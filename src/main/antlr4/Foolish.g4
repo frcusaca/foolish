@@ -30,7 +30,7 @@ primaryExpr     : literal
 
 funcExpr        : LPAREN paramList? RPAREN ARROW brane ;
 paramList       : param ( COMMA param )* ;
-param           : identifier COLON ( type_ | typeIdentifier ) ;
+param           : identifier COLON ( primitiveType | typeIdentifier ) ;
 
 braneExpr       : LBRACE braneStmt* RBRACE ;
 braneStmt       : ( expression | assignmentExpression ) ( SEMI | NEWLINE )* ;
@@ -38,21 +38,22 @@ braneStmt       : ( expression | assignmentExpression ) ( SEMI | NEWLINE )* ;
 assignmentExpression : assignExpr | typeAssignExpr | derefAssignExpr ;
 assignExpr      : identifier ASSIGN expression ;
 typeAssignExpr  : typeIdentifier ASSIGN typeExpression ;
-typeExpression  : type_ | typeIdentifier ;
+typeExpression  : primitiveType | typeIdentifier ;
 derefAssignExpr : identifier ASSIGN_DEREF expression ;
 
 braneTypeDef    : LDBLBRACE ( fieldDef ( COMMA fieldDef )* )? RDBLBRACE ;
-fieldDef        : identifier COLON ( type_ | typeIdentifier ) ;
+fieldDef        : identifier COLON ( primitiveType | typeIdentifier ) ;
 
 primitiveType   : INT_T | FLOAT_T | STRING_T | BRANE_T | braneTypeDef ;
-type_           : TYPE_KIND PRIM_QUOTE primitiveType ;
+typeIdentifier : TYPE_KIND PRIM_QUOTE TYPE_IDENTIFIER ;
 
 braneIndex      : identifier | intLiteral ;
 
 literal         : primitiveLiteral | typeLiteral ;
 primitiveLiteral: intLiteral | floatLiteral | stringLiteral ;
-intLiteral      : MINUS? DIGITS ;
-floatLiteral    : DIGITS? DOT DIGITS ;
+prefixSign      : MINUS|PLUS ;
+intLiteral      : prefixSign? NUMBER ;
+floatLiteral    : prefixSign? NUMBER? DOT NUMBER ;
 stringLiteral   : DQUOTE (~DQUOTE)* DQUOTE ;
 typeLiteral     : TYPE_KIND PRIM_QUOTE primitiveLiteral ;
 
@@ -99,9 +100,11 @@ PRIM_QUOTE : '\'' ;
 TYPE_KIND  : [Tt] ;
 
 // Order matters: TYPE_IDENTIFIER before ORD_IDENTIFIER
-TYPE_IDENTIFIER : [Tt] '\'' [A-Za-z_][A-Za-z0-9_]* ;
-ORD_IDENTIFIER  : '\''? [A-Za-z_][A-Za-z0-9_]* ;
+fragment PRIMITIVE_IDENTIFIER : [A-Za-z_][A-Za-z0-9_]* ;
+TYPE_IDENTIFIER : TYPE_KIND PRIM_QUOTE PRIMITIVE_IDENTIFIER  ;
+ORD_IDENTIFIER  : PRIM_QUOTE? PRIMITIVE_IDENTIFIER ;
 
+NUMBER: DIGITS;
 fragment DIGITS : [0-9]+ ;
 
 // Comments are ignored by the parser
