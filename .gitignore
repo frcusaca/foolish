@@ -1,0 +1,47 @@
+# Compiled class files and build artifacts
+bin/
+target/
+build/
+dist/
+*.class
+*.jar
+*.war
+*.ear
+
+# Ivy related files
+ivy-cache/
+lib/
+ivy.xml.original
+ivy-report.xml
+
+logs/
+*.log
+# IDE specific files (uncomment based on your IDE)
+# Eclipse
+#.classpath
+#.project
+#.settings/
+
+# IntelliJ IDEA
+#.idea/
+#*.iml
+#*.ipr
+#*.iws
+
+# NetBeans
+#nbproject/
+#build/
+
+.vscode/
+
+# Operating system specific files
+.DS_Store
+Thumbs.db
+
+# Virtual machine crash logs
+hs_err_pid*.log
+
+*~
+*.swp
+
+

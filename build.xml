@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="foolish" default="test" basedir="." xmlns:ivy="antlib:org.apache.ivy.ant">
+  <property name="src.dir" value="src/main/java"/>
+  <property name="antlr.dir" value="src/main/antlr4"/>
+  <property name="gen.dir" value="build/generated-src"/>
+  <property name="classes.dir" value="build/classes"/>
+  <property name="test.src.dir" value="src/test/java"/>
+  <property name="test.classes.dir" value="build/test-classes"/>
+  <property name="lib.dir" value="lib"/>
+  <property name="ivy.lib" value="${lib.dir}/ivy.jar"/>
+  <property name="main.class" value="com.foolishlang.Main"/>
+
+  <target name="bootstrap-ivy" depends="download-ivy">
+    <mkdir dir="${lib.dir}"/>
+    <available file="${ivy.lib}" property="ivy.present"/>
+    <condition property="need.ivy">
+      <not><isset property="ivy.present"/></not>
+    </condition>
+    <echo message="Ivy present? ${ivy.present}"/>
+      <echo message="Downloading Apache Ivy..."/>
+      <get src="https://repo1.maven.org/maven2/org/apache/ivy/ivy/2.5.1/ivy-2.5.1.jar"
+           dest="${ivy.lib}" skipexisting="true"/>
+    <antcall target="download-ivy"/>
+  </target>
+
+
+<target name="download-ivy" if="need.ivy">
+  <echo message="Downloading Apache Ivy..."/>
+  <get src="https://repo1.maven.org/maven2/org/apache/ivy/ivy/2.5.1/ivy-2.5.1.jar"
+       dest="${ivy.lib}" skipexisting="true"/>
+</target>
+
+
+<target name="init-ivy" depends="bootstrap-ivy,download-ivy">
+
+	<!--
+    <taskdef name="ivy:resolve" classname="org.apache.ivy.ant.IvyResolve" classpath="${ivy.lib}"/>
+		<taskdef name="ivy:retrieve" classname="org.apache.ivy.ant.IvyRetrieve" classpath="${ivy.lib}"/>
+		-->
+    <taskdef uri="antlib:org.apache.ivy.ant"
+           resource="org/apache/ivy/ant/antlib.xml"
+           classpath="${ivy.lib}"/>
+  </target>
+
+  <target name="resolve" depends="init-ivy">
+    <echo message="Resolving dependencies via Ivy..."/>
+    <ivy:resolve file="ivy.xml" />
+    <ivy:retrieve pattern="${lib.dir}/[organization]/[module]/[artifact]-[revision](-[classifier]).[ext]" />
+  </target>
+
+  <target name="clean">
+    <delete dir="build"/>
+  </target>
+
+  <target name="generate" depends="resolve">
+    <mkdir dir="${gen.dir}"/>
+    <java classname="org.antlr.v4.Tool" fork="true" failonerror="true">
+      <arg value="-Dlanguage=Java"/>
+      <arg value="-visitor"/>
+      <arg value="-package"/>
+      <arg value="com.foolishlang.grammar"/>
+      <arg value="-o"/>
+      <arg value="${gen.dir}"/>
+      <arg value="${antlr.dir}/Foolish.g4"/>
+      <classpath>
+        <fileset dir="${lib.dir}">
+		<include name="**/antlr4-*.jar"/>
+		<include name="**/antlr4-runtime-*.jar"/>
+		<include name="**/antlr-runtime-*.jar"/>
+		<include name="**/ST4-*.jar"/>
+        </fileset>
+      </classpath>
+    </java>
+  </target>
+
+  <target name="compile" depends="generate">
+    <mkdir dir="${classes.dir}"/>
+    <javac source="21" target="21" includeantruntime="false" destdir="${classes.dir}">
+      <src path="${src.dir}"/>
+      <src path="${gen.dir}"/>
+      <classpath>
+        <fileset dir="${lib.dir}">
+          <include name="*.jar"/>
+        </fileset>
+      </classpath>
+    </javac>
+  </target>
+
+  <target name="run" depends="compile">
+    <java classname="${main.class}" fork="true">
+      <classpath>
+        <fileset dir="${lib.dir}">
+          <include name="*.jar"/>
+        </fileset>
+        <pathelement location="${classes.dir}"/>
+      </classpath>
+      <arg value="samples/hello.foo"/>
+    </java>
+  </target>
+
+  <target name="compile-tests" depends="compile">
+    <mkdir dir="${test.classes.dir}"/>
+    <javac source="21" target="21" includeantruntime="false" destdir="${test.classes.dir}">
+      <src path="${test.src.dir}"/>
+      <classpath>
+        <fileset dir="${lib.dir}">
+          <include name="*.jar"/>
+        </fileset>
+        <pathelement location="${classes.dir}"/>
+      </classpath>
+    </javac>
+  </target>
+
+  <target name="test" depends="compile-tests">
+    <java classname="org.junit.platform.console.ConsoleLauncher" fork="true" failonerror="true">
+      <classpath>
+        <fileset dir="${lib.dir}">
+          <include name="*.jar"/>
+        </fileset>
+        <pathelement location="${classes.dir}"/>
+        <pathelement location="${test.classes.dir}"/>
+      </classpath>
+      <arg value="--scan-classpath"/>
+    </java>
+  </target>
+</project>

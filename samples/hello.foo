@@ -1,0 +1,14 @@
+
+{
+  -- Simple sample showing RPN adjacency concat and path deref
+  myProduct = (a: t'Int, b: t'Int) -> {
+    product = a * b
+  }
+
+  call_myProduct_result = {1,2} myProduct
+  call_myProduct_result =$ {1,2} myProduct
+
+  firstLine = call_myProduct_result^
+  lastLine  = call_myProduct_result$
+  nthLine   = call_myProduct_result#3
+}
