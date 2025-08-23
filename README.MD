@@ -1,3 +1,20 @@
+# Foolish language — Java + ANTLR4 + Ant + Ivy
+
+Build & test:
+  - `ant test`  : bootstraps Ivy, resolves deps (ANTLR 4.13.1, JUnit Console 1.10.2), generates parser, compiles, runs tests
+  - `ant run`   : runs the demo on `samples/hello.foo`
+
+Layout:
+  - `src/main/antlr4/Foolish.g4` — grammar (Java target, visitor on, package `com.foolishlang.grammar`)
+  - `src/main/java/com/foolishlang` — AST, AstBuilder, Symbols, SymbolBuilder, ParserFacade, Main
+  - `src/test/java/com/foolishlang` — JUnit tests
+  - `samples/hello.foo` — sample program
+
+Notes:
+  - Comments are lexed to the hidden channel and therefore ignored (denotational semantics preserved).
+  - Concatenation is adjacency of brane-valued expressions (RPN), left-to-right; association is immaterial for denotation.
+  - `^` and `$` are shorthand path derefs equivalent to `#1` and `#-1` when index omitted.
+
 The Foolish language is a computer programming language. The language is specified to grow as we find the market fit for it in this age of rapidly expanding AI usage.
 
 Foolish language begins as an exercise in vibe programming. We use AI to generate much of the code for a simplistic functional programming language. This language has simple concept of a "brane" that largely resembles code blocks, lambda's, struct, class, enum and other similar constructs in modern day programming languages. To that end, it is curly bracket enclosed block of statements. Statements in Foolish are simply assignments of an expression to a name. Statements can also just be an express, the name is anonymized in this case. Brane, once understood, can be inspected for it's values at a certain key, or a certain line/statement number. It is permitted to assign to the same name repeatedly. The language facilitates retrieval of the values in it's syntax.
