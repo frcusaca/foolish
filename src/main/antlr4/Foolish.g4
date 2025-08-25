@@ -1,4 +1,3 @@
-
 grammar Foolish;
 
 program : brane EOF ;
@@ -17,8 +16,10 @@ concatExpr      : postfixExpr (postfixExpr)* ;
 
 postfixExpr     : primaryExpr pathOp* ;
 pathOp          : CARET braneIndex?
+                : SLASH braneIndex
                 | DOLLAR braneIndex?
-                | HASH braneIndex
+                | QMARK braneIndex
+                | HASH intLiteral
                 ;
 
 primaryExpr     : literal
@@ -98,6 +99,7 @@ DOT        : '.' ;
 DQUOTE     : '"' ;
 PRIM_QUOTE : '\'' ;
 TYPE_KIND  : [Tt] ;
+QMARK      : '?' ;
 
 // Order matters: TYPE_IDENTIFIER before ORD_IDENTIFIER
 fragment PRIMITIVE_IDENTIFIER : [A-Za-z_][A-Za-z0-9_]* ;

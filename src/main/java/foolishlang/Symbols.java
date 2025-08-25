@@ -1,5 +1,5 @@
 
-package com.foolishlang;
+package foolishlang;
 
 import java.util.*;
 

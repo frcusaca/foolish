@@ -46,13 +46,13 @@
             </goals>
             <configuration>
               <arguments>
-                <argument>-visitor</argument>
                 <argument>-package</argument>
                 <argument>com.foolishlang.grammar</argument>
+                <argument>-visitor</argument>
               </arguments>
-              <outputDirectory>${project.build.directory}/generated-sources/antlr4</outputDirectory>
-              <sourceDirectory>${project.basedir}/src/main/antlr4</sourceDirectory>
-              <packageName>com.foolishlang.grammar</packageName>
+              <outputDirectory>${project.build.directory}/generated-sources/antlr4/com/foolishlang/grammar</outputDirectory>
+              <sourceDirectory>src/main/antlr4</sourceDirectory>
+<!--              <packageOutputDirectory>true</packageOutputDirectory>-->
             </configuration>
           </execution>
         </executions>

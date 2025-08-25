@@ -1,10 +1,10 @@
 
-package com.foolishlang;
+package foolishlang;
 
 import java.util.*;
 
 public final class AST {
-    public sealed interface Node permits Program, Brane, Stmt, Expr, TypeExpr, Comment {}
+    public sealed interface Node permits Program, Brane, Stmt, Expr, TypeExpr, Param, FieldDef, PathDeref {}
 
     public static final class Program implements Node {
         public final Brane body;

@@ -1,0 +1,99 @@
+-- Foolish Language EBNF
+-- The language revolves around the concept of a Brane, an associative array
+-- where every computation is transparent and each line can be inspected for its value.
+-- Kinds are a feature of the language where we can project any symbol or literal used in foolish 
+-- into another Kind. In the least the kind prefix separates the language into different name spaces.
+-- kinds are specified by `Kind_Identifier'type_name". the kind identifier will lift the type specified into a new kind.
+-- similarly `Kind_Identifier'literal` and `Kind_Identifier'identiifier`, etc.
+
+<program> ::= <brane> ; 
+-- A program is a single brane.
+
+<binaryExpression> ::= <logicalOrExpr> ; 
+-- Expressions include arithmetic, logical operations, RPN brane concatenation, function calls, literals, identifiers, and brane literals.
+
+-- Operator precedence: lowest to highest
+<logicalOrExpr> ::= <logicalAndExpr> { "||" <logicalAndExpr> } ;
+<logicalAndExpr> ::= <equalityExpr> { "&&" <equalityExpr> } ;
+<equalityExpr> ::= <relationalExpr> { "==" <relationalExpr> } ;
+<relationalExpr> ::= <addExpr> { ("<" | ">" | "<=" | ">=") <addExpr> } ;
+<addExpr> ::= <mulExpr> { ("+" | "-") <mulExpr> } ;
+<mulExpr> ::= <concatExpr> { ("*" | "/") <concatExpr> } ;
+
+<concatExpr> ::= <postfixExpr> { <postfixExpr> } ; 
+-- Sequential RPN concatenation of branes (left-to-right)
+-- Concatenation means “one brane after another”; no evaluation side effects.
+
+<postfixExpr> ::= <primaryExpr> { <pathOp> } ;
+-- Postfix operations for brane indexing/dereference:
+-- ^member: first alteration of member. aka search '/asdf', except '^' permits empty path which means simply the value of the first statement in the brane.
+-- $member: last alteration of member. aka search backwards "?asdf". '$' permits empty path which means the last value of the braine.
+-- #index: numeric index (0-based or -1 for last)
+<pathOp> ::= "^" [<braneIndex>]
+           | "/" [braneIndex>]
+           | "$" [<braneIndex>] 
+           | "?" [<braneIndex>] 
+           | "#" <intLiteral> ;
+-- TODO extend "#" to accept value expressions
+
+<primaryExpr> ::= <literal>
+                | <identifier>
+                | <funcExpr>        -- function definition
+                | <braneExpr>       -- inline brane literal
+                | "(" <binaryExpression> ")" ;
+
+<funcExpr> ::= "(" [<paramList>] ")" "->" <brane> ;
+-- Function definitions: returns a brane; no side effects
+<paramList> ::= <param> { "," <param> } ;
+<param> ::= <identifier> ":" (<primitiveType> | <typeIdentifier>) ;
+-- Parameters are typed; the t' prefix indicates a type.
+
+<braneExpr> ::= "{" { <braneStmt> } "}" ;
+-- Branes are sequences of statements and expressions.
+
+<braneStmt> ::= (<binaryExpression> | <assignmentExpression> | <comment>) { ";" | "\n" } ;
+-- Statements can be expressions, assignments, or comments.
+-- Multiple semicolons or newlines are allowed as separators.
+
+<assignmentExpression> ::= <assignExpr> | <typeAssignExpr> | <derefAssignExpr> ;
+<assignExpr> ::= <identifier> "=" <binaryExpression> ;
+-- Regular assignment of a brane or value to a name.
+
+<typeAssignExpr> ::= <typeIdentifier> "=" <typeExpression> ;
+<typeExpression> ::= <primitiveType> | <typeIdentifier> ;
+-- Assigns a type to a name (type checking happens later).
+
+<derefAssignExpr> ::= <identifier> "=$" <binaryExpression> ;
+-- Assigns the last computed value of a brane <binaryExpression> to a variable.
+
+<braneTypeDef> ::= "{{" [ <fieldDef> { "," <fieldDef> } ] "}}" ;
+<fieldDef> ::= <identifier> ":" (<primitiveType> | <typeIdentifier>) ;
+-- Brane type definitions: fields must have known type and size.
+
+<primitiveType> ::= "Int" | "Float" | "String" | "Brane" | <braneTypeDef> ;
+-- Built-in primitive types.
+
+<braneIndex> ::= <identifier> | <intLiteral> ;
+-- For indexing into branes.
+
+<literal> ::= [ <kind> "'" ]? <primitiveLiteral> ;
+<primitiveLiteral> ::= <intLiteral> | <floatLiteral> | <stringLiteral> ;
+<intLiteral> ::= [ "+" | "-" ]? <DIGITS> ;
+<floatLiteral> ::= [ "-" ]? [ <DIGITS> ]? "." <DIGITS> ;
+<stringLiteral> ::= '"' { any-char-except-quote } '"' ;
+-- Literals can optionally have a kind prefix: ordinary (') or type (T').
+
+<identifier> ::= <ordinaryIdentifier> | <typeIdentifier> ;
+<ordinaryIdentifier> ::= [ "'" ]? <primitiveIdentifier> ;
+<typeIdentifier> ::= ("T" | "t") "'" <primitiveIdentifier> ;
+
+<primitiveIdentifier> ::= letter { letter | digit | "_" } ;
+-- Identifiers are case-sensitive.
+
+<kind> ::= "'" | ("T" | "t") ;
+
+<comment> ::= <lineComment> | <blockComment> ;
+<lineComment> ::= "--" { any-char-except-newline } ;
+<blockComment> ::= "---" { any-char-except "---" } "---" ;
+-- Comments are ignored for execution, can appear anywhere between statements.
+

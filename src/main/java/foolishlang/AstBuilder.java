@@ -1,5 +1,5 @@
 
-package com.foolishlang;
+package foolishlang;
 
 import com.foolishlang.grammar.*;
 import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor;
@@ -37,6 +37,15 @@ public class AstBuilder extends AbstractParseTreeVisitor<Object> implements Fool
         if (ctx.expression()!=null) {
             return new AST.ExprStmt(asExpr(visit(ctx.expression())));
         }
+        return null;
+    }
+
+    /**
+     * @param ctx the parse tree 
+     * @return
+     */
+    @Override
+    public Object visitAssignmentExpression(FoolishParser.AssignmentExpressionContext ctx) {
         return null;
     }
 
@@ -161,6 +170,17 @@ public class AstBuilder extends AbstractParseTreeVisitor<Object> implements Fool
         return new AST.PathDerefExpr(base, derefs);
     }
 
+    /**
+     * @param ctx the parse tree 
+     * @return
+     */
+    @Override
+    public Object visitPathOp(FoolishParser.PathOpContext ctx) {
+        if(ctx.HASH()!=null){
+           new AST.PathDeref()
+        }
+    }
+
     @Override public Object visitPrimaryExpr(FoolishParser.PrimaryExprContext ctx) {
         if (ctx.literal()!=null) return visit(ctx.literal());
         if (ctx.identifier()!=null) return visit(ctx.identifier());
@@ -183,6 +203,24 @@ public class AstBuilder extends AbstractParseTreeVisitor<Object> implements Fool
         return new AST.FuncExpr(params, body);
     }
 
+    /**
+     * @param ctx the parse tree 
+     * @return
+     */
+    @Override
+    public Object visitParamList(FoolishParser.ParamListContext ctx) {
+        return null;
+    }
+
+    /**
+     * @param ctx the parse tree 
+     * @return
+     */
+    @Override
+    public Object visitParam(FoolishParser.ParamContext ctx) {
+        return null;
+    }
+
     @Override public Object visitBraneIndex(FoolishParser.BraneIndexContext ctx) {
         if (ctx.identifier()!=null) return visit(ctx.identifier());
         return visit(ctx.intLiteral());
@@ -193,6 +231,15 @@ public class AstBuilder extends AbstractParseTreeVisitor<Object> implements Fool
         if (ctx.intLiteral()!=null) return visit(ctx.intLiteral());
         if (ctx.floatLiteral()!=null) return visit(ctx.floatLiteral());
         return visit(ctx.stringLiteral());
+    }
+
+    /**
+     * @param ctx the parse tree 
+     * @return
+     */
+    @Override
+    public Object visitPrefixSign(FoolishParser.PrefixSignContext ctx) {
+        return null;
     }
 
     @Override public Object visitLiteral(FoolishParser.LiteralContext ctx) {
@@ -240,6 +287,33 @@ public class AstBuilder extends AbstractParseTreeVisitor<Object> implements Fool
             fields.add(new AST.FieldDef(id, (AST.Node)t));
         }
         return new AST.BraneType(fields);
+    }
+
+    /**
+     * @param ctx the parse tree 
+     * @return
+     */
+    @Override
+    public Object visitFieldDef(FoolishParser.FieldDefContext ctx) {
+        return null;
+    }
+
+    /**
+     * @param ctx the parse tree 
+     * @return
+     */
+    @Override
+    public Object visitPrimitiveType(FoolishParser.PrimitiveTypeContext ctx) {
+        return null;
+    }
+
+    /**
+     * @param ctx the parse tree 
+     * @return
+     */
+    @Override
+    public Object visitTypeIdentifier(FoolishParser.TypeIdentifierContext ctx) {
+        return null;
     }
 
     @Override public Object visitTypeIdent(FoolishParser.TypeIdentContext ctx) {

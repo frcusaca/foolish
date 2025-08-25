@@ -1,5 +1,5 @@
 
-package com.foolishlang;
+package foolishlang;
 
 import com.foolishlang.grammar.*;
 import org.antlr.v4.runtime.*;
