@@ -8,7 +8,7 @@
   <property name="test.classes.dir" value="build/test-classes"/>
   <property name="lib.dir" value="lib"/>
   <property name="ivy.lib" value="${lib.dir}/ivy.jar"/>
-  <property name="main.class" value="com.foolishlang.Main"/>
+  <property name="main.class" value="org.foolish.Main"/>
 
   <target name="bootstrap-ivy" depends="download-ivy">
     <mkdir dir="${lib.dir}"/>
@@ -73,7 +73,7 @@
       <arg value="-Dlanguage=Java"/>
       <arg value="-visitor"/>
       <arg value="-package"/>
-      <arg value="com.foolishlang.grammar"/>
+      <arg value="org.foolish.grammar"/>
       <arg value="-o"/>
       <arg value="${gen.dir}"/>
       <arg value="${antlr.dir}/Foolish.g4"/>

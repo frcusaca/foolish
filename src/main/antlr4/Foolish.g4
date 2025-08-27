@@ -1,117 +1,55 @@
 grammar Foolish;
 
 program : brane EOF ;
-brane   : braneExpr ;
 
-expression      : logicalOrExpr ;
-logicalOrExpr   : logicalAndExpr ( OR OR logicalAndExpr )* ;
-logicalAndExpr  : equalityExpr ( AND AND equalityExpr )* ;
-equalityExpr    : relationalExpr ( EQEQ relationalExpr )* ;
-relationalExpr  : addExpr ( (LT | GT | LE | GE) addExpr )* ;
-addExpr         : mulExpr ( (PLUS | MINUS) mulExpr )* ;
-mulExpr         : concatExpr ( (STAR | SLASH) concatExpr )* ;
+brane : LBRACE stmt* RBRACE ;
 
-// RPN concatenation by adjacency, left-to-right
-concatExpr      : postfixExpr (postfixExpr)* ;
+stmt : (assignment | expr) SEMI ;
 
-postfixExpr     : primaryExpr pathOp* ;
-pathOp          : CARET braneIndex?
-                : SLASH braneIndex
-                | DOLLAR braneIndex?
-                | QMARK braneIndex
-                | HASH intLiteral
-                ;
+assignment : IDENTIFIER ASSIGN expr ;
 
-primaryExpr     : literal
-                | identifier
-                | funcExpr
-                | braneExpr
-                | LPAREN expression RPAREN
-                ;
+expr : addExpr ;
 
-funcExpr        : LPAREN paramList? RPAREN ARROW brane ;
-paramList       : param ( COMMA param )* ;
-param           : identifier COLON ( primitiveType | typeIdentifier ) ;
+addExpr : mulExpr ((PLUS | MINUS) mulExpr)* ;
 
-braneExpr       : LBRACE braneStmt* RBRACE ;
-braneStmt       : ( expression | assignmentExpression ) ( SEMI | NEWLINE )* ;
-
-assignmentExpression : assignExpr | typeAssignExpr | derefAssignExpr ;
-assignExpr      : identifier ASSIGN expression ;
-typeAssignExpr  : typeIdentifier ASSIGN typeExpression ;
-typeExpression  : primitiveType | typeIdentifier ;
-derefAssignExpr : identifier ASSIGN_DEREF expression ;
-
-braneTypeDef    : LDBLBRACE ( fieldDef ( COMMA fieldDef )* )? RDBLBRACE ;
-fieldDef        : identifier COLON ( primitiveType | typeIdentifier ) ;
-
-primitiveType   : INT_T | FLOAT_T | STRING_T | BRANE_T | braneTypeDef ;
-typeIdentifier : TYPE_KIND PRIM_QUOTE TYPE_IDENTIFIER ;
-
-braneIndex      : identifier | intLiteral ;
-
-literal         : primitiveLiteral | typeLiteral ;
-primitiveLiteral: intLiteral | floatLiteral | stringLiteral ;
-prefixSign      : MINUS|PLUS ;
-intLiteral      : prefixSign? NUMBER ;
-floatLiteral    : prefixSign? NUMBER? DOT NUMBER ;
-stringLiteral   : DQUOTE (~DQUOTE)* DQUOTE ;
-typeLiteral     : TYPE_KIND PRIM_QUOTE primitiveLiteral ;
-
-identifier
-    : TYPE_IDENTIFIER     #TypeIdent
-    | ORD_IDENTIFIER      #OrdIdent
+mulExpr
+    : unaryExpr ((MUL | DIV) unaryExpr)*
     ;
 
-// Tokens
-INT_T      : 'Int' ;
-FLOAT_T    : 'Float' ;
-STRING_T   : 'String' ;
-BRANE_T    : 'Brane' ;
+unaryOp
+    : MUL
+    ;
 
-ARROW      : '->' ;
-ASSIGN     : '=' ;
-ASSIGN_DEREF : '=$' ;
-EQEQ       : '==' ;
-LE         : '<=' ;
-GE         : '>=' ;
-LT         : '<' ;
-GT         : '>' ;
-PLUS       : '+' ;
-MINUS      : '-' ;
-STAR       : '*' ;
-SLASH      : '/' ;
-HASH       : '#' ;
-CARET      : '^' ;
-DOLLAR     : '$' ;
-OR         : '|' ;
-AND        : '&' ;
-LPAREN     : '(' ;
-RPAREN     : ')' ;
-LBRACE     : '{' ;
-RBRACE     : '}' ;
-LDBLBRACE  : '{{' ;
-RDBLBRACE  : '}}' ;
-COMMA      : ',' ;
-COLON      : ':' ;
-SEMI       : ';' ;
-DOT        : '.' ;
-DQUOTE     : '"' ;
-PRIM_QUOTE : '\'' ;
-TYPE_KIND  : [Tt] ;
-QMARK      : '?' ;
+unaryExpr
+    : unaryOp unaryExpr
+    | primary
+    ;
 
-// Order matters: TYPE_IDENTIFIER before ORD_IDENTIFIER
-fragment PRIMITIVE_IDENTIFIER : [A-Za-z_][A-Za-z0-9_]* ;
-TYPE_IDENTIFIER : TYPE_KIND PRIM_QUOTE PRIMITIVE_IDENTIFIER  ;
-ORD_IDENTIFIER  : PRIM_QUOTE? PRIMITIVE_IDENTIFIER ;
+primary : INTEGER
+        | IDENTIFIER
+        | LPAREN expr RPAREN 
+	;
 
-NUMBER: DIGITS;
-fragment DIGITS : [0-9]+ ;
+// Lexer rules (uppercase)
+LBRACE : '{' ;
+RBRACE : '}' ;
+LPAREN : '(' ;
+RPAREN : ')' ;
+SEMI : ';' ;
+ASSIGN : '=' ;
+PLUS : '+' ;
+MINUS : '-' ;
+MUL : '*' ;
+DIV : '/' ;
 
-// Comments are ignored by the parser
-LINE_COMMENT : '--' ~[\r\n]* -> channel(HIDDEN) ;
-BLOCK_COMMENT: '---' ( ~'-' | '-' ~'-' | '--' ~'-' )* '---' -> channel(HIDDEN) ;
+INTEGER : SIGN? DIGIT+ ;
 
-WS      : [ \t\f\r]+ -> channel(HIDDEN) ;
-NEWLINE : '\r'? '\n' ;
+fragment LETTER : [a-zA-Z] ;
+fragment DIGIT : [0-9] ;
+fragment UNDERSCORE : '_' ;
+fragment SIGN : [+-] ;
+
+// Skip whitespace
+WS : [ \t\r\n]+ -> skip ;
+
+IDENTIFIER : LETTER (LETTER|DIGIT|UNDERSCORE)* ;

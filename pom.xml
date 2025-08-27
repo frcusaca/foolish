@@ -3,7 +3,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>com.foolishlang</groupId>
+  <groupId>org.foolish</groupId>
   <artifactId>foolish</artifactId>
   <version>1.0-SNAPSHOT</version>
   <packaging>jar</packaging>
@@ -14,6 +14,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <antlr4.version>4.13.1</antlr4.version>
     <junit.platform.version>1.10.2</junit.platform.version>
+      <jackson.version>2.17.2</jackson.version>
   </properties>
 
   <dependencies>
@@ -47,10 +48,10 @@
             <configuration>
               <arguments>
                 <argument>-package</argument>
-                <argument>com.foolishlang.grammar</argument>
+                <argument>org.foolish.grammar</argument>
                 <argument>-visitor</argument>
               </arguments>
-              <outputDirectory>${project.build.directory}/generated-sources/antlr4/com/foolishlang/grammar</outputDirectory>
+              <outputDirectory>${project.build.directory}/generated-sources/antlr4/org/foolish/grammar</outputDirectory>
               <sourceDirectory>src/main/antlr4</sourceDirectory>
 <!--              <packageOutputDirectory>true</packageOutputDirectory>-->
             </configuration>
