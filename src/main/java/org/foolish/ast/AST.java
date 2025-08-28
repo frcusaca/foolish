@@ -2,11 +2,11 @@ package org.foolish.ast;
 
 import java.util.List;
 
-public sealed interface AST permits AST.Program, AST.Stmt, AST.Expr {
-    record Program(Brane brane) implements AST {
+public sealed interface AST permits AST.Program, AST.Stmt, AST.Expr, AST.Brane {
+    record Program(Branes brane) implements AST {
     }
 
-    record Brane(List<Stmt> statements) implements Stmt {
+    record Brane(List<Stmt> statements) implements AST {
         public String toString() {
             StringBuilder sb = new StringBuilder();
             sb.append("{\n");
@@ -18,7 +18,17 @@ public sealed interface AST permits AST.Program, AST.Stmt, AST.Expr {
         }
     }
 
-    sealed interface Stmt extends AST permits Assignment, ExprStmt, Brane {
+    sealed interface Stmt extends AST permits Assignment, ExprStmt, Branes {
+    }
+
+    record Branes(List<Brane> branes) implements Stmt {
+        public String toString() {
+            StringBuilder sb = new StringBuilder();
+            for (Brane brane : branes) {
+                sb.append(brane).append("\n");
+            }
+            return sb.toString();
+        }
     }
 
     record Assignment(String id, Expr expr) implements Stmt {

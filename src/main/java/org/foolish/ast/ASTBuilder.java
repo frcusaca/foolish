@@ -10,7 +10,7 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
     @Override
     public AST visitProgram(FoolishParser.ProgramContext ctx) {
-        return visit(ctx.brane());
+        return visit(ctx.branes());
     }
 
     @Override
@@ -23,6 +23,18 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
         }
         return new AST.Brane(stmts);
     }
+
+    @Override
+    public AST visitBranes(FoolishParser.BranesContext ctx) {
+        List<AST.Brane> brns = new ArrayList<>();
+        for (var s : ctx.brane()) {
+            AST st = (AST) visit(s);
+            if (st instanceof AST.Brane brn) brns.add(brn);
+            else throw new RuntimeException("Expected brane, got: " + st);
+        }
+        return new AST.Branes(brns);
+    }
+
 
     @Override
     public AST visitStmt(FoolishParser.StmtContext ctx) {

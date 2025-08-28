@@ -1,11 +1,12 @@
 grammar Foolish;
 
-program : brane EOF ;
+program : branes EOF ;
 
 brane : LBRACE stmt* RBRACE ;
+branes: brane+ ;
 
 stmt
-    : brane SEMI
+    : branes SEMI
     | assignment SEMI
     | expr SEMI
     ;
