@@ -19,16 +19,17 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
         for (var s : ctx.stmt()) {
             AST st = (AST) visit(s);
             if (st instanceof AST.Stmt stmt) stmts.add(stmt);
+            else throw new RuntimeException("Expected statement, got: " + st);
         }
         return new AST.Brane(stmts);
     }
 
     @Override
     public AST visitStmt(FoolishParser.StmtContext ctx) {
-        if (ctx.assignment() != null) {
-            return visit(ctx.assignment());
+        if (ctx.expr() != null) {
+            return visit(ctx.expr());
         } else {
-            return new AST.ExprStmt((AST.Expr) visit(ctx.expr()));
+            return visit(ctx.assignment());
         }
     }
 
@@ -68,10 +69,17 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
     @Override
     public AST visitUnaryExpr(FoolishParser.UnaryExprContext ctx) {
-        if (ctx.primary() != null) return visit(ctx.primary());
-        String op = ctx.getChild(0).getText();
-        AST.Expr expr = (AST.Expr) visit(ctx.unaryExpr());
-        return new AST.UnaryExpr(op, expr);
+        if (ctx.PLUS() != null) {
+            String op = "+";
+            AST.Expr expr = (AST.Expr) visit(ctx.primary());
+            return new AST.UnaryExpr(op, expr);
+        } else if (ctx.MINUS() != null) {
+            String op = "-";
+            AST.Expr expr = (AST.Expr) visit(ctx.primary());
+            return new AST.UnaryExpr(op, expr);
+        } else {
+            return visit(ctx.primary());
+        }
     }
 
     @Override

@@ -28,6 +28,11 @@ public class ParserTest {
         AST.Brane brane = (AST.Brane) ast;
         assertEquals(1, brane.statements().size());
         assertTrue(brane.statements().get(0) instanceof AST.Assignment);
+        assertEquals("""
+{
+  x = 5;
+}""", ast.toString());
+
     }
 
     @Test
@@ -37,17 +42,32 @@ public class ParserTest {
         AST.Brane brane = (AST.Brane) ast;
         assertEquals(2, brane.statements().size());
         assertTrue(brane.statements().get(0) instanceof AST.Assignment);
+        assertEquals("""
+{
+  x = (1 + (2 * 3));
+  y = (x - 4);
+}""", ast.toString());
+
     }
 
     @Test
     public void testUnary() {
         AST ast = parse("{ x = -3; y = +x; }");
         assertTrue(ast instanceof AST.Brane);
+        assertEquals("""
+{
+  x = -3;
+  y = +x;
+}""", ast.toString());
     }
 
     @Test
     public void testNestedExpr() {
         AST ast = parse("{ x = -(2 + (3*4)); }");
         assertTrue(ast instanceof AST.Brane);
+        assertEquals("""
+{
+  x = -(2 + (3 * 4));
+}""", ast.toString());
     }
 }

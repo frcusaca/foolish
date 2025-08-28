@@ -4,30 +4,29 @@ program : brane EOF ;
 
 brane : LBRACE stmt* RBRACE ;
 
-stmt : (assignment | expr) SEMI ;
+stmt
+    : brane SEMI
+    | assignment SEMI
+    | expr SEMI
+    ;
 
 assignment : IDENTIFIER ASSIGN expr ;
 
-expr : addExpr ;
-
+expr
+    : addExpr
+    ;
 addExpr : mulExpr ((PLUS | MINUS) mulExpr)* ;
 
 mulExpr
     : unaryExpr ((MUL | DIV) unaryExpr)*
     ;
 
-unaryOp
-    : MUL
-    ;
-
 unaryExpr
-    : unaryOp unaryExpr
-    | primary
+    : (PLUS|MINUS)? primary
     ;
-
 primary : INTEGER
         | IDENTIFIER
-        | LPAREN expr RPAREN 
+        | LPAREN expr RPAREN
 	;
 
 // Lexer rules (uppercase)
@@ -42,12 +41,11 @@ MINUS : '-' ;
 MUL : '*' ;
 DIV : '/' ;
 
-INTEGER : SIGN? DIGIT+ ;
+INTEGER : DIGIT+ ;
 
 fragment LETTER : [a-zA-Z] ;
 fragment DIGIT : [0-9] ;
 fragment UNDERSCORE : '_' ;
-fragment SIGN : [+-] ;
 
 // Skip whitespace
 WS : [ \t\r\n]+ -> skip ;
