@@ -15,13 +15,13 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
     @Override
     public AST visitBrane(FoolishParser.BraneContext ctx) {
-        List<AST.Stmt> stmts = new ArrayList<>();
+        List<AST.Expr> exprs = new ArrayList<>();
         for (var s : ctx.stmt()) {
-            AST st = (AST) visit(s);
-            if (st instanceof AST.Stmt stmt) stmts.add(stmt);
+            AST st = visit(s);
+            if (st instanceof AST.Expr expr) exprs.add(expr);
             else throw new RuntimeException("Expected statement, got: " + st);
         }
-        return new AST.Brane(stmts);
+        return new AST.Brane(exprs);
     }
 
     @Override
@@ -54,6 +54,7 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
     @Override
     public AST visitExpr(FoolishParser.ExprContext ctx) {
+        if (ctx.ifExpr() != null) return visit(ctx.ifExpr());
         return visit(ctx.addExpr());
     }
 
@@ -98,6 +99,29 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
     public AST visitPrimary(FoolishParser.PrimaryContext ctx) {
         if (ctx.INTEGER() != null) return new AST.Literal(Long.parseLong(ctx.INTEGER().getText()));
         if (ctx.IDENTIFIER() != null) return new AST.VarRef(ctx.IDENTIFIER().getText());
+        if (ctx.UNKNOWN() != null) return AST.UnknownExpr.INSTANCE;
+
         return (AST.Expr) visit(ctx.expr());
     }
+
+    @Override
+    public AST visitIfExpr(FoolishParser.IfExprContext ctx) {
+        FoolishParser.IfExprHelperIfContext theIfCtx = ctx.ifExprHelperIf();
+        AST.Expr condition = (AST.Expr) visit(theIfCtx.expr(0));
+        AST.Expr theThen = (AST.Expr) visit(theIfCtx.expr(1));
+
+        AST.Expr theElse = AST.UnknownExpr.INSTANCE;
+        if (ctx.ifExprHelperElse()!=null)
+            theElse = (AST.Expr)( visit(ctx.ifExprHelperElse().expr()));
+
+        List<AST.IfExpr> elseIfs = new ArrayList<>();
+        ctx.ifExprHelperElif().forEach(elseIfCtx -> {
+            AST.Expr elseIfCondition = (AST.Expr) visit(elseIfCtx.expr(0));
+            AST.Expr elseIfThen = (AST.Expr) visit(elseIfCtx.expr(1));
+            // Transform else-if into nested if-else
+            elseIfs.add(new AST.IfExpr(elseIfCondition, elseIfThen, null, null));
+        });
+        return new AST.IfExpr(condition, theThen, theElse, elseIfs);
+    }
+
 }

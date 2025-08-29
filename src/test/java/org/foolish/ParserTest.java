@@ -20,6 +20,19 @@ public class ParserTest {
         ParseTree tree = parser.program();
         return new ASTBuilder().visit(tree);
     }
+    @Test
+    public void testExprStatement() {
+        AST ast = parse("{ 1; }");
+        assertTrue(ast instanceof AST.Branes);
+        AST.Branes branes = (AST.Branes) ast;
+        assertEquals(1, branes.branes().size());
+        AST.Brane brane = branes.branes().get(0);
+        assertEquals("""
+                {
+                  1;
+                }
+                """, ast.toString());
+    }
 
     @Test
     public void testSimpleAssignment() {
@@ -129,4 +142,88 @@ public class ParserTest {
                 }
                 """, ast.toString());
     }
+
+
+    @Test
+    public void testUnknown() {
+        AST ast = parse("{ x = ???; y = ??? ;}");
+        assertEquals("""
+                {
+                  x = ???;
+                  y = ???;
+                }
+                """, ast.toString());
+    }
+
+    @Test
+    public void testIf() {
+        AST ast = parse("{ x = if a then 1; }");
+        assertEquals("""
+                {
+                  x = if a then 1;
+                }
+                """, ast.toString());
+
+        AST ast2 = parse("{ x = if a then 1 else ???; }");
+        assertEquals("""
+                {
+                  x = if a then 1;
+                }
+                """, ast2.toString());
+
+        AST ast3 = parse("{ x = if a then 1 elif b then 3 elif d then 100 else 4; }");
+        assertEquals("""
+                {
+                  x = if a then 1 elif b then 3 elif d then 100 else 4;
+                }
+                """, ast3.toString());
+
+
+        AST ast4 = parse("""
+                        {
+                            if a then 
+                                if z then 10 else 2 
+                            elif b then 
+                                if x then
+                                    30 
+                                else 
+                                    if y then 20 else 3
+                            elif d then 
+                                if asdf then 
+                                    if qwer then 300 else 200
+                                elif zxcv then 
+                                    100
+                                elif qwe then 
+                                    if 2 then 50 elif 45 then 40 else 0
+                            else 
+                                4;
+                        }""");
+        assertEquals("""
+                {
+                  if a then if z then 10 else 2 elif b then if x then 30 else if y then 20 else 3 elif d then if asdf then if qwer then 300 else 200 elif zxcv then 100 elif qwe then if 2 then 50 elif 45 then 40 else 0 else 4;
+                }
+                """, ast4.toString());
+        AST.Branes ast4Brane = (AST.Branes) ast4;
+        assertEquals(1, ast4Brane.branes().size());
+        AST.Brane brane = ast4Brane.branes().get(0);
+        assertEquals(1, brane.statements().size());
+        assertTrue(brane.statements().get(0) instanceof AST.IfExpr);
+        AST.IfExpr ifExpr = (AST.IfExpr) brane.statements().get(0);
+        // Check the nested structure of the if expression
+        assertTrue(ifExpr.thenExpr() instanceof AST.IfExpr);
+
+        // The outer if has two elseifs
+        assertEquals(2,ifExpr.elseIfs().size());
+
+        AST.IfExpr elif2 = (AST.IfExpr) ifExpr.elseIfs().get(1);
+        assertTrue(elif2.thenExpr() instanceof AST.IfExpr);
+
+        assertEquals(2,((AST.IfExpr) elif2.thenExpr()).elseIfs().size());
+        AST.IfExpr elif21 = ((AST.IfExpr) elif2.thenExpr()).elseIfs().get(0);
+        assertEquals(new AST.VarRef("zxcv"), elif21.condition());
+        assertEquals(new AST.Literal(100), elif21.thenExpr());
+
+    }
+
+
 }

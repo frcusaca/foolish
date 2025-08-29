@@ -15,7 +15,9 @@ assignment : IDENTIFIER ASSIGN expr ;
 
 expr
     : addExpr
+    | ifExpr
     ;
+
 addExpr : mulExpr ((PLUS | MINUS) mulExpr)* ;
 
 mulExpr
@@ -25,10 +27,19 @@ mulExpr
 unaryExpr
     : (PLUS|MINUS)? primary
     ;
+
 primary : INTEGER
         | IDENTIFIER
         | LPAREN expr RPAREN
+        | UNKNOWN
 	;
+
+ifExpr
+    : ifExprHelperIf (ifExprHelperElif)* (ifExprHelperElse)?
+    ;
+ifExprHelperIf: IF  expr THEN expr ;
+ifExprHelperElif: ELIF expr THEN expr ;
+ifExprHelperElse: ELSE expr ;
 
 // Lexer rules (uppercase)
 LBRACE : '{' ;
@@ -41,6 +52,13 @@ PLUS : '+' ;
 MINUS : '-' ;
 MUL : '*' ;
 DIV : '/' ;
+
+IF  : 'if' ;
+THEN : 'then' ;
+ELIF : 'elif' ;
+ELSE : 'else' ;
+
+UNKNOWN : '???' ; // Unknowns are unknown
 
 INTEGER : DIGIT+ ;
 
