@@ -225,5 +225,22 @@ public class ParserTest {
 
     }
 
+    @Test
+    public void testUnaryStarOperator() {
+        AST ast = parse("{ *1; }");
+        assertTrue(ast instanceof AST.Branes);
+        AST.Branes branes = (AST.Branes) ast;
+        assertEquals(1, branes.branes().size());
+        AST.Brane brane = branes.branes().get(0);
+        assertEquals(1, brane.statements().size());
+        AST.Expr expr = brane.statements().get(0);
+        assertTrue(expr instanceof AST.UnaryExpr);
+        AST.UnaryExpr unary = (AST.UnaryExpr) expr;
+        assertEquals("*", unary.op());
+        assertTrue(unary.expr() instanceof AST.Literal);
+        assertEquals(1L, ((AST.Literal) unary.expr()).value());
+        assertEquals("*1", unary.toString());
+    }
+
 
 }

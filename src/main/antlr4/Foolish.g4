@@ -25,7 +25,7 @@ mulExpr
     ;
 
 unaryExpr
-    : (PLUS|MINUS)? primary
+    : (PLUS|MINUS|MUL)? primary
     ;
 
 primary : INTEGER

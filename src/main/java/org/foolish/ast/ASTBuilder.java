@@ -90,6 +90,10 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
             String op = "-";
             AST.Expr expr = (AST.Expr) visit(ctx.primary());
             return new AST.UnaryExpr(op, expr);
+        } else if (ctx.MUL() != null) {
+            String op = "*";
+            AST.Expr expr = (AST.Expr) visit(ctx.primary());
+            return new AST.UnaryExpr(op, expr);
         } else {
             return visit(ctx.primary());
         }
