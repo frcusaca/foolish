@@ -101,11 +101,20 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
     @Override
     public AST visitPrimary(FoolishParser.PrimaryContext ctx) {
-        if (ctx.INTEGER() != null) return new AST.Literal(Long.parseLong(ctx.INTEGER().getText()));
-        if (ctx.IDENTIFIER() != null) return new AST.Identifier(ctx.IDENTIFIER().getText());
-        if (ctx.UNKNOWN() != null) return AST.UnknownExpr.INSTANCE;
+        if (ctx.characterizable() != null) return visit(ctx.characterizable());
+        if (ctx.expr() != null) return visit(ctx.expr());
+        return AST.UnknownExpr.INSTANCE;
+    }
 
-        return (AST.Expr) visit(ctx.expr());
+    @Override
+    public AST visitCharacterizable(FoolishParser.CharacterizableContext ctx) {
+        if (ctx.INTEGER() != null) {
+            return new AST.Literal(Long.parseLong(ctx.INTEGER().getText()));
+        }
+        if (ctx.IDENTIFIER() != null) {
+            return new AST.Identifier(ctx.IDENTIFIER().getText());
+        }
+        throw new RuntimeException("Unexpected characterizable type");
     }
 
     @Override

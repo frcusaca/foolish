@@ -28,10 +28,15 @@ unaryExpr
     : (PLUS|MINUS|MUL)? primary
     ;
 
-primary : INTEGER
-        | IDENTIFIER
-        | LPAREN expr RPAREN
-        | UNKNOWN
+characterizable
+    : INTEGER
+    | IDENTIFIER
+    ;
+
+primary
+    : characterizable
+    | LPAREN expr RPAREN
+    | UNKNOWN
 	;
 
 ifExpr
