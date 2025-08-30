@@ -4,14 +4,40 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public sealed interface AST permits AST.Program,AST.Expr{
+public sealed interface AST permits AST.Program,AST.Expr {
     record Program(Branes brane) implements AST {
     }
 
-
-    sealed interface Expr extends AST permits Literal, Identifier, BinaryExpr, UnaryExpr, Brane, Branes, IfExpr, UnknownExpr, Stmt {
+    sealed interface Expr extends AST permits Characterizable, BinaryExpr, UnaryExpr, Brane, Branes, IfExpr, UnknownExpr, Stmt {
 
     }
+
+    sealed interface Characterizable extends Expr permits Literal, Identifier {
+        String characterization();  // null means no characterization
+    }
+
+    sealed interface Literal extends Characterizable permits IntegerLiteral {
+        long value();  // All literals can provide a value
+    }
+
+    record IntegerLiteral(String characterization, long value) implements Literal {
+        public IntegerLiteral(long value) {
+            this(null, value);
+        }
+        public String toString() {
+            return characterization != null ? characterization + "'" + value : Long.toString(value);
+        }
+    }
+
+    record Identifier(String characterization, String id) implements Characterizable {
+        public Identifier(String id) {
+            this(null, id);
+        }
+        public String toString() {
+            return characterization != null ? characterization + "'" + id : id;
+        }
+    }
+
     record Brane(List<Expr> statements) implements Expr {
         public String toString() {
             StringBuilder sb = new StringBuilder();
@@ -33,17 +59,6 @@ public sealed interface AST permits AST.Program,AST.Expr{
         }
     }
 
-    record Literal(long value) implements Expr {
-        public String toString() {
-            return Long.toString(value);
-        }
-    }
-
-    record Identifier(String id) implements Expr {
-        public String toString() {
-            return id;
-        }
-    }
 
     record BinaryExpr(String op, Expr left, Expr right) implements Expr {
         public String toString() {

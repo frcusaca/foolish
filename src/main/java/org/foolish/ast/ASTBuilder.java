@@ -108,13 +108,33 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
     @Override
     public AST visitCharacterizable(FoolishParser.CharacterizableContext ctx) {
+        String characterization = null;
+        if (ctx.IDENTIFIER(0) != null && ctx.APOSTROPHE() != null) {
+            characterization = ctx.IDENTIFIER(0).getText();
+        }
+
+        if (ctx.literal() != null) {
+            return visit(ctx.literal());
+        }
+
+        // Must be an identifier (the last token if we had a characterization, or the only token if we didn't)
+        String id = ctx.IDENTIFIER(characterization != null ? 1 : 0).getText();
+        return new AST.Identifier(characterization, id);
+    }
+
+    @Override
+    public AST visitLiteral(FoolishParser.LiteralContext ctx) {
+        // Get characterization from parent context
+        String characterization = null;
+        if (ctx.getParent() instanceof FoolishParser.CharacterizableContext parentCtx) {
+            if (parentCtx.IDENTIFIER(0) != null && parentCtx.APOSTROPHE() != null) {
+                characterization = parentCtx.IDENTIFIER(0).getText();
+            }
+        }
         if (ctx.INTEGER() != null) {
-            return new AST.Literal(Long.parseLong(ctx.INTEGER().getText()));
+            return new AST.IntegerLiteral(characterization, Long.parseLong(ctx.INTEGER().getText()));
         }
-        if (ctx.IDENTIFIER() != null) {
-            return new AST.Identifier(ctx.IDENTIFIER().getText());
-        }
-        throw new RuntimeException("Unexpected characterizable type");
+        throw new RuntimeException("Unknown literal type");
     }
 
     @Override

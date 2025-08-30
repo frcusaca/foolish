@@ -219,10 +219,10 @@ public class ParserTest {
         AST.IfExpr elif2 = (AST.IfExpr) ifExpr.elseIfs().get(1);
         assertTrue(elif2.thenExpr() instanceof AST.IfExpr);
 
-        assertEquals(2, ((AST.IfExpr) elif2.thenExpr()).elseIfs().size());
+        assertEquals(2,((AST.IfExpr) elif2.thenExpr()).elseIfs().size());
         AST.IfExpr elif21 = ((AST.IfExpr) elif2.thenExpr()).elseIfs().get(0);
         assertEquals(new AST.Identifier("zxcv"), elif21.condition());
-        assertEquals(new AST.Literal(100), elif21.thenExpr());
+        assertEquals(new AST.IntegerLiteral(100), elif21.thenExpr());
 
     }
 
@@ -238,8 +238,39 @@ public class ParserTest {
         assertTrue(expr instanceof AST.UnaryExpr);
         AST.UnaryExpr unary = (AST.UnaryExpr) expr;
         assertEquals("*", unary.op());
-        assertTrue(unary.expr() instanceof AST.Literal);
-        assertEquals(1L, ((AST.Literal) unary.expr()).value());
+        assertTrue(unary.expr() instanceof AST.IntegerLiteral);
+        assertEquals(1L, ((AST.IntegerLiteral) unary.expr()).value());
         assertEquals("*1", unary.toString());
+    }
+
+    @Test
+    public void testCharacterization() {
+        AST ast = parse("{ t'x = 5; n'42; }");
+        assertTrue(ast instanceof AST.Branes);
+        AST.Branes branes = (AST.Branes) ast;
+        assertEquals(1, branes.branes().size());
+        AST.Brane brane = branes.branes().get(0);
+        assertEquals(2, brane.statements().size());
+
+        // Check t'x = 5
+        assertTrue(brane.statements().get(0) instanceof AST.Assignment);
+        AST.Assignment assignment = (AST.Assignment) brane.statements().get(0);
+        assertEquals("x", assignment.id());
+        assertTrue(assignment.expr() instanceof AST.IntegerLiteral);
+        assertEquals(5L, ((AST.IntegerLiteral) assignment.expr()).value());
+
+        // Check n'42
+        assertTrue(brane.statements().get(1) instanceof AST.Characterizable);
+        AST.Characterizable characterizable = (AST.Characterizable) brane.statements().get(1);
+        assertEquals("n", characterizable.characterization());
+        assertTrue(characterizable instanceof AST.IntegerLiteral);
+        assertEquals(42L, ((AST.IntegerLiteral) characterizable).value());
+
+        assertEquals("""
+                {
+                  t'x = 5;
+                  n'42;
+                }
+                """, ast.toString());
     }
 }

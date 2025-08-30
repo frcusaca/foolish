@@ -28,9 +28,12 @@ unaryExpr
     : (PLUS|MINUS|MUL)? primary
     ;
 
-characterizable
+literal
     : INTEGER
-    | IDENTIFIER
+    ;
+
+characterizable
+    : IDENTIFIER? APOSTROPHE? (literal | IDENTIFIER)
     ;
 
 primary
@@ -75,3 +78,5 @@ fragment UNDERSCORE : '_' ;
 WS : [ \t\r\n]+ -> skip ;
 
 IDENTIFIER : LETTER (LETTER|DIGIT|UNDERSCORE)* ;
+
+APOSTROPHE : '\'' ;
