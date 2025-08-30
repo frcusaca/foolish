@@ -9,7 +9,7 @@ public sealed interface AST permits AST.Program,AST.Expr{
     }
 
 
-    sealed interface Expr extends AST permits Literal, VarRef, BinaryExpr, UnaryExpr, Brane, Branes, IfExpr, UnknownExpr, Stmt {
+    sealed interface Expr extends AST permits Literal, Identifier, BinaryExpr, UnaryExpr, Brane, Branes, IfExpr, UnknownExpr, Stmt {
 
     }
     record Brane(List<Expr> statements) implements Expr {
@@ -39,7 +39,7 @@ public sealed interface AST permits AST.Program,AST.Expr{
         }
     }
 
-    record VarRef(String id) implements Expr {
+    record Identifier(String id) implements Expr {
         public String toString() {
             return id;
         }

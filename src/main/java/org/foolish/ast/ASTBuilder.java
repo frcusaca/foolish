@@ -102,7 +102,7 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
     @Override
     public AST visitPrimary(FoolishParser.PrimaryContext ctx) {
         if (ctx.INTEGER() != null) return new AST.Literal(Long.parseLong(ctx.INTEGER().getText()));
-        if (ctx.IDENTIFIER() != null) return new AST.VarRef(ctx.IDENTIFIER().getText());
+        if (ctx.IDENTIFIER() != null) return new AST.Identifier(ctx.IDENTIFIER().getText());
         if (ctx.UNKNOWN() != null) return AST.UnknownExpr.INSTANCE;
 
         return (AST.Expr) visit(ctx.expr());
@@ -127,5 +127,4 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
         });
         return new AST.IfExpr(condition, theThen, theElse, elseIfs);
     }
-
 }

@@ -20,6 +20,7 @@ public class ParserTest {
         ParseTree tree = parser.program();
         return new ASTBuilder().visit(tree);
     }
+
     @Test
     public void testExprStatement() {
         AST ast = parse("{ 1; }");
@@ -180,24 +181,24 @@ public class ParserTest {
 
 
         AST ast4 = parse("""
-                        {
-                            if a then 
-                                if z then 10 else 2 
-                            elif b then 
-                                if x then
-                                    30 
-                                else 
-                                    if y then 20 else 3
-                            elif d then 
-                                if asdf then 
-                                    if qwer then 300 else 200
-                                elif zxcv then 
-                                    100
-                                elif qwe then 
-                                    if 2 then 50 elif 45 then 40 else 0
-                            else 
-                                4;
-                        }""");
+                {
+                    if a then 
+                        if z then 10 else 2 
+                    elif b then 
+                        if x then
+                            30 
+                        else 
+                            if y then 20 else 3
+                    elif d then 
+                        if asdf then 
+                            if qwer then 300 else 200
+                        elif zxcv then 
+                            100
+                        elif qwe then 
+                            if 2 then 50 elif 45 then 40 else 0
+                    else 
+                        4;
+                }""");
         assertEquals("""
                 {
                   if a then if z then 10 else 2 elif b then if x then 30 else if y then 20 else 3 elif d then if asdf then if qwer then 300 else 200 elif zxcv then 100 elif qwe then if 2 then 50 elif 45 then 40 else 0 else 4;
@@ -213,14 +214,14 @@ public class ParserTest {
         assertTrue(ifExpr.thenExpr() instanceof AST.IfExpr);
 
         // The outer if has two elseifs
-        assertEquals(2,ifExpr.elseIfs().size());
+        assertEquals(2, ifExpr.elseIfs().size());
 
         AST.IfExpr elif2 = (AST.IfExpr) ifExpr.elseIfs().get(1);
         assertTrue(elif2.thenExpr() instanceof AST.IfExpr);
 
-        assertEquals(2,((AST.IfExpr) elif2.thenExpr()).elseIfs().size());
+        assertEquals(2, ((AST.IfExpr) elif2.thenExpr()).elseIfs().size());
         AST.IfExpr elif21 = ((AST.IfExpr) elif2.thenExpr()).elseIfs().get(0);
-        assertEquals(new AST.VarRef("zxcv"), elif21.condition());
+        assertEquals(new AST.Identifier("zxcv"), elif21.condition());
         assertEquals(new AST.Literal(100), elif21.thenExpr());
 
     }
@@ -241,6 +242,4 @@ public class ParserTest {
         assertEquals(1L, ((AST.Literal) unary.expr()).value());
         assertEquals("*1", unary.toString());
     }
-
-
 }
