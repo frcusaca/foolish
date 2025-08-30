@@ -157,6 +157,39 @@ public class ParserTest {
     }
 
     @Test
+    public void testComments() {
+        AST ast = parse("""
+                    { 
+                    !!
+                        This block of text is known as a block comment.
+                        It can contain code such as:
+                            {
+                                a=2;
+                                b=t'3;
+                                etc=???;
+                            }
+                        But it will be ignored by the parser.
+                     !!
+                        x = ???;
+                        y = ???;
+                        ! {} this is a comment?
+                        ! how about this?
+                        y = 10; ! !!now is another comment
+                        z = 11;  ! ! staggered commenting ;;;;
+                    }
+                """);
+        assertEquals("""
+                {
+                  x = ???;
+                  y = ???;
+                  y = 10;
+                  z = 11;
+                }
+                """, ast.toString());
+    }
+
+
+    @Test
     public void testIf() {
         AST ast = parse("{ x = if a then 1; }");
         assertEquals("""
@@ -219,7 +252,7 @@ public class ParserTest {
         AST.IfExpr elif2 = (AST.IfExpr) ifExpr.elseIfs().get(1);
         assertTrue(elif2.thenExpr() instanceof AST.IfExpr);
 
-        assertEquals(2,((AST.IfExpr) elif2.thenExpr()).elseIfs().size());
+        assertEquals(2, ((AST.IfExpr) elif2.thenExpr()).elseIfs().size());
         AST.IfExpr elif21 = ((AST.IfExpr) elif2.thenExpr()).elseIfs().get(0);
         assertEquals(new AST.Identifier("zxcv"), elif21.condition());
         assertEquals(new AST.IntegerLiteral(100), elif21.thenExpr());
@@ -245,12 +278,12 @@ public class ParserTest {
 
     @Test
     public void testCharacterization() {
-        AST ast = parse("{ t'x = 5; n'42; }");
+        AST ast = parse("{ x = 5; n'42; b = x'{true; false; result=10;};}");
         assertTrue(ast instanceof AST.Branes);
         AST.Branes branes = (AST.Branes) ast;
         assertEquals(1, branes.branes().size());
         AST.Brane brane = branes.branes().get(0);
-        assertEquals(2, brane.statements().size());
+        assertEquals(3, brane.statements().size());
 
         // Check t'x = 5
         assertTrue(brane.statements().get(0) instanceof AST.Assignment);
@@ -262,14 +295,19 @@ public class ParserTest {
         // Check n'42
         assertTrue(brane.statements().get(1) instanceof AST.Characterizable);
         AST.Characterizable characterizable = (AST.Characterizable) brane.statements().get(1);
-        assertEquals("n", characterizable.characterization());
+        assertEquals("n", characterizable.characterization().id());
         assertTrue(characterizable instanceof AST.IntegerLiteral);
         assertEquals(42L, ((AST.IntegerLiteral) characterizable).value());
 
         assertEquals("""
                 {
-                  t'x = 5;
+                  x = 5;
                   n'42;
+                  b = x'{
+                  true;
+                  false;
+                  result = 10;
+                };
                 }
                 """, ast.toString());
     }

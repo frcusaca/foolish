@@ -1,0 +1,9 @@
+{
+    ; Comments can be placed here
+    ; These branes are the system symbols
+    characterization = {}
+    type = characterization'{};
+    identifier = characterization'{}
+    brane = type'{};
+    integer = type'{};
+}

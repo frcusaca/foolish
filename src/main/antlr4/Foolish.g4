@@ -2,15 +2,20 @@ grammar Foolish;
 
 program : branes EOF ;
 
+characterizable
+    : (IDENTIFIER? APOSTROPHE)? (literal | IDENTIFIER | brane)
+    ;
+
 brane : LBRACE stmt* RBRACE ;
 branes: brane+ ;
 
 stmt
-    : branes SEMI
-    | assignment SEMI
-    | expr SEMI
+    : (
+      branes
+    | assignment
+    | expr
+    ) SEMI LINE_COMMENT?
     ;
-
 assignment : IDENTIFIER ASSIGN expr ;
 
 expr
@@ -32,10 +37,6 @@ literal
     : INTEGER
     ;
 
-characterizable
-    : IDENTIFIER? APOSTROPHE? (literal | IDENTIFIER)
-    ;
-
 primary
     : characterizable
     | LPAREN expr RPAREN
@@ -55,6 +56,15 @@ RBRACE : '}' ;
 LPAREN : '(' ;
 RPAREN : ')' ;
 SEMI : ';' ;
+
+LINE_COMMENT
+    : '!' ~[\r\n]* -> skip
+    ;
+BLOCK_COMMENT
+    : '!!' (.| '\r' | '\n' )*? '!!' -> skip
+    ;
+
+
 ASSIGN : '=' ;
 PLUS : '+' ;
 MINUS : '-' ;

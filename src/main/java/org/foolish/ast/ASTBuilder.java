@@ -6,6 +6,8 @@ import org.foolish.grammar.FoolishParser;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.foolish.ast.AST.setCharacterization;
+
 public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
     @Override
@@ -108,31 +110,31 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
     @Override
     public AST visitCharacterizable(FoolishParser.CharacterizableContext ctx) {
-        String characterization = null;
-        if (ctx.IDENTIFIER(0) != null && ctx.APOSTROPHE() != null) {
-            characterization = ctx.IDENTIFIER(0).getText();
+        String characterization = ""; // Default to empty string is the characterization
+        int identifierIndex = 0;
+        if (ctx.APOSTROPHE() != null) {
+            if (ctx.IDENTIFIER(0) != null) {
+                characterization = ctx.IDENTIFIER(0).getText();
+                identifierIndex = 1;
+            }
         }
 
+        AST ret = null;
         if (ctx.literal() != null) {
-            return visit(ctx.literal());
+            ret = visit(ctx.literal());
+        } else if (ctx.brane() != null) {
+            ret = visit(ctx.brane());
+        } else {
+            ret = new AST.Identifier(ctx.IDENTIFIER(identifierIndex).getText());
         }
-
-        // Must be an identifier (the last token if we had a characterization, or the only token if we didn't)
-        String id = ctx.IDENTIFIER(characterization != null ? 1 : 0).getText();
-        return new AST.Identifier(characterization, id);
+        return setCharacterization(characterization, ret);
     }
 
     @Override
     public AST visitLiteral(FoolishParser.LiteralContext ctx) {
         // Get characterization from parent context
-        String characterization = null;
-        if (ctx.getParent() instanceof FoolishParser.CharacterizableContext parentCtx) {
-            if (parentCtx.IDENTIFIER(0) != null && parentCtx.APOSTROPHE() != null) {
-                characterization = parentCtx.IDENTIFIER(0).getText();
-            }
-        }
         if (ctx.INTEGER() != null) {
-            return new AST.IntegerLiteral(characterization, Long.parseLong(ctx.INTEGER().getText()));
+            return new AST.IntegerLiteral(Long.parseLong(ctx.INTEGER().getText()));
         }
         throw new RuntimeException("Unknown literal type");
     }
@@ -144,8 +146,8 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
         AST.Expr theThen = (AST.Expr) visit(theIfCtx.expr(1));
 
         AST.Expr theElse = AST.UnknownExpr.INSTANCE;
-        if (ctx.ifExprHelperElse()!=null)
-            theElse = (AST.Expr)( visit(ctx.ifExprHelperElse().expr()));
+        if (ctx.ifExprHelperElse() != null)
+            theElse = (AST.Expr) (visit(ctx.ifExprHelperElse().expr()));
 
         List<AST.IfExpr> elseIfs = new ArrayList<>();
         ctx.ifExprHelperElif().forEach(elseIfCtx -> {
