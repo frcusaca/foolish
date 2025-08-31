@@ -71,12 +71,24 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
         return left;
     }
 
+
     @Override
     public AST visitMulExpr(FoolishParser.MulExprContext ctx) {
-        AST.Expr left = (AST.Expr) visit(ctx.unaryExpr(0));
-        for (int i = 1; i < ctx.unaryExpr().size(); i++) {
+        AST.Expr left = (AST.Expr) visit(ctx.expExpr(0));
+        for (int i = 1; i < ctx.expExpr().size(); i++) {
             String op = ctx.getChild(2 * i - 1).getText();
-            AST.Expr right = (AST.Expr) visit(ctx.unaryExpr(i));
+            AST.Expr right = (AST.Expr) visit(ctx.expExpr(i));
+            left = new AST.BinaryExpr(op, left, right);
+        }
+        return left;
+    }
+
+    @Override
+    public AST visitExpExpr(FoolishParser.ExpExprContext ctx) {
+        AST.Expr left = (AST.Expr) visit(ctx.unaryExpr());
+        if(ctx.expExpr()!=null){
+            String op = ctx.getChild(1).getText();
+            AST.Expr right = (AST.Expr) visit(ctx.expExpr());
             left = new AST.BinaryExpr(op, left, right);
         }
         return left;

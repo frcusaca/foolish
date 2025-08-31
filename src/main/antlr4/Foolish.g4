@@ -25,8 +25,14 @@ expr
 
 addExpr : mulExpr ((PLUS | MINUS) mulExpr)* ;
 
+
 mulExpr
-    : unaryExpr ((MUL | DIV) unaryExpr)*
+    : expExpr (( MUL | DIV) expExpr)*
+    ;
+
+expExpr
+    : unaryExpr <assoc=right> EXP expExpr
+    | unaryExpr
     ;
 
 unaryExpr
@@ -70,6 +76,7 @@ PLUS : '+' ;
 MINUS : '-' ;
 MUL : '*' ;
 DIV : '/' ;
+EXP : '^' ;
 
 IF  : 'if' ;
 THEN : 'then' ;

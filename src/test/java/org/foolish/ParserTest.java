@@ -73,17 +73,19 @@ public class ParserTest {
 
     @Test
     public void testPrecedence() {
-        AST ast = parse("{ x = (1+2)*3+4; y = -(x/-4); }");
+        AST ast = parse("{ x = (1+2)*3+4; y = -(x/-4); z = 1*2^3^4*4^5+1; k=1*2^3^4^5^6}");
         assertTrue(ast instanceof AST.Branes);
         AST.Branes branes = (AST.Branes) ast;
         assertEquals(1, branes.branes().size());
         AST.Brane brane = branes.branes().get(0);
-        assertEquals(2, brane.statements().size());
+        assertEquals(4, brane.statements().size());
         assertTrue(brane.statements().get(0) instanceof AST.Assignment);
         assertEquals("""
                 {
                   x = (((1 + 2) * 3) + 4);
                   y = -(x / -4);
+                  z = (((1 * (2 ^ (3 ^ 4))) * (4 ^ 5)) + 1);
+                  k = (1 * (2 ^ (3 ^ (4 ^ (5 ^ 6)))));
                 }
                 """, ast.toString());
 
@@ -278,12 +280,12 @@ public class ParserTest {
 
     @Test
     public void testCharacterization() {
-        AST ast = parse("{ x = 5; n'42; b = x'{true; false; result=10;};}");
+        AST ast = parse("{ x = 5; n'42; b = x'{true; false; result=10;}; c= t'1+u'var*z'zz^a'a^b'b+1}");
         assertTrue(ast instanceof AST.Branes);
         AST.Branes branes = (AST.Branes) ast;
         assertEquals(1, branes.branes().size());
         AST.Brane brane = branes.branes().get(0);
-        assertEquals(3, brane.statements().size());
+        assertEquals(4, brane.statements().size());
 
         // Check t'x = 5
         assertTrue(brane.statements().get(0) instanceof AST.Assignment);
@@ -308,6 +310,7 @@ public class ParserTest {
                   false;
                   result = 10;
                 };
+                  c = ((t'1 + (u'var * (z'zz ^ (a'a ^ b'b)))) + 1);
                 }
                 """, ast.toString());
     }
