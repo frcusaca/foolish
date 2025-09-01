@@ -4,11 +4,11 @@ program : branes EOF ;
 
 characterizable
     : (IDENTIFIER? APOSTROPHE)? (literal | IDENTIFIER | brane)
-    # TODO: make characterizable's also characterizable
     ;
 
 brane : LBRACE stmt* RBRACE ;
-branes: brane+ ;
+branes:
+brane+ ;
 
 stmt
     : (

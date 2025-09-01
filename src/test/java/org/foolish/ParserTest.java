@@ -314,4 +314,36 @@ public class ParserTest {
                 }
                 """, ast.toString());
     }
+
+
+    @Test
+    public void testParsingIds(){
+        AST ast = parse("""
+                {
+                   r = a b c d;
+                   e f g
+                }""");
+        assertEquals("""
+                {
+                  r = a b c d;
+                  e f g;
+                }
+                """, ast.toString());
+    }
+    @Test
+    public void testLibratedBrane(){
+        AST ast = parse("""
+                {
+                    parameter1=1;
+                    parameter2 = 2;
+                    lb = f'{parameter1;parameter2;}{result = parameter1 + parameter2;}; 
+                    result = {1,2} lb;
+                }""");
+        assertEquals("""
+                Math'{
+                  pi = 3.14159;
+                  e = 2.71828;
+                }
+                """, ast.toString());
+    }
 }

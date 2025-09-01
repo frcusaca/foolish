@@ -6,4 +6,5 @@
     identifier = characterization'{}
     brane = type'{};
     integer = type'{};
+    liberatedBrane = {parameter1;parameter2;}{result = parameter1 + parameter2}
 }
