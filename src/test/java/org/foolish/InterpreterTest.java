@@ -1,57 +1,60 @@
 package org.foolish;
 
-import org.foolish.reference.interpreter.RuntimeFactory;
-import org.foolish.reference.interpreter.Evaluator;
-import org.foolish.reference.interpreter.Renderer;
-import org.foolish.reference.interpreter.ir.RuntimeSourceCodeNode;
-import org.foolish.reference.interpreter.ir.RuntimeIntermediateNode;
+import org.antlr.v4.runtime.*;
 import org.foolish.ast.AST;
+import org.foolish.ast.ASTBuilder;
+import org.foolish.grammar.FoolishLexer;
+import org.foolish.grammar.FoolishParser;
+import org.foolish.interpreter.BraneValue;
+import org.foolish.interpreter.Environment;
+import org.foolish.interpreter.IntValue;
+import org.foolish.interpreter.Interpreter;
+import org.foolish.interpreter.Value;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 public class InterpreterTest {
+    private AST.Branes parse(String code) {
+        CharStream input = CharStreams.fromString(code);
+        FoolishLexer lexer = new FoolishLexer(input);
+        CommonTokenStream tokens = new CommonTokenStream(lexer);
+        FoolishParser parser = new FoolishParser(tokens);
+        return (AST.Branes) new ASTBuilder().visit(parser.program());
+    }
+
     @Test
     public void testSimpleAssignmentAndArithmetic() {
         String code = "{ x = 2 + 3 * 4; y = x * 2; }";
-        RuntimeSourceCodeNode.SourceBranes src = RuntimeFactory.fromStringToSource(code);
-        AST.Branes branes = src.ast();
-        assertEquals(1, branes.branes().size());
-        AST.Brane brane = branes.branes().get(0);
-        Evaluator evaluator = new Evaluator();
-        RuntimeIntermediateNode.EvaluatedBrane result = evaluator.evaluate(brane);
-        Renderer renderer = new Renderer();
-        String output = renderer.render(result);
-        assertTrue(output.contains("x = 14"));
-        assertTrue(output.contains("y = 28"));
+        AST.Branes branes = parse(code);
+        Interpreter interpreter = new Interpreter();
+        interpreter.evaluate(branes);
+        Environment env = interpreter.global();
+        assertEquals(14L, ((IntValue) env.get("x")).value());
+        assertEquals(28L, ((IntValue) env.get("y")).value());
     }
 
     @Test
     public void testIfExpr() {
         String code = "{ x = if 1 then 42 else 0; y = if 0 then 1 else 2; }";
-        RuntimeSourceCodeNode.SourceBranes src = RuntimeFactory.fromStringToSource(code);
-        AST.Branes branes = src.ast();
-        AST.Brane brane = branes.branes().get(0);
-        Evaluator evaluator = new Evaluator();
-        RuntimeIntermediateNode.EvaluatedBrane result = evaluator.evaluate(brane);
-        Renderer renderer = new Renderer();
-        String output = renderer.render(result);
-        assertTrue(output.contains("x = 42"));
-        assertTrue(output.contains("y = 2"));
+        AST.Branes branes = parse(code);
+        Interpreter interpreter = new Interpreter();
+        interpreter.evaluate(branes);
+        Environment env = interpreter.global();
+        assertEquals(42L, ((IntValue) env.get("x")).value());
+        assertEquals(2L, ((IntValue) env.get("y")).value());
     }
 
     @Test
     public void testUnknownAndNestedBrane() {
         String code = "{ a = ???; b = { x = 1; }; }";
-        RuntimeSourceCodeNode.SourceBranes src = RuntimeFactory.fromStringToSource(code);
-        AST.Branes branes = src.ast();
-        AST.Brane brane = branes.branes().get(0);
-        Evaluator evaluator = new Evaluator();
-        RuntimeIntermediateNode.EvaluatedBrane result = evaluator.evaluate(brane);
-        Renderer renderer = new Renderer();
-        String output = renderer.render(result);
-        assertTrue(output.contains("a = ???"));
-        assertTrue(output.contains("b = <brane:1 statements>"));
+        AST.Branes branes = parse(code);
+        Interpreter interpreter = new Interpreter();
+        interpreter.evaluate(branes);
+        Environment env = interpreter.global();
+        assertSame(Value.UNKNOWN, env.get("a"));
+        Value b = env.get("b");
+        assertTrue(b instanceof BraneValue);
+        assertEquals(1, ((BraneValue) b).brane().statements().size());
     }
 }
-
