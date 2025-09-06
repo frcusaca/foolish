@@ -42,7 +42,8 @@ public class Interpreter {
     private Value evalExpr(AST.Expr expr, Environment env) {
         if (expr instanceof AST.Assignment assign) {
             Value value = evalExpr(assign.expr(), env);
-            env.set(assign.id(), value);
+            String key = keyFor(new AST.Identifier(assign.id()));
+            env.set(key, value);
             return value;
         } else if (expr instanceof AST.IntegerLiteral lit) {
             return new IntValue(lit.value());
@@ -57,7 +58,7 @@ public class Interpreter {
                     case "+" -> new IntValue(l.value() + r.value());
                     case "-" -> new IntValue(l.value() - r.value());
                     case "*" -> new IntValue(l.value() * r.value());
-                    case "/" -> new IntValue(l.value() / r.value());
+                    case "/" -> r.value() == 0 ? Value.UNKNOWN : new IntValue(l.value() / r.value());
                     case "^" -> new IntValue((long) Math.pow(l.value(), r.value()));
                     default -> Value.UNKNOWN;
                 };

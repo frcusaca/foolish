@@ -36,7 +36,11 @@ public class Environment {
 
     /** Bind a value in this environment. */
     public void set(String name, Value value) {
-        values.put(name, value);
+        if (values.containsKey(name) || parent == null) {
+            values.put(name, value);
+        } else {
+            parent.set(name, value);
+        }
     }
 
     /** Snapshot of current bindings for testing. */

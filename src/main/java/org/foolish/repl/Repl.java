@@ -33,6 +33,9 @@ public class Repl {
                 continue;
             }
             try {
+                if (!line.endsWith(";")) {
+                    line = line + ";";
+                }
                 CharStream input = CharStreams.fromString(line);
                 FoolishLexer lexer = new FoolishLexer(input);
                 CommonTokenStream tokens = new CommonTokenStream(lexer);
