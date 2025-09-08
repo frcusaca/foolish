@@ -11,10 +11,10 @@ public class EnvironmentTest {
         parent.define(x, 1L);
 
         Environment child = new Environment(parent);
-        assertEquals(1L, child.lookup(x).orElse(null));
+        assertEquals(1L, child.lookup(x));
 
         child.define(x, 2L);
-        assertEquals(2L, child.lookup(x).orElse(null));
-        assertEquals(1L, parent.lookup(x).orElse(null));
+        assertEquals(2L, child.lookup(x));
+        assertEquals(1L, parent.lookup(x));
     }
 }

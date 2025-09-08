@@ -17,7 +17,7 @@ public class BraneTest {
         Environment env = new Environment();
         Object result = brane.execute(env);
         assertEquals(42L, result);
-        assertEquals(42L, env.lookup(x).orElse(null));
+        assertEquals(42L, env.lookup(x));
     }
 
     @Test
@@ -28,6 +28,6 @@ public class BraneTest {
         Branes branes = new Branes(List.of(b1, b2));
         Environment env = new Environment();
         branes.execute(env);
-        assertEquals(2L, env.lookup(x).orElse(null));
+        assertEquals(2L, env.lookup(x));
     }
 }

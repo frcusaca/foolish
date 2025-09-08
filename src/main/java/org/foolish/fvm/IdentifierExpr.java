@@ -1,7 +1,5 @@
 package org.foolish.fvm;
 
-import java.util.Optional;
-
 /**
  * Resolves the value of an identifier from the environment.
  */
@@ -16,7 +14,6 @@ public class IdentifierExpr implements Instruction {
 
     @Override
     public Object execute(Environment env) {
-        Optional<Object> value = env.lookup(id);
-        return value.orElse(null);
+        return env.lookup(id);
     }
 }
