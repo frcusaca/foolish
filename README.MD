@@ -2,6 +2,7 @@
 
 Build & test:
   - `mvn clean generate-sources compile test`  : 
+  - [![Java CI](https://github.com/frcusaca/foolish/actions/workflows/tests.yml/badge.svg)](https://github.com/frcusaca/foolish/actions/workflows/tests.yml)
 
 Layout:
   - `src/main/antlr4/Foolish.g4` — grammar (Java target, visitor on, package `com.foolishlang.grammar`)
