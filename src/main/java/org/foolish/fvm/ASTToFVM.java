@@ -57,8 +57,10 @@ public class ASTToFVM {
                 elseIfs.add((IfExpr) translate(e));
             }
             return new IfExpr(cond, thenExpr, elseExpr, elseIfs);
+        } else if (expr instanceof AST.UnknownExpr) {
+            throw new IllegalArgumentException("Unknown expression encountered");
         }
-        return new IntegerLiteral(0); // Unknown expression
+        throw new IllegalArgumentException("Unsupported AST expression: " + expr.getClass().getSimpleName());
     }
 
     private Characterizable toCharacterizable(AST.Identifier id) {

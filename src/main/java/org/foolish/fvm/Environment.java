@@ -2,7 +2,6 @@ package org.foolish.fvm;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * An environment that holds identifier bindings.  Environments may be nested
@@ -22,7 +21,7 @@ public class Environment {
     }
 
     public void define(Characterizable id, Object value) {
-        values.put(id, value);
+        values.put(id, value == null ? Unknown.INSTANCE : value);
     }
 
     public boolean contains(Characterizable id) {
@@ -30,13 +29,14 @@ public class Environment {
         return parent != null && parent.contains(id);
     }
 
-    public Optional<Object> lookup(Characterizable id) {
+    public Object lookup(Characterizable id) {
         if (values.containsKey(id)) {
-            return Optional.ofNullable(values.get(id));
+            Object v = values.get(id);
+            return v == null ? Unknown.INSTANCE : v;
         }
         if (parent != null) {
             return parent.lookup(id);
         }
-        return Optional.empty();
+        return Unknown.INSTANCE;
     }
 }
