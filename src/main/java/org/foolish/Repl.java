@@ -17,20 +17,30 @@ import java.io.InputStreamReader;
 
 /** Simple read-eval-print loop for the Foolish language. */
 public class Repl {
+
+    /** Parse the provided source into an AST program. */
+    public static AST.Program parse(String source) {
+        CharStream input = CharStreams.fromString(source);
+        FoolishLexer lexer = new FoolishLexer(input);
+        CommonTokenStream tokens = new CommonTokenStream(lexer);
+        FoolishParser parser = new FoolishParser(tokens);
+        return (AST.Program) new ASTBuilder().visitProgram(parser.program());
+    }
+
+    /** Translate and execute the given source, returning the result. */
+    public static Object eval(String source, Environment env) {
+        AST.Program ast = parse(source);
+        Program program = new ASTToFVM().translate(ast);
+        return program.execute(env);
+    }
+
     public static void main(String[] args) throws IOException {
         BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
         Environment env = new Environment();
-        ASTToFVM translator = new ASTToFVM();
         String line;
         while ((line = reader.readLine()) != null) {
             if (line.isBlank()) continue;
-            CharStream input = CharStreams.fromString(line);
-            FoolishLexer lexer = new FoolishLexer(input);
-            CommonTokenStream tokens = new CommonTokenStream(lexer);
-            FoolishParser parser = new FoolishParser(tokens);
-            AST.Program ast = (AST.Program) new ASTBuilder().visitProgram(parser.program());
-            Program program = translator.translate(ast);
-            Object result = program.execute(env);
+            Object result = eval(line, env);
             if (result != null) {
                 System.out.println(result);
             }
