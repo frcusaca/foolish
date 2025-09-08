@@ -33,6 +33,9 @@ public class ASTToFVM {
     }
 
     private Instruction translate(AST.Expr expr) {
+        if (expr == null) {
+            return null;
+        }
         if (expr instanceof AST.IntegerLiteral lit) {
             return new IntegerLiteral(lit.value());
         } else if (expr instanceof AST.Identifier id) {
@@ -44,6 +47,8 @@ public class ASTToFVM {
             return new BinaryExpr(bin.op(), translate(bin.left()), translate(bin.right()));
         } else if (expr instanceof AST.UnaryExpr un) {
             return new UnaryExpr(un.op(), translate(un.expr()));
+        } else if (expr instanceof AST.UnknownExpr) {
+            return null;
         } else if (expr instanceof AST.Brane br) {
             return translate(br);
         } else if (expr instanceof AST.Branes brs) {
@@ -54,7 +59,10 @@ public class ASTToFVM {
             Instruction elseExpr = translate(ifExpr.elseExpr());
             List<IfExpr> elseIfs = new ArrayList<>();
             for (AST.IfExpr e : ifExpr.elseIfs()) {
-                elseIfs.add((IfExpr) translate(e));
+                Instruction translated = translate(e);
+                if (translated instanceof IfExpr elif) {
+                    elseIfs.add(elif);
+                }
             }
             return new IfExpr(cond, thenExpr, elseExpr, elseIfs);
         }

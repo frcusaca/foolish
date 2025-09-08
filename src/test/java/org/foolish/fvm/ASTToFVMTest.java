@@ -22,4 +22,46 @@ public class ASTToFVMTest {
         Object result = prog.execute(new Environment());
         assertEquals(5L, result);
     }
+
+    @Test
+    void translatesIfWithoutElse() {
+        AST.IfExpr ifExpr = new AST.IfExpr(
+                new AST.IntegerLiteral(1),
+                new AST.IntegerLiteral(42),
+                null,
+                List.of()
+        );
+        AST.Brane brane = new AST.Brane(List.of(ifExpr));
+        AST.Branes branes = new AST.Branes(List.of(brane));
+        AST.Program program = new AST.Program(branes);
+
+        ASTToFVM translator = new ASTToFVM();
+        Program prog = translator.translate(program);
+        Object result = prog.execute(new Environment());
+        assertEquals(42L, result);
+    }
+
+    @Test
+    void translatesIfElseIfElse() {
+        AST.IfExpr elif = new AST.IfExpr(
+                new AST.IntegerLiteral(1),
+                new AST.IntegerLiteral(2),
+                null,
+                List.of()
+        );
+        AST.IfExpr ifExpr = new AST.IfExpr(
+                new AST.IntegerLiteral(0),
+                new AST.IntegerLiteral(1),
+                new AST.IntegerLiteral(3),
+                List.of(elif)
+        );
+        AST.Brane brane = new AST.Brane(List.of(ifExpr));
+        AST.Branes branes = new AST.Branes(List.of(brane));
+        AST.Program program = new AST.Program(branes);
+
+        ASTToFVM translator = new ASTToFVM();
+        Program prog = translator.translate(program);
+        Object result = prog.execute(new Environment());
+        assertEquals(2L, result);
+    }
 }
