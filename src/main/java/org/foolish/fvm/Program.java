@@ -14,6 +14,6 @@ public class Program implements Insoe {
 
     @Override
     public Finear execute(Environment env) {
-        return ProgramVm.execute(this, env);
+        return FinearVm.execute(this, env);
     }
 }

@@ -27,7 +27,7 @@ public class Midoe implements Targoe {
      * onto the heap and returned.
      */
     public Finear evaluate(Environment env) {
-        return MidoeVm.evaluate(this, env);
+        return FinearVm.evaluate(this, env);
     }
 
     /**

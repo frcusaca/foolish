@@ -6,9 +6,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Translates the high level AST into executable FVM instructions.
+ * Converts the high level AST into {@link Insoe} instructions.
  */
-public class ASTToFVM {
+public class TargoeVm {
 
     public Program translate(AST.Program program) {
         Brane brane = translate(program.brane());
@@ -18,7 +18,7 @@ public class ASTToFVM {
     private Brane translate(AST.Brane brane) {
         List<Midoe> stmts = new ArrayList<>();
         for (AST.Expr expr : brane.statements()) {
-            stmts.add(ensureMidoe(translate(expr)));
+            stmts.add(MidoeVm.wrap(translate(expr)));
         }
         Characterizable chr = toCharacterizable(brane.characterization());
         return new SingleBrane(chr, stmts);
@@ -42,13 +42,13 @@ public class ASTToFVM {
             return new Midoe(new IdentifierExpr(toCharacterizable(id)));
         } else if (expr instanceof AST.Assignment asg) {
             Characterizable id = new Characterizable(asg.id());
-            return new Midoe(new Assignment(id, ensureMidoe(translate(asg.expr()))));
+            return new Midoe(new Assignment(id, MidoeVm.wrap(translate(asg.expr()))));
         } else if (expr instanceof AST.BinaryExpr bin) {
-            Midoe left = ensureMidoe(translate(bin.left()));
-            Midoe right = ensureMidoe(translate(bin.right()));
+            Midoe left = MidoeVm.wrap(translate(bin.left()));
+            Midoe right = MidoeVm.wrap(translate(bin.right()));
             return new Midoe(new BinaryExpr(bin.op(), left, right));
         } else if (expr instanceof AST.UnaryExpr un) {
-            return new Midoe(new UnaryExpr(un.op(), ensureMidoe(translate(un.expr()))));
+            return new Midoe(new UnaryExpr(un.op(), MidoeVm.wrap(translate(un.expr()))));
         } else if (expr instanceof AST.UnknownExpr) {
             return Finear.UNKNOWN;
         } else if (expr instanceof AST.Brane br) {
@@ -56,12 +56,12 @@ public class ASTToFVM {
         } else if (expr instanceof AST.Branes brs) {
             return new Midoe(translate(brs));
         } else if (expr instanceof AST.IfExpr ifExpr) {
-            Midoe cond = ensureMidoe(translate(ifExpr.condition()));
-            Midoe thenExpr = ensureMidoe(translate(ifExpr.thenExpr()));
-            Midoe elseExpr = ensureMidoe(translate(ifExpr.elseExpr()));
+            Midoe cond = MidoeVm.wrap(translate(ifExpr.condition()));
+            Midoe thenExpr = MidoeVm.wrap(translate(ifExpr.thenExpr()));
+            Midoe elseExpr = MidoeVm.wrap(translate(ifExpr.elseExpr()));
             List<IfExpr> elseIfs = new ArrayList<>();
             for (AST.IfExpr e : ifExpr.elseIfs()) {
-                Midoe translated = ensureMidoe(translate(e));
+                Midoe translated = MidoeVm.wrap(translate(e));
                 if (translated.progress_heap().get(0) instanceof IfExpr elif) {
                     elseIfs.add(elif);
                 }
@@ -69,15 +69,6 @@ public class ASTToFVM {
             return new Midoe(new IfExpr(cond, thenExpr, elseExpr, elseIfs));
         }
         throw new IllegalArgumentException("Unsupported AST expression: " + expr.getClass().getSimpleName());
-    }
-
-    private Midoe ensureMidoe(Targoe t) {
-        if (t == null) return new Midoe();
-        if (t instanceof Midoe m) return m;
-        if (t instanceof Insoe i) return new Midoe(i);
-        Midoe m = new Midoe();
-        m.progress_heap().add(t);
-        return m;
     }
 
     private Characterizable toCharacterizable(AST.Identifier id) {

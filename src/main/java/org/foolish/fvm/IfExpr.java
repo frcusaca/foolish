@@ -25,6 +25,6 @@ public class IfExpr implements Insoe {
 
     @Override
     public Finear execute(Environment env) {
-        return IfExprVm.execute(this, env);
+        return FinearVm.execute(this, env);
     }
 }
