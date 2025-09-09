@@ -16,9 +16,9 @@ public class TargoeVm {
     }
 
     private Brane translate(AST.Brane brane) {
-        List<Midoe> stmts = new ArrayList<>();
+        List<Insoe> stmts = new ArrayList<>();
         for (AST.Expr expr : brane.statements()) {
-            stmts.add(MidoeVm.wrap(translate(expr)));
+            stmts.add(translate(expr));
         }
         Characterizable chr = toCharacterizable(brane.characterization());
         return new SingleBrane(chr, stmts);
@@ -32,41 +32,41 @@ public class TargoeVm {
         return new Branes(list);
     }
 
-    private Targoe translate(AST.Expr expr) {
+    private Insoe translate(AST.Expr expr) {
         if (expr == null) {
             return Finear.UNKNOWN;
         }
         if (expr instanceof AST.IntegerLiteral lit) {
             return Finear.of(lit.value());
         } else if (expr instanceof AST.Identifier id) {
-            return new Midoe(new IdentifierExpr(toCharacterizable(id)));
+            return new IdentifierExpr(toCharacterizable(id));
         } else if (expr instanceof AST.Assignment asg) {
             Characterizable id = new Characterizable(asg.id());
-            return new Midoe(new Assignment(id, MidoeVm.wrap(translate(asg.expr()))));
+            return new Assignment(id, translate(asg.expr()));
         } else if (expr instanceof AST.BinaryExpr bin) {
-            Midoe left = MidoeVm.wrap(translate(bin.left()));
-            Midoe right = MidoeVm.wrap(translate(bin.right()));
-            return new Midoe(new BinaryExpr(bin.op(), left, right));
+            Insoe left = translate(bin.left());
+            Insoe right = translate(bin.right());
+            return new BinaryExpr(bin.op(), left, right);
         } else if (expr instanceof AST.UnaryExpr un) {
-            return new Midoe(new UnaryExpr(un.op(), MidoeVm.wrap(translate(un.expr()))));
+            return new UnaryExpr(un.op(), translate(un.expr()));
         } else if (expr instanceof AST.UnknownExpr) {
             return Finear.UNKNOWN;
         } else if (expr instanceof AST.Brane br) {
-            return new Midoe(translate(br));
+            return translate(br);
         } else if (expr instanceof AST.Branes brs) {
-            return new Midoe(translate(brs));
+            return translate(brs);
         } else if (expr instanceof AST.IfExpr ifExpr) {
-            Midoe cond = MidoeVm.wrap(translate(ifExpr.condition()));
-            Midoe thenExpr = MidoeVm.wrap(translate(ifExpr.thenExpr()));
-            Midoe elseExpr = MidoeVm.wrap(translate(ifExpr.elseExpr()));
+            Insoe cond = translate(ifExpr.condition());
+            Insoe thenExpr = translate(ifExpr.thenExpr());
+            Insoe elseExpr = translate(ifExpr.elseExpr());
             List<IfExpr> elseIfs = new ArrayList<>();
             for (AST.IfExpr e : ifExpr.elseIfs()) {
-                Midoe translated = MidoeVm.wrap(translate(e));
-                if (translated.progress_heap().get(0) instanceof IfExpr elif) {
+                Insoe translated = translate(e);
+                if (translated instanceof IfExpr elif) {
                     elseIfs.add(elif);
                 }
             }
-            return new Midoe(new IfExpr(cond, thenExpr, elseExpr, elseIfs));
+            return new IfExpr(cond, thenExpr, elseExpr, elseIfs);
         }
         throw new IllegalArgumentException("Unsupported AST expression: " + expr.getClass().getSimpleName());
     }

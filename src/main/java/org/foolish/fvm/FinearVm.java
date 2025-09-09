@@ -1,121 +1,96 @@
 package org.foolish.fvm;
 
 /**
- * Evaluation utilities that operate on {@link Midoe} trees and push them
- * forward toward {@link Finear} results.
+ * Evaluation utilities that operate on {@link Midoe} trees and push them toward
+ * {@link Finear} results.
  */
 public final class FinearVm {
     private FinearVm() {}
 
     /** Evaluates the given midoe within the provided environment. */
     public static Finear evaluate(Midoe midoe, Environment env) {
-        if (midoe.progress_heap().isEmpty()) {
-            return Finear.UNKNOWN;
-        }
-        Targoe top = midoe.progress_heap().get(midoe.progress_heap().size() - 1);
-        if (top instanceof Finear finer) {
-            if (midoe.progress_heap().size() == 1) {
-                return finer;
-            }
-            top = midoe.progress_heap().get(0);
-        }
         Finear result;
-        if (top instanceof Insoe insoe) {
-            result = execute(insoe, env);
-        } else if (top instanceof Midoe child) {
-            result = evaluate(child, env);
-        } else {
+        if (midoe instanceof ProgramMidoe pm) {
+            result = evaluate(pm.brane(), env);
+        } else if (midoe instanceof BraneMidoe bm) {
             result = Finear.UNKNOWN;
+            for (Midoe stmt : bm.statements()) {
+                result = evaluate(stmt, env);
+            }
+        } else if (midoe instanceof AssignmentMidoe am) {
+            Assignment base = (Assignment) am.base();
+            Finear value = evaluate(am.expr(), env);
+            env.define(base.id(), value);
+            result = value;
+        } else if (midoe instanceof BinaryMidoe bm) {
+            BinaryExpr base = (BinaryExpr) bm.base();
+            Finear l = evaluate(bm.left(), env);
+            Finear r = evaluate(bm.right(), env);
+            if (l.isUnknown() || r.isUnknown()) {
+                result = Finear.UNKNOWN;
+            } else {
+                long lv = ((Number) l.value()).longValue();
+                long rv = ((Number) r.value()).longValue();
+                long val = switch (base.op()) {
+                    case "+" -> lv + rv;
+                    case "-" -> lv - rv;
+                    case "*" -> lv * rv;
+                    case "/" -> lv / rv;
+                    default -> throw new IllegalArgumentException("Unknown op: " + base.op());
+                };
+                result = Finear.of(val);
+            }
+        } else if (midoe instanceof UnaryMidoe um) {
+            UnaryExpr base = (UnaryExpr) um.base();
+            Finear res = evaluate(um.expr(), env);
+            if (res.isUnknown()) {
+                result = Finear.UNKNOWN;
+            } else {
+                long v = ((Number) res.value()).longValue();
+                long val = switch (base.op()) {
+                    case "+" -> +v;
+                    case "-" -> -v;
+                    case "*" -> v; // '*' unary no-op for now
+                    default -> throw new IllegalArgumentException("Unknown unary op: " + base.op());
+                };
+                result = Finear.of(val);
+            }
+        } else if (midoe instanceof IdentifierMidoe im) {
+            IdentifierExpr base = (IdentifierExpr) im.base();
+            result = env.lookup(base.id());
+        } else if (midoe instanceof IfMidoe im) {
+            if (asBoolean(evaluate(im.condition(), env))) {
+                result = evaluate(im.thenExpr(), env);
+            } else {
+                result = Finear.UNKNOWN;
+                for (IfMidoe elif : im.elseIfs()) {
+                    if (asBoolean(evaluate(elif.condition(), env))) {
+                        result = evaluate(elif.thenExpr(), env);
+                        break;
+                    }
+                }
+                if (result.isUnknown()) {
+                    Midoe elseExpr = im.elseExpr();
+                    if (elseExpr != null) {
+                        result = evaluate(elseExpr, env);
+                    }
+                }
+            }
+        } else {
+            Targoe base = midoe.base();
+            if (base instanceof Finear f) {
+                result = f;
+            } else {
+                result = Finear.UNKNOWN;
+            }
         }
         midoe.progress_heap().add(result);
         return result;
     }
 
-    /** Dispatches execution based on the concrete instruction type. */
+    /** Executes an instruction by wrapping it in a {@link Midoe}. */
     public static Finear execute(Insoe insoe, Environment env) {
-        if (insoe instanceof Program p) {
-            return executeProgram(p, env);
-        } else if (insoe instanceof Brane b) {
-            return executeBrane(b, env);
-        } else if (insoe instanceof Assignment a) {
-            return executeAssignment(a, env);
-        } else if (insoe instanceof BinaryExpr b) {
-            return executeBinary(b, env);
-        } else if (insoe instanceof UnaryExpr u) {
-            return executeUnary(u, env);
-        } else if (insoe instanceof IdentifierExpr id) {
-            return executeIdentifier(id, env);
-        } else if (insoe instanceof IfExpr iff) {
-            return executeIf(iff, env);
-        }
-        return Finear.UNKNOWN;
-    }
-
-    private static Finear executeProgram(Program program, Environment env) {
-        return execute(program.brane(), env);
-    }
-
-    private static Finear executeBrane(Brane brane, Environment env) {
-        Finear result = Finear.UNKNOWN;
-        for (Midoe stmt : brane.statements()) {
-            result = evaluate(stmt, env);
-        }
-        return result;
-    }
-
-    private static Finear executeAssignment(Assignment asg, Environment env) {
-        Finear value = evaluate(asg.expr(), env);
-        env.define(asg.id(), value);
-        return value;
-    }
-
-    private static Finear executeBinary(BinaryExpr expr, Environment env) {
-        Finear l = evaluate(expr.left(), env);
-        Finear r = evaluate(expr.right(), env);
-        if (l.isUnknown() || r.isUnknown()) return Finear.UNKNOWN;
-        long lv = ((Number) l.value()).longValue();
-        long rv = ((Number) r.value()).longValue();
-        long res = switch (expr.op()) {
-            case "+" -> lv + rv;
-            case "-" -> lv - rv;
-            case "*" -> lv * rv;
-            case "/" -> lv / rv;
-            default -> throw new IllegalArgumentException("Unknown op: " + expr.op());
-        };
-        return Finear.of(res);
-    }
-
-    private static Finear executeUnary(UnaryExpr expr, Environment env) {
-        Finear res = evaluate(expr.expr(), env);
-        if (res.isUnknown()) return Finear.UNKNOWN;
-        long v = ((Number) res.value()).longValue();
-        long val = switch (expr.op()) {
-            case "+" -> +v;
-            case "-" -> -v;
-            case "*" -> v; // '*' unary no-op for now
-            default -> throw new IllegalArgumentException("Unknown unary op: " + expr.op());
-        };
-        return Finear.of(val);
-    }
-
-    private static Finear executeIdentifier(IdentifierExpr expr, Environment env) {
-        return env.lookup(expr.id());
-    }
-
-    private static Finear executeIf(IfExpr expr, Environment env) {
-        if (asBoolean(evaluate(expr.condition(), env))) {
-            return evaluate(expr.thenExpr(), env);
-        }
-        for (IfExpr elif : expr.elseIfs()) {
-            if (asBoolean(evaluate(elif.condition(), env))) {
-                return evaluate(elif.thenExpr(), env);
-            }
-        }
-        Midoe elseExpr = expr.elseExpr();
-        if (elseExpr != null) {
-            return evaluate(elseExpr, env);
-        }
-        return Finear.UNKNOWN;
+        return evaluate(MidoeVm.wrap(insoe), env);
     }
 
     private static boolean asBoolean(Finear f) {

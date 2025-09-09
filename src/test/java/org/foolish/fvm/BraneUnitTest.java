@@ -9,15 +9,14 @@ public class BraneUnitTest {
     @Test
     void executesStatements() {
         Characterizable x = new Characterizable("x");
-        Midoe fortyTwo = new Midoe();
-        fortyTwo.progress_heap().add(Finear.of(42));
-        List<Midoe> stmts = List.of(
-                new Midoe(new Assignment(x, fortyTwo)),
-                new Midoe(new IdentifierExpr(x))
+        Insoe fortyTwo = Finear.of(42);
+        List<Insoe> stmts = List.of(
+                new Assignment(x, fortyTwo),
+                new IdentifierExpr(x)
         );
         SingleBrane brane = new SingleBrane(null, stmts);
         Environment env = new Environment();
-        Finear result = new Midoe(brane).evaluate(env);
+        Finear result = MidoeVm.wrap(brane).evaluate(env);
         assertEquals(42L, result.value());
         assertEquals(42L, env.lookup(x).value());
     }
@@ -25,15 +24,13 @@ public class BraneUnitTest {
     @Test
     void branesAggregateStatements() {
         Characterizable x = new Characterizable("x");
-        Midoe one = new Midoe();
-        one.progress_heap().add(Finear.of(1));
-        Midoe two = new Midoe();
-        two.progress_heap().add(Finear.of(2));
-        SingleBrane b1 = new SingleBrane(null, List.of(new Midoe(new Assignment(x, one))));
-        SingleBrane b2 = new SingleBrane(null, List.of(new Midoe(new Assignment(x, two))));
+        Insoe one = Finear.of(1);
+        Insoe two = Finear.of(2);
+        SingleBrane b1 = new SingleBrane(null, List.of(new Assignment(x, one)));
+        SingleBrane b2 = new SingleBrane(null, List.of(new Assignment(x, two)));
         Branes branes = new Branes(List.of(b1, b2));
         Environment env = new Environment();
-        new Midoe(branes).evaluate(env);
+        MidoeVm.wrap(branes).evaluate(env);
         assertEquals(2L, env.lookup(x).value());
     }
 }

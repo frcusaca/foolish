@@ -17,7 +17,7 @@ public abstract class Brane implements Insoe {
         return characterization;
     }
 
-    protected abstract List<Midoe> statements();
+    protected abstract List<Insoe> statements();
 
     @Override
     public Finear execute(Environment env) {
