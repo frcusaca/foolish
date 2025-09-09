@@ -8,13 +8,13 @@ public class EnvironmentUnitTest {
     void cascadesLookups() {
         Environment parent = new Environment();
         Characterizable x = new Characterizable("x");
-        parent.define(x, 1L);
+        parent.define(x, Finer.of(1));
 
         Environment child = new Environment(parent);
-        assertEquals(1L, child.lookup(x));
+        assertEquals(1L, child.lookup(x).value());
 
-        child.define(x, 2L);
-        assertEquals(2L, child.lookup(x));
-        assertEquals(1L, parent.lookup(x));
+        child.define(x, Finer.of(2));
+        assertEquals(2L, child.lookup(x).value());
+        assertEquals(1L, parent.lookup(x).value());
     }
 }

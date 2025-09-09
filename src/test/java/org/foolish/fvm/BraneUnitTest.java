@@ -9,25 +9,25 @@ public class BraneUnitTest {
     @Test
     void executesStatements() {
         Characterizable x = new Characterizable("x");
-        List<Instruction> stmts = List.of(
-                new Assignment(x, new IntegerLiteral(42)),
-                new IdentifierExpr(x)
+        List<Targoe> stmts = List.of(
+                new Midoe(new Assignment(x, Finer.of(42))),
+                new Midoe(new IdentifierExpr(x))
         );
         SingleBrane brane = new SingleBrane(null, stmts);
         Environment env = new Environment();
-        Object result = brane.execute(env);
-        assertEquals(42L, result);
-        assertEquals(42L, env.lookup(x));
+        Finer result = new Midoe(brane).evaluate(env);
+        assertEquals(42L, result.value());
+        assertEquals(42L, env.lookup(x).value());
     }
 
     @Test
     void branesAggregateStatements() {
         Characterizable x = new Characterizable("x");
-        SingleBrane b1 = new SingleBrane(null, List.of(new Assignment(x, new IntegerLiteral(1))));
-        SingleBrane b2 = new SingleBrane(null, List.of(new Assignment(x, new IntegerLiteral(2))));
+        SingleBrane b1 = new SingleBrane(null, List.of(new Midoe(new Assignment(x, Finer.of(1)))));
+        SingleBrane b2 = new SingleBrane(null, List.of(new Midoe(new Assignment(x, Finer.of(2)))));
         Branes branes = new Branes(List.of(b1, b2));
         Environment env = new Environment();
-        branes.execute(env);
-        assertEquals(2L, env.lookup(x));
+        new Midoe(branes).evaluate(env);
+        assertEquals(2L, env.lookup(x).value());
     }
 }

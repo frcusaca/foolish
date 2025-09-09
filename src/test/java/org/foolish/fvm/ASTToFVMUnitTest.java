@@ -19,8 +19,8 @@ public class ASTToFVMUnitTest {
 
         ASTToFVM translator = new ASTToFVM();
         Program prog = translator.translate(program);
-        Object result = prog.execute(new Environment());
-        assertEquals(5L, result);
+        Finer result = new Midoe(prog).evaluate(new Environment());
+        assertEquals(5L, result.value());
     }
 
     @Test
@@ -37,8 +37,8 @@ public class ASTToFVMUnitTest {
 
         ASTToFVM translator = new ASTToFVM();
         Program prog = translator.translate(program);
-        Object result = prog.execute(new Environment());
-        assertEquals(42L, result);
+        Finer result = new Midoe(prog).evaluate(new Environment());
+        assertEquals(42L, result.value());
     }
 
     @Test
@@ -61,7 +61,7 @@ public class ASTToFVMUnitTest {
 
         ASTToFVM translator = new ASTToFVM();
         Program prog = translator.translate(program);
-        Object result = prog.execute(new Environment());
-        assertEquals(2L, result);
+        Finer result = new Midoe(prog).evaluate(new Environment());
+        assertEquals(2L, result.value());
     }
 }
