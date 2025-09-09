@@ -6,7 +6,7 @@ import java.util.List;
  * Base class for brane execution constructs.  A brane executes a sequence of
  * instructions within a given environment.
  */
-public abstract class Brane implements Instruction {
+public abstract class Brane implements Insoe {
     private final Characterizable characterization;
 
     protected Brane(Characterizable characterization) {
@@ -17,16 +17,16 @@ public abstract class Brane implements Instruction {
         return characterization;
     }
 
-    protected abstract List<Instruction> statements();
+    protected abstract List<Targoe> statements();
 
-    protected Object executeBraneStatement(Instruction stmt, Environment env) {
-        return stmt.execute(env);
+    protected Finer executeBraneStatement(Targoe stmt, Environment env) {
+        return Midoe.evaluate(stmt, env);
     }
 
     @Override
-    public Object execute(Environment env) {
-        Object result = null;
-        for (Instruction stmt : statements()) {
+    public Finer execute(Environment env) {
+        Finer result = Finer.UNKNOWN;
+        for (Targoe stmt : statements()) {
             result = executeBraneStatement(stmt, env);
         }
         return result;

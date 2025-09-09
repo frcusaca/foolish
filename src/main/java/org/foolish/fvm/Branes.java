@@ -17,8 +17,8 @@ public class Branes extends Brane {
     }
 
     @Override
-    protected List<Instruction> statements() {
-        List<Instruction> stmts = new ArrayList<>();
+    protected List<Targoe> statements() {
+        List<Targoe> stmts = new ArrayList<>();
         for (Brane b : branes) {
             stmts.addAll(b.statements());
         }

@@ -5,38 +5,40 @@ import java.util.List;
 /**
  * Implements an if/elif/else expression.
  */
-public class IfExpr implements Instruction {
-    private final Instruction condition;
-    private final Instruction thenExpr;
-    private final Instruction elseExpr;
+public class IfExpr implements Insoe {
+    private final Targoe condition;
+    private final Targoe thenExpr;
+    private final Targoe elseExpr;
     private final List<IfExpr> elseIfs;
 
-    public IfExpr(Instruction condition, Instruction thenExpr, Instruction elseExpr, List<IfExpr> elseIfs) {
+    public IfExpr(Targoe condition, Targoe thenExpr, Targoe elseExpr, List<IfExpr> elseIfs) {
         this.condition = condition;
         this.thenExpr = thenExpr;
         this.elseExpr = elseExpr;
         this.elseIfs = elseIfs == null ? List.of() : List.copyOf(elseIfs);
     }
 
-    private boolean asBoolean(Object o) {
+    private boolean asBoolean(Finer f) {
+        if (f.isUnknown()) return false;
+        Object o = f.value();
         if (o instanceof Boolean b) return b;
         if (o instanceof Number n) return n.longValue() != 0;
         return o != null;
     }
 
     @Override
-    public Object execute(Environment env) {
-        if (asBoolean(condition.execute(env))) {
-            return thenExpr.execute(env);
+    public Finer execute(Environment env) {
+        if (asBoolean(Midoe.evaluate(condition, env))) {
+            return Midoe.evaluate(thenExpr, env);
         }
         for (IfExpr elif : elseIfs) {
-            if (asBoolean(elif.condition.execute(env))) {
-                return elif.thenExpr.execute(env);
+            if (asBoolean(Midoe.evaluate(elif.condition, env))) {
+                return Midoe.evaluate(elif.thenExpr, env);
             }
         }
         if (elseExpr != null) {
-            return elseExpr.execute(env);
+            return Midoe.evaluate(elseExpr, env);
         }
-        return null;
+        return Finer.UNKNOWN;
     }
 }
