@@ -5,15 +5,15 @@ package org.foolish.fvm;
  */
 public class UnaryExpr implements Insoe {
     private final String op;
-    private final Midoe expr;
+    private final Insoe expr;
 
-    public UnaryExpr(String op, Midoe expr) {
+    public UnaryExpr(String op, Insoe expr) {
         this.op = op;
         this.expr = expr;
     }
 
     String op() { return op; }
-    Midoe expr() { return expr; }
+    Insoe expr() { return expr; }
 
     @Override
     public Finear execute(Environment env) {

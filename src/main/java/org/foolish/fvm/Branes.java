@@ -17,8 +17,8 @@ public class Branes extends Brane {
     }
 
     @Override
-    protected List<Midoe> statements() {
-        List<Midoe> stmts = new ArrayList<>();
+    protected List<Insoe> statements() {
+        List<Insoe> stmts = new ArrayList<>();
         for (Brane b : branes) {
             stmts.addAll(b.statements());
         }

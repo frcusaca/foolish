@@ -5,18 +5,18 @@ package org.foolish.fvm;
  */
 public class BinaryExpr implements Insoe {
     private final String op;
-    private final Midoe left;
-    private final Midoe right;
+    private final Insoe left;
+    private final Insoe right;
 
-    public BinaryExpr(String op, Midoe left, Midoe right) {
+    public BinaryExpr(String op, Insoe left, Insoe right) {
         this.op = op;
         this.left = left;
         this.right = right;
     }
 
     String op() { return op; }
-    Midoe left() { return left; }
-    Midoe right() { return right; }
+    Insoe left() { return left; }
+    Insoe right() { return right; }
 
     @Override
     public Finear execute(Environment env) {
