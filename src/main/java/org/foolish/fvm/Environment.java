@@ -1,7 +1,7 @@
 package org.foolish.fvm;
 
-import java.util.HashMap;
-import java.util.Map;
+import com.google.common.collect.ImmutableMap;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * An environment that holds identifier bindings.  Environments may be nested
@@ -9,7 +9,8 @@ import java.util.Map;
  * found locally.
  */
 public class Environment {
-    private final Map<Characterizable, Object> values = new HashMap<>();
+    private final AtomicReference<ImmutableMap<Characterizable, Object>> values =
+            new AtomicReference<>(ImmutableMap.of());
     private final Environment parent;
 
     public Environment() {
@@ -21,17 +22,27 @@ public class Environment {
     }
 
     public void define(Characterizable id, Object value) {
-        values.put(id, value == null ? Unknown.INSTANCE : value);
+        Object v = value == null ? Unknown.INSTANCE : value;
+        while (true) {
+            ImmutableMap<Characterizable, Object> current = values.get();
+            ImmutableMap<Characterizable, Object> updated = ImmutableMap.<Characterizable, Object>builder()
+                    .putAll(current)
+                    .put(id, v)
+                    .build();
+            if (values.compareAndSet(current, updated)) {
+                return;
+            }
+        }
     }
 
     public boolean contains(Characterizable id) {
-        if (values.containsKey(id)) return true;
+        if (values.get().containsKey(id)) return true;
         return parent != null && parent.contains(id);
     }
 
     public Object lookup(Characterizable id) {
-        if (values.containsKey(id)) {
-            Object v = values.get(id);
+        if (values.get().containsKey(id)) {
+            Object v = values.get().get(id);
             return v == null ? Unknown.INSTANCE : v;
         }
         if (parent != null) {

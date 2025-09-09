@@ -20,6 +20,9 @@ public abstract class Brane implements Instruction {
     protected abstract List<Instruction> statements();
 
     protected Object executeBraneStatement(Instruction stmt, Environment env) {
+        if (stmt instanceof Brane b) {
+            return b.execute(new Environment(env));
+        }
         return stmt.execute(env);
     }
 
