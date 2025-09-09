@@ -44,5 +44,5 @@ public abstract class Targoe {
  * resulting environment.  The environment is provided so that copy-on-write
  * semantics can propagate updated environments to subsequent evaluations.
  */
-record EvalResult(Resoe value, Environment env) {}
+public record EvalResult(Resoe value, Environment env) {}
 

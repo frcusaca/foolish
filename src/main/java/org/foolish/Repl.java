@@ -8,6 +8,7 @@ import org.foolish.ast.ASTBuilder;
 import org.foolish.fvm.ASTToFVM;
 import org.foolish.fvm.Environment;
 import org.foolish.fvm.Program;
+import org.foolish.fvm.EvalResult;
 import org.foolish.grammar.FoolishLexer;
 import org.foolish.grammar.FoolishParser;
 
@@ -27,8 +28,8 @@ public class Repl {
         return (AST.Program) new ASTBuilder().visitProgram(parser.program());
     }
 
-    /** Translate and execute the given source, returning the result. */
-    public static Object eval(String source, Environment env) {
+    /** Translate and execute the given source, returning the result and environment. */
+    public static EvalResult eval(String source, Environment env) {
         AST.Program ast = parse(source);
         Program program = new ASTToFVM().translate(ast);
         return program.execute(env);
@@ -40,10 +41,9 @@ public class Repl {
         String line;
         while ((line = reader.readLine()) != null) {
             if (line.isBlank()) continue;
-            Object result = eval(line, env);
-            if (result != null) {
-                System.out.println(result);
-            }
+            EvalResult result = eval(line, env);
+            env = result.env();
+            System.out.println(result.value());
         }
     }
 }
