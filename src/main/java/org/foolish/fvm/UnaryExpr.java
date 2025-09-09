@@ -17,6 +17,6 @@ public class UnaryExpr implements Insoe {
 
     @Override
     public Finear execute(Environment env) {
-        return UnaryExprVm.execute(this, env);
+        return FinearVm.execute(this, env);
     }
 }

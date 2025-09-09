@@ -20,6 +20,6 @@ public class BinaryExpr implements Insoe {
 
     @Override
     public Finear execute(Environment env) {
-        return BinaryExprVm.execute(this, env);
+        return FinearVm.execute(this, env);
     }
 }

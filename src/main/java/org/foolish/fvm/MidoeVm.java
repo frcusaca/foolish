@@ -1,32 +1,20 @@
 package org.foolish.fvm;
 
 /**
- * Evaluation utilities for {@link Midoe} instances.
+ * Utilities for constructing {@link Midoe} trees from arbitrary {@link Targoe}
+ * instances.  Each resulting {@code Midoe} has its originating {@link Targoe}
+ * at the bottom of its progress heap.
  */
 public final class MidoeVm {
     private MidoeVm() {}
 
-    public static Finear evaluate(Midoe midoe, Environment env) {
-        if (midoe.progress_heap().isEmpty()) {
-            return Finear.UNKNOWN;
-        }
-        Targoe top = midoe.progress_heap().get(midoe.progress_heap().size() - 1);
-        if (top instanceof Finear finer) {
-            if (midoe.progress_heap().size() == 1) {
-                return finer;
-            }
-            top = midoe.progress_heap().get(0);
-        }
-        if (top instanceof Insoe insoe) {
-            Finear result = insoe.execute(env);
-            midoe.progress_heap().add(result);
-            return result;
-        }
-        if (top instanceof Midoe m) {
-            Finear result = evaluate(m, env);
-            midoe.progress_heap().add(result);
-            return result;
-        }
-        return Finear.UNKNOWN;
+    /** Wraps the given target in a {@link Midoe}, attaching it to the progress heap. */
+    public static Midoe wrap(Targoe targoe) {
+        if (targoe == null) return new Midoe();
+        if (targoe instanceof Midoe m) return m;
+        if (targoe instanceof Insoe i) return new Midoe(i);
+        Midoe m = new Midoe();
+        m.progress_heap().add(targoe);
+        return m;
     }
 }

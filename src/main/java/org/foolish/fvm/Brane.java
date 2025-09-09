@@ -21,6 +21,6 @@ public abstract class Brane implements Insoe {
 
     @Override
     public Finear execute(Environment env) {
-        return BraneVm.execute(this, env);
+        return FinearVm.execute(this, env);
     }
 }

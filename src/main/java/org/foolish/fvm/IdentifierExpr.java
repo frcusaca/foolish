@@ -14,6 +14,6 @@ public class IdentifierExpr implements Insoe {
 
     @Override
     public Finear execute(Environment env) {
-        return IdentifierExprVm.execute(this, env);
+        return FinearVm.execute(this, env);
     }
 }
