@@ -10,8 +10,10 @@ public class Program implements Insoe {
         this.brane = brane;
     }
 
+    Brane brane() { return brane; }
+
     @Override
-    public Finer execute(Environment env) {
-        return brane.execute(env);
+    public Finear execute(Environment env) {
+        return ProgramVm.execute(this, env);
     }
 }
