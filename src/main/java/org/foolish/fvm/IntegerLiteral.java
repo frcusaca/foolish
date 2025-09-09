@@ -1,19 +1,11 @@
 package org.foolish.fvm;
 
 /**
- * Literal long value.
+ * A literal long value represented as a {@link Resoe}.
  */
-public class IntegerLiteral implements Instruction {
-    private final long value;
-
+public class IntegerLiteral extends Resoe {
     public IntegerLiteral(long value) {
-        this.value = value;
-    }
-
-    public long value() { return value; }
-
-    @Override
-    public Object execute(Environment env) {
-        return value;
+        super(value);
     }
 }
+

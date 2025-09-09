@@ -4,12 +4,13 @@ import java.util.List;
 
 /**
  * Base class for brane execution constructs.  A brane executes a sequence of
- * instructions within a given environment.
+ * targoes within a new child environment providing copy-on-write semantics.
  */
-public abstract class Brane implements Instruction {
+public abstract class Brane extends Instruction {
     private final Characterizable characterization;
 
-    protected Brane(Characterizable characterization) {
+    protected Brane(Characterizable characterization, TargoeType type) {
+        super(type);
         this.characterization = characterization;
     }
 
@@ -17,18 +18,26 @@ public abstract class Brane implements Instruction {
         return characterization;
     }
 
-    protected abstract List<Instruction> statements();
+    /**
+     * @return sequential list of targoes/statements contained in this brane.
+     */
+    protected abstract List<Targoe> statements();
 
-    protected Object executeBraneStatement(Instruction stmt, Environment env) {
+    protected EvalResult executeBraneStatement(Targoe stmt, Environment env) {
         return stmt.execute(env);
     }
 
     @Override
-    public Object execute(Environment env) {
-        Object result = null;
-        for (Instruction stmt : statements()) {
-            result = executeBraneStatement(stmt, env);
+    public EvalResult execute(Environment env) {
+        Environment local = env.child();
+        Resoe result = Resoe.UNKNOWN;
+        for (Targoe stmt : statements()) {
+            EvalResult er = executeBraneStatement(stmt, local);
+            result = er.value();
+            local = er.env();
         }
-        return result;
+        // changes are not propagated to parent to preserve copy-on-write
+        return new EvalResult(result, env);
     }
 }
+

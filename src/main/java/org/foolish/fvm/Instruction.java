@@ -1,11 +1,12 @@
 package org.foolish.fvm;
 
 /**
- * Represents a unit of executable code within the FVM.  Each instruction
- * operates within an {@link Environment} and returns a result which may be
- * {@code null}.
+ * An executable unit within the FVM.  Instructions are simply specialized
+ * {@link Targoe} instances.
  */
-@FunctionalInterface
-public interface Instruction {
-    Object execute(Environment env);
+public abstract class Instruction extends Targoe {
+    protected Instruction(TargoeType type) {
+        super(type);
+    }
 }
+

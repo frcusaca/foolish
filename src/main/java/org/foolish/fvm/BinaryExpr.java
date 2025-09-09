@@ -3,27 +3,38 @@ package org.foolish.fvm;
 /**
  * Basic binary arithmetic operations on long values.
  */
-public class BinaryExpr implements Instruction {
+public class BinaryExpr extends Instruction {
     private final String op;
-    private final Instruction left;
-    private final Instruction right;
+    private final Targoe left;
+    private final Targoe right;
 
-    public BinaryExpr(String op, Instruction left, Instruction right) {
+    public BinaryExpr(String op, Targoe left, Targoe right) {
+        super(TargoeType.BINARY_EXPR);
         this.op = op;
         this.left = left;
         this.right = right;
     }
 
     @Override
-    public Object execute(Environment env) {
-        long l = ((Number) left.execute(env)).longValue();
-        long r = ((Number) right.execute(env)).longValue();
-        return switch (op) {
-            case "+" -> l + r;
-            case "-" -> l - r;
-            case "*" -> l * r;
-            case "/" -> l / r;
+    public EvalResult execute(Environment env) {
+        EvalResult l = left.execute(env);
+        EvalResult r = right.execute(l.env());
+        if (l.value() == Unknown.INSTANCE || r.value() == Unknown.INSTANCE) {
+            return new EvalResult(Unknown.INSTANCE, r.env());
+        }
+        long lv = l.value().asLong();
+        long rv = r.value().asLong();
+        if ("/".equals(op) && rv == 0) {
+            return new EvalResult(Unknown.INSTANCE, r.env());
+        }
+        long result = switch (op) {
+            case "+" -> lv + rv;
+            case "-" -> lv - rv;
+            case "*" -> lv * rv;
+            case "/" -> lv / rv;
             default -> throw new IllegalArgumentException("Unknown op: " + op);
         };
+        return new EvalResult(new Resoe(result), r.env());
     }
 }
+
