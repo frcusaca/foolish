@@ -13,7 +13,7 @@ public class IdentifierExpr implements Insoe {
     public Characterizable id() { return id; }
 
     @Override
-    public Finer execute(Environment env) {
-        return env.lookup(id);
+    public Finear execute(Environment env) {
+        return IdentifierExprVm.execute(this, env);
     }
 }

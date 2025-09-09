@@ -5,29 +5,21 @@ package org.foolish.fvm;
  */
 public class BinaryExpr implements Insoe {
     private final String op;
-    private final Targoe left;
-    private final Targoe right;
+    private final Midoe left;
+    private final Midoe right;
 
-    public BinaryExpr(String op, Targoe left, Targoe right) {
+    public BinaryExpr(String op, Midoe left, Midoe right) {
         this.op = op;
         this.left = left;
         this.right = right;
     }
 
+    String op() { return op; }
+    Midoe left() { return left; }
+    Midoe right() { return right; }
+
     @Override
-    public Finer execute(Environment env) {
-        Finer l = Midoe.evaluate(left, env);
-        Finer r = Midoe.evaluate(right, env);
-        if (l.isUnknown() || r.isUnknown()) return Finer.UNKNOWN;
-        long lv = ((Number) l.value()).longValue();
-        long rv = ((Number) r.value()).longValue();
-        long res = switch (op) {
-            case "+" -> lv + rv;
-            case "-" -> lv - rv;
-            case "*" -> lv * rv;
-            case "/" -> lv / rv;
-            default -> throw new IllegalArgumentException("Unknown op: " + op);
-        };
-        return Finer.of(res);
+    public Finear execute(Environment env) {
+        return BinaryExprVm.execute(this, env);
     }
 }

@@ -6,17 +6,18 @@ package org.foolish.fvm;
  */
 public class Assignment implements Insoe {
     private final Characterizable id;
-    private final Targoe expr;
+    private final Midoe expr;
 
-    public Assignment(Characterizable id, Targoe expr) {
+    public Assignment(Characterizable id, Midoe expr) {
         this.id = id;
         this.expr = expr;
     }
 
+    Characterizable id() { return id; }
+    Midoe expr() { return expr; }
+
     @Override
-    public Finer execute(Environment env) {
-        Finer value = Midoe.evaluate(expr, env);
-        env.define(id, value);
-        return value;
+    public Finear execute(Environment env) {
+        return AssignmentVm.execute(this, env);
     }
 }

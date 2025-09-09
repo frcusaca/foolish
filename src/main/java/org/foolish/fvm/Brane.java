@@ -17,18 +17,10 @@ public abstract class Brane implements Insoe {
         return characterization;
     }
 
-    protected abstract List<Targoe> statements();
-
-    protected Finer executeBraneStatement(Targoe stmt, Environment env) {
-        return Midoe.evaluate(stmt, env);
-    }
+    protected abstract List<Midoe> statements();
 
     @Override
-    public Finer execute(Environment env) {
-        Finer result = Finer.UNKNOWN;
-        for (Targoe stmt : statements()) {
-            result = executeBraneStatement(stmt, env);
-        }
-        return result;
+    public Finear execute(Environment env) {
+        return BraneVm.execute(this, env);
     }
 }
