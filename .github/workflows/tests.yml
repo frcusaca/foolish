@@ -19,7 +19,7 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
           cache: 'maven'
-      - name: "🧪 Unit tests"
-        run: mvn -B -Dtest='*Test,!*ApprovalTest' test
-      - name: "📷 Approval tests"
-        run: mvn -B -Dtest='*ApprovalTest' test
+        - name: "🧪 Unit tests"
+          run: mvn -B surefire:test@unit-tests
+        - name: "📷 Approval tests"
+          run: mvn -B surefire:test@approval-tests

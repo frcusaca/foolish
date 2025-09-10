@@ -25,4 +25,16 @@ public class ParserApprovalTest {
         AST ast = parse("{ x = 1+2*3; y = x-4; }");
         Approvals.verify(ast.toString());
     }
+
+    @Test
+    void operatorPrecedenceIsApproved() {
+        AST ast = parse("{ x = -1 + +2 * 3 / *4 - +5; }");
+        Approvals.verify(ast.toString());
+    }
+
+    @Test
+    void nestedBranesAreApproved() {
+        AST ast = parse("{ { { z = 3; } y = 2; { w = 4; } } x = 1; { p = 5; { q = 6; } } }");
+        Approvals.verify(ast.toString());
+    }
 }

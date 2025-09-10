@@ -311,4 +311,39 @@ public class ParserTest {
                 }
                 """, ast.toString());
     }
+
+    @Test
+    public void testAllOperatorPrecedences() {
+        AST ast = parse("{ x = -1 + +2 * 3 / *4 - +5; }");
+        assertEquals("""
+                {
+                  x = ((-1 + ((+2 * 3) / *4)) - +5);
+                }
+                """, ast.toString());
+    }
+
+    @Test
+    public void testDeepBraneNesting() {
+        AST ast = parse("{ { { z = 3; } y = 2; { w = 4; } } x = 1; { p = 5; { q = 6; } } }");
+        assertEquals("""
+                {
+                  {
+                    {
+                      z = 3;
+                    }
+                    y = 2;
+                    {
+                      w = 4;
+                    }
+                  }
+                  x = 1;
+                  {
+                    p = 5;
+                    {
+                      q = 6;
+                    }
+                  }
+                }
+                """, ast.toString());
+    }
 }
