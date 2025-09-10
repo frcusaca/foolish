@@ -5,9 +5,9 @@ import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.foolish.ast.AST;
 import org.foolish.ast.ASTBuilder;
-import org.foolish.fvm.ASTToFVM;
+import org.foolish.fvm.TargoeVm;
 import org.foolish.fvm.Environment;
-import org.foolish.fvm.Program;
+import org.foolish.fvm.Insoe;
 import org.foolish.grammar.FoolishLexer;
 import org.foolish.grammar.FoolishParser;
 
@@ -30,7 +30,7 @@ public class Repl {
     /** Translate and execute the given source, returning the result. */
     public static Object eval(String source, Environment env) {
         AST.Program ast = parse(source);
-        Program program = new ASTToFVM().translate(ast);
+        Insoe program = new TargoeVm().translate(ast);
         return program.execute(env);
     }
 

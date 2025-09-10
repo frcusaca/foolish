@@ -7,7 +7,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class ASTToFVMTest {
+public class TargoeVmTest {
     @Test
     void translatesAndExecutes() {
         // Construct AST: { x = 5; x }
@@ -17,9 +17,9 @@ public class ASTToFVMTest {
         AST.Branes branes = new AST.Branes(List.of(brane));
         AST.Program program = new AST.Program(branes);
 
-        ASTToFVM translator = new ASTToFVM();
-        Program prog = translator.translate(program);
-        Finer result = new Midoe(prog).evaluate(new Environment());
+        TargoeVm translator = new TargoeVm();
+        Insoe prog = translator.translate(program);
+        Finear result = MidoeVm.wrap(prog).evaluate(new Environment());
         assertEquals(5L, result.value());
     }
 
@@ -35,9 +35,9 @@ public class ASTToFVMTest {
         AST.Branes branes = new AST.Branes(List.of(brane));
         AST.Program program = new AST.Program(branes);
 
-        ASTToFVM translator = new ASTToFVM();
-        Program prog = translator.translate(program);
-        Finer result = new Midoe(prog).evaluate(new Environment());
+        TargoeVm translator = new TargoeVm();
+        Insoe prog = translator.translate(program);
+        Finear result = MidoeVm.wrap(prog).evaluate(new Environment());
         assertEquals(42L, result.value());
     }
 
@@ -59,9 +59,9 @@ public class ASTToFVMTest {
         AST.Branes branes = new AST.Branes(List.of(brane));
         AST.Program program = new AST.Program(branes);
 
-        ASTToFVM translator = new ASTToFVM();
-        Program prog = translator.translate(program);
-        Finer result = new Midoe(prog).evaluate(new Environment());
+        TargoeVm translator = new TargoeVm();
+        Insoe prog = translator.translate(program);
+        Finear result = MidoeVm.wrap(prog).evaluate(new Environment());
         assertEquals(2L, result.value());
     }
 }
