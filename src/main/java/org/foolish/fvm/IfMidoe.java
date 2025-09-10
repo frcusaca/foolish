@@ -1,16 +1,18 @@
 package org.foolish.fvm;
 
+import org.foolish.ast.AST;
 import java.util.List;
 
-/** Midoe wrapper for an {@link IfExpr}. */
+/** Midoe wrapper for an if expression. */
 class IfMidoe extends Midoe {
     private final Midoe condition;
     private final Midoe thenExpr;
     private final Midoe elseExpr;
     private final List<IfMidoe> elseIfs;
 
-    IfMidoe(IfExpr base, Midoe condition, Midoe thenExpr, Midoe elseExpr, List<IfMidoe> elseIfs) {
+    IfMidoe(Insoe base, Midoe condition, Midoe thenExpr, Midoe elseExpr, List<IfMidoe> elseIfs) {
         super(base);
+        base.as(AST.IfExpr.class);
         this.condition = condition;
         this.thenExpr = thenExpr;
         this.elseExpr = elseExpr;

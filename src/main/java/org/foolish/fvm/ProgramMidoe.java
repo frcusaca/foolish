@@ -1,11 +1,14 @@
 package org.foolish.fvm;
 
-/** Midoe wrapper for a {@link Program}. */
+import org.foolish.ast.AST;
+
+/** Midoe wrapper for a program. */
 class ProgramMidoe extends Midoe {
     private final Midoe brane;
 
-    ProgramMidoe(Program base, Midoe brane) {
+    ProgramMidoe(Insoe base, Midoe brane) {
         super(base);
+        base.as(AST.Program.class);
         this.brane = brane;
     }
 

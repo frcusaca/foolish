@@ -1,5 +1,6 @@
 package org.foolish.fvm;
 
+import org.foolish.ast.AST;
 import java.util.Objects;
 
 /**
@@ -21,6 +22,12 @@ public final class Characterizable {
     public Characterizable(Characterizable characterization, String id) {
         this.characterization = characterization;
         this.id = id == null ? "" : id;
+    }
+
+    /** Creates a {@code Characterizable} from an AST identifier chain. */
+    public static Characterizable fromAst(AST.Identifier id) {
+        if (id == null) return null;
+        return new Characterizable(fromAst(id.characterization()), id.id());
     }
 
     public Characterizable characterization() {

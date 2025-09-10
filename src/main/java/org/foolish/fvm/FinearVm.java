@@ -1,5 +1,7 @@
 package org.foolish.fvm;
 
+import org.foolish.ast.AST;
+
 /**
  * Evaluation utilities that operate on {@link Midoe} trees and push them toward
  * {@link Finear} results.
@@ -18,12 +20,10 @@ public final class FinearVm {
                 result = evaluate(stmt, env);
             }
         } else if (midoe instanceof AssignmentMidoe am) {
-            Assignment base = (Assignment) am.base();
             Finear value = evaluate(am.expr(), env);
-            env.define(base.id(), value);
+            env.define(am.id(), value);
             result = value;
         } else if (midoe instanceof BinaryMidoe bm) {
-            BinaryExpr base = (BinaryExpr) bm.base();
             Finear l = evaluate(bm.left(), env);
             Finear r = evaluate(bm.right(), env);
             if (l.isUnknown() || r.isUnknown()) {
@@ -31,33 +31,31 @@ public final class FinearVm {
             } else {
                 long lv = ((Number) l.value()).longValue();
                 long rv = ((Number) r.value()).longValue();
-                long val = switch (base.op()) {
+                long val = switch (bm.op()) {
                     case "+" -> lv + rv;
                     case "-" -> lv - rv;
                     case "*" -> lv * rv;
                     case "/" -> lv / rv;
-                    default -> throw new IllegalArgumentException("Unknown op: " + base.op());
+                    default -> throw new IllegalArgumentException("Unknown op: " + bm.op());
                 };
                 result = Finear.of(val);
             }
         } else if (midoe instanceof UnaryMidoe um) {
-            UnaryExpr base = (UnaryExpr) um.base();
             Finear res = evaluate(um.expr(), env);
             if (res.isUnknown()) {
                 result = Finear.UNKNOWN;
             } else {
                 long v = ((Number) res.value()).longValue();
-                long val = switch (base.op()) {
+                long val = switch (um.op()) {
                     case "+" -> +v;
                     case "-" -> -v;
                     case "*" -> v; // '*' unary no-op for now
-                    default -> throw new IllegalArgumentException("Unknown unary op: " + base.op());
+                    default -> throw new IllegalArgumentException("Unknown unary op: " + um.op());
                 };
                 result = Finear.of(val);
             }
         } else if (midoe instanceof IdentifierMidoe im) {
-            IdentifierExpr base = (IdentifierExpr) im.base();
-            result = env.lookup(base.id());
+            result = env.lookup(im.id());
         } else if (midoe instanceof IfMidoe im) {
             if (asBoolean(evaluate(im.condition(), env))) {
                 result = evaluate(im.thenExpr(), env);
@@ -76,6 +74,10 @@ public final class FinearVm {
                     }
                 }
             }
+        } else if (midoe instanceof LiteralMidoe lm) {
+            result = Finear.of(lm.value());
+        } else if (midoe.base() instanceof Insoe in && in.ast() instanceof AST.UnknownExpr) {
+            result = Finear.UNKNOWN;
         } else {
             Targoe base = midoe.base();
             if (base instanceof Finear f) {

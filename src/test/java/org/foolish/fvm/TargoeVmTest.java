@@ -22,7 +22,7 @@ public class TargoeVmTest {
         AST.Program program = new AST.Program(branes);
 
         TargoeVm translator = new TargoeVm();
-        Program prog = translator.translate(program);
+        Insoe prog = translator.translate(program);
         Finear result = MidoeVm.wrap(prog).evaluate(new Environment());
         assertEquals(5L, result.value());
     }
@@ -40,7 +40,7 @@ public class TargoeVmTest {
         AST.Program program = new AST.Program(branes);
 
         TargoeVm translator = new TargoeVm();
-        Program prog = translator.translate(program);
+        Insoe prog = translator.translate(program);
         Finear result = MidoeVm.wrap(prog).evaluate(new Environment());
         assertEquals(42L, result.value());
     }
@@ -64,7 +64,7 @@ public class TargoeVmTest {
         AST.Program program = new AST.Program(branes);
 
         TargoeVm translator = new TargoeVm();
-        Program prog = translator.translate(program);
+        Insoe prog = translator.translate(program);
         Finear result = MidoeVm.wrap(prog).evaluate(new Environment());
         assertEquals(2L, result.value());
     }
