@@ -10,11 +10,16 @@ brane : LBRACE stmt* RBRACE ;
 branes: brane+ ;
 
 stmt
-    : (
-      branes
-    | assignment
-    | expr
-    ) SEMI LINE_COMMENT?
+    : ( brane SEMI?)
+    |
+    (
+        (
+              branes
+            | assignment
+            | expr
+        ) SEMI
+    )
+    LINE_COMMENT?
     ;
 assignment : IDENTIFIER ASSIGN expr ;
 
