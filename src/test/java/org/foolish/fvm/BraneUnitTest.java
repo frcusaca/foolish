@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.List;
 
-public class BraneTest {
+public class BraneUnitTest {
     @Test
     void executesStatements() {
         Characterizable x = new Characterizable("x");

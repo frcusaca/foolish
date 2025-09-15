@@ -7,7 +7,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class ASTToFVMTest {
+public class ASTToFVMUnitTest {
     @Test
     void translatesAndExecutes() {
         // Construct AST: { x = 5; x }

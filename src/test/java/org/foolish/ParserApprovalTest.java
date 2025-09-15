@@ -34,7 +34,7 @@ public class ParserApprovalTest {
 
     @Test
     void nestedBranesAreApproved() {
-        AST ast = parse("{ { { z = 3; } y = 2; { w = 4; } } x = 1; { p = 5; { q = 6; } } }");
+        AST ast = parse("{ { { z = 3; }; y = 2; { w = 4; }; }; x = 1; { p = 5; { q = 6; }; }; }");
         Approvals.verify(ast.toString());
     }
 }
