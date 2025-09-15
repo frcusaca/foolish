@@ -3,7 +3,7 @@ package org.foolish.fvm;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
-public class EnvironmentTest {
+public class EnvironmentUnitTest {
     @Test
     void cascadesLookups() {
         Environment parent = new Environment();

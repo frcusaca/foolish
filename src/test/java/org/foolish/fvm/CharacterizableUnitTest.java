@@ -3,7 +3,7 @@ package org.foolish.fvm;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
-public class CharacterizableTest {
+public class CharacterizableUnitTest {
     @Test
     void equalityAndHashing() {
         Characterizable a1 = new Characterizable("a");

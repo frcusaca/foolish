@@ -11,8 +11,7 @@ branes: brane+ ;
 
 stmt
     : (
-      branes
-    | assignment
+      assignment
     | expr
     ) SEMI LINE_COMMENT?
     ;
@@ -21,6 +20,7 @@ assignment : IDENTIFIER ASSIGN expr ;
 expr
     : addExpr
     | ifExpr
+    | branes
     ;
 
 addExpr : mulExpr ((PLUS | MINUS) mulExpr)* ;

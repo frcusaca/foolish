@@ -31,6 +31,14 @@
       <version>${junit.platform.version}</version>
       <scope>test</scope>
     </dependency>
+
+    <!-- ApprovalTests for snapshot-based testing -->
+    <dependency>
+      <groupId>com.approvaltests</groupId>
+      <artifactId>approvaltests</artifactId>
+      <version>25.0.23</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
@@ -85,6 +93,37 @@
               <sources>
                 <source>${project.build.directory}/generated-sources/antlr4</source>
               </sources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      
+      <plugin>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.2.5</version>
+        <executions>
+          <execution>
+            <id>unit-tests</id>
+            <phase>test</phase>
+            <goals>
+              <goal>test</goal>
+            </goals>
+            <configuration>
+              <includes>
+                <include>**/*UnitTest.java</include>
+              </includes>
+            </configuration>
+          </execution>
+          <execution>
+            <id>approval-tests</id>
+            <phase>test</phase>
+            <goals>
+              <goal>test</goal>
+            </goals>
+            <configuration>
+              <includes>
+                <include>**/*ApprovalTest.java</include>
+              </includes>
             </configuration>
           </execution>
         </executions>

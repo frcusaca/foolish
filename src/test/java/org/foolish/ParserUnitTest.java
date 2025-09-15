@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class ParserTest {
+public class ParserUnitTest {
 
     private AST parse(String code) {
         CharStream input = CharStreams.fromString(code);
@@ -310,5 +310,90 @@ public class ParserTest {
                 };
                 }
                 """, ast.toString());
+    }
+
+    @Test
+    public void testAllOperatorPrecedences() {
+        AST ast = parse("{ x = -1 + +2 * 3 / *4 - +5; }");
+        assertEquals("""
+                {
+                  x = ((-1 + ((+2 * 3) / *4)) - +5);
+                }
+                """, ast.toString());
+    }
+
+    @Test
+    public void testDeepBraneNesting() {
+        AST ast = parse(
+                """
+                        {
+                         a = 2;
+                         b = { a = 3; };
+                         c = { 
+                                 a = 4;
+                                    b = { a = 5; b = { a = 6; }; };
+                             };
+                         { uhoh = ??? ; };
+                        }
+                        {
+                            {
+                                { z = 3; };
+                                y = 2;
+                                { w = 4; };
+                            };
+                            x = 1;
+                            {
+                                p = 5;
+                                { q = 6;{};{{{};};};};
+                            };
+                         }
+                """
+         );
+        assertEquals("""
+{
+  a = 2;
+  b = {
+  a = 3;
+};
+  c = {
+  a = 4;
+  b = {
+  a = 5;
+  b = {
+  a = 6;
+};
+};
+};
+  {
+  uhoh = ???;
+};
+}
+{
+  {
+  {
+  z = 3;
+};
+  y = 2;
+  {
+  w = 4;
+};
+};
+  x = 1;
+  {
+  p = 5;
+  {
+  q = 6;
+  {
+};
+  {
+  {
+  {
+};
+};
+};
+};
+};
+}
+""", ast.toString());
     }
 }
