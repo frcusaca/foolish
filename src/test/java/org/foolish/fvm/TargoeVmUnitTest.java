@@ -6,12 +6,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
-
-<<<<<<<< HEAD:src/test/java/org/foolish/fvm/ASTToFVMUnitTest.java
-public class ASTToFVMUnitTest {
-========
-public class TargoeVmTest {
->>>>>>>> 127c9e5 (Consolidate VM logic by evaluation level):src/test/java/org/foolish/fvm/TargoeVmTest.java
+public class TargoeVmUnitTest {
     @Test
     void translatesAndExecutes() {
         // Construct AST: { x = 5; x }
