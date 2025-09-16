@@ -39,6 +39,18 @@
       <version>25.0.23</version>
       <scope>test</scope>
     </dependency>
+      <dependency>
+          <groupId>org.junit.jupiter</groupId>
+          <artifactId>junit-jupiter-engine</artifactId>
+          <version>5.10.2</version>
+          <scope>test</scope>
+      </dependency>
+      <dependency>
+          <groupId>org.junit.jupiter</groupId>
+          <artifactId>junit-jupiter-api</artifactId>
+          <version>5.10.2</version>
+          <scope>test</scope>
+      </dependency>
   </dependencies>
 
   <build>
@@ -101,32 +113,33 @@
       <plugin>
         <artifactId>maven-surefire-plugin</artifactId>
         <version>3.2.5</version>
-        <executions>
-          <execution>
-            <id>unit-tests</id>
-            <phase>test</phase>
-            <goals>
-              <goal>test</goal>
-            </goals>
+<!--        <executions>-->
+<!--          <execution>-->
+<!--            <id>unit-tests</id>-->
+<!--            <phase>test</phase>-->
+<!--            <goals>-->
+<!--              <goal>test</goal>-->
+<!--            </goals>-->
             <configuration>
               <includes>
-                <include>**/*UnitTest.java</include>
+                  <include>**/*Test.java</include>
+<!--                <include>**/*UnitTest.java</include>-->
               </includes>
             </configuration>
-          </execution>
-          <execution>
-            <id>approval-tests</id>
-            <phase>test</phase>
-            <goals>
-              <goal>test</goal>
-            </goals>
-            <configuration>
-              <includes>
-                <include>**/*ApprovalTest.java</include>
-              </includes>
-            </configuration>
-          </execution>
-        </executions>
+<!--          </execution>-->
+<!--          <execution>-->
+<!--            <id>approval-tests</id>-->
+<!--            <phase>test</phase>-->
+<!--            <goals>-->
+<!--              <goal>test</goal>-->
+<!--            </goals>-->
+<!--            <configuration>-->
+<!--              <includes>-->
+<!--                <include>**/*ApprovalTest.java</include>-->
+<!--              </includes>-->
+<!--            </configuration>-->
+<!--          </execution>-->
+<!--        </executions>-->
       </plugin>
     </plugins>
   </build>

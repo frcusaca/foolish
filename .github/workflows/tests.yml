@@ -20,6 +20,4 @@ jobs:
           java-version: '21'
           cache: 'maven'
         - name: "🧪 Unit tests"
-          run: mvn -B surefire:test@unit-tests
-        - name: "📷 Approval tests"
-          run: mvn -B surefire:test@approval-tests
+          run: mvn -B surefire:test
