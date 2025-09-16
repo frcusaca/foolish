@@ -6,12 +6,8 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
-<<<<<<<< HEAD:src/test/java/org/foolish/fvm/TargoeVmUnitTest.java
-public class TargoeVmUnitTest {
-========
 
-public class TargoeVmTest {
->>>>>>>> ae24497f956ba83dd4012369a8b5b6a4db6069d0:src/test/java/org/foolish/fvm/TargoeVmTest.java
+public class TargoeVmUnitTest {
     @Test
     void translatesAndExecutes() {
         // Construct AST: { x = 5; x }
