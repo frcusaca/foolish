@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.List;
 
-public class BraneUnitTest {
+public class BraneTest {
     @Test
     void executesStatements() {
         AST.Expr assign = new AST.Assignment("x", new AST.IntegerLiteral(42));
