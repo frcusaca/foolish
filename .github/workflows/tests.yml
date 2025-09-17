@@ -21,6 +21,6 @@ jobs:
           cache: 'maven'
         - name: "🧪 Unit tests"
           run: mvn -P unit-tests
-		- name: "📷 Approval tests"
+        - name: "📷 Approval tests"
           run: mvn -P approval-tests
 
