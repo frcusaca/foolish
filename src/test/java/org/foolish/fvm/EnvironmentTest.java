@@ -6,15 +6,17 @@ import static org.junit.jupiter.api.Assertions.*;
 public class EnvironmentTest {
     @Test
     void cascadesLookups() {
+        // Foolish: parent { x = 1 } child { x = 2 }
         Environment parent = new Environment();
         Characterizable x = new Characterizable("x");
-        parent.define(x, 1L);
+        parent.define(x, new IntegerLiteral(1));
 
         Environment child = new Environment(parent);
-        assertEquals(1L, child.lookup(x));
+        assertEquals(1L, ((Finer) child.lookup(x)).value());
 
-        child.define(x, 2L);
-        assertEquals(2L, child.lookup(x));
-        assertEquals(1L, parent.lookup(x));
+        child.define(x, new IntegerLiteral(2));
+        assertEquals(2L, ((Finer) child.lookup(x)).value());
+        assertEquals(1L, ((Finer) parent.lookup(x)).value());
     }
 }
+

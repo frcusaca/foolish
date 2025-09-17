@@ -4,19 +4,20 @@ package org.foolish.fvm;
  * Assigns the result of an expression to an identifier in the current
  * environment.
  */
-public class Assignment implements Instruction {
+public class Assignment implements Insoe {
     private final Characterizable id;
-    private final Instruction expr;
+    private final Targoe expr;
 
-    public Assignment(Characterizable id, Instruction expr) {
+    public Assignment(Characterizable id, Targoe expr) {
         this.id = id;
         this.expr = expr;
     }
 
     @Override
-    public Object execute(Environment env) {
-        Object value = expr.execute(env);
+    public Targoe execute(Environment env) {
+        Finer value = Evaluator.eval(expr, env);
         env.define(id, value);
         return value;
     }
 }
+

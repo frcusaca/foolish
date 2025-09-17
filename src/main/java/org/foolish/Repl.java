@@ -5,9 +5,7 @@ import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.foolish.ast.AST;
 import org.foolish.ast.ASTBuilder;
-import org.foolish.fvm.ASTToFVM;
-import org.foolish.fvm.Environment;
-import org.foolish.fvm.Program;
+import org.foolish.fvm.*;
 import org.foolish.grammar.FoolishLexer;
 import org.foolish.grammar.FoolishParser;
 
@@ -31,7 +29,11 @@ public class Repl {
     public static Object eval(String source, Environment env) {
         AST.Program ast = parse(source);
         Program program = new ASTToFVM().translate(ast);
-        return program.execute(env);
+        Finer result = Evaluator.eval(program, env);
+        if (result instanceof Unknown) {
+            return result;
+        }
+        return result.value();
     }
 
     public static void main(String[] args) throws IOException {
@@ -47,3 +49,4 @@ public class Repl {
         }
     }
 }
+

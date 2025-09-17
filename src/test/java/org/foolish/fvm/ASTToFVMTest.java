@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.*;
 public class ASTToFVMTest {
     @Test
     void translatesAndExecutes() {
-        // Construct AST: { x = 5; x }
+        // Foolish: { x = 5; x }
         AST.Expr assign = new AST.Assignment("x", new AST.IntegerLiteral(5));
         AST.Expr ident = new AST.Identifier("x");
         AST.Brane brane = new AST.Brane(List.of(assign, ident));
@@ -19,12 +19,13 @@ public class ASTToFVMTest {
 
         ASTToFVM translator = new ASTToFVM();
         Program prog = translator.translate(program);
-        Object result = prog.execute(new Environment());
-        assertEquals(5L, result);
+        Finer result = Evaluator.eval(prog, new Environment());
+        assertEquals(5L, result.value());
     }
 
     @Test
     void translatesIfWithoutElse() {
+        // Foolish: if 1 { 42 }
         AST.IfExpr ifExpr = new AST.IfExpr(
                 new AST.IntegerLiteral(1),
                 new AST.IntegerLiteral(42),
@@ -37,12 +38,13 @@ public class ASTToFVMTest {
 
         ASTToFVM translator = new ASTToFVM();
         Program prog = translator.translate(program);
-        Object result = prog.execute(new Environment());
-        assertEquals(42L, result);
+        Finer result = Evaluator.eval(prog, new Environment());
+        assertEquals(42L, result.value());
     }
 
     @Test
     void translatesIfElseIfElse() {
+        // Foolish: if 0 { 1 } elif 1 { 2 } else { 3 }
         AST.IfExpr elif = new AST.IfExpr(
                 new AST.IntegerLiteral(1),
                 new AST.IntegerLiteral(2),
@@ -61,7 +63,8 @@ public class ASTToFVMTest {
 
         ASTToFVM translator = new ASTToFVM();
         Program prog = translator.translate(program);
-        Object result = prog.execute(new Environment());
-        assertEquals(2L, result);
+        Finer result = Evaluator.eval(prog, new Environment());
+        assertEquals(2L, result.value());
     }
 }
+

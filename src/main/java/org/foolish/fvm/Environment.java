@@ -9,7 +9,7 @@ import java.util.Map;
  * found locally.
  */
 public class Environment {
-    private final Map<Characterizable, Object> values = new HashMap<>();
+    private final Map<Characterizable, Targoe> values = new HashMap<>();
     private final Environment parent;
 
     public Environment() {
@@ -20,7 +20,7 @@ public class Environment {
         this.parent = parent;
     }
 
-    public void define(Characterizable id, Object value) {
+    public void define(Characterizable id, Targoe value) {
         values.put(id, value == null ? Unknown.INSTANCE : value);
     }
 
@@ -29,9 +29,9 @@ public class Environment {
         return parent != null && parent.contains(id);
     }
 
-    public Object lookup(Characterizable id) {
+    public Targoe lookup(Characterizable id) {
         if (values.containsKey(id)) {
-            Object v = values.get(id);
+            Targoe v = values.get(id);
             return v == null ? Unknown.INSTANCE : v;
         }
         if (parent != null) {
@@ -40,3 +40,4 @@ public class Environment {
         return Unknown.INSTANCE;
     }
 }
+

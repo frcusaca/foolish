@@ -3,27 +3,34 @@ package org.foolish.fvm;
 /**
  * Basic binary arithmetic operations on long values.
  */
-public class BinaryExpr implements Instruction {
+public class BinaryExpr implements Insoe {
     private final String op;
-    private final Instruction left;
-    private final Instruction right;
+    private final Targoe left;
+    private final Targoe right;
 
-    public BinaryExpr(String op, Instruction left, Instruction right) {
+    public BinaryExpr(String op, Targoe left, Targoe right) {
         this.op = op;
         this.left = left;
         this.right = right;
     }
 
     @Override
-    public Object execute(Environment env) {
-        long l = ((Number) left.execute(env)).longValue();
-        long r = ((Number) right.execute(env)).longValue();
-        return switch (op) {
-            case "+" -> l + r;
-            case "-" -> l - r;
-            case "*" -> l * r;
-            case "/" -> l / r;
+    public Targoe execute(Environment env) {
+        Finer l = Evaluator.eval(left, env);
+        Finer r = Evaluator.eval(right, env);
+        if (l instanceof Unknown || r instanceof Unknown) {
+            return Unknown.INSTANCE;
+        }
+        long lv = ((Number) l.value()).longValue();
+        long rv = ((Number) r.value()).longValue();
+        long result = switch (op) {
+            case "+" -> lv + rv;
+            case "-" -> lv - rv;
+            case "*" -> lv * rv;
+            case "/" -> lv / rv;
             default -> throw new IllegalArgumentException("Unknown op: " + op);
         };
+        return new IntegerLiteral(result);
     }
 }
+

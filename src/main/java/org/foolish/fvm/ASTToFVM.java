@@ -16,7 +16,7 @@ public class ASTToFVM {
     }
 
     private Brane translate(AST.Brane brane) {
-        List<Instruction> stmts = new ArrayList<>();
+        List<Targoe> stmts = new ArrayList<>();
         for (AST.Expr expr : brane.statements()) {
             stmts.add(translate(expr));
         }
@@ -32,41 +32,46 @@ public class ASTToFVM {
         return new Branes(list);
     }
 
-    private Instruction translate(AST.Expr expr) {
+    private Insoe translateIf(AST.IfExpr ifExpr) {
+        Targoe cond = translate(ifExpr.condition());
+        Targoe thenExpr = translate(ifExpr.thenExpr());
+        Targoe elseExpr = translate(ifExpr.elseExpr());
+        List<IfExpr> elseIfs = new ArrayList<>();
+        for (AST.IfExpr e : ifExpr.elseIfs()) {
+            Insoe translated = translateIf(e);
+            if (translated instanceof IfExpr ie) {
+                elseIfs.add(ie);
+            }
+        }
+        return new IfExpr(cond, thenExpr, elseExpr, elseIfs);
+    }
+
+    private Targoe translate(AST.Expr expr) {
         if (expr == null) {
-            return null;
+            return Unknown.INSTANCE;
         }
         if (expr instanceof AST.IntegerLiteral lit) {
             return new IntegerLiteral(lit.value());
         } else if (expr instanceof AST.Identifier id) {
-            return new IdentifierExpr(toCharacterizable(id));
+            return new Midoe(new IdentifierExpr(toCharacterizable(id)));
         } else if (expr instanceof AST.Assignment asg) {
             Characterizable id = new Characterizable(asg.id());
-            return new Assignment(id, translate(asg.expr()));
+            Insoe insoe = new Assignment(id, translate(asg.expr()));
+            return new Midoe(insoe);
         } else if (expr instanceof AST.BinaryExpr bin) {
-            return new BinaryExpr(bin.op(), translate(bin.left()), translate(bin.right()));
+            Insoe insoe = new BinaryExpr(bin.op(), translate(bin.left()), translate(bin.right()));
+            return new Midoe(insoe);
         } else if (expr instanceof AST.UnaryExpr un) {
-            return new UnaryExpr(un.op(), translate(un.expr()));
-        } else if (expr instanceof AST.UnknownExpr) {
-            return null;
+            Insoe insoe = new UnaryExpr(un.op(), translate(un.expr()));
+            return new Midoe(insoe);
         } else if (expr instanceof AST.Brane br) {
-            return translate(br);
+            return new Midoe(translate(br));
         } else if (expr instanceof AST.Branes brs) {
-            return translate(brs);
+            return new Midoe(translate(brs));
         } else if (expr instanceof AST.IfExpr ifExpr) {
-            Instruction cond = translate(ifExpr.condition());
-            Instruction thenExpr = translate(ifExpr.thenExpr());
-            Instruction elseExpr = translate(ifExpr.elseExpr());
-            List<IfExpr> elseIfs = new ArrayList<>();
-            for (AST.IfExpr e : ifExpr.elseIfs()) {
-                Instruction translated = translate(e);
-                if (translated instanceof IfExpr elif) {
-                    elseIfs.add(elif);
-                }
-            }
-            return new IfExpr(cond, thenExpr, elseExpr, elseIfs);
+            return new Midoe(translateIf(ifExpr));
         } else if (expr instanceof AST.UnknownExpr) {
-            throw new IllegalArgumentException("Unknown expression encountered");
+            return Unknown.INSTANCE;
         }
         throw new IllegalArgumentException("Unsupported AST expression: " + expr.getClass().getSimpleName());
     }
@@ -77,3 +82,4 @@ public class ASTToFVM {
         return new Characterizable(parent, id.id());
     }
 }
+
