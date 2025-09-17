@@ -19,8 +19,8 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
           cache: 'maven'
-        - name: "🧪 Unit tests"
-          run: mvn -P unit-tests
-        - name: "📷 Approval tests"
-          run: mvn -P approval-tests
+      - name: "🧪 Unit tests"
+        run: mvn -P unit-tests
+      - name: "📷 Approval tests"
+        run: mvn -P approval-tests
 
