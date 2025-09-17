@@ -27,11 +27,11 @@ public class Repl {
         return (AST.Program) new ASTBuilder().visitProgram(parser.program());
     }
 
-    /** Translate and execute the given source, returning the result. */
+    /** Translate and eval the given source, returning the result. */
     public static Object eval(String source, Environment env) {
         AST.Program ast = parse(source);
         Insoe program = new TargoeVm().translate(ast);
-        return program.execute(env);
+        return program.eval(env);
     }
 
     public static void main(String[] args) throws IOException {

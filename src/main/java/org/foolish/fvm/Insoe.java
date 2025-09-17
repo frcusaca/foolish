@@ -32,7 +32,7 @@ public final class Insoe implements Targoe {
     }
 
     /** Executes this instruction by delegating to the {@link FinearVm}. */
-    public Finear execute(Environment env) {
+    public Finear eval(Environment env) {
         return FinearVm.execute(this, env);
     }
 }
