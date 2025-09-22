@@ -112,7 +112,7 @@
       
       <plugin>
         <artifactId>maven-surefire-plugin</artifactId>
-        <version>3.2.5</version>
+        <version>3.5.4</version>
             <configuration>
               <includes>
                   <include>**/*Test.java</include>
@@ -127,7 +127,7 @@
 		<activation>
 			<activeByDefault>true</activeByDefault>
 		</activation>
-		<build> <plugins> <plugin> <artifactId>maven-surefire-plugin</artifactId> <version>3.2.5</version>
+		<build> <plugins> <plugin> <artifactId>maven-surefire-plugin</artifactId> <version>3.5.4</version>
 		    <configuration> <includes> <include>**/*Test.java</include> </includes> </configuration>
 		</plugin> </plugins> </build>
 	  </profile>
@@ -136,7 +136,7 @@
 		<activation>
 			<activeByDefault>false</activeByDefault>
 		</activation>
-		<build> <plugins> <plugin> <artifactId>maven-surefire-plugin</artifactId> <version>3.2.5</version>
+		<build> <plugins> <plugin> <artifactId>maven-surefire-plugin</artifactId> <version>3.5.4</version>
 		    <configuration> <includes> <include>**/*UnitTest.java</include> </includes> </configuration>
 		</plugin> </plugins> </build>
 	  </profile>
@@ -145,7 +145,7 @@
 		<activation>
 			<activeByDefault>false</activeByDefault>
 		</activation>
-		<build> <plugins> <plugin> <artifactId>maven-surefire-plugin</artifactId> <version>3.2.5</version>
+		<build> <plugins> <plugin> <artifactId>maven-surefire-plugin</artifactId> <version>3.5.4</version>
 		    <configuration> <includes> <include>**/*ApprovalTest.java</include> </includes> </configuration>
 		</plugin> </plugins> </build>
 	  </profile>
