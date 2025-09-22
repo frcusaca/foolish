@@ -12,7 +12,8 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
     @Override
     public AST visitProgram(FoolishParser.ProgramContext ctx) {
-        return visit(ctx.branes());
+        AST.Branes brns = (AST.Branes) visit(ctx.branes());
+        return new AST.Program(brns);
     }
 
     @Override

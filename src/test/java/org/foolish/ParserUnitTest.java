@@ -24,8 +24,8 @@ public class ParserUnitTest {
     @Test
     public void testExprStatement() {
         AST ast = parse("{ 1; }");
-        assertTrue(ast instanceof AST.Branes);
-        AST.Branes branes = (AST.Branes) ast;
+        assertTrue(ast instanceof AST.Program);
+        AST.Branes branes = ((AST.Program) ast).branes();
         assertEquals(1, branes.branes().size());
         AST.Brane brane = branes.branes().get(0);
         assertEquals("""
@@ -38,8 +38,8 @@ public class ParserUnitTest {
     @Test
     public void testSimpleAssignment() {
         AST ast = parse("{ x = 5; }");
-        assertTrue(ast instanceof AST.Branes);
-        AST.Branes branes = (AST.Branes) ast;
+        assertTrue(ast instanceof AST.Program);
+        AST.Branes branes = ((AST.Program) ast).branes();
         assertEquals(1, branes.branes().size());
         AST.Brane brane = branes.branes().get(0);
         assertEquals(1, brane.statements().size());
@@ -55,8 +55,8 @@ public class ParserUnitTest {
     @Test
     public void testArithmetic() {
         AST ast = parse("{ x = 1+2*3; y = x-4; }");
-        assertTrue(ast instanceof AST.Branes);
-        AST.Branes branes = (AST.Branes) ast;
+        assertTrue(ast instanceof AST.Program);
+        AST.Branes branes = ((AST.Program) ast).branes();
         assertEquals(1, branes.branes().size());
         AST.Brane brane = branes.branes().get(0);
         assertEquals(2, brane.statements().size());
@@ -74,8 +74,8 @@ public class ParserUnitTest {
     @Test
     public void testPrecedence() {
         AST ast = parse("{ x = (1+2)*3+4; y = -(x/-4); }");
-        assertTrue(ast instanceof AST.Branes);
-        AST.Branes branes = (AST.Branes) ast;
+        assertTrue(ast instanceof AST.Program);
+        AST.Branes branes = ((AST.Program) ast).branes();
         assertEquals(1, branes.branes().size());
         AST.Brane brane = branes.branes().get(0);
         assertEquals(2, brane.statements().size());
@@ -93,8 +93,8 @@ public class ParserUnitTest {
     @Test
     public void testUnary() {
         AST ast = parse("{ x = -3; y = +x; }");
-        assertTrue(ast instanceof AST.Branes);
-        AST.Branes branes = (AST.Branes) ast;
+        assertTrue(ast instanceof AST.Program);
+        AST.Branes branes = ((AST.Program) ast).branes();
         assertEquals(1, branes.branes().size());
         AST.Brane brane = branes.branes().get(0);
         assertEquals("""
@@ -110,8 +110,8 @@ public class ParserUnitTest {
     @Test
     public void testNestedExpr() {
         AST ast = parse("{ x = -(2 + (3*4)); }");
-        assertTrue(ast instanceof AST.Branes);
-        AST.Branes branes = (AST.Branes) ast;
+        assertTrue(ast instanceof AST.Program);
+        AST.Branes branes = ((AST.Program) ast).branes();
         assertEquals(1, branes.branes().size());
         AST.Brane brane = branes.branes().get(0);
         assertEquals("""
@@ -127,8 +127,9 @@ public class ParserUnitTest {
         // In Foolish, consecutive branes with out semicolo separator means to concatenate them
         // in the sequence they're listed.
         AST ast = parse("{ x = 1; y=2 ;} { z=3; } { x = x + y + z; result=42;}");
-        assertTrue(ast instanceof AST.Branes);
-        assertEquals(3, ((AST.Branes) ast).branes().size());
+        assertTrue(ast instanceof AST.Program);
+        AST.Branes branes = ((AST.Program) ast).branes();
+        assertEquals(3, branes.size());
         assertEquals("""
                 {
                   x = 1;
@@ -237,7 +238,7 @@ public class ParserUnitTest {
                   if a then if z then 10 else 2 elif b then if x then 30 else if y then 20 else 3 elif d then if asdf then if qwer then 300 else 200 elif zxcv then 100 elif qwe then if 2 then 50 elif 45 then 40 else 0 else 4;
                 }
                 """, ast4.toString());
-        AST.Branes ast4Brane = (AST.Branes) ast4;
+        AST.Branes ast4Brane = ((AST.Program) ast4).branes();
         assertEquals(1, ast4Brane.branes().size());
         AST.Brane brane = ast4Brane.branes().get(0);
         assertEquals(1, brane.statements().size());
@@ -262,8 +263,8 @@ public class ParserUnitTest {
     @Test
     public void testUnaryStarOperator() {
         AST ast = parse("{ *1; }");
-        assertTrue(ast instanceof AST.Branes);
-        AST.Branes branes = (AST.Branes) ast;
+        assertTrue(ast instanceof AST.Program);
+        AST.Branes branes = ((AST.Program) ast).branes();
         assertEquals(1, branes.branes().size());
         AST.Brane brane = branes.branes().get(0);
         assertEquals(1, brane.statements().size());
@@ -279,8 +280,8 @@ public class ParserUnitTest {
     @Test
     public void testCharacterization() {
         AST ast = parse("{ x = 5; n'42; b = x'{true; false; result=10;};}");
-        assertTrue(ast instanceof AST.Branes);
-        AST.Branes branes = (AST.Branes) ast;
+        assertTrue(ast instanceof AST.Program);
+        AST.Branes branes = ((AST.Program) ast).branes();
         assertEquals(1, branes.branes().size());
         AST.Brane brane = branes.branes().get(0);
         assertEquals(3, brane.statements().size());

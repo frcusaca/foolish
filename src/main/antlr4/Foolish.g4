@@ -6,8 +6,8 @@ characterizable
     : (IDENTIFIER? APOSTROPHE)? (literal | IDENTIFIER | brane)
     ;
 
-brane : LBRACE stmt* RBRACE ;
 branes: brane+ ;
+brane : LBRACE stmt* RBRACE ;
 
 stmt
     : (

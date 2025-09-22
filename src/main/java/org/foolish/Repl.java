@@ -24,6 +24,8 @@ public class Repl {
         FoolishLexer lexer = new FoolishLexer(input);
         CommonTokenStream tokens = new CommonTokenStream(lexer);
         FoolishParser parser = new FoolishParser(tokens);
+        parser.removeErrorListeners();
+        parser.addErrorListener(new org.antlr.v4.runtime.ConsoleErrorListener());
         return (AST.Program) new ASTBuilder().visitProgram(parser.program());
     }
 

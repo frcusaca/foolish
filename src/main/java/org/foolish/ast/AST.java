@@ -5,7 +5,10 @@ import java.util.List;
 import java.util.Objects;
 
 public sealed interface AST permits AST.Program, AST.Expr {
-    record Program(Branes brane) implements AST {
+    record Program(Branes branes) implements AST {
+        public String toString() {
+            return branes.toString();
+        }
     }
 
     sealed interface Expr extends AST permits Characterizable, BinaryExpr, UnaryExpr, Branes, IfExpr, UnknownExpr, Stmt {
@@ -117,6 +120,9 @@ public sealed interface AST permits AST.Program, AST.Expr {
                 sb.append(brane).append("\n");
             }
             return sb.toString();
+        }
+        public int size() {
+            return branes.size();
         }
     }
 

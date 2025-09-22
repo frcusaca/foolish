@@ -3,7 +3,6 @@ package org.foolish.fvm;
 import org.foolish.ast.AST;
 import java.util.ArrayList;
 import java.util.List;
-
 /**
  * Utilities for constructing {@link Midoe} trees from arbitrary {@link Targoe}
  * instances.  Each resulting {@code Midoe} has its originating {@link Targoe}
@@ -20,7 +19,7 @@ public final class MidoeVm {
         if (targoe instanceof Insoe in) {
             AST ast = in.ast();
             if (ast instanceof AST.Program p) {
-                return new ProgramMidoe(in, wrap(new Insoe(p.brane())));
+                return new ProgramMidoe(in, wrap(new Insoe(p.branes())));
             }
             if (ast instanceof AST.Brane b) {
                 List<Midoe> stmts = new ArrayList<>();
