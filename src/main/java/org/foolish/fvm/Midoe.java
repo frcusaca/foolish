@@ -34,7 +34,7 @@ public class Midoe implements Targoe {
     /** @return {@code true} if the top of the heap is not a {@link Finear}. */
     public boolean isUnknown() {
         if (progress_heap.isEmpty()) return true;
-        Targoe top = progress_heap.get(progress_heap.size() - 1);
+        Targoe top = progress_heap.getLast();
         return !(top instanceof Finear);
     }
 

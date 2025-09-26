@@ -5,7 +5,7 @@ package org.foolish.fvm;
  * Represents a concluded value in the FVM.  A {@code Finear} may either
  * contain a concrete value or represent an unknown result.
  */
-public final class Finear implements Targoe {
+public final class Finear extends Midoe {
     private final Object value; // null signifies unknown
 
     private Finear(Object value) {
@@ -34,5 +34,10 @@ public final class Finear implements Targoe {
 
     public Finear execute(Environment env) {
         return this;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return obj!=null && obj instanceof Finear f && (this.isUnknown() && f.isUnknown() || this.value.equals(f.value));
     }
 }

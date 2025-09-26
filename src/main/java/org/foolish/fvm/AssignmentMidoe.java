@@ -16,4 +16,5 @@ class AssignmentMidoe extends Midoe {
 
     public Characterizable id() { return id; }
     public Midoe expr() { return expr; }
+    public String toString() { return "MidoeAssignment(" + id + "," + expr + ")"; }
 }

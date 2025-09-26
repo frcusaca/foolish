@@ -16,4 +16,5 @@ class UnaryMidoe extends Midoe {
 
     public String op() { return op; }
     public Midoe expr() { return expr; }
+    public String toString() { return "MidoeUnary(" + op + expr + ")"; }
 }

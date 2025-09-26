@@ -15,4 +15,7 @@ class ProgramMidoe extends Midoe {
     public Midoe brane() {
         return brane;
     }
+    public String toString() {
+        return "MidoeProgram(" + brane + ")";
+    }
 }

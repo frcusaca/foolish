@@ -13,9 +13,11 @@ public final class MidoeVm {
 
     /** Wraps the given target in a {@link Midoe}, attaching it to the progress heap. */
     public static Midoe wrap(Targoe targoe) {
+        return wrap(targoe, 0);
+    }
+    public static Midoe wrap(Targoe targoe, int line) {
         if (targoe == null) return new Midoe();
         if (targoe instanceof Midoe m) return m;
-        if (targoe instanceof Finear f) return new Midoe(f);
         if (targoe instanceof Insoe in) {
             AST ast = in.ast();
             if (ast instanceof AST.Program p) {
@@ -23,16 +25,19 @@ public final class MidoeVm {
             }
             if (ast instanceof AST.Brane b) {
                 List<Midoe> stmts = new ArrayList<>();
-                for (AST.Expr expr : b.statements()) {
-                    stmts.add(wrap(new Insoe(expr)));
+                stmts=b.statements()
+                for (int line=0; line <stmts.size(); line++) {
+                    AST.Expr expr = stmts.get(line);
+                    stmts.add(wrap(new Insoe(expr), line));
                 }
                 return new BraneMidoe(in, stmts);
             }
             if (ast instanceof AST.Branes brs) {
                 List<Midoe> stmts = new ArrayList<>();
+                int line=0
                 for (AST.Brane br : brs.branes()) {
                     for (AST.Expr expr : br.statements()) {
-                        stmts.add(wrap(new Insoe(expr)));
+                        stmts.add(wrap(new Insoe(expr), line++));
                     }
                 }
                 return new BraneMidoe(in, stmts);
@@ -58,9 +63,6 @@ public final class MidoeVm {
                     elseIfs.add((IfMidoe) wrap(new Insoe(e)));
                 }
                 return new IfMidoe(in, condition, thenExpr, elseExpr, elseIfs);
-            }
-            if (ast instanceof AST.IntegerLiteral lit) {
-                return new LiteralMidoe(in, lit.value());
             }
             if (ast instanceof AST.UnknownExpr) {
                 return new Midoe(in);

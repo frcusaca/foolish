@@ -74,8 +74,6 @@ public final class FinearVm {
                     }
                 }
             }
-        } else if (midoe instanceof LiteralMidoe lm) {
-            result = Finear.of(lm.value());
         } else if (midoe.base() instanceof Insoe in && in.ast() instanceof AST.UnknownExpr) {
             result = Finear.UNKNOWN;
         } else {
@@ -96,7 +94,7 @@ public final class FinearVm {
     }
 
     private static boolean asBoolean(Finear f) {
-        if (f.isUnknown()) return false;
+        if (f.isUnknown()) return Finear.UNKNOWN ;
         Object o = f.value();
         if (o instanceof Boolean b) return b;
         if (o instanceof Number n) return n.longValue() != 0;

@@ -19,4 +19,5 @@ class BinaryMidoe extends Midoe {
     public String op() { return op; }
     public Midoe left() { return left; }
     public Midoe right() { return right; }
+    public String toString() { return "MidoeBinary(" + left + op +  right + ")"; }
 }

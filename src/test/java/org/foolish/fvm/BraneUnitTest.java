@@ -16,7 +16,7 @@ public class BraneUnitTest {
         AST.Program program = new AST.Program(branes);
 
         Environment env = new Environment();
-        Insoe in = new TargoeVm().translate(program);
+        Insoe in = new InsoVm().translate(program);
         Finear result = MidoeVm.wrap(in).evaluate(env);
         assertEquals(42L, result.value());
         assertEquals(42L, env.lookup(new Characterizable("x")).value());
@@ -32,7 +32,7 @@ public class BraneUnitTest {
         AST.Program program = new AST.Program(branes);
 
         Environment env = new Environment();
-        Insoe in = new TargoeVm().translate(program);
+        Insoe in = new InsoVm().translate(program);
         MidoeVm.wrap(in).evaluate(env);
         assertEquals(2L, env.lookup(new Characterizable("x")).value());
     }
