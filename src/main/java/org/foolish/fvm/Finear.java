@@ -26,6 +26,10 @@ public final class Finear extends Midoe {
     public Object value() {
         return value;
     }
+    public long longValue() {
+        if (isUnknown()) throw new IllegalStateException("Cannot get long value of unknown Finear");
+        return (Long)value;
+    }
 
     /**
      * @return {@code true} if this finear represents an unknown result.
