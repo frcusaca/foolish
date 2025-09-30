@@ -9,6 +9,8 @@ public final class Finear extends Midoe {
     private final Object value; // null signifies unknown
 
     private Finear(Object value) {
+        super(null);
+        progress_heap.add(this);
         this.value = value;
     }
 
@@ -32,12 +34,13 @@ public final class Finear extends Midoe {
         return this == UNKNOWN || value == null;
     }
 
-    public Finear execute(Environment env) {
-        return this;
-    }
-
-    @Override
     public boolean equals(Object obj) {
         return obj!=null && obj instanceof Finear f && (this.isUnknown() && f.isUnknown() || this.value.equals(f.value));
+    }
+    public int hashCode() {
+        return isUnknown() ? 0 : value.hashCode();
+    }
+    public String toString() {
+        return isUnknown() ? "UNKNOWN" : value.toString();
     }
 }

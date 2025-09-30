@@ -7,7 +7,7 @@ import java.util.Objects;
  * Represents an identifier that may be characterized.  Characterizations are
  * themselves {@code Characterizable} allowing chains such as {@code a'b'c}.
  *
- * The {@link Environment} uses this class as the key for identifier
+ * The {@link Env} uses this class as the key for identifier
  * resolution so equality and hashing are based on the canonical
  * representation of the entire characterization chain.
  */

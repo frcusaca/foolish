@@ -31,8 +31,4 @@ public final class Insoe implements Targoe {
         return type.cast(ast);
     }
 
-    /** Executes this instruction by delegating to the {@link FinearVm}. */
-    public Finear eval(Environment env) {
-        return FinearVm.execute(this, env);
-    }
 }

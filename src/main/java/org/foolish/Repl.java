@@ -5,9 +5,7 @@ import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.foolish.ast.AST;
 import org.foolish.ast.ASTBuilder;
-import org.foolish.fvm.InsoVm;
-import org.foolish.fvm.Environment;
-import org.foolish.fvm.Insoe;
+import org.foolish.fvm.*;
 import org.foolish.grammar.FoolishLexer;
 import org.foolish.grammar.FoolishParser;
 
@@ -15,10 +13,14 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
-/** Simple read-eval-print loop for the Foolish language. */
+/**
+ * Simple read-eval-print loop for the Foolish language.
+ */
 public class Repl {
 
-    /** Parse the provided source into an AST program. */
+    /**
+     * Parse the provided source into an AST program.
+     */
     public static AST.Program parse(String source) {
         CharStream input = CharStreams.fromString(source);
         FoolishLexer lexer = new FoolishLexer(input);
@@ -29,16 +31,21 @@ public class Repl {
         return (AST.Program) new ASTBuilder().visitProgram(parser.program());
     }
 
-    /** Translate and eval the given source, returning the result. */
-    public static Object eval(String source, Environment env) {
+    /**
+     * Translate and eval the given source, returning the result.
+     */
+    public static Object eval(String source, Env env) {
         AST.Program ast = parse(source);
-        Insoe program = new InsoVm().translate(ast);
-        return program.eval(env);
+        Insoe program = new InsoeVm().translate(ast);
+        Midoe target = MidoeVm.wrap(program);
+        FinearVmAbstract fvm = new FinearVmSimple();
+        Midoe eval_result = fvm.evaluate(target);
+        return eval_result;
     }
 
     public static void main(String[] args) throws IOException {
         BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-        Environment env = new Environment();
+        Env env = new Env();
         String line;
         while ((line = reader.readLine()) != null) {
             if (line.isBlank()) continue;

@@ -8,7 +8,7 @@ import java.util.List;
  * and tracks progress toward a final {@link Finear} result on its own heap.
  */
 public class Midoe implements Targoe {
-    private final List<Targoe> progress_heap;
+    protected final List<Targoe> progress_heap;
 
     Midoe(Targoe base) {
         this.progress_heap = new ArrayList<>();
@@ -24,11 +24,6 @@ public class Midoe implements Targoe {
 
     public Targoe base() {
         return this.progress_heap.getFirst();
-    }
-
-    /** Evaluates this midoe within the given environment. */
-    public Finear evaluate(Environment env) {
-        return FinearVm.evaluate(this, env);
     }
 
     /** @return {@code true} if the top of the heap is not a {@link Finear}. */
