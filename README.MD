@@ -107,6 +107,10 @@ Names are selected from an alphabet that excludes the reserved symbols of the la
       a&#x202F;name=4;   !! narrow non-breaking space
    }
 ```
+
+### The Unknown
+The unknown is of paramount importance to us, therefore we dedicate a symbol yo express Unknown in Foolish `???`.
+
 ### Renaming
 Foolish permits reusing names. If one were to think of the semantics of static single assignment, this would be how Foolish interprets a reused name.
 ```
@@ -315,6 +319,38 @@ Recall the brane concatenated function invocation above, we have changed one lin
    }
 ```
 The flexibility of expression helps the Foolish user greatest flexibility in extracting use information from the right place, and at the same time place emphasis on code symbols to maximize readability and communication efficiency.
+
+## Detachment
+Human have long saught detachment from material world. Even though Foolosh is inherently detached and completely abstract, we find that we need to perform further detachment.
+### Named Detachment
+```
+   {
+      a = ???;
+      b = ???;
+   }
+```
+
+This brain detaches the names a and b. So to declare a function with formal parameter names that might alteady be in use, one would do:
+```
+   {  
+      a=???;
+      b=???;
+      result=a+b;
+   }
+```
+### Complete Detachment
+We now introduce complete detachment using name search. To completely detach from a large number of ornall of the names and values.
+```
+   {
+      tmp*=???
+   }
+```
+Or even complete detachment like this:
+```
+   {
+      *=???
+   }
+```
 
 # TODO:
  Other features that we want to expand documentation on in the future:
