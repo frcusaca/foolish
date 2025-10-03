@@ -30,7 +30,7 @@ Line comments are like those from standard langauges the marking that begins the
       !! This is a comment inside the brane
       !! This is another inside the brane.
       !! We can even exclaim inside a comment !!!
-      !! TODO: Check that is possible --------^^^
+      !! [ ] TODO: Check that is possible ----^^^
    }
 ```
 
@@ -262,15 +262,15 @@ Recall each search result puts the cursor at start of the line just before varia
 
 | Expressions| Effect on Cursor|
 |:----------:|:---------------:|
-| `↑`,`#@-1`     | Moves cursor to the begining of the line referring to this brane |
-| `↓`,`#@+1`     | Moves cursor to the begining of the brane that is the value of this line|
-| `←`,`#-1`      | Moves cursor to the start of previous line|
-| `→`,`#+1`      | Moves cursor to the end of this line, effectively at the start of the next line |
+| `↑`,`#@-1` | Moves cursor to the begining of the line referring to this brane |
+| `↓`,`#@+1` | Moves cursor to the begining of the brane that is the value of this line|
+| `←`,`#-1`  | Moves cursor to the start of previous line|
+| `→`,`#+1`  | Moves cursor to the end of this line, effectively at the start of the next line |
 
 So we could use stack based syntax if we so desire:
 ```
    {
-      f = {result=↑#-1 + ↑#-2};
+      f = {result=↑#-1 + ↑#-2}; !! See below detachment for clarification
       0;
       1;
       f$; !! 1
@@ -282,6 +282,8 @@ So we could use stack based syntax if we so desire:
    }
 ```
 
+[ ] TODO: Document searching upward for variables scoped in parent branes.
+
 ### Unanchored Brane Search Leads to Self Awareness
 Notice that everytime we refer to a named value by name, (aka reference a value by a variable name), we are actually doing a `.` search on the brane and it's parents as if the brane ended before the start of the current line. So all the searchs can actually be invoked without following a brane. In that case it would mean to search present brane with the cursor just before the beginning of the current line.
 ```
@@ -291,7 +293,7 @@ Notice that everytime we refer to a named value by name, (aka reference a value 
 	c= #-1 + #-2;
    }
 ```
-TODO: Augment syntax to make it easier to read for humans and possible to parse for compilers.
+[ ] TODO: Augment syntax to make it easier to read for humans and possible to parse for compilers.
 
 Since the Foolish document is read top to bottom, it is not possible to search downward past current position. so these symbol are not permitted in an unanchored search `↓`,`#@+1`, `→`,`#+1`. However, if an existing search expression is in progress, it is possible to anchor these searches to a previous unanchored search result. "??_*result#+1" is permitted.
 
@@ -342,6 +344,21 @@ This brain detaches the names a and b. So to declare a function with formal para
    }
 ```
 The detachment is right associative brane that iperates on the brane to its right side.
+
+The original example of function definition probably needed this detachment for it to be a useful function:
+```
+   {
+      f = [↑=???]{result=↑#-1 + ↑#-2};
+   }
+```
+Ideally, an upward search like this will block out ALL references to variables from the parent brane and above. So that in this function
+```
+   {
+      f = [↑=???]{result=↑#-1 + ↑#-2 - universal_constant};
+   }
+```
+the `universal_constant` will be specified by caller as a parameter.
+
 ### Complete Detachment
 We now introduce complete detachment using name search. To completely detach from a large number of ornall of the names and values.
 ```
@@ -356,7 +373,7 @@ Or even complete detachment like this:
    }
 ```
 
-# TODO:
+# [ ] TODO:
  Other features that we want to expand documentation on in the future:
  * Loops, Recursions, etc.
  * Characterization
