@@ -330,25 +330,29 @@ Human have long saught detachment from material world. Even though Foolosh is in
    }
 ```
 
-This brain detaches the names a and b. So to declare a function with formal parameter names that might alteady be in use, one would do:
+This brain detaches the names a and b. So to declare a function with formal parameter names that might already be in use, one would could perform detachment during a naming expression.
 ```
    {  
-      a=???;
-      b=???;
-      result=a+b;
+      fn=[
+            a=???;
+            b=???;
+         ]{
+            result=a+b;
+         }
    }
 ```
+The detachment is right associative brane that iperates on the brane to its right side.
 ### Complete Detachment
 We now introduce complete detachment using name search. To completely detach from a large number of ornall of the names and values.
 ```
    {
-      tmp*=???
+      clean_heap=[tmp_*=???]old_heap_brane
    }
 ```
 Or even complete detachment like this:
 ```
    {
-      *=???
+      pure_func=[*=???]{...}
    }
 ```
 
