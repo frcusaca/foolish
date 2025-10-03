@@ -191,13 +191,13 @@ Another example of using concatenation is derivation. To mimic Object-Oriented p
 The only way to create the effect of dynamic invocation is to create interfaces and specify them at programming time:
 ```
    {
-      animal         = {kindom`'Animalia';}
+      animal         = {kindom='Animalia';}
       mouthed_animal = animal {greet='hello';};
       cat            = mouthed_animal {greet='mewo'};
       dog            = mouthed_animal {greet='bark'};
       pet            = {play={greet;greet;greet;};};
       my_pet         = cat pet;
-      your_pet       = dog_pet;
+      your_pet       = dog pet;
    }
 ```
 
@@ -255,7 +255,9 @@ evaluates to
 TBD.
 ### Cursor Movements
 Recall each search result puts the cursor at start of the line just before variable names. We now define a few operators to move that search cursor.
+
 | Expressions| Effect on Cursor|
+|:----------:|:---------------:|
 | `↑`,`#@-1`     | Moves cursor to the begining of the line referring to this brane |
 | `↓`,`#@+1`     | Moves cursor to the begining of the brane that is the value of this line|
 | `←`,`#-1`      | Moves cursor to the start of previous line|
