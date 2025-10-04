@@ -386,7 +386,7 @@ When default branes are next to each other, they are right associative--the righ
  * AI adaptations to support Foolish language.
  * Human-In-the-loop programming.
 
-Notes:
+# Attic - older notes
   - Concatenation is adjacency of brane-valued expressions (RPN), left-to-right; association is immaterial for denotation.
 
 The Foolish language is a computer programming language environment. The language is specified to grow as we find the market fit for it in this age of rapidly expanding AI usage.
