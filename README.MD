@@ -257,7 +257,7 @@ evaluates to
 ```
 ### Expression Search
 TBD.
-### Cursor Movements
+### Search Cursor Movements
 Recall each search result puts the cursor at start of the line just before variable names. We now define a few operators to move that search cursor.
 
 | Expressions| Effect on Cursor|
@@ -326,10 +326,10 @@ The flexibility of expression helps the Foolish user greatest flexibility in ext
 Human have long saught detachment from material world. Even though Foolosh is inherently detached and completely abstract, we find that we need to perform further detachment.
 ### Named Detachment
 ```
-   {
+   [
       a = ???;
       b = ???;
-   }
+   ]
 ```
 
 This brain detaches the names a and b. So to declare a function with formal parameter names that might already be in use, one would could perform detachment during a naming expression.
@@ -373,6 +373,24 @@ Or even complete detachment like this:
    }
 ```
 
+### Detach to Default
+In order to mimic default parameters in many modern programming lanuages, we shall offer a way to specify detachment that sets notnonly the expeftation for what meeda to be provided but also what happens when that expectation is not fulfilled.
+```
+   ...
+   f=[r=???; pi=3.14]{
+      pir = pi * r
+      area = pir * r
+      circumference = 2*pir
+   }
+   ...
+   c       = {r=2} f
+   c_hires = {r=2, pi=3.14159} f
+   c_huh   = [r=4] f
+```
+Note, though, the binding of RHS within the detachments are again within the scope of the current brane. The compiler shall give earning in suspiciously ambiguous cases. the `c_huh` is a brane now having a default balue for r as well.
+
+When default branes are next to each other, they are right associative--the right most default brane is overriden by the default brane to its immediate left first and foremost. Default brane concatenation always has higher priority than their concatenatuon with branes. When default brane is between branes it always right-associative--it is applied to the brane on the right side before other brane operations.
+
 # [ ] TODO:
  Other features that we want to expand documentation on in the future:
  * Loops, Recursions, etc.
@@ -386,7 +404,7 @@ Or even complete detachment like this:
  * AI adaptations to support Foolish language.
  * Human-In-the-loop programming.
 
-Notes:
+# Attic - older notes
   - Concatenation is adjacency of brane-valued expressions (RPN), left-to-right; association is immaterial for denotation.
 
 The Foolish language is a computer programming language environment. The language is specified to grow as we find the market fit for it in this age of rapidly expanding AI usage.
