@@ -71,7 +71,7 @@ Block are enclosed by a pair of consecutive triple exclaimantion marks:
 ```
 
 
-## Expressions
+### Expressions
 Aside from comments, branes may contain expressions. Expressions are symbols that follow Foolish rules for an expression and should be evaluable to a fixed value. Here are a few integer expressions in side a brane:
 
 ```
@@ -82,7 +82,7 @@ Aside from comments, branes may contain expressions. Expressions are symbols tha
 ```
 A brane writen in Foolish is itself an expression.
 
-## Names
+### Names
 One very powerful concept we have for abstracting thoughts and think of complex matter with complex properties and interactions is the substitution of the statement or object of consideration with a name. Names such as `x`, `y`, `foolish`, `programming language`. So this is an important concept in Foolish that we are able to name value expressions using the naming operator `=`:
 
 ```
@@ -108,8 +108,53 @@ Names are selected from an alphabet that excludes the reserved symbols of the la
    }
 ```
 
+Foolish expressions and values inherently do not have names. They are only marked with names when the naming operator `=` is used. So the following brane:
+```
+   {
+      1;
+      2;
+      3;
+   }
+```
+is a brane with three unnamed values. The following brane:
+```   {
+      a=1;
+      b=2;
+      c=3;
+      }
+```
+is a brane with three named values.
+
+#### Scope of Name
+Names are scoped to "before the current expression". So the current naming operation is not yet in scope. This is similar to how many programming languages work. So the following brane:
+```
+   {
+      a=1;
+      a=a+1; !! a=2
+      a=a+1; !! a=3
+   }
+```
+Such a convention has the direct benefit of dealying recursive concepts until more thought is put into the line of code.
+
 ### The Unknown
-The unknown is of paramount importance to us, therefore we dedicate a symbol yo express Unknown in Foolish `???`.
+The unknown is of paramount importance to us, therefore we dedicate a symbol yo express Unknown in Foolish `???`. Here we declare we do not know the answer:
+```
+   {
+      answer=???;
+   }
+```
+In fact every unnamed expression is an assignment to an unknown name:
+```
+   {1;2;3;}
+```
+is shorthand to
+```
+   {
+      ???=1;
+      ???=2;
+      ???=3;
+   }
+```
 
 ### Renaming
 Foolish permits reusing names. If one were to think of the semantics of static single assignment, this would be how Foolish interprets a reused name.
@@ -132,7 +177,8 @@ is equivalent to
 ```
 NB: we did preserve the first assignment `a=1` as part of the brane for historical accuracy.
 
-## Proximity is Combination
+### More Brane Expressions
+#### Proximity is Combination
 Branes combine freely. Listing two branes either in code or by named reference means it is desired that the two branes be concatenated. The following code snippets have the same meaning in Foolish:
 ```
    {
@@ -152,7 +198,7 @@ and
 ```
 This kind of resembles some physical and biological systems where like-kinded things combine when they come to close proximity to each other.
 
-### The Brane Concatenation
+#### The Brane Concatenation
 Concatenation operation is associative. Here is an example of branes acting like functions, naturally brane concatenation invokes functions in RPN.
 
 ```
@@ -205,11 +251,11 @@ The only way to create the effect of dynamic invocation is to create interfaces 
    }
 ```
 
-## Brane Search
+### Brane Search
 Once we have established a bundle of named value expressions that we call brane, we expect there to be some order and conceptual meaning to this collection--there is meaning in it and there is meaning in their collection together. It may become useful for us to inspect this brane for some particular aspect that interest us. We accomplish this one of two ways. We can either search for something that we have named, or search for a particular way we computed something.
 
 Brane search expresses are always written postfix except for during naming.
-### Name Search
+#### Name Search
 Conventional regular expressions can be used to search the name space of a brane. Supposing the brane is a text document of names. After each search, if search continues, then the cursor is placed at beginning of the name that it has found.
    * backward search from a cursor is after the last character in the brane's name document.
       * `.` means to find the last name matching the regexp: `brane.result` means the last value to be named `result` in the brane. This interpretation has similar effect as the normal dereferencing symbol `.` used in other languages.
@@ -255,8 +301,47 @@ evaluates to
           }
    }
 ```
-### Expression Search
-TBD.
+
+
+#### Search Paths 
+##### Backward Search
+Since the Foolish document is read top to bottom, it is not possible to search downward past current position. so these symbol are not permitted in an unanchored search `↓`,`#@+1`, `→`,`#+1`. However, if an existing search expression is in progress, it is possible to anchor these searches to a previous unanchored search result. "??_*result#+1" is permitted.
+Backward search is conducted in the following manner to discover their occurrences:
+1. Start with the cursor at the beginning of the current line.
+2. Search the current brane backwards from the cursor. Return if found.
+3. If not found, search raises the cursor to current brane's parent expression, the cursor is placed at the beginning of that line.
+4. goto step 2.
+5. If no parent brane, then search returns ???
+
+##### Forward  Search
+Forward search is performed line by line to the end of the brane. Forward search is not permitted to raise the cursor to parent branes. So forward search is limited to the current brane only.
+
+##### Depth Search
+[ ] TODO: Extend search into the computation graph with more syntactical capabilities for finding computational results.
+
+### Value Search
+Forward value search is triggered by the `:` operator. It is a forward search operator on a brane that searches for a value that can be considered equivalent to the search parameter. `::` is the bulk forward value search operator.
+```
+   {
+      doc={
+             tmp_a = 2*2;
+             c     = tmp_a sqrt;
+             tmp_b = 1+3;
+             d     = tmp_b cbrt;
+          }
+      r = doc:4;    !! r = 2*2;
+      r2= doc::4;   !! r2 = {tmp_a=2*2; tmp_b=3*3;}
+      doc:4 = 10    !! `tmp_a = 10;`
+   }
+```
+Single and bulk backward value search is triggered by `<:` and `<::` respectively.
+The part of the search result that is used depends on the context. when used in the RHS of a naming expression, the value is used. When used on the LHS of a naming expression, the name is used.
+
+
+##### Expression Search
+[ ] TODO: Extend search into the computation graph with more syntactical capabilities for finding computational results.
+##### Search Combinations
+[ ] TODO: Document combinations of name and value search.
 ### Search Cursor Movements
 Recall each search result puts the cursor at start of the line just before variable names. We now define a few operators to move that search cursor.
 
@@ -284,8 +369,8 @@ So we could use stack based syntax if we so desire:
 
 [ ] TODO: Document searching upward for variables scoped in parent branes.
 
-### Unanchored Brane Search Leads to Self Awareness
-Notice that everytime we refer to a named value by name, (aka reference a value by a variable name), we are actually doing a `.` search on the brane and it's parents as if the brane ended before the start of the current line. So all the searchs can actually be invoked without following a brane. In that case it would mean to search present brane with the cursor just before the beginning of the current line.
+#### Unanchored Brane Search Leads to Self Awareness
+Notice that everytime we refer to a named value by name, (aka reference a value by a variable name), we are actually doing a `.` search on the brane itself and it's parents as if the brane ended before the start of the current line. So all the searches can actually be invoked without following a brane. In that case it would mean to search present brane with the cursor just before the beginning of the current line.
 ```
    {
 	1;
@@ -294,8 +379,6 @@ Notice that everytime we refer to a named value by name, (aka reference a value 
    }
 ```
 [ ] TODO: Augment syntax to make it easier to read for humans and possible to parse for compilers.
-
-Since the Foolish document is read top to bottom, it is not possible to search downward past current position. so these symbol are not permitted in an unanchored search `↓`,`#@+1`, `→`,`#+1`. However, if an existing search expression is in progress, it is possible to anchor these searches to a previous unanchored search result. "??_*result#+1" is permitted.
 
 
 ### Naming a search result
@@ -322,9 +405,9 @@ Recall the brane concatenated function invocation above, we have changed one lin
 ```
 The flexibility of expression helps the Foolish user greatest flexibility in extracting use information from the right place, and at the same time place emphasis on code symbols to maximize readability and communication efficiency.
 
-## Detachment
+### Detachment
 Human have long saught detachment from material world. Even though Foolosh is inherently detached and completely abstract, we find that we need to perform further detachment.
-### Named Detachment
+#### Named Detachment
 ```
    [
       a = ???;
@@ -343,7 +426,7 @@ This brain detaches the names a and b. So to declare a function with formal para
          }
    }
 ```
-The detachment is right associative brane that iperates on the brane to its right side.
+The detachment is right associative brane that operates on the brane to its right side.
 
 The original example of function definition probably needed this detachment for it to be a useful function:
 ```
@@ -359,7 +442,7 @@ Ideally, an upward search like this will block out ALL references to variables f
 ```
 the `universal_constant` will be specified by caller as a parameter.
 
-### Complete Detachment
+#### Complete Detachment
 We now introduce complete detachment using name search. To completely detach from a large number of ornall of the names and values.
 ```
    {
@@ -373,7 +456,7 @@ Or even complete detachment like this:
    }
 ```
 
-### Detach to Default
+#### Detach to Default
 In order to mimic default parameters in many modern programming lanuages, we shall offer a way to specify detachment that sets notnonly the expeftation for what meeda to be provided but also what happens when that expectation is not fulfilled.
 ```
    ...
@@ -385,14 +468,95 @@ In order to mimic default parameters in many modern programming lanuages, we sha
    ...
    c       = {r=2} f
    c_hires = {r=2, pi=3.14159} f
-   c_huh   = [r=4] f
+   c_huh   =$ [r=4] f  !! c_huh = 25.12; 
 ```
-Note, though, the binding of RHS within the detachments are again within the scope of the current brane. The compiler shall give earning in suspiciously ambiguous cases. the `c_huh` is a brane now having a default balue for r as well.
+Note, though, the binding of RHS within the detachments are again within the scope of the current brane. The compiler shall give earning in suspiciously ambiguous cases. the `c_huh` is a brane now having a default value for r as well, but since the assignment ask for the last entry, the result is computed and assigned in the referer brane.
 
 When default branes are next to each other, they are right associative--the right most default brane is overriden by the default brane to its immediate left first and foremost. Default brane concatenation always has higher priority than their concatenatuon with branes. When default brane is between branes it always right-associative--it is applied to the brane on the right side before other brane operations.
+### Branching
+Branching is accomplished using value search.
+```
+   {
+      condition = {
+                     if x==1 then       !! `if k then` evaluates to the boolean value of `k`
+                     result = 1;
+                     else if x==2 then  !! `else if k then` evalutes to the boolean value of `k`
+                     result = 4;
+                     else               !! In the If-then-else brane, else evaluates to true
+                     result = 2;
+      }
+      result = condition:true→;  !! Search for a true value, then forward cursor to the next line.
+      result = condition→;       !! short hand for `:true→`
+      result => condition;       !! short hand for `:true→`
+   }
+```
+or ulta-compact
+```
+    {
+        result =:true→ { a<0; 0; else; a}  !! Works to compress negative range to zero. aka the ReLU nonlinearity.
+        result =→ { a<0; 0; else; a}       !! Also works
+        result => { a<0; 0; else; a}       !! probably the easiest to type.
+    }
+```
+### Recursion
+Since the brane search starts with cursor at beginning of the current line, finding the current brane is easy with `↑`. So recursion is easy to express:
+```
+   {
+      factorial = [n=???]{
+                      result = if n <= 1 
+                               then result = 1 
+                               else [n=n-1]↑$;
+                   }
+      five_fact = [n=5] factorial    !! five_fact = 120;
+   }
+```
+#### Corecursion
+Here, it seems that we often perform loops or other complex operation where a single line performs updates to several states. Most prototypical example is this python code
+```python
+def fib():
+    l = 0
+    ll = 1
+    yield l;
+    yield ll;
+    while true:
+        l, ll = ll, l + ll
+        yield ll
+def triangle_number():
+.
+.
+.
+while not quit():
+    print(next(fib()) * next(triangle_number()))
+```
+And we proceed to use fib while we operate on triangle numbers as well. This Fibonacci counter continues merrily on its own.
+
+But so far Foolish has been entirely functional.
+[ ] TODO: how do we centrally organize several coordinated state updates in a single line of code?
+
+#### Mutual Recursion
+However, mutual recursion is not directly possible since we cannot search downward past current line. The only way to create corecursion is to use use an unbound name and pass it into the context:
+```
+   {
+      even = [n=???; odd=???]{
+                 result = if n == 0 
+                          then result = true 
+                          else [n=n-1;] odd$;
+              }
+      odd  = [n=???]{
+                 result = if n == 0 
+                          then result = false 
+                          else [n=n-1; odd=↑;] even$; !! Already defined above, so we can find it directly by name.
+                          !! By Foolish convention, odd is not yet in scope, so we need to pass it in.
+              }
+      is_four_even = [n=4] even{odd=odd} !! is_four_even = true;
+      is_five_even = [n=5] even{odd=odd} !! is_five_even = false;
+   }
+```
 
 # [ ] TODO:
  Other features that we want to expand documentation on in the future:
+ * Document the call-by-value versus call-by-reference semantics: Does it matter??
+ * When does Foolishness become concrete and when is it still Foolish?
  * Loops, Recursions, etc.
  * Characterization
  * Tracability.
