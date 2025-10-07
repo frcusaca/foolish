@@ -566,6 +566,8 @@ However, mutual recursion is not directly possible since we cannot search downwa
  * Human-In-the-loop programming.
  * Mutable Branes. There are not much one can do to a brane. Given any line in the brane: it can be deleted, appended, prepended, name changed, or value changed.
  * Translation versus Transformation.
+ * Specify the "Thought Block": how to stop evaluation.
+ * define more precisely the verb `to fool`.
 
 # Attic - older notes
   - Concatenation is adjacency of brane-valued expressions (RPN), left-to-right; association is immaterial for denotation.
