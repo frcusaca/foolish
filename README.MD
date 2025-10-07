@@ -6,7 +6,7 @@
 
 
 ## Introduction
-The Foolish language project welcomes you to join us Foolish programmers. The Foolish program file has extension `.foo`. It is a language designed and built in the 21st century. It is functional and typed in its own ways. The hope is that as we develop this language, it becomes a very reliable way for humans to interface with computers with high semantic throughput with very low temporal latency. Languages and data representations are themselves very abstract ideas that either we think of in our heads or we use computer to compute. Foolish language is rigorous and easy to use in full abstraction, but also has interfaces that grounds it to realities that we wish to compute and communicate about.
+The Foolish language project welcomes you to join us Foolish programmers. The Foolish program file has extension `.foo`. It is a language designed and built in the 21st century. It is functional and typed in its own ways. The hope is that as we develop this language, it becomes a very reliable way for humans to interface with computers with high semantic throughput with very low temporal latency. Languages and data representations are themselves very abstract ideas that either we think of in our heads or we use computer to compute. Foolish language is rigorous and easy to use in full abstraction, but also has interfaces that grounds it to realities that we wish to compute and communicate about. Much of the language is inspired by what just seem to make sense. For example, containment, via branes, just happens naturally in living organisms. Proximity leads to interaction and possibly combination occurs in nature on scales as small as atoms and as large as countries, planets, stars and galaxies. These operations is important if we want our compute to eventually be about our physical and biological worlds.
 
 ## The Language
 ### Branes
@@ -334,7 +334,7 @@ Forward value search is triggered by the `:` operator. It is a forward search op
       doc:4 = 10    !! `tmp_a = 10;`
    }
 ```
-Single and bulk backward value search is triggered by `<:` and `<::` respectively.
+Single and bulk backward value search is triggered by `<:` and `<<:` respectively.
 The part of the search result that is used depends on the context. when used in the RHS of a naming expression, the value is used. When used on the LHS of a naming expression, the name is used.
 
 
@@ -474,29 +474,22 @@ Note, though, the binding of RHS within the detachments are again within the sco
 
 When default branes are next to each other, they are right associative--the right most default brane is overriden by the default brane to its immediate left first and foremost. Default brane concatenation always has higher priority than their concatenatuon with branes. When default brane is between branes it always right-associative--it is applied to the brane on the right side before other brane operations.
 ### Branching
-Branching is accomplished using value search.
+Branching is accomplished using search.
 ```
    {
-      condition = {
-                     if x==1 then       !! `if k then` evaluates to the boolean value of `k`
+      ifblock = {
+                     if x==1 then         !! `if k then` fools to the expression `f'condition=k;`
                      result = 1;
-                     else if x==2 then  !! `else if k then` evalutes to the boolean value of `k`
+                     else if x==2 then    !! `else if k then` fools to the expression `f'condition=k;`
                      result = 4;
-                     else               !! In the If-then-else brane, else evaluates to true
+                     else                 !! `else` fools to the expression `f'condition=true;`
                      result = 2;
+		     f'condition=10;      !! ERROR, cannot assign to foolish names
       }
-      result = condition:true→;  !! Search for a true value, then forward cursor to the next line.
-      result = condition→;       !! short hand for `:true→`
-      result => condition;       !! short hand for `:true→`
+      result = ifblock/f'condition:true→;   !! Search for a true value, then forward cursor to the next line.
+      result = condition⇒;                !! short hand for `/f'condition:true→` !! That uses a double-lined arrow in '=⇒' which is different from next statement single-arrow
+      result => condition;                !! short hand for `/f'condition:true→`
    }
-```
-or ulta-compact
-```
-    {
-        result =:true→ { a<0; 0; else; a}  !! Works to compress negative range to zero. aka the ReLU nonlinearity.
-        result =→ { a<0; 0; else; a}       !! Also works
-        result => { a<0; 0; else; a}       !! probably the easiest to type.
-    }
 ```
 ### Recursion
 Since the brane search starts with cursor at beginning of the current line, finding the current brane is easy with `↑`. So recursion is easy to express:
@@ -541,13 +534,16 @@ However, mutual recursion is not directly possible since we cannot search downwa
                  result = if n == 0 
                           then result = true 
                           else [n=n-1;] odd$;
-              }
+                          !! [ ] TODO: Explain why we can't do this:
+			  !! else [n=n-1;] →;
+              };
       odd  = [n=???]{
                  result = if n == 0 
                           then result = false 
                           else [n=n-1; odd=↑;] even$; !! Already defined above, so we can find it directly by name.
-                          !! By Foolish convention, odd is not yet in scope, so we need to pass it in.
-              }
+                          !! By Foolish convention, the symbol 'odd' is not yet in scope, so we need to pass it by 
+                          !! searching backwards for odd function itself.
+              };
       is_four_even = [n=4] even{odd=odd} !! is_four_even = true;
       is_five_even = [n=5] even{odd=odd} !! is_five_even = false;
    }
@@ -559,6 +555,7 @@ However, mutual recursion is not directly possible since we cannot search downwa
  * When does Foolishness become concrete and when is it still Foolish?
  * Loops, Recursions, etc.
  * Characterization
+ * * characterize some names as system-generated, e.g. branching.
  * Tracability.
  * Enhanced refactoring and intervention in computation.
  * Restatable programs for better comprehension and compression.
@@ -567,6 +564,8 @@ However, mutual recursion is not directly possible since we cannot search downwa
  * Program Optimization.
  * AI adaptations to support Foolish language.
  * Human-In-the-loop programming.
+ * Mutable Branes. There are not much one can do to a brane. Given any line in the brane: it can be deleted, appended, prepended, name changed, or value changed.
+ * Translation versus Transformation.
 
 # Attic - older notes
   - Concatenation is adjacency of brane-valued expressions (RPN), left-to-right; association is immaterial for denotation.
