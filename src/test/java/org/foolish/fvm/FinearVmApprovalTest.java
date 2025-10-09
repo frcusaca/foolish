@@ -4,14 +4,16 @@ import org.foolish.grammar.FoolishLexer;
 import org.foolish.grammar.FoolishParser;
 import org.foolish.ast.AST;
 import org.foolish.ast.ASTBuilder;
+import org.foolish.ResourcesApprovalNamer;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.approvaltests.Approvals;
+import org.approvaltests.writers.ApprovalTextWriter;
 import org.junit.jupiter.api.Test;
 
 public class FinearVmApprovalTest {
 
-    private String evaluateProgram(String code) {
+    private void verifyApprovalOf(String code) {
         // Parse the code
         CharStream input = CharStreams.fromString(code);
         FoolishLexer lexer = new FoolishLexer(input);
@@ -50,36 +52,32 @@ public class FinearVmApprovalTest {
             output.append(result.toString()).append("\n");
         }
 
-        return output.toString();
+        // Verify with approval test
+        Approvals.verify(new ApprovalTextWriter(output.toString(), "txt"), new ResourcesApprovalNamer());
     }
 
     @Test
     void simpleArithmeticIsApproved() {
-        String output = evaluateProgram("{ x = 1 + 2; }");
-        Approvals.verify(output);
+        verifyApprovalOf("{ x = 1 + 2; }");
     }
 
     @Test
     void complexArithmeticIsApproved() {
-        String output = evaluateProgram("{ x = 1 + 2 * 3; y = x - 4; }");
-        Approvals.verify(output);
+        verifyApprovalOf("{ x = 1 + 2 * 3; y = x - 4; }");
     }
 
     @Test
     void unaryOperationsIsApproved() {
-        String output = evaluateProgram("{ x = -5; y = +10; }");
-        Approvals.verify(output);
+        verifyApprovalOf("{ x = -5; y = +10; }");
     }
 
     @Test
     void ifExpressionIsApproved() {
-        String output = evaluateProgram("{ x = if 1 then 42 else 24; }");
-        Approvals.verify(output);
+        verifyApprovalOf("{ x = if 1 then 42 else 24; }");
     }
 
     @Test
     void nestedBranesIsApproved() {
-        String output = evaluateProgram("{ { x = 1; }; y = 2; }");
-        Approvals.verify(output);
+        verifyApprovalOf("{ { x = 1; }; y = 2; }");
     }
 }
