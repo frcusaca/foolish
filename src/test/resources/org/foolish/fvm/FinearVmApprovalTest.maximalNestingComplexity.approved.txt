@@ -1,5 +1,20 @@
 INPUT:
-{ { a = 1; { { b = if a then if a + 1 then 10 else 20 else 30; }; c = b * 2; }; }; { d = if c then c + missing else 0; }; result = d - a; }
+        {
+            {
+                a = 1;
+                {
+                    {
+                        b = if a then if a + 1 then 10 else 20 else 30;
+                    };
+                    c = b * 2;
+                };
+            };
+            {
+                d = if c then c + missing else 0;
+            };
+            result = d - a;
+        }
+
 
 PARSED AST:
 {

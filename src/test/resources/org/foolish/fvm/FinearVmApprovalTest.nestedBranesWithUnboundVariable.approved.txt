@@ -1,5 +1,14 @@
 INPUT:
-{ { { a = unknownVar; }; b = a + 1; }; c = b * 2; }
+        {
+            {
+                {
+                    a = unknownVar;
+                };
+                b = a + 1;
+            };
+            c = b * 2;
+        }
+
 
 PARSED AST:
 {

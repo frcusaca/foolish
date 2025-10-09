@@ -1,5 +1,15 @@
 INPUT:
-{ x = 5; { { y = if x then if notHere then 1 else 2 else 3; }; z = y + x; }; w = z - unknown; }
+        {
+            x = 5;
+            {
+                {
+                    y = if x then if notHere then 1 else 2 else 3;
+                };
+                z = y + x;
+            };
+            w = z - unknown;
+        }
+
 
 PARSED AST:
 {

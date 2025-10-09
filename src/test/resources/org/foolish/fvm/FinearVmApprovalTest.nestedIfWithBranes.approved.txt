@@ -1,5 +1,13 @@
 INPUT:
-{ { { x = if 1 then if 2 then 10 else 20 else if 3 then 30 else 40; }; }; y = x + 5; }
+        {
+            {
+                {
+                    x = if 1 then if 2 then 10 else 20 else if 3 then 30 else 40;
+                };
+            };
+            y = x + 5;
+        }
+
 
 PARSED AST:
 {

@@ -1,5 +1,8 @@
 INPUT:
-{ x = if 1 then if 2 then if 3 then 100 else 200 else 300 else 400; }
+        {
+            x = if 1 then if 2 then if 3 then 100 else 200 else 300 else 400;
+        }
+
 
 PARSED AST:
 {

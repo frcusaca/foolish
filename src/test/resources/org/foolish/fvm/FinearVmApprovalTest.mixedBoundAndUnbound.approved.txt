@@ -1,5 +1,15 @@
 INPUT:
-{ a = 10; { b = notDefined; { c = a + b; }; }; d = c - a; }
+        {
+            a = 10;
+            {
+                b = notDefined;
+                {
+                    c = a + b;
+                };
+            };
+            d = c - a;
+        }
+
 
 PARSED AST:
 {

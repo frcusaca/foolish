@@ -25,16 +25,38 @@ public class ParserApprovalTest {
 
     @Test
     void arithmeticIsApproved() {
-        verifyApprovalOf("{ x = 1+2*3; y = x-4; }");
+        verifyApprovalOf("""
+                {
+                    x = 1+2*3;
+                    y = x-4;
+                }
+        """);
     }
 
     @Test
     void operatorPrecedenceIsApproved() {
-        verifyApprovalOf("{ x = -1 + +2 * 3 / *4 - +5; }");
+        verifyApprovalOf("""
+                {
+                    x = -1 + +2 * 3 / *4 - +5;
+                }
+        """);
     }
 
     @Test
     void nestedBranesAreApproved() {
-        verifyApprovalOf("{ { { z = 3; }; y = 2; { w = 4; }; }; x = 1; { p = 5; { q = 6; }; }; }");
+        verifyApprovalOf("""
+                {
+                    {
+                        {z = 3;};
+                        y = 2;
+                        { w = 4; };
+                    };
+                    x = 1;
+                    {
+                        p = 5;
+                        { q = 6; };
+                    };
+                }
+        """);
     }
 }

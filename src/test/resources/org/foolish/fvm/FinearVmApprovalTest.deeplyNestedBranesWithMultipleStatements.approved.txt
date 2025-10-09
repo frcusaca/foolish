@@ -1,5 +1,18 @@
 INPUT:
-{ a = 1; { b = 2; { c = 3; { d = a + b + c; }; }; }; result = a + b + c + d; }
+        {
+            a = 1;
+            {
+                b = 2;
+                {
+                    c = 3;
+                    {
+                        d = a + b + c;
+                    };
+                };
+            };
+            result = a + b + c + d;
+        }
+
 
 PARSED AST:
 {

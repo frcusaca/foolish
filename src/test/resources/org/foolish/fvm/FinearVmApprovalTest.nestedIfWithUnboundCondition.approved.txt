@@ -1,5 +1,8 @@
 INPUT:
-{ x = if unknown then if 1 then 42 else 24 else 0; }
+        {
+            x = if unknown then if 1 then 42 else 24 else 0;
+        }
+
 
 PARSED AST:
 {

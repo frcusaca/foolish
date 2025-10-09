@@ -1,5 +1,14 @@
 INPUT:
-{ { { a = 2; }; b = if a then if a - 1 then 100 else 200 else 300; }; c = b + a; }
+        {
+            {
+                {
+                    a = 2;
+                };
+                b = if a then if a - 1 then 100 else 200 else 300;
+            };
+            c = b + a;
+        }
+
 
 PARSED AST:
 {

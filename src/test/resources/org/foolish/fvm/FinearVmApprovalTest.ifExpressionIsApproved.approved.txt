@@ -1,5 +1,8 @@
 INPUT:
-{ x = if 1 then 42 else 24; }
+        {
+            x = if 1 then 42 else 24;
+        }
+
 
 PARSED AST:
 {

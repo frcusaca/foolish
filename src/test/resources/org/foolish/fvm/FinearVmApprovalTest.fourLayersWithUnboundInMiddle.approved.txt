@@ -1,5 +1,17 @@
 INPUT:
-{ { x = 5; { y = missing + x; { z = y - 1; }; }; }; w = z; }
+        {
+            {
+                x = 5;
+                {
+                    y = missing + x;
+                    {
+                        z = y - 1;
+                    };
+                };
+            };
+            w = z;
+        }
+
 
 PARSED AST:
 {

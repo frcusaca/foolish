@@ -1,0 +1,10 @@
+# Claude Code ignore file
+# Add files/patterns that Claude Code should ignore
+
+target/
+*.class
+*.jar
+*.war
+.git/
+.idea/
+*.iml

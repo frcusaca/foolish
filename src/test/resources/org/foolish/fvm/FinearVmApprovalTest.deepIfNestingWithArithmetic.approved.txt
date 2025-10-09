@@ -1,5 +1,9 @@
 INPUT:
-{ a = 5; b = if a then if a - 3 then if a - 5 then 1 else 2 else 3 else 4; }
+        {
+            a = 5;
+            b = if a then if a - 3 then if a - 5 then 1 else 2 else 3 else 4;
+        }
+
 
 PARSED AST:
 {
