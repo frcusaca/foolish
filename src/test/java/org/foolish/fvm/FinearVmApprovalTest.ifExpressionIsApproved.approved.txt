@@ -1,0 +1,17 @@
+INPUT:
+{ x = if 1 then 42 else 24; }
+
+PARSED AST:
+{
+  x = if 1 then 42 else 24;
+}
+
+
+INITIAL MIDOE:
+MidoeProgram(MidoeBrane{MidoeAssignment(x,MidoeIf(1, 42, 24));})
+
+EVALUATION RESULT:
+MidoeBrane{MidoeAssignment(x,MidoeIf(1, 42, 24));}
+
+FINAL BRANE STATUS:
+MidoeBrane{MidoeAssignment(x,MidoeIf(1, 42, 24));}

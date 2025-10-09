@@ -1,0 +1,18 @@
+INPUT:
+{ x = 1 + 2 * 3; y = x - 4; }
+
+PARSED AST:
+{
+  x = (1 + (2 * 3));
+  y = (x - 4);
+}
+
+
+INITIAL MIDOE:
+MidoeProgram(MidoeBrane{MidoeAssignment(x,MidoeBinary(1+MidoeBinary(2*3)));MidoeAssignment(y,MidoeBinary(x@7)-4));})
+
+EVALUATION RESULT:
+MidoeBrane{MidoeAssignment(x,MidoeBinary(1+MidoeBinary(2*3)));MidoeAssignment(y,MidoeBinary(x@7)-4));}
+
+FINAL BRANE STATUS:
+MidoeBrane{MidoeAssignment(x,MidoeBinary(1+MidoeBinary(2*3)));MidoeAssignment(y,MidoeBinary(x@7)-4));}

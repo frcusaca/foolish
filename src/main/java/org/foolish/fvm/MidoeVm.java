@@ -35,9 +35,9 @@ public final class MidoeVm {
                     case AST.Brane b -> {
                         List<Midoe> stmts = new ArrayList<>();
                         List<AST.Expr> raw_stmts = b.statements();
-                        for (int raw_stmts_line = 0; line < raw_stmts.size(); raw_stmts_line++) {
+                        for (int raw_stmts_line = 0; raw_stmts_line < raw_stmts.size(); raw_stmts_line++) {
                             AST.Expr expr = raw_stmts.get(raw_stmts_line);
-                            stmts.add(wrap(new Insoe(expr), line));
+                            stmts.add(wrap(new Insoe(expr), raw_stmts_line));
                         }
                         return new BraneMidoe(code_node, stmts);
                     }
