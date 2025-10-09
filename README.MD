@@ -799,6 +799,64 @@ unbound name and pass it into the context:
 }
 ```
 
+## Ecosystem
+### Computer Reading Branes
+When a computer encounters a `.foo` file, it shall parse the Foolish into
+an AST. The units on which the computer works on are the expressions. The
+largest expression being a brane, its processing take up much of the Foolish
+Ecosystem.
+
+### The Unicelluar Brane Computer (UBC)
+Like our human minds, most of our computational resources have limited abilities.
+A unicelluar Brane computer (UBC) is one that has just enough capacity to hold the AST
+of a brane, and the ability to interpret and understand a single expression at a time.
+This computer proceeds simply from beginning of the brane to the end of the brane
+evaluating and creating new values to be stored in the brane. In order to process
+expressions, the brane actually has two more sources of informtion: Ancestral and
+Immediate. The Immediate Brane (IB) is the current contex that we have accumulated
+inside the unicelluar brane computer so far, including name of the current expression.
+The Ancestral Brane (AB) is the search context that contains the name of the expression
+in an AST that defined the current brane, that expression's AB and IB.
+
+In some cases, such as the recursive call to `↑`, the search finds a line of code that
+has incomplete value. Note by incomplete value, we mean not the unkown value `???`, but a
+value that the present UBC does not fully know the value of. In the case of this incomplete
+value, it would appear that the simplest machine is unable to continue evaluating the value
+of the Foolish expression. In fact, we don't even know all of the names or values this brane
+will capture by its end. To continue computation, the UBC must stash the current execution
+context, and evaluate that expression using the context "IB AB ↑". That says the UBC shall
+evaluate the AST of the expression that created the present brane, resolving any searches
+first using the current AB, then using current IB.
+```
+    {...{...{...
+
+        !! At this point, we search up for name resolutions the AB below
+        !! refers to this point and back and up
+	f = {
+            !! Start of IB
+            one = 1;
+            two = 2;
+            !! End of IB
+            if (continue) then
+               r=[three=one+2;]↑ 
+            else
+               r=5
+            !! Continue to code that we didn't know when we computed r
+            four = 4;
+        }
+    ...}...}..}
+```
+
+In that example, in recursive call to compute r is evaluated using `[IB, AB] f`.
+where the expression named `f` is available by Foolish source code only. IB and AB
+would always be available at the recursive call by above definitions.
+
+### The Multiceulluar Brane Computer
+[ ] TBD
+### The Next Step in the Evolution Chain
+[ ] TBD
+
+
 ### TODO Items
  Other features that we want to expand documentation on in the future:
  * Document the call-by-value versus call-by-reference semantics: Does it 
