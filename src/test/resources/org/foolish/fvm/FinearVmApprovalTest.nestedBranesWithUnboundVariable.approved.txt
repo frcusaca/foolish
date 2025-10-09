@@ -1,0 +1,23 @@
+INPUT:
+{ { { a = unknownVar; }; b = a + 1; }; c = b * 2; }
+
+PARSED AST:
+{
+  {
+  {
+  a = unknownVar;
+};
+  b = (a + 1);
+};
+  c = (b * 2);
+}
+
+
+INITIAL MIDOE:
+MidoeProgram(MidoeBrane{MidoeBrane{MidoeBrane{MidoeAssignment(a,unknownVar@UNKNOWN));};MidoeAssignment(b,MidoeBinary(a@UNKNOWN)+1));};MidoeAssignment(c,MidoeBinary(b@UNKNOWN)*2));})
+
+EVALUATION RESULT:
+MidoeBrane{MidoeBrane{MidoeBrane{MidoeAssignment(a,UNKNOWN);};MidoeAssignment(b,UNKNOWN);};MidoeAssignment(c,UNKNOWN);}
+
+FINAL BRANE STATUS:
+MidoeBrane{MidoeBrane{MidoeBrane{MidoeAssignment(a,UNKNOWN);};MidoeAssignment(b,UNKNOWN);};MidoeAssignment(c,UNKNOWN);}

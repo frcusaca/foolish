@@ -1,0 +1,29 @@
+INPUT:
+{ { a = 1; { { b = if a then if a + 1 then 10 else 20 else 30; }; c = b * 2; }; }; { d = if c then c + missing else 0; }; result = d - a; }
+
+PARSED AST:
+{
+  {
+  a = 1;
+  {
+  {
+  b = if a then if (a + 1) then 10 else 20 else 30;
+};
+  c = (b * 2);
+};
+};
+  {
+  d = if c then (c + missing) else 0;
+};
+  result = (d - a);
+}
+
+
+INITIAL MIDOE:
+MidoeProgram(MidoeBrane{MidoeBrane{MidoeAssignment(a,1);MidoeBrane{MidoeBrane{MidoeAssignment(b,MidoeIf(a@1), MidoeIf(MidoeBinary(a@1)+1), 10, 20), 30));};MidoeAssignment(c,MidoeBinary(b@UNKNOWN)*2));};};MidoeBrane{MidoeAssignment(d,MidoeIf(c@UNKNOWN), MidoeBinary(cMidoeId()+missingMidoeId()), 0));};MidoeAssignment(result,MidoeBinary(d@UNKNOWN)-a@UNKNOWN)));})
+
+EVALUATION RESULT:
+MidoeBrane{MidoeBrane{MidoeAssignment(a,1);MidoeBrane{MidoeBrane{MidoeAssignment(b,10);};MidoeAssignment(c,UNKNOWN);};};MidoeBrane{MidoeAssignment(d,0);};MidoeAssignment(result,UNKNOWN);}
+
+FINAL BRANE STATUS:
+MidoeBrane{MidoeBrane{MidoeAssignment(a,1);MidoeBrane{MidoeBrane{MidoeAssignment(b,10);};MidoeAssignment(c,UNKNOWN);};};MidoeBrane{MidoeAssignment(d,0);};MidoeAssignment(result,UNKNOWN);}

@@ -1,0 +1,24 @@
+INPUT:
+{ { { p = -5; q = +10; }; r = p + q; }; s = r * 2; }
+
+PARSED AST:
+{
+  {
+  {
+  p = -5;
+  q = +10;
+};
+  r = (p + q);
+};
+  s = (r * 2);
+}
+
+
+INITIAL MIDOE:
+MidoeProgram(MidoeBrane{MidoeBrane{MidoeBrane{MidoeAssignment(p,MidoeUnary(-5));MidoeAssignment(q,MidoeUnary(+10));};MidoeAssignment(r,MidoeBinary(p@UNKNOWN)+q@UNKNOWN)));};MidoeAssignment(s,MidoeBinary(r@UNKNOWN)*2));})
+
+EVALUATION RESULT:
+MidoeBrane{MidoeBrane{MidoeBrane{MidoeAssignment(p,-5);MidoeAssignment(q,10);};MidoeAssignment(r,UNKNOWN);};MidoeAssignment(s,UNKNOWN);}
+
+FINAL BRANE STATUS:
+MidoeBrane{MidoeBrane{MidoeBrane{MidoeAssignment(p,-5);MidoeAssignment(q,10);};MidoeAssignment(r,UNKNOWN);};MidoeAssignment(s,UNKNOWN);}

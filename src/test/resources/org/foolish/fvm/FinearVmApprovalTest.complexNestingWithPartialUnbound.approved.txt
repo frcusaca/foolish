@@ -1,0 +1,24 @@
+INPUT:
+{ x = 5; { { y = if x then if notHere then 1 else 2 else 3; }; z = y + x; }; w = z - unknown; }
+
+PARSED AST:
+{
+  x = 5;
+  {
+  {
+  y = if x then if notHere then 1 else 2 else 3;
+};
+  z = (y + x);
+};
+  w = (z - unknown);
+}
+
+
+INITIAL MIDOE:
+MidoeProgram(MidoeBrane{MidoeAssignment(x,5);MidoeBrane{MidoeBrane{MidoeAssignment(y,MidoeIf(x@5), MidoeIf(notHere@UNKNOWN), 1, 2), 3));};MidoeAssignment(z,MidoeBinary(y@UNKNOWN)+x@5)));};MidoeAssignment(w,MidoeBinary(z@UNKNOWN)-unknown@UNKNOWN)));})
+
+EVALUATION RESULT:
+MidoeBrane{MidoeAssignment(x,5);MidoeBrane{MidoeBrane{MidoeAssignment(y,2);};MidoeAssignment(z,UNKNOWN);};MidoeAssignment(w,UNKNOWN);}
+
+FINAL BRANE STATUS:
+MidoeBrane{MidoeAssignment(x,5);MidoeBrane{MidoeBrane{MidoeAssignment(y,2);};MidoeAssignment(z,UNKNOWN);};MidoeAssignment(w,UNKNOWN);}

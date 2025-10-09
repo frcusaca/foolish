@@ -1,0 +1,23 @@
+INPUT:
+{ { { a = 2; }; b = if a then if a - 1 then 100 else 200 else 300; }; c = b + a; }
+
+PARSED AST:
+{
+  {
+  {
+  a = 2;
+};
+  b = if a then if (a - 1) then 100 else 200 else 300;
+};
+  c = (b + a);
+}
+
+
+INITIAL MIDOE:
+MidoeProgram(MidoeBrane{MidoeBrane{MidoeBrane{MidoeAssignment(a,2);};MidoeAssignment(b,MidoeIf(a@UNKNOWN), MidoeIf(MidoeBinary(aMidoeId()-1), 100, 200), 300));};MidoeAssignment(c,MidoeBinary(b@UNKNOWN)+a@UNKNOWN)));})
+
+EVALUATION RESULT:
+MidoeBrane{MidoeBrane{MidoeBrane{MidoeAssignment(a,2);};MidoeAssignment(b,300);};MidoeAssignment(c,UNKNOWN);}
+
+FINAL BRANE STATUS:
+MidoeBrane{MidoeBrane{MidoeBrane{MidoeAssignment(a,2);};MidoeAssignment(b,300);};MidoeAssignment(c,UNKNOWN);}

@@ -1,0 +1,26 @@
+INPUT:
+{ { { { x = 2 * 3; }; y = x + 4; }; z = y - 1; }; w = z * 2; }
+
+PARSED AST:
+{
+  {
+  {
+  {
+  x = (2 * 3);
+};
+  y = (x + 4);
+};
+  z = (y - 1);
+};
+  w = (z * 2);
+}
+
+
+INITIAL MIDOE:
+MidoeProgram(MidoeBrane{MidoeBrane{MidoeBrane{MidoeBrane{MidoeAssignment(x,MidoeBinary(2*3));};MidoeAssignment(y,MidoeBinary(x@UNKNOWN)+4));};MidoeAssignment(z,MidoeBinary(y@UNKNOWN)-1));};MidoeAssignment(w,MidoeBinary(z@UNKNOWN)*2));})
+
+EVALUATION RESULT:
+MidoeBrane{MidoeBrane{MidoeBrane{MidoeBrane{MidoeAssignment(x,6);};MidoeAssignment(y,UNKNOWN);};MidoeAssignment(z,UNKNOWN);};MidoeAssignment(w,UNKNOWN);}
+
+FINAL BRANE STATUS:
+MidoeBrane{MidoeBrane{MidoeBrane{MidoeBrane{MidoeAssignment(x,6);};MidoeAssignment(y,UNKNOWN);};MidoeAssignment(z,UNKNOWN);};MidoeAssignment(w,UNKNOWN);}

@@ -1,0 +1,24 @@
+INPUT:
+{ a = 10; { b = notDefined; { c = a + b; }; }; d = c - a; }
+
+PARSED AST:
+{
+  a = 10;
+  {
+  b = notDefined;
+  {
+  c = (a + b);
+};
+};
+  d = (c - a);
+}
+
+
+INITIAL MIDOE:
+MidoeProgram(MidoeBrane{MidoeAssignment(a,10);MidoeBrane{MidoeAssignment(b,notDefined@UNKNOWN));MidoeBrane{MidoeAssignment(c,MidoeBinary(a@10)+b@UNKNOWN)));};};MidoeAssignment(d,MidoeBinary(c@UNKNOWN)-a@10)));})
+
+EVALUATION RESULT:
+MidoeBrane{MidoeAssignment(a,10);MidoeBrane{MidoeAssignment(b,UNKNOWN);MidoeBrane{MidoeAssignment(c,UNKNOWN);};};MidoeAssignment(d,UNKNOWN);}
+
+FINAL BRANE STATUS:
+MidoeBrane{MidoeAssignment(a,10);MidoeBrane{MidoeAssignment(b,UNKNOWN);MidoeBrane{MidoeAssignment(c,UNKNOWN);};};MidoeAssignment(d,UNKNOWN);}

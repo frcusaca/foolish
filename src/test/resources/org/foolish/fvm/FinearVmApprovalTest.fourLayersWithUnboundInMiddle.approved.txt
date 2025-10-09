@@ -1,0 +1,26 @@
+INPUT:
+{ { x = 5; { y = missing + x; { z = y - 1; }; }; }; w = z; }
+
+PARSED AST:
+{
+  {
+  x = 5;
+  {
+  y = (missing + x);
+  {
+  z = (y - 1);
+};
+};
+};
+  w = z;
+}
+
+
+INITIAL MIDOE:
+MidoeProgram(MidoeBrane{MidoeBrane{MidoeAssignment(x,5);MidoeBrane{MidoeAssignment(y,MidoeBinary(missing@UNKNOWN)+x@5)));MidoeBrane{MidoeAssignment(z,MidoeBinary(y@UNKNOWN)-1));};};};MidoeAssignment(w,z@UNKNOWN));})
+
+EVALUATION RESULT:
+MidoeBrane{MidoeBrane{MidoeAssignment(x,5);MidoeBrane{MidoeAssignment(y,UNKNOWN);MidoeBrane{MidoeAssignment(z,UNKNOWN);};};};MidoeAssignment(w,UNKNOWN);}
+
+FINAL BRANE STATUS:
+MidoeBrane{MidoeBrane{MidoeAssignment(x,5);MidoeBrane{MidoeAssignment(y,UNKNOWN);MidoeBrane{MidoeAssignment(z,UNKNOWN);};};};MidoeAssignment(w,UNKNOWN);}

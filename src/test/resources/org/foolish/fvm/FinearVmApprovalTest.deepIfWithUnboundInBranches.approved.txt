@@ -1,0 +1,17 @@
+INPUT:
+{ result = if 1 then if 0 then notFound else if 1 then stillMissing else 10 else 5; }
+
+PARSED AST:
+{
+  result = if 1 then if 0 then notFound else if 1 then stillMissing else 10 else 5;
+}
+
+
+INITIAL MIDOE:
+MidoeProgram(MidoeBrane{MidoeAssignment(result,MidoeIf(1, MidoeIf(0, notFoundMidoeId(), MidoeIf(1, stillMissing@UNKNOWN), 10)), 5));})
+
+EVALUATION RESULT:
+MidoeBrane{MidoeAssignment(result,10);}
+
+FINAL BRANE STATUS:
+MidoeBrane{MidoeAssignment(result,10);}

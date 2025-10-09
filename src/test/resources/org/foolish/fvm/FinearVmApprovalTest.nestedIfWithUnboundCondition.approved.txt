@@ -1,0 +1,17 @@
+INPUT:
+{ x = if unknown then if 1 then 42 else 24 else 0; }
+
+PARSED AST:
+{
+  x = if unknown then if 1 then 42 else 24 else 0;
+}
+
+
+INITIAL MIDOE:
+MidoeProgram(MidoeBrane{MidoeAssignment(x,MidoeIf(unknown@UNKNOWN), MidoeIf(1, 42, 24), 0));})
+
+EVALUATION RESULT:
+MidoeBrane{MidoeAssignment(x,0);}
+
+FINAL BRANE STATUS:
+MidoeBrane{MidoeAssignment(x,0);}

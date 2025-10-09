@@ -1,0 +1,17 @@
+INPUT:
+{ x = if 1 then if 2 then if 3 then 100 else 200 else 300 else 400; }
+
+PARSED AST:
+{
+  x = if 1 then if 2 then if 3 then 100 else 200 else 300 else 400;
+}
+
+
+INITIAL MIDOE:
+MidoeProgram(MidoeBrane{MidoeAssignment(x,MidoeIf(1, MidoeIf(2, MidoeIf(3, 100, 200), 300), 400));})
+
+EVALUATION RESULT:
+MidoeBrane{MidoeAssignment(x,100);}
+
+FINAL BRANE STATUS:
+MidoeBrane{MidoeAssignment(x,100);}

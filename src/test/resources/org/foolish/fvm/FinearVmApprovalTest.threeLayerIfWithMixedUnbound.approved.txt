@@ -1,0 +1,18 @@
+INPUT:
+{ a = 10; b = if a then if missing then 1 else if a - 5 then undefined else 3 else 4; }
+
+PARSED AST:
+{
+  a = 10;
+  b = if a then if missing then 1 else if (a - 5) then undefined else 3 else 4;
+}
+
+
+INITIAL MIDOE:
+MidoeProgram(MidoeBrane{MidoeAssignment(a,10);MidoeAssignment(b,MidoeIf(a@10), MidoeIf(missing@UNKNOWN), 1, MidoeIf(MidoeBinary(a@10)-5), undefined@UNKNOWN), 3)), 4));})
+
+EVALUATION RESULT:
+MidoeBrane{MidoeAssignment(a,10);MidoeAssignment(b,3);}
+
+FINAL BRANE STATUS:
+MidoeBrane{MidoeAssignment(a,10);MidoeAssignment(b,3);}

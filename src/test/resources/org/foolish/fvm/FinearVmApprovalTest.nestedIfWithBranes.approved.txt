@@ -1,0 +1,22 @@
+INPUT:
+{ { { x = if 1 then if 2 then 10 else 20 else if 3 then 30 else 40; }; }; y = x + 5; }
+
+PARSED AST:
+{
+  {
+  {
+  x = if 1 then if 2 then 10 else 20 else if 3 then 30 else 40;
+};
+};
+  y = (x + 5);
+}
+
+
+INITIAL MIDOE:
+MidoeProgram(MidoeBrane{MidoeBrane{MidoeBrane{MidoeAssignment(x,MidoeIf(1, MidoeIf(2, 10, 20), MidoeIf(3, 30, 40)));};};MidoeAssignment(y,MidoeBinary(x@UNKNOWN)+5));})
+
+EVALUATION RESULT:
+MidoeBrane{MidoeBrane{MidoeBrane{MidoeAssignment(x,10);};};MidoeAssignment(y,UNKNOWN);}
+
+FINAL BRANE STATUS:
+MidoeBrane{MidoeBrane{MidoeBrane{MidoeAssignment(x,10);};};MidoeAssignment(y,UNKNOWN);}

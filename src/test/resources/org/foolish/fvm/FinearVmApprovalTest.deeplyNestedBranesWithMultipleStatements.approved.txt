@@ -1,0 +1,27 @@
+INPUT:
+{ a = 1; { b = 2; { c = 3; { d = a + b + c; }; }; }; result = a + b + c + d; }
+
+PARSED AST:
+{
+  a = 1;
+  {
+  b = 2;
+  {
+  c = 3;
+  {
+  d = ((a + b) + c);
+};
+};
+};
+  result = (((a + b) + c) + d);
+}
+
+
+INITIAL MIDOE:
+MidoeProgram(MidoeBrane{MidoeAssignment(a,1);MidoeBrane{MidoeAssignment(b,2);MidoeBrane{MidoeAssignment(c,3);MidoeBrane{MidoeAssignment(d,MidoeBinary(MidoeBinary(a@1)+b@2))+c@3)));};};};MidoeAssignment(result,MidoeBinary(MidoeBinary(MidoeBinary(a@1)+b@UNKNOWN))+c@UNKNOWN))+d@UNKNOWN)));})
+
+EVALUATION RESULT:
+MidoeBrane{MidoeAssignment(a,1);MidoeBrane{MidoeAssignment(b,2);MidoeBrane{MidoeAssignment(c,3);MidoeBrane{MidoeAssignment(d,6);};};};MidoeAssignment(result,UNKNOWN);}
+
+FINAL BRANE STATUS:
+MidoeBrane{MidoeAssignment(a,1);MidoeBrane{MidoeAssignment(b,2);MidoeBrane{MidoeAssignment(c,3);MidoeBrane{MidoeAssignment(d,6);};};};MidoeAssignment(result,UNKNOWN);}

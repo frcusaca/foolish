@@ -1,0 +1,17 @@
+INPUT:
+{ result = if 1 then if 0 then 10 else if 1 then if 1 then 42 else 24 else 12 else 5; }
+
+PARSED AST:
+{
+  result = if 1 then if 0 then 10 else if 1 then if 1 then 42 else 24 else 12 else 5;
+}
+
+
+INITIAL MIDOE:
+MidoeProgram(MidoeBrane{MidoeAssignment(result,MidoeIf(1, MidoeIf(0, 10, MidoeIf(1, MidoeIf(1, 42, 24), 12)), 5));})
+
+EVALUATION RESULT:
+MidoeBrane{MidoeAssignment(result,42);}
+
+FINAL BRANE STATUS:
+MidoeBrane{MidoeAssignment(result,42);}
