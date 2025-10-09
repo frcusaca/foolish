@@ -11,12 +11,26 @@ PARSED AST:
   y = +10;
 }
 
+FINAL BRANE:
+{
+  x = -5;
+  y = 10;
+}
 
 INITIAL MIDOE:
-MidoeProgram(MidoeBrane{MidoeAssignment(x,MidoeUnary(-5));MidoeAssignment(y,MidoeUnary(+10));})
+MidoeProgram(MidoeBrane(
+  MidoeAssignment(x, MidoeUnary(-, Finear(5))),
+  MidoeAssignment(y, MidoeUnary(+, Finear(10)))
+))
 
 EVALUATION RESULT:
-MidoeBrane{MidoeAssignment(x,-5);MidoeAssignment(y,10);}
+MidoeBrane(
+  MidoeAssignment(x, Finear(-5)),
+  MidoeAssignment(y, Finear(10))
+)
 
 FINAL BRANE STATUS:
-MidoeBrane{MidoeAssignment(x,-5);MidoeAssignment(y,10);}
+MidoeBrane(
+  MidoeAssignment(x, Finear(-5)),
+  MidoeAssignment(y, Finear(10))
+)

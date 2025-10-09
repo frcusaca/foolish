@@ -13,20 +13,54 @@ INPUT:
 PARSED AST:
 {
   {
-  {
-  a = (1 + 2);
-};
-  b = (a * 3);
-};
+    {
+      a = (1 + 2);
+    };
+    b = (a * 3);
+  };
   c = (b - 4);
 }
 
+FINAL BRANE:
+{
+  {
+    {
+      a = 3;
+    };
+    b = UNKNOWN;
+  };
+  c = UNKNOWN;
+}
 
 INITIAL MIDOE:
-MidoeProgram(MidoeBrane{MidoeBrane{MidoeBrane{MidoeAssignment(a,MidoeBinary(1+2));};MidoeAssignment(b,MidoeBinary(a@UNKNOWN)*3));};MidoeAssignment(c,MidoeBinary(b@UNKNOWN)-4));})
+MidoeProgram(MidoeBrane(
+  MidoeBrane(
+    MidoeBrane(
+      MidoeAssignment(a, MidoeBinary(Finear(1), +, Finear(2)))
+    ),
+    MidoeAssignment(b, MidoeBinary(MidoeId(a), *, Finear(3)))
+  ),
+  MidoeAssignment(c, MidoeBinary(MidoeId(b), -, Finear(4)))
+))
 
 EVALUATION RESULT:
-MidoeBrane{MidoeBrane{MidoeBrane{MidoeAssignment(a,3);};MidoeAssignment(b,UNKNOWN);};MidoeAssignment(c,UNKNOWN);}
+MidoeBrane(
+  MidoeBrane(
+    MidoeBrane(
+      MidoeAssignment(a, Finear(3))
+    ),
+    MidoeAssignment(b, Finear(UNKNOWN))
+  ),
+  MidoeAssignment(c, Finear(UNKNOWN))
+)
 
 FINAL BRANE STATUS:
-MidoeBrane{MidoeBrane{MidoeBrane{MidoeAssignment(a,3);};MidoeAssignment(b,UNKNOWN);};MidoeAssignment(c,UNKNOWN);}
+MidoeBrane(
+  MidoeBrane(
+    MidoeBrane(
+      MidoeAssignment(a, Finear(3))
+    ),
+    MidoeAssignment(b, Finear(UNKNOWN))
+  ),
+  MidoeAssignment(c, Finear(UNKNOWN))
+)

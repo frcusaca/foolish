@@ -18,23 +18,73 @@ PARSED AST:
 {
   a = 1;
   {
-  b = 2;
-  {
-  c = 3;
-  {
-  d = ((a + b) + c);
-};
-};
-};
+    b = 2;
+    {
+      c = 3;
+      {
+        d = ((a + b) + c);
+      };
+    };
+  };
   result = (((a + b) + c) + d);
 }
 
+FINAL BRANE:
+{
+  a = 1;
+  {
+    b = 2;
+    {
+      c = 3;
+      {
+        d = 6;
+      };
+    };
+  };
+  result = UNKNOWN;
+}
 
 INITIAL MIDOE:
-MidoeProgram(MidoeBrane{MidoeAssignment(a,1);MidoeBrane{MidoeAssignment(b,2);MidoeBrane{MidoeAssignment(c,3);MidoeBrane{MidoeAssignment(d,MidoeBinary(MidoeBinary(a@1)+b@2))+c@3)));};};};MidoeAssignment(result,MidoeBinary(MidoeBinary(MidoeBinary(a@1)+b@UNKNOWN))+c@UNKNOWN))+d@UNKNOWN)));})
+MidoeProgram(MidoeBrane(
+  MidoeAssignment(a, Finear(1)),
+  MidoeBrane(
+    MidoeAssignment(b, Finear(2)),
+    MidoeBrane(
+      MidoeAssignment(c, Finear(3)),
+      MidoeBrane(
+        MidoeAssignment(d, MidoeBinary(MidoeBinary(MidoeId(a), +, MidoeId(b)), +, MidoeId(c)))
+      )
+    )
+  ),
+  MidoeAssignment(result, MidoeBinary(MidoeBinary(MidoeBinary(MidoeId(a), +, MidoeId(b)), +, MidoeId(c)), +, MidoeId(d)))
+))
 
 EVALUATION RESULT:
-MidoeBrane{MidoeAssignment(a,1);MidoeBrane{MidoeAssignment(b,2);MidoeBrane{MidoeAssignment(c,3);MidoeBrane{MidoeAssignment(d,6);};};};MidoeAssignment(result,UNKNOWN);}
+MidoeBrane(
+  MidoeAssignment(a, Finear(1)),
+  MidoeBrane(
+    MidoeAssignment(b, Finear(2)),
+    MidoeBrane(
+      MidoeAssignment(c, Finear(3)),
+      MidoeBrane(
+        MidoeAssignment(d, Finear(6))
+      )
+    )
+  ),
+  MidoeAssignment(result, Finear(UNKNOWN))
+)
 
 FINAL BRANE STATUS:
-MidoeBrane{MidoeAssignment(a,1);MidoeBrane{MidoeAssignment(b,2);MidoeBrane{MidoeAssignment(c,3);MidoeBrane{MidoeAssignment(d,6);};};};MidoeAssignment(result,UNKNOWN);}
+MidoeBrane(
+  MidoeAssignment(a, Finear(1)),
+  MidoeBrane(
+    MidoeAssignment(b, Finear(2)),
+    MidoeBrane(
+      MidoeAssignment(c, Finear(3)),
+      MidoeBrane(
+        MidoeAssignment(d, Finear(6))
+      )
+    )
+  ),
+  MidoeAssignment(result, Finear(UNKNOWN))
+)

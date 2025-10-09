@@ -13,20 +13,62 @@ INPUT:
 PARSED AST:
 {
   {
-  {
-  a = 2;
-};
-  b = if a then if (a - 1) then 100 else 200 else 300;
-};
+    {
+      a = 2;
+    };
+    b = if a then if (a - 1) then 100 else 200 else 300;
+  };
   c = (b + a);
 }
 
+FINAL BRANE:
+{
+  {
+    {
+      a = 2;
+    };
+    b = 300;
+  };
+  c = UNKNOWN;
+}
 
 INITIAL MIDOE:
-MidoeProgram(MidoeBrane{MidoeBrane{MidoeBrane{MidoeAssignment(a,2);};MidoeAssignment(b,MidoeIf(a@UNKNOWN), MidoeIf(MidoeBinary(aMidoeId()-1), 100, 200), 300));};MidoeAssignment(c,MidoeBinary(b@UNKNOWN)+a@UNKNOWN)));})
+MidoeProgram(MidoeBrane(
+  MidoeBrane(
+    MidoeBrane(
+      MidoeAssignment(a, Finear(2))
+    ),
+    MidoeAssignment(b, MidoeIf(
+      MidoeId(a),
+      MidoeIf(
+        MidoeBinary(MidoeId(a), -, Finear(1)),
+        Finear(100),
+        Finear(200)
+      ),
+      Finear(300)
+    ))
+  ),
+  MidoeAssignment(c, MidoeBinary(MidoeId(b), +, MidoeId(a)))
+))
 
 EVALUATION RESULT:
-MidoeBrane{MidoeBrane{MidoeBrane{MidoeAssignment(a,2);};MidoeAssignment(b,300);};MidoeAssignment(c,UNKNOWN);}
+MidoeBrane(
+  MidoeBrane(
+    MidoeBrane(
+      MidoeAssignment(a, Finear(2))
+    ),
+    MidoeAssignment(b, Finear(300))
+  ),
+  MidoeAssignment(c, Finear(UNKNOWN))
+)
 
 FINAL BRANE STATUS:
-MidoeBrane{MidoeBrane{MidoeBrane{MidoeAssignment(a,2);};MidoeAssignment(b,300);};MidoeAssignment(c,UNKNOWN);}
+MidoeBrane(
+  MidoeBrane(
+    MidoeBrane(
+      MidoeAssignment(a, Finear(2))
+    ),
+    MidoeAssignment(b, Finear(300))
+  ),
+  MidoeAssignment(c, Finear(UNKNOWN))
+)

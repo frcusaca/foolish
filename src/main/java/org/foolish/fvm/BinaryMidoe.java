@@ -37,6 +37,6 @@ class BinaryMidoe extends Midoe {
     }
 
     public String toString() {
-        return "MidoeBinary(" + left + op + right + ")";
+        return FormatterFactory.verbose().format(this);
     }
 }

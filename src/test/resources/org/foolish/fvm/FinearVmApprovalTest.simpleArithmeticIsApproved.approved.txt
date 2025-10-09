@@ -9,12 +9,22 @@ PARSED AST:
   x = (1 + 2);
 }
 
+FINAL BRANE:
+{
+  x = 3;
+}
 
 INITIAL MIDOE:
-MidoeProgram(MidoeBrane{MidoeAssignment(x,MidoeBinary(1+2));})
+MidoeProgram(MidoeBrane(
+  MidoeAssignment(x, MidoeBinary(Finear(1), +, Finear(2)))
+))
 
 EVALUATION RESULT:
-MidoeBrane{MidoeAssignment(x,3);}
+MidoeBrane(
+  MidoeAssignment(x, Finear(3))
+)
 
 FINAL BRANE STATUS:
-MidoeBrane{MidoeAssignment(x,3);}
+MidoeBrane(
+  MidoeAssignment(x, Finear(3))
+)

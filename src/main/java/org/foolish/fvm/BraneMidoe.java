@@ -26,10 +26,6 @@ class BraneMidoe extends Midoe {
     }
 
     public String toString() {
-        StringBuffer statements = new StringBuffer();
-        for (Midoe stmt : statements()) {
-            statements.append(stmt).append(";");
-        }
-        return "MidoeBrane{" + statements + "}";
+        return FormatterFactory.verbose().format(this);
     }
 }

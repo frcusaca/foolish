@@ -34,6 +34,6 @@ class AssignmentMidoe extends Midoe {
     }
 
     public String toString() {
-        return "MidoeAssignment(" + id + "," + expr + ")";
+        return FormatterFactory.verbose().format(this);
     }
 }

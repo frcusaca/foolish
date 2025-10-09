@@ -12,19 +12,61 @@ INPUT:
 PARSED AST:
 {
   {
-  {
-  x = if 1 then if 2 then 10 else 20 else if 3 then 30 else 40;
-};
-};
+    {
+      x = if 1 then if 2 then 10 else 20 else if 3 then 30 else 40;
+    };
+  };
   y = (x + 5);
 }
 
+FINAL BRANE:
+{
+  {
+    {
+      x = 10;
+    };
+  };
+  y = UNKNOWN;
+}
 
 INITIAL MIDOE:
-MidoeProgram(MidoeBrane{MidoeBrane{MidoeBrane{MidoeAssignment(x,MidoeIf(1, MidoeIf(2, 10, 20), MidoeIf(3, 30, 40)));};};MidoeAssignment(y,MidoeBinary(x@UNKNOWN)+5));})
+MidoeProgram(MidoeBrane(
+  MidoeBrane(
+    MidoeBrane(
+      MidoeAssignment(x, MidoeIf(
+        Finear(1),
+        MidoeIf(
+          Finear(2),
+          Finear(10),
+          Finear(20)
+        ),
+        MidoeIf(
+          Finear(3),
+          Finear(30),
+          Finear(40)
+        )
+      ))
+    )
+  ),
+  MidoeAssignment(y, MidoeBinary(MidoeId(x), +, Finear(5)))
+))
 
 EVALUATION RESULT:
-MidoeBrane{MidoeBrane{MidoeBrane{MidoeAssignment(x,10);};};MidoeAssignment(y,UNKNOWN);}
+MidoeBrane(
+  MidoeBrane(
+    MidoeBrane(
+      MidoeAssignment(x, Finear(10))
+    )
+  ),
+  MidoeAssignment(y, Finear(UNKNOWN))
+)
 
 FINAL BRANE STATUS:
-MidoeBrane{MidoeBrane{MidoeBrane{MidoeAssignment(x,10);};};MidoeAssignment(y,UNKNOWN);}
+MidoeBrane(
+  MidoeBrane(
+    MidoeBrane(
+      MidoeAssignment(x, Finear(10))
+    )
+  ),
+  MidoeAssignment(y, Finear(UNKNOWN))
+)

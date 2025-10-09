@@ -1,0 +1,1 @@
+alias approve_tests='find . -name "*received.txt" |rev|cut -d. -f3-|rev|xargs -I{} -n1 echo mvimdiff -f "{}.received.txt" "{}.approved.txt"'

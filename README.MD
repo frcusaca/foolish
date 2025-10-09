@@ -92,7 +92,7 @@ verification, and human-AI collaborative programming. Foolish doesn't just run
 on computers—it bridges human and computational intelligence.
 
 ### 👼 Built for Good
-As we sit on the precipice of evolution, we must enbue our creations with all
+As we sit on the precipice of evolution, we must imbue our creations with all
 the best that we have come to know. Foolish aims to be built for good not
 evil.
 
@@ -531,7 +531,7 @@ to the search parameter. `::` is the bulk forward value search operator.
         d     = tmp_b cbrt;
     }
     r = doc:4;    !! r = 2*2;
-    r2= doc::4;   !! r2 = {tmp_a=2*2; tmp_b=3*3;}
+    r2= doc::4;   !! r2 = {tmp_a=2*2; tmp_b=1+3;}
     doc:4 = 10    !! `tmp_a = 10;`
 }
 ```

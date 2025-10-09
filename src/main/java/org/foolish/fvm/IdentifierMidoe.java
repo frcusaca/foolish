@@ -23,12 +23,6 @@ class IdentifierMidoe extends Midoe {
     }
 
     public String toString() {
-        String value = "MidoeId(";
-        if (progress_heap.size() > 1) {
-            // Return a versioned id if in a function context
-            value = "@" + progress_heap.getLast();
-        }
-        return id.toString() + value + ")";
-
+        return FormatterFactory.verbose().format(this);
     }
 }

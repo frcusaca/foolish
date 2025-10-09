@@ -9,12 +9,26 @@ PARSED AST:
   x = if 1 then 42 else 24;
 }
 
+FINAL BRANE:
+{
+  x = 42;
+}
 
 INITIAL MIDOE:
-MidoeProgram(MidoeBrane{MidoeAssignment(x,MidoeIf(1, 42, 24));})
+MidoeProgram(MidoeBrane(
+  MidoeAssignment(x, MidoeIf(
+    Finear(1),
+    Finear(42),
+    Finear(24)
+  ))
+))
 
 EVALUATION RESULT:
-MidoeBrane{MidoeAssignment(x,42);}
+MidoeBrane(
+  MidoeAssignment(x, Finear(42))
+)
 
 FINAL BRANE STATUS:
-MidoeBrane{MidoeAssignment(x,42);}
+MidoeBrane(
+  MidoeAssignment(x, Finear(42))
+)

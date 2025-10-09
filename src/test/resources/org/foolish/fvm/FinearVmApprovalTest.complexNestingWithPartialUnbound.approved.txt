@@ -15,20 +15,66 @@ PARSED AST:
 {
   x = 5;
   {
-  {
-  y = if x then if notHere then 1 else 2 else 3;
-};
-  z = (y + x);
-};
+    {
+      y = if x then if notHere then 1 else 2 else 3;
+    };
+    z = (y + x);
+  };
   w = (z - unknown);
 }
 
+FINAL BRANE:
+{
+  x = 5;
+  {
+    {
+      y = 2;
+    };
+    z = UNKNOWN;
+  };
+  w = UNKNOWN;
+}
 
 INITIAL MIDOE:
-MidoeProgram(MidoeBrane{MidoeAssignment(x,5);MidoeBrane{MidoeBrane{MidoeAssignment(y,MidoeIf(x@5), MidoeIf(notHere@UNKNOWN), 1, 2), 3));};MidoeAssignment(z,MidoeBinary(y@UNKNOWN)+x@5)));};MidoeAssignment(w,MidoeBinary(z@UNKNOWN)-unknown@UNKNOWN)));})
+MidoeProgram(MidoeBrane(
+  MidoeAssignment(x, Finear(5)),
+  MidoeBrane(
+    MidoeBrane(
+      MidoeAssignment(y, MidoeIf(
+        MidoeId(x),
+        MidoeIf(
+          MidoeId(notHere),
+          Finear(1),
+          Finear(2)
+        ),
+        Finear(3)
+      ))
+    ),
+    MidoeAssignment(z, MidoeBinary(MidoeId(y), +, MidoeId(x)))
+  ),
+  MidoeAssignment(w, MidoeBinary(MidoeId(z), -, MidoeId(unknown)))
+))
 
 EVALUATION RESULT:
-MidoeBrane{MidoeAssignment(x,5);MidoeBrane{MidoeBrane{MidoeAssignment(y,2);};MidoeAssignment(z,UNKNOWN);};MidoeAssignment(w,UNKNOWN);}
+MidoeBrane(
+  MidoeAssignment(x, Finear(5)),
+  MidoeBrane(
+    MidoeBrane(
+      MidoeAssignment(y, Finear(2))
+    ),
+    MidoeAssignment(z, Finear(UNKNOWN))
+  ),
+  MidoeAssignment(w, Finear(UNKNOWN))
+)
 
 FINAL BRANE STATUS:
-MidoeBrane{MidoeAssignment(x,5);MidoeBrane{MidoeBrane{MidoeAssignment(y,2);};MidoeAssignment(z,UNKNOWN);};MidoeAssignment(w,UNKNOWN);}
+MidoeBrane(
+  MidoeAssignment(x, Finear(5)),
+  MidoeBrane(
+    MidoeBrane(
+      MidoeAssignment(y, Finear(2))
+    ),
+    MidoeAssignment(z, Finear(UNKNOWN))
+  ),
+  MidoeAssignment(w, Finear(UNKNOWN))
+)

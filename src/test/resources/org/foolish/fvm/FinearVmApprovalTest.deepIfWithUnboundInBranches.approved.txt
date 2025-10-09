@@ -9,12 +9,34 @@ PARSED AST:
   result = if 1 then if 0 then notFound else if 1 then stillMissing else 10 else 5;
 }
 
+FINAL BRANE:
+{
+  result = 10;
+}
 
 INITIAL MIDOE:
-MidoeProgram(MidoeBrane{MidoeAssignment(result,MidoeIf(1, MidoeIf(0, notFoundMidoeId(), MidoeIf(1, stillMissing@UNKNOWN), 10)), 5));})
+MidoeProgram(MidoeBrane(
+  MidoeAssignment(result, MidoeIf(
+    Finear(1),
+    MidoeIf(
+      Finear(0),
+      MidoeId(notFound),
+      MidoeIf(
+        Finear(1),
+        MidoeId(stillMissing),
+        Finear(10)
+      )
+    ),
+    Finear(5)
+  ))
+))
 
 EVALUATION RESULT:
-MidoeBrane{MidoeAssignment(result,10);}
+MidoeBrane(
+  MidoeAssignment(result, Finear(10))
+)
 
 FINAL BRANE STATUS:
-MidoeBrane{MidoeAssignment(result,10);}
+MidoeBrane(
+  MidoeAssignment(result, Finear(10))
+)

@@ -11,12 +11,38 @@ PARSED AST:
   b = if a then if missing then 1 else if (a - 5) then undefined else 3 else 4;
 }
 
+FINAL BRANE:
+{
+  a = 10;
+  b = 3;
+}
 
 INITIAL MIDOE:
-MidoeProgram(MidoeBrane{MidoeAssignment(a,10);MidoeAssignment(b,MidoeIf(a@10), MidoeIf(missing@UNKNOWN), 1, MidoeIf(MidoeBinary(a@10)-5), undefined@UNKNOWN), 3)), 4));})
+MidoeProgram(MidoeBrane(
+  MidoeAssignment(a, Finear(10)),
+  MidoeAssignment(b, MidoeIf(
+    MidoeId(a),
+    MidoeIf(
+      MidoeId(missing),
+      Finear(1),
+      MidoeIf(
+        MidoeBinary(MidoeId(a), -, Finear(5)),
+        MidoeId(undefined),
+        Finear(3)
+      )
+    ),
+    Finear(4)
+  ))
+))
 
 EVALUATION RESULT:
-MidoeBrane{MidoeAssignment(a,10);MidoeAssignment(b,3);}
+MidoeBrane(
+  MidoeAssignment(a, Finear(10)),
+  MidoeAssignment(b, Finear(3))
+)
 
 FINAL BRANE STATUS:
-MidoeBrane{MidoeAssignment(a,10);MidoeAssignment(b,3);}
+MidoeBrane(
+  MidoeAssignment(a, Finear(10)),
+  MidoeAssignment(b, Finear(3))
+)

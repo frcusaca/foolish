@@ -4,6 +4,7 @@ import org.foolish.grammar.FoolishLexer;
 import org.foolish.grammar.FoolishParser;
 import org.foolish.ast.AST;
 import org.foolish.ast.ASTBuilder;
+import org.foolish.ast.ASTFormatter;
 import org.foolish.ResourcesApprovalNamer;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.ParseTree;
@@ -14,6 +15,11 @@ import org.junit.jupiter.api.Test;
 public class FinearVmApprovalTest {
 
     private void verifyApprovalOf(String code) {
+        // Create formatters once
+        TargoeFormatter humanReadableFormatter = FormatterFactory.humanReadable();
+        TargoeFormatter verboseFormatter = FormatterFactory.verbose();
+        ASTFormatter astFormatter = new ASTFormatter();
+        
         // Parse the code
         CharStream input = CharStreams.fromString(code);
         FoolishLexer lexer = new FoolishLexer(input);
@@ -33,24 +39,27 @@ public class FinearVmApprovalTest {
         FinearVmSimple vm = new FinearVmSimple();
         Midoe result = vm.evaluate(midoe);
 
+        // Helper to get final brane
+        Midoe finalBrane = result instanceof ProgramMidoe pm ? pm.brane() : result;
+
         // Format output
         StringBuilder output = new StringBuilder();
         output.append("INPUT:\n");
         output.append(code).append("\n\n");
         output.append("PARSED AST:\n");
-        output.append(ast.toString()).append("\n\n");
+        output.append(astFormatter.format(ast)).append("\n\n");
+        
+        // Human-readable format
+        output.append("FINAL BRANE:\n");
+        output.append(humanReadableFormatter.format(finalBrane)).append("\n\n");
+        
+        // Verbose format
         output.append("INITIAL MIDOE:\n");
-        output.append(midoe.toString()).append("\n\n");
+        output.append(verboseFormatter.format(midoe)).append("\n\n");
         output.append("EVALUATION RESULT:\n");
-        output.append(result.toString()).append("\n\n");
+        output.append(verboseFormatter.format(result)).append("\n\n");
         output.append("FINAL BRANE STATUS:\n");
-        if (result instanceof ProgramMidoe pm) {
-            output.append(pm.brane().toString()).append("\n");
-        } else if (result instanceof BraneMidoe bm) {
-            output.append(bm.toString()).append("\n");
-        } else {
-            output.append(result.toString()).append("\n");
-        }
+        output.append(verboseFormatter.format(finalBrane)).append("\n");
 
         // Verify with approval test
         Approvals.verify(new ApprovalTextWriter(output.toString(), "txt"), new ResourcesApprovalNamer());

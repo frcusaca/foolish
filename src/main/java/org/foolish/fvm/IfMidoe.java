@@ -26,12 +26,6 @@ class IfMidoe extends Midoe {
     public Midoe elseExpr() { return elseExpr; }
     public List<IfMidoe> elseIfs() { return elseIfs; }
     public String toString() {
-        StringBuilder sb = new StringBuilder("MidoeIf(" + condition + ", " + thenExpr);
-        for (IfMidoe elif : elseIfs)
-            sb.append(", ").append(elif);
-        if (elseExpr != null)
-            sb.append(", ").append(elseExpr);
-        sb.append(")");
-        return sb.toString();
+        return FormatterFactory.verbose().format(this);
     }
 }

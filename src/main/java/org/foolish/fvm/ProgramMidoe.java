@@ -16,6 +16,6 @@ class ProgramMidoe extends Midoe {
         return brane;
     }
     public String toString() {
-        return "MidoeProgram(" + brane + ")";
+        return FormatterFactory.verbose().format(this);
     }
 }
