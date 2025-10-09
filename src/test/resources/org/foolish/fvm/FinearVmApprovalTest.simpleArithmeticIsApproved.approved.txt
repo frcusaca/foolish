@@ -11,7 +11,7 @@ INITIAL MIDOE:
 MidoeProgram(MidoeBrane{MidoeAssignment(x,MidoeBinary(1+2));})
 
 EVALUATION RESULT:
-MidoeBrane{MidoeAssignment(x,MidoeBinary(1+2));}
+MidoeBrane{MidoeAssignment(x,3);}
 
 FINAL BRANE STATUS:
-MidoeBrane{MidoeAssignment(x,MidoeBinary(1+2));}
+MidoeBrane{MidoeAssignment(x,3);}

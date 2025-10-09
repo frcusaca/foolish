@@ -11,7 +11,7 @@ INITIAL MIDOE:
 MidoeProgram(MidoeBrane{MidoeAssignment(x,MidoeIf(1, 42, 24));})
 
 EVALUATION RESULT:
-MidoeBrane{MidoeAssignment(x,MidoeIf(1, 42, 24));}
+MidoeBrane{MidoeAssignment(x,42);}
 
 FINAL BRANE STATUS:
-MidoeBrane{MidoeAssignment(x,MidoeIf(1, 42, 24));}
+MidoeBrane{MidoeAssignment(x,42);}

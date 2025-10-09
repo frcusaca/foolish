@@ -12,7 +12,7 @@ INITIAL MIDOE:
 MidoeProgram(MidoeBrane{MidoeAssignment(x,MidoeBinary(1+MidoeBinary(2*3)));MidoeAssignment(y,MidoeBinary(x@7)-4));})
 
 EVALUATION RESULT:
-MidoeBrane{MidoeAssignment(x,MidoeBinary(1+MidoeBinary(2*3)));MidoeAssignment(y,MidoeBinary(x@7)-4));}
+MidoeBrane{MidoeAssignment(x,7);MidoeAssignment(y,3);}
 
 FINAL BRANE STATUS:
-MidoeBrane{MidoeAssignment(x,MidoeBinary(1+MidoeBinary(2*3)));MidoeAssignment(y,MidoeBinary(x@7)-4));}
+MidoeBrane{MidoeAssignment(x,7);MidoeAssignment(y,3);}

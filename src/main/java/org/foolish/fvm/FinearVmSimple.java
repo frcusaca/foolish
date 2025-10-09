@@ -2,6 +2,9 @@ package org.foolish.fvm;
 
 import org.foolish.ast.AST;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import static java.lang.Boolean.FALSE;
 import static java.lang.Boolean.TRUE;
 
@@ -22,23 +25,26 @@ public final class FinearVmSimple implements FinearVmAbstract {
         if (midoe instanceof ProgramMidoe pm) {
             result = evaluate(pm.brane(), env);
         } else if (midoe instanceof BraneMidoe bm) {
-            int uks =0;
+            int uks = 0;
             int b_l_n = -1;
+            List<Midoe> evaluatedStmts = new ArrayList<>();
             for (Midoe stmt : bm.statements()) {
                 ++b_l_n;
+                Midoe evaluatedStmt;
                 if (stmt instanceof BraneMidoe bstmt) {
-                    result = evaluate(bstmt, new Env(env, b_l_n));
+                    evaluatedStmt = evaluate(bstmt, new Env(env, b_l_n));
                 } else {
-                    result = evaluate(stmt, env);
+                    evaluatedStmt = evaluate(stmt, env);
                 }
-                if (result == Finear.UNKNOWN) {
+                evaluatedStmts.add(evaluatedStmt);
+                if (evaluatedStmt == Finear.UNKNOWN) {
                     ++uks;
                 }
             }
-            if(uks>0){
-                result=Finear.UNKNOWN;
-            }else{
-                result = midoe;
+            if(uks > 0){
+                result = Finear.UNKNOWN;
+            } else {
+                result = new BraneMidoe(null, evaluatedStmts);
             }
         } else if (midoe instanceof AssignmentMidoe am) {
             Targoe value = evaluate(am.expr(), env);
