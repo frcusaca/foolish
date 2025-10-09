@@ -60,6 +60,7 @@ public final class FinearVmSimple implements FinearVmAbstract {
                     case "/" -> lv / rv;
                     default -> throw new IllegalArgumentException("Unknown op: " + bm.op());
                 };
+                result = Finear.of(val);
             }
         } else if (midoe instanceof UnaryMidoe um) {
             Targoe res = evaluate(um.expr(), env);
@@ -123,7 +124,7 @@ public final class FinearVmSimple implements FinearVmAbstract {
                 result = Finear.UNKNOWN;
             }
         }
-        if (result != midoe.progress_heap.getLast())
+        if (midoe.progress_heap().isEmpty() || result != midoe.progress_heap().getLast())
             midoe.progress_heap().add(result);
         return result;
     }

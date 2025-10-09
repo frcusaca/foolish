@@ -12,9 +12,11 @@ class BraneMidoe extends Midoe {
 
     BraneMidoe(Insoe base, List<Midoe> statements) {
         super(base);
-        AST ast = base.ast();
-        if (!(ast instanceof AST.Brane) && !(ast instanceof AST.Branes)) {
-            throw new IllegalArgumentException("BraneMidoe requires AST.Brane or AST.Branes");
+        if (base != null) {
+            AST ast = base.ast();
+            if (!(ast instanceof AST.Brane) && !(ast instanceof AST.Branes)) {
+                throw new IllegalArgumentException("BraneMidoe requires AST.Brane or AST.Branes");
+            }
         }
         this.statements = List.copyOf(statements);
     }

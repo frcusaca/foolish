@@ -12,7 +12,9 @@ class IfMidoe extends Midoe {
 
     IfMidoe(Insoe base, Midoe condition, Midoe thenExpr, Midoe elseExpr, List<IfMidoe> elseIfs) {
         super(base);
-        base.as(AST.IfExpr.class);
+        if (base != null) {
+            base.as(AST.IfExpr.class);
+        }
         this.condition = condition;
         this.thenExpr = thenExpr;
         this.elseExpr = elseExpr;

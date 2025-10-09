@@ -23,7 +23,7 @@ public class Midoe implements Targoe {
     }
 
     public Targoe base() {
-        return this.progress_heap.getFirst();
+        return this.progress_heap.isEmpty() ? null : this.progress_heap.getFirst();
     }
 
     /** @return {@code true} if the top of the heap is not a {@link Finear}. */
