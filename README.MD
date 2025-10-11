@@ -138,6 +138,14 @@ data structures that mirror how we naturally think about complex systems. Just
 as biological cells contain organelles, which contain molecules, which contain 
 atoms, Foolish branes can contain other branes in a natural, intuitive manner.
 
+### Sizes
+In the physical world, containment membranes and units of organization tend to
+have observably limited size. Cells can only be so big before the member stops
+working. Subnuclear objects has to be so close or otherwise the forces that keep
+them together stops working. Therefore the Foolish brane is also limited in size.
+The Foolish brane certainly should have finite size, and depending on the computer
+it may have a specified limit in number of entries.
+
 ## Language Reference
 
 ### Comments
@@ -814,18 +822,19 @@ This computer proceeds simply from beginning of the brane to the end of the bran
 evaluating and creating new values to be stored in the brane. In order to process
 expressions, the brane actually has two more sources of informtion: Ancestral and
 Immediate. The Immediate Brane (IB) is the current contex that we have accumulated
-inside the unicelluar brane computer so far, including name of the current expression.
+inside the unicelluar brane computer so far, not including name of the current expression.
 The Ancestral Brane (AB) is the search context that contains the name of the expression
 in an AST that defined the current brane, that expression's AB and IB.
 
 In some cases, such as the recursive call to `↑`, the search finds a line of code that
-has incomplete value. Note by incomplete value, we mean not the unkown value `???`, but a
-value that the present UBC does not fully know the value of. In the case of this incomplete
-value, it would appear that the simplest machine is unable to continue evaluating the value
-of the Foolish expression. In fact, we don't even know all of the names or values this brane
-will capture by its end. To continue computation, the UBC must stash the current execution
-context, and evaluate that expression using the context "IB AB ↑". That says the UBC shall
-evaluate the AST of the expression that created the present brane, resolving any searches
+has incomplete value. Note by incomplete value, in the UBC, we mean not the unkown 
+value `???`, but a value that the present UBC does not fully know the value of (yet). In 
+the case of this incomplete value, it would appear that the simplest machine is unable 
+to continue evaluating the value of the Foolish expression. In fact, we don't even 
+know all of the names or values this brane will capture by its end. To continue 
+computation, the UBC must stash the current execution context, and evaluate that 
+expression using the context "IB AB ↑". That says the UBC shall evaluate the AST of the 
+expression that created the present brane, resolving any searches
 first using the current AB, then using current IB.
 ```
     {...{...{...
@@ -851,6 +860,8 @@ In that example, in recursive call to compute r is evaluated using `[IB, AB] f`.
 where the expression named `f` is available by Foolish source code only. IB and AB
 would always be available at the recursive call by above definitions.
 
+#### The UBC pass
+The UBC encounters text 
 ### The Multiceulluar Brane Computer
 [ ] TBD
 ### The Next Step in the Evolution Chain
@@ -879,6 +890,9 @@ would always be available at the recursive call by above definitions.
  * Translation versus Transformation.
  * Specify the "Thought Block": how to stop evaluation.
  * define more precisely the verb `to fool`.
+ * Homorphic Encryption and equivalent "thought block" builtin.
+ * Asynchornized execution.
+ * Realtime computations.
 
 ## Development Notes
   - Concatenation is adjacency of brane-valued expressions (RPN), left-to-right;
