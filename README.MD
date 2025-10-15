@@ -138,6 +138,8 @@ data structures that mirror how we naturally think about complex systems. Just
 as biological cells contain organelles, which contain molecules, which contain 
 atoms, Foolish branes can contain other branes in a natural, intuitive manner.
 
+The brane is a one dimentional object. Its entries line up one after another.
+
 ## Language Reference
 
 ### Comments
@@ -856,6 +858,26 @@ would always be available at the recursive call by above definitions.
 ### The Next Step in the Evolution Chain
 [ ] TBD
 
+### Typing
+Types have become very central to humanity's aporoach to organize and understand
+programs. Foolish therefore will also propose to use types to understand Foolish.
+Foolish would like to use the name *characterization* to refer to representations
+and functionalities that are traditionally within the realm of type systems. Foolish
+values, branes, expressions and names are characterizables. Foolish
+characterizations are Foolish programs that establishes whether a characterizable has
+or does not have said characterization. These are the most inclusive and the most exclusive
+characterization available in Foolish.
+
+```foolish
+   {
+      all=[*]{
+         true;
+      };
+      none=[*]{
+         false;
+      }
+   }
+```Note that this this is nominal in that the characterizers have names.
 
 ### TODO Items
  Other features that we want to expand documentation on in the future:
