@@ -40,7 +40,7 @@ computers. We are building toward a future where programming is:
   understanding and debugging capabilities
 - **Automatically Enhanced**: Built-in hooks support automatic programming,
   formal proofs, verification, and computing with uncertainty
-- **Maximally Human**: Accessible, ergonomical, and adaptable design that is
+- **Maximally Human**: Accessible, ergonomic, and adaptable design that is
   precise and high-functioning for human use
 - **Bidirectionally Communicative**: The system maximizes both human-to-computer
   and computer-to-human communication efficiency
@@ -130,6 +130,9 @@ curly braces to enclose values `{}`:
 {}                    !! Empty brane
 {{}}                  !! Brane containing an empty brane  
 {{};{{}};{{{}}};}     !! Complex nested structure with multiple branes
+{🌌={};}              !! Supports customizable alphabet
+{愚=↑;}
+{👶=👍;}
 ```
 
 This ability to create containment will ultimately help us organize ideas. 
@@ -149,8 +152,11 @@ it may have a specified limit in number of entries.
 Inside the brane, it is a one dimentional object. Its entries line up one after another.
 The true dimension of entries are computational dependencies. So depending on the code
 in side, the actual dependency axis could have smaller dimensions best visualized
-as a dependency tree. The deendency tree and its subdimensions can be linearized
-as the sequence of code as they appear inside the brane in a single dimension.
+as a dependency DAG. The dependency DAG and its subdimensions branch out and progress
+forward in their own time dimensions. Sometimes more than one timeline merge together
+by being involved in an expression that refers to all of them. Overall, the brane's
+facturing timelines can be linearized, merging into the sequence of code as they originally
+appear inside the foolish code, into a single time dimension.
 
 ## Language Reference
 
@@ -469,6 +475,10 @@ found.
 In all cases of single regular expression matches, match failure is a 
 compilation error if possible and a runtime error if it occurs.
 
+Accessing `b$x` is also referred to as accessing the `x` coordinate of `b`. See
+[Relational Coordinates](#relational-coordinates) section for expanded discussions.
+
+
 #### Bulk Name Search
 In the case regular expression is used for searching for multiple brane content,
 we use the operators `//` and `??` to ask for a brane that contains all 
@@ -586,6 +596,11 @@ So we could use stack based syntax if we so desire:
     f$; !! 13
 }
 ```
+
+For now we forbid the use of unanchored `#0` searching to beginning of the current line.
+The only permitted recursive call is the `↑` operator. An expression that contains 
+recursion must be an expression with a brane that refer's to the line in the parent brane
+where it is coordinated.
 
 [ ] TODO: Document searching upward for variables scoped in parent branes.
 
@@ -820,15 +835,15 @@ an AST. The units on which the computer works on are the expressions. The
 largest expression being a brane, its processing take up much of the Foolish
 Ecosystem.
 
-### The Unicelluar Brane Computer (UBC)
+### The Unicellular Brane Computer (UBC)
 Like our human minds, most of our computational resources have limited abilities.
-A unicelluar Brane computer (UBC) is one that has just enough capacity to hold the AST
+A unicellular Brane computer (UBC) is one that has just enough capacity to hold the AST
 of a brane, and the ability to interpret and understand a single expression at a time.
 This computer proceeds simply from beginning of the brane to the end of the brane
 evaluating and creating new values to be stored in the brane. In order to process
-expressions, the brane actually has two more sources of informtion: Ancestral and
-Immediate. The Immediate Brane (IB) is the current contex that we have accumulated
-inside the unicelluar brane computer so far, not including name of the current expression.
+expressions, the brane actually has two more sources of information: Ancestral and
+Immediate. The Immediate Brane (IB) is the current context that we have accumulated
+inside the unicellular brane computer so far, not including name of the current expression.
 The Ancestral Brane (AB) is the search context that contains the name of the expression
 in an AST that defined the current brane, that expression's AB and IB.
 
@@ -866,8 +881,52 @@ In that example, in recursive call to compute r is evaluated using `[IB, AB] f`.
 where the expression named `f` is available by Foolish source code only. IB and AB
 would always be available at the recursive call by above definitions.
 
+To facilitate the multiple steps of UBC evaluation, we define an internal representation
+known as the Foolish Internal Representation (FIR). FIR can be several things:
+1. A Foolish AST. This is an uncoordinated and unevaluated expression in its original
+   Foolish.
+2. A finalized value--integer or brane.
+3. A comment.
+4. An underevaluated FIR represents code that was expressed in Foolish, but it 
+   has not been fully evaluated in the present UBC context. This FIR contains the AST of
+   the expression, and a reference to the AB and IB that was used to attempt
+   evaluation. But there are three possible reasons why the FIR is underevaluated:
+   1. The AST is unprocessed.
+   2. The FIR contains references to names that are not yet defined in the present context.
+   2. The expression contains recursive references to names that are not yet fully
+      evaluated in the present context.
 #### The UBC pass
-The UBC encounters text 
+1. If the UBC encounters Foolish text representing a brane, UBC holds it in memory.
+2. UBC parses the Foolish text into an AST--this AST is always a brane
+3. The brane is evaluated.
+
+UBC expression evaluation:
+1. If the expression is a comment AST, store it as comment FIR.
+2. If the line is an arithmetic expression, evaluate math and produce a value FIR.
+3. If brain concatenation is involved, then process the brains based on precedence
+   rules: default brain associating right, then brain concatenation associatively.
+   result is a FIR of a single brane.
+
+UBC search evaluation:
+1. TBD:
+
+UBC brain evaluation:
+1. The context is established: AB's and IB storage spaces are allocated.
+2. Each line of FIR is evaluated using expression evaluation.
+   1. if the FIR is a value, it is maintained as value.
+   2. if the FIR is an expression, it is evaluated, the new FIR retained. (*)
+   2. IB is updated.
+   3. proceed to next line.
+4. When the brane ends, the brane is returned as a value.
+
+(*) When a brane contains underevaluated references, most likely due to either careless
+references in a `{}` brane , `[]` detachment or `↑` recursion. In a single step, the 
+underevaluated FIR is inspected to see if more context is available for evaluation. If 
+an `↑` recursion caused the underevaluation, the FIR is updated to replace `↑` with a
+FIR representing `[IB, AB] a`--the `a` being the AST of `↑`. This concludes the iteration.
+Note, the next time we reach this spot, we will have a brane concatenation that can be
+processed.
+
 ### The Multiceulluar Brane Computer
 [ ] TBD
 ### The Next Step in the Evolution Chain
@@ -892,7 +951,27 @@ characterization available in Foolish.
          false;
       }
    }
-```Note that this this is nominal in that the characterizers have names.
+```
+Note that this this is nominal in that the characterizers have names.
+
+### Relational Coordinates
+Relational coordinates are the *names* of brane members that we believe, as programmers
+are the most important aspects of a brane. When we think of coordinates, we think of
+x and y coordintes in a two dimensional cartesian graph. But in reality, almost all
+relationships that we consider can be modeled as functions of coordinates in some 
+coordinate system. Most often we think of binary attributes, "hot or not", for example,
+sometimes, an object is observable to have higher dimensional coordinates such as SIC
+or ZIP codes. There could also be higher valence relationships, such as `{a,b,c} sorted_by_x`
+or `{a,b,c} is_median_height`, which may return boolean whether `a.x`, `b.x`, `c.x` is
+sorted, or `a` is median of `b` and `c`, respectively.
+
+So, in Foolish, a value that is accessible *after* a brane is fully evaluated is considered 
+a coordinate--the value tells us how to relate to the brane that was just comptued. A well 
+coordinated brane is one that is fully evaluated to values so that computation can procede
+to access the coordinate with no undesirable consequences.
+
+#### Relational Coordinate Matching
+[ ] TODO: {a,b,c,d} product_filter [ae,be,ce,de]{ae.x==be.x; be.y==ce.z; ce.a==de.b}AND
 
 ### TODO Items
  Other features that we want to expand documentation on in the future:
@@ -919,7 +998,10 @@ characterization available in Foolish.
  * Homorphic Encryption and equivalent "thought block" builtin.
  * Asynchornized execution.
  * Realtime computations.
-
+ * Builtin masking of data from compute.
+ * Library ecosystem for interactivity with python/java/c++/rust/go/etc.Other 
+   popular open systems such as pytorch, R, octave, Apache systems such as ray,
+   spark, arrow, standards such as JSON, XML, HTM, PPML, ONNX, protocol buffers, etc.
 ## Development Notes
   - Concatenation is adjacency of brane-valued expressions (RPN), left-to-right;
     association is immaterial for denotation.
