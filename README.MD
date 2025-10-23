@@ -140,11 +140,17 @@ atoms, Foolish branes can contain other branes in a natural, intuitive manner.
 
 ### Sizes
 In the physical world, containment membranes and units of organization tend to
-have observably limited size. Cells can only be so big before the member stops
-working. Subnuclear objects has to be so close or otherwise the forces that keep
+have observably limited size. Cells can only be so big before the the split or
+death. Atomic and subatomic objects has to be so close or otherwise the forces that keep
 them together stops working. Therefore the Foolish brane is also limited in size.
 The Foolish brane certainly should have finite size, and depending on the computer
 it may have a specified limit in number of entries.
+
+Inside the brane, it is a one dimentional object. Its entries line up one after another.
+The true dimension of entries are computational dependencies. So depending on the code
+in side, the actual dependency axis could have smaller dimensions best visualized
+as a dependency tree. The deendency tree and its subdimensions can be linearized
+as the sequence of code as they appear inside the brane in a single dimension.
 
 ## Language Reference
 
@@ -867,6 +873,26 @@ The UBC encounters text
 ### The Next Step in the Evolution Chain
 [ ] TBD
 
+### Typing
+Types have become very central to humanity's aporoach to organize and understand
+programs. Foolish therefore will also propose to use types to understand Foolish.
+Foolish would like to use the name *characterization* to refer to representations
+and functionalities that are traditionally within the realm of type systems. Foolish
+values, branes, expressions and names are characterizables. Foolish
+characterizations are Foolish programs that establishes whether a characterizable has
+or does not have said characterization. These are the most inclusive and the most exclusive
+characterization available in Foolish.
+
+```foolish
+   {
+      all=[*]{
+         true;
+      };
+      none=[*]{
+         false;
+      }
+   }
+```Note that this this is nominal in that the characterizers have names.
 
 ### TODO Items
  Other features that we want to expand documentation on in the future:
