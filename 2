@@ -842,19 +842,22 @@ computation, the UBC must stash the current execution context, and evaluate that
 expression using the context "IB AB ↑". That says the UBC shall evaluate the AST of the 
 expression that created the present brane, resolving any searches
 first using the current AB, then using current IB.
-```foolish
+```
     {...{...{...
 
         !! At this point, we search up for name resolutions the AB below
         !! refers to this point and back and up
 	f = {
             !! Start of IB
-            zero = ←; !! program may use this method to require a positional aregument.
+            zero = ←;                !! program may use this method to require a positional aregument.
             one = 1;
             two = 2;
             !! End of IB
             if (continue) then
                r=[three=zero+one+2;]↑ 
+               !!! This is evaluated because ↑ does not have value yet.
+		  r = [three=zero+one+2;] IB AB !! followed by the code in the dots of `f=...`
+               !!!
             else
                r=5
             !! Continue to code that we didn't know when we computed r
@@ -863,21 +866,9 @@ first using the current AB, then using current IB.
     ...}...}..}
 ```
 
-In that example, in recursive call to compute r is processed by the UCB to the
-equivalent of:
-```foolish
-   {
-      ...
-      r = [three=zero+one+2;] IB AB !!! the code for f= !!!
-      ...
-   }
-```
-Because branes are finite, the code on the right side of `f=` is surely parsed
-to AST and stored in memory by the time UCB is requied to evaluate this line of
-Foolish. Therefore in constant time, the uncoordinated ↑ is translated into an
-AST expression. This AST expression may further contain ↑ inside or at its front.
-But that is for a later iteration of UCB to evaluate. Each step taken by the UCB
-should require finite time.
+In that example, in recursive call to compute r is evaluated using `[IB, AB] f`.
+where the expression named `f` is available by Foolish source code only. IB and AB
+would always be available at the recursive call by above definitions.
 
 #### The UBC pass
 The UBC encounters text 
