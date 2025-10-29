@@ -181,7 +181,7 @@ the line comment is a double exclamation mark `!!`.
 
 #### Block Comments
 Block comments are enclosed by a pair of consecutive triple exclamation marks:
-```
+```foolish
 {
     !!! Move along nothing to see here.
 
@@ -253,7 +253,7 @@ language. Names should include a small non-breaking white space character,
 currently `_`. Ideally it should be a non-breaking thin space \&thinsp 
 "&thinsp;". But nothing is able to render these spaces right now, so we also 
 include `_` for spacing out complicated nouns.
-```
+```foolish
 {
     
     a_name=0;
@@ -267,7 +267,7 @@ include `_` for spacing out complicated nouns.
 
 Foolish expressions and values inherently do not have names. They are only 
 marked with names when the naming operator `=` is used. So the following brane:
-```
+```foolish
 {
     1;
     2;
@@ -275,7 +275,7 @@ marked with names when the naming operator `=` is used. So the following brane:
 }
 ```
 is a brane with three unnamed values. The following brane:
-```
+```foolish
 {
     a=1;
     b=2;
@@ -288,7 +288,7 @@ is a brane with three named values.
 Names are scoped to "before the current expression". So the current naming 
 operation is not yet in scope. This is similar to how many programming 
 languages work. So the following brane:
-```
+```foolish
 {
     a=1;
     a=a+1; !! a=2
@@ -301,17 +301,17 @@ more thought is put into the line of code.
 ### The Unknown
 The unknown is of paramount importance to us, therefore we dedicate a symbol 
 to express Unknown in Foolish `???`. Here we declare we do not know the answer:
-```
+```foolish
 {
     answer=???;
 }
 ```
 In fact every unnamed expression is an assignment to an unknown name:
-```
+```foolish
 {1;2;3;}
 ```
 is shorthand to
-```
+```foolish
 {
     ???=1;
     ???=2;
@@ -322,7 +322,7 @@ is shorthand to
 ### Renaming
 Foolish permits reusing names. If one were to think of the semantics of static 
 single assignment, this would be how Foolish interprets a reused name.
-```
+```foolish
 {
     a=1;
     b=a;
@@ -331,7 +331,7 @@ single assignment, this would be how Foolish interprets a reused name.
 }
 ```
 is equivalent to
-```
+```foolish
 {
       a=1;
       b=1;
@@ -349,7 +349,7 @@ historical accuracy.
 Branes combine freely. Listing two branes either in code or by named reference 
 means it is desired that the two branes be concatenated. The following code 
 snippets have the same meaning in Foolish:
-```
+```foolish
 {
     a=1;
     b=2;
@@ -357,7 +357,7 @@ snippets have the same meaning in Foolish:
 ```
 
 and
-```
+```foolish
 {
     a=1;
 }
@@ -377,7 +377,7 @@ products of these same organizational principles.
 Concatenation operation is associative. Here is an example of branes acting 
 like functions, naturally brane concatenation invokes functions in RPN.
 
-```
+```foolish
 {
     !! ...
     f={
@@ -392,7 +392,7 @@ like functions, naturally brane concatenation invokes functions in RPN.
 
 One will note that it didn't matter how evaluation occurred—either `(q p) f` 
 or `q (p f)` yields the same `result`:
-```
+```foolish
 {
     !! ...
     result={
@@ -409,7 +409,7 @@ Object-Oriented programming inheritance. By default, if we extend a brane with
 another by post-concatenation, method and member references follow "static 
 invocation" rules.
 
-```
+```foolish
 {
     class_a = { a=1; b=2}
     class_b = class_a {c=3}
@@ -420,7 +420,7 @@ invocation" rules.
 
 The only way to create the effect of dynamic invocation is to create interfaces
 and specify them at programming time:
-```
+```foolish
 {
     animal         = {kindom='Animalia';}
     mouthed_animal = animal {greet='hello';};
@@ -484,7 +484,7 @@ In the case regular expression is used for searching for multiple brane content,
 we use the operators `//` and `??` to ask for a brane that contains all 
 matchine entries of the search-subject brane.
    * `b//tmp_.*` the result is a brane that refers to the `b`
-```
+```foolish
 {
     doc={
         tmp_a = 2*2;
@@ -497,7 +497,7 @@ matchine entries of the search-subject brane.
 }
 ```
 evaluates to
-```
+```foolish
 {
     doc={
         tmp_a = 2*2;
@@ -546,7 +546,7 @@ capabilities for finding computational results.
 Forward value search is triggered by the `:` operator. It is a forward search 
 operator on a brane that searches for a value that can be considered equivalent
 to the search parameter. `::` is the bulk forward value search operator.
-```
+```foolish
 {
     doc={
         tmp_a = 2*2;
@@ -583,7 +583,7 @@ variable names. We now define a few operators to move that search cursor.
 | `→`,`#+1`  | Moves cursor to the end of this line, effectively at the start of the next line |
 
 So we could use stack based syntax if we so desire:
-```
+```foolish
 {
     f = {result=↑#-1 + ↑#-2}; !! See below detachment for clarification
     0;
@@ -611,7 +611,7 @@ it's parents as if the brane ended before the start of the current line. So all
 the searches can actually be invoked without following a brane. In that case it
 would mean to search present brane with the cursor just before the beginning of
 the current line.
-```
+```foolish
 {
     1;
     2;
@@ -635,7 +635,7 @@ Recall the brane concatenated function invocation above, we have changed one
 line, which is that during the assignment of result, we have added a brane 
 search expression(`$`) right after the naming operator(`=`). This puts the 
 actual number into the result instead of the brane that computed the number.
-```
+```foolish
 {
     !! ...
     f={
@@ -662,7 +662,7 @@ Humans have long sought detachment from the material world. Even though Foolish
 is inherently detached and completely abstract, we find that we need to perform
 further detachment.
 #### Named Detachment
-```
+```foolish
 [
     a = ???;
     b = ???;
@@ -672,7 +672,7 @@ further detachment.
 This brane detaches the names a and b. So to declare a function with formal 
 parameter names that might already be in use, one could perform detachment 
 during a naming expression.
-```
+```foolish
 {  
     fn=[
         a=???;
@@ -687,30 +687,44 @@ right side.
 
 The original example of function definition probably needed this detachment for 
 it to be a useful function:
-```
+```foolish
 {
     f = [↑=???]{result=↑#-1 + ↑#-2};
 }
 ```
 Ideally, an upward search like this will block out ALL references to variables 
 from the parent brane and above. So that in this function
-```
+```foolish
 {
     f = [↑=???]{result=↑#-1 + ↑#-2 - universal_constant};
 }
 ```
 the `universal_constant` will be specified by caller as a parameter.
 
+An example of its use:
+```foolish
+{
+   x=1;
+   y=2;
+   z=3;
+   f=[x;z]{ result = x - y; }
+   result = [y,x] f
+}
+```
+The detachment brane dissociates the ensuing brane on its right side from the
+context decontexualizing x and y. x and y become unbound symbols. From timeline
+perspctive, the detachment snips off dependency DAG edges.
+
 #### Complete Detachment
 We now introduce complete detachment using name search to completely detach 
 from a large number or all of the names and values.
-```
+```foolish
 {
     clean_heap=[tmp_*=???]old_heap_brane
 }
 ```
 Or even complete detachment like this:
-```
+```foolish
 {
     pure_func=[*=???]{...}
 }
@@ -721,7 +735,7 @@ In order to mimic default parameters in many modern programming languages, we
 shall offer a way to specify detachment that sets not only the expectation for 
 what needs to be provided but also what happens when that expectation is not 
 fulfilled.
-```
+```foolish
 ...
 f=[r=???; pi=3.14]{
     pir = pi * r
@@ -747,7 +761,7 @@ is always right-associative—it is applied to the brane on the right side befor
 other brane operations.
 ### Control Flow
 Branching is accomplished using search.
-```
+```foolish
 {
     ifblock = {
         if x==1 then         !! `if k then` fools to the expression `f'condition=k;`
@@ -766,7 +780,7 @@ Branching is accomplished using search.
 ### Recursion
 Since the brane search starts with cursor at beginning of the current line, 
 finding the current brane is easy with `↑`. So recursion is easy to express:
-```
+```foolish
 {
     factorial = [n=???]{
         result = if n <= 1 
@@ -807,7 +821,7 @@ single line of code?
 However, mutual recursion is not directly possible since we cannot search 
 downward past the current line. The only way to create corecursion is to use an
 unbound name and pass it into the context:
-```
+```foolish
 {
     even = [n=???; odd=???]{
         result = if n == 0 
@@ -900,30 +914,44 @@ known as the Foolish Internal Representation (FIR). FIR can be several things:
    Foolish.
 2. A finalized value--integer or brane.
 3. A comment.
+4. An abstract brane in that it is deliberately or inadvertently undercontextualized--
+     Some identifier referenced within has no available binding to value or brane member.
+     An optimization we may perform is to coordinate the values of an abstract brane where
+     possible. That brane with all possible values coordinated is a fully evaluted
+     abstract brane. Normally, a recursive brane conditions on some computational result
+     that depends on a parameter--a coordinate identifier that is named but unattached
+     at the definition of the brane. In these cases, the abstract brane can be fully
+     evaluated because the recursion depends on a parameter. But it is possible to 
+     construct an abstract brane that calls itself irrespective of future parameters.
+     such a brane will be finite or infinite indepth depending on its construction.
+     the abstract brane may therefore be permenantly underevaluated due to its construction.
+     An abstract brane is fully evaluated if the underevaluated members are due to detached
+     identifier names.
 4. An underevaluated FIR represents code that was expressed in Foolish, but it 
    has not been fully evaluated in the present UBC context. This FIR contains the AST of
    the expression, and a reference to the AB and IB that was used to attempt
    evaluation. But there are three possible reasons why the FIR is underevaluated:
    1. The AST is unprocessed.
-   2. The FIR contains references to names that are not yet defined in the present context.
-   2. The expression contains recursive references to names that are not yet fully
-      evaluated in the present context.
+   2. The expression has an unevaluated AST that contains recursive references to names
+      that are not yet fully evaluated in the present context.
+
 #### The UBC pass
 1. If the UBC encounters Foolish text representing a brane, UBC holds it in memory.
 2. UBC parses the Foolish text into an AST--this AST is always a brane
 3. The brane is evaluated.
 
-UBC expression evaluation:
+UBC expression evaluation step:
 1. If the expression is a comment AST, store it as comment FIR.
-2. If the line is an arithmetic expression, evaluate math and produce a value FIR.
-3. If brain concatenation is involved, then process the brains based on precedence
-   rules: default brain associating right, then brain concatenation associatively.
-   result is a FIR of a single brane.
+2. If arithmetic expression, evaluate math and produce a value FIR.
+3. If brane concatenation is involved, then process the branes based on precedence
+   rules: detachment brane associating right using First-Right-Left-Last(FRLL), then brane
+   concatenation associatively. The result is a FIR of a single brane.
+4. If expression is single brane, then evaluate the brane.
 
 UBC search evaluation:
 1. TBD:
 
-UBC brain evaluation:
+UBC brane evaluation:
 1. The context is established: AB's and IB storage spaces are allocated.
 2. Each line of FIR is evaluated using expression evaluation.
    1. if the FIR is a value, it is maintained as value.
@@ -932,14 +960,23 @@ UBC brain evaluation:
    3. proceed to next line.
 4. When the brane ends, the brane is returned as a value.
 
-(*) When a brane contains underevaluated references, most likely due to either careless
-references in a `{}` brane , `[]` detachment or `↑` recursion. In a single step, the 
-underevaluated FIR is inspected to see if more context is available for evaluation. If 
-an `↑` recursion caused the underevaluation, the FIR is updated to replace `↑` with a
-FIR representing `[IB, AB] a`--the `a` being the AST of `↑`. This concludes the iteration.
-Note, the next time we reach this spot, we will have a brane concatenation that can be
-processed.
+(*) The expression is underevaluated if it makes an underevaluated references.
+When the underevaluation is caused by `↑` recursion this single step materializes one
+step of the recursion. The FIR is updated to replace `↑` with a FIR representing 
+`[IB, AB] a`--the `a` being the AST of `↑`. This concludes the iteration.
+Note, the next time we take a step in UBC pass , this FIR is a brane concatenation that
+can be processed by the brane evaluation. It may or may not produce another recursion
+step depending on the program and context.
 
+The UBC FIR processing has following stages:
+1. AST
+2. FIR with all evaluation results coordinated. (Completion, another UBC does nothing)
+3. FIR with some underevaluated coordinates. (In progress, another UBC step may
+   produce changes)
+
+Because of the step-wise evaluation, the brane tree is evaluated breadth-first. The
+brane having finite size means each UBC step terminates in finite time. As long as
+the UBC FIR is not complete, each step makes progress towards completion.
 ### The Multiceulluar Brane Computer
 [ ] TBD
 ### The Next Step in the Evolution Chain
