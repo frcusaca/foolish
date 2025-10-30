@@ -27,7 +27,7 @@ public class ParserUnitTest {
         assertTrue(ast instanceof AST.Program);
         AST.Branes branes = ((AST.Program) ast).branes();
         assertEquals(1, branes.branes().size());
-        AST.Brane brane = branes.branes().get(0);
+        AST.Brane brane = (AST.Brane) branes.branes().get(0);
         assertEquals("""
                 {
                   1;
@@ -41,7 +41,7 @@ public class ParserUnitTest {
         assertTrue(ast instanceof AST.Program);
         AST.Branes branes = ((AST.Program) ast).branes();
         assertEquals(1, branes.branes().size());
-        AST.Brane brane = branes.branes().get(0);
+        AST.Brane brane = (AST.Brane) branes.branes().get(0);
         assertEquals(1, brane.statements().size());
         assertTrue(brane.statements().get(0) instanceof AST.Assignment);
         assertEquals("""
@@ -58,7 +58,7 @@ public class ParserUnitTest {
         assertTrue(ast instanceof AST.Program);
         AST.Branes branes = ((AST.Program) ast).branes();
         assertEquals(1, branes.branes().size());
-        AST.Brane brane = branes.branes().get(0);
+        AST.Brane brane = (AST.Brane) branes.branes().get(0);
         assertEquals(2, brane.statements().size());
         assertTrue(brane.statements().get(0) instanceof AST.Assignment);
         assertEquals("""
@@ -77,7 +77,7 @@ public class ParserUnitTest {
         assertTrue(ast instanceof AST.Program);
         AST.Branes branes = ((AST.Program) ast).branes();
         assertEquals(1, branes.branes().size());
-        AST.Brane brane = branes.branes().get(0);
+        AST.Brane brane = (AST.Brane) branes.branes().get(0);
         assertEquals(2, brane.statements().size());
         assertTrue(brane.statements().get(0) instanceof AST.Assignment);
         assertEquals("""
@@ -96,7 +96,7 @@ public class ParserUnitTest {
         assertTrue(ast instanceof AST.Program);
         AST.Branes branes = ((AST.Program) ast).branes();
         assertEquals(1, branes.branes().size());
-        AST.Brane brane = branes.branes().get(0);
+        AST.Brane brane = (AST.Brane) branes.branes().get(0);
         assertEquals("""
                 {
                   x = -3;
@@ -113,7 +113,7 @@ public class ParserUnitTest {
         assertTrue(ast instanceof AST.Program);
         AST.Branes branes = ((AST.Program) ast).branes();
         assertEquals(1, branes.branes().size());
-        AST.Brane brane = branes.branes().get(0);
+        AST.Brane brane = (AST.Brane) branes.branes().get(0);
         assertEquals("""
                 {
                   x = -(2 + (3 * 4));
@@ -240,7 +240,7 @@ public class ParserUnitTest {
                 """, ast4.toString());
         AST.Branes ast4Brane = ((AST.Program) ast4).branes();
         assertEquals(1, ast4Brane.branes().size());
-        AST.Brane brane = ast4Brane.branes().get(0);
+        AST.Brane brane = (AST.Brane) ast4Brane.branes().get(0);
         assertEquals(1, brane.statements().size());
         assertTrue(brane.statements().get(0) instanceof AST.IfExpr);
         AST.IfExpr ifExpr = (AST.IfExpr) brane.statements().get(0);
@@ -266,7 +266,7 @@ public class ParserUnitTest {
         assertTrue(ast instanceof AST.Program);
         AST.Branes branes = ((AST.Program) ast).branes();
         assertEquals(1, branes.branes().size());
-        AST.Brane brane = branes.branes().get(0);
+        AST.Brane brane = (AST.Brane) branes.branes().get(0);
         assertEquals(1, brane.statements().size());
         AST.Expr expr = brane.statements().get(0);
         assertTrue(expr instanceof AST.UnaryExpr);
@@ -283,7 +283,7 @@ public class ParserUnitTest {
         assertTrue(ast instanceof AST.Program);
         AST.Branes branes = ((AST.Program) ast).branes();
         assertEquals(1, branes.branes().size());
-        AST.Brane brane = branes.branes().get(0);
+        AST.Brane brane = (AST.Brane) branes.branes().get(0);
         assertEquals(3, brane.statements().size());
 
         // Check t'x = 5

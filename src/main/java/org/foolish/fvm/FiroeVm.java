@@ -44,9 +44,14 @@ public final class FiroeVm {
                     case AST.Branes brs -> {
                         List<Firoe> stmts = new ArrayList<>();
                         int b_l_line = -1;
-                        for (AST.Brane br : brs.branes()) {
-                            for (AST.Expr expr : br.statements()) {
-                                stmts.add(wrap(new Insoe(expr), ++b_l_line));
+                        for (AST.Characterizable br : brs.branes()) {
+                            if (br instanceof AST.Brane brane) {
+                                for (AST.Expr expr : brane.statements()) {
+                                    stmts.add(wrap(new Insoe(expr), ++b_l_line));
+                                }
+                            } else if (br instanceof AST.SearchUP searchUp) {
+                                // SearchUP doesn't have statements, handle as a single expression
+                                stmts.add(wrap(new Insoe(searchUp), ++b_l_line));
                             }
                         }
                         return new BraneFiroe(code_node, stmts);
@@ -74,6 +79,9 @@ public final class FiroeVm {
                         return new IfFiroe(code_node, condition, thenExpr, elseExpr, elseIfs);
                     }
                     case AST.UnknownExpr unknown -> {
+                        return new Firoe(code_node);
+                    }
+                    case AST.SearchUP searchUp -> {
                         return new Firoe(code_node);
                     }
                     case AST.Literal literal -> {

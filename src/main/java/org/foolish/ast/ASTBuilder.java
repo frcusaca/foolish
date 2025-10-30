@@ -18,6 +18,9 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
     @Override
     public AST visitBrane(FoolishParser.BraneContext ctx) {
+        if (ctx.brane_search() != null) {
+            return visit(ctx.brane_search());
+        }
         List<AST.Expr> exprs = new ArrayList<>();
         for (var s : ctx.stmt()) {
             AST st = visit(s);
@@ -29,15 +32,19 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
     @Override
     public AST visitBranes(FoolishParser.BranesContext ctx) {
-        List<AST.Brane> brns = new ArrayList<>();
+        List<AST.Characterizable> brns = new ArrayList<>();
         for (var s : ctx.brane()) {
             AST st = (AST) visit(s);
-            if (st instanceof AST.Brane brn) brns.add(brn);
-            else throw new RuntimeException("Expected brane, got: " + st);
+            if (st instanceof AST.Characterizable brn) brns.add(brn);
+            else throw new RuntimeException("Expected characterizable brane, got: " + st);
         }
         return new AST.Branes(brns);
     }
 
+    @Override
+    public AST visitBrane_search(FoolishParser.Brane_searchContext ctx) {
+        return new AST.SearchUP();
+    }
 
     @Override
     public AST visitStmt(FoolishParser.StmtContext ctx) {

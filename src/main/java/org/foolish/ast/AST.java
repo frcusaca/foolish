@@ -15,7 +15,7 @@ public sealed interface AST permits AST.Program, AST.Expr {
 
     }
 
-    sealed interface Characterizable extends Expr permits Literal, Identifier, Brane {
+    sealed interface Characterizable extends Expr permits Literal, Identifier, Brane, SearchUP {
         Identifier characterization();  // null means no characterization
 
         default String cannoicalCharacterization() {
@@ -32,6 +32,8 @@ public sealed interface AST permits AST.Program, AST.Expr {
             return (T) (new Identifier(identifier, ident.id()));
         } else if (chrbl instanceof Brane brn){
             return (T) (new Brane(identifier, brn.statements()));
+        } else if (chrbl instanceof SearchUP searchUp){
+            return (T) (new SearchUP(identifier));
         }else {
             throw new IllegalArgumentException("Cannot set characterization on type: " + chrbl.getClass());
         }
@@ -113,10 +115,29 @@ public sealed interface AST permits AST.Program, AST.Expr {
         }
     }
 
-    record Branes(List<Brane> branes) implements Expr {
+    record SearchUP(Identifier characterization) implements Characterizable {
+        public SearchUP() {
+            this(null);
+        }
+
+        public String toString() {
+            return (((characterization != null && characterization.id.length() > 0) ? characterization.id + "'" : "")
+                    + "↑");
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return (obj != null &&
+                    obj instanceof SearchUP other &&
+                    this.cannoicalCharacterization().equals(other.cannoicalCharacterization())
+            );
+        }
+    }
+
+    record Branes(List<Characterizable> branes) implements Expr {
         public String toString() {
             StringBuilder sb = new StringBuilder();
-            for (Brane brane : branes) {
+            for (Characterizable brane : branes) {
                 sb.append(brane).append("\n");
             }
             return sb.toString();
