@@ -17,20 +17,20 @@ FINAL BRANE:
   y = 10;
 }
 
-INITIAL MIDOE:
-MidoeProgram(MidoeBrane(
-  MidoeAssignment(x, MidoeUnary(-, Finear(5))),
-  MidoeAssignment(y, MidoeUnary(+, Finear(10)))
+INITIAL FIROE:
+FiroeProgram(FiroeBrane(
+  FiroeAssignment(x, FiroeUnary(-, Finear(5))),
+  FiroeAssignment(y, FiroeUnary(+, Finear(10)))
 ))
 
 EVALUATION RESULT:
-MidoeBrane(
-  MidoeAssignment(x, Finear(-5)),
-  MidoeAssignment(y, Finear(10))
+FiroeBrane(
+  FiroeAssignment(x, Finear(-5)),
+  FiroeAssignment(y, Finear(10))
 )
 
 FINAL BRANE STATUS:
-MidoeBrane(
-  MidoeAssignment(x, Finear(-5)),
-  MidoeAssignment(y, Finear(10))
+FiroeBrane(
+  FiroeAssignment(x, Finear(-5)),
+  FiroeAssignment(y, Finear(10))
 )

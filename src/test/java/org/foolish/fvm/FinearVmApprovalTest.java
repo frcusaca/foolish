@@ -32,15 +32,15 @@ public class FinearVmApprovalTest {
         InsoeVm insoeVm = new InsoeVm();
         Insoe insoe = insoeVm.translate((AST.Program) ast);
 
-        // Wrap to Midoe
-        Midoe midoe = MidoeVm.wrap(insoe);
+        // Wrap to Firoe
+        Firoe firoe = FiroeVm.wrap(insoe);
 
         // Evaluate
         FinearVmSimple vm = new FinearVmSimple();
-        Midoe result = vm.evaluate(midoe);
+        Firoe result = vm.evaluate(firoe);
 
         // Helper to get final brane
-        Midoe finalBrane = result instanceof ProgramMidoe pm ? pm.brane() : result;
+        Firoe finalBrane = result instanceof ProgramFiroe pm ? pm.brane() : result;
 
         // Format output
         StringBuilder output = new StringBuilder();
@@ -54,8 +54,8 @@ public class FinearVmApprovalTest {
         output.append(humanReadableFormatter.format(finalBrane)).append("\n\n");
         
         // Verbose format
-        output.append("INITIAL MIDOE:\n");
-        output.append(verboseFormatter.format(midoe)).append("\n\n");
+        output.append("INITIAL FIROE:\n");
+        output.append(verboseFormatter.format(firoe)).append("\n\n");
         output.append("EVALUATION RESULT:\n");
         output.append(verboseFormatter.format(result)).append("\n\n");
         output.append("FINAL BRANE STATUS:\n");

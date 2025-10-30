@@ -22,9 +22,9 @@ class FinearVmSimpleUnitTest {
     void evaluateSimpleArithmetic() {
         Finear left = Finear.of(5);
         Finear right = Finear.of(3);
-        BinaryMidoe add = new BinaryMidoe(null, "+", left, right);
+        BinaryFiroe add = new BinaryFiroe(null, "+", left, right);
 
-        Midoe result = vm.evaluate(add, env);
+        Firoe result = vm.evaluate(add, env);
 
         assertInstanceOf(Finear.class, result);
         assertEquals(8L, ((Finear) result).value());
@@ -33,8 +33,8 @@ class FinearVmSimpleUnitTest {
     @Test
     void evaluateVariableAssignment() {
         Finear value = Finear.of(42);
-        IdentifierMidoe id = new IdentifierMidoe("x");
-        AssignmentMidoe assignment = new AssignmentMidoe(null, id.id(), value);
+        IdentifierFiroe id = new IdentifierFiroe("x");
+        AssignmentFiroe assignment = new AssignmentFiroe(null, id.id(), value);
 
         vm.evaluate(assignment, env);
 
@@ -48,9 +48,9 @@ class FinearVmSimpleUnitTest {
         Finear condition = Finear.of(1);
         Finear thenValue = Finear.of(42);
         Finear elseValue = Finear.of(24);
-        IfMidoe ifMidoe = new IfMidoe(null, condition, thenValue, elseValue, List.of());
+        IfFiroe ifFiroe = new IfFiroe(null, condition, thenValue, elseValue, List.of());
 
-        Midoe result = vm.evaluate(ifMidoe, env);
+        Firoe result = vm.evaluate(ifFiroe, env);
 
         assertInstanceOf(Finear.class, result);
         assertEquals(42L, ((Finear) result).value());
@@ -59,9 +59,9 @@ class FinearVmSimpleUnitTest {
     @Test
     void evaluateUnaryOperation() {
         Finear value = Finear.of(5);
-        UnaryMidoe unary = new UnaryMidoe("-", value);
+        UnaryFiroe unary = new UnaryFiroe("-", value);
 
-        Midoe result = vm.evaluate(unary, env);
+        Firoe result = vm.evaluate(unary, env);
 
         assertInstanceOf(Finear.class, result);
         assertEquals(-5L, ((Finear) result).value());
@@ -72,11 +72,11 @@ class FinearVmSimpleUnitTest {
         // Equivalent to (x = 5) + (y = 3)
         Finear five = Finear.of(5);
         Finear three = Finear.of(3);
-        IdentifierMidoe xId = new IdentifierMidoe("x");
-        IdentifierMidoe yId = new IdentifierMidoe("y");
-        AssignmentMidoe xAssign = new AssignmentMidoe(null, xId.id(), five);
-        AssignmentMidoe yAssign = new AssignmentMidoe(null, yId.id(), three);
-        BinaryMidoe add = new BinaryMidoe(null,"+", xAssign, yAssign);
+        IdentifierFiroe xId = new IdentifierFiroe("x");
+        IdentifierFiroe yId = new IdentifierFiroe("y");
+        AssignmentFiroe xAssign = new AssignmentFiroe(null, xId.id(), five);
+        AssignmentFiroe yAssign = new AssignmentFiroe(null, yId.id(), three);
+        BinaryFiroe add = new BinaryFiroe(null,"+", xAssign, yAssign);
 
         vm.evaluate(add, env);
 
@@ -86,8 +86,8 @@ class FinearVmSimpleUnitTest {
 
     @Test
     void evaluateUnknownReturnsUnknown() {
-        Midoe unknown = new Midoe();
-        Midoe result = vm.evaluate(unknown, env);
+        Firoe unknown = new Firoe();
+        Firoe result = vm.evaluate(unknown, env);
         assertEquals(Finear.UNKNOWN, result);
     }
 
@@ -95,11 +95,11 @@ class FinearVmSimpleUnitTest {
     void evaluateBraneWithMultipleStatements() {
         Finear first = Finear.of(1);
         Finear second = Finear.of(2);
-        BraneMidoe brane = new BraneMidoe(null, List.of(first, second));
+        BraneFiroe brane = new BraneFiroe(null, List.of(first, second));
 
-        Midoe result = vm.evaluate(brane, env);
+        Firoe result = vm.evaluate(brane, env);
 
         assertNotEquals(Finear.UNKNOWN, result);
-        assertTrue(result instanceof BraneMidoe);
+        assertTrue(result instanceof BraneFiroe);
     }
 }

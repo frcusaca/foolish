@@ -5,7 +5,7 @@ import org.foolish.ast.AST;
 /**
  * INstruction Of Evaluation.  A simple wrapper around an AST node so that the
  * node can participate in the evaluation pipeline.  The wrapped AST sits at the
- * bottom of a {@link Midoe}'s progress heap.
+ * bottom of a {@link Firoe}'s progress heap.
  */
 public final class Insoe implements Targoe {
     private final AST ast;

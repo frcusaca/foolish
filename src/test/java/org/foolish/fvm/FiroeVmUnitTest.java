@@ -7,21 +7,21 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class MidoeVmUnitTest {
+public class FiroeVmUnitTest {
     @Test
     void wrapHandlesNullInput() {
-        Midoe result = MidoeVm.wrap(null);
+        Firoe result = FiroeVm.wrap(null);
         assertNotNull(result);
-        assertTrue(result instanceof Midoe);
+        assertTrue(result instanceof Firoe);
     }
 
     @Test
     void wrapHandlesProgram() {
         AST.Program program = new AST.Program(new AST.Branes(List.of()));
         Insoe input = new Insoe(program);
-        Midoe result = MidoeVm.wrap(input);
+        Firoe result = FiroeVm.wrap(input);
 
-        assertTrue(result instanceof ProgramMidoe);
+        assertTrue(result instanceof ProgramFiroe);
     }
 
     @Test
@@ -31,11 +31,11 @@ public class MidoeVmUnitTest {
         AST.BinaryExpr binExpr = new AST.BinaryExpr("+", left, right);
         Insoe input = new Insoe(binExpr);
 
-        Midoe result = MidoeVm.wrap(input);
+        Firoe result = FiroeVm.wrap(input);
 
-        assertTrue(result instanceof BinaryMidoe);
-        BinaryMidoe binary = (BinaryMidoe) result;
-        assertInstanceOf(IdentifierMidoe.class, binary.left());
+        assertTrue(result instanceof BinaryFiroe);
+        BinaryFiroe binary = (BinaryFiroe) result;
+        assertInstanceOf(IdentifierFiroe.class, binary.left());
         assertInstanceOf(Finear.class, binary.right());
     }
 
@@ -44,7 +44,7 @@ public class MidoeVmUnitTest {
         AST.IntegerLiteral literal = new AST.IntegerLiteral(42);
         Insoe input = new Insoe(literal);
 
-        Midoe result = MidoeVm.wrap(input);
+        Firoe result = FiroeVm.wrap(input);
 
         assertInstanceOf(Finear.class, result);
         assertEquals (42 , ((Finear) result).longValue());
@@ -58,13 +58,13 @@ public class MidoeVmUnitTest {
         AST.IfExpr ifExpr = new AST.IfExpr(condition, thenExpr, elseExpr, List.of());
         Insoe input = new Insoe(ifExpr);
 
-        Midoe result = MidoeVm.wrap(input);
+        Firoe result = FiroeVm.wrap(input);
 
-        assertInstanceOf(IfMidoe.class, result);
-        IfMidoe ifMidoe = (IfMidoe) result;
-        assertInstanceOf(IdentifierMidoe.class, ifMidoe.condition());
-        assertInstanceOf(Finear.class, ifMidoe.thenExpr());
-        assertInstanceOf(Finear.class, ifMidoe.elseExpr());
-        assertTrue(ifMidoe.elseIfs().isEmpty());
+        assertInstanceOf(IfFiroe.class, result);
+        IfFiroe ifFiroe = (IfFiroe) result;
+        assertInstanceOf(IdentifierFiroe.class, ifFiroe.condition());
+        assertInstanceOf(Finear.class, ifFiroe.thenExpr());
+        assertInstanceOf(Finear.class, ifFiroe.elseExpr());
+        assertTrue(ifFiroe.elseIfs().isEmpty());
     }
 }

@@ -9,29 +9,29 @@ import static java.lang.Boolean.FALSE;
 import static java.lang.Boolean.TRUE;
 
 /**
- * Evaluation utilities that operate on {@link Midoe} trees and push them toward
+ * Evaluation utilities that operate on {@link Firoe} trees and push them toward
  * {@link Finear} results.
  */
 public final class FinearVmSimple implements FinearVmAbstract {
     public FinearVmSimple() {
     }
 
-    public Midoe evaluate(Midoe midoe) {
-        return evaluate(midoe, new Env());
+    public Firoe evaluate(Firoe firoe) {
+        return evaluate(firoe, new Env());
     }
 
-    public Midoe evaluate(Midoe midoe, Env env) {
-        Midoe result = Finear.UNKNOWN;
-        if (midoe instanceof ProgramMidoe pm) {
+    public Firoe evaluate(Firoe firoe, Env env) {
+        Firoe result = Finear.UNKNOWN;
+        if (firoe instanceof ProgramFiroe pm) {
             result = evaluate(pm.brane(), env);
-        } else if (midoe instanceof BraneMidoe bm) {
+        } else if (firoe instanceof BraneFiroe bm) {
             int uks = 0;
             int b_l_n = -1;
-            List<Midoe> evaluatedStmts = new ArrayList<>();
-            for (Midoe stmt : bm.statements()) {
+            List<Firoe> evaluatedStmts = new ArrayList<>();
+            for (Firoe stmt : bm.statements()) {
                 ++b_l_n;
-                Midoe evaluatedStmt;
-                if (stmt instanceof BraneMidoe bstmt) {
+                Firoe evaluatedStmt;
+                if (stmt instanceof BraneFiroe bstmt) {
                     evaluatedStmt = evaluate(bstmt, new Env(env, b_l_n));
                 } else {
                     evaluatedStmt = evaluate(stmt, env);
@@ -44,19 +44,19 @@ public final class FinearVmSimple implements FinearVmAbstract {
             if(uks > 0){
                 result = Finear.UNKNOWN;
             } else {
-                result = new BraneMidoe(null, evaluatedStmts);
+                result = new BraneFiroe(null, evaluatedStmts);
             }
-        } else if (midoe instanceof AssignmentMidoe am) {
+        } else if (firoe instanceof AssignmentFiroe am) {
             Targoe value = evaluate(am.expr(), env);
-            if (value instanceof Midoe vm) {
+            if (value instanceof Firoe vm) {
                 env.put(am.id().id(), vm);
-                result = new AssignmentMidoe(null, am.id(),vm);
+                result = new AssignmentFiroe(null, am.id(),vm);
             }
-        } else if (midoe instanceof BinaryMidoe bm) {
+        } else if (firoe instanceof BinaryFiroe bm) {
             Targoe l = evaluate(bm.left(), env);
             Targoe r = evaluate(bm.right(), env);
-            if (l instanceof Midoe lm && lm instanceof Finear flm && !flm.isUnknown()
-                    && r instanceof Midoe rm && rm instanceof Finear frm && !frm.isUnknown()) {
+            if (l instanceof Firoe lm && lm instanceof Finear flm && !flm.isUnknown()
+                    && r instanceof Firoe rm && rm instanceof Finear frm && !frm.isUnknown()) {
                 long lv = ((Number) flm.value()).longValue();
                 long rv = ((Number) frm.value()).longValue();
                 long val = switch (bm.op()) {
@@ -68,9 +68,9 @@ public final class FinearVmSimple implements FinearVmAbstract {
                 };
                 result = Finear.of(val);
             }
-        } else if (midoe instanceof UnaryMidoe um) {
+        } else if (firoe instanceof UnaryFiroe um) {
             Targoe res = evaluate(um.expr(), env);
-            if (res instanceof Midoe mres && !mres.isUnknown() &&
+            if (res instanceof Firoe mres && !mres.isUnknown() &&
                     mres instanceof Finear fmres) {
                 long v = ((Number) fmres.value()).longValue();
                 long val = switch (um.op()) {
@@ -81,31 +81,31 @@ public final class FinearVmSimple implements FinearVmAbstract {
                 };
                 result = Finear.of(val);
             }
-        } else if (midoe instanceof IdentifierMidoe im) {
+        } else if (firoe instanceof IdentifierFiroe im) {
             // NOTE: here, we did not specify a line number. We depend on sequential evaluation to
             // find the right item.
             Targoe res = env.get(im.id().id());
-            if (res instanceof Midoe mr) {
+            if (res instanceof Firoe mr) {
                 result = mr;
             } else {
                 throw new IllegalStateException("Identifier " + im.id().id() + " resolved too generically to an object:" + res.getClass());
             }
-        } else if (midoe instanceof IfMidoe im) {
+        } else if (firoe instanceof IfFiroe im) {
             switch (eval_cond(im.condition(), im.thenExpr(), env)) {
                 case null -> {
                 }
                 case Finear f when f == Finear.UNKNOWN -> {
                 }
-                case Midoe m -> {
+                case Firoe m -> {
                     result = m;
                 }
             }
             if (result == Finear.UNKNOWN) {
-                for (IfMidoe elif : im.elseIfs()) {
+                for (IfFiroe elif : im.elseIfs()) {
                     switch (eval_cond(elif.condition(), elif.thenExpr(), env)) {
                         case null -> {
                         }
-                        case Midoe m -> {
+                        case Firoe m -> {
                             result = m;
                         }
                     }
@@ -115,23 +115,23 @@ public final class FinearVmSimple implements FinearVmAbstract {
                 }
             }
             if (result == Finear.UNKNOWN) {
-                Midoe elseExpr = im.elseExpr();
+                Firoe elseExpr = im.elseExpr();
                 if (elseExpr != null) {
                     result = evaluate(elseExpr, env);
                 }
             }
-        } else if (midoe.base() instanceof Insoe in && in.ast() instanceof AST.UnknownExpr) {
+        } else if (firoe.base() instanceof Insoe in && in.ast() instanceof AST.UnknownExpr) {
             result = Finear.UNKNOWN;
         } else {
-            Targoe base = midoe.base();
+            Targoe base = firoe.base();
             if (base instanceof Finear f) {
                 result = f;
             } else {
                 result = Finear.UNKNOWN;
             }
         }
-        if (midoe.progress_heap().isEmpty() || result != midoe.progress_heap().getLast())
-            midoe.progress_heap().add(result);
+        if (firoe.progress_heap().isEmpty() || result != firoe.progress_heap().getLast())
+            firoe.progress_heap().add(result);
         return result;
     }
 
@@ -139,7 +139,7 @@ public final class FinearVmSimple implements FinearVmAbstract {
     // if condition evaluates to true, then the evaluted then expr is returned.
     // if condition is false, then null is returned
     // if condition is unknown, then Unknown is returned without executing then branch
-    Midoe eval_cond(Midoe condition, Midoe thenExpr, Env env) {
+    Firoe eval_cond(Firoe condition, Firoe thenExpr, Env env) {
         Targoe val = evaluate(condition, env);
         switch (asBoolean(val)) {
             case null -> {

@@ -2,17 +2,17 @@ package org.foolish.fvm;
 
 import org.foolish.ast.AST;
 
-/** Midoe wrapper for a unary expression. */
-class UnaryMidoe extends Midoe {
+/** Firoe wrapper for a unary expression. */
+class UnaryFiroe extends Firoe {
     private final String op;
-    private final Midoe expr;
+    private final Firoe expr;
 
-    UnaryMidoe(String op, Midoe expr) {
+    UnaryFiroe(String op, Firoe expr) {
         super(null);
         this.op = op;
         this.expr = expr;
     }
-    UnaryMidoe(Insoe base, Midoe expr) {
+    UnaryFiroe(Insoe base, Firoe expr) {
         super(base);
         AST.UnaryExpr ast = base.as(AST.UnaryExpr.class);
         this.op = ast.op();
@@ -20,7 +20,7 @@ class UnaryMidoe extends Midoe {
     }
 
     public String op() { return op; }
-    public Midoe expr() { return expr; }
+    public Firoe expr() { return expr; }
     public String toString() { 
         return FormatterFactory.verbose().format(this); 
     }

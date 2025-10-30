@@ -25,7 +25,7 @@ public class FormatterFactory {
     
     /**
      * Returns a formatter that outputs verbose class-based representation.
-     * Example: "MidoeBrane(MidoeAssignment(a, 2))"
+     * Example: "FiroeBrane(FiroeAssignment(a, 2))"
      */
     public static TargoeFormatter verbose() {
         return VERBOSE_FORMATTER;

@@ -5,7 +5,7 @@ package org.foolish.fvm;
  * Represents a concluded value in the FVM.  A {@code Finear} may either
  * contain a concrete value or represent an unknown result.
  */
-public final class Finear extends Midoe {
+public final class Finear extends Firoe {
     private final Object value; // null signifies unknown
 
     private Finear(Object value) {

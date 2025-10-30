@@ -27,22 +27,22 @@ public class TargoeFormatter {
         
         if (targoe instanceof Finear finear) {
             return formatFinear(finear);
-        } else if (targoe instanceof BraneMidoe brane) {
-            return formatBraneMidoe(brane, indentLevel);
-        } else if (targoe instanceof AssignmentMidoe assignment) {
-            return formatAssignmentMidoe(assignment, indentLevel);
-        } else if (targoe instanceof IfMidoe ifMidoe) {
-            return formatIfMidoe(ifMidoe, indentLevel);
-        } else if (targoe instanceof BinaryMidoe binary) {
-            return formatBinaryMidoe(binary, indentLevel);
-        } else if (targoe instanceof UnaryMidoe unary) {
-            return formatUnaryMidoe(unary, indentLevel);
-        } else if (targoe instanceof IdentifierMidoe identifier) {
-            return formatIdentifierMidoe(identifier);
-        } else if (targoe instanceof ProgramMidoe program) {
-            return formatProgramMidoe(program, indentLevel);
-        } else if (targoe instanceof Midoe midoe) {
-            return formatGenericMidoe(midoe, indentLevel);
+        } else if (targoe instanceof BraneFiroe brane) {
+            return formatBraneFiroe(brane, indentLevel);
+        } else if (targoe instanceof AssignmentFiroe assignment) {
+            return formatAssignmentFiroe(assignment, indentLevel);
+        } else if (targoe instanceof IfFiroe ifFiroe) {
+            return formatIfFiroe(ifFiroe, indentLevel);
+        } else if (targoe instanceof BinaryFiroe binary) {
+            return formatBinaryFiroe(binary, indentLevel);
+        } else if (targoe instanceof UnaryFiroe unary) {
+            return formatUnaryFiroe(unary, indentLevel);
+        } else if (targoe instanceof IdentifierFiroe identifier) {
+            return formatIdentifierFiroe(identifier);
+        } else if (targoe instanceof ProgramFiroe program) {
+            return formatProgramFiroe(program, indentLevel);
+        } else if (targoe instanceof Firoe firoe) {
+            return formatGenericFiroe(firoe, indentLevel);
         } else {
             return formatGenericTargoe(targoe, indentLevel);
         }
@@ -56,15 +56,15 @@ public class TargoeFormatter {
         }
     }
     
-    private String formatBraneMidoe(BraneMidoe brane, int indentLevel) {
+    private String formatBraneFiroe(BraneFiroe brane, int indentLevel) {
         if (verbose) {
             if (brane.statements().isEmpty()) {
-                return "MidoeBrane()";
+                return "FiroeBrane()";
             }
-            StringBuilder sb = new StringBuilder("MidoeBrane(\n");
+            StringBuilder sb = new StringBuilder("FiroeBrane(\n");
             String indent = indentUnit.repeat(indentLevel + 1);
             boolean first = true;
-            for (Midoe stmt : brane.statements()) {
+            for (Firoe stmt : brane.statements()) {
                 if (!first) sb.append(",\n");
                 sb.append(indent).append(format(stmt, indentLevel + 1));
                 first = false;
@@ -77,7 +77,7 @@ public class TargoeFormatter {
             }
             StringBuilder sb = new StringBuilder("{\n");
             String indent = indentUnit.repeat(indentLevel + 1);
-            for (Midoe stmt : brane.statements()) {
+            for (Firoe stmt : brane.statements()) {
                 sb.append(indent).append(format(stmt, indentLevel + 1)).append(";\n");
             }
             sb.append(indentUnit.repeat(indentLevel)).append("}");
@@ -85,85 +85,85 @@ public class TargoeFormatter {
         }
     }
     
-    private String formatAssignmentMidoe(AssignmentMidoe assignment, int indentLevel) {
+    private String formatAssignmentFiroe(AssignmentFiroe assignment, int indentLevel) {
         if (verbose) {
-            return "MidoeAssignment(" + assignment.id() + ", " + format(assignment.expr(), indentLevel) + ")";
+            return "FiroeAssignment(" + assignment.id() + ", " + format(assignment.expr(), indentLevel) + ")";
         } else {
             return assignment.id() + " = " + format(assignment.expr(), indentLevel);
         }
     }
     
-    private String formatIfMidoe(IfMidoe ifMidoe, int indentLevel) {
+    private String formatIfFiroe(IfFiroe ifFiroe, int indentLevel) {
         if (verbose) {
-            StringBuilder sb = new StringBuilder("MidoeIf(\n");
+            StringBuilder sb = new StringBuilder("FiroeIf(\n");
             String indent = indentUnit.repeat(indentLevel + 1);
-            sb.append(indent).append(format(ifMidoe.condition(), indentLevel + 1));
-            sb.append(",\n").append(indent).append(format(ifMidoe.thenExpr(), indentLevel + 1));
+            sb.append(indent).append(format(ifFiroe.condition(), indentLevel + 1));
+            sb.append(",\n").append(indent).append(format(ifFiroe.thenExpr(), indentLevel + 1));
             
-            for (IfMidoe elif : ifMidoe.elseIfs()) {
+            for (IfFiroe elif : ifFiroe.elseIfs()) {
                 sb.append(",\n").append(indent).append(format(elif, indentLevel + 1));
             }
             
-            if (ifMidoe.elseExpr() != null) {
-                sb.append(",\n").append(indent).append(format(ifMidoe.elseExpr(), indentLevel + 1));
+            if (ifFiroe.elseExpr() != null) {
+                sb.append(",\n").append(indent).append(format(ifFiroe.elseExpr(), indentLevel + 1));
             }
             sb.append("\n").append(indentUnit.repeat(indentLevel)).append(")");
             return sb.toString();
         } else {
             StringBuilder sb = new StringBuilder("if ");
-            sb.append(format(ifMidoe.condition(), indentLevel));
-            sb.append(" then ").append(format(ifMidoe.thenExpr(), indentLevel));
+            sb.append(format(ifFiroe.condition(), indentLevel));
+            sb.append(" then ").append(format(ifFiroe.thenExpr(), indentLevel));
             
-            for (IfMidoe elif : ifMidoe.elseIfs()) {
+            for (IfFiroe elif : ifFiroe.elseIfs()) {
                 sb.append(" else ").append(format(elif, indentLevel));
             }
             
-            if (ifMidoe.elseExpr() != null) {
-                sb.append(" else ").append(format(ifMidoe.elseExpr(), indentLevel));
+            if (ifFiroe.elseExpr() != null) {
+                sb.append(" else ").append(format(ifFiroe.elseExpr(), indentLevel));
             }
             return sb.toString();
         }
     }
     
-    private String formatBinaryMidoe(BinaryMidoe binary, int indentLevel) {
+    private String formatBinaryFiroe(BinaryFiroe binary, int indentLevel) {
         if (verbose) {
-            return "MidoeBinary(" + format(binary.left(), indentLevel) + ", " + binary.op() + ", " + format(binary.right(), indentLevel) + ")";
+            return "FiroeBinary(" + format(binary.left(), indentLevel) + ", " + binary.op() + ", " + format(binary.right(), indentLevel) + ")";
         } else {
             return format(binary.left(), indentLevel) + " " + binary.op() + " " + format(binary.right(), indentLevel);
         }
     }
     
-    private String formatUnaryMidoe(UnaryMidoe unary, int indentLevel) {
+    private String formatUnaryFiroe(UnaryFiroe unary, int indentLevel) {
         if (verbose) {
-            return "MidoeUnary(" + unary.op() + ", " + format(unary.expr(), indentLevel) + ")";
+            return "FiroeUnary(" + unary.op() + ", " + format(unary.expr(), indentLevel) + ")";
         } else {
             return unary.op() + format(unary.expr(), indentLevel);
         }
     }
     
-    private String formatIdentifierMidoe(IdentifierMidoe identifier) {
+    private String formatIdentifierFiroe(IdentifierFiroe identifier) {
         if (verbose) {
-            return "MidoeId(" + identifier.id() + ")";
+            return "FiroeId(" + identifier.id() + ")";
         } else {
             return identifier.id().toString();
         }
     }
     
-    private String formatProgramMidoe(ProgramMidoe program, int indentLevel) {
+    private String formatProgramFiroe(ProgramFiroe program, int indentLevel) {
         if (verbose) {
-            return "MidoeProgram(" + format(program.brane(), indentLevel) + ")";
+            return "FiroeProgram(" + format(program.brane(), indentLevel) + ")";
         } else {
             return format(program.brane(), indentLevel);
         }
     }
     
-    private String formatGenericMidoe(Midoe midoe, int indentLevel) {
+    private String formatGenericFiroe(Firoe firoe, int indentLevel) {
         if (verbose) {
-            StringBuilder sb = new StringBuilder(midoe.getClass().getSimpleName() + "(");
-            if (showProgressHeap && !midoe.progress_heap().isEmpty()) {
+            StringBuilder sb = new StringBuilder(firoe.getClass().getSimpleName() + "(");
+            if (showProgressHeap && !firoe.progress_heap().isEmpty()) {
                 sb.append("heap: [");
                 boolean first = true;
-                for (Targoe item : midoe.progress_heap()) {
+                for (Targoe item : firoe.progress_heap()) {
                     if (!first) sb.append(", ");
                     sb.append(format(item, indentLevel + 1));
                     first = false;
@@ -173,7 +173,7 @@ public class TargoeFormatter {
             sb.append(")");
             return sb.toString();
         } else {
-            return midoe.getClass().getSimpleName();
+            return firoe.getClass().getSimpleName();
         }
     }
     

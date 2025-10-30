@@ -2,17 +2,17 @@ package org.foolish.fvm;
 
 import org.foolish.ast.AST;
 
-/** Midoe wrapper for a program. */
-class ProgramMidoe extends Midoe {
-    private final Midoe brane;
+/** Firoe wrapper for a program. */
+class ProgramFiroe extends Firoe {
+    private final Firoe brane;
 
-    ProgramMidoe(Insoe base, Midoe brane) {
+    ProgramFiroe(Insoe base, Firoe brane) {
         super(base);
         base.as(AST.Program.class);
         this.brane = brane;
     }
 
-    public Midoe brane() {
+    public Firoe brane() {
         return brane;
     }
     public String toString() {
