@@ -3,21 +3,21 @@ package org.foolish.fvm;
 import org.foolish.ast.AST;
 
 /**
- * Midoe wrapper for a binary expression.
+ * Firoe wrapper for a binary expression.
  */
-class BinaryMidoe extends Midoe {
+class BinaryFiroe extends Firoe {
     private final String op;
-    private final Midoe left;
-    private final Midoe right;
+    private final Firoe left;
+    private final Firoe right;
 
-    BinaryMidoe(Insoe base, Midoe left, Midoe right) {
+    BinaryFiroe(Insoe base, Firoe left, Firoe right) {
         this(base,
                 base.as(AST.BinaryExpr.class).op(),
                 left,
                 right);
     }
 
-    BinaryMidoe(Insoe base, String op, Midoe left, Midoe right) {
+    BinaryFiroe(Insoe base, String op, Firoe left, Firoe right) {
         super(base);
         this.op = op;
         this.left = left;
@@ -28,11 +28,11 @@ class BinaryMidoe extends Midoe {
         return op;
     }
 
-    public Midoe left() {
+    public Firoe left() {
         return left;
     }
 
-    public Midoe right() {
+    public Firoe right() {
         return right;
     }
 

@@ -3,19 +3,19 @@ package org.foolish.fvm;
 import org.foolish.ast.AST;
 
 /**
- * Midoe wrapper for an assignment expression.
+ * Firoe wrapper for an assignment expression.
  */
-class AssignmentMidoe extends Midoe {
+class AssignmentFiroe extends Firoe {
     private final Characterizable id;
-    private final Midoe expr;
+    private final Firoe expr;
 
-    AssignmentMidoe(Insoe base, Midoe expr) {
+    AssignmentFiroe(Insoe base, Firoe expr) {
         this(base,
                 new Characterizable(base.as(AST.Assignment.class).id()),
                 expr);
     }
 
-    AssignmentMidoe(Insoe base, Characterizable id, Midoe expr) {
+    AssignmentFiroe(Insoe base, Characterizable id, Firoe expr) {
         super(base);
         if (base!=null) {
             AST.Assignment ast = base.as(AST.Assignment.class);
@@ -29,7 +29,7 @@ class AssignmentMidoe extends Midoe {
         return id;
     }
 
-    public Midoe expr() {
+    public Firoe expr() {
         return expr;
     }
 

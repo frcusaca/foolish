@@ -4,9 +4,9 @@ import org.foolish.ast.AST;
 
 public interface FinearVmAbstract {
     /**
-     * Evaluates the given midoe within the provided environment.
+     * Evaluates the given firoe within the provided environment.
      */
-    abstract public Midoe evaluate(Midoe midoe, Env env);
-    abstract public Midoe evaluate(Midoe midoe);
+    abstract public Firoe evaluate(Firoe firoe, Env env);
+    abstract public Firoe evaluate(Firoe firoe);
 
 }

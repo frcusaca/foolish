@@ -14,16 +14,16 @@ FINAL BRANE:
   result = 10;
 }
 
-INITIAL MIDOE:
-MidoeProgram(MidoeBrane(
-  MidoeAssignment(result, MidoeIf(
+INITIAL FIROE:
+FiroeProgram(FiroeBrane(
+  FiroeAssignment(result, FiroeIf(
     Finear(1),
-    MidoeIf(
+    FiroeIf(
       Finear(0),
-      MidoeId(notFound),
-      MidoeIf(
+      FiroeId(notFound),
+      FiroeIf(
         Finear(1),
-        MidoeId(stillMissing),
+        FiroeId(stillMissing),
         Finear(10)
       )
     ),
@@ -32,11 +32,11 @@ MidoeProgram(MidoeBrane(
 ))
 
 EVALUATION RESULT:
-MidoeBrane(
-  MidoeAssignment(result, Finear(10))
+FiroeBrane(
+  FiroeAssignment(result, Finear(10))
 )
 
 FINAL BRANE STATUS:
-MidoeBrane(
-  MidoeAssignment(result, Finear(10))
+FiroeBrane(
+  FiroeAssignment(result, Finear(10))
 )

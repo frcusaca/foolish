@@ -4,21 +4,21 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * MIDdle Of Evaluation. Each {@code Midoe} wraps an underlying {@link Targoe}
+ * Foolish Internal Representation Of Evaluation. Each {@code Firoe} wraps an underlying {@link Targoe}
  * and tracks progress toward a final {@link Finear} result on its own heap.
  */
-public class Midoe implements Targoe {
+public class Firoe implements Targoe {
     protected final List<Targoe> progress_heap;
 
-    Midoe(Targoe base) {
+    Firoe(Targoe base) {
         this.progress_heap = new ArrayList<>();
         if (base != null) {
             this.progress_heap.add(base);
         }
     }
 
-    /** Creates an empty midoe with no base instruction. */
-    public Midoe() {
+    /** Creates an empty firoe with no base instruction. */
+    public Firoe() {
         this(null);
     }
 

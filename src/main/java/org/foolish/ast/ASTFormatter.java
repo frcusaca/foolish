@@ -27,6 +27,7 @@ public class ASTFormatter {
             case AST.Program program -> formatProgram(program, indentLevel);
             case AST.Branes branes -> formatBranes(branes, indentLevel);
             case AST.Brane brane -> formatBrane(brane, indentLevel);
+            case AST.SearchUP searchUp -> searchUp.toString();
             case AST.Assignment assignment -> formatAssignment(assignment, indentLevel);
             case AST.BinaryExpr binary -> formatBinaryExpr(binary, indentLevel);
             case AST.UnaryExpr unary -> formatUnaryExpr(unary, indentLevel);
@@ -45,7 +46,7 @@ public class ASTFormatter {
     private String formatBranes(AST.Branes branes, int indentLevel) {
         StringBuilder sb = new StringBuilder();
         boolean first = true;
-        for (AST.Brane brane : branes.branes()) {
+        for (AST.Characterizable brane : branes.branes()) {
             if (!first) sb.append("\n");
             sb.append(format(brane, indentLevel));
             first = false;

@@ -32,35 +32,35 @@ FINAL BRANE:
   c = UNKNOWN;
 }
 
-INITIAL MIDOE:
-MidoeProgram(MidoeBrane(
-  MidoeBrane(
-    MidoeBrane(
-      MidoeAssignment(a, MidoeBinary(Finear(1), +, Finear(2)))
+INITIAL FIROE:
+FiroeProgram(FiroeBrane(
+  FiroeBrane(
+    FiroeBrane(
+      FiroeAssignment(a, FiroeBinary(Finear(1), +, Finear(2)))
     ),
-    MidoeAssignment(b, MidoeBinary(MidoeId(a), *, Finear(3)))
+    FiroeAssignment(b, FiroeBinary(FiroeId(a), *, Finear(3)))
   ),
-  MidoeAssignment(c, MidoeBinary(MidoeId(b), -, Finear(4)))
+  FiroeAssignment(c, FiroeBinary(FiroeId(b), -, Finear(4)))
 ))
 
 EVALUATION RESULT:
-MidoeBrane(
-  MidoeBrane(
-    MidoeBrane(
-      MidoeAssignment(a, Finear(3))
+FiroeBrane(
+  FiroeBrane(
+    FiroeBrane(
+      FiroeAssignment(a, Finear(3))
     ),
-    MidoeAssignment(b, Finear(UNKNOWN))
+    FiroeAssignment(b, Finear(UNKNOWN))
   ),
-  MidoeAssignment(c, Finear(UNKNOWN))
+  FiroeAssignment(c, Finear(UNKNOWN))
 )
 
 FINAL BRANE STATUS:
-MidoeBrane(
-  MidoeBrane(
-    MidoeBrane(
-      MidoeAssignment(a, Finear(3))
+FiroeBrane(
+  FiroeBrane(
+    FiroeBrane(
+      FiroeAssignment(a, Finear(3))
     ),
-    MidoeAssignment(b, Finear(UNKNOWN))
+    FiroeAssignment(b, Finear(UNKNOWN))
   ),
-  MidoeAssignment(c, Finear(UNKNOWN))
+  FiroeAssignment(c, Finear(UNKNOWN))
 )

@@ -7,7 +7,11 @@ characterizable
     ;
 
 branes: brane+ ;
-brane : LBRACE stmt* RBRACE ;
+brane 
+    : LBRACE stmt* RBRACE 
+    | brane_search;
+
+brane_search :  UP;
 
 stmt
     : (
@@ -75,7 +79,7 @@ IF  : 'if' ;
 THEN : 'then' ;
 ELIF : 'elif' ;
 ELSE : 'else' ;
-
+UP   : '↑' ;
 UNKNOWN : '???' ; // Unknowns are unknown
 
 INTEGER : DIGIT+ ;

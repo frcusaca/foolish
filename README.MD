@@ -1050,7 +1050,14 @@ So, in Foolish, a value that is accessible *after* a brane is fully evaluated is
 a coordinate—the value tells us how to relate to the brane that was just computed. A well-
 coordinated brane is one that is fully evaluated to values so that computation can proceed
 to access the coordinate with no undesirable consequences.
-
+#### Single Coordinate Matching
+```
+{
+    point_a = {x=1; y=2; z=3;};
+    point_b = {x=1; y=3; z=4;};
+    is_aligned = point_a.x == point_b.x; !! is_aligned = true;
+}
+```
 #### Relational Coordinate Matching
 - [ ] TODO: {a,b,c,d} product_filter [ae,be,ce,de]{ae.x==be.x; be.y==ce.z; ce.a==de.b}AND
 
