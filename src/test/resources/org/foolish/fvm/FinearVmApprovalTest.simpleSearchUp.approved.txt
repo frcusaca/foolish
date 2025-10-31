@@ -9,7 +9,7 @@ UNKNOWN
 
 INITIAL FIROE:
 FiroeProgram(FiroeBrane(
-  Firoe()
+  FiroeSearchUp( parent=BraneFiroe)
 ))
 
 EVALUATION RESULT:

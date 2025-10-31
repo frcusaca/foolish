@@ -39,6 +39,8 @@ public class TargoeFormatter {
             return formatUnaryFiroe(unary, indentLevel);
         } else if (targoe instanceof IdentifierFiroe identifier) {
             return formatIdentifierFiroe(identifier);
+        } else if (targoe instanceof SearchUpFiroe searchUp) {
+            return formatSearchUpFiroe(searchUp, indentLevel);
         } else if (targoe instanceof ProgramFiroe program) {
             return formatProgramFiroe(program, indentLevel);
         } else if (targoe instanceof Firoe firoe) {
@@ -148,7 +150,16 @@ public class TargoeFormatter {
             return identifier.id().toString();
         }
     }
-    
+
+    private String formatSearchUpFiroe(SearchUpFiroe searchUp, int indentLevel) {
+        if (verbose) {
+            String parentInfo = searchUp.parent() != null ? " parent=" + searchUp.parent().getClass().getSimpleName() : " parent=null";
+            return "FiroeSearchUp(" + parentInfo + ")";
+        } else {
+            return "↑";
+        }
+    }
+
     private String formatProgramFiroe(ProgramFiroe program, int indentLevel) {
         if (verbose) {
             return "FiroeProgram(" + format(program.brane(), indentLevel) + ")";

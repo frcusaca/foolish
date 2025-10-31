@@ -76,10 +76,13 @@ public class FiroeVmUnitTest {
         Firoe result = FiroeVm.wrap(input);
 
         assertNotNull(result);
-        assertInstanceOf(Firoe.class, result);
-        assertNotNull(result.base());
-        assertInstanceOf(Insoe.class, result.base());
-        assertEquals(searchUp, ((Insoe) result.base()).ast());
+        assertInstanceOf(SearchUpFiroe.class, result);
+        SearchUpFiroe searchUpFiroe = (SearchUpFiroe) result;
+        assertNotNull(searchUpFiroe.base());
+        assertInstanceOf(Insoe.class, searchUpFiroe.base());
+        assertEquals(searchUp, ((Insoe) searchUpFiroe.base()).ast());
+        // When wrapped at top level, parent should be null
+        assertNull(searchUpFiroe.parent());
     }
 
     @Test
@@ -90,10 +93,13 @@ public class FiroeVmUnitTest {
         Firoe result = FiroeVm.wrap(input);
 
         assertNotNull(result);
-        assertInstanceOf(Firoe.class, result);
-        assertNotNull(result.base());
-        assertInstanceOf(Insoe.class, result.base());
-        assertEquals(searchUp, ((Insoe) result.base()).ast());
+        assertInstanceOf(SearchUpFiroe.class, result);
+        SearchUpFiroe searchUpFiroe = (SearchUpFiroe) result;
+        assertNotNull(searchUpFiroe.base());
+        assertInstanceOf(Insoe.class, searchUpFiroe.base());
+        assertEquals(searchUp, ((Insoe) searchUpFiroe.base()).ast());
+        // When wrapped at top level, parent should be null
+        assertNull(searchUpFiroe.parent());
     }
 
     @Test
@@ -114,11 +120,14 @@ public class FiroeVmUnitTest {
         assertInstanceOf(Finear.class, braneFiroe.statements().get(0));
         assertEquals(42L, ((Finear) braneFiroe.statements().get(0)).longValue());
 
-        // SearchUp wraps to a Firoe
+        // SearchUp wraps to a SearchUpFiroe with parent pointer
         Firoe searchUpFiroe = braneFiroe.statements().get(1);
-        assertInstanceOf(Firoe.class, searchUpFiroe);
+        assertInstanceOf(SearchUpFiroe.class, searchUpFiroe);
         assertInstanceOf(Insoe.class, searchUpFiroe.base());
         assertEquals(searchUp, ((Insoe) searchUpFiroe.base()).ast());
+        // Verify parent pointer is set to the BraneFiroe
+        assertNotNull(((SearchUpFiroe) searchUpFiroe).parent());
+        assertInstanceOf(BraneFiroe.class, ((SearchUpFiroe) searchUpFiroe).parent());
 
         // Second brane's statement
         assertInstanceOf(Finear.class, braneFiroe.statements().get(2));
@@ -139,13 +148,20 @@ public class FiroeVmUnitTest {
         BraneFiroe braneFiroe = (BraneFiroe) result;
         assertEquals(3, braneFiroe.statements().size());
 
-        assertInstanceOf(Firoe.class, braneFiroe.statements().get(0));
+        // Verify all SearchUPs have the BraneFiroe as parent
+        assertInstanceOf(SearchUpFiroe.class, braneFiroe.statements().get(0));
         assertEquals(searchUp1, ((Insoe) braneFiroe.statements().get(0).base()).ast());
+        assertNotNull(((SearchUpFiroe) braneFiroe.statements().get(0)).parent());
+        assertInstanceOf(BraneFiroe.class, ((SearchUpFiroe) braneFiroe.statements().get(0)).parent());
 
-        assertInstanceOf(Firoe.class, braneFiroe.statements().get(1));
+        assertInstanceOf(SearchUpFiroe.class, braneFiroe.statements().get(1));
         assertEquals(searchUp2, ((Insoe) braneFiroe.statements().get(1).base()).ast());
+        assertNotNull(((SearchUpFiroe) braneFiroe.statements().get(1)).parent());
+        assertInstanceOf(BraneFiroe.class, ((SearchUpFiroe) braneFiroe.statements().get(1)).parent());
 
-        assertInstanceOf(Firoe.class, braneFiroe.statements().get(2));
+        assertInstanceOf(SearchUpFiroe.class, braneFiroe.statements().get(2));
         assertEquals(searchUp3, ((Insoe) braneFiroe.statements().get(2).base()).ast());
+        assertNotNull(((SearchUpFiroe) braneFiroe.statements().get(2)).parent());
+        assertInstanceOf(BraneFiroe.class, ((SearchUpFiroe) braneFiroe.statements().get(2)).parent());
     }
 }

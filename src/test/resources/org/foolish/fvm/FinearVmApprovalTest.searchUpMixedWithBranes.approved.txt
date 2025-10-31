@@ -19,7 +19,7 @@ UNKNOWN
 INITIAL FIROE:
 FiroeProgram(FiroeBrane(
   FiroeAssignment(x, Finear(1)),
-  Firoe(),
+  FiroeSearchUp( parent=BraneFiroe),
   FiroeAssignment(y, Finear(2))
 ))
 

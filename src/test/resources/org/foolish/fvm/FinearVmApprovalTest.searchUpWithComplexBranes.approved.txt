@@ -32,7 +32,7 @@ FiroeProgram(FiroeBrane(
   FiroeBrane(
     FiroeAssignment(b, Finear(10))
   ),
-  Firoe(),
+  FiroeSearchUp( parent=BraneFiroe),
   FiroeAssignment(c, FiroeBinary(FiroeId(a), +, FiroeId(b)))
 ))
 
