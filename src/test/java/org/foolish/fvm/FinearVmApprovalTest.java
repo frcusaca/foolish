@@ -358,4 +358,40 @@ public class FinearVmApprovalTest {
                 }
         """);
     }
+
+    // SearchUp tests
+    @Test
+    void simpleSearchUp() {
+        verifyApprovalOf("↑");
+    }
+
+    @Test
+    void multipleSearchUps() {
+        verifyApprovalOf("↑ ↑");
+    }
+
+    @Test
+    void searchUpMixedWithBranes() {
+        verifyApprovalOf("""
+                { x = 1; }
+                ↑
+                { y = 2; }
+        """);
+    }
+
+    @Test
+    void searchUpWithComplexBranes() {
+        verifyApprovalOf("""
+                {
+                    a = 5;
+                    {
+                        b = 10;
+                    };
+                }
+                ↑
+                {
+                    c = a + b;
+                }
+        """);
+    }
 }

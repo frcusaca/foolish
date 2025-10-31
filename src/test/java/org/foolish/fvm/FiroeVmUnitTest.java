@@ -67,4 +67,85 @@ public class FiroeVmUnitTest {
         assertInstanceOf(Finear.class, ifFiroe.elseExpr());
         assertTrue(ifFiroe.elseIfs().isEmpty());
     }
+
+    @Test
+    void wrapHandlesSimpleSearchUp() {
+        AST.SearchUP searchUp = new AST.SearchUP();
+        Insoe input = new Insoe(searchUp);
+
+        Firoe result = FiroeVm.wrap(input);
+
+        assertNotNull(result);
+        assertInstanceOf(Firoe.class, result);
+        assertNotNull(result.base());
+        assertInstanceOf(Insoe.class, result.base());
+        assertEquals(searchUp, ((Insoe) result.base()).ast());
+    }
+
+    @Test
+    void wrapHandlesCharacterizedSearchUp() {
+        AST.SearchUP searchUp = new AST.SearchUP(new AST.Identifier("type"));
+        Insoe input = new Insoe(searchUp);
+
+        Firoe result = FiroeVm.wrap(input);
+
+        assertNotNull(result);
+        assertInstanceOf(Firoe.class, result);
+        assertNotNull(result.base());
+        assertInstanceOf(Insoe.class, result.base());
+        assertEquals(searchUp, ((Insoe) result.base()).ast());
+    }
+
+    @Test
+    void wrapHandlesBranesWithSearchUp() {
+        AST.Brane brane1 = new AST.Brane(List.of(new AST.IntegerLiteral(42)));
+        AST.SearchUP searchUp = new AST.SearchUP();
+        AST.Brane brane2 = new AST.Brane(List.of(new AST.IntegerLiteral(99)));
+        AST.Branes branes = new AST.Branes(List.of(brane1, searchUp, brane2));
+        Insoe input = new Insoe(branes);
+
+        Firoe result = FiroeVm.wrap(input);
+
+        assertInstanceOf(BraneFiroe.class, result);
+        BraneFiroe braneFiroe = (BraneFiroe) result;
+        assertEquals(3, braneFiroe.statements().size());
+
+        // First brane's statement
+        assertInstanceOf(Finear.class, braneFiroe.statements().get(0));
+        assertEquals(42L, ((Finear) braneFiroe.statements().get(0)).longValue());
+
+        // SearchUp wraps to a Firoe
+        Firoe searchUpFiroe = braneFiroe.statements().get(1);
+        assertInstanceOf(Firoe.class, searchUpFiroe);
+        assertInstanceOf(Insoe.class, searchUpFiroe.base());
+        assertEquals(searchUp, ((Insoe) searchUpFiroe.base()).ast());
+
+        // Second brane's statement
+        assertInstanceOf(Finear.class, braneFiroe.statements().get(2));
+        assertEquals(99L, ((Finear) braneFiroe.statements().get(2)).longValue());
+    }
+
+    @Test
+    void wrapHandlesMultipleSearchUps() {
+        AST.SearchUP searchUp1 = new AST.SearchUP();
+        AST.SearchUP searchUp2 = new AST.SearchUP(new AST.Identifier("n"));
+        AST.SearchUP searchUp3 = new AST.SearchUP(new AST.Identifier("t"));
+        AST.Branes branes = new AST.Branes(List.of(searchUp1, searchUp2, searchUp3));
+        Insoe input = new Insoe(branes);
+
+        Firoe result = FiroeVm.wrap(input);
+
+        assertInstanceOf(BraneFiroe.class, result);
+        BraneFiroe braneFiroe = (BraneFiroe) result;
+        assertEquals(3, braneFiroe.statements().size());
+
+        assertInstanceOf(Firoe.class, braneFiroe.statements().get(0));
+        assertEquals(searchUp1, ((Insoe) braneFiroe.statements().get(0).base()).ast());
+
+        assertInstanceOf(Firoe.class, braneFiroe.statements().get(1));
+        assertEquals(searchUp2, ((Insoe) braneFiroe.statements().get(1).base()).ast());
+
+        assertInstanceOf(Firoe.class, braneFiroe.statements().get(2));
+        assertEquals(searchUp3, ((Insoe) braneFiroe.statements().get(2).base()).ast());
+    }
 }

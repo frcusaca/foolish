@@ -330,7 +330,7 @@ public class ParserUnitTest {
                         {
                          a = 2;
                          b = { a = 3; };
-                         c = { 
+                         c = {
                                  a = 4;
                                     b = { a = 5; b = { a = 6; }; };
                              };
@@ -396,5 +396,147 @@ public class ParserUnitTest {
 };
 }
 """, ast.toString());
+    }
+
+    @Test
+    public void testSimpleSearchUp() {
+        AST ast = parse("↑");
+        assertTrue(ast instanceof AST.Program);
+        AST.Branes branes = ((AST.Program) ast).branes();
+        assertEquals(1, branes.branes().size());
+        assertTrue(branes.branes().get(0) instanceof AST.SearchUP);
+        AST.SearchUP searchUp = (AST.SearchUP) branes.branes().get(0);
+        assertNull(searchUp.characterization());
+        assertEquals("↑\n", ast.toString());
+    }
+
+    @Test
+    public void testMultipleSearchUps() {
+        AST ast = parse("↑ ↑");
+        assertTrue(ast instanceof AST.Program);
+        AST.Branes branes = ((AST.Program) ast).branes();
+        assertEquals(2, branes.branes().size());
+
+        assertTrue(branes.branes().get(0) instanceof AST.SearchUP);
+        assertNull(((AST.SearchUP) branes.branes().get(0)).characterization());
+
+        assertTrue(branes.branes().get(1) instanceof AST.SearchUP);
+        assertNull(((AST.SearchUP) branes.branes().get(1)).characterization());
+
+        assertEquals("↑\n↑\n", ast.toString());
+    }
+
+    @Test
+    public void testSearchUpMixedWithBranes() {
+        AST ast = parse("{ x = 1; } ↑ { y = 2; }");
+        assertTrue(ast instanceof AST.Program);
+        AST.Branes branes = ((AST.Program) ast).branes();
+        assertEquals(3, branes.branes().size());
+
+        assertTrue(branes.branes().get(0) instanceof AST.Brane);
+        AST.Brane brane1 = (AST.Brane) branes.branes().get(0);
+        assertEquals(1, brane1.statements().size());
+
+        assertTrue(branes.branes().get(1) instanceof AST.SearchUP);
+
+        assertTrue(branes.branes().get(2) instanceof AST.Brane);
+        AST.Brane brane2 = (AST.Brane) branes.branes().get(2);
+        assertEquals(1, brane2.statements().size());
+
+        assertEquals("""
+                {
+                  x = 1;
+                }
+                ↑
+                {
+                  y = 2;
+                }
+                """, ast.toString());
+    }
+
+    @Test
+    public void testSearchUpEquality() {
+        AST.SearchUP searchUp1 = new AST.SearchUP();
+        AST.SearchUP searchUp2 = new AST.SearchUP();
+        AST.SearchUP searchUp3 = new AST.SearchUP(new AST.Identifier("n"));
+        AST.SearchUP searchUp4 = new AST.SearchUP(new AST.Identifier("n"));
+        AST.SearchUP searchUp5 = new AST.SearchUP(new AST.Identifier("m"));
+
+        assertEquals(searchUp1, searchUp2);
+        assertEquals(searchUp3, searchUp4);
+        assertNotEquals(searchUp1, searchUp3);
+        assertNotEquals(searchUp3, searchUp5);
+    }
+
+    @Test
+    public void testSearchUpToString() {
+        AST.SearchUP searchUp1 = new AST.SearchUP();
+        assertEquals("↑", searchUp1.toString());
+
+        AST.SearchUP searchUp2 = new AST.SearchUP(new AST.Identifier("type"));
+        assertEquals("type'↑", searchUp2.toString());
+
+        AST.SearchUP searchUp3 = new AST.SearchUP(new AST.Identifier(""));
+        assertEquals("↑", searchUp3.toString());
+    }
+
+    @Test
+    public void testSetCharacterizationOnSearchUp() {
+        AST.SearchUP searchUp = new AST.SearchUP();
+        assertNull(searchUp.characterization());
+
+        AST.SearchUP characterized = AST.setCharacterization("type", searchUp);
+        assertNotNull(characterized.characterization());
+        assertEquals("type", characterized.characterization().id());
+        assertEquals("type'↑", characterized.toString());
+
+        // Test with empty string characterization
+        AST.SearchUP emptyChar = AST.setCharacterization("", searchUp);
+        assertNotNull(emptyChar.characterization());
+        assertEquals("", emptyChar.characterization().id());
+        assertEquals("↑", emptyChar.toString());
+
+        // Test with null characterization
+        AST.SearchUP nullChar = AST.setCharacterization(null, searchUp);
+        assertNotNull(nullChar.characterization());
+        assertEquals("", nullChar.characterization().id());
+        assertEquals("↑", nullChar.toString());
+    }
+
+    @Test
+    public void testSearchUpWithEmptyCharacterization() {
+        AST.SearchUP searchUp = new AST.SearchUP(new AST.Identifier(""));
+        assertEquals("", searchUp.cannoicalCharacterization());
+        assertEquals("↑", searchUp.toString());
+    }
+
+    @Test
+    public void testComplexSearchUpScenario() {
+        // Test a complex scenario with SearchUp in a brane with assignments
+        AST ast = parse("{ x = 5; } ↑ { y = 10; }");
+        assertTrue(ast instanceof AST.Program);
+        AST.Branes branes = ((AST.Program) ast).branes();
+        assertEquals(3, branes.branes().size());
+
+        // First brane
+        assertTrue(branes.branes().get(0) instanceof AST.Brane);
+
+        // SearchUp (uncharacterized)
+        assertTrue(branes.branes().get(1) instanceof AST.SearchUP);
+        assertNull(((AST.SearchUP) branes.branes().get(1)).characterization());
+
+        // Last brane
+        assertTrue(branes.branes().get(2) instanceof AST.Brane);
+    }
+
+    @Test
+    public void testProgrammaticCharacterization() {
+        // Test characterization set programmatically (not parsed)
+        AST.SearchUP searchUp = new AST.SearchUP();
+        AST.SearchUP characterized = AST.setCharacterization("type", searchUp);
+
+        assertNotNull(characterized.characterization());
+        assertEquals("type", characterized.characterization().id());
+        assertEquals("type'↑", characterized.toString());
     }
 }

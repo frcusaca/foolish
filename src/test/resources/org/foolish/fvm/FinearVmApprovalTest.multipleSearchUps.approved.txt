@@ -1,0 +1,21 @@
+INPUT:
+↑ ↑
+
+PARSED AST:
+↑
+↑
+
+FINAL BRANE:
+UNKNOWN
+
+INITIAL FIROE:
+FiroeProgram(FiroeBrane(
+  Firoe(),
+  Firoe()
+))
+
+EVALUATION RESULT:
+Finear(UNKNOWN)
+
+FINAL BRANE STATUS:
+Finear(UNKNOWN)
