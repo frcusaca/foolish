@@ -29,8 +29,7 @@ public class FinearVmApprovalTest {
         AST ast = new ASTBuilder().visit(tree);
 
         // Convert to Insoe
-        InsoeVm insoeVm = new InsoeVm();
-        Insoe insoe = insoeVm.translate((AST.Program) ast);
+        Insoe insoe = new Insoe(ast);
 
         // Wrap to Firoe
         Firoe firoe = FiroeVm.wrap(insoe);

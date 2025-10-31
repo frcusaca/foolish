@@ -36,7 +36,7 @@ public class Repl {
      */
     public static Object eval(String source, Env env) {
         AST.Program ast = parse(source);
-        Insoe program = new InsoeVm().translate(ast);
+        Insoe program = new Insoe(ast);
         Firoe target = FiroeVm.wrap(program);
         FinearVmAbstract fvm = new FinearVmSimple();
         Firoe eval_result = fvm.evaluate(target);
