@@ -713,8 +713,9 @@ during a naming expression.
     }
 }
 ```
-The detachment is right associative brane that operates on the brane to its 
-right side.
+The detachment is left associative with detachment branes and right associative
+with branes--It overwrites detachment branes on the left, and affects brane on
+it's right.
 
 The original example of function definition probably needed this detachment for 
 it to be a useful function:
@@ -784,9 +785,9 @@ suspiciously ambiguous cases. The `c_huh` is a brane now having a default value
 for r as well, but since the assignment asks for the last entry, the result is 
 computed and assigned in the referring brane.
 
-When default branes are next to each other, they are right associative—the 
-rightmost default brane is overridden by the default brane to its immediate 
-left first and foremost. Default brane concatenation always has higher priority
+When default branes are next to each other, they are left associative—the 
+left-most default brane is overridden by the default brane to its immediate 
+right first and foremost. Default brane concatenation always has higher priority
 than their concatenation with branes. When a default brane is between branes it
 is always right-associative—it is applied to the brane on the right side before
 other brane operations.
@@ -975,7 +976,7 @@ UBC expression evaluation step:
 1. If the expression is a comment AST, store it as comment FIR.
 2. If arithmetic expression, evaluate math and produce a value FIR.
 3. If brane concatenation is involved, then process the branes based on precedence
-   rules: detachment brane associating right using First-Right-Left-Last(FRLL), then brane
+   rules: detachment brane associating left using Left-First-Right-Last(LFRL), then brane
    concatenation associatively. The result is a FIR of a single brane.
 4. If expression is single brane, then evaluate the brane.
 
