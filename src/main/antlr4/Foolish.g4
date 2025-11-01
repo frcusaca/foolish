@@ -3,13 +3,31 @@ grammar Foolish;
 program : branes EOF ;
 
 characterizable
-    : (IDENTIFIER? APOSTROPHE)? (literal | IDENTIFIER | brane)
+    : characterizable_identifier
+    | (IDENTIFIER? APOSTROPHE)? (literal | brane)
+    ;
+
+characterizable_identifier
+    : (IDENTIFIER? APOSTROPHE)? IDENTIFIER
     ;
 
 branes: brane+ ;
-brane 
-    : LBRACE stmt* RBRACE 
+brane
+    : standard_brane
+    | detach_brane
     | brane_search;
+
+standard_brane
+    : LBRACE stmt* RBRACE
+    ;
+
+detach_brane
+    : LBRACK detach_stmt* RBRACK
+    ;
+
+detach_stmt
+    : characterizable_identifier (ASSIGN expr)? SEMI LINE_COMMENT?
+    ;
 
 brane_search :  UP;
 
@@ -59,6 +77,8 @@ LBRACE : '{' ;
 RBRACE : '}' ;
 LPAREN : '(' ;
 RPAREN : ')' ;
+LBRACK : '[' ;
+RBRACK : ']' ;
 SEMI : ';' ;
 
 LINE_COMMENT

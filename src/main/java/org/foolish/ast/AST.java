@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public sealed interface AST permits AST.Program, AST.Expr {
+public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStatement {
     record Program(Branes branes) implements AST {
         public String toString() {
             return branes.toString();
@@ -15,7 +15,7 @@ public sealed interface AST permits AST.Program, AST.Expr {
 
     }
 
-    sealed interface Characterizable extends Expr permits Literal, Identifier, Brane, SearchUP {
+    sealed interface Characterizable extends Expr permits Literal, Identifier, Brane, DetachmentBrane, SearchUP {
         Identifier characterization();  // null means no characterization
 
         default String cannoicalCharacterization() {
@@ -32,6 +32,8 @@ public sealed interface AST permits AST.Program, AST.Expr {
             return (T) (new Identifier(identifier, ident.id()));
         } else if (chrbl instanceof Brane brn){
             return (T) (new Brane(identifier, brn.statements()));
+        } else if (chrbl instanceof DetachmentBrane detachment){
+            return (T) (new DetachmentBrane(identifier, detachment.statements()));
         } else if (chrbl instanceof SearchUP searchUp){
             return (T) (new SearchUP(identifier));
         }else {
@@ -112,6 +114,40 @@ public sealed interface AST permits AST.Program, AST.Expr {
                     this.statements.equals(other.statements) &&
                     this.cannoicalCharacterization().equals(other.cannoicalCharacterization())
             );
+        }
+    }
+
+    record DetachmentBrane(Identifier characterization, List<DetachmentStatement> statements) implements Characterizable {
+        public DetachmentBrane(List<DetachmentStatement> statements) {
+            this(null, statements);
+        }
+
+        public String toString() {
+            StringBuilder sb = new StringBuilder();
+            if (cannoicalCharacterization() != "") {
+                sb.append(characterization.id).append("'");
+            }
+            sb.append("[\n");
+            for (DetachmentStatement stmt : statements) {
+                sb.append("  ").append(stmt).append(";\n");
+            }
+            sb.append("]");
+            return sb.toString();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return (obj != null &&
+                    obj instanceof DetachmentBrane other &&
+                    this.statements.equals(other.statements) &&
+                    this.cannoicalCharacterization().equals(other.cannoicalCharacterization())
+            );
+        }
+    }
+
+    record DetachmentStatement(Identifier identifier, Expr expr) implements AST {
+        public String toString() {
+            return identifier + " = " + expr;
         }
     }
 

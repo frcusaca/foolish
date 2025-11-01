@@ -6,6 +6,8 @@ import org.foolish.grammar.FoolishParser;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.antlr.v4.runtime.tree.TerminalNode;
+
 import static org.foolish.ast.AST.setCharacterization;
 
 public class ASTBuilder extends FoolishBaseVisitor<AST> {
@@ -20,14 +22,45 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
     public AST visitBrane(FoolishParser.BraneContext ctx) {
         if (ctx.brane_search() != null) {
             return visit(ctx.brane_search());
+        } else if (ctx.standard_brane() != null) {
+            return visit(ctx.standard_brane());
+        } else if (ctx.detach_brane() != null) {
+            return visit(ctx.detach_brane());
         }
+        throw new IllegalArgumentException("Unknown brane alternative");
+    }
+
+    private List<AST.Expr> collectStatements(List<FoolishParser.StmtContext> statements) {
         List<AST.Expr> exprs = new ArrayList<>();
-        for (var s : ctx.stmt()) {
+        for (var s : statements) {
             AST st = visit(s);
             if (st instanceof AST.Expr expr) exprs.add(expr);
             else throw new RuntimeException("Expected statement, got: " + st);
         }
-        return new AST.Brane(exprs);
+        return exprs;
+    }
+
+    private List<AST.DetachmentStatement> collectDetachmentStatements(List<FoolishParser.Detach_stmtContext> statements) {
+        List<AST.DetachmentStatement> exprs = new ArrayList<>();
+        for (var s : statements) {
+            AST st = visit(s);
+            if (st instanceof AST.DetachmentStatement assignment) {
+                exprs.add(assignment);
+            } else {
+                throw new RuntimeException("Expected detachment assignment, got: " + st);
+            }
+        }
+        return exprs;
+    }
+
+    @Override
+    public AST visitStandard_brane(FoolishParser.Standard_braneContext ctx) {
+        return new AST.Brane(collectStatements(ctx.stmt()));
+    }
+
+    @Override
+    public AST visitDetach_brane(FoolishParser.Detach_braneContext ctx) {
+        return new AST.DetachmentBrane(collectDetachmentStatements(ctx.detach_stmt()));
     }
 
     @Override
@@ -60,6 +93,13 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
         String id = ctx.IDENTIFIER().getText();
         AST.Expr expr = (AST.Expr) visit(ctx.expr());
         return new AST.Assignment(id, expr);
+    }
+
+    @Override
+    public AST visitDetach_stmt(FoolishParser.Detach_stmtContext ctx) {
+        AST.Identifier identifier = (AST.Identifier) visit(ctx.characterizable_identifier());
+        AST.Expr expr = ctx.expr() != null ? (AST.Expr) visit(ctx.expr()) : AST.UnknownExpr.INSTANCE;
+        return new AST.DetachmentStatement(identifier, expr);
     }
 
     @Override
@@ -118,24 +158,44 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
     @Override
     public AST visitCharacterizable(FoolishParser.CharacterizableContext ctx) {
-        String characterization = ""; // Default to empty string is the characterization
-        int identifierIndex = 0;
-        if (ctx.APOSTROPHE() != null) {
-            if (ctx.IDENTIFIER(0) != null) {
-                characterization = ctx.IDENTIFIER(0).getText();
-                identifierIndex = 1;
-            }
+        if (ctx.characterizable_identifier() != null) {
+            return visit(ctx.characterizable_identifier());
         }
 
-        AST ret = null;
+        String characterization = "";
+        if (ctx.APOSTROPHE() != null) {
+            TerminalNode prefixIdentifier = ctx.IDENTIFIER();
+            characterization = prefixIdentifier != null ? prefixIdentifier.getText() : "";
+        }
+
+        AST ret;
         if (ctx.literal() != null) {
             ret = visit(ctx.literal());
         } else if (ctx.brane() != null) {
             ret = visit(ctx.brane());
         } else {
-            ret = new AST.Identifier(ctx.IDENTIFIER(identifierIndex).getText());
+            throw new IllegalStateException("Characterizable must be literal or brane when not identifier");
         }
-        return setCharacterization(characterization, ret);
+        return ctx.APOSTROPHE() != null ? setCharacterization(characterization, ret) : ret;
+    }
+
+    @Override
+    public AST visitCharacterizable_identifier(FoolishParser.Characterizable_identifierContext ctx) {
+        List<TerminalNode> identifiers = ctx.IDENTIFIER();
+        String id;
+        String characterization = null;
+        if (ctx.APOSTROPHE() != null) {
+            id = identifiers.get(identifiers.size() - 1).getText();
+            characterization = identifiers.size() > 1 ? identifiers.get(0).getText() : "";
+        } else {
+            id = identifiers.get(0).getText();
+        }
+
+        AST.Identifier identifier = new AST.Identifier(id);
+        if (ctx.APOSTROPHE() != null) {
+            identifier = setCharacterization(characterization, identifier);
+        }
+        return identifier;
     }
 
     @Override

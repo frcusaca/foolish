@@ -59,4 +59,27 @@ public class ParserApprovalTest {
                 }
         """);
     }
+
+    @Test
+    void detachmentBraneAssignmentsAreApproved() {
+        verifyApprovalOf("""
+                [
+                    x = ???;
+                    y;
+                ]
+                {
+                    result = x;
+                }
+        """);
+    }
+
+    @Test
+    void characterizedDetachmentBraneIsApproved() {
+        verifyApprovalOf("""
+                [
+                    det'x = 1;
+                    det'y;
+                ]
+        """);
+    }
 }
