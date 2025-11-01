@@ -600,7 +600,7 @@ public class ParserUnitTest {
     @Test
     public void testSearchUpWithEmptyCharacterization() {
         AST.SearchUP searchUp = new AST.SearchUP(new AST.Identifier(""));
-        assertEquals("", searchUp.cannoicalCharacterization());
+        assertEquals("", searchUp.canonicalCharacterization());
         assertEquals("↑", searchUp.toString());
     }
 

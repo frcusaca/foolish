@@ -18,7 +18,7 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
     sealed interface Characterizable extends Expr permits Literal, Identifier, Brane, DetachmentBrane, SearchUP {
         Identifier characterization();  // null means no characterization
 
-        default String cannoicalCharacterization() {
+        default String canonicalCharacterization() {
             return this.characterization() == null ? "" : this.characterization().cannonicalId();
         }
 
@@ -59,7 +59,7 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
         public boolean equals(Object obj) {
             return (obj != null &&
                     obj instanceof IntegerLiteral other && this.value == other.value
-                    && this.cannoicalCharacterization().equals(other.cannoicalCharacterization())
+                    && this.canonicalCharacterization().equals(other.canonicalCharacterization())
             );
         }
     }
@@ -84,7 +84,7 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
             return (obj != null &&
                     obj instanceof Identifier other &&
                     this.cannonicalId().equals(other.cannonicalId()) &&
-                    this.cannoicalCharacterization().equals(other.cannoicalCharacterization())
+                    this.canonicalCharacterization().equals(other.canonicalCharacterization())
             );
         }
     }
@@ -96,7 +96,7 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
 
         public String toString() {
             StringBuilder sb = new StringBuilder();
-            if (cannoicalCharacterization() != "") {
+            if (canonicalCharacterization() != "") {
                 sb.append(characterization.id).append("'");
             }
             sb.append("{\n");
@@ -112,7 +112,7 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
             return (obj != null &&
                     obj instanceof Brane other &&
                     this.statements.equals(other.statements) &&
-                    this.cannoicalCharacterization().equals(other.cannoicalCharacterization())
+                    this.canonicalCharacterization().equals(other.canonicalCharacterization())
             );
         }
     }
@@ -124,8 +124,8 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
 
         public String toString() {
             StringBuilder sb = new StringBuilder();
-            if (!cannoicalCharacterization().isEmpty()) {
-                sb.append(cannoicalCharacterization()).append("'");
+            if (!canonicalCharacterization().isEmpty()) {
+                sb.append(canonicalCharacterization()).append("'");
             }
             sb.append("[\n");
             for (DetachmentStatement stmt : statements) {
@@ -140,7 +140,7 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
             return (obj != null &&
                     obj instanceof DetachmentBrane other &&
                     this.statements.equals(other.statements) &&
-                    this.cannoicalCharacterization().equals(other.cannoicalCharacterization())
+                    this.canonicalCharacterization().equals(other.canonicalCharacterization())
             );
         }
     }
@@ -165,7 +165,7 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
         public boolean equals(Object obj) {
             return (obj != null &&
                     obj instanceof SearchUP other &&
-                    this.cannoicalCharacterization().equals(other.cannoicalCharacterization())
+                    this.canonicalCharacterization().equals(other.canonicalCharacterization())
             );
         }
     }

@@ -31,26 +31,27 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
     }
 
     private List<AST.Expr> collectStatements(List<FoolishParser.StmtContext> statements) {
-        List<AST.Expr> exprs = new ArrayList<>();
-        for (var s : statements) {
-            AST st = visit(s);
-            if (st instanceof AST.Expr expr) exprs.add(expr);
-            else throw new RuntimeException("Expected statement, got: " + st);
-        }
-        return exprs;
+        return statements.stream()
+                .map(this::visit)
+                .map(st -> {
+                    if (st instanceof AST.Expr expr) {
+                        return expr;
+                    }
+                    throw new RuntimeException("Expected statement, got: " + st);
+                })
+                .toList();
     }
-
+    
     private List<AST.DetachmentStatement> collectDetachmentStatements(List<FoolishParser.Detach_stmtContext> statements) {
-        List<AST.DetachmentStatement> detachedStatements = new ArrayList<>();
-        for (var s : statements) {
-            AST st = visit(s);
-            if (st instanceof AST.DetachmentStatement assignment) {
-                detachedStatements.add(assignment);
-            } else {
-                throw new RuntimeException("Expected detachment assignment, got: " + st);
-            }
-        }
-        return detachedStatements;
+        return statements.stream()
+                .map(this::visit)
+                .map(st -> {
+                    if (st instanceof AST.DetachmentStatement assignment) {
+                        return assignment;
+                    }
+                    throw new RuntimeException("Expected detachment assignment, got: " + st);
+                })
+                .toList();
     }
 
     @Override
@@ -182,20 +183,13 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
     @Override
     public AST visitCharacterizable_identifier(FoolishParser.Characterizable_identifierContext ctx) {
         List<TerminalNode> identifiers = ctx.IDENTIFIER();
-        String id;
-        String characterization = null;
         if (ctx.APOSTROPHE() != null) {
-            id = identifiers.get(identifiers.size() - 1).getText();
-            characterization = identifiers.size() > 1 ? identifiers.get(0).getText() : "";
+            String id = identifiers.get(identifiers.size() - 1).getText();
+            String characterization = identifiers.size() > 1 ? identifiers.get(0).getText() : "";
+            return setCharacterization(characterization, new AST.Identifier(id));
         } else {
-            id = identifiers.get(0).getText();
+            return new AST.Identifier(identifiers.get(0).getText());
         }
-
-        AST.Identifier identifier = new AST.Identifier(id);
-        if (ctx.APOSTROPHE() != null) {
-            identifier = setCharacterization(characterization, identifier);
-        }
-        return identifier;
     }
 
     @Override
