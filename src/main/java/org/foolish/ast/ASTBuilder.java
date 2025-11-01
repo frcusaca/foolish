@@ -41,16 +41,16 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
     }
 
     private List<AST.DetachmentStatement> collectDetachmentStatements(List<FoolishParser.Detach_stmtContext> statements) {
-        List<AST.DetachmentStatement> exprs = new ArrayList<>();
+        List<AST.DetachmentStatement> detachedStatements = new ArrayList<>();
         for (var s : statements) {
             AST st = visit(s);
             if (st instanceof AST.DetachmentStatement assignment) {
-                exprs.add(assignment);
+                detachedStatements.add(assignment);
             } else {
                 throw new RuntimeException("Expected detachment assignment, got: " + st);
             }
         }
-        return exprs;
+        return detachedStatements;
     }
 
     @Override
