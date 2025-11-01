@@ -124,8 +124,8 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
 
         public String toString() {
             StringBuilder sb = new StringBuilder();
-            if (cannoicalCharacterization() != "") {
-                sb.append(characterization.id).append("'");
+            if (!cannoicalCharacterization().isEmpty()) {
+                sb.append(cannoicalCharacterization()).append("'");
             }
             sb.append("[\n");
             for (DetachmentStatement stmt : statements) {
