@@ -55,6 +55,9 @@ public final class FiroeVm {
                         }
                         return new BraneFiroe(code_node, stmts);
                     }
+                    case AST.DetachmentBrane ignored -> {
+                        throw new UnsupportedOperationException("Detachment branes are not implemented yet");
+                    }
                     case AST.Branes brs -> {
                         // Create the BraneFiroe that will be the parent for nested statements
                         BraneFiroe braneFiroe = new BraneFiroe(code_node, List.of());
@@ -65,6 +68,8 @@ public final class FiroeVm {
                                 for (AST.Expr expr : brane.statements()) {
                                     stmts.add(wrap(new Insoe(expr), ++b_l_line, braneFiroe));
                                 }
+                            } else if (br instanceof AST.DetachmentBrane) {
+                                throw new UnsupportedOperationException("Detachment branes are not implemented yet");
                             } else if (br instanceof AST.SearchUP searchUp) {
                                 // SearchUP doesn't have statements, handle as a single expression
                                 stmts.add(wrap(new Insoe(searchUp), ++b_l_line, braneFiroe));

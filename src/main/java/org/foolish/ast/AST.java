@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public sealed interface AST permits AST.Program, AST.Expr {
+public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStatement {
     record Program(Branes branes) implements AST {
         public String toString() {
             return branes.toString();
@@ -15,10 +15,10 @@ public sealed interface AST permits AST.Program, AST.Expr {
 
     }
 
-    sealed interface Characterizable extends Expr permits Literal, Identifier, Brane, SearchUP {
+    sealed interface Characterizable extends Expr permits Literal, Identifier, Brane, DetachmentBrane, SearchUP {
         Identifier characterization();  // null means no characterization
 
-        default String cannoicalCharacterization() {
+        default String canonicalCharacterization() {
             return this.characterization() == null ? "" : this.characterization().cannonicalId();
         }
 
@@ -32,6 +32,8 @@ public sealed interface AST permits AST.Program, AST.Expr {
             return (T) (new Identifier(identifier, ident.id()));
         } else if (chrbl instanceof Brane brn){
             return (T) (new Brane(identifier, brn.statements()));
+        } else if (chrbl instanceof DetachmentBrane detachment){
+            return (T) (new DetachmentBrane(identifier, detachment.statements()));
         } else if (chrbl instanceof SearchUP searchUp){
             return (T) (new SearchUP(identifier));
         }else {
@@ -57,7 +59,7 @@ public sealed interface AST permits AST.Program, AST.Expr {
         public boolean equals(Object obj) {
             return (obj != null &&
                     obj instanceof IntegerLiteral other && this.value == other.value
-                    && this.cannoicalCharacterization().equals(other.cannoicalCharacterization())
+                    && this.canonicalCharacterization().equals(other.canonicalCharacterization())
             );
         }
     }
@@ -82,7 +84,7 @@ public sealed interface AST permits AST.Program, AST.Expr {
             return (obj != null &&
                     obj instanceof Identifier other &&
                     this.cannonicalId().equals(other.cannonicalId()) &&
-                    this.cannoicalCharacterization().equals(other.cannoicalCharacterization())
+                    this.canonicalCharacterization().equals(other.canonicalCharacterization())
             );
         }
     }
@@ -94,7 +96,7 @@ public sealed interface AST permits AST.Program, AST.Expr {
 
         public String toString() {
             StringBuilder sb = new StringBuilder();
-            if (cannoicalCharacterization() != "") {
+            if (canonicalCharacterization() != "") {
                 sb.append(characterization.id).append("'");
             }
             sb.append("{\n");
@@ -110,8 +112,42 @@ public sealed interface AST permits AST.Program, AST.Expr {
             return (obj != null &&
                     obj instanceof Brane other &&
                     this.statements.equals(other.statements) &&
-                    this.cannoicalCharacterization().equals(other.cannoicalCharacterization())
+                    this.canonicalCharacterization().equals(other.canonicalCharacterization())
             );
+        }
+    }
+
+    record DetachmentBrane(Identifier characterization, List<DetachmentStatement> statements) implements Characterizable {
+        public DetachmentBrane(List<DetachmentStatement> statements) {
+            this(null, statements);
+        }
+
+        public String toString() {
+            StringBuilder sb = new StringBuilder();
+            if (!canonicalCharacterization().isEmpty()) {
+                sb.append(canonicalCharacterization()).append("'");
+            }
+            sb.append("[\n");
+            for (DetachmentStatement stmt : statements) {
+                sb.append("  ").append(stmt).append(";\n");
+            }
+            sb.append("]");
+            return sb.toString();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return (obj != null &&
+                    obj instanceof DetachmentBrane other &&
+                    this.statements.equals(other.statements) &&
+                    this.canonicalCharacterization().equals(other.canonicalCharacterization())
+            );
+        }
+    }
+
+    record DetachmentStatement(Identifier identifier, Expr expr) implements AST {
+        public String toString() {
+            return identifier + " = " + expr;
         }
     }
 
@@ -129,7 +165,7 @@ public sealed interface AST permits AST.Program, AST.Expr {
         public boolean equals(Object obj) {
             return (obj != null &&
                     obj instanceof SearchUP other &&
-                    this.cannoicalCharacterization().equals(other.cannoicalCharacterization())
+                    this.canonicalCharacterization().equals(other.canonicalCharacterization())
             );
         }
     }

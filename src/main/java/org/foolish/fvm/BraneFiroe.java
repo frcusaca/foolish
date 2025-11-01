@@ -14,7 +14,8 @@ class BraneFiroe extends Firoe {
         super(base);
         if (base != null) {
             AST ast = base.ast();
-            if (!(ast instanceof AST.Brane) && !(ast instanceof AST.Branes)) {
+            if (!(ast instanceof AST.Brane) &&
+                !(ast instanceof AST.Branes)) {
                 throw new IllegalArgumentException("BraneFiroe requires AST.Brane or AST.Branes");
             }
         }

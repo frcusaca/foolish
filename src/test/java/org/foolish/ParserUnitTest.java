@@ -147,6 +147,100 @@ public class ParserUnitTest {
 
 
     @Test
+    public void testDetachmentBrane() {
+        AST ast = parse("""
+                [
+                    x = ???;
+                    y;
+                ]
+                {
+                    result = x;
+                }
+                """);
+        assertTrue(ast instanceof AST.Program);
+        AST.Branes branes = ((AST.Program) ast).branes();
+        assertEquals(2, branes.size());
+        assertTrue(branes.branes().get(0) instanceof AST.DetachmentBrane);
+        AST.DetachmentBrane detachment = (AST.DetachmentBrane) branes.branes().get(0);
+        assertEquals(2, detachment.statements().size());
+        AST.DetachmentStatement firstAssignment = detachment.statements().get(0);
+        assertEquals("x", firstAssignment.identifier().id());
+        assertTrue(firstAssignment.expr() instanceof AST.UnknownExpr);
+        AST.DetachmentStatement secondAssignment = detachment.statements().get(1);
+        assertEquals("y", secondAssignment.identifier().id());
+        assertTrue(secondAssignment.expr() instanceof AST.UnknownExpr);
+        assertEquals("""
+                [
+                  x = ???;
+                  y = ???;
+                ]
+                {
+                  result = x;
+                }
+                """, ast.toString());
+    }
+
+    @Test
+    public void testDetachmentBraneWithDefaults() {
+        AST ast = parse("""
+                [
+                    r = ???;
+                    pi = 3;
+                    circumference;
+                ]
+                """);
+        assertTrue(ast instanceof AST.Program);
+        AST.Branes branes = ((AST.Program) ast).branes();
+        assertEquals(1, branes.size());
+        assertTrue(branes.branes().get(0) instanceof AST.DetachmentBrane);
+        AST.DetachmentBrane detachment = (AST.DetachmentBrane) branes.branes().get(0);
+        assertEquals(3, detachment.statements().size());
+        AST.DetachmentStatement radius = detachment.statements().get(0);
+        assertEquals("r", radius.identifier().id());
+        assertTrue(radius.expr() instanceof AST.UnknownExpr);
+        AST.DetachmentStatement pi = detachment.statements().get(1);
+        assertEquals("pi", pi.identifier().id());
+        assertTrue(pi.expr() instanceof AST.IntegerLiteral);
+        AST.DetachmentStatement circumference = detachment.statements().get(2);
+        assertEquals("circumference", circumference.identifier().id());
+        assertTrue(circumference.expr() instanceof AST.UnknownExpr);
+        assertEquals("""
+                [
+                  r = ???;
+                  pi = 3;
+                  circumference = ???;
+                ]
+                """, ast.toString());
+    }
+
+    @Test
+    public void testDetachmentBraneCharacterizedIdentifiers() {
+        AST ast = parse("""
+                [
+                    det'x = 1;
+                    det'y;
+                ]
+                """);
+        AST.DetachmentBrane detachment = (AST.DetachmentBrane) ((AST.Program) ast).branes().branes().get(0);
+        AST.DetachmentStatement first = detachment.statements().get(0);
+        assertNotNull(first.identifier().characterization());
+        assertEquals("det", first.identifier().characterization().id());
+        assertEquals("x", first.identifier().id());
+        AST.DetachmentStatement second = detachment.statements().get(1);
+        assertNotNull(second.identifier().characterization());
+        assertEquals("det", second.identifier().characterization().id());
+        assertEquals("y", second.identifier().id());
+        assertTrue(second.expr() instanceof AST.UnknownExpr);
+        assertEquals("""
+                [
+                  det'x = 1;
+                  det'y = ???;
+                ]
+                """, ast.toString());
+    }
+
+
+    @Test
     public void testUnknown() {
         AST ast = parse("{ x = ???; y = ??? ;}");
         assertEquals("""
@@ -506,7 +600,7 @@ public class ParserUnitTest {
     @Test
     public void testSearchUpWithEmptyCharacterization() {
         AST.SearchUP searchUp = new AST.SearchUP(new AST.Identifier(""));
-        assertEquals("", searchUp.cannoicalCharacterization());
+        assertEquals("", searchUp.canonicalCharacterization());
         assertEquals("↑", searchUp.toString());
     }
 
