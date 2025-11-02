@@ -106,7 +106,8 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
     @Override
     public AST visitExpr(FoolishParser.ExprContext ctx) {
         if (ctx.ifExpr() != null) return visit(ctx.ifExpr());
-        return visit(ctx.compareExpr());
+        if (ctx.binaryExpr() != null) return visit(ctx.binaryExpr());
+        return visit(ctx.branes());
     }
 
     @Override
@@ -226,7 +227,7 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
     }
 
     @Override
-    public AST visitCompareExpr(FoolishParser.CompareExprContext ctx) {
+    public AST visitBinaryExpr(FoolishParser.BinaryExprContext ctx) {
         AST.Expr left = (AST.Expr) visit(ctx.addExpr(0));
         for (int i = 1; i < ctx.addExpr().size(); i++) {
             String op = ctx.getChild(2 * i - 1).getText();

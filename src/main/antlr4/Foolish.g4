@@ -41,11 +41,11 @@ assignment : IDENTIFIER ASSIGN expr ;
 
 expr
     : ifExpr
-    | compareExpr
+    | binaryExpr
     | branes
     ;
 
-compareExpr
+binaryExpr
     : addExpr ((EQ | LE | GE | NE) addExpr)*
     ;
 
