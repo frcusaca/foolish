@@ -97,7 +97,7 @@ public class FinearVmApprovalTest {
     void ifExpressionIsApproved() {
         verifyApprovalOf("""
                 {
-                    x = if 1 then 42 else 24;
+                    x = if true then 42 else 24;
                 }
         """);
     }
@@ -238,7 +238,7 @@ public class FinearVmApprovalTest {
     void threeNestedIfThenElse() {
         verifyApprovalOf("""
                 {
-                    x = if 1 then if 2 then if 3 then 100 else 200 else 300 else 400;
+                    x = if true then if true then if true then 100 else 200 else 300 else 400;
                 }
         """);
     }
@@ -247,7 +247,7 @@ public class FinearVmApprovalTest {
     void fourNestedIfWithElseIf() {
         verifyApprovalOf("""
                 {
-                    result = if 1 then if 0 then 10 else if 1 then if 1 then 42 else 24 else 12 else 5;
+                    result = if true then if false then 10 else if true then if true then 42 else 24 else 12 else 5;
                 }
         """);
     }
@@ -257,7 +257,7 @@ public class FinearVmApprovalTest {
         verifyApprovalOf("""
                 {
                     a = 5;
-                    b = if a then if a - 3 then if a - 5 then 1 else 2 else 3 else 4;
+                    b = if a >= 0 then if a - 3 >= 0 then if a - 5 >= 0 then 1 else 2 else 3 else 4;
                 }
         """);
     }
@@ -268,7 +268,7 @@ public class FinearVmApprovalTest {
                 {
                     {
                         {
-                            x = if 1 then if 2 then 10 else 20 else if 3 then 30 else 40;
+                            x = if true then if true then 10 else 20 else if true then 30 else 40;
                         };
                     };
                     y = x + 5;
@@ -281,7 +281,7 @@ public class FinearVmApprovalTest {
     void nestedIfWithUnboundCondition() {
         verifyApprovalOf("""
                 {
-                    x = if unknown then if 1 then 42 else 24 else 0;
+                    x = if boolean'unknown then if true then 42 else 24 else 0;
                 }
         """);
     }
@@ -290,7 +290,7 @@ public class FinearVmApprovalTest {
     void deepIfWithUnboundInBranches() {
         verifyApprovalOf("""
                 {
-                    result = if 1 then if 0 then notFound else if 1 then stillMissing else 10 else 5;
+                    result = if true then if false then notFound else if true then stillMissing else 10 else 5;
                 }
         """);
     }
@@ -300,7 +300,7 @@ public class FinearVmApprovalTest {
         verifyApprovalOf("""
                 {
                     a = 10;
-                    b = if a then if missing then 1 else if a - 5 then undefined else 3 else 4;
+                    b = if a >= 0 then if boolean'missing then 1 else if a - 5 >= 0 then undefined else 3 else 4;
                 }
         """);
     }
@@ -314,7 +314,7 @@ public class FinearVmApprovalTest {
                         {
                             a = 2;
                         };
-                        b = if a then if a - 1 then 100 else 200 else 300;
+                        b = if a >= 0 then if a - 1 >= 0 then 100 else 200 else 300;
                     };
                     c = b + a;
                 }
@@ -328,7 +328,7 @@ public class FinearVmApprovalTest {
                     x = 5;
                     {
                         {
-                            y = if x then if notHere then 1 else 2 else 3;
+                            y = if x >= 0 then if boolean'notHere then 1 else 2 else 3;
                         };
                         z = y + x;
                     };
@@ -345,13 +345,13 @@ public class FinearVmApprovalTest {
                         a = 1;
                         {
                             {
-                                b = if a then if a + 1 then 10 else 20 else 30;
+                                b = if a >= 0 then if a + 1 >= 0 then 10 else 20 else 30;
                             };
                             c = b * 2;
                         };
                     };
                     {
-                        d = if c then c + missing else 0;
+                        d = if c >= 0 then c + missing else 0;
                     };
                     result = d - a;
                 }

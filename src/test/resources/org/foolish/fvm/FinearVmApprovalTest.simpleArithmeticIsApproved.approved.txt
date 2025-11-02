@@ -5,26 +5,26 @@ INPUT:
 
 
 PARSED AST:
-{
-  x = (1 + 2);
+brane'{
+  integer'x = (integer'1 + integer'2);
 }
 
 FINAL BRANE:
 {
-  x = 3;
+  integer'x = 3;
 }
 
 INITIAL FIROE:
 FiroeProgram(FiroeBrane(
-  FiroeAssignment(x, FiroeBinary(Finear(1), +, Finear(2)))
+  FiroeAssignment(integer'x, FiroeBinary(Finear(1), +, Finear(2)))
 ))
 
 EVALUATION RESULT:
 FiroeBrane(
-  FiroeAssignment(x, Finear(3))
+  FiroeAssignment(integer'x, Finear(3))
 )
 
 FINAL BRANE STATUS:
 FiroeBrane(
-  FiroeAssignment(x, Finear(3))
+  FiroeAssignment(integer'x, Finear(3))
 )

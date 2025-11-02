@@ -12,61 +12,61 @@ INPUT:
 
 
 PARSED AST:
-{
-  a = 10;
-  {
+brane'{
+  integer'a = integer'10;
+  brane'{
     b = notDefined;
-    {
-      c = (a + b);
+    brane'{
+      integer'c = (a + b);
     };
   };
-  d = (c - a);
+  integer'd = (c - a);
 }
 
 FINAL BRANE:
 {
-  a = 10;
+  integer'a = 10;
   {
     b = UNKNOWN;
     {
-      c = UNKNOWN;
+      integer'c = UNKNOWN;
     };
   };
-  d = UNKNOWN;
+  integer'd = UNKNOWN;
 }
 
 INITIAL FIROE:
 FiroeProgram(FiroeBrane(
-  FiroeAssignment(a, Finear(10)),
+  FiroeAssignment(integer'a, Finear(10)),
   FiroeBrane(
     FiroeAssignment(b, FiroeId(notDefined)),
     FiroeBrane(
-      FiroeAssignment(c, FiroeBinary(FiroeId(a), +, FiroeId(b)))
+      FiroeAssignment(integer'c, FiroeBinary(FiroeId(a), +, FiroeId(b)))
     )
   ),
-  FiroeAssignment(d, FiroeBinary(FiroeId(c), -, FiroeId(a)))
+  FiroeAssignment(integer'd, FiroeBinary(FiroeId(c), -, FiroeId(a)))
 ))
 
 EVALUATION RESULT:
 FiroeBrane(
-  FiroeAssignment(a, Finear(10)),
+  FiroeAssignment(integer'a, Finear(10)),
   FiroeBrane(
     FiroeAssignment(b, Finear(UNKNOWN)),
     FiroeBrane(
-      FiroeAssignment(c, Finear(UNKNOWN))
+      FiroeAssignment(integer'c, Finear(UNKNOWN))
     )
   ),
-  FiroeAssignment(d, Finear(UNKNOWN))
+  FiroeAssignment(integer'd, Finear(UNKNOWN))
 )
 
 FINAL BRANE STATUS:
 FiroeBrane(
-  FiroeAssignment(a, Finear(10)),
+  FiroeAssignment(integer'a, Finear(10)),
   FiroeBrane(
     FiroeAssignment(b, Finear(UNKNOWN)),
     FiroeBrane(
-      FiroeAssignment(c, Finear(UNKNOWN))
+      FiroeAssignment(integer'c, Finear(UNKNOWN))
     )
   ),
-  FiroeAssignment(d, Finear(UNKNOWN))
+  FiroeAssignment(integer'd, Finear(UNKNOWN))
 )

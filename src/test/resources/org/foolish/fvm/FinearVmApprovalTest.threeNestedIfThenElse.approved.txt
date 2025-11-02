@@ -1,27 +1,27 @@
 INPUT:
         {
-            x = if 1 then if 2 then if 3 then 100 else 200 else 300 else 400;
+            x = if true then if true then if true then 100 else 200 else 300 else 400;
         }
 
 
 PARSED AST:
-{
-  x = if 1 then if 2 then if 3 then 100 else 200 else 300 else 400;
+brane'{
+  x = if boolean'true then if boolean'true then if boolean'true then integer'100 else integer'200 else integer'300 else integer'400;
 }
 
 FINAL BRANE:
 {
-  x = 100;
+  integer'x = 100;
 }
 
 INITIAL FIROE:
 FiroeProgram(FiroeBrane(
   FiroeAssignment(x, FiroeIf(
-    Finear(1),
+    Finear(true),
     FiroeIf(
-      Finear(2),
+      Finear(true),
       FiroeIf(
-        Finear(3),
+        Finear(true),
         Finear(100),
         Finear(200)
       ),
@@ -33,10 +33,10 @@ FiroeProgram(FiroeBrane(
 
 EVALUATION RESULT:
 FiroeBrane(
-  FiroeAssignment(x, Finear(100))
+  FiroeAssignment(integer'x, Finear(100))
 )
 
 FINAL BRANE STATUS:
 FiroeBrane(
-  FiroeAssignment(x, Finear(100))
+  FiroeAssignment(integer'x, Finear(100))
 )

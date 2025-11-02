@@ -4,15 +4,14 @@ import org.foolish.ast.AST;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import static java.lang.Boolean.FALSE;
-import static java.lang.Boolean.TRUE;
+import java.util.Set;
 
 /**
  * Evaluation utilities that operate on {@link Firoe} trees and push them toward
  * {@link Finear} results.
  */
 public final class FinearVmSimple implements FinearVmAbstract {
+    private static final Set<String> BUILT_IN_TYPES = Set.of("integer", "boolean", "brane");
     public FinearVmSimple() {
     }
 
@@ -49,30 +48,34 @@ public final class FinearVmSimple implements FinearVmAbstract {
         } else if (firoe instanceof AssignmentFiroe am) {
             Targoe value = evaluate(am.expr(), env);
             if (value instanceof Firoe vm) {
-                env.put(am.id().id(), vm);
-                result = new AssignmentFiroe(null, am.id(),vm);
+                Characterizable typedId = characterizeAssignment(am.id(), vm);
+                env.put(typedId, vm);
+                result = new AssignmentFiroe(null, typedId, vm);
             }
         } else if (firoe instanceof BinaryFiroe bm) {
             Targoe l = evaluate(bm.left(), env);
             Targoe r = evaluate(bm.right(), env);
             if (l instanceof Firoe lm && lm instanceof Finear flm && !flm.isUnknown()
                     && r instanceof Firoe rm && rm instanceof Finear frm && !frm.isUnknown()) {
-                long lv = ((Number) flm.value()).longValue();
-                long rv = ((Number) frm.value()).longValue();
-                long val = switch (bm.op()) {
-                    case "+" -> lv + rv;
-                    case "-" -> lv - rv;
-                    case "*" -> lv * rv;
-                    case "/" -> lv / rv;
+                Object lvObj = flm.value();
+                Object rvObj = frm.value();
+                result = switch (bm.op()) {
+                    case "+" -> Finear.of(requireNumeric(lvObj, bm.op()) + requireNumeric(rvObj, bm.op()));
+                    case "-" -> Finear.of(requireNumeric(lvObj, bm.op()) - requireNumeric(rvObj, bm.op()));
+                    case "*" -> Finear.of(requireNumeric(lvObj, bm.op()) * requireNumeric(rvObj, bm.op()));
+                    case "/" -> Finear.of(requireNumeric(lvObj, bm.op()) / requireNumeric(rvObj, bm.op()));
+                    case "==" -> Finear.ofBoolean(equalsValue(lvObj, rvObj));
+                    case "<>" -> Finear.ofBoolean(!equalsValue(lvObj, rvObj));
+                    case "<=" -> Finear.ofBoolean(requireNumeric(lvObj, bm.op()) <= requireNumeric(rvObj, bm.op()));
+                    case ">=" -> Finear.ofBoolean(requireNumeric(lvObj, bm.op()) >= requireNumeric(rvObj, bm.op()));
                     default -> throw new IllegalArgumentException("Unknown op: " + bm.op());
                 };
-                result = Finear.of(val);
             }
         } else if (firoe instanceof UnaryFiroe um) {
             Targoe res = evaluate(um.expr(), env);
             if (res instanceof Firoe mres && !mres.isUnknown() &&
                     mres instanceof Finear fmres) {
-                long v = ((Number) fmres.value()).longValue();
+                long v = requireNumeric(fmres.value(), um.op());
                 long val = switch (um.op()) {
                     case "+" -> +v;
                     case "-" -> -v;
@@ -84,7 +87,7 @@ public final class FinearVmSimple implements FinearVmAbstract {
         } else if (firoe instanceof IdentifierFiroe im) {
             // NOTE: here, we did not specify a line number. We depend on sequential evaluation to
             // find the right item.
-            Targoe res = env.get(im.id().id());
+            Targoe res = env.get(im.id());
             if (res instanceof Firoe mr) {
                 result = mr;
             } else {
@@ -140,6 +143,7 @@ public final class FinearVmSimple implements FinearVmAbstract {
     // if condition is false, then null is returned
     // if condition is unknown, then Unknown is returned without executing then branch
     Firoe eval_cond(Firoe condition, Firoe thenExpr, Env env) {
+        ensureBooleanCharacterization(condition);
         Targoe val = evaluate(condition, env);
         switch (asBoolean(val)) {
             case null -> {
@@ -163,5 +167,89 @@ public final class FinearVmSimple implements FinearVmAbstract {
         }
         return null;
 
+    }
+
+    private long requireNumeric(Object value, String op) {
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        throw new IllegalStateException("Operation '" + op + "' requires numeric operands but found " + value);
+    }
+
+    private boolean equalsValue(Object left, Object right) {
+        if (left instanceof Number ln && right instanceof Number rn) {
+            return ln.longValue() == rn.longValue();
+        }
+        return left == null ? right == null : left.equals(right);
+    }
+
+    private Characterizable characterizeAssignment(Characterizable id, Firoe value) {
+        if (value instanceof BraneFiroe) {
+            return prependCharacterization(id, "brane");
+        }
+        if (value instanceof Finear finear && !finear.isUnknown()) {
+            Object raw = finear.value();
+            if (raw instanceof Number) {
+                return prependCharacterization(id, "integer");
+            }
+            if (raw instanceof Boolean) {
+                return prependCharacterization(id, "boolean");
+            }
+        }
+        return id;
+    }
+
+    private Characterizable prependCharacterization(Characterizable id, String characterization) {
+        if (id == null) {
+            return Characterizable.fromCanonical(characterization);
+        }
+        String baseCanonical = id.canonical();
+        if (baseCanonical == null || baseCanonical.isEmpty()) {
+            baseCanonical = id.id();
+        }
+        if (baseCanonical == null) {
+            baseCanonical = "";
+        }
+        if (baseCanonical.startsWith(characterization + "'")) {
+            return id;
+        }
+        String remainder = baseCanonical;
+        int idx = baseCanonical.indexOf("'");
+        if (idx > 0) {
+            String first = baseCanonical.substring(0, idx);
+            if (BUILT_IN_TYPES.contains(first)) {
+                remainder = baseCanonical.substring(idx + 1);
+            }
+        } else if (BUILT_IN_TYPES.contains(baseCanonical)) {
+            remainder = "";
+        }
+        if (remainder.isEmpty()) {
+            remainder = id.id() == null ? "" : id.id();
+        }
+        String canonical = remainder.isEmpty() ? characterization : characterization + "'" + remainder;
+        return Characterizable.fromCanonical(canonical);
+    }
+
+    private void ensureBooleanCharacterization(Firoe condition) {
+        Targoe base = condition.base();
+        if (base instanceof Insoe insoe) {
+            AST ast = insoe.ast();
+            if (!isBooleanCharacterized(ast)) {
+                throw new IllegalStateException("IF conditions must have boolean characterization");
+            }
+        }
+    }
+
+    private boolean isBooleanCharacterized(AST ast) {
+        if (ast instanceof AST.Characterizable charExpr) {
+            return "boolean".equals(charExpr.canonicalCharacterization());
+        } else if (ast instanceof AST.BinaryExpr binaryExpr) {
+            AST.Identifier characterization = binaryExpr.characterization();
+            return characterization != null && "boolean".equals(characterization.cannonicalId());
+        } else if (ast instanceof AST.UnaryExpr unaryExpr) {
+            AST.Identifier characterization = unaryExpr.characterization();
+            return characterization != null && "boolean".equals(characterization.cannonicalId());
+        }
+        return false;
     }
 }

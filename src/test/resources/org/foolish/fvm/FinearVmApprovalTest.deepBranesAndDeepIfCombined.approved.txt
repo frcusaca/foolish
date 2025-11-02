@@ -4,71 +4,71 @@ INPUT:
                 {
                     a = 2;
                 };
-                b = if a then if a - 1 then 100 else 200 else 300;
+                b = if a >= 0 then if a - 1 >= 0 then 100 else 200 else 300;
             };
             c = b + a;
         }
 
 
 PARSED AST:
-{
-  {
-    {
-      a = 2;
+brane'{
+  brane'{
+    brane'{
+      integer'a = integer'2;
     };
-    b = if a then if (a - 1) then 100 else 200 else 300;
+    b = if (a >= integer'0) then if ((a - integer'1) >= integer'0) then integer'100 else integer'200 else integer'300;
   };
-  c = (b + a);
+  integer'c = (b + a);
 }
 
 FINAL BRANE:
 {
   {
     {
-      a = 2;
+      integer'a = 2;
     };
-    b = 300;
+    integer'b = 300;
   };
-  c = UNKNOWN;
+  integer'c = UNKNOWN;
 }
 
 INITIAL FIROE:
 FiroeProgram(FiroeBrane(
   FiroeBrane(
     FiroeBrane(
-      FiroeAssignment(a, Finear(2))
+      FiroeAssignment(integer'a, Finear(2))
     ),
     FiroeAssignment(b, FiroeIf(
-      FiroeId(a),
+      FiroeBinary(FiroeId(a), >=, Finear(0)),
       FiroeIf(
-        FiroeBinary(FiroeId(a), -, Finear(1)),
+        FiroeBinary(FiroeBinary(FiroeId(a), -, Finear(1)), >=, Finear(0)),
         Finear(100),
         Finear(200)
       ),
       Finear(300)
     ))
   ),
-  FiroeAssignment(c, FiroeBinary(FiroeId(b), +, FiroeId(a)))
+  FiroeAssignment(integer'c, FiroeBinary(FiroeId(b), +, FiroeId(a)))
 ))
 
 EVALUATION RESULT:
 FiroeBrane(
   FiroeBrane(
     FiroeBrane(
-      FiroeAssignment(a, Finear(2))
+      FiroeAssignment(integer'a, Finear(2))
     ),
-    FiroeAssignment(b, Finear(300))
+    FiroeAssignment(integer'b, Finear(300))
   ),
-  FiroeAssignment(c, Finear(UNKNOWN))
+  FiroeAssignment(integer'c, Finear(UNKNOWN))
 )
 
 FINAL BRANE STATUS:
 FiroeBrane(
   FiroeBrane(
     FiroeBrane(
-      FiroeAssignment(a, Finear(2))
+      FiroeAssignment(integer'a, Finear(2))
     ),
-    FiroeAssignment(b, Finear(300))
+    FiroeAssignment(integer'b, Finear(300))
   ),
-  FiroeAssignment(c, Finear(UNKNOWN))
+  FiroeAssignment(integer'c, Finear(UNKNOWN))
 )

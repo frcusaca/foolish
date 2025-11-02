@@ -11,14 +11,14 @@ INPUT:
 
 
 PARSED AST:
-{
-  {
-    {
+brane'{
+  brane'{
+    brane'{
       a = unknownVar;
     };
-    b = (a + 1);
+    integer'b = (a + integer'1);
   };
-  c = (b * 2);
+  integer'c = (b * integer'2);
 }
 
 FINAL BRANE:
@@ -27,9 +27,9 @@ FINAL BRANE:
     {
       a = UNKNOWN;
     };
-    b = UNKNOWN;
+    integer'b = UNKNOWN;
   };
-  c = UNKNOWN;
+  integer'c = UNKNOWN;
 }
 
 INITIAL FIROE:
@@ -38,9 +38,9 @@ FiroeProgram(FiroeBrane(
     FiroeBrane(
       FiroeAssignment(a, FiroeId(unknownVar))
     ),
-    FiroeAssignment(b, FiroeBinary(FiroeId(a), +, Finear(1)))
+    FiroeAssignment(integer'b, FiroeBinary(FiroeId(a), +, Finear(1)))
   ),
-  FiroeAssignment(c, FiroeBinary(FiroeId(b), *, Finear(2)))
+  FiroeAssignment(integer'c, FiroeBinary(FiroeId(b), *, Finear(2)))
 ))
 
 EVALUATION RESULT:
@@ -49,9 +49,9 @@ FiroeBrane(
     FiroeBrane(
       FiroeAssignment(a, Finear(UNKNOWN))
     ),
-    FiroeAssignment(b, Finear(UNKNOWN))
+    FiroeAssignment(integer'b, Finear(UNKNOWN))
   ),
-  FiroeAssignment(c, Finear(UNKNOWN))
+  FiroeAssignment(integer'c, Finear(UNKNOWN))
 )
 
 FINAL BRANE STATUS:
@@ -60,7 +60,7 @@ FiroeBrane(
     FiroeBrane(
       FiroeAssignment(a, Finear(UNKNOWN))
     ),
-    FiroeAssignment(b, Finear(UNKNOWN))
+    FiroeAssignment(integer'b, Finear(UNKNOWN))
   ),
-  FiroeAssignment(c, Finear(UNKNOWN))
+  FiroeAssignment(integer'c, Finear(UNKNOWN))
 )

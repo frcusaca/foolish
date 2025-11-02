@@ -2,7 +2,7 @@ INPUT:
         {
             {
                 {
-                    x = if 1 then if 2 then 10 else 20 else if 3 then 30 else 40;
+                    x = if true then if true then 10 else 20 else if true then 30 else 40;
                 };
             };
             y = x + 5;
@@ -10,23 +10,23 @@ INPUT:
 
 
 PARSED AST:
-{
-  {
-    {
-      x = if 1 then if 2 then 10 else 20 else if 3 then 30 else 40;
+brane'{
+  brane'{
+    brane'{
+      x = if boolean'true then if boolean'true then integer'10 else integer'20 else if boolean'true then integer'30 else integer'40;
     };
   };
-  y = (x + 5);
+  integer'y = (x + integer'5);
 }
 
 FINAL BRANE:
 {
   {
     {
-      x = 10;
+      integer'x = 10;
     };
   };
-  y = UNKNOWN;
+  integer'y = UNKNOWN;
 }
 
 INITIAL FIROE:
@@ -34,39 +34,39 @@ FiroeProgram(FiroeBrane(
   FiroeBrane(
     FiroeBrane(
       FiroeAssignment(x, FiroeIf(
-        Finear(1),
+        Finear(true),
         FiroeIf(
-          Finear(2),
+          Finear(true),
           Finear(10),
           Finear(20)
         ),
         FiroeIf(
-          Finear(3),
+          Finear(true),
           Finear(30),
           Finear(40)
         )
       ))
     )
   ),
-  FiroeAssignment(y, FiroeBinary(FiroeId(x), +, Finear(5)))
+  FiroeAssignment(integer'y, FiroeBinary(FiroeId(x), +, Finear(5)))
 ))
 
 EVALUATION RESULT:
 FiroeBrane(
   FiroeBrane(
     FiroeBrane(
-      FiroeAssignment(x, Finear(10))
+      FiroeAssignment(integer'x, Finear(10))
     )
   ),
-  FiroeAssignment(y, Finear(UNKNOWN))
+  FiroeAssignment(integer'y, Finear(UNKNOWN))
 )
 
 FINAL BRANE STATUS:
 FiroeBrane(
   FiroeBrane(
     FiroeBrane(
-      FiroeAssignment(x, Finear(10))
+      FiroeAssignment(integer'x, Finear(10))
     )
   ),
-  FiroeAssignment(y, Finear(UNKNOWN))
+  FiroeAssignment(integer'y, Finear(UNKNOWN))
 )

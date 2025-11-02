@@ -45,6 +45,7 @@ public class Env {
     final Env parent;
     final int my_line_number;
     final Map<String, VarVersions> vars = Maps.newConcurrentMap();
+    final Map<String, String> latestCharacterizations = Maps.newConcurrentMap();
     int put_count=-1;
 
 
@@ -61,21 +62,37 @@ public class Env {
         ++put_count;
     }
 
-    public void put(String id, Targoe value) {
-        vars.computeIfAbsent(id, k -> new VarVersions(id)).add(value, ++put_count);
+    public void put(Characterizable id, Targoe value) {
+        String canonical = canonical(id);
+        vars.computeIfAbsent(canonical, k -> new VarVersions(canonical)).add(value, ++put_count);
+        recordCharacterization(id, canonical);
     }
-    public void put(String id, Targoe value, int line_number) {
+    public void put(Characterizable id, Targoe value, int line_number) {
         assert line_number>put_count;
         put_count=line_number;
-        vars.computeIfAbsent(id, k -> new VarVersions(id)).add(value, put_count);
+        String canonical = canonical(id);
+        vars.computeIfAbsent(canonical, k -> new VarVersions(canonical)).add(value, put_count);
+        recordCharacterization(id, canonical);
     }
 
-    public Targoe get(String id) {
+    public Targoe get(Characterizable id) {
         return get(id, -1);
     }
 
-    public Targoe get(String id, int from_line) {
-        VarVersions versions = vars.get(id);
+    public Targoe get(Characterizable id, int from_line) {
+        String canonical = canonical(id);
+        VarVersions versions = vars.get(canonical);
+        if ((versions == null || versions.get(from_line) == Finear.UNKNOWN) && id != null) {
+            Characterizable characterization = id.characterization();
+            String baseId = id.id();
+            if ((characterization == null || characterization.canonical().isEmpty()) && baseId != null && !baseId.isEmpty()) {
+                String mapped = latestCharacterizations.get(baseId);
+                if (mapped != null && !mapped.equals(canonical)) {
+                    versions = vars.get(mapped);
+                    canonical = mapped;
+                }
+            }
+        }
         if (versions != null) {
             // find the greatest line number <= from_line
             Targoe value = versions.get(from_line);
@@ -86,5 +103,23 @@ public class Env {
             return parent.get(id, my_line_number);
         }
         return Finear.UNKNOWN;
+    }
+
+    private String canonical(Characterizable id) {
+        if (id == null) {
+            return "";
+        }
+        String canonical = id.canonical();
+        return canonical == null ? "" : canonical;
+    }
+
+    private void recordCharacterization(Characterizable id, String canonical) {
+        if (id == null) {
+            return;
+        }
+        String baseId = id.id();
+        if (baseId != null && !baseId.isEmpty() && !canonical.isEmpty()) {
+            latestCharacterizations.put(baseId, canonical);
+        }
     }
 }

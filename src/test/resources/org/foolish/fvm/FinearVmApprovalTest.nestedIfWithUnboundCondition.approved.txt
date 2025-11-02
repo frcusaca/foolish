@@ -1,25 +1,25 @@
 INPUT:
         {
-            x = if unknown then if 1 then 42 else 24 else 0;
+            x = if boolean'unknown then if true then 42 else 24 else 0;
         }
 
 
 PARSED AST:
-{
-  x = if unknown then if 1 then 42 else 24 else 0;
+brane'{
+  x = if boolean'unknown then if boolean'true then integer'42 else integer'24 else integer'0;
 }
 
 FINAL BRANE:
 {
-  x = 0;
+  integer'x = 0;
 }
 
 INITIAL FIROE:
 FiroeProgram(FiroeBrane(
   FiroeAssignment(x, FiroeIf(
-    FiroeId(unknown),
+    FiroeId(boolean'unknown),
     FiroeIf(
-      Finear(1),
+      Finear(true),
       Finear(42),
       Finear(24)
     ),
@@ -29,10 +29,10 @@ FiroeProgram(FiroeBrane(
 
 EVALUATION RESULT:
 FiroeBrane(
-  FiroeAssignment(x, Finear(0))
+  FiroeAssignment(integer'x, Finear(0))
 )
 
 FINAL BRANE STATUS:
 FiroeBrane(
-  FiroeAssignment(x, Finear(0))
+  FiroeAssignment(integer'x, Finear(0))
 )

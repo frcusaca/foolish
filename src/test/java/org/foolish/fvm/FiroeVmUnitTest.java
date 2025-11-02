@@ -28,7 +28,7 @@ public class FiroeVmUnitTest {
     void wrapHandlesBinaryExpression() {
         AST.Identifier left = new AST.Identifier("x");
         AST.IntegerLiteral right = new AST.IntegerLiteral(42);
-        AST.BinaryExpr binExpr = new AST.BinaryExpr("+", left, right);
+        AST.BinaryExpr binExpr = new AST.BinaryExpr(new AST.Identifier("integer"), "+", left, right);
         Insoe input = new Insoe(binExpr);
 
         Firoe result = FiroeVm.wrap(input);

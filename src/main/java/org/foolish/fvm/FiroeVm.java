@@ -107,9 +107,11 @@ public final class FiroeVm {
                     }
                     case AST.Literal literal -> {
                         // In this special case, we do not have a Firoe as there is no firoe of processing a literal
-                        if (literal instanceof AST.IntegerLiteral il)
+                        if (literal instanceof AST.IntegerLiteral il) {
                             return Finear.of(il.value());
-                        else {
+                        } else if (literal instanceof AST.BooleanLiteral bl) {
+                            return Finear.ofBoolean(bl.value());
+                        } else {
                             throw new IllegalArgumentException("Unknown literal type: " + literal);
                         }
                     }

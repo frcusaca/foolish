@@ -22,13 +22,29 @@ public final class Finear extends Firoe {
         return new Finear(value);
     }
 
+    /** Creates a {@code Finear} holding the given boolean value. */
+    public static Finear ofBoolean(boolean value) {
+        return new Finear(value);
+    }
+
     /** Returns the underlying value, or {@code null} if unknown. */
     public Object value() {
         return value;
     }
     public long longValue() {
         if (isUnknown()) throw new IllegalStateException("Cannot get long value of unknown Finear");
-        return (Long)value;
+        if (!(value instanceof Number number)) {
+            throw new IllegalStateException("Cannot get long value of non-numeric Finear");
+        }
+        return number.longValue();
+    }
+
+    public boolean booleanValue() {
+        if (isUnknown()) throw new IllegalStateException("Cannot get boolean value of unknown Finear");
+        if (!(value instanceof Boolean bool)) {
+            throw new IllegalStateException("Cannot get boolean value of non-boolean Finear");
+        }
+        return bool;
     }
 
     /**

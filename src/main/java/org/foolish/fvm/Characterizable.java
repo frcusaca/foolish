@@ -30,6 +30,22 @@ public final class Characterizable {
         return new Characterizable(fromAst(id.characterization()), id.id());
     }
 
+    public static Characterizable fromCanonical(String canonical) {
+        if (canonical == null) {
+            return null;
+        }
+        if (canonical.isEmpty()) {
+            return new Characterizable("");
+        }
+        String[] parts = canonical.split("'");
+        Characterizable characterization = null;
+        for (int i = 0; i < parts.length - 1; i++) {
+            characterization = new Characterizable(characterization, parts[i]);
+        }
+        String id = parts[parts.length - 1];
+        return new Characterizable(characterization, id);
+    }
+
     public Characterizable characterization() {
         return characterization;
     }
