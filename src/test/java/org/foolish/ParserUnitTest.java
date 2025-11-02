@@ -29,8 +29,8 @@ public class ParserUnitTest {
         assertEquals(1, branes.branes().size());
         AST.Brane brane = (AST.Brane) branes.branes().get(0);
         assertEquals("""
-                {
-                  1;
+                brane'{
+                  integer'1;
                 }
                 """, ast.toString());
     }
@@ -45,8 +45,8 @@ public class ParserUnitTest {
         assertEquals(1, brane.statements().size());
         assertTrue(brane.statements().get(0) instanceof AST.Assignment);
         assertEquals("""
-                {
-                  x = 5;
+                brane'{
+                  integer'x = integer'5;
                 }
                 """, ast.toString());
 
@@ -62,9 +62,9 @@ public class ParserUnitTest {
         assertEquals(2, brane.statements().size());
         assertTrue(brane.statements().get(0) instanceof AST.Assignment);
         assertEquals("""
-                {
-                  x = (1 + (2 * 3));
-                  y = (x - 4);
+                brane'{
+                  integer'x = (integer'1 + (integer'2 * integer'3));
+                  integer'y = (x - integer'4);
                 }
                 """, ast.toString());
 
@@ -81,9 +81,9 @@ public class ParserUnitTest {
         assertEquals(2, brane.statements().size());
         assertTrue(brane.statements().get(0) instanceof AST.Assignment);
         assertEquals("""
-                {
-                  x = (((1 + 2) * 3) + 4);
-                  y = -(x / -4);
+                brane'{
+                  integer'x = (((integer'1 + integer'2) * integer'3) + integer'4);
+                  integer'y = -(x / -integer'4);
                 }
                 """, ast.toString());
 
@@ -98,9 +98,9 @@ public class ParserUnitTest {
         assertEquals(1, branes.branes().size());
         AST.Brane brane = (AST.Brane) branes.branes().get(0);
         assertEquals("""
-                {
-                  x = -3;
-                  y = +x;
+                brane'{
+                  integer'x = -integer'3;
+                  integer'y = +x;
                 }""", brane.toString());
         // AST has an EOL but brane does not
 
@@ -115,8 +115,8 @@ public class ParserUnitTest {
         assertEquals(1, branes.branes().size());
         AST.Brane brane = (AST.Brane) branes.branes().get(0);
         assertEquals("""
-                {
-                  x = -(2 + (3 * 4));
+                brane'{
+                  integer'x = -(integer'2 + (integer'3 * integer'4));
                 }
                 """, ast.toString());
     }
@@ -131,16 +131,16 @@ public class ParserUnitTest {
         AST.Branes branes = ((AST.Program) ast).branes();
         assertEquals(3, branes.size());
         assertEquals("""
-                {
-                  x = 1;
-                  y = 2;
+                brane'{
+                  integer'x = integer'1;
+                  integer'y = integer'2;
                 }
-                {
-                  z = 3;
+                brane'{
+                  integer'z = integer'3;
                 }
-                {
-                  x = ((x + y) + z);
-                  result = 42;
+                brane'{
+                  integer'x = ((x + y) + z);
+                  integer'result = integer'42;
                 }
                 """, ast.toString());
     }
@@ -170,11 +170,11 @@ public class ParserUnitTest {
         assertEquals("y", secondAssignment.identifier().id());
         assertTrue(secondAssignment.expr() instanceof AST.UnknownExpr);
         assertEquals("""
-                [
+                brane'[
                   x = ???;
                   y = ???;
                 ]
-                {
+                brane'{
                   result = x;
                 }
                 """, ast.toString());
@@ -205,9 +205,9 @@ public class ParserUnitTest {
         assertEquals("circumference", circumference.identifier().id());
         assertTrue(circumference.expr() instanceof AST.UnknownExpr);
         assertEquals("""
-                [
+                brane'[
                   r = ???;
-                  pi = 3;
+                  pi = integer'3;
                   circumference = ???;
                 ]
                 """, ast.toString());
@@ -232,8 +232,8 @@ public class ParserUnitTest {
         assertEquals("y", second.identifier().id());
         assertTrue(second.expr() instanceof AST.UnknownExpr);
         assertEquals("""
-                [
-                  det'x = 1;
+                brane'[
+                  det'x = integer'1;
                   det'y = ???;
                 ]
                 """, ast.toString());
@@ -244,7 +244,7 @@ public class ParserUnitTest {
     public void testUnknown() {
         AST ast = parse("{ x = ???; y = ??? ;}");
         assertEquals("""
-                {
+                brane'{
                   x = ???;
                   y = ???;
                 }
@@ -274,11 +274,11 @@ public class ParserUnitTest {
                     }
                 """);
         assertEquals("""
-                {
+                brane'{
                   x = ???;
                   y = ???;
-                  y = 10;
-                  z = 11;
+                  integer'y = integer'10;
+                  integer'z = integer'11;
                 }
                 """, ast.toString());
     }
@@ -288,22 +288,22 @@ public class ParserUnitTest {
     public void testIf() {
         AST ast = parse("{ x = if a then 1; }");
         assertEquals("""
-                {
-                  x = if a then 1;
+                brane'{
+                  x = if a then integer'1;
                 }
                 """, ast.toString());
 
         AST ast2 = parse("{ x = if a then 1 else ???; }");
         assertEquals("""
-                {
-                  x = if a then 1;
+                brane'{
+                  x = if a then integer'1;
                 }
                 """, ast2.toString());
 
         AST ast3 = parse("{ x = if a then 1 elif b then 3 elif d then 100 else 4; }");
         assertEquals("""
-                {
-                  x = if a then 1 elif b then 3 elif d then 100 else 4;
+                brane'{
+                  x = if a then integer'1 elif b then integer'3 elif d then integer'100 else integer'4;
                 }
                 """, ast3.toString());
 
@@ -328,8 +328,8 @@ public class ParserUnitTest {
                         4;
                 }""");
         assertEquals("""
-                {
-                  if a then if z then 10 else 2 elif b then if x then 30 else if y then 20 else 3 elif d then if asdf then if qwer then 300 else 200 elif zxcv then 100 elif qwe then if 2 then 50 elif 45 then 40 else 0 else 4;
+                brane'{
+                  if a then if z then integer'10 else integer'2 elif b then if x then integer'30 else if y then integer'20 else integer'3 elif d then if asdf then if qwer then integer'300 else integer'200 elif zxcv then integer'100 elif qwe then if integer'2 then integer'50 elif integer'45 then integer'40 else integer'0 else integer'4;
                 }
                 """, ast4.toString());
         AST.Branes ast4Brane = ((AST.Program) ast4).branes();
@@ -368,7 +368,7 @@ public class ParserUnitTest {
         assertEquals("*", unary.op());
         assertTrue(unary.expr() instanceof AST.IntegerLiteral);
         assertEquals(1L, ((AST.IntegerLiteral) unary.expr()).value());
-        assertEquals("*1", unary.toString());
+        assertEquals("*integer'1", unary.toString());
     }
 
     @Test
@@ -383,7 +383,7 @@ public class ParserUnitTest {
         // Check t'x = 5
         assertTrue(brane.statements().get(0) instanceof AST.Assignment);
         AST.Assignment assignment = (AST.Assignment) brane.statements().get(0);
-        assertEquals("x", assignment.id());
+        assertEquals("x", assignment.id().id());
         assertTrue(assignment.expr() instanceof AST.IntegerLiteral);
         assertEquals(5L, ((AST.IntegerLiteral) assignment.expr()).value());
 
@@ -395,13 +395,13 @@ public class ParserUnitTest {
         assertEquals(42L, ((AST.IntegerLiteral) characterizable).value());
 
         assertEquals("""
-                {
-                  x = 5;
+                brane'{
+                  integer'x = integer'5;
                   n'42;
-                  b = x'{
-                  true;
-                  false;
-                  result = 10;
+                  x'b = x'{
+                  boolean'true;
+                  boolean'false;
+                  integer'result = integer'10;
                 };
                 }
                 """, ast.toString());
@@ -411,8 +411,8 @@ public class ParserUnitTest {
     public void testAllOperatorPrecedences() {
         AST ast = parse("{ x = -1 + +2 * 3 / *4 - +5; }");
         assertEquals("""
-                {
-                  x = ((-1 + ((+2 * 3) / *4)) - +5);
+                brane'{
+                  integer'x = ((-integer'1 + ((+integer'2 * integer'3) / *integer'4)) - +integer'5);
                 }
                 """, ast.toString());
     }
@@ -445,44 +445,44 @@ public class ParserUnitTest {
                 """
          );
         assertEquals("""
-{
-  a = 2;
-  b = {
-  a = 3;
+brane'{
+  integer'a = integer'2;
+  brane'b = brane'{
+  integer'a = integer'3;
 };
-  c = {
-  a = 4;
-  b = {
-  a = 5;
-  b = {
-  a = 6;
+  brane'c = brane'{
+  integer'a = integer'4;
+  brane'b = brane'{
+  integer'a = integer'5;
+  brane'b = brane'{
+  integer'a = integer'6;
 };
 };
 };
-  {
+  brane'{
   uhoh = ???;
 };
 }
-{
-  {
-  {
-  z = 3;
+brane'{
+  brane'{
+  brane'{
+  integer'z = integer'3;
 };
-  y = 2;
-  {
-  w = 4;
+  integer'y = integer'2;
+  brane'{
+  integer'w = integer'4;
 };
 };
-  x = 1;
-  {
-  p = 5;
-  {
-  q = 6;
-  {
+  integer'x = integer'1;
+  brane'{
+  integer'p = integer'5;
+  brane'{
+  integer'q = integer'6;
+  brane'{
 };
-  {
-  {
-  {
+  brane'{
+  brane'{
+  brane'{
 };
 };
 };
@@ -538,12 +538,12 @@ public class ParserUnitTest {
         assertEquals(1, brane2.statements().size());
 
         assertEquals("""
-                {
-                  x = 1;
+                brane'{
+                  integer'x = integer'1;
                 }
                 ↑
-                {
-                  y = 2;
+                brane'{
+                  integer'y = integer'2;
                 }
                 """, ast.toString());
     }

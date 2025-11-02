@@ -1,32 +1,32 @@
 INPUT:
         {
             a = 10;
-            b = if a then if missing then 1 else if a - 5 then undefined else 3 else 4;
+            b = if a >= 0 then if boolean'missing then 1 else if a - 5 >= 0 then undefined else 3 else 4;
         }
 
 
 PARSED AST:
-{
-  a = 10;
-  b = if a then if missing then 1 else if (a - 5) then undefined else 3 else 4;
+brane'{
+  integer'a = integer'10;
+  b = if (a >= integer'0) then if boolean'missing then integer'1 else if ((a - integer'5) >= integer'0) then undefined else integer'3 else integer'4;
 }
 
 FINAL BRANE:
 {
-  a = 10;
-  b = 3;
+  integer'a = 10;
+  integer'b = 3;
 }
 
 INITIAL FIROE:
 FiroeProgram(FiroeBrane(
-  FiroeAssignment(a, Finear(10)),
+  FiroeAssignment(integer'a, Finear(10)),
   FiroeAssignment(b, FiroeIf(
-    FiroeId(a),
+    FiroeBinary(FiroeId(a), >=, Finear(0)),
     FiroeIf(
-      FiroeId(missing),
+      FiroeId(boolean'missing),
       Finear(1),
       FiroeIf(
-        FiroeBinary(FiroeId(a), -, Finear(5)),
+        FiroeBinary(FiroeBinary(FiroeId(a), -, Finear(5)), >=, Finear(0)),
         FiroeId(undefined),
         Finear(3)
       )
@@ -37,12 +37,12 @@ FiroeProgram(FiroeBrane(
 
 EVALUATION RESULT:
 FiroeBrane(
-  FiroeAssignment(a, Finear(10)),
-  FiroeAssignment(b, Finear(3))
+  FiroeAssignment(integer'a, Finear(10)),
+  FiroeAssignment(integer'b, Finear(3))
 )
 
 FINAL BRANE STATUS:
 FiroeBrane(
-  FiroeAssignment(a, Finear(10)),
-  FiroeAssignment(b, Finear(3))
+  FiroeAssignment(integer'a, Finear(10)),
+  FiroeAssignment(integer'b, Finear(3))
 )

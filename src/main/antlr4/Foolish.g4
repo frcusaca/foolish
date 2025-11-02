@@ -40,9 +40,13 @@ stmt
 assignment : IDENTIFIER ASSIGN expr ;
 
 expr
-    : addExpr
-    | ifExpr
+    : ifExpr
+    | compareExpr
     | branes
+    ;
+
+compareExpr
+    : addExpr ((EQ | LE | GE | NE) addExpr)*
     ;
 
 addExpr : mulExpr ((PLUS | MINUS) mulExpr)* ;
@@ -57,6 +61,8 @@ unaryExpr
 
 literal
     : INTEGER
+    | TRUE
+    | FALSE
     ;
 
 primary
@@ -94,6 +100,10 @@ PLUS : '+' ;
 MINUS : '-' ;
 MUL : '*' ;
 DIV : '/' ;
+EQ : '==' ;
+LE : '<=' ;
+GE : '>=' ;
+NE : '<>' ;
 
 IF  : 'if' ;
 THEN : 'then' ;
@@ -101,6 +111,9 @@ ELIF : 'elif' ;
 ELSE : 'else' ;
 UP   : '↑' ;
 UNKNOWN : '???' ; // Unknowns are unknown
+
+TRUE : 'true' ;
+FALSE : 'false' ;
 
 INTEGER : DIGIT+ ;
 

@@ -1,23 +1,23 @@
 INPUT:
         {
-            x = if 1 then 42 else 24;
+            x = if true then 42 else 24;
         }
 
 
 PARSED AST:
-{
-  x = if 1 then 42 else 24;
+brane'{
+  x = if boolean'true then integer'42 else integer'24;
 }
 
 FINAL BRANE:
 {
-  x = 42;
+  integer'x = 42;
 }
 
 INITIAL FIROE:
 FiroeProgram(FiroeBrane(
   FiroeAssignment(x, FiroeIf(
-    Finear(1),
+    Finear(true),
     Finear(42),
     Finear(24)
   ))
@@ -25,10 +25,10 @@ FiroeProgram(FiroeBrane(
 
 EVALUATION RESULT:
 FiroeBrane(
-  FiroeAssignment(x, Finear(42))
+  FiroeAssignment(integer'x, Finear(42))
 )
 
 FINAL BRANE STATUS:
 FiroeBrane(
-  FiroeAssignment(x, Finear(42))
+  FiroeAssignment(integer'x, Finear(42))
 )

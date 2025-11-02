@@ -12,15 +12,15 @@ INPUT:
 
 
 PARSED AST:
-{
-  a = 5;
-  {
-    b = 10;
+brane'{
+  integer'a = integer'5;
+  brane'{
+    integer'b = integer'10;
   };
 }
 ↑
-{
-  c = (a + b);
+brane'{
+  integer'c = (a + b);
 }
 
 FINAL BRANE:
@@ -28,12 +28,12 @@ UNKNOWN
 
 INITIAL FIROE:
 FiroeProgram(FiroeBrane(
-  FiroeAssignment(a, Finear(5)),
+  FiroeAssignment(integer'a, Finear(5)),
   FiroeBrane(
-    FiroeAssignment(b, Finear(10))
+    FiroeAssignment(integer'b, Finear(10))
   ),
   FiroeSearchUp( parent=BraneFiroe),
-  FiroeAssignment(c, FiroeBinary(FiroeId(a), +, FiroeId(b)))
+  FiroeAssignment(integer'c, FiroeBinary(FiroeId(a), +, FiroeId(b)))
 ))
 
 EVALUATION RESULT:

@@ -1,18 +1,18 @@
-{
-  {
-  {
-  z = 3;
+brane'{
+  brane'{
+  brane'{
+  integer'z = integer'3;
 };
-  y = 2;
-  {
-  w = 4;
+  integer'y = integer'2;
+  brane'{
+  integer'w = integer'4;
 };
 };
-  x = 1;
-  {
-  p = 5;
-  {
-  q = 6;
+  integer'x = integer'1;
+  brane'{
+  integer'p = integer'5;
+  brane'{
+  integer'q = integer'6;
 };
 };
 }

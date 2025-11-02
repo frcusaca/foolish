@@ -4,111 +4,111 @@ INPUT:
                 a = 1;
                 {
                     {
-                        b = if a then if a + 1 then 10 else 20 else 30;
+                        b = if a >= 0 then if a + 1 >= 0 then 10 else 20 else 30;
                     };
                     c = b * 2;
                 };
             };
             {
-                d = if c then c + missing else 0;
+                d = if c >= 0 then c + missing else 0;
             };
             result = d - a;
         }
 
 
 PARSED AST:
-{
-  {
-    a = 1;
-    {
-      {
-        b = if a then if (a + 1) then 10 else 20 else 30;
+brane'{
+  brane'{
+    integer'a = integer'1;
+    brane'{
+      brane'{
+        b = if (a >= integer'0) then if ((a + integer'1) >= integer'0) then integer'10 else integer'20 else integer'30;
       };
-      c = (b * 2);
+      integer'c = (b * integer'2);
     };
   };
-  {
-    d = if c then (c + missing) else 0;
+  brane'{
+    d = if (c >= integer'0) then (c + missing) else integer'0;
   };
-  result = (d - a);
+  integer'result = (d - a);
 }
 
 FINAL BRANE:
 {
   {
-    a = 1;
+    integer'a = 1;
     {
       {
-        b = 10;
+        integer'b = 10;
       };
-      c = UNKNOWN;
+      integer'c = UNKNOWN;
     };
   };
   {
-    d = 0;
+    integer'd = 0;
   };
-  result = UNKNOWN;
+  integer'result = UNKNOWN;
 }
 
 INITIAL FIROE:
 FiroeProgram(FiroeBrane(
   FiroeBrane(
-    FiroeAssignment(a, Finear(1)),
+    FiroeAssignment(integer'a, Finear(1)),
     FiroeBrane(
       FiroeBrane(
         FiroeAssignment(b, FiroeIf(
-          FiroeId(a),
+          FiroeBinary(FiroeId(a), >=, Finear(0)),
           FiroeIf(
-            FiroeBinary(FiroeId(a), +, Finear(1)),
+            FiroeBinary(FiroeBinary(FiroeId(a), +, Finear(1)), >=, Finear(0)),
             Finear(10),
             Finear(20)
           ),
           Finear(30)
         ))
       ),
-      FiroeAssignment(c, FiroeBinary(FiroeId(b), *, Finear(2)))
+      FiroeAssignment(integer'c, FiroeBinary(FiroeId(b), *, Finear(2)))
     )
   ),
   FiroeBrane(
     FiroeAssignment(d, FiroeIf(
-      FiroeId(c),
+      FiroeBinary(FiroeId(c), >=, Finear(0)),
       FiroeBinary(FiroeId(c), +, FiroeId(missing)),
       Finear(0)
     ))
   ),
-  FiroeAssignment(result, FiroeBinary(FiroeId(d), -, FiroeId(a)))
+  FiroeAssignment(integer'result, FiroeBinary(FiroeId(d), -, FiroeId(a)))
 ))
 
 EVALUATION RESULT:
 FiroeBrane(
   FiroeBrane(
-    FiroeAssignment(a, Finear(1)),
+    FiroeAssignment(integer'a, Finear(1)),
     FiroeBrane(
       FiroeBrane(
-        FiroeAssignment(b, Finear(10))
+        FiroeAssignment(integer'b, Finear(10))
       ),
-      FiroeAssignment(c, Finear(UNKNOWN))
+      FiroeAssignment(integer'c, Finear(UNKNOWN))
     )
   ),
   FiroeBrane(
-    FiroeAssignment(d, Finear(0))
+    FiroeAssignment(integer'd, Finear(0))
   ),
-  FiroeAssignment(result, Finear(UNKNOWN))
+  FiroeAssignment(integer'result, Finear(UNKNOWN))
 )
 
 FINAL BRANE STATUS:
 FiroeBrane(
   FiroeBrane(
-    FiroeAssignment(a, Finear(1)),
+    FiroeAssignment(integer'a, Finear(1)),
     FiroeBrane(
       FiroeBrane(
-        FiroeAssignment(b, Finear(10))
+        FiroeAssignment(integer'b, Finear(10))
       ),
-      FiroeAssignment(c, Finear(UNKNOWN))
+      FiroeAssignment(integer'c, Finear(UNKNOWN))
     )
   ),
   FiroeBrane(
-    FiroeAssignment(d, Finear(0))
+    FiroeAssignment(integer'd, Finear(0))
   ),
-  FiroeAssignment(result, Finear(UNKNOWN))
+  FiroeAssignment(integer'result, Finear(UNKNOWN))
 )

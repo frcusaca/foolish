@@ -11,7 +11,7 @@ class AssignmentFiroe extends Firoe {
 
     AssignmentFiroe(Insoe base, Firoe expr) {
         this(base,
-                new Characterizable(base.as(AST.Assignment.class).id()),
+                Characterizable.fromAst(base.as(AST.Assignment.class).id()),
                 expr);
     }
 
@@ -19,7 +19,7 @@ class AssignmentFiroe extends Firoe {
         super(base);
         if (base!=null) {
             AST.Assignment ast = base.as(AST.Assignment.class);
-            assert ast.id().equals(id.id());
+            assert ast.id().cannonicalId().equals(id.id());
         }
         this.id = id;
         this.expr = expr;

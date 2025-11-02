@@ -6,31 +6,31 @@ INPUT:
 
 
 PARSED AST:
-{
-  x = (1 + (2 * 3));
-  y = (x - 4);
+brane'{
+  integer'x = (integer'1 + (integer'2 * integer'3));
+  integer'y = (x - integer'4);
 }
 
 FINAL BRANE:
 {
-  x = 7;
-  y = 3;
+  integer'x = 7;
+  integer'y = 3;
 }
 
 INITIAL FIROE:
 FiroeProgram(FiroeBrane(
-  FiroeAssignment(x, FiroeBinary(Finear(1), +, FiroeBinary(Finear(2), *, Finear(3)))),
-  FiroeAssignment(y, FiroeBinary(FiroeId(x), -, Finear(4)))
+  FiroeAssignment(integer'x, FiroeBinary(Finear(1), +, FiroeBinary(Finear(2), *, Finear(3)))),
+  FiroeAssignment(integer'y, FiroeBinary(FiroeId(x), -, Finear(4)))
 ))
 
 EVALUATION RESULT:
 FiroeBrane(
-  FiroeAssignment(x, Finear(7)),
-  FiroeAssignment(y, Finear(3))
+  FiroeAssignment(integer'x, Finear(7)),
+  FiroeAssignment(integer'y, Finear(3))
 )
 
 FINAL BRANE STATUS:
 FiroeBrane(
-  FiroeAssignment(x, Finear(7)),
-  FiroeAssignment(y, Finear(3))
+  FiroeAssignment(integer'x, Finear(7)),
+  FiroeAssignment(integer'y, Finear(3))
 )

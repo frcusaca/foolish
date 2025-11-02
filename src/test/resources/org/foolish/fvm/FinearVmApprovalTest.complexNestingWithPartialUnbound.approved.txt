@@ -3,7 +3,7 @@ INPUT:
             x = 5;
             {
                 {
-                    y = if x then if notHere then 1 else 2 else 3;
+                    y = if x >= 0 then if boolean'notHere then 1 else 2 else 3;
                 };
                 z = y + x;
             };
@@ -12,69 +12,69 @@ INPUT:
 
 
 PARSED AST:
-{
-  x = 5;
-  {
-    {
-      y = if x then if notHere then 1 else 2 else 3;
+brane'{
+  integer'x = integer'5;
+  brane'{
+    brane'{
+      y = if (x >= integer'0) then if boolean'notHere then integer'1 else integer'2 else integer'3;
     };
-    z = (y + x);
+    integer'z = (y + x);
   };
-  w = (z - unknown);
+  integer'w = (z - unknown);
 }
 
 FINAL BRANE:
 {
-  x = 5;
+  integer'x = 5;
   {
     {
-      y = 2;
+      integer'y = 2;
     };
-    z = UNKNOWN;
+    integer'z = UNKNOWN;
   };
-  w = UNKNOWN;
+  integer'w = UNKNOWN;
 }
 
 INITIAL FIROE:
 FiroeProgram(FiroeBrane(
-  FiroeAssignment(x, Finear(5)),
+  FiroeAssignment(integer'x, Finear(5)),
   FiroeBrane(
     FiroeBrane(
       FiroeAssignment(y, FiroeIf(
-        FiroeId(x),
+        FiroeBinary(FiroeId(x), >=, Finear(0)),
         FiroeIf(
-          FiroeId(notHere),
+          FiroeId(boolean'notHere),
           Finear(1),
           Finear(2)
         ),
         Finear(3)
       ))
     ),
-    FiroeAssignment(z, FiroeBinary(FiroeId(y), +, FiroeId(x)))
+    FiroeAssignment(integer'z, FiroeBinary(FiroeId(y), +, FiroeId(x)))
   ),
-  FiroeAssignment(w, FiroeBinary(FiroeId(z), -, FiroeId(unknown)))
+  FiroeAssignment(integer'w, FiroeBinary(FiroeId(z), -, FiroeId(unknown)))
 ))
 
 EVALUATION RESULT:
 FiroeBrane(
-  FiroeAssignment(x, Finear(5)),
+  FiroeAssignment(integer'x, Finear(5)),
   FiroeBrane(
     FiroeBrane(
-      FiroeAssignment(y, Finear(2))
+      FiroeAssignment(integer'y, Finear(2))
     ),
-    FiroeAssignment(z, Finear(UNKNOWN))
+    FiroeAssignment(integer'z, Finear(UNKNOWN))
   ),
-  FiroeAssignment(w, Finear(UNKNOWN))
+  FiroeAssignment(integer'w, Finear(UNKNOWN))
 )
 
 FINAL BRANE STATUS:
 FiroeBrane(
-  FiroeAssignment(x, Finear(5)),
+  FiroeAssignment(integer'x, Finear(5)),
   FiroeBrane(
     FiroeBrane(
-      FiroeAssignment(y, Finear(2))
+      FiroeAssignment(integer'y, Finear(2))
     ),
-    FiroeAssignment(z, Finear(UNKNOWN))
+    FiroeAssignment(integer'z, Finear(UNKNOWN))
   ),
-  FiroeAssignment(w, Finear(UNKNOWN))
+  FiroeAssignment(integer'w, Finear(UNKNOWN))
 )

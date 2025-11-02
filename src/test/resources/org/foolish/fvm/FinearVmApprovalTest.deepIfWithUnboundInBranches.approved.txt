@@ -1,28 +1,28 @@
 INPUT:
         {
-            result = if 1 then if 0 then notFound else if 1 then stillMissing else 10 else 5;
+            result = if true then if false then notFound else if true then stillMissing else 10 else 5;
         }
 
 
 PARSED AST:
-{
-  result = if 1 then if 0 then notFound else if 1 then stillMissing else 10 else 5;
+brane'{
+  result = if boolean'true then if boolean'false then notFound else if boolean'true then stillMissing else integer'10 else integer'5;
 }
 
 FINAL BRANE:
 {
-  result = 10;
+  integer'result = 10;
 }
 
 INITIAL FIROE:
 FiroeProgram(FiroeBrane(
   FiroeAssignment(result, FiroeIf(
-    Finear(1),
+    Finear(true),
     FiroeIf(
-      Finear(0),
+      Finear(false),
       FiroeId(notFound),
       FiroeIf(
-        Finear(1),
+        Finear(true),
         FiroeId(stillMissing),
         Finear(10)
       )
@@ -33,10 +33,10 @@ FiroeProgram(FiroeBrane(
 
 EVALUATION RESULT:
 FiroeBrane(
-  FiroeAssignment(result, Finear(10))
+  FiroeAssignment(integer'result, Finear(10))
 )
 
 FINAL BRANE STATUS:
 FiroeBrane(
-  FiroeAssignment(result, Finear(10))
+  FiroeAssignment(integer'result, Finear(10))
 )

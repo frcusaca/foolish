@@ -28,6 +28,8 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
         Identifier identifier = new Identifier(id == null ? "" : id);
         if (chrbl instanceof IntegerLiteral intLit) {
             return (T) (new IntegerLiteral(identifier, intLit.value()));
+        } else if (chrbl instanceof BooleanLiteral boolLit) {
+            return (T) (new BooleanLiteral(identifier, boolLit.value()));
         } else if (chrbl instanceof Identifier ident) {
             return (T) (new Identifier(identifier, ident.id()));
         } else if (chrbl instanceof Brane brn){
@@ -36,17 +38,17 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
             return (T) (new DetachmentBrane(identifier, detachment.statements()));
         } else if (chrbl instanceof SearchUP searchUp){
             return (T) (new SearchUP(identifier));
-        }else {
+        } else {
             throw new IllegalArgumentException("Cannot set characterization on type: " + chrbl.getClass());
         }
     }
 
-    sealed interface Literal extends Characterizable permits IntegerLiteral {
+    sealed interface Literal extends Characterizable permits IntegerLiteral, BooleanLiteral {
     }
 
     record IntegerLiteral(Identifier characterization, long value) implements Literal {
         public IntegerLiteral(long value) {
-            this("", value);
+            this("integer", value);
         }
         public IntegerLiteral(String chara, long value) {
             this(new Identifier(chara==null?"":chara), value);
@@ -59,6 +61,30 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
         public boolean equals(Object obj) {
             return (obj != null &&
                     obj instanceof IntegerLiteral other && this.value == other.value
+                    && this.canonicalCharacterization().equals(other.canonicalCharacterization())
+            );
+        }
+    }
+
+    record BooleanLiteral(Identifier characterization, boolean value) implements Literal {
+        public BooleanLiteral(boolean value) {
+            this("boolean", value);
+        }
+
+        public BooleanLiteral(String chara, boolean value) {
+            this(new Identifier(chara == null ? "" : chara), value);
+        }
+
+        @Override
+        public String toString() {
+            return (((characterization != null && characterization.id.length() > 0) ? characterization.id + "'" : "")
+                    + Boolean.toString(value));
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return (obj != null &&
+                    obj instanceof BooleanLiteral other && this.value == other.value
                     && this.canonicalCharacterization().equals(other.canonicalCharacterization())
             );
         }
@@ -184,13 +210,13 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
     }
 
 
-    record BinaryExpr(String op, Expr left, Expr right) implements Expr {
+    record BinaryExpr(Identifier characterization, String op, Expr left, Expr right) implements Expr {
         public String toString() {
             return "(" + left + " " + op + " " + right + ")";
         }
     }
 
-    record UnaryExpr(String op, Expr expr) implements Expr {
+    record UnaryExpr(Identifier characterization, String op, Expr expr) implements Expr {
         public String toString() {
             return op + expr;
         }
@@ -201,7 +227,7 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
     }
 
 
-    record Assignment(String id, Expr expr) implements Stmt {
+    record Assignment(Identifier id, Expr expr) implements Stmt {
         public String toString() {
             return id + " = " + expr;
         }

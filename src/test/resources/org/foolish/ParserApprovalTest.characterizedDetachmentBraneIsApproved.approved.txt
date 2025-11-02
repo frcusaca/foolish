@@ -1,4 +1,4 @@
-[
-  det'x = 1;
+brane'[
+  det'x = integer'1;
   det'y = ???;
 ]

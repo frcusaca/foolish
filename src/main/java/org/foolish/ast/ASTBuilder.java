@@ -56,12 +56,12 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
     @Override
     public AST visitStandard_brane(FoolishParser.Standard_braneContext ctx) {
-        return new AST.Brane(collectStatements(ctx.stmt()));
+        return setCharacterization("brane", new AST.Brane(collectStatements(ctx.stmt())));
     }
 
     @Override
     public AST visitDetach_brane(FoolishParser.Detach_braneContext ctx) {
-        return new AST.DetachmentBrane(collectDetachmentStatements(ctx.detach_stmt()));
+        return setCharacterization("brane", new AST.DetachmentBrane(collectDetachmentStatements(ctx.detach_stmt())));
     }
 
     @Override
@@ -93,7 +93,7 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
     public AST visitAssignment(FoolishParser.AssignmentContext ctx) {
         String id = ctx.IDENTIFIER().getText();
         AST.Expr expr = (AST.Expr) visit(ctx.expr());
-        return new AST.Assignment(id, expr);
+        return new AST.Assignment(characterizeIdentifierForAssignment(id, expr), expr);
     }
 
     @Override
@@ -106,7 +106,7 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
     @Override
     public AST visitExpr(FoolishParser.ExprContext ctx) {
         if (ctx.ifExpr() != null) return visit(ctx.ifExpr());
-        return visit(ctx.addExpr());
+        return visit(ctx.compareExpr());
     }
 
     @Override
@@ -115,7 +115,7 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
         for (int i = 1; i < ctx.mulExpr().size(); i++) {
             String op = ctx.getChild(2 * i - 1).getText();
             AST.Expr right = (AST.Expr) visit(ctx.mulExpr(i));
-            left = new AST.BinaryExpr(op, left, right);
+            left = createBinaryExpr(op, left, right);
         }
         return left;
     }
@@ -126,7 +126,7 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
         for (int i = 1; i < ctx.unaryExpr().size(); i++) {
             String op = ctx.getChild(2 * i - 1).getText();
             AST.Expr right = (AST.Expr) visit(ctx.unaryExpr(i));
-            left = new AST.BinaryExpr(op, left, right);
+            left = createBinaryExpr(op, left, right);
         }
         return left;
     }
@@ -136,15 +136,15 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
         if (ctx.PLUS() != null) {
             String op = "+";
             AST.Expr expr = (AST.Expr) visit(ctx.primary());
-            return new AST.UnaryExpr(op, expr);
+            return new AST.UnaryExpr(new AST.Identifier("integer"), op, expr);
         } else if (ctx.MINUS() != null) {
             String op = "-";
             AST.Expr expr = (AST.Expr) visit(ctx.primary());
-            return new AST.UnaryExpr(op, expr);
+            return new AST.UnaryExpr(new AST.Identifier("integer"), op, expr);
         } else if (ctx.MUL() != null) {
             String op = "*";
             AST.Expr expr = (AST.Expr) visit(ctx.primary());
-            return new AST.UnaryExpr(op, expr);
+            return new AST.UnaryExpr(new AST.Identifier("integer"), op, expr);
         } else {
             return visit(ctx.primary());
         }
@@ -197,6 +197,10 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
         // Get characterization from parent context
         if (ctx.INTEGER() != null) {
             return new AST.IntegerLiteral(Long.parseLong(ctx.INTEGER().getText()));
+        } else if (ctx.TRUE() != null) {
+            return new AST.BooleanLiteral(Boolean.TRUE);
+        } else if (ctx.FALSE() != null) {
+            return new AST.BooleanLiteral(Boolean.FALSE);
         }
         throw new RuntimeException("Unknown literal type");
     }
@@ -219,5 +223,40 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
             elseIfs.add(new AST.IfExpr(elseIfCondition, elseIfThen, null, null));
         });
         return new AST.IfExpr(condition, theThen, theElse, elseIfs);
+    }
+
+    @Override
+    public AST visitCompareExpr(FoolishParser.CompareExprContext ctx) {
+        AST.Expr left = (AST.Expr) visit(ctx.addExpr(0));
+        for (int i = 1; i < ctx.addExpr().size(); i++) {
+            String op = ctx.getChild(2 * i - 1).getText();
+            AST.Expr right = (AST.Expr) visit(ctx.addExpr(i));
+            left = createBinaryExpr(op, left, right);
+        }
+        return left;
+    }
+
+    private AST.BinaryExpr createBinaryExpr(String op, AST.Expr left, AST.Expr right) {
+        String characterization = switch (op) {
+            case "==", "<>", "<=", ">=" -> "boolean";
+            default -> "integer";
+        };
+        return new AST.BinaryExpr(new AST.Identifier(characterization), op, left, right);
+    }
+
+    private AST.Identifier characterizeIdentifierForAssignment(String id, AST.Expr expr) {
+        AST.Identifier identifier = new AST.Identifier(id);
+        String chara = null;
+        if (expr instanceof AST.Characterizable characterizable) {
+            chara = characterizable.canonicalCharacterization();
+        } else if (expr instanceof AST.BinaryExpr binaryExpr && binaryExpr.characterization() != null) {
+            chara = binaryExpr.characterization().cannonicalId();
+        } else if (expr instanceof AST.UnaryExpr unaryExpr && unaryExpr.characterization() != null) {
+            chara = unaryExpr.characterization().cannonicalId();
+        }
+        if (chara != null && !chara.isEmpty()) {
+            return AST.setCharacterization(chara, identifier);
+        }
+        return identifier;
     }
 }

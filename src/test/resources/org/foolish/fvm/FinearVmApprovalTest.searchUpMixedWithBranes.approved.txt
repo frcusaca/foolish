@@ -5,12 +5,12 @@ INPUT:
 
 
 PARSED AST:
-{
-  x = 1;
+brane'{
+  integer'x = integer'1;
 }
 ↑
-{
-  y = 2;
+brane'{
+  integer'y = integer'2;
 }
 
 FINAL BRANE:
@@ -18,9 +18,9 @@ UNKNOWN
 
 INITIAL FIROE:
 FiroeProgram(FiroeBrane(
-  FiroeAssignment(x, Finear(1)),
+  FiroeAssignment(integer'x, Finear(1)),
   FiroeSearchUp( parent=BraneFiroe),
-  FiroeAssignment(y, Finear(2))
+  FiroeAssignment(integer'y, Finear(2))
 ))
 
 EVALUATION RESULT:

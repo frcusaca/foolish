@@ -1,31 +1,31 @@
 INPUT:
         {
             a = 5;
-            b = if a then if a - 3 then if a - 5 then 1 else 2 else 3 else 4;
+            b = if a >= 0 then if a - 3 >= 0 then if a - 5 >= 0 then 1 else 2 else 3 else 4;
         }
 
 
 PARSED AST:
-{
-  a = 5;
-  b = if a then if (a - 3) then if (a - 5) then 1 else 2 else 3 else 4;
+brane'{
+  integer'a = integer'5;
+  b = if (a >= integer'0) then if ((a - integer'3) >= integer'0) then if ((a - integer'5) >= integer'0) then integer'1 else integer'2 else integer'3 else integer'4;
 }
 
 FINAL BRANE:
 {
-  a = 5;
-  b = 2;
+  integer'a = 5;
+  integer'b = 1;
 }
 
 INITIAL FIROE:
 FiroeProgram(FiroeBrane(
-  FiroeAssignment(a, Finear(5)),
+  FiroeAssignment(integer'a, Finear(5)),
   FiroeAssignment(b, FiroeIf(
-    FiroeId(a),
+    FiroeBinary(FiroeId(a), >=, Finear(0)),
     FiroeIf(
-      FiroeBinary(FiroeId(a), -, Finear(3)),
+      FiroeBinary(FiroeBinary(FiroeId(a), -, Finear(3)), >=, Finear(0)),
       FiroeIf(
-        FiroeBinary(FiroeId(a), -, Finear(5)),
+        FiroeBinary(FiroeBinary(FiroeId(a), -, Finear(5)), >=, Finear(0)),
         Finear(1),
         Finear(2)
       ),
@@ -37,12 +37,12 @@ FiroeProgram(FiroeBrane(
 
 EVALUATION RESULT:
 FiroeBrane(
-  FiroeAssignment(a, Finear(5)),
-  FiroeAssignment(b, Finear(2))
+  FiroeAssignment(integer'a, Finear(5)),
+  FiroeAssignment(integer'b, Finear(1))
 )
 
 FINAL BRANE STATUS:
 FiroeBrane(
-  FiroeAssignment(a, Finear(5)),
-  FiroeAssignment(b, Finear(2))
+  FiroeAssignment(integer'a, Finear(5)),
+  FiroeAssignment(integer'b, Finear(1))
 )

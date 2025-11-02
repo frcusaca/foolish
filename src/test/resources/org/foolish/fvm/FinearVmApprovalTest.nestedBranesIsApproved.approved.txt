@@ -8,41 +8,41 @@ INPUT:
 
 
 PARSED AST:
-{
-  {
-    x = 1;
+brane'{
+  brane'{
+    integer'x = integer'1;
   };
-  y = 2;
+  integer'y = integer'2;
 }
 
 FINAL BRANE:
 {
   {
-    x = 1;
+    integer'x = 1;
   };
-  y = 2;
+  integer'y = 2;
 }
 
 INITIAL FIROE:
 FiroeProgram(FiroeBrane(
   FiroeBrane(
-    FiroeAssignment(x, Finear(1))
+    FiroeAssignment(integer'x, Finear(1))
   ),
-  FiroeAssignment(y, Finear(2))
+  FiroeAssignment(integer'y, Finear(2))
 ))
 
 EVALUATION RESULT:
 FiroeBrane(
   FiroeBrane(
-    FiroeAssignment(x, Finear(1))
+    FiroeAssignment(integer'x, Finear(1))
   ),
-  FiroeAssignment(y, Finear(2))
+  FiroeAssignment(integer'y, Finear(2))
 )
 
 FINAL BRANE STATUS:
 FiroeBrane(
   FiroeBrane(
-    FiroeAssignment(x, Finear(1))
+    FiroeAssignment(integer'x, Finear(1))
   ),
-  FiroeAssignment(y, Finear(2))
+  FiroeAssignment(integer'y, Finear(2))
 )

@@ -38,7 +38,7 @@ class FinearVmSimpleUnitTest {
 
         vm.evaluate(assignment, env);
 
-        Targoe stored = env.get("x");
+        Targoe stored = env.get(id.id());
         assertInstanceOf(Finear.class, stored);
         assertEquals(42L, ((Finear) stored).longValue());
     }
@@ -80,8 +80,8 @@ class FinearVmSimpleUnitTest {
 
         vm.evaluate(add, env);
 
-        assertEquals(5L, ((Finear) env.get("x")).value());
-        assertEquals(3L, ((Finear) env.get("y")).value());
+        assertEquals(5L, ((Finear) env.get(xId.id())).value());
+        assertEquals(3L, ((Finear) env.get(yId.id())).value());
     }
 
     @Test

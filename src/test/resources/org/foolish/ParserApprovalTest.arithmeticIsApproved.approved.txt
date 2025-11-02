@@ -1,4 +1,4 @@
-{
-  x = (1 + (2 * 3));
-  y = (x - 4);
+brane'{
+  integer'x = (integer'1 + (integer'2 * integer'3));
+  integer'y = (x - integer'4);
 }

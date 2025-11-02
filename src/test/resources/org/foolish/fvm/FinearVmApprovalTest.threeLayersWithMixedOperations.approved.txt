@@ -12,61 +12,61 @@ INPUT:
 
 
 PARSED AST:
-{
-  {
-    {
-      p = -5;
-      q = +10;
+brane'{
+  brane'{
+    brane'{
+      integer'p = -integer'5;
+      integer'q = +integer'10;
     };
-    r = (p + q);
+    integer'r = (p + q);
   };
-  s = (r * 2);
+  integer's = (r * integer'2);
 }
 
 FINAL BRANE:
 {
   {
     {
-      p = -5;
-      q = 10;
+      integer'p = -5;
+      integer'q = 10;
     };
-    r = UNKNOWN;
+    integer'r = UNKNOWN;
   };
-  s = UNKNOWN;
+  integer's = UNKNOWN;
 }
 
 INITIAL FIROE:
 FiroeProgram(FiroeBrane(
   FiroeBrane(
     FiroeBrane(
-      FiroeAssignment(p, FiroeUnary(-, Finear(5))),
-      FiroeAssignment(q, FiroeUnary(+, Finear(10)))
+      FiroeAssignment(integer'p, FiroeUnary(-, Finear(5))),
+      FiroeAssignment(integer'q, FiroeUnary(+, Finear(10)))
     ),
-    FiroeAssignment(r, FiroeBinary(FiroeId(p), +, FiroeId(q)))
+    FiroeAssignment(integer'r, FiroeBinary(FiroeId(p), +, FiroeId(q)))
   ),
-  FiroeAssignment(s, FiroeBinary(FiroeId(r), *, Finear(2)))
+  FiroeAssignment(integer's, FiroeBinary(FiroeId(r), *, Finear(2)))
 ))
 
 EVALUATION RESULT:
 FiroeBrane(
   FiroeBrane(
     FiroeBrane(
-      FiroeAssignment(p, Finear(-5)),
-      FiroeAssignment(q, Finear(10))
+      FiroeAssignment(integer'p, Finear(-5)),
+      FiroeAssignment(integer'q, Finear(10))
     ),
-    FiroeAssignment(r, Finear(UNKNOWN))
+    FiroeAssignment(integer'r, Finear(UNKNOWN))
   ),
-  FiroeAssignment(s, Finear(UNKNOWN))
+  FiroeAssignment(integer's, Finear(UNKNOWN))
 )
 
 FINAL BRANE STATUS:
 FiroeBrane(
   FiroeBrane(
     FiroeBrane(
-      FiroeAssignment(p, Finear(-5)),
-      FiroeAssignment(q, Finear(10))
+      FiroeAssignment(integer'p, Finear(-5)),
+      FiroeAssignment(integer'q, Finear(10))
     ),
-    FiroeAssignment(r, Finear(UNKNOWN))
+    FiroeAssignment(integer'r, Finear(UNKNOWN))
   ),
-  FiroeAssignment(s, Finear(UNKNOWN))
+  FiroeAssignment(integer's, Finear(UNKNOWN))
 )
