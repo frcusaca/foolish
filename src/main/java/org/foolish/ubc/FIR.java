@@ -54,7 +54,7 @@ public abstract class FIR {
      *
      * @return the integer value
      * @throws UnsupportedOperationException if this FIR doesn't support getValue
-     * @throws IllegalStateException if this FIR is not fully evaluated
+     * @throws IllegalStateException         if this FIR is not fully evaluated
      */
     public long getValue() {
         throw new UnsupportedOperationException("getValue not supported for " + getClass().getSimpleName());
@@ -67,7 +67,7 @@ public abstract class FIR {
      *
      * @return the environment
      * @throws UnsupportedOperationException if this FIR doesn't support getEnvironment
-     * @throws IllegalStateException if this FIR is not fully evaluated
+     * @throws IllegalStateException         if this FIR is not fully evaluated
      */
     public Env getEnvironment() {
         throw new UnsupportedOperationException("getEnvironment not supported for " + getClass().getSimpleName());
@@ -77,19 +77,27 @@ public abstract class FIR {
      * Creates a FIR from an AST expression.
      */
     FIR createFiroeFromExpr(AST.Expr expr) {
-        if (expr instanceof AST.IntegerLiteral literal) {
-            return new ValueFiroe(expr, literal.value());
-        } else if (expr instanceof AST.BinaryExpr binary) {
-            return new BinaryFiroe(binary);
-        } else if (expr instanceof AST.UnaryExpr unary) {
-            return new UnaryFiroe(unary);
-        } else if (expr instanceof AST.IfExpr ifExpr) {
-            return new IfFiroe(ifExpr);
-        } else if (expr instanceof AST.Brane brane) {
-            return new BraneFiroe(brane);
-        } else {
-            // Placeholder for unsupported types
-            return new ValueFiroe(0L);
+        switch (expr) {
+            case AST.IntegerLiteral literal -> {
+                return new ValueFiroe(expr, literal.value());
+            }
+            case AST.BinaryExpr binary -> {
+                return new BinaryFiroe(binary);
+            }
+            case AST.UnaryExpr unary -> {
+                return new UnaryFiroe(unary);
+            }
+            case AST.IfExpr ifExpr -> {
+                return new IfFiroe(ifExpr);
+            }
+            case AST.Brane brane -> {
+                return new BraneFiroe(brane);
+            }
+            case AST.Identifier id -> {
+                throw new UnsupportedOperationException("Identifier FIR creation not implemented yet.");
+            } default -> {
+                // Placeholder for unsupported types
+                return new ValueFiroe(0L);
+            }
         }
     }
-}
