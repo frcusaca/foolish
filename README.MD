@@ -186,8 +186,8 @@ dimensions best visualized as a dependency DAG. The dependency DAG and its
 subdimensions branch out and progress forward in their own time dimensions. 
 Sometimes more than one timeline merges together by being involved in an 
 expression that refers to all of them. Overall, the brane's fracturing timelines 
-can be linearized, merging into the sequence of code as they originally appear 
-inside the Foolish code, into a single time dimension.
+can be linearized, by stringing them into the sequence of code as they originally
+appear inside the Foolish code, into a single time dimension.
 
 ## Language Reference
 

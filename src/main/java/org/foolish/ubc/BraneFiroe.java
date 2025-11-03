@@ -34,39 +34,14 @@ public class BraneFiroe extends FiroeWithBraneMind {
             for (AST.Expr expr : brane.statements()) {
                 FIR firoe = createFiroeFromExpr(expr);
                 expressionFiroes.add(firoe);
-                if (firoe.underevaluated()) {
-                    braneMind.offer(firoe);
-                }
+                enqueueFir(firoe);
             }
-        }
-    }
-
-    /**
-     * Creates a FIR from an AST expression.
-     */
-    private FIR createFiroeFromExpr(AST.Expr expr) {
-        if (expr instanceof AST.IntegerLiteral literal) {
-            return new ValueFiroe(expr, literal.value());
-        } else if (expr instanceof AST.BinaryExpr binary) {
-            return new BinaryFiroe(binary);
-        } else if (expr instanceof AST.UnaryExpr unary) {
-            return new UnaryFiroe(unary);
-        } else if (expr instanceof AST.IfExpr ifExpr) {
-            return new IfFiroe(ifExpr);
-        } else if (expr instanceof AST.SearchUP searchUp) {
-            return new SearchUpFiroe(searchUp);
-        } else if (expr instanceof AST.Brane brane) {
-            return new BraneFiroe(brane);
-        } else {
-            // For unsupported expressions, create a generic FIR
-            return new UnsupportedFiroe(expr);
         }
     }
 
     @Override
     public boolean underevaluated() {
-        // BraneFiroe is underevaluated until it's initialized and all items in braneMind are processed
-        return !initialized || !braneMind.isEmpty();
+        return !initialized || super.underevaluated();
     }
 
     @Override
@@ -76,20 +51,7 @@ public class BraneFiroe extends FiroeWithBraneMind {
             return;
         }
 
-        if (braneMind.isEmpty()) {
-            return;
-        }
-
-        FIR current = braneMind.peek();
-        if (current instanceof FiroeWithBraneMind firoeWithMind) {
-            firoeWithMind.step();
-            if (!current.underevaluated()) {
-                braneMind.poll();
-            }
-        } else {
-            // Should not happen as FiroeWithoutBraneMind shouldn't be in queue
-            braneMind.poll();
-        }
+        super.step();
     }
 
     /**

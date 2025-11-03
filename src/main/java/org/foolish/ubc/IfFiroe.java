@@ -4,16 +4,55 @@ import org.foolish.ast.AST;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 
 /**
  * IfFiroe represents an if-else expression in the UBC system.
  * Contains a series of Firoes representing conditions and values.
  */
+
 public class IfFiroe extends FiroeWithBraneMind {
-    private FIR conditionFiroe;
-    private FIR thenFiroe;
-    private FIR elseFiroe;
-    private List<IfFiroe> elseIfFiroes;
+
+    // This class is private to ensure that nothign else can insert
+    // this class into the "else branch"
+    private class ConditionalFiroe extends FiroeWithBraneMind{
+
+        Boolean condition_value=null;
+        protected ConditionalFiroe(AST.IfExpr ifExpr) {
+            super(ifExpr);
+            enqueueFirOf(createFiroeFromExpr(ifExpr.condition()), createFiroeFromExpr(ifExpr.thenExpr()));
+        }
+
+        @Override
+        public void  step(){
+            if(braneMemory.isEmpty()){
+                // first must evaluate condition
+                super.step();
+                if(!braneMemory.isEmpty()){
+                    condition_value = braneMemory.peek().getValue()!=0;
+                }
+            }else if (condition_value == true){
+                // when condition is known and it is decided this needs to be executed
+                super.step();
+            }
+        }
+
+        @Override
+        public boolean underevaluated(){
+            return hasUnknownCondition() || (hasTrueCondition() && super.underevaluated());
+        }
+
+         public boolean hasUnknownCondition(){
+            return condition_value==null;
+        }
+        public boolean hasTrueCondition(){
+            return condition_value==true;
+        }
+        public boolean hasFalseCondition(){
+            return condition_value==false;
+        }
+    }
+
     private boolean initialized;
     private FIR result;
 
@@ -28,134 +67,66 @@ public class IfFiroe extends FiroeWithBraneMind {
         initialized = true;
 
         AST.IfExpr ifExpr = (AST.IfExpr) ast;
+        enqueueFirOf(new ConditionalFiroe(ifExpr));
 
         // Create Firoes for condition, then, and else branches
-        conditionFiroe = createFiroeFromExpr(ifExpr.condition());
-        thenFiroe = createFiroeFromExpr(ifExpr.thenExpr());
-        elseFiroe = createFiroeFromExpr(ifExpr.elseExpr());
-
-        // Create else-if Firoes
-        elseIfFiroes = new ArrayList<>();
+        enqueueFirOf(createFiroeFromExpr(ifExpr.condition()), createFiroeFromExpr(ifExpr.thenExpr()));
         for (AST.IfExpr elseIf : ifExpr.elseIfs()) {
-            elseIfFiroes.add(new IfFiroe(elseIf));
+            enqueueFir(new ConditionalFiroe(elseIf));
         }
 
         // Enqueue condition for evaluation first
-        if (conditionFiroe.underevaluated()) {
-            braneMind.offer(conditionFiroe);
-        }
+        enqueueFir(createFiroeFromExpr(ifExpr.elseExpr()));
     }
 
     @Override
     public void step() {
-        if (result != null) {
-            return;
-        }
-
-        if (!initialized) {
+        if (!initialized){
             initialize();
             return;
         }
-
-        // Step 1: Evaluate the condition
-        if (conditionFiroe.underevaluated()) {
-            if (conditionFiroe instanceof FiroeWithBraneMind firoeWithMind) {
-                firoeWithMind.step();
-                if (!conditionFiroe.underevaluated()) {
-                    braneMind.poll();
+        switch(braneMemory.peekLast()){
+            case null -> step();
+            case ConditionalFiroe cfiroe -> {
+                if (cfiroe.hasTrueCondition()) {
+                    step();
                 }
             }
-            return;
-        }
-
-        // Step 2: Based on condition, evaluate the appropriate branch
-        if (conditionFiroe instanceof ValueFiroe conditionValue) {
-            boolean conditionIsTrue = conditionValue.getValue() != 0;
-
-            if (conditionIsTrue) {
-                // Evaluate then branch
-                if (thenFiroe.underevaluated()) {
-                    if (thenFiroe instanceof FiroeWithBraneMind firoeWithMind) {
-                        firoeWithMind.step();
-                    }
-                } else {
-                    result = thenFiroe;
-                }
-            } else {
-                // Check else-if branches
-                boolean elseIfMatched = false;
-                for (IfFiroe elseIfFiroe : elseIfFiroes) {
-                    if (elseIfFiroe.underevaluated()) {
-                        elseIfFiroe.step();
-                        if (!elseIfFiroe.underevaluated()) {
-                            result = elseIfFiroe.getResult();
-                            elseIfMatched = true;
-                            break;
-                        }
-                    }
-                }
-
-                if (!elseIfMatched && result == null) {
-                    // Evaluate else branch
-                    if (elseFiroe.underevaluated()) {
-                        if (elseFiroe instanceof FiroeWithBraneMind firoeWithMind) {
-                            firoeWithMind.step();
-                        }
-                    } else {
-                        result = elseFiroe;
-                    }
-                }
-            }
+            case FIR firoe -> {/*else was ealuated fully already*/}
         }
     }
 
     @Override
     public boolean underevaluated() {
-        return result == null;
+        return switch (braneMemory.peekLast()) {
+            case null -> true;
+            case ConditionalFiroe cfiroe when (cfiroe.condition_value==true) ->
+                    false;
+            default ->
+                    // This queue, when it contains something other than a conditionalFiroe means else.
+                    true;
+        };
     }
 
     /**
      * Get the result of the if expression.
      */
     public FIR getResult() {
-        return result;
+        return switch (braneMemory.peekLast()) {
+            case null ->
+                throw new IllegalStateException("IfFiroe result requested before evaluation.");
+            case ConditionalFiroe cfiroe when (cfiroe.condition_value==true) ->
+                    cfiroe.braneMemory.getLast();
+            case FIR elseResult ->
+                elseResult;
+        };
     }
-
     /**
      * Get the value if the result is a ValueFiroe.
      */
     @Override
     public long getValue() {
-        if (result instanceof ValueFiroe valueFiroe) {
-            return valueFiroe.getValue();
-        }
-        throw new IllegalStateException("IfFiroe result is not a ValueFiroe");
+            return getResult().getValue();
     }
 
-    @Override
-    public boolean isAbstract() {
-        return (conditionFiroe != null && conditionFiroe.isAbstract()) ||
-               (thenFiroe != null && thenFiroe.isAbstract()) ||
-               (elseFiroe != null && elseFiroe.isAbstract());
-    }
-
-    /**
-     * Creates a FIR from an AST expression.
-     */
-    private FIR createFiroeFromExpr(AST.Expr expr) {
-        if (expr instanceof AST.IntegerLiteral literal) {
-            return new ValueFiroe(expr, literal.value());
-        } else if (expr instanceof AST.BinaryExpr binary) {
-            return new BinaryFiroe(binary);
-        } else if (expr instanceof AST.UnaryExpr unary) {
-            return new UnaryFiroe(unary);
-        } else if (expr instanceof AST.IfExpr ifExpr) {
-            return new IfFiroe(ifExpr);
-        } else if (expr instanceof AST.Brane brane) {
-            return new BraneFiroe(brane);
-        } else {
-            // Placeholder for unsupported types
-            return new ValueFiroe(0L);
-        }
-    }
 }

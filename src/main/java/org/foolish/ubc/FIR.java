@@ -73,4 +73,23 @@ public abstract class FIR {
         throw new UnsupportedOperationException("getEnvironment not supported for " + getClass().getSimpleName());
     }
 
+    /**
+     * Creates a FIR from an AST expression.
+     */
+    FIR createFiroeFromExpr(AST.Expr expr) {
+        if (expr instanceof AST.IntegerLiteral literal) {
+            return new ValueFiroe(expr, literal.value());
+        } else if (expr instanceof AST.BinaryExpr binary) {
+            return new BinaryFiroe(binary);
+        } else if (expr instanceof AST.UnaryExpr unary) {
+            return new UnaryFiroe(unary);
+        } else if (expr instanceof AST.IfExpr ifExpr) {
+            return new IfFiroe(ifExpr);
+        } else if (expr instanceof AST.Brane brane) {
+            return new BraneFiroe(brane);
+        } else {
+            // Placeholder for unsupported types
+            return new ValueFiroe(0L);
+        }
+    }
 }

@@ -35,20 +35,15 @@ public class UnaryFiroe extends FiroeWithBraneMind {
             operandFiroe = createFiroeFromExpr(unaryExpr.expr());
             operandCreated = true;
 
-            if (operandFiroe.underevaluated()) {
-                braneMind.offer(operandFiroe);
-            }
+            enqueueFir(operandFiroe);
             return;
         }
 
-        // Step 2+: If operand is still underevaluated, step it
-        if (operandFiroe.underevaluated()) {
-            if (operandFiroe instanceof FiroeWithBraneMind firoeWithMind) {
-                firoeWithMind.step();
-                if (!operandFiroe.underevaluated()) {
-                    braneMind.poll();
-                }
-            }
+        // Step 2+: Let the parent class handle braneMind stepping
+        super.step();
+        
+        // Check if we can compute the final result
+        if (super.underevaluated()) {
             return;
         }
 
@@ -91,21 +86,4 @@ public class UnaryFiroe extends FiroeWithBraneMind {
         return operator + (operandFiroe != null ? operandFiroe : "?");
     }
 
-    /**
-     * Creates a FIR from an AST expression.
-     */
-    private FIR createFiroeFromExpr(AST.Expr expr) {
-        if (expr instanceof AST.IntegerLiteral literal) {
-            return new ValueFiroe(expr, literal.value());
-        } else if (expr instanceof AST.BinaryExpr binary) {
-            return new BinaryFiroe(binary);
-        } else if (expr instanceof AST.UnaryExpr unary) {
-            return new UnaryFiroe(unary);
-        } else if (expr instanceof AST.Brane brane) {
-            return new BraneFiroe(brane);
-        } else {
-            // Placeholder for unsupported types
-            return new ValueFiroe(0L);
-        }
-    }
 }
