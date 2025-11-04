@@ -1,12 +1,11 @@
 package org.foolish.ast;
 
+import org.antlr.v4.runtime.tree.TerminalNode;
 import org.foolish.grammar.FoolishBaseVisitor;
 import org.foolish.grammar.FoolishParser;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import org.antlr.v4.runtime.tree.TerminalNode;
 
 import static org.foolish.ast.AST.setCharacterization;
 
@@ -41,7 +40,7 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
                 })
                 .toList();
     }
-    
+
     private List<AST.DetachmentStatement> collectDetachmentStatements(List<FoolishParser.Detach_stmtContext> statements) {
         return statements.stream()
                 .map(this::visit)
@@ -68,7 +67,7 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
     public AST visitBranes(FoolishParser.BranesContext ctx) {
         List<AST.Characterizable> brns = new ArrayList<>();
         for (var s : ctx.brane()) {
-            AST st = (AST) visit(s);
+            AST st = visit(s);
             if (st instanceof AST.Characterizable brn) brns.add(brn);
             else throw new RuntimeException("Expected characterizable brane, got: " + st);
         }

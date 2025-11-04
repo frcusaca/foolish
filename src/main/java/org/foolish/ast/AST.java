@@ -5,9 +5,20 @@ import java.util.List;
 import java.util.Objects;
 
 public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStatement {
-    record Program(Branes branes) implements AST {
-        public String toString() {
-            return branes.toString();
+    static <T> T setCharacterization(String id, T chrbl) {
+        Identifier identifier = new Identifier(id == null ? "" : id);
+        if (chrbl instanceof IntegerLiteral intLit) {
+            return (T) (new IntegerLiteral(identifier, intLit.value()));
+        } else if (chrbl instanceof Identifier ident) {
+            return (T) (new Identifier(identifier, ident.id()));
+        } else if (chrbl instanceof Brane brn) {
+            return (T) (new Brane(identifier, brn.statements()));
+        } else if (chrbl instanceof DetachmentBrane detachment) {
+            return (T) (new DetachmentBrane(identifier, detachment.statements()));
+        } else if (chrbl instanceof SearchUP searchUp) {
+            return (T) (new SearchUP(identifier));
+        } else {
+            throw new IllegalArgumentException("Cannot set characterization on type: " + chrbl.getClass());
         }
     }
 
@@ -24,33 +35,27 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
 
     }
 
-    public static <T> T setCharacterization(String id, T chrbl) {
-        Identifier identifier = new Identifier(id == null ? "" : id);
-        if (chrbl instanceof IntegerLiteral intLit) {
-            return (T) (new IntegerLiteral(identifier, intLit.value()));
-        } else if (chrbl instanceof Identifier ident) {
-            return (T) (new Identifier(identifier, ident.id()));
-        } else if (chrbl instanceof Brane brn){
-            return (T) (new Brane(identifier, brn.statements()));
-        } else if (chrbl instanceof DetachmentBrane detachment){
-            return (T) (new DetachmentBrane(identifier, detachment.statements()));
-        } else if (chrbl instanceof SearchUP searchUp){
-            return (T) (new SearchUP(identifier));
-        }else {
-            throw new IllegalArgumentException("Cannot set characterization on type: " + chrbl.getClass());
-        }
+    sealed interface Literal extends Characterizable permits IntegerLiteral {
     }
 
-    sealed interface Literal extends Characterizable permits IntegerLiteral {
+    sealed interface Stmt extends Expr permits Assignment {
+    }
+
+    record Program(Branes branes) implements AST {
+        public String toString() {
+            return branes.toString();
+        }
     }
 
     record IntegerLiteral(Identifier characterization, long value) implements Literal {
         public IntegerLiteral(long value) {
             this("", value);
         }
+
         public IntegerLiteral(String chara, long value) {
-            this(new Identifier(chara==null?"":chara), value);
+            this(new Identifier(chara == null ? "" : chara), value);
         }
+
         public String toString() {
             return (((characterization != null && characterization.id.length() > 0) ? characterization.id + "'" : "")
                     + value);
@@ -117,7 +122,8 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
         }
     }
 
-    record DetachmentBrane(Identifier characterization, List<DetachmentStatement> statements) implements Characterizable {
+    record DetachmentBrane(Identifier characterization,
+                           List<DetachmentStatement> statements) implements Characterizable {
         public DetachmentBrane(List<DetachmentStatement> statements) {
             this(null, statements);
         }
@@ -178,11 +184,11 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
             }
             return sb.toString();
         }
+
         public int size() {
             return branes.size();
         }
     }
-
 
     record BinaryExpr(String op, Expr left, Expr right) implements Expr {
         public String toString() {
@@ -195,11 +201,6 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
             return op + expr;
         }
     }
-
-
-    sealed interface Stmt extends Expr permits Assignment {
-    }
-
 
     record Assignment(String id, Expr expr) implements Stmt {
         public String toString() {

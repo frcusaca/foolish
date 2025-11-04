@@ -1,0 +1,90 @@
+INPUT:
+        {
+            a = 1;
+            {
+                b = 2;
+                {
+                    c = 3;
+                    {
+                        d = a + b + c;
+                    };
+                };
+            };
+            result = a + b + c + d;
+        }
+
+
+PARSED AST:
+{
+  a = 1;
+  {
+    b = 2;
+    {
+      c = 3;
+      {
+        d = ((a + b) + c);
+      };
+    };
+  };
+  result = (((a + b) + c) + d);
+}
+
+FINAL BRANE:
+{
+  a = 1;
+  {
+    b = 2;
+    {
+      c = 3;
+      {
+        d = 6;
+      };
+    };
+  };
+  result = NK;
+}
+
+INITIAL FIROE:
+FiroeProgram(FiroeBrane(
+  FiroeAssignment(a, Finear(1)),
+  FiroeBrane(
+    FiroeAssignment(b, Finear(2)),
+    FiroeBrane(
+      FiroeAssignment(c, Finear(3)),
+      FiroeBrane(
+        FiroeAssignment(d, FiroeBinary(FiroeBinary(FiroeId(a), +, FiroeId(b)), +, FiroeId(c)))
+      )
+    )
+  ),
+  FiroeAssignment(result, FiroeBinary(FiroeBinary(FiroeBinary(FiroeId(a), +, FiroeId(b)), +, FiroeId(c)), +, FiroeId(d)))
+))
+
+EVALUATION RESULT:
+FiroeBrane(
+  FiroeAssignment(a, Finear(1)),
+  FiroeBrane(
+    FiroeAssignment(b, Finear(2)),
+    FiroeBrane(
+      FiroeAssignment(c, Finear(3)),
+      FiroeBrane(
+        FiroeAssignment(d, Finear(6))
+      )
+    )
+  ),
+  FiroeAssignment(result, Finear(NK))
+)
+
+FINAL BRANE STATUS:
+FiroeBrane(
+  FiroeAssignment(a, Finear(1)),
+  FiroeBrane(
+    FiroeAssignment(b, Finear(2)),
+    FiroeBrane(
+      FiroeAssignment(c, Finear(3)),
+      FiroeBrane(
+        FiroeAssignment(d, Finear(6))
+      )
+    )
+  ),
+  FiroeAssignment(result, Finear(NK))
+)

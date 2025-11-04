@@ -45,6 +45,11 @@ computers. We are building toward a future where programming is:
 - **Bidirectionally Communicative**: The system maximizes both human-to-computer
   and computer-to-human communication efficiency
 
+As a **Fooler**, for lack of a better concise way to describe us, we are the people
+who develops Foolish. A Fooler might say the variable is *nye* (says 'nigh') when 
+they encounter a FIR that has not yet been evaluated fully, we say "that's a no-no"
+when we see `???`. fully evaluated expressions are values.
+
 ---
 
 ## Quick Start
@@ -330,14 +335,14 @@ Such a convention has the direct benefit of delaying recursive concepts until
 more thought is put into the line of code.
 
 ### The Unknown
-The unknown is of paramount importance to us, therefore we dedicate a symbol 
-to express Unknown in Foolish `???`. Here we declare we do not know the answer:
+The ***NK*** (*Not Knowable*, pronounced "no-no") is of paramount importance to us, therefore we dedicate a symbol 
+to express the *NK* state in Foolish `???`. Here we declare we do not know the answer:
 ```foolish
 {
     answer=???;
 }
 ```
-In fact every unnamed expression is an assignment to an unknown name:
+In fact every unnamed expression is an assignment to an *NK* name:
 ```foolish
 {1;2;3;}
 ```
@@ -894,7 +899,7 @@ The Ancestral Brane (AB) is the search context that contains the name of the exp
 in an AST that defined the current brane, that expression's AB and IB.
 
 In some cases, such as the recursive call to `↑`, the search finds a line of code that
-has an incomplete value. Note by incomplete value, in the UBC, we mean not the unknown 
+has an incomplete value. Note by incomplete value, in the UBC, we mean not the *NK* 
 value `???`, but a value that the present UBC does not fully know the value of (yet). In 
 the case of this incomplete value, it would appear that the simplest machine is unable 
 to continue evaluating the value of the Foolish expression. In fact, we don't even 
@@ -949,23 +954,23 @@ known as the Foolish Internal Representation (FIR). FIR can be several things:
 4. An abstract brane in that it is deliberately or inadvertently undercontextualized—
      some identifier referenced within has no available binding to value or brane member.
      An optimization we may perform is to coordinate the values of an abstract brane where
-     possible. That brane with all possible values coordinated is a fully evaluated
+     possible. That brane with all possible values coordinated is a ***FK*** (*Fully Known*)
      abstract brane. Normally, a recursive brane conditions on some computational result
      that depends on a parameter—a coordinate identifier that is named but unattached
-     at the definition of the brane. In these cases, the abstract brane can be fully
-     evaluated because the recursion depends on a parameter. But it is possible to 
+     at the definition of the brane. In these cases, the abstract brane can be *FK*
+     because the recursion depends on a parameter. But it is possible to 
      construct an abstract brane that calls itself irrespective of future parameters.
      Such a brane will be finite or infinite in depth depending on its construction.
-     The abstract brane may therefore be permanently underevaluated due to its construction.
-     An abstract brane is fully evaluated if the underevaluated members are due to detached
-     identifier names.
-5. An underevaluated FIR represents code that was expressed in Foolish, but it 
-   has not been fully evaluated in the present UBC context. This FIR contains the AST of
+     The abstract brane may therefore be permanently ***NYE*** (*Not Yet Evaluated*,
+     pronounced "nigh") due to its construction.  An abstract brane is *FK* if 
+     the *NYE* members are due to detached identifier names.
+5. An *NYE* FIR represents code that was expressed in Foolish, but it 
+   has not been *FK* in the present UBC context. This FIR contains the AST of
    the expression, and a reference to the AB and IB that were used to attempt
-   evaluation. But there are three possible reasons why the FIR is underevaluated:
+   evaluation. But there are three possible reasons why the FIR is *NYE*:
    1. The AST is unprocessed.
    2. The expression has an unevaluated AST that contains recursive references to names
-      that are not yet fully evaluated in the present context.
+      that are not yet *FK* in the present context.
 
 #### The UBC pass
 1. If the UBC encounters Foolish text representing a brane, UBC holds it in memory.
@@ -992,8 +997,8 @@ UBC brane evaluation:
    4. Proceed to next line.
 3. When the brane ends, the brane is returned as a value.
 
-(*) The expression is underevaluated if it makes underevaluated references.
-When the underevaluation is caused by `↑` recursion, this single step materializes one
+(*) The expression is *NYE* if it makes *NYE* references.
+When the *NYE* state is caused by `↑` recursion, this single step materializes one
 step of the recursion. The FIR is updated to replace `↑` with a FIR representing 
 `[IB, AB] a`—the `a` being the AST of `↑`. This concludes the iteration.
 Note, the next time we take a step in the UBC pass, this FIR is a brane concatenation that
@@ -1003,7 +1008,7 @@ step depending on the program and context.
 The UBC FIR processing has the following stages:
 1. AST
 2. FIR with all evaluation results coordinated. (Completion, another UBC does nothing)
-3. FIR with some underevaluated coordinates. (In progress, another UBC step may
+3. FIR with some *NYE* coordinates. (In progress, another UBC step may
    produce changes)
 
 Because of the step-wise evaluation, the brane tree is evaluated breadth-first. The
@@ -1047,9 +1052,9 @@ or ZIP codes. There could also be higher-valence relationships, such as `{a,b,c}
 or `{a,b,c} is_median_height`, which may return a boolean on whether `a.x`, `b.x`, `c.x` is
 sorted, or `a` is the median of `b` and `c`, respectively.
 
-So, in Foolish, a value that is accessible *after* a brane is fully evaluated is considered 
+So, in Foolish, a value that is accessible *after* a brane is *FK* is considered 
 a coordinate—the value tells us how to relate to the brane that was just computed. A well-
-coordinated brane is one that is fully evaluated to values so that computation can proceed
+coordinated brane is one that is *FK* to values so that computation can proceed
 to access the coordinate with no undesirable consequences.
 #### Single Coordinate Matching
 ```

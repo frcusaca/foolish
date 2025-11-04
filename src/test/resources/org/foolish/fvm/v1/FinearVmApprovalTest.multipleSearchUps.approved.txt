@@ -1,0 +1,21 @@
+INPUT:
+↑ ↑
+
+PARSED AST:
+↑
+↑
+
+FINAL BRANE:
+NK
+
+INITIAL FIROE:
+FiroeProgram(FiroeBrane(
+  FiroeSearchUp( parent=BraneFiroe),
+  FiroeSearchUp( parent=BraneFiroe)
+))
+
+EVALUATION RESULT:
+Finear(NK)
+
+FINAL BRANE STATUS:
+Finear(NK)
