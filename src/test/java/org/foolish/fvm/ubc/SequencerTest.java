@@ -1,11 +1,7 @@
 package org.foolish.fvm.ubc;
 
 import org.foolish.ast.AST;
-import org.foolish.fvm.Env;
 import org.foolish.fvm.v1.Insoe;
-import org.foolish.fvm.ubc.BraneFiroe;
-import org.foolish.fvm.ubc.Sequencer4Human;
-import org.foolish.fvm.ubc.UnicelluarBraneComputer;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

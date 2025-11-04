@@ -1,6 +1,5 @@
 package org.foolish.fvm.v1;
 
-import org.foolish.fvm.v1.Characterizable;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 

@@ -14,9 +14,17 @@ import java.util.List;
 public class BraneFiroe extends FiroeWithBraneMind {
     private final Env environment;
 
-    public BraneFiroe(AST ast) {
+    /**
+     * Constructs a BraneFiroe with the given AST and Ancestral Brane environment.
+     * The ABEnv is used for resolving identifiers from ancestral branes.
+     */
+    public BraneFiroe(AST ast, Env aBEnv) {
         super(ast);
-        this.environment = null;
+        this.environment = aBEnv;
+    }
+
+    public BraneFiroe(AST ast) {
+        this(ast, null);
     }
 
     /**
@@ -79,9 +87,12 @@ public class BraneFiroe extends FiroeWithBraneMind {
         return new Sequencer4Human().sequence(this);
     }
 
-    public BraneFiroe cleanClone() {
-        return new BraneFiroe(this.ast);
+
+    public BraneFiroe cloneWithABEnv(Env newABEnv) {
+        return new BraneFiroe(this.ast, newABEnv==null?this.environment:newABEnv);
     }
 
-
+    public BraneFiroe cloneAbstract() {
+        return cloneWithABEnv(null);
+    }
 }

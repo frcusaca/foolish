@@ -1,8 +1,6 @@
 package org.foolish.fvm.ubc;
 
 import org.foolish.fvm.Env;
-import org.foolish.fvm.ubc.UbcRepl;
-import org.foolish.fvm.ubc.BraneFiroe;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
