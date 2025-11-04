@@ -298,6 +298,7 @@ include `_` for spacing out complicated nouns.
     a&thinsp;name=2;   !! Thin space word entity
     a&hairsp;name=3;   !! hair space
     a&#x202F;name=4;   !! narrow non-breaking space
+    a&#x2060;name=5;   !! word joiner
 }
 ```
 

@@ -106,11 +106,10 @@ INTEGER : DIGIT+ ;
 
 fragment LETTER : [a-zA-Z] ;
 fragment DIGIT : [0-9] ;
-fragment UNDERSCORE : '_' ;
-
+fragment INTRA_ID_SEPARATOR : ' ' | '⁠' | '_' ;
 // Skip whitespace
 WS : [ \t\r\n]+ -> skip ;
 
-IDENTIFIER : LETTER (LETTER|DIGIT|UNDERSCORE)* ;
+IDENTIFIER : LETTER (LETTER|DIGIT|INTRA_ID_SEPARATOR)* ;
 
 APOSTROPHE : '\'' ;

@@ -82,4 +82,21 @@ public class ParserApprovalTest {
                 ]
         """);
     }
+
+    @Test
+    void otherSpacesAreApproved() {
+        verifyApprovalOf("""
+                [
+                    variable\u202Fx = ???;
+                    coordinate\u2060y;
+                ]
+                {
+                    my_result = x;
+                    my\u202Fresult\u2060coordinate=-42;
+                    here\u202Ftoo'a\u202Fb\u2060c = 5;
+                    simple\u2060name'd\u202Fe\u2060f;
+                }
+        """);
+    }
+
 }

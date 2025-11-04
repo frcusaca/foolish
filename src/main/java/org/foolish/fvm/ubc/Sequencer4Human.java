@@ -1,11 +1,13 @@
 package org.foolish.fvm.ubc;
 
+import org.foolish.ast.AST;
+
 /**
  * Human-friendly sequencer that formats FIR objects with configurable indentation.
  * Uses '➠' as the default tab character for visual clarity.
  */
 public class Sequencer4Human extends Sequencer<String> {
-    private static final String DEFAULT_TAB = "➠";
+    private static final String DEFAULT_TAB = "＿"; //U+FF3F
     private final String tabChar;
 
     /**
@@ -43,6 +45,8 @@ public class Sequencer4Human extends Sequencer<String> {
             return sequenceIf(ifFiroe, depth);
         } else if (fir instanceof SearchUpFiroe searchUp) {
             return sequenceSearchUp(searchUp, depth);
+        } else if (fir instanceof AssignmentFiroe assignment) {
+            return sequenceAssignment(assignment, depth);
         } else {
             return indent(depth) + "???";
         }
@@ -51,7 +55,17 @@ public class Sequencer4Human extends Sequencer<String> {
     @Override
     protected String sequenceBrane(BraneFiroe brane, int depth) {
         StringBuilder sb = new StringBuilder();
-        sb.append(indent(depth)).append("{\n");
+
+        // Add characterization (name) if present
+        if (brane.ast() instanceof AST.Brane braneAst &&
+            braneAst.characterization() != null &&
+            !braneAst.canonicalCharacterization().isEmpty()) {
+            sb.append(indent(depth)).append(braneAst.canonicalCharacterization()).append("'");
+        } else {
+            sb.append(indent(depth));
+        }
+
+        sb.append("{\n");
 
         for (FIR expr : brane.getExpressionFiroes()) {
             sb.append(sequence(expr, depth + 1));
@@ -103,6 +117,21 @@ public class Sequencer4Human extends Sequencer<String> {
     @Override
     protected String sequenceSearchUp(SearchUpFiroe searchUp, int depth) {
         return indent(depth) + "↑";
+    }
+
+    /**
+     * Sequences an assignment FIR showing the coordinate name and its value.
+     */
+    protected String sequenceAssignment(AssignmentFiroe assignment, int depth) {
+        if (!assignment.isNye() && assignment.getResult() != null) {
+            FIR result = assignment.getResult();
+            // Check if the result is fully evaluated before getting its value
+            if (!result.isNye()) {
+                return indent(depth) + assignment.getId() + " = " + result.getValue();
+            }
+        }
+        // If not yet evaluated, show the structure
+        return indent(depth) + assignment.getId() + " = ???";
     }
 
     /**

@@ -79,4 +79,13 @@ public abstract class Sequencer<T> {
      * @return The formatted output
      */
     protected abstract T sequenceSearchUp(SearchUpFiroe searchUp, int depth);
+
+    /**
+     * Sequence an AssignmentFiroe into the output format.
+     *
+     * @param assignment The AssignmentFiroe to sequence
+     * @param depth      The current depth level for indentation
+     * @return The formatted output
+     */
+    protected abstract T sequenceAssignment(AssignmentFiroe assignment, int depth);
 }

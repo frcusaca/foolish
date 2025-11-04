@@ -1,0 +1,18 @@
+INPUT:
+{10 / 0;}
+
+PARSED AST:
+{
+  (10 / 0);
+}
+
+UBC EVALUATION:
+Steps taken: 3
+
+FINAL RESULT:
+{
+＿0;
+}
+
+COMPLETION STATUS:
+Complete: true

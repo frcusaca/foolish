@@ -117,6 +117,9 @@ public abstract class FIR {
             case AST.Brane brane -> {
                 return new BraneFiroe(brane);
             }
+            case AST.Assignment assignment -> {
+                return new AssignmentFiroe(assignment);
+            }
             case AST.Identifier id -> {
                 throw new UnsupportedOperationException("Identifier FIR creation not implemented yet.");
             }

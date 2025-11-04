@@ -29,7 +29,7 @@ class SequencerTest {
         assertTrue(output.contains("{"));
         assertTrue(output.contains("}"));
         assertTrue(output.contains("5"));
-        assertTrue(output.contains("➠")); // Should use the tab character
+        assertTrue(output.contains("＿")); // Should use the tab character
     }
 
     @Test
@@ -72,7 +72,7 @@ class SequencerTest {
 
         assertTrue(output.contains("{"));
         assertTrue(output.contains("  42")); // Should use two spaces
-        assertFalse(output.contains("➠")); // Should NOT use default tab
+        assertFalse(output.contains("＿")); // Should NOT use default tab
     }
 
     @Test
@@ -120,15 +120,15 @@ class SequencerTest {
         assertTrue(output.contains("5"));
         assertTrue(output.contains("7"));
 
-        // Should have proper indentation with ➠
-        long tabCount = output.chars().filter(ch -> ch == '➠').count();
+        // Should have proper indentation with ＿
+        long tabCount = output.chars().filter(ch -> ch == '＿').count();
         assertTrue(tabCount >= 2); // At least 2 tabs for nested structure
     }
 
     @Test
     void testDefaultTabCharacter() {
         Sequencer4Human sequencer = new Sequencer4Human();
-        assertEquals("➠", sequencer.getTabChar());
+        assertEquals("＿", sequencer.getTabChar());
     }
 
     @Test
@@ -145,7 +145,7 @@ class SequencerTest {
         String toStringOutput = result.toString();
 
         // toString() should use Sequencer4Human
-        assertTrue(toStringOutput.contains("➠"));
+        assertTrue(toStringOutput.contains("＿"));
         assertTrue(toStringOutput.contains("99"));
     }
 }

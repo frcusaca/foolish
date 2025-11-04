@@ -55,8 +55,13 @@
         <groupId>org.apache.commons</groupId>
         <artifactId>commons-lang3</artifactId>
         <version>3.19.0</version>
-    </dependency>
-
+	</dependency>
+	<!-- Some ancient code was producing warning that flooded AI memor -->
+	<dependency>
+	    <groupId>com.google.inject</groupId>
+	    <artifactId>guice</artifactId>
+	    <version>7.0.0</version>
+	</dependency>
       <dependency>
           <groupId>com.google.guava</groupId>
           <artifactId>guava</artifactId>
@@ -127,7 +132,8 @@
             <configuration>
               <includes>
                   <include>**/*Test.java</include>
-              </includes>
+	  </includes>
+	  <argLine>--sun-misc-unsafe-memory-access=allow</argLine>
             </configuration>
       </plugin>
     </plugins>
