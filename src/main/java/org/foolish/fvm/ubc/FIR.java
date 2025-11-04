@@ -120,8 +120,8 @@ public abstract class FIR {
             case AST.Assignment assignment -> {
                 return new AssignmentFiroe(assignment);
             }
-            case AST.Identifier id -> {
-                throw new UnsupportedOperationException("Identifier FIR creation not implemented yet.");
+            case AST.Identifier identifier -> {
+                return new IdentifierFiroe(identifier);
             }
             default -> {
                 // Placeholder for unsupported types

@@ -277,4 +277,107 @@ public class UbcApprovalTest {
                 }
         """);
     }
+
+    // If-then-else tests
+    // TODO: Fix IfFiroe infinite loop issues before enabling these tests
+    /*
+    @Test
+    void simpleIfThenElseIsApproved() {
+        verifyUbcApprovalOf("""
+                {
+                    if 1 then 42 else 99;
+                }
+        """);
+    }
+
+    @Test
+    void simpleIfThenElseFalseIsApproved() {
+        verifyUbcApprovalOf("""
+                {
+                    if 0 then 42 else 99;
+                }
+        """);
+    }
+
+    @Test
+    void ifThenNoElseImplicitNKIsApproved() {
+        verifyUbcApprovalOf("""
+                {
+                    if 0 then 42;
+                }
+        """);
+    }
+
+    @Test
+    void ifElifElseChainIsApproved() {
+        verifyUbcApprovalOf("""
+                {
+                    if 0 then 10 elif 0 then 20 elif 1 then 30 else 40;
+                }
+        """);
+    }
+
+    @Test
+    void ifWithComplexConditionIsApproved() {
+        verifyUbcApprovalOf("""
+                {
+                    if 5 + 3 then 100 else 200;
+                }
+        """);
+    }
+
+    @Test
+    void ifWithComplexThenValueIsApproved() {
+        verifyUbcApprovalOf("""
+                {
+                    if 1 then 10 * 5 + 3 else 0;
+                }
+        """);
+    }
+
+    @Test
+    void nestedIfThenElseIsApproved() {
+        verifyUbcApprovalOf("""
+                {
+                    if 1 then if 0 then 10 else 20 else 30;
+                }
+        """);
+    }
+
+    @Test
+    void ifWithFiMarkerIsApproved() {
+        verifyUbcApprovalOf("""
+                {
+                    if 1 then 42 else 99 fi;
+                }
+        """);
+    }
+
+    @Test
+    void deeplyNestedIfWithFiIsApproved() {
+        verifyUbcApprovalOf("""
+                {
+                    if 1 then
+                        if 0 then 10
+                        elif 0 then 20
+                        else if 1 then 30 else 40 fi
+                    fi
+                    else 50;
+                }
+        """);
+    }
+
+    @Test
+    void multipleNestedIfCheckingFiAssociationIsApproved() {
+        verifyUbcApprovalOf("""
+                {
+                    if 1 then
+                        if 1 then
+                            if 0 then 100 else 200 fi
+                        else 300 fi
+                    else 400 fi;
+                }
+        """);
+    }
+    */
 }

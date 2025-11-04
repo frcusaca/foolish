@@ -11,7 +11,7 @@ Steps taken: 3
 
 FINAL RESULT:
 {
-＿0;
+＿???;
 }
 
 COMPLETION STATUS:

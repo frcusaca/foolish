@@ -8,12 +8,14 @@ import org.foolish.ast.AST;
  * In one step, it converts to the operand Firoe.
  * Evaluation continues until the operand is done.
  * One more step computes the result of the unary expression.
+ *
+ * Arithmetic errors during evaluation result in NK (not-known) values.
  */
 public class UnaryFiroe extends FiroeWithBraneMind {
     private final String operator;
     private FIR operandFiroe;
     private boolean operandCreated;
-    private ValueFiroe result;
+    private FIR result;
 
     public UnaryFiroe(AST.UnaryExpr unaryExpr) {
         super(unaryExpr);
@@ -54,19 +56,41 @@ public class UnaryFiroe extends FiroeWithBraneMind {
             return;
         }
 
-        // Final step: Compute the unary operation result
-        long operandValue = operandFiroe.getValue();
-        long resultValue = switch (operator) {
-            case "-" -> -operandValue;
-            case "!" -> operandValue == 0 ? 1L : 0L;
-            default -> throw new UnsupportedOperationException("Unknown operator: " + operator);
-        };
-        result = new ValueFiroe(ast, resultValue);
+        // If operand is abstract (NK), the result is NK
+        if (operandFiroe.isAbstract()) {
+            result = new NKFiroe(ast, "Operand is not-known");
+            return;
+        }
+
+        try {
+            // Final step: Compute the unary operation result
+            long operandValue = operandFiroe.getValue();
+            long resultValue = switch (operator) {
+                case "-" -> -operandValue;
+                case "!" -> operandValue == 0 ? 1L : 0L;
+                default -> throw new UnsupportedOperationException("Unknown operator: " + operator);
+            };
+            result = new ValueFiroe(ast, resultValue);
+        } catch (Exception e) {
+            // Catch any runtime errors during evaluation
+            result = new NKFiroe(ast, e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
+        }
     }
 
     @Override
     public boolean isNye() {
         return result == null;
+    }
+
+    /**
+     * Returns true if the result is NK (not-known).
+     */
+    @Override
+    public boolean isAbstract() {
+        if (result != null) {
+            return result.isAbstract();
+        }
+        return operandFiroe != null && operandFiroe.isAbstract();
     }
 
     /**
@@ -78,11 +102,6 @@ public class UnaryFiroe extends FiroeWithBraneMind {
             throw new IllegalStateException("UnaryFiroe not fully evaluated");
         }
         return result.getValue();
-    }
-
-    @Override
-    public boolean isAbstract() {
-        return operandFiroe != null && operandFiroe.isAbstract();
     }
 
     @Override

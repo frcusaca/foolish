@@ -31,8 +31,13 @@ public class IfFiroe extends FiroeWithBraneMind {
             enqueueFirs(new ConditionalFiroe(elseIf));
         }
 
-        // Enqueue condition for evaluation first
-        enqueueFirs(createFiroeFromExpr(ifExpr.elseExpr()));
+        // Enqueue else branch - if not present (UnknownExpr), use NK (???)
+        if (ifExpr.elseExpr() == AST.UnknownExpr.INSTANCE || ifExpr.elseExpr() == null) {
+            // No explicit else branch - add implicit else ???
+            enqueueFirs(new NKFiroe("No matching condition in if-elif chain"));
+        } else {
+            enqueueFirs(createFiroeFromExpr(ifExpr.elseExpr()));
+        }
 
         nextPossibleIdx=0;
 
@@ -67,8 +72,7 @@ public class IfFiroe extends FiroeWithBraneMind {
                 }
             }
             case FIR firoe -> {
-                /*else was ealuated fully already*/
-                // TODO: Make sure there is always an else branch
+                /* Else branch (explicitly provided or implicit ???) has been fully evaluated */
                 nextPossibleIdx = braneMemory.size()-1; // Choose the else branch
                 result = firoe;
                 super.step();
@@ -89,7 +93,7 @@ public class IfFiroe extends FiroeWithBraneMind {
     }
 
 
-    // This class is private to ensure that nothign else can insert
+    // This class is private to ensure that nothing else can insert
     // this class into the "else branch"
     private class ConditionalFiroe extends FiroeWithBraneMind {
 
@@ -104,6 +108,23 @@ public class IfFiroe extends FiroeWithBraneMind {
         protected void initialize() {
             setInitialized();
             // ConditionalFiroe handles initialization in constructor
+        }
+
+        @Override
+        public void step() {
+            super.step();
+            // After stepping, check if condition has been evaluated
+            if (condition_value == null && !braneMemory.isEmpty() && !braneMemory.get(0).isNye()) {
+                // Condition is evaluated, get its value
+                FIR conditionFir = braneMemory.get(0);
+                if (!conditionFir.isAbstract()) {
+                    long condValue = conditionFir.getValue();
+                    condition_value = (condValue != 0);
+                } else {
+                    // Condition is NK, treat as false
+                    condition_value = false;
+                }
+            }
         }
 
         @Override

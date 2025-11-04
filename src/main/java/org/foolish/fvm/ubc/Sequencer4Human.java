@@ -35,6 +35,8 @@ public class Sequencer4Human extends Sequencer<String> {
     public String sequence(FIR fir, int depth) {
         if (fir instanceof BraneFiroe brane) {
             return sequenceBrane(brane, depth);
+        } else if (fir instanceof NKFiroe) {
+            return sequenceNK(fir, depth);
         } else if (fir instanceof ValueFiroe value) {
             return sequenceValue(value, depth);
         } else if (fir instanceof BinaryFiroe binary) {
@@ -83,8 +85,12 @@ public class Sequencer4Human extends Sequencer<String> {
 
     @Override
     protected String sequenceBinary(BinaryFiroe binary, int depth) {
-        // If the binary expression has been fully evaluated, just show the result
+        // If the binary expression has been fully evaluated
         if (!binary.isNye()) {
+            // Check if the result is NK (not-known)
+            if (binary.isAbstract()) {
+                return indent(depth) + "???";
+            }
             return indent(depth) + binary.getValue();
         }
         // Otherwise show the expression structure (shouldn't normally happen in evaluated branes)
@@ -125,13 +131,24 @@ public class Sequencer4Human extends Sequencer<String> {
     protected String sequenceAssignment(AssignmentFiroe assignment, int depth) {
         if (!assignment.isNye() && assignment.getResult() != null) {
             FIR result = assignment.getResult();
-            // Check if the result is fully evaluated before getting its value
+            // Check if the result is fully evaluated
             if (!result.isNye()) {
+                // Check if the result is NK (not-known)
+                if (result.isAbstract()) {
+                    return indent(depth) + assignment.getId() + " = ???";
+                }
                 return indent(depth) + assignment.getId() + " = " + result.getValue();
             }
         }
         // If not yet evaluated, show the structure
         return indent(depth) + assignment.getId() + " = ???";
+    }
+
+    /**
+     * Sequences an NK (not-known) FIR.
+     */
+    protected String sequenceNK(FIR nk, int depth) {
+        return indent(depth) + "???";
     }
 
     /**

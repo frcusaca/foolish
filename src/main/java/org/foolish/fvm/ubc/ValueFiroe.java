@@ -38,4 +38,8 @@ public class ValueFiroe extends FiroeWithoutBraneMind {
     public String toString() {
         return String.valueOf(value);
     }
+
+    public FIR clone(){
+        return this; // I'm a constant
+    }
 }

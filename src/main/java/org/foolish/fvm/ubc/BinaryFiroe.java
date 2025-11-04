@@ -8,10 +8,12 @@ import org.foolish.ast.AST;
  * In one step, it converts to two Firoes, enqueued into braneMind.
  * They are stepped until not NYE (Not Yet Evaluated).
  * The last step performs the binary operation.
+ *
+ * Arithmetic errors (division by zero, etc.) result in NK (not-known) values.
  */
 public class BinaryFiroe extends FiroeWithBraneMind {
     private final String operator;
-    private ValueFiroe result;
+    private FIR result;
 
     public BinaryFiroe(AST.BinaryExpr binaryExpr) {
         super(binaryExpr);
@@ -47,31 +49,64 @@ public class BinaryFiroe extends FiroeWithBraneMind {
             return;
         }
 
-        long left = braneMemory.removeFirst().getValue();
-        long right = braneMemory.removeFirst().getValue();
-        long resultValue = switch (operator) {
-            case "+" -> left + right;
-            case "-" -> left - right;
-            case "*" -> left * right;
-            case "/" -> right != 0 ? left / right : 0L;
-            case "%" -> right != 0 ? left % right : 0L;
-            case "==" -> left == right ? 1L : 0L;
-            case "!=" -> left != right ? 1L : 0L;
-            case "<>" -> left != right ? 1L : 0L;
-            case "<" -> left < right ? 1L : 0L;
-            case "<=" -> left <= right ? 1L : 0L;
-            case ">" -> left > right ? 1L : 0L;
-            case ">=" -> left >= right ? 1L : 0L;
-            case "&&" -> (left != 0 && right != 0) ? 1L : 0L;
-            case "||" -> (left != 0 || right != 0) ? 1L : 0L;
-            default -> throw new UnsupportedOperationException("Unknown operator: " + operator);
-        };
-        result = new ValueFiroe(null, resultValue);
+        FIR leftFir = braneMemory.removeFirst();
+        FIR rightFir = braneMemory.removeFirst();
+
+        // If either operand is abstract (NK), the result is NK
+        if (leftFir.isAbstract() || rightFir.isAbstract()) {
+            result = new NKFiroe(ast, "Operand is not-known");
+            return;
+        }
+
+        try {
+            long left = leftFir.getValue();
+            long right = rightFir.getValue();
+
+            // Handle division and modulo by zero -> NK
+            if ((operator.equals("/") || operator.equals("%")) && right == 0) {
+                String errorMsg = operator.equals("/") ? "Division by zero" : "Modulo by zero";
+                result = new NKFiroe(ast, errorMsg);
+                return;
+            }
+
+            long resultValue = switch (operator) {
+                case "+" -> left + right;
+                case "-" -> left - right;
+                case "*" -> left * right;
+                case "/" -> left / right;  // Zero check done above
+                case "%" -> left % right;  // Zero check done above
+                case "==" -> left == right ? 1L : 0L;
+                case "!=" -> left != right ? 1L : 0L;
+                case "<>" -> left != right ? 1L : 0L;
+                case "<" -> left < right ? 1L : 0L;
+                case "<=" -> left <= right ? 1L : 0L;
+                case ">" -> left > right ? 1L : 0L;
+                case ">=" -> left >= right ? 1L : 0L;
+                case "&&" -> (left != 0 && right != 0) ? 1L : 0L;
+                case "||" -> (left != 0 || right != 0) ? 1L : 0L;
+                default -> throw new UnsupportedOperationException("Unknown operator: " + operator);
+            };
+            result = new ValueFiroe(null, resultValue);
+        } catch (Exception e) {
+            // Catch any runtime errors during evaluation
+            result = new NKFiroe(ast, e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
+        }
     }
 
     @Override
     public boolean isNye() {
         return result == null;
+    }
+
+    /**
+     * Returns true if the result is NK (not-known).
+     */
+    @Override
+    public boolean isAbstract() {
+        if (result != null) {
+            return result.isAbstract();
+        }
+        return super.isAbstract();
     }
 
     /**

@@ -88,4 +88,13 @@ public abstract class Sequencer<T> {
      * @return The formatted output
      */
     protected abstract T sequenceAssignment(AssignmentFiroe assignment, int depth);
+
+    /**
+     * Sequence an NKFiroe (not-known value) into the output format.
+     *
+     * @param nk    The NKFiroe to sequence
+     * @param depth The current depth level for indentation
+     * @return The formatted output
+     */
+    protected abstract T sequenceNK(FIR nk, int depth);
 }

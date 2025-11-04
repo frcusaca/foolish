@@ -66,11 +66,12 @@ primary
 	;
 
 ifExpr
-    : ifExprHelperIf (ifExprHelperElif)* (ifExprHelperElse)?
+    : ifExprHelperIf (ifExprHelperElif)* (ifExprHelperElse)? endIf?
     ;
 ifExprHelperIf: IF  expr THEN expr ;
 ifExprHelperElif: ELIF expr THEN expr ;
 ifExprHelperElse: ELSE expr ;
+endIf: FI ;
 
 // Lexer rules (uppercase)
 LBRACE : '{' ;
@@ -99,6 +100,7 @@ IF  : 'if' ;
 THEN : 'then' ;
 ELIF : 'elif' ;
 ELSE : 'else' ;
+FI   :  'fi'  ;
 UP   : '↑' ;
 UNKNOWN : '???' ; // Unknowns are unknown
 
