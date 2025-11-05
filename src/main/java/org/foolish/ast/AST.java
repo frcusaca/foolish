@@ -202,9 +202,26 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
         }
     }
 
-    record Assignment(String id, Expr expr) implements Stmt {
+    record Assignment(Identifier identifier, Expr expr) implements Stmt {
+        /**
+         * Creates an Assignment with a simple uncharacterized identifier.
+         * @deprecated Use Assignment(Identifier, Expr) instead
+         */
+        @Deprecated
+        public Assignment(String id, Expr expr) {
+            this(new Identifier(id), expr);
+        }
+
+        /**
+         * Gets the identifier name (without characterization).
+         * For compatibility with existing code.
+         */
+        public String id() {
+            return identifier.id();
+        }
+
         public String toString() {
-            return id + " = " + expr;
+            return identifier + " = " + expr;
         }
     }
 

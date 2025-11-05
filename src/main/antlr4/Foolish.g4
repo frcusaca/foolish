@@ -37,7 +37,7 @@ stmt
     | expr
     ) SEMI LINE_COMMENT?
     ;
-assignment : IDENTIFIER ASSIGN expr ;
+assignment : characterizable_identifier ASSIGN expr ;
 
 expr
     : addExpr

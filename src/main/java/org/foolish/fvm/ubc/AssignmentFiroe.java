@@ -6,14 +6,19 @@ import org.foolish.ast.AST;
  * FIR for assignment expressions.
  * An assignment evaluates its right-hand side expression and stores the result
  * with a coordinate name in the brane's environment.
+ *
+ * The LHS uses CharacterizedIdentifier to support characterized identifiers for
+ * proper resolution and type checking. The RHS is evaluated as a FIR, and any
+ * identifiers within the RHS expression tree will be represented as IdentifierFiroe
+ * which internally uses CharacterizedIdentifier.
  */
 public class AssignmentFiroe extends FiroeWithBraneMind {
-    private final String id;
+    private final CharacterizedIdentifier lhs;
     private FIR result;
 
     public AssignmentFiroe(AST.Assignment assignment) {
         super(assignment);
-        this.id = assignment.id();
+        this.lhs = new CharacterizedIdentifier(assignment.identifier());
         this.result = null;
     }
 
@@ -61,6 +66,7 @@ public class AssignmentFiroe extends FiroeWithBraneMind {
 
     @Override
     public boolean isAbstract() {
+        /** check of the ID is abstract **/
         if (result != null) {
             return result.isAbstract();
         }
@@ -68,10 +74,18 @@ public class AssignmentFiroe extends FiroeWithBraneMind {
     }
 
     /**
-     * Gets the coordinate name for this assignment.
+     * Gets the coordinate name for this assignment (without characterization).
+     * For compatibility with existing code.
      */
     public String getId() {
-        return id;
+        return lhs.getId();
+    }
+
+    /**
+     * Gets the LHS characterized identifier.
+     */
+    public CharacterizedIdentifier getLhs() {
+        return lhs;
     }
 
     /**

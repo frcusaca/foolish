@@ -5,7 +5,6 @@
 {
   my_result = x;
   my result⁠coordinate = -42;
-  here too'a b⁠c;
-  5;
+  here too'a b⁠c = 5;
   simple⁠name'd e⁠f;
 }

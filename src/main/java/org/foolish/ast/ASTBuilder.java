@@ -90,9 +90,9 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
     @Override
     public AST visitAssignment(FoolishParser.AssignmentContext ctx) {
-        String id = ctx.IDENTIFIER().getText();
+        AST.Identifier identifier = (AST.Identifier) visit(ctx.characterizable_identifier());
         AST.Expr expr = (AST.Expr) visit(ctx.expr());
-        return new AST.Assignment(id, expr);
+        return new AST.Assignment(identifier, expr);
     }
 
     @Override

@@ -3,18 +3,13 @@ package org.foolish.fvm.ubc;
 import org.foolish.ast.AST;
 
 /**
- * IdentifierFiroe represents a characterizable identifier reference in the UBC system.
+ * IdentifierFiroe represents a characterized identifier reference in the UBC system.
  *
- * In FIR, identifiers are always represented as strings:
- * - The identifier name: a String
- * - The characterization: a String (flattened from any chain in AST)
- *
- * Examples:
+ * Uses CharacterizedIdentifier to hold the identifier name and characterization:
  * - Simple identifier: `x` → id="x", characterization=""
  * - Characterized: `type'x` → id="x", characterization="type"
- * - Chained: `outer'inner'x` → id="x", characterization="outer'inner"
  *
- * The characterization string is used when resolving identifiers to:
+ * The characterization is used when resolving identifiers to:
  * - Disambiguate between multiple bindings of the same name
  * - Type checking (future)
  * - Scope resolution (future)
@@ -23,14 +18,11 @@ import org.foolish.ast.AST;
  * returns NK (not-known) values.
  */
 public class IdentifierFiroe extends FiroeWithoutBraneMind {
-    private final String id;
-    private final String characterization;
+    private final CharacterizedIdentifier identifier;
 
     public IdentifierFiroe(AST.Identifier identifier) {
         super(identifier);
-        this.id = identifier.id();
-        // Flatten the characterization chain to a string
-        this.characterization = identifier.canonicalCharacterization();
+        this.identifier = new CharacterizedIdentifier(identifier);
     }
 
     /**
@@ -39,15 +31,22 @@ public class IdentifierFiroe extends FiroeWithoutBraneMind {
      */
     public IdentifierFiroe(String id, String characterization) {
         super(null);
-        this.id = id;
-        this.characterization = characterization != null ? characterization : "";
+        this.identifier = new CharacterizedIdentifier(id, characterization);
     }
 
     /**
-     * Gets the identifier name as a string.
+     * Gets the CharacterizedIdentifier.
+     */
+    public CharacterizedIdentifier getIdentifier() {
+        return identifier;
+    }
+
+    /**
+     * Gets the identifier name as a string (without characterization).
+     * For compatibility with existing code.
      */
     public String getId() {
-        return id;
+        return identifier.getId();
     }
 
     /**
@@ -55,14 +54,14 @@ public class IdentifierFiroe extends FiroeWithoutBraneMind {
      * Returns empty string "" if no characterization.
      */
     public String getCharacterization() {
-        return characterization;
+        return identifier.getCharacterization();
     }
 
     /**
      * Checks if this identifier has a characterization.
      */
     public boolean hasCharacterization() {
-        return characterization != null && !characterization.isEmpty();
+        return identifier.hasCharacterization();
     }
 
     /**
