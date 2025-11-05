@@ -27,4 +27,9 @@ Unit test is able to very specifically test each unit of the software, it is the
 correctness. Approval tests should try to correspond to unit tests, but approval test tend to illustrate
 behavior to users better. It is best used to illustrate the most IMPORTANT and most EASILY CONFUSED
 aspect of code behavior. Approval tests should be fairly comprehensive but prioritizes showing correct
-behavior in a more human readable way.
+behavior in a more human readable way.  When writing tests, please be mindful that we'd like to expand the 
+utilization of unicode and use more of the available alphabets to improve our expressivity and to help
+disambiguate concepts written in Foolish. Use sensible names from all available languages, currently
+including anything that uses Latin script, Greek, Cyrillic, Hebrew, Chinese and Sanskrit. New tests should
+use variables that follow powerlaw distribution with mean 3.5 characters for short branes, and 5 for
+longer branes.

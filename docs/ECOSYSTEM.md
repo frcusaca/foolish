@@ -29,34 +29,34 @@ expression that created the present brane, resolving any searches first using th
 using the current IB.
 
 ```foolish
-    {...{...{...
+	{...{...{...
 
-        !! At this point, we search up for name resolutions the AB below
-        !! refers to this point and back and up
-	f = {
-            !! Start of IB
-            zero = ←; !! program may use this method to require a positional aregument.
-            one = 1;
-            two = 2;
-            !! End of IB
-            if (continue) then
-               r=[three=zero+one+2;]↑
-            else
-               r=5
-            !! Continue to code that we didn't know when we computed r
-            four = 4;
-        }
-    ...}...}..}
+		!! At this point, we search up for name resolutions the AB below
+		!! refers to this point and back and up
+		f = {
+			!! Start of IB
+			zero = ←; !! program may use this method to require a positional aregument.
+			one = 1;
+			two = 2;
+			!! End of IB
+			if (continue) then
+				r=[three=zero+one+2;]↑
+			else
+				r=5
+			!! Continue to code that we didn't know when we computed r
+			four = 4;
+		}
+	...}...}..}
 ```
 
 In that example, the recursive call to compute r is processed by the UBC to the equivalent of:
 
 ```foolish
-   {
-      ...
-      r = [three=zero+one+2;] IB AB !!! the code for f= !!!
-      ...
-   }
+	{
+		...
+		r = [three=zero+one+2;] IB AB !!! the code for f= !!!
+		...
+	}
 ```
 
 Because branes are finite, the code on the right side of `f=` is surely parsed to AST and stored in
@@ -156,14 +156,14 @@ characterizable has or does not have said characterization. These are the most i
 most exclusive characterizations available in Foolish.
 
 ```foolish
-   {
-      all=[*]{
-         true;
-      };
-      none=[*]{
-         false;
-      }
-   }
+	{
+		all=[*]{
+			true;
+		};
+		none=[*]{
+			false;
+		}
+	}
 ```
 
 Note that this this is nominal in that the characterizers have names.
@@ -188,9 +188,9 @@ consequences.
 
 ```foolish
 {
-    point_a = {x=1; y=2; z=3;};
-    point_b = {x=1; y=3; z=4;};
-    is_aligned = point_a.x == point_b.x; !! is_aligned = true;
+	point_a = {x=1; y=2; z=3;};
+	point_b = {x=1; y=3; z=4;};
+	is_aligned = point_a.x == point_b.x; !! is_aligned = true;
 }
 ```
 

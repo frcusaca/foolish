@@ -133,7 +133,6 @@
               <includes>
                   <include>**/*Test.java</include>
 	  </includes>
-	  <argLine>--sun-misc-unsafe-memory-access=allow</argLine>
             </configuration>
       </plugin>
     </plugins>

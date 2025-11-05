@@ -146,21 +146,21 @@ if (ifExpr.elseExpr() == AST.UnknownExpr.INSTANCE || ifExpr.elseExpr() == null) 
 
 ```foolish
 {
-    // Condition false, no else → ???
-    if 0 then 42;
+	// Condition false, no else → ???
+	if 0 then 42;
 
-    // Same as above, explicit
-    if 0 then 42 else ???;
+	// Same as above, explicit
+	if 0 then 42 else ???;
 
-    // Elif chain, none match → ???
-    if 0 then 10
-    elif 0 then 20
-    elif 0 then 30;
-    // Result: ???
+	// Elif chain, none match → ???
+	if 0 then 10
+	elif 0 then 20
+	elif 0 then 30;
+	// Result: ???
 
-    // Explicit else prevents NK
-    if 0 then 10 else 99;
-    // Result: 99
+	// Explicit else prevents NK
+	if 0 then 10 else 99;
+	// Result: 99
 }
 ```
 

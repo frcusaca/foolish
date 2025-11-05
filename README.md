@@ -189,10 +189,10 @@ double exclamation mark `!!`.
 
 ```foolish
 {
-   !! This is a comment inside the brane
-   !! This is another comment inside the brane.
-   !! We can even exclaim inside a comment !!!
-   !! - [ ] TODO: Check that this is possible ----^^^
+	!! This is a comment inside the brane
+	!! This is another comment inside the brane.
+	!! We can even exclaim inside a comment !!!
+	!! - [ ] TODO: Check that this is possible ----^^^
 }
 ```
 
@@ -202,34 +202,34 @@ Block comments are enclosed by a pair of consecutive triple exclamation marks:
 
 ```foolish
 {
-    !!! Move along nothing to see here.
+	!!! Move along nothing to see here.
 
-         ##
-        ###
-         ##
-                    #
-        ###################
-        #####################
-                    #    ## #
-                        #####
+	     ##
+	    ###
+	     ##
+	                #
+	    ###################
+	    #####################
+	                #    ## #
+	                    #####
 
-            ####
-          #########
-         ##       ##
-        #           #
-        #          ##
-         ##       ##
-          #########
-            ####
-            ####
-          #########
-         ##       ##
-        #           #
-        #          ##
-         ##       ##
-          #########
-            ####
-    !!!
+	        ####
+	      #########
+	     ##       ##
+	    #           #
+	    #          ##
+	     ##       ##
+	      #########
+	        ####
+	        ####
+	      #########
+	     ##       ##
+	    #           #
+	    #          ##
+	     ##       ##
+	      #########
+	        ####
+	!!!
 }
 ```
 
@@ -240,10 +240,10 @@ rules and should be evaluable to a fixed value. Here are a few integer expressio
 
 ```foolish
 {
-   1;    !! This is the number 1
-   2;    !! This is the number 2
-   3.14; !! Floating point numbers work too
-   "hello"; !! Strings are also expressions
+	1;    !! This is the number 1
+	2;    !! This is the number 2
+	3.14; !! Floating point numbers work too
+	"hello"; !! Strings are also expressions
 }
 ```
 
@@ -258,12 +258,12 @@ concept in Foolish that we are able to name value expressions using the naming o
 
 ```foolish
 {
-   a = 1;                                    !! Simple name binding
-   b = 2;                                    !! Another binding
-   c = 3;                                    !! Value assignment
-   greeting = "Hello, Foolish world!";      !! String binding
-   calculation = a + b + c;                  !! Expression binding
-   !! etc.
+	a = 1;                                    !! Simple name binding
+	b = 2;                                    !! Another binding
+	c = 3;                                    !! Value assignment
+	greeting = "Hello, Foolish world!";      !! String binding
+	calculation = a + b + c;                  !! Expression binding
+	!! etc.
 }
 ```
 
@@ -275,13 +275,13 @@ so we also include `_` for spacing out complicated nouns.
 ```foolish
 {
 
-    a_name=0;
-    a&#x2009;name=1;   !! Thin space in hexmal
-    a&#8201;name=1;    !! Thin space in decimal
-    a&thinsp;name=2;   !! Thin space word entity
-    a&hairsp;name=3;   !! hair space
-    a&#x202F;name=4;   !! narrow non-breaking space
-    a&#x2060;name=5;   !! word joiner
+	a_name=0;
+	a&#x2009;name=1;   !! Thin space in hexmal
+	a&#8201;name=1;    !! Thin space in decimal
+	a&thinsp;name=2;   !! Thin space word entity
+	a&hairsp;name=3;   !! hair space
+	a&#x202F;name=4;   !! narrow non-breaking space
+	a&#x2060;name=5;   !! word joiner
 }
 ```
 
@@ -290,9 +290,9 @@ the naming operator `=` is used. So the following brane:
 
 ```foolish
 {
-    1;
-    2;
-    3;
+	1;
+	2;
+	3;
 }
 ```
 
@@ -300,9 +300,9 @@ is a brane with three unnamed values. The following brane:
 
 ```foolish
 {
-    a=1;
-    b=2;
-    c=3;
+	a=1;
+	b=2;
+	c=3;
 }
 ```
 
@@ -321,9 +321,9 @@ scope. This is similar to how many programming languages work. So the following 
 
 ```foolish
 {
-    a=1;
-    a=a+1; !! a=2
-    a=a+1; !! a=3
+	a=1;
+	a=a+1; !! a=2
+	a=a+1; !! a=3
 }
 ```
 
@@ -338,7 +338,7 @@ answer:
 
 ```foolish
 {
-    answer=???;
+	answer=???;
 }
 ```
 
@@ -352,9 +352,9 @@ is shorthand to
 
 ```foolish
 {
-    ???=1;
-    ???=2;
-    ???=3;
+	???=1;
+	???=2;
+	???=3;
 }
 ```
 
@@ -365,10 +365,10 @@ this would be how Foolish interprets a reused name.
 
 ```foolish
 {
-    a=1;
-    b=a;
-    a=2;
-    c=a;
+	a=1;
+	b=a;
+	a=2;
+	c=a;
 }
 ```
 
@@ -376,10 +376,10 @@ is equivalent to
 
 ```foolish
 {
-      a=1;
-      b=1;
-      a=2;
-      c=2;
+	a=1;
+	b=1;
+	a=2;
+	c=2;
 }
 ```
 

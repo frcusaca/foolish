@@ -67,19 +67,19 @@ The `Sequencer4Human` class handles NK display:
 
 ```
 {
-    a = 10 / 0;      // a = ???
-    b = 5 + 3;       // b = 8
-    c = a * 2;       // c = ??? (propagated from a)
-    d = b - 1;       // d = 7 (unaffected by NK values)
+	a = 10 / 0;      // a = ???
+	b = 5 + 3;       // b = 8
+	c = a * 2;       // c = ??? (propagated from a)
+	d = b - 1;       // d = 7 (unaffected by NK values)
 }
 ```
 
 Result:
 ```
 {
-  ＿a = ???;
-  ＿b = 8;
-  ＿c = ???;
-  ＿d = 7;
+	＿a = ???;
+	＿b = 8;
+	＿c = ???;
+	＿d = 7;
 }
 ```

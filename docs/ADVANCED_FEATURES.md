@@ -9,8 +9,8 @@ that the two branes be concatenated. The following code snippets have the same m
 
 ```foolish
 {
-    a=1;
-    b=2;
+	a=1;
+	b=2;
 }
 ```
 
@@ -18,10 +18,10 @@ and
 
 ```foolish
 {
-    a=1;
+	a=1;
 }
 {
-    b=2;
+	b=2;
 }
 ```
 
@@ -39,14 +39,14 @@ naturally, brane concatenation invokes functions in RPN.
 
 ```foolish
 {
-    !! ...
-    f={
-        y=x*x+2x-1;
-    };
-    p={x=1+a;}
-    q={a=1;}
-    result =  q p f !! We called `f` on parameter `p` which was evaluated on `q`.
-    !! ...
+	!! ...
+	f={
+		y=x*x+2x-1;
+	};
+	p={x=1+a;}
+	q={a=1;}
+	result =  q p f !! We called `f` on parameter `p` which was evaluated on `q`.
+	!! ...
 }
 ```
 
@@ -55,13 +55,13 @@ the same `result`:
 
 ```foolish
 {
-    !! ...
-    result={
-        a=1;
-        x=1+a;
-        y=x*x+2x-1;
-    }
-    !! ...
+	!! ...
+	result={
+		a=1;
+		x=1+a;
+		y=x*x+2x-1;
+	}
+	!! ...
 }
 ```
 
@@ -71,10 +71,10 @@ references follow "static invocation" rules.
 
 ```foolish
 {
-    class_a = { a=1; b=2}
-    class_b = class_a {c=3}
-    a_b     = class_b
-    !! So, class b is inheriting everything from a with the addition of `c`
+	class_a = { a=1; b=2}
+	class_b = class_a {c=3}
+	a_b     = class_b
+	!! So, class b is inheriting everything from a with the addition of `c`
 }
 ```
 
@@ -83,13 +83,13 @@ programming time:
 
 ```foolish
 {
-    animal         = {kindom='Animalia';}
-    mouthed_animal = animal {greet='hello';};
-    cat            = mouthed_animal {greet='mewo'};
-    dog            = mouthed_animal {greet='bark'};
-    pet            = {play={greet;greet;greet;};};
-    my_pet         = cat pet;
-    your_pet       = dog pet;
+	animal         = {kindom='Animalia';}
+	mouthed_animal = animal {greet='hello';};
+	cat            = mouthed_animal {greet='mewo'};
+	dog            = mouthed_animal {greet='bark'};
+	pet            = {play={greet;greet;greet;};};
+	my_pet         = cat pet;
+	your_pet       = dog pet;
 }
 ```
 
@@ -146,14 +146,14 @@ brane.
 
 ```foolish
 {
-    doc={
-        tmp_a = 2*2;
-        c     = tmp_a sqrt;
-        tmp_b = 3*3;
-        d     = tmp_b cbrt;
-    }
-    r = doc//tmp.*;
-    r2 = doc??tmp.*;
+	doc={
+		tmp_a = 2*2;
+		c     = tmp_a sqrt;
+		tmp_b = 3*3;
+		d     = tmp_b cbrt;
+	}
+	r = doc//tmp.*;
+	r2 = doc??tmp.*;
 }
 ```
 
@@ -161,20 +161,20 @@ evaluates to
 
 ```foolish
 {
-    doc={
-        tmp_a = 2*2;
-        c     = tmp_a sqrt;
-        tmp_b = 3*3;
-        d     = tmp_b cbrt;
-    }
-    r = {
-        tmp_a = doc.tmp_a;
-        tmp_b = doc.tmp_b;
-    }
-    r2 = {
-        tmp_b = doc.tmp_b;
-        tmp_a = doc.tmp_a;
-    }
+	doc={
+		tmp_a = 2*2;
+		c     = tmp_a sqrt;
+		tmp_b = 3*3;
+		d     = tmp_b cbrt;
+	}
+	r = {
+		tmp_a = doc.tmp_a;
+		tmp_b = doc.tmp_b;
+	}
+	r2 = {
+		tmp_b = doc.tmp_b;
+		tmp_a = doc.tmp_a;
+	}
 }
 ```
 
@@ -213,15 +213,15 @@ bulk forward value search operator.
 
 ```foolish
 {
-    doc={
-        tmp_a = 2*2;
-        c     = tmp_a sqrt;
-        tmp_b = 1+3;
-        d     = tmp_b cbrt;
-    }
-    r = doc:4;    !! r = 2*2;
-    r2= doc::4;   !! r2 = {tmp_a=2*2; tmp_b=1+3;}
-    doc:4 = 10    !! `tmp_a = 10;`
+	doc={
+		tmp_a = 2*2;
+		c     = tmp_a sqrt;
+		tmp_b = 1+3;
+		d     = tmp_b cbrt;
+	}
+	r = doc:4;    !! r = 2*2;
+	r2= doc::4;   !! r2 = {tmp_a=2*2; tmp_b=1+3;}
+	doc:4 = 10    !! `tmp_a = 10;`
 }
 ```
 
@@ -254,15 +254,15 @@ So we could use stack based syntax if we so desire:
 
 ```foolish
 {
-    f = {result=↑#-1 + ↑#-2}; !! See below detachment for clarification
-    0;
-    1;
-    f$; !! 1
-    f$; !! 2
-    f$; !! 3
-    f$; !! 5
-    f$; !! 8
-    f$; !! 13
+	f = {result=↑#-1 + ↑#-2}; !! See below detachment for clarification
+	0;
+	1;
+	f$; !! 1
+	f$; !! 2
+	f$; !! 3
+	f$; !! 5
+	f$; !! 8
+	f$; !! 13
 }
 ```
 
@@ -282,9 +282,9 @@ beginning of the current line.
 
 ```foolish
 {
-    1;
-    2;
-    c= #-1 + #-2;
+	1;
+	2;
+	c= #-1 + #-2;
 }
 ```
 
@@ -307,20 +307,20 @@ computed the number.
 
 ```foolish
 {
-    !! ...
-    f={
-        y=x*x+2x-1;
-    };
-    p={x=1+a;}
-    q={a=1;}
-    result =$  q p f !! result is now the actual `result=7;`
+	!! ...
+	f={
+		y=x*x+2x-1;
+	};
+	p={x=1+a;}
+	q={a=1;}
+	result =$  q p f !! result is now the actual `result=7;`
 
-    !! ... A few more examples
-    calculation =  q p f !! result is now the actual `result=7;`
-    secondary_result =.x calculation
-    secondary_result =x calculation
-    secondary_result = calculation.x
-    result = calculation$
+	!! ... A few more examples
+	calculation =  q p f !! result is now the actual `result=7;`
+	secondary_result =.x calculation
+	secondary_result =x calculation
+	secondary_result = calculation.x
+	result = calculation$
 }
 ```
 
@@ -337,8 +337,8 @@ detached and completely abstract, we find that we need to perform further detach
 
 ```foolish
 [
-    a = ???;
-    b = ???;
+	a = ???;
+	b = ???;
 ]
 ```
 
@@ -347,12 +347,12 @@ might already be in use, one could perform detachment during a naming expression
 
 ```foolish
 {
-    fn=[
-        a=???;
-        b=???;
-    ]{
-        result=a+b;
-    }
+	fn=[
+		a=???;
+		b=???;
+	]{
+		result=a+b;
+	}
 }
 ```
 
@@ -364,7 +364,7 @@ function:
 
 ```foolish
 {
-    f = [↑=???]{result=↑#-1 + ↑#-2};
+	f = [↑=???]{result=↑#-1 + ↑#-2};
 }
 ```
 
@@ -373,7 +373,7 @@ brane and above. So that in this function
 
 ```foolish
 {
-    f = [↑=???]{result=↑#-1 + ↑#-2 - universal_constant};
+	f = [↑=???]{result=↑#-1 + ↑#-2 - universal_constant};
 }
 ```
 
@@ -383,11 +383,11 @@ An example of its use:
 
 ```foolish
 {
-   x=1;
-   y=2;
-   z=3;
-   f=[x;z]{ result = x - y; }
-   result = [y,x] f
+	x=1;
+	y=2;
+	z=3;
+	f=[x;z]{ result = x - y; }
+	result = [y,x] f
 }
 ```
 
@@ -402,7 +402,7 @@ all of the names and values.
 
 ```foolish
 {
-    clean_heap=[tmp_*=???]old_heap_brane
+	clean_heap=[tmp_*=???]old_heap_brane
 }
 ```
 
@@ -410,7 +410,7 @@ Or even complete detachment like this:
 
 ```foolish
 {
-    pure_func=[*=???]{...}
+	pure_func=[*=???]{...}
 }
 ```
 
@@ -423,9 +423,9 @@ happens when that expectation is not fulfilled.
 ```foolish
 ...
 f=[r=???; pi=3.14]{
-    pir = pi * r
-    area = pir * r
-    circumference = 2*pir
+	pir = pi * r
+	area = pir * r
+	circumference = 2*pir
 }
 ...
 c       = {r=2} f
@@ -444,24 +444,65 @@ concatenation always has higher priority than their concatenation with branes. W
 is between branes it is always right-associative—it is applied to the brane on the right side
 before other brane operations.
 
+### Detachment Would Have to be Timetraveling Unthink Operator ???
+What should the following code do?
+```foolish
+{
+	a = 1;
+	b = 2;
+	c = {a+b};
+	d =$ [a=-1,b=-2]c;
+}
+```
+If detachment actually worked, one might think `d=-3`. Since detachment should take the brane `c` and
+change it's mind about what a and b are supposed to be? It looks like this detachment facility allows us
+to time travel back or "unthink" something that we already thought?
+
+Thankfully, the name operator `=` also coordinatse an exprssion. during the assignment
+```foolish
+...
+   c = {a+b};
+...
+```
+
+The act of coordinating that foolish brane exprssion to the parent brane has the effect of localizing
+references to that line in that brane. Coordinating an expression is like chemically binding a smaller
+brane organelle into inside of a larger brane at the sites `a` and `b`. And the only way to prevent that
+binding from happening is to use detachment brane to prevent binding of specified coordinates during the
+coordination where that detachment brane appears.
+```foolish
+...
+   c = {a+b}; !! is equivalent to c={3} due ordination at this location.
+...
+```
+
+Detachment blocker branes prevents that from happening.
+```foolish
+   α = 1;
+   β = 2;
+   c = [α, β]{α+β}; !! Look ma, I respond to α- and β-blockers, I'm a real boy now !
+...
+```
+
+
 ## Control Flow
 
 Branching is accomplished using search.
 
 ```foolish
 {
-    ifblock = {
-        if x==1 then         !! `if k then` fools to the expression `f'condition=k;`
-        result = 1;
-        else if x==2 then    !! `else if k then` fools to the expression `f'condition=k;`
-        result = 4;
-        else                 !! `else` fools to the expression `f'condition=true;`
-        result = 2;
-        f'condition=10;      !! ERROR, cannot assign to Foolish names
-    }
-    result = ifblock/f'condition:true→;   !! Search for a true value, then forward cursor to next
-    result = condition⇒;                  !! shorthand for `/f'condition:true→`
-    result => condition;                  !! shorthand for `/f'condition:true→`
+	ifblock = {
+		if x==1 then         !! `if k then` fools to the expression `f'condition=k;`
+		result = 1;
+		else if x==2 then    !! `else if k then` fools to the expression `f'condition=k;`
+		result = 4;
+		else                 !! `else` fools to the expression `f'condition=true;`
+		result = 2;
+		f'condition=10;      !! ERROR, cannot assign to Foolish names
+	}
+	result = ifblock/f'condition:true→;   !! Search for a true value, then forward cursor to next
+	result = condition⇒;                  !! shorthand for `/f'condition:true→`
+	result => condition;                  !! shorthand for `/f'condition:true→`
 }
 ```
 
@@ -472,12 +513,12 @@ brane is easy with `↑`. So recursion is easy to express:
 
 ```foolish
 {
-    factorial = [n=???]{
-        result = if n <= 1
-                 then result = 1
-                 else [n=n-1]↑$;
-    }
-    five_fact = [n=5] factorial    !! five_fact = 120;
+	factorial = [n=???]{
+		result = if n <= 1
+		         then result = 1
+		         else [n=n-1]↑$;
+	}
+	five_fact = [n=5] factorial    !! five_fact = 120;
 }
 ```
 
@@ -518,21 +559,21 @@ line. The only way to create corecursion is to use an unbound name and pass it i
 
 ```foolish
 {
-    even = [n=???; odd=???]{
-        result = if n == 0
-                 then result = true
-                 else [n=n-1;] odd$;
-                 !! - [ ] TODO: Explain why we can't do this:
-                 !! else [n=n-1;] →;
-    };
-    odd  = [n=???]{
-        result = if n == 0
-                 then result = false
-                 else [n=n-1; odd=↑;] even$; !! Already defined above, so we can find it directly
-                 !! By Foolish convention, the symbol 'odd' is not yet in scope, so we need to pass
-                 !! it by searching backwards for odd function itself.
-    };
-    is_four_even = [n=4] even{odd=odd} !! is_four_even = true;
-    is_five_even = [n=5] even{odd=odd} !! is_five_even = false;
+	even = [n=???; odd=???]{
+		result = if n == 0
+		         then result = true
+		         else [n=n-1;] odd$;
+		         !! - [ ] TODO: Explain why we can't do this:
+		         !! else [n=n-1;] →;
+	};
+	odd  = [n=???]{
+		result = if n == 0
+		         then result = false
+		         else [n=n-1; odd=↑;] even$; !! Already defined above, so we can find it directly
+		         !! By Foolish convention, the symbol 'odd' is not yet in scope, so we need to pass
+		         !! it by searching backwards for odd function itself.
+	};
+	is_four_even = [n=4] even{odd=odd} !! is_four_even = true;
+	is_five_even = [n=5] even{odd=odd} !! is_five_even = false;
 }
 ```

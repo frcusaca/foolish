@@ -111,7 +111,7 @@ UNKNOWN : '???' ; // Unknowns are unknown
 
 INTEGER : DIGIT+ ;
 
-fragment LETTER : [a-zA-Z] ;
+fragment LETTER : LATIN | GREEK_PART | CYRYLLIC_PART | HEBREW_PART | CHINESE_PART;
 fragment DIGIT : [0-9] ;
 fragment INTRA_ID_SEPARATOR : ' ' | '⁠' | '_' ;
 // Skip whitespace
@@ -120,3 +120,28 @@ WS : [ \t\r\n]+ -> skip ;
 IDENTIFIER : LETTER (LETTER|DIGIT|INTRA_ID_SEPARATOR)* ;
 
 APOSTROPHE : '\'' ;
+fragment LATIN  : [a-zA-Z]+;
+fragment GREEK_PART: [αβΓγΔδεζηΘθΙικΛλμνΞξΟοΠπρΣσςτυΦφΨψΩω]+; // Greek letters that do not confuse with latin easily
+fragment CYRYLLIC_PART: [БбвДдЖжЗзИиЙйКкЛлмнПптЦцЧчЩщЪъЫыЭэЮюЯя]+;
+fragment HEBREW_PART : [אבגהחטכלמנסעפצקרשתםףץך]+;
+fragment CHINESE_PART : ('\u4E00'..'\u9FFF')+;
+fragment SANSKRIT_PART 
+    :   (   DEVANAGARI_CHAR
+        |   VEDIC_EXT_CHAR
+        |   DEVANAGARI_EXT_CHAR
+        )+
+    ;
+
+// Fragment rules for specific Unicode blocks (these are not tokens themselves, but building blocks)
+fragment DEVANAGARI_CHAR
+    :   '\u0900'..'\u097F' // Devanagari block
+    ;
+
+fragment VEDIC_EXT_CHAR
+    :   '\u1CD0'..'\u1CFF' // Vedic Extensions block
+    ;
+
+// The Devanagari Extended block may contain additional relevant characters
+fragment DEVANAGARI_EXT_CHAR
+    :   '\uA8E0'..'\uA8FF' // Devanagari Extended block
+    ;
