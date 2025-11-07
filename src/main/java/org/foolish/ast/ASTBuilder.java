@@ -105,6 +105,7 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
     @Override
     public AST visitExpr(FoolishParser.ExprContext ctx) {
         if (ctx.ifExpr() != null) return visit(ctx.ifExpr());
+        if (ctx.branes() != null) return visit(ctx.branes());
         return visit(ctx.addExpr());
     }
 
