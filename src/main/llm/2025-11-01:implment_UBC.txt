@@ -1,6 +1,6 @@
 Let's beging implementing the UBC anew. It's okay if this new code duplicates existing functionality from FiroeVM. It is supposed to replace existing fvm implementation, so put everything in ubc directory parallel to fvm. Please read the README.md to understand UBC design. The UnicelluarBraneComputer should be initiated with a Brane Insoe and AB context. The corresponding BraneFiroe is created with only the AST attached.
 
-Note: A **Fooler**, for lack of a better concise way to describe them, is a person who develops Foolish. A Fooler might say the variable is *nye* (says 'nigh') when they encounter a FIR that has not yet been evaluated fully. 
+Note: A **Foolisher**, for lack of a better concise way to describe them, is a person who develops Foolish. A Foolisher might say the variable is *nye* (says 'nigh') when they encounter a FIR that has not yet been evaluated fully. 
 
 
 The FIR:

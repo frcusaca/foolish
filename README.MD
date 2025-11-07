@@ -43,8 +43,7 @@ building toward a future where programming is:
 - **Grounded in Reality**: Built-in methods seamlessly connect abstract thought to real-world
   implementations
 
-As a **Fooler**, for lack of a better concise way to describe us, we are the people who develops
-Foolish. A Fooler might say the variable is *nye* (says 'nigh') when they encounter a FIR that has
+A Foolisher might say the variable is *nye* (says 'nigh') when they encounter a FIR that has
 not yet been evaluated fully, we say "that's a no-no" when we see `???`. Fully evaluated
 expressions are values.
 

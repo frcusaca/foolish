@@ -6,8 +6,8 @@
  * represents a simple computational machine that processes branes (code blocks)
  * expression by expression using breadth-first evaluation.
  *
- * <p>A <strong>Fooler</strong>, for lack of a better concise way to describe them,
- * is a person who develops Foolish. A Fooler might say a variable is <em>nye</em>
+ * <p>A <strong>Foolisher</strong>, for lack of a better concise way to describe them,
+ * is a person who develops Foolish. A Foolisher might say a variable is <em>nye</em>
  * (says 'nigh') when they encounter a FIR that has not yet been evaluated fully.
  *
  * <h3>Evaluation State Terminology</h3>
@@ -16,7 +16,7 @@
  *       Code that has been expressed but not fully evaluated in the current context</li>
  *   <li><strong><em>FK</em></strong> (<em>Fully Known</em>) -
  *       Values or branes that are completely evaluated and known</li>
- *   <li><strong><em>NK</em></strong> (<em>Not Knowable</em>, pronounced "nook") -
+ *   <li><strong><em>NK</em></strong> (<em>Not Knowable</em>, pronounced "no-no") -
  *       The unknown state represented by {@code ???} in Foolish</li>
  * </ul>
  *
