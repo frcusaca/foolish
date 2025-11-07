@@ -23,4 +23,8 @@ becomes "interpreted" which is when we gain the machinery to correctly handle th
 So good places to be are "lexed and tested" and "interpreted and tested".
 
 
-
+Unit test is able to very specifically test each unit of the software, it is the primary check of
+correctness. Approval tests should try to correspond to unit tests, but approval test tend to illustrate
+behavior to users better. It is best used to illustrate the most IMPORTANT and most EASILY CONFUSED
+aspect of code behavior. Approval tests should be fairly comprehensive but prioritizes showing correct
+behavior in a more human readable way.
