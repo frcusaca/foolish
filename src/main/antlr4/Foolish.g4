@@ -52,7 +52,11 @@ mulExpr
     ;
 
 unaryExpr
-    : (PLUS|MINUS|MUL)? primary
+    : (PLUS|MINUS|MUL)? postfixExpr
+    ;
+
+postfixExpr
+    : primary (DOT characterizable_identifier)*
     ;
 
 literal
@@ -95,6 +99,7 @@ PLUS : '+' ;
 MINUS : '-' ;
 MUL : '*' ;
 DIV : '/' ;
+DOT : '.' ;
 
 IF  : 'if' ;
 THEN : 'then' ;

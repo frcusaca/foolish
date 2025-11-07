@@ -372,6 +372,69 @@ public class ParserUnitTest {
     }
 
     @Test
+    public void testDereference() {
+        // Simple dereference
+        AST ast = parse("{ x = a.b; }");
+        assertEquals("""
+                {
+                  x = a.b;
+                }
+                """, ast.toString());
+
+        // Check AST structure
+        AST.Branes branes = ((AST.Program) ast).branes();
+        AST.Brane brane = (AST.Brane) branes.branes().get(0);
+        AST.Assignment assignment = (AST.Assignment) brane.statements().get(0);
+        assertTrue(assignment.expr() instanceof AST.DereferenceExpr);
+        AST.DereferenceExpr deref = (AST.DereferenceExpr) assignment.expr();
+        assertTrue(deref.base() instanceof AST.Identifier);
+        assertEquals("a", ((AST.Identifier) deref.base()).id());
+        assertEquals("b", deref.coordinate().id());
+
+        // Chained dereference
+        AST ast2 = parse("{ x = a.b.c.d; }");
+        assertEquals("""
+                {
+                  x = a.b.c.d;
+                }
+                """, ast2.toString());
+
+        // Dereference with characterization
+        AST ast3 = parse("{ x = my_brane'a.coord; }");
+        assertEquals("""
+                {
+                  x = my_brane'a.coord;
+                }
+                """, ast3.toString());
+
+        // Dereference on expression
+        AST ast4 = parse("{ x = (a + b).result; }");
+        assertEquals("""
+                {
+                  x = (a + b).result;
+                }
+                """, ast4.toString());
+
+        // Dereference with thin space separators in identifiers
+        AST ast5 = parse("{ x = my\u202Fbrane.my\u2060coordinate; }");
+        assertEquals("""
+                {
+                  x = my\u202Fbrane.my\u2060coordinate;
+                }
+                """, ast5.toString());
+
+        // Dereference on brane
+        AST ast6 = parse("{ x = {y = 10;}.y; }");
+        assertEquals("""
+                {
+                  x = {
+                  y = 10;
+                }.y;
+                }
+                """, ast6.toString());
+    }
+
+    @Test
     public void testCharacterization() {
         AST ast = parse("{ x = 5; n'42; b = x'{true; false; result=10;};}");
         assertTrue(ast instanceof AST.Program);

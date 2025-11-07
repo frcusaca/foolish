@@ -1,0 +1,4 @@
+{
+  x = (a + b).result;
+  y = (x * 2).value;
+}

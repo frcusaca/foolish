@@ -39,5 +39,9 @@ public class BraneMemory implements BraneMemoryInterface<BraneMemory.Query, FIR>
 
     @Override
     public void put(Query id, FIR value, int byLine) {
-        memory.computeIfAbsent(byLine, k -> new java.util.HashMap<>()).put(id, value);
+        if (id instanceof CharacterizedIdentifier charId) {
+            memory.computeIfAbsent(byLine, k -> new java.util.HashMap<>()).put(charId, value);
+        } else {
+            throw new IllegalArgumentException("Only IdentifierQuery is supported for put operations");
+        }
     }}
