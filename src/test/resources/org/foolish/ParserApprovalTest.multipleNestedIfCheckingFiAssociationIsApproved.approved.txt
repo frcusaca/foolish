@@ -1,0 +1,3 @@
+{
+  result = if a then if b then if c then 100 else 200 else 300 else 400;
+}

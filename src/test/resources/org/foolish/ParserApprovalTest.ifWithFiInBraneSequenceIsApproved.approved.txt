@@ -1,0 +1,5 @@
+{
+  first = if a then 1 else 2;
+  second = if b then 3;
+  third = if c then if d then 4 else 5;
+}

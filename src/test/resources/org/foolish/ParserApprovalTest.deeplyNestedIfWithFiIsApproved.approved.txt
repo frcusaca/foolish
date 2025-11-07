@@ -1,0 +1,3 @@
+{
+  result = if x then if y then 10 elif z then 20 else if w then 30 else 40 else 50;
+}

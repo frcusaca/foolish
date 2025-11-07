@@ -99,4 +99,128 @@ public class ParserApprovalTest {
         """);
     }
 
+    @Test
+    void simpleIfThenElseIsApproved() {
+        verifyApprovalOf("""
+                {
+                    x = if a then 1 else 2;
+                }
+        """);
+    }
+
+    @Test
+    void simpleIfThenElseWithFiIsApproved() {
+        verifyApprovalOf("""
+                {
+                    x = if a then 1 else 2 fi;
+                }
+        """);
+    }
+
+    @Test
+    void ifWithoutElseIsApproved() {
+        verifyApprovalOf("""
+                {
+                    x = if a then 1;
+                }
+        """);
+    }
+
+    @Test
+    void ifWithoutElseButWithFiIsApproved() {
+        verifyApprovalOf("""
+                {
+                    x = if a then 1 fi;
+                }
+        """);
+    }
+
+    @Test
+    void ifWithElifChainIsApproved() {
+        verifyApprovalOf("""
+                {
+                    x = if a then 1 elif b then 2 elif c then 3 else 4;
+                }
+        """);
+    }
+
+    @Test
+    void ifWithElifChainAndFiIsApproved() {
+        verifyApprovalOf("""
+                {
+                    x = if a then 1 elif b then 2 elif c then 3 else 4 fi;
+                }
+        """);
+    }
+
+    @Test
+    void nestedIfWithFiMarkersIsApproved() {
+        verifyApprovalOf("""
+                {
+                    x = if a then
+                        if b then 10 else 20 fi
+                    else 30 fi;
+                }
+        """);
+    }
+
+    @Test
+    void deeplyNestedIfWithFiIsApproved() {
+        verifyApprovalOf("""
+                {
+                    result = if x then
+                        if y then 10
+                        elif z then 20
+                        else if w then 30 else 40 fi
+                    fi
+                    else 50;
+                }
+        """);
+    }
+
+    @Test
+    void multipleNestedIfCheckingFiAssociationIsApproved() {
+        verifyApprovalOf("""
+                {
+                    result = if a then
+                        if b then
+                            if c then 100 else 200 fi
+                        else 300 fi
+                    else 400 fi;
+                }
+        """);
+    }
+
+    @Test
+    void complexNestedIfElifWithMixedFiMarkersIsApproved() {
+        verifyApprovalOf("""
+                {
+                    result = if a then
+                        if z then 10 else 2 fi
+                    elif b then
+                        if x then 30
+                        else if y then 20 else 3 fi fi
+                    elif d then
+                        if p then
+                            if q then 300 else 200 fi
+                        elif r then 100
+                        elif s then
+                            if t then 50 elif u then 40 else 0 fi
+                        fi
+                    else 4 fi;
+                }
+        """);
+    }
+
+    @Test
+    void ifWithFiInBraneSequenceIsApproved() {
+        verifyApprovalOf("""
+                {
+                    first = if a then 1 else 2 fi;
+                    second = if b then 3 fi;
+                    third = if c then if d then 4 fi else 5 fi;
+                }
+        """);
+    }
+
 }
