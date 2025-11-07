@@ -301,4 +301,50 @@ public class ParserApprovalTest {
         """);
     }
 
+    @Test
+    void dereferenceWithCharacterizedCoordinatesIsApproved() {
+        verifyApprovalOf("""
+                {
+                    x = br.integer'x;
+                    result = br.integer'x + br.float'y;
+                    value = a.b.type'value;
+                }
+        """);
+    }
+
+    @Test
+    void dereferenceOperatorPrecedenceWithUnaryIsApproved() {
+        verifyApprovalOf("""
+                {
+                    x = -a.b;
+                    y = +obj.value;
+                    z = *ptr.data;
+                    w = -a.b.c.d;
+                }
+        """);
+    }
+
+    @Test
+    void dereferenceOperatorPrecedenceWithBinaryIsApproved() {
+        verifyApprovalOf("""
+                {
+                    sum = a.b + c.d;
+                    product = a.b * c.d;
+                    complex = -a.x + b.y * c.z;
+                    nested = (a.b + c.d) * (e.f - g.h);
+                }
+        """);
+    }
+
+    @Test
+    void dereferenceOnBraneListIsApproved() {
+        verifyApprovalOf("""
+                {
+                    a = ({z=1;}{x=1;}).c;
+                    result = ({a=1;}{b=2;}{c=3;}).value;
+                    complex = ({data=10;}{more=20;}).field.nested;
+                }
+        """);
+    }
+
 }

@@ -1,0 +1,5 @@
+{
+  x = br.integer'x;
+  result = (br.integer'x + br.float'y);
+  value = a.b.type'value;
+}

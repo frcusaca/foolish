@@ -435,6 +435,177 @@ public class ParserUnitTest {
     }
 
     @Test
+    public void testDereferenceWithCharacterizedCoordinates() {
+        // Dereference to get characterized identifier
+        AST ast = parse("{ x = br.integer'x; }");
+        assertEquals("""
+                {
+                  x = br.integer'x;
+                }
+                """, ast.toString());
+
+        // Check AST structure
+        AST.Branes branes = ((AST.Program) ast).branes();
+        AST.Brane brane = (AST.Brane) branes.branes().get(0);
+        AST.Assignment assignment = (AST.Assignment) brane.statements().get(0);
+        assertTrue(assignment.expr() instanceof AST.DereferenceExpr);
+        AST.DereferenceExpr deref = (AST.DereferenceExpr) assignment.expr();
+        AST.Identifier coord = deref.coordinate();
+        assertEquals("x", coord.id());
+        assertEquals("integer", coord.characterization().id());
+
+        // Multiple characterized derefs in expression
+        AST ast2 = parse("{ result = br.integer'x + br.float'y; }");
+        assertEquals("""
+                {
+                  result = (br.integer'x + br.float'y);
+                }
+                """, ast2.toString());
+
+        // Chained dereference with characterization at end
+        AST ast3 = parse("{ x = a.b.type'value; }");
+        assertEquals("""
+                {
+                  x = a.b.type'value;
+                }
+                """, ast3.toString());
+    }
+
+    @Test
+    public void testDereferenceOnBraneList() {
+        // Dereference on a brane list requires parentheses: ({branes}).c
+        // This parses as: DereferenceExpr(Branes([{z=1}, {x=1}]), c)
+        AST ast = parse("{ a = ({z=1;}{x=1;}).c; }");
+        assertEquals("""
+                {
+                  a = {
+                  z = 1;
+                }
+                {
+                  x = 1;
+                }
+                .c;
+                }
+                """, ast.toString());
+
+        // Verify AST structure
+        AST.Branes branes = ((AST.Program) ast).branes();
+        AST.Brane brane = (AST.Brane) branes.branes().get(0);
+        AST.Assignment assignment = (AST.Assignment) brane.statements().get(0);
+
+        // The expression should be a DereferenceExpr
+        assertTrue(assignment.expr() instanceof AST.DereferenceExpr);
+        AST.DereferenceExpr deref = (AST.DereferenceExpr) assignment.expr();
+
+        // The base should be Branes containing two branes
+        assertTrue(deref.base() instanceof AST.Branes);
+        AST.Branes innerBranes = (AST.Branes) deref.base();
+        assertEquals(2, innerBranes.branes().size());
+        assertTrue(innerBranes.branes().get(0) instanceof AST.Brane);
+        assertTrue(innerBranes.branes().get(1) instanceof AST.Brane);
+
+        // The coordinate is c
+        assertEquals("c", deref.coordinate().id());
+
+        // Multiple branes with dereference
+        AST ast2 = parse("{ result = ({a=1;}{b=2;}{c=3;}).value; }");
+        assertEquals("""
+                {
+                  result = {
+                  a = 1;
+                }
+                {
+                  b = 2;
+                }
+                {
+                  c = 3;
+                }
+                .value;
+                }
+                """, ast2.toString());
+
+        // Verify it's a DereferenceExpr with Branes base
+        AST.Branes branes2 = ((AST.Program) ast2).branes();
+        AST.Brane brane2 = (AST.Brane) branes2.branes().get(0);
+        AST.Assignment assignment2 = (AST.Assignment) brane2.statements().get(0);
+        assertTrue(assignment2.expr() instanceof AST.DereferenceExpr);
+        AST.DereferenceExpr deref2 = (AST.DereferenceExpr) assignment2.expr();
+        assertTrue(deref2.base() instanceof AST.Branes);
+        AST.Branes innerBranes2 = (AST.Branes) deref2.base();
+        assertEquals(3, innerBranes2.branes().size());
+    }
+
+    @Test
+    public void testDereferenceOperatorPrecedence() {
+        // Dereference has higher precedence than unary operators
+        // -a.x should parse as -(a.x) not (-a).x
+        AST ast = parse("{ x = -a.b; }");
+        assertEquals("""
+                {
+                  x = -a.b;
+                }
+                """, ast.toString());
+
+        // Check AST structure: unary op should wrap dereference
+        AST.Branes branes = ((AST.Program) ast).branes();
+        AST.Brane brane = (AST.Brane) branes.branes().get(0);
+        AST.Assignment assignment = (AST.Assignment) brane.statements().get(0);
+        assertTrue(assignment.expr() instanceof AST.UnaryExpr);
+        AST.UnaryExpr unary = (AST.UnaryExpr) assignment.expr();
+        assertEquals("-", unary.op());
+        assertTrue(unary.expr() instanceof AST.DereferenceExpr);
+
+        // More precedence tests
+        AST ast2 = parse("{ x = +obj.value; }");
+        assertEquals("""
+                {
+                  x = +obj.value;
+                }
+                """, ast2.toString());
+
+        AST ast3 = parse("{ x = *ptr.data; }");
+        assertEquals("""
+                {
+                  x = *ptr.data;
+                }
+                """, ast3.toString());
+
+        // Dereference has higher precedence than binary operators
+        AST ast4 = parse("{ x = a.b + c.d; }");
+        assertEquals("""
+                {
+                  x = (a.b + c.d);
+                }
+                """, ast4.toString());
+
+        AST ast5 = parse("{ x = a.b * c.d; }");
+        assertEquals("""
+                {
+                  x = (a.b * c.d);
+                }
+                """, ast5.toString());
+
+        // Chained dereference with unary
+        AST ast6 = parse("{ x = -a.b.c.d; }");
+        assertEquals("""
+                {
+                  x = -a.b.c.d;
+                }
+                """, ast6.toString());
+
+        // Verify the structure: should be -(a.b.c.d)
+        AST.Branes branes6 = ((AST.Program) ast6).branes();
+        AST.Brane brane6 = (AST.Brane) branes6.branes().get(0);
+        AST.Assignment assignment6 = (AST.Assignment) brane6.statements().get(0);
+        assertTrue(assignment6.expr() instanceof AST.UnaryExpr);
+        AST.UnaryExpr unary6 = (AST.UnaryExpr) assignment6.expr();
+        assertTrue(unary6.expr() instanceof AST.DereferenceExpr);
+        AST.DereferenceExpr deref6 = (AST.DereferenceExpr) unary6.expr();
+        // The base should be another dereference (a.b.c)
+        assertTrue(deref6.base() instanceof AST.DereferenceExpr);
+    }
+
+    @Test
     public void testCharacterization() {
         AST ast = parse("{ x = 5; n'42; b = x'{true; false; result=10;};}");
         assertTrue(ast instanceof AST.Program);

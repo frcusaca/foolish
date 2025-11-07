@@ -1,0 +1,6 @@
+{
+  x = -a.b;
+  y = +obj.value;
+  z = *ptr.data;
+  w = -a.b.c.d;
+}
