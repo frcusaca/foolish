@@ -223,4 +223,82 @@ public class ParserApprovalTest {
         """);
     }
 
+    @Test
+    void simpleDereferenceIsApproved() {
+        verifyApprovalOf("""
+                {
+                    x = a.b;
+                }
+        """);
+    }
+
+    @Test
+    void chainedDereferenceIsApproved() {
+        verifyApprovalOf("""
+                {
+                    result = a.b.c.d;
+                }
+        """);
+    }
+
+    @Test
+    void dereferenceWithCharacterizationIsApproved() {
+        verifyApprovalOf("""
+                {
+                    x = my_brane'a.coord;
+                    y = 'anonymous.value;
+                }
+        """);
+    }
+
+    @Test
+    void dereferenceOnExpressionIsApproved() {
+        verifyApprovalOf("""
+                {
+                    x = (a + b).result;
+                    y = (x * 2).value;
+                }
+        """);
+    }
+
+    @Test
+    void dereferenceOnBraneIsApproved() {
+        verifyApprovalOf("""
+                {
+                    x = {y = 10;}.y;
+                    result = {a = 1; b = 2;}.a;
+                }
+        """);
+    }
+
+    @Test
+    void dereferenceInComplexExpressionsIsApproved() {
+        verifyApprovalOf("""
+                {
+                    x = a.b + c.d;
+                    y = data.x * data.y;
+                    z = (a.b + c.d) * e.f;
+                }
+        """);
+    }
+
+    @Test
+    void dereferenceWithIfExprIsApproved() {
+        verifyApprovalOf("""
+                {
+                    result = if condition then brane1.x else brane2.y;
+                    value = data.field.nested;
+                }
+        """);
+    }
+
+    @Test
+    void dereferenceWithThinSpacesIsApproved() {
+        verifyApprovalOf("""
+                {
+                    x = my\u202Fbrane.my\u2060coordinate;
+                }
+        """);
+    }
+
 }

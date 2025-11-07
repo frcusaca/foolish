@@ -134,19 +134,29 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
     public AST visitUnaryExpr(FoolishParser.UnaryExprContext ctx) {
         if (ctx.PLUS() != null) {
             String op = "+";
-            AST.Expr expr = (AST.Expr) visit(ctx.primary());
+            AST.Expr expr = (AST.Expr) visit(ctx.postfixExpr());
             return new AST.UnaryExpr(op, expr);
         } else if (ctx.MINUS() != null) {
             String op = "-";
-            AST.Expr expr = (AST.Expr) visit(ctx.primary());
+            AST.Expr expr = (AST.Expr) visit(ctx.postfixExpr());
             return new AST.UnaryExpr(op, expr);
         } else if (ctx.MUL() != null) {
             String op = "*";
-            AST.Expr expr = (AST.Expr) visit(ctx.primary());
+            AST.Expr expr = (AST.Expr) visit(ctx.postfixExpr());
             return new AST.UnaryExpr(op, expr);
         } else {
-            return visit(ctx.primary());
+            return visit(ctx.postfixExpr());
         }
+    }
+
+    @Override
+    public AST visitPostfixExpr(FoolishParser.PostfixExprContext ctx) {
+        AST.Expr base = (AST.Expr) visit(ctx.primary());
+        for (int i = 0; i < ctx.characterizable_identifier().size(); i++) {
+            AST.Identifier coordinate = (AST.Identifier) visit(ctx.characterizable_identifier(i));
+            base = new AST.DereferenceExpr(base, coordinate);
+        }
+        return base;
     }
 
     @Override
