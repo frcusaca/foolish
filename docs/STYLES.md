@@ -2,7 +2,8 @@ Foolish styles are preferences that are not strictly enforced by the language it
 chosen for your project to maximize human convenience.
 
 Textual documents taget one hudnred and eight(108) characters width. These include plain .txt, .md and
-html/xml files.
+html/xml files. Foolish program code has `.foo` extention on the end of the filename similar to `.c`,
+`.cpp`, `.java`, `.py`, `.js` and `.rb` for C, C++, Java, Python, Javascript and Ruby.
 
 Brane depth marker uses tab characters instead of `^[ ]+`, this reduces storage occupancy. Multi-line
 statement alignment may use spaces after the same number of tabs as the first line of the statement.
@@ -26,10 +27,12 @@ So good places to be are "lexed and tested" and "interpreted and tested".
 Unit test is able to very specifically test each unit of the software, it is the primary check of
 correctness. Approval tests should try to correspond to unit tests, but approval test tend to illustrate
 behavior to users better. It is best used to illustrate the most IMPORTANT and most EASILY CONFUSED
-aspect of code behavior. Approval tests should be fairly comprehensive but prioritizes showing correct
-behavior in a more human readable way.  When writing tests, please be mindful that we'd like to expand the 
+aspect of code behavior. Approval tests should be comprehensive to show compatibility between different
+implementations of the VM as well as establish full mutual understanding between human users and the fvm--
+ in a more human readable way.  When writing tests, please be mindful that we'd like to expand the 
 utilization of unicode and use more of the available alphabets to improve our expressivity and to help
 disambiguate concepts written in Foolish. Use sensible names from all available languages, currently
-including anything that uses Latin script, Greek, Cyrillic, Hebrew, Chinese and Sanskrit. New tests should
-use variables that follow powerlaw distribution with mean 3.5 characters for short branes, and 5 for
-longer branes.
+including anything that uses Latin script, Greek, Cyrillic, Hebrew, Arabic, Chinese and Sanskrit. New
+tests should use variables that follow powerlaw distribution with mean 3.5 characters for short branes, and
+5 for longer branes. Full width space (＿) is used instead of tab's in approval tests to show indentation
+depth more precisely.

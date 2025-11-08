@@ -1,0 +1,27 @@
+name: Java Tests
+
+on:
+  push:
+    branches:
+       - "main"
+       - "dev/**"
+       - "codex/**"
+  pull_request:
+    branches: ["main", "dev/**", "codex/**"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'maven'
+      - name: "Compile"
+        run: mvn clean compile test-compile
+      - name: "🧪 Java Unit Tests"
+        run: mvn surefire:test@java-unit
+      - name: "📷 Java Approval Tests"
+        run: mvn surefire:test@java-approval

@@ -14,7 +14,9 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <antlr4.version>4.13.2</antlr4.version>
     <junit.platform.version>1.13.4</junit.platform.version>
-      <jackson.version>2.17.2</jackson.version>
+    <jackson.version>2.17.2</jackson.version>
+    <scala.version>3.3.4</scala.version>
+    <scala.binary.version>3</scala.binary.version>
   </properties>
 
   <dependencies>
@@ -66,6 +68,19 @@
           <groupId>com.google.guava</groupId>
           <artifactId>guava</artifactId>
           <version>33.5.0-jre</version>
+      </dependency>
+      <!-- Scala Library -->
+      <dependency>
+          <groupId>org.scala-lang</groupId>
+          <artifactId>scala3-library_3</artifactId>
+          <version>${scala.version}</version>
+      </dependency>
+      <!-- ScalaTest for testing -->
+      <dependency>
+          <groupId>org.scalatest</groupId>
+          <artifactId>scalatest_3</artifactId>
+          <version>3.2.19</version>
+          <scope>test</scope>
       </dependency>
   </dependencies>
 
@@ -123,17 +138,172 @@
               </sources>
             </configuration>
           </execution>
+          <execution>
+            <id>add-scala-sources</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>add-source</goal>
+            </goals>
+            <configuration>
+              <sources>
+                <source>src/main/scala</source>
+              </sources>
+            </configuration>
+          </execution>
+          <execution>
+            <id>add-scala-test-sources</id>
+            <phase>generate-test-sources</phase>
+            <goals>
+              <goal>add-test-source</goal>
+            </goals>
+            <configuration>
+              <sources>
+                <source>src/test/scala</source>
+              </sources>
+            </configuration>
+          </execution>
         </executions>
       </plugin>
-      
+
+      <!-- Scala compiler plugin - compile after Java -->
+      <plugin>
+        <groupId>net.alchim31.maven</groupId>
+        <artifactId>scala-maven-plugin</artifactId>
+        <version>4.9.2</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>compile</goal>
+              <goal>testCompile</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <scalaVersion>${scala.version}</scalaVersion>
+          <sendJavaToScalac>false</sendJavaToScalac>
+          <args>
+            <arg>-deprecation</arg>
+            <arg>-feature</arg>
+          </args>
+        </configuration>
+      </plugin>
+
       <plugin>
         <artifactId>maven-surefire-plugin</artifactId>
         <version>3.2.5</version>
+        <configuration>
+          <includes>
+            <include>**/*Test.java</include>
+            <include>**/*Test.scala</include>
+            <include>**/*Suite.scala</include>
+          </includes>
+        </configuration>
+        <executions>
+          <!-- Default execution runs all tests including cross-validation -->
+          <execution>
+            <id>default-test</id>
+            <phase>test</phase>
+            <goals>
+              <goal>test</goal>
+            </goals>
+          </execution>
+
+          <!-- Java unit tests only -->
+          <execution>
+            <id>java-unit</id>
+            <phase>none</phase>
+            <goals>
+              <goal>test</goal>
+            </goals>
             <configuration>
               <includes>
-                  <include>**/*Test.java</include>
-	  </includes>
+                <include>**/*Test.java</include>
+              </includes>
+              <excludes>
+                <exclude>**/*ApprovalTest.java</exclude>
+              </excludes>
             </configuration>
+          </execution>
+
+          <!-- Scala unit tests only -->
+          <execution>
+            <id>scala-unit</id>
+            <phase>none</phase>
+            <goals>
+              <goal>test</goal>
+            </goals>
+            <configuration>
+              <includes>
+                <include>**/*Test.scala</include>
+              </includes>
+              <excludes>
+                <exclude>**/*ApprovalTest.scala</exclude>
+              </excludes>
+            </configuration>
+          </execution>
+
+          <!-- Java approval tests only -->
+          <execution>
+            <id>java-approval</id>
+            <phase>none</phase>
+            <goals>
+              <goal>test</goal>
+            </goals>
+            <configuration>
+              <includes>
+                <include>**/*ApprovalTest.java</include>
+              </includes>
+            </configuration>
+          </execution>
+
+          <!-- Scala approval tests only -->
+          <execution>
+            <id>scala-approval</id>
+            <phase>none</phase>
+            <goals>
+              <goal>test</goal>
+            </goals>
+            <configuration>
+              <includes>
+                <include>**/*ApprovalTest.scala</include>
+              </includes>
+            </configuration>
+          </execution>
+
+          <!-- Cross-validation: verify Java and Scala approvals match -->
+          <execution>
+            <id>approval-test</id>
+            <phase>none</phase>
+            <goals>
+              <goal>test</goal>
+            </goals>
+            <configuration>
+              <includes>
+                <include>**/ApprovalCrossValidationTest.java</include>
+              </includes>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- ScalaTest Maven plugin -->
+      <plugin>
+        <groupId>org.scalatest</groupId>
+        <artifactId>scalatest-maven-plugin</artifactId>
+        <version>2.2.0</version>
+        <configuration>
+          <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
+          <junitxml>.</junitxml>
+          <filereports>TestSuiteReport.txt</filereports>
+        </configuration>
+        <executions>
+          <execution>
+            <id>test</id>
+            <goals>
+              <goal>test</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>

@@ -1,0 +1,37 @@
+!!INPUT!!
+{
+            5;
+            {
+                10;
+                15;
+            };
+            20;
+        }
+
+!!!
+PARSED AST:
+{
+  5;
+  {
+    10;
+    15;
+  };
+  20;
+}
+
+UBC EVALUATION:
+Steps taken: 5
+
+FINAL RESULT:
+{
+＿5;
+＿{
+＿＿10;
+＿＿15;
+＿};
+＿20;
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!

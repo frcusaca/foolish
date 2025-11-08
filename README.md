@@ -2,7 +2,9 @@
 
 *Where proximity meets computation, and containment creates clarity*
 
-[![Java CI](https://github.com/frcusaca/foolish/actions/workflows/tests.yml/badge.svg)](https://github.com/frcusaca/foolish/actions/workflows/tests.yml)
+[![Java Tests](https://github.com/frcusaca/foolish/actions/workflows/java-tests.yml/badge.svg)](https://github.com/frcusaca/foolish/actions/workflows/java-tests.yml)
+[![Scala Tests](https://github.com/frcusaca/foolish/actions/workflows/scala-tests.yml/badge.svg)](https://github.com/frcusaca/foolish/actions/workflows/scala-tests.yml)
+[![Cross Validation](https://github.com/frcusaca/foolish/actions/workflows/tests.yml/badge.svg)](https://github.com/frcusaca/foolish/actions/workflows/tests.yml)
 [![License](https://img.shields.io/badge/license-Open%20Source-blue.svg)](#)
 [![Status](https://img.shields.io/badge/status-Active%20Development-green.svg)](#)
 

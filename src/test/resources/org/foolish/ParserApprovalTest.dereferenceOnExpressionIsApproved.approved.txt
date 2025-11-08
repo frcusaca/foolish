@@ -1,3 +1,10 @@
+INPUT:
+{
+            x = (a + b).result;
+            y = (x * 2).value;
+        }
+
+OUTPUT:
 {
   x = (a + b).result;
   y = (x * 2).value;

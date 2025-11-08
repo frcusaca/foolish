@@ -1,3 +1,10 @@
+INPUT:
+[
+            det'x = 1;
+            det'y;
+        ]
+
+OUTPUT:
 [
   det'x = 1;
   det'y = ???;

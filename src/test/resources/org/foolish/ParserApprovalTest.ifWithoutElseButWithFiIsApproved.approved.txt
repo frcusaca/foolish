@@ -1,3 +1,9 @@
+INPUT:
+{
+            x = if a then 1 fi;
+        }
+
+OUTPUT:
 {
   x = if a then 1;
 }

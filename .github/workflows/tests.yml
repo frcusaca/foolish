@@ -1,4 +1,4 @@
-name: Java CI
+name: Cross Validation
 
 on:
   push:
@@ -10,7 +10,8 @@ on:
     branches: ["main", "dev/**", "codex/**"]
 
 jobs:
-  build:
+  cross-validation:
+    name: Cross Validation
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,8 +20,8 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
           cache: 'maven'
-      - name: "🧪 Unit tests"
-        run: mvn test -P unit-tests
-      - name: "📷 Approval tests"
-        run: mvn test -P approval-tests
+      - name: "Compile and run all tests"
+        run: mvn clean test
+      - name: "✅ Verify Java/Scala outputs match"
+        run: echo "Cross-validation runs as part of 'mvn test'"
 

@@ -4,11 +4,14 @@ import org.approvaltests.namer.StackTraceNamer;
 
 /**
  * Custom ApprovalNamer that stores approval files in src/test/resources
- * instead of src/test/java alongside test classes.
+ * instead of src/test/java or src/test/scala alongside test classes.
  */
 public class ResourcesApprovalNamer extends StackTraceNamer {
     @Override
     public String getSourceFilePath() {
-        return super.getSourceFilePath().replace("/java/", "/resources/");
+        String path = super.getSourceFilePath();
+        // Handle both Java and Scala test directories
+        return path.replace("/java/", "/resources/")
+                   .replace("/scala/", "/resources/");
     }
 }

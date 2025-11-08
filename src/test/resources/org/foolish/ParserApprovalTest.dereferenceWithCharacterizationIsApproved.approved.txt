@@ -1,3 +1,10 @@
+INPUT:
+{
+            x = my_brane'a.coord;
+            y = 'anonymous.value;
+        }
+
+OUTPUT:
 {
   x = my_brane'a.coord;
   y = anonymous.value;

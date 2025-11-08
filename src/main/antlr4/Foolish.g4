@@ -111,13 +111,13 @@ UNKNOWN : '???' ; // Unknowns are unknown
 
 INTEGER : DIGIT+ ;
 
-fragment LETTER : LATIN | GREEK_PART | CYRYLLIC_PART | HEBREW_PART | CHINESE_PART;
+fragment LETTERS : ARABIC_PART | LATIN | GREEK_PART | CYRYLLIC_PART | HEBREW_PART | CHINESE_PART;
 fragment DIGIT : [0-9] ;
 fragment INTRA_ID_SEPARATOR : ' ' | '⁠' | '_' ;
 // Skip whitespace
 WS : [ \t\r\n]+ -> skip ;
 
-IDENTIFIER : LETTER (LETTER|DIGIT|INTRA_ID_SEPARATOR)* ;
+IDENTIFIER : LETTERS (LETTERS|DIGIT|INTRA_ID_SEPARATOR)* ;
 
 APOSTROPHE : '\'' ;
 fragment LATIN  : [a-zA-Z]+;
@@ -125,6 +125,7 @@ fragment GREEK_PART: [αβΓγΔδεζηΘθΙικΛλμνΞξΟοΠπρΣσςτ
 fragment CYRYLLIC_PART: [БбвДдЖжЗзИиЙйКкЛлмнПптЦцЧчЩщЪъЫыЭэЮюЯя]+;
 fragment HEBREW_PART : [אבגהחטכלמנסעפצקרשתםףץך]+;
 fragment CHINESE_PART : ('\u4E00'..'\u9FFF')+;
+fragment ARABIC_PART : ('\u0621'..'\u0652')+;
 fragment SANSKRIT_PART 
     :   (   DEVANAGARI_CHAR
         |   VEDIC_EXT_CHAR

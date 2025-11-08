@@ -20,7 +20,14 @@ public class ParserApprovalTest {
         ParseTree tree = parser.program();
         AST ast = new ASTBuilder().visit(tree);
 
-        Approvals.verify(new ApprovalTextWriter(ast.toString(), "txt"), new ResourcesApprovalNamer());
+        // Format output with INPUT and OUTPUT sections (like UBC tests)
+        StringBuilder output = new StringBuilder();
+        output.append("INPUT:\n");
+        output.append(code.trim()).append("\n\n");
+        output.append("OUTPUT:\n");
+        output.append(ast.toString());
+
+        Approvals.verify(new ApprovalTextWriter(output.toString(), "txt"), new ResourcesApprovalNamer());
     }
 
     @Test
