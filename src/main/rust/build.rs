@@ -45,8 +45,12 @@ fn main() {
                     downloaded = true;
                     break;
                 }
-                Ok(_) => continue,
-                Err(_) => continue,
+                Ok(status) => {
+                    println!("cargo:warning=Download command '{}' failed with status: {}", command, status);
+                }
+                Err(e) => {
+                    println!("cargo:warning=Failed to execute command '{}': {}. Is it installed and in your PATH?", command, e);
+                }
             }
         }
 
