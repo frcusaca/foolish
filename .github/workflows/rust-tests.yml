@@ -1,0 +1,27 @@
+name: Rust Tests
+
+on:
+  push:
+    branches:
+      - "main"
+      - "dev/**"
+      - "codex/**"
+  pull_request:
+    branches: ["main", "dev/**", "codex/**"]
+
+jobs:
+  rust-tests:
+    name: Rust Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'maven'
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+      - name: "🦀 Cargo test"
+        run: cargo test --workspace
