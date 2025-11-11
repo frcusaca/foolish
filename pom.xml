@@ -15,6 +15,10 @@
     <antlr4.version>4.13.2</antlr4.version>
     <junit.platform.version>1.13.4</junit.platform.version>
       <jackson.version>2.17.2</jackson.version>
+    <antlr.language>Java</antlr.language>
+    <antlr.skip>false</antlr.skip>
+    <antlr.rust.tool.url>https://github.com/rrevenantt/antlr4rust/releases/download/antlr4-4.8-2-Rust0.3.0-beta/antlr4-4.8-2-SNAPSHOT-complete.jar</antlr.rust.tool.url>
+    <antlr.rust.tool.jar>${project.build.directory}/antlr-rust/antlr4-4.8-2-SNAPSHOT-complete.jar</antlr.rust.tool.jar>
   </properties>
 
   <dependencies>
@@ -82,6 +86,7 @@
               <goal>antlr4</goal>
             </goals>
             <configuration>
+              <skip>${antlr.skip}</skip>
               <arguments>
                 <argument>-package</argument>
                 <argument>org.foolish.grammar</argument>
@@ -125,6 +130,32 @@
           </execution>
         </executions>
       </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>3.3.0</version>
+        <executions>
+          <execution>
+            <id>generate-sources-rust</id>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <executable>java</executable>
+              <workingDirectory>${project.basedir}</workingDirectory>
+              <arguments>
+                <argument>-jar</argument>
+                <argument>${antlr.rust.tool.jar}</argument>
+                <argument>-Dlanguage=Rust</argument>
+                <argument>-visitor</argument>
+                <argument>-o</argument>
+                <argument>${project.build.directory}/generated-sources/antlr-rust</argument>
+                <argument>${project.basedir}/src/main/antlr4/Foolish.g4</argument>
+              </arguments>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
       
       <plugin>
         <artifactId>maven-surefire-plugin</artifactId>
@@ -138,34 +169,32 @@
     </plugins>
   </build>
 	<profiles>
-	  <profile>
-		<id>all-tests</id>
-		<activation>
-			<activeByDefault>true</activeByDefault>
-		</activation>
-		<build> <plugins> <plugin> <artifactId>maven-surefire-plugin</artifactId> <version>3.2.5</version>
-		    <configuration> <includes> <include>**/*Test.java</include> </includes> </configuration>
-		</plugin> </plugins> </build>
-	  </profile>
-	  <profile>
-		<id>unit-tests</id>
-		<activation>
-			<activeByDefault>false</activeByDefault>
-		</activation>
-		<build> <plugins> <plugin> <artifactId>maven-surefire-plugin</artifactId> <version>3.2.5</version>
-		    <configuration> <includes> <include>**/*UnitTest.java</include> </includes> </configuration>
-		</plugin> </plugins> </build>
-	  </profile>
-	  <profile>
-		<id>approval-tests</id>
-		<activation>
-			<activeByDefault>false</activeByDefault>
-		</activation>
-		<build> <plugins> <plugin> <artifactId>maven-surefire-plugin</artifactId> <version>3.2.5</version>
-		    <configuration> <includes> <include>**/*ApprovalTest.java</include> </includes> </configuration>
-		</plugin> </plugins> </build>
-	  </profile>
-
-
-	</profiles>
+          <profile>
+                <id>all-tests</id>
+                <activation>
+                        <activeByDefault>true</activeByDefault>
+                </activation>
+                <build> <plugins> <plugin> <artifactId>maven-surefire-plugin</artifactId> <version>3.2.5</version>
+                    <configuration> <includes> <include>**/*Test.java</include> </includes> </configuration>
+                </plugin> </plugins> </build>
+          </profile>
+          <profile>
+                <id>unit-tests</id>
+                <activation>
+                        <activeByDefault>false</activeByDefault>
+                </activation>
+                <build> <plugins> <plugin> <artifactId>maven-surefire-plugin</artifactId> <version>3.2.5</version>
+                    <configuration> <includes> <include>**/*UnitTest.java</include> </includes> </configuration>
+                </plugin> </plugins> </build>
+          </profile>
+          <profile>
+                <id>approval-tests</id>
+                <activation>
+                        <activeByDefault>false</activeByDefault>
+                </activation>
+                <build> <plugins> <plugin> <artifactId>maven-surefire-plugin</artifactId> <version>3.2.5</version>
+                    <configuration> <includes> <include>**/*ApprovalTest.java</include> </includes> </configuration>
+                </plugin> </plugins> </build>
+          </profile>
+        </profiles>
 </project>
