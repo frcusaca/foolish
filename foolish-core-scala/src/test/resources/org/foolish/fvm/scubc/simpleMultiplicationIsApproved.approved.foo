@@ -1,0 +1,20 @@
+!!INPUT!!
+{6 * 7;}
+
+!!!
+PARSED AST:
+{
+  (6 * 7);
+}
+
+UBC EVALUATION:
+Steps taken: 11
+
+FINAL RESULT:
+{
+＿42;
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!

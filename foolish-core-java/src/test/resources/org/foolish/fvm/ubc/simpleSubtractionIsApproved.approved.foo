@@ -1,0 +1,20 @@
+!!INPUT!!
+{10 - 3;}
+
+!!!
+PARSED AST:
+{
+  (10 - 3);
+}
+
+UBC EVALUATION:
+Steps taken: 11
+
+FINAL RESULT:
+{
+＿7;
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!

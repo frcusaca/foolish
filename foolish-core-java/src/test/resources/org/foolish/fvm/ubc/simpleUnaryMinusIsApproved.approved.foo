@@ -1,0 +1,20 @@
+!!INPUT!!
+{-42;}
+
+!!!
+PARSED AST:
+{
+  -42;
+}
+
+UBC EVALUATION:
+Steps taken: 10
+
+FINAL RESULT:
+{
+＿-42;
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!

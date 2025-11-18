@@ -4,18 +4,24 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>org.foolish</groupId>
-  <artifactId>foolish</artifactId>
+  <artifactId>foolish-parent</artifactId>
   <version>1.0-SNAPSHOT</version>
-  <packaging>jar</packaging>
+  <packaging>pom</packaging>
+
+  <modules>
+    <module>foolish-parser-java</module>
+    <module>foolish-core-java</module>
+    <module>foolish-core-scala</module>
+  </modules>
 
   <properties>
-    <maven.compiler.source>21</maven.compiler.source>
-    <maven.compiler.target>21</maven.compiler.target>
+    <maven.compiler.source>25</maven.compiler.source>
+    <maven.compiler.target>25</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <antlr4.version>4.13.2</antlr4.version>
     <junit.platform.version>1.13.4</junit.platform.version>
     <jackson.version>2.17.2</jackson.version>
-    <scala.version>3.3.4</scala.version>
+    <scala.version>3.3.7</scala.version>
     <scala.binary.version>3</scala.binary.version>
     <antlr.language>Java</antlr.language>
     <antlr.skip>false</antlr.skip>
@@ -23,318 +29,128 @@
     <antlr.rust.tool.jar>${project.build.directory}/antlr-rust/antlr4-4.8-2-SNAPSHOT-complete.jar</antlr.rust.tool.jar>
   </properties>
 
-  <dependencies>
-    <!-- ANTLR runtime -->
-    <dependency>
-      <groupId>org.antlr</groupId>
-      <artifactId>antlr4-runtime</artifactId>
-      <version>${antlr4.version}</version>
-    </dependency>
-    <!-- JUnit Platform Console Standalone -->
-    <dependency>
-      <groupId>org.junit.platform</groupId>
-      <artifactId>junit-platform-console-standalone</artifactId>
-      <version>${junit.platform.version}</version>
-      <scope>test</scope>
-    </dependency>
+  <dependencyManagement>
+    <dependencies>
+      <!-- ANTLR runtime -->
+      <dependency>
+        <groupId>org.antlr</groupId>
+        <artifactId>antlr4-runtime</artifactId>
+        <version>${antlr4.version}</version>
+      </dependency>
+      <!-- JUnit Platform Console Standalone -->
+      <dependency>
+        <groupId>org.junit.platform</groupId>
+        <artifactId>junit-platform-console-standalone</artifactId>
+        <version>${junit.platform.version}</version>
+        <scope>test</scope>
+      </dependency>
 
-    <!-- ApprovalTests for snapshot-based testing -->
-    <dependency>
-      <groupId>com.approvaltests</groupId>
-      <artifactId>approvaltests</artifactId>
-      <version>25.0.23</version>
-      <scope>test</scope>
-    </dependency>
+      <!-- ApprovalTests for snapshot-based testing -->
       <dependency>
-          <groupId>org.junit.jupiter</groupId>
-          <artifactId>junit-jupiter-engine</artifactId>
-          <version>5.10.2</version>
-          <scope>test</scope>
+        <groupId>com.approvaltests</groupId>
+        <artifactId>approvaltests</artifactId>
+        <version>25.0.23</version>
+        <scope>test</scope>
       </dependency>
-      <dependency>
-          <groupId>org.junit.jupiter</groupId>
-          <artifactId>junit-jupiter-api</artifactId>
-          <version>5.10.2</version>
-          <scope>test</scope>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.commons</groupId>
-        <artifactId>commons-lang3</artifactId>
-        <version>3.19.0</version>
-	</dependency>
-	<!-- Some ancient code was producing warning that flooded AI memor -->
-	<dependency>
-	    <groupId>com.google.inject</groupId>
-	    <artifactId>guice</artifactId>
-	    <version>7.0.0</version>
-	</dependency>
-      <dependency>
-          <groupId>com.google.guava</groupId>
-          <artifactId>guava</artifactId>
-          <version>33.5.0-jre</version>
-      </dependency>
-      <!-- Scala Library -->
-      <dependency>
-          <groupId>org.scala-lang</groupId>
-          <artifactId>scala3-library_3</artifactId>
-          <version>${scala.version}</version>
-      </dependency>
-      <!-- ScalaTest for testing -->
-      <dependency>
-          <groupId>org.scalatest</groupId>
-          <artifactId>scalatest_3</artifactId>
-          <version>3.2.19</version>
-          <scope>test</scope>
-      </dependency>
-  </dependencies>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>5.10.2</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>5.10.2</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+          <groupId>org.apache.commons</groupId>
+          <artifactId>commons-lang3</artifactId>
+          <version>3.19.0</version>
+  	</dependency>
+  	<!-- Some ancient code was producing warning that flooded AI memor -->
+  	<dependency>
+  	    <groupId>com.google.inject</groupId>
+  	    <artifactId>guice</artifactId>
+  	    <version>7.0.0</version>
+  	</dependency>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>33.5.0-jre</version>
+        </dependency>
+        <!-- Scala Library -->
+        <dependency>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala3-library_3</artifactId>
+            <version>${scala.version}</version>
+        </dependency>
+        <!-- ScalaTest for testing -->
+        <dependency>
+            <groupId>org.scalatest</groupId>
+            <artifactId>scalatest_3</artifactId>
+            <version>3.2.19</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+  </dependencyManagement>
 
   <build>
-    <plugins>
-      <!-- ANTLR4 Maven Plugin for grammar generation -->
-      <plugin>
-        <groupId>org.antlr</groupId>
-        <artifactId>antlr4-maven-plugin</artifactId>
-        <version>${antlr4.version}</version>
-        <executions>
-          <execution>
-            <goals>
-              <goal>antlr4</goal>
-            </goals>
-            <configuration>
-              <skip>${antlr.skip}</skip>
-              <arguments>
-                <argument>-package</argument>
-                <argument>org.foolish.grammar</argument>
-                <argument>-visitor</argument>
-              </arguments>
-              <outputDirectory>${project.build.directory}/generated-sources/antlr4/org/foolish/grammar</outputDirectory>
-              <sourceDirectory>src/main/antlr4</sourceDirectory>
-<!--              <packageOutputDirectory>true</packageOutputDirectory>-->
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
+    <pluginManagement>
+      <plugins>
+        <!-- ANTLR4 Maven Plugin for grammar generation -->
+        <plugin>
+          <groupId>org.antlr</groupId>
+          <artifactId>antlr4-maven-plugin</artifactId>
+          <version>${antlr4.version}</version>
+        </plugin>
 
-      <!-- Compiler plugin -->
-      <plugin>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.14.0</version>
-        <configuration>
-          <source>${maven.compiler.source}</source>
-          <target>${maven.compiler.target}</target>
-        </configuration>
-      </plugin>
+        <!-- Compiler plugin -->
+        <plugin>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <version>3.14.0</version>
+          <configuration>
+            <source>${maven.compiler.source}</source>
+            <target>${maven.compiler.target}</target>
+          </configuration>
+        </plugin>
 
-      <!-- Add generated sources to compilation -->
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>build-helper-maven-plugin</artifactId>
-        <version>3.6.1</version>
-        <executions>
-          <execution>
-            <id>add-source</id>
-            <phase>generate-sources</phase>
-            <goals>
-              <goal>add-source</goal>
-            </goals>
-            <configuration>
-              <sources>
-                <source>${project.build.directory}/generated-sources/antlr4</source>
-              </sources>
-            </configuration>
-          </execution>
-          <execution>
-            <id>add-scala-sources</id>
-            <phase>generate-sources</phase>
-            <goals>
-              <goal>add-source</goal>
-            </goals>
-            <configuration>
-              <sources>
-                <source>src/main/scala</source>
-              </sources>
-            </configuration>
-          </execution>
-          <execution>
-            <id>add-scala-test-sources</id>
-            <phase>generate-test-sources</phase>
-            <goals>
-              <goal>add-test-source</goal>
-            </goals>
-            <configuration>
-              <sources>
-                <source>src/test/scala</source>
-              </sources>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-      <!-- Scala compiler plugin - compile after Java -->
-      <plugin>
-        <groupId>net.alchim31.maven</groupId>
-        <artifactId>scala-maven-plugin</artifactId>
-        <version>4.9.2</version>
-        <executions>
-          <execution>
-            <goals>
-              <goal>compile</goal>
-              <goal>testCompile</goal>
-            </goals>
-          </execution>
-        </executions>
-        <configuration>
-          <scalaVersion>${scala.version}</scalaVersion>
-          <sendJavaToScalac>false</sendJavaToScalac>
-          <args>
-            <arg>-deprecation</arg>
-            <arg>-feature</arg>
-          </args>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>exec-maven-plugin</artifactId>
-        <version>3.3.0</version>
-        <executions>
-          <execution>
-            <id>generate-sources-rust</id>
-            <goals>
-              <goal>exec</goal>
-            </goals>
-            <configuration>
-              <executable>java</executable>
-              <workingDirectory>${project.basedir}</workingDirectory>
-              <arguments>
-                <argument>-jar</argument>
-                <argument>${antlr.rust.tool.jar}</argument>
-                <argument>-Dlanguage=Rust</argument>
-                <argument>-visitor</argument>
-                <argument>-o</argument>
-                <argument>${project.build.directory}/generated-sources/antlr-rust</argument>
-                <argument>${project.basedir}/src/main/antlr4/Foolish.g4</argument>
-              </arguments>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <artifactId>maven-surefire-plugin</artifactId>
-        <version>3.2.5</version>
-        <configuration>
-          <includes>
-            <include>**/*Test.java</include>
-            <include>**/*Test.scala</include>
-            <include>**/*Suite.scala</include>
-          </includes>
-        </configuration>
-        <executions>
-          <!-- Default execution runs all tests including cross-validation -->
-          <execution>
-            <id>default-test</id>
-            <phase>test</phase>
-            <goals>
-              <goal>test</goal>
-            </goals>
-          </execution>
+        <!-- Add generated sources to compilation -->
+        <plugin>
+          <groupId>org.codehaus.mojo</groupId>
+          <artifactId>build-helper-maven-plugin</artifactId>
+          <version>3.6.1</version>
+        </plugin>
 
-          <!-- Java unit tests only -->
-          <execution>
-            <id>java-unit</id>
-            <phase>none</phase>
-            <goals>
-              <goal>test</goal>
-            </goals>
-            <configuration>
-              <includes>
-                <include>**/*Test.java</include>
-              </includes>
-              <excludes>
-                <exclude>**/*ApprovalTest.java</exclude>
-              </excludes>
-            </configuration>
-          </execution>
+        <!-- Scala compiler plugin -->
+        <plugin>
+          <groupId>net.alchim31.maven</groupId>
+          <artifactId>scala-maven-plugin</artifactId>
+          <version>4.9.2</version>
+        </plugin>
 
-          <!-- Scala unit tests only -->
-          <execution>
-            <id>scala-unit</id>
-            <phase>none</phase>
-            <goals>
-              <goal>test</goal>
-            </goals>
-            <configuration>
-              <includes>
-                <include>**/*Test.scala</include>
-              </includes>
-              <excludes>
-                <exclude>**/*ApprovalTest.scala</exclude>
-              </excludes>
-            </configuration>
-          </execution>
+        <!-- Exec Maven plugin -->
+        <plugin>
+          <groupId>org.codehaus.mojo</groupId>
+          <artifactId>exec-maven-plugin</artifactId>
+          <version>3.3.0</version>
+        </plugin>
 
-          <!-- Java approval tests only -->
-          <execution>
-            <id>java-approval</id>
-            <phase>none</phase>
-            <goals>
-              <goal>test</goal>
-            </goals>
-            <configuration>
-              <includes>
-                <include>**/*ApprovalTest.java</include>
-              </includes>
-            </configuration>
-          </execution>
+        <!-- Maven Surefire plugin -->
+        <plugin>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <version>3.2.5</version>
+        </plugin>
 
-          <!-- Scala approval tests only -->
-          <execution>
-            <id>scala-approval</id>
-            <phase>none</phase>
-            <goals>
-              <goal>test</goal>
-            </goals>
-            <configuration>
-              <includes>
-                <include>**/*ApprovalTest.scala</include>
-              </includes>
-            </configuration>
-          </execution>
-
-          <!-- Cross-validation: verify Java and Scala approvals match -->
-          <execution>
-            <id>approval-test</id>
-            <phase>none</phase>
-            <goals>
-              <goal>test</goal>
-            </goals>
-            <configuration>
-              <includes>
-                <include>**/ApprovalCrossValidationTest.java</include>
-              </includes>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-
-      <!-- ScalaTest Maven plugin -->
-      <plugin>
-        <groupId>org.scalatest</groupId>
-        <artifactId>scalatest-maven-plugin</artifactId>
-        <version>2.2.0</version>
-        <configuration>
-          <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
-          <junitxml>.</junitxml>
-          <filereports>TestSuiteReport.txt</filereports>
-        </configuration>
-        <executions>
-          <execution>
-            <id>test</id>
-            <goals>
-              <goal>test</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-    </plugins>
+        <!-- ScalaTest Maven plugin -->
+        <plugin>
+          <groupId>org.scalatest</groupId>
+          <artifactId>scalatest-maven-plugin</artifactId>
+          <version>2.2.0</version>
+        </plugin>
+      </plugins>
+    </pluginManagement>
   </build>
 	<profiles>
           <profile>
