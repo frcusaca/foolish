@@ -24,7 +24,7 @@
     <dependency>
       <groupId>org.foolish</groupId>
       <artifactId>foolish</artifactId>
-      <version>${project.version}</version>
+      <version>${foolish.version}</version>
     </dependency>
     <dependency>
       <groupId>org.eclipse.lsp4j</groupId>
