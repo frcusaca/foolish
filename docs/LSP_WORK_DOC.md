@@ -4,7 +4,7 @@ This document captures the working plan for building a Java-based Language Serve
 
 ## Current implementation status
 
-- ✅ **Step 1 – Bootstrap module:** A dedicated `foolish-lsp` Maven module now lives alongside the existing Foolish build. It reuses the runtime/AST classes published by the root project and ships a shaded `foolish-lsp.jar` hosting a stub `FoolishLanguageServer` so editors can already spawn the binary for smoke testing.
+- ✅ **Step 1 – Bootstrap module:** A dedicated `foolish-lsp-java` Maven module now lives alongside the existing Foolish build. It reuses the runtime/AST classes published by the root project and ships a shaded `foolish-lsp-java.jar` hosting a stub `FoolishLanguageServer` so editors can already spawn the binary for smoke testing.
 - 🔜 **Next steps:** Gradually replace the placeholder document/workspace services with real parsing, diagnostics, and formatting logic from the core module per the roadmap below.
 
 ## Architecture overview
@@ -17,7 +17,7 @@ This document captures the working plan for building a Java-based Language Serve
 - Runtime semantics are modeled through the FVM environment (`Env`, `CharacterizedIdentifier`) and the Unicellular Brane Computer (UBC), so we can reuse the same scope-resolution logic for tooling features like go-to-definition, diagnostics, or live evaluation.
 
 ### Proposed Java LSP architecture
-1. **Language server process** – Create a new Maven submodule (e.g., `foolish-lsp`) that depends on the existing `antlr4-runtime`, AST, and FVM code. Use `org.eclipse.lsp4j` to implement `FoolishLanguageServer` and package it into an executable JAR (`java -jar foolish-lsp.jar`).
+1. **Language server process** – Create a new Maven submodule (e.g., `foolish-lsp-java`) that depends on the existing `antlr4-runtime`, AST, and FVM code. Use `org.eclipse.lsp4j` to implement `FoolishLanguageServer` and package it into an executable JAR (`java -jar foolish-lsp-java.jar`).
 2. **Document & workspace services** – Maintain an in-memory workspace of `.foo` documents with incremental text updates, file-system watchers for on-disk changes, and dependency tracking for multi-file brane compositions.
 3. **Parsing pipeline** – On each change, run the ANTLR lexer/parser (`Foolish.g4`) and build an AST via `ASTBuilder`, caching results and emitting syntax diagnostics through LSP `PublishDiagnostics`. Future enhancements can expose the parse tree for folding or outline views.
 4. **Semantic services** – Reuse `Env`/`CharacterizedIdentifier` to build semantic tables per brane, tracking SSA-style bindings so definitions, references, and search operators resolve consistently with runtime semantics.
@@ -41,21 +41,20 @@ This document captures the working plan for building a Java-based Language Serve
 
 ## Development notes
 
-> **Build alignment:** Keep every toolchain Maven-first (server, CLI launcher, VS Code assets, IntelliJ plugin). Run the normal `mvn install` at repo root to publish the latest `org.foolish:foolish` snapshot locally, then build the server with `mvn -f foolish-lsp/pom.xml package`. Avoid introducing Gradle just for plugin packaging.
+> **Build alignment:** Keep every toolchain Maven-first (server, CLI launcher, VS Code assets, IntelliJ plugin). Run the normal `mvn install` at repo root to publish the latest `org.foolish:foolish` snapshot locally. The LSP module is now part of the root Maven reactor, so a standard `mvn verify` or `mvn install` from the repo root will build and test both the core and `foolish-lsp-java`. Avoid introducing Gradle just for plugin packaging.
 
 ### Building the LSP server
-1. Add a Maven module `foolish-lsp` with dependencies on the core runtime, AST, and ANTLR artifacts already defined in the root `pom.xml`. **Status:** ✅ done – see `foolish-lsp/pom.xml`.
+1. Add a Maven module `foolish-lsp-java` with dependencies on the core runtime, AST, and ANTLR artifacts already defined in the root `pom.xml`. **Status:** ✅ done – see `foolish-lsp-java/pom.xml`.
 2. Implement `FoolishLanguageServer` using LSP4J and expose a `main` entry point.
 3. Configure the module’s POM with:
    - `maven-compiler-plugin` targeting Java 21 (aligned with the repo).
-   - `maven-shade-plugin` to produce a standalone `foolish-lsp.jar`.
+   - `maven-shade-plugin` to produce a standalone `foolish-lsp-java.jar`.
 4. Build flow:
-   - `mvn install` (repo root) to publish the latest `org.foolish:foolish` artifact locally.
-   - `mvn -f foolish-lsp/pom.xml package` to compile and shade the server. Locate the artifact under `foolish-lsp/target/`.
+   - Run `mvn verify` (or `mvn install`) at the repo root to build/tests both modules and shade the server. Locate the artifact under `foolish-lsp-java/target/`.
 
 ### Loading into VS Code for testing
 1. Scaffold a VS Code extension (TypeScript) using `yo code` or manual setup.
-2. Add `vscode-languageclient` and configure the client to spawn `java -jar server/foolish-lsp.jar` (bundle the jar or download on activation).
+2. Add `vscode-languageclient` and configure the client to spawn `java -jar server/foolish-lsp-java.jar` (bundle the jar or download on activation).
 3. Use the `Run Extension` task in VS Code to open a new Extension Development Host window and verify features across `.foo` files.
 4. Package for testers via `vsce package` and share the `.vsix`.
 
@@ -63,10 +62,10 @@ This document captures the working plan for building a Java-based Language Serve
 1. **Plugin setup**
    - Keep the toolchain Maven-first: scaffold an IntelliJ Platform plugin project that uses the [`intellij-platform-maven-plugin`](https://plugins.jetbrains.com/docs/intellij/tools-maven.html) so it aligns with the rest of the Foolish build. Add the `com.intellij.platform.lsp` module as a dependency.
    - Declare `.foo` as a language/file type, optionally referencing Foolish icons and colors.
-   - Add an LSP server definition that launches the shaded `foolish-lsp.jar` (point to the local build path or remote download).
+   - Add an LSP server definition that launches the shaded `foolish-lsp-java.jar` (point to the local build path or remote download).
 2. **Building & running**
    - Invoke `mvn verify` (or `mvn package`) inside the plugin project to assemble the ZIP under `target/`. Keep the Foolish repo checked out adjacent to the plugin project so the JAR path is stable.
-   - During development, run `mvn -P runIde verify` (the profile provided by the IntelliJ Maven plugin) to start a sandboxed IDE with the plugin pre-installed. Point the LSP configuration to the freshly built `foolish-lsp.jar`.
+   - During development, run `mvn -P runIde verify` (the profile provided by the IntelliJ Maven plugin) to start a sandboxed IDE with the plugin pre-installed. Point the LSP configuration to the freshly built `foolish-lsp-java.jar`.
 3. **Reloading the plugin**
    - Stop the sandbox IDE, rebuild via Maven, and relaunch. IntelliJ automatically reloads the plugin when the sandbox restarts.
    - For on-the-fly reloading without restarting, use the “Load/Unload Custom Plugin” action (Ctrl+Shift+A) in the sandbox to unload the current build and load the new ZIP from `target/`.
