@@ -1,23 +1,23 @@
 INPUT:
 [
             variable x = ???;
-            coordinate⁠y;
+            coordinate y;
         ]
         {
             my_result = x;
-            my result⁠coordinate=-42;
-            here too'a b⁠c = 5;
-            simple⁠name'd e⁠f;
+            my result coordinate=-42;
+            here too'a b c = 5;
+            simple name'd e f;
         }
 
 OUTPUT:
 [
   variable x = ???;
-  coordinate⁠y = ???;
+  coordinate y = ???;
 ]
 {
   my_result = x;
-  my result⁠coordinate = -42;
-  here too'a b⁠c = 5;
-  simple⁠name'd e⁠f;
+  my result coordinate = -42;
+  here too'a b c = 5;
+  simple name'd e f;
 }

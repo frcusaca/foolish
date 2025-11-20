@@ -8,6 +8,7 @@ import org.eclipse.lsp4j.ServerCapabilities;
 import org.eclipse.lsp4j.TextDocumentSyncKind;
 import org.eclipse.lsp4j.WorkspaceFoldersOptions;
 import org.eclipse.lsp4j.WorkspaceServerCapabilities;
+import org.eclipse.lsp4j.services.LanguageClient;
 import org.eclipse.lsp4j.services.LanguageServer;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
@@ -24,10 +25,16 @@ public final class FoolishLanguageServer implements LanguageServer {
 
     private final FoolishTextDocumentService textDocumentService;
     private final FoolishWorkspaceService workspaceService;
+    private LanguageClient client;
 
     public FoolishLanguageServer() {
         this.textDocumentService = new FoolishTextDocumentService();
         this.workspaceService = new FoolishWorkspaceService();
+    }
+
+    public void connect(LanguageClient client) {
+        this.client = client;
+        this.textDocumentService.connect(client);
     }
 
     @Override
@@ -62,6 +69,12 @@ public final class FoolishLanguageServer implements LanguageServer {
     @Override
     public void exit() {
         LOGGER.info("Server exiting");
+    }
+
+    @Override
+    public void setTrace(org.eclipse.lsp4j.SetTraceParams params) {
+        // VS Code sends this to control tracing - we can ignore it
+        LOGGER.debug("Trace set to: {}", params.getValue());
     }
 
     @Override

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- Disable logback's own status messages to avoid polluting stdout -->
+    <statusListener class="ch.qos.logback.core.status.NopStatusListener" />
+    
+    <!-- Log to stderr - VS Code will capture this and show in Output panel -->
+    <appender name="STDERR" class="ch.qos.logback.core.ConsoleAppender">
+        <target>System.err</target>
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} -- %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Optional: Log to standard cache directory for debugging -->
+    <!-- Uncomment to enable file logging -->
+    <!--
+    <appender name="FILE" class="ch.qos.logback.core.FileAppender">
+        <file>${user.home}/.cache/foolish-lsp/server.log</file>
+        <append>true</append>
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} -- %msg%n</pattern>
+        </encoder>
+    </appender>
+    -->
+
+    <root level="INFO">
+        <appender-ref ref="STDERR" />
+        <!-- Uncomment to enable file logging -->
+        <!-- <appender-ref ref="FILE" /> -->
+    </root>
+</configuration>

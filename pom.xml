@@ -76,11 +76,6 @@
   	    <artifactId>guice</artifactId>
   	    <version>7.0.0</version>
   	</dependency>
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>33.5.0-jre</version>
-        </dependency>
         <!-- Scala Library -->
         <dependency>
             <groupId>org.scala-lang</groupId>

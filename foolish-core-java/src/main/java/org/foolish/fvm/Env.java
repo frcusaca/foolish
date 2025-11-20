@@ -1,26 +1,27 @@
 package org.foolish.fvm;
 
-import com.google.common.collect.Maps;
 import org.foolish.fvm.v1.Finear;
 import org.foolish.fvm.v1.Targoe;
 
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Environment for FVM evaluation.
  * Since branes are essentially Single Static Assignment, the environment is
- * about to look up an identifier based on the current line-scope within a brane, as well as search upward
+ * about to look up an identifier based on the current line-scope within a
+ * brane, as well as search upward
  */
 public class Env {
     final Env parent;
     final int my_line_number;
-    final Map<String, VarVersions> vars = Maps.newConcurrentMap();
+    final Map<String, VarVersions> vars = new ConcurrentHashMap<>();
     int put_count = -1;
+
     public Env() {
         this(null, -1);
     }
-
 
     public Env(Env parent, int my_line_number) {
         this.parent = parent;
@@ -61,7 +62,7 @@ public class Env {
 
     class VarVersions {
         private final String id;
-        private final TreeMap<Integer, Targoe> storage = Maps.newTreeMap();
+        private final TreeMap<Integer, Targoe> storage = new TreeMap<>();
 
         public VarVersions(String id) {
             this.id = id;
@@ -81,7 +82,8 @@ public class Env {
         }
 
         public Targoe latest() {
-            if (storage.isEmpty()) return Finear.NK;
+            if (storage.isEmpty())
+                return Finear.NK;
             return storage.lastEntry().getValue();
         }
     }

@@ -113,7 +113,10 @@ INTEGER : DIGIT+ ;
 
 fragment LETTERS : ARABIC_PART | LATIN | GREEK_PART | CYRYLLIC_PART | HEBREW_PART | CHINESE_PART;
 fragment DIGIT : [0-9] ;
-fragment INTRA_ID_SEPARATOR : ' ' | '⁠' | '_' ;
+fragment INTRA_ID_SEPARATOR 
+    : '\u202F' // Narrow non-breaking space 
+    | '_'      // Normal width underscore
+    ;
 // Skip whitespace
 WS : [ \t\r\n]+ -> skip ;
 

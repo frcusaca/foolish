@@ -1,0 +1,19 @@
+{
+    ! Test file for Foolish LSP
+    x = 10;
+    y = 20;
+    
+    ! This should show a syntax error - missing operand
+    z = x + ;
+    
+    ! Valid nested branes
+    outer'{
+        inner = 42;
+        {
+            deep = inner * 2;
+        };
+    };
+    
+    ! If expression
+    result = if x then y else 0;
+}

@@ -3,7 +3,7 @@
             {
                 {
                     {
-                        set_the answer⁠is=42;
+                        set_the_answer_is=42;
                     };
                 };
             };
@@ -15,7 +15,7 @@ PARSED AST:
   {
     {
       {
-        set_the answer⁠is = 42;
+        set_the_answer_is = 42;
       };
     };
   };
@@ -29,7 +29,7 @@ FINAL RESULT:
 ＿{
 ＿＿{
 ＿＿＿{
-＿＿＿＿set_the answer⁠is = 42;
+＿＿＿＿set_the_answer_is = 42;
 ＿＿＿};
 ＿＿};
 ＿};

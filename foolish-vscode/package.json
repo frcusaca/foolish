@@ -1,0 +1,46 @@
+{
+    "name": "foolish",
+    "displayName": "Foolish Language Support",
+    "description": "Language support for Foolish programming language",
+    "version": "0.1.0",
+    "publisher": "foolish",
+    "engines": {
+        "vscode": "^1.75.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "activationEvents": [
+        "onLanguage:foolish"
+    ],
+    "main": "./client/extension.js",
+    "contributes": {
+        "languages": [
+            {
+                "id": "foolish",
+                "aliases": [
+                    "Foolish",
+                    "foolish"
+                ],
+                "extensions": [
+                    ".foo"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "foolish",
+                "scopeName": "source.foolish",
+                "path": "./syntaxes/foolish.tmLanguage.json"
+            }
+        ]
+    },
+    "dependencies": {
+        "vscode-languageclient": "^9.0.1"
+    },
+    "devDependencies": {
+        "@types/node": "^20.0.0",
+        "@types/vscode": "^1.75.0"
+    }
+}
