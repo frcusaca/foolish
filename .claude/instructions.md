@@ -53,7 +53,4 @@
 
 ## Build and Development
 - Build tool: Maven
-- Java version: 21
-- Main source: `src/main/java/`
-- Test source: `src/test/java/`
-- Grammar: `src/main/antlr4/` (ANTLR4)
+- Java version: 25
