@@ -1,0 +1,20 @@
+!!INPUT!!
+{2 + 3 * 4 - 5;}
+
+!!!
+PARSED AST:
+{
+  ((2 + (3 * 4)) - 5);
+}
+
+UBC EVALUATION:
+Steps taken: 7
+
+FINAL RESULT:
+{
+＿9;
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!

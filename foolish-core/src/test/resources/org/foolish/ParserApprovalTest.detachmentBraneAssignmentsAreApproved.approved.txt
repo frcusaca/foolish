@@ -1,0 +1,17 @@
+INPUT:
+[
+            x = ???;
+            y;
+        ]
+        {
+            result = x;
+        }
+
+OUTPUT:
+[
+  x = ???;
+  y = ???;
+]
+{
+  result = x;
+}

@@ -1,0 +1,21 @@
+INPUT:
+{
+            result = if a then
+                if z then 10 else 2 fi
+            elif b then
+                if x then 30
+                else if y then 20 else 3 fi fi
+            elif d then
+                if p then
+                    if q then 300 else 200 fi
+                elif r then 100
+                elif s then
+                    if t then 50 elif u then 40 else 0 fi
+                fi
+            else 4 fi;
+        }
+
+OUTPUT:
+{
+  result = if a then if z then 10 else 2 elif b then if x then 30 else if y then 20 else 3 elif d then if p then if q then 300 else 200 elif r then 100 elif s then if t then 50 elif u then 40 else 0 else 4;
+}

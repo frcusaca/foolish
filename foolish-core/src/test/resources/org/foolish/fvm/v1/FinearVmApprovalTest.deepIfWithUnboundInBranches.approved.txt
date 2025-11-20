@@ -1,0 +1,42 @@
+INPUT:
+        {
+            result = if 1 then if 0 then notFound else if 1 then stillMissing else 10 else 5;
+        }
+
+
+PARSED AST:
+{
+  result = if 1 then if 0 then notFound else if 1 then stillMissing else 10 else 5;
+}
+
+FINAL BRANE:
+{
+  result = 10;
+}
+
+INITIAL FIROE:
+FiroeProgram(FiroeBrane(
+  FiroeAssignment(result, FiroeIf(
+    Finear(1),
+    FiroeIf(
+      Finear(0),
+      FiroeId(notFound),
+      FiroeIf(
+        Finear(1),
+        FiroeId(stillMissing),
+        Finear(10)
+      )
+    ),
+    Finear(5)
+  ))
+))
+
+EVALUATION RESULT:
+FiroeBrane(
+  FiroeAssignment(result, Finear(10))
+)
+
+FINAL BRANE STATUS:
+FiroeBrane(
+  FiroeAssignment(result, Finear(10))
+)

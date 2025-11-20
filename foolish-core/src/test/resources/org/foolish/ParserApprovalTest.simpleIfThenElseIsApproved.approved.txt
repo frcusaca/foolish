@@ -1,0 +1,9 @@
+INPUT:
+{
+            x = if a then 1 else 2;
+        }
+
+OUTPUT:
+{
+  x = if a then 1 else 2;
+}

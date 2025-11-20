@@ -1,0 +1,42 @@
+INPUT:
+        {
+            x = if 1 then if 2 then if 3 then 100 else 200 else 300 else 400;
+        }
+
+
+PARSED AST:
+{
+  x = if 1 then if 2 then if 3 then 100 else 200 else 300 else 400;
+}
+
+FINAL BRANE:
+{
+  x = 100;
+}
+
+INITIAL FIROE:
+FiroeProgram(FiroeBrane(
+  FiroeAssignment(x, FiroeIf(
+    Finear(1),
+    FiroeIf(
+      Finear(2),
+      FiroeIf(
+        Finear(3),
+        Finear(100),
+        Finear(200)
+      ),
+      Finear(300)
+    ),
+    Finear(400)
+  ))
+))
+
+EVALUATION RESULT:
+FiroeBrane(
+  FiroeAssignment(x, Finear(100))
+)
+
+FINAL BRANE STATUS:
+FiroeBrane(
+  FiroeAssignment(x, Finear(100))
+)

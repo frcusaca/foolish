@@ -1,0 +1,48 @@
+INPUT:
+        {
+            a = 10;
+            b = if a then if missing then 1 else if a - 5 then undefined else 3 else 4;
+        }
+
+
+PARSED AST:
+{
+  a = 10;
+  b = if a then if missing then 1 else if (a - 5) then undefined else 3 else 4;
+}
+
+FINAL BRANE:
+{
+  a = 10;
+  b = 3;
+}
+
+INITIAL FIROE:
+FiroeProgram(FiroeBrane(
+  FiroeAssignment(a, Finear(10)),
+  FiroeAssignment(b, FiroeIf(
+    FiroeId(a),
+    FiroeIf(
+      FiroeId(missing),
+      Finear(1),
+      FiroeIf(
+        FiroeBinary(FiroeId(a), -, Finear(5)),
+        FiroeId(undefined),
+        Finear(3)
+      )
+    ),
+    Finear(4)
+  ))
+))
+
+EVALUATION RESULT:
+FiroeBrane(
+  FiroeAssignment(a, Finear(10)),
+  FiroeAssignment(b, Finear(3))
+)
+
+FINAL BRANE STATUS:
+FiroeBrane(
+  FiroeAssignment(a, Finear(10)),
+  FiroeAssignment(b, Finear(3))
+)
