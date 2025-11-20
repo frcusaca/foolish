@@ -8,6 +8,8 @@ import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 public class ParserUnitTest {
@@ -223,12 +225,12 @@ public class ParserUnitTest {
                 """);
         AST.DetachmentBrane detachment = (AST.DetachmentBrane) ((AST.Program) ast).branes().branes().get(0);
         AST.DetachmentStatement first = detachment.statements().get(0);
-        assertNotNull(first.identifier().characterization());
-        assertEquals("det", first.identifier().characterization().id());
+        assertNotNull(first.identifier().characterizations());
+        assertEquals(List.of("det"), first.identifier().characterizations());
         assertEquals("x", first.identifier().id());
         AST.DetachmentStatement second = detachment.statements().get(1);
-        assertNotNull(second.identifier().characterization());
-        assertEquals("det", second.identifier().characterization().id());
+        assertNotNull(second.identifier().characterizations());
+        assertEquals(List.of("det"), second.identifier().characterizations());
         assertEquals("y", second.identifier().id());
         assertTrue(second.expr() instanceof AST.UnknownExpr);
         assertEquals("""
@@ -452,7 +454,7 @@ public class ParserUnitTest {
         AST.DereferenceExpr deref = (AST.DereferenceExpr) assignment.expr();
         AST.Identifier coord = deref.coordinate();
         assertEquals("x", coord.id());
-        assertEquals("integer", coord.characterization().id());
+        assertEquals(List.of("integer"), coord.characterizations());
 
         // Multiple characterized derefs in expression
         AST ast2 = parse("{ result = br.integer'x + br.float'y; }");
@@ -624,7 +626,7 @@ public class ParserUnitTest {
         // Check n'42
         assertTrue(brane.statements().get(1) instanceof AST.Characterizable);
         AST.Characterizable characterizable = (AST.Characterizable) brane.statements().get(1);
-        assertEquals("n", characterizable.characterization().id());
+        assertEquals(List.of("n"), characterizable.characterizations());
         assertTrue(characterizable instanceof AST.IntegerLiteral);
         assertEquals(42L, ((AST.IntegerLiteral) characterizable).value());
 
@@ -734,7 +736,7 @@ public class ParserUnitTest {
         assertEquals(1, branes.branes().size());
         assertTrue(branes.branes().get(0) instanceof AST.SearchUP);
         AST.SearchUP searchUp = (AST.SearchUP) branes.branes().get(0);
-        assertNull(searchUp.characterization());
+        assertTrue(searchUp.characterizations().isEmpty());
         assertEquals("↑\n", ast.toString());
     }
 
@@ -746,10 +748,10 @@ public class ParserUnitTest {
         assertEquals(2, branes.branes().size());
 
         assertTrue(branes.branes().get(0) instanceof AST.SearchUP);
-        assertNull(((AST.SearchUP) branes.branes().get(0)).characterization());
+        assertTrue(((AST.SearchUP) branes.branes().get(0)).characterizations().isEmpty());
 
         assertTrue(branes.branes().get(1) instanceof AST.SearchUP);
-        assertNull(((AST.SearchUP) branes.branes().get(1)).characterization());
+        assertTrue(((AST.SearchUP) branes.branes().get(1)).characterizations().isEmpty());
 
         assertEquals("↑\n↑\n", ast.toString());
     }
@@ -786,9 +788,9 @@ public class ParserUnitTest {
     public void testSearchUpEquality() {
         AST.SearchUP searchUp1 = new AST.SearchUP();
         AST.SearchUP searchUp2 = new AST.SearchUP();
-        AST.SearchUP searchUp3 = new AST.SearchUP(new AST.Identifier("n"));
-        AST.SearchUP searchUp4 = new AST.SearchUP(new AST.Identifier("n"));
-        AST.SearchUP searchUp5 = new AST.SearchUP(new AST.Identifier("m"));
+        AST.SearchUP searchUp3 = new AST.SearchUP(List.of("n"));
+        AST.SearchUP searchUp4 = new AST.SearchUP(List.of("n"));
+        AST.SearchUP searchUp5 = new AST.SearchUP(List.of("m"));
 
         assertEquals(searchUp1, searchUp2);
         assertEquals(searchUp3, searchUp4);
@@ -801,39 +803,38 @@ public class ParserUnitTest {
         AST.SearchUP searchUp1 = new AST.SearchUP();
         assertEquals("↑", searchUp1.toString());
 
-        AST.SearchUP searchUp2 = new AST.SearchUP(new AST.Identifier("type"));
+        AST.SearchUP searchUp2 = new AST.SearchUP(List.of("type"));
         assertEquals("type'↑", searchUp2.toString());
 
-        AST.SearchUP searchUp3 = new AST.SearchUP(new AST.Identifier(""));
+        AST.SearchUP searchUp3 = new AST.SearchUP(List.of());
         assertEquals("↑", searchUp3.toString());
     }
 
     @Test
     public void testSetCharacterizationOnSearchUp() {
         AST.SearchUP searchUp = new AST.SearchUP();
-        assertNull(searchUp.characterization());
+        assertTrue(searchUp.characterizations().isEmpty());
 
-        AST.SearchUP characterized = AST.setCharacterization("type", searchUp);
-        assertNotNull(characterized.characterization());
-        assertEquals("type", characterized.characterization().id());
+        AST.SearchUP characterized = AST.setCharacterization(List.of("type"), searchUp);
+        assertNotNull(characterized.characterizations());
+        assertEquals(List.of("type"), characterized.characterizations());
         assertEquals("type'↑", characterized.toString());
 
-        // Test with empty string characterization
-        AST.SearchUP emptyChar = AST.setCharacterization("", searchUp);
-        assertNotNull(emptyChar.characterization());
-        assertEquals("", emptyChar.characterization().id());
+        // Test with empty list characterization
+        AST.SearchUP emptyChar = AST.setCharacterization(List.of(), searchUp);
+        assertNotNull(emptyChar.characterizations());
+        assertTrue(emptyChar.characterizations().isEmpty());
         assertEquals("↑", emptyChar.toString());
 
         // Test with null characterization
         AST.SearchUP nullChar = AST.setCharacterization(null, searchUp);
-        assertNotNull(nullChar.characterization());
-        assertEquals("", nullChar.characterization().id());
+        // null should be handled as empty list
         assertEquals("↑", nullChar.toString());
     }
 
     @Test
     public void testSearchUpWithEmptyCharacterization() {
-        AST.SearchUP searchUp = new AST.SearchUP(new AST.Identifier(""));
+        AST.SearchUP searchUp = new AST.SearchUP(List.of());
         assertEquals("", searchUp.canonicalCharacterization());
         assertEquals("↑", searchUp.toString());
     }
@@ -851,7 +852,7 @@ public class ParserUnitTest {
 
         // SearchUp (uncharacterized)
         assertTrue(branes.branes().get(1) instanceof AST.SearchUP);
-        assertNull(((AST.SearchUP) branes.branes().get(1)).characterization());
+        assertTrue(((AST.SearchUP) branes.branes().get(1)).characterizations().isEmpty());
 
         // Last brane
         assertTrue(branes.branes().get(2) instanceof AST.Brane);
@@ -861,10 +862,10 @@ public class ParserUnitTest {
     public void testProgrammaticCharacterization() {
         // Test characterization set programmatically (not parsed)
         AST.SearchUP searchUp = new AST.SearchUP();
-        AST.SearchUP characterized = AST.setCharacterization("type", searchUp);
+        AST.SearchUP characterized = AST.setCharacterization(List.of("type"), searchUp);
 
-        assertNotNull(characterized.characterization());
-        assertEquals("type", characterized.characterization().id());
+        assertNotNull(characterized.characterizations());
+        assertEquals(List.of("type"), characterized.characterizations());
         assertEquals("type'↑", characterized.toString());
     }
 }

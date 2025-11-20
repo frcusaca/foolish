@@ -24,8 +24,8 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
     // Add characterization (name) if present
     brane.ast match
       case braneAst: AST.Brane
-        if braneAst.characterization() != null && braneAst.canonicalCharacterization().nonEmpty =>
-        sb.append(indent(depth)).append(braneAst.canonicalCharacterization()).append("'")
+        if braneAst.canonicalCharacterization().nonEmpty =>
+        sb.append(indent(depth)).append(braneAst.canonicalCharacterization())
       case _ =>
         sb.append(indent(depth))
 

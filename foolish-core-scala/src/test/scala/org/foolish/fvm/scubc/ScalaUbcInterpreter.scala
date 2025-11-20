@@ -3,8 +3,6 @@ package org.foolish.fvm.scubc
 import org.antlr.v4.runtime.{CharStream, CharStreams, CommonTokenStream}
 import org.foolish.UbcTester
 import org.foolish.ast.{AST, ASTBuilder, ASTFormatter}
-import org.foolish.fvm.Env
-import org.foolish.fvm.v1.Insoe
 import org.foolish.grammar.{FoolishLexer, FoolishParser}
 import scala.jdk.CollectionConverters.*
 
@@ -32,8 +30,7 @@ class ScalaUbcInterpreter extends UbcTester:
       case _ => throw RuntimeException(s"Expected a brane but got: ${firstBrane.getClass}")
 
     // Create UBC and run
-    val braneInsoe = Insoe(brane)
-    val ubc = UnicelluarBraneComputer(braneInsoe, Env())
+    val ubc = UnicelluarBraneComputer(brane)
     val stepCount = ubc.runToCompletion()
     val finalResult = ubc.getRootBrane
 
@@ -54,11 +51,6 @@ class ScalaUbcInterpreter extends UbcTester:
 
     output.append("COMPLETION STATUS:\n")
     output.append(s"Complete: ${ubc.isComplete}")
-
-    val finalEnv = ubc.getFinalEnvironment
-    if finalEnv != null then
-      output.append("\n\nFINAL ENVIRONMENT:\n")
-      output.append(finalEnv.toString)
 
     output.append("\n!!!\n")
 

@@ -2,20 +2,28 @@ grammar Foolish;
 
 program : branes EOF ;
 
-characterizable
-    : characterizable_identifier
-    | (IDENTIFIER? APOSTROPHE)? (literal | brane)
+// A characterization is an optional identifier followed by an apostrophe
+characterization
+    : IDENTIFIER? APOSTROPHE
     ;
 
+// Characterizable identifiers are characterized identifiers
 characterizable_identifier
-    : (IDENTIFIER? APOSTROPHE)? IDENTIFIER
+    : characterization* IDENTIFIER
+    ;
+
+// Characterizables can be identifiers, literals, or branes
+characterizable
+    : characterizable_identifier
+    | characterization* (literal | brane)
     ;
 
 branes: brane+ ;
 brane
     : standard_brane
     | detach_brane
-    | brane_search;
+    | brane_search
+    ;
 
 standard_brane
     : LBRACE stmt* RBRACE
@@ -29,7 +37,7 @@ detach_stmt
     : characterizable_identifier (ASSIGN expr)? SEMI LINE_COMMENT?
     ;
 
-brane_search :  UP;
+brane_search : UP;
 
 stmt
     : (
@@ -77,6 +85,14 @@ ifExprHelperElif: ELIF expr THEN expr ;
 ifExprHelperElse: ELSE expr ;
 endIf: FI ;
 
+// Regexp operators for brane searching
+regexp_operator
+    : DOT_DOT        // '..'
+    | QUESTION_QUESTION  // '??'
+    | DOT            // '.'
+    | QUESTION       // '?'
+    ;
+
 // Lexer rules (uppercase)
 LBRACE : '{' ;
 RBRACE : '}' ;
@@ -99,6 +115,7 @@ PLUS : '+' ;
 MINUS : '-' ;
 MUL : '*' ;
 DIV : '/' ;
+
 DOT : '.' ;
 
 IF  : 'if' ;

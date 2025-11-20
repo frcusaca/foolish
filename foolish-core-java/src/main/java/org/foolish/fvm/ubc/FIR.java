@@ -1,7 +1,6 @@
 package org.foolish.fvm.ubc;
 
 import org.foolish.ast.AST;
-import org.foolish.fvm.Env;
 
 /**
  * Foolish Internal Representation (FIR).
@@ -91,7 +90,6 @@ public abstract class FIR {
     /**
      * Gets the value from this FIR if it represents a simple value.
      * For ValueFiroe and evaluated expressions, returns the integer value.
-     * For BraneFiroe, throws an exception (use getEnvironment instead).
      *
      * @return the integer value
      * @throws UnsupportedOperationException if this FIR doesn't support getValue
@@ -99,19 +97,6 @@ public abstract class FIR {
      */
     public long getValue() {
         throw new UnsupportedOperationException("getValue not supported for " + getClass().getSimpleName());
-    }
-
-    /**
-     * Gets the environment from this FIR if it represents a brane.
-     * For BraneFiroe, returns the frozen Env after full evaluation.
-     * For other types, throws an exception.
-     *
-     * @return the environment
-     * @throws UnsupportedOperationException if this FIR doesn't support getEnvironment
-     * @throws IllegalStateException         if this FIR is not fully evaluated
-     */
-    public Env getEnvironment() {
-        throw new UnsupportedOperationException("getEnvironment not supported for " + getClass().getSimpleName());
     }
 
     /**
