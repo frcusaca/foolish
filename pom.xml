@@ -12,7 +12,7 @@
     <module>foolish-parser-java</module>
     <module>foolish-core-java</module>
     <module>foolish-core-scala</module>
-        <module>foolish-lsp-java</module>
+    <module>foolish-lsp-java</module>
   </modules>
 
   <properties>
