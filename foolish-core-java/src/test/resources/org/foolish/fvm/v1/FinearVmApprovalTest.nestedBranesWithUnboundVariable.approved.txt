@@ -1,0 +1,66 @@
+INPUT:
+        {
+            {
+                {
+                    a = unknownVar;
+                };
+                b = a + 1;
+            };
+            c = b * 2;
+        }
+
+
+PARSED AST:
+{
+  {
+    {
+      a = unknownVar;
+    };
+    b = (a + 1);
+  };
+  c = (b * 2);
+}
+
+FINAL BRANE:
+{
+  {
+    {
+      a = NK;
+    };
+    b = NK;
+  };
+  c = NK;
+}
+
+INITIAL FIROE:
+FiroeProgram(FiroeBrane(
+  FiroeBrane(
+    FiroeBrane(
+      FiroeAssignment(a, FiroeId(unknownVar))
+    ),
+    FiroeAssignment(b, FiroeBinary(FiroeId(a), +, Finear(1)))
+  ),
+  FiroeAssignment(c, FiroeBinary(FiroeId(b), *, Finear(2)))
+))
+
+EVALUATION RESULT:
+FiroeBrane(
+  FiroeBrane(
+    FiroeBrane(
+      FiroeAssignment(a, Finear(NK))
+    ),
+    FiroeAssignment(b, Finear(NK))
+  ),
+  FiroeAssignment(c, Finear(NK))
+)
+
+FINAL BRANE STATUS:
+FiroeBrane(
+  FiroeBrane(
+    FiroeBrane(
+      FiroeAssignment(a, Finear(NK))
+    ),
+    FiroeAssignment(b, Finear(NK))
+  ),
+  FiroeAssignment(c, Finear(NK))
+)

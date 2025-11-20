@@ -1,0 +1,36 @@
+INPUT:
+        {
+            x = -5;
+            y = +10;
+        }
+
+
+PARSED AST:
+{
+  x = -5;
+  y = +10;
+}
+
+FINAL BRANE:
+{
+  x = -5;
+  y = 10;
+}
+
+INITIAL FIROE:
+FiroeProgram(FiroeBrane(
+  FiroeAssignment(x, FiroeUnary(-, Finear(5))),
+  FiroeAssignment(y, FiroeUnary(+, Finear(10)))
+))
+
+EVALUATION RESULT:
+FiroeBrane(
+  FiroeAssignment(x, Finear(-5)),
+  FiroeAssignment(y, Finear(10))
+)
+
+FINAL BRANE STATUS:
+FiroeBrane(
+  FiroeAssignment(x, Finear(-5)),
+  FiroeAssignment(y, Finear(10))
+)

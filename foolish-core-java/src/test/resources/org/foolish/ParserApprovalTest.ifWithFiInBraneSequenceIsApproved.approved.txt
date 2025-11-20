@@ -1,0 +1,13 @@
+INPUT:
+{
+            first = if a then 1 else 2 fi;
+            second = if b then 3 fi;
+            third = if c then if d then 4 fi else 5 fi;
+        }
+
+OUTPUT:
+{
+  first = if a then 1 else 2;
+  second = if b then 3;
+  third = if c then if d then 4 else 5;
+}

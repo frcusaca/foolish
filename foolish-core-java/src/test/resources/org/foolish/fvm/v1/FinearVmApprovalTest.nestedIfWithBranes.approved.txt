@@ -1,0 +1,72 @@
+INPUT:
+        {
+            {
+                {
+                    x = if 1 then if 2 then 10 else 20 else if 3 then 30 else 40;
+                };
+            };
+            y = x + 5;
+        }
+
+
+PARSED AST:
+{
+  {
+    {
+      x = if 1 then if 2 then 10 else 20 else if 3 then 30 else 40;
+    };
+  };
+  y = (x + 5);
+}
+
+FINAL BRANE:
+{
+  {
+    {
+      x = 10;
+    };
+  };
+  y = NK;
+}
+
+INITIAL FIROE:
+FiroeProgram(FiroeBrane(
+  FiroeBrane(
+    FiroeBrane(
+      FiroeAssignment(x, FiroeIf(
+        Finear(1),
+        FiroeIf(
+          Finear(2),
+          Finear(10),
+          Finear(20)
+        ),
+        FiroeIf(
+          Finear(3),
+          Finear(30),
+          Finear(40)
+        )
+      ))
+    )
+  ),
+  FiroeAssignment(y, FiroeBinary(FiroeId(x), +, Finear(5)))
+))
+
+EVALUATION RESULT:
+FiroeBrane(
+  FiroeBrane(
+    FiroeBrane(
+      FiroeAssignment(x, Finear(10))
+    )
+  ),
+  FiroeAssignment(y, Finear(NK))
+)
+
+FINAL BRANE STATUS:
+FiroeBrane(
+  FiroeBrane(
+    FiroeBrane(
+      FiroeAssignment(x, Finear(10))
+    )
+  ),
+  FiroeAssignment(y, Finear(NK))
+)

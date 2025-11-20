@@ -1,0 +1,34 @@
+INPUT:
+{
+            a = ({z=1;}{x=1;}).c;
+            result = ({a=1;}{b=2;}{c=3;}).value;
+            complex = ({data=10;}{more=20;}).field.nested;
+        }
+
+OUTPUT:
+{
+  a = {
+  z = 1;
+}
+{
+  x = 1;
+}
+.c;
+  result = {
+  a = 1;
+}
+{
+  b = 2;
+}
+{
+  c = 3;
+}
+.value;
+  complex = {
+  data = 10;
+}
+{
+  more = 20;
+}
+.field.nested;
+}

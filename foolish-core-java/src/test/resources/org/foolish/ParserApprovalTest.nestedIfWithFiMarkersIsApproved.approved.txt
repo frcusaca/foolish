@@ -1,0 +1,11 @@
+INPUT:
+{
+            x = if a then
+                if b then 10 else 20 fi
+            else 30 fi;
+        }
+
+OUTPUT:
+{
+  x = if a then if b then 10 else 20 else 30;
+}

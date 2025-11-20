@@ -1,0 +1,48 @@
+INPUT:
+        {
+            a = 5;
+            b = if a then if a - 3 then if a - 5 then 1 else 2 else 3 else 4;
+        }
+
+
+PARSED AST:
+{
+  a = 5;
+  b = if a then if (a - 3) then if (a - 5) then 1 else 2 else 3 else 4;
+}
+
+FINAL BRANE:
+{
+  a = 5;
+  b = 2;
+}
+
+INITIAL FIROE:
+FiroeProgram(FiroeBrane(
+  FiroeAssignment(a, Finear(5)),
+  FiroeAssignment(b, FiroeIf(
+    FiroeId(a),
+    FiroeIf(
+      FiroeBinary(FiroeId(a), -, Finear(3)),
+      FiroeIf(
+        FiroeBinary(FiroeId(a), -, Finear(5)),
+        Finear(1),
+        Finear(2)
+      ),
+      Finear(3)
+    ),
+    Finear(4)
+  ))
+))
+
+EVALUATION RESULT:
+FiroeBrane(
+  FiroeAssignment(a, Finear(5)),
+  FiroeAssignment(b, Finear(2))
+)
+
+FINAL BRANE STATUS:
+FiroeBrane(
+  FiroeAssignment(a, Finear(5)),
+  FiroeAssignment(b, Finear(2))
+)
