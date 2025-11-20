@@ -1,9 +1,0 @@
-INPUT:
-{
-            x = my brane.my⁠coordinate;
-        }
-
-OUTPUT:
-{
-  x = my brane.my⁠coordinate;
-}

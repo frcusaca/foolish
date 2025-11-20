@@ -1,9 +1,0 @@
-INPUT:
-{
-            x = if a then 1 elif b then 2 elif c then 3 else 4;
-        }
-
-OUTPUT:
-{
-  x = if a then 1 elif b then 2 elif c then 3 else 4;
-}

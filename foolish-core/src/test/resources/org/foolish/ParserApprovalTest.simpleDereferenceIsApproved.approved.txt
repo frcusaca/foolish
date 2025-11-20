@@ -1,9 +1,0 @@
-INPUT:
-{
-            x = a.b;
-        }
-
-OUTPUT:
-{
-  x = a.b;
-}
