@@ -7,8 +7,6 @@ import org.foolish.UbcTester;
 import org.foolish.ast.AST;
 import org.foolish.ast.ASTBuilder;
 import org.foolish.ast.ASTFormatter;
-import org.foolish.fvm.Env;
-import org.foolish.fvm.v1.Insoe;
 import org.foolish.grammar.FoolishLexer;
 import org.foolish.grammar.FoolishParser;
 
@@ -31,8 +29,7 @@ public class JavaUbcInterpreter implements UbcTester {
         AST.Brane brane = (AST.Brane) program.branes().branes().get(0);
 
         // Create UBC and run
-        Insoe braneInsoe = new Insoe(brane);
-        UnicelluarBraneComputer ubc = new UnicelluarBraneComputer(braneInsoe, new Env());
+        UnicelluarBraneComputer ubc = new UnicelluarBraneComputer(brane);
         int stepCount = ubc.runToCompletion();
         BraneFiroe finalResult = ubc.getRootBrane();
 
@@ -53,12 +50,6 @@ public class JavaUbcInterpreter implements UbcTester {
 
         output.append("COMPLETION STATUS:\n");
         output.append("Complete: ").append(ubc.isComplete());
-
-        Env finalEnv = ubc.getFinalEnvironment();
-        if (finalEnv != null) {
-            output.append("\n\nFINAL ENVIRONMENT:\n");
-            output.append(finalEnv.toString());
-        }
 
         output.append("\n!!!\n");
 

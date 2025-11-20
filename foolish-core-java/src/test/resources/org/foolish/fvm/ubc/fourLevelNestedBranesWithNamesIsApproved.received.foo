@@ -1,0 +1,35 @@
+!!INPUT!!
+{
+            a = -10;
+            second'{
+                b = 20;
+                third'{
+                    c = 30;
+                    inner'{
+                        d = 40;
+                    };
+                };
+            };
+        }
+
+!!!
+PARSED AST:
+{
+}
+{
+}
+{
+}
+{
+}
+
+UBC EVALUATION:
+Steps taken: 6
+
+FINAL RESULT:
+{
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!

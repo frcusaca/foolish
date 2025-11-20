@@ -2,8 +2,6 @@ package org.foolish.fvm.scubc
 
 import org.antlr.v4.runtime.{CharStream, CharStreams, CommonTokenStream}
 import org.foolish.ast.{AST, ASTBuilder}
-import org.foolish.fvm.Env
-import org.foolish.fvm.v1.Insoe
 import org.foolish.grammar.{FoolishLexer, FoolishParser}
 import scala.io.StdIn
 import scala.util.{Try, Success, Failure}
@@ -25,7 +23,7 @@ object UbcRepl:
     ASTBuilder().visitProgram(parser.program()).asInstanceOf[AST.Program]
 
   /** Evaluate the given source using UBC, returning the result */
-  def eval(source: String, env: Env): Option[BraneFiroe] =
+  def eval(source: String): Option[BraneFiroe] =
     val ast = parse(source)
 
     // Extract the brane from the program
@@ -39,8 +37,7 @@ object UbcRepl:
     firstBrane match
       case Some(brane: AST.Brane) =>
         // Create UBC and evaluate
-        val braneInsoe = Insoe(brane)
-        val ubc = UnicelluarBraneComputer(braneInsoe, env)
+        val ubc = UnicelluarBraneComputer(brane)
 
         // Run to completion
         ubc.runToCompletion()
@@ -56,7 +53,6 @@ object UbcRepl:
     println("Type Foolish expressions (Ctrl+D to exit)")
     println()
 
-    val env = Env()
     val debug = args.contains("--debug")
 
     Iterator.continually(Option(StdIn.readLine()))
@@ -64,7 +60,7 @@ object UbcRepl:
       .map(_.get)
       .filterNot(_.isBlank)
       .foreach { line =>
-        Try(eval(line, env)) match
+        Try(eval(line)) match
           case Success(Some(result)) =>
             println(s"=> $result")
           case Success(None) =>

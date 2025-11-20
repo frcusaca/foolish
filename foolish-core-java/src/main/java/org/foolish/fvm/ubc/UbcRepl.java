@@ -5,8 +5,6 @@ import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.foolish.ast.AST;
 import org.foolish.ast.ASTBuilder;
-import org.foolish.fvm.Env;
-import org.foolish.fvm.v1.Insoe;
 import org.foolish.grammar.FoolishLexer;
 import org.foolish.grammar.FoolishParser;
 
@@ -83,7 +81,7 @@ public class UbcRepl {
     /**
      * Evaluate the given source using UBC, returning the result.
      */
-    public static Object eval(String source, Env env) {
+    public static Object eval(String source) {
         AST.Program ast = parse(source);
 
         // Extract the brane from the program
@@ -99,8 +97,7 @@ public class UbcRepl {
         }
 
         // Create UBC and evaluate
-        Insoe braneInsoe = new Insoe(brane);
-        UnicelluarBraneComputer ubc = new UnicelluarBraneComputer(braneInsoe, env);
+        UnicelluarBraneComputer ubc = new UnicelluarBraneComputer(brane);
 
         // Run to completion
         ubc.runToCompletion();
@@ -116,14 +113,13 @@ public class UbcRepl {
         System.out.println();
 
         BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-        Env env = new Env();
         String line;
 
         while ((line = reader.readLine()) != null) {
             if (line.isBlank()) continue;
 
             try {
-                Object result = eval(line, env);
+                Object result = eval(line);
                 if (result != null) {
                     System.out.println("=> " + result);
                 }

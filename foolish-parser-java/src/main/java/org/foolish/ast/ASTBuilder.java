@@ -11,6 +11,18 @@ import static org.foolish.ast.AST.setCharacterization;
 
 public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
+    private List<String> extractCharacterizations(List<FoolishParser.CharacterizationContext> contexts) {
+        if (contexts == null || contexts.isEmpty()) {
+            return List.of();
+        }
+        List<String> result = new ArrayList<>();
+        for (FoolishParser.CharacterizationContext ctx : contexts) {
+            TerminalNode identifier = ctx.IDENTIFIER();
+            result.add(identifier != null ? identifier.getText() : "");
+        }
+        return result;
+    }
+
     @Override
     public AST visitProgram(FoolishParser.ProgramContext ctx) {
         AST.Branes brns = (AST.Branes) visit(ctx.branes());
@@ -25,6 +37,15 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
             return visit(ctx.standard_brane());
         } else if (ctx.detach_brane() != null) {
             return visit(ctx.detach_brane());
+        }
+        System.err.println("DEBUG: Unknown brane alternative");
+        System.err.println("  ctx: " + ctx.getText());
+        System.err.println("  standard_brane: " + ctx.standard_brane());
+        System.err.println("  detach_brane: " + ctx.detach_brane());
+        System.err.println("  brane_search: " + ctx.brane_search());
+        System.err.println("  children: " + ctx.getChildCount());
+        for (int i = 0; i < ctx.getChildCount(); i++) {
+            System.err.println("    child " + i + ": " + ctx.getChild(i).getClass().getName() + " = " + ctx.getChild(i).getText());
         }
         throw new IllegalArgumentException("Unknown brane alternative");
     }
@@ -78,6 +99,7 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
     public AST visitBrane_search(FoolishParser.Brane_searchContext ctx) {
         return new AST.SearchUP();
     }
+
 
     @Override
     public AST visitStmt(FoolishParser.StmtContext ctx) {
@@ -152,6 +174,12 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
     @Override
     public AST visitPostfixExpr(FoolishParser.PostfixExprContext ctx) {
+        // Check if it's a regexp search (stub: return UNKNOWN)
+        if (ctx.regexp_operator() != null) {
+            return AST.UnknownExpr.INSTANCE;
+        }
+
+        // Handle dereference: primary.identifier.identifier...
         AST.Expr base = (AST.Expr) visit(ctx.primary());
         for (int i = 0; i < ctx.characterizable_identifier().size(); i++) {
             AST.Identifier coordinate = (AST.Identifier) visit(ctx.characterizable_identifier(i));
@@ -173,11 +201,7 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
             return visit(ctx.characterizable_identifier());
         }
 
-        String characterization = "";
-        if (ctx.APOSTROPHE() != null) {
-            TerminalNode prefixIdentifier = ctx.IDENTIFIER();
-            characterization = prefixIdentifier != null ? prefixIdentifier.getText() : "";
-        }
+        List<String> characterizations = extractCharacterizations(ctx.characterization());
 
         AST ret;
         if (ctx.literal() != null) {
@@ -187,18 +211,18 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
         } else {
             throw new IllegalStateException("Characterizable must be literal or brane when not identifier");
         }
-        return ctx.APOSTROPHE() != null ? setCharacterization(characterization, ret) : ret;
+        return !characterizations.isEmpty() ? setCharacterization(characterizations, ret) : ret;
     }
 
     @Override
     public AST visitCharacterizable_identifier(FoolishParser.Characterizable_identifierContext ctx) {
-        List<TerminalNode> identifiers = ctx.IDENTIFIER();
-        if (ctx.APOSTROPHE() != null) {
-            String id = identifiers.get(identifiers.size() - 1).getText();
-            String characterization = identifiers.size() > 1 ? identifiers.get(0).getText() : "";
-            return setCharacterization(characterization, new AST.Identifier(id));
+        List<String> characterizations = extractCharacterizations(ctx.characterization());
+        String id = ctx.IDENTIFIER().getText();
+
+        if (characterizations.isEmpty()) {
+            return new AST.Identifier(id);
         } else {
-            return new AST.Identifier(identifiers.get(0).getText());
+            return setCharacterization(characterizations, new AST.Identifier(id));
         }
     }
 
