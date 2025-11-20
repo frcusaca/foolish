@@ -1,8 +1,6 @@
 package org.foolish.fvm.ubc;
 
 import org.foolish.ast.AST;
-import org.foolish.fvm.Env;
-import org.foolish.fvm.v1.Insoe;
 
 /**
  * Unicellular Brane Computer (UBC).
@@ -11,45 +9,25 @@ import org.foolish.fvm.v1.Insoe;
  * the AST of a brane and the ability to interpret and understand a single expression
  * at a time. It proceeds from the beginning of the brane to the end, evaluating and
  * creating new values.
- * <p>
- * The UBC has two sources of information:
- * - Ancestral Brane (AB): The search context containing the parent brane's environment
- * - Immediate Brane (IB): The current context accumulated inside the UBC so far
  */
 public class UnicelluarBraneComputer {
     private final BraneFiroe rootBrane;
-    private final Env ancestralContext;
-    private final Env immediateContext;
 
     /**
-     * Creates a UBC with a Brane Insoe and AB context.
-     * The corresponding BraneFiroe is created with only the AST attached.
+     * Creates a UBC with a Brane AST.
      *
-     * @param braneInsoe       The Insoe containing the brane AST
-     * @param ancestralContext The Ancestral Brane context (AB)
+     * @param braneAst The brane AST
      */
-    public UnicelluarBraneComputer(Insoe braneInsoe, Env ancestralContext) {
-        if (braneInsoe == null) {
-            throw new IllegalArgumentException("Brane Insoe cannot be null");
+    public UnicelluarBraneComputer(AST braneAst) {
+        if (braneAst == null) {
+            throw new IllegalArgumentException("Brane AST cannot be null");
         }
 
-        AST ast = braneInsoe.ast();
-        if (!(ast instanceof AST.Brane)) {
-            throw new IllegalArgumentException("Insoe must contain a Brane AST");
+        if (!(braneAst instanceof AST.Brane)) {
+            throw new IllegalArgumentException("AST must be a Brane");
         }
 
-        this.rootBrane = new BraneFiroe(ast);
-        this.ancestralContext = ancestralContext != null ? ancestralContext : new Env();
-        this.immediateContext = new Env(this.ancestralContext, 0);
-    }
-
-    /**
-     * Creates a UBC with a Brane Insoe and no ancestral context.
-     *
-     * @param braneInsoe The Insoe containing the brane AST
-     */
-    public UnicelluarBraneComputer(Insoe braneInsoe) {
-        this(braneInsoe, null);
+        this.rootBrane = new BraneFiroe(braneAst);
     }
 
     /**
@@ -97,32 +75,5 @@ public class UnicelluarBraneComputer {
      */
     public BraneFiroe getRootBrane() {
         return rootBrane;
-    }
-
-    /**
-     * Returns the ancestral context (AB).
-     */
-    public Env getAncestralContext() {
-        return ancestralContext;
-    }
-
-    /**
-     * Returns the immediate context (IB).
-     */
-    public Env getImmedateContext() {
-        return immediateContext;
-    }
-
-    /**
-     * Gets the final environment after full evaluation.
-     * This is the frozen Env representing the fully evaluated brane.
-     *
-     * @return the frozen environment, or null if evaluation is not complete
-     */
-    public Env getFinalEnvironment() {
-        if (!isComplete()) {
-            return null;
-        }
-        return rootBrane.getEnvironment();
     }
 }

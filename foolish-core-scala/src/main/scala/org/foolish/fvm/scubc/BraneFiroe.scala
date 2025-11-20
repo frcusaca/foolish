@@ -1,7 +1,6 @@
 package org.foolish.fvm.scubc
 
 import org.foolish.ast.AST
-import org.foolish.fvm.Env
 import scala.jdk.CollectionConverters.*
 
 /**
@@ -9,7 +8,7 @@ import scala.jdk.CollectionConverters.*
  * The BraneFiroe processes its AST to create Expression Firoes,
  * which are enqueued into the braneMind and evaluated breadth-first.
  */
-class BraneFiroe(override val ast: AST, val environment: Env = null)
+class BraneFiroe(override val ast: AST)
   extends FiroeWithBraneMind(ast):
 
   /** Initialize the BraneFiroe by converting AST statements to Expression Firoes */
@@ -36,26 +35,12 @@ class BraneFiroe(override val ast: AST, val environment: Env = null)
 
     super.step()
 
-  /** Returns the frozen environment after full evaluation */
-  override def getEnvironment: Env =
-    if getNyes != Nyes.CONSTANT then
-      throw IllegalStateException("BraneFiroe not fully evaluated")
-    environment
-
   /** Returns the list of expression Firoes in this brane */
   def getExpressionFiroes: List[FIR] = braneMemory.toList
 
   override def toString: String =
     Sequencer4Human().sequence(this)
 
-  def cloneWithABEnv(newABEnv: Env): BraneFiroe =
-    BraneFiroe(this.ast, if newABEnv == null then this.environment else newABEnv)
-
-  def cloneAbstract(): BraneFiroe = cloneWithABEnv(null)
-
 object BraneFiroe:
-  def apply(ast: AST, environment: Env): BraneFiroe =
-    new BraneFiroe(ast, environment)
-
   def apply(ast: AST): BraneFiroe =
-    new BraneFiroe(ast, null)
+    new BraneFiroe(ast)

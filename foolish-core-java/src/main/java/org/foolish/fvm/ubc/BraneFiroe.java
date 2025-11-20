@@ -1,7 +1,6 @@
 package org.foolish.fvm.ubc;
 
 import org.foolish.ast.AST;
-import org.foolish.fvm.Env;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -12,19 +11,9 @@ import java.util.List;
  * which are enqueued into the braneMind and evaluated breadth-first.
  */
 public class BraneFiroe extends FiroeWithBraneMind {
-    private final Env environment;
-
-    /**
-     * Constructs a BraneFiroe with the given AST and Ancestral Brane environment.
-     * The ABEnv is used for resolving identifiers from ancestral branes.
-     */
-    public BraneFiroe(AST ast, Env aBEnv) {
-        super(ast);
-        this.environment = aBEnv;
-    }
 
     public BraneFiroe(AST ast) {
-        this(ast, null);
+        super(ast);
     }
 
     /**
@@ -61,19 +50,6 @@ public class BraneFiroe extends FiroeWithBraneMind {
     }
 
     /**
-     * Returns the frozen environment after full evaluation.
-     * This is the value of a fully evaluated BraneFiroe.
-     */
-    @Override
-    public Env getEnvironment() {
-        if (isNye()) {
-            throw new IllegalStateException("BraneFiroe not fully evaluated");
-        }
-        return environment;
-    }
-
-
-    /**
      * Returns the list of expression Firoes in this brane.
      * Includes both completed (in braneMemory) and pending (in braneMind) FIRs.
      */
@@ -83,18 +59,8 @@ public class BraneFiroe extends FiroeWithBraneMind {
         return allFiroes;
     }
 
-
     @Override
     public String toString() {
         return new Sequencer4Human().sequence(this);
-    }
-
-
-    public BraneFiroe cloneWithABEnv(Env newABEnv) {
-        return new BraneFiroe(this.ast, newABEnv==null?this.environment:newABEnv);
-    }
-
-    public BraneFiroe cloneAbstract() {
-        return cloneWithABEnv(null);
     }
 }

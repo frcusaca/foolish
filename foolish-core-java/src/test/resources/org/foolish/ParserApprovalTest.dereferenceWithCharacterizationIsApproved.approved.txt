@@ -7,5 +7,5 @@ INPUT:
 OUTPUT:
 {
   x = my_brane'a.coord;
-  y = anonymous.value;
+  y = 'anonymous.value;
 }

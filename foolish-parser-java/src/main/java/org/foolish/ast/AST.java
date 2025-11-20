@@ -4,15 +4,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStatement {
-    static <T> T setCharacterization(String id, T chrbl) {
-        var identifier = new Identifier(id == null ? "" : id);
+public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStatement, AST.BraneRegexpSearch {
+    static <T> T setCharacterization(List<String> characterizations, T chrbl) {
         return (T) switch (chrbl) {
-            case IntegerLiteral intLit -> new IntegerLiteral(identifier, intLit.value());
-            case Identifier ident -> new Identifier(identifier, ident.id());
-            case Brane brn -> new Brane(identifier, brn.statements());
-            case DetachmentBrane detachment -> new DetachmentBrane(identifier, detachment.statements());
-            case SearchUP searchUp -> new SearchUP(identifier);
+            case IntegerLiteral intLit -> new IntegerLiteral(characterizations, intLit.value());
+            case Identifier ident -> new Identifier(characterizations, ident.id());
+            case Brane brn -> new Brane(characterizations, brn.statements());
+            case DetachmentBrane detachment -> new DetachmentBrane(characterizations, detachment.statements());
+            case SearchUP searchUp -> new SearchUP(characterizations);
             case null, default -> throw new IllegalArgumentException("Cannot set characterization on type: " + (chrbl == null ? "null" : chrbl.getClass()));
         };
     }
@@ -22,10 +21,13 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
     }
 
     sealed interface Characterizable extends Expr permits Literal, Identifier, Brane, DetachmentBrane, SearchUP {
-        Identifier characterization();  // null means no characterization
+        List<String> characterizations();  // empty list means no characterization
 
         default String canonicalCharacterization() {
-            return this.characterization() == null ? "" : this.characterization().cannonicalId();
+            if (this.characterizations() == null || this.characterizations().isEmpty()) {
+                return "";
+            }
+            return String.join("'", this.characterizations()) + "'";
         }
 
     }
@@ -42,18 +44,17 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
         }
     }
 
-    record IntegerLiteral(Identifier characterization, long value) implements Literal {
+    record IntegerLiteral(List<String> characterizations, long value) implements Literal {
         public IntegerLiteral(long value) {
-            this("", value);
+            this(List.of(), value);
         }
 
         public IntegerLiteral(String chara, long value) {
-            this(new Identifier(chara == null ? "" : chara), value);
+            this(chara == null || chara.isEmpty() ? List.of() : List.of(chara), value);
         }
 
         public String toString() {
-            return (((characterization != null && !characterization.id.isEmpty()) ? characterization.id + "'" : "")
-                    + value);
+            return canonicalCharacterization() + value;
         }
 
         public boolean equals(Object obj) {
@@ -64,14 +65,13 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
         }
     }
 
-    record Identifier(Identifier characterization, String id) implements Characterizable {
+    record Identifier(List<String> characterizations, String id) implements Characterizable {
         public Identifier(String id) {
-            this(null, id);
+            this(List.of(), id);
         }
 
         public String toString() {
-            return (((characterization != null && !characterization.id.isEmpty()) ? characterization.id + "'" : "")
-                    + id);
+            return canonicalCharacterization() + id;
         }
 
         public String cannonicalId() {
@@ -89,16 +89,14 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
         }
     }
 
-    record Brane(Identifier characterization, List<Expr> statements) implements Characterizable {
+    record Brane(List<String> characterizations, List<Expr> statements) implements Characterizable {
         public Brane(List<Expr> statements) {
-            this(null, statements);
+            this(List.of(), statements);
         }
 
         public String toString() {
             var sb = new StringBuilder();
-            if (!canonicalCharacterization().isEmpty()) {
-                sb.append(characterization.id).append("'");
-            }
+            sb.append(canonicalCharacterization());
             sb.append("{\n");
             for (Expr expr : statements) {
                 sb.append("  ").append(expr).append(";\n");
@@ -117,17 +115,15 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
         }
     }
 
-    record DetachmentBrane(Identifier characterization,
+    record DetachmentBrane(List<String> characterizations,
                            List<DetachmentStatement> statements) implements Characterizable {
         public DetachmentBrane(List<DetachmentStatement> statements) {
-            this(null, statements);
+            this(List.of(), statements);
         }
 
         public String toString() {
             StringBuilder sb = new StringBuilder();
-            if (!canonicalCharacterization().isEmpty()) {
-                sb.append(canonicalCharacterization()).append("'");
-            }
+            sb.append(canonicalCharacterization());
             sb.append("[\n");
             for (DetachmentStatement stmt : statements) {
                 sb.append("  ").append(stmt).append(";\n");
@@ -152,14 +148,13 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
         }
     }
 
-    record SearchUP(Identifier characterization) implements Characterizable {
+    record SearchUP(List<String> characterizations) implements Characterizable {
         public SearchUP() {
-            this(null);
+            this(List.of());
         }
 
         public String toString() {
-            return (((characterization != null && characterization.id.length() > 0) ? characterization.id + "'" : "")
-                    + "↑");
+            return canonicalCharacterization() + "↑";
         }
 
         @Override
@@ -257,6 +252,22 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
                 sb.append(" else ").append(elseExpr);
             }
             return sb.toString();
+        }
+    }
+
+    record BraneRegexpSearch(Characterizable brane, String operator, String pattern) implements AST {
+        public String toString() {
+            return brane + " " + operator + " " + pattern;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return (obj != null &&
+                    obj instanceof BraneRegexpSearch other &&
+                    this.brane.equals(other.brane) &&
+                    this.operator.equals(other.operator) &&
+                    this.pattern.equals(other.pattern)
+            );
         }
     }
 }

@@ -52,9 +52,8 @@ public class Sequencer4Human extends Sequencer<String> {
 
         // Add characterization (name) if present
         if (brane.ast() instanceof AST.Brane braneAst
-            && braneAst.characterization() != null
             && !braneAst.canonicalCharacterization().isEmpty()) {
-            sb.append(indent(depth)).append(braneAst.canonicalCharacterization()).append("'");
+            sb.append(indent(depth)).append(braneAst.canonicalCharacterization());
         } else {
             sb.append(indent(depth));
         }

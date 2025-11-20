@@ -1,7 +1,6 @@
 package org.foolish.fvm.scubc
 
 import org.foolish.ast.AST
-import org.foolish.fvm.v1.Insoe
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
 import scala.jdk.CollectionConverters.*
@@ -11,8 +10,7 @@ class SequencerTest:
   @Test
   def testSequencer4HumanWithSimpleInteger(): Unit =
     val brane = AST.Brane(List(AST.IntegerLiteral(5L)).asJava)
-    val insoe = Insoe(brane)
-    val ubc = UnicelluarBraneComputer(insoe)
+    val ubc = UnicelluarBraneComputer(brane)
     ubc.runToCompletion()
     val result = ubc.getRootBrane
     val output = Sequencer4Human().sequence(result)
@@ -21,8 +19,7 @@ class SequencerTest:
   @Test
   def testSequencer4HumanWithMultipleExpressions(): Unit =
     val brane = AST.Brane(List(AST.IntegerLiteral(1L), AST.IntegerLiteral(2L), AST.IntegerLiteral(3L)).asJava)
-    val insoe = Insoe(brane)
-    val ubc = UnicelluarBraneComputer(insoe)
+    val ubc = UnicelluarBraneComputer(brane)
     ubc.runToCompletion()
     val result = ubc.getRootBrane
     val output = Sequencer4Human().sequence(result)
@@ -33,8 +30,7 @@ class SequencerTest:
   @Test
   def testSequencer4HumanWithCustomTabCharacter(): Unit =
     val brane = AST.Brane(List(AST.IntegerLiteral(42L)).asJava)
-    val insoe = Insoe(brane)
-    val ubc = UnicelluarBraneComputer(insoe)
+    val ubc = UnicelluarBraneComputer(brane)
     ubc.runToCompletion()
     val result = ubc.getRootBrane
     val customSequencer = Sequencer4Human("  ")

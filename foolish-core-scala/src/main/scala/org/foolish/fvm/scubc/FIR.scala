@@ -1,7 +1,6 @@
 package org.foolish.fvm.scubc
 
 import org.foolish.ast.AST
-import org.foolish.fvm.Env
 
 /**
  * Foolish Internal Representation (FIR).
@@ -65,13 +64,6 @@ abstract class FIR(val ast: AST, val comment: Option[String] = None):
    */
   def getValue: Long =
     throw UnsupportedOperationException(s"getValue not supported for ${getClass.getSimpleName}")
-
-  /**
-   * Gets the environment from this FIR if it represents a brane.
-   * Throws UnsupportedOperationException if not supported.
-   */
-  def getEnvironment: Env =
-    throw UnsupportedOperationException(s"getEnvironment not supported for ${getClass.getSimpleName}")
 
 object FIR:
   /** Creates a FIR from an AST expression */

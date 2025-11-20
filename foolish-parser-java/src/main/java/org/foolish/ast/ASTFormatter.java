@@ -59,8 +59,9 @@ public class ASTFormatter {
         String indent = indentUnit.repeat(indentLevel);
         String innerIndent = indentUnit.repeat(indentLevel + 1);
 
-        if (brane.characterization() != null && brane.characterization().id() != null && !brane.characterization().id().isEmpty()) {
-            sb.append(brane.characterization().id()).append("'");
+        String canonicalChar = brane.canonicalCharacterization();
+        if (!canonicalChar.isEmpty()) {
+            sb.append(canonicalChar);
         }
         sb.append("{\n");
 
