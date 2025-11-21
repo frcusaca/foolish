@@ -538,4 +538,66 @@ public class ParserApprovalTest {
         """);
     }
 
+    // Tests for balanced parentheses in regexp patterns
+    @Test
+    void regexpWithBalancedParenthesesIsApproved() {
+        verifyApprovalOf("""
+                {
+                    result = brane.(pattern);
+                    value = data..(nested);
+                }
+        """);
+    }
+
+    @Test
+    void regexpWithBalancedBracesIsApproved() {
+        verifyApprovalOf("""
+                {
+                    result = brane.{pattern};
+                    value = data..{nested};
+                }
+        """);
+    }
+
+    @Test
+    void regexpWithBalancedBracketsIsApproved() {
+        verifyApprovalOf("""
+                {
+                    result = brane.[pattern];
+                    value = data..[nested];
+                }
+        """);
+    }
+
+    @Test
+    void regexpWithNestedBalancedParenthesesIsApproved() {
+        verifyApprovalOf("""
+                {
+                    result = brane.((nested));
+                    deep = data..{outer[inner(deep)]};
+                    mixed = x?(a{b[c]});
+                }
+        """);
+    }
+
+    @Test
+    void regexpWithMultipleBalancedGroupsIsApproved() {
+        verifyApprovalOf("""
+                {
+                    result = brane.(first)(second)[third]{fourth};
+                    chain = data..(a)(b)..(c)[d]??(e){f};
+                }
+        """);
+    }
+
+    @Test
+    void regexpWithBalancedParensAndIdentifiersIsApproved() {
+        verifyApprovalOf("""
+                {
+                    result = brane.(foo)bar(baz);
+                    complex = data..prefix(inner)suffix[more]end;
+                }
+        """);
+    }
+
 }

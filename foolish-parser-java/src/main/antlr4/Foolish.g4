@@ -93,9 +93,19 @@ regexp_operator
     | QUESTION       // '?'
     ;
 
-// Regexp pattern matches tokens that can appear in search patterns
-// Matches the original intent: letters, digits, separators, braces, parens, brackets, apostrophes
-regexp_expression : (IDENTIFIER | INTEGER | APOSTROPHE | LBRACE | RBRACE | LPAREN | RPAREN | LBRACK | RBRACK)+;
+// Regexp expression with balanced parentheses validation
+// The pattern is stored as a string (via getText()) but ANTLR enforces matching pairs
+regexp_expression : regexp_element+ ;
+
+regexp_element
+    : LETTERS
+    | DIGIT
+    | INTRA_ID_SEPARATOR
+    | APOSTROPHE
+    | LPAREN regexp_element* RPAREN    // Balanced ()
+    | LBRACE regexp_element* RBRACE    // Balanced {}
+    | LBRACK regexp_element* RBRACK    // Balanced []
+    ;
 
 // Lexer rules (uppercase)
 LBRACE : '{' ;

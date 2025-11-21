@@ -1,0 +1,11 @@
+INPUT:
+{
+            result = brane.(foo)bar(baz);
+            complex = data..prefix(inner)suffix[more]end;
+        }
+
+OUTPUT:
+{
+  result = brane.(foo)bar(baz);
+  complex = data..prefix(inner)suffix[more]end;
+}

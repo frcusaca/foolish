@@ -181,7 +181,7 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
         for (int i = 0; i < ctx.regexp_operator().size(); i++) {
             String operator = ctx.regexp_operator(i).getText();
             // Get the pattern by concatenating all tokens in the regexp_expression
-            // This allows patterns like: foo, foo'bar, {pattern}, etc.
+            // ANTLR grammar enforces balanced parentheses, we just extract as string
             String pattern = ctx.regexp_expression(i).getText();
             base = new AST.RegexpSearchExpr(base, operator, pattern);
         }

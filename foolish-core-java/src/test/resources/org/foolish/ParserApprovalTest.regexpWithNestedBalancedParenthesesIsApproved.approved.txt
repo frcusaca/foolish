@@ -1,0 +1,13 @@
+INPUT:
+{
+            result = brane.((nested));
+            deep = data..{outer[inner(deep)]};
+            mixed = x?(a{b[c]});
+        }
+
+OUTPUT:
+{
+  result = brane.((nested));
+  deep = data..{outer[inner(deep)]};
+  mixed = x?(a{b[c]});
+}

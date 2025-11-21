@@ -1,0 +1,11 @@
+INPUT:
+{
+            result = brane.(pattern);
+            value = data..(nested);
+        }
+
+OUTPUT:
+{
+  result = brane.(pattern);
+  value = data..(nested);
+}
