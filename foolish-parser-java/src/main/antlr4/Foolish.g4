@@ -88,20 +88,17 @@ endIf: FI ;
 // Regexp operators for brane searching
 regexp_operator
     : DOT_DOT        // '..'
-    | QUESTION_QUESTION  // '??'
     | DOT            // '.'
-    | QUESTION       // '?'
     ;
 
 // Regexp expression with balanced parentheses validation
 // The pattern is stored as a string (via getText()) but ANTLR enforces matching pairs
+// Note: Must use tokens (IDENTIFIER, INTEGER) not fragments (LETTERS, DIGIT, INTRA_ID_SEPARATOR)
+// since fragments cannot be referenced in parser rules
 regexp_expression : regexp_element+ ;
 
 regexp_element
-    : LETTERS
-    | DIGIT
-    | INTRA_ID_SEPARATOR
-    | APOSTROPHE
+    : REGEXP_SYMBOLS+
     | LPAREN regexp_element* RPAREN    // Balanced ()
     | LBRACE regexp_element* RBRACE    // Balanced {}
     | LBRACK regexp_element* RBRACK    // Balanced []
@@ -129,11 +126,13 @@ PLUS : '+' ;
 MINUS : '-' ;
 MUL : '*' ;
 DIV : '/' ;
+CARET : '^';
+ESLASH : '\\';
+DOLLAR : '$';
+QUESTION: '?';
 
 DOT_DOT : '..' ;
-QUESTION_QUESTION : '??' ;
 DOT : '.' ;
-QUESTION : '?' ;
 
 IF  : 'if' ;
 THEN : 'then' ;
@@ -152,6 +151,9 @@ fragment INTRA_ID_SEPARATOR : ' ' | '⁠' | '_' ;
 WS : [ \t\r\n]+ -> skip ;
 
 IDENTIFIER : LETTERS (LETTERS|DIGIT|INTRA_ID_SEPARATOR)* ;
+REGEXP_SYMBOLS : REGEXP_ID_CHARS|REGEXP_OPS;
+fragment REGEXP_ID_CHARS:LETTERS|DIGIT|INTRA_ID_SEPARATOR;
+fragment REGEXP_OPS: MUL|PLUS|CARET|APOSTROPHE|QUESTION|DOLLAR;
 
 APOSTROPHE : '\'' ;
 fragment LATIN  : [a-zA-Z]+;
