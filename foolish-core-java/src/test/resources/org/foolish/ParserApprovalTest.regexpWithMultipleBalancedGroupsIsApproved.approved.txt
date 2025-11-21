@@ -1,11 +1,11 @@
 INPUT:
 {
             result = brane.(first)(second)[third]{fourth};
-            chain = data..(a)(b)..(c)[d]??(e){f};
+            chain = data..(a)(b)..(c)[d]..(e){f};
         }
 
 OUTPUT:
 {
   result = brane.(first)(second)[third]{fourth};
-  chain = data..(a)(b)..(c)[d]??(e){f};
+  chain = data..(a)(b)..(c)[d]..(e){f};
 }

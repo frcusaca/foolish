@@ -98,10 +98,29 @@ regexp_operator
 regexp_expression : regexp_element+ ;
 
 regexp_element
-    : REGEXP_SYMBOLS+
-    | LPAREN regexp_element* RPAREN    // Balanced ()
-    | LBRACE regexp_element* RBRACE    // Balanced {}
-    | LBRACK regexp_element* RBRACK    // Balanced []
+    : IDENTIFIER         // Letters, digits, separators
+    | INTEGER            // Numbers
+    | APOSTROPHE         // ' (for characterization)
+    // Special chars allowed ONLY inside parentheses to avoid ambiguity with operators
+    | LPAREN regexp_inner* RPAREN    // Balanced () - can contain special chars
+    | LBRACE regexp_inner* RBRACE    // Balanced {}
+    | LBRACK regexp_inner* RBRACK    // Balanced []
+    ;
+
+// Inside parentheses/braces/brackets, we can use regexp special characters
+regexp_inner
+    : IDENTIFIER
+    | INTEGER
+    | APOSTROPHE
+    | MUL                // * (for regexp, only inside parens)
+    | PLUS               // + (for regexp, only inside parens)
+    | CARET              // ^ (for regexp, only inside parens)
+    | QUESTION           // ? (for regexp, only inside parens)
+    | DOLLAR             // $ (for regexp, only inside parens)
+    | ESLASH             // \ (for regexp, only inside parens)
+    | LPAREN regexp_inner* RPAREN    // Nested balanced ()
+    | LBRACE regexp_inner* RBRACE    // Nested balanced {}
+    | LBRACK regexp_inner* RBRACK    // Nested balanced []
     ;
 
 // Lexer rules (uppercase)
@@ -151,9 +170,6 @@ fragment INTRA_ID_SEPARATOR : ' ' | '⁠' | '_' ;
 WS : [ \t\r\n]+ -> skip ;
 
 IDENTIFIER : LETTERS (LETTERS|DIGIT|INTRA_ID_SEPARATOR)* ;
-REGEXP_SYMBOLS : REGEXP_ID_CHARS|REGEXP_OPS;
-fragment REGEXP_ID_CHARS:LETTERS|DIGIT|INTRA_ID_SEPARATOR;
-fragment REGEXP_OPS: MUL|PLUS|CARET|APOSTROPHE|QUESTION|DOLLAR;
 
 APOSTROPHE : '\'' ;
 fragment LATIN  : [a-zA-Z]+;

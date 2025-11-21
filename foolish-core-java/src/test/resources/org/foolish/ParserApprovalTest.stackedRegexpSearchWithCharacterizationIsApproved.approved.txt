@@ -1,9 +1,9 @@
 INPUT:
 {
-            result = brane'a.coord'x..deep'y?opt'z;
+            result = brane'a.coord'x..deep'y.opt'z;
         }
 
 OUTPUT:
 {
-  result = brane'a.coord'x..deep'y?opt'z;
+  result = brane'a.coord'x..deep'y.opt'z;
 }

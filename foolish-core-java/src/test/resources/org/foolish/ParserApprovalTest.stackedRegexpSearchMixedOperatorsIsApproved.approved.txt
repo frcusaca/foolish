@@ -1,11 +1,11 @@
 INPUT:
 {
-            mixed = a.b..c?d??e;
-            complex = data.field..nested?maybe??unknown;
+            mixed = a.b..c.d..e;
+            complex = data.field..nested.maybe..unknown;
         }
 
 OUTPUT:
 {
-  mixed = a.b..c?d??e;
-  complex = data.field..nested?maybe??unknown;
+  mixed = a.b..c.d..e;
+  complex = data.field..nested.maybe..unknown;
 }

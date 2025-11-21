@@ -6,6 +6,8 @@ INPUT:
 
 OUTPUT:
 {
-  unknown = myBrane??search;
-  find = data??anything;
+  unknown = myBrane;
+  search;
+  find = data;
+  anything;
 }

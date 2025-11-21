@@ -375,25 +375,7 @@ public class ParserApprovalTest {
         """);
     }
 
-    @Test
-    void regexpSearchWithQuestionOperatorIsApproved() {
-        verifyApprovalOf("""
-                {
-                    maybe = myBrane?optional;
-                    check = data?exists;
-                }
-        """);
-    }
-
-    @Test
-    void regexpSearchWithQuestionQuestionOperatorIsApproved() {
-        verifyApprovalOf("""
-                {
-                    unknown = myBrane??search;
-                    find = data??anything;
-                }
-        """);
-    }
+    // Note: ? and ?? operators removed from grammar, only . and .. are supported
 
     // Tests for stacked regexp suffixes
     @Test
@@ -410,8 +392,8 @@ public class ParserApprovalTest {
     void stackedRegexpSearchMixedOperatorsIsApproved() {
         verifyApprovalOf("""
                 {
-                    mixed = a.b..c?d??e;
-                    complex = data.field..nested?maybe??unknown;
+                    mixed = a.b..c.d..e;
+                    complex = data.field..nested.maybe..unknown;
                 }
         """);
     }
@@ -420,7 +402,7 @@ public class ParserApprovalTest {
     void stackedRegexpSearchWithCharacterizationIsApproved() {
         verifyApprovalOf("""
                 {
-                    result = brane'a.coord'x..deep'y?opt'z;
+                    result = brane'a.coord'x..deep'y.opt'z;
                 }
         """);
     }
@@ -532,7 +514,7 @@ public class ParserApprovalTest {
     void regexpSearchInComplexExpressionsIsApproved() {
         verifyApprovalOf("""
                 {
-                    result = a.b + c..d * e?f - g??h;
+                    result = a.b + c..d * e.f - g..h;
                     nested = (x.y + z.w) * data..field;
                 }
         """);
@@ -575,7 +557,7 @@ public class ParserApprovalTest {
                 {
                     result = brane.((nested));
                     deep = data..{outer[inner(deep)]};
-                    mixed = x?(a{b[c]});
+                    mixed = x.(a{b[c]});
                 }
         """);
     }
@@ -585,7 +567,7 @@ public class ParserApprovalTest {
         verifyApprovalOf("""
                 {
                     result = brane.(first)(second)[third]{fourth};
-                    chain = data..(a)(b)..(c)[d]??(e){f};
+                    chain = data..(a)(b)..(c)[d]..(e){f};
                 }
         """);
     }

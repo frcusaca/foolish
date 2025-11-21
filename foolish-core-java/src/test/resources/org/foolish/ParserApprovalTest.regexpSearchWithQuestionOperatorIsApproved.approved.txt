@@ -6,6 +6,8 @@ INPUT:
 
 OUTPUT:
 {
-  maybe = myBrane?optional;
-  check = data?exists;
+  maybe = myBrane;
+  optional;
+  check = data;
+  exists;
 }

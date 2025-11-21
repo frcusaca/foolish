@@ -1,11 +1,11 @@
 INPUT:
 {
-            result = a.b + c..d * e?f - g??h;
+            result = a.b + c..d * e.f - g..h;
             nested = (x.y + z.w) * data..field;
         }
 
 OUTPUT:
 {
-  result = ((a.b + (c..d * e?f)) - g??h);
+  result = ((a.b + (c..d * e.f)) - g..h);
   nested = ((x.y + z.w) * data..field);
 }
