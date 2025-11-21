@@ -1,0 +1,11 @@
+INPUT:
+{
+            result = myBrane.coordinate;
+            value = data.field;
+        }
+
+OUTPUT:
+{
+  result = myBrane.coordinate;
+  value = data.field;
+}

@@ -1,0 +1,11 @@
+INPUT:
+{
+            result = a.b.c.d;
+            chain = x..y..z;
+        }
+
+OUTPUT:
+{
+  result = a.b.c.d;
+  chain = x..y..z;
+}

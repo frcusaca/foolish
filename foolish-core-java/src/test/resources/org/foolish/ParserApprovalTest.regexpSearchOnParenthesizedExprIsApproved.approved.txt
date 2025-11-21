@@ -1,0 +1,11 @@
+INPUT:
+{
+            result = (a + b).field;
+            value = (x * 2).coord;
+        }
+
+OUTPUT:
+{
+  result = (a + b).field;
+  value = (x * 2).coord;
+}

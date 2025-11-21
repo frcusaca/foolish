@@ -1,0 +1,13 @@
+INPUT:
+{
+            sum = a.x + b.y;
+            product = data.val * count.num;
+            diff = first.coord - second.coord;
+        }
+
+OUTPUT:
+{
+  sum = (a.x + b.y);
+  product = (data.val * count.num);
+  diff = (first.coord - second.coord);
+}

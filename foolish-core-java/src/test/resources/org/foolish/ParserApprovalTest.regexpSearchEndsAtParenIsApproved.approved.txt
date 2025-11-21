@@ -1,0 +1,11 @@
+INPUT:
+{
+            result = (a.b);
+            nested = (data.field).value;
+        }
+
+OUTPUT:
+{
+  result = a.b;
+  nested = data.field.value;
+}

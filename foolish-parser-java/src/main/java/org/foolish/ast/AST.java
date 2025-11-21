@@ -16,7 +16,7 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
         };
     }
 
-    sealed interface Expr extends AST permits Characterizable, BinaryExpr, UnaryExpr, Branes, IfExpr, UnknownExpr, Stmt, DereferenceExpr {
+    sealed interface Expr extends AST permits Characterizable, BinaryExpr, UnaryExpr, Branes, IfExpr, UnknownExpr, Stmt, DereferenceExpr, RegexpSearchExpr {
 
     }
 
@@ -195,6 +195,39 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
     record DereferenceExpr(Expr base, Identifier coordinate) implements Expr {
         public String toString() {
             return base + "." + coordinate;
+        }
+    }
+
+    /**
+     * Represents a regexp search operation: base operator pattern
+     * Examples: myBrane.foo, myBrane..bar, myBrane?baz, myBrane??qux
+     * Can be chained: myBrane.foo..bar is represented as
+     * RegexpSearchExpr(RegexpSearchExpr(myBrane, ".", "foo"), "..", "bar")
+     */
+    record RegexpSearchExpr(Expr base, String operator, String pattern) implements Expr {
+        public RegexpSearchExpr {
+            Objects.requireNonNull(base, "base cannot be null");
+            Objects.requireNonNull(operator, "operator cannot be null");
+            Objects.requireNonNull(pattern, "pattern cannot be null");
+            // Validate operator
+            if (!operator.equals(".") && !operator.equals("..") &&
+                !operator.equals("?") && !operator.equals("??")) {
+                throw new IllegalArgumentException("Invalid regexp operator: " + operator);
+            }
+        }
+
+        public String toString() {
+            return base + operator + pattern;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return (obj != null &&
+                    obj instanceof RegexpSearchExpr other &&
+                    this.base.equals(other.base) &&
+                    this.operator.equals(other.operator) &&
+                    this.pattern.equals(other.pattern)
+            );
         }
     }
 

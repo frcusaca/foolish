@@ -383,15 +383,16 @@ public class ParserUnitTest {
                 }
                 """, ast.toString());
 
-        // Check AST structure
+        // Check AST structure - now using RegexpSearchExpr instead of DereferenceExpr
         AST.Branes branes = ((AST.Program) ast).branes();
         AST.Brane brane = (AST.Brane) branes.branes().get(0);
         AST.Assignment assignment = (AST.Assignment) brane.statements().get(0);
-        assertTrue(assignment.expr() instanceof AST.DereferenceExpr);
-        AST.DereferenceExpr deref = (AST.DereferenceExpr) assignment.expr();
-        assertTrue(deref.base() instanceof AST.Identifier);
-        assertEquals("a", ((AST.Identifier) deref.base()).id());
-        assertEquals("b", deref.coordinate().id());
+        assertTrue(assignment.expr() instanceof AST.RegexpSearchExpr);
+        AST.RegexpSearchExpr search = (AST.RegexpSearchExpr) assignment.expr();
+        assertTrue(search.base() instanceof AST.Identifier);
+        assertEquals("a", ((AST.Identifier) search.base()).id());
+        assertEquals(".", search.operator());
+        assertEquals("b", search.pattern());
 
         // Chained dereference
         AST ast2 = parse("{ x = a.b.c.d; }");
@@ -446,15 +447,15 @@ public class ParserUnitTest {
                 }
                 """, ast.toString());
 
-        // Check AST structure
+        // Check AST structure - now using RegexpSearchExpr
         AST.Branes branes = ((AST.Program) ast).branes();
         AST.Brane brane = (AST.Brane) branes.branes().get(0);
         AST.Assignment assignment = (AST.Assignment) brane.statements().get(0);
-        assertTrue(assignment.expr() instanceof AST.DereferenceExpr);
-        AST.DereferenceExpr deref = (AST.DereferenceExpr) assignment.expr();
-        AST.Identifier coord = deref.coordinate();
-        assertEquals("x", coord.id());
-        assertEquals(List.of("integer"), coord.characterizations());
+        assertTrue(assignment.expr() instanceof AST.RegexpSearchExpr);
+        AST.RegexpSearchExpr search = (AST.RegexpSearchExpr) assignment.expr();
+        assertEquals(".", search.operator());
+        // Pattern now includes characterization as a string
+        assertEquals("integer'x", search.pattern());
 
         // Multiple characterized derefs in expression
         AST ast2 = parse("{ result = br.integer'x + br.float'y; }");
@@ -495,19 +496,20 @@ public class ParserUnitTest {
         AST.Brane brane = (AST.Brane) branes.branes().get(0);
         AST.Assignment assignment = (AST.Assignment) brane.statements().get(0);
 
-        // The expression should be a DereferenceExpr
-        assertTrue(assignment.expr() instanceof AST.DereferenceExpr);
-        AST.DereferenceExpr deref = (AST.DereferenceExpr) assignment.expr();
+        // The expression should be a RegexpSearchExpr
+        assertTrue(assignment.expr() instanceof AST.RegexpSearchExpr);
+        AST.RegexpSearchExpr search = (AST.RegexpSearchExpr) assignment.expr();
 
         // The base should be Branes containing two branes
-        assertTrue(deref.base() instanceof AST.Branes);
-        AST.Branes innerBranes = (AST.Branes) deref.base();
+        assertTrue(search.base() instanceof AST.Branes);
+        AST.Branes innerBranes = (AST.Branes) search.base();
         assertEquals(2, innerBranes.branes().size());
         assertTrue(innerBranes.branes().get(0) instanceof AST.Brane);
         assertTrue(innerBranes.branes().get(1) instanceof AST.Brane);
 
-        // The coordinate is c
-        assertEquals("c", deref.coordinate().id());
+        // The pattern is "c"
+        assertEquals(".", search.operator());
+        assertEquals("c", search.pattern());
 
         // Multiple branes with dereference
         AST ast2 = parse("{ result = ({a=1;}{b=2;}{c=3;}).value; }");
@@ -526,14 +528,14 @@ public class ParserUnitTest {
                 }
                 """, ast2.toString());
 
-        // Verify it's a DereferenceExpr with Branes base
+        // Verify it's a RegexpSearchExpr with Branes base
         AST.Branes branes2 = ((AST.Program) ast2).branes();
         AST.Brane brane2 = (AST.Brane) branes2.branes().get(0);
         AST.Assignment assignment2 = (AST.Assignment) brane2.statements().get(0);
-        assertTrue(assignment2.expr() instanceof AST.DereferenceExpr);
-        AST.DereferenceExpr deref2 = (AST.DereferenceExpr) assignment2.expr();
-        assertTrue(deref2.base() instanceof AST.Branes);
-        AST.Branes innerBranes2 = (AST.Branes) deref2.base();
+        assertTrue(assignment2.expr() instanceof AST.RegexpSearchExpr);
+        AST.RegexpSearchExpr search2 = (AST.RegexpSearchExpr) assignment2.expr();
+        assertTrue(search2.base() instanceof AST.Branes);
+        AST.Branes innerBranes2 = (AST.Branes) search2.base();
         assertEquals(3, innerBranes2.branes().size());
     }
 
@@ -548,14 +550,14 @@ public class ParserUnitTest {
                 }
                 """, ast.toString());
 
-        // Check AST structure: unary op should wrap dereference
+        // Check AST structure: unary op should wrap regexp search
         AST.Branes branes = ((AST.Program) ast).branes();
         AST.Brane brane = (AST.Brane) branes.branes().get(0);
         AST.Assignment assignment = (AST.Assignment) brane.statements().get(0);
         assertTrue(assignment.expr() instanceof AST.UnaryExpr);
         AST.UnaryExpr unary = (AST.UnaryExpr) assignment.expr();
         assertEquals("-", unary.op());
-        assertTrue(unary.expr() instanceof AST.DereferenceExpr);
+        assertTrue(unary.expr() instanceof AST.RegexpSearchExpr);
 
         // More precedence tests
         AST ast2 = parse("{ x = +obj.value; }");
@@ -601,10 +603,10 @@ public class ParserUnitTest {
         AST.Assignment assignment6 = (AST.Assignment) brane6.statements().get(0);
         assertTrue(assignment6.expr() instanceof AST.UnaryExpr);
         AST.UnaryExpr unary6 = (AST.UnaryExpr) assignment6.expr();
-        assertTrue(unary6.expr() instanceof AST.DereferenceExpr);
-        AST.DereferenceExpr deref6 = (AST.DereferenceExpr) unary6.expr();
-        // The base should be another dereference (a.b.c)
-        assertTrue(deref6.base() instanceof AST.DereferenceExpr);
+        assertTrue(unary6.expr() instanceof AST.RegexpSearchExpr);
+        AST.RegexpSearchExpr search6 = (AST.RegexpSearchExpr) unary6.expr();
+        // The base should be another regexp search (a.b.c)
+        assertTrue(search6.base() instanceof AST.RegexpSearchExpr);
     }
 
     @Test

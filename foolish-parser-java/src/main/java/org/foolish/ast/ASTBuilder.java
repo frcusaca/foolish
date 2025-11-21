@@ -174,12 +174,18 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
     @Override
     public AST visitPostfixExpr(FoolishParser.PostfixExprContext ctx) {
-        // Handle dereference: primary.identifier.identifier...
+        // Handle regexp search: primary operator pattern operator pattern ...
         AST.Expr base = (AST.Expr) visit(ctx.primary());
-        for (int i = 0; i < ctx.characterizable_identifier().size(); i++) {
-            AST.Identifier coordinate = (AST.Identifier) visit(ctx.characterizable_identifier(i));
-            base = new AST.DereferenceExpr(base, coordinate);
+
+        // Each pair of (regexp_operator, regexp_expression) forms one search operation
+        for (int i = 0; i < ctx.regexp_operator().size(); i++) {
+            String operator = ctx.regexp_operator(i).getText();
+            // Get the pattern by concatenating all tokens in the regexp_expression
+            // This allows patterns like: foo, foo'bar, {pattern}, etc.
+            String pattern = ctx.regexp_expression(i).getText();
+            base = new AST.RegexpSearchExpr(base, operator, pattern);
         }
+
         return base;
     }
 

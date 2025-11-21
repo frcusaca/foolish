@@ -1,0 +1,16 @@
+INPUT:
+{
+            result = {x = 10;}.field;
+            value = {a = 1; b = 2;}.coord;
+        }
+
+OUTPUT:
+{
+  result = {
+  x = 10;
+}.field;
+  value = {
+  a = 1;
+  b = 2;
+}.coord;
+}

@@ -1,0 +1,11 @@
+INPUT:
+{
+            x = a.b + c.d;
+            y = data.field * value.coord;
+        }
+
+OUTPUT:
+{
+  x = (a.b + c.d);
+  y = (data.field * value.coord);
+}

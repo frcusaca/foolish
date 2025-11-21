@@ -354,4 +354,188 @@ public class ParserApprovalTest {
         """);
     }
 
+    // Regexp search tests with different operators
+    @Test
+    void regexpSearchWithDotOperatorIsApproved() {
+        verifyApprovalOf("""
+                {
+                    result = myBrane.coordinate;
+                    value = data.field;
+                }
+        """);
+    }
+
+    @Test
+    void regexpSearchWithDotDotOperatorIsApproved() {
+        verifyApprovalOf("""
+                {
+                    result = myBrane..pattern;
+                    deep = data..nested;
+                }
+        """);
+    }
+
+    @Test
+    void regexpSearchWithQuestionOperatorIsApproved() {
+        verifyApprovalOf("""
+                {
+                    maybe = myBrane?optional;
+                    check = data?exists;
+                }
+        """);
+    }
+
+    @Test
+    void regexpSearchWithQuestionQuestionOperatorIsApproved() {
+        verifyApprovalOf("""
+                {
+                    unknown = myBrane??search;
+                    find = data??anything;
+                }
+        """);
+    }
+
+    // Tests for stacked regexp suffixes
+    @Test
+    void stackedRegexpSearchSameOperatorIsApproved() {
+        verifyApprovalOf("""
+                {
+                    result = a.b.c.d;
+                    chain = x..y..z;
+                }
+        """);
+    }
+
+    @Test
+    void stackedRegexpSearchMixedOperatorsIsApproved() {
+        verifyApprovalOf("""
+                {
+                    mixed = a.b..c?d??e;
+                    complex = data.field..nested?maybe??unknown;
+                }
+        """);
+    }
+
+    @Test
+    void stackedRegexpSearchWithCharacterizationIsApproved() {
+        verifyApprovalOf("""
+                {
+                    result = brane'a.coord'x..deep'y?opt'z;
+                }
+        """);
+    }
+
+    // Tests for regexp ending conditions
+    @Test
+    void regexpSearchEndsAtWhitespaceIsApproved() {
+        verifyApprovalOf("""
+                {
+                    x = a.b + c.d;
+                    y = data.field * value.coord;
+                }
+        """);
+    }
+
+    @Test
+    void regexpSearchEndsAtSemicolonIsApproved() {
+        verifyApprovalOf("""
+                {
+                    result = myBrane.pattern;
+                    other = data.field;
+                }
+        """);
+    }
+
+    @Test
+    void regexpSearchEndsAtOperatorIsApproved() {
+        verifyApprovalOf("""
+                {
+                    sum = a.x + b.y;
+                    product = data.val * count.num;
+                    diff = first.coord - second.coord;
+                }
+        """);
+    }
+
+    @Test
+    void regexpSearchEndsAtParenIsApproved() {
+        verifyApprovalOf("""
+                {
+                    result = (a.b);
+                    nested = (data.field).value;
+                }
+        """);
+    }
+
+    // Tests for regexp on different element types
+    @Test
+    void regexpSearchOnIdentifierIsApproved() {
+        verifyApprovalOf("""
+                {
+                    result = identifier.pattern;
+                    value = name.coord;
+                }
+        """);
+    }
+
+    @Test
+    void regexpSearchOnParenthesizedExprIsApproved() {
+        verifyApprovalOf("""
+                {
+                    result = (a + b).field;
+                    value = (x * 2).coord;
+                }
+        """);
+    }
+
+    @Test
+    void regexpSearchOnBraneIsApproved() {
+        verifyApprovalOf("""
+                {
+                    result = {x = 10;}.field;
+                    value = {a = 1; b = 2;}.coord;
+                }
+        """);
+    }
+
+    @Test
+    void regexpSearchOnBraneListIsApproved() {
+        verifyApprovalOf("""
+                {
+                    result = ({a=1;}{b=2;}).pattern;
+                    deep = ({x=1;}{y=2;}).field..nested;
+                }
+        """);
+    }
+
+    @Test
+    void regexpSearchOnCharacterizedBraneIsApproved() {
+        verifyApprovalOf("""
+                {
+                    result = type'{x = 10;}.field;
+                    value = name'data'{a = 1;}.coord;
+                }
+        """);
+    }
+
+    @Test
+    void regexpSearchWithIfExprIsApproved() {
+        verifyApprovalOf("""
+                {
+                    result = if condition then brane1.x else brane2.y;
+                    chain = data.field..nested;
+                }
+        """);
+    }
+
+    @Test
+    void regexpSearchInComplexExpressionsIsApproved() {
+        verifyApprovalOf("""
+                {
+                    result = a.b + c..d * e?f - g??h;
+                    nested = (x.y + z.w) * data..field;
+                }
+        """);
+    }
+
 }

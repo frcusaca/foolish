@@ -1,0 +1,11 @@
+INPUT:
+{
+            result = myBrane.pattern;
+            other = data.field;
+        }
+
+OUTPUT:
+{
+  result = myBrane.pattern;
+  other = data.field;
+}

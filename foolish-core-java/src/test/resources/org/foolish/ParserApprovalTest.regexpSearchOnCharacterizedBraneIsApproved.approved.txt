@@ -1,0 +1,15 @@
+INPUT:
+{
+            result = type'{x = 10;}.field;
+            value = name'data'{a = 1;}.coord;
+        }
+
+OUTPUT:
+{
+  result = type'{
+  x = 10;
+}.field;
+  value = name'data'{
+  a = 1;
+}.coord;
+}

@@ -1,0 +1,11 @@
+INPUT:
+{
+            result = identifier.pattern;
+            value = name.coord;
+        }
+
+OUTPUT:
+{
+  result = identifier.pattern;
+  value = name.coord;
+}

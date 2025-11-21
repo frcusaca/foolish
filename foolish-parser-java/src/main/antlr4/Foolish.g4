@@ -64,7 +64,7 @@ unaryExpr
     ;
 
 postfixExpr
-    : primary (DOT characterizable_identifier)*
+    : primary (regexp_operator regexp_expression)*
     ;
 
 literal
@@ -93,6 +93,10 @@ regexp_operator
     | QUESTION       // '?'
     ;
 
+// Regexp pattern matches tokens that can appear in search patterns
+// Matches the original intent: letters, digits, separators, braces, parens, brackets, apostrophes
+regexp_expression : (IDENTIFIER | INTEGER | APOSTROPHE | LBRACE | RBRACE | LPAREN | RPAREN | LBRACK | RBRACK)+;
+
 // Lexer rules (uppercase)
 LBRACE : '{' ;
 RBRACE : '}' ;
@@ -116,7 +120,10 @@ MINUS : '-' ;
 MUL : '*' ;
 DIV : '/' ;
 
+DOT_DOT : '..' ;
+QUESTION_QUESTION : '??' ;
 DOT : '.' ;
+QUESTION : '?' ;
 
 IF  : 'if' ;
 THEN : 'then' ;
