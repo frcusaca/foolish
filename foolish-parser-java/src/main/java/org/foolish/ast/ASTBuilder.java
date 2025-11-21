@@ -174,11 +174,6 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
     @Override
     public AST visitPostfixExpr(FoolishParser.PostfixExprContext ctx) {
-        // Check if it's a regexp search (stub: return UNKNOWN)
-        if (ctx.regexp_operator() != null) {
-            return AST.UnknownExpr.INSTANCE;
-        }
-
         // Handle dereference: primary.identifier.identifier...
         AST.Expr base = (AST.Expr) visit(ctx.primary());
         for (int i = 0; i < ctx.characterizable_identifier().size(); i++) {
