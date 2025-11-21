@@ -31,3 +31,12 @@ There's some kind of very permissive software license on the code and ideas expr
 use foolishly, but do give back to the originators and contributors of this project so as to
 sustain either their work and lives, or otherwise at least keep alive the spirit to develop despite
 our fatuity.
+
+Maven 3.8.x had been using a version of Guava that generates a lot of error messages. Since maven
+is installed into the OS, another way to use a different maven is to run the following commands
+```sh
+mvn wrapper:wrapper
+./mvnw -N wrapper:wrapper -Dmaven=3.9.11
+```
+and then use the mvnw script to run maven builds hence forth.
+
