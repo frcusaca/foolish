@@ -582,4 +582,87 @@ public class ParserApprovalTest {
         """);
     }
 
+    // Tests for seek operations (statement number indexing)
+    @Test
+    void seekWithPositiveIndexIsApproved() {
+        verifyApprovalOf("""
+                {
+                    result = myBrane#5;
+                    value = data#0;
+                    another = brane#123;
+                }
+        """);
+    }
+
+    @Test
+    void seekWithNegativeIndexIsApproved() {
+        verifyApprovalOf("""
+                {
+                    result = myBrane#-1;
+                    value = data#-10;
+                    last = brane#-99;
+                }
+        """);
+    }
+
+    @Test
+    void seekAfterRegexpSearchIsApproved() {
+        verifyApprovalOf("""
+                {
+                    result = brane.pattern#5;
+                    deep = data..nested#-2;
+                }
+        """);
+    }
+
+    @Test
+    void multipleSeekOperationsIsApproved() {
+        verifyApprovalOf("""
+                {
+                    result = brane#5#2;
+                    chain = data#0#-1#3;
+                }
+        """);
+    }
+
+    @Test
+    void seekInComplexExpressionsIsApproved() {
+        verifyApprovalOf("""
+                {
+                    result = a#5 + b#-2;
+                    product = data#0 * count#10;
+                }
+        """);
+    }
+
+    @Test
+    void seekOnParenthesizedExprIsApproved() {
+        verifyApprovalOf("""
+                {
+                    result = (a + b)#5;
+                    value = (x * 2)#-1;
+                }
+        """);
+    }
+
+    @Test
+    void seekOnBraneIsApproved() {
+        verifyApprovalOf("""
+                {
+                    result = {x = 10;}#0;
+                    value = {a = 1; b = 2;}#1;
+                }
+        """);
+    }
+
+    @Test
+    void mixedRegexpAndSeekIsApproved() {
+        verifyApprovalOf("""
+                {
+                    result = brane.pattern#5..nested#-1;
+                    complex = data#0.field..deep#2;
+                }
+        """);
+    }
+
 }

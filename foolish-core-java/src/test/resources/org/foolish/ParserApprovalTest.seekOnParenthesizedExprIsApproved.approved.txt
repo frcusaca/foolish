@@ -1,0 +1,11 @@
+INPUT:
+{
+            result = (a + b)#5;
+            value = (x * 2)#-1;
+        }
+
+OUTPUT:
+{
+  result = (a + b)#5;
+  value = (x * 2)#-1;
+}

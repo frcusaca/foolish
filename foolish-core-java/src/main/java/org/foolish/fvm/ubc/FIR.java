@@ -128,6 +128,9 @@ public abstract class FIR {
             case AST.RegexpSearchExpr regexpSearch -> {
                 return new RegexpSearchFiroe(regexpSearch);
             }
+            case AST.SeekExpr seekExpr -> {
+                return new SeekFiroe(seekExpr);
+            }
             default -> {
                 // Placeholder for unsupported types
                 return new ValueFiroe(0L);

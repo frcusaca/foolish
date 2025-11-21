@@ -16,7 +16,7 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
         };
     }
 
-    sealed interface Expr extends AST permits Characterizable, BinaryExpr, UnaryExpr, Branes, IfExpr, UnknownExpr, Stmt, DereferenceExpr, RegexpSearchExpr {
+    sealed interface Expr extends AST permits Characterizable, BinaryExpr, UnaryExpr, Branes, IfExpr, UnknownExpr, Stmt, DereferenceExpr, RegexpSearchExpr, SeekExpr {
 
     }
 
@@ -227,6 +227,30 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
                     this.base.equals(other.base) &&
                     this.operator.equals(other.operator) &&
                     this.pattern.equals(other.pattern)
+            );
+        }
+    }
+
+    /**
+     * Represents a seek operation to search by statement number: base#index
+     * Examples: myBrane#5, data#-2
+     * The index can be positive (forward from start) or negative (backward from end)
+     */
+    record SeekExpr(Expr base, long index) implements Expr {
+        public SeekExpr {
+            Objects.requireNonNull(base, "base cannot be null");
+        }
+
+        public String toString() {
+            return base + "#" + index;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return (obj != null &&
+                    obj instanceof SeekExpr other &&
+                    this.base.equals(other.base) &&
+                    this.index == other.index
             );
         }
     }

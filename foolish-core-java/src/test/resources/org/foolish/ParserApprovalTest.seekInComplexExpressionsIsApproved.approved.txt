@@ -1,0 +1,11 @@
+INPUT:
+{
+            result = a#5 + b#-2;
+            product = data#0 * count#10;
+        }
+
+OUTPUT:
+{
+  result = (a#5 + b#-2);
+  product = (data#0 * count#10);
+}

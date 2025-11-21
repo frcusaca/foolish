@@ -1,0 +1,16 @@
+INPUT:
+{
+            result = {x = 10;}#0;
+            value = {a = 1; b = 2;}#1;
+        }
+
+OUTPUT:
+{
+  result = {
+  x = 10;
+}#0;
+  value = {
+  a = 1;
+  b = 2;
+}#1;
+}

@@ -1,0 +1,13 @@
+INPUT:
+{
+            result = myBrane#-1;
+            value = data#-10;
+            last = brane#-99;
+        }
+
+OUTPUT:
+{
+  result = myBrane#-1;
+  value = data#-10;
+  last = brane#-99;
+}

@@ -1,0 +1,11 @@
+INPUT:
+{
+            result = brane.pattern#5..nested#-1;
+            complex = data#0.field..deep#2;
+        }
+
+OUTPUT:
+{
+  result = brane.pattern#5..nested#-1;
+  complex = data#0.field..deep#2;
+}

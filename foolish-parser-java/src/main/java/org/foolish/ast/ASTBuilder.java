@@ -174,16 +174,25 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
     @Override
     public AST visitPostfixExpr(FoolishParser.PostfixExprContext ctx) {
-        // Handle regexp search: primary operator pattern operator pattern ...
+        // Handle postfix operations: regexp search and seek
         AST.Expr base = (AST.Expr) visit(ctx.primary());
 
-        // Each pair of (regexp_operator, regexp_expression) forms one search operation
-        for (int i = 0; i < ctx.regexp_operator().size(); i++) {
-            String operator = ctx.regexp_operator(i).getText();
-            // Get the pattern by concatenating all tokens in the regexp_expression
-            // ANTLR grammar enforces balanced parentheses, we just extract as string
-            String pattern = ctx.regexp_expression(i).getText();
-            base = new AST.RegexpSearchExpr(base, operator, pattern);
+        // Process each postfix operation in order
+        for (FoolishParser.Postfix_opContext opCtx : ctx.postfix_op()) {
+            if (opCtx.regexp_operator() != null) {
+                // Regexp search operation
+                String operator = opCtx.regexp_operator().getText();
+                String pattern = opCtx.regexp_expression().getText();
+                base = new AST.RegexpSearchExpr(base, operator, pattern);
+            } else if (opCtx.HASH() != null) {
+                // Seek operation
+                FoolishParser.Seek_indexContext seekCtx = opCtx.seek_index();
+                long index = Long.parseLong(seekCtx.INTEGER().getText());
+                if (seekCtx.MINUS() != null) {
+                    index = -index;
+                }
+                base = new AST.SeekExpr(base, index);
+            }
         }
 
         return base;

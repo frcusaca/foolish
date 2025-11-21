@@ -1,0 +1,13 @@
+INPUT:
+{
+            result = myBrane#5;
+            value = data#0;
+            another = brane#123;
+        }
+
+OUTPUT:
+{
+  result = myBrane#5;
+  value = data#0;
+  another = brane#123;
+}

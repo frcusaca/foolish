@@ -64,7 +64,16 @@ unaryExpr
     ;
 
 postfixExpr
-    : primary (regexp_operator regexp_expression)*
+    : primary (postfix_op)*
+    ;
+
+postfix_op
+    : regexp_operator regexp_expression
+    | HASH seek_index
+    ;
+
+seek_index
+    : MINUS? INTEGER
     ;
 
 literal
@@ -149,6 +158,7 @@ CARET : '^';
 ESLASH : '\\';
 DOLLAR : '$';
 QUESTION: '?';
+HASH : '#';
 
 DOT_DOT : '..' ;
 DOT : '.' ;
