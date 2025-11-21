@@ -76,6 +76,7 @@ public abstract class FiroeWithBraneMind extends FIR {
             braneMemory.addLast(fir);
         }
     }
+
     protected void enqueueExprs(AST.Expr... exprs) {
         for (AST.Expr expr : exprs)
             enqueueFirs(FIR.createFiroeFromExpr(expr));
@@ -99,7 +100,7 @@ public abstract class FiroeWithBraneMind extends FIR {
 
     /**
      * Steps the next FIR in the braneMind queue with state-aware brane handling.
-     *
+     * <p>
      * State transitions:
      * - UNINITIALIZED → INITIALIZED: Initialize this FIR
      * - INITIALIZED → REFERENCES_IDENTIFIED: Step non-branes only until all are REFERENCES_IDENTIFIED
@@ -107,7 +108,7 @@ public abstract class FiroeWithBraneMind extends FIR {
      * - ALLOCATED → RESOLVED: Step non-branes only until all are RESOLVED
      * - RESOLVED → EVALUATING: Immediate transition when detected
      * - EVALUATING → CONSTANT: Step everything (including branes) until all complete
-     *
+     * <p>
      * Derived classes should override this method and call super.step() as needed.
      */
     public void step() {
@@ -177,7 +178,7 @@ public abstract class FiroeWithBraneMind extends FIR {
      * @return true if all non-branes have reached the target state, false otherwise
      */
     private boolean stepNonBranesUntilState(Nyes targetState) {
-        if (braneMind.isEmpty() || allNonBranesReachedState(targetState)){
+        if (braneMind.isEmpty() || allNonBranesReachedState(targetState)) {
             return true;
         }
 
@@ -213,11 +214,11 @@ public abstract class FiroeWithBraneMind extends FIR {
      */
     private boolean allNonBranesReachedState(Nyes targetState) {
         FIR current = braneMind.getFirst();
-        int seen=1;
+        int seen = 1;
         // Let's skip branes and the sub expressions that has already reached desired state.
         while (isBrane(current) || (current.getNyes().ordinal() >= targetState.ordinal())) {
             // Re-enqueue brane without stepping - keep its place in line
-            if(seen++>=braneMind.size()){
+            if (seen++ >= braneMind.size()) {
                 return true;
             }
             braneMind.addLast(braneMind.removeFirst());
