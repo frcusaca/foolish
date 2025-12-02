@@ -10,18 +10,32 @@ on:
     branches: ["main", "dev/**", "codex/**"]
 
 jobs:
-  test:
+  scala-unit-tests:
+    name: Scala Unit Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
-          java-version: '21'
+          java-version: '25'
           cache: 'maven'
       - name: "Compile"
         run: mvn clean compile test-compile
       - name: "🧪 Scala Unit Tests"
-        run: mvn surefire:test@scala-unit
+        run: mvn test -Dtest=SequencerTest,UnicelluarBraneComputerTest -Dsurefire.failIfNoSpecifiedTests=false
+
+  scala-approval-tests:
+    name: Scala Approval Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '25'
+          cache: 'maven'
+      - name: "Compile"
+        run: mvn clean compile test-compile
       - name: "📷 Scala Approval Tests"
-        run: mvn surefire:test@scala-approval
+        run: mvn test -Dtest=ScUbcApprovalTest -Dsurefire.failIfNoSpecifiedTests=false

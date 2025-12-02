@@ -10,23 +10,32 @@ on:
     branches: ["main", "dev/**", "codex/**"]
 
 jobs:
-  test:
+  java-unit-tests:
+    name: Java Unit Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
-          java-version: '21'
-          cache: 'maven'
-      - name: Set up JDK
-        uses: actions/setup-java@v5
-        with:
-          distribution: 'temurin'
           java-version: '25'
+          cache: 'maven'
       - name: "Compile"
         run: mvn clean compile test-compile
       - name: "🧪 Java Unit Tests"
-        run: mvn surefire:test@java-unit
+        run: mvn test -Dtest=**/*UnitTest -Dsurefire.failIfNoSpecifiedTests=false
+
+  java-approval-tests:
+    name: Java Approval Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '25'
+          cache: 'maven'
+      - name: "Compile"
+        run: mvn clean compile test-compile
       - name: "📷 Java Approval Tests"
-        run: mvn surefire:test@java-approval
+        run: mvn test -Dtest=**/*ApprovalTest -Dsurefire.failIfNoSpecifiedTests=false
