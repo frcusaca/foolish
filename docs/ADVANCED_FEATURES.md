@@ -272,6 +272,9 @@ expression with a brane that refers to the line in the parent brane where it is 
 
 - [ ] TODO: Document searching upward for variables scoped in parent branes.
 
+## Search Result
+Search results in the value found at the cursor unless it is marked with `:` in which case, the search results in the name resolution context at the cursor, and `|` which results in the name at the cursor.
+
 ### Unanchored Brane Search Leads to Self-Awareness
 
 Notice that every time we refer to a named value by name (a.k.a. reference a value by a variable
