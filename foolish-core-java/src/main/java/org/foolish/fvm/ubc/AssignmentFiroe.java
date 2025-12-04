@@ -6,7 +6,7 @@ import org.foolish.ast.AST;
  * FIR for assignment expressions.
  * An assignment evaluates its right-hand side expression and stores the result
  * with a coordinate name in the brane's environment.
- *
+ * <p>
  * The LHS uses CharacterizedIdentifier to support characterized identifiers for
  * proper resolution and type checking. The RHS is evaluated as a FIR, and any
  * identifiers within the RHS expression tree will be represented as IdentifierFiroe

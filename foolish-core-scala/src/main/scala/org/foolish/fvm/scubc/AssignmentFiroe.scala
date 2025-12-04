@@ -31,8 +31,8 @@ class AssignmentFiroe(assignment: AST.Assignment)
     super.step()
 
     // Check if we can get the final result
-    if !super.isNye && braneMemory.nonEmpty then
-      result = Some(braneMemory(0))
+    if !super.isNye && !braneMemory.isEmpty then
+      result = Some(braneMemory.get(0))
 
   override def isAbstract: Boolean =
     result.map(_.isAbstract).getOrElse(super.isAbstract)

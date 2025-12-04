@@ -27,7 +27,7 @@ class UnaryFiroe(unaryExpr: AST.UnaryExpr) extends FiroeWithBraneMind(unaryExpr)
     if getNyes != Nyes.CONSTANT then
       return
 
-    val operandFir = braneMemory(0)
+    val operandFir = braneMemory.get(0)
 
     // If operand is abstract (NK), the result is NK
     if operandFir.isAbstract then
@@ -57,7 +57,7 @@ class UnaryFiroe(unaryExpr: AST.UnaryExpr) extends FiroeWithBraneMind(unaryExpr)
       throw IllegalStateException("UnaryFiroe not fully evaluated"))
 
   override def toString: String =
-    result.map(_.toString).getOrElse(s"$operator${braneMemory.headOption.map(_.toString).getOrElse("?")}")
+    result.map(_.toString).getOrElse(s"$operator${if braneMemory.isEmpty then "?" else braneMemory.get(0).toString}")
 
 object UnaryFiroe:
   def apply(unaryExpr: AST.UnaryExpr): UnaryFiroe =

@@ -1,0 +1,25 @@
+!!INPUT!!
+{
+    x = 42;
+    x;
+}
+
+!!!
+PARSED AST:
+{
+  x = 42;
+  x;
+}
+
+UBC EVALUATION:
+Steps taken: 15
+
+FINAL RESULT:
+{
+＿x = 42;
+＿42;
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!

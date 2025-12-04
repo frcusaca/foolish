@@ -69,6 +69,5 @@ public class NKFiroe extends FiroeWithoutBraneMind {
         return this; // I'm a constant
     }
 
-
 }
 

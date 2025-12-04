@@ -42,6 +42,7 @@ public class Sequencer4Human extends Sequencer<String> {
             case IfFiroe ifFiroe -> sequenceIf(ifFiroe, depth);
             case SearchUpFiroe searchUp -> sequenceSearchUp(searchUp, depth);
             case AssignmentFiroe assignment -> sequenceAssignment(assignment, depth);
+            case IdentifierFiroe identifier -> sequenceIdentifier(identifier, depth);
             case null, default -> indent(depth) + "???";
         };
     }
@@ -133,6 +134,22 @@ public class Sequencer4Human extends Sequencer<String> {
         }
         // If not yet evaluated, show the structure
         return indent(depth) + assignment.getId() + " = ???";
+    }
+
+    /**
+     * Sequences an identifier FIR showing its resolved value.
+     */
+    protected String sequenceIdentifier(IdentifierFiroe identifier, int depth) {
+        // If the identifier has been resolved and is not NYE
+        if (!identifier.isNye()) {
+            // Check if it resolved to an abstract value
+            if (identifier.isAbstract()) {
+                return indent(depth) + "???";
+            }
+            return indent(depth) + identifier.getValue();
+        }
+        // If not yet evaluated
+        return indent(depth) + "???";
     }
 
     /**

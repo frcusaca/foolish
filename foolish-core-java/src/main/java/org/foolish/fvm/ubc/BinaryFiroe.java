@@ -60,8 +60,8 @@ public class BinaryFiroe extends FiroeWithBraneMind {
     }
 
     private void computeResult() {
-        FIR leftFir = braneMemory.removeFirst();
-        FIR rightFir = braneMemory.removeFirst();
+        FIR leftFir = braneMemory.get(0);
+        FIR rightFir = braneMemory.get(1);
 
         // If either operand is abstract (NK), the result is NK
         if (leftFir.isAbstract() || rightFir.isAbstract()) {

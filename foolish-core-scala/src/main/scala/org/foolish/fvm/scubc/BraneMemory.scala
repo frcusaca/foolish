@@ -1,38 +1,84 @@
 package org.foolish.fvm.scubc
 
-import org.foolish.fvm.BraneMemoryInterface
 import scala.collection.mutable
-import java.util.regex.Pattern
 
 /**
  * BraneMemory implementation for the UBC system.
+ * Stores FIRs in a list indexed by line number, matching the Java implementation.
  */
-class BraneMemory(val parent: BraneMemory = null) extends BraneMemoryInterface[BraneMemory.Query, FIR]:
+class BraneMemory(private var parent: BraneMemory = null):
+  private var myPos: Option[Int] = None
+  private val memory = mutable.ArrayBuffer[FIR]()
 
-  private val memory = mutable.Map[Int, mutable.Map[CharacterizedIdentifier, FIR]]()
+  def this(parent: BraneMemory, myPos: Int) =
+    this(parent)
+    setMyPos(myPos)
 
-  def get(id: BraneMemory.Query, fromLine: Int): FIR =
-    (fromLine to 0 by -1).view.flatMap { line =>
-      memory.get(line).flatMap { lineMemory =>
-        val charId = id.asInstanceOf[CharacterizedIdentifier]
-        if lineMemory.contains(charId) then Some(lineMemory(charId))
-        else None
-      }
-    }.headOption.orNull
+  def setMyPos(pos: Int): Unit =
+    if myPos.isEmpty then
+      myPos = Some(pos)
+    else
+      throw RuntimeException("Cannot recoordinate a BraneMemory.")
 
-  def put(id: BraneMemory.Query, value: FIR, byLine: Int): Unit =
-    id match
-      case charId: CharacterizedIdentifier =>
-        memory.getOrElseUpdate(byLine, mutable.Map()).put(charId, value)
-      case _ =>
-        throw IllegalArgumentException("Only IdentifierQuery is supported for put operations")
+  def setParent(parent: BraneMemory): Unit =
+    this.parent = parent
+
+  def get(idx: Int): FIR =
+    if idx >= 0 && idx < memory.size then
+      memory(idx)
+    else
+      throw IndexOutOfBoundsException(s"Index: $idx, Size: ${memory.size}")
+
+  /**
+   * Get the FIR matching the query, searching backwards from fromLine.
+   * Returns Option[(Int, FIR)] where Int is the line number.
+   */
+  def get(query: BraneMemory.Query, fromLine: Int): Option[(Int, FIR)] =
+    val startLine = math.min(fromLine, memory.size - 1)
+
+    // Search backwards from fromLine to 0
+    for line <- startLine to 0 by -1 do
+      val lineMemory = memory(line)
+      if query.matches(lineMemory) then
+        return Some((line, lineMemory))
+
+    // If not found in this brane, search in parent
+    if parent != null then
+      return parent.get(query, myPos.get)
+
+    None // Not found
+
+  def put(line: FIR): Unit =
+    memory.addOne(line)
+
+  def isEmpty: Boolean = memory.isEmpty
+
+  def stream: Iterator[FIR] = memory.iterator
+
+  def size: Int = memory.size
+
+  def getLast: FIR =
+    if memory.isEmpty then
+      throw new NoSuchElementException("BraneMemory is empty")
+    memory.last
+
+  def removeFirst(): FIR =
+    if memory.isEmpty then
+      throw new NoSuchElementException("BraneMemory is empty")
+    memory.remove(0)
 
 object BraneMemory:
-  trait Query
+  sealed trait Query:
+    def matches(brane_line: FIR): Boolean
 
-  /** Regular class to avoid case-to-case inheritance prohibition */
-  class IdentifierQuery(name: String, characterization: String = "")
-    extends CharacterizedIdentifier(name, characterization) with Query
+  class StrictlyMatchingQuery(name: String, characterization: String)
+    extends CharacterizedIdentifier(name, characterization) with Query:
 
-  case class RegExpQuery(regex: String) extends Query:
-    val pattern: Pattern = Pattern.compile(regex)
+    override def matches(brane_line: FIR): Boolean =
+      brane_line match
+        case ass: AssignmentFiroe =>
+          val lhs = ass.getLhs
+          lhs == this
+        case _ =>
+          // mostly here is unnamed lines in brane
+          false

@@ -36,7 +36,7 @@ class BraneFiroe(override val ast: AST)
     super.step()
 
   /** Returns the list of expression Firoes in this brane */
-  def getExpressionFiroes: List[FIR] = braneMemory.toList
+  def getExpressionFiroes: List[FIR] = braneMemory.stream.toList
 
   override def toString: String =
     Sequencer4Human().sequence(this)

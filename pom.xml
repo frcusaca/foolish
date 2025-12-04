@@ -70,17 +70,6 @@
           <artifactId>commons-lang3</artifactId>
           <version>3.19.0</version>
   	</dependency>
-  	<!-- Some ancient code was producing warning that flooded AI memor -->
-  	<dependency>
-  	    <groupId>com.google.inject</groupId>
-  	    <artifactId>guice</artifactId>
-  	    <version>7.0.0</version>
-  	</dependency>
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>33.5.0-jre</version>
-        </dependency>
         <!-- Scala Library -->
         <dependency>
             <groupId>org.scala-lang</groupId>

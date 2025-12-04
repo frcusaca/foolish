@@ -1,0 +1,52 @@
+!!INPUT!!
+{
+    a = 10;
+    b = 20;
+    outer'{
+        c = 30;
+        a + c;
+        inner'{
+            a = 40;
+            a + b + c;
+        };
+        a + b;
+    };
+}
+
+!!!
+PARSED AST:
+{
+  a = 10;
+  b = 20;
+  outer'{
+    c = 30;
+    (a + c);
+    inner'{
+      a = 40;
+      ((a + b) + c);
+    };
+    (a + b);
+  };
+}
+
+UBC EVALUATION:
+Steps taken: 89
+
+FINAL RESULT:
+{
+＿a = 10;
+＿b = 20;
+＿outer'{
+＿＿c = 30;
+＿＿40;
+＿＿inner'{
+＿＿＿a = 40;
+＿＿＿90;
+＿＿};
+＿＿30;
+＿};
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!

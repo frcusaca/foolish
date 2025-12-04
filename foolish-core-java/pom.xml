@@ -29,12 +29,6 @@
             <artifactId>commons-lang3</artifactId>
         </dependency>
 
-        <!-- Guava -->
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-        </dependency>
-
         <!-- JUnit Platform Console Standalone -->
         <dependency>
             <groupId>org.junit.platform</groupId>

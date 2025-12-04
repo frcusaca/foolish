@@ -10,13 +10,24 @@ import scala.collection.mutable
 abstract class FiroeWithBraneMind(ast: AST, comment: Option[String] = None) extends FIR(ast, comment):
 
   protected val braneMind = mutable.Queue[FIR]()
-  protected val braneMemory = mutable.ArrayBuffer[FIR]()
+  protected val braneMemory = new BraneMemory(null)
+  protected var ordinated: Boolean = false
+
+  def ordinateToParentBraneMind(parent: FiroeWithBraneMind, myPos: Int): Unit =
+    assert(!this.ordinated)
+    this.braneMemory.setParent(parent.braneMemory)
+    this.braneMemory.setMyPos(myPos)
+    this.ordinated = true
 
   /** Enqueues FIRs into the braneMind */
   protected def enqueueFirs(firs: FIR*): Unit =
     firs.foreach { fir =>
       braneMind.enqueue(fir)
-      braneMemory.addOne(fir)
+      braneMemory.put(fir)
+      fir match
+        case fwbm: FiroeWithBraneMind =>
+          fwbm.ordinateToParentBraneMind(this, braneMind.size - 1)
+        case _ =>
     }
 
   protected def enqueueExprs(exprs: AST.Expr*): Unit =
@@ -33,7 +44,7 @@ abstract class FiroeWithBraneMind(ast: AST, comment: Option[String] = None) exte
 
   /** Check if any FIRs in braneMind or braneMemory are abstract */
   def isAbstract: Boolean =
-    braneMind.exists(_.isAbstract) || braneMemory.exists(_.isAbstract)
+    braneMind.exists(_.isAbstract) || braneMemory.stream.exists(_.isAbstract)
 
   /**
    * Checks if a FIR is a brane (BraneFiroe).

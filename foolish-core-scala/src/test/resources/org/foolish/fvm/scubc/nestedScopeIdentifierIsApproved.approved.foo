@@ -1,0 +1,31 @@
+!!INPUT!!
+{
+    x = 100;
+    outer'{
+        x;
+    };
+}
+
+!!!
+PARSED AST:
+{
+  x = 100;
+  outer'{
+    x;
+  };
+}
+
+UBC EVALUATION:
+Steps taken: 21
+
+FINAL RESULT:
+{
+＿x = 100;
+＿outer'{
+＿＿100;
+＿};
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!

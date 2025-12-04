@@ -1,0 +1,31 @@
+!!INPUT!!
+{
+    x = 5;
+    y = 3;
+    z = 2;
+    x * y + z;
+}
+
+!!!
+PARSED AST:
+{
+  x = 5;
+  y = 3;
+  z = 2;
+  ((x * y) + z);
+}
+
+UBC EVALUATION:
+Steps taken: 44
+
+FINAL RESULT:
+{
+＿x = 5;
+＿y = 3;
+＿z = 2;
+＿17;
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!

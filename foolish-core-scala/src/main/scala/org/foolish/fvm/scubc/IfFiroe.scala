@@ -42,7 +42,7 @@ class IfFiroe(ifExpr: AST.IfExpr) extends FiroeWithBraneMind(ifExpr):
     if getNyes != Nyes.CONSTANT then
       return
 
-    braneMemory(nextPossibleIdx) match
+    braneMemory.get(nextPossibleIdx) match
       case cfiroe: ConditionalFiroe =>
         if cfiroe.hasTrueCondition then
           step()
@@ -82,8 +82,8 @@ class IfFiroe(ifExpr: AST.IfExpr) extends FiroeWithBraneMind(ifExpr):
     override def step(): Unit =
       super.step()
       // After stepping, check if condition has been evaluated
-      if conditionValue.isEmpty && braneMemory.nonEmpty && braneMemory(0).getNyes == Nyes.CONSTANT then
-        val conditionFir = braneMemory(0)
+      if conditionValue.isEmpty && !braneMemory.isEmpty && braneMemory.get(0).getNyes == Nyes.CONSTANT then
+        val conditionFir = braneMemory.get(0)
         if !conditionFir.isAbstract then
           val condValue = conditionFir.getValue
           conditionValue = Some(condValue != 0)
@@ -97,7 +97,7 @@ class IfFiroe(ifExpr: AST.IfExpr) extends FiroeWithBraneMind(ifExpr):
     def hasUnknownCondition: Boolean = conditionValue.isEmpty
     def hasTrueCondition: Boolean = conditionValue.contains(true)
     def hasFalseCondition: Boolean = conditionValue.contains(false)
-    def getThenFir: FIR = braneMemory.last
+    def getThenFir: FIR = braneMemory.getLast
 
   end ConditionalFiroe
 

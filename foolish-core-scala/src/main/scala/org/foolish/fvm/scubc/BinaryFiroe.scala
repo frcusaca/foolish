@@ -27,8 +27,8 @@ class BinaryFiroe(binaryExpr: AST.BinaryExpr) extends FiroeWithBraneMind(binaryE
     if getNyes != Nyes.CONSTANT then
       return
 
-    val leftFir = braneMemory.remove(0)
-    val rightFir = braneMemory.remove(0)
+    val leftFir = braneMemory.get(0)
+    val rightFir = braneMemory.get(1)
 
     // If either operand is abstract (NK), the result is NK
     if leftFir.isAbstract || rightFir.isAbstract then

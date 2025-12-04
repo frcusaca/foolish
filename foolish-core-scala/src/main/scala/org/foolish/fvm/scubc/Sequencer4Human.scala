@@ -16,6 +16,7 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
     case ifFiroe: IfFiroe => sequenceIf(ifFiroe, depth)
     case searchUp: SearchUpFiroe => sequenceSearchUp(searchUp, depth)
     case assignment: AssignmentFiroe => sequenceAssignment(assignment, depth)
+    case identifier: IdentifierFiroe => sequenceIdentifier(identifier, depth)
     case _ => indent(depth) + "???"
 
   protected def sequenceBrane(brane: BraneFiroe, depth: Int): String =
@@ -88,6 +89,18 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
     else
       // If not yet evaluated, show the structure
       indent(depth) + s"${assignment.getId} = ???"
+
+  protected def sequenceIdentifier(identifier: IdentifierFiroe, depth: Int): String =
+    // If the identifier has been resolved and is not NYE
+    if !identifier.isNye then
+      // Check if it resolved to an abstract value
+      if identifier.isAbstract then
+        indent(depth) + "???"
+      else
+        indent(depth) + identifier.getValue.toString
+    else
+      // If not yet evaluated
+      indent(depth) + "???"
 
   protected def sequenceNK(nk: FIR, depth: Int): String =
     indent(depth) + "???"
