@@ -1,10 +1,12 @@
 package org.foolish.fvm.ubc;
 
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import static java.lang.Math.min;
 
@@ -41,6 +43,12 @@ public class BraneMemory {
         this.memory = new ArrayList<>();
     }
 
+    public Optional<FIR> get(int idx){
+        if(idx>0 && idx<memory.size()){
+            return Optional.of(memory.get(idx));
+        }
+        return Optional.empty();
+    }
     public Optional<Pair<Integer, FIR>> get(Query query, int fromLine) {
         for (int line = min(fromLine, memory.size() - 1); line >= 0; line--) {
             var lineMemory = memory.get(line);
@@ -56,5 +64,13 @@ public class BraneMemory {
 
     public void put(FIR line) {
         memory.add(line);
+    }
+
+    public boolean isEmpty() {
+        return memory.isEmpty();
+    }
+
+    public Stream<FIR> stream(){
+        return memory.stream();
     }
 }
