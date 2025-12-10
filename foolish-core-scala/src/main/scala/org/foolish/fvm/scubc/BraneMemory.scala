@@ -1,13 +1,13 @@
 package org.foolish.fvm.scubc
 
-import org.foolish.fvm.BraneMemoryInterface
+
 import scala.collection.mutable
 import java.util.regex.Pattern
 
 /**
  * BraneMemory implementation for the UBC system.
  */
-class BraneMemory(val parent: BraneMemory = null) extends BraneMemoryInterface[BraneMemory.Query, FIR]:
+class BraneMemory(val parent: BraneMemory = null):
 
   private val memory = mutable.Map[Int, mutable.Map[CharacterizedIdentifier, FIR]]()
 

@@ -26,14 +26,14 @@ public abstract class FiroeWithBraneMind extends FIR {
     protected FiroeWithBraneMind(AST ast, String comment) {
         super(ast, comment);
         this.braneMind = new LinkedList<>();
-        this.braneMemory = new BraneMemory(null, -1);
+        this.braneMemory = new BraneMemory(null);
         this.ordinated = false;
     }
 
     public void ordinateToParentBraneMind(FiroeWithBraneMind parent, int myPos) {
         assert !this.ordinated;
-        this.braneMemory.parent = parent.braneMemory;
-        this.braneMemory.myPos = myPos;
+        this.braneMemory.setParent(parent.braneMemory);
+        this.braneMemory.setMyPos(myPos);
         this.ordinated = true;
     }
 

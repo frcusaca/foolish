@@ -33,18 +33,34 @@ public class BraneMemory implements Iterable<FIR> {
         }
     }
 
-    BraneMemory parent;
-    int myPos;
+    private BraneMemory parent;
+    private Optional<Integer> myPos = Optional.empty();
     private final List<FIR> memory;
 
-    public BraneMemory(BraneMemory parent, int myPos) {
+    public BraneMemory(BraneMemory parent) {
         this.parent = parent;
-        this.myPos = myPos;
         this.memory = new ArrayList<>();
     }
 
-    public FIR get(int idx){
-        if(idx>=0 && idx<memory.size()){
+    public BraneMemory(BraneMemory parent, int myPos) {
+        this(parent);
+        setMyPos(myPos);
+    }
+
+    public void setMyPos(int pos) {
+        if (myPos.isEmpty()) {
+            this.myPos = Optional.of(pos);
+        } else {
+            throw new RuntimeException("Cannot recoordinate a BraneMemory.");
+        }
+    }
+
+    public void setParent(BraneMemory parent) {
+        this.parent = parent;
+    }
+
+    public FIR get(int idx) {
+        if (idx >= 0 && idx < memory.size()) {
             return memory.get(idx);
         }
         throw new IndexOutOfBoundsException("Index: " + idx + ", Size: " + memory.size());
@@ -58,7 +74,7 @@ public class BraneMemory implements Iterable<FIR> {
             }
         }
         if (parent != null) {
-            return parent.get(query, myPos);
+            return parent.get(query, myPos.get());
         }
         return Optional.empty(); // Not found
     }
@@ -71,10 +87,10 @@ public class BraneMemory implements Iterable<FIR> {
         return memory.isEmpty();
     }
 
-    public Stream<FIR> stream(){
+    public Stream<FIR> stream() {
         return memory.stream();
     }
-    
+
     public int size() {
         return memory.size();
     }

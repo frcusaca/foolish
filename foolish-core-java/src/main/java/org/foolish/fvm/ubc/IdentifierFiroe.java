@@ -1,7 +1,7 @@
 package org.foolish.fvm.ubc;
 
 import org.foolish.ast.AST;
-
+import org.foolish.fvm.ubc.BraneMemory.StrictlyMatchingQuery;
 /**
  * IdentifierFiroe represents a characterized identifier reference in the UBC system.
  *
@@ -17,21 +17,13 @@ import org.foolish.ast.AST;
  * Currently, identifier lookup is not yet implemented in UBC, so this
  * returns NK (not-known) values.
  */
-public class IdentifierFiroe extends FiroeWithoutBraneMind {
-    private final CharacterizedIdentifier identifier;
+public class IdentifierFiroe extends FiroeWithBraneMind {
+    private final StrictlyMatchingQuery identifier;
+    private FIR value = null;
 
     public IdentifierFiroe(AST.Identifier identifier) {
         super(identifier);
-        this.identifier = new CharacterizedIdentifier(identifier);
-    }
-
-    /**
-     * Creates an IdentifierFiroe with explicit id and characterization strings.
-     * Used when converting from other representations.
-     */
-    public IdentifierFiroe(String id, String characterization) {
-        super(null);
-        this.identifier = new CharacterizedIdentifier(id, characterization);
+        this.identifier = new StrictlyMatchingQuery(identifier.id(), identifier.canonicalCharacterization());
     }
 
     /**
@@ -39,14 +31,6 @@ public class IdentifierFiroe extends FiroeWithoutBraneMind {
      */
     public CharacterizedIdentifier getIdentifier() {
         return identifier;
-    }
-
-    /**
-     * Gets the identifier name as a string (without characterization).
-     * For compatibility with existing code.
-     */
-    public String getId() {
-        return identifier.getId();
     }
 
     /**
@@ -58,29 +42,44 @@ public class IdentifierFiroe extends FiroeWithoutBraneMind {
     }
 
     /**
-     * Checks if this identifier has a characterization.
-     */
-    public boolean hasCharacterization() {
-        return identifier.hasCharacterization();
-    }
-
-    /**
      * Identifier lookup is not yet implemented, so identifiers are abstract (not-known).
      */
     @Override
     public boolean isAbstract() {
         return true;
     }
-    
 
+    @Override
+    protected void initialize() {
+
+    }
+
+    /**
+     * Implement the step method only overriding resolution phase, during resolution
+     * we use the branemind to find the value of the identifier and store a reference to
+     * it for `getValue()`
+     */
+    @Override
+    public void step() {
+        switch (getNyes()) {
+            case INITIALIZED: {
+                value = braneMemory.get(identifier, 0)
+                        .map(r -> r.getValue())
+                        .orElse(null);
+                setNyes(Nyes.RESOLVED);
+            }
+            default:
+                super.step();
+
+        }
+    }
     /**
      * Identifier lookup is not yet implemented.
      * @throws UnsupportedOperationException always
      */
     @Override
     public long getValue() {
-        throw new UnsupportedOperationException(
-            "Identifier lookup not yet implemented in UBC. Cannot get value for: " + this);
+        return value.getValue();
     }
 
     @Override
