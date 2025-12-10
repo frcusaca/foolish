@@ -41,17 +41,18 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
         return identifier.getCharacterization();
     }
 
+
+    @Override
+    protected void initialize() {
+        setInitialized();
+    }
+
     /**
      * Identifier lookup is not yet implemented, so identifiers are abstract (not-known).
      */
     @Override
     public boolean isAbstract() {
         return true;
-    }
-
-    @Override
-    protected void initialize() {
-
     }
 
     /**
