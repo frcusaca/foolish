@@ -1,7 +1,6 @@
 package org.foolish.fvm.ubc;
 
 import org.foolish.ast.AST;
-import org.foolish.fvm.ubc.BraneMemory.StrictlyMatchingQuery;
 /**
  * IdentifierFiroe represents a characterized identifier reference in the UBC system.
  *
@@ -23,7 +22,8 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
 
     public IdentifierFiroe(AST.Identifier identifier) {
         super(identifier);
-        this.identifier = new StrictlyMatchingQuery(identifier.id(), identifier.canonicalCharacterization());
+        CharacterizedIdentifier ci = new CharacterizedIdentifier(identifier);
+        this.identifier = new StrictlyMatchingQuery(ci.getId(), ci.getCharacterization());
     }
 
     /**
@@ -76,6 +76,13 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
 
         }
     }
+    /**
+     * Gets the resolved value FIR.
+     */
+    public FIR getResolvedValue() {
+        return value;
+    }
+
     /**
      * Identifier lookup is not yet implemented.
      * @throws UnsupportedOperationException always

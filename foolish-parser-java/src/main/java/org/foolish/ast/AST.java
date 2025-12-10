@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStatement, AST.BraneRegexpSearch {
+public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStatement {
     static <T> T setCharacterization(List<String> characterizations, T chrbl) {
         return (T) switch (chrbl) {
             case IntegerLiteral intLit -> new IntegerLiteral(characterizations, intLit.value());
@@ -16,7 +16,7 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
         };
     }
 
-    sealed interface Expr extends AST permits Characterizable, BinaryExpr, UnaryExpr, Branes, IfExpr, UnknownExpr, Stmt, DereferenceExpr {
+    sealed interface Expr extends AST permits Characterizable, BinaryExpr, UnaryExpr, Branes, IfExpr, UnknownExpr, Stmt, DereferenceExpr, BraneRegexpSearch {
 
     }
 
@@ -255,7 +255,7 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
         }
     }
 
-    record BraneRegexpSearch(Characterizable brane, String operator, String pattern) implements AST {
+    record BraneRegexpSearch(Characterizable brane, String operator, String pattern) implements Expr {
         public String toString() {
             return brane + " " + operator + " " + pattern;
         }

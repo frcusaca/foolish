@@ -23,6 +23,10 @@ public abstract class FiroeWithBraneMind extends FIR {
     protected final BraneMemory braneMemory;
     protected boolean ordinated;
 
+    public BraneMemory getMemory() {
+        return braneMemory;
+    }
+
     protected FiroeWithBraneMind(AST ast, String comment) {
         super(ast, comment);
         this.braneMind = new LinkedList<>();
