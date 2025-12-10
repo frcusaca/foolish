@@ -10,7 +10,7 @@ import java.util.stream.Stream;
 
 import static java.lang.Math.min;
 
-public class BraneMemory {
+public class BraneMemory implements Iterable<FIR> {
     public sealed interface Query permits StrictlyMatchingQuery {
         public abstract boolean matches(FIR brane_line);
     }
@@ -43,12 +43,13 @@ public class BraneMemory {
         this.memory = new ArrayList<>();
     }
 
-    public Optional<FIR> get(int idx){
-        if(idx>0 && idx<memory.size()){
-            return Optional.of(memory.get(idx));
+    public FIR get(int idx){
+        if(idx>=0 && idx<memory.size()){
+            return memory.get(idx);
         }
-        return Optional.empty();
+        throw new IndexOutOfBoundsException("Index: " + idx + ", Size: " + memory.size());
     }
+
     public Optional<Pair<Integer, FIR>> get(Query query, int fromLine) {
         for (int line = min(fromLine, memory.size() - 1); line >= 0; line--) {
             var lineMemory = memory.get(line);
@@ -72,5 +73,28 @@ public class BraneMemory {
 
     public Stream<FIR> stream(){
         return memory.stream();
+    }
+    
+    public int size() {
+        return memory.size();
+    }
+
+    public FIR getLast() {
+        if (memory.isEmpty()) {
+            throw new java.util.NoSuchElementException("BraneMemory is empty");
+        }
+        return memory.get(memory.size() - 1);
+    }
+
+    public FIR removeFirst() {
+        if (memory.isEmpty()) {
+            throw new java.util.NoSuchElementException("BraneMemory is empty");
+        }
+        return memory.remove(0);
+    }
+
+    @Override
+    public java.util.Iterator<FIR> iterator() {
+        return memory.iterator();
     }
 }

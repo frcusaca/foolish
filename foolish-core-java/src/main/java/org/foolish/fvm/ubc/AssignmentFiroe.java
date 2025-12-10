@@ -54,9 +54,9 @@ public class AssignmentFiroe extends FiroeWithBraneMind {
         }
 
         // Expression is fully evaluated, store the result
-        braneMemory.get(0).ifPresent(fir -> {
-            result = fir;
-        });
+        if (!braneMemory.isEmpty()) {
+            result = braneMemory.get(0);
+        }
     }
 
     @Override

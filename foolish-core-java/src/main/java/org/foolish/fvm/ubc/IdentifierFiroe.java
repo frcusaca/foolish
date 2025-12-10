@@ -71,6 +71,7 @@ public class IdentifierFiroe extends FiroeWithoutBraneMind {
     public boolean isAbstract() {
         return true;
     }
+    
 
     /**
      * Identifier lookup is not yet implemented.
