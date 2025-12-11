@@ -2,7 +2,7 @@ package org.foolish.fvm.ubc;
 
 import java.util.regex.Pattern;
 
-public class RegexpQuery implements Query {
+public final class RegexpQuery implements Query {
     private final Pattern pattern;
 
     public RegexpQuery(String regex) {

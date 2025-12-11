@@ -1,6 +1,6 @@
 package org.foolish.fvm.ubc;
 
-public class StrictlyMatchingQuery extends CharacterizedIdentifier implements Query {
+public final class StrictlyMatchingQuery extends CharacterizedIdentifier implements Query {
     public StrictlyMatchingQuery(String name, String characterization) {
         super(name, characterization);
     }

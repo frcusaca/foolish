@@ -1,5 +1,5 @@
 package org.foolish.fvm.ubc;
 
-public interface Query {
+public sealed interface Query permits StrictlyMatchingQuery, RegexpQuery {
     boolean matches(FIR brane_line);
 }
