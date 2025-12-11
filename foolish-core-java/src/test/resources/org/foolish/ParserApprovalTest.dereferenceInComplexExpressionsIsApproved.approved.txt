@@ -7,7 +7,7 @@ INPUT:
 
 OUTPUT:
 {
-  x = (a . b + c . d);
-  y = (data . x * data . y);
-  z = ((a . b + c . d) * e . f);
+  x = (a.b + c.d);
+  y = (data.x * data.y);
+  z = ((a.b + c.d) * e.f);
 }

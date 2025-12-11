@@ -13,7 +13,7 @@ OUTPUT:
 {
   x = 1;
 }
- . c;
+.c;
   result = {
   a = 1;
 }
@@ -23,12 +23,12 @@ OUTPUT:
 {
   c = 3;
 }
- . value;
+.value;
   complex = {
   data = 10;
 }
 {
   more = 20;
 }
- . field . nested;
+.field.nested;
 }

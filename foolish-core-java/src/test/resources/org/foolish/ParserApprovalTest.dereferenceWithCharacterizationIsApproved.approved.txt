@@ -6,6 +6,6 @@ INPUT:
 
 OUTPUT:
 {
-  x = my_brane'a . coord;
-  y = 'anonymous . value;
+  x = my_brane'a.coord;
+  y = 'anonymous.value;
 }

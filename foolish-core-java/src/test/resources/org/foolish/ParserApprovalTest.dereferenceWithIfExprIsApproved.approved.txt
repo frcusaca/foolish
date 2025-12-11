@@ -6,6 +6,6 @@ INPUT:
 
 OUTPUT:
 {
-  result = if condition then brane1 . x else brane2 . y;
-  value = data . field . nested;
+  result = if condition then brane1.x else brane2.y;
+  value = data.field.nested;
 }

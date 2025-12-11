@@ -5,5 +5,5 @@ INPUT:
 
 OUTPUT:
 {
-  x = a . b;
+  x = a.b;
 }
