@@ -46,7 +46,7 @@ class BraneMemoryUnitTest {
         brane.put(assignment);
 
         // Query for x from line 0
-        BraneMemory.Query query = new BraneMemory.StrictlyMatchingQuery("x", "");
+        Query query = new StrictlyMatchingQuery("x", "");
         Optional<Pair<Integer, FIR>> result = brane.get(query, 0);
 
         assertTrue(result.isPresent());
@@ -66,7 +66,7 @@ class BraneMemoryUnitTest {
         brane.put(createAssignment("z", 20));
 
         // Query for x from line 2 - should find line 0
-        BraneMemory.Query query = new BraneMemory.StrictlyMatchingQuery("x", "");
+        Query query = new StrictlyMatchingQuery("x", "");
         Optional<Pair<Integer, FIR>> result = brane.get(query, 2);
 
         assertTrue(result.isPresent());
@@ -89,7 +89,7 @@ class BraneMemoryUnitTest {
         brane.put(secondX);
 
         // Query from line 1 should find first x (line 0)
-        BraneMemory.Query query = new BraneMemory.StrictlyMatchingQuery("x", "");
+        Query query = new StrictlyMatchingQuery("x", "");
         Optional<Pair<Integer, FIR>> result = brane.get(query, 1);
         assertTrue(result.isPresent());
         assertEquals(0, result.get().getLeft());
@@ -115,7 +115,7 @@ class BraneMemoryUnitTest {
         brane.put(createAssignment("x", 42));
 
         // Query for y - should not be found
-        BraneMemory.Query query = new BraneMemory.StrictlyMatchingQuery("y", "");
+        Query query = new StrictlyMatchingQuery("y", "");
         Optional<Pair<Integer, FIR>> result = brane.get(query, 0);
 
         assertFalse(result.isPresent());
@@ -133,7 +133,7 @@ class BraneMemoryUnitTest {
         child.put(createAssignment("y", 200));
 
         // Query for x from child - should find it in parent
-        BraneMemory.Query query = new BraneMemory.StrictlyMatchingQuery("x", "");
+        Query query = new StrictlyMatchingQuery("x", "");
         Optional<Pair<Integer, FIR>> result = child.get(query, 0);
 
         assertTrue(result.isPresent());
@@ -154,7 +154,7 @@ class BraneMemoryUnitTest {
         child.put(childX);
 
         // Query for x from child - should find child's x
-        BraneMemory.Query query = new BraneMemory.StrictlyMatchingQuery("x", "");
+        Query query = new StrictlyMatchingQuery("x", "");
         Optional<Pair<Integer, FIR>> result = child.get(query, 0);
 
         assertTrue(result.isPresent());
@@ -182,19 +182,19 @@ class BraneMemoryUnitTest {
         parent.put(createAssignment("z", 300));  // line 2
 
         // Query for x from child - should find it (line 0 <= child position 1)
-        BraneMemory.Query queryX = new BraneMemory.StrictlyMatchingQuery("x", "");
+        Query queryX = new StrictlyMatchingQuery("x", "");
         Optional<Pair<Integer, FIR>> resultX = child.get(queryX, 0);
         assertTrue(resultX.isPresent());
         assertSame(xAssignment, resultX.get().getRight());
 
         // Query for y from child - should find it (line 1 <= child position 1)
-        BraneMemory.Query queryY = new BraneMemory.StrictlyMatchingQuery("y", "");
+        Query queryY = new StrictlyMatchingQuery("y", "");
         Optional<Pair<Integer, FIR>> resultY = child.get(queryY, 0);
         assertTrue(resultY.isPresent());
         assertSame(yAssignment, resultY.get().getRight());
 
         // Query for z from child - should NOT find it (line 2 > child position 1)
-        BraneMemory.Query queryZ = new BraneMemory.StrictlyMatchingQuery("z", "");
+        Query queryZ = new StrictlyMatchingQuery("z", "");
         Optional<Pair<Integer, FIR>> resultZ = child.get(queryZ, 0);
         assertFalse(resultZ.isPresent());
     }
@@ -215,19 +215,19 @@ class BraneMemoryUnitTest {
         child.put(childZ);
 
         // Query for x from child - should traverse up to grandparent
-        BraneMemory.Query queryX = new BraneMemory.StrictlyMatchingQuery("x", "");
+        Query queryX = new StrictlyMatchingQuery("x", "");
         Optional<Pair<Integer, FIR>> result = child.get(queryX, 0);
         assertTrue(result.isPresent());
         assertSame(grandparentX, result.get().getRight());
 
         // Query for y from child - should find in parent
-        BraneMemory.Query queryY = new BraneMemory.StrictlyMatchingQuery("y", "");
+        Query queryY = new StrictlyMatchingQuery("y", "");
         result = child.get(queryY, 0);
         assertTrue(result.isPresent());
         assertSame(parentY, result.get().getRight());
 
         // Query for z from child - should find in child
-        BraneMemory.Query queryZ = new BraneMemory.StrictlyMatchingQuery("z", "");
+        Query queryZ = new StrictlyMatchingQuery("z", "");
         result = child.get(queryZ, 0);
         assertTrue(result.isPresent());
         assertSame(childZ, result.get().getRight());
@@ -244,14 +244,14 @@ class BraneMemoryUnitTest {
         brane.put(plainAssignment);          // line 1: x = 100
 
         // Query for type'x - canonicalCharacterization adds trailing '
-        BraneMemory.Query query = new BraneMemory.StrictlyMatchingQuery("x", "type'");
+        Query query = new StrictlyMatchingQuery("x", "type'");
         Optional<Pair<Integer, FIR>> result = brane.get(query, 1);
         assertTrue(result.isPresent());
         assertEquals(0, result.get().getLeft());
         assertSame(characterizedAssignment, result.get().getRight());
 
         // Query for uncharacterized x from line 1 - should find line 1
-        BraneMemory.Query queryPlain = new BraneMemory.StrictlyMatchingQuery("x", "");
+        Query queryPlain = new StrictlyMatchingQuery("x", "");
         result = brane.get(queryPlain, 1);
         assertTrue(result.isPresent());
         assertEquals(1, result.get().getLeft());
@@ -271,7 +271,7 @@ class BraneMemoryUnitTest {
         brane.put(createAssignment("y", 5));   // line 2: y = 5
         brane.put(x3);              // line 3: x = 30
 
-        BraneMemory.Query query = new BraneMemory.StrictlyMatchingQuery("x", "");
+        Query query = new StrictlyMatchingQuery("x", "");
 
         // From line 0: finds line 0
         Optional<Pair<Integer, FIR>> result = brane.get(query, 0);

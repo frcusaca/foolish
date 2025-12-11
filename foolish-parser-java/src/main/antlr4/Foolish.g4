@@ -64,7 +64,16 @@ unaryExpr
     ;
 
 postfixExpr
-    : primary (DOT characterizable_identifier)*
+    : primary (postfix_op)*
+    ;
+
+postfix_op
+    : regexp_operator regexp_expression
+    | HASH seek_index
+    ;
+
+seek_index
+    : MINUS? INTEGER
     ;
 
 literal
@@ -88,9 +97,42 @@ endIf: FI ;
 // Regexp operators for brane searching
 regexp_operator
     : DOT_DOT        // '..'
-    | QUESTION_QUESTION  // '??'
     | DOT            // '.'
     | QUESTION       // '?'
+    | QUESTION_QUESTION // '??'
+    ;
+
+// Regexp expression with balanced parentheses validation
+// The pattern is stored as a string (via getText()) but ANTLR enforces matching pairs
+// Note: Must use tokens (IDENTIFIER, INTEGER) not fragments (LETTERS, DIGIT, INTRA_ID_SEPARATOR)
+// since fragments cannot be referenced in parser rules
+regexp_expression : regexp_element+ ;
+
+regexp_element
+    : IDENTIFIER         // Letters, digits, separators
+    | INTEGER            // Numbers
+    | APOSTROPHE         // ' (for characterization)
+    // Special chars allowed ONLY inside parentheses to avoid ambiguity with operators
+    | LPAREN regexp_inner* RPAREN    // Balanced () - can contain special chars
+    | LBRACE regexp_inner* RBRACE    // Balanced {}
+    | LBRACK regexp_inner* RBRACK    // Balanced []
+    ;
+
+// Inside parentheses/braces/brackets, we can use regexp special characters
+regexp_inner
+    : IDENTIFIER
+    | INTEGER
+    | APOSTROPHE
+    | MUL                // * (for regexp, only inside parens)
+    | PLUS               // + (for regexp, only inside parens)
+    | CARET              // ^ (for regexp, only inside parens)
+    | QUESTION           // ? (for regexp, only inside parens)
+    | DOLLAR             // $ (for regexp, only inside parens)
+    | ESLASH             // \ (for regexp, only inside parens)
+    | DOT                // . (for regexp, only inside parens)
+    | LPAREN regexp_inner* RPAREN    // Nested balanced ()
+    | LBRACE regexp_inner* RBRACE    // Nested balanced {}
+    | LBRACK regexp_inner* RBRACK    // Nested balanced []
     ;
 
 // Lexer rules (uppercase)
@@ -103,10 +145,10 @@ RBRACK : ']' ;
 SEMI : ';' ;
 
 LINE_COMMENT
-    : '!' ~[\r\n]* -> skip
+    : '!!' ~[\r\n]* -> skip
     ;
 BLOCK_COMMENT
-    : '!!' (.| '\r' | '\n' )*? '!!' -> skip
+    : '!' (.| '\r' | '\n' '\\!')*? '!' -> skip
     ;
 
 
@@ -115,7 +157,14 @@ PLUS : '+' ;
 MINUS : '-' ;
 MUL : '*' ;
 DIV : '/' ;
+CARET : '^';
+ESLASH : '\\';
+DOLLAR : '$';
+QUESTION: '?';
+QUESTION_QUESTION: '??';
+HASH : '#';
 
+DOT_DOT : '..' ;
 DOT : '.' ;
 
 IF  : 'if' ;

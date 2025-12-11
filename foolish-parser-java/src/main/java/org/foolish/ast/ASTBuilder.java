@@ -174,11 +174,15 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
     @Override
     public AST visitPostfixExpr(FoolishParser.PostfixExprContext ctx) {
-        // Handle dereference: primary.identifier.identifier...
         AST.Expr base = (AST.Expr) visit(ctx.primary());
-        for (int i = 0; i < ctx.characterizable_identifier().size(); i++) {
-            AST.Identifier coordinate = (AST.Identifier) visit(ctx.characterizable_identifier(i));
-            base = new AST.DereferenceExpr(base, coordinate);
+        for (FoolishParser.Postfix_opContext op : ctx.postfix_op()) {
+            if (op.regexp_operator() != null) {
+                String operator = op.regexp_operator().getText();
+                String pattern = op.regexp_expression().getText();
+                base = new AST.BraneRegexpSearch(base, operator, pattern);
+            } else if (op.HASH() != null) {
+                throw new UnsupportedOperationException("Hash operator not implemented");
+            }
         }
         return base;
     }
