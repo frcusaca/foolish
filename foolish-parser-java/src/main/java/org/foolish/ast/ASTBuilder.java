@@ -31,7 +31,9 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
     @Override
     public AST visitBrane(FoolishParser.BraneContext ctx) {
-        if (ctx.standard_brane() != null) {
+        if (ctx.brane_search() != null) {
+            return visit(ctx.brane_search());
+        } else if (ctx.standard_brane() != null) {
             return visit(ctx.standard_brane());
         } else if (ctx.detach_brane() != null) {
             return visit(ctx.detach_brane());
@@ -40,6 +42,7 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
         System.err.println("  ctx: " + ctx.getText());
         System.err.println("  standard_brane: " + ctx.standard_brane());
         System.err.println("  detach_brane: " + ctx.detach_brane());
+        System.err.println("  brane_search: " + ctx.brane_search());
         System.err.println("  children: " + ctx.getChildCount());
         for (int i = 0; i < ctx.getChildCount(); i++) {
             System.err.println("    child " + i + ": " + ctx.getChild(i).getClass().getName() + " = " + ctx.getChild(i).getText());

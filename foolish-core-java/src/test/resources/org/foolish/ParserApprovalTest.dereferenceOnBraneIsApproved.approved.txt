@@ -8,9 +8,9 @@ OUTPUT:
 {
   x = {
   y = 10;
-}.y;
+} . y;
   result = {
   a = 1;
   b = 2;
-}.a;
+} . a;
 }
