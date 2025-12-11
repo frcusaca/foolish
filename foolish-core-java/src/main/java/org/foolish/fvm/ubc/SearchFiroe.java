@@ -27,11 +27,14 @@ public class SearchFiroe extends FiroeWithBraneMind {
 
         if (braneAst instanceof AST.Identifier id) {
              targetBraneFir = new IdentifierFiroe(id);
+             enqueueFirs(targetBraneFir);
         } else if (braneAst instanceof AST.Brane b) {
              targetBraneFir = new BraneFiroe(b);
+             enqueueFirs(targetBraneFir);
+        } else {
+             // Handle unsupported types (e.g. literals) by doing nothing
+             // step() will handle null targetBraneFir
         }
-
-        enqueueFirs(targetBraneFir);
     }
 
     @Override
@@ -39,8 +42,14 @@ public class SearchFiroe extends FiroeWithBraneMind {
         super.step();
 
         if (isNye()) {
+            if (targetBraneFir == null) {
+                // Should not happen for valid AST, but avoid loop
+                setNyes(Nyes.RESOLVED);
+                return;
+            }
+
             // Check if we can perform the search now (when targetBraneFir is done)
-            if (value == null && targetBraneFir != null && !targetBraneFir.isNye()) {
+            if (value == null && !targetBraneFir.isNye()) {
                  performSearch();
             }
             return;
