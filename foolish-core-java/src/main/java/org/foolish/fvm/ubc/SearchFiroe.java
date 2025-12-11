@@ -1,11 +1,10 @@
 package org.foolish.fvm.ubc;
 
 import org.foolish.ast.AST;
-import org.foolish.ast.AST.Characterizable;
 import org.apache.commons.lang3.tuple.Pair;
 
 public class SearchFiroe extends FiroeWithBraneMind {
-    private final Characterizable braneAst;
+    private final AST.Expr braneAst;
     private final String operator;
     private final String patternStr;
     private Query query;
@@ -25,16 +24,8 @@ public class SearchFiroe extends FiroeWithBraneMind {
         if (isInitialized()) return;
         setInitialized();
 
-        if (braneAst instanceof AST.Identifier id) {
-             targetBraneFir = new IdentifierFiroe(id);
-             enqueueFirs(targetBraneFir);
-        } else if (braneAst instanceof AST.Brane b) {
-             targetBraneFir = new BraneFiroe(b);
-             enqueueFirs(targetBraneFir);
-        } else {
-             // Handle unsupported types (e.g. literals) by doing nothing
-             // step() will handle null targetBraneFir
-        }
+        targetBraneFir = FIR.createFiroeFromExpr(braneAst);
+        enqueueFirs(targetBraneFir);
     }
 
     @Override

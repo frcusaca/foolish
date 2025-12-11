@@ -255,7 +255,7 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
         }
     }
 
-    record BraneRegexpSearch(Characterizable brane, String operator, String pattern) implements Expr {
+    record BraneRegexpSearch(Expr brane, String operator, String pattern) implements Expr {
         public String toString() {
             return brane + " " + operator + " " + pattern;
         }

@@ -94,12 +94,7 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
     @Override
     public AST visitBrane_search(FoolishParser.Brane_searchContext ctx) {
-        AST.Characterizable target = (AST.Characterizable) visit(ctx.characterizable());
-        String operator = ctx.regexp_operator().getText();
-        String pattern = ctx.STRING().getText();
-        // Remove quotes from string
-        pattern = pattern.substring(1, pattern.length() - 1);
-        return new AST.BraneRegexpSearch(target, operator, pattern);
+        return new AST.SearchUP();
     }
 
 
@@ -130,7 +125,6 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
     public AST visitExpr(FoolishParser.ExprContext ctx) {
         if (ctx.ifExpr() != null) return visit(ctx.ifExpr());
         if (ctx.branes() != null) return visit(ctx.branes());
-        if (ctx.brane_search() != null) return visit(ctx.brane_search());
         return visit(ctx.addExpr());
     }
 
@@ -177,11 +171,15 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
     @Override
     public AST visitPostfixExpr(FoolishParser.PostfixExprContext ctx) {
-        // Handle dereference: primary.identifier.identifier...
         AST.Expr base = (AST.Expr) visit(ctx.primary());
-        for (int i = 0; i < ctx.characterizable_identifier().size(); i++) {
-            AST.Identifier coordinate = (AST.Identifier) visit(ctx.characterizable_identifier(i));
-            base = new AST.DereferenceExpr(base, coordinate);
+        for (FoolishParser.Postfix_opContext op : ctx.postfix_op()) {
+            if (op.regexp_operator() != null) {
+                String operator = op.regexp_operator().getText();
+                String pattern = op.regexp_expression().getText();
+                base = new AST.BraneRegexpSearch(base, operator, pattern);
+            } else if (op.HASH() != null) {
+                throw new UnsupportedOperationException("Hash operator not implemented");
+            }
         }
         return base;
     }
