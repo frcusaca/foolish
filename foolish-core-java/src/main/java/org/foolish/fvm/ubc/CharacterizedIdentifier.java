@@ -81,6 +81,9 @@ public class CharacterizedIdentifier {
      */
     public String toFoolishString() {
         if (hasCharacterization()) {
+            if (characterization.endsWith("'")) {
+                return characterization + id;
+            }
             return characterization + "'" + id;
         }
         return id;

@@ -41,6 +41,7 @@ public class Sequencer4Human extends Sequencer<String> {
             case UnaryFiroe unary -> sequenceUnary(unary, depth);
             case IfFiroe ifFiroe -> sequenceIf(ifFiroe, depth);
             case SearchUpFiroe searchUp -> sequenceSearchUp(searchUp, depth);
+            case SearchFiroe search -> sequenceSearch(search, depth);
             case AssignmentFiroe assignment -> sequenceAssignment(assignment, depth);
             case IdentifierFiroe identifier -> sequenceIdentifier(identifier, depth);
             case null, default -> indent(depth) + "???";
@@ -117,23 +118,41 @@ public class Sequencer4Human extends Sequencer<String> {
         return indent(depth) + "↑";
     }
 
+    protected String sequenceSearch(SearchFiroe search, int depth) {
+        if (!search.isNye()) {
+            try {
+                return indent(depth) + search.getValue();
+            } catch (Exception e) {
+                return indent(depth) + "???";
+            }
+        }
+        return indent(depth) + "???";
+    }
+
     /**
      * Sequences an assignment FIR showing the coordinate name and its value.
      */
     protected String sequenceAssignment(AssignmentFiroe assignment, int depth) {
+        String id = assignment.getLhs().toFoolishString();
         if (!assignment.isNye() && assignment.getResult() != null) {
             FIR result = assignment.getResult();
             // Check if the result is fully evaluated
             if (!result.isNye()) {
                 // Check if the result is NK (not-known)
                 if (result.isAbstract()) {
-                    return indent(depth) + assignment.getId() + " = ???";
+                    return indent(depth) + id + " = ???";
                 }
-                return indent(depth) + assignment.getId() + " = " + result.getValue();
+                if (result instanceof ValueFiroe) {
+                    return indent(depth) + id + " = " + result.getValue();
+                }
+
+                String seq = sequence(result, depth);
+                // Strip leading indent to place inline with assignment if possible
+                return indent(depth) + id + " = " + seq.stripLeading();
             }
         }
         // If not yet evaluated, show the structure
-        return indent(depth) + assignment.getId() + " = ???";
+        return indent(depth) + id + " = ???";
     }
 
     /**

@@ -1,0 +1,78 @@
+!!INPUT!!
+{
+  y = { a = 1; b = 2; a = 3; };
+  z = y . "a";
+
+  y2 = { abc = 10; bcd = 20; };
+  z2 = y2 . "b.*";
+
+  z3 = y2 . "^a";
+  z4 = y2 . "^a.*";
+
+  y3 = { type'x = 100; other'x = 200; };
+  z5 = y3 . "type'x";
+
+  ! Partial match with anchor
+  y4 = { abc = 500; };
+  z7 = y4 . "^a";
+}
+
+!!!
+PARSED AST:
+{
+  y = {
+    a = 1;
+    b = 2;
+    a = 3;
+  };
+  z = y . a;
+  y2 = {
+    abc = 10;
+    bcd = 20;
+  };
+  z2 = y2 . b.*;
+  z3 = y2 . ^a;
+  z4 = y2 . ^a.*;
+  y3 = {
+    x = 100;
+    x = 200;
+  };
+  z5 = y3 . type'x;
+  y4 = {
+    abc = 500;
+  };
+  z7 = y4 . ^a;
+}
+
+UBC EVALUATION:
+Steps taken: 304
+
+FINAL RESULT:
+{
+＿y = ＿{
+＿＿a = 1;
+＿＿b = 2;
+＿＿a = 3;
+＿};
+＿z = ＿3;
+＿y2 = ＿{
+＿＿abc = 10;
+＿＿bcd = 20;
+＿};
+＿z2 = ＿20;
+＿z3 = ＿10;
+＿z4 = ＿10;
+＿y3 = ＿{
+＿＿type'x = 100;
+＿＿other'x = 200;
+＿};
+＿z5 = ＿100;
+＿y4 = ＿{
+＿＿abc = 500;
+＿};
+＿z7 = ＿500;
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!

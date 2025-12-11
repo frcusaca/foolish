@@ -22,7 +22,6 @@ branes: brane+ ;
 brane
     : standard_brane
     | detach_brane
-    | brane_search
     ;
 
 standard_brane
@@ -37,8 +36,6 @@ detach_stmt
     : characterizable_identifier (ASSIGN expr)? SEMI LINE_COMMENT?
     ;
 
-brane_search : UP;
-
 stmt
     : (
       assignment
@@ -51,6 +48,7 @@ expr
     : addExpr
     | ifExpr
     | branes
+    | brane_search
     ;
 
 addExpr : mulExpr ((PLUS | MINUS) mulExpr)* ;
@@ -86,11 +84,15 @@ ifExprHelperElse: ELSE expr ;
 endIf: FI ;
 
 // Regexp operators for brane searching
+brane_search
+    : characterizable regexp_operator STRING
+    ;
+
 regexp_operator
-    : DOT_DOT        // '..'
-    | QUESTION_QUESTION  // '??'
-    | DOT            // '.'
-    | QUESTION       // '?'
+    : DOT_DOT
+    | QUESTION_QUESTION
+    | DOT
+    | QUESTION
     ;
 
 // Lexer rules (uppercase)
@@ -117,6 +119,9 @@ MUL : '*' ;
 DIV : '/' ;
 
 DOT : '.' ;
+DOT_DOT : '..' ;
+QUESTION : '?' ;
+QUESTION_QUESTION : '??' ;
 
 IF  : 'if' ;
 THEN : 'then' ;
@@ -126,6 +131,7 @@ FI   :  'fi'  ;
 UP   : '↑' ;
 UNKNOWN : '???' ; // Unknowns are unknown
 
+STRING : '"' ( ~('"' | '\\') | '\\' . )* '"' ;
 INTEGER : DIGIT+ ;
 
 fragment LETTERS : ARABIC_PART | LATIN | GREEK_PART | CYRYLLIC_PART | HEBREW_PART | CHINESE_PART;

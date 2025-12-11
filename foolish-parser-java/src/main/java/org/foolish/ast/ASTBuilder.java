@@ -31,9 +31,7 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
     @Override
     public AST visitBrane(FoolishParser.BraneContext ctx) {
-        if (ctx.brane_search() != null) {
-            return visit(ctx.brane_search());
-        } else if (ctx.standard_brane() != null) {
+        if (ctx.standard_brane() != null) {
             return visit(ctx.standard_brane());
         } else if (ctx.detach_brane() != null) {
             return visit(ctx.detach_brane());
@@ -42,7 +40,6 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
         System.err.println("  ctx: " + ctx.getText());
         System.err.println("  standard_brane: " + ctx.standard_brane());
         System.err.println("  detach_brane: " + ctx.detach_brane());
-        System.err.println("  brane_search: " + ctx.brane_search());
         System.err.println("  children: " + ctx.getChildCount());
         for (int i = 0; i < ctx.getChildCount(); i++) {
             System.err.println("    child " + i + ": " + ctx.getChild(i).getClass().getName() + " = " + ctx.getChild(i).getText());
@@ -97,7 +94,12 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
     @Override
     public AST visitBrane_search(FoolishParser.Brane_searchContext ctx) {
-        return new AST.SearchUP();
+        AST.Characterizable target = (AST.Characterizable) visit(ctx.characterizable());
+        String operator = ctx.regexp_operator().getText();
+        String pattern = ctx.STRING().getText();
+        // Remove quotes from string
+        pattern = pattern.substring(1, pattern.length() - 1);
+        return new AST.BraneRegexpSearch(target, operator, pattern);
     }
 
 
@@ -128,6 +130,7 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
     public AST visitExpr(FoolishParser.ExprContext ctx) {
         if (ctx.ifExpr() != null) return visit(ctx.ifExpr());
         if (ctx.branes() != null) return visit(ctx.branes());
+        if (ctx.brane_search() != null) return visit(ctx.brane_search());
         return visit(ctx.addExpr());
     }
 
