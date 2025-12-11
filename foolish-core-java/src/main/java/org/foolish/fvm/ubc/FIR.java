@@ -125,9 +125,16 @@ public abstract class FIR {
             case AST.Identifier identifier -> {
                 return new IdentifierFiroe(identifier);
             }
+            case AST.RegexpSearchExpr regexpSearch -> {
+                return new RegexpSearchFiroe(regexpSearch);
+            }
+            case AST.SeekExpr seekExpr -> {
+                // TODO: Implement SeekFiroe when needed
+                return new NKFiroe();
+            }
             default -> {
                 // Placeholder for unsupported types
-                return new ValueFiroe(0L);
+                return new NKFiroe();
             }
         }
     }

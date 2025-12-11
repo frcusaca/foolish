@@ -64,7 +64,17 @@ unaryExpr
     ;
 
 postfixExpr
-    : primary (DOT characterizable_identifier)*
+    : primary (postfix_op)*
+    ;
+
+postfix_op
+    : DOT characterizable_identifier
+    | regexp_operator regexp_expression
+    | HASH seek_index
+    ;
+
+seek_index
+    : MINUS? INTEGER
     ;
 
 literal
@@ -75,7 +85,7 @@ primary
     : characterizable
     | LPAREN expr RPAREN
     | UNKNOWN
-	;
+    ;
 
 ifExpr
     : ifExprHelperIf (ifExprHelperElif)* (ifExprHelperElse)? endIf?
@@ -87,10 +97,41 @@ endIf: FI ;
 
 // Regexp operators for brane searching
 regexp_operator
-    : DOT_DOT        // '..'
-    | QUESTION_QUESTION  // '??'
-    | DOT            // '.'
-    | QUESTION       // '?'
+    : QUESTION          // ?
+    | QUESTION_QUESTION // ??
+    ;
+
+// Regexp expression with balanced parentheses validation
+// The pattern is stored as a string (via getText()) but ANTLR enforces matching pairs
+// Note: Must use tokens (IDENTIFIER, INTEGER) not fragments (LETTERS, DIGIT, INTRA_ID_SEPARATOR)
+// since fragments cannot be referenced in parser rules
+regexp_expression : regexp_element+ ;
+
+regexp_element
+    : IDENTIFIER         // Letters, digits, separators
+    | INTEGER            // Numbers
+    | APOSTROPHE         // ' (for characterization)
+    // Special chars allowed ONLY inside parentheses to avoid ambiguity with operators
+    | LPAREN regexp_inner* RPAREN    // Balanced () - can contain special chars
+    | LBRACE regexp_inner* RBRACE    // Balanced {}
+    | LBRACK regexp_inner* RBRACK    // Balanced []
+    ;
+
+// Inside parentheses/braces/brackets, we can use regexp special characters
+regexp_inner
+    : IDENTIFIER
+    | INTEGER
+    | APOSTROPHE
+    | MUL                // * (for regexp, only inside parens)
+    | PLUS               // + (for regexp, only inside parens)
+    | CARET              // ^ (for regexp, only inside parens)
+    | QUESTION           // ? (for regexp, only inside parens)
+    | DOLLAR             // $ (for regexp, only inside parens)
+    | ESLASH             // \ (for regexp, only inside parens)
+    | DOT                // . (for regexp, only inside parens)
+    | LPAREN regexp_inner* RPAREN    // Nested balanced ()
+    | LBRACE regexp_inner* RBRACE    // Nested balanced {}
+    | LBRACK regexp_inner* RBRACK    // Nested balanced []
     ;
 
 // Lexer rules (uppercase)
@@ -103,10 +144,10 @@ RBRACK : ']' ;
 SEMI : ';' ;
 
 LINE_COMMENT
-    : '!' ~[\r\n]* -> skip
+    : '!!' ~[\r\n]* -> skip
     ;
 BLOCK_COMMENT
-    : '!!' (.| '\r' | '\n' )*? '!!' -> skip
+    : '!' (.|'\r'|'\n'|'\\!')*? '!' -> skip
     ;
 
 
@@ -115,7 +156,14 @@ PLUS : '+' ;
 MINUS : '-' ;
 MUL : '*' ;
 DIV : '/' ;
+CARET : '^';
+ESLASH : '\\';
+DOLLAR : '$';
+QUESTION: '?';
+QUESTION_QUESTION: '??';
+HASH : '#';
 
+DOT_DOT : '..' ;
 DOT : '.' ;
 
 IF  : 'if' ;
@@ -130,7 +178,7 @@ INTEGER : DIGIT+ ;
 
 fragment LETTERS : ARABIC_PART | LATIN | GREEK_PART | CYRYLLIC_PART | HEBREW_PART | CHINESE_PART;
 fragment DIGIT : [0-9] ;
-fragment INTRA_ID_SEPARATOR : ' ' | '⁠' | '_' ;
+fragment INTRA_ID_SEPARATOR : '\u202F' | '_' ;
 // Skip whitespace
 WS : [ \t\r\n]+ -> skip ;
 
@@ -143,7 +191,7 @@ fragment CYRYLLIC_PART: [БбвДдЖжЗзИиЙйКкЛлмнПптЦцЧчЩ�
 fragment HEBREW_PART : [אבגהחטכלמנסעפצקרשתםףץך]+;
 fragment CHINESE_PART : ('\u4E00'..'\u9FFF')+;
 fragment ARABIC_PART : ('\u0621'..'\u0652')+;
-fragment SANSKRIT_PART 
+fragment SANSKRIT_PART
     :   (   DEVANAGARI_CHAR
         |   VEDIC_EXT_CHAR
         |   DEVANAGARI_EXT_CHAR

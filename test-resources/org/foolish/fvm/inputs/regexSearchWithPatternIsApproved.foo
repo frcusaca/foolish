@@ -1,0 +1,3 @@
+{
+    result = {alice = 1; bob = 2; charlie = 3;}?(a.*);
+}

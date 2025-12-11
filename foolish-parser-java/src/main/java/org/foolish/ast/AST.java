@@ -16,7 +16,7 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
         };
     }
 
-    sealed interface Expr extends AST permits Characterizable, BinaryExpr, UnaryExpr, Branes, IfExpr, UnknownExpr, Stmt, DereferenceExpr {
+    sealed interface Expr extends AST permits Characterizable, BinaryExpr, UnaryExpr, Branes, IfExpr, UnknownExpr, Stmt, DereferenceExpr, RegexpSearchExpr, SeekExpr {
 
     }
 
@@ -195,6 +195,18 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
     record DereferenceExpr(Expr base, Identifier coordinate) implements Expr {
         public String toString() {
             return base + "." + coordinate;
+        }
+    }
+
+    record RegexpSearchExpr(Expr base, String operator, String pattern) implements Expr {
+        public String toString() {
+            return base + " " + operator + " " + pattern;
+        }
+    }
+
+    record SeekExpr(Expr base, int offset) implements Expr {
+        public String toString() {
+            return base + "#" + offset;
         }
     }
 

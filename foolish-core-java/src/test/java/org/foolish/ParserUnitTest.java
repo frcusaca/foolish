@@ -256,8 +256,8 @@ public class ParserUnitTest {
     @Test
     public void testComments() {
         AST ast = parse("""
-                    { 
-                    !!
+                    {
+                    !
                         This block of text is known as a block comment.
                         It can contain code such as:
                             {
@@ -266,13 +266,13 @@ public class ParserUnitTest {
                                 etc=???;
                             }
                         But it will be ignored by the parser.
-                     !!
+                     !
                         x = ???;
                         y = ???;
-                        ! {} this is a comment?
-                        ! how about this?
-                        y = 10; ! !!now is another comment
-                        z = 11;  ! ! staggered commenting ;;;;
+                        !! {} this is a comment?
+                        !! how about this?
+                        y = 10; !! !!now is another comment
+                        z = 11;  !! ! staggered commenting ;;;;
                     }
                 """);
         assertEquals("""

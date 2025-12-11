@@ -11,28 +11,6 @@ import java.util.stream.Stream;
 import static java.lang.Math.min;
 
 public class BraneMemory implements Iterable<FIR> {
-    public sealed interface Query permits StrictlyMatchingQuery {
-        public abstract boolean matches(FIR brane_line);
-    }
-
-    public static final class StrictlyMatchingQuery extends CharacterizedIdentifier implements Query {
-        public StrictlyMatchingQuery(String name, String characterization) {
-            super(name, characterization);
-        }
-
-        public boolean matches(FIR brane_line) {
-            return switch (brane_line) {
-                case AssignmentFiroe ass -> {
-                    CharacterizedIdentifier lhs = ass.getLhs();
-                    yield lhs.equals(this);
-                }
-                default ->
-                    // mostly here is unamed lines in brane.
-                        false;
-            };
-        }
-    }
-
     private BraneMemory parent;
     private Optional<Integer> myPos = Optional.empty();
     private final List<FIR> memory;

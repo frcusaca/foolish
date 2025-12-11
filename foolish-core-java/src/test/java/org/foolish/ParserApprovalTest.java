@@ -95,13 +95,13 @@ public class ParserApprovalTest {
         verifyApprovalOf("""
                 [
                     variable\u202Fx = ???;
-                    coordinate\u2060y;
+                    coordinate\u202Fy;
                 ]
                 {
                     my_result = x;
-                    my\u202Fresult\u2060coordinate=-42;
-                    here\u202Ftoo'a\u202Fb\u2060c = 5;
-                    simple\u2060name'd\u202Fe\u2060f;
+                    my\u202Fresult\u202Fcoordinate=-42;
+                    here\u202Ftoo'a\u202Fb\u202Fc = 5;
+                    simple\u202Fname'd\u202Fe\u202Ff;
                 }
         """);
     }
@@ -303,7 +303,7 @@ public class ParserApprovalTest {
     void dereferenceWithThinSpacesIsApproved() {
         verifyApprovalOf("""
                 {
-                    x = my\u202Fbrane.my\u2060coordinate;
+                    x = my\u202Fbrane.my\u202Fcoordinate;
                 }
         """);
     }

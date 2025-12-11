@@ -1,0 +1,25 @@
+!!INPUT!!
+{
+    result = {α = 100; β = 200;}?notfound;
+}
+
+!!!
+PARSED AST:
+{
+  result = {
+  α = 100;
+  β = 200;
+} ? notfound;
+}
+
+UBC EVALUATION:
+Steps taken: 11
+
+FINAL RESULT:
+{
+＿result = 0;
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!

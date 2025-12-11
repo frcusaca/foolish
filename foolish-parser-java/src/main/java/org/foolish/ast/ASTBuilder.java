@@ -174,12 +174,27 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
     @Override
     public AST visitPostfixExpr(FoolishParser.PostfixExprContext ctx) {
-        // Handle dereference: primary.identifier.identifier...
         AST.Expr base = (AST.Expr) visit(ctx.primary());
-        for (int i = 0; i < ctx.characterizable_identifier().size(); i++) {
-            AST.Identifier coordinate = (AST.Identifier) visit(ctx.characterizable_identifier(i));
-            base = new AST.DereferenceExpr(base, coordinate);
+
+        // Process all postfix operations in order
+        for (var postfixOp : ctx.postfix_op()) {
+            if (postfixOp.DOT() != null && postfixOp.characterizable_identifier() != null) {
+                // Handle dereference: base.identifier
+                AST.Identifier coordinate = (AST.Identifier) visit(postfixOp.characterizable_identifier());
+                base = new AST.DereferenceExpr(base, coordinate);
+            } else if (postfixOp.regexp_operator() != null && postfixOp.regexp_expression() != null) {
+                // Handle regexp search: base ? pattern or base ?? pattern
+                String operator = postfixOp.regexp_operator().getText();
+                String pattern = postfixOp.regexp_expression().getText();
+                base = new AST.RegexpSearchExpr(base, operator, pattern);
+            } else if (postfixOp.HASH() != null && postfixOp.seek_index() != null) {
+                // Handle seek: base#N or base#-N
+                String indexText = postfixOp.seek_index().getText();
+                int offset = Integer.parseInt(indexText);
+                base = new AST.SeekExpr(base, offset);
+            }
         }
+
         return base;
     }
 
@@ -212,6 +227,12 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
     @Override
     public AST visitCharacterizable_identifier(FoolishParser.Characterizable_identifierContext ctx) {
         List<String> characterizations = extractCharacterizations(ctx.characterization());
+
+        // Handle case where IDENTIFIER might be null (should not happen per grammar, but defensive)
+        if (ctx.IDENTIFIER() == null) {
+            throw new IllegalStateException("characterizable_identifier requires an IDENTIFIER token");
+        }
+
         String id = ctx.IDENTIFIER().getText();
 
         if (characterizations.isEmpty()) {
