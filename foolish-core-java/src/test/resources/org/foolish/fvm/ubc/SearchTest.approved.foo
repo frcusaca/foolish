@@ -2,9 +2,11 @@
 {
   y = { a = 1; b = 2; a = 3; };
   z = y . a;
+  z_question = y ? a;
 
   y2 = { abc = 10; bcd = 20; };
   z2 = y2 . (b.*);
+  z2_question = y2 ? (b.*);
 
   z3 = y2 . (^a);
   z4 = y2 . (^a.*);
@@ -26,11 +28,13 @@ PARSED AST:
     a = 3;
   };
   z = y . a;
+  z_question = y ? a;
   y2 = {
     abc = 10;
     bcd = 20;
   };
   z2 = y2 . (b.*);
+  z2_question = y2 ? (b.*);
   z3 = y2 . (^a);
   z4 = y2 . (^a.*);
   y3 = {
@@ -45,7 +49,7 @@ PARSED AST:
 }
 
 UBC EVALUATION:
-Steps taken: 304
+Steps taken: 376
 
 FINAL RESULT:
 {
@@ -55,11 +59,13 @@ FINAL RESULT:
 ＿＿a = 3;
 ＿};
 ＿z = ＿3;
+＿z_question = ＿3;
 ＿y2 = ＿{
 ＿＿abc = 10;
 ＿＿bcd = 20;
 ＿};
 ＿z2 = ＿20;
+＿z2_question = ＿20;
 ＿z3 = ＿10;
 ＿z4 = ＿10;
 ＿y3 = ＿{

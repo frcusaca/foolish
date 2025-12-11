@@ -98,6 +98,8 @@ endIf: FI ;
 regexp_operator
     : DOT_DOT        // '..'
     | DOT            // '.'
+    | QUESTION       // '?'
+    | QUESTION_QUESTION // '??'
     ;
 
 // Regexp expression with balanced parentheses validation
@@ -159,6 +161,7 @@ CARET : '^';
 ESLASH : '\\';
 DOLLAR : '$';
 QUESTION: '?';
+QUESTION_QUESTION: '??';
 HASH : '#';
 
 DOT_DOT : '..' ;

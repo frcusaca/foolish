@@ -1,9 +1,11 @@
 {
   y = { a = 1; b = 2; a = 3; };
   z = y . a;
+  z_question = y ? a;
 
   y2 = { abc = 10; bcd = 20; };
   z2 = y2 . (b.*);
+  z2_question = y2 ? (b.*);
 
   z3 = y2 . (^a);
   z4 = y2 . (^a.*);
