@@ -6,13 +6,18 @@ public class RegexpQuery implements Query {
     private final Pattern pattern;
 
     public RegexpQuery(String regex) {
-        this.pattern = Pattern.compile(regex);
+        String finalRegex = regex;
+        if (!regex.contains("^") && !regex.contains("$")) {
+            finalRegex = "^" + regex + "$";
+        }
+        this.pattern = Pattern.compile(finalRegex);
     }
 
     @Override
     public boolean matches(FIR brane_line) {
         if (brane_line instanceof AssignmentFiroe ass) {
-             return pattern.matcher(ass.getId()).matches();
+             String target = ass.getLhs().getCharacterization() + ass.getLhs().getId();
+             return pattern.matcher(target).find();
         }
         return false;
     }
