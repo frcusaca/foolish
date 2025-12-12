@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mvn clean compile:*)",
+      "Bash(mvn test:*)",
+      "Bash(mvn clean install:*)",
+      "Bash(cat:*)",
+      "Bash(javac:*)",
+      "Bash(java:*)",
+      "Bash(ls:*)",
+      "Bash(for f in *.received.foo)",
+      "Bash(do base=\"$f%.received.foo\")",
+      "Bash(if [ ! -f \"$base.approved.foo\" ])",
+      "Bash(then echo \"Missing approval for: $base\")",
+      "Bash(fi)",
+      "Bash(done)",
+      "Bash(find:*)",
+      "Bash(then cp \"$f\" \"$base.approved.foo\")",
+      "Bash(echo:*)",
+      "Find(*)",
+      "LS(*)",
+      "Glob(*)",
+      "Grep(*)",
+      "WebFetch(*)",
+      "WebSearch(*)",
+      "MultiEdit(*)"
+    ]
+  }
+}
