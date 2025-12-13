@@ -64,6 +64,13 @@ public class ApprovalTestRunner {
      * Finds all .foo input files in the shared input directory.
      */
     public List<File> findInputFiles() {
+        return findInputFiles(inputPath);
+    }
+
+    /**
+     * Static helper to find all .foo input files in the shared input directory.
+     */
+    public static List<File> findInputFiles(String inputPath) {
         try {
             Path dir = Path.of("src/test/resources", inputPath);
             if (!Files.exists(dir)) {
