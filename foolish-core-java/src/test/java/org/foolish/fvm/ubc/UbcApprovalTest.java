@@ -26,9 +26,15 @@ public class UbcApprovalTest {
     );
 
     static Stream<Arguments> provideInputFiles() {
-        return ApprovalTestRunner.findInputFiles("org/foolish/fvm/inputs")
-                .stream()
-                .map(file -> Arguments.of(file, file.getName().replace(".foo", "")));
+        String filter = System.getProperty("foolish.test.filter");
+
+        Stream<File> fileStream = ApprovalTestRunner.findInputFiles("org/foolish/fvm/inputs").stream();
+
+        if (filter != null && !filter.isBlank()) {
+            fileStream = fileStream.filter(f -> f.getName().contains(filter));
+        }
+
+        return fileStream.map(file -> Arguments.of(file, file.getName().replace(".foo", "")));
     }
 
     @ParameterizedTest(name = "{1}")

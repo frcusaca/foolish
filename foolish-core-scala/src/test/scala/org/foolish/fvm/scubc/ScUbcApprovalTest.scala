@@ -30,6 +30,11 @@ class ScUbcApprovalTest:
 object ScUbcApprovalTest:
   @MethodSource
   def provideInputFiles(): Stream[Arguments] =
-    ApprovalTestRunner.findInputFiles("org/foolish/fvm/inputs")
-      .stream()
-      .map(file => Arguments.of(file, file.getName.replace(".foo", "")))
+    val filter = System.getProperty("foolish.test.filter")
+    var fileStream = ApprovalTestRunner.findInputFiles("org/foolish/fvm/inputs").stream()
+
+    if (filter != null && !filter.isBlank) {
+      fileStream = fileStream.filter(f => f.getName.contains(filter))
+    }
+
+    fileStream.map(file => Arguments.of(file, file.getName.replace(".foo", "")))
