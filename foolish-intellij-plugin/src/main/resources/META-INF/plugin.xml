@@ -1,0 +1,26 @@
+<idea-plugin>
+    <id>org.foolish.intellij</id>
+    <name>Foolish Language</name>
+    <vendor>Foolish Org</vendor>
+
+    <description><![CDATA[
+    Support for the Foolish language.
+    Includes syntax highlighting and LSP support.
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.redhat.devtools.lsp4ij</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <fileType name="Foolish" implementationClass="org.foolish.intellij.FoolishFileType"
+                  fieldName="INSTANCE" language="Foolish" extensions="foo;fool"/>
+        <lang.parserDefinition language="Foolish" implementationClass="org.foolish.intellij.FoolishParserDefinition"/>
+        <lang.syntaxHighlighterFactory language="Foolish"
+                                       implementationClass="org.foolish.intellij.FoolishSyntaxHighlighterFactory"/>
+    </extensions>
+
+    <extensions defaultExtensionNs="com.redhat.devtools.lsp4ij">
+        <server id="foolishLsp" name="Foolish LSP" factoryClass="org.foolish.intellij.lsp.FoolishLspServerFactory"/>
+        <languageMapping language="Foolish" serverId="foolishLsp"/>
+    </extensions>
+</idea-plugin>
