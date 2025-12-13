@@ -1,4 +1,5 @@
 {
+  "alwaysThinkingEnabled": false,
   "permissions": {
     "allow": [
       "Bash(mvn clean compile:*)",
@@ -25,5 +26,21 @@
       "WebSearch(*)",
       "MultiEdit(*)"
     ]
+  },
+  "enabledPlugins": {},
+  "extraKnownMarketplaces": {
+    "company-tools": {
+      "source": {
+        "source": "github",
+        "repo": "company-org/claude-plugins"
+      }
+    },
+    "security-plugins": {
+      "source": {
+        "source": "git",
+        "url": "https://git.company.com/security/plugins.git"
+      }
+    }
   }
+
 }
