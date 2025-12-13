@@ -50,7 +50,7 @@
       <dependency>
         <groupId>com.approvaltests</groupId>
         <artifactId>approvaltests</artifactId>
-        <version>25.0.23</version>
+        <version>25.10.0</version>
         <scope>test</scope>
       </dependency>
         <dependency>
@@ -68,7 +68,7 @@
         <dependency>
           <groupId>org.apache.commons</groupId>
           <artifactId>commons-lang3</artifactId>
-          <version>3.19.0</version>
+          <version>3.20.0</version>
   	</dependency>
         <!-- Scala Library -->
         <dependency>
@@ -117,7 +117,7 @@
         <plugin>
           <groupId>net.alchim31.maven</groupId>
           <artifactId>scala-maven-plugin</artifactId>
-          <version>4.9.2</version>
+          <version>4.9.7</version>
         </plugin>
 
         <!-- Exec Maven plugin -->
