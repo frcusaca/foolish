@@ -144,10 +144,10 @@ RBRACK : ']' ;
 SEMI : ';' ;
 
 LINE_COMMENT
-    : '!!' ~[\r\n]* -> skip
+    : '!!' (?!!) ~[\r\n]* -> skip
     ;
 BLOCK_COMMENT
-    : '!' (.|'\r'|'\n'|'\\!')*? '!' -> skip
+    : '!!!' (.|'\r'|'\n'|'\\!')*? '!!!' -> skip
     ;
 
 

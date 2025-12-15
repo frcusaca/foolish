@@ -347,7 +347,7 @@ When you encounter test failures:
    If you write a temporary test program to verify assumptions:
    - Consider adding it to the test suite as a regression test
    - Label it clearly: `@Category(RegressionTest.class)` or similar
-   - Add comments explaining what bug it prevents
+   - Add comments explaining what bug it prevents.(Recall '!!' starts line comment and '!!!' starts block comments in foolish.)
 
 ### 6. Advanced Patterns
 

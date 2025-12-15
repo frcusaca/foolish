@@ -194,6 +194,7 @@ double exclamation mark `!!`.
 	!! This is a comment inside the brane
 	!! This is another comment inside the brane.
 	!! We can even exclaim inside a comment !!!
+	!! Or simulate a banner !!
 	!! - [ ] TODO: Check that this is possible ----^^^
 }
 ```
@@ -269,21 +270,16 @@ concept in Foolish that we are able to name value expressions using the naming o
 }
 ```
 
-Names are selected from an alphabet that excludes the reserved symbols of the language. Names should
-include a small non-breaking white space character, currently `_`. Ideally it should be a
-non-breaking thin space &thinsp; "&thinsp;". But nothing is able to render these spaces right now,
-so we also include `_` for spacing out complicated nouns.
+Names are selected from an alphabet that excludes the reserved symbols of the language. For
+intra-identifier word separation, only two symbols are permitted: the underscore `_` (U+005F) and
+the narrow non-breaking space (U+202F). The narrow non-breaking space provides visually cleaner
+separation when rendering systems support it.
 
 ```foolish
 {
 
-	a_name=0;
-	a&#x2009;name=1;   !! Thin space in hexmal
-	a&#8201;name=1;    !! Thin space in decimal
-	a&thinsp;name=2;   !! Thin space word entity
-	a&hairsp;name=3;   !! hair space
-	a&#x202F;name=4;   !! narrow non-breaking space
-	a&#x2060;name=5;   !! word joiner
+	a_name=0;          !! Underscore separator
+	a&#x202F;name=1;   !! Narrow non-breaking space (U+202F)
 }
 ```
 
