@@ -9,6 +9,7 @@ The ~/.XCompose file may contain the following short cuts:
 <Multi_key> <Down> : "↓" U2191 # Dow Arrow
 <Multi_key> <Left> : "←" U2191 # Left Arrow
 <Multi_key> <Right> : "→" U2191 # Right Arrow
+<Multi_key> <space> <space> : " " U202F # Narrow non-breaking space (intra-identifier separator)
 <Multi_key> G : "▼" U9660 # Gradient
 <Multi_key> D : "⍍" U234D # Differential
 <Multi_key> t : "⊤" U234D # Truth, Top

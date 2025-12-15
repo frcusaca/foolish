@@ -143,11 +143,12 @@ LBRACK : '[' ;
 RBRACK : ']' ;
 SEMI : ';' ;
 
+BLOCK_COMMENT
+    : '!!!' .*? '!!!' -> skip
+    ;
+
 LINE_COMMENT
     : '!!' ~[\r\n]* -> skip
-    ;
-BLOCK_COMMENT
-    : '!' (.|'\r'|'\n'|'\\!')*? '!' -> skip
     ;
 
 
