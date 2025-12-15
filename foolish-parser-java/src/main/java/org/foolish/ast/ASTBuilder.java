@@ -103,6 +103,11 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
     @Override
     public AST visitStmt(FoolishParser.StmtContext ctx) {
+        return visit(ctx.stmt_body());
+    }
+
+    @Override
+    public AST visitStmt_body(FoolishParser.Stmt_bodyContext ctx) {
         if (ctx.expr() != null) {
             return visit(ctx.expr());
         } else {
