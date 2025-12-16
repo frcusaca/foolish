@@ -136,47 +136,149 @@ and a runtime error if it occurs.
 Accessing `b$x` is also referred to as accessing the `x` coordinate of `b`. See the
 [Relational Coordinates](RELATIONAL_COORDINATES.md) section for expanded discussion.
 
-### Bulk Name Search
+### Cursor-Based Search: `?` and `??`
 
-In the case where a regular expression is used for searching for multiple brane content, we use the
-operators `//` and `??` to ask for a brane that contains all matching entries of the search-subject
-brane.
+Foolish provides cursor-based search operators that treat the brane as a text document with a cursor
+position. The search semantics depend on where the cursor is positioned within the brane's namespace.
 
-* `b//tmp_.*` the result is a brane that refers to the `b`
+#### Localized Search: `?`
 
-```foolish
-{
-	doc={
-		tmp_a = 2*2;
-		c     = tmp_a sqrt;
-		tmp_b = 3*3;
-		d     = tmp_b cbrt;
-	}
-	r = doc//tmp.*;
-	r2 = doc??tmp.*;
-}
-```
+The `?` operator performs a **localized search** within a single brane without looking at parent
+branes. When anchored to a brane `a`, the search `a?pattern` searches only within brane `a` for
+names matching the pattern, ignoring any parent contexts.
 
-evaluates to
+**Note**: The `.` dereference operator is an alias for anchored localized search. So `a.x` is
+equivalent to `a?x` when `x` is a literal identifier.
 
 ```foolish
 {
-	doc={
-		tmp_a = 2*2;
-		c     = tmp_a sqrt;
-		tmp_b = 3*3;
-		d     = tmp_b cbrt;
-	}
-	r = {
-		tmp_a = doc.tmp_a;
-		tmp_b = doc.tmp_b;
-	}
-	r2 = {
-		tmp_b = doc.tmp_b;
-		tmp_a = doc.tmp_a;
+	x = 100;
+	inner = {
+		y = 20;
+		z = 30;
+	};
+	!! Anchored localized searches (only look inside 'inner')
+	r1 = inner?y;     !! Finds y inside inner: r1 = 20
+	r2 = inner.z;     !! Same as inner?z: r2 = 30
+	r3 = inner?x;     !! NOT FOUND (doesn't search parents): r3 = ???
+}
+```
+
+When unanchored, `?pattern` performs a localized search in the current brane's scope (the brane
+where the search expression is written), searching backwards from the cursor position without
+looking at parent branes.
+
+```foolish
+{
+	outer = {
+		a = 1;
+		inner = {
+			b = 2;
+			r1 = ?b;   !! Unanchored: searches current (inner) scope: r1 = 2
+			r2 = ?a;   !! Unanchored: 'a' not in current scope: r2 = ???
+		};
 	}
 }
 ```
+
+#### Globalized Search: `??`
+
+The `??` operator performs a **cursor-based globalized search** that searches upward through parent
+branes. When anchored to a brane, `a??pattern` means:
+
+1. Place the cursor at the end of brane `a` (after the semicolon of the last statement)
+2. Resolve `pattern` as if it is being referred to by a statement at that cursor position
+3. Search backwards from the cursor, then upward through parent branes if not found
+
+```foolish
+{
+	x = 100;
+	y = 200;
+	outer = {
+		a = 10;
+		inner = {
+			b = 20;
+			c = 30;
+		};
+		!! Anchored globalized searches (cursor positioned at end of 'inner')
+		r1 = inner??c;    !! Finds c at end of inner: r1 = 30
+		r2 = inner??a;    !! Searches up from end of inner, finds a: r2 = 10
+		r3 = inner??y;    !! Searches up twice, finds y: r3 = 200
+	}
+}
+```
+
+When unanchored, `??pattern` performs default variable lookup - searching backwards from the
+current cursor position and then upward through parent branes. This is equivalent to normal
+identifier resolution in Foolish.
+
+```foolish
+{
+	x = 100;
+	outer = {
+		a = 1;
+		b = ??a;     !! Unanchored: default variable lookup, finds a: b = 1
+		c = a;       !! Normal reference: same behavior as ??a
+		d = ??x;     !! Searches up to parent, finds x: d = 100
+	}
+}
+```
+
+The unanchored `??` exists for consistency and explicitness but provides the same semantics as
+normal identifier resolution.
+
+#### Multi-Search: `?*`
+
+The `?*` operator is a **multi-search** (or bulk search) operator that returns a brane containing
+**all** results matching the pattern, rather than just the first match. This is useful when you
+want to collect multiple values that match a regex pattern.
+
+**Syntax**: `brane?*pattern` performs a regex search within the brane and returns a new brane
+containing all matching name-value pairs.
+
+```foolish
+{
+	doc = {
+		tmp_a = 4;
+		result = tmp_a * 2;
+		tmp_b = 9;
+		output = tmp_b * 3;
+		tmp_c = 16;
+	};
+	!! Multi-search for all names starting with 'tmp_'
+	temps = doc?*tmp_.*;
+	!! temps = {tmp_a = 4; tmp_b = 9; tmp_c = 16;}
+}
+```
+
+The `?*` operator can be combined with anchored or unanchored forms:
+
+```foolish
+{
+	x_1 = 10;
+	x_2 = 20;
+	data = {
+		x_3 = 30;
+		x_4 = 40;
+		y_1 = 50;
+	};
+	!! Anchored multi-search (searches only inside 'data')
+	all_x = data?*x_.*;     !! {x_3 = 30; x_4 = 40;}
+
+	!! Unanchored multi-search (searches current scope only)
+	outer_x = ?*x_.*;       !! {x_1 = 10; x_2 = 20;}
+}
+```
+
+**Note**: The `?*` operator performs **localized** multi-search (does not search parent branes).
+For a globalized multi-search that includes parent scopes, combine with the globalized search
+semantics (implementation-dependent).
+
+**Common Use Cases**:
+- Collecting temporary variables: `brane?*tmp_.*`
+- Gathering test results: `results?*test_.*`
+- Extracting configuration values: `config?*debug_.*`
+- Filtering brane members by naming convention
 
 ### Search Paths
 

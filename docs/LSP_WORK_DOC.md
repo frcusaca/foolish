@@ -12,7 +12,7 @@ This document captures the working plan for building a Java-based Language Serve
 ### Existing building blocks
 - Foolish programs live in `.foo` files composed of nested *branes*. Computation derives from proximity (adjacent branes) while containment organizes values. Editors must surface this mental model.
 - Concatenation is adjacency in reverse-Polish order (RPN), which is how functions, derivations, and OO-style extension are expressed. See `samples/hello.foo` for a canonical example that concatenates `{1,2}` with `myProduct` and dereferences via `^`, `$`, and `#`.
-- Brane search operators (`.`, `$`, `#`, `/`, `//`, `??`) are fundamental language constructs, so any tooling roadmap must include understanding of these postfix search paths.
+- Brane search operators (`.`, `$`, `#`, `/`, `?`, `??`, `?*`) are fundamental language constructs, so any tooling roadmap must include understanding of these postfix search paths.
 - The repo ships an ANTLR4 grammar, AST model, AST builder, and formatter. These are the ready-made parsing and pretty-printing components to embed inside the LSP server.
 - Runtime semantics are modeled through the FVM environment (`Env`, `CharacterizedIdentifier`) and the Unicellular Brane Computer (UBC), so we can reuse the same scope-resolution logic for tooling features like go-to-definition, diagnostics, or live evaluation.
 
@@ -36,7 +36,7 @@ This document captures the working plan for building a Java-based Language Serve
 | --- | --- | --- |
 | **0 – Infrastructure** | Wiring, diagnostics | Document sync, incremental parsing, syntax errors from ANTLR, AST caching, formatting via `ASTFormatter`. |
 | **1 – MVP** | Navigation & authoring | Hover showing canonical characterizations, go-to-definition, find references by replaying `Env` scopes, outline view of branes/assignments, RPN snippets. |
-| **2 – Search & evaluation** | Foolish-specific semantics | Search-aware completions (`.`, `$`, `#`, `/`, `//`, `??`), brane coordinate previews, optional inline evaluation via the UBC. |
+| **2 – Search & evaluation** | Foolish-specific semantics | Search-aware completions (`.`, `$`, `#`, `/`, `?`, `??`, `?*`), brane coordinate previews, optional inline evaluation via the UBC. |
 | **3 – Extended ecosystem** | Advanced tooling | Refactoring/traceability tooling, AI-assisted generation, mutable brane editing commands, or visualization of relational coordinates. |
 
 ## Development notes

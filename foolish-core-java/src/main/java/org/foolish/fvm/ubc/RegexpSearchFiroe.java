@@ -10,10 +10,11 @@ import java.util.Optional;
  * It evaluates a base expression (expected to be a brane), then searches
  * within that brane's memory for an identifier matching the regexp pattern.
  *
- * Syntax: brane ? pattern or brane ?? pattern
+ * Syntax: brane ? pattern or brane ?? pattern or brane ?* pattern
  *
- * The ? operator performs a single query search.
- * The ?? operator is reserved for future use (possibly multiple matches).
+ * The ? operator performs localized search (only within the brane, no parent search).
+ * The ?? operator performs globalized search (cursor-based search upward through parents).
+ * The ?* operator performs multi-search (returns a brane with all matching results).
  */
 public class RegexpSearchFiroe extends FiroeWithBraneMind {
     private final String operator;
