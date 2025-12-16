@@ -48,6 +48,21 @@ class BraneMemory(private var parent: BraneMemory = null):
 
     None // Not found
 
+  /**
+   * Search for a query locally within this brane only, without searching parent branes.
+   * Used for localized regex search (? operator).
+   */
+  def getLocal(query: BraneMemory.Query, fromLine: Int): Option[(Int, FIR)] =
+    val startLine = math.min(fromLine, memory.size - 1)
+
+    // Search backwards from fromLine to 0
+    for line <- startLine to 0 by -1 do
+      val lineMemory = memory(line)
+      if query.matches(lineMemory) then
+        return Some((line, lineMemory))
+
+    None // Not found, don't search parents
+
   def put(line: FIR): Unit =
     memory.addOne(line)
 
@@ -68,6 +83,12 @@ class BraneMemory(private var parent: BraneMemory = null):
     memory.remove(0)
 
 object BraneMemory:
+  /**
+   * Query represents a search pattern for finding lines in BraneMemory.
+   * This is a sealed trait with different query types:
+   * - StrictlyMatchingQuery: exact identifier match
+   * - RegexpQuery: regular expression pattern match
+   */
   sealed trait Query:
     def matches(brane_line: FIR): Boolean
 
@@ -82,3 +103,35 @@ object BraneMemory:
         case _ =>
           // mostly here is unnamed lines in brane
           false
+
+  /**
+   * RegexpQuery matches identifiers using a regular expression pattern.
+   * If the pattern doesn't start with ^ or end with $, they are added
+   * to make it a "whole identifier" match (similar to StrictlyMatchingQuery).
+   * If the pattern contains anchors, it uses partial matching within the identifier.
+   */
+  class RegexpQuery(regexPattern: String) extends Query:
+    val originalPattern: String = regexPattern
+    val startsWithCaret: Boolean = regexPattern.startsWith("^")
+    val endsWithDollar: Boolean = regexPattern.endsWith("$")
+    val isAnchored: Boolean = startsWithCaret || endsWithDollar
+
+    // If no anchoring, add both ^ and $ to make it a whole match
+    val finalPattern: String =
+      if !startsWithCaret && !endsWithDollar then
+        "^" + regexPattern + "$"
+      else
+        regexPattern
+
+    val pattern: scala.util.matching.Regex = finalPattern.r
+
+    override def matches(brane_line: FIR): Boolean =
+      brane_line match
+        case ass: AssignmentFiroe =>
+          val lhs = ass.getLhs
+          val fullName = lhs.toString  // Includes characterization
+          val nameOnly = lhs.getId
+
+          // Try matching against both the full name and name only
+          pattern.findFirstIn(fullName).isDefined || pattern.findFirstIn(nameOnly).isDefined
+        case _ => false

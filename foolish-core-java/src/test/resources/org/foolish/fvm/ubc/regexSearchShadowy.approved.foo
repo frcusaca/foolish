@@ -11,7 +11,7 @@
 	};
 	{
 		!! And again by refernece
-		brn = {alice = 2; bob = 3; charlie = 4; adam=alice; advent=5; {adrian=6};bobulous=7;}
+		brn = {alice = 2; bob = 3; charlie = 4; adam=alice; advent=5; {adrian=6};bobulous=7;};
 	    result1 = brn?(a.*);
 	    result2 = brn?^a;
 	    result3 = brn?e$;
@@ -20,10 +20,10 @@
 	};
 	{
 		!! Now chained search
-		brn = {alice = 2; bob = 3; charlie = 4; adam=alice; advent=5; {adrian=6};bobulous=7;}
+		brn = {alice = 2; bob = 3; charlie = 4; adam=alice; advent=5; {adrian=6};bobulous=7;};
 		brn2 = {hard_to_typo_name_for_a_brane=brn};
-		result1 = brn2?.*brane ?a.*;
-		result2 = brn2?(.*brane)?a.*;
+	    	result1 = brn2?.*brane ?a.*;
+	    	result2 = brn2?(.*brane)?a.*;
 	};
 }
 
@@ -86,15 +86,15 @@ PARSED AST:
   };
   {
     brn = {
-  alice = 2;
-  bob = 3;
-  charlie = 4;
-  adam = alice;
-  advent = 5;
-  {
-};
-  bobulous = 7;
-} ? (a.*);
+      alice = 2;
+      bob = 3;
+      charlie = 4;
+      adam = alice;
+      advent = 5;
+      {
+      };
+      bobulous = 7;
+    };
     result1 = brn ? (a.*);
     result2 = brn ? ^a;
     result3 = brn ? e$;
@@ -103,24 +103,24 @@ PARSED AST:
   };
   {
     brn = {
-  alice = 2;
-  bob = 3;
-  charlie = 4;
-  adam = alice;
-  advent = 5;
-  {
-};
-  bobulous = 7;
-} ? (a.*);
+      alice = 2;
+      bob = 3;
+      charlie = 4;
+      adam = alice;
+      advent = 5;
+      {
+      };
+      bobulous = 7;
+    };
     brn2 = {
     };
     result1 = brn2 ? .*brane ? a.*;
-    result1 = brn2 ? (.*brane) ? a.*;
+    result2 = brn2 ? (.*brane) ? a.*;
   };
 }
 
 UBC EVALUATION:
-Steps taken: 572
+Steps taken: 576
 
 FINAL RESULT:
 {
@@ -134,7 +134,16 @@ FINAL RESULT:
 ＿＿result5 = ???;
 ＿};
 ＿{
-＿＿brn = {alice = 2; bob = 3; charlie = 4; adam=alice; advent=5; {adrian=6};bobulous=7;}
+＿＿brn = {
+      ＿＿＿alice = 2;
+      ＿＿＿bob = 3;
+      ＿＿＿charlie = 4;
+      ＿＿＿adam = 2;
+      ＿＿＿advent = 5;
+      ＿＿＿{
+      ＿＿＿};
+      ＿＿＿bobulous = 7;
+      ＿＿};
 ＿＿result1 = 5;
 ＿＿result2 = 5;
 ＿＿result3 = 4;
@@ -142,7 +151,16 @@ FINAL RESULT:
 ＿＿result5 = ???;
 ＿};
 ＿{
-＿＿brn = {alice = 2; bob = 3; charlie = 4; adam=alice; advent=5; {adrian=6};bobulous=7;}
+＿＿brn = {
+      ＿＿＿alice = 2;
+      ＿＿＿bob = 3;
+      ＿＿＿charlie = 4;
+      ＿＿＿adam = 2;
+      ＿＿＿advent = 5;
+      ＿＿＿{
+      ＿＿＿};
+      ＿＿＿bobulous = 7;
+      ＿＿};
 ＿＿brn2 = {
        ＿＿};
 ＿＿result1 = 1;

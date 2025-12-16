@@ -103,7 +103,11 @@ public class RegexpSearchFiroe extends FiroeWithBraneMind {
         BraneMemory targetMemory = braneFiroe.braneMemory;
         int searchFrom = targetMemory.size() - 1;
 
-        Optional<Pair<Integer, FIR>> result = targetMemory.get(query, searchFrom);
+        // Use getLocal() for the ? operator (localized search, no parent search)
+        // Use get() for ?? operator (globalized search with parent search)
+        Optional<Pair<Integer, FIR>> result = operator.equals("?")
+            ? targetMemory.getLocal(query, searchFrom)
+            : targetMemory.get(query, searchFrom);
 
         if (result.isPresent()) {
             searchResult = result.get().getValue();

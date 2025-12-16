@@ -75,4 +75,5 @@ object FIR:
     case brane: AST.Brane => BraneFiroe(brane)
     case assignment: AST.Assignment => AssignmentFiroe(assignment)
     case identifier: AST.Identifier => IdentifierFiroe(identifier)
+    case regexpSearch: AST.RegexpSearchExpr => RegexpSearchFiroe(regexpSearch)
     case _ => ValueFiroe(null, 0L) // Placeholder for unsupported types
