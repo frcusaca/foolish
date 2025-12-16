@@ -1,0 +1,5 @@
+{
+    x = 1 !! No semicolon here, just a comment
+    y = 2; !! Standard semicolon and comment
+    z = 3 !! Another one
+}

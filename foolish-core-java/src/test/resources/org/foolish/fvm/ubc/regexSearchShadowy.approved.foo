@@ -84,8 +84,9 @@ PARSED AST:
   bobulous = 7;
 } ? premordial;
   };
-  {
-    brn = {
+}
+{
+  brn = {
   alice = 2;
   bob = 3;
   charlie = 4;
@@ -95,32 +96,15 @@ PARSED AST:
 };
   bobulous = 7;
 } ? (a.*);
-    result1 = brn ? (a.*);
-    result2 = brn ? ^a;
-    result3 = brn ? e$;
-    result4 = brn ? bob;
-    result5 = brn ? premordial;
-  };
-  {
-    brn = {
-  alice = 2;
-  bob = 3;
-  charlie = 4;
-  adam = alice;
-  advent = 5;
-  {
-};
-  bobulous = 7;
-} ? (a.*);
-    brn2 = {
-    };
-    result1 = brn2 ? .*brane ? a.*;
-    result1 = brn2 ? (.*brane) ? a.*;
-  };
+  result1 = brn ? (a.*);
+  result2 = brn ? ^a;
+  result3 = brn ? e$;
+  result4 = brn ? bob;
+  result5 = brn ? premordial;
 }
 
 UBC EVALUATION:
-Steps taken: 572
+Steps taken: 348
 
 FINAL RESULT:
 {
@@ -132,21 +116,6 @@ FINAL RESULT:
 ＿＿result3 = 4;
 ＿＿result4 = 3;
 ＿＿result5 = 0;
-＿};
-＿{
-＿＿brn = 5;
-＿＿result1 = ???;
-＿＿result2 = ???;
-＿＿result3 = ???;
-＿＿result4 = ???;
-＿＿result5 = ???;
-＿};
-＿{
-＿＿brn = 5;
-＿＿brn2 = {
-       ＿＿};
-＿＿result1 = ???;
-＿＿result1 = ???;
 ＿};
 }
 
