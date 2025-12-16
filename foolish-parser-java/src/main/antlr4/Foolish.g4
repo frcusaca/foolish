@@ -46,6 +46,7 @@ stmt_body
 
 stmt
     : stmt_body (SEMI LINE_COMMENT? | LINE_COMMENT)
+    | LINE_COMMENT
     ;
 assignment : characterizable_identifier ASSIGN expr ;
 
