@@ -57,6 +57,20 @@ public class BraneMemory implements Iterable<FIR> {
         return Optional.empty(); // Not found
     }
 
+    /**
+     * Search for a query locally within this brane only, without searching parent branes.
+     * Used for localized regex search (? operator).
+     */
+    public Optional<Pair<Integer, FIR>> getLocal(Query query, int fromLine) {
+        for (int line = min(fromLine, memory.size() - 1); line >= 0; line--) {
+            var lineMemory = memory.get(line);
+            if (query.matches(lineMemory)) {
+                return Optional.of(Pair.of(line, lineMemory));
+            }
+        }
+        return Optional.empty(); // Not found, don't search parents
+    }
+
     public void put(FIR line) {
         memory.add(line);
     }
