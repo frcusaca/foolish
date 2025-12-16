@@ -1,0 +1,16 @@
+{
+	!! Test regex pattern matching in localized search
+	!! Based on NAME_SEARCH_AND_BOUND.md section "Localized Search: ?"
+
+	!! Pattern with parentheses
+	alice_match = {alice=1; bob=2; charlie=3;}?(al.*);
+
+	!! Pattern with regex anchors - start of string
+	first_a = {alice=1; adam=2; bob=3;}?^a;
+
+	!! Pattern with regex anchors - end of string
+	ends_with_e = {alice=1; charlie=2; bob=3;}?e$;
+
+	!! More complex pattern
+	temp_vars = {tmp_a=10; result=20; tmp_b=30; output=40;}?(tmp_.*);
+}

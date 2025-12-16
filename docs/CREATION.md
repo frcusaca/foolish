@@ -35,6 +35,27 @@ We postulate that one can always create a new value that is distinct, in our Foo
 	}
 
 
+	{!!system.b.foo
+		T   = b'⬤  ; !! True is a new boolean idea
+		F   = b'⬤  ; !! False is a new boolean idea
+		⊦   = b'⬤  ; !! assertion is a new idea.
+		not = b'⬤  ; !! assertion is a new idea.
+		and = b'⬤  ; !! assertion is a new idea.
+		or  = b'⬤  ; !! assertion is a new idea.
+		⊦ T;
+		⊦ F not;
+		⊦ T == F not;
+		⊦ F == T not;
+		⊦ {T, T} and;
+		⊦ {T, F} and not;
+		⊦ {F, T} and not;
+		⊦ {F, F} and not;
+		⊦ {T, T} or;
+		⊦ {T, F} or;
+		⊦ {F, T} or;
+		⊦ {F, F} or not;
+	}
+
 	{!!system.f.foo
 		.  .  .
 		0 = f'⬤ ; !! Floating point characterization

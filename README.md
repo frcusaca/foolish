@@ -115,13 +115,16 @@ have come to know. Foolish aims to be built for good, not evil.
   - [Block Comments](#block-comments)
 - [Expressions and Values](#expressions-and-values)
 - [Names and Scope](#names-and-scope)
-  - [Scope of Name](#scope-of-name)
 - [The Unknown](#the-unknown)
 - [Renaming](#renaming)
+- [Names, Search, and Bound](docs/NAME_SEARCH_AND_BOUND.md) - Comprehensive guide to naming, search system, and detachment
+  - [Names and Ordinates](docs/NAME_SEARCH_AND_BOUND.md#names-and-ordinates)
+  - [Scope and Name Resolution](docs/NAME_SEARCH_AND_BOUND.md#scope-and-name-resolution)
+  - [The Search System](docs/NAME_SEARCH_AND_BOUND.md#the-search-system)
+  - [Detachment Branes](docs/NAME_SEARCH_AND_BOUND.md#detachment-branes-controlling-scope-boundaries)
+  - [Search Paths](docs/NAME_SEARCH_AND_BOUND.md#search-paths)
 - [Advanced Features](docs/ADVANCED_FEATURES.md)
   - [Brane Operations](docs/ADVANCED_FEATURES.md#brane-operations)
-  - [Search System](docs/ADVANCED_FEATURES.md#search-system)
-  - [Detachment and Parameters](docs/ADVANCED_FEATURES.md#detachment-and-parameters)
   - [Control Flow](docs/ADVANCED_FEATURES.md#control-flow)
   - [Recursion](docs/ADVANCED_FEATURES.md#recursion)
 - [Ecosystem](docs/ECOSYSTEM.md)
@@ -256,77 +259,26 @@ A brane written in Foolish is itself an expression.
 
 One very powerful concept we have for abstracting thoughts and thinking of complex matter with
 complex properties and interactions is the substitution of the statement or object of consideration
-with a name. Names such as `x`, `y`, `foolish`, `programming language`. So this is an important
-concept in Foolish that we are able to name value expressions using the naming operator `=`:
+with a name. Names such as `x`, `y`, `foolish`, `programming language`. This is an important
+concept in Foolish—we are able to name value expressions using the naming operator `=`:
 
 ```foolish
 {
 	a = 1;                                    !! Simple name binding
-	b = 2;                                    !! Another binding
-	c = 3;                                    !! Value assignment
-	greeting = "Hello, Foolish world!";      !! String binding
-	calculation = a + b + c;                  !! Expression binding
-	!! etc.
+	point = {x=10; y=20;};                   !! Nested brane with coordinates
+	x_coord = point.x;                        !! Accessing a coordinate: x_coord = 10
+	calculation = a + point.x;                !! Using names in expressions
 }
 ```
 
-Names are selected from an alphabet that excludes the reserved symbols of the language. For
-intra-identifier word separation, only two symbols are permitted: the underscore `_` (U+005F) and
-the narrow non-breaking space (U+202F). The narrow non-breaking space provides visually cleaner
-separation when rendering systems support it.
+Names (also called *ordinates* or *coordinates*) serve as navigational reference points within
+branes. Basic access uses `.` for dereferencing: `brane.name` retrieves the value. Names are scoped
+to "before the current expression"—references look backwards in the current brane, then search
+upward through parent branes if needed.
 
-```foolish
-{
-
-	a_name=0;          !! Underscore separator
-	a&#x202F;name=1;   !! Narrow non-breaking space (U+202F)
-}
-```
-
-Foolish expressions and values inherently do not have names. They are only marked with names when
-the naming operator `=` is used. So the following brane:
-
-```foolish
-{
-	1;
-	2;
-	3;
-}
-```
-
-is a brane with three unnamed values. The following brane:
-
-```foolish
-{
-	a=1;
-	b=2;
-	c=3;
-}
-```
-
-is a brane with three named values.
-
-**Note on Coordinates**: In Foolish, names are also called *coordinates*. This terminology reflects
-the idea that names serve as navigational reference points within branes, allowing us to locate and
-access specific values. When we use a name to access a value (such as `brane.x`), we are accessing
-that brane's coordinate. See [Relational Coordinates](docs/RELATIONAL_COORDINATES.md) for a detailed
-discussion of how names function as coordinates in relational contexts.
-
-### Scope of Name
-
-Names are scoped to "before the current expression". So the current naming operation is not yet in
-scope. This is similar to how many programming languages work. So the following brane:
-
-```foolish
-{
-	a=1;
-	a=a+1; !! a=2
-	a=a+1; !! a=3
-}
-```
-
-Such a convention has the direct benefit of delaying recursive concepts until more thought is put
-into the line of code.
+For comprehensive documentation on names, the search system (including `?`, `??`, `?*`, value
+search, cursor movements), and how detachment branes `[...]` control scope boundaries, see
+[Names, Search, and Bound](docs/NAME_SEARCH_AND_BOUND.md).
 
 ## The Unknown
 
@@ -358,35 +310,23 @@ is shorthand to
 
 ## Renaming
 
-Foolish permits reusing names. If one were to think of the semantics of static single assignment,
-this would be how Foolish interprets a reused name.
+Foolish permits reusing names with static single assignment semantics. Each reference captures the
+value at the time of use:
 
 ```foolish
-{
-	a=1;
-	b=a;
-	a=2;
-	c=a;
-}
+{a=1; b=a; a=2; c=a;}  !! b=1, c=2 (each 'a' reference uses the current value)
 ```
 
-is equivalent to
-
-```foolish
-{
-	a=1;
-	b=1;
-	a=2;
-	c=2;
-}
-```
-
-NB: we did preserve the first assignment `a=1` as part of the brane for historical accuracy.
+For details on scope resolution and name reuse, see [Names, Search, and Bound](docs/NAME_SEARCH_AND_BOUND.md).
 
 ---
 
-For advanced features including brane operations, the search system, detachment and parameters,
-control flow, and recursion, see the [Advanced Features](docs/ADVANCED_FEATURES.md) documentation.
+## Further Documentation
 
-For implementation details including the Unicellular Brane Computer (UBC), typing systems, and
-relational coordinates, see the [Ecosystem](docs/ECOSYSTEM.md) documentation.
+- **[Names, Search, and Bound](docs/NAME_SEARCH_AND_BOUND.md)** - Comprehensive guide to naming
+  systems, the search operators (`.`, `?`, `??`, `?*`, `:`, cursor movements), and how detachment
+  branes `[...]` control scope boundaries for globalized searches
+- **[Advanced Features](docs/ADVANCED_FEATURES.md)** - Brane operations (concatenation, proximity
+  is combination), control flow, and recursion
+- **[Ecosystem](docs/ECOSYSTEM.md)** - Implementation details including the Unicellular Brane
+  Computer (UBC), typing systems, and relational coordinates

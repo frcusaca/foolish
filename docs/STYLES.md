@@ -6,7 +6,29 @@ html/xml files. Foolish program code has `.foo` extention on the end of the file
 `.cpp`, `.java`, `.py`, `.js` and `.rb` for C, C++, Java, Python, Javascript and Ruby.
 
 Brane depth marker uses tab characters instead of `^[ ]+`, this reduces storage occupancy. Multi-line
-statement alignment may use spaces after the same number of tabs as the first line of the statement.
+statement alignment may use spaces after the same number of tabs as the first line of the statement. For example
+```foolish
+{
+	a = ( 1 +
+	      2 + !!6 spaces before 2 to put it at same depth as 1.
+	      3 +
+	      4 +
+	      5
+	    ) !! This parenthesis closes a value expression in the a assigment.
+}
+```
+The tab is only used to indent brane blocks. Within brane blocks, if subsequent indentations are required, they use use spaces corresponding to the number of characters they wish to follow. The "2 +" follows one tab to the depth of "a", and then 6 spaces accounting for the depth of "a = ( " to align the beginning with body of that parenthesized expression. Sub-brains will tab one again. The deep indentation is not necessary, as long as it is consistent and aids reading of the code. The following is equally readable.
+```foolish
+{
+	a = (
+	 1 + !! 1 space to separate 1 from a when reading.
+	 2 +
+	 3 +
+	 4 +
+	 5
+	) !! This parenthesis is at a's depth as it completes definition of a.
+}
+```
 
 We prefer to use the word "name" to mean either identifier or characterized identifier. Ordinate is
 a name that has been associated with a brane, it is also a verb meaning to make a name an ordnate of a

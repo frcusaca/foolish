@@ -8,4 +8,5 @@
 |"Δ"    |U+0394   | &#x0394;    | [Differentiation - Delta](DIFFERENTIATION.md) |
 |"∇"    |U+2207   | &#x2207;    | [Differentiation - Nabla](DIFFERENTIATION.md) |
 |" "    |U+202F   | &#x202F;    | [Names and Scope - Intra-identifier separator](../README.md#names-and-scope) |
-|"_"    |U+005F   | &#x005F;    | [Names and Scope - Intra-identifier separator](../README.md#names-and-scope) |
+|"\_"    |U+005F   | &#x005F;    | [Names and Scope - Intra-identifier separator](../README.md#names-and-scope) |
+|"⊦"    |U+22A6   | &#8870;     | [Assert](LOGIC.md) |
