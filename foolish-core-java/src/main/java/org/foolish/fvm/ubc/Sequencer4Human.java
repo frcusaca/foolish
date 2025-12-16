@@ -138,6 +138,9 @@ public class Sequencer4Human extends Sequencer<String> {
                     if (braneSeq.startsWith(indent)) {
                         braneSeq = braneSeq.substring(indent.length());
                     }
+                    // For subsequent lines, add spaces to align with "id = "
+                    String padding = " ".repeat(assignment.getId().length() + 3);
+                    braneSeq = braneSeq.replace("\n", "\n" + padding);
                     return indent(depth) + assignment.getId() + " = " + braneSeq;
                 }
                 return indent(depth) + assignment.getId() + " = " + result.getValue();
