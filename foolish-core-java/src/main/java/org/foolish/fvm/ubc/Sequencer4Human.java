@@ -129,6 +129,20 @@ public class Sequencer4Human extends Sequencer<String> {
                 if (result.isAbstract()) {
                     return indent(depth) + assignment.getId() + " = ???";
                 }
+                if (result instanceof BraneFiroe brane) {
+                    // For nested branes, recursively sequence them but remove the indentation from the first line
+                    // since we are already indenting 'id = '
+                    String braneSeq = sequenceBrane(brane, depth);
+                    // Remove the leading indentation from the brane sequence
+                    String indent = indent(depth);
+                    if (braneSeq.startsWith(indent)) {
+                        braneSeq = braneSeq.substring(indent.length());
+                    }
+                    // For subsequent lines, add spaces to align with "id = "
+                    String padding = " ".repeat(assignment.getId().length() + 3);
+                    braneSeq = braneSeq.replace("\n", "\n" + padding);
+                    return indent(depth) + assignment.getId() + " = " + braneSeq;
+                }
                 return indent(depth) + assignment.getId() + " = " + result.getValue();
             }
         }

@@ -26,7 +26,7 @@ brane
     ;
 
 standard_brane
-    : LBRACE stmt* RBRACE
+    : LBRACE stmt* stmt_body? RBRACE
     ;
 
 detach_brane
@@ -39,11 +39,14 @@ detach_stmt
 
 brane_search : UP;
 
-stmt
-    : (
-      assignment
+stmt_body
+    : assignment
     | expr
-    ) SEMI LINE_COMMENT?
+    ;
+
+stmt
+    : stmt_body (SEMI LINE_COMMENT? | LINE_COMMENT)
+    | LINE_COMMENT
     ;
 assignment : characterizable_identifier ASSIGN expr ;
 
@@ -111,6 +114,11 @@ regexp_element
     : IDENTIFIER         // Letters, digits, separators
     | INTEGER            // Numbers
     | APOSTROPHE         // ' (for characterization)
+    | MUL                // *
+    | PLUS               // +
+    | CARET              // ^
+    | DOLLAR             // $
+    | DOT                // .
     // Special chars allowed ONLY inside parentheses to avoid ambiguity with operators
     | LPAREN regexp_inner* RPAREN    // Balanced () - can contain special chars
     | LBRACE regexp_inner* RBRACE    // Balanced {}
@@ -148,7 +156,7 @@ BLOCK_COMMENT
     ;
 
 LINE_COMMENT
-    : '!!' ~[\r\n]* -> skip
+    : '!!' ~[\r\n]*
     ;
 
 

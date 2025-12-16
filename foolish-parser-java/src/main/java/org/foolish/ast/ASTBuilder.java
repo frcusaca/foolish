@@ -53,6 +53,7 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
     private List<AST.Expr> collectStatements(List<FoolishParser.StmtContext> statements) {
         return statements.stream()
                 .map(this::visit)
+                .filter(java.util.Objects::nonNull) // Filter out comment-only statements
                 .map(st -> {
                     if (st instanceof AST.Expr expr) {
                         return expr;
@@ -103,6 +104,14 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
     @Override
     public AST visitStmt(FoolishParser.StmtContext ctx) {
+        if (ctx.stmt_body() != null) {
+            return visit(ctx.stmt_body());
+        }
+        return null; // Comment-only statement
+    }
+
+    @Override
+    public AST visitStmt_body(FoolishParser.Stmt_bodyContext ctx) {
         if (ctx.expr() != null) {
             return visit(ctx.expr());
         } else {
