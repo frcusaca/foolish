@@ -179,6 +179,12 @@ find . -name "*.received.foo" -exec sh -c 'mv "$0" "${0%.received.foo}.approved.
 - Use sensible variable names from all available alphabets to improve expressivity
 - New tests should use power-law distributed variable name lengths
 
+### Debugging
+- Reproduce errors in approval tests, breaking complex issues into smaller test cases
+- Use configuration flags in test comments (`!! --verbose !!`) for verbose output
+- Printf-style debugging only as last resort
+- Verify fixes don't break other tests; keep useful intermediate tests as regression guards
+
 ## Git Commit Message Format
 
 Summary of long thinking/programming tasks should always be in the format of git commit message. Git commit messages should include:
