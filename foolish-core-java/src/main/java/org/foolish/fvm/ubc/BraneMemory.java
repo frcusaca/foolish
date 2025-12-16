@@ -45,16 +45,24 @@ public class BraneMemory implements Iterable<FIR> {
     }
 
     public Optional<Pair<Integer, FIR>> get(Query query, int fromLine) {
+        Optional<Pair<Integer, FIR>> local = getLocal(query, fromLine);
+        if (local.isPresent()) {
+            return local;
+        }
+        if (parent != null) {
+            return parent.get(query, myPos.get());
+        }
+        return Optional.empty(); // Not found
+    }
+
+    public Optional<Pair<Integer, FIR>> getLocal(Query query, int fromLine) {
         for (int line = min(fromLine, memory.size() - 1); line >= 0; line--) {
             var lineMemory = memory.get(line);
             if (query.matches(lineMemory)) {
                 return Optional.of(Pair.of(line, lineMemory));
             }
         }
-        if (parent != null) {
-            return parent.get(query, myPos.get());
-        }
-        return Optional.empty(); // Not found
+        return Optional.empty(); // Not found locally
     }
 
     public void put(FIR line) {
