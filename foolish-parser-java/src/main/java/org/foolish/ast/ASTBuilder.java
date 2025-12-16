@@ -77,7 +77,17 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
     @Override
     public AST visitStandard_brane(FoolishParser.Standard_braneContext ctx) {
-        return new AST.Brane(collectStatements(ctx.stmt()));
+        List<AST.Expr> statements = new ArrayList<>(collectStatements(ctx.stmt()));
+
+        // Handle optional final stmt_body (without semicolon terminator)
+        if (ctx.stmt_body() != null) {
+            AST stmtBody = visit(ctx.stmt_body());
+            if (stmtBody instanceof AST.Expr expr) {
+                statements.add(expr);
+            }
+        }
+
+        return new AST.Brane(statements);
     }
 
     @Override
