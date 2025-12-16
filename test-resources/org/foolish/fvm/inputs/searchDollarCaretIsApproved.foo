@@ -1,0 +1,22 @@
+{
+	!! Test for $ and ^ as postfix operators (NOT YET IMPLEMENTED)
+	!! Based on NAME_SEARCH_AND_BOUND.md sections:
+	!! - "Backward Search from End": $ finds last value
+	!! - "Forward Search from Beginning": ^ finds first value
+
+	!! NOTE: Currently $ and ^ only work as regex anchors within ? patterns
+	!! They are not yet implemented as standalone postfix operators
+	!! These examples show the documented specification
+
+	!! $ as regex anchor - this works
+	last_match = {alice=1; charlie=2; bob=3;}?e$;
+
+	!! ^ as regex anchor - this works
+	first_match = {alice=1; adam=2; advent=3;}?^a.*;
+
+	!! TODO: Implement $ and ^ as postfix operators:
+	!! last_val = {x=1; y=2; z=3;}$;        !! Should be 3
+	!! first_val = {a=10; b=20; c=30;}^;    !! Should be 10
+	!! single_dollar = {value=42;}$;        !! Should be 42
+	!! single_caret = {value=99;}^;         !! Should be 99
+}

@@ -59,7 +59,8 @@ PARSED AST:
   charlie = 4;
   adam = alice;
   advent = 5;
-  {adrian=6};
+  {
+};
   bobulous = 7;
 } ? e$;
     result4 = {
@@ -68,7 +69,8 @@ PARSED AST:
   charlie = 4;
   adam = alice;
   advent = 5;
-  {adrian=6};
+  {
+};
   bobulous = 7;
 } ? bob;
     result5 = {
@@ -89,7 +91,8 @@ PARSED AST:
       charlie = 4;
       adam = alice;
       advent = 5;
-      {adrian=6};
+      {
+      };
       bobulous = 7;
     };
     result1 = brn ? (a.*);
@@ -105,21 +108,14 @@ PARSED AST:
       charlie = 4;
       adam = alice;
       advent = 5;
-      {adrian=6};
+      {
+      };
       bobulous = 7;
     };
     brn2 = {
-      hard_to_typo_name_for_a_brane={
-      alice = 2;
-      bob = 3;
-      charlie = 4;
-      adam = alice;
-      advent = 5;
-      {adrian=6};
-      bobulous = 7;
     };
     result1 = brn2 ? .*brane ? a.*;
-    result1 = brn2 ? (.*brane) ? a.*;
+    result2 = brn2 ? (.*brane) ? a.*;
   };
 }
 
@@ -135,22 +131,6 @@ FINAL RESULT:
 ＿＿result2 = 5;
 ＿＿result3 = 4;
 ＿＿result4 = 3;
-＿＿result5 = 0;
-＿};
-＿{
-＿＿brn = {
-      ＿＿＿alice = 2;
-      ＿＿＿bob = 3;
-      ＿＿＿charlie = 4;
-      ＿＿＿adam = 2;
-      ＿＿＿advent = 5;
-      ＿＿＿{adrian=6};
-      ＿＿＿bobulous = 7;
-      ＿＿};
-＿＿result1 = ???;
-＿＿result2 = ???;
-＿＿result3 = ???;
-＿＿result4 = ???;
 ＿＿result5 = ???;
 ＿};
 ＿{
@@ -160,21 +140,31 @@ FINAL RESULT:
       ＿＿＿charlie = 4;
       ＿＿＿adam = 2;
       ＿＿＿advent = 5;
-      ＿＿＿{adrian=6};
+      ＿＿＿{
+      ＿＿＿};
+      ＿＿＿bobulous = 7;
+      ＿＿};
+＿＿result1 = 5;
+＿＿result2 = 5;
+＿＿result3 = 4;
+＿＿result4 = 3;
+＿＿result5 = ???;
+＿};
+＿{
+＿＿brn = {
+      ＿＿＿alice = 2;
+      ＿＿＿bob = 3;
+      ＿＿＿charlie = 4;
+      ＿＿＿adam = 2;
+      ＿＿＿advent = 5;
+      ＿＿＿{
+      ＿＿＿};
       ＿＿＿bobulous = 7;
       ＿＿};
 ＿＿brn2 = {
-      hard_to_typo_name_for_a_brane={
-      alice = 2;
-      bob = 3;
-      charlie = 4;
-      adam = alice;
-      advent = 5;
-      {adrian=6};
-      bobulous = 7;
-    };
-＿＿result1 = 5;
-＿＿result2 = 5;
+       ＿＿};
+＿＿result1 = 1;
+＿＿result2 = 1;
 ＿};
 }
 

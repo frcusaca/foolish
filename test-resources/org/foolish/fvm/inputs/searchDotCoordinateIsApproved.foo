@@ -1,0 +1,17 @@
+{
+	!! Test for . operator - coordinate access (backward search)
+	!! Based on NAME_SEARCH_AND_BOUND.md section "Backward Search from End"
+	!! ". - Find the last name matching the regexp"
+
+	!! Simple coordinate access
+	x = {a=1; b=2; c=3;}.c;
+
+	!! Multiple redefinitions - . finds LAST occurrence
+	last = {x=1; y=2; x=3; z=4; x=5;}.x;
+
+	!! Nested branes
+	nested = {outer={inner=10;}}.outer;
+
+	!! Coordinate access chains
+	deep = {p={q={r=42;};};}.p.q.r;
+}

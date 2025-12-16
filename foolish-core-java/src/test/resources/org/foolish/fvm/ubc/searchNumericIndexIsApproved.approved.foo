@@ -1,0 +1,73 @@
+!!INPUT!!
+{
+	!! Test for numeric indexing with # operator
+	!! Based on NAME_SEARCH_AND_BOUND.md sections:
+	!! - "Backward Search from End": #-N for Nth-to-last value
+	!! - "Forward Search from Beginning": #N for (N+1)th value (zero-indexed)
+
+	data = {a=10; b=20; c=30; d=40; e=50;};
+
+	!! Forward search (zero-based indexing)
+	first = data#0;      !! First value: 10
+	second = data#1;     !! Second value: 20
+	third = data#2;      !! Third value: 30
+
+	!! Backward search (negative indexing)
+	last = data#-1;      !! Last value: 50
+	second_last = data#-2;   !! Second-to-last: 40
+	third_last = data#-3;    !! Third-to-last: 30
+
+	!! Edge cases
+	only_one = {x=99;}#0;    !! Should be 99
+	also_last = {x=99;}#-1;  !! Should also be 99
+}
+
+!!!
+PARSED AST:
+{
+  data = {
+    a = 10;
+    b = 20;
+    c = 30;
+    d = 40;
+    e = 50;
+  };
+  first = data#0;
+  second = data#1;
+  third = data#2;
+  last = data#-1;
+  second_last = data#-2;
+  third_last = data#-3;
+  only_one = {
+  x = 99;
+}#0;
+  also_last = {
+  x = 99;
+}#-1;
+}
+
+UBC EVALUATION:
+Steps taken: 118
+
+FINAL RESULT:
+{
+＿data = {
+       ＿＿a = 10;
+       ＿＿b = 20;
+       ＿＿c = 30;
+       ＿＿d = 40;
+       ＿＿e = 50;
+       ＿};
+＿first = ???;
+＿second = ???;
+＿third = ???;
+＿last = ???;
+＿second_last = ???;
+＿third_last = ???;
+＿only_one = ???;
+＿also_last = ???;
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!
