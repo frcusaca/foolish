@@ -1,7 +1,6 @@
 ---
 name: maven-builder-for-foolish-language
-description: Comprehensive Maven build strategies for mixed Java/Scala projects with 
-parallel execution, intelligent test running, and targeted debugging workflows.
+description: Comprehensive Maven build strategies for mixed Java/Scala projects with parallel execution, intelligent test running, and targeted debugging workflows. Use this skill when user asks to build the project, run tests, compile code, clean build, run Maven commands, fix compilation errors, or analyze test failures. Automatically invoked for requests like "make a fresh build", "run all tests", "build and test", "clean and compile", or any Maven-related build tasks.
 ---
 
 # Maven Builder Skill
