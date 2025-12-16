@@ -32,6 +32,10 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
         return identifier;
     }
 
+    public FIR getResolvedValue() {
+        return value;
+    }
+
     /**
      * Gets the characterization as a flattened string.
      * Returns empty string "" if no characterization.

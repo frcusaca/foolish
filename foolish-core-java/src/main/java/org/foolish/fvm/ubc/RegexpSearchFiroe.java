@@ -89,6 +89,10 @@ public class RegexpSearchFiroe extends FiroeWithBraneMind {
 
         FIR base = braneMemory.getLast();
 
+        if (base instanceof IdentifierFiroe identifierFiroe) {
+            base = identifierFiroe.getResolvedValue();
+        }
+
         // Base must be a brane
         if (!(base instanceof BraneFiroe braneFiroe)) {
             searchResult = new NKFiroe(); // Can only search branes
@@ -102,13 +106,18 @@ public class RegexpSearchFiroe extends FiroeWithBraneMind {
         BraneMemory targetMemory = braneFiroe.braneMemory;
         int searchFrom = targetMemory.size() - 1;
 
-        Optional<Pair<Integer, FIR>> result = targetMemory.get(query, searchFrom);
+        Optional<Pair<Integer, FIR>> result = targetMemory.getLocal(query, searchFrom);
 
         if (result.isPresent()) {
             searchResult = result.get().getValue();
         } else {
             searchResult = new NKFiroe(); // Not found
         }
+    }
+
+    @Override
+    public boolean isNye() {
+        return searchResult == null;
     }
 
     @Override

@@ -43,6 +43,7 @@ public class Sequencer4Human extends Sequencer<String> {
             case SearchUpFiroe searchUp -> sequenceSearchUp(searchUp, depth);
             case AssignmentFiroe assignment -> sequenceAssignment(assignment, depth);
             case IdentifierFiroe identifier -> sequenceIdentifier(identifier, depth);
+            case RegexpSearchFiroe regexpSearch -> sequenceRegexpSearch(regexpSearch, depth);
             case null, default -> indent(depth) + "???";
         };
     }
@@ -170,6 +171,19 @@ public class Sequencer4Human extends Sequencer<String> {
      * Sequences an NK (not-known) FIR.
      */
     protected String sequenceNK(FIR nk, int depth) {
+        return indent(depth) + "???";
+    }
+
+    protected String sequenceRegexpSearch(RegexpSearchFiroe regexpSearch, int depth) {
+        // If the regexp search has been fully evaluated
+        if (!regexpSearch.isNye()) {
+            // Check if it resolved to an abstract value
+            if (regexpSearch.isAbstract()) {
+                return indent(depth) + "???";
+            }
+            return indent(depth) + regexpSearch.getValue();
+        }
+        // If not yet evaluated
         return indent(depth) + "???";
     }
 
