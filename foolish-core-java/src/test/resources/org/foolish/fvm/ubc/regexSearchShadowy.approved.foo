@@ -11,7 +11,7 @@
 	};
 	{
 		!! And again by refernece
-		brn = {alice = 2; bob = 3; charlie = 4; adam=alice; advent=5; {adrian=6};bobulous=7;}?(a.*);
+		brn = {alice = 2; bob = 3; charlie = 4; adam=alice; advent=5; {adrian=6};bobulous=7;}
 	    result1 = brn?(a.*);
 	    result2 = brn?^a;
 	    result3 = brn?e$;
@@ -20,10 +20,10 @@
 	};
 	{
 		!! Now chained search
-		brn = {alice = 2; bob = 3; charlie = 4; adam=alice; advent=5; {adrian=6};bobulous=7;}?(a.*);
+		brn = {alice = 2; bob = 3; charlie = 4; adam=alice; advent=5; {adrian=6};bobulous=7;}
 		brn2 = {hard_to_typo_name_for_a_brane=brn};
 		result1 = brn2?.*brane ?a.*;
-		result1 = brn2?(.*brane)?a.*;
+		result2 = brn2?(.*brane)?a.*;
 	};
 }
 
@@ -131,22 +131,22 @@ FINAL RESULT:
 ＿＿result2 = 5;
 ＿＿result3 = 4;
 ＿＿result4 = 3;
-＿＿result5 = 0;
-＿};
-＿{
-＿＿brn = 5;
-＿＿result1 = ???;
-＿＿result2 = ???;
-＿＿result3 = ???;
-＿＿result4 = ???;
 ＿＿result5 = ???;
 ＿};
 ＿{
-＿＿brn = 5;
+＿＿brn = {alice = 2; bob = 3; charlie = 4; adam=alice; advent=5; {adrian=6};bobulous=7;}
+＿＿result1 = 5;
+＿＿result2 = 5;
+＿＿result3 = 4;
+＿＿result4 = 3;
+＿＿result5 = ???;
+＿};
+＿{
+＿＿brn = {alice = 2; bob = 3; charlie = 4; adam=alice; advent=5; {adrian=6};bobulous=7;}
 ＿＿brn2 = {
        ＿＿};
-＿＿result1 = ???;
-＿＿result1 = ???;
+＿＿result1 = 1;
+＿＿result2 = 1;
 ＿};
 }
 
