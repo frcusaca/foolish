@@ -18,7 +18,7 @@ import org.foolish.ast.AST;
  */
 public class IdentifierFiroe extends FiroeWithBraneMind {
     private final Query.StrictlyMatchingQuery identifier;
-    private FIR value = null;
+    FIR value = null; // Package-private for access by RegexpSearchFiroe
 
     public IdentifierFiroe(AST.Identifier identifier) {
         super(identifier);

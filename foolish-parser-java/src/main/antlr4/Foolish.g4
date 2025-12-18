@@ -187,7 +187,10 @@ INTEGER : DIGIT+ ;
 
 fragment LETTERS : ARABIC_PART | LATIN | GREEK_PART | CYRYLLIC_PART | HEBREW_PART | CHINESE_PART;
 fragment DIGIT : [0-9] ;
-fragment INTRA_ID_SEPARATOR : '\u202F' | '_' ;
+
+// System that accepts _ should convert it to the thinner modifier letter low macro (ux02cd)
+// Collation and search systems should accept these as exchangeable.
+fragment INTRA_ID_SEPARATOR : '\u202F' | '_' | '\u02CD';
 // Skip whitespace
 WS : [ \t\r\n]+ -> skip ;
 

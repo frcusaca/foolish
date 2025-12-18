@@ -40,6 +40,7 @@ PARSED AST:
   adam = alice;
   advent = 5;
   {
+  adrian = 6;
 };
   bobulous = 7;
 } ? (a.*);
@@ -50,6 +51,7 @@ PARSED AST:
   adam = alice;
   advent = 5;
   {
+  adrian = 6;
 };
   bobulous = 7;
 } ? ^a;
@@ -60,6 +62,7 @@ PARSED AST:
   adam = alice;
   advent = 5;
   {
+  adrian = 6;
 };
   bobulous = 7;
 } ? e$;
@@ -70,6 +73,7 @@ PARSED AST:
   adam = alice;
   advent = 5;
   {
+  adrian = 6;
 };
   bobulous = 7;
 } ? bob;
@@ -80,6 +84,7 @@ PARSED AST:
   adam = alice;
   advent = 5;
   {
+  adrian = 6;
 };
   bobulous = 7;
 } ? premordial;
@@ -92,6 +97,7 @@ PARSED AST:
       adam = alice;
       advent = 5;
       {
+        adrian = 6;
       };
       bobulous = 7;
     };
@@ -109,10 +115,12 @@ PARSED AST:
       adam = alice;
       advent = 5;
       {
+        adrian = 6;
       };
       bobulous = 7;
     };
     brn2 = {
+      hard_to_typo_name_for_a_brane = brn;
     };
     result1 = brn2 ? .*brane ? a.*;
     result2 = brn2 ? (.*brane) ? a.*;
@@ -120,7 +128,7 @@ PARSED AST:
 }
 
 UBC EVALUATION:
-Steps taken: 576
+Steps taken: 558
 
 FINAL RESULT:
 {
@@ -141,6 +149,7 @@ FINAL RESULT:
       ＿＿＿adam = 2;
       ＿＿＿advent = 5;
       ＿＿＿{
+      ＿＿＿＿adrian = 6;
       ＿＿＿};
       ＿＿＿bobulous = 7;
       ＿＿};
@@ -158,13 +167,25 @@ FINAL RESULT:
       ＿＿＿adam = 2;
       ＿＿＿advent = 5;
       ＿＿＿{
+      ＿＿＿＿adrian = 6;
       ＿＿＿};
       ＿＿＿bobulous = 7;
       ＿＿};
 ＿＿brn2 = {
+       ＿＿＿hard_to_typo_name_for_a_brane = {
+                                       ＿＿＿＿alice = 2;
+                                       ＿＿＿＿bob = 3;
+                                       ＿＿＿＿charlie = 4;
+                                       ＿＿＿＿adam = 2;
+                                       ＿＿＿＿advent = 5;
+                                       ＿＿＿＿{
+                                       ＿＿＿＿＿adrian = 6;
+                                       ＿＿＿＿};
+                                       ＿＿＿＿bobulous = 7;
+                                       ＿＿＿};
        ＿＿};
-＿＿result1 = 1;
-＿＿result2 = 1;
+＿＿result1 = 5;
+＿＿result2 = 5;
 ＿};
 }
 

@@ -22,7 +22,7 @@ class IdentifierFiroe(override val ast: AST.Identifier)
     ast.id(),
     ast.canonicalCharacterization()
   )
-  private var value: FIR = null
+  private[scubc] var value: FIR = null // Package-private for access by RegexpSearchFiroe
 
   def this(id: String, characterization: String) =
     this(new AST.Identifier(

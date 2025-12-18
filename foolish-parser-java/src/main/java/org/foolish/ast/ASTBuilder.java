@@ -6,11 +6,11 @@ import org.foolish.grammar.FoolishParser;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import static org.foolish.ast.AST.setCharacterization;
 
 public class ASTBuilder extends FoolishBaseVisitor<AST> {
-
     private List<String> extractCharacterizations(List<FoolishParser.CharacterizationContext> contexts) {
         if (contexts == null || contexts.isEmpty()) {
             return List.of();
@@ -77,7 +77,15 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
     @Override
     public AST visitStandard_brane(FoolishParser.Standard_braneContext ctx) {
-        return new AST.Brane(collectStatements(ctx.stmt()));
+        List<AST.Expr> statements = new ArrayList<>(collectStatements(ctx.stmt()));
+        // Add the optional final statement without semicolon (stmt_body)
+        if (ctx.stmt_body() != null) {
+            AST stmtBody = visit(ctx.stmt_body());
+            if (stmtBody instanceof AST.Expr expr) {
+                statements.add(expr);
+            }
+        }
+        return new AST.Brane(statements);
     }
 
     @Override
@@ -183,28 +191,28 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
     @Override
     public AST visitPostfixExpr(FoolishParser.PostfixExprContext ctx) {
-        AST.Expr base = (AST.Expr) visit(ctx.primary());
+        AST.Expr anchor = (AST.Expr) visit(ctx.primary());
 
         // Process all postfix operations in order
         for (var postfixOp : ctx.postfix_op()) {
             if (postfixOp.DOT() != null && postfixOp.characterizable_identifier() != null) {
-                // Handle dereference: base.identifier
+                // Handle dereference: anchor.identifier
                 AST.Identifier coordinate = (AST.Identifier) visit(postfixOp.characterizable_identifier());
-                base = new AST.DereferenceExpr(base, coordinate);
+                anchor = new AST.DereferenceExpr(anchor, coordinate);
             } else if (postfixOp.regexp_operator() != null && postfixOp.regexp_expression() != null) {
-                // Handle regexp search: base ? pattern or base ?? pattern
+                // Handle regexp search: anchor ? pattern or anchor ?? pattern
                 String operator = postfixOp.regexp_operator().getText();
                 String pattern = postfixOp.regexp_expression().getText();
-                base = new AST.RegexpSearchExpr(base, operator, pattern);
+                anchor = new AST.RegexpSearchExpr(anchor, operator, pattern);
             } else if (postfixOp.HASH() != null && postfixOp.seek_index() != null) {
-                // Handle seek: base#N or base#-N
+                // Handle seek: anchor#N or anchor#-N
                 String indexText = postfixOp.seek_index().getText();
                 int offset = Integer.parseInt(indexText);
-                base = new AST.SeekExpr(base, offset);
+                anchor = new AST.SeekExpr(anchor, offset);
             }
         }
 
-        return base;
+        return anchor;
     }
 
     @Override

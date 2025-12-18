@@ -129,7 +129,18 @@ public class Sequencer4Human extends Sequencer<String> {
                 if (result.isAbstract()) {
                     return indent(depth) + assignment.getId() + " = ???";
                 }
-                if (result instanceof BraneFiroe brane) {
+
+                // Unwrap identifier to get the actual value
+                FIR unwrapped = result;
+                if (result instanceof IdentifierFiroe identifierFiroe) {
+                    unwrapped = identifierFiroe.value;
+                    // Further unwrap if the identifier resolved to an assignment
+                    if (unwrapped instanceof AssignmentFiroe assignmentFiroe) {
+                        unwrapped = assignmentFiroe.getResult();
+                    }
+                }
+
+                if (unwrapped instanceof BraneFiroe brane) {
                     // For nested branes, recursively sequence them but remove the indentation from the first line
                     // since we are already indenting 'id = '
                     String braneSeq = sequenceBrane(brane, depth);

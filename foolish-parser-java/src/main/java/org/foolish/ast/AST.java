@@ -192,21 +192,21 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
         }
     }
 
-    record DereferenceExpr(Expr base, Identifier coordinate) implements Expr {
+    record DereferenceExpr(Expr anchor, Identifier coordinate) implements Expr {
         public String toString() {
-            return base + "." + coordinate;
+            return anchor + "." + coordinate;
         }
     }
 
-    record RegexpSearchExpr(Expr base, String operator, String pattern) implements Expr {
+    record RegexpSearchExpr(Expr anchor, String operator, String pattern) implements Expr {
         public String toString() {
-            return base + " " + operator + " " + pattern;
+            return anchor + " " + operator + " " + pattern;
         }
     }
 
-    record SeekExpr(Expr base, int offset) implements Expr {
+    record SeekExpr(Expr anchor, int offset) implements Expr {
         public String toString() {
-            return base + "#" + offset;
+            return anchor + "#" + offset;
         }
     }
 
