@@ -81,10 +81,7 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
         // Handle optional final stmt_body (without semicolon terminator)
         if (ctx.stmt_body() != null) {
-            AST stmtBody = visit(ctx.stmt_body());
-            if (stmtBody instanceof AST.Expr expr) {
-                statements.add(expr);
-            }
+            statements.add((AST.Expr) visit(ctx.stmt_body()));
         }
 
         return new AST.Brane(statements);
