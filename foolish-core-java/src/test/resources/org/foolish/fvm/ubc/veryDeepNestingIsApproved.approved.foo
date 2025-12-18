@@ -15,7 +15,7 @@ PARSED AST:
   {
     {
       {
-        the answer is = 42;
+        theˍanswerˍis = 42;
       };
     };
   };
@@ -29,7 +29,7 @@ FINAL RESULT:
 ＿{
 ＿＿{
 ＿＿＿{
-＿＿＿＿the answer is = 42;
+＿＿＿＿theˍanswerˍis = 42;
 ＿＿＿};
 ＿＿};
 ＿};

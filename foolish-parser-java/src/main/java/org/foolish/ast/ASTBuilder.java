@@ -11,6 +11,16 @@ import java.util.regex.Pattern;
 import static org.foolish.ast.AST.setCharacterization;
 
 public class ASTBuilder extends FoolishBaseVisitor<AST> {
+    static final Pattern ID_CANONICALIZER = Pattern.compile("[\u202F_\u02CD]");
+    static final String INTRA_ID_SPACE = "\u02CD";
+
+    public static final String canonicalizeIdentifierName(String name) {
+        if (name == null)
+            return null;
+
+        return ID_CANONICALIZER.matcher(name).replaceAll(INTRA_ID_SPACE);
+    }
+
     private List<String> extractCharacterizations(List<FoolishParser.CharacterizationContext> contexts) {
         if (contexts == null || contexts.isEmpty()) {
             return List.of();
@@ -18,7 +28,7 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
         List<String> result = new ArrayList<>();
         for (FoolishParser.CharacterizationContext ctx : contexts) {
             TerminalNode identifier = ctx.IDENTIFIER();
-            result.add(identifier != null ? identifier.getText() : "");
+            result.add(identifier != null ? canonicalizeIdentifierName(identifier.getText()) : "");
         }
         return result;
     }
@@ -202,7 +212,7 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
             } else if (postfixOp.regexp_operator() != null && postfixOp.regexp_expression() != null) {
                 // Handle regexp search: anchor ? pattern or anchor ?? pattern
                 String operator = postfixOp.regexp_operator().getText();
-                String pattern = postfixOp.regexp_expression().getText();
+                String pattern = canonicalizeIdentifierName(postfixOp.regexp_expression().getText());
                 anchor = new AST.RegexpSearchExpr(anchor, operator, pattern);
             } else if (postfixOp.HASH() != null && postfixOp.seek_index() != null) {
                 // Handle seek: anchor#N or anchor#-N
@@ -250,7 +260,7 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
             throw new IllegalStateException("characterizable_identifier requires an IDENTIFIER token");
         }
 
-        String id = ctx.IDENTIFIER().getText();
+        String id = canonicalizeIdentifierName(ctx.IDENTIFIER().getText());
 
         if (characterizations.isEmpty()) {
             return new AST.Identifier(id);

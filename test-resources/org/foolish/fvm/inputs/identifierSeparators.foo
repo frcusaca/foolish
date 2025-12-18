@@ -1,0 +1,11 @@
+{
+  my_var = 1;
+  my var = 2;
+  myˍvar = 3;
+
+  my_var + my var + myˍvar;
+
+  foo_bar'x = 10;
+  foo bar'x = 20;
+  fooˍbar'x
+}
