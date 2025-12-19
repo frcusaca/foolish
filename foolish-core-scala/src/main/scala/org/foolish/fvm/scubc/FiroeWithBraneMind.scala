@@ -10,7 +10,7 @@ import scala.collection.mutable
 abstract class FiroeWithBraneMind(ast: AST, comment: Option[String] = None) extends FIR(ast, comment):
 
   protected val braneMind = mutable.Queue[FIR]()
-  protected val braneMemory = new BraneMemory(null)
+  protected[scubc] val braneMemory = new BraneMemory(null)
   protected var ordinated: Boolean = false
 
   def ordinateToParentBraneMind(parent: FiroeWithBraneMind, myPos: Int): Unit =

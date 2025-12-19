@@ -12,12 +12,12 @@ INPUT:
 
 OUTPUT:
 [
-  variable x = ???;
-  coordinate y = ???;
+  variableˍx = ???;
+  coordinateˍy = ???;
 ]
 {
-  my_result = x;
-  my result coordinate = -42;
-  here too'a b c = 5;
-  simple name'd e f;
+  myˍresult = x;
+  myˍresultˍcoordinate = -42;
+  hereˍtoo'aˍbˍc = 5;
+  simpleˍname'dˍeˍf;
 }

@@ -1,0 +1,194 @@
+!!INPUT!!
+{
+	premordial = 0;
+	{
+	    apple = 1;
+	    result1 = {alice = 2; bob = 3; charlie = 4; adam=alice; advent=5; {adrian=6};bobulous=7;}?(a.*);
+	    result2 = {alice = 2; bob = 3; charlie = 4; adam=alice; advent=5; {adrian=6};bobulous=7;}?^a;
+	    result3 = {alice = 2; bob = 3; charlie = 4; adam=alice; advent=5; {adrian=6};bobulous=7;}?e$;
+	    result4 = {alice = 2; bob = 3; charlie = 4; adam=alice; advent=5; {adrian=6};bobulous=7;}?bob;
+	    result5 = {alice = 2; bob = 3; charlie = 4; adam=alice; advent=5; {adrian=6};bobulous=7;}?premordial;
+	};
+	{
+		!! And again by refernece
+		brn = {alice = 2; bob = 3; charlie = 4; adam=alice; advent=5; {adrian=6};bobulous=7;};
+	    result1 = brn?(a.*);
+	    result2 = brn?^a;
+	    result3 = brn?e$;
+	    result4 = brn?bob;
+	    result5 = brn?premordial;
+	};
+	{
+		!! Now chained search
+		brn = {alice = 2; bob = 3; charlie = 4; adam=alice; advent=5; {adrian=6};bobulous=7;};
+		brn2 = {hard_to_typo_name_for_a_brane=brn};
+		result1 = brn2?.*brane ?a.*;
+		result2 = brn2?(.*brane)?a.*;
+	};
+}
+
+!!!
+PARSED AST:
+{
+  premordial = 0;
+  {
+    apple = 1;
+    result1 = {
+  alice = 2;
+  bob = 3;
+  charlie = 4;
+  adam = alice;
+  advent = 5;
+  {
+  adrian = 6;
+};
+  bobulous = 7;
+} ? (a.*);
+    result2 = {
+  alice = 2;
+  bob = 3;
+  charlie = 4;
+  adam = alice;
+  advent = 5;
+  {
+  adrian = 6;
+};
+  bobulous = 7;
+} ? ^a;
+    result3 = {
+  alice = 2;
+  bob = 3;
+  charlie = 4;
+  adam = alice;
+  advent = 5;
+  {
+  adrian = 6;
+};
+  bobulous = 7;
+} ? e$;
+    result4 = {
+  alice = 2;
+  bob = 3;
+  charlie = 4;
+  adam = alice;
+  advent = 5;
+  {
+  adrian = 6;
+};
+  bobulous = 7;
+} ? bob;
+    result5 = {
+  alice = 2;
+  bob = 3;
+  charlie = 4;
+  adam = alice;
+  advent = 5;
+  {
+  adrian = 6;
+};
+  bobulous = 7;
+} ? premordial;
+  };
+  {
+    brn = {
+      alice = 2;
+      bob = 3;
+      charlie = 4;
+      adam = alice;
+      advent = 5;
+      {
+        adrian = 6;
+      };
+      bobulous = 7;
+    };
+    result1 = brn ? (a.*);
+    result2 = brn ? ^a;
+    result3 = brn ? e$;
+    result4 = brn ? bob;
+    result5 = brn ? premordial;
+  };
+  {
+    brn = {
+      alice = 2;
+      bob = 3;
+      charlie = 4;
+      adam = alice;
+      advent = 5;
+      {
+        adrian = 6;
+      };
+      bobulous = 7;
+    };
+    brn2 = {
+      hardˍtoˍtypoˍnameˍforˍaˍbrane = brn;
+    };
+    result1 = brn2 ? .*brane ? a.*;
+    result2 = brn2 ? (.*brane) ? a.*;
+  };
+}
+
+UBC EVALUATION:
+Steps taken: 566
+
+FINAL RESULT:
+{
+＿premordial = 0;
+＿{
+＿＿apple = 1;
+＿＿result1 = 5;
+＿＿result2 = 5;
+＿＿result3 = 4;
+＿＿result4 = 3;
+＿＿result5 = ???;
+＿};
+＿{
+＿＿brn = {
+      ＿＿＿alice = 2;
+      ＿＿＿bob = 3;
+      ＿＿＿charlie = 4;
+      ＿＿＿adam = 2;
+      ＿＿＿advent = 5;
+      ＿＿＿{
+      ＿＿＿＿adrian = 6;
+      ＿＿＿};
+      ＿＿＿bobulous = 7;
+      ＿＿};
+＿＿result1 = 5;
+＿＿result2 = 5;
+＿＿result3 = 4;
+＿＿result4 = 3;
+＿＿result5 = ???;
+＿};
+＿{
+＿＿brn = {
+      ＿＿＿alice = 2;
+      ＿＿＿bob = 3;
+      ＿＿＿charlie = 4;
+      ＿＿＿adam = 2;
+      ＿＿＿advent = 5;
+      ＿＿＿{
+      ＿＿＿＿adrian = 6;
+      ＿＿＿};
+      ＿＿＿bobulous = 7;
+      ＿＿};
+＿＿brn2 = {
+       ＿＿＿hardˍtoˍtypoˍnameˍforˍaˍbrane = {
+                                       ＿＿＿＿alice = 2;
+                                       ＿＿＿＿bob = 3;
+                                       ＿＿＿＿charlie = 4;
+                                       ＿＿＿＿adam = 2;
+                                       ＿＿＿＿advent = 5;
+                                       ＿＿＿＿{
+                                       ＿＿＿＿＿adrian = 6;
+                                       ＿＿＿＿};
+                                       ＿＿＿＿bobulous = 7;
+                                       ＿＿＿};
+       ＿＿};
+＿＿result1 = 5;
+＿＿result2 = 5;
+＿};
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!

@@ -14,11 +14,11 @@ PARSED AST:
 }
 
 UBC EVALUATION:
-Steps taken: 11
+Steps taken: 36
 
 FINAL RESULT:
 {
-＿result = 0;
+＿result = 1;
 }
 
 COMPLETION STATUS:

@@ -5,5 +5,5 @@ INPUT:
 
 OUTPUT:
 {
-  x = my brane.my coordinate;
+  x = myˍbrane.myˍcoordinate;
 }
