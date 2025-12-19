@@ -83,7 +83,23 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
         if result.isAbstract then
           indent(depth) + s"${assignment.getId} = ???"
         else
-          indent(depth) + s"${assignment.getId} = ${result.getValue}"
+          unwrap(result) match
+            case brane: BraneFiroe =>
+              // Special handling for nested branes to align indentation
+              val innerSeq = sequence(brane, 0)
+              val lines = innerSeq.linesIterator.toSeq
+              if lines.isEmpty then
+                 indent(depth) + s"${assignment.getId} = ${innerSeq}"
+              else
+                 val firstLine = indent(depth) + s"${assignment.getId} = ${lines.head}"
+                 val otherLines = lines.tail.map { line =>
+                    indent(depth) + (" " * (assignment.getId.length + 3)) + line
+                 }
+                 (firstLine +: otherLines).mkString("\n")
+
+            case unwrapped =>
+              // Simple values
+              indent(depth) + s"${assignment.getId} = ${unwrapped.getValue}"
       else
         indent(depth) + s"${assignment.getId} = ???"
     else
@@ -97,10 +113,23 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
       if identifier.isAbstract then
         indent(depth) + "???"
       else
-        indent(depth) + identifier.getValue.toString
+        unwrap(identifier) match
+          case brane: BraneFiroe =>
+             // Should not typically happen for top-level sequencing but good to handle
+             sequence(brane, depth)
+          case unwrapped =>
+             indent(depth) + unwrapped.getValue.toString
     else
       // If not yet evaluated
       indent(depth) + "???"
+
+  @scala.annotation.tailrec
+  private def unwrap(fir: FIR): FIR = fir match
+    case assignment: AssignmentFiroe if assignment.getResult.isDefined =>
+      unwrap(assignment.getResult.get)
+    case identifier: IdentifierFiroe if identifier.value != null =>
+      unwrap(identifier.value)
+    case other => other
 
   protected def sequenceNK(nk: FIR, depth: Int): String =
     indent(depth) + "???"

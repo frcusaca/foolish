@@ -1,13 +1,13 @@
 !!INPUT!!
 {
-            {
-                {
-                    {
-                        set_the answer⁠is=42;
-                    };
-                };
-            };
-        }
+	{
+		{
+			{
+				the answer is=42;
+			};
+		};
+	};
+}
 
 !!!
 PARSED AST:
@@ -15,7 +15,7 @@ PARSED AST:
   {
     {
       {
-        set_the answer⁠is = 42;
+        theˍanswerˍis = 42;
       };
     };
   };
@@ -29,7 +29,7 @@ FINAL RESULT:
 ＿{
 ＿＿{
 ＿＿＿{
-＿＿＿＿set_the answer⁠is = 42;
+＿＿＿＿theˍanswerˍis = 42;
 ＿＿＿};
 ＿＿};
 ＿};

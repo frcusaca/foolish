@@ -64,13 +64,13 @@ class RegexpSearchFiroe(regexpSearch: AST.RegexpSearchExpr)
     if braneMind.isEmpty then
       return true
 
-    val current = braneMind.removeFirst()
+    val current = braneMind.dequeue()
     current.step()
 
     if current.isNye then
-      braneMind.addLast(current)
+      braneMind.enqueue(current)
 
-    current.getNyes.ordinal() >= targetState.ordinal()
+    current.getNyes.ordinal >= targetState.ordinal
 
   private def isAnchorReady(): Boolean =
     if braneMemory.isEmpty then
@@ -92,9 +92,9 @@ class RegexpSearchFiroe(regexpSearch: AST.RegexpSearchExpr)
           // Assignment not yet complete, step it
           assignmentFiroe.step()
           return false
-        if assignmentFiroe.getResult == null then
+        if assignmentFiroe.getResult.isEmpty then
           return false // Assignment not yet evaluated
-        assignmentFiroe.getResult
+        assignmentFiroe.getResult.get
       case other => other
 
     // Check if it's a chained RegexpSearchFiroe
@@ -151,10 +151,10 @@ class RegexpSearchFiroe(regexpSearch: AST.RegexpSearchExpr)
           while assignmentFiroe.isNye do
             assignmentFiroe.step()
 
-          anchor = assignmentFiroe.getResult
-          if anchor == null then
+          if assignmentFiroe.getResult.isEmpty then
             searchResult = NKFiroe()
             return
+          anchor = assignmentFiroe.getResult.get
 
         case regexpSearchFiroe: RegexpSearchFiroe =>
           anchor = regexpSearchFiroe.searchResult
@@ -173,7 +173,7 @@ class RegexpSearchFiroe(regexpSearch: AST.RegexpSearchExpr)
           val targetMemory = braneFiroe.braneMemory
           val searchFrom = targetMemory.size - 1
 
-          val result = if operator == "?" then
+          val result: Option[(Int, FIR)] = if operator == "?" then
             targetMemory.getLocal(query, searchFrom)
           else
             targetMemory.get(query, searchFrom)
@@ -189,7 +189,7 @@ class RegexpSearchFiroe(regexpSearch: AST.RegexpSearchExpr)
           foundValue = foundValue match
             case assignmentFiroe: AssignmentFiroe =>
               val res = assignmentFiroe.getResult
-              if res == null then NKFiroe() else res
+              if res.isEmpty then NKFiroe() else res.get
             case other => other
 
           // If the result is still a wrapper type (Identifier/Assignment/RegexpSearch),
