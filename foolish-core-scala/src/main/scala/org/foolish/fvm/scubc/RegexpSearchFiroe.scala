@@ -1,7 +1,6 @@
 package org.foolish.fvm.scubc
 
 import org.foolish.ast.{AST, SearchOperator}
-import org.foolish.fvm.ubc.Query
 
 import java.util.Optional
 
@@ -18,7 +17,7 @@ class RegexpSearchFiroe(regexpSearch: AST.RegexpSearchExpr) extends AbstractSear
   }
 
   override protected def executeSearch(target: BraneFiroe): FIR = {
-    val query = new Query.RegexpQuery(pattern)
+    val query = new BraneMemory.RegexpQuery(pattern)
     val targetMemory = target.braneMemory
     val searchFrom = targetMemory.size - 1
 
@@ -28,7 +27,7 @@ class RegexpSearchFiroe(regexpSearch: AST.RegexpSearchExpr) extends AbstractSear
       case _ => throw new IllegalStateException("Unknown regexp operator: " + operator)
     }
 
-    if (result.isPresent) result.get().getValue else new NKFiroe()
+    if (result.isDefined) result.get._2 else new NKFiroe()
   }
 
   override def toString: String = ast.toString
