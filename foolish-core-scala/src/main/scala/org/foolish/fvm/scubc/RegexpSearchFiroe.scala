@@ -92,9 +92,9 @@ class RegexpSearchFiroe(regexpSearch: AST.RegexpSearchExpr)
           // Assignment not yet complete, step it
           assignmentFiroe.step()
           return false
-        if assignmentFiroe.getResult == null then
+        if assignmentFiroe.getResult.isEmpty then
           return false // Assignment not yet evaluated
-        assignmentFiroe.getResult
+        assignmentFiroe.getResult.get
       case other => other
 
     // Check if it's a chained RegexpSearchFiroe
@@ -152,9 +152,10 @@ class RegexpSearchFiroe(regexpSearch: AST.RegexpSearchExpr)
             assignmentFiroe.step()
 
           anchor = assignmentFiroe.getResult.orNull
-          if anchor == null then
+          if anchor == null || assignmentFiroe.getResult.isEmpty then
             searchResult = NKFiroe()
             return
+          anchor = assignmentFiroe.getResult.get
 
         case regexpSearchFiroe: RegexpSearchFiroe =>
           anchor = regexpSearchFiroe.searchResult
@@ -173,7 +174,7 @@ class RegexpSearchFiroe(regexpSearch: AST.RegexpSearchExpr)
           val targetMemory = braneFiroe.braneMemory
           val searchFrom = targetMemory.size - 1
 
-          val result = if operator == "?" then
+          val result: Option[(Int, FIR)] = if operator == "?" then
             targetMemory.getLocal(query, searchFrom)
           else
             targetMemory.get(query, searchFrom)

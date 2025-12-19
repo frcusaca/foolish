@@ -83,34 +83,27 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
         if result.isAbstract then
           indent(depth) + s"${assignment.getId} = ???"
         else
-          // Unwrap identifier to get the actual value
-          var unwrapped = result
-          result match
-            case identifierFiroe: IdentifierFiroe =>
-              unwrapped = identifierFiroe.value
-              // Further unwrap if the identifier resolved to an assignment
-              unwrapped match
-                case assignmentFiroe: AssignmentFiroe =>
-                  unwrapped = assignmentFiroe.getResult.orNull
-                case _ =>
-            case _ =>
-
-          unwrapped match
+          unwrap(result) match
             case brane: BraneFiroe =>
-              // For nested branes, recursively sequence them but remove the indentation from the first line
-              // since we are already indenting 'id = '
-              val braneSeq = sequenceBrane(brane, depth)
-              // Remove the leading indentation from the brane sequence
+              // Special handling for nested branes to align indentation
+              val sequencedBrane = sequence(brane, depth)
+              // Strip the first line's indentation
               val indentStr = indent(depth)
-              val cleanedSeq = if braneSeq.startsWith(indentStr) then
-                braneSeq.substring(indentStr.length)
+              val strippedBrane = if (sequencedBrane.startsWith(indentStr)) then
+                sequencedBrane.substring(indentStr.length)
               else
-                braneSeq
-              // For subsequent lines, add spaces to align with "id = "
+                sequencedBrane
+
+              // Calculate padding for subsequent lines
               val padding = " " * (assignment.getId.length + 3)
-              indent(depth) + s"${assignment.getId} = ${cleanedSeq.replace("\n", "\n" + padding)}"
-            case _ =>
-              indent(depth) + s"${assignment.getId} = ${result.getValue}"
+              // Apply padding to subsequent lines
+              val alignedBrane = strippedBrane.replace("\n", "\n" + padding)
+
+              indent(depth) + s"${assignment.getId} = ${alignedBrane}"
+
+            case unwrapped =>
+              // Simple values
+              indent(depth) + s"${assignment.getId} = ${unwrapped.getValue}"
       else
         indent(depth) + s"${assignment.getId} = ???"
     else
@@ -124,10 +117,23 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
       if identifier.isAbstract then
         indent(depth) + "???"
       else
-        indent(depth) + identifier.getValue.toString
+        unwrap(identifier) match
+          case brane: BraneFiroe =>
+             // Should not typically happen for top-level sequencing but good to handle
+             sequence(brane, depth)
+          case unwrapped =>
+             indent(depth) + unwrapped.getValue.toString
     else
       // If not yet evaluated
       indent(depth) + "???"
+
+  @scala.annotation.tailrec
+  private def unwrap(fir: FIR): FIR = fir match
+    case assignment: AssignmentFiroe if assignment.getResult.isDefined =>
+      unwrap(assignment.getResult.get)
+    case identifier: IdentifierFiroe if identifier.value != null =>
+      unwrap(identifier.value)
+    case other => other
 
   protected def sequenceNK(nk: FIR, depth: Int): String =
     indent(depth) + "???"
