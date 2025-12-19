@@ -11,38 +11,29 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>foolish-core-java</artifactId>
+    <artifactId>foolish-crossvalidation</artifactId>
     <packaging>jar</packaging>
-    <name>Foolish Core (Java)</name>
+    <name>Foolish Cross-Validation Tests</name>
+    <description>Cross-validation tests verifying Java and Scala implementations produce identical outputs</description>
 
     <dependencies>
-        <!-- Parser dependency -->
+        <!-- Java core dependency to access approval test outputs -->
         <dependency>
             <groupId>org.foolish</groupId>
-            <artifactId>foolish-parser-java</artifactId>
+            <artifactId>foolish-core-java</artifactId>
             <version>${project.version}</version>
-        </dependency>
-
-        <!-- Apache Commons -->
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-        </dependency>
-
-        <!-- JUnit Platform Console Standalone -->
-        <dependency>
-            <groupId>org.junit.platform</groupId>
-            <artifactId>junit-platform-console-standalone</artifactId>
             <scope>test</scope>
         </dependency>
 
-        <!-- ApprovalTests for snapshot-based testing -->
+        <!-- Scala core dependency to access approval test outputs -->
         <dependency>
-            <groupId>com.approvaltests</groupId>
-            <artifactId>approvaltests</artifactId>
+            <groupId>org.foolish</groupId>
+            <artifactId>foolish-core-scala</artifactId>
+            <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
 
+        <!-- JUnit for testing -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
@@ -57,27 +48,7 @@
     </dependencies>
 
     <build>
-        <testResources>
-            <testResource>
-                <directory>../test-resources</directory>
-            </testResource>
-        </testResources>
-
         <plugins>
-            <!-- Create test-jar to share test utilities with other modules -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
-                <version>3.3.0</version>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>test-jar</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>

@@ -34,7 +34,9 @@ public class RegexpSearchFiroe extends FiroeWithBraneMind {
     private final String operator;
     private final String pattern;
     private final SearchResultType resultType;
-    FIR searchResult = null; // Package-private for chained searches
+    FIR searchResult = null; // Package-private for chained searches; null means search incomplete
+    private FIR unwrapAnchor = null; // Current anchor being unwrapped during search
+    private boolean searchPerformed = false; // Track whether we've performed the actual brane search
 
     public RegexpSearchFiroe(AST.RegexpSearchExpr regexpSearch) {
         super(regexpSearch);
@@ -80,13 +82,16 @@ public class RegexpSearchFiroe extends FiroeWithBraneMind {
                 }
             }
             case RESOLVED -> {
-                // Wait for anchor brane to be fully CONSTANT before searching
+                // Wait for anchor brane to be fully CONSTANT before starting search
                 if (stepNonBranesUntilState(Nyes.CONSTANT)) {
                     // Check if the anchor is ready (unwrapping identifiers and assignments)
                     if (isAnchorReady()) {
-                        // Perform the search
-                        performSearch();
-                        setNyes(Nyes.CONSTANT);
+                        // Perform one step of the search unwrapping
+                        performSearchStep();
+                        // Only advance to CONSTANT once search is complete (searchResult != null)
+                        if (searchResult != null) {
+                            setNyes(Nyes.CONSTANT);
+                        }
                     }
                 }
             }
@@ -167,120 +172,124 @@ public class RegexpSearchFiroe extends FiroeWithBraneMind {
         };
     }
 
-    private void performSearch() {
-        // Check which result type is requested
-        switch (resultType) {
-            case VALUE:
-                // Implemented below - return the actual value
-                break;
-            case NAME:
-                throw new UnsupportedOperationException("Search result type NAME not yet implemented");
-            case CONTEXT:
-                throw new UnsupportedOperationException("Search result type CONTEXT not yet implemented");
-            case ASSIGNMENT:
-                throw new UnsupportedOperationException("Search result type ASSIGNMENT not yet implemented");
+    /**
+     * Perform one step of the search unwrapping process.
+     * This method is called repeatedly while in RESOLVED state until searchResult != null.
+     * Each call unwraps one layer or performs the brane search.
+     */
+    private void performSearchStep() {
+        // Check which result type is requested (only on first call)
+        if (unwrapAnchor == null && !searchPerformed) {
+            switch (resultType) {
+                case VALUE:
+                    // Implemented below - return the actual value
+                    break;
+                case NAME:
+                    throw new UnsupportedOperationException("Search result type NAME not yet implemented");
+                case CONTEXT:
+                    throw new UnsupportedOperationException("Search result type CONTEXT not yet implemented");
+                case ASSIGNMENT:
+                    throw new UnsupportedOperationException("Search result type ASSIGNMENT not yet implemented");
+            }
+
+            // Get the anchor brane from braneMemory (the evaluated anchor expression)
+            if (braneMemory.isEmpty()) {
+                searchResult = new NKFiroe(); // Not found
+                return;
+            }
+
+            unwrapAnchor = braneMemory.getLast();
         }
 
-        // Get the anchor brane from braneMemory (the evaluated anchor expression)
-        if (braneMemory.isEmpty()) {
-            searchResult = new NKFiroe(); // Not found
+        // If we've already found the result, nothing to do
+        if (searchResult != null) {
             return;
         }
 
-        FIR anchor = braneMemory.getLast();
-
-        // Unwrap layers until we reach a searchable value (brane or ???)
-        // Loop repeatedly until anchor is fully unwrapped
-        //
+        // Unwrap one layer at a time
         // NOTE: Current FIR architecture has IdentifierFiroe.value point to AssignmentFiroe,
         // which then contains the actual value. This means we must unwrap both:
         //   brn (IdentifierFiroe) -> brn=... (AssignmentFiroe) -> {...} (BraneFiroe)
-        //
-        // Since we do fuzzy matching in search, knowing the full assignment can give us the
-        // original assignment name and characterizations.
-        boolean searchPerformed = false; // Track whether we've already searched
-        while (true) {
-            switch (anchor) {
-                case IdentifierFiroe identifierFiroe:
-                    anchor = identifierFiroe.value;
-                    if (anchor == null) {
-                        searchResult = new NKFiroe();
-                        return;
-                    }
-                    continue; // Check the unwrapped value
-
-                case AssignmentFiroe assignmentFiroe:
-                    // Unwrap assignment - this is needed because identifiers point to assignments
-                    // Step the assignment until it's fully evaluated
-                    while (assignmentFiroe.isNye()) {
-                        assignmentFiroe.step();
-                    }
-
-                    anchor = assignmentFiroe.getResult();
-                    if (anchor == null) {
-                        searchResult = new NKFiroe();
-                        return;
-                    }
-                    continue; // Check the unwrapped value
-
-                case RegexpSearchFiroe regexpSearchFiroe:
-                    anchor = regexpSearchFiroe.searchResult;
-                    if (anchor == null) {
-                        searchResult = new NKFiroe();
-                        return;
-                    }
-                    continue; // Check the unwrapped value
-
-                case BraneFiroe braneFiroe:
-                    // If we've already performed a search, this brane is the result - return it
-                    if (searchPerformed) {
-                        searchResult = braneFiroe;
-                        return;
-                    }
-
-                    // Found a brane - perform the search
-                    Query.RegexpQuery query = new Query.RegexpQuery(pattern);
-                    BraneMemory targetMemory = braneFiroe.braneMemory;
-                    int searchFrom = targetMemory.size() - 1;
-
-                    Optional<Pair<Integer, FIR>> result = operator.equals("?")
-                        ? targetMemory.getLocal(query, searchFrom)
-                        : targetMemory.get(query, searchFrom);
-
-                    searchPerformed = true; // Mark that we've performed the search
-
-                    FIR foundValue = result.map(pair -> pair.getValue()).orElse(new NKFiroe());
-
-                    // For VALUE result type: Unwrap assignments to get the actual value
-                    // When we find "name=value" in a brane, we want to return the value, not the assignment
-                    if (foundValue instanceof AssignmentFiroe assignment) {
-                        foundValue = assignment.getResult();
-                        if (foundValue == null) {
-                            foundValue = new NKFiroe();
-                        }
-                    }
-
-                    // If the result is still a wrapper type (Identifier/Assignment/RegexpSearch),
-                    // put it back through the unwrapping loop to fully resolve it to a concrete value
-                    if (foundValue instanceof IdentifierFiroe || foundValue instanceof AssignmentFiroe || foundValue instanceof RegexpSearchFiroe) {
-                        anchor = foundValue;
-                        continue; // Continue unwrapping
-                    }
-
-                    // Fully unwrapped - return the concrete value
-                    searchResult = foundValue;
-                    return;
-
-                case NKFiroe _:
-                    // Searching ??? returns ???
+        switch (unwrapAnchor) {
+            case IdentifierFiroe identifierFiroe:
+                unwrapAnchor = identifierFiroe.value;
+                if (unwrapAnchor == null) {
                     searchResult = new NKFiroe();
-                    return;
+                }
+                return; // Check the unwrapped value on next step
 
-                default:
-                    // Can only search branes or ???
+            case AssignmentFiroe assignmentFiroe:
+                // Unwrap assignment - this is needed because identifiers point to assignments
+                // Step the assignment if it's not yet evaluated
+                if (assignmentFiroe.isNye()) {
+                    assignmentFiroe.step();
+                    return; // Wait for assignment to complete
+                }
+
+                unwrapAnchor = assignmentFiroe.getResult();
+                if (unwrapAnchor == null) {
                     searchResult = new NKFiroe();
+                }
+                return; // Check the unwrapped value on next step
+
+            case RegexpSearchFiroe regexpSearchFiroe:
+                // Step the chained search if it's not complete
+                if (regexpSearchFiroe.searchResult == null) {
+                    regexpSearchFiroe.step();
+                    return; // Wait for chained search to complete
+                }
+                unwrapAnchor = regexpSearchFiroe.searchResult;
+                return; // Check the unwrapped value on next step
+
+            case BraneFiroe braneFiroe:
+                // If we've already performed a search, this brane is the result - return it
+                if (searchPerformed) {
+                    searchResult = braneFiroe;
                     return;
-            }
+                }
+
+                // Found a brane - perform the search
+                Query.RegexpQuery query = new Query.RegexpQuery(pattern);
+                BraneMemory targetMemory = braneFiroe.braneMemory;
+                int searchFrom = targetMemory.size() - 1;
+
+                Optional<Pair<Integer, FIR>> result = operator.equals("?")
+                    ? targetMemory.getLocal(query, searchFrom)
+                    : targetMemory.get(query, searchFrom);
+
+                searchPerformed = true; // Mark that we've performed the search
+
+                FIR foundValue = result.map(pair -> pair.getValue()).orElse(new NKFiroe());
+
+                // For VALUE result type: Unwrap assignments to get the actual value
+                // When we find "name=value" in a brane, we want to return the value, not the assignment
+                if (foundValue instanceof AssignmentFiroe assignment) {
+                    foundValue = assignment.getResult();
+                    if (foundValue == null) {
+                        foundValue = new NKFiroe();
+                    }
+                }
+
+                // If the result is still a wrapper type (Identifier/Assignment/RegexpSearch),
+                // put it back through the unwrapping loop to fully resolve it to a concrete value
+                if (foundValue instanceof IdentifierFiroe || foundValue instanceof AssignmentFiroe || foundValue instanceof RegexpSearchFiroe) {
+                    unwrapAnchor = foundValue;
+                    return; // Continue unwrapping on next step
+                }
+
+                // Fully unwrapped - return the concrete value
+                searchResult = foundValue;
+                return;
+
+            case NKFiroe _:
+                // Searching ??? returns ???
+                searchResult = new NKFiroe();
+                return;
+
+            default:
+                // Can only search branes or ???
+                searchResult = new NKFiroe();
+                return;
         }
     }
 

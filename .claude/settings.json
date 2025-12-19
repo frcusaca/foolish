@@ -22,8 +22,7 @@
       "LS(*)",
       "Glob(*)",
       "Grep(*)",
-      "WebFetch(*)",
-      "WebSearch(*)",
+      "WebFetch(domain:*)",
       "MultiEdit(*)"
     ]
   },

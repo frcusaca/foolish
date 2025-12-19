@@ -21,7 +21,9 @@ class RegexpSearchFiroe(regexpSearch: AST.RegexpSearchExpr)
   private val operator: String = regexpSearch.operator()
   private val pattern: String = regexpSearch.pattern()
   private val resultType: SearchResultType = SearchResultType.VALUE
-  private[scubc] var searchResult: FIR = null // Package-private for chained searches
+  private[scubc] var searchResult: FIR = null // Package-private for chained searches; null means search incomplete
+  private var unwrapAnchor: FIR = null // Current anchor being unwrapped during search
+  private var searchPerformed: Boolean = false // Track whether we've performed the actual brane search
 
   override protected def initialize(): Unit =
     setInitialized()
@@ -49,13 +51,15 @@ class RegexpSearchFiroe(regexpSearch: AST.RegexpSearchExpr)
           setNyes(Nyes.RESOLVED)
 
       case Nyes.RESOLVED =>
-        // Wait for anchor brane to be fully CONSTANT before searching
+        // Wait for anchor brane to be fully CONSTANT before starting search
         if stepNonBranesUntilState(Nyes.CONSTANT) then
           // Check if the anchor is ready (unwrapping identifiers and assignments)
           if isAnchorReady() then
-            // Perform the search
-            performSearch()
-            setNyes(Nyes.CONSTANT)
+            // Perform one step of the search unwrapping
+            performSearchStep()
+            // Only advance to CONSTANT once search is complete (searchResult != null)
+            if searchResult != null then
+              setNyes(Nyes.CONSTANT)
 
       case _ =>
         super.step()
@@ -108,111 +112,116 @@ class RegexpSearchFiroe(regexpSearch: AST.RegexpSearchExpr)
           true
       case _ => true // Anchor is ready
 
-  private def performSearch(): Unit =
-    // Check which result type is requested
-    resultType match
-      case SearchResultType.VALUE =>
-        // Implemented below - return the actual value
-      case SearchResultType.NAME =>
-        throw UnsupportedOperationException("Search result type NAME not yet implemented")
-      case SearchResultType.CONTEXT =>
-        throw UnsupportedOperationException("Search result type CONTEXT not yet implemented")
-      case SearchResultType.ASSIGNMENT =>
-        throw UnsupportedOperationException("Search result type ASSIGNMENT not yet implemented")
+  /**
+   * Perform one step of the search unwrapping process.
+   * This method is called repeatedly while in RESOLVED state until searchResult != null.
+   * Each call unwraps one layer or performs the brane search.
+   */
+  private def performSearchStep(): Unit =
+    // Check which result type is requested (only on first call)
+    if unwrapAnchor == null && !searchPerformed then
+      resultType match
+        case SearchResultType.VALUE =>
+          // Implemented below - return the actual value
+        case SearchResultType.NAME =>
+          throw UnsupportedOperationException("Search result type NAME not yet implemented")
+        case SearchResultType.CONTEXT =>
+          throw UnsupportedOperationException("Search result type CONTEXT not yet implemented")
+        case SearchResultType.ASSIGNMENT =>
+          throw UnsupportedOperationException("Search result type ASSIGNMENT not yet implemented")
 
-    // Get the anchor brane from braneMemory (the evaluated anchor expression)
-    if braneMemory.isEmpty then
-      searchResult = NKFiroe()
+      // Get the anchor brane from braneMemory (the evaluated anchor expression)
+      if braneMemory.isEmpty then
+        searchResult = NKFiroe()
+        return
+
+      unwrapAnchor = braneMemory.getLast
+
+    // If we've already found the result, nothing to do
+    if searchResult != null then
       return
 
-    // Unwrap layers until we reach a searchable value (brane or ???)
-    //
+    // Unwrap one layer at a time
     // NOTE: Current FIR architecture has IdentifierFiroe.value point to AssignmentFiroe,
     // which then contains the actual value. This means we must unwrap both:
     //   brn (IdentifierFiroe) -> brn=... (AssignmentFiroe) -> {...} (BraneFiroe)
-    //
-    // Question for consideration: Should identifiers point directly to values for search purposes?
-    // Assignments are only meaningful as brane members, not as intermediate search steps.
-    var anchor = braneMemory.getLast
-    var continue = true
-    var searchPerformed = false // Track whether we've already searched
-
-    while continue do
-      anchor match
-        case identifierFiroe: IdentifierFiroe =>
-          anchor = identifierFiroe.value
-          if anchor == null then
-            searchResult = NKFiroe()
-            return
-
-        case assignmentFiroe: AssignmentFiroe =>
-          // Unwrap assignment - this is needed because identifiers point to assignments
-          // Step the assignment until it's fully evaluated
-          while assignmentFiroe.isNye do
-            assignmentFiroe.step()
-
-          anchor = assignmentFiroe.getResult.orNull
-          if anchor == null || assignmentFiroe.getResult.isEmpty then
-            searchResult = NKFiroe()
-            return
-          anchor = assignmentFiroe.getResult.get
-
-        case regexpSearchFiroe: RegexpSearchFiroe =>
-          anchor = regexpSearchFiroe.searchResult
-          if anchor == null then
-            searchResult = NKFiroe()
-            return
-
-        case braneFiroe: BraneFiroe =>
-          // If we've already performed a search, this brane is the result - return it
-          if searchPerformed then
-            searchResult = braneFiroe
-            return
-
-          // Found a brane - perform the search
-          val query = BraneMemory.RegexpQuery(pattern)
-          val targetMemory = braneFiroe.braneMemory
-          val searchFrom = targetMemory.size - 1
-
-          val result: Option[(Int, FIR)] = if operator == "?" then
-            targetMemory.getLocal(query, searchFrom)
-          else
-            targetMemory.get(query, searchFrom)
-
-          searchPerformed = true // Mark that we've performed the search
-
-          var foundValue = result match
-            case Some((_, fir)) => fir
-            case None => NKFiroe()
-
-          // For VALUE result type: Unwrap assignments to get the actual value
-          // When we find "name=value" in a brane, we want to return the value, not the assignment
-          foundValue = foundValue match
-            case assignmentFiroe: AssignmentFiroe =>
-              val res = assignmentFiroe.getResult.orNull
-              if res == null then NKFiroe() else res
-            case other => other
-
-          // If the result is still a wrapper type (Identifier/Assignment/RegexpSearch),
-          // put it back through the unwrapping loop to fully resolve it to a concrete value
-          foundValue match
-            case _: IdentifierFiroe | _: AssignmentFiroe | _: RegexpSearchFiroe =>
-              anchor = foundValue
-              // Continue unwrapping
-            case _ =>
-              // Fully unwrapped - return the concrete value
-              searchResult = foundValue
-              return
-
-        case _: NKFiroe =>
-          // Searching ??? returns ???
+    unwrapAnchor match
+      case identifierFiroe: IdentifierFiroe =>
+        unwrapAnchor = identifierFiroe.value
+        if unwrapAnchor == null then
           searchResult = NKFiroe()
+        return // Check the unwrapped value on next step
+
+      case assignmentFiroe: AssignmentFiroe =>
+        // Unwrap assignment - this is needed because identifiers point to assignments
+        // Step the assignment if it's not yet evaluated
+        if assignmentFiroe.isNye then
+          assignmentFiroe.step()
+          return // Wait for assignment to complete
+
+        unwrapAnchor = assignmentFiroe.getResult.orNull
+        if unwrapAnchor == null then
+          searchResult = NKFiroe()
+        return // Check the unwrapped value on next step
+
+      case regexpSearchFiroe: RegexpSearchFiroe =>
+        // Step the chained search if it's not complete
+        if regexpSearchFiroe.searchResult == null then
+          regexpSearchFiroe.step()
+          return // Wait for chained search to complete
+        unwrapAnchor = regexpSearchFiroe.searchResult
+        return // Check the unwrapped value on next step
+
+      case braneFiroe: BraneFiroe =>
+        // If we've already performed a search, this brane is the result - return it
+        if searchPerformed then
+          searchResult = braneFiroe
           return
 
-        case _ =>
-          // Can only search branes or ???
-          searchResult = NKFiroe()
-          return
+        // Found a brane - perform the search
+        val query = BraneMemory.RegexpQuery(pattern)
+        val targetMemory = braneFiroe.braneMemory
+        val searchFrom = targetMemory.size - 1
+
+        val result: Option[(Int, FIR)] = if operator == "?" then
+          targetMemory.getLocal(query, searchFrom)
+        else
+          targetMemory.get(query, searchFrom)
+
+        searchPerformed = true // Mark that we've performed the search
+
+        var foundValue = result match
+          case Some((_, fir)) => fir
+          case None => NKFiroe()
+
+        // For VALUE result type: Unwrap assignments to get the actual value
+        // When we find "name=value" in a brane, we want to return the value, not the assignment
+        foundValue = foundValue match
+          case assignmentFiroe: AssignmentFiroe =>
+            val res = assignmentFiroe.getResult.orNull
+            if res == null then NKFiroe() else res
+          case other => other
+
+        // If the result is still a wrapper type (Identifier/Assignment/RegexpSearch),
+        // put it back through the unwrapping loop to fully resolve it to a concrete value
+        foundValue match
+          case _: IdentifierFiroe | _: AssignmentFiroe | _: RegexpSearchFiroe =>
+            unwrapAnchor = foundValue
+            return // Continue unwrapping on next step
+          case _ =>
+            // Fully unwrapped - return the concrete value
+            searchResult = foundValue
+            return
+
+      case _: NKFiroe =>
+        // Searching ??? returns ???
+        searchResult = NKFiroe()
+        return
+
+      case _ =>
+        // Can only search branes or ???
+        searchResult = NKFiroe()
+        return
 
   override def isAbstract: Boolean =
     if searchResult == null then

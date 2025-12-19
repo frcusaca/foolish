@@ -19,18 +19,18 @@ import static org.junit.jupiter.api.Assertions.*;
  * Cross-validation test that verifies Java and Scala UBC implementations
  * produce identical output for all test cases.
  *
- * This test runs during 'mvn test' to ensure both implementations
- * produce identical output.
+ * This test runs as a separate module after both Java and Scala tests complete
+ * to ensure both implementations produce identical output.
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class ApprovalCrossValidationTest {
 
     protected String getJavaApprovalPath() {
-        return "src/test/resources/org/foolish/fvm/ubc";
+        return "../foolish-core-java/src/test/resources/org/foolish/fvm/ubc";
     }
 
     protected String getScalaApprovalPath() {
-        return "src/test/resources/org/foolish/fvm/scubc";
+        return "../foolish-core-scala/src/test/resources/org/foolish/fvm/scubc";
     }
 
     @Test

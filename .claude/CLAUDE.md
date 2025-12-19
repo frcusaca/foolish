@@ -45,16 +45,18 @@ The codebase uses a **multi-module Maven project** with parallel Java and Scala 
 
 ```
 foolish-parent (root POM)
-├── foolish-parser-java    (ANTLR grammar, AST, shared by both implementations)
-├── foolish-core-java      (Java UBC implementation)
-├── foolish-core-scala     (Scala UBC implementation)
-└── foolish-lsp-java       (Language Server Protocol)
+├── foolish-parser-java       (ANTLR grammar, AST, shared by both implementations)
+├── foolish-core-java         (Java UBC implementation)
+├── foolish-core-scala        (Scala UBC implementation)
+├── foolish-lsp-java          (Language Server Protocol)
+└── foolish-crossvalidation   (Cross-validation tests verifying Java/Scala output identity)
 ```
 
 **Key Dependencies:**
 - Both Java and Scala core modules depend on the shared parser
 - Scala core depends on Java core for shared test utilities
 - LSP server uses the Java implementation
+- Cross-validation module depends on both Java and Scala core modules
 - Requirements: Java 25, Scala 3.3.7, ANTLR 4.13.2
 
 ### The Unicellular Brane Computer (UBC)
@@ -109,15 +111,15 @@ Only `CONSTANT` means fully evaluated (not "nye" = Not Yet Evaluated).
 - Test classes (JUnit vs ScalaTest)
 - Separate approval output directories
 
-**Critical Constraint:** Both implementations must produce **byte-identical** approval outputs. `ApprovalCrossValidationTest.java` enforces this by comparing all approval files.
+**Critical Constraint:** Both implementations must produce **byte-identical** approval outputs. Cross-validation tests in the `foolish-crossvalidation` module enforce this by comparing all approval files.
 
 ### Test Infrastructure
 
 **Three-Tier Testing:**
 
-1. **Unit Tests** (`*UnitTest.java`) - focused component tests
-2. **Approval Tests** (`*ApprovalTest.{java,scala}`) - snapshot-based integration tests
-3. **Cross-Validation** (`ApprovalCrossValidationTest.java`) - ensures Java/Scala output identity
+1. **Unit Tests** (`*UnitTest.java`) - focused component tests in Java and Scala modules
+2. **Approval Tests** (`*ApprovalTest.{java,scala}`) - snapshot-based integration tests in Java and Scala modules
+3. **Cross-Validation** (separate `foolish-crossvalidation` module) - runs after Java and Scala tests to ensure output identity
 
 #### Approval Test Workflow
 
@@ -205,6 +207,7 @@ Claude Code v1.0.0 / claude-sonnet-4.5
 - **Java UBC**: `foolish-core-java/src/main/java/org/foolish/fvm/ubc/`
 - **Scala UBC**: `foolish-core-scala/src/main/scala/org/foolish/fvm/scubc/`
 - **Test Inputs**: `*/src/test/resources/org/foolish/fvm/inputs/`
+- **Cross-Validation Tests**: `foolish-crossvalidation/src/test/java/org/foolish/`
 - **Documentation**: `docs/` directory (README.md, STYLES.md, ADVANCED_FEATURES.md, ECOSYSTEM.md, etc.)
 
 ## Additional Documentation
@@ -228,6 +231,6 @@ When proposing updates, explain what has changed and why the documentation needs
 
 ## Last Updated
 
-**Date**: 2025-12-15
-**Status**: Expanded approval test workflow section with precise directory locations and workflow steps for adding new tests.
+**Date**: 2025-12-19
+**Status**: Separated cross-validation tests into dedicated `foolish-crossvalidation` module. Updated module structure diagram, test infrastructure documentation, and important file locations to reflect the new organization.
 **Reviewed by**: User requested update
