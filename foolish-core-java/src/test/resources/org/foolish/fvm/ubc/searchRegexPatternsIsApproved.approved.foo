@@ -19,27 +19,27 @@
 !!!
 PARSED AST:
 {
-  alice_match = {
+  aliceˍmatch = {
   alice = 1;
   bob = 2;
   charlie = 3;
 } ? (al.*);
-  first_a = {
+  firstˍa = {
   alice = 1;
   adam = 2;
   bob = 3;
 } ? ^a;
-  ends_with_e = {
+  endsˍwithˍe = {
   alice = 1;
   charlie = 2;
   bob = 3;
 } ? e$;
-  temp_vars = {
-  tmp_a = 10;
+  tempˍvars = {
+  tmpˍa = 10;
   result = 20;
-  tmp_b = 30;
+  tmpˍb = 30;
   output = 40;
-} ? (tmp_.*);
+} ? (tmpˍ.*);
 }
 
 UBC EVALUATION:
@@ -47,10 +47,10 @@ Steps taken: 143
 
 FINAL RESULT:
 {
-＿alice_match = 1;
-＿first_a = 2;
-＿ends_with_e = 2;
-＿temp_vars = 30;
+＿aliceˍmatch = 1;
+＿firstˍa = 2;
+＿endsˍwithˍe = 2;
+＿tempˍvars = 30;
 }
 
 COMPLETION STATUS:

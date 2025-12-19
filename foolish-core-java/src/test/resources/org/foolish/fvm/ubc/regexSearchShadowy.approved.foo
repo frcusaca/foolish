@@ -120,7 +120,7 @@ PARSED AST:
       bobulous = 7;
     };
     brn2 = {
-      hard_to_typo_name_for_a_brane = brn;
+      hardˍtoˍtypoˍnameˍforˍaˍbrane = brn;
     };
     result1 = brn2 ? .*brane ? a.*;
     result2 = brn2 ? (.*brane) ? a.*;
@@ -172,7 +172,7 @@ FINAL RESULT:
       ＿＿＿bobulous = 7;
       ＿＿};
 ＿＿brn2 = {
-       ＿＿＿hard_to_typo_name_for_a_brane = {
+       ＿＿＿hardˍtoˍtypoˍnameˍforˍaˍbrane = {
                                        ＿＿＿＿alice = 2;
                                        ＿＿＿＿bob = 3;
                                        ＿＿＿＿charlie = 4;
