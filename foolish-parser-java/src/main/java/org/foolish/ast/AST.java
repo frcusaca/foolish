@@ -235,6 +235,9 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
         }
 
         public String toString() {
+            if (expr instanceof OneShotSearchExpr) {
+                return identifier + " =" + expr;
+            }
             return identifier + " = " + expr;
         }
     }
