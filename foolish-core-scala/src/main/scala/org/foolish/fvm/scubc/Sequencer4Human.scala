@@ -83,7 +83,34 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
         if result.isAbstract then
           indent(depth) + s"${assignment.getId} = ???"
         else
-          indent(depth) + s"${assignment.getId} = ${result.getValue}"
+          // Unwrap identifier to get the actual value
+          var unwrapped = result
+          result match
+            case identifierFiroe: IdentifierFiroe =>
+              unwrapped = identifierFiroe.value
+              // Further unwrap if the identifier resolved to an assignment
+              unwrapped match
+                case assignmentFiroe: AssignmentFiroe =>
+                  unwrapped = assignmentFiroe.getResult.orNull
+                case _ =>
+            case _ =>
+
+          unwrapped match
+            case brane: BraneFiroe =>
+              // For nested branes, recursively sequence them but remove the indentation from the first line
+              // since we are already indenting 'id = '
+              val braneSeq = sequenceBrane(brane, depth)
+              // Remove the leading indentation from the brane sequence
+              val indentStr = indent(depth)
+              val cleanedSeq = if braneSeq.startsWith(indentStr) then
+                braneSeq.substring(indentStr.length)
+              else
+                braneSeq
+              // For subsequent lines, add spaces to align with "id = "
+              val padding = " " * (assignment.getId.length + 3)
+              indent(depth) + s"${assignment.getId} = ${cleanedSeq.replace("\n", "\n" + padding)}"
+            case _ =>
+              indent(depth) + s"${assignment.getId} = ${result.getValue}"
       else
         indent(depth) + s"${assignment.getId} = ???"
     else

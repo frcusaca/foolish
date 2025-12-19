@@ -64,13 +64,13 @@ class RegexpSearchFiroe(regexpSearch: AST.RegexpSearchExpr)
     if braneMind.isEmpty then
       return true
 
-    val current = braneMind.removeFirst()
+    val current = braneMind.dequeue()
     current.step()
 
     if current.isNye then
-      braneMind.addLast(current)
+      braneMind.enqueue(current)
 
-    current.getNyes.ordinal() >= targetState.ordinal()
+    current.getNyes.ordinal >= targetState.ordinal
 
   private def isAnchorReady(): Boolean =
     if braneMemory.isEmpty then
@@ -151,7 +151,7 @@ class RegexpSearchFiroe(regexpSearch: AST.RegexpSearchExpr)
           while assignmentFiroe.isNye do
             assignmentFiroe.step()
 
-          anchor = assignmentFiroe.getResult
+          anchor = assignmentFiroe.getResult.orNull
           if anchor == null then
             searchResult = NKFiroe()
             return
@@ -188,7 +188,7 @@ class RegexpSearchFiroe(regexpSearch: AST.RegexpSearchExpr)
           // When we find "name=value" in a brane, we want to return the value, not the assignment
           foundValue = foundValue match
             case assignmentFiroe: AssignmentFiroe =>
-              val res = assignmentFiroe.getResult
+              val res = assignmentFiroe.getResult.orNull
               if res == null then NKFiroe() else res
             case other => other
 
