@@ -86,16 +86,20 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
           unwrap(result) match
             case brane: BraneFiroe =>
               // Special handling for nested branes to align indentation
-              val innerSeq = sequence(brane, 0)
-              val lines = innerSeq.linesIterator.toSeq
-              if lines.isEmpty then
-                 indent(depth) + s"${assignment.getId} = ${innerSeq}"
+              val sequencedBrane = sequence(brane, depth)
+              // Strip the first line's indentation
+              val indentStr = indent(depth)
+              val strippedBrane = if (sequencedBrane.startsWith(indentStr)) then
+                sequencedBrane.substring(indentStr.length)
               else
-                 val firstLine = indent(depth) + s"${assignment.getId} = ${lines.head}"
-                 val otherLines = lines.tail.map { line =>
-                    indent(depth) + (" " * (assignment.getId.length + 3)) + line
-                 }
-                 (firstLine +: otherLines).mkString("\n")
+                sequencedBrane
+
+              // Calculate padding for subsequent lines
+              val padding = " " * (assignment.getId.length + 3)
+              // Apply padding to subsequent lines
+              val alignedBrane = strippedBrane.replace("\n", "\n" + padding)
+
+              indent(depth) + s"${assignment.getId} = ${alignedBrane}"
 
             case unwrapped =>
               // Simple values
