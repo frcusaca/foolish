@@ -16,7 +16,7 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
         };
     }
 
-    sealed interface Expr extends AST permits Characterizable, BinaryExpr, UnaryExpr, Branes, IfExpr, UnknownExpr, Stmt, DereferenceExpr, RegexpSearchExpr, SeekExpr {
+    sealed interface Expr extends AST permits Characterizable, BinaryExpr, UnaryExpr, Branes, IfExpr, UnknownExpr, Stmt, DereferenceExpr, RegexpSearchExpr, SeekExpr, OneShotSearchExpr {
 
     }
 
@@ -198,7 +198,7 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
         }
     }
 
-    record RegexpSearchExpr(Expr anchor, String operator, String pattern) implements Expr {
+    record RegexpSearchExpr(Expr anchor, SearchOperator operator, String pattern) implements Expr {
         public String toString() {
             return anchor + " " + operator + " " + pattern;
         }
@@ -207,6 +207,12 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
     record SeekExpr(Expr anchor, int offset) implements Expr {
         public String toString() {
             return anchor + "#" + offset;
+        }
+    }
+
+    record OneShotSearchExpr(Expr anchor, SearchOperator operator) implements Expr {
+        public String toString() {
+            return operator + " " + anchor;
         }
     }
 

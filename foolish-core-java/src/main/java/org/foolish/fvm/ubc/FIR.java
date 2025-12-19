@@ -128,6 +128,9 @@ public abstract class FIR {
             case AST.RegexpSearchExpr regexpSearch -> {
                 return new RegexpSearchFiroe(regexpSearch);
             }
+            case AST.OneShotSearchExpr oneShotSearch -> {
+                return new OneShotSearchFiroe(oneShotSearch);
+            }
             case AST.SeekExpr seekExpr -> {
                 // TODO: Implement SeekFiroe when needed
                 return new NKFiroe();
