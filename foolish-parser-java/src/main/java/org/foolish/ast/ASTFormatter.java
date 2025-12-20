@@ -74,6 +74,9 @@ public class ASTFormatter {
     }
 
     private String formatAssignment(AST.Assignment assignment, int indentLevel) {
+        if (assignment.expr() instanceof AST.OneShotSearchExpr) {
+            return assignment.id() + " =" + format(assignment.expr(), indentLevel);
+        }
         return assignment.id() + " = " + format(assignment.expr(), indentLevel);
     }
 

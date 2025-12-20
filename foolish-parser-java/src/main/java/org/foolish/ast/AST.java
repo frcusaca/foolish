@@ -212,7 +212,7 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
 
     record OneShotSearchExpr(Expr anchor, SearchOperator operator) implements Expr {
         public String toString() {
-            return operator + " " + anchor;
+            return operator + anchor.toString();
         }
     }
 
