@@ -77,8 +77,8 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
           assignmentFiroe.step()
           return false
         }
-        if (assignmentFiroe.getResult == null) return false
-        assignmentFiroe.getResult.asInstanceOf[FIR]
+        if (assignmentFiroe.getResult.isEmpty) return false
+        assignmentFiroe.getResult.get
       case _ => anchor
     }
     if (resolvedAnchor2 == null) return false
@@ -120,8 +120,8 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
           return
         }
         val res = assignmentFiroe.getResult
-        if (res == null) searchResult = new NKFiroe()
-        else unwrapAnchor = res.asInstanceOf[FIR]
+        if (res.isEmpty) searchResult = new NKFiroe()
+        else unwrapAnchor = res.get
         return
 
       case abstractSearch: AbstractSearchFiroe =>
@@ -151,8 +151,8 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
         result match {
           case assignment: AssignmentFiroe =>
             val res = assignment.getResult
-            if (res == null) result = new NKFiroe()
-            else result = res.asInstanceOf[FIR]
+            if (res.isEmpty) result = new NKFiroe()
+            else result = res.get
           case _ =>
         }
 
