@@ -92,6 +92,20 @@ Only `CONSTANT` means fully evaluated (not "nye" = Not Yet Evaluated).
 - Names resolve based on proximity: "containment creates organization, proximity creates combination"
 - Supports both exact identifier matching and regular expression queries
 
+#### Brane Reference Semantics: AB and IB
+
+**Ancestral Brane (AB)** and **Immediate Brane (IB)** are critical context for name resolution:
+- **IB**: Current context accumulated so far (lines before current expression)
+- **AB**: Parent brane context containing the defining expression and its AB/IB
+
+**Detachment and Coordination**: When a brane is referenced by name:
+1. The brane was already partially resolved in its original AB/IB context
+2. A clone is **detached** from its original AB/IB
+3. The clone is **recoordinated** with new AB (the containing brane) and new IB (preceding lines)
+4. Previously failed name searches can now resolve in the new context
+
+In UBC implementation, this means creating a modified clone with new context. See `docs/ECOSYSTEM.md` for detailed semantics.
+
 #### Evaluation Strategy
 
 `FiroeWithBraneMind` implements **breadth-first evaluation** with state-aware stepping:
@@ -231,6 +245,6 @@ When proposing updates, explain what has changed and why the documentation needs
 
 ## Last Updated
 
-**Date**: 2025-12-19
-**Status**: Separated cross-validation tests into dedicated `foolish-crossvalidation` module. Updated module structure diagram, test infrastructure documentation, and important file locations to reflect the new organization.
+**Date**: 2025-12-23
+**Status**: Updated documentation to consistently describe brane reference semantics: when branes are referenced by name, they are detached from original AB/IB and recoordinated with new AB/IB during assignment. Added explicit AB (Ancestral Brane) and IB (Immediate Brane) definitions and cross-references across ECOSYSTEM.md, NAME_SEARCH_AND_BOUND.md, ADVANCED_FEATURES.md, and CLAUDE.md.
 **Reviewed by**: User requested update

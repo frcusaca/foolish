@@ -682,17 +682,19 @@ should take the brane `c` and change its mind about what `a` and `b` are suppose
 like this detachment facility allows us to time travel back or "unthink" something that we already
 thought?
 
-Thankfully, the name operator `=` also **ordinates** an expression. During the assignment:
+Thankfully, the name operator `=` also **ordinates** (coordinates) an expression. During the assignment:
 
 ```foolish
 c = {a+b};
 ```
 
 The act of ordinating that foolish brane expression to the parent brane has the effect of
-localizing references to that line in that brane. Ordinating an expression is like chemically
-binding a smaller brane organelle inside of a larger brane at the sites `a` and `b`. And the only
-way to prevent that binding from happening is to use detachment brane to prevent binding of
-specified coordinates during the ordination where that detachment brane appears.
+localizing references to that line in that brane. When the brane is first coordinated, it searches
+for and resolves all variables it can find using its Ancestral Brane (AB) and Immediate Brane (IB)
+context. Ordinating an expression is like chemically binding a smaller brane organelle inside of a
+larger brane at the sites `a` and `b`. And the only way to prevent that binding from happening is
+to use detachment brane to prevent binding of specified coordinates during the ordination where
+that detachment brane appears.
 
 ```foolish
 c = {a+b}; !! is equivalent to c={3} due to ordination at this location.
@@ -705,6 +707,11 @@ Detachment blocker branes prevent that from happening:
 β = 2;
 c = [α, β]{α+β}; !! Look ma, I respond to α- and β-blockers, I'm a real boy now!
 ```
+
+**Note on brane references**: When a brane name like `c` is referenced later in another assignment,
+a clone of that brane is detached from its original AB and IB and recoordinated with new AB/IB from
+the referencing location. This allows previously failed searches to resolve in the new context. For
+detailed semantics, see [ECOSYSTEM.md](ECOSYSTEM.md#brane-reference-semantics-detachment-and-coordination).
 
 ---
 

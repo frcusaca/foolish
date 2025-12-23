@@ -65,6 +65,12 @@ the same `result`:
 }
 ```
 
+**Note on brane references in concatenation**: When branes like `q`, `p`, or `f` are referenced by
+name in a concatenation, each reference creates a detached clone of the original brane. During
+concatenation, these clones are recoordinated with new Ancestral Brane (AB) and Immediate Brane (IB)
+from the concatenation context, allowing previously unresolved names to potentially resolve. See
+[ECOSYSTEM.md](ECOSYSTEM.md#brane-reference-semantics-detachment-and-coordination) for detailed semantics.
+
 Another example of using concatenation is derivation, which mimics Object-Oriented programming
 inheritance. By default, if we extend a brane with another by post-concatenation, method and member
 references follow "static invocation" rules.

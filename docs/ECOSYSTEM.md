@@ -1,5 +1,9 @@
 # Ecosystem
 
+## It/Them
+Foolish ecosystem has available to itself most of itself. To start, the source code of foolish is always
+available. When it is not clear, Foolish code is the source program as we type it between "```follish ```" quotes. The Foolish AST is created by a Foolish parser. AST's are available to the Foolish systems, one can refer to the AST from Foolish code, as well, it is available later in the Foolish computer. A machine, let's call it the foolish brane computer, is used to translate Foolish AST into Foolish internal representations. Therefore branes have source code, always finite length Strings, AST, and Foolish Iternal Representation. The user almost always interact with the Foolish system using Foolish language.
+
 ## Computer Reading Branes
 
 When a computer encounters a `.foo` file, it shall parse the Foolish into an AST. The units on
@@ -13,10 +17,30 @@ Brane Computer (UBC) is one that has just enough capacity to hold the AST of a b
 ability to interpret and understand a single expression at a time. This computer proceeds simply
 from the beginning of the brane to the end of the brane, evaluating and creating new values to be
 stored in the brane. In order to process expressions, the brane actually has two more sources of
-information: Ancestral and Immediate. The Immediate Brane (IB) is the current context that we have
-accumulated inside the Unicellular Brane Computer so far, not including the name of the current
-expression. The Ancestral Brane (AB) is the search context that contains the name of the expression
-in an AST that defined the current brane, that expression's AB and IB.
+information: Ancestral and Immediate.
+
+### Ancestral Brane (AB) and Immediate Brane (IB)
+
+Given a brane statement, the **Immediate Brane (IB)** is the current context that we have accumulated
+inside the Unicellular Brane Computer so far, not including the name of the current statement. The 
+**Ancestral Brane (AB)** is the search context immediately before and outside of the brane where a statment
+is being made. AB is a linearization of the nesting of brane statement all collapsed into a single brane.
+
+### Brane Reference Semantics: Detachment and Coordination
+
+When a brane is first coordinated (assigned to a name), it has already searched for and resolved all
+the variables it can find in its original AB and IB context, leaving it with:
+- Names bound to values (successfully resolved)
+- Names with incomputable values due to failed searches (free variables)
+
+When an assignment statement refers to a brane by name, a clone of that brane is **detached** from its
+original AB and IB and **recoordinated** into the new position. During recoordination:
+- **New AB**: The brane it is being assigned into
+- **New IB**: All lines preceding the assignment
+
+This allows previously failed searches to potentially resolve in the new context. For detailed
+operational semantics of how the UBC evaluates brane source code with combinations of original and
+new AB/IB, see the UBC brane evaluation section below.
 
 In some cases, such as the recursive call to `↑`, the search finds a line of code that has an
 incomplete value. Note by incomplete value, in the UBC, we mean not the *NK* value `???`, but a
@@ -65,6 +89,25 @@ time, the uncoordinated `↑` is translated into an AST expression. This AST exp
 contain `↑` inside or at its front. But that is for a later iteration of the UBC to evaluate. Each
 step taken by the UBC should require finite time.
 
+Generally speaking the context for brane reference is as follows:
+```foolish
+	{...{..
+		!! SS_b1 is the code for this expression, it also has contexts AB_b1 and IB_b1.
+		b1 = {...};
+		{...{...
+			!! The context for this assignment is AB_b2 and IB_b2;
+
+			b2 = p1 p2 p3 b1 p4 p5 p6; 
+
+			!! The code here is `b2 = p1 p2 p3 b1...`, when b1 is discovered to be the brane
+			!!  above, it needs to be evaluated, that reference, the `b1` means evaluating the
+			!!  search result, SS_b1 with context `AB_b2 IB_b2 AB_b1 IB_b1`. Implementor should
+			!!  take care to not create infinite search loops due to circular reference.
+	...}
+```
+
+
+
 To facilitate the multiple steps of UBC evaluation, we define an internal representation known as
 the Foolish Internal Representation (FIR). FIR can be several things:
 
@@ -93,18 +136,22 @@ the Foolish Internal Representation (FIR). FIR can be several things:
 
 ### The UBC pass
 
-1. If the UBC encounters Foolish text representing a brane, UBC holds it in memory.
-2. UBC parses the Foolish text into an AST--this AST is always a brane
-3. The brane is evaluated.
+1. If the UBC encounters Foolish text representing a brane, UBC holds it in memory as source code.
+2. UBC parses the Foolish text into an AST.
+3. The AST is compiled into Foolish Internal Representation (FIR). The tree rougly mirrors the AST
+with the exception that the FIR has some extra facilities for tracking the process of evaluation as
+well as supporting searches. Upon creation, the FIR's contain just the code's AST object.
+Note: AST is immutable objects referenced by FIR nodes. The repeated AST are not quadratic space to store.
 
 UBC expression evaluation step:
 
 1. If the expression is a comment AST, store it as comment FIR.
-2. If arithmetic expression, evaluate math and produce a value FIR.
-3. If brane concatenation is involved, then process the branes based on precedence rules:
+2. If the AST is an arithmetic expression, evaluate math and produce a value FIR.
+3. If AST represents brane concatenation , then process the branes based on precedence rules:
    detachment brane associating left using Left-First-Right-Last(LFRL), then brane concatenation
    associatively. The result is a FIR of a single brane.
-4. If expression is single brane, then evaluate the brane.
+4. If AST is a search expression, search is performed. The search may stay "unresolved" indefinitely.
+4. If AST is a brane expression, then evaluate the brane.
 
 UBC search evaluation:
 
