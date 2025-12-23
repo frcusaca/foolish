@@ -211,7 +211,8 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
                 anchor = new AST.DereferenceExpr(anchor, coordinate);
             } else if (postfixOp.regexp_operator() != null && postfixOp.regexp_expression() != null) {
                 // Handle regexp search: anchor ? pattern or anchor ?? pattern
-                String operator = postfixOp.regexp_operator().getText();
+                String opText = postfixOp.regexp_operator().getText();
+                SearchOperator operator = "?".equals(opText) ? SearchOperator.REGEXP_LOCAL : SearchOperator.REGEXP_GLOBAL;
                 String pattern = canonicalizeIdentifierName(postfixOp.regexp_expression().getText());
                 anchor = new AST.RegexpSearchExpr(anchor, operator, pattern);
             } else if (postfixOp.HASH() != null && postfixOp.seek_index() != null) {
@@ -219,6 +220,12 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
                 String indexText = postfixOp.seek_index().getText();
                 int offset = Integer.parseInt(indexText);
                 anchor = new AST.SeekExpr(anchor, offset);
+            } else if (postfixOp.CARET() != null) {
+                // Handle head: anchor^
+                anchor = new AST.OneShotSearchExpr(anchor, SearchOperator.HEAD);
+            } else if (postfixOp.DOLLAR() != null) {
+                // Handle tail: anchor$
+                anchor = new AST.OneShotSearchExpr(anchor, SearchOperator.TAIL);
             }
         }
 

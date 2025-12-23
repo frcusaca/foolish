@@ -76,4 +76,5 @@ object FIR:
     case assignment: AST.Assignment => AssignmentFiroe(assignment)
     case identifier: AST.Identifier => IdentifierFiroe(identifier)
     case regexpSearch: AST.RegexpSearchExpr => RegexpSearchFiroe(regexpSearch)
+    case oneShotSearch: AST.OneShotSearchExpr => OneShotSearchFiroe(oneShotSearch)
     case _ => ValueFiroe(null, 0L) // Placeholder for unsupported types

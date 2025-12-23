@@ -74,6 +74,8 @@ postfix_op
     : DOT characterizable_identifier
     | regexp_operator regexp_expression
     | HASH seek_index
+    | CARET
+    | DOLLAR
     ;
 
 seek_index

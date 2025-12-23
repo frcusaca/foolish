@@ -17,6 +17,7 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
     case searchUp: SearchUpFiroe => sequenceSearchUp(searchUp, depth)
     case assignment: AssignmentFiroe => sequenceAssignment(assignment, depth)
     case identifier: IdentifierFiroe => sequenceIdentifier(identifier, depth)
+    case oneShotSearch: OneShotSearchFiroe => sequenceOneShotSearch(oneShotSearch, depth)
     case _ => indent(depth) + "???"
 
   protected def sequenceBrane(brane: BraneFiroe, depth: Int): String =
@@ -127,12 +128,24 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
       // If not yet evaluated
       indent(depth) + "???"
 
+  protected def sequenceOneShotSearch(oneShotSearch: OneShotSearchFiroe, depth: Int): String =
+    if !oneShotSearch.isNye then
+      if oneShotSearch.isAbstract then
+        indent(depth) + "???"
+      else
+        // Use sequence() recursively on the result if we can access it
+        sequence(oneShotSearch.getResult, depth)
+    else
+      indent(depth) + "???"
+
   @scala.annotation.tailrec
   private def unwrap(fir: FIR): FIR = fir match
     case assignment: AssignmentFiroe if assignment.getResult.isDefined =>
       unwrap(assignment.getResult.get)
     case identifier: IdentifierFiroe if identifier.value != null =>
       unwrap(identifier.value)
+    case oneShotSearch: OneShotSearchFiroe if oneShotSearch.getResult != null =>
+      unwrap(oneShotSearch.getResult)
     case other => other
 
   protected def sequenceNK(nk: FIR, depth: Int): String =

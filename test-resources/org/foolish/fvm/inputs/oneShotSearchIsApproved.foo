@@ -1,0 +1,36 @@
+{
+  !! 1. Basic Head/Tail
+  x = { 10; 20; 30 }^;  !! Should be 10
+  y = { 10; 20; 30 }$;  !! Should be 30
+
+  !! 2. Unwrapping Assignment
+  a = {
+    first = 100;
+    second = 200;
+  }^;
+  !! Should be 100 (value of first=100)
+
+  !! 3. Nested Branes
+  b = {
+    { 1; 2 };
+    { 3; 4 };
+  }$;
+  !! Should be { 3; 4 }
+
+  c = b^; !! Should be 3
+  d = b$; !! Should be 4
+
+  !! 4. Empty Brane (should be ???)
+  e = {}^;
+  f = {}$;
+
+  !! 5. Chained Operations
+  brane = { 1; 2; 3 };
+  val = brane^;
+
+  !! 6. Indirect Scalar Reference (Regression Test)
+  scalar = {
+    x = 42;
+    x;
+  }$; !! Should be 42, not ???
+}

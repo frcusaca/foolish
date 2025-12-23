@@ -43,6 +43,7 @@ public class Sequencer4Human extends Sequencer<String> {
             case SearchUpFiroe searchUp -> sequenceSearchUp(searchUp, depth);
             case AssignmentFiroe assignment -> sequenceAssignment(assignment, depth);
             case IdentifierFiroe identifier -> sequenceIdentifier(identifier, depth);
+            case OneShotSearchFiroe oneShotSearch -> sequenceOneShotSearch(oneShotSearch, depth);
             case null, default -> indent(depth) + "???";
         };
     }
@@ -130,13 +131,17 @@ public class Sequencer4Human extends Sequencer<String> {
                     return indent(depth) + assignment.getId() + " = ???";
                 }
 
-                // Unwrap identifier to get the actual value
+                // Unwrap identifier/assignment/oneshot to get the actual value
                 FIR unwrapped = result;
-                if (result instanceof IdentifierFiroe identifierFiroe) {
-                    unwrapped = identifierFiroe.value;
-                    // Further unwrap if the identifier resolved to an assignment
-                    if (unwrapped instanceof AssignmentFiroe assignmentFiroe) {
-                        unwrapped = assignmentFiroe.getResult();
+                while (true) {
+                    if (unwrapped instanceof IdentifierFiroe identifierFiroe) {
+                         unwrapped = identifierFiroe.value;
+                    } else if (unwrapped instanceof AssignmentFiroe assignmentFiroe) {
+                         unwrapped = assignmentFiroe.getResult();
+                    } else if (unwrapped instanceof OneShotSearchFiroe oneShotSearchFiroe) {
+                         unwrapped = oneShotSearchFiroe.getResult();
+                    } else {
+                         break;
                     }
                 }
 
@@ -181,6 +186,23 @@ public class Sequencer4Human extends Sequencer<String> {
      * Sequences an NK (not-known) FIR.
      */
     protected String sequenceNK(FIR nk, int depth) {
+        return indent(depth) + "???";
+    }
+
+    protected String sequenceOneShotSearch(OneShotSearchFiroe oneShotSearch, int depth) {
+        if (!oneShotSearch.isNye()) {
+            if (oneShotSearch.isAbstract()) {
+                return indent(depth) + "???";
+            }
+            // If the result is a brane, we need to handle it gracefully
+            try {
+                return indent(depth) + oneShotSearch.getValue();
+            } catch (UnsupportedOperationException e) {
+                 // It might be a brane or something else that doesn't support getValue()
+                 // Use sequence() recursively on the result if we can access it
+                 return sequence(oneShotSearch.getResult(), depth);
+            }
+        }
         return indent(depth) + "???";
     }
 
