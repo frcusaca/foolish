@@ -39,21 +39,21 @@
 !!!
 PARSED AST:
 {
-  x = ^ {
+  x =^{
   10;
   20;
   30;
 };
-  y = $ {
+  y =${
   10;
   20;
   30;
 };
-  a = ^ {
+  a =^{
   first = 100;
   second = 200;
 };
-  b = $ {
+  b =${
   {
   1;
   2;
@@ -63,19 +63,19 @@ PARSED AST:
   4;
 };
 };
-  c = ^ b;
-  d = $ b;
-  e = ^ {
+  c =^b;
+  d =$b;
+  e =^{
 };
-  f = $ {
+  f =${
 };
   brane = {
     1;
     2;
     3;
   };
-  val = ^ brane;
-  scalar = $ {
+  val =^brane;
+  scalar =${
   x = 42;
   x;
 };
