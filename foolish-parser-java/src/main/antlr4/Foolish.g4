@@ -45,7 +45,7 @@ stmt_body
     ;
 
 stmt
-    : stmt_body (SEMI LINE_COMMENT? | LINE_COMMENT)
+    : stmt_body ((SEMI | COMMA) LINE_COMMENT? | LINE_COMMENT)
     | LINE_COMMENT
     ;
 assignment : characterizable_identifier ASSIGN expr ;
@@ -152,6 +152,7 @@ RPAREN : ')' ;
 LBRACK : '[' ;
 RBRACK : ']' ;
 SEMI : ';' ;
+COMMA : ',' ;
 
 BLOCK_COMMENT
     : '!!!' .*? '!!!' -> skip
