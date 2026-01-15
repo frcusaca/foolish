@@ -138,6 +138,16 @@ For all project-specific information including:
 
 ---
 
+## Markdown File Update Protocol
+
+**IMPORTANT**: When you modify any `*.md` file in this repository, you MUST update the "## Last Updated" section at the end of that file. See `AGENTS.md` for the complete protocol. Always include:
+
+1. **Current timestamp** (YYYY-MM-DD format)
+2. **Your agent identifier** (Claude Code v1.0.0 / claude-sonnet-4-5-20250929)
+3. **Brief summary** of what was changed
+
+This ensures all AI agents collaborating on this project can track documentation changes.
+
 ## Maintenance Instructions
 
 **Weekly Check**: After one week past the day of last update to this file (either by git timestamp or the Last Updated section below) please review this CLAUDE.md file for accuracy:
@@ -147,18 +157,12 @@ For all project-specific information including:
 3. Ensure `AGENTS.md` is properly referenced and contains all project-specific details
 4. Confirm this file focuses ONLY on Claude Code-specific features
 5. Propose updates to the user if discrepancies are found
-6. Update the updated section--even if user makes no update
+6. Update the Last Updated section below--even if user makes no changes
 
 When proposing updates, explain what has changed and why the documentation needs adjustment. After user review, update the "Last Updated" date below whether changes are accepted or the user confirms current state is acceptable.
 
 ## Last Updated
 
 **Date**: 2026-01-15
-**Status**: Restructured to separate Claude Code-specific content from general project information:
-- Moved all project-specific details (architecture, UBC, FIR, testing, conventions) to `AGENTS.md`
-- Kept only Claude Code-specific features: skills, CCW setup, commit format, branch naming
-- Added prominent references to `AGENTS.md` for project information
-- CLAUDE.md now focuses exclusively on Claude Code features while AGENTS.md serves all AI agents
-
-**Key Change**: Claude Code users should read `AGENTS.md` for project details and this file for Claude-specific features.
-**Reviewed by**: User requested separation of Claude-specific vs general AI agent content
+**Updated By**: Claude Code v1.0.0 / claude-sonnet-4-5-20250929
+**Changes**: Restructured to separate Claude Code-specific content from general project information. Moved all project-specific details (architecture, UBC, FIR, testing, conventions) to AGENTS.md. Kept only Claude Code-specific features: skills, CCW setup, commit format, branch naming. Added markdown update protocol reference and multi-agent collaboration awareness.

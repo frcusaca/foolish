@@ -6,6 +6,8 @@ This document provides instructions for AI agents (including Claude Code, GitHub
 
 Foolish is a revolutionary programming language with parallel Java and Scala implementations. This guide helps AI agents navigate the unique build requirements and environment-specific setup needed for development.
 
+**Multiple AI agents collaborate on this project.** This document serves as the shared knowledge base for all AI coding assistants (Claude Code, GitHub Copilot, Cursor, and others) to ensure consistent understanding of the project structure, build processes, testing workflows, and coding conventions.
+
 ## Build Requirements
 
 - **Java Version**: Java 25 (Temurin recommended)
@@ -442,6 +444,42 @@ git push
 
 ---
 
-**Last Updated**: 2026-01-15
-**Maintained By**: Project contributors
-**Purpose**: Enable AI agents to effectively contribute to the Foolish project
+## Markdown File Update Protocol
+
+**IMPORTANT**: Whenever ANY AI agent modifies a `*.md` file in this repository, the agent MUST update the "## Last Updated" section at the end of that file with:
+
+1. **Current timestamp** (YYYY-MM-DD format)
+2. **Agent identifier** (as specific as possible, including model name/version)
+3. **Brief summary** of what was changed
+
+Example format:
+```markdown
+## Last Updated
+
+**Date**: 2026-01-15
+**Updated By**: Claude Code v1.0.0 / claude-sonnet-4-5-20250929
+**Changes**: Added detailed UBC architecture documentation and test infrastructure workflows
+```
+
+This ensures all AI agents can track who modified documentation and when, maintaining clear collaboration history.
+
+## Maintenance Instructions
+
+**Weekly Check**: After one week past the day of last update to AGENTS.md (either by git timestamp or the Last Updated section below), please review this file for accuracy:
+
+1. Verify that project structure, build commands, and setup instructions are still accurate
+2. Check if new project conventions or workflows need documentation
+3. Ensure UBC architecture details match current implementation
+4. Confirm test infrastructure documentation reflects actual test structure
+5. Verify that all AI agents have access to necessary information
+6. Check that environment detection and CCW setup instructions are current
+7. Propose updates to the user if discrepancies are found
+8. Update the Last Updated section below--even if user makes no changes
+
+When proposing updates, explain what has changed and why the documentation needs adjustment. After user review, update the "Last Updated" date below whether changes are accepted or the user confirms current state is acceptable.
+
+## Last Updated
+
+**Date**: 2026-01-15
+**Updated By**: Claude Code v1.0.0 / claude-sonnet-4-5-20250929
+**Changes**: Restructured to separate Claude Code-specific content from general project information. Moved all project-specific details (architecture, UBC, FIR, testing, conventions) from CLAUDE.md to AGENTS.md. Added comprehensive UBC architecture documentation, detailed test infrastructure, Foolish terminology, and multi-agent collaboration protocols. Added maintenance instructions and markdown update protocol for all AI agents.
