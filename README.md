@@ -45,9 +45,10 @@ building toward a future where programming is:
 - **Grounded in Reality**: Built-in methods seamlessly connect abstract thought to real-world
   implementations
 
-A Foolisher might say the variable is *nye* (says 'nigh') when they encounter a FIR that has
-not yet been evaluated fully, we say "that's a no-no" when we see `???`. Fully evaluated
-expressions are values.
+A Foolisher might say the variable is *nye* (says 'nigh', any pre-constantic state) when they
+encounter a FIR that has not reached CONSTANTIC, or that it's *constantic* (says 'cons-TAN-tic',
+constant in context) when it may gain value when associated with new context. We say "that's a
+no-no" when we see `???`. Fully evaluated expressions are values that have achieved CONSTANT.
 
 ---
 
@@ -135,12 +136,12 @@ have come to know. Foolish aims to be built for good, not evil.
 - [Names and Scope](#names-and-scope)
 - [The Unknown](#the-unknown)
 - [Renaming](#renaming)
-- [Names, Search, and Bound](docs/NAME_SEARCH_AND_BOUND.md) - Comprehensive guide to naming, search system, and detachment
-  - [Names and Ordinates](docs/NAME_SEARCH_AND_BOUND.md#names-and-ordinates)
-  - [Scope and Name Resolution](docs/NAME_SEARCH_AND_BOUND.md#scope-and-name-resolution)
-  - [The Search System](docs/NAME_SEARCH_AND_BOUND.md#the-search-system)
-  - [Detachment Branes](docs/NAME_SEARCH_AND_BOUND.md#detachment-branes-controlling-scope-boundaries)
-  - [Search Paths](docs/NAME_SEARCH_AND_BOUND.md#search-paths)
+- [Names, Searches, and Bounds](docs/NAMES_SEARCHES_N_BOUNDS.md) - Comprehensive guide to naming, search system, and detachment
+  - [Names and Ordinates](docs/NAMES_SEARCHES_N_BOUNDS.md#names-and-ordinates)
+  - [Scope and Name Resolution](docs/NAMES_SEARCHES_N_BOUNDS.md#scope-and-name-resolution)
+  - [The Search System](docs/NAMES_SEARCHES_N_BOUNDS.md#the-search-system)
+  - [Detachment Branes](docs/NAMES_SEARCHES_N_BOUNDS.md#detachment-branes-controlling-scope-boundaries)
+  - [Search Paths](docs/NAMES_SEARCHES_N_BOUNDS.md#search-paths)
 - [Advanced Features](docs/ADVANCED_FEATURES.md)
   - [Brane Operations](docs/ADVANCED_FEATURES.md#brane-operations)
   - [Control Flow](docs/ADVANCED_FEATURES.md#control-flow)
@@ -278,25 +279,28 @@ A brane written in Foolish is itself an expression.
 One very powerful concept we have for abstracting thoughts and thinking of complex matter with
 complex properties and interactions is the substitution of the statement or object of consideration
 with a name. Names such as `x`, `y`, `foolish`, `programming language`. This is an important
-concept in Foolish—we are able to name value expressions using the naming operator `=`:
+concept in Foolish—we are able to **identify** value expressions with names using the identification
+operator `=`:
 
 ```foolish
 {
-	a = 1;                                    !! Simple name binding
-	point = {x=10; y=20;};                   !! Nested brane with coordinates
-	x_coord = point.x;                        !! Accessing a coordinate: x_coord = 10
+	a = 1;                                    !! Identify 1 as 'a'
+	point = {x=10; y=20;};                   !! Nested brane with ordinates
+	x_coord = point.x;                        !! Accessing an ordinate: x_coord = 10
 	calculation = a + point.x;                !! Using names in expressions
 }
 ```
 
-Names (also called *ordinates* or *coordinates*) serve as navigational reference points within
-branes. Basic access uses `.` for dereferencing: `brane.name` retrieves the value. Names are scoped
-to "before the current expression"—references look backwards in the current brane, then search
-upward through parent branes if needed.
+When these assignments are evaluated in a brane, each identified expression becomes **ordinated** to
+that brane—the brane gains **ordinates** (named axes/dimensions). Names (also called *ordinates* or
+*coordinates*) serve as navigational reference points within branes. Basic access uses `.` for
+dereferencing: `brane.name` retrieves the value. Names are scoped to "before the current
+expression"—references look backwards in the current brane, then search upward through parent branes
+if needed.
 
 For comprehensive documentation on names, the search system (including `?`, `??`, `?*`, value
 search, cursor movements), and how detachment branes `[...]` control scope boundaries, see
-[Names, Search, and Bound](docs/NAME_SEARCH_AND_BOUND.md).
+[Names, Searches, and Bounds](docs/NAMES_SEARCHES_N_BOUNDS.md).
 
 ## The Unknown
 
@@ -335,13 +339,13 @@ value at the time of use:
 {a=1; b=a; a=2; c=a;}  !! b=1, c=2 (each 'a' reference uses the current value)
 ```
 
-For details on scope resolution and name reuse, see [Names, Search, and Bound](docs/NAME_SEARCH_AND_BOUND.md).
+For details on scope resolution and name reuse, see [Names, Searches, and Bounds](docs/NAMES_SEARCHES_N_BOUNDS.md).
 
 ---
 
 ## Further Documentation
 
-- **[Names, Search, and Bound](docs/NAME_SEARCH_AND_BOUND.md)** - Comprehensive guide to naming
+- **[Names, Searches, and Bounds](docs/NAMES_SEARCHES_N_BOUNDS.md)** - Comprehensive guide to naming
   systems, the search operators (`.`, `?`, `??`, `?*`, `:`, cursor movements), and how detachment
   branes `[...]` control scope boundaries for globalized searches
 - **[Advanced Features](docs/ADVANCED_FEATURES.md)** - Brane operations (concatenation, proximity

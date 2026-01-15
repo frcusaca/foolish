@@ -30,16 +30,28 @@ The tab is only used to indent brane blocks. Within brane blocks, if subsequent 
 }
 ```
 
-We prefer to use the word "name" to mean either identifier or characterized identifier. Ordinate is
-a name that has been associated with a brane, it is also a verb meaning to make a name an ordnate of a
-particular brane. The coordinate mainly refers to when a brane becomes ordinated to a brane (assigned
-to a name), but because it may refer to other ordinates in the brane and its parents, that act is
-called "coordinating a child brane to a parent brane." Searches upwards are retrospections and downwards
-are prospections.
+We prefer to use the word "name" to mean either identifier or characterized identifier.
+
+**Identification**: An assignment statement (`x = expr`) **identifies** an expression with a name. The
+RHS expression is **identified** when assigned to the LHS identifier. We most frequently talk about
+"brane identification."
+
+**Ordinate**: A name (axis/dimension) that an expression is ordinated to in a brane. When an
+assignment is evaluated in a brane, the identified expression becomes **ordinated** to that brane—it
+becomes part of the brane, and the brane gains an **ordinate** (the identifier becomes the name of an
+axis, like x and y in a 2D Cartesian system).
+
+**Coordination**: During UBC evaluation, an expression becomes **coordinated** with other ordinates
+of the brane and ancestral branes—it reacts to other ordinates. Most expressions are only partially
+coordinated (with unresolved identifiers) during intermediate stages.
+
+Searches upwards are retrospections and downwards are prospections.
 
 As a **Foolisher**, for lack of a better concise way to describe us, we are the inhabitant of Foolish
-and we tend to develop Foolish. A Foolisher might say the variable is *nye* (says 'nigh') when they
-encounter a FIR that has not yet been evaluated fully, we say "that's a no-no" when we see `???`.
+and we tend to develop Foolish. A Foolisher might say the variable is *nye* (says 'nigh', any
+pre-constantic state) when they encounter a FIR that has not reached CONSTANTIC, or that it's
+*constantic* (says 'cons-TAN-tic', constant in context) when it may gain value when associated with
+new context. We say "that's a no-no" when we see `???`.
 not fully evaluated. During development, a feature becomes "lexed", which means it parses into AST, but
 downstream implementation yields a `???` when it is encountered. A second step during which the feature
 becomes "interpreted" which is when we gain the machinery to correctly handle the the feature in the VM.

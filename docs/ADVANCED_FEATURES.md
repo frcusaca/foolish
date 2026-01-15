@@ -69,7 +69,7 @@ the same `result`:
 name in a concatenation, each reference creates a detached clone of the original brane. During
 concatenation, these clones are recoordinated with new Ancestral Brane (AB) and Immediate Brane (IB)
 from the concatenation context, allowing previously unresolved names to potentially resolve. See
-[ECOSYSTEM.md](ECOSYSTEM.md#brane-reference-semantics-detachment-and-coordination) for detailed semantics.
+[ECOSYSTEM.md](ECOSYSTEM.md#brane-reference-semantics-identification-ordination-and-coordination) for detailed semantics.
 
 Another example of using concatenation is derivation, which mimics Object-Oriented programming
 inheritance. By default, if we extend a brane with another by post-concatenation, method and member
@@ -135,46 +135,52 @@ position.
 
 For comprehensive documentation on the search system, including detailed semantics of all search
 operators, search paths, cursor positioning, and naming search results, see
-[Names, Search, and Bound](NAME_SEARCH_AND_BOUND.md#the-search-system).
+[Names, Searches, and Bounds](NAMES_SEARCHES_N_BOUNDS.md#the-search-system).
 
-## Detachment and Parameters
+## Liberation (Detachment) and Parameters
 
-Detachment branes use square brackets `[...]` to create controlled scope boundaries and define
-parameters. They dissociate names from their context, making them unbound symbols that must be
-supplied by callers.
+Liberation branes (also called detachment branes) use square brackets `[...]` to create controlled
+scope boundaries, liberate identifiers from context, and define function parameters. They free names
+from their context, making them unbound symbols (free variables) that must be supplied by callers.
+
+**For comprehensive documentation on liberation/detachment**, including:
+- Gentle introduction with analogies to traditional function parameters  
+- Three types of liberation branes (`[...]`, `[/...]`, `[+...]`)
+- Pattern matching and complete liberation
+- Default parameters  
+- Liberation precedence and associativity (with 11 detailed examples)
+- UBC implementation semantics
+
+See **[Names, Searches, and Bounds - Liberation Branes](NAMES_SEARCHES_N_BOUNDS.md#liberation-branes-controlling-scope-boundaries-and-creating-functions)**.
 
 ### Quick Reference
 
+**Type 1: Backward Search `[...]`** - Liberates identifiers from outer scope (default)
 ```foolish
-{
-	!! Named detachment - create function parameters
-	fn = [a=???; b=???]{result=a+b;}
-	result = {a=10; b=20;} fn  !! result = 30
+add = [a, b]{result = a + b;};   !! 'a' and 'b' are free variables
+```
 
-	!! Complete detachment - remove temporary variables
-	clean = [tmp_*=???]old_heap
+**Type 2: Forward Search `[/...]` and `[#N]`** - Liberates by forward search into brane
+```foolish
+recipe = [/ingredient]{ingredient = ?flour + ?sugar;};  !! Blocks 'ingredient' resolution
+```
 
-	!! Detach with defaults
-	circle = [r=???; pi=3.14]{area = pi*r*r;}
-	c1 = {r=2;} circle           !! Uses default pi=3.14
-	c2 = {r=2; pi=3.14159;} circle  !! Overrides default
+**Type 3: P-Brane (Plus Brane) `[+...]`** - Undetachment (selective binding)
+```foolish
+result = [+ secret_a, secret_b]secure;  !! Bind only these two, keep others liberated
+```
 
-	!! Detachment bounds globalized search
-	f = [↑=???]{result=↑#-1 + ↑#-2;}  !! Blocks parent scope access
+	c1_next =$ counter1.get;  !! c1_next = 1
+
+	c2 =$ counter2.get;  !! c2 = 100
+	counter2.increment;
+	c2_next =$ counter2.get;  !! c2_next = 110
 }
 ```
 
-**Key concept**: Detachment branes `[...]` define the **boundary for globalized searches** (`??`).
-When `[↑=???]` is used, it prevents the function from accessing parent brane variables—they must be
-passed as parameters instead.
-
-**Ordination**: The `=` operator ordinates (coordinates) an expression, binding it to the parent
-brane at the referenced sites. Detachment prevents this binding: `c=[α,β]{α+β}` keeps `α` and `β`
-unbound, while `c={α+β}` binds them immediately (equivalent to `c={3}` if `α=1` and `β=2`).
-
-For comprehensive documentation on detachment branes, including named detachment, complete
-detachment, defaults, how detachment bounds globalized searches, and ordination semantics, see
-[Names, Search, and Bound](NAME_SEARCH_AND_BOUND.md#detachment-branes-controlling-scope-boundaries).
+For more comprehensive documentation on detachment branes, including how detachment bounds
+globalized searches and ordination semantics, see
+[Names, Searches, and Bounds](NAMES_SEARCHES_N_BOUNDS.md#detachment-branes-controlling-scope-boundaries).
 
 
 ## Control Flow

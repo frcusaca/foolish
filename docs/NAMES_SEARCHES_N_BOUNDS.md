@@ -1,4 +1,4 @@
-# Names, Search, and Bound: The Foolish Reference System
+# Names, Searches, and Bounds: The Foolish Reference System
 
 One very powerful concept we have for abstracting thoughts and thinking of complex matter with complex
 properties and interactions is the substitution of the statement or object of consideration with a
@@ -41,30 +41,31 @@ searches through detachment.
 
 ## Names and Ordinates
 
-### The Naming Operator
+### The Naming Operator: Identification
 
-In Foolish, we name value expressions using the naming operator `=`:
+In Foolish, we **identify** value expressions with names using the identification operator `=`. An
+assignment statement **identifies** an expression: the RHS expression is **identified** when the LHS
+identifier is assigned.
 
 ```foolish
 {
-	a = 1;                                    !! Simple name binding
-	b = 2;                                    !! Another binding
-	c = 3;                                    !! Value assignment
-	greeting = "Hello, Foolish world!";      !! String binding
-	calculation = a + b + c;                  !! Expression binding
+	a = 1;                                    !! Identify 1 as 'a'
+	b = 2;                                    !! Identify 2 as 'b'
+	c = 3;                                    !! Identify 3 as 'c'
+	greeting = "Hello, Foolish world!";      !! Identify string as 'greeting'
+	calculation = a + b + c;                  !! Identify expression as 'calculation'
 }
 ```
 
-### Coordinates: Names as Navigation
+When these assignments are evaluated in a brane, each identified expression becomes **ordinated** to
+that brane (see [Ordination](#detachment-and-ordination) below).
 
-In Foolish, names are also called *ordinates* or *coordinates*. This terminology reflects the idea
-that names serve as navigational reference points within branes, allowing us to locate and access
-specific values.
+### Coordinates: Names as Navigation (Ordinates)
 
-When we think of coordinates, we think of x and y coordinates in a two-dimensional Cartesian graph.
-But in reality, almost all relationships that we consider can be modeled as functions of coordinates
-in some coordinate system. When we use a name to access a value (such as `brane.x`), we are
-accessing that brane's coordinate.
+In Foolish, names are also called *ordinates* or *coordinates*. An **ordinate** is a name that an
+expression is ordinated to in a brane—it becomes the name of an axis, a new dimension, just like x
+and y are names in a 2D Cartesian system. This terminology reflects the idea that names serve as
+navigational reference points within branes, allowing us to locate and access specific values.
 
 Most often we think of binary attributes, "hot or not", for example; sometimes, an object is
 observable to have higher-cardinality coordinates such as SIC or ZIP codes. There could also be
@@ -72,9 +73,18 @@ higher-valence relationships, such as `{a,b,c} sorted_by_x` or `{a,b,c} is_media
 may return a boolean on whether `a.x`, `b.x`, `c.x` is sorted, or `a` is the median of `b` and
 `c`, respectively.
 
-A well-coordinated brane should have its members readily accessible by their names or brane search.
-See [Relational Coordinates](RELATIONAL_COORDINATES.md) for a detailed discussion of how names
-function as coordinates in relational contexts.
+We use *coordinates* when more than one ordinates are mentioned and highlight the fact the two values
+occuring together may have significance in addition to the meanings of the values that they have taken
+on individually. (x,y) are coordinates because often y depends on x, or that x and y together satisfy
+specified conditions.
+
+In reality, almost all relationships that we consider can be modeled as functions of coordinates
+in some coordinate system. When we use a name to access a value (such as `brane.x`), we are
+accessing that brane's coordinate (ordinate).
+
+A well-coordinated brane should have its ordinates (members) readily accessible by their names or
+brane search. See [Relational Coordinates](RELATIONAL_COORDINATES.md) for a detailed discussion of
+how ordinates function as coordinates in relational contexts.
 
 ### Permitted Name Characters
 
@@ -529,70 +539,173 @@ readability and communication efficiency.
 
 ---
 
-## Detachment Branes: Controlling Scope Boundaries
+## Liberation Branes: Controlling Scope Boundaries and Creating Functions
 
-Humans have long sought detachment from the material world. Even though Foolish is inherently
-detached and completely abstract, we find that we need to perform further detachment. Detachment
-branes use square brackets `[...]` to create controlled scope boundaries.
+Humans have long sought detachment from the material world, liberation from constraints. Even though
+Foolish is inherently detached and completely abstract, we find that we need to perform further
+detachment—to **liberate** identifiers from their context. Liberation branes (also called detachment
+branes) use square brackets `[...]` to create controlled scope boundaries and free variables.
 
-### Named Detachment
+### The Long-Felt Need: Functions with Parameters
 
-```foolish
-[
-	a = ???;
-	b = ???;
-]
-```
+In traditional programming languages, when you want to create a function that accepts parameters, you
+declare formal parameters that are separate from any variables in the surrounding scope:
 
-This brane detaches the names `a` and `b`. So to declare a function with formal parameter names
-that might already be in use, one could perform detachment during a naming expression:
-
-```foolish
-{
-	fn=[
-		a=???;
-		b=???;
-	]{
-		result=a+b;
-	}
+```javascript
+// JavaScript
+let x = 10;
+function add(x, y) {  // This 'x' is different from outer 'x'
+    return x + y;
 }
 ```
 
-The detachment is left associative with detachment branes and right associative with branes—it
-overwrites detachment branes on the left, and affects branes on its right.
+Foolish faces the same challenge. When you create a brane expression, it naturally resolves all
+identifiers it can find in the surrounding context—which is great for reusing values, but not so
+great when you want to create an abstract brane (a template or function) that doesn't bind to the
+current context. But what if you want it to wait patiently for values to be supplied later, like a
+well-behaved function should?
 
-An example of use:
+This is where liberation branes come in. They allow you to **liberate identifiers**, making them
+free variables that must be supplied by the caller. The act of placing a liberation brane in front
+of a regular brane is called **liberation** or **detachment**, and the identifiers specified become
+**liberated ordinates** or **detached names**. Think of it as setting your variables free—though
+unlike real liberation movements, these variables are actually happy to be called back into service
+when you need them.
+
+**Simple Example - Creating a Function:**
 
 ```foolish
 {
-	x=1;
-	y=2;
-	z=3;
-	f=[x;z]{ result = x - y; }
-	result = [y,x] f
+	!! Without liberation: 'a' and 'b' bind to outer scope
+	a = 1;
+	b = 2;
+	sum = {result = a + b;};  !! sum.result = 3 (bound immediately)
+
+	!! With liberation: 'a' and 'b' are freed, must be supplied later
+	add = [a, b]{result = a + b;};  !! add is constantic (abstract)
+
+	!! Supply values when calling:
+	result =$ {a=10; b=20;} add;  !! result = 30
 }
 ```
 
-The detachment brane dissociates the ensuing brane on its right side from the context,
-decontextualizing `x` and `y`. `x` and `y` become unbound symbols. From the timeline perspective,
-the detachment snips off dependency DAG edges.
+In this example, we **detach** the names `a` and `b`, liberating them from the outer scope. The
+brane `add` becomes constantic—it's as resolved as it can be in its current context, but will gain
+value when associated with a new context that provides `a` and `b`.
 
-### Complete Detachment
+**Terminology Note**: Throughout this document, we use "liberation" and "detachment" interchangeably.
+When an identifier is liberated, it becomes a *free variable* (mirroring programming language
+literature). The liberation brane performs the **liberating act** of detaching identifiers.
 
-We now introduce complete detachment using name search to completely detach from a large number or
-all of the names and values:
+### Named Liberation (Basic Detachment)
+
+The most basic form of liberation lists the identifiers you want to liberate from context:
+
+```foolish
+[a, b]  !! Liberate identifiers 'a' and 'b'
+```
+
+You can also write it with explicit `???` assignments to emphasize these are free variables:
+
+```foolish
+[a=???; b=???;]  !! Equivalent: explicitly showing free variables
+```
+
+When you place a liberation brane before a regular brane, you're creating a function with parameters:
 
 ```foolish
 {
-	clean_heap=[tmp_*=???]old_heap_brane
+	!! Declare a function: liberate 'a' and 'b' as parameters
+	fn = [a, b]{
+		result = a + b;
+	};
+
+	!! Call the function by providing values
+	answer =$ {a=10; b=20;} fn;  !! answer = 30
 }
 ```
 
-Or even complete detachment like this:
+**The liberation is right-associative with branes**—it affects the brane on its right. Think of it as:
+`[a,b]` applies to `{result=a+b;}` creating an abstract brane.
+
+**Multiple Examples to Illustrate Liberation:**
 
 ```foolish
 {
-	pure_func=[*=???]{...}
+	!! Example 1: Liberate to avoid outer scope binding
+	x = 1;
+	y = 2;
+	z = 3;
+
+	!! Without liberation: binds immediately
+	eager = {result = x - y;};  !! eager.result = -1
+
+	!! With liberation: waits for context
+	lazy = [x, z]{result = x - y;};  !! lazy is constantic
+
+	!! When we provide new context:
+	value =$ {x=10; z=30;} lazy;  !! value = 8 (x=10, y=2 from outer)
+}
+```
+
+```foolish
+{
+	!! Example 2: Reusing function with different arguments
+	a = 1;
+	b = 2;
+
+	!! Create parameterized function by liberating 'a' and 'b'
+	multiply = [a, b]{product = a * b;};
+
+	!! Use it multiple times with different values
+	result1 =$ {a=3; b=4;} multiply;   !! 12
+	result2 =$ {a=5; b=6;} multiply;   !! 30
+	result3 =$ {a=7; b=8;} multiply;   !! 56
+}
+```
+
+The liberation brane **dissociates** identifiers from their context, making them unbound symbols.
+From a dependency graph perspective, liberation snips off the dependency DAG edges to the outer scope
+for the liberated names.
+
+### Complete Liberation Using Patterns
+
+You can liberate multiple identifiers at once using pattern matching. This is especially useful for
+liberating temporary variables or creating completely detached functions:
+
+**Pattern-Based Liberation:**
+
+```foolish
+{
+	!! Liberate all identifiers starting with 'tmp_'
+	clean_heap = [tmp_*] old_heap_brane;
+
+	!! Liberate all identifiers matching pattern
+	sanitized = [debug_*, test_*] production_code;
+}
+```
+
+**Complete Liberation (All Identifiers):**
+
+```foolish
+{
+	!! Liberate everything - creates completely abstract brane
+	pure_func = [*]{x = y + z;};  !! All identifiers are free
+
+	!! Must supply all needed values
+	result =$ {x=0; y=10; z=20;} pure_func;
+}
+```
+
+**Multiple Patterns:**
+
+```foolish
+{
+	!! Liberate any identifier having 'a's or 'b's
+	fn = [a*, b*]{result = a1 + b1 + c;};  !! a1, b1 are free; c is bound
+
+	!! Supply only the liberated ones
+	value =$ {a1=10; b1=20;} fn;  !! c comes from outer scope
 }
 ```
 
@@ -625,7 +738,156 @@ concatenation always has higher priority than their concatenation with branes. W
 is between branes it is always right-associative—it is applied to the brane on the right side
 before other brane operations.
 
-### How Detachment Bounds Globalized Searches
+### Three Types of Liberation Branes
+
+Foolish provides three distinct types of liberation branes for different use cases:
+
+#### Type 1: Backward Search Liberation `[-...]` or `[...]` (Default)
+
+The standard liberation brane performs **backward search** to match identifiers that should NOT be
+resolved. **This is opposite behavior from normal branes**: in `[a]`, the `a` means "don't find
+identifier `a`", while in `{a}`, the `a` means "find `a` and use its value."
+
+**Basic Example:**
+
+```foolish
+{
+	a = 1;
+	b = [a]{c = a + 1;};  !! Liberate 'a' from outer scope
+
+	!! When we provide new context:
+	c =$ {a=2} b;
+	confirm = c == 3;  !! Result is `2+1` not `1+1`
+}
+```
+
+**Pattern Matching:**
+
+```foolish
+{
+	!! Match identifier exactly
+	fn1 = [a]{c = a + 1;};
+
+	!! Match any number of a's (a, aa, aaa, ...)
+	fn2 = [a*]{c = a + 1;};
+
+	!! Match any identifier with a's or b's
+	fn3 = [a*, b*]{c = ab + ba;};
+}
+```
+
+#### Type 2: Forward Search Liberation `[/...]` and `[#N]`
+
+A statement in the liberation brane prefixed with `/` means **forward search into the subsequent
+brane**. It liberates any expression assigned to identifiers matching the pattern. The `#` similarly
+identifies statements by number for liberation.
+
+**Forward Search by Name:**
+
+```foolish
+{
+	!! Forward search: liberate the 'ingredient' identifier
+	recipe = [/ingredient]{
+		step1 = "mix";
+		ingredient = ?flour + ?sugar + ?eggs;
+		step2 = "bake";
+	};
+
+	!! recipe is constantic - will gain value when flour, sugar, eggs provided
+
+	!! Provide context:
+	flour = 1;
+	sugar = 2;
+	eggs = 3;
+
+	bakery = {
+		!! During ordination, recipe.ingredient triggers search
+		!! and finds flour, sugar, eggs
+		cake =$ recipe.ingredient;  !! cake = 6
+	};
+}
+```
+
+**Forward Search by Statement Number:**
+
+```foolish
+{
+	!! Block statement #1 by number
+	process = [#1]{
+		setup = "init";       !! statement 0
+		secret = ?password;   !! statement 1 - liberated!
+		output = secret * 2;  !! statement 2
+	};
+
+	!! process is constantic
+
+	password = 5;
+	result =$ process.output;  !! result = 10
+}
+```
+
+**Implementation Note**: When a brane is a concatenation of liberation followed by brane, the
+liberation is removed before identification, ordination, and coordination.
+
+#### Type 3: P-Brane (Plus Brane / Precise Brane) `[+...]` - Undetachment
+
+The p-brane `[+...]` performs **selective binding** (undetachment). It means: detach everything
+already detached **EXCEPT** for what's specified inside. This allows you to selectively bind only
+certain identifiers while keeping others free.
+
+**Example: Selective Binding**
+
+```foolish
+{
+	!! Define constantic brane with forward search liberation
+	secure = [/a, /b, /c]{
+		a = ?secret_a;
+		b = ?secret_b;
+		c = ?secret_c;
+		result = a + b + c;
+	};
+
+	secret_a = 10;
+	secret_b = 20;
+	secret_c = 30;
+
+	!! P-brane: selectively bind only secret_a and secret_b
+	!! Everything else remains liberated
+	partial =$ [+ secret_a, secret_b] secure.result;
+	!! partial is still constantic because secret_c not resolved
+
+	!! Fully bind all three
+	full =$ [+ secret_a, secret_b, secret_c] secure.result;  !! full = 60
+}
+```
+
+**Complex Example: Cookie Factory**
+
+```foolish
+{
+	!! Liberate multiple ingredients using forward search
+	bake = [/secret_sauce, /secret_recipe]{
+		base = "dough";
+		flavor = secret_sauce + secret_recipe;
+		extra = secret_key;  !! Not liberated - will bind if available
+		cookie = base + flavor + extra;
+	};
+
+	secret_sauce = "chocolate";
+	secret_recipe = "vanilla";
+	secret_key = "sprinkles";
+
+	!! P-brane: bind only sauce and recipe, keep key liberated
+	result = [+ secret_sauce, secret_recipe] bake.cookie;
+	!! result = "dough" + "chocolate" + "vanilla" + "sprinkles"
+}
+```
+
+**Alarming Case**: `{b=[c,d,e]{f=1}}` is not illegal but alarming—the liberation fails to liberate
+anything because `c`, `d`, `e` aren't referenced in the brane. Foolish compilers should warn about
+this.
+
+### How Liberation Bounds Globalized Searches
 
 This is the crucial concept: **detachment branes define the boundary for globalized searches**.
 When you use a detachment brane like `[↑=???]`, it creates a scope barrier that prevents the `??`
@@ -682,22 +944,29 @@ should take the brane `c` and change its mind about what `a` and `b` are suppose
 like this detachment facility allows us to time travel back or "unthink" something that we already
 thought?
 
-Thankfully, the name operator `=` also **ordinates** (coordinates) an expression. During the assignment:
+Thankfully, the name operator `=` has two roles: **identification** and **ordination**.
+
+**Identification** (`x = expr`): The assignment statement **identifies** the expression `expr` with
+the name `x`. The expression is **identified** when assigned.
+
+**Ordination**: When the assignment is evaluated in a brane, the identified expression becomes
+**ordinated** to that brane—it becomes part of the brane. The brane gains an **ordinate** (the
+identifier `x` becomes the name of an axis/dimension). During the assignment:
 
 ```foolish
 c = {a+b};
 ```
 
 The act of ordinating that foolish brane expression to the parent brane has the effect of
-localizing references to that line in that brane. When the brane is first coordinated, it searches
-for and resolves all variables it can find using its Ancestral Brane (AB) and Immediate Brane (IB)
-context. Ordinating an expression is like chemically binding a smaller brane organelle inside of a
-larger brane at the sites `a` and `b`. And the only way to prevent that binding from happening is
-to use detachment brane to prevent binding of specified coordinates during the ordination where
-that detachment brane appears.
+coordinating it with that brane's context. When the brane is first ordinated, it searches for and
+resolves all variables it can find using its Ancestral Brane (AB) and Immediate Brane (IB) context,
+becoming **coordinated** with other ordinates. Ordinating an expression is like chemically binding a
+smaller brane organelle inside of a larger brane at the sites `a` and `b`. And the only way to
+prevent that binding from happening during ordination is to use a detachment brane to prevent
+binding of specified ordinates.
 
 ```foolish
-c = {a+b}; !! is equivalent to c={3} due to ordination at this location.
+c = {a+b}; !! is equivalent to c={3} due to coordination during ordination at this location.
 ```
 
 Detachment blocker branes prevent that from happening:
@@ -711,7 +980,306 @@ c = [α, β]{α+β}; !! Look ma, I respond to α- and β-blockers, I'm a real bo
 **Note on brane references**: When a brane name like `c` is referenced later in another assignment,
 a clone of that brane is detached from its original AB and IB and recoordinated with new AB/IB from
 the referencing location. This allows previously failed searches to resolve in the new context. For
-detailed semantics, see [ECOSYSTEM.md](ECOSYSTEM.md#brane-reference-semantics-detachment-and-coordination).
+detailed semantics, see [ECOSYSTEM.md](ECOSYSTEM.md#brane-reference-semantics-identification-ordination-and-coordination).
+
+### Liberation Precedence and Associativity
+
+Liberation and undetachment branes follow specific precedence rules that determine how complex
+expressions are evaluated. Understanding these rules is crucial for writing correct Foolish code.
+
+#### Three-Level Precedence for Brane Concatenation
+
+When UBC encounters a series of brane concatenations like `[+a][o][-a]{}{}[]{}`, the processing
+order follows three levels of precedence:
+
+**Level 1 (Highest): Left-Associate Liberation Branes**
+
+All liberation branes (of any type: `[-...]`, `[/...]`, `[+...]`) left associate with each other.
+"Left associate" means the left-most brane has the final say, then second-left-most, etc.
+
+**Level 2 (Second): Liberation Right-Associates with Branes**
+
+Liberation brane right associates with branes. Expression `[]{}{}`  processes liberation first
+unless parenthesized.
+
+**Level 3 (Third): Brane Free Association**
+
+(Possibly liberated) branes concatenate with other (possibly liberated) branes. These branes can
+freely associate right or left with no difference in semantics.
+
+#### Precedence Examples
+
+Let's explore copious examples to illustrate these precedence rules thoroughly:
+
+**Example 1: Left Association of Liberations**
+
+```foolish
+{
+	a = 1;
+	o = 2;
+
+	!! [+a][o][-a] left associates
+	!! Step 1: [+a] undetaches 'a'
+	!! Step 2: [o] liberates 'o'
+	!! Step 3: [-a] liberates 'a' again
+	!! Final: both 'a' and 'o' are liberated
+	result = [+a][o][-a]{whats_a = a;};
+	!! Equivalent to: result = [a, o]{whats_a = a;};
+
+	!! With brane concatenation:
+	result2 = {hello=1}[+a][o][-a]{whats_a = a;};
+	!! Equivalent to: result2 = {hello=1}([a, o]{whats_a = a;});
+}
+```
+
+**Example 2: Simple Backward Liberation**
+
+```foolish
+{
+	a = 1;
+	b = 2;
+	c = 3;
+
+	!! [a][b] left associates: both liberated
+	result = [a][b]{x = a + b + c;};
+
+	!! When called with new context:
+	value =$ {a=10; b=20;} result;  !! value = 33 (uses c=3 from outer scope)
+}
+```
+
+**Example 3: Liberation with Undetachment**
+
+```foolish
+{
+	a = 1;
+	b = 2;
+	c = 3;
+
+	!! [a,b][+a] left associates
+	!! First [a,b] liberates both, then [+a] undetaches only 'a'
+	!! Final result: 'b' is liberated, 'a' is bound
+	result = [a,b][+a]{x = a + b + c;};
+
+	!! When called:
+	value =$ {b=20;} result;  !! value = 24 (a=1 from outer, b=20 from call, c=3 from outer)
+}
+```
+
+**Example 4: Liberation Right-Associates with Branes**
+
+```foolish
+{
+	a = 1;
+	y = 2;
+	x = 3;
+
+	!! [y][x]{result = x+y}{final_result = result + x + y} means:
+	!! [y,x]({result = x+y}{final_result = result + x + y})
+	!! The liberation applies to the entire concatenated brane
+	r = [y][x]{result = x + y}{final_result = result + x};
+	!! Equivalent to: r = [y,x]({result = x+y; final_result = result + x;});
+
+	!! When called:
+	value =$ {x=10; y=5;} r;  !! value.final_result = 25 (10+5+10)
+}
+```
+
+**Example 5: Brane Free Association**
+
+```foolish
+{
+	!! All of these are semantically identical:
+	ex1 = {a=1}{a=2}{c = a + 1;};      !! c = 3
+	ex2 = {a=1}{a=2; c = a + 1;};      !! c = 3
+	ex3 = {a=1; a=2;}{c = a + 1;};     !! c = 3
+	ex4 = {a=1; a=2}{c = a + 1};       !! c = 3
+	ex5 = {a=1; a=2; c = a + 1};       !! c = 3
+
+	!! The branes concatenate into single brane before resolution
+	!! So 'a' is redefined to 2, and c sees a=2
+}
+```
+
+**Important**: `{a=1}{a=2}{c=a+1}` means the same as `{a=1;a=2;c=a+1}` or `{a=1}({a=2;c=a+1})`.
+This is crucial for keeping concatenated function branes abstract:
+
+```foolish
+{
+	!! To concatenate functional branes and keep everything abstract,
+	!! enumerate all liberated identifiers at the front:
+	r = [x,y,z](brane_fn_of_x brane_fn_of_y brane_fn_of_z);
+}
+```
+
+**Example 6: Complex Precedence Chain**
+
+```foolish
+{
+	a = 1;
+	b = 2;
+	c = 3;
+	d = 4;
+
+	!! Parse: [a][b][c][+a,b]{}{}{d=d+1}
+	!!
+	!! Step 1: Left-associate all liberations: [a][b][c][+a,b]
+	!!   - [a] liberates 'a'
+	!!   - [b] liberates 'b'
+	!!   - [c] liberates 'c'
+	!!   - [+a,b] undetaches 'a' and 'b'
+	!!   - Final: 'c' is liberated, 'a' and 'b' are bound
+	!!
+	!! Step 2: Right-associate liberation result with branes
+	!!   [LIBERATION]{}{}{d=d+1}
+	!!
+	!! Step 3: Concatenate branes
+	!!   {}{}{d=d+1} becomes {d=d+1}
+	!!
+	!! Result: liberation applies to {d=d+1}, with 'c' liberated, 'a','b' bound
+
+	fn = [a][b][c][+a,b]{}{}{d = d + 1;};
+
+	!! When called:
+	value =$ {c=30;} fn;  !! value = 5 (uses a=1, b=2, d=4 from outer)
+}
+```
+
+**Example 7: Forward Search with Secret Values**
+
+```foolish
+{
+	!! Define a constantic brane with blocked resolution
+	recipe = [/ingredient]{
+		step1 = "mix";
+		ingredient = ?flour + ?sugar + ?eggs;
+		step2 = "bake";
+	};
+
+	!! recipe is constantic - may gain value when associated with new context
+
+	!! Provide context:
+	flour = 1;
+	sugar = 2;
+	eggs = 3;
+
+	bakery = {
+		!! During ordination, recipe.ingredient triggers search
+		!! and finds flour, sugar, eggs
+		cake =$ recipe.ingredient;  !! cake = 6
+	};
+}
+```
+
+**Example 8: Statement Number Liberation**
+
+```foolish
+{
+	!! Block statement #1 by number
+	process = [#1]{
+		setup = "init";          !! statement 0
+		secret = ?password;      !! statement 1 - liberated!
+		output = secret * 2;     !! statement 2
+	};
+
+	!! process is constantic
+
+	password = 5;
+	result =$ process.output;  !! result = 10
+}
+```
+
+**Example 9: P-Brane Selective Binding**
+
+```foolish
+{
+	!! Define constantic brane with all liberated
+	secure = [/a, /b, /c]{
+		a = ?secret_a;
+		b = ?secret_b;
+		c = ?secret_c;
+		result = a + b + c;
+	};
+
+	secret_a = 10;
+	secret_b = 20;
+	secret_c = 30;
+
+	!! Selectively bind only secret_a and secret_b
+	partial =$ [+ secret_a, secret_b] secure.result;
+	!! partial is still constantic because secret_c not resolved
+
+	!! Fully bind
+	full =$ [+ secret_a, secret_b, secret_c] secure.result;  !! full = 60
+}
+```
+
+**Example 10: Liberation Doesn't Liberate Anything (Alarming Case)**
+
+```foolish
+{
+	x = 10;
+
+	!! Alarming: [y,z] doesn't liberate anything because y,z aren't in the brane
+	!! This is not illegal, just suspicious - compilers should warn
+	fn = [y,z]{result = x + 1;};
+
+	!! x is still bound from outer scope
+	value =$ fn;  !! value = 11
+}
+```
+
+**Example 11: Complex Real-World Counter Factory**
+
+```foolish
+{
+	!! Define a constantic function factory
+	make_counter = [/start, /step]{
+		count = start;
+		increment = {count = count + step;};
+		get = {count;};
+	};
+
+	!! Create two different counters with different contexts
+	start = 0;
+	step = 1;
+	counter1 = make_counter;
+
+	start = 100;
+	step = 10;
+	counter2 = make_counter;
+
+	!! Use counters
+	c1 =$ counter1.get;  !! c1 = 0
+	counter1.increment;
+	c1_next =$ counter1.get;  !! c1_next = 1
+
+	c2 =$ counter2.get;  !! c2 = 100
+	counter2.increment;
+	c2_next =$ counter2.get;  !! c2_next = 110
+}
+```
+
+#### UBC Implementation Semantics
+
+In terms of UBC, liberation precedence semantics requires that:
+
+1. **Liberation aggregation**: The chain of liberation branes `[][][]` is stored in a single
+   liberation FIR, preprocessed to determine final behavior
+2. **Brane concatenation before resolution**: The chain of branes must be put together and treated
+   as a single brane with all lines concatenated, **BEFORE** identifier resolution
+3. **Liberation removal**: When a brane is a concatenation of liberation followed by brane, the
+   liberation is removed before identification, ordination, and coordination
+4. **Upward search blocking**: The liberation brane should see one single expression on its right
+   side; that expression is a child of the liberation brane FIR, and this is how we block search
+   upward
+
+**Why concatenate before resolution?** It's possible for a brane to reference something defined just
+before it, but if we resolve it too early, it may find that same variable in IB/AB, which is
+undesirable.
+
+**Future implementations**: In multi-cellular implementations, only the resolution result has to be
+the same; the actual implementation doesn't have to follow this process.
 
 ---
 
@@ -747,15 +1315,29 @@ to raise the cursor to parent branes. So forward search is limited to the curren
 
 ## Summary
 
-The Foolish name, search, and detachment system creates a coherent model for:
+The Foolish names, searches, and bounds system creates a coherent model for:
 
-1. **Naming**: Using `=` to create ordinates/coordinates that serve as navigational points
-2. **Searching**: Multiple operators (`.`, `?`, `??`, `?*`, `??*`, `/`, `//`, `/*`, `//*`) to find values by name,
+1. **Identification**: Using `=` to identify expressions with names
+2. **Ordination**: Evaluating assignments in branes so expressions become ordinated, gaining ordinates (named axes/dimensions)
+3. **Coordination**: Expressions reacting to other ordinates during UBC evaluation, becoming coordinated with brane context
+4. **Searching**: Multiple operators (`.`, `?`, `??`, `?*`, `??*`, `/`, `//`, `/*`, `//*`) to find values by name,
    pattern, or value
-3. **Bounding**: Using detachment branes `[...]` to control scope boundaries and limit the reach of
-   globalized searches
+5. **Liberation (Detachment)**: Using liberation branes `[...]`, `[/...]`, `[+...]` to liberate identifiers, creating free variables and abstract branes (functions)
+6. **Bounding**: Liberation branes control scope boundaries and limit the reach of globalized searches
+
+**Liberation Terminology**:
+- **Liberate/Detach**: Free an identifier from its context, making it a free variable
+- **Liberation/Detachment**: The act of placing a liberation brane before a regular brane
+- **Liberated ordinates/Detached names**: Identifiers that have been freed
+- Three types: Backward search `[...]`, Forward search `[/...]`, P-brane/undetachment `[+...]`
+
+**Precedence** (highest to lowest):
+1. Left-associate liberation branes
+2. Liberation right-associates with branes
+3. Brane free association
 
 Together, these features enable Foolish to be both highly expressive and properly scoped, allowing
 programmers to write code that is simultaneously flexible and controlled. The search system
-transforms programming from precise recall to intelligent exploration, while detachment ensures
-that scope boundaries remain clear and intentional.
+transforms programming from precise recall to intelligent exploration, while liberation ensures
+that scope boundaries remain clear and intentional, enabling the creation of abstract, reusable
+functions with proper parameter handling.

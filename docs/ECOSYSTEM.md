@@ -22,25 +22,36 @@ information: Ancestral and Immediate.
 ### Ancestral Brane (AB) and Immediate Brane (IB)
 
 Given a brane statement, the **Immediate Brane (IB)** is the current context that we have accumulated
-inside the Unicellular Brane Computer so far, not including the name of the current statement. The 
-**Ancestral Brane (AB)** is the search context immediately before and outside of the brane where a statment
-is being made. AB is a linearization of the nesting of brane statement all collapsed into a single brane.
+inside the Unicellular Brane Computer so far (lines before current expression), not including any
+definitions made in the current statement. The **Ancestral Brane (AB)** is the search context
+immediately before and outside of the brane where a statement is being made. AB is a linearization of
+the nesting of brane statements all collapsed into a single brane.
 
-### Brane Reference Semantics: Detachment and Coordination
+### Brane Reference Semantics: Identification, Ordination, and Coordination
 
-When a brane is first coordinated (assigned to a name), it has already searched for and resolved all
+**Three Key Concepts:**
+
+1. **Identification**: An assignment statement **identifies** an expression with a name using the `=` operator. The RHS expression is **identified** when the LHS identifier is assigned. We most frequently talk about "brane identification."
+
+2. **Ordination**: When an assignment is evaluated in a brane, the identified expression becomes **ordinated** to that brane—it becomes part of the brane. The brane gains an **ordinate** (the LHS identifier becomes the name of an axis, a new dimension, just like x and y are names in a 2D Cartesian system). During ordination, the expression searches for and resolves names using its AB and IB context.
+
+3. **Coordination**: During UBC compute resolution stage, an expression located in a brane becomes **coordinated** with other ordinates of the brane and ancestral branes. It becomes coordinated because it has reacted to the other ordinates. Most expressions are only partially coordinated (with unresolved identifiers) during intermediate evaluation stages.
+
+**When a brane is first ordinated** (identified and assigned to a name), it has already searched for and resolved all
 the variables it can find in its original AB and IB context, leaving it with:
-- Names bound to values (successfully resolved)
-- Names with incomputable values due to failed searches (free variables)
+- Names bound to values (successfully resolved and coordinated)
+- Names with incomputable values due to failed searches (free variables, not fully coordinated)
 
-When an assignment statement refers to a brane by name, a clone of that brane is **detached** from its
-original AB and IB and **recoordinated** into the new position. During recoordination:
-- **New AB**: The brane it is being assigned into
+This example brane may change value when referenced in a statement—it is constantic. When an
+assignment statement refers to a brane by name, a clone of that constantic brane is **detached** from
+its original AB and IB and **recoordinated** into the new position. During recoordination:
+- **New AB**: The brane it is being ordinated into
 - **New IB**: All lines preceding the assignment
 
-This allows previously failed searches to potentially resolve in the new context. For detailed
-operational semantics of how the UBC evaluates brane source code with combinations of original and
-new AB/IB, see the UBC brane evaluation section below.
+This allows previously failed searches to potentially resolve in the new context, so the constantic
+brane can gain value and potentially achieve CONSTANT. For detailed operational semantics of how the
+UBC evaluates brane source code with combinations of original and new AB/IB, see the UBC brane
+evaluation section below.
 
 In some cases, such as the recursive call to `↑`, the search finds a line of code that has an
 incomplete value. Note by incomplete value, in the UBC, we mean not the *NK* value `???`, but a
@@ -112,27 +123,27 @@ To facilitate the multiple steps of UBC evaluation, we define an internal repres
 the Foolish Internal Representation (FIR). FIR can be several things:
 
 1. A Foolish AST. This is an uncoordinated and unevaluated expression in its original Foolish.
-2. A finalized value—integer or brane.
+2. A finalized value—integer or brane in CONSTANT state.
 3. A comment.
-4. An abstract brane in that it is deliberately or inadvertently undercontextualized—some
-   identifier referenced within has no available binding to value or brane member. An optimization
-   we may perform is to coordinate the values of an abstract brane where possible. That brane with
-   all possible values coordinated is a ***FK*** (*Fully Known*) abstract brane. Normally, a
-   recursive brane conditions on some computational result that depends on a parameter—a coordinate
+4. An abstract brane that is deliberately or inadvertently undercontextualized—some identifier
+   referenced within has no available binding to value or brane member. An optimization we may
+   perform is to coordinate the values of an abstract brane where possible. That brane with all
+   possible values coordinated is a ***CONSTANTIC*** (constant in context) abstract brane. Normally,
+   a recursive brane conditions on some computational result that depends on a parameter—an ordinate
    identifier that is named but unattached at the definition of the brane. In these cases, the
-   abstract brane can be *FK* because the recursion depends on a parameter. But it is possible to
-   construct an abstract brane that calls itself irrespective of future parameters. Such a brane
+   abstract brane can be constantic because the recursion depends on a parameter. But it is possible
+   to construct an abstract brane that calls itself irrespective of future parameters. Such a brane
    will be finite or infinite in depth depending on its construction. The abstract brane may
-   therefore be permanently ***NYE*** (*Not Yet Evaluated*, pronounced "nigh") due to its
-   construction. An abstract brane is *FK* if the *NYE* members are due to detached identifier
-   names.
-5. An *NYE* FIR represents code that was expressed in Foolish, but it has not been *FK* in the
-   present UBC context. This FIR contains the AST of the expression, and a reference to the AB and
-   IB that were used to attempt evaluation. But there are three possible reasons why the FIR is
-   *NYE*:
+   therefore be permanently ***NYE*** (*Not Yet Evaluated*, pronounced "nigh", any pre-constantic
+   state) due to its construction. An abstract brane is constantic if it has not reached CONSTANTIC
+   due to detached identifier names.
+5. A NYE FIR represents code that was expressed in Foolish, but it has not reached CONSTANTIC in
+   the present UBC context. This FIR contains the AST of the expression, and a reference to the AB
+   and IB that were used to attempt evaluation. Possible reasons why the FIR has not reached
+   CONSTANTIC:
    1. The AST is unprocessed.
-   2. The expression has an unevaluated AST that contains recursive references to names that are
-      not yet *FK* in the present context.
+   2. The expression has an unevaluated AST that contains recursive references to names that have
+      not reached CONSTANTIC in the present context.
 
 ### The UBC pass
 
@@ -174,11 +185,13 @@ iteration. Note, the next time we take a step in the UBC pass, this FIR is a bra
 that can be processed by the brane evaluation. It may or may not produce another recursion step
 depending on the program and context.
 
-The UBC FIR processing has the following stages:
+The UBC FIR processing has the following stages (NYES, pronounced like "NICE", encapsulates all
+evaluation stages from UNINITIALIZED through CONSTANT):
 
-1. AST
-2. FIR with all evaluation results coordinated. (Completion, another UBC does nothing)
-3. FIR with some *NYE* coordinates. (In progress, another UBC step may produce changes)
+1. **AST** - uncoordinated, unevaluated
+2. **NYE** (Not Yet Evaluated) - FIR with some NYE ordinates (In progress, another UBC step may produce changes)
+3. **CONSTANTIC** (pronounced "cons-TAN-tic", constant in context) - FIR with all ordinates coordinated as much as possible in current context; may gain value when associated with new context
+4. **CONSTANT** - FIR with all evaluation results fully coordinated (Completion, another UBC does nothing). During coordination, a brane may stay CONSTANT or transition from CONSTANTIC to ALLOCATED if it started constantic.
 
 Because of the step-wise evaluation, the brane tree is evaluated breadth-first. The brane having
 finite size means each UBC step terminates in finite time. As long as the UBC FIR is not complete,
@@ -217,19 +230,19 @@ Note that this this is nominal in that the characterizers have names.
 
 ## Relational Coordinates
 
-Relational coordinates are the *names* of brane members that we believe, as programmers, are the
-most important aspects of a brane. When we think of coordinates, we think of x and y coordinates in
-a two-dimensional Cartesian graph. But in reality, almost all relationships that we consider can be
-modeled as functions of coordinates in some coordinate system. Most often we think of binary
-attributes, "hot or not", for example; sometimes, an object is observable to have higher-
-dimensional coordinates such as SIC or ZIP codes. There could also be higher-valence relationships,
-such as `{a,b,c} sorted_by_x` or `{a,b,c} is_median_height`, which may return a boolean on whether
-`a.x`, `b.x`, `c.x` is sorted, or `a` is the median of `b` and `c`, respectively.
+Relational coordinates are the *ordinates* (names) of brane members that we believe, as programmers,
+are the most important aspects of a brane. When we think of coordinates, we think of x and y
+coordinates in a two-dimensional Cartesian graph. But in reality, almost all relationships that we
+consider can be modeled as functions of coordinates in some coordinate system. Most often we think
+of binary attributes, "hot or not", for example; sometimes, an object is observable to have
+higher-dimensional coordinates such as SIC or ZIP codes. There could also be higher-valence
+relationships, such as `{a,b,c} sorted_by_x` or `{a,b,c} is_median_height`, which may return a
+boolean on whether `a.x`, `b.x`, `c.x` is sorted, or `a` is the median of `b` and `c`, respectively.
 
-So, in Foolish, a value that is accessible *after* a brane is *FK* is considered a coordinate—the
-value tells us how to relate to the brane that was just computed. A well-coordinated brane is one
-that is *FK* to values so that computation can proceed to access the coordinate with no undesirable
-consequences.
+So, in Foolish, a value that is accessible *after* a brane has reached CONSTANTIC is considered a
+coordinate—the value tells us how to relate to the brane that was just computed. A well-coordinated
+brane is one that is constantic or has achieved CONSTANT with values so that computation can proceed
+to access the coordinate with no undesirable consequences.
 
 ### Single Coordinate Matching
 
