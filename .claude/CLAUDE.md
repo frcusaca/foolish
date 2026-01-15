@@ -37,6 +37,67 @@ mvn clean compile -T $(($(nproc) * 2)) -DskipTests
 
 For detailed build strategies, approval test workflows, and debugging patterns, invoke the maven-builder-for-foolish-language skill.
 
+## Claude Code Web (CCW) Setup
+
+**This project requires Java 25.** The Claude Code Web environment provides Java 21 by default, so Java 25 must be installed using SDKMAN.
+
+### Automated Setup (SessionStart Hook)
+
+The repository includes a SessionStart hook (`.claude/hooks/session-start.sh`) that automatically:
+1. Installs SDKMAN if not present
+2. Installs Java 25 (Temurin) via SDKMAN
+3. Configures a local Maven proxy to handle authentication with the CCW proxy
+4. Creates Maven `settings.xml` with proxy configuration
+
+The hook is configured in `.claude/config.json` and runs automatically when a CCW session starts.
+
+### Manual Setup (if needed)
+
+If the hook doesn't run or you need to set up manually:
+
+```bash
+# 1. Install SDKMAN
+curl -s "https://get.sdkman.io" | bash
+source "$HOME/.sdkman/bin/sdkman-init.sh"
+
+# 2. Install Java 25
+sdk install java 25.0.1-tem
+
+# 3. Run the session-start hook manually
+.claude/hooks/session-start.sh
+```
+
+### Distinguishing CCW from Local Environments
+
+To detect if code is running in Claude Code Web vs. a local environment, check these environment variables:
+
+```bash
+# Simple check
+if [ -n "$CLAUDECODE" ]; then
+    echo "Running in Claude Code Web"
+fi
+
+# More specific check
+if [ "$CLAUDE_CODE_REMOTE_ENVIRONMENT_TYPE" = "cloud_default" ]; then
+    echo "Running in Claude Code Web (cloud environment)"
+fi
+```
+
+**Key CCW Environment Variables:**
+- `CLAUDECODE=1` - Present in all Claude Code environments
+- `CLAUDE_CODE_REMOTE_ENVIRONMENT_TYPE=cloud_default` - Specific to CCW
+- `CLAUDE_CODE_PROXY_RESOLVES_HOSTS=true` - Indicates proxy is needed for DNS resolution
+- `CLAUDE_CODE_SESSION_ID` - Unique session identifier
+
+### Why the Maven Proxy is Needed
+
+Maven doesn't automatically honor the standard `HTTP_PROXY` or `HTTPS_PROXY` environment variables for authentication. The local proxy (`/tmp/maven-proxy.py`) acts as an intermediary that:
+1. Accepts connections from Maven without authentication
+2. Forwards requests to the CCW upstream proxy with proper authentication headers
+3. Handles the complex JWT-based authentication automatically
+
+**Reference:** This workaround is documented in [GitHub issue #13372](https://github.com/anthropics/claude-code/issues/13372) and [this LinkedIn article](https://www.linkedin.com/pulse/fixing-maven-build-issues-claude-code-web-ccw-tarun-lalwani-8n7oc).
+
 ## Project Architecture
 
 ### Multi-Module Maven Structure
@@ -245,6 +306,13 @@ When proposing updates, explain what has changed and why the documentation needs
 
 ## Last Updated
 
-**Date**: 2025-12-23
-**Status**: Updated documentation to consistently describe brane reference semantics: when branes are referenced by name, they are detached from original AB/IB and recoordinated with new AB/IB during assignment. Added explicit AB (Ancestral Brane) and IB (Immediate Brane) definitions and cross-references across ECOSYSTEM.md, NAME_SEARCH_AND_BOUND.md, ADVANCED_FEATURES.md, and CLAUDE.md.
+**Date**: 2026-01-15
+**Status**: Added comprehensive Claude Code Web (CCW) setup instructions including:
+- SessionStart hook for automated Java 25 installation via SDKMAN
+- Local Maven proxy configuration to handle CCW proxy authentication
+- Environment variable detection to distinguish CCW from local environments
+- Documentation of the Maven proxy workaround from GitHub issue #13372
+- Instructions for manual setup if automation fails
+
+Project now fully supports both local development (Java 25 required) and Claude Code Web environments with automatic configuration.
 **Reviewed by**: User requested update
