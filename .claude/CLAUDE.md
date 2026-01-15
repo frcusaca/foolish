@@ -1,24 +1,78 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides Claude Code-specific guidance when working on the Foolish project.
 
-## Build and Test Commands
+## For All AI Agents - Read AGENTS.md First
 
-This project uses the **maven-builder-for-foolish-language** skill for comprehensive Maven build strategies with parallel execution, intelligent test running, and targeted debugging workflows.
+**IMPORTANT**: This repository includes comprehensive project guidance in `AGENTS.md` at the root directory. **ALL AI agents** (including Claude Code, GitHub Copilot, Cursor, and other AI coding assistants) should consult **`AGENTS.md`** for:
 
-To access the full build system documentation and commands, use:
-```
+- Environment detection and setup (Claude Code Web vs local development)
+- Build requirements and commands (Java 25, Scala 3.3.7, ANTLR 4.13.2, Maven)
+- Project structure and multi-module Maven architecture
+- The Unicellular Brane Computer (UBC) implementation details
+- FIR (Foolish Internal Representation) and state machine
+- BraneMemory, scope resolution, AB/IB semantics
+- Test infrastructure (unit tests, approval tests, cross-validation)
+- Foolish language terminology and coding conventions
+- Git workflow and branch naming conventions
+- Common development tasks with complete examples
+
+**The sections below provide Claude Code-specific instructions only.** For general project information, always consult `AGENTS.md` first.
+
+---
+
+## Claude Code-Specific Features
+
+### Build and Test Skills
+
+Claude Code provides specialized skills for build management. For comprehensive Maven build strategies with parallel execution, intelligent test running, and targeted debugging workflows, use:
+
+```bash
 /skill maven-builder-for-foolish-language
 ```
 
-### Quick Reference
+This skill provides:
+- Parallel execution strategies with dynamic resource detection
+- Test debugging workflows
+- Approval test management and parallelization
+- Compilation error handling
+- Decision trees for build selection
+- Output analysis strategies
+
+See `.claude/skills/maven-builder-for-foolish-language/` for full documentation.
+
+### Claude Code Web (CCW) Setup
+
+**This project requires Java 25.** Local development assumes Java 25 is installed. Claude Code Web provides Java 21 by default, so setup is required.
+
+**IMPORTANT:** Before running any Maven commands in CCW, run:
+
+```bash
+/skill ccw-maven-setup
+```
+
+This skill automatically:
+1. Detects if running in CCW (checks `CLAUDECODE` environment variable)
+2. If in CCW:
+   - Installs SDKMAN (if not present)
+   - Installs latest stable Java 25 (Temurin) via SDKMAN
+   - Starts a local Maven authentication proxy at `127.0.0.1:3128`
+   - Configures `~/.m2/settings.xml` with proxy settings
+3. If not in CCW (local environment):
+   - Does nothing - assumes Java 25 is already installed
+
+**The skill is idempotent** - safe to run multiple times.
+
+For details on why CCW needs a proxy and how the setup works, see the "Claude Code Web Setup" section in `AGENTS.md`.
+
+### Quick Build Reference
 
 Basic build and test:
 ```bash
 mvn clean generate-sources compile test
 ```
 
-For optimized parallel builds with fancy parallelization:
+Optimized parallel builds:
 ```bash
 # Clean parallel build (2 threads per core, dynamically calculated)
 mvn clean compile -T $(($(nproc) * 2))
@@ -35,216 +89,80 @@ mvn clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$
 mvn clean compile -T $(($(nproc) * 2)) -DskipTests
 ```
 
-For detailed build strategies, approval test workflows, and debugging patterns, invoke the maven-builder-for-foolish-language skill.
-
-## Project Architecture
-
-### Multi-Module Maven Structure
-
-The codebase uses a **multi-module Maven project** with parallel Java and Scala implementations:
-
-```
-foolish-parent (root POM)
-├── foolish-parser-java       (ANTLR grammar, AST, shared by both implementations)
-├── foolish-core-java         (Java UBC implementation)
-├── foolish-core-scala        (Scala UBC implementation)
-├── foolish-lsp-java          (Language Server Protocol)
-└── foolish-crossvalidation   (Cross-validation tests verifying Java/Scala output identity)
-```
-
-**Key Dependencies:**
-- Both Java and Scala core modules depend on the shared parser
-- Scala core depends on Java core for shared test utilities
-- LSP server uses the Java implementation
-- Cross-validation module depends on both Java and Scala core modules
-- Requirements: Java 25, Scala 3.3.7, ANTLR 4.13.2
-
-### The Unicellular Brane Computer (UBC)
-
-The **UBC is the reference implementation of Foolish**. It implements a unique evaluation model based on branes (containment structures).
-
-#### FIR (Foolish Internal Representation)
-
-FIR objects represent expressions during evaluation and progress through a multi-stage state machine:
-
-```
-UNINITIALIZED → INITIALIZED → REFERENCES_IDENTIFIED → ALLOCATED
-  → RESOLVED → EVALUATING → CONSTANT
-```
-
-Only `CONSTANT` means fully evaluated (not "nye" = Not Yet Evaluated).
-
-**Key FIR Types:**
-- `ValueFiroe` - constants (integers, strings)
-- `NKFiroe` - "Not Known" values (`???`), errors
-- `BraneFiroe` - evaluates branes `{...}`
-- `AssignmentFiroe` - variable bindings `x = expr`
-- `IdentifierFiroe` - variable references with optional characterizations
-- `BinaryFiroe` / `UnaryFiroe` - arithmetic/logical operators
-- `IfFiroe` - conditional expressions
-- `SearchUpFiroe` - `↑` operator for upward scope traversal
-- `RegexpSearchFiroe` - pattern-based brane search
-
-#### BraneMemory: Hierarchical Scoping
-
-`BraneMemory` implements Foolish's unique scope resolution:
-- **Retrospective search**: searches backwards in current brane, then upwards through parent branes
-- Names resolve based on proximity: "containment creates organization, proximity creates combination"
-- Supports both exact identifier matching and regular expression queries
-
-#### Brane Reference Semantics: AB and IB
-
-**Ancestral Brane (AB)** and **Immediate Brane (IB)** are critical context for name resolution:
-- **IB**: Current context accumulated so far (lines before current expression)
-- **AB**: Parent brane context containing the defining expression and its AB/IB
-
-**Detachment and Coordination**: When a brane is referenced by name:
-1. The brane was already partially resolved in its original AB/IB context
-2. A clone is **detached** from its original AB/IB
-3. The clone is **recoordinated** with new AB (the containing brane) and new IB (preceding lines)
-4. Previously failed name searches can now resolve in the new context
-
-In UBC implementation, this means creating a modified clone with new context. See `docs/ECOSYSTEM.md` for detailed semantics.
-
-#### Evaluation Strategy
-
-`FiroeWithBraneMind` implements **breadth-first evaluation** with state-aware stepping:
-- Maintains `braneMind` (LinkedList<FIR>) - evaluation queue
-- Maintains `braneMemory` (BraneMemory) - completed evaluations
-- Different phases prevent evaluation order issues and enable partial/abstract evaluation
-
-### Parallel Java/Scala Implementations
-
-**Shared Components:**
-- AST (Java records in parser module)
-- ANTLR grammar (`Foolish.g4`)
-- Test input files (`.foo` programs in `test-resources/`)
-
-**Parallel Components:**
-- FIR implementations (`org.foolish.fvm.ubc` vs `org.foolish.fvm.scubc`)
-- Test classes (JUnit vs ScalaTest)
-- Separate approval output directories
-
-**Critical Constraint:** Both implementations must produce **byte-identical** approval outputs. Cross-validation tests in the `foolish-crossvalidation` module enforce this by comparing all approval files.
-
-### Test Infrastructure
-
-**Three-Tier Testing:**
-
-1. **Unit Tests** (`*UnitTest.java`) - focused component tests in Java and Scala modules
-2. **Approval Tests** (`*ApprovalTest.{java,scala}`) - snapshot-based integration tests in Java and Scala modules
-3. **Cross-Validation** (separate `foolish-crossvalidation` module) - runs after Java and Scala tests to ensure output identity
-
-#### Approval Test Workflow
-
-**Directory Structure:**
-- **Inputs (shared)**: `test-resources/org/foolish/fvm/inputs/*.foo`
-- **Java outputs**: `foolish-core-java/src/test/resources/org/foolish/fvm/ubc/*.approved.foo`
-- **Scala outputs**: `foolish-core-scala/src/test/resources/org/foolish/fvm/scubc/*.approved.foo`
-
-**Test Classes:**
-- `ParserApprovalTest.java` - AST parsing verification
-- `UbcApprovalTest.java` - Java UBC evaluation
-- `ScUbcApprovalTest.scala` - Scala UBC evaluation
-
-**Adding New Approval Tests:**
-
-1. Create input file: `test-resources/org/foolish/fvm/inputs/yourTestName.foo`
-2. Add test method to appropriate test class referencing the input filename
-3. Run tests - generates `*.received.foo` files in output directories
-4. Review diffs and approve:
-
-```bash
-# Show diffs for all received files
-find . -name "*.received.foo" -exec sh -c 'diff -u "${0%.received.foo}.approved.foo" "$0" || true' {} \;
-
-# Approve all received files (move to .approved.foo)
-find . -name "*.received.foo" -exec sh -c 'mv "$0" "${0%.received.foo}.approved.foo"' {} \;
-```
-
-**Output Format:**
-- Approval files show: Input → Parsed AST → UBC Evaluation steps → Final Result
-- Use full-width space (＿) to show indentation depth precisely
-- Both Java and Scala implementations already(and must continue to) produce byte-identical outputs
-
-## Language-Specific Conventions
-
-### Foolish Terminology (from STYLES.md)
-
-- **Foolisher** - developer/user of Foolish
-- **Nye** (say "nigh") - Not Yet Evaluated state
-- **No-no** - The `???` unknown value
-- **Ordinate** - a name associated with a brane
-- **Coordinate** - brane member names used for relational access
-- **Lexed** - feature parses to AST
-- **Interpreted** - feature fully implemented in VM
-
-### Code Style
-
-- Tabs for depth markers (reduces storage)
-- 108 character width for documents
-- `.foo` extension for Foolish programs
-- Full-width space (＿) in approval tests shows indentation precisely
-- Variable names follow power-law distribution (mean 3.5 chars short, 5 chars long)
-- Use diverse Unicode: Latin, Greek, Cyrillic, Hebrew, Arabic, Chinese, Sanskrit
-
-### Writing Tests
-
-- Unit tests verify correctness of each component
-- Approval tests illustrate behavior to users - focus on IMPORTANT and EASILY CONFUSED aspects
-- Use sensible variable names from all available alphabets to improve expressivity
-- New tests should use power-law distributed variable name lengths
-
-### Debugging
-- Reproduce errors in approval tests, breaking complex issues into smaller test cases
-- Use configuration flags in test comments (`!! --verbose !!`) for verbose output
-- Printf-style debugging only as last resort
-- Verify fixes don't break other tests; keep useful intermediate tests as regression guards
+For detailed build strategies and debugging patterns, use the `maven-builder-for-foolish-language` skill.
 
 ## Git Commit Message Format
 
-Summary of long thinking/programming tasks should always be in the format of git commit message. Git commit messages should include:
-- Current version of the claude agent
-- Identifier of model used to create it
+Claude Code commit messages should include:
+- Current version of Claude Code
+- Model identifier
 
 Example:
 ```
 Add RegExp search to brane operations
 
-Claude Code v1.0.0 / claude-sonnet-4.5
+Implemented pattern-based search using RegexpSearchFiroe.
+Added tests and updated documentation.
+
+Claude Code v1.0.0 / claude-sonnet-4-5-20250929
 ```
 
-## Important File Locations
+## Git Workflow
 
-- **Grammar**: `foolish-parser-java/src/main/antlr4/Foolish.g4`
-- **AST**: `foolish-parser-java/src/main/java/org/foolish/ast/AST.java`
-- **Java UBC**: `foolish-core-java/src/main/java/org/foolish/fvm/ubc/`
-- **Scala UBC**: `foolish-core-scala/src/main/scala/org/foolish/fvm/scubc/`
-- **Test Inputs**: `*/src/test/resources/org/foolish/fvm/inputs/`
-- **Cross-Validation Tests**: `foolish-crossvalidation/src/test/java/org/foolish/`
-- **Documentation**: `docs/` directory (README.md, STYLES.md, ADVANCED_FEATURES.md, ECOSYSTEM.md, etc.)
+### Branch Naming
+Branches must follow: `claude/<descriptive-name>-<session-id>`
 
-## Additional Documentation
+Example: `claude/run-tests-8vk4v`
 
-Refer to README.md and docs/STYLES.md for common terminologies. Other documents in the docs/ directory provide additional details when something is ambiguous.
+**CRITICAL**: Branch must start with `claude/` and end with matching session ID, otherwise push will fail with 403 HTTP error.
+
+### Push Guidelines
+- Always use: `git push -u origin <branch-name>`
+- If push fails with network errors, retry up to 4 times with exponential backoff (2s, 4s, 8s, 16s)
+
+## Project-Specific Information
+
+For all project-specific information including:
+- Multi-module Maven structure and dependencies
+- UBC (Unicellular Brane Computer) architecture
+- FIR state machine and evaluation strategy
+- BraneMemory and scope resolution
+- AB/IB (Ancestral Brane / Immediate Brane) semantics
+- Test infrastructure and approval test workflows
+- Foolish language terminology and coding conventions
+- Important file locations
+- Adding new approval tests
+- Debugging workflows
+
+**Consult `AGENTS.md` at the root directory.**
 
 ---
+
+## Markdown File Update Protocol
+
+**IMPORTANT**: When you modify any `*.md` file in this repository, you MUST update the "## Last Updated" section at the end of that file. See `AGENTS.md` for the complete protocol. Always include:
+
+1. **Current timestamp** (YYYY-MM-DD format)
+2. **Your agent identifier** (Claude Code v1.0.0 / claude-sonnet-4-5-20250929)
+3. **Brief summary** of what was changed
+
+This ensures all AI agents collaborating on this project can track documentation changes.
 
 ## Maintenance Instructions
 
 **Weekly Check**: After one week past the day of last update to this file (either by git timestamp or the Last Updated section below) please review this CLAUDE.md file for accuracy:
 
-1. Verify build commands still work
-2. Check if new modules have been added
-3. Confirm architectural descriptions match current implementation
-4. Identify any new conventions or patterns that should be documented
+1. Verify that Claude Code-specific content (skills, CCW setup) is still accurate
+2. Check if new Claude Code features need documentation
+3. Ensure `AGENTS.md` is properly referenced and contains all project-specific details
+4. Confirm this file focuses ONLY on Claude Code-specific features
 5. Propose updates to the user if discrepancies are found
-5. Update the updated section--even if user makes no update.
+6. Update the Last Updated section below--even if user makes no changes
 
 When proposing updates, explain what has changed and why the documentation needs adjustment. After user review, update the "Last Updated" date below whether changes are accepted or the user confirms current state is acceptable.
 
 ## Last Updated
 
-**Date**: 2025-12-23
-**Status**: Updated documentation to consistently describe brane reference semantics: when branes are referenced by name, they are detached from original AB/IB and recoordinated with new AB/IB during assignment. Added explicit AB (Ancestral Brane) and IB (Immediate Brane) definitions and cross-references across ECOSYSTEM.md, NAME_SEARCH_AND_BOUND.md, ADVANCED_FEATURES.md, and CLAUDE.md.
-**Reviewed by**: User requested update
+**Date**: 2026-01-15
+**Updated By**: Claude Code v1.0.0 / claude-sonnet-4-5-20250929
+**Changes**: Restructured to separate Claude Code-specific content from general project information. Moved all project-specific details (architecture, UBC, FIR, testing, conventions) to AGENTS.md. Kept only Claude Code-specific features: skills, CCW setup, commit format, branch naming. Added markdown update protocol reference and multi-agent collaboration awareness.
