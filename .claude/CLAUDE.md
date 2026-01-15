@@ -2,6 +2,19 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## For All AI Agents
+
+**IMPORTANT**: This repository includes comprehensive guidance for AI agents in `AGENTS.md` at the root directory. AI agents (including Claude Code, GitHub Copilot, Cursor, and other AI coding assistants) should consult `AGENTS.md` for:
+
+- Environment detection and setup (Claude Code Web vs local development)
+- Build requirements and commands
+- Project structure and architecture overview
+- Testing workflows and approval test patterns
+- Git workflow and branch naming conventions
+- Common development tasks with complete examples
+
+The sections below provide Claude-specific instructions that supplement the general AI agent guidance in `AGENTS.md`.
+
 ## Build and Test Commands
 
 This project uses the **maven-builder-for-foolish-language** skill for comprehensive Maven build strategies with parallel execution, intelligent test running, and targeted debugging workflows.

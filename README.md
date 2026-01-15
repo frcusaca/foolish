@@ -64,6 +64,24 @@ biological realities you want to model.
 
 Additional implementation notes are in the docs folder.
 
+## For AI Agents and Contributors
+
+**AI coding assistants** (Claude Code, GitHub Copilot, Cursor, and others) should consult
+**[AGENTS.md](AGENTS.md)** for comprehensive development guidance including:
+
+- Environment detection (Claude Code Web vs local development)
+- Build requirements (Java 25, Scala 3.3.7, ANTLR 4.13.2, Maven)
+- Setup instructions for cloud environments (CCW) and local development
+- Build commands with parallel execution strategies
+- Project structure and multi-module Maven architecture
+- The Unicellular Brane Computer (UBC) implementation details
+- Testing workflows (unit tests, approval tests, cross-validation)
+- Git workflow and branch naming conventions for AI agents
+- Common development tasks with complete examples
+
+`AGENTS.md` is specifically written to enable AI agents to effectively contribute to the Foolish
+project with minimal friction.
+
 ## Key Features That Set Foolish Apart
 
 ### 🧬 Bio-Inspired Programming Model
