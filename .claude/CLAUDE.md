@@ -39,64 +39,64 @@ For detailed build strategies, approval test workflows, and debugging patterns, 
 
 ## Claude Code Web (CCW) Setup
 
-**This project requires Java 25.** The Claude Code Web environment provides Java 21 by default, so Java 25 must be installed using SDKMAN.
+**This project requires Java 25.** Local development assumes Java 25 is installed. Claude Code Web provides Java 21 by default, so additional setup is required.
 
-### Automated Setup (SessionStart Hook)
+### Setup for Claude Code Web
 
-The repository includes a SessionStart hook (`.claude/hooks/session-start.sh`) that automatically:
-1. Installs SDKMAN if not present
-2. Installs Java 25 (Temurin) via SDKMAN
-3. Configures a local Maven proxy to handle authentication with the CCW proxy
-4. Creates Maven `settings.xml` with proxy configuration
-
-The hook is configured in `.claude/config.json` and runs automatically when a CCW session starts.
-
-### Manual Setup (if needed)
-
-If the hook doesn't run or you need to set up manually:
+**IMPORTANT:** Before running any Maven commands in CCW, run the setup skill:
 
 ```bash
-# 1. Install SDKMAN
-curl -s "https://get.sdkman.io" | bash
-source "$HOME/.sdkman/bin/sdkman-init.sh"
-
-# 2. Install Java 25
-sdk install java 25.0.1-tem
-
-# 3. Run the session-start hook manually
-.claude/hooks/session-start.sh
+/skill ccw-maven-setup
 ```
 
-### Distinguishing CCW from Local Environments
-
-To detect if code is running in Claude Code Web vs. a local environment, check these environment variables:
-
+Or directly:
 ```bash
-# Simple check
-if [ -n "$CLAUDECODE" ]; then
-    echo "Running in Claude Code Web"
-fi
-
-# More specific check
-if [ "$CLAUDE_CODE_REMOTE_ENVIRONMENT_TYPE" = "cloud_default" ]; then
-    echo "Running in Claude Code Web (cloud environment)"
-fi
+.claude/skills/ccw-maven-setup/prep_if_ccw.sh
 ```
 
-**Key CCW Environment Variables:**
-- `CLAUDECODE=1` - Present in all Claude Code environments
-- `CLAUDE_CODE_REMOTE_ENVIRONMENT_TYPE=cloud_default` - Specific to CCW
-- `CLAUDE_CODE_PROXY_RESOLVES_HOSTS=true` - Indicates proxy is needed for DNS resolution
+This skill automatically:
+1. Detects if running in CCW (checks `CLAUDECODE` environment variable)
+2. If in CCW:
+   - Installs SDKMAN (if not present)
+   - Installs latest stable Java 25 (Temurin) via SDKMAN
+   - Starts a local Maven authentication proxy at `127.0.0.1:3128`
+   - Configures `~/.m2/settings.xml` with proxy settings
+3. If not in CCW (local environment):
+   - Does nothing - assumes Java 25 is already installed
+
+**The skill is idempotent** - safe to run multiple times.
+
+### Local Development
+
+For local development (outside CCW):
+- Install Java 25 using your preferred method (SDKMAN, package manager, etc.)
+- No proxy setup needed
+- Run Maven commands normally: `mvn clean test`
+
+### Why CCW Needs a Proxy
+
+Maven doesn't honor standard `HTTP_PROXY`/`HTTPS_PROXY` environment variables for authentication. The CCW environment uses a proxy with JWT-based authentication that Maven cannot handle directly.
+
+The local proxy (`/tmp/maven-proxy.py`):
+- Runs on `localhost:3128`
+- Accepts Maven connections without authentication
+- Forwards to CCW upstream proxy with proper authentication headers
+- Automatically handles JWT token extraction from environment variables
+
+**Technical References:**
+- [GitHub Issue #13372](https://github.com/anthropics/claude-code/issues/13372) - Maven/Gradle builds failing in CCW
+- [LinkedIn Article](https://www.linkedin.com/pulse/fixing-maven-build-issues-claude-code-web-ccw-tarun-lalwani-8n7oc) - Detailed explanation and automation
+
+### Environment Detection
+
+The skill detects CCW by checking the `CLAUDECODE` environment variable:
+- **CCW:** `CLAUDECODE=1` is set
+- **Local:** `CLAUDECODE` is unset or empty
+
+Other useful CCW environment variables:
+- `CLAUDE_CODE_REMOTE_ENVIRONMENT_TYPE=cloud_default` - Specific to CCW cloud
+- `CLAUDE_CODE_PROXY_RESOLVES_HOSTS=true` - Indicates DNS resolution via proxy
 - `CLAUDE_CODE_SESSION_ID` - Unique session identifier
-
-### Why the Maven Proxy is Needed
-
-Maven doesn't automatically honor the standard `HTTP_PROXY` or `HTTPS_PROXY` environment variables for authentication. The local proxy (`/tmp/maven-proxy.py`) acts as an intermediary that:
-1. Accepts connections from Maven without authentication
-2. Forwards requests to the CCW upstream proxy with proper authentication headers
-3. Handles the complex JWT-based authentication automatically
-
-**Reference:** This workaround is documented in [GitHub issue #13372](https://github.com/anthropics/claude-code/issues/13372) and [this LinkedIn article](https://www.linkedin.com/pulse/fixing-maven-build-issues-claude-code-web-ccw-tarun-lalwani-8n7oc).
 
 ## Project Architecture
 
@@ -307,12 +307,13 @@ When proposing updates, explain what has changed and why the documentation needs
 ## Last Updated
 
 **Date**: 2026-01-15
-**Status**: Added comprehensive Claude Code Web (CCW) setup instructions including:
-- SessionStart hook for automated Java 25 installation via SDKMAN
-- Local Maven proxy configuration to handle CCW proxy authentication
-- Environment variable detection to distinguish CCW from local environments
-- Documentation of the Maven proxy workaround from GitHub issue #13372
-- Instructions for manual setup if automation fails
+**Status**: Added Claude Code Web (CCW) support via skill-based setup:
+- Created `ccw-maven-setup` skill for on-demand CCW environment preparation
+- Skill installs latest stable Java 25 (Temurin) via SDKMAN in CCW
+- Local Maven proxy handles CCW proxy authentication automatically
+- Environment detection via `CLAUDECODE` variable - no setup needed for local dev
+- Removed SessionStart hook approach in favor of explicit skill invocation
+- Local environments work unchanged (assumes Java 25 installed)
 
-Project now fully supports both local development (Java 25 required) and Claude Code Web environments with automatic configuration.
+**Key Change**: Developers must run `/skill ccw-maven-setup` before Maven commands in CCW. Local development unchanged.
 **Reviewed by**: User requested update

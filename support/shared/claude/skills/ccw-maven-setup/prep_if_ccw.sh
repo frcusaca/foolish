@@ -1,48 +1,58 @@
 #!/bin/bash
-# SessionStart hook for Claude Code Web (CCW) environments
-# This script sets up the Java environment and Maven proxy for CCW sessions
+# Prepare Maven environment for Claude Code Web (CCW)
+# Does nothing if not in CCW environment
 
-# Check if we're in Claude Code Web environment
-if [ -n "$CLAUDECODE" ] || [ "$CLAUDE_CODE_REMOTE_ENVIRONMENT_TYPE" = "cloud_default" ]; then
-    echo "🔧 Detected Claude Code Web environment - setting up Java and Maven..."
+set -e
 
-    # Install sdkman if not already installed
-    if [ ! -d "$HOME/.sdkman" ]; then
-        echo "📦 Installing SDKMAN..."
-        curl -s "https://get.sdkman.io" | bash
-    fi
+# Detect CCW environment
+if [ -z "$CLAUDECODE" ]; then
+    echo "ℹ️  Not in Claude Code Web - no setup needed"
+    exit 0
+fi
 
-    # Source sdkman
-    source "$HOME/.sdkman/bin/sdkman-init.sh"
+echo "🔧 Claude Code Web detected - setting up Java 25 and Maven proxy..."
 
-    # Install Java 25 if not already installed
-    if ! sdk list java | grep -q "25.0.1-tem.*installed"; then
-        echo "☕ Installing Java 25 (Temurin)..."
-        sdk install java 25.0.1-tem
+# Install SDKMAN if needed
+if [ ! -d "$HOME/.sdkman" ]; then
+    echo "📦 Installing SDKMAN..."
+    curl -s "https://get.sdkman.io" | bash
+fi
+
+# Source SDKMAN
+source "$HOME/.sdkman/bin/sdkman-init.sh"
+
+# Install Java 25 if needed (latest stable Temurin)
+if ! sdk list java 2>/dev/null | grep -q "25\..*-tem.*installed"; then
+    echo "☕ Installing latest stable Java 25 (Temurin)..."
+    # Get the latest 25.x Temurin version
+    JAVA_VERSION=$(sdk list java 2>/dev/null | grep "tem" | grep "25\." | grep -v "fx\|ea" | head -1 | awk '{print $NF}')
+    if [ -n "$JAVA_VERSION" ]; then
+        sdk install java "$JAVA_VERSION"
     else
-        echo "✅ Java 25 already installed"
-        sdk use java 25.0.1-tem
+        echo "⚠️  Could not find Java 25 Temurin, trying default..."
+        sdk install java 25-tem
     fi
+else
+    echo "✅ Java 25 already installed"
+    # Use any installed Java 25 Temurin version
+    INSTALLED_VERSION=$(sdk list java 2>/dev/null | grep "25\..*-tem.*installed" | head -1 | awk '{print $NF}')
+    sdk use java "$INSTALLED_VERSION"
+fi
 
-    # Set up Maven proxy for CCW
-    echo "🔌 Setting up Maven proxy..."
+# Setup Maven proxy for CCW
+PROXY_URL="${HTTPS_PROXY:-$https_proxy}"
+if [ -z "$PROXY_URL" ]; then
+    echo "⚠️  No proxy detected - skipping proxy setup"
+    exit 0
+fi
 
-    # Extract proxy info from environment
-    PROXY_URL="${HTTPS_PROXY:-$https_proxy}"
-    if [ -n "$PROXY_URL" ]; then
-        # Parse proxy URL: http://user:pass@host:port
-        PROXY_HOST=$(echo "$PROXY_URL" | sed -E 's|.*@([^:]+):.*|\1|')
-        PROXY_PORT=$(echo "$PROXY_URL" | sed -E 's|.*:([0-9]+)$|\1|')
+echo "🔌 Setting up Maven proxy..."
 
-        echo "  Proxy host: $PROXY_HOST"
-        echo "  Proxy port: $PROXY_PORT"
+# Start local proxy if not running
+if ! pgrep -f "maven-proxy.py" > /dev/null; then
+    echo "🚀 Starting Maven authentication proxy..."
 
-        # Start local Maven proxy if not already running
-        if ! pgrep -f "maven-proxy.py" > /dev/null; then
-            echo "🚀 Starting local Maven authentication proxy..."
-
-            # Create the proxy script
-            cat > /tmp/maven-proxy.py <<'PROXY_EOF'
+    cat > /tmp/maven-proxy.py <<'PROXYEOF'
 #!/usr/bin/env python3
 """Local proxy that adds auth when forwarding to upstream proxy."""
 import socket, threading, os, base64, select
@@ -60,21 +70,16 @@ def handle(client):
         req = b''
         while b'\r\n\r\n' not in req:
             req += client.recv(4096)
-
         target = req.split(b'\r\n')[0].split()[1].decode()
         host, port = (target.split(':') + ['443'])[:2]
-
         proxy_host, proxy_port, user, pwd = get_upstream()
         auth = base64.b64encode(f"{user}:{pwd}".encode()).decode()
-
         upstream = socket.socket()
         upstream.connect((proxy_host, proxy_port))
         upstream.send(f"CONNECT {host}:{port} HTTP/1.1\r\nProxy-Authorization: Basic {auth}\r\n\r\n".encode())
-
         resp = b''
         while b'\r\n\r\n' not in resp:
             resp += upstream.recv(4096)
-
         if b'200' in resp.split(b'\r\n')[0]:
             client.send(b'HTTP/1.1 200 Connection Established\r\n\r\n')
             for s in [client, upstream]: s.setblocking(False)
@@ -93,23 +98,23 @@ if __name__ == '__main__':
     srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     srv.bind(('127.0.0.1', LOCAL_PORT))
     srv.listen(10)
-    print(f"Local proxy on 127.0.0.1:{LOCAL_PORT}")
+    print(f"Maven proxy listening on 127.0.0.1:{LOCAL_PORT}")
     while True:
         c, _ = srv.accept()
         threading.Thread(target=handle, args=(c,), daemon=True).start()
-PROXY_EOF
+PROXYEOF
 
-            chmod +x /tmp/maven-proxy.py
-            python3 /tmp/maven-proxy.py > /tmp/maven-proxy.log 2>&1 &
-            sleep 2
-            echo "  ✅ Maven proxy started at 127.0.0.1:3128"
-        else
-            echo "  ✅ Maven proxy already running"
-        fi
+    chmod +x /tmp/maven-proxy.py
+    python3 /tmp/maven-proxy.py > /tmp/maven-proxy.log 2>&1 &
+    sleep 2
+    echo "  ✅ Proxy started at 127.0.0.1:3128"
+else
+    echo "  ✅ Proxy already running"
+fi
 
-        # Configure Maven settings.xml
-        mkdir -p "$HOME/.m2"
-        cat > "$HOME/.m2/settings.xml" <<'SETTINGS_EOF'
+# Configure Maven settings
+mkdir -p "$HOME/.m2"
+cat > "$HOME/.m2/settings.xml" <<'SETTINGSEOF'
 <?xml version="1.0" encoding="UTF-8"?>
 <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -125,15 +130,9 @@ PROXY_EOF
     </proxy>
   </proxies>
 </settings>
-SETTINGS_EOF
-        echo "  ✅ Maven settings.xml configured"
-    fi
+SETTINGSEOF
+echo "  ✅ Maven settings.xml configured"
 
-    echo "✨ Claude Code Web setup complete!"
-    echo ""
-    echo "Java version:"
-    java -version
-    echo ""
-else
-    echo "ℹ️  Not in Claude Code Web environment - skipping CCW-specific setup"
-fi
+echo "✨ CCW setup complete!"
+echo ""
+java -version
