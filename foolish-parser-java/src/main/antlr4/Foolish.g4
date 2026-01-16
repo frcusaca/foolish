@@ -30,7 +30,16 @@ standard_brane
     ;
 
 detach_brane
-    : LBRACK detach_stmt* RBRACK
+    : LBRACK detach_list RBRACK
+    ;
+
+detach_list
+    : detach_element (COMMA detach_element)*
+    | detach_stmt*
+    ;
+
+detach_element
+    : regexp_expression (ASSIGN expr)?
     ;
 
 detach_stmt
@@ -121,6 +130,8 @@ regexp_element
     | CARET              // ^
     | DOLLAR             // $
     | DOT                // .
+    | QUESTION           // ?
+    | QUESTION_QUESTION  // ??
     // Special chars allowed ONLY inside parentheses to avoid ambiguity with operators
     | LPAREN regexp_inner* RPAREN    // Balanced () - can contain special chars
     | LBRACE regexp_inner* RBRACE    // Balanced {}

@@ -85,6 +85,18 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
                 .toList();
     }
 
+    private List<AST.DetachmentStatement> collectDetachmentElements(List<FoolishParser.Detach_elementContext> elements) {
+        return elements.stream()
+                .map(this::visit)
+                .map(st -> {
+                    if (st instanceof AST.DetachmentStatement assignment) {
+                        return assignment;
+                    }
+                    throw new RuntimeException("Expected detachment element, got: " + st);
+                })
+                .toList();
+    }
+
     @Override
     public AST visitStandard_brane(FoolishParser.Standard_braneContext ctx) {
         List<AST.Expr> statements = new ArrayList<>(collectStatements(ctx.stmt()));
@@ -100,7 +112,19 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
     @Override
     public AST visitDetach_brane(FoolishParser.Detach_braneContext ctx) {
-        return new AST.DetachmentBrane(collectDetachmentStatements(ctx.detach_stmt()));
+        FoolishParser.Detach_listContext listCtx = ctx.detach_list();
+        if (listCtx == null) {
+             // Handle legacy or error cases, though parser should ensure detach_list
+             return new AST.DetachmentBrane(List.of());
+        }
+
+        if (!listCtx.detach_element().isEmpty()) {
+             return new AST.DetachmentBrane(collectDetachmentElements(listCtx.detach_element()));
+        } else if (!listCtx.detach_stmt().isEmpty()) {
+             return new AST.DetachmentBrane(collectDetachmentStatements(listCtx.detach_stmt()));
+        }
+
+        return new AST.DetachmentBrane(List.of());
     }
 
     @Override
@@ -142,6 +166,15 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
         AST.Identifier identifier = (AST.Identifier) visit(ctx.characterizable_identifier());
         AST.Expr expr = (AST.Expr) visit(ctx.expr());
         return new AST.Assignment(identifier, expr);
+    }
+
+    @Override
+    public AST visitDetach_element(FoolishParser.Detach_elementContext ctx) {
+        String pattern = canonicalizeIdentifierName(ctx.regexp_expression().getText());
+        AST.Identifier identifier = new AST.Identifier(pattern); // Store pattern as identifier for now
+        AST.Expr expr = ctx.expr() != null ? (AST.Expr) visit(ctx.expr()) : AST.UnknownExpr.INSTANCE;
+        // If expr is UnknownExpr (default), it means we just have the pattern.
+        return new AST.DetachmentStatement(identifier, expr);
     }
 
     @Override

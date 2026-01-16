@@ -14,10 +14,15 @@ public class BraneMemory implements Iterable<FIR> {
     private BraneMemory parent;
     private Optional<Integer> myPos = Optional.empty();
     private final List<FIR> memory;
+    private final List<Rule> rules;
+
+    public enum Action { BLOCK, ALLOW }
+    public record Rule(Query query, Action action) {}
 
     public BraneMemory(BraneMemory parent) {
         this.parent = parent;
         this.memory = new ArrayList<>();
+        this.rules = new ArrayList<>();
     }
 
     public BraneMemory(BraneMemory parent, int myPos) {
@@ -51,10 +56,40 @@ public class BraneMemory implements Iterable<FIR> {
                 return Optional.of(Pair.of(line, lineMemory));
             }
         }
-        if (parent != null) {
-            return parent.get(query, myPos.get());
+
+        if (parent != null && !isBlocked(query)) {
+             return parent.get(query, myPos.get());
         }
         return Optional.empty(); // Not found
+    }
+
+    public void addRule(Query query, Action action) {
+        // Prepend rule to enforce priority (last added wins? No, we iterate R-to-L and prepend)
+        // If createFiroeFromBranes iterates R-to-L and calls addRule (which should be prepend):
+        // List: [LastAdded, ... FirstAdded].
+        // Lookup iterates 0..N.
+        // So LastAdded wins.
+        // Correct for "Left overrides Right" if we iterate R-to-L.
+        // Wait, if R-to-L: {x} [b] [a].
+        // 1. Process [a]. Add `a`.
+        // 2. Process [b]. Add `b`.
+        // List: [b, a].
+        // Lookup finds `b` first.
+        // So Left (`b`) overrides Right (`a`). Correct.
+        rules.add(0, new Rule(query, action));
+    }
+
+    public void addBlocker(Query blocker) {
+        addRule(blocker, Action.BLOCK);
+    }
+
+    private boolean isBlocked(Query query) {
+        for (Rule rule : rules) {
+             if (rule.query.blocks(query)) {
+                 return rule.action == Action.BLOCK;
+             }
+        }
+        return false;
     }
 
     /**

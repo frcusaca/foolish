@@ -15,6 +15,17 @@ public sealed interface Query permits Query.StrictlyMatchingQuery, Query.RegexpQ
     boolean matches(FIR brane_line);
 
     /**
+     * Checks if this query blocks another query.
+     * This is used for detachment/blocking logic.
+     */
+    default boolean blocks(Query other) {
+        // By default, assume no blocking unless implemented
+        // Since we don't have a universal way to check query overlap yet.
+        // We will implement specific logic in subclasses.
+        return false;
+    }
+
+    /**
      * StrictlyMatchingQuery matches identifiers exactly by name and characterization.
      */
     final class StrictlyMatchingQuery extends CharacterizedIdentifier implements Query {
@@ -33,6 +44,19 @@ public sealed interface Query permits Query.StrictlyMatchingQuery, Query.RegexpQ
                     // mostly here is unnamed lines in brane.
                         false;
             };
+        }
+
+        @Override
+        public boolean blocks(Query other) {
+            if (other instanceof StrictlyMatchingQuery strict) {
+                return this.equals(strict);
+            }
+            // A specific identifier blocks a regex if the identifier matches the regex? No.
+            // A blocker (this) blocks a query (other) if anything 'other' matches is also matched by 'this'.
+            // For strict query, it only blocks if 'other' is also strict and equal.
+            // If 'other' is a regex, we can't easily know if 'other' ONLY matches this.
+            // So we conservatively return false for regex.
+            return false;
         }
 
         @Override
@@ -93,6 +117,22 @@ public sealed interface Query permits Query.StrictlyMatchingQuery, Query.RegexpQ
 
         public boolean isAnchored() {
             return isAnchored;
+        }
+
+        @Override
+        public boolean blocks(Query other) {
+            // A Regex blocker blocks 'other' if 'other' falls within the regex.
+            if (other instanceof StrictlyMatchingQuery strict) {
+                // Check if the strict identifier matches this regex pattern
+                String fullName = strict.toString();
+                String nameOnly = strict.getId();
+                return pattern.matcher(fullName).find() || pattern.matcher(nameOnly).find();
+            } else if (other instanceof RegexpQuery regex) {
+                // Hard to determine if one regex blocks another completely.
+                // For now, if patterns are identical, we say yes.
+                return this.originalPattern.equals(regex.originalPattern);
+            }
+            return false;
         }
 
         @Override
