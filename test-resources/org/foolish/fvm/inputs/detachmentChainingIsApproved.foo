@@ -1,0 +1,6 @@
+[α = 1; β = 2;][α = 999; γ = 3;]{
+	!! Test detachment brane chaining with left-override semantics
+	!! [α = 1][α = 999] → left α=1 wins, α should be 1 not 999
+	!! β and γ should both be present
+	result = α + β + γ;
+}

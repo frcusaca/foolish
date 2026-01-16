@@ -27,6 +27,23 @@ import java.util.stream.Collectors;
  * }
  * </pre>
  * <p>
+ * <b>Detachment Brane Chaining (Left-to-Right Combination):</b>
+ * <p>
+ * Multiple adjacent detachment branes combine left-to-right before applying to a regular brane.
+ * The chain stops when a regular brane is encountered. The leftmost detachment wins for conflicts.
+ * <p>
+ * Examples:
+ * <ul>
+ * <li>{@code [a][b]{...}} → combines both, blocks a and b</li>
+ * <li>{@code [a=1][a=2]{...}} → left wins, a=1 (not a=2)</li>
+ * <li>{@code [a=1][b=2][c=3]{...}} → all three combine, all defaults preserved</li>
+ * <li>{@code [a]{[b]{...}}} → NO combination, [b] is inside a brane so it's separate</li>
+ * </ul>
+ * <p>
+ * The combination semantics ensure that detachment chains are processed consistently,
+ * with the leftmost (earliest) declaration taking precedence. This is implemented via
+ * {@link #combineWith(DetachmentFiroe)} which creates a merged DetachmentFiroe.
+ * <p>
  * <b>Types of Detachment Branes</b> (from NAMES_SEARCHES_N_BOUNDS.md):
  * <ul>
  * <li><b>Type 1: Backward Search</b> {@code [a, b]} - Blocks backward identifier resolution (implemented)</li>
@@ -136,12 +153,64 @@ public class DetachmentFiroe extends FiroeWithBraneMind {
             AST.Assignment assignment = new AST.Assignment(
                     new AST.Identifier(
                             List.of(),  // TODO: handle characterizations
-                            def.identifier.getName()
+                            def.identifier.getId()
                     ),
                     def.defaultValue.ast() instanceof AST.Expr expr ? expr : AST.UnknownExpr.INSTANCE
             );
             targetBrane.enqueueFirs(new AssignmentFiroe(assignment));
         }
+    }
+
+    /**
+     * Combines this detachment brane with another one, implementing left-override semantics.
+     * <p>
+     * <b>Combination Rules (Left-to-Right, Left Wins):</b>
+     * <ul>
+     * <li>When `[a=1][a=2]`, the left `a=1` overrides the right `a=2`</li>
+     * <li>When `[a][b]`, both `a` and `b` are blocked</li>
+     * <li>When `[a=1][b=2]`, both defaults are kept</li>
+     * <li>This (left) takes precedence over other (right) for conflicts</li>
+     * </ul>
+     * <p>
+     * This enables chaining: `[a][b][c]{...}` combines all three detachments
+     * before applying to the brane.
+     *
+     * @param other The right-side detachment brane to combine with
+     * @return A new DetachmentFiroe representing the combined detachment
+     */
+    public DetachmentFiroe combineWith(DetachmentFiroe other) {
+        // Create combined lists with left-override semantics
+        List<CharacterizedIdentifier> combinedBlocked = new ArrayList<>(this.blockedIdentifiers);
+        List<DetachmentDefault> combinedDefaults = new ArrayList<>(this.defaults);
+
+        // Add identifiers from 'other' that aren't already in 'this' (left wins)
+        for (CharacterizedIdentifier otherId : other.blockedIdentifiers) {
+            if (!combinedBlocked.contains(otherId)) {
+                combinedBlocked.add(otherId);
+            }
+        }
+
+        // Add defaults from 'other' that aren't already in 'this' (left wins)
+        for (DetachmentDefault otherDefault : other.defaults) {
+            boolean alreadyHasDefault = combinedDefaults.stream()
+                    .anyMatch(def -> def.identifier.equals(otherDefault.identifier));
+            if (!alreadyHasDefault) {
+                combinedDefaults.add(otherDefault);
+            }
+        }
+
+        // Create a combined DetachmentFiroe
+        return new DetachmentFiroe(combinedBlocked, combinedDefaults);
+    }
+
+    /**
+     * Private constructor for creating combined detachment branes.
+     * Used by combineWith() to create the result without parsing AST.
+     */
+    private DetachmentFiroe(List<CharacterizedIdentifier> blockedIds, List<DetachmentDefault> defaults) {
+        super(null); // No AST for combined detachments
+        this.blockedIdentifiers = new ArrayList<>(blockedIds);
+        this.defaults = new ArrayList<>(defaults);
     }
 
     @Override
@@ -150,7 +219,7 @@ public class DetachmentFiroe extends FiroeWithBraneMind {
         sb.append("[\n");
         for (int i = 0; i < blockedIdentifiers.size(); i++) {
             CharacterizedIdentifier id = blockedIdentifiers.get(i);
-            sb.append("  ").append(id.getName());
+            sb.append("  ").append(id.getId());
 
             // Find matching default
             boolean hasDefault = false;

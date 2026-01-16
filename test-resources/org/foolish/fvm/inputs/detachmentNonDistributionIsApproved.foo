@@ -1,0 +1,8 @@
+[α = 1;]{
+	x = α;
+	!! Detachment inside a brane does NOT combine with outer detachment
+	!! This [β] is separate, not part of the outer [α] chain
+	inner = [β = 2;]{
+		y = α + β;
+	};
+}
