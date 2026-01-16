@@ -112,8 +112,8 @@ public class BraneMemory implements Iterable<FIR> {
         for (int i = detachmentFilterChain.size() - 1; i >= 0; i--) {
             List<Query> filterStage = detachmentFilterChain.get(i);
             for (Query blocked : filterStage) {
-                if (blocked instanceof StrictlyMatchingQuery blockedMatch &&
-                    query instanceof StrictlyMatchingQuery queryMatch) {
+                if (blocked instanceof Query.StrictlyMatchingQuery blockedMatch &&
+                    query instanceof Query.StrictlyMatchingQuery queryMatch) {
                     if (blockedMatch.equals(queryMatch)) {
                         return true; // Blocked by this filter
                     }

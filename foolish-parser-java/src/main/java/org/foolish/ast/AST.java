@@ -152,8 +152,9 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
 
         public String toString() {
             String prefix = isPbrane ? "+" : "";
+            // Always show = ??? for detachment statements (even when no default provided)
             if (expr == null || expr == UnknownExpr.INSTANCE) {
-                return prefix + identifier;
+                return prefix + identifier + " = ???";
             }
             return prefix + identifier + " = " + expr;
         }

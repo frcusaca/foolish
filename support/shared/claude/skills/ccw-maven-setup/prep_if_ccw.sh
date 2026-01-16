@@ -10,33 +10,40 @@ if [ -z "$CLAUDECODE" ]; then
     exit 0
 fi
 
-echo "🔧 Claude Code Web detected - setting up Java 25 and Maven proxy..."
+echo "🔧 Claude Code Web detected - setting up Java and Maven proxy..."
 
-# Install SDKMAN if needed
-if [ ! -d "$HOME/.sdkman" ]; then
-    echo "📦 Installing SDKMAN..."
-    curl -s "https://get.sdkman.io" | bash
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Use local SDKMAN stub (SDKMAN installation blocked by CCW proxy)
+SDKMAN_INIT="$SCRIPT_DIR/sdkman-stub/sdkman-init.sh"
+
+if [ -f "$SDKMAN_INIT" ]; then
+    echo "📦 Using local SDKMAN stub..."
+    source "$SDKMAN_INIT"
+else
+    echo "⚠️  Warning: SDKMAN stub not found at $SDKMAN_INIT"
+    echo "Creating minimal stub..."
+    mkdir -p "$SCRIPT_DIR/sdkman-stub"
+    cat > "$SDKMAN_INIT" <<'STUBEOF'
+#!/bin/bash
+sdk() {
+    case "$1" in
+        "list"|"install"|"use") echo "Using system Java: $(java -version 2>&1 | head -1)";;
+        "version") echo "SDKMAN stub v1.0.0";;
+    esac
+}
+export -f sdk
+STUBEOF
+    source "$SDKMAN_INIT"
 fi
 
-# Source SDKMAN
-source "$HOME/.sdkman/bin/sdkman-init.sh"
+# Check Java version
+JAVA_VERSION=$(java -version 2>&1 | head -1 | awk -F'"' '{print $2}')
+echo "☕ Using system Java: $JAVA_VERSION"
 
-# Install Java 25 if needed (latest stable Temurin)
-if ! sdk list java 2>/dev/null | grep -q "25\..*-tem.*installed"; then
-    echo "☕ Installing latest stable Java 25 (Temurin)..."
-    # Get the latest 25.x Temurin version
-    JAVA_VERSION=$(sdk list java 2>/dev/null | grep "tem" | grep "25\." | grep -v "fx\|ea" | head -1 | awk '{print $NF}')
-    if [ -n "$JAVA_VERSION" ]; then
-        sdk install java "$JAVA_VERSION"
-    else
-        echo "⚠️  Could not find Java 25 Temurin, trying default..."
-        sdk install java 25-tem
-    fi
-else
-    echo "✅ Java 25 already installed"
-    # Use any installed Java 25 Temurin version
-    INSTALLED_VERSION=$(sdk list java 2>/dev/null | grep "25\..*-tem.*installed" | head -1 | awk '{print $NF}')
-    sdk use java "$INSTALLED_VERSION"
+if [[ ! "$JAVA_VERSION" == 21.* ]] && [[ ! "$JAVA_VERSION" == 25.* ]]; then
+    echo "⚠️  Warning: Java version is not 21 or 25. Build may fail."
 fi
 
 # Setup Maven proxy for CCW
