@@ -1,5 +1,8 @@
 !!INPUT!!
 {
+    x_outer = 99;
+    y = 88;
+
     outer = {
         a = 1;
         b = 2;
@@ -34,60 +37,27 @@
         regex_block = [x_*] {
              x_1 = 1;
              res_x1 = x_1; !! Local should be fine
-             res_x_outer = x_outer; !! Blocked
-             res_y = y;
+             res_x_outer = x_outer; !! Blocked (matches x_*)
+             res_y = y; !! Not blocked
         };
 
         !! 6. P-Brane (Undetachment)
-        !! [+a] should unblock a.
-        !! [-a][+a] -> Left overrides Right? Or Sequence?
-        !! Documentation: "Left-most has final say" -> Left overrides.
-        !! So [-a][+a] -> Block a.
-        !! [+a][-a] -> Allow a.
-
         pbrane_allow = [a, b] [+a] {
-             val_a = a; !! Should be Allowed (if +a overrides a) -> Wait.
-             !! [a,b] is ONE detachment. [+a] is NEXT.
-             !! [a,b][+a]. Left is [a,b]. Right is [+a].
-             !! If Left overrides Right: a is Blocked.
-             !! Let's check my implementation.
-             !! R-to-L iteration.
-             !! 1. [+a]. Add rule (a, ALLOW). Memory: [(a, ALLOW)].
-             !! 2. [a,b]. Add rules (a, BLOCK), (b, BLOCK).
-             !!    addRules appends to initialRules.
-             !!    initialRules: [(a, ALLOW), (a, BLOCK), (b, BLOCK)].
-             !! initialize():
-             !!    addRule((a, ALLOW)) -> Memory: [(a, ALLOW)].
-             !!    addRule((a, BLOCK)) -> Memory: [(a, BLOCK), (a, ALLOW)].
-             !!    addRule((b, BLOCK)) -> Memory: [(b, BLOCK), (a, BLOCK), (a, ALLOW)].
-             !! Lookup: Checks 0..N.
-             !! Checks (b, BLOCK).
-             !! Checks (a, BLOCK). Match! Returns BLOCK.
-             !! So [a,b][+a] -> Blocked.
-             !! This matches "Left overrides Right".
+             val_a = a; !! Blocked (Left overrides Right)
              val_b = b; !! Blocked
         };
 
         pbrane_override = [+a] [a] {
-             !! [+a][a].
-             !! 1. [a]. Add (a, BLOCK). Memory: [(a, BLOCK)].
-             !! 2. [+a]. Add (a, ALLOW). initialRules: [(a, BLOCK), (a, ALLOW)].
-             !! initialize:
-             !!   addRule(BLOCK) -> Memory: [BLOCK].
-             !!   addRule(ALLOW) -> Memory: [ALLOW, BLOCK].
-             !! Lookup: Matches ALLOW.
-             !! So [+a][a] -> Allowed.
-             val_a = a;
+             val_a = a; !! Allowed (Left overrides Right)
         };
     };
-
-    x_outer = 99;
-    y = 88;
 }
 
 !!!
 PARSED AST:
 {
+  xˍouter = 99;
+  y = 88;
   outer = {
     a = 1;
     b = 2;
@@ -161,8 +131,6 @@ PARSED AST:
       valˍa = a;
     };
   };
-  xˍouter = 99;
-  y = 88;
 }
 
 UBC EVALUATION:
@@ -170,9 +138,9 @@ Steps taken: 265
 
 FINAL RESULT:
 {
-＿outer = ???;
 ＿xˍouter = 99;
 ＿y = 88;
+＿outer = ???;
 }
 
 COMPLETION STATUS:

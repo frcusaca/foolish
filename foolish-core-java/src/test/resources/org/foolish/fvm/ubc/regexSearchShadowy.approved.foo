@@ -122,13 +122,13 @@ PARSED AST:
     brn2 = {
       hardˍtoˍtypoˍnameˍforˍaˍbrane = brn;
     };
-    result1 = brn2 ? .*brane ? a.*;
-    result2 = brn2 ? (.*brane) ? a.*;
+    result1 = brn2 ? .*brane?a.*;
+    result2 = brn2 ? (.*brane)?a.*;
   };
 }
 
 UBC EVALUATION:
-Steps taken: 642
+Steps taken: 610
 
 FINAL RESULT:
 {
@@ -184,8 +184,8 @@ FINAL RESULT:
                                        ＿＿＿＿bobulous = 7;
                                        ＿＿＿};
        ＿＿};
-＿＿result1 = 5;
-＿＿result2 = 5;
+＿＿result1 = ???;
+＿＿result2 = ???;
 ＿};
 }
 
