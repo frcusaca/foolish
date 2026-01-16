@@ -47,6 +47,8 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
             return visit(ctx.standard_brane());
         } else if (ctx.detach_brane() != null) {
             return visit(ctx.detach_brane());
+        } else if (ctx.characterizable_identifier() != null) {
+            return visit(ctx.characterizable_identifier());
         }
         System.err.println("DEBUG: Unknown brane alternative");
         System.err.println("  ctx: " + ctx.getText());

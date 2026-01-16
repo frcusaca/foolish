@@ -139,9 +139,9 @@ public abstract class FIR {
                 return new NKFiroe();
             }
             case AST.DetachmentBrane detachment -> {
-                // Standalone DetachmentBrane maps to a BraneFiroe with blockers and no statements.
-                List<BraneMemory.Rule> rules = extractRules(detachment);
-                return new BraneFiroe(null, Collections.emptyList(), rules);
+                // Standalone DetachmentBrane maps to a BraneFiroe with modifications and no statements.
+                List<BraneMemory.QueryModification> mods = extractQueryModifications(detachment);
+                return new BraneFiroe(null, Collections.emptyList(), mods);
             }
             case AST.Branes branes -> {
                 return createFiroeFromBranes(branes);
@@ -153,27 +153,22 @@ public abstract class FIR {
         }
     }
 
-    private static List<BraneMemory.Rule> extractRules(AST.DetachmentBrane detachment) {
-        List<BraneMemory.Rule> rules = new ArrayList<>();
+    private static List<BraneMemory.QueryModification> extractQueryModifications(AST.DetachmentBrane detachment) {
+        List<BraneMemory.QueryModification> mods = new ArrayList<>();
         for (AST.DetachmentStatement stmt : detachment.statements()) {
              // Check for P-brane '+' prefix in identifier
              String id = stmt.identifier().id();
-             BraneMemory.Action action = BraneMemory.Action.BLOCK;
+             BraneMemory.Modification modification = BraneMemory.Modification.BLOCK;
 
              // Simple detection of + prefix
-             // Since ASTBuilder canonicalizes, and PLUS is valid in identifier part in regex_element,
-             // we need to be careful. The user uses [+a].
-             // The ASTBuilder returns identifier text.
-             // If parse tree had PLUS, it is in text.
              if (id.startsWith("+")) {
-                 action = BraneMemory.Action.ALLOW;
+                 modification = BraneMemory.Modification.ALLOW;
                  id = id.substring(1);
-                 // Strip whitespace/separators if any after +? (Not likely if lexed as one Identifier or regex)
              }
 
-             rules.add(new BraneMemory.Rule(new Query.RegexpQuery(id), action));
+             mods.add(new BraneMemory.QueryModification(new Query.RegexpQuery(id), modification));
         }
-        return rules;
+        return mods;
     }
 
     private static FIR createFiroeFromBranes(AST.Branes branes) {
@@ -188,52 +183,52 @@ public abstract class FIR {
         for (int i = list.size() - 1; i >= 0; i--) {
             AST.Characterizable elem = list.get(i);
 
-            if (elem instanceof AST.DetachmentBrane db) {
-                List<BraneMemory.Rule> rules = extractRules(db);
-                if (acc == null) {
-                    // Orphan detachment at end
-                    acc = new BraneFiroe(null, Collections.emptyList(), rules);
-                } else if (acc instanceof BraneFiroe bf && bf.ast() == null && bf.comment() == null) { // Synthetic brane
-                     bf.addRules(rules); // Appends to initialRules
-                } else {
-                     // acc is a standard brane or complex FIR (but not "synthetic" optimized one).
-                     // We still want to inject if possible, or wrap.
-                     if (acc instanceof BraneFiroe bf) {
-                         bf.addRules(rules);
-                     } else {
-                         acc = new BraneFiroe(null, Collections.singletonList(acc), rules);
-                     }
+            switch (elem) {
+                case AST.DetachmentBrane db -> {
+                    List<BraneMemory.QueryModification> mods = extractQueryModifications(db);
+                    if (acc == null) {
+                        // Orphan detachment at end
+                        acc = new BraneFiroe(null, Collections.emptyList(), mods);
+                    } else if (acc instanceof BraneFiroe bf && bf.ast() == null && bf.comment() == null) { // Synthetic brane
+                         bf.addQueryModifications(mods);
+                    } else {
+                         // acc is a standard brane or complex FIR.
+                         // Inject modifications if it's a BraneFiroe, otherwise wrap.
+                         if (acc instanceof BraneFiroe bf) {
+                             bf.addQueryModifications(mods);
+                         } else {
+                             acc = new BraneFiroe(null, Collections.singletonList(acc), mods);
+                         }
+                    }
                 }
-            } else if (elem instanceof AST.Brane sb) {
-                // Standard Brane
-                BraneFiroe sbFiroe = (BraneFiroe) createFiroeFromExpr(sb);
+                case AST.Brane sb -> {
+                    // Standard Brane
+                    BraneFiroe sbFiroe = (BraneFiroe) createFiroeFromExpr(sb);
 
-                if (acc == null) {
-                    acc = sbFiroe;
-                } else if (acc instanceof BraneFiroe bf) {
-                    // acc needs sbFiroe as predecessor.
-                    bf.prepend(sbFiroe);
-                    // acc remains the Head (Child).
-                } else {
-                     // acc is not a BraneFiroe? (e.g. wrapper of some sort)
-                     // Shouldn't happen given our logic, but handle gracefully.
-                     // Fallback: wrap
-                     List<FIR> seq = new ArrayList<>();
-                     seq.add(sbFiroe);
-                     seq.add(acc);
-                     acc = new BraneFiroe(null, seq, Collections.emptyList());
+                    if (acc == null) {
+                        acc = sbFiroe;
+                    } else if (acc instanceof BraneFiroe bf) {
+                        // acc needs sbFiroe as predecessor.
+                        bf.prepend(sbFiroe);
+                    } else {
+                         // acc is not a BraneFiroe? Fallback: wrap
+                         List<FIR> seq = new ArrayList<>();
+                         seq.add(sbFiroe);
+                         seq.add(acc);
+                         acc = new BraneFiroe(null, seq, Collections.emptyList());
+                    }
                 }
-            } else {
-                // Other characterizable (e.g. SearchUP).
-                // Treat as expression.
-                FIR exprFiroe = createFiroeFromExpr((AST.Expr) elem);
-                if (acc == null) {
-                    acc = exprFiroe;
-                } else {
-                    List<FIR> seq = new ArrayList<>();
-                    seq.add(exprFiroe);
-                    seq.add(acc);
-                    acc = new BraneFiroe(null, seq, Collections.emptyList());
+                case AST.Characterizable other -> {
+                    // Other characterizable (e.g. SearchUP). Treat as expression.
+                    FIR exprFiroe = createFiroeFromExpr((AST.Expr) other);
+                    if (acc == null) {
+                        acc = exprFiroe;
+                    } else {
+                        List<FIR> seq = new ArrayList<>();
+                        seq.add(exprFiroe);
+                        seq.add(acc);
+                        acc = new BraneFiroe(null, seq, Collections.emptyList());
+                    }
                 }
             }
         }

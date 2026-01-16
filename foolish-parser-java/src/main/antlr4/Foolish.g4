@@ -23,6 +23,7 @@ brane
     : standard_brane
     | detach_brane
     | brane_search
+    | characterizable_identifier
     ;
 
 standard_brane

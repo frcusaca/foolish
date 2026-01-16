@@ -4,6 +4,7 @@ import java.util.regex.Pattern;
 
 /**
  * Query represents a search pattern for finding lines in BraneMemory.
+ * Supports Brane and Branes scope control and search operations.
  * This is a sealed interface with different query types:
  * - StrictlyMatchingQuery: exact identifier match
  * - RegexpQuery: regular expression pattern match
@@ -16,7 +17,7 @@ public sealed interface Query permits Query.StrictlyMatchingQuery, Query.RegexpQ
 
     /**
      * Checks if this query blocks another query.
-     * This is used for detachment/blocking logic.
+     * This is used for detachment/blocking logic in Brane and Branes.
      */
     default boolean blocks(Query other) {
         // By default, assume no blocking unless implemented

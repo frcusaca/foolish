@@ -1,0 +1,64 @@
+{
+    grandparent_a = 100;
+
+    parent = {
+        parent_b = 200;
+
+        !! 1. Deep nesting with blocked ancestor
+        !! Block 'grandparent_a'. Child should not see it.
+        blocked_child = [grandparent_a] {
+            inner = {
+                val_a = grandparent_a; !! Should be ???
+                val_b = parent_b;      !! Should be 200
+            };
+        };
+
+        !! 2. Deep nesting with P-brane override
+        !! Block 'grandparent_a', but inner P-brane allows it?
+        !! [grandparent_a] { ... [+grandparent_a] { ... } }
+        !! Inner P-brane applies to inner scope.
+        !! Outer [grandparent_a] blocks from *its* parent.
+        !! Inner [+grandparent_a] allows from *its* parent (which is Outer).
+        !! If Outer cannot see grandparent_a, Inner cannot see it either, even if allowed.
+        !! Because the link is broken at Outer.
+        !! So val_a should still be ???.
+        override_attempt = [grandparent_a] {
+            inner = [+grandparent_a] {
+                val_a = grandparent_a; !! ???
+            };
+        };
+
+        !! 3. Detachment on Brane Identifier
+        base_brane = {
+            secret = 42;
+            public = 1;
+        };
+
+        !! Apply detachment to an identifier that resolves to a brane
+        !! This syntax isn't directly supported as `y = [a] x` yet in parser?
+        !! Let's check grammar: assignment : characterizable_identifier ASSIGN expr ;
+        !! expr : ... | branes ;
+        !! branes : brane+ ;
+        !! brane : ... | detach_brane ...
+        !! If we write `y = [a] base_brane`, it parses as `y = ([a] base_brane)`.
+        !! `[a] base_brane` is a concatenated brane expression.
+        !! So `y` becomes a new brane which wraps `base_brane` with blockers.
+        detached_brane = [secret] base_brane;
+
+        test_access = {
+            s = detached_brane.secret; !! Should be ???
+            p = detached_brane.public; !! Should be 1
+        };
+
+        !! 4. Undetachment on Brane Identifier
+        !! Block 'secret', then Unblock 'secret'.
+        !! `[+secret] [secret] base_brane`.
+        !! Left overrides Right: `[+secret]` overrides `[secret]`.
+        !! Result: secret is visible.
+        undetached_brane = [+secret] [secret] base_brane;
+
+        test_undetached = {
+            s = undetached_brane.secret; !! Should be 42
+        };
+    };
+}
