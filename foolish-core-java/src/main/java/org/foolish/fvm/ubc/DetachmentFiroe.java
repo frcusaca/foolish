@@ -15,6 +15,18 @@ import java.util.stream.Collectors;
  * When concatenated with a regular brane, the detachment brane prevents
  * the listed identifiers from being resolved in parent branes.
  * <p>
+ * <b>IMPORTANT: Blocking cascades to all child branes.</b> Once an identifier is blocked
+ * at a detachment level, that blocking is effective for the entire brane subtree below it.
+ * This includes all nested branes within the detached brane. For example:
+ * <pre>
+ * [α, β]{
+ *   result = α;      // α is blocked from parent scope
+ *   nested = {
+ *     x = α;         // α is ALSO blocked here (cascades to children)
+ *   };
+ * }
+ * </pre>
+ * <p>
  * From the documentation:
  * "The detachment brane dissociates the ensuing brane on its right side from
  * the context, decontextualizing [the identifiers]. [They] become unbound symbols.
