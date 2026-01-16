@@ -114,9 +114,10 @@ public class DetachmentFiroe extends FiroeWithBraneMind {
      * @param targetBrane The brane to apply detachment to
      */
     public void applyDetachmentTo(FiroeWithBraneMind targetBrane) {
-        // Create a list of blocked identifier queries
-        List<BraneMemory.Query> blockedQueries = blockedIdentifiers.stream()
-                .map(id -> new BraneMemory.StrictlyMatchingQuery(id.getName(), id.getCharacterization()))
+        // Create a list of blocked identifier queries using unified matching logic
+        // This uses CharacterizedIdentifier.equals() for consistent matching
+        List<Query> blockedQueries = blockedIdentifiers.stream()
+                .map(id -> new Query.StrictlyMatchingQuery(id.getId(), id.getCharacterization()))
                 .collect(Collectors.toList());
 
         // Apply blocking to the target brane's memory
