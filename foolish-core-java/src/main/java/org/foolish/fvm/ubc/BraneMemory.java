@@ -14,15 +14,44 @@ public class BraneMemory implements Iterable<FIR> {
     private BraneMemory parent;
     private Optional<Integer> myPos = Optional.empty();
     private final List<FIR> memory;
+    private final List<Query> blockedIdentifiers;
 
     public BraneMemory(BraneMemory parent) {
         this.parent = parent;
         this.memory = new ArrayList<>();
+        this.blockedIdentifiers = new ArrayList<>();
     }
 
     public BraneMemory(BraneMemory parent, int myPos) {
         this(parent);
         setMyPos(myPos);
+    }
+
+    /**
+     * Sets the list of identifiers that should be blocked from parent resolution.
+     * This is used by detachment branes to prevent identifier resolution in parent scopes.
+     *
+     * @param blockedQueries The list of identifier queries that should be blocked
+     */
+    public void setBlockedIdentifiers(List<Query> blockedQueries) {
+        this.blockedIdentifiers.clear();
+        this.blockedIdentifiers.addAll(blockedQueries);
+    }
+
+    /**
+     * Checks if a query is blocked from parent resolution.
+     *
+     * @param query The query to check
+     * @return true if the query is blocked, false otherwise
+     */
+    private boolean isBlocked(Query query) {
+        return blockedIdentifiers.stream().anyMatch(blocked -> {
+            if (blocked instanceof StrictlyMatchingQuery blockedMatch &&
+                query instanceof StrictlyMatchingQuery queryMatch) {
+                return blockedMatch.equals(queryMatch);
+            }
+            return false;
+        });
     }
 
     public void setMyPos(int pos) {
@@ -51,9 +80,12 @@ public class BraneMemory implements Iterable<FIR> {
                 return Optional.of(Pair.of(line, lineMemory));
             }
         }
-        if (parent != null) {
+
+        // Check if this query is blocked from parent resolution
+        if (parent != null && !isBlocked(query)) {
             return parent.get(query, myPos.get());
         }
+
         return Optional.empty(); // Not found
     }
 

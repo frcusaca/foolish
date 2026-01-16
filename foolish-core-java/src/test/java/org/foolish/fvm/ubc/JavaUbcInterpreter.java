@@ -10,6 +10,9 @@ import org.foolish.ast.ASTFormatter;
 import org.foolish.grammar.FoolishLexer;
 import org.foolish.grammar.FoolishParser;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Java implementation of the UBC tester.
  * Produces complete .approved.foo files with input code and test results.
@@ -25,13 +28,35 @@ public class JavaUbcInterpreter implements UbcTester {
         FoolishParser parser = new FoolishParser(tokens);
         AST.Program program = (AST.Program) new ASTBuilder().visit(parser.program());
 
-        // Extract first brane
-        AST.Brane brane = (AST.Brane) program.branes().branes().get(0);
+        // Extract branes and handle concatenation
+        List<AST.Characterizable> branes = program.branes().branes();
 
-        // Create UBC and run
-        UnicelluarBraneComputer ubc = new UnicelluarBraneComputer(brane);
-        int stepCount = ubc.runToCompletion();
-        BraneFiroe finalResult = ubc.getRootBrane();
+        // Handle detachment brane concatenation
+        UnicelluarBraneComputer ubc;
+        BraneFiroe finalResult;
+        int stepCount;
+
+        if (branes.size() == 2 &&
+            branes.get(0) instanceof AST.DetachmentBrane detachment &&
+            branes.get(1) instanceof AST.Brane targetBrane) {
+            // This is detachment brane concatenation: [x, y]{...}
+            // We need to apply the detachment to the target brane
+            ubc = createDetachedBraneUbc(detachment, targetBrane);
+            stepCount = ubc.runToCompletion();
+            finalResult = ubc.getRootBrane();
+        } else if (branes.size() == 1 && branes.get(0) instanceof AST.Brane brane) {
+            // Single regular brane
+            ubc = new UnicelluarBraneComputer(brane);
+            stepCount = ubc.runToCompletion();
+            finalResult = ubc.getRootBrane();
+        } else {
+            // For other cases, just use the first brane
+            // TODO: Handle other concatenation cases
+            AST.Brane brane = (AST.Brane) branes.get(0);
+            ubc = new UnicelluarBraneComputer(brane);
+            stepCount = ubc.runToCompletion();
+            finalResult = ubc.getRootBrane();
+        }
 
         // Format as complete .foo file
         StringBuilder output = new StringBuilder();
@@ -54,6 +79,32 @@ public class JavaUbcInterpreter implements UbcTester {
         output.append("\n!!!\n");
 
         return output.toString();
+    }
+
+    /**
+     * Creates a UBC for a detached brane.
+     * This applies the detachment brane to the target brane, blocking identifiers from parent resolution.
+     */
+    private UnicelluarBraneComputer createDetachedBraneUbc(AST.DetachmentBrane detachment, AST.Brane targetBrane) {
+        // Create a wrapper brane that includes the detachment logic
+        // The detachment should block the specified identifiers from parent resolution
+
+        // Create UBC for the target brane
+        UnicelluarBraneComputer ubc = new UnicelluarBraneComputer(targetBrane);
+
+        // Get the root brane FIR
+        BraneFiroe rootBrane = ubc.getRootBrane();
+
+        // Create a detachment FIR and apply it to the root brane
+        DetachmentFiroe detachmentFir = new DetachmentFiroe(detachment);
+
+        // Initialize the detachment FIR
+        detachmentFir.step(); // Initialize
+
+        // Apply the detachment to the root brane
+        detachmentFir.applyDetachmentTo(rootBrane);
+
+        return ubc;
     }
 
     @Override
