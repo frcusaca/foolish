@@ -27,22 +27,32 @@ import java.util.stream.Collectors;
  * }
  * </pre>
  * <p>
- * <b>Detachment Brane Chaining (Left-to-Right Combination):</b>
+ * <b>Detachment Brane Chaining (Filter Chain Semantics):</b>
  * <p>
- * Multiple adjacent detachment branes combine left-to-right before applying to a regular brane.
- * The chain stops when a regular brane is encountered. The leftmost detachment wins for conflicts.
+ * Multiple adjacent detachment branes form a filter chain that processes identifier resolution.
+ * The chain stops when a regular brane is encountered.
+ * <p>
+ * <b>Filter Evaluation (Right-to-Left):</b> For {@code [d1][d2][d3]{B}} searching for {@code v}:
+ * <ol>
+ * <li>Search finds match {@code v} in parent scope</li>
+ * <li>d3 (rightmost) decides: does d3 block {@code v}?</li>
+ * <li>d2 can override d3's decision</li>
+ * <li>d1 (leftmost) has final say</li>
+ * <li>If undetached after all filters → use match</li>
+ * <li>If detached → identifier is blocked</li>
+ * </ol>
  * <p>
  * Examples:
  * <ul>
- * <li>{@code [a][b]{...}} → combines both, blocks a and b</li>
- * <li>{@code [a=1][a=2]{...}} → left wins, a=1 (not a=2)</li>
- * <li>{@code [a=1][b=2][c=3]{...}} → all three combine, all defaults preserved</li>
- * <li>{@code [a]{[b]{...}}} → NO combination, [b] is inside a brane so it's separate</li>
+ * <li>{@code [a][b]{...}} → both filters in chain, both block</li>
+ * <li>{@code [a=1][a=2]{...}} → chain preserves both; d2 blocks with default 2, d1 overrides with default 1</li>
+ * <li>{@code [a=1][b=2][c=3]{...}} → three-stage filter chain, each blocks its identifier</li>
+ * <li>{@code [a]{[b]{...}}} → NO chain, [b] is inside a brane so it's separate</li>
  * </ul>
  * <p>
- * The combination semantics ensure that detachment chains are processed consistently,
- * with the leftmost (earliest) declaration taking precedence. This is implemented via
- * {@link #combineWith(DetachmentFiroe)} which creates a merged DetachmentFiroe.
+ * <b>IMPORTANT:</b> Cannot merge filters (except identical exact matches).
+ * The filter sequence must be preserved for correct semantics, especially for future
+ * regexp and p-brane support. Optimization via regexp compiler or state machine is planned.
  * <p>
  * <b>Types of Detachment Branes</b> (from NAMES_SEARCHES_N_BOUNDS.md):
  * <ul>
@@ -162,35 +172,31 @@ public class DetachmentFiroe extends FiroeWithBraneMind {
     }
 
     /**
-     * Combines this detachment brane with another one, implementing left-override semantics.
+     * Combines this detachment brane with another one for legacy single-filter use.
      * <p>
-     * <b>Combination Rules (Left-to-Right, Left Wins):</b>
-     * <ul>
-     * <li>When `[a=1][a=2]`, the left `a=1` overrides the right `a=2`</li>
-     * <li>When `[a][b]`, both `a` and `b` are blocked</li>
-     * <li>When `[a=1][b=2]`, both defaults are kept</li>
-     * <li>This (left) takes precedence over other (right) for conflicts</li>
-     * </ul>
+     * <b>DEPRECATED:</b> This method is retained for backward compatibility but should not
+     * be used for multi-stage filter chains. Use filter chain API instead.
      * <p>
-     * This enables chaining: `[a][b][c]{...}` combines all three detachments
-     * before applying to the brane.
+     * With filter chain semantics, detachment branes should NOT be merged but kept
+     * as separate stages in the chain. Merging is only safe when both filters are
+     * identical exact matches.
      *
-     * @param other The right-side detachment brane to combine with
-     * @return A new DetachmentFiroe representing the combined detachment
+     * @deprecated Use filter chain API via BraneMemory.setDetachmentFilterChain()
+     * @param other The right-side detachment brane
+     * @return A merged DetachmentFiroe (may lose filter chain semantics)
      */
+    @Deprecated
     public DetachmentFiroe combineWith(DetachmentFiroe other) {
-        // Create combined lists with left-override semantics
+        // Legacy merge: left wins for conflicts
         List<CharacterizedIdentifier> combinedBlocked = new ArrayList<>(this.blockedIdentifiers);
         List<DetachmentDefault> combinedDefaults = new ArrayList<>(this.defaults);
 
-        // Add identifiers from 'other' that aren't already in 'this' (left wins)
         for (CharacterizedIdentifier otherId : other.blockedIdentifiers) {
             if (!combinedBlocked.contains(otherId)) {
                 combinedBlocked.add(otherId);
             }
         }
 
-        // Add defaults from 'other' that aren't already in 'this' (left wins)
         for (DetachmentDefault otherDefault : other.defaults) {
             boolean alreadyHasDefault = combinedDefaults.stream()
                     .anyMatch(def -> def.identifier.equals(otherDefault.identifier));
@@ -199,16 +205,16 @@ public class DetachmentFiroe extends FiroeWithBraneMind {
             }
         }
 
-        // Create a combined DetachmentFiroe
         return new DetachmentFiroe(combinedBlocked, combinedDefaults);
     }
 
     /**
-     * Private constructor for creating combined detachment branes.
-     * Used by combineWith() to create the result without parsing AST.
+     * Private constructor for creating merged detachment branes (legacy).
+     * @deprecated Filter chains should not be merged
      */
+    @Deprecated
     private DetachmentFiroe(List<CharacterizedIdentifier> blockedIds, List<DetachmentDefault> defaults) {
-        super(null); // No AST for combined detachments
+        super(null); // No AST for merged detachments
         this.blockedIdentifiers = new ArrayList<>(blockedIds);
         this.defaults = new ArrayList<>(defaults);
     }

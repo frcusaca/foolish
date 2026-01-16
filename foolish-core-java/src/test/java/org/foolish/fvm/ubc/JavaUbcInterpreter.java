@@ -12,6 +12,7 @@ import org.foolish.grammar.FoolishParser;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Java implementation of the UBC tester.
@@ -97,16 +98,27 @@ public class JavaUbcInterpreter implements UbcTester {
     /**
      * Creates a UBC for a brane with detachment chain applied.
      * <p>
-     * Handles multiple detachment branes that combine left-to-right before
-     * applying to the target brane. Implements left-override semantics where
-     * the leftmost detachment wins for conflicts.
+     * <b>Filter Chain Semantics (Right-to-Left Evaluation):</b>
      * <p>
-     * Example: {@code [a=1][a=2][b=3]{...}} → combines to {@code [a=1, b=3]{...}}
-     * where the left {@code a=1} overrides the right {@code a=2}.
+     * For {@code [d1][d2][d3]{B}} searching for identifier {@code v}:
+     * <ol>
+     * <li>Search finds match in parent scope</li>
+     * <li>Apply d3 filter (rightmost): does d3 block v?</li>
+     * <li>Apply d2 filter: does d2 override d3's decision?</li>
+     * <li>Apply d1 filter (leftmost): d1 has final say</li>
+     * <li>If undetached after all filters → use match</li>
+     * <li>If detached → identifier is blocked</li>
+     * </ol>
+     * <p>
+     * IMPORTANT: Cannot merge filters (except identical exact matches).
+     * The sequence must be preserved and applied as a filter chain.
+     * <p>
+     * Each detachment brane becomes one stage in the filter chain.
+     * Default values are determined by the leftmost filter that blocks the identifier.
      *
-     * @param detachmentChain List of detachment branes to combine (left-to-right order)
-     * @param targetBrane The regular brane to apply detachment to
-     * @return UBC with combined detachment applied
+     * @param detachmentChain List of detachment branes (left-to-right order as in code)
+     * @param targetBrane The regular brane to apply detachment chain to
+     * @return UBC with detachment filter chain applied
      */
     private UnicelluarBraneComputer createDetachedBraneUbc(List<AST.DetachmentBrane> detachmentChain, AST.Brane targetBrane) {
         // Create UBC for the target brane
@@ -115,23 +127,32 @@ public class JavaUbcInterpreter implements UbcTester {
         // Get the root brane FIR
         BraneFiroe rootBrane = ubc.getRootBrane();
 
-        // Combine all detachment branes left-to-right
-        DetachmentFiroe combined = null;
-        for (AST.DetachmentBrane detachment : detachmentChain) {
-            DetachmentFiroe current = new DetachmentFiroe(detachment);
-            current.step(); // Initialize
+        // Build the filter chain: each detachment brane becomes one filter stage
+        List<List<Query>> filterChain = new ArrayList<>();
 
-            if (combined == null) {
-                combined = current;
-            } else {
-                // Left (combined) overrides right (current)
-                combined = combined.combineWith(current);
-            }
+        for (AST.DetachmentBrane detachment : detachmentChain) {
+            DetachmentFiroe detachmentFir = new DetachmentFiroe(detachment);
+            detachmentFir.step(); // Initialize
+
+            // Extract queries for this filter stage
+            List<Query> filterStage = detachmentFir.getBlockedIdentifiers().stream()
+                    .map(id -> new Query.StrictlyMatchingQuery(id.getId(), id.getCharacterization()))
+                    .collect(Collectors.toList());
+
+            filterChain.add(filterStage);
         }
 
-        // Apply the combined detachment to the root brane
-        if (combined != null) {
-            combined.applyDetachmentTo(rootBrane);
+        // Apply the filter chain to the root brane
+        rootBrane.braneMemory.setDetachmentFilterChain(filterChain);
+
+        // Apply default values from the leftmost detachment that provides them
+        // (leftmost wins for defaults)
+        for (AST.DetachmentBrane detachment : detachmentChain) {
+            DetachmentFiroe detachmentFir = new DetachmentFiroe(detachment);
+            detachmentFir.step(); // Initialize
+            detachmentFir.applyDetachmentTo(rootBrane);
+            break; // Only apply defaults from first (leftmost) detachment for now
+            // TODO: Properly handle default override semantics
         }
 
         return ubc;

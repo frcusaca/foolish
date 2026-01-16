@@ -1,0 +1,16 @@
+[α = 1;][β = 2;][γ = 3;]{
+	!! Filter chain semantics: [d1][d2][d3]{B}
+	!! When searching for identifier v:
+	!!   1. Search finds match in parent scope
+	!!   2. d3 (γ=3, rightmost) decides: block or not?
+	!!   3. d2 (β=2) can override d3's decision
+	!!   4. d1 (α=1, leftmost) has final say
+	!!   5. If undetached after all filters → use match
+	!!
+	!! For α: d3 doesn't mention, d2 doesn't mention, d1 blocks → BLOCKED with default 1
+	!! For β: d3 doesn't mention, d2 blocks, d1 doesn't override → BLOCKED with default 2
+	!! For γ: d3 blocks, d2 doesn't override, d1 doesn't override → BLOCKED with default 3
+	!!
+	!! All three should be blocked with their respective defaults
+	result = α + β + γ;  !! Should be 1 + 2 + 3 = 6
+}

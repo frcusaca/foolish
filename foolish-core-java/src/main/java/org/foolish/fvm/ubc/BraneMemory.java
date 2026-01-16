@@ -14,12 +14,16 @@ public class BraneMemory implements Iterable<FIR> {
     private BraneMemory parent;
     private Optional<Integer> myPos = Optional.empty();
     private final List<FIR> memory;
-    private final List<Query> blockedIdentifiers;
+
+    // Detachment filter chain: list of detachment stages applied right-to-left
+    // Each stage is a list of queries representing one detachment brane
+    // Example: [d1][d2][d3]{B} → chain has 3 stages: [[d3 queries], [d2 queries], [d1 queries]]
+    private final List<List<Query>> detachmentFilterChain;
 
     public BraneMemory(BraneMemory parent) {
         this.parent = parent;
         this.memory = new ArrayList<>();
-        this.blockedIdentifiers = new ArrayList<>();
+        this.detachmentFilterChain = new ArrayList<>();
     }
 
     public BraneMemory(BraneMemory parent, int myPos) {
@@ -28,50 +32,95 @@ public class BraneMemory implements Iterable<FIR> {
     }
 
     /**
-     * Sets the list of identifiers that should be blocked from parent resolution.
-     * This is used by detachment branes to prevent identifier resolution in parent scopes.
+     * Sets the detachment filter chain for this brane.
      * <p>
-     * IMPORTANT: Blocking set at this level cascades to all child branes that search
-     * upward through this brane. See {@link #get(Query, int)} for details on how
-     * blocking propagates through the brane hierarchy.
+     * <b>Filter Chain Semantics:</b> When searching for identifier `v` in `[d1][d2][d3]{B}`:
+     * <ol>
+     * <li>Search finds match in parent scope</li>
+     * <li>Apply filter d3 (rightmost): does d3 block v?</li>
+     * <li>Apply filter d2: does d2 override d3's decision?</li>
+     * <li>Apply filter d1 (leftmost): d1 has final say</li>
+     * <li>If undetached after all filters → use match</li>
+     * <li>If detached → identifier is blocked</li>
+     * </ol>
+     * <p>
+     * Each filter stage can:
+     * <ul>
+     * <li>Block the identifier (if it's in that stage's list)</li>
+     * <li>Pass through (if identifier not mentioned in that stage)</li>
+     * </ul>
+     * <p>
+     * IMPORTANT: Cannot merge filters unless they're identical exact matches.
+     * The sequence must be preserved for correct semantics.
+     * <p>
+     * Blocking cascades to child branes - see {@link #get(Query, int)}.
      *
-     * @param blockedQueries The list of identifier queries that should be blocked
+     * @param filterChain List of detachment stages (ordered left-to-right as they appear in code)
      */
+    public void setDetachmentFilterChain(List<List<Query>> filterChain) {
+        this.detachmentFilterChain.clear();
+        this.detachmentFilterChain.addAll(filterChain);
+    }
+
+    /**
+     * Legacy method for backward compatibility. Adds a single filter stage.
+     * @deprecated Use {@link #setDetachmentFilterChain(List)} for proper chain support
+     */
+    @Deprecated
     public void setBlockedIdentifiers(List<Query> blockedQueries) {
-        this.blockedIdentifiers.clear();
-        this.blockedIdentifiers.addAll(blockedQueries);
+        this.detachmentFilterChain.clear();
+        this.detachmentFilterChain.add(new ArrayList<>(blockedQueries));
     }
 
     /**
-     * Returns an unmodifiable view of the blocked identifiers at this level.
-     * Used for debugging and testing to verify detachment brane blocking.
+     * Returns an unmodifiable view of the detachment filter chain.
+     * Used for debugging and testing to verify detachment brane filtering.
      *
-     * @return List of blocked queries at this brane level
+     * @return List of filter stages (each stage is a list of queries)
      */
-    public List<Query> getBlockedIdentifiers() {
-        return List.copyOf(blockedIdentifiers);
+    public List<List<Query>> getDetachmentFilterChain() {
+        return detachmentFilterChain.stream()
+                .map(List::copyOf)
+                .toList();
     }
 
     /**
-     * Checks if a query is blocked from parent resolution at this level.
+     * Checks if a query is blocked by the detachment filter chain.
      * <p>
-     * IMPORTANT: Blocking cascades to all child branes. When a child brane searches upward
-     * for an identifier, the search will traverse through parent branes. If any parent brane
-     * has blocked that identifier, the search stops at that level and returns empty.
-     * This ensures that detachment branes effectively block identifier resolution for
-     * the entire brane subtree below them.
+     * <b>Filter Chain Evaluation (Right-to-Left):</b>
+     * <p>
+     * For chain `[d1][d2][d3]{B}` searching for `v`:
+     * <ol>
+     * <li>Check d3 (rightmost): if d3 blocks v, mark as MAYBE_BLOCKED</li>
+     * <li>Check d2: if d2 blocks v, override to MAYBE_BLOCKED; if d2 doesn't mention v, keep previous state</li>
+     * <li>Check d1 (leftmost): d1 has final say - if blocks v, result is BLOCKED; if doesn't mention, keep previous</li>
+     * </ol>
+     * <p>
+     * Currently simplified: if ANY filter in chain blocks the identifier, it's blocked.
+     * The leftmost filter that mentions it determines the default value (handled elsewhere).
+     * <p>
+     * IMPORTANT: Blocking cascades to all child branes. When a child brane searches upward,
+     * any blocking at an ancestor level stops the search.
      *
      * @param query The query to check
-     * @return true if the query is blocked at this level, false otherwise
+     * @return true if the query is blocked after applying all filters, false otherwise
      */
     private boolean isBlocked(Query query) {
-        return blockedIdentifiers.stream().anyMatch(blocked -> {
-            if (blocked instanceof StrictlyMatchingQuery blockedMatch &&
-                query instanceof StrictlyMatchingQuery queryMatch) {
-                return blockedMatch.equals(queryMatch);
+        // Apply filters right-to-left (reverse iteration through chain)
+        // For now: if any filter blocks it, it's blocked
+        // Future: track block/unblock decisions through the chain for p-branes
+        for (int i = detachmentFilterChain.size() - 1; i >= 0; i--) {
+            List<Query> filterStage = detachmentFilterChain.get(i);
+            for (Query blocked : filterStage) {
+                if (blocked instanceof StrictlyMatchingQuery blockedMatch &&
+                    query instanceof StrictlyMatchingQuery queryMatch) {
+                    if (blockedMatch.equals(queryMatch)) {
+                        return true; // Blocked by this filter
+                    }
+                }
             }
-            return false;
-        });
+        }
+        return false; // Not blocked by any filter
     }
 
     public void setMyPos(int pos) {
