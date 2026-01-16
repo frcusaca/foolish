@@ -1,0 +1,75 @@
+!! Test evaluation-time ordinate binding with =$
+
+{
+    !! Basic evaluation-time binding
+    f = [a, b, c]{r = a + b + c};
+    result1 =$ [a=1, b=2, c=3]f;  !! Binds at evaluation: 1+2+3=6
+
+    !! f is unchanged, still has detached ordinates
+    a = 10; b = 20; c = 30;
+    result2 =$ f;                  !! Uses current scope: 60
+
+    !! Partial binding at evaluation
+    g = [x, y, z]{sum = x + y + z};
+    x = 5;
+    result3 =$ [y=10, z=15]g;     !! x from scope (5), y=10, z=15: 30
+
+    !! Evaluation-time binding with partially applied brane
+    h = [a, b, c, d]{product = a * b * c * d};
+    a = 2;
+    h2 = [+a]h;                   !! h2 has a=2 captured
+
+    result4 =$ [b=3, c=4, d=5]h2; !! Binds remaining at eval: 2*3*4*5=120
+
+    !! Multiple evaluations with different bindings
+    k = [p, q]{diff = p - q};
+    r1 =$ [p=10, q=3]k;           !! 7
+    r2 =$ [p=100, q=50]k;         !! 50
+    r3 =$ [p=5, q=2]k;            !! 3
+
+    !! Evaluation binding overrides scope values
+    {
+        m = [x, y]{z = x + y};
+        x = 1;
+        y = 2;
+
+        !! Even though scope has x=1, y=2, evaluation binding takes precedence
+        result5 =$ [x=100, y=200]m;  !! 300, not 3
+    };
+
+    !! Nested evaluation binding
+    {
+        outer = [a]{
+            inner = [b]{result = a + b};
+            result =$ [b=5]inner      !! Binds b=5 at inner evaluation
+        };
+
+        result6 =$ [a=10]outer;       !! Binds a=10 at outer evaluation
+                                       !! Expected: 10+5=15
+    };
+
+    !! Evaluation binding with constantic-captured brane
+    {
+        n = [i, j, k]{sum = i + j + k};
+        i = 1; j = 2; k = 3;
+        n2 <=> n;                     !! Captures i=1, j=2, k=3
+
+        !! Can we override captured values at evaluation?
+        result7 =$ [i=100]n2;         !! Should this use i=100 or i=1?
+                                       !! Expectation: captured values can't be overridden
+                                       !! Result should be 1+2+3=6 (ignore i=100)
+    };
+
+    !! Evaluation binding with brane that has mix of captured and detached
+    {
+        p_val = 10;
+        q_val = 20;
+        mixed = [r_val, s_val]{
+            answer = p_val + q_val + r_val + s_val
+        };
+        !! p_val=10, q_val=20 captured
+        !! r_val, s_val detached
+
+        result8 =$ [r_val=30, s_val=40]mixed;  !! 10+20+30+40=100
+    };
+}

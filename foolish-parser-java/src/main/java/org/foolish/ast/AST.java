@@ -16,7 +16,7 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
         };
     }
 
-    sealed interface Expr extends AST permits Characterizable, BinaryExpr, UnaryExpr, Branes, IfExpr, UnknownExpr, Stmt, DereferenceExpr, RegexpSearchExpr, SeekExpr, OneShotSearchExpr {
+    sealed interface Expr extends AST permits Characterizable, BinaryExpr, UnaryExpr, Branes, IfExpr, UnknownExpr, Stmt, DereferenceExpr, RegexpSearchExpr, SeekExpr, OneShotSearchExpr, ConstanticExpr {
 
     }
 
@@ -142,9 +142,20 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
         }
     }
 
-    record DetachmentStatement(Identifier identifier, Expr expr) implements AST {
+    record DetachmentStatement(boolean isPbrane, Identifier identifier, Expr expr) implements AST {
+        /**
+         * Creates a non-P-brane detachment statement.
+         */
+        public DetachmentStatement(Identifier identifier, Expr expr) {
+            this(false, identifier, expr);
+        }
+
         public String toString() {
-            return identifier + " = " + expr;
+            String prefix = isPbrane ? "+" : "";
+            if (expr == null || expr == UnknownExpr.INSTANCE) {
+                return prefix + identifier;
+            }
+            return prefix + identifier + " = " + expr;
         }
     }
 
@@ -216,14 +227,27 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
         }
     }
 
-    record Assignment(Identifier identifier, Expr expr) implements Stmt {
+    record ConstanticExpr(Expr expr) implements Expr {
+        public String toString() {
+            return "<" + expr + ">";
+        }
+    }
+
+    record Assignment(Identifier identifier, Expr expr, boolean isConstantic) implements Stmt {
+        /**
+         * Creates a non-constantic Assignment.
+         */
+        public Assignment(Identifier identifier, Expr expr) {
+            this(identifier, expr, false);
+        }
+
         /**
          * Creates an Assignment with a simple uncharacterized identifier.
          * @deprecated Use Assignment(Identifier, Expr) instead
          */
         @Deprecated
         public Assignment(String id, Expr expr) {
-            this(new Identifier(id), expr);
+            this(new Identifier(id), expr, false);
         }
 
         /**
@@ -235,10 +259,11 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
         }
 
         public String toString() {
-            if (expr instanceof OneShotSearchExpr) {
+            String op = isConstantic ? " <=> " : " = ";
+            if (expr instanceof OneShotSearchExpr && !isConstantic) {
                 return identifier + " =" + expr;
             }
-            return identifier + " = " + expr;
+            return identifier + op + expr;
         }
     }
 

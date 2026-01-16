@@ -1,0 +1,114 @@
+!! Test complex nested detachment scenarios
+
+{
+    !! Multi-level nested branes with mixed detachment
+    {
+        a = 1;
+        b = 2;
+        outer = [c]{
+            inner1 = [d]{
+                inner2 = [e]{
+                    result = a + b + c + d + e
+                };
+                result =$ inner2
+            };
+            result =$ inner1
+        };
+
+        !! a=1, b=2 captured at outer definition
+        !! c detached in outer
+        !! d detached in inner1
+        !! e detached in inner2
+
+        c = 10;
+        d = 20;
+        e = 30;
+        x =$ outer;       !! Should be 63: 1+2+10+20+30
+    };
+
+    !! Currying chain with P-branes
+    {
+        curry_test = [a, b, c, d, e]{sum = a + b + c + d + e};
+
+        a = 1;
+        step1 = [+a]curry_test;       !! a=1
+
+        b = 2;
+        step2 = [+b]step1;            !! a=1, b=2
+
+        c = 3;
+        step3 = [+c]step2;            !! a=1, b=2, c=3
+
+        !! Now bind d and e at evaluation
+        d = 4;
+        e = 5;
+        result =$ step3;  !! Should be 15
+    };
+
+    !! Mixed binding strategies
+    {
+        mixer = [p, q, r, s, t]{product = p * q * r * s * t};
+
+        p = 2;
+        q = 3;
+
+        !! Use P-brane for p, explicit for q, constantic for rest
+        partial = [+p, q=10]mixer;    !! p=2 from scope, q=10 explicit
+        r = 4;
+        s = 5;
+        t = 6;
+
+        captured <=> partial;         !! Constantic: captures r=4, s=5, t=6
+
+        !! Change scope
+        r = 100;
+        s = 200;
+        t = 300;
+
+        y =$ captured;    !! Should use p=2, q=10, r=4, s=5, t=6
+                          !! Result: 2*10*4*5*6 = 2400
+    };
+
+    !! Detachment with brane factories
+    {
+        factory = [multiplier]{
+            generated = [x]{result = x * multiplier};
+            result = generated
+        };
+
+        multiplier = 10;  !! Should be detached
+        double_it <=> factory;  !! Captures multiplier=10
+
+        x = 5;
+        z =$ double_it;   !! double_it is a brane with x detached, multiplier=10
+                          !! Result should be 50
+
+        !! Create another factory with different multiplier
+        multiplier = 3;
+        triple_it <=> factory;
+
+        w =$ triple_it;   !! Should be 15: x=5, multiplier=3
+    };
+
+    !! Re-detachment of nested branes
+    {
+        nested = [a]{
+            level2 = [b]{
+                level3 = [c]{answer = a + b + c};
+                answer =$ level3
+            };
+            answer =$ level2
+        };
+
+        a = 1;
+        b = 2;
+        c = 3;
+
+        !! Re-detach 'a' with explicit value
+        redetached = [a=100]nested;
+        result1 =$ redetached;  !! Should be 105: a=100, b=2, c=3
+
+        !! Original still works
+        result2 =$ nested;      !! Should be 6: a=1, b=2, c=3
+    };
+}

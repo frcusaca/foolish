@@ -1,0 +1,54 @@
+!! Test re-applying detachment to already-evaluated brane references
+
+{
+    !! Basic re-detachment
+    f = [a, b, c, d]{r = a + b + c + d};
+    f2 = [a, b, c, d]f;   !! Re-detaches (behaves same as f)
+
+    r =$ [a=1, b=2, c=3, d=4]f;   !! Evaluates to 10
+    r2 =$ [a=1, b=2, c=3, d=5]f2; !! Evaluates to 11
+
+    !! Re-detachment can change which ordinates are detached
+    g = [a, b]{sum = a + b};      !! a, b detached
+    a = 10;
+    g2 = [b]g;            !! Re-detach only b, resolve a from current scope
+                          !! g2 now has a=10 captured, only b detached
+    b = 5;
+    x =$ g2;              !! Should be 15: a=10, b=5
+
+    !! Confirm g still has both ordinates detached
+    y =$ [a=1, b=2]g;     !! Should be 3
+
+    !! Re-detachment with explicit values
+    h = [p, q, r]{product = p * q * r};
+    h2 = [p=2, q=3]h;     !! Bind p=2, q=3, r still detached
+    r = 4;
+    z =$ h2;              !! Should be 24: 2*3*4
+
+    !! Complex re-detachment chain
+    {
+        k = [a, b, c, d]{result = a + b + c + d};
+        a = 1;
+        k2 = [+a]k;       !! k2: a=1 captured, b,c,d detached
+
+        b = 2;
+        k3 = [+b]k2;      !! k3: a=1, b=2 captured, c,d detached
+
+        k4 = [c=3]k3;     !! k4: a=1, b=2, c=3, only d detached
+        d = 4;
+        w =$ k4;          !! Should be 10
+
+        !! Re-detach k4 to free up 'c' again
+        k5 = [c]k4;       !! Should alarm - c was already bound to 3
+                          !! Or should it create new detachment?
+        c = 100;
+        w2 =$ k5;         !! If c re-detached: 1+2+100+4=107
+                          !! If alarmed: 1+2+3+4=10
+    };
+
+    !! Evaluation-time binding doesn't modify original
+    m = [x, y]{z = x + y};
+    x = 5; y = 6;
+    result1 =$ [x=10]m;   !! Provides x=10 at eval: 10+6=16
+    result2 =$ m;         !! m unchanged, uses scope: 5+6=11
+}

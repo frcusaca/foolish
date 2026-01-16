@@ -34,7 +34,7 @@ detach_brane
     ;
 
 detach_stmt
-    : characterizable_identifier (ASSIGN expr)? SEMI LINE_COMMENT?
+    : PLUS? characterizable_identifier (ASSIGN expr)? SEMI LINE_COMMENT?
     ;
 
 brane_search : UP;
@@ -48,7 +48,10 @@ stmt
     : stmt_body ((SEMI | COMMA) LINE_COMMENT? | LINE_COMMENT)
     | LINE_COMMENT
     ;
-assignment : characterizable_identifier ASSIGN expr ;
+assignment
+    : characterizable_identifier ASSIGN expr
+    | characterizable_identifier CONSTANTIC_ASSIGN expr
+    ;
 
 expr
     : addExpr
@@ -89,6 +92,7 @@ literal
 primary
     : characterizable
     | LPAREN expr RPAREN
+    | LANGLE expr RANGLE      // Constantic brackets
     | UNKNOWN
     ;
 
@@ -151,6 +155,8 @@ LPAREN : '(' ;
 RPAREN : ')' ;
 LBRACK : '[' ;
 RBRACK : ']' ;
+LANGLE : '<' ;
+RANGLE : '>' ;
 SEMI : ';' ;
 COMMA : ',' ;
 
@@ -163,6 +169,7 @@ LINE_COMMENT
     ;
 
 
+CONSTANTIC_ASSIGN : '<=>' ;
 ASSIGN : '=' ;
 PLUS : '+' ;
 MINUS : '-' ;

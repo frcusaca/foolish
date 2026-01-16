@@ -141,14 +141,16 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
     public AST visitAssignment(FoolishParser.AssignmentContext ctx) {
         AST.Identifier identifier = (AST.Identifier) visit(ctx.characterizable_identifier());
         AST.Expr expr = (AST.Expr) visit(ctx.expr());
-        return new AST.Assignment(identifier, expr);
+        boolean isConstantic = ctx.CONSTANTIC_ASSIGN() != null;
+        return new AST.Assignment(identifier, expr, isConstantic);
     }
 
     @Override
     public AST visitDetach_stmt(FoolishParser.Detach_stmtContext ctx) {
+        boolean isPbrane = ctx.PLUS() != null;
         AST.Identifier identifier = (AST.Identifier) visit(ctx.characterizable_identifier());
         AST.Expr expr = ctx.expr() != null ? (AST.Expr) visit(ctx.expr()) : AST.UnknownExpr.INSTANCE;
-        return new AST.DetachmentStatement(identifier, expr);
+        return new AST.DetachmentStatement(isPbrane, identifier, expr);
     }
 
     @Override
@@ -235,7 +237,16 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
     @Override
     public AST visitPrimary(FoolishParser.PrimaryContext ctx) {
         if (ctx.characterizable() != null) return visit(ctx.characterizable());
-        if (ctx.expr() != null) return visit(ctx.expr());
+        if (ctx.LPAREN() != null && ctx.expr() != null) {
+            // Regular parenthesized expression
+            return visit(ctx.expr());
+        }
+        if (ctx.LANGLE() != null && ctx.expr() != null) {
+            // Constantic brackets
+            AST.Expr expr = (AST.Expr) visit(ctx.expr());
+            return new AST.ConstanticExpr(expr);
+        }
+        if (ctx.UNKNOWN() != null) return AST.UnknownExpr.INSTANCE;
         return AST.UnknownExpr.INSTANCE;
     }
 
