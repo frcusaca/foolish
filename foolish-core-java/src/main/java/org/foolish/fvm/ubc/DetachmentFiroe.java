@@ -27,6 +27,13 @@ import java.util.stream.Collectors;
  * }
  * </pre>
  * <p>
+ * <b>Types of Detachment Branes</b> (from NAMES_SEARCHES_N_BOUNDS.md):
+ * <ul>
+ * <li><b>Type 1: Backward Search</b> {@code [a, b]} - Blocks backward identifier resolution (implemented)</li>
+ * <li><b>Type 2: Forward Search</b> {@code [/a, #N]} - Blocks forward search into brane (TODO)</li>
+ * <li><b>Type 3: P-Brane</b> {@code [+a, b]} - Selective binding (undetachment) (TODO)</li>
+ * </ul>
+ * <p>
  * From the documentation:
  * "The detachment brane dissociates the ensuing brane on its right side from
  * the context, decontextualizing [the identifiers]. [They] become unbound symbols.

@@ -1,0 +1,18 @@
+{
+	!! P-brane (Plus Brane) selective binding test
+	!! TODO: Implement P-brane [+a, b] syntax for selective binding
+	!!
+	!! P-branes allow selective binding of specific identifiers while
+	!! keeping others detached. Syntax: [+ identifier1, identifier2]
+	!!
+	!! Example from NAMES_SEARCHES_N_BOUNDS.md:
+	!!   secure = [/a, /b, /c]{result = a + b + c;};
+	!!   partial =$ [+ a, b] secure.result;
+	!!
+	!! This would bind only 'a' and 'b' from parent scope,
+	!! keeping 'c' detached (liberated).
+	!!
+	!! For now, this test just demonstrates the syntax is not yet implemented.
+
+	result = 0;
+}
