@@ -1,0 +1,41 @@
+{
+    outer = {
+        a = 1;
+        b = 2;
+        c = 3;
+
+        !! Test 1: Pipeline Override
+        !! d1 d2 d3 d4 B
+        !! d4 decides, d3 changes, d2 changes, d1 final say.
+        !! Let's simulate:
+        !! d4 = [a] (Block)
+        !! d3 = [+a] (Allow - overrides d4)
+        !! d2 = [a] (Block - overrides d3)
+        !! d1 = [+a] (Allow - overrides d2)
+        !! Result should be ALLOW.
+        pipeline_allow = [+a][a][+a][a] {
+             val = a;
+        };
+
+        !! d4 = [+a] (Allow)
+        !! d3 = [a] (Block)
+        !! d2 = [+a] (Allow)
+        !! d1 = [a] (Block)
+        !! Result should be BLOCK.
+        pipeline_block = [a][+a][a][+a] {
+             val = a;
+        };
+
+        !! Regex matching order
+        !! d2 = [x_*] (Block all x_*)
+        !! d1 = [+x_1] (Allow specific x_1)
+        !! Result: x_1 allowed, x_2 blocked.
+        regex_pipeline = [+x_1] [x_*] {
+             v1 = x_1; !! Allowed
+             v2 = x_2; !! Blocked
+        };
+
+        x_1 = 10;
+        x_2 = 20;
+    };
+}

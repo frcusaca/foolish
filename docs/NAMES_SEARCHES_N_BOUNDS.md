@@ -1274,6 +1274,21 @@ In terms of UBC, liberation precedence semantics requires that:
    side; that expression is a child of the liberation brane FIR, and this is how we block search
    upward
 
+**Pipeline Filtering Semantics**:
+When multiple detachment branes are chained (e.g., `d1 d2 d3 d4 B`), the filtering logic proceeds
+as follows:
+1. Search starts from just before `d1` (the parent context).
+2. The decision process flows from right to left (inner-most to outer-most):
+   - `d4` makes the initial decision (detached or not).
+   - `d3` can override that decision.
+   - `d2` can override that decision.
+   - `d1` (the left-most detachment) has the final say.
+3. If the identifier remains undetached after this pipeline, it is considered a match.
+
+This "Left Overrides Right" precedence ensures that the outer-most detachment controls the final
+visibility, consistent with the principle that "Left-Associate Liberation Branes" have higher
+precedence.
+
 **Why concatenate before resolution?** It's possible for a brane to reference something defined just
 before it, but if we resolve it too early, it may find that same variable in IB/AB, which is
 undesirable.
