@@ -23,7 +23,11 @@ Run this skill automatically before any Maven build operations when working in C
 
 Or directly:
 ```bash
-.claude/skills/ccw-maven-setup/prep_if_ccw.sh
+prep_if_ccw.sh
+```
+NB: That script prep_if_ccw.sh is in the directory of this skill next to the skill.md and it may requires execution using bash due to lack of executable permissions.
+```sh
+bash prep_if_ccw.sh
 ```
 
 ## Technical Details

@@ -54,9 +54,10 @@ See `.claude/skills/maven-builder-for-foolish-language/` for full documentation.
 This skill automatically:
 1. Detects if running in CCW (checks `CLAUDECODE` environment variable)
 2. If in CCW:
-   - Installs SDKMAN (if not present)
-   - Installs latest stable Java 25 (Temurin) via SDKMAN
-   - Starts a local Maven authentication proxy at `127.0.0.1:3128`
+   - use the script in the skill's directory(ccw-maven-setup/prep_if_ccw.sh right next to ccw-maven-setup/skill.md)
+     - Installs SDKMAN (if not present)
+     - Installs latest stable Java 25 (Temurin) via SDKMAN
+     - Starts a local Maven authentication proxy at `127.0.0.1:3128`
    - Configures `~/.m2/settings.xml` with proxy settings
 3. If not in CCW (local environment):
    - Does nothing - assumes Java 25 is already installed
