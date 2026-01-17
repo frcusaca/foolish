@@ -4,6 +4,9 @@
 
 set -e
 
+# Get script directory for accessing repo-vendored files
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Detect CCW environment
 if [ -z "$CLAUDECODE" ]; then
     echo "ℹ️  Not in Claude Code Web - no setup needed"
@@ -18,8 +21,9 @@ if [ ! -d "$HOME/.sdkman" ]; then
     curl -s "https://get.sdkman.io" | bash
 fi
 
-# Source SDKMAN
-source "$HOME/.sdkman/bin/sdkman-init.sh"
+# Source SDKMAN from repo-vendored copy (version-controlled)
+source "$HOME/.sdkman/bin/sdkman-init.sh" || source "$SCRIPT_DIR/sdkman-init.sh"
+
 
 # Install Java 25 if needed (latest stable Temurin)
 if ! sdk list java 2>/dev/null | grep -q "25\..*-tem.*installed"; then
