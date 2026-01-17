@@ -71,7 +71,7 @@ PARSED AST:
   parent = {
     parentˍb = 200;
     blockedˍchild = [
-  grandparentˍa = ???;
+  grandparentˍa;
 ]
 {
       inner = {
@@ -80,11 +80,11 @@ PARSED AST:
       };
     };
     overrideˍattempt = [
-  grandparentˍa = ???;
+  grandparentˍa;
 ]
 {
       inner = [
-  +grandparentˍa = ???;
+  +grandparentˍa;
 ]
 {
         valˍa = grandparentˍa;
@@ -95,7 +95,7 @@ PARSED AST:
       public = 1;
     };
     detachedˍbrane = [
-  secret = ???;
+  secret;
 ]
 baseˍbrane;
     testˍaccess = {
@@ -103,10 +103,10 @@ baseˍbrane;
       p = detachedˍbrane.public;
     };
     undetachedˍbrane = [
-  +secret = ???;
+  +secret;
 ]
 [
-  secret = ???;
+  secret;
 ]
 baseˍbrane;
     testˍundetached = {

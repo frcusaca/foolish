@@ -173,8 +173,8 @@ public class ParserUnitTest {
         assertTrue(secondAssignment.expr() instanceof AST.UnknownExpr);
         assertEquals("""
                 [
-                  x = ???;
-                  y = ???;
+                  x;
+                  y;
                 ]
                 {
                   result = x;
@@ -208,9 +208,9 @@ public class ParserUnitTest {
         assertTrue(circumference.expr() instanceof AST.UnknownExpr);
         assertEquals("""
                 [
-                  r = ???;
+                  r;
                   pi = 3;
-                  circumference = ???;
+                  circumference;
                 ]
                 """, ast.toString());
     }
@@ -236,7 +236,7 @@ public class ParserUnitTest {
         assertEquals("""
                 [
                   det'x = 1;
-                  det'y = ???;
+                  det'y;
                 ]
                 """, ast.toString());
     }
@@ -637,5 +637,35 @@ public class ParserUnitTest {
         assertNotNull(characterized.characterizations());
         assertEquals(List.of("type"), characterized.characterizations());
         assertEquals("type'↑", characterized.toString());
+    }
+
+    @Test
+    public void testOneShotAssignment() {
+        AST ast = parse("{ x =$ f; }");
+        assertEquals("""
+                {
+                  x =$f;
+                }
+                """, ast.toString());
+    }
+
+    @Test
+    public void testConstanticAssignment() {
+        AST ast = parse("{ x = <f>; }");
+        assertEquals("""
+                {
+                  x = <f>;
+                }
+                """, ast.toString());
+    }
+
+    @Test
+    public void testConstanticSugar() {
+        AST ast = parse("{ x <=> f; }");
+        assertEquals("""
+                {
+                  x = <f>;
+                }
+                """, ast.toString());
     }
 }

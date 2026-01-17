@@ -155,6 +155,16 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
             return;
         }
 
+        if (unwrapAnchor instanceof ConstanticFiroe constantic) {
+            if (constantic.isNye()) {
+                constantic.step();
+                return;
+            }
+            unwrapAnchor = constantic.getResult();
+            if (unwrapAnchor == null) searchResult = new NKFiroe();
+            return;
+        }
+
         if (unwrapAnchor instanceof BraneFiroe braneFiroe) {
              if (searchPerformed) {
                  searchResult = braneFiroe;

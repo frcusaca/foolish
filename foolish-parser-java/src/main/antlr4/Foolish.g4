@@ -40,7 +40,7 @@ detach_list
     ;
 
 detach_element
-    : regexp_expression (ASSIGN expr)?
+    : PLUS? regexp_expression (ASSIGN expr)?
     ;
 
 detach_stmt
@@ -58,7 +58,11 @@ stmt
     : stmt_body ((SEMI | COMMA) LINE_COMMENT? | LINE_COMMENT)
     | LINE_COMMENT
     ;
-assignment : characterizable_identifier ASSIGN expr ;
+assignment
+    : characterizable_identifier ASSIGN expr
+    | characterizable_identifier CONST_ASSIGN expr
+    | characterizable_identifier ONE_SHOT_ASSIGN expr
+    ;
 
 expr
     : addExpr
@@ -99,6 +103,7 @@ literal
 primary
     : characterizable
     | LPAREN expr RPAREN
+    | ANGLE_L expr ANGLE_R
     | UNKNOWN
     ;
 
@@ -117,9 +122,6 @@ regexp_operator
     ;
 
 // Regexp expression with balanced parentheses validation
-// The pattern is stored as a string (via getText()) but ANTLR enforces matching pairs
-// Note: Must use tokens (IDENTIFIER, INTEGER) not fragments (LETTERS, DIGIT, INTRA_ID_SEPARATOR)
-// since fragments cannot be referenced in parser rules
 regexp_expression : regexp_element+ ;
 
 regexp_element
@@ -139,7 +141,6 @@ regexp_element
     | LBRACK regexp_inner* RBRACK    // Balanced []
     ;
 
-// Inside parentheses/braces/brackets, we can use regexp special characters
 regexp_inner
     : IDENTIFIER
     | INTEGER
@@ -163,6 +164,8 @@ LPAREN : '(' ;
 RPAREN : ')' ;
 LBRACK : '[' ;
 RBRACK : ']' ;
+ANGLE_L : '<' ;
+ANGLE_R : '>' ;
 SEMI : ';' ;
 COMMA : ',' ;
 
@@ -176,6 +179,8 @@ LINE_COMMENT
 
 
 ASSIGN : '=' ;
+CONST_ASSIGN : '<=>' ;
+ONE_SHOT_ASSIGN : '=$' ;
 PLUS : '+' ;
 MINUS : '-' ;
 MUL : '*' ;
@@ -204,7 +209,6 @@ fragment LETTERS : ARABIC_PART | LATIN | GREEK_PART | CYRYLLIC_PART | HEBREW_PAR
 fragment DIGIT : [0-9] ;
 
 // System that accepts _ should convert it to the thinner modifier letter low macro (ux02cd)
-// Collation and search systems should accept these as exchangeable.
 fragment INTRA_ID_SEPARATOR : '\u202F' | '_' | '\u02CD';
 // Skip whitespace
 WS : [ \t\r\n]+ -> skip ;
@@ -213,7 +217,7 @@ IDENTIFIER : LETTERS (LETTERS|DIGIT|INTRA_ID_SEPARATOR)* ;
 
 APOSTROPHE : '\'' ;
 fragment LATIN  : [a-zA-Z]+;
-fragment GREEK_PART: [αβΓγΔδεζηΘθΙικΛλμνΞξΟοΠπρΣσςτυΦφΨψΩω]+; // Greek letters that do not confuse with latin easily
+fragment GREEK_PART: [αβΓγΔδεζηΘθΙικΛλμνΞξΟοΠπρΣσςτυΦφΨψΩω]+;
 fragment CYRYLLIC_PART: [БбвДдЖжЗзИиЙйКкЛлмнПптЦцЧчЩщЪъЫыЭэЮюЯя]+;
 fragment HEBREW_PART : [אבגהחטכלמנסעפצקרשתםףץך]+;
 fragment CHINESE_PART : ('\u4E00'..'\u9FFF')+;
@@ -225,16 +229,14 @@ fragment SANSKRIT_PART
         )+
     ;
 
-// Fragment rules for specific Unicode blocks (these are not tokens themselves, but building blocks)
 fragment DEVANAGARI_CHAR
-    :   '\u0900'..'\u097F' // Devanagari block
+    :   '\u0900'..'\u097F'
     ;
 
 fragment VEDIC_EXT_CHAR
-    :   '\u1CD0'..'\u1CFF' // Vedic Extensions block
+    :   '\u1CD0'..'\u1CFF'
     ;
 
-// The Devanagari Extended block may contain additional relevant characters
 fragment DEVANAGARI_EXT_CHAR
-    :   '\uA8E0'..'\uA8FF' // Devanagari Extended block
+    :   '\uA8E0'..'\uA8FF'
     ;

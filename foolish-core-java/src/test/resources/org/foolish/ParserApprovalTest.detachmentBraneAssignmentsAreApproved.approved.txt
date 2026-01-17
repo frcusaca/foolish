@@ -9,8 +9,8 @@ INPUT:
 
 OUTPUT:
 [
-  x = ???;
-  y = ???;
+  x;
+  y;
 ]
 {
   result = x;

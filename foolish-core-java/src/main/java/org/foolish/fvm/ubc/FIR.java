@@ -146,6 +146,10 @@ public abstract class FIR {
             case AST.Branes branes -> {
                 return createFiroeFromBranes(branes);
             }
+            case AST.AngleBracketExpr angle -> {
+                FIR inner = createFiroeFromExpr(angle.expr());
+                return new ConstanticFiroe(angle, inner);
+            }
             default -> {
                 // Placeholder for unsupported types
                 return new NKFiroe();
@@ -156,16 +160,8 @@ public abstract class FIR {
     private static List<BraneMemory.QueryModification> extractQueryModifications(AST.DetachmentBrane detachment) {
         List<BraneMemory.QueryModification> mods = new ArrayList<>();
         for (AST.DetachmentStatement stmt : detachment.statements()) {
-             // Check for P-brane '+' prefix in identifier
              String id = stmt.identifier().id();
-             BraneMemory.Modification modification = BraneMemory.Modification.BLOCK;
-
-             // Simple detection of + prefix
-             if (id.startsWith("+")) {
-                 modification = BraneMemory.Modification.ALLOW;
-                 id = id.substring(1);
-             }
-
+             BraneMemory.Modification modification = stmt.isPreservation() ? BraneMemory.Modification.ALLOW : BraneMemory.Modification.BLOCK;
              mods.add(new BraneMemory.QueryModification(new Query.RegexpQuery(id), modification));
         }
         return mods;

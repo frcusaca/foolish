@@ -63,18 +63,18 @@ PARSED AST:
     b = 2;
     c = 3;
     redundant = [
-  a = ???;
-  a = ???;
+  a;
+  a;
 ]
 {
       resˍa = a;
       resˍb = b;
     };
     nested = [
-  a = ???;
+  a;
 ]
 [
-  b = ???;
+  b;
 ]
 {
       resˍa = a;
@@ -82,10 +82,10 @@ PARSED AST:
       resˍc = c;
     };
     nestedˍredundant = [
-  a = ???;
+  a;
 ]
 [
-  a = ???;
+  a;
 ]
 {
       resˍa = a;
@@ -95,14 +95,14 @@ PARSED AST:
       locˍa = 10;
     }
 [
-  b = ???;
+  b;
 ]
 {
       valˍa = locˍa;
       valˍb = b;
     };
     regexˍblock = [
-  xˍ* = ???;
+  xˍ*;
 ]
 {
       xˍ1 = 1;
@@ -111,21 +111,21 @@ PARSED AST:
       resˍy = y;
     };
     pbraneˍallow = [
-  a = ???;
-  b = ???;
+  a;
+  b;
 ]
 [
-  +a = ???;
+  +a;
 ]
 {
       valˍa = a;
       valˍb = b;
     };
     pbraneˍoverride = [
-  +a = ???;
+  +a;
 ]
 [
-  a = ???;
+  a;
 ]
 {
       valˍa = a;

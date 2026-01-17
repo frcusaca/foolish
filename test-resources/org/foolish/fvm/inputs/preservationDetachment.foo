@@ -1,0 +1,49 @@
+{
+  outer = {
+    a = 1;
+
+    !! f blocks 'a'
+    f = [a] {
+       val = a;
+    };
+    x =$ f;
+
+    !! g allows 'a' (preservation)
+    g = [+a] {
+       val = a;
+    };
+    y =$ g;
+
+    !! h: [+a, a]. Right-to-left processing means 'a' handled first (pushed last?), '+a' handled second (pushed first?).
+    !! FIR.java: process list from i = size-1 down to 0.
+    !! list=[+a, a].
+    !! i=1: a (BLOCK). append to acc? No, FIR extracts mods.
+    !! extractQueryModifications iterates `statements()`. Standard order (0 to N).
+    !! Wait, `DetachmentBrane` logic in `FIR.java`:
+    !! `extractQueryModifications` iterates statements in order.
+    !! It returns a list.
+    !! `BraneFiroe.addQueryModifications` adds them to `initialQueryMods`.
+    !! `initialize()` iterates `initialQueryMods` and calls `braneMemory.addQueryModification`.
+    !! `BraneMemory.addQueryModification`?
+    !! If it prepends to memory (stack), then last added is first checked.
+    !! If `initialize` iterates list 0..N, then 0 is added first, N is added last.
+    !! So N is at the top of stack (checked first).
+    !! So `[+a, a]` -> +a added, then a added. 'a' is top. BLOCK wins.
+    !! So [+a, a] -> BLOCK.
+    !! [a, +a] -> a added, then +a added. +a is top. ALLOW wins.
+
+    !! Let's verify this hypothesis with the test.
+
+    !! [+a, a] -> Expect BLOCK (???) if my logic is right.
+    h = [+a, a] {
+       val = a;
+    };
+    z =$ h;
+
+    !! [a, +a] -> Expect ALLOW (1)
+    k = [a, +a] {
+       val = a;
+    };
+    w =$ k;
+  };
+}

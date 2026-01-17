@@ -121,6 +121,19 @@ public class BraneFiroe extends FiroeWithBraneMind {
         return allFiroes;
     }
 
+    /**
+     * Clones this BraneFiroe.
+     * @param keepPredecessor If true, the clone retains the predecessor (detachments).
+     *                        If false, the predecessor is dropped (standard reference behavior).
+     */
+    public BraneFiroe clone(boolean keepPredecessor) {
+        BraneFiroe clone = new BraneFiroe(this.ast, new ArrayList<>(this.initialFirs), new ArrayList<>(this.initialQueryMods));
+        if (keepPredecessor) {
+            clone.predecessor = this.predecessor;
+        }
+        return clone;
+    }
+
     @Override
     public String toString() {
         return new Sequencer4Human().sequence(this);

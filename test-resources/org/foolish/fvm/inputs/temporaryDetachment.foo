@@ -1,0 +1,53 @@
+{
+    outer = {
+        a = 1;
+        b = 2;
+
+        !! Test 1: Standard Reference Drops Detachment
+        !! f = [b] { a + b }
+        !! Inside f definition, b is blocked.
+        !! But when f is referenced (x = f), b should resolve from new context.
+        f = [b] {
+            res = a + b;
+        };
+
+        !! At definition time, 'f' is created. 'b' inside 'f' is blocked.
+        !! But 'f' is lazy (it's a brane).
+
+        !! Call f:
+        !! x should be 1 + 2 = 3.
+        !! Because [b] was temporary during f's definition.
+        !! When we say x =$ f, we get a clone of f WITHOUT [b].
+        !! So b resolves to outer.b (2).
+        x =$ f;
+
+        !! Test 2: Constantic Reference Keeps Detachment
+        !! f2 = <f>
+        !! f2 should keep [b] detachment.
+        !! So inside f2, b is blocked.
+        f2 = <f>;
+
+        !! x2 =$ f2.
+        !! b is blocked. result is ??? (NK) + 1 = ???
+        x2 =$ f2;
+
+        !! Test 3: Constantic Assignment Syntax
+        !! f3 <=> f is sugar for f3 = <f>
+        f3 <=> f;
+        x3 =$ f3; !! Should be ???
+
+        !! Test 4: New Context
+        context = {
+            a = 10;
+            b = 20;
+
+            !! Re-use f.
+            !! Standard f: drops [b]. Uses a=10, b=20. Result 30.
+            val_f =$ f;
+
+            !! Re-use f2 (constantic).
+            !! Keeps [b] blocked. Uses a=10. b is blocked. Result ???
+            val_f2 =$ f2;
+        };
+    };
+}

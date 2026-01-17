@@ -12,8 +12,8 @@ INPUT:
 
 OUTPUT:
 [
-  variableˍx = ???;
-  coordinateˍy = ???;
+  variableˍx;
+  coordinateˍy;
 ]
 {
   myˍresult = x;

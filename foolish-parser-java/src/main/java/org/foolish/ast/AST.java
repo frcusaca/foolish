@@ -16,7 +16,7 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
         };
     }
 
-    sealed interface Expr extends AST permits Characterizable, BinaryExpr, UnaryExpr, Branes, IfExpr, UnknownExpr, Stmt, DereferenceExpr, RegexpSearchExpr, SeekExpr, OneShotSearchExpr {
+    sealed interface Expr extends AST permits Characterizable, BinaryExpr, UnaryExpr, Branes, IfExpr, UnknownExpr, Stmt, DereferenceExpr, RegexpSearchExpr, SeekExpr, OneShotSearchExpr, AngleBracketExpr {
 
     }
 
@@ -142,9 +142,17 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
         }
     }
 
-    record DetachmentStatement(Identifier identifier, Expr expr) implements AST {
+    record DetachmentStatement(Identifier identifier, Expr expr, boolean isPreservation) implements AST {
+        public DetachmentStatement(Identifier identifier, Expr expr) {
+            this(identifier, expr, false);
+        }
+
         public String toString() {
-            return identifier + " = " + expr;
+            String prefix = isPreservation ? "+" : "";
+            if (expr instanceof UnknownExpr) {
+                return prefix + identifier;
+            }
+            return prefix + identifier + " = " + expr;
         }
     }
 
@@ -207,6 +215,12 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
     record SeekExpr(Expr anchor, int offset) implements Expr {
         public String toString() {
             return anchor + "#" + offset;
+        }
+    }
+
+    record AngleBracketExpr(Expr expr) implements Expr {
+        public String toString() {
+            return "<" + expr + ">";
         }
     }
 

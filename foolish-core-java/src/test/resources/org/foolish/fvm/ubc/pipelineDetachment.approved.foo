@@ -49,40 +49,40 @@ PARSED AST:
     b = 2;
     c = 3;
     pipelineˍallow = [
-  +a = ???;
+  +a;
 ]
 [
-  a = ???;
+  a;
 ]
 [
-  +a = ???;
+  +a;
 ]
 [
-  a = ???;
+  a;
 ]
 {
       val = a;
     };
     pipelineˍblock = [
-  a = ???;
+  a;
 ]
 [
-  +a = ???;
+  +a;
 ]
 [
-  a = ???;
+  a;
 ]
 [
-  +a = ???;
+  +a;
 ]
 {
       val = a;
     };
     regexˍpipeline = [
-  +xˍ1 = ???;
+  +xˍ1;
 ]
 [
-  xˍ* = ???;
+  xˍ*;
 ]
 {
       v1 = xˍ1;

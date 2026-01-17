@@ -12,13 +12,11 @@ import org.foolish.ast.AST;
  * - Disambiguate between multiple bindings of the same name
  * - Type checking (future)
  * - Scope resolution (future)
- *
- * Currently, identifier lookup is not yet implemented in UBC, so this
- * returns NK (not-known) values.
  */
 public class IdentifierFiroe extends FiroeWithBraneMind {
     private final Query.StrictlyMatchingQuery identifier;
-    FIR value = null; // Package-private for access by RegexpSearchFiroe
+    FIR value = null; // Standard (stripped) value
+    FIR raw = null;   // Raw value (for Constantic access)
 
     public IdentifierFiroe(AST.Identifier identifier) {
         super(identifier);
@@ -65,9 +63,18 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
     public void step() {
         switch (getNyes()) {
             case INITIALIZED: {
-                value = braneMemory.get(identifier, 0)
-                        .map(r -> r.getValue())
+                // Get raw value from memory
+                raw = braneMemory.get(identifier, 0)
+                        .map(p -> p.getValue())
                         .orElse(null);
+
+                // Process standard value
+                if (raw instanceof BraneFiroe brane) {
+                    value = brane.clone(false); // Drop detachments
+                } else {
+                    value = raw;
+                }
+
                 setNyes(Nyes.RESOLVED);
             }
             default:
@@ -75,12 +82,10 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
 
         }
     }
-    /**
-     * Identifier lookup is not yet implemented.
-     * @throws UnsupportedOperationException always
-     */
+
     @Override
     public long getValue() {
+        if (value == null) throw new IllegalStateException("Identifier not resolved");
         return value.getValue();
     }
 

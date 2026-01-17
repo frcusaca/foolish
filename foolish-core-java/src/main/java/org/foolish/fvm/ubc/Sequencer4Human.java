@@ -44,6 +44,7 @@ public class Sequencer4Human extends Sequencer<String> {
             case AssignmentFiroe assignment -> sequenceAssignment(assignment, depth);
             case IdentifierFiroe identifier -> sequenceIdentifier(identifier, depth);
             case OneShotSearchFiroe oneShotSearch -> sequenceOneShotSearch(oneShotSearch, depth);
+            case ConstanticFiroe constantic -> sequence(constantic.getResult(), depth);
             case null, default -> indent(depth) + "???";
         };
     }
@@ -140,6 +141,8 @@ public class Sequencer4Human extends Sequencer<String> {
                          unwrapped = assignmentFiroe.getResult();
                     } else if (unwrapped instanceof OneShotSearchFiroe oneShotSearchFiroe) {
                          unwrapped = oneShotSearchFiroe.getResult();
+                    } else if (unwrapped instanceof ConstanticFiroe constantic) {
+                         unwrapped = constantic.getResult();
                     } else {
                          break;
                     }

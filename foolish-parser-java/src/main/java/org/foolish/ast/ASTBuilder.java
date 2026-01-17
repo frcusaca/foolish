@@ -167,6 +167,11 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
     public AST visitAssignment(FoolishParser.AssignmentContext ctx) {
         AST.Identifier identifier = (AST.Identifier) visit(ctx.characterizable_identifier());
         AST.Expr expr = (AST.Expr) visit(ctx.expr());
+        if (ctx.CONST_ASSIGN() != null) {
+            expr = new AST.AngleBracketExpr(expr);
+        } else if (ctx.ONE_SHOT_ASSIGN() != null) {
+            expr = new AST.OneShotSearchExpr(expr, SearchOperator.TAIL);
+        }
         return new AST.Assignment(identifier, expr);
     }
 
@@ -175,8 +180,9 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
         String pattern = canonicalizeIdentifierName(ctx.regexp_expression().getText());
         AST.Identifier identifier = new AST.Identifier(pattern); // Store pattern as identifier for now
         AST.Expr expr = ctx.expr() != null ? (AST.Expr) visit(ctx.expr()) : AST.UnknownExpr.INSTANCE;
+        boolean isPreservation = ctx.PLUS() != null;
         // If expr is UnknownExpr (default), it means we just have the pattern.
-        return new AST.DetachmentStatement(identifier, expr);
+        return new AST.DetachmentStatement(identifier, expr, isPreservation);
     }
 
     @Override
@@ -270,7 +276,12 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
     @Override
     public AST visitPrimary(FoolishParser.PrimaryContext ctx) {
         if (ctx.characterizable() != null) return visit(ctx.characterizable());
-        if (ctx.expr() != null) return visit(ctx.expr());
+        if (ctx.expr() != null) {
+            if (ctx.ANGLE_L() != null) {
+                return new AST.AngleBracketExpr((AST.Expr) visit(ctx.expr()));
+            }
+            return visit(ctx.expr());
+        }
         return AST.UnknownExpr.INSTANCE;
     }
 

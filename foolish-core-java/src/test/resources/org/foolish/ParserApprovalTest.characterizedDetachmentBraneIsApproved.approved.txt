@@ -7,5 +7,5 @@ INPUT:
 OUTPUT:
 [
   det'x = 1;
-  det'y = ???;
+  det'y;
 ]
