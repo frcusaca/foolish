@@ -48,15 +48,8 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
         } else if (ctx.detach_brane() != null) {
             return visit(ctx.detach_brane());
         }
-        System.err.println("DEBUG: Unknown brane alternative");
-        System.err.println("  ctx: " + ctx.getText());
-        System.err.println("  standard_brane: " + ctx.standard_brane());
-        System.err.println("  detach_brane: " + ctx.detach_brane());
-        System.err.println("  brane_search: " + ctx.brane_search());
-        System.err.println("  children: " + ctx.getChildCount());
-        for (int i = 0; i < ctx.getChildCount(); i++) {
-            System.err.println("    child " + i + ": " + ctx.getChild(i).getClass().getName() + " = " + ctx.getChild(i).getText());
-        }
+        // Simulating AlarmSystem behavior as parser cannot depend on core
+        System.err.println("[ALARM 5] Unknown brane alternative: " + ctx.getText());
         throw new IllegalArgumentException("Unknown brane alternative");
     }
 

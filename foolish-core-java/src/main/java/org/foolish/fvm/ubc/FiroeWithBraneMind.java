@@ -176,8 +176,8 @@ public abstract class FiroeWithBraneMind extends FIR {
                     }
                 } catch (Exception e) {
                     braneMind.addFirst(current); // Re-enqueue on error
+                    org.foolish.fvm.AlarmSystem.raise(braneMemory, "Error during braneMind step execution: " + e.getMessage(), org.foolish.fvm.AlarmSystem.PANIC);
                     throw new RuntimeException("Error during braneMind step execution", e);
-                    //TODO: Handle this exception Foolishly
                 }
             }
             case CONSTANT -> {
@@ -216,8 +216,8 @@ public abstract class FiroeWithBraneMind extends FIR {
 
         } catch (Exception e) {
             braneMind.addFirst(current); // Re-enqueue on error
+            org.foolish.fvm.AlarmSystem.raise(braneMemory, "Error during braneMind step execution: " + e.getMessage(), org.foolish.fvm.AlarmSystem.PANIC);
             throw new RuntimeException("Error during braneMind step execution", e);
-            //TODO: Handle this exception Foolishly
         }
 
         // Check if all non-branes in the queue have reached target state
