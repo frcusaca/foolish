@@ -3,6 +3,16 @@
 # Custom Maven wrapper for Foolish project
 # Detects Claude Code Web (CCW) environment and applies proxy settings when needed
 
+# Exit on error
+set -e
+
+# Check if Maven is available
+if ! command -v mvn &> /dev/null; then
+    echo "Error: Maven (mvn) command not found in PATH" >&2
+    echo "Please install Maven or ensure it is available in your PATH" >&2
+    exit 127
+fi
+
 # Detect if running in Claude Code Web
 if [ -n "$CLAUDECODE" ]; then
     # CCW environment - use local proxy
@@ -14,6 +24,7 @@ if [ -n "$CLAUDECODE" ]; then
     # Set MAVEN_OPTS to disable SSL verification at JVM level
     export MAVEN_OPTS="${MAVEN_OPTS} -Djavax.net.ssl.trustStore=/etc/ssl/certs/java/cacerts -Djavax.net.ssl.trustStorePassword=changeit"
 
+    # Run Maven with proxy settings and propagate exit code
     mvn \
         -Dhttp.proxyHost="$PROXY_HOST" \
         -Dhttp.proxyPort="$PROXY_PORT" \
@@ -23,7 +34,9 @@ if [ -n "$CLAUDECODE" ]; then
         -Dmaven.wagon.http.ssl.allowall=true \
         -Dmaven.wagon.http.ssl.ignore.validity.dates=true \
         "$@"
+    exit $?
 else
-    # Local or other environment - run Maven directly
+    # Local or other environment - run Maven directly and propagate exit code
     mvn "$@"
+    exit $?
 fi
