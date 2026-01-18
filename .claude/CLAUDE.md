@@ -21,6 +21,32 @@ This file provides Claude Code-specific guidance when working on the Foolish pro
 
 ---
 
+## ⚠️ CRITICAL: Maven Wrapper Usage
+
+**🚫 NEVER use `mvn` directly - ALWAYS use `./mvn_cmd` instead**
+
+The `mvn_cmd` wrapper script at the project root automatically handles environment-specific Maven configuration:
+
+- **In Claude Code Web (CCW)**: Applies proxy settings (`127.0.0.1:3128`) required for Maven to work
+- **In Local/Other Environments**: Runs Maven directly without proxy
+
+**Examples:**
+```bash
+# ✅ CORRECT - Use mvn_cmd wrapper
+./mvn_cmd clean test
+./mvn_cmd compile -DskipTests
+
+# ❌ WRONG - Do not call mvn directly
+mvn clean test
+mvn compile -DskipTests
+```
+
+**Why this matters:** Maven doesn't honor standard `HTTP_PROXY` environment variables. The wrapper ensures Maven commands work correctly in all environments without manual proxy configuration.
+
+**Enforcement:** The SessionStart hook automatically creates a shell wrapper that redirects `mvn` to `./mvn_cmd`, but you should use `./mvn_cmd` directly.
+
+---
+
 ## Claude Code-Specific Features
 
 ### Build and Test Skills
@@ -70,24 +96,24 @@ For details on why CCW needs a proxy and how the setup works, see the "Claude Co
 
 Basic build and test:
 ```bash
-mvn clean generate-sources compile test
+./mvn_cmd clean generate-sources compile test
 ```
 
 Optimized parallel builds:
 ```bash
 # Clean parallel build (2 threads per core, dynamically calculated)
-mvn clean compile -T $(($(nproc) * 2))
+./mvn_cmd clean compile -T $(($(nproc) * 2))
 
 # Parallel tests (4 threads per core for test execution)
-mvn test -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
+./mvn_cmd test -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 
 # Combined clean build with parallel tests
-mvn clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
+./mvn_cmd clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 ```
 
 **Important**: When fixing compilation errors, always skip tests first:
 ```bash
-mvn clean compile -T $(($(nproc) * 2)) -DskipTests
+./mvn_cmd clean compile -T $(($(nproc) * 2)) -DskipTests
 ```
 
 For detailed build strategies and debugging patterns, use the `maven-builder-for-foolish-language` skill.
@@ -164,6 +190,6 @@ When proposing updates, explain what has changed and why the documentation needs
 
 ## Last Updated
 
-**Date**: 2026-01-15
+**Date**: 2026-01-18
 **Updated By**: Claude Code v1.0.0 / claude-sonnet-4-5-20250929
-**Changes**: Restructured to separate Claude Code-specific content from general project information. Moved all project-specific details (architecture, UBC, FIR, testing, conventions) to AGENTS.md. Kept only Claude Code-specific features: skills, CCW setup, commit format, branch naming. Added markdown update protocol reference and multi-agent collaboration awareness.
+**Changes**: Added prominent CRITICAL warning section about Maven wrapper usage. Updated all Maven command examples to use `./mvn_cmd` instead of `mvn`. Added explanation of SessionStart hook enforcement mechanism. Ensured all build commands use the correct wrapper script for CCW compatibility.
