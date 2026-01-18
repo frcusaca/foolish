@@ -3,8 +3,57 @@
 # Custom Maven wrapper for Foolish project
 # Detects Claude Code Web (CCW) environment and applies proxy settings when needed
 
+# Get script directory for accessing project files
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Detect if running in Claude Code Web
 if [ -n "$CLAUDECODE" ]; then
+    # CCW environment - check if Java 25 and SDKMAN are properly installed
+    NEEDS_SETUP=false
+
+    # Check if SDKMAN is installed
+    if [ ! -d "$HOME/.sdkman" ]; then
+        echo "⚠️  SDKMAN not found - running CCW setup..."
+        NEEDS_SETUP=true
+    fi
+
+    # Check if Java 25 is available
+    if [ -d "$HOME/.sdkman" ]; then
+        # Source SDKMAN
+        source "$HOME/.sdkman/bin/sdkman-init.sh" 2>/dev/null || true
+
+        # Check Java version
+        JAVA_VERSION=$(java -version 2>&1 | head -1 | grep -oP '(?<=version ")[0-9]+')
+        if [ "$JAVA_VERSION" != "25" ]; then
+            echo "⚠️  Java 25 not active (found Java $JAVA_VERSION) - running CCW setup..."
+            NEEDS_SETUP=true
+        fi
+    fi
+
+    # Check if Maven proxy is running
+    if ! pgrep -f "maven-proxy.py" > /dev/null; then
+        echo "⚠️  Maven proxy not running - running CCW setup..."
+        NEEDS_SETUP=true
+    fi
+
+    # Run setup if needed
+    if [ "$NEEDS_SETUP" = true ]; then
+        echo "🔧 Running CCW setup script..."
+        if [ -f "$SCRIPT_DIR/.claude/skills/ccw-maven-setup/prep_if_ccw.sh" ]; then
+            "$SCRIPT_DIR/.claude/skills/ccw-maven-setup/prep_if_ccw.sh" || {
+                echo "⚠️  Setup script encountered errors but continuing..."
+            }
+        else
+            echo "❌ CCW setup script not found at $SCRIPT_DIR/.claude/skills/ccw-maven-setup/prep_if_ccw.sh"
+            echo "   Please run the setup manually before using mvn_cmd"
+        fi
+    fi
+
+    # Ensure SDKMAN is sourced for this session
+    if [ -d "$HOME/.sdkman" ]; then
+        source "$HOME/.sdkman/bin/sdkman-init.sh" 2>/dev/null || true
+    fi
+
     # CCW environment - use local proxy
     PROXY_HOST="127.0.0.1"
     PROXY_PORT="3128"

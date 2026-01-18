@@ -2,7 +2,8 @@
 # Prepare Maven environment for Claude Code Web (CCW)
 # Does nothing if not in CCW environment
 
-set -e
+# Don't use set -e to allow partial setup if Java installation fails
+# Don't use set -u either as SDKMAN scripts reference unset variables
 
 # Get script directory for accessing repo-vendored files
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -31,16 +32,22 @@ if ! sdk list java 2>/dev/null | grep -q "25\..*-tem.*installed"; then
     # Get the latest 25.x Temurin version
     JAVA_VERSION=$(sdk list java 2>/dev/null | grep "tem" | grep "25\." | grep -v "fx\|ea" | head -1 | awk '{print $NF}')
     if [ -n "$JAVA_VERSION" ]; then
-        sdk install java "$JAVA_VERSION"
+        sdk install java "$JAVA_VERSION" || {
+            echo "⚠️  Java 25 installation failed - will continue with proxy setup"
+            echo "   Tests requiring Java 25 compilation may fail"
+        }
     else
-        echo "⚠️  Could not find Java 25 Temurin, trying default..."
-        sdk install java 25-tem
+        echo "⚠️  Could not find Java 25 Temurin in SDKMAN repository"
+        sdk install java 25-tem || {
+            echo "⚠️  Java 25 installation failed - will continue with proxy setup"
+            echo "   Tests requiring Java 25 compilation may fail"
+        }
     fi
 else
     echo "✅ Java 25 already installed"
     # Use any installed Java 25 Temurin version
     INSTALLED_VERSION=$(sdk list java 2>/dev/null | grep "25\..*-tem.*installed" | head -1 | awk '{print $NF}')
-    sdk use java "$INSTALLED_VERSION"
+    sdk use java "$INSTALLED_VERSION" || true
 fi
 
 # Setup Maven proxy for CCW
