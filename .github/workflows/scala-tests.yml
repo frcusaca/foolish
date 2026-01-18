@@ -21,9 +21,9 @@ jobs:
           java-version: '25'
           cache: 'maven'
       - name: "Compile"
-        run: mvn clean compile test-compile
+        run: ./mvn_cmd clean compile test-compile
       - name: "🧪 Scala Unit Tests"
-        run: mvn test -Dtest=SequencerTest,UnicelluarBraneComputerTest -Dsurefire.failIfNoSpecifiedTests=false
+        run: ./mvn_cmd test -Dtest=SequencerTest,UnicelluarBraneComputerTest -Dsurefire.failIfNoSpecifiedTests=false
 
   scala-approval-tests:
     name: Scala Approval Tests
@@ -36,6 +36,6 @@ jobs:
           java-version: '25'
           cache: 'maven'
       - name: "Compile"
-        run: mvn clean compile test-compile
+        run: ./mvn_cmd clean compile test-compile
       - name: "📷 Scala Approval Tests"
-        run: mvn test -Dtest=ScUbcApprovalTest -Dsurefire.failIfNoSpecifiedTests=false
+        run: ./mvn_cmd test -Dtest=ScUbcApprovalTest -Dsurefire.failIfNoSpecifiedTests=false

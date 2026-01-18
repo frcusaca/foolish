@@ -21,7 +21,7 @@ jobs:
           java-version: '25'
           cache: 'maven'
       - name: "Compile and run Java tests"
-        run: mvn clean test -pl foolish-parser-java,foolish-core-java
+        run: ./mvn_cmd clean test -pl foolish-parser-java,foolish-core-java
 
   scala-tests:
     name: Scala Tests
@@ -34,7 +34,7 @@ jobs:
           java-version: '25'
           cache: 'maven'
       - name: "Compile and run Scala tests"
-        run: mvn clean test -pl foolish-core-scala
+        run: ./mvn_cmd clean test -pl foolish-core-scala
 
   cross-validation:
     name: Cross Validation
@@ -48,7 +48,7 @@ jobs:
           java-version: '25'
           cache: 'maven'
       - name: "Compile all modules"
-        run: mvn clean compile test-compile
+        run: ./mvn_cmd clean compile test-compile
       - name: "✅ Run cross-validation tests"
-        run: mvn test -pl foolish-crossvalidation
+        run: ./mvn_cmd test -pl foolish-crossvalidation
 
