@@ -29,8 +29,8 @@ The `mvn_cmd` script in the project root automatically handles environment-speci
 # CORRECT - Use mvn_cmd wrapper
 ./mvn_cmd clean test
 
-# WRONG - Do not call ./mvn_cmd directly
-./mvn_cmd clean test
+# WRONG - Do not call mvn directly
+mvn clean test
 ```
 
 This ensures Maven commands work correctly across all development environments without manual proxy configuration.
