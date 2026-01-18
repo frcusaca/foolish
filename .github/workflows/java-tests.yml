@@ -21,9 +21,9 @@ jobs:
           java-version: '25'
           cache: 'maven'
       - name: "Compile"
-        run: mvn clean compile test-compile
+        run: ./mvn_cmd clean compile test-compile
       - name: "🧪 Java Unit Tests"
-        run: mvn test -Dtest=**/*UnitTest -Dsurefire.failIfNoSpecifiedTests=false
+        run: ./mvn_cmd test -Dtest=**/*UnitTest -Dsurefire.failIfNoSpecifiedTests=false
 
   java-approval-tests:
     name: Java Approval Tests
@@ -36,6 +36,6 @@ jobs:
           java-version: '25'
           cache: 'maven'
       - name: "Compile"
-        run: mvn clean compile test-compile
+        run: ./mvn_cmd clean compile test-compile
       - name: "📷 Java Approval Tests"
-        run: mvn test -Dtest=**/*ApprovalTest -Dsurefire.failIfNoSpecifiedTests=false
+        run: ./mvn_cmd test -Dtest=**/*ApprovalTest -Dsurefire.failIfNoSpecifiedTests=false
