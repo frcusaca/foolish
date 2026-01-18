@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+# Custom Maven wrapper for Foolish project
+# Detects Claude Code Web (CCW) environment and applies proxy settings when needed
+
+# Detect if running in Claude Code Web
+if [ -n "$CLAUDECODE" ]; then
+    # CCW environment - use local proxy
+    PROXY_HOST="127.0.0.1"
+    PROXY_PORT="3128"
+
+    echo "Detected CCW environment - using proxy $PROXY_HOST:$PROXY_PORT"
+
+    mvn \
+        -Dhttp.proxyHost="$PROXY_HOST" \
+        -Dhttp.proxyPort="$PROXY_PORT" \
+        -Dhttps.proxyHost="$PROXY_HOST" \
+        -Dhttps.proxyPort="$PROXY_PORT" \
+        "$@"
+else
+    # Local or other environment - run Maven directly
+    mvn "$@"
+fi
