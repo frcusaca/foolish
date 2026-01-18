@@ -167,19 +167,19 @@ recipe = [/ingredient]{ingredient = ?flour + ?sugar;};  !! Blocks 'ingredient' r
 
 **Type 3: P-Brane (Plus Brane) `[+...]`** - Undetachment (selective binding)
 ```foolish
-result = [+ secret_a, secret_b]secure;  !! Bind only these two, keep others liberated
+result = [+ secret_a, secret_b]<secure>;  !! Bind only these two, keep others liberated
 ```
 
-	c1_next =$ counter1.get;  !! c1_next = 1
-
-	c2 =$ counter2.get;  !! c2 = 100
-	counter2.increment;
-	c2_next =$ counter2.get;  !! c2_next = 110
-}
+**Stay-Foolish Markers** - Control resolution timing of constantic branes
+```foolish
+f2 = <f>;        !! SF marker: reactivates liberations for this assignment
+f3 <=> f;        !! Constantic assignment (shorthand for f3 = <f>)
+g  = <<f>>;      !! SFF marker: reconstructs from AST
+gg <<=>> f;      !! SFF assignment (shorthand for gg = <<f>>)
 ```
 
 For more comprehensive documentation on detachment branes, including how detachment bounds
-globalized searches and ordination semantics, see
+globalized searches, ordination semantics, and stay-foolish markers, see
 [Names, Searches, and Bounds](NAMES_SEARCHES_N_BOUNDS.md#detachment-branes-controlling-scope-boundaries).
 
 

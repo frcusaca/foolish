@@ -193,6 +193,14 @@ evaluation stages from UNINITIALIZED through CONSTANT):
 3. **CONSTANTIC** (pronounced "cons-TAN-tic", constant in context) - FIR with all ordinates coordinated as much as possible in current context; may gain value when associated with new context
 4. **CONSTANT** - FIR with all evaluation results fully coordinated (Completion, another UBC does nothing). During coordination, a brane may stay CONSTANT or transition from CONSTANTIC to ALLOCATED if it started constantic.
 
+**State Rendering in Output:**
+
+| State | Rendering | Notes |
+|-------|-----------|-------|
+| NYE | `???` | Not yet evaluated |
+| CONSTANTIC | `?C?` | Constant in context; for constantic branes, contents may be shown |
+| CONSTANT | value | The final computed value |
+
 Because of the step-wise evaluation, the brane tree is evaluated breadth-first. The brane having
 finite size means each UBC step terminates in finite time. As long as the UBC FIR is not complete,
 each step makes progress towards completion.

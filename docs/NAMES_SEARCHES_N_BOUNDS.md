@@ -32,6 +32,8 @@ searches through detachment.
   - [Detach to Default](#detach-to-default)
   - [How Detachment Bounds Globalized Searches](#how-detachment-bounds-globalized-searches)
   - [Detachment and Ordination](#detachment-and-ordination)
+  - [Stay-Foolish Markers](#stay-foolish-markers-controlling-resolution-timing)
+  - [Alarming Liberation](#alarming-liberation-ineffective-detachment)
 - [Search Paths](#search-paths)
   - [Backward Search](#backward-search)
   - [Forward Search](#forward-search)
@@ -981,6 +983,83 @@ c = [α, β]{α+β}; !! Look ma, I respond to α- and β-blockers, I'm a real bo
 a clone of that brane is detached from its original AB and IB and recoordinated with new AB/IB from
 the referencing location. This allows previously failed searches to resolve in the new context. For
 detailed semantics, see [ECOSYSTEM.md](ECOSYSTEM.md#brane-reference-semantics-identification-ordination-and-coordination).
+
+### Stay-Foolish Markers: Controlling Resolution Timing
+
+When referencing a constantic brane, you may want to control when its liberated ordinates resolve.
+Foolish provides **stay-foolish markers** for this purpose.
+
+#### The SF Marker `<>`
+
+The **Stay-Foolish marker** `<expression>` reactivates any original liberations when assigning
+the expression, preventing immediate resolution of liberated ordinates:
+
+```foolish
+{
+	a=1; b=2; c=3; d=4;
+	f  = [a,b,c,d]{r = a+b+c+d};
+	f2 = <f>;                    !! Reactivates liberations; a,b,c,d remain free in f2
+
+	d=5;
+	r  =$ f;                     !! 10 (a,b,c,d resolve at evaluation)
+	r2 =$ f2;                    !! 11 (d=5 at evaluation time)
+}
+```
+
+#### Constantic Assignment `<=>`
+
+The **constantic assignment** operator is shorthand for wrapping the RHS in SF markers:
+
+```foolish
+{
+	f3 <=> f;    !! Equivalent to: f3 = <f>;
+}
+```
+
+#### The SFF Marker `<<>>`
+
+The **Stay-Fully-Foolish marker** `<<expression>>` reconstructs the expression from its original
+AST, creating a fresh instance with no prior coordination:
+
+```foolish
+{
+	a=1; b=2; c=3; d=4; e=5;
+	f  = [a,b,c,d]{r = a+b+c+d+e};  !! e resolves to 5 during assignment
+	g  = <<f>>;                     !! Reconstructs from AST; e is also unresolved
+	g2 = [a,b,c,d]{r = a+b+c+d+e};  !! Equivalent to g
+}
+```
+
+#### SFF Assignment `<<=>>`
+
+The **SFF assignment** operator is shorthand for wrapping the RHS in SFF markers:
+
+```foolish
+{
+	gg <<=>> f;   !! Equivalent to: gg = <<f>>;
+}
+```
+
+### Alarming Liberation: Ineffective Detachment
+
+Attempting to liberate an identifier that has already been coordinated triggers an **alarming**
+condition. The liberation has no effect, but the system warns about the ineffective operation:
+
+```foolish
+{
+	a = 1;
+	f = [b]{r = a + b};   !! 'a' coordinated to 1, 'b' liberated
+	f2 = [a=3] f;         !! ALARMING: 'a' already coordinated in f
+	                      !! The [a=3] has no effect on f's already-coordinated 'a'
+
+	b = 2;
+	x =$ f;               !! x = 3 (a=1 from original, b=2 from scope)
+	y =$ f2;              !! y = 3 (same result; alarming liberation was ineffective)
+}
+```
+
+This behavior parallels how function parameters work in other languages—you cannot change a
+captured variable's binding after the function is defined.
 
 ### Liberation Precedence and Associativity
 

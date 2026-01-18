@@ -70,24 +70,24 @@ For details on why CCW needs a proxy and how the setup works, see the "Claude Co
 
 Basic build and test:
 ```bash
-mvn clean generate-sources compile test
+mvn_cmd clean generate-sources compile test
 ```
 
 Optimized parallel builds:
 ```bash
 # Clean parallel build (2 threads per core, dynamically calculated)
-mvn clean compile -T $(($(nproc) * 2))
+mvn_cmd clean compile -T $(($(nproc) * 2))
 
 # Parallel tests (4 threads per core for test execution)
-mvn test -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
+mvn_cmd test -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 
 # Combined clean build with parallel tests
-mvn clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
+mvn_cmd clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 ```
 
 **Important**: When fixing compilation errors, always skip tests first:
 ```bash
-mvn clean compile -T $(($(nproc) * 2)) -DskipTests
+mvn_cmd clean compile -T $(($(nproc) * 2)) -DskipTests
 ```
 
 For detailed build strategies and debugging patterns, use the `maven-builder-for-foolish-language` skill.
