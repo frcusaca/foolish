@@ -11,11 +11,17 @@ if [ -n "$CLAUDECODE" ]; then
 
     echo "Detected CCW environment - using proxy $PROXY_HOST:$PROXY_PORT"
 
+    # Set MAVEN_OPTS to disable SSL verification at JVM level
+    export MAVEN_OPTS="${MAVEN_OPTS} -Djavax.net.ssl.trustStore=/etc/ssl/certs/java/cacerts -Djavax.net.ssl.trustStorePassword=changeit"
+
     mvn \
         -Dhttp.proxyHost="$PROXY_HOST" \
         -Dhttp.proxyPort="$PROXY_PORT" \
         -Dhttps.proxyHost="$PROXY_HOST" \
         -Dhttps.proxyPort="$PROXY_PORT" \
+        -Dmaven.wagon.http.ssl.insecure=true \
+        -Dmaven.wagon.http.ssl.allowall=true \
+        -Dmaven.wagon.http.ssl.ignore.validity.dates=true \
         "$@"
 else
     # Local or other environment - run Maven directly
