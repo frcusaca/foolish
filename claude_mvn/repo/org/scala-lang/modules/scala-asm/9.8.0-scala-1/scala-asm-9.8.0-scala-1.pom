@@ -1,0 +1,36 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>org.scala-lang.modules</groupId>
+    <artifactId>scala-asm</artifactId>
+    <packaging>jar</packaging>
+    <description>scala-asm</description>
+    <url>https://github.com/scala/scala-asm</url>
+    <version>9.8.0-scala-1</version>
+    <licenses>
+        <license>
+            <name>BSD 3-clause</name>
+            <url>http://opensource.org/licenses/BSD-3-Clause</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+    <name>scala-asm</name>
+    <organization>
+        <name>org.scala-lang.modules</name>
+        <url>https://github.com/scala/scala-asm</url>
+    </organization>
+    <scm>
+        <url>https://github.com/scala/scala-asm</url>
+        <connection>scm:git:git@github.com:scala/scala-asm.git</connection>
+    </scm>
+    <developers>
+        <developer>
+            <id>lamp</id>
+            <name>LAMP/EPFL</name>
+        </developer>
+        <developer>
+            <id>Akka</id>
+            <name>Akka</name>
+        </developer>
+    </developers>
+</project>

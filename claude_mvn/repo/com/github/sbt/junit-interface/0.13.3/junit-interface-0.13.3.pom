@@ -1,0 +1,53 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.github.sbt</groupId>
+    <artifactId>junit-interface</artifactId>
+    <packaging>jar</packaging>
+    <description>An implementation of sbt's test interface for JUnit 4</description>
+    <url>http://github.com/sbt/junit-interface/</url>
+    <version>0.13.3</version>
+    <licenses>
+        <license>
+            <name>Two-clause BSD-style license</name>
+            <url>http://github.com/sbt/junit-interface/blob/master/LICENSE.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+    <name>junit-interface</name>
+    <inceptionYear>2009</inceptionYear>
+    <organization>
+        <name>com.github.sbt</name>
+        <url>http://github.com/sbt/junit-interface/</url>
+    </organization>
+    <scm>
+        <url>https://github.com/sbt/junit-interface</url>
+        <connection>scm:git@github.com:sbt/junit-interface.git</connection>
+    </scm>
+    <developers>
+        <developer>
+            <id>szeiger</id>
+            <name>Stefan Zeiger</name>
+            <url>http://szeiger.de</url>
+            <email>szeiger@novocode.com</email>
+        </developer>
+        <developer>
+            <id>eed3si9n</id>
+            <name>Eugene Yokota</name>
+            <url>https://eed3si9n.com/</url>
+            <email>@eed3si9n</email>
+        </developer>
+    </developers>
+    <dependencies>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.13.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.scala-sbt</groupId>
+            <artifactId>test-interface</artifactId>
+            <version>1.0</version>
+        </dependency>
+    </dependencies>
+</project>

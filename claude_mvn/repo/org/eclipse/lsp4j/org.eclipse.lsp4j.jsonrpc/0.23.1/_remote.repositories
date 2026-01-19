@@ -1,0 +1,4 @@
+#NOTE: This is a Maven Resolver internal implementation file, its format can be changed without prior notice.
+#Tue Dec 02 10:32:47 PST 2025
+org.eclipse.lsp4j.jsonrpc-0.23.1.jar>central=
+org.eclipse.lsp4j.jsonrpc-0.23.1.pom>central=

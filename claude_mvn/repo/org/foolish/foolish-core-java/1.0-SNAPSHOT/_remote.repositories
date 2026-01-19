@@ -1,0 +1,5 @@
+#NOTE: This is a Maven Resolver internal implementation file, its format can be changed without prior notice.
+#Wed Dec 17 19:32:00 PST 2025
+foolish-core-java-1.0-SNAPSHOT-tests.jar>=
+foolish-core-java-1.0-SNAPSHOT.jar>=
+foolish-core-java-1.0-SNAPSHOT.pom>=

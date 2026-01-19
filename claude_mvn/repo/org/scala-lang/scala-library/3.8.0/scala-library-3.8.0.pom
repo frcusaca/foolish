@@ -1,0 +1,52 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>org.scala-lang</groupId>
+    <artifactId>scala-library</artifactId>
+    <packaging>jar</packaging>
+    <description>scala-library-bootstrapped</description>
+    <url>https://scala-lang.org/</url>
+    <version>3.8.0</version>
+    <licenses>
+        <license>
+            <name>Apache-2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+    <name>scala-library-bootstrapped</name>
+    <organization>
+        <name>LAMP/EPFL</name>
+        <url>http://lamp.epfl.ch</url>
+    </organization>
+    <scm>
+        <url>https://github.com/scala/scala3</url>
+        <connection>scm:git:git@github.com:scala/scala3.git</connection>
+    </scm>
+    <developers>
+        <developer>
+            <id>scala</id>
+            <name>The Scala Team</name>
+            <url>https://scala-lang.org/</url>
+            <email>security@scala-lang.org</email>
+        </developer>
+    </developers>
+    <properties>
+        <info.scala.versionLine>Next</info.scala.versionLine>
+        <info.versionScheme>always</info.versionScheme>
+    </properties>
+    <repositories>
+        <repository>
+            <id>my-maven-proxy-releases</id>
+            <name>my-maven-proxy-releases</name>
+            <url>https://scala-webapps.epfl.ch/artifactory/central/</url>
+            <layout>default</layout>
+        </repository>
+        <repository>
+            <id>Artifactory</id>
+            <name>Artifactory</name>
+            <url>https://repo.scala-lang.org/artifactory/fat-jar/</url>
+            <layout>default</layout>
+        </repository>
+    </repositories>
+</project>
