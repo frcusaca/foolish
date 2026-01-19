@@ -77,6 +77,46 @@ This setup implements a **two-part solution** from [GitHub Issue #13372](https:/
 1. **Proxy Routing**: Local Python proxy handles JWT authentication, Maven uses localhost:3128
 2. **TLS Trust**: CA certificate extraction and Java truststore configuration to prevent PKIX errors
 
+### Known CCW Limitations (Updated: 2026-01-19)
+
+**What Works:**
+- ✅ Java 25 installation and environment setup
+- ✅ Maven proxy configuration (Python proxy + settings.xml)
+- ✅ Parser module compilation (ANTLR grammar processing)
+- ✅ Basic dependency downloads (100+ artifacts successfully downloaded)
+
+**What's Blocked:**
+- ❌ **PKIX Certificate Errors**: Some HTTPS Maven downloads fail with "unable to find valid certification path to requested target"
+- ❌ **Root Cause**: CCW's TLS inspection proxy uses "Anthropic sandbox-egress-production TLS Inspection CA"
+- ❌ **Certificate Catch-22**: Cannot extract the CA certificate programmatically because the SSL connection itself requires the trust we're trying to establish
+
+**Attempted Solutions:**
+- Tried automatic CA certificate extraction via `openssl s_client` - blocked by TLS inspection
+- Tried Maven SSL flags (`-Dmaven.wagon.http.ssl.insecure=true`) - ineffective at Java HTTP client level
+- Implemented truststore import logic - ready to use but needs the CA certificate file
+
+**Workarounds:**
+
+1. **Work Locally** (Recommended):
+   - Full Maven functionality with Java 25
+   - No proxy or certificate issues
+   - All tests and builds work normally
+
+2. **Manual CA Certificate** (If Available):
+   - Place the Anthropic CA cert at: `support/shared/claude/skills/ccw-maven-setup/ccw-proxy-ca.pem`
+   - SessionStart hook will automatically import it into Java truststore
+   - Maven builds should work after restart
+
+3. **Partial Functionality** (Current State):
+   - Parser compiles successfully
+   - Some dependencies download via HTTP
+   - HTTPS-dependent artifacts may fail
+
+**Request to Anthropic:**
+- Add Maven Central (`repo.maven.apache.org`, `*.maven.apache.org`) to NO_PROXY environment variable
+- Or provide the TLS inspection CA certificate for manual trust configuration
+- Similar to the fix applied for Rust's crates.io (Issue #10307)
+
 **Manual Setup (optional):**
 
 If you need to run setup manually for any reason:
@@ -186,4 +226,4 @@ When proposing updates, explain what has changed and why the documentation needs
 
 **Date**: 2026-01-19
 **Updated By**: Claude Code v2.1.1 / claude-sonnet-4-5-20250929
-**Changes**: Improved CCW Maven proxy setup based on GitHub Issue #13372 and LinkedIn article. Changed from async to synchronous mode to prevent race conditions. Added HTTP proxy configuration (was HTTPS-only), proxy readiness verification with netcat, and better error logging. Updated documentation to reference the technical articles this implementation is based on. All Maven commands use standard `mvn` as proxy configuration is handled automatically by SessionStart hook.
+**Changes**: Added "Known CCW Limitations" section documenting PKIX certificate errors that prevent full Maven functionality in CCW. Detailed what works (Java 25, proxy routing, parser compilation), what's blocked (HTTPS downloads due to TLS inspection CA), attempted solutions, and workarounds. Improved CCW Maven proxy setup based on GitHub Issue #13372 and LinkedIn article with synchronous mode, HTTP+HTTPS proxy configuration, readiness verification, and CA certificate import logic. All Maven commands use standard `mvn` as proxy configuration is handled automatically by SessionStart hook.
