@@ -70,9 +70,8 @@ Additional implementation notes are in the docs folder.
 **AI coding assistants** (Claude Code, GitHub Copilot, Cursor, and others) should consult
 **[AGENTS.md](AGENTS.md)** for comprehensive development guidance including:
 
-- Environment detection (Claude Code Web vs local development)
+- Environment detection
 - Build requirements (Java 25, Scala 3.3.7, ANTLR 4.13.2, Maven)
-- Setup instructions for cloud environments (CCW) and local development
 - Build commands with parallel execution strategies
 - Project structure and multi-module Maven architecture
 - The Unicellular Brane Computer (UBC) implementation details
