@@ -45,24 +45,28 @@ See `.claude/skills/maven-builder-for-foolish-language/` for full documentation.
 
 **This project requires Java 25.** Local development assumes Java 25 is installed. Claude Code Web provides Java 21 by default, so setup is required.
 
-**IMPORTANT:** Before running any Maven commands in CCW, run:
+**Automatic Setup via SessionStart Hook:**
 
-```bash
-/skill ccw-maven-setup
-```
+This project is configured with a SessionStart hook that **automatically runs CCW setup in async mode** when your session starts. The setup runs in the background while your session initializes, so you can start working immediately.
 
-This skill automatically:
+**What happens automatically:**
 1. Detects if running in CCW (checks `CLAUDECODE` environment variable)
-2. If in CCW:
-   - use the script in the skill's directory(ccw-maven-setup/prep_if_ccw.sh right next to ccw-maven-setup/skill.md)
-     - Installs SDKMAN (if not present)
-     - Installs latest stable Java 25 (Temurin) via SDKMAN
-     - Starts a local Maven authentication proxy at `127.0.0.1:3128`
+2. If in CCW (runs in background):
+   - Installs SDKMAN (if not present)
+   - Installs latest stable Java 25 (Temurin) via SDKMAN
+   - Starts a local Maven authentication proxy at `127.0.0.1:3128`
    - Configures `~/.m2/settings.xml` with proxy settings
 3. If not in CCW (local environment):
    - Does nothing - assumes Java 25 is already installed
 
-**The skill is idempotent** - safe to run multiple times.
+**The setup is async and idempotent** - your session starts immediately while setup runs in the background. Subsequent sessions are faster due to caching.
+
+**Manual Setup (optional):**
+
+If you need to run setup manually for any reason:
+```bash
+/skill ccw-maven-setup
+```
 
 For details on why CCW needs a proxy and how the setup works, see the "Claude Code Web Setup" section in `AGENTS.md`.
 
@@ -70,24 +74,24 @@ For details on why CCW needs a proxy and how the setup works, see the "Claude Co
 
 Basic build and test:
 ```bash
-mvn_cmd clean generate-sources compile test
+mvn clean generate-sources compile test
 ```
 
 Optimized parallel builds:
 ```bash
 # Clean parallel build (2 threads per core, dynamically calculated)
-mvn_cmd clean compile -T $(($(nproc) * 2))
+mvn clean compile -T $(($(nproc) * 2))
 
 # Parallel tests (4 threads per core for test execution)
-mvn_cmd test -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
+mvn test -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 
 # Combined clean build with parallel tests
-mvn_cmd clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
+mvn clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 ```
 
 **Important**: When fixing compilation errors, always skip tests first:
 ```bash
-mvn_cmd clean compile -T $(($(nproc) * 2)) -DskipTests
+mvn clean compile -T $(($(nproc) * 2)) -DskipTests
 ```
 
 For detailed build strategies and debugging patterns, use the `maven-builder-for-foolish-language` skill.
@@ -164,6 +168,6 @@ When proposing updates, explain what has changed and why the documentation needs
 
 ## Last Updated
 
-**Date**: 2026-01-15
-**Updated By**: Claude Code v1.0.0 / claude-sonnet-4-5-20250929
-**Changes**: Restructured to separate Claude Code-specific content from general project information. Moved all project-specific details (architecture, UBC, FIR, testing, conventions) to AGENTS.md. Kept only Claude Code-specific features: skills, CCW setup, commit format, branch naming. Added markdown update protocol reference and multi-agent collaboration awareness.
+**Date**: 2026-01-19
+**Updated By**: Claude Code v2.1.1 / claude-sonnet-4-5-20250929
+**Changes**: Removed `mvn_cmd` wrapper script references and reverted all Maven commands to use `mvn` directly. Updated CCW setup section to document automatic SessionStart hook with async mode. Added details about background setup process and manual fallback option. All Maven commands now use standard `mvn` as proxy configuration is handled automatically by the SessionStart hook.

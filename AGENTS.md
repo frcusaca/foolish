@@ -15,26 +15,6 @@ Foolish is a revolutionary programming language with parallel Java and Scala imp
 - **Build Tool**: Maven (multi-module project)
 - **ANTLR**: 4.13.2 (for grammar generation)
 
-## Maven Wrapper Script (CRITICAL)
-
-**ALL AI AGENTS MUST USE `./mvn_cmd` INSTEAD OF `mvn` DIRECTLY.**
-
-The `mvn_cmd` script in the project root automatically handles environment-specific Maven configuration:
-
-- **In Claude Code Web (CCW)**: Automatically applies proxy settings (`127.0.0.1:3128`) required for Maven to work
-- **In Local/Other Environments**: Runs Maven directly without proxy
-
-**Usage:**
-```bash
-# CORRECT - Use mvn_cmd wrapper
-./mvn_cmd clean test
-
-# WRONG - Do not call mvn directly
-mvn clean test
-```
-
-This ensures Maven commands work correctly across all development environments without manual proxy configuration.
-
 ## Environment Detection
 
 The project supports two primary development environments:
@@ -43,7 +23,7 @@ The project supports two primary development environments:
 - Standard development environment on developer's machine
 - Assumes Java 25 is already installed
 - No proxy configuration needed
-- Maven commands work directly: `./mvn_cmd clean test`
+- Maven commands work directly: `mvn clean test`
 
 ### Claude Code Web (CCW)
 - Cloud-based development environment provided by Claude Code
@@ -104,27 +84,27 @@ A local Python proxy runs on `localhost:3128` that:
 
 ```bash
 # Full clean build with tests
-./mvn_cmd clean generate-sources compile test
+mvn clean generate-sources compile test
 
 # Parallel build (recommended)
-./mvn_cmd clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
+mvn clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 ```
 
 ### Compilation Only
 
 ```bash
 # When fixing compilation errors, skip tests
-./mvn_cmd clean compile -T $(($(nproc) * 2)) -DskipTests
+mvn clean compile -T $(($(nproc) * 2)) -DskipTests
 ```
 
 ### Running Tests
 
 ```bash
 # Run all tests with parallel execution
-./mvn_cmd test -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
+mvn test -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 
 # Run specific test
-./mvn_cmd test -Dtest=ClassName#methodName
+mvn test -Dtest=ClassName#methodName
 ```
 
 ### Build Skills (Claude Code)
@@ -344,26 +324,24 @@ GitHub Copilot / gpt-4
 
 **Claude Code:**
 ```bash
-# 1. Run CCW setup skill
-/skill ccw-maven-setup
-
-# 2. Verify Java version
+# CCW setup runs automatically via SessionStart hook
+# Just verify Java version once your session starts
 java -version  # Should show Java 25
 
-# 3. Run build
-./mvn_cmd clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
+# Run build
+mvn clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 ```
 
 **Other AI agents:**
 ```bash
-# 1. Run setup script directly
+# 1. Run setup script directly (if not using SessionStart hook)
 .claude/skills/ccw-maven-setup/prep_if_ccw.sh
 
 # 2. Verify Java version
 java -version  # Should show Java 25
 
 # 3. Run build
-./mvn_cmd clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
+mvn clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 ```
 
 ### Adding a New Approval Test
@@ -382,10 +360,10 @@ java -version  # Should show Java 25
 ### Debugging Compilation Errors
 ```bash
 # Always skip tests when fixing compilation
-./mvn_cmd clean compile -T $(($(nproc) * 2)) -DskipTests
+mvn clean compile -T $(($(nproc) * 2)) -DskipTests
 
 # After compilation succeeds, run tests
-./mvn_cmd test -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
+mvn test -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 ```
 
 ## Important Files
@@ -419,11 +397,11 @@ fi
 
 **Full Workflow (CCW - Claude Code):**
 ```bash
-# Setup (once per session)
-/skill ccw-maven-setup
+# Setup runs automatically via SessionStart hook
+# Just start developing once your session is ready
 
 # Development cycle
-./mvn_cmd clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
+mvn clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 
 # Commit and push
 git add .
@@ -435,11 +413,11 @@ git push -u origin claude/your-branch-name
 
 **Full Workflow (CCW - Other AI agents):**
 ```bash
-# Setup (once per session)
+# Setup (once per session, if not using SessionStart hook)
 .claude/skills/ccw-maven-setup/prep_if_ccw.sh
 
 # Development cycle
-./mvn_cmd clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
+mvn clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 
 # Commit and push
 git add .
@@ -452,7 +430,7 @@ git push -u origin <agent-prefix>/your-branch-name
 **Full Workflow (Local - All agents):**
 ```bash
 # No setup needed - just develop
-./mvn_cmd clean test
+mvn clean test
 
 # Commit and push
 git add .
@@ -500,6 +478,6 @@ When proposing updates, explain what has changed and why the documentation needs
 
 ## Last Updated
 
-**Date**: 2026-01-18
-**Updated By**: Claude Code v1.0.0 / claude-sonnet-4-5-20250929
-**Changes**: Added Maven wrapper script section instructing all AI agents to use `./mvn_cmd` instead of calling `mvn` directly. Updated all Maven command examples throughout the document to use the wrapper script. This ensures consistent proxy handling across CCW and local environments.
+**Date**: 2026-01-19
+**Updated By**: Claude Code v2.1.1 / claude-sonnet-4-5-20250929
+**Changes**: Removed Maven wrapper script (`mvn_cmd`) section and reverted all Maven commands to use `mvn` directly. Added SessionStart hook configuration that automatically runs CCW setup in async mode, eliminating the need for manual setup or wrapper scripts. Updated CCW workflow to reflect automatic setup via SessionStart hook.

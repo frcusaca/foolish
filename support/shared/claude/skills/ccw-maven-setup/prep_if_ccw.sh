@@ -13,7 +13,11 @@ if [ -z "$CLAUDECODE" ]; then
     exit 0
 fi
 
+# Enable async mode - session starts immediately while this runs in background
+echo '{"async": true, "asyncTimeout": 300000}'
+
 echo "🔧 Claude Code Web detected - setting up Java 25 and Maven proxy..."
+echo "⏱️  This will run in the background while your session starts..."
 
 # Install SDKMAN if needed
 if [ ! -d "$HOME/.sdkman" ]; then
@@ -26,12 +30,16 @@ source "$HOME/.sdkman/bin/sdkman-init.sh" || source "$SCRIPT_DIR/sdkman-init.sh"
 
 
 # Install Java 25 if needed (latest stable Temurin)
+echo "🔍 Checking for Java 25..."
 if ! sdk list java 2>/dev/null | grep -q "25\..*-tem.*installed"; then
     echo "☕ Installing latest stable Java 25 (Temurin)..."
+    echo "   (This may take 30-60 seconds on first run)"
     # Get the latest 25.x Temurin version
     JAVA_VERSION=$(sdk list java 2>/dev/null | grep "tem" | grep "25\." | grep -v "fx\|ea" | head -1 | awk '{print $NF}')
     if [ -n "$JAVA_VERSION" ]; then
+        echo "   Installing Java $JAVA_VERSION..."
         sdk install java "$JAVA_VERSION"
+        echo "   ✅ Java $JAVA_VERSION installed successfully"
     else
         echo "⚠️  Could not find Java 25 Temurin, trying default..."
         sdk install java 25-tem
@@ -40,6 +48,7 @@ else
     echo "✅ Java 25 already installed"
     # Use any installed Java 25 Temurin version
     INSTALLED_VERSION=$(sdk list java 2>/dev/null | grep "25\..*-tem.*installed" | head -1 | awk '{print $NF}')
+    echo "   Using Java $INSTALLED_VERSION"
     sdk use java "$INSTALLED_VERSION"
 fi
 
@@ -139,4 +148,12 @@ echo "  ✅ Maven settings.xml configured"
 
 echo "✨ CCW setup complete!"
 echo ""
-java -version
+echo "📊 Environment status:"
+echo "   Java version:"
+java -version 2>&1 | sed 's/^/   /'
+echo ""
+echo "   Maven proxy: 127.0.0.1:3128"
+echo "   Maven settings: $HOME/.m2/settings.xml"
+echo ""
+echo "✅ Your session is ready for Maven builds!"
+echo "   You can now run: mvn clean test"
