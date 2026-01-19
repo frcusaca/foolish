@@ -53,6 +53,18 @@ else
     sdk use java "$INSTALLED_VERSION"
 fi
 
+# Persist Java 25 environment for the session
+JAVA_HOME="$HOME/.sdkman/candidates/java/current"
+export JAVA_HOME
+export PATH="$JAVA_HOME/bin:$PATH"
+
+# If CLAUDE_ENV_FILE is available, persist for the entire session
+if [ -n "$CLAUDE_ENV_FILE" ]; then
+    echo "export JAVA_HOME=\"$JAVA_HOME\"" >> "$CLAUDE_ENV_FILE"
+    echo "export PATH=\"\$JAVA_HOME/bin:\$PATH\"" >> "$CLAUDE_ENV_FILE"
+    echo "  ✅ Java 25 environment persisted to session"
+fi
+
 # Setup Maven proxy for CCW
 PROXY_URL="${HTTPS_PROXY:-$https_proxy}"
 if [ -z "$PROXY_URL" ]; then
