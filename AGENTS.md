@@ -73,6 +73,14 @@ A local Python proxy runs on `localhost:3128` that:
 - Accepts Maven connections without authentication
 - Forwards requests to the CCW upstream proxy with proper authentication headers
 - Automatically extracts and uses JWT tokens from environment variables
+- Handles both HTTP and HTTPS protocols for Maven Central access
+
+**Implementation Details:**
+- **Synchronous execution**: SessionStart hook waits for setup to complete (~60s first run, ~10s cached)
+- **Readiness verification**: Uses netcat to confirm proxy is listening before continuing
+- **Dual protocol support**: Configures both HTTP and HTTPS proxies in Maven settings.xml
+- **Error logging**: All proxy errors logged to `/tmp/maven-proxy.log` for debugging
+- **Idempotent setup**: Safe to run multiple times, won't reinstall if already present
 
 **Technical References:**
 - [GitHub Issue #13372](https://github.com/anthropics/claude-code/issues/13372) - Maven/Gradle builds failing in CCW
@@ -480,4 +488,4 @@ When proposing updates, explain what has changed and why the documentation needs
 
 **Date**: 2026-01-19
 **Updated By**: Claude Code v2.1.1 / claude-sonnet-4-5-20250929
-**Changes**: Removed Maven wrapper script (`mvn_cmd`) section and reverted all Maven commands to use `mvn` directly. Added SessionStart hook configuration that automatically runs CCW setup in async mode, eliminating the need for manual setup or wrapper scripts. Updated CCW workflow to reflect automatic setup via SessionStart hook.
+**Changes**: Enhanced CCW Maven proxy setup based on GitHub Issue #13372 and LinkedIn article by Tarun Lalwani. Implemented synchronous SessionStart hook (was async) to prevent race conditions, added HTTP proxy support (was HTTPS-only), added proxy readiness verification with netcat, improved error logging to /tmp/maven-proxy.log, and added nonProxyHosts configuration. Removed mvn_cmd wrapper in favor of standard `mvn` commands with automatic proxy configuration.

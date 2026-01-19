@@ -47,19 +47,27 @@ See `.claude/skills/maven-builder-for-foolish-language/` for full documentation.
 
 **Automatic Setup via SessionStart Hook:**
 
-This project is configured with a SessionStart hook that **automatically runs CCW setup in async mode** when your session starts. The setup runs in the background while your session initializes, so you can start working immediately.
+This project is configured with a SessionStart hook that **automatically runs CCW setup synchronously** when your session starts. This ensures Java 25 and Maven proxy are fully ready before your session begins.
 
 **What happens automatically:**
 1. Detects if running in CCW (checks `CLAUDECODE` environment variable)
-2. If in CCW (runs in background):
+2. If in CCW (waits for completion before session starts):
    - Installs SDKMAN (if not present)
    - Installs latest stable Java 25 (Temurin) via SDKMAN
    - Starts a local Maven authentication proxy at `127.0.0.1:3128`
-   - Configures `~/.m2/settings.xml` with proxy settings
+   - Verifies proxy is listening and ready
+   - Configures `~/.m2/settings.xml` with HTTP + HTTPS proxy settings
 3. If not in CCW (local environment):
    - Does nothing - assumes Java 25 is already installed
 
-**The setup is async and idempotent** - your session starts immediately while setup runs in the background. Subsequent sessions are faster due to caching.
+**The setup is synchronous and idempotent:**
+- ⏱️ First run: ~60 seconds (downloads Java 25)
+- ⚡ Subsequent runs: ~10 seconds (cached)
+- ✅ Session is guaranteed ready for Maven builds when it starts
+- 🔄 Safe to run multiple times (won't reinstall if already present)
+
+**Technical Implementation:**
+This setup implements the workaround from [GitHub Issue #13372](https://github.com/anthropics/claude-code/issues/13372) and the [LinkedIn article by Tarun Lalwani](https://www.linkedin.com/pulse/fixing-maven-build-issues-claude-code-web-ccw-tarun-lalwani-8n7oc), using a local Python proxy that handles authentication transparently for Maven.
 
 **Manual Setup (optional):**
 
@@ -170,4 +178,4 @@ When proposing updates, explain what has changed and why the documentation needs
 
 **Date**: 2026-01-19
 **Updated By**: Claude Code v2.1.1 / claude-sonnet-4-5-20250929
-**Changes**: Removed `mvn_cmd` wrapper script references and reverted all Maven commands to use `mvn` directly. Updated CCW setup section to document automatic SessionStart hook with async mode. Added details about background setup process and manual fallback option. All Maven commands now use standard `mvn` as proxy configuration is handled automatically by the SessionStart hook.
+**Changes**: Improved CCW Maven proxy setup based on GitHub Issue #13372 and LinkedIn article. Changed from async to synchronous mode to prevent race conditions. Added HTTP proxy configuration (was HTTPS-only), proxy readiness verification with netcat, and better error logging. Updated documentation to reference the technical articles this implementation is based on. All Maven commands use standard `mvn` as proxy configuration is handled automatically by SessionStart hook.

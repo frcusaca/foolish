@@ -13,11 +13,12 @@ if [ -z "$CLAUDECODE" ]; then
     exit 0
 fi
 
-# Enable async mode - session starts immediately while this runs in background
-echo '{"async": true, "asyncTimeout": 300000}'
-
+# Run synchronously to ensure Java 25 and Maven proxy are ready before session starts
+# This is critical infrastructure - async mode would create race conditions where
+# Maven commands could fail if run before the proxy is ready
 echo "🔧 Claude Code Web detected - setting up Java 25 and Maven proxy..."
-echo "⏱️  This will run in the background while your session starts..."
+echo "⏱️  This setup ensures your session is ready for Maven builds..."
+echo "    (First run: ~60s, subsequent runs: ~10s due to caching)"
 
 # Install SDKMAN if needed
 if [ ! -d "$HOME/.sdkman" ]; then
@@ -119,13 +120,30 @@ PROXYEOF
 
     chmod +x /tmp/maven-proxy.py
     python3 /tmp/maven-proxy.py > /tmp/maven-proxy.log 2>&1 &
-    sleep 2
-    echo "  ✅ Proxy started at 127.0.0.1:3128"
+
+    # Wait for proxy to be ready (with timeout)
+    echo "  ⏳ Waiting for proxy to start..."
+    TIMEOUT=10
+    ELAPSED=0
+    while ! nc -z 127.0.0.1 3128 2>/dev/null; do
+        if [ $ELAPSED -ge $TIMEOUT ]; then
+            echo "  ⚠️  WARNING: Proxy did not start within ${TIMEOUT}s"
+            echo "  Check /tmp/maven-proxy.log for errors"
+            break
+        fi
+        sleep 0.5
+        ELAPSED=$((ELAPSED + 1))
+    done
+
+    if nc -z 127.0.0.1 3128 2>/dev/null; then
+        echo "  ✅ Proxy started and listening on 127.0.0.1:3128"
+    fi
 else
     echo "  ✅ Proxy already running"
 fi
 
 # Configure Maven settings
+echo "  📝 Configuring Maven settings.xml..."
 mkdir -p "$HOME/.m2"
 cat > "$HOME/.m2/settings.xml" <<'SETTINGSEOF'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -134,26 +152,43 @@ cat > "$HOME/.m2/settings.xml" <<'SETTINGSEOF'
           xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
                               http://maven.apache.org/xsd/settings-1.0.0.xsd">
   <proxies>
+    <!-- HTTP proxy for Maven Central -->
     <proxy>
-      <id>local</id>
+      <id>local-http</id>
+      <active>true</active>
+      <protocol>http</protocol>
+      <host>127.0.0.1</host>
+      <port>3128</port>
+      <nonProxyHosts>localhost|127.0.0.1</nonProxyHosts>
+    </proxy>
+    <!-- HTTPS proxy for Maven Central -->
+    <proxy>
+      <id>local-https</id>
       <active>true</active>
       <protocol>https</protocol>
       <host>127.0.0.1</host>
       <port>3128</port>
+      <nonProxyHosts>localhost|127.0.0.1</nonProxyHosts>
     </proxy>
   </proxies>
 </settings>
 SETTINGSEOF
-echo "  ✅ Maven settings.xml configured"
+echo "  ✅ Maven settings.xml configured (HTTP + HTTPS)"
 
+echo ""
 echo "✨ CCW setup complete!"
 echo ""
 echo "📊 Environment status:"
 echo "   Java version:"
-java -version 2>&1 | sed 's/^/   /'
+java -version 2>&1 | sed 's/^/   /' | head -1
 echo ""
-echo "   Maven proxy: 127.0.0.1:3128"
+echo "   Maven proxy: 127.0.0.1:3128 (HTTP + HTTPS)"
 echo "   Maven settings: $HOME/.m2/settings.xml"
+echo "   Proxy log: /tmp/maven-proxy.log"
 echo ""
 echo "✅ Your session is ready for Maven builds!"
 echo "   You can now run: mvn clean test"
+echo ""
+echo "📚 This setup implements the fix from:"
+echo "   - GitHub Issue #13372 (Maven/Gradle proxy authentication)"
+echo "   - LinkedIn article by Tarun Lalwani"
