@@ -62,13 +62,6 @@ public abstract class FiroeWithBraneMind extends FIR {
         enqueueFirs(ofExpr(tasks));
     }
 
-
-    @Override
-    public boolean isAbstract() {
-        return java.util.stream.Stream.concat(braneMind.stream(), braneMemory.stream())
-                .anyMatch(FIR::isAbstract);
-    }
-
     /**
      * Initialize this FIR by setting up its state and enqueuing sub-FIRs.
      * This method should be called once during the first step().
@@ -96,15 +89,6 @@ public abstract class FiroeWithBraneMind extends FIR {
     protected void enqueueExprs(AST.Expr... exprs) {
         for (AST.Expr expr : exprs)
             enqueueFirs(FIR.createFiroeFromExpr(expr));
-    }
-
-    /**
-     * A FiroeWithBraneMind is NYE (Not Yet Evaluated) if its Nyes state is not CONSTANT.
-     * Derived classes should override this method and call super.isNye() as needed.
-     */
-    @Override
-    public boolean isNye() {
-        return !atConstant() && !atConstantic();
     }
 
     /**
@@ -180,7 +164,7 @@ public abstract class FiroeWithBraneMind extends FIR {
                     //TODO: Handle this exception Foolishly
                 }
             }
-            case CONSTANT, CONSTANTIC -> {
+            case CONSTANTIC, CONSTANT -> {
                 // Already evaluated, nothing to do
             }
         }
@@ -237,7 +221,7 @@ public abstract class FiroeWithBraneMind extends FIR {
         // Let's skip branes and the sub expressions that has already reached desired state.
         while (isBrane(current) || (current.getNyes().ordinal() >= targetState.ordinal())) {
             // Re-enqueue brane without stepping - keep its place in line
-            if (seen++ >= braneMind.size()) {
+            if (seen++ > braneMind.size()) {
                 return true;
             }
             braneMind.addLast(braneMind.removeFirst());

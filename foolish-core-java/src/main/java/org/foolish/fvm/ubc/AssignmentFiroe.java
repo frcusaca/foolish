@@ -35,7 +35,7 @@ public class AssignmentFiroe extends FiroeWithBraneMind {
     @Override
     public void step() {
         if (result != null) {
-            // Already computed
+            // Already computed (non-null result)
             return;
         }
 
@@ -53,72 +53,71 @@ public class AssignmentFiroe extends FiroeWithBraneMind {
         super.step();
 
         // Check if we can get the final result
-        if (super.isNye()) {
+        if (isNye()) {
             return;
         }
 
-        // Expression is fully evaluated, store the result
+        // Expression is fully evaluated (or stuck at Constantic), store the result
         if (!braneMemory.isEmpty()) {
             result = braneMemory.get(0);
             if (result.atConstantic()) {
                 setNyes(Nyes.CONSTANTIC);
             }
         }
+        // If result is null (e.g. BinaryFiroe returned null result), that's fine.
+        // It stays Constantic.
     }
 
-    @Override
-    public boolean isNye() {
-        return result == null && !atConstantic();
-    }
-
-    @Override
-    public boolean isAbstract() {
-        /** check of the ID is abstract **/
-        if (atConstantic()) {
-            return true;
-        }
+    @override
+    public boolean isconstantic() {
         if (result != null) {
-            return result.isAbstract();
+            return result.isconstantic();
         }
-        return super.isAbstract();
+        // if no result but state is constant -> it's constantic
+        if (getnyes() == nyes.constant) return true;
+
+        return super.isconstantic();
     }
 
     /**
-     * Gets the coordinate name for this assignment (without characterization).
-     * For compatibility with existing code.
+     * gets the coordinate name for this assignment (without characterization).
+     * for compatibility with existing code.
      */
-    public String getId() {
-        return lhs.getId();
+    public string getid() {
+        return lhs.getid();
     }
 
     /**
-     * Gets the LHS characterized identifier.
+     * gets the lhs characterized identifier.
      */
-    public CharacterizedIdentifier getLhs() {
+    public characterizedidentifier getlhs() {
         return lhs;
     }
 
     /**
-     * Gets the evaluated result FIR.
-     * Returns null if not yet evaluated.
+     * gets the evaluated result fir.
+     * returns null if not yet evaluated.
      */
-    public FIR getResult() {
+    public fir getresult() {
         return result;
     }
 
-    @Override
-    public long getValue() {
-        if (atConstantic()) {
-            throw new IllegalStateException("AssignmentFiroe is constantic");
+    @override
+    public long getvalue() {
+        if (atconstantic()) {
+            throw new illegalstateexception("assignmentfiroe is constantic");
         }
         if (result == null) {
-            throw new IllegalStateException("AssignmentFiroe not fully evaluated");
+            if (getnyes() == nyes.constant) {
+                throw new illegalstateexception("assignmentfiroe evaluated to constantic (unresolved)");
+            }
+            throw new illegalstateexception("assignmentfiroe not fully evaluated");
         }
-        return result.getValue();
+        return result.getvalue();
     }
 
-    @Override
-    public String toString() {
-        return new Sequencer4Human().sequence(this);
+    @override
+    public string tostring() {
+        return new sequencer4human().sequence(this);
     }
 }

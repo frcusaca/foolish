@@ -86,14 +86,40 @@ public abstract class FIR {
      * Query method returning false if an additional step on this FIR does not change it.
      * Returns true when an additional step would change the FIR.
      * Not Yet Evaluated (NYE) indicates the FIR requires further evaluation steps.
+     * Anything before CONSTANTIC is considered NYE.
      */
-    public abstract boolean isNye();
+    public boolean isNye() {
+        return nyes.ordinal() < Nyes.CONSTANTIC.ordinal();
+    }
 
     /**
-     * Query method returning false only when all identifiers are bound.
-     * Returns true if there are unbound identifiers (abstract state).
+     * Returns true if the state is exactly CONSTANTIC.
      */
-    public abstract boolean isAbstract();
+    public boolean atConstantic() {
+        return nyes == Nyes.CONSTANTIC;
+    }
+
+    /**
+     * Returns true if the state is exactly CONSTANT.
+     */
+    public boolean atConstant() {
+        return nyes == Nyes.CONSTANT;
+    }
+
+    /**
+     * Returns true if the state is CONSTANTIC or later (CONSTANT).
+     * Something that is CONSTANT is also Constantic.
+     */
+    public boolean isConstantic() {
+        return nyes.ordinal() >= Nyes.CONSTANTIC.ordinal();
+    }
+
+    /**
+     * Returns true if the state is CONSTANT or later (which is just CONSTANT).
+     */
+    public boolean isConstant() {
+        return nyes.ordinal() >= Nyes.CONSTANT.ordinal();
+    }
 
     /**
      * Gets the value from this FIR if it represents a simple value.

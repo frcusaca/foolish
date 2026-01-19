@@ -41,17 +41,14 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
     }
 
     /**
-     * An identifier is abstract if it hasn't been resolved yet or if its resolved value is abstract.
+     * An identifier is Constantic if it hasn't been resolved yet or if its resolved value is Constantic.
      */
     @Override
-    public boolean isAbstract() {
-        if (atConstantic()) {
-            return true;
-        }
+    public boolean isConstantic() {
         if (value == null) {
-            return true; // Not yet resolved
+            return true; // Not yet resolved or missing
         }
-        return value.isAbstract();
+        return value.isConstantic();
     }
 
     @Override
@@ -68,8 +65,13 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
     public void step() {
         switch (getNyes()) {
             case INITIALIZED: {
-                value = braneMemory.get(identifier, 0)
-                        .map(r -> r.getValue())
+                var found = braneMemory.get(identifier, 0);
+                if (found.isEmpty()) {
+                    setNyes(Nyes.CONSTANTIC);
+                    return;
+                }
+                value = found
+                        .map(r -> r.getRight())
                         .orElse(null);
                 if (value == null) {
                     setNyes(Nyes.CONSTANTIC);
@@ -88,8 +90,9 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
      */
     @Override
     public long getValue() {
-        if (atConstantic()) {
-            throw new UnsupportedOperationException("Cannot get value from constantic identifier");
+        if (value == null) {
+            if (atConstantic()) throw new IllegalStateException("Identifier is Constantic (missing): " + identifier.getId());
+            throw new IllegalStateException("Identifier not resolved or not found: " + identifier.getId());
         }
         return value.getValue();
     }

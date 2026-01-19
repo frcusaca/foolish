@@ -31,17 +31,21 @@ public class SearchUpFiroe extends FiroeWithoutBraneMind {
     }
 
     /**
-     * SearchUpFiroe is abstract if the referenced brane is abstract or not set.
+     * SearchUpFiroe is Constantic if the referenced brane is Constantic or not set.
      */
     @Override
-    public boolean isAbstract() {
+    public boolean isConstantic() {
         if (referencedBrane == null) {
             return true;
         }
-        return referencedBrane.isAbstract();
+        return referencedBrane.isConstantic();
     }
 
     @Override
+    public void step() {
+        // Nothing to do
+    }
+
     public String toString() {
         return "↑";
     }

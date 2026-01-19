@@ -52,7 +52,10 @@ public class BraneMemory implements Iterable<FIR> {
             }
         }
         if (parent != null) {
-            return parent.get(query, myPos.get());
+            // Default to searching from end of parent if myPos is not set
+            // This is crucial for CMFir which links memory without fixed position
+            int parentPos = myPos.orElse(parent.size() - 1);
+            return parent.get(query, parentPos);
         }
         return Optional.empty(); // Not found
     }

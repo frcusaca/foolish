@@ -18,7 +18,6 @@ public class IfFiroe extends FiroeWithBraneMind {
 
     protected int nextPossibleIdx;
 
-    @Override
     protected void initialize() {
         if (isInitialized()) return;
 
@@ -44,7 +43,6 @@ public class IfFiroe extends FiroeWithBraneMind {
         setInitialized();
     }
 
-    @Override
     public void step() {
         if (!isInitialized()) {
             initialize();
@@ -80,10 +78,6 @@ public class IfFiroe extends FiroeWithBraneMind {
         }
     }
 
-    @Override
-    public boolean isNye() {
-        return nextPossibleIdx < braneMemory.size() || braneMemory.getLast().isNye();
-    }
 
     /**
      * Get the result of the if expression.
@@ -104,20 +98,18 @@ public class IfFiroe extends FiroeWithBraneMind {
             enqueueSubfirOfExprs(ifExpr.condition(), ifExpr.thenExpr());
         }
 
-        @Override
         protected void initialize() {
             setInitialized();
             // ConditionalFiroe handles initialization in constructor
         }
 
-        @Override
         public void step() {
             super.step();
             // After stepping, check if condition has been evaluated
             if (condition_value == null && !braneMemory.isEmpty() && !braneMemory.get(0).isNye()) {
                 // Condition is evaluated, get its value
                 FIR conditionFir = braneMemory.get(0);
-                if (!conditionFir.isAbstract()) {
+                if (!conditionFir.isConstantic()) {
                     long condValue = conditionFir.getValue();
                     condition_value = (condValue != 0);
                 } else {
@@ -127,10 +119,6 @@ public class IfFiroe extends FiroeWithBraneMind {
             }
         }
 
-        @Override
-        public boolean isNye() {
-            return hasUnknownCondition() || (hasTrueCondition() && super.isNye());
-        }
 
         public boolean hasUnknownCondition() {
             return condition_value == null;

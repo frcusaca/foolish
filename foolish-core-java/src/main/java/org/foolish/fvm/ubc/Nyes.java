@@ -8,9 +8,11 @@ package org.foolish.fvm.ubc;
  * lifecycle, with transitions managed through the {@link FIR#setNyes(Nyes)} method.
  * <p>
  * The evaluation flow typically progresses as follows:
- * UNINITIALIZED → INITIALIZED → REFERENCES_IDENTIFIED → ALLOCATED → RESOLVED → EVALUATING → CONSTANT
+ * UNINITIALIZED → INITIALIZED → REFERENCES_IDENTIFIED → ALLOCATED → RESOLVED → EVALUATING → CONSTANTIC → CONSTANT
  * <p>
- * Only CONSTANT represents a fully evaluated state where {@code isNye()} returns false.
+ * CONSTANTIC represents a state where evaluation has paused due to missing information (e.g. unbound identifiers),
+ * but could resume in a different context. "Stay Foolish" state.
+ * CONSTANT represents a fully evaluated, immutable state (Result or Error).
  */
 public enum Nyes {
     /**
@@ -57,9 +59,12 @@ public enum Nyes {
     EVALUATING,
 
     /**
-     * The evaluation has halted because a required resource was not found.
-     * The FIR is "stuck" in a constantic state.
-     * Like CONSTANT, it is a terminal state.
+     * Like CONSTANT, it is a terminal state as far as `step()` is concerned.
+     * Evaluation halted due to missing information (unbound identifiers).
+     * It is CONSTANT In Context. It is context if context does not change.
+     * It is not required that this FIR do change for some context. But
+     * for computational efficiency, it would be best if Constantic state
+     * only happens for a FIR that is expected to change if context changes.
      */
     CONSTANTIC,
 

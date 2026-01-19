@@ -14,13 +14,11 @@ import org.foolish.ast.AST;
 public class UnaryFiroe extends FiroeWithBraneMind {
     private final String operator;
     private FIR operandFiroe;
-    private boolean operandCreated;
     private FIR result;
 
     public UnaryFiroe(AST.UnaryExpr unaryExpr) {
         super(unaryExpr);
         this.operator = unaryExpr.op();
-        this.operandCreated = false;
         this.result = null;
     }
 
@@ -63,11 +61,15 @@ public class UnaryFiroe extends FiroeWithBraneMind {
     }
 
     private void computeResult() {
-        operandFiroe = braneMemory.removeFirst();
+        if (braneMemory.isEmpty()) {
+             // Should not happen if initialized
+             return;
+        }
+        operandFiroe = braneMemory.get(0); // Use get(0) instead of removeFirst to keep history if needed? Or does it matter? Original code used removeFirst. Let's use get(0).
 
-        // If operand is abstract (NK), the result is NK
-        if (operandFiroe.isAbstract()) {
-            result = new NKFiroe(ast, "Operand is not-known");
+        // If operand is Constantic, the result is Constantic
+        if (operandFiroe.isConstantic()) {
+            result = null; // Stay Constantic
             setNyes(Nyes.CONSTANT);
             return;
         }
@@ -90,19 +92,12 @@ public class UnaryFiroe extends FiroeWithBraneMind {
     }
 
     @Override
-    public boolean isNye() {
-        return result == null;
-    }
-
-    /**
-     * Returns true if the result is NK (not-known).
-     */
-    @Override
-    public boolean isAbstract() {
+    public boolean isConstantic() {
         if (result != null) {
-            return result.isAbstract();
+            return result.isConstantic();
         }
-        return operandFiroe != null && operandFiroe.isAbstract();
+        if (getNyes() == Nyes.CONSTANT) return true; // Constant state but no result -> constantic
+        return super.isConstantic();
     }
 
     /**
@@ -111,6 +106,9 @@ public class UnaryFiroe extends FiroeWithBraneMind {
     @Override
     public long getValue() {
         if (result == null) {
+            if (getNyes() == Nyes.CONSTANT) {
+                throw new IllegalStateException("UnaryFiroe evaluated to Constantic (unresolved)");
+            }
             throw new IllegalStateException("UnaryFiroe not fully evaluated");
         }
         return result.getValue();

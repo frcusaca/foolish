@@ -27,12 +27,23 @@ public abstract class FiroeWithoutBraneMind extends FIR {
         // No-op: Values don't require stepping
     }
 
+    // Removed isNye override, relies on Nyes state (CONSTANT)
+
     /**
-     * FiroeWithoutBraneMind instances are never NYE (Not Yet Evaluated).
-     * They represent finalized values and are always in CONSTANT state.
+     * Values are generally not constantic (unresolved).
+     * Subclasses like NKFiroe might override behavior if they represent errors,
+     * but base assumption is False.
+     * Wait, FIR.isConstantic checks Nyes state.
+     * Since FiroeWithoutBraneMind sets Nyes.CONSTANT, isConstantic() returns TRUE because CONSTANT >= CONSTANTIC.
+     *
+     * However, FiroeWithoutBraneMind typically represents fully resolved values (like integers) or Errors.
+     * If it is a Value, isConstantic() should be true (as it is constant).
+     * The `atConstantic()` method will return false.
+     *
+     * So we don't need to override isConstantic().
      */
     @Override
-    public boolean isNye() {
-        return getNyes() != Nyes.CONSTANT;
+    public boolean isConstantic() {
+        return super.isConstantic();
     }
 }

@@ -59,7 +59,6 @@
  * <h3>Key Methods</h3>
  * <ul>
  *   <li>{@code isNye()} - Returns true if additional steps would change the FIR (*NYE* - Not Yet Evaluated)</li>
- *   <li>{@code isAbstract()} - Returns true if there are unbound identifiers</li>
  *   <li>{@code getValue()} - Gets the integer value from evaluated expressions</li>
  *   <li>{@code getEnvironment()} - Gets the frozen Env from evaluated branes</li>
  * </ul>
