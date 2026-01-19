@@ -41,90 +41,42 @@ This skill provides:
 
 See `.claude/skills/maven-builder-for-foolish-language/` for full documentation.
 
-### Claude Code Web (CCW) Setup
+### Claude Code Web (CCW) - Not Recommended for This Project
 
-**This project requires Java 25.** Local development assumes Java 25 is installed. Claude Code Web provides Java 21 by default, so setup is required.
+**Date**: 2026-01-19
+**Model**: claude-sonnet-4-5-20250929
 
-**Automatic Setup via SessionStart Hook:**
+This project requires Java 25 and Maven for builds. Claude Code Web is not currently configured to support Maven-based Java development.
 
-This project is configured with a SessionStart hook that **automatically runs CCW setup synchronously** when your session starts. This ensures Java 25 and Maven proxy are fully ready before your session begins.
+**What Works in CCW:**
+- Java 25 installation (via SessionStart hook using SDKMAN)
+- Basic Java compilation
+- Code editing and file management
 
-**What happens automatically:**
-1. Detects if running in CCW (checks `CLAUDECODE` environment variable)
-2. If in CCW (waits for completion before session starts):
-   - Installs SDKMAN (if not present)
-   - Installs latest stable Java 25 (Temurin) via SDKMAN
-   - Exports `JAVA_HOME` and updates `PATH` for the session
-   - Starts a local Maven authentication proxy at `127.0.0.1:3128`
-   - Verifies proxy is listening and ready
-   - Configures `~/.m2/settings.xml` with HTTP + HTTPS proxy settings
-   - Extracts and imports CA certificates into Java truststore (fixes PKIX errors)
-   - Sets `MAVEN_OPTS` to use custom truststore
-3. If not in CCW (local environment):
-   - Does nothing - assumes Java 25 is already installed
+**What Does Not Work:**
+- Maven dependency downloads from Maven Central
+- Full Maven builds requiring external artifacts
+- Running tests that depend on Maven dependencies
 
-**The setup is synchronous and idempotent:**
-- ⏱️ First run: ~60 seconds (downloads Java 25)
-- ⚡ Subsequent runs: ~10 seconds (cached)
-- ✅ Session is guaranteed ready for Maven builds when it starts
-- 🔄 Safe to run multiple times (won't reinstall if already present)
-- 🔐 Handles both proxy routing AND TLS certificate trust
+**Why Maven Doesn't Work:**
 
-**Technical Implementation:**
+As of January 2026, Claude Code Web's network security model prevents standard Maven dependency resolution. The environment's egress filtering interferes with Maven's HTTPS connections to artifact repositories. Various workarounds were attempted (proxy configuration, certificate manipulation, SSL bypasses) but each approach was progressively blocked or rendered ineffective by the security infrastructure.
 
-This setup implements a **two-part solution** from [GitHub Issue #13372](https://github.com/anthropics/claude-code/issues/13372) and the [LinkedIn article by Tarun Lalwani](https://www.linkedin.com/pulse/fixing-maven-build-issues-claude-code-web-ccw-tarun-lalwani-8n7oc):
+This appears to be an inherent limitation of CCW's current architecture rather than a simple configuration issue. The same challenges affected other language ecosystems (like Rust) initially, so support may improve over time.
 
-1. **Proxy Routing**: Local Python proxy handles JWT authentication, Maven uses localhost:3128
-2. **TLS Trust**: CA certificate extraction and Java truststore configuration to prevent PKIX errors
+**Recommendation:**
 
-### Known CCW Limitations (Updated: 2026-01-19)
+**Use local development for this project.** All Maven functionality works normally in a local environment with Java 25 installed. CCW is approximately 3 months old (as of January 2026) and still maturing its support for different development stacks.
 
-**What Works:**
-- ✅ Java 25 installation and environment setup
-- ✅ Maven proxy configuration (Python proxy + settings.xml)
-- ✅ Parser module compilation (ANTLR grammar processing)
-- ✅ Basic dependency downloads (100+ artifacts successfully downloaded)
+**SessionStart Hook:**
 
-**What's Blocked:**
-- ❌ **PKIX Certificate Errors**: Some HTTPS Maven downloads fail with "unable to find valid certification path to requested target"
-- ❌ **Root Cause**: CCW's TLS inspection proxy uses "Anthropic sandbox-egress-production TLS Inspection CA"
-- ❌ **Certificate Catch-22**: Cannot extract the CA certificate programmatically because the SSL connection itself requires the trust we're trying to establish
+The project includes a SessionStart hook that installs Java 25 in CCW environments:
+- Installs SDKMAN if needed
+- Installs Java 25 (Temurin) via SDKMAN
+- Configures `JAVA_HOME` and `PATH` for the session
+- Shows a warning about Maven limitations
 
-**Attempted Solutions:**
-- Tried automatic CA certificate extraction via `openssl s_client` - blocked by TLS inspection
-- Tried Maven SSL flags (`-Dmaven.wagon.http.ssl.insecure=true`) - ineffective at Java HTTP client level
-- Implemented truststore import logic - ready to use but needs the CA certificate file
-
-**Workarounds:**
-
-1. **Work Locally** (Recommended):
-   - Full Maven functionality with Java 25
-   - No proxy or certificate issues
-   - All tests and builds work normally
-
-2. **Manual CA Certificate** (If Available):
-   - Place the Anthropic CA cert at: `support/shared/claude/skills/ccw-maven-setup/ccw-proxy-ca.pem`
-   - SessionStart hook will automatically import it into Java truststore
-   - Maven builds should work after restart
-
-3. **Partial Functionality** (Current State):
-   - Parser compiles successfully
-   - Some dependencies download via HTTP
-   - HTTPS-dependent artifacts may fail
-
-**Request to Anthropic:**
-- Add Maven Central (`repo.maven.apache.org`, `*.maven.apache.org`) to NO_PROXY environment variable
-- Or provide the TLS inspection CA certificate for manual trust configuration
-- Similar to the fix applied for Rust's crates.io (Issue #10307)
-
-**Manual Setup (optional):**
-
-If you need to run setup manually for any reason:
-```bash
-/skill ccw-maven-setup
-```
-
-For details on why CCW needs a proxy and how the setup works, see the "Claude Code Web Setup" section in `AGENTS.md`.
+This provides basic Java 25 availability but does not enable full Maven functionality.
 
 ### Quick Build Reference
 
@@ -226,4 +178,4 @@ When proposing updates, explain what has changed and why the documentation needs
 
 **Date**: 2026-01-19
 **Updated By**: Claude Code v2.1.1 / claude-sonnet-4-5-20250929
-**Changes**: Added "Known CCW Limitations" section documenting PKIX certificate errors that prevent full Maven functionality in CCW. Detailed what works (Java 25, proxy routing, parser compilation), what's blocked (HTTPS downloads due to TLS inspection CA), attempted solutions, and workarounds. Improved CCW Maven proxy setup based on GitHub Issue #13372 and LinkedIn article with synchronous mode, HTTP+HTTPS proxy configuration, readiness verification, and CA certificate import logic. All Maven commands use standard `mvn` as proxy configuration is handled automatically by SessionStart hook.
+**Changes**: Reverted all proxy circumvention code and replaced with straightforward documentation. CCW is not currently viable for Maven/Java development due to network security constraints that prevent Maven dependency resolution. Removed Python proxy, certificate extraction, and settings.xml manipulation. SessionStart hook now only installs Java 25 and shows a warning about Maven limitations. Documented that CCW is approximately 3 months old and still maturing, and recommended local development for this project.

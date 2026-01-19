@@ -26,79 +26,10 @@ The project supports two primary development environments:
 - Maven commands work directly: `mvn clean test`
 
 ### Claude Code Web (CCW)
-- Cloud-based development environment provided by Claude Code
-- Requires special setup for Java 25 and Maven proxy
-- Environment variable: `CLAUDECODE=1` (always set in CCW)
-- Additional variables:
-  - `CLAUDE_CODE_REMOTE_ENVIRONMENT_TYPE=cloud_default`
-  - `CLAUDE_CODE_PROXY_RESOLVES_HOSTS=true`
-  - `CLAUDE_CODE_SESSION_ID` (unique session identifier)
-
-## Claude Code Web Setup
-
-**CRITICAL**: When working in Claude Code Web (CCW), you MUST run the CCW setup before any Maven operations.
-
-### Running the Setup
-
-**Claude Code users:**
-```bash
-/skill ccw-maven-setup
-```
-
-**All AI agents (alternative method):**
-```bash
-.claude/skills/ccw-maven-setup/prep_if_ccw.sh
-```
-
-### What the Setup Does
-
-The skill (`ccw-maven-setup`) automatically detects the environment and:
-
-**In Claude Code Web (CCW):**
-1. Installs SDKMAN if not present
-2. Installs latest stable Java 25 (Temurin) via SDKMAN
-3. Starts a local Maven authentication proxy at `127.0.0.1:3128`
-4. Configures `~/.m2/settings.xml` with proxy settings
-
-**In Local Environments:**
-- Does nothing (exits immediately)
-- Assumes Java 25 is already available
-
-### Why CCW Needs Special Setup
-
-Maven doesn't honor standard `HTTP_PROXY`/`HTTPS_PROXY` environment variables for authentication. The CCW environment uses a proxy with JWT-based authentication that Maven cannot handle directly.
-
-**The Solution:**
-A local Python proxy runs on `localhost:3128` that:
-- Accepts Maven connections without authentication
-- Forwards requests to the CCW upstream proxy with proper authentication headers
-- Automatically extracts and uses JWT tokens from environment variables
-- Handles both HTTP and HTTPS protocols for Maven Central access
-
-**Implementation Details:**
-- **Synchronous execution**: SessionStart hook waits for setup to complete (~60s first run, ~10s cached)
-- **Readiness verification**: Uses netcat to confirm proxy is listening before continuing
-- **Dual protocol support**: Configures both HTTP and HTTPS proxies in Maven settings.xml
-- **Error logging**: All proxy errors logged to `/tmp/maven-proxy.log` for debugging
-- **Idempotent setup**: Safe to run multiple times, won't reinstall if already present
-- **TLS/SSL certificate handling**: Automatically extracts and imports CA certificates to fix PKIX errors
-
-**Two-Part Solution:**
-
-1. **Proxy Routing** (fixes Maven Central access):
-   - Python proxy handles JWT authentication
-   - Maven settings.xml points to localhost:3128
-   - Downloads work but may hit certificate errors
-
-2. **TLS Trust** (fixes PKIX certificate errors):
-   - Extracts CA certificate from proxy connection
-   - Imports into Java truststore (`~/.m2/ccw-truststore.jks`)
-   - Sets `MAVEN_OPTS` to use custom truststore
-   - Fixes "unable to find valid certification path" errors
-
-**Technical References:**
-- [GitHub Issue #13372](https://github.com/anthropics/claude-code/issues/13372) - Maven/Gradle builds failing in CCW
-- [LinkedIn Article](https://www.linkedin.com/pulse/fixing-maven-build-issues-claude-code-web-ccw-tarun-lalwani-8n7oc) - Detailed workaround explanation
+- Cloud-based development environment
+- **Not recommended for this project** - Use local development instead
+- Maven dependency resolution does not work reliably in CCW environments
+- See CLAUDE.md for details on CCW limitations
 
 ## Build Commands
 
@@ -502,4 +433,4 @@ When proposing updates, explain what has changed and why the documentation needs
 
 **Date**: 2026-01-19
 **Updated By**: Claude Code v2.1.1 / claude-sonnet-4-5-20250929
-**Changes**: Enhanced CCW Maven proxy setup based on GitHub Issue #13372 and LinkedIn article by Tarun Lalwani. Implemented synchronous SessionStart hook (was async) to prevent race conditions, added HTTP proxy support (was HTTPS-only), added proxy readiness verification with netcat, improved error logging to /tmp/maven-proxy.log, and added nonProxyHosts configuration. Removed mvn_cmd wrapper in favor of standard `mvn` commands with automatic proxy configuration.
+**Changes**: Simplified CCW section to brief note recommending local development instead. Removed detailed proxy configuration and workaround documentation. CCW is not currently suitable for Maven-based Java development.
