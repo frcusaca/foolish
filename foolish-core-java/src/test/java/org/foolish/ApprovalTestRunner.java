@@ -1,8 +1,9 @@
 package org.foolish;
 
 import org.approvaltests.Approvals;
+import org.approvaltests.core.Options;
 import org.approvaltests.namer.ApprovalNamer;
-import org.approvaltests.writers.ApprovalTextWriter;
+import org.approvaltests.namer.NamerWrapper;
 
 import java.io.File;
 import java.io.IOException;
@@ -103,38 +104,21 @@ public class ApprovalTestRunner {
 
             // Create custom namer for output location
             String packageName = outputPath.replace('/', '.');
-            ApprovalNamer namer = new CustomApprovalNamer(packageName, testName, "foo");
+            String packagePath = packageName.replace('.', File.separatorChar);
+            String sourceFilePath = "src" + File.separator + "test" + File.separator + "resources" +
+                   File.separator + packagePath + File.separator;
 
-            // Verify with ApprovalTests
-            Approvals.verify(new ApprovalTextWriter(approvalContent, "foo"), namer);
+            // Verify with ApprovalTests using Options and NamerWrapper
+            // Note: chaining forFile() is necessary because withExtension returns Options, not FileOptions
+            Approvals.verify(approvalContent, new Options()
+                .forFile().withExtension(".foo")
+                .forFile().withNamer(new NamerWrapper(
+                    () -> testName,
+                    () -> sourceFilePath
+                )));
 
         } catch (IOException e) {
             throw new RuntimeException("Failed to read input file: " + inputFile, e);
-        }
-    }
-
-    /**
-     * Custom ApprovalNamer that places files in test resources by package.
-     */
-    private static class CustomApprovalNamer extends org.approvaltests.namer.StackTraceNamer {
-        private final String packageName;
-        private final String testName;
-
-        public CustomApprovalNamer(String packageName, String testName, String extension) {
-            this.packageName = packageName;
-            this.testName = testName;
-        }
-
-        @Override
-        public String getApprovalName() {
-            return testName;
-        }
-
-        @Override
-        public String getSourceFilePath() {
-            String packagePath = packageName.replace('.', File.separatorChar);
-            return "src" + File.separator + "test" + File.separator + "resources" +
-                   File.separator + packagePath;
         }
     }
 }
