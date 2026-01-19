@@ -288,7 +288,7 @@ mvn clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$
 **Other AI agents:**
 ```bash
 # 1. Run setup script directly (if not using SessionStart hook)
-.claude/skills/ccw-maven-setup/prep_if_ccw.sh
+support/shared/claude/skills/ccw-maven-setup/prep_if_ccw.sh
 
 # 2. Verify Java version
 java -version  # Should show Java 25
