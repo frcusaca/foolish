@@ -8,9 +8,11 @@ package org.foolish.fvm.ubc;
  * lifecycle, with transitions managed through the {@link FIR#setNyes(Nyes)} method.
  * <p>
  * The evaluation flow typically progresses as follows:
- * UNINITIALIZED → INITIALIZED → REFERENCES_IDENTIFIED → ALLOCATED → RESOLVED → EVALUATING → CONSTANT
+ * UNINITIALIZED → INITIALIZED → REFERENCES_IDENTIFIED → ALLOCATED → RESOLVED → EVALUATING → CONSTANTIC → CONSTANT
  * <p>
- * Only CONSTANT represents a fully evaluated state where {@code isNye()} returns false.
+ * CONSTANTIC represents a state where evaluation has paused due to missing information (e.g. unbound identifiers),
+ * but could resume in a different context. "Stay Foolish" state.
+ * CONSTANT represents a fully evaluated, immutable state (Result or Error).
  */
 public enum Nyes {
     /**
@@ -55,6 +57,12 @@ public enum Nyes {
      * Transition taken care of by step().
      */
     EVALUATING,
+
+    /**
+     * Evaluation halted due to missing information (unbound identifiers), but may resume.
+     * This is NOT NYE (Not Yet Evaluated) in the local context - it is done as far as it can go.
+     */
+    CONSTANTIC,
 
     /**
      * No more changes will happen with call to step() unless the environment changes.

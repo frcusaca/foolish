@@ -46,6 +46,7 @@ public class BinaryFiroe extends FiroeWithBraneMind {
                 super.step();
 
                 // After parent steps, check if we can compute the final result
+                // If parent says CONSTANT, it means braneMind is empty.
                 if (getNyes() == Nyes.CONSTANT && braneMind.isEmpty() && result == null) {
                     computeResult();
                 }
@@ -63,9 +64,10 @@ public class BinaryFiroe extends FiroeWithBraneMind {
         FIR leftFir = braneMemory.get(0);
         FIR rightFir = braneMemory.get(1);
 
-        // If either operand is abstract (NK), the result is NK
-        if (leftFir.isAbstract() || rightFir.isAbstract()) {
-            result = new NKFiroe(ast, "Operand is not-known");
+        // If either operand is Constantic (unresolved), the result is Constantic.
+        // We do NOT convert to NK. result stays null.
+        if (leftFir.isConstantic() || rightFir.isConstantic()) {
+            result = null; // Stay Constantic
             setNyes(Nyes.CONSTANT);
             return;
         }
@@ -108,21 +110,17 @@ public class BinaryFiroe extends FiroeWithBraneMind {
         }
     }
 
-    @Override
-    public boolean isNye() {
-        // BinaryFiroe is NYE until we have computed the final result
-        return result == null;
-    }
+    // Removed isNye override to use parent's state-based logic
 
     /**
-     * Returns true if the result is NK (not-known).
+     * Returns true if the result is Constantic (e.g. missing vars).
      */
     @Override
-    public boolean isAbstract() {
-        if (result != null) {
-            return result.isAbstract();
+    public boolean isConstantic() {
+        if (result == null) {
+            return true; // No result computed yet (or computed as null/Constantic)
         }
-        return super.isAbstract();
+        return result.isConstantic();
     }
 
     /**
@@ -131,6 +129,11 @@ public class BinaryFiroe extends FiroeWithBraneMind {
     @Override
     public long getValue() {
         if (result == null) {
+            // If result is null but state is CONSTANT, it means we are Constantic (unresolved).
+            // Calling getValue() on an unresolved expression is an error.
+            if (getNyes() == Nyes.CONSTANT) {
+                throw new IllegalStateException("BinaryFiroe evaluated to Constantic (unresolved)");
+            }
             throw new IllegalStateException("BinaryFiroe not fully evaluated");
         }
         return result.getValue();

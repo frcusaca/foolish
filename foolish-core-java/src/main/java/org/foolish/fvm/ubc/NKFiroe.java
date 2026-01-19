@@ -30,7 +30,7 @@ public class NKFiroe extends FiroeWithoutBraneMind {
     }
 
     public NKFiroe() {
-        this(null, null);
+        this(null, "Unknown reason");
     }
 
     /**
@@ -43,24 +43,18 @@ public class NKFiroe extends FiroeWithoutBraneMind {
     }
 
     /**
-     * NKFiroe is abstract because the value is not known.
+     * NKFiroe is NOT constantic. It is a concrete (constant) error value.
      */
-    @Override
-    public boolean isAbstract() {
-        return true;
-    }
 
     /**
      * Cannot get a value from NK - it's not known.
      *
      * @throws IllegalStateException always
      */
-    @Override
     public long getValue() {
-        throw new IllegalStateException("Cannot get value from NK (not-known)");
+        throw new IllegalStateException("Cannot get value from NK (not-known): " + nkComment);
     }
 
-    @Override
     public String toString() {
         return "???";
     }
@@ -70,4 +64,3 @@ public class NKFiroe extends FiroeWithoutBraneMind {
     }
 
 }
-

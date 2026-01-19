@@ -34,10 +34,7 @@ public class BraneFiroe extends FiroeWithBraneMind {
         }
     }
 
-    @Override
-    public boolean isNye() {
-        return !isInitialized() || super.isNye();
-    }
+    // Removed isNye override
 
     @Override
     public void step() {

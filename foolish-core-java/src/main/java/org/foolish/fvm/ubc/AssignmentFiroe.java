@@ -35,7 +35,7 @@ public class AssignmentFiroe extends FiroeWithBraneMind {
     @Override
     public void step() {
         if (result != null) {
-            // Already computed
+            // Already computed (non-null result)
             return;
         }
 
@@ -53,24 +53,25 @@ public class AssignmentFiroe extends FiroeWithBraneMind {
             return;
         }
 
-        // Expression is fully evaluated, store the result
+        // Expression is fully evaluated (or stuck at Constantic), store the result
         if (!braneMemory.isEmpty()) {
             result = braneMemory.get(0);
         }
+        // If result is null (e.g. BinaryFiroe returned null result), that's fine.
+        // It stays Constantic.
     }
 
-    @Override
-    public boolean isNye() {
-        return result == null;
-    }
+    // Removed isNye override
 
     @Override
-    public boolean isAbstract() {
-        /** check of the ID is abstract **/
+    public boolean isConstantic() {
         if (result != null) {
-            return result.isAbstract();
+            return result.isConstantic();
         }
-        return super.isAbstract();
+        // If no result but state is constant -> it's constantic
+        if (getNyes() == Nyes.CONSTANT) return true;
+
+        return super.isConstantic();
     }
 
     /**
@@ -99,6 +100,9 @@ public class AssignmentFiroe extends FiroeWithBraneMind {
     @Override
     public long getValue() {
         if (result == null) {
+            if (getNyes() == Nyes.CONSTANT) {
+                throw new IllegalStateException("AssignmentFiroe evaluated to Constantic (unresolved)");
+            }
             throw new IllegalStateException("AssignmentFiroe not fully evaluated");
         }
         return result.getValue();

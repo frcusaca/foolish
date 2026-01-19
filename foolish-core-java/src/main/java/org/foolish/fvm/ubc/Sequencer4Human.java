@@ -26,12 +26,10 @@ public class Sequencer4Human extends Sequencer<String> {
         this(DEFAULT_TAB);
     }
 
-    @Override
     public String sequence(FIR fir) {
         return sequence(fir, 0);
     }
 
-    @Override
     public String sequence(FIR fir, int depth) {
         return switch (fir) {
             case BraneFiroe brane -> sequenceBrane(brane, depth);
@@ -48,7 +46,6 @@ public class Sequencer4Human extends Sequencer<String> {
         };
     }
 
-    @Override
     protected String sequenceBrane(BraneFiroe brane, int depth) {
         var sb = new StringBuilder();
 
@@ -71,17 +68,15 @@ public class Sequencer4Human extends Sequencer<String> {
         return sb.toString();
     }
 
-    @Override
     protected String sequenceValue(ValueFiroe value, int depth) {
         return indent(depth) + value.getValue();
     }
 
-    @Override
     protected String sequenceBinary(BinaryFiroe binary, int depth) {
         // If the binary expression has been fully evaluated
         if (!binary.isNye()) {
             // Check if the result is NK (not-known)
-            if (binary.isAbstract()) {
+            if (binary.isConstantic()) {
                 return indent(depth) + "???";
             }
             return indent(depth) + binary.getValue();
@@ -90,7 +85,6 @@ public class Sequencer4Human extends Sequencer<String> {
         return indent(depth) + binary;
     }
 
-    @Override
     protected String sequenceUnary(UnaryFiroe unary, int depth) {
         // If the unary expression has been fully evaluated, just show the result
         if (!unary.isNye()) {
@@ -100,7 +94,6 @@ public class Sequencer4Human extends Sequencer<String> {
         return indent(depth) + unary;
     }
 
-    @Override
     protected String sequenceIf(IfFiroe ifFiroe, int depth) {
         // If the if expression has been fully evaluated, show the result
         if (!ifFiroe.isNye()) {
@@ -113,7 +106,6 @@ public class Sequencer4Human extends Sequencer<String> {
         return indent(depth) + "if ???";
     }
 
-    @Override
     protected String sequenceSearchUp(SearchUpFiroe searchUp, int depth) {
         return indent(depth) + "↑";
     }
@@ -127,7 +119,7 @@ public class Sequencer4Human extends Sequencer<String> {
             // Check if the result is fully evaluated
             if (!result.isNye()) {
                 // Check if the result is NK (not-known)
-                if (result.isAbstract()) {
+                if (result.isConstantic()) {
                     return indent(depth) + assignment.getId() + " = ???";
                 }
 
@@ -173,7 +165,7 @@ public class Sequencer4Human extends Sequencer<String> {
         // If the identifier has been resolved and is not NYE
         if (!identifier.isNye()) {
             // Check if it resolved to an abstract value
-            if (identifier.isAbstract()) {
+            if (identifier.isConstantic()) {
                 return indent(depth) + "???";
             }
             return indent(depth) + identifier.getValue();
@@ -191,7 +183,7 @@ public class Sequencer4Human extends Sequencer<String> {
 
     protected String sequenceOneShotSearch(OneShotSearchFiroe oneShotSearch, int depth) {
         if (!oneShotSearch.isNye()) {
-            if (oneShotSearch.isAbstract()) {
+            if (oneShotSearch.isConstantic()) {
                 return indent(depth) + "???";
             }
             // If the result is a brane, we need to handle it gracefully

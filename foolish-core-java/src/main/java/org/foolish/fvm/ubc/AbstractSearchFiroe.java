@@ -21,14 +21,12 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
         this.operator = operator;
     }
 
-    @Override
     protected void initialize() {
         setInitialized();
         // Derived classes must ensure they call enqueueExprs(anchor) during initialization
         // We can't do it here easily because getting the anchor depends on the specific AST type
     }
 
-    @Override
     public void step() {
         switch (getNyes()) {
             case INITIALIZED -> {
@@ -211,13 +209,7 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
         return searchResult;
     }
 
-    @Override
-    public boolean isAbstract() {
-        if (searchResult == null) return true;
-        return searchResult.isAbstract();
-    }
 
-    @Override
     public long getValue() {
         if (searchResult == null) {
             throw new IllegalStateException("Search not yet evaluated");

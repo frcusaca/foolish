@@ -21,7 +21,6 @@ public class ValueFiroe extends FiroeWithoutBraneMind {
     /**
      * Returns the integral value stored in this ValueFiroe.
      */
-    @Override
     public long getValue() {
         return value;
     }
@@ -29,12 +28,7 @@ public class ValueFiroe extends FiroeWithoutBraneMind {
     /**
      * ValueFiroe is never abstract as it represents a concrete value.
      */
-    @Override
-    public boolean isAbstract() {
-        return false;
-    }
 
-    @Override
     public String toString() {
         return String.valueOf(value);
     }
