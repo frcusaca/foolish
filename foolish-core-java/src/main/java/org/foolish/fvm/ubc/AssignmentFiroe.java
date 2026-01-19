@@ -14,11 +14,12 @@ import org.foolish.ast.AST;
  */
 public class AssignmentFiroe extends FiroeWithBraneMind {
     private final CharacterizedIdentifier lhs;
-    private FiroeState result = new FiroeState.Unknown();
+    private FIR result;
 
     public AssignmentFiroe(AST.Assignment assignment) {
         super(assignment);
         this.lhs = new CharacterizedIdentifier(assignment.identifier());
+        this.result = null;
     }
 
     @Override
@@ -33,9 +34,13 @@ public class AssignmentFiroe extends FiroeWithBraneMind {
 
     @Override
     public void step() {
-        switch (result) {
-            case FiroeState.Value _ -> { return; }
-            default -> {}
+        if (result != null) {
+            // Already computed
+            return;
+        }
+
+        if (getNyes() == Nyes.CONSTANTIC) {
+            return;
         }
 
         if (!isInitialized()) {
@@ -54,36 +59,28 @@ public class AssignmentFiroe extends FiroeWithBraneMind {
 
         // Expression is fully evaluated, store the result
         if (!braneMemory.isEmpty()) {
-            result = new FiroeState.Value(braneMemory.get(0));
-        } else {
-            // Should usually not happen if expression was valid, but maybe for unit
-            // or empty brane? Or maybe it's just unknown.
-            // If braneMemory is empty after evaluation, we assume it produced nothing valid
-            // or it's a void operation.
-            // Keeping as Unknown if nothing produced, or maybe Constantic if it failed?
-            // Existing logic had result=null which meant NYE, but here we are done stepping.
-            // If we are done stepping but result is null, it means isNye was false.
-            // So we need a state that says "Done but no value".
-            // For now, let's assume if it finished, it has a value or it stays Unknown/Constantic?
-            // If braneMemory is empty, let's leave it as Unknown for now unless we want Constantic.
+            result = braneMemory.get(0);
+            if (result.getNyes() == Nyes.CONSTANTIC) {
+                setNyes(Nyes.CONSTANTIC);
+            }
         }
     }
 
     @Override
     public boolean isNye() {
-        return switch (result) {
-            case FiroeState.Value _ -> false;
-            default -> true;
-        };
+        return result == null && getNyes() != Nyes.CONSTANTIC;
     }
 
     @Override
     public boolean isAbstract() {
         /** check of the ID is abstract **/
-        return switch (result) {
-            case FiroeState.Value(FIR fir) -> fir.isAbstract();
-            default -> super.isAbstract();
-        };
+        if (getNyes() == Nyes.CONSTANTIC) {
+            return true;
+        }
+        if (result != null) {
+            return result.isAbstract();
+        }
+        return super.isAbstract();
     }
 
     /**
@@ -103,28 +100,21 @@ public class AssignmentFiroe extends FiroeWithBraneMind {
 
     /**
      * Gets the evaluated result FIR.
-     * Returns null if not yet evaluated or result is not a Value.
-     * Note: This method signature is kept compatible where possible, returning FIR.
-     * If the state is not Value, it returns null, mimicking previous behavior.
-     * Use getFiroeState() for full state access.
+     * Returns null if not yet evaluated.
      */
     public FIR getResult() {
-        return switch (result) {
-            case FiroeState.Value(FIR fir) -> fir;
-            default -> null;
-        };
-    }
-
-    public FiroeState getFiroeState() {
         return result;
     }
 
     @Override
     public long getValue() {
-        return switch (result) {
-            case FiroeState.Value(FIR fir) -> fir.getValue();
-            default -> throw new IllegalStateException("AssignmentFiroe not fully evaluated or constantic");
-        };
+        if (getNyes() == Nyes.CONSTANTIC) {
+            throw new IllegalStateException("AssignmentFiroe is constantic");
+        }
+        if (result == null) {
+            throw new IllegalStateException("AssignmentFiroe not fully evaluated");
+        }
+        return result.getValue();
     }
 
     @Override

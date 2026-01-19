@@ -18,7 +18,7 @@ import org.foolish.ast.AST;
  */
 public class IdentifierFiroe extends FiroeWithBraneMind {
     private final Query.StrictlyMatchingQuery identifier;
-    FiroeState state = new FiroeState.Unknown(); // Package-private for access by RegexpSearchFiroe
+    FIR value = null; // Package-private for access by RegexpSearchFiroe
 
     public IdentifierFiroe(AST.Identifier identifier) {
         super(identifier);
@@ -45,10 +45,13 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
      */
     @Override
     public boolean isAbstract() {
-        return switch (state) {
-            case FiroeState.Value(FIR fir) -> fir.isAbstract();
-            case FiroeState.Unknown(), FiroeState.Constantic() -> true;
-        };
+        if (getNyes() == Nyes.CONSTANTIC) {
+            return true;
+        }
+        if (value == null) {
+            return true; // Not yet resolved
+        }
+        return value.isAbstract();
     }
 
     @Override
@@ -65,15 +68,14 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
     public void step() {
         switch (getNyes()) {
             case INITIALIZED: {
-                var found = braneMemory.get(identifier, 0)
+                value = braneMemory.get(identifier, 0)
                         .map(r -> r.getValue())
                         .orElse(null);
-                if (found != null) {
-                    state = new FiroeState.Value(found);
+                if (value == null) {
+                    setNyes(Nyes.CONSTANTIC);
                 } else {
-                    state = new FiroeState.Constantic();
+                    setNyes(Nyes.RESOLVED);
                 }
-                setNyes(Nyes.RESOLVED);
             }
             default:
                 super.step();
@@ -86,10 +88,10 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
      */
     @Override
     public long getValue() {
-        return switch (state) {
-            case FiroeState.Value(FIR fir) -> fir.getValue();
-            case FiroeState.Unknown(), FiroeState.Constantic() -> throw new UnsupportedOperationException("Cannot get value from identifier in state " + state);
-        };
+        if (getNyes() == Nyes.CONSTANTIC) {
+            throw new UnsupportedOperationException("Cannot get value from constantic identifier");
+        }
+        return value.getValue();
     }
 
     @Override

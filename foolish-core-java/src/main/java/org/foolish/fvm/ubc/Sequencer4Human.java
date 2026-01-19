@@ -122,42 +122,29 @@ public class Sequencer4Human extends Sequencer<String> {
      * Sequences an assignment FIR showing the coordinate name and its value.
      */
     protected String sequenceAssignment(AssignmentFiroe assignment, int depth) {
-        // Check state explicitly
-        FiroeState state = assignment.getFiroeState();
-        if (state instanceof FiroeState.Constantic) {
-             return indent(depth) + assignment.getId() + " = ?C?";
-        }
-
-        if (state instanceof FiroeState.Value(FIR result) && !assignment.isNye()) {
+        if (!assignment.isNye() && assignment.getResult() != null) {
+            FIR result = assignment.getResult();
             // Check if the result is fully evaluated
-            if (!result.isNye()) {
+            if (!result.isNye() || result.getNyes() == Nyes.CONSTANTIC) {
+
                 // Unwrap identifier/assignment/oneshot to get the actual value
                 FIR unwrapped = result;
                 boolean constanticFound = false;
 
                 unwrappingLoop:
                 while (true) {
-                    if (unwrapped == null) break unwrappingLoop;
+                    if (unwrapped == null) break;
+                    if (unwrapped.getNyes() == Nyes.CONSTANTIC) {
+                        constanticFound = true;
+                        break;
+                    }
+
                     switch (unwrapped) {
                         case IdentifierFiroe identifierFiroe -> {
-                            switch (identifierFiroe.state) {
-                                case FiroeState.Value(FIR idVal) -> unwrapped = idVal;
-                                case FiroeState.Constantic _ -> {
-                                    constanticFound = true;
-                                    break unwrappingLoop;
-                                }
-                                default -> { break unwrappingLoop; }
-                            }
+                            unwrapped = identifierFiroe.value;
                         }
                         case AssignmentFiroe assignmentFiroe -> {
-                            switch (assignmentFiroe.getFiroeState()) {
-                                case FiroeState.Value(FIR assVal) -> unwrapped = assVal;
-                                case FiroeState.Constantic _ -> {
-                                    constanticFound = true;
-                                    break unwrappingLoop;
-                                }
-                                default -> { break unwrappingLoop; }
-                            }
+                            unwrapped = assignmentFiroe.getResult();
                         }
                         case OneShotSearchFiroe oneShotSearchFiroe ->
                              unwrapped = oneShotSearchFiroe.getResult();
@@ -169,7 +156,7 @@ public class Sequencer4Human extends Sequencer<String> {
                     return indent(depth) + assignment.getId() + " = ?C?";
                 }
 
-                if (unwrapped.isAbstract()) {
+                if (unwrapped != null && unwrapped.isAbstract()) {
                     return indent(depth) + assignment.getId() + " = ???";
                 }
 
@@ -189,6 +176,8 @@ public class Sequencer4Human extends Sequencer<String> {
                 }
                 return indent(depth) + assignment.getId() + " = " + result.getValue();
             }
+        } else if (assignment.getNyes() == Nyes.CONSTANTIC) {
+             return indent(depth) + assignment.getId() + " = ?C?";
         }
         // If not yet evaluated, show the structure
         return indent(depth) + assignment.getId() + " = ???";
@@ -198,7 +187,7 @@ public class Sequencer4Human extends Sequencer<String> {
      * Sequences an identifier FIR showing its resolved value.
      */
     protected String sequenceIdentifier(IdentifierFiroe identifier, int depth) {
-        if (identifier.state instanceof FiroeState.Constantic) {
+        if (identifier.getNyes() == Nyes.CONSTANTIC) {
             return indent(depth) + "?C?";
         }
 

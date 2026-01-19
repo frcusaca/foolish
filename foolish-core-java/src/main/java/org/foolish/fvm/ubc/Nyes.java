@@ -57,6 +57,13 @@ public enum Nyes {
     EVALUATING,
 
     /**
+     * The evaluation has halted because a required resource was not found.
+     * The FIR is "stuck" in a constantic state.
+     * Like CONSTANT, it is a terminal state.
+     */
+    CONSTANTIC,
+
+    /**
      * No more changes will happen with call to step() unless the environment changes.
      * This is the only !isNye() state - a FIR in CONSTANT state is fully evaluated.
      */

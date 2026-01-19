@@ -50,6 +50,9 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
                 if (stepNonBranesUntilState(Nyes.CONSTANT)) {
                     if (isAnchorReady()) {
                         performSearchStep();
+                        if (getNyes() == Nyes.CONSTANTIC) {
+                            return;
+                        }
                         if (searchResult != null) {
                             setNyes(Nyes.CONSTANT);
                         }
@@ -82,14 +85,19 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
 
         FIR anchor = braneMemory.getLast();
 
+        // Check if anchor is CONSTANTIC
+        if (anchor.getNyes() == Nyes.CONSTANTIC) {
+            return true;
+        }
+
         // Unwrap identifier to get the actual value
         FIR resolvedAnchor = anchor;
         if (anchor instanceof IdentifierFiroe identifierFiroe) {
-            switch (identifierFiroe.state) {
-                case FiroeState.Constantic _ -> { return true; }
-                case FiroeState.Value(FIR fir) -> resolvedAnchor = fir;
-                case FiroeState.Unknown _ -> { return false; }
+            if (identifierFiroe.getNyes() == Nyes.CONSTANTIC) {
+                return true;
             }
+            if (identifierFiroe.value == null) return false;
+            resolvedAnchor = identifierFiroe.value;
         }
 
         if (resolvedAnchor == null) return false;
@@ -97,21 +105,24 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
 
         // Unwrap assignment
         if (anchor instanceof AssignmentFiroe assignmentFiroe) {
+            if (assignmentFiroe.getNyes() == Nyes.CONSTANTIC) {
+                return true;
+            }
             if (assignmentFiroe.isNye()) {
                 assignmentFiroe.step();
                 return false;
             }
-            switch (assignmentFiroe.getFiroeState()) {
-                case FiroeState.Constantic _ -> { return true; }
-                case FiroeState.Value(FIR fir) -> anchor = fir;
-                case FiroeState.Unknown _ -> { return false; }
-            }
+            if (assignmentFiroe.getResult() == null) return false;
+            anchor = assignmentFiroe.getResult();
         }
 
         if (anchor == null) return false;
 
         // Check if chained search is ready
         if (anchor instanceof AbstractSearchFiroe abstractSearchFiroe) {
+             if (abstractSearchFiroe.getNyes() == Nyes.CONSTANTIC) {
+                 return true;
+             }
              if (abstractSearchFiroe.isNye()) {
                  abstractSearchFiroe.step();
                  return false;
@@ -133,40 +144,46 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
 
         if (searchResult != null) return;
 
+        // Check for constantic anchor
+        if (unwrapAnchor.getNyes() == Nyes.CONSTANTIC) {
+            searchResult = new NKFiroe(); // Search on constantic -> NK? Or constantic result?
+            // Usually if resource is missing, search fails -> NK.
+            // Or maybe it should propagate constantic? "Refactor identifier 'NOT FOUND' state to CONSTANTIC state"
+            // But a search result that fails is usually NK.
+            // Let's stick to NK for now unless specified otherwise.
+            return;
+        }
+
         // Unwrapping Loop
         if (unwrapAnchor instanceof IdentifierFiroe identifierFiroe) {
-            switch (identifierFiroe.state) {
-                case FiroeState.Constantic _ -> {
-                    searchResult = new NKFiroe();
-                    return;
-                }
-                case FiroeState.Value(FIR fir) -> {
-                    unwrapAnchor = fir;
-                    return;
-                }
-                default -> { return; }
+            if (identifierFiroe.getNyes() == Nyes.CONSTANTIC) {
+                searchResult = new NKFiroe();
+                return;
             }
+            unwrapAnchor = identifierFiroe.value;
+            if (unwrapAnchor == null) searchResult = new NKFiroe();
+            return;
         }
 
         if (unwrapAnchor instanceof AssignmentFiroe assignmentFiroe) {
+            if (assignmentFiroe.getNyes() == Nyes.CONSTANTIC) {
+                searchResult = new NKFiroe();
+                return;
+            }
             if (assignmentFiroe.isNye()) {
                 assignmentFiroe.step();
                 return;
             }
-            switch (assignmentFiroe.getFiroeState()) {
-                case FiroeState.Constantic _ -> {
-                    searchResult = new NKFiroe();
-                    return;
-                }
-                case FiroeState.Value(FIR fir) -> {
-                    unwrapAnchor = fir;
-                    return;
-                }
-                default -> { return; }
-            }
+            unwrapAnchor = assignmentFiroe.getResult();
+            if (unwrapAnchor == null) searchResult = new NKFiroe();
+            return;
         }
 
         if (unwrapAnchor instanceof AbstractSearchFiroe abstractSearchFiroe) {
+            if (abstractSearchFiroe.getNyes() == Nyes.CONSTANTIC) {
+                searchResult = new NKFiroe();
+                return;
+            }
             if (abstractSearchFiroe.isNye()) {
                 abstractSearchFiroe.step();
                 return;
@@ -190,6 +207,13 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
                  // Should ideally return NKFiroe, but assume executeSearch handles logic
                  searchResult = new NKFiroe();
                  return;
+             }
+
+             if (result.getNyes() == Nyes.CONSTANTIC) {
+                 // If search result is constantic (e.g. identifier found but it was constantic)
+                 // Then we treat it as found but constantic.
+                 // But wait, executeSearch returns FIR.
+                 // If we found an IdentifierFiroe that is Constantic, result is that IdentifierFiroe.
              }
 
              // If the search result itself needs unwrapping (e.g. it's an assignment or identifier found in the brane)
