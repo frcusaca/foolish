@@ -15,26 +15,6 @@ Foolish is a revolutionary programming language with parallel Java and Scala imp
 - **Build Tool**: Maven (multi-module project)
 - **ANTLR**: 4.13.2 (for grammar generation)
 
-## Maven Wrapper Script (CRITICAL)
-
-**ALL AI AGENTS MUST USE `./mvn_cmd` INSTEAD OF `mvn` DIRECTLY.**
-
-The `mvn_cmd` script in the project root automatically handles environment-specific Maven configuration:
-
-- **In Claude Code Web (CCW)**: Automatically applies proxy settings (`127.0.0.1:3128`) required for Maven to work
-- **In Local/Other Environments**: Runs Maven directly without proxy
-
-**Usage:**
-```bash
-# CORRECT - Use mvn_cmd wrapper
-./mvn_cmd clean test
-
-# WRONG - Do not call mvn directly
-mvn clean test
-```
-
-This ensures Maven commands work correctly across all development environments without manual proxy configuration.
-
 ## Environment Detection
 
 The project supports two primary development environments:
@@ -43,60 +23,13 @@ The project supports two primary development environments:
 - Standard development environment on developer's machine
 - Assumes Java 25 is already installed
 - No proxy configuration needed
-- Maven commands work directly: `./mvn_cmd clean test`
+- Maven commands work directly: `mvn clean test`
 
 ### Claude Code Web (CCW)
-- Cloud-based development environment provided by Claude Code
-- Requires special setup for Java 25 and Maven proxy
-- Environment variable: `CLAUDECODE=1` (always set in CCW)
-- Additional variables:
-  - `CLAUDE_CODE_REMOTE_ENVIRONMENT_TYPE=cloud_default`
-  - `CLAUDE_CODE_PROXY_RESOLVES_HOSTS=true`
-  - `CLAUDE_CODE_SESSION_ID` (unique session identifier)
-
-## Claude Code Web Setup
-
-**CRITICAL**: When working in Claude Code Web (CCW), you MUST run the CCW setup before any Maven operations.
-
-### Running the Setup
-
-**Claude Code users:**
-```bash
-/skill ccw-maven-setup
-```
-
-**All AI agents (alternative method):**
-```bash
-.claude/skills/ccw-maven-setup/prep_if_ccw.sh
-```
-
-### What the Setup Does
-
-The skill (`ccw-maven-setup`) automatically detects the environment and:
-
-**In Claude Code Web (CCW):**
-1. Installs SDKMAN if not present
-2. Installs latest stable Java 25 (Temurin) via SDKMAN
-3. Starts a local Maven authentication proxy at `127.0.0.1:3128`
-4. Configures `~/.m2/settings.xml` with proxy settings
-
-**In Local Environments:**
-- Does nothing (exits immediately)
-- Assumes Java 25 is already available
-
-### Why CCW Needs Special Setup
-
-Maven doesn't honor standard `HTTP_PROXY`/`HTTPS_PROXY` environment variables for authentication. The CCW environment uses a proxy with JWT-based authentication that Maven cannot handle directly.
-
-**The Solution:**
-A local Python proxy runs on `localhost:3128` that:
-- Accepts Maven connections without authentication
-- Forwards requests to the CCW upstream proxy with proper authentication headers
-- Automatically extracts and uses JWT tokens from environment variables
-
-**Technical References:**
-- [GitHub Issue #13372](https://github.com/anthropics/claude-code/issues/13372) - Maven/Gradle builds failing in CCW
-- [LinkedIn Article](https://www.linkedin.com/pulse/fixing-maven-build-issues-claude-code-web-ccw-tarun-lalwani-8n7oc) - Detailed workaround explanation
+- Cloud-based development environment
+- **Not recommended for this project** - Use local development instead
+- Maven dependency resolution does not work reliably in CCW environments
+- See CLAUDE.md for details on CCW limitations
 
 ## Build Commands
 
@@ -104,27 +37,27 @@ A local Python proxy runs on `localhost:3128` that:
 
 ```bash
 # Full clean build with tests
-./mvn_cmd clean generate-sources compile test
+mvn clean generate-sources compile test
 
 # Parallel build (recommended)
-./mvn_cmd clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
+mvn clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 ```
 
 ### Compilation Only
 
 ```bash
 # When fixing compilation errors, skip tests
-./mvn_cmd clean compile -T $(($(nproc) * 2)) -DskipTests
+mvn clean compile -T $(($(nproc) * 2)) -DskipTests
 ```
 
 ### Running Tests
 
 ```bash
 # Run all tests with parallel execution
-./mvn_cmd test -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
+mvn test -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 
 # Run specific test
-./mvn_cmd test -Dtest=ClassName#methodName
+mvn test -Dtest=ClassName#methodName
 ```
 
 ### Build Skills (Claude Code)
@@ -344,26 +277,24 @@ GitHub Copilot / gpt-4
 
 **Claude Code:**
 ```bash
-# 1. Run CCW setup skill
-/skill ccw-maven-setup
-
-# 2. Verify Java version
+# CCW setup runs automatically via SessionStart hook
+# Just verify Java version once your session starts
 java -version  # Should show Java 25
 
-# 3. Run build
-./mvn_cmd clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
+# Run build
+mvn clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 ```
 
 **Other AI agents:**
 ```bash
-# 1. Run setup script directly
-.claude/skills/ccw-maven-setup/prep_if_ccw.sh
+# 1. Run setup script directly (if not using SessionStart hook)
+support/shared/claude/skills/ccw-maven-setup/prep_if_ccw.sh
 
 # 2. Verify Java version
 java -version  # Should show Java 25
 
 # 3. Run build
-./mvn_cmd clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
+mvn clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 ```
 
 ### Adding a New Approval Test
@@ -382,10 +313,10 @@ java -version  # Should show Java 25
 ### Debugging Compilation Errors
 ```bash
 # Always skip tests when fixing compilation
-./mvn_cmd clean compile -T $(($(nproc) * 2)) -DskipTests
+mvn clean compile -T $(($(nproc) * 2)) -DskipTests
 
 # After compilation succeeds, run tests
-./mvn_cmd test -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
+mvn test -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 ```
 
 ## Important Files
@@ -419,11 +350,11 @@ fi
 
 **Full Workflow (CCW - Claude Code):**
 ```bash
-# Setup (once per session)
-/skill ccw-maven-setup
+# Setup runs automatically via SessionStart hook
+# Just start developing once your session is ready
 
 # Development cycle
-./mvn_cmd clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
+mvn clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 
 # Commit and push
 git add .
@@ -435,11 +366,11 @@ git push -u origin claude/your-branch-name
 
 **Full Workflow (CCW - Other AI agents):**
 ```bash
-# Setup (once per session)
-.claude/skills/ccw-maven-setup/prep_if_ccw.sh
+# Setup (once per session, if not using SessionStart hook)
+support/shared/claude/skills/ccw-maven-setup/prep_if_ccw.sh
 
 # Development cycle
-./mvn_cmd clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
+mvn clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 
 # Commit and push
 git add .
@@ -452,7 +383,7 @@ git push -u origin <agent-prefix>/your-branch-name
 **Full Workflow (Local - All agents):**
 ```bash
 # No setup needed - just develop
-./mvn_cmd clean test
+mvn clean test
 
 # Commit and push
 git add .
@@ -500,6 +431,6 @@ When proposing updates, explain what has changed and why the documentation needs
 
 ## Last Updated
 
-**Date**: 2026-01-18
-**Updated By**: Claude Code v1.0.0 / claude-sonnet-4-5-20250929
-**Changes**: Added Maven wrapper script section instructing all AI agents to use `./mvn_cmd` instead of calling `mvn` directly. Updated all Maven command examples throughout the document to use the wrapper script. This ensures consistent proxy handling across CCW and local environments.
+**Date**: 2026-01-19
+**Updated By**: Claude Code v2.1.1 / claude-sonnet-4-5-20250929
+**Changes**: Simplified CCW section to brief note recommending local development instead. Removed detailed proxy configuration and workaround documentation. CCW is not currently suitable for Maven-based Java development.

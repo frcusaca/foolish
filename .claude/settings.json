@@ -29,6 +29,18 @@
       "MultiEdit(*)"
     ]
   },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/support/shared/claude/skills/ccw-maven-setup/prep_if_ccw.sh"
+          }
+        ]
+      }
+    ]
+  },
   "enabledPlugins": {},
   "extraKnownMarketplaces": {
     "company-tools": {

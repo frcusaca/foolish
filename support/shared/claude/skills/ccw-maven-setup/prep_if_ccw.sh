@@ -13,7 +13,9 @@ if [ -z "$CLAUDECODE" ]; then
     exit 0
 fi
 
-echo "🔧 Claude Code Web detected - setting up Java 25 and Maven proxy..."
+echo "🔧 Claude Code Web detected - setting up Java 25..."
+echo "⏱️  This setup ensures Java 25 is available for your session..."
+echo "    (First run: ~60s, subsequent runs: ~10s due to caching)"
 
 # Install SDKMAN if needed
 if [ ! -d "$HOME/.sdkman" ]; then
@@ -26,12 +28,16 @@ source "$HOME/.sdkman/bin/sdkman-init.sh" || source "$SCRIPT_DIR/sdkman-init.sh"
 
 
 # Install Java 25 if needed (latest stable Temurin)
-if ! sdk list java 2>/dev/null | grep -q "25\..*-tem.*installed"; then
+echo "🔍 Checking for Java 25..."
+if ! sdk list java | grep -q "25\..*-tem.*installed"; then
     echo "☕ Installing latest stable Java 25 (Temurin)..."
+    echo "   (This may take 30-60 seconds on first run)"
     # Get the latest 25.x Temurin version
     JAVA_VERSION=$(sdk list java 2>/dev/null | grep "tem" | grep "25\." | grep -v "fx\|ea" | head -1 | awk '{print $NF}')
     if [ -n "$JAVA_VERSION" ]; then
+        echo "   Installing Java $JAVA_VERSION..."
         sdk install java "$JAVA_VERSION"
+        echo "   ✅ Java $JAVA_VERSION installed successfully"
     else
         echo "⚠️  Could not find Java 25 Temurin, trying default..."
         sdk install java 25-tem
@@ -40,103 +46,29 @@ else
     echo "✅ Java 25 already installed"
     # Use any installed Java 25 Temurin version
     INSTALLED_VERSION=$(sdk list java 2>/dev/null | grep "25\..*-tem.*installed" | head -1 | awk '{print $NF}')
+    echo "   Using Java $INSTALLED_VERSION"
     sdk use java "$INSTALLED_VERSION"
 fi
 
-# Setup Maven proxy for CCW
-PROXY_URL="${HTTPS_PROXY:-$https_proxy}"
-if [ -z "$PROXY_URL" ]; then
-    echo "⚠️  No proxy detected - skipping proxy setup"
-    exit 0
+# Persist Java 25 environment for the session
+JAVA_HOME="$HOME/.sdkman/candidates/java/current"
+export JAVA_HOME
+export PATH="$JAVA_HOME/bin:$PATH"
+
+# If CLAUDE_ENV_FILE is available, persist for the entire session
+if [ -n "$CLAUDE_ENV_FILE" ]; then
+    echo "export JAVA_HOME=\"$JAVA_HOME\"" >> "$CLAUDE_ENV_FILE"
+    echo "export PATH=\"\$JAVA_HOME/bin:\$PATH\"" >> "$CLAUDE_ENV_FILE"
+    echo "  ✅ Java 25 environment persisted to session"
 fi
 
-echo "🔌 Setting up Maven proxy..."
-
-# Start local proxy if not running
-if ! pgrep -f "maven-proxy.py" > /dev/null; then
-    echo "🚀 Starting Maven authentication proxy..."
-
-    cat > /tmp/maven-proxy.py <<'PROXYEOF'
-#!/usr/bin/env python3
-"""Local proxy that adds auth when forwarding to upstream proxy."""
-import socket, threading, os, base64, select
-from urllib.parse import urlparse
-
-LOCAL_PORT = 3128
-UPSTREAM = os.environ.get('https_proxy') or os.environ.get('HTTPS_PROXY')
-
-def get_upstream():
-    p = urlparse(UPSTREAM)
-    return p.hostname, p.port, p.username or '', p.password or ''
-
-def handle(client):
-    try:
-        req = b''
-        while b'\r\n\r\n' not in req:
-            req += client.recv(4096)
-        target = req.split(b'\r\n')[0].split()[1].decode()
-        host, port = (target.split(':') + ['443'])[:2]
-        proxy_host, proxy_port, user, pwd = get_upstream()
-        auth = base64.b64encode(f"{user}:{pwd}".encode()).decode()
-        upstream = socket.socket()
-        upstream.connect((proxy_host, proxy_port))
-        upstream.send(f"CONNECT {host}:{port} HTTP/1.1\r\nProxy-Authorization: Basic {auth}\r\n\r\n".encode())
-        resp = b''
-        while b'\r\n\r\n' not in resp:
-            resp += upstream.recv(4096)
-        if b'200' in resp.split(b'\r\n')[0]:
-            client.send(b'HTTP/1.1 200 Connection Established\r\n\r\n')
-            for s in [client, upstream]: s.setblocking(False)
-            while True:
-                r, _, _ = select.select([client, upstream], [], [], 30)
-                if not r: break
-                for s in r:
-                    data = s.recv(8192)
-                    if not data: return
-                    (upstream if s is client else client).sendall(data)
-    except: pass
-    finally: client.close()
-
-if __name__ == '__main__':
-    srv = socket.socket()
-    srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    srv.bind(('127.0.0.1', LOCAL_PORT))
-    srv.listen(10)
-    print(f"Maven proxy listening on 127.0.0.1:{LOCAL_PORT}")
-    while True:
-        c, _ = srv.accept()
-        threading.Thread(target=handle, args=(c,), daemon=True).start()
-PROXYEOF
-
-    chmod +x /tmp/maven-proxy.py
-    python3 /tmp/maven-proxy.py > /tmp/maven-proxy.log 2>&1 &
-    sleep 2
-    echo "  ✅ Proxy started at 127.0.0.1:3128"
-else
-    echo "  ✅ Proxy already running"
-fi
-
-# Configure Maven settings
-mkdir -p "$HOME/.m2"
-cat > "$HOME/.m2/settings.xml" <<'SETTINGSEOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
-          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
-                              http://maven.apache.org/xsd/settings-1.0.0.xsd">
-  <proxies>
-    <proxy>
-      <id>local</id>
-      <active>true</active>
-      <protocol>https</protocol>
-      <host>127.0.0.1</host>
-      <port>3128</port>
-    </proxy>
-  </proxies>
-</settings>
-SETTINGSEOF
-echo "  ✅ Maven settings.xml configured"
-
-echo "✨ CCW setup complete!"
 echo ""
-java -version
+echo "✨ Java 25 setup complete!"
+echo ""
+echo "📊 Environment status:"
+echo "   Java version:"
+java -version 2>&1 | sed 's/^/   /' | head -1
+echo ""
+echo "⚠️  Note: Maven builds may not work in CCW due to environment limitations"
+echo "   For full Maven functionality, please use local development"
+

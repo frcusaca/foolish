@@ -41,53 +41,65 @@ This skill provides:
 
 See `.claude/skills/maven-builder-for-foolish-language/` for full documentation.
 
-### Claude Code Web (CCW) Setup
+### Claude Code Web (CCW) - Not Recommended for This Project
 
-**This project requires Java 25.** Local development assumes Java 25 is installed. Claude Code Web provides Java 21 by default, so setup is required.
+**Date**: 2026-01-19
+**Model**: claude-sonnet-4-5-20250929
 
-**IMPORTANT:** Before running any Maven commands in CCW, run:
+This project requires Java 25 and Maven for builds. Claude Code Web is not currently configured to support Maven-based Java development.
 
-```bash
-/skill ccw-maven-setup
-```
+**What Works in CCW:**
+- Java 25 installation (via SessionStart hook using SDKMAN)
+- Basic Java compilation
+- Code editing and file management
 
-This skill automatically:
-1. Detects if running in CCW (checks `CLAUDECODE` environment variable)
-2. If in CCW:
-   - use the script in the skill's directory(ccw-maven-setup/prep_if_ccw.sh right next to ccw-maven-setup/skill.md)
-     - Installs SDKMAN (if not present)
-     - Installs latest stable Java 25 (Temurin) via SDKMAN
-     - Starts a local Maven authentication proxy at `127.0.0.1:3128`
-   - Configures `~/.m2/settings.xml` with proxy settings
-3. If not in CCW (local environment):
-   - Does nothing - assumes Java 25 is already installed
+**What Does Not Work:**
+- Maven dependency downloads from Maven Central
+- Full Maven builds requiring external artifacts
+- Running tests that depend on Maven dependencies
 
-**The skill is idempotent** - safe to run multiple times.
+**Why Maven Doesn't Work:**
 
-For details on why CCW needs a proxy and how the setup works, see the "Claude Code Web Setup" section in `AGENTS.md`.
+As of January 2026, Claude Code Web's network security model prevents standard Maven dependency resolution. The environment's egress filtering interferes with Maven's HTTPS connections to artifact repositories. Various workarounds were attempted (proxy configuration, certificate manipulation, SSL bypasses) but each approach was progressively blocked or rendered ineffective by the security infrastructure.
+
+This appears to be an inherent limitation of CCW's current architecture rather than a simple configuration issue. The same challenges affected other language ecosystems (like Rust) initially, so support may improve over time.
+
+**Recommendation:**
+
+**Use local development for this project.** All Maven functionality works normally in a local environment with Java 25 installed. CCW is approximately 3 months old (as of January 2026) and still maturing its support for different development stacks.
+
+**SessionStart Hook:**
+
+The project includes a SessionStart hook that installs Java 25 in CCW environments:
+- Installs SDKMAN if needed
+- Installs Java 25 (Temurin) via SDKMAN
+- Configures `JAVA_HOME` and `PATH` for the session
+- Shows a warning about Maven limitations
+
+This provides basic Java 25 availability but does not enable full Maven functionality.
 
 ### Quick Build Reference
 
 Basic build and test:
 ```bash
-mvn_cmd clean generate-sources compile test
+mvn clean generate-sources compile test
 ```
 
 Optimized parallel builds:
 ```bash
 # Clean parallel build (2 threads per core, dynamically calculated)
-mvn_cmd clean compile -T $(($(nproc) * 2))
+mvn clean compile -T $(($(nproc) * 2))
 
 # Parallel tests (4 threads per core for test execution)
-mvn_cmd test -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
+mvn test -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 
 # Combined clean build with parallel tests
-mvn_cmd clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
+mvn clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 ```
 
 **Important**: When fixing compilation errors, always skip tests first:
 ```bash
-mvn_cmd clean compile -T $(($(nproc) * 2)) -DskipTests
+mvn clean compile -T $(($(nproc) * 2)) -DskipTests
 ```
 
 For detailed build strategies and debugging patterns, use the `maven-builder-for-foolish-language` skill.
@@ -164,6 +176,6 @@ When proposing updates, explain what has changed and why the documentation needs
 
 ## Last Updated
 
-**Date**: 2026-01-15
-**Updated By**: Claude Code v1.0.0 / claude-sonnet-4-5-20250929
-**Changes**: Restructured to separate Claude Code-specific content from general project information. Moved all project-specific details (architecture, UBC, FIR, testing, conventions) to AGENTS.md. Kept only Claude Code-specific features: skills, CCW setup, commit format, branch naming. Added markdown update protocol reference and multi-agent collaboration awareness.
+**Date**: 2026-01-19
+**Updated By**: Claude Code v2.1.1 / claude-sonnet-4-5-20250929
+**Changes**: Reverted all proxy circumvention code and replaced with straightforward documentation. CCW is not currently viable for Maven/Java development due to network security constraints that prevent Maven dependency resolution. Removed Python proxy, certificate extraction, and settings.xml manipulation. SessionStart hook now only installs Java 25 and shows a warning about Maven limitations. Documented that CCW is approximately 3 months old and still maturing, and recommended local development for this project.
