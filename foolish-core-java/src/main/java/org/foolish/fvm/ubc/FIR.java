@@ -67,6 +67,14 @@ public abstract class FIR {
         this.nyes = nyes;
     }
 
+    public final boolean atConstant() {
+        return nyes == Nyes.CONSTANT;
+    }
+
+    public final boolean atConstantic() {
+        return nyes == Nyes.CONSTANTIC;
+    }
+
     /**
      * Perform one step of evaluation on this FIR.
      * This method should advance the FIR's evaluation state by one step.

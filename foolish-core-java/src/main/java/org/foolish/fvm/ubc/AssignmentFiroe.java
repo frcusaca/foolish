@@ -39,7 +39,7 @@ public class AssignmentFiroe extends FiroeWithBraneMind {
             return;
         }
 
-        if (getNyes() == Nyes.CONSTANTIC) {
+        if (atConstantic()) {
             return;
         }
 
@@ -60,7 +60,7 @@ public class AssignmentFiroe extends FiroeWithBraneMind {
         // Expression is fully evaluated, store the result
         if (!braneMemory.isEmpty()) {
             result = braneMemory.get(0);
-            if (result.getNyes() == Nyes.CONSTANTIC) {
+            if (result.atConstantic()) {
                 setNyes(Nyes.CONSTANTIC);
             }
         }
@@ -68,13 +68,13 @@ public class AssignmentFiroe extends FiroeWithBraneMind {
 
     @Override
     public boolean isNye() {
-        return result == null && getNyes() != Nyes.CONSTANTIC;
+        return result == null && !atConstantic();
     }
 
     @Override
     public boolean isAbstract() {
         /** check of the ID is abstract **/
-        if (getNyes() == Nyes.CONSTANTIC) {
+        if (atConstantic()) {
             return true;
         }
         if (result != null) {
@@ -108,7 +108,7 @@ public class AssignmentFiroe extends FiroeWithBraneMind {
 
     @Override
     public long getValue() {
-        if (getNyes() == Nyes.CONSTANTIC) {
+        if (atConstantic()) {
             throw new IllegalStateException("AssignmentFiroe is constantic");
         }
         if (result == null) {

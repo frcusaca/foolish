@@ -45,7 +45,7 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
      */
     @Override
     public boolean isAbstract() {
-        if (getNyes() == Nyes.CONSTANTIC) {
+        if (atConstantic()) {
             return true;
         }
         if (value == null) {
@@ -88,7 +88,7 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
      */
     @Override
     public long getValue() {
-        if (getNyes() == Nyes.CONSTANTIC) {
+        if (atConstantic()) {
             throw new UnsupportedOperationException("Cannot get value from constantic identifier");
         }
         return value.getValue();

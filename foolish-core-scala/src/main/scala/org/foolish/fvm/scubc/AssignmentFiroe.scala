@@ -11,7 +11,7 @@ class AssignmentFiroe(assignment: AST.Assignment)
   extends FiroeWithBraneMind(assignment):
 
   val lhs = CharacterizedIdentifier(assignment.identifier())
-  private var result: FiroeState = FiroeState.Unknown()
+  private var result: Option[FIR] = None
 
   override protected def initialize(): Unit =
     if isInitialized then return
@@ -20,7 +20,10 @@ class AssignmentFiroe(assignment: AST.Assignment)
     enqueueExprs(assignment.expr())
 
   override def step(): Unit =
-    if result.isInstanceOf[FiroeState.Value] then
+    if result.isDefined then
+      return
+
+    if atConstantic then
       return
 
     if !isInitialized then
@@ -32,12 +35,19 @@ class AssignmentFiroe(assignment: AST.Assignment)
 
     // Check if we can get the final result
     if !super.isNye && !braneMemory.isEmpty then
-      result = FiroeState.Value(braneMemory.get(0))
+      val res = braneMemory.get(0)
+      result = Some(res)
+      if res.atConstantic then
+        setNyes(Nyes.CONSTANTIC)
 
   override def isAbstract: Boolean =
-    result match
-      case FiroeState.Value(fir) => fir.isAbstract
-      case _ => super.isAbstract
+    if atConstantic then
+      true
+    else
+      result.map(_.isAbstract).getOrElse(super.isAbstract)
+
+  override def isNye: Boolean =
+    result.isEmpty && !atConstantic
 
   /** Gets the coordinate name for this assignment (without characterization) */
   def getId: String = lhs.getId
@@ -46,17 +56,13 @@ class AssignmentFiroe(assignment: AST.Assignment)
   def getLhs: CharacterizedIdentifier = lhs
 
   /** Gets the evaluated result FIR */
-  def getResult: Option[FIR] =
-    result match
-      case FiroeState.Value(fir) => Some(fir)
-      case _ => None
-
-  def getFiroeState: FiroeState = result
+  def getResult: Option[FIR] = result
 
   override def getValue: Long =
-    result match
-      case FiroeState.Value(fir) => fir.getValue
-      case _ => throw IllegalStateException("AssignmentFiroe not fully evaluated")
+    if atConstantic then
+      throw IllegalStateException("AssignmentFiroe is constantic")
+    result.map(_.getValue).getOrElse(
+      throw IllegalStateException("AssignmentFiroe not fully evaluated"))
 
   override def toString: String =
     Sequencer4Human().sequence(this)

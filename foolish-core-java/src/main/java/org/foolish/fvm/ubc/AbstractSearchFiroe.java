@@ -50,7 +50,7 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
                 if (stepNonBranesUntilState(Nyes.CONSTANT)) {
                     if (isAnchorReady()) {
                         performSearchStep();
-                        if (getNyes() == Nyes.CONSTANTIC) {
+                        if (atConstantic()) {
                             return;
                         }
                         if (searchResult != null) {
@@ -86,14 +86,14 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
         FIR anchor = braneMemory.getLast();
 
         // Check if anchor is CONSTANTIC
-        if (anchor.getNyes() == Nyes.CONSTANTIC) {
+        if (anchor.atConstantic()) {
             return true;
         }
 
         // Unwrap identifier to get the actual value
         FIR resolvedAnchor = anchor;
         if (anchor instanceof IdentifierFiroe identifierFiroe) {
-            if (identifierFiroe.getNyes() == Nyes.CONSTANTIC) {
+            if (identifierFiroe.atConstantic()) {
                 return true;
             }
             if (identifierFiroe.value == null) return false;
@@ -105,7 +105,7 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
 
         // Unwrap assignment
         if (anchor instanceof AssignmentFiroe assignmentFiroe) {
-            if (assignmentFiroe.getNyes() == Nyes.CONSTANTIC) {
+            if (assignmentFiroe.atConstantic()) {
                 return true;
             }
             if (assignmentFiroe.isNye()) {
@@ -120,7 +120,7 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
 
         // Check if chained search is ready
         if (anchor instanceof AbstractSearchFiroe abstractSearchFiroe) {
-             if (abstractSearchFiroe.getNyes() == Nyes.CONSTANTIC) {
+             if (abstractSearchFiroe.atConstantic()) {
                  return true;
              }
              if (abstractSearchFiroe.isNye()) {
@@ -145,7 +145,7 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
         if (searchResult != null) return;
 
         // Check for constantic anchor
-        if (unwrapAnchor.getNyes() == Nyes.CONSTANTIC) {
+        if (unwrapAnchor.atConstantic()) {
             searchResult = new NKFiroe(); // Search on constantic -> NK? Or constantic result?
             // Usually if resource is missing, search fails -> NK.
             // Or maybe it should propagate constantic? "Refactor identifier 'NOT FOUND' state to CONSTANTIC state"
@@ -156,7 +156,7 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
 
         // Unwrapping Loop
         if (unwrapAnchor instanceof IdentifierFiroe identifierFiroe) {
-            if (identifierFiroe.getNyes() == Nyes.CONSTANTIC) {
+            if (identifierFiroe.atConstantic()) {
                 searchResult = new NKFiroe();
                 return;
             }
@@ -166,7 +166,7 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
         }
 
         if (unwrapAnchor instanceof AssignmentFiroe assignmentFiroe) {
-            if (assignmentFiroe.getNyes() == Nyes.CONSTANTIC) {
+            if (assignmentFiroe.atConstantic()) {
                 searchResult = new NKFiroe();
                 return;
             }
@@ -180,7 +180,7 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
         }
 
         if (unwrapAnchor instanceof AbstractSearchFiroe abstractSearchFiroe) {
-            if (abstractSearchFiroe.getNyes() == Nyes.CONSTANTIC) {
+            if (abstractSearchFiroe.atConstantic()) {
                 searchResult = new NKFiroe();
                 return;
             }
@@ -209,7 +209,7 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
                  return;
              }
 
-             if (result.getNyes() == Nyes.CONSTANTIC) {
+             if (result.atConstantic()) {
                  // If search result is constantic (e.g. identifier found but it was constantic)
                  // Then we treat it as found but constantic.
                  // But wait, executeSearch returns FIR.

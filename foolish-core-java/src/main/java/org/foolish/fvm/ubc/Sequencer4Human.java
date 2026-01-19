@@ -8,6 +8,8 @@ import org.foolish.ast.AST;
  */
 public class Sequencer4Human extends Sequencer<String> {
     private static final String DEFAULT_TAB = "＿"; //U+FF3F
+    public static final String NK_STR = "???";
+    public static final String CC_STR = "⎵⎵";
     private final String tabChar;
 
     /**
@@ -44,7 +46,7 @@ public class Sequencer4Human extends Sequencer<String> {
             case AssignmentFiroe assignment -> sequenceAssignment(assignment, depth);
             case IdentifierFiroe identifier -> sequenceIdentifier(identifier, depth);
             case OneShotSearchFiroe oneShotSearch -> sequenceOneShotSearch(oneShotSearch, depth);
-            case null, default -> indent(depth) + "???";
+            case null, default -> indent(depth) + NK_STR;
         };
     }
 
@@ -82,7 +84,7 @@ public class Sequencer4Human extends Sequencer<String> {
         if (!binary.isNye()) {
             // Check if the result is NK (not-known)
             if (binary.isAbstract()) {
-                return indent(depth) + "???";
+                return indent(depth) + NK_STR;
             }
             return indent(depth) + binary.getValue();
         }
@@ -110,7 +112,7 @@ public class Sequencer4Human extends Sequencer<String> {
             }
         }
         // Otherwise show the if structure (shouldn't normally happen in evaluated branes)
-        return indent(depth) + "if ???";
+        return indent(depth) + "if " + NK_STR;
     }
 
     @Override
@@ -125,7 +127,7 @@ public class Sequencer4Human extends Sequencer<String> {
         if (!assignment.isNye() && assignment.getResult() != null) {
             FIR result = assignment.getResult();
             // Check if the result is fully evaluated
-            if (!result.isNye() || result.getNyes() == Nyes.CONSTANTIC) {
+            if (!result.isNye() || result.atConstantic()) {
 
                 // Unwrap identifier/assignment/oneshot to get the actual value
                 FIR unwrapped = result;
@@ -134,7 +136,7 @@ public class Sequencer4Human extends Sequencer<String> {
                 unwrappingLoop:
                 while (true) {
                     if (unwrapped == null) break;
-                    if (unwrapped.getNyes() == Nyes.CONSTANTIC) {
+                    if (unwrapped.atConstantic()) {
                         constanticFound = true;
                         break;
                     }
@@ -153,11 +155,11 @@ public class Sequencer4Human extends Sequencer<String> {
                 }
 
                 if (constanticFound) {
-                    return indent(depth) + assignment.getId() + " = ?C?";
+                    return indent(depth) + assignment.getId() + " = " + CC_STR;
                 }
 
                 if (unwrapped != null && unwrapped.isAbstract()) {
-                    return indent(depth) + assignment.getId() + " = ???";
+                    return indent(depth) + assignment.getId() + " = " + NK_STR;
                 }
 
                 if (unwrapped instanceof BraneFiroe brane) {
@@ -176,44 +178,44 @@ public class Sequencer4Human extends Sequencer<String> {
                 }
                 return indent(depth) + assignment.getId() + " = " + result.getValue();
             }
-        } else if (assignment.getNyes() == Nyes.CONSTANTIC) {
-             return indent(depth) + assignment.getId() + " = ?C?";
+        } else if (assignment.atConstantic()) {
+             return indent(depth) + assignment.getId() + " = " + CC_STR;
         }
         // If not yet evaluated, show the structure
-        return indent(depth) + assignment.getId() + " = ???";
+        return indent(depth) + assignment.getId() + " = " + NK_STR;
     }
 
     /**
      * Sequences an identifier FIR showing its resolved value.
      */
     protected String sequenceIdentifier(IdentifierFiroe identifier, int depth) {
-        if (identifier.getNyes() == Nyes.CONSTANTIC) {
-            return indent(depth) + "?C?";
+        if (identifier.atConstantic()) {
+            return indent(depth) + CC_STR;
         }
 
         // If the identifier has been resolved and is not NYE
         if (!identifier.isNye()) {
             // Check if it resolved to an abstract value
             if (identifier.isAbstract()) {
-                return indent(depth) + "???";
+                return indent(depth) + NK_STR;
             }
             return indent(depth) + identifier.getValue();
         }
         // If not yet evaluated
-        return indent(depth) + "???";
+        return indent(depth) + NK_STR;
     }
 
     /**
      * Sequences an NK (not-known) FIR.
      */
     protected String sequenceNK(FIR nk, int depth) {
-        return indent(depth) + "???";
+        return indent(depth) + NK_STR;
     }
 
     protected String sequenceOneShotSearch(OneShotSearchFiroe oneShotSearch, int depth) {
         if (!oneShotSearch.isNye()) {
             if (oneShotSearch.isAbstract()) {
-                return indent(depth) + "???";
+                return indent(depth) + NK_STR;
             }
             // If the result is a brane, we need to handle it gracefully
             try {
@@ -224,7 +226,7 @@ public class Sequencer4Human extends Sequencer<String> {
                  return sequence(oneShotSearch.getResult(), depth);
             }
         }
-        return indent(depth) + "???";
+        return indent(depth) + NK_STR;
     }
 
     /**

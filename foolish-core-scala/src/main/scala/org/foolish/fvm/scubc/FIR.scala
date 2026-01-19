@@ -23,6 +23,9 @@ abstract class FIR(val ast: AST, val comment: Option[String] = None):
   protected def setNyes(newNyes: Nyes): Unit =
     nyes = newNyes
 
+  final def atConstant: Boolean = nyes == Nyes.CONSTANT
+  final def atConstantic: Boolean = nyes == Nyes.CONSTANTIC
+
   /**
    * Checks if this FIR has been initialized.
    */

@@ -104,7 +104,7 @@ public abstract class FiroeWithBraneMind extends FIR {
      */
     @Override
     public boolean isNye() {
-        return getNyes() != Nyes.CONSTANT && getNyes() != Nyes.CONSTANTIC;
+        return !atConstant() && !atConstantic();
     }
 
     /**

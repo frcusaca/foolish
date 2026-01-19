@@ -33,6 +33,9 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
         if (stepNonBranesUntilState(Nyes.CONSTANT)) {
           if (isAnchorReady) {
             performSearchStep()
+            if (atConstantic) {
+              return
+            }
             if (searchResult != null) {
               setNyes(Nyes.CONSTANT)
             }
@@ -60,14 +63,17 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
 
     var anchor = braneMemory.getLast
 
+    // Check if anchor is CONSTANTIC
+    if (anchor.atConstantic) {
+      return true
+    }
+
     // Unwrap identifier
     val resolvedAnchor = anchor match {
       case identifierFiroe: IdentifierFiroe =>
-        identifierFiroe.state match {
-          case FiroeState.Constantic() => return true
-          case FiroeState.Value(fir) => fir
-          case _ => return false
-        }
+        if (identifierFiroe.atConstantic) return true
+        if (identifierFiroe.value == null) return false
+        identifierFiroe.value
       case _ => anchor
     }
     if (resolvedAnchor == null) return false
@@ -76,15 +82,13 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
     // Unwrap assignment
     val resolvedAnchor2 = anchor match {
       case assignmentFiroe: AssignmentFiroe =>
+        if (assignmentFiroe.atConstantic) return true
         if (assignmentFiroe.isNye) {
           assignmentFiroe.step()
           return false
         }
-        assignmentFiroe.getFiroeState match {
-          case FiroeState.Constantic() => return true
-          case FiroeState.Value(fir) => fir
-          case _ => return false
-        }
+        if (assignmentFiroe.getResult.isEmpty) return false
+        assignmentFiroe.getResult.get
       case _ => anchor
     }
     if (resolvedAnchor2 == null) return false
@@ -93,6 +97,7 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
     // Check chained search
     anchor match {
       case abstractSearch: AbstractSearchFiroe =>
+        if (abstractSearch.atConstantic) return true
         if (abstractSearch.isNye) {
           abstractSearch.step()
           false
@@ -114,34 +119,41 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
 
     if (searchResult != null) return
 
+    // Check for constantic anchor
+    if (unwrapAnchor.atConstantic) {
+        searchResult = new NKFiroe()
+        return
+    }
+
     unwrapAnchor match {
       case identifierFiroe: IdentifierFiroe =>
-        identifierFiroe.state match {
-          case FiroeState.Constantic() =>
-             searchResult = new NKFiroe()
-             return
-          case FiroeState.Value(fir) =>
-             unwrapAnchor = fir
-             return
-          case _ => return
+        if (identifierFiroe.atConstantic) {
+            searchResult = new NKFiroe()
+            return
         }
+        unwrapAnchor = identifierFiroe.value
+        if (unwrapAnchor == null) searchResult = new NKFiroe()
+        return
 
       case assignmentFiroe: AssignmentFiroe =>
+        if (assignmentFiroe.atConstantic) {
+            searchResult = new NKFiroe()
+            return
+        }
         if (assignmentFiroe.isNye) {
           assignmentFiroe.step()
           return
         }
-        assignmentFiroe.getFiroeState match {
-          case FiroeState.Constantic() =>
-             searchResult = new NKFiroe()
-             return
-          case FiroeState.Value(fir) =>
-             unwrapAnchor = fir
-             return
-          case _ => return
-        }
+        val res = assignmentFiroe.getResult
+        if (res.isEmpty) searchResult = new NKFiroe()
+        else unwrapAnchor = res.get
+        return
 
       case abstractSearch: AbstractSearchFiroe =>
+        if (abstractSearch.atConstantic) {
+            searchResult = new NKFiroe()
+            return
+        }
         if (abstractSearch.isNye) {
           abstractSearch.step()
           return
@@ -162,6 +174,10 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
         if (result == null) {
           searchResult = new NKFiroe()
           return
+        }
+
+        if (result.atConstantic) {
+            // Handled as result
         }
 
         // Unwrap assignment result

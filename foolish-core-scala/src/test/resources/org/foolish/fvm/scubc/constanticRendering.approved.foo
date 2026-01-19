@@ -10,11 +10,11 @@ PARSED AST:
 }
 
 UBC EVALUATION:
-Steps taken: 13
+Steps taken: 11
 
 FINAL RESULT:
 {
-＿x = ?C?;
+＿x = ⎵⎵;
 }
 
 COMPLETION STATUS:
