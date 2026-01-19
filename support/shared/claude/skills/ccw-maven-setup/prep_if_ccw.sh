@@ -187,6 +187,63 @@ cat > "$HOME/.m2/settings.xml" <<'SETTINGSEOF'
 SETTINGSEOF
 echo "  ✅ Maven settings.xml configured (HTTP + HTTPS)"
 
+# Configure Java truststore for CCW proxy CA certificate
+echo "  🔐 Setting up Java truststore for CCW proxy..."
+TRUSTSTORE="$HOME/.m2/ccw-truststore.jks"
+STOREPASS="${STOREPASS:-changeit}"
+
+# Try to extract the CA certificate from the CCW proxy
+# The proxy might use a self-signed cert or corporate CA
+CA_PEM="$HOME/.m2/ccw-proxy-ca.pem"
+
+# Attempt to extract the CA cert from the proxy connection
+# This uses openssl to connect and extract the certificate chain
+if command -v openssl >/dev/null 2>&1; then
+    # Extract proxy host from HTTPS_PROXY
+    PROXY_HOST=$(echo "$HTTPS_PROXY" | sed -E 's|https?://([^:@]*:)?([^:@]*)@||' | sed -E 's|https?://||' | cut -d':' -f1)
+    PROXY_PORT=$(echo "$HTTPS_PROXY" | sed -E 's|https?://([^:@]*:)?([^:@]*)@||' | sed -E 's|https?://||' | cut -d':' -f2 | cut -d'/' -f1)
+
+    # Try to get certificate from a known HTTPS endpoint through the proxy
+    if timeout 5 openssl s_client -connect repo.maven.apache.org:443 -proxy "$PROXY_HOST:$PROXY_PORT" -showcerts </dev/null 2>/dev/null | \
+       openssl x509 -outform PEM > "$CA_PEM" 2>/dev/null; then
+        echo "  📜 Extracted CA certificate from proxy"
+    else
+        echo "  ℹ️  Could not extract CA certificate automatically"
+        rm -f "$CA_PEM"
+    fi
+fi
+
+# If we have a CA certificate (either extracted or provided), import it
+if [ -f "$CA_PEM" ]; then
+    echo "  🔧 Importing CA certificate into Java truststore..."
+
+    # Remove old truststore if it exists
+    rm -f "$TRUSTSTORE"
+
+    # Import the CA certificate
+    if keytool -importcert -noprompt \
+        -alias ccw-proxy-ca \
+        -file "$CA_PEM" \
+        -keystore "$TRUSTSTORE" \
+        -storepass "$STOREPASS" >/dev/null 2>&1; then
+
+        echo "  ✅ CA certificate imported successfully"
+
+        # Set MAVEN_OPTS to use the custom truststore
+        export MAVEN_OPTS="${MAVEN_OPTS:-} -Djavax.net.ssl.trustStore=$TRUSTSTORE -Djavax.net.ssl.trustStorePassword=$STOREPASS"
+
+        # Persist to session if CLAUDE_ENV_FILE is available
+        if [ -n "$CLAUDE_ENV_FILE" ]; then
+            echo "export MAVEN_OPTS=\"\${MAVEN_OPTS:-} -Djavax.net.ssl.trustStore=$TRUSTSTORE -Djavax.net.ssl.trustStorePassword=$STOREPASS\"" >> "$CLAUDE_ENV_FILE"
+        fi
+    else
+        echo "  ⚠️  Failed to import CA certificate"
+    fi
+else
+    echo "  ℹ️  No CA certificate found - PKIX errors may occur for HTTPS downloads"
+    echo "  📝 To fix PKIX errors, place CA cert at: $SCRIPT_DIR/ccw-proxy-ca.pem"
+fi
+
 echo ""
 echo "✨ CCW setup complete!"
 echo ""
@@ -196,6 +253,9 @@ java -version 2>&1 | sed 's/^/   /' | head -1
 echo ""
 echo "   Maven proxy: 127.0.0.1:3128 (HTTP + HTTPS)"
 echo "   Maven settings: $HOME/.m2/settings.xml"
+if [ -f "$TRUSTSTORE" ]; then
+    echo "   Java truststore: $TRUSTSTORE"
+fi
 echo "   Proxy log: /tmp/maven-proxy.log"
 echo ""
 echo "✅ Your session is ready for Maven builds!"

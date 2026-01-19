@@ -81,6 +81,20 @@ A local Python proxy runs on `localhost:3128` that:
 - **Dual protocol support**: Configures both HTTP and HTTPS proxies in Maven settings.xml
 - **Error logging**: All proxy errors logged to `/tmp/maven-proxy.log` for debugging
 - **Idempotent setup**: Safe to run multiple times, won't reinstall if already present
+- **TLS/SSL certificate handling**: Automatically extracts and imports CA certificates to fix PKIX errors
+
+**Two-Part Solution:**
+
+1. **Proxy Routing** (fixes Maven Central access):
+   - Python proxy handles JWT authentication
+   - Maven settings.xml points to localhost:3128
+   - Downloads work but may hit certificate errors
+
+2. **TLS Trust** (fixes PKIX certificate errors):
+   - Extracts CA certificate from proxy connection
+   - Imports into Java truststore (`~/.m2/ccw-truststore.jks`)
+   - Sets `MAVEN_OPTS` to use custom truststore
+   - Fixes "unable to find valid certification path" errors
 
 **Technical References:**
 - [GitHub Issue #13372](https://github.com/anthropics/claude-code/issues/13372) - Maven/Gradle builds failing in CCW

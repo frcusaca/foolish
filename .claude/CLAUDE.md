@@ -54,9 +54,12 @@ This project is configured with a SessionStart hook that **automatically runs CC
 2. If in CCW (waits for completion before session starts):
    - Installs SDKMAN (if not present)
    - Installs latest stable Java 25 (Temurin) via SDKMAN
+   - Exports `JAVA_HOME` and updates `PATH` for the session
    - Starts a local Maven authentication proxy at `127.0.0.1:3128`
    - Verifies proxy is listening and ready
    - Configures `~/.m2/settings.xml` with HTTP + HTTPS proxy settings
+   - Extracts and imports CA certificates into Java truststore (fixes PKIX errors)
+   - Sets `MAVEN_OPTS` to use custom truststore
 3. If not in CCW (local environment):
    - Does nothing - assumes Java 25 is already installed
 
@@ -65,9 +68,14 @@ This project is configured with a SessionStart hook that **automatically runs CC
 - ⚡ Subsequent runs: ~10 seconds (cached)
 - ✅ Session is guaranteed ready for Maven builds when it starts
 - 🔄 Safe to run multiple times (won't reinstall if already present)
+- 🔐 Handles both proxy routing AND TLS certificate trust
 
 **Technical Implementation:**
-This setup implements the workaround from [GitHub Issue #13372](https://github.com/anthropics/claude-code/issues/13372) and the [LinkedIn article by Tarun Lalwani](https://www.linkedin.com/pulse/fixing-maven-build-issues-claude-code-web-ccw-tarun-lalwani-8n7oc), using a local Python proxy that handles authentication transparently for Maven.
+
+This setup implements a **two-part solution** from [GitHub Issue #13372](https://github.com/anthropics/claude-code/issues/13372) and the [LinkedIn article by Tarun Lalwani](https://www.linkedin.com/pulse/fixing-maven-build-issues-claude-code-web-ccw-tarun-lalwani-8n7oc):
+
+1. **Proxy Routing**: Local Python proxy handles JWT authentication, Maven uses localhost:3128
+2. **TLS Trust**: CA certificate extraction and Java truststore configuration to prevent PKIX errors
 
 **Manual Setup (optional):**
 
