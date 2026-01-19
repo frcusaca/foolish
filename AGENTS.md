@@ -367,7 +367,7 @@ git push -u origin claude/your-branch-name
 **Full Workflow (CCW - Other AI agents):**
 ```bash
 # Setup (once per session, if not using SessionStart hook)
-.claude/skills/ccw-maven-setup/prep_if_ccw.sh
+support/shared/claude/skills/ccw-maven-setup/prep_if_ccw.sh
 
 # Development cycle
 mvn clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
