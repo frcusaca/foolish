@@ -22,7 +22,7 @@ class IdentifierFiroe(override val ast: AST.Identifier)
     ast.id(),
     ast.canonicalCharacterization()
   )
-  private[scubc] var value: FIR = null // Package-private for access by RegexpSearchFiroe
+  private[scubc] var state: FiroeState = FiroeState.Unknown() // Package-private for access by RegexpSearchFiroe
 
   def this(id: String, characterization: String) =
     this(new AST.Identifier(
@@ -40,10 +40,9 @@ class IdentifierFiroe(override val ast: AST.Identifier)
    * An identifier is abstract if it hasn't been resolved yet or if its resolved value is abstract.
    */
   override def isAbstract: Boolean =
-    if value == null then
-      true // Not yet resolved
-    else
-      value.isAbstract
+    state match
+      case FiroeState.Value(fir) => fir.isAbstract
+      case _ => true // Unknown or Constantic are abstract
 
   override protected def initialize(): Unit = ()
 
@@ -54,9 +53,13 @@ class IdentifierFiroe(override val ast: AST.Identifier)
   override def step(): Unit =
     getNyes match
       case Nyes.INITIALIZED =>
-        value = braneMemory.get(identifier, 0)
+        val found = braneMemory.get(identifier, 0)
           .map(_._2)
           .orNull
+        if found != null then
+          state = FiroeState.Value(found)
+        else
+          state = FiroeState.Constantic()
         setNyes(Nyes.RESOLVED)
       case _ =>
         super.step()
@@ -64,6 +67,9 @@ class IdentifierFiroe(override val ast: AST.Identifier)
   /**
    * Get the value of the resolved identifier.
    */
-  override def getValue: Long = value.getValue
+  override def getValue: Long =
+    state match
+      case FiroeState.Value(fir) => fir.getValue
+      case _ => throw UnsupportedOperationException(s"Cannot get value from identifier in state $state")
 
   override def toString: String = ast.toString

@@ -1,0 +1,22 @@
+!!INPUT!!
+{
+    x = non_existent;
+}
+
+!!!
+PARSED AST:
+{
+  x = nonˍexistent;
+}
+
+UBC EVALUATION:
+Steps taken: 13
+
+FINAL RESULT:
+{
+＿x = ?C?;
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!

@@ -63,8 +63,11 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
     // Unwrap identifier
     val resolvedAnchor = anchor match {
       case identifierFiroe: IdentifierFiroe =>
-        if (identifierFiroe.value == null) return false
-        identifierFiroe.value
+        identifierFiroe.state match {
+          case FiroeState.Constantic() => return true
+          case FiroeState.Value(fir) => fir
+          case _ => return false
+        }
       case _ => anchor
     }
     if (resolvedAnchor == null) return false
@@ -77,8 +80,11 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
           assignmentFiroe.step()
           return false
         }
-        if (assignmentFiroe.getResult.isEmpty) return false
-        assignmentFiroe.getResult.get
+        assignmentFiroe.getFiroeState match {
+          case FiroeState.Constantic() => return true
+          case FiroeState.Value(fir) => fir
+          case _ => return false
+        }
       case _ => anchor
     }
     if (resolvedAnchor2 == null) return false
@@ -110,19 +116,30 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
 
     unwrapAnchor match {
       case identifierFiroe: IdentifierFiroe =>
-        unwrapAnchor = identifierFiroe.value
-        if (unwrapAnchor == null) searchResult = new NKFiroe()
-        return
+        identifierFiroe.state match {
+          case FiroeState.Constantic() =>
+             searchResult = new NKFiroe()
+             return
+          case FiroeState.Value(fir) =>
+             unwrapAnchor = fir
+             return
+          case _ => return
+        }
 
       case assignmentFiroe: AssignmentFiroe =>
         if (assignmentFiroe.isNye) {
           assignmentFiroe.step()
           return
         }
-        val res = assignmentFiroe.getResult
-        if (res.isEmpty) searchResult = new NKFiroe()
-        else unwrapAnchor = res.get
-        return
+        assignmentFiroe.getFiroeState match {
+          case FiroeState.Constantic() =>
+             searchResult = new NKFiroe()
+             return
+          case FiroeState.Value(fir) =>
+             unwrapAnchor = fir
+             return
+          case _ => return
+        }
 
       case abstractSearch: AbstractSearchFiroe =>
         if (abstractSearch.isNye) {

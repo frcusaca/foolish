@@ -76,57 +76,63 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
     indent(depth) + "↑"
 
   protected def sequenceAssignment(assignment: AssignmentFiroe, depth: Int): String =
-    if !assignment.isNye && assignment.getResult.isDefined then
-      val result = assignment.getResult.get
-      // Check if the result is fully evaluated
-      if !result.isNye then
-        // Check if the result is NK (not-known)
-        if result.isAbstract then
-          indent(depth) + s"${assignment.getId} = ???"
+    assignment.getFiroeState match
+      case FiroeState.Constantic() =>
+        indent(depth) + s"${assignment.getId} = ?C?"
+      case FiroeState.Value(result) if !assignment.isNye =>
+        // Check if the result is fully evaluated
+        if !result.isNye then
+            unwrap(result) match
+              case FiroeState.Constantic() =>
+                 indent(depth) + s"${assignment.getId} = ?C?"
+              case FiroeState.Value(unwrapped) =>
+                if unwrapped.isAbstract then
+                   indent(depth) + s"${assignment.getId} = ???"
+                else
+                   unwrapped match
+                      case brane: BraneFiroe =>
+                         // Special handling for nested branes to align indentation
+                         val sequencedBrane = sequence(brane, depth)
+                         // Strip the first line's indentation
+                         val indentStr = indent(depth)
+                         val strippedBrane = if (sequencedBrane.startsWith(indentStr)) then
+                           sequencedBrane.substring(indentStr.length)
+                         else
+                           sequencedBrane
+
+                         // Calculate padding for subsequent lines
+                         val padding = " " * (assignment.getId.length + 3)
+                         // Apply padding to subsequent lines
+                         val alignedBrane = strippedBrane.replace("\n", "\n" + padding)
+
+                         indent(depth) + s"${assignment.getId} = ${alignedBrane}"
+
+                      case simple =>
+                         // Simple values
+                         indent(depth) + s"${assignment.getId} = ${simple.getValue}"
+              case _ => indent(depth) + s"${assignment.getId} = ???"
         else
-          unwrap(result) match
-            case brane: BraneFiroe =>
-              // Special handling for nested branes to align indentation
-              val sequencedBrane = sequence(brane, depth)
-              // Strip the first line's indentation
-              val indentStr = indent(depth)
-              val strippedBrane = if (sequencedBrane.startsWith(indentStr)) then
-                sequencedBrane.substring(indentStr.length)
-              else
-                sequencedBrane
-
-              // Calculate padding for subsequent lines
-              val padding = " " * (assignment.getId.length + 3)
-              // Apply padding to subsequent lines
-              val alignedBrane = strippedBrane.replace("\n", "\n" + padding)
-
-              indent(depth) + s"${assignment.getId} = ${alignedBrane}"
-
-            case unwrapped =>
-              // Simple values
-              indent(depth) + s"${assignment.getId} = ${unwrapped.getValue}"
-      else
+          indent(depth) + s"${assignment.getId} = ???"
+      case _ =>
+        // If not yet evaluated, show the structure
         indent(depth) + s"${assignment.getId} = ???"
-    else
-      // If not yet evaluated, show the structure
-      indent(depth) + s"${assignment.getId} = ???"
 
   protected def sequenceIdentifier(identifier: IdentifierFiroe, depth: Int): String =
-    // If the identifier has been resolved and is not NYE
-    if !identifier.isNye then
-      // Check if it resolved to an abstract value
-      if identifier.isAbstract then
-        indent(depth) + "???"
-      else
-        unwrap(identifier) match
-          case brane: BraneFiroe =>
-             // Should not typically happen for top-level sequencing but good to handle
-             sequence(brane, depth)
-          case unwrapped =>
-             indent(depth) + unwrapped.getValue.toString
-    else
-      // If not yet evaluated
-      indent(depth) + "???"
+    identifier.state match
+      case FiroeState.Constantic() =>
+        indent(depth) + "?C?"
+      case FiroeState.Value(fir) if !identifier.isNye =>
+          if identifier.isAbstract then
+             indent(depth) + "???"
+          else
+             unwrap(identifier) match
+                case FiroeState.Constantic() => indent(depth) + "?C?"
+                case FiroeState.Value(unwrapped) =>
+                   unwrapped match
+                      case brane: BraneFiroe => sequence(brane, depth)
+                      case simple => indent(depth) + simple.getValue.toString
+                case _ => indent(depth) + "???"
+      case _ => indent(depth) + "???"
 
   protected def sequenceOneShotSearch(oneShotSearch: OneShotSearchFiroe, depth: Int): String =
     if !oneShotSearch.isNye then
@@ -139,14 +145,18 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
       indent(depth) + "???"
 
   @scala.annotation.tailrec
-  private def unwrap(fir: FIR): FIR = fir match
-    case assignment: AssignmentFiroe if assignment.getResult.isDefined =>
-      unwrap(assignment.getResult.get)
-    case identifier: IdentifierFiroe if identifier.value != null =>
-      unwrap(identifier.value)
+  private def unwrap(fir: FIR): FiroeState = fir match
+    case assignment: AssignmentFiroe =>
+       assignment.getFiroeState match
+          case FiroeState.Value(v) => unwrap(v)
+          case other => other
+    case identifier: IdentifierFiroe =>
+       identifier.state match
+          case FiroeState.Value(v) => unwrap(v)
+          case other => other
     case oneShotSearch: OneShotSearchFiroe if oneShotSearch.getResult != null =>
-      unwrap(oneShotSearch.getResult)
-    case other => other
+       unwrap(oneShotSearch.getResult)
+    case other => FiroeState.Value(other)
 
   protected def sequenceNK(nk: FIR, depth: Int): String =
     indent(depth) + "???"

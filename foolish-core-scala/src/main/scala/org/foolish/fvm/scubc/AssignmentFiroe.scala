@@ -11,7 +11,7 @@ class AssignmentFiroe(assignment: AST.Assignment)
   extends FiroeWithBraneMind(assignment):
 
   val lhs = CharacterizedIdentifier(assignment.identifier())
-  private var result: Option[FIR] = None
+  private var result: FiroeState = FiroeState.Unknown()
 
   override protected def initialize(): Unit =
     if isInitialized then return
@@ -20,7 +20,7 @@ class AssignmentFiroe(assignment: AST.Assignment)
     enqueueExprs(assignment.expr())
 
   override def step(): Unit =
-    if result.isDefined then
+    if result.isInstanceOf[FiroeState.Value] then
       return
 
     if !isInitialized then
@@ -32,10 +32,12 @@ class AssignmentFiroe(assignment: AST.Assignment)
 
     // Check if we can get the final result
     if !super.isNye && !braneMemory.isEmpty then
-      result = Some(braneMemory.get(0))
+      result = FiroeState.Value(braneMemory.get(0))
 
   override def isAbstract: Boolean =
-    result.map(_.isAbstract).getOrElse(super.isAbstract)
+    result match
+      case FiroeState.Value(fir) => fir.isAbstract
+      case _ => super.isAbstract
 
   /** Gets the coordinate name for this assignment (without characterization) */
   def getId: String = lhs.getId
@@ -44,11 +46,17 @@ class AssignmentFiroe(assignment: AST.Assignment)
   def getLhs: CharacterizedIdentifier = lhs
 
   /** Gets the evaluated result FIR */
-  def getResult: Option[FIR] = result
+  def getResult: Option[FIR] =
+    result match
+      case FiroeState.Value(fir) => Some(fir)
+      case _ => None
+
+  def getFiroeState: FiroeState = result
 
   override def getValue: Long =
-    result.map(_.getValue).getOrElse(
-      throw IllegalStateException("AssignmentFiroe not fully evaluated"))
+    result match
+      case FiroeState.Value(fir) => fir.getValue
+      case _ => throw IllegalStateException("AssignmentFiroe not fully evaluated")
 
   override def toString: String =
     Sequencer4Human().sequence(this)

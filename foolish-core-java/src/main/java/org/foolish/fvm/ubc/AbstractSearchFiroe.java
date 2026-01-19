@@ -85,8 +85,11 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
         // Unwrap identifier to get the actual value
         FIR resolvedAnchor = anchor;
         if (anchor instanceof IdentifierFiroe identifierFiroe) {
-            if (identifierFiroe.value == null) return false;
-            resolvedAnchor = identifierFiroe.value;
+            switch (identifierFiroe.state) {
+                case FiroeState.Constantic _ -> { return true; }
+                case FiroeState.Value(FIR fir) -> resolvedAnchor = fir;
+                case FiroeState.Unknown _ -> { return false; }
+            }
         }
 
         if (resolvedAnchor == null) return false;
@@ -98,8 +101,11 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
                 assignmentFiroe.step();
                 return false;
             }
-            if (assignmentFiroe.getResult() == null) return false;
-            anchor = assignmentFiroe.getResult();
+            switch (assignmentFiroe.getFiroeState()) {
+                case FiroeState.Constantic _ -> { return true; }
+                case FiroeState.Value(FIR fir) -> anchor = fir;
+                case FiroeState.Unknown _ -> { return false; }
+            }
         }
 
         if (anchor == null) return false;
@@ -129,9 +135,17 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
 
         // Unwrapping Loop
         if (unwrapAnchor instanceof IdentifierFiroe identifierFiroe) {
-            unwrapAnchor = identifierFiroe.value;
-            if (unwrapAnchor == null) searchResult = new NKFiroe();
-            return;
+            switch (identifierFiroe.state) {
+                case FiroeState.Constantic _ -> {
+                    searchResult = new NKFiroe();
+                    return;
+                }
+                case FiroeState.Value(FIR fir) -> {
+                    unwrapAnchor = fir;
+                    return;
+                }
+                default -> { return; }
+            }
         }
 
         if (unwrapAnchor instanceof AssignmentFiroe assignmentFiroe) {
@@ -139,9 +153,17 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
                 assignmentFiroe.step();
                 return;
             }
-            unwrapAnchor = assignmentFiroe.getResult();
-            if (unwrapAnchor == null) searchResult = new NKFiroe();
-            return;
+            switch (assignmentFiroe.getFiroeState()) {
+                case FiroeState.Constantic _ -> {
+                    searchResult = new NKFiroe();
+                    return;
+                }
+                case FiroeState.Value(FIR fir) -> {
+                    unwrapAnchor = fir;
+                    return;
+                }
+                default -> { return; }
+            }
         }
 
         if (unwrapAnchor instanceof AbstractSearchFiroe abstractSearchFiroe) {

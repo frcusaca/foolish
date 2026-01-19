@@ -18,7 +18,7 @@ import org.foolish.ast.AST;
  */
 public class IdentifierFiroe extends FiroeWithBraneMind {
     private final Query.StrictlyMatchingQuery identifier;
-    FIR value = null; // Package-private for access by RegexpSearchFiroe
+    FiroeState state = new FiroeState.Unknown(); // Package-private for access by RegexpSearchFiroe
 
     public IdentifierFiroe(AST.Identifier identifier) {
         super(identifier);
@@ -45,10 +45,10 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
      */
     @Override
     public boolean isAbstract() {
-        if (value == null) {
-            return true; // Not yet resolved
-        }
-        return value.isAbstract();
+        return switch (state) {
+            case FiroeState.Value(FIR fir) -> fir.isAbstract();
+            case FiroeState.Unknown(), FiroeState.Constantic() -> true;
+        };
     }
 
     @Override
@@ -65,9 +65,14 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
     public void step() {
         switch (getNyes()) {
             case INITIALIZED: {
-                value = braneMemory.get(identifier, 0)
+                var found = braneMemory.get(identifier, 0)
                         .map(r -> r.getValue())
                         .orElse(null);
+                if (found != null) {
+                    state = new FiroeState.Value(found);
+                } else {
+                    state = new FiroeState.Constantic();
+                }
                 setNyes(Nyes.RESOLVED);
             }
             default:
@@ -81,7 +86,10 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
      */
     @Override
     public long getValue() {
-        return value.getValue();
+        return switch (state) {
+            case FiroeState.Value(FIR fir) -> fir.getValue();
+            case FiroeState.Unknown(), FiroeState.Constantic() -> throw new UnsupportedOperationException("Cannot get value from identifier in state " + state);
+        };
     }
 
     @Override
