@@ -29,7 +29,7 @@ source "$HOME/.sdkman/bin/sdkman-init.sh" || source "$SCRIPT_DIR/sdkman-init.sh"
 
 # Install Java 25 if needed (latest stable Temurin)
 echo "🔍 Checking for Java 25..."
-if ! sdk list java 2>/dev/null | grep -q "25\..*-tem.*installed"; then
+if ! sdk list java | grep -q "25\..*-tem.*installed"; then
     echo "☕ Installing latest stable Java 25 (Temurin)..."
     echo "   (This may take 30-60 seconds on first run)"
     # Get the latest 25.x Temurin version
