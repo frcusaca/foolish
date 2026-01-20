@@ -12,7 +12,8 @@
 PARSED AST:
 {
   x = 100;
-  inner'{
+  inner
+'{
     x = 200;
     x;
   };
@@ -20,16 +21,13 @@ PARSED AST:
 }
 
 UBC EVALUATION:
-Steps taken: 29
+Steps taken: 13
 
 FINAL RESULT:
 {
-＿x = 100;
-＿inner'{
-＿＿x = 200;
-＿＿200;
-＿};
-＿100;
+＿x = ???;
+＿???;
+＿???;
 }
 
 COMPLETION STATUS:

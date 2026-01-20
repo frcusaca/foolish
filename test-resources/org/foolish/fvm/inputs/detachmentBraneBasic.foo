@@ -1,0 +1,44 @@
+{
+    test_1 = {
+        !! Test basic detachment during assignment
+        !! From Test 1 in Detachment_Project.md
+        a = 1;
+        f = [b]{r = a + b};
+        b = 3;
+        x =$ f;              !! Should be 4: a captured as 1, b resolves to 3
+    };
+
+    test_2 = {
+        !! Nested case: detachment within detachment
+        c = 10;
+        g = [d]{
+            inner = [e]{result = c + d + e};
+            result =$ inner
+        };
+        !! c captured as 10, d detached, e is not found
+        d = 20;
+        e = 5;
+        y =$ g;          !! Should be 35: c=10, d=20, e=5
+    };
+
+    test_3 = {
+        !! Test with multiple detached ordinates
+        h = [p, q, r]{sum = p + q + r};
+        p = 1; q = 2; r = 3;
+        z =$ h;              !! Should be 6
+    };
+
+    test_4 = {
+        !! Concatenated detachment branes
+        !! From Situation 2 in Detachment_Project.md
+        a=1;b=2;c=3;d=4;z=-100;
+        f = [a,b,c  ] {d = a+b+c+z};
+        g = [ ,b,c,d] {o = -b-c-d-z};
+
+        r = f g ;
+
+        !! Fixed syntax from original example (my_result1 =.d r) to standard dereference
+        my_result1 = r.d;      !! -94
+        my_result2 = r.o;      !! -5
+    };
+}

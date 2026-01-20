@@ -1,0 +1,27 @@
+!!INPUT!!
+{
+    x = 5;
+    result = {y = 1;}?y;
+}
+
+!!!
+PARSED AST:
+{
+  x = 5;
+  result = {
+  y = 1;
+} ? y;
+}
+
+UBC EVALUATION:
+Steps taken: 28
+
+FINAL RESULT:
+{
+＿x = 5;
+＿result = 1;
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!

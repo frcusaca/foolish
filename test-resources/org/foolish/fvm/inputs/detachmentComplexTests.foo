@@ -1,0 +1,137 @@
+{
+    test_re_detachment = {
+        !! From Test 5 in Detachment_Project.md
+        !! Basic re-detachment
+        f = [a, b, c, d]{r = a + b + c + d};
+        f2 = [a, b, c, d]f;   !! Re-detaches (behaves same as f)
+
+        r =$ [a=1, b=2, c=3, d=4]f;   !! Evaluates to 10
+        r2 =$ [a=1, b=2, c=3, d=5]f2; !! Evaluates to 11
+
+        !! Re-detachment can change which ordinates are detached
+        g = [a, b]{sum = a + b};      !! a, b detached
+        a = 10;
+        g2 = [b]g;            !! Re-detach only b, resolve a from current scope
+                              !! g2 now has a=10 captured, only b detached
+        b = 5;
+        x =$ g2;              !! Should be 15: a=10, b=5
+
+        !! Confirm g still has both ordinates detached
+        y =$ [a=1, b=2]g;     !! Should be 3
+
+        !! Re-detachment with explicit values
+        h = [p, q, r]{product = p * q * r};
+        h2 = [p=2, q=3]h;     !! Bind p=2, q=3, r still detached
+        r = 4;
+        z =$ h2;              !! Should be 24: 2*3*4
+    };
+
+    test_complex_nested = {
+        !! From Test 6
+        !! Multi-level nested branes with mixed detachment
+        {
+            a = 1;
+            b = 2;
+            outer = [c]{
+                inner1 = [d]{
+                    inner2 = [e]{
+                        result = a + b + c + d + e
+                    };
+                    result =$ inner2
+                };
+                result =$ inner1
+            };
+            c = 10;
+            d = 20;
+            e = 30;
+            x =$ outer;       !! Should be 63: 1+2+10+20+30
+        };
+
+        !! Currying chain with P-branes
+        {
+            curry_test = [a, b, c, d, e]{sum = a + b + c + d + e};
+
+            a = 1;
+            step1 = [+a]curry_test;       !! a=1
+
+            b = 2;
+            step2 = [+b]step1;            !! a=1, b=2
+
+            c = 3;
+            step3 = [+c]step2;            !! a=1, b=2, c=3
+
+            !! Now bind d and e at evaluation
+            d = 4;
+            e = 5;
+            result =$ step3;  !! Should be 15
+        };
+
+        !! Mixed binding strategies
+        {
+            mixer = [p, q, r, s, t]{product = p * q * r * s * t};
+
+            p = 2;
+            q = 3;
+
+            !! Use P-brane for p, explicit for q, constantic for rest
+            partial = [+p, q=10]mixer;    !! p=2 from scope, q=10 explicit
+            r = 4;
+            s = 5;
+            t = 6;
+
+            captured <=> partial;         !! Constantic: captures r=4, s=5, t=6
+
+            !! Change scope
+            r = 100;
+            s = 200;
+            t = 300;
+
+            y =$ captured;    !! Should use p=2, q=10, r=4, s=5, t=6
+                              !! Result: 2*10*4*5*6 = 2400
+        };
+
+        !! Detachment with brane factories
+        {
+            factory = [multiplier]{
+                generated = [x]{result = x * multiplier};
+                result = generated
+            };
+
+            multiplier = 10;  !! Should be detached
+            double_it <=> factory;  !! Captures multiplier=10
+
+            x = 5;
+            z =$ double_it;   !! double_it is a brane with x detached, multiplier=10
+                              !! Result should be 50
+
+            !! Create another factory with different multiplier
+            multiplier = 3;
+            triple_it <=> factory;
+
+            w =$ triple_it;   !! Should be 15: x=5, multiplier=3
+        };
+    };
+
+    test_evaluation_time_binding = {
+        !! From Test 7
+        !! Basic evaluation-time binding
+        f = [a, b, c]{r = a + b + c};
+        result1 =$ [a=1, b=2, c=3]f;  !! Binds at evaluation: 1+2+3=6
+
+        !! f is unchanged, still has detached ordinates
+        a = 10; b = 20; c = 30;
+        result2 =$ f;                  !! Uses current scope: 60
+
+        !! Partial binding at evaluation
+        g = [x, y, z]{sum = x + y + z};
+        x = 5;
+        result3 =$ [y=10, z=15]g;     !! x from scope (5), y=10, z=15: 30
+
+        !! Evaluation-time binding with partially applied brane
+        h = [a, b, c, d]{product = a * b * c * d};
+        a = 2;
+        h2 = [+a]h;                   !! h2 has a=2 captured
+
+        result4 =$ [b=3, c=4, d=5]h2; !! Binds remaining at eval: 2*3*4*5=120
+    };
+}

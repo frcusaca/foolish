@@ -1,0 +1,37 @@
+!!INPUT!!
+{
+    x = 100;
+    inner'{
+        x = 200;
+        x;
+    };
+    x;
+}
+
+!!!
+PARSED AST:
+{
+  x = 100;
+  inner'{
+    x = 200;
+    x;
+  };
+  x;
+}
+
+UBC EVALUATION:
+Steps taken: 29
+
+FINAL RESULT:
+{
+＿x = 100;
+＿inner'{
+＿＿x = 200;
+＿＿200;
+＿};
+＿100;
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!

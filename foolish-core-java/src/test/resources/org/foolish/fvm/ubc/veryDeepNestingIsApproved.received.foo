@@ -1,0 +1,40 @@
+!!INPUT!!
+{
+	{
+		{
+			{
+				the answer is=42;
+			};
+		};
+	};
+}
+
+!!!
+PARSED AST:
+{
+  {
+    {
+      {
+        theˍanswerˍis = 42;
+      };
+    };
+  };
+}
+
+UBC EVALUATION:
+Steps taken: 32
+
+FINAL RESULT:
+{
+＿{
+＿＿{
+＿＿＿{
+＿＿＿＿theˍanswerˍis = 42;
+＿＿＿};
+＿＿};
+＿};
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!

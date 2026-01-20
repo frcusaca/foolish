@@ -10,20 +10,19 @@
 PARSED AST:
 {
   x = 100;
-  outer'{
+  outer
+'{
     x;
   };
 }
 
 UBC EVALUATION:
-Steps taken: 20
+Steps taken: 12
 
 FINAL RESULT:
 {
-＿x = 100;
-＿outer'{
-＿＿100;
-＿};
+＿x = ???;
+＿???;
 }
 
 COMPLETION STATUS:

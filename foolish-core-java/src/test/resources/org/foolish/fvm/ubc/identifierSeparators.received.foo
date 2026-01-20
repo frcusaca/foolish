@@ -1,0 +1,42 @@
+!!INPUT!!
+{
+  my_var = 1;
+  my var = 2;
+  myˍvar = 3;
+
+  my_var + my var + myˍvar;
+
+  foo_bar'x = 10;
+  foo bar'x = 20;
+  fooˍbar'x
+}
+
+!!!
+PARSED AST:
+{
+  myˍvar = 1;
+  myˍvar = 2;
+  myˍvar = 3;
+  ((myˍvar + myˍvar) + myˍvar);
+  x = 10;
+  x = 20;
+  fooˍbar'x;
+}
+
+UBC EVALUATION:
+Steps taken: 63
+
+FINAL RESULT:
+{
+＿myˍvar = 1;
+＿myˍvar = 2;
+＿myˍvar = 3;
+＿9;
+＿x = 10;
+＿x = 20;
+＿20;
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!

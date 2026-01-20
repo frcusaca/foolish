@@ -1,0 +1,20 @@
+!!INPUT!!
+{((((5))));}
+
+!!!
+PARSED AST:
+{
+  5;
+}
+
+UBC EVALUATION:
+Steps taken: 7
+
+FINAL RESULT:
+{
+＿5;
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!

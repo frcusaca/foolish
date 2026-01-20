@@ -20,25 +20,38 @@
 PARSED AST:
 {
   aliceˍmatch = {
-  alice = 1;
-  bob = 2;
-  charlie = 3;
+  alice = 1
+;
+  bob = 2
+;
+  charlie = 3
+;
 } ? (al.*);
   firstˍa = {
-  alice = 1;
-  adam = 2;
-  bob = 3;
+  alice = 1
+;
+  adam = 2
+;
+  bob = 3
+;
 } ? ^a;
   endsˍwithˍe = {
-  alice = 1;
-  charlie = 2;
-  bob = 3;
+  alice = 1
+;
+  charlie = 2
+;
+  bob = 3
+;
 } ? e$;
   tempˍvars = {
-  tmpˍa = 10;
-  result = 20;
-  tmpˍb = 30;
-  output = 40;
+  tmpˍa = 10
+;
+  result = 20
+;
+  tmpˍb = 30
+;
+  output = 40
+;
 } ? (tmpˍ.*);
 }
 
@@ -47,10 +60,10 @@ Steps taken: 143
 
 FINAL RESULT:
 {
-＿aliceˍmatch = 1;
-＿firstˍa = 2;
-＿endsˍwithˍe = 2;
-＿tempˍvars = 30;
+＿aliceˍmatch = ???;
+＿firstˍa = ???;
+＿endsˍwithˍe = ???;
+＿tempˍvars = ???;
 }
 
 COMPLETION STATUS:
