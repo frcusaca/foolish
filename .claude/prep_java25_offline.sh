@@ -66,6 +66,7 @@ if ! sdk list java | grep -q "25\..*-tem.*installed"; then
         echo "⚠️  Could not find Java 25 Temurin, trying default..."
         sdk install java 25-tem
     fi
+   sdk install maven
 else
     echo "✅ Java 25 already installed"
     # Use any installed Java 25 Temurin version
