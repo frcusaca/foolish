@@ -1,0 +1,16 @@
+{
+    test_1 = {
+        !! SFF marker <<>> and <<=>>
+        !! From Detachment_Project.md "Btw, relatedly..."
+        a=1;b=2;c=3;d=4;e=5;
+        f  = [a,b,c,d] {r = a+b+c+d+e};
+
+        g  = <<f>>;    !! This pastes the source code for value of f's assignment here
+
+        gg <<=>>  f;   !! Shorthand for above
+
+        g2 = [a,b,c,d] {r = a+b+c+d+e};
+
+        h  =  << {g,f} >>;  !! Just constructs the Foolish AST and binds it to h
+    };
+}

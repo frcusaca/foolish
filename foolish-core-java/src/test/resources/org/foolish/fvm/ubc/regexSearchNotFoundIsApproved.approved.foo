@@ -7,8 +7,10 @@
 PARSED AST:
 {
   result = {
-  α = 100;
-  β = 200;
+  α = 100
+;
+  β = 200
+;
 } ? notfound;
 }
 

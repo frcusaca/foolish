@@ -1,0 +1,177 @@
+!!INPUT!!
+{
+    test_1 = {
+        !! From Test 4 in Detachment_Project.md
+        !! Basic constantic brackets - capture all detached ordinates
+        a = 1; b = 2; c = 3; d = 4;
+        f = [a, b, c, d]{r = a + b + c + d};
+        f2 = <f>;             !! Captures a=1, b=2, c=3, d=4 at assignment
+
+        r =$ f;               !! Uses current scope: 1+2+3+4 = 10
+        d = 5;
+        r2 =$ f2;             !! Uses captured values: 1+2+3+5 = 11
+        d = 6;
+        r3 =$ f2;             !! Still 11 (f2's capture doesn't change)
+    };
+
+    test_2 = {
+        !! Constantic assignment <=> shorthand
+        a = 1; b = 2; c = 3; d = 4;
+        f = [a, b, c, d]{r = a + b + c + d};
+
+        !! [ ]TODO: CHECK THIS. The example logic in MD implies f3 captures d=6, but code order shows f3 defined before d=6.
+        !! Assuming f3 captures at definition time.
+        f3 <=> f;             !! Equivalent to f3 = <f>;
+
+        d = 6;
+        r4 =$ f3;             !! If f3 captured d=4 (from above), result is 10. If d=6, result is 12.
+    };
+
+    test_3 = {
+         !! Constantic brackets with nested scopes
+        {
+            p = 10; q = 20; r = 30;
+            g = [p, q, r]{sum = p + q + r};
+            g2 = <g>;         !! Captures p=10, q=20, r=30
+
+            {
+                !! Inner scope changes variables
+                p = 100;
+                q = 200;
+                x =$ g;       !! Uses current scope: 100+200+30 = 330
+                y =$ g2;      !! Uses captured: 10+20+30 = 60
+            };
+        };
+    };
+
+    test_4 = {
+        !! Important: constantic brackets only affect brane references
+        !! Not freshly parsed branes
+        h1 = <[x, y]{z = x + y}>;    !! <> has no effect on fresh brane
+        h2 = [x, y]{z = x + y};      !! Equivalent to h1
+
+        x = 5; y = 7;
+        z1 =$ h1;             !! Both should resolve x, y from current scope
+        z2 =$ h2;             !! Expected: 12 for both
+    };
+
+    test_5 = {
+        !! Constantic capture of partially applied brane
+        m = [a, b, c]{result = a + b + c};
+        a = 1; b = 2;
+        m2 = [+a]<m>;           !! m2 has a=1 captured, b,c detached
+        m3 = <m2>;            !! Captures remaining: b=2, c from scope
+        c = 3;
+        w =$ m3;              !! a=1 (from m2), b=2 (from m3), c=3 (current) = 6
+    };
+}
+
+!!!
+PARSED AST:
+{
+  testˍ1 = {
+    a = 1;
+    b = 2;
+    c = 3;
+    d = 4;
+    f = [a, b, c, d]
+{
+      r = (((a + b) + c) + d);
+    };
+    f2 = <f
+>;
+    r =$f
+;
+    d = 5;
+    r2 =$f2
+;
+    d = 6;
+    r3 =$f2
+;
+  };
+  testˍ2 = {
+    a = 1;
+    b = 2;
+    c = 3;
+    d = 4;
+    f = [a, b, c, d]
+{
+      r = (((a + b) + c) + d);
+    };
+    f3 = <f
+>;
+    d = 6;
+    r4 =$f3
+;
+  };
+  testˍ3 = {
+    {
+      p = 10;
+      q = 20;
+      r = 30;
+      g = [p, q, r]
+{
+        sum = ((p + q) + r);
+      };
+      g2 = <g
+>;
+      {
+        p = 100;
+        q = 200;
+        x =$g
+;
+        y =$g2
+;
+      };
+    };
+  };
+  testˍ4 = {
+    h1 = <[x, y]
+{
+  z = (x + y);
+}
+>;
+    h2 = [x, y]
+{
+      z = (x + y);
+    };
+    x = 5;
+    y = 7;
+    z1 =$h1
+;
+    z2 =$h2
+;
+  };
+  testˍ5 = {
+    m = [a, b, c]
+{
+      result = ((a + b) + c);
+    };
+    a = 1;
+    b = 2;
+    m2 = [+a]
+<m
+>;
+    m3 = <m2
+>;
+    c = 3;
+    w =$m3
+;
+  };
+}
+
+UBC EVALUATION:
+Steps taken: 43
+
+FINAL RESULT:
+{
+＿testˍ1 = ???;
+＿testˍ2 = ???;
+＿testˍ3 = ???;
+＿testˍ4 = ???;
+＿testˍ5 = ???;
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!

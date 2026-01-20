@@ -22,17 +22,11 @@ PARSED AST:
 }
 
 UBC EVALUATION:
-Steps taken: 32
+Steps taken: 7
 
 FINAL RESULT:
 {
-＿{
-＿＿{
-＿＿＿{
-＿＿＿＿theˍanswerˍis = 42;
-＿＿＿};
-＿＿};
-＿};
+＿???;
 }
 
 COMPLETION STATUS:
