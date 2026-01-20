@@ -51,11 +51,11 @@ JAVA_HOME="$HOME/.sdkman/candidates/java/current"
 export JAVA_HOME
 export PATH="$JAVA_HOME/bin:$PATH"
 
-echo ""
-echo "✨ Java 25 setup complete!"
-echo ""
-echo "📊 Environment status:"
-echo "   Java version:"
-java -version 2>&1 | sed 's/^/   /' | head -1
-echo "   JAVA_HOME: $JAVA_HOME"
-echo ""
+#echo ""
+#echo "✨ Java 25 setup complete!"
+#echo ""
+#echo "📊 Environment status:"
+#echo "   Java version:"
+#java -version 2>&1 | sed 's/^/   /' | head -1
+#echo "   JAVA_HOME: $JAVA_HOME"
+#echo ""
