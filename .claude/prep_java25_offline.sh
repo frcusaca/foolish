@@ -60,13 +60,13 @@ if ! sdk list java | grep -q "25\..*-tem.*installed"; then
     JAVA_VERSION=$(sdk list java 2>/dev/null | grep "tem" | grep "25\." | grep -v "fx\|ea" | head -1 | awk '{print $NF}')
     if [ -n "$JAVA_VERSION" ]; then
         echo "   Installing Java $JAVA_VERSION..."
-        sdk install java "$JAVA_VERSION"
+        sdk install java "$JAVA_VERSION" 2>&1 >> /dev/null
         echo "   ✅ Java $JAVA_VERSION installed successfully"
     else
         echo "⚠️  Could not find Java 25 Temurin, trying default..."
-        sdk install java 25-tem
+        sdk install java 25-tem 2>&1 >> /dev/null
     fi
-   sdk install maven
+   sdk install maven 2>&1 >> /dev/null
 else
     echo "✅ Java 25 already installed"
     # Use any installed Java 25 Temurin version
