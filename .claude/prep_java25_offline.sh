@@ -34,6 +34,10 @@ fi
 echo "🔧 Setting up Java 25 (offline mode)..."
 echo "⏱️  This setup ensures Java 25 is available for your session..."
 
+
+export MAVEN_OPTS="-o -Dmaven.repo.local=$CLAUDE_PROJECT_DIR/claude_mvn/repo $MAVEN_OPTS"
+echo "MAVEN_OPTS=\"-Dmaven.repo.local=$CLAUDE_PROJECT_DIR/claude_mvn/repo $MAVEN_OPTS\"" >> "$CLAUDE_ENV_FILE"
+
 # Source SDKMAN from repo-vendored copy or home directory (if it exists)
 if [ -f "$HOME/.sdkman/bin/sdkman-init.sh" ]; then
     echo "📦 Found SDKMAN in home directory, sourcing..."
@@ -43,6 +47,9 @@ else
     curl -s "https://get.sdkman.io" | bash
     source "$HOME/.sdkman/bin/sdkman-init.sh"
 fi
+
+# Let's set the path for now, it won't hurt
+echo "export PATH=\"PATH\""  >> "$CLAUDE_ENV_FILE"
 
 # Install Java 25 if needed (latest stable Temurin)
 echo "🔍 Checking for Java 25..."
@@ -73,8 +80,6 @@ export JAVA_HOME
 echo "export JAVA_HOME=\"$HOME/.sdkman/candidates/java/current\"" >> "$CLAUDE_ENV_FILE"
 export PATH="$JAVA_HOME/bin:$PATH"
 echo "export PATH=\"$JAVA_HOME/bin:$PATH\""  >> "$CLAUDE_ENV_FILE"
-export MAVEN_OPTS="-o -Dmaven.repo.local=$CLAUDE_PROJECT_DIR/claude_mvn/repo $MAVEN_OPTS"
-echo "MAVEN_OPTS=\"-Dmaven.repo.local=$CLAUDE_PROJECT_DIR/claude_mvn/repo $MAVEN_OPTS\"" >> "$CLAUDE_ENV_FILE"
 
 #echo ""
 #echo "✨ Java 25 setup complete!"
