@@ -287,13 +287,10 @@ mvn clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$
 
 **Other AI agents:**
 ```bash
-# 1. Run setup script directly (if not using SessionStart hook)
-support/shared/claude/skills/ccw-maven-setup/prep_if_ccw.sh
-
-# 2. Verify Java version
+# 1. Verify Java version
 java -version  # Should show Java 25
 
-# 3. Run build
+# 2. Run build
 mvn clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 ```
 
@@ -347,39 +344,6 @@ else
     echo "Running in local environment"
 fi
 ```
-
-**Full Workflow (CCW - Claude Code):**
-```bash
-# Setup runs automatically via SessionStart hook
-# Just start developing once your session is ready
-
-# Development cycle
-mvn clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
-
-# Commit and push
-git add .
-git commit -m "Your changes
-
-Claude Code v1.0.0 / claude-sonnet-4-5-20250929"
-git push -u origin claude/your-branch-name
-```
-
-**Full Workflow (CCW - Other AI agents):**
-```bash
-# Setup (once per session, if not using SessionStart hook)
-support/shared/claude/skills/ccw-maven-setup/prep_if_ccw.sh
-
-# Development cycle
-mvn clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
-
-# Commit and push
-git add .
-git commit -m "Your changes
-
-[AI Agent Name] / [Model ID]"
-git push -u origin <agent-prefix>/your-branch-name
-```
-
 **Full Workflow (Local - All agents):**
 ```bash
 # No setup needed - just develop
