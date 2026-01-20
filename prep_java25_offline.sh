@@ -1,11 +1,10 @@
-#!/bin/bash
+#!/bin/bash -x
 # Modified version of prep_if_ccw.sh for offline environments
 # Skips SDKMAN installation, uses existing SDKMAN if available
 
 set -e
 
 # Get script directory for accessing repo-vendored files
-SCRIPT_DIR="/home/user/foolish/support/shared/claude/skills/ccw-maven-setup"
 
 echo "🔧 Setting up Java 25 (offline mode)..."
 echo "⏱️  This setup ensures Java 25 is available for your session..."
@@ -14,13 +13,10 @@ echo "⏱️  This setup ensures Java 25 is available for your session..."
 if [ -f "$HOME/.sdkman/bin/sdkman-init.sh" ]; then
     echo "📦 Found SDKMAN in home directory, sourcing..."
     source "$HOME/.sdkman/bin/sdkman-init.sh"
-elif [ -f "$SCRIPT_DIR/sdkman-init.sh" ]; then
-    echo "📦 Using vendored sdkman-init.sh..."
-    source "$SCRIPT_DIR/sdkman-init.sh"
 else
-    echo "❌ SDKMAN not found in home directory or vendored location"
-    echo "   Cannot proceed without SDKMAN"
-    exit 1
+    echo "Install SDKMAN"
+    curl -s "https://get.sdkman.io" | bash
+    source "$HOME/.sdkman/bin/sdkman-init.sh"
 fi
 
 # Install Java 25 if needed (latest stable Temurin)
