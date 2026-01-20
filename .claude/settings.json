@@ -35,7 +35,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/yacjbt.sh -V"
+            "command": "$CLAUDE_PROJECT_DIR/.claude/prep_java25_offline.sh"
           }
         ]
       }

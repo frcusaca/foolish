@@ -73,7 +73,7 @@ export JAVA_HOME
 echo "export JAVA_HOME=\"$HOME/.sdkman/candidates/java/current\"" >> "$CLAUDE_ENV_FILE"
 export PATH="$JAVA_HOME/bin:$PATH"
 echo "export PATH=\"$JAVA_HOME/bin:$PATH\""  >> "$CLAUDE_ENV_FILE"
-export MAVEN_OPTS="-Dmaven.repo.local=$CLAUDE_PROJECT_DIR/claude_mvn/repo $MAVEN_OPTS"
+export MAVEN_OPTS="-o -Dmaven.repo.local=$CLAUDE_PROJECT_DIR/claude_mvn/repo $MAVEN_OPTS"
 export "MAVEN_OPTS=\"-Dmaven.repo.local=$CLAUDE_PROJECT_DIR/claude_mvn/repo $MAVEN_OPTS\"" >> "$CLAUDE_ENV_FILE"
 
 #echo ""
