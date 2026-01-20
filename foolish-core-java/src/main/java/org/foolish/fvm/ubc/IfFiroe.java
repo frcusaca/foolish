@@ -92,6 +92,29 @@ public class IfFiroe extends FiroeWithBraneMind {
         return result;
     }
 
+    @Override
+    public java.util.Set<String> getMyIdentifiers() {
+        AST.IfExpr expr = (AST.IfExpr) ast;
+        java.util.Set<String> ids = new java.util.HashSet<>();
+
+        // Main condition and then block
+        ids.addAll(FIR.createFiroeFromExpr(expr.condition()).getMyIdentifiers());
+        ids.addAll(FIR.createFiroeFromExpr(expr.thenExpr()).getMyIdentifiers());
+
+        // Else-ifs
+        for (AST.IfExpr elseIf : expr.elseIfs()) {
+            ids.addAll(FIR.createFiroeFromExpr(elseIf.condition()).getMyIdentifiers());
+            ids.addAll(FIR.createFiroeFromExpr(elseIf.thenExpr()).getMyIdentifiers());
+        }
+
+        // Else block
+        if (expr.elseExpr() != null && expr.elseExpr() != AST.UnknownExpr.INSTANCE) {
+            ids.addAll(FIR.createFiroeFromExpr(expr.elseExpr()).getMyIdentifiers());
+        }
+
+        return ids;
+    }
+
 
     // This class is private to ensure that nothing else can insert
     // this class into the "else branch"
@@ -145,6 +168,19 @@ public class IfFiroe extends FiroeWithBraneMind {
         }
         public FIR getThenFir(){
             return braneMemory.getLast();
+        }
+
+        @Override
+        public java.util.Set<String> getMyIdentifiers() {
+            // This inner class is used for else-ifs, which are IfExprs.
+            // We can delegate to the main IfFiroe logic or reimplement for the specific parts.
+            // Since ConditionalFiroe wraps an IfExpr (the else-if part),
+            // and `ast` is that IfExpr.
+            AST.IfExpr expr = (AST.IfExpr) ast;
+            java.util.Set<String> ids = new java.util.HashSet<>();
+            ids.addAll(FIR.createFiroeFromExpr(expr.condition()).getMyIdentifiers());
+            ids.addAll(FIR.createFiroeFromExpr(expr.thenExpr()).getMyIdentifiers());
+            return ids;
         }
     }
 

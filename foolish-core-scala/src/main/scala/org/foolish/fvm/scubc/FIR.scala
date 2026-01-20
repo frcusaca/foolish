@@ -68,6 +68,14 @@ abstract class FIR(val ast: AST, val comment: Option[String] = None):
   def getValue: Long =
     throw UnsupportedOperationException(s"getValue not supported for ${getClass.getSimpleName}")
 
+  /**
+   * Returns the set of identifiers referenced by this FIR.
+   * This method recursively collects identifiers from sub-expressions but does NOT descend into nested branes.
+   *
+   * @return a set of identifier names
+   */
+  def getMyIdentifiers: Set[String]
+
 object FIR:
   /** Creates a FIR from an AST expression */
   def createFiroeFromExpr(expr: AST.Expr): FIR = expr match

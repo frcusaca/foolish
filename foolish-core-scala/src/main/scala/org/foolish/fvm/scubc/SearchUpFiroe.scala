@@ -22,3 +22,5 @@ class SearchUpFiroe(
     referencedBrane.forall(_.isAbstract)
 
   override def toString: String = "↑"
+
+  override def getMyIdentifiers: Set[String] = Set.empty

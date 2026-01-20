@@ -59,6 +59,10 @@ class UnaryFiroe(unaryExpr: AST.UnaryExpr) extends FiroeWithBraneMind(unaryExpr)
   override def toString: String =
     result.map(_.toString).getOrElse(s"$operator${if braneMemory.isEmpty then "?" else braneMemory.get(0).toString}")
 
+  override def getMyIdentifiers: Set[String] =
+    val expr = ast.asInstanceOf[AST.UnaryExpr]
+    FIR.createFiroeFromExpr(expr.expr()).getMyIdentifiers
+
 object UnaryFiroe:
   def apply(unaryExpr: AST.UnaryExpr): UnaryFiroe =
     new UnaryFiroe(unaryExpr)

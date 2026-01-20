@@ -23,4 +23,6 @@ case class NKFiroe(override val ast: AST = null, nkComment: Option[String] = Non
 
   override def toString: String = "???"
 
+  override def getMyIdentifiers: Set[String] = Set.empty
+
   override def clone: FIR = this // immutable constant

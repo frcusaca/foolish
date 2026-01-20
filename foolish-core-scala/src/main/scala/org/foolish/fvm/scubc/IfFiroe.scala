@@ -66,6 +66,25 @@ class IfFiroe(ifExpr: AST.IfExpr) extends FiroeWithBraneMind(ifExpr):
   /** Get the result of the if expression */
   def getResult: Option[FIR] = result
 
+  override def getMyIdentifiers: Set[String] =
+    val expr = ast.asInstanceOf[AST.IfExpr]
+    val ids = scala.collection.mutable.Set[String]()
+
+    // Main condition and then block
+    ids.addAll(FIR.createFiroeFromExpr(expr.condition()).getMyIdentifiers)
+    ids.addAll(FIR.createFiroeFromExpr(expr.thenExpr()).getMyIdentifiers)
+
+    import scala.jdk.CollectionConverters.*
+    expr.elseIfs().asScala.foreach { elseIf =>
+      ids.addAll(FIR.createFiroeFromExpr(elseIf.condition()).getMyIdentifiers)
+      ids.addAll(FIR.createFiroeFromExpr(elseIf.thenExpr()).getMyIdentifiers)
+    }
+
+    if expr.elseExpr() != null && expr.elseExpr() != AST.UnknownExpr.INSTANCE then
+      ids.addAll(FIR.createFiroeFromExpr(expr.elseExpr()).getMyIdentifiers)
+
+    ids.toSet
+
   /**
    * ConditionalFiroe - private to ensure nothing else can insert into the else branch
    */
@@ -98,6 +117,11 @@ class IfFiroe(ifExpr: AST.IfExpr) extends FiroeWithBraneMind(ifExpr):
     def hasTrueCondition: Boolean = conditionValue.contains(true)
     def hasFalseCondition: Boolean = conditionValue.contains(false)
     def getThenFir: FIR = braneMemory.getLast
+
+    override def getMyIdentifiers: Set[String] =
+      val expr = ast.asInstanceOf[AST.IfExpr]
+      FIR.createFiroeFromExpr(expr.condition()).getMyIdentifiers ++
+        FIR.createFiroeFromExpr(expr.thenExpr()).getMyIdentifiers
 
   end ConditionalFiroe
 

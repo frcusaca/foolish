@@ -41,6 +41,8 @@ class BraneFiroe(override val ast: AST)
   override def toString: String =
     Sequencer4Human().sequence(this)
 
+  override def getMyIdentifiers: Set[String] = Set.empty
+
 object BraneFiroe:
   def apply(ast: AST): BraneFiroe =
     new BraneFiroe(ast)

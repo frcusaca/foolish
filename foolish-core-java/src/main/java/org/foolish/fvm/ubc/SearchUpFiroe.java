@@ -45,4 +45,9 @@ public class SearchUpFiroe extends FiroeWithoutBraneMind {
     public String toString() {
         return "↑";
     }
+
+    @Override
+    public java.util.Set<String> getMyIdentifiers() {
+        return java.util.Collections.emptySet();
+    }
 }

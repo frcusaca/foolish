@@ -67,6 +67,10 @@ class AssignmentFiroe(assignment: AST.Assignment)
   override def toString: String =
     Sequencer4Human().sequence(this)
 
+  override def getMyIdentifiers: Set[String] =
+    val assignment = ast.asInstanceOf[AST.Assignment]
+    FIR.createFiroeFromExpr(assignment.expr()).getMyIdentifiers
+
 object AssignmentFiroe:
   def apply(assignment: AST.Assignment): AssignmentFiroe =
     new AssignmentFiroe(assignment)

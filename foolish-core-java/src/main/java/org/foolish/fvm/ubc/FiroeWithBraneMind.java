@@ -51,6 +51,11 @@ public abstract class FiroeWithBraneMind extends FIR {
             protected void initialize() {
                 setInitialized();
             }
+
+            @Override
+            public java.util.Set<String> getMyIdentifiers() {
+                return java.util.Collections.emptySet();
+            }
         };
         for (FIR task : tasks) {
             result.enqueueFirs(task);

@@ -179,5 +179,6 @@ object FiroeWithBraneMind:
   def of(tasks: FIR*): FiroeWithBraneMind =
     val result = new FiroeWithBraneMind(null, None):
       override protected def initialize(): Unit = ()
+      override def getMyIdentifiers: Set[String] = Set.empty
     result.enqueueFirs(tasks*)
     result

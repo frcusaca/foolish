@@ -98,4 +98,9 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
     public String toString() {
         return ((AST.Identifier) ast).toString();
     }
+
+    @Override
+    public java.util.Set<String> getMyIdentifiers() {
+        return java.util.Set.of(identifier.getId());
+    }
 }

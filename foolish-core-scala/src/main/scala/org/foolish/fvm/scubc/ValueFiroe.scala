@@ -18,4 +18,6 @@ case class ValueFiroe(override val ast: AST, value: Long) extends FiroeWithoutBr
 
   override def toString: String = value.toString
 
+  override def getMyIdentifiers: Set[String] = Set.empty
+
   override def clone: FIR = this // immutable constant

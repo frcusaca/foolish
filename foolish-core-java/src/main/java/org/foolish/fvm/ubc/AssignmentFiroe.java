@@ -121,4 +121,20 @@ public class AssignmentFiroe extends FiroeWithBraneMind {
     public String toString() {
         return new Sequencer4Human().sequence(this);
     }
+
+    @Override
+    public java.util.Set<String> getMyIdentifiers() {
+        // Enqueue only adds to braneMind, but we need to check the expression
+        // which might not be created yet if not initialized.
+        // We can create it temporarily or access AST.
+        // But createFiroeFromExpr creates a new FIR instance.
+        // We should probably rely on the fact that we can create a temporary FIR just to check identifiers
+        // or check the AST directly?
+        // Checking AST directly would duplicate logic.
+        // Creating a temporary FIR seems safer for consistency.
+
+        AST.Assignment assignment = (AST.Assignment) ast;
+        FIR exprFir = FIR.createFiroeFromExpr(assignment.expr());
+        return exprFir.getMyIdentifiers();
+    }
 }

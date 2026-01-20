@@ -76,6 +76,12 @@ class BinaryFiroe(binaryExpr: AST.BinaryExpr) extends FiroeWithBraneMind(binaryE
     result.map(_.getValue).getOrElse(
       throw IllegalStateException("BinaryFiroe not fully evaluated"))
 
+  override def getMyIdentifiers: Set[String] =
+    val expr = ast.asInstanceOf[AST.BinaryExpr]
+    val left = FIR.createFiroeFromExpr(expr.left())
+    val right = FIR.createFiroeFromExpr(expr.right())
+    left.getMyIdentifiers ++ right.getMyIdentifiers
+
 object BinaryFiroe:
   def apply(binaryExpr: AST.BinaryExpr): BinaryFiroe =
     new BinaryFiroe(binaryExpr)

@@ -42,4 +42,10 @@ public class RegexpSearchFiroe extends AbstractSearchFiroe {
     public String toString() {
         return ast.toString();
     }
+
+    @Override
+    public java.util.Set<String> getMyIdentifiers() {
+        AST.RegexpSearchExpr expr = (AST.RegexpSearchExpr) ast;
+        return FIR.createFiroeFromExpr(expr.anchor()).getMyIdentifiers();
+    }
 }

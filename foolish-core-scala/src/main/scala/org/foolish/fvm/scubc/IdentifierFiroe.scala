@@ -75,3 +75,5 @@ class IdentifierFiroe(override val ast: AST.Identifier)
     value.getValue
 
   override def toString: String = ast.toString
+
+  override def getMyIdentifiers: Set[String] = Set(identifier.getId)

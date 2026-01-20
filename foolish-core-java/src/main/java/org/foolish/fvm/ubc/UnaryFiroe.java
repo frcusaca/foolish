@@ -124,4 +124,10 @@ public class UnaryFiroe extends FiroeWithBraneMind {
         return operator + (operandFiroe != null ? operandFiroe : "?");
     }
 
+    @Override
+    public java.util.Set<String> getMyIdentifiers() {
+        AST.UnaryExpr expr = (AST.UnaryExpr) ast;
+        FIR operand = FIR.createFiroeFromExpr(expr.expr());
+        return operand.getMyIdentifiers();
+    }
 }

@@ -135,4 +135,14 @@ public class BinaryFiroe extends FiroeWithBraneMind {
         }
         return result.getValue();
     }
+
+    @Override
+    public java.util.Set<String> getMyIdentifiers() {
+        AST.BinaryExpr expr = (AST.BinaryExpr) ast;
+        FIR left = FIR.createFiroeFromExpr(expr.left());
+        FIR right = FIR.createFiroeFromExpr(expr.right());
+        java.util.Set<String> ids = new java.util.HashSet<>(left.getMyIdentifiers());
+        ids.addAll(right.getMyIdentifiers());
+        return ids;
+    }
 }

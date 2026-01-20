@@ -27,4 +27,8 @@ class OneShotSearchFiroe(oneShotSearch: AST.OneShotSearchExpr) extends AbstractS
   }
 
   override def toString: String = ast.toString
+
+  override def getMyIdentifiers: Set[String] =
+    val expr = ast.asInstanceOf[AST.OneShotSearchExpr]
+    FIR.createFiroeFromExpr(expr.anchor()).getMyIdentifiers
 }

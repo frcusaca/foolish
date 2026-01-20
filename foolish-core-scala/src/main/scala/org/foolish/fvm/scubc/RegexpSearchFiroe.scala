@@ -31,4 +31,8 @@ class RegexpSearchFiroe(regexpSearch: AST.RegexpSearchExpr) extends AbstractSear
   }
 
   override def toString: String = ast.toString
+
+  override def getMyIdentifiers: Set[String] =
+    val expr = ast.asInstanceOf[AST.RegexpSearchExpr]
+    FIR.createFiroeFromExpr(expr.anchor()).getMyIdentifiers
 }

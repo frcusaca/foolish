@@ -42,4 +42,9 @@ public class ValueFiroe extends FiroeWithoutBraneMind {
     public FIR clone(){
         return this; // I'm a constant
     }
+
+    @Override
+    public java.util.Set<String> getMyIdentifiers() {
+        return java.util.Collections.emptySet();
+    }
 }

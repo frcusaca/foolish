@@ -63,4 +63,9 @@ public class BraneFiroe extends FiroeWithBraneMind {
     public String toString() {
         return new Sequencer4Human().sequence(this);
     }
+
+    @Override
+    public java.util.Set<String> getMyIdentifiers() {
+        return java.util.Collections.emptySet();
+    }
 }

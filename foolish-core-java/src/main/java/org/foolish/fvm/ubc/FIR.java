@@ -108,6 +108,14 @@ public abstract class FIR {
     }
 
     /**
+     * Returns the set of identifiers referenced by this FIR.
+     * This method recursively collects identifiers from sub-expressions but does NOT descend into nested branes.
+     *
+     * @return a set of identifier names
+     */
+    public abstract java.util.Set<String> getMyIdentifiers();
+
+    /**
      * Creates a FIR from an AST expression.
      */
     protected static FIR createFiroeFromExpr(AST.Expr expr) {

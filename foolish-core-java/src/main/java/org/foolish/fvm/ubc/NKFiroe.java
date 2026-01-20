@@ -69,5 +69,9 @@ public class NKFiroe extends FiroeWithoutBraneMind {
         return this; // I'm a constant
     }
 
+    @Override
+    public java.util.Set<String> getMyIdentifiers() {
+        return java.util.Collections.emptySet();
+    }
 }
 

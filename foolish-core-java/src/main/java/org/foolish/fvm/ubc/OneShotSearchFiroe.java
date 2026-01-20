@@ -36,4 +36,10 @@ public class OneShotSearchFiroe extends AbstractSearchFiroe {
     public String toString() {
         return ast.toString();
     }
+
+    @Override
+    public java.util.Set<String> getMyIdentifiers() {
+        AST.OneShotSearchExpr expr = (AST.OneShotSearchExpr) ast;
+        return FIR.createFiroeFromExpr(expr.anchor()).getMyIdentifiers();
+    }
 }
