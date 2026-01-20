@@ -23,6 +23,9 @@ class AssignmentFiroe(assignment: AST.Assignment)
     if result.isDefined then
       return
 
+    if atConstantic then
+      return
+
     if !isInitialized then
       initialize()
       return
@@ -32,10 +35,19 @@ class AssignmentFiroe(assignment: AST.Assignment)
 
     // Check if we can get the final result
     if !super.isNye && !braneMemory.isEmpty then
-      result = Some(braneMemory.get(0))
+      val res = braneMemory.get(0)
+      result = Some(res)
+      if res.atConstantic then
+        setNyes(Nyes.CONSTANTIC)
 
   override def isAbstract: Boolean =
-    result.map(_.isAbstract).getOrElse(super.isAbstract)
+    if atConstantic then
+      true
+    else
+      result.map(_.isAbstract).getOrElse(super.isAbstract)
+
+  override def isNye: Boolean =
+    result.isEmpty && !atConstantic
 
   /** Gets the coordinate name for this assignment (without characterization) */
   def getId: String = lhs.getId
@@ -47,6 +59,8 @@ class AssignmentFiroe(assignment: AST.Assignment)
   def getResult: Option[FIR] = result
 
   override def getValue: Long =
+    if atConstantic then
+      throw IllegalStateException("AssignmentFiroe is constantic")
     result.map(_.getValue).getOrElse(
       throw IllegalStateException("AssignmentFiroe not fully evaluated"))
 

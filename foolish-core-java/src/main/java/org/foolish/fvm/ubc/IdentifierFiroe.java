@@ -45,6 +45,9 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
      */
     @Override
     public boolean isAbstract() {
+        if (atConstantic()) {
+            return true;
+        }
         if (value == null) {
             return true; // Not yet resolved
         }
@@ -68,7 +71,11 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
                 value = braneMemory.get(identifier, 0)
                         .map(r -> r.getValue())
                         .orElse(null);
-                setNyes(Nyes.RESOLVED);
+                if (value == null) {
+                    setNyes(Nyes.CONSTANTIC);
+                } else {
+                    setNyes(Nyes.RESOLVED);
+                }
             }
             default:
                 super.step();
@@ -81,6 +88,9 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
      */
     @Override
     public long getValue() {
+        if (atConstantic()) {
+            throw new UnsupportedOperationException("Cannot get value from constantic identifier");
+        }
         return value.getValue();
     }
 

@@ -104,7 +104,7 @@ public abstract class FiroeWithBraneMind extends FIR {
      */
     @Override
     public boolean isNye() {
-        return getNyes() != Nyes.CONSTANT;
+        return !atConstant() && !atConstantic();
     }
 
     /**
@@ -180,7 +180,7 @@ public abstract class FiroeWithBraneMind extends FIR {
                     //TODO: Handle this exception Foolishly
                 }
             }
-            case CONSTANT -> {
+            case CONSTANT, CONSTANTIC -> {
                 // Already evaluated, nothing to do
             }
         }
@@ -229,6 +229,9 @@ public abstract class FiroeWithBraneMind extends FIR {
      * The furst sub-target-state non-brane member is shifted to the front of the queue.
      */
     private boolean allNonBranesReachedState(Nyes targetState) {
+        if (braneMind.isEmpty()) {
+            return true;
+        }
         FIR current = braneMind.getFirst();
         int seen = 1;
         // Let's skip branes and the sub expressions that has already reached desired state.

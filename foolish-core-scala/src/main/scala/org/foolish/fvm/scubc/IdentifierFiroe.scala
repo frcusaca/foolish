@@ -40,7 +40,9 @@ class IdentifierFiroe(override val ast: AST.Identifier)
    * An identifier is abstract if it hasn't been resolved yet or if its resolved value is abstract.
    */
   override def isAbstract: Boolean =
-    if value == null then
+    if atConstantic then
+      true
+    else if value == null then
       true // Not yet resolved
     else
       value.isAbstract
@@ -57,13 +59,19 @@ class IdentifierFiroe(override val ast: AST.Identifier)
         value = braneMemory.get(identifier, 0)
           .map(_._2)
           .orNull
-        setNyes(Nyes.RESOLVED)
+        if value == null then
+          setNyes(Nyes.CONSTANTIC)
+        else
+          setNyes(Nyes.RESOLVED)
       case _ =>
         super.step()
 
   /**
    * Get the value of the resolved identifier.
    */
-  override def getValue: Long = value.getValue
+  override def getValue: Long =
+    if atConstantic then
+      throw UnsupportedOperationException("Cannot get value from constantic identifier")
+    value.getValue
 
   override def toString: String = ast.toString

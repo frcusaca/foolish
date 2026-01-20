@@ -198,7 +198,7 @@ evaluation stages from UNINITIALIZED through CONSTANT):
 | State | Rendering | Notes |
 |-------|-----------|-------|
 | NYE | `???` | Not yet evaluated |
-| CONSTANTIC | `?C?` | Constant in context; for constantic branes, contents may be shown |
+| CONSTANTIC | `⎵⎵` | Constant in context; for constantic branes, contents may be shown |
 | CONSTANT | value | The final computed value |
 
 Because of the step-wise evaluation, the brane tree is evaluated breadth-first. The brane having

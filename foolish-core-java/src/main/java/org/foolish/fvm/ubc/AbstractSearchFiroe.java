@@ -50,6 +50,9 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
                 if (stepNonBranesUntilState(Nyes.CONSTANT)) {
                     if (isAnchorReady()) {
                         performSearchStep();
+                        if (atConstantic()) {
+                            return;
+                        }
                         if (searchResult != null) {
                             setNyes(Nyes.CONSTANT);
                         }
@@ -82,9 +85,17 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
 
         FIR anchor = braneMemory.getLast();
 
+        // Check if anchor is CONSTANTIC
+        if (anchor.atConstantic()) {
+            return true;
+        }
+
         // Unwrap identifier to get the actual value
         FIR resolvedAnchor = anchor;
         if (anchor instanceof IdentifierFiroe identifierFiroe) {
+            if (identifierFiroe.atConstantic()) {
+                return true;
+            }
             if (identifierFiroe.value == null) return false;
             resolvedAnchor = identifierFiroe.value;
         }
@@ -94,6 +105,9 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
 
         // Unwrap assignment
         if (anchor instanceof AssignmentFiroe assignmentFiroe) {
+            if (assignmentFiroe.atConstantic()) {
+                return true;
+            }
             if (assignmentFiroe.isNye()) {
                 assignmentFiroe.step();
                 return false;
@@ -106,6 +120,9 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
 
         // Check if chained search is ready
         if (anchor instanceof AbstractSearchFiroe abstractSearchFiroe) {
+             if (abstractSearchFiroe.atConstantic()) {
+                 return true;
+             }
              if (abstractSearchFiroe.isNye()) {
                  abstractSearchFiroe.step();
                  return false;
@@ -127,14 +144,32 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
 
         if (searchResult != null) return;
 
+        // Check for constantic anchor
+        if (unwrapAnchor.atConstantic()) {
+            searchResult = new NKFiroe(); // Search on constantic -> NK? Or constantic result?
+            // Usually if resource is missing, search fails -> NK.
+            // Or maybe it should propagate constantic? "Refactor identifier 'NOT FOUND' state to CONSTANTIC state"
+            // But a search result that fails is usually NK.
+            // Let's stick to NK for now unless specified otherwise.
+            return;
+        }
+
         // Unwrapping Loop
         if (unwrapAnchor instanceof IdentifierFiroe identifierFiroe) {
+            if (identifierFiroe.atConstantic()) {
+                searchResult = new NKFiroe();
+                return;
+            }
             unwrapAnchor = identifierFiroe.value;
             if (unwrapAnchor == null) searchResult = new NKFiroe();
             return;
         }
 
         if (unwrapAnchor instanceof AssignmentFiroe assignmentFiroe) {
+            if (assignmentFiroe.atConstantic()) {
+                searchResult = new NKFiroe();
+                return;
+            }
             if (assignmentFiroe.isNye()) {
                 assignmentFiroe.step();
                 return;
@@ -145,6 +180,10 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
         }
 
         if (unwrapAnchor instanceof AbstractSearchFiroe abstractSearchFiroe) {
+            if (abstractSearchFiroe.atConstantic()) {
+                searchResult = new NKFiroe();
+                return;
+            }
             if (abstractSearchFiroe.isNye()) {
                 abstractSearchFiroe.step();
                 return;
@@ -168,6 +207,13 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
                  // Should ideally return NKFiroe, but assume executeSearch handles logic
                  searchResult = new NKFiroe();
                  return;
+             }
+
+             if (result.atConstantic()) {
+                 // If search result is constantic (e.g. identifier found but it was constantic)
+                 // Then we treat it as found but constantic.
+                 // But wait, executeSearch returns FIR.
+                 // If we found an IdentifierFiroe that is Constantic, result is that IdentifierFiroe.
              }
 
              // If the search result itself needs unwrapping (e.g. it's an assignment or identifier found in the brane)

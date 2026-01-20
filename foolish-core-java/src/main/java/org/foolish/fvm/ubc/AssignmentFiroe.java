@@ -39,6 +39,10 @@ public class AssignmentFiroe extends FiroeWithBraneMind {
             return;
         }
 
+        if (atConstantic()) {
+            return;
+        }
+
         if (!isInitialized()) {
             // Initialize and enqueue the expression
             initialize();
@@ -56,17 +60,23 @@ public class AssignmentFiroe extends FiroeWithBraneMind {
         // Expression is fully evaluated, store the result
         if (!braneMemory.isEmpty()) {
             result = braneMemory.get(0);
+            if (result.atConstantic()) {
+                setNyes(Nyes.CONSTANTIC);
+            }
         }
     }
 
     @Override
     public boolean isNye() {
-        return result == null;
+        return result == null && !atConstantic();
     }
 
     @Override
     public boolean isAbstract() {
         /** check of the ID is abstract **/
+        if (atConstantic()) {
+            return true;
+        }
         if (result != null) {
             return result.isAbstract();
         }
@@ -98,6 +108,9 @@ public class AssignmentFiroe extends FiroeWithBraneMind {
 
     @Override
     public long getValue() {
+        if (atConstantic()) {
+            throw new IllegalStateException("AssignmentFiroe is constantic");
+        }
         if (result == null) {
             throw new IllegalStateException("AssignmentFiroe not fully evaluated");
         }

@@ -5,7 +5,13 @@ import org.foolish.ast.AST
 /**
  * Human-friendly sequencer that formats FIR objects with configurable indentation.
  */
+object Sequencer4Human {
+  val NK_STR = "???"
+  val CC_STR = "⎵⎵"
+}
+
 case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
+  import Sequencer4Human._
 
   def sequence(fir: FIR, depth: Int): String = fir match
     case brane: BraneFiroe => sequenceBrane(brane, depth)
@@ -18,7 +24,7 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
     case assignment: AssignmentFiroe => sequenceAssignment(assignment, depth)
     case identifier: IdentifierFiroe => sequenceIdentifier(identifier, depth)
     case oneShotSearch: OneShotSearchFiroe => sequenceOneShotSearch(oneShotSearch, depth)
-    case _ => indent(depth) + "???"
+    case _ => indent(depth) + NK_STR
 
   protected def sequenceBrane(brane: BraneFiroe, depth: Int): String =
     val sb = StringBuilder()
@@ -49,7 +55,7 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
     if !binary.isNye then
       // Check if the result is NK (not-known)
       if binary.isAbstract then
-        indent(depth) + "???"
+        indent(depth) + NK_STR
       else
         indent(depth) + binary.getValue.toString
     else
@@ -67,10 +73,10 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
   protected def sequenceIf(ifFiroe: IfFiroe, depth: Int): String =
     // If the if expression has been fully evaluated, show the result
     if !ifFiroe.isNye then
-      ifFiroe.getResult.map(result => sequence(result, depth)).getOrElse(indent(depth) + "if ???")
+      ifFiroe.getResult.map(result => sequence(result, depth)).getOrElse(indent(depth) + "if " + NK_STR)
     else
       // Show the if structure (shouldn't normally happen in evaluated branes)
-      indent(depth) + "if ???"
+      indent(depth) + "if " + NK_STR
 
   protected def sequenceSearchUp(searchUp: SearchUpFiroe, depth: Int): String =
     indent(depth) + "↑"
@@ -80,11 +86,14 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
       val result = assignment.getResult.get
       // Check if the result is fully evaluated
       if !result.isNye then
-        // Check if the result is NK (not-known)
-        if result.isAbstract then
-          indent(depth) + s"${assignment.getId} = ???"
+        if result.atConstantic then
+           indent(depth) + s"${assignment.getId} = $CC_STR"
         else
           unwrap(result) match
+            case constantic if constantic.atConstantic =>
+               indent(depth) + s"${assignment.getId} = $CC_STR"
+            case abstractFir if abstractFir.isAbstract =>
+               indent(depth) + s"${assignment.getId} = $NK_STR"
             case brane: BraneFiroe =>
               // Special handling for nested branes to align indentation
               val sequencedBrane = sequence(brane, depth)
@@ -106,50 +115,60 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
               // Simple values
               indent(depth) + s"${assignment.getId} = ${unwrapped.getValue}"
       else
-        indent(depth) + s"${assignment.getId} = ???"
+        indent(depth) + s"${assignment.getId} = $NK_STR"
+    else if assignment.atConstantic then
+        indent(depth) + s"${assignment.getId} = $CC_STR"
     else
       // If not yet evaluated, show the structure
-      indent(depth) + s"${assignment.getId} = ???"
+      indent(depth) + s"${assignment.getId} = $NK_STR"
 
   protected def sequenceIdentifier(identifier: IdentifierFiroe, depth: Int): String =
     // If the identifier has been resolved and is not NYE
     if !identifier.isNye then
-      // Check if it resolved to an abstract value
-      if identifier.isAbstract then
-        indent(depth) + "???"
+      if identifier.atConstantic then
+         indent(depth) + CC_STR
+      else if identifier.isAbstract then
+        indent(depth) + NK_STR
       else
         unwrap(identifier) match
+          case constantic if constantic.atConstantic => indent(depth) + CC_STR
           case brane: BraneFiroe =>
              // Should not typically happen for top-level sequencing but good to handle
              sequence(brane, depth)
           case unwrapped =>
              indent(depth) + unwrapped.getValue.toString
+    else if identifier.atConstantic then
+        indent(depth) + CC_STR
     else
       // If not yet evaluated
-      indent(depth) + "???"
+      indent(depth) + NK_STR
 
   protected def sequenceOneShotSearch(oneShotSearch: OneShotSearchFiroe, depth: Int): String =
     if !oneShotSearch.isNye then
       if oneShotSearch.isAbstract then
-        indent(depth) + "???"
+        indent(depth) + NK_STR
       else
         // Use sequence() recursively on the result if we can access it
         sequence(oneShotSearch.getResult, depth)
     else
-      indent(depth) + "???"
+      indent(depth) + NK_STR
 
   @scala.annotation.tailrec
   private def unwrap(fir: FIR): FIR = fir match
-    case assignment: AssignmentFiroe if assignment.getResult.isDefined =>
-      unwrap(assignment.getResult.get)
-    case identifier: IdentifierFiroe if identifier.value != null =>
-      unwrap(identifier.value)
+    case assignment: AssignmentFiroe =>
+       if assignment.atConstantic then assignment
+       else if assignment.getResult.isDefined then unwrap(assignment.getResult.get)
+       else assignment
+    case identifier: IdentifierFiroe =>
+       if identifier.atConstantic then identifier
+       else if identifier.value != null then unwrap(identifier.value)
+       else identifier
     case oneShotSearch: OneShotSearchFiroe if oneShotSearch.getResult != null =>
-      unwrap(oneShotSearch.getResult)
+       unwrap(oneShotSearch.getResult)
     case other => other
 
   protected def sequenceNK(nk: FIR, depth: Int): String =
-    indent(depth) + "???"
+    indent(depth) + NK_STR
 
   private def indent(depth: Int): String = tabChar * depth
 
