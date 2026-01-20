@@ -49,7 +49,7 @@ else
 fi
 
 # Let's set the path for now, it won't hurt
-echo "export PATH=\"PATH\""  >> "$CLAUDE_ENV_FILE"
+echo "export PATH=\"$PATH\""  >> "$CLAUDE_ENV_FILE"
 
 # Install Java 25 if needed (latest stable Temurin)
 echo "🔍 Checking for Java 25..."
