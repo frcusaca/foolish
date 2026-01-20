@@ -80,7 +80,8 @@ export JAVA_HOME
 echo "export JAVA_HOME=\"$HOME/.sdkman/candidates/java/current\"" >> "$CLAUDE_ENV_FILE"
 export PATH="$JAVA_HOME/bin:$PATH"
 echo "export PATH=\"$JAVA_HOME/bin:$PATH\""  >> "$CLAUDE_ENV_FILE"
-
+echo "Please set these environment variables manually"
+cat "$CLAUDE_ENV_FILE"
 #echo ""
 #echo "✨ Java 25 setup complete!"
 #echo ""
