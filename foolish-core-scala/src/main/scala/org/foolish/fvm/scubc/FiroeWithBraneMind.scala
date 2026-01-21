@@ -40,7 +40,7 @@ abstract class FiroeWithBraneMind(ast: AST, comment: Option[String] = None) exte
    * A FiroeWithBraneMind is NYE (Not Yet Evaluated) if its Nyes state is not CONSTANT.
    * Derived classes should override this method and call super.isNye as needed.
    */
-  def isNye: Boolean = getNyes != Nyes.CONSTANT && getNyes != Nyes.CONSTANTIC
+  def isNye: Boolean = getNyes != Nyes.CONSTANT && getNyes != Nyes.CONSTANIC
 
   /** Check if any FIRs in braneMind or braneMemory are abstract */
   def isAbstract: Boolean =
@@ -113,7 +113,7 @@ abstract class FiroeWithBraneMind(ast: AST, comment: Option[String] = None) exte
             throw RuntimeException("Error during braneMind step execution", e)
             //TODO: Handle this exception Foolishly
 
-      case Nyes.CONSTANT | Nyes.CONSTANTIC =>
+      case Nyes.CONSTANT | Nyes.CONSTANIC =>
         // Already evaluated, nothing to do
 
   /**

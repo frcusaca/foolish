@@ -64,11 +64,12 @@ public class BinaryFiroe extends FiroeWithBraneMind {
         FIR leftFir = braneMemory.get(0);
         FIR rightFir = braneMemory.get(1);
 
-        // If either operand is Constantic (unresolved), the result is Constantic.
+        // If either operand is Constanic (unresolved), the result is Constanic.
         // We do NOT convert to NK. result stays null.
-        if (leftFir.isConstantic() || rightFir.isConstantic()) {
-            result = null; // Stay Constantic
-            setNyes(Nyes.CONSTANT);
+        // Use atConstanic() to check for exactly CONSTANIC state, not CONSTANT.
+        if (leftFir.atConstanic() || rightFir.atConstanic()) {
+            result = null; // Stay Constanic
+            setNyes(Nyes.CONSTANIC);
             return;
         }
 
@@ -113,14 +114,14 @@ public class BinaryFiroe extends FiroeWithBraneMind {
     // Removed isNye override to use parent's state-based logic
 
     /**
-     * Returns true if the result is Constantic (e.g. missing vars).
+     * Returns true if the result is Constanic (e.g. missing vars).
      */
     @Override
-    public boolean isConstantic() {
+    public boolean isConstanic() {
         if (result == null) {
-            return true; // No result computed yet (or computed as null/Constantic)
+            return true; // No result computed yet (or computed as null/Constanic)
         }
-        return result.isConstantic();
+        return result.isConstanic();
     }
 
     /**
@@ -129,10 +130,10 @@ public class BinaryFiroe extends FiroeWithBraneMind {
     @Override
     public long getValue() {
         if (result == null) {
-            // If result is null but state is CONSTANT, it means we are Constantic (unresolved).
+            // If result is null, we are Constanic (unresolved).
             // Calling getValue() on an unresolved expression is an error.
-            if (getNyes() == Nyes.CONSTANT) {
-                throw new IllegalStateException("BinaryFiroe evaluated to Constantic (unresolved)");
+            if (atConstanic()) {
+                throw new IllegalStateException("BinaryFiroe is Constanic (unresolved)");
             }
             throw new IllegalStateException("BinaryFiroe not fully evaluated");
         }

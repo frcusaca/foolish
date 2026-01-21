@@ -164,7 +164,7 @@ public abstract class FiroeWithBraneMind extends FIR {
                     //TODO: Handle this exception Foolishly
                 }
             }
-            case CONSTANTIC, CONSTANT -> {
+            case CONSTANIC, CONSTANT -> {
                 // Already evaluated, nothing to do
             }
         }

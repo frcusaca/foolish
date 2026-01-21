@@ -45,8 +45,8 @@ building toward a future where programming is:
 - **Grounded in Reality**: Built-in methods seamlessly connect abstract thought to real-world
   implementations
 
-A Foolisher might say the variable is *nye* (says 'nigh', any pre-constantic state) when they
-encounter a FIR that has not reached CONSTANTIC, or that it's *constantic* (says 'cons-TAN-tic',
+A Foolisher might say the variable is *nye* (says 'nigh', any pre-constanic state) when they
+encounter a FIR that has not reached CONSTANIC, or that it's *constanic* (says 'cons-TAN-tic',
 constant in context) when it may gain value when associated with new context. We say "that's a
 no-no" when we see `???`. Fully evaluated expressions are values that have achieved CONSTANT.
 

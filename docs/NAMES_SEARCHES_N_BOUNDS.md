@@ -584,7 +584,7 @@ when you need them.
 	sum = {result = a + b;};  !! sum.result = 3 (bound immediately)
 
 	!! With liberation: 'a' and 'b' are freed, must be supplied later
-	add = [a, b]{result = a + b;};  !! add is constantic (abstract)
+	add = [a, b]{result = a + b;};  !! add is constanic (abstract)
 
 	!! Supply values when calling:
 	result =$ {a=10; b=20;} add;  !! result = 30
@@ -592,7 +592,7 @@ when you need them.
 ```
 
 In this example, we **detach** the names `a` and `b`, liberating them from the outer scope. The
-brane `add` becomes constantic—it's as resolved as it can be in its current context, but will gain
+brane `add` becomes constanic—it's as resolved as it can be in its current context, but will gain
 value when associated with a new context that provides `a` and `b`.
 
 **Terminology Note**: Throughout this document, we use "liberation" and "detachment" interchangeably.
@@ -643,7 +643,7 @@ When you place a liberation brane before a regular brane, you're creating a func
 	eager = {result = x - y;};  !! eager.result = -1
 
 	!! With liberation: waits for context
-	lazy = [x, z]{result = x - y;};  !! lazy is constantic
+	lazy = [x, z]{result = x - y;};  !! lazy is constanic
 
 	!! When we provide new context:
 	value =$ {x=10; z=30;} lazy;  !! value = 8 (x=10, y=2 from outer)
@@ -795,7 +795,7 @@ identifies statements by number for liberation.
 		step2 = "bake";
 	};
 
-	!! recipe is constantic - will gain value when flour, sugar, eggs provided
+	!! recipe is constanic - will gain value when flour, sugar, eggs provided
 
 	!! Provide context:
 	flour = 1;
@@ -821,7 +821,7 @@ identifies statements by number for liberation.
 		output = secret * 2;  !! statement 2
 	};
 
-	!! process is constantic
+	!! process is constanic
 
 	password = 5;
 	result =$ process.output;  !! result = 10
@@ -841,7 +841,7 @@ certain identifiers while keeping others free.
 
 ```foolish
 {
-	!! Define constantic brane with forward search liberation
+	!! Define constanic brane with forward search liberation
 	secure = [/a, /b, /c]{
 		a = ?secret_a;
 		b = ?secret_b;
@@ -856,7 +856,7 @@ certain identifiers while keeping others free.
 	!! P-brane: selectively bind only secret_a and secret_b
 	!! Everything else remains liberated
 	partial =$ [+ secret_a, secret_b] secure.result;
-	!! partial is still constantic because secret_c not resolved
+	!! partial is still constanic because secret_c not resolved
 
 	!! Fully bind all three
 	full =$ [+ secret_a, secret_b, secret_c] secure.result;  !! full = 60
@@ -986,7 +986,7 @@ detailed semantics, see [ECOSYSTEM.md](ECOSYSTEM.md#brane-reference-semantics-id
 
 ### Stay-Foolish Markers: Controlling Resolution Timing
 
-When referencing a constantic brane, you may want to control when its liberated ordinates resolve.
+When referencing a constanic brane, you may want to control when its liberated ordinates resolve.
 Foolish provides **stay-foolish markers** for this purpose.
 
 #### The SF Marker `<>`
@@ -1006,9 +1006,9 @@ the expression, preventing immediate resolution of liberated ordinates:
 }
 ```
 
-#### Constantic Assignment `<=>`
+#### Constanic Assignment `<=>`
 
-The **constantic assignment** operator is shorthand for wrapping the RHS in SF markers:
+The **constanic assignment** operator is shorthand for wrapping the RHS in SF markers:
 
 ```foolish
 {
@@ -1228,14 +1228,14 @@ This is crucial for keeping concatenated function branes abstract:
 
 ```foolish
 {
-	!! Define a constantic brane with blocked resolution
+	!! Define a constanic brane with blocked resolution
 	recipe = [/ingredient]{
 		step1 = "mix";
 		ingredient = ?flour + ?sugar + ?eggs;
 		step2 = "bake";
 	};
 
-	!! recipe is constantic - may gain value when associated with new context
+	!! recipe is constanic - may gain value when associated with new context
 
 	!! Provide context:
 	flour = 1;
@@ -1261,7 +1261,7 @@ This is crucial for keeping concatenated function branes abstract:
 		output = secret * 2;     !! statement 2
 	};
 
-	!! process is constantic
+	!! process is constanic
 
 	password = 5;
 	result =$ process.output;  !! result = 10
@@ -1272,7 +1272,7 @@ This is crucial for keeping concatenated function branes abstract:
 
 ```foolish
 {
-	!! Define constantic brane with all liberated
+	!! Define constanic brane with all liberated
 	secure = [/a, /b, /c]{
 		a = ?secret_a;
 		b = ?secret_b;
@@ -1286,7 +1286,7 @@ This is crucial for keeping concatenated function branes abstract:
 
 	!! Selectively bind only secret_a and secret_b
 	partial =$ [+ secret_a, secret_b] secure.result;
-	!! partial is still constantic because secret_c not resolved
+	!! partial is still constanic because secret_c not resolved
 
 	!! Fully bind
 	full =$ [+ secret_a, secret_b, secret_c] secure.result;  !! full = 60
@@ -1312,7 +1312,7 @@ This is crucial for keeping concatenated function branes abstract:
 
 ```foolish
 {
-	!! Define a constantic function factory
+	!! Define a constanic function factory
 	make_counter = [/start, /step]{
 		count = start;
 		increment = {count = count + step;};

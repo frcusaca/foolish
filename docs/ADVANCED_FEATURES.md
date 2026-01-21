@@ -170,10 +170,10 @@ recipe = [/ingredient]{ingredient = ?flour + ?sugar;};  !! Blocks 'ingredient' r
 result = [+ secret_a, secret_b]<secure>;  !! Bind only these two, keep others liberated
 ```
 
-**Stay-Foolish Markers** - Control resolution timing of constantic branes
+**Stay-Foolish Markers** - Control resolution timing of constanic branes
 ```foolish
 f2 = <f>;        !! SF marker: reactivates liberations for this assignment
-f3 <=> f;        !! Constantic assignment (shorthand for f3 = <f>)
+f3 <=> f;        !! Constanic assignment (shorthand for f3 = <f>)
 g  = <<f>>;      !! SFF marker: reconstructs from AST
 gg <<=>> f;      !! SFF assignment (shorthand for gg = <<f>>)
 ```

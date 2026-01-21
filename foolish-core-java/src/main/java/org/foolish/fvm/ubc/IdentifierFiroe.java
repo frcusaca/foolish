@@ -41,14 +41,14 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
     }
 
     /**
-     * An identifier is Constantic if it hasn't been resolved yet or if its resolved value is Constantic.
+     * An identifier is Constanic if it hasn't been resolved yet or if its resolved value is Constanic.
      */
     @Override
-    public boolean isConstantic() {
+    public boolean isConstanic() {
         if (value == null) {
             return true; // Not yet resolved or missing
         }
-        return value.isConstantic();
+        return value.isConstanic();
     }
 
     @Override
@@ -64,24 +64,22 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
     @Override
     public void step() {
         switch (getNyes()) {
-            case INITIALIZED: {
+            case INITIALIZED -> {
                 var found = braneMemory.get(identifier, 0);
                 if (found.isEmpty()) {
-                    setNyes(Nyes.CONSTANTIC);
+                    setNyes(Nyes.CONSTANIC);
                     return;
                 }
                 value = found
                         .map(r -> r.getRight())
                         .orElse(null);
                 if (value == null) {
-                    setNyes(Nyes.CONSTANTIC);
+                    setNyes(Nyes.CONSTANIC);
                 } else {
                     setNyes(Nyes.RESOLVED);
                 }
             }
-            default:
-                super.step();
-
+            default -> super.step();
         }
     }
     /**
@@ -91,7 +89,7 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
     @Override
     public long getValue() {
         if (value == null) {
-            if (atConstantic()) throw new IllegalStateException("Identifier is Constantic (missing): " + identifier.getId());
+            if (atConstanic()) throw new IllegalStateException("Identifier is Constanic (missing): " + identifier.getId());
             throw new IllegalStateException("Identifier not resolved or not found: " + identifier.getId());
         }
         return value.getValue();

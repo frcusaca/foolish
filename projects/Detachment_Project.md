@@ -3,27 +3,27 @@ This is the project notes for detachment brane. It might be slightly out of orde
   - [x] Update the English description and examples befitting the docs/*.md files.
     - [x] Added SF/SFF markers section to NAMES_SEARCHES_N_BOUNDS.md
     - [x] Added Alarming Liberation section to NAMES_SEARCHES_N_BOUNDS.md
-    - [x] Added CONSTANTIC rendering table to ECOSYSTEM.md
+    - [x] Added CONSTANIC rendering table to ECOSYSTEM.md
     - [x] Added Stay-Foolish quick reference to ADVANCED_FEATURES.md
-  - [ ] Constantic as a known state:
+  - [ ] Constanic as a known state:
     - [x] Document '?C?' rendering convention (in ECOSYSTEM.md)
-    - [ ] Refactor identifier "NOT FOUND" state to CONSTANTIC state
-    - [ ] Update all tests to use '?C?' for constantic rendering
-    - [ ] For constantic branes, print contents to show what's constantic
+    - [ ] Refactor identifier "NOT FOUND" state to CONSTANIC state
+    - [ ] Update all tests to use '?C?' for constanic rendering
+    - [ ] For constanic branes, print contents to show what's constanic
   - [ ] Implement "get_my_identifiers" if it isn't already and unit test. For example it would be `this` for identifier FIR. It should recursively call same method on all expressions, BUT it does not descend into branes because those have different scopes.
   - [ ] Implement and test that parent chain on FIR is not circular.
   - [ ] Create a context manipulation FIR, it takes a single object FIR(called o below) as reference and should be the base class for many other FIRs.
     - ContexManipulationFIR, CMFir, let's call it c, it executes in 2 phases altering it's own state and it's object's state.
     - During intiation, c get's it's parent as expressions normally do. (parent brane with line number)
     - Internal Phase A:
-      - if o is not either CONSTANTIC or CONSTANT, stepping the c will step o. (NB: o and it's children's parent has not changed)
+      - if o is not either CONSTANIC or CONSTANT, stepping the c will step o. (NB: o and it's children's parent has not changed)
       - If o becomes CONSTANT, then c is CONSTANT.
     - Internal Phase B: can be defined depending on situation. Default implementation is to continue resolution:
-      - if o is constantic, then make a stay_foolish_clone of o, we will call o2, but within CMFir, o2 is now the object. sf-clone will reference CONSTANT objects, but make copies of anything CONSTANTIC. Note this works well because CONSTANT objects do not have constantic children, but coordinated constantic references cause their parents to be constantic.
+      - if o is constanic, then make a stay_foolish_clone of o, we will call o2, but within CMFir, o2 is now the object. sf-clone will reference CONSTANT objects, but make copies of anything CONSTANIC. Note this works well because CONSTANT objects do not have constanic children, but coordinated constanic references cause their parents to be constanic.
       - set o2's sub-expressions (all expressions without descending into another brane), their parents are now updated to be o2. o2's parent is c. This means sub expressions will be able to use c's context to complete coordination.
       - set the state of c and o2 to identifier resolution state. (end step here)
-      - continuing stepping on c will step o2 until it reaches constantic or constant.
-      - when o2 is constantic or constant, c will have the same state.
+      - continuing stepping on c will step o2 until it reaches constanic or constant.
+      - when o2 is constanic or constant, c will have the same state.
         - value of c is value of o2
     - [ ] Identifier assignments are CMFir's:
       - '{c=a+b+c}', the RHS is a CMFir around the expression "CMFir(a+b+c)"
@@ -32,8 +32,8 @@ This is the project notes for detachment brane. It might be slightly out of orde
     - [ ] Add grammar rules for '<>', '<<>>', '<=>', '<<=>>'
     - [ ] unit tests for behavior since it modifies FIR mostly.
     - [ ] approval tests to demonstrate behaviors.
-    - Simplified implementation of '<>' a FIR containing it's contents. <>-FIR is a CMFir with the exception that Phase 2 moves the <>-FIR's own state to constantic directly without performing additional resolution.
-    - Simplified implementation of '<<>>' This just re-initializes the content from AST and starts in CONSTANTIC state. It should be alarming if content has no AST.
+    - Simplified implementation of '<>' a FIR containing it's contents. <>-FIR is a CMFir with the exception that Phase 2 moves the <>-FIR's own state to constanic directly without performing additional resolution.
+    - Simplified implementation of '<<>>' This just re-initializes the content from AST and starts in CONSTANIC state. It should be alarming if content has no AST.
 
   - [ ] Implement the simplest Detachment Brane--just perform detachment
     - [ ] the FIR and functionalities for it tested through unit tests.
@@ -61,7 +61,7 @@ This is the project notes for detachment brane. It might be slightly out of orde
 
 * The filtering logic is Implemented as part of BraneMemory. Detachment branes shall use that feature of BraneMemory. The filters are active or inactive on DetachmentBrane's BraneMemory.
 * Refactor search behavior (existing search) considering the backward detachment code
-* Implement detachment brane FIR, and it's functions: which is to block coordination of some identifiers *once* during first assignment. Use Unit test to test it's behavior is correct. Essentially, a detachment brane turns inert once the brane it modifies reaches constantic.
+* Implement detachment brane FIR, and it's functions: which is to block coordination of some identifiers *once* during first assignment. Use Unit test to test it's behavior is correct. Essentially, a detachment brane turns inert once the brane it modifies reaches constanic.
 * Implement simple detachment grammar of detachment brane [ pattern, pattern,..], thoroughly test all expected behaviors, including several of them together, including nesting and all those behaviors.
 
 * Add `<>` and `<<>>` markers to syntax, and convert to FIR--test this step using approval tests.
@@ -97,7 +97,7 @@ The branes always resolve and evaluates greedily when assigned in a brane statem
     confirm 4 == v2;
 
     f3 = [b]f;            !! This statement detaches `b` from an `f` that's ready to move past
-                          !! CONSTANTIC, so b remains uncoordinated in f3
+                          !! CONSTANIC, so b remains uncoordinated in f3
     b=4;
     v3 =$ f3              !! evaluates to 5
     confirm 5 == v3;
@@ -109,9 +109,9 @@ The branes always resolve and evaluates greedily when assigned in a brane statem
 {
     a=1;b=2;c=3;d=4;z=-100
     f = [a,b,c  ] {d = a+b+c+z};  !! The symbol f refers to a brane that doesn't know a,b,c;
-                                  !! end of that expression is 100 at constantic
+                                  !! end of that expression is 100 at constanic
     g = [ ,b,c,d] {o = -b-c-d-z}; !! The symbol g refers to a brane that doesn't know b,c,d;
-                                  !! end of that expression is 100 at constantic
+                                  !! end of that expression is 100 at constanic
 
     r = f g ;             !! concatenates to the unresolved brane {d=a+b+c+(-100),o = -b-c-d-(-100);}
                           !! it then resolves to {d=1+2+3+(-100); o = -2-3-d-(-100);}
@@ -322,11 +322,11 @@ Test 3: pbranePartialApplication.foo
     w =$ h2;              !! Should be 18: a=5, b=10, c=3
 }
 
-Test 4: constanticBracketsAndAssignment.foo
-!! Test constantic brackets <> and constantic assignment <=>
+Test 4: constanicBracketsAndAssignment.foo
+!! Test constanic brackets <> and constanic assignment <=>
 
 {
-    !! Basic constantic brackets - capture all detached ordinates
+    !! Basic constanic brackets - capture all detached ordinates
     a = 1; b = 2; c = 3; d = 4;
     f = [a, b, c, d]{r = a + b + c + d};
     f2 = <f>;             !! Captures a=1, b=2, c=3, d=4 at assignment
@@ -337,11 +337,11 @@ Test 4: constanticBracketsAndAssignment.foo
     d = 6;
     r3 =$ f2;             !! Still 11 (f2's capture doesn't change)
 
-    !! Constantic assignment <=> shorthand
+    !! Constanic assignment <=> shorthand
     f3 <=> f;             !! Equivalent to f3 = <f>;
     r4 =$ f3;             !! Captures d=6: 1+2+3+6 = 12
 
-    !! Constantic brackets with nested scopes
+    !! Constanic brackets with nested scopes
     {
         p = 10; q = 20; r = 30;
         g = [p, q, r]{sum = p + q + r};
@@ -356,7 +356,7 @@ Test 4: constanticBracketsAndAssignment.foo
         };
     };
 
-    !! Important: constantic brackets only affect brane references
+    !! Important: constanic brackets only affect brane references
     !! Not freshly parsed branes
     h1 = <[x, y]{z = x + y}>;    !! <> has no effect on fresh brane
     h2 = [x, y]{z = x + y};      !! Equivalent to h1
@@ -365,7 +365,7 @@ Test 4: constanticBracketsAndAssignment.foo
     z1 =$ h1;             !! Both should resolve x, y from current scope
     z2 =$ h2;             !! Expected: 12 for both
 
-    !! Constantic capture of partially applied brane
+    !! Constanic capture of partially applied brane
     m = [a, b, c]{result = a + b + c};
     a = 1; b = 2;
     m2 = [+a]<m>;           !! m2 has a=1 captured, b,c detached
@@ -485,13 +485,13 @@ Test 6: complexNestedDetachment.foo
         p = 2;
         q = 3;
 
-        !! Use P-brane for p, explicit for q, constantic for rest
+        !! Use P-brane for p, explicit for q, constanic for rest
         partial = [+p, q=10]mixer;    !! p=2 from scope, q=10 explicit
         r = 4;
         s = 5;
         t = 6;
 
-        captured <=> partial;         !! Constantic: captures r=4, s=5, t=6
+        captured <=> partial;         !! Constanic: captures r=4, s=5, t=6
 
         !! Change scope
         r = 100;
@@ -597,7 +597,7 @@ Test 7: evaluationTimeBinding.foo
                                        !! Expected: 10+5=15
     };
 
-    !! Evaluation binding with constantic-captured brane
+    !! Evaluation binding with constanic-captured brane
     {
         n = [i, j, k]{sum = i + j + k};
         i = 1; j = 2; k = 3;
@@ -631,7 +631,7 @@ detachmentChainingIsApproved.foo
 detachmentFilterChainIsApproved.foo
 detachmentNonDistributionIsApproved.foo
 pbraneSelectiveBindingIsApproved.foo
-[x] Create documentation explaining the free variable semantics, P-brane, constantic brackets, and all binding mechanisms.
+[x] Create documentation explaining the free variable semantics, P-brane, constanic brackets, and all binding mechanisms.
     - Integrated into existing docs (NAMES_SEARCHES_N_BOUNDS.md, ECOSYSTEM.md, ADVANCED_FEATURES.md) rather than separate file.
 
 CCW Setup: Update the CCW setup script to use a local SDKMAN stub (since get.sdkman.io is blocked by CCW proxy).
@@ -691,4 +691,4 @@ There're two short hands that we're introducing here (syntax and code TODO; docu
         d=6;
         r3 =$  f3     !! evalutes correctly to 12. 
 }
-Note the constantic bracket and constantic assignment only affects brane references, they do nothing for freshly parsed foolish branes with detachments.
+Note the constanic bracket and constanic assignment only affects brane references, they do nothing for freshly parsed foolish branes with detachments.

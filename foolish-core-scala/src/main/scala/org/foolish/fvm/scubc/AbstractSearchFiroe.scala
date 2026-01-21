@@ -33,7 +33,7 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
         if (stepNonBranesUntilState(Nyes.CONSTANT)) {
           if (isAnchorReady) {
             performSearchStep()
-            if (atConstantic) {
+            if (atConstanic) {
               return
             }
             if (searchResult != null) {
@@ -63,15 +63,15 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
 
     var anchor = braneMemory.getLast
 
-    // Check if anchor is CONSTANTIC
-    if (anchor.atConstantic) {
+    // Check if anchor is CONSTANIC
+    if (anchor.atConstanic) {
       return true
     }
 
     // Unwrap identifier
     val resolvedAnchor = anchor match {
       case identifierFiroe: IdentifierFiroe =>
-        if (identifierFiroe.atConstantic) return true
+        if (identifierFiroe.atConstanic) return true
         if (identifierFiroe.value == null) return false
         identifierFiroe.value
       case _ => anchor
@@ -82,7 +82,7 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
     // Unwrap assignment
     val resolvedAnchor2 = anchor match {
       case assignmentFiroe: AssignmentFiroe =>
-        if (assignmentFiroe.atConstantic) return true
+        if (assignmentFiroe.atConstanic) return true
         if (assignmentFiroe.isNye) {
           assignmentFiroe.step()
           return false
@@ -97,7 +97,7 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
     // Check chained search
     anchor match {
       case abstractSearch: AbstractSearchFiroe =>
-        if (abstractSearch.atConstantic) return true
+        if (abstractSearch.atConstanic) return true
         if (abstractSearch.isNye) {
           abstractSearch.step()
           false
@@ -119,15 +119,15 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
 
     if (searchResult != null) return
 
-    // Check for constantic anchor
-    if (unwrapAnchor.atConstantic) {
+    // Check for constanic anchor
+    if (unwrapAnchor.atConstanic) {
         searchResult = new NKFiroe()
         return
     }
 
     unwrapAnchor match {
       case identifierFiroe: IdentifierFiroe =>
-        if (identifierFiroe.atConstantic) {
+        if (identifierFiroe.atConstanic) {
             searchResult = new NKFiroe()
             return
         }
@@ -136,7 +136,7 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
         return
 
       case assignmentFiroe: AssignmentFiroe =>
-        if (assignmentFiroe.atConstantic) {
+        if (assignmentFiroe.atConstanic) {
             searchResult = new NKFiroe()
             return
         }
@@ -150,7 +150,7 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
         return
 
       case abstractSearch: AbstractSearchFiroe =>
-        if (abstractSearch.atConstantic) {
+        if (abstractSearch.atConstanic) {
             searchResult = new NKFiroe()
             return
         }
@@ -176,7 +176,7 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
           return
         }
 
-        if (result.atConstantic) {
+        if (result.atConstanic) {
             // Handled as result
         }
 

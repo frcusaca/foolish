@@ -31,14 +31,14 @@ public class SearchUpFiroe extends FiroeWithoutBraneMind {
     }
 
     /**
-     * SearchUpFiroe is Constantic if the referenced brane is Constantic or not set.
+     * SearchUpFiroe is Constanic if the referenced brane is Constanic or not set.
      */
     @Override
-    public boolean isConstantic() {
+    public boolean isConstanic() {
         if (referencedBrane == null) {
             return true;
         }
-        return referencedBrane.isConstantic();
+        return referencedBrane.isConstanic();
     }
 
     @Override

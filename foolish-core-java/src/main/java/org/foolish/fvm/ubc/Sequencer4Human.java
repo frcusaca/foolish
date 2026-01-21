@@ -77,11 +77,17 @@ public class Sequencer4Human extends Sequencer<String> {
     protected String sequenceBinary(BinaryFiroe binary, int depth) {
         // If the binary expression has been fully evaluated
         if (!binary.isNye()) {
-            // Check if the result is NK (not-known)
-            if (binary.isConstantic()) {
+            // Check if the result is Constanic (unresolved)
+            if (binary.atConstanic()) {
                 return indent(depth) + CC_STR;
             }
-            return indent(depth) + binary.getValue();
+            // Try to get the value - may throw if result is NK (error like division by zero)
+            try {
+                return indent(depth) + binary.getValue();
+            } catch (IllegalStateException e) {
+                // NK result (division by zero, etc.)
+                return indent(depth) + NK_STR;
+            }
         }
         // Otherwise show the expression structure (shouldn't normally happen in evaluated branes)
         return indent(depth) + binary;
@@ -90,6 +96,10 @@ public class Sequencer4Human extends Sequencer<String> {
     protected String sequenceUnary(UnaryFiroe unary, int depth) {
         // If the unary expression has been fully evaluated, just show the result
         if (!unary.isNye()) {
+            if (unary.atConstanic()) {
+                // Constanic - show placeholder
+                return indent(depth) + "⎵";
+            }
             return indent(depth) + unary.getValue();
         }
         // Otherwise show the expression structure (shouldn't normally happen in evaluated branes)
@@ -120,19 +130,26 @@ public class Sequencer4Human extends Sequencer<String> {
             FIR result = assignment.getResult();
             // Check if the result is fully evaluated
             if (!result.isNye()) {
-                if (result.isConstantic()) {
+                // Use atConstanic() to check for exactly CONSTANIC state (unresolved)
+                // not CONSTANT state (fully evaluated)
+                if (result.atConstanic()) {
                     return indent(depth) + assignment.getId() + " = " + CC_STR;
+                }
+
+                // Check if result is directly an NK (error like division by zero)
+                if (result instanceof NKFiroe) {
+                    return indent(depth) + assignment.getId() + " = " + NK_STR;
                 }
 
                 // Unwrap identifier/assignment/oneshot to get the actual value
                 FIR unwrapped = result;
-                boolean constanticFound = false;
+                boolean constanicFound = false;
 
                 unwrappingLoop:
                 while (true) {
                     if (unwrapped == null) break;
-                    if (unwrapped.atConstantic()) {
-                        constanticFound = true;
+                    if (unwrapped.atConstanic()) {
+                        constanicFound = true;
                         break;
                     }
 
@@ -149,11 +166,11 @@ public class Sequencer4Human extends Sequencer<String> {
                     }
                 }
 
-                if (constanticFound) {
+                if (constanicFound) {
                     return indent(depth) + assignment.getId() + " = " + CC_STR;
                 }
 
-                if (unwrapped != null && unwrapped isinstance NKFiroe) {
+                if (unwrapped instanceof NKFiroe) {
                     return indent(depth) + assignment.getId() + " = " + NK_STR;
                 }
 
@@ -171,9 +188,9 @@ public class Sequencer4Human extends Sequencer<String> {
                     braneSeq = braneSeq.replace("\n", "\n" + padding);
                     return indent(depth) + assignment.getId() + " = " + braneSeq;
                 }
-                return indent(depth) + assignment.getId() + " = " + result.getValue();
+                return indent(depth) + assignment.getId() + " = " + unwrapped.getValue();
             }
-        } else if (assignment.atConstantic()) {
+        } else if (assignment.atConstanic()) {
              return indent(depth) + assignment.getId() + " = " + CC_STR;
         }
         // If not yet evaluated, show the structure
@@ -184,16 +201,12 @@ public class Sequencer4Human extends Sequencer<String> {
      * Sequences an identifier FIR showing its resolved value.
      */
     protected String sequenceIdentifier(IdentifierFiroe identifier, int depth) {
-        if (identifier.atConstantic()) {
+        if (identifier.atConstanic()) {
             return indent(depth) + CC_STR;
         }
 
         // If the identifier has been resolved and is not NYE
         if (!identifier.isNye()) {
-            // Check if it resolved to an abstract value
-            if (identifier.isConstantic()) {
-                return indent(depth) + CC_STR;
-            }
             return indent(depth) + identifier.getValue();
         }
         // If not yet evaluated
@@ -209,7 +222,8 @@ public class Sequencer4Human extends Sequencer<String> {
 
     protected String sequenceOneShotSearch(OneShotSearchFiroe oneShotSearch, int depth) {
         if (!oneShotSearch.isNye()) {
-            if (oneShotSearch.isConstantic()) {
+            // Use atConstanic() to check for exactly CONSTANIC state (unresolved)
+            if (oneShotSearch.atConstanic()) {
                 return indent(depth) + CC_STR;
             }
             // If the result is a brane, we need to handle it gracefully

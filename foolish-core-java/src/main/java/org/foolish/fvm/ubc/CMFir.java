@@ -31,10 +31,10 @@ public class CMFir extends FiroeWithBraneMind {
 
         if (getNyes() == Nyes.CONSTANT) return;
 
-        // Phase A: Step o until it is CONSTANT or CONSTANTIC
+        // Phase A: Step o until it is CONSTANT or CONSTANIC
         if (!phaseBStarted) {
-            // Check if o is CONSTANTIC *before* stepping.
-            if (isConstantic(o)) {
+            // Check if o is CONSTANIC *before* stepping.
+            if (isConstanic(o)) {
                 startPhaseB();
                 return;
             }
@@ -46,8 +46,8 @@ public class CMFir extends FiroeWithBraneMind {
             }
 
             if (o.getNyes() == Nyes.CONSTANT) {
-                // If o becomes CONSTANT, we check if it is Constantic (e.g. NK).
-                if (o.isConstantic()) {
+                // If o becomes CONSTANT, we check if it is Constanic (e.g. NK).
+                if (o.isConstanic()) {
                     startPhaseB();
                     return;
                 }
@@ -62,14 +62,15 @@ public class CMFir extends FiroeWithBraneMind {
             // Mirror o2's state to CMFir
             if (o2.getNyes() == Nyes.CONSTANT) {
                 setNyes(Nyes.CONSTANT);
-            } else if (isConstantic(o2)) {
-                 // If o2 ends up constantic, we might be stuck or done.
+            } else if (o2.atConstanic()) {
+                // If o2 ends up constanic, we're also constanic
+                setNyes(Nyes.CONSTANIC);
             }
         }
     }
 
-    private boolean isConstantic(FIR f) {
-        return f.getNyes() == Nyes.RESOLVED && f.isConstantic();
+    private boolean isConstanic(FIR f) {
+        return f.isConstanic();
     }
 
     private void startPhaseB() {
@@ -101,14 +102,14 @@ public class CMFir extends FiroeWithBraneMind {
 
     public long getValue() {
         if (phaseBStarted) {
-            if (o2.isConstantic()) {
+            if (o2.isConstanic()) {
                  if (o2 instanceof AssignmentFiroe af && af.getResult() instanceof NKFiroe nk) {
                      throw new IllegalStateException("Cannot get value from NK (not-known): " + nk.getNkComment());
                  }
                  if (o2.getNyes() != Nyes.CONSTANT) {
                     throw new IllegalStateException("CMFir not fully evaluated (o2 not constant)");
                  }
-                 // If CONSTANT but still constantic (e.g. NK directly)
+                 // If CONSTANT but still constanic (e.g. NK directly)
                  if (o2 instanceof NKFiroe nk) {
                      throw new IllegalStateException("Cannot get value from NK (not-known): " + nk.getNkComment());
                  }

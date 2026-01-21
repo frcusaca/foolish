@@ -49,8 +49,8 @@ Searches upwards are retrospections and downwards are prospections.
 
 As a **Foolisher**, for lack of a better concise way to describe us, we are the inhabitant of Foolish
 and we tend to develop Foolish. A Foolisher might say the variable is *nye* (says 'nigh', any
-pre-constantic state) when they encounter a FIR that has not reached CONSTANTIC, or that it's
-*constantic* (says 'cons-TAN-tic', constant in context) when it may gain value when associated with
+pre-constanic state) when they encounter a FIR that has not reached CONSTANIC, or that it's
+*constanic* (says 'cons-TAN-tic', constant in context) when it may gain value when associated with
 new context. We say "that's a no-no" when we see `???`.
 not fully evaluated. During development, a feature becomes "lexed", which means it parses into AST, but
 downstream implementation yields a `???` when it is encountered. A second step during which the feature

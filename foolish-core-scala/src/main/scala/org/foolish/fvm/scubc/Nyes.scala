@@ -58,10 +58,10 @@ enum Nyes:
 
   /**
    * The evaluation has halted because a required resource was not found.
-   * The FIR is "stuck" in a constantic state.
+   * The FIR is "stuck" in a constanic state.
    * Like CONSTANT, it is a terminal state.
    */
-  case CONSTANTIC
+  case CONSTANIC
 
   /**
    * No more changes will happen with call to step() unless the environment changes.

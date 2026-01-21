@@ -109,7 +109,7 @@ public class IfFiroe extends FiroeWithBraneMind {
             if (condition_value == null && !braneMemory.isEmpty() && !braneMemory.get(0).isNye()) {
                 // Condition is evaluated, get its value
                 FIR conditionFir = braneMemory.get(0);
-                if (!conditionFir.isConstantic()) {
+                if (!conditionFir.isConstanic()) {
                     long condValue = conditionFir.getValue();
                     condition_value = (condValue != 0);
                 } else {

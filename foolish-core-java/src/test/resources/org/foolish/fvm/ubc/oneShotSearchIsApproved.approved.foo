@@ -82,7 +82,7 @@ PARSED AST:
 }
 
 UBC EVALUATION:
-Steps taken: 191
+Steps taken: 192
 
 FINAL RESULT:
 {
@@ -95,8 +95,8 @@ FINAL RESULT:
     ＿};
 ＿c = 3;
 ＿d = 4;
-＿e = ???;
-＿f = ???;
+＿e = ⎵⎵;
+＿f = ⎵⎵;
 ＿brane = {
         ＿＿1;
         ＿＿2;

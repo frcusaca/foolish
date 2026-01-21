@@ -86,11 +86,11 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
       val result = assignment.getResult.get
       // Check if the result is fully evaluated
       if !result.isNye then
-        if result.atConstantic then
+        if result.atConstanic then
            indent(depth) + s"${assignment.getId} = $CC_STR"
         else
           unwrap(result) match
-            case constantic if constantic.atConstantic =>
+            case constanic if constanic.atConstanic =>
                indent(depth) + s"${assignment.getId} = $CC_STR"
             case abstractFir if abstractFir.isAbstract =>
                indent(depth) + s"${assignment.getId} = $NK_STR"
@@ -116,7 +116,7 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
               indent(depth) + s"${assignment.getId} = ${unwrapped.getValue}"
       else
         indent(depth) + s"${assignment.getId} = $NK_STR"
-    else if assignment.atConstantic then
+    else if assignment.atConstanic then
         indent(depth) + s"${assignment.getId} = $CC_STR"
     else
       // If not yet evaluated, show the structure
@@ -125,19 +125,19 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
   protected def sequenceIdentifier(identifier: IdentifierFiroe, depth: Int): String =
     // If the identifier has been resolved and is not NYE
     if !identifier.isNye then
-      if identifier.atConstantic then
+      if identifier.atConstanic then
          indent(depth) + CC_STR
       else if identifier.isAbstract then
         indent(depth) + NK_STR
       else
         unwrap(identifier) match
-          case constantic if constantic.atConstantic => indent(depth) + CC_STR
+          case constanic if constanic.atConstanic => indent(depth) + CC_STR
           case brane: BraneFiroe =>
              // Should not typically happen for top-level sequencing but good to handle
              sequence(brane, depth)
           case unwrapped =>
              indent(depth) + unwrapped.getValue.toString
-    else if identifier.atConstantic then
+    else if identifier.atConstanic then
         indent(depth) + CC_STR
     else
       // If not yet evaluated
@@ -156,11 +156,11 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
   @scala.annotation.tailrec
   private def unwrap(fir: FIR): FIR = fir match
     case assignment: AssignmentFiroe =>
-       if assignment.atConstantic then assignment
+       if assignment.atConstanic then assignment
        else if assignment.getResult.isDefined then unwrap(assignment.getResult.get)
        else assignment
     case identifier: IdentifierFiroe =>
-       if identifier.atConstantic then identifier
+       if identifier.atConstanic then identifier
        else if identifier.value != null then unwrap(identifier.value)
        else identifier
     case oneShotSearch: OneShotSearchFiroe if oneShotSearch.getResult != null =>

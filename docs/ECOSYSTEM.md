@@ -42,13 +42,13 @@ the variables it can find in its original AB and IB context, leaving it with:
 - Names bound to values (successfully resolved and coordinated)
 - Names with incomputable values due to failed searches (free variables, not fully coordinated)
 
-This example brane may change value when referenced in a statement—it is constantic. When an
-assignment statement refers to a brane by name, a clone of that constantic brane is **detached** from
+This example brane may change value when referenced in a statement—it is constanic. When an
+assignment statement refers to a brane by name, a clone of that constanic brane is **detached** from
 its original AB and IB and **recoordinated** into the new position. During recoordination:
 - **New AB**: The brane it is being ordinated into
 - **New IB**: All lines preceding the assignment
 
-This allows previously failed searches to potentially resolve in the new context, so the constantic
+This allows previously failed searches to potentially resolve in the new context, so the constanic
 brane can gain value and potentially achieve CONSTANT. For detailed operational semantics of how the
 UBC evaluates brane source code with combinations of original and new AB/IB, see the UBC brane
 evaluation section below.
@@ -128,22 +128,22 @@ the Foolish Internal Representation (FIR). FIR can be several things:
 4. An abstract brane that is deliberately or inadvertently undercontextualized—some identifier
    referenced within has no available binding to value or brane member. An optimization we may
    perform is to coordinate the values of an abstract brane where possible. That brane with all
-   possible values coordinated is a ***CONSTANTIC*** (constant in context) abstract brane. Normally,
+   possible values coordinated is a ***CONSTANIC*** (constant in context) abstract brane. Normally,
    a recursive brane conditions on some computational result that depends on a parameter—an ordinate
    identifier that is named but unattached at the definition of the brane. In these cases, the
-   abstract brane can be constantic because the recursion depends on a parameter. But it is possible
+   abstract brane can be constanic because the recursion depends on a parameter. But it is possible
    to construct an abstract brane that calls itself irrespective of future parameters. Such a brane
    will be finite or infinite in depth depending on its construction. The abstract brane may
-   therefore be permanently ***NYE*** (*Not Yet Evaluated*, pronounced "nigh", any pre-constantic
-   state) due to its construction. An abstract brane is constantic if it has not reached CONSTANTIC
+   therefore be permanently ***NYE*** (*Not Yet Evaluated*, pronounced "nigh", any pre-constanic
+   state) due to its construction. An abstract brane is constanic if it has not reached CONSTANIC
    due to detached identifier names.
-5. A NYE FIR represents code that was expressed in Foolish, but it has not reached CONSTANTIC in
+5. A NYE FIR represents code that was expressed in Foolish, but it has not reached CONSTANIC in
    the present UBC context. This FIR contains the AST of the expression, and a reference to the AB
    and IB that were used to attempt evaluation. Possible reasons why the FIR has not reached
-   CONSTANTIC:
+   CONSTANIC:
    1. The AST is unprocessed.
    2. The expression has an unevaluated AST that contains recursive references to names that have
-      not reached CONSTANTIC in the present context.
+      not reached CONSTANIC in the present context.
 
 ### The UBC pass
 
@@ -190,15 +190,15 @@ evaluation stages from UNINITIALIZED through CONSTANT):
 
 1. **AST** - uncoordinated, unevaluated
 2. **NYE** (Not Yet Evaluated) - FIR with some NYE ordinates (In progress, another UBC step may produce changes)
-3. **CONSTANTIC** (pronounced "cons-TAN-tic", constant in context) - FIR with all ordinates coordinated as much as possible in current context; may gain value when associated with new context
-4. **CONSTANT** - FIR with all evaluation results fully coordinated (Completion, another UBC does nothing). During coordination, a brane may stay CONSTANT or transition from CONSTANTIC to ALLOCATED if it started constantic.
+3. **CONSTANIC** (pronounced "cons-TAN-tic", constant in context) - FIR with all ordinates coordinated as much as possible in current context; may gain value when associated with new context
+4. **CONSTANT** - FIR with all evaluation results fully coordinated (Completion, another UBC does nothing). During coordination, a brane may stay CONSTANT or transition from CONSTANIC to ALLOCATED if it started constanic.
 
 **State Rendering in Output:**
 
 | State | Rendering | Notes |
 |-------|-----------|-------|
 | NYE | `???` | Not yet evaluated |
-| CONSTANTIC | `⎵⎵` | Constant in context; for constantic branes, contents may be shown |
+| CONSTANIC | `⎵⎵` | Constant in context; for constanic branes, contents may be shown |
 | CONSTANT | value | The final computed value |
 
 Because of the step-wise evaluation, the brane tree is evaluated breadth-first. The brane having
@@ -247,9 +247,9 @@ higher-dimensional coordinates such as SIC or ZIP codes. There could also be hig
 relationships, such as `{a,b,c} sorted_by_x` or `{a,b,c} is_median_height`, which may return a
 boolean on whether `a.x`, `b.x`, `c.x` is sorted, or `a` is the median of `b` and `c`, respectively.
 
-So, in Foolish, a value that is accessible *after* a brane has reached CONSTANTIC is considered a
+So, in Foolish, a value that is accessible *after* a brane has reached CONSTANIC is considered a
 coordinate—the value tells us how to relate to the brane that was just computed. A well-coordinated
-brane is one that is constantic or has achieved CONSTANT with values so that computation can proceed
+brane is one that is constanic or has achieved CONSTANT with values so that computation can proceed
 to access the coordinate with no undesirable consequences.
 
 ### Single Coordinate Matching

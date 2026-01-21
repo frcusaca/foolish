@@ -3,9 +3,9 @@
 ## Completed in this session:
 
 ### Terminology Updates
-- [x] Updated CONSTANT_IN_CONTEXT → CONSTANTIC throughout all documentation
-- [x] Added CONSTANTIC definition: "constant in context" (pronounced "cons-TAN-tic")
-- [x] Clarified NYE: any pre-constantic state (before reaching CONSTANTIC)
+- [x] Updated CONSTANT_IN_CONTEXT → CONSTANIC throughout all documentation
+- [x] Added CONSTANIC definition: "constant in context" (pronounced "cons-TAN-tic")
+- [x] Clarified NYE: any pre-constanic state (before reaching CONSTANIC)
 - [x] Clarified NYES (pronounced like "NICE"): encapsulates all evaluation stages from UNINITIALIZED through CONSTANT
 - [x] Updated IB definition: does not include any definitions made in the current statement
 - [x] Added verbs "reach" and "achieve" for advancement toward CONSTANT in NYES
@@ -28,11 +28,11 @@
 
 ### Files Updated (Pass 1 - Terminology)
 - [x] `.claude/CLAUDE.md` - Core definitions, FIR state machine, terminology
-- [x] `docs/ECOSYSTEM.md` - All CONSTANTIC terminology, IB definition, brane semantics
+- [x] `docs/ECOSYSTEM.md` - All CONSTANIC terminology, IB definition, brane semantics
 - [x] `docs/ADVANCED_FEATURES.md` - Initial detachment section
-- [x] `docs/RELATIONAL_COORDINATES.md` - CONSTANTIC terminology
+- [x] `docs/RELATIONAL_COORDINATES.md` - CONSTANIC terminology
 - [x] `docs/STYLES.md` - Updated Foolisher terminology
-- [x] `README.md` - Updated nye/constantic definitions
+- [x] `README.md` - Updated nye/constanic definitions
 
 ### Files Updated (Pass 2 - Liberation Consolidation)
 - [x] `docs/NAMES_SEARCHES_N_BOUNDS.md` - Major rewrite with comprehensive liberation docs
@@ -54,7 +54,7 @@
 - [ ] Test left-association of multiple detachments
 - [ ] Test right-association of detachment with branes
 - [ ] Test brane concatenation before identifier resolution
-- [ ] Test constantic branes gaining value in new context
+- [ ] Test constanic branes gaining value in new context
 
 ### Implementation (main phase)
 - [ ] Implement DetachmentFiroe aggregation
@@ -63,8 +63,8 @@
 - [ ] Implement p-brane selective binding
 - [ ] Implement detachment removal before identification/ordination/coordination
 - [ ] Implement brane concatenation chain processing
-- [ ] Update FIR state machine to include CONSTANTIC stage
-- [ ] Implement CONSTANTIC → ALLOCATED transition during coordination
+- [ ] Update FIR state machine to include CONSTANIC stage
+- [ ] Implement CONSTANIC → ALLOCATED transition during coordination
 
 ---
 

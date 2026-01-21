@@ -43,7 +43,7 @@ public class NKFiroe extends FiroeWithoutBraneMind {
     }
 
     /**
-     * NKFiroe is NOT constantic. It is a concrete (constant) error value.
+     * NKFiroe is NOT constanic. It is a concrete (constant) error value.
      */
 
     /**

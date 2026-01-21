@@ -23,6 +23,15 @@ This file provides Claude Code-specific guidance when working on the Foolish pro
 
 ## Claude Code-Specific Features
 
+### Session Hook Setup
+
+The project includes a SessionStart hook in `.claude/settings.json` that configures the development environment. The hook may output environment variable settings that need to be run manually in the shell before builds work.
+
+**After starting a new session:**
+1. Check the hook output for any environment variable exports (e.g., `export JAVA_HOME=...`, `export PATH=...`)
+2. If provided, run these export commands in your shell
+3. Then proceed with Maven builds
+
 ### Build and Test Skills
 
 Claude Code provides specialized skills for build management. For comprehensive Maven build strategies with parallel execution, intelligent test running, and targeted debugging workflows, use:
@@ -40,43 +49,6 @@ This skill provides:
 - Output analysis strategies
 
 See `.claude/skills/maven-builder-for-foolish-language/` for full documentation.
-
-### Claude Code Web (CCW) - Not Recommended for This Project
-
-**Date**: 2026-01-19
-**Model**: claude-sonnet-4-5-20250929
-
-This project requires Java 25 and Maven for builds. Claude Code Web is not currently configured to support Maven-based Java development.
-
-**What Works in CCW:**
-- Java 25 installation (via SessionStart hook using SDKMAN)
-- Basic Java compilation
-- Code editing and file management
-
-**What Does Not Work:**
-- Maven dependency downloads from Maven Central
-- Full Maven builds requiring external artifacts
-- Running tests that depend on Maven dependencies
-
-**Why Maven Doesn't Work:**
-
-As of January 2026, Claude Code Web's network security model prevents standard Maven dependency resolution. The environment's egress filtering interferes with Maven's HTTPS connections to artifact repositories. Various workarounds were attempted (proxy configuration, certificate manipulation, SSL bypasses) but each approach was progressively blocked or rendered ineffective by the security infrastructure.
-
-This appears to be an inherent limitation of CCW's current architecture rather than a simple configuration issue. The same challenges affected other language ecosystems (like Rust) initially, so support may improve over time.
-
-**Recommendation:**
-
-**Use local development for this project.** All Maven functionality works normally in a local environment with Java 25 installed. CCW is approximately 3 months old (as of January 2026) and still maturing its support for different development stacks.
-
-**SessionStart Hook:**
-
-The project includes a SessionStart hook that installs Java 25 in CCW environments:
-- Installs SDKMAN if needed
-- Installs Java 25 (Temurin) via SDKMAN
-- Configures `JAVA_HOME` and `PATH` for the session
-- Shows a warning about Maven limitations
-
-This provides basic Java 25 availability but does not enable full Maven functionality.
 
 ### Quick Build Reference
 
@@ -165,7 +137,7 @@ This ensures all AI agents collaborating on this project can track documentation
 
 **Weekly Check**: After one week past the day of last update to this file (either by git timestamp or the Last Updated section below) please review this CLAUDE.md file for accuracy:
 
-1. Verify that Claude Code-specific content (skills, CCW setup) is still accurate
+1. Verify that Claude Code-specific content (skills, session hooks) is still accurate
 2. Check if new Claude Code features need documentation
 3. Ensure `AGENTS.md` is properly referenced and contains all project-specific details
 4. Confirm this file focuses ONLY on Claude Code-specific features
@@ -174,8 +146,43 @@ This ensures all AI agents collaborating on this project can track documentation
 
 When proposing updates, explain what has changed and why the documentation needs adjustment. After user review, update the "Last Updated" date below whether changes are accepted or the user confirms current state is acceptable.
 
+---
+
+## Historical: Claude Code Web (CCW) Notes
+
+**Note**: The following section documents historical attempts to use Claude Code Web with this project. As of January 2026, CCW is not recommended for this Maven-based Java project due to network limitations.
+
+### CCW Limitations (January 2026)
+
+**Date**: 2026-01-19
+**Model**: claude-sonnet-4-5-20250929
+
+This project requires Java 25 and Maven for builds. Claude Code Web is not currently configured to support Maven-based Java development.
+
+**What Works in CCW:**
+- Java 25 installation (via SessionStart hook using SDKMAN)
+- Basic Java compilation
+- Code editing and file management
+
+**What Does Not Work:**
+- Maven dependency downloads from Maven Central
+- Full Maven builds requiring external artifacts
+- Running tests that depend on Maven dependencies
+
+**Why Maven Doesn't Work:**
+
+As of January 2026, Claude Code Web's network security model prevents standard Maven dependency resolution. The environment's egress filtering interferes with Maven's HTTPS connections to artifact repositories. Various workarounds were attempted (proxy configuration, certificate manipulation, SSL bypasses) but each approach was progressively blocked or rendered ineffective by the security infrastructure.
+
+This appears to be an inherent limitation of CCW's current architecture rather than a simple configuration issue. The same challenges affected other language ecosystems (like Rust) initially, so support may improve over time.
+
+**Recommendation:**
+
+**Use local development for this project.** All Maven functionality works normally in a local environment with Java 25 installed. CCW is approximately 3 months old (as of January 2026) and still maturing its support for different development stacks.
+
+---
+
 ## Last Updated
 
 **Date**: 2026-01-19
-**Updated By**: Claude Code v2.1.1 / claude-sonnet-4-5-20250929
-**Changes**: Reverted all proxy circumvention code and replaced with straightforward documentation. CCW is not currently viable for Maven/Java development due to network security constraints that prevent Maven dependency resolution. Removed Python proxy, certificate extraction, and settings.xml manipulation. SessionStart hook now only installs Java 25 and shows a warning about Maven limitations. Documented that CCW is approximately 3 months old and still maturing, and recommended local development for this project.
+**Updated By**: Claude Code / claude-opus-4-5-20251101
+**Changes**: Moved CCW documentation to a historical section at the bottom. Added new "Session Hook Setup" section explaining that the SessionStart hook may output environment variable settings that need to be run manually in the shell before builds work. Simplified the main documentation to focus on local development workflow.

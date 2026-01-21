@@ -67,10 +67,11 @@ public class UnaryFiroe extends FiroeWithBraneMind {
         }
         operandFiroe = braneMemory.get(0); // Use get(0) instead of removeFirst to keep history if needed? Or does it matter? Original code used removeFirst. Let's use get(0).
 
-        // If operand is Constantic, the result is Constantic
-        if (operandFiroe.isConstantic()) {
-            result = null; // Stay Constantic
-            setNyes(Nyes.CONSTANT);
+        // If operand is Constanic, the result is Constanic
+        // Use atConstanic() to check for exactly CONSTANIC state, not CONSTANT.
+        if (operandFiroe.atConstanic()) {
+            result = null; // Stay Constanic
+            setNyes(Nyes.CONSTANIC);
             return;
         }
 
@@ -92,12 +93,12 @@ public class UnaryFiroe extends FiroeWithBraneMind {
     }
 
     @Override
-    public boolean isConstantic() {
+    public boolean isConstanic() {
         if (result != null) {
-            return result.isConstantic();
+            return result.isConstanic();
         }
-        if (getNyes() == Nyes.CONSTANT) return true; // Constant state but no result -> constantic
-        return super.isConstantic();
+        if (getNyes() == Nyes.CONSTANT) return true; // Constant state but no result -> constanic
+        return super.isConstanic();
     }
 
     /**
@@ -106,8 +107,8 @@ public class UnaryFiroe extends FiroeWithBraneMind {
     @Override
     public long getValue() {
         if (result == null) {
-            if (getNyes() == Nyes.CONSTANT) {
-                throw new IllegalStateException("UnaryFiroe evaluated to Constantic (unresolved)");
+            if (atConstanic()) {
+                throw new IllegalStateException("UnaryFiroe is Constanic (unresolved)");
             }
             throw new IllegalStateException("UnaryFiroe not fully evaluated");
         }

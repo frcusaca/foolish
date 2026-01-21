@@ -17,8 +17,8 @@ expression should be referred to by that name in subsequent branes. When the ass
 **ordinate** (a coordinate/axis) for the brane. In some situations, the expression being ordinated
 will evaluate to different values depending on where in the brane it is ordinated or which ordinate
 it is assigned to. In these situations, the expression may be itself NYE (Not Yet Evaluated, any
-pre-constantic state) until ordinated into a brane, at which point it becomes coordinated and reaches
-CONSTANTIC (constant in context, pronounced "cons-TAN-tic").
+pre-constanic state) until ordinated into a brane, at which point it becomes coordinated and reaches
+CONSTANIC (constant in context, pronounced "cons-TAN-tic").
 
 A well-coordinated brane should have its ordinates readily accessible by their names or brane search.
 

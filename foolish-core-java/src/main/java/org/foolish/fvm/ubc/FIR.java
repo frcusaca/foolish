@@ -71,8 +71,8 @@ public abstract class FIR {
         return nyes == Nyes.CONSTANT;
     }
 
-    public final boolean atConstantic() {
-        return nyes == Nyes.CONSTANTIC;
+    public final boolean atConstanic() {
+        return nyes == Nyes.CONSTANIC;
     }
 
     /**
@@ -86,32 +86,18 @@ public abstract class FIR {
      * Query method returning false if an additional step on this FIR does not change it.
      * Returns true when an additional step would change the FIR.
      * Not Yet Evaluated (NYE) indicates the FIR requires further evaluation steps.
-     * Anything before CONSTANTIC is considered NYE.
+     * Anything before CONSTANIC is considered NYE.
      */
     public boolean isNye() {
-        return nyes.ordinal() < Nyes.CONSTANTIC.ordinal();
+        return nyes.ordinal() < Nyes.CONSTANIC.ordinal();
     }
 
     /**
-     * Returns true if the state is exactly CONSTANTIC.
+     * Returns true if the state is CONSTANIC or later (CONSTANT).
+     * Something that is CONSTANT is also Constanic.
      */
-    public boolean atConstantic() {
-        return nyes == Nyes.CONSTANTIC;
-    }
-
-    /**
-     * Returns true if the state is exactly CONSTANT.
-     */
-    public boolean atConstant() {
-        return nyes == Nyes.CONSTANT;
-    }
-
-    /**
-     * Returns true if the state is CONSTANTIC or later (CONSTANT).
-     * Something that is CONSTANT is also Constantic.
-     */
-    public boolean isConstantic() {
-        return nyes.ordinal() >= Nyes.CONSTANTIC.ordinal();
+    public boolean isConstanic() {
+        return nyes.ordinal() >= Nyes.CONSTANIC.ordinal();
     }
 
     /**
