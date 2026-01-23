@@ -643,16 +643,29 @@ public class ParserUnitTest {
     public void testNestedAssignmentInRHSShouldFail() {
         // Assignment in RHS of assignment should fail to parse
         // e.g., result = (x = 5) is invalid syntax
-        try {
-            AST ast = parse("{ result = (x = 5); }");
-            // If we reach here, parsing succeeded when it shouldn't have
-            fail("Parser should reject assignment in RHS of assignment, but got: " + ast.toString());
-        } catch (Exception e) {
-            // Expected: parser should throw an error
-            assertTrue(e.getMessage().contains("mismatched input") ||
-                      e.getMessage().contains("no viable alternative") ||
-                      e.getMessage().contains("extraneous input"),
-                      "Expected parse error for nested assignment, got: " + e.getMessage());
-        }
+
+        // Use a custom error listener to detect syntax errors
+        CharStream input = CharStreams.fromString("{ result = (x = 5); }");
+        FoolishLexer lexer = new FoolishLexer(input);
+        CommonTokenStream tokens = new CommonTokenStream(lexer);
+        FoolishParser parser = new FoolishParser(tokens);
+
+        // Track if we got a syntax error
+        final boolean[] hadSyntaxError = {false};
+        parser.removeErrorListeners(); // Remove default console error listener
+        parser.addErrorListener(new BaseErrorListener() {
+            @Override
+            public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol,
+                                    int line, int charPositionInLine, String msg, RecognitionException e) {
+                hadSyntaxError[0] = true;
+            }
+        });
+
+        ParseTree tree = parser.program();
+        AST ast = new ASTBuilder().visit(tree);
+
+        // Parser should have reported a syntax error
+        assertTrue(hadSyntaxError[0],
+                  "Parser should reject assignment in RHS of assignment, but got: " + ast.toString());
     }
 }

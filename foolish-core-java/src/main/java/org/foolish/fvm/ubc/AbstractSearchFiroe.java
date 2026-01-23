@@ -53,8 +53,8 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
                                 // Keep searching
                             }
                             case NKFiroe nk -> {
-                                // Search failed - CONSTANIC (constant in context, won't resolve)
-                                setNyes(Nyes.CONSTANIC);
+                                // Search failed - result is NK (not found)
+                                setNyes(Nyes.CONSTANT);
                             }
                             default -> {
                                 // Search succeeded - step the result until it's fully evaluated
