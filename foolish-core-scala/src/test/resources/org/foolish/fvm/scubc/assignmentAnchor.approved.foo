@@ -1,6 +1,7 @@
 !!INPUT!!
 {
-    result1 = (brn = {alice = 2; bob = 3; charlie = 4})?a.*;
+    brn = {alice = 2; bob = 3; charlie = 4};
+    result1 = brn?a.*;
     result2 = brn?b.*;
     result3 = (x = (y = {david = 5; eve = 6})?d.*);
 }
@@ -8,18 +9,31 @@
 !!!
 PARSED AST:
 {
+  brn = {
+    alice = 2;
+    bob = 3;
+    charlie = 4;
+  };
+  result1 = brn ? a.*;
+  result2 = brn ? b.*;
 }
 {
-  alice = 2;
-  bob = 3;
-  charlie = 4;
+  david = 5;
+  eve = 6;
 }
 
 UBC EVALUATION:
-Steps taken: 6
+Steps taken: 63
 
 FINAL RESULT:
 {
+＿brn = {
+      ＿＿alice = 2;
+      ＿＿bob = 3;
+      ＿＿charlie = 4;
+      ＿};
+＿result1 = 2;
+＿result2 = 3;
 }
 
 COMPLETION STATUS:

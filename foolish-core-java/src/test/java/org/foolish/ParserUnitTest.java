@@ -638,4 +638,21 @@ public class ParserUnitTest {
         assertEquals(List.of("type"), characterized.characterizations());
         assertEquals("type'↑", characterized.toString());
     }
+
+    @Test
+    public void testNestedAssignmentInRHSShouldFail() {
+        // Assignment in RHS of assignment should fail to parse
+        // e.g., result = (x = 5) is invalid syntax
+        try {
+            AST ast = parse("{ result = (x = 5); }");
+            // If we reach here, parsing succeeded when it shouldn't have
+            fail("Parser should reject assignment in RHS of assignment, but got: " + ast.toString());
+        } catch (Exception e) {
+            // Expected: parser should throw an error
+            assertTrue(e.getMessage().contains("mismatched input") ||
+                      e.getMessage().contains("no viable alternative") ||
+                      e.getMessage().contains("extraneous input"),
+                      "Expected parse error for nested assignment, got: " + e.getMessage());
+        }
+    }
 }
