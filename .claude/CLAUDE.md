@@ -1,38 +1,21 @@
 # CLAUDE.md
 
-This file provides Claude Code-specific guidance when working on the Foolish project.
+## Use Common Sense
+Consult `AGENTS.md` at the root directory.
+Apply industry standard best practices liberally. Use colloquial java and scala language patterns based on the installed versions.(25 and 3.8.1 presently).
+Treat documentation in docs/ as if they are product documents, documentation in projects/ are engineering design, notes and discussions. This applies both to reading and generating for each directory.
 
-## For All AI Agents - Read AGENTS.md First
-
-**IMPORTANT**: This repository includes comprehensive project guidance in `AGENTS.md` at the root directory. **ALL AI agents** (including Claude Code, GitHub Copilot, Cursor, and other AI coding assistants) should consult **`AGENTS.md`** for:
-
-- Environment detection and setup (Claude Code Web vs local development)
-- Build requirements and commands (Java 25, Scala 3.3.7, ANTLR 4.13.2, Maven)
-- Project structure and multi-module Maven architecture
-- The Unicellular Brane Computer (UBC) implementation details
-- FIR (Foolish Internal Representation) and state machine
-- BraneMemory, scope resolution, AB/IB semantics
-- Test infrastructure (unit tests, approval tests, cross-validation)
-- Foolish language terminology and coding conventions
-- Git workflow and branch naming conventions
-- Common development tasks with complete examples
-
-**The sections below provide Claude Code-specific instructions only.** For general project information, always consult `AGENTS.md` first.
-
----
-
-## Claude Code-Specific Features
-
-### Session Hook Setup
+## Session Hook Setup
 
 The project includes a SessionStart hook in `.claude/settings.json` that configures the development environment. The hook may output environment variable settings that need to be run manually in the shell before builds work.
 
 **After starting a new session:**
 1. Check the hook output for any environment variable exports (e.g., `export JAVA_HOME=...`, `export PATH=...`)
-2. If provided, run these export commands in your shell
+2. If the session start hook provides additional instructions in the output, run them.
 3. Then proceed with Maven builds
 
-### Build and Test Skills
+
+## Build and Test Skills
 
 Claude Code provides specialized skills for build management. For comprehensive Maven build strategies with parallel execution, intelligent test running, and targeted debugging workflows, use:
 
@@ -50,7 +33,7 @@ This skill provides:
 
 See `.claude/skills/maven-builder-for-foolish-language/` for full documentation.
 
-### Quick Build Reference
+## Quick Build Reference
 
 Basic build and test:
 ```bash
@@ -69,14 +52,55 @@ mvn test -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 mvn clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 ```
 
-**Important**: When fixing compilation errors, always skip tests first:
+When fixing compilation errors, always skip tests first:
 ```bash
-mvn clean compile -T $(($(nproc) * 2)) -DskipTests
+mvn clean compile -DskipTests
+# Or even turn on debugging 
+mvn clean compile -X -DskipTests
 ```
 
 For detailed build strategies and debugging patterns, use the `maven-builder-for-foolish-language` skill.
 
-## Git Commit Message Format
+### Grammar File Changes
+
+Whenever the ANTLR grammar file is modified (`foolish-parser-java/src/main/antlr4/Foolish.g4`), you must regenerate
+sources before that takes effect. Maven sometimes fails to see the file has changed.  This regenerates the parser/lexer from the grammar.
+
+```bash
+mvn clean generate-sources
+```
+
+### Approval Test Protocol
+
+Approval tests can only be updated in one of three ways. Each change requires all subsequent stages to be performed.
+
+1. Input File Changed: The `.foo` input file (for example `src/test/resources/org/foolish/fvm/inputs/`) is modified. Sometimes this adds tests for new functionalities, other times this may corrects tests.
+2. Source code is changed so the system under test could produce different results.
+3. Run the test: this produces a `.received.*` file, it should be examined ( generated in `src/test/resources/org/foolish/fvm/ubc/` (Java) or `src/test/resources/org/foolish/fvm/scubc/` (Scala)
+4. Present the difference on screen using a side-by-side diff
+   ```bash
+   diff -y --color src/test/resources/org/foolish/fvm/ubc/testName.received.foo \
+                   src/test/resources/org/foolish/fvm/ubc/testName.approved.foo
+   ```
+4. User Approves: After user approval, move `.received.foo` to `.approved.foo`
+5. Subsequent commits and commit comment must mention the approval test was updated.
+
+
+### Running approval tests
+The command for running approval test inside the module foolish-core-java, filtering for input file that has
+Shadow in the name, while in the top foolish directory it would be invoked this way:
+```bash
+mvn test -pl foolish-core-java -Dtest=UbcApprovalTest -Dfoolish.test.filter=Shadow
+```
+This runs just the selected approval class and filters input file names.
+
+## Clarifications
+* When user mentions "path/" first interpret it as relative path from the directory where claude code was invoked. This is normal behavior for most unix apps, for example if I "cat path/file" that path is resolved from the current path.
+* Never directly edit `.approved.foo` files
+
+## Git
+
+### Git Commit Message Format
 
 Claude Code commit messages should include:
 - Current version of Claude Code
@@ -92,7 +116,6 @@ Added tests and updated documentation.
 Claude Code v1.0.0 / claude-sonnet-4-5-20250929
 ```
 
-## Git Workflow
 
 ### Branch Naming
 Branches must follow: `claude/<descriptive-name>-<session-id>`
@@ -105,25 +128,26 @@ Example: `claude/run-tests-8vk4v`
 - Always use: `git push -u origin <branch-name>`
 - If push fails with network errors, retry up to 4 times with exponential backoff (2s, 4s, 8s, 16s)
 
-## Project-Specific Information
 
-For all project-specific information including:
-- Multi-module Maven structure and dependencies
-- UBC (Unicellular Brane Computer) architecture
-- FIR state machine and evaluation strategy
-- BraneMemory and scope resolution
-- AB/IB (Ancestral Brane / Immediate Brane) semantics
-- Test infrastructure and approval test workflows
-- Foolish language terminology and coding conventions
-- Important file locations
-- Adding new approval tests
-- Debugging workflows
 
-**Consult `AGENTS.md` at the root directory.**
+## Documentation Organization
 
----
+### Directory Structure
 
-## Markdown File Update Protocol
+- **`docs/`** - General documentation, architecture, language design, user guides
+  - User-facing tutorials
+  - Language specifications
+  - Architecture overviews
+  - User-facing documentation
+  - Permanent reference material
+
+- **`projects/`** - Engineering/design-specific documents for active work
+  - Implementation summaries
+  - Design decisions and rationale
+  - Work-in-progress specifications
+  - Engineering notes and analysis
+
+### Markdown File Update Protocol
 
 **IMPORTANT**: When you modify any `*.md` file in this repository, you MUST update the "## Last Updated" section at the end of that file. See `AGENTS.md` for the complete protocol. Always include:
 
@@ -183,6 +207,6 @@ This appears to be an inherent limitation of CCW's current architecture rather t
 
 ## Last Updated
 
-**Date**: 2026-01-19
-**Updated By**: Claude Code / claude-opus-4-5-20251101
-**Changes**: Moved CCW documentation to a historical section at the bottom. Added new "Session Hook Setup" section explaining that the SessionStart hook may output environment variable settings that need to be run manually in the shell before builds work. Simplified the main documentation to focus on local development workflow.
+**Date**: 2026-01-23
+**Updated By**: Claude Code v1.0.0 / claude-sonnet-4-5-20250929
+**Changes**: Added "Documentation Organization" section clarifying that engineering/design-specific documents belong in `projects/` directory while general documentation belongs in `docs/` directory.

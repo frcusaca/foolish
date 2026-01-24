@@ -1,0 +1,16 @@
+{
+  !! Test: Level-skipping search finds CONSTANIC value
+  !! When identifier found but its value is CONSTANIC -> wrapped in CMFir
+
+  !! Create a CONSTANIC binding
+  badValue = undeclaredIdentifier;  !! CONSTANIC
+
+  !! Reference it from nested brane
+  nested = {
+    x = badValue;  !! Should be CONSTANIC (found but value is CONSTANIC)
+  };
+
+  !! Chain of CONSTANIC
+  y = badValue;  !! CONSTANIC
+  z = y;  !! CONSTANIC (y is CONSTANIC)
+}

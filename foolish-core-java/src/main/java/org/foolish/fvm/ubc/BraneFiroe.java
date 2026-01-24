@@ -37,13 +37,13 @@ public class BraneFiroe extends FiroeWithBraneMind {
     // Removed isNye override
 
     @Override
-    public void step() {
+    public int step() {
         if (!isInitialized()) {
             initialize();
-            return;
+            return 1;
         }
 
-        super.step();
+        return super.step();
     }
 
     /**

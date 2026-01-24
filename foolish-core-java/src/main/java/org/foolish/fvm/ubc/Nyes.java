@@ -8,7 +8,7 @@ package org.foolish.fvm.ubc;
  * lifecycle, with transitions managed through the {@link FIR#setNyes(Nyes)} method.
  * <p>
  * The evaluation flow typically progresses as follows:
- * UNINITIALIZED → INITIALIZED → REFERENCES_IDENTIFIED → ALLOCATED → RESOLVED → EVALUATING → CONSTANIC → CONSTANT
+ * UNINITIALIZED → INITIALIZED → CHECKED → EVALUATING → CONSTANIC → CONSTANT
  * <p>
  * CONSTANIC (say "CON-STAN-NICK") represents a state where evaluation has paused due to missing information (e.g. unbound identifiers),
  * but could resume in a different context. CONSTANt IN Context - "Stay Foolish" state.
@@ -28,28 +28,14 @@ public enum Nyes {
     INITIALIZED,
 
     /**
-     * All referenced identifiers collected (not including sub-branes).
-     * For non-brane expressions: step() until it reaches RESOLVED state.
-     * For branes: step() until it reaches REFERENCES_IDENTIFIED state.
-     * Transition taken care of by step().
-     */
-    REFERENCES_IDENTIFIED,
-
-    /**
+     * Type/reference checking completed.
+     * Reserved for future type checking and reference validation.
+     * Currently used as a transitional state between INITIALIZED and EVALUATING.
      * AB (Abstract Brane), IB (Implementation Brane) established firmly.
+     * All variables for an expression are collected and validated.
      * Transition taken care of by step().
      */
-    ALLOCATED,
-
-    /**
-     * All variables for an expression are resolved.
-     * For non-brane expressions: step() until it reaches RESOLVED state.
-     * For branes: identifiers that can be resolved are resolved.
-     * Branes should step until non-brane expressions are resolved.
-     * For now, stub this branch for other expressions and return ???.
-     * Transition taken care of by step().
-     */
-    RESOLVED,
+    CHECKED,
 
     /**
      * Take a step() as we do currently, including branes.

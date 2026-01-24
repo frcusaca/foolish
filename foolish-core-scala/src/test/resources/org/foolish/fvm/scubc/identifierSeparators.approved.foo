@@ -18,8 +18,8 @@ PARSED AST:
   myˍvar = 2;
   myˍvar = 3;
   ((myˍvar + myˍvar) + myˍvar);
-  x = 10;
-  x = 20;
+  fooˍbar'x = 10;
+  fooˍbar'x = 20;
   fooˍbar'x;
 }
 
@@ -32,8 +32,8 @@ FINAL RESULT:
 ＿myˍvar = 2;
 ＿myˍvar = 3;
 ＿9;
-＿x = 10;
-＿x = 20;
+＿fooˍbar'x = 10;
+＿fooˍbar'x = 20;
 ＿20;
 }
 

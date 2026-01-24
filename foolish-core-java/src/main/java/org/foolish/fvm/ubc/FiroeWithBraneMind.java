@@ -103,61 +103,51 @@ public abstract class FiroeWithBraneMind extends FIR {
      * <p>
      * State transitions:
      * - UNINITIALIZED → INITIALIZED: Initialize this FIR
-     * - INITIALIZED → REFERENCES_IDENTIFIED: Step non-branes only until all are REFERENCES_IDENTIFIED
-     * - REFERENCES_IDENTIFIED → ALLOCATED: Step non-branes only until all are ALLOCATED
-     * - ALLOCATED → RESOLVED: Step non-branes only until all are RESOLVED
-     * - RESOLVED → EVALUATING: Immediate transition when detected
+     * - INITIALIZED → CHECKED: Step non-branes only until all are CHECKED (type/reference checking)
+     * - CHECKED → EVALUATING: Immediate transition when detected
      * - EVALUATING → CONSTANT: Step everything (including branes) until all complete
      * <p>
      * Derived classes should override this method and call super.step() as needed.
+     *
+     * @return 1 for meaningful work, 0 for empty transitions
      */
-    public void step() {
+    public int step() {
         switch (getNyes()) {
             case UNINITIALIZED -> {
                 // First step: initialize this FIR
                 initialize();
                 setNyes(Nyes.INITIALIZED);
+                return 1;
             }
             case INITIALIZED -> {
-                // Step non-brane expressions until all are REFERENCES_IDENTIFIED
-                if (stepNonBranesUntilState(Nyes.REFERENCES_IDENTIFIED)) {
-                    // All non-branes have reached REFERENCES_IDENTIFIED
-                    setNyes(Nyes.REFERENCES_IDENTIFIED);
+                // Step non-brane expressions until all are CHECKED
+                if (stepNonBranesUntilState(Nyes.CHECKED)) {
+                    // All non-branes have reached CHECKED (type/reference checking complete)
+                    setNyes(Nyes.CHECKED);
                 }
+                return 1; // Did work stepping sub-expressions
             }
-            case REFERENCES_IDENTIFIED -> {
-                // Step non-brane expressions until all are ALLOCATED
-                if (stepNonBranesUntilState(Nyes.ALLOCATED)) {
-                    // All non-branes have reached ALLOCATED
-                    setNyes(Nyes.ALLOCATED);
-                }
-            }
-            case ALLOCATED -> {
-                // Step non-brane expressions until all are RESOLVED
-                if (stepNonBranesUntilState(Nyes.RESOLVED)) {
-                    // All non-branes have reached RESOLVED
-                    setNyes(Nyes.RESOLVED);
-                }
-            }
-            case RESOLVED -> {
+            case CHECKED -> {
                 // Immediate transition to EVALUATING when step() is called
                 setNyes(Nyes.EVALUATING);
+                return 1;
             }
             case EVALUATING -> {
                 // Step everything including sub-branes
                 if (braneMind.isEmpty()) {
                     // All expressions evaluated, transition to CONSTANT
                     setNyes(Nyes.CONSTANT);
-                    return;
+                    return 1;
                 }
 
                 FIR current = braneMind.removeFirst();
                 try {
-                    current.step();
+                    int work = current.step();
 
                     if (current.isNye()) {
                         braneMind.addLast(current);
                     }
+                    return work;
                 } catch (Exception e) {
                     braneMind.addFirst(current); // Re-enqueue on error
                     throw new RuntimeException("Error during braneMind step execution", e);
@@ -166,8 +156,10 @@ public abstract class FiroeWithBraneMind extends FIR {
             }
             case CONSTANIC, CONSTANT -> {
                 // Already evaluated, nothing to do
+                return 0;
             }
         }
+        return 0; // Should not reach here
     }
 
     /**

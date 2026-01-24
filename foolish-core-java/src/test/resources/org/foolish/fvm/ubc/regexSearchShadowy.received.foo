@@ -22,8 +22,13 @@
 		!! Now chained search
 		brn = {alice = 2; bob = 3; charlie = 4; adam=alice; advent=5; {adrian=6};bobulous=7;};
 		brn2 = {hard_to_typo_name_for_a_brane=brn};
-	    	result1 = brn2?.*brane ?a.*;
-	    	result2 = brn2?(.*brane)?a.*;
+	    	result0 = brn2.hard_to_typo_name_for_a_brane .bobulous;      !! dereference should suceed resolving to 7 NOTE the space
+	    	!! result1 = brn2.hard_to_typo_name_for_a_brane#-2 .adrian; !! should be 6
+	    	result2 = brn2?.*brane ?a.*;                                !! 5 !! advent
+	    	result3 = brn2?(.*brane)?a.*;                               !! 5 !! advent
+	    	result4 = brn2?(.*brane) .bobulous;                         !! still 7: NOTE the space
+	    	result5 = brn2?(.*brane)?.*t$;                              !! 5 !! advent
+	    	result6 = brn2?(.*brane)~.*e$;                             !! 2 !! alice
 	};
 }
 
@@ -122,13 +127,17 @@ PARSED AST:
     brn2 = {
       hardˍtoˍtypoˍnameˍforˍaˍbrane = brn;
     };
-    result1 = brn2 ? .*brane ? a.*;
-    result2 = brn2 ? (.*brane) ? a.*;
+    result0 = brn2.hardˍtoˍtypoˍnameˍforˍaˍbrane.bobulous;
+    result2 = brn2 ? .*brane ? a.*;
+    result3 = brn2 ? (.*brane) ? a.*;
+    result4 = brn2 ? (.*brane).bobulous;
+    result5 = brn2 ? (.*brane) ? .*t$;
+    result6 = brn2 ? (.*brane) ~ .*e$;
   };
 }
 
 UBC EVALUATION:
-Steps taken: 648
+Steps taken: 575
 
 FINAL RESULT:
 {
@@ -184,8 +193,12 @@ FINAL RESULT:
                                        ＿＿＿＿bobulous = 7;
                                        ＿＿＿};
        ＿＿};
-＿＿result1 = 5;
+＿＿result0 = ???;
 ＿＿result2 = 5;
+＿＿result3 = 5;
+＿＿result4 = ???;
+＿＿result5 = 5;
+＿＿result6 = 2;
 ＿};
 }
 

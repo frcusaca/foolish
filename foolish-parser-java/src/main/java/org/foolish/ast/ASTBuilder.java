@@ -210,9 +210,15 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
                 AST.Identifier coordinate = (AST.Identifier) visit(postfixOp.characterizable_identifier());
                 anchor = new AST.DereferenceExpr(anchor, coordinate);
             } else if (postfixOp.regexp_operator() != null && postfixOp.regexp_expression() != null) {
-                // Handle regexp search: anchor ? pattern or anchor ?? pattern
+                // Handle regexp search: anchor?pattern (backward), anchor~pattern (forward), anchor??/~~ (find-all)
                 String opText = postfixOp.regexp_operator().getText();
-                SearchOperator operator = "?".equals(opText) ? SearchOperator.REGEXP_LOCAL : SearchOperator.REGEXP_GLOBAL;
+                SearchOperator operator = switch (opText) {
+                    case "?" -> SearchOperator.REGEXP_LOCAL;
+                    case "~" -> SearchOperator.REGEXP_FORWARD_LOCAL;
+                    case "??" -> SearchOperator.REGEXP_GLOBAL;
+                    case "~~" -> SearchOperator.REGEXP_FORWARD_GLOBAL;
+                    default -> throw new IllegalArgumentException("Unknown regexp operator: " + opText);
+                };
                 String pattern = canonicalizeIdentifierName(postfixOp.regexp_expression().getText());
                 anchor = new AST.RegexpSearchExpr(anchor, operator, pattern);
             } else if (postfixOp.HASH() != null && postfixOp.seek_index() != null) {

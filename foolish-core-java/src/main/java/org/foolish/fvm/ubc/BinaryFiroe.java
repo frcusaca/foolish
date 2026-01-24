@@ -29,35 +29,39 @@ public class BinaryFiroe extends FiroeWithBraneMind {
     }
 
     @Override
-    public void step() {
+    public int step() {
         if (result != null) {
             // Already computed - ensure we're in CONSTANT state
             setNyes(Nyes.CONSTANT);
-            return;
+            return 0;
         }
 
         switch (getNyes()) {
-            case UNINITIALIZED, INITIALIZED, REFERENCES_IDENTIFIED, ALLOCATED, RESOLVED -> {
+            case UNINITIALIZED, INITIALIZED, CHECKED -> {
                 // Let parent handle state progression through these phases
-                super.step();
+                return super.step();
             }
             case EVALUATING -> {
                 // Step operands through evaluation
-                super.step();
+                int work = super.step();
 
                 // After parent steps, check if we can compute the final result
                 // If parent says CONSTANT, it means braneMind is empty.
                 if (getNyes() == Nyes.CONSTANT && braneMind.isEmpty() && result == null) {
                     computeResult();
                 }
+                return work;
             }
             case CONSTANT -> {
                 // Should not reach here if result is null, but handle gracefully
                 if (result == null && braneMind.isEmpty()) {
                     computeResult();
+                    return 1;
                 }
+                return 0;
             }
         }
+        return 0;
     }
 
     private void computeResult() {

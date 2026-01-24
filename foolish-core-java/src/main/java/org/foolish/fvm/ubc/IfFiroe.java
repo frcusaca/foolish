@@ -43,15 +43,15 @@ public class IfFiroe extends FiroeWithBraneMind {
         setInitialized();
     }
 
-    public void step() {
+    public int step() {
         if (!isInitialized()) {
             initialize();
-            return;
+            return 1;
         }
 
         if (result != null) {
             // Already done
-            return;
+            return 0;
         }
 
         switch (braneMemory.get(nextPossibleIdx)) {
@@ -62,11 +62,14 @@ public class IfFiroe extends FiroeWithBraneMind {
                     if(!thenFir.isNye()){
                         result = cfiroe.getThenFir();
                     }
+                    return 1;
                 }else if(cfiroe.hasFalseCondition()){
                     nextPossibleIdx+=1;
+                    return 1;
                 }else{
                     // condition is nye, need to step further
                     cfiroe.step();
+                    return 1;
                 }
             }
             case FIR firoe -> {
@@ -74,6 +77,7 @@ public class IfFiroe extends FiroeWithBraneMind {
                 nextPossibleIdx = braneMemory.size()-1; // Choose the else branch
                 result = firoe;
                 super.step();
+                return 1;
             }
         }
     }
@@ -103,8 +107,8 @@ public class IfFiroe extends FiroeWithBraneMind {
             // ConditionalFiroe handles initialization in constructor
         }
 
-        public void step() {
-            super.step();
+        public int step() {
+            int work = super.step();
             // After stepping, check if condition has been evaluated
             if (condition_value == null && !braneMemory.isEmpty() && !braneMemory.get(0).isNye()) {
                 // Condition is evaluated, get its value
@@ -117,6 +121,7 @@ public class IfFiroe extends FiroeWithBraneMind {
                     condition_value = false;
                 }
             }
+            return work;
         }
 
 

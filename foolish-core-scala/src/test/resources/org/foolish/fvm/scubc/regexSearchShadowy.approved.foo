@@ -24,6 +24,8 @@
 		brn2 = {hard_to_typo_name_for_a_brane=brn};
 	    	result1 = brn2?.*brane ?a.*;
 	    	result2 = brn2?(.*brane)?a.*;
+	    	result2 = brn2?(.*brane).bobulous;
+	    	result2 = brn2.hard_to_typo_name_for_a_brane.bobulous;
 	};
 }
 
@@ -124,11 +126,13 @@ PARSED AST:
     };
     result1 = brn2 ? .*brane ? a.*;
     result2 = brn2 ? (.*brane) ? a.*;
+    result2 = brn2 ? (.*brane).bobulous;
+    result2 = brn2.hardˍtoˍtypoˍnameˍforˍaˍbrane.bobulous;
   };
 }
 
 UBC EVALUATION:
-Steps taken: 650
+Steps taken: 670
 
 FINAL RESULT:
 {
@@ -186,6 +190,8 @@ FINAL RESULT:
        ＿＿};
 ＿＿result1 = 5;
 ＿＿result2 = 5;
+＿＿result2 = ???;
+＿＿result2 = 0;
 ＿};
 }
 

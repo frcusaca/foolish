@@ -1,0 +1,24 @@
+{
+  !! Test: Level-skipping identifier search succeeds
+  !! When identifier found and has CONSTANT value -> CONSTANT result
+
+  x = 42;
+
+  !! Direct reference
+  y = x;  !! Should be CONSTANT 42
+
+  !! Reference from nested brane
+  nested = {
+    z = x;  !! Should be CONSTANT 42 (found in parent)
+  };
+
+  !! Multi-level nesting
+  level1 = {
+    a = 100;
+    level2 = {
+      level3 = {
+        b = a;  !! Should be CONSTANT 100 (found 2 levels up)
+      };
+    };
+  };
+}

@@ -1,0 +1,34 @@
+!!INPUT!!
+{
+  !! Test: Anchored search on CONSTANIC anchor
+  !! When anchor itself is constanic (???) -> result is ???
+
+  !! Chained constanic
+  emptyBrane = {};
+  chainedConstanic = emptyBrane^;  !! ???
+  doubleConstanic = chainedConstanic$;  !! ??? (searching on ???)
+}
+
+!!!
+PARSED AST:
+{
+  emptyBrane = {
+  };
+  chainedConstanic =^emptyBrane;
+  doubleConstanic =$chainedConstanic;
+}
+
+UBC EVALUATION:
+Steps taken: 43
+
+FINAL RESULT:
+{
+＿emptyBrane = {
+             ＿};
+＿chainedConstanic = ???;
+＿doubleConstanic = ???;
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!

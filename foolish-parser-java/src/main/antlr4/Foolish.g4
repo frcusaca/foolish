@@ -102,8 +102,10 @@ endIf: FI ;
 
 // Regexp operators for brane searching
 regexp_operator
-    : QUESTION          // ?
-    | QUESTION_QUESTION // ??
+    : QUESTION          // ? (backward search)
+    | QUESTION_QUESTION // ?? (find-all backward - not yet implemented)
+    | TILDE             // ~ (forward search)
+    | TILDE_TILDE       // ~~ (find-all forward - not yet implemented)
     ;
 
 // Regexp expression with balanced parentheses validation
@@ -171,8 +173,10 @@ DIV : '/' ;
 CARET : '^';
 ESLASH : '\\';
 DOLLAR : '$';
-QUESTION: '?';
 QUESTION_QUESTION: '??';
+QUESTION: '?';
+TILDE_TILDE: '~~';
+TILDE: '~';
 HASH : '#';
 
 DOT_DOT : '..' ;

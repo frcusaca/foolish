@@ -78,10 +78,11 @@ public class CharacterizedIdentifier {
     /**
      * Returns the full characterized identifier string in Foolish syntax.
      * E.g., "type'x" for characterized, "x" for plain.
+     * Note: characterization from canonicalCharacterization() already includes trailing '
      */
     public String toFoolishString() {
         if (hasCharacterization()) {
-            return characterization + "'" + id;
+            return characterization + id;
         }
         return id;
     }

@@ -126,6 +126,7 @@ public class Sequencer4Human extends Sequencer<String> {
      * Sequences an assignment FIR showing the coordinate name and its value.
      */
     protected String sequenceAssignment(AssignmentFiroe assignment, int depth) {
+        String fullId = assignment.getLhs().toString();
         if (!assignment.isNye() && assignment.getResult() != null) {
             FIR result = assignment.getResult();
             // Check if the result is fully evaluated
@@ -133,12 +134,12 @@ public class Sequencer4Human extends Sequencer<String> {
                 // Use atConstanic() to check for exactly CONSTANIC state (unresolved)
                 // not CONSTANT state (fully evaluated)
                 if (result.atConstanic()) {
-                    return indent(depth) + assignment.getId() + " = " + CC_STR;
+                    return indent(depth) + fullId + " = " + CC_STR;
                 }
 
                 // Check if result is directly an NK (error like division by zero)
                 if (result instanceof NKFiroe) {
-                    return indent(depth) + assignment.getId() + " = " + NK_STR;
+                    return indent(depth) + fullId + " = " + NK_STR;
                 }
 
                 // Unwrap identifier/assignment/oneshot to get the actual value
@@ -167,11 +168,11 @@ public class Sequencer4Human extends Sequencer<String> {
                 }
 
                 if (constanicFound) {
-                    return indent(depth) + assignment.getId() + " = " + CC_STR;
+                    return indent(depth) + fullId + " = " + CC_STR;
                 }
 
                 if (unwrapped instanceof NKFiroe) {
-                    return indent(depth) + assignment.getId() + " = " + NK_STR;
+                    return indent(depth) + fullId + " = " + NK_STR;
                 }
 
                 if (unwrapped instanceof BraneFiroe brane) {
@@ -184,17 +185,17 @@ public class Sequencer4Human extends Sequencer<String> {
                         braneSeq = braneSeq.substring(indent.length());
                     }
                     // For subsequent lines, add spaces to align with "id = "
-                    String padding = " ".repeat(assignment.getId().length() + 3);
+                    String padding = " ".repeat(fullId.length() + 3);
                     braneSeq = braneSeq.replace("\n", "\n" + padding);
-                    return indent(depth) + assignment.getId() + " = " + braneSeq;
+                    return indent(depth) + fullId + " = " + braneSeq;
                 }
-                return indent(depth) + assignment.getId() + " = " + unwrapped.getValue();
+                return indent(depth) + fullId + " = " + unwrapped.getValue();
             }
         } else if (assignment.atConstanic()) {
-             return indent(depth) + assignment.getId() + " = " + CC_STR;
+             return indent(depth) + fullId + " = " + CC_STR;
         }
         // If not yet evaluated, show the structure
-        return indent(depth) + assignment.getId() + " = " + NK_STR;
+        return indent(depth) + fullId + " = " + NK_STR;
     }
 
     /**

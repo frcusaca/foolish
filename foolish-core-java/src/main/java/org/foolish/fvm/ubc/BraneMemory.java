@@ -9,6 +9,7 @@ import java.util.Optional;
 import java.util.stream.Stream;
 
 import static java.lang.Math.min;
+import static java.lang.Math.max;
 
 public class BraneMemory implements Iterable<FIR> {
     private BraneMemory parent;
@@ -62,10 +63,26 @@ public class BraneMemory implements Iterable<FIR> {
 
     /**
      * Search for a query locally within this brane only, without searching parent branes.
-     * Used for localized regex search (? operator).
+     * Searches backward from fromLine to 0 (finds last match).
+     * Used for localized backward regex search (? operator).
      */
     public Optional<Pair<Integer, FIR>> getLocal(Query query, int fromLine) {
         for (int line = min(fromLine, memory.size() - 1); line >= 0; line--) {
+            var lineMemory = memory.get(line);
+            if (query.matches(lineMemory)) {
+                return Optional.of(Pair.of(line, lineMemory));
+            }
+        }
+        return Optional.empty(); // Not found, don't search parents
+    }
+
+    /**
+     * Search for a query locally within this brane only, without searching parent branes.
+     * Searches forward from fromLine to end (finds first match).
+     * Used for localized forward regex search (/ operator).
+     */
+    public Optional<Pair<Integer, FIR>> getLocalForward(Query query, int fromLine) {
+        for (int line = max(fromLine, 0); line < memory.size(); line++) {
             var lineMemory = memory.get(line);
             if (query.matches(lineMemory)) {
                 return Optional.of(Pair.of(line, lineMemory));

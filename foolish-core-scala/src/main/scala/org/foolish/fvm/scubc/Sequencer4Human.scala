@@ -82,18 +82,19 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
     indent(depth) + "↑"
 
   protected def sequenceAssignment(assignment: AssignmentFiroe, depth: Int): String =
+    val fullId = assignment.getLhs.toString
     if !assignment.isNye && assignment.getResult.isDefined then
       val result = assignment.getResult.get
       // Check if the result is fully evaluated
       if !result.isNye then
         if result.atConstanic then
-           indent(depth) + s"${assignment.getId} = $CC_STR"
+           indent(depth) + s"$fullId = $CC_STR"
         else
           unwrap(result) match
             case constanic if constanic.atConstanic =>
-               indent(depth) + s"${assignment.getId} = $CC_STR"
+               indent(depth) + s"$fullId = $CC_STR"
             case abstractFir if abstractFir.isAbstract =>
-               indent(depth) + s"${assignment.getId} = $NK_STR"
+               indent(depth) + s"$fullId = $NK_STR"
             case brane: BraneFiroe =>
               // Special handling for nested branes to align indentation
               val sequencedBrane = sequence(brane, depth)
@@ -105,22 +106,22 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
                 sequencedBrane
 
               // Calculate padding for subsequent lines
-              val padding = " " * (assignment.getId.length + 3)
+              val padding = " " * (fullId.length + 3)
               // Apply padding to subsequent lines
               val alignedBrane = strippedBrane.replace("\n", "\n" + padding)
 
-              indent(depth) + s"${assignment.getId} = ${alignedBrane}"
+              indent(depth) + s"$fullId = ${alignedBrane}"
 
             case unwrapped =>
               // Simple values
-              indent(depth) + s"${assignment.getId} = ${unwrapped.getValue}"
+              indent(depth) + s"$fullId = ${unwrapped.getValue}"
       else
-        indent(depth) + s"${assignment.getId} = $NK_STR"
+        indent(depth) + s"$fullId = $NK_STR"
     else if assignment.atConstanic then
-        indent(depth) + s"${assignment.getId} = $CC_STR"
+        indent(depth) + s"$fullId = $CC_STR"
     else
       // If not yet evaluated, show the structure
-      indent(depth) + s"${assignment.getId} = $NK_STR"
+      indent(depth) + s"$fullId = $NK_STR"
 
   protected def sequenceIdentifier(identifier: IdentifierFiroe, depth: Int): String =
     // If the identifier has been resolved and is not NYE

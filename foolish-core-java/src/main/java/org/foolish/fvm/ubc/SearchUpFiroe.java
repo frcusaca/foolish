@@ -42,8 +42,9 @@ public class SearchUpFiroe extends FiroeWithoutBraneMind {
     }
 
     @Override
-    public void step() {
-        // Nothing to do
+    public int step() {
+        // Nothing to do - already evaluated
+        return 0;
     }
 
     public String toString() {

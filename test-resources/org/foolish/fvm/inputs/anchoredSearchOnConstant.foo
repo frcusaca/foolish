@@ -1,0 +1,13 @@
+{
+  !! Test: Anchored search on CONSTANT brane
+  !! When a brane is CONSTANT and search succeeds, result is CONSTANT
+
+  b = {α = 100; β = 200;};
+
+  !! Head and tail searches on constant brane
+  head = b^;  !! Should be CONSTANT 100
+  tail = b$;  !! Should be CONSTANT 200
+
+  !! Pattern search on constant brane (found)
+  found = b?α;  !! Should be CONSTANT 100
+}

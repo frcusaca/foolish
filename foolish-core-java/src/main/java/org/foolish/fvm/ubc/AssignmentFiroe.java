@@ -33,28 +33,28 @@ public class AssignmentFiroe extends FiroeWithBraneMind {
     }
 
     @Override
-    public void step() {
+    public int step() {
         if (result != null) {
             // Already computed (non-null result)
-            return;
+            return 0;
         }
 
         if (atConstanic()) {
-            return;
+            return 0;
         }
 
         if (!isInitialized()) {
             // Initialize and enqueue the expression
             initialize();
-            return;
+            return 1;
         }
 
         // Let the parent class handle braneMind stepping
-        super.step();
+        int work = super.step();
 
         // Check if we can get the final result
         if (isNye()) {
-            return;
+            return work;
         }
 
         // Expression is fully evaluated (or stuck at Constanic), store the result
@@ -66,6 +66,7 @@ public class AssignmentFiroe extends FiroeWithBraneMind {
         }
         // If result is null (e.g. BinaryFiroe returned null result), that's fine.
         // It stays Constanic.
+        return work;
     }
 
     @Override

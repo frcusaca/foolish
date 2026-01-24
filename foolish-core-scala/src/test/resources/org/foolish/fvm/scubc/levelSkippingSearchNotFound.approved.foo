@@ -1,0 +1,39 @@
+!!INPUT!!
+{
+  !! Test: Level-skipping identifier search not found
+  !! When identifier not found in entire scope chain -> CONSTANIC
+
+  !! Reference undeclared identifier
+  x = undeclaredIdentifier;  !! Should be CONSTANIC (not found in any parent)
+
+  !! Nested case - identifier not in any parent
+  outer = {
+    inner = {
+      y = missingValue;  !! CONSTANIC - not found even in outer
+    };
+  };
+}
+
+!!!
+PARSED AST:
+{
+  x = undeclaredIdentifier;
+  outer = {
+    inner = {
+      y = missingValue;
+    };
+  };
+}
+
+UBC EVALUATION:
+Steps taken: 41
+
+FINAL RESULT:
+{
+＿x = ⎵⎵;
+＿outer = ???;
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!

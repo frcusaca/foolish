@@ -2,6 +2,11 @@
 
 This document provides instructions for AI agents (including Claude Code, GitHub Copilot, Cursor, and other AI coding assistants) working on the Foolish project.
 
+## Use Common Sense
+Apply industry standard best practices liberally. Use colloquial java and scala language patterns based on the installed versions.(25 and 3.8.1 presently).
+Treat documentation in docs/ as if they are product documents, documentation in projects/ are engineering design, notes and discussions. This applies both to reading and generating for each directory.
+
+
 ## Overview
 
 Foolish is a revolutionary programming language with parallel Java and Scala implementations. This guide helps AI agents navigate the unique build requirements and environment-specific setup needed for development.
@@ -11,7 +16,7 @@ Foolish is a revolutionary programming language with parallel Java and Scala imp
 ## Build Requirements
 
 - **Java Version**: Java 25 (Temurin recommended)
-- **Scala Version**: 3.3.7
+- **Scala Version**: 3.8.1
 - **Build Tool**: Maven (multi-module project)
 - **ANTLR**: 4.13.2 (for grammar generation)
 
@@ -27,9 +32,6 @@ The project supports two primary development environments:
 
 ### Claude Code Web (CCW)
 - Cloud-based development environment
-- **Not recommended for this project** - Use local development instead
-- Maven dependency resolution does not work reliably in CCW environments
-- See CLAUDE.md for details on CCW limitations
 
 ## Build Commands
 
@@ -41,16 +43,25 @@ mvn clean generate-sources compile test
 
 # Parallel build (recommended)
 mvn clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
+
+# Rebuild Antlr4 lexer and parser from g4 file
+# This needs to happen every time 'foolish-parser-java/src/main/antlr4/Foolish.g4' changes
+mvn clean generate-sources
+
+# The approval tests can be selected this way specifying module, class and then the test file filter
+mvn test -pl foolish-core-java -Dtest=UbcApprovalTest -Dfoolish.test.filter=Shadow
+
+# Just build (skip tests) when fixing compilation errors.
+mvn clean compile -DskipTests
+
+## Select a module to reduce build time and effort
+mvn compile -pl foolish-core-java -DskipTests
+
+## Turn on debugging and stack trace for debugging build problems
+mvn clean compile -X -DskipTests
 ```
 
-### Compilation Only
-
-```bash
-# When fixing compilation errors, skip tests
-mvn clean compile -T $(($(nproc) * 2)) -DskipTests
-```
-
-### Running Tests
+## Running Tests
 
 ```bash
 # Run all tests with parallel execution
@@ -58,22 +69,38 @@ mvn test -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 
 # Run specific test
 mvn test -Dtest=ClassName#methodName
-```
+mvn test -pl foolish-core-java -Dtest=UbcApprovalTest -Dfoolish.test.filter=Shadow
 
-### Build Skills (Claude Code)
+`## Approval Test Protocol
 
-**Claude Code users** can access comprehensive build strategies via:
+Approval tests can only be updated in one of three ways. Each change requires all subsequent stages to be performed.
+
+1. Input File Changed: The `.foo` input file (for example `src/test/resources/org/foolish/fvm/inputs/`) is modified. Sometimes this adds tests for new functionalities, other times this may corrects tests.
+2. Source code is changed so the system under test could produce different results.
+3. Run the test: this produces a `.received.*` file, it should be examined ( generated in `src/test/resources/org/foolish/fvm/ubc/` (Java) or `src/test/resources/org/foolish/fvm/scubc/` (Scala)
+4. Present the difference on screen using a side-by-side diff
+   ```bash
+   diff -y --color src/test/resources/org/foolish/fvm/ubc/testName.received.foo \
+                   src/test/resources/org/foolish/fvm/ubc/testName.approved.foo
+   ```
+4. User Approves: After user approval, move `.received.foo` to `.approved.foo`
+5. Subsequent commits and commit comment must mention the approval test was updated.
+
+
+### Running approval tests
+The command for running approval test inside the module foolish-core-java, filtering for input file that has
+Shadow in the name, while in the top foolish directory it would be invoked this way:
+
 ```bash
-/skill maven-builder-for-foolish-language
+mvn test -pl foolish-core-java -Dtest=UbcApprovalTest -Dfoolish.test.filter=Shadow
 ```
+This runs just the selected approval class and filters input file names.
 
-This skill provides:
-- Parallel execution strategies
-- Test debugging workflows
-- Approval test management
-- Compilation error handling
+## Clarifications
+* When user mentions "path/" first interpret it as relative path from the directory where claude code was invoked. This is normal behavior for most unix apps, for example if I "cat path/file" that path is resolved from the current path.
+* Never directly edit `.approved.foo` files
 
-**Other AI agents**: Refer to the maven-builder-for-foolish-language skill documentation at `.claude/skills/maven-builder-for-foolish-language/` for detailed build patterns and strategies.
+``
 
 ## Project Structure
 
@@ -269,55 +296,6 @@ GitHub Copilot / gpt-4
 
 - Always use: `git push -u origin <branch-name>` for first push
 - If push fails with network errors, retry up to 4 times with exponential backoff (2s, 4s, 8s, 16s)
-- **For Claude Code specifically**: Branch must start with `claude/` and end with session ID, otherwise push will fail with 403
-
-## Common Tasks
-
-### First Time Setup (CCW Only)
-
-**Claude Code:**
-```bash
-# CCW setup runs automatically via SessionStart hook
-# Just verify Java version once your session starts
-java -version  # Should show Java 25
-
-# Run build
-mvn clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
-```
-
-**Other AI agents:**
-```bash
-# 1. Run setup script directly (if not using SessionStart hook)
-support/shared/claude/skills/ccw-maven-setup/prep_if_ccw.sh
-
-# 2. Verify Java version
-java -version  # Should show Java 25
-
-# 3. Run build
-mvn clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
-```
-
-### Adding a New Approval Test
-1. Create input file: `test-resources/org/foolish/fvm/inputs/yourTestName.foo`
-2. Add test method to appropriate test class
-3. Run tests to generate `.received.foo` files
-4. Review diffs and approve:
-   ```bash
-   # Show diffs
-   find . -name "*.received.foo" -exec sh -c 'diff -u "${0%.received.foo}.approved.foo" "$0" || true' {} \;
-
-   # Approve
-   find . -name "*.received.foo" -exec sh -c 'mv "$0" "${0%.received.foo}.approved.foo"' {} \;
-   ```
-
-### Debugging Compilation Errors
-```bash
-# Always skip tests when fixing compilation
-mvn clean compile -T $(($(nproc) * 2)) -DskipTests
-
-# After compilation succeeds, run tests
-mvn test -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
-```
 
 ## Important Files
 
@@ -328,7 +306,25 @@ mvn test -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 - **Documentation**: `docs/` (README.md, STYLES.md, ECOSYSTEM.md, etc.)
 - **AI Instructions**: `.claude/CLAUDE.md` (Claude-specific guidance)
 
-## Additional Resources
+## Documentation
+
+### Directory Structure
+
+- **`docs/`** - General documentation, architecture, language design, user guides
+  - User-facing tutorials
+  - Language specifications
+  - Architecture overviews
+  - User-facing documentation
+  - Permanent reference material
+
+- **`projects/`** - Engineering/design-specific documents for active work
+  - Implementation summaries
+  - Design decisions and rationale
+  - Work-in-progress specifications
+  - Engineering notes and analysis
+
+
+### Additional Resources
 
 For complete details on:
 - Language features and semantics → See `README.md`
@@ -338,62 +334,6 @@ For complete details on:
 - Claude-specific guidance → See `.claude/CLAUDE.md`
 
 ## Quick Reference
-
-**Environment Check:**
-```bash
-if [ -n "$CLAUDECODE" ]; then
-    echo "Running in Claude Code Web"
-else
-    echo "Running in local environment"
-fi
-```
-
-**Full Workflow (CCW - Claude Code):**
-```bash
-# Setup runs automatically via SessionStart hook
-# Just start developing once your session is ready
-
-# Development cycle
-mvn clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
-
-# Commit and push
-git add .
-git commit -m "Your changes
-
-Claude Code v1.0.0 / claude-sonnet-4-5-20250929"
-git push -u origin claude/your-branch-name
-```
-
-**Full Workflow (CCW - Other AI agents):**
-```bash
-# Setup (once per session, if not using SessionStart hook)
-support/shared/claude/skills/ccw-maven-setup/prep_if_ccw.sh
-
-# Development cycle
-mvn clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
-
-# Commit and push
-git add .
-git commit -m "Your changes
-
-[AI Agent Name] / [Model ID]"
-git push -u origin <agent-prefix>/your-branch-name
-```
-
-**Full Workflow (Local - All agents):**
-```bash
-# No setup needed - just develop
-mvn clean test
-
-# Commit and push
-git add .
-git commit -m "Your changes
-
-[AI Agent Name] / [Model ID]"
-git push
-```
-
----
 
 ## Markdown File Update Protocol
 

@@ -79,8 +79,13 @@ public abstract class FIR {
      * Perform one step of evaluation on this FIR.
      * This method should advance the FIR's evaluation state by one step.
      * For simple values that don't require stepping, this can be a no-op.
+     *
+     * @return the amount of work done in this step:
+     *         0 for empty transitions (no-op, already evaluated, or waiting)
+     *         1 for meaningful work (state transitions, evaluations, searches)
+     *         Values are accumulated for step counting
      */
-    public abstract void step();
+    public abstract int step();
 
     /**
      * Query method returning false if an additional step on this FIR does not change it.

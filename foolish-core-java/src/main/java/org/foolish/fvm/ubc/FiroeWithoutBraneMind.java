@@ -21,10 +21,13 @@ public abstract class FiroeWithoutBraneMind extends FIR {
     /**
      * FiroeWithoutBraneMind instances don't require stepping as they represent finalized values.
      * This is a no-op implementation.
+     *
+     * @return 0 (no work done - already constant)
      */
     @Override
-    public void step() {
+    public int step() {
         // No-op: Values don't require stepping
+        return 0;
     }
 
     // Removed isNye override, relies on Nyes state (CONSTANT)

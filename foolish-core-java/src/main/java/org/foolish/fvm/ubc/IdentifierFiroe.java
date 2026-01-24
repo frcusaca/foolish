@@ -62,13 +62,13 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
      * it for `getValue()`
      */
     @Override
-    public void step() {
+    public int step() {
         switch (getNyes()) {
             case INITIALIZED -> {
                 var found = braneMemory.get(identifier, 0);
                 if (found.isEmpty()) {
                     setNyes(Nyes.CONSTANIC);
-                    return;
+                    return 1;
                 }
                 value = found
                         .map(r -> r.getRight())
@@ -76,10 +76,13 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
                 if (value == null) {
                     setNyes(Nyes.CONSTANIC);
                 } else {
-                    setNyes(Nyes.RESOLVED);
+                    setNyes(Nyes.CHECKED);
                 }
+                return 1;
             }
-            default -> super.step();
+            default -> {
+                return super.step();
+            }
         }
     }
     /**

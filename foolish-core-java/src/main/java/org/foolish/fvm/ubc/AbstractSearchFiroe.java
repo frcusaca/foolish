@@ -9,6 +9,51 @@ import org.foolish.ast.SearchOperator;
  * - Waiting for the anchor expression to be evaluated
  * - Unwrapping the anchor (Identifier -> Value, Assignment -> Result, etc.)
  * - Calling executeSearch() when ready
+ *
+ * <h2>Search Semantics</h2>
+ *
+ * <h3>Anchored Searches (B^, B$, B#123, B/pattern, B?pattern, B.pattern)</h3>
+ * <p>Anchored searches look within a specific brane only (do not traverse parent branes).</p>
+ * <p>Anchored searches return ??? (NK) when:</p>
+ * <ul>
+ *   <li>The anchor brane is empty or the search fails</li>
+ *   <li>The anchor itself evaluates to ???</li>
+ *   <li>The anchor brane is CONSTANT but the identifier is not found</li>
+ *   <li>Searching on non-brane values</li>
+ * </ul>
+ *
+ * <p><b>IMPORTANT:</b> For anchored searches, the result can be CONSTANT ??? even when the anchor
+ * brane B is still Constanic. This happens when the brane's own identifiers have been accumulated
+ * (all idFIRs created) by the time the search is performed.</p>
+ *
+ * <p><b>Search Directions:</b></p>
+ * <ul>
+ *   <li>B/x - forward search (finds first match from start to end)</li>
+ *   <li>B?x - backward search (finds last match from end to start)</li>
+ *   <li>B.x - alias for B?x (behaves like object member access in Java/C++/Python)</li>
+ * </ul>
+ *
+ * <p><b>Note:</b> Unanchored forward search /x is NOT in syntax (conflicts with division).
+ * Find-all operators (B??x, B//x) are reserved for future implementation.</p>
+ *
+ * <h3>Level-Skipping Brane-Boundary Insensitive Searches (identifier references, ?pattern)</h3>
+ * <p>Level-skipping searches traverse parent branes (unanchored searches).</p>
+ * <p>Level-skipping searches use CONSTANIC when:</p>
+ * <ul>
+ *   <li>Identifier not found in any parent brane (CONSTANIC state signals missing attachment/detachment)</li>
+ *   <li>Found value is itself CONSTANIC (wrapped in CMFir)</li>
+ *   <li>Found value becomes CONSTANT (search completes normally)</li>
+ * </ul>
+ *
+ * <p>See docs/search-semantics.md for detailed documentation.</p>
+ *
+ * <h3>TODO: Test Cases Needed</h3>
+ * <ul>
+ *   <li>Partial parameter specification: Test where we partially specify parameters in a brane
+ *       and then query for their values while the brane is still Constanic. This should demonstrate
+ *       that searches can return CONSTANT results even when the anchor brane is Constanic.</li>
+ *   <li>Recursive search behavior: Searches that reference themselves may need special handling.</li>
+ * </ul>
  */
 public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
     protected final SearchOperator operator;
@@ -27,54 +72,51 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
         // We can't do it here easily because getting the anchor depends on the specific AST type
     }
 
-    public void step() {
+    public int step() {
         switch (getNyes()) {
             case INITIALIZED -> {
-                if (stepNonBranesUntilState(Nyes.REFERENCES_IDENTIFIED)) {
-                    setNyes(Nyes.REFERENCES_IDENTIFIED);
+                if (stepNonBranesUntilState(Nyes.CHECKED)) {
+                    setNyes(Nyes.CHECKED);
                 }
+                return 1;
             }
-            case REFERENCES_IDENTIFIED -> {
-                if (stepNonBranesUntilState(Nyes.ALLOCATED)) {
-                    setNyes(Nyes.ALLOCATED);
-                }
-            }
-            case ALLOCATED -> {
-                if (stepNonBranesUntilState(Nyes.RESOLVED)) {
-                    setNyes(Nyes.RESOLVED);
-                }
-            }
-            case RESOLVED -> {
+            case CHECKED -> {
                 if (stepNonBranesUntilState(Nyes.CONSTANT)) {
                     if (isAnchorReady()) {
                         performSearchStep();
                         switch (searchResult) {
                             case null -> {
                                 // Keep searching
+                                return 1;
                             }
                             case NKFiroe nk -> {
                                 // Search failed - result is NK (not found)
                                 setNyes(Nyes.CONSTANT);
+                                return 1;
                             }
                             default -> {
                                 // Search succeeded - step the result until it's fully evaluated
                                 if (searchResult.isNye()) {
                                     searchResult.step();
-                                    return;
+                                    return 1;
                                 }
                                 // Check if result is Constanic (not NK)
                                 if (searchResult.atConstanic()) {
                                     setNyes(Nyes.CONSTANIC);
-                                    return;
+                                    return 1;
                                 }
                                 // Result is CONSTANT - we're done
                                 setNyes(Nyes.CONSTANT);
+                                return 1;
                             }
                         }
                     }
                 }
+                return 1;
             }
-            default -> super.step();
+            default -> {
+                return super.step();
+            }
         }
     }
 

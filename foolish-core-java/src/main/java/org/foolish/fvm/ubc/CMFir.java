@@ -23,20 +23,20 @@ public class CMFir extends FiroeWithBraneMind {
         // We manage 'o' stepping manually in step(), not in braneMind
     }
 
-    public void step() {
+    public int step() {
         if (!isInitialized()) {
             initialize();
-            return;
+            return 1;
         }
 
-        if (getNyes() == Nyes.CONSTANT) return;
+        if (getNyes() == Nyes.CONSTANT) return 0;
 
         // Phase A: Step o until it is CONSTANT or CONSTANIC
         if (!phaseBStarted) {
             // Check if o is CONSTANIC *before* stepping.
             if (isConstanic(o)) {
                 startPhaseB();
-                return;
+                return 1;
             }
 
             try {
@@ -49,12 +49,13 @@ public class CMFir extends FiroeWithBraneMind {
                 // If o becomes CONSTANT, we check if it is Constanic (e.g. NK).
                 if (o.isConstanic()) {
                     startPhaseB();
-                    return;
+                    return 1;
                 }
 
                 setNyes(Nyes.CONSTANT);
-                return;
+                return 1;
             }
+            return 1;
         } else {
             // Phase B: Step o2 (the clone in the new context)
             o2.step();
@@ -66,6 +67,7 @@ public class CMFir extends FiroeWithBraneMind {
                 // If o2 ends up constanic, we're also constanic
                 setNyes(Nyes.CONSTANIC);
             }
+            return 1;
         }
     }
 

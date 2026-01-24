@@ -25,9 +25,11 @@ case class CharacterizedIdentifier(id: String, characterization: String = ""):
   /** Checks if this identifier has a non-empty characterization */
   def hasCharacterization: Boolean = characterization.nonEmpty
 
-  /** Returns the full characterized identifier string in Foolish syntax */
+  /** Returns the full characterized identifier string in Foolish syntax
+   *  Note: characterization from canonicalCharacterization() already includes trailing '
+   */
   def toFoolishString: String =
-    if hasCharacterization then s"$characterization'$id"
+    if hasCharacterization then s"$characterization$id"
     else id
 
   override def toString: String = toFoolishString

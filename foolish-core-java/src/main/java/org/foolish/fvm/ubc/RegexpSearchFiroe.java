@@ -27,11 +27,23 @@ public class RegexpSearchFiroe extends AbstractSearchFiroe {
     protected FIR executeSearch(BraneFiroe target) {
         Query.RegexpQuery query = new Query.RegexpQuery(pattern);
         BraneMemory targetMemory = target.braneMemory;
-        int searchFrom = targetMemory.size() - 1;
 
         Optional<Pair<Integer, FIR>> result = switch (operator) {
-            case REGEXP_LOCAL -> targetMemory.getLocal(query, searchFrom);
-            case REGEXP_GLOBAL -> targetMemory.get(query, searchFrom);
+            case REGEXP_LOCAL -> {
+                // Backward search: search from end to start (find last match)
+                int searchFrom = targetMemory.size() - 1;
+                yield targetMemory.getLocal(query, searchFrom);
+            }
+            case REGEXP_FORWARD_LOCAL -> {
+                // Forward search: search from start to end (find first match)
+                int searchFrom = 0;
+                yield targetMemory.getLocalForward(query, searchFrom);
+            }
+            case REGEXP_GLOBAL -> {
+                // Global backward search (find-all, not yet fully implemented)
+                int searchFrom = targetMemory.size() - 1;
+                yield targetMemory.get(query, searchFrom);
+            }
             default -> throw new IllegalStateException("Unknown regexp operator: " + operator);
         };
 
