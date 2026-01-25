@@ -1,6 +1,7 @@
 package org.foolish.fvm.ubc;
 
 import org.foolish.ast.AST;
+import org.foolish.ast.SearchOperator;
 
 /**
  * Foolish Internal Representation (FIR).
@@ -155,6 +156,15 @@ public abstract class FIR {
             }
             case AST.OneShotSearchExpr oneShotSearch -> {
                 return new OneShotSearchFiroe(oneShotSearch);
+            }
+            case AST.DereferenceExpr dereferenceExpr -> {
+                AST.RegexpSearchExpr synthetic = new AST.RegexpSearchExpr(dereferenceExpr.anchor(), SearchOperator.REGEXP_LOCAL, dereferenceExpr.coordinate().toString());
+                return new RegexpSearchFiroe(synthetic) {
+                    @Override
+                    public String toString() {
+                        return dereferenceExpr.toString();
+                    }
+                };
             }
             case AST.SeekExpr seekExpr -> {
                 // TODO: Implement SeekFiroe when needed
