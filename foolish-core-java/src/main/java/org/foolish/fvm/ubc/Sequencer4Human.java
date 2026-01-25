@@ -43,7 +43,7 @@ public class Sequencer4Human extends Sequencer<String> {
             case SearchUpFiroe searchUp -> sequenceSearchUp(searchUp, depth);
             case AssignmentFiroe assignment -> sequenceAssignment(assignment, depth);
             case IdentifierFiroe identifier -> sequenceIdentifier(identifier, depth);
-            case OneShotSearchFiroe oneShotSearch -> sequenceOneShotSearch(oneShotSearch, depth);
+            case AbstractSearchFiroe search -> sequenceSearch(search, depth);
             case null, default -> indent(depth) + NK_STR;
         };
     }
@@ -221,19 +221,19 @@ public class Sequencer4Human extends Sequencer<String> {
         return indent(depth) + NK_STR;
     }
 
-    protected String sequenceOneShotSearch(OneShotSearchFiroe oneShotSearch, int depth) {
-        if (!oneShotSearch.isNye()) {
+    protected String sequenceSearch(AbstractSearchFiroe search, int depth) {
+        if (!search.isNye()) {
             // Use atConstanic() to check for exactly CONSTANIC state (unresolved)
-            if (oneShotSearch.atConstanic()) {
+            if (search.atConstanic()) {
                 return indent(depth) + CC_STR;
             }
             // If the result is a brane, we need to handle it gracefully
             try {
-                return indent(depth) + oneShotSearch.getValue();
+                return indent(depth) + search.getValue();
             } catch (UnsupportedOperationException e) {
-                 // It might be a brane or something else that doesn't support getValue()
-                 // Use sequence() recursively on the result if we can access it
-                 return sequence(oneShotSearch.getResult(), depth);
+                // It might be a brane or something else that doesn't support getValue()
+                // Use sequence() recursively on the result if we can access it
+                return sequence(search.getResult(), depth);
             }
         }
         return indent(depth) + NK_STR;
