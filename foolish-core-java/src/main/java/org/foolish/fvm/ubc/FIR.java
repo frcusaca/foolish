@@ -152,6 +152,9 @@ public abstract class FIR {
                 return new IdentifierFiroe(identifier);
             }
             case AST.RegexpSearchExpr regexpSearch -> {
+                if (DerefSearchFiroe.isExactMatch(regexpSearch.pattern())) {
+                    return new DerefSearchFiroe(regexpSearch);
+                }
                 return new RegexpSearchFiroe(regexpSearch);
             }
             case AST.OneShotSearchExpr oneShotSearch -> {
@@ -159,12 +162,7 @@ public abstract class FIR {
             }
             case AST.DereferenceExpr dereferenceExpr -> {
                 AST.RegexpSearchExpr synthetic = new AST.RegexpSearchExpr(dereferenceExpr.anchor(), SearchOperator.REGEXP_LOCAL, dereferenceExpr.coordinate().toString());
-                return new RegexpSearchFiroe(synthetic) {
-                    @Override
-                    public String toString() {
-                        return dereferenceExpr.toString();
-                    }
-                };
+                return new DerefSearchFiroe(synthetic, dereferenceExpr);
             }
             case AST.SeekExpr seekExpr -> {
                 // TODO: Implement SeekFiroe when needed
