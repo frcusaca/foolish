@@ -1,0 +1,18 @@
+{
+	data = {a=10; b=20; c=30; d=40; e=50;};
+
+	!! Forward search (zero-based indexing)
+	first = data#0;      !! First value: 10
+	second = data#1;     !! Second value: 20
+
+	!! Backward search (negative indexing)
+	last = data#-1;      !! Last value: 50
+	second_last = data#-2;   !! Second-to-last: 40
+
+	!! Out of bounds
+	oob_pos = data#5;    !! Should be ???
+	oob_neg = data#-6;   !! Should be ???
+
+	!! Empty brane
+	empty = {}#0;        !! Should be ???
+}

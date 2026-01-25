@@ -157,8 +157,7 @@ public abstract class FIR {
                 return new OneShotSearchFiroe(oneShotSearch);
             }
             case AST.SeekExpr seekExpr -> {
-                // TODO: Implement SeekFiroe when needed
-                return new NKFiroe();
+                return new SeekFiroe(seekExpr);
             }
             default -> {
                 // Placeholder for unsupported types
