@@ -100,6 +100,7 @@ primary
     : characterizable
     | LPAREN expr RPAREN
     | UNKNOWN
+    | HASH MINUS INTEGER  // Unanchored backward seek: #-1, #-2, etc.
     ;
 
 ifExpr

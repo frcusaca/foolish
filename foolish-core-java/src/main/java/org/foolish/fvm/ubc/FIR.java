@@ -167,6 +167,9 @@ public abstract class FIR {
             case AST.SeekExpr seekExpr -> {
                 return new SeekFiroe(seekExpr);
             }
+            case AST.UnanchoredSeekExpr unanchoredSeekExpr -> {
+                return new UnanchoredSeekFiroe(unanchoredSeekExpr);
+            }
             default -> {
                 // Placeholder for unsupported types
                 return new NKFiroe();

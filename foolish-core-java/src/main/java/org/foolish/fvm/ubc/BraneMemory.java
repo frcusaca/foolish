@@ -34,6 +34,14 @@ public class BraneMemory implements Iterable<FIR> {
         }
     }
 
+    public int getMyPos() {
+        return myPos.orElse(-1);
+    }
+
+    public BraneMemory getParent() {
+        return parent;
+    }
+
     public void setParent(BraneMemory parent) {
         this.parent = parent;
     }

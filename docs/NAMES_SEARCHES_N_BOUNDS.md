@@ -607,12 +607,6 @@ The most basic form of liberation lists the identifiers you want to liberate fro
 [a, b]  !! Liberate identifiers 'a' and 'b'
 ```
 
-You can also write it with explicit `???` assignments to emphasize these are free variables:
-
-```foolish
-[a=???; b=???;]  !! Equivalent: explicitly showing free variables
-```
-
 When you place a liberation brane before a regular brane, you're creating a function with parameters:
 
 ```foolish
@@ -718,15 +712,17 @@ specify detachment that sets not only the expectation for what needs to be provi
 happens when that expectation is not fulfilled:
 
 ```foolish
-f=[r=???; pi=3.14]{
-	pir = pi * r
-	area = pir * r
-	circumference = 2*pir
+{
+	f=[r; pi=3.14]{
+		pir = pi * r
+		area = pir * r
+		circumference = 2*pir
+	}
+	
+	c       = {r=2} f
+	c_hires = {r=2, pi=3.14159} f
+	c_huh   =$ [r=4] f  !! c_huh = 25.12;
 }
-
-c       = {r=2} f
-c_hires = {r=2, pi=3.14159} f
-c_huh   =$ [r=4] f  !! c_huh = 25.12;
 ```
 
 Note, though, that the binding of RHS within the detachments are again within the scope of the
@@ -744,7 +740,7 @@ before other brane operations.
 
 Foolish provides three distinct types of liberation branes for different use cases:
 
-#### Type 1: Backward Search Liberation `[-...]` or `[...]` (Default)
+#### Type 1: RHS blockage in [-...]` or `[...]` (Default)
 
 The standard liberation brane performs **backward search** to match identifiers that should NOT be
 resolved. **This is opposite behavior from normal branes**: in `[a]`, the `a` means "don't find
@@ -763,7 +759,7 @@ identifier `a`", while in `{a}`, the `a` means "find `a` and use its value."
 }
 ```
 
-**Pattern Matching:**
+**Pattern Matching RHS:**
 
 ```foolish
 {
@@ -778,24 +774,37 @@ identifier `a`", while in `{a}`, the `a` means "find `a` and use its value."
 }
 ```
 
-#### Type 2: Forward Search Liberation `[/...]` and `[#N]`
+#### Type 2: LHS Pattern Matching in [-...]` or `[...]`
+Detachment by LHS is written in detachment brane as forward searches or seek offsets. All of these fn's
+have intermediate set at CONSTANIC after step(). fn1, fn2 and fn3 have CONSTANIC intermeidate because a,
+b or both did not resolve due to detachment brane. fn3, fn4, fn5 and fn6 did not compute intermediate
+because it was blocked either by forward search (meaning find LHS maching identifier) or by offset search,
+which means block those offsets in the subsequent brane.
 
-A statement in the liberation brane prefixed with `/` means **forward search into the subsequent
-brane**. It liberates any expression assigned to identifiers matching the pattern. The `#` similarly
-identifies statements by number for liberation.
+```foo
+{
+    fn1 = [a,b]{ intermediate=a+b; result = intermediate+1};
+    fn2 = [a]{ intermediate=a+b; result = intermediate+1};
+    fn3 = [b]{ intermediate=a+b; result = intermediate+1};
+    fn4 = [~intermediate]{ intermediate=a+b; result = intermediate+1}; !! '~' says to search forward in this case into next brane
+    fn5 = [#0]{ intermediate=a+b; result = intermediate+1};            !! Seeks in detachment branes are anchored to the next brane
+    fn6 = [#-2]{ intermediate=a+b; result = intermediate+1};
+}
 
-**Forward Search by Name:**
+Another example of LHS by name:
 
 ```foolish
 {
-	!! Forward search: liberate the 'ingredient' identifier
-	recipe = [/ingredient]{
+    flouer = roses;
+    sugar  = sucrose;
+    eggs   = on;
+	recipe = [~ingredient]{
 		step1 = "mix";
 		ingredient = ?flour + ?sugar + ?eggs;
 		step2 = "bake";
 	};
 
-	!! recipe is constanic - will gain value when flour, sugar, eggs provided
+	!! recipe is constanic - will gain value later when we coordinate with flour, sugar, eggs
 
 	!! Provide context:
 	flour = 1;
@@ -810,7 +819,7 @@ identifies statements by number for liberation.
 }
 ```
 
-**Forward Search by Statement Number:**
+Another example of LHS by seeking offsets:
 
 ```foolish
 {
@@ -821,7 +830,7 @@ identifies statements by number for liberation.
 		output = secret * 2;  !! statement 2
 	};
 
-	!! process is constanic
+	!! process is constanic, password is not even CONSTANIC
 
 	password = 5;
 	result =$ process.output;  !! result = 10
@@ -829,7 +838,7 @@ identifies statements by number for liberation.
 ```
 
 **Implementation Note**: When a brane is a concatenation of liberation followed by brane, the
-liberation is removed before identification, ordination, and coordination.
+liberation is removed before the next identification, ordination, or coordination.
 
 #### Type 3: P-Brane (Plus Brane / Precise Brane) `[+...]` - Undetachment
 
@@ -842,7 +851,7 @@ certain identifiers while keeping others free.
 ```foolish
 {
 	!! Define constanic brane with forward search liberation
-	secure = [/a, /b, /c]{
+	secure = [~a, ~b, ~c]{
 		a = ?secret_a;
 		b = ?secret_b;
 		c = ?secret_c;
@@ -855,20 +864,24 @@ certain identifiers while keeping others free.
 
 	!! P-brane: selectively bind only secret_a and secret_b
 	!! Everything else remains liberated
-	partial =$ [+ secret_a, secret_b] secure.result;
+	partial =$ [+ secret_a, secret_b]<secure>;
 	!! partial is still constanic because secret_c not resolved
 
 	!! Fully bind all three
-	full =$ [+ secret_a, secret_b, secret_c] secure.result;  !! full = 60
+	full =$ [+ secret_a, secret_b, secret_c]<secure>;  !! full = 60
 }
 ```
+NOTE. the P-Brane `[+ ...]` can only be applied to an expression surrounded by SF marker. During
+conversion from AST to FIR, the UBC shall reject p-brane operating on expressiosn that are not
+foolish detachment branes ('[+ ...][]...') or SF-marked brane reference('[+ ..]<b>') However, 
+SF markers('<' and '>') can occur without p-branes.
 
 **Complex Example: Cookie Factory**
 
 ```foolish
 {
 	!! Liberate multiple ingredients using forward search
-	bake = [/secret_sauce, /secret_recipe]{
+	bake = [~secret_sauce, ~secret_recipe]{
 		base = "dough";
 		flavor = secret_sauce + secret_recipe;
 		extra = secret_key;  !! Not liberated - will bind if available
@@ -880,7 +893,7 @@ certain identifiers while keeping others free.
 	secret_key = "sprinkles";
 
 	!! P-brane: bind only sauce and recipe, keep key liberated
-	result = [+ secret_sauce, secret_recipe] bake.cookie;
+	result = [+ secret_sauce, secret_recipe]<bake>.cookie;
 	!! result = "dough" + "chocolate" + "vanilla" + "sprinkles"
 }
 ```
@@ -900,11 +913,11 @@ Consider this example:
 ```foolish
 {
 	universal_constant = 42;
-	f = [↑=???]{result=↑#-1 + ↑#-2 - universal_constant};
+	f = [↑]{result=↑#-1 + ↑#-2 - universal_constant};
 }
 ```
 
-The `[↑=???]` detachment blocks ALL references to variables from the parent brane and above. So
+The `[↑]` detachment blocks ALL references to variables from the parent brane and above. So
 `universal_constant` will NOT be found in the outer scope—instead, it must be specified by the
 caller as a parameter. The detachment creates a **bound** on the search space.
 
@@ -921,7 +934,7 @@ detachment:
 
 ```foolish
 {
-	f = [↑=???]{result=↑#-1 + ↑#-2};  !! With detachment
+	f = [↑]{result=↑#-1 + ↑#-2};  !! With detachment
 }
 ```
 
@@ -1073,18 +1086,18 @@ order follows three levels of precedence:
 
 **Level 1 (Highest): Left-Associate Liberation Branes**
 
-All liberation branes (of any type: `[-...]`, `[/...]`, `[+...]`) left associate with each other.
+All liberation branes (of any type: `[-...]`, `[+...]`) left associate with each other.
 "Left associate" means the left-most brane has the final say, then second-left-most, etc.
 
 **Level 2 (Second): Liberation Right-Associates with Branes**
 
-Liberation brane right associates with branes. Expression `[]{}{}`  processes liberation first
-unless parenthesized.
+Liberation brane right associates with branes. Expression `{}[]{}{}`  processes liberation with
+brane on its right first unless parenthesized.
 
 **Level 3 (Third): Brane Free Association**
 
 (Possibly liberated) branes concatenate with other (possibly liberated) branes. These branes can
-freely associate right or left with no difference in semantics.
+freely associate right or left with no difference in semantics. Brane-brane concatenation is associative.
 
 #### Precedence Examples
 
@@ -1135,15 +1148,21 @@ Let's explore copious examples to illustrate these precedence rules thoroughly:
 	b = 2;
 	c = 3;
 
-	!! [a,b][+a] left associates
+	!! [+a][a,b] left associates
 	!! First [a,b] liberates both, then [+a] undetaches only 'a'
 	!! Final result: 'b' is liberated, 'a' is bound
-	result = [a,b][+a]{x = a + b + c;};
+	result = [+a][a,b]{x = a + b + c;};
 
 	!! When called:
 	value =$ {b=20;} result;  !! value = 24 (a=1 from outer, b=20 from call, c=3 from outer)
 }
 ```
+Recall the  semantics for finding a in the result computation above is to search for a. It would
+find the 'a', but before search returns, that search result passes through the modifier [a,b] (which
+marks it for detachment. Then, '[+a]' modifies that result and sets a to be findable, and therefore
+finally result is that a is found. Note, if 'a' was marked as detached after the chain, the search would
+continue backwards and up the ancestral chain until an 'a' can pass through the searhc chain, or the
+context is exhausted at which point a is CONSTANIC.
 
 **Example 4: Liberation Right-Associates with Branes**
 
@@ -1229,7 +1248,7 @@ This is crucial for keeping concatenated function branes abstract:
 ```foolish
 {
 	!! Define a constanic brane with blocked resolution
-	recipe = [/ingredient]{
+	recipe = [~ingredient]{
 		step1 = "mix";
 		ingredient = ?flour + ?sugar + ?eggs;
 		step2 = "bake";
@@ -1273,7 +1292,7 @@ This is crucial for keeping concatenated function branes abstract:
 ```foolish
 {
 	!! Define constanic brane with all liberated
-	secure = [/a, /b, /c]{
+	secure = [~a, ~b, ~c]{
 		a = ?secret_a;
 		b = ?secret_b;
 		c = ?secret_c;
@@ -1313,10 +1332,10 @@ This is crucial for keeping concatenated function branes abstract:
 ```foolish
 {
 	!! Define a constanic function factory
-	make_counter = [/start, /step]{
+	make_counter = [~start, ~step]{
 		count = start;
 		increment = {count = count + step;};
-		get = {count;};
+		get = count;
 	};
 
 	!! Create two different counters with different contexts
@@ -1329,13 +1348,13 @@ This is crucial for keeping concatenated function branes abstract:
 	counter2 = make_counter;
 
 	!! Use counters
-	c1 =$ counter1.get;  !! c1 = 0
+	c1 = counter1.get;  !! c1 = 0
 	counter1.increment;
-	c1_next =$ counter1.get;  !! c1_next = 1
+	c1_next = counter1.get;  !! c1_next = 1
 
-	c2 =$ counter2.get;  !! c2 = 100
+	c2 = counter2.get;  !! c2 = 100
 	counter2.increment;
-	c2_next =$ counter2.get;  !! c2_next = 110
+	c2_next = counter2.get;  !! c2_next = 110
 }
 ```
 
@@ -1401,14 +1420,14 @@ The Foolish names, searches, and bounds system creates a coherent model for:
 3. **Coordination**: Expressions reacting to other ordinates during UBC evaluation, becoming coordinated with brane context
 4. **Searching**: Multiple operators (`.`, `?`, `??`, `?*`, `??*`, `/`, `//`, `/*`, `//*`) to find values by name,
    pattern, or value
-5. **Liberation (Detachment)**: Using liberation branes `[...]`, `[/...]`, `[+...]` to liberate identifiers, creating free variables and abstract branes (functions)
+5. **Liberation (Detachment)**: Using liberation branes `[...]`, ``[+...]` to liberate identifiers, creating free variables and abstract branes (functions)
 6. **Bounding**: Liberation branes control scope boundaries and limit the reach of globalized searches
 
 **Liberation Terminology**:
 - **Liberate/Detach**: Free an identifier from its context, making it a free variable
 - **Liberation/Detachment**: The act of placing a liberation brane before a regular brane
 - **Liberated ordinates/Detached names**: Identifiers that have been freed
-- Three types: Backward search `[...]`, Forward search `[/...]`, P-brane/undetachment `[+...]`
+- Three types: Backward search `[...]`, P-brane/undetachment `[+...]`
 
 **Precedence** (highest to lowest):
 1. Left-associate liberation branes

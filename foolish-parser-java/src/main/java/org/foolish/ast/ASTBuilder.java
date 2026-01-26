@@ -242,6 +242,11 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
     public AST visitPrimary(FoolishParser.PrimaryContext ctx) {
         if (ctx.characterizable() != null) return visit(ctx.characterizable());
         if (ctx.expr() != null) return visit(ctx.expr());
+        // Handle unanchored backward seek: #-N
+        if (ctx.HASH() != null && ctx.MINUS() != null && ctx.INTEGER() != null) {
+            int offset = -Integer.parseInt(ctx.INTEGER().getText());
+            return new AST.UnanchoredSeekExpr(offset);
+        }
         return AST.UnknownExpr.INSTANCE;
     }
 
