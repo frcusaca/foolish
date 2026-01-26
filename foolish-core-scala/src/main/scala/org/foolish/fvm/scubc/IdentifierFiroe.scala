@@ -50,7 +50,7 @@ class IdentifierFiroe(override val ast: AST.Identifier)
   override protected def initialize(): Unit = ()
 
   /**
-   * Implement the step method, during resolution phase we use the branemind
+   * Implement the step method, during checking phase we use the branemind
    * to find the value of the identifier and store a reference to it for getValue()
    */
   override def step(): Unit =
@@ -62,7 +62,7 @@ class IdentifierFiroe(override val ast: AST.Identifier)
         if value == null then
           setNyes(Nyes.CONSTANIC)
         else
-          setNyes(Nyes.RESOLVED)
+          setNyes(Nyes.CHECKED)
       case _ =>
         super.step()
 

@@ -152,11 +152,15 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
 
   protected def sequenceOneShotSearch(oneShotSearch: OneShotSearchFiroe, depth: Int): String =
     if !oneShotSearch.isNye then
-      if oneShotSearch.isAbstract then
-        indent(depth) + NK_STR
-      else
-        // Use sequence() recursively on the result if we can access it
+      // Check if search found nothing - not found is CONSTANIC
+      if !oneShotSearch.isFound then
+        indent(depth) + CC_STR
+      else if oneShotSearch.atConstant then
+        // Found and CONSTANT - use sequence() recursively on the result
         sequence(oneShotSearch.getResult, depth)
+      else
+        // Search found something but it's CONSTANIC (unresolved)
+        indent(depth) + CC_STR
     else
       indent(depth) + NK_STR
 

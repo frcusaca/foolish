@@ -82,7 +82,7 @@ class CMFirUnitTest {
         AssignmentFiroe o = new AssignmentFiroe(rAssign);
         // Step o in empty context -> should be abstract
         o.step(); // Initialize
-        // Note: o is REFERENCES_IDENTIFIED here, not yet done or abstract.
+        // Note: o is CHECKED here, not yet done or abstract.
         // We removed the incorrect assertion.
 
         // 3. Create CMFir wrapping 'o'

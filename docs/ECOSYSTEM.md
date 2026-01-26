@@ -191,7 +191,7 @@ evaluation stages from UNINITIALIZED through CONSTANT):
 1. **AST** - uncoordinated, unevaluated
 2. **NYE** (Not Yet Evaluated) - FIR with some NYE ordinates (In progress, another UBC step may produce changes)
 3. **CONSTANIC** (pronounced "cons-TAN-tic", constant in context) - FIR with all ordinates coordinated as much as possible in current context; may gain value when associated with new context
-4. **CONSTANT** - FIR with all evaluation results fully coordinated (Completion, another UBC does nothing). During coordination, a brane may stay CONSTANT or transition from CONSTANIC to ALLOCATED if it started constanic.
+4. **CONSTANT** - FIR with all evaluation results fully coordinated (Completion, another UBC does nothing). During coordination, a brane may stay CONSTANT or transition from CONSTANIC to CHECKED if it started constanic.
 
 **State Rendering in Output:**
 

@@ -63,8 +63,8 @@
 - [ ] Implement p-brane selective binding
 - [ ] Implement detachment removal before identification/ordination/coordination
 - [ ] Implement brane concatenation chain processing
-- [ ] Update FIR state machine to include CONSTANIC stage
-- [ ] Implement CONSTANIC → ALLOCATED transition during coordination
+- [x] Update FIR state machine to include CONSTANIC stage (completed)
+- [ ] Implement CONSTANIC → CHECKED transition during coordination
 
 ---
 

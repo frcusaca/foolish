@@ -129,14 +129,13 @@ When a level-skipping search finds an identifier whose value is CONSTANIC, the r
 }
 ```
 
-### TODO: Resolve Stage Semantics
+### CHECKED Stage Semantics
 
-**Status:** Needs clarification
+**Status:** Implemented
 
-The RESOLVED state currently acts as a transitional state before search execution, but its relationship to CONSTANIC needs better documentation. Questions:
-- What exactly does RESOLVED mean for a search?
-- Can a search remain RESOLVED indefinitely?
-- How does RESOLVED relate to the anchor's constancy?
+The CHECKED state represents completion of type/reference checking and validation. It's a transitional state between INITIALIZED and EVALUATING where the search anchor and parameters are validated. The state machine progression is:
+
+UNINITIALIZED → INITIALIZED → CHECKED → EVALUATING → CONSTANIC → CONSTANT
 
 ### TODO: Recursive Search Behavior
 

@@ -227,18 +227,24 @@ public class Sequencer4Human extends Sequencer<String> {
 
     protected String sequenceSearch(AbstractSearchFiroe search, int depth) {
         if (!search.isNye()) {
-            // Use atConstanic() to check for exactly CONSTANIC state (unresolved)
-            if (search.atConstanic()) {
+            // Check if search found nothing - not found is CONSTANIC
+            if (!search.isFound()) {
                 return indent(depth) + CC_STR;
             }
-            // If the result is a brane, we need to handle it gracefully
-            try {
-                return indent(depth) + search.getValue();
-            } catch (UnsupportedOperationException e) {
-                // It might be a brane or something else that doesn't support getValue()
-                // Use sequence() recursively on the result if we can access it
-                return sequence(search.getResult(), depth);
+            // Search found something - check if it's fully evaluated (CONSTANT)
+            if (search.atConstant()) {
+                // Found and CONSTANT - get the value
+                // If the result is a brane, we need to handle it gracefully
+                try {
+                    return indent(depth) + search.getValue();
+                } catch (UnsupportedOperationException e) {
+                    // It might be a brane or something else that doesn't support getValue()
+                    // Use sequence() recursively on the result if we can access it
+                    return sequence(search.getResult(), depth);
+                }
             }
+            // Search found something but it's CONSTANIC (unresolved)
+            return indent(depth) + CC_STR;
         }
         return indent(depth) + NK_STR;
     }

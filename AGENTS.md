@@ -133,11 +133,11 @@ The **UBC is the reference implementation of Foolish**. It implements a unique e
 FIR objects represent expressions during evaluation and progress through a multi-stage state machine:
 
 ```
-UNINITIALIZED → INITIALIZED → REFERENCES_IDENTIFIED → ALLOCATED
-  → RESOLVED → EVALUATING → CONSTANT
+UNINITIALIZED → INITIALIZED → CHECKED → EVALUATING → CONSTANIC → CONSTANT
 ```
 
-Only `CONSTANT` means fully evaluated (not "nye" = Not Yet Evaluated).
+- `CONSTANT`: Fully evaluated (not "nye" = Not Yet Evaluated)
+- `CONSTANIC` (say "CON-STAN-NICK"): CONSTANt IN Context - evaluation paused due to missing information (unbound identifiers)
 
 **Key FIR Types:**
 - `ValueFiroe` - constants (integers, strings)

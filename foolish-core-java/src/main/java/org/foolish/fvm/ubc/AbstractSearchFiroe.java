@@ -60,6 +60,7 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
     protected FIR searchResult = null;
     protected FIR unwrapAnchor = null;
     protected boolean searchPerformed = false;
+    protected boolean found = false;
 
     protected AbstractSearchFiroe(AST.Expr ast, SearchOperator operator) {
         super(ast);
@@ -91,11 +92,13 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
                             }
                             case NKFiroe nk -> {
                                 // Search failed - result is NK (not found)
+                                found = false;
                                 setNyes(Nyes.CONSTANT);
                                 return 1;
                             }
                             default -> {
                                 // Search succeeded - step the result until it's fully evaluated
+                                found = true;
                                 if (searchResult.isNye()) {
                                     searchResult.step();
                                     return 1;
@@ -314,6 +317,19 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
         return searchResult;
     }
 
+    /**
+     * Returns whether the search found a result.
+     * A search is "found" if the result is not NKFiroe.
+     *
+     * Semantics:
+     * - isFound() && CONSTANT: search found and result is fully evaluated
+     * - isFound() && CONSTANIC: search found but result is unresolved
+     * - !isFound() && CONSTANIC: search not found (only valid state for not found)
+     * - !isFound() && CONSTANT: invalid - should not occur
+     */
+    public boolean isFound() {
+        return found;
+    }
 
     public long getValue() {
         if (searchResult == null) {

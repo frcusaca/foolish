@@ -9,6 +9,7 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
   protected var searchResult: FIR = _
   protected var unwrapAnchor: FIR = _
   protected var searchPerformed: Boolean = false
+  protected var found: Boolean = false
 
   override protected def initialize(): Unit = {
     setInitialized()
@@ -18,18 +19,10 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
   override def step(): Unit = {
     getNyes match {
       case Nyes.INITIALIZED =>
-        if (stepNonBranesUntilState(Nyes.REFERENCES_IDENTIFIED)) {
-          setNyes(Nyes.REFERENCES_IDENTIFIED)
+        if (stepNonBranesUntilState(Nyes.CHECKED)) {
+          setNyes(Nyes.CHECKED)
         }
-      case Nyes.REFERENCES_IDENTIFIED =>
-        if (stepNonBranesUntilState(Nyes.ALLOCATED)) {
-          setNyes(Nyes.ALLOCATED)
-        }
-      case Nyes.ALLOCATED =>
-        if (stepNonBranesUntilState(Nyes.RESOLVED)) {
-          setNyes(Nyes.RESOLVED)
-        }
-      case Nyes.RESOLVED =>
+      case Nyes.CHECKED =>
         if (stepNonBranesUntilState(Nyes.CONSTANT)) {
           if (isAnchorReady) {
             performSearchStep()
@@ -37,6 +30,11 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
               return
             }
             if (searchResult != null) {
+              // Set found status based on result type
+              searchResult match {
+                case _: NKFiroe => found = false
+                case _ => found = true
+              }
               setNyes(Nyes.CONSTANT)
             }
           }
@@ -214,6 +212,18 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
   protected def executeSearch(target: BraneFiroe): FIR
 
   def getResult: FIR = searchResult
+
+  /**
+   * Returns whether the search found a result.
+   * A search is "found" if the result is not NKFiroe.
+   *
+   * Semantics:
+   * - isFound() && CONSTANT: search found and result is fully evaluated
+   * - isFound() && CONSTANIC: search found but result is unresolved
+   * - !isFound() && CONSTANIC: search not found (only valid state for not found)
+   * - !isFound() && CONSTANT: invalid - should not occur
+   */
+  def isFound: Boolean = found
 
   override def isAbstract: Boolean = {
     if (searchResult == null) return true

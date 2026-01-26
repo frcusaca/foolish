@@ -109,12 +109,12 @@ These operators for finding all matches are **reserved for future implementation
 
 The search process follows these phases:
 
-1. **INITIALIZED → REFERENCES_IDENTIFIED**: Step non-brane expressions
-2. **REFERENCES_IDENTIFIED → ALLOCATED**: Continue stepping
-3. **ALLOCATED → RESOLVED**: Continue stepping until anchor is ready
-4. **RESOLVED → CONSTANT/CONSTANIC**: Perform search and evaluate result
+1. **INITIALIZED → CHECKED**: Step non-brane expressions until checked
+2. **CHECKED → CONSTANT/CONSTANIC**: Perform search and evaluate result
 
-Key method: `performSearchStep()` in AbstractSearchFiroe.java:163-263
+State transitions: UNINITIALIZED → INITIALIZED → CHECKED → EVALUATING → CONSTANIC → CONSTANT
+
+Key method: `performSearchStep()` in AbstractSearchFiroe
 
 ### Anchor Unwrapping
 
@@ -148,8 +148,8 @@ Example test case needed:
 }
 ```
 
-### Resolve Stage Semantics
-The RESOLVED state needs clearer semantics. Currently it acts as a transitional state before search execution, but its relationship to CONSTANIC needs documentation.
+### Checked Stage Semantics
+The CHECKED state represents the completion of type/reference checking and validation. It's a transitional state before EVALUATING where the search anchor and parameters are validated.
 
 ### Recursive Search Behavior
 Recursive searches (searches that reference themselves) may behave differently and need special handling. This is not yet fully specified or tested.

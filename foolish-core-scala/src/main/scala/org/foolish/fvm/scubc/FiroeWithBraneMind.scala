@@ -57,10 +57,8 @@ abstract class FiroeWithBraneMind(ast: AST, comment: Option[String] = None) exte
    *
    * State transitions:
    * - UNINITIALIZED → INITIALIZED: Initialize this FIR
-   * - INITIALIZED → REFERENCES_IDENTIFIED: Step non-branes only until all are REFERENCES_IDENTIFIED
-   * - REFERENCES_IDENTIFIED → ALLOCATED: Step non-branes only until all are ALLOCATED
-   * - ALLOCATED → RESOLVED: Step non-branes only until all are RESOLVED
-   * - RESOLVED → EVALUATING: Immediate transition when detected
+   * - INITIALIZED → CHECKED: Step non-branes only until all are CHECKED
+   * - CHECKED → EVALUATING: Immediate transition when detected
    * - EVALUATING → CONSTANT: Step everything (including branes) until all complete
    *
    * Derived classes should override this method and call super.step() as needed.
@@ -73,24 +71,12 @@ abstract class FiroeWithBraneMind(ast: AST, comment: Option[String] = None) exte
         setNyes(Nyes.INITIALIZED)
 
       case Nyes.INITIALIZED =>
-        // Step non-brane expressions until all are REFERENCES_IDENTIFIED
-        if stepNonBranesUntilState(Nyes.REFERENCES_IDENTIFIED) then
-          // All non-branes have reached REFERENCES_IDENTIFIED
-          setNyes(Nyes.REFERENCES_IDENTIFIED)
+        // Step non-brane expressions until all are CHECKED
+        if stepNonBranesUntilState(Nyes.CHECKED) then
+          // All non-branes have reached CHECKED
+          setNyes(Nyes.CHECKED)
 
-      case Nyes.REFERENCES_IDENTIFIED =>
-        // Step non-brane expressions until all are ALLOCATED
-        if stepNonBranesUntilState(Nyes.ALLOCATED) then
-          // All non-branes have reached ALLOCATED
-          setNyes(Nyes.ALLOCATED)
-
-      case Nyes.ALLOCATED =>
-        // Step non-brane expressions until all are RESOLVED
-        if stepNonBranesUntilState(Nyes.RESOLVED) then
-          // All non-branes have reached RESOLVED
-          setNyes(Nyes.RESOLVED)
-
-      case Nyes.RESOLVED =>
+      case Nyes.CHECKED =>
         // Immediate transition to EVALUATING when step() is called
         setNyes(Nyes.EVALUATING)
 

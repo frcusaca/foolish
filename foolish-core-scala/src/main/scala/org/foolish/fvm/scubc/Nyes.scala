@@ -8,9 +8,11 @@ package org.foolish.fvm.scubc
  * lifecycle, with transitions managed through the FIR.setNyes() method.
  *
  * The evaluation flow typically progresses as follows:
- * UNINITIALIZED → INITIALIZED → REFERENCES_IDENTIFIED → ALLOCATED → RESOLVED → EVALUATING → CONSTANT
+ * UNINITIALIZED → INITIALIZED → CHECKED → EVALUATING → CONSTANIC → CONSTANT
  *
- * Only CONSTANT represents a fully evaluated state where isNye() returns false.
+ * CONSTANIC (say "CON-STAN-NICK") represents a state where evaluation has paused due to missing information (e.g. unbound identifiers),
+ * but could resume in a different context. CONSTANt IN Context - "Stay Foolish" state.
+ * CONSTANT represents a fully evaluated, immutable state (Result or Error).
  */
 enum Nyes:
   /**
@@ -26,28 +28,14 @@ enum Nyes:
   case INITIALIZED
 
   /**
-   * All referenced identifiers collected (not including sub-branes).
-   * For non-brane expressions: step() until it reaches RESOLVED state.
-   * For branes: step() until it reaches REFERENCES_IDENTIFIED state.
-   * Transition taken care of by step().
-   */
-  case REFERENCES_IDENTIFIED
-
-  /**
+   * Type/reference checking completed.
+   * Reserved for future type checking and reference validation.
+   * Currently used as a transitional state between INITIALIZED and EVALUATING.
    * AB (Abstract Brane), IB (Implementation Brane) established firmly.
+   * All variables for an expression are collected and validated.
    * Transition taken care of by step().
    */
-  case ALLOCATED
-
-  /**
-   * All variables for an expression are resolved.
-   * For non-brane expressions: step() until it reaches RESOLVED state.
-   * For branes: identifiers that can be resolved are resolved.
-   * Branes should step until non-brane expressions are resolved.
-   * For now, stub this branch for other expressions and return ???.
-   * Transition taken care of by step().
-   */
-  case RESOLVED
+  case CHECKED
 
   /**
    * Take a step() as we do currently, including branes.
@@ -57,9 +45,12 @@ enum Nyes:
   case EVALUATING
 
   /**
-   * The evaluation has halted because a required resource was not found.
-   * The FIR is "stuck" in a constanic state.
-   * Like CONSTANT, it is a terminal state.
+   * Like CONSTANT, it is a terminal state as far as step() is concerned.
+   * Evaluation halted due to missing information (unbound identifiers).
+   * It is CONSTANt IN Context (say "CON-STAN-NICK"). It is constant if context does not change.
+   * It is not required that this FIR do change for some context. But
+   * for computational efficiency, it would be best if Constanic state
+   * only happens for a FIR that is expected to change if context changes.
    */
   case CONSTANIC
 
