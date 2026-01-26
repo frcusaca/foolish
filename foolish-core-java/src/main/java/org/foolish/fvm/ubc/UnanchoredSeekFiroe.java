@@ -71,45 +71,47 @@ public class UnanchoredSeekFiroe extends FiroeWithBraneMind {
     public int step() {
         switch (getNyes()) {
             case INITIALIZED -> {
-                // Find the actual brane's memory by traversing up the parent chain
-                // We need to go all the way to the top-level brane (BraneFiroe) which contains
-                // the actual statements. Intermediate FIRs (BinaryFiroe, AssignmentFiroe) have
-                // empty memories.
-                BraneMemory targetMemory = braneMemory;
-                BraneMemory candidateMemory = targetMemory.getParent();
-                int stepsUp = 0;
+                // UnanchoredSeek looks within the brane it's coordinated to
+                // We need to find:
+                // 1. The brane memory containing all statements (largest memory in chain)
+                // 2. Our current position (from the memory that is a direct child of the brane memory)
 
-                // Traverse all the way up the parent chain
-                while (candidateMemory != null) {
-                    targetMemory = candidateMemory;
-                    candidateMemory = candidateMemory.getParent();
-                    stepsUp++;
+                BraneMemory targetMemory = null;
+                int maxSize = 0;
+
+                // First pass: find the largest memory (the actual brane memory)
+                BraneMemory current = braneMemory;
+                while (current != null) {
+                    if (current.size() > maxSize) {
+                        maxSize = current.size();
+                        targetMemory = current;
+                    }
+                    current = current.getParent();
                 }
 
-                // Target memory should now be the BraneFiroe's memory
-                int size = targetMemory.size();
+                // Second pass: find the myPos from the memory whose parent is the target brane memory
+                int currentPos = -1;
+                current = braneMemory;
+                while (current != null) {
+                    BraneMemory parent = current.getParent();
+                    if (parent == targetMemory && current.getMyPos() >= 0) {
+                        currentPos = current.getMyPos();
+                        break;
+                    }
+                    current = parent;
+                }
 
-                if (size == 0) {
-                    // Empty brane - out of bounds
+                if (targetMemory == null || targetMemory.size() == 0) {
+                    // No brane memory found - out of bounds
                     value = null;
                     setNyes(Nyes.CONSTANIC);
                     return 1;
                 }
 
-                // Now find the current position by checking myPos at each level going back up
-                // The last non-(-1) myPos we find tells us which statement we're in
-                BraneMemory temp = braneMemory;
-                int currentPos = -1;
-                while (temp != null) {
-                    int pos = temp.getMyPos();
-                    if (pos >= 0) {
-                        currentPos = pos;
-                    }
-                    temp = temp.getParent();
-                }
-
+                int size = targetMemory.size();
                 if (currentPos < 0) {
-                    currentPos = size - 1;  // Default to last position if not set
+                    // No position set - default to last position
+                    currentPos = size - 1;
                 }
 
                 // Calculate target index: currentPos + offset (offset is negative)

@@ -65,40 +65,42 @@ class UnanchoredSeekFiroe(seekExpr: AST.UnanchoredSeekExpr) extends FiroeWithBra
   override def step(): Unit =
     getNyes match
       case Nyes.INITIALIZED =>
-        // Find the actual brane's memory by traversing up the parent chain
-        // We need to go all the way to the top-level brane (BraneFiroe) which contains
-        // the actual statements. Intermediate FIRs (BinaryFiroe, AssignmentFiroe) have
-        // empty memories.
-        var targetMemory = braneMemory
-        var candidateMemory = targetMemory.getParent
-        var stepsUp = 0
+        // UnanchoredSeek looks within the brane it's coordinated to
+        // We need to find:
+        // 1. The brane memory containing all statements (largest memory in chain)
+        // 2. Our current position (from the memory that is a direct child of the brane memory)
 
-        // Traverse all the way up the parent chain
-        while candidateMemory != null do
-          targetMemory = candidateMemory
-          candidateMemory = candidateMemory.getParent
-          stepsUp += 1
+        var targetMemory: BraneMemory = null
+        var maxSize = 0
 
-        // Target memory should now be the BraneFiroe's memory
-        val size = targetMemory.size
+        // First pass: find the largest memory (the actual brane memory)
+        var current = braneMemory
+        while current != null do
+          if current.size > maxSize then
+            maxSize = current.size
+            targetMemory = current
+          current = current.getParent
 
-        if size == 0 then
-          // Empty brane - out of bounds
+        // Second pass: find the myPos from the memory whose parent is the target brane memory
+        var currentPos = -1
+        current = braneMemory
+        while current != null do
+          val parent = current.getParent
+          if parent == targetMemory && current.getMyPos >= 0 then
+            currentPos = current.getMyPos
+            current = null // break
+          else
+            current = parent
+
+        if targetMemory == null || targetMemory.size == 0 then
+          // No brane memory found - out of bounds
           value = null
           setNyes(Nyes.CONSTANIC)
         else
-          // Now find the current position by checking myPos at each level going back up
-          // The last non-(-1) myPos we find tells us which statement we're in
-          var temp = braneMemory
-          var currentPos = -1
-          while temp != null do
-            val pos = temp.getMyPos
-            if pos >= 0 then
-              currentPos = pos
-            temp = temp.getParent
-
+          val size = targetMemory.size
           if currentPos < 0 then
-            currentPos = size - 1  // Default to last position if not set
+            // No position set - default to last position
+            currentPos = size - 1
 
           // Calculate target index: currentPos + offset (offset is negative)
           // Example: currentPos=2, offset=-1 -> targetIdx=1 (previous statement)
