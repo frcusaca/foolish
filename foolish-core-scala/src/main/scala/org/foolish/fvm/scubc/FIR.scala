@@ -89,4 +89,5 @@ object FIR:
       val synthetic = new AST.RegexpSearchExpr(dereferenceExpr.anchor(), org.foolish.ast.SearchOperator.REGEXP_LOCAL, dereferenceExpr.coordinate().toString)
       new DerefSearchFiroe(synthetic, dereferenceExpr)
     case seekExpr: AST.SeekExpr => SeekFiroe(seekExpr)
+    case unanchoredSeekExpr: AST.UnanchoredSeekExpr => UnanchoredSeekFiroe(unanchoredSeekExpr)
     case _ => ValueFiroe(null, 0L) // Placeholder for unsupported types

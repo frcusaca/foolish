@@ -175,6 +175,11 @@ public class Sequencer4Human extends Sequencer<String> {
                     return indent(depth) + fullId + " = " + NK_STR;
                 }
 
+                // Check if the final unwrapped value is constanic
+                if (unwrapped != null && unwrapped.atConstanic()) {
+                    return indent(depth) + fullId + " = " + CC_STR;
+                }
+
                 if (unwrapped instanceof BraneFiroe brane) {
                     // For nested branes, recursively sequence them but remove the indentation from the first line
                     // since we are already indenting 'id = '

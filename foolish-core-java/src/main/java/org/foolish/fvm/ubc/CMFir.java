@@ -29,52 +29,38 @@ public class CMFir extends FiroeWithBraneMind {
             return 1;
         }
 
-        if (getNyes() == Nyes.CONSTANT) return 0;
+        if (atConstant())  return 0;
 
+        if (!phaseBStarted && o.atConstanic()){
+                startPhaseB();
+	}
         // Phase A: Step o until it is CONSTANT or CONSTANIC
         if (!phaseBStarted) {
-            // Check if o is CONSTANIC *before* stepping.
-            if (isConstanic(o)) {
-                startPhaseB();
-                return 1;
-            }
+            o.step();
 
-            try {
-                o.step();
-            } catch (Exception e) {
-                throw e;
-            }
-
-            if (o.getNyes() == Nyes.CONSTANT) {
-                // If o becomes CONSTANT, we check if it is Constanic (e.g. NK).
-                if (o.isConstanic()) {
-                    startPhaseB();
-                    return 1;
-                }
-
+            if (o.atConstant()) {
+                // O reached CONSTANT without being CONSTANIC
+                // This means it's fully resolved (not abstract)
                 setNyes(Nyes.CONSTANT);
-                return 1;
             }
             return 1;
         } else {
             // Phase B: Step o2 (the clone in the new context)
             o2.step();
+	    syncO2Nyes();
+            return 1;
+        }
+    }
 
-            // Mirror o2's state to CMFir
-            if (o2.getNyes() == Nyes.CONSTANT) {
+    private void syncO2Nyes(){
+	    if (o2.atConstant()) {
                 setNyes(Nyes.CONSTANT);
             } else if (o2.atConstanic()) {
                 // If o2 ends up constanic, we're also constanic
                 setNyes(Nyes.CONSTANIC);
             }
-            return 1;
-        }
-    }
 
-    private boolean isConstanic(FIR f) {
-        return f.isConstanic();
     }
-
     private void startPhaseB() {
         phaseBStarted = true;
         // make a stay_foolish_clone of o
@@ -85,6 +71,7 @@ public class CMFir extends FiroeWithBraneMind {
             // We link o2 to this CMFir's memory context
             fwbm.braneMemory.setParent(this.braneMemory);
         }
+	syncO2Nyes();
     }
 
     private FIR stayFoolishClone(FIR original) {
@@ -104,17 +91,16 @@ public class CMFir extends FiroeWithBraneMind {
 
     public long getValue() {
         if (phaseBStarted) {
-            if (o2.isConstanic()) {
-                 if (o2 instanceof AssignmentFiroe af && af.getResult() instanceof NKFiroe nk) {
-                     throw new IllegalStateException("Cannot get value from NK (not-known): " + nk.getNkComment());
-                 }
-                 if (o2.getNyes() != Nyes.CONSTANT) {
-                    throw new IllegalStateException("CMFir not fully evaluated (o2 not constant)");
-                 }
-                 // If CONSTANT but still constanic (e.g. NK directly)
-                 if (o2 instanceof NKFiroe nk) {
-                     throw new IllegalStateException("Cannot get value from NK (not-known): " + nk.getNkComment());
-                 }
+            // Check for NK (not-known) cases before attempting getValue
+            if (o2 instanceof AssignmentFiroe af && af.getResult() instanceof NKFiroe nk) {
+                throw new IllegalStateException("Cannot get value from NK (not-known): " + nk.getNkComment());
+            }
+            if (o2 instanceof NKFiroe nk) {
+                throw new IllegalStateException("Cannot get value from NK (not-known): " + nk.getNkComment());
+            }
+            // Verify o2 is fully evaluated
+            if (!o2.atConstant()) {
+                throw new IllegalStateException("CMFir not fully evaluated (o2 not constant, state: " + o2.getNyes() + ")");
             }
             return o2.getValue();
         } else {

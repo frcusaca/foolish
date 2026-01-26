@@ -23,6 +23,10 @@ class BraneMemory(private var parent: BraneMemory = null):
   def setParent(parent: BraneMemory): Unit =
     this.parent = parent
 
+  def getParent: BraneMemory = parent
+
+  def getMyPos: Int = myPos.getOrElse(-1)
+
   def get(idx: Int): FIR =
     if idx >= 0 && idx < memory.size then
       memory(idx)
