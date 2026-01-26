@@ -13,11 +13,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Unit tests for CMFir (Context Manipulation FIR).
  * Verifies "Stay Foolish" behavior where code defined in one scope
  * is evaluated in another scope.
- *
- * TODO: These tests are currently disabled pending investigation of
- * the dynamic scoping and context chain implementation.
  */
-@Disabled("CMFir dynamic scoping implementation needs further investigation")
 class CMFirUnitTest {
 
     /**
@@ -174,14 +170,18 @@ class CMFirUnitTest {
         // Simple evaluation loop until CONSTANT
         // We also need to step the context items if they are NYE (AssignmentFiroes are usually NYE initially)
 
-        // Ensure context items are stepped
-        context.stream().forEach(f -> {
-            int steps = 0;
-            while (f.isNye() && steps < 100) {
-                f.step();
-                steps++;
-            }
-        });
+        // Ensure all context items in the entire parent chain are stepped
+        BraneMemory current = context;
+        while (current != null) {
+            current.stream().forEach(f -> {
+                int steps = 0;
+                while (f.isNye() && steps < 100) {
+                    f.step();
+                    steps++;
+                }
+            });
+            current = current.getParent();
+        }
 
         int steps = 0;
         while (fir.isNye() && steps < 1000) {
