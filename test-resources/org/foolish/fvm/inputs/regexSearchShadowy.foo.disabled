@@ -25,7 +25,7 @@
 	    	!! result1 = brn2.hard_to_typo_name_for_a_brane#-2 .adrian; !! should be 6
 	    	result2 = brn2?.*brane ?a.*;                                !! 5 !! advent
 	    	result3 = brn2?(.*brane)?a.*;                               !! 5 !! advent
-	    	result4 = brn2?(.*brane) .bobulous;                         !! still 7: NOTE the space
+		result4 = brn2?(.*brane) .bobulous;                         !! still 7: NOTE the space
 	    	result5 = brn2?(.*brane)?.*t$;                              !! 5 !! advent
 	    	result6 = brn2?(.*brane)~.*e$;                             !! 2 !! alice
 	};

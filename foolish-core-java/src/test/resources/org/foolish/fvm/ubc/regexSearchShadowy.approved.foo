@@ -26,7 +26,7 @@
 	    	!! result1 = brn2.hard_to_typo_name_for_a_brane#-2 .adrian; !! should be 6
 	    	result2 = brn2?.*brane ?a.*;                                !! 5 !! advent
 	    	result3 = brn2?(.*brane)?a.*;                               !! 5 !! advent
-	    	result4 = brn2?(.*brane) .bobulous;                         !! still 7: NOTE the space
+		result4 = brn2?(.*brane) .bobulous;                         !! still 7: NOTE the space
 	    	result5 = brn2?(.*brane)?.*t$;                              !! 5 !! advent
 	    	result6 = brn2?(.*brane)~.*e$;                             !! 2 !! alice
 	};
@@ -137,7 +137,7 @@ PARSED AST:
 }
 
 UBC EVALUATION:
-Steps taken: 575
+Steps taken: 592
 
 FINAL RESULT:
 {
@@ -193,10 +193,10 @@ FINAL RESULT:
                                        ＿＿＿＿bobulous = 7;
                                        ＿＿＿};
        ＿＿};
-＿＿result0 = ???;
+＿＿result0 = 7;
 ＿＿result2 = 5;
 ＿＿result3 = 5;
-＿＿result4 = ???;
+＿＿result4 = 7;
 ＿＿result5 = 5;
 ＿＿result6 = 2;
 ＿};

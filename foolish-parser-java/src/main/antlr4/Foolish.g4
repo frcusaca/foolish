@@ -1,5 +1,15 @@
 grammar Foolish;
 
+@parser::members {
+    private boolean areTokensAdjacent() {
+        Token prev = _input.LT(-1);
+        Token curr = _input.LT(1);
+        // Check if there are any hidden tokens (like whitespace) between prev and curr
+        int indexDiff = curr.getTokenIndex() - prev.getTokenIndex();
+        return indexDiff == 1;
+    }
+}
+
 program : branes EOF ;
 
 // A characterization is an optional identifier followed by an apostrophe
@@ -112,7 +122,7 @@ regexp_operator
 // The pattern is stored as a string (via getText()) but ANTLR enforces matching pairs
 // Note: Must use tokens (IDENTIFIER, INTEGER) not fragments (LETTERS, DIGIT, INTRA_ID_SEPARATOR)
 // since fragments cannot be referenced in parser rules
-regexp_expression : regexp_element+ ;
+regexp_expression : regexp_element ({areTokensAdjacent()}? regexp_element)* ;
 
 regexp_element
     : IDENTIFIER         // Letters, digits, separators
@@ -199,7 +209,7 @@ fragment DIGIT : [0-9] ;
 // Collation and search systems should accept these as exchangeable.
 fragment INTRA_ID_SEPARATOR : '\u202F' | '_' | '\u02CD';
 // Skip whitespace
-WS : [ \t\r\n]+ -> skip ;
+WS : [ \t\r\n]+ -> channel(HIDDEN) ;
 
 IDENTIFIER : LETTERS (LETTERS|DIGIT|INTRA_ID_SEPARATOR)* ;
 
