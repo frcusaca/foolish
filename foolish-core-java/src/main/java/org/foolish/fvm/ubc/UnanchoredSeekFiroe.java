@@ -71,34 +71,58 @@ public class UnanchoredSeekFiroe extends FiroeWithBraneMind {
     public int step() {
         switch (getNyes()) {
             case INITIALIZED -> {
-                // UnanchoredSeek looks within the brane it's coordinated to
-                // We need to find:
-                // 1. The brane memory containing all statements (largest memory in chain)
-                // 2. Our current position (from the memory that is a direct child of the brane memory)
+                // UnanchoredSeek searches within the IMMEDIATE containing brane only.
+                // It does NOT traverse up to parent branes - the search is bounded by the brane boundary.
+                //
+                // Example: { a=1; b={ c=#-1 } }
+                //   Inside brane b, #-1 looks for the previous statement within b.
+                //   Since c is the first statement in b, #-1 is CONSTANIC (out of bounds).
+                //   It does NOT find a=1 from the outer brane.
+                //
+                // Algorithm:
+                // 1. Find the closest BraneFiroe memory (the immediate containing brane)
+                // 2. Find our current position within that brane
+                // 3. Seek backwards by offset within that brane only
 
                 BraneMemory targetMemory = null;
-                int maxSize = 0;
+                int currentPos = -1;
 
-                // First pass: find the largest memory (the actual brane memory)
+                // Find the CLOSEST (not largest!) brane memory that contains positioned statements
+                // We need to find the first memory in the parent chain where:
+                // - It has children with myPos >= 0 (it's a brane with statements)
+                // - One of those children is in our ancestor chain
+                //
+                // Two-pass approach:
+                // Pass 1: Find the first brane memory (closest one that has positioned children)
+                // Pass 2: Find our position within that brane
+
+                // Find the CLOSEST brane memory containing our statement
+                // We traverse up the memory chain looking for the first substantial brane
+                // (size >= 3 to skip expression temporary memories which are typically smaller)
+                //
+                // For each candidate brane, we check if any of our ancestor memories is a direct
+                // child of that brane with a position set (myPos >= 0). If so, that's our brane
+                // and the myPos is our position within it.
+
                 BraneMemory current = braneMemory;
                 while (current != null) {
-                    if (current.size() > maxSize) {
-                        maxSize = current.size();
-                        targetMemory = current;
+                    // Skip small memories (expression temps, usually size 0-2)
+                    // Real statement branes typically have size >= 3
+                    if (current.size() >= 3) {
+                        // Check if any of our ancestor memories is a direct child of this current memory
+                        BraneMemory checkChild = braneMemory;
+                        while (checkChild != null) {
+                            if (checkChild.getParent() == current && checkChild.getMyPos() >= 0) {
+                                // Found it! current is the brane, checkChild.myPos is our position
+                                targetMemory = current;
+                                currentPos = checkChild.getMyPos();
+                                break;
+                            }
+                            checkChild = checkChild.getParent();
+                        }
+                        if (targetMemory != null) break; // Stop at the first brane we find
                     }
                     current = current.getParent();
-                }
-
-                // Second pass: find the myPos from the memory whose parent is the target brane memory
-                int currentPos = -1;
-                current = braneMemory;
-                while (current != null) {
-                    BraneMemory parent = current.getParent();
-                    if (parent == targetMemory && current.getMyPos() >= 0) {
-                        currentPos = current.getMyPos();
-                        break;
-                    }
-                    current = parent;
                 }
 
                 if (targetMemory == null || targetMemory.size() == 0) {
@@ -142,6 +166,15 @@ public class UnanchoredSeekFiroe extends FiroeWithBraneMind {
             throw new IllegalStateException("Unanchored seek not resolved: #" + offset);
         }
         return value.getValue();
+    }
+
+    /**
+     * Returns the resolved value for unwrapping in search operations.
+     * This allows OneShotSearchFiroe and other search operations to access
+     * the result of the unanchored seek.
+     */
+    public FIR getResult() {
+        return value;
     }
 
     @Override

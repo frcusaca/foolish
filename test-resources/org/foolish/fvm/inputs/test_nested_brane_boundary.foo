@@ -1,0 +1,9 @@
+{
+    a = 1;
+    b = {
+        c = #-1;  !! Should be CONSTANIC - no previous statement in b
+        d = 2;
+        e = #-1;  !! Should be 2 (d)
+    };
+    f = #-1;      !! Should be b (the whole brane)
+}

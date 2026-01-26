@@ -1,0 +1,25 @@
+!!INPUT!!
+{
+    a = 1;
+    b = $ a;
+}
+
+!!!
+PARSED AST:
+{
+  a = 1;
+  b =$a;
+}
+
+UBC EVALUATION:
+Steps taken: 20
+
+FINAL RESULT:
+{
+＿a = 1;
+＿b = ???;
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!

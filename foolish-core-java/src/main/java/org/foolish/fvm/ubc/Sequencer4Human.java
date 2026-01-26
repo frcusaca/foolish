@@ -163,6 +163,8 @@ public class Sequencer4Human extends Sequencer<String> {
                         }
                         case AbstractSearchFiroe searchFiroe ->
                              unwrapped = searchFiroe.getResult();
+                        case UnanchoredSeekFiroe unanchoredSeekFiroe ->
+                             unwrapped = unanchoredSeekFiroe.getResult();
                         default -> { break unwrappingLoop; }
                     }
                 }

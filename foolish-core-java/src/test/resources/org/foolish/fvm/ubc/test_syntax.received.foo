@@ -1,0 +1,36 @@
+!!INPUT!!
+{
+    a = 1;
+    b = {2; 3; 4};
+    c = #-1$;
+}
+
+!!!
+PARSED AST:
+{
+  a = 1;
+  b = {
+    2;
+    3;
+    4;
+  };
+  c =$#-1;
+}
+
+UBC EVALUATION:
+Steps taken: 28
+
+FINAL RESULT:
+{
+＿a = 1;
+＿b = {
+＿    ＿2;
+＿    ＿3;
+＿    ＿4;
+＿};
+＿c = ???;
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!

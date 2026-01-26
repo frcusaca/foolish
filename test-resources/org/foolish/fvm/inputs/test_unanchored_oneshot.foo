@@ -1,0 +1,7 @@
+{
+    a = 1;
+    b = {10; 20; 30};
+    c = #-1;      !! Should be b (the brane)
+    d = #-1$;     !! Should be tail of #-1, which is tail of b = 30
+    e =$ #-2;     !! Should be tail of #-2, which is tail of a = 1
+}

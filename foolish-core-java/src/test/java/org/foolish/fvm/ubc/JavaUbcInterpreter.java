@@ -1,8 +1,6 @@
 package org.foolish.fvm.ubc;
 
-import org.antlr.v4.runtime.CharStream;
-import org.antlr.v4.runtime.CharStreams;
-import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.*;
 import org.foolish.UbcTester;
 import org.foolish.ast.AST;
 import org.foolish.ast.ASTBuilder;
@@ -10,20 +8,69 @@ import org.foolish.ast.ASTFormatter;
 import org.foolish.grammar.FoolishLexer;
 import org.foolish.grammar.FoolishParser;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Java implementation of the UBC tester.
  * Produces complete .approved.foo files with input code and test results.
  */
 public class JavaUbcInterpreter implements UbcTester {
 
+    /**
+     * Custom error listener that collects parse errors for reporting.
+     */
+    private static class ParseErrorCollector extends BaseErrorListener {
+        private final List<String> errors = new ArrayList<>();
+
+        @Override
+        public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol,
+                              int line, int charPositionInLine,
+                              String msg, RecognitionException e) {
+            errors.add("line " + line + ":" + charPositionInLine + " " + msg);
+        }
+
+        public List<String> getErrors() {
+            return errors;
+        }
+
+        public boolean hasErrors() {
+            return !errors.isEmpty();
+        }
+    }
+
     @Override
     public String execute(String code) {
-        // Parse the code
+        // Parse the code with error collection
         CharStream input = CharStreams.fromString(code);
         FoolishLexer lexer = new FoolishLexer(input);
         CommonTokenStream tokens = new CommonTokenStream(lexer);
         FoolishParser parser = new FoolishParser(tokens);
+
+        // Add custom error listener
+        ParseErrorCollector errorCollector = new ParseErrorCollector();
+        parser.removeErrorListeners(); // Remove default console error listener
+        parser.addErrorListener(errorCollector);
+
         AST.Program program = (AST.Program) new ASTBuilder().visit(parser.program());
+
+        // Format as complete .foo file
+        StringBuilder output = new StringBuilder();
+        output.append("!!INPUT!!\n");
+        output.append(code).append("\n\n");
+        output.append("!!!\n");
+
+        // Report parse errors if any - HALT if errors found
+        if (errorCollector.hasErrors()) {
+            output.append("PARSE ERRORS:\n");
+            for (String error : errorCollector.getErrors()) {
+                output.append("  ").append(error).append("\n");
+            }
+            output.append("\n");
+            output.append("VM HALTED: Cannot execute due to parse errors.\n");
+            output.append("!!!\n");
+            return output.toString();
+        }
 
         // Extract first brane
         AST.Brane brane = (AST.Brane) program.branes().branes().get(0);
@@ -32,12 +79,6 @@ public class JavaUbcInterpreter implements UbcTester {
         UnicelluarBraneComputer ubc = new UnicelluarBraneComputer(brane);
         int stepCount = ubc.runToCompletion();
         BraneFiroe finalResult = ubc.getRootBrane();
-
-        // Format as complete .foo file
-        StringBuilder output = new StringBuilder();
-        output.append("!!INPUT!!\n");
-        output.append(code).append("\n\n");
-        output.append("!!!\n");
 
         output.append("PARSED AST:\n");
         output.append(new ASTFormatter().format(program)).append("\n\n");

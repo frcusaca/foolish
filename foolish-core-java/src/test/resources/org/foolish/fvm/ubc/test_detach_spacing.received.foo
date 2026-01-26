@@ -1,0 +1,36 @@
+!!INPUT!!
+{
+    a = {1; 2; 3};
+    b =$ a;     !! No space - should work
+    c = $ a;    !! Space - should fail with parse error
+}
+
+!!!
+PARSED AST:
+{
+  a = {
+    1;
+    2;
+    3;
+  };
+  b =$a;
+  c =$a;
+}
+
+UBC EVALUATION:
+Steps taken: 38
+
+FINAL RESULT:
+{
+＿a = {
+＿    ＿1;
+＿    ＿2;
+＿    ＿3;
+＿};
+＿b = 3;
+＿c = 3;
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!

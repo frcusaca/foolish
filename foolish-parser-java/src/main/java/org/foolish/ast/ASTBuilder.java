@@ -134,6 +134,15 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
     public AST visitAssignment(FoolishParser.AssignmentContext ctx) {
         AST.Identifier identifier = (AST.Identifier) visit(ctx.characterizable_identifier());
         AST.Expr expr = (AST.Expr) visit(ctx.expr());
+
+        // Handle syntactic sugar: "id =$ expr" becomes "id = ($expr)"
+        // and "id =^ expr" becomes "id = (^expr)"
+        if (ctx.DOLLAR() != null) {
+            expr = new AST.OneShotSearchExpr(expr, SearchOperator.TAIL);
+        } else if (ctx.CARET() != null) {
+            expr = new AST.OneShotSearchExpr(expr, SearchOperator.HEAD);
+        }
+
         return new AST.Assignment(identifier, expr);
     }
 

@@ -254,6 +254,21 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
             return;
         }
 
+        if (unwrapAnchor instanceof UnanchoredSeekFiroe unanchoredSeekFiroe) {
+            if (unanchoredSeekFiroe.atConstanic()) {
+                searchResult = new NKFiroe();
+                return;
+            }
+            if (unanchoredSeekFiroe.isNye()) {
+                unanchoredSeekFiroe.step();
+                return;
+            }
+            unwrapAnchor = unanchoredSeekFiroe.getResult();
+            // If result is null (out of bounds), search fails
+            if (unwrapAnchor == null) searchResult = new NKFiroe();
+            return;
+        }
+
         if (unwrapAnchor instanceof BraneFiroe braneFiroe) {
              if (searchPerformed) {
                  searchResult = braneFiroe;
@@ -283,7 +298,7 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
                  if (result == null) result = new NKFiroe();
              }
 
-             if (result instanceof IdentifierFiroe || result instanceof AssignmentFiroe || result instanceof AbstractSearchFiroe) {
+             if (result instanceof IdentifierFiroe || result instanceof AssignmentFiroe || result instanceof AbstractSearchFiroe || result instanceof UnanchoredSeekFiroe) {
                  unwrapAnchor = result;
                  return;
              }

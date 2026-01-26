@@ -58,7 +58,11 @@ stmt
     : stmt_body ((SEMI | COMMA) LINE_COMMENT? | LINE_COMMENT)
     | LINE_COMMENT
     ;
-assignment : characterizable_identifier ASSIGN expr ;
+assignment
+    : characterizable_identifier ASSIGN {areTokensAdjacent()}? DOLLAR expr
+    | characterizable_identifier ASSIGN {areTokensAdjacent()}? CARET expr
+    | characterizable_identifier ASSIGN expr
+    ;
 
 expr
     : addExpr

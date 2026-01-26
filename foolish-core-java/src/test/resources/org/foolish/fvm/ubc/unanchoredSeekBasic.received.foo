@@ -47,10 +47,13 @@ PARSED AST:
     bb = 3;
     cc = (bb * bb);
   };
+  h =$#-1;
+  i =$#-2;
+  j =^#-3;
 }
 
 UBC EVALUATION:
-Steps taken: 170
+Steps taken: 203
 
 FINAL RESULT:
 {
@@ -65,10 +68,13 @@ FINAL RESULT:
 ＿e = 20;
 ＿f = 59;
 ＿g = {
-＿    ＿aa = 59;
+＿    ＿aa = ⎵⎵;
 ＿    ＿bb = 3;
 ＿    ＿cc = 9;
 ＿};
+＿h = 9;
+＿i = 9;
+＿j = ???;
 }
 
 COMPLETION STATUS:

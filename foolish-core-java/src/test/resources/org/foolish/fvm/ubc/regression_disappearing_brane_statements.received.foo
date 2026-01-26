@@ -1,0 +1,51 @@
+!!INPUT!!
+{
+    !! Regression test for disappearing brane statements
+    !! When a parse error occurs mid-brane, subsequent statements should still be attempted
+    !! This tests that parse errors don't cause silent statement omission
+
+    !! These statements should parse correctly
+    a = 1;
+    b = 2;
+    c = 3;
+
+    !! This statement has invalid syntax and should cause a parse error
+    !! The syntax "d =$ 4" is invalid (should be "d = 4$" or similar)
+    d =$ 4;
+
+    !! These statements come AFTER the parse error
+    !! The question is: do they disappear from the AST?
+    e = 5;
+    f = 6;
+    g = 7;
+}
+
+!!!
+PARSED AST:
+{
+  a = 1;
+  b = 2;
+  c = 3;
+  d =$4;
+  e = 5;
+  f = 6;
+  g = 7;
+}
+
+UBC EVALUATION:
+Steps taken: 41
+
+FINAL RESULT:
+{
+＿a = 1;
+＿b = 2;
+＿c = 3;
+＿d = ???;
+＿e = 5;
+＿f = 6;
+＿g = 7;
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!
