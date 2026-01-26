@@ -84,59 +84,19 @@ public class UnanchoredSeekFiroe extends FiroeWithBraneMind {
                 // 2. Find our current position within that brane
                 // 3. Seek backwards by offset within that brane only
 
-                BraneMemory targetMemory = null;
-                int currentPos = -1;
+                // Use the new getMyBrane() and getMyBraneIndex() methods
+                BraneFiroe containingBrane = getMyBrane();
+                int currentPos = getMyBraneIndex();
 
-                // Find the CLOSEST (not largest!) brane memory that contains positioned statements
-                // We need to find the first memory in the parent chain where:
-                // - It has children with myPos >= 0 (it's a brane with statements)
-                // - One of those children is in our ancestor chain
-                //
-                // Two-pass approach:
-                // Pass 1: Find the first brane memory (closest one that has positioned children)
-                // Pass 2: Find our position within that brane
-
-                // Find the CLOSEST brane memory containing our statement
-                // We traverse up the memory chain looking for the first substantial brane
-                // (size >= 3 to skip expression temporary memories which are typically smaller)
-                //
-                // For each candidate brane, we check if any of our ancestor memories is a direct
-                // child of that brane with a position set (myPos >= 0). If so, that's our brane
-                // and the myPos is our position within it.
-
-                BraneMemory current = braneMemory;
-                while (current != null) {
-                    // Skip small memories (expression temps, usually size 0-2)
-                    // Real statement branes typically have size >= 3
-                    if (current.size() >= 3) {
-                        // Check if any of our ancestor memories is a direct child of this current memory
-                        BraneMemory checkChild = braneMemory;
-                        while (checkChild != null) {
-                            if (checkChild.getParent() == current && checkChild.getMyPos() >= 0) {
-                                // Found it! current is the brane, checkChild.myPos is our position
-                                targetMemory = current;
-                                currentPos = checkChild.getMyPos();
-                                break;
-                            }
-                            checkChild = checkChild.getParent();
-                        }
-                        if (targetMemory != null) break; // Stop at the first brane we find
-                    }
-                    current = current.getParent();
-                }
-
-                if (targetMemory == null || targetMemory.size() == 0) {
-                    // No brane memory found - out of bounds
+                if (containingBrane == null || currentPos < 0) {
+                    // No containing brane found - out of bounds
                     value = null;
                     setNyes(Nyes.CONSTANIC);
                     return 1;
                 }
 
+                BraneMemory targetMemory = containingBrane.braneMemory;
                 int size = targetMemory.size();
-                if (currentPos < 0) {
-                    // No position set - default to last position
-                    currentPos = size - 1;
-                }
 
                 // Calculate target index: currentPos + offset (offset is negative)
                 // Example: currentPos=2, offset=-1 -> targetIdx=1 (previous statement)

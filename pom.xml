@@ -117,14 +117,15 @@
         <plugin>
           <groupId>org.codehaus.mojo</groupId>
           <artifactId>build-helper-maven-plugin</artifactId>
-          <version>3.6.1</version>
+	  <version>3.6.1</version>
         </plugin>
 
         <!-- Scala compiler plugin -->
         <plugin>
           <groupId>net.alchim31.maven</groupId>
           <artifactId>scala-maven-plugin</artifactId>
-          <version>4.9.9</version>
+	  <version>4.9.9</version>
+	  <configuration><jvmArgs><jvmArg>--sun-misc-unsafe-memory-access=allow</jvmArg><jvmArg>--enable-native-access=ALL-UNNAMED </jvmArg></jvmArgs></configuration>
         </plugin>
 
         <!-- Exec Maven plugin -->
@@ -132,6 +133,7 @@
           <groupId>org.codehaus.mojo</groupId>
           <artifactId>exec-maven-plugin</artifactId>
           <version>3.3.0</version>
+	  <configuration><jvmArgs><jvmArg>--sun-misc-unsafe-memory-access=allow</jvmArg><jvmArg>--enable-native-access=ALL-UNNAMED </jvmArg></jvmArgs></configuration>
         </plugin>
 
         <!-- Maven Surefire plugin -->
@@ -156,7 +158,10 @@
                         <activeByDefault>true</activeByDefault>
                 </activation>
                 <build> <plugins> <plugin> <artifactId>maven-surefire-plugin</artifactId> <version>3.2.5</version>
-                    <configuration> <includes> <include>**/*Test.java</include> </includes> </configuration>
+		<configuration> 
+		    <argLine>--sun-misc-unsafe-memory-access=allow --enable-native-access=ALL-UNNAMED </argLine>
+		    <includes> <include>**/*Test.java</include> </includes> 
+	        </configuration>
                 </plugin> </plugins> </build>
           </profile>
           <profile>
@@ -165,7 +170,10 @@
                         <activeByDefault>false</activeByDefault>
                 </activation>
                 <build> <plugins> <plugin> <artifactId>maven-surefire-plugin</artifactId> <version>3.2.5</version>
-                    <configuration> <includes> <include>**/*UnitTest.java</include> </includes> </configuration>
+					<configuration>
+						<argLine>--sun-misc-unsafe-memory-access=allow --enable-native-access=ALL-UNNAMED </argLine>
+						<includes> <include>**/*UnitTest.java</include> </includes> 
+					</configuration>
                 </plugin> </plugins> </build>
           </profile>
           <profile>
@@ -174,7 +182,10 @@
                         <activeByDefault>false</activeByDefault>
                 </activation>
                 <build> <plugins> <plugin> <artifactId>maven-surefire-plugin</artifactId> <version>3.2.5</version>
-                    <configuration> <includes> <include>**/*ApprovalTest.java</include> </includes> </configuration>
+					<configuration> 
+						<argLine>--sun-misc-unsafe-memory-access=allow --enable-native-access=ALL-UNNAMED </argLine>
+						<includes> <include>**/*ApprovalTest.java</include> </includes> 
+					</configuration>
                 </plugin> </plugins> </build>
           </profile>
         </profiles>

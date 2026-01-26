@@ -13,6 +13,7 @@ public abstract class FIR {
     protected final String comment;
     private boolean initialized;
     private Nyes nyes;
+    private FIR parentFir = null;  // The FIR that contains this FIR (set during enqueue)
 
     protected FIR(AST ast, String comment) {
         this.ast = ast;
@@ -66,6 +67,22 @@ public abstract class FIR {
      */
     protected void setNyes(Nyes nyes) {
         this.nyes = nyes;
+    }
+
+    /**
+     * Sets the parent FIR that contains this FIR.
+     * This is called when this FIR is enqueued into a parent's braneMind.
+     */
+    protected void setParentFir(FIR parent) {
+        this.parentFir = parent;
+    }
+
+    /**
+     * Gets the parent FIR that contains this FIR.
+     * Returns null if this FIR has no parent (e.g., root brane).
+     */
+    protected FIR getParentFir() {
+        return parentFir;
     }
 
     public final boolean atConstant() {
@@ -123,6 +140,52 @@ public abstract class FIR {
      */
     public long getValue() {
         throw new UnsupportedOperationException("getValue not supported for " + getClass().getSimpleName());
+    }
+
+    /**
+     * Gets the BraneFiroe that contains this FIR in its statement list.
+     * Chains through parent FIRs until finding one whose parent is a BraneFiroe.
+     * <p>
+     * The containing brane is the closest BraneFiroe in the FIR hierarchy,
+     * representing the brane where this FIR appears as a statement.
+     * <p>
+     * Parallel expressions (such as operands in a+b) are at the "same height"
+     * and all statements in a brane are parallel/same height. The height does
+     * NOT deepen with deepening FIR structures - height only changes when
+     * crossing brane boundaries.
+     *
+     * @return the containing BraneFiroe, or null if this FIR is not contained
+     *         in a brane (e.g., at root level)
+     */
+    public BraneFiroe getMyBrane() {
+        // Chain through parents until we find one whose parent is a BraneFiroe
+        if (parentFir instanceof BraneFiroe bf) {
+		return bf;
+	}
+	return parentFir.getMyBrane();
+    }
+
+    /**
+     * Gets the index of this FIR in its containing brane's memory.
+     * Chains through parent FIRs to find the statement-level FIR, then returns its position.
+     * <p>
+     * The brane index defines the "order of expressions" within a height level.
+     * All statements at the same brane level are parallel/same height, and the
+     * index orders them for operations like unanchored backward search.
+     * <p>
+     * Note: The index is for the statement containing this FIR, not necessarily
+     * this exact FIR object. For example, if this is a sub-expression of an
+     * assignment, it returns the assignment's index in the brane.
+     *
+     * @return the index in the containing brane's memory (0-based), or -1 if
+     *         this FIR is not in a brane (root level)
+     */
+    public int getMyBraneIndex() {
+        return switch (parentFir) {
+            case null ->  -1;
+	    case BraneFiroe bf -> bf.getIndexOf(this);
+	    default -> parentFir.getMyBraneIndex();
+	};
     }
 
     /**

@@ -9,12 +9,17 @@ import scala.collection.mutable
 class BraneMemory(private var parent: BraneMemory = null):
   private var myPos: Option[Int] = None
   private val memory = mutable.ArrayBuffer[FIR]()
+  private var owningBrane: BraneFiroe = null  // The BraneFiroe that owns this memory
 
   def this(parent: BraneMemory, myPos: Int) =
     this(parent)
-    setMyPos(myPos)
+    this.myPos = Some(myPos)
 
-  def setMyPos(pos: Int): Unit =
+  /**
+   * Internal method for setting position in parent memory.
+   * Only used internally - external code should use FIR's getMyBraneIndex() instead.
+   */
+  def setMyPosInternal(pos: Int): Unit =
     if myPos.isEmpty then
       myPos = Some(pos)
     else
@@ -26,6 +31,22 @@ class BraneMemory(private var parent: BraneMemory = null):
   def getParent: BraneMemory = parent
 
   def getMyPos: Int = myPos.getOrElse(-1)
+
+  /**
+   * Sets the BraneFiroe that owns this BraneMemory.
+   * Should only be called once, typically by BraneFiroe during construction.
+   */
+  def setOwningBrane(brane: BraneFiroe): Unit =
+    if owningBrane == null then
+      owningBrane = brane
+    else
+      throw RuntimeException("Cannot reassign owning brane of BraneMemory.")
+
+  /**
+   * Gets the BraneFiroe that owns this BraneMemory.
+   * Returns null if this is not a brane's memory (e.g., expression evaluation memory).
+   */
+  def getOwningBrane: BraneFiroe = owningBrane
 
   def get(idx: Int): FIR =
     if idx >= 0 && idx < memory.size then
@@ -48,7 +69,15 @@ class BraneMemory(private var parent: BraneMemory = null):
 
     // If not found in this brane, search in parent
     if parent != null then
-      return parent.get(query, myPos.get)
+      // Compute position dynamically using owningBrane's getMyBraneIndex() if available
+      // Otherwise fall back to myPos (for unit tests without BraneFiroe)
+      // Default to searching from end of parent if neither is available
+      // This is crucial for CMFir which links memory without fixed position
+      val parentPos = if owningBrane != null then
+        owningBrane.getMyBraneIndex
+      else
+        myPos.getOrElse(parent.size - 1)
+      return parent.get(query, parentPos)
 
     None // Not found
 

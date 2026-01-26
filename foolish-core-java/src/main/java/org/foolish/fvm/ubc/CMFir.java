@@ -7,6 +7,12 @@ import org.foolish.ast.AST;
  * Adapts a FIR to the current context (brane).
  * Used for handling "Stay Foolish" behavior where a brane or expression
  * defined in one scope is evaluated in another.
+ * <p>
+ * <b>Nested CMFir Wrapping:</b> When a CMFir wraps another CMFir as its object,
+ * the current implementation directly wraps the inner CMFir without optimization.
+ * This creates multiple levels of indirection (CMFir(CMFir(CMFir(...)))).
+ * Future optimization could potentially flatten these nested CMFirs to reduce
+ * indirection levels, but for now the straightforward approach is used.
  */
 public class CMFir extends FiroeWithBraneMind {
     private FIR o;

@@ -14,6 +14,8 @@ public class BraneFiroe extends FiroeWithBraneMind {
 
     public BraneFiroe(AST ast) {
         super(ast);
+        // Register this brane as the owner of its memory
+        this.braneMemory.setOwningBrane(this);
     }
 
     /**

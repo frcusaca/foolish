@@ -10,6 +10,7 @@ import org.foolish.ast.AST
 abstract class FIR(val ast: AST, val comment: Option[String] = None):
   private var initialized: Boolean = false
   private var nyes: Nyes = Nyes.UNINITIALIZED
+  private var parentFir: FIR = null  // The FIR that contains this FIR (set during enqueue)
 
   /**
    * Returns the current NYE state of this FIR.
@@ -22,6 +23,19 @@ abstract class FIR(val ast: AST, val comment: Option[String] = None):
    */
   protected def setNyes(newNyes: Nyes): Unit =
     nyes = newNyes
+
+  /**
+   * Sets the parent FIR that contains this FIR.
+   * This is called when this FIR is enqueued into a parent's braneMind.
+   */
+  protected[scubc] def setParentFir(parent: FIR): Unit =
+    parentFir = parent
+
+  /**
+   * Gets the parent FIR that contains this FIR.
+   * Returns null if this FIR has no parent (e.g., root brane).
+   */
+  protected def getParentFir: FIR = parentFir
 
   final def atConstant: Boolean = nyes == Nyes.CONSTANT
   final def atConstanic: Boolean = nyes == Nyes.CONSTANIC
@@ -67,6 +81,48 @@ abstract class FIR(val ast: AST, val comment: Option[String] = None):
    */
   def getValue: Long =
     throw UnsupportedOperationException(s"getValue not supported for ${getClass.getSimpleName}")
+
+  /**
+   * Gets the BraneFiroe that contains this FIR in its statement list.
+   * Chains through parent FIRs until finding one whose parent is a BraneFiroe.
+   * <p>
+   * The containing brane is the closest BraneFiroe in the FIR hierarchy,
+   * representing the brane where this FIR appears as a statement.
+   * <p>
+   * Parallel expressions (such as operands in a+b) are at the "same height"
+   * and all statements in a brane are parallel/same height. The height does
+   * NOT deepen with deepening FIR structures - height only changes when
+   * crossing brane boundaries.
+   *
+   * @return the containing BraneFiroe, or null if this FIR is not contained
+   *         in a brane (e.g., at root level)
+   */
+  def getMyBrane: BraneFiroe =
+    parentFir match
+      case bf: BraneFiroe => bf
+      case null => null
+      case _ => parentFir.getMyBrane
+
+  /**
+   * Gets the index of this FIR in its containing brane's memory.
+   * Chains through parent FIRs to find the statement-level FIR, then returns its position.
+   * <p>
+   * The brane index defines the "order of expressions" within a height level.
+   * All statements at the same brane level are parallel/same height, and the
+   * index orders them for operations like unanchored backward search.
+   * <p>
+   * Note: The index is for the statement containing this FIR, not necessarily
+   * this exact FIR object. For example, if this is a sub-expression of an
+   * assignment, it returns the assignment's index in the brane.
+   *
+   * @return the index in the containing brane's memory (0-based), or -1 if
+   *         this FIR is not in a brane (root level)
+   */
+  def getMyBraneIndex: Int =
+    parentFir match
+      case null => -1
+      case bf: BraneFiroe => bf.getIndexOf(this)
+      case _ => parentFir.getMyBraneIndex
 
 object FIR:
   /** Creates a FIR from an AST expression */

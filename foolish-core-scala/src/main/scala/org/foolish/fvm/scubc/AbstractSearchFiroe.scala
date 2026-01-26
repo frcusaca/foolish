@@ -32,10 +32,23 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
             if (searchResult != null) {
               // Set found status based on result type
               searchResult match {
-                case _: NKFiroe => found = false
-                case _ => found = true
+                case _: NKFiroe =>
+                  // Search failed - result is NK (not found)
+                  found = false
+                  setNyes(Nyes.CONSTANT)
+                case _ =>
+                  // Search succeeded - check if result is Constanic
+                  found = true
+                  if (searchResult.isNye) {
+                    searchResult.step()
+                  } else if (searchResult.atConstanic) {
+                    // Result is Constanic - propagate it
+                    setNyes(Nyes.CONSTANIC)
+                  } else {
+                    // Result is CONSTANT - we're done
+                    setNyes(Nyes.CONSTANT)
+                  }
               }
-              setNyes(Nyes.CONSTANT)
             }
           }
         }
@@ -160,6 +173,19 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
         if (unwrapAnchor == null) searchResult = new NKFiroe()
         return
 
+      case unanchoredSeekFiroe: UnanchoredSeekFiroe =>
+        if (unanchoredSeekFiroe.atConstanic) {
+            searchResult = new NKFiroe()
+            return
+        }
+        if (unanchoredSeekFiroe.isNye) {
+          unanchoredSeekFiroe.step()
+          return
+        }
+        unwrapAnchor = unanchoredSeekFiroe.getResult
+        if (unwrapAnchor == null) searchResult = new NKFiroe()
+        return
+
       case braneFiroe: BraneFiroe =>
         if (searchPerformed) {
           searchResult = braneFiroe
@@ -187,7 +213,7 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
           case _ =>
         }
 
-        if (result.isInstanceOf[IdentifierFiroe] || result.isInstanceOf[AssignmentFiroe] || result.isInstanceOf[AbstractSearchFiroe]) {
+        if (result.isInstanceOf[IdentifierFiroe] || result.isInstanceOf[AssignmentFiroe] || result.isInstanceOf[AbstractSearchFiroe] || result.isInstanceOf[UnanchoredSeekFiroe]) {
           unwrapAnchor = result
           return
         }

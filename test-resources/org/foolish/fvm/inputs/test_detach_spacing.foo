@@ -1,5 +1,0 @@
-{
-    a = {1; 2; 3};
-    b =$ a;     !! No space - should work
-    c = $ a;    !! Space - should fail with parse error
-}

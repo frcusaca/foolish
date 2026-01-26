@@ -46,26 +46,29 @@ mvn clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$
 
 # Rebuild Antlr4 lexer and parser from g4 file
 # This needs to happen every time 'foolish-parser-java/src/main/antlr4/Foolish.g4' changes
-mvn clean generate-sources
+mvn clean generate-sources -T $(($(nproc) * 2))
 
 # The approval tests can be selected this way specifying module, class and then the test file filter
 mvn test -pl foolish-core-java -Dtest=UbcApprovalTest -Dfoolish.test.filter=Shadow
 
 # Just build (skip tests) when fixing compilation errors.
+mvn clean compile -DskipTests -T $(($(nproc) * 2))
+
+# However, you may choose single threaded compilation to improve readability of compilation errors
 mvn clean compile -DskipTests
 
 ## Select a module to reduce build time and effort
-mvn compile -pl foolish-core-java -DskipTests
+mvn compile -pl foolish-core-java -DskipTests -T $(($(nproc) * 2))
 
 ## Turn on debugging and stack trace for debugging build problems
-mvn clean compile -X -DskipTests
+mvn clean compile -X -e -DskipTests
 ```
 
 ## Running Tests
 
 ```bash
 # Run all tests with parallel execution
-mvn test -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
+mvn test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 
 # Run specific test
 mvn test -Dtest=ClassName#methodName

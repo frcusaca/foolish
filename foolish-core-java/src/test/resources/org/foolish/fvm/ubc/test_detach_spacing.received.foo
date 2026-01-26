@@ -6,31 +6,8 @@
 }
 
 !!!
-PARSED AST:
-{
-  a = {
-    1;
-    2;
-    3;
-  };
-  b =$a;
-  c =$a;
-}
+PARSE ERRORS:
+  line 4:8 rule assignment failed predicate: {areTokensAdjacent()}?
 
-UBC EVALUATION:
-Steps taken: 38
-
-FINAL RESULT:
-{
-＿a = {
-＿    ＿1;
-＿    ＿2;
-＿    ＿3;
-＿};
-＿b = 3;
-＿c = 3;
-}
-
-COMPLETION STATUS:
-Complete: true
+VM HALTED: Cannot execute due to parse errors.
 !!!

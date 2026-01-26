@@ -15,6 +15,7 @@ public class BraneMemory implements Iterable<FIR> {
     private BraneMemory parent;
     private Optional<Integer> myPos = Optional.empty();
     private final List<FIR> memory;
+    private BraneFiroe owningBrane = null; // The BraneFiroe that owns this memory
 
     public BraneMemory(BraneMemory parent) {
         this.parent = parent;
@@ -23,19 +24,19 @@ public class BraneMemory implements Iterable<FIR> {
 
     public BraneMemory(BraneMemory parent, int myPos) {
         this(parent);
-        setMyPos(myPos);
+        this.myPos = Optional.of(myPos);
     }
 
-    public void setMyPos(int pos) {
+    /**
+     * Internal method for setting position in parent memory.
+     * Only used internally - external code should use FIR's getMyBraneIndex() instead.
+     */
+    void setMyPosInternal(int pos) {
         if (myPos.isEmpty()) {
             this.myPos = Optional.of(pos);
         } else {
             throw new RuntimeException("Cannot recoordinate a BraneMemory.");
         }
-    }
-
-    public int getMyPos() {
-        return myPos.orElse(-1);
     }
 
     public BraneMemory getParent() {
@@ -61,9 +62,16 @@ public class BraneMemory implements Iterable<FIR> {
             }
         }
         if (parent != null) {
-            // Default to searching from end of parent if myPos is not set
+            // Compute position dynamically using owningBrane's getMyBraneIndex() if available
+            // Otherwise fall back to myPos (for unit tests without BraneFiroe)
+            // Default to searching from end of parent if neither is available
             // This is crucial for CMFir which links memory without fixed position
-            int parentPos = myPos.orElse(parent.size() - 1);
+            int parentPos;
+            if (owningBrane != null) {
+                parentPos = owningBrane.getMyBraneIndex();
+            } else {
+                parentPos = myPos.orElse(parent.size() - 1);
+            }
             return parent.get(query, parentPos);
         }
         return Optional.empty(); // Not found
@@ -132,5 +140,25 @@ public class BraneMemory implements Iterable<FIR> {
     @Override
     public java.util.Iterator<FIR> iterator() {
         return memory.iterator();
+    }
+
+    /**
+     * Sets the BraneFiroe that owns this BraneMemory.
+     * Should only be called once, typically by BraneFiroe during construction.
+     */
+    public void setOwningBrane(BraneFiroe brane) {
+        if (this.owningBrane == null) {
+            this.owningBrane = brane;
+        } else {
+            throw new RuntimeException("Cannot reassign owning brane of BraneMemory.");
+        }
+    }
+
+    /**
+     * Gets the BraneFiroe that owns this BraneMemory.
+     * Returns null if this is not a brane's memory (e.g., expression evaluation memory).
+     */
+    public BraneFiroe getOwningBrane() {
+        return owningBrane;
     }
 }

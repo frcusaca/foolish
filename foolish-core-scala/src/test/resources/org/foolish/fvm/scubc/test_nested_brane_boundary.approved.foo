@@ -1,0 +1,44 @@
+!!INPUT!!
+{
+    a = 1;
+    b = {
+        c = #-1;  !! Should be CONSTANIC - no previous statement in b
+        d = 2;
+        e = #-1;  !! Should be 2 (d)
+    };
+    f = #-1;      !! Should be b (the whole brane)
+}
+
+!!!
+PARSED AST:
+{
+  a = 1;
+  b = {
+    c = #-1;
+    d = 2;
+    e = #-1;
+  };
+  f = #-1;
+}
+
+UBC EVALUATION:
+Steps taken: 46
+
+FINAL RESULT:
+{
+＿a = 1;
+＿b = {
+＿    ＿c = ⎵⎵;
+＿    ＿d = 2;
+＿    ＿e = 2;
+＿};
+＿f = {
+＿    ＿c = ⎵⎵;
+＿    ＿d = 2;
+＿    ＿e = 2;
+＿};
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!
