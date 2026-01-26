@@ -23,7 +23,7 @@
     <antlr4.version>4.13.2</antlr4.version>
     <junit.platform.version>1.13.4</junit.platform.version>
     <jackson.version>2.17.2</jackson.version>
-    <scala.version>3.8.0</scala.version>
+    <scala.version>3.8.1</scala.version>
     <scala.binary.version>3</scala.binary.version>
     <antlr.language>Java</antlr.language>
     <antlr.skip>false</antlr.skip>
@@ -51,7 +51,7 @@
       <dependency>
         <groupId>com.approvaltests</groupId>
         <artifactId>approvaltests</artifactId>
-        <version>26.4.0</version>
+        <version>26.6.0</version>
         <scope>test</scope>
       </dependency>
         <dependency>
@@ -124,7 +124,7 @@
         <plugin>
           <groupId>net.alchim31.maven</groupId>
           <artifactId>scala-maven-plugin</artifactId>
-          <version>4.9.7</version>
+          <version>4.9.9</version>
         </plugin>
 
         <!-- Exec Maven plugin -->

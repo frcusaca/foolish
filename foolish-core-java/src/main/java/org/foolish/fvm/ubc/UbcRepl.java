@@ -124,7 +124,7 @@ public class UbcRepl {
                     System.out.println("=> " + result);
                 }
             } catch (Exception e) {
-                System.err.println("Error: " + e.getMessage());
+                org.foolish.fvm.AlarmSystem.raise(null, "REPL Error: " + e.getMessage(), org.foolish.fvm.AlarmSystem.PANIC);
                 if (args.length > 0 && args[0].equals("--debug")) {
                     e.printStackTrace();
                 }
