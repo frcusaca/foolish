@@ -78,6 +78,15 @@ object FIR:
     case brane: AST.Brane => BraneFiroe(brane)
     case assignment: AST.Assignment => AssignmentFiroe(assignment)
     case identifier: AST.Identifier => IdentifierFiroe(identifier)
-    case regexpSearch: AST.RegexpSearchExpr => RegexpSearchFiroe(regexpSearch)
+    case regexpSearch: AST.RegexpSearchExpr =>
+      if (DerefSearchFiroe.isExactMatch(regexpSearch.pattern())) {
+        new DerefSearchFiroe(regexpSearch)
+      } else {
+        RegexpSearchFiroe(regexpSearch)
+      }
     case oneShotSearch: AST.OneShotSearchExpr => OneShotSearchFiroe(oneShotSearch)
+    case dereferenceExpr: AST.DereferenceExpr =>
+      val synthetic = new AST.RegexpSearchExpr(dereferenceExpr.anchor(), org.foolish.ast.SearchOperator.REGEXP_LOCAL, dereferenceExpr.coordinate().toString)
+      new DerefSearchFiroe(synthetic, dereferenceExpr)
+    case seekExpr: AST.SeekExpr => SeekFiroe(seekExpr)
     case _ => ValueFiroe(null, 0L) // Placeholder for unsupported types

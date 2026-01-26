@@ -50,6 +50,7 @@ class BraneMemory(private var parent: BraneMemory = null):
 
   /**
    * Search for a query locally within this brane only, without searching parent branes.
+   * Searches backward from fromLine to 0 (finds last match).
    * Used for localized regex search (? operator).
    */
   def getLocal(query: BraneMemory.Query, fromLine: Int): Option[(Int, FIR)] =
@@ -57,6 +58,22 @@ class BraneMemory(private var parent: BraneMemory = null):
 
     // Search backwards from fromLine to 0
     for line <- startLine to 0 by -1 do
+      val lineMemory = memory(line)
+      if query.matches(lineMemory) then
+        return Some((line, lineMemory))
+
+    None // Not found, don't search parents
+
+  /**
+   * Search for a query locally within this brane only, without searching parent branes.
+   * Searches forward from fromLine to end (finds first match).
+   * Used for localized forward regex search (~ operator).
+   */
+  def getLocalForward(query: BraneMemory.Query, fromLine: Int): Option[(Int, FIR)] =
+    val startLine = math.max(fromLine, 0)
+
+    // Search forwards from fromLine to end
+    for line <- startLine until memory.size do
       val lineMemory = memory(line)
       if query.matches(lineMemory) then
         return Some((line, lineMemory))

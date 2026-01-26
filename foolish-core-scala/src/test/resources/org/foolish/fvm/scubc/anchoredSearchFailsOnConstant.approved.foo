@@ -32,12 +32,12 @@ Steps taken: 81
 FINAL RESULT:
 {
 ＿b = {
-    ＿＿α = 100;
-    ＿＿β = 200;
-    ＿};
+＿    ＿α = 100;
+＿    ＿β = 200;
+＿};
 ＿notFound = ???;
 ＿emptyBrane = {
-             ＿};
+＿};
 ＿emptyHead = ???;
 ＿emptyTail = ???;
 }

@@ -34,8 +34,8 @@ FINAL RESULT:
 {
 ＿badValue = ⎵⎵;
 ＿nested = {
-         ＿＿x = ⎵⎵;
-         ＿};
+＿         ＿x = ⎵⎵;
+＿};
 ＿y = ⎵⎵;
 ＿z = ⎵⎵;
 }

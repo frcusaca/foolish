@@ -184,9 +184,13 @@ public class Sequencer4Human extends Sequencer<String> {
                     if (braneSeq.startsWith(indent)) {
                         braneSeq = braneSeq.substring(indent.length());
                     }
-                    // For subsequent lines, add spaces to align with "id = "
+                    // For subsequent lines, add padding to align with "id = "
+                    // The padding should come BETWEEN the parent depth marker and the nested depth marker
+                    // Example: "\n＿＿content" becomes "\n＿    ＿content" for "b = " (4 chars)
                     String padding = " ".repeat(fullId.length() + 3);
-                    braneSeq = braneSeq.replace("\n", "\n" + padding);
+                    String nestedIndent = indent(depth + 1);  // e.g., "＿＿"
+                    String parentIndent = indent(depth);       // e.g., "＿"
+                    braneSeq = braneSeq.replace("\n" + nestedIndent, "\n" + parentIndent + padding + tabChar);
                     return indent(depth) + fullId + " = " + braneSeq;
                 }
                 return indent(depth) + fullId + " = " + unwrapped.getValue();

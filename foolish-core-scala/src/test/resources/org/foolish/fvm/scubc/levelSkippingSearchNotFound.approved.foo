@@ -31,7 +31,11 @@ Steps taken: 41
 FINAL RESULT:
 {
 ＿x = ⎵⎵;
-＿outer = ???;
+＿outer = {
+＿        ＿inner = {
+＿        ＿        ＿y = ⎵⎵;
+＿        ＿};
+＿};
 }
 
 COMPLETION STATUS:

@@ -93,10 +93,10 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
           unwrap(result) match
             case constanic if constanic.atConstanic =>
                indent(depth) + s"$fullId = $CC_STR"
-            case abstractFir if abstractFir.isAbstract =>
-               indent(depth) + s"$fullId = $NK_STR"
             case brane: BraneFiroe =>
               // Special handling for nested branes to align indentation
+              // Must check for BraneFiroe BEFORE isAbstract check, since branes
+              // containing only CONSTANIC values will have isAbstract=true
               val sequencedBrane = sequence(brane, depth)
               // Strip the first line's indentation
               val indentStr = indent(depth)
@@ -106,12 +106,18 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
                 sequencedBrane
 
               // Calculate padding for subsequent lines
+              // The padding should come BETWEEN the parent depth marker and the nested depth marker
+              // Example: "\n＿＿content" becomes "\n＿    ＿content" for "b = " (4 chars)
               val padding = " " * (fullId.length + 3)
-              // Apply padding to subsequent lines
-              val alignedBrane = strippedBrane.replace("\n", "\n" + padding)
+              val nestedIndent = indent(depth + 1)  // e.g., "＿＿"
+              val parentIndent = indent(depth)       // e.g., "＿"
+              // Apply padding between parent and nested indentation
+              val alignedBrane = strippedBrane.replace(s"\n$nestedIndent", s"\n$parentIndent$padding$tabChar")
 
               indent(depth) + s"$fullId = ${alignedBrane}"
 
+            case abstractFir if abstractFir.isAbstract =>
+               indent(depth) + s"$fullId = $NK_STR"
             case unwrapped =>
               // Simple values
               indent(depth) + s"$fullId = ${unwrapped.getValue}"

@@ -32,10 +32,10 @@ FINAL RESULT:
 {
 ＿x = ⎵⎵;
 ＿outer = {
-        ＿＿inner = {
-                ＿＿＿y = ⎵⎵;
-                ＿＿};
-        ＿};
+＿        ＿inner = {
+＿        ＿        ＿y = ⎵⎵;
+＿        ＿};
+＿};
 }
 
 COMPLETION STATUS:

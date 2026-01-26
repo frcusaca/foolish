@@ -50,16 +50,16 @@ FINAL RESULT:
 ＿x = 42;
 ＿y = 42;
 ＿nested = {
-         ＿＿z = 42;
-         ＿};
+＿         ＿z = 42;
+＿};
 ＿level1 = {
-         ＿＿a = 100;
-         ＿＿level2 = {
-                  ＿＿＿level3 = {
-                           ＿＿＿＿b = 100;
-                           ＿＿＿};
-                  ＿＿};
-         ＿};
+＿         ＿a = 100;
+＿         ＿level2 = {
+＿         ＿         ＿level3 = {
+＿         ＿         ＿         ＿b = 100;
+＿         ＿         ＿};
+＿         ＿};
+＿};
 }
 
 COMPLETION STATUS:

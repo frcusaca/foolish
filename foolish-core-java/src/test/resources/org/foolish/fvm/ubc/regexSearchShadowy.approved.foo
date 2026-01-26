@@ -152,16 +152,16 @@ FINAL RESULT:
 ＿};
 ＿{
 ＿＿brn = {
-      ＿＿＿alice = 2;
-      ＿＿＿bob = 3;
-      ＿＿＿charlie = 4;
-      ＿＿＿adam = 2;
-      ＿＿＿advent = 5;
-      ＿＿＿{
-      ＿＿＿＿adrian = 6;
-      ＿＿＿};
-      ＿＿＿bobulous = 7;
-      ＿＿};
+＿＿      ＿alice = 2;
+＿＿      ＿bob = 3;
+＿＿      ＿charlie = 4;
+＿＿      ＿adam = 2;
+＿＿      ＿advent = 5;
+＿＿      ＿{
+＿＿      ＿＿adrian = 6;
+＿＿      ＿};
+＿＿      ＿bobulous = 7;
+＿＿};
 ＿＿result1 = 5;
 ＿＿result2 = 5;
 ＿＿result3 = 4;
@@ -170,29 +170,29 @@ FINAL RESULT:
 ＿};
 ＿{
 ＿＿brn = {
-      ＿＿＿alice = 2;
-      ＿＿＿bob = 3;
-      ＿＿＿charlie = 4;
-      ＿＿＿adam = 2;
-      ＿＿＿advent = 5;
-      ＿＿＿{
-      ＿＿＿＿adrian = 6;
-      ＿＿＿};
-      ＿＿＿bobulous = 7;
-      ＿＿};
+＿＿      ＿alice = 2;
+＿＿      ＿bob = 3;
+＿＿      ＿charlie = 4;
+＿＿      ＿adam = 2;
+＿＿      ＿advent = 5;
+＿＿      ＿{
+＿＿      ＿＿adrian = 6;
+＿＿      ＿};
+＿＿      ＿bobulous = 7;
+＿＿};
 ＿＿brn2 = {
-       ＿＿＿hardˍtoˍtypoˍnameˍforˍaˍbrane = {
-                                       ＿＿＿＿alice = 2;
-                                       ＿＿＿＿bob = 3;
-                                       ＿＿＿＿charlie = 4;
-                                       ＿＿＿＿adam = 2;
-                                       ＿＿＿＿advent = 5;
-                                       ＿＿＿＿{
-                                       ＿＿＿＿＿adrian = 6;
-                                       ＿＿＿＿};
-                                       ＿＿＿＿bobulous = 7;
-                                       ＿＿＿};
-       ＿＿};
+＿＿       ＿hardˍtoˍtypoˍnameˍforˍaˍbrane = {
+＿＿       ＿                                ＿alice = 2;
+＿＿       ＿                                ＿bob = 3;
+＿＿       ＿                                ＿charlie = 4;
+＿＿       ＿                                ＿adam = 2;
+＿＿       ＿                                ＿advent = 5;
+＿＿       ＿                                ＿{
+＿＿       ＿                                ＿＿adrian = 6;
+＿＿       ＿                                ＿};
+＿＿       ＿                                ＿bobulous = 7;
+＿＿       ＿};
+＿＿};
 ＿＿result0 = 7;
 ＿＿result2 = 5;
 ＿＿result3 = 5;

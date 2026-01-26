@@ -19,11 +19,20 @@ class RegexpSearchFiroe(regexpSearch: AST.RegexpSearchExpr) extends AbstractSear
   override protected def executeSearch(target: BraneFiroe): FIR = {
     val query = new BraneMemory.RegexpQuery(pattern)
     val targetMemory = target.braneMemory
-    val searchFrom = targetMemory.size - 1
 
     val result = operator match {
-      case SearchOperator.REGEXP_LOCAL => targetMemory.getLocal(query, searchFrom)
-      case SearchOperator.REGEXP_GLOBAL => targetMemory.get(query, searchFrom)
+      case SearchOperator.REGEXP_LOCAL =>
+        // Backward search: search from end to start (find last match)
+        val searchFrom = targetMemory.size - 1
+        targetMemory.getLocal(query, searchFrom)
+      case SearchOperator.REGEXP_FORWARD_LOCAL =>
+        // Forward search: search from start to end (find first match)
+        val searchFrom = 0
+        targetMemory.getLocalForward(query, searchFrom)
+      case SearchOperator.REGEXP_GLOBAL =>
+        // Global backward search (find-all, not yet fully implemented)
+        val searchFrom = targetMemory.size - 1
+        targetMemory.get(query, searchFrom)
       case _ => throw new IllegalStateException("Unknown regexp operator: " + operator)
     }
 

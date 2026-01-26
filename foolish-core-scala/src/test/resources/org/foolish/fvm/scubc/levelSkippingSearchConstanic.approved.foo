@@ -33,7 +33,9 @@ Steps taken: 52
 FINAL RESULT:
 {
 ＿badValue = ⎵⎵;
-＿nested = ???;
+＿nested = {
+＿         ＿x = ⎵⎵;
+＿};
 ＿y = ⎵⎵;
 ＿z = ⎵⎵;
 }
