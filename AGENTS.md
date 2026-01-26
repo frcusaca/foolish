@@ -38,8 +38,8 @@ The project supports two primary development environments:
 ### Basic Build and Test
 
 ```bash
-# Full clean build with tests
-mvn clean generate-sources compile test
+# Full clean build. Do this at beginning of a session and after every merge or rebase operation. Also, anytime when debugging took more than 13 minutes, do a full rebuild.
+mvn clean generate-sources compile
 
 # Parallel build (recommended)
 mvn clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
