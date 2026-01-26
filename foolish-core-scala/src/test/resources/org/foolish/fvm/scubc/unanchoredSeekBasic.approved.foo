@@ -77,13 +77,13 @@ PARSED AST:
 }
 
 UBC EVALUATION:
-Steps taken: 25
+Steps taken: 30
 
 FINAL RESULT:
 {
 ＿a = 1;
 ＿b = 2;
-＿c = 0;
+＿c = 3;
 }
 
 COMPLETION STATUS:
