@@ -20,13 +20,13 @@
     e = 20;
     f = #-1 + #-2 + #-3 + #-4 + #-5 + #-6 + #-7 + #-8  !! Should find: 20 + 10 + 12 + 5 + 4 + 3 + 3 + 2 = 59
     g = { !! Let's make sure it respects boundaries
-        aa= #-1 !! Constanic
+        aa= #-1; !! Constanic - #-1 inside nested brane shouldn't find f
         bb= 3;
-        cc = bb * bb;
+        cc = bb * bb
     };
-    h =$ #-1 ;
-    i = #-2$ ;
-    j = #-3^ ;
+    h =$ #-1 ;   !! Syntactic sugar for h = #-1$ (tail of #-1)
+    i = #-2$ ;   !! Tail of #-2
+    j =^ #-3 ;   !! Syntactic sugar for j = #-3^ (head of #-3)
 }
 
 !!!

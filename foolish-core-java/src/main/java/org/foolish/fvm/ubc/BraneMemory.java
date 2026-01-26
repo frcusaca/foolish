@@ -15,6 +15,7 @@ public class BraneMemory implements Iterable<FIR> {
     private BraneMemory parent;
     private Optional<Integer> myPos = Optional.empty();
     private final List<FIR> memory;
+    private BraneFiroe owningBrane = null; // The BraneFiroe that owns this memory
 
     public BraneMemory(BraneMemory parent) {
         this.parent = parent;
@@ -132,5 +133,25 @@ public class BraneMemory implements Iterable<FIR> {
     @Override
     public java.util.Iterator<FIR> iterator() {
         return memory.iterator();
+    }
+
+    /**
+     * Sets the BraneFiroe that owns this BraneMemory.
+     * Should only be called once, typically by BraneFiroe during construction.
+     */
+    public void setOwningBrane(BraneFiroe brane) {
+        if (this.owningBrane == null) {
+            this.owningBrane = brane;
+        } else {
+            throw new RuntimeException("Cannot reassign owning brane of BraneMemory.");
+        }
+    }
+
+    /**
+     * Gets the BraneFiroe that owns this BraneMemory.
+     * Returns null if this is not a brane's memory (e.g., expression evaluation memory).
+     */
+    public BraneFiroe getOwningBrane() {
+        return owningBrane;
     }
 }

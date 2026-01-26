@@ -126,6 +126,74 @@ public abstract class FIR {
     }
 
     /**
+     * Gets the BraneFiroe that contains this FIR in its statement list.
+     * Traverses up the BraneMemory parent chain to find the containing brane.
+     * <p>
+     * The containing brane is the closest BraneFiroe in the memory hierarchy,
+     * representing the brane where this FIR appears as a statement.
+     * <p>
+     * Parallel expressions (such as operands in a+b) are at the "same height"
+     * and all statements in a brane are parallel/same height. The height does
+     * NOT deepen with deepening FIR structures - height only changes when
+     * crossing brane boundaries.
+     *
+     * @return the containing BraneFiroe, or null if this FIR is not contained
+     *         in a brane (e.g., at root level or in a FiroeWithoutBraneMind)
+     */
+    public BraneFiroe getMyBrane() {
+        if (!(this instanceof FiroeWithBraneMind fwbm)) {
+            return null; // FiroeWithoutBraneMind has no brane memory
+        }
+
+        // Walk up the memory chain to find a memory owned by a BraneFiroe
+        BraneMemory current = fwbm.braneMemory.getParent();
+        while (current != null) {
+            BraneFiroe owner = current.getOwningBrane();
+            if (owner != null) {
+                return owner;
+            }
+            current = current.getParent();
+        }
+        return null; // No containing brane found (root level)
+    }
+
+    /**
+     * Gets the index of this FIR in its containing brane's memory.
+     * This represents the position where this FIR's assignment statement appears
+     * in the brane's statement list.
+     * <p>
+     * The brane index defines the "order of expressions" within a height level.
+     * All statements at the same brane level are parallel/same height, and the
+     * index orders them for operations like unanchored backward search.
+     * <p>
+     * Note: The index is for the statement containing this FIR, not necessarily
+     * this exact FIR object. For example, if this is a sub-expression of an
+     * assignment, it returns the assignment's index in the brane.
+     *
+     * @return the index in the containing brane's memory (0-based), or -1 if
+     *         this FIR is not in a brane (root level or FiroeWithoutBraneMind)
+     */
+    public int getMyBraneIndex() {
+        if (!(this instanceof FiroeWithBraneMind fwbm)) {
+            return -1; // FiroeWithoutBraneMind has no brane position
+        }
+
+        // Walk up the memory chain to find the position in a brane's memory
+        BraneMemory childMemory = fwbm.braneMemory;
+        BraneMemory current = childMemory.getParent();
+
+        while (current != null) {
+            if (current.getOwningBrane() != null) {
+                // Found a brane's memory - return our position in it
+                return childMemory.getMyPos();
+            }
+            childMemory = current;
+            current = current.getParent();
+        }
+        return -1; // No containing brane found (root level)
+    }
+
+    /**
      * Creates a FIR from an AST expression.
      */
     protected static FIR createFiroeFromExpr(AST.Expr expr) {
