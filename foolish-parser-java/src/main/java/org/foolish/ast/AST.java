@@ -16,7 +16,7 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
         };
     }
 
-    sealed interface Expr extends AST permits Characterizable, BinaryExpr, UnaryExpr, Branes, IfExpr, UnknownExpr, Stmt, DereferenceExpr, RegexpSearchExpr, SeekExpr, OneShotSearchExpr {
+    sealed interface Expr extends AST permits Characterizable, BinaryExpr, UnaryExpr, Branes, IfExpr, UnknownExpr, Stmt, DereferenceExpr, RegexpSearchExpr, SeekExpr, OneShotSearchExpr, ConstanticExpr, SFFExpr {
 
     }
 
@@ -35,7 +35,7 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
     sealed interface Literal extends Characterizable permits IntegerLiteral {
     }
 
-    sealed interface Stmt extends Expr permits Assignment {
+    sealed interface Stmt extends Expr permits Assignment, ConfirmStmt {
     }
 
     record Program(Branes branes) implements AST {
@@ -124,9 +124,12 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
         public String toString() {
             StringBuilder sb = new StringBuilder();
             sb.append(canonicalCharacterization());
-            sb.append("[\n");
-            for (DetachmentStatement stmt : statements) {
-                sb.append("  ").append(stmt).append(";\n");
+            sb.append("[");
+            for (int i = 0; i < statements.size(); i++) {
+                sb.append(statements.get(i));
+                if (i < statements.size() - 1) {
+                    sb.append(", ");
+                }
             }
             sb.append("]");
             return sb.toString();
@@ -142,9 +145,32 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
         }
     }
 
-    record DetachmentStatement(Identifier identifier, Expr expr) implements AST {
+    record DetachmentStatement(Identifier identifier, Expr expr, boolean isPBrane, ForwardSearchType forwardSearchType, int seekIndex) implements AST {
+        public DetachmentStatement(Identifier identifier, Expr expr) {
+            this(identifier, expr, false, ForwardSearchType.NONE, 0);
+        }
+
+        public enum ForwardSearchType { NONE, LOCAL, GLOBAL }
+
         public String toString() {
-            return identifier + " = " + expr;
+            if (seekIndex != 0) { // Assuming 0 is default/unused for now, unless seek #0 is valid (it is). But seekIndex is only used if identifier is null?
+                // Let's use logic.
+            }
+            // Logic for formatting:
+            // if forwardSearch: ~id or ~~id
+            // if seek: #N
+            // else: +? id (= expr)?
+
+            if (forwardSearchType == ForwardSearchType.LOCAL) return "~" + identifier;
+            if (forwardSearchType == ForwardSearchType.GLOBAL) return "~~" + identifier;
+            // Seek case (AST structure might need refinement if identifier is null)
+            // If identifier is null, it might be seek?
+
+            String prefix = isPBrane ? "+" : "";
+            String idStr = identifier != null ? identifier.toString() : "";
+            String exprStr = (expr != null && expr != UnknownExpr.INSTANCE) ? " = " + expr : "";
+            if (idStr.isEmpty() && exprStr.isEmpty()) return "";
+            return prefix + idStr + exprStr;
         }
     }
 
@@ -166,10 +192,10 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
         }
     }
 
-    record Branes(List<Characterizable> branes) implements Expr {
+    record Branes(List<Expr> branes) implements Expr {
         public String toString() {
             StringBuilder sb = new StringBuilder();
-            for (Characterizable brane : branes) {
+            for (Expr brane : branes) {
                 sb.append(brane).append("\n");
             }
             return sb.toString();
@@ -216,6 +242,18 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
         }
     }
 
+    record ConstanticExpr(Expr expr) implements Expr {
+        public String toString() {
+            return "<" + expr + ">";
+        }
+    }
+
+    record SFFExpr(Expr expr) implements Expr {
+        public String toString() {
+            return "<<" + expr + ">>";
+        }
+    }
+
     record Assignment(Identifier identifier, Expr expr) implements Stmt {
         /**
          * Creates an Assignment with a simple uncharacterized identifier.
@@ -239,6 +277,12 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
                 return identifier + " =" + expr;
             }
             return identifier + " = " + expr;
+        }
+    }
+
+    record ConfirmStmt(Expr left, Expr right) implements Stmt {
+        public String toString() {
+            return "confirm " + left + " == " + right;
         }
     }
 

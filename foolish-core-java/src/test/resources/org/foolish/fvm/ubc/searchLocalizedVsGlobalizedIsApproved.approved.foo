@@ -21,40 +21,27 @@
 PARSED AST:
 {
   r1 = {
-  y = 20
-;
-  z = 30
-;
+  y = 20;
+  z = 30;
 } ? y;
   r2 = {
-  alice = 1
-;
-  bob = 2
-;
-  charlie = 3
-;
+  alice = 1;
+  bob = 2;
+  charlie = 3;
 } ? (al.*);
   r3 = {
-  a = 1
-;
-  b = 2
-;
+  a = 1;
+  b = 2;
 } ? notfound;
   r4 = {
-  alice = 1
-;
-  adam = 2
-;
-  advent = 3
-;
+  alice = 1;
+  adam = 2;
+  advent = 3;
 } ? ^a.*;
   r5 = {
-  alice = 1
-;
-  charlie = 2
-;
-  bobulous = 3
-;
+  alice = 1;
+  charlie = 2;
+  bobulous = 3;
 } ? e$;
 }
 
@@ -63,11 +50,11 @@ Steps taken: 152
 
 FINAL RESULT:
 {
-＿r1 = ???;
-＿r2 = ???;
+＿r1 = 20;
+＿r2 = 1;
 ＿r3 = ???;
-＿r4 = ???;
-＿r5 = ???;
+＿r4 = 3;
+＿r5 = 2;
 }
 
 COMPLETION STATUS:

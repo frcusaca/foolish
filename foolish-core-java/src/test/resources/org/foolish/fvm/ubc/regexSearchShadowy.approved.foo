@@ -34,99 +34,59 @@ PARSED AST:
   {
     apple = 1;
     result1 = {
-  alice = 2
-;
-  bob = 3
-;
-  charlie = 4
-;
-  adam = alice
-;
-  advent = 5
-;
+  alice = 2;
+  bob = 3;
+  charlie = 4;
+  adam = alice;
+  advent = 5;
   {
-  adrian = 6
-;
-}
-;
-  bobulous = 7
-;
+  adrian = 6;
+};
+  bobulous = 7;
 } ? (a.*);
     result2 = {
-  alice = 2
-;
-  bob = 3
-;
-  charlie = 4
-;
-  adam = alice
-;
-  advent = 5
-;
+  alice = 2;
+  bob = 3;
+  charlie = 4;
+  adam = alice;
+  advent = 5;
   {
-  adrian = 6
-;
-}
-;
-  bobulous = 7
-;
+  adrian = 6;
+};
+  bobulous = 7;
 } ? ^a;
     result3 = {
-  alice = 2
-;
-  bob = 3
-;
-  charlie = 4
-;
-  adam = alice
-;
-  advent = 5
-;
+  alice = 2;
+  bob = 3;
+  charlie = 4;
+  adam = alice;
+  advent = 5;
   {
-  adrian = 6
-;
-}
-;
-  bobulous = 7
-;
+  adrian = 6;
+};
+  bobulous = 7;
 } ? e$;
     result4 = {
-  alice = 2
-;
-  bob = 3
-;
-  charlie = 4
-;
-  adam = alice
-;
-  advent = 5
-;
+  alice = 2;
+  bob = 3;
+  charlie = 4;
+  adam = alice;
+  advent = 5;
   {
-  adrian = 6
-;
-}
-;
-  bobulous = 7
-;
+  adrian = 6;
+};
+  bobulous = 7;
 } ? bob;
     result5 = {
-  alice = 2
-;
-  bob = 3
-;
-  charlie = 4
-;
-  adam = alice
-;
-  advent = 5
-;
+  alice = 2;
+  bob = 3;
+  charlie = 4;
+  adam = alice;
+  advent = 5;
   {
-  adrian = 6
-;
-}
-;
-  bobulous = 7
-;
+  adrian = 6;
+};
+  bobulous = 7;
 } ? premordial;
   };
   {
@@ -168,14 +128,65 @@ PARSED AST:
 }
 
 UBC EVALUATION:
-Steps taken: 14
+Steps taken: 642
 
 FINAL RESULT:
 {
-＿premordial = ???;
-＿???;
-＿???;
-＿???;
+＿premordial = 0;
+＿{
+＿＿apple = 1;
+＿＿result1 = 5;
+＿＿result2 = 5;
+＿＿result3 = 4;
+＿＿result4 = 3;
+＿＿result5 = ???;
+＿};
+＿{
+＿＿brn = {
+      ＿＿＿alice = 2;
+      ＿＿＿bob = 3;
+      ＿＿＿charlie = 4;
+      ＿＿＿adam = 2;
+      ＿＿＿advent = 5;
+      ＿＿＿{
+      ＿＿＿＿adrian = 6;
+      ＿＿＿};
+      ＿＿＿bobulous = 7;
+      ＿＿};
+＿＿result1 = 5;
+＿＿result2 = 5;
+＿＿result3 = 4;
+＿＿result4 = 3;
+＿＿result5 = ???;
+＿};
+＿{
+＿＿brn = {
+      ＿＿＿alice = 2;
+      ＿＿＿bob = 3;
+      ＿＿＿charlie = 4;
+      ＿＿＿adam = 2;
+      ＿＿＿advent = 5;
+      ＿＿＿{
+      ＿＿＿＿adrian = 6;
+      ＿＿＿};
+      ＿＿＿bobulous = 7;
+      ＿＿};
+＿＿brn2 = {
+       ＿＿＿hardˍtoˍtypoˍnameˍforˍaˍbrane = {
+                                       ＿＿＿＿alice = 2;
+                                       ＿＿＿＿bob = 3;
+                                       ＿＿＿＿charlie = 4;
+                                       ＿＿＿＿adam = 2;
+                                       ＿＿＿＿advent = 5;
+                                       ＿＿＿＿{
+                                       ＿＿＿＿＿adrian = 6;
+                                       ＿＿＿＿};
+                                       ＿＿＿＿bobulous = 7;
+                                       ＿＿＿};
+       ＿＿};
+＿＿result1 = 5;
+＿＿result2 = 5;
+＿};
 }
 
 COMPLETION STATUS:

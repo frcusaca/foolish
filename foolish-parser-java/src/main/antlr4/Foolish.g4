@@ -18,7 +18,7 @@ characterizable
     | characterization* (literal | brane)
     ;
 
-branes: brane+ ;
+branes: primary+ ;
 brane
     : standard_brane
     | detach_brane
@@ -30,11 +30,18 @@ standard_brane
     ;
 
 detach_brane
-    : LBRACK detach_stmt* RBRACK
+    : LBRACK detach_item_list? RBRACK
     ;
 
-detach_stmt
-    : characterizable_identifier (ASSIGN expr)? SEMI LINE_COMMENT?
+detach_item_list
+    : detach_item (COMMA detach_item)*
+    ;
+
+detach_item
+    : (PLUS? characterizable_identifier (ASSIGN expr)?)
+    | (TILDE | TILDE_TILDE) regexp_expression
+    | HASH seek_index
+    |
     ;
 
 brane_search : UP;
@@ -42,18 +49,28 @@ brane_search : UP;
 stmt_body
     : assignment
     | expr
+    | confirm_stmt
     ;
 
 stmt
     : stmt_body ((SEMI | COMMA) LINE_COMMENT? | LINE_COMMENT)
     | LINE_COMMENT
     ;
-assignment : characterizable_identifier ASSIGN expr ;
+assignment
+    : characterizable_identifier ASSIGN expr
+    | characterizable_identifier CONST_ASSIGN expr
+    | characterizable_identifier SFF_ASSIGN expr
+    | characterizable_identifier ONE_SHOT_ASSIGN expr
+    ;
+
+confirm_stmt
+    : CONFIRM expr EQ expr
+    ;
 
 expr
-    : addExpr
+    : branes
+    | addExpr
     | ifExpr
-    | branes
     ;
 
 addExpr : mulExpr ((PLUS | MINUS) mulExpr)* ;
@@ -90,6 +107,8 @@ primary
     : characterizable
     | LPAREN expr RPAREN
     | UNKNOWN
+    | LT expr GT
+    | L_DOUBLE_ANGLE expr R_DOUBLE_ANGLE
     ;
 
 ifExpr
@@ -121,6 +140,7 @@ regexp_element
     | CARET              // ^
     | DOLLAR             // $
     | DOT                // .
+    | TILDE              // ~
     // Special chars allowed ONLY inside parentheses to avoid ambiguity with operators
     | LPAREN regexp_inner* RPAREN    // Balanced () - can contain special chars
     | LBRACE regexp_inner* RBRACE    // Balanced {}
@@ -139,6 +159,7 @@ regexp_inner
     | DOLLAR             // $ (for regexp, only inside parens)
     | ESLASH             // \ (for regexp, only inside parens)
     | DOT                // . (for regexp, only inside parens)
+    | TILDE              // ~
     | LPAREN regexp_inner* RPAREN    // Nested balanced ()
     | LBRACE regexp_inner* RBRACE    // Nested balanced {}
     | LBRACK regexp_inner* RBRACK    // Nested balanced []
@@ -164,6 +185,10 @@ LINE_COMMENT
 
 
 ASSIGN : '=' ;
+CONST_ASSIGN : '<=>' ;
+SFF_ASSIGN : '<<=>>' ;
+ONE_SHOT_ASSIGN : '=$' ;
+
 PLUS : '+' ;
 MINUS : '-' ;
 MUL : '*' ;
@@ -174,6 +199,8 @@ DOLLAR : '$';
 QUESTION: '?';
 QUESTION_QUESTION: '??';
 HASH : '#';
+TILDE : '~';
+TILDE_TILDE: '~~';
 
 DOT_DOT : '..' ;
 DOT : '.' ;
@@ -185,6 +212,14 @@ ELSE : 'else' ;
 FI   :  'fi'  ;
 UP   : '↑' ;
 UNKNOWN : '???' ; // Unknowns are unknown
+CONFIRM : 'confirm' ;
+EQ : '==' ;
+
+LT : '<' ;
+GT : '>' ;
+L_DOUBLE_ANGLE : '<<' ;
+R_DOUBLE_ANGLE : '>>' ;
+
 
 INTEGER : DIGIT+ ;
 

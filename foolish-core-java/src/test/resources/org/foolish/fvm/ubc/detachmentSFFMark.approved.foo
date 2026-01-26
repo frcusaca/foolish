@@ -29,26 +29,21 @@ PARSED AST:
 {
       r = ((((a + b) + c) + d) + e);
     };
-    g = <<f
->>;
-    gg = <<f
->>;
+    g = <<f>>;
+    gg = <<f>>;
     g2 = [a, b, c, d]
 {
       r = ((((a + b) + c) + d) + e);
     };
     h = <<{
-  g
-;
-  f
-;
-}
->>;
+      g;
+      f;
+    }>>;
   };
 }
 
 UBC EVALUATION:
-Steps taken: 11
+Steps taken: 176
 
 FINAL RESULT:
 {

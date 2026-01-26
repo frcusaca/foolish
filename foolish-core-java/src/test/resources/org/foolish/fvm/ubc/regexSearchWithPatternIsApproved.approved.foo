@@ -7,12 +7,9 @@
 PARSED AST:
 {
   result = {
-  alice = 1
-;
-  bob = 2
-;
-  charlie = 3
-;
+  alice = 1;
+  bob = 2;
+  charlie = 3;
 } ? (a.*);
 }
 
@@ -21,7 +18,7 @@ Steps taken: 36
 
 FINAL RESULT:
 {
-＿result = ???;
+＿result = 1;
 }
 
 COMPLETION STATUS:

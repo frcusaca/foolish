@@ -35,6 +35,15 @@ public class ASTFormatter {
             case AST.Identifier identifier -> identifier.toString();
             case AST.IntegerLiteral literal -> literal.toString();
             case AST.UnknownExpr unknown -> unknown.toString();
+            case AST.DetachmentBrane detachment -> formatDetachmentBrane(detachment, indentLevel);
+            case AST.DetachmentStatement detachStmt -> detachStmt.toString();
+            case AST.ConstanticExpr constantic -> "<" + format(constantic.expr(), indentLevel) + ">";
+            case AST.SFFExpr sff -> "<<" + format(sff.expr(), indentLevel) + ">>";
+            case AST.ConfirmStmt confirm -> confirm.toString();
+            case AST.OneShotSearchExpr oneShot -> oneShot.toString();
+            case AST.DereferenceExpr deref -> deref.toString();
+            case AST.RegexpSearchExpr regex -> regex.toString();
+            case AST.SeekExpr seek -> seek.toString();
             default -> ast.toString();
         };
     }
@@ -46,7 +55,7 @@ public class ASTFormatter {
     private String formatBranes(AST.Branes branes, int indentLevel) {
         StringBuilder sb = new StringBuilder();
         boolean first = true;
-        for (AST.Characterizable brane : branes.branes()) {
+        for (AST.Expr brane : branes.branes()) {
             if (!first) sb.append("\n");
             sb.append(format(brane, indentLevel));
             first = false;
@@ -71,6 +80,11 @@ public class ASTFormatter {
 
         sb.append(indent).append("}");
         return sb.toString();
+    }
+
+    private String formatDetachmentBrane(AST.DetachmentBrane detachment, int indentLevel) {
+        // Simple formatting for now
+        return detachment.toString();
     }
 
     private String formatAssignment(AST.Assignment assignment, int indentLevel) {

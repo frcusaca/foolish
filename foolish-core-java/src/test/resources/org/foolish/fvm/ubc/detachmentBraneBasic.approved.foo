@@ -54,8 +54,7 @@ PARSED AST:
       r = (a + b);
     };
     b = 3;
-    x =$f
-;
+    x =$f;
   };
   testˍ2 = {
     c = 10;
@@ -65,13 +64,11 @@ PARSED AST:
 {
         result = ((c + d) + e);
       };
-      result =$inner
-;
+      result =$inner;
     };
     d = 20;
     e = 5;
-    y =$g
-;
+    y =$g;
   };
   testˍ3 = {
     h = [p, q, r]
@@ -81,8 +78,7 @@ PARSED AST:
     p = 1;
     q = 2;
     r = 3;
-    z =$h
-;
+    z =$h;
   };
   testˍ4 = {
     a = 1;
@@ -106,7 +102,7 @@ g;
 }
 
 UBC EVALUATION:
-Steps taken: 35
+Steps taken: 446
 
 FINAL RESULT:
 {

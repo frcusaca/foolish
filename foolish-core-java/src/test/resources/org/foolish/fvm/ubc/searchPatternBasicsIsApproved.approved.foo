@@ -14,18 +14,13 @@
 PARSED AST:
 {
   simple = {
-  x = 10
-;
-  y = 20
-;
-  z = 30
-;
+  x = 10;
+  y = 20;
+  z = 30;
 } ? y;
   notfound = {
-  a = 1
-;
-  b = 2
-;
+  a = 1;
+  b = 2;
 } ? missing;
 }
 
@@ -34,7 +29,7 @@ Steps taken: 61
 
 FINAL RESULT:
 {
-＿simple = ???;
+＿simple = 20;
 ＿notfound = ???;
 }
 

@@ -147,18 +147,10 @@ PARSED AST:
     };
     f2 = [a, b, c, d]
 f;
-    r =$[a = 1
-, b = 2
-, c = 3
-, d = 4
-]
+    r =$[a = 1, b = 2, c = 3, d = 4]
 f
 ;
-    r2 =$[a = 1
-, b = 2
-, c = 3
-, d = 5
-]
+    r2 =$[a = 1, b = 2, c = 3, d = 5]
 f2
 ;
     g = [a, b]
@@ -169,24 +161,18 @@ f2
     g2 = [b]
 g;
     b = 5;
-    x =$g2
-;
-    y =$[a = 1
-, b = 2
-]
+    x =$g2;
+    y =$[a = 1, b = 2]
 g
 ;
     h = [p, q, r]
 {
       product = ((p * q) * r);
     };
-    h2 = [p = 2
-, q = 3
-]
+    h2 = [p = 2, q = 3]
 h;
     r = 4;
-    z =$h2
-;
+    z =$h2;
   };
   testˍcomplexˍnested = {
     {
@@ -200,17 +186,14 @@ h;
 {
             result = ((((a + b) + c) + d) + e);
           };
-          result =$inner2
-;
+          result =$inner2;
         };
-        result =$inner1
-;
+        result =$inner1;
       };
       c = 10;
       d = 20;
       e = 30;
-      x =$outer
-;
+      x =$outer;
     };
     {
       curryˍtest = [a, b, c, d, e]
@@ -228,8 +211,7 @@ step1;
 step2;
       d = 4;
       e = 5;
-      result =$step3
-;
+      result =$step3;
     };
     {
       mixer = [p, q, r, s, t]
@@ -238,19 +220,16 @@ step2;
       };
       p = 2;
       q = 3;
-      partial = [+p, q = 10
-]
+      partial = [+p, q = 10]
 mixer;
       r = 4;
       s = 5;
       t = 6;
-      captured = <partial
->;
+      captured = <partial>;
       r = 100;
       s = 200;
       t = 300;
-      y =$captured
-;
+      y =$captured;
     };
     {
       factory = [multiplier]
@@ -262,16 +241,12 @@ mixer;
         result = generated;
       };
       multiplier = 10;
-      doubleˍit = <factory
->;
+      doubleˍit = <factory>;
       x = 5;
-      z =$doubleˍit
-;
+      z =$doubleˍit;
       multiplier = 3;
-      tripleˍit = <factory
->;
-      w =$tripleˍit
-;
+      tripleˍit = <factory>;
+      w =$tripleˍit;
     };
   };
   testˍevaluationˍtimeˍbinding = {
@@ -279,25 +254,19 @@ mixer;
 {
       r = ((a + b) + c);
     };
-    result1 =$[a = 1
-, b = 2
-, c = 3
-]
+    result1 =$[a = 1, b = 2, c = 3]
 f
 ;
     a = 10;
     b = 20;
     c = 30;
-    result2 =$f
-;
+    result2 =$f;
     g = [x, y, z]
 {
       sum = ((x + y) + z);
     };
     x = 5;
-    result3 =$[y = 10
-, z = 15
-]
+    result3 =$[y = 10, z = 15]
 g
 ;
     h = [a, b, c, d]
@@ -307,17 +276,14 @@ g
     a = 2;
     h2 = [+a]
 h;
-    result4 =$[b = 3
-, c = 4
-, d = 5
-]
+    result4 =$[b = 3, c = 4, d = 5]
 h2
 ;
   };
 }
 
 UBC EVALUATION:
-Steps taken: 27
+Steps taken: 1264
 
 FINAL RESULT:
 {

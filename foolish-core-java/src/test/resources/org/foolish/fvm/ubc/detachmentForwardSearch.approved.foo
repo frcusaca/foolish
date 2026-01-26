@@ -132,22 +132,61 @@
 !!!
 PARSED AST:
 {
-}
+  testˍ1 = {
+    f = [~ingredient]
 {
-}
-[
-  ingredient = ???;
-]
+      ingredient = 10;
+      result = (ingredient + 5);
+    };
+    ingredient = 100;
+    x =$f;
+  };
+  testˍ2 = {
+    g = [~~tmp_*]
 {
-  ingredient = 10;
-  result = (ingredient + 5);
+      tmpˍa = 1;
+      tmpˍb = 2;
+      result = ((tmpˍa + tmpˍb) + 3);
+    };
+    tmpˍa = 10;
+    tmpˍb = 20;
+    y =$g;
+  };
+  testˍ3 = {
+    h = [a, ~result]
+{
+      result = (a + b);
+    };
+    a = 1;
+    b = 2;
+    result = 100;
+    z =$[result = 50]
+h
+;
+  };
+  testˍ4 = {
+    k = []
+{
+      first = 10;
+      second = 20;
+    };
+    val =$[first = 100]
+k
+;
+    r1 = val.first;
+    r2 = val.second;
+  };
 }
 
 UBC EVALUATION:
-Steps taken: 6
+Steps taken: 329
 
 FINAL RESULT:
 {
+＿testˍ1 = ???;
+＿testˍ2 = ???;
+＿testˍ3 = ???;
+＿testˍ4 = ???;
 }
 
 COMPLETION STATUS:

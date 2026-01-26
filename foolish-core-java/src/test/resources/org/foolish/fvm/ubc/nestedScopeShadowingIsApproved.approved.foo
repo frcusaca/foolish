@@ -21,13 +21,21 @@ PARSED AST:
 }
 
 UBC EVALUATION:
-Steps taken: 13
+Steps taken: 38
 
 FINAL RESULT:
 {
-＿x = ???;
-＿???;
-＿???;
+＿x = 100;
+＿{
+＿＿???;
+＿＿'{
+＿＿＿x = 200;
+＿＿＿200;
+＿＿};
+＿＿x = 200;
+＿＿200;
+＿};
+＿100;
 }
 
 COMPLETION STATUS:

@@ -36,14 +36,11 @@ PARSED AST:
 {
       r = (a + b);
     };
-    f2 = [a = 3
-]
+    f2 = [a = 3]
 f;
     b = 2;
-    x =$f
-;
-    y =$f2
-;
+    x =$f;
+    y =$f2;
   };
   testˍ2 = {
     a = 1;
@@ -51,17 +48,14 @@ f;
 {
       result = (a + c);
     };
-    g2 = [a = 5
-, c = 10
-]
+    g2 = [a = 5, c = 10]
 g;
-    z =$g2
-;
+    z =$g2;
   };
 }
 
 UBC EVALUATION:
-Steps taken: 19
+Steps taken: 196
 
 FINAL RESULT:
 {

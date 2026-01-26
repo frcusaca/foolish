@@ -66,12 +66,10 @@ PARSED AST:
     a = 3;
     c = 1;
     f2 = [+a, c]
-<f
->;
+<f>;
     b = 2;
     d = 4;
-    x =$f2
-;
+    x =$f2;
   };
   testˍ2 = {
     f = [a, b, c, d]
@@ -81,14 +79,12 @@ PARSED AST:
     a = 3;
     c = 1;
     f2 = [+a, c]
-<f
->;
+<f>;
     a = 100;
     c = 200;
     b = 2;
     d = 4;
-    y =$f2
-;
+    y =$f2;
   };
   testˍ3 = {
     g = [p, q, r, s]
@@ -98,17 +94,13 @@ PARSED AST:
     p = 1;
     q = 2;
     g2 = [+p]
-<g
->;
+<g>;
     r = 3;
     g3 = [+r]
-<g2
->;
+<g2>;
     s = 4;
-    z =$[q = 10
-]
-<g3
->
+    z =$[q = 10]
+<g3>
 ;
   };
   testˍ4 = {
@@ -117,18 +109,15 @@ PARSED AST:
       result = ((a + b) + c);
     };
     a = 5;
-    h2 = [+a, b = 10
-]
-<h
->;
+    h2 = [+a, b = 10]
+<h>;
     c = 3;
-    w =$h2
-;
+    w =$h2;
   };
 }
 
 UBC EVALUATION:
-Steps taken: 35
+Steps taken: 497
 
 FINAL RESULT:
 {

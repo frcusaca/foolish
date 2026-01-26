@@ -59,6 +59,13 @@ public class BraneFiroe extends FiroeWithBraneMind {
         return allFiroes;
     }
 
+    /**
+     * Returns the brane's memory.
+     */
+    public BraneMemory getMemory() {
+        return braneMemory;
+    }
+
     @Override
     public String toString() {
         return new Sequencer4Human().sequence(this);

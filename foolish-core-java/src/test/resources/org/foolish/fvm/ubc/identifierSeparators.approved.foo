@@ -24,17 +24,17 @@ PARSED AST:
 }
 
 UBC EVALUATION:
-Steps taken: 61
+Steps taken: 63
 
 FINAL RESULT:
 {
-＿myˍvar = ???;
-＿myˍvar = ???;
-＿myˍvar = ???;
-＿???;
-＿x = ???;
-＿x = ???;
-＿???;
+＿myˍvar = 1;
+＿myˍvar = 2;
+＿myˍvar = 3;
+＿9;
+＿x = 10;
+＿x = 20;
+＿20;
 }
 
 COMPLETION STATUS:

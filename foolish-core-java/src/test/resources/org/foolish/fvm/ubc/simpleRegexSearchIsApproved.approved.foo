@@ -9,8 +9,7 @@ PARSED AST:
 {
   x = 5;
   result = {
-  y = 1
-;
+  y = 1;
 } ? y;
 }
 
@@ -19,8 +18,8 @@ Steps taken: 28
 
 FINAL RESULT:
 {
-＿x = ???;
-＿result = ???;
+＿x = 5;
+＿result = 1;
 }
 
 COMPLETION STATUS:

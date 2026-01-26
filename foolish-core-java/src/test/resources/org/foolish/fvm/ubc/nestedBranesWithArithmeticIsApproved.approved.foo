@@ -26,12 +26,18 @@ PARSED AST:
 }
 
 UBC EVALUATION:
-Steps taken: 20
+Steps taken: 51
 
 FINAL RESULT:
 {
 ＿5;
-＿???;
+＿{
+＿＿20;
+＿＿{
+＿＿＿5;
+＿＿};
+＿＿15;
+＿};
 ＿3;
 }
 

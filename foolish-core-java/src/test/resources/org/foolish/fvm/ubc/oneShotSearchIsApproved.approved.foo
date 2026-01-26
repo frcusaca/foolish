@@ -40,42 +40,28 @@
 PARSED AST:
 {
   x =^{
-  10
-;
-  20
-;
-  30
-;
+  10;
+  20;
+  30;
 };
   y =${
-  10
-;
-  20
-;
-  30
-;
+  10;
+  20;
+  30;
 };
   a =^{
-  first = 100
-;
-  second = 200
-;
+  first = 100;
+  second = 200;
 };
   b =${
   {
-  1
-;
-  2
-;
-}
-;
+  1;
+  2;
+};
   {
-  3
-;
-  4
-;
-}
-;
+  3;
+  4;
+};
 };
   c =^b;
   d =$b;
@@ -90,29 +76,34 @@ PARSED AST:
   };
   val =^brane;
   scalar =${
-  x = 42
-;
-  x
-;
+  x = 42;
+  x;
 };
 }
 
 UBC EVALUATION:
-Steps taken: 162
+Steps taken: 191
 
 FINAL RESULT:
 {
-＿x = ???;
-＿y = ???;
-＿a = ???;
-＿b = ???;
-＿c = ???;
-＿d = ???;
+＿x = 10;
+＿y = 30;
+＿a = 100;
+＿b = {
+    ＿＿3;
+    ＿＿4;
+    ＿};
+＿c = 3;
+＿d = 4;
 ＿e = ???;
 ＿f = ???;
-＿brane = ???;
-＿val = ???;
-＿scalar = ???;
+＿brane = {
+        ＿＿1;
+        ＿＿2;
+        ＿＿3;
+        ＿};
+＿val = 1;
+＿scalar = 42;
 }
 
 COMPLETION STATUS:

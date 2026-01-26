@@ -91,7 +91,7 @@ public class UbcRepl {
         }
 
         // Get the first brane to evaluate
-        AST.Characterizable firstBrane = branes.branes().get(0);
+        AST.Expr firstBrane = branes.branes().get(0);
         if (!(firstBrane instanceof AST.Brane brane)) {
             return null;
         }

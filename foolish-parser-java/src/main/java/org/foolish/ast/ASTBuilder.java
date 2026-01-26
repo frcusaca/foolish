@@ -35,8 +35,14 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
     @Override
     public AST visitProgram(FoolishParser.ProgramContext ctx) {
-        AST.Branes brns = (AST.Branes) visit(ctx.branes());
-        return new AST.Program(brns);
+        AST ast = visit(ctx.branes());
+        if (ast instanceof AST.Branes branes) {
+            return new AST.Program(branes);
+        }
+        if (ast instanceof AST.Expr expr) {
+            return new AST.Program(new AST.Branes(List.of(expr)));
+        }
+        throw new RuntimeException("Expected expression or branes from program body, got: " + ast);
     }
 
     @Override
@@ -68,19 +74,10 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
                     if (st instanceof AST.Expr expr) {
                         return expr;
                     }
-                    throw new RuntimeException("Expected statement, got: " + st);
-                })
-                .toList();
-    }
-
-    private List<AST.DetachmentStatement> collectDetachmentStatements(List<FoolishParser.Detach_stmtContext> statements) {
-        return statements.stream()
-                .map(this::visit)
-                .map(st -> {
-                    if (st instanceof AST.DetachmentStatement assignment) {
-                        return assignment;
+                    if (st instanceof AST.ConfirmStmt) {
+                        return (AST.Expr) st;
                     }
-                    throw new RuntimeException("Expected detachment assignment, got: " + st);
+                    throw new RuntimeException("Expected statement, got: " + st);
                 })
                 .toList();
     }
@@ -100,16 +97,70 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
     @Override
     public AST visitDetach_brane(FoolishParser.Detach_braneContext ctx) {
-        return new AST.DetachmentBrane(collectDetachmentStatements(ctx.detach_stmt()));
+        if (ctx.detach_item_list() == null) {
+            return new AST.DetachmentBrane(List.of());
+        }
+
+        List<AST.DetachmentStatement> items = new ArrayList<>();
+        for (FoolishParser.Detach_itemContext itemCtx : ctx.detach_item_list().detach_item()) {
+             items.add((AST.DetachmentStatement) visit(itemCtx));
+        }
+        return new AST.DetachmentBrane(items);
+    }
+
+    @Override
+    public AST visitDetach_item(FoolishParser.Detach_itemContext ctx) {
+        // Cases:
+        // 1. (PLUS? characterizable_identifier (ASSIGN expr)?)
+        // 2. (TILDE | TILDE_TILDE) characterizable_identifier
+        // 3. HASH seek_index
+
+        if (ctx.HASH() != null) {
+            // Seek case
+            String indexText = ctx.seek_index().getText();
+            int index = Integer.parseInt(indexText);
+            return new AST.DetachmentStatement(null, AST.UnknownExpr.INSTANCE, false, AST.DetachmentStatement.ForwardSearchType.NONE, index);
+        }
+
+        if (ctx.TILDE() != null || ctx.TILDE_TILDE() != null) {
+            // Forward search case
+            // The pattern is a regexp_expression, which is basically a sequence of elements.
+            // We need to extract the text.
+            String pattern = ctx.regexp_expression().getText();
+            // We store it as an identifier for now, as DetachmentStatement uses Identifier
+            AST.Identifier identifier = new AST.Identifier(pattern);
+
+            AST.DetachmentStatement.ForwardSearchType type = ctx.TILDE() != null ?
+                AST.DetachmentStatement.ForwardSearchType.LOCAL :
+                AST.DetachmentStatement.ForwardSearchType.GLOBAL;
+            return new AST.DetachmentStatement(identifier, AST.UnknownExpr.INSTANCE, false, type, 0);
+        }
+
+        // Standard detachment case
+        boolean isPBrane = ctx.PLUS() != null;
+        AST.Identifier identifier = null;
+        AST.Expr expr = AST.UnknownExpr.INSTANCE;
+
+        if (ctx.characterizable_identifier() != null) {
+            identifier = (AST.Identifier) visit(ctx.characterizable_identifier());
+            if (ctx.expr() != null) {
+                expr = (AST.Expr) visit(ctx.expr());
+            }
+        }
+
+        return new AST.DetachmentStatement(identifier, expr, isPBrane, AST.DetachmentStatement.ForwardSearchType.NONE, 0);
     }
 
     @Override
     public AST visitBranes(FoolishParser.BranesContext ctx) {
-        List<AST.Characterizable> brns = new ArrayList<>();
-        for (var s : ctx.brane()) {
+        List<AST.Expr> brns = new ArrayList<>();
+        for (var s : ctx.primary()) {
             AST st = visit(s);
-            if (st instanceof AST.Characterizable brn) brns.add(brn);
-            else throw new RuntimeException("Expected characterizable brane, got: " + st);
+            if (st instanceof AST.Expr brn) brns.add(brn);
+            else throw new RuntimeException("Expected expression in branes list, got: " + st);
+        }
+        if (brns.size() == 1) {
+            return brns.get(0);
         }
         return new AST.Branes(brns);
     }
@@ -132,6 +183,8 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
     public AST visitStmt_body(FoolishParser.Stmt_bodyContext ctx) {
         if (ctx.expr() != null) {
             return visit(ctx.expr());
+        } else if (ctx.confirm_stmt() != null) {
+            return visit(ctx.confirm_stmt());
         } else {
             return visit(ctx.assignment());
         }
@@ -141,14 +194,24 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
     public AST visitAssignment(FoolishParser.AssignmentContext ctx) {
         AST.Identifier identifier = (AST.Identifier) visit(ctx.characterizable_identifier());
         AST.Expr expr = (AST.Expr) visit(ctx.expr());
+
+        if (ctx.CONST_ASSIGN() != null) { // <=>
+            return new AST.Assignment(identifier, new AST.ConstanticExpr(expr));
+        } else if (ctx.SFF_ASSIGN() != null) { // <<=>>
+            return new AST.Assignment(identifier, new AST.SFFExpr(expr));
+        } else if (ctx.ONE_SHOT_ASSIGN() != null) { // =$
+            // Assuming default anchor behavior (TAIL)
+            return new AST.Assignment(identifier, new AST.OneShotSearchExpr(expr, SearchOperator.TAIL));
+        }
+
         return new AST.Assignment(identifier, expr);
     }
 
     @Override
-    public AST visitDetach_stmt(FoolishParser.Detach_stmtContext ctx) {
-        AST.Identifier identifier = (AST.Identifier) visit(ctx.characterizable_identifier());
-        AST.Expr expr = ctx.expr() != null ? (AST.Expr) visit(ctx.expr()) : AST.UnknownExpr.INSTANCE;
-        return new AST.DetachmentStatement(identifier, expr);
+    public AST visitConfirm_stmt(FoolishParser.Confirm_stmtContext ctx) {
+        AST.Expr left = (AST.Expr) visit(ctx.expr(0));
+        AST.Expr right = (AST.Expr) visit(ctx.expr(1));
+        return new AST.ConfirmStmt(left, right);
     }
 
     @Override
@@ -235,7 +298,14 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
     @Override
     public AST visitPrimary(FoolishParser.PrimaryContext ctx) {
         if (ctx.characterizable() != null) return visit(ctx.characterizable());
-        if (ctx.expr() != null) return visit(ctx.expr());
+        if (ctx.expr() != null) {
+            if (ctx.LT() != null && ctx.GT() != null) { // <expr>
+                 return new AST.ConstanticExpr((AST.Expr) visit(ctx.expr()));
+            } else if (ctx.L_DOUBLE_ANGLE() != null && ctx.R_DOUBLE_ANGLE() != null) { // <<expr>>
+                 return new AST.SFFExpr((AST.Expr) visit(ctx.expr()));
+            }
+            return visit(ctx.expr()); // (expr)
+        }
         return AST.UnknownExpr.INSTANCE;
     }
 

@@ -135,8 +135,24 @@ public abstract class FIR {
                 // TODO: Implement SeekFiroe when needed
                 return new NKFiroe();
             }
+            case AST.Branes branes -> {
+                return new BranesFiroe(branes);
+            }
+            case AST.DetachmentBrane detachmentBrane -> {
+                return new DetachmentFiroe(detachmentBrane);
+            }
+            case AST.ConstanticExpr constantic -> {
+                return new ConstanticFiroe(constantic);
+            }
+            case AST.SFFExpr sff -> {
+                return new SFFFiroe(sff);
+            }
+            case AST.ConfirmStmt confirm -> {
+                return new NKFiroe(); // Confirm just executes check (TODO: implement ConfirmFiroe)
+            }
             default -> {
                 // Placeholder for unsupported types
+                System.err.println("DEBUG: Unsupported AST expression type: " + expr.getClass().getName());
                 return new NKFiroe();
             }
         }

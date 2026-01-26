@@ -35,6 +35,7 @@ public class Sequencer4Human extends Sequencer<String> {
     public String sequence(FIR fir, int depth) {
         return switch (fir) {
             case BraneFiroe brane -> sequenceBrane(brane, depth);
+            case BranesFiroe branes -> sequenceBranes(branes, depth);
             case NKFiroe nk -> sequenceNK(nk, depth);
             case ValueFiroe value -> sequenceValue(value, depth);
             case BinaryFiroe binary -> sequenceBinary(binary, depth);
@@ -44,7 +45,10 @@ public class Sequencer4Human extends Sequencer<String> {
             case AssignmentFiroe assignment -> sequenceAssignment(assignment, depth);
             case IdentifierFiroe identifier -> sequenceIdentifier(identifier, depth);
             case OneShotSearchFiroe oneShotSearch -> sequenceOneShotSearch(oneShotSearch, depth);
-            case null, default -> indent(depth) + "???";
+            case null, default -> {
+                String className = fir == null ? "null" : fir.getClass().getName();
+                yield indent(depth) + "??? (" + className + ")";
+            }
         };
     }
 
@@ -67,6 +71,19 @@ public class Sequencer4Human extends Sequencer<String> {
             sb.append(";\n");
         }
 
+        sb.append(indent(depth)).append("}");
+        return sb.toString();
+    }
+
+    protected String sequenceBranes(BranesFiroe branes, int depth) {
+        // Similar to Brane, but for BranesFiroe
+        var sb = new StringBuilder();
+        sb.append(indent(depth)).append("{\n");
+        for (FIR expr : branes.stream().toList()) { // stream() exposed via FiroeWithBraneMind?
+             // Actually FiroeWithBraneMind exposes stream() of braneMemory
+             sb.append(sequence(expr, depth + 1));
+             sb.append(";\n");
+        }
         sb.append(indent(depth)).append("}");
         return sb.toString();
     }
@@ -131,7 +148,7 @@ public class Sequencer4Human extends Sequencer<String> {
                     return indent(depth) + assignment.getId() + " = ???";
                 }
 
-                // Unwrap identifier/assignment/oneshot to get the actual value
+                // Unwrap identifier/assignment/oneshot/constantic to get the actual value
                 FIR unwrapped = result;
                 while (true) {
                     if (unwrapped instanceof IdentifierFiroe identifierFiroe) {
@@ -143,6 +160,7 @@ public class Sequencer4Human extends Sequencer<String> {
                     } else {
                          break;
                     }
+                    if (unwrapped == null) return indent(depth) + assignment.getId() + " = ???";
                 }
 
                 if (unwrapped instanceof BraneFiroe brane) {
@@ -157,9 +175,16 @@ public class Sequencer4Human extends Sequencer<String> {
                     // For subsequent lines, add spaces to align with "id = "
                     String padding = " ".repeat(assignment.getId().length() + 3);
                     braneSeq = braneSeq.replace("\n", "\n" + padding);
+
                     return indent(depth) + assignment.getId() + " = " + braneSeq;
                 }
-                return indent(depth) + assignment.getId() + " = " + result.getValue();
+                // Fallback for simple values
+                try {
+                    return indent(depth) + assignment.getId() + " = " + unwrapped.getValue();
+                } catch (Exception e) {
+                    // If getValue fails (e.g. for complex types not handled above), print toString or ???
+                    return indent(depth) + assignment.getId() + " = " + unwrapped;
+                }
             }
         }
         // If not yet evaluated, show the structure
