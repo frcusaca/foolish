@@ -12,11 +12,15 @@ abstract class FiroeWithBraneMind(ast: AST, comment: Option[String] = None) exte
   protected val braneMind = mutable.Queue[FIR]()
   protected[scubc] val braneMemory = new BraneMemory(null)
   protected var ordinated: Boolean = false
+  protected val indexLookup = new java.util.IdentityHashMap[FIR, Int]()
 
   def ordinateToParentBraneMind(parent: FiroeWithBraneMind, myPos: Int): Unit =
     assert(!this.ordinated)
     this.braneMemory.setParent(parent.braneMemory)
-    this.braneMemory.setMyPos(myPos)
+    // For BraneFiroe: position is tracked via parent FIR relationships (getMyBraneIndex)
+    // For other FIRs (like IdentifierFiroe): we need to set myPos since they don't have owningBrane
+    if !this.isInstanceOf[BraneFiroe] then
+      this.braneMemory.setMyPosInternal(myPos)
     this.ordinated = true
 
   /** Enqueues FIRs into the braneMind */
@@ -24,11 +28,18 @@ abstract class FiroeWithBraneMind(ast: AST, comment: Option[String] = None) exte
     firs.foreach { fir =>
       braneMind.enqueue(fir)
       braneMemory.put(fir)
+      // Set parent FIR relationship
+      fir.setParentFir(this)
+      val index = braneMind.size - 1
+      indexLookup.put(fir, index)
       fir match
         case fwbm: FiroeWithBraneMind =>
-          fwbm.ordinateToParentBraneMind(this, braneMind.size - 1)
+          fwbm.ordinateToParentBraneMind(this, index)
         case _ =>
     }
+
+  def getIndexOf(f: FIR): Int =
+    indexLookup.get(f)
 
   protected def enqueueExprs(exprs: AST.Expr*): Unit =
     exprs.foreach(expr => enqueueFirs(FIR.createFiroeFromExpr(expr)))

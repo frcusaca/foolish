@@ -137,14 +137,16 @@
                     <args>
                         <arg>-deprecation</arg>
                         <arg>-feature</arg>
-                    </args>
+		</args>
+		<jvmArgs> <jvmArg>--sun-misc-unsafe-memory-access=allow</jvmArg><jvmArg>--enable-native-access=ALL-UNNAMED </jvmArg> </jvmArgs>
                 </configuration>
             </plugin>
 
             <!-- Maven Surefire for JUnit tests -->
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <configuration>
+		<configuration>
+		    <argLine>--sun-misc-unsafe-memory-access=allow --enable-native-access=ALL-UNNAMED</argLine>
                     <includes>
                         <include>**/*Test.java</include>
                         <include>**/*Test.scala</include>

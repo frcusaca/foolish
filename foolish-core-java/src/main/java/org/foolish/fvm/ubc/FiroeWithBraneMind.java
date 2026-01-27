@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Stream;
+import java.util.IdentityHashMap;
 
 /**
  * FIR with a braneMind queue for managing evaluation tasks.
@@ -22,6 +23,7 @@ public abstract class FiroeWithBraneMind extends FIR {
     protected final LinkedList<FIR> braneMind;
     protected final BraneMemory braneMemory;
     protected boolean ordinated;
+    protected IdentityHashMap indexLookup = new IdentityHashMap<FIR,Integer>();
 
     protected FiroeWithBraneMind(AST ast, String comment) {
         super(ast, comment);
@@ -33,7 +35,11 @@ public abstract class FiroeWithBraneMind extends FIR {
     public void ordinateToParentBraneMind(FiroeWithBraneMind parent, int myPos) {
         assert !this.ordinated;
         this.braneMemory.setParent(parent.braneMemory);
-        this.braneMemory.setMyPos(myPos);
+        // For BraneFiroe: position is tracked via parent FIR relationships (getMyBraneIndex)
+        // For other FIRs (like IdentifierFiroe): we need to set myPos since they don't have owningBrane
+        if (!(this instanceof BraneFiroe)) {
+            this.braneMemory.setMyPosInternal(myPos);
+        }
         this.ordinated = true;
     }
 
@@ -77,13 +83,21 @@ public abstract class FiroeWithBraneMind extends FIR {
         for (FIR fir : firs) {
             braneMind.addLast(fir);
             braneMemory.put(fir);
+            // Set parent FIR relationship
+            fir.setParentFir(this);
+	    int index = braneMind.size() - 1;
+            indexLookup.put(fir,index);
             switch (fir) {
                 case FiroeWithBraneMind fwbm:
-                    fwbm.ordinateToParentBraneMind(this, braneMind.size() - 1);
+                    fwbm.ordinateToParentBraneMind(this, index);
                 default:
                     ;
             }
         }
+    }
+
+    protected int getIndexOf(FIR f){
+	    return (Integer)indexLookup.get(f);
     }
 
     protected void enqueueExprs(AST.Expr... exprs) {

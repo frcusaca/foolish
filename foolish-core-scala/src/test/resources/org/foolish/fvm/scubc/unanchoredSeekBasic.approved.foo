@@ -19,6 +19,14 @@
     d = 10;
     e = 20;
     f = #-1 + #-2 + #-3 + #-4 + #-5 + #-6 + #-7 + #-8  !! Should find: 20 + 10 + 12 + 5 + 4 + 3 + 3 + 2 = 59
+    g = { !! Let's make sure it respects boundaries
+        aa= #-1; !! Constanic - #-1 inside nested brane shouldn't find f
+        bb= 3;
+        cc = bb * bb
+    };
+    h =$ #-1 ;   !! Syntactic sugar for h = #-1$ (tail of #-1)
+    i = #-2$ ;   !! Tail of #-2
+    j =^ #-3 ;   !! Syntactic sugar for j = #-3^ (head of #-3)
 }
 
 !!!
@@ -34,10 +42,18 @@ PARSED AST:
   d = 10;
   e = 20;
   f = (((((((#-1 + #-2) + #-3) + #-4) + #-5) + #-6) + #-7) + #-8);
+  g = {
+    aa = #-1;
+    bb = 3;
+    cc = (bb * bb);
+  };
+  h =$#-1;
+  i =$#-2;
+  j =^#-3;
 }
 
 UBC EVALUATION:
-Steps taken: 139
+Steps taken: 210
 
 FINAL RESULT:
 {
@@ -51,6 +67,14 @@ FINAL RESULT:
 ＿d = 10;
 ＿e = 20;
 ＿f = 59;
+＿g = {
+＿    ＿aa = ⎵⎵;
+＿    ＿bb = 3;
+＿    ＿cc = 9;
+＿};
+＿h = 9;
+＿i = 9;
+＿j = ???;
 }
 
 COMPLETION STATUS:

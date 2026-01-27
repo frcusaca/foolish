@@ -1,31 +1,34 @@
 !!INPUT!!
 {
-    a = {1; 2; 3};
-    b =$ a;
+    a = 1;
+    b = {2; 3; 4};
+    c =$#-1;
 }
 
 !!!
 PARSED AST:
 {
-  a = {
-    1;
+  a = 1;
+  b = {
     2;
     3;
+    4;
   };
-  b =$a;
+  c =$#-1;
 }
 
 UBC EVALUATION:
-Steps taken: 27
+Steps taken: 34
 
 FINAL RESULT:
 {
-＿a = {
-＿    ＿1;
+＿a = 1;
+＿b = {
 ＿    ＿2;
 ＿    ＿3;
+＿    ＿4;
 ＿};
-＿b = 3;
+＿c = 4;
 }
 
 COMPLETION STATUS:

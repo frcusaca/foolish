@@ -1,0 +1,46 @@
+!!INPUT!!
+{
+    a = 1;
+    b = {10; 20; 30};
+    c = #-1;      !! Should be b (the brane)
+    d = #-1$;     !! Should be tail of #-1, which is tail of b = 30
+    e =$ #-2;     !! Syntactic sugar for e = #-2$ - #-2 is b, tail of b is 30
+}
+
+!!!
+PARSED AST:
+{
+  a = 1;
+  b = {
+    10;
+    20;
+    30;
+  };
+  c = #-1;
+  d =$#-1;
+  e =$#-2;
+}
+
+UBC EVALUATION:
+Steps taken: 58
+
+FINAL RESULT:
+{
+＿a = 1;
+＿b = {
+＿    ＿10;
+＿    ＿20;
+＿    ＿30;
+＿};
+＿c = {
+＿    ＿10;
+＿    ＿20;
+＿    ＿30;
+＿};
+＿d = 30;
+＿e = 30;
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!

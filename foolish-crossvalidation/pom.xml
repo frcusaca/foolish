@@ -51,10 +51,9 @@
         <plugins>
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <configuration>
-                    <includes>
-                        <include>**/*Test.java</include>
-                    </includes>
+		<configuration>
+		    <argLine>--sun-misc-unsafe-memory-access=allow --enable-native-access=ALL-UNNAMED </argLine>
+                    <includes> <include>**/*Test.java</include> </includes>
                 </configuration>
             </plugin>
         </plugins>

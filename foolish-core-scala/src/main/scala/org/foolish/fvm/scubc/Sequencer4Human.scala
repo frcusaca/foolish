@@ -174,8 +174,10 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
        if identifier.atConstanic then identifier
        else if identifier.value != null then unwrap(identifier.value)
        else identifier
-    case oneShotSearch: OneShotSearchFiroe if oneShotSearch.getResult != null =>
-       unwrap(oneShotSearch.getResult)
+    case abstractSearch: AbstractSearchFiroe if abstractSearch.getResult != null =>
+       unwrap(abstractSearch.getResult)
+    case unanchoredSeek: UnanchoredSeekFiroe if unanchoredSeek.getResult != null =>
+       unwrap(unanchoredSeek.getResult)
     case other => other
 
   protected def sequenceNK(nk: FIR, depth: Int): String =

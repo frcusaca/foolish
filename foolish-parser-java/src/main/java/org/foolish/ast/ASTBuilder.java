@@ -132,18 +132,34 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
     @Override
     public AST visitAssignment(FoolishParser.AssignmentContext ctx) {
-        AST.Identifier identifier = (AST.Identifier) visit(ctx.characterizable_identifier());
-        AST.Expr expr = (AST.Expr) visit(ctx.expr());
+        try {
+            AST.Identifier identifier = (AST.Identifier) visit(ctx.characterizable_identifier());
 
-        // Handle syntactic sugar: "id =$ expr" becomes "id = ($expr)"
-        // and "id =^ expr" becomes "id = (^expr)"
-        if (ctx.DOLLAR() != null) {
-            expr = new AST.OneShotSearchExpr(expr, SearchOperator.TAIL);
-        } else if (ctx.CARET() != null) {
-            expr = new AST.OneShotSearchExpr(expr, SearchOperator.HEAD);
+            // Check if expression exists (parse error if null)
+            if (ctx.expr() == null) {
+                return null; // Parse error - expression missing
+            }
+
+            AST.Expr expr = (AST.Expr) visit(ctx.expr());
+
+            // Check if visit returned null (parse error in expression)
+            if (expr == null) {
+                return null; // Parse error in expression
+            }
+
+            // Handle syntactic sugar: "id =$ expr" becomes "id = ($expr)"
+            // and "id =^ expr" becomes "id = (^expr)"
+            if (ctx.DOLLAR() != null) {
+                expr = new AST.OneShotSearchExpr(expr, SearchOperator.TAIL);
+            } else if (ctx.CARET() != null) {
+                expr = new AST.OneShotSearchExpr(expr, SearchOperator.HEAD);
+            }
+
+            return new AST.Assignment(identifier, expr);
+        } catch (NullPointerException e) {
+            // Parse error - return null to indicate malformed assignment
+            return null;
         }
-
-        return new AST.Assignment(identifier, expr);
     }
 
     @Override

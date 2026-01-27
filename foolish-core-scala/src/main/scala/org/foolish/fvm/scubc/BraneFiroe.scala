@@ -11,6 +11,9 @@ import scala.jdk.CollectionConverters.*
 class BraneFiroe(override val ast: AST)
   extends FiroeWithBraneMind(ast):
 
+  // Register this brane as the owner of its memory
+  braneMemory.setOwningBrane(this)
+
   /** Initialize the BraneFiroe by converting AST statements to Expression Firoes */
   override protected def initialize(): Unit =
     if isInitialized then return

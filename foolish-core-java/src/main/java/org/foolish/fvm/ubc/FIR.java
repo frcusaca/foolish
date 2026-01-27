@@ -13,6 +13,7 @@ public abstract class FIR {
     protected final String comment;
     private boolean initialized;
     private Nyes nyes;
+    private FIR parentFir = null;  // The FIR that contains this FIR (set during enqueue)
 
     protected FIR(AST ast, String comment) {
         this.ast = ast;
@@ -66,6 +67,22 @@ public abstract class FIR {
      */
     protected void setNyes(Nyes nyes) {
         this.nyes = nyes;
+    }
+
+    /**
+     * Sets the parent FIR that contains this FIR.
+     * This is called when this FIR is enqueued into a parent's braneMind.
+     */
+    protected void setParentFir(FIR parent) {
+        this.parentFir = parent;
+    }
+
+    /**
+     * Gets the parent FIR that contains this FIR.
+     * Returns null if this FIR has no parent (e.g., root brane).
+     */
+    protected FIR getParentFir() {
+        return parentFir;
     }
 
     public final boolean atConstant() {
@@ -127,9 +144,9 @@ public abstract class FIR {
 
     /**
      * Gets the BraneFiroe that contains this FIR in its statement list.
-     * Traverses up the BraneMemory parent chain to find the containing brane.
+     * Chains through parent FIRs until finding one whose parent is a BraneFiroe.
      * <p>
-     * The containing brane is the closest BraneFiroe in the memory hierarchy,
+     * The containing brane is the closest BraneFiroe in the FIR hierarchy,
      * representing the brane where this FIR appears as a statement.
      * <p>
      * Parallel expressions (such as operands in a+b) are at the "same height"
@@ -138,29 +155,19 @@ public abstract class FIR {
      * crossing brane boundaries.
      *
      * @return the containing BraneFiroe, or null if this FIR is not contained
-     *         in a brane (e.g., at root level or in a FiroeWithoutBraneMind)
+     *         in a brane (e.g., at root level)
      */
     public BraneFiroe getMyBrane() {
-        if (!(this instanceof FiroeWithBraneMind fwbm)) {
-            return null; // FiroeWithoutBraneMind has no brane memory
-        }
-
-        // Walk up the memory chain to find a memory owned by a BraneFiroe
-        BraneMemory current = fwbm.braneMemory.getParent();
-        while (current != null) {
-            BraneFiroe owner = current.getOwningBrane();
-            if (owner != null) {
-                return owner;
-            }
-            current = current.getParent();
-        }
-        return null; // No containing brane found (root level)
+        // Chain through parents until we find one whose parent is a BraneFiroe
+        if (parentFir instanceof BraneFiroe bf) {
+		return bf;
+	}
+	return parentFir.getMyBrane();
     }
 
     /**
      * Gets the index of this FIR in its containing brane's memory.
-     * This represents the position where this FIR's assignment statement appears
-     * in the brane's statement list.
+     * Chains through parent FIRs to find the statement-level FIR, then returns its position.
      * <p>
      * The brane index defines the "order of expressions" within a height level.
      * All statements at the same brane level are parallel/same height, and the
@@ -171,26 +178,14 @@ public abstract class FIR {
      * assignment, it returns the assignment's index in the brane.
      *
      * @return the index in the containing brane's memory (0-based), or -1 if
-     *         this FIR is not in a brane (root level or FiroeWithoutBraneMind)
+     *         this FIR is not in a brane (root level)
      */
     public int getMyBraneIndex() {
-        if (!(this instanceof FiroeWithBraneMind fwbm)) {
-            return -1; // FiroeWithoutBraneMind has no brane position
-        }
-
-        // Walk up the memory chain to find the position in a brane's memory
-        BraneMemory childMemory = fwbm.braneMemory;
-        BraneMemory current = childMemory.getParent();
-
-        while (current != null) {
-            if (current.getOwningBrane() != null) {
-                // Found a brane's memory - return our position in it
-                return childMemory.getMyPos();
-            }
-            childMemory = current;
-            current = current.getParent();
-        }
-        return -1; // No containing brane found (root level)
+        return switch (parentFir) {
+            case null ->  -1;
+	    case BraneFiroe bf -> bf.getIndexOf(this);
+	    default -> parentFir.getMyBraneIndex();
+	};
     }
 
     /**

@@ -58,49 +58,21 @@ class UnanchoredSeekFiroe(seekExpr: AST.UnanchoredSeekExpr) extends FiroeWithBra
   /**
    * Resolve the unanchored seek during the INITIALIZED phase.
    *
-   * Unanchored seeks search in the containing brane's memory, not in the current
-   * expression's memory. Since this FIR is typically ordinated to an AssignmentFiroe
-   * (which has empty memory), we need to access the parent's memory (the actual brane).
+   * Uses the parent FIR chain to find the containing brane and position.
    */
   override def step(): Unit =
     getNyes match
       case Nyes.INITIALIZED =>
-        // UnanchoredSeek looks within the brane it's coordinated to
-        // We need to find:
-        // 1. The brane memory containing all statements (largest memory in chain)
-        // 2. Our current position (from the memory that is a direct child of the brane memory)
+        val containingBrane = getMyBrane
+        val currentPos = getMyBraneIndex
 
-        var targetMemory: BraneMemory = null
-        var maxSize = 0
-
-        // First pass: find the largest memory (the actual brane memory)
-        var current = braneMemory
-        while current != null do
-          if current.size > maxSize then
-            maxSize = current.size
-            targetMemory = current
-          current = current.getParent
-
-        // Second pass: find the myPos from the memory whose parent is the target brane memory
-        var currentPos = -1
-        current = braneMemory
-        while current != null do
-          val parent = current.getParent
-          if parent == targetMemory && current.getMyPos >= 0 then
-            currentPos = current.getMyPos
-            current = null // break
-          else
-            current = parent
-
-        if targetMemory == null || targetMemory.size == 0 then
-          // No brane memory found - out of bounds
+        if containingBrane == null || currentPos < 0 then
+          // No containing brane or position - out of bounds
           value = null
           setNyes(Nyes.CONSTANIC)
         else
+          val targetMemory = containingBrane.braneMemory
           val size = targetMemory.size
-          if currentPos < 0 then
-            // No position set - default to last position
-            currentPos = size - 1
 
           // Calculate target index: currentPos + offset (offset is negative)
           // Example: currentPos=2, offset=-1 -> targetIdx=1 (previous statement)
@@ -124,5 +96,12 @@ class UnanchoredSeekFiroe(seekExpr: AST.UnanchoredSeekExpr) extends FiroeWithBra
         throw IllegalStateException(s"Unanchored seek is Constanic (out of bounds): #$offset")
       throw IllegalStateException(s"Unanchored seek not resolved: #$offset")
     value.getValue
+
+  /**
+   * Returns the resolved value for unwrapping in search operations.
+   * This allows OneShotSearchFiroe and other search operations to access
+   * the result of the unanchored seek.
+   */
+  def getResult: FIR = value
 
   override def toString: String = ast.toString

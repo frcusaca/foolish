@@ -24,19 +24,19 @@ public class BraneMemory implements Iterable<FIR> {
 
     public BraneMemory(BraneMemory parent, int myPos) {
         this(parent);
-        setMyPos(myPos);
+        this.myPos = Optional.of(myPos);
     }
 
-    public void setMyPos(int pos) {
+    /**
+     * Internal method for setting position in parent memory.
+     * Only used internally - external code should use FIR's getMyBraneIndex() instead.
+     */
+    void setMyPosInternal(int pos) {
         if (myPos.isEmpty()) {
             this.myPos = Optional.of(pos);
         } else {
             throw new RuntimeException("Cannot recoordinate a BraneMemory.");
         }
-    }
-
-    public int getMyPos() {
-        return myPos.orElse(-1);
     }
 
     public BraneMemory getParent() {
@@ -62,9 +62,16 @@ public class BraneMemory implements Iterable<FIR> {
             }
         }
         if (parent != null) {
-            // Default to searching from end of parent if myPos is not set
+            // Compute position dynamically using owningBrane's getMyBraneIndex() if available
+            // Otherwise fall back to myPos (for unit tests without BraneFiroe)
+            // Default to searching from end of parent if neither is available
             // This is crucial for CMFir which links memory without fixed position
-            int parentPos = myPos.orElse(parent.size() - 1);
+            int parentPos;
+            if (owningBrane != null) {
+                parentPos = owningBrane.getMyBraneIndex();
+            } else {
+                parentPos = myPos.orElse(parent.size() - 1);
+            }
             return parent.get(query, parentPos);
         }
         return Optional.empty(); // Not found
