@@ -8,14 +8,26 @@ import org.foolish.ast.AST;
  */
 public abstract class FiroeWithoutBraneMind extends FIR {
 
-    protected FiroeWithoutBraneMind(AST ast, String comment) {
-        super(ast, comment);
+    protected FiroeWithoutBraneMind(AST ast, String comment, boolean ai) {
+        super(ast, comment, ai);
         // FiroeWithoutBraneMind instances are immediately CONSTANT
         setNyes(Nyes.CONSTANT);
     }
 
+    protected FiroeWithoutBraneMind(AST ast, String comment) {
+        this(ast, comment, false);
+    }
+
     protected FiroeWithoutBraneMind(AST ast) {
-        this(ast, null);
+        this(ast, null, false);
+    }
+
+    /**
+     * Auto-instruction constructor.
+     */
+    protected FiroeWithoutBraneMind(String comment) {
+        super(comment);
+        setNyes(Nyes.CONSTANT);
     }
 
     /**

@@ -1,5 +1,6 @@
 package org.foolish.ast;
 
+import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.foolish.grammar.FoolishBaseVisitor;
 import org.foolish.grammar.FoolishParser;
@@ -19,6 +20,16 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
             return null;
 
         return ID_CANONICALIZER.matcher(name).replaceAll(INTRA_ID_SPACE);
+    }
+
+    /**
+     * Extract source location from ANTLR ParserRuleContext.
+     */
+    private AST.SourceLocation getSourceLocation(ParserRuleContext ctx) {
+        if (ctx == null || ctx.start == null) {
+            return AST.SourceLocation.UNKNOWN;
+        }
+        return new AST.SourceLocation(ctx.start.getLine(), ctx.start.getCharPositionInLine());
     }
 
     private List<String> extractCharacterizations(List<FoolishParser.CharacterizationContext> contexts) {
@@ -93,7 +104,10 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
     @Override
     public AST visitDetach_brane(FoolishParser.Detach_braneContext ctx) {
-        return new AST.DetachmentBrane(collectDetachmentStatements(ctx.detach_stmt()));
+        if (ctx.detach_stmt_list() == null) {
+            return new AST.DetachmentBrane(List.of());
+        }
+        return new AST.DetachmentBrane(collectDetachmentStatements(ctx.detach_stmt_list().detach_stmt()));
     }
 
     @Override
@@ -147,15 +161,30 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
                 return null; // Parse error in expression
             }
 
-            // Handle syntactic sugar: "id =$ expr" becomes "id = ($expr)"
-            // and "id =^ expr" becomes "id = (^expr)"
-            if (ctx.DOLLAR() != null) {
-                expr = new AST.OneShotSearchExpr(expr, SearchOperator.TAIL);
-            } else if (ctx.CARET() != null) {
-                expr = new AST.OneShotSearchExpr(expr, SearchOperator.HEAD);
+            // Determine assignment operator
+            AST.AssignmentOperator operator;
+            if (ctx.LT_LT_EQ_GT_GT() != null) {
+                // <<=>> operator: wrap RHS in StayFullyFoolishExpr
+                operator = AST.AssignmentOperator.SFF;
+                expr = new AST.StayFullyFoolishExpr(expr);
+            } else if (ctx.LT_EQ_GT() != null) {
+                // <=> operator: wrap RHS in StayFoolishExpr
+                operator = AST.AssignmentOperator.CONSTANIC;
+                expr = new AST.StayFoolishExpr(expr);
+            } else {
+                // Normal assignment
+                operator = AST.AssignmentOperator.ASSIGN;
+
+                // Handle syntactic sugar: "id =$ expr" becomes "id = ($expr)"
+                // and "id =^ expr" becomes "id = (^expr)"
+                if (ctx.DOLLAR() != null) {
+                    expr = new AST.OneShotSearchExpr(expr, SearchOperator.TAIL);
+                } else if (ctx.CARET() != null) {
+                    expr = new AST.OneShotSearchExpr(expr, SearchOperator.HEAD);
+                }
             }
 
-            return new AST.Assignment(identifier, expr);
+            return new AST.Assignment(identifier, expr, operator, getSourceLocation(ctx));
         } catch (NullPointerException e) {
             // Parse error - return null to indicate malformed assignment
             return null;
@@ -259,7 +288,22 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
     @Override
     public AST visitPrimary(FoolishParser.PrimaryContext ctx) {
         if (ctx.characterizable() != null) return visit(ctx.characterizable());
-        if (ctx.expr() != null) return visit(ctx.expr());
+
+        // Handle Stay-Fully-Foolish marker: <<expr>>
+        if (ctx.LT_LT() != null && ctx.GT_GT() != null && ctx.expr() != null) {
+            AST.Expr innerExpr = (AST.Expr) visit(ctx.expr());
+            return new AST.StayFullyFoolishExpr(innerExpr);
+        }
+
+        // Handle Stay-Foolish marker: <expr>
+        if (ctx.LT() != null && ctx.GT() != null && ctx.expr() != null) {
+            AST.Expr innerExpr = (AST.Expr) visit(ctx.expr());
+            return new AST.StayFoolishExpr(innerExpr);
+        }
+
+        // Handle parenthesized expression: (expr)
+        if (ctx.LPAREN() != null && ctx.expr() != null) return visit(ctx.expr());
+
         // Handle unanchored backward seek: #-N
         if (ctx.HASH() != null && ctx.MINUS() != null && ctx.INTEGER() != null) {
             int offset = -Integer.parseInt(ctx.INTEGER().getText());

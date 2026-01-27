@@ -240,4 +240,15 @@ public abstract class FiroeWithBraneMind extends FIR {
         return braneMemory.stream();
     }
 
+    /**
+     * Gets the statement index/number of the given FIR within this brane's statement queue.
+     * Returns -1 if the FIR is not found in this brane's queue.
+     *
+     * @param fir the FIR to find
+     * @return the 0-based index, or -1 if not found
+     */
+    public int getStatementIndex(FIR fir) {
+        return braneMemory.getStatementIndex(fir);
+    }
+
 }

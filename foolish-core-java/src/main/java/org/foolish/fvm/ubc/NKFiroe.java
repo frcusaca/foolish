@@ -17,7 +17,7 @@ public class NKFiroe extends FiroeWithoutBraneMind {
     private final String nkComment;
 
     public NKFiroe(AST ast, String comment) {
-        super(ast);
+        super(ast, comment, false);  // Has AST, not auto-generated
         this.nkComment = comment;
     }
 
@@ -25,12 +25,16 @@ public class NKFiroe extends FiroeWithoutBraneMind {
         this(ast, null);
     }
 
+    /**
+     * Auto-instruction constructor: NK without AST.
+     */
     public NKFiroe(String comment) {
-        this(null, comment);
+        super(comment);  // Auto-instruction constructor
+        this.nkComment = comment;
     }
 
     public NKFiroe() {
-        this(null, "Unknown reason");
+        this("Unknown reason");
     }
 
     /**
@@ -52,7 +56,8 @@ public class NKFiroe extends FiroeWithoutBraneMind {
      * @throws IllegalStateException always
      */
     public long getValue() {
-        throw new IllegalStateException("Cannot get value from NK (not-known): " + nkComment);
+        String errorMsg = formatErrorMessage("Cannot get value from NK (not-known): " + nkComment);
+        throw new IllegalStateException(errorMsg);
     }
 
     public String toString() {
