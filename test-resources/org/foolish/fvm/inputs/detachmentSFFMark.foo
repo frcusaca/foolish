@@ -9,7 +9,7 @@
 
         g2 <<=>>  ff   !! Shorthand for above.
 
-	e=6 
+	e=6 ;
         rg  = g        !! same as value of ff above plus 1, rg=16;
 	rg2 = g2       !! same as value of ff above plus 1, rg=16;
     };

@@ -40,11 +40,15 @@ standard_brane
     ;
 
 detach_brane
-    : LBRACK detach_stmt* RBRACK
+    : LBRACK detach_stmt_list? RBRACK
+    ;
+
+detach_stmt_list
+    : detach_stmt ((SEMI | COMMA) LINE_COMMENT? detach_stmt)* ((SEMI | COMMA) LINE_COMMENT?)?
     ;
 
 detach_stmt
-    : characterizable_identifier (ASSIGN expr)? SEMI LINE_COMMENT?
+    : characterizable_identifier (ASSIGN expr)?
     ;
 
 brane_search : UP;
@@ -59,7 +63,9 @@ stmt
     | LINE_COMMENT
     ;
 assignment
-    : characterizable_identifier ASSIGN {areTokensAdjacent()}? DOLLAR expr
+    : characterizable_identifier LT_LT_EQ_GT_GT expr    // <<=>>> SFF assignment
+    | characterizable_identifier LT_EQ_GT expr           // <=> SF assignment (constanic)
+    | characterizable_identifier ASSIGN {areTokensAdjacent()}? DOLLAR expr
     | characterizable_identifier ASSIGN {areTokensAdjacent()}? CARET expr
     | characterizable_identifier ASSIGN expr
     ;
@@ -103,6 +109,8 @@ literal
 primary
     : characterizable
     | LPAREN expr RPAREN
+    | LT_LT expr GT_GT     // <<expr>> SFF marker
+    | LT expr GT           // <expr> SF marker
     | UNKNOWN
     | HASH MINUS INTEGER  // Unanchored backward seek: #-1, #-2, etc.
     ;
@@ -179,6 +187,14 @@ LINE_COMMENT
     : '!!' ~[\r\n]*
     ;
 
+
+// Multi-character operators must come before single-character ones
+LT_LT_EQ_GT_GT : '<<=>>' ;  // SFF assignment
+LT_EQ_GT : '<=>' ;          // Constanic assignment (SF assignment)
+LT_LT : '<<' ;              // SFF marker open
+GT_GT : '>>' ;              // SFF marker close
+LT : '<' ;                  // SF marker open
+GT : '>' ;                  // SF marker close
 
 ASSIGN : '=' ;
 PLUS : '+' ;

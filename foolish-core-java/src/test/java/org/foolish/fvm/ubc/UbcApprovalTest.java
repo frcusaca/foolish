@@ -37,7 +37,7 @@ public class UbcApprovalTest {
         return fileStream.map(file -> Arguments.of(file, file.getName().replace(".foo", "")));
     }
 
-    @ParameterizedTest(name = "{1}")
+    @ParameterizedTest(name = "{index}: {1}")
     @MethodSource("provideInputFiles")
     void approvalTests(File inputFile, String testName) {
         runner.runApprovalTest(inputFile, testName);

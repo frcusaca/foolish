@@ -161,4 +161,20 @@ public class BraneMemory implements Iterable<FIR> {
     public BraneFiroe getOwningBrane() {
         return owningBrane;
     }
+
+    /**
+     * Gets the index of a FIR within this brane's queue.
+     * Returns -1 if not found.
+     *
+     * @param fir the FIR to find
+     * @return 0-based index, or -1 if not found
+     */
+    public int getStatementIndex(FIR fir) {
+        for (int i = 0; i < memory.size(); i++) {
+            if (memory.get(i) == fir) {
+                return i;
+            }
+        }
+        return -1;
+    }
 }

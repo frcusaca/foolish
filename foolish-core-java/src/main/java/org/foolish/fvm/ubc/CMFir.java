@@ -4,9 +4,12 @@ import org.foolish.ast.AST;
 
 /**
  * Context Manipulation FIR (CMFir).
- * Adapts a FIR to the current context (brane).
- * Used for handling "Stay Foolish" behavior where a brane or expression
- * defined in one scope is evaluated in another.
+ * This is a state tracking FIR that will let a referenced object (o) reach Constanic
+ * before making a copy of it as o2 and continuing to evaluate o2 in the new context.
+ * <p>
+ * CMFir operates in two phases:
+ * - Phase A: Evaluate wrapped FIR (o) until it reaches CONSTANIC or CONSTANT
+ * - Phase B: If o is CONSTANIC, clone it and re-evaluate in current brane's context
  * <p>
  * <b>Nested CMFir Wrapping:</b> When a CMFir wraps another CMFir as its object,
  * the current implementation directly wraps the inner CMFir without optimization.
@@ -14,38 +17,32 @@ import org.foolish.ast.AST;
  * Future optimization could potentially flatten these nested CMFirs to reduce
  * indirection levels, but for now the straightforward approach is used.
  */
-public class CMFir extends FiroeWithBraneMind {
-    private FIR o;
-    private FIR o2;
-    private boolean phaseBStarted = false;
+public class CMFir extends FiroeWithoutBraneMind {
+    protected FIR o;
+    protected FIR o2;
+    protected boolean phaseBStarted = false;
 
     public CMFir(AST ast, FIR o) {
         super(ast);
         this.o = o;
+        // CMFir starts as NYE and will step through phases
+        setNyes(Nyes.UNINITIALIZED);
     }
 
-    protected void initialize() {
-        setInitialized();
-        // We manage 'o' stepping manually in step(), not in braneMind
-    }
-
+    @Override
     public int step() {
-        if (!isInitialized()) {
-            initialize();
-            return 1;
+        if (atConstant()) return 0;
+
+        if (!phaseBStarted && o.atConstanic()) {
+            startPhaseB();
         }
 
-        if (atConstant())  return 0;
-
-        if (!phaseBStarted && o.atConstanic()){
-                startPhaseB();
-	}
         // Phase A: Step o until it is CONSTANT or CONSTANIC
         if (!phaseBStarted) {
             o.step();
 
             if (o.atConstant()) {
-                // O reached CONSTANT without being CONSTANIC
+                // o reached CONSTANT without being CONSTANIC
                 // This means it's fully resolved (not abstract)
                 setNyes(Nyes.CONSTANT);
             }
@@ -53,12 +50,12 @@ public class CMFir extends FiroeWithBraneMind {
         } else {
             // Phase B: Step o2 (the clone in the new context)
             o2.step();
-	    syncO2Nyes();
+            syncO2Nyes();
             return 1;
         }
     }
 
-    private void syncO2Nyes(){
+    protected void syncO2Nyes(){
 	    if (o2.atConstant()) {
                 setNyes(Nyes.CONSTANT);
             } else if (o2.atConstanic()) {
@@ -67,20 +64,27 @@ public class CMFir extends FiroeWithBraneMind {
             }
 
     }
-    private void startPhaseB() {
+
+    protected void startPhaseB() {
         phaseBStarted = true;
         // make a stay_foolish_clone of o
         o2 = stayFoolishClone(o);
 
-        // set o2's sub-expressions parent to o2, o2's parent to c.
+        // Set o2's parent FIR to this CMFir
+        o2.setParentFir(this);
+
+        // If o2 has a braneMind, link its memory to the containing brane's memory
         if (o2 instanceof FiroeWithBraneMind fwbm) {
-            // We link o2 to this CMFir's memory context
-            fwbm.braneMemory.setParent(this.braneMemory);
+            BraneFiroe myBrane = getMyBrane();
+            if (myBrane != null) {
+                // Set o2's memory parent to the containing brane's memory
+                fwbm.braneMemory.setParent(myBrane.braneMemory);
+            }
         }
-	syncO2Nyes();
+        syncO2Nyes();
     }
 
-    private FIR stayFoolishClone(FIR original) {
+    protected FIR stayFoolishClone(FIR original) {
         // Simplified implementation: Create fresh FIR from AST.
         // This effectively "re-evaluates" the expression in the new context.
         if (original instanceof AssignmentFiroe af) {
@@ -91,6 +95,19 @@ public class CMFir extends FiroeWithBraneMind {
         }
         // Fallback for non-Expr ASTs if any (shouldn't happen for FIRs wrapping Expr)
         throw new UnsupportedOperationException("Cannot clone FIR with AST type: " + original.ast().getClass());
+    }
+
+    // Accessors for subclasses
+    protected FIR getO() {
+        return o;
+    }
+
+    protected void setO2(FIR o2) {
+        this.o2 = o2;
+    }
+
+    protected void setPhaseBStarted(boolean started) {
+        this.phaseBStarted = started;
     }
 
 
@@ -120,5 +137,13 @@ public class CMFir extends FiroeWithBraneMind {
 
     public String toString() {
         return "CMFir(" + (phaseBStarted ? o2 : o) + ")";
+    }
+
+    protected Nyes getNyes() {
+	if(phaseBStarted){
+		return o2.getNyes();
+	}else{
+		return o.getNyes();
+	}
     }
 }

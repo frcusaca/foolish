@@ -87,17 +87,24 @@ class CMFirUnitTest {
         // 4. Setup context for CMFir: a=1, b=2
         // CMFir needs to be part of a brane to see variables.
         // We can manually set its parent memory.
-        BraneMemory context = new BraneMemory(null);
-        context.put(new AssignmentFiroe(createAssignmentAST("a", 1)));
-        context.put(new AssignmentFiroe(createAssignmentAST("b", 2)));
+        // Create a brane with the context variables
+        AST.Brane braneAst = new AST.Brane(
+            List.of(),
+            List.of(
+                createAssignmentAST("a", 1),
+                createAssignmentAST("b", 2)
+            )
+        );
+        BraneFiroe contextBrane = new BraneFiroe(braneAst);
 
-        // CMFir is a FiroeWithBraneMind, so it has its own memory.
-        // We set its parent to our context.
-        cmFir.braneMemory.setParent(context);
+        // Set CMFir's parent to the context brane so it can resolve variables
+        cmFir.setParentFir(contextBrane);
 
-        // 5. Evaluate CMFir
-        // It should detect o is abstract (Constanic), clone it to o2, re-parent o2 to CMFir's memory (which sees context), and resolve.
-        evaluateFully(context, cmFir);
+        // Evaluate the context brane first to set up a and b
+        evaluateFully(contextBrane.braneMemory, contextBrane);
+
+        // Now evaluate CMFir in that context
+        evaluateFully(contextBrane.braneMemory, cmFir);
 
         // 6. Verify result
         assertEquals(Nyes.CONSTANT, cmFir.getNyes());
@@ -116,23 +123,35 @@ class CMFirUnitTest {
         AssignmentFiroe o = new AssignmentFiroe(rAssign);
 
         // Scope 1: a=1, b=2 -> 3
-        BraneMemory scope1 = new BraneMemory(null);
-        scope1.put(new AssignmentFiroe(createAssignmentAST("a", 1)));
-        scope1.put(new AssignmentFiroe(createAssignmentAST("b", 2)));
+        AST.Brane scope1Ast = new AST.Brane(
+            List.of(),
+            List.of(
+                createAssignmentAST("a", 1),
+                createAssignmentAST("b", 2)
+            )
+        );
+        BraneFiroe scope1Brane = new BraneFiroe(scope1Ast);
 
         CMFir cmFir1 = new CMFir(null, o);
-        cmFir1.braneMemory.setParent(scope1);
-        evaluateFully(scope1, cmFir1);
+        cmFir1.setParentFir(scope1Brane);
+        evaluateFully(scope1Brane.braneMemory, scope1Brane);
+        evaluateFully(scope1Brane.braneMemory, cmFir1);
         assertEquals(3, cmFir1.getValue());
 
         // Scope 2: a=10, b=20 -> 30
-        BraneMemory scope2 = new BraneMemory(null);
-        scope2.put(new AssignmentFiroe(createAssignmentAST("a", 10)));
-        scope2.put(new AssignmentFiroe(createAssignmentAST("b", 20)));
+        AST.Brane scope2Ast = new AST.Brane(
+            List.of(),
+            List.of(
+                createAssignmentAST("a", 10),
+                createAssignmentAST("b", 20)
+            )
+        );
+        BraneFiroe scope2Brane = new BraneFiroe(scope2Ast);
 
         CMFir cmFir2 = new CMFir(null, o);
-        cmFir2.braneMemory.setParent(scope2);
-        evaluateFully(scope2, cmFir2);
+        cmFir2.setParentFir(scope2Brane);
+        evaluateFully(scope2Brane.braneMemory, scope2Brane);
+        evaluateFully(scope2Brane.braneMemory, cmFir2);
         assertEquals(30, cmFir2.getValue());
     }
 
@@ -149,18 +168,33 @@ class CMFirUnitTest {
         AST.Assignment rAssign = createAssignmentAST("r", aPlusB);
         AssignmentFiroe o = new AssignmentFiroe(rAssign);
 
-        BraneMemory root = new BraneMemory(null);
-        root.put(new AssignmentFiroe(createAssignmentAST("a", 1)));
-        root.put(new AssignmentFiroe(createAssignmentAST("b", 2)));
+        // Create root brane with a=1, b=2
+        AST.Brane rootAst = new AST.Brane(
+            List.of(),
+            List.of(
+                createAssignmentAST("a", 1),
+                createAssignmentAST("b", 2)
+            )
+        );
+        BraneFiroe rootBrane = new BraneFiroe(rootAst);
+        evaluateFully(rootBrane.braneMemory, rootBrane);
 
-        // Shadow 'a'
-        BraneMemory childScope = new BraneMemory(root, 1);
-        childScope.put(new AssignmentFiroe(createAssignmentAST("a", 10)));
+        // Create child brane that shadows 'a' with 10
+        AST.Brane childAst = new AST.Brane(
+            List.of(),
+            List.of(
+                createAssignmentAST("a", 10)
+            )
+        );
+        BraneFiroe childBrane = new BraneFiroe(childAst);
+        childBrane.braneMemory.setParent(rootBrane.braneMemory);
+        childBrane.setParentFir(rootBrane);
+        evaluateFully(childBrane.braneMemory, childBrane);
 
         CMFir cmFir = new CMFir(null, o);
-        cmFir.braneMemory.setParent(childScope);
+        cmFir.setParentFir(childBrane);
 
-        evaluateFully(childScope, cmFir);
+        evaluateFully(childBrane.braneMemory, cmFir);
 
         // Should use a=10 (shadowed), b=2 (inherited) -> 12
         assertEquals(12, cmFir.getValue());

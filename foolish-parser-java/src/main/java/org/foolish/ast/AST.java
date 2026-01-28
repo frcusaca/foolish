@@ -5,6 +5,28 @@ import java.util.List;
 import java.util.Objects;
 
 public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStatement, AST.BraneRegexpSearch {
+
+    /**
+     * Source location information for AST nodes.
+     * Tracks line and column position in the original source file.
+     */
+    record SourceLocation(int line, int column) {
+        public static final SourceLocation UNKNOWN = new SourceLocation(-1, -1);
+
+        @Override
+        public String toString() {
+            if (line < 0) return "unknown";
+            return "line " + line + ":" + column;
+        }
+    }
+
+    /**
+     * Returns the source location where this AST node was parsed.
+     * Returns SourceLocation.UNKNOWN if location tracking is not enabled.
+     */
+    default SourceLocation sourceLocation() {
+        return SourceLocation.UNKNOWN;
+    }
     static <T> T setCharacterization(List<String> characterizations, T chrbl) {
         return (T) switch (chrbl) {
             case IntegerLiteral intLit -> new IntegerLiteral(characterizations, intLit.value());
@@ -16,7 +38,7 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
         };
     }
 
-    sealed interface Expr extends AST permits Characterizable, BinaryExpr, UnaryExpr, Branes, IfExpr, UnknownExpr, Stmt, DereferenceExpr, RegexpSearchExpr, SeekExpr, OneShotSearchExpr, UnanchoredSeekExpr {
+    sealed interface Expr extends AST permits Characterizable, BinaryExpr, UnaryExpr, Branes, IfExpr, UnknownExpr, Stmt, DereferenceExpr, RegexpSearchExpr, SeekExpr, OneShotSearchExpr, UnanchoredSeekExpr, StayFoolishExpr, StayFullyFoolishExpr {
 
     }
 
@@ -222,14 +244,49 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
         }
     }
 
-    record Assignment(Identifier identifier, Expr expr) implements Stmt {
+    enum AssignmentOperator {
+        ASSIGN("="),           // Normal assignment
+        CONSTANIC("<=>"),      // Stay-Foolish (SF) assignment (wraps RHS in <...>)
+        SFF("<<=>>");          // Stay-Fully-Foolish (SFF) assignment (wraps RHS in <<...>>)
+
+        private final String symbol;
+
+        AssignmentOperator(String symbol) {
+            this.symbol = symbol;
+        }
+
+        public String symbol() {
+            return symbol;
+        }
+    }
+
+    record Assignment(Identifier identifier, Expr expr, AssignmentOperator operator, SourceLocation location) implements Stmt {
+        /**
+         * Creates an Assignment with default (normal) operator.
+         */
+        public Assignment(Identifier identifier, Expr expr) {
+            this(identifier, expr, AssignmentOperator.ASSIGN, SourceLocation.UNKNOWN);
+        }
+
+        /**
+         * Creates an Assignment with location info.
+         */
+        public Assignment(Identifier identifier, Expr expr, AssignmentOperator operator) {
+            this(identifier, expr, operator, SourceLocation.UNKNOWN);
+        }
+
         /**
          * Creates an Assignment with a simple uncharacterized identifier.
          * @deprecated Use Assignment(Identifier, Expr) instead
          */
         @Deprecated
         public Assignment(String id, Expr expr) {
-            this(new Identifier(id), expr);
+            this(new Identifier(id), expr, AssignmentOperator.ASSIGN, SourceLocation.UNKNOWN);
+        }
+
+        @Override
+        public SourceLocation sourceLocation() {
+            return location;
         }
 
         /**
@@ -241,10 +298,23 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
         }
 
         public String toString() {
-            if (expr instanceof OneShotSearchExpr) {
-                return identifier + " =" + expr;
+            // Auto-convert to SF/SFF syntax if RHS is wrapped in SF/SFF markers
+            if (operator == AssignmentOperator.ASSIGN) {
+                if (expr instanceof StayFoolishExpr sfExpr) {
+                    // Convert "id = <expr>" to "id <=> expr"
+                    return identifier + " <=> " + sfExpr.expr();
+                } else if (expr instanceof StayFullyFoolishExpr sffExpr) {
+                    // Convert "id = <<expr>>" to "id <<==>> expr"
+                    return identifier + " <<==>> " + sffExpr.expr();
+                } else if (expr instanceof OneShotSearchExpr) {
+                    return identifier + " =" + expr;
+                }
+                return identifier + " = " + expr;
             }
-            return identifier + " = " + expr;
+
+            // For explicit SF/SFF operators, print them as-is
+            String opStr = " " + operator.symbol() + " ";
+            return identifier + opStr + expr;
         }
     }
 
@@ -253,6 +323,27 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
 
         public String toString() {
             return "???";
+        }
+    }
+
+    /**
+     * Stay-Foolish marker: <expr>
+     * Reactivates original liberations when assigning the expression.
+     * Only affects brane references, not fresh branes.
+     */
+    record StayFoolishExpr(Expr expr) implements Expr {
+        public String toString() {
+            return "<" + expr + ">";
+        }
+    }
+
+    /**
+     * Stay-Fully-Foolish marker: <<expr>>
+     * Reconstructs expression from AST, creating fresh instance with no prior coordination.
+     */
+    record StayFullyFoolishExpr(Expr expr) implements Expr {
+        public String toString() {
+            return "<<" + expr + ">>";
         }
     }
 

@@ -41,11 +41,26 @@ public class JavaUbcInterpreter implements UbcTester {
 
     @Override
     public String execute(String code) {
-        // Parse the code with error collection
-        CharStream input = CharStreams.fromString(code);
-        FoolishLexer lexer = new FoolishLexer(input);
-        CommonTokenStream tokens = new CommonTokenStream(lexer);
-        FoolishParser parser = new FoolishParser(tokens);
+        return execute(code, "unknown.foo");
+    }
+
+    /**
+     * Executes Foolish code with a specified filename for error reporting.
+     *
+     * @param code the Foolish code to execute
+     * @param filename the source filename (e.g., "test.foo")
+     * @return the formatted test output
+     */
+    public String execute(String code, String filename) {
+        // Set up execution context for error reporting
+        ExecutionContext.setCurrent(new ExecutionContext(filename));
+
+        try {
+            // Parse the code with error collection
+            CharStream input = CharStreams.fromString(code);
+            FoolishLexer lexer = new FoolishLexer(input);
+            CommonTokenStream tokens = new CommonTokenStream(lexer);
+            FoolishParser parser = new FoolishParser(tokens);
 
         // Add custom error listener
         ParseErrorCollector errorCollector = new ParseErrorCollector();
@@ -89,12 +104,16 @@ public class JavaUbcInterpreter implements UbcTester {
         output.append("FINAL RESULT:\n");
         output.append(new Sequencer4Human().sequence(finalResult)).append("\n\n");
 
-        output.append("COMPLETION STATUS:\n");
-        output.append("Complete: ").append(ubc.isComplete());
+            output.append("COMPLETION STATUS:\n");
+            output.append("Complete: ").append(ubc.isComplete());
 
-        output.append("\n!!!\n");
+            output.append("\n!!!\n");
 
-        return output.toString();
+            return output.toString();
+        } finally {
+            // Clean up execution context
+            ExecutionContext.clearCurrent();
+        }
     }
 
     @Override
