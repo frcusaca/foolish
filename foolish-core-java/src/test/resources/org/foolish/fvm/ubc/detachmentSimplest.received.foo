@@ -1,0 +1,84 @@
+!!INPUT!!
+{
+    test_1 = {
+        x = 1;
+        f = []{ r = x };
+        res =$ f; !! Expect 1
+    };
+    test_2 = {
+        x = 1;
+        f = [x]{ r = x };
+        res =$ f; !! Expect ??? (Blocked)
+    };
+    test_3 = {
+        x = 1;
+        f = [y]{ r = x }; !! Block y, allow x
+        res =$ f; !! Expect 1
+    };
+}
+
+!!!
+PARSED AST:
+{
+  testˍ1 = {
+    x = 1;
+    f = [
+]
+{
+      r = x;
+    };
+    res =$f;
+  };
+  testˍ2 = {
+    x = 1;
+    f = [
+  x = ???;
+]
+{
+      r = x;
+    };
+    res =$f;
+  };
+  testˍ3 = {
+    x = 1;
+    f = [
+  y = ???;
+]
+{
+      r = x;
+    };
+    res =$f;
+  };
+}
+
+UBC EVALUATION:
+Steps taken: 193
+
+FINAL RESULT:
+{
+＿testˍ1 = {
+＿         ＿x = 1;
+＿         ＿f = {
+＿         ＿    ＿r = 1;
+＿         ＿};
+＿         ＿res = 1;
+＿};
+＿testˍ2 = {
+＿         ＿x = 1;
+＿         ＿f = {
+＿         ＿    ＿r = ???;
+＿         ＿};
+＿         ＿res = ???;
+＿};
+＿testˍ3 = {
+＿         ＿x = 1;
+＿         ＿f = {
+＿         ＿    ＿r = 1;
+＿         ＿};
+＿         ＿res = 1;
+＿};
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!

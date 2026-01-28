@@ -50,17 +50,6 @@ public class UnanchoredSeekFiroe extends FiroeWithBraneMind {
     }
 
     /**
-     * An unanchored seek is Constanic if it hasn't been resolved yet or if its resolved value is Constanic.
-     */
-    @Override
-    public boolean isConstanic() {
-        if (value == null) {
-            return true; // Not yet resolved or out of bounds
-        }
-        return value.isConstanic();
-    }
-
-    /**
      * Resolve the unanchored seek during the INITIALIZED phase.
      *
      * Unanchored seeks search in the containing brane's memory, not in the current

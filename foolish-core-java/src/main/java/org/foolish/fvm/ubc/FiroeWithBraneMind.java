@@ -21,7 +21,7 @@ import java.util.IdentityHashMap;
  */
 public abstract class FiroeWithBraneMind extends FIR {
     protected final LinkedList<FIR> braneMind;
-    protected final BraneMemory braneMemory;
+    protected BraneMemory braneMemory;
     protected boolean ordinated;
     protected IdentityHashMap indexLookup = new IdentityHashMap<FIR,Integer>();
 
@@ -149,8 +149,8 @@ public abstract class FiroeWithBraneMind extends FIR {
             case EVALUATING -> {
                 // Step everything including sub-branes
                 if (braneMind.isEmpty()) {
-                    // All expressions evaluated, transition to CONSTANT
-                    setNyes(Nyes.CONSTANT);
+                    // All expressions evaluated, transition to completion state
+                    onQueueEmpty();
                     return 1;
                 }
 
@@ -249,6 +249,15 @@ public abstract class FiroeWithBraneMind extends FIR {
      */
     public int getStatementIndex(FIR fir) {
         return braneMemory.getStatementIndex(fir);
+    }
+
+    /**
+     * Called when the braneMind queue is empty during EVALUATING state.
+     * Default implementation transitions to CONSTANT.
+     * Subclasses can override to perform final computations or set a different state (e.g. CONSTANIC).
+     */
+    protected void onQueueEmpty() {
+        setNyes(Nyes.CONSTANT);
     }
 
 }

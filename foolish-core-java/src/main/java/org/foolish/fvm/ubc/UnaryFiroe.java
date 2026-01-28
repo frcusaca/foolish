@@ -44,13 +44,7 @@ public class UnaryFiroe extends FiroeWithBraneMind {
             }
             case EVALUATING -> {
                 // Step operand through evaluation
-                int work = super.step();
-
-                // After parent steps, check if we can compute the final result
-                if (getNyes() == Nyes.CONSTANT && braneMind.isEmpty() && result == null) {
-                    computeResult();
-                }
-                return work;
+                return super.step();
             }
             case CONSTANT -> {
                 // Should not reach here if result is null, but handle gracefully
@@ -97,12 +91,12 @@ public class UnaryFiroe extends FiroeWithBraneMind {
     }
 
     @Override
-    public boolean isConstanic() {
-        if (result != null) {
-            return result.isConstanic();
+    protected void onQueueEmpty() {
+        if (result == null) {
+            computeResult();
+        } else {
+            setNyes(Nyes.CONSTANT);
         }
-        if (getNyes() == Nyes.CONSTANT) return true; // Constant state but no result -> constanic
-        return super.isConstanic();
     }
 
     /**

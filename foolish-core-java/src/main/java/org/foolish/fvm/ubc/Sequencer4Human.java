@@ -44,6 +44,7 @@ public class Sequencer4Human extends Sequencer<String> {
             case AssignmentFiroe assignment -> sequenceAssignment(assignment, depth);
             case IdentifierFiroe identifier -> sequenceIdentifier(identifier, depth);
             case AbstractSearchFiroe search -> sequenceSearch(search, depth);
+            case CMFir cmFir -> sequence(cmFir.getResult(), depth);
             case null, default -> indent(depth) + NK_STR;
         };
     }
@@ -165,6 +166,8 @@ public class Sequencer4Human extends Sequencer<String> {
                              unwrapped = searchFiroe.getResult();
                         case UnanchoredSeekFiroe unanchoredSeekFiroe ->
                              unwrapped = unanchoredSeekFiroe.getResult();
+                        case CMFir cmFir ->
+                             unwrapped = cmFir.getResult();
                         default -> { break unwrappingLoop; }
                     }
                 }
@@ -200,7 +203,11 @@ public class Sequencer4Human extends Sequencer<String> {
                     braneSeq = braneSeq.replace("\n" + nestedIndent, "\n" + parentIndent + padding + tabChar);
                     return indent(depth) + fullId + " = " + braneSeq;
                 }
-                return indent(depth) + fullId + " = " + unwrapped.getValue();
+                try {
+                    return indent(depth) + fullId + " = " + unwrapped.getValue();
+                } catch (IllegalStateException | UnsupportedOperationException e) {
+                    return indent(depth) + fullId + " = " + NK_STR;
+                }
             }
         } else if (assignment.atConstanic()) {
              return indent(depth) + fullId + " = " + CC_STR;
@@ -219,7 +226,11 @@ public class Sequencer4Human extends Sequencer<String> {
 
         // If the identifier has been resolved and is not NYE
         if (!identifier.isNye()) {
-            return indent(depth) + identifier.getValue();
+            try {
+                return indent(depth) + identifier.getValue();
+            } catch (IllegalStateException | UnsupportedOperationException e) {
+                return indent(depth) + NK_STR;
+            }
         }
         // If not yet evaluated
         return indent(depth) + NK_STR;
@@ -240,11 +251,19 @@ public class Sequencer4Human extends Sequencer<String> {
             }
             // Search found something - check if it's fully evaluated (CONSTANT)
             if (search.atConstant()) {
+                FIR res = search.getResult();
+                // Unwrap CMFir
+                if (res instanceof CMFir cm) res = cm.getResult();
+
+                if (res instanceof NKFiroe) {
+                    return indent(depth) + NK_STR;
+                }
+
                 // Found and CONSTANT - get the value
                 // If the result is a brane, we need to handle it gracefully
                 try {
                     return indent(depth) + search.getValue();
-                } catch (UnsupportedOperationException e) {
+                } catch (UnsupportedOperationException | IllegalStateException e) {
                     // It might be a brane or something else that doesn't support getValue()
                     // Use sequence() recursively on the result if we can access it
                     return sequence(search.getResult(), depth);

@@ -43,14 +43,7 @@ public class BinaryFiroe extends FiroeWithBraneMind {
             }
             case EVALUATING -> {
                 // Step operands through evaluation
-                int work = super.step();
-
-                // After parent steps, check if we can compute the final result
-                // If parent says CONSTANT, it means braneMind is empty.
-                if (getNyes() == Nyes.CONSTANT && braneMind.isEmpty() && result == null) {
-                    computeResult();
-                }
-                return work;
+                return super.step();
             }
             case CONSTANT -> {
                 // Should not reach here if result is null, but handle gracefully
@@ -117,15 +110,13 @@ public class BinaryFiroe extends FiroeWithBraneMind {
 
     // Removed isNye override to use parent's state-based logic
 
-    /**
-     * Returns true if the result is Constanic (e.g. missing vars).
-     */
     @Override
-    public boolean isConstanic() {
+    protected void onQueueEmpty() {
         if (result == null) {
-            return true; // No result computed yet (or computed as null/Constanic)
+            computeResult();
+        } else {
+            setNyes(Nyes.CONSTANT);
         }
-        return result.isConstanic();
     }
 
     /**

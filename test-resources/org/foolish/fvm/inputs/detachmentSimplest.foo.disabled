@@ -1,0 +1,17 @@
+{
+    test_1 = {
+        x = 1;
+        f = []{ r = x };
+        res =$ f; !! Expect 1
+    };
+    test_2 = {
+        x = 1;
+        f = [x]{ r = x };
+        res =$ f; !! Expect ??? (Blocked)
+    };
+    test_3 = {
+        x = 1;
+        f = [y]{ r = x }; !! Block y, allow x
+        res =$ f; !! Expect 1
+    };
+}
