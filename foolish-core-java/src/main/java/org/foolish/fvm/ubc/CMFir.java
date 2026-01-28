@@ -17,7 +17,7 @@ import org.foolish.ast.AST;
  * Future optimization could potentially flatten these nested CMFirs to reduce
  * indirection levels, but for now the straightforward approach is used.
  */
-public class CMFir extends FiroeWithoutBraneMind {
+public class CMFir extends FIR {
     protected FIR o;
     protected FIR o2;
     protected boolean phaseBStarted = false;
@@ -68,7 +68,7 @@ public class CMFir extends FiroeWithoutBraneMind {
     protected void startPhaseB() {
         phaseBStarted = true;
         // make a stay_foolish_clone of o
-        o2 = stayFoolishClone(o);
+        o2 = makeCopy(o);
 
         // Set o2's parent FIR to this CMFir
         o2.setParentFir(this);
@@ -84,17 +84,17 @@ public class CMFir extends FiroeWithoutBraneMind {
         syncO2Nyes();
     }
 
-    protected FIR stayFoolishClone(FIR original) {
-        // Simplified implementation: Create fresh FIR from AST.
-        // This effectively "re-evaluates" the expression in the new context.
-        if (original instanceof AssignmentFiroe af) {
-             return new AssignmentFiroe((AST.Assignment) af.ast());
+    protected FIR makeCopy(FIR o) {
+        return o.copy(Nyes.INITIALIZED);
+    }
+
+    @Override
+    public FIR copy(Nyes newNyes) {
+        if (isConstanic()) {
+            return getResult().copy(newNyes); // Remove CMFir in copying if we can.
+        } else {
+            return super.copy(newNyes);
         }
-        if (original.ast() instanceof AST.Expr expr) {
-             return FIR.createFiroeFromExpr(expr);
-        }
-        // Fallback for non-Expr ASTs if any (shouldn't happen for FIRs wrapping Expr)
-        throw new UnsupportedOperationException("Cannot clone FIR with AST type: " + original.ast().getClass());
     }
 
     // Accessors for subclasses

@@ -1,0 +1,38 @@
+!!INPUT!!
+{
+	!! Test basic localized search patterns
+	!! Based on NAME_SEARCH_AND_BOUND.md section "Name Search"
+
+	!! Simple identifier search
+	simple = {x=10; y=20; z=30;}?y;
+
+	!! Not found returns ???
+	notfound = {a=1; b=2;}?missing;
+}
+
+!!!
+PARSED AST:
+{
+  simple = {
+  x = 10;
+  y = 20;
+  z = 30;
+} ? y;
+  notfound = {
+  a = 1;
+  b = 2;
+} ? missing;
+}
+
+UBC EVALUATION:
+Steps taken: 54
+
+FINAL RESULT:
+{
+＿simple = 20;
+＿notfound = ???;
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!

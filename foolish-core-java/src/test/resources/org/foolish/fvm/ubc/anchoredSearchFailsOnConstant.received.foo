@@ -1,0 +1,47 @@
+!!INPUT!!
+{
+  !! Test: Anchored search fails on CONSTANT brane
+  !! When brane is CONSTANT but identifier not found -> ???
+
+  b = {α = 100; β = 200;};
+  notFound = b?γ;  !! Should be ??? (constant brane, but γ not found)
+
+  !! Empty brane searches
+  emptyBrane = {};
+  emptyHead = emptyBrane^;  !! Should be ???
+  emptyTail = emptyBrane$;  !! Should be ???
+}
+
+!!!
+PARSED AST:
+{
+  b = {
+    α = 100;
+    β = 200;
+  };
+  notFound = b ? γ;
+  emptyBrane = {
+  };
+  emptyHead =^emptyBrane;
+  emptyTail =$emptyBrane;
+}
+
+UBC EVALUATION:
+Steps taken: 74
+
+FINAL RESULT:
+{
+＿b = {
+＿    ＿α = 100;
+＿    ＿β = 200;
+＿};
+＿notFound = ???;
+＿emptyBrane = {
+＿};
+＿emptyHead = ???;
+＿emptyTail = ???;
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!

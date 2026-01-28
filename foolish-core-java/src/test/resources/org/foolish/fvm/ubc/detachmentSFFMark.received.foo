@@ -10,16 +10,72 @@
 
         g2 <<=>>  ff   !! Shorthand for above.
 
-	e=6 
+	e=6 ;
         rg  = g        !! same as value of ff above plus 1, rg=16;
 	rg2 = g2       !! same as value of ff above plus 1, rg=16;
     };
 }
 
 !!!
-PARSE ERRORS:
-  line 13:8 no viable alternative at input 'test_1 = {\n        !! SFF marker <<>> and <<=>>\n        a=1;b=2;c=3;d=4;e=5;\n        f  = [a,b,c,d] {r = a+b+c+d+e};\n\tff = f         !! Now we've coordinated everything. ff={r=15};\n\n        g  = <<ff>>    !! as if we typed "g = [a,b,c,d] {r = a+b+c+d+e};"\n\n        g2 <<=>>  ff   !! Shorthand for above.\n\n\te=6 \n        rg'
-  line 13:8 no viable alternative at input 'e=6 \n        rg'
+PARSED AST:
+{
+  testˍ1 = {
+    a = 1;
+    b = 2;
+    c = 3;
+    d = 4;
+    e = 5;
+    f = [
+  a = ???;
+  b = ???;
+  c = ???;
+  d = ???;
+]
+{
+      r = ((((a + b) + c) + d) + e);
+    };
+    ff = f;
+    g = <<ff>>;
+    g2 = <<ff>>;
+    e = 6;
+    rg = g;
+    rg2 = g2;
+  };
+}
 
-VM HALTED: Cannot execute due to parse errors.
+UBC EVALUATION:
+Steps taken: 161
+
+FINAL RESULT:
+{
+＿testˍ1 = {
+＿         ＿a = 1;
+＿         ＿b = 2;
+＿         ＿c = 3;
+＿         ＿d = 4;
+＿         ＿e = 5;
+＿         ＿f = {
+＿         ＿    ＿r = ???;
+＿         ＿};
+＿         ＿ff = {
+＿         ＿     ＿r = ???;
+＿         ＿};
+＿         ＿g = {
+＿         ＿    ＿r = ???;
+＿         ＿};
+＿         ＿g2 = {
+＿         ＿     ＿r = ???;
+＿         ＿};
+＿         ＿e = 6;
+＿         ＿rg = {
+＿         ＿     ＿r = ???;
+＿         ＿};
+＿         ＿rg2 = {
+＿         ＿      ＿r = ???;
+＿         ＿};
+＿};
+}
+
+COMPLETION STATUS:
+Complete: true
 !!!

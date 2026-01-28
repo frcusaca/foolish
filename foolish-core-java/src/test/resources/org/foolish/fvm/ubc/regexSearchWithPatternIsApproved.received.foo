@@ -1,0 +1,26 @@
+!!INPUT!!
+{
+    result = {alice = 1; bob = 2; charlie = 3;}?(a.*);
+}
+
+!!!
+PARSED AST:
+{
+  result = {
+  alice = 1;
+  bob = 2;
+  charlie = 3;
+} ? (a.*);
+}
+
+UBC EVALUATION:
+Steps taken: 32
+
+FINAL RESULT:
+{
+＿result = 1;
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!

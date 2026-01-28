@@ -3,12 +3,15 @@ package org.foolish.fvm.ubc;
 import org.foolish.ast.AST;
 import org.foolish.ast.SearchOperator;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Foolish Internal Representation (FIR).
  * The FIR is the internal representation of computation that holds an AST
  * and tracks evaluation progress.
  */
-public abstract class FIR {
+public abstract class FIR implements Cloneable {
     protected final AST ast;
     protected final String comment;
     private boolean initialized;
@@ -229,7 +232,27 @@ public abstract class FIR {
      * All changes to a Firoe's Nyes must be made through this method.
      */
     protected void setNyes(Nyes nyes) {
+        if (this.nyes == nyes) return;
+        if (this.nyes.ordinal() >= Nyes.CONSTANIC.ordinal()) {
+            throw new IllegalStateException("Cannot change state of Constanic FIR: " + this);
+        }
         this.nyes = nyes;
+    }
+
+    protected void setConstanic() {
+        setNyes(Nyes.CONSTANIC);
+    }
+
+    protected void setConstant() {
+        setNyes(Nyes.CONSTANT);
+    }
+
+    protected void setChecked() {
+        setNyes(Nyes.CHECKED);
+    }
+
+    protected void setEvaluating() {
+        setNyes(Nyes.EVALUATING);
     }
 
     /**
@@ -246,6 +269,29 @@ public abstract class FIR {
      */
     protected FIR getParentFir() {
         return parentFir;
+    }
+
+    public FIR copy(Nyes newNyes) {
+        if (this.nyes != newNyes) {
+            FIR ret = this.clone();
+            // Bypass safety check for copy initialization
+            ret.nyes = newNyes;
+            return ret;
+        }
+        if (isConstanic()) {
+            return this;
+        } else {
+            return new CMFir(this.ast, this);
+        }
+    }
+
+    @Override
+    protected FIR clone() {
+        try {
+            return (FIR) super.clone();
+        } catch (CloneNotSupportedException e) {
+            throw new RuntimeException("Clone not supported for " + getClass().getSimpleName(), e);
+        }
     }
 
     public final boolean atConstant() {
@@ -322,6 +368,7 @@ public abstract class FIR {
      */
     public BraneFiroe getMyBrane() {
         // Chain through parents until we find one whose parent is a BraneFiroe
+        if (parentFir == null) return null;
         if (parentFir instanceof BraneFiroe bf) {
 		return bf;
 	}
@@ -371,6 +418,30 @@ public abstract class FIR {
             case AST.Brane brane -> {
                 return new BraneFiroe(brane);
             }
+            case AST.Branes branes -> {
+                List<FIR> firs = new ArrayList<>();
+                List<AST.DetachmentBrane> pendingDetachments = new ArrayList<>();
+
+                for (AST.Characterizable c : branes.branes()) {
+                    if (c instanceof AST.DetachmentBrane db) {
+                        pendingDetachments.add(db);
+                    } else if (c instanceof AST.Brane b) {
+                        BraneFiroe bf = new BraneFiroe(b);
+                        if (!pendingDetachments.isEmpty()) {
+                            bf = new DetachmentBraneFiroe(new ArrayList<>(pendingDetachments), bf);
+                            pendingDetachments.clear();
+                        }
+                        firs.add(bf);
+                    } else {
+                        // For other types, process normally. Detachments reset.
+                        pendingDetachments.clear(); // Discard detachments that don't precede a Brane
+                        firs.add(createFiroeFromExpr(c));
+                    }
+                }
+
+                if (firs.size() == 1) return firs.get(0);
+                return FiroeWithBraneMind.of(firs.toArray(FIR[]::new));
+            }
             case AST.Assignment assignment -> {
                 return new AssignmentFiroe(assignment);
             }
@@ -397,14 +468,14 @@ public abstract class FIR {
                 return new UnanchoredSeekFiroe(unanchoredSeekExpr);
             }
             case AST.StayFoolishExpr stayFoolish -> {
-                // SF marker wraps expression in SFFiroe for re-coordination
+                // SF marker wraps expression in SFMarkFiroe for re-coordination
                 FIR innerFir = createFiroeFromExpr(stayFoolish.expr());
-                return new SFFiroe(stayFoolish, innerFir);
+                return new SFMarkFiroe(stayFoolish, innerFir);
             }
             case AST.StayFullyFoolishExpr stayFullyFoolish -> {
-                // SFF marker reconstructs from AST using SFFFiroe
+                // SFF marker reconstructs from AST using SFMarkFFiroe
                 FIR innerFir = createFiroeFromExpr(stayFullyFoolish.expr());
-                return new SFFFiroe(stayFullyFoolish, innerFir);
+                return new SFMarkFFiroe(stayFullyFoolish, innerFir);
             }
             default -> {
                 // Placeholder for unsupported types

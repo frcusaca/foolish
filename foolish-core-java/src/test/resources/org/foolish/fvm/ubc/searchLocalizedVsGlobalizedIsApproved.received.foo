@@ -1,0 +1,62 @@
+!!INPUT!!
+{
+	!! Test localized ? search with various patterns
+	!! Based on NAME_SEARCH_AND_BOUND.md section "Localized Search: ?"
+
+	!! Anchored localized search on inline brane
+	r1 = {y=20; z=30;}?y;              !! Should be 20
+
+	!! Regex pattern with parentheses
+	r2 = {alice=1; bob=2; charlie=3;}?(al.*);  !! Should be 1
+
+	!! Pattern not found returns ???
+	r3 = {a=1; b=2;}?notfound;         !! Should be ???
+
+	!! Using regex anchors within the pattern
+	r4 = {alice=1; adam=2; advent=3;}?^a.*;    !! First name starting with 'a'
+	r5 = {alice=1; charlie=2; bobulous=3;}?e$; !! Last name ending with 'e'
+}
+
+!!!
+PARSED AST:
+{
+  r1 = {
+  y = 20;
+  z = 30;
+} ? y;
+  r2 = {
+  alice = 1;
+  bob = 2;
+  charlie = 3;
+} ? (al.*);
+  r3 = {
+  a = 1;
+  b = 2;
+} ? notfound;
+  r4 = {
+  alice = 1;
+  adam = 2;
+  advent = 3;
+} ? ^a.*;
+  r5 = {
+  alice = 1;
+  charlie = 2;
+  bobulous = 3;
+} ? e$;
+}
+
+UBC EVALUATION:
+Steps taken: 132
+
+FINAL RESULT:
+{
+＿r1 = 20;
+＿r2 = 1;
+＿r3 = ???;
+＿r4 = 3;
+＿r5 = 2;
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!

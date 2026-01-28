@@ -40,17 +40,6 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
         return identifier.getCharacterization();
     }
 
-    /**
-     * An identifier is Constanic if it hasn't been resolved yet or if its resolved value is Constanic.
-     */
-    @Override
-    public boolean isConstanic() {
-        if (value == null) {
-            return true; // Not yet resolved or missing
-        }
-        return value.isConstanic();
-    }
-
     @Override
     protected void initialize() {
         setInitialized();
@@ -70,9 +59,14 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
                     setNyes(Nyes.CONSTANIC);
                     return 1;
                 }
-                value = found
+                FIR rawValue = found
                         .map(r -> r.getRight())
                         .orElse(null);
+                if (rawValue != null) {
+                    value = new CMFir(ast, rawValue);
+                } else {
+                    value = null;
+                }
                 if (value == null) {
                     setNyes(Nyes.CONSTANIC);
                 } else {

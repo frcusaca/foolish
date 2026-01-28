@@ -190,13 +190,24 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
              return true;
         }
 
+        if (anchor instanceof CMFir cmFir) {
+            if (cmFir.atConstanic()) {
+                return true;
+            }
+            if (cmFir.isNye()) {
+                cmFir.step();
+                return false;
+            }
+            return true;
+        }
+
         return true;
     }
 
     protected void performSearchStep() {
         if (unwrapAnchor == null && !searchPerformed) {
             if (braneMemory.isEmpty()) {
-                searchResult = new NKFiroe();
+                searchResult = new CMFir(ast, new NKFiroe());
                 return;
             }
             unwrapAnchor = braneMemory.getLast();
@@ -206,22 +217,32 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
 
         // Check for constanic anchor
         if (unwrapAnchor.atConstanic()) {
-            searchResult = new NKFiroe(); // Search on constanic -> NK? Or constanic result?
-            // Usually if resource is missing, search fails -> NK.
-            // Or maybe it should propagate constanic? "Refactor identifier 'NOT FOUND' state to CONSTANIC state"
-            // But a search result that fails is usually NK.
-            // Let's stick to NK for now unless specified otherwise.
+            searchResult = new CMFir(ast, new NKFiroe());
             return;
         }
 
         // Unwrapping Loop
+        if (unwrapAnchor instanceof CMFir cmFir) {
+            if (cmFir.atConstanic()) {
+                searchResult = new CMFir(ast, new NKFiroe());
+                return;
+            }
+            if (cmFir.isNye()) {
+                cmFir.step();
+                return;
+            }
+            unwrapAnchor = cmFir.getResult();
+            if (unwrapAnchor == null) searchResult = new CMFir(ast, new NKFiroe());
+            return;
+        }
+
         if (unwrapAnchor instanceof IdentifierFiroe identifierFiroe) {
             if (identifierFiroe.atConstanic()) {
-                searchResult = new NKFiroe();
+                searchResult = new CMFir(ast, new NKFiroe());
                 return;
             }
             unwrapAnchor = identifierFiroe.value;
-            if (unwrapAnchor == null) searchResult = new NKFiroe();
+            if (unwrapAnchor == null) searchResult = new CMFir(ast, new NKFiroe());
             return;
         }
 
@@ -271,7 +292,7 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
 
         if (unwrapAnchor instanceof BraneFiroe braneFiroe) {
              if (searchPerformed) {
-                 searchResult = braneFiroe;
+                 searchResult = new CMFir(ast, braneFiroe);
                  return;
              }
 
@@ -280,15 +301,8 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
 
              if (result == null) {
                  // Should ideally return NKFiroe, but assume executeSearch handles logic
-                 searchResult = new NKFiroe();
+                 searchResult = new CMFir(ast, new NKFiroe());
                  return;
-             }
-
-             if (result.atConstanic()) {
-                 // If search result is constanic (e.g. identifier found but it was constanic)
-                 // Then we treat it as found but constanic.
-                 // But wait, executeSearch returns FIR.
-                 // If we found an IdentifierFiroe that is Constanic, result is that IdentifierFiroe.
              }
 
              // If the search result itself needs unwrapping (e.g. it's an assignment or identifier found in the brane)
@@ -298,27 +312,27 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
                  if (result == null) result = new NKFiroe();
              }
 
-             if (result instanceof IdentifierFiroe || result instanceof AssignmentFiroe || result instanceof AbstractSearchFiroe || result instanceof UnanchoredSeekFiroe) {
+             if (result instanceof IdentifierFiroe || result instanceof AssignmentFiroe || result instanceof AbstractSearchFiroe || result instanceof UnanchoredSeekFiroe || result instanceof CMFir) {
                  unwrapAnchor = result;
                  return;
              }
 
-             searchResult = result;
+             searchResult = new CMFir(ast, result);
              return;
         }
 
         if (unwrapAnchor instanceof NKFiroe) {
-            searchResult = new NKFiroe();
+            searchResult = new CMFir(ast, new NKFiroe());
             return;
         }
 
         // Default: If we have performed the search (or unwrapped a result) and reached a leaf value
         // that is not one of the wrapper types above, it IS the result.
         if (searchPerformed) {
-            searchResult = unwrapAnchor;
+            searchResult = new CMFir(ast, unwrapAnchor);
         } else {
             // We are trying to search on something that isn't a brane
-            searchResult = new NKFiroe();
+            searchResult = new CMFir(ast, new NKFiroe());
         }
     }
 

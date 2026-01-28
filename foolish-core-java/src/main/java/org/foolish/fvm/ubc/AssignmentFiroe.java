@@ -50,34 +50,21 @@ public class AssignmentFiroe extends FiroeWithBraneMind {
         }
 
         // Let the parent class handle braneMind stepping
-        int work = super.step();
+        return super.step();
+    }
 
-        // Check if we can get the final result
-        if (isNye()) {
-            return work;
-        }
-
-        // Expression is fully evaluated (or stuck at Constanic), store the result
+    @Override
+    protected void onQueueEmpty() {
         if (!braneMemory.isEmpty()) {
             result = braneMemory.get(0);
             if (result.atConstanic()) {
                 setNyes(Nyes.CONSTANIC);
+            } else {
+                setNyes(Nyes.CONSTANT);
             }
+        } else {
+            setNyes(Nyes.CONSTANT);
         }
-        // If result is null (e.g. BinaryFiroe returned null result), that's fine.
-        // It stays Constanic.
-        return work;
-    }
-
-    @Override
-    public boolean isConstanic() {
-        if (result != null) {
-            return result.isConstanic();
-        }
-        // if no result but state is constant -> it's constanic
-        if (getNyes() == Nyes.CONSTANIC) return true;
-
-        return super.isConstanic();
     }
 
     /**
