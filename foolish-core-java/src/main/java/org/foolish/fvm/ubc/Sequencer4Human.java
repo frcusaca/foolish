@@ -44,8 +44,34 @@ public class Sequencer4Human extends Sequencer<String> {
             case AssignmentFiroe assignment -> sequenceAssignment(assignment, depth);
             case IdentifierFiroe identifier -> sequenceIdentifier(identifier, depth);
             case AbstractSearchFiroe search -> sequenceSearch(search, depth);
+            case CMFir cmFir -> sequenceCMFir(cmFir, depth);
             case null, default -> indent(depth) + NK_STR;
         };
+    }
+
+    protected String sequenceCMFir(CMFir cmFir, int depth) {
+        if (!cmFir.isNye()) {
+            // Check if result is Constanic (unresolved)
+            if (cmFir.atConstanic()) {
+                return indent(depth) + CC_STR;
+            }
+            // Try to get the value - may throw if result is NK
+            try {
+                return indent(depth) + cmFir.getValue();
+            } catch (IllegalStateException e) {
+                // NK result
+                return indent(depth) + NK_STR;
+            }
+        } else if (cmFir.atConstanic()) {
+            return indent(depth) + CC_STR;
+        } else {
+            // CMFir is still evaluating - delegate to the inner object if available and displayable
+            FIR result = cmFir.getResult();
+            if (result != null && !(result instanceof NKFiroe)) {
+                return sequence(result, depth);
+            }
+        }
+        return indent(depth) + "CMFir(...)";
     }
 
     protected String sequenceBrane(BraneFiroe brane, int depth) {
@@ -165,6 +191,8 @@ public class Sequencer4Human extends Sequencer<String> {
                              unwrapped = searchFiroe.getResult();
                         case UnanchoredSeekFiroe unanchoredSeekFiroe ->
                              unwrapped = unanchoredSeekFiroe.getResult();
+                        case CMFir cmFir ->
+                             unwrapped = cmFir.getResult();
                         default -> { break unwrappingLoop; }
                     }
                 }

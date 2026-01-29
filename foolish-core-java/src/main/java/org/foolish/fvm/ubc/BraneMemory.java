@@ -68,7 +68,8 @@ public class BraneMemory implements Iterable<FIR> {
             // This is crucial for CMFir which links memory without fixed position
             int parentPos;
             if (owningBrane != null) {
-                parentPos = owningBrane.getMyBraneIndex();
+                int ownerIndex = owningBrane.getMyBraneIndex();
+                parentPos = (ownerIndex != -1) ? ownerIndex : (parent.size() - 1);
             } else {
                 parentPos = myPos.orElse(parent.size() - 1);
             }
