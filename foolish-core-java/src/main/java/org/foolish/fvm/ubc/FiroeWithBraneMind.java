@@ -97,7 +97,8 @@ public abstract class FiroeWithBraneMind extends FIR {
     }
 
     protected int getIndexOf(FIR f){
-	    return (Integer)indexLookup.get(f);
+        Integer idx = (Integer) indexLookup.get(f);
+        return idx != null ? idx : -1;
     }
 
     protected void enqueueExprs(AST.Expr... exprs) {
