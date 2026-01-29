@@ -28,8 +28,8 @@ public class AssignmentFiroe extends FiroeWithBraneMind {
         setInitialized();
 
         AST.Assignment assignment = (AST.Assignment) ast;
-        // Enqueue the expression to be evaluated
-        enqueueExprs(assignment.expr());
+        // Store the expression in braneMemory (prime() will enqueue to braneMind)
+        storeExprs(assignment.expr());
     }
 
     @Override

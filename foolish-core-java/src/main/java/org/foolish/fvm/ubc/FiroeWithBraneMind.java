@@ -47,12 +47,49 @@ public abstract class FiroeWithBraneMind extends FIR {
         this(ast, null);
     }
 
+    /**
+     * Copy constructor for cloneConstanic.
+     * Creates an exact copy of braneMemory with cloned items (updated parent chains).
+     * BraneMemory is verified to be empty for CONSTANIC FIRs.
+     *
+     * @param original the FiroeWithBraneMind to copy
+     * @param newParent the new parent for this clone
+     */
+    protected FiroeWithBraneMind(FiroeWithBraneMind original, FIR newParent) {
+        super(original.ast(), original.comment);
+        setParentFir(newParent);
+
+        // Verify braneMind is empty (critical invariant for CONSTANIC FIRs)
+        if (!original.braneMind.isEmpty()) {
+            throw new IllegalStateException(
+                formatErrorMessage("cloneConstanic requires empty braneMind, but found " +
+                                  original.braneMind.size() + " items. " +
+                                  "This indicates the FIR is not truly CONSTANIC."));
+        }
+
+        // Create empty braneMind (already verified original is empty)
+        this.braneMind = new LinkedList<>();
+
+        // Create new braneMemory and clone contents with updated parent chains
+        this.braneMemory = new BraneMemory(original.braneMemory.getParent());
+        for (FIR fir : original.braneMemory) {
+            // Clone each item, passing this as new parent to update parent chain
+            FIR clonedFir = fir.cloneConstanic(this, java.util.Optional.empty());
+            this.braneMemory.put(clonedFir);
+        }
+
+        this.ordinated = original.ordinated;
+
+        // Mark as initialized since braneMemory is already populated
+        setInitialized();
+    }
+
     static FiroeWithBraneMind ofExpr(AST.Expr... tasks) {
         return of(List.of(tasks).stream().map(FIR::createFiroeFromExpr).toArray(FIR[]::new));
     }
 
     static FiroeWithBraneMind of(FIR... tasks) {
-        FiroeWithBraneMind result = new FiroeWithBraneMind(null, null) {
+        FiroeWithBraneMind result = new FiroeWithBraneMind((AST) null, (String) null) {
             @Override
             protected void initialize() {
                 setInitialized();
@@ -64,6 +101,17 @@ public abstract class FiroeWithBraneMind extends FIR {
         return result;
     }
 
+    /**
+     * Stores subfir created from AST expressions into braneMemory (not braneMind).
+     */
+    protected void storeSubfirOfExprs(AST.Expr... tasks) {
+        storeFirs(ofExpr(tasks));
+    }
+
+    /**
+     * DEPRECATED: Use storeSubfirOfExprs() during initialize() instead.
+     */
+    @Deprecated
     protected void enqueueSubfirOfExprs(AST.Expr... tasks) {
         enqueueFirs(ofExpr(tasks));
     }
@@ -76,9 +124,60 @@ public abstract class FiroeWithBraneMind extends FIR {
     protected abstract void initialize();
 
     /**
+     * Primes the braneMind by enqueueing non-constant items from braneMemory.
+     * <p>
+     * This is called during the CHECKED → PRIMED transition. By separating
+     * the priming logic from initialization, we ensure CONSTANIC FIRs have
+     * empty braneMind, which is critical for cloneConstanic.
+     * <p>
+     * When a CONSTANIC FIR is cloned and reset to INITIALIZED, it will:
+     * 1. Skip initialize() (already done)
+     * 2. Reach CHECKED state
+     * 3. Call prime() to enqueue non-constant items
+     * 4. Continue evaluation in EVALUATING state
+     */
+    protected void prime() {
+        // Enqueue all non-constant items from braneMemory into braneMind
+        for (FIR fir : braneMemory) {
+            if (!fir.isConstant()) {
+                braneMind.add(fir);
+            }
+        }
+    }
+
+    /**
      * Enqueues a FIR into the braneMind if it's NYE (Not Yet Evaluated).
      * If the FIR is already evaluated, place it directly into braneMemory.
      */
+    /**
+     * Adds FIRs to braneMemory only (not braneMind).
+     * Called during initialize() to store FIRs without enqueueing for evaluation.
+     * The prime() method will later enqueue non-constant items into braneMind.
+     */
+    protected void storeFirs(FIR... firs) {
+        for (FIR fir : firs) {
+            braneMemory.put(fir);
+            // Set parent FIR relationship
+            fir.setParentFir(this);
+            int index = braneMemory.size() - 1;
+            indexLookup.put(fir, index);
+            switch (fir) {
+                case FiroeWithBraneMind fwbm:
+                    fwbm.ordinateToParentBraneMind(this, index);
+                    break;
+                default:
+                    // Non-braneMind FIRs don't need ordination
+                    break;
+            }
+        }
+    }
+
+    /**
+     * DEPRECATED: Use storeFirs() during initialize() instead.
+     * This method adds to both braneMind and braneMemory, which breaks the
+     * PRIMED state separation. Kept for backward compatibility.
+     */
+    @Deprecated
     protected void enqueueFirs(FIR... firs) {
         for (FIR fir : firs) {
             braneMind.addLast(fir);
@@ -100,6 +199,19 @@ public abstract class FiroeWithBraneMind extends FIR {
 	    return (Integer)indexLookup.get(f);
     }
 
+    /**
+     * Stores FIRs created from AST expressions into braneMemory (not braneMind).
+     * Use during initialize() instead of enqueueExprs().
+     */
+    protected void storeExprs(AST.Expr... exprs) {
+        for (AST.Expr expr : exprs)
+            storeFirs(FIR.createFiroeFromExpr(expr));
+    }
+
+    /**
+     * DEPRECATED: Use storeExprs() during initialize() instead.
+     */
+    @Deprecated
     protected void enqueueExprs(AST.Expr... exprs) {
         for (AST.Expr expr : exprs)
             enqueueFirs(FIR.createFiroeFromExpr(expr));
@@ -142,7 +254,13 @@ public abstract class FiroeWithBraneMind extends FIR {
                 return 1; // Did work stepping sub-expressions
             }
             case CHECKED -> {
-                // Immediate transition to EVALUATING when step() is called
+                // Prime braneMind with non-constant items from braneMemory
+                prime();
+                setNyes(Nyes.PRIMED);
+                return 1;
+            }
+            case PRIMED -> {
+                // Immediate transition to EVALUATING
                 setNyes(Nyes.EVALUATING);
                 return 1;
             }
@@ -253,19 +371,54 @@ public abstract class FiroeWithBraneMind extends FIR {
 
     /**
      * Creates a shallow clone of this FiroeWithBraneMind.
+     * Shares braneMind and braneMemory references.
      * <p>
-     * Note: This creates a shallow clone that shares braneMind and braneMemory references.
-     * For deep cloning with independent state, FIRs are typically recreated from AST
-     * via the copy() mechanism in CMFir.
-     * <p>
-     * The shallow clone is sufficient for most use cases because:
-     * - FIRs become immutable once CONSTANIC
-     * - CMFir wrapping handles context-sensitive re-evaluation
-     * - Deep cloning would require careful handling of circular references
+     * Note: For deep cloning, use cloneKeepingConstants() instead.
      */
     @Override
     protected FIR clone() {
         return (FiroeWithBraneMind) super.clone();
+    }
+
+    /**
+     * Clones this CONSTANIC FiroeWithBraneMind with updated parent chain.
+     * <p>
+     * Creates an exact copy of braneMemory with recursively cloned items.
+     * Verifies braneMind is empty (critical invariant for CONSTANIC FIRs).
+     *
+     * @param newParent the new parent for this clone
+     * @param targetNyes optional target state
+     * @return a clone with updated parent chain
+     */
+    @Override
+    protected FIR cloneConstanic(FIR newParent, java.util.Optional<Nyes> targetNyes) {
+        if (!isConstanic()) {
+            throw new IllegalStateException(
+                formatErrorMessage("cloneConstanic can only be called on CONSTANIC or CONSTANT FIRs, " +
+                                  "but this FIR is in state: " + getNyes()));
+        }
+
+        if (isConstant()) {
+            return this;  // Share CONSTANT FIRs completely
+        }
+
+        // CONSTANIC: use copy constructor
+        FiroeWithBraneMind copy = new FiroeWithBraneMind(this, newParent) {
+            @Override
+            protected void initialize() {
+                // Copy constructor already initialized braneMemory
+                setInitialized();
+            }
+        };
+
+        // Set target state if specified, otherwise copy from original
+        if (targetNyes.isPresent()) {
+            copy.nyes = targetNyes.get();
+        } else {
+            copy.nyes = this.nyes;
+        }
+
+        return copy;
     }
 
 }

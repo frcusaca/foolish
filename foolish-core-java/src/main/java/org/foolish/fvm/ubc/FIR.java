@@ -20,7 +20,7 @@ public abstract class FIR implements Cloneable {
     protected final AST ast;
     protected final String comment;
     private boolean initialized;
-    private Nyes nyes;
+    protected Nyes nyes;  // Protected to allow cloneConstanic to set state directly
     private FIR parentFir = null;  // The FIR that contains this FIR (set during enqueue)
     private final boolean ai;      // Auto-instruction: true if FIR was auto-generated (no AST)
 
@@ -503,6 +503,56 @@ public abstract class FIR implements Cloneable {
         } catch (CloneNotSupportedException e) {
             throw new RuntimeException("Clone not supported for " + getClass().getSimpleName(), e);
         }
+    }
+
+    /**
+     * Clones a CONSTANIC (or CONSTANT) FIR with updated parent chain.
+     * <p>
+     * This method is ONLY for cloning CONSTANIC or CONSTANT FIRs. It will throw
+     * an exception if called on a FIR that is not constanic.
+     * <p>
+     * <b>Key behaviors:</b>
+     * - CONSTANT FIRs: Returns this (shared completely - they're immutable)
+     * - CONSTANIC FIRs: Creates a clone with updated parent chain to enable re-evaluation
+     * <p>
+     * <b>Lemma:</b> CONSTANT FIR cannot have non-CONSTANT children (fully immutable tree).
+     * Therefore, CONSTANT FIRs can be shared completely without cloning.
+     * <p>
+     * <b>For CONSTANIC FIRs:</b> Parent chain must be updated to point to new objects
+     * to enable re-evaluation in a new context. The clone uses a copy constructor
+     * that recursively calls cloneConstanic on children with updated parents.
+     *
+     * @param newParent the new parent FIR for this clone
+     * @param targetNyes optional target state; if present, sets clone to this state;
+     *                   if empty, copies state from original
+     * @return a clone with updated parent chain (CONSTANIC), or this (CONSTANT)
+     * @throws IllegalStateException if called on a FIR that is not constanic
+     */
+    protected FIR cloneConstanic(FIR newParent, java.util.Optional<Nyes> targetNyes) {
+        if (!isConstanic()) {
+            throw new IllegalStateException(
+                formatErrorMessage("cloneConstanic can only be called on CONSTANIC or CONSTANT FIRs, " +
+                                  "but this FIR is in state: " + getNyes()));
+        }
+
+        if (isConstant()) {
+            return this;  // Share CONSTANT FIRs completely (immutable tree)
+        }
+
+        // CONSTANIC: clone with new parent chain
+        // Default implementation uses shallow clone
+        // Subclasses with children (like FiroeWithBraneMind) must override
+        FIR copy = this.clone();
+        copy.setParentFir(newParent);
+
+        // Set target state if specified, otherwise copy from original
+        if (targetNyes.isPresent()) {
+            copy.nyes = targetNyes.get();  // Direct assignment bypasses immutability check
+        } else {
+            copy.nyes = this.nyes;  // Copy original state
+        }
+
+        return copy;
     }
 
     /**

@@ -20,7 +20,7 @@ public class RegexpSearchFiroe extends AbstractSearchFiroe {
     protected void initialize() {
         super.initialize();
         AST.RegexpSearchExpr searchExpr = (AST.RegexpSearchExpr) ast;
-        enqueueExprs(searchExpr.anchor());
+        storeExprs(searchExpr.anchor());
     }
 
     @Override

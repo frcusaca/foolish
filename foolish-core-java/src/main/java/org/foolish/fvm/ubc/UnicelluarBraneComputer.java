@@ -37,7 +37,7 @@ public class UnicelluarBraneComputer {
         // So we need a Firoe that holds standardLib.
 
         // Let's create a dummy Firoe for the Standard Library.
-        FiroeWithBraneMind stdLibOwner = new FiroeWithBraneMind(null) {
+        FiroeWithBraneMind stdLibOwner = new FiroeWithBraneMind((AST) null) {
             {
                 this.braneMemory.setParent(standardLib);
                 // Wait, standardLib IS the memory. We want rootBrane.memory.parent = standardLib.

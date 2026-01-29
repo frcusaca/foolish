@@ -20,7 +20,7 @@ public class SeekFiroe extends AbstractSearchFiroe {
     protected void initialize() {
         super.initialize();
         AST.SeekExpr seekExpr = (AST.SeekExpr) ast;
-        enqueueExprs(seekExpr.anchor());
+        storeExprs(seekExpr.anchor());
     }
 
     @Override

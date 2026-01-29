@@ -7,6 +7,13 @@ Apply industry standard best practices liberally. Use colloquial java and scala 
 Treat documentation in docs/ as if they are product documents, documentation in projects/ are engineering design, notes and discussions. This applies both to reading and generating for each directory.
 
 
+## Development process
+Due to the nature of human-driven development, AI should always write the tests first. Approval tests and unit tests, write the tests with most important features, and unclear corner cases written as tests to not only check behavior, but also to document what it looks like.
+
+Always write feature in Java first. Work until all java tests are passing before starting to code the same feature in any other languages.
+
+Ask permission before coding new features or reparing bugs in languages other than ANTLR4, Java or Foolish. Ignore build errors in other language directories if you must and `test -amd` in the java directories.
+
 ## Overview
 
 Foolish is a revolutionary programming language with parallel Java and Scala implementations. This guide helps AI agents navigate the unique build requirements and environment-specific setup needed for development.
@@ -29,9 +36,6 @@ The project supports two primary development environments:
 - Assumes Java 25 is already installed
 - No proxy configuration needed
 - Maven commands work directly: `mvn clean test`
-
-### Claude Code Web (CCW)
-- Cloud-based development environment
 
 ## Build Commands
 

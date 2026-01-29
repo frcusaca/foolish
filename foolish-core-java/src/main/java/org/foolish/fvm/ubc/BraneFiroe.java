@@ -48,6 +48,18 @@ public class BraneFiroe extends FiroeWithBraneMind {
     }
 
     /**
+     * Copy constructor for cloneConstanic.
+     * Creates a copy with independent braneMind/braneMemory and updated parent chain.
+     *
+     * @param original the BraneFiroe to copy
+     * @param newParent the new parent for this clone
+     */
+    protected BraneFiroe(BraneFiroe original, FIR newParent) {
+        super(original, newParent);
+        this.EXPRMNT_brane_depth = original.EXPRMNT_brane_depth;
+    }
+
+    /**
      * EXPERIMENTAL: Sets the brane depth and checks if it exceeds the maximum allowed depth.
      * If the depth exceeds the limit, this brane is immediately set to CONSTANT and an alarm is raised.
      * <p>
@@ -135,6 +147,35 @@ public class BraneFiroe extends FiroeWithBraneMind {
     }
 
     /**
+     * Clones this CONSTANIC BraneFiroe with updated parent chain.
+     * Uses copy constructor to create independent braneMind/braneMemory.
+     */
+    @Override
+    protected FIR cloneConstanic(FIR newParent, java.util.Optional<Nyes> targetNyes) {
+        if (!isConstanic()) {
+            throw new IllegalStateException(
+                formatErrorMessage("cloneConstanic can only be called on CONSTANIC or CONSTANT FIRs, " +
+                                  "but this FIR is in state: " + getNyes()));
+        }
+
+        if (isConstant()) {
+            return this;  // Share CONSTANT branes completely
+        }
+
+        // CONSTANIC: use copy constructor
+        BraneFiroe copy = new BraneFiroe(this, newParent);
+
+        // Set target state if specified, otherwise copy from original
+        if (targetNyes.isPresent()) {
+            copy.nyes = targetNyes.get();
+        } else {
+            copy.nyes = this.nyes;
+        }
+
+        return copy;
+    }
+
+    /**
      * Initialize the BraneFiroe by converting AST statements to Expression Firoes.
      */
     @Override
@@ -145,7 +186,7 @@ public class BraneFiroe extends FiroeWithBraneMind {
         if (ast instanceof AST.Brane brane) {
             for (AST.Expr expr : brane.statements()) {
                 FIR firoe = createFiroeFromExpr(expr);
-                enqueueFirs(firoe);
+                storeFirs(firoe);  // Store in braneMemory only, prime() will enqueue to braneMind
             }
         }else{
             throw new IllegalArgumentException("AST must be of type AST.Brane");

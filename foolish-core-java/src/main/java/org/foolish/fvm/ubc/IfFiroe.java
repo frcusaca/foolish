@@ -22,20 +22,20 @@ public class IfFiroe extends FiroeWithBraneMind {
         if (isInitialized()) return;
 
         AST.IfExpr ifExpr = (AST.IfExpr) ast;
-        enqueueSubfirOfExprs(ifExpr);
+        storeSubfirOfExprs(ifExpr);
 
         // Create Firoes for condition, then, and else branches
-        enqueueSubfirOfExprs(ifExpr.condition(), ifExpr.thenExpr());
+        storeSubfirOfExprs(ifExpr.condition(), ifExpr.thenExpr());
         for (AST.IfExpr elseIf : ifExpr.elseIfs()) {
-            enqueueFirs(new ConditionalFiroe(elseIf));
+            storeFirs(new ConditionalFiroe(elseIf));
         }
 
         // Enqueue else branch - if not present (UnknownExpr), use NK (???)
         if (ifExpr.elseExpr() == AST.UnknownExpr.INSTANCE || ifExpr.elseExpr() == null) {
             // No explicit else branch - add implicit else ???
-            enqueueFirs(new NKFiroe("No matching condition in if-elif chain"));
+            storeFirs(new NKFiroe("No matching condition in if-elif chain"));
         } else {
-            enqueueFirs(createFiroeFromExpr(ifExpr.elseExpr()));
+            storeFirs(createFiroeFromExpr(ifExpr.elseExpr()));
         }
 
         nextPossibleIdx=0;
@@ -99,7 +99,7 @@ public class IfFiroe extends FiroeWithBraneMind {
 
         protected ConditionalFiroe(AST.IfExpr ifExpr) {
             super(ifExpr);
-            enqueueSubfirOfExprs(ifExpr.condition(), ifExpr.thenExpr());
+            storeSubfirOfExprs(ifExpr.condition(), ifExpr.thenExpr());
         }
 
         protected void initialize() {

@@ -8,7 +8,7 @@ package org.foolish.fvm.ubc;
  * lifecycle, with transitions managed through the {@link FIR#setNyes(Nyes)} method.
  * <p>
  * The evaluation flow typically progresses as follows:
- * UNINITIALIZED → INITIALIZED → CHECKED → EVALUATING → CONSTANIC → CONSTANT
+ * UNINITIALIZED → INITIALIZED → CHECKED → PRIMED → EVALUATING → CONSTANIC → CONSTANT
  * <p>
  * CONSTANIC (say "CON-STAN-NICK") represents a state where evaluation has paused due to missing information (e.g. unbound identifiers),
  * but could resume in a different context. CONSTANt IN Context - "Stay Foolish" state.
@@ -30,12 +30,21 @@ public enum Nyes {
     /**
      * Type/reference checking completed.
      * Reserved for future type checking and reference validation.
-     * Currently used as a transitional state between INITIALIZED and EVALUATING.
+     * Currently used as a transitional state between INITIALIZED and PRIMED.
      * AB (Abstract Brane), IB (Implementation Brane) established firmly.
      * All variables for an expression are collected and validated.
      * Transition taken care of by step().
      */
     CHECKED,
+
+    /**
+     * BraneMind has been primed with non-constant items from braneMemory.
+     * For FiroeWithBraneMind: non-constant items from braneMemory are enqueued into braneMind.
+     * For other FIRs: this state is typically transitioned through immediately.
+     * This separation ensures CONSTANIC FIRs have empty braneMind (critical for cloneConstanic).
+     * Transition taken care of by step().
+     */
+    PRIMED,
 
     /**
      * Take a step() as we do currently, including branes.

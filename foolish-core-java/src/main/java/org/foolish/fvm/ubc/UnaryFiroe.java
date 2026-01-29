@@ -26,7 +26,7 @@ public class UnaryFiroe extends FiroeWithBraneMind {
     protected void initialize() {
         setInitialized();
         AST.UnaryExpr op = (AST.UnaryExpr) ast;
-        enqueueExprs(op.expr());
+        storeExprs(op.expr());
     }
 
     @Override

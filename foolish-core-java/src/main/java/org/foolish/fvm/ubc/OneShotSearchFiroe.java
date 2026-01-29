@@ -15,7 +15,7 @@ public class OneShotSearchFiroe extends AbstractSearchFiroe {
     protected void initialize() {
         super.initialize();
         AST.OneShotSearchExpr searchExpr = (AST.OneShotSearchExpr) ast;
-        enqueueExprs(searchExpr.anchor());
+        storeExprs(searchExpr.anchor());
     }
 
     @Override

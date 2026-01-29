@@ -50,12 +50,12 @@ public class DetachmentBraneFiroe extends FiroeWithBraneMind {
     protected void initialize() {
         setInitialized();
 
-        // Enqueue the detachment statements (assignments or standalone identifiers)
+        // Store the detachment statements (assignments or standalone identifiers)
         for (AST.DetachmentStatement stmt : ((AST.DetachmentBrane) ast).statements()) {
             // Create assignment FIR for each detachment statement
             // Note: Parser creates ??? (UnknownExpr) for standalone identifiers
             FIR fir = new AssignmentFiroe(new AST.Assignment(stmt.identifier(), stmt.expr()));
-            enqueueFirs(fir);
+            storeFirs(fir);
         }
     }
 

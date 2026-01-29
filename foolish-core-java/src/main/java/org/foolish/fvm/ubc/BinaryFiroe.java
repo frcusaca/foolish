@@ -21,10 +21,25 @@ public class BinaryFiroe extends FiroeWithBraneMind {
         this.result = null;
     }
 
+    /**
+     * Copy constructor for cloneConstanic.
+     * Creates a copy with independent braneMind/braneMemory and updated parent chain.
+     * Resets result to null so the copy can re-evaluate.
+     *
+     * @param original the BinaryFiroe to copy
+     * @param newParent the new parent for this clone
+     */
+    protected BinaryFiroe(BinaryFiroe original, FIR newParent) {
+        super(original, newParent);
+        this.operator = original.operator;
+        // Always reset result to null - the copy will re-evaluate
+        this.result = null;
+    }
+
     @Override
     protected void initialize() {
         AST.BinaryExpr binaryExpr = (AST.BinaryExpr) ast;
-        enqueueExprs(binaryExpr.left(), binaryExpr.right());
+        storeExprs(binaryExpr.left(), binaryExpr.right());  // Store in braneMemory, not braneMind
         setInitialized();
     }
 
@@ -142,5 +157,34 @@ public class BinaryFiroe extends FiroeWithBraneMind {
             throw new IllegalStateException("BinaryFiroe not fully evaluated");
         }
         return result.getValue();
+    }
+
+    /**
+     * Clones this CONSTANIC BinaryFiroe with updated parent chain.
+     * Uses copy constructor to create independent braneMind/braneMemory with reset result.
+     */
+    @Override
+    protected FIR cloneConstanic(FIR newParent, java.util.Optional<Nyes> targetNyes) {
+        if (!isConstanic()) {
+            throw new IllegalStateException(
+                formatErrorMessage("cloneConstanic can only be called on CONSTANIC or CONSTANT FIRs, " +
+                                  "but this FIR is in state: " + getNyes()));
+        }
+
+        if (isConstant()) {
+            return this;  // Share CONSTANT binary expressions completely
+        }
+
+        // CONSTANIC: use copy constructor
+        BinaryFiroe copy = new BinaryFiroe(this, newParent);
+
+        // Set target state if specified, otherwise copy from original
+        if (targetNyes.isPresent()) {
+            copy.nyes = targetNyes.get();
+        } else {
+            copy.nyes = this.nyes;
+        }
+
+        return copy;
     }
 }

@@ -67,12 +67,10 @@ public class CMFir extends FiroeWithoutBraneMind {
 
     protected void startPhaseB() {
         phaseBStarted = true;
-        // Use unified copy mechanism to re-evaluate in new context
-        // copy(INITIALIZED) creates a fresh copy ready for re-evaluation
-        o2 = o.copy(Nyes.INITIALIZED);
 
-        // Set o2's parent FIR to this CMFir
-        o2.setParentFir(this);
+        // Clone the CONSTANIC FIR with updated parent chain and reset to INITIALIZED
+        // cloneConstanic handles parent updating and state setting in one call
+        o2 = o.cloneConstanic(this, java.util.Optional.of(Nyes.INITIALIZED));
 
         // If o2 is a BraneFiroe, recalculate its depth in the new context
         // This is critical for depth limit checking when branes are coordinated
