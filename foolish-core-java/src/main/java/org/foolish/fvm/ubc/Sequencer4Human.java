@@ -165,6 +165,9 @@ public class Sequencer4Human extends Sequencer<String> {
                              unwrapped = searchFiroe.getResult();
                         case UnanchoredSeekFiroe unanchoredSeekFiroe ->
                              unwrapped = unanchoredSeekFiroe.getResult();
+                        case CMFir cmFir -> {
+                             unwrapped = cmFir.getResult();
+                        }
                         default -> { break unwrappingLoop; }
                     }
                 }
@@ -200,7 +203,14 @@ public class Sequencer4Human extends Sequencer<String> {
                     braneSeq = braneSeq.replace("\n" + nestedIndent, "\n" + parentIndent + padding + tabChar);
                     return indent(depth) + fullId + " = " + braneSeq;
                 }
-                return indent(depth) + fullId + " = " + unwrapped.getValue();
+                if (unwrapped != null) {
+                    try {
+                        return indent(depth) + fullId + " = " + unwrapped.getValue();
+                    } catch (IllegalStateException e) {
+                        // Fallback if value cannot be retrieved (e.g., still NYE or NK inside CMFir)
+                        return indent(depth) + fullId + " = " + NK_STR;
+                    }
+                }
             }
         } else if (assignment.atConstanic()) {
              return indent(depth) + fullId + " = " + CC_STR;

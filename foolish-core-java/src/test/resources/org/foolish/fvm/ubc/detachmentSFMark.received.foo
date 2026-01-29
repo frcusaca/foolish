@@ -1,0 +1,255 @@
+!!INPUT!!
+{ 
+    test_1 = {
+        !! From Test 4 in Detachment_Project.md
+        !! Basic constantic brackets - capture all detached ordinates
+        a = 1; b = 2; c = 3; d = 4;
+        f = [a, b, c, d]{r = a + b + c + d};
+        f2 = <f>;             !! does NOT aptures anything new. Equivalent to f
+
+        r =$ f;               !! Uses current scope: 1+2+3+4 = 10
+        d = 5;
+        r2 =$ f2;             !! also uses current scope 1+2+3+5 = 11
+        d = 6;
+        r3 =$ f2;             !! Still 11 (f2's capture doesn't change)
+    };
+
+    test_2 = {
+        !! Constantic assignment <=> shorthand
+        a = 1; b = 2; c = 3; d = 4;
+        f = [d]{r = a + b + c + d}; !! Captures a=1,b=2,c=3;
+
+        f3 <=> f;                   !! Equivalent to f3 = <f> both still needs d
+	r1 = f;                     !! 1+2+3+4 = 10
+        r2 = f2;                    !! 1+2+3+4 = 10
+	a=2;b=3;c=4;
+        d = 6;                      !! Both, when coordinated, now sees 6 for d
+        r2 =$ f;                    !! 1+2+3+4 = 11
+        r3 =$ f3;                   !! 1+2+3+4 = 11
+    };
+
+    test_3 = {
+         !! Constantic brackets with nested scopes
+        {
+            p = 10; q = 20; r = 30;
+            g = [q, r]{sum = p + q + r}; !! captures p=10
+            p = 11;           
+            g2 = <g>;         !! no change, p still 10; q,r still uncoordinated.
+
+            {
+                !! Inner scope changes variables
+                p = 100;
+                q = 200;
+                x =$ g;       !! Uses current scope for q,r: 10+200+30=240
+                y =$ g2;      !! Same should be 240
+            };
+        };
+    };
+
+    test_4 = {
+        !! Important: constantic brackets only affect brane references
+        h1 = <[x, y]{z = x + y}>;    !! <> has no effect on fresh brane
+        h2 = [x, y]{z = x + y};      !! Equivalent to h1
+
+        x = 5; y = 7;
+        z1 =$ h1;             !! Both should resolve x, y from current scope
+        z2 =$ h2;             !! Expected: 12 for both
+    };
+
+    test_5 = {
+        !! Partial capture.
+        f = [a, b, c]{result = a + b + c};
+        b = 10;
+	f2 = f;               !! n caught b=10
+
+        a = -10; b=-100000; c=1;
+        f3 <=> f2;            !! f3 same as f2, blocked from capture a,c, b already coordinated to 10.
+
+        r4 =$ f3;             !! Constanic one-shot search.
+
+        result = r4;          !! result should be the number 1, not a brane
+    };
+}
+
+!!!
+PARSED AST:
+{
+  testˍ1 = {
+    a = 1;
+    b = 2;
+    c = 3;
+    d = 4;
+    f = [
+  a = ???;
+  b = ???;
+  c = ???;
+  d = ???;
+]
+{
+      r = (((a + b) + c) + d);
+    };
+    f2 = <f>;
+    r =$f;
+    d = 5;
+    r2 =$f2;
+    d = 6;
+    r3 =$f2;
+  };
+  testˍ2 = {
+    a = 1;
+    b = 2;
+    c = 3;
+    d = 4;
+    f = [
+  d = ???;
+]
+{
+      r = (((a + b) + c) + d);
+    };
+    f3 = <f>;
+    r1 = f;
+    r2 = f2;
+    a = 2;
+    b = 3;
+    c = 4;
+    d = 6;
+    r2 =$f;
+    r3 =$f3;
+  };
+  testˍ3 = {
+    {
+      p = 10;
+      q = 20;
+      r = 30;
+      g = [
+  q = ???;
+  r = ???;
+]
+{
+        sum = ((p + q) + r);
+      };
+      p = 11;
+      g2 = <g>;
+      {
+        p = 100;
+        q = 200;
+        x =$g;
+        y =$g2;
+      };
+    };
+  };
+  testˍ4 = {
+    h1 = <[
+  x = ???;
+  y = ???;
+]
+{
+  z = (x + y);
+}
+>;
+    h2 = [
+  x = ???;
+  y = ???;
+]
+{
+      z = (x + y);
+    };
+    x = 5;
+    y = 7;
+    z1 =$h1;
+    z2 =$h2;
+  };
+  testˍ5 = {
+    f = [
+  a = ???;
+  b = ???;
+  c = ???;
+]
+{
+      result = ((a + b) + c);
+    };
+    b = 10;
+    f2 = f;
+    a = -10;
+    b = -100000;
+    c = 1;
+    f3 = <f2>;
+    r4 =$f3;
+    result = r4;
+  };
+}
+
+UBC EVALUATION:
+Steps taken: 405
+
+FINAL RESULT:
+{
+＿testˍ1 = {
+＿         ＿a = 1;
+＿         ＿b = 2;
+＿         ＿c = 3;
+＿         ＿d = 4;
+＿         ＿f = ???;
+＿         ＿f2 = ???;
+＿         ＿r = ???;
+＿         ＿d = 5;
+＿         ＿r2 = ???;
+＿         ＿d = 6;
+＿         ＿r3 = ???;
+＿};
+＿testˍ2 = {
+＿         ＿a = 1;
+＿         ＿b = 2;
+＿         ＿c = 3;
+＿         ＿d = 4;
+＿         ＿f = ???;
+＿         ＿f3 = ???;
+＿         ＿r1 = ???;
+＿         ＿r2 = ⎵⎵;
+＿         ＿a = 2;
+＿         ＿b = 3;
+＿         ＿c = 4;
+＿         ＿d = 6;
+＿         ＿r2 = ???;
+＿         ＿r3 = ???;
+＿};
+＿testˍ3 = {
+＿         ＿{
+＿         ＿＿p = 10;
+＿         ＿＿q = 20;
+＿         ＿＿r = 30;
+＿         ＿＿g = ???;
+＿         ＿＿p = 11;
+＿         ＿＿g2 = ???;
+＿         ＿＿{
+＿         ＿＿＿p = 100;
+＿         ＿＿＿q = 200;
+＿         ＿＿＿x = ???;
+＿         ＿＿＿y = ???;
+＿         ＿＿};
+＿         ＿};
+＿};
+＿testˍ4 = {
+＿         ＿h1 = ???;
+＿         ＿h2 = ???;
+＿         ＿x = 5;
+＿         ＿y = 7;
+＿         ＿z1 = ???;
+＿         ＿z2 = ???;
+＿};
+＿testˍ5 = {
+＿         ＿f = ???;
+＿         ＿b = 10;
+＿         ＿f2 = ???;
+＿         ＿a = -10;
+＿         ＿b = -100000;
+＿         ＿c = 1;
+＿         ＿f3 = ???;
+＿         ＿r4 = ???;
+＿         ＿result = ???;
+＿};
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!

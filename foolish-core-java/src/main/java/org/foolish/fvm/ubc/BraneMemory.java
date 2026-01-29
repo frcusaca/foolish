@@ -66,10 +66,11 @@ public class BraneMemory implements Iterable<FIR> {
             // Otherwise fall back to myPos (for unit tests without BraneFiroe)
             // Default to searching from end of parent if neither is available
             // This is crucial for CMFir which links memory without fixed position
-            int parentPos;
+            int parentPos = -1;
             if (owningBrane != null) {
                 parentPos = owningBrane.getMyBraneIndex();
-            } else {
+            }
+            if (parentPos == -1) {
                 parentPos = myPos.orElse(parent.size() - 1);
             }
             return parent.get(query, parentPos);
