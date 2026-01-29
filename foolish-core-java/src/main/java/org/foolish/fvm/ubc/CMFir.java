@@ -25,8 +25,8 @@ public class CMFir extends FiroeWithoutBraneMind {
     public CMFir(AST ast, FIR o) {
         super(ast);
         this.o = o;
-        // CMFir starts as NYE and will step through phases
-        setNyes(Nyes.UNINITIALIZED);
+        // CMFir starts as UNINITIALIZED (set by parent constructor)
+        // No need to set again - parent FIR constructor already did this
     }
 
     @Override
@@ -67,11 +67,19 @@ public class CMFir extends FiroeWithoutBraneMind {
 
     protected void startPhaseB() {
         phaseBStarted = true;
-        // make a stay_foolish_clone of o
-        o2 = stayFoolishClone(o);
+        // Use unified copy mechanism to re-evaluate in new context
+        // copy(INITIALIZED) creates a fresh copy ready for re-evaluation
+        o2 = o.copy(Nyes.INITIALIZED);
 
         // Set o2's parent FIR to this CMFir
         o2.setParentFir(this);
+
+        // If o2 is a BraneFiroe, recalculate its depth in the new context
+        // This is critical for depth limit checking when branes are coordinated
+        if (o2 instanceof BraneFiroe braneFiroe) {
+            int newDepth = braneFiroe.calculateBraneDepth();
+            braneFiroe.setExprmntBraneDepth(newDepth);
+        }
 
         // If o2 has a braneMind, link its memory to the containing brane's memory
         if (o2 instanceof FiroeWithBraneMind fwbm) {
@@ -82,19 +90,6 @@ public class CMFir extends FiroeWithoutBraneMind {
             }
         }
         syncO2Nyes();
-    }
-
-    protected FIR stayFoolishClone(FIR original) {
-        // Simplified implementation: Create fresh FIR from AST.
-        // This effectively "re-evaluates" the expression in the new context.
-        if (original instanceof AssignmentFiroe af) {
-             return new AssignmentFiroe((AST.Assignment) af.ast());
-        }
-        if (original.ast() instanceof AST.Expr expr) {
-             return FIR.createFiroeFromExpr(expr);
-        }
-        // Fallback for non-Expr ASTs if any (shouldn't happen for FIRs wrapping Expr)
-        throw new UnsupportedOperationException("Cannot clone FIR with AST type: " + original.ast().getClass());
     }
 
     // Accessors for subclasses
@@ -145,5 +140,26 @@ public class CMFir extends FiroeWithoutBraneMind {
 	}else{
 		return o.getNyes();
 	}
+    }
+
+    /**
+     * Override copy() to unwrap CMFir when possible.
+     * If this CMFir has completed phase B and inner FIR is CONSTANIC,
+     * unwrap and return the inner FIR's copy instead.
+     * Otherwise, use default copy behavior.
+     */
+    @Override
+    public FIR copy(Nyes targetNyes) {
+        if (isConstanic() && phaseBStarted) {
+            // Unwrap CMFir - return inner FIR's copy
+            FIR inner = o2;
+            return inner.copy(targetNyes);
+        } else if (isConstanic() && !phaseBStarted) {
+            // Phase B not started yet, use o
+            return o.copy(targetNyes);
+        } else {
+            // Not yet CONSTANIC, use default behavior
+            return super.copy(targetNyes);
+        }
     }
 }

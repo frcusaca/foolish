@@ -7,8 +7,16 @@ import org.foolish.ast.SearchOperator;
  * Foolish Internal Representation (FIR).
  * The FIR is the internal representation of computation that holds an AST
  * and tracks evaluation progress.
+ * <p>
+ * <b>IMMUTABILITY CONTRACT:</b>
+ * Once a FIR reaches isConstanic() (CONSTANIC or CONSTANT state), it becomes
+ * immutable. No fields may be modified after this point. Any attempt to change
+ * state will throw IllegalStateException.
+ * <p>
+ * To create variations of CONSTANIC FIRs, use the copy() method which creates
+ * new instances with different target states.
  */
-public abstract class FIR {
+public abstract class FIR implements Cloneable {
     protected final AST ast;
     protected final String comment;
     private boolean initialized;
@@ -211,10 +219,20 @@ public abstract class FIR {
     }
 
     /**
-     * Sets the initialized state of this FIR.
+     * Sets the initialized flag of this FIR.
+     * This is separate from the Nyes state and tracks basic initialization.
      */
     protected void setInitialized() {
         this.initialized = true;
+    }
+
+    /**
+     * Sets both the initialized flag and transitions to INITIALIZED Nyes state.
+     * This is the recommended way to mark a FIR as initialized.
+     */
+    protected void markInitialized() {
+        this.initialized = true;
+        setNyesInitialized();
     }
 
     /**
@@ -227,9 +245,92 @@ public abstract class FIR {
     /**
      * Sets the NYE state of this FIR.
      * All changes to a Firoe's Nyes must be made through this method.
+     *
+     * @deprecated Use state-specific setters instead (setUninitialized, setInitialized, etc.)
+     *             This method remains for backward compatibility but will be removed.
      */
+    @Deprecated
     protected void setNyes(Nyes nyes) {
+        // Check immutability constraint - use direct field check, not getNyes()
+        // because subclasses like CMFir override getNyes() to return inner state
+        if (this.nyes != null &&
+            this.nyes.ordinal() >= Nyes.CONSTANIC.ordinal() &&
+            nyes != Nyes.CONSTANT) {
+            throw new IllegalStateException(
+                formatErrorMessage("Cannot change state from " + this.nyes + " to " + nyes +
+                                  " - FIR is immutable once CONSTANIC"));
+        }
         this.nyes = nyes;
+    }
+
+    /**
+     * Transitions to UNINITIALIZED Nyes state.
+     * Only allowed from constructor - enforces proper initialization.
+     */
+    protected void setNyesUninitialized() {
+        if (nyes != null && nyes != Nyes.UNINITIALIZED) {
+            throw new IllegalStateException(
+                formatErrorMessage("Cannot transition to UNINITIALIZED from " + nyes));
+        }
+        this.nyes = Nyes.UNINITIALIZED;
+    }
+
+    /**
+     * Transitions to INITIALIZED Nyes state.
+     * Only allowed before CONSTANIC state.
+     */
+    protected void setNyesInitialized() {
+        if (isConstanic()) {
+            throw new IllegalStateException(
+                formatErrorMessage("Cannot change state to INITIALIZED - FIR is immutable once CONSTANIC"));
+        }
+        this.nyes = Nyes.INITIALIZED;
+    }
+
+    /**
+     * Transitions to CHECKED Nyes state.
+     * Only allowed before CONSTANIC state.
+     */
+    protected void setNyesChecked() {
+        if (isConstanic()) {
+            throw new IllegalStateException(
+                formatErrorMessage("Cannot change state to CHECKED - FIR is immutable once CONSTANIC"));
+        }
+        this.nyes = Nyes.CHECKED;
+    }
+
+    /**
+     * Transitions to EVALUATING Nyes state.
+     * Only allowed before CONSTANIC state.
+     */
+    protected void setNyesEvaluating() {
+        if (isConstanic()) {
+            throw new IllegalStateException(
+                formatErrorMessage("Cannot change state to EVALUATING - FIR is immutable once CONSTANIC"));
+        }
+        this.nyes = Nyes.EVALUATING;
+    }
+
+    /**
+     * Transitions to CONSTANIC Nyes state.
+     * Once set, FIR becomes immutable and only CONSTANT transition is allowed.
+     * Only allowed before CONSTANIC state.
+     */
+    protected void setNyesConstanic() {
+        if (isConstanic()) {
+            // Already CONSTANIC or CONSTANT, no-op
+            return;
+        }
+        this.nyes = Nyes.CONSTANIC;
+    }
+
+    /**
+     * Transitions to CONSTANT Nyes state.
+     * This is the only state transition allowed from CONSTANIC.
+     * Once CONSTANT, no further transitions are possible.
+     */
+    protected void setNyesConstant() {
+        this.nyes = Nyes.CONSTANT;
     }
 
     /**
@@ -273,24 +374,27 @@ public abstract class FIR {
      * Returns true when an additional step would change the FIR.
      * Not Yet Evaluated (NYE) indicates the FIR requires further evaluation steps.
      * Anything before CONSTANIC is considered NYE.
+     * Uses getNyes() to support subclass overrides (e.g., CMFir).
      */
     public boolean isNye() {
-        return nyes.ordinal() < Nyes.CONSTANIC.ordinal();
+        return getNyes().ordinal() < Nyes.CONSTANIC.ordinal();
     }
 
     /**
      * Returns true if the state is CONSTANIC or later (CONSTANT).
      * Something that is CONSTANT is also Constanic.
+     * Uses getNyes() to support subclass overrides (e.g., CMFir).
      */
     public boolean isConstanic() {
-        return nyes.ordinal() >= Nyes.CONSTANIC.ordinal();
+        return getNyes().ordinal() >= Nyes.CONSTANIC.ordinal();
     }
 
     /**
      * Returns true if the state is CONSTANT or later (which is just CONSTANT).
+     * Uses getNyes() to support subclass overrides (e.g., CMFir).
      */
     public boolean isConstant() {
-        return nyes.ordinal() >= Nyes.CONSTANT.ordinal();
+        return getNyes().ordinal() >= Nyes.CONSTANT.ordinal();
     }
 
     /**
@@ -352,6 +456,56 @@ public abstract class FIR {
     }
 
     /**
+     * Creates a copy of this FIR with optional target state.
+     * <p>
+     * This is the unified copying mechanism for all FIRs. The behavior depends on:
+     * - If targetNyes is specified and different: clone and set new state
+     * - If FIR is CONSTANIC and no target: return this (immutable, safe to share)
+     * - Otherwise: wrap in CMFir for deferred context-sensitive copying
+     *
+     * @param targetNyes target Nyes state for the copy, or null to preserve current state
+     * @return a copy of this FIR (may be this if immutable, or wrapped in CMFir)
+     */
+    public FIR copy(Nyes targetNyes) {
+        // If target state specified and different, clone and set new state
+        if (targetNyes != null && nyes != targetNyes) {
+            FIR fresh = this.clone();
+            // Set nyes directly - this is the ONLY place where we bypass setNyes()
+            // Direct assignment is safe here because we just cloned
+            fresh.nyes = targetNyes;
+            return fresh;
+        }
+        if (isConstanic()) {
+            return this;  // Immutable, safe to share
+        } else {
+            // Wrap in CMFir for deferred copying in new context
+            if (this.ast() instanceof AST.Expr expr) {
+                return new CMFir(this.ast(), this);
+            } else {
+                // Fallback: clone for non-Expr ASTs
+                return this.clone();
+            }
+        }
+    }
+
+
+    /**
+     * Creates a shallow clone of this FIR.
+     * Subclasses should override to provide deep cloning where needed
+     * (e.g., for FIRs with braneMind or other mutable state).
+     *
+     * @return a shallow clone of this FIR
+     */
+    @Override
+    protected FIR clone() {
+        try {
+            return (FIR) super.clone();
+        } catch (CloneNotSupportedException e) {
+            throw new RuntimeException("Clone not supported for " + getClass().getSimpleName(), e);
+        }
+    }
+
+    /**
      * Creates a FIR from an AST expression.
      */
     protected static FIR createFiroeFromExpr(AST.Expr expr) {
@@ -370,6 +524,9 @@ public abstract class FIR {
             }
             case AST.Brane brane -> {
                 return new BraneFiroe(brane);
+            }
+            case AST.DetachmentBrane detachBrane -> {
+                return new DetachmentBraneFiroe(detachBrane);
             }
             case AST.Assignment assignment -> {
                 return new AssignmentFiroe(assignment);
@@ -397,14 +554,15 @@ public abstract class FIR {
                 return new UnanchoredSeekFiroe(unanchoredSeekExpr);
             }
             case AST.StayFoolishExpr stayFoolish -> {
-                // SF marker wraps expression in SFFiroe for re-coordination
+                // SF marker wraps expression in SFMarkFiroe for re-coordination
                 FIR innerFir = createFiroeFromExpr(stayFoolish.expr());
-                return new SFFiroe(stayFoolish, innerFir);
+                return new SFMarkFiroe(stayFoolish, innerFir);
             }
             case AST.StayFullyFoolishExpr stayFullyFoolish -> {
-                // SFF marker reconstructs from AST using SFFFiroe
-                FIR innerFir = createFiroeFromExpr(stayFullyFoolish.expr());
-                return new SFFFiroe(stayFullyFoolish, innerFir);
+                // SFF marker (<<==>> syntax) is temporarily disabled
+                // See SFFFiroe.java for details on why it's commented out
+                // TODO: Re-enable after detachment branes are stable
+                return new NKFiroe("SFF marker (<<==>> syntax) not yet implemented");
             }
             default -> {
                 // Placeholder for unsupported types

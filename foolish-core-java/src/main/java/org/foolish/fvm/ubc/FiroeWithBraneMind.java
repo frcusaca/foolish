@@ -251,4 +251,21 @@ public abstract class FiroeWithBraneMind extends FIR {
         return braneMemory.getStatementIndex(fir);
     }
 
+    /**
+     * Creates a shallow clone of this FiroeWithBraneMind.
+     * <p>
+     * Note: This creates a shallow clone that shares braneMind and braneMemory references.
+     * For deep cloning with independent state, FIRs are typically recreated from AST
+     * via the copy() mechanism in CMFir.
+     * <p>
+     * The shallow clone is sufficient for most use cases because:
+     * - FIRs become immutable once CONSTANIC
+     * - CMFir wrapping handles context-sensitive re-evaluation
+     * - Deep cloning would require careful handling of circular references
+     */
+    @Override
+    protected FIR clone() {
+        return (FiroeWithBraneMind) super.clone();
+    }
+
 }

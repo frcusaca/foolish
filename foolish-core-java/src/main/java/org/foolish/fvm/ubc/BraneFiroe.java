@@ -9,13 +9,129 @@ import java.util.List;
  * BraneFiroe represents a brane in the UBC system.
  * The BraneFiroe processes its AST to create Expression Firoes,
  * which are enqueued into the braneMind and evaluated breadth-first.
+ * <p>
+ * <b>EXPERIMENTAL FEATURES:</b>
+ * <ul>
+ *   <li>EXPRMNT_brane_depth: Tracks nesting depth from root brane (0-based).
+ *       Used to prevent infinite recursion and stack overflow.</li>
+ * </ul>
  */
 public class BraneFiroe extends FiroeWithBraneMind {
 
+    /**
+     * EXPERIMENTAL: Maximum allowed brane depth before limiting instantiation.
+     * Branes at or exceeding this depth are immediately set to CONSTANT with "???" value.
+     * This prevents infinite recursion and excessive memory usage.
+     * <p>
+     * Value: 96,485 (chosen as a large but bounded limit)
+     */
+    private static final int EXPRMNT_MAX_BRANE_DEPTH = 96_485;
+
+    /**
+     * EXPERIMENTAL: The nesting depth of this brane from the root brane.
+     * Root brane has depth 0, its child branes have depth 1, etc.
+     * <p>
+     * This is used to detect pathological cases of excessive nesting that could
+     * lead to stack overflow or memory exhaustion.
+     * <p>
+     * Note: This is not final because it may be updated when a brane is copied
+     * or coordinated (e.g., via CMFir wrapping or assignment coordination).
+     */
+    private int EXPRMNT_brane_depth;
+
     public BraneFiroe(AST ast) {
         super(ast);
-        // Register this brane as the owner of its memory
+
+        // Calculate and set depth from parent brane chain
+        int calculatedDepth = calculateBraneDepth();
+        setExprmntBraneDepth(calculatedDepth);
+    }
+
+    /**
+     * EXPERIMENTAL: Sets the brane depth and checks if it exceeds the maximum allowed depth.
+     * If the depth exceeds the limit, this brane is immediately set to CONSTANT and an alarm is raised.
+     * <p>
+     * This method should be called:
+     * - During construction (automatically via calculateBraneDepth)
+     * - When a brane is copied (via copy())
+     * - When a brane is coordinated (e.g., CMFir wrapping, assignment coordination)
+     *
+     * @param depth the new depth to set
+     */
+    protected void setExprmntBraneDepth(int depth) {
+        this.EXPRMNT_brane_depth = depth;
+
+        // Check if depth exceeds limit
+        if (this.EXPRMNT_brane_depth >= EXPRMNT_MAX_BRANE_DEPTH) {
+            // Immediately set to CONSTANT - this brane will not evaluate
+            setNyesConstant();
+
+            // Raise medium level alarm
+            org.foolish.fvm.AlarmSystem.raise(
+                null,
+                formatErrorMessage("Brane depth limit exceeded: " + this.EXPRMNT_brane_depth +
+                                  " >= " + EXPRMNT_MAX_BRANE_DEPTH +
+                                  ". This brane has been terminated with ??? value to prevent " +
+                                  "infinite recursion or memory exhaustion."),
+                org.foolish.fvm.AlarmSystem.MILD  // Medium severity level
+            );
+
+            // Do not register this brane - early return to prevent initialization
+            return;
+        }
+
+        // Normal case: register this brane as the owner of its memory
         this.braneMemory.setOwningBrane(this);
+    }
+
+    /**
+     * EXPERIMENTAL: Calculates the depth of this brane by walking up the parent chain.
+     * Root brane has depth 0.
+     * <p>
+     * Package-private so that CMFir can recalculate depth when coordinating branes.
+     *
+     * @return the nesting depth from root (0-based)
+     */
+    int calculateBraneDepth() {
+        int depth = 0;
+        FIR current = this.getParentFir();
+
+        while (current != null) {
+            if (current instanceof BraneFiroe) {
+                depth++;
+            }
+            current = current.getParentFir();
+        }
+
+        return depth;
+    }
+
+    /**
+     * EXPERIMENTAL: Returns the brane depth of this BraneFiroe.
+     * Root brane returns 0, nested branes return their nesting level.
+     *
+     * @return the nesting depth (0-based)
+     */
+    public int getExprmntBraneDepth() {
+        return EXPRMNT_brane_depth;
+    }
+
+    /**
+     * Override clone to recalculate and update depth when a brane is copied.
+     * This is crucial for CMFir coordination where a brane from one context
+     * is copied into another context with potentially different nesting depth.
+     */
+    @Override
+    protected FIR clone() {
+        BraneFiroe cloned = (BraneFiroe) super.clone();
+
+        // Recalculate depth based on new parent context
+        // The clone will have the same parentFir initially, but when it's
+        // re-parented (e.g., in CMFir.startPhaseB), the depth needs updating
+        int newDepth = cloned.calculateBraneDepth();
+        cloned.setExprmntBraneDepth(newDepth);
+
+        return cloned;
     }
 
     /**
@@ -58,8 +174,27 @@ public class BraneFiroe extends FiroeWithBraneMind {
         return allFiroes;
     }
 
+    /**
+     * Returns the value of this brane.
+     * For depth-limited branes (exceeding EXPRMNT_MAX_BRANE_DEPTH), returns
+     * a special error value indicating the depth limit was reached.
+     */
+    @Override
+    public long getValue() {
+        if (EXPRMNT_brane_depth >= EXPRMNT_MAX_BRANE_DEPTH) {
+            throw new IllegalStateException(
+                formatErrorMessage("Cannot get value from depth-limited brane (depth=" +
+                                  EXPRMNT_brane_depth + " >= " + EXPRMNT_MAX_BRANE_DEPTH + ")")
+            );
+        }
+        return super.getValue();
+    }
+
     @Override
     public String toString() {
+        if (EXPRMNT_brane_depth >= EXPRMNT_MAX_BRANE_DEPTH) {
+            return "BraneFiroe[depth-limited@" + EXPRMNT_brane_depth + "]";
+        }
         return new Sequencer4Human().sequence(this);
     }
 }

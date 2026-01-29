@@ -15,7 +15,7 @@ public class BraneMemory implements Iterable<FIR> {
     private BraneMemory parent;
     private Optional<Integer> myPos = Optional.empty();
     private final List<FIR> memory;
-    private BraneFiroe owningBrane = null; // The BraneFiroe that owns this memory
+    private FiroeWithBraneMind owningBrane = null; // The Firoe with braneMind that owns this memory
 
     public BraneMemory(BraneMemory parent) {
         this.parent = parent;
@@ -58,6 +58,10 @@ public class BraneMemory implements Iterable<FIR> {
         for (int line = min(fromLine, memory.size() - 1); line >= 0; line--) {
             var lineMemory = memory.get(line);
             if (query.matches(lineMemory)) {
+                // Check if we need to filter this result due to detachment
+                if (shouldFilterMatch(query)) {
+                    continue;  // Skip this match due to detachment filter
+                }
                 return Optional.of(Pair.of(line, lineMemory));
             }
         }
@@ -75,6 +79,41 @@ public class BraneMemory implements Iterable<FIR> {
             return parent.get(query, parentPos);
         }
         return Optional.empty(); // Not found
+    }
+
+    /**
+     * Checks if a match should be filtered due to detachment brane.
+     * Walks up the parent chain looking for active detachment filters.
+     *
+     * @param query the query being searched for
+     * @return true if this match should be filtered (skipped)
+     */
+    private boolean shouldFilterMatch(Query query) {
+        String queryName = extractIdentifierName(query);
+        if (queryName == null) {
+            return false;  // Can't filter non-identifier queries
+        }
+
+        // Check this brane's owning brane for detachment filtering
+        if (owningBrane instanceof DetachmentBraneFiroe detach) {
+            if (detach.shouldFilter(queryName)) {
+                return true;
+            }
+        }
+
+        // Could also check parent branes, but for now just check local
+        return false;
+    }
+
+    /**
+     * Extracts the identifier name from a Query for detachment filtering.
+     * Returns null if the query doesn't have a simple identifier name.
+     */
+    private String extractIdentifierName(Query query) {
+        return switch (query) {
+            case Query.StrictlyMatchingQuery smq -> smq.getId();
+            case Query.RegexpQuery rq -> null;  // Regexp queries don't have simple names
+        };
     }
 
     /**
@@ -143,10 +182,10 @@ public class BraneMemory implements Iterable<FIR> {
     }
 
     /**
-     * Sets the BraneFiroe that owns this BraneMemory.
-     * Should only be called once, typically by BraneFiroe during construction.
+     * Sets the FiroeWithBraneMind that owns this BraneMemory.
+     * Should only be called once, typically by BraneFiroe or DetachmentBraneFiroe during construction.
      */
-    public void setOwningBrane(BraneFiroe brane) {
+    public void setOwningBrane(FiroeWithBraneMind brane) {
         if (this.owningBrane == null) {
             this.owningBrane = brane;
         } else {
@@ -155,10 +194,10 @@ public class BraneMemory implements Iterable<FIR> {
     }
 
     /**
-     * Gets the BraneFiroe that owns this BraneMemory.
+     * Gets the FiroeWithBraneMind that owns this BraneMemory.
      * Returns null if this is not a brane's memory (e.g., expression evaluation memory).
      */
-    public BraneFiroe getOwningBrane() {
+    public FiroeWithBraneMind getOwningBrane() {
         return owningBrane;
     }
 
