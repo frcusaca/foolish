@@ -25,13 +25,8 @@ class BraneFiroe(override val ast: AST)
           val firoe = FIR.createFiroeFromExpr(expr)
           enqueueFirs(firoe)
         }
-      case dBrane: AST.DetachmentBrane =>
-        dBrane.statements().asScala.foreach { stmt =>
-          // Detachment statements are not fully supported yet, represent as NK
-          enqueueFirs(new NKFiroe())
-        }
       case _ =>
-        throw IllegalArgumentException("AST must be of type AST.Brane or AST.DetachmentBrane")
+        throw IllegalArgumentException("AST must be of type AST.Brane")
 
   override def isNye: Boolean =
     getNyes != Nyes.CONSTANT

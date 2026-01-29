@@ -40,13 +40,8 @@ public class BraneFiroe extends FiroeWithBraneMind {
                 FIR firoe = createFiroeFromExpr(expr);
                 enqueueFirs(firoe);
             }
-        } else if (ast instanceof AST.DetachmentBrane dBrane) {
-            for (AST.DetachmentStatement stmt : dBrane.statements()) {
-                // Detachment statements are not fully supported yet, represent as NK
-                enqueueFirs(new NKFiroe());
-            }
-        } else {
-            throw new IllegalArgumentException("AST must be of type AST.Brane or AST.DetachmentBrane");
+        }else{
+            throw new IllegalArgumentException("AST must be of type AST.Brane");
         }
     }
 

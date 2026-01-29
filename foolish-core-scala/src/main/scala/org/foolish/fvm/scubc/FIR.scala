@@ -132,7 +132,6 @@ object FIR:
     case unary: AST.UnaryExpr => UnaryFiroe(unary)
     case ifExpr: AST.IfExpr => IfFiroe(ifExpr)
     case brane: AST.Brane => BraneFiroe(brane)
-    case dBrane: AST.DetachmentBrane => BraneFiroe(dBrane)
     case assignment: AST.Assignment => AssignmentFiroe(assignment)
     case identifier: AST.Identifier => IdentifierFiroe(identifier)
     case regexpSearch: AST.RegexpSearchExpr =>
