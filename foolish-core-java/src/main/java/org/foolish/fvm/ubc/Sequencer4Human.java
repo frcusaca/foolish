@@ -200,7 +200,11 @@ public class Sequencer4Human extends Sequencer<String> {
                     braneSeq = braneSeq.replace("\n" + nestedIndent, "\n" + parentIndent + padding + tabChar);
                     return indent(depth) + fullId + " = " + braneSeq;
                 }
-                return indent(depth) + fullId + " = " + unwrapped.getValue();
+                try {
+                    return indent(depth) + fullId + " = " + unwrapped.getValue();
+                } catch (IllegalStateException e) {
+                    return indent(depth) + fullId + " = " + NK_STR;
+                }
             }
         } else if (assignment.atConstanic()) {
              return indent(depth) + fullId + " = " + CC_STR;
