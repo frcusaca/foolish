@@ -371,6 +371,9 @@ public abstract class FIR {
             case AST.Brane brane -> {
                 return new BraneFiroe(brane);
             }
+            case AST.DetachmentBrane dBrane -> {
+                return new BraneFiroe(dBrane);
+            }
             case AST.Assignment assignment -> {
                 return new AssignmentFiroe(assignment);
             }
