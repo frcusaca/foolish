@@ -352,6 +352,43 @@ public abstract class FIR {
     }
 
     /**
+     * Gets the hierarchical index of this statement.
+     * Index always starts with 0 because the top program is a brane and it starts on line zero by convention.
+     * Each subsequent number represents the 0-based statement number in the brane that contains the desired statement.
+     *
+     * @return the immutable FoolishIndex representing the path to this statement
+     */
+    public FoolishIndex getMyIndex() {
+        FoolishIndexBuilder builder = new FoolishIndexBuilder();
+        FIR current = this;
+
+        while (current != null) {
+            FIR parent = current.getParentFir();
+
+            if (parent == null) {
+                // Reached root
+                break;
+            }
+
+            // If parent is a BraneFiroe, this FIR (or the chain leading to it) is a statement in it.
+            if (parent instanceof BraneFiroe brane) {
+                int index = brane.getIndexOf(current);
+                if (index != -1) {
+                    builder.prepend(index);
+                }
+            }
+
+            // Move up the chain
+            current = parent;
+        }
+
+        // Always start with 0 (root)
+        builder.prepend(0);
+
+        return builder.build();
+    }
+
+    /**
      * Creates a FIR from an AST expression.
      */
     protected static FIR createFiroeFromExpr(AST.Expr expr) {
