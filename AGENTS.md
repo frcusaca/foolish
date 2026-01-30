@@ -12,7 +12,7 @@ Due to the nature of human-driven development, AI should always write the tests 
 
 Always write feature in Java first. Work until all java tests are passing before starting to code the same feature in any other languages.
 
-Ask permission before coding new features or reparing bugs in languages other than ANTLR4, Java or Foolish. Ignore build errors in other language directories if you must and `test -amd` in the java directories.
+Ask permission before coding new features or reparing bugs in languages other than ANTLR4, Java or Foolish. Ignore build errors in other language directories if you must and `test -am` in the java directories.
 
 ## Overview
 

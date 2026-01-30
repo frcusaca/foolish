@@ -1,11 +1,11 @@
 !!INPUT!!
-{
+{ 
     test_1 = {
         !! From Test 4 in Detachment_Project.md
         !! Basic constantic brackets - capture all detached ordinates
         a = 1; b = 2; c = 3; d = 4;
         f = [a, b, c, d]{r = a + b + c + d};
-        f2 = <f>;             !! does NOT capture anything new. Equivalent to f
+        f2 = <f>;             !! does NOT aptures anything new. Equivalent to f
 
         r =$ f;               !! Uses current scope: 1+2+3+4 = 10
         d = 5;
@@ -33,7 +33,7 @@
         {
             p = 10; q = 20; r = 30;
             g = [q, r]{sum = p + q + r}; !! captures p=10
-            p = 11;
+            p = 11;           
             g2 = <g>;         !! no change, p still 10; q,r still uncoordinated.
 
             {
