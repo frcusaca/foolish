@@ -10,8 +10,8 @@ public class FoolishIndex {
     private final String separator;
 
     public FoolishIndex(List<Integer> indices, String separator) {
-        this.indices = Collections.unmodifiableList(indices);
-        this.separator = separator;
+        this.indices = List.copyOf(Objects.requireNonNull(indices));
+        this.separator = Objects.requireNonNull(separator);
     }
 
     public List<Integer> getIndices() {

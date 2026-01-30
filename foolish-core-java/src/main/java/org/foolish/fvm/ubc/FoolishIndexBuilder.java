@@ -2,7 +2,7 @@ package org.foolish.fvm.ubc;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
-import java.util.List;
+
 
 public class FoolishIndexBuilder {
     private final LinkedList<Integer> indices = new LinkedList<>();
@@ -19,7 +19,7 @@ public class FoolishIndexBuilder {
     }
 
     public FoolishIndexBuilder separator(String separator) {
-        this.separator = separator;
+        this.separator = java.util.Objects.requireNonNull(separator);
         return this;
     }
 

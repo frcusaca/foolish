@@ -5,7 +5,7 @@
         !! Basic constantic brackets - capture all detached ordinates
         a = 1; b = 2; c = 3; d = 4;
         f = [a, b, c, d]{r = a + b + c + d};
-        f2 = <f>;             !! does NOT aptures anything new. Equivalent to f
+        f2 = <f>;             !! does NOT capture anything new. Equivalent to f
 
         r =$ f;               !! Uses current scope: 1+2+3+4 = 10
         d = 5;
