@@ -1,5 +1,5 @@
 !!INPUT!!
-{ 
+{
     test_1 = {
         !! From Test 4 in Detachment_Project.md
         !! Basic constantic brackets - capture all detached ordinates
@@ -33,7 +33,7 @@
         {
             p = 10; q = 20; r = 30;
             g = [q, r]{sum = p + q + r}; !! captures p=10
-            p = 11;           
+            p = 11;
             g2 = <g>;         !! no change, p still 10; q,r still uncoordinated.
 
             {
@@ -180,7 +180,7 @@ PARSED AST:
 }
 
 UBC EVALUATION:
-Steps taken: 405
+Steps taken: 423
 
 FINAL RESULT:
 {
@@ -189,8 +189,8 @@ FINAL RESULT:
 ＿         ＿b = 2;
 ＿         ＿c = 3;
 ＿         ＿d = 4;
-＿         ＿f = ???;
-＿         ＿f2 = ???;
+＿         ＿f = 0;
+＿         ＿f2 = 0;
 ＿         ＿r = ???;
 ＿         ＿d = 5;
 ＿         ＿r2 = ???;
@@ -202,9 +202,9 @@ FINAL RESULT:
 ＿         ＿b = 2;
 ＿         ＿c = 3;
 ＿         ＿d = 4;
-＿         ＿f = ???;
-＿         ＿f3 = ???;
-＿         ＿r1 = ???;
+＿         ＿f = 0;
+＿         ＿f3 = 0;
+＿         ＿r1 = 0;
 ＿         ＿r2 = ⎵⎵;
 ＿         ＿a = 2;
 ＿         ＿b = 3;
@@ -218,9 +218,9 @@ FINAL RESULT:
 ＿         ＿＿p = 10;
 ＿         ＿＿q = 20;
 ＿         ＿＿r = 30;
-＿         ＿＿g = ???;
+＿         ＿＿g = 0;
 ＿         ＿＿p = 11;
-＿         ＿＿g2 = ???;
+＿         ＿＿g2 = 0;
 ＿         ＿＿{
 ＿         ＿＿＿p = 100;
 ＿         ＿＿＿q = 200;
@@ -230,21 +230,21 @@ FINAL RESULT:
 ＿         ＿};
 ＿};
 ＿testˍ4 = {
-＿         ＿h1 = ???;
-＿         ＿h2 = ???;
+＿         ＿h1 = 0;
+＿         ＿h2 = 0;
 ＿         ＿x = 5;
 ＿         ＿y = 7;
 ＿         ＿z1 = ???;
 ＿         ＿z2 = ???;
 ＿};
 ＿testˍ5 = {
-＿         ＿f = ???;
+＿         ＿f = 0;
 ＿         ＿b = 10;
-＿         ＿f2 = ???;
+＿         ＿f2 = 0;
 ＿         ＿a = -10;
 ＿         ＿b = -100000;
 ＿         ＿c = 1;
-＿         ＿f3 = ???;
+＿         ＿f3 = 0;
 ＿         ＿r4 = ???;
 ＿         ＿result = ???;
 ＿};

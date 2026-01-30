@@ -1,0 +1,60 @@
+!!INPUT!!
+{
+    test_1 = {
+        !! Test alarming behavior when trying to detach already-resolved variables
+        !! From Test 2 in Detachment_Project.md
+
+        a = 1;
+        f = [b]{r = a + b};   !! 'a' resolves to 1, 'b' is detached
+
+        !! This should trigger an alarm - 'a' is already resolved in f
+        !! The detachment [a=3] has no effect
+        f2 = [a=3]<f>;         !! ALARMING: "CODE_ALARM(A0101, Detaching resolved ordinate 'a')"
+
+        b = 2;
+        x =$ f;               !! Should be 3
+        y =$ f2;              !! Should also be 3 (the [a=3] had no effect)
+    };
+
+    test_2 = {
+        !! Test alarming with multiple ordinates
+        a = 1;
+        g = [c]{result = a + c};  !! 'a' already resolved (1), 'c' detached
+        g2 = [a=5, c]<g>;      !! ALARMING: raise "CODE_ALARM(A0101, Detaching resolved ordinate 'a')
+
+        z =$ g2;                  !! Should be 11: a=1 (original), c=10 (newly bound), result is 11
+    };
+
+   test_3 = {
+        f = [a,b,c] {r=a+b+c};
+        g = [c]f;                !! ALARMING: required to produce "CODE_ALARM(A0102, Detaching identifier without SF mark 'f')"
+   }
+}
+
+!!!
+PARSED AST:
+{
+}
+{
+  a = 1;
+  f = [
+  b = ???;
+]
+{
+    r = (a + b);
+  };
+}
+[
+  a = 3;
+]
+
+UBC EVALUATION:
+Steps taken: 4
+
+FINAL RESULT:
+{
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!

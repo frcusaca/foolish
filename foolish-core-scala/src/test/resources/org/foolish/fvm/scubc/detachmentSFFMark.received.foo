@@ -44,7 +44,7 @@ PARSED AST:
 }
 
 UBC EVALUATION:
-Steps taken: 92
+Steps taken: 90
 
 FINAL RESULT:
 {
@@ -54,13 +54,13 @@ FINAL RESULT:
 ＿         ＿c = 3;
 ＿         ＿d = 4;
 ＿         ＿e = 5;
-＿         ＿f = ???;
-＿         ＿ff = ???;
-＿         ＿g = ???;
-＿         ＿g2 = ???;
+＿         ＿f = 0;
+＿         ＿ff = 0;
+＿         ＿g = 0;
+＿         ＿g2 = 0;
 ＿         ＿e = 6;
-＿         ＿rg = ???;
-＿         ＿rg2 = ???;
+＿         ＿rg = 0;
+＿         ＿rg2 = 0;
 ＿};
 }
 
