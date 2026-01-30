@@ -70,8 +70,9 @@ public abstract class FiroeWithBraneMind extends FIR {
         // Create empty braneMind (already verified original is empty)
         this.braneMind = new LinkedList<>();
 
-        // Create new braneMemory and clone contents with updated parent chains
-        this.braneMemory = new BraneMemory(original.braneMemory.getParent());
+        // Create new braneMemory with null parent initially
+        // The parent will be set by the caller (e.g., CMFir.startPhaseB) based on new context
+        this.braneMemory = new BraneMemory(null);
         for (FIR fir : original.braneMemory) {
             // Clone each item, passing this as new parent to update parent chain
             FIR clonedFir = fir.cloneConstanic(this, java.util.Optional.empty());
@@ -267,8 +268,15 @@ public abstract class FiroeWithBraneMind extends FIR {
             case EVALUATING -> {
                 // Step everything including sub-branes
                 if (braneMind.isEmpty()) {
-                    // All expressions evaluated, transition to CONSTANT
-                    setNyes(Nyes.CONSTANT);
+                    // All expressions evaluated, check if any are CONSTANIC
+                    boolean anyConstanic = false;
+                    for (FIR fir : braneMemory) {
+                        if (fir.atConstanic()) {
+                            anyConstanic = true;
+                            break;
+                        }
+                    }
+                    setNyes(anyConstanic ? Nyes.CONSTANIC : Nyes.CONSTANT);
                     return 1;
                 }
 

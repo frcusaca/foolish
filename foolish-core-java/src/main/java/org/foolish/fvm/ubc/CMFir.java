@@ -140,6 +140,18 @@ public class CMFir extends FiroeWithoutBraneMind {
 	}
     }
 
+    @Override
+    public boolean isNye() {
+        // CMFir is NYE until phase B completes
+        if (!phaseBStarted) {
+            // Phase A: NYE if o is still evaluating, OR if o is CONSTANIC (need to start phase B)
+            return o.isNye() || o.atConstanic();
+        } else {
+            // Phase B: NYE while o2 is evaluating
+            return o2.isNye();
+        }
+    }
+
     /**
      * Override copy() to unwrap CMFir when possible.
      * If this CMFir has completed phase B and inner FIR is CONSTANIC,

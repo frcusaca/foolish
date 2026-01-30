@@ -52,20 +52,29 @@ public class BinaryFiroe extends FiroeWithBraneMind {
         }
 
         switch (getNyes()) {
-            case UNINITIALIZED, INITIALIZED, CHECKED -> {
+            case UNINITIALIZED, INITIALIZED, CHECKED, PRIMED -> {
                 // Let parent handle state progression through these phases
                 return super.step();
             }
             case EVALUATING -> {
                 // Step operands through evaluation
-                int work = super.step();
-
-                // After parent steps, check if we can compute the final result
-                // If parent says CONSTANT, it means braneMind is empty.
-                if (getNyes() == Nyes.CONSTANT && braneMind.isEmpty() && result == null) {
+                if (braneMind.isEmpty()) {
+                    // All operands evaluated, compute result
                     computeResult();
+                    return 1;
                 }
-                return work;
+
+                FIR current = braneMind.removeFirst();
+                try {
+                    int work = current.step();
+                    if (current.isNye()) {
+                        braneMind.addLast(current);
+                    }
+                    return work;
+                } catch (Exception e) {
+                    braneMind.addFirst(current); // Re-enqueue on error
+                    throw new RuntimeException("Error during operand evaluation", e);
+                }
             }
             case CONSTANT -> {
                 // Should not reach here if result is null, but handle gracefully

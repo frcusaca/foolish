@@ -43,30 +43,50 @@ public class AssignmentFiroe extends FiroeWithBraneMind {
             return 0;
         }
 
-        if (!isInitialized()) {
-            // Initialize and enqueue the expression
-            initialize();
-            return 1;
-        }
+        switch (getNyes()) {
+            case UNINITIALIZED -> {
+                initialize();
+                setNyes(Nyes.INITIALIZED);
+                return 1;
+            }
+            case INITIALIZED, CHECKED, PRIMED -> {
+                // Let parent handle state progression through these phases
+                return super.step();
+            }
+            case EVALUATING -> {
+                // Step the expression through evaluation
+                if (braneMind.isEmpty()) {
+                    // Expression evaluated, store result and determine final state
+                    if (!braneMemory.isEmpty()) {
+                        result = braneMemory.get(0);
+                        if (result.atConstanic()) {
+                            setNyes(Nyes.CONSTANIC);
+                        } else {
+                            setNyes(Nyes.CONSTANT);
+                        }
+                    } else {
+                        setNyes(Nyes.CONSTANT);
+                    }
+                    return 1;
+                }
 
-        // Let the parent class handle braneMind stepping
-        int work = super.step();
-
-        // Check if we can get the final result
-        if (isNye()) {
-            return work;
-        }
-
-        // Expression is fully evaluated (or stuck at Constanic), store the result
-        if (!braneMemory.isEmpty()) {
-            result = braneMemory.get(0);
-            if (result.atConstanic()) {
-                setNyes(Nyes.CONSTANIC);
+                FIR current = braneMind.removeFirst();
+                try {
+                    int work = current.step();
+                    if (current.isNye()) {
+                        braneMind.addLast(current);
+                    }
+                    return work;
+                } catch (Exception e) {
+                    braneMind.addFirst(current); // Re-enqueue on error
+                    throw new RuntimeException("Error during expression evaluation", e);
+                }
+            }
+            case CONSTANT, CONSTANIC -> {
+                return 0;
             }
         }
-        // If result is null (e.g. BinaryFiroe returned null result), that's fine.
-        // It stays Constanic.
-        return work;
+        return 0;
     }
 
     @Override

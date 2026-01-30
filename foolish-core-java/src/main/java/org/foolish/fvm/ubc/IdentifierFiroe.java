@@ -64,6 +64,11 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
     @Override
     public int step() {
         switch (getNyes()) {
+            case UNINITIALIZED -> {
+                initialize();
+                setNyes(Nyes.INITIALIZED);
+                return 1;
+            }
             case INITIALIZED -> {
                 var found = braneMemory.get(identifier, 0);
                 if (found.isEmpty()) {
@@ -79,6 +84,31 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
                     setNyes(Nyes.CHECKED);
                 }
                 return 1;
+            }
+            case CHECKED -> {
+                // Identifier lookup is complete, check if value is constanic
+                if (value.isConstanic()) {
+                    setNyes(Nyes.CONSTANIC);
+                } else if (value.isConstant()) {
+                    setNyes(Nyes.CONSTANT);
+                } else {
+                    // Value is still evaluating - shouldn't happen for identifiers
+                    // since we just store a reference, but handle gracefully
+                    setNyes(Nyes.EVALUATING);
+                }
+                return 1;
+            }
+            case EVALUATING -> {
+                // Check if value completed evaluation
+                if (value.isConstanic()) {
+                    setNyes(Nyes.CONSTANIC);
+                } else if (value.isConstant()) {
+                    setNyes(Nyes.CONSTANT);
+                }
+                return 1;
+            }
+            case CONSTANIC, CONSTANT -> {
+                return 0;
             }
             default -> {
                 return super.step();
