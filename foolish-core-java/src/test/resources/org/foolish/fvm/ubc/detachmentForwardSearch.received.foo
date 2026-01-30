@@ -1,0 +1,70 @@
+!!INPUT!!
+{
+    !! Test Forward Search Liberation with ~ (local/single match) !!
+    test_1 = {
+
+        !! In the following example, at isConstanic, we expect ingrideint to point at
+        !!   a search expresison that is constanic. This was achieved as part of
+        !!   detachment concatenating with f's main brane.
+        f = [~ingredient]{
+            ingredient = cookbook.recipe.key_ingredient;
+            result = ingredient + 5
+        };
+	cookbook = {recipe={key_ingredient=0}};
+	r =$ f;    !! r=5;
+
+        !! In constant cases (the literal is 10 can only be atConstant, ingridient
+        !!   should indeed point to a constant 10. If this is deteched at completion
+        !!   of priming, an alarm should be raised
+        f = [~ingredient]{
+            ingredient = 10;            !! raise alarm: "CODE_ALARM(A0301, Detaching a constant)"
+            result = ingredient + 5
+        };
+	rw =$ f;    !! r2=15;
+    };
+
+    !! Mixed forward search and standard backward detachment !!
+    test_2 = {
+        !! 'a' is standard detachment (name known)
+        !! '~result' finds 'result' inside and detaches it
+
+        h = [a, ~ir]{
+	    A  = a+1;       !! Constanic due to detachment of 'a'
+            ir = b + 1;   !! Constanic due to detachment of 'ir'
+            result = A + ir;!! Constanic due to A and ir
+        };
+
+        a = 1;
+        b = 2;
+        confirm 3 == h$;
+    };
+
+    !! Liberation by index [#N]!!
+    test_4 = {
+        !! Liberate the 0th statement (first one)
+        zeroth     = 1;
+        negative_1 = 1;
+        negative_2 = 1;
+        k = [#0]{
+            first = zeroth + negative_1 + negative_2; !! no coordination occurs
+            second = 20
+        };
+        r =$ k;   !! r=20, amazingly k is constanic but this line is accessible.
+
+        zeroth = 0; negative_1 = 1; negative_2 = 2; !! new values
+	r2 = k.first;   !! r2 = 3.
+
+        zeroth = 0; negative_1 = -1; negative_2 = -2; !! new values again
+	r3 = k.first;   !! r3 = -3; !! Third time is the charm.
+    };
+}
+
+!!!
+PARSE ERRORS:
+  line 8:13 no viable alternative at input 'test_1 = { \n\n        !! In the following example, at isConstanic, we expect ingrideint to point at\n        !!   a search expresison that is constanic. This was achieved as part of \n        !!   detachment concatenating with f's main brane.\n        f = [~'
+  line 8:13 no viable alternative at input 'f = [~'
+  line 8:13 extraneous input '~' expecting {']', IDENTIFIER, '''}
+  line 11:9 mismatched input ';' expecting {'}', '+', '-', '*', '/', '^', '$', '??', '?', '~~', '~', '#', '.'}
+
+VM HALTED: Cannot execute due to parse errors.
+!!!
