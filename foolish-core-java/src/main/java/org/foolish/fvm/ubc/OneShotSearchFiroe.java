@@ -20,7 +20,7 @@ public class OneShotSearchFiroe extends AbstractSearchFiroe {
 
     @Override
     protected FIR executeSearch(BraneFiroe target) {
-        BraneMemory targetMemory = target.braneMemory;
+        ReadOnlyBraneMemory targetMemory = target.getBraneMemory();
         if (targetMemory.isEmpty()) {
              return new NKFiroe();
         }

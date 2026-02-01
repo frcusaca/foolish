@@ -64,10 +64,10 @@ public class AssignmentFiroe extends FiroeWithBraneMind {
             }
             case EVALUATING -> {
                 // Step the expression through evaluation
-                if (braneMind.isEmpty()) {
+                if (isBrainEmpty()) {
                     // Expression evaluated, store result and determine final state
-                    if (!braneMemory.isEmpty()) {
-                        result = braneMemory.get(0);
+                    if (!isMemoryEmpty()) {
+                        result = memoryGet(0);
                         if (result.atConstanic()) {
                             setNyes(Nyes.CONSTANIC);
                         } else {
@@ -79,15 +79,15 @@ public class AssignmentFiroe extends FiroeWithBraneMind {
                     return 1;
                 }
 
-                FIR current = braneMind.removeFirst();
+                FIR current = brainDequeue();
                 try {
                     int work = current.step();
                     if (current.isNye()) {
-                        braneMind.addLast(current);
+                        brainEnqueue(current);
                     }
                     return work;
                 } catch (Exception e) {
-                    braneMind.addFirst(current); // Re-enqueue on error
+                    brainEnqueueFirst(current); // Re-enqueue on error
                     throw new RuntimeException("Error during expression evaluation", e);
                 }
             }

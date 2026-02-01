@@ -26,8 +26,8 @@ class PrimedStateDebugTest {
 
         System.out.println("=== Simple Brane Test ===");
         System.out.println("Initial: state=" + brane.getNyes() +
-                         ", memory=" + brane.braneMemory.size() +
-                         ", mind=" + brane.braneMind.size());
+                         ", memory=" + brane.getBraneMemory().size() +
+                         ", mind=" + brane.getBraneMindSize());
 
         // Step through evaluation
         int steps = 0;
@@ -37,8 +37,8 @@ class PrimedStateDebugTest {
             Nyes after = brane.getNyes();
 
             System.out.println("Step " + steps + ": " + before + " -> " + after +
-                             ", memory=" + brane.braneMemory.size() +
-                             ", mind=" + brane.braneMind.size());
+                             ", memory=" + brane.getBraneMemory().size() +
+                             ", mind=" + brane.getBraneMindSize());
 
             steps++;
         }
@@ -48,8 +48,8 @@ class PrimedStateDebugTest {
         assertTrue(brane.isConstant(), "Brane should reach CONSTANT state");
         // Branes don't have getValue() - they contain assignments
         // Check that the assignment 'a' is present and has value 1
-        assertEquals(1, brane.braneMemory.size(), "Should have 1 assignment");
-        FIR assignment = brane.braneMemory.get(0);
+        assertEquals(1, brane.getBraneMemory().size(), "Should have 1 assignment");
+        FIR assignment = brane.getBraneMemory().get(0);
         assertTrue(assignment instanceof AssignmentFiroe, "Should be an assignment");
         assertEquals(1, ((AssignmentFiroe)assignment).getResult().getValue(), "Assignment result should be 1");
     }
@@ -85,8 +85,8 @@ class PrimedStateDebugTest {
             Nyes before = brane.getNyes();
 
             // Debug: Check what's in braneMind before stepping
-            if (!brane.braneMind.isEmpty() && steps > 5) {
-                FIR current = brane.braneMind.getFirst();
+            if (!brane.isBraneMindEmpty() && steps > 5) {
+                FIR current = brane.peekBraneMind();
                 System.out.println("  [Step " + steps + "] braneMind.first: " + current.getClass().getSimpleName() +
                                  " state=" + current.getNyes() +
                                  (current instanceof AssignmentFiroe ? " lhs=" + ((AssignmentFiroe)current).getId() : ""));
@@ -101,10 +101,10 @@ class PrimedStateDebugTest {
 
             // Check if f assignment is present
             if (steps % 10 == 0) {
-                System.out.println("  At step " + steps + ": memory=" + brane.braneMemory.size() +
-                                 ", mind=" + brane.braneMind.size());
-                if (!brane.braneMemory.isEmpty()) {
-                    FIR f = brane.braneMemory.get(0);
+                System.out.println("  At step " + steps + ": memory=" + brane.getBraneMemory().size() +
+                                 ", mind=" + brane.getBraneMindSize());
+                if (!brane.getBraneMemory().isEmpty()) {
+                    FIR f = brane.getBraneMemory().get(0);
                     System.out.println("    memory[0]: " + f.getClass().getSimpleName() + " state=" + f.getNyes());
                 }
             }
@@ -209,8 +209,8 @@ class PrimedStateDebugTest {
         BraneFiroe resultBrane = (BraneFiroe) result;
 
         // Check that the brane has the assignment 'r = a + b' evaluated to 3
-        assertEquals(1, resultBrane.braneMemory.size(), "Should have 1 assignment");
-        FIR assignment = resultBrane.braneMemory.get(0);
+        assertEquals(1, resultBrane.getBraneMemory().size(), "Should have 1 assignment");
+        FIR assignment = resultBrane.getBraneMemory().get(0);
         assertTrue(assignment instanceof AssignmentFiroe, "Should be an assignment");
         AssignmentFiroe assignFir = (AssignmentFiroe) assignment;
         assertEquals("r", assignFir.getId(), "Assignment should be for 'r'");

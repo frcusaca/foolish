@@ -213,7 +213,7 @@ public class BraneFiroe extends FiroeWithBraneMind {
      */
     public List<FIR> getExpressionFiroes() {
         List<FIR> allFiroes = new ArrayList<>();
-        braneMemory.forEach(allFiroes::add);
+        stream().forEach(allFiroes::add);
         return allFiroes;
     }
 

@@ -25,7 +25,7 @@ public class SeekFiroe extends AbstractSearchFiroe {
 
     @Override
     protected FIR executeSearch(BraneFiroe target) {
-        BraneMemory targetMemory = target.braneMemory;
+        ReadOnlyBraneMemory targetMemory = target.getBraneMemory();
         int size = targetMemory.size();
         int idx = offset;
 

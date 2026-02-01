@@ -80,26 +80,26 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
     }
 
     protected boolean stepNonBranesUntilState(Nyes targetState) {
-        if (braneMind.isEmpty()) {
+        if (isBrainEmpty()) {
             return true;
         }
 
-        FIR current = braneMind.removeFirst();
+        FIR current = brainDequeue();
         current.step();
 
         if (current.isNye()) {
-            braneMind.addLast(current);
+            brainEnqueue(current);
         }
 
         return current.getNyes().ordinal() >= targetState.ordinal();
     }
 
     protected boolean isAnchorReady() {
-        if (braneMemory.isEmpty()) {
+        if (isMemoryEmpty()) {
             return false;
         }
 
-        FIR anchor = braneMemory.getLast();
+        FIR anchor = memoryGetLast();
 
         if (anchor.atConstanic()) {
             return true;
@@ -147,11 +147,11 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
 
     protected void performSearchStep() {
         if (unwrapAnchor == null && !searchPerformed) {
-            if (braneMemory.isEmpty()) {
+            if (isMemoryEmpty()) {
                 searchResult = new NKFiroe();
                 return;
             }
-            unwrapAnchor = braneMemory.getLast();
+            unwrapAnchor = memoryGetLast();
         }
 
         if (searchResult != null) return;

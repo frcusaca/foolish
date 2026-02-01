@@ -69,17 +69,17 @@ class CMFirUnitTest {
      * This version is for tests that manually construct FIRs and set up parent relationships.
      * Ensures all context items in the entire parent chain are evaluated before stepping the target FIR.
      */
-    private void evaluateFully(BraneMemory context, FIR fir) {
+    private void evaluateFully(ReadOnlyBraneMemory context, FIR fir) {
         // Ensure all context items in the entire parent chain are stepped
-        BraneMemory current = context;
+        ReadOnlyBraneMemory current = context;
         while (current != null) {
-            current.stream().forEach(f -> {
+            for (FIR f : current) {
                 int steps = 0;
                 while (f.isNye() && steps < 1000) {
                     f.step();
                     steps++;
                 }
-            });
+            }
             current = current.getParent();
         }
 
@@ -98,8 +98,9 @@ class CMFirUnitTest {
      */
     private long lookupValue(BraneFiroe brane, String identifier) {
         Query query = new Query.StrictlyMatchingQuery(identifier, "");
+        ReadOnlyBraneMemory memory = brane.getBraneMemory();
         Optional<org.apache.commons.lang3.tuple.Pair<Integer, FIR>> result =
-            brane.braneMemory.get(query, brane.braneMemory.size() - 1);
+            memory.get(query, memory.size() - 1);
 
         if (result.isEmpty()) {
             throw new IllegalStateException("Identifier '" + identifier + "' not found");
@@ -246,7 +247,7 @@ class CMFirUnitTest {
             )
         );
         BraneFiroe rootBrane = new BraneFiroe(rootAst);
-        evaluateFully(rootBrane.braneMemory, rootBrane);
+        evaluateFully(rootBrane.getBraneMemory(), rootBrane);
 
         // Create child brane that shadows 'a' with 10
         AST.Brane childAst = new AST.Brane(
@@ -256,14 +257,14 @@ class CMFirUnitTest {
             )
         );
         BraneFiroe childBrane = new BraneFiroe(childAst);
-        childBrane.braneMemory.setParent(rootBrane.braneMemory);
+        childBrane.linkMemoryParent(rootBrane.getBraneMemory());
         childBrane.setParentFir(rootBrane);
-        evaluateFully(childBrane.braneMemory, childBrane);
+        evaluateFully(childBrane);
 
         CMFir cmFir = new CMFir(null, o);
         cmFir.setParentFir(childBrane);
 
-        evaluateFully(childBrane.braneMemory, cmFir);
+        evaluateFully(cmFir);
 
         // Should use a=10 (shadowed), b=2 (inherited) -> 12
         assertEquals(12, cmFir.getValue());

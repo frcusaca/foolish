@@ -95,7 +95,7 @@ public class UnanchoredSeekFiroe extends FiroeWithBraneMind {
                     return 1;
                 }
 
-                BraneMemory targetMemory = containingBrane.braneMemory;
+                ReadOnlyBraneMemory targetMemory = containingBrane.getBraneMemory();
                 int size = targetMemory.size();
 
                 // Calculate target index: currentPos + offset (offset is negative)

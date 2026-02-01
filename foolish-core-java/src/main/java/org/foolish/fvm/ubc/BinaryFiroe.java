@@ -58,27 +58,27 @@ public class BinaryFiroe extends FiroeWithBraneMind {
             }
             case EVALUATING -> {
                 // Step operands through evaluation
-                if (braneMind.isEmpty()) {
+                if (isBrainEmpty()) {
                     // All operands evaluated, compute result
                     computeResult();
                     return 1;
                 }
 
-                FIR current = braneMind.removeFirst();
+                FIR current = brainDequeue();
                 try {
                     int work = current.step();
                     if (current.isNye()) {
-                        braneMind.addLast(current);
+                        brainEnqueue(current);
                     }
                     return work;
                 } catch (Exception e) {
-                    braneMind.addFirst(current); // Re-enqueue on error
+                    brainEnqueueFirst(current); // Re-enqueue on error
                     throw new RuntimeException("Error during operand evaluation", e);
                 }
             }
             case CONSTANT -> {
                 // Should not reach here if result is null, but handle gracefully
-                if (result == null && braneMind.isEmpty()) {
+                if (result == null && isBrainEmpty()) {
                     computeResult();
                     return 1;
                 }
@@ -89,8 +89,8 @@ public class BinaryFiroe extends FiroeWithBraneMind {
     }
 
     private void computeResult() {
-        FIR leftFir = braneMemory.get(0);
-        FIR rightFir = braneMemory.get(1);
+        FIR leftFir = memoryGet(0);
+        FIR rightFir = memoryGet(1);
 
         // If either operand is Constanic (unresolved), the result is Constanic.
         // We do NOT convert to NK. result stays null.

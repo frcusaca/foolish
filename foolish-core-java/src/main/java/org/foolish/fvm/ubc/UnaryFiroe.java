@@ -44,27 +44,27 @@ public class UnaryFiroe extends FiroeWithBraneMind {
             }
             case EVALUATING -> {
                 // Step operand through evaluation
-                if (braneMind.isEmpty()) {
+                if (isBrainEmpty()) {
                     // Operand evaluated, compute result
                     computeResult();
                     return 1;
                 }
 
-                FIR current = braneMind.removeFirst();
+                FIR current = brainDequeue();
                 try {
                     int work = current.step();
                     if (current.isNye()) {
-                        braneMind.addLast(current);
+                        brainEnqueue(current);
                     }
                     return work;
                 } catch (Exception e) {
-                    braneMind.addFirst(current); // Re-enqueue on error
+                    brainEnqueueFirst(current); // Re-enqueue on error
                     throw new RuntimeException("Error during operand evaluation", e);
                 }
             }
             case CONSTANT -> {
                 // Should not reach here if result is null, but handle gracefully
-                if (result == null && braneMind.isEmpty()) {
+                if (result == null && isBrainEmpty()) {
                     computeResult();
                     return 1;
                 }
@@ -75,11 +75,11 @@ public class UnaryFiroe extends FiroeWithBraneMind {
     }
 
     private void computeResult() {
-        if (braneMemory.isEmpty()) {
+        if (isMemoryEmpty()) {
              // Should not happen if initialized
              return;
         }
-        operandFiroe = braneMemory.get(0); // Use get(0) instead of removeFirst to keep history if needed? Or does it matter? Original code used removeFirst. Let's use get(0).
+        operandFiroe = memoryGet(0); // Use get(0) instead of removeFirst to keep history if needed? Or does it matter? Original code used removeFirst. Let's use get(0).
 
         // If operand is Constanic, the result is Constanic
         // Use atConstanic() to check for exactly CONSTANIC state, not CONSTANT.

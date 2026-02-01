@@ -26,7 +26,7 @@ public class RegexpSearchFiroe extends AbstractSearchFiroe {
     @Override
     protected FIR executeSearch(BraneFiroe target) {
         Query.RegexpQuery query = new Query.RegexpQuery(pattern);
-        BraneMemory targetMemory = target.braneMemory;
+        ReadOnlyBraneMemory targetMemory = target.getBraneMemory();
 
         Optional<Pair<Integer, FIR>> result = switch (operator) {
             case REGEXP_LOCAL -> {

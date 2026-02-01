@@ -54,7 +54,7 @@ public class IfFiroe extends FiroeWithBraneMind {
             return 0;
         }
 
-        switch (braneMemory.get(nextPossibleIdx)) {
+        switch (memoryGet(nextPossibleIdx)) {
             case ConditionalFiroe cfiroe -> {
                 if (cfiroe.hasTrueCondition()) {
                     step();
@@ -74,7 +74,7 @@ public class IfFiroe extends FiroeWithBraneMind {
             }
             case FIR firoe -> {
                 /* Else branch (explicitly provided or implicit ???) has been fully evaluated */
-                nextPossibleIdx = braneMemory.size()-1; // Choose the else branch
+                nextPossibleIdx = memorySize()-1; // Choose the else branch
                 result = firoe;
                 super.step();
                 return 1;
@@ -110,9 +110,9 @@ public class IfFiroe extends FiroeWithBraneMind {
         public int step() {
             int work = super.step();
             // After stepping, check if condition has been evaluated
-            if (condition_value == null && !braneMemory.isEmpty() && !braneMemory.get(0).isNye()) {
+            if (condition_value == null && !isMemoryEmpty() && !memoryGet(0).isNye()) {
                 // Condition is evaluated, get its value
-                FIR conditionFir = braneMemory.get(0);
+                FIR conditionFir = memoryGet(0);
                 if (!conditionFir.isConstanic()) {
                     long condValue = conditionFir.getValue();
                     condition_value = (condValue != 0);
@@ -137,7 +137,7 @@ public class IfFiroe extends FiroeWithBraneMind {
             return condition_value == false;
         }
         public FIR getThenFir(){
-            return braneMemory.getLast();
+            return memoryGetLast();
         }
     }
 

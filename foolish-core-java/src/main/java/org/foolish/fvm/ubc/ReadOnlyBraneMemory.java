@@ -72,4 +72,20 @@ public interface ReadOnlyBraneMemory extends Iterable<FIR> {
      */
     @Override
     Iterator<FIR> iterator();
+
+    /**
+     * Searches locally (backward) within this brane only, without searching parent branes.
+     * @param query the search query
+     * @param fromLine the starting line for the search
+     * @return pair of (index, FIR) if found, empty otherwise
+     */
+    Optional<Pair<Integer, FIR>> getLocal(Query query, int fromLine);
+
+    /**
+     * Searches locally (forward) within this brane only, without searching parent branes.
+     * @param query the search query
+     * @param fromLine the starting line for the search
+     * @return pair of (index, FIR) if found, empty otherwise
+     */
+    Optional<Pair<Integer, FIR>> getLocalForward(Query query, int fromLine);
 }

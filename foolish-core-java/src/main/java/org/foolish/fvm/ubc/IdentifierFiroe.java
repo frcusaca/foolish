@@ -79,7 +79,7 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
                 return 1;
             }
             case INITIALIZED -> {
-                var found = braneMemory.get(identifier, 0);
+                var found = memoryGet(identifier, 0);
                 if (found.isEmpty()) {
                     setNyes(Nyes.CONSTANIC);
                     return 1;
