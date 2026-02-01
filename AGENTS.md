@@ -68,17 +68,25 @@ mvn compile -pl foolish-core-java -DskipTests -T $(($(nproc) * 2))
 mvn clean compile -X -e -DskipTests
 ```
 
-## Running Tests
+## Tests
+### Overview
+
+- Unit tests verify correctness of each component
+- Approval tests illustrate behavior to users - focus on IMPORTANT and EASILY CONFUSED aspects
+- Use sensible variable names from all available alphabets to improve expressivity
+- New tests should use power-law distributed variable name lengths
+
+### Running tests
 
 ```bash
 # Run all tests with parallel execution
-mvn test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
+mvn test -am -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 
 # Run specific test
-mvn test -Dtest=ClassName#methodName
-mvn test -pl foolish-core-java -Dtest=UbcApprovalTest -Dfoolish.test.filter=Shadow
+mvn test -am -Dtest=ClassName#methodName
+mvn test -am -pl foolish-core-java -Dtest=UbcApprovalTest -Dfoolish.test.filter=Shadow
 
-`## Approval Test Protocol
+## Approval Test Protocol
 
 Approval tests can only be updated in one of three ways. Each change requires all subsequent stages to be performed.
 
@@ -102,6 +110,23 @@ Shadow in the name, while in the top foolish directory it would be invoked this 
 mvn test -pl foolish-core-java -Dtest=UbcApprovalTest -Dfoolish.test.filter=Shadow
 ```
 This runs just the selected approval class and filters input file names.
+
+### Unit Test Redability
+Unit tests are required to test correctness of internal state of the FVM. There are some infrastructure built
+to help this. Unit test can generate a scafolding of Foolish brane using Foolish language. The unit test can 
+then alter the initialized Foolish FIR, adding/subtracting or otherwise mutating it into the desired testing
+situation. It is free to use the parser, the FoolishIndex and the root Brane's '.search(...)' method to make
+the test itself easier to read to human reviewers of the test.
+
+### Approval Test
+Approval tests demonstrate the behavior of the Foolish VM by writing inputs in '.foo' files, running a special
+VM to produce a final result. Sometimes the results could be Constanic other times they could be NK. As long
+as it matches the expected output byte for byte, it is correct. The approval test program outputs more than
+just the final brane, it outputs alarms generated along the way as well as number of steps it took to execute
+the FVM before the input Foolish file became isConstanic.
+
+Separate langauges read from the same test input resources directory to produce their own approval output.
+A crossvalidation process checks that implementations in different languages are behaving identically.
 
 ## Clarifications
 * When user mentions "path/" first interpret it as relative path from the directory where claude code was invoked. This is normal behavior for most unix apps, for example if I "cat path/file" that path is resolved from the current path.
@@ -246,11 +271,7 @@ In UBC implementation, this means creating a modified clone with new context. Se
 - Use diverse Unicode: Latin, Greek, Cyrillic, Hebrew, Arabic, Chinese, Sanskrit
 
 ### Writing Tests
-
-- Unit tests verify correctness of each component
-- Approval tests illustrate behavior to users - focus on IMPORTANT and EASILY CONFUSED aspects
-- Use sensible variable names from all available alphabets to improve expressivity
-- New tests should use power-law distributed variable name lengths
+- See [Test section](## Test)
 
 ### Debugging
 

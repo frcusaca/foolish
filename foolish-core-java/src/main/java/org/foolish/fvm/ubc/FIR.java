@@ -427,9 +427,39 @@ public abstract class FIR implements Cloneable {
     public BraneFiroe getMyBrane() {
         // Chain through parents until we find one whose parent is a BraneFiroe
         if (parentFir instanceof BraneFiroe bf) {
-		return bf;
-	}
-	return parentFir.getMyBrane();
+            return bf;
+        }
+        if (parentFir == null) {
+            return null;
+        }
+        return parentFir.getMyBrane();
+    }
+
+    /**
+     * Gets the hierarchical index of this FIR statement.
+     * The index starts with 0 (root) and appends the statement index at each level.
+     * Format example: [0, 0, 1, 2]
+     */
+    public FoolishIndex getMyIndex() {
+        FoolishIndexBuilder builder = new FoolishIndexBuilder();
+        FIR current = this;
+
+        // Traverse up the hierarchy
+        while (current != null) {
+            int index = current.getMyBraneIndex();
+            if (index == -1) {
+                // We reached the top (root or detached)
+                // "Index always starts with 0"
+                builder.prepend(0);
+                break;
+            } else {
+                builder.prepend(index);
+                // Move to the containing brane
+                current = current.getMyBrane();
+            }
+        }
+
+        return builder.build();
     }
 
     /**
@@ -610,8 +640,6 @@ public abstract class FIR implements Cloneable {
             }
             case AST.StayFullyFoolishExpr stayFullyFoolish -> {
                 // SFF marker (<<==>> syntax) is temporarily disabled
-                // See SFFFiroe.java for details on why it's commented out
-                // TODO: Re-enable after detachment branes are stable
                 return new NKFiroe("SFF marker (<<==>> syntax) not yet implemented");
             }
             default -> {

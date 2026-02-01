@@ -182,8 +182,6 @@ class CMFirUnitTest {
         assertTrue(rootBrane.isConstanic(), "Root brane should be CONSTANIC or CONSTANT");
 
         // Verify that g (which is $f evaluated in context with a=1, b=2) has value 3
-        // Note: g will be the brane {r = a + b} evaluated in the context
-        // We need to check the value of r within that brane
         long gValue = lookupValue(rootBrane, "g");
         assertEquals(3, gValue, "g = $f should evaluate to 3 (a + b where a=1, b=2)");
     }

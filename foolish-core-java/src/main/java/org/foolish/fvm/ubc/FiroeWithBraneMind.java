@@ -211,7 +211,8 @@ public abstract class FiroeWithBraneMind extends FIR {
     }
 
     protected int getIndexOf(FIR f){
-	    return (Integer)indexLookup.get(f);
+        Integer idx = (Integer) indexLookup.get(f);
+        return idx != null ? idx : -1;
     }
 
     /**
@@ -391,27 +392,11 @@ public abstract class FiroeWithBraneMind extends FIR {
         return braneMemory.getStatementIndex(fir);
     }
 
-    /**
-     * Creates a shallow clone of this FiroeWithBraneMind.
-     * Shares braneMind and braneMemory references.
-     * <p>
-     * Note: For deep cloning, use cloneKeepingConstants() instead.
-     */
     @Override
     protected FIR clone() {
         return (FiroeWithBraneMind) super.clone();
     }
 
-    /**
-     * Clones this CONSTANIC FiroeWithBraneMind with updated parent chain.
-     * <p>
-     * Creates an exact copy of braneMemory with recursively cloned items.
-     * Verifies braneMind is empty (critical invariant for CONSTANIC FIRs).
-     *
-     * @param newParent the new parent for this clone
-     * @param targetNyes optional target state
-     * @return a clone with updated parent chain
-     */
     @Override
     protected FIR cloneConstanic(FIR newParent, java.util.Optional<Nyes> targetNyes) {
         if (!isConstanic()) {
@@ -421,19 +406,16 @@ public abstract class FiroeWithBraneMind extends FIR {
         }
 
         if (isConstant()) {
-            return this;  // Share CONSTANT FIRs completely
+            return this;
         }
 
-        // CONSTANIC: use copy constructor
         FiroeWithBraneMind copy = new FiroeWithBraneMind(this, newParent) {
             @Override
             protected void initialize() {
-                // Copy constructor already initialized braneMemory
                 setInitialized();
             }
         };
 
-        // Set target state if specified, otherwise copy from original
         if (targetNyes.isPresent()) {
             copy.nyes = targetNyes.get();
         } else {
@@ -442,5 +424,4 @@ public abstract class FiroeWithBraneMind extends FIR {
 
         return copy;
     }
-
 }

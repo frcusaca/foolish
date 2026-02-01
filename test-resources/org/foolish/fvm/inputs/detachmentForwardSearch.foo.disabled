@@ -1,129 +1,59 @@
 {
-    test_1 = {
-        !! Test Forward Search Liberation with ~ (local/single match)
-        !! Previously [/pattern], now [~pattern]
+    !! Test Forward Search Liberation with ~ (local/single match) !!
+    test_1 = { 
 
-        !! Should liberate 'ingredient' in the following brane by looking forward into it
+        !! In the following example, at isConstanic, we expect ingrideint to point at
+        !!   a search expresison that is constanic. This was achieved as part of 
+        !!   detachment concatenating with f's main brane.
         f = [~ingredient]{
-            ingredient = 10;
+            ingredient = cookbook.recipe.key_ingredient;
             result = ingredient + 5
         };
+	cookbook = {recipe={key_ingredient=0}};
+	r =$ f;    !! r=5;
 
-        !! 'ingredient' should be detached/liberated, so f has it as a free variable?
-        !! Or does it mean it's BLOCKED from external resolution (standard detachment)
-        !! but the target is found by searching the brane?
-        !! "Forward search liberates identifiers by looking INTO the subsequent brane"
-        !! So it finds 'ingredient' inside and marks it as detached for the outside?
-        !! This matches "Detachment" semantics.
-
-        ingredient = 100;
-        x =$ f; !! Should use ingredient=100?
-                !! If 'ingredient' was found inside and detached, it's a hole.
-                !! So x = 100 + 5 = 105.
-    };
-
-    test_2 = {
-        !! Test Find-All Forward Search with ~~ (global/multiple match)
-        !! Previously [//pattern], now [~~pattern]
-
-        !! Should liberate ALL identifiers matching 'tmp_*'
-        g = [~~tmp_*]{
-            tmp_a = 1;
-            tmp_b = 2;
-            result = tmp_a + tmp_b + 3
+        !! In constant cases (the literal is 10 can only be atConstant, ingridient
+        !!   should indeed point to a constant 10. If this is deteched at completion
+        !!   of priming, an alarm should be raised
+        f = [~ingredient]{
+            ingredient = 10;            !! raise alarm: "CODE_ALARM(A0301, Detaching a constant)"
+            result = ingredient + 5
         };
-
-        tmp_a = 10;
-        tmp_b = 20;
-
-        y =$ g; !! Should use outer tmp_a, tmp_b?
-                !! If they are detached, yes.
-                !! y = 10 + 20 + 3 = 33.
+	rw =$ f;    !! r2=15;
     };
 
-    test_3 = {
-        !! Mixed forward search and standard backward detachment
+    !! Mixed forward search and standard backward detachment !!
+    test_2 = {
         !! 'a' is standard detachment (name known)
         !! '~result' finds 'result' inside and detaches it
 
-        h = [a, ~result]{
-            result = a + b
+        h = [a, ~ir]{
+	    A  = a+1;       !! Constanic due to detachment of 'a'
+            ir = b + 1;   !! Constanic due to detachment of 'ir'
+            result = A + ir;!! Constanic due to A and ir
         };
 
         a = 1;
         b = 2;
-        result = 100; !! Should not be used if 'result' is local variable?
-                      !! Wait, detachment usually applies to free variables (unresolved identifiers).
-                      !! If 'result' is assigned inside, it's bound.
-                      !! Detaching a bound variable?
-                      !! Maybe forward search is for when the variable is NOT assigned but used?
-                      !! "liberates any statement whose identifier matches pattern"
-                      !! If it matches "result = ...", then 'result' is the identifier.
-                      !! If it's a detachment, it means 'result' is NOT provided by the brane?
-                      !! No, detachment [x] means x is a HOLE.
-                      !! If I write { x = 1 }, x is bound.
-                      !! If I write [x]{ x = 1 }, does it unbind x?
-                      !! "Detachment of a sub-brane B... creates free variables... during assignment"
-                      !! If B defines x=1, x is not free.
-                      !! So forward search only makes sense if it finds usages that ARE free?
-                      !! OR it forces them to be free even if bound? (That sounds like overriding assignment).
-
-        !! Let's assume standard detachment semantics: "Detachment... creates free variables".
-        !! Usually applied to identifiers that WOULD resolve to outer scope.
-        !! If I have { y = x + 1 }, x is free. [x] detects it.
-        !! But forward search [~x] looks INTO the brane.
-        !! It finds 'x' in 'x+1'? No, it says "statement whose identifier matches".
-        !! Statements are assignments 'id = expr'.
-        !! So it finds 'x = ...'.
-        !! If it finds 'x = ...', x is bound.
-        !! If we detach 'x', we hide the internal 'x'?
-        !! "Make 'x' visible/invisible"?
-
-        !! Re-reading Detachment_Project.md:
-        !! "Forward search liberates identifiers by looking INTO the subsequent brane"
-        !! "liberates any statement whose identifier matches pattern"
-        !! Liberate = Detach = Make Free?
-        !! If I have { x = 1 }, and I liberate x.
-        !! Does it mean the 'x' in {x=1} becomes a free variable 'x' requiring injection?
-        !! effectively `{ x = 1 }` becomes `{ x = ??? }` and we must provide x?
-        !! This effectively "erases" the internal value?
-
-        !! Example:
-        !! f = [~result]{ result = 10 };
-        !! x =$ f; !! result is ???
-        !! y =$ [result=20] f; !! result is 20.
-
-        z =$ [result=50] h; !! a=1, b=2 (from scope), result=50 (injected)
-                            !! 1 + 2 = 3.
-                            !! Wait, h = { result = a+b }.
-                            !! The expression for result is a+b.
-                            !! If we liberate result, we discard 'a+b'?
-                            !! And accept injected value?
-                            !! That seems to be the implication of "liberating" an assignment.
-
-        !! Let's verify this behavior in implementation later.
-        !! For now, writing the test case with this assumption.
-
-        !! If we inject result=50, the value of h is { result=50 }.
-        !! But 'h' evaluates to a brane.
-        !! If we ask for h.result, we get 50.
+        confirm 3 == h$;
     };
 
+    !! Liberation by index [#N]!!
     test_4 = {
-        !! Liberation by index [#N]
         !! Liberate the 0th statement (first one)
-
+        zeroth     = 1;
+        negative_1 = 1;
+        negative_2 = 1;
         k = [#0]{
-            first = 10;
+            first = zeroth + negative_1 + negative_2; !! no coordination occurs
             second = 20
         };
+        r =$ k;   !! r=20, amazingly k is constanic but this line is accessible.
 
-        !! 'first' is liberated (erased/detached). 'second' is 20.
+        zeroth = 0; negative_1 = 1; negative_2 = 2; !! new values
+	r2 = k.first;   !! r2 = 3.
 
-        val =$ [first=100] k;
-        !! k should consist of { first=100; second=20 }.
-        !! Check result
-        r1 = val.first; !! 100
-        r2 = val.second; !! 20
+        zeroth = 0; negative_1 = -1; negative_2 = -2; !! new values again
+	r3 = k.first;   !! r3 = -3; !! Third time is the charm.
     };
 }

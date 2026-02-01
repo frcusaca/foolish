@@ -74,8 +74,9 @@ public class BraneMemory implements Iterable<FIR> {
                 try {
                     parentPos = owningBrane.getMyBraneIndex();
                 } catch (NullPointerException e) {
-                    // If getMyBraneIndex() fails (e.g., CMFir clone not in indexLookup),
-                    // fall back to myPos or end of parent
+                    parentPos = myPos.orElse(parent.size() - 1);
+                }
+                if (parentPos == -1) {
                     parentPos = myPos.orElse(parent.size() - 1);
                 }
             } else {

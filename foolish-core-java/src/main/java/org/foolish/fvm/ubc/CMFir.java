@@ -26,7 +26,6 @@ public class CMFir extends FiroeWithoutBraneMind {
         super(ast);
         this.o = o;
         // CMFir starts as UNINITIALIZED (set by parent constructor)
-        // No need to set again - parent FIR constructor already did this
     }
 
     @Override
@@ -40,8 +39,7 @@ public class CMFir extends FiroeWithoutBraneMind {
         // Phase A: Step o until it is CONSTANT or CONSTANIC
         if (!phaseBStarted) {
             o.step();
-            // CMFir delegates state to o, so no need to sync nyes
-            // atConstant() will return true once o.atConstant() is true
+            // CMFir delegates state to o via overridden getNyes(), atConstant(), atConstanic()
             return 1;
         } else {
             // Phase B: Step o2 (the clone in the new context)
@@ -52,20 +50,16 @@ public class CMFir extends FiroeWithoutBraneMind {
     }
 
     protected void syncO2Nyes(){
-        // CMFir delegates state to inner FIR (o or o2) via overridden getNyes(), atConstant(), atConstanic()
-        // So we don't need to sync nyes - just let the delegation handle it
-        // Note: CMFir's own nyes field is not used when inner FIR is active
+        // CMFir delegates state to inner FIR via overridden getNyes(), atConstant(), atConstanic()
     }
 
     protected void startPhaseB() {
         phaseBStarted = true;
 
         // Clone the CONSTANIC FIR with updated parent chain and reset to INITIALIZED
-        // cloneConstanic handles parent updating and state setting in one call
         o2 = o.cloneConstanic(this, java.util.Optional.of(Nyes.INITIALIZED));
 
         // If o2 is a BraneFiroe, recalculate its depth in the new context
-        // This is critical for depth limit checking when branes are coordinated
         if (o2 instanceof BraneFiroe braneFiroe) {
             int newDepth = braneFiroe.calculateBraneDepth();
             braneFiroe.setExprmntBraneDepth(newDepth);
@@ -75,10 +69,7 @@ public class CMFir extends FiroeWithoutBraneMind {
         if (o2 instanceof FiroeWithBraneMind fwbm) {
             BraneFiroe myBrane = getMyBrane();
             if (myBrane != null) {
-                // Set o2's memory parent to the containing brane's memory
                 fwbm.braneMemory.setParent(myBrane.braneMemory);
-                // Set position for parent searches - use end of parent memory
-                // This ensures o2 can see all bindings in the parent brane
                 fwbm.braneMemory.setMyPosInternal(myBrane.braneMemory.size() - 1);
             }
         }
@@ -97,8 +88,6 @@ public class CMFir extends FiroeWithoutBraneMind {
     protected void setPhaseBStarted(boolean started) {
         this.phaseBStarted = started;
     }
-
-
 
     public long getValue() {
         if (phaseBStarted) {
@@ -128,16 +117,15 @@ public class CMFir extends FiroeWithoutBraneMind {
     }
 
     protected Nyes getNyes() {
-	if(phaseBStarted){
-		return o2.getNyes();
-	}else{
-		return o.getNyes();
-	}
+        if (phaseBStarted) {
+            return o2.getNyes();
+        } else {
+            return o.getNyes();
+        }
     }
 
     @Override
     public boolean atConstant() {
-        // CMFir delegates state to inner FIR
         if (phaseBStarted) {
             return o2.atConstant();
         } else {
@@ -147,7 +135,6 @@ public class CMFir extends FiroeWithoutBraneMind {
 
     @Override
     public boolean atConstanic() {
-        // CMFir delegates state to inner FIR
         if (phaseBStarted) {
             return o2.atConstanic();
         } else {
@@ -157,33 +144,20 @@ public class CMFir extends FiroeWithoutBraneMind {
 
     @Override
     public boolean isNye() {
-        // CMFir is NYE until phase B completes
         if (!phaseBStarted) {
-            // Phase A: NYE if o is still evaluating, OR if o is CONSTANIC (need to start phase B)
             return o.isNye() || o.atConstanic();
         } else {
-            // Phase B: NYE while o2 is evaluating
             return o2.isNye();
         }
     }
 
-    /**
-     * Override copy() to unwrap CMFir when possible.
-     * If this CMFir has completed phase B and inner FIR is CONSTANIC,
-     * unwrap and return the inner FIR's copy instead.
-     * Otherwise, use default copy behavior.
-     */
     @Override
     public FIR copy(Nyes targetNyes) {
         if (isConstanic() && phaseBStarted) {
-            // Unwrap CMFir - return inner FIR's copy
-            FIR inner = o2;
-            return inner.copy(targetNyes);
+            return o2.copy(targetNyes);
         } else if (isConstanic() && !phaseBStarted) {
-            // Phase B not started yet, use o
             return o.copy(targetNyes);
         } else {
-            // Not yet CONSTANIC, use default behavior
             return super.copy(targetNyes);
         }
     }
