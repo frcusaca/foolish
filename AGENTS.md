@@ -46,6 +46,9 @@ mvn clean
 The second command to clean out foolish repo is important. If maven repository is elsewhere, please remove the corresponding foolish code as well. This has proven to be
 a problem for several systems where 'mvn install' was invoked at some point. It installed stale antlr source that prevented updates to g4 files from taking effect.
 
+** IMPORTANT ** NEVER USE "mvn install". THAT COMMAND IS INCOMPATIBLE WITH THIS PROJECT'S BUILD PROCESS. ALWAYS DO A FULL CLEANING WHEN IN DOUBT.
+Part of the Foolish project is to never have to write in all caps like that about a project written in Foolish.
+
 ### Basic Build and Test
 
 ```bash
