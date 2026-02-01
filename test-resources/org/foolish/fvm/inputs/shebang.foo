@@ -1,0 +1,7 @@
+#!/usr/bin/env foolish
+{
+   !! confirm=x==1
+   x = 1;
+   y = 2;
+   !! confirm=y==2
+}
