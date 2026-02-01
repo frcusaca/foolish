@@ -5,7 +5,7 @@
             r = {a=1}{b=3}{c=a};
       };
       !! confirm = OB$.c == 1
-   }
+   };
 
 
    test_2_serach_concatenates_after_constanicity = {
@@ -25,7 +25,7 @@
       }
       !! confirm = OB.r1.c == 5
       !! confirm = OB.r2..c == 5
-   }
+   };
 
    test_3_constanic_search_result_concatenates_before_coordination={
       OB={
@@ -36,7 +36,7 @@
             r=A B C
       }
       !! confirm = OB$.c == 1
-   }
+   };
 
    test_4_constant_search_result_stays_constant_during_concatenation={
       OB={
@@ -47,5 +47,5 @@
             r=A B C
       }
       !! confirm result = OB$.c == 1
-   }
+   };
 }

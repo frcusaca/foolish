@@ -10,7 +10,7 @@
       }
       OB = OB1 OB2;
       !! confirm = OB$ == 2;
-   }
+   };
 
    test_2_sequential_searches_after_concatenation = {
       OB={
@@ -33,14 +33,14 @@
                   aaa=111;
                   bbb=222;
                   ccc=333;
-               }
+               };
                OBC4={
                   aaaa=1111;
                   bbbb=2222;
                   cccc=3333;
-               }
-            }
-         }
+               };
+            };
+         };
          work = {
             start = ?OBB;
             find_2 = start#-2
@@ -48,7 +48,7 @@
          }
 
          r =$ OB1 work
-      }
+      };
       !! confirm = OB$ == 666;
-   }
+   };
 }

@@ -2,7 +2,7 @@
    !!! Foolish concatenation !!!
    test_1={
       c = {a=1,b=2,c=3}{e=4,f=5,g6};
-   }
+   };
    !! confirm=test_1.c=={a=1,b=2,c=3,e=4,f=5,g=6}
 
 
