@@ -2,4 +2,16 @@
     x = 1 !! No semicolon here, just a comment
     y = 2; !! Standard semicolon and comment
     z = 3 !! Another one
+    z = 3 !! Another one
+    z = 3 !! Another one
+    z = 3 !! Another one
+    can = 4 !!! wohoo !!!
+    we =5
+     !!! do !!!
+    this = 6
+
+
+
+	!! yet?
+    okay = 1
 }

@@ -8,9 +8,15 @@ grammar Foolish;
         int indexDiff = curr.getTokenIndex() - prev.getTokenIndex();
         return indexDiff == 1;
     }
+
+    private boolean isNextTokenOnSameLine() {
+        Token prev = _input.LT(-1);
+        Token curr = _input.LT(1);
+        return prev.getLine() == curr.getLine();
+    }
 }
 
-program : branes EOF ;
+program : SHEBANG? branes EOF ;
 
 // A characterization is an optional identifier followed by an apostrophe
 characterization
@@ -44,7 +50,7 @@ detach_brane
     ;
 
 detach_stmt_list
-    : detach_stmt ((SEMI | COMMA) LINE_COMMENT? detach_stmt)* ((SEMI | COMMA) LINE_COMMENT?)?
+    : detach_stmt ((SEMI | COMMA | LINE_COMMENT | BLOCK_COMMENT) detach_stmt)* (SEMI | COMMA | LINE_COMMENT | BLOCK_COMMENT)
     ;
 
 detach_stmt
@@ -59,8 +65,9 @@ stmt_body
     ;
 
 stmt
-    : stmt_body ((SEMI | COMMA) LINE_COMMENT? | LINE_COMMENT)
+    : stmt_body (SEMI|COMMA|LINE_COMMENT|BLOCK_COMMENT)+?
     | LINE_COMMENT
+    | BLOCK_COMMENT
     ;
 assignment
     : characterizable_identifier LT_LT_EQ_GT_GT expr    // <<=>>> SFF assignment
@@ -181,7 +188,7 @@ COMMA : ',' ;
 
 
 BLOCK_COMMENT
-    : '!!!' .*? '!!!' -> channel(2)
+    : '!!!' .*? '!!!'
     ;
 
 LINE_COMMENT
@@ -189,7 +196,7 @@ LINE_COMMENT
     ;
 
 SHEBANG
-    : '#!' ~[\r\n]* -> channel(2)
+    : '#!' ~[\r\n]*
     ;
 
 
