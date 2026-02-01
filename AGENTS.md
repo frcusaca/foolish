@@ -43,6 +43,7 @@ The project supports two primary development environments:
 
 ```bash
 # Full clean build. Do this at beginning of a session and after every merge or rebase operation. Also, anytime when debugging took more than 13 minutes, do a full rebuild.
+# Everytime the 'foolish-parser-java/src/main/antlr4/Foolish.g4' file is updated, this command must be run at the root of the project to regenerate the parser.
 mvn clean generate-sources compile
 
 # Parallel build (recommended)
