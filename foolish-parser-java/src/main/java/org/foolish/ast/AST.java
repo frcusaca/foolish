@@ -188,10 +188,10 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
         }
     }
 
-    record Branes(List<Characterizable> branes) implements Expr {
+    record Branes(List<Expr> branes) implements Expr {
         public String toString() {
             StringBuilder sb = new StringBuilder();
-            for (Characterizable brane : branes) {
+            for (Expr brane : branes) {
                 sb.append(brane).append("\n");
             }
             return sb.toString();

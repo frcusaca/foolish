@@ -46,7 +46,7 @@ public class ASTFormatter {
     private String formatBranes(AST.Branes branes, int indentLevel) {
         StringBuilder sb = new StringBuilder();
         boolean first = true;
-        for (AST.Characterizable brane : branes.branes()) {
+        for (AST.Expr brane : branes.branes()) {
             if (!first) sb.append("\n");
             sb.append(format(brane, indentLevel));
             first = false;

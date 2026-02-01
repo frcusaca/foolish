@@ -1,0 +1,47 @@
+!!INPUT!!
+{
+   !!! Foolish concatenation !!!
+   test_1={
+      c = {a=1,b=2,c=3}{e=4,f=5,g6};
+   }
+   !! confirm=test_1.c=={a=1,b=2,c=3,e=4,f=5,g=6}
+
+
+   !!! Concatenation by reference !!!
+   test_2={
+      b1={a=1,b=2,c=3};
+      b2={e=4,f=5,g=6};
+      c = b1 b2;
+   };
+   !! confirm=test_2.c=={a=1,b=2,c=3,e=4,f=5,g=6}
+
+   !!! Concatenation mixing reference and Foolish !!!
+   test_3={
+      b1={a=1,b=2,c=3};
+      b2={e=4,f=5,g=6};
+      c1 = {a=1,b=2,c=3} b2;
+      c2 = b1 {e=4,f=5,g=6};
+   };
+   !! confirm=test_3.c1=={a=1,b=2,c=3,e=4,f=5,g=6}
+   !! confirm=test_3.c2=={a=1,b=2,c=3,e=4,f=5,g=6}
+
+
+   !!! Concatenation mixing reference, serach and Foolish !!!
+   test_3={
+      b1={a=1,b=2,c=3};
+      b2={e=4,f=5,g=6};
+      c1 = {a=1,b=2,c=3} b2 ?test1.c;
+      c2 = ?test2.c b1 test3.c2 {e=4,f=5,g=6};
+   };
+   !! confirm=test_3.c1=={a=1,b=2,c=3,e=4,f=5,g=6,a=1,b=2,c=3,e=4,f=5,g=6}
+   !! confirm=test_3.c2=={a=1,b=2,c=3,e=4,f=5,g=6,a=1,b=2,c=3,a=1,b=2,c=3,e=4,f=5,g=6,e=4,f=5,g=6};
+
+}
+
+!!!
+PARSE ERRORS:
+  line 33:11 no viable alternative at input 'test_3={\n      b1={a=1,b=2,c=3};\n      b2={e=4,f=5,g=6};\n      c1 = {a=1,b=2,c=3} b2 ?test1.c;\n      c2 = ?'
+  line 29:9 mismatched input '=' expecting {<EOF>, '{', '(', '[', '<<', '<', '^', '$', '??', '?', '~~', '~', '#', '.', '\u2191', '???', INTEGER, IDENTIFIER, '''}
+
+VM HALTED: Cannot execute due to parse errors.
+!!!

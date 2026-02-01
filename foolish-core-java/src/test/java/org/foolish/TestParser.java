@@ -15,19 +15,26 @@ public class TestParser {
         System.out.println("Program tree: " + program.toStringTree(parser));
         
         FoolishParser.BranesContext branes = program.branes();
-        System.out.println("Branes count: " + branes.brane().size());
+        System.out.println("Branes count: " + branes.concatExpr().postfixExpr().size());
         
-        FoolishParser.BraneContext brane = branes.brane(0);
-        System.out.println("Brane class: " + brane.getClass().getName());
-        System.out.println("standard_brane: " + brane.standard_brane());
-        System.out.println("detach_brane: " + brane.detach_brane());
-        System.out.println("brane_search: " + brane.brane_search());
-        
-        if (brane.standard_brane() != null) {
-            System.out.println("Statements: " + brane.standard_brane().stmt().size());
-            for (int i = 0; i < brane.standard_brane().stmt().size(); i++) {
-                FoolishParser.StmtContext stmt = brane.standard_brane().stmt(i);
-                System.out.println("  Statement " + i + ": " + stmt.getText());
+        FoolishParser.BraneContext brane = null;
+        if (branes.concatExpr().postfixExpr(0).primary() != null &&
+            branes.concatExpr().postfixExpr(0).primary().characterizable() != null) {
+            brane = branes.concatExpr().postfixExpr(0).primary().characterizable().brane();
+        }
+
+        if (brane != null) {
+            System.out.println("Brane class: " + brane.getClass().getName());
+            System.out.println("standard_brane: " + brane.standard_brane());
+            System.out.println("detach_brane: " + brane.detach_brane());
+            System.out.println("brane_search: " + brane.brane_search());
+
+            if (brane.standard_brane() != null) {
+                System.out.println("Statements: " + brane.standard_brane().stmt().size());
+                for (int i = 0; i < brane.standard_brane().stmt().size(); i++) {
+                    FoolishParser.StmtContext stmt = brane.standard_brane().stmt(i);
+                    System.out.println("  Statement " + i + ": " + stmt.getText());
+                }
             }
         }
     }

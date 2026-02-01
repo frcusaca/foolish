@@ -28,7 +28,7 @@ characterizable
     | characterization* (literal | brane)
     ;
 
-branes: brane+ ;
+branes: concatExpr ;
 brane
     : standard_brane
     | detach_brane
@@ -73,7 +73,6 @@ assignment
 expr
     : addExpr
     | ifExpr
-    | branes
     ;
 
 addExpr : mulExpr ((PLUS | MINUS) mulExpr)* ;
@@ -83,7 +82,11 @@ mulExpr
     ;
 
 unaryExpr
-    : (PLUS|MINUS|MUL)? postfixExpr
+    : (PLUS|MINUS|MUL)? concatExpr
+    ;
+
+concatExpr
+    : postfixExpr+
     ;
 
 postfixExpr
@@ -113,6 +116,7 @@ primary
     | LT expr GT           // <expr> SF marker
     | UNKNOWN
     | HASH MINUS INTEGER  // Unanchored backward seek: #-1, #-2, etc.
+    | regexp_operator regexp_expression // Unanchored regex search
     ;
 
 ifExpr

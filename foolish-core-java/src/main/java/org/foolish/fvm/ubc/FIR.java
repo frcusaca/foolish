@@ -401,6 +401,9 @@ public abstract class FIR {
             case AST.Brane brane -> {
                 return new BraneFiroe(brane);
             }
+            case AST.Branes branes -> {
+                throw new UnsupportedOperationException("Brane concatenation not implemented yet");
+            }
             case AST.Assignment assignment -> {
                 return new AssignmentFiroe(assignment);
             }

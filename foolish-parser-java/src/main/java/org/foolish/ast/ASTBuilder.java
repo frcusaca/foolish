@@ -112,13 +112,30 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
 
     @Override
     public AST visitBranes(FoolishParser.BranesContext ctx) {
-        List<AST.Characterizable> brns = new ArrayList<>();
-        for (var s : ctx.brane()) {
-            AST st = visit(s);
-            if (st instanceof AST.Characterizable brn) brns.add(brn);
-            else throw new RuntimeException("Expected characterizable brane, got: " + st);
+        AST result = visit(ctx.concatExpr());
+        if (result instanceof AST.Branes branes) {
+            return branes;
+        } else if (result instanceof AST.Expr expr) {
+            return new AST.Branes(List.of(expr));
         }
-        return new AST.Branes(brns);
+        throw new RuntimeException("Expected expression from concatExpr");
+    }
+
+    @Override
+    public AST visitConcatExpr(FoolishParser.ConcatExprContext ctx) {
+        List<AST.Expr> exprs = new ArrayList<>();
+        for (var p : ctx.postfixExpr()) {
+            AST ast = visit(p);
+            if (ast instanceof AST.Expr expr) {
+                exprs.add(expr);
+            } else {
+                throw new RuntimeException("Expected expression, got: " + ast);
+            }
+        }
+        if (exprs.size() == 1) {
+            return exprs.get(0);
+        }
+        return new AST.Branes(exprs);
     }
 
     @Override
@@ -201,7 +218,6 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
     @Override
     public AST visitExpr(FoolishParser.ExprContext ctx) {
         if (ctx.ifExpr() != null) return visit(ctx.ifExpr());
-        if (ctx.branes() != null) return visit(ctx.branes());
         return visit(ctx.addExpr());
     }
 
@@ -231,18 +247,18 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
     public AST visitUnaryExpr(FoolishParser.UnaryExprContext ctx) {
         if (ctx.PLUS() != null) {
             String op = "+";
-            AST.Expr expr = (AST.Expr) visit(ctx.postfixExpr());
+            AST.Expr expr = (AST.Expr) visit(ctx.concatExpr());
             return new AST.UnaryExpr(op, expr);
         } else if (ctx.MINUS() != null) {
             String op = "-";
-            AST.Expr expr = (AST.Expr) visit(ctx.postfixExpr());
+            AST.Expr expr = (AST.Expr) visit(ctx.concatExpr());
             return new AST.UnaryExpr(op, expr);
         } else if (ctx.MUL() != null) {
             String op = "*";
-            AST.Expr expr = (AST.Expr) visit(ctx.postfixExpr());
+            AST.Expr expr = (AST.Expr) visit(ctx.concatExpr());
             return new AST.UnaryExpr(op, expr);
         } else {
-            return visit(ctx.postfixExpr());
+            return visit(ctx.concatExpr());
         }
     }
 
@@ -288,6 +304,20 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
     @Override
     public AST visitPrimary(FoolishParser.PrimaryContext ctx) {
         if (ctx.characterizable() != null) return visit(ctx.characterizable());
+
+        // Handle unanchored regex search
+        if (ctx.regexp_operator() != null && ctx.regexp_expression() != null) {
+            String opText = ctx.regexp_operator().getText();
+            SearchOperator operator = switch (opText) {
+                case "?" -> SearchOperator.REGEXP_LOCAL;
+                case "~" -> SearchOperator.REGEXP_FORWARD_LOCAL;
+                case "??" -> SearchOperator.REGEXP_GLOBAL;
+                case "~~" -> SearchOperator.REGEXP_FORWARD_GLOBAL;
+                default -> throw new IllegalArgumentException("Unknown regexp operator: " + opText);
+            };
+            String pattern = canonicalizeIdentifierName(ctx.regexp_expression().getText());
+            return new AST.RegexpSearchExpr(AST.UnknownExpr.INSTANCE, operator, pattern);
+        }
 
         // Handle Stay-Fully-Foolish marker: <<expr>>
         if (ctx.LT_LT() != null && ctx.GT_GT() != null && ctx.expr() != null) {
