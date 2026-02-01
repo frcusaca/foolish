@@ -1,0 +1,13 @@
+!!INPUT!!
+{
+    a = {1; 2; 3};
+    b =$ a;     !! No space - should work
+    c = $ a;    !! Space - should fail with parse error
+}
+
+!!!
+PARSE ERRORS:
+  line 4:8 rule assignment failed predicate: {areTokensAdjacent()}?
+
+VM HALTED: Cannot execute due to parse errors.
+!!!
