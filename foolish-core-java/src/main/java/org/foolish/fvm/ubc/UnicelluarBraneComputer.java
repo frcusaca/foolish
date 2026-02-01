@@ -39,20 +39,20 @@ public class UnicelluarBraneComputer {
         // Let's create a dummy Firoe for the Standard Library.
         FiroeWithBraneMind stdLibOwner = new FiroeWithBraneMind((AST) null) {
             {
-                this.braneMemory.setParent(standardLib);
+                linkMemoryParent(standardLib);
                 // Wait, standardLib IS the memory. We want rootBrane.memory.parent = standardLib.
-                // But FiroeWithBraneMind.braneMemory is protected.
-                // We can't access rootBrane.braneMemory directly from here unless we are in the same package (we are).
+                // But FiroeWithBraneMind.braneMemory is now private with accessor methods.
+                // We can use the accessor to link the parent.
             }
             @Override
             protected void initialize() { setInitialized(); }
         };
-        // Actually, since we are in the same package, we can access protected fields?
+        // Actually, since we are in the same package, we can access protected accessor methods.
         // Yes, UnicelluarBraneComputer is in org.foolish.fvm.ubc.
         // BraneFiroe extends FiroeWithBraneMind.
-        // FiroeWithBraneMind has `protected final BraneMemory braneMemory`.
+        // FiroeWithBraneMind has protected accessor linkMemoryParent().
 
-        this.rootBrane.braneMemory.setParent(standardLib);
+        this.rootBrane.linkMemoryParent(standardLib);
     }
 
     /**

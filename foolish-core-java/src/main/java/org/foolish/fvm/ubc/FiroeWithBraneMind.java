@@ -43,9 +43,10 @@ import java.util.IdentityHashMap;
  * <p>
  * <b>=== FIELD ACCESS ===</b>
  * <p>
- * The braneMind and braneMemory fields are protected for subclass access.
+ * The braneMind and braneMemory fields are protected during migration to accessor methods.
  * For external diagnostic access, use {@link #getBraneMemory()}.
- * Future work (Phase 6) will add controlled accessor methods.
+ * Subclasses should use the accessor methods defined in the ACCESSOR METHODS section.
+ * Once all subclasses are migrated, these fields will become private.
  */
 public abstract class FiroeWithBraneMind extends FIR {
     protected final LinkedList<FIR> braneMind;
@@ -62,11 +63,11 @@ public abstract class FiroeWithBraneMind extends FIR {
 
     public void ordinateToParentBraneMind(FiroeWithBraneMind parent, int myPos) {
         assert !this.ordinated;
-        this.braneMemory.setParent(parent.braneMemory);
+        linkMemoryParent(parent.braneMemory);
         // For BraneFiroe: position is tracked via parent FIR relationships (getMyBraneIndex)
         // For other FIRs (like IdentifierFiroe): we need to set myPos since they don't have owningBrane
         if (!(this instanceof BraneFiroe)) {
-            this.braneMemory.setMyPosInternal(myPos);
+            setMemoryPosition(myPos);
         }
         this.ordinated = true;
     }
@@ -88,10 +89,10 @@ public abstract class FiroeWithBraneMind extends FIR {
         setParentFir(newParent);
 
         // Verify braneMind is empty (critical invariant for CONSTANIC FIRs)
-        if (!original.braneMind.isEmpty()) {
+        if (!original.isBrainEmpty()) {
             throw new IllegalStateException(
                 formatErrorMessage("cloneConstanic requires empty braneMind, but found " +
-                                  original.braneMind.size() + " items. " +
+                                  original.brainSize() + " items. " +
                                   "This indicates the FIR is not truly CONSTANIC."));
         }
 
@@ -199,10 +200,10 @@ public abstract class FiroeWithBraneMind extends FIR {
      */
     protected void storeFirs(FIR... firs) {
         for (FIR fir : firs) {
-            braneMemory.put(fir);
+            braneMemory.put(fir);  // Direct access OK - internal method
             // Set parent FIR relationship
             fir.setParentFir(this);
-            int index = braneMemory.size() - 1;
+            int index = memorySize() - 1;
             indexLookup.put(fir, index);
             switch (fir) {
                 case FiroeWithBraneMind fwbm:
@@ -223,6 +224,7 @@ public abstract class FiroeWithBraneMind extends FIR {
     @Deprecated
     protected void enqueueFirs(FIR... firs) {
         for (FIR fir : firs) {
+            // Direct field access to bypass constanic check - this is deprecated anyway
             braneMind.addLast(fir);
             braneMemory.put(fir);
             // Set parent FIR relationship
@@ -310,7 +312,7 @@ public abstract class FiroeWithBraneMind extends FIR {
             }
             case EVALUATING -> {
                 // Step everything including sub-branes
-                if (braneMind.isEmpty()) {
+                if (isBrainEmpty()) {
                     // All expressions evaluated, check if any are CONSTANIC
                     boolean anyConstanic = false;
                     for (FIR fir : braneMemory) {
@@ -323,16 +325,16 @@ public abstract class FiroeWithBraneMind extends FIR {
                     return 1;
                 }
 
-                FIR current = braneMind.removeFirst();
+                FIR current = brainDequeue();
                 try {
                     int work = current.step();
 
                     if (current.isNye()) {
-                        braneMind.addLast(current);
+                        brainEnqueue(current);
                     }
                     return work;
                 } catch (Exception e) {
-                    braneMind.addFirst(current); // Re-enqueue on error
+                    brainEnqueueFirst(current); // Re-enqueue on error
                     org.foolish.fvm.AlarmSystem.raise(braneMemory, "Error during braneMind step execution: " + e.getMessage(), org.foolish.fvm.AlarmSystem.PANIC);
                     throw new RuntimeException("Error during braneMind step execution", e);
                 }
@@ -353,11 +355,11 @@ public abstract class FiroeWithBraneMind extends FIR {
      * @return true if all non-branes have reached the target state, false otherwise
      */
     private boolean stepNonBranesUntilState(Nyes targetState) {
-        if (braneMind.isEmpty() || allNonBranesReachedState(targetState)) {
+        if (isBrainEmpty() || allNonBranesReachedState(targetState)) {
             return true;
         }
 
-        FIR current = braneMind.removeFirst();
+        FIR current = brainDequeue();
 
         //Reach here only when we have found the first non-brane sub-targetSetate member
         try {
@@ -366,7 +368,7 @@ public abstract class FiroeWithBraneMind extends FIR {
 
             // re-enqueue if still NYE
             if (current.isNye()) {
-                braneMind.addLast(current);
+                brainEnqueue(current);
             }
             // Check if it has reached the target state
             if (current.getNyes().ordinal() < targetState.ordinal()) {
@@ -374,7 +376,7 @@ public abstract class FiroeWithBraneMind extends FIR {
             }
 
         } catch (Exception e) {
-            braneMind.addFirst(current); // Re-enqueue on error
+            brainEnqueueFirst(current); // Re-enqueue on error
             org.foolish.fvm.AlarmSystem.raise(braneMemory, "Error during braneMind step execution: " + e.getMessage(), org.foolish.fvm.AlarmSystem.PANIC);
             throw new RuntimeException("Error during braneMind step execution", e);
         }
@@ -388,19 +390,19 @@ public abstract class FiroeWithBraneMind extends FIR {
      * The furst sub-target-state non-brane member is shifted to the front of the queue.
      */
     private boolean allNonBranesReachedState(Nyes targetState) {
-        if (braneMind.isEmpty()) {
+        if (isBrainEmpty()) {
             return true;
         }
-        FIR current = braneMind.getFirst();
+        FIR current = brainPeek();
         int seen = 1;
         // Let's skip branes and the sub expressions that has already reached desired state.
         while (isBrane(current) || (current.getNyes().ordinal() >= targetState.ordinal())) {
             // Re-enqueue brane without stepping - keep its place in line
-            if (seen++ > braneMind.size()) {
+            if (seen++ > brainSize()) {
                 return true;
             }
-            braneMind.addLast(braneMind.removeFirst());
-            current = braneMind.getFirst();
+            brainEnqueue(brainDequeue());
+            current = brainPeek();
         }
         return false;
     }
@@ -420,16 +422,141 @@ public abstract class FiroeWithBraneMind extends FIR {
         return braneMemory.getStatementIndex(fir);
     }
 
+    // ========== ACCESSOR METHODS ==========
+    // Phase 6: Controlled access to braneMemory and braneMind
+
     /**
-     * Gets the BraneMemory for read-only access.
+     * BraneMind (work queue) accessors
+     */
+
+    /**
+     * Enqueues a FIR at the end of braneMind.
+     * Note: C6 states braneMind should only contain NYE FIRs, but in practice
+     * we may temporarily enqueue constanic FIRs during evaluation (they'll be
+     * removed on the next iteration when isNye() returns false).
+     */
+    protected void brainEnqueue(FIR fir) {
+        braneMind.addLast(fir);
+    }
+
+    /**
+     * Enqueues a FIR at the beginning of braneMind (for error recovery).
+     * Note: During error recovery, we may need to re-enqueue FIRs that are already constanic.
+     * This is acceptable as an exception to C6 since we're in an error state.
+     */
+    protected void brainEnqueueFirst(FIR fir) {
+        // Allow re-enqueueing for error recovery (exception to C6)
+        braneMind.addFirst(fir);
+    }
+
+    /**
+     * Dequeues and returns the first FIR from braneMind.
+     * @throws java.util.NoSuchElementException if braneMind is empty
+     */
+    protected FIR brainDequeue() {
+        return braneMind.removeFirst();
+    }
+
+    /**
+     * Returns the first FIR in braneMind without removing it.
+     * @throws java.util.NoSuchElementException if braneMind is empty
+     */
+    protected FIR brainPeek() {
+        return braneMind.getFirst();
+    }
+
+    /**
+     * Checks if braneMind is empty.
+     */
+    protected boolean isBrainEmpty() {
+        return braneMind.isEmpty();
+    }
+
+    /**
+     * Returns the size of braneMind.
+     */
+    protected int brainSize() {
+        return braneMind.size();
+    }
+
+    /**
+     * BraneMemory (persistent storage) accessors
+     */
+
+    /**
+     * Gets a FIR from braneMemory by index (read-only).
+     * @param index the 0-based index
+     * @return the FIR at the given index
+     * @throws IndexOutOfBoundsException if index is out of range
+     */
+    protected FIR memoryGet(int index) {
+        return braneMemory.get(index);
+    }
+
+    /**
+     * Checks if braneMemory is empty (read-only).
+     */
+    protected boolean isMemoryEmpty() {
+        return braneMemory.isEmpty();
+    }
+
+    /**
+     * Gets the last FIR from braneMemory (read-only).
+     * @throws java.util.NoSuchElementException if braneMemory is empty
+     */
+    protected FIR memoryGetLast() {
+        return braneMemory.getLast();
+    }
+
+    /**
+     * Returns the size of braneMemory (read-only).
+     */
+    protected int memorySize() {
+        return braneMemory.size();
+    }
+
+    /**
+     * Links this braneMemory to a parent BraneMemory (controlled mutation).
+     * This is a legitimate parent chain modification (C4 exception).
+     * Used during ordination and context manipulation (CMFir, ConcatenationFiroe).
+     * <p>
+     * Accepts ReadOnlyBraneMemory to allow use with getBraneMemory(), but internally
+     * requires actual BraneMemory for the parent link.
+     */
+    protected void linkMemoryParent(ReadOnlyBraneMemory parent) {
+        if (!(parent instanceof BraneMemory)) {
+            throw new IllegalArgumentException("Parent must be an actual BraneMemory instance");
+        }
+        braneMemory.setParent((BraneMemory) parent);
+    }
+
+    /**
+     * Sets the position of this braneMemory within its parent (controlled mutation).
+     * Used during ordination and context manipulation.
+     */
+    protected void setMemoryPosition(int pos) {
+        braneMemory.setMyPosInternal(pos);
+    }
+
+    /**
+     * Sets the owning brane for this braneMemory (controlled mutation).
+     * Used during construction and cloning operations.
+     */
+    protected void setMemoryOwner(FiroeWithBraneMind owner) {
+        braneMemory.setOwningBrane(owner);
+    }
+
+    /**
+     * Gets a read-only view of the BraneMemory.
      * Used by AlarmSystem and other diagnostic tools.
      * <p>
-     * NOTE: This is a preliminary accessor. Phase 6 will add more
-     * controlled accessor methods for specific operations.
+     * External code receives a {@link ReadOnlyBraneMemory} interface that only
+     * exposes query and iteration operations, preventing modification of the
+     * brane's internal memory structure.
      *
-     * @return the braneMemory (never null)
+     * @return read-only view of braneMemory (never null)
      */
-    public BraneMemory getBraneMemory() {
+    public ReadOnlyBraneMemory getBraneMemory() {
         return braneMemory;
     }
 

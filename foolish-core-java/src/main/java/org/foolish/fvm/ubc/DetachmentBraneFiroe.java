@@ -43,7 +43,7 @@ public class DetachmentBraneFiroe extends FiroeWithBraneMind {
             .collect(Collectors.toSet());
 
         // Set up this brane's memory with filtering
-        this.braneMemory.setOwningBrane(this);
+        setMemoryOwner(this);
     }
 
     @Override

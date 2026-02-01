@@ -58,7 +58,7 @@ public class BraneFiroe extends FiroeWithBraneMind {
         super(original, newParent);
         this.EXPRMNT_brane_depth = original.EXPRMNT_brane_depth;
         // Set owning brane for the new braneMemory (created by super)
-        this.braneMemory.setOwningBrane(this);
+        setMemoryOwner(this);
     }
 
     /**
@@ -95,7 +95,7 @@ public class BraneFiroe extends FiroeWithBraneMind {
         }
 
         // Normal case: register this brane as the owner of its memory
-        this.braneMemory.setOwningBrane(this);
+        setMemoryOwner(this);
     }
 
     /**

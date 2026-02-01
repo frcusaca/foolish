@@ -92,8 +92,8 @@ public class CMFir extends FiroeWithoutBraneMind {
         if (o2 instanceof FiroeWithBraneMind fwbm) {
             BraneFiroe myBrane = getMyBrane();
             if (myBrane != null) {
-                fwbm.braneMemory.setParent(myBrane.braneMemory);
-                fwbm.braneMemory.setMyPosInternal(myBrane.braneMemory.size() - 1);
+                fwbm.linkMemoryParent(myBrane.getBraneMemory());
+                fwbm.setMemoryPosition(myBrane.memorySize() - 1);
             }
         }
         syncO2Nyes();

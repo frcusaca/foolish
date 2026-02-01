@@ -11,7 +11,7 @@ import java.util.stream.Stream;
 import static java.lang.Math.min;
 import static java.lang.Math.max;
 
-public class BraneMemory implements Iterable<FIR> {
+public class BraneMemory implements ReadOnlyBraneMemory {
     private BraneMemory parent;
     private Optional<Integer> myPos = Optional.empty();
     private final List<FIR> memory;

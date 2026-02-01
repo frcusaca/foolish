@@ -51,7 +51,7 @@ public class SFMarkFiroe extends CMFir {
             BraneFiroe myBrane = getMyBrane();
             if (myBrane != null) {
                 // Set o2's memory parent to the containing brane's memory
-                fwbm.braneMemory.setParent(myBrane.braneMemory);
+                fwbm.linkMemoryParent(myBrane.getBraneMemory());
             }
         }
         syncO2Nyes();

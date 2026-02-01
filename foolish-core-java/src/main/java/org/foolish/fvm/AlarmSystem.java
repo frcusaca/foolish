@@ -79,7 +79,7 @@ public class AlarmSystem {
         }
 
         // Get braneMemory for threshold lookup
-        BraneMemory context = null;
+        ReadOnlyBraneMemory context = null;
         if (fir != null) {
             BraneFiroe brane = fir.getMyBrane();
             if (brane != null) {
@@ -156,7 +156,7 @@ public class AlarmSystem {
         locationInfo = fir.getLocationDescription() + " - ";
 
         // Get braneMemory for threshold lookup via containing brane
-        BraneMemory context = null;
+        ReadOnlyBraneMemory context = null;
         BraneFiroe brane = fir.getMyBrane();
         if (brane != null) {
             context = brane.getBraneMemory();
@@ -203,7 +203,7 @@ public class AlarmSystem {
         }
     }
 
-    private static int resolveAlarmingLevel(BraneMemory context) {
+    private static int resolveAlarmingLevel(ReadOnlyBraneMemory context) {
         Query query = new Query.StrictlyMatchingQuery(VAR_ALARMING_LEVEL, "");
 
         Optional<Pair<Integer, FIR>> result = context.get(query, context.size());
