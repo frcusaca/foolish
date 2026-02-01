@@ -38,35 +38,43 @@ The project supports two primary development environments:
 - Maven commands work directly: `mvn clean test`
 
 ## Build Commands
+### Cleaning
+```bash
+rm -rf ~/.m2/repository/org/foolish
+mvn clean
+```
+The second command to clean out foolish repo is important. If maven repository is elsewhere, please remove the corresponding foolish code as well. This has proven to be
+a problem for several systems where 'mvn install' was invoked at some point. It installed stale antlr source that prevented updates to g4 files from taking effect.
 
 ### Basic Build and Test
 
 ```bash
 # Full clean build. Do this at beginning of a session and after every merge or rebase operation. Also, anytime when debugging took more than 13 minutes, do a full rebuild.
 # Everytime the 'foolish-parser-java/src/main/antlr4/Foolish.g4' file is updated, this command must be run at the root of the project to regenerate the parser.
-mvn clean generate-sources compile
+rm -rf ~/.m2/repository/org/foolish ## Remove same everywhere else where m2 may store repository.
+mvn clean generate-sources compile -am -ff
 
 # Parallel build (recommended)
-mvn clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
+mvn clean test -am -fae -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 
 # Rebuild Antlr4 lexer and parser from g4 file
 # This needs to happen every time 'foolish-parser-java/src/main/antlr4/Foolish.g4' changes
 mvn clean generate-sources -T $(($(nproc) * 2))
 
 # The approval tests can be selected this way specifying module, class and then the test file filter
-mvn test -pl foolish-core-java -Dtest=UbcApprovalTest -Dfoolish.test.filter=Shadow
+mvn test -am -ff -pl foolish-core-java -Dtest=UbcApprovalTest -Dfoolish.test.filter=Shadow
 
 # Just build (skip tests) when fixing compilation errors.
-mvn clean compile -DskipTests -T $(($(nproc) * 2))
+mvn clean compile -am -ff -DskipTests -T $(($(nproc) * 2))
 
 # However, you may choose single threaded compilation to improve readability of compilation errors
-mvn clean compile -DskipTests
+mvn clean compile -am -ff -DskipTests
 
 ## Select a module to reduce build time and effort
-mvn compile -pl foolish-core-java -DskipTests -T $(($(nproc) * 2))
+mvn compile -am -ff -pl foolish-core-java -DskipTests -T $(($(nproc) * 2))
 
 ## Turn on debugging and stack trace for debugging build problems
-mvn clean compile -X -e -DskipTests
+mvn clean compile -am -ff -X -e -DskipTests
 ```
 
 ## Tests
@@ -81,11 +89,11 @@ mvn clean compile -X -e -DskipTests
 
 ```bash
 # Run all tests with parallel execution
-mvn test -am -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
+mvn test -am -fae -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 
 # Run specific test
-mvn test -am -Dtest=ClassName#methodName
-mvn test -am -pl foolish-core-java -Dtest=UbcApprovalTest -Dfoolish.test.filter=Shadow
+mvn test -am -ff -Dtest=ClassName#methodName
+mvn test -am -ff -pl foolish-core-java -Dtest=UbcApprovalTest -Dfoolish.test.filter=Shadow
 
 ## Approval Test Protocol
 

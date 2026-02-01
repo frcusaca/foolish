@@ -1,0 +1,28 @@
+!!INPUT!!
+#!/usr/bin/env foolish
+{
+   !! confirm=x==1
+   x = 1;
+   y = 2;
+   !! confirm=y==2
+}
+
+!!!
+PARSED AST:
+{
+  x = 1;
+  y = 2;
+}
+
+UBC EVALUATION:
+Steps taken: 15
+
+FINAL RESULT:
+{
+＿x = 1;
+＿y = 2;
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!
