@@ -73,10 +73,24 @@ public abstract class FiroeWithBraneMind extends FIR {
         // Create new braneMemory with null parent initially
         // The parent will be set by the caller (e.g., CMFir.startPhaseB) based on new context
         this.braneMemory = new BraneMemory(null);
+        int index = 0;
         for (FIR fir : original.braneMemory) {
-            // Clone each item, passing this as new parent to update parent chain
-            FIR clonedFir = fir.cloneConstanic(this, java.util.Optional.empty());
+            // Clone each item, resetting to INITIALIZED so they will re-evaluate
+            // This is critical: nested FIRs must also be reset, not just the top-level brane
+            FIR clonedFir = fir.cloneConstanic(this, java.util.Optional.of(Nyes.INITIALIZED));
             this.braneMemory.put(clonedFir);
+
+            // Add to indexLookup so getIndexOf works for cloned FIRs
+            this.indexLookup.put(clonedFir, index);
+
+            // Link cloned FIR's braneMemory to this brane's memory (ordination)
+            // This is critical for identifier resolution in the new context
+            if (clonedFir instanceof FiroeWithBraneMind fwbm) {
+                // Reset ordinated flag so we can re-ordinate in new context
+                fwbm.ordinated = false;
+                fwbm.ordinateToParentBraneMind(this, index);
+            }
+            index++;
         }
 
         this.ordinated = original.ordinated;

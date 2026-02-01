@@ -349,12 +349,12 @@ public abstract class FIR implements Cloneable {
         return parentFir;
     }
 
-    public final boolean atConstant() {
-        return nyes == Nyes.CONSTANT;
+    public boolean atConstant() {
+        return getNyes() == Nyes.CONSTANT;
     }
 
-    public final boolean atConstanic() {
-        return nyes == Nyes.CONSTANIC;
+    public boolean atConstanic() {
+        return getNyes() == Nyes.CONSTANIC;
     }
 
     /**

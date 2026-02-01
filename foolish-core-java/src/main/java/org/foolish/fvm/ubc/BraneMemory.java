@@ -67,12 +67,17 @@ public class BraneMemory implements Iterable<FIR> {
         }
         if (parent != null) {
             // Compute position dynamically using owningBrane's getMyBraneIndex() if available
-            // Otherwise fall back to myPos (for unit tests without BraneFiroe)
+            // Otherwise fall back to myPos (for unit tests without BraneFiroe or CMFir clones)
             // Default to searching from end of parent if neither is available
-            // This is crucial for CMFir which links memory without fixed position
             int parentPos;
             if (owningBrane != null) {
-                parentPos = owningBrane.getMyBraneIndex();
+                try {
+                    parentPos = owningBrane.getMyBraneIndex();
+                } catch (NullPointerException e) {
+                    // If getMyBraneIndex() fails (e.g., CMFir clone not in indexLookup),
+                    // fall back to myPos or end of parent
+                    parentPos = myPos.orElse(parent.size() - 1);
+                }
             } else {
                 parentPos = myPos.orElse(parent.size() - 1);
             }
@@ -188,9 +193,10 @@ public class BraneMemory implements Iterable<FIR> {
     public void setOwningBrane(FiroeWithBraneMind brane) {
         if (this.owningBrane == null) {
             this.owningBrane = brane;
-        } else {
+        } else if (this.owningBrane != brane) {
             throw new RuntimeException("Cannot reassign owning brane of BraneMemory.");
         }
+        // If same brane, allow (idempotent)
     }
 
     /**

@@ -26,6 +26,15 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
     }
 
     /**
+     * Copy constructor for cloneConstanic.
+     */
+    protected IdentifierFiroe(IdentifierFiroe original, FIR newParent) {
+        super(original, newParent);
+        this.identifier = original.identifier;  // Query is immutable, can share
+        this.value = null;  // Reset value for re-resolution in new context
+    }
+
+    /**
      * Gets the CharacterizedIdentifier.
      */
     public CharacterizedIdentifier getIdentifier() {
@@ -86,10 +95,12 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
                 return 1;
             }
             case CHECKED -> {
-                // Identifier lookup is complete, check if value is constanic
-                if (value.isConstanic()) {
+                // Identifier lookup is complete, check if value has reached final state
+                // Use atConstanic() to check for exactly CONSTANIC (unresolved)
+                // Use atConstant() to check for exactly CONSTANT (fully resolved)
+                if (value.atConstanic()) {
                     setNyes(Nyes.CONSTANIC);
-                } else if (value.isConstant()) {
+                } else if (value.atConstant()) {
                     setNyes(Nyes.CONSTANT);
                 } else {
                     // Value is still evaluating - shouldn't happen for identifiers
@@ -100,9 +111,10 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
             }
             case EVALUATING -> {
                 // Check if value completed evaluation
-                if (value.isConstanic()) {
+                // Use atConstanic() and atConstant() for exact state checks
+                if (value.atConstanic()) {
                     setNyes(Nyes.CONSTANIC);
-                } else if (value.isConstant()) {
+                } else if (value.atConstant()) {
                     setNyes(Nyes.CONSTANT);
                 }
                 return 1;
@@ -131,5 +143,30 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
     @Override
     public String toString() {
         return ((AST.Identifier) ast).toString();
+    }
+
+    @Override
+    protected FIR cloneConstanic(FIR newParent, java.util.Optional<Nyes> targetNyes) {
+        if (!isConstanic()) {
+            throw new IllegalStateException(
+                formatErrorMessage("cloneConstanic can only be called on CONSTANIC or CONSTANT FIRs, " +
+                                  "but this FIR is in state: " + getNyes()));
+        }
+
+        if (isConstant()) {
+            return this;  // Share CONSTANT identifiers completely
+        }
+
+        // CONSTANIC: use copy constructor
+        IdentifierFiroe copy = new IdentifierFiroe(this, newParent);
+
+        // Set target state if specified, otherwise copy from original
+        if (targetNyes.isPresent()) {
+            copy.nyes = targetNyes.get();
+        } else {
+            copy.nyes = this.nyes;
+        }
+
+        return copy;
     }
 }

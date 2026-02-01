@@ -40,12 +40,8 @@ public class CMFir extends FiroeWithoutBraneMind {
         // Phase A: Step o until it is CONSTANT or CONSTANIC
         if (!phaseBStarted) {
             o.step();
-
-            if (o.atConstant()) {
-                // o reached CONSTANT without being CONSTANIC
-                // This means it's fully resolved (not abstract)
-                setNyes(Nyes.CONSTANT);
-            }
+            // CMFir delegates state to o, so no need to sync nyes
+            // atConstant() will return true once o.atConstant() is true
             return 1;
         } else {
             // Phase B: Step o2 (the clone in the new context)
@@ -56,13 +52,9 @@ public class CMFir extends FiroeWithoutBraneMind {
     }
 
     protected void syncO2Nyes(){
-	    if (o2.atConstant()) {
-                setNyes(Nyes.CONSTANT);
-            } else if (o2.atConstanic()) {
-                // If o2 ends up constanic, we're also constanic
-                setNyes(Nyes.CONSTANIC);
-            }
-
+        // CMFir delegates state to inner FIR (o or o2) via overridden getNyes(), atConstant(), atConstanic()
+        // So we don't need to sync nyes - just let the delegation handle it
+        // Note: CMFir's own nyes field is not used when inner FIR is active
     }
 
     protected void startPhaseB() {
@@ -85,6 +77,9 @@ public class CMFir extends FiroeWithoutBraneMind {
             if (myBrane != null) {
                 // Set o2's memory parent to the containing brane's memory
                 fwbm.braneMemory.setParent(myBrane.braneMemory);
+                // Set position for parent searches - use end of parent memory
+                // This ensures o2 can see all bindings in the parent brane
+                fwbm.braneMemory.setMyPosInternal(myBrane.braneMemory.size() - 1);
             }
         }
         syncO2Nyes();
@@ -138,6 +133,26 @@ public class CMFir extends FiroeWithoutBraneMind {
 	}else{
 		return o.getNyes();
 	}
+    }
+
+    @Override
+    public boolean atConstant() {
+        // CMFir delegates state to inner FIR
+        if (phaseBStarted) {
+            return o2.atConstant();
+        } else {
+            return o.atConstant();
+        }
+    }
+
+    @Override
+    public boolean atConstanic() {
+        // CMFir delegates state to inner FIR
+        if (phaseBStarted) {
+            return o2.atConstanic();
+        } else {
+            return o.atConstanic();
+        }
     }
 
     @Override

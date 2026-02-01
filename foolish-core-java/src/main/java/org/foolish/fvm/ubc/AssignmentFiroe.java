@@ -22,6 +22,15 @@ public class AssignmentFiroe extends FiroeWithBraneMind {
         this.result = null;
     }
 
+    /**
+     * Copy constructor for cloneConstanic.
+     */
+    protected AssignmentFiroe(AssignmentFiroe original, FIR newParent) {
+        super(original, newParent);
+        this.lhs = original.lhs;  // CharacterizedIdentifier is immutable
+        this.result = null;  // Reset result for re-evaluation
+    }
+
     @Override
     protected void initialize() {
         if (isInitialized()) return;
@@ -140,5 +149,30 @@ public class AssignmentFiroe extends FiroeWithBraneMind {
     @Override
     public String toString() {
         return new Sequencer4Human().sequence(this);
+    }
+
+    @Override
+    protected FIR cloneConstanic(FIR newParent, java.util.Optional<Nyes> targetNyes) {
+        if (!isConstanic()) {
+            throw new IllegalStateException(
+                formatErrorMessage("cloneConstanic can only be called on CONSTANIC or CONSTANT FIRs, " +
+                                  "but this FIR is in state: " + getNyes()));
+        }
+
+        if (isConstant()) {
+            return this;  // Share CONSTANT assignments completely
+        }
+
+        // CONSTANIC: use copy constructor
+        AssignmentFiroe copy = new AssignmentFiroe(this, newParent);
+
+        // Set target state if specified, otherwise copy from original
+        if (targetNyes.isPresent()) {
+            copy.nyes = targetNyes.get();
+        } else {
+            copy.nyes = this.nyes;
+        }
+
+        return copy;
     }
 }

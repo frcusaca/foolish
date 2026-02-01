@@ -57,6 +57,8 @@ public class BraneFiroe extends FiroeWithBraneMind {
     protected BraneFiroe(BraneFiroe original, FIR newParent) {
         super(original, newParent);
         this.EXPRMNT_brane_depth = original.EXPRMNT_brane_depth;
+        // Set owning brane for the new braneMemory (created by super)
+        this.braneMemory.setOwningBrane(this);
     }
 
     /**
