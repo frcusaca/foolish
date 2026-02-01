@@ -665,6 +665,9 @@ public abstract class FIR implements Cloneable {
             case AST.Brane brane -> {
                 return new BraneFiroe(brane);
             }
+            case AST.Concatenation concatenation -> {
+                return new ConcatenationFiroe(concatenation);
+            }
             case AST.DetachmentBrane detachBrane -> {
                 return new DetachmentBraneFiroe(detachBrane);
             }

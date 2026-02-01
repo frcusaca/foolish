@@ -1,0 +1,47 @@
+{
+   test_1_concatenate_foolish_branes={
+      c = {a=1,b=2,c=3}{e=4,f=5,g=6};
+     !! confirm=c=={a=1,b=2,c=3,e=4,f=5,g=6};
+   };
+
+
+   test_2_concatenate_brane_references={
+      b1={a=1,b=2,c=3};
+      b2={e=4,f=5,g=6};
+      c = b1 b2;
+      !! confirm=c=={a=1,b=2,c=3,e=4,f=5,g=6};
+   };
+
+   test_3_concatenate_mixed_reference_and_foolish_branes={
+      b1={a=1,b=2,c=3};
+      b2={e=4,f=5,g=6};
+      c1 = {a=1,b=2,c=3} b2;
+      c2 = b1 {e=4,f=5,g=6};
+     !! confirm=c1=={a=1,b=2,c=3,e=4,f=5,g=6};
+     !! confirm=c2=={a=1,b=2,c=3,e=4,f=5,g=6};
+   };
+
+   test_4_concatenate_concatenated_brnes={
+      b1={a=1,b=2};
+      b2={c=3,d=4};
+      b3={e=5,f=6};
+      c1 = b1 b2 b3;
+      c2 = b3 b2 b1;
+      c3 = b2 b1 b3;
+      r = c1 c2 c3
+   !! confirm=c1=={a=1,b=2,c=3,d=4,e=5,f=6};
+   !! confirm=c2=={e=5,f=6,c=3,d=4,a=1,b=2};
+   !! confirm=c3=={c=3,d=4,a=1,b=2;e=5,f=6};
+   !! confirm=r=={a=1,b=2,c=3,d=4,e=5,f=6,e=5,f=6,c=3,d=4,a=1,b=2,c=3,d=4,a=1,b=2;e=5,f=6};
+   };
+
+   !! test_5_concatenate_mix_of_reference_foolish_and_searched_branes={
+   !!    b1={a=1,b=2,c=3};
+   !!    b2={e=4,f=5,g=6};
+   !!    c1 = {a=1,b=2,c=3} b2 ?test1.c;
+   !!    !! confirm=test_4.c1=={a=1,b=2,c=3,e=4,f=5,g=6,a=1,b=2,c=3,e=4,f=5,g=6};
+   !!    !! confirm=test_4.c2=={a=1,b=2,c=3,e=4,f=5,g=6,a=1,b=2,c=3,a=1,b=2,c=3,f=5,g=6,e=4,f=5,g=6};
+   !!    c2 = ?test2.c b1 test3.c2 {e=4,f=5,g=6};
+   !! };
+
+}

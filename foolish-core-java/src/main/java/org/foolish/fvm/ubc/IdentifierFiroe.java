@@ -50,6 +50,14 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
     }
 
     /**
+     * Gets the resolved FIR value for this identifier.
+     * Returns null if not yet resolved or if resolution failed.
+     */
+    public FIR getResolvedFir() {
+        return value;
+    }
+
+    /**
      * An identifier is Constanic if it hasn't been resolved yet or if its resolved value is Constanic.
      */
     @Override

@@ -26,6 +26,7 @@ public class Sequencer4Human extends Sequencer<String> {
     public String sequence(FIR fir, int depth) {
         return switch (fir) {
             case BraneFiroe brane -> sequenceBrane(brane, depth);
+            case ConcatenationFiroe concat -> sequenceConcatenation(concat, depth);
             case NKFiroe nk -> sequenceNK(nk, depth);
             case ValueFiroe value -> sequenceValue(value, depth);
             case BinaryFiroe binary -> sequenceBinary(binary, depth);
@@ -55,6 +56,20 @@ public class Sequencer4Human extends Sequencer<String> {
             sb.append(sequence(expr, depth + 1));
             sb.append(";\n");
         }
+
+        sb.append(indent(depth)).append("}");
+        return sb.toString();
+    }
+
+    protected String sequenceConcatenation(ConcatenationFiroe concat, int depth) {
+        // Concatenation is displayed as merged brane content
+        var sb = new StringBuilder();
+        sb.append(indent(depth)).append("{\n");
+
+        concat.stream().forEach(fir -> {
+            sb.append(sequence(fir, depth + 1));
+            sb.append(";\n");
+        });
 
         sb.append(indent(depth)).append("}");
         return sb.toString();
@@ -133,6 +148,18 @@ public class Sequencer4Human extends Sequencer<String> {
                     braneSeq = braneSeq.replace("\n" + nestedIndent, "\n" + parentIndent + padding + tabChar);
                     return indent(depth) + fullId + " = " + braneSeq;
                 }
+                if (unwrapped instanceof ConcatenationFiroe concat) {
+                    String concatSeq = sequenceConcatenation(concat, depth);
+                    String indent = indent(depth);
+                    if (concatSeq.startsWith(indent)) {
+                        concatSeq = concatSeq.substring(indent.length());
+                    }
+                    String padding = " ".repeat(fullId.length() + 3);
+                    String nestedIndent = indent(depth + 1);
+                    String parentIndent = indent(depth);
+                    concatSeq = concatSeq.replace("\n" + nestedIndent, "\n" + parentIndent + padding + tabChar);
+                    return indent(depth) + fullId + " = " + concatSeq;
+                }
                 if (unwrapped != null) {
                     try {
                         return indent(depth) + fullId + " = " + unwrapped.getValue();
@@ -155,7 +182,7 @@ public class Sequencer4Human extends Sequencer<String> {
     private FIR unwrap(FIR fir) {
         FIR current = fir;
         while (current != null) {
-            if (current instanceof BraneFiroe) {
+            if (current instanceof BraneFiroe || current instanceof ConcatenationFiroe) {
                 return current;
             }
 
@@ -189,7 +216,27 @@ public class Sequencer4Human extends Sequencer<String> {
             return indent(depth) + CC_STR;
         }
         if (!identifier.isNye()) {
-            return indent(depth) + identifier.getValue();
+            // If the identifier resolved to a brane or concatenation, sequence that
+            FIR resolved = identifier.getResolvedFir();
+            if (resolved instanceof BraneFiroe brane) {
+                return sequenceBrane(brane, depth);
+            }
+            if (resolved instanceof ConcatenationFiroe concat) {
+                return sequenceConcatenation(concat, depth);
+            }
+            // Unwrap through assignments to find the actual value
+            FIR unwrapped = unwrap(resolved);
+            if (unwrapped instanceof BraneFiroe brane) {
+                return sequenceBrane(brane, depth);
+            }
+            if (unwrapped instanceof ConcatenationFiroe concat) {
+                return sequenceConcatenation(concat, depth);
+            }
+            try {
+                return indent(depth) + identifier.getValue();
+            } catch (UnsupportedOperationException e) {
+                // Fall through to NK if getValue fails
+            }
         }
         return indent(depth) + NK_STR;
     }

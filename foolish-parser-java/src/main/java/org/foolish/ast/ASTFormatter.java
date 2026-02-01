@@ -26,12 +26,14 @@ public class ASTFormatter {
         return switch (ast) {
             case AST.Program program -> formatProgram(program, indentLevel);
             case AST.Branes branes -> formatBranes(branes, indentLevel);
+            case AST.Concatenation concatenation -> formatConcatenation(concatenation, indentLevel);
             case AST.Brane brane -> formatBrane(brane, indentLevel);
             case AST.SearchUP searchUp -> searchUp.toString();
             case AST.Assignment assignment -> formatAssignment(assignment, indentLevel);
             case AST.BinaryExpr binary -> formatBinaryExpr(binary, indentLevel);
             case AST.UnaryExpr unary -> formatUnaryExpr(unary, indentLevel);
             case AST.IfExpr ifExpr -> formatIfExpr(ifExpr, indentLevel);
+            case AST.DereferenceExpr deref -> formatDereferenceExpr(deref, indentLevel);
             case AST.Identifier identifier -> identifier.toString();
             case AST.IntegerLiteral literal -> literal.toString();
             case AST.UnknownExpr unknown -> unknown.toString();
@@ -49,6 +51,18 @@ public class ASTFormatter {
         for (AST.Characterizable brane : branes.branes()) {
             if (!first) sb.append("\n");
             sb.append(format(brane, indentLevel));
+            first = false;
+        }
+        return sb.toString();
+    }
+
+    private String formatConcatenation(AST.Concatenation concatenation, int indentLevel) {
+        // Format concatenation like Branes - each element on its own line
+        StringBuilder sb = new StringBuilder();
+        boolean first = true;
+        for (AST.Expr element : concatenation.elements()) {
+            if (!first) sb.append("\n");
+            sb.append(format(element, indentLevel));
             first = false;
         }
         return sb.toString();
@@ -103,5 +117,14 @@ public class ASTFormatter {
         }
 
         return sb.toString();
+    }
+
+    private String formatDereferenceExpr(AST.DereferenceExpr deref, int indentLevel) {
+        String anchorStr = format(deref.anchor(), indentLevel);
+        // For Branes/Concatenation anchors, put the .identifier on a new line
+        if (deref.anchor() instanceof AST.Branes || deref.anchor() instanceof AST.Concatenation) {
+            return anchorStr + "\n." + deref.coordinate();
+        }
+        return anchorStr + "." + deref.coordinate();
     }
 }

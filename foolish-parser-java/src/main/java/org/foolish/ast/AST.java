@@ -38,7 +38,7 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
         };
     }
 
-    sealed interface Expr extends AST permits Characterizable, BinaryExpr, UnaryExpr, Branes, IfExpr, UnknownExpr, Stmt, DereferenceExpr, RegexpSearchExpr, SeekExpr, OneShotSearchExpr, UnanchoredSeekExpr, StayFoolishExpr, StayFullyFoolishExpr {
+    sealed interface Expr extends AST permits Characterizable, BinaryExpr, UnaryExpr, Branes, Concatenation, IfExpr, UnknownExpr, Stmt, DereferenceExpr, RegexpSearchExpr, SeekExpr, OneShotSearchExpr, UnanchoredSeekExpr, StayFoolishExpr, StayFullyFoolishExpr {
 
     }
 
@@ -199,6 +199,30 @@ public sealed interface AST permits AST.Program, AST.Expr, AST.DetachmentStateme
 
         public int size() {
             return branes.size();
+        }
+    }
+
+    /**
+     * Concatenation of branes and/or expressions.
+     * Unlike Branes (which only contains actual brane ASTs), Concatenation can contain:
+     * - Branes (standard, detachment, or search-up)
+     * - Identifiers (references to branes)
+     * - Postfix expressions (e.g., x.a, x?pattern)
+     *
+     * Semantics: All elements are joined into a shared evaluation context.
+     * Later elements can reference identifiers from earlier elements.
+     */
+    record Concatenation(List<Expr> elements) implements Expr {
+        public String toString() {
+            StringBuilder sb = new StringBuilder();
+            for (Expr element : elements) {
+                sb.append(element).append("\n");
+            }
+            return sb.toString();
+        }
+
+        public int size() {
+            return elements.size();
         }
     }
 

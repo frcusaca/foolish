@@ -1,0 +1,135 @@
+!!INPUT!!
+{
+   !!! Foolish concatenation !!!
+   test_1={
+      c = {a=1,b=2,c=3}{e=4,f=5,g=6};
+   };
+   !! confirm=test_1.c=={a=1,b=2,c=3,e=4,f=5,g=6}
+
+
+   !!! Concatenation by reference !!!
+   test_2={
+      b1={a=1,b=2,c=3};
+      b2={e=4,f=5,g=6};
+      c = b1 b2;
+   };
+   !! confirm=test_2.c=={a=1,b=2,c=3,e=4,f=5,g=6}
+
+   !!! Concatenation mixing reference and Foolish !!!
+   test_3={
+      b1={a=1,b=2,c=3};
+      b2={e=4,f=5,g=6};
+      c1 = {a=1,b=2,c=3} b2;
+      c2 = b1 {e=4,f=5,g=6};
+   };
+   !! confirm=test_3.c1=={a=1,b=2,c=3,e=4,f=5,g=6}
+   !! confirm=test_3.c2=={a=1,b=2,c=3,e=4,f=5,g=6}
+
+
+   !!! Concatenation mixing reference, search and Foolish - TODO: needs unanchored search syntax !!!
+   !! test_4={
+   !!    b1={a=1,b=2,c=3};
+   !!    b2={e=4,f=5,g=6};
+   !!    c1 = {a=1,b=2,c=3} b2 ?test1.c;
+   !!    c2 = ?test2.c b1 test3.c2 {e=4,f=5,g=6};
+   !! };
+   !! confirm=test_4.c1=={a=1,b=2,c=3,e=4,f=5,g=6,a=1,b=2,c=3,e=4,f=5,g=6}
+   !! confirm=test_4.c2=={a=1,b=2,c=3,e=4,f=5,g=6,a=1,b=2,c=3,a=1,b=2,c=3,e=4,f=5,g=6,e=4,f=5,g=6};
+
+}
+
+!!!
+PARSED AST:
+{
+  testˍ1 = {
+    c = {
+      a = 1;
+      b = 2;
+      c = 3;
+    }
+{
+      e = 4;
+      f = 5;
+      g = 6;
+    };
+  };
+  testˍ2 = {
+    b1 = {
+      a = 1;
+      b = 2;
+      c = 3;
+    };
+    b2 = {
+      e = 4;
+      f = 5;
+      g = 6;
+    };
+    c = b1
+b2;
+  };
+  testˍ3 = {
+    b1 = {
+      a = 1;
+      b = 2;
+      c = 3;
+    };
+    b2 = {
+      e = 4;
+      f = 5;
+      g = 6;
+    };
+    c1 = {
+      a = 1;
+      b = 2;
+      c = 3;
+    }
+b2;
+    c2 = b1
+{
+      e = 4;
+      f = 5;
+      g = 6;
+    };
+  };
+}
+
+UBC EVALUATION:
+Steps taken: 162
+
+FINAL RESULT:
+{
+＿testˍ1 = {
+＿         ＿c = 0;
+＿};
+＿testˍ2 = {
+＿         ＿b1 = {
+＿         ＿     ＿a = 1;
+＿         ＿     ＿b = 2;
+＿         ＿     ＿c = 3;
+＿         ＿};
+＿         ＿b2 = {
+＿         ＿     ＿e = 4;
+＿         ＿     ＿f = 5;
+＿         ＿     ＿g = 6;
+＿         ＿};
+＿         ＿c = 0;
+＿};
+＿testˍ3 = {
+＿         ＿b1 = {
+＿         ＿     ＿a = 1;
+＿         ＿     ＿b = 2;
+＿         ＿     ＿c = 3;
+＿         ＿};
+＿         ＿b2 = {
+＿         ＿     ＿e = 4;
+＿         ＿     ＿f = 5;
+＿         ＿     ＿g = 6;
+＿         ＿};
+＿         ＿c1 = 0;
+＿         ＿c2 = 0;
+＿};
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!

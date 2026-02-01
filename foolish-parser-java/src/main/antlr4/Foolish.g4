@@ -80,7 +80,18 @@ assignment
 expr
     : addExpr
     | ifExpr
-    | branes
+    | concatenation
+    ;
+
+// Concatenation: sequence of branes and/or identifiers (whitespace separated on same line)
+// Examples: {a=1}{b=2}, b1 b2, {a=1} b2, b1 {b=2}
+concatenation
+    : concatenation_element ({isNextTokenOnSameLine()}? concatenation_element)+
+    ;
+
+concatenation_element
+    : brane
+    | postfixExpr
     ;
 
 addExpr : mulExpr ((PLUS | MINUS) mulExpr)* ;

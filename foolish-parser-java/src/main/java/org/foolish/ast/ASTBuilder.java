@@ -201,8 +201,30 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
     @Override
     public AST visitExpr(FoolishParser.ExprContext ctx) {
         if (ctx.ifExpr() != null) return visit(ctx.ifExpr());
-        if (ctx.branes() != null) return visit(ctx.branes());
+        if (ctx.concatenation() != null) return visit(ctx.concatenation());
         return visit(ctx.addExpr());
+    }
+
+    @Override
+    public AST visitConcatenation(FoolishParser.ConcatenationContext ctx) {
+        List<AST.Expr> elements = new ArrayList<>();
+        for (var element : ctx.concatenation_element()) {
+            AST ast = visit(element);
+            if (ast instanceof AST.Expr expr) {
+                elements.add(expr);
+            } else {
+                throw new RuntimeException("Expected expression in concatenation, got: " + ast);
+            }
+        }
+        return new AST.Concatenation(elements);
+    }
+
+    @Override
+    public AST visitConcatenation_element(FoolishParser.Concatenation_elementContext ctx) {
+        if (ctx.brane() != null) {
+            return visit(ctx.brane());
+        }
+        return visit(ctx.postfixExpr());
     }
 
     @Override
