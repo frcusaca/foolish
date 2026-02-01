@@ -53,7 +53,7 @@ You can also explicitly request Maven operations:
 → Claude uses: mvn test -Dtest=PaymentTest -DtrimStackTrace=false
 
 "We modified the ANTLR grammar, rebuild everything"
-→ Claude uses: mvn clean generate-sources -T 2C && mvn compile -T 2C
+→ Claude uses: mvn clean generate-sources -T 2C && mvn verify -DskipTests -T 2C
 ```
 
 ## Configuration
@@ -76,7 +76,7 @@ The skill uses sensible defaults:
 You can request different settings:
 ```
 "Build with 4 threads exactly"
-→ Claude uses: mvn compile -T 4
+→ Claude uses: mvn verify -DskipTests -T 4
 
 "Run tests with 8 threads"
 → Claude uses: mvn test -DthreadCount=8 -Dparallel=classes

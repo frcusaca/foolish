@@ -23,11 +23,11 @@ mvn clean compile -T 2C -DskipTests
 
 # Step 2: Fix compilation errors iteratively
 # Make fixes, then quick recompile (still skipping tests)
-mvn compile -T 1C -DskipTests
+mvn verify -DskipTests -T 1C -DskipTests
 
 # Step 3: Repeat step 2 until compilation succeeds
 # ...fix more issues...
-mvn compile -T 1C -DskipTests
+mvn verify -DskipTests -T 1C -DskipTests
 # [INFO] BUILD SUCCESS
 
 # Step 4: ONLY NOW run tests (compilation proven to work)
@@ -71,7 +71,7 @@ mvn clean compile -T 2C -DskipTests
 mvn clean generate-sources -T 2C
 
 # Step 2: Compile everything (Java/Scala + generated code)
-mvn compile -T 2C
+mvn verify -DskipTests -T 2C
 
 # Step 3: Run tests to verify grammar changes
 mvn test -Dparallel=classesAndMethods -DthreadCount=4
@@ -165,7 +165,7 @@ mvn test -Dtest=ValidationTest#testEmailValidation
 # Add emailValidation() method to Validator class
 
 # Step 4: Quick compile + single test
-mvn compile test -Dtest=ValidationTest#testEmailValidation
+mvn verify -Dtest=ValidationTest#testEmailValidation
 # Passes now
 
 # Step 5: Run all validation tests to ensure no regression
@@ -229,18 +229,18 @@ mvn clean compile -T 2C -DskipTests
 # Still fails but faster iteration - no time wasted on tests
 
 # Step 3: Identify all compilation errors
-mvn compile -T 2C -DskipTests 2>&1 | grep "ERROR" | sort -u
+mvn verify -T 2C -DskipTests 2>&1 | grep "ERROR" | sort -u
 # Shows affected files and error types
 
 # Step 4: Fix compilation errors iteratively
 # Edit files to fix import errors, method signatures, etc.
 
 # Step 5: Quick compile check after each batch of fixes
-mvn compile -T 1C -DskipTests
+mvn verify -DskipTests -T 1C -DskipTests
 # Fast feedback loop - under 30 seconds
 
 # Step 6: Once all compilation errors fixed
-mvn compile -T 1C -DskipTests
+mvn verify -DskipTests -T 1C -DskipTests
 # BUILD SUCCESS
 
 # Step 7: NOW run tests to verify behavior
@@ -285,14 +285,14 @@ mvn clean compile -T 2C -DskipTests
 # Errors in SerializationUtil.java - deprecated methods
 
 # Step 2: Identify all affected files
-mvn compile -T 2C -DskipTests 2>&1 | grep "error:"
+mvn verify -T 2C -DskipTests 2>&1 | grep "error:"
 # Shows 5 files with compilation errors
 
 # Step 3: Fix compilation errors
 # Update deprecated method calls to new API
 
 # Step 4: Incremental compile to verify fixes
-mvn compile -T 1C -DskipTests
+mvn verify -T 1C -DskipTests
 # BUILD SUCCESS - compilation fixed
 
 # Step 5: NOW run tests to catch runtime issues

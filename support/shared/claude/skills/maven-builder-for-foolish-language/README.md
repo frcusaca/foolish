@@ -59,12 +59,12 @@ mvn clean compile -T 2C -DskipTests
 ```bash
 # 1. Make code changes
 # 2. Incremental build + tests
-mvn compile -T 1C test -Dparallel=classes,methods -DthreadCount=4
+mvn verify -DskipTests -T 1C test -Dparallel=classes,methods -DthreadCount=4
 ```
 
 ### After ANTLR4 Changes
 ```bash
-mvn clean generate-sources -T 2C && mvn compile -T 2C -DskipTests
+mvn clean generate-sources -T 2C && mvn verify -DskipTests -T 2C -DskipTests
 # Then after verifying compilation:
 mvn test -Dparallel=classes,methods -DthreadCount=4
 ```

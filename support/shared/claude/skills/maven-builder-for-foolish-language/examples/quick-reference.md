@@ -8,9 +8,9 @@
 |------|---------|-------------|
 | Clean parallel build | `mvn clean compile -T 2C` | Fresh start, major changes |
 | **Compilation debugging** | `mvn clean compile -T 2C -DskipTests` | **Fixing compilation errors - skip tests!** |
-| Incremental build | `mvn compile -T 1C` | Routine development |
+| Incremental build | `mvn verify -DskipTests -T 1C` | Routine development |
 | Generate sources | `mvn generate-sources -T 2C` | ANTLR4, protobuf changes |
-| Skip tests | `mvn compile -T 2C -DskipTests` | Quick build verification |
+| Skip tests | `mvn verify -DskipTests -T 2C -DskipTests` | Quick build verification |
 
 ### Test Commands
 
@@ -31,7 +31,7 @@
 | Full clean + test | `mvn clean test -T 2C -Dparallel=classes,methods -DthreadCount=4` | Before commits |
 | Verify (with IT) | `mvn clean verify -T 2C -Dparallel=classes,methods -DthreadCount=4` | Complete validation |
 | Debug build | `mvn clean compile test -Dtest=MyTest -X > debug.log 2>&1` | Deep debugging |
-| **Compile then test** | `mvn compile -T 2C -DskipTests && mvn test -Dparallel=classes,methods` | **After fixing compilation** |
+| **Compile then test** | `mvn verify -DskipTests -T 2C -DskipTests && mvn test -Dparallel=classes,methods` | **After fixing compilation** |
 
 ## Flag Reference
 
@@ -100,14 +100,14 @@ What changed?
 ├── Compilation errors
 │   └── mvn clean compile -T 2C -DskipTests (FIX COMPILATION FIRST!)
 ├── ANTLR4 grammar (.g4)
-│   └── mvn clean generate-sources -T 2C && mvn compile -T 2C -DskipTests
+│   └── mvn clean generate-sources -T 2C && mvn verify -DskipTests -T 2C -DskipTests
 │       (then: mvn test -Dparallel=classes,methods -DthreadCount=4)
 ├── Dependencies in pom.xml
 │   └── mvn clean compile -T 2C -DskipTests (verify compilation first)
 ├── Major refactoring
 │   └── mvn clean compile -T 2C
 └── Normal code edits
-    └── mvn compile -T 1C
+    └── mvn verify -DskipTests -T 1C
 ```
 
 ### Which Test Command?
@@ -151,7 +151,7 @@ What's the goal?
 mvn clean compile -T 2C -DskipTests
 
 # Quick iteration while fixing errors
-mvn compile -T 1C -DskipTests
+mvn verify -DskipTests -T 1C -DskipTests
 
 # After compilation succeeds, run tests
 mvn test -Dparallel=classes,methods -DthreadCount=4
@@ -160,7 +160,7 @@ mvn test -Dparallel=classes,methods -DthreadCount=4
 ### After Changing ANTLR4 Grammar
 ```bash
 mvn clean generate-sources -T 2C
-mvn compile -T 2C
+mvn verify -DskipTests -T 2C
 mvn test -Dparallel=classes,methods -DthreadCount=4
 ```
 

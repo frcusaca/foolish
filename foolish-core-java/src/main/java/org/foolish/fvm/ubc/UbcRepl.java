@@ -24,7 +24,7 @@ import java.io.InputStreamReader;
  *
  * <p>Or compile and run:
  * <pre>
- * mvn compile
+ * mvn verify -DskipTests
  * java -cp target/classes:target/dependency/* org.foolish.fvm.ubc.UbcRepl
  * </pre>
  *

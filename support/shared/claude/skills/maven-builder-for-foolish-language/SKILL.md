@@ -55,7 +55,7 @@ mvn clean compile -T $(($(nproc) * 2)) -DskipTests
 
 For incremental compilation debugging:
 ```bash
-mvn compile -DskipTests
+mvn verify -DskipTests -DskipTests
 ```
 
 #### Compilation Debugging (Skip Tests)
@@ -71,7 +71,7 @@ mvn clean compile -T $(($(nproc) * 2)) -DskipTests
 #### Incremental Build
 For routine compilation after code changes:
 ```bash
-mvn compile -T $(nproc)
+mvn verify -DskipTests -T $(nproc)
 ```
 - **When to use**: Normal development cycle with isolated changes
 - **Parallel strategy**: 1 thread per core (conservative, dynamically calculated)
@@ -83,7 +83,7 @@ mvn generate-sources -T $(($(nproc) * 2))
 ```
 - **When to use**: Changes to ANTLR4 grammars, protobuf definitions, or other code generators
 - **Parallel strategy**: 2 threads per core (dynamically calculated)
-- **Follow-up**: Usually requires `mvn compile -T $(($(nproc) * 2))` afterward
+- **Follow-up**: Usually requires `mvn verify -DskipTests -T $(($(nproc) * 2))` afterward
 
 ### 2. Test Execution Modes
 
@@ -452,7 +452,7 @@ Check that `<configuration>` includes parallel compilation:
 mvn clean compile -T $(($(nproc) * 2)) -DskipTests
 
 # Step 2: Fix compilation errors iteratively
-mvn compile -T $(nproc) -DskipTests
+mvn verify -DskipTests -T $(nproc) -DskipTests
 
 # Step 3: Only after compilation succeeds, run tests
 mvn test -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
@@ -534,14 +534,14 @@ Code Change Type:
 │   └── mvn clean compile -T $(($(nproc) * 2)) -DskipTests (focus on fixing compilation first)
 │
 ├── ANTLR4 grammar (.g4 files)
-│   └── mvn clean generate-sources -T $(($(nproc) * 2)) && mvn compile -T $(($(nproc) * 2)) -DskipTests
+│   └── mvn clean generate-sources -T $(($(nproc) * 2)) && mvn verify -DskipTests -T $(($(nproc) * 2)) -DskipTests
 │       (then after compilation verified: mvn test -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4)))
 │
 ├── Major refactoring / dependency changes
 │   └── mvn clean compile -T $(($(nproc) * 2)) test -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 │
 ├── Normal code changes (Java/Scala)
-│   └── mvn compile -T $(nproc) test -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
+│   └── mvn verify -DskipTests -T $(nproc) test -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 │
 ├── Only tests changed
 │   └── mvn test -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
@@ -575,7 +575,7 @@ mvn clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$
 
 # Re-generate sources (ANTLR4, etc.) - skip tests until compilation verified
 mvn clean generate-sources -T $(($(nproc) * 2))
-mvn compile -T $(($(nproc) * 2)) -DskipTests
+mvn verify -DskipTests -T $(($(nproc) * 2)) -DskipTests
 
 # Run specific test verbosely
 mvn test -Dtest=MyTest -DtrimStackTrace=false
