@@ -179,12 +179,17 @@ RBRACK : ']' ;
 SEMI : ';' ;
 COMMA : ',' ;
 
+
 BLOCK_COMMENT
-    : '!!!' .*? '!!!' -> skip
+    : '!!!' .*? '!!!' -> channel(2)
     ;
 
 LINE_COMMENT
     : '!!' ~[\r\n]*
+    ;
+
+SHEBANG
+    : '#!' ~[\r\n]* -> channel(2)
     ;
 
 
