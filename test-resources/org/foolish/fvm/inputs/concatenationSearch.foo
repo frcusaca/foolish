@@ -4,10 +4,10 @@
              a=1;
              message=2;
              only=1;
-      }
+      };
       OB2={
           which_1 = #-1 + 1;
-      }
+      };
       OB = OB1 OB2;
       !! confirm = OB$ == 2;
    }
@@ -27,25 +27,25 @@
                   cccc=33;
                };
             };
-            OBB={ oops = 1/0;}
+            OBB={ oops = 1/0;};
             OBB={
                OBC3={
                   aaa=111;
                   bbb=222;
                   ccc=333;
-               }
+               };
                OBC4={
                   aaaa=1111;
                   bbbb=2222;
                   cccc=3333;
-               }
-            }
-         }
+               };
+            };
+         };
          work = {
             start = ?OBB;
-            find_2 = start#-2
+            find_2 = start#-2;
             r=find_2~c* *3;
-         }
+         };
 
          r =$ OB1 work
       }
