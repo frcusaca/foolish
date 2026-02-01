@@ -8,6 +8,18 @@ grammar Foolish;
         int indexDiff = curr.getTokenIndex() - prev.getTokenIndex();
         return indexDiff == 1;
     }
+
+    private boolean hasTrailingBlockComment() {
+        Token prev = _input.LT(-1);
+        if (prev == null) return false;
+        int i = prev.getTokenIndex();
+        java.util.List<Token> hidden = ((org.antlr.v4.runtime.CommonTokenStream)_input).getHiddenTokensToRight(i);
+        if (hidden == null) return false;
+        for (Token t : hidden) {
+             if (t.getType() == BLOCK_COMMENT) return true;
+        }
+        return false;
+    }
 }
 
 program : branes EOF ;
@@ -44,7 +56,7 @@ detach_brane
     ;
 
 detach_stmt_list
-    : detach_stmt ((SEMI | COMMA) LINE_COMMENT? detach_stmt)* ((SEMI | COMMA) LINE_COMMENT?)?
+    : detach_stmt ((SEMI | COMMA) LINE_COMMENT? detach_stmt | {hasTrailingBlockComment()}? detach_stmt)* ((SEMI | COMMA) LINE_COMMENT? | {hasTrailingBlockComment()}?)?
     ;
 
 detach_stmt
@@ -59,7 +71,9 @@ stmt_body
     ;
 
 stmt
-    : stmt_body ((SEMI | COMMA) LINE_COMMENT? | LINE_COMMENT)
+    : stmt_body (SEMI | COMMA) LINE_COMMENT?
+    | stmt_body LINE_COMMENT
+    | stmt_body {hasTrailingBlockComment()}?
     | LINE_COMMENT
     ;
 assignment
@@ -180,7 +194,7 @@ SEMI : ';' ;
 COMMA : ',' ;
 
 BLOCK_COMMENT
-    : '!!!' .*? '!!!' -> skip
+    : '!!!' .*? '!!!' -> channel(HIDDEN)
     ;
 
 LINE_COMMENT
