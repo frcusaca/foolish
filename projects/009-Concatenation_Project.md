@@ -172,6 +172,68 @@ The following cleanup work (from the plan) enables safe ConcatenationFiroe imple
 { OB = {x=1}{y=2}{z=x+y}; result = OB$.z }  !! result==3
 ```
 
+## ExecutionFir Design
+
+### Problem Summary
+
+**Issue 1: Rendering**
+Concatenation output should show flat brane contents when fully evaluated, or `{...}{...}` format when not. Currently showing nested structures incorrectly.
+
+**Issue 2: Stepping**
+`pendingFirs` doesn't use proper breadth-first stepping. Need coordinated stepping of multiple FIRs to specific milestones.
+
+### Design: ExecutionFir
+
+A new reusable `FiroeWithBraneMind` that coordinates stepping multiple FIRs to target states.
+
+#### API Concept
+
+```java
+ExecutionFir.of(fir1, fir2, fir3)
+    .setParent(false)           // don't re-parent these FIRs to ExecutionFir
+    .stepUntil(Nyes.PRIMED)     // target state for all FIRs
+    .onComplete(firs -> {...})  // callback when all reach target
+    .onStuck(firs -> {...})     // callback if any stuck at CONSTANIC < target
+```
+
+#### Use Cases
+
+1. **Concatenation Stage A**: Step identifiers/searches to PRIMED without re-parenting
+2. **Concatenation Stage C**: Step joined branes after re-parenting
+3. **Future patterns**: Any coordinated multi-FIR stepping
+
+#### ExecutionFir Behavior
+
+- Maintains list of FIRs to step
+- Each `step()` call steps one FIR from its internal queue (breadth-first)
+- Removes FIR from queue when it reaches target state (or beyond)
+- Tracks completion: all reached target vs some stuck at CONSTANIC
+- Reports final status for caller to decide next action
+
+#### State Transitions
+
+```
+ExecutionFir states:
+- EVALUATING: Still stepping FIRs toward target
+- CONSTANT: All FIRs reached target state → success
+- CONSTANIC: Some FIRs stuck at CONSTANIC before target → caller decides
+```
+
+### Rendering Decision
+
+Rendering depends on Nyes state:
+- If concatenation is fully evaluated (CONSTANT), render as flat brane contents from braneMemory
+- If not fully evaluated, render as `{...} {...}` with single-space separators to show proximity
+
+The single-space separator is critical - it visually reinforces that elements are associated in a concatenation, showing their proximity in the source code.
+
+### Re-parenting Control
+
+The `setParent(false)` option is important:
+- During Stage A, we step identifiers/searches to PRIMED but don't want to re-parent them
+- They retain their original parent relationships for proper identifier resolution
+- After the join (Stage B), the cloned branes ARE re-parented to the concatenation
+
 ## Future Considerations
 
 - **P-branes with concatenation**: How does `[+a]{b=a}` interact with concatenation?
@@ -183,5 +245,5 @@ The following cleanup work (from the plan) enables safe ConcatenationFiroe imple
 ## Last Updated
 
 **Date**: 2026-02-01
-**Updated By**: Claude Code v1.0.0 / claude-sonnet-4-5-20250929
-**Changes**: Added LhsSearchable concept - branes become searchable when they reach PRIMED state. Clarified that isLhsSearchable() is equivalent to isPrimed() for this implementation, with future iterations potentially refining this. Updated stage descriptions to show LhsSearchable status at each stage.
+**Updated By**: Claude Code v1.0.0 / claude-opus-4-5-20251101
+**Changes**: Added ExecutionFir Design section documenting the new coordinated FIR stepping utility. Includes problem summary (rendering and stepping issues), API concept with builder pattern, use cases, behavior description, state transitions, rendering decisions (flat brane vs `{...}{...}` format), and re-parenting control explanation.
