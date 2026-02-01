@@ -13,6 +13,34 @@ package org.foolish.fvm.ubc;
  * CONSTANIC (say "CON-STAN-NICK") represents a state where evaluation has paused due to missing information (e.g. unbound identifiers),
  * but could resume in a different context. CONSTANt IN Context - "Stay Foolish" state.
  * CONSTANT represents a fully evaluated, immutable state (Result or Error).
+ * <p>
+ * <b>STATE CHECKING CONVENTIONS ("at" vs "is"):</b>
+ * <p>
+ * Two conventions exist for checking states in {@link FIR}:
+ * <ul>
+ *   <li><b>"at" methods</b> - EXACT state match only
+ *     <ul>
+ *       <li>{@code atConstanic()}: true ONLY when {@code nyes == CONSTANIC}</li>
+ *       <li>{@code atConstant()}: true ONLY when {@code nyes == CONSTANT}</li>
+ *     </ul>
+ *   </li>
+ *   <li><b>"is" methods</b> - AT LEAST that state (includes higher states)
+ *     <ul>
+ *       <li>{@code isConstanic()}: true when {@code nyes >= CONSTANIC} (i.e., CONSTANIC OR CONSTANT)</li>
+ *       <li>{@code isConstant()}: true when {@code nyes >= CONSTANT}</li>
+ *     </ul>
+ *   </li>
+ * </ul>
+ * <p>
+ * <b>DECISION GUIDE:</b>
+ * <ul>
+ *   <li>Need to distinguish CONSTANIC from CONSTANT? → Use {@code atConstanic()} and {@code atConstant()}</li>
+ *   <li>Checking if FIR is done evaluating (either state acceptable)? → Use {@code isConstanic()}</li>
+ *   <li>Checking if FIR is fully resolved? → Use {@code isConstant()}</li>
+ * </ul>
+ * <p>
+ * Example: CMFir Phase A decision uses {@code atConstanic()} to detect when to start Phase B,
+ * while cloneConstanic precondition uses {@code isConstanic()} since both states are valid.
  */
 public enum Nyes {
     /**

@@ -8,10 +8,42 @@ import org.foolish.ast.SearchOperator;
  * The FIR is the internal representation of computation that holds an AST
  * and tracks evaluation progress.
  * <p>
- * <b>IMMUTABILITY CONTRACT:</b>
+ * <b>=== CONSTRAINTS ===</b>
+ * <p>
+ * <b>C1: IMMUTABILITY AFTER CONSTANIC</b><br>
  * Once a FIR reaches isConstanic() (CONSTANIC or CONSTANT state), it becomes
  * immutable. No fields may be modified after this point. Any attempt to change
  * state will throw IllegalStateException.
+ * <p>
+ * <b>C2: CONSTANT TREE INVARIANT</b><br>
+ * A CONSTANT FIR never has non-CONSTANT descendants.
+ * If a FIR is CONSTANT, ALL children are also CONSTANT.
+ * Verified: CONSTANT FIRs can be shared without cloning.
+ * Implication: cloneConstanic() returns {@code this} for CONSTANT FIRs.
+ * <p>
+ * <b>C3: CONSTANIC VALUE STABILITY</b><br>
+ * A CONSTANIC FIR's value can only change due to coordination (re-evaluation
+ * in a new context via CMFir or ConcatenationFiroe).
+ * CONSTANIC branes' CONSTANT members remain accessible via search/getValue.
+ * Only non-CONSTANT members may resolve differently in new context.
+ * <p>
+ * <b>C4: PARENT CHAIN INTEGRITY</b><br>
+ * parentFir must not be reassigned after initial setup (enqueue or cloning)
+ * except during context manipulation (CMFir.startPhaseB, ConcatenationFiroe.Stage B).
+ * <p>
+ * <b>=== PRE/POST CONDITIONS ===</b>
+ * <p>
+ * <b>step():</b><br>
+ * PRE: isNye() == true OR no-op<br>
+ * POST: State advances or remains same; never regresses
+ * <p>
+ * <b>getValue():</b><br>
+ * PRE: isConstant() == true (or throws)<br>
+ * POST: Returns numeric value; never modifies state
+ * <p>
+ * <b>cloneConstanic():</b><br>
+ * PRE: isConstanic() == true<br>
+ * POST: Returns {@code this} if CONSTANT; returns clone with updated parent if CONSTANIC
  * <p>
  * To create variations of CONSTANIC FIRs, use the copy() method which creates
  * new instances with different target states.
@@ -349,10 +381,27 @@ public abstract class FIR implements Cloneable {
         return parentFir;
     }
 
+    /**
+     * Returns true if state is EXACTLY CONSTANT.
+     * Use when you need to distinguish CONSTANT from CONSTANIC.
+     * <p>
+     * "at Constant" means the FIR is at the CONSTANT state specifically.
+     * @see #isConstant() for "at least CONSTANT" check
+     */
     public boolean atConstant() {
         return getNyes() == Nyes.CONSTANT;
     }
 
+    /**
+     * Returns true if state is EXACTLY CONSTANIC.
+     * Use when you need to distinguish CONSTANIC from CONSTANT.
+     * <p>
+     * "at Constanic" means the FIR is at the CONSTANIC state specifically,
+     * not yet fully resolved but done stepping in current context.
+     * <p>
+     * Example: CMFir Phase A uses this to detect when to start Phase B.
+     * @see #isConstanic() for "at least CONSTANIC" check
+     */
     public boolean atConstanic() {
         return getNyes() == Nyes.CONSTANIC;
     }
@@ -381,17 +430,28 @@ public abstract class FIR implements Cloneable {
     }
 
     /**
-     * Returns true if the state is CONSTANIC or later (CONSTANT).
-     * Something that is CONSTANT is also Constanic.
+     * Returns true if the state is CONSTANIC or higher (CONSTANIC OR CONSTANT).
+     * "is Constanic" means the FIR has reached at least the CONSTANIC state.
+     * <p>
+     * Use when checking "is this FIR done with stepping?" regardless of
+     * whether it reached full resolution or paused at constanic.
+     * <p>
+     * Example: cloneConstanic() precondition uses this since both states are valid.
      * Uses getNyes() to support subclass overrides (e.g., CMFir).
+     * @see #atConstanic() for exact CONSTANIC check
      */
     public boolean isConstanic() {
         return getNyes().ordinal() >= Nyes.CONSTANIC.ordinal();
     }
 
     /**
-     * Returns true if the state is CONSTANT or later (which is just CONSTANT).
+     * Returns true if the state is CONSTANT or higher (currently just CONSTANT).
+     * "is Constant" means the FIR is fully resolved.
+     * <p>
+     * Use when checking "is this FIR fully resolved?" - no context change
+     * will affect its value.
      * Uses getNyes() to support subclass overrides (e.g., CMFir).
+     * @see #atConstant() for exact CONSTANT check
      */
     public boolean isConstant() {
         return getNyes().ordinal() >= Nyes.CONSTANT.ordinal();

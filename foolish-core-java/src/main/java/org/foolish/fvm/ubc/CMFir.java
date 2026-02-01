@@ -8,14 +8,37 @@ import org.foolish.ast.AST;
  * before making a copy of it as o2 and continuing to evaluate o2 in the new context.
  * <p>
  * CMFir operates in two phases:
- * - Phase A: Evaluate wrapped FIR (o) until it reaches CONSTANIC or CONSTANT
- * - Phase B: If o is CONSTANIC, clone it and re-evaluate in current brane's context
+ * <ul>
+ *   <li><b>Phase A:</b> Evaluate wrapped FIR (o) until it reaches CONSTANIC or CONSTANT</li>
+ *   <li><b>Phase B:</b> If o is CONSTANIC, clone it and re-evaluate in current brane's context</li>
+ * </ul>
  * <p>
  * <b>Nested CMFir Wrapping:</b> When a CMFir wraps another CMFir as its object,
  * the current implementation directly wraps the inner CMFir without optimization.
  * This creates multiple levels of indirection (CMFir(CMFir(CMFir(...)))).
  * Future optimization could potentially flatten these nested CMFirs to reduce
  * indirection levels, but for now the straightforward approach is used.
+ * <p>
+ * <b>=== CONSTRAINTS ===</b>
+ * <p>
+ * <b>C9: PHASE TRANSITION TRIGGER</b><br>
+ * Phase B starts ONLY when {@code o.atConstanic()} is true (exact CONSTANIC state).
+ * If o reaches CONSTANT directly without being CONSTANIC first, no Phase B occurs.
+ * Use {@code atConstanic()} not {@code isConstanic()} for this check.
+ * <p>
+ * <b>C10: PARENT CHAIN UPDATE</b><br>
+ * During Phase B, the cloned FIR's braneMemory parent is updated to point to
+ * CMFir's containing brane's memory. This enables identifier resolution in the new context.
+ * This is one of the legitimate cases where parent chain is modified after initial setup.
+ * <p>
+ * <b>C11: STATE DELEGATION</b><br>
+ * CMFir's state methods ({@link #getNyes()}, {@link #atConstant()}, {@link #atConstanic()},
+ * {@link #isNye()}, {@link #isConstanic()}) delegate to the active inner FIR:
+ * <ul>
+ *   <li>Before Phase B: delegates to {@code o}</li>
+ *   <li>During Phase B: delegates to {@code o2}</li>
+ * </ul>
+ * This ensures CMFir transparently reflects the state of its wrapped FIR.
  */
 public class CMFir extends FiroeWithoutBraneMind {
     protected FIR o;

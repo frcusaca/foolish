@@ -1,3 +1,7 @@
+**NOTE:** See `projects/009-Concatenation_Project.md` for brane concatenation design, which builds on this detachment work.
+
+---
+
 This is the project notes for detachment brane. It might be slightly out of order and self conflicting. Please point out problems as we progress through. At the top here, I will include the best project progression I can come up with. Let's iterate a bit on how to prceded before doing these one at at time in separate PR's.
 
   - [x] Update the English description and examples befitting the docs/*.md files.

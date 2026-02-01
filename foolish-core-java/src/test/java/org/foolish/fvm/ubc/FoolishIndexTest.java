@@ -19,7 +19,7 @@ public class FoolishIndexTest {
                 .append(2)
                 .prepend(0)
                 .build();
-        assertEquals("[0,1,2]", index.toString());
+        assertEquals("[0#1#2]", index.toString());  // Default separator is '#'
         assertEquals(List.of(0, 1, 2), index.getIndices());
     }
 
@@ -59,25 +59,25 @@ public class FoolishIndexTest {
         // grandChildBrane contains stmt3
         grandChildBrane.enqueueFirs(stmt3);
 
-        // Assertions
+        // Assertions (using '#' separator - seek-like path from root)
 
         // Root: [0]
         assertEquals("[0]", root.getMyIndex().toString());
 
-        // ChildBrane: [0, 0] (Root(0) -> childBrane(0))
-        assertEquals("[0,0]", childBrane.getMyIndex().toString());
+        // ChildBrane: [0#0] (Root(0) -> childBrane(0))
+        assertEquals("[0#0]", childBrane.getMyIndex().toString());
 
-        // stmt1: [0, 0, 0] (Root(0) -> childBrane(0) -> stmt1(0))
-        assertEquals("[0,0,0]", stmt1.getMyIndex().toString());
+        // stmt1: [0#0#0] (Root(0) -> childBrane(0) -> stmt1(0))
+        assertEquals("[0#0#0]", stmt1.getMyIndex().toString());
 
-        // stmt2: [0, 0, 1] (Root(0) -> childBrane(0) -> stmt2(1))
-        assertEquals("[0,0,1]", stmt2.getMyIndex().toString());
+        // stmt2: [0#0#1] (Root(0) -> childBrane(0) -> stmt2(1))
+        assertEquals("[0#0#1]", stmt2.getMyIndex().toString());
 
-        // grandChildBrane: [0, 0, 2]
-        assertEquals("[0,0,2]", grandChildBrane.getMyIndex().toString());
+        // grandChildBrane: [0#0#2]
+        assertEquals("[0#0#2]", grandChildBrane.getMyIndex().toString());
 
-        // stmt3: [0, 0, 2, 0]
-        assertEquals("[0,0,2,0]", stmt3.getMyIndex().toString());
+        // stmt3: [0#0#2#0]
+        assertEquals("[0#0#2#0]", stmt3.getMyIndex().toString());
     }
 
     @Test
@@ -117,13 +117,13 @@ public class FoolishIndexTest {
         FIR childExpr = new ValueFiroe(null, 1);
         exprParent.enqueueFirs(childExpr);
 
-        // exprParent index: [0, 1] (root has assignment at 0, exprParent at 1)
-        assertEquals("[0,1]", exprParent.getMyIndex().toString());
+        // exprParent index: [0#1] (root has assignment at 0, exprParent at 1)
+        assertEquals("[0#1]", exprParent.getMyIndex().toString());
 
-        // childExpr should share the same statement index [0, 1]
+        // childExpr should share the same statement index [0#1]
         // Because childExpr.getMyBraneIndex() calls parentFir.getMyBraneIndex().
         // parentFir is exprParent.
         // exprParent is in root (BraneFiroe). So it returns its index in root.
-        assertEquals("[0,1]", childExpr.getMyIndex().toString());
+        assertEquals("[0#1]", childExpr.getMyIndex().toString());
     }
 }

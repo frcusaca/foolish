@@ -13,11 +13,39 @@ import java.util.IdentityHashMap;
  * The braneMind enables breadth-first execution of nested expressions.
  * <p>
  * This class centrally manages the braneMind queue operations:
- * - Enqueuing sub-FIRs that need evaluation
- * - Stepping through NYE (Not Yet Evaluated) FIRs
- * - Dequeuing FIRs when they complete evaluation
+ * <ul>
+ *   <li>Enqueuing sub-FIRs that need evaluation</li>
+ *   <li>Stepping through NYE (Not Yet Evaluated) FIRs</li>
+ *   <li>Dequeuing FIRs when they complete evaluation</li>
+ * </ul>
  * <p>
  * Derived classes must implement initialize() and should override step() and isNye() for their specific logic.
+ * <p>
+ * <b>=== CONSTRAINTS ===</b>
+ * <p>
+ * <b>C5: PRIMED STATE SEPARATION</b><br>
+ * When a FIR reaches isConstanic() (CONSTANIC or CONSTANT), braneMind MUST be empty.
+ * This is critical for {@link #cloneConstanic(FIR, java.util.Optional)} which assumes empty braneMind.
+ * The PRIMED state exists specifically to ensure this invariant.
+ * <p>
+ * <b>C6: BRANEMIND WORK QUEUE INVARIANT</b><br>
+ * braneMind only contains NYE FIRs (FIRs with {@code isNye() == true}).
+ * Once a FIR is {@code !isNye()}, it is removed from braneMind (stays in braneMemory).
+ * <p>
+ * <b>C7: BRANEMEMORY PERSISTENCE</b><br>
+ * braneMemory is append-only during normal operation.
+ * Items are never removed from braneMemory during evaluation.
+ * <p>
+ * <b>C8: ORDINATION REQUIREMENT</b><br>
+ * Before braneMemory can resolve identifiers from parent context,
+ * {@link #ordinateToParentBraneMind(FiroeWithBraneMind, int)} must be called exactly once.
+ * The {@code ordinated} flag tracks this.
+ * <p>
+ * <b>=== FIELD ACCESS ===</b>
+ * <p>
+ * The braneMind and braneMemory fields are protected for subclass access.
+ * For external diagnostic access, use {@link #getBraneMemory()}.
+ * Future work (Phase 6) will add controlled accessor methods.
  */
 public abstract class FiroeWithBraneMind extends FIR {
     protected final LinkedList<FIR> braneMind;
@@ -390,6 +418,19 @@ public abstract class FiroeWithBraneMind extends FIR {
      */
     public int getStatementIndex(FIR fir) {
         return braneMemory.getStatementIndex(fir);
+    }
+
+    /**
+     * Gets the BraneMemory for read-only access.
+     * Used by AlarmSystem and other diagnostic tools.
+     * <p>
+     * NOTE: This is a preliminary accessor. Phase 6 will add more
+     * controlled accessor methods for specific operations.
+     *
+     * @return the braneMemory (never null)
+     */
+    public BraneMemory getBraneMemory() {
+        return braneMemory;
     }
 
     @Override
