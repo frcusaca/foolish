@@ -5,7 +5,7 @@
     hello = 6;
     r =$ f;
     !! confirm= r == 12;
-  }
+  };
 
   test_2_SFMarked_identifier={
     f = { r=hello*2; }
@@ -14,7 +14,7 @@
     hello = 6;
     r =$ g;
     !! confirm= r == 12;
-  }
+  };
 
   test_2_SFMarked_subbrane={
     f = { r=hello*2; }
@@ -23,7 +23,7 @@
     hello = 6;
     r =$ g;
     !! confirm= r == 10;
-  }
+  };
 
   test_2_SFMarked_subbrane={
     f = { r=hello*2; }
@@ -37,6 +37,6 @@
     hello = 6;
     r =$ g.r;         !! g.r looks for f, finds outter f, looks for hello finds 6
     !! confirm= r == 12;
-  }
+  };
   
 }
