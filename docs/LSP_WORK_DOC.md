@@ -41,7 +41,7 @@ This document captures the working plan for building a Java-based Language Serve
 
 ## Development notes
 
-> **Build alignment:** Keep every toolchain Maven-first (server, CLI launcher, VS Code assets, IntelliJ plugin). Run the normal `mvn install` at repo root to publish the latest `org.foolish:foolish` snapshot locally. The LSP module is now part of the root Maven reactor, so a standard `mvn verify` or `mvn install` from the repo root will build and test both the core and `foolish-lsp-java`. Avoid introducing Gradle just for plugin packaging.
+> **Build alignment:** Keep every toolchain Maven-first (server, CLI launcher, VS Code assets, IntelliJ plugin). Run the normal `mvn verify` at repo root to publish the latest `org.foolish:foolish` snapshot locally. The LSP module is now part of the root Maven reactor, so a standard `mvn verify` from the repo root will build and test both the core and `foolish-lsp-java`. Avoid introducing Gradle just for plugin packaging.
 
 ### Building the LSP server
 1. Add a Maven module `foolish-lsp-java` with dependencies on the core runtime, AST, and ANTLR artifacts already defined in the root `pom.xml`. **Status:** ✅ done – see `foolish-lsp-java/pom.xml`.
@@ -50,7 +50,7 @@ This document captures the working plan for building a Java-based Language Serve
    - `maven-compiler-plugin` targeting Java 21 (aligned with the repo).
    - `maven-shade-plugin` to produce a standalone `foolish-lsp-java.jar`.
 4. Build flow:
-   - Run `mvn verify` (or `mvn install`) at the repo root to build/tests both modules and shade the server. Locate the artifact under `foolish-lsp-java/target/`.
+   - Run `mvn verify` at the repo root to build/tests both modules and shade the server. Locate the artifact under `foolish-lsp-java/target/`.
 
 ### Loading into VS Code for testing
 1. Scaffold a VS Code extension (TypeScript) using `yo code` or manual setup.

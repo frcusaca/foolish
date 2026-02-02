@@ -43,7 +43,7 @@ mvn test -Dparallel=classesAndMethods -DthreadCount=4
 **Common mistake example**:
 ```bash
 # Mistake: Trying to compile and test in one step when code is broken
-mvn clean install -T 2C
+mvn clean verify -T 2C
 # Result: 
 #   - Compilation fails on multiple files
 #   - Maven tries to run tests anyway (fails)
@@ -260,7 +260,7 @@ mvn clean test -T 2C -Dparallel=classesAndMethods -DthreadCount=4
 **Mistake to Avoid**:
 ```bash
 # DON'T DO THIS when you have compilation errors:
-mvn clean install -T 2C
+mvn clean verify -T 2C
 # Wastes time trying to run tests that can't possibly work
 ```
 
