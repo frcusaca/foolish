@@ -11,17 +11,18 @@ import java.util.Optional;
  * ConcatenationFiroe combines multiple branes/expressions into a single evaluation context.
  * <p>
  * Semantics:
- * - Each element is first evaluated to constanic in its original context
+ * - Each element is first evaluated to PRIMED in its original context
  * - Then all elements are cloned and re-parented into this concatenation's braneMemory
  * - Later elements can resolve identifiers from earlier elements
  * <p>
  * Stage A: UNINITIALIZED → INITIALIZED → CHECKED
- *   - Create FIRs from source elements, store in pendingFirs (not braneMemory)
- *   - Step all pendingFirs until each isConstanic()
+ *   - Create FIRs from source elements
+ *   - Use ExecutionFir to step all FIRs to PRIMED state (breadth-first)
+ *   - FIRs retain their original parents during this stage
  *   - LHS searches are blocked during this stage
  * <p>
  * Stage B: CHECKED → PRIMED
- *   - Clone and re-parent all pendingFirs into braneMemory
+ *   - Clone and re-parent all source FIRs into braneMemory
  *   - Brane becomes LhsSearchable at end of this stage
  * <p>
  * Stage C: PRIMED → EVALUATING → CONSTANT
@@ -32,13 +33,13 @@ import java.util.Optional;
 public class ConcatenationFiroe extends FiroeWithBraneMind {
 
     private final List<AST.Expr> sourceElements;  // Original element ASTs
-    private final List<FIR> pendingFirs;          // FIRs waiting to reach constanic
+    private ExecutionFir stageAExecutor;          // Coordinates stepping to PRIMED
+    private List<FIR> sourceFirs;                 // FIRs created from source elements
     private boolean joinComplete = false;
 
     public ConcatenationFiroe(AST.Concatenation concatenation) {
         super(concatenation);
         this.sourceElements = concatenation.elements();
-        this.pendingFirs = new ArrayList<>();
     }
 
     /**
@@ -47,8 +48,9 @@ public class ConcatenationFiroe extends FiroeWithBraneMind {
     protected ConcatenationFiroe(ConcatenationFiroe original, FIR newParent) {
         super(original, newParent);
         this.sourceElements = original.sourceElements;
-        this.pendingFirs = new ArrayList<>();  // Empty for cloned state
-        this.joinComplete = true;  // Cloned concatenation is already joined
+        this.stageAExecutor = null;  // Not needed for cloned state
+        this.sourceFirs = null;       // Not needed for cloned state
+        this.joinComplete = true;     // Cloned concatenation is already joined
         setMemoryOwner(this);
     }
 
@@ -66,13 +68,22 @@ public class ConcatenationFiroe extends FiroeWithBraneMind {
         if (isInitialized()) return;
         setInitialized();
 
-        // Create FIRs from source elements and store in pendingFirs
-        // NOT in braneMemory yet - we'll move them after they reach constanic
+        // Create FIRs from source elements
+        // NOT in braneMemory yet - we'll move them after they reach PRIMED
+        sourceFirs = new ArrayList<>();
         for (AST.Expr element : sourceElements) {
             FIR fir = createFiroeFromExpr(element);
             fir.setParentFir(this);
-            pendingFirs.add(fir);
+            sourceFirs.add(fir);
         }
+
+        // Create ExecutionFir to coordinate stepping to CONSTANIC
+        // setParent(false) - FIRs keep their original parent relationships
+        // We need CONSTANIC (not PRIMED) because cloneConstanic requires isConstanic()
+        stageAExecutor = ExecutionFir.stepping(sourceFirs)
+            .setParent(false)
+            .stepUntil(Nyes.CONSTANIC)
+            .build();
     }
 
     @Override
@@ -84,21 +95,25 @@ public class ConcatenationFiroe extends FiroeWithBraneMind {
                 return 1;
             }
             case INITIALIZED -> {
-                // Stage A: Step all pendingFirs until they reach constanic
-                boolean allConstanic = true;
-                for (FIR fir : pendingFirs) {
-                    if (!fir.isConstanic()) {
-                        fir.step();
-                        allConstanic = false;
-                    }
+                // Stage A: Use ExecutionFir to step source FIRs to PRIMED (breadth-first)
+                if (!stageAExecutor.isConstanic()) {
+                    stageAExecutor.step();
+                    return 1;
                 }
-                if (allConstanic) {
-                    setNyes(Nyes.CHECKED);
+
+                // ExecutionFir finished - check result
+                if (stageAExecutor.isStuck()) {
+                    // Some FIRs couldn't reach PRIMED - we become CONSTANIC
+                    setNyes(Nyes.CONSTANIC);
+                    return 1;
                 }
+
+                // All FIRs reached PRIMED - proceed to Stage B
+                setNyes(Nyes.CHECKED);
                 return 1;
             }
             case CHECKED -> {
-                // Stage B: Clone and re-parent all pendingFirs into braneMemory
+                // Stage B: Clone and re-parent all source FIRs into braneMemory
                 performJoin();
                 prime();
                 setNyes(Nyes.PRIMED);
@@ -120,11 +135,11 @@ public class ConcatenationFiroe extends FiroeWithBraneMind {
     }
 
     /**
-     * Performs the join operation: clone all pendingFirs and add to braneMemory.
+     * Performs the join operation: clone all source FIRs and add to braneMemory.
      * After this, later elements can see identifiers from earlier elements.
      */
     private void performJoin() {
-        for (FIR fir : pendingFirs) {
+        for (FIR fir : sourceFirs) {
             FIR resolved = unwrapIfIdentifier(fir);
 
             if (resolved instanceof FiroeWithBraneMind fwbm) {
@@ -136,7 +151,9 @@ public class ConcatenationFiroe extends FiroeWithBraneMind {
                 storeFirs(resolved);
             }
         }
-        pendingFirs.clear();
+        // Clean up stage A resources
+        sourceFirs = null;
+        stageAExecutor = null;
         joinComplete = true;
     }
 
@@ -199,7 +216,8 @@ public class ConcatenationFiroe extends FiroeWithBraneMind {
     @Override
     public String toString() {
         if (!joinComplete) {
-            return "ConcatenationFiroe[pending=" + pendingFirs.size() + ", state=" + getNyes() + "]";
+            int pendingCount = sourceFirs != null ? sourceFirs.size() : 0;
+            return "ConcatenationFiroe[pending=" + pendingCount + ", state=" + getNyes() + "]";
         }
         return new Sequencer4Human().sequence(this);
     }

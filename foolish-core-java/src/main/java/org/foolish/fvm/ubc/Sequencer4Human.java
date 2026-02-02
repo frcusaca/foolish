@@ -62,7 +62,8 @@ public class Sequencer4Human extends Sequencer<String> {
     }
 
     protected String sequenceConcatenation(ConcatenationFiroe concat, int depth) {
-        // Concatenation is displayed as merged brane content
+        // For now, render concatenation similar to brane - show contents in braces
+        // TODO: Consider flattening for CONSTANT concatenations
         var sb = new StringBuilder();
         sb.append(indent(depth)).append("{\n");
 
@@ -74,6 +75,7 @@ public class Sequencer4Human extends Sequencer<String> {
         sb.append(indent(depth)).append("}");
         return sb.toString();
     }
+
 
     protected String sequenceValue(ValueFiroe value, int depth) {
         return indent(depth) + value.getValue();

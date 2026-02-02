@@ -19,7 +19,7 @@ import java.util.function.Consumer;
  * <p>
  * <b>Usage:</b>
  * <pre>
- * ExecutionFir executor = ExecutionFir.of(fir1, fir2, fir3)
+ * ExecutionFir executor = ExecutionFir.stepping(fir1, fir2, fir3)
  *     .setParent(false)           // don't re-parent these FIRs
  *     .stepUntil(Nyes.PRIMED)     // target state for all FIRs
  *     .onComplete(firs -> {...})  // callback when all reach target
@@ -71,7 +71,7 @@ public class ExecutionFir extends FiroeWithBraneMind {
      * @param firs the FIRs to coordinate
      * @return a new Builder instance
      */
-    public static Builder of(FIR... firs) {
+    public static Builder stepping(FIR... firs) {
         return new Builder(List.of(firs));
     }
 
@@ -81,7 +81,7 @@ public class ExecutionFir extends FiroeWithBraneMind {
      * @param firs the FIRs to coordinate
      * @return a new Builder instance
      */
-    public static Builder of(List<FIR> firs) {
+    public static Builder stepping(List<FIR> firs) {
         return new Builder(firs);
     }
 

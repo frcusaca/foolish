@@ -189,12 +189,15 @@ A new reusable `FiroeWithBraneMind` that coordinates stepping multiple FIRs to t
 #### API Concept
 
 ```java
-ExecutionFir.of(fir1, fir2, fir3)
+ExecutionFir.stepping(fir1, fir2, fir3)
     .setParent(false)           // don't re-parent these FIRs to ExecutionFir
     .stepUntil(Nyes.PRIMED)     // target state for all FIRs
     .onComplete(firs -> {...})  // callback when all reach target
     .onStuck(firs -> {...})     // callback if any stuck at CONSTANIC < target
 ```
+
+Note: The method is named `stepping()` rather than `of()` to avoid conflicts with
+`FiroeWithBraneMind.of()` which it inherits from.
 
 #### Use Cases
 
