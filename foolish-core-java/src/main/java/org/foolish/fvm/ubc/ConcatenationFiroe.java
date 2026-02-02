@@ -70,11 +70,20 @@ public class ConcatenationFiroe extends FiroeWithBraneMind {
 
         // Create FIRs from source elements
         // NOT in braneMemory yet - we'll move them after they reach PRIMED
+        // But we DO need to ordinate them so they can resolve identifiers through
+        // this concatenation's parent chain during Stage A
         sourceFirs = new ArrayList<>();
+        int index = 0;
         for (AST.Expr element : sourceElements) {
             FIR fir = createFiroeFromExpr(element);
             fir.setParentFir(this);
+            // Ordinate FiroeWithBraneMind children so they can resolve identifiers
+            // through this concatenation's parent chain
+            if (fir instanceof FiroeWithBraneMind fwbm) {
+                fwbm.ordinateToParentBraneMind(this, index);
+            }
             sourceFirs.add(fir);
+            index++;
         }
 
         // Create ExecutionFir to coordinate stepping to CONSTANIC
@@ -148,6 +157,11 @@ public class ConcatenationFiroe extends FiroeWithBraneMind {
             if (resolved instanceof FiroeWithBraneMind fwbm) {
                 // Clone the brane with this as new parent, reset to INITIALIZED
                 FIR cloned = fwbm.cloneConstanic(this, Optional.of(Nyes.INITIALIZED));
+                // Reset ordinated flag on cloned FIR so storeFirs can re-ordinate it
+                // in the concatenation's memory context
+                if (cloned instanceof FiroeWithBraneMind clonedFwbm) {
+                    clonedFwbm.ordinated = false;
+                }
                 storeFirs(cloned);
             } else {
                 // Non-brane in concatenation is a critical error

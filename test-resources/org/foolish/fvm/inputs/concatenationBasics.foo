@@ -9,7 +9,7 @@
       b1={a=1,b=2,c=3};
       b2={e=4,f=5,g=6};
       c = b1 b2;
-t      !! confirm=c=={a=1,b=2,c=3,e=4,f=5,g=6};
+      !! confirm=c=={a=1,b=2,c=3,e=4,f=5,g=6};
    };
 
    test_3_concatenate_mixed_reference_and_foolish_branes={

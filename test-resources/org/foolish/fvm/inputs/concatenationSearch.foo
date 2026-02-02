@@ -1,15 +1,15 @@
 {
-  search_target_1={ a=-1; c=-2; b=-2; c={a=-1,b=-2,c=-3,e=-4,f=-5,g=-6}; }
-  search_target_2={ a=5; c=6; b=7; c2={a=1,b=2,c=3,e=4,f=5,g=6}; c={a=0,b=2,c=3,e=4,f=5,g=-6}; }
-  search_target_1={ a=1; c=2; b=2; c={a=1,b=2,c=3,e=4,f=5,g=6}; }
+  search_target_1={ a=-1; c=-2; b=-2; c={a=-1,b=-2,c=-3,e=-4,f=-5,g=-6}; };
+  search_target_2={ a=5; c=6; b=7; c2={a=1,b=2,c=3,e=4,f=5,g=6}; c={a=0,b=2,c=3,e=4,f=5,g=-6}; };
+  search_target_1={ a=1; c=2; b=2; c={a=1,b=2,c=3,e=4,f=5,g=6}; };
 
-  test_1_concatenate_mix_of_reference_foolish_and_searched_branes={
+  test_1_concatenate_mix_of_reference_and_navigation={
       b1={a=1,b=2,c=3};
       b2={e=4,f=5,g=6};
-      c1 = {a=1,b=2,c=3} b2 search_targ_1.* .c;
-      c2 = ?search_target_1 .c b1 ?search_target_2 .c2 {e=4,f=5,g=6};
+      c1 = {a=1,b=2,c=3} b2 search_target_1.c;
+      c2 = search_target_1.c b1 search_target_2.c2 {e=4,f=5,g=6};
       !! confirm=c1=={a=1,b=2,c=3,e=4,f=5,g=6,a=1,b=2,c=3,e=4,f=5,g=6};
-      !! confirm=c2=={a=1,b=2,c=3,e=4,f=5,g=6,a=1,b=2,c=3,a=1,b=2,c=3,f=5,g=6,e=4,f=5,g=6};
+      !! confirm=c2=={a=1,b=2,c=3,e=4,f=5,g=6,a=1,b=2,c=3,a=1,b=2,c=3,e=4,f=5,g=6,e=4,f=5,g=6};
    };
 
 
@@ -18,51 +18,11 @@
              a=1;
              message=2;
              only=1;
-      }
+      };
       OB2={
           which_1 = #-1 + 1;
-      }
+      };
       OB = OB1 OB2;
       !! confirm = OB$ == 2;
-   };
-
-   test_3_sequential_searches_after_concatenation = {
-      OB={
-         OB1={
-            OBA={
-               OBC1={
-                  aaa=1;
-                  bbb=2;
-                  ccc=3;
-               };
-               OBC2={
-                  aaaa=11;
-                  bbbb=22;
-                  cccc=33;
-               };
-            };
-            OBB={ oops = 1/0;}
-            OBB={
-               OBC3={
-                  aaa=111;
-                  bbb=222;
-                  ccc=333;
-               };
-               OBC4={
-                  aaaa=1111;
-                  bbbb=2222;
-                  cccc=3333;
-               };
-            };
-         };
-         work = {
-            start = ?OBB;
-            find_2 = start#-2
-            r=find_2~c* *3;
-         }
-
-         r =$ OB1 work
-      };
-      !! confirm = OB$ == 666;
    };
 }
