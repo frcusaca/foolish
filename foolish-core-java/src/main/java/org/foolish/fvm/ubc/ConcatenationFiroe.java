@@ -137,18 +137,26 @@ public class ConcatenationFiroe extends FiroeWithBraneMind {
     /**
      * Performs the join operation: clone all source FIRs and add to braneMemory.
      * After this, later elements can see identifiers from earlier elements.
+     * <p>
+     * All elements must resolve to FiroeWithBraneMind (branes or concatenations).
+     * If any element resolves to a non-brane, an alarm is raised.
      */
     private void performJoin() {
         for (FIR fir : sourceFirs) {
-            FIR resolved = unwrapIfIdentifier(fir);
+            FIR resolved = unwrapToResolvedBrane(fir);
 
             if (resolved instanceof FiroeWithBraneMind fwbm) {
                 // Clone the brane with this as new parent, reset to INITIALIZED
                 FIR cloned = fwbm.cloneConstanic(this, Optional.of(Nyes.INITIALIZED));
                 storeFirs(cloned);
             } else {
-                // For simple values, just store them directly
-                storeFirs(resolved);
+                // Non-brane in concatenation is a critical error
+                String errorMsg = "Concatenation element resolved to non-brane: " +
+                    resolved.getClass().getSimpleName() +
+                    " at " + fir.getLocationDescription() +
+                    ". Concatenation can only contain branes.";
+                AlarmSystem.raiseFromFir(this, errorMsg, AlarmSystem.PANIC);
+                throw new IllegalStateException(formatErrorMessage(errorMsg));
             }
         }
         // Clean up stage A resources
@@ -158,17 +166,55 @@ public class ConcatenationFiroe extends FiroeWithBraneMind {
     }
 
     /**
-     * If fir is an IdentifierFiroe that resolved to a brane, unwrap it.
-     * Otherwise return the fir as-is.
+     * Unwraps wrapper FIRs (Identifier, Search, CMFir, etc.) to get the resolved brane.
+     * Follows the chain of wrappers until reaching the actual resolved FIR.
+     *
+     * @param fir the FIR to unwrap
+     * @return the resolved FIR (should be a brane), or the original if not a wrapper
      */
-    private FIR unwrapIfIdentifier(FIR fir) {
-        if (fir instanceof IdentifierFiroe idFir && idFir.isConstanic()) {
-            FIR resolved = idFir.getResolvedFir();
-            if (resolved != null) {
-                return resolved;
+    private FIR unwrapToResolvedBrane(FIR fir) {
+        FIR current = fir;
+
+        // Follow the wrapper chain
+        while (current != null && current.isConstanic()) {
+            switch (current) {
+                case IdentifierFiroe idFir -> {
+                    FIR resolved = idFir.getResolvedFir();
+                    if (resolved == null) return current;
+                    current = resolved;
+                }
+                case AbstractSearchFiroe searchFir -> {
+                    FIR result = searchFir.getResult();
+                    if (result == null) return current;
+                    current = result;
+                }
+                case CMFir cmFir -> {
+                    FIR result = cmFir.getResult();
+                    if (result == null) return current;
+                    current = result;
+                }
+                case AssignmentFiroe assignFir -> {
+                    FIR result = assignFir.getResult();
+                    if (result == null) return current;
+                    current = result;
+                }
+                case UnanchoredSeekFiroe seekFir -> {
+                    FIR result = seekFir.getResult();
+                    if (result == null) return current;
+                    current = result;
+                }
+                case FiroeWithBraneMind fwbm -> {
+                    // Reached a brane - stop unwrapping
+                    return current;
+                }
+                default -> {
+                    // Not a wrapper, return as-is
+                    return current;
+                }
             }
         }
-        return fir;
+
+        return current;
     }
 
     @Override

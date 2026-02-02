@@ -596,6 +596,18 @@ public abstract class FIR implements Cloneable {
     }
 
     /**
+     * Convenience method to clone with this FIR's parent and specified target state.
+     * Equivalent to cloneConstanic(this.getParentFir(), targetNyes).
+     *
+     * @param targetNyes optional target state; if present, sets clone to this state
+     * @return a clone with parent from this FIR
+     * @throws IllegalStateException if called on a FIR that is not constanic
+     */
+    protected FIR cloneConstanic(java.util.Optional<Nyes> targetNyes) {
+        return cloneConstanic(this.getParentFir(), targetNyes);
+    }
+
+    /**
      * Clones a CONSTANIC (or CONSTANT) FIR with updated parent chain.
      * <p>
      * This method is ONLY for cloning CONSTANIC or CONSTANT FIRs. It will throw

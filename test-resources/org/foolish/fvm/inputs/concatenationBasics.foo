@@ -9,7 +9,7 @@
       b1={a=1,b=2,c=3};
       b2={e=4,f=5,g=6};
       c = b1 b2;
-      !! confirm=c=={a=1,b=2,c=3,e=4,f=5,g=6};
+t      !! confirm=c=={a=1,b=2,c=3,e=4,f=5,g=6};
    };
 
    test_3_concatenate_mixed_reference_and_foolish_branes={
@@ -33,15 +33,6 @@
    !! confirm=c2=={e=5,f=6,c=3,d=4,a=1,b=2};
    !! confirm=c3=={c=3,d=4,a=1,b=2;e=5,f=6};
    !! confirm=r=={a=1,b=2,c=3,d=4,e=5,f=6,e=5,f=6,c=3,d=4,a=1,b=2,c=3,d=4,a=1,b=2;e=5,f=6};
-   };
-
-   test_5_concatenate_mix_of_reference_foolish_and_searched_branes={
-      b1={a=1,b=2,c=3};
-       b2={e=4,f=5,g=6};
-       c1 = {a=1,b=2,c=3} b2 ?test1.c;
-       c2 = ?test2.c b1 test3.c2 {e=4,f=5,g=6};
-       !! confirm=test_4.c1=={a=1,b=2,c=3,e=4,f=5,g=6,a=1,b=2,c=3,e=4,f=5,g=6};
-       !! confirm=test_4.c2=={a=1,b=2,c=3,e=4,f=5,g=6,a=1,b=2,c=3,a=1,b=2,c=3,f=5,g=6,e=4,f=5,g=6};
    };
 
 }

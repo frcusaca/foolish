@@ -62,18 +62,83 @@ public class Sequencer4Human extends Sequencer<String> {
     }
 
     protected String sequenceConcatenation(ConcatenationFiroe concat, int depth) {
-        // For now, render concatenation similar to brane - show contents in braces
-        // TODO: Consider flattening for CONSTANT concatenations
+        // Rendering depends on Nyes state:
+        // - If at least PRIMED: render as flat brane - flatten sub-brane contents into single brane
+        // - If not PRIMED: render as {..} {..} with single-space separators showing proximity
+
+        if (concat.getNyes().ordinal() >= Nyes.PRIMED.ordinal()) {
+            // At least PRIMED - render as flat brane with flattened contents
+            var sb = new StringBuilder();
+            sb.append(indent(depth)).append("{\n");
+
+            // Flatten: for each sub-brane, render its contents directly (not the brane wrapper)
+            concat.stream().forEach(fir -> {
+                FIR unwrapped = unwrap(fir);
+                if (unwrapped instanceof FiroeWithBraneMind fwbm) {
+                    // Flatten this sub-brane's contents into the parent
+                    fwbm.stream().forEach(innerFir -> {
+                        sb.append(sequence(innerFir, depth + 1));
+                        sb.append(";\n");
+                    });
+                } else {
+                    // Non-brane items (values, etc.) render directly
+                    sb.append(sequence(fir, depth + 1));
+                    sb.append(";\n");
+                }
+            });
+
+            sb.append(indent(depth)).append("}");
+            return sb.toString();
+        }
+
+        // Not yet PRIMED - render elements with single-space separators
+        // This shows the proximity of concatenated elements
         var sb = new StringBuilder();
-        sb.append(indent(depth)).append("{\n");
+        sb.append(indent(depth));
 
-        concat.stream().forEach(fir -> {
-            sb.append(sequence(fir, depth + 1));
-            sb.append(";\n");
-        });
+        boolean first = true;
+        for (var firIter = concat.stream().iterator(); firIter.hasNext(); ) {
+            FIR fir = firIter.next();
+            if (!first) {
+                sb.append(" ");  // Single space separator for proximity
+            }
+            first = false;
 
-        sb.append(indent(depth)).append("}");
+            // Render each element inline (compact format)
+            String element = sequenceInline(fir);
+            sb.append(element);
+        }
+
         return sb.toString();
+    }
+
+    /**
+     * Sequences a FIR for inline display (used in concatenation proximity rendering).
+     * Branes are rendered as {...} without internal expansion.
+     */
+    private String sequenceInline(FIR fir) {
+        return switch (fir) {
+            case BraneFiroe brane -> "{...}";
+            case ConcatenationFiroe concat -> "{...}";
+            case ValueFiroe value -> String.valueOf(value.getValue());
+            case IdentifierFiroe id -> {
+                if (id.isConstant()) {
+                    try {
+                        yield String.valueOf(id.getValue());
+                    } catch (UnsupportedOperationException e) {
+                        FIR resolved = id.getResolvedFir();
+                        if (resolved instanceof BraneFiroe || resolved instanceof ConcatenationFiroe) {
+                            yield "{...}";
+                        }
+                        yield CC_STR;
+                    }
+                } else if (id.atConstanic()) {
+                    yield CC_STR;
+                }
+                yield NK_STR;
+            }
+            case null, default -> NK_STR;
+        };
     }
 
 
