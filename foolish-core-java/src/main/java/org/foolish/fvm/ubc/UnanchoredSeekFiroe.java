@@ -44,6 +44,15 @@ public class UnanchoredSeekFiroe extends FiroeWithBraneMind {
         }
     }
 
+    /**
+     * Copy constructor for cloneConstanic.
+     */
+    protected UnanchoredSeekFiroe(UnanchoredSeekFiroe original, FIR newParent) {
+        super(original, newParent);
+        this.offset = original.offset;
+        this.value = null;  // Reset for re-evaluation
+    }
+
     @Override
     protected void initialize() {
         setInitialized();
@@ -71,31 +80,36 @@ public class UnanchoredSeekFiroe extends FiroeWithBraneMind {
     public int step() {
         switch (getNyes()) {
             case INITIALIZED -> {
-                // UnanchoredSeek searches within the IMMEDIATE containing brane only.
-                // It does NOT traverse up to parent branes - the search is bounded by the brane boundary.
+                // UnanchoredSeek searches within the IMMEDIATE containing brane/concatenation.
+                // It does NOT traverse up to parent branes - the search is bounded by the
+                // brane or concatenation boundary.
                 //
                 // Example: { a=1; b={ c=#-1 } }
                 //   Inside brane b, #-1 looks for the previous statement within b.
                 //   Since c is the first statement in b, #-1 is CONSTANIC (out of bounds).
                 //   It does NOT find a=1 from the outer brane.
                 //
+                // For concatenations like OB = OB1 OB2:
+                //   After joining, all statements are flattened into the concatenation's memory.
+                //   A seek in a cloned statement can find preceding statements from earlier branes.
+                //
                 // Algorithm:
-                // 1. Find the closest BraneFiroe memory (the immediate containing brane)
-                // 2. Find our current position within that brane
-                // 3. Seek backwards by offset within that brane only
+                // 1. Find the closest FiroeWithBraneMind memory (brane or concatenation)
+                // 2. Find our current position within that memory
+                // 3. Seek backwards by offset within that memory only
 
-                // Use the new getMyBrane() and getMyBraneIndex() methods
-                BraneFiroe containingBrane = getMyBrane();
-                int currentPos = getMyBraneIndex();
+                // Use getMyBraneContainer() to find BraneFiroe or ConcatenationFiroe
+                FiroeWithBraneMind containingMind = getMyBraneContainer();
+                int currentPos = getMyBraneContainerIndex();
 
-                if (containingBrane == null || currentPos < 0) {
-                    // No containing brane found - out of bounds
+                if (containingMind == null || currentPos < 0) {
+                    // No containing brane/concatenation found - out of bounds
                     value = null;
                     setNyes(Nyes.CONSTANIC);
                     return 1;
                 }
 
-                ReadOnlyBraneMemory targetMemory = containingBrane.getBraneMemory();
+                ReadOnlyBraneMemory targetMemory = containingMind.getBraneMemory();
                 int size = targetMemory.size();
 
                 // Calculate target index: currentPos + offset (offset is negative)
@@ -140,5 +154,29 @@ public class UnanchoredSeekFiroe extends FiroeWithBraneMind {
     @Override
     public String toString() {
         return ((AST.UnanchoredSeekExpr) ast).toString();
+    }
+
+    @Override
+    protected FIR cloneConstanic(FIR newParent, java.util.Optional<Nyes> targetNyes) {
+        if (!isConstanic()) {
+            throw new IllegalStateException(
+                formatErrorMessage("cloneConstanic can only be called on CONSTANIC or CONSTANT FIRs, " +
+                    "but this FIR is in state: " + getNyes()));
+        }
+
+        if (isConstant()) {
+            return this;  // Share CONSTANT seeks
+        }
+
+        // CONSTANIC: use copy constructor
+        UnanchoredSeekFiroe copy = new UnanchoredSeekFiroe(this, newParent);
+
+        if (targetNyes.isPresent()) {
+            copy.nyes = targetNyes.get();
+        } else {
+            copy.nyes = this.nyes;
+        }
+
+        return copy;
     }
 }

@@ -39,6 +39,15 @@ public class BraneMemory implements ReadOnlyBraneMemory {
         }
     }
 
+    /**
+     * Resets myPos to allow re-ordination in a new context.
+     * Used when cloning FIRs for concatenation flattening, where the clone
+     * will be re-parented and needs a new position in the new parent.
+     */
+    void resetMyPos() {
+        this.myPos = Optional.empty();
+    }
+
     public BraneMemory getParent() {
         return parent;
     }

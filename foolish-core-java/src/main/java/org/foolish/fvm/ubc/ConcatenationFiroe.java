@@ -144,8 +144,12 @@ public class ConcatenationFiroe extends FiroeWithBraneMind {
     }
 
     /**
-     * Performs the join operation: clone all source FIRs and add to braneMemory.
-     * After this, later elements can see identifiers from earlier elements.
+     * Performs the join operation: flatten and clone all statements from source branes
+     * into this concatenation's braneMemory.
+     * <p>
+     * Each source brane's statements are cloned individually and reset to INITIALIZED
+     * (or kept as-is if CONSTANT). This flattening allows unanchored seeks (#-1, etc.)
+     * to find statements from earlier branes in the concatenation.
      * <p>
      * All elements must resolve to FiroeWithBraneMind (branes or concatenations).
      * If any element resolves to a non-brane, an alarm is raised.
@@ -155,14 +159,25 @@ public class ConcatenationFiroe extends FiroeWithBraneMind {
             FIR resolved = unwrapToResolvedBrane(fir);
 
             if (resolved instanceof FiroeWithBraneMind fwbm) {
-                // Clone the brane with this as new parent, reset to INITIALIZED
-                FIR cloned = fwbm.cloneConstanic(this, Optional.of(Nyes.INITIALIZED));
-                // Reset ordinated flag on cloned FIR so storeFirs can re-ordinate it
-                // in the concatenation's memory context
-                if (cloned instanceof FiroeWithBraneMind clonedFwbm) {
-                    clonedFwbm.ordinated = false;
-                }
-                storeFirs(cloned);
+                // Flatten: iterate over the brane's statements and clone each one
+                // into this concatenation's braneMemory
+                fwbm.stream().forEach(statement -> {
+                    // Clone each statement with this concatenation as new parent
+                    // Reset to INITIALIZED if not CONSTANT so it can re-evaluate
+                    Optional<Nyes> targetState = statement.isConstant()
+                        ? Optional.empty()  // Keep CONSTANT as-is
+                        : Optional.of(Nyes.INITIALIZED);  // Reset others to re-evaluate
+
+                    FIR cloned = statement.cloneConstanic(this, targetState);
+
+                    // Reset ordinated flag and memory position so storeFirs can
+                    // re-ordinate in new context
+                    if (cloned instanceof FiroeWithBraneMind clonedFwbm) {
+                        clonedFwbm.ordinated = false;
+                        clonedFwbm.resetMemoryPosition();
+                    }
+                    storeFirs(cloned);
+                });
             } else {
                 // Non-brane in concatenation is a critical error
                 String errorMsg = "Concatenation element resolved to non-brane: " +

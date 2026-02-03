@@ -71,20 +71,11 @@ public class Sequencer4Human extends Sequencer<String> {
             var sb = new StringBuilder();
             sb.append(indent(depth)).append("{\n");
 
-            // Flatten: for each sub-brane, render its contents directly (not the brane wrapper)
+            // Render each item in the concatenation's flattened memory
+            // After performJoin, the concatenation contains individual statements (not nested branes)
             concat.stream().forEach(fir -> {
-                FIR unwrapped = unwrap(fir);
-                if (unwrapped instanceof FiroeWithBraneMind fwbm) {
-                    // Flatten this sub-brane's contents into the parent
-                    fwbm.stream().forEach(innerFir -> {
-                        sb.append(sequence(innerFir, depth + 1));
-                        sb.append(";\n");
-                    });
-                } else {
-                    // Non-brane items (values, etc.) render directly
-                    sb.append(sequence(fir, depth + 1));
-                    sb.append(";\n");
-                }
+                sb.append(sequence(fir, depth + 1));
+                sb.append(";\n");
             });
 
             sb.append(indent(depth)).append("}");

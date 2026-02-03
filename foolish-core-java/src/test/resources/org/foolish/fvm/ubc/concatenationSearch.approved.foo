@@ -1,0 +1,240 @@
+!!INPUT!!
+{
+  search_target_1={ a=-1; c=-2; b=-2; c={a=-1,b=-2,c=-3,e=-4,f=-5,g=-6}; };
+  search_target_2={ a=5; c=6; b=7; c2={a=1,b=2,c=3,e=4,f=5,g=6}; c={a=0,b=2,c=3,e=4,f=5,g=-6}; };
+  search_target_1={ a=1; c=2; b=2; c={a=1,b=2,c=3,e=4,f=5,g=6}; };
+
+  test_1_concatenate_mix_of_reference_and_navigation={
+      b1={a=1,b=2,c=3};
+      b2={e=4,f=5,g=6};
+      c1 = {a=1,b=2,c=3} b2 search_target_1.c;
+      c2 = search_target_1.c b1 search_target_2.c2 {e=4,f=5,g=6};
+      !! confirm=c1=={a=1,b=2,c=3,e=4,f=5,g=6,a=1,b=2,c=3,e=4,f=5,g=6};
+      !! confirm=c2=={a=1,b=2,c=3,e=4,f=5,g=6,a=1,b=2,c=3,a=1,b=2,c=3,e=4,f=5,g=6,e=4,f=5,g=6};
+   };
+
+
+   test_2_constanic_seek_finds_after_concatenation = {
+      OB1={
+             a=1;
+             message=2;
+             only=1;
+      };
+      OB2={
+          which_1 = #-1 + 1;
+      };
+      OB = OB1 OB2;
+      !! confirm = OB$ == 2;
+   };
+}
+
+!!!
+PARSED AST:
+{
+  searchˍtargetˍ1 = {
+    a = -1;
+    c = -2;
+    b = -2;
+    c = {
+      a = -1;
+      b = -2;
+      c = -3;
+      e = -4;
+      f = -5;
+      g = -6;
+    };
+  };
+  searchˍtargetˍ2 = {
+    a = 5;
+    c = 6;
+    b = 7;
+    c2 = {
+      a = 1;
+      b = 2;
+      c = 3;
+      e = 4;
+      f = 5;
+      g = 6;
+    };
+    c = {
+      a = 0;
+      b = 2;
+      c = 3;
+      e = 4;
+      f = 5;
+      g = -6;
+    };
+  };
+  searchˍtargetˍ1 = {
+    a = 1;
+    c = 2;
+    b = 2;
+    c = {
+      a = 1;
+      b = 2;
+      c = 3;
+      e = 4;
+      f = 5;
+      g = 6;
+    };
+  };
+  testˍ1ˍconcatenateˍmixˍofˍreferenceˍandˍnavigation = {
+    b1 = {
+      a = 1;
+      b = 2;
+      c = 3;
+    };
+    b2 = {
+      e = 4;
+      f = 5;
+      g = 6;
+    };
+    c1 = {
+      a = 1;
+      b = 2;
+      c = 3;
+    }
+b2
+searchˍtargetˍ1.c;
+    c2 = searchˍtargetˍ1.c
+b1
+searchˍtargetˍ2.c2
+{
+      e = 4;
+      f = 5;
+      g = 6;
+    };
+  };
+  testˍ2ˍconstanicˍseekˍfindsˍafterˍconcatenation = {
+    OB1 = {
+      a = 1;
+      message = 2;
+      only = 1;
+    };
+    OB2 = {
+      whichˍ1 = (#-1 + 1);
+    };
+    OB = OB1
+OB2;
+  };
+}
+
+UBC EVALUATION:
+Steps taken: 564
+
+FINAL RESULT:
+{
+＿searchˍtargetˍ1 = {
+＿                  ＿a = -1;
+＿                  ＿c = -2;
+＿                  ＿b = -2;
+＿                  ＿c = {
+＿                  ＿    ＿a = -1;
+＿                  ＿    ＿b = -2;
+＿                  ＿    ＿c = -3;
+＿                  ＿    ＿e = -4;
+＿                  ＿    ＿f = -5;
+＿                  ＿    ＿g = -6;
+＿                  ＿};
+＿};
+＿searchˍtargetˍ2 = {
+＿                  ＿a = 5;
+＿                  ＿c = 6;
+＿                  ＿b = 7;
+＿                  ＿c2 = {
+＿                  ＿     ＿a = 1;
+＿                  ＿     ＿b = 2;
+＿                  ＿     ＿c = 3;
+＿                  ＿     ＿e = 4;
+＿                  ＿     ＿f = 5;
+＿                  ＿     ＿g = 6;
+＿                  ＿};
+＿                  ＿c = {
+＿                  ＿    ＿a = 0;
+＿                  ＿    ＿b = 2;
+＿                  ＿    ＿c = 3;
+＿                  ＿    ＿e = 4;
+＿                  ＿    ＿f = 5;
+＿                  ＿    ＿g = -6;
+＿                  ＿};
+＿};
+＿searchˍtargetˍ1 = {
+＿                  ＿a = 1;
+＿                  ＿c = 2;
+＿                  ＿b = 2;
+＿                  ＿c = {
+＿                  ＿    ＿a = 1;
+＿                  ＿    ＿b = 2;
+＿                  ＿    ＿c = 3;
+＿                  ＿    ＿e = 4;
+＿                  ＿    ＿f = 5;
+＿                  ＿    ＿g = 6;
+＿                  ＿};
+＿};
+＿testˍ1ˍconcatenateˍmixˍofˍreferenceˍandˍnavigation = {
+＿                                                     ＿b1 = {
+＿                                                     ＿     ＿a = 1;
+＿                                                     ＿     ＿b = 2;
+＿                                                     ＿     ＿c = 3;
+＿                                                     ＿};
+＿                                                     ＿b2 = {
+＿                                                     ＿     ＿e = 4;
+＿                                                     ＿     ＿f = 5;
+＿                                                     ＿     ＿g = 6;
+＿                                                     ＿};
+＿                                                     ＿c1 = {
+＿                                                     ＿     ＿a = 1;
+＿                                                     ＿     ＿b = 2;
+＿                                                     ＿     ＿c = 3;
+＿                                                     ＿     ＿e = 4;
+＿                                                     ＿     ＿f = 5;
+＿                                                     ＿     ＿g = 6;
+＿                                                     ＿     ＿a = 1;
+＿                                                     ＿     ＿b = 2;
+＿                                                     ＿     ＿c = 3;
+＿                                                     ＿     ＿e = 4;
+＿                                                     ＿     ＿f = 5;
+＿                                                     ＿     ＿g = 6;
+＿                                                     ＿};
+＿                                                     ＿c2 = {
+＿                                                     ＿     ＿a = 1;
+＿                                                     ＿     ＿b = 2;
+＿                                                     ＿     ＿c = 3;
+＿                                                     ＿     ＿e = 4;
+＿                                                     ＿     ＿f = 5;
+＿                                                     ＿     ＿g = 6;
+＿                                                     ＿     ＿a = 1;
+＿                                                     ＿     ＿b = 2;
+＿                                                     ＿     ＿c = 3;
+＿                                                     ＿     ＿a = 1;
+＿                                                     ＿     ＿b = 2;
+＿                                                     ＿     ＿c = 3;
+＿                                                     ＿     ＿e = 4;
+＿                                                     ＿     ＿f = 5;
+＿                                                     ＿     ＿g = 6;
+＿                                                     ＿     ＿e = 4;
+＿                                                     ＿     ＿f = 5;
+＿                                                     ＿     ＿g = 6;
+＿                                                     ＿};
+＿};
+＿testˍ2ˍconstanicˍseekˍfindsˍafterˍconcatenation = {
+＿                                                  ＿OB1 = {
+＿                                                  ＿      ＿a = 1;
+＿                                                  ＿      ＿message = 2;
+＿                                                  ＿      ＿only = 1;
+＿                                                  ＿};
+＿                                                  ＿OB2 = {
+＿                                                  ＿      ＿whichˍ1 = ⎵⎵;
+＿                                                  ＿};
+＿                                                  ＿OB = {
+＿                                                  ＿     ＿a = 1;
+＿                                                  ＿     ＿message = 2;
+＿                                                  ＿     ＿only = 1;
+＿                                                  ＿     ＿whichˍ1 = 2;
+＿                                                  ＿};
+＿};
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!

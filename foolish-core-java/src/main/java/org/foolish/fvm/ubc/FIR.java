@@ -496,6 +496,47 @@ public abstract class FIR implements Cloneable {
     }
 
     /**
+     * Gets the closest brane-like container (BraneFiroe or ConcatenationFiroe).
+     * <p>
+     * Unlike getMyBrane() which only returns BraneFiroe, this method returns
+     * brane-like containers that hold statements as direct children. This includes:
+     * - BraneFiroe: The normal brane syntax { ... }
+     * - ConcatenationFiroe: Joined branes that act as a single logical brane
+     * <p>
+     * This method does NOT return AssignmentFiroe or other FiroeWithBraneMind
+     * that use braneMemory for internal expression evaluation rather than
+     * statement storage.
+     *
+     * @return the containing brane-like FiroeWithBraneMind, or null if not found
+     */
+    public FiroeWithBraneMind getMyBraneContainer() {
+        if (parentFir instanceof BraneFiroe || parentFir instanceof ConcatenationFiroe) {
+            return (FiroeWithBraneMind) parentFir;
+        }
+        if (parentFir == null) {
+            return null;
+        }
+        return parentFir.getMyBraneContainer();
+    }
+
+    /**
+     * Gets the index of this FIR in its containing brane-like container's memory.
+     * <p>
+     * Works with BraneFiroe and ConcatenationFiroe.
+     *
+     * @return the index in the containing memory (0-based), or -1 if not found
+     */
+    public int getMyBraneContainerIndex() {
+        if (parentFir instanceof BraneFiroe || parentFir instanceof ConcatenationFiroe) {
+            return ((FiroeWithBraneMind) parentFir).getIndexOf(this);
+        }
+        if (parentFir == null) {
+            return -1;
+        }
+        return parentFir.getMyBraneContainerIndex();
+    }
+
+    /**
      * Gets the hierarchical index of this FIR statement.
      * The index starts with 0 (root) and appends the statement index at each level.
      * Format example: [0, 0, 1, 2]

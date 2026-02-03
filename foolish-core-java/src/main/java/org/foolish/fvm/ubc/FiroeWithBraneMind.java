@@ -553,6 +553,14 @@ public abstract class FiroeWithBraneMind extends FIR {
     }
 
     /**
+     * Resets the memory position to allow re-ordination in a new context.
+     * Used when cloning FIRs for concatenation flattening.
+     */
+    protected void resetMemoryPosition() {
+        braneMemory.resetMyPos();
+    }
+
+    /**
      * Sets the owning brane for this braneMemory (controlled mutation).
      * Used during construction and cloning operations.
      */
