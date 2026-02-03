@@ -1,0 +1,144 @@
+!!INPUT!!
+{
+   test_1_foolish_concatenates_before_resolution = {
+      OB={
+            a=2;
+            r = {a=1}{b=3}{c=a};
+      };
+      !! confirm = OB$.c == 1
+   };
+
+   test_3_constanic_search_result_concatenates_before_coordination={
+      OB={
+            A={a=1};
+            B={b=3};
+            C={c=a};   !! This reaches Constantic before concatenation
+            a=-1;
+            r=A B C
+      }
+      !! confirm = OB$.c == 1
+   };
+
+   test_4_constant_search_result_stays_constant_during_concatenation={
+      OB={
+            A={a=1};
+            B={b=A.a}; !! This reaches Constant before concatenation (and subsequent coordination)
+            C={c=b};   !! This reaches Constantic before concatenation
+            b=-2;
+            r=A B C
+      }
+      !! confirm result = OB$.c == 1
+   };
+}
+
+!!!
+PARSED AST:
+{
+  testˍ1ˍfoolishˍconcatenatesˍbeforeˍresolution = {
+    OB = {
+      a = 2;
+      r = {
+        a = 1;
+      }
+{
+        b = 3;
+      }
+{
+        c = a;
+      };
+    };
+  };
+  testˍ3ˍconstanicˍsearchˍresultˍconcatenatesˍbeforeˍcoordination = {
+    OB = {
+      A = {
+        a = 1;
+      };
+      B = {
+        b = 3;
+      };
+      C = {
+        c = a;
+      };
+      a = -1;
+      r = A
+B
+C;
+    };
+  };
+  testˍ4ˍconstantˍsearchˍresultˍstaysˍconstantˍduringˍconcatenation = {
+    OB = {
+      A = {
+        a = 1;
+      };
+      B = {
+        b = A.a;
+      };
+      C = {
+        c = b;
+      };
+      b = -2;
+      r = A
+B
+C;
+    };
+  };
+}
+
+UBC EVALUATION:
+Steps taken: 321
+
+FINAL RESULT:
+{
+＿testˍ1ˍfoolishˍconcatenatesˍbeforeˍresolution = {
+＿                                                ＿OB = {
+＿                                                ＿     ＿a = 2;
+＿                                                ＿     ＿r = {
+＿                                                ＿     ＿    ＿a = 1;
+＿                                                ＿     ＿    ＿b = 3;
+＿                                                ＿     ＿    ＿c = 1;
+＿                                                ＿     ＿};
+＿                                                ＿};
+＿};
+＿testˍ3ˍconstanicˍsearchˍresultˍconcatenatesˍbeforeˍcoordination = {
+＿                                                                  ＿OB = {
+＿                                                                  ＿     ＿A = {
+＿                                                                  ＿     ＿    ＿a = 1;
+＿                                                                  ＿     ＿};
+＿                                                                  ＿     ＿B = {
+＿                                                                  ＿     ＿    ＿b = 3;
+＿                                                                  ＿     ＿};
+＿                                                                  ＿     ＿C = {
+＿                                                                  ＿     ＿    ＿c = ⎵⎵;
+＿                                                                  ＿     ＿};
+＿                                                                  ＿     ＿a = -1;
+＿                                                                  ＿     ＿r = {
+＿                                                                  ＿     ＿    ＿a = 1;
+＿                                                                  ＿     ＿    ＿b = 3;
+＿                                                                  ＿     ＿    ＿c = 1;
+＿                                                                  ＿     ＿};
+＿                                                                  ＿};
+＿};
+＿testˍ4ˍconstantˍsearchˍresultˍstaysˍconstantˍduringˍconcatenation = {
+＿                                                                    ＿OB = {
+＿                                                                    ＿     ＿A = {
+＿                                                                    ＿     ＿    ＿a = 1;
+＿                                                                    ＿     ＿};
+＿                                                                    ＿     ＿B = {
+＿                                                                    ＿     ＿    ＿b = 1;
+＿                                                                    ＿     ＿};
+＿                                                                    ＿     ＿C = {
+＿                                                                    ＿     ＿    ＿c = ⎵⎵;
+＿                                                                    ＿     ＿};
+＿                                                                    ＿     ＿b = -2;
+＿                                                                    ＿     ＿r = {
+＿                                                                    ＿     ＿    ＿a = 1;
+＿                                                                    ＿     ＿    ＿b = 1;
+＿                                                                    ＿     ＿    ＿c = 1;
+＿                                                                    ＿     ＿};
+＿                                                                    ＿};
+＿};
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!

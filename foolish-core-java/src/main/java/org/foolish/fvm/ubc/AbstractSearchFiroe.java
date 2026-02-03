@@ -23,6 +23,20 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind implements 
         this.operator = operator;
     }
 
+    /**
+     * Copy constructor for cloneConstanic.
+     * Resets search state so the search can be re-executed in a new context.
+     */
+    protected AbstractSearchFiroe(AbstractSearchFiroe original, FIR newParent) {
+        super(original, newParent);
+        this.operator = original.operator;
+        // Reset search state for re-evaluation
+        this.searchResult = null;
+        this.unwrapAnchor = null;
+        this.searchPerformed = false;
+        this.found = false;
+    }
+
     protected void initialize() {
         setInitialized();
     }
@@ -158,7 +172,11 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind implements 
 
         if (unwrapAnchor instanceof IdentifierFiroe identifierFiroe) {
             if (identifierFiroe.value == null) {
-                if (!identifierFiroe.atConstanic()) {
+                if (identifierFiroe.atConstanic()) {
+                    // Identifier is constanic but not resolved - propagate as search result
+                    // This happens when the search finds a constanic identifier (e.g., forward ref)
+                    searchResult = identifierFiroe;
+                } else {
                     searchResult = new NKFiroe();
                 }
                 return;
@@ -256,4 +274,7 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind implements 
         }
         return searchResult.getValue();
     }
+
+    @Override
+    protected abstract FIR cloneConstanic(FIR newParent, java.util.Optional<Nyes> targetNyes);
 }

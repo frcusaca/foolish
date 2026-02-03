@@ -16,6 +16,14 @@ public class SeekFiroe extends AbstractSearchFiroe {
         this.offset = seekExpr.offset();
     }
 
+    /**
+     * Copy constructor for cloneConstanic.
+     */
+    protected SeekFiroe(SeekFiroe original, FIR newParent) {
+        super(original, newParent);
+        this.offset = original.offset;
+    }
+
     @Override
     protected void initialize() {
         super.initialize();
@@ -45,5 +53,28 @@ public class SeekFiroe extends AbstractSearchFiroe {
     @Override
     public String toString() {
         return ast.toString();
+    }
+
+    @Override
+    protected FIR cloneConstanic(FIR newParent, java.util.Optional<Nyes> targetNyes) {
+        if (!isConstanic()) {
+            throw new IllegalStateException(
+                formatErrorMessage("cloneConstanic can only be called on CONSTANIC or CONSTANT FIRs, " +
+                    "but this FIR is in state: " + getNyes()));
+        }
+
+        if (isConstant()) {
+            return this;  // Share CONSTANT seeks
+        }
+
+        SeekFiroe copy = new SeekFiroe(this, newParent);
+
+        if (targetNyes.isPresent()) {
+            copy.nyes = targetNyes.get();
+        } else {
+            copy.nyes = this.nyes;
+        }
+
+        return copy;
     }
 }

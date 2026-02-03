@@ -1,4 +1,13 @@
 {
+   test_1_simple = {
+      x = 5;
+      A={a=1};
+      AA={a=x};
+      B={b=3};
+      C={c=AA.a};
+      f = A AA B C;
+   };
+
    test_1_serach_concatenates_after_constanicity = {
       OB={
             a=2;
