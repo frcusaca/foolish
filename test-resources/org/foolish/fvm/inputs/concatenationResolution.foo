@@ -14,7 +14,7 @@
             A={a=1};
             AA={a=parameter};
             B={b=3};
-            C={c=AA.parameter};   !! This finds AA, becomes constanic before concatenation and coordination
+            C={c=AA.a};   !! This finds AA, becomes constanic before concatenation and coordination
             f = A AA B C;         !! Still constanic
 
             parameter = 5;
