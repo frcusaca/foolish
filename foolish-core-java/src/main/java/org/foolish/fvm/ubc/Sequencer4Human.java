@@ -10,6 +10,7 @@ public class Sequencer4Human extends Sequencer<String> {
     public static final String NK_STR = "???";
     public static final String CC_STR = "⎵⎵";
     private final String tabChar;
+    private boolean nyesStateInOutput = true; // Default is on
 
     public Sequencer4Human(String tabChar) {
         this.tabChar = tabChar;
@@ -17,6 +18,14 @@ public class Sequencer4Human extends Sequencer<String> {
 
     public Sequencer4Human() {
         this(DEFAULT_TAB);
+    }
+
+    public void setNyesStateInOutput(boolean enabled) {
+        this.nyesStateInOutput = enabled;
+    }
+
+    public boolean isNyesStateInOutputEnabled() {
+        return nyesStateInOutput;
     }
 
     public String sequence(FIR fir) {
@@ -124,7 +133,7 @@ public class Sequencer4Human extends Sequencer<String> {
                         yield CC_STR;
                     }
                 } else if (id.atConstanic()) {
-                    yield CC_STR;
+                    yield addNyesStateIfEnabled(CC_STR, id.getNyes());
                 }
                 yield NK_STR;
             }
@@ -140,7 +149,7 @@ public class Sequencer4Human extends Sequencer<String> {
     protected String sequenceBinary(BinaryFiroe binary, int depth) {
         if (!binary.isNye()) {
             if (binary.atConstanic()) {
-                return indent(depth) + CC_STR;
+                return indent(depth) + addNyesStateIfEnabled(CC_STR, binary.getNyes());
             }
             try {
                 return indent(depth) + binary.getValue();
@@ -154,7 +163,7 @@ public class Sequencer4Human extends Sequencer<String> {
     protected String sequenceUnary(UnaryFiroe unary, int depth) {
         if (!unary.isNye()) {
             if (unary.atConstanic()) {
-                return indent(depth) + "⎵";
+                return indent(depth) + addNyesStateIfEnabled("⎵", unary.getNyes());
             }
             return indent(depth) + unary.getValue();
         }
@@ -190,6 +199,7 @@ public class Sequencer4Human extends Sequencer<String> {
                     && !(unwrapped instanceof BraneFiroe)
                     && !(unwrapped instanceof ConcatenationFiroe)) {
                     return indent(depth) + fullId + " = " + CC_STR;
+                    return indent(depth) + fullId + " = " + addNyesStateIfEnabled(CC_STR, unwrapped.getNyes());
                 }
 
                 if (unwrapped instanceof NKFiroe) {
@@ -230,7 +240,7 @@ public class Sequencer4Human extends Sequencer<String> {
                 }
             }
         } else if (assignment.atConstanic()) {
-             return indent(depth) + fullId + " = " + CC_STR;
+             return indent(depth) + fullId + " = " + addNyesStateIfEnabled(CC_STR, assignment.getNyes());
         }
         return indent(depth) + fullId + " = " + NK_STR;
     }
@@ -320,7 +330,7 @@ public class Sequencer4Human extends Sequencer<String> {
                     return sequence(search.getResult(), depth);
                 }
             }
-            return indent(depth) + CC_STR;
+            return indent(depth) + addNyesStateIfEnabled(CC_STR, search.getNyes());
         }
         return indent(depth) + NK_STR;
     }
@@ -331,5 +341,15 @@ public class Sequencer4Human extends Sequencer<String> {
 
     public String getTabChar() {
         return tabChar;
+    }
+    
+    /**
+     * Adds Nyes state to string if enabled
+     */
+    private String addNyesStateIfEnabled(String value, Nyes nyes) {
+        if (nyesStateInOutput) {
+            return value + " (" + nyes + ")";
+        }
+        return value;
     }
 }
