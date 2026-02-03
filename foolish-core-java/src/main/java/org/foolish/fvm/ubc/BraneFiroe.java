@@ -16,7 +16,7 @@ import java.util.List;
  *       Used to prevent infinite recursion and stack overflow.</li>
  * </ul>
  */
-public class BraneFiroe extends FiroeWithBraneMind {
+public class BraneFiroe extends FiroeWithBraneMind implements Constanicable {
 
     /**
      * EXPERIMENTAL: Maximum allowed brane depth before limiting instantiation.
@@ -146,6 +146,14 @@ public class BraneFiroe extends FiroeWithBraneMind {
         cloned.setExprmntBraneDepth(newDepth);
 
         return cloned;
+    }
+
+    /**
+     * For container types, getResult() returns this since the brane IS the result.
+     */
+    @Override
+    public FIR getResult() {
+        return this;
     }
 
     /**

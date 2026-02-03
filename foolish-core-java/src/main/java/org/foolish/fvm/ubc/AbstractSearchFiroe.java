@@ -11,7 +11,7 @@ import org.foolish.ast.SearchOperator;
  *
  * Constanic branes can still have searchable constant elements (e.g., tail of {aa=⎵⎵; cc=9} is 9).
  */
-public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
+public abstract class AbstractSearchFiroe extends FiroeWithBraneMind implements Constanicable {
     protected final SearchOperator operator;
     protected FIR searchResult = null;
     protected FIR unwrapAnchor = null;

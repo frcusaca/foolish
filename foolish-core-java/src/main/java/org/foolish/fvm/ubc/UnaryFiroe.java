@@ -11,7 +11,7 @@ import org.foolish.ast.AST;
  *
  * Arithmetic errors during evaluation result in NK (not-known) values.
  */
-public class UnaryFiroe extends FiroeWithBraneMind {
+public class UnaryFiroe extends FiroeWithBraneMind implements Constanicable {
     private final String operator;
     private FIR operandFiroe;
     private FIR result;
@@ -113,6 +113,11 @@ public class UnaryFiroe extends FiroeWithBraneMind {
         }
         if (getNyes() == Nyes.CONSTANT) return true; // Constant state but no result -> constanic
         return super.isConstanic();
+    }
+
+    @Override
+    public FIR getResult() {
+        return result;
     }
 
     /**

@@ -537,6 +537,44 @@ public abstract class FIR implements Cloneable {
     }
 
     /**
+     * Unwraps a chain of Constanicable wrappers to get the underlying resolved FIR.
+     * <p>
+     * This method follows the chain of {@link Constanicable#getResult()} calls until
+     * it reaches a non-wrapper FIR (like BraneFiroe, ConcatenationFiroe, ValueFiroe, etc.)
+     * or a wrapper that hasn't resolved yet (getResult() returns null).
+     * <p>
+     * Used by:
+     * <ul>
+     *   <li>ConcatenationFiroe - to unwrap identifiers/searches to their resolved branes</li>
+     *   <li>CMFir - to unwrap the inner FIR for context manipulation</li>
+     *   <li>Sequencer4Human - to unwrap assignments for rendering</li>
+     * </ul>
+     *
+     * @param fir the FIR to unwrap
+     * @return the underlying resolved FIR, or the original if not a Constanicable or not resolved
+     */
+    public static FIR unwrapConstanicable(FIR fir) {
+        FIR current = fir;
+
+        // Follow the wrapper chain while the FIR is constanic
+        while (current != null && current.isConstanic()) {
+            if (current instanceof Constanicable constanicable) {
+                FIR result = constanicable.getResult();
+                if (result == null || result == current) {
+                    // Not resolved yet, or self-referential (containers like BraneFiroe)
+                    return current;
+                }
+                current = result;
+            } else {
+                // Not a Constanicable, stop unwrapping
+                return current;
+            }
+        }
+
+        return current;
+    }
+
+    /**
      * Gets the hierarchical index of this FIR statement.
      * The index starts with 0 (root) and appends the statement index at each level.
      * Format example: [0, 0, 1, 2]

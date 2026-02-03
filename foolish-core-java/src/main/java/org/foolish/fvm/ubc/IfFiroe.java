@@ -7,7 +7,7 @@ import org.foolish.ast.AST;
  * Contains a series of Firoes representing conditions and values.
  */
 
-public class IfFiroe extends FiroeWithBraneMind {
+public class IfFiroe extends FiroeWithBraneMind implements Constanicable {
 
     private FIR result;
 

@@ -30,7 +30,7 @@ import java.util.Optional;
  *
  * @see projects/009-Concatenation_Project.md for detailed design specification
  */
-public class ConcatenationFiroe extends FiroeWithBraneMind {
+public class ConcatenationFiroe extends FiroeWithBraneMind implements Constanicable {
 
     private final List<AST.Expr> sourceElements;  // Original element ASTs
     private ExecutionFir stageAExecutor;          // Coordinates stepping to PRIMED
@@ -69,18 +69,28 @@ public class ConcatenationFiroe extends FiroeWithBraneMind {
         setInitialized();
 
         // Create FIRs from source elements
-        // NOT in braneMemory yet - we'll move them after they reach PRIMED
-        // But we DO need to ordinate them so they can resolve identifiers through
-        // this concatenation's parent chain during Stage A
+        // NOT in braneMemory yet - we'll move them after they reach CONSTANIC
+        //
+        // Key semantics for "concatenates before resolution":
+        // - Brane elements (BraneFiroe, ConcatenationFiroe) are NOT ordinated, so their
+        //   contents cannot resolve identifiers from outer scope. This makes unresolved
+        //   identifiers inside branes become CONSTANIC, allowing re-resolution after join.
+        // - Non-brane elements (IdentifierFiroe, etc.) ARE ordinated so they can resolve
+        //   to find the branes they reference (e.g., `c = b1 b2` needs b1, b2 to resolve).
         sourceFirs = new ArrayList<>();
         int index = 0;
         for (AST.Expr element : sourceElements) {
             FIR fir = createFiroeFromExpr(element);
             fir.setParentFir(this);
-            // Ordinate FiroeWithBraneMind children so they can resolve identifiers
-            // through this concatenation's parent chain
+
+            // Only ordinate non-brane elements (identifiers, searches, etc.)
+            // Branes are kept isolated so their contents don't resolve to outer scope
             if (fir instanceof FiroeWithBraneMind fwbm) {
-                fwbm.ordinateToParentBraneMind(this, index);
+                if (!(fir instanceof BraneFiroe) && !(fir instanceof ConcatenationFiroe)) {
+                    // Non-brane FiroeWithBraneMind (like IdentifierFiroe) - ordinate for resolution
+                    fwbm.ordinateToParentBraneMind(this, index);
+                }
+                // BraneFiroe and ConcatenationFiroe - NOT ordinated (isolated during Stage A)
             }
             sourceFirs.add(fir);
             index++;
@@ -156,18 +166,18 @@ public class ConcatenationFiroe extends FiroeWithBraneMind {
      */
     private void performJoin() {
         for (FIR fir : sourceFirs) {
-            FIR resolved = unwrapToResolvedBrane(fir);
+            FIR resolved = FIR.unwrapConstanicable(fir);
 
             if (resolved instanceof FiroeWithBraneMind fwbm) {
                 // Flatten: iterate over the brane's statements and clone each one
                 // into this concatenation's braneMemory
                 fwbm.stream().forEach(statement -> {
                     // Clone each statement with this concatenation as new parent
-                    // Reset to INITIALIZED if not CONSTANT so it can re-evaluate
+                    // CONSTANT items stay CONSTANT (they're fully resolved, immutable).
+                    // CONSTANIC items reset to INITIALIZED to re-evaluate in new context.
                     Optional<Nyes> targetState = statement.isConstant()
                         ? Optional.empty()  // Keep CONSTANT as-is
-                        : Optional.of(Nyes.INITIALIZED);  // Reset others to re-evaluate
-
+                        : Optional.of(Nyes.INITIALIZED);  // Reset CONSTANIC to re-evaluate
                     FIR cloned = statement.cloneConstanic(this, targetState);
 
                     // Reset ordinated flag and memory position so storeFirs can
@@ -195,55 +205,11 @@ public class ConcatenationFiroe extends FiroeWithBraneMind {
     }
 
     /**
-     * Unwraps wrapper FIRs (Identifier, Search, CMFir, etc.) to get the resolved brane.
-     * Follows the chain of wrappers until reaching the actual resolved FIR.
-     *
-     * @param fir the FIR to unwrap
-     * @return the resolved FIR (should be a brane), or the original if not a wrapper
+     * For container types, getResult() returns this since the concatenation IS the result.
      */
-    private FIR unwrapToResolvedBrane(FIR fir) {
-        FIR current = fir;
-
-        // Follow the wrapper chain
-        while (current != null && current.isConstanic()) {
-            switch (current) {
-                case IdentifierFiroe idFir -> {
-                    FIR resolved = idFir.getResolvedFir();
-                    if (resolved == null) return current;
-                    current = resolved;
-                }
-                case AbstractSearchFiroe searchFir -> {
-                    FIR result = searchFir.getResult();
-                    if (result == null) return current;
-                    current = result;
-                }
-                case CMFir cmFir -> {
-                    FIR result = cmFir.getResult();
-                    if (result == null) return current;
-                    current = result;
-                }
-                case AssignmentFiroe assignFir -> {
-                    FIR result = assignFir.getResult();
-                    if (result == null) return current;
-                    current = result;
-                }
-                case UnanchoredSeekFiroe seekFir -> {
-                    FIR result = seekFir.getResult();
-                    if (result == null) return current;
-                    current = result;
-                }
-                case FiroeWithBraneMind fwbm -> {
-                    // Reached a brane - stop unwrapping
-                    return current;
-                }
-                default -> {
-                    // Not a wrapper, return as-is
-                    return current;
-                }
-            }
-        }
-
-        return current;
+    @Override
+    public FIR getResult() {
+        return this;
     }
 
     @Override

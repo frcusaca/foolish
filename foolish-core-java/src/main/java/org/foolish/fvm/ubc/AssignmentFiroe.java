@@ -12,7 +12,7 @@ import org.foolish.ast.AST;
  * identifiers within the RHS expression tree will be represented as IdentifierFiroe
  * which internally uses CharacterizedIdentifier.
  */
-public class AssignmentFiroe extends FiroeWithBraneMind {
+public class AssignmentFiroe extends FiroeWithBraneMind implements Constanicable {
     private final CharacterizedIdentifier lhs;
     private FIR result;
 

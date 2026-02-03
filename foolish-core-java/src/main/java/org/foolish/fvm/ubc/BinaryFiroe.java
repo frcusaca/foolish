@@ -11,7 +11,7 @@ import org.foolish.ast.AST;
  *
  * Arithmetic errors (division by zero, etc.) result in NK (not-known) values.
  */
-public class BinaryFiroe extends FiroeWithBraneMind {
+public class BinaryFiroe extends FiroeWithBraneMind implements Constanicable {
     private final String operator;
     private FIR result;
 
@@ -150,6 +150,11 @@ public class BinaryFiroe extends FiroeWithBraneMind {
             return true; // No result computed yet (or computed as null/Constanic)
         }
         return result.isConstanic();
+    }
+
+    @Override
+    public FIR getResult() {
+        return result;
     }
 
     /**

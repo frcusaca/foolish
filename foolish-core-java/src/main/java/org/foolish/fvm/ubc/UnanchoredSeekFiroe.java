@@ -29,7 +29,7 @@ import org.foolish.ast.AST;
  *   2. CONSTANIC seeks transition to CHECKED when they find their target
  *   3. The search uses the concatenated brane's full memory, not just the original brane
  */
-public class UnanchoredSeekFiroe extends FiroeWithBraneMind {
+public class UnanchoredSeekFiroe extends FiroeWithBraneMind implements Constanicable {
 
     private final int offset;
     private FIR value = null;

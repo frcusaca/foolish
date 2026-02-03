@@ -40,7 +40,7 @@ import org.foolish.ast.AST;
  * </ul>
  * This ensures CMFir transparently reflects the state of its wrapped FIR.
  */
-public class CMFir extends FiroeWithoutBraneMind {
+public class CMFir extends FiroeWithoutBraneMind implements Constanicable {
     protected FIR o;
     protected FIR o2;
     protected boolean phaseBStarted = false;
