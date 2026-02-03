@@ -198,7 +198,6 @@ public class Sequencer4Human extends Sequencer<String> {
                 if (unwrapped != null && unwrapped.atConstanic()
                     && !(unwrapped instanceof BraneFiroe)
                     && !(unwrapped instanceof ConcatenationFiroe)) {
-                    return indent(depth) + fullId + " = " + CC_STR;
                     return indent(depth) + fullId + " = " + addNyesStateIfEnabled(CC_STR, unwrapped.getNyes());
                 }
 
