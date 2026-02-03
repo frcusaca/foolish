@@ -1,0 +1,32 @@
+{
+   test_1_serach_concatenates_after_constanicity = {
+      OB={
+            a=2;
+            A={a=1};
+            AA={a=parameter};
+            B={b=3};
+            C={c=AA.a};   !! This finds AA, becomes constanic before concatenation and coordination
+            f = A AA B C;         !! Still constanic
+
+            parameter = 5;
+            r1 = f;
+
+            !! Just paranoid, checking if this comes through the same way?
+            r2 = A AA B C;
+      }
+      !! confirm = OB.r1.c == 5
+      !! confirm = OB.r2..c == 5
+   };
+
+
+   test_2_mixed_scope= {
+      OB={
+            AA={a=parameter+b};
+	    do_work={
+              b=-1;
+              call={paramter=5;}AA
+            }
+      }
+      !! confirm = OB.do_work$ == 4
+   }
+}
