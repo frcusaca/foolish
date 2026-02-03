@@ -30,10 +30,10 @@ Steps taken: 42
 
 FINAL RESULT:
 {
-＿x = ⎵⎵;
+＿x = ⎵⎵ (CONSTANIC);
 ＿outer = {
 ＿        ＿inner = {
-＿        ＿        ＿y = ⎵⎵;
+＿        ＿        ＿y = ⎵⎵ (CONSTANIC);
 ＿        ＿};
 ＿};
 }

@@ -157,12 +157,9 @@ public class ConcatenationFiroe extends FiroeWithBraneMind {
             if (resolved instanceof FiroeWithBraneMind fwbm) {
                 // Clone the brane with this as new parent, reset to INITIALIZED
                 FIR cloned = fwbm.cloneConstanic(this, Optional.of(Nyes.INITIALIZED));
-                // Reset ordinated flag on cloned FIR so storeFirs can re-ordinate it
-                // in the concatenation's memory context
-                if (cloned instanceof FiroeWithBraneMind clonedFwbm) {
-                    clonedFwbm.ordinated = false;
-                }
-                storeFirs(cloned);
+                // Add cloned brane directly to memory without re-ordination
+                // since cloneConstanic already set up the memory structure properly
+                addClonedFirToMemory(cloned);
             } else {
                 // Non-brane in concatenation is a critical error
                 String errorMsg = "Concatenation element resolved to non-brane: " +
@@ -177,6 +174,46 @@ public class ConcatenationFiroe extends FiroeWithBraneMind {
         sourceFirs = null;
         stageAExecutor = null;
         joinComplete = true;
+    }
+
+    /**
+     * Adds a cloned FIR to braneMemory without re-ordination.
+     * Used for cloned FiroeWithBraneMind instances that already have
+     * their memory structure set up from cloneConstanic.
+     */
+    private void addClonedFirToMemory(FIR fir) {
+        // Create a simple store method that doesn't re-ordinate
+        addWithoutOrdination(fir);
+    }
+
+    /**
+     * Adds FIR to memory without calling ordination logic.
+     * This bypasses the storeFirs method to avoid re-coordination issues.
+     */
+    private void addWithoutOrdination(FIR fir) {
+        // Access parent's braneMemory through inheritance
+        java.lang.reflect.Field braneMemoryField;
+        try {
+            braneMemoryField = org.foolish.fvm.ubc.FiroeWithBraneMind.class.getDeclaredField("braneMemory");
+            braneMemoryField.setAccessible(true);
+            org.foolish.fvm.ubc.BraneMemory memory = 
+                (org.foolish.fvm.ubc.BraneMemory) braneMemoryField.get(this);
+            
+            java.lang.reflect.Field indexLookupField = 
+                org.foolish.fvm.ubc.FiroeWithBraneMind.class.getDeclaredField("indexLookup");
+            indexLookupField.setAccessible(true);
+            java.util.Map indexLookup = 
+                (java.util.Map) indexLookupField.get(this);
+            
+            // Add to memory and set up relationships without ordination
+            memory.put(fir);
+            fir.setParentFir(this);
+            int index = memory.size() - 1;
+            indexLookup.put(fir, index);
+            
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to add FIR without ordination", e);
+        }
     }
 
     /**

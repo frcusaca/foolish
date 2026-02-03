@@ -28,12 +28,12 @@ FINAL RESULT:
 {
 ＿a = 1;
 ＿b = {
-＿    ＿c = ⎵⎵;
+＿    ＿c = ⎵⎵ (CONSTANIC);
 ＿    ＿d = 2;
 ＿    ＿e = 2;
 ＿};
 ＿f = {
-＿    ＿c = ⎵⎵;
+＿    ＿c = ⎵⎵ (CONSTANIC);
 ＿    ＿d = 2;
 ＿    ＿e = 2;
 ＿};

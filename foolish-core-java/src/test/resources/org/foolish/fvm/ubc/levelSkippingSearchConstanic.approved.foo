@@ -32,12 +32,12 @@ Steps taken: 49
 
 FINAL RESULT:
 {
-＿badValue = ⎵⎵;
+＿badValue = ⎵⎵ (CONSTANIC);
 ＿nested = {
-＿         ＿x = ⎵⎵;
+＿         ＿x = ⎵⎵ (CONSTANIC);
 ＿};
-＿y = ⎵⎵;
-＿z = ⎵⎵;
+＿y = ⎵⎵ (CONSTANIC);
+＿z = ⎵⎵ (CONSTANIC);
 }
 
 COMPLETION STATUS:
