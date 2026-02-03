@@ -85,6 +85,7 @@ public class IdentifierFiroe extends FiroeWithBraneMind implements Constanicable
      */
     @Override
     public int step() {
+        System.err.println("DEBUG STEP: Identifier " + identifier.getId() + " step() at state " + getNyes());
         switch (getNyes()) {
             case UNINITIALIZED -> {
                 initialize();
@@ -94,6 +95,7 @@ public class IdentifierFiroe extends FiroeWithBraneMind implements Constanicable
             case INITIALIZED -> {
                 var found = memoryGet(identifier, 0);
                 if (found.isEmpty()) {
+                    System.err.println("DEBUG: Identifier " + identifier.getId() + " NOT FOUND");
                     setNyes(Nyes.CONSTANIC);
                     return 1;
                 }
@@ -103,6 +105,7 @@ public class IdentifierFiroe extends FiroeWithBraneMind implements Constanicable
                 if (value == null) {
                     setNyes(Nyes.CONSTANIC);
                 } else {
+                    System.err.println("DEBUG: Identifier " + identifier.getId() + " FOUND, transitioning to CHECKED");
                     setNyes(Nyes.CHECKED);
                 }
                 return 1;
@@ -111,8 +114,18 @@ public class IdentifierFiroe extends FiroeWithBraneMind implements Constanicable
                 // Identifier lookup is complete, check if value has reached final state
                 // Use atConstanic() to check for exactly CONSTANIC (unresolved)
                 // Use atConstant() to check for exactly CONSTANT (fully resolved)
+                System.err.println("DEBUG: Identifier " + identifier.getId() + " CHECKED value=" +
+                    value.getClass().getSimpleName() + " atConstanic=" + value.atConstanic() +
+                    " atConstant=" + value.atConstant() + " nyes=" + value.getNyes() + " isNye=" + value.isNye());
                 if (value.atConstanic()) {
-                    setNyes(Nyes.CONSTANIC);
+                    // CONSTANIC value needs to be coordinated (cloned and re-positioned)
+                    // so it can re-resolve from this identifier's position.
+                    System.err.println("DEBUG: Identifier " + identifier.getId() + " coordinating CONSTANIC value " + value.getClass().getSimpleName());
+                    // Clone the value with INITIALIZED state so it will re-evaluate.
+                    value = value.cloneConstanic(this, java.util.Optional.of(Nyes.INITIALIZED));
+                    // storeFirs will ordinate the clone to this identifier's context
+                    storeFirs(value);
+                    setNyes(Nyes.PRIMED);
                 } else if (value.atConstant()) {
                     setNyes(Nyes.CONSTANT);
                 } else {
@@ -122,13 +135,27 @@ public class IdentifierFiroe extends FiroeWithBraneMind implements Constanicable
                 }
                 return 1;
             }
+            case PRIMED -> {
+                // Transition to EVALUATING to step the coordinated value
+                setNyes(Nyes.EVALUATING);
+                return 1;
+            }
             case EVALUATING -> {
-                // Check if value completed evaluation
-                // Use atConstanic() and atConstant() for exact state checks
-                if (value.atConstanic()) {
-                    setNyes(Nyes.CONSTANIC);
-                } else if (value.atConstant()) {
-                    setNyes(Nyes.CONSTANT);
+                // Step the coordinated value through evaluation
+                if (isBrainEmpty()) {
+                    // Value finished evaluating, check final state
+                    if (value.atConstanic()) {
+                        setNyes(Nyes.CONSTANIC);
+                    } else {
+                        setNyes(Nyes.CONSTANT);
+                    }
+                    return 1;
+                }
+                // Step the next FIR in braneMind
+                FIR current = brainDequeue();
+                current.step();
+                if (current.isNye()) {
+                    brainEnqueue(current);
                 }
                 return 1;
             }

@@ -186,7 +186,9 @@ public class Sequencer4Human extends Sequencer<String> {
 
                 FIR unwrapped = unwrap(result);
 
-                if (unwrapped != null && unwrapped.atConstanic() && !(unwrapped instanceof BraneFiroe)) {
+                if (unwrapped != null && unwrapped.atConstanic()
+                    && !(unwrapped instanceof BraneFiroe)
+                    && !(unwrapped instanceof ConcatenationFiroe)) {
                     return indent(depth) + fullId + " = " + CC_STR;
                 }
 
@@ -270,12 +272,9 @@ public class Sequencer4Human extends Sequencer<String> {
     }
 
     protected String sequenceIdentifier(IdentifierFiroe identifier, int depth) {
-        if (identifier.atConstanic()) {
-            return indent(depth) + CC_STR;
-        }
-        if (!identifier.isNye()) {
-            // If the identifier resolved to a brane or concatenation, sequence that
-            FIR resolved = identifier.getResolvedFir();
+        // Even if constanic, try to expand if we can get the resolved FIR
+        FIR resolved = identifier.getResolvedFir();
+        if (resolved != null) {
             if (resolved instanceof BraneFiroe brane) {
                 return sequenceBrane(brane, depth);
             }
@@ -290,11 +289,17 @@ public class Sequencer4Human extends Sequencer<String> {
             if (unwrapped instanceof ConcatenationFiroe concat) {
                 return sequenceConcatenation(concat, depth);
             }
-            try {
-                return indent(depth) + identifier.getValue();
-            } catch (UnsupportedOperationException e) {
-                // Fall through to NK if getValue fails
+            if (!identifier.atConstanic()) {
+                try {
+                    return indent(depth) + identifier.getValue();
+                } catch (UnsupportedOperationException e) {
+                    // Fall through to CC_STR or NK_STR
+                }
             }
+        }
+
+        if (identifier.atConstanic()) {
+            return indent(depth) + CC_STR;
         }
         return indent(depth) + NK_STR;
     }
