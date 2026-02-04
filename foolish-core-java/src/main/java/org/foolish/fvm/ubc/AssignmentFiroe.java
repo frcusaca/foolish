@@ -98,6 +98,7 @@ public class AssignmentFiroe extends FiroeWithBraneMind implements Constanicable
         return 0;
     }
 
+
     @Override
     public boolean isConstanic() {
         if (result != null) {
@@ -125,8 +126,8 @@ public class AssignmentFiroe extends FiroeWithBraneMind implements Constanicable
     }
 
     /**
-     * Gets the evaluated result FIR.
-     * Returns null if not yet evaluated.
+     * This is the RHS expression that gives this assignment
+     * its value.
      */
     public FIR getResult() {
         return result;

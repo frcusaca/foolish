@@ -16,6 +16,7 @@ import org.foolish.ast.AST;
  * Currently, identifier lookup is not yet implemented in UBC, so this
  * returns NK (not-known) values.
  */
+
 public class IdentifierFiroe extends FiroeWithBraneMind implements Constanicable {
     private final Query.StrictlyMatchingQuery identifier;
     FIR value = null; // Package-private for access by RegexpSearchFiroe

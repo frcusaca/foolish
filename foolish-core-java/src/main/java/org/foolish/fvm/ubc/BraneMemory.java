@@ -1,6 +1,5 @@
 package org.foolish.fvm.ubc;
 
-import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.ArrayList;
@@ -81,7 +80,7 @@ public class BraneMemory implements ReadOnlyBraneMemory {
             int parentPos;
             if (owningBrane != null) {
                 try {
-                    parentPos = owningBrane.getMyBraneIndex();
+                    parentPos = owningBrane.getMyBraneStatementNumber();
                 } catch (NullPointerException e) {
                     parentPos = myPos.orElse(parent.size() - 1);
                 }

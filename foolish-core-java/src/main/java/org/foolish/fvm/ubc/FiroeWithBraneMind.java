@@ -582,6 +582,10 @@ public abstract class FiroeWithBraneMind extends FIR {
         return braneMemory;
     }
 
+    public FIR getMemoryItem(int index){
+        return braneMemory.get(index);
+    }
+
     // ========== PACKAGE-PRIVATE TEST ACCESSORS ==========
     // For unit tests only - allows inspection of internal state
 

@@ -143,7 +143,7 @@ public abstract class FIR implements Cloneable {
      * Gets the statement number of this FIR within its containing brane.
      * Returns -1 if not in a brane or if position cannot be determined.
      */
-    public int getStatementNumber() {
+    public int getMyBraneStatementNumber() {
         BraneFiroe containingBrane = getMyBrane();
         if (containingBrane != null) {
             return containingBrane.getStatementIndex(this);
@@ -163,7 +163,7 @@ public abstract class FIR implements Cloneable {
         AST.SourceLocation nearest = nearestSourceLocation();
         sb.append(nearest.toString());
 
-        int stmtNum = getStatementNumber();
+        int stmtNum = getMyBraneStatementNumber();
         if (stmtNum >= 0) {
             sb.append(" (statement #").append(stmtNum + 1).append(")");
         }
@@ -175,29 +175,6 @@ public abstract class FIR implements Cloneable {
         return sb.toString();
     }
 
-    /**
-     * Finds the first ancestral brane (walking up parent chain) that has a known source location.
-     * Returns the brane's line number, or 0 if no ancestral brane with location is found.
-     * <p>
-     * Note: The root brane always exists (worst case line 0), so this will always return a value.
-     *
-     * @return the line number of the first ancestral brane with a source location
-     */
-    public int getAncestralBraneLineNumber() {
-        FIR current = this;
-        while (current != null) {
-            if (current instanceof BraneFiroe) {
-                AST.SourceLocation loc = current.sourceLocation();
-                if (loc != AST.SourceLocation.UNKNOWN) {
-                    return loc.line();
-                }
-                // If brane has unknown location, keep searching up
-            }
-            current = current.parentFir;
-        }
-        // No ancestral brane found with location - return 0 (root brane default)
-        return 0;
-    }
 
     /**
      * Formats an error message with the standard 3-item format:
@@ -234,7 +211,7 @@ public abstract class FIR implements Cloneable {
         }
 
         // 3. Ancestral brane line number
-        int braneLineNum = getAncestralBraneLineNumber();
+        int braneLineNum = getMyBraneStatementNumber();
         sb.append(" Brane@").append(braneLineNum);
 
         // Append the actual message
@@ -585,7 +562,7 @@ public abstract class FIR implements Cloneable {
 
         // Traverse up the hierarchy
         while (current != null) {
-            int index = current.getMyBraneIndex();
+            int index = current.getMyBraneStatementNumber();
             if (index == -1) {
                 // We reached the top (root or detached)
                 // "Index always starts with 0"
@@ -599,29 +576,6 @@ public abstract class FIR implements Cloneable {
         }
 
         return builder.build();
-    }
-
-    /**
-     * Gets the index of this FIR in its containing brane's memory.
-     * Chains through parent FIRs to find the statement-level FIR, then returns its position.
-     * <p>
-     * The brane index defines the "order of expressions" within a height level.
-     * All statements at the same brane level are parallel/same height, and the
-     * index orders them for operations like unanchored backward search.
-     * <p>
-     * Note: The index is for the statement containing this FIR, not necessarily
-     * this exact FIR object. For example, if this is a sub-expression of an
-     * assignment, it returns the assignment's index in the brane.
-     *
-     * @return the index in the containing brane's memory (0-based), or -1 if
-     *         this FIR is not in a brane (root level)
-     */
-    public int getMyBraneIndex() {
-        return switch (parentFir) {
-            case null ->  -1;
-	    case BraneFiroe bf -> bf.getIndexOf(this);
-	    default -> parentFir.getMyBraneIndex();
-	};
     }
 
     /**

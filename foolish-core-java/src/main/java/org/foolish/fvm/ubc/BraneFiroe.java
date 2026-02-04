@@ -248,4 +248,16 @@ public class BraneFiroe extends FiroeWithBraneMind implements Constanicable {
         }
         return new Sequencer4Human().sequence(this);
     }
+
+    public FIR getExpressionFiroeAt(int index) {
+        if (index < 0 || index >= getBraneMemory().size()) {
+            throw new IndexOutOfBoundsException("Index out of bounds: " + index);
+        }
+        switch (getBraneMemory().get(index)) {
+            case AssignmentFiroe af:
+                return af.getResult();
+            case FIR other:
+                return other;
+        }
+    }
 }

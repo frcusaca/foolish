@@ -8,7 +8,9 @@ import java.util.Optional;
 /**
  * RegexpSearchFiroe performs a regular expression search on a brane.
  */
-public class RegexpSearchFiroe extends AbstractSearchFiroe {
+public class RegexpSearchFiroe
+        extends AbstractSearchFiroe
+        implements Constanicable {
     private final String pattern;
 
     public RegexpSearchFiroe(AST.RegexpSearchExpr regexpSearch) {
