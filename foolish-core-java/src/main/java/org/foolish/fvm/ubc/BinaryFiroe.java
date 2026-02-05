@@ -147,7 +147,9 @@ public class BinaryFiroe extends FiroeWithBraneMind implements Constanicable {
     @Override
     public boolean isConstanic() {
         if (result == null) {
-            return true; // No result computed yet (or computed as null/Constanic)
+            // Only return true if we are technically in CONSTANIC state (or CONSTANT)
+            // UNINITIALIZED/INITIALIZED/CHECKED/PRIMED/EVALUATING are NOT Constanic.
+            return getNyes().ordinal() >= Nyes.CONSTANIC.ordinal();
         }
         return result.isConstanic();
     }

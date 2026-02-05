@@ -328,7 +328,7 @@ public abstract class FiroeWithBraneMind extends FIR {
                     setNyes(anyConstanic ? Nyes.CONSTANIC : Nyes.CONSTANT);
                     return 1;
                 }
-
+                
                 FIR current = braneMind.removeFirst();
                 try {
                     int work = current.step();
