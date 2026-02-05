@@ -330,6 +330,7 @@ public abstract class FiroeWithBraneMind extends FIR {
                 }
                 
                 FIR current = braneMind.removeFirst();
+                
                 try {
                     int work = current.step();
 

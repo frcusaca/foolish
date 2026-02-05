@@ -1,6 +1,7 @@
 package org.foolish.fvm.ubc;
 
 import org.foolish.ast.AST;
+import java.util.Optional;
 
 /**
  * UnanchoredSeekFiroe implements unanchored backward seek in the current brane.
@@ -157,7 +158,7 @@ public class UnanchoredSeekFiroe extends FiroeWithBraneMind implements Constanic
     }
 
     @Override
-    protected FIR cloneConstanic(FIR newParent, java.util.Optional<Nyes> targetNyes) {
+    protected FIR cloneConstanic(FIR newParent, Optional<Nyes> targetNyes) {
         if (!isConstanic()) {
             throw new IllegalStateException(
                 formatErrorMessage("cloneConstanic can only be called on CONSTANIC or CONSTANT FIRs, " +
@@ -178,5 +179,24 @@ public class UnanchoredSeekFiroe extends FiroeWithBraneMind implements Constanic
         }
 
         return copy;
+    }
+    @Override
+    public Optional<FIR> valuableSelf() {
+        if (FIR.RECURSION_DEPTH.get() > 100) {
+            return Optional.empty();
+        }
+        try {
+            FIR.RECURSION_DEPTH.set(FIR.RECURSION_DEPTH.get() + 1);
+            // TODO: Check for circular reference
+            if (value != null) {
+                return value.valuableSelf();
+            }
+            if (atConstanic()) {
+                 return Optional.empty();
+            }
+            return null;
+        } finally {
+            FIR.RECURSION_DEPTH.set(FIR.RECURSION_DEPTH.get() - 1);
+        }
     }
 }

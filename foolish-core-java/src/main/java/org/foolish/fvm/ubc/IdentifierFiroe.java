@@ -1,6 +1,7 @@
 package org.foolish.fvm.ubc;
 
 import org.foolish.ast.AST;
+import java.util.Optional;
 /**
  * IdentifierFiroe represents a characterized identifier reference in the UBC system.
  *
@@ -68,8 +69,11 @@ public class IdentifierFiroe extends FiroeWithBraneMind implements Constanicable
      */
     @Override
     public boolean isConstanic() {
+        if (getNyes() != Nyes.CONSTANIC && getNyes() != Nyes.CONSTANT) {
+            return false;
+        }
         if (value == null) {
-            return true; // Not yet resolved or missing
+            return true; // Resolved to nothing (CONSTANIC)
         }
         return value.isConstanic();
     }
@@ -86,7 +90,6 @@ public class IdentifierFiroe extends FiroeWithBraneMind implements Constanicable
      */
     @Override
     public int step() {
-        System.err.println("DEBUG STEP: Identifier " + identifier.getId() + " step() at state " + getNyes());
         switch (getNyes()) {
             case UNINITIALIZED -> {
                 initialize();
@@ -96,7 +99,6 @@ public class IdentifierFiroe extends FiroeWithBraneMind implements Constanicable
             case INITIALIZED -> {
                 var found = memoryGet(identifier, 0);
                 if (found.isEmpty()) {
-                    System.err.println("DEBUG: Identifier " + identifier.getId() + " NOT FOUND");
                     setNyes(Nyes.CONSTANIC);
                     return 1;
                 }
@@ -106,24 +108,16 @@ public class IdentifierFiroe extends FiroeWithBraneMind implements Constanicable
                 if (value == null) {
                     setNyes(Nyes.CONSTANIC);
                 } else {
-                    System.err.println("DEBUG: Identifier " + identifier.getId() + " FOUND, transitioning to CHECKED");
                     setNyes(Nyes.CHECKED);
                 }
                 return 1;
             }
             case CHECKED -> {
-                // Identifier lookup is complete, check if value has reached final state
-                // Use atConstanic() to check for exactly CONSTANIC (unresolved)
-                // Use atConstant() to check for exactly CONSTANT (fully resolved)
-                System.err.println("DEBUG: Identifier " + identifier.getId() + " CHECKED value=" +
-                    value.getClass().getSimpleName() + " atConstanic=" + value.atConstanic() +
-                    " atConstant=" + value.atConstant() + " nyes=" + value.getNyes() + " isNye=" + value.isNye());
                 if (value.atConstanic()) {
                     // CONSTANIC value needs to be coordinated (cloned and re-positioned)
                     // so it can re-resolve from this identifier's position.
-                    System.err.println("DEBUG: Identifier " + identifier.getId() + " coordinating CONSTANIC value " + value.getClass().getSimpleName());
                     // Clone the value with INITIALIZED state so it will re-evaluate.
-                    value = value.cloneConstanic(this, java.util.Optional.of(Nyes.INITIALIZED));
+                    value = value.cloneConstanic(this, Optional.of(Nyes.INITIALIZED));
                     // storeFirs will ordinate the clone to this identifier's context
                     storeFirs(value);
                     setNyes(Nyes.PRIMED);
@@ -187,7 +181,7 @@ public class IdentifierFiroe extends FiroeWithBraneMind implements Constanicable
     }
 
     @Override
-    protected FIR cloneConstanic(FIR newParent, java.util.Optional<Nyes> targetNyes) {
+    protected FIR cloneConstanic(FIR newParent, Optional<Nyes> targetNyes) {
         if (!isConstanic()) {
             throw new IllegalStateException(
                 formatErrorMessage("cloneConstanic can only be called on CONSTANIC or CONSTANT FIRs, " +
@@ -209,5 +203,27 @@ public class IdentifierFiroe extends FiroeWithBraneMind implements Constanicable
         }
 
         return copy;
+    }
+
+    @Override
+    public Optional<FIR> valuableSelf() {
+        if (FIR.RECURSION_DEPTH.get() > 100) {
+            return Optional.empty();
+        }
+        try {
+            FIR.RECURSION_DEPTH.set(FIR.RECURSION_DEPTH.get() + 1);
+            // TODO: Check for circular reference
+            if (value != null) {
+                return value.valuableSelf();
+            }
+            if (atConstanic()) {
+                 // Constanic (e.g. not found), return Empty as requested
+                 return Optional.empty();
+            }
+            // Not ready yet
+            return null;
+        } finally {
+            FIR.RECURSION_DEPTH.set(FIR.RECURSION_DEPTH.get() - 1);
+        }
     }
 }

@@ -38,7 +38,15 @@ public abstract class FiroeWithoutBraneMind extends FIR {
      */
     @Override
     public int step() {
-        // No-op: Values don't require stepping
+        // If we are somehow reset to non-CONSTANT (e.g. via cloneConstanic resetting to INITIALIZED),
+        // we must transition back to CONSTANT because we are intrinsically constant.
+        // If we are somehow reset to non-CONSTANT (e.g. via cloneConstanic resetting to INITIALIZED),
+        // we must transition back to CONSTANT because we are intrinsically constant.
+        if (getNyes() != Nyes.CONSTANT) {
+            System.out.println("FiroeWithoutBraneMind " + this + " resetting to CONSTANT from " + getNyes());
+            setNyes(Nyes.CONSTANT);
+            return 1;
+        }
         return 0;
     }
 

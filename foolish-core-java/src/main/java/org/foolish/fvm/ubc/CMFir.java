@@ -1,6 +1,7 @@
 package org.foolish.fvm.ubc;
 
 import org.foolish.ast.AST;
+import java.util.Optional;
 
 /**
  * Context Manipulation FIR (CMFir).
@@ -80,7 +81,7 @@ public class CMFir extends FiroeWithoutBraneMind implements Constanicable {
         phaseBStarted = true;
 
         // Clone the CONSTANIC FIR with updated parent chain and reset to INITIALIZED
-        o2 = o.cloneConstanic(this, java.util.Optional.of(Nyes.INITIALIZED));
+        o2 = o.cloneConstanic(this, Optional.of(Nyes.INITIALIZED));
 
         // If o2 is a BraneFiroe, recalculate its depth in the new context
         if (o2 instanceof BraneFiroe braneFiroe) {
@@ -182,6 +183,23 @@ public class CMFir extends FiroeWithoutBraneMind implements Constanicable {
             return o.copy(targetNyes);
         } else {
             return super.copy(targetNyes);
+        }
+    }
+
+    @Override
+    public Optional<FIR> valuableSelf() {
+        if (FIR.RECURSION_DEPTH.get() > 100) {
+            return Optional.empty();
+        }
+        try {
+            FIR.RECURSION_DEPTH.set(FIR.RECURSION_DEPTH.get() + 1);
+            if (phaseBStarted) {
+                return o2.valuableSelf();
+            } else {
+                return o.valuableSelf();
+            }
+        } finally {
+            FIR.RECURSION_DEPTH.set(FIR.RECURSION_DEPTH.get() - 1);
         }
     }
 }

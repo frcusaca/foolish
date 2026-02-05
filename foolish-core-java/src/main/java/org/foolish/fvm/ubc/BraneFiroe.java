@@ -176,10 +176,14 @@ public class BraneFiroe extends FiroeWithBraneMind implements Constanicable {
         BraneFiroe copy = new BraneFiroe(this, newParent);
 
         // Set target state if specified, otherwise copy from original
+        // Set target state if specified, otherwise reset to INITIALIZED to ensure invariant
+        // because children were reset to INITIALIZED by the copy constructor.
         if (targetNyes.isPresent()) {
             copy.nyes = targetNyes.get();
         } else {
-            copy.nyes = this.nyes;
+            // Cannot copy this.nyes (CONSTANIC) because children are INITIALIZED.
+            // Must allow re-evaluation.
+            copy.nyes = Nyes.INITIALIZED;
         }
 
         return copy;

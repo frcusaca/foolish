@@ -1,6 +1,7 @@
 package org.foolish.fvm.ubc;
 
 import org.foolish.ast.AST;
+import java.util.Optional;
 
 /**
  * FIR for assignment expressions.
@@ -153,7 +154,7 @@ public class AssignmentFiroe extends FiroeWithBraneMind implements Constanicable
     }
 
     @Override
-    protected FIR cloneConstanic(FIR newParent, java.util.Optional<Nyes> targetNyes) {
+    protected FIR cloneConstanic(FIR newParent, Optional<Nyes> targetNyes) {
         if (!isConstanic()) {
             throw new IllegalStateException(
                 formatErrorMessage("cloneConstanic can only be called on CONSTANIC or CONSTANT FIRs, " +
@@ -175,5 +176,27 @@ public class AssignmentFiroe extends FiroeWithBraneMind implements Constanicable
         }
 
         return copy;
+    }
+
+    @Override
+    public Optional<FIR> valuableSelf() {
+        if (FIR.RECURSION_DEPTH.get() > 100) {
+            return Optional.empty();
+        }
+        try {
+            FIR.RECURSION_DEPTH.set(FIR.RECURSION_DEPTH.get() + 1);
+            // TODO: Check for circular reference
+            if (result != null) {
+                return result.valuableSelf();
+            }
+            if (atConstanic()) {
+                 // Constanic means we paused (e.g. missing var), effectively empty result
+                 return Optional.empty();
+            }
+            // If not ready yet, return null
+            return null;
+        } finally {
+            FIR.RECURSION_DEPTH.set(FIR.RECURSION_DEPTH.get() - 1);
+        }
     }
 }

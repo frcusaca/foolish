@@ -65,9 +65,27 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind implements 
                 return 1;
             }
             case CHECKED -> {
-                if (stepNonBranesUntilState(Nyes.PRIMED)) {
+                boolean nonBranesReady = stepNonBranesUntilState(Nyes.CONSTANIC);
+                if (nonBranesReady) {
+                    // Initialize unwrapAnchor if needed to check if it's a Brane
+                    if (unwrapAnchor == null && !isMemoryEmpty()) {
+                        unwrapAnchor = memoryGetLast();
+                    }
+
+                    // Special handling for Brane anchors which are skipped by stepNonBranesUntilState
+                    // We must step them explicitly so they can progress (and step their children)
+                    if (unwrapAnchor != null && isBrane(unwrapAnchor) && unwrapAnchor.isNye()) {
+                         unwrapAnchor.step();
+                         return 1;
+                    }
+                    
                     if (isAnchorReady()) {
-                        performSearchStep();
+                        int work = performSearchStep();
+                        if (work == 0) {
+                             // Waiting for dependency
+                             return 0;
+                        }
+                        
                         if (searchResult == null) {
                             // Search not completed (internal stepping)
                             return 1;
@@ -82,9 +100,9 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind implements 
                         // Search found a result
                         FIR result = searchResult.get();
                         
+                        // Wait for result to be ready
                         if (result.isNye()) {
-                            result.step();
-                            return 1;
+                             return 1; 
                         }
                         if (result.atConstanic()) {
                             setNyes(Nyes.CONSTANIC);
@@ -120,6 +138,7 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind implements 
         int size = braneSize();
         for(int i = 0; i < size; ++i){
             FIR current = braneDequeue();
+            
             if (current.getNyes().ordinal() < targetState.ordinal()) {
                 current.step();
                 if (current.getNyes().ordinal() < targetState.ordinal()){
@@ -138,121 +157,76 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind implements 
         return !isMemoryEmpty();
     }
 
-    protected void performSearchStep() {
-        if (searchResult != null) return; // Already finished search
+    protected int performSearchStep() {
+        if (searchResult != null) return 0; // Already finished search
 
         if (unwrapAnchor == null) {
             if (isMemoryEmpty()) {
                 // No anchor means empty set -> Not Found
                 searchResult = Optional.empty();
-                return;
+                return 1;
             }
             unwrapAnchor = memoryGetLast();
         }
 
-        if (unwrapAnchor instanceof IdentifierFiroe identifierFiroe) {
-            if (identifierFiroe.isNye()) {
-                identifierFiroe.step();
-                return;
-            }
-            if (identifierFiroe.value == null) {
-                if (identifierFiroe.atConstanic()) {
-                    // Identifier is constanic but not resolved - propagate as search result
-                    // This happens when the search finds a constanic identifier (e.g., forward ref)
-                    searchResult = Optional.of(identifierFiroe);
-                } else {
-                    searchResult = Optional.empty();
-                }
-                return;
-            }
-            unwrapAnchor = identifierFiroe.value;
-            return;
+        // Use valuableSelf() to resolve the anchor
+        Optional<FIR> valuable = unwrapAnchor.valuableSelf();
+
+        if (valuable == null) {
+            // Anchor not ready (pre-PRIMED or evaluating)
+            return 0; // Waiting
         }
 
-        if (unwrapAnchor instanceof AssignmentFiroe assignmentFiroe) {
-            if (assignmentFiroe.isNye()) {
-                assignmentFiroe.step();
-                return;
-            }
-            unwrapAnchor = assignmentFiroe.getResult();
-            if (unwrapAnchor == null) {
-                 searchResult = Optional.empty();
-            }
-            return;
+        if (valuable.isEmpty()) {
+            // Anchor is constanic/empty -> Search result is empty
+            searchResult = Optional.empty();
+            // By definition, valuableSelf() returns Empty when constanic.
+            setNyes(Nyes.CONSTANIC); 
+            return 1;
         }
 
-        if (unwrapAnchor instanceof AbstractSearchFiroe abstractSearchFiroe) {
-            if (abstractSearchFiroe.isNye()) {
-                abstractSearchFiroe.step();
-                return;
-            }
-            unwrapAnchor = abstractSearchFiroe.getResult();
-            if (unwrapAnchor == null) {
-                searchResult = Optional.empty(); // Was new NKFiroe()
-            }
-            return;
-        }
+        FIR resolvedAnchor = valuable.get();
 
-        if (unwrapAnchor instanceof UnanchoredSeekFiroe unanchoredSeekFiroe) {
-            if (unanchoredSeekFiroe.isNye()) {
-                unanchoredSeekFiroe.step();
-                return;
-            }
-            unwrapAnchor = unanchoredSeekFiroe.getResult();
-            if (unwrapAnchor == null) {
-                searchResult = Optional.empty();
-            }
-            return;
-        }
+        // If the resolved anchor is still something we need to process specifically
+        // (like BraneFiroe for searching), handle it.
+        // Note: valuableSelf() returns 'this' for BraneFiroe.
 
-        if (unwrapAnchor instanceof BraneFiroe braneFiroe) {
+        if (resolvedAnchor instanceof BraneFiroe braneFiroe) {
              SearchCursor cursor = createCursor(braneFiroe);
              FIR result = executeSearch(cursor);
 
              if (result == null) {
-                 // Should ideally trigger re-step? 
-                 // Assuming executeSearch returns null if needed to wait? 
-                 // Or does it return NK/null for not found?
-                 // Existing code wrapped null in NKFiroe.
+                 // Search incomplete/failed
                  searchResult = Optional.empty();
-                 return;
-             }
-
-             if (result instanceof AssignmentFiroe assignment) {
-                 // Don't unwrap assignment result eagerly here, let next loop handle it?
-                 // Wait, original logic did:
-                 // result = assignment.getResult(); if null -> NK
-                 
-                 // If we return the assignment itself, the caller might use it as result.
-                 // But wait, performSearchStep sets searchResult.
-                 // If we set searchResult = Optional.of(assignment), the main loop will step it (if NYE).
-                 // AbstractSearchFiroe.step() says: FIR result = searchResult.get(); if (result.isNye()) step();
-                 // So we CAN return the AssignmentFiroe itself!
-                 searchResult = Optional.of(result);
-                 return;
+                 return 1;
              }
              
-             // Same for UnanchoredSeekFiroe etc?
-             // Original logic unwrapped anchors, but for the *result* of the search?
-             // "if (result instanceof IdentifierFiroe ... unwrapAnchor = result; return;"
-             
-             if (result instanceof IdentifierFiroe || result instanceof AssignmentFiroe
-                 || result instanceof AbstractSearchFiroe || result instanceof UnanchoredSeekFiroe) {
-                 unwrapAnchor = result;
-                 return;
+             // Unwrap the result using recursive valuableSelf()
+             Optional<FIR> val = result.valuableSelf();
+             if (val == null) {
+                 // Result depends on something not ready. Wait.
+                 return 0; // Waiting
              }
-
-             searchResult = Optional.of(result);
-             return;
+             
+             // If val is empty (e.g. Constanic/Unresolved), searchResult is empty.
+             searchResult = val;
+             return 1;
         }
 
-        if (unwrapAnchor instanceof NKFiroe) {
+        if (resolvedAnchor instanceof NKFiroe) {
             searchResult = Optional.empty();
-            return;
+            return 1;
         }
 
-        // Fallthrough: unwrapAnchor is the result (e.g. constant value)
-        searchResult = Optional.of(unwrapAnchor);
+        // If we unwrapped something (e.g. Identifier -> Assignment), continue finding the anchor.
+        if (resolvedAnchor != unwrapAnchor && resolvedAnchor != null) {
+            unwrapAnchor = resolvedAnchor;
+            return 1; // Progress made (unwrapped)
+        }
+
+        // Fallthrough: resolvedAnchor is the final result (e.g. constant value)
+        searchResult = Optional.of(resolvedAnchor);
+        return 1;
     }
 
     protected SearchCursor createCursor(BraneFiroe target) {
@@ -296,6 +270,29 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind implements 
         return searchResult.map(FIR::getValue).orElseThrow(() -> new IllegalStateException("Search result is empty/constanic"));
     }
 
+    protected abstract FIR cloneConstanic(FIR newParent, Optional<Nyes> targetNyes);
+
     @Override
-    protected abstract FIR cloneConstanic(FIR newParent, java.util.Optional<Nyes> targetNyes);
+    public Optional<FIR> valuableSelf() {
+        // GIGANTIC TODO: CHECK FOR CIRCULAR REFERENCE
+        // Implementing simple recursion limit to prevent StackOverflow
+        if (FIR.RECURSION_DEPTH.get() > 100) {
+            return Optional.empty();
+        }
+
+        try {
+            FIR.RECURSION_DEPTH.set(FIR.RECURSION_DEPTH.get() + 1);
+            if (searchResult != null) {
+                // Found a result (could be empty if not found/constanic)
+                 if (searchResult.isEmpty()) {
+                     return Optional.empty();
+                 }
+                 return searchResult.get().valuableSelf();
+            }
+            // Not ready/evaluated yet
+            return null;
+        } finally {
+            FIR.RECURSION_DEPTH.set(FIR.RECURSION_DEPTH.get() - 1);
+        }
+    }
 }

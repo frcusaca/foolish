@@ -611,6 +611,24 @@ public abstract class FIR implements Cloneable {
         }
     }
 
+    /**
+     * Shared recursion guard for valuableSelf() to prevent infinite loops.
+     */
+    protected static final ThreadLocal<Integer> RECURSION_DEPTH = ThreadLocal.withInitial(() -> 0);
+
+    /**
+     * Returns the "valuable self" of this FIR, resolving wrappers to their significant values.
+     * <p>
+     * - Returns Optional.of(this) by default (literal constants, branes, etc).
+     * - Returns result of RHS for AssignmentFiroe.
+     * - Returns resolved value for IdentifierFiroe.
+     * - Returns Optional.empty() if the FIR tried to resolve but wasn't ready (CONSTANIC).
+     * - Returns null if the FIR shouldn't have been called yet (pre-PRIMED).
+     */
+    public java.util.Optional<FIR> valuableSelf() {
+        return java.util.Optional.of(this);
+    }
+
 
     /**
      * Creates a shallow clone of this FIR.
