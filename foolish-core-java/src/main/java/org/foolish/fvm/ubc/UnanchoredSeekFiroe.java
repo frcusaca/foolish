@@ -34,9 +34,6 @@ public class UnanchoredSeekFiroe extends FiroeWithBraneMind implements Constanic
     private final int offset;
     private FIR value = null;
 
-    public UnanchoredSeekFiroe(AST.Identifier identifier) {
-        this()
-    }
     public UnanchoredSeekFiroe(AST.UnanchoredSeekExpr seekExpr) {
         super(seekExpr);
         this.offset = seekExpr.offset();
