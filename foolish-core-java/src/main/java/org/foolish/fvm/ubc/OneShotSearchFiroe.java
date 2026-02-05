@@ -26,17 +26,11 @@ public class OneShotSearchFiroe extends AbstractSearchFiroe {
     }
 
     @Override
-    protected FIR executeSearch(Cursor cursor) {
-        ReadOnlyBraneMemory targetMemory = cursor.brane().getBraneMemory();
-        if (targetMemory.isEmpty()) {
-             return new NKFiroe();
-        }
-
-        try {
-            return targetMemory.get(cursor.statementIndex());
-        } catch (IndexOutOfBoundsException e) {
-            return new NKFiroe();
-        }
+    protected FIR executeSearch(SearchCursor cursor) {
+        return cursor.streamCandidates()
+            .findFirst()
+            .map(org.apache.commons.lang3.tuple.Pair::getValue)
+            .orElse(new NKFiroe());
     }
 
     @Override

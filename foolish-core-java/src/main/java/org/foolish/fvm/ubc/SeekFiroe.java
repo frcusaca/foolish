@@ -32,8 +32,11 @@ public class SeekFiroe extends AbstractSearchFiroe {
     }
 
     @Override
-    protected FIR executeSearch(Cursor cursor) {
-        ReadOnlyBraneMemory targetMemory = cursor.brane().getBraneMemory();
+    protected FIR executeSearch(SearchCursor cursor) {
+        // Seek is an index lookup, so we can access the brane directly from the cursor's start position.
+        // The SearchCursor iterator isn't strictly needed for direct indexing, 
+        // but the signature requires it.
+        ReadOnlyBraneMemory targetMemory = cursor.getStart().brane().getBraneMemory();
         int size = targetMemory.size();
         int idx = offset;
 

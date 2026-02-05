@@ -6,10 +6,6 @@ package org.foolish.fvm.ubc;
 public class ExpressionSearchCursor extends Cursor.CursorImpl {
 
     public ExpressionSearchCursor(FIR expr) {
-        this(expr, null);
-    }
-
-    public ExpressionSearchCursor(FIR expr, SearchAttributes attributes) {
-        super(expr.getMyBrane(), expr.getMyBraneStatementNumber(), attributes);
+        super(expr.getMyBrane(), expr.getMyBraneStatementNumber());
     }
 }

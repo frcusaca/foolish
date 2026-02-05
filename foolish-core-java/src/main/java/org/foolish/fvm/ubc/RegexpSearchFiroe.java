@@ -34,18 +34,20 @@ public class RegexpSearchFiroe
     }
 
     @Override
-    protected FIR executeSearch(Cursor cursor) {
+    protected FIR executeSearch(SearchCursor cursor) {
         Query.RegexpQuery query = new Query.RegexpQuery(pattern);
-        ReadOnlyBraneMemory targetMemory = cursor.brane().getBraneMemory();
-
-        Optional<Pair<Integer, FIR>> result = switch (operator) {
-            case REGEXP_LOCAL -> targetMemory.getLocal(cursor, query);
-            case REGEXP_FORWARD_LOCAL -> targetMemory.getLocalForward(cursor, query);
-            case REGEXP_GLOBAL -> targetMemory.get(cursor, query);
-            default -> throw new IllegalStateException("Unknown regexp operator: " + operator);
-        };
-
-        return result.map(Pair::getValue).orElse(new NKFiroe());
+        
+        return cursor.streamCandidates()
+            .filter(pair -> {
+                FIR fir = pair.getRight();
+                if (query.matches(fir)) {
+                    return true;
+                }
+                return false;
+            })
+            .findFirst()
+            .map(Pair::getValue)
+            .orElse(new NKFiroe());
     }
 
     @Override

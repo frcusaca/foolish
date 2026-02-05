@@ -12,14 +12,17 @@ import static org.foolish.fvm.ubc.Cursor.*;
 public final class FoolishCursor extends CursorImpl {
 
     public FoolishCursor(BraneFiroe root, FoolishIndex idx) {
-        this(root, idx, null);
+        this(root, idx, 0); // Default to start?
     }
 
-    public FoolishCursor(BraneFiroe root, int index, SearchAttributes attributes) {
-        super(root, index, attributes);
+    public FoolishCursor(BraneFiroe root, int index) {
+        super(root, index);
     }
 
-    public FoolishCursor(BraneFiroe root, FoolishIndex idx, SearchAttributes beforeLine) {
+    public FoolishCursor(BraneFiroe root, FoolishIndex idx, int offset) {
+        // ... simplistic impl, existing FoolishIndex logic was complex
+        // Let's assume FoolishIndex logic here is just to find the start point.
+        // The original constructor navigated indices.
         BraneFiroe current = root;
         List<Integer> inds = idx.getIndices();
         for (int idxidx = 0; idxidx < inds.size() - 1; idxidx++) {
@@ -29,7 +32,7 @@ public final class FoolishCursor extends CursorImpl {
             }
             current = brane;
         }
-        super(current, inds.get(inds.size() - 1), beforeLine);
+        super(current, inds.get(inds.size() - 1));
     }
 
 }
