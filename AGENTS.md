@@ -263,6 +263,15 @@ In UBC implementation, this means creating a modified clone with new context. Se
 
 ## Language-Specific Conventions
 
+## Java
+- Perform static import of classes like Optional so the code is not litered with 'java.util.Optional'
+- Use switch and pattern matching whenever possible in place of instance statements. Switch statements, switch expressions, yield, default, all that.
+- Use switch with added contionals.
+- leverage lambdas and method references.
+- Use streams for monadic operations.
+- Use Java modules.
+- Use Java String templates to reduce code verbosity.
+
 ### Foolish Terminology (from STYLES.md)
 
 - **Foolisher** - developer/user of Foolish
