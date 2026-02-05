@@ -187,7 +187,7 @@ public abstract class FiroeWithBraneMind extends FIR {
     protected void prime() {
         // Enqueue all non-constant items from braneMemory into braneMind
         for (FIR fir : braneMemory) {
-            if (!fir.isConstant()) {
+            if (!fir.isConstanic()) {
                 braneMind.add(fir);
             }
         }
@@ -316,7 +316,7 @@ public abstract class FiroeWithBraneMind extends FIR {
             }
             case EVALUATING -> {
                 // Step everything including sub-branes
-                if (braneMind.isEmpty()) {
+                if (isBraneEmpty()) {
                     // All expressions evaluated, check if any are CONSTANIC
                     boolean anyConstanic = false;
                     for (FIR fir : braneMemory) {
@@ -363,7 +363,7 @@ public abstract class FiroeWithBraneMind extends FIR {
             return true;
         }
 
-        FIR current = braneMind.removeFirst();
+        FIR current = braneDequeue();
 
         //Reach here only when we have found the first non-brane sub-targetSetate member
         try {
@@ -394,19 +394,19 @@ public abstract class FiroeWithBraneMind extends FIR {
      * The furst sub-target-state non-brane member is shifted to the front of the queue.
      */
     private boolean allNonBranesReachedState(Nyes targetState) {
-        if (isBrainEmpty()) {
+        if (isBraneEmpty()) {
             return true;
         }
-        FIR current = brainPeek();
+        FIR current = branePeek();
         int seen = 1;
         // Let's skip branes and the sub expressions that has already reached desired state.
         while (isBrane(current) || (current.getNyes().ordinal() >= targetState.ordinal())) {
             // Re-enqueue brane without stepping - keep its place in line
-            if (seen++ > brainSize()) {
+            if (seen++ > braneSize()) {
                 return true;
             }
-            brainEnqueue(brainDequeue());
-            current = brainPeek();
+            braneEnqueue(braneDequeue());
+            current = branePeek();
         }
         return false;
     }
@@ -439,7 +439,7 @@ public abstract class FiroeWithBraneMind extends FIR {
      * we may temporarily enqueue constanic FIRs during evaluation (they'll be
      * removed on the next iteration when isNye() returns false).
      */
-    protected void brainEnqueue(FIR fir) {
+    protected void braneEnqueue(FIR fir) {
         braneMind.addLast(fir);
     }
 
@@ -448,7 +448,7 @@ public abstract class FiroeWithBraneMind extends FIR {
      * Note: During error recovery, we may need to re-enqueue FIRs that are already constanic.
      * This is acceptable as an exception to C6 since we're in an error state.
      */
-    protected void brainEnqueueFirst(FIR fir) {
+    protected void braneEnqueueFirst(FIR fir) {
         // Allow re-enqueueing for error recovery (exception to C6)
         braneMind.addFirst(fir);
     }
@@ -457,7 +457,7 @@ public abstract class FiroeWithBraneMind extends FIR {
      * Dequeues and returns the first FIR from braneMind.
      * @throws java.util.NoSuchElementException if braneMind is empty
      */
-    protected FIR brainDequeue() {
+    protected FIR braneDequeue() {
         return braneMind.removeFirst();
     }
 
@@ -465,21 +465,21 @@ public abstract class FiroeWithBraneMind extends FIR {
      * Returns the first FIR in braneMind without removing it.
      * @throws java.util.NoSuchElementException if braneMind is empty
      */
-    protected FIR brainPeek() {
+    protected FIR branePeek() {
         return braneMind.getFirst();
     }
 
     /**
      * Checks if braneMind is empty.
      */
-    protected boolean isBrainEmpty() {
+    protected boolean isBraneEmpty() {
         return braneMind.isEmpty();
     }
 
     /**
      * Returns the size of braneMind.
      */
-    protected int brainSize() {
+    protected int braneSize() {
         return braneMind.size();
     }
 

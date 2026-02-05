@@ -64,7 +64,7 @@ public class AssignmentFiroe extends FiroeWithBraneMind implements Constanicable
             }
             case EVALUATING -> {
                 // Step the expression through evaluation
-                if (isBrainEmpty()) {
+                if (isBraneEmpty()) {
                     // Expression evaluated, store result and determine final state
                     if (!isMemoryEmpty()) {
                         result = memoryGet(0);
@@ -79,15 +79,15 @@ public class AssignmentFiroe extends FiroeWithBraneMind implements Constanicable
                     return 1;
                 }
 
-                FIR current = brainDequeue();
+                FIR current = braneDequeue();
                 try {
                     int work = current.step();
                     if (current.isNye()) {
-                        brainEnqueue(current);
+                        braneEnqueue(current);
                     }
                     return work;
                 } catch (Exception e) {
-                    brainEnqueueFirst(current); // Re-enqueue on error
+                    braneEnqueueFirst(current); // Re-enqueue on error
                     throw new RuntimeException("Error during expression evaluation", e);
                 }
             }

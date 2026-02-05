@@ -91,7 +91,7 @@ public class ExecutionFir extends FiroeWithBraneMind {
         // Add all FIRs that haven't reached target to braneMind for stepping
         for (FIR fir : managedFirs) {
             if (!hasReachedTarget(fir)) {
-                brainEnqueue(fir);
+                braneEnqueue(fir);
             }
         }
     }
@@ -124,18 +124,18 @@ public class ExecutionFir extends FiroeWithBraneMind {
      * Uses breadth-first stepping: dequeue, step, re-enqueue if not done.
      */
     private int stepManagedFirs() {
-        if (isBrainEmpty()) {
+        if (isBraneEmpty()) {
             // Check final state
             finalizeExecution();
             return 1;
         }
 
-        FIR current = brainDequeue();
+        FIR current = braneDequeue();
 
         // Check if already at target
         if (hasReachedTarget(current)) {
             // Don't re-enqueue, check if we're done
-            if (isBrainEmpty()) {
+            if (isBraneEmpty()) {
                 finalizeExecution();
             }
             return 1;
@@ -145,7 +145,7 @@ public class ExecutionFir extends FiroeWithBraneMind {
         if (isStuckBeforeTarget(current)) {
             // This FIR cannot progress further
             // Remove from queue (don't re-enqueue)
-            if (isBrainEmpty()) {
+            if (isBraneEmpty()) {
                 finalizeExecution();
             }
             return 1;
@@ -156,11 +156,11 @@ public class ExecutionFir extends FiroeWithBraneMind {
 
         // Re-enqueue if not at target and not stuck
         if (!hasReachedTarget(current) && !isStuckBeforeTarget(current)) {
-            brainEnqueue(current);
+            braneEnqueue(current);
         }
 
         // Check if we're done after this step
-        if (isBrainEmpty()) {
+        if (isBraneEmpty()) {
             finalizeExecution();
         }
 

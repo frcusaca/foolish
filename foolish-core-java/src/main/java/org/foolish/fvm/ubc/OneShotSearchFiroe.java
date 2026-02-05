@@ -26,17 +26,17 @@ public class OneShotSearchFiroe extends AbstractSearchFiroe {
     }
 
     @Override
-    protected FIR executeSearch(BraneFiroe target) {
-        ReadOnlyBraneMemory targetMemory = target.getBraneMemory();
+    protected FIR executeSearch(Cursor cursor) {
+        ReadOnlyBraneMemory targetMemory = cursor.brane().getBraneMemory();
         if (targetMemory.isEmpty()) {
              return new NKFiroe();
         }
 
-        return switch (operator) {
-            case HEAD -> targetMemory.get(0);
-            case TAIL -> targetMemory.getLast();
-            default -> throw new IllegalStateException("Unknown one-shot operator: " + operator);
-        };
+        try {
+            return targetMemory.get(cursor.statementIndex());
+        } catch (IndexOutOfBoundsException e) {
+            return new NKFiroe();
+        }
     }
 
     @Override

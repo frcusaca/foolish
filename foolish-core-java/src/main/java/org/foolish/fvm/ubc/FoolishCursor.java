@@ -15,6 +15,10 @@ public final class FoolishCursor extends CursorImpl {
         this(root, idx, null);
     }
 
+    public FoolishCursor(BraneFiroe root, int index, SearchAttributes attributes) {
+        super(root, index, attributes);
+    }
+
     public FoolishCursor(BraneFiroe root, FoolishIndex idx, SearchAttributes beforeLine) {
         BraneFiroe current = root;
         List<Integer> inds = idx.getIndices();

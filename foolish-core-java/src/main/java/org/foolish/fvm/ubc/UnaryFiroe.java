@@ -44,27 +44,27 @@ public class UnaryFiroe extends FiroeWithBraneMind implements Constanicable {
             }
             case EVALUATING -> {
                 // Step operand through evaluation
-                if (isBrainEmpty()) {
+                if (isBraneEmpty()) {
                     // Operand evaluated, compute result
                     computeResult();
                     return 1;
                 }
 
-                FIR current = brainDequeue();
+                FIR current = braneDequeue();
                 try {
                     int work = current.step();
                     if (current.isNye()) {
-                        brainEnqueue(current);
+                        braneEnqueue(current);
                     }
                     return work;
                 } catch (Exception e) {
-                    brainEnqueueFirst(current); // Re-enqueue on error
+                    braneEnqueueFirst(current); // Re-enqueue on error
                     throw new RuntimeException("Error during operand evaluation", e);
                 }
             }
             case CONSTANT -> {
                 // Should not reach here if result is null, but handle gracefully
-                if (result == null && isBrainEmpty()) {
+                if (result == null && isBraneEmpty()) {
                     computeResult();
                     return 1;
                 }

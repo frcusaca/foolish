@@ -160,6 +160,21 @@ public class BraneMemory implements ReadOnlyBraneMemory {
         return Optional.empty(); // Not found, don't search parents
     }
 
+    @Override
+    public Optional<Pair<Integer, FIR>> get(Cursor cursor, Query query) {
+        return get(query, cursor.statementIndex());
+    }
+
+    @Override
+    public Optional<Pair<Integer, FIR>> getLocal(Cursor cursor, Query query) {
+        return getLocal(query, cursor.statementIndex());
+    }
+
+    @Override
+    public Optional<Pair<Integer, FIR>> getLocalForward(Cursor cursor, Query query) {
+        return getLocalForward(query, cursor.statementIndex());
+    }
+
     public void put(FIR line) {
         memory.add(line);
     }

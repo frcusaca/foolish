@@ -143,7 +143,7 @@ public class IdentifierFiroe extends FiroeWithBraneMind implements Constanicable
             }
             case EVALUATING -> {
                 // Step the coordinated value through evaluation
-                if (isBrainEmpty()) {
+                if (isBraneEmpty()) {
                     // Value finished evaluating, check final state
                     if (value.atConstanic()) {
                         setNyes(Nyes.CONSTANIC);
@@ -153,10 +153,10 @@ public class IdentifierFiroe extends FiroeWithBraneMind implements Constanicable
                     return 1;
                 }
                 // Step the next FIR in braneMind
-                FIR current = brainDequeue();
+                FIR current = braneDequeue();
                 current.step();
                 if (current.isNye()) {
-                    brainEnqueue(current);
+                    braneEnqueue(current);
                 }
                 return 1;
             }

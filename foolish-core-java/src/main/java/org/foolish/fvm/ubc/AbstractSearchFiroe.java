@@ -54,7 +54,7 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind implements 
                 return 1;
             }
             case CHECKED -> {
-                if (stepNonBranesUntilState(Nyes.CONSTANT)) {
+                if (stepNonBranesUntilState(Nyes.PRIMED)) {
                     if (isAnchorReady()) {
                         performSearchStep();
                         switch (searchResult) {
@@ -93,19 +93,30 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind implements 
         }
     }
 
+    /**
+     * Takes one step on one brane not yet at target state (by numerical value).
+     * This method will not loop forever. But it is possible to call this method
+     * forever due to children branes not progressing.
+     * 
+     * @returns true when all branes are at target state
+     */
     protected boolean stepNonBranesUntilState(Nyes targetState) {
-        if (isBrainEmpty()) {
+        if (isBraneEmpty()) {
             return true;
         }
 
-        FIR current = brainDequeue();
-        current.step();
-
-        if (current.isNye()) {
-            brainEnqueue(current);
+        for(int i = braneSize(); i >0; --i){
+            FIR current = braneDequeue();
+            if (current.getNyes().ordinal() < targetState.ordinal()) {
+                current.step();
+                if (current.getNyes().ordinal() < targetState.ordinal()){
+                    braneEnqueue(current);
+                }
+                return isBraneEmpty();
+            }
         }
 
-        return current.getNyes().ordinal() >= targetState.ordinal();
+        return isBraneEmpty();
     }
 
     protected boolean isAnchorReady() {
@@ -223,7 +234,8 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind implements 
                  return;
              }
 
-             FIR result = executeSearch(braneFiroe);
+             Cursor cursor = createCursor(braneFiroe);
+             FIR result = executeSearch(cursor);
              searchPerformed = true;
 
              if (result == null) {
@@ -258,7 +270,26 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind implements 
         }
     }
 
-    protected abstract FIR executeSearch(BraneFiroe target);
+    protected Cursor createCursor(BraneFiroe target) {
+        ReadOnlyBraneMemory memory = target.getBraneMemory();
+        int size = memory.size();
+        
+        // Handle empty memory gracefully where possible, though subclasses often check this too
+        int lastIndex = Math.max(0, size - 1);
+
+        return switch (operator) {
+            case HEAD -> new FoolishCursor(target, 0, Cursor.SearchAttributes.BEFORE_LINE_BRANE_BOUND);
+            case TAIL -> new FoolishCursor(target, lastIndex, Cursor.SearchAttributes.BEFORE_LINE_BRANE_BOUND);
+            
+            case REGEXP_LOCAL, REGEXP_GLOBAL -> new FoolishCursor(target, lastIndex, Cursor.SearchAttributes.BEFORE_LINE_BRANE_BOUND);
+            case REGEXP_FORWARD_LOCAL, REGEXP_FORWARD_GLOBAL -> new FoolishCursor(target, 0, Cursor.SearchAttributes.BEFORE_LINE_BRANE_BOUND);
+            
+            // Default fallbacks
+            default -> new FoolishCursor(target, 0, Cursor.SearchAttributes.BEFORE_LINE_BRANE_BOUND);
+        };
+    }
+
+    protected abstract FIR executeSearch(Cursor cursor);
 
     public FIR getResult() {
         return searchResult;
