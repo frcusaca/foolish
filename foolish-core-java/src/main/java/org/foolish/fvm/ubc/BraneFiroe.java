@@ -208,6 +208,38 @@ public class BraneFiroe extends FiroeWithBraneMind {
     }
 
     /**
+     * Executes the given search firoe in the context of this brane.
+     * The search runs as if it were appended to the end of the brane,
+     * without modifying the brane itself.
+     *
+     * @param searchFiroe the search expression to evaluate
+     * @return the result of the search (FIR)
+     */
+    public FIR search(AbstractSearchFiroe searchFiroe) {
+        // Link the search firoe to this brane's memory (as parent)
+        // Position -1 indicates it's floating/appended
+        searchFiroe.ordinateToParentBraneMind(this, -1);
+
+        // Run the search to completion
+        while (searchFiroe.isNye()) {
+            searchFiroe.step();
+
+            // If the search firoe is initialized but has an NKFiroe anchor (from ???),
+            // substitute 'this' brane as the anchor.
+            if (searchFiroe.isInitialized() && !searchFiroe.braneMemory.isEmpty()) {
+                FIR anchor = searchFiroe.braneMemory.getLast();
+                if (anchor instanceof NKFiroe) {
+                    // We inject 'this' as a correction for implicit anchor
+                    searchFiroe.braneMemory.put(this);
+                }
+            }
+        }
+
+        // Return the result
+        return searchFiroe.getResult();
+    }
+
+    /**
      * Returns the list of expression Firoes in this brane.
      * Includes both completed (in braneMemory) and pending (in braneMind) FIRs.
      */

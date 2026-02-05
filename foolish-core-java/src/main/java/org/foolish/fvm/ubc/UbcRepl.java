@@ -106,6 +106,51 @@ public class UbcRepl {
         return ubc.getRootBrane();
     }
 
+    /**
+     * Executes a search expression inside the context of a given brane.
+     * The search string is wrapped in a brane, parsed, and executed.
+     *
+     * @param brane the context brane
+     * @param searchString the search expression (e.g., "?top.a.c")
+     * @return the result of the search
+     */
+    public static FIR braneSearch(BraneFiroe brane, String searchString) {
+        String effectiveSearch = searchString.trim();
+        if (effectiveSearch.startsWith("?") || effectiveSearch.startsWith("~") || effectiveSearch.startsWith("#")) {
+            effectiveSearch = "??? " + effectiveSearch;
+        }
+
+        String source = "{" + effectiveSearch + "}";
+        AST.Program ast = parse(source);
+
+        // Extract the brane
+        AST.Branes branes = ast.branes();
+        if (branes == null || branes.branes().isEmpty()) {
+            throw new IllegalArgumentException("Failed to parse search string: " + searchString);
+        }
+
+        AST.Characterizable firstBrane = branes.branes().get(0);
+        if (!(firstBrane instanceof AST.Brane searchBrane)) {
+            throw new IllegalArgumentException("Search string did not parse to a standard brane");
+        }
+
+        // Extract the first statement
+        if (searchBrane.statements().isEmpty()) {
+            throw new IllegalArgumentException("Search string is empty or comment-only");
+        }
+
+        AST.Expr expr = searchBrane.statements().get(0);
+
+        // Create FIR
+        FIR firoe = FIR.createFiroeFromExpr(expr);
+
+        if (firoe instanceof AbstractSearchFiroe searchFiroe) {
+            return brane.search(searchFiroe);
+        } else {
+            throw new IllegalArgumentException("Expression is not a search operation: " + expr);
+        }
+    }
+
     public static void main(String[] args) throws IOException {
         System.out.println("Foolish UBC REPL");
         System.out.println("Using Unicellular Brane Computer");
