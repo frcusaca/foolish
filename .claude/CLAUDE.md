@@ -3,7 +3,7 @@
 ## Use Common Sense
 Consult `AGENTS.md` at the root directory.
 Apply industry standard best practices liberally. Use colloquial java and scala language patterns based on the installed versions.(25 and 3.8.1 presently).
-Treat documentation in docs/ as if they are product documents, documentation in projects/ are engineering design, notes and discussions. This applies both to reading and generating for each directory.
+Documentation is organized under docs/ in subdirectories: howto/ (tutorials), why/ (philosophy), how/ (engineering), todo/ (project tracking), and old/ (legacy documents being reorganized).
 
 ## Session Hook Setup
 
@@ -134,18 +134,13 @@ Example: `claude/run-tests-8vk4v`
 
 ### Directory Structure
 
-- **`docs/`** - General documentation, architecture, language design, user guides
-  - User-facing tutorials
-  - Language specifications
-  - Architecture overviews
-  - User-facing documentation
-  - Permanent reference material
+- **`docs/howto`** - "How to Express it in Foolish" - literate programming tutorials as .foo files
+- **`docs/why`** - "Philosophy of Foolish" - origins, inspirations, design philosophy
+- **`docs/how`** - "Engineering documentation" - operational semantics, implementation details, reference
+- **`docs/todo`** - "Project documentation" - active project tracking and growth plans
+- **`docs/old`** - Legacy documentation (being reorganized into the above directories)
 
-- **`projects/`** - Engineering/design-specific documents for active work
-  - Implementation summaries
-  - Design decisions and rationale
-  - Work-in-progress specifications
-  - Engineering notes and analysis
+(The `projects/` directory has been retired; its contents are in `docs/old/`.)
 
 ### Markdown File Update Protocol
 
@@ -207,6 +202,6 @@ This appears to be an inherent limitation of CCW's current architecture rather t
 
 ## Last Updated
 
-**Date**: 2026-01-23
-**Updated By**: Claude Code v1.0.0 / claude-sonnet-4-5-20250929
-**Changes**: Added "Documentation Organization" section clarifying that engineering/design-specific documents belong in `projects/` directory while general documentation belongs in `docs/` directory.
+**Date**: 2026-02-06
+**Updated By**: Claude Code v1.0.0 / claude-opus-4-6
+**Changes**: Reorganized documentation structure. Replaced docs/ and projects/ directory descriptions with new 5-directory taxonomy (howto, why, how, todo, old). The projects/ directory has been retired.

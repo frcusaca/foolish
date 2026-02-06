@@ -4,7 +4,7 @@ This document provides instructions for AI agents (including Claude Code, GitHub
 
 ## Use Common Sense
 Apply industry standard best practices liberally. Use colloquial java and scala language patterns based on the installed versions.(25 and 3.8.1 presently).
-Treat documentation in docs/ as if they are product documents, documentation in projects/ are engineering design, notes and discussions. This applies both to reading and generating for each directory.
+Documentation is organized under docs/ in subdirectories: howto/ (tutorials), why/ (philosophy), how/ (engineering), todo/ (project tracking), and old/ (legacy documents being reorganized).
 
 
 ## Development process
@@ -222,7 +222,7 @@ UNINITIALIZED → INITIALIZED → CHECKED → EVALUATING → CONSTANIC → CONST
 3. The clone is **recoordinated** with new AB (the containing brane) and new IB (preceding lines)
 4. Previously failed name searches can now resolve in the new context
 
-In UBC implementation, this means creating a modified clone with new context. See `docs/ECOSYSTEM.md` for detailed semantics.
+In UBC implementation, this means creating a modified clone with new context. See `docs/old/ECOSYSTEM.md` for detailed semantics.
 
 #### Evaluation Strategy
 
@@ -352,34 +352,29 @@ GitHub Copilot / gpt-4
 - **AST**: `foolish-parser-java/src/main/java/org/foolish/ast/AST.java`
 - **Java UBC**: `foolish-core-java/src/main/java/org/foolish/fvm/ubc/`
 - **Scala UBC**: `foolish-core-scala/src/main/scala/org/foolish/fvm/scubc/`
-- **Documentation**: `docs/` (README.md, STYLES.md, ECOSYSTEM.md, etc.)
+- **Documentation**: `docs/` (legacy docs in `docs/old/`; new docs in `docs/howto/`, `docs/why/`, `docs/how/`, `docs/todo/`)
 - **AI Instructions**: `.claude/CLAUDE.md` (Claude-specific guidance)
 
 ## Documentation
 
 ### Directory Structure
 
-- **`docs/`** - General documentation, architecture, language design, user guides
-  - User-facing tutorials
-  - Language specifications
-  - Architecture overviews
-  - User-facing documentation
-  - Permanent reference material
+- **`docs/howto`** - "How to Express it in Foolish" - literate programming tutorials as .foo files
+- **`docs/why`** - "Philosophy of Foolish" - origins, inspirations, design philosophy
+- **`docs/how`** - "Engineering documentation" - operational semantics, implementation details, reference
+- **`docs/todo`** - "Project documentation" - active project tracking and growth plans
+- **`docs/old`** - Legacy documentation (being reorganized into the above directories)
 
-- **`projects/`** - Engineering/design-specific documents for active work
-  - Implementation summaries
-  - Design decisions and rationale
-  - Work-in-progress specifications
-  - Engineering notes and analysis
+(The `projects/` directory has been retired; its contents are in `docs/old/`.)
 
 
 ### Additional Resources
 
 For complete details on:
 - Language features and semantics → See `README.md`
-- Terminology and conventions → See `docs/STYLES.md`
-- UBC architecture → See `docs/ECOSYSTEM.md`
-- Name resolution and search → See `docs/NAME_SEARCH_AND_BOUND.md`
+- Terminology and conventions → See `docs/old/STYLES.md`
+- UBC architecture → See `docs/old/ECOSYSTEM.md`
+- Name resolution and search → See `docs/old/NAMES_SEARCHES_N_BOUNDS.md`
 - Claude-specific guidance → See `.claude/CLAUDE.md`
 
 ## Quick Reference
@@ -420,6 +415,6 @@ When proposing updates, explain what has changed and why the documentation needs
 
 ## Last Updated
 
-**Date**: 2026-01-19
-**Updated By**: Claude Code v2.1.1 / claude-sonnet-4-5-20250929
-**Changes**: Simplified CCW section to brief note recommending local development instead. Removed detailed proxy configuration and workaround documentation. CCW is not currently suitable for Maven-based Java development.
+**Date**: 2026-02-06
+**Updated By**: Claude Code v1.0.0 / claude-opus-4-6
+**Changes**: Reorganized documentation structure. Replaced docs/ and projects/ directory descriptions with new 5-directory taxonomy (howto, why, how, todo, old). Updated all file path references. Fixed stale NAME_SEARCH_AND_BOUND.md reference.
