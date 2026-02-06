@@ -78,7 +78,7 @@ public class BraneFiroe extends FiroeWithBraneMind implements Constanicable {
         // Check if depth exceeds limit
         if (this.EXPRMNT_brane_depth >= EXPRMNT_MAX_BRANE_DEPTH) {
             // Immediately set to CONSTANT - this brane will not evaluate
-            setNyesConstant();
+            setNyes(Nyes.CONSTANT);
 
             // Raise medium level alarm
             org.foolish.fvm.AlarmSystem.raise(

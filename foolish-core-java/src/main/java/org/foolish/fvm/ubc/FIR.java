@@ -241,7 +241,7 @@ public abstract class FIR implements Cloneable {
      */
     protected void markInitialized() {
         this.initialized = true;
-        setNyesInitialized();
+        setNyes(Nyes.INITIALIZED);
     }
 
     /**
@@ -254,92 +254,84 @@ public abstract class FIR implements Cloneable {
     /**
      * Sets the NYE state of this FIR.
      * All changes to a Firoe's Nyes must be made through this method.
+     * <p>
+     * State transitions are validated using two-layer if-then logic.
+     * Key constraints:
+     * <ul>
+     *   <li>No backward transitions (new state ordinal must be >= current ordinal)</li>
+     *   <li>CONSTANIC is immutable except for transition to CONSTANT</li>
+     *   <li>CONSTANT is terminal - no transitions allowed</li>
+     *   <li>Forward skips are allowed (e.g., UNINITIALIZED → CONSTANT for ValueFiroe)</li>
+     * </ul>
      *
-     * @deprecated Use state-specific setters instead (setUninitialized, setInitialized, etc.)
-     *             This method remains for backward compatibility but will be removed.
+     * @param nyes the new state to transition to
+     * @throws IllegalStateException if the transition is not allowed
      */
-    @Deprecated
     protected void setNyes(Nyes nyes) {
-        // Check immutability constraint - use direct field check, not getNyes()
-        // because subclasses like CMFir override getNyes() to return inner state
-        if (this.nyes != null &&
-            this.nyes.ordinal() >= Nyes.CONSTANIC.ordinal() &&
-            nyes != Nyes.CONSTANT) {
-            throw new IllegalStateException(
-                formatErrorMessage("Cannot change state from " + this.nyes + " to " + nyes +
-                                  " - FIR is immutable once CONSTANIC"));
-        }
-        this.nyes = nyes;
-    }
-
-    /**
-     * Transitions to UNINITIALIZED Nyes state.
-     * Only allowed from constructor - enforces proper initialization.
-     */
-    protected void setNyesUninitialized() {
-        if (nyes != null && nyes != Nyes.UNINITIALIZED) {
-            throw new IllegalStateException(
-                formatErrorMessage("Cannot transition to UNINITIALIZED from " + nyes));
-        }
-        this.nyes = Nyes.UNINITIALIZED;
-    }
-
-    /**
-     * Transitions to INITIALIZED Nyes state.
-     * Only allowed before CONSTANIC state.
-     */
-    protected void setNyesInitialized() {
-        if (isConstanic()) {
-            throw new IllegalStateException(
-                formatErrorMessage("Cannot change state to INITIALIZED - FIR is immutable once CONSTANIC"));
-        }
-        this.nyes = Nyes.INITIALIZED;
-    }
-
-    /**
-     * Transitions to CHECKED Nyes state.
-     * Only allowed before CONSTANIC state.
-     */
-    protected void setNyesChecked() {
-        if (isConstanic()) {
-            throw new IllegalStateException(
-                formatErrorMessage("Cannot change state to CHECKED - FIR is immutable once CONSTANIC"));
-        }
-        this.nyes = Nyes.CHECKED;
-    }
-
-    /**
-     * Transitions to EVALUATING Nyes state.
-     * Only allowed before CONSTANIC state.
-     */
-    protected void setNyesEvaluating() {
-        if (isConstanic()) {
-            throw new IllegalStateException(
-                formatErrorMessage("Cannot change state to EVALUATING - FIR is immutable once CONSTANIC"));
-        }
-        this.nyes = Nyes.EVALUATING;
-    }
-
-    /**
-     * Transitions to CONSTANIC Nyes state.
-     * Once set, FIR becomes immutable and only CONSTANT transition is allowed.
-     * Only allowed before CONSTANIC state.
-     */
-    protected void setNyesConstanic() {
-        if (isConstanic()) {
-            // Already CONSTANIC or CONSTANT, no-op
+        // Handle null current state (shouldn't happen, but be safe)
+        if (this.nyes == null) {
+            this.nyes = nyes;
             return;
         }
-        this.nyes = Nyes.CONSTANIC;
-    }
 
-    /**
-     * Transitions to CONSTANT Nyes state.
-     * This is the only state transition allowed from CONSTANIC.
-     * Once CONSTANT, no further transitions are possible.
-     */
-    protected void setNyesConstant() {
-        this.nyes = Nyes.CONSTANT;
+        // Two-layer if-then: outer checks current state, inner checks new state
+        if (this.nyes == Nyes.UNINITIALIZED) {
+            // From UNINITIALIZED, any forward transition is allowed
+            if (nyes.ordinal() >= Nyes.UNINITIALIZED.ordinal()) {
+                this.nyes = nyes;
+            } else {
+                throw new IllegalStateException(
+                    formatErrorMessage("Cannot transition from UNINITIALIZED to " + nyes));
+            }
+        } else if (this.nyes == Nyes.INITIALIZED) {
+            if (nyes.ordinal() >= Nyes.INITIALIZED.ordinal()) {
+                this.nyes = nyes;
+            } else {
+                throw new IllegalStateException(
+                    formatErrorMessage("Cannot transition backward from INITIALIZED to " + nyes));
+            }
+        } else if (this.nyes == Nyes.CHECKED) {
+            if (nyes.ordinal() >= Nyes.CHECKED.ordinal()) {
+                this.nyes = nyes;
+            } else {
+                throw new IllegalStateException(
+                    formatErrorMessage("Cannot transition backward from CHECKED to " + nyes));
+            }
+        } else if (this.nyes == Nyes.PRIMED) {
+            if (nyes.ordinal() >= Nyes.PRIMED.ordinal()) {
+                this.nyes = nyes;
+            } else {
+                throw new IllegalStateException(
+                    formatErrorMessage("Cannot transition backward from PRIMED to " + nyes));
+            }
+        } else if (this.nyes == Nyes.EVALUATING) {
+            if (nyes.ordinal() >= Nyes.EVALUATING.ordinal()) {
+                this.nyes = nyes;
+            } else {
+                throw new IllegalStateException(
+                    formatErrorMessage("Cannot transition backward from EVALUATING to " + nyes));
+            }
+        } else if (this.nyes == Nyes.CONSTANIC) {
+            // CONSTANIC is immutable - only CONSTANT or same state allowed
+            if (nyes == Nyes.CONSTANT) {
+                this.nyes = nyes;
+            } else if (nyes == Nyes.CONSTANIC) {
+                // No-op, already in this state
+            } else {
+                throw new IllegalStateException(
+                    formatErrorMessage("Cannot change state from CONSTANIC to " + nyes +
+                                      " - FIR is immutable once CONSTANIC"));
+            }
+        } else if (this.nyes == Nyes.CONSTANT) {
+            // CONSTANT is terminal - no transitions allowed except same state
+            if (nyes == Nyes.CONSTANT) {
+                // No-op, already in this state
+            } else {
+                throw new IllegalStateException(
+                    formatErrorMessage("Cannot change state from CONSTANT to " + nyes +
+                                      " - FIR is immutable once CONSTANT"));
+            }
+        }
     }
 
     /**
