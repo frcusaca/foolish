@@ -38,6 +38,15 @@ The project supports two primary development environments:
 - Maven commands work directly: `mvn clean test`
 
 ## Build Commands
+### Make project specific repository
+To be completely safe, let's make our own copy of the repo by running the script located at the root of the project directory:
+```bash
+./session_starter.make.m2.4.me.sh
+```
+It outputs an export command for future maven 
+"export MAVEN_OPTS="-Dmaven.repo.local=/home/hcubsy/AI_NAME/BRANCH/.m2.4.me"
+with the AI_NAME and BRANCH name replaced with current path. Do that and we're set for this session in terms of dependencies.
+
 ### Cleaning
 ```bash
 rm -rf ~/.m2/repository/org/foolish

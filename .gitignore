@@ -107,3 +107,4 @@ buildNumber.properties
 
 *.received.txt
 *.received.foo
+.m2.4.me
