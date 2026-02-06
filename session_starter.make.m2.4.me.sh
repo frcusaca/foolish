@@ -2,7 +2,7 @@
 
 # Configuration
 SOURCE_REPO="$HOME/.m2/repository"
-TARGET_REPO="./.m2.4.me"
+TARGET_REPO="$(pwd)/.m2.4.me"
 
 rm -rf ${SOURCE_REPO}/org/foolish
 
@@ -18,7 +18,7 @@ if [ ! -d "$SOURCE_REPO" ]; then
     exit 1
 fi
 
-if [ -d "$TARGET_REPO" ]; then
+if [ -e "$TARGET_REPO" ]; then
     echo "Target $TARGET_REPO already exists. Skipping copy."
 else
     OS_TYPE=$(uname -s)
@@ -36,25 +36,27 @@ else
             if cp --reflink=always -r "$SOURCE_REPO" "$TARGET_REPO" 2>/dev/null; then
                 echo "Success: Created space-efficient reflink copy."
             else
-                echo "Reflink failed (unsupported filesystem). Falling back to standard copy..."
-                cp -r "$SOURCE_REPO" "$TARGET_REPO"
+                echo "Reflink failed (unsupported filesystem). Falling back to standard shared copy..."
+    		rm -rf "$TARGET_REPO" # clean up the failed copy
+                #cp -r "$SOURCE_REPO" "$TARGET_REPO"
+                ln -s "$SOURCE_REPO" "$TARGET_REPO"
             fi
             ;;
         *)
-            echo "Unknown OS. Performing standard copy..."
-            cp -r "$SOURCE_REPO" "$TARGET_REPO"
+            echo "Unknown OS. Performing standard shared copy..."
+            ln -s "$SOURCE_REPO" "$TARGET_REPO"
             ;;
     esac
 fi
 
 # Export for the current shell session
 # Using $(realpath ...) ensures Maven always has an absolute path
-export MAVEN_OPTS="-Dmaven.repo.local=$(pwd)/$TARGET_REPO"
+export MAVEN_OPTS="-Dmaven.repo.local=$TARGET_REPO"
 
 echo "----------------------------------------------------------"
-echo "Local Repo: $(pwd)/$TARGET_REPO"
+echo "Local Repo: $TARGET_REPO"
 echo "MAVEN_OPTS set. Ready for: mvn compile / install"
 echo "Run following in all sessions that invokes maven"
-echo export MAVEN_OPTS=\"-Dmaven.repo.local=$(pwd)/$TARGET_REPO\"
+echo export MAVEN_OPTS=\"-Dmaven.repo.local=$TARGET_REPO\"
 echo "----------------------------------------------------------"
 
