@@ -29,7 +29,7 @@ public class UnicelluarBraneComputer {
 
         BraneMemory standardLib = StandardConfiguration.createStandardLibrary();
         this.rootBrane = new BraneFiroe(braneAst);
-        this.rootBrane.ordinateToParentBraneMind(FiroeWithBraneMind.of(), -1);
+        this.rootBrane.ordinateToParentBraneMind(FiroeWithBraneMind.of());
         // Manually set the parent of the rootBrane's memory to the standardLib
         // Since ordinateToParentBraneMind expects a Firoe parent, we might need a dummy parent wrapping the stdLib
         // or just expose setParent.

@@ -40,7 +40,7 @@ import java.util.IdentityHashMap;
  * <p>
  * <b>C8: ORDINATION REQUIREMENT</b><br>
  * Before braneMemory can resolve identifiers from parent context,
- * {@link #ordinateToParentBraneMind(FiroeWithBraneMind, int)} must be called exactly once.
+ * {@link #ordinateToParentBraneMind(FiroeWithBraneMind)} must be called exactly once.
  * The {@code ordinated} flag tracks this.
  * <p>
  * <b>=== FIELD ACCESS ===</b>
@@ -65,14 +65,25 @@ public abstract class FiroeWithBraneMind extends FIR {
         this.ordinated = false;
     }
 
-    public void ordinateToParentBraneMind(FiroeWithBraneMind parent, int myPos) {
-        assert !this.ordinated;
+    /**
+     * Ordinates this FIR to its parent brane's memory.
+     * This establishes the parent chain for identifier resolution.
+     * <p>
+     * The parent tracks this child's index via its indexLookup map.
+     * This child remembers its parent via parentFir (set during storeFirs/enqueueFirs).
+     * <p>
+     * Note: The caller (storeFirs/enqueueFirs) is responsible for calling
+     * parent.indexLookup.put(child, index) BEFORE calling this method.
+     *
+     * @param parent the parent brane to ordinate to
+     */
+    public void ordinateToParentBraneMind(FiroeWithBraneMind parent) {
+        assert !this.ordinated : "Cannot re-ordinate a FIR";
         linkMemoryParent(parent.braneMemory);
-        // For BraneFiroe: position is tracked via parent FIR relationships (getMyBraneIndex)
-        // For other FIRs (like IdentifierFiroe): we need to set myPos since they don't have owningBrane
-        if (!(this instanceof BraneFiroe)) {
-            setMemoryPosition(myPos);
-        }
+        // Set this FIR as the owning brane for its memory.
+        // This is needed so that when this FIR's braneMemory searches the parent,
+        // it can determine the search position via owningBrane.getMyBraneStatementNumber().
+        setMemoryOwner(this);
         this.ordinated = true;
     }
 
@@ -121,7 +132,7 @@ public abstract class FiroeWithBraneMind extends FIR {
             if (clonedFir instanceof FiroeWithBraneMind fwbm) {
                 // Reset ordinated flag so we can re-ordinate in new context
                 fwbm.ordinated = false;
-                fwbm.ordinateToParentBraneMind(this, index);
+                fwbm.ordinateToParentBraneMind(this);
             }
             index++;
         }
@@ -211,7 +222,10 @@ public abstract class FiroeWithBraneMind extends FIR {
             indexLookup.put(fir, index);
             switch (fir) {
                 case FiroeWithBraneMind fwbm:
-                    fwbm.ordinateToParentBraneMind(this, index);
+                    // Only ordinate if not already ordinated (e.g., shared CONSTANT FIRs)
+                    if (!fwbm.ordinated) {
+                        fwbm.ordinateToParentBraneMind(this);
+                    }
                     break;
                 default:
                     // Non-braneMind FIRs don't need ordination
@@ -237,7 +251,10 @@ public abstract class FiroeWithBraneMind extends FIR {
             indexLookup.put(fir,index);
             switch (fir) {
                 case FiroeWithBraneMind fwbm:
-                    fwbm.ordinateToParentBraneMind(this, index);
+                    // Only ordinate if not already ordinated
+                    if (!fwbm.ordinated) {
+                        fwbm.ordinateToParentBraneMind(this);
+                    }
                 default:
                     ;
             }
@@ -424,7 +441,7 @@ public abstract class FiroeWithBraneMind extends FIR {
      * @return the 0-based index, or -1 if not found
      */
     public int getStatementIndex(FIR fir) {
-        return braneMemory.getStatementIndex(fir);
+        return getIndexOf(fir);
     }
 
     // ========== ACCESSOR METHODS ==========
@@ -545,21 +562,7 @@ public abstract class FiroeWithBraneMind extends FIR {
         braneMemory.setParent((BraneMemory) parent);
     }
 
-    /**
-     * Sets the position of this braneMemory within its parent (controlled mutation).
-     * Used during ordination and context manipulation.
-     */
-    protected void setMemoryPosition(int pos) {
-        braneMemory.setMyPosInternal(pos);
-    }
 
-    /**
-     * Resets the memory position to allow re-ordination in a new context.
-     * Used when cloning FIRs for concatenation flattening.
-     */
-    protected void resetMemoryPosition() {
-        braneMemory.resetMyPos();
-    }
 
     /**
      * Sets the owning brane for this braneMemory (controlled mutation).

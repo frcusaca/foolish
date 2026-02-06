@@ -38,6 +38,26 @@ class BraneMemoryUnitTest {
         return new AssignmentFiroe(ast);
     }
 
+    /**
+     * Helper to create a child BraneMemory with a mock owningBrane that returns a fixed position.
+     * This simulates the new architecture where the parent's indexLookup tracks child positions.
+     */
+    private BraneMemory createChildWithPosition(BraneMemory parent, int position) {
+        BraneMemory child = new BraneMemory(null);
+        child.setParent(parent);
+        // Create a mock FiroeWithBraneMind that returns the fixed position
+        FiroeWithBraneMind mockOwner = new FiroeWithBraneMind((AST) null) {
+            @Override
+            protected void initialize() { setInitialized(); }
+            @Override
+            public int getMyBraneStatementNumber() {
+                return position;  // Return fixed position for testing
+            }
+        };
+        child.setOwningBrane(mockOwner);
+        return child;
+    }
+
     @Test
     void testSimpleLookup() {
         // Create a brane with one assignment: x = 42 at line 0
@@ -127,9 +147,12 @@ class BraneMemoryUnitTest {
         BraneMemory parent = new BraneMemory(null);
         AssignmentFiroe parentX = createAssignment("x", 100);
         parent.put(parentX);
+        parent.put(createAssignment("placeholder", 0));  // line 1 placeholder
 
-        // Create child brane at position 1 in parent
-        BraneMemory child = new BraneMemory(parent, 1);
+        // Create child brane - it will search from end of parent by default
+        // when owningBrane is null (parent.size() - 1 = 1)
+        BraneMemory child = new BraneMemory(null);
+        child.setParent(parent);
         child.put(createAssignment("y", 200));
 
         // Query for x from child - should find it in parent
@@ -147,9 +170,10 @@ class BraneMemoryUnitTest {
         BraneMemory parent = new BraneMemory(null);
         parent.put(createAssignment("x", 100));
         parent.put(createAssignment("y", 50));
+        parent.put(createAssignment("placeholder", 0));  // line 2
 
         // Create child brane at position 2 in parent
-        BraneMemory child = new BraneMemory(parent, 2);
+        BraneMemory child = createChildWithPosition(parent, 2);
         AssignmentFiroe childX = createAssignment("x", 200);
         child.put(childX);
 
@@ -174,7 +198,7 @@ class BraneMemoryUnitTest {
         parent.put(xAssignment);  // line 0
 
         // Create child at position 1 - can see up to and including position 1 in parent
-        BraneMemory child = new BraneMemory(parent, 1);
+        BraneMemory child = createChildWithPosition(parent, 1);
 
         // Add y and z to parent AFTER child created
         AssignmentFiroe yAssignment = createAssignment("y", 200);
@@ -205,12 +229,14 @@ class BraneMemoryUnitTest {
         BraneMemory grandparent = new BraneMemory(null);
         AssignmentFiroe grandparentX = createAssignment("x", 100);
         grandparent.put(grandparentX);
+        grandparent.put(createAssignment("placeholder", 0));  // line 1
 
-        BraneMemory parent = new BraneMemory(grandparent, 1);
+        BraneMemory parent = createChildWithPosition(grandparent, 1);
         AssignmentFiroe parentY = createAssignment("y", 200);
         parent.put(parentY);
+        parent.put(createAssignment("placeholder2", 0));  // line 1
 
-        BraneMemory child = new BraneMemory(parent, 1);
+        BraneMemory child = createChildWithPosition(parent, 1);
         AssignmentFiroe childZ = createAssignment("z", 300);
         child.put(childZ);
 

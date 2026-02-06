@@ -142,11 +142,23 @@ public abstract class FIR implements Cloneable {
     /**
      * Gets the statement number of this FIR within its containing brane.
      * Returns -1 if not in a brane or if position cannot be determined.
+     * <p>
+     * For FIRs that are sub-expressions of a brane statement (not direct children),
+     * this delegates to the parent FIR's statement number. This ensures that
+     * sub-expressions share their containing statement's index.
      */
     public int getMyBraneStatementNumber() {
         BraneFiroe containingBrane = getMyBrane();
         if (containingBrane != null) {
-            return containingBrane.getStatementIndex(this);
+            int directIndex = containingBrane.getStatementIndex(this);
+            if (directIndex != -1) {
+                return directIndex;
+            }
+            // Not directly in the brane - delegate to parent
+            // This handles sub-expressions that share their parent's statement index
+            if (parentFir != null) {
+                return parentFir.getMyBraneStatementNumber();
+            }
         }
         return -1;
     }

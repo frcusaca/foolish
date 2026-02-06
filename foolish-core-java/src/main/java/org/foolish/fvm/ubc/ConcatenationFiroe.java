@@ -88,7 +88,9 @@ public class ConcatenationFiroe extends FiroeWithBraneMind implements Constanica
             if (fir instanceof FiroeWithBraneMind fwbm) {
                 if (!(fir instanceof BraneFiroe) && !(fir instanceof ConcatenationFiroe)) {
                     // Non-brane FiroeWithBraneMind (like IdentifierFiroe) - ordinate for resolution
-                    fwbm.ordinateToParentBraneMind(this, index);
+                    // Add to indexLookup first so parent knows the index
+                    indexLookup.put(fir, index);
+                    fwbm.ordinateToParentBraneMind(this);
                 }
                 // BraneFiroe and ConcatenationFiroe - NOT ordinated (isolated during Stage A)
             }
@@ -180,12 +182,15 @@ public class ConcatenationFiroe extends FiroeWithBraneMind implements Constanica
                         : Optional.of(Nyes.INITIALIZED);  // Reset CONSTANIC to re-evaluate
                     FIR cloned = statement.cloneConstanic(this, targetState);
 
-                    // Reset ordinated flag and memory position so storeFirs can
-                    // re-ordinate in new context
-                    if (cloned instanceof FiroeWithBraneMind clonedFwbm) {
+                    // Only reset ordinated flag for FIRs that are ACTUALLY NEW clones.
+                    // If cloned == statement, the object is being shared (CONSTANT FIRs)
+                    // and should NOT be re-ordinated - it belongs to its original parent.
+                    boolean isNewClone = cloned != statement;
+                    if (isNewClone && cloned instanceof FiroeWithBraneMind clonedFwbm) {
                         clonedFwbm.ordinated = false;
-                        clonedFwbm.resetMemoryPosition();
                     }
+                    
+                    // Store the FIR - storeFirs will only ordinate if ordinated=false
                     storeFirs(cloned);
                 });
             } else {

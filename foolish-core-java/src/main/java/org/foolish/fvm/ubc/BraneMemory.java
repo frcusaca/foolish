@@ -12,7 +12,6 @@ import static java.lang.Math.max;
 
 public class BraneMemory implements ReadOnlyBraneMemory {
     private BraneMemory parent;
-    private Optional<Integer> myPos = Optional.empty();
     private final List<FIR> memory;
     private FiroeWithBraneMind owningBrane = null; // The Firoe with braneMind that owns this memory
 
@@ -21,31 +20,6 @@ public class BraneMemory implements ReadOnlyBraneMemory {
         this.memory = new ArrayList<>();
     }
 
-    public BraneMemory(BraneMemory parent, int myPos) {
-        this(parent);
-        this.myPos = Optional.of(myPos);
-    }
-
-    /**
-     * Internal method for setting position in parent memory.
-     * Only used internally - external code should use FIR's getMyBraneIndex() instead.
-     */
-    void setMyPosInternal(int pos) {
-        if (myPos.isEmpty()) {
-            this.myPos = Optional.of(pos);
-        } else {
-            throw new RuntimeException("Cannot recoordinate a BraneMemory.");
-        }
-    }
-
-    /**
-     * Resets myPos to allow re-ordination in a new context.
-     * Used when cloning FIRs for concatenation flattening, where the clone
-     * will be re-parented and needs a new position in the new parent.
-     */
-    void resetMyPos() {
-        this.myPos = Optional.empty();
-    }
 
     public BraneMemory getParent() {
         return parent;
@@ -74,21 +48,15 @@ public class BraneMemory implements ReadOnlyBraneMemory {
             }
         }
         if (parent != null) {
-            // Compute position dynamically using owningBrane's getMyBraneIndex() if available
-            // Otherwise fall back to myPos (for unit tests without BraneFiroe or CMFir clones)
-            // Default to searching from end of parent if neither is available
-            int parentPos;
+            // Compute position using owningBrane's getMyBraneStatementNumber()
+            // which queries the parent's indexLookup for this brane's index.
+            // Default to searching from end of parent if position cannot be determined.
+            int parentPos = parent.size() - 1;  // Default fallback
             if (owningBrane != null) {
-                try {
-                    parentPos = owningBrane.getMyBraneStatementNumber();
-                } catch (NullPointerException e) {
-                    parentPos = myPos.orElse(parent.size() - 1);
+                int idx = owningBrane.getMyBraneStatementNumber();
+                if (idx >= 0) {
+                    parentPos = idx;
                 }
-                if (parentPos == -1) {
-                    parentPos = myPos.orElse(parent.size() - 1);
-                }
-            } else {
-                parentPos = myPos.orElse(parent.size() - 1);
             }
             return parent.get(query, parentPos);
         }
