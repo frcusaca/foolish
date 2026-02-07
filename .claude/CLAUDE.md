@@ -3,7 +3,7 @@
 ## Use Common Sense
 Consult `AGENTS.md` at the root directory.
 Apply industry standard best practices liberally. Use colloquial java and scala language patterns based on the installed versions.(25 and 3.8.1 presently).
-Documentation is organized under docs/ in subdirectories: howto/ (tutorials), why/ (philosophy), how/ (engineering), todo/ (project tracking), and old/ (legacy documents being reorganized).
+Documentation is organized under docs/ in subdirectories: howto/ (tutorials), why/ (philosophy), how/ (engineering), todo/ (project tracking), and vintage_legacy/ (legacy documents being reorganized).
 
 ## Session Hook Setup
 
@@ -138,9 +138,9 @@ Example: `claude/run-tests-8vk4v`
 - **`docs/why`** - "Philosophy of Foolish" - origins, inspirations, design philosophy
 - **`docs/how`** - "Engineering documentation" - operational semantics, implementation details, reference
 - **`docs/todo`** - "Project documentation" - active project tracking and growth plans
-- **`docs/old`** - Legacy documentation (being reorganized into the above directories)
+- **`docs/vintage_legacy`** - Legacy documentation (being reorganized into the above directories)
 
-(The `projects/` directory has been retired; its contents are in `docs/old/`.)
+(The `projects/` directory has been retired; its contents are in `docs/vintage_legacy/`.)
 
 ### Markdown File Update Protocol
 
@@ -204,4 +204,4 @@ This appears to be an inherent limitation of CCW's current architecture rather t
 
 **Date**: 2026-02-06
 **Updated By**: Claude Code v1.0.0 / claude-opus-4-6
-**Changes**: Reorganized documentation structure. Replaced docs/ and projects/ directory descriptions with new 5-directory taxonomy (howto, why, how, todo, old). The projects/ directory has been retired.
+**Changes**: Reorganized documentation structure. Replaced docs/ and projects/ directory descriptions with new 5-directory taxonomy (howto, why, how, todo, vintage_legacy). The projects/ directory has been retired.

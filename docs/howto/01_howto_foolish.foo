@@ -1,0 +1,568 @@
+!! ============================================================================
+!! How to Express it in Foolish — Chapter 1: The Basics
+!! ============================================================================
+!!
+!! Welcome, Foolisher! This tutorial teaches you the Foolish programming
+!! language by example. You are reading a real Foolish program right now.
+!! Everything between !! marks is a comment — the computer ignores it,
+!! but you can read it to learn.
+!!
+!! To run this file:   (once tooling is available)
+!!   foolish 01_howto_foolish.foo
+!!
+!! Let's begin.
+
+!! ============================================================================
+!! 1. BRANES: The Container of Everything
+!! ============================================================================
+!!
+!! The most fundamental idea in Foolish is the *brane*. A brane is a
+!! container for values, enclosed in curly braces {}. Think of it like
+!! a box that holds things.
+!!
+!! Every Foolish program is itself a brane. So right now, you're going inside
+!! one big brane that wraps this entire foolish program.
+{
+	!! --- 1.1 Values ---
+	!!
+	!! The simplest thing you can put in a brane is a *value*.
+	!! Here are some integers:
+
+	1;
+	2;
+	3;
+
+	!! And a floating point number:
+
+	3.14;
+
+	!! And a string:
+
+	"hello";
+
+	!! And, of course, branes are valuable expressions as well:
+	{};
+
+	!! Comma works too to separate *statements*.
+	3,1,4,5,
+
+        !! Each value is a statement. Statements can end with a semicolon,
+	!! but they don't have to — a comment also ends a statement.
+	!! Both of these are fine:
+
+	42;          !! with semicolon
+	99           !! without semicolon (this comment ends the statement)
+	100          !! Also, the last statement does not need a semi-colon.
+}
+
+!! ============================================================================
+!! 2. NAMING THINGS: Identification
+!! ============================================================================
+!!
+!! Values on their own aren't very useful. We need to give them names
+!! so we can refer to them later. In Foolish, the = operator *identifies*
+!! a value with a name. This operation is also called *ordinating* the value
+!! to the brane, and *coordinating* the value with other values of the brane.
+
+{
+	x = 42;
+	greeting = "hi there";
+	pi = 3.14;
+
+	!! Now x, greeting, and pi are *ordinates* of this brane.
+	!! Think of them as named slots — coordinates you can use to
+	!! navigate to specific values.
+
+	!! You can use a name to get its value back:
+
+	answer = x;            !! answer is 42
+
+	!! Names look backward: a statement can only see names that
+	!! were defined *before* it. This is called retrospection or
+        !! retrospective search.
+
+	a = 10;
+	b = a;                 !! b is 10 — 'a' was defined above
+}
+
+!! ============================================================================
+!! 2b. IDENTIFIER NAMES: Multi-Word and Multi-Script
+!! ============================================================================
+!!
+!! Foolish identifiers can be single words or multi-word names.
+!! For multi-word names, use _ (underscore) as an intra-identifier
+!! word separator. The system automatically converts underscores to
+!! the thinner modifier letter low macron ˍ (U+02CD) for display.
+!! You can also use narrow no-break space (U+202F) directly.
+!! All three separators — _ ˍ and the narrow space — are equivalent.
+!!
+!! Foolish embraces Unicode. Identifiers can use letters from many
+!! scripts: Latin, Greek, Cyrillic, Hebrew, Arabic, Chinese, and Sanskrit.
+!! Mathematical and business symbols are also valid in identifiers.
+!! Use whatever script best expresses your meaning.
+
+{
+	!! --- Single-word names (most common) ---
+
+	x = 1;
+	π = 3.14;              !! Greek
+	Б = 7;                 !! Cyrillic
+	א = 42;                !! Hebrew *(AI)*
+	سعر = 99;              !! Arabic ("price")
+
+        !! Aha these scripts print right to left! cool!
+        !! But it does make characterziations awkward🤔.
+	a'سعر = 99;            !! characterization is on price not 99
+	سعر = a'99;            !! characterization is on 99
+	a'سعر = a'99;          !! characterization on both.
+
+	值 = 100;              !! Chinese ("value")
+	शून्य = 0;               !! Sanskrit ("shunya" — zero)
+
+	!! --- Math and business symbols in identifiers ---
+
+	ℝ = 1;                 !! letterlike: the reals
+	∇f = 42;               !! math operator + Latin: gradient of f
+	x² = 9;                !! Latin + superscript: x squared
+	ℂ₀ = 0;                !! letterlike + subscript: C-sub-zero
+
+	©acme = 100;           !! copyright symbol + Latin
+	price€ = 50;           !! Latin + currency: price in euros
+	§clause = 7;           !! section sign + Latin
+
+	!! --- Two-word names (common) ---
+
+	my_count = 10;
+	total_sum = 55;
+	δ_τιμή = 5;            !! Greek: "delta value"
+	变量名 = 1;            !! Chinese: "variable name"
+
+	!! --- Longer names (less frequent, following Zipf's law) ---
+
+	max_retry_count = 3;
+	очень_длинное_имя = 0;  !! Cyrillic: "very long name"
+
+	!! --- The three separators are interchangeable ---
+	!! my_var, myˍvar, and my var (with narrow no-break space)
+	!! are all the same identifier. The system normalizes them.
+
+	!! A name's length should follow a natural distribution:
+	!! mostly 1-2 words, occasionally 3-4, rarely longer.
+	!! Like words in a natural language — short ones are common,
+	!! long ones are rare but expressive when needed.
+}
+
+!! ============================================================================
+!! 3. ARITHMETIC: Computing with Values
+!! ============================================================================
+!!
+!! Foolish supports the standard arithmetic operations. Nothing
+!! surprising here — it works like you'd expect from math class.
+
+{
+	!! Addition and subtraction
+	sum = 3 + 4;           !! 7
+	diff = 10 - 3;         !! 7
+
+	!! Multiplication and division
+	product = 6 * 7;       !! 42
+	quotient = 20 / 4;     !! 5
+
+	!! Unary minus (negation)
+	neg = -5;              !! -5
+	also_neg = neg * 3;     !! -15
+
+	!! Operator precedence works as expected:
+	!! multiplication and division bind tighter than addition and subtraction.
+
+	result1 = 2 + 3 * 4;  !! 14, not 20
+	result2 = 2 * 3 + 4;  !! 10
+
+	!! Modulo (remainder)
+	remainder = 10 % 3;   !! 1
+
+	!! Division by zero gives ??? (Not Known, pronounced [NO-NO])
+	oops = 10 / 0;        !! ??? "Division by zero is a no-no here."
+}
+
+!! ============================================================================
+!! 4. USING NAMES IN EXPRESSIONS
+!! ============================================================================
+!!
+!! Names and arithmetic combine naturally:
+
+{
+	width = 10;
+	height = 5;
+	area = width * height;           !! 50
+	perimeter = 2 * (width + height) !! 30
+}
+
+!! ============================================================================
+!! 4b. SHADOWING: Reusing Names
+!! ============================================================================
+!!
+!! Foolish lets you reuse a name. Each new definition *shadows* the
+!! previous one. When you reference a name, Foolish searches backward
+!! from that point and finds the most recent definition.
+!!
+!! This is like static single assignment (SSA) — each use of a name
+!! captures the value at the point where it was most recently defined.
+
+{
+	!! Simple shadowing: each 'x' is a new definition
+	x = 1;
+	x = 2;
+	x = 3;
+	result = x;    !! 3 — finds the most recent x, which is x=3
+
+	!! The earlier definitions still existed — they were just shadowed.
+	!! Anything that captured them before they were shadowed keeps
+	!! the old value:
+
+	a = 10;
+	snapshot = a;  !! snapshot is 10
+	a = 20;
+	a = 30;
+	current = a;   !! 30 — finds the latest a
+	old = snapshot; !! 10 — snapshot captured a when it was 10
+}
+
+!! Here's a more detailed example showing how each reference
+!! looks backward to find its own "most recent" definition:
+
+{
+	x = 1;
+	a = x;         !! a = 1 (x is 1 at this point)
+	x = 2;
+	b = x;         !! b = 2 (x is 2 at this point)
+	x = 3;
+	c = x;         !! c = 3 (x is 3 at this point)
+
+	!! a, b, and c each captured a different moment of x.
+	!! This is the essence of Foolish's backward search:
+	!! each statement sees only what came before it.
+
+	sum = a + b + c; !! 1 + 2 + 3 = 6
+}
+
+!! Shadowing also works across brane boundaries. Inner branes
+!! can shadow names from their parent:
+
+{
+	color = "red";
+	inner = {
+		color = "blue";        !! shadows the outer color
+		my_color = color;      !! "blue" — finds the inner one
+	};
+	still_red = color;         !! "red" — the outer color is unchanged
+}
+
+!! ============================================================================
+!! 5. COMMENTS
+!! ============================================================================
+!!
+!! You've already seen line comments (!!). There are also block comments
+!! that can span multiple lines, delimited by triple exclamation marks:
+
+{
+	x = 1 !! line comment — also ends the statement
+
+	!!!
+	    This is a block comment.
+	    It can span multiple lines.
+	    Everything between the triple marks is ignored.
+	!!!
+
+	y = 2;
+
+	z = 3 !!! short block comment also ends the statement !!!
+}
+
+!! ============================================================================
+!! 6. THE UNKNOWN: ???
+!! ============================================================================
+!!
+!! Foolish has a special value for things that are not known: ???
+!! We call it *NK* (Not Known), pronounced "no-no".
+
+{
+	!! You can write it explicitly:
+
+	mystery = ???;
+
+	!! You get ??? when something goes wrong:
+
+	bad_math = 10 / 0;    !! ??? — division by zero
+	also_bad = 10 % 0;    !! ??? — modulo by zero
+
+	!! If you use ??? in an expression, the result is also ???:
+
+	x = ??? + 5;           !! ???
+	y = 10 * ???;          !! ???
+
+	!! Every unnamed value is secretly assigned to ???:
+	!! Writing this:
+	1;
+	2;
+	!! is the same as:
+	??? = 1;
+	??? = 2;
+}
+
+!! ============================================================================
+!! 7. NESTED BRANES
+!! ============================================================================
+!!
+!! Branes can contain other branes. This is how you build structure
+!! in Foolish — like boxes inside boxes.
+
+{
+	!! A brane containing a brane:
+
+	inner'{
+		a = 10;
+		b = 20;
+	};
+
+	!! Branes can nest as deep as you like:
+
+	level1={
+		x = 1;
+		level2={
+			y = 2;
+			level3={
+				z = 3;
+			};
+		};
+	};
+}
+
+!! ============================================================================
+!! 8. SCOPE: What Can See What
+!! ============================================================================
+!!
+!! This is one of the most important ideas in Foolish. Scope rules
+!! determine which names a statement can access.
+!!
+!! Rule 1: Later statements can see earlier statements.
+!! Rule 2: Earlier statements CANNOT see later statements.
+!! Rule 3: Inner branes can see their parent brane's names defined on lines
+!!         before their own statement in the parent brane.
+
+{
+	a = 10;
+	b = 20;
+
+	inner={
+		c = 30;
+
+		!! Inside this brane, we can see a and b from the parent:
+		sum = a + b + c;           !! 60
+
+		!! We can also shadow parent names:
+		a = 40;
+		local_a = a;           !! 40 (uses the inner a)
+	};
+
+	!! Out here, we CANNOT see c — it's inside inner.
+	!! And the inner a=40 doesn't affect our a=10.
+	still_ten = a;             !! 10
+}
+
+!! Here's a clearer example of backward-only visibility:
+
+{
+	first = 1;
+	second = first;    !! second is 1 — first is visible (defined above)
+
+	!! But a name cannot see things defined after it.
+	!! If we reference something not yet defined, it won't resolve
+	!! in this brane — Foolish searches backward, then upward, back, up, etc...
+	!! but it will not search forward within its own brane.
+
+	third = second;    !! 1 — chains work, each looks backward
+}
+
+!! ============================================================================
+!! 9. DOT DEREFERENCE: Looking Inside Branes
+!! ============================================================================
+!!
+!! To access a named value inside another brane, use the dot operator.
+!! If you've used any programming language before, this will feel familiar.
+
+{
+	point = {x = 10; y = 20};
+
+	!! Access ordinates with dot:
+	px = point.x;              !! 10
+	py = point.y;              !! 20
+
+	!! Chain dots for nested branes:
+	outer={
+		middle={
+			value = 42;
+		};
+	};
+
+	deep = outer.middle.value; !! 42
+
+	!! If the name doesn't exist, it displays ⎵⎵
+	!! NB: That's not the same as no-no ???
+	nope = point.z;            !! ⎵⎵
+}
+
+!! ============================================================================
+!! 10. HEAD AND TAIL: First and Last
+!! ============================================================================
+!!
+!! Sometimes you want the first or last element of a brane without
+!! knowing its name. Use ^ for head (first) and $ for tail (last).
+
+{
+	data = {a = 10; b = 20; c = 30};
+
+	first = data^;             !! 10 (the first value)
+	last  = data$;             !! 30 (the last value)
+
+	!! Sweet Things:
+	first =^ data;             !! 10 syntactic sugar for 'first = data^;'
+	last  =$ data;             !! 30 syntactic sugar for 'first = data$;'
+
+	!! On an empty brane, both give ???:
+	nothing1 = {}^;            !! ??? (not ⎵⎵ btw)
+	nothing2 = {}$;            !! ??? (not ⎵⎵ btw)
+
+	!! Btw, if you can guess, try guessing why this is Foolish:
+	maybe_something =$ some;   !! ⎵⎵
+	maybe_something =^ some;   !! ⎵⎵
+
+	!! You can combine this with nesting:
+	nested = {
+		{1; 2};
+		{3; 4};
+	};
+
+	last_brane = nested$;      !! {3; 4}
+	last_of_last = nested$.^;  !! Hmm, let's save chaining for later
+}
+
+!! ============================================================================
+!! 11. INDEX ACCESS: The # Operator
+!! ============================================================================
+!!
+!! Use # with a number to access a brane element by its position.
+!! Positive numbers count from the beginning (starting at 0).
+!! Negative numbers count from the end.
+
+{
+	data = {a = 10; b = 20; c = 30; d = 40; e = 50};
+
+	!! Forward indexing (0-based):
+	zeroth = data#0;              !! 10
+	first = data#1;               !! 20
+	second = data#2;              !! 30
+
+	!! Backward indexing (negative):
+	last = data#-1;               !! 50
+	second_last = data#-2;        !! 40
+
+	!! Out of bounds gives ???:
+	too_far = data#10;            !! ???
+	too_neg = data#-10;           !! ???
+
+	!! Again, curiously this is Foolish:
+	maybe_something =#10 some;    !! ⎵⎵
+	maybe_something =#-10 some;   !! ⎵⎵
+}
+
+!! ============================================================================
+!! 12. UNANCHORED SEEK: Reaching Back by Position
+!! ============================================================================
+!!
+!! Sometimes you want to refer to a previous statement by its position
+!! rather than its name. The unanchored seek #-N lets you do this.
+!! It counts backward from the current statement.
+
+{
+	a = 1;
+	b = 2;
+	c = #-1 + #-2;     !! c = b + a = 2 + 1 = 3
+	                    !! #-1 is the statement right before (b = 2)
+	                    !! #-2 is two statements before (a = 1)
+
+	!! Another example:
+	x = 10;
+	y = 20;
+	z = 30;
+	total = #-1 + #-2 + #-3;  !! 30 + 20 + 10 = 60
+
+	!! Important: unanchored seek respects brane boundaries.
+	!! Inside a nested brane, #-1 refers to the previous statement
+	!! in THAT brane, not the parent.
+
+	outer_val = 100;
+	inner={
+		inner_val = 50;
+		!! #-1 here is inner_val (50), NOT outer_val
+		ref = #-1;             !! 50
+	};
+}
+
+!! ============================================================================
+!! 13. PUTTING IT ALL TOGETHER
+!! ============================================================================
+!!
+!! Let's use what we've learned to build a small example.
+
+{
+	!! A record describing a rectangle
+	rect={
+		width = 8;
+		height = 5;
+		area = width * height;       !! 40
+		perimeter = 2 * (width + height) !! 26
+	};
+
+	!! Access its properties from outside
+	w = rect.width;                  !! 8
+	a = rect.area;                   !! 40
+
+	!! A brane of numbers
+	numbers = {10; 20; 30; 40; 50};
+	first = numbers^;               !! 10
+	last = numbers$;                !! 50
+	middle = numbers#2;             !! 30
+
+	!! Nested structure
+	person={
+		name = "Alice";
+		address={
+			city = "Foolsberg";
+			zip = 12345;
+		};
+	};
+
+	city = person.address.city;      !! "Foolsberg"
+}
+
+!! ============================================================================
+!! RECAP
+!! ============================================================================
+!!
+!! You now know the fundamentals of Foolish:
+!!
+!!   Branes          {}              Everything lives in branes
+!!   Values          42, 3.14, "hi"  Numbers and strings
+!!   Identification  x = 42          Give values names
+!!   Arithmetic      + - * / %       Standard math
+!!   Comments        !! and !!!      For humans, ignored by computer
+!!   The Unknown     ???             Not Known ("no-no")
+!!   Nesting         {{}}            Branes inside branes
+!!   Scope           backward, then up  Later sees earlier, inner sees outer
+!!   Dot access      brane.name      Look inside a brane
+!!   Head/Tail       brane^ brane$   First and last element
+!!   Index access    brane#N         By position
+!!   Unanchored seek #-N             Previous statement by position
+!!
+!! Next: 02_howto_foolish_more.foo — Searches, patterns, and more

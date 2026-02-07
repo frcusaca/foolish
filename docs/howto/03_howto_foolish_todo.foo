@@ -1,0 +1,118 @@
+!! ============================================================================
+!! How to Express it in Foolish — Chapter 3: Topics To Be Written
+!! ============================================================================
+!!
+!! This file lists topics for future chapters. Each topic will likely
+!! expand into its own detailed chapter with many examples.
+
+!! ============================================================================
+!! TOPIC: Brane Concatenation — Proximity Creates Combination
+!! ============================================================================
+!!
+!! Two adjacent branes combine (concatenate). The principle:
+!! proximity creates combination.
+!!
+!!   result = {a=1} {b=2}        !! branes merge
+!!   result = brane1 brane2      !! named branes concatenate
+!!
+!! Concatenation is associative: (A B) C = A (B C).
+!! This is how functions are invoked — reverse-polish notation.
+!! This is how derivation (OO inheritance) works.
+!! Anonymous vs named concatenation have different evaluation timing.
+
+!! ============================================================================
+!! TOPIC: Liberation Branes [...] and Detachment
+!! ============================================================================
+!!
+!! Liberation branes free identifiers from their context, making them
+!! unbound (free variables) that must be supplied by the caller.
+!!
+!!   add = [a, b]{result = a + b}    !! a and b are liberated
+!!   answer =$ {a=3; b=4} add        !! supplies a and b, answer = 7
+!!
+!! Types of liberation:
+!!   [a, b]{...}     — liberate by name (backward search blocked)
+!!   [~a, ~b]{...}   — liberate by forward search
+!!   [#1, #2]{...}   — liberate by position
+!!   [*]{...}        — liberate everything
+!!
+!! Stay-foolish markers: <expr> reactivates liberations.
+!! Constanic assignment: f <=> g is shorthand for f = <g>.
+
+!! ============================================================================
+!! TOPIC: Characterization — The ' Marker
+!! ============================================================================
+!!
+!! Characterization is Foolish's approach to what other languages call
+!! "types." The syntax uses the ' (apostrophe) marker on identifiers.
+!!
+!! Syntax (defined, semantics still being specified):
+!!   name'CharName               !! identifier with characterization
+!!   foo_bar'x = 10              !! 'x' characterizes 'foo_bar'
+!!   my_brane'SomeType = {...}   !! brane with characterization
+!!
+!! The characterization identifier follows the same rules as any
+!! Foolish identifier. It can use underscores, Unicode, etc.
+!!
+!! Key idea: characterizations are Foolish programs that establish
+!! whether a value has or does not have a characterization. They are
+!! descriptions, not prescriptions — more like labels than cages.
+!!
+!! Identifier separators (all equivalent for the identifier part):
+!!   my_var    !! underscore
+!!   my var    !! narrow no-break space (U+202F)
+!!   myˍvar    !! modifier letter low macron (U+02CD)
+!!
+!! Note: the name'{...} shorthand seen in Chapter 1 (e.g., inner'{...})
+!! uses characterization syntax. The name before ' is characterized by
+!! the expression after '. Full semantics to be specified.
+
+!! ============================================================================
+!! TOPIC: The Creation Postulate
+!! ============================================================================
+!!
+!! We postulate that one can always create a new value that is distinct
+!! from everything else ever seen before. The big black dot ⬤ represents
+!! this act. All concepts are constructed by creating new items and
+!! relating them.
+
+!! ============================================================================
+!! TOPIC: Equivalence
+!! ============================================================================
+!!
+!! Foolish has six kinds of equivalence:
+!!   =s=   Syntactic: bit-wise identical source code
+!!   ==    Semantic: same after branes are not nye
+!!   ===   Deep semantic: same in all possible coordinations
+!!         Nominal: same names / same names in same order
+!!         Characterization: same characterized names
+!!         Value: same values appear
+
+!! ============================================================================
+!! TOPIC: Logic and Assertions
+!! ============================================================================
+!!
+!! The assert operator |= (or ⊦) stipulates that the RHS evaluates
+!! to boolean true. The confirm keyword checks a boolean condition.
+
+!! ============================================================================
+!! TOPIC: Differentiation
+!! ============================================================================
+!!
+!! Program differentiation: calculating changes to output when knowing
+!! changes to input. Uses ∇ (gradient/nabla) and Δ (delta) symbols.
+!! Discrete domain differentiation, not continuous.
+
+!! ============================================================================
+!! TOPIC: Globalized Search (??)
+!! ============================================================================
+!!
+!! The ?? operator searches with parent brane lookup (crosses boundaries).
+!! Not yet fully implemented; reserved for future.
+
+!! ============================================================================
+!! TOPIC: Find-All Search (?*)
+!! ============================================================================
+!!
+!! The ?* operator collects all matches within a brane.
+!! Not yet fully implemented; reserved for future.

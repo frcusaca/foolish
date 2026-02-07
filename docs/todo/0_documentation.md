@@ -1,7 +1,7 @@
 # Documentation Reorganization Plan
 
 This document tracks the phased reorganization of Foolish documentation from the
-legacy flat structure (now in `docs/old/`) into the new four-directory taxonomy.
+legacy flat structure (now in `docs/vintage_legacy/`) into the new four-directory taxonomy.
 
 ## Directory Taxonomy
 
@@ -11,15 +11,15 @@ legacy flat structure (now in `docs/old/`) into the new four-directory taxonomy.
 | `docs/why` | Philosophy of Foolish | English prose on origins, inspirations, design philosophy |
 | `docs/how` | Engineering Documentation | Operational semantics, implementation details, reference |
 | `docs/todo` | Project Documentation | Active project tracking and growth plans |
-| `docs/old` | Legacy Documentation | Pre-reorganization files, being migrated |
+| `docs/vintage_legacy` | Legacy Documentation | Pre-reorganization files, being migrated |
 
 ## Phase 1: Structure and Migration (COMPLETE)
 
-- [x] Create directory structure: docs/howto, docs/why, docs/how, docs/todo, docs/old
-- [x] Move all docs/ files to docs/old/
-- [x] Move all projects/ files to docs/old/
+- [x] Create directory structure: docs/howto, docs/why, docs/how, docs/todo, docs/vintage_legacy
+- [x] Move all docs/ files to docs/vintage_legacy/
+- [x] Move all projects/ files to docs/vintage_legacy/
 - [x] Move SYMBOL_TABLE.md to docs/how/ as permanent reference
-- [x] Update README.md links to point to docs/old/
+- [x] Update README.md links to point to docs/vintage_legacy/
 - [x] Update AGENTS.md documentation section
 - [x] Update CLAUDE.md documentation section
 - [x] Create this plan document
@@ -29,7 +29,7 @@ legacy flat structure (now in `docs/old/`) into the new four-directory taxonomy.
 Content: Operational semantics expressed in UBC steps. Denotational semantics forthcoming.
 Implementation details.
 
-Source material from `docs/old/`:
+Source material from `docs/vintage_legacy/`:
 - ECOSYSTEM.md - UBC architecture, brane reference semantics, typing
 - UBC_FEATURES.md - UBC feature documentation
 - search-semantics.md - Search system operational semantics
@@ -43,7 +43,7 @@ Source material from `docs/old/`:
 - DEVELOPMENT.md / DEVELOPMENT_NOTES.md - Development engineering notes
 - SYMBOL_TABLE.md - Already migrated
 
-Source material from `docs/old/` (formerly projects/):
+Source material from `docs/vintage_legacy/` (formerly projects/):
 - 003-Detachment_Project.md - Detachment engineering
 - 004-nyes-state-simplification.md - State simplification engineering
 - 005-step-counting-refactoring.md - Step counting engineering
@@ -56,7 +56,7 @@ Source material from `docs/old/` (formerly projects/):
 Tasks:
 - [ ] Identify content that describes operational semantics and extract/reorganize
 - [ ] Write new docs/how/ files with proper structure
-- [ ] Update README.md links from docs/old/ to docs/how/ as content migrates
+- [ ] Update README.md links from docs/vintage_legacy/ to docs/how/ as content migrates
 
 ## Phase 3: Populate `docs/why/` (Philosophy of Foolish)
 
@@ -75,7 +75,7 @@ Topics to cover:
   and what we learn from them
 - [ ] Origins story of Foolish
 
-Source material from `docs/old/`:
+Source material from `docs/vintage_legacy/`:
 - CREATION.md - Creation postulate, origin concepts
 - DEVELOPMENT_NOTES.md - Foundation philosophy, historical context
 - STYLES.md - Design philosophy, terminology
@@ -95,15 +95,15 @@ Structure:
 
 Source material:
 - README.md tutorial sections (Branes, Sizes, Comments, Expressions, Names, The Unknown)
-- docs/old/ADVANCED_FEATURES.md code examples
-- docs/old/NAMES_SEARCHES_N_BOUNDS.md code examples
+- docs/vintage_legacy/ADVANCED_FEATURES.md code examples
+- docs/vintage_legacy/NAMES_SEARCHES_N_BOUNDS.md code examples
 - Existing test input .foo files for reference patterns
 
 ## Phase 5: Populate `docs/todo/` (Project Documentation)
 
 Content: How we're growing Foolish. Active project tracking.
 
-Source material from `docs/old/` (formerly projects/):
+Source material from `docs/vintage_legacy/` (formerly projects/):
 - 000-TODO_FEATURES.md - Feature TODO list and roadmap
 - 001-GO_PLAN.md - Go implementation plan
 - 002-todo.md - General TODO tracking
@@ -126,10 +126,10 @@ summary composed of the first chapters from each documentation area:
 
 ## Phase 7: Cleanup
 
-- [ ] Verify all docs/old/ content has been migrated or explicitly archived
-- [ ] Remove docs/old/ files that are fully superseded
+- [ ] Verify all docs/vintage_legacy/ content has been migrated or explicitly archived
+- [ ] Remove docs/vintage_legacy/ files that are fully superseded
 - [ ] Final review of all cross-references
-- [ ] Remove docs/old/ directory when empty
+- [ ] Remove docs/vintage_legacy/ directory when empty
 
 ## Last Updated
 

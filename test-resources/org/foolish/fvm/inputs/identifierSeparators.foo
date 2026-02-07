@@ -7,5 +7,65 @@
 
   foo_bar'x = 10;
   foo bar'x = 20;
-  fooˍbar'x
+  fooˍbar'x;
+
+  !! Multi-script identifiers
+  x = 1;
+  π = 3;
+  Б = 7;
+  א = 42;
+  سعر = 99;
+  值 = 100;
+  शून्य = 0;
+
+  x + π + Б + א + سعر + 值 + शून्य;
+
+  !! Retrieve each script's value by name
+  v1 = x;
+  v2 = π;
+  v3 = Б;
+  v4 = א;
+  v5 = سعر;
+  v6 = 值;
+  v7 = शून्य;
+
+  !! Mixed-script identifiers
+  Δx = 5;
+  πr2 = 314;
+  值count = 8;
+  शून्य_value = 0;
+  maxБ = 77;
+
+  !! Retrieve mixed-script values
+  m1 = Δx;
+  m2 = πr2;
+  m3 = 值count;
+  m4 = शून्य_value;
+  m5 = maxБ;
+
+  !! Math symbols
+  ℝ = 1;
+  ∀x = 2;
+  ∇f = 3;
+  x² = 4;
+  ℂ₀ = 5;
+
+  !! Retrieve math symbol values
+  s1 = ℝ;
+  s2 = ∀x;
+  s3 = ∇f;
+  s4 = x²;
+  s5 = ℂ₀;
+
+  !! Business symbols
+  ©acme = 100;
+  price€ = 50;
+  §clause = 7;
+  ™brand = 999;
+
+  !! Retrieve business symbol values
+  b1 = ©acme;
+  b2 = price€;
+  b3 = §clause;
+  b4 = ™brand
 }

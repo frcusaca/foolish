@@ -30,11 +30,14 @@ Delta applied to two compatible value produces the change:
     d0      = program∇
 
 	input2 = ...;
+    !! Specify a change function that changes input1 to input2
     change ={input1, input2}Δ;
+
+    !! Apply the gradient of the program we calculated above to the `change` in parameters
     d1      = change d0;
 
-
-    !! Apply the gradient
+    !! Apply the program gradient, it is a function that takes the output of program due
+    !!    to input1 and changes it to the output of program due to input2
     output2_from_diff =$ output1 d1
 
     !! the results should be the same as actually running it on the output
@@ -63,4 +66,4 @@ We could also parameterize the gradient to specify what changes we need to monit
 }
 ```
 
-
+The blocky looking d 'Ƌ' is alias for Δ the differential.
