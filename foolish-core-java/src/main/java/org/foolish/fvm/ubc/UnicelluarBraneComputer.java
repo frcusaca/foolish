@@ -27,31 +27,12 @@ public class UnicelluarBraneComputer {
             throw new IllegalArgumentException("AST must be a Brane");
         }
 
-        BraneMemory standardLib = StandardConfiguration.createStandardLibrary();
+        FiroeWithBraneMind standardLib = StandardConfiguration.createStandardLibrary();
         this.rootBrane = new BraneFiroe(braneAst);
         this.rootBrane.ordinateToParentBraneMind(FiroeWithBraneMind.of());
-        // Manually set the parent of the rootBrane's memory to the standardLib
-        // Since ordinateToParentBraneMind expects a Firoe parent, we might need a dummy parent wrapping the stdLib
-        // or just expose setParent.
-        // FiroeWithBraneMind.ordinateToParentBraneMind sets this.braneMemory.setParent(parent.braneMemory).
-        // So we need a Firoe that holds standardLib.
-
-        // Let's create a dummy Firoe for the Standard Library.
-        FiroeWithBraneMind stdLibOwner = new FiroeWithBraneMind((AST) null) {
-            {
-                linkMemoryParent(standardLib);
-                // Wait, standardLib IS the memory. We want rootBrane.memory.parent = standardLib.
-                // But FiroeWithBraneMind.braneMemory is now private with accessor methods.
-                // We can use the accessor to link the parent.
-            }
-            @Override
-            protected void initialize() { setInitialized(); }
-        };
-        // Actually, since we are in the same package, we can access protected accessor methods.
-        // Yes, UnicelluarBraneComputer is in org.foolish.fvm.ubc.
-        // BraneFiroe extends FiroeWithBraneMind.
-        // FiroeWithBraneMind has protected accessor linkMemoryParent().
-
+        
+        // Link the rootBrane's memory to the standardLib FIR
+        // This allows the rootBrane to resolve identifiers from the standard library
         this.rootBrane.linkMemoryParent(standardLib);
     }
 

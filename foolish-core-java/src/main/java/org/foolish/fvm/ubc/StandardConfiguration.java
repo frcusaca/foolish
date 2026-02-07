@@ -12,9 +12,16 @@ import java.util.Optional;
  */
 public class StandardConfiguration {
 
-    public static BraneMemory createStandardLibrary() {
-        // Create a detached BraneMemory for the standard library
-        BraneMemory stdLib = new BraneMemory(null);
+    /**
+     * Creates the standard library as a FiroeWithBraneMind.
+     * The returned FIR contains predefined values like ALARM_LEVELS.
+     */
+    public static FiroeWithBraneMind createStandardLibrary() {
+        // Create a FiroeWithBraneMind to hold the standard library items
+        FiroeWithBraneMind stdLib = new FiroeWithBraneMind((AST) null) {
+            @Override
+            protected void initialize() { setInitialized(); }
+        };
 
         // Define ALARM_LEVELS brane
         // ALARM_LEVELS = [ NOT=0; BARELY=1; MILD=3; HAIR_RAISING=5; PANIC=10; ]
@@ -49,7 +56,7 @@ public class StandardConfiguration {
              }
         };
 
-        stdLib.put(assignment);
+        stdLib.storeFirs(assignment);
 
         return stdLib;
     }

@@ -11,22 +11,21 @@ import static java.lang.Math.min;
 import static java.lang.Math.max;
 
 public class BraneMemory implements ReadOnlyBraneMemory {
-    private BraneMemory parent;
+    private FiroeWithBraneMind parentBrane;  // Parent FIR (not its memory)
     private final List<FIR> memory;
     private FiroeWithBraneMind owningBrane = null; // The Firoe with braneMind that owns this memory
 
-    public BraneMemory(BraneMemory parent) {
-        this.parent = parent;
+    public BraneMemory(FiroeWithBraneMind parentBrane) {
+        this.parentBrane = parentBrane;
         this.memory = new ArrayList<>();
     }
 
-
-    public BraneMemory getParent() {
-        return parent;
+    public FiroeWithBraneMind getParentBrane() {
+        return parentBrane;
     }
 
-    public void setParent(BraneMemory parent) {
-        this.parent = parent;
+    public void setParentBrane(FiroeWithBraneMind parentBrane) {
+        this.parentBrane = parentBrane;
     }
 
     public FIR get(int idx) {
@@ -37,6 +36,7 @@ public class BraneMemory implements ReadOnlyBraneMemory {
     }
 
     public Optional<Pair<Integer, FIR>> get(Query query, int fromLine) {
+        // Search in this memory first (backward from fromLine)
         for (int line = min(fromLine, memory.size() - 1); line >= 0; line--) {
             var lineMemory = memory.get(line);
             if (query.matches(lineMemory)) {
@@ -47,18 +47,20 @@ public class BraneMemory implements ReadOnlyBraneMemory {
                 return Optional.of(Pair.of(line, lineMemory));
             }
         }
-        if (parent != null) {
+        // Not found locally - delegate to parent brane's memory
+        if (parentBrane != null) {
             // Compute position using owningBrane's getMyBraneStatementNumber()
             // which queries the parent's indexLookup for this brane's index.
             // Default to searching from end of parent if position cannot be determined.
-            int parentPos = parent.size() - 1;  // Default fallback
+            int parentPos = parentBrane.memorySize() - 1;  // Default fallback
             if (owningBrane != null) {
                 int idx = owningBrane.getMyBraneStatementNumber();
                 if (idx >= 0) {
                     parentPos = idx;
                 }
             }
-            return parent.get(query, parentPos);
+            // Delegate to parent brane's memoryGet - keeping braneMemory private
+            return parentBrane.memoryGet(query, parentPos);
         }
         return Optional.empty(); // Not found
     }

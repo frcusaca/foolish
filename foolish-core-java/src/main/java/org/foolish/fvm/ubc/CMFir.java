@@ -89,12 +89,12 @@ public class CMFir extends FiroeWithoutBraneMind implements Constanicable {
             braneFiroe.setExprmntBraneDepth(newDepth);
         }
 
-        // If o2 has a braneMind, link its memory to the containing brane's memory
+        // If o2 has a braneMind, link its memory to the containing brane
         // The parent brane's indexLookup tracks this FIR's position via the CMFir's own position
         if (o2 instanceof FiroeWithBraneMind fwbm) {
             BraneFiroe myBrane = getMyBrane();
             if (myBrane != null) {
-                fwbm.linkMemoryParent(myBrane.getBraneMemory());
+                fwbm.linkMemoryParent(myBrane);  // Links to parent FIR (not its memory)
                 // The CMFir itself is tracked in the parent brane's indexLookup.
                 // o2 uses CMFir's position for identifier resolution since o2.parentFir = this.
             }

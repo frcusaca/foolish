@@ -46,12 +46,12 @@ public class SFMarkFiroe extends CMFir {
             braneFiroe.setExprmntBraneDepth(newDepth);
         }
 
-        // If o2 has a braneMind, link its memory to the containing brane's memory
+        // If o2 has a braneMind, link its memory to the containing brane
         if (o2 instanceof FiroeWithBraneMind fwbm) {
             BraneFiroe myBrane = getMyBrane();
             if (myBrane != null) {
-                // Set o2's memory parent to the containing brane's memory
-                fwbm.linkMemoryParent(myBrane.getBraneMemory());
+                // Set o2's memory parent to the containing brane (not its memory)
+                fwbm.linkMemoryParent(myBrane);
             }
         }
         syncO2Nyes();

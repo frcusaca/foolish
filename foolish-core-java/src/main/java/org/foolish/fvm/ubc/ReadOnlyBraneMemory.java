@@ -47,10 +47,10 @@ public interface ReadOnlyBraneMemory extends Iterable<FIR> {
     boolean isEmpty();
 
     /**
-     * Gets the parent BraneMemory (read-only view).
-     * @return parent memory, or null if this is the root
+     * Gets the parent FiroeWithBraneMind (the owning FIR of the parent memory).
+     * @return parent brane FIR, or null if this is the root
      */
-    ReadOnlyBraneMemory getParent();
+    FiroeWithBraneMind getParentBrane();
 
     /**
      * Searches for an identifier matching the query.

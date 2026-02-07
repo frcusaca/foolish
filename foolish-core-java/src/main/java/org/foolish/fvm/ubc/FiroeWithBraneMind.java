@@ -79,7 +79,7 @@ public abstract class FiroeWithBraneMind extends FIR {
      */
     public void ordinateToParentBraneMind(FiroeWithBraneMind parent) {
         assert !this.ordinated : "Cannot re-ordinate a FIR";
-        linkMemoryParent(parent.braneMemory);
+        linkMemoryParent(parent);  // Links to parent FIR (not its memory)
         // Set this FIR as the owning brane for its memory.
         // This is needed so that when this FIR's braneMemory searches the parent,
         // it can determine the search position via owningBrane.getMyBraneStatementNumber().
@@ -531,9 +531,10 @@ public abstract class FiroeWithBraneMind extends FIR {
     }
 
     /**
-     * Returns the size of braneMemory (read-only).
+     * Returns the size of braneMemory.
+     * Used by child braneMemory to determine parent search range.
      */
-    protected int memorySize() {
+    public int memorySize() {
         return braneMemory.size();
     }
 
@@ -552,14 +553,14 @@ public abstract class FiroeWithBraneMind extends FIR {
      * This is a legitimate parent chain modification (C4 exception).
      * Used during ordination and context manipulation (CMFir, ConcatenationFiroe).
      * <p>
-     * Accepts ReadOnlyBraneMemory to allow use with getBraneMemory(), but internally
-     * requires actual BraneMemory for the parent link.
+     * Links this braneMemory to a parent FiroeWithBraneMind (controlled mutation).
+     * This establishes the parent chain for identifier resolution.
+     * <p>
+     * The braneMemory links to the parent FIR (not the parent's memory),
+     * keeping each braneMemory private to its owning FIR.
      */
-    protected void linkMemoryParent(ReadOnlyBraneMemory parent) {
-        if (!(parent instanceof BraneMemory)) {
-            throw new IllegalArgumentException("Parent must be an actual BraneMemory instance");
-        }
-        braneMemory.setParent((BraneMemory) parent);
+    protected void linkMemoryParent(FiroeWithBraneMind parent) {
+        braneMemory.setParentBrane(parent);
     }
 
 
@@ -589,6 +590,8 @@ public abstract class FiroeWithBraneMind extends FIR {
     public FIR getMemoryItem(int index){
         return braneMemory.get(index);
     }
+
+
 
     // ========== PACKAGE-PRIVATE TEST ACCESSORS ==========
     // For unit tests only - allows inspection of internal state
