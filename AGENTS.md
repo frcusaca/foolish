@@ -49,7 +49,7 @@ with the AI_NAME and BRANCH name replaced with current path. Do that and we're s
 
 ### Cleaning
 ```bash
-rm -rf ~/.m2/repository/org/foolish
+mvn build-helper:remove-project-artifact
 mvn clean
 ```
 The second command to clean out foolish repo is important. If maven repository is elsewhere, please remove the corresponding foolish code as well. This has proven to be
@@ -63,7 +63,7 @@ Part of the Foolish project is to never have to write in all caps like that abou
 ```bash
 # Full clean build. Do this at beginning of a session and after every merge or rebase operation. Also, anytime when debugging took more than 13 minutes, do a full rebuild.
 # Everytime the 'foolish-parser-java/src/main/antlr4/Foolish.g4' file is updated, this command must be run at the root of the project to regenerate the parser.
-rm -rf ~/.m2/repository/org/foolish ## Remove same everywhere else where m2 may store repository.
+mvn build-helper:remove-project-artifact ## Remove same everywhere else where m2 may store repository.
 mvn clean generate-sources verify
 
 # Parallel build (recommended)
