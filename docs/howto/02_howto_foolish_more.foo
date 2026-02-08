@@ -1,0 +1,361 @@
+!! ============================================================================
+!! How to Express it in Foolish — Chapter 2: Searches and Patterns
+!! ============================================================================
+!!
+!! In Chapter 1, you learned the basics: branes, values, names, arithmetic,
+!! nesting, dot access, head/tail, index access, and unanchored seek.
+!!
+!! This chapter goes deeper into how Foolish finds things. We reveal that
+!! the dot operator you already know is actually a *search*, and show you
+!! the full search toolkit.
+!!
+!! Topics:
+!!
+!!   - Localized search with ?  (anchored, one brane only)
+!!   - The dot . as an alias for ?
+!!   - Regex pattern search: brane?pattern
+!!   - Forward search with ~ (anchored)
+!!   - Named shadowing and resolution order
+!!   - The constanic state: what happens when a name can't be found
+
+!! ============================================================================
+!! 1. LOCALIZED SEARCH: The ? Operator
+!! ============================================================================
+!!
+!! In Chapter 1, we used the dot to look inside branes: brane.name
+!!
+!! Here's what's really happening: the dot is a *search*. It searches
+!! backward through the brane's ordinates for a matching name. The ?
+!! operator does the same thing, making the search explicit.
+
+{
+	data = {alice = 2; bob = 3; charlie = 4};
+
+	!! These two are equivalent — dot is an alias for ?
+	r1 = data.bob;             !! 3
+	r2 = data?bob;             !! 3
+
+	!! Both search *backward* through the brane, from the last
+	!! statement toward the first. When they find a match, they
+	!! return that value.
+
+	!! If the name isn't found, it displays ⎵⎵ (constanic):
+	r3 = data?missing;         !! ⎵⎵
+}
+
+!! Why does backward matter? Because of shadowing. When a brane has
+!! multiple ordinates with the same name, backward search finds the
+!! LAST one (the most recent definition):
+
+{
+	versions = {
+		x = 1;
+		x = 2;
+		x = 3;
+	};
+
+	!! Backward search (? and .) finds the LAST x:
+	latest = versions?x;       !! 3
+	same = versions.x;         !! 3
+
+	!! This is why dot behaves like familiar object member access —
+	!! if you define a name multiple times, you get the latest value,
+	!! just like in most programming languages.
+}
+
+!! ============================================================================
+!! 2. FORWARD SEARCH: The ~ Operator
+!! ============================================================================
+!!
+!! While ? searches backward (from end toward beginning), the ~ operator
+!! searches *forward* (from beginning toward end).
+!!
+!! ~ is also an anchored search — it only looks inside the specified brane.
+!!
+!! Important: there is no unanchored forward search. Foolish cannot look
+!! forward in its own brane. But it CAN look forward inside a brane
+!! it already has a reference to.
+
+{
+	data = {a1 = 10; a2 = 20; a3 = 30};
+
+	!! Forward search ~ finds the FIRST match:
+	first_a = data~a.*;        !! 10 (finds a1, the first match)
+
+	!! Compare with backward search ? which finds the LAST match:
+	last_a = data?a.*;         !! 30 (finds a3, the last match)
+}
+
+!! Here's a clearer example showing the difference:
+
+{
+	people = {
+		alice = 100;
+		bob = 200;
+		anna = 300;
+		ben = 400;
+	};
+
+	!! Forward ~ finds the first name starting with 'a':
+	first_a = people~a.*;      !! 100 (alice — first match from the top)
+
+	!! Backward ? finds the last name starting with 'a':
+	last_a = people?a.*;       !! 300 (anna — last match from the bottom)
+
+	!! For exact name matches (not patterns), direction doesn't matter
+	!! if the name is unique:
+	bob1 = people~bob;         !! 200
+	bob2 = people?bob;         !! 200
+	bob3 = people.bob;         !! 200 (dot is alias for ?)
+}
+
+!! ============================================================================
+!! 3. REGEX PATTERN SEARCH
+!! ============================================================================
+!!
+!! Both ? and ~ can match against regular expression patterns,
+!! not just exact names. This lets you search for ordinates by pattern.
+
+{
+	brn = {alice = 2; bob = 3; charlie = 4};
+
+	!! Search for names matching a pattern:
+	r1 = brn?a.*;              !! 2 (last name matching a.* — alice)
+
+	!! Parentheses work in patterns too:
+	r2 = brn?(al.*);           !! 2 (matches "alice")
+
+	!! Regex anchors (^ for start, $ for end of name):
+	r3 = brn?e$;               !! 4 (last name ending with 'e' — charlie)
+}
+
+!! Pattern search is powerful for querying structured branes:
+
+{
+	config = {
+		db_host = "localhost";
+		db_port = 5432;
+		db_name = "mydb";
+		app_port = 8080;
+		app_debug = 1;
+	};
+
+	!! Find something about the database:
+	some_db = config?db_.*;         !! "mydb" (last db_ entry, backward)
+	first_db = config~db_.*;        !! "localhost" (first db_ entry, forward)
+
+	!! Find something about the app:
+	some_app = config?app_.*;       !! 1 (last app_ entry)
+}
+
+!! ============================================================================
+!! 4. DOT AS BACKWARD SEARCH
+!! ============================================================================
+!!
+!! Now you understand the full picture:
+!!
+!!   brane.name    is the same as    brane?name
+!!
+!! The dot is just syntactic sugar for backward search. This means
+!! brane.name always finds the LAST definition of that name in the brane.
+!!
+!! Why backward? Because it matches how most programmers think about
+!! member access: if something is redefined, you want the latest version.
+
+{
+	!! A brane where a name is defined multiple times:
+	history = {
+		version = "1.0";
+		version = "2.0";
+		version = "3.0";
+	};
+
+	!! Dot finds the last one — the "current" version:
+	current = history.version;      !! "3.0"
+
+	!! Forward search finds the first — the "original" version:
+	original = history~version;     !! "1.0"
+}
+
+!! ============================================================================
+!! 5. SEARCH ON INLINE BRANES
+!! ============================================================================
+!!
+!! You don't need to name a brane before searching it.
+!! Search operators work directly on inline brane expressions:
+
+{
+	!! Search on an inline brane:
+	r1 = {x = 10; y = 20; z = 30}?y;     !! 20
+	r2 = {x = 10; y = 20; z = 30}~x;     !! 10
+
+	!! Head and tail on inline branes (from Chapter 1):
+	first = {10; 20; 30}^;                !! 10
+	last = {10; 20; 30}$;                 !! 30
+
+	!! Index on inline branes:
+	middle = {10; 20; 30}#1;              !! 20
+
+	!! Pattern search on inline branes:
+	r3 = {alice = 1; bob = 2; charlie = 3}?(al.*);  !! 1
+}
+
+!! ============================================================================
+!! 6. ANCHORED vs UNANCHORED
+!! ============================================================================
+!!
+!! All the searches above are *anchored* — they search inside a specific
+!! brane that you point to. Let's clarify this distinction:
+!!
+!!   ANCHORED:    brane.name   brane?pat   brane~pat   brane^   brane$   brane#N
+!!                All search inside a specific brane only.
+!!
+!!   UNANCHORED:  name         #-N
+!!                Search from current position backward through scope chain.
+!!
+!! Anchored searches NEVER cross brane boundaries.
+!! Unanchored searches DO cross brane boundaries (backward, then up to parent).
+
+{
+	outer_val = 100;
+
+	brn = {
+		inner_val = 50;
+		a = inner_val;       !! 50 — unanchored, finds inner_val in this brane
+		b = outer_val;       !! 100 — unanchored, doesn't find in this brane,
+		                     !!        searches up to parent, finds it there
+	};
+
+	!! Anchored search can only see what's inside brn:
+	c = brn?inner_val;       !! 50 — found inside brn
+	d = brn?outer_val;       !! ⎵⎵ — NOT found (anchored doesn't look outside)
+}
+
+!! ============================================================================
+!! 7. SHADOWING AND RESOLUTION ORDER
+!! ============================================================================
+!!
+!! Now that you understand searches, let's look at how Foolish resolves
+!! names in detail. This is the full resolution algorithm:
+!!
+!!   1. Search backward in the current brane (from current line upward)
+!!   2. If not found, search backward in the parent brane
+!!      (from the line where this brane is defined, upward)
+!!   3. If not found, continue up to grandparent, great-grandparent, etc.
+!!   4. If not found anywhere, the expression is *constanic*
+!!
+!! At each level, the search is backward — it finds the most recent
+!! definition before the reference point.
+
+{
+	x = "global";
+
+	level1 = {
+		x = "level1";
+
+		level2 = {
+			!! Here, x resolves to "level1" — found in parent
+			a = x;                   !! "level1"
+
+			x = "level2";
+			!! Now x resolves to "level2" — found in current brane
+			b = x;                   !! "level2"
+		};
+
+		!! Back in level1, x is still "level1":
+		c = x;                       !! "level1"
+	};
+
+	!! Back at top level, x is still "global":
+	d = x;                           !! "global"
+}
+
+!! Here's another example showing multi-level resolution:
+
+{
+	color = "red";
+	size = "big";
+
+	box = {
+		color = "blue";
+		!! color resolves to "blue" (found here)
+		!! size resolves to "big" (not here, found in parent)
+
+		inner = {
+			!! color resolves to "blue" (found in parent brane 'box')
+			!! size resolves to "big" (found in grandparent)
+			label = {color; size};
+		};
+	};
+}
+
+!! The key insight: each reference sees the world as it existed
+!! *before* that reference, looking backward and then upward.
+!! This is Foolish's version of static single assignment.
+
+!! ============================================================================
+!! 8. THE CONSTANIC STATE
+!! ============================================================================
+!!
+!! What happens when a name search fails everywhere — current brane,
+!! parent, grandparent, all the way up? The expression becomes
+!! *constanic* (says "cons-TAN-tic").
+!!
+!! Constanic means "constant in context" — the expression has done
+!! everything it can in the current context, but it might gain a value
+!! if placed in a different context later.
+!!
+!! This is different from ??? (no-no). The ??? means "definitely not
+!! known." Constanic means "not known YET — waiting for more context."
+!!
+!! Constanic expressions display as ⎵⎵ (double UnderBracket).
+!! This is visually distinct from ??? so you can tell them apart.
+
+{
+	!! This reference can't find 'mystery' anywhere:
+	x = mystery;        !! ⎵⎵ — constanic, not found in any scope
+
+	!! Compare with ???:
+	y = 10 / 0;         !! ??? — definitely not known (division by zero)
+
+	!! The two symbols mean different things:
+	!!   ⎵⎵   "I don't know this yet — give me more context"
+	!!   ???   "This is a definite error — a no-no"
+
+	!! The distinction matters: constanic values (⎵⎵) can potentially
+	!! resolve later when the brane is used in a new context
+	!! (through concatenation or detachment — topics for Chapter 3).
+	!! But ??? is final — it never resolves.
+}
+
+!! Constanic is *intentionally alarming*. When you see it, it usually
+!! means one of two things:
+!!   1. You forgot to define a name (a bug)
+!!   2. You intentionally left a name free for later binding (a feature)
+!!
+!! We'll explore case 2 in Chapter 3 when we cover liberation branes.
+
+!! ============================================================================
+!! RECAP
+!! ============================================================================
+!!
+!! You now know Foolish's search system:
+!!
+!!   brane?name       Backward search (last match)
+!!   brane.name       Same as brane?name (alias)
+!!   brane~name       Forward search (first match)
+!!   brane?(pattern)  Backward regex pattern search
+!!   brane~(pattern)  Forward regex pattern search
+!!   brane^           Head (first element)
+!!   brane$           Tail (last element)
+!!   brane#N          Index access (0-based forward, negative backward)
+!!   #-N              Unanchored backward seek (by position)
+!!   name             Unanchored backward name search (through scope chain)
+!!
+!!   Anchored:    searches inside a specific brane only
+!!   Unanchored:  searches backward, then up through parent branes
+!!
+!!   Shadowing:   later definitions shadow earlier ones
+!!   Constanic:   ⎵⎵ — what happens when a name isn't found anywhere
+!!
+!! Next: 03_howto_foolish_todo.foo — Concatenation, liberation, and beyond

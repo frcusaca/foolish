@@ -246,7 +246,7 @@ UNKNOWN : '???' ; // Unknowns are unknown
 
 INTEGER : DIGIT+ ;
 
-fragment LETTERS : ARABIC_PART | LATIN | GREEK_PART | CYRYLLIC_PART | HEBREW_PART | CHINESE_PART;
+fragment LETTERS : GREEK_PART | LATIN_PART | MATH_PART | BUSINESS_PART | ARABIC_PART | CHINESE_PART | CYRYLLIC_PART | HEBREW_PART | SANSKRIT_PART;
 fragment DIGIT : [0-9] ;
 
 // System that accepts _ should convert it to the thinner modifier letter low macro (ux02cd)
@@ -258,7 +258,7 @@ WS : [ \t\r\n]+ -> channel(HIDDEN) ;
 IDENTIFIER : LETTERS (LETTERS|DIGIT|INTRA_ID_SEPARATOR)* ;
 
 APOSTROPHE : '\'' ;
-fragment LATIN  : [a-zA-Z]+;
+fragment LATIN_PART  : [\p{Script=Latin}&\p{L}] ;
 fragment GREEK_PART: [αβΓγΔδεζηΘθΙικΛλμνΞξΟοΠπρΣσςτυΦφΨψΩω]+; // Greek letters that do not confuse with latin easily
 fragment CYRYLLIC_PART: [БбвДдЖжЗзИиЙйКкЛлмнПптЦцЧчЩщЪъЫыЭэЮюЯя]+;
 fragment HEBREW_PART : [אבגהחטכלמנסעפצקרשתםףץך]+;
@@ -272,15 +272,57 @@ fragment SANSKRIT_PART
     ;
 
 // Fragment rules for specific Unicode blocks (these are not tokens themselves, but building blocks)
-fragment DEVANAGARI_CHAR
-    :   '\u0900'..'\u097F' // Devanagari block
+fragment DEVANAGARI_CHAR :   '\u0900'..'\u097F' // Devanagari block
     ;
-
-fragment VEDIC_EXT_CHAR
-    :   '\u1CD0'..'\u1CFF' // Vedic Extensions block
+fragment VEDIC_EXT_CHAR :   '\u1CD0'..'\u1CFF' // Vedic Extensions block
     ;
-
 // The Devanagari Extended block may contain additional relevant characters
-fragment DEVANAGARI_EXT_CHAR
-    :   '\uA8E0'..'\uA8FF' // Devanagari Extended block
+fragment DEVANAGARI_EXT_CHAR :   '\uA8E0'..'\uA8FF' // Devanagari Extended block
+    ;
+// --- Core Operators and Relations ---
+fragment UNICODE_MATH_OPERATORS : [\u2200-\u22FF] ; // Mathematical Operators
+fragment UNICODE_SUPP_MATH_OPERATORS : [\u2A00-\u2AFF] ; // Supplemental Mathematical Operators
+// --- Symbols and Technical ---
+fragment UNICODE_ARROWS : [\u2190-\u21FF] ; // Basic Arrows
+fragment UNICODE_MISC_TECHNICAL : [\u2300-\u23FF] ; // Braces, floor/ceil, etc.
+fragment UNICODE_LETTERLIKE_SYMBOLS : [\u2100-\u214F] ; // Constants like ℝ, ℂ, ℘
+// --- Superscripts and Subscripts ---
+fragment UNICODE_SUB_SUPER_SCRIPTS : [\u2070-\u209F] ; // Includes ₀ (u2080) and ⁰ (u2070)
+// --- Higher Plane Alphanumerics (Requires \u{...} syntax) ---
+fragment UNICODE_MATH_ALPHANUMERIC : [\u{1D400}-\u{1D7FF}] ; // Bold, Italic, Fraktur, Double-struck letters
+// Combine them into your existing rule
+MATH_PART
+    : [a-zA-Z]
+    | UNICODE_MATH_OPERATORS
+    | UNICODE_SUPP_MATH_OPERATORS
+    | UNICODE_ARROWS
+    | UNICODE_LETTERLIKE_SYMBOLS
+    | UNICODE_SUB_SUPER_SCRIPTS
+    | UNICODE_MATH_ALPHANUMERIC
+    ;
+
+// --- Common Legal/Business Symbols ---
+fragment UNICODE_LEGAL_SYMBOLS
+    : '\u00A9' // Copyright (©)
+    | '\u00AE' // Registered (®)
+    | '\u00A7' // Section (§)
+    | '\u00B6' // Paragraph/Pilcrow (¶)
+    ;
+// --- Specialized Business Marks ---
+fragment UNICODE_BUSINESS_MARKS
+    : '\u2122' // Trademark (™)
+    | '\u2120' // Service Mark (℠)
+    | '\u2117' // Sound Recording Copyright (℗)
+    ;
+// --- Currency Symbols ---
+fragment UNICODE_CURRENCY
+    : [\u0024]           // Dollar ($)
+    | [\u00A2-\u00A5]    // Cent, Pound, Currency, Yen (¢, £, ¤, ¥)
+    | [\u20A0-\u20CF]    // Currency Symbols Block (Euro €, Rupee ₹, etc.)
+    ;
+BUSINESS_PART
+    | UNICODE_SUB_SUPER_SCRIPTS
+    | UNICODE_LEGAL_SYMBOLS
+    | UNICODE_BUSINESS_MARKS
+    | UNICODE_CURRENCY
     ;

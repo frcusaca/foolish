@@ -63,7 +63,7 @@ combination** and **containment enables organization**. The language provides ri
 capabilities while maintaining interfaces that ground your computations to the physical and
 biological realities you want to model.
 
-Additional implementation notes are in the docs folder.
+Additional implementation notes are in the [docs/vintage_legacy](docs/vintage_legacy/) folder (being reorganized into docs/ subdirectories).
 
 ## For AI Agents and Contributors
 
@@ -135,28 +135,28 @@ have come to know. Foolish aims to be built for good, not evil.
 - [Names and Scope](#names-and-scope)
 - [The Unknown](#the-unknown)
 - [Renaming](#renaming)
-- [Names, Searches, and Bounds](docs/NAMES_SEARCHES_N_BOUNDS.md) - Comprehensive guide to naming, search system, and detachment
-  - [Names and Ordinates](docs/NAMES_SEARCHES_N_BOUNDS.md#names-and-ordinates)
-  - [Scope and Name Resolution](docs/NAMES_SEARCHES_N_BOUNDS.md#scope-and-name-resolution)
-  - [The Search System](docs/NAMES_SEARCHES_N_BOUNDS.md#the-search-system)
-  - [Detachment Branes](docs/NAMES_SEARCHES_N_BOUNDS.md#detachment-branes-controlling-scope-boundaries)
-  - [Search Paths](docs/NAMES_SEARCHES_N_BOUNDS.md#search-paths)
-- [Advanced Features](docs/ADVANCED_FEATURES.md)
-  - [Brane Operations](docs/ADVANCED_FEATURES.md#brane-operations)
-  - [Control Flow](docs/ADVANCED_FEATURES.md#control-flow)
-  - [Recursion](docs/ADVANCED_FEATURES.md#recursion)
-- [Ecosystem](docs/ECOSYSTEM.md)
-  - [Computer Reading Branes](docs/ECOSYSTEM.md#computer-reading-branes)
-  - [The Unicellular Brane Computer (UBC)](docs/ECOSYSTEM.md#the-unicellular-brane-computer-ubc)
-  - [The Multicellular Brane Computer](docs/ECOSYSTEM.md#the-multicellular-brane-computer)
-  - [Typing](docs/ECOSYSTEM.md#typing)
-  - [Relational Coordinates](docs/RELATIONAL_COORDINATES.md)
-- [Development Notes](docs/DEVELOPMENT_NOTES.md)
-- [TODO Items](docs/TODO_FEATURES.md)
-- [Appendix](docs/APPENDIX.md)
-  - [Styles](docs/STYLES.md)
-  - [Keyboard Aid](docs/APPENDIX.md#keyboard-aid)
-  - [Documentation Contributors](docs/APPENDIX.md#documentation-contributors)
+- [Names, Searches, and Bounds](docs/vintage_legacy/NAMES_SEARCHES_N_BOUNDS.md) - Comprehensive guide to naming, search system, and detachment
+  - [Names and Ordinates](docs/vintage_legacy/NAMES_SEARCHES_N_BOUNDS.md#names-and-ordinates)
+  - [Scope and Name Resolution](docs/vintage_legacy/NAMES_SEARCHES_N_BOUNDS.md#scope-and-name-resolution)
+  - [The Search System](docs/vintage_legacy/NAMES_SEARCHES_N_BOUNDS.md#the-search-system)
+  - [Detachment Branes](docs/vintage_legacy/NAMES_SEARCHES_N_BOUNDS.md#detachment-branes-controlling-scope-boundaries)
+  - [Search Paths](docs/vintage_legacy/NAMES_SEARCHES_N_BOUNDS.md#search-paths)
+- [Advanced Features](docs/vintage_legacy/ADVANCED_FEATURES.md)
+  - [Brane Operations](docs/vintage_legacy/ADVANCED_FEATURES.md#brane-operations)
+  - [Control Flow](docs/vintage_legacy/ADVANCED_FEATURES.md#control-flow)
+  - [Recursion](docs/vintage_legacy/ADVANCED_FEATURES.md#recursion)
+- [Ecosystem](docs/vintage_legacy/ECOSYSTEM.md)
+  - [Computer Reading Branes](docs/vintage_legacy/ECOSYSTEM.md#computer-reading-branes)
+  - [The Unicellular Brane Computer (UBC)](docs/vintage_legacy/ECOSYSTEM.md#the-unicellular-brane-computer-ubc)
+  - [The Multicellular Brane Computer](docs/vintage_legacy/ECOSYSTEM.md#the-multicellular-brane-computer)
+  - [Typing](docs/vintage_legacy/ECOSYSTEM.md#typing)
+  - [Relational Coordinates](docs/vintage_legacy/RELATIONAL_COORDINATES.md)
+- [Development Notes](docs/vintage_legacy/DEVELOPMENT_NOTES.md)
+- [TODO Items](docs/vintage_legacy/000-TODO_FEATURES.md)
+- [Appendix](docs/vintage_legacy/APPENDIX.md)
+  - [Styles](docs/vintage_legacy/STYLES.md)
+  - [Keyboard Aid](docs/vintage_legacy/APPENDIX.md#keyboard-aid)
+  - [Documentation Contributors](docs/vintage_legacy/APPENDIX.md#documentation-contributors)
 
 ---
 
@@ -299,7 +299,7 @@ if needed.
 
 For comprehensive documentation on names, the search system (including `?`, `??`, `?*`, value
 search, cursor movements), and how detachment branes `[...]` control scope boundaries, see
-[Names, Searches, and Bounds](docs/NAMES_SEARCHES_N_BOUNDS.md).
+[Names, Searches, and Bounds](docs/vintage_legacy/NAMES_SEARCHES_N_BOUNDS.md).
 
 ## The Unknown
 
@@ -338,16 +338,29 @@ value at the time of use:
 {a=1; b=a; a=2; c=a;}  !! b=1, c=2 (each 'a' reference uses the current value)
 ```
 
-For details on scope resolution and name reuse, see [Names, Searches, and Bounds](docs/NAMES_SEARCHES_N_BOUNDS.md).
+For details on scope resolution and name reuse, see [Names, Searches, and Bounds](docs/vintage_legacy/NAMES_SEARCHES_N_BOUNDS.md).
 
 ---
 
-## Further Documentation
+## Documentation
 
-- **[Names, Searches, and Bounds](docs/NAMES_SEARCHES_N_BOUNDS.md)** - Comprehensive guide to naming
+Documentation is organized under `docs/` in purpose-driven subdirectories:
+
+- **[How to Express it in Foolish](docs/howto/)** (`docs/howto`) - Literate programming tutorials as `.foo` files with documentation in comments. Cookbook style with decreasing documentation density.
+- **[Philosophy of Foolish](docs/why/)** (`docs/why`) - Origins, inspirations, and design philosophy in English prose. Why branes? Why openness? What we learn from nature.
+- **[Engineering Documentation](docs/how/)** (`docs/how`) - Operational semantics, implementation details, and permanent reference material.
+- **[Project Documentation](docs/todo/)** (`docs/todo`) - Active project tracking, growth plans, and roadmap.
+- **[Legacy Documentation](docs/vintage_legacy/)** (`docs/vintage_legacy`) - Pre-reorganization documentation, being migrated into the above directories.
+
+### Legacy References
+
+The following documents are in `docs/vintage_legacy/` and will be reorganized in future iterations:
+
+- **[Names, Searches, and Bounds](docs/vintage_legacy/NAMES_SEARCHES_N_BOUNDS.md)** - Comprehensive guide to naming
   systems, the search operators (`.`, `?`, `??`, `?*`, `:`, cursor movements), and how detachment
   branes `[...]` control scope boundaries for globalized searches
-- **[Advanced Features](docs/ADVANCED_FEATURES.md)** - Brane operations (concatenation, proximity
+- **[Advanced Features](docs/vintage_legacy/ADVANCED_FEATURES.md)** - Brane operations (concatenation, proximity
   is combination), control flow, and recursion
-- **[Ecosystem](docs/ECOSYSTEM.md)** - Implementation details including the Unicellular Brane
+- **[Ecosystem](docs/vintage_legacy/ECOSYSTEM.md)** - Implementation details including the Unicellular Brane
   Computer (UBC), typing systems, and relational coordinates
+- **[Symbol Table](docs/how/SYMBOL_TABLE.md)** - Reference table of Foolish symbols and Unicode mappings
