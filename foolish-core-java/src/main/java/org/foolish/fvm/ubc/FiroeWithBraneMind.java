@@ -64,6 +64,17 @@ public abstract class FiroeWithBraneMind extends FIR {
         this.braneMemory = new BraneMemory(null);
         this.ordinated = false;
     }
+    
+    protected FiroeWithBraneMind(Either<AST, String> source, String comment) {
+        this(source, comment, false);
+    }
+
+    protected FiroeWithBraneMind(Either<AST, String> source, String comment, boolean ai) {
+        super(source, comment, ai);
+        this.braneMind = new LinkedList<>();
+        this.braneMemory = new BraneMemory(null);
+        this.ordinated = false;
+    }
 
     /**
      * Ordinates this FIR to its parent brane's memory.
@@ -91,6 +102,10 @@ public abstract class FiroeWithBraneMind extends FIR {
         this(ast, null);
     }
 
+    protected FiroeWithBraneMind(Either<AST, String> source) {
+        this(source, null);
+    }
+
     /**
      * Copy constructor for cloneConstanic.
      * Creates an exact copy of braneMemory with cloned items (updated parent chains).
@@ -100,7 +115,9 @@ public abstract class FiroeWithBraneMind extends FIR {
      * @param newParent the new parent for this clone
      */
     protected FiroeWithBraneMind(FiroeWithBraneMind original, FIR newParent) {
-        super(original.ast(), original.comment);
+        super(original.sourceCode, original.comment, original.isAi());
+        // Since super constructor handles SourceCode, we can proceed.
+        // Original logic used original.ast(). Now uses original.sourceCode. 
         setParentFir(newParent);
 
         // Verify braneMind is empty (critical invariant for CONSTANIC FIRs)
@@ -148,7 +165,7 @@ public abstract class FiroeWithBraneMind extends FIR {
     }
 
     static FiroeWithBraneMind of(FIR... tasks) {
-        FiroeWithBraneMind result = new FiroeWithBraneMind((AST) null, (String) null) {
+        FiroeWithBraneMind result = new FiroeWithBraneMind((Either<AST, String>) null, (String) null) {
             @Override
             protected void initialize() {
                 setInitialized();

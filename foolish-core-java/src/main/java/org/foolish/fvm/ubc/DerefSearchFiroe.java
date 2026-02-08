@@ -1,23 +1,24 @@
 package org.foolish.fvm.ubc;
 
 import org.foolish.ast.AST;
+import org.foolish.ast.SearchOperator;
+import java.util.Optional;
 
 /**
- * DerefSearchFiroe is a specialized RegexpSearchFiroe for exact match searches.
- * It is used when the search pattern contains no wildcards (and thus is an exact match)
- * or when explicitly created from a DereferenceExpr.
+ * DerefSearchFiroe handles dereferencing operations (e.g. obj.prop or anchored exact searches).
+ * It searches strictly within the anchor's brane (braneBound=true).
  */
-public class DerefSearchFiroe extends RegexpSearchFiroe {
-    private final AST originalAst;
+public class DerefSearchFiroe extends AbstractSearchFiroe implements Constanicable {
+    private final RegexpSearcher searcher;
 
     public DerefSearchFiroe(AST.RegexpSearchExpr regexpSearch) {
-        super(regexpSearch);
-        this.originalAst = null;
+        super(regexpSearch, regexpSearch.operator());
+        this.searcher = new RegexpSearcher(regexpSearch.pattern());
     }
 
     public DerefSearchFiroe(AST.RegexpSearchExpr syntheticExpr, AST.DereferenceExpr originalExpr) {
-        super(syntheticExpr);
-        this.originalAst = originalExpr;
+        super(syntheticExpr, syntheticExpr.operator());
+        this.searcher = new RegexpSearcher(syntheticExpr.pattern());
     }
 
     /**
@@ -25,34 +26,48 @@ public class DerefSearchFiroe extends RegexpSearchFiroe {
      */
     protected DerefSearchFiroe(DerefSearchFiroe original, FIR newParent) {
         super(original, newParent);
-        this.originalAst = original.originalAst;
+        this.searcher = original.searcher;
     }
 
+    @Override
+    protected void initialize() {
+        super.initialize();
+        if (ast instanceof AST.RegexpSearchExpr searchExpr) {
+            storeExprs(searchExpr.anchor());
+        }
+    }
+
+    @Override
+    protected SearchCursor createCursor(BraneFiroe target) {
+        // Dereference search is always bounded to the target brane
+        ReadOnlyBraneMemory memory = target.getBraneMemory();
+        int size = memory.size();
+        
+        // Determine start index based on operator direction
+        boolean forward = (operator == SearchOperator.REGEXP_FORWARD_LOCAL || operator == SearchOperator.REGEXP_FORWARD_GLOBAL);
+        int startIndex = forward ? 0 : Math.max(0, size - 1);
+
+        // Always braneBound=true for dereference
+        return new SearchCursor(new FoolishCursor(target, startIndex), forward, true, true);
+    }
+
+    @Override
+    protected FIR executeSearch(SearchCursor cursor) {
+         return searcher.search(cursor).orElse(new MissingFiroe());
+    }
+    
+    public String getPattern() {
+        return searcher.getPattern();
+    }
+    
     @Override
     public String toString() {
-        if (originalAst != null) {
-            return originalAst.toString();
-        }
-        return super.toString();
-    }
-
-    /**
-     * Checks if the pattern contains any regex wildcards or special characters.
-     * If false, the pattern is considered an exact match string.
-     */
-    public static boolean isExactMatch(String pattern) {
-        if (pattern == null) return true;
-        for (char c : pattern.toCharArray()) {
-            // Check for standard regex metacharacters
-            if ("*+?^$[](){} |\\.".indexOf(c) >= 0) {
-                return false;
-            }
-        }
-        return true;
+        if (ast != null) return ast.toString();
+        return searcher.getRawPattern();
     }
 
     @Override
-    protected FIR cloneConstanic(FIR newParent, java.util.Optional<Nyes> targetNyes) {
+    protected FIR cloneConstanic(FIR newParent, Optional<Nyes> targetNyes) {
         if (!isConstanic()) {
             throw new IllegalStateException(
                 formatErrorMessage("cloneConstanic can only be called on CONSTANIC or CONSTANT FIRs, " +
@@ -60,7 +75,7 @@ public class DerefSearchFiroe extends RegexpSearchFiroe {
         }
 
         if (isConstant()) {
-            return this;  // Share CONSTANT searches
+            return this;
         }
 
         DerefSearchFiroe copy = new DerefSearchFiroe(this, newParent);
@@ -72,5 +87,12 @@ public class DerefSearchFiroe extends RegexpSearchFiroe {
         }
 
         return copy;
+    }
+    
+    /**
+     * Checks if the pattern contains any regex wildcards or special characters.
+     */
+    public static boolean isExactMatch(String pattern) {
+        return RegexpSearcher.isExactMatch(pattern);
     }
 }

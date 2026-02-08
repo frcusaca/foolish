@@ -12,7 +12,7 @@ package org.foolish.fvm.ubc;
  * <p>
  * <b>Wrapper Constanicables</b> resolve to another FIR via {@link #getResult()}:
  * <ul>
- *   <li>{@link IdentifierFiroe} - resolves identifier name to FIR in memory</li>
+ *   <li>{@link IdentifyingFiroe} - resolves identifier name to FIR in memory</li>
  *   <li>{@link AssignmentFiroe} - evaluates RHS expression to FIR</li>
  *   <li>{@link CMFir} - context manipulation wrapper, phases A/B</li>
  *   <li>{@link AbstractSearchFiroe} - search operations (DerefSearchFiroe, RegexpSearchFiroe, etc.)</li>
@@ -45,7 +45,7 @@ public interface Constanicable {
     /**
      * Returns the resolved/computed result of this Constanicable.
      * <p>
-     * For wrapper types (IdentifierFiroe, AssignmentFiroe, SearchFiroe, etc.),
+     * For wrapper types (IdentifyingFiroe, AssignmentFiroe, SearchFiroe, etc.),
      * this returns the underlying FIR that this wrapper resolves to.
      * <p>
      * For container types (BraneFiroe, ConcatenationFiroe), this returns {@code this}

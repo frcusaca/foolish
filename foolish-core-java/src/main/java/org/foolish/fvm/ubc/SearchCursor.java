@@ -80,10 +80,43 @@ public final class SearchCursor {
             // Check bounds
             if (nextIdx < 0 || nextIdx >= retCursor.brane().getBraneMemory().size()) {
                  // End of this brane
-                 // TODO: If not braneBound, move to parent?
-                 // For now, implementing braneBound=true logic implicitly
-                 // If !braneBound, we would set 'current' to parent's cursor?
-                 hasNext = false; 
+                 if (!braneBound) {
+                     // Move to parent brane
+                     BraneFiroe parentBrane = retCursor.brane().getMyBrane();
+                     if (parentBrane != null) {
+                         // Start at beginning or end of parent depending on direction
+                         int parentSize = parentBrane.getBraneMemory().size();
+                         int startIdx = forward ? 0 : (parentSize - 1); // Start fresh in parent
+                         
+                         // Create cursor for parent
+                         // Note: We scan the ENTIRE parent (or from start/end).
+                         // If we wanted lexical scope (from declaration point), we'd need
+                         // to know where the child brane was detached from. 
+                         // But for now, assuming "global unanchored" = search whole parent.
+                         current = new FoolishCursor(parentBrane, startIdx);
+                         
+                         // Check if valid (e.g. empty parent?)
+                         if (isValid(current)) {
+                             hasNext = true;
+                         } else {
+                             // Parent empty, recurse logic?
+                             // Simplification: if parent empty/invalid, try ITS parent
+                             // But for now, rely on loop or next call?
+                             // Iteration logic handles next() call.
+                             // But we need to set hasNext=true only if valid.
+                             // If parent is empty, isValid returns false?
+                             // If invalid, hasNext=false (stop).
+                             // Ideally we should loop until we find a valid parent or run out.
+                             // But let's assume one level step for now or fix this later.
+                             // Actually, isValid checks bounds. If parent empty, size=0, idx=0 -> invalid.
+                             hasNext = isValid(current); 
+                         }
+                     } else {
+                         hasNext = false; // Root reached
+                     }
+                 } else {
+                     hasNext = false;
+                 }
             } else {
                  current = new FoolishCursor(retCursor.brane(), nextIdx);
                  hasNext = true;

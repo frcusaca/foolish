@@ -10,7 +10,7 @@ import java.util.Optional;
  * <p>
  * The LHS uses CharacterizedIdentifier to support characterized identifiers for
  * proper resolution and type checking. The RHS is evaluated as a FIR, and any
- * identifiers within the RHS expression tree will be represented as IdentifierFiroe
+ * identifiers within the RHS expression tree will be represented as IdentifyingFiroe
  * which internally uses CharacterizedIdentifier.
  */
 public class AssignmentFiroe extends FiroeWithBraneMind implements Constanicable {

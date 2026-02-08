@@ -75,7 +75,7 @@ public class ConcatenationFiroe extends FiroeWithBraneMind implements Constanica
         // - Brane elements (BraneFiroe, ConcatenationFiroe) are NOT ordinated, so their
         //   contents cannot resolve identifiers from outer scope. This makes unresolved
         //   identifiers inside branes become CONSTANIC, allowing re-resolution after join.
-        // - Non-brane elements (IdentifierFiroe, etc.) ARE ordinated so they can resolve
+        // - Non-brane elements (IdentifyingFiroe, etc.) ARE ordinated so they can resolve
         //   to find the branes they reference (e.g., `c = b1 b2` needs b1, b2 to resolve).
         sourceFirs = new ArrayList<>();
         int index = 0;
@@ -87,7 +87,7 @@ public class ConcatenationFiroe extends FiroeWithBraneMind implements Constanica
             // Branes are kept isolated so their contents don't resolve to outer scope
             if (fir instanceof FiroeWithBraneMind fwbm) {
                 if (!(fir instanceof BraneFiroe) && !(fir instanceof ConcatenationFiroe)) {
-                    // Non-brane FiroeWithBraneMind (like IdentifierFiroe) - ordinate for resolution
+                    // Non-brane FiroeWithBraneMind (like IdentifyingFiroe) - ordinate for resolution
                     // Add to indexLookup first so parent knows the index
                     indexLookup.put(fir, index);
                     fwbm.ordinateToParentBraneMind(this);

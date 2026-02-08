@@ -105,7 +105,7 @@ public class FoolishIndexTest {
         // BinaryFiroe extends FIR directly? No, usually FiroeWithBraneMind or similar if it evaluates sub-expressions.
         // Let's assume we have a parent FIR 'exprParent' that is FiroeWithBraneMind.
 
-        FiroeWithBraneMind exprParent = new FiroeWithBraneMind(null) {
+        FiroeWithBraneMind exprParent = new FiroeWithBraneMind((org.foolish.ast.AST)null) {
             @Override
             protected void initialize() {}
         };

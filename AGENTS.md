@@ -65,7 +65,7 @@ mvn clean verify -am -fae -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -Dth
 mvn clean generate-sources -T $(($(nproc) * 2))
 
 # The approval tests can be selected this way specifying module, class and then the test file filter
-mvn verify -am -ff -pl foolish-core-java -Dtest=UbcApprovalTest -Dfoolish.test.filter=Shadow
+mvn verify -am -ff -pl foolish-core-java -Dtest=UbcApprovalTest -Dfoolish.test.filter=Shadow  -Dsurefire.failIfNoSpecifiedTests=false
 
 # Just build (skip tests) when fixing compilation errors.
 mvn verify -am -ff -DskipTests -T $(($(nproc) * 2))
@@ -92,11 +92,12 @@ mvn clean verify -am -ff -X -e -DskipTests
 
 ```bash
 # Run all tests with parallel execution
-mvn verify -am -fae -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
+mvn verify -am -fae -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4)) -Dsurefire.failIfNoSpecifiedTests=false
 
 # Run specific test
 mvn verify -am -ff -Dtest=ClassName#methodName
-mvn verify -am -ff -pl foolish-core-java -Dtest=UbcApprovalTest -Dfoolish.test.filter=Shadow
+mvn verify -am -ff -pl foolish-core-java -Dtest=UbcApprovalTest -Dfoolish.test.filter=Shadow -Dsurefire.failIfNoSpecifiedTests=false
+
 
 ## Approval Test Protocol
 
@@ -119,7 +120,7 @@ The command for running approval test inside the module foolish-core-java, filte
 Shadow in the name, while in the top foolish directory it would be invoked this way:
 
 ```bash
-mvn test -pl foolish-core-java -Dtest=UbcApprovalTest -Dfoolish.test.filter=Shadow
+mvn test -pl foolish-core-java -Dtest=UbcApprovalTest -Dfoolish.test.filter=Shadow -Dsurefire.failIfNoSpecifiedTests=false
 ```
 This runs just the selected approval class and filters input file names.
 

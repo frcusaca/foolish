@@ -21,32 +21,32 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind implements 
         super(ast);
         this.operator = operator;
     }
+    
+    protected AbstractSearchFiroe(Either<AST, String> source, SearchOperator operator) {
+        super(source, null, false);
+        this.operator = operator;
+    }
 
     /**
      * Copy constructor for cloneConstanic.
      * Resets search state so the search can be re-executed in a new context.
      */
     protected AbstractSearchFiroe(AbstractSearchFiroe original, FIR newParent) {
-        super(original, newParent);
+        super(original.sourceCode, null, original.isAi());
+        this.setParentFir(newParent);
+        this.nyes = original.nyes; 
+        
         this.operator = original.operator;
         this.unwrapAnchor = null;
         
         // C4: If search resulted in "Not Found" (Empty), reset it to null so we try again.
-        // If it was found (Present), we could conceptually keep it, but typically
-        // constanic cloning implies re-evaluation might be needed or context changed.
-        // However, per user request: reset ONLY if Optional.Empty.
         if (original.searchResult != null && original.searchResult.isEmpty()) {
             this.searchResult = null;
         } else {
-             // If original was null (not run) or Present (found), keep it?
-             // If original was null, new one is null.
-             // If original was Present, we copy it? But wait, if Present, it might be
-             // a specific FIR instance that needs cloning if we want to be safe?
-             // Actually, usually we want to re-evaluate if we are being cloned into a new context.
-             // But adhering strictly to "reset to null ONLY WHEN Optional.Empty":
              this.searchResult = original.searchResult;
         }
     }
+
 
     protected void initialize() {
         setInitialized();

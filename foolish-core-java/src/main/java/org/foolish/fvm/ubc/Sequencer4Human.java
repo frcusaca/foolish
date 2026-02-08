@@ -43,7 +43,8 @@ public class Sequencer4Human extends Sequencer<String> {
             case IfFiroe ifFiroe -> sequenceIf(ifFiroe, depth);
             case SearchUpFiroe searchUp -> sequenceSearchUp(searchUp, depth);
             case AssignmentFiroe assignment -> sequenceAssignment(assignment, depth);
-            case IdentifierFiroe identifier -> sequenceIdentifier(identifier, depth);
+            case LocalSearchFiroe local -> sequenceLocalSearch(local, depth);
+            case DerefSearchFiroe deref -> sequenceDeref(deref, depth);
             case AbstractSearchFiroe search -> sequenceSearch(search, depth);
             case null, default -> indent(depth) + NK_STR;
         };
@@ -121,19 +122,35 @@ public class Sequencer4Human extends Sequencer<String> {
             case BraneFiroe brane -> "{...}";
             case ConcatenationFiroe concat -> "{...}";
             case ValueFiroe value -> String.valueOf(value.getValue());
-            case IdentifierFiroe id -> {
-                if (id.isConstant()) {
+            case LocalSearchFiroe local -> {
+                if (local.isConstant()) {
                     try {
-                        yield String.valueOf(id.getValue());
-                    } catch (UnsupportedOperationException e) {
-                        FIR resolved = id.getResolvedFir();
-                        if (resolved instanceof BraneFiroe || resolved instanceof ConcatenationFiroe) {
-                            yield "{...}";
-                        }
-                        yield CC_STR;
+                        yield String.valueOf(local.getValue());
+                    } catch (IllegalStateException e) {
+                         FIR resolved = local.getResult();
+                         if (resolved instanceof BraneFiroe || resolved instanceof ConcatenationFiroe) {
+                             yield "{...}";
+                         }
+                         yield CC_STR;
                     }
-                } else if (id.atConstanic()) {
-                    yield addNyesStateIfEnabled(CC_STR, id.getNyes());
+                } else if (local.atConstanic()) {
+                     yield addNyesStateIfEnabled(CC_STR, local.getNyes());
+                }
+                yield NK_STR;
+            }
+            case DerefSearchFiroe deref -> {
+                if (deref.isConstant()) {
+                    try {
+                        yield String.valueOf(deref.getValue());
+                    } catch (IllegalStateException e) {
+                         FIR resolved = deref.getResult();
+                         if (resolved instanceof BraneFiroe || resolved instanceof ConcatenationFiroe) {
+                             yield "{...}";
+                         }
+                         yield CC_STR;
+                    }
+                } else if (deref.atConstanic()) {
+                     yield addNyesStateIfEnabled(CC_STR, deref.getNyes());
                 }
                 yield NK_STR;
             }
@@ -256,9 +273,13 @@ public class Sequencer4Human extends Sequencer<String> {
             }
 
             switch (current) {
-                case IdentifierFiroe id -> {
-                    if (id.value == null) return id;
-                    current = id.value;
+                case LocalSearchFiroe local -> {
+                    if (local.getResult() == null) return local;
+                    current = local.getResult();
+                }
+                case DerefSearchFiroe deref -> {
+                    if (deref.getResult() == null) return deref;
+                    current = deref.getResult();
                 }
                 case AssignmentFiroe assign -> {
                     if (assign.getResult() == null) return assign;
@@ -280,9 +301,38 @@ public class Sequencer4Human extends Sequencer<String> {
         return current;
     }
 
-    protected String sequenceIdentifier(IdentifierFiroe identifier, int depth) {
+    protected String sequenceLocalSearch(LocalSearchFiroe local, int depth) {
+        FIR resolved = local.getResult();
+        if (resolved != null) {
+            if (resolved instanceof BraneFiroe brane) {
+                return sequenceBrane(brane, depth);
+            }
+            if (resolved instanceof ConcatenationFiroe concat) {
+                return sequenceConcatenation(concat, depth);
+            }
+            FIR unwrapped = unwrap(resolved);
+            if (unwrapped instanceof BraneFiroe brane) {
+                return sequenceBrane(brane, depth);
+            }
+            if (unwrapped instanceof ConcatenationFiroe concat) {
+                return sequenceConcatenation(concat, depth);
+            }
+            if (!local.atConstanic()) {
+                try {
+                    return indent(depth) + local.getValue();
+                } catch (Exception e) {
+                }
+            }
+        }
+        if (local.atConstanic()) {
+            return indent(depth) + CC_STR;
+        }
+        return indent(depth) + NK_STR;
+    }
+
+    protected String sequenceDeref(DerefSearchFiroe deref, int depth) {
         // Even if constanic, try to expand if we can get the resolved FIR
-        FIR resolved = identifier.getResolvedFir();
+        FIR resolved = deref.getResult();
         if (resolved != null) {
             if (resolved instanceof BraneFiroe brane) {
                 return sequenceBrane(brane, depth);
@@ -298,16 +348,16 @@ public class Sequencer4Human extends Sequencer<String> {
             if (unwrapped instanceof ConcatenationFiroe concat) {
                 return sequenceConcatenation(concat, depth);
             }
-            if (!identifier.atConstanic()) {
+            if (!deref.atConstanic()) {
                 try {
-                    return indent(depth) + identifier.getValue();
-                } catch (UnsupportedOperationException e) {
+                    return indent(depth) + deref.getValue();
+                } catch (Exception e) {
                     // Fall through to CC_STR or NK_STR
                 }
             }
         }
 
-        if (identifier.atConstanic()) {
+        if (deref.atConstanic()) {
             return indent(depth) + CC_STR;
         }
         return indent(depth) + NK_STR;
