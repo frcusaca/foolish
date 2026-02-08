@@ -468,12 +468,13 @@
 	second_last = data#-2;        !! 40
 
 	!! Out of bounds gives ???:
-	too_far = data#10;            !! ???
+	too_far = data#10;            !! ??? because data is constant.
 	too_neg = data#-10;           !! ???
 
 	!! Again, curiously this is Foolish:
 	maybe_something =#10 some;    !! ⎵⎵
 	maybe_something =#-10 some;   !! ⎵⎵
+        !!  But nothing1 and nothing2 from section 10 was ???
 }
 
 !! ============================================================================

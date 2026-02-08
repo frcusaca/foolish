@@ -228,7 +228,7 @@
 
 	!! Anchored search can only see what's inside brn:
 	c = brn?inner_val;       !! 50 — found inside brn
-	d = brn?outer_val;       !! ⎵⎵ — NOT found (anchored doesn't look outside)
+	d = brn?outer_val;       !! ??? Not found and definitely won't be found.
 }
 
 !! ============================================================================
