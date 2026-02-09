@@ -43,9 +43,10 @@ To be completely safe, let's make our own copy of the repo by running the script
 ```bash
 ./session_starter.make.m2.4.me.sh
 ```
-It outputs an export command for future maven 
-"export MAVEN_OPTS="-Dmaven.repo.local=/home/hcubsy/AI_NAME/BRANCH/.m2.4.me"
-with the AI_NAME and BRANCH name replaced with current path. Do that and we're set for this session in terms of dependencies.
+It outputs an export command for shells used in this session
+```bash
+env | egrep -q "\.m2\.4\.me" || export MAVEN_OPTS="-Dmaven.repo.local=.m2.4.me ${MAVEN_OPTS}"
+```
 
 ### Cleaning
 ```bash

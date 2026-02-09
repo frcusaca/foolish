@@ -36,27 +36,26 @@ else
             if cp --reflink=always -r "$SOURCE_REPO" "$TARGET_REPO" 2>/dev/null; then
                 echo "Success: Created space-efficient reflink copy."
             else
-                echo "Reflink failed (unsupported filesystem). Falling back to standard shared copy..."
-    		rm -rf "$TARGET_REPO" # clean up the failed copy
-                #cp -r "$SOURCE_REPO" "$TARGET_REPO"
-                ln -s "$SOURCE_REPO" "$TARGET_REPO"
+                echo "Reflink failed (unsupported filesystem). Falling back to standard copy..."
+                cp -r "$SOURCE_REPO" "$TARGET_REPO"
             fi
             ;;
         *)
-            echo "Unknown OS. Performing standard shared copy..."
-            ln -s "$SOURCE_REPO" "$TARGET_REPO"
+            echo "Unknown OS. Performing standard copy..."
+            cp -r "$SOURCE_REPO" "$TARGET_REPO"
             ;;
     esac
 fi
 
 # Export for the current shell session
 # Using $(realpath ...) ensures Maven always has an absolute path
-export MAVEN_OPTS="-Dmaven.repo.local=$TARGET_REPO"
+export MAVEN_OPTS="-Dmaven.repo.local=.m2.4.me"
 
 echo "----------------------------------------------------------"
-echo "Local Repo: $TARGET_REPO"
+echo "Local Repo: $(pwd)/$TARGET_REPO"
 echo "MAVEN_OPTS set. Ready for: mvn compile / install"
 echo "Run following in all sessions that invokes maven"
-echo export MAVEN_OPTS=\"-Dmaven.repo.local=$TARGET_REPO\"
+echo export MAVEN_OPTS=\"-Dmaven.repo.local=.m2.4.me\"
+echo 'env | egrep -q "\.m2\.4\.me" || export MAVEN_OPTS="-Dmaven.repo.local=.m2.4.me ${MAVEN_OPTS}"'
 echo "----------------------------------------------------------"
 
