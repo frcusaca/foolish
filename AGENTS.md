@@ -54,9 +54,7 @@ mvn build-helper:remove-project-artifact
 mvn clean
 ```
 The second command to clean out foolish repo is important. If maven repository is elsewhere, please remove the corresponding foolish code as well. This has proven to be
-a problem for several systems where 'mvn install' was invoked at some point. It installed stale antlr source that prevented updates to g4 files from taking effect.
 
-** IMPORTANT ** NEVER USE "mvn install". THAT COMMAND IS INCOMPATIBLE WITH THIS PROJECT'S BUILD PROCESS. ALWAYS DO A FULL CLEANING WHEN IN DOUBT.
 Part of the Foolish project is to never have to write in all caps like that about a project written in Foolish.
 
 ### Basic Build and Test
@@ -68,26 +66,34 @@ mvn build-helper:remove-project-artifact ## Remove same everywhere else where m2
 mvn clean generate-sources verify
 
 # Parallel build (recommended)
-mvn clean verify -am -fae -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
+mvn clean compile -fae -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 
-# Rebuild Antlr4 parser/lexer and parser from g4 file
-# This needs to happen every time 'foolish-parser-java/src/main/antlr4/Foolish.g4' changes
+# Rebuild Antlr4 parser/lexer and parser from g4 file  
+# Syntax changes made altering `foolish-parser-java/src/main/antlr4/Foolish.g4' needs to regenerate source
+```bash
 mvn clean generate-sources -T $(($(nproc) * 2))
+```
+
+# NOTE: Any time syntax changes or other changes are made to the g4 file or else where in the parser
+#   module foolish-parser-java, the parser needs to be reinstalled into maven repo to take effect.
+```
+mvn generate install -pl foolish-parser-java -am
+```
 
 # The approval tests can be selected this way specifying module, class and then the test file filter
-mvn verify -am -ff -pl foolish-core-java -Dtest=UbcApprovalTest -Dfoolish.test.filter=Shadow
+mvn test -ff -pl foolish-core-java -Dtest=UbcApprovalTest -Dfoolish.test.filter=Shadow
 
 # Just build (skip tests) when fixing compilation errors.
-mvn verify -am -ff -DskipTests -T $(($(nproc) * 2))
+mvn compile -ff -DskipTests -T $(($(nproc) * 2))
 
 # However, you may choose single threaded compilation to improve readability of compilation errors
-mvn verify -am -ff -DskipTests
+mvn compile -am -ff -DskipTests
 
 ## Select a module to reduce build time and effort
-mvn comile -ff -pl foolish-core-java -DskipTests -T $(($(nproc) * 2))
+mvn compile -ff -pl foolish-core-java -DskipTests -T $(($(nproc) * 2))
 
 ## Turn on debugging and stack trace for debugging build problems
-mvn clean verify -am -ff -X -e -DskipTests
+mvn clean compile -am -ff -X -e -DskipTests
 ```
 
 ## Tests
@@ -102,11 +108,11 @@ mvn clean verify -am -ff -X -e -DskipTests
 
 ```bash
 # Run all tests with parallel execution
-mvn verify -am -fae -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
+mvn test -fae -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 
 # Run specific test
-mvn verify -am -ff -Dtest=ClassName#methodName
-mvn verify -am -ff -pl foolish-core-java -Dtest=UbcApprovalTest -Dfoolish.test.filter=Shadow
+mvn test -ff -Dtest=ClassName#methodName
+mvn test -ff -pl foolish-core-java -Dtest=UbcApprovalTest -Dfoolish.test.filter=Shadow
 
 ## Approval Test Protocol
 
