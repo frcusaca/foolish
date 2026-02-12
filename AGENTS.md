@@ -4,7 +4,7 @@ This document provides instructions for AI agents (including Claude Code, GitHub
 
 ## Use Common Sense
 Apply industry standard best practices liberally. Use colloquial java and scala language patterns based on the installed versions.(25 and 3.8.1 presently).
-Treat documentation in docs/ as if they are product documents, documentation in projects/ are engineering design, notes and discussions. This applies both to reading and generating for each directory.
+Documentation is organized under docs/ in subdirectories: howto/ (tutorials), why/ (philosophy), how/ (engineering), todo/ (project tracking), and vintage_legacy/ (legacy documents being reorganized).
 
 
 ## Development process
@@ -38,15 +38,23 @@ The project supports two primary development environments:
 - Maven commands work directly: `mvn clean test`
 
 ## Build Commands
+### Make project specific repository
+To be completely safe, let's make our own copy of the repo by running the script located at the root of the project directory:
+```bash
+./session_starter.make.m2.4.me.sh
+```
+It outputs an export command for shells used in this session
+```bash
+env | egrep -q "\.m2\.4\.me" || export MAVEN_OPTS="-Dmaven.repo.local=.m2.4.me ${MAVEN_OPTS}"
+```
+
 ### Cleaning
 ```bash
-rm -rf ~/.m2/repository/org/foolish
+mvn build-helper:remove-project-artifact
 mvn clean
 ```
 The second command to clean out foolish repo is important. If maven repository is elsewhere, please remove the corresponding foolish code as well. This has proven to be
-a problem for several systems where 'mvn install' was invoked at some point. It installed stale antlr source that prevented updates to g4 files from taking effect.
 
-** IMPORTANT ** NEVER USE "mvn install". THAT COMMAND IS INCOMPATIBLE WITH THIS PROJECT'S BUILD PROCESS. ALWAYS DO A FULL CLEANING WHEN IN DOUBT.
 Part of the Foolish project is to never have to write in all caps like that about a project written in Foolish.
 
 ### Basic Build and Test
@@ -54,30 +62,38 @@ Part of the Foolish project is to never have to write in all caps like that abou
 ```bash
 # Full clean build. Do this at beginning of a session and after every merge or rebase operation. Also, anytime when debugging took more than 13 minutes, do a full rebuild.
 # Everytime the 'foolish-parser-java/src/main/antlr4/Foolish.g4' file is updated, this command must be run at the root of the project to regenerate the parser.
-rm -rf ~/.m2/repository/org/foolish ## Remove same everywhere else where m2 may store repository.
+mvn build-helper:remove-project-artifact ## Remove same everywhere else where m2 may store repository.
 mvn clean generate-sources verify
 
 # Parallel build (recommended)
-mvn clean verify -am -fae -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
+mvn clean compile -fae -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 
-# Rebuild Antlr4 parser/lexer and parser from g4 file
-# This needs to happen every time 'foolish-parser-java/src/main/antlr4/Foolish.g4' changes
+# Rebuild Antlr4 parser/lexer and parser from g4 file  
+# Syntax changes made altering `foolish-parser-java/src/main/antlr4/Foolish.g4' needs to regenerate source
+```bash
 mvn clean generate-sources -T $(($(nproc) * 2))
+```
+
+# NOTE: Any time syntax changes or other changes are made to the g4 file or else where in the parser
+#   module foolish-parser-java, the parser needs to be reinstalled into maven repo to take effect.
+```
+mvn generate install -pl foolish-parser-java -am
+```
 
 # The approval tests can be selected this way specifying module, class and then the test file filter
-mvn verify -am -ff -pl foolish-core-java -Dtest=UbcApprovalTest -Dfoolish.test.filter=Shadow
+mvn test -ff -pl foolish-core-java -Dtest=UbcApprovalTest -Dfoolish.test.filter=Shadow
 
 # Just build (skip tests) when fixing compilation errors.
-mvn verify -am -ff -DskipTests -T $(($(nproc) * 2))
+mvn compile -ff -DskipTests -T $(($(nproc) * 2))
 
 # However, you may choose single threaded compilation to improve readability of compilation errors
-mvn verify -am -ff -DskipTests
+mvn compile -am -ff -DskipTests
 
 ## Select a module to reduce build time and effort
-mvn comile -ff -pl foolish-core-java -DskipTests -T $(($(nproc) * 2))
+mvn compile -ff -pl foolish-core-java -DskipTests -T $(($(nproc) * 2))
 
 ## Turn on debugging and stack trace for debugging build problems
-mvn clean verify -am -ff -X -e -DskipTests
+mvn clean compile -am -ff -X -e -DskipTests
 ```
 
 ## Tests
@@ -92,11 +108,11 @@ mvn clean verify -am -ff -X -e -DskipTests
 
 ```bash
 # Run all tests with parallel execution
-mvn verify -am -fae -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
+mvn test -fae -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 
 # Run specific test
-mvn verify -am -ff -Dtest=ClassName#methodName
-mvn verify -am -ff -pl foolish-core-java -Dtest=UbcApprovalTest -Dfoolish.test.filter=Shadow
+mvn test -ff -Dtest=ClassName#methodName
+mvn test -ff -pl foolish-core-java -Dtest=UbcApprovalTest -Dfoolish.test.filter=Shadow
 
 ## Approval Test Protocol
 
@@ -213,7 +229,7 @@ UNINITIALIZED → INITIALIZED → CHECKED → EVALUATING → CONSTANIC → CONST
 3. The clone is **recoordinated** with new AB (the containing brane) and new IB (preceding lines)
 4. Previously failed name searches can now resolve in the new context
 
-In UBC implementation, this means creating a modified clone with new context. See `docs/ECOSYSTEM.md` for detailed semantics.
+In UBC implementation, this means creating a modified clone with new context. See `docs/vintage_legacy/ECOSYSTEM.md` for detailed semantics.
 
 #### Evaluation Strategy
 
@@ -262,15 +278,6 @@ In UBC implementation, this means creating a modified clone with new context. Se
 - Both Java and Scala implementations already (and must continue to) produce byte-identical outputs
 
 ## Language-Specific Conventions
-
-## Java
-- Perform static import of classes like Optional so the code is not litered with 'java.util.Optional'
-- Use switch and pattern matching whenever possible in place of instance statements. Switch statements, switch expressions, yield, default, all that.
-- Use switch with added contionals.
-- leverage lambdas and method references.
-- Use streams for monadic operations.
-- Use Java modules.
-- Use Java String templates to reduce code verbosity.
 
 ### Foolish Terminology (from STYLES.md)
 
@@ -352,34 +359,29 @@ GitHub Copilot / gpt-4
 - **AST**: `foolish-parser-java/src/main/java/org/foolish/ast/AST.java`
 - **Java UBC**: `foolish-core-java/src/main/java/org/foolish/fvm/ubc/`
 - **Scala UBC**: `foolish-core-scala/src/main/scala/org/foolish/fvm/scubc/`
-- **Documentation**: `docs/` (README.md, STYLES.md, ECOSYSTEM.md, etc.)
+- **Documentation**: `docs/` (legacy docs in `docs/vintage_legacy/`; new docs in `docs/howto/`, `docs/why/`, `docs/how/`, `docs/todo/`)
 - **AI Instructions**: `.claude/CLAUDE.md` (Claude-specific guidance)
 
 ## Documentation
 
 ### Directory Structure
 
-- **`docs/`** - General documentation, architecture, language design, user guides
-  - User-facing tutorials
-  - Language specifications
-  - Architecture overviews
-  - User-facing documentation
-  - Permanent reference material
+- **`docs/howto`** - "How to Express it in Foolish" - literate programming tutorials as .foo files
+- **`docs/why`** - "Philosophy of Foolish" - origins, inspirations, design philosophy
+- **`docs/how`** - "Engineering documentation" - operational semantics, implementation details, reference
+- **`docs/todo`** - "Project documentation" - active project tracking and growth plans
+- **`docs/vintage_legacy`** - Legacy documentation (being reorganized into the above directories)
 
-- **`projects/`** - Engineering/design-specific documents for active work
-  - Implementation summaries
-  - Design decisions and rationale
-  - Work-in-progress specifications
-  - Engineering notes and analysis
+(The `projects/` directory has been retired; its contents are in `docs/vintage_legacy/`.)
 
 
 ### Additional Resources
 
 For complete details on:
 - Language features and semantics → See `README.md`
-- Terminology and conventions → See `docs/STYLES.md`
-- UBC architecture → See `docs/ECOSYSTEM.md`
-- Name resolution and search → See `docs/NAME_SEARCH_AND_BOUND.md`
+- Terminology and conventions → See `docs/vintage_legacy/STYLES.md`
+- UBC architecture → See `docs/vintage_legacy/ECOSYSTEM.md`
+- Name resolution and search → See `docs/vintage_legacy/NAMES_SEARCHES_N_BOUNDS.md`
 - Claude-specific guidance → See `.claude/CLAUDE.md`
 
 ## Quick Reference
@@ -420,6 +422,6 @@ When proposing updates, explain what has changed and why the documentation needs
 
 ## Last Updated
 
-**Date**: 2026-01-19
-**Updated By**: Claude Code v2.1.1 / claude-sonnet-4-5-20250929
-**Changes**: Simplified CCW section to brief note recommending local development instead. Removed detailed proxy configuration and workaround documentation. CCW is not currently suitable for Maven-based Java development.
+**Date**: 2026-02-06
+**Updated By**: Claude Code v1.0.0 / claude-opus-4-6
+**Changes**: Reorganized documentation structure. Replaced docs/ and projects/ directory descriptions with new 5-directory taxonomy (howto, why, how, todo, vintage_legacy). Updated all file path references. Fixed stale NAME_SEARCH_AND_BOUND.md reference.
