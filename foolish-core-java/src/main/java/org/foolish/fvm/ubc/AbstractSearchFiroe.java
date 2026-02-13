@@ -214,7 +214,7 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind implements 
         }
 
         if (resolvedAnchor instanceof NKFiroe) {
-            searchResult = Optional.empty();
+            searchResult = Optional.of(new NKFiroe());
             return 1;
         }
 

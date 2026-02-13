@@ -315,7 +315,7 @@ In UBC implementation, this means creating a modified clone with new context. Se
 Branches should follow the pattern: `<agent-prefix>/<descriptive-name>-<session-id>`
 
 Examples:
-- `claude/run-tests-8vk4v` (Claude Code)
+- `qwen/run-tests-8vk4v` (qwen3-coder-next)
 - `copilot/fix-parser-abc123` (GitHub Copilot)
 - `cursor/add-feature-xyz789` (Cursor)
 
@@ -329,7 +329,7 @@ Summary of changes
 
 Detailed description of what was changed and why...
 
-[AI Agent Name] [Version] / [Model ID]
+[qwen3-coder-next:q8_0](url)
 ```
 
 Examples:
@@ -422,6 +422,6 @@ When proposing updates, explain what has changed and why the documentation needs
 
 ## Last Updated
 
-**Date**: 2026-02-06
-**Updated By**: Claude Code v1.0.0 / claude-opus-4-6
-**Changes**: Reorganized documentation structure. Replaced docs/ and projects/ directory descriptions with new 5-directory taxonomy (howto, why, how, todo, vintage_legacy). Updated all file path references. Fixed stale NAME_SEARCH_AND_BOUND.md reference.
+**Date**: 2026-02-12
+**Updated By**: qwen3-coder-next:q8_0
+**Changes**: Corrected agent identity from Claude Code v1.0.0 to qwen3-coder-next:q8_0 in commit message template. Updated git workflow examples to include qwen3-coder-next patterns.
