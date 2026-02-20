@@ -54,9 +54,12 @@ Source material from `docs/vintage_legacy/` (formerly projects/):
 - 010-AlarmCode_Engineering.md - Alarm code engineering
 
 Tasks:
-- [ ] Identify content that describes operational semantics and extract/reorganize
-- [ ] Write new docs/how/ files with proper structure
-- [ ] Update README.md links from docs/vintage_legacy/ to docs/how/ as content migrates
+- [x] Consolidated UBC engineering reference: `docs/how/ubc_engineering.md` (from ECOSYSTEM.md, UBC_FEATURES.md, search-semantics.md, 004-nyes-state-simplification.md, 008-cmfir-nyes-state-review.md)
+- [x] UBC2 design specification: `docs/how/ubc2_design.md` (new design doc for next-gen brane computer)
+- [x] Update README.md links to new docs/how/ files
+- [ ] Identify remaining content that describes operational semantics and extract/reorganize
+- [ ] Write additional docs/how/ files (detachment engineering, search semantics detail, alarm codes)
+- [ ] Update README.md links from docs/vintage_legacy/ to docs/how/ as more content migrates
 
 ## Phase 3: Populate `docs/why/` (Philosophy of Foolish)
 
@@ -111,6 +114,7 @@ Source material from `docs/vintage_legacy/` (formerly projects/):
 - 007-foolish-indentation-style-guide.md - Style guide (may also fit docs/how/)
 
 Tasks:
+- [x] Create UBC2 design status and continuation guide: `docs/todo/1_ubc2_design_status.md`
 - [ ] Review and consolidate active TODO items
 - [ ] Archive completed project items
 - [ ] Create new project tracking documents for active work
@@ -133,6 +137,6 @@ summary composed of the first chapters from each documentation area:
 
 ## Last Updated
 
-**Date**: 2026-02-06
+**Date**: 2026-02-20
 **Updated By**: Claude Code v1.0.0 / claude-opus-4-6
-**Changes**: Initial creation of documentation reorganization plan.
+**Changes**: Added UBC2 design status/continuation guide to Phase 5 tasks.

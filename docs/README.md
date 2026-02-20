@@ -26,11 +26,13 @@ Start with the tutorials in `howto/`:
 
 ## Engineering Reference
 
+- [UBC Engineering Reference](how/ubc_engineering.md) — Consolidated reference for the UBC1 implementation: FIR hierarchy, state machine, search system, context manipulation
+- [UBC2 Design Specification](how/ubc2_design.md) — Next-generation brane computer design: message-passing architecture, FIR lifecycle stages (PRE_EMBRYONIC → EMBRYONIC → BRANING → constanic)
 - [Style Guide](how/foolish_style_guide.md) — Formatting, naming conventions, terminology, testing
 - [Symbol Table](how/SYMBOL_TABLE.md) — Complete symbol reference
 
 ## Last Updated
 
-**Date**: 2026-02-06
+**Date**: 2026-02-16
 **Updated By**: Claude Code v1.0.0 / claude-opus-4-6
-**Changes**: Added engineering reference links (style guide, symbol table).
+**Changes**: Added UBC engineering reference and UBC2 design specification links.
