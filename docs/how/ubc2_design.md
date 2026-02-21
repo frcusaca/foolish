@@ -626,10 +626,11 @@ def resolve(parent_brane):
             return
 
         if cur_res.at_woconstanic():
-            # CONTINUE: Dereference through WOCONSTANIC searches
-            # They found something, let's chase it
-            cur_res = cur_res.target
-            continue
+            # STOP: WOCONSTANIC search hasn't performed its search yet
+            # It's waiting for dependencies - it has no value to dereference
+            self.state = WOCONSTANIC
+            self.target = cur_res
+            return
 
         if cur_res.at_constant():
             # STOP: Found fully resolved search
@@ -662,9 +663,16 @@ def resolve(parent_brane):
 
 ### Key Dereferencing Rules
 
-1. **WOCONSTANIC searches are transparent** - Dereference through them by following `target`
+1. **WOCONSTANIC searches are barriers (NOT transparent)** - Stop dereferencing and become WOCONSTANIC
 2. **CONSTANIC searches are barriers** - Stop dereferencing and become WOCONSTANIC
-3. **Branes are opaque** - Don't dereference through branes (even WOCONSTANIC branes)
+3. **Branes are opaque** - Don't dereference through branes (WOCONSTANIC or CONSTANIC)
+
+**Why is WOCONSTANIC a barrier for searches?**
+
+A WOCONSTANIC search has **not yet performed its search**. It's waiting for its dependencies to
+resolve before it can search. The search has no value yet — it doesn't know what it will find.
+Therefore, we cannot dereference through it. The original search must wait for the WOCONSTANIC
+search to resolve.
 
 **Why is CONSTANIC a barrier?**
 
@@ -672,6 +680,12 @@ CONSTANIC means "search failed in current context and will NEVER change" unless 
 re-coordinated into a new context. When dereferencing encounters a CONSTANIC search, there's no
 point waiting for it to "become CONSTANT" in the current context — that will never happen. The
 search should stop and become WOCONSTANIC (waiting for re-coordination).
+
+**Why are branes opaque?**
+
+Branes are first-class values. A WOCONSTANIC or CONSTANIC brane has unresolved searches inside it,
+but the brane itself is the value we found. We don't dereference "into" branes — we treat them as
+endpoints.
 
 ### SearchFir Lifecycle Integration
 
@@ -683,8 +697,54 @@ state transitions:
 | **PRE_EMBRYONIC** | SearchFir is instantiated (holds query pattern) but not resolved |
 | **EMBRYONIC** | Proto-brane calls `searchFir.resolve(this)` - SearchFir performs search and dereferencing |
 | **EMBRYONIC (wait-for)** | Proto-brane re-calls `searchFir.resolve(this)` when checking wait-for queue - SearchFir re-resolves if target changed state |
-| **BRANING** | SearchFir is finalized (CONSTANIC, WOCONSTANIC, or CONSTANT) - no further action |
+| **BRANING** | SearchFir is finalized (CONSTANIC, WOCONSTANIC, or CONSTANT) - receives messages about target state changes |
 | **CONSTANIC** | SearchFir is in terminal state along with parent proto-brane |
+
+### Message-Based State Change Notification
+
+When a SearchFir becomes WOCONSTANIC (waiting on a WOCONSTANIC or CONSTANIC target), it needs to
+be notified when the target's state changes. This is handled through the **messaging system**
+(not callbacks).
+
+#### Registration for State Change Messages
+
+When `resolve()` determines that a SearchFir should become WOCONSTANIC:
+
+1. SearchFir transitions to WOCONSTANIC
+2. SearchFir stores reference to target
+3. **SearchFir registers interest** in target's state changes by adding itself to the target's
+   **state change listener list**
+4. When target transitions to a new state, target sends **StateChange** messages to all registered
+   listeners
+
+#### StateChange Message Processing
+
+State change messages are processed during the proto-brane's `step()` method. The proto-brane
+processes messages at a **finite rate** (message bandwidth) to ensure fairness across all FIRs.
+
+**Message format:**
+```
+StateChange {
+    source_fir: FIR           // The FIR whose state changed
+    old_state: Nyes           // Previous state
+    new_state: Nyes           // Current state
+}
+```
+
+**When a WOCONSTANIC SearchFir receives a StateChange message:**
+
+1. Check if `source_fir` is the target this search is waiting on
+2. If yes, re-call `resolve()` to re-evaluate dereferencing
+3. Possible outcomes:
+   - Target became CONSTANT → SearchFir may become CONSTANT (dereference to final value)
+   - Target became CONSTANIC → SearchFir remains WOCONSTANIC (still waiting)
+   - Target became WOCONSTANIC again → SearchFir remains WOCONSTANIC (still waiting)
+
+**Message-based triggering ensures:**
+- No direct callback mechanism (avoids tight coupling)
+- Finite message processing rate (fairness, no monopolization)
+- Messages delivered during `step()` (clear control flow)
+- Proto-brane orchestrates all message handling (centralized)
 
 ### SearchFir Terminal States
 
@@ -695,6 +755,56 @@ A SearchFir reaches one of three terminal states after dereferencing:
 | **CONSTANIC** | Search itself found nothing (identifier doesn't exist) | `?` |
 | **WOCONSTANIC** | Dereferencing chain ended at CONSTANIC or WOCONSTANIC barrier | `??` |
 | **CONSTANT** | Dereferencing chain ended at CONSTANT or INDEPENDENT result | *(value)* |
+
+### Anchored Search into CONSTANIC or WOCONSTANIC Branes
+
+When an anchored search targets a CONSTANIC or WOCONSTANIC brane, the search becomes WOCONSTANIC
+(waiting for the brane to resolve):
+
+```foolish
+{
+    b = {x = y;};  // b is CONSTANIC (y not found)
+    c = b.x;       // Anchored search: b.x
+}
+```
+
+**Resolution:**
+1. `SearchFir(b.x).resolve()`: anchored search into brane `b`
+2. Brane `b` is CONSTANIC (has unresolved searches)
+3. **Can we search inside a CONSTANIC brane?** Yes! The brane's statement array exists.
+4. Search for `x` within brane `b` → finds `x` at statement 0
+5. `x` is bound to SearchFir(y), which is CONSTANIC
+6. SearchFir(b.x) becomes WOCONSTANIC (found `x`, but `x` is CONSTANIC)
+
+**Result:**
+```
+{
+＿b = {＿＿x = ?;};
+＿c = ??;       // WOCONSTANIC (found b.x, but b.x is CONSTANIC)
+}
+```
+
+**If the anchor itself is WOCONSTANIC:**
+```foolish
+{
+    b = {x = y; z = w;};  // b is WOCONSTANIC (waiting on y and w)
+    c = b.x;              // Anchored search: b.x
+}
+```
+
+**Resolution:**
+1. `SearchFir(b.x).resolve()`: anchored search into brane `b`
+2. Brane `b` is WOCONSTANIC (anchor is not fully resolved)
+3. SearchFir(b.x) becomes WOCONSTANIC immediately (anchor is WOCONSTANIC)
+4. **Cannot search inside WOCONSTANIC brane** — the brane hasn't finished stepping
+
+**Result:**
+```
+{
+＿b = ??;
+＿c = ??;       // WOCONSTANIC (anchor b is WOCONSTANIC)
+}
+```
 
 ### Example: Search Chain
 
@@ -718,16 +828,19 @@ A SearchFir reaches one of three terminal states after dereferencing:
 
 **EMBRYONIC Step 2 (re-check wait-for queue):**
 - `SearchFir(b).resolve()`: searches for 'a' → finds SearchFir(a) (CONSTANIC) → STOP (barrier) → WOCONSTANIC
-- `SearchFir(c).resolve()`: searches for 'b' → finds SearchFir(b) (WOCONSTANIC) → dereference to SearchFir(a) (CONSTANIC) → STOP (barrier) → WOCONSTANIC
+- `SearchFir(c).resolve()`: searches for 'b' → finds SearchFir(b) (WOCONSTANIC) → STOP (barrier) → WOCONSTANIC
 
 **Result:**
 ```
 {
 ＿a = ?;        // CONSTANIC
 ＿b = ??;       // WOCONSTANIC (waiting on CONSTANIC 'a')
-＿c = ??;       // WOCONSTANIC (dereferenced through 'b' to 'a')
+＿c = ??;       // WOCONSTANIC (waiting on WOCONSTANIC 'b')
 }
 ```
+
+**Note:** SearchFir(c) does **not** dereference through SearchFir(b) because WOCONSTANIC searches
+are barriers (they haven't performed their search yet, so have no value to dereference).
 
 ### SearchFir value() Method
 
@@ -958,45 +1071,189 @@ parent's context.
 
 ## Brane Communication Protocol
 
+The UBC2 uses a **message-passing architecture** where branes, proto-branes, and SearchFirs
+communicate through discrete messages. Messages are processed during `step()` at a **finite rate**
+(message bandwidth) to ensure fairness.
+
 ### Message Types
+
+#### FulfillSearch
+
+Sent from child to parent when a search cannot be resolved locally.
 
 ```
 FulfillSearch {
-    source_luid: LUID       // Who is asking
-    query: Query             // What to search for
-    precedence: int          // Writing-order position (lower = higher priority)
-}
-
-RespondToSearch {
-    target_luid: LUID        // Who asked
-    query: Query             // What was searched for
-    result: FIR | NotFound   // The answer
+    source_luid: LUID       // Who is asking (SearchFir's LUID)
+    source_fir: FIR         // Reference to the SearchFir
+    query: Query            // What to search for (pattern, anchored/unanchored, scope)
+    precedence: int         // Writing-order position (lower = higher priority)
 }
 ```
 
-### Communication Flow
+#### RespondToSearch
+
+Sent from parent to child with search result.
+
+```
+RespondToSearch {
+    target_luid: LUID        // Who asked (SearchFir's LUID)
+    target_fir: FIR          // Reference to the requesting SearchFir
+    query: Query             // What was searched for
+    result: FIR | NotFound   // The answer (FIR reference or NotFound marker)
+}
+```
+
+#### StateChange
+
+Sent from a FIR to all registered listeners when its state changes.
+
+```
+StateChange {
+    source_fir: FIR          // The FIR whose state changed
+    old_state: Nyes          // Previous state (e.g., NYE, WOCONSTANIC)
+    new_state: Nyes          // Current state (e.g., CONSTANT, CONSTANIC)
+}
+```
+
+**When sent:**
+- When any FIR transitions between Nyes states
+- Particularly important for WOCONSTANIC → CONSTANT transitions
+- Triggers re-resolution of dependent searches
+
+**Who receives:**
+- SearchFirs that registered interest in this FIR (added themselves to state change listener list)
+- Parent proto-brane (if it has wait-for queue entries depending on this FIR)
+
+### Message Processing
+
+Proto-branes process messages during their `step()` method. Message processing is **bounded** by
+**message bandwidth** — a constant limit on the number of messages processed per step.
+
+**Message processing order:**
+
+1. **Inbound messages from parent** (RespondToSearch, StateChange)
+2. **Inbound messages from children** (FulfillSearch)
+3. **Outbound messages to parent** (FulfillSearch for unresolved searches)
+4. **Outbound messages to children** (RespondToSearch with results, StateChange notifications)
+
+**Message bandwidth enforcement:**
+
+```java
+void step() {
+    int messagesProcessed = 0;
+
+    // Process inbound messages (up to MESSAGE_BANDWIDTH)
+    while (messagesProcessed < MESSAGE_BANDWIDTH && !inboundQueue.isEmpty()) {
+        Message msg = inboundQueue.dequeue();
+        processMessage(msg);
+        messagesProcessed++;
+    }
+
+    // ... other step logic (search resolution, etc.)
+}
+```
+
+**Typical MESSAGE_BANDWIDTH**: 8-16 messages per step (configurable).
+
+### Message Routing
+
+#### FulfillSearch Routing
+
+1. Child SearchFir calls `resolve()`, cannot resolve locally
+2. Child adds FulfillSearch to parent's inbound message queue
+3. Parent processes FulfillSearch during `step()`:
+   - If parent can resolve: create RespondToSearch, add to child's inbound queue
+   - If parent cannot resolve: forward FulfillSearch to grandparent
+
+#### RespondToSearch Routing
+
+1. Parent resolves search, creates RespondToSearch
+2. Add RespondToSearch to child's inbound message queue (addressed by LUID)
+3. Child processes RespondToSearch during `step()`:
+   - Locate SearchFir by LUID
+   - Update SearchFir.target with result
+   - SearchFir may trigger state change (NYE → WOCONSTANIC or CONSTANT)
+
+#### StateChange Routing
+
+1. FIR transitions to new state (e.g., WOCONSTANIC → CONSTANT)
+2. FIR sends StateChange to all registered listeners:
+   - Each listener is a SearchFir that is WOCONSTANIC waiting on this FIR
+   - StateChange added to listener's parent proto-brane's inbound queue
+3. Listener's proto-brane processes StateChange during `step()`:
+   - Re-call `searchFir.resolve()` to re-evaluate dereferencing
+   - SearchFir may transition to new state based on updated target state
+
+### Communication Flow Example
 
 ```
 Child Brane                    Parent Brane                   Grandparent
     |                              |                              |
     |--- FulfillSearch(q) -------->|                              |
-    |                              |-- (can resolve locally?) --->|
-    |                              |   YES: bind result           |
-    |                              |   NO:                        |
+    |                              |                              |
+    |                        (can resolve locally?)               |
+    |                              |                              |
+    |                         NO - forward:                       |
     |                              |--- FulfillSearch(q) -------->|
     |                              |                              |
     |                              |<-- RespondToSearch(q,r) -----|
+    |                              |                              |
     |<-- RespondToSearch(q,r) -----|                              |
+    |                              |                              |
+(SearchFir receives result)        |                              |
+    |                              |                              |
+(If result is WOCONSTANIC, register for StateChange)              |
+    |                              |                              |
+(Later: result transitions WOCONSTANIC → CONSTANT)                |
+    |                              |                              |
+    |<-- StateChange --------------|                              |
+    |                              |                              |
+(SearchFir re-resolves, may become CONSTANT)                      |
 ```
 
 ### Address Model
 
-Each brane has:
-- **Parent address:** The brane that contains this brane. Root brane has no parent.
-- **Child addresses:** The sub-branes appended during PRE_EMBRYONIC step 7.
+Each proto-brane or brane has:
+
+- **Parent address:** The brane that contains this brane. Root brane has no parent. Used for
+  sending FulfillSearch messages upward.
+- **Child addresses:** The sub-branes appended during PRE_EMBRYONIC. Used for sending
+  RespondToSearch and StateChange messages downward.
+- **LUID-based lookup table:** Maps LUID to FIR for routing messages to specific SearchFirs.
 
 These addresses are established during the PRE_EMBRYONIC → EMBRYONIC transition and remain stable
 for the brane's lifetime.
+
+### Message Organization in Proto-Brane
+
+Proto-branes track message-related state:
+
+```java
+class ProtoBrane {
+    // Message queues
+    Queue<Message> inboundQueue;     // Messages from parent and children
+    Queue<Message> outboundQueue;    // Messages to send to parent/children
+
+    // Search tracking
+    Map<LUID, SearchFir> searchIndex;  // Lookup SearchFir by LUID
+    Set<SearchFir> waitForQueue;       // Searches waiting on NYE targets
+
+    // State change listeners
+    Map<FIR, List<SearchFir>> stateChangeListeners;  // FIR → interested SearchFirs
+
+    // Message bandwidth
+    final int MESSAGE_BANDWIDTH = 8;
+}
+```
+
+**Message triggers SearchFir functionality:**
+
+- **FulfillSearch received:** Trigger local search, possibly forward to parent
+- **RespondToSearch received:** Trigger SearchFir.resolve() to process result
+- **StateChange received:** Trigger SearchFir.resolve() to re-evaluate dereferencing
+
+The proto-brane organizes messages and triggers appropriate SearchFir methods, but does not
+duplicate SearchFir logic.
 
 ---
 
@@ -1328,6 +1585,9 @@ UBC2 avoids this by having one `step()` implementation that consults traits, not
 single brane. Whether explicit `{...}{...}` or implicit `a b c` or mixed `{z+y}a{t+u}b{}{}c d` or
 even grouped `(a$) (b$) ((c d e)$)$`, they are all wrapped inside a **ConcatenationBrane**.
 
+Concatenation is **the mechanism** by which operators work: `a + b` desugars to `{a}{b}{🧠+}`,
+which concatenates into a single proto-brane `{a, b, 🧠+}`.
+
 **Note:** Grouping `()` must work before concatenation is fully implemented. See prioritization in
 [Design TODO](#design-todo).
 
@@ -1339,46 +1599,167 @@ A ConcatenationBrane is a wrapping FIR that:
 - Executes its children's searches until they reach constanic states
 - Merges children into a contiguous brane once all are ready
 
+```java
+class ConcatenationBrane extends ProtoBrane {
+    List<FIR> children;           // The branes being concatenated
+    Brane merged;                 // The merged result brane
+    boolean searchIsolation;      // Don't forward FulfillSearch to parent
+}
+```
+
 ### Concatenation Lifecycle
 
-**PRE_EMBRYONIC:**
+#### PRE_EMBRYONIC
+
 The ConcatenationBrane is instantiated with references to its child branes (the branes being
 joined). Each child is in PRE_EMBRYONIC or CONSTANIC state.
 
-**EMBRYONIC:**
+**Actions:**
+1. Store references to children
+2. Set `searchIsolation = true` (do not forward messages to parent)
+3. Transition to EMBRYONIC
+
+#### EMBRYONIC
+
 The ConcatenationBrane steps each child brane until all children are either:
 - **PRE_EMBRYONIC or CONSTANIC** (not actively stepping), AND
 - **BRANE-valued** (full branes, not proto-branes)
 
-During EMBRYONIC, the ConcatenationBrane does **not** forward search messages from children to its
-parent. Children must resolve their searches independently or reach constanic states.
+**Message handling:**
+- **FulfillSearch from children:** Do **not** forward to parent. Search isolation is enforced.
+  Children must resolve locally or reach CONSTANIC.
+- **StateChange from children:** Monitor for transitions to constanic states
+- **RespondToSearch:** Not sent to children (no forwarding from parent)
 
-**BRANING:**
+**Transition criterion:**
+All children are (PRE_EMBRYONIC or constanic) AND all children are BRANE-valued → transition to
+BRANING
+
+#### BRANING
+
 Once all child branes are available (PRE_EMBRYONIC or CONSTANIC) and BRANE-valued:
 
-1. **Constanic-copy statements:** The statements from each child brane are constanic-copied into a
-   new, contiguous, empty brane. CONSTANT and INDEPENDENT statements are referenced (not copied).
-   CONSTANIC and WOCONSTANIC statements are recursively cloned.
+**Step 1: Constanic-copy statements**
 
-2. **Create merged brane:** The constanic-copied statements become the ConcatenationBrane's
-   internal brane. This brane is a new first-class brane.
+For each child brane, constanic-copy its statements into a new contiguous statement array:
+- CONSTANT and INDEPENDENT statements → reference (no copy)
+- CONSTANIC and WOCONSTANIC statements → recursively clone
+- **Update parent references** on cloned statements to point to merged brane
 
-3. **Transition to Brane PRE_EMBRYONIC:** The merged brane now executes the full Brane
-   PRE_EMBRYONIC steps (counting lines, building search cache, etc.).
+**Step 2: Create merged brane**
 
-4. **ConcatenationBrane becomes EMBRYONIC:** After the merged brane completes PRE_EMBRYONIC, the
-   ConcatenationBrane itself transitions to EMBRYONIC and begins stepping the merged brane through
-   its lifecycle.
+The constanic-copied statements become the merged brane's statement array. The merged brane is a
+new first-class brane with:
+- Statement count = sum of all children's statement counts
+- Named statement cache = concatenated from all children (in order)
+- Parent reference = ConcatenationBrane's parent
 
-**CONSTANIC:**
-When the merged brane reaches a constanic state, the ConcatenationBrane reaches the same constanic
-state. The ConcatenationBrane's `value()` returns the merged brane.
+**Step 3: Merged brane executes PRE_EMBRYONIC**
 
-### Search Isolation
+The merged brane now executes the full Brane PRE_EMBRYONIC actions:
+1. Count lines (already known from sum)
+2. Build statement array (already built)
+3. Build search cache (concatenate children's caches)
+4. Instantiate RHS FIRs (already instantiated via constanic-copy)
+5. Find searches (walk RHS, already done)
+6. Append child branes (none for merged brane, it's flat)
 
-**Critical:** The ConcatenationBrane does not act as a search relay between its children and its
-parent. Searches inside the child branes must be resolved within those branes or remain constanic.
-This isolation ensures that concatenation does not leak scope.
+Transition merged brane to EMBRYONIC.
+
+**Step 4: ConcatenationBrane steps merged brane**
+
+ConcatenationBrane transitions to BRANING (stepping child merged brane). The merged brane:
+- Performs search resolution in its combined statement array
+- Sends FulfillSearch to ConcatenationBrane's parent (search isolation ends after merge)
+- Steps through EMBRYONIC → BRANING → constanic
+
+**Transition criterion:**
+Merged brane reaches constanic state → ConcatenationBrane reaches same constanic state
+
+#### CONSTANIC Terminal State
+
+When the merged brane reaches a constanic state (CONSTANIC, WOCONSTANIC, or CONSTANT), the
+ConcatenationBrane reaches the same state. The ConcatenationBrane's `value()` returns the merged
+brane.
+
+### Search Isolation Enforcement
+
+**Critical:** During EMBRYONIC, the ConcatenationBrane enforces **search isolation**:
+
+```java
+void processMessage(Message msg) {
+    if (msg instanceof FulfillSearch) {
+        // Do NOT forward to parent
+        // Respond with NotFound or local resolution only
+        FulfillSearch req = (FulfillSearch) msg;
+        FIR result = this.performLocalSearch(req.query);
+        if (result == null) {
+            // Search failed - respond with NotFound
+            sendToChild(new RespondToSearch(req.source_luid, req.query, NotFound));
+        } else {
+            // Found locally - respond with result
+            sendToChild(new RespondToSearch(req.source_luid, req.query, result));
+        }
+    }
+}
+```
+
+Children cannot search through the concatenation boundary into the parent. This ensures:
+- Concatenation does not leak scope
+- Child branes are isolated during the concatenation process
+- After merging, the merged brane can search parent normally
+
+### Writing-Order Precedence
+
+When concatenating multiple branes, **writing order** determines statement order in the merged
+brane:
+
+```foolish
+{a=1}{b=2}{c=3}
+```
+
+Merged statement array: `[a=1, b=2, c=3]` (left-to-right order)
+
+Searches within the merged brane follow **backward search from cursor position**, so later
+statements can reference earlier statements:
+
+```foolish
+{a=1}{b=a+1}{c=b+1}
+```
+
+Merged: `{a=1; b=a+1; c=b+1;}` → `c` finds `b`, `b` finds `a`
+
+### Concatenation and Operators
+
+Binary and unary operators desugar to brane concatenation:
+
+```foolish
+result = 1 + 2 * 3
+```
+
+Desugars to (assuming standard precedence):
+```foolish
+result = {1}{2}{3}{🧠*}{🧠+}
+```
+
+Concatenates to:
+```foolish
+result = {1, 2, 3, 🧠*, 🧠+}
+```
+
+The system operators `🧠*` and `🧠+` are proto-branes that access their parent's statement array
+to retrieve operands (see [System Operators](#system-operators)).
+
+### Constanic Cloning and Concatenation
+
+When a ConcatenationBrane is constanic-cloned:
+
+1. **Clone each child** using constanic cloning rules
+2. **Create new ConcatenationBrane** with cloned children
+3. **Re-merge** in the new context (children may have different states after cloning)
+4. Merged brane re-resolves searches in new parent context
+
+This allows concatenated branes to gain value through re-coordination.
 
 ### Implementation Priority
 
@@ -1387,6 +1768,22 @@ Concatenation depends on grouping `()` working correctly. The implementation pri
 1. **Grouping:** Implement `()` for expression precedence
 2. **Proto-branes and Branes:** Ensure the basic lifecycle works
 3. **Concatenation:** Implement ConcatenationBrane after the above are stable
+
+### Open Design Questions
+
+1. **How does concatenation interact with liberation branes `[...]`?**
+   - Does `[a]{x=a}{y=a}` liberate `a` in both branes before concatenation?
+   - Per NAMES_SEARCHES_N_BOUNDS.md: liberation is removed before concatenation
+
+2. **What if children are not all BRANE-valued?**
+   - Can we concatenate proto-branes (scalars) with branes?
+   - Probably not — concatenation requires BRANE-valued children
+   - Proto-branes that are scalars cannot be concatenated
+
+3. **Performance: when to trigger merging?**
+   - Eager: merge as soon as all children are available
+   - Lazy: merge only when the merged brane is referenced
+   - Current design: eager merging during BRANING
 
 ---
 
@@ -1788,15 +2185,16 @@ These are noted in the design but deferred to later iterations:
 
 **Date**: 2026-02-20
 **Updated By**: Claude Code v1.0.0 / claude-sonnet-4-5-20250929
-**Changes**: Major design session on search dereferencing and constanic cloning. Added comprehensive
-SearchFir section specifying search resolution and dereferencing protocol. Key insights: (1)
-Identifiers are SearchFir instances (no variable dereferencing), (2) Dereferencing loops chase
-through WOCONSTANIC, stop at CONSTANIC barriers, (3) SearchFir.resolve() is idempotent and driven
-by proto-brane EMBRYONIC/BRANING states, (4) CONSTANIC clones → EMBRYONIC (re-search in new
-context), WOCONSTANIC clones → BRANING (wait for children, then re-dereference). Completely
-rewrote Constanic Cloning section with detailed state transition table including rationale columns.
-Added parent chain update specification. Clarified EMBRYONIC wait-for queue re-checking mechanism.
-Updated PRE_EMBRYONIC to note search resolution happens in EMBRYONIC. Added dereferencing barrier
-concept (CONSTANIC stops dereferencing, WOCONSTANIC continues). Previous changes: Restructured
-Proto-Branes/Branes hierarchy, operators as syntactic sugar, value() specification, Brane
-Concatenation, System Operators, search bandwidth, braneMind heap, Lessons Learned.
+**Changes**: **Microstates and messaging refinements.** Corrected dereferencing rule: WOCONSTANIC
+searches are barriers (NOT transparent) — they haven't performed their search yet, have no value to
+dereference. Added message-based state change notification (StateChange messages instead of
+callbacks). Added anchored search into CONSTANIC/WOCONSTANIC branes specification. Completely
+rewrote Brane Communication Protocol section with detailed message formats (FulfillSearch,
+RespondToSearch, StateChange), message processing with bandwidth limits, message routing,
+organization in proto-brane. Significantly expanded Brane Concatenation section with lifecycle
+details, search isolation enforcement, writing-order precedence, constanic cloning interaction,
+open design questions. Added terminology note: "Nyes" is proper noun (capitalized), "nyes" is
+lowercase when referring to the nyes of a FIR. "Microstate" = any state finer than Nyes.
+**Previous session:** Major design on search dereferencing and constanic cloning. SearchFir section,
+CONSTANIC/WOCONSTANIC cloning state transitions, parent chain updates, operators as syntactic
+sugar, Proto-Branes/Branes hierarchy, System Operators, Lessons Learned.
