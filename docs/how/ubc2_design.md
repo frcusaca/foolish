@@ -24,7 +24,8 @@ For the engineering reference of the current UBC1 implementation, see
   - [BRANING](#braning)
   - [CONSTANIC Terminal States](#constanic-terminal-states)
 - [SF and SFF Markers](#sf-and-sff-markers)
-- [Constanic Cloning and Coordination](#constanic-cloning-and-coordination)
+- [SearchFir: Search Resolution and Dereferencing](#searchfir-search-resolution-and-dereferencing)
+- [Constanic Cloning and Re-Coordination](#constanic-cloning-and-re-coordination)
 - [Brane Communication Protocol](#brane-communication-protocol)
 - [LUID: Locally Unique Identifiers](#luid-locally-unique-identifiers)
 - [Search Resolution and Precedence](#search-resolution-and-precedence)
@@ -261,13 +262,9 @@ Walk the RHS expression FIRs and find all search operations, **stopping at brane
 (searches inside nested branes belong to those branes, not this one). Maintain the searches in the
 order they were written to establish precedence: **first-to-write-first-to-find**.
 
-**Action 6 — Perform brane-bounded searches (backwards).**
-For each search found in Action 5, attempt a **backwards search** within this brane's boundaries
-only. Use the flexible cursor/query system from UBC1 for search execution. Searches that find
-their targets locally are bound immediately. Searches that do not find targets locally are
-**queued** for inter-brane resolution (they need to look beyond this brane's boundaries).
-
-**Note:** Action 6 is moved to EMBRYONIC stage (see below).
+**Note:** Brane-bounded search resolution occurs during the EMBRYONIC stage (see below), not during
+PRE_EMBRYONIC. PRE_EMBRYONIC only identifies which searches exist; it does not attempt to resolve
+them.
 
 **Action 7 — Append child branes.**
 Append PRE_EMBRYONIC branes found in RHS expressions to the braneMind, in writing order (the order
@@ -287,23 +284,28 @@ ready for EMBRYONIC communication.
 
 ### EMBRYONIC
 
-During the EMBRYONIC stage, the proto-brane (or brane) is set up for handling search requests and
-actively communicates to resolve its searches.
+During the EMBRYONIC stage, the proto-brane actively resolves its searches through a combination of
+local search, dereferencing, and message-passing communication with parent and child branes.
 
-#### Setup: Brane-Bounded Searches
+**IMPORTANT**: Identifiers on the RHS are **SearchFir** instances. There is no "variable
+dereferencing" in the traditional sense. When you write `a = b`, the `b` is a SearchFir that
+performs a search operation. All identifier resolution is search resolution.
 
-The first action in EMBRYONIC is to complete the search resolution work begun in PRE_EMBRYONIC
-Action 6:
+#### Search Resolution Process
 
-**Perform brane-bounded backwards searches.** For each search queued in PRE_EMBRYONIC, execute a
-backwards search within this brane's boundaries using the **flexible cursor/query system from
-UBC1**. This system supports:
-- Pattern-based searches (regex)
-- Anchored searches (`identifier`, `{#-1}`, `brane?member`)
-- Unanchored seeks (`←`, `↑`)
+EMBRYONIC performs search resolution in steps:
 
-Searches that find their target locally are bound immediately. Searches that do **not** find their
-target and need to look beyond the brane boundary are queued for parent dispatch.
+1. **Call `resolve()` on each SearchFir** (up to search bandwidth limit per step)
+2. **SearchFir.resolve() performs**:
+   - Local brane-bounded search for the identifier
+   - Dereferencing loop to chase through search chains
+   - State determination based on what was found
+3. **Add unresolved searches to wait-for queue** if targets are NYE (still stepping)
+4. **Dispatch FulfillSearch messages** to parent for searches that need inter-brane resolution
+5. **Receive and route messages** from parent and children
+
+See [SearchFir: Search Resolution and Dereferencing](#searchfir-search-resolution-and-dereferencing)
+for the complete SearchFir protocol.
 
 #### Search Bandwidth and Dispatch
 
@@ -348,18 +350,25 @@ The **braneMind** is a min-heap keyed by `<state, cur_rank, intra_statement_orde
 Heap sort is smallest-on-top. If the top of the heap is not in the current state, then it appears
 the current state is complete in terms of stepping descendant FIRs.
 
+#### Wait-For Queue Re-Checking
+
+Every EMBRYONIC step, the proto-brane **re-checks the wait-for queue**. Searches in the wait-for
+queue are waiting for their targets to finish stepping (NYE → constanic transition).
+
+For each search in the wait-for queue:
+1. Call `search.resolve()` again (resolve is idempotent)
+2. If target changed state (e.g., NYE → CONSTANIC), search will detect and update its own state
+3. Remove finalized searches (CONSTANIC, WOCONSTANIC, CONSTANT) from wait-for queue
+
+**The dereferencing loop extends automatically** when targets change state, because `resolve()` is
+called again and re-performs dereferencing based on current target states.
+
 #### Transition Criterion
 
-**Once all local searches have been dispatched** (the search queue is empty) **and all outstanding
-search requests return**, the proto-brane transitions to **BRANING**.
-
-Note: Non-brane expressions that are waiting on constanic dependencies remain in the wait-for
-queue. The proto-brane does not wait for them to resolve before transitioning to BRANING.
-
 **→ Transition to BRANING** when:
-- The local search queue is empty
-- All searches have been dispatched or resolved
-- The proto-brane's own search resolution is complete
+- All SearchFirs have been resolved (reached terminal constanic states)
+- Wait-for queue is empty
+- All non-search expressions are resolved
 
 #### Wait-For Mechanism
 
@@ -558,29 +567,380 @@ constanic itself:
 
 ---
 
-## Constanic Cloning and Coordination
+## SearchFir: Search Resolution and Dereferencing
 
-When a search result during the EMBRYONIC stage is CONSTANIC or WOCONSTANIC, the UBC2 must copy
-and relocate that expression into the current brane so it can be re-evaluated in the new context.
-This is the **constanic cloning** mechanism, and it replaces UBC1's approach of wrapping FIRs in
-CMFir.
+**SearchFir** is the FIR type that represents identifier searches on the RHS of assignments. When
+you write `a = b`, the `b` is a SearchFir instance. SearchFir is **not** a proto-brane — it has no
+independent lifecycle. Instead, it is driven by the proto-brane that contains it.
 
-### How Constanic Cloning Works
+### SearchFir Structure
 
-1. The messaging system determines that a search result is constanic.
-2. If the result is **CONSTANT** or **INDEPENDENT**: the clone is simply a reference to the
-   immutable object. CONSTANT elements never change, so sharing is safe. INDEPENDENT elements are
-   similarly immutable and detached.
-3. If the result is **CONSTANIC** or **WOCONSTANIC**: the expression is recursively
-   `cloneConstanic`'d. For branes, the RHS expressions are constanically cloned. CONSTANT and
-   INDEPENDENT sub-expressions within the clone are references to the immutable originals (no copy).
-   Only CONSTANIC and WOCONSTANIC sub-expressions are recursively cloned.
-4. The clone **replaces** the current object occupying the slot in the statement array. This is a
-   direct replacement, not a wrapper.
-5. The cloned CONSTANIC objects — and only the objects at CONSTANIC (not WOCONSTANIC) — transition
-   back to **EMBRYONIC** stage and experience search resolution again in their new context.
-   WOCONSTANIC clones do not need fresh search resolution (they already found everything); they
-   wait for their cloned dependencies to settle.
+```java
+class SearchFir extends FIR {
+    Query query;           // Pattern, anchored/unanchored, scope
+    FIR target;            // The found result (after dereferencing)
+    Nyes state;            // CONSTANIC, WOCONSTANIC, CONSTANT (terminal states)
+                           // Or NYE (still resolving)
+}
+```
+
+### The resolve() Method
+
+SearchFir has a single key method: `resolve()`. This method is called by the parent proto-brane
+during its EMBRYONIC stage. The `resolve()` method performs:
+
+1. **Search** for the identifier in the parent brane
+2. **Dereferencing loop** to chase through search chains
+3. **State determination** based on the final dereferenced result
+
+#### Pseudocode for resolve()
+
+```python
+def resolve(parent_brane):
+    # If already finalized, don't re-resolve
+    if self.at_constanic() or self.at_woconstanic() or self.at_constant():
+        return
+
+    # Step 1: Perform search
+    cur_res = parent_brane.perform_search(self.query)
+
+    if cur_res is None:
+        # Search failed - identifier doesn't exist
+        self.state = CONSTANIC
+        return
+
+    # Step 2: Dereferencing loop
+    # Chase through searches until we hit a barrier
+    depth = 0
+    while cur_res.is_search():
+        depth += 1
+        if depth > MAX_DEREFERENCE_DEPTH:
+            raise CircularReferenceException()
+
+        # Check state of the found search
+        if cur_res.at_constanic():
+            # STOP: CONSTANIC is a dereferencing barrier
+            # Search failed in original context, won't change without re-coordination
+            self.state = WOCONSTANIC
+            self.target = cur_res
+            return
+
+        if cur_res.at_woconstanic():
+            # CONTINUE: Dereference through WOCONSTANIC searches
+            # They found something, let's chase it
+            cur_res = cur_res.target
+            continue
+
+        if cur_res.at_constant():
+            # STOP: Found fully resolved search
+            self.state = CONSTANT
+            self.target = cur_res.target  # Dereference to final value
+            return
+
+        if cur_res.is_pre_constanic():  # NYE
+            # STOP: Target still stepping, wait for it
+            parent_brane.add_to_wait_for_queue(self)
+            self.state = NYE
+            return
+
+    # Step 3: Found a non-search (brane)
+    if cur_res.at_constanic() or cur_res.at_woconstanic():
+        self.state = WOCONSTANIC
+        self.target = cur_res
+        return
+
+    if cur_res.at_constant() or cur_res.at_independent():
+        self.state = CONSTANT
+        self.target = cur_res
+        return
+
+    if cur_res.is_pre_constanic():
+        parent_brane.add_to_wait_for_queue(self)
+        self.state = NYE
+        return
+```
+
+### Key Dereferencing Rules
+
+1. **WOCONSTANIC searches are transparent** - Dereference through them by following `target`
+2. **CONSTANIC searches are barriers** - Stop dereferencing and become WOCONSTANIC
+3. **Branes are opaque** - Don't dereference through branes (even WOCONSTANIC branes)
+
+**Why is CONSTANIC a barrier?**
+
+CONSTANIC means "search failed in current context and will NEVER change" unless the FIR is
+re-coordinated into a new context. When dereferencing encounters a CONSTANIC search, there's no
+point waiting for it to "become CONSTANT" in the current context — that will never happen. The
+search should stop and become WOCONSTANIC (waiting for re-coordination).
+
+### SearchFir Lifecycle Integration
+
+SearchFir does not have its own independent state machine. It is driven by the proto-brane's Nyes
+state transitions:
+
+| Proto-Brane State | SearchFir Action |
+|------------------|------------------|
+| **PRE_EMBRYONIC** | SearchFir is instantiated (holds query pattern) but not resolved |
+| **EMBRYONIC** | Proto-brane calls `searchFir.resolve(this)` - SearchFir performs search and dereferencing |
+| **EMBRYONIC (wait-for)** | Proto-brane re-calls `searchFir.resolve(this)` when checking wait-for queue - SearchFir re-resolves if target changed state |
+| **BRANING** | SearchFir is finalized (CONSTANIC, WOCONSTANIC, or CONSTANT) - no further action |
+| **CONSTANIC** | SearchFir is in terminal state along with parent proto-brane |
+
+### SearchFir Terminal States
+
+A SearchFir reaches one of three terminal states after dereferencing:
+
+| State | Meaning | Sequencer Output |
+|-------|---------|-----------------|
+| **CONSTANIC** | Search itself found nothing (identifier doesn't exist) | `?` |
+| **WOCONSTANIC** | Dereferencing chain ended at CONSTANIC or WOCONSTANIC barrier | `??` |
+| **CONSTANT** | Dereferencing chain ended at CONSTANT or INDEPENDENT result | *(value)* |
+
+### Example: Search Chain
+
+```foolish
+{
+    a = x;      // x not found
+    b = a;      // search for 'a'
+    c = b;      // search for 'b'
+}
+```
+
+**PRE_EMBRYONIC:**
+- Statement 0: `a = SearchFir(x)` (not resolved)
+- Statement 1: `b = SearchFir(a)` (not resolved)
+- Statement 2: `c = SearchFir(b)` (not resolved)
+
+**EMBRYONIC Step 1:**
+- `SearchFir(a).resolve()`: searches for 'x' → not found → CONSTANIC
+- `SearchFir(b).resolve()`: searches for 'a' → finds SearchFir(a) (NYE) → wait-for queue
+- `SearchFir(c).resolve()`: searches for 'b' → finds SearchFir(b) (NYE) → wait-for queue
+
+**EMBRYONIC Step 2 (re-check wait-for queue):**
+- `SearchFir(b).resolve()`: searches for 'a' → finds SearchFir(a) (CONSTANIC) → STOP (barrier) → WOCONSTANIC
+- `SearchFir(c).resolve()`: searches for 'b' → finds SearchFir(b) (WOCONSTANIC) → dereference to SearchFir(a) (CONSTANIC) → STOP (barrier) → WOCONSTANIC
+
+**Result:**
+```
+{
+＿a = ?;        // CONSTANIC
+＿b = ??;       // WOCONSTANIC (waiting on CONSTANIC 'a')
+＿c = ??;       // WOCONSTANIC (dereferenced through 'b' to 'a')
+}
+```
+
+### SearchFir value() Method
+
+```java
+public Object value() {
+    if (at_constant()) {
+        return target.value();  // Dereference to final value
+    }
+    if (at_woconstanic()) {
+        return target;  // Return the FIR we're waiting on
+    }
+    if (at_constanic()) {
+        return this;  // Return self as CONSTANIC marker
+    }
+    throw new IllegalStateException("Cannot get value of NYE SearchFir");
+}
+```
+
+---
+
+## Constanic Cloning and Re-Coordination
+
+**Constanic cloning** is the definitive mechanism for re-coordinating proto-branes into new
+contexts. When a CONSTANIC or WOCONSTANIC expression is referenced in a new context, it is cloned
+and given a chance to resolve in that context. This replaces UBC1's CMFir wrapper approach.
+
+### The Re-Coordination Problem
+
+Consider:
+```foolish
+{
+    fn = {a = x; b = a;};  // fn is WOCONSTANIC (x not found)
+    x = 42;
+    result = fn;           // How does fn gain value?
+}
+```
+
+When `fn` is assigned to `result`, the WOCONSTANIC brane `fn` needs to be **re-coordinated** into
+the new context where `x = 42` exists. The mechanism: **constanic cloning**.
+
+### When Constanic Cloning Occurs
+
+Constanic cloning is triggered when:
+1. A CONSTANIC or WOCONSTANIC FIR is found during search resolution
+2. The FIR needs to be relocated into a new parent brane
+3. The clone will be re-evaluated in the new context
+
+**Key timing**: Cloning occurs **after** the source FIR reaches a constanic state (CONSTANIC,
+WOCONSTANIC, CONSTANT, or INDEPENDENT). The wait-for mechanism ensures we never try to clone NYE
+FIRs.
+
+### Parent Chain Update
+
+**Critical**: When a FIR is constanic-cloned, the clone receives a **new parent reference**. This
+ensures that:
+- CONSTANIC searches re-resolve in the new context (search the new parent brane)
+- FulfillSearch messages are sent to the new parent (not the original parent)
+- The clone is fully integrated into the new brane's hierarchy
+
+The parent chain update happens during the cloning process, before the clone begins stepping.
+
+### Constanic Cloning State Transition Table
+
+| Source State | Clone Action | Clone Initial State | Rationale |
+|-------------|-------------|-------------------|-----------|
+| **CONSTANT** | Reference (no copy) | CONSTANT | Immutable value, safe to share. No cloning needed. |
+| **INDEPENDENT** | Reference (no copy) | INDEPENDENT | Immutable and detached, safe to share. No cloning needed. |
+| **CONSTANIC** | Recursive clone | **EMBRYONIC** | Search failed in original context. Re-search in new context: local scope first, then beyond boundary. New parent may provide missing bindings. |
+| **WOCONSTANIC** | Recursive clone | **BRANING** | Already found all symbols, waiting on dependencies. Don't re-search. Wait for cloned children to resolve, then re-evaluate dereferencing chain. Receives messages from children. |
+| **NYE** | Exception | N/A | Constanic cloning must only be called on constanic FIRs. Wait-for mechanism ensures source is constanic before cloning. |
+
+### Detailed Rationale
+
+#### CONSTANT and INDEPENDENT: No Cloning
+
+CONSTANT and INDEPENDENT FIRs are **immutable**. Once a FIR reaches CONSTANT, its value never
+changes. INDEPENDENT FIRs are similarly immutable and detached from context. Both can be safely
+shared across multiple contexts without cloning.
+
+**Implementation**: The clone is simply a reference to the original FIR. No recursion, no copying.
+
+#### CONSTANIC: Re-Search in New Context
+
+A CONSTANIC FIR has unresolved searches. In the original context, the searches failed (identifiers
+not found). When constanic-cloned into a new context, the clone gets a fresh chance to find those
+identifiers.
+
+**Why EMBRYONIC?**
+- The clone needs to perform search resolution from scratch
+- Searches are performed locally first (brane-bounded), then beyond boundary if needed
+- The new parent brane may contain the missing identifiers
+- EMBRYONIC is the standard stage for search resolution
+
+**Cloning process:**
+1. Clone the FIR structure recursively
+2. Clone all sub-FIRs (children) using constanic cloning rules
+3. Update parent reference to new parent brane
+4. Transition clone to EMBRYONIC
+5. Clone begins search resolution via `searchFir.resolve()`
+
+**Example:**
+```foolish
+{
+    fn = {a = x;};  // fn is CONSTANIC (x not found)
+    x = 42;
+    result = fn;    // Constanic-clone fn
+}
+```
+
+Cloning process:
+1. Clone brane `fn` → new instance
+2. Clone SearchFir(x) → new instance, parent = new brane clone
+3. New brane clone transitions to EMBRYONIC
+4. SearchFir(x).resolve() searches in new context → finds x=42 → CONSTANT
+5. New brane clone transitions to BRANING → CONSTANT
+
+#### WOCONSTANIC: Wait for Children, Then Re-Dereference
+
+A WOCONSTANIC FIR has **already resolved all its searches**. It found all the identifiers it was
+looking for. It's just waiting for those identifiers to finish evaluating (they're CONSTANIC or
+WOCONSTANIC themselves).
+
+**Why BRANING?**
+- The clone doesn't need to re-search (it already found everything)
+- It needs to wait for its children (dependencies) to re-resolve in the new context
+- When children change state, the clone re-evaluates its dereferencing chain
+- BRANING is the state for "I'm done with my work, waiting for children"
+
+**Cloning process:**
+1. Clone the FIR structure recursively
+2. Clone all sub-FIRs (children) using constanic cloning rules:
+   - CONSTANT/INDEPENDENT children → reference (no copy)
+   - CONSTANIC children → recursive clone, transition to **EMBRYONIC**
+   - WOCONSTANIC children → recursive clone, transition to **BRANING**
+3. Update parent reference to new parent brane
+4. Transition clone to BRANING
+5. Clone waits for messages from children indicating state changes
+6. When children change state, clone re-calls `resolve()` to re-evaluate dereferencing
+
+**Example:**
+```foolish
+{
+    fn = {a = x; b = a;};  // a is CONSTANIC, b is WOCONSTANIC (waiting on a)
+    x = 42;
+    result = fn;           // Constanic-clone fn
+}
+```
+
+Cloning process:
+1. Clone brane `fn` → new instance
+2. Clone SearchFir(a) → CONSTANIC, transitions to **EMBRYONIC**
+3. Clone SearchFir(b) → WOCONSTANIC, transitions to **BRANING**
+4. New brane clone transitions to BRANING (waiting for children)
+
+Resolution in new context:
+1. SearchFir(a).resolve() searches for 'x' → finds 42 → CONSTANT
+2. SearchFir(a) sends message to SearchFir(b): "I resolved to CONSTANT"
+3. SearchFir(b) receives message, re-calls `resolve()`
+4. SearchFir(b).resolve() searches for 'a' → finds SearchFir(a) (CONSTANT) → dereferences → CONSTANT
+5. All children CONSTANT → brane transitions to CONSTANT
+
+### Special Case: SearchFir WOCONSTANIC Cloning
+
+When a WOCONSTANIC SearchFir is constanic-cloned:
+
+1. **Clone transitions to BRANING** (not EMBRYONIC)
+2. **Clone's target is constanic-cloned** using the same rules
+3. **Clone waits for target to re-resolve** in new context
+4. **When target changes state**, clone re-calls `resolve()` to re-evaluate dereferencing
+
+**Why this works:**
+- WOCONSTANIC SearchFir already found the identifier (search succeeded)
+- The identifier it found is CONSTANIC or WOCONSTANIC (needs re-coordination)
+- When the target is cloned and transitions to EMBRYONIC or BRANING, it will re-resolve
+- The SearchFir clone receives notification and re-dereferences
+- The dereferencing chain extends automatically through the message-passing system
+
+### Recursive Cloning
+
+Constanic cloning is **recursive**. When a brane is constanic-cloned:
+
+1. Clone the brane structure (statement array, named statement cache, etc.)
+2. **Update parent reference** to new parent brane
+3. For each statement in the brane:
+   - Clone the LHS identifier (if named)
+   - Clone the RHS expression using constanic cloning rules
+   - Sub-expressions are constanic-cloned recursively
+4. Determine clone's initial state (EMBRYONIC for CONSTANIC, BRANING for WOCONSTANIC)
+5. Clone begins stepping in its initial state
+
+**Important**: CONSTANT and INDEPENDENT sub-expressions are **not** recursively cloned — they are
+referenced directly. Only CONSTANIC and WOCONSTANIC sub-expressions require cloning.
+
+### Coordination After Cloning
+
+After cloning, the clone participates in the brane's normal lifecycle:
+
+**CONSTANIC clone (in EMBRYONIC):**
+1. Performs search resolution via SearchFir.resolve()
+2. Sends FulfillSearch messages to new parent for unresolved searches
+3. Receives RespondToSearch messages with results
+4. Transitions through EMBRYONIC → BRANING → constanic based on resolution results
+
+**WOCONSTANIC clone (in BRANING):**
+1. Waits for children to finish re-resolving
+2. Receives messages from children when they transition to constanic states
+3. Re-evaluates dereferencing chains when children change state
+4. Transitions to CONSTANT when all dependencies resolve, or remains WOCONSTANIC if dependencies
+   stay constanic
+
+**The fundamental operation**: A constanic brane gains value when associated with a new context.
+Constanic cloning makes this possible by giving the clone a fresh chance to resolve in the new
+parent's context.
 
 ### Key Differences from UBC1
 
@@ -589,61 +949,10 @@ CMFir.
 | Mechanism | Wrap FIR in CMFir, two-phase eval | Clone and replace in slot |
 | When triggered | During evaluation | Only when object is constanic |
 | Wrapper overhead | CMFir delegates state | No wrapper; direct replacement |
-| Re-evaluation | CMFir Phase B steps clone | Clone re-enters EMBRYONIC |
+| Re-evaluation | CMFir Phase B steps clone | Clone re-enters EMBRYONIC or BRANING |
 | CONSTANT handling | CMFir short-circuits | Reference to immutable; no clone |
-
-### Cloning Rules by State
-
-| Source State | Clone Action |
-|-------------|-------------|
-| CONSTANT | Reference to immutable object (no copy) |
-| INDEPENDENT | Reference to immutable object (no copy) |
-| CONSTANIC | Recursive `cloneConstanic`: clone expression tree, sub-expressions cloned recursively. Clone transitions to **EMBRYONIC** for fresh search resolution. |
-| WOCONSTANIC | Recursive `cloneConstanic`: clone expression tree, sub-expressions cloned recursively. Clone starts in **BRANING** state with children constanic-copied. See special case below. |
-| NYE (any pre-constanic) | **Exception** — constanic cloning must only be called on constanic FIRs. The wait-for mechanism ensures cloning only happens after the source reaches constanic. |
-
-#### Special Case: WOCONSTANIC Constanic Cloning
-
-When a WOCONSTANIC FIR is constanic-cloned, a subtle situation arises: some of its sub-FIRs may
-be CONSTANIC (the dependencies it is waiting on). The clone must handle this correctly:
-
-1. **New FIR with new parent:** The WOCONSTANIC FIR is cloned into a new instance with the new
-   parent brane reference.
-2. **Start in BRANING state:** The clone begins in BRANING state, **not** EMBRYONIC. The
-   WOCONSTANIC clone already completed search resolution (it found everything); it does not need
-   to re-search.
-3. **Children constanic-copied:** Each child FIR is constanic-cloned recursively:
-   - CONSTANT and INDEPENDENT children: Reference to immutable original (no copy)
-   - CONSTANIC children: Cloned recursively and transition to **EMBRYONIC** in the new context.
-     The new context may provide bindings that were missing in the original context.
-   - WOCONSTANIC children: Cloned recursively and remain in **BRANING** state.
-4. **CONSTANIC children revert to EMBRYONIC:** This is the key: when a CONSTANIC FIR is cloned as
-   part of a WOCONSTANIC parent's constanic clone, it transitions to EMBRYONIC in the new context.
-   The new parent brane may provide the missing bindings.
-
-This mechanism allows a WOCONSTANIC FIR (which found all its symbols but is waiting on constanic
-results) to be placed in a new context where those constanic results may resolve.
-
-### Coordination After Cloning
-
-After a **CONSTANIC** clone is placed in its new slot and transitions to EMBRYONIC:
-
-1. It participates in the brane's normal EMBRYONIC communication — sending FulfillSearch messages
-   for its unresolved searches.
-2. The new brane context may resolve searches that were unresolvable in the original context.
-3. If all searches resolve to CONSTANT/INDEPENDENT, the clone reaches CONSTANT.
-4. If all searches are found but some results are constanic, the clone reaches WOCONSTANIC.
-5. If some searches remain unresolved, the clone reaches CONSTANIC in the new context.
-
-After a **WOCONSTANIC** clone is placed in its new slot:
-
-1. It does not re-enter EMBRYONIC — its searches were already resolved.
-2. It monitors its cloned dependencies. As those dependencies settle (reach CONSTANT), the
-   WOCONSTANIC expression may itself reach CONSTANT.
-3. If dependencies remain constanic, the expression remains WOCONSTANIC.
-
-This is the mechanism by which "a constanic brane can gain value when associated with a new
-context" — the fundamental operation of brane coordination.
+| Parent chain update | Unclear/inconsistent | Explicit parent reference update during cloning |
+| WOCONSTANIC handling | Not distinguished from CONSTANIC | BRANING state, wait for children |
 
 ---
 
@@ -1479,15 +1788,15 @@ These are noted in the design but deferred to later iterations:
 
 **Date**: 2026-02-20
 **Updated By**: Claude Code v1.0.0 / claude-sonnet-4-5-20250929
-**Changes**: Major reorganization and clarifications based on implementation planning session.
-Restructured document to present Proto-Branes before Branes (proto-brane as foundation, brane
-derives from it). Added clear distinction that unary/binary operators are syntactic sugar for
-brane concatenation. Added comprehensive `value()` method specification for all FIR types.
-Clarified PRE_EMBRYONIC as single atomic step (not multiple steps). Refined EMBRYONIC with search
-bandwidth, dispatch mechanism, and braneMind heap structure. Added WOCONSTANIC constanic cloning
-edge case handling (WOCONSTANIC parent with CONSTANIC children). Updated constanic predicate
-equation format. Added comprehensive Brane Concatenation section (ConcatenationBrane lifecycle,
-search isolation). Added System Operators section with 🧠 prefix specification and desugaring
-examples. Reorganized Design TODO to prioritize grouping before concatenation. Added Lessons
-Learned items 10-11 (finer-grained steps, world-stopping exceptions vs alarms). Added note about
-ordinal comparisons with WOCONSTANIC edge case caveat.
+**Changes**: Major design session on search dereferencing and constanic cloning. Added comprehensive
+SearchFir section specifying search resolution and dereferencing protocol. Key insights: (1)
+Identifiers are SearchFir instances (no variable dereferencing), (2) Dereferencing loops chase
+through WOCONSTANIC, stop at CONSTANIC barriers, (3) SearchFir.resolve() is idempotent and driven
+by proto-brane EMBRYONIC/BRANING states, (4) CONSTANIC clones → EMBRYONIC (re-search in new
+context), WOCONSTANIC clones → BRANING (wait for children, then re-dereference). Completely
+rewrote Constanic Cloning section with detailed state transition table including rationale columns.
+Added parent chain update specification. Clarified EMBRYONIC wait-for queue re-checking mechanism.
+Updated PRE_EMBRYONIC to note search resolution happens in EMBRYONIC. Added dereferencing barrier
+concept (CONSTANIC stops dereferencing, WOCONSTANIC continues). Previous changes: Restructured
+Proto-Branes/Branes hierarchy, operators as syntactic sugar, value() specification, Brane
+Concatenation, System Operators, search bandwidth, braneMind heap, Lessons Learned.
