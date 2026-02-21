@@ -12,7 +12,12 @@ For the engineering reference of the current UBC1 implementation, see
 
 - [What Is the UBC2](#what-is-the-ubc2)
 - [Message-Passing Architecture](#message-passing-architecture)
-- [Every Expression Is a Brane](#every-expression-is-a-brane)
+- [Literal Values and Proto-Branes](#literal-values-and-proto-branes)
+  - [Literal Values Are Always INDEPENDENT](#literal-values-are-always-independent)
+  - [Proto-Branes: Boundary-Less Expressions](#proto-branes-boundary-less-expressions)
+  - [The value() Method](#the-value-method)
+  - [Operators as Syntactic Sugar](#operators-as-syntactic-sugar)
+- [Branes: Full Boundary Expressions](#branes-full-boundary-expressions)
 - [FIR Lifecycle Stages](#fir-lifecycle-stages)
   - [PRE_EMBRYONIC](#pre_embryonic)
   - [EMBRYONIC](#embryonic)
@@ -24,6 +29,8 @@ For the engineering reference of the current UBC1 implementation, see
 - [LUID: Locally Unique Identifiers](#luid-locally-unique-identifiers)
 - [Search Resolution and Precedence](#search-resolution-and-precedence)
 - [NK vs CONSTANIC: When Is a Search Truly Failed?](#nk-vs-constanic-when-is-a-search-truly-failed)
+- [Brane Concatenation](#brane-concatenation)
+- [System Operators](#system-operators)
 - [Sequencing: Human-Readable Output](#sequencing-human-readable-output)
 - [FIR Type Hierarchy](#fir-type-hierarchy)
 - [Design TODO](#design-todo)
@@ -100,55 +107,117 @@ This check is cheap (one integer comparison per message) and prevents:
 
 ---
 
-## Every Expression Is a Brane
-
-In UBC2, **every expression that is not a literal value is a brane**. Binary operations, unary
-operations, searches — all are branes. This is the central unification: there is only one lifecycle
-implementation, and it handles everything that requires identifier resolution.
-
-**Note:** UBC2 removes if-then-else (`IfFiroe`) entirely. Path selection in UBC2 is search-based,
-not conditional-branching-based. The IfFiroe implementation in UBC1 had persistent infinite-loop
-bugs and a fundamentally fragile recursive `step()` design. UBC2 replaces this with a mechanism
-that fits the brane model natively. See [Design TODO](#design-todo) for the planned approach.
+## Literal Values and Proto-Branes
 
 ### Literal Values Are Always INDEPENDENT
 
 Foolish literal values (integers, strings) are always in the **INDEPENDENT** state. They do not
 transition through any lifecycle stages. They have no searches to resolve, no dependencies to wait
-for, and no parent to communicate with. They simply exist.
+for, and no parent to communicate with. They simply exist. Their `value()` method returns the
+literal value itself.
 
-### Boundary-Less Branes (Proto-Branes)
+### Proto-Branes: Boundary-Less Expressions
 
-Expressions like binary operations (`a + b`) and unary operations (`-x`) are branes, but they
-differ from curly-brace branes `{...}` in two ways:
+**Proto-branes** are expressions that participate in the full FIR lifecycle (PRE_EMBRYONIC →
+EMBRYONIC → BRANING → CONSTANIC) but **do not define a search boundary**. This category includes:
 
-1. **No boundary.** A boundary-less brane does not define a search scope. When a search starts
-   inside a boundary-less brane, it begins in the **parent brane** where the expression is located.
-   In contrast, a curly-brace brane `{...}` defines a boundary — searches inside it search within
-   the brane first before going to parents.
+- Binary operations: `a + b`, `x * y`
+- Unary operations: `-x`, `!flag`
+- Searches: `identifier`, `pattern$`, `{#-1}`
+- Assignments (RHS expressions): `name = expression`
 
-2. **`.value()` returns a literal.** The result of evaluating a boundary-less brane is a literal
-   value (integer, string), not a brane. A curly-brace brane's `.value()` returns the brane itself.
+Proto-branes differ from full branes (curly-brace branes `{...}`) in two fundamental ways:
+
+1. **No search boundary.** When a search starts inside a proto-brane, it begins in the **parent
+   brane** where the proto-brane is located. There is no local scope to search first. Searches
+   pass directly through to the containing brane.
+
+2. **`.value()` returns a literal.** The result of evaluating a proto-brane is a scalar value
+   (integer, string, boolean), not a brane. Proto-branes compute values; full branes compute
+   branes.
+
+Proto-branes are "everything we've described except for search boundary." They implement the
+complete lifecycle but without establishing their own namespace.
+
+### The value() Method
+
+Every FIR in UBC2 has a `value()` method that returns its evaluated result:
+
+| FIR Type | `value()` Returns | Notes |
+|----------|------------------|-------|
+| **Literal** (INDEPENDENT) | The literal value (int, string) | Immediate; no evaluation needed |
+| **Proto-brane** (CONSTANIC) | Scalar value or search result | For integer literal proto-branes: returns `int`. For search proto-branes: returns the found FIR or CONSTANIC marker |
+| **Brane** (CONSTANIC) | The brane itself | Full branes are first-class values |
+
+The `value()` method is called by the VM when an expression reaches a terminal constanic state
+and the result is needed for further computation.
+
+### Operators as Syntactic Sugar
+
+**All unary and binary operators are syntactic sugar for brane concatenations.**
+
+The expression `1 + 2` is not a special "addition operation" — it is syntactic sugar for
+concatenating branes:
+
+```
+1 + 2   →   {1}{2}{🧠+}
+```
+
+The curly braces `{...}` in this explanation indicate proto-branes, not Foolish syntax. The three
+proto-branes concatenate due to proximity, producing:
+
+```
+{1, 2, 🧠+}
+```
+
+This is a single proto-brane containing three statements. The system operator `🧠+` references
+library code that the VM/hardware implements. When this proto-brane reaches BRANING stage, the
+`🧠+` operator accesses the two preceding values in its parent brane and computes their sum.
+
+The `🧠` prefix marks system operators. When the VM encounters these symbols, their dedicated FIR
+implementations are initialized. The actual FIR implementation for `🧠+` might be implemented
+naively as:
+
+```java
+a, b = parent.getValuesBeforeMe(me);
+myValue = a + b;
+```
+
+See [System Operators](#system-operators) for the complete list and their semantics.
 
 ### Characterization of Proto-Branes
 
-For typing purposes, boundary-less branes could be characterized. For example, an addition
-operation might be expressed as:
+For typing purposes, proto-branes can be characterized. For example, an addition operation might
+be expressed as:
 
 ```foolish
 add = $'{ <#-1> + <#-2> }
 ```
 
-The characterization `$'` signals special treatment of this brane — it is a proto-brane whose
-result is a scalar value extracted from its computation. This notation is for future reference; the
-UBC2 reference implementation does not require explicit characterizations to handle proto-branes.
+The characterization `$'` signals that this is a proto-brane whose result is a scalar value
+extracted from its computation. This notation is for future reference; the UBC2 reference
+implementation does not require explicit characterizations to handle proto-branes.
 
-### One Lifecycle
+---
 
-Because every non-literal expression is a brane, the UBC2 implements **one set of lifecycle
-stages** (PRE_EMBRYONIC → EMBRYONIC → BRANING → CONSTANIC) that handles all expressions uniformly.
-The differences between boundary-less branes and curly-brace branes are expressed through their
-search scope rules, not through different lifecycle implementations.
+## Branes: Full Boundary Expressions
+
+**Branes** (curly-brace branes `{...}`) are proto-branes that **define a search boundary**.
+Everything about the proto-brane lifecycle applies, with these additions:
+
+1. **Search boundary.** Searches that start inside a brane search the brane's named statements
+   first before escalating to parent branes. The brane establishes a local namespace.
+
+2. **`.value()` returns the brane.** A brane is a first-class value. Its `value()` method returns
+   the brane itself, not a scalar.
+
+Branes derive from proto-branes conceptually. The proto-brane lifecycle is the foundation; branes
+add boundary semantics on top.
+
+**Note:** UBC2 removes if-then-else (`IfFiroe`) entirely. Path selection in UBC2 is search-based,
+not conditional-branching-based. The IfFiroe implementation in UBC1 had persistent infinite-loop
+bugs and a fundamentally fragile recursive `step()` design. UBC2 replaces this with a mechanism
+that fits the brane model natively. See [Design TODO](#design-todo) for the planned approach.
 
 ---
 
@@ -160,61 +229,137 @@ processing.
 
 ### PRE_EMBRYONIC
 
-A FIR in PRE_EMBRYONIC stage holds a Foolish code AST. The UBC2 performs the following steps in
-order:
+A FIR in PRE_EMBRYONIC stage holds a Foolish code AST. The UBC2 performs the following actions **as
+a single atomic step**. The individual operations listed are not separate steps; they occur
+together during the PRE_EMBRYONIC → EMBRYONIC transition:
 
-**Step 0 — Establish LUID.**
-Each expression receives a Locally Unique Identifier. The LUID is composed of the statement number
-followed by a disambiguator that distinguishes this expression from other expressions on the same
-statement. The LUID is unique within the brane.
+**Action 1 — Count lines.**
+Count the number of lines (statements) in the brane. **This is required because branes have finite,
+known size.** The line count establishes the size of the statement array and is used for anchored
+searches like `{#-1}` (previous line) and `{#N}` (line N).
 
-**Step 1 — Establish line count.**
-Count the number of lines (statements) in the brane.
-
-**Step 2 — Establish statement array.**
+**Action 2 — Establish statement array.**
 Create the array of statements from the AST. Each statement occupies one slot, indexed from 0.
 
-**Step 3 — Gather characterized identifiers.**
+**Action 3 — Build search cache.**
 Walk all *named* statements (assignments with LHS identifiers) and cache the fully characterized
-identifier name for searching. Unnamed statements (those assigned to `???`) are skipped. The
-named statements form a linked list pointing into the statement array.
+identifier name for regex searching. Unnamed statements (those assigned to `???`) are skipped.
+**The cache is just an array of strings** with fully-characterized names, enabling fast pattern
+matching during search resolution.
 
 Each `IdentifyingFiroe` caches its fully characterized identifier string so that searches can
 match against it without re-traversing the characterization chain.
 
-**Step 4 — Instantiate RHS FIRs.**
-For each statement, instantiate the RHS expression's FIR in PRE_EMBRYONIC stage. This creates the
-FIR tree for the brane's expressions without evaluating anything.
+**Action 4 — Instantiate RHS FIRs.**
+For each statement, instantiate the RHS expression's FIR **in PRE_EMBRYONIC stage** without taking
+the PRE_EMBRYONIC step. This means the RHS FIRs are **readied** for the steps being defined here,
+but they have not yet performed their own PRE_EMBRYONIC actions. They hold AST and await their
+turn.
 
-**Step 5 — Find all searches in RHS expressions.**
+**Action 5 — Find all searches in RHS expressions.**
 Walk the RHS expression FIRs and find all search operations, **stopping at brane boundaries**
 (searches inside nested branes belong to those branes, not this one). Maintain the searches in the
 order they were written to establish precedence: **first-to-write-first-to-find**.
 
-**Step 6 — Resolve intra-brane searches.**
-Attempt to resolve each RHS search within this brane. For searches that can be resolved locally
-(the target identifier exists in this brane's named statements), bind the search to its result.
-For searches that cannot be resolved locally, aggregate them into the braneMind for communication
-with the parent brane and for monitoring incoming results.
+**Action 6 — Perform brane-bounded searches (backwards).**
+For each search found in Action 5, attempt a **backwards search** within this brane's boundaries
+only. Use the flexible cursor/query system from UBC1 for search execution. Searches that find
+their targets locally are bound immediately. Searches that do not find targets locally are
+**queued** for inter-brane resolution (they need to look beyond this brane's boundaries).
 
-**Step 7 — Append child branes.**
+**Note:** Action 6 is moved to EMBRYONIC stage (see below).
+
+**Action 7 — Append child branes.**
 Append PRE_EMBRYONIC branes found in RHS expressions to the braneMind, in writing order (the order
-in which they appear in the source code).
+in which they appear in the source code). These child branes will be stepped during the BRANING
+stage.
+
+**Action 0 — Establish LUID.**
+Each expression receives a Locally Unique Identifier. The LUID is composed of the statement number
+followed by a disambiguator that distinguishes this expression from other expressions on the same
+statement. The LUID is unique within the brane and is used for message routing.
 
 **→ Transition to EMBRYONIC.**
 
+**Important Note:** The PRE_EMBRYONIC actions occur as a single step. There is no intermediate
+state between Actions 1-7. The proto-brane transitions atomically from holding an AST to being
+ready for EMBRYONIC communication.
+
 ### EMBRYONIC
 
-During the EMBRYONIC stage, the brane actively communicates to resolve its remaining searches.
+During the EMBRYONIC stage, the proto-brane (or brane) is set up for handling search requests and
+actively communicates to resolve its searches.
+
+#### Setup: Brane-Bounded Searches
+
+The first action in EMBRYONIC is to complete the search resolution work begun in PRE_EMBRYONIC
+Action 6:
+
+**Perform brane-bounded backwards searches.** For each search queued in PRE_EMBRYONIC, execute a
+backwards search within this brane's boundaries using the **flexible cursor/query system from
+UBC1**. This system supports:
+- Pattern-based searches (regex)
+- Anchored searches (`identifier`, `{#-1}`, `brane?member`)
+- Unanchored seeks (`←`, `↑`)
+
+Searches that find their target locally are bound immediately. Searches that do **not** find their
+target and need to look beyond the brane boundary are queued for parent dispatch.
+
+#### Search Bandwidth and Dispatch
+
+The proto-brane tracks **outstanding search requests** — searches that have been sent to parents
+and await responses. Each EMBRYONIC step processes a **constant number of searches**. This constant
+is the **search bandwidth** (e.g., 4 or 8 searches per step).
+
+For each step:
+1. Take up to `search_bandwidth` searches from the queue
+2. Execute each search locally using the cursor/query system
+3. For searches that succeed: bind the result
+4. For searches that fail locally: dispatch a `FulfillSearch` message to the parent brane
+5. Increment the **outstanding search count** for each dispatched search
+6. Remove dispatched searches from the local tracking queue (the parent now owns them)
+
+**The parent brane responds** with `RespondToSearch` messages. When a response arrives:
+- Decrement the outstanding search count
+- Apply the result to the requesting expression
+- If the result is NYE (not-yet-evaluated), add to the wait-for queue
+- If the result is CONSTANIC or WOCONSTANIC, trigger constanic cloning
 
 #### Communication
 
-- **Outbound:** The brane sends "Fulfill search" messages to its parent brane for all unresolved
-  searches aggregated in step 6.
-- **Inbound from children:** The brane receives "Fulfill search" messages from its child branes.
-  It attempts to resolve them locally. If it cannot, it forwards them to its own parent.
-- **Inbound from parent:** The brane receives "Respond to search" messages. It applies the results
-  to its own unresolved searches and forwards results to children that requested them.
+- **Outbound to parent:** The proto-brane sends `FulfillSearch` messages for searches that cannot
+  be resolved locally (up to `search_bandwidth` per step).
+- **Inbound from children:** The proto-brane receives `FulfillSearch` messages from its child
+  branes. It attempts to resolve them using its own cursor/query system. If it cannot, it forwards
+  them to its own parent (subject to its own search bandwidth).
+- **Inbound from parent:** The proto-brane receives `RespondToSearch` messages. It applies the
+  results to its own unresolved searches and forwards results to children that requested them.
+
+#### The braneMind Heap
+
+The **braneMind** is a min-heap keyed by `<state, cur_rank, intra_statement_order, fir>`:
+
+- **state**: The FIR's current lifecycle state (PRE_EMBRYONIC < EMBRYONIC < BRANING < CONSTANIC)
+- **cur_rank**: Initially the statement number; increases by `statement_count` each time a FIR is
+  stepped and needs to requeue. This implements round-robin stepping.
+- **intra_statement_order**: Position within the statement (for expressions that share a statement)
+- **fir**: The FIR reference
+
+Heap sort is smallest-on-top. If the top of the heap is not in the current state, then it appears
+the current state is complete in terms of stepping descendant FIRs.
+
+#### Transition Criterion
+
+**Once all local searches have been dispatched** (the search queue is empty) **and all outstanding
+search requests return**, the proto-brane transitions to **BRANING**.
+
+Note: Non-brane expressions that are waiting on constanic dependencies remain in the wait-for
+queue. The proto-brane does not wait for them to resolve before transitioning to BRANING.
+
+**→ Transition to BRANING** when:
+- The local search queue is empty
+- All searches have been dispatched or resolved
+- The proto-brane's own search resolution is complete
 
 #### Wait-For Mechanism
 
@@ -244,24 +389,39 @@ Special care is required depending on the terminal states of those dependencies:
    In UBC2, the messaging system triggers `cloneConstanic` only when the object is already
    constanic — the clone replaces the slot directly.
 
-The brane remains EMBRYONIC as long as it has non-brane expressions that are not yet CONSTANIC.
-
-**→ Transition to BRANING** when all of this brane's non-brane expressions are CONSTANIC.
-
 ### BRANING
 
-In the BRANING state, the brane is both itself a brane *and* does work on executing other branes.
-It steps its children branes — the sub-branes that were appended to the braneMind in step 7.
+In the BRANING state, the proto-brane continues to execute its child branes and handle
+communication until all work is complete.
 
 During BRANING:
-- The brane continues to handle inbound and outbound communications
-- It steps each child brane, which may produce further search messages
-- Children may themselves transition through EMBRYONIC → BRANING → constanic
+- **Step child branes:** The proto-brane steps each child brane from the braneMind heap (see
+  EMBRYONIC section for heap structure). Children may be in any state (PRE_EMBRYONIC, EMBRYONIC,
+  BRANING, or constanic).
+- **Continue communication:** The proto-brane continues to handle inbound and outbound
+  communication:
+  - Receives and forwards `FulfillSearch` messages from children to parent
+  - Receives `RespondToSearch` messages from parent and routes them to children
+  - Resolves searches locally when possible
+- **Monitor wait-for queue:** Expressions waiting on constanic dependencies are periodically
+  checked. When dependencies reach constanic states, constanic cloning is triggered.
 
-The BRANING state persists until everything in the braneMind is CONSTANIC — all children branes
-and all expressions have reached a terminal state.
+#### Communication Bandwidth
 
-**→ Transition to CONSTANIC.**
+The proto-brane processes a constant number of communication events per BRANING step, subject to
+the same **search bandwidth** limit as EMBRYONIC. This prevents a single proto-brane from
+monopolizing the message channel.
+
+#### Transition Criterion
+
+The BRANING state persists until **all work is complete**:
+- All child branes have reached constanic states (CONSTANIC, WOCONSTANIC, CONSTANT, or INDEPENDENT)
+- All expressions in the wait-for queue have resolved or reached constanic states
+- No outstanding search requests remain
+- The braneMind heap contains only constanic FIRs
+
+**→ Transition to a constanic terminal state** (CONSTANIC, WOCONSTANIC, CONSTANT, or INDEPENDENT)
+depending on the resolution status of the proto-brane's own searches and dependencies.
 
 ### CONSTANIC Terminal States
 
@@ -275,9 +435,22 @@ terminal states:
 | **CONSTANT** | Fully evaluated. All searches resolved to CONSTANT or INDEPENDENT values. Immutable. |
 | **INDEPENDENT** | Promoted from CONSTANT. Detached from parent — although the parent may still hold a reference to it. Reserved for future development. |
 
-The predicate `is_constanic` means
-`at_constanic || at_woconstanic || at_constant || at_independent`. A FIR stops stepping when it
-reaches any terminal state.
+#### The Constanic Predicate
+
+The constanic predicate is defined as:
+
+```
+is_constanic = at_constanic || at_woconstanic || at_constant || at_independent
+```
+
+The English phrase "is constanic" has the same meaning. A FIR stops stepping when it reaches any
+terminal state.
+
+**Important Note:** Some WOCONSTANIC FIRs may have CONSTANIC children (or other constanic states
+that are earlier in the ordinal ordering). This violates the strict ordinal hierarchy assumption
+that "children's states are >= parent state." Therefore, **ordinal comparisons should still be
+used for efficiency in checking constanic states**, but implementations must handle the edge case
+where WOCONSTANIC parents have CONSTANIC (or CONSTANT) children.
 
 #### CONSTANIC vs WOCONSTANIC
 
@@ -426,8 +599,30 @@ CMFir.
 | CONSTANT | Reference to immutable object (no copy) |
 | INDEPENDENT | Reference to immutable object (no copy) |
 | CONSTANIC | Recursive `cloneConstanic`: clone expression tree, sub-expressions cloned recursively. Clone transitions to **EMBRYONIC** for fresh search resolution. |
-| WOCONSTANIC | Recursive `cloneConstanic`: clone expression tree, sub-expressions cloned recursively. Clone remains **WOCONSTANIC** — it already found everything, just waiting on dependencies. |
-| NYE (any pre-constanic) | Not cloned — the wait-for mechanism ensures cloning only happens after the source reaches constanic. |
+| WOCONSTANIC | Recursive `cloneConstanic`: clone expression tree, sub-expressions cloned recursively. Clone starts in **BRANING** state with children constanic-copied. See special case below. |
+| NYE (any pre-constanic) | **Exception** — constanic cloning must only be called on constanic FIRs. The wait-for mechanism ensures cloning only happens after the source reaches constanic. |
+
+#### Special Case: WOCONSTANIC Constanic Cloning
+
+When a WOCONSTANIC FIR is constanic-cloned, a subtle situation arises: some of its sub-FIRs may
+be CONSTANIC (the dependencies it is waiting on). The clone must handle this correctly:
+
+1. **New FIR with new parent:** The WOCONSTANIC FIR is cloned into a new instance with the new
+   parent brane reference.
+2. **Start in BRANING state:** The clone begins in BRANING state, **not** EMBRYONIC. The
+   WOCONSTANIC clone already completed search resolution (it found everything); it does not need
+   to re-search.
+3. **Children constanic-copied:** Each child FIR is constanic-cloned recursively:
+   - CONSTANT and INDEPENDENT children: Reference to immutable original (no copy)
+   - CONSTANIC children: Cloned recursively and transition to **EMBRYONIC** in the new context.
+     The new context may provide bindings that were missing in the original context.
+   - WOCONSTANIC children: Cloned recursively and remain in **BRANING** state.
+4. **CONSTANIC children revert to EMBRYONIC:** This is the key: when a CONSTANIC FIR is cloned as
+   part of a WOCONSTANIC parent's constanic clone, it transitions to EMBRYONIC in the new context.
+   The new parent brane may provide the missing bindings.
+
+This mechanism allows a WOCONSTANIC FIR (which found all its symbols but is waiting on constanic
+results) to be placed in a new context where those constanic results may resolve.
 
 ### Coordination After Cloning
 
@@ -818,27 +1013,173 @@ UBC2 avoids this by having one `step()` implementation that consults traits, not
 
 ---
 
+## Brane Concatenation
+
+**Brane concatenation** is a fundamental Foolish operation that combines multiple branes into a
+single brane. Whether explicit `{...}{...}` or implicit `a b c` or mixed `{z+y}a{t+u}b{}{}c d` or
+even grouped `(a$) (b$) ((c d e)$)$`, they are all wrapped inside a **ConcatenationBrane**.
+
+**Note:** Grouping `()` must work before concatenation is fully implemented. See prioritization in
+[Design TODO](#design-todo).
+
+### ConcatenationBrane Structure
+
+A ConcatenationBrane is a wrapping FIR that:
+- Holds the branes being concatenated as **direct children**
+- Does **not** pass search queries from children to the parent (search isolation)
+- Executes its children's searches until they reach constanic states
+- Merges children into a contiguous brane once all are ready
+
+### Concatenation Lifecycle
+
+**PRE_EMBRYONIC:**
+The ConcatenationBrane is instantiated with references to its child branes (the branes being
+joined). Each child is in PRE_EMBRYONIC or CONSTANIC state.
+
+**EMBRYONIC:**
+The ConcatenationBrane steps each child brane until all children are either:
+- **PRE_EMBRYONIC or CONSTANIC** (not actively stepping), AND
+- **BRANE-valued** (full branes, not proto-branes)
+
+During EMBRYONIC, the ConcatenationBrane does **not** forward search messages from children to its
+parent. Children must resolve their searches independently or reach constanic states.
+
+**BRANING:**
+Once all child branes are available (PRE_EMBRYONIC or CONSTANIC) and BRANE-valued:
+
+1. **Constanic-copy statements:** The statements from each child brane are constanic-copied into a
+   new, contiguous, empty brane. CONSTANT and INDEPENDENT statements are referenced (not copied).
+   CONSTANIC and WOCONSTANIC statements are recursively cloned.
+
+2. **Create merged brane:** The constanic-copied statements become the ConcatenationBrane's
+   internal brane. This brane is a new first-class brane.
+
+3. **Transition to Brane PRE_EMBRYONIC:** The merged brane now executes the full Brane
+   PRE_EMBRYONIC steps (counting lines, building search cache, etc.).
+
+4. **ConcatenationBrane becomes EMBRYONIC:** After the merged brane completes PRE_EMBRYONIC, the
+   ConcatenationBrane itself transitions to EMBRYONIC and begins stepping the merged brane through
+   its lifecycle.
+
+**CONSTANIC:**
+When the merged brane reaches a constanic state, the ConcatenationBrane reaches the same constanic
+state. The ConcatenationBrane's `value()` returns the merged brane.
+
+### Search Isolation
+
+**Critical:** The ConcatenationBrane does not act as a search relay between its children and its
+parent. Searches inside the child branes must be resolved within those branes or remain constanic.
+This isolation ensures that concatenation does not leak scope.
+
+### Implementation Priority
+
+Concatenation depends on grouping `()` working correctly. The implementation priority is:
+
+1. **Grouping:** Implement `()` for expression precedence
+2. **Proto-branes and Branes:** Ensure the basic lifecycle works
+3. **Concatenation:** Implement ConcatenationBrane after the above are stable
+
+---
+
+## System Operators
+
+System operators are built-in operations prefixed with the **🧠** symbol (U+1F9E0, "brain"). When
+the VM encounters a system operator, it initializes a dedicated FIR that implements the operation.
+
+### System Operator Table
+
+| Operator | Symbol | Unicode | Operation | Naive Implementation |
+|----------|--------|---------|-----------|---------------------|
+| Add | 🧠+ | U+1F9E0 U+002B | Addition | `a, b = parent.getValuesBeforeMe(me, 2); myValue = a + b;` |
+| Subtract | 🧠- | U+1F9E0 U+002D | Subtraction | `a, b = parent.getValuesBeforeMe(me, 2); myValue = a - b;` |
+| Multiply | 🧠* | U+1F9E0 U+002A | Multiplication | `a, b = parent.getValuesBeforeMe(me, 2); myValue = a * b;` |
+| Divide | 🧠/ | U+1F9E0 U+002F | Division | `a, b = parent.getValuesBeforeMe(me, 2); if (b == 0) throw ArithmeticException; myValue = a / b;` |
+| Negate | 🧠− | U+1F9E0 U+2212 | Unary negation | `a = parent.getValueBeforeMe(me); myValue = -a;` |
+| Not | 🧠! | U+1F9E0 U+0021 | Logical NOT | `a = parent.getValueBeforeMe(me); myValue = !a;` |
+
+### How System Operators Work
+
+When Foolish source code is parsed, binary and unary operators are **desugared** into system
+operator proto-branes:
+
+**Source:**
+```foolish
+result = 1 + 2
+```
+
+**Desugared (conceptual):**
+```
+result = {1}{2}{🧠+}  →  {1, 2, 🧠+}
+```
+
+The `🧠+` proto-brane concatenates with the literal proto-branes `1` and `2`, forming a single
+proto-brane with three statements. When the `🧠+` reaches BRANING stage, it:
+
+1. Calls `parent.getValuesBeforeMe(me, 2)` to retrieve the two preceding values (1 and 2)
+2. Computes `1 + 2 = 3`
+3. Sets `myValue = 3`
+4. Transitions to CONSTANT
+
+The `value()` method for the `🧠+` proto-brane returns `3` (an int).
+
+### Adding System Operators to Symbol Table
+
+The 🧠 symbol must be added to the symbol table documented in
+[SYMBOL_TABLE.md](SYMBOL_TABLE.md). Each system operator requires:
+- Symbol rendering (🧠+, 🧠-, etc.)
+- Unicode codepoints
+- HTML entities (for documentation)
+- Reference to this section
+
+### Implementation Notes
+
+System operator FIRs are **proto-branes** (not full branes). They:
+- Have no search boundary
+- Return scalar values via `value()`
+- Access parent brane's statement array to retrieve operands
+- Follow the standard proto-brane lifecycle
+
+The "naive implementation" examples above are conceptual. The actual FIR implementation would:
+- Validate operand types
+- Handle CONSTANIC operands (wait-for mechanism)
+- Produce NK for arithmetic errors (division by zero, type mismatches)
+- Use the standard proto-brane step-based evaluation
+
+---
+
 ## Design TODO
 
 The following features are required for UBC2 but not yet fully specified in this document. They
 are listed in priority order.
 
-### 1. Brane Concatenation
+### 1. Grouping and Operator Precedence
 
-**Priority: Highest.** Brane concatenation is a core Foolish language operation and affects search
-semantics fundamentally (see [NK vs CONSTANIC](#nk-vs-constanic-when-is-a-search-truly-failed)).
+**Priority: Highest.** Parentheses `()` for grouping and operator precedence must work before brane
+concatenation can be implemented. This establishes the parse tree structure that concatenation
+operates on.
 
 Design must specify:
-- How concatenation interacts with PRE_EMBRYONIC (does the concatenated brane re-do steps 1-7?)
-- How concatenation interacts with EMBRYONIC (search messages from a brane that was just extended)
-- Concatenation of CONSTANT + CONSTANIC branes
-- Writing-order precedence in concatenated branes (which brane's statements come first?)
-- The three-level precedence rules from NAMES_SEARCHES_N_BOUNDS.md: left-associate liberations,
-  liberation right-associates with branes, brane free association
+- How `(a + b) * c` groups differently from `a + b * c`
+- How grouping interacts with proto-brane boundaries
+- Precedence rules for binary operators (+, -, *, /, etc.)
+- How grouped expressions are represented in the AST
 
-### 2. Detachment (Liberation Branes)
+### 2. Brane Concatenation
 
-**Priority: Highest (after concatenation).** Detachment semantics depend on how concatenation
+**Priority: Highest (after grouping).** Brane concatenation is now fully specified in
+[Brane Concatenation](#brane-concatenation). Implementation tasks remaining:
+
+- Implement ConcatenationBrane FIR type
+- Test concatenation of CONSTANT + CONSTANIC branes
+- Test concatenation of proto-branes vs full branes
+- Verify search isolation (children cannot search through concatenation boundary to parent)
+- Test writing-order precedence in concatenated branes
+- Implement the three-level precedence rules from NAMES_SEARCHES_N_BOUNDS.md: left-associate
+  liberations, liberation right-associates with branes, brane free association
+
+### 3. Detachment (Liberation Branes)
+
+**Priority: High (after concatenation).** Detachment semantics depend on how concatenation
 works, because detachment branes left-associate with each other and right-associate with branes
 before brane concatenation happens.
 
@@ -853,12 +1194,12 @@ Design must specify:
 - Detachment removal: when a brane is concatenated, the liberation is removed before
   identification, ordination, and coordination
 
-### 3. Search-Based Path Selection (Replacing If-Then-Else)
+### 4. Search-Based Path Selection (Replacing If-Then-Else)
 
-**Priority: High.** UBC2 does not implement `if-then-else`. Control flow is expressed through
-search operations that select paths based on pattern matching and value conditions. The specific
-mechanism is to be designed. UBC1's IfFiroe had infinite-loop bugs and a fragile recursive
-`step()` design that is not carried forward.
+**Priority: High (after proto-branes are stable).** UBC2 does not implement `if-then-else`.
+Control flow is expressed through search operations that select paths based on pattern matching
+and value conditions. The specific mechanism is to be designed. UBC1's IfFiroe had infinite-loop
+bugs and a fragile recursive `step()` design that is not carried forward.
 
 ---
 
@@ -1101,6 +1442,20 @@ references. UBC2's depth-based message sanity check (see
 [Circular Message-Passing Sanity Check](#circular-message-passing-sanity-check)) catches this
 class of bug structurally.
 
+### 10. Implement Finer-Grained Proto-Brane Steps
+
+UBC1's step implementation was often too coarse, leading to non-deterministic behavior when
+multiple FIRs tried to step simultaneously. UBC2's PRE_EMBRYONIC actions are atomic (single step)
+but clearly documented. EMBRYONIC and BRANING have explicit bounded work per step (search
+bandwidth, communication bandwidth).
+
+### 11. Use World-Stopping Exceptions or Alarms for Errors
+
+UBC1 often silently converted errors to NK values, hiding bugs. UBC2 should use **world-stopping
+exceptions** for programming errors (NullPointerException, ClassCastException, etc.) and
+**Alarms** for domain errors (division by zero, depth exceeded, etc.). Alarms propagate through
+the message channel; exceptions halt evaluation and surface to the user immediately.
+
 ---
 
 ## Future Optimizations
@@ -1122,15 +1477,17 @@ These are noted in the design but deferred to later iterations:
 
 ## Last Updated
 
-**Date**: 2026-02-16
-**Updated By**: Claude Code v1.0.0 / claude-opus-4-6
-**Changes**: Initial creation and iterative refinement in single session. Major sections: message-
-passing architecture with circular sanity check; every-expression-is-a-brane unification; FIR
-lifecycle stages (PRE_EMBRYONIC → EMBRYONIC → BRANING → CONSTANIC); EMBRYONIC wait-for mechanism;
-constanic cloning (replacing CMFir); CONSTANIC/WOCONSTANIC split; SF/SFF markers; INDEPENDENT
-state. Added NK vs CONSTANIC clarification: searches are CONSTANIC (not NK) when brane
-concatenation could provide the missing binding — reverses UBC1 decision on `{#-1}`. Removed
-if-then-else from UBC2 (search-based path selection instead). Added FIR type hierarchy proposal
-(IndependentFir + ProtoBrane with traits). Added Design TODO (brane concatenation, detachment,
-search-based path selection). Added Lessons Learned from UBC1 (9 items from code review and git
-history analysis).
+**Date**: 2026-02-20
+**Updated By**: Claude Code v1.0.0 / claude-sonnet-4-5-20250929
+**Changes**: Major reorganization and clarifications based on implementation planning session.
+Restructured document to present Proto-Branes before Branes (proto-brane as foundation, brane
+derives from it). Added clear distinction that unary/binary operators are syntactic sugar for
+brane concatenation. Added comprehensive `value()` method specification for all FIR types.
+Clarified PRE_EMBRYONIC as single atomic step (not multiple steps). Refined EMBRYONIC with search
+bandwidth, dispatch mechanism, and braneMind heap structure. Added WOCONSTANIC constanic cloning
+edge case handling (WOCONSTANIC parent with CONSTANIC children). Updated constanic predicate
+equation format. Added comprehensive Brane Concatenation section (ConcatenationBrane lifecycle,
+search isolation). Added System Operators section with 🧠 prefix specification and desugaring
+examples. Reorganized Design TODO to prioritize grouping before concatenation. Added Lessons
+Learned items 10-11 (finer-grained steps, world-stopping exceptions vs alarms). Added note about
+ordinal comparisons with WOCONSTANIC edge case caveat.
