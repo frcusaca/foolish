@@ -634,8 +634,9 @@ def resolve(parent_brane):
 
         if cur_res.at_constant():
             # STOP: Found fully resolved search
+            # The search itself becomes CONSTANT - dereference to the final value
             self.state = CONSTANT
-            self.target = cur_res.target  # Dereference to final value
+            self.target = cur_res  # Store reference to CONSTANT search
             return
 
         if cur_res.is_pre_constanic():  # NYE
@@ -665,7 +666,8 @@ def resolve(parent_brane):
 
 1. **WOCONSTANIC searches are barriers (NOT transparent)** - Stop dereferencing and become WOCONSTANIC
 2. **CONSTANIC searches are barriers** - Stop dereferencing and become WOCONSTANIC
-3. **Branes are opaque** - Don't dereference through branes (WOCONSTANIC or CONSTANIC)
+3. **CONSTANT searches are endpoints** - Stop dereferencing and become CONSTANT (search succeeded, has final value)
+4. **Branes are opaque** - Don't dereference through branes (WOCONSTANIC or CONSTANIC)
 
 **Why is WOCONSTANIC a barrier for searches?**
 
