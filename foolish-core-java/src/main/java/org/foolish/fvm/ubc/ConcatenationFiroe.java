@@ -174,6 +174,13 @@ public class ConcatenationFiroe extends FiroeWithBraneMind implements Constanica
                 // Flatten: iterate over the brane's statements and clone each one
                 // into this concatenation's braneMemory
                 fwbm.stream().forEach(statement -> {
+                    // Only clone constanic statements (CONSTANIC or CONSTANT)
+                    // Statements not yet at constanic should be stepped first
+                    if (!statement.isConstanic()) {
+                        // This should not happen - the statement should be constanic after step()
+                        // Skip for now and let it be processed in a later phase
+                        return;
+                    }
                     // Clone each statement with this concatenation as new parent
                     // CONSTANT items stay CONSTANT (they're fully resolved, immutable).
                     // CONSTANIC items reset to INITIALIZED to re-evaluate in new context.

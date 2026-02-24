@@ -85,7 +85,7 @@ C;
 }
 
 UBC EVALUATION:
-Steps taken: 315
+Steps taken: 330
 
 FINAL RESULT:
 {
@@ -108,7 +108,7 @@ FINAL RESULT:
 ＿                                                                  ＿     ＿    ＿b = 3;
 ＿                                                                  ＿     ＿};
 ＿                                                                  ＿     ＿C = {
-＿                                                                  ＿     ＿    ＿c = ⎵⎵;
+＿                                                                  ＿     ＿    ＿c = ⎵⎵ (CONSTANIC);
 ＿                                                                  ＿     ＿};
 ＿                                                                  ＿     ＿a = -1;
 ＿                                                                  ＿     ＿r = {
@@ -127,7 +127,7 @@ FINAL RESULT:
 ＿                                                                    ＿     ＿    ＿b = 1;
 ＿                                                                    ＿     ＿};
 ＿                                                                    ＿     ＿C = {
-＿                                                                    ＿     ＿    ＿c = ⎵⎵;
+＿                                                                    ＿     ＿    ＿c = ⎵⎵ (CONSTANIC);
 ＿                                                                    ＿     ＿};
 ＿                                                                    ＿     ＿b = -2;
 ＿                                                                    ＿     ＿r = {

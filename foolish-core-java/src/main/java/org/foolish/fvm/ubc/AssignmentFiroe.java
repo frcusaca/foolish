@@ -24,12 +24,19 @@ public class AssignmentFiroe extends FiroeWithBraneMind implements Constanicable
     }
 
     /**
-     * Copy constructor for cloneConstanic.
+     * Constructor for cloneConstanic that avoids cloning braneMemory items.
+     * Instead, it creates a fresh AssignmentFiroe from the AST and copies the result.
      */
-    protected AssignmentFiroe(AssignmentFiroe original, FIR newParent) {
-        super(original, newParent);
-        this.lhs = original.lhs;  // CharacterizedIdentifier is immutable
-        this.result = null;  // Reset result for re-evaluation
+    private AssignmentFiroe(AST.Assignment assignment, FIR newParent, CharacterizedIdentifier lhs) {
+        super(assignment, null);
+        setParentFir(newParent);
+        this.lhs = lhs;  // Use provided lhs (same object as original, not final assignment)
+        this.result = null;
+        this.ordinated = false;
+        this.indexLookup = new java.util.IdentityHashMap<>();
+        // Initialize braneMemory from AST (same as original constructor)
+        // This must be called AFTER setting up the object but BEFORE marking as initialized
+        storeExprs(assignment.expr());
     }
 
     @Override
@@ -165,14 +172,18 @@ public class AssignmentFiroe extends FiroeWithBraneMind implements Constanicable
             return this;  // Share CONSTANT assignments completely
         }
 
-        // CONSTANIC: use copy constructor
-        AssignmentFiroe copy = new AssignmentFiroe(this, newParent);
+        // CONSTANIC: create copy manually to avoid cloning braneMemory items
+        // which may contain non-constanic expressions that were replaced by result
+        AssignmentFiroe copy = new AssignmentFiroe((AST.Assignment) this.ast, newParent, this.lhs);
+        // Don't copy result - let the clone re-evaluate from scratch to ensure
+        // it resolves identifiers in the new context (e.g., CMFir's parent brane)
+        copy.result = null;
+        copy.setInitialized();
+        copy.nyes = this.nyes;  // Copy state directly
 
-        // Set target state if specified, otherwise copy from original
+        // Set target state if specified
         if (targetNyes.isPresent()) {
             copy.nyes = targetNyes.get();
-        } else {
-            copy.nyes = this.nyes;
         }
 
         return copy;

@@ -22,17 +22,21 @@ PARSED AST:
 }
 
 UBC EVALUATION:
-Steps taken: 42
+Steps taken: 54
 
 FINAL RESULT:
 {
 ＿a = 1;
 ＿b = {
-＿    ＿c = ???;
+＿    ＿c = ⎵⎵ (CONSTANIC);
 ＿    ＿d = 2;
-＿    ＿e = ???;
+＿    ＿e = 2;
 ＿};
-＿f = ???;
+＿f = {
+＿    ＿c = ⎵⎵ (CONSTANIC);
+＿    ＿d = 2;
+＿    ＿e = 2;
+＿};
 }
 
 COMPLETION STATUS:

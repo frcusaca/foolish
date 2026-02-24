@@ -120,7 +120,7 @@ OB2;
 }
 
 UBC EVALUATION:
-Steps taken: 529
+Steps taken: 552
 
 FINAL RESULT:
 {
@@ -224,7 +224,7 @@ FINAL RESULT:
 ＿                                                  ＿      ＿only = 1;
 ＿                                                  ＿};
 ＿                                                  ＿OB2 = {
-＿                                                  ＿      ＿whichˍ1 = ⎵⎵;
+＿                                                  ＿      ＿whichˍ1 = ⎵⎵ (CONSTANIC);
 ＿                                                  ＿};
 ＿                                                  ＿OB = {
 ＿                                                  ＿     ＿a = 1;

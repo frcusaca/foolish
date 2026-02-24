@@ -114,27 +114,21 @@ public class IdentifierFiroe extends FiroeWithBraneMind implements Constanicable
             }
             case CHECKED -> {
                 if (value.atConstanic()) {
-                    // CONSTANIC value needs to be coordinated (cloned and re-positioned)
-                    // so it can re-resolve from this identifier's position.
-                    // For constanic values, preserve the original nyes state (not INITIALIZED).
                     Nyes targetNyes = value.getNyes() == Nyes.CONSTANIC || value.getNyes() == Nyes.CONSTANT
-                        ? value.getNyes()  // Preserve CONSTANIC/CONSTANT state
-                        : Nyes.INITIALIZED;  // Reset to INITIALIZED for values that need re-evaluation
+                        ? value.getNyes() : Nyes.INITIALIZED;
                     value = value.cloneConstanic(this, Optional.of(targetNyes));
-                    // storeFirs will ordinate the clone to this identifier's context
                     storeFirs(value);
-                    // The clone may need to be stepped to complete its evaluation
-                    // Only enqueue if the target state is not yet reached
                     if (targetNyes != Nyes.CONSTANIC && targetNyes != Nyes.CONSTANT) {
                         braneEnqueue(value);
                     }
                     setNyes(Nyes.PRIMED);
                 } else if (value.atConstant()) {
+                    storeFirs(value);
                     setNyes(Nyes.CONSTANT);
                 } else {
-                    // Value is still evaluating - shouldn't happen for identifiers
-                    // since we just store a reference, but handle gracefully
-                    setNyes(Nyes.EVALUATING);
+                    storeFirs(value);
+                    braneEnqueue(value);
+                    setNyes(Nyes.PRIMED);
                 }
                 return 1;
             }
@@ -144,22 +138,17 @@ public class IdentifierFiroe extends FiroeWithBraneMind implements Constanicable
                 return 1;
             }
             case EVALUATING -> {
-                // Step the coordinated value through evaluation
                 if (isBraneEmpty()) {
-                    // Value finished evaluating, check final state
-                    if (value.atConstanic()) {
-                        setNyes(Nyes.CONSTANIC);
+                    if (value.isConstanic()) {
+                        setNyes(value.atConstanic() ? Nyes.CONSTANIC : Nyes.CONSTANT);
                     } else {
                         setNyes(Nyes.CONSTANT);
                     }
                     return 1;
                 }
-                // Step the next FIR in braneMind
                 FIR current = braneDequeue();
                 current.step();
-                if (current.isNye()) {
-                    braneEnqueue(current);
-                }
+                if (current.isNye()) braneEnqueue(current);
                 return 1;
             }
             case CONSTANIC, CONSTANT -> {

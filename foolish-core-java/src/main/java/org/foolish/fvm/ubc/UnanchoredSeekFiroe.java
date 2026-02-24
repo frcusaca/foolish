@@ -60,12 +60,16 @@ public class UnanchoredSeekFiroe extends FiroeWithBraneMind implements Constanic
     }
 
     /**
-     * An unanchored seek is Constanic if it hasn't been resolved yet or if its resolved value is Constanic.
+     * An unanchored seek is Constanic only when its state is CONSTANIC or CONSTANT.
+     * A null value in earlier states means the seek hasn't been evaluated yet.
      */
     @Override
     public boolean isConstanic() {
+        if (getNyes() != Nyes.CONSTANIC && getNyes() != Nyes.CONSTANT) {
+            return false;
+        }
         if (value == null) {
-            return true; // Not yet resolved or out of bounds
+            return true;  // Resolved to nothing (out of bounds)
         }
         return value.isConstanic();
     }

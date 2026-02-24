@@ -536,22 +536,15 @@ public abstract class FIR implements Cloneable {
      */
     public static FIR unwrapConstanicable(FIR fir) {
         FIR current = fir;
-
-        // Follow the wrapper chain while the FIR is constanic
-        while (current != null && current.isConstanic()) {
+        while (current != null) {
             if (current instanceof Constanicable constanicable) {
                 FIR result = constanicable.getResult();
-                if (result == null || result == current) {
-                    // Not resolved yet, or self-referential (containers like BraneFiroe)
-                    return current;
-                }
+                if (result == null || result == current) return current;
                 current = result;
             } else {
-                // Not a Constanicable, stop unwrapping
                 return current;
             }
         }
-
         return current;
     }
 
