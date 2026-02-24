@@ -56,7 +56,7 @@ This document summarizes the implementation and testing of search semantics in F
 
 **Current Implementation:**
 - `IdentifierFiroe.step()`: Sets state to CONSTANIC if identifier not found via `braneMemory.get()`
-- `IdentifierFiroe.isConstanic()`: Returns true if value is null or value.isConstanic()
+- `IdentifierFiroe.achievedConstanic()`: Returns true if value is null or value.achievedConstanic()
 - Level-skipping is inherent in `BraneMemory.get()` which traverses parent branes
 
 ## Semantic Clarifications Documented

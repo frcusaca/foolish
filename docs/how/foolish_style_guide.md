@@ -1,5 +1,7 @@
 # Foolish Style Guide
 
+> AI agents: read [../DOC_AGENTS.md](../DOC_AGENTS.md) before editing this file.
+
 Universal instructions for writing and generating Foolish code examples, documentation,
 and tests. These are preferences, not strictly enforced by the language.
 

@@ -1,5 +1,7 @@
 # The Creation Postulate
 
+> AI agents: read [../DOC_AGENTS.md](../DOC_AGENTS.md) before editing this file.
+
 ## Statement
 
 **We postulate that any thinking thing — humans, biological organisms, minds of any

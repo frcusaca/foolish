@@ -16,7 +16,7 @@ expression should be referred to by that name in subsequent branes. When the ass
 **evaluated** in a brane, the expression becomes **ordinated** to the brane, and we add an
 **ordinate** (a coordinate/axis) for the brane. In some situations, the expression being ordinated
 will evaluate to different values depending on where in the brane it is ordinated or which ordinate
-it is assigned to. In these situations, the expression may be itself NYE (Not Yet Evaluated, any
+it is assigned to. In these situations, the expression may be itself nigh (Not Yet Evaluated, any
 pre-constanic state) until ordinated into a brane, at which point it becomes coordinated and reaches
 CONSTANIC (constant in context, pronounced "cons-TAN-tic").
 

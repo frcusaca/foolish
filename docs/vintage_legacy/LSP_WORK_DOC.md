@@ -21,7 +21,7 @@ This document captures the working plan for building a Java-based Language Serve
 2. **Document & workspace services** – Maintain an in-memory workspace of `.foo` documents with incremental text updates, file-system watchers for on-disk changes, and dependency tracking for multi-file brane compositions.
 3. **Parsing pipeline** – On each change, run the ANTLR lexer/parser (`Foolish.g4`) and build an AST via `ASTBuilder`, caching results and emitting syntax diagnostics through LSP `PublishDiagnostics`. Future enhancements can expose the parse tree for folding or outline views.
 4. **Semantic services** – Reuse `Env`/`CharacterizedIdentifier` to build semantic tables per brane, tracking SSA-style bindings so definitions, references, and search operators resolve consistently with runtime semantics.
-5. **Evaluation hook (optional)** – Wrap the UBC (`UnicellularBraneComputer`) so the LSP can simulate execution or step through NYE/FK states, enabling code lenses like “Evaluate brane.”
+5. **Evaluation hook (optional)** – Wrap the UBC (`UnicellularBraneComputer`) so the LSP can simulate execution or step through nigh/FK states, enabling code lenses like “Evaluate brane.”
 6. **Formatting & code actions** – Surface the existing `ASTFormatter` via the `textDocument/formatting` handler and build code actions (wrap statements into a brane, normalize characterizations) by manipulating AST nodes.
 7. **Search-aware navigation UI** – Model brane search operators as first-class commands so editor clients can expose palette entries or keybindings that match the language’s navigation semantics.
 

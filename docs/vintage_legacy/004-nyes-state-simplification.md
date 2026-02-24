@@ -1,8 +1,8 @@
-# NYE State Machine Simplification
+# Nyes State Machine Simplification
 
 ## Overview
 
-This document describes the simplification of the NYE (Not Yet Evaluated) state machine by replacing three transitional states (REFERENCES_IDENTIFIED, ALLOCATED, RESOLVED) with a single CHECKED state.
+This document describes the simplification of the Nyes (Not Yet Evaluated) state machine by replacing three transitional states (REFERENCES_IDENTIFIED, ALLOCATED, RESOLVED) with a single CHECKED state.
 
 ## Motivation
 
@@ -114,4 +114,4 @@ mvn test -Dtest=UbcApprovalTest
 
 **Date**: 2026-01-24
 **Updated By**: Claude Code v1.0.0 / claude-sonnet-4-5-20250929
-**Changes**: Initial creation documenting the simplification of NYE state machine from 6 intermediate states (UNINITIALIZED → INITIALIZED → REFERENCES_IDENTIFIED → ALLOCATED → RESOLVED → EVALUATING) to 4 states (UNINITIALIZED → INITIALIZED → CHECKED → EVALUATING).
+**Changes**: Initial creation documenting the simplification of Nyes state machine from 6 intermediate states (UNINITIALIZED → INITIALIZED → REFERENCES_IDENTIFIED → ALLOCATED → RESOLVED → EVALUATING) to 4 states (UNINITIALIZED → INITIALIZED → CHECKED → EVALUATING).

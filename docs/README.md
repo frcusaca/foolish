@@ -1,5 +1,7 @@
 # Foolish Documentation
 
+> AI agents: read [DOC_AGENTS.md](DOC_AGENTS.md) before editing files in this directory.
+
 Documentation is organized in purpose-driven subdirectories:
 
 | Directory | Title | Description |
@@ -27,7 +29,7 @@ Start with the tutorials in `howto/`:
 ## Engineering Reference
 
 - [UBC Engineering Reference](how/ubc_engineering.md) — Consolidated reference for the UBC1 implementation: FIR hierarchy, state machine, search system, context manipulation
-- [UBC2 Design Specification](how/ubc2_design.md) — Next-generation brane computer design: message-passing architecture, FIR lifecycle stages (PRE_EMBRYONIC → EMBRYONIC → BRANING → constanic)
+- [UBC2 Design Specification](how/ubc2_design.md) — Next-generation brane computer design: message-passing architecture, FIR lifecycle stages (PREMBRYONIC → EMBRYONIC → BRANING → constanic)
 - [Style Guide](how/foolish_style_guide.md) — Formatting, naming conventions, terminology, testing
 - [Symbol Table](how/SYMBOL_TABLE.md) — Complete symbol reference
 

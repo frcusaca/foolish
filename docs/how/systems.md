@@ -1,8 +1,12 @@
 # System Operators
 
-System operators are built-in operations that the Foolish VM/hardware implements directly. They
-are prefixed with the **🧠** symbol (U+1F9E0, "brain") to distinguish them from user-defined
-operations.
+> AI agents: read [../DOC_AGENTS.md](../DOC_AGENTS.md) before editing this file.
+
+System operators are the denotations of built-in VM/hardware operations. The **🧠** prefix
+(U+1F9E0) is the denotational marker for Foolish semantics — it signals that we are talking
+about the *meaning* of an expression, not its surface syntax. A system operator like `🧠+` is
+not something a programmer types; it is what the addition operator `+` *means* after the parser
+has converted syntax to semantics.
 
 ## Purpose
 
@@ -84,7 +88,7 @@ class SystemAddFir extends ProtoBrane {
         if (at_embryonic()) {
             // Wait for the two preceding values to become constanic
             FIR[] operands = parent.getValuesBeforeMe(this, 2);
-            if (operands[0].is_constanic() && operands[1].is_constanic()) {
+            if (operands[0].achievedConstanic() && operands[1].achievedConstanic()) {
                 try {
                     int a = operands[0].value();
                     int b = operands[1].value();
@@ -135,10 +139,10 @@ FIR right = operands[1];  // Value two positions before this operator
 FIR operand = parent.getValueBeforeMe(this);
 ```
 
-**Important:** The operands may be NYE (not-yet-evaluated), CONSTANIC, WOCONSTANIC, or CONSTANT.
+**Important:** The operands may be nigh (not-yet-evaluated), CONSTANIC, WOCONSTANIC, or CONSTANT.
 The system operator must:
 - Wait for operands to reach constanic states before computing
-- Use the wait-for mechanism if operands are NYE
+- Use the wait-for mechanism if operands are nigh
 - Handle CONSTANIC operands (produce NK or wait for constanic cloning to resolve them)
 
 ## Adding New System Operators

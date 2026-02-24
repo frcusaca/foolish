@@ -1,0 +1,45 @@
+Make clear distinction that unary and binary operators are simply syntactical sugar added on to brane concatenations.
+
+Proto-brane is every thing we've described except for search boundary. We should define ProtoBrane as a concept to implement and test first. Finely separate what happens during step() in each state.
+
+Every braneFIR has a `value()` method. It returns (for VM purposes) `int` for integer literal proto-branes, search branes has value that is the search result.
+
+So, for an expression `1 + 2` syntactic sugar for `{1}{2}{🧠+}$` (the curly indicating they are branes, not foolish syntax). that would combine due to proximity `{1, 2, 🧠+}$`, producing an atomic value. the '🧠+' then references system library code in which vm/hardware implements the addition. This detail should be written out. (there should be a systems.md) where all these specially prefixed operators are defined. There should be a decoding system for system operators(FIR). when VM encounters these symbols, their dedicated FIR are initialized. (the actual FIR may be implemented naively. `a,b = parent.getValuesBeforeMe(me); myValue=a+b`. Obviously add the 🧠 symbol to the symbol table.
+
+move the Brane design after proto-brane and literals, brane derives from proto-brane. brane's `value()` is the brane itself.
+
+
+PREMBRYONIC lifcycle the listed actions are a single step. 1) count lines, that this is required as brane have finite known size.  3.) that cache is just array of strings with fully-characterized names for regexp search. 4.) could be confusing--it means to instantiate the FIR in PREMBRYONIC without taking the step being defined here. (readied for the steps being defined here). 6.) Move this to EMBRYONIC stage.
+
+EMBRYONIC the brane is setup for handling the search requests that may have been queued up while it was prembryonic. Update the search function: 
+ * Here, we should bring over the very flexible cursor/query system from UCB, for 6 we have to perform a brane-bounded search (backwards for each search), and then queue those searches that did not find and need to look beyond boundaries (some do not). the braneMind could be a heap keyed by <state, cur_rank, intra-statement-order,fir> heap sort is smallest on top. cur_rank starts with statement number, and increases by steatement_count of the brane everytime a fir is stepped and needs to requeue. if top of heap is not current state, then it would appear current state is complete in terms of stepping on decendent-fir's. 
+ * for searches extending into parents: it handles a constant number of searches in one step, that constant is search_bandwidth. each one is executed locally and then dispatched elsewhere as needed. The dispatch would tell parent to respond to descendent request, and present embryonic brane would no longer track that search request. Each proto-brane tracks number of outstanding search requests sent to parents. Once all searches have been dispatched, the proto-brane transitions to BRANING. reaching CONSTANIC state, removes the search from tracking for active search.
+
+BRANING continues to communicate until CONSTANIC.
+
+update the equastion:
+
+"is constanic" = achievedConstanic = at_constanic || at_woconstanic || at_constant || at_independent.
+indicating the english has same meaning.
+
+
+Constanic clone would throw exception if it is every called on something that is nigh.
+
+
+Have to address what happens when something WOConstanic (a search) points to something Constanic (search result contains Constanic elements or itself is constanic). The impact is that search needs to execute on a sub-fir but the fir itself is already WOConstanic. (subFIR gets EMBRYONIC, but parent search FIR is WOConstanic and does not participate in search). So it looks like the solution is that WOConstanic's subfir's are constanicCloned, so some of them, the CONSTANIC fir that we're waiting on, would revert to Embryonic, given new context. The constanic clone for WOCONSTANIC should be to: new FIR with new parent, start in BRANING state, children constanic copied(into either Embryonic or Braning depending on their state just prior to constanicCloning).
+
+These aspects, most of them were already in the document, just need to clarify these steps, and flush out some situations that might arise during implementation.
+
+
+Lessons from UCB, We should still use ordinal for checking "is constanic", but put in the note that some WOConstanic may have Constanics underneighth (not strictly true that children's states are >= parent)
+
+2.) needs to be mitigated with finer step implementation in proto-brane
+3.) Use either world-stopping exceptions, or Alarms.
+
+
+Brane concatenation:
+Concatenation is a wrapping FIR, whether `{...}{...}` or `a b c ` or `{z+y}a{t+u}b{}{}c d` or even `(a$) (b$) ((c d e)$)$)` they're wrapped inside a CocnatenationBrane which holds combined branes as direct children. The Concatenation brane does not pass search queries from children. The only sub-firs that make progress are searches until they're constanic.
+
+When all joining branes are available((PREMBRYONIC or CONSTANIC) and BRANE valued), their statements are constanic copied into a contiguous empty brane, and becomes the ConcatenationBrane's statements. ConcatenationBrane now executes Brane PREMBRYONIC Steps. and itself becomes EMBRYONIC.
+
+We should prioritize implementations and make sure grouping () works before we get here.

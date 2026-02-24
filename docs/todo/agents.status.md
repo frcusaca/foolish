@@ -1,5 +1,17 @@
-# UBC2 Design Specification — Status and Continuation Guide
+# agents.status.md — AI Action and Progress Log
 
+> AI agents: read [../DOC_AGENTS.md](../DOC_AGENTS.md) before editing this file.
+
+Append-only. Add new entries at the bottom with `---` header and `[YYYY-MM-DD] agent / model`.
+Reference by line number from other documents (lines never shift upward).
+
+The content below through line ~992 is the original UBC2 Design Specification — Status and
+Continuation Guide, preserved as historical record and context. New log entries follow after
+the original Last Updated section.
+
+---
+
+*Original document header:* UBC2 Design Specification — Status and Continuation Guide.
 This document captures the complete state of the UBC2 design work as of 2026-02-20, so that
 another Claude session or a human reader can resume work without loss of context.
 
@@ -13,7 +25,7 @@ another Claude session or a human reader can resume work without loss of context
   - [Core Concept](#core-concept)
   - [Message-Passing Architecture](#message-passing-architecture)
   - [Every Expression Is a Brane](#every-expression-is-a-brane)
-  - [FIR Lifecycle: PRE_EMBRYONIC → EMBRYONIC → BRANING → constanic](#fir-lifecycle-pre_embryonic--embryonic--braning--constanic)
+  - [FIR Lifecycle: PREMBRYONIC → EMBRYONIC → BRANING → constanic](#fir-lifecycle-prembryonic--embryonic--braning--constanic)
   - [Terminal States](#terminal-states)
   - [SF and SFF Markers](#sf-and-sff-markers)
   - [Constanic Cloning (Replaces CMFir)](#constanic-cloning-replaces-cmfir)
@@ -132,15 +144,15 @@ All non-literal expressions are branes with one unified lifecycle. This includes
 **If-then-else is removed.** UBC1's `IfFiroe` had infinite-loop bugs and fragile recursive
 `step()`. UBC2 uses search-based path selection instead (not yet designed — see Design TODO).
 
-### FIR Lifecycle: PRE_EMBRYONIC → EMBRYONIC → BRANING → constanic
+### FIR Lifecycle: PREMBRYONIC → EMBRYONIC → BRANING → constanic
 
-**PRE_EMBRYONIC** — Seven explicit steps on the Foolish code AST:
+**PREMBRYONIC** — Seven explicit steps on the Foolish code AST:
 0. Establish LUID (statement_number : expression_disambiguator)
 1. Count lines in brane
 2. Create statement array from AST
 3. Gather characterized identifiers; cache fully characterized names for search. Named statements
-   form a linked list into the statement array. Skip unnamed (`???`) statements.
-4. Instantiate RHS FIRs in PRE_EMBRYONIC
+   form a linked list into the statement array. Skip unnamed statements.
+4. Instantiate RHS FIRs in PREMBRYONIC
 5. Find all searches in RHS expressions, stopping at brane boundaries. Maintain writing order
    (first-to-write-first-to-find precedence).
 6. Resolve intra-brane searches. Bind locally resolvable ones. Aggregate unresolved into braneMind
@@ -170,14 +182,14 @@ until all children and expressions reach constanic states.
 | **CONSTANT** | Fully evaluated. Immutable. |
 | **INDEPENDENT** | Promoted from CONSTANT, detached from parent. Future-facing; not exercised in initial UBC2. |
 
-`is_constanic` = `at_constanic || at_woconstanic || at_constant || at_independent`.
+`achievedConstanic` = `at_constanic || at_woconstanic || at_constant || at_independent`.
 
 The CONSTANIC/WOCONSTANIC split matters for: SF/SFF markers, constanic cloning behavior, and
 sequencing output symbols.
 
 ### SF and SFF Markers
 
-**SFF `<<expr>>`**: Stay-Fully-Foolish. PRE_EMBRYONIC → CONSTANIC directly. No search at all.
+**SFF `<<expr>>`**: Stay-Fully-Foolish. PREMBRYONIC → CONSTANIC directly. No search at all.
 All identifiers frozen unresolved.
 
 **SF `<expr>`**: Stay-Foolish. Participates in parent's EMBRYONIC. Resolves its own symbols
@@ -196,14 +208,14 @@ Cloning rules by source state:
   resolution in new context.
 - **WOCONSTANIC**: Recursive clone. Clone stays **WOCONSTANIC** — searches already found,
   just waiting on cloned dependencies to settle.
-- **NYE**: Not cloned. Wait-for ensures cloning only after constanic.
+- **nigh**: Not cloned. Wait-for ensures cloning only after constanic.
 
 CONSTANT and INDEPENDENT sub-expressions within clones are references to immutable originals.
 Only CONSTANIC/WOCONSTANIC sub-expressions are recursively cloned.
 
 ### NK vs CONSTANIC Clarification
 
-**The rule**: NK (`???`) only when the UBC can **prove** the search will fail in ALL possible
+**The rule**: NK (`🧠???`) only when the UBC can **prove** the search will fail in ALL possible
 future executions — including when CONSTANIC expressions are discovered by search and
 coordinated elsewhere. Otherwise: CONSTANIC.
 
@@ -215,15 +227,15 @@ CONSTANIC, not NK.
 it is CONSTANIC, because concatenation could prepend content.
 
 **NK is reserved for**: anchored search on CONSTANT brane that doesn't contain the target,
-explicit `???` in source, arithmetic errors, depth limit exceeded.
+arithmetic errors, depth limit exceeded.
 
 ### Sequencing Output Symbols
 
 | Symbol | State | Meaning |
 |--------|-------|---------|
-| `???` | NK | Definitively unfindable |
-| `?` | CONSTANIC | Not found yet, might be found later |
-| `??` | WOCONSTANIC | Found everything, waiting on dependencies |
+| `🧠???` | NK | Definitively unfindable |
+| `🧠??` | CONSTANIC | Not found yet, might be found later |
+| `🧠?` | WOCONSTANIC | Found everything, waiting on dependencies |
 | *(value)* | CONSTANT / INDEPENDENT | Fully evaluated |
 
 CONSTANIC and WOCONSTANIC branes are **expanded** in output to show internal state.
@@ -274,11 +286,11 @@ A resuming session should treat these as settled unless the user explicitly reop
 | CONSTANIC split into CONSTANIC + WOCONSTANIC | CONSTANIC = nothing found. WOCONSTANIC = all found but deps stuck. Different cloning behavior; different output symbols. |
 | INDEPENDENT terminal state (future) | Detached from parent. Reserved for liberation/detachment. Not exercised in initial UBC2. |
 | Constanic cloning replaces CMFir | Clone-and-replace-slot, no wrapper. CONSTANIC clones → EMBRYONIC. WOCONSTANIC clones stay WOCONSTANIC. CONSTANT = reference (no copy). |
-| NK only for provably unfindable | Reverses UBC1's `{#-1}` = `???`. Concatenation means most intra-brane failures are CONSTANIC. |
-| SFF: PRE_EMBRYONIC → CONSTANIC directly | No search resolution at all. |
+| NK only for provably unfindable | Reverses UBC1's `{#-1}` = `🧠???`. Concatenation means most intra-brane failures are CONSTANIC. |
+| SFF: PREMBRYONIC → CONSTANIC directly | No search resolution at all. |
 | SF: own symbols only, no child forwarding, no further resolution | Typically WOCONSTANIC. |
 | Shallow FIR hierarchy (IndependentFir + ProtoBrane) | Traits (hasBoundary, isDetachment, sfMode) instead of 15+ subclasses. |
-| Sequencing symbols: `?` = CONSTANIC, `??` = WOCONSTANIC, `???` = NK | CONSTANIC/WOCONSTANIC branes expanded in output. |
+| Sequencing symbols: `🧠??` = CONSTANIC, `🧠?` = WOCONSTANIC, `🧠???` = NK | CONSTANIC/WOCONSTANIC branes expanded in output. |
 | Circular message-passing sanity check | Depth-based invariant: sender must be strictly deeper than receiver. |
 | Writing-order precedence | First-to-write-first-to-find. Programmer controls resolution order by code order. |
 | Wait-for mechanism (busy-checking initially) | Callback-based is a future refinement. |
@@ -295,7 +307,7 @@ These features are required for UBC2 but **not yet designed**. They are captured
 Core Foolish language operation. Affects search semantics fundamentally (drives the NK vs
 CONSTANIC distinction). Design must specify:
 
-- How concatenation interacts with PRE_EMBRYONIC (re-do steps 1–7?)
+- How concatenation interacts with PREMBRYONIC (re-do steps 1–7?)
 - How concatenation interacts with EMBRYONIC (search messages after brane extension)
 - Concatenation of CONSTANT + CONSTANIC branes
 - Writing-order precedence in concatenated branes
@@ -378,7 +390,7 @@ limit, and cycle detection.
 **Issue 12: Exception Swallowing in Arithmetic**
 
 UBC1's `BinaryFiroe` catches all `Exception` and wraps in NKFiroe, hiding bugs
-(NullPointerException, ClassCastException become `???`). UBC2 should only catch
+(NullPointerException, ClassCastException become `🧠???`). UBC2 should only catch
 `ArithmeticException` and produce NK with descriptive comment. Others propagate as alarms.
 
 *Action needed*: When implementing ProtoBrane arithmetic, narrow the catch clause.
@@ -392,7 +404,7 @@ circular messages, but `setParent()` should also assert the new parent is shallo
 
 **Issue 14: Depth Limiting Should Be Communicated**
 
-UBC1's `EXPRMNT_MAX_BRANE_DEPTH = 96_485` silently makes a brane CONSTANT with `???`. UBC2
+UBC1's `EXPRMNT_MAX_BRANE_DEPTH = 96_485` silently makes a brane CONSTANT with `🧠???`. UBC2
 should produce an alarm through the message channel. The limit should be configurable.
 
 *Action needed*: Design alarm message type for depth exhaustion. Make limit configurable.
@@ -400,7 +412,7 @@ should produce an alarm through the message channel. The limit should be configu
 **Issue 15: Approval Tests Were Force-Approved**
 
 Git commit `0032e47`: "Temporarily approve some of these." Baselines may be incorrect. The new
-`?` / `??` / `???` output symbols also mean ALL existing approval tests need regeneration.
+`🧠?` / `🧠??` / `🧠???` output symbols also mean ALL existing approval tests need regeneration.
 
 *Action needed*: Audit existing `.approved.foo` baselines before using them as UBC2 references.
 Regenerate all approval tests once UBC2 Sequencer4Human updates are complete.
@@ -432,8 +444,8 @@ byte-identical output. Any output symbol changes cascade to Scala.
 
 **Issue 19: Sequencer Rendering Updates**
 
-Sequencer4Human must be updated: `?` for CONSTANIC (was `⎵⎵`), `??` for WOCONSTANIC (new),
-`???` for NK (unchanged), expanded rendering of CONSTANIC/WOCONSTANIC branes, remove/update
+Sequencer4Human must be updated: `🧠??` for CONSTANIC (was `⎵⎵`), `🧠?` for WOCONSTANIC (new),
+`🧠???` for NK (now 🧠-prefixed), expanded rendering of CONSTANIC/WOCONSTANIC branes, remove/update
 `(CONSTANIC)` state suffix.
 
 *Action needed*: Implement after design is stable. Source:
@@ -480,14 +492,14 @@ the clone-and-replace the ONLY path, but the question remains: should CONSTANIC 
 sealed/immutable at the type level?*
 
 **Unary/Binary null-result state mismatch.** Both `UnaryFiroe` and `BinaryFiroe` override
-`isConstanic()` to return `true` when `result == null && state == CONSTANT`. The state says
-CONSTANT (done) but the result is null (no value). This breaks `isConstanic()` semantics. Output
+`achievedConstanic()` to return `true` when `result == null && state == CONSTANT`. The state says
+CONSTANT (done) but the result is null (no value). This breaks `achievedConstanic()` semantics. Output
 rendering works around this by checking `atConstanic()` for the special null-result case.
 *UBC2's ProtoBrane should never have this mismatch — WOCONSTANIC handles the "structurally
 complete but not resolved" case explicitly.*
 
-**UnanchoredSeekFiroe overloads CONSTANIC for two meanings.** `isConstanic()` returns `true` when
-`value == null` — but this covers both "not yet resolved" (NYE) and "out of bounds" (genuinely
+**UnanchoredSeekFiroe overloads CONSTANIC for two meanings.** `achievedConstanic()` returns `true` when
+`value == null` — but this covers both "not yet resolved" (nigh) and "out of bounds" (genuinely
 unresolved). These should be distinguishable. The code has a TODO: "When implementing brane
 concatenation, ensure unanchored seeks re-evaluate after concatenation." *UBC2 needs to decide:
 should there be an explicit "awaiting concatenation" state, or is CONSTANIC sufficient?*
@@ -570,7 +582,7 @@ is a bug in `Sequencer4Human.java` — inconsistent rendering across FIR types.
 **Mixed symbols for not-found vs not-known.** `"???"` (NK_STR) is used for actually computed NK
 values. `"⎵⎵"` (CC_STR) is used for constanic unresolved values. But search not-found uses
 CC_STR instead of NK_STR. The semantic distinction between "not found" and "not known" is
-unclear in the rendering. *UBC2's three-symbol system (`?` / `??` / `???`) clarifies this.*
+unclear in the rendering. *UBC2's three-symbol system (`🧠?` / `🧠??` / `🧠???`) clarifies this.*
 
 ### Global State and Error Handling
 
@@ -580,7 +592,7 @@ nested evaluations can't have different filenames. *UBC2 should pass context thr
 chain, not use thread-local storage.*
 
 **`BinaryFiroe` catches all `Exception` and wraps in NKFiroe.** NullPointerException,
-ClassCastException, and other programming bugs become `???` — hidden behind "errors as values."
+ClassCastException, and other programming bugs become `🧠???` — hidden behind "errors as values."
 *UBC2 should only catch `ArithmeticException`.*
 
 **`FiroeWithBraneMind` re-enqueues on error then rethrows.** If an exception persists, the FIR
@@ -743,7 +755,7 @@ Cross-referencing the code review, git history, and documentation gaps against t
 
 | UBC1 Problem | UBC2 Status | Notes |
 |-------------|-------------|-------|
-| CONSTANIC semantic confusion (20 days of iteration) | **ADDRESSED.** CONSTANIC/WOCONSTANIC split makes the distinction explicit. `?`/`??`/`???` symbols eliminate rendering ambiguity. | Terminology must be finalized before implementation. |
+| CONSTANIC semantic confusion (20 days of iteration) | **ADDRESSED.** CONSTANIC/WOCONSTANIC split makes the distinction explicit. `🧠?`/`🧠??`/`🧠???` symbols eliminate rendering ambiguity. | Terminology must be finalized before implementation. |
 | CMFir two-phase instability (4+ redesigns) | **ADDRESSED.** Constanic cloning replaces CMFir entirely. Clone-and-replace-slot, no wrapper, no phase confusion. | |
 | `instanceof` chains in search unwrapping (15 cases) | **ADDRESSED.** ProtoBrane with traits eliminates type dispatch. One `step()`, no unwrapping needed. | |
 | Reflection abuse in concatenation | **ADDRESSED in principle.** ProtoBrane exposes public interface. But concatenation design is not yet specified. | **NEEDS DESIGN** |
@@ -759,9 +771,9 @@ Cross-referencing the code review, git history, and documentation gaps against t
 | NK vs CONSTANIC: anchored vs unanchored inconsistency | **ADDRESSED.** Clear rule: NK only for provably unfindable. Concatenation means most failures are CONSTANIC. | |
 | Forward search liberation not in grammar | **NOT ADDRESSED.** Design TODO item 2 lists it as requirement but no grammar changes specified. | **NEEDS DESIGN** |
 | Concatenation search locking not implemented | **NOT ADDRESSED.** Concatenation design is TODO item 1. | **NEEDS DESIGN** |
-| CHECKED state does nothing | **ADDRESSED.** PRE_EMBRYONIC steps 0–7 replace CHECKED with explicit substeps. | |
+| CHECKED state does nothing | **ADDRESSED.** PREMBRYONIC steps 0–7 replace CHECKED with explicit substeps. | |
 | Unanchored seek overloads CONSTANIC | **PARTIALLY ADDRESSED.** CONSTANIC/WOCONSTANIC split helps but "awaiting concatenation" not distinguished. | **NEEDS DECISION** |
-| Sequencer rendering inconsistencies | **ADDRESSED.** New symbol table (`?`/`??`/`???`) with explicit rendering rules. | |
+| Sequencer rendering inconsistencies | **ADDRESSED.** New symbol table (`🧠?`/`🧠??`/`🧠???`) with explicit rendering rules. | |
 | Corecursion/mutual recursion | **NOT ADDRESSED.** Acknowledged as future research in Issue 21. | |
 | Floating-point NaN/infinity | **NOT ADDRESSED.** Out of scope for initial UBC2. | |
 | `↑` operator semantics incomplete | **NOT ADDRESSED.** Issue 11 notes this. | **NEEDS DESIGN** |
@@ -785,7 +797,7 @@ document or `docs/how/ubc2_design.md` where the full context lives.
 The single most impactful undesigned feature. Concatenation affects NK vs CONSTANIC semantics,
 search resolution, detachment, and writing-order precedence. Questions requiring human input:
 
-- When brane A is concatenated with brane B, does A re-execute PRE_EMBRYONIC steps 1–7?
+- When brane A is concatenated with brane B, does A re-execute PREMBRYONIC steps 1–7?
 - Does concatenation happen during EMBRYONIC, BRANING, or as a separate lifecycle event?
 - What is the search locking mechanism during concatenation? (UBC1 said "CRITICAL" but never
   implemented it.)
@@ -890,7 +902,7 @@ the reference semantics for CONSTANT branes that are shared (not copied)?
 [Git History](#force-approved-tests)*
 
 Some `.approved.foo` baselines were force-approved (`0032e47`: "Temporarily approve some of
-these"). The new `?`/`??`/`???` symbols mean ALL tests need regeneration anyway. Questions:
+these"). The new `🧠?`/`🧠??`/`🧠???` symbols mean ALL tests need regeneration anyway. Questions:
 
 - Should old baselines be audited for correctness before UBC2, or just regenerated from scratch?
 - Which tests exercised semantics that UBC2 changes (NK vs CONSTANIC)?
@@ -972,22 +984,80 @@ The user has not explicitly stated the next step. Likely continuations (in rough
    search (Issue 8).
 
 6. **Begin UBC2 implementation** in Java. The design is stable enough to start on the core:
-   ProtoBrane class, IndependentFir, PRE_EMBRYONIC steps, EMBRYONIC message passing, BRANING
+   ProtoBrane class, IndependentFir, PREMBRYONIC steps, EMBRYONIC message passing, BRANING
    child stepping, constanic terminal states.
 
 ---
 
 ## Last Updated
 
-**Date**: 2026-02-20
-**Updated By**: Claude Code v1.0.0 / claude-opus-4-6
-**Changes**: Initial creation with comprehensive review. Contains: session summary, compressed
-UBC2 design context, 13 settled design decisions, 3 Design TODOs, 15 open issues (items 8–22),
-deep UBC1 code review (state machine defects, search fragility, parent chain integrity,
-concatenation gaps, rendering bugs, global state issues), git history iteration analysis (12
-weeks of patterns: constanic 20-day struggle, CMFir 4-day churn, search 5 failed attempts,
-concatenation duplicated implementations, "shat all over it" multi-agent incident, force-approved
-tests), vintage legacy documentation gaps (unspecified search semantics, unsettled detachment,
-incomplete concatenation precedence, empty CHECKED state, language feature gaps), UBC2 coverage
-assessment (22-row matrix), and 14 prioritized human action items (H1–H14) with pointers to
-full context.
+**Date**: 2026-02-24
+**Updated By**: Claude Code v1.0.0 / claude-sonnet-4-6
+**Changes**: Applied 🧠 prefix to all sequencer output symbols throughout: `🧠?` (WOCONSTANIC),
+`🧠??` (CONSTANIC), `🧠???` (NK). Removed erroneous claim that `???` is a valid Foolish input
+token (it is not — all three symbols are sequencer output only). Updated Sequencing Output
+Symbols table, NK vs CONSTANIC section, issues 12/14/15/18/19, comparison table rows, and
+human action item H10.
+**Previous session (2026-02-20):** Initial creation with comprehensive review. Contains:
+session summary, compressed UBC2 design context, 13 settled design decisions, 3 Design TODOs,
+15 open issues (items 8–22), deep UBC1 code review, git history iteration analysis, vintage
+legacy documentation gaps, UBC2 coverage assessment (22-row matrix), and 14 prioritized human
+action items (H1–H14).
+
+---
+[2026-02-24] Claude Code v1.0.0 / claude-sonnet-4-6
+
+Structural documentation session. Changes committed across two commits (f5cdfd2, 8a8424d,
+and this commit):
+
+- Created `docs/DOC_AGENTS.md` — authoritative AI agent instructions for the docs/ tree.
+  Covers project purpose (UBC→UBC2 transition via BDD), directory map, key files to read,
+  mandatory per-commit actions, append-only log format, and style guide (English/Java/Foolish).
+- Renamed this file from `1_ubc2_design_status.md` to `agents.status.md`. All cross-references
+  updated in human_todo_index.md and 0_documentation.md.
+- Created `agents.scratch.log.md` — append-only AI scratch pad for non-trivial reasoning.
+  Seeded with three entries: WOCONSTANIC dereferencing rationale, output symbol ordering
+  rationale, and achievedConstanic() terminology anchoring.
+- Added DOC_AGENTS.md notice header (`> AI agents: read ...`) to all *.md files in docs/
+  (excluding DOC_AGENTS.md itself and vintage_legacy/).
+- Added link to `0.a.concatenation.woes.md` in human_todo_index.md D2 entry and in
+  DOC_AGENTS.md key-files table.
+- Updated human_todo_index.md Last Updated section; this append entry serves as the
+  agents.status.md update for this commit.
+
+Outstanding items unchanged — see human_todo_index.md for current list.
+
+---
+[2026-02-24] Claude Code v1.0.0 / claude-sonnet-4-6
+
+Added "Literals Are Branes" subsection to ubc2_design.md, placed between
+"Literal Values Are Always INDEPENDENT" and "Proto-Branes: Boundary-Less Expressions".
+
+Key content: every literal `1`, `2`, `"hello"` is internally a single-element system brane
+(`🧠1`, `🧠2`, etc.). The three access forms `🧠1.value()`, `🧠1$.value()`, `🧠1^.value()` are
+all equivalent and evaluate to the literal. This uniformity is what makes the postfix
+concatenation `{r = 🧠1 🧠2 🧠+}` → `{r = {🧠1, 🧠2, 🧠+}}` coherent without special cases.
+
+The 🧠 prefix on literal branes is an internal representation detail; programmers write plain
+literals in source, the parser converts them during AST-to-FIR conversion.
+
+Updated: docs/how/ubc2_design.md (new subsection + ToC entry + Last Updated).
+
+---
+[2026-02-24] Claude Code v1.0.0 / claude-sonnet-4-6
+
+Clarified the meaning of the 🧠 prefix throughout docs/:
+
+The 🧠 prefix is the **denotational marker** for Foolish semantics. It signals "we are talking
+about the meaning of this expression, not its syntax" — analogous to ⟦⟧ in formal denotational
+semantics. This unifies all three uses: `🧠1` (literal brane), `🧠+` (operator), `🧠??` (state).
+
+Updated files:
+- ubc2_design.md: "Literals Are Branes" section rewritten around denotational framing; Output
+  Symbols paragraph rewritten; System Operators opening rewritten.
+- systems.md: opening paragraph rewritten.
+- DOC_AGENTS.md: style guide bullet on 🧠 replaced with denotational explanation; Foolish section
+  updated to "denotational symbols."
+- 50_ubc2_baseline_migration.md: two notes about 🧠 prefix rewritten.
+- agents.scratch.log.md: new entry explaining the denotational marker insight and its relation
+  to standard ⟦⟧ notation.

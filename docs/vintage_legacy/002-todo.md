@@ -5,7 +5,7 @@
 ### Terminology Updates
 - [x] Updated CONSTANT_IN_CONTEXT → CONSTANIC throughout all documentation
 - [x] Added CONSTANIC definition: "constant in context" (pronounced "cons-TAN-tic")
-- [x] Clarified NYE: any pre-constanic state (before reaching CONSTANIC)
+- [x] Clarified nigh: any pre-constanic state (before reaching CONSTANIC)
 - [x] Clarified NYES (pronounced like "NICE"): encapsulates all evaluation stages from UNINITIALIZED through CONSTANT
 - [x] Updated IB definition: does not include any definitions made in the current statement
 - [x] Added verbs "reach" and "achieve" for advancement toward CONSTANT in NYES

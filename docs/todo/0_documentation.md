@@ -1,5 +1,7 @@
 # Documentation Reorganization Plan
 
+> AI agents: read [../DOC_AGENTS.md](../DOC_AGENTS.md) before editing this file.
+
 This document tracks the phased reorganization of Foolish documentation from the
 legacy flat structure (now in `docs/vintage_legacy/`) into the new four-directory taxonomy.
 
@@ -114,7 +116,7 @@ Source material from `docs/vintage_legacy/` (formerly projects/):
 - 007-foolish-indentation-style-guide.md - Style guide (may also fit docs/how/)
 
 Tasks:
-- [x] Create UBC2 design status and continuation guide: `docs/todo/1_ubc2_design_status.md`
+- [x] Create UBC2 design status and continuation guide: `docs/todo/agents.status.md`
 - [ ] Review and consolidate active TODO items
 - [ ] Archive completed project items
 - [ ] Create new project tracking documents for active work

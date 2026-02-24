@@ -1,5 +1,7 @@
 # Philosophy of Foolish — Brainstorm Snapshot
 
+> AI agents: read [../DOC_AGENTS.md](../DOC_AGENTS.md) before editing this file.
+
 This is a raw collection of every motivating thought, design rationale, and philosophical principle
 found in the Foolish documentation, plus some AI-contributed ideas marked with **(AI)**.
 Possibly repetitative — completeness over conciseness by design.
@@ -386,7 +388,7 @@ Possibly repetitative — completeness over conciseness by design.
   UNINITIALIZED → INITIALIZED → CHECKED → EVALUATING → CONSTANIC → CONSTANT. This
   progression is called *NYES* (pronounced like "nice").
 
-- *NYE* (Not Yet Evaluated, says "nigh") — any pre-constanic state. In plain terms, it's
+- *nigh* (Not Yet Evaluated, says "nigh") — any pre-constanic state. In plain terms, it's
   still cooking.
 
 - *CONSTANIC* (constant in context, says "cons-TAN-tic") — may gain value when associated
@@ -402,7 +404,7 @@ Possibly repetitative — completeness over conciseness by design.
 
 - **(AI)** This state progression mirrors the philosophical concept of potentiality vs actuality
   (Aristotle). A constanic value has actual form but potential content — it will become fully actual
-  when placed in the right context. NYE is pure potentiality; CONSTANT is pure actuality.
+  when placed in the right context. A nigh FIR is pure potentiality; CONSTANT is pure actuality.
 
 ---
 

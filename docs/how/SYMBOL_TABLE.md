@@ -1,3 +1,5 @@
+> AI agents: read [../DOC_AGENTS.md](../DOC_AGENTS.md) before editing this file.
+
 |Symbol | unicode | HTML entity | Document Reference |
 |-------|---------|-------------|--------------------|
 |"⬤"    |U+2B24   | &#x2B24;    | [Creation Posture](CREATION.md#branes-the-foundation) |
@@ -14,10 +16,10 @@
 |"\_"    |U+005F   | &#x005F;    | [Names and Scope - Intra-identifier separator](../../README.md#names-and-scope) |
 |"⊦"    |U+22A6   | &#8870;     | [Assert](LOGIC.md) |
 |"∨"    |U+2228   | &#x2228;    | [OR](SCHOLIA.md) |
-|"⎵⎵"    |U+23B5   | &UnderBracket;&UnderBracket;   | Constanic display (deprecated - use ? instead) |
-|"?"    |U+003F   | &#x003F;    | [CONSTANIC state](ubc2_design.md#sequencing-human-readable-output) |
-|"??"   |U+003F U+003F | &#x003F;&#x003F; | [WOCONSTANIC state](ubc2_design.md#sequencing-human-readable-output) |
-|"???"  |U+003F U+003F U+003F | &#x003F;&#x003F;&#x003F; | [NK (Not Known) state](ubc2_design.md#sequencing-human-readable-output) |
+|"⎵⎵"    |U+23B5   | &UnderBracket;&UnderBracket;   | Constanic display (deprecated - use 🧠?? instead) |
+|"🧠?"   |U+1F9E0 U+003F | &#x1F9E0;&#x003F; | [WOCONSTANIC sequencer output](ubc2_design.md#output-symbols) |
+|"🧠??"  |U+1F9E0 U+003F U+003F | &#x1F9E0;&#x003F;&#x003F; | [CONSTANIC sequencer output](ubc2_design.md#output-symbols) |
+|"🧠???" |U+1F9E0 U+003F U+003F U+003F | &#x1F9E0;&#x003F;&#x003F;&#x003F; | [NK (Not Known) sequencer output](ubc2_design.md#output-symbols) |
 |"🧠"    |U+1F9E0  | &#x1F9E0;   | [System operator prefix](systems.md) |
 |"🧠+"   |U+1F9E0 U+002B | &#x1F9E0;&#x002B; | [System Add operator](systems.md#system-operator-table) |
 |"🧠-"   |U+1F9E0 U+002D | &#x1F9E0;&#x002D; | [System Subtract operator](systems.md#system-operator-table) |

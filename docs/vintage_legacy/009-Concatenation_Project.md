@@ -75,7 +75,7 @@ Future work will add **RhsSearchable** for value-based searches (e.g., searching
    - Brane is NOT LhsSearchable yet
 
 2. **INITIALIZED → CHECKED**
-   - Step all `pendingFirs` until each `isConstanic()`
+   - Step all `pendingFirs` until each `achievedConstanic()`
    - **CRITICAL:** LHS searches into this ConcatenationFiroe are blocked during this stage
    - This prevents premature identifier resolution before the join is complete
    - Still NOT LhsSearchable
@@ -144,7 +144,7 @@ The following cleanup work (from the plan) enables safe ConcatenationFiroe imple
 
 | Cleanup Item | Why Needed |
 |--------------|------------|
-| at/is state conventions | Clear semantics for "wait until isConstanic" |
+| at/is state conventions | Clear semantics for "wait until achievedConstanic" |
 | Constraint C5 (empty braneMind at constanic) | Critical for cloneConstanic in Stage B |
 | FoolishIndex documentation | Debugging parent chain changes |
 | AlarmSystem with FoolishIndex | Error reporting during Stage A/B |

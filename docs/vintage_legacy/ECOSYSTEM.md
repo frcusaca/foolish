@@ -134,10 +134,10 @@ the Foolish Internal Representation (FIR). FIR can be several things:
    abstract brane can be constanic because the recursion depends on a parameter. But it is possible
    to construct an abstract brane that calls itself irrespective of future parameters. Such a brane
    will be finite or infinite in depth depending on its construction. The abstract brane may
-   therefore be permanently ***NYE*** (*Not Yet Evaluated*, pronounced "nigh", any pre-constanic
+   therefore be permanently ***nigh*** (*Not Yet Evaluated*, pronounced "nigh", any pre-constanic
    state) due to its construction. An abstract brane is constanic if it has not reached CONSTANIC
    due to detached identifier names.
-5. A NYE FIR represents code that was expressed in Foolish, but it has not reached CONSTANIC in
+5. A nigh FIR represents code that was expressed in Foolish, but it has not reached CONSTANIC in
    the present UBC context. This FIR contains the AST of the expression, and a reference to the AB
    and IB that were used to attempt evaluation. Possible reasons why the FIR has not reached
    CONSTANIC:
@@ -178,7 +178,7 @@ UBC brane evaluation:
    4. Proceed to next line.
 3. When the brane ends, the brane is returned as a value.
 
-(*) The expression is *NYE* if it makes *NYE* references. When the *NYE* state is caused by `↑`
+(*) The expression is *nigh* if it makes *nigh* references. When the *nigh* state is caused by `↑`
 recursion, this single step materializes one step of the recursion. The FIR is updated to replace
 `↑` with a FIR representing `[IB, AB] a`—the `a` being the AST of `↑`. This concludes the
 iteration. Note, the next time we take a step in the UBC pass, this FIR is a brane concatenation
@@ -189,7 +189,7 @@ The UBC FIR processing has the following stages (NYES, pronounced like "NICE", e
 evaluation stages from UNINITIALIZED through CONSTANT):
 
 1. **AST** - uncoordinated, unevaluated
-2. **NYE** (Not Yet Evaluated) - FIR with some NYE ordinates (In progress, another UBC step may produce changes)
+2. **nigh** (Not Yet Evaluated) - FIR with some nigh ordinates (In progress, another UBC step may produce changes)
 3. **CONSTANIC** (pronounced "cons-TAN-tic", constant in context) - FIR with all ordinates coordinated as much as possible in current context; may gain value when associated with new context
 4. **CONSTANT** - FIR with all evaluation results fully coordinated (Completion, another UBC does nothing). During coordination, a brane may stay CONSTANT or transition from CONSTANIC to CHECKED if it started constanic.
 
@@ -197,7 +197,7 @@ evaluation stages from UNINITIALIZED through CONSTANT):
 
 | State | Rendering | Notes |
 |-------|-----------|-------|
-| NYE | `???` | Not yet evaluated |
+| nigh | `???` | Not yet evaluated |
 | CONSTANIC | `⎵⎵` | Constant in context; for constanic branes, contents may be shown |
 | CONSTANT | value | The final computed value |
 

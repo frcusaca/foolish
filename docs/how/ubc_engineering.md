@@ -1,5 +1,7 @@
 # UBC Engineering Reference
 
+> AI agents: read [../DOC_AGENTS.md](../DOC_AGENTS.md) before editing this file.
+
 The Unicellular Brane Computer (UBC) is the reference implementation of the Foolish Virtual Machine.
 This document consolidates the engineering details of the current UBC implementation (UBC1) as built
 in the `foolish-core-java` and `foolish-core-scala` modules.
@@ -93,7 +95,7 @@ UNINITIALIZED → INITIALIZED → CHECKED → PRIMED → EVALUATING → CONSTANI
 | `INITIALIZED` | FIR structure created from AST, caches ready |
 | `CHECKED` | Type/reference checking complete (currently pass-through, reserved for future) |
 | `PRIMED` | Non-constant items enqueued into braneMind |
-| `EVALUATING` | Active stepping: dequeue from braneMind, step, re-enqueue if still NYE |
+| `EVALUATING` | Active stepping: dequeue from braneMind, step, re-enqueue if still nigh |
 | `CONSTANIC` | Constant In Context — paused due to missing information. Terminal for this context |
 | `CONSTANT` | Fully evaluated, immutable. Terminal |
 
@@ -101,8 +103,8 @@ UNINITIALIZED → INITIALIZED → CHECKED → PRIMED → EVALUATING → CONSTANI
 REFERENCES_IDENTIFIED, ALLOCATED, and RESOLVED between INITIALIZED and EVALUATING. These were
 condensed into the single CHECKED state.
 
-The generic term **constanic** (lowercase) refers to either CONSTANIC or CONSTANT — a FIR that is
-no longer stepping. The predicate `is_constanic` means `at_constant || at_constanic`.
+The generic term **constanic** (lowercase) refers to any terminal state — a FIR that is no longer
+stepping. The predicate `achievedConstanic` means `at_constanic || at_woconstanic || at_constant || at_independent`.
 
 ---
 
@@ -114,10 +116,10 @@ no longer stepping. The predicate `is_constanic` means `at_constant || at_consta
 evaluation:
 
 1. `prime()`: Enqueue all non-CONSTANT items from braneMemory
-2. Each step: dequeue front item, call `step()`, re-enqueue at back if still NYE
+2. Each step: dequeue front item, call `step()`, re-enqueue at back if still nigh
 3. When queue empties: check if all items are CONSTANT (→ CONSTANT) or any are CONSTANIC (→ CONSTANIC)
 
-**Invariant C6:** Only NYE FIRs may be in the braneMind.
+**Invariant C6:** Only nigh FIRs may be in the braneMind.
 **Invariant C5:** At CONSTANIC state, braneMind MUST be empty.
 
 ### BraneMemory (Persistent Storage)
@@ -157,7 +159,7 @@ When a FIR is stored in braneMemory:
 
 5. **EVALUATING**: Main loop:
    - If braneMind is empty: transition to CONSTANT (all done) or CONSTANIC (some items stuck)
-   - Otherwise: dequeue front FIR, step it, re-enqueue if still NYE
+   - Otherwise: dequeue front FIR, step it, re-enqueue if still nigh
 
 6. **CONSTANIC or CONSTANT**: Terminal. `step()` returns 0.
 
@@ -218,7 +220,7 @@ The `Query` sealed interface has two implementations:
 2. **CHECKED**: Monitor the resolved FIR's state:
    - Target at CONSTANIC → this identifier also CONSTANIC
    - Target at CONSTANT → this identifier CONSTANT
-   - Target still NYE → EVALUATING (wait for it)
+   - Target still nigh → EVALUATING (wait for it)
 
 3. **EVALUATING**: Continue monitoring until target settles.
 
@@ -251,7 +253,7 @@ CMFir delegates state queries to the active phase's FIR:
 - Before Phase B: state comes from `o`
 - During Phase B: state comes from `o2`
 
-**Key insight:** Use `atConstanic()` (exact match) not `isConstanic()` (≥ CONSTANIC) when deciding
+**Key insight:** Use `atConstanic()` (exact match) not `achievedConstanic()` (≥ CONSTANIC) when deciding
 whether to start Phase B. The latter includes CONSTANT, which would incorrectly trigger re-evaluation
 of already-resolved expressions.
 
@@ -275,7 +277,7 @@ Depth is calculated by walking the `parentFir` chain and counting `BraneFiroe` a
 | ID | Constraint | Description |
 |----|-----------|-------------|
 | C5 | PRIMED STATE SEPARATION | At CONSTANIC, braneMind MUST be empty |
-| C6 | BRANEMIND WORK QUEUE | Only NYE FIRs in queue |
+| C6 | BRANEMIND WORK QUEUE | Only nigh FIRs in queue |
 | C7 | BRANEMEMORY PERSISTENCE | Append-only, never removes items |
 | C8 | ORDINATION REQUIREMENT | Parent link must be established before identifier resolution |
 
@@ -288,8 +290,8 @@ Depth is calculated by walking the `parentFir` chain and counting `BraneFiroe` a
 | `atConstant()` | `nyes == CONSTANT` | Exact check: fully evaluated |
 | `atConstanic()` | `nyes == CONSTANIC` | Exact check: paused, awaiting context |
 | `isConstant()` | `nyes >= CONSTANT` | At least CONSTANT (just CONSTANT today) |
-| `isConstanic()` | `nyes >= CONSTANIC` | At least CONSTANIC (CONSTANIC or CONSTANT) |
-| `isNye()` | `nyes < CONSTANIC` | Still evaluating |
+| `achievedConstanic()` | `nyes >= CONSTANIC` | At least CONSTANIC (CONSTANIC or CONSTANT) |
+| `isNigh()` | `nyes < CONSTANIC` | Still evaluating |
 
 **Rule:** Use `at*` methods for control flow decisions that distinguish CONSTANIC from CONSTANT.
 Use `is*` methods for "are we done?" checks.

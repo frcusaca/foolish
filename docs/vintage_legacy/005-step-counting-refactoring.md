@@ -81,7 +81,7 @@ Updated `runToCompletion()` to accumulate only meaningful steps:
 public int runToCompletion() {
     int steps = 0;
     int iterations = 0;
-    while (rootBrane.isNye()) {
+    while (rootBrane.isNigh()) {
         int work = rootBrane.step();
         steps += work;  // Accumulate actual work
         iterations++;

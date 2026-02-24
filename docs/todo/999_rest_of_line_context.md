@@ -1,5 +1,7 @@
 # Rest-of-Line Context Switching with Backtick
 
+> AI agents: read [../DOC_AGENTS.md](../DOC_AGENTS.md) before editing this file.
+
 ## Status: Proposal
 
 ## Summary

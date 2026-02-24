@@ -6,20 +6,20 @@ Reviewed and fixed CMFir (Context Manipulation FIR) implementation after recent 
 
 ## Critical Bugs Fixed
 
-### Bug 1: Phase A Using `isConstanic()` Instead of `atConstanic()`
+### Bug 1: Phase A Using `achievedConstanic()` Instead of `atConstanic()`
 
 **File**: `foolish-core-java/src/main/java/org/foolish/fvm/ubc/CMFir.java`
 **Lines**: 37, 49
 
 **Problem**:
-The original code used `isConstanic()` which returns true for both CONSTANIC and CONSTANT states (checks `nyes.ordinal() >= Nyes.CONSTANIC.ordinal()`). This caused Phase B to start even when `o` reached CONSTANT state, which is incorrect behavior.
+The original code used `achievedConstanic()` which returns true for both CONSTANIC and CONSTANT states (checks `nyes.ordinal() >= Nyes.CONSTANIC.ordinal()`). This caused Phase B to start even when `o` reached CONSTANT state, which is incorrect behavior.
 
 **Before (BUGGY)**:
 ```java
 // Phase A: Step o until it is CONSTANT or CONSTANIC
 if (!phaseBStarted) {
     if (o.getNyes() == Nyes.CONSTANT) {
-        if (o.isConstanic()) {  // BUG: Always true when CONSTANT!
+        if (o.achievedConstanic()) {  // BUG: Always true when CONSTANT!
             startPhaseB();
             return 1;
         }
@@ -71,13 +71,13 @@ if (!phaseBStarted) {
 **Lines**: 103-121
 
 **Problem**:
-The original code used `isConstanic()` as a guard and then checked `getNyes() != Nyes.CONSTANT`, which was unnecessarily complex. Should directly check `!atConstant()` to verify full evaluation.
+The original code used `achievedConstanic()` as a guard and then checked `getNyes() != Nyes.CONSTANT`, which was unnecessarily complex. Should directly check `!atConstant()` to verify full evaluation.
 
 **Before (COMPLEX)**:
 ```java
 public long getValue() {
     if (phaseBStarted) {
-        if (o2.isConstanic()) {
+        if (o2.achievedConstanic()) {
              if (o2 instanceof AssignmentFiroe af && af.getResult() instanceof NKFiroe nk) {
                  throw new IllegalStateException("Cannot get value from NK (not-known): " + nk.getNkComment());
              }
@@ -134,14 +134,14 @@ private void evaluateFully(BraneMemory context, FIR fir) {
     // Ensure context items are stepped
     context.stream().forEach(f -> {
         int steps = 0;
-        while (f.isNye() && steps < 100) {
+        while (f.isNigh() && steps < 100) {
             f.step();
             steps++;
         }
     });
 
     int steps = 0;
-    while (fir.isNye() && steps < 1000) {
+    while (fir.isNigh() && steps < 1000) {
         fir.step();
         steps++;
     }
@@ -159,7 +159,7 @@ private void evaluateFully(BraneMemory context, FIR fir) {
     while (current != null) {
         current.stream().forEach(f -> {
             int steps = 0;
-            while (f.isNye() && steps < 100) {
+            while (f.isNigh() && steps < 100) {
                 f.step();
                 steps++;
             }
@@ -168,7 +168,7 @@ private void evaluateFully(BraneMemory context, FIR fir) {
     }
 
     int steps = 0;
-    while (fir.isNye() && steps < 1000) {
+    while (fir.isNigh() && steps < 1000) {
         fir.step();
         steps++;
     }
@@ -201,9 +201,9 @@ After review, here's the correct usage of state-checking methods in CMFir:
 | `atConstant()` | `nyes == Nyes.CONSTANT` | Check if exactly CONSTANT (fully evaluated) |
 | `atConstanic()` | `nyes == Nyes.CONSTANIC` | Check if exactly CONSTANIC (paused, awaiting context) |
 | `isConstant()` | `nyes >= Nyes.CONSTANT` | Check if at least CONSTANT (just CONSTANT) |
-| `isConstanic()` | `nyes >= Nyes.CONSTANIC` | Check if at least CONSTANIC (CONSTANIC or CONSTANT) |
+| `achievedConstanic()` | `nyes >= Nyes.CONSTANIC` | Check if at least CONSTANIC (CONSTANIC or CONSTANT) |
 
-**Key Insight**: Use `atConstant()` and `atConstanic()` for precise state checks when control flow depends on distinguishing between the two states. Use `isConstanic()` only when you want to catch "at least CONSTANIC" and then refine with additional checks.
+**Key Insight**: Use `atConstant()` and `atConstanic()` for precise state checks when control flow depends on distinguishing between the two states. Use `achievedConstanic()` only when you want to catch "at least CONSTANIC" and then refine with additional checks.
 
 ## Related Files
 
