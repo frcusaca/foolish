@@ -487,13 +487,28 @@ terminal states:
 | **WOCONSTANIC** | Waiting On CONSTANICs. Every search was found, but one or more of the found results are themselves CONSTANIC or WOCONSTANIC. The expression is waiting for its dependencies to settle. When those dependencies gain value (through recoordination), this expression can progress. |
 | **CONSTANT** | Fully evaluated. All searches resolved to CONSTANT or INDEPENDENT values. Immutable. |
 | **INDEPENDENT** | Promoted from CONSTANT. Detached from parent — although the parent may still hold a reference to it. Reserved for future development. |
+!!!@AGENT
 
+We need to specifically define program method names for accessing nyse status:
+
+isAt(Nyse_State);   // exactly at the state
+isPre(Nyse_State);  // before and not including the state, implemented as numerical comparison
+isPost(Nyse_State); // after and not including the state, implemented as numerical comparison
+isNigh();           // Alias for isPre(CONSTANIC)
+getNyse();          // return the num member. NB: no setNyse() as per design FIR Nyse is very private and self controled.
+
+Please make this update in **all of** UBC2 design and related documents. Recall in English we still say "at Constanic",
+"pre-Constanic", "post-Constanic", but when it needs to be formal, we use these methods to refer to them.
+
+This way the following can say 
+achievedConstanicty= isAt(CONSTANIC) || isPost(CONSTANIC)
+!!!
 #### The Constanic Predicate
 
 The constanic predicate is defined as:
 
 ```
-achievedConstanic = at_constanic || at_woconstanic || at_constant || at_independent
+achievedConstanicity = at_constanic || at_woconstanic || at_constant || at_independent
 ```
 
 The English phrase "is constanic" has the same meaning. A FIR stops stepping when it reaches any
@@ -2145,7 +2160,7 @@ The UBC2 design is an evolution of UBC1, not a replacement of its semantics:
 
 The Nyes state values are extended to represent the new stages (PREMBRYONIC, EMBRYONIC, BRANING),
 the split of CONSTANIC into CONSTANIC/WOCONSTANIC, and the INDEPENDENT terminal state. The
-constanic predicate `achievedConstanic` encompasses CONSTANIC, WOCONSTANIC, CONSTANT, and INDEPENDENT.
+constanic predicate `achievedConstanicity` encompasses CONSTANIC, WOCONSTANIC, CONSTANT, and INDEPENDENT.
 
 ---
 
@@ -2194,7 +2209,7 @@ ProtoBrane) should be finalized before implementation begins.
 UBC1's CMFir was a wrapper that delegated state queries to an inner FIR. This broke transparency
 (code checking `this.nyes` directly bypassed the delegation) and required complex two-phase
 evaluation logic. CMFir was implemented, then reversed (with/without braneMind), and had critical
-state-checking bugs (`achievedConstanic()` vs `atConstanic()`). UBC2's constanic cloning replaces the
+state-checking bugs (`achievedConstanicity()` vs `atConstanic()`). UBC2's constanic cloning replaces the
 slot directly — no wrapper, no delegation, no phase confusion.
 
 ### 7. Don't Force-Approve Tests

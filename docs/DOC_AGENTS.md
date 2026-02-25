@@ -36,7 +36,36 @@ foundational than one numbered `50`. Within a group, `0.a` precedes `0.b`, etc. 
 tracking documents, choose a number that reflects where the work fits in the overall sequence.
 
 ---
+## Interactions Through @Agent Feedback Comments
 
+!!!@AGENT,
+   this doc comment addressed to you within this section of the DOC_AGENTS.md is to be read but not altered.
+   DO NOT REMOVE !!
+!!!
+
+Humans will usually leave feedback to agents during collaboration by inserting Foolish comments with '@AGENT' tag in side a comment near(just before or after) where an information source can be found, OR it may be near where a change is being requested by the human. The comment is inserted, so the surrounding context should be read ignoring the comment when understanding it for the information or making the update.
+```foolish
+{ uhoh=1/(1-1); !!!@AGENT correct this please!!! }
+```
+```java
+Clas....
+   //!!@Agent In side other programming language blocks, the Foolish comment tend to reside within the language's native comment.
+```
+```python
+def fn...
+   ##!!@Agent In side other programming language blocks, the Foolish comment tend to reside within the language's native comment.
+def raise_error: !!!@ Agent, I might tell you that this method needs to be called "generate_error" in a feedback comment block not native to this language!!!
+    return """ This block of language describes the problem
+          !!@Agent Sometimes, it's just a Foolish comment inside part of program of another language.
+    """
+```
+
+
+When agent sees this comment, it knows to regard it as a human input regarding text in proximity of the comment and that it is expected to react to address the comment to an extent that the input @AGENT comment itself can be entirely removed. Agent should tollerate line comments
+
+!! @Agent: This is a line comment you should keep in this document section for illustration purposes. DO NOT REMOVE.
+
+This requires that, outside this current markdown "## Interactions" section, we never generate this type of comment AND that agent is to leave these explanation alone. 
 ## Key Files to Read When Starting Work
 
 | File | When to read |
