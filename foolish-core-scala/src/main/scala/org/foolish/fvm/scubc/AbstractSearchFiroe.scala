@@ -16,18 +16,19 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
     // Subclasses must enqueue anchor
   }
 
-  override def step(): Unit = {
+  override def step(): Int = {
     getNyes match {
       case Nyes.INITIALIZED =>
         if (stepNonBranesUntilState(Nyes.CHECKED)) {
           setNyes(Nyes.CHECKED)
         }
+        1
       case Nyes.CHECKED =>
         if (stepNonBranesUntilState(Nyes.CONSTANT)) {
           if (isAnchorReady) {
             performSearchStep()
             if (atConstanic) {
-              return
+              return 1
             }
             if (searchResult != null) {
               // Set found status based on result type
@@ -52,7 +53,9 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
             }
           }
         }
-      case _ => super.step()
+        1
+      case _ =>
+        super.step()
     }
   }
 
@@ -98,8 +101,9 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
           assignmentFiroe.step()
           return false
         }
-        if (assignmentFiroe.getResult.isEmpty) return false
-        assignmentFiroe.getResult.get
+        val res = assignmentFiroe.getResult
+        if (res == null) return false
+        res
       case _ => anchor
     }
     if (resolvedAnchor2 == null) return false
@@ -147,17 +151,20 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
         return
 
       case assignmentFiroe: AssignmentFiroe =>
+        println(s"DEBUG: assignmentFiroe=$assignmentFiroe, atConstanic=${assignmentFiroe.atConstanic}, isNye=${assignmentFiroe.isNye}, result=${assignmentFiroe.getResult}")
         if (assignmentFiroe.atConstanic) {
             searchResult = new NKFiroe()
             return
         }
         if (assignmentFiroe.isNye) {
+          println(s"DEBUG: assignment is NYE, stepping...")
           assignmentFiroe.step()
           return
         }
         val res = assignmentFiroe.getResult
-        if (res.isEmpty) searchResult = new NKFiroe()
-        else unwrapAnchor = res.get
+        println(s"DEBUG: assignment result=$res")
+        if (res == null) searchResult = new NKFiroe()
+        else unwrapAnchor = res
         return
 
       case abstractSearch: AbstractSearchFiroe =>
@@ -182,8 +189,12 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
           unanchoredSeekFiroe.step()
           return
         }
-        unwrapAnchor = unanchoredSeekFiroe.getResult
-        if (unwrapAnchor == null) searchResult = new NKFiroe()
+        val result = unanchoredSeekFiroe.getResult
+        if (result == null) {
+            searchResult = new NKFiroe()
+            return
+        }
+        unwrapAnchor = result
         return
 
       case braneFiroe: BraneFiroe =>
@@ -208,8 +219,8 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
         result match {
           case assignment: AssignmentFiroe =>
             val res = assignment.getResult
-            if (res.isEmpty) result = new NKFiroe()
-            else result = res.get
+            if (res == null) result = new NKFiroe()
+            else result = res
           case _ =>
         }
 
@@ -225,11 +236,49 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
         searchResult = new NKFiroe()
         return
 
+      // Handle value types by finding their containing brane
       case _ =>
         if (searchPerformed) {
           searchResult = unwrapAnchor
         } else {
-          searchResult = new NKFiroe()
+          // Try to find the containing brane for this value
+          val containingBrane = unwrapAnchor.getMyBrane
+          println(s"DEBUG: unwrapAnchor=${unwrapAnchor.getClass.getSimpleName}, containingBrane=$containingBrane, searchPerformed=$searchPerformed")
+          containingBrane match
+            case braneFiroe: BraneFiroe =>
+              // Found the containing brane - perform the search on it
+              println(s"DEBUG: Calling executeSearch on brane $braneFiroe")
+              var result = executeSearch(braneFiroe)
+              searchPerformed = true
+
+              if (result == null) {
+                searchResult = new NKFiroe()
+                return
+              }
+
+              if (result.atConstanic) {
+                // Handled as result
+              }
+
+              // Unwrap assignment result
+              result match
+                case assignment: AssignmentFiroe =>
+                  val res = assignment.getResult
+                  if res == null then result = new NKFiroe()
+                  else result = res
+                case _ =>
+              end match
+
+              if result.isInstanceOf[IdentifierFiroe] || result.isInstanceOf[AssignmentFiroe] || result.isInstanceOf[AbstractSearchFiroe] || result.isInstanceOf[UnanchoredSeekFiroe] then
+                unwrapAnchor = result
+                return
+              end if
+
+              searchResult = result
+              return
+            case _ =>
+              // No containing brane found - return NK
+              searchResult = new NKFiroe()
         }
         return
     }
@@ -237,7 +286,7 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
 
   protected def executeSearch(target: BraneFiroe): FIR
 
-  def getResult: FIR = searchResult
+  override def getResult: FIR = searchResult
 
   /**
    * Returns whether the search found a result.

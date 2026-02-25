@@ -44,16 +44,19 @@ class UnicelluarBraneComputer(
   /**
    * Runs the UBC until evaluation is complete.
    *
-   * @return the number of steps taken
+   * @return the number of meaningful steps taken (excluding empty transitions)
    */
   def runToCompletion(): Int =
     var steps = 0
-    while step() do
-      steps += 1
+    var iterations = 0
+    while rootBrane.isNye do
+      val work = rootBrane.step()
+      steps += work
+      iterations += 1
 
       // Safety check to prevent infinite loops
-      if steps > 100000 then
-        throw RuntimeException("Evaluation exceeded maximum step count (possible infinite loop)")
+      if iterations > 100000 then
+        throw RuntimeException("Evaluation exceeded maximum iteration count (possible infinite loop)")
 
     steps
 

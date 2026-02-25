@@ -16,7 +16,7 @@ import org.foolish.fvm.scubc.BraneMemory.StrictlyMatchingQuery
  * - Scope resolution (future)
  */
 class IdentifierFiroe(override val ast: AST.Identifier)
-  extends FiroeWithBraneMind(ast):
+  extends FiroeWithBraneMind(ast) with Constanicable:
 
   private val identifier = new StrictlyMatchingQuery(
     ast.id(),
@@ -47,13 +47,25 @@ class IdentifierFiroe(override val ast: AST.Identifier)
     else
       value.isAbstract
 
+  /**
+   * An identifier is Constanic only when its state is CONSTANIC or CONSTANT.
+   * A null value in earlier states means the identifier hasn't been evaluated yet.
+   */
+  override def isConstanic: Boolean =
+    if getNyes != Nyes.CONSTANIC && getNyes != Nyes.CONSTANT then
+      false
+    else if value == null then
+      true  // Not yet resolved or out of bounds
+    else
+      value.isConstanic
+
   override protected def initialize(): Unit = ()
 
   /**
    * Implement the step method, during checking phase we use the branemind
    * to find the value of the identifier and store a reference to it for getValue()
    */
-  override def step(): Unit =
+  override def step(): Int =
     getNyes match
       case Nyes.INITIALIZED =>
         value = braneMemory.get(identifier, 0)
@@ -63,6 +75,19 @@ class IdentifierFiroe(override val ast: AST.Identifier)
           setNyes(Nyes.CONSTANIC)
         else
           setNyes(Nyes.CHECKED)
+        1
+      case Nyes.CHECKED =>
+        if value.isConstanic then
+          storeFirs(value)
+          setNyes(value.atConstanic match
+            case true => Nyes.CONSTANIC
+            case false => Nyes.CONSTANT
+          )
+        else
+          storeFirs(value)
+          braneEnqueue(value)
+          setNyes(Nyes.PRIMED)
+        1
       case _ =>
         super.step()
 
@@ -73,5 +98,24 @@ class IdentifierFiroe(override val ast: AST.Identifier)
     if atConstanic then
       throw UnsupportedOperationException("Cannot get value from constanic identifier")
     value.getValue
+
+  /** Returns the resolved value for unwrapping in search operations */
+  override def getResult: FIR = value
+
+  override def cloneConstanic(newParent: FIR, targetNyes: Option[Nyes]): FIR =
+    if !isConstanic then
+      throw IllegalStateException(
+        s"cloneConstanic can only be called on CONSTANIC or CONSTANT FIRs, " +
+        s"but this FIR is in state: ${getNyes}")
+    if isConstant then
+      return this  // Share CONSTANT identifiers
+    // CONSTANIC: create fresh copy from AST
+    val copy = new IdentifierFiroe(ast.asInstanceOf[AST.Identifier])
+    copy.setParentFir(newParent)
+    copy.value = null  // Reset for re-evaluation
+    copy.setNyes(getNyes)
+    // Set target state if specified
+    targetNyes.foreach(copy.setNyes)
+    copy
 
   override def toString: String = ast.toString

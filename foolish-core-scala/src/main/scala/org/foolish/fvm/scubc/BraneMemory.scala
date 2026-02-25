@@ -59,7 +59,9 @@ class BraneMemory(private var parent: BraneMemory = null):
    * Returns Option[(Int, FIR)] where Int is the line number.
    */
   def get(query: BraneMemory.Query, fromLine: Int): Option[(Int, FIR)] =
-    val startLine = math.min(fromLine, memory.size - 1)
+    // Handle negative fromLine: search entire braneMemory
+    val actualFromLine = if fromLine < 0 then memory.size - 1 else fromLine
+    val startLine = math.min(actualFromLine, memory.size - 1)
 
     // Search backwards from fromLine to 0
     for line <- startLine to 0 by -1 do
@@ -74,7 +76,8 @@ class BraneMemory(private var parent: BraneMemory = null):
       // Default to searching from end of parent if neither is available
       // This is crucial for CMFir which links memory without fixed position
       val parentPos = if owningBrane != null then
-        owningBrane.getMyBraneIndex
+        val idx = owningBrane.getMyBraneIndex
+        if idx >= 0 then idx else parent.size - 1
       else
         myPos.getOrElse(parent.size - 1)
       return parent.get(query, parentPos)
@@ -121,6 +124,8 @@ class BraneMemory(private var parent: BraneMemory = null):
   def stream: Iterator[FIR] = memory.iterator
 
   def size: Int = memory.size
+
+  def iterator: Iterator[FIR] = memory.iterator
 
   def getLast: FIR =
     if memory.isEmpty then

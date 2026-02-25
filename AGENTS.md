@@ -159,6 +159,7 @@ A crossvalidation process checks that implementations in different languages are
 ## Clarifications
 * When user mentions "path/" first interpret it as relative path from the directory where claude code was invoked. This is normal behavior for most unix apps, for example if I "cat path/file" that path is resolved from the current path.
 * Never directly edit `.approved.foo` files
+* AI, Agents, ML models, none of you should ever change any '.approved.foo' files any where in the system. Approval is a procedure that must be performed by human using dumb editors.
 
 ``
 

@@ -11,7 +11,7 @@ abstract class FiroeWithoutBraneMind(ast: AST, comment: Option[String] = None) e
   setNyes(Nyes.CONSTANT)
 
   /** FiroeWithoutBraneMind instances don't require stepping */
-  def step(): Unit = () // No-op
+  def step(): Int = 0 // No-op, returns 0 for no work done
 
   /**
    * FiroeWithoutBraneMind instances are never NYE (Not Yet Evaluated).

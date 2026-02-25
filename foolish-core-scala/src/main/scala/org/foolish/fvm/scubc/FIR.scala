@@ -41,6 +41,18 @@ abstract class FIR(val ast: AST, val comment: Option[String] = None):
   final def atConstanic: Boolean = nyes == Nyes.CONSTANIC
 
   /**
+   * Returns true when nyes >= CONSTANIC (i.e., CONSTANIC OR CONSTANT)
+   * This is the Scala equivalent of Java's isConstanic() method.
+   */
+  def isConstanic: Boolean = nyes == Nyes.CONSTANIC || nyes == Nyes.CONSTANT
+
+  /**
+   * Returns true when nyes >= CONSTANT (i.e., CONSTANT only)
+   * This is the Scala equivalent of Java's isConstant() method.
+   */
+  final def isConstant: Boolean = nyes == Nyes.CONSTANT
+
+  /**
    * Checks if this FIR has been initialized.
    */
   protected def isInitialized: Boolean = initialized
@@ -60,7 +72,7 @@ abstract class FIR(val ast: AST, val comment: Option[String] = None):
       setInitialized()
 
   /** Perform one step of evaluation on this FIR */
-  def step(): Unit
+  def step(): Int
 
   /**
    * Query method returning false if an additional step on this FIR does not change it.
@@ -135,15 +147,38 @@ object FIR:
     case assignment: AST.Assignment => AssignmentFiroe(assignment)
     case identifier: AST.Identifier => IdentifierFiroe(identifier)
     case regexpSearch: AST.RegexpSearchExpr =>
-      if (DerefSearchFiroe.isExactMatch(regexpSearch.pattern())) {
+      if DerefSearchFiroe.isExactMatch(regexpSearch.pattern()) then
         new DerefSearchFiroe(regexpSearch)
-      } else {
-        RegexpSearchFiroe(regexpSearch)
-      }
-    case oneShotSearch: AST.OneShotSearchExpr => OneShotSearchFiroe(oneShotSearch)
+      else
+        new RegexpSearchFiroe(regexpSearch)
+    case oneShotSearch: AST.OneShotSearchExpr => new OneShotSearchFiroe(oneShotSearch)
     case dereferenceExpr: AST.DereferenceExpr =>
       val synthetic = new AST.RegexpSearchExpr(dereferenceExpr.anchor(), org.foolish.ast.SearchOperator.REGEXP_LOCAL, dereferenceExpr.coordinate().toString)
       new DerefSearchFiroe(synthetic, dereferenceExpr)
     case seekExpr: AST.SeekExpr => SeekFiroe(seekExpr)
     case unanchoredSeekExpr: AST.UnanchoredSeekExpr => UnanchoredSeekFiroe(unanchoredSeekExpr)
+    case concatenation: AST.Concatenation => ConcatenationFiroe(concatenation)
     case _ => ValueFiroe(null, 0L) // Placeholder for unsupported types
+
+  /**
+   * Unwraps a Constanicable FIR to its resolved value.
+   *
+   * Follows the wrapper chain while the FIR is constanic:
+   * - IdentifierFiroe -> its value
+   * - AssignmentFiroe -> its result
+   * - SearchFiroe -> its searchResult
+   *
+   * Returns the first FIR in the chain that is either:
+   * - Not a Constanicable
+   * - A Constanicable with null or self-referential result
+   */
+  def unwrapConstanicable(fir: FIR): FIR =
+    var current = fir
+    while current != null do
+      if current.isInstanceOf[Constanicable] then
+        val result = current.asInstanceOf[Constanicable].getResult
+        if result == null || result == current then return current
+        current = result
+      else
+        return current
+    current
