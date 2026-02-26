@@ -13,6 +13,20 @@ object Sequencer4Human {
 case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
   import Sequencer4Human._
 
+  private var nyesStateInOutput: Boolean = true // Default is on
+
+  def setNyesStateInOutput(enabled: Boolean): Unit =
+    nyesStateInOutput = enabled
+
+  def isNyesStateInOutputEnabled: Boolean =
+    nyesStateInOutput
+
+  private def addNyesStateIfEnabled(value: String, nyes: Nyes): String =
+    if nyesStateInOutput then
+      s"$value ($nyes)"
+    else
+      value
+
   def sequence(fir: FIR, depth: Int): String = fir match
     case brane: BraneFiroe => sequenceBrane(brane, depth)
     case concat: ConcatenationFiroe => sequenceConcatenation(concat, depth)
@@ -56,7 +70,7 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
     if !binary.isNye then
       // Check if the result is constanic (unresolved)
       if binary.atConstanic then
-        indent(depth) + CC_STR
+        indent(depth) + addNyesStateIfEnabled(CC_STR, binary.getNyes)
       else if binary.isAbstract then
         indent(depth) + NK_STR
       else
@@ -73,7 +87,7 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
     if !unary.isNye then
       // Check if the result is constanic (unresolved)
       if unary.atConstanic then
-        indent(depth) + CC_STR
+        indent(depth) + addNyesStateIfEnabled("⎵", unary.getNyes)
       else
         try
           indent(depth) + unary.getValue.toString
@@ -112,7 +126,7 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
           if unwrapped.atConstanic
              && !unwrapped.isInstanceOf[BraneFiroe]
              && !unwrapped.isInstanceOf[ConcatenationFiroe] then
-            indent(depth) + s"$fullId = $CC_STR"
+            indent(depth) + addNyesStateIfEnabled(s"$fullId = $CC_STR", unwrapped.getNyes)
           else if unwrapped.isInstanceOf[BraneFiroe] then
             // Special handling for nested branes to align indentation
             val sequencedBrane = sequence(unwrapped.asInstanceOf[BraneFiroe], depth)
@@ -163,7 +177,7 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
       else
         indent(depth) + s"$fullId = $NK_STR"
     else if assignment.atConstanic then
-        indent(depth) + s"$fullId = $CC_STR"
+        indent(depth) + addNyesStateIfEnabled(s"$fullId = $CC_STR", assignment.getNyes)
     else
       // If not yet evaluated, show the structure
       indent(depth) + s"$fullId = $NK_STR"
@@ -172,19 +186,19 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
     // If the identifier has been resolved and is not NYE
     if !identifier.isNye then
       if identifier.atConstanic then
-         indent(depth) + CC_STR
+         indent(depth) + addNyesStateIfEnabled(CC_STR, identifier.getNyes)
       else if identifier.isAbstract then
         indent(depth) + NK_STR
       else
         unwrap(identifier) match
-          case constanic if constanic.atConstanic => indent(depth) + CC_STR
+          case constanic if constanic.atConstanic => indent(depth) + addNyesStateIfEnabled(CC_STR, constanic.getNyes)
           case brane: BraneFiroe =>
              // Should not typically happen for top-level sequencing but good to handle
              sequence(brane, depth)
           case unwrapped =>
              indent(depth) + unwrapped.getValue.toString
     else if identifier.atConstanic then
-        indent(depth) + CC_STR
+        indent(depth) + addNyesStateIfEnabled(CC_STR, identifier.getNyes)
     else
       // If not yet evaluated
       indent(depth) + NK_STR
@@ -193,13 +207,13 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
     if !oneShotSearch.isNye then
       // Check if search found nothing - not found is CONSTANIC
       if !oneShotSearch.isFound then
-        indent(depth) + CC_STR
+        indent(depth) + addNyesStateIfEnabled(CC_STR, oneShotSearch.getNyes)
       else if oneShotSearch.atConstant then
         // Found and CONSTANT - use sequence() recursively on the result
         sequence(oneShotSearch.getResult, depth)
       else
         // Search found something but it's CONSTANIC (unresolved)
-        indent(depth) + CC_STR
+        indent(depth) + addNyesStateIfEnabled(CC_STR, oneShotSearch.getNyes)
     else
       indent(depth) + NK_STR
 
@@ -283,7 +297,7 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
             else
               CC_STR
       else if identifier.atConstanic then
-        CC_STR
+        addNyesStateIfEnabled(CC_STR, identifier.getNyes)
       else
         NK_STR
     case _ => NK_STR

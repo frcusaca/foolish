@@ -26,14 +26,14 @@ PARSED AST:
 }
 
 UBC EVALUATION:
-Steps taken: 33
+Steps taken: 44
 
 FINAL RESULT:
 {
-＿x = ⎵⎵;
+＿x = ⎵⎵ (CONSTANIC);
 ＿outer = {
 ＿        ＿inner = {
-＿        ＿        ＿y = ⎵⎵;
+＿        ＿        ＿y = ⎵⎵ (CONSTANIC);
 ＿        ＿};
 ＿};
 }

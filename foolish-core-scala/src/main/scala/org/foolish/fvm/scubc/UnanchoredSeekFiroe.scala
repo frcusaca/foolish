@@ -65,7 +65,12 @@ class UnanchoredSeekFiroe(seekExpr: AST.UnanchoredSeekExpr) extends FiroeWithBra
       value.isConstanic
 
   override def isNye: Boolean =
-    getNyes.ordinal < Nyes.CONSTANIC.ordinal
+    if value == null then
+      // Not yet resolved or out of bounds
+      getNyes.ordinal < Nyes.CONSTANIC.ordinal
+    else
+      // Check if the value is NYE
+      value.isNye
 
   /**
    * Resolve the unanchored seek during the INITIALIZED phase.
@@ -96,9 +101,14 @@ class UnanchoredSeekFiroe(seekExpr: AST.UnanchoredSeekExpr) extends FiroeWithBra
 
           // Check bounds
           if targetIdx >= 0 && targetIdx < size then
-            value = targetMemory.get(targetIdx)
-            println(s"DEBUG UnanchoredSeekFiroe: value=$value (class=${value.getClass.getSimpleName})")
+            var memItem = targetMemory.get(targetIdx)
+            println(s"DEBUG UnanchoredSeekFiroe: targetMemory.get($targetIdx) = $memItem (class=${memItem.getClass.getSimpleName}, getNyes=${memItem.getNyes})")
+            // Set the value reference first
+            value = memItem
+            // Set state to CHECKED so the item can be further evaluated if needed
+            // This matches Java behavior - seek doesn't fully evaluate the item itself
             setNyes(Nyes.CHECKED)
+            println(s"DEBUG UnanchoredSeekFiroe: Set value=$memItem, state to CHECKED")
           else
             // Out of bounds - return constanic (not found)
             value = null
@@ -107,6 +117,8 @@ class UnanchoredSeekFiroe(seekExpr: AST.UnanchoredSeekExpr) extends FiroeWithBra
         1
 
       case _ =>
+        // Let parent handle all other states (CHECKED, PRIMED, EVALUATING, etc.)
+        // The parent class will progress the state through the normal state machine
         super.step()
 
   override def getValue: Long =
@@ -121,7 +133,10 @@ class UnanchoredSeekFiroe(seekExpr: AST.UnanchoredSeekExpr) extends FiroeWithBra
    * This allows OneShotSearchFiroe and other search operations to access
    * the result of the unanchored seek.
    */
-  override def getResult: FIR = value
+  override def getResult: FIR = {
+    println(s"DEBUG UnanchoredSeekFiroe.getResult: value=$value (class=${if value != null then value.getClass.getSimpleName else "null"})")
+    value
+  }
 
   override def cloneConstanic(newParent: FIR, targetNyes: Option[Nyes]): FIR =
     if !isConstanic then

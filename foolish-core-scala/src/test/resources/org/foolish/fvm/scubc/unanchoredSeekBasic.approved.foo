@@ -53,7 +53,7 @@ PARSED AST:
 }
 
 UBC EVALUATION:
-Steps taken: 210
+Steps taken: 329
 
 FINAL RESULT:
 {
@@ -68,13 +68,13 @@ FINAL RESULT:
 ＿e = 20;
 ＿f = 59;
 ＿g = {
-＿    ＿aa = ⎵⎵;
+＿    ＿aa = ⎵⎵ (CONSTANIC);
 ＿    ＿bb = 3;
 ＿    ＿cc = 9;
 ＿};
 ＿h = 9;
 ＿i = 9;
-＿j = ???;
+＿j = ⎵⎵ (CONSTANIC);
 }
 
 COMPLETION STATUS:

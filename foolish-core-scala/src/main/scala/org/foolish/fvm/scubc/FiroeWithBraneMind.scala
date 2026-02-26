@@ -217,7 +217,9 @@ abstract class FiroeWithBraneMind(ast: AST, comment: Option[String] = None)
         if braneMind.isEmpty then
           // All expressions evaluated, check if any are CONSTANIC
           val anyConstanic = braneMemory.stream.exists(_.atConstanic)
-          setNyes(if anyConstanic then Nyes.CONSTANIC else Nyes.CONSTANT)
+          val newState = if anyConstanic then Nyes.CONSTANIC else Nyes.CONSTANT
+          println(s"DEBUG FiroeWithBraneMind.EVALUATING: braneMemory.size=${braneMemory.size}, newState=$newState")
+          setNyes(newState)
           return 1
 
         val current = braneMind.dequeue()

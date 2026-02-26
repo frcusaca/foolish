@@ -59,10 +59,13 @@ class BraneFiroe(override val ast: AST)
 
   override def step(): Int =
     if !isInitialized then
+      println(s"DEBUG BraneFiroe.step: initializing, ast=$ast")
       initialize()
       return 1
 
-    super.step()
+    val result = super.step()
+    println(s"DEBUG BraneFiroe.step: after super.step(), getNyes=${getNyes}, braneMemory.size=${braneMemory.size}, braneMind.size=${braneMind.size}")
+    result
 
   /** Returns the list of expression Firoes in this brane */
   def getExpressionFiroes: List[FIR] = braneMemory.stream.toList
