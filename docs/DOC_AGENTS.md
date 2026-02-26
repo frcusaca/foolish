@@ -111,7 +111,7 @@ For example:
 [2026-02-24T11:22:27,026055815-08:00] Claude Code v1.0.0 / claude-sonnet-4-6
 ```
 
-These files can be referenced by line number from other documents because they never shrink.
+These files can be referenced by line number from other documents because they never shrink. These files are written specifically for agents to read, so they should differ from git commit which are meant for human consumption and more formal documentation.
 
 ---
 
