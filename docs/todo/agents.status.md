@@ -97,11 +97,11 @@ as follows:
 
 | File | Status | Description |
 |------|--------|-------------|
-| `docs/how/ubc2_design.md` | **NEW (untracked)** | UBC2 design specification, 1137 lines. The primary deliverable. |
-| `docs/how/ubc_engineering.md` | **NEW (untracked)** | Consolidated UBC1 engineering reference, ~325 lines. |
+| `docs/how/ubc2_design.md` | **NEW (untracked) | UBC2 design specification, 1137 lines. The primary deliverable. |
+| `docs/how/ubc_engineering.md` | **NEW (untracked) | Consolidated UBC1 engineering reference, ~325 lines. |
 | `docs/README.md` | **MODIFIED** | Added Engineering Reference links to new docs. |
 | `docs/todo/0_documentation.md` | **MODIFIED** | Phase 2: 3 items checked off. |
-| `docs/todo/1_ubc2_design_status.md` | **NEW (this file)** | This continuation guide. |
+| `docs/todo/1_ubc2_design_status.md` | **NEW (this file) | This continuation guide. |
 
 ---
 
@@ -137,7 +137,7 @@ integer comparison per message prevents infinite forwarding loops.
 
 All non-literal expressions are branes with one unified lifecycle. This includes:
 - **Curly-brace branes** `{...}`: define a search scope boundary. `.value()` returns the brane.
-- **Boundary-less branes (proto-branes)**: binary ops (`a + b`), unary ops (`-x`), searches.
+- **Boundary-less branes (proto-branes): binary ops (`a + b`), unary ops (`-x`), searches.
   No search scope boundary (searches start in parent). `.value()` returns a literal.
 - **Literal values**: Always INDEPENDENT. No lifecycle. They simply exist.
 
@@ -828,7 +828,7 @@ Depends on concatenation design. Critical sub-questions:
 *Source material*: `docs/vintage_legacy/003-Detachment_Project.md`,
 `docs/vintage_legacy/NAMES_SEARCHES_N_BOUNDS.md` lines 739–1244.
 
-**H3. Search-Based Path Selection (Replacing If-Then-Else)**
+**H3. Search-Based Path Selection (Replacing If-Then-Else)
 *Priority: BLOCKING. Referenced: [Design TODO item 3](#3-search-based-path-selection-high-replaces-if-then-else),
 [Issue 8](#high-priority--affects-ubc2-design)*
 
@@ -991,14 +991,14 @@ The user has not explicitly stated the next step. Likely continuations (in rough
 
 ## Last Updated
 
-**Date**: 2026-02-24
-**Updated By**: Claude Code v1.0.0 / claude-sonnet-4-6
-**Changes**: Applied 🧠 prefix to all sequencer output symbols throughout: `🧠?` (WOCONSTANIC),
+Date: 2026-02-24
+Updated By: Claude Code v1.0.0 / claude-sonnet-4-6
+Changes: Applied 🧠 prefix to all sequencer output symbols throughout: `🧠?` (WOCONSTANIC),
 `🧠??` (CONSTANIC), `🧠???` (NK). Removed erroneous claim that `???` is a valid Foolish input
 token (it is not — all three symbols are sequencer output only). Updated Sequencing Output
 Symbols table, NK vs CONSTANIC section, issues 12/14/15/18/19, comparison table rows, and
 human action item H10.
-**Previous session (2026-02-20):** Initial creation with comprehensive review. Contains:
+Previous session (2026-02-20):** Initial creation with comprehensive review. Contains:
 session summary, compressed UBC2 design context, 13 settled design decisions, 3 Design TODOs,
 15 open issues (items 8–22), deep UBC1 code review, git history iteration analysis, vintage
 legacy documentation gaps, UBC2 coverage assessment (22-row matrix), and 14 prioritized human

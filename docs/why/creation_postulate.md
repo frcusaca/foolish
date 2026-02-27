@@ -4,9 +4,9 @@
 
 ## Statement
 
-**We postulate that any thinking thing — humans, biological organisms, minds of any
-kind — can always have a new idea that is distinct from every idea it has ever had
-before.**
+> We postulate that any thinking thing — humans, biological organisms, minds of any
+> kind — can always have a new idea that is distinct from every idea it has ever had
+> before.
 
 Not only can we think new ideas, we can name them and talk about them. We can relate
 them to our existing ideas. We can share them with others. The universe of ideas is
@@ -247,8 +247,9 @@ ideas across disciplines.
 
 ## Last Updated
 
-**Date**: 2026-02-06
-**Updated By**: Claude Code v1.0.0 / claude-opus-4-6
-**Changes**: Restructured to lead with the philosophical idea (new ideas, not new values),
-then show how Foolish implements it, then related work across mathematics, philosophy,
-computer science, and natural sciences.
+Date: 2026-02-26
+Updated By: Claude Code v1.0.0 / claude-opus-4-6
+Changes: Converted bolded statement into blockquote — structure conveys prominence better
+than bold running prose. Definition-list labels in Related Work left as-is (standard convention).
+Previous (2026-02-06): Restructured to lead with the philosophical idea, then Foolish
+implementation, then related work.

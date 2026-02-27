@@ -1,6 +1,17 @@
 # DOC_AGENTS.md — AI Agent Instructions for the `docs/` Directory
 
-**Read this file before working on any document in `docs/` or its subdirectories.**
+Read this file before working on any document in `docs/` or its subdirectories.
+
+---
+
+## Style Authority
+
+The comprehensive English style guide for Foolish documentation is
+[`styleguide.md`](styleguide.md). Read it before writing or editing any document in this
+directory tree. The style guide is strict for human-consumption documentation (`why/`,
+`howto/`) and strongly preferred for agent-facing documentation (`how/`, `todo/`).
+
+When this file and `styleguide.md` conflict, this file takes precedence.
 
 ---
 
@@ -31,9 +42,21 @@ The development discipline is strict BDD. Tests come first:
 | `docs/todo/` | Project tracking, outstanding items, agent logs | Lower = higher priority |
 | `docs/vintage_legacy/` | Pre-reorganization files; read for context, do not edit | — |
 
-**Numeric file prefixes** encode priority — a file numbered `0` is more important and more
+Numeric file prefixes encode priority — a file numbered `0` is more important and more
 foundational than one numbered `50`. Within a group, `0.a` precedes `0.b`, etc. When adding new
 tracking documents, choose a number that reflects where the work fits in the overall sequence.
+
+### Readability Priorities by Directory
+
+The `how/` and `todo/` directories are working documents that agents read and update frequently.
+These directories prioritize agent readability: unambiguous symbol references, consistent
+terminology, and structural clarity that an LLM can parse reliably. When editing files in these
+directories, maintain this standard on an ongoing basis — each edit should leave the file at
+least as readable to an agent as it was before.
+
+The `why/` and `howto/` directories are primarily for human readers. They explain philosophy,
+motivation, and tutorial material in a style that a person reads end-to-end. Prioritize natural
+prose flow and readability for humans in these directories.
 
 ---
 ## Interactions Through @Agent Feedback Comments
@@ -82,19 +105,20 @@ This requires that, outside this current markdown "## Interactions" section, we 
 
 ## Mandatory Actions on Every Commit
 
-1. **Update `todo/human_todo_index.md`** — mark resolved items, add new ones if the work
+1. Update `todo/human_todo_index.md` — mark resolved items, add new ones if the work
    revealed open questions.
-2. **Append to `todo/agents.status.md`** — one timestamped entry per commit summarising what
+2. Append to `todo/agents.status.md` — one timestamped entry per commit summarising what
    changed and why. See format below.
-3. **Append to `todo/agents.scratch.log.md`** if the session involved non-trivial reasoning
+3. Append to `todo/agents.scratch.log.md` if the session involved non-trivial reasoning
    that may be useful in future sessions (architecture debates, rejected alternatives, etc.).
-4. **Update the `## Last Updated` section** of any `*.md` file you modify.
+4. Update the `## Last Updated` section of any `*.md` file you modify. Use plain labels
+   (`Date:`, `Updated By:`, `Changes:`, `Previous:`) — the colon already marks them as labels.
 
 ---
 
 ## Append-Only Log Format
 
-Both `agents.status.md` and `agents.scratch.log.md` are **append-only**. Never edit earlier
+Both `agents.status.md` and `agents.scratch.log.md` are append-only. Never edit earlier
 entries. Add new entries at the bottom.
 
 Each entry header:
@@ -115,31 +139,40 @@ These files can be referenced by line number from other documents because they n
 
 ---
 
-## Style Guide for New UBC2 Documents
+## Style and Formatting
 
-### English Prose
+For English prose conventions — emphasis, structure, voice, punctuation, and formatting — read
+[`styleguide.md`](styleguide.md). That file is the comprehensive reference. The subsections
+here cover domain-specific conventions that supplement it.
 
-- **State names** are written in SMALL CAPS when used as technical terms: PREMBRYONIC,
-  EMBRYONIC, BRANING, CONSTANIC, WOCONSTANIC, CONSTANT, INDEPENDENT. Collectively the
-  progression is called the *Nyes states* (proper noun; the enum is `Nyes`).
-- **Predicates**: use `atCONSTANIC()` / `at_constanic()` for the exact-state check;
-  `achievedConstanic()` / `achieved_constanic()` for "at or beyond CONSTANIC." The adjective
-  *nigh* means pre-constanic (before and not including CONSTANIC). `isNigh()` returns true
-  when the FIR has not yet achieved constanic.
-- **"Nigh X"** in prose means "before and not including X." There is no `X-` notation.
-  `X+` in prose means "X and all states beyond it."
-- **The 🧠 prefix is the Foolish semantic bracket prefix.** `🧠e` is the single-token form of
-  `🧠⟦e⟧` — the meaning of expression `e`. Writing `🧠1 🧠2 🧠+` token by token is equivalent
-  to writing `🧠⟦1 + 2⟧` as a whole. It appears on literal branes (`🧠1`), system operators
-  (`🧠+`), and state symbols (`🧠?`, `🧠??`, `🧠???`). None are source syntax; all are
-  denotations. See `how/SYMBOL_TABLE.md` for unicode codepoints.
-- **Sequencer output state symbols**: `🧠?` (WOCONSTANIC), `🧠??` (CONSTANIC), `🧠???` (NK).
-  These are the denotations of constanic states as rendered by the sequencer.
-- **NK** (Not Known) is produced only when the UBC can prove a search fails in *all* possible
-  future contexts. Ordinary search failure is CONSTANIC, not NK.
-- Prefer flowing paragraphs over bulleted lists for explanatory prose. Use lists for
-  enumerated steps or decision tables where order or discreteness matters.
-- Avoid font-emphasis emoting. Avoid all-caps for emphasis; reserve caps for state/enum names.
+Nyes state names (PREMBRYONIC, EMBRYONIC, BRANING, CONSTANIC, etc.) need no additional emphasis
+when capitalized. The capitals already distinguish them from ordinary English.
+
+### Terminology Conventions
+
+State names are written in capitals when used as technical terms: PREMBRYONIC, EMBRYONIC,
+BRANING, CONSTANIC, WOCONSTANIC, CONSTANT, INDEPENDENT. Collectively the progression is
+called the *Nyes states* (proper noun; the enum is `Nyes`).
+
+For predicates, use `atCONSTANIC()` / `at_constanic()` for the exact-state check and
+`achievedConstanic()` / `achieved_constanic()` for "at or beyond CONSTANIC." The adjective
+*nigh* means pre-constanic (before and not including CONSTANIC). `isNigh()` returns true when
+the FIR has not yet achieved constanic.
+
+"Nigh X" in prose means "before and not including X." There is no `X-` notation. `X+` in
+prose means "X and all states beyond it."
+
+### The 🧠 Prefix
+
+The 🧠 prefix is the Foolish semantic bracket prefix. `🧠e` is the single-token form of
+`🧠⟦e⟧` — the meaning of expression `e`. Writing `🧠1 🧠2 🧠+` token by token is equivalent
+to writing `🧠⟦1 + 2⟧` as a whole. It appears on literal branes (`🧠1`), system operators
+(`🧠+`), and state symbols (`🧠?`, `🧠??`, `🧠???`). None are source syntax; all are
+denotations. See `how/SYMBOL_TABLE.md` for unicode codepoints.
+
+The sequencer output state symbols are `🧠?` (WOCONSTANIC), `🧠??` (CONSTANIC), and `🧠???`
+(NK). NK (Not Known) is produced only when the UBC can prove a search fails in all possible
+future contexts. Ordinary search failure is CONSTANIC, not NK.
 
 ### Java
 
@@ -184,7 +217,27 @@ re-opening closed debates.
 
 ## Last Updated
 
-**Date**: 2026-02-24
-**Updated By**: Claude Code v1.0.0 / claude-sonnet-4-6
-**Changes**: Initial creation. Covers project purpose, directory map, key files, commit
-obligations, append-only log format, and style guide sections for English, Java, and Foolish.
+Date: 2026-02-27
+Updated By: Claude Code v1.0.0 / claude-opus-4-6
+Changes: Moved English prose style content (emphasis rules, structural elements table, code
+block guidance, rendering target, LLM over-emphasis note) into `styleguide.md`. Replaced
+verbose "Style Guide for New UBC2 Documents" section with compact "Style and Formatting"
+linking to `styleguide.md`. Added "Style Authority" section establishing `styleguide.md` as
+the comprehensive reference — strict for human docs, strongly preferred for agent docs, with
+`DOC_AGENTS.md` having final say on conflicts. Resolved `bold_emphasis` DEFERRED item in
+`styleguide.md`. Retained domain-specific subsections (Terminology, 🧠 Prefix, Java, Foolish).
+Previous (2026-02-26): Added Rendering Target subsection — markdown files target browser rendering, HTML
+entities acceptable when needed. Added Readability Priorities by Directory under Directory Map:
+`how/` and `todo/` prioritize agent readability (ongoing), `why/` and `howto/` prioritize human
+readability. Re-reviewed full document for agent readability; fixed heading level on directory
+readability subsection.
+Previous (2026-02-26): Renamed "Structure Before Emphasis" to "Structure for Emphasis." Added
+references to Unix man pages, IEEE standards, Chicago Manual of Style, and Knuth as exemplars.
+Added complete markdown structural elements table. Added "Code Blocks" subsection requiring
+typed fenced blocks for any code longer than five tokens. Removed bold from Last Updated labels
+throughout docs directory.
+Previous (2026-02-26): Added "Writing Normal English" subsection framing conventions as normal
+technical English practice. Addressed LLM over-emphasis pattern explicitly.
+Previous (2026-02-25): Rewrote English Prose style guide with subsections for structure,
+emphasis, and prose style. Removed @Agent feedback comments.
+Previous (2026-02-24): Initial creation by claude-sonnet-4-6.

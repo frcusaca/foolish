@@ -135,6 +135,6 @@ grammar and into context-specific sub-parsers. Each data type owns its own synta
 
 ## Last Updated
 
-**Date**: 2026-02-06
-**Updated By**: Claude Code v1.0.0 / claude-opus-4-6
-**Changes**: Initial proposal document.
+Date: 2026-02-06
+Updated By: Claude Code v1.0.0 / claude-opus-4-6
+Changes: Initial proposal document.
