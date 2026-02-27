@@ -26,15 +26,12 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
       case Nyes.CHECKED =>
         if (stepNonBranesUntilState(Nyes.CONSTANIC)) {
           if (isAnchorReady) {
-            println(s"DEBUG: Calling performSearchStep, searchPerformed=$searchPerformed, searchResult=$searchResult")
             performSearchStep()
-            println(s"DEBUG: After performSearchStep, searchResult=$searchResult, searchPerformed=$searchPerformed, atConstanic=$atConstanic")
             if (atConstanic) {
               return 1
             }
             if (searchResult != null) {
               // Set found status based on result type
-              println(s"DEBUG: searchResult=$searchResult, found=$found")
               searchResult match {
                 case _: NKFiroe =>
                   // Search failed - result is NK (not found)
@@ -53,14 +50,16 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
                     setNyes(Nyes.CONSTANT)
                   }
               }
+            } else {
+              // searchResult is null means "found but constanic" (e.g., constanic identifier with no value)
+              // This matches Java's valuableSelf() returning Optional.empty()
+              found = true
+              setNyes(Nyes.CONSTANIC)
             }
-            // If searchResult is null, the search is not completed yet (internal stepping).
-            // Stay in CHECKED state to retry when anchor becomes ready.
           }
         }
         1
       case _ =>
-        println(s"DEBUG: default step case, nyes=$getNyes, braneMemory.size=${braneMemory.size}")
         super.step()
     }
   }
@@ -82,11 +81,9 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
     if (braneMemory.isEmpty) return false
 
     var anchor = braneMemory.getLast
-    println(s"DEBUG isAnchorReady: anchor=$anchor (class=${anchor.getClass.getSimpleName})")
 
     // Check if anchor is CONSTANIC
     if (anchor.atConstanic) {
-      println(s"DEBUG isAnchorReady: anchor is CONSTANIC, returning true")
       return true
     }
 
@@ -120,52 +117,40 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
     // Check chained search
     anchor match {
       case abstractSearch: AbstractSearchFiroe =>
-        println(s"DEBUG isAnchorReady: abstractSearch=$abstractSearch, atConstanic=${abstractSearch.atConstanic}, isNye=${abstractSearch.isNye}, getNyes=${abstractSearch.getNyes}")
         if (abstractSearch.atConstanic) {
-          println(s"DEBUG isAnchorReady: returning true (abstractSearch CONSTANIC)")
           return true
         }
         if (abstractSearch.isNye) {
           abstractSearch.step()
-          println(s"DEBUG isAnchorReady: returning false (abstractSearch NYE after step)")
           false
         } else {
-          println(s"DEBUG isAnchorReady: returning true (abstractSearch not NYE)")
           true
         }
       case unanchoredSeek: UnanchoredSeekFiroe =>
         val seekValue = unanchoredSeek.getResult
-        println(s"DEBUG isAnchorReady: unanchoredSeek=$unanchoredSeek, atConstanic=${unanchoredSeek.atConstanic}, isNye=${unanchoredSeek.isNye}, getNyes=${unanchoredSeek.getNyes}, value=$seekValue")
         if (unanchoredSeek.atConstanic) {
-          println(s"DEBUG isAnchorReady: returning true (unanchoredSeek CONSTANIC)")
           return true
         }
         if (unanchoredSeek.isNye) {
           unanchoredSeek.step()
-          println(s"DEBUG isAnchorReady: returning false (unanchoredSeek NYE after step)")
           false
         } else {
-          println(s"DEBUG isAnchorReady: returning true (unanchoredSeek not NYE)")
           true
         }
       case _ =>
-        println(s"DEBUG isAnchorReady: returning true (default case)")
         true
     }
     end match
   }
 
   protected def performSearchStep(): Unit = {
-    println(s"DEBUG performSearchStep: entered, searchPerformed=$searchPerformed, braneMemory.size=${braneMemory.size}")
     if (unwrapAnchor == null && !searchPerformed) {
       if (braneMemory.isEmpty) {
         searchResult = new NKFiroe()
         return
       }
       val last = braneMemory.getLast
-      println(s"DEBUG performSearchStep: braneMemory.getLast=$last (class=${last.getClass.getSimpleName})")
       unwrapAnchor = last
-      println(s"DEBUG performSearchStep: set unwrapAnchor=$unwrapAnchor (class=${unwrapAnchor.getClass.getSimpleName})")
     }
 
     if (searchResult != null) return
@@ -183,8 +168,11 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
 
       unwrapAnchor match {
       case identifierFiroe: IdentifierFiroe =>
+        // If identifier is constanic but has no value, return null result to indicate
+        // "found but constanic" (not "not found"). This matches Java's valuableSelf()
+        // behavior which returns Optional.empty() for constanic identifiers.
         if (identifierFiroe.atConstanic) {
-            searchResult = new NKFiroe()
+            searchResult = null
             return
         }
         if (identifierFiroe.isNye) {
@@ -198,25 +186,20 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
         resolved = false  // Continue unwrapping
 
       case assignmentFiroe: AssignmentFiroe =>
-        println(s"DEBUG case assignmentFiroe: unwrapAnchor=$unwrapAnchor, atConstanic=${assignmentFiroe.atConstanic}, isNye=${assignmentFiroe.isNye}, getNyes=${assignmentFiroe.getNyes}")
         // For search operations, constanic assignments should still be unwrapped
         // to get their result (e.g., g = {...} where the brane is constanic)
         if (assignmentFiroe.isNye) {
           assignmentFiroe.step()
-          println(s"DEBUG: After step, isNye=${assignmentFiroe.isNye}")
           if (assignmentFiroe.isNye) {
             return  // Will retry on next step
           }
         }
         val res = assignmentFiroe.getResult
-        println(s"DEBUG: assignmentFiroe.getResult = $res (class=${res.getClass.getSimpleName})")
         if (res == null) {
-          println(s"DEBUG: searchResult = NKFiroe (result is null)")
           searchResult = new NKFiroe()
         }
         else {
           unwrapAnchor = res
-          println(s"DEBUG: unwrapAnchor = $unwrapAnchor")
         }
         resolved = false  // Continue unwrapping
 
@@ -241,18 +224,14 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
         resolved = false  // Continue unwrapping
 
       case unanchoredSeekFiroe: UnanchoredSeekFiroe =>
-        println(s"DEBUG: case unanchoredSeekFiroe, atConstanic=${unanchoredSeekFiroe.atConstanic}, isNye=${unanchoredSeekFiroe.isNye}, getNyes=${unanchoredSeekFiroe.getNyes}")
         if (unanchoredSeekFiroe.isNye) {
           unanchoredSeekFiroe.step()
-          println(s"DEBUG: After step, isNye=${unanchoredSeekFiroe.isNye}, getNyes=${unanchoredSeekFiroe.getNyes}")
           if (unanchoredSeekFiroe.isNye) {
             return  // Will retry on next step
           }
         }
         val result = unanchoredSeekFiroe.getResult
-        println(s"DEBUG: unanchoredSeekFiroe.getResult = $result (class=${if result != null then result.getClass.getSimpleName else "null"})")
         if (result == null && !unanchoredSeekFiroe.atConstanic) {
-            println(s"DEBUG: searchResult = NKFiroe (result is null)")
             searchResult = new NKFiroe()
             return
         }
@@ -265,14 +244,12 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
         resolved = false  // Continue unwrapping
 
       case braneFiroe: BraneFiroe =>
-        println(s"DEBUG: braneFiroe case, searchPerformed=$searchPerformed, braneMemory.size=${braneFiroe.braneMemory.size}")
         if (searchPerformed) {
           searchResult = braneFiroe
           return
         }
 
         var result = executeSearch(braneFiroe)
-        println(s"DEBUG: After executeSearch, result=$result (class=${result.getClass.getSimpleName})")
         searchPerformed = true
 
         if (result == null) {
@@ -312,12 +289,17 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
               unwrapAnchor = result
               resolved = false  // Continue unwrapping
             else
-              println(s"DEBUG: Setting searchResult = $result (class=${result.getClass.getSimpleName})")
               searchResult = result
         }
 
       case nkFiroe: NKFiroe =>
         searchResult = new NKFiroe()
+        return
+
+      case value: ValueFiroe =>
+        // For value types, the search result is the value itself
+        // This handles cases like $4 which creates a OneShotSearch on a value
+        searchResult = value
         return
 
       // Handle value types by finding their containing brane
@@ -327,11 +309,9 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
         } else {
           // Try to find the containing brane for this value
           val containingBrane = unwrapAnchor.getMyBrane
-          println(s"DEBUG: unwrapAnchor=${unwrapAnchor.getClass.getSimpleName}, containingBrane=$containingBrane, searchPerformed=$searchPerformed")
           containingBrane match
             case braneFiroe: BraneFiroe =>
               // Found the containing brane - perform the search on it
-              println(s"DEBUG: Calling executeSearch on brane $braneFiroe")
               var result = executeSearch(braneFiroe)
               searchPerformed = true
 
@@ -405,9 +385,15 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
   }
 
   override def isNye: Boolean = {
-    val result = if (searchResult == null) true else searchResult.isNye
-    if (result) println(s"DEBUG AbstractSearchFiroe.isNye: searchResult=$searchResult, searchResult.isNye=${if searchResult != null then searchResult.isNye else "N/A"}")
-    result
+    // searchResult == null means "found but constanic" (e.g., constanic identifier with no value)
+    // In this case, isNye should return false if the search's state indicates it's done (CONSTANIC or CONSTANT)
+    if (searchResult == null) {
+      // Use the state-based isNye from parent class (FiroeWithBraneMind)
+      // This returns false for CONSTANIC and CONSTANT states
+      getNyes != Nyes.CONSTANT && getNyes != Nyes.CONSTANIC
+    } else {
+      searchResult.isNye
+    }
   }
 
   override def getValue: Long = {

@@ -29,10 +29,7 @@ class AssignmentFiroe(assignment: AST.Assignment)
   override protected def initialize(): Unit =
     if isInitialized then return
     setInitialized()
-
-    println(s"DEBUG AssignmentFiroe.initialize: assignment.expr=${assignment.expr()}")
     enqueueExprs(assignment.expr())
-    println(s"DEBUG AssignmentFiroe.initialize: braneMemory.size=${braneMemory.size}")
 
   override def step(): Int =
     if result != null then
@@ -51,13 +48,11 @@ class AssignmentFiroe(assignment: AST.Assignment)
     // Check if we can get the final result
     if !super.isNye && !braneMemory.isEmpty then
       val res = braneMemory.get(0)
-      println(s"DEBUG AssignmentFiroe.step: result=$res, res.class=${res.getClass.getSimpleName}, res.atConstanic=${res.atConstanic}, self.getNyes=${getNyes}")
       result = res
       if res.atConstanic then
         setNyes(Nyes.CONSTANIC)
       else
         setNyes(Nyes.CONSTANT)
-      println(s"DEBUG AssignmentFiroe.step: setNyes to ${getNyes}")
     work
 
   override def isAbstract: Boolean =

@@ -39,6 +39,7 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
     case assignment: AssignmentFiroe => sequenceAssignment(assignment, depth)
     case identifier: IdentifierFiroe => sequenceIdentifier(identifier, depth)
     case oneShotSearch: OneShotSearchFiroe => sequenceOneShotSearch(oneShotSearch, depth)
+    case search: AbstractSearchFiroe => sequenceSearch(search, depth)
     case _ => indent(depth) + NK_STR
 
   protected def sequenceBrane(brane: BraneFiroe, depth: Int): String =
@@ -214,6 +215,23 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
       else
         // Search found something but it's CONSTANIC (unresolved)
         indent(depth) + addNyesStateIfEnabled(CC_STR, oneShotSearch.getNyes)
+    else
+      indent(depth) + NK_STR
+
+  protected def sequenceSearch(search: AbstractSearchFiroe, depth: Int): String =
+    if !search.isNye then
+      // Check if search found nothing - not found is CONSTANIC
+      if !search.isFound then
+        indent(depth) + addNyesStateIfEnabled(CC_STR, search.getNyes)
+      else if search.atConstant then
+        // Found and CONSTANT - try to get the value
+        try
+          search.getValue.toString
+        catch
+          case _: IllegalStateException => sequence(search.getResult, depth)
+      else
+        // Search found something but it's CONSTANIC (unresolved)
+        indent(depth) + addNyesStateIfEnabled(CC_STR, search.getNyes)
     else
       indent(depth) + NK_STR
 

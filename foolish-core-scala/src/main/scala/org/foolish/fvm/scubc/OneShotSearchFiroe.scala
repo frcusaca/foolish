@@ -7,38 +7,49 @@ import org.foolish.ast.{AST, SearchOperator}
  */
 class OneShotSearchFiroe(oneShotSearch: AST.OneShotSearchExpr) extends AbstractSearchFiroe(oneShotSearch, oneShotSearch.operator()) {
 
-  override protected def initialize(): Unit = {
-    println(s"DEBUG OneShotSearchFiroe.initialize: entering, searchPerformed=$searchPerformed, braneMemory.size=${braneMemory.size}")
+  override protected def initialize(): Unit =
     super.initialize()
     val searchExpr = ast.asInstanceOf[AST.OneShotSearchExpr]
-    println(s"DEBUG OneShotSearchFiroe.initialize: after super.initialize, braneMemory.size=${braneMemory.size}")
     enqueueExprs(searchExpr.anchor())
-    println(s"DEBUG OneShotSearchFiroe.initialize: after enqueueExprs, braneMemory.size=${braneMemory.size}, braneMind.size=${braneMind.size}")
-  }
 
-  override protected def executeSearch(target: BraneFiroe): FIR = {
+  override protected def executeSearch(target: BraneFiroe): FIR =
     val targetMemory = target.braneMemory
-    println(s"DEBUG OneShotSearchFiroe: executeSearch operator=$operator, targetMemory.size=${targetMemory.size}")
-    if (targetMemory.isEmpty) {
-      val nk = new NKFiroe()
-      println(s"DEBUG OneShotSearchFiroe: returning NK (empty memory)")
-      return nk
-    }
+    if targetMemory.isEmpty then
+      return new NKFiroe()
 
-    val result = operator match {
-      case SearchOperator.HEAD =>
-        val head = targetMemory.get(0)
-        println(s"DEBUG OneShotSearchFiroe: HEAD returning $head (class=${head.getClass.getSimpleName})")
-        head
-      case SearchOperator.TAIL =>
-        val last = targetMemory.getLast
-        println(s"DEBUG OneShotSearchFiroe: TAIL returning $last (class=${last.getClass.getSimpleName})")
-        last
+    operator match
+      case SearchOperator.HEAD => targetMemory.get(0)
+      case SearchOperator.TAIL => targetMemory.getLast
       case _ => throw new IllegalStateException("Unknown one-shot operator: " + operator)
-    }
-    println(s"DEBUG OneShotSearchFiroe: executeSearch returning $result (class=${result.getClass.getSimpleName})")
-    result
-  }
 
   override def toString: String = ast.toString
+
+  /**
+   * Copy constructor for cloneConstanic.
+   * Resets search state so the search can be re-executed in a new context.
+   */
+  private def this(original: OneShotSearchFiroe, newParent: FIR) =
+    this(original.ast.asInstanceOf[AST.OneShotSearchExpr])
+    setParentFir(newParent)
+    // Copy braneMemory contents with cloned items
+    original.braneMemory.stream.foreach { fir =>
+      val cloned = fir.asInstanceOf[Constanicable].cloneConstanic(this, Some(Nyes.INITIALIZED))
+      braneMemory.put(cloned)
+      indexLookup.put(cloned, braneMemory.size - 1)
+      // For nested FiroeWithBraneMind instances, set up parent memory link
+      if cloned.isInstanceOf[FiroeWithBraneMind] then
+        cloned.asInstanceOf[FiroeWithBraneMind].ordinated = false
+        cloned.asInstanceOf[FiroeWithBraneMind].ordinateToParentBraneMind(this, indexLookup.size - 1)
+    }
+
+  override def cloneConstanic(newParent: FIR, targetNyes: Option[Nyes]): FIR =
+    if !isConstanic then
+      throw IllegalStateException(
+        s"cloneConstanic can only be called on CONSTANIC or CONSTANT FIRs, " +
+        s"but this FIR is in state: ${getNyes}")
+    if isConstant then
+      return this  // Share CONSTANT searches
+    val copy = new OneShotSearchFiroe(this, newParent)
+    targetNyes.foreach(copy.setNyes)
+    copy
 }

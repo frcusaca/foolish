@@ -26,19 +26,39 @@ import scala.jdk.CollectionConverters.*
 class ConcatenationFiroe(override val ast: AST.Concatenation)
   extends FiroeWithBraneMind(ast) with Constanicable:
 
-  private val sourceElements: List[AST.Expr] = ast.elements().asScala.toList
+  private var sourceElements: List[AST.Expr] = ast.elements().asScala.toList
   private var stageAExecutor: ExecutionFir = null
   private var sourceFirs: List[FIR] = null
   private var joinComplete = false
 
   /**
    * Copy constructor for cloneConstanic.
+   * Creates a copy with independent braneMemory and updated parent chain.
+   *
+   * @param original the ConcatenationFiroe to copy
+   * @param newParent the new parent for this clone
    */
   private def this(original: ConcatenationFiroe, newParent: FIR) =
     this(original.ast)
     setParentFir(newParent)
+    // Copy braneMemory contents with cloned items
+    original.braneMemory.stream.foreach { fir =>
+      val cloned = fir.asInstanceOf[Constanicable].cloneConstanic(this, Some(Nyes.INITIALIZED))
+      braneMemory.put(cloned)
+      indexLookup.put(cloned, braneMemory.size - 1)
+      // For nested FiroeWithBraneMind instances, set up parent memory link
+      if cloned.isInstanceOf[FiroeWithBraneMind] then
+        // Reset ordinated flag so we can re-ordinate in new context
+        cloned.asInstanceOf[FiroeWithBraneMind].ordinated = false
+        cloned.asInstanceOf[FiroeWithBraneMind].ordinateToParentBraneMind(this, indexLookup.size - 1)
+    }
+    // Copy source elements for later operations
+    sourceElements = original.sourceElements
+    stageAExecutor = null
     sourceFirs = null
     joinComplete = true
+    // Set state to INITIALIZED so children can re-evaluate
+    setNyes(Nyes.INITIALIZED)
 
   /**
    * Checks if this concatenation is ready for LHS identifier searches.

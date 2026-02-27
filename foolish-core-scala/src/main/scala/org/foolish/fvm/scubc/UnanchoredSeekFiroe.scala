@@ -82,38 +82,31 @@ class UnanchoredSeekFiroe(seekExpr: AST.UnanchoredSeekExpr) extends FiroeWithBra
       case Nyes.INITIALIZED =>
         val containingBrane = getMyBrane
         val currentPos = getMyBraneIndex
-        println(s"DEBUG UnanchoredSeekFiroe: containingBrane=$containingBrane, currentPos=$currentPos, offset=$offset")
 
         if containingBrane == null || currentPos < 0 then
           // No containing brane or position - out of bounds
           value = null
           setNyes(Nyes.CONSTANIC)
-          println(s"DEBUG UnanchoredSeekFiroe: No containing brane or position, setting null")
         else
           val targetMemory = containingBrane.braneMemory
           val size = targetMemory.size
-          println(s"DEBUG UnanchoredSeekFiroe: targetMemory.size=$size")
 
           // Calculate target index: currentPos + offset (offset is negative)
           // Example: currentPos=2, offset=-1 -> targetIdx=1 (previous statement)
           val targetIdx = currentPos + offset
-          println(s"DEBUG UnanchoredSeekFiroe: targetIdx=$targetIdx")
 
           // Check bounds
           if targetIdx >= 0 && targetIdx < size then
             var memItem = targetMemory.get(targetIdx)
-            println(s"DEBUG UnanchoredSeekFiroe: targetMemory.get($targetIdx) = $memItem (class=${memItem.getClass.getSimpleName}, getNyes=${memItem.getNyes})")
             // Set the value reference first
             value = memItem
             // Set state to CHECKED so the item can be further evaluated if needed
             // This matches Java behavior - seek doesn't fully evaluate the item itself
             setNyes(Nyes.CHECKED)
-            println(s"DEBUG UnanchoredSeekFiroe: Set value=$memItem, state to CHECKED")
           else
             // Out of bounds - return constanic (not found)
             value = null
             setNyes(Nyes.CONSTANIC)
-            println(s"DEBUG UnanchoredSeekFiroe: Out of bounds, setting null")
         1
 
       case _ =>
@@ -133,10 +126,7 @@ class UnanchoredSeekFiroe(seekExpr: AST.UnanchoredSeekExpr) extends FiroeWithBra
    * This allows OneShotSearchFiroe and other search operations to access
    * the result of the unanchored seek.
    */
-  override def getResult: FIR = {
-    println(s"DEBUG UnanchoredSeekFiroe.getResult: value=$value (class=${if value != null then value.getClass.getSimpleName else "null"})")
-    value
-  }
+  override def getResult: FIR = value
 
   override def cloneConstanic(newParent: FIR, targetNyes: Option[Nyes]): FIR =
     if !isConstanic then
