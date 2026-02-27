@@ -8,11 +8,11 @@ and tests. These are preferences, not strictly enforced by the language.
 ## File Format
 
 - Foolish source files use the `.foo` extension
-- Text width target: **108 characters** for all textual documents (`.foo`, `.txt`, `.md`, `.html`, `.xml`)
+- Text width target: 108 characters for all textual documents (`.foo`, `.txt`, `.md`, `.html`, `.xml`)
 
 ## Indentation
 
-Brane depth uses **tab characters** (not spaces) to reduce storage occupancy.
+Brane depth uses tab characters (not spaces) to reduce storage occupancy.
 
 Multi-line statement alignment may use spaces after the leading tabs. The spaces align
 continuation lines with the relevant part of the first line:
@@ -74,11 +74,11 @@ A feature progresses through these stages:
 
 ### Identifier Length Distribution
 
-Variable names should follow a **power-law (Zipf) distribution**:
+Variable names should follow a power-law (Zipf) distribution:
 
-- **Most names**: 1-2 words (short, common)
-- **Some names**: 3-4 words (occasional, descriptive)
-- **Rare names**: 5+ words (expressive when needed)
+- Most names: 1-2 words (short, common)
+- Some names: 3-4 words (occasional, descriptive)
+- Rare names: 5+ words (expressive when needed)
 
 Mean length targets:
 - Short branes: ~3.5 characters
@@ -117,8 +117,8 @@ expressivity and disambiguate concepts:
 ## Voice and Register
 
 When writing documentation that spans several sentences or paragraphs, explicitly signal
-to the reader whether you are speaking **about the Foolish language** (in layman's terms)
-or speaking **in Foolish** (using Foolish terminology).
+to the reader whether you are speaking about the Foolish language (in layman's terms)
+or speaking in Foolish (using Foolish terminology).
 
 Use the language's name as the transition marker:
 
@@ -161,7 +161,7 @@ Unit tests specifically test each unit of software — the primary check of corr
 Approval tests illustrate behavior to users. They should:
 
 - Correspond to unit tests where possible
-- Illustrate the most **important** and most **easily confused** aspects of behavior
+- Illustrate the most important and most easily confused aspects of behavior
 - Be comprehensive to show compatibility between different VM implementations
 - Establish mutual understanding between human users and the FVM in a human-readable way
 
@@ -170,6 +170,9 @@ more precisely.
 
 ## Last Updated
 
-**Date**: 2026-02-06
-**Updated By**: Claude Code v1.0.0 / claude-opus-4-6
-**Changes**: Initial creation from docs/vintage_legacy/STYLES.md content, restructured as universal style guide.
+Date: 2026-02-26
+Updated By: Claude Code v1.0.0 / claude-opus-4-6
+Changes: Reduced emphatic markings — removed bold from running prose (tab characters, text
+width, Zipf distribution, voice/register transition phrases, approval test descriptions).
+Retained bold on definition-list labels in Terminology table.
+Previous (2026-02-06): Initial creation from vintage_legacy/STYLES.md.

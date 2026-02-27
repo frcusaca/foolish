@@ -41,7 +41,7 @@ marker — it indicates we are expressing the *meaning* of an expression, not it
 
 - [ ] Run all UBC1 approval tests against UBC2 sequencer output
 - [ ] Review each `.received.foo` diff carefully (do not force-approve)
-- [ ] **Audit input files for invalid `???` usage** — scan all `.foo` test input files to
+- [ ] Audit input files for invalid `???` usage — scan all `.foo` test input files to
       confirm none use `???` as Foolish source syntax. It is not a valid input token.
       Any occurrence in a `.foo` input file is a bug in the test itself.
 - [ ] For each test where output changed from `🧠???` to `🧠??`: verify that brane concatenation
@@ -66,9 +66,8 @@ never appear in Foolish program input files, because they are semantics, not syn
 
 ## Last Updated
 
-**Date**: 2026-02-24
-**Updated By**: Claude Code v1.0.0 / claude-sonnet-4-6
-**Changes**: Renamed from `50_approval_test_migration.md`. Updated output symbols to use 🧠
-prefix throughout. Removed erroneous claim that parser accepts `???` as source token (it does
-not — all three symbols are sequencer output only). Added task to audit test input files for
-invalid `???` usage.
+Date: 2026-02-26
+Updated By: Claude Code v1.0.0 / claude-opus-4-6
+Changes: Removed bold from migration task item (structure carries the meaning).
+Previous (2026-02-24): Renamed from `50_approval_test_migration.md`. Updated output symbols
+to use 🧠 prefix. Removed erroneous claim about parser accepting `???` as source token.

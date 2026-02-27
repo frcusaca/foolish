@@ -35,6 +35,6 @@ Start with the tutorials in `howto/`:
 
 ## Last Updated
 
-**Date**: 2026-02-16
-**Updated By**: Claude Code v1.0.0 / claude-opus-4-6
-**Changes**: Added UBC engineering reference and UBC2 design specification links.
+Date: 2026-02-16
+Updated By: Claude Code v1.0.0 / claude-opus-4-6
+Changes: Added UBC engineering reference and UBC2 design specification links.

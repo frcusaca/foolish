@@ -27,7 +27,7 @@ Possibly repetitative — completeness over conciseness by design.
 
 ## The Core Mantra
 
-- **"Start simple, compute as we are."
+- "Start simple, compute as we are."
 
 - Containment is information.
 
@@ -710,7 +710,8 @@ Possibly repetitative — completeness over conciseness by design.
 
 ## Last Updated
 
-**Date**: 2026-02-06
-**Updated By**: Claude Code v1.0.0 / claude-opus-4-6
-**Changes**: Initial brainstorm snapshot. Extracted motivations from all docs/vintage_legacy/ and projects/ files.
-AI-contributed ideas marked with (AI).
+Date: 2026-02-26
+Updated By: Claude Code v1.0.0 / claude-opus-4-6
+Changes: Minor emphasis pass — removed bold from core mantra quote (sentence structure carries
+weight). Retained (AI) markers and definition-list labels as appropriate uses.
+Previous (2026-02-06): Initial brainstorm snapshot from vintage_legacy/ and projects/ files.

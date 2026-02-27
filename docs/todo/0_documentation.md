@@ -139,6 +139,6 @@ summary composed of the first chapters from each documentation area:
 
 ## Last Updated
 
-**Date**: 2026-02-20
-**Updated By**: Claude Code v1.0.0 / claude-opus-4-6
-**Changes**: Added UBC2 design status/continuation guide to Phase 5 tasks.
+Date: 2026-02-20
+Updated By: Claude Code v1.0.0 / claude-opus-4-6
+Changes: Added UBC2 design status/continuation guide to Phase 5 tasks.

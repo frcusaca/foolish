@@ -46,7 +46,7 @@ The core components are:
 | Context manip | `CMFir` | Two-phase "Stay Foolish" re-evaluation in new context |
 | State enum | `Nyes` | State machine: UNINITIALIZED → ... → CONSTANT |
 
-**Source locations:**
+Source locations:
 - Java: `foolish-core-java/src/main/java/org/foolish/fvm/ubc/`
 - Scala: `foolish-core-scala/src/main/scala/org/foolish/fvm/scubc/`
 
@@ -99,11 +99,11 @@ UNINITIALIZED → INITIALIZED → CHECKED → PRIMED → EVALUATING → CONSTANI
 | `CONSTANIC` | Constant In Context — paused due to missing information. Terminal for this context |
 | `CONSTANT` | Fully evaluated, immutable. Terminal |
 
-**History:** The state machine was simplified from an earlier design that had intermediate states
+The state machine was simplified from an earlier design that had intermediate states
 REFERENCES_IDENTIFIED, ALLOCATED, and RESOLVED between INITIALIZED and EVALUATING. These were
 condensed into the single CHECKED state.
 
-The generic term **constanic** (lowercase) refers to any terminal state — a FIR that is no longer
+The generic term *constanic* (lowercase) refers to any terminal state — a FIR that is no longer
 stepping. The predicate `achievedConstanic` means `at_constanic || at_woconstanic || at_constant || at_independent`.
 
 ---
@@ -119,20 +119,20 @@ evaluation:
 2. Each step: dequeue front item, call `step()`, re-enqueue at back if still nigh
 3. When queue empties: check if all items are CONSTANT (→ CONSTANT) or any are CONSTANIC (→ CONSTANIC)
 
-**Invariant C6:** Only nigh FIRs may be in the braneMind.
-**Invariant C5:** At CONSTANIC state, braneMind MUST be empty.
+Invariant C6: only nigh FIRs may be in the braneMind.
+Invariant C5: at CONSTANIC state, braneMind must be empty.
 
 ### BraneMemory (Persistent Storage)
 
 `BraneMemory` is an append-only list of FIRs representing the statements of a brane. It provides:
 
-- **Indexed access:** `get(int index)` — 0-based statement position
-- **Backward search:** `get(Query, fromLine)` — searches backward from `fromLine`, then up parent chain
-- **Local backward search:** `getLocal(Query, fromLine)` — backward within this brane only
-- **Local forward search:** `getLocalForward(Query, fromLine)` — forward within this brane only
-- **Parent chain:** Hierarchical link to parent brane's memory for scope resolution
+- Indexed access: `get(int index)` — 0-based statement position
+- Backward search: `get(Query, fromLine)` — searches backward from `fromLine`, then up parent chain
+- Local backward search: `getLocal(Query, fromLine)` — backward within this brane only
+- Local forward search: `getLocalForward(Query, fromLine)` — forward within this brane only
+- Parent chain: hierarchical link to parent brane's memory for scope resolution
 
-**Invariant C7:** BraneMemory is append-only; items are never removed during evaluation.
+Invariant C7: BraneMemory is append-only; items are never removed during evaluation.
 
 ### Storage Operations
 
@@ -174,9 +174,9 @@ and the brane tree is evaluated breadth-first.
 
 The `Query` sealed interface has two implementations:
 
-- **`StrictlyMatchingQuery`**: Exact identifier match. Checks if a brane line is an
+- `StrictlyMatchingQuery`: exact identifier match. Checks if a brane line is an
   `AssignmentFiroe` whose LHS matches the query identifier (including characterization chain).
-- **`RegexpQuery`**: Pattern-based match. Auto-anchors patterns with `^...$` for whole-identifier
+- `RegexpQuery`: pattern-based match. Auto-anchors patterns with `^...$` for whole-identifier
   matching.
 
 ### Search Operators
@@ -194,9 +194,9 @@ The `Query` sealed interface has two implementations:
 
 ### NK vs CONSTANIC Search Results
 
-- **Anchored searches** return `???` (NK) on failure — the brane is fully known and the name is
+- Anchored searches return `???` (NK) on failure — the brane is fully known and the name is
   simply not there.
-- **Level-skipping searches** produce CONSTANIC on failure — the identifier might be found when the
+- Level-skipping searches produce CONSTANIC on failure — the identifier might be found when the
   brane is recoordinated into a new context.
 
 ### Search Implementation
@@ -237,8 +237,8 @@ different scope (dynamic scoping). It has two phases:
 ### Phase A: Step Original
 
 Step the original FIR (`o`) until it reaches a terminal state:
-- If `o` reaches **CONSTANIC**: enter Phase B (needs re-evaluation in new context)
-- If `o` reaches **CONSTANT**: done (fully resolved in original context, no re-evaluation needed)
+- If `o` reaches CONSTANIC: enter Phase B (needs re-evaluation in new context)
+- If `o` reaches CONSTANT: done (fully resolved in original context, no re-evaluation needed)
 
 ### Phase B: Clone and Re-evaluate
 
@@ -253,9 +253,9 @@ CMFir delegates state queries to the active phase's FIR:
 - Before Phase B: state comes from `o`
 - During Phase B: state comes from `o2`
 
-**Key insight:** Use `atConstanic()` (exact match) not `achievedConstanic()` (≥ CONSTANIC) when deciding
-whether to start Phase B. The latter includes CONSTANT, which would incorrectly trigger re-evaluation
-of already-resolved expressions.
+Use `atConstanic()` (exact match), not `achievedConstanic()` (≥ CONSTANIC), when deciding whether
+to start Phase B. The latter includes CONSTANT, which would incorrectly trigger re-evaluation of
+already-resolved expressions.
 
 ---
 
@@ -293,8 +293,8 @@ Depth is calculated by walking the `parentFir` chain and counting `BraneFiroe` a
 | `achievedConstanic()` | `nyes >= CONSTANIC` | At least CONSTANIC (CONSTANIC or CONSTANT) |
 | `isNigh()` | `nyes < CONSTANIC` | Still evaluating |
 
-**Rule:** Use `at*` methods for control flow decisions that distinguish CONSTANIC from CONSTANT.
-Use `is*` methods for "are we done?" checks.
+Use `at*` methods for control flow decisions that distinguish CONSTANIC from CONSTANT. Use `is*`
+methods for "are we done?" checks.
 
 ---
 
@@ -314,13 +314,17 @@ Both implementations share:
 - The same ANTLR grammar (`Foolish.g4`)
 - The same test input files (`.foo` programs)
 
-**Critical constraint:** Both must produce byte-identical approval test outputs. Cross-validation
-tests in `foolish-crossvalidation` enforce this.
+Both implementations must produce byte-identical approval test outputs. Cross-validation tests in
+`foolish-crossvalidation` enforce this.
 
 ---
 
 ## Last Updated
 
-**Date**: 2026-02-16
-**Updated By**: Claude Code v1.0.0 / claude-opus-4-6
-**Changes**: Initial creation. Consolidated UBC engineering reference from ECOSYSTEM.md, UBC_FEATURES.md, search-semantics.md, 004-nyes-state-simplification.md, and 008-cmfir-nyes-state-review.md.
+Date: 2026-02-26
+Updated By: Claude Code v1.0.0 / claude-opus-4-6
+Changes: Reduced emphatic markings throughout — removed bold from invariant labels, definition
+list items, running-prose callouts, and search result descriptions. Prose now relies on sentence
+structure and capitalized state names rather than typographic emphasis.
+Previous (2026-02-16): Initial creation from ECOSYSTEM.md, UBC_FEATURES.md, search-semantics.md,
+004-nyes-state-simplification.md, and 008-cmfir-nyes-state-review.md.
