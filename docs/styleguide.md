@@ -30,7 +30,7 @@ Manual of Style (grammar fallback for Google, Apple, Stylepedia).
 
 ## Core Principles
 
-### The Five C's
+### The C's
 
 1. *Clarity* — Every sentence communicates exactly one idea with no ambiguity.
 2. *Conciseness* — Remove every word that does not add meaning.
@@ -39,6 +39,8 @@ Manual of Style (grammar fallback for Google, Apple, Stylepedia).
    all documents.
 5. *Completeness* — Documentation covers every user-facing behavior;
    undocumented features do not exist.
+6. *Communication* — Documentation has a singular purpose of communication,
+   this is not abstract expression for expression sake.
 
 ### Writing and Formatting Standards
 
@@ -60,11 +62,12 @@ patronizing. It is the typographic equivalent of shouting. The conventions
 in this guide on emphasis, structure, and formatting exist in part to
 counteract this tendency. The standard is simple: write the way a thoughtful
 engineer writes for other engineers. The reader is paying attention. Trust
-sentence structure to carry meaning. Reserve emphasis for the rare cases
-where it genuinely helps. Take a cue from Unix man pages, IEEE standards,
-the Chicago Manual of Style, or any well-edited technical reference — none
-of them bold every other phrase, and all of them communicate complex material
-clearly through structure and sentence craft alone.
+document and sentence structure as as each word to express the full meaning.
+Reserve emphasis for the rare cases where it genuinely helps. Take a cue
+from Unix man pages, IEEE standards, the Chicago Manual of Style, or any
+well-edited technical reference — none of them bold every other phrase, and
+all of them communicate complex material clearly through structure and
+sentence craft alone.
 
 ---
 
@@ -233,7 +236,9 @@ reader's purpose, or too obvious to name, passive voice eliminates false
 precision and noise.
 
 > "The file was corrupted during transmission."
+>
 > "The configuration is loaded at startup."
+>
 > "Unused variables are flagged with a warning."
 
 Don't force an actor into subject position when none is meaningfully present.
@@ -247,8 +252,10 @@ Use this when the *what* matters more than the *who did it*, or when the writer
 wants the reader to register the subject itself as the primary point.
 
 > "Girls can't be bribed."
-> "Branes can't be mutated after initialization."
-> "The message, once sent, can't be recalled."
+>
+> "Expression proto-brane members cannot be searched."
+>
+> "That special message, once sent, can't be recalled."
 
 This pattern is especially effective at the opening of a new section or
 immediately after a transition, where it announces the new topic with emphasis.
@@ -262,6 +269,7 @@ wrong rather than who caused it, and to avoid placing the user in subject
 position for a mistake.
 
 > "An invalid value was entered for `timeout`."
+>
 > "The connection was refused."
 
 Don't write "You entered an invalid value" in error contexts. The condition
@@ -280,9 +288,7 @@ subject helps the reader maintain orientation. Uniform syntactic structure
 across a passage creates a reading rhythm that makes dense material easier
 to follow.
 
-> "In the winter months, the brane's scheduling behavior is constrained by
-> resource limits. It can't allocate new threads. It can't spawn child branes.
-> It must complete queued work before accepting new messages."
+> In the constanic months, the brane's scheduling behavior is constrained by resource limits. It can't allocate new threads. It can't spawn child branes. It must complete queued work before accepting new messages."
 
 The passive opening ("is constrained") places "the brane's scheduling behavior"
 in subject position and launches a chain of active sentences that all refer
@@ -672,7 +678,10 @@ Incorrect: "click here," "this page," "learn more"
 10.2 Every cross-reference must include a call to action — a phrase that
 tells the reader why they should follow the link. For the full detail, read
 [the Cross-References and Linking section of the Foolish Style Guide](StyleGuide.md#10-linking-and-cross-references).
-Format: "For [purpose], read [descriptive link text](url)."
+* Format for backward references: "For [purpose], review [descriptive link text](url)."
+* Format for forward references: "For [purpose], read [descriptive link text](url)."
+
+purose is often "complete detail", but can be "cross tabulated table", "explanation of..."
 
 10.3 Don't use raw URLs as link text. Embed the URL behind descriptive text.
 
