@@ -68,9 +68,15 @@ class IdentifierFiroe(override val ast: AST.Identifier)
   override def step(): Int =
     getNyes match
       case Nyes.INITIALIZED =>
+        val parentMem = braneMemory.getParent
+        val parentStr = if parentMem != null then
+          s"parentSize=${parentMem.size} parentHash=${System.identityHashCode(parentMem)}"
+        else "noParent"
+        System.out.println(s"DEBUG IdentifierFiroe.step INITIALIZED: this=${System.identityHashCode(this)} identifier=$identifier braneMemory=${braneMemory.size} $parentStr")
         value = braneMemory.get(identifier, 0)
           .map(_._2)
           .orNull
+        System.out.println(s"DEBUG IdentifierFiroe.step INITIALIZED: value=$value valueClass=${if (value != null) value.getClass.getSimpleName else "null"}")
         if value == null then
           setNyes(Nyes.CONSTANIC)
         else
@@ -78,11 +84,20 @@ class IdentifierFiroe(override val ast: AST.Identifier)
         1
       case Nyes.CHECKED =>
         if value.isConstanic then
+          // For CONSTANIC values, we DON'T clone them here.
+          // Instead, we keep a reference to the original value and let the
+          // parent (e.g., ConcatenationFiroe in performJoin) handle the cloning.
+          // This ensures that when the value is cloned, its parent chain is set
+          // correctly (to the ConcatenationFiroe, not the IdentifierFiroe).
+          //
+          // We still store the value in braneMemory for unwrapConstanicable to work,
+          // but we don't enqueue it for re-evaluation (it will be re-evaluated after
+          // the parent clones it).
           storeFirs(value)
-          setNyes(value.atConstanic match
-            case true => Nyes.CONSTANIC
-            case false => Nyes.CONSTANT
-          )
+          setNyes(Nyes.PRIMED)
+        else if value.isConstant then
+          storeFirs(value)
+          setNyes(Nyes.CONSTANT)
         else
           storeFirs(value)
           braneEnqueue(value)
@@ -102,6 +117,18 @@ class IdentifierFiroe(override val ast: AST.Identifier)
   /** Returns the resolved value for unwrapping in search operations */
   override def getResult: FIR = value
 
+
+  override def valuableSelf(): java.util.Optional[FIR] =
+    if value == null then
+      if atConstanic then
+        java.util.Optional.empty[FIR]()
+      else
+        null  // Not ready yet
+    else if atConstanic then
+      java.util.Optional.empty[FIR]()
+    else
+      value.valuableSelf()
+
   override def cloneConstanic(newParent: FIR, targetNyes: Option[Nyes]): FIR =
     if !isConstanic then
       throw IllegalStateException(
@@ -116,6 +143,10 @@ class IdentifierFiroe(override val ast: AST.Identifier)
     copy.setNyes(getNyes)
     // Set target state if specified
     targetNyes.foreach(copy.setNyes)
+    // Ordinate to parent so identifier resolution works correctly
+    // This is critical for cloned identifiers to find their values in the new context
+    if !copy.ordinated then
+      copy.ordinateToParentBraneMind(newParent.asInstanceOf[FiroeWithBraneMind])
     copy
 
   override def toString: String = ast.toString

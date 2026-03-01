@@ -10,10 +10,16 @@ import java.util.stream.Stream;
 import static java.lang.Math.min;
 import static java.lang.Math.max;
 
+/**
+ * BraneMemory: append-only storage for FIRs within a brane.
+ * <p>
+ * Supports backward search from a position with parent chain traversal for identifier resolution.
+ * See {@code projects/FIR-Invariances.md#C7: BraneMemory Persistence}
+ */
 public class BraneMemory implements ReadOnlyBraneMemory {
-    private FiroeWithBraneMind parentBrane;  // Parent FIR (not its memory)
+    private FiroeWithBraneMind parentBrane;
     private final List<FIR> memory;
-    private FiroeWithBraneMind owningBrane = null; // The Firoe with braneMind that owns this memory
+    private FiroeWithBraneMind owningBrane = null;
 
     public BraneMemory(FiroeWithBraneMind parentBrane) {
         this.parentBrane = parentBrane;
@@ -36,75 +42,48 @@ public class BraneMemory implements ReadOnlyBraneMemory {
     }
 
     public Optional<Pair<Integer, FIR>> get(Query query, int fromLine) {
-        // Search in this memory first (backward from fromLine)
         for (int line = min(fromLine, memory.size() - 1); line >= 0; line--) {
             var lineMemory = memory.get(line);
             if (query.matches(lineMemory)) {
-                // Check if we need to filter this result due to detachment
                 if (shouldFilterMatch(query)) {
-                    continue;  // Skip this match due to detachment filter
+                    continue;
                 }
                 return Optional.of(Pair.of(line, lineMemory));
             }
         }
-        // Not found locally - delegate to parent brane's memory
         if (parentBrane != null) {
-            // Compute position using owningBrane's getMyBraneStatementNumber()
-            // which queries the parent's indexLookup for this brane's index.
-            // Default to searching from end of parent if position cannot be determined.
-            int parentPos = parentBrane.memorySize() - 1;  // Default fallback
+            int parentPos = parentBrane.memorySize() - 1;
             if (owningBrane != null) {
                 int idx = owningBrane.getMyBraneStatementNumber();
                 if (idx >= 0) {
                     parentPos = idx;
                 }
             }
-            // Delegate to parent brane's memoryGet - keeping braneMemory private
             return parentBrane.memoryGet(query, parentPos);
         }
-        return Optional.empty(); // Not found
+        return Optional.empty();
     }
 
-    /**
-     * Checks if a match should be filtered due to detachment brane.
-     * Walks up the parent chain looking for active detachment filters.
-     *
-     * @param query the query being searched for
-     * @return true if this match should be filtered (skipped)
-     */
     private boolean shouldFilterMatch(Query query) {
         String queryName = extractIdentifierName(query);
         if (queryName == null) {
-            return false;  // Can't filter non-identifier queries
+            return false;
         }
-
-        // Check this brane's owning brane for detachment filtering
         if (owningBrane instanceof DetachmentBraneFiroe detach) {
             if (detach.shouldFilter(queryName)) {
                 return true;
             }
         }
-
-        // Could also check parent branes, but for now just check local
         return false;
     }
 
-    /**
-     * Extracts the identifier name from a Query for detachment filtering.
-     * Returns null if the query doesn't have a simple identifier name.
-     */
     private String extractIdentifierName(Query query) {
         return switch (query) {
             case Query.StrictlyMatchingQuery smq -> smq.getId();
-            case Query.RegexpQuery rq -> null;  // Regexp queries don't have simple names
+            case Query.RegexpQuery rq -> null;
         };
     }
 
-    /**
-     * Search for a query locally within this brane only, without searching parent branes.
-     * Searches backward from fromLine to 0 (finds last match).
-     * Used for localized backward regex search (? operator).
-     */
     public Optional<Pair<Integer, FIR>> getLocal(Query query, int fromLine) {
         for (int line = min(fromLine, memory.size() - 1); line >= 0; line--) {
             var lineMemory = memory.get(line);
@@ -112,14 +91,9 @@ public class BraneMemory implements ReadOnlyBraneMemory {
                 return Optional.of(Pair.of(line, lineMemory));
             }
         }
-        return Optional.empty(); // Not found, don't search parents
+        return Optional.empty();
     }
 
-    /**
-     * Search for a query locally within this brane only, without searching parent branes.
-     * Searches forward from fromLine to end (finds first match).
-     * Used for localized forward regex search (/ operator).
-     */
     public Optional<Pair<Integer, FIR>> getLocalForward(Query query, int fromLine) {
         for (int line = max(fromLine, 0); line < memory.size(); line++) {
             var lineMemory = memory.get(line);
@@ -127,7 +101,7 @@ public class BraneMemory implements ReadOnlyBraneMemory {
                 return Optional.of(Pair.of(line, lineMemory));
             }
         }
-        return Optional.empty(); // Not found, don't search parents
+        return Optional.empty();
     }
 
     @Override
@@ -180,34 +154,18 @@ public class BraneMemory implements ReadOnlyBraneMemory {
         return memory.iterator();
     }
 
-    /**
-     * Sets the FiroeWithBraneMind that owns this BraneMemory.
-     * Should only be called once, typically by BraneFiroe or DetachmentBraneFiroe during construction.
-     */
     public void setOwningBrane(FiroeWithBraneMind brane) {
         if (this.owningBrane == null) {
             this.owningBrane = brane;
         } else if (this.owningBrane != brane) {
             throw new RuntimeException("Cannot reassign owning brane of BraneMemory.");
         }
-        // If same brane, allow (idempotent)
     }
 
-    /**
-     * Gets the FiroeWithBraneMind that owns this BraneMemory.
-     * Returns null if this is not a brane's memory (e.g., expression evaluation memory).
-     */
     public FiroeWithBraneMind getOwningBrane() {
         return owningBrane;
     }
 
-    /**
-     * Gets the index of a FIR within this brane's queue.
-     * Returns -1 if not found.
-     *
-     * @param fir the FIR to find
-     * @return 0-based index, or -1 if not found
-     */
     public int getStatementIndex(FIR fir) {
         for (int i = 0; i < memory.size(); i++) {
             if (memory.get(i) == fir) {

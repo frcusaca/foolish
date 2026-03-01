@@ -122,8 +122,7 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
         // Unwrap to get the actual result
         val unwrapped = unwrap(result)
         if unwrapped != null then
-          // Check if constanic, but exclude BraneFiroe and ConcatenationFiroe (Java behavior)
-          // This allows branes/concatenations to be sequenced even when they're constanic
+          // Check if unwrapped result is constanic and NOT a brane/concatenation
           if unwrapped.atConstanic
              && !unwrapped.isInstanceOf[BraneFiroe]
              && !unwrapped.isInstanceOf[ConcatenationFiroe] then
@@ -168,40 +167,58 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
 
             indent(depth) + s"$fullId = ${alignedConcat}"
 
-          else if unwrapped.isAbstract then
-            indent(depth) + s"$fullId = $NK_STR"
           else
-            // Simple values
-            indent(depth) + s"$fullId = ${unwrapped.getValue}"
+            // Simple values or constanic identifiers - try to get value, fallback toNK_STR
+            try
+              indent(depth) + s"$fullId = ${unwrapped.getValue}"
+            catch
+              case _: IllegalStateException => indent(depth) + s"$fullId = $NK_STR"
         else
           indent(depth) + s"$fullId = $NK_STR"
       else
         indent(depth) + s"$fullId = $NK_STR"
     else if assignment.atConstanic then
+      // Assignment itself is constanic
+      // Check if the result is a brane or concatenation
+      if result.isInstanceOf[BraneFiroe] || result.isInstanceOf[ConcatenationFiroe] then
+        // For constanic branes/concatenations, sequence them
+        indent(depth) + s"$fullId = $NK_STR"
+      else
         indent(depth) + addNyesStateIfEnabled(s"$fullId = $CC_STR", assignment.getNyes)
     else
       // If not yet evaluated, show the structure
       indent(depth) + s"$fullId = $NK_STR"
 
   protected def sequenceIdentifier(identifier: IdentifierFiroe, depth: Int): String =
-    // If the identifier has been resolved and is not NYE
-    if !identifier.isNye then
-      if identifier.atConstanic then
-         indent(depth) + addNyesStateIfEnabled(CC_STR, identifier.getNyes)
-      else if identifier.isAbstract then
-        indent(depth) + NK_STR
+    // Match Java behavior: try to get the resolved FIR first
+    val resolved = identifier.getResult
+    // Check atConstanic first - if true, show CC_STR regardless of resolved value
+    if identifier.atConstanic then
+      indent(depth) + addNyesStateIfEnabled(CC_STR, identifier.getNyes)
+    else if resolved != null then
+      if resolved.isInstanceOf[BraneFiroe] then
+        sequence(resolved.asInstanceOf[BraneFiroe], depth)
+      else if resolved.isInstanceOf[ConcatenationFiroe] then
+        sequenceConcatenation(resolved.asInstanceOf[ConcatenationFiroe], depth)
       else
-        unwrap(identifier) match
-          case constanic if constanic.atConstanic => indent(depth) + addNyesStateIfEnabled(CC_STR, constanic.getNyes)
-          case brane: BraneFiroe =>
-             // Should not typically happen for top-level sequencing but good to handle
-             sequence(brane, depth)
-          case unwrapped =>
-             indent(depth) + unwrapped.getValue.toString
-    else if identifier.atConstanic then
-        indent(depth) + addNyesStateIfEnabled(CC_STR, identifier.getNyes)
+        // Unwrap through assignments to find the actual value
+        val unwrapped = unwrap(resolved)
+        if unwrapped.isInstanceOf[BraneFiroe] then
+          sequence(unwrapped.asInstanceOf[BraneFiroe], depth)
+        else if unwrapped.isInstanceOf[ConcatenationFiroe] then
+          sequenceConcatenation(unwrapped.asInstanceOf[ConcatenationFiroe], depth)
+        else
+          try
+            indent(depth) + unwrapped.getValue.toString
+          catch
+            case _: UnsupportedOperationException =>
+              // If unwrapped value is at CONSTANIC, show CC_STR
+              if unwrapped.atConstanic then
+                indent(depth) + addNyesStateIfEnabled(CC_STR, unwrapped.getNyes)
+              else
+                indent(depth) + NK_STR
     else
-      // If not yet evaluated
+      // If not yet evaluated and no resolved value
       indent(depth) + NK_STR
 
   protected def sequenceOneShotSearch(oneShotSearch: OneShotSearchFiroe, depth: Int): String =
@@ -231,6 +248,7 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
           case _: IllegalStateException => sequence(search.getResult, depth)
       else
         // Search found something but it's CONSTANIC (unresolved)
+        // Match Java behavior: for CONSTANIC searches, just show CC_STR without sequencing the result
         indent(depth) + addNyesStateIfEnabled(CC_STR, search.getNyes)
     else
       indent(depth) + NK_STR
@@ -244,13 +262,21 @@ case class Sequencer4Human(tabChar: String = "＿") extends Sequencer[String]:
        if result != null then unwrap(result)
        else assignment
     case identifier: IdentifierFiroe =>
-       if identifier.atConstanic then identifier
-       else if identifier.value != null then unwrap(identifier.value)
-       else identifier
-    case abstractSearch: AbstractSearchFiroe if abstractSearch.getResult != null =>
-       unwrap(abstractSearch.getResult)
-    case unanchoredSeek: UnanchoredSeekFiroe if unanchoredSeek.getResult != null =>
-       unwrap(unanchoredSeek.getResult)
+       // Match Java behavior: only check null, not atConstanic
+       // Java's unwrap returns id if id.value == null, otherwise continues with id.value
+       if identifier.value == null then identifier else unwrap(identifier.value)
+    case abstractSearch: AbstractSearchFiroe =>
+       // Match Java behavior: only check null, not atConstanic
+       if abstractSearch.getResult != null then
+         unwrap(abstractSearch.getResult)
+       else
+         abstractSearch
+    case unanchoredSeek: UnanchoredSeekFiroe =>
+       // Match Java behavior: only check null, not atConstanic
+       if unanchoredSeek.getResult != null then
+         unwrap(unanchoredSeek.getResult)
+       else
+         unanchoredSeek
     case brane: BraneFiroe => brane  // Stop at branes
     case concat: ConcatenationFiroe => concat  // Stop at concatenations
     case other => other

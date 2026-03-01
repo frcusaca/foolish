@@ -75,20 +75,21 @@ class UnanchoredSeekFiroe(seekExpr: AST.UnanchoredSeekExpr) extends FiroeWithBra
   /**
    * Resolve the unanchored seek during the INITIALIZED phase.
    *
-   * Uses the parent FIR chain to find the containing brane and position.
+   * Uses the parent FIR chain to find the containing brane container (brane or concatenation)
+   * and position.
    */
   override def step(): Int =
     getNyes match
       case Nyes.INITIALIZED =>
-        val containingBrane = getMyBrane
-        val currentPos = getMyBraneIndex
+        val containingContainer = getMyBraneContainer
+        val currentPos = getMyBraneContainerIndex
 
-        if containingBrane == null || currentPos < 0 then
-          // No containing brane or position - out of bounds
+        if containingContainer == null || currentPos < 0 then
+          // No containing brane container or position - out of bounds
           value = null
           setNyes(Nyes.CONSTANIC)
         else
-          val targetMemory = containingBrane.braneMemory
+          val targetMemory = containingContainer.braneMemory
           val size = targetMemory.size
 
           // Calculate target index: currentPos + offset (offset is negative)
@@ -139,7 +140,8 @@ class UnanchoredSeekFiroe(seekExpr: AST.UnanchoredSeekExpr) extends FiroeWithBra
     val copy = new UnanchoredSeekFiroe(seekExpr.asInstanceOf[AST.UnanchoredSeekExpr])
     copy.setParentFir(newParent)
     copy.value = null  // Reset for re-evaluation
-    copy.setNyes(getNyes)
+    // Reset state to INITIALIZED so the seek re-evaluates in the new context
+    copy.setNyes(Nyes.INITIALIZED)
     // Set target state if specified
     targetNyes.foreach(copy.setNyes)
     copy

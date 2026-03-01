@@ -155,53 +155,84 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
 
     if (searchResult != null) return
 
-    // Check for constanic anchor
-    if (unwrapAnchor.atConstanic) {
-        searchResult = new NKFiroe()
-        return
-    }
-
     // Loop to fully resolve the anchor (unwrap through identifiers, assignments, searches)
+    // This must happen BEFORE checking for constanic because a constanic identifier
+    // might resolve to a brane that we can search
     var resolved = false
     while (!resolved) {
       resolved = true  // Assume resolved unless we find something to unwrap
 
+      if (searchResult != null) return  // Check after unwrapping might have set result
+
       unwrapAnchor match {
       case identifierFiroe: IdentifierFiroe =>
-        // If identifier is constanic but has no value, return null result to indicate
-        // "found but constanic" (not "not found"). This matches Java's valuableSelf()
-        // behavior which returns Optional.empty() for constanic identifiers.
+        // Handle constanic identifiers first - they're already resolved
         if (identifierFiroe.atConstanic) {
+          if identifierFiroe.value != null then
+            // Identifier is constanic with a value - the value is the resolved result
+            // (e.g., AA -> AssignmentFiroe that's constanic because its RHS is constanic)
+            searchResult = identifierFiroe.value
+          else
+            // Identifier is constanic with no value - not found
             searchResult = null
-            return
+          resolved = true
         }
-        if (identifierFiroe.isNye) {
+        else if (identifierFiroe.isNye) {
+          // Not yet resolved, step and wait
           identifierFiroe.step()
-          if (identifierFiroe.isNye) {
+          if identifierFiroe.isNye then
             return  // Will retry on next step
-          }
-        }
-        unwrapAnchor = identifierFiroe.value
-        if (unwrapAnchor == null) searchResult = new NKFiroe()
-        resolved = false  // Continue unwrapping
-
-      case assignmentFiroe: AssignmentFiroe =>
-        // For search operations, constanic assignments should still be unwrapped
-        // to get their result (e.g., g = {...} where the brane is constanic)
-        if (assignmentFiroe.isNye) {
-          assignmentFiroe.step()
-          if (assignmentFiroe.isNye) {
-            return  // Will retry on next step
-          }
-        }
-        val res = assignmentFiroe.getResult
-        if (res == null) {
-          searchResult = new NKFiroe()
+          // After stepping, check if resolved
+          unwrapAnchor = identifierFiroe.value
+          if unwrapAnchor == null then
+            searchResult = new NKFiroe()
+          resolved = false  // Continue unwrapping if we got a value
         }
         else {
-          unwrapAnchor = res
+          // Identifier is resolved (not constanic, not NYE)
+          unwrapAnchor = identifierFiroe.value
+          if unwrapAnchor == null then
+            searchResult = new NKFiroe()
+          resolved = false  // Continue unwrapping if we got a value
         }
-        resolved = false  // Continue unwrapping
+
+      case assignmentFiroe: AssignmentFiroe =>
+        // Handle constanic assignments first - they're already resolved
+        if assignmentFiroe.atConstanic then
+          val res = assignmentFiroe.getResult
+          if res == null then
+            // Assignment is constanic but has no result yet
+            searchResult = null
+            resolved = true
+          else if res.isInstanceOf[BraneFiroe] then
+            // Assignment's result is a brane - continue unwrapping to let the BraneFiroe case handle it
+            // This is critical for OneShotSearchFiroe (e.g., $ #-1) to properly extract tail/head from branes
+            unwrapAnchor = res
+            resolved = false
+          else
+            // Assignment's result is the resolved value (not a brane)
+            searchResult = res
+            resolved = true
+        else if assignmentFiroe.isNye then
+          // Not yet evaluated, step and wait
+          assignmentFiroe.step()
+          if assignmentFiroe.isNye then
+            return  // Will retry on next step
+          // After stepping, get result
+          val res = assignmentFiroe.getResult
+          if res == null then
+            searchResult = new NKFiroe()
+          else
+            unwrapAnchor = res
+          resolved = false
+        else
+          // Assignment is fully evaluated
+          val res = assignmentFiroe.getResult
+          if res == null then
+            searchResult = new NKFiroe()
+          else
+            unwrapAnchor = res
+          resolved = false
 
       case abstractSearch: AbstractSearchFiroe =>
         if (abstractSearch.isNye) {
@@ -290,6 +321,7 @@ abstract class AbstractSearchFiroe(ast: AST.Expr, val operator: SearchOperator) 
               resolved = false  // Continue unwrapping
             else
               searchResult = result
+              resolved = false  // Continue to check if result needs unwrapping
         }
 
       case nkFiroe: NKFiroe =>

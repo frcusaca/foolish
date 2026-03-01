@@ -10,8 +10,14 @@ abstract class FiroeWithoutBraneMind(ast: AST, comment: Option[String] = None) e
   // FiroeWithoutBraneMind instances are immediately CONSTANT
   setNyes(Nyes.CONSTANT)
 
-  /** FiroeWithoutBraneMind instances don't require stepping */
-  def step(): Int = 0 // No-op, returns 0 for no work done
+  /** FiroeWithoutBraneMind instances don't require stepping, but may need state recovery */
+  def step(): Int =
+    // If we are somehow reset to non-CONSTANT (e.g. via cloneConstanic resetting to INITIALIZED),
+    // we must transition back to CONSTANT because we are intrinsically constant.
+    if getNyes != Nyes.CONSTANT then
+      setNyes(Nyes.CONSTANT)
+      return 1
+    0 // No-op, returns 0 for no work done
 
   /**
    * FiroeWithoutBraneMind instances are never NYE (Not Yet Evaluated).

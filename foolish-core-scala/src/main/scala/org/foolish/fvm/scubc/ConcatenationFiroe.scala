@@ -48,10 +48,18 @@ class ConcatenationFiroe(override val ast: AST.Concatenation)
       indexLookup.put(cloned, braneMemory.size - 1)
       // For nested FiroeWithBraneMind instances, set up parent memory link
       if cloned.isInstanceOf[FiroeWithBraneMind] then
+        val fwbm = cloned.asInstanceOf[FiroeWithBraneMind]
         // Reset ordinated flag so we can re-ordinate in new context
-        cloned.asInstanceOf[FiroeWithBraneMind].ordinated = false
-        cloned.asInstanceOf[FiroeWithBraneMind].ordinateToParentBraneMind(this, indexLookup.size - 1)
+        fwbm.ordinated = false
+        // Use the NEW index in the concatenated brane, not the original index.
+        // This ensures that when the cloned brane searches parent memories,
+        // it uses its position in the concatenated brane (not the original brane).
+        fwbm.ordinateToParentBraneMind(this, indexLookup.size - 1)
     }
+    // Set myPos to -1 (no limit) so that nested branes can search the entire
+    // concatenated brane when looking up identifiers. The original brane's
+    // position is not relevant here because the cloned branes are now part of
+    // a new concatenated context.
     // Copy source elements for later operations
     sourceElements = original.sourceElements
     stageAExecutor = null
@@ -78,15 +86,19 @@ class ConcatenationFiroe(override val ast: AST.Concatenation)
       val fir = FIR.createFiroeFromExpr(element)
       fir.setParentFir(this)
 
-      fir match
-        case fwbm: FiroeWithBraneMind =>
-          if !fwbm.isInstanceOf[BraneFiroe] && !fwbm.isInstanceOf[ConcatenationFiroe] then
-            indexLookup.put(fir, index)
-            fwbm.ordinateToParentBraneMind(this, index)
-        case _ =>
+      // Only ordinate non-brane elements (identifiers, searches, etc.)
+      // Branes are kept isolated so their contents don't resolve to outer scope
+      // This matches Java's "concatenates before resolution" semantics.
+      if fir.isInstanceOf[FiroeWithBraneMind] then
+        val fwbm = fir.asInstanceOf[FiroeWithBraneMind]
+        if !fwbm.isInstanceOf[BraneFiroe] && !fwbm.isInstanceOf[ConcatenationFiroe] then
+          // Non-brane FiroeWithBraneMind (like IdentifierFiroe) - ordinate for resolution
+          indexLookup.put(fir, index)
+          fwbm.ordinateToParentBraneMind(this, index)
       sourceFirs = sourceFirs :+ fir
       index += 1
     }
+
 
     stageAExecutor = ExecutionFir.stepping(sourceFirs*)
       .setParent(false)
@@ -134,32 +146,68 @@ class ConcatenationFiroe(override val ast: AST.Concatenation)
         0
 
   private def performJoin(): Unit =
+    System.out.println(s"DEBUG performJoin: THIS ConcatenationFiroe hashCode=${System.identityHashCode(this)}")
+    // Track the maximum original position of component branes for search scope limitation
+    var maxOriginalPos = -1
+
     sourceFirs.foreach { fir =>
       val resolved = FIR.unwrapConstanicable(fir)
+      System.out.println(s"DEBUG performJoin: fir=${fir.getClass.getSimpleName}, resolved=${resolved.getClass.getSimpleName}, resolvedState=${resolved.getNyes}")
 
       resolved match
         case fwbm: FiroeWithBraneMind =>
-          // Use a fold to skip non-constanic statements
+          val stmtCount = fwbm.braneMemory.size
+          System.out.println(s"DEBUG performJoin: fwbm.stream.size = $stmtCount")
+          // Get the original position of this brane from the sourceFirs index
+          val originalIndex = sourceFirs.indexOf(fir)
+          System.out.println(s"DEBUG performJoin: originalIndex for ${fwbm.getClass.getSimpleName} = $originalIndex")
+          if originalIndex > maxOriginalPos then
+            maxOriginalPos = originalIndex
+
+          // Flatten: iterate over the brane's statements and clone each one
+          // into this concatenation's braneMemory
           fwbm.stream.foreach { statement =>
-            if statement.isConstanic then
-              val targetState = if statement.isConstant then
-                None
-              else
-                Some(Nyes.INITIALIZED)
+            // Only clone constanic statements (CONSTANIC or CONSTANT)
+            // Statements not yet at constanic should be skipped and left in their original brane.
+            // This matches Java's behavior where non-constanic statements remain unresolved.
+            if !statement.isConstanic then
+              // Skip non-constanic statements - they remain in their original brane
+              return
+            // Clone each statement with this concatenation as new parent
+            // CONSTANT items stay CONSTANT (they're fully resolved, immutable).
+            // CONSTANIC items reset to INITIALIZED to re-evaluate in new context.
+            val targetState = if statement.isConstant then
+              None  // Keep CONSTANT as-is
+            else
+              Some(Nyes.INITIALIZED)  // Reset CONSTANIC to re-evaluate
 
-              val cloned = statement.asInstanceOf[Constanicable].cloneConstanic(this, targetState)
+            val cloned = statement.asInstanceOf[Constanicable].cloneConstanic(this, targetState)
 
-              val isNewClone = cloned ne statement
-              if isNewClone && cloned.isInstanceOf[FiroeWithBraneMind] then
-                cloned.asInstanceOf[FiroeWithBraneMind].ordinated = false
+            // Only reset ordinated flag for FIRs that are ACTUALLY NEW clones.
+            // If cloned == statement, the object is being shared (CONSTANT FIRs)
+            // and should NOT be re-ordinated - it belongs to its original parent.
+            val isNewClone = cloned ne statement
+            System.out.println(s"DEBUG performJoin: targetState=$targetState, cloned=${cloned.getClass.getSimpleName}, clonedState=${cloned.getNyes}, isNewClone=$isNewClone")
+            System.out.println(s"DEBUG performJoin: this=${System.identityHashCode(this)} this.braneMemory=${System.identityHashCode(this.braneMemory)}")
 
-              storeFirs(cloned)
+            storeFirs(cloned)
+            if isNewClone && cloned.isInstanceOf[FiroeWithBraneMind] then
+              val clonedFwbm = cloned.asInstanceOf[FiroeWithBraneMind]
+              clonedFwbm.ordinated = false
           }
 
         case _ =>
           throw new IllegalStateException(
             s"Concatenation element resolved to non-brane: ${resolved.getClass.getSimpleName}. " +
             "Concatenation can only contain branes.")
+    }
+
+    val currentMyPos = braneMemory.getMyPos
+    System.out.println(s"DEBUG performJoin: maxOriginalPos = $maxOriginalPos braneMemory.myPos=$currentMyPos")
+
+    System.out.println(s"DEBUG performJoin: AFTER STORE - braneMemory.size=${braneMemory.size}")
+    braneMemory.stream.foreach { item =>
+      System.out.println(s"DEBUG performJoin:   braneMemory item=$item class=${item.getClass.getSimpleName}")
     }
 
     sourceFirs = null
@@ -196,6 +244,11 @@ class ConcatenationFiroe(override val ast: AST.Concatenation)
       val pendingCount = if sourceFirs != null then sourceFirs.size else 0
       s"ConcatenationFiroe[pending=$pendingCount, state=${getNyes}]"
     else
+      System.out.println(s"DEBUG ConcatenationFiroe.toString: this=${System.identityHashCode(this)} state=${getNyes} braneMemory.size=${braneMemory.size}")
+      System.out.println(s"DEBUG ConcatenationFiroe.toString: stream contents:")
+      braneMemory.stream.foreach { fir =>
+        System.out.println(s"DEBUG   - $fir (${fir.getClass.getSimpleName}) state=${fir.getNyes}")
+      }
       Sequencer4Human().sequence(this)
 
 object ConcatenationFiroe:

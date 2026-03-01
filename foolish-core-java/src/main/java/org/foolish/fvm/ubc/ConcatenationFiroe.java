@@ -167,10 +167,13 @@ public class ConcatenationFiroe extends FiroeWithBraneMind implements Constanica
      * If any element resolves to a non-brane, an alarm is raised.
      */
     private void performJoin() {
+        System.out.println("DEBUG performJoin: THIS ConcatenationFiroe hashCode=" + System.identityHashCode(this));
         for (FIR fir : sourceFirs) {
             FIR resolved = FIR.unwrapConstanicable(fir);
+            System.out.println("DEBUG performJoin: fir=" + fir.getClass().getSimpleName() + ", resolved=" + resolved.getClass().getSimpleName() + ", resolvedState=" + resolved.getNyes());
 
             if (resolved instanceof FiroeWithBraneMind fwbm) {
+                System.out.println("DEBUG performJoin: fwbm.stream.size = " + fwbm.stream().count());
                 // Flatten: iterate over the brane's statements and clone each one
                 // into this concatenation's braneMemory
                 fwbm.stream().forEach(statement -> {
@@ -192,13 +195,13 @@ public class ConcatenationFiroe extends FiroeWithBraneMind implements Constanica
                     // Only reset ordinated flag for FIRs that are ACTUALLY NEW clones.
                     // If cloned == statement, the object is being shared (CONSTANT FIRs)
                     // and should NOT be re-ordinated - it belongs to its original parent.
-                    boolean isNewClone = cloned != statement;
-                    if (isNewClone && cloned instanceof FiroeWithBraneMind clonedFwbm) {
+                    boolean isNewClone2 = cloned != statement;
+                    System.out.println("DEBUG performJoin: statement=" + statement.getClass().getSimpleName() + ", state=" + statement.getNyes() + ", isConstanic=" + statement.isConstanic() + ", isConstant=" + statement.isConstant());
+                    System.out.println("DEBUG performJoin: targetState=" + targetState + ", cloned=" + cloned.getClass().getSimpleName() + ", clonedState=" + cloned.getNyes() + ", isNewClone=" + isNewClone2);
+                    storeFirs(cloned);
+                    if (isNewClone2 && cloned instanceof FiroeWithBraneMind clonedFwbm) {
                         clonedFwbm.ordinated = false;
                     }
-                    
-                    // Store the FIR - storeFirs will only ordinate if ordinated=false
-                    storeFirs(cloned);
                 });
             } else {
                 // Non-brane in concatenation is a critical error

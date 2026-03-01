@@ -107,7 +107,7 @@ AA;
 }
 
 UBC EVALUATION:
-Steps taken: 477
+Steps taken: 423
 
 FINAL RESULT:
 {
@@ -145,21 +145,34 @@ FINAL RESULT:
 ＿                                                ＿     ＿    ＿b = 3;
 ＿                                                ＿     ＿};
 ＿                                                ＿     ＿C = {
-＿                                                ＿     ＿    ＿c = ???;
+＿                                                ＿     ＿    ＿c = {
+＿                                                ＿     ＿    ＿    ＿a = ⎵⎵ (CONSTANIC);
+＿                                                ＿     ＿    ＿};
 ＿                                                ＿     ＿};
 ＿                                                ＿     ＿f = {
 ＿                                                ＿     ＿    ＿a = 1;
 ＿                                                ＿     ＿    ＿a = ⎵⎵ (CONSTANIC);
 ＿                                                ＿     ＿    ＿b = 3;
-＿                                                ＿     ＿    ＿c = ???;
+＿                                                ＿     ＿    ＿c = {
+＿                                                ＿     ＿    ＿    ＿a = ⎵⎵ (CONSTANIC);
+＿                                                ＿     ＿    ＿};
 ＿                                                ＿     ＿};
 ＿                                                ＿     ＿parameter = 5;
-＿                                                ＿     ＿r1 = ⎵⎵ (CONSTANIC);
+＿                                                ＿     ＿r1 = {
+＿                                                ＿     ＿     ＿a = 1;
+＿                                                ＿     ＿     ＿a = ⎵⎵ (CONSTANIC);
+＿                                                ＿     ＿     ＿b = 3;
+＿                                                ＿     ＿     ＿c = {
+＿                                                ＿     ＿     ＿    ＿a = ⎵⎵ (CONSTANIC);
+＿                                                ＿     ＿     ＿};
+＿                                                ＿     ＿};
 ＿                                                ＿     ＿r2 = {
 ＿                                                ＿     ＿     ＿a = 1;
 ＿                                                ＿     ＿     ＿a = 5;
 ＿                                                ＿     ＿     ＿b = 3;
-＿                                                ＿     ＿     ＿c = ???;
+＿                                                ＿     ＿     ＿c = {
+＿                                                ＿     ＿     ＿    ＿a = ⎵⎵ (CONSTANIC);
+＿                                                ＿     ＿     ＿};
 ＿                                                ＿     ＿};
 ＿                                                ＿};
 ＿};

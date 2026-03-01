@@ -2,6 +2,7 @@ package org.foolish.fvm.scubc
 
 import org.foolish.ast.AST
 import scala.collection.mutable
+import scala.jdk.CollectionConverters.*
 
 /**
  * FIR with a braneMind queue for managing evaluation tasks.
@@ -15,9 +16,25 @@ abstract class FiroeWithBraneMind(ast: AST, comment: Option[String] = None)
   protected[scubc] var ordinated: Boolean = false
   protected val indexLookup = new java.util.IdentityHashMap[FIR, Int]()
 
+  def ordinateToParentBraneMind(parent: FiroeWithBraneMind): Unit =
+    assert(!this.ordinated)
+    this.braneMemory.setParent(parent.braneMemory)
+    // Set this FIR as the owning brane for its memory.
+    // This is needed so that when this FIR's braneMemory searches the parent,
+    // it can determine the search position via owningBrane.getMyBraneIndex().
+    // This matches Java's behavior in ordinateToParentBraneMind().
+    this.braneMemory.setOwningBrane(this)
+    // Note: NOT setting myPos here - position will be computed dynamically via getMyBraneIndex()
+    // This is critical for proper search behavior when FIRs are stored (not enqueued)
+    this.ordinated = true
   def ordinateToParentBraneMind(parent: FiroeWithBraneMind, myPos: Int): Unit =
     assert(!this.ordinated)
     this.braneMemory.setParent(parent.braneMemory)
+    // Set this FIR as the owning brane for its memory.
+    // This is needed so that when this FIR's braneMemory searches the parent,
+    // it can determine the search position via owningBrane.getMyBraneIndex().
+    // This matches Java's behavior in ordinateToParentBraneMind().
+    this.braneMemory.setOwningBrane(this)
     // For BraneFiroe: position is tracked via parent FIR relationships (getMyBraneIndex)
     // For other FIRs (like IdentifierFiroe): we need to set myPos since they don't have owningBrane
     if !this.isInstanceOf[BraneFiroe] then
@@ -40,7 +57,11 @@ abstract class FiroeWithBraneMind(ast: AST, comment: Option[String] = None)
     }
 
   def getIndexOf(f: FIR): Int =
-    indexLookup.get(f)
+    val containsKey = indexLookup.containsKey(f)
+    val idx = if !containsKey then -1
+    else indexLookup.get(f).asInstanceOf[java.lang.Integer].intValue()
+    System.out.println(s"DEBUG getIndexOf: this=${this.getClass.getSimpleName}(hashCode=${System.identityHashCode(this)}) f=$f (hashCode=${System.identityHashCode(f)}) containsKey=$containsKey idx=$idx")
+    idx
 
   /**
    * Returns an iterator over all FIRs in braneMemory.
@@ -59,6 +80,7 @@ abstract class FiroeWithBraneMind(ast: AST, comment: Option[String] = None)
   /**
    * Stores FIRs in braneMemory only (not braneMind).
    * Used by IdentifierFiroe and ConcatenationFiroe for storage without immediate evaluation.
+   * Calls ordinateToParentBraneMind for nested FiroeWithBraneMind instances that are not already ordinated.
    */
   protected def storeFirs(firs: FIR*): Unit =
     firs.foreach { fir =>
@@ -67,11 +89,32 @@ abstract class FiroeWithBraneMind(ast: AST, comment: Option[String] = None)
       indexLookup.put(fir, index)
       // Set parent FIR relationship for proper getMyBrane() and getMyBraneIndex() tracking
       fir.setParentFir(this)
-      // For nested FiroeWithBraneMind instances, set up parent memory link
+      // For nested FiroeWithBraneMind instances, update parent chain.
+      // This is critical for shared CONSTANT assignments to search in the correct parent.
       if fir.isInstanceOf[FiroeWithBraneMind] then
         val fwbm = fir.asInstanceOf[FiroeWithBraneMind]
         if !fwbm.ordinated then
-          fwbm.ordinateToParentBraneMind(this, index)
+          // Set myPos to this brane's position in the parent's memory.
+          // This limits search when the cloned brane searches parent memories.
+          // Only set if not already set (e.g., cloned branes have myPos set in copy constructor)
+          if fwbm.braneMemory.getMyPos < 0 then
+            fwbm.braneMemory.setMyPosInternal(index)
+          fwbm.ordinateToParentBraneMind(this)
+    }
+
+  /**
+   * Stores FIRs in braneMemory without calling ordinateToParentBraneMind.
+   * Used during cloneConstanic when the FIR will be added to a different parent's braneMemory later.
+   * Matches Java's behavior where cloned FIRs don't get ordinated immediately.
+   */
+  protected def storeFirsQuietly(firs: FIR*): Unit =
+    firs.foreach { fir =>
+      braneMemory.put(fir)
+      val index = braneMemory.size - 1
+      indexLookup.put(fir, index)
+      // Set parent FIR relationship for proper getMyBrane() and getMyBraneIndex() tracking
+      fir.setParentFir(this)
+      // Do NOT call ordinateToParentBraneMind - the FIR will be ordinated when added to the final parent
     }
 
   /**
@@ -80,14 +123,33 @@ abstract class FiroeWithBraneMind(ast: AST, comment: Option[String] = None)
    * Only enqueues items that are not at CONSTANIC or CONSTANT state.
    */
   protected def prime(): Unit =
+    System.out.println(s"DEBUG prime: this=${System.identityHashCode(this)} braneMemory.size=${braneMemory.size} braneMind.size=${braneMind.size}")
     val iterator = braneMemory.iterator
     while iterator.hasNext do
       val fir = iterator.next()
+      System.out.println(s"DEBUG prime: checking fir=${fir.getClass.getSimpleName} state=${fir.getNyes} isConstanic=${fir.isConstanic}")
       if !fir.isConstanic then
+        System.out.println(s"DEBUG prime: enqueueing fir=${fir.getClass.getSimpleName}")
         braneMind.enqueue(fir)
+    System.out.println(s"DEBUG prime: after braneMind.size=${braneMind.size}")
 
   protected def enqueueExprs(exprs: AST.Expr*): Unit =
     exprs.foreach(expr => enqueueFirs(FIR.createFiroeFromExpr(expr)))
+
+  /**
+   * Stores FIRs from expressions in braneMemory only (not braneMind).
+   * Used by AssignmentFiroe's copy constructor for cloneConstanic.
+   */
+  protected def storeExprs(exprs: AST.Expr*): Unit =
+    exprs.foreach(expr => storeFirs(FIR.createFiroeFromExpr(expr)))
+
+  /**
+   * Stores FIRs from expressions in braneMemory without calling ordinateToParentBraneMind.
+   * Used during cloneConstanic when the FIR will be added to a different parent's braneMemory later.
+   * Matches Java's behavior where cloned FIRs don't get ordinated immediately.
+   */
+  protected def storeExprsQuietly(exprs: AST.Expr*): Unit =
+    exprs.foreach(expr => storeFirsQuietly(FIR.createFiroeFromExpr(expr)))
 
   protected def enqueueSubfirOfExprs(exprs: AST.Expr*): Unit =
     enqueueFirs(FiroeWithBraneMind.ofExpr(exprs*))
@@ -143,10 +205,16 @@ abstract class FiroeWithBraneMind(ast: AST, comment: Option[String] = None)
         case fwbm: FiroeWithBraneMind =>
           // Reset ordinated flag so we can re-ordinate in new context
           fwbm.ordinated = false
-          fwbm.ordinateToParentBraneMind(this, index)
+          // Don't pass index - this matches Java's behavior where ordinateToParentBraneMind
+          // doesn't set myPos. The position is computed dynamically via getMyBraneIndex().
+          fwbm.ordinateToParentBraneMind(this)
         case _ =>
       index += 1
     }
+
+    // Don't preserve original brane's position - this matches Java's behavior
+    // where the copy constructor doesn't set myPos on the cloned braneMemory.
+    // The position will be set when the cloned brane is stored in its new parent.
 
     this.ordinated = original.ordinated
     setInitialized()
@@ -226,6 +294,8 @@ abstract class FiroeWithBraneMind(ast: AST, comment: Option[String] = None)
           val w = current.step()
           if current.isNye then
             braneMind.enqueue(current)
+          // Don't transition here - let the next step() call handle it when braneMind is empty at the start
+          // This matches Java's behavior where the final transition counts as an extra step
           w.asInstanceOf[Int]
         catch
           case e: Exception =>

@@ -14,45 +14,79 @@ class AssignmentFiroe(assignment: AST.Assignment)
   private var result: FIR = null
 
   /**
-   * Constructor for cloneConstanic that avoids cloning braneMemory items.
-   * Instead, it creates a fresh AssignmentFiroe from the AST.
+   * Constructor for cloneConstanic that creates a fresh AssignmentFiroe from AST.
+   * This ensures that identifiers are re-evaluated in the new context.
+   * Matches Java's behavior: stores expressions but doesn't call ordination for children.
    */
   private def this(assignment: AST.Assignment, newParent: FIR, lhs: CharacterizedIdentifier) =
     this(assignment)
     setParentFir(newParent)
     _lhs = lhs
     result = null
-    // indexLookup is already initialized in base class, don't reassign
-    // Just need to clear it if needed, but it should be fine as-is since we're creating a fresh copy
-    enqueueExprs(assignment.expr())
+    ordinated = false
+    // Initialize braneMemory from AST (same as original constructor)
+    // This must be called AFTER setting up the object but BEFORE marking as initialized
+    storeExprs(assignment.expr())
 
   override protected def initialize(): Unit =
     if isInitialized then return
     setInitialized()
-    enqueueExprs(assignment.expr())
+    // Store the expression in braneMemory (prime() will enqueue to braneMind)
+    // This matches Java's AssignmentFiroe.initialize() behavior
+    val expr = assignment.expr()
+    System.out.println(s"DEBUG AssignmentFiroe.initialize: assignment=$assignment assignmentClass=${assignment.getClass.getSimpleName} expr=$expr exprClass=${expr.getClass.getSimpleName}")
+    storeExprs(expr)
+    System.out.println(s"DEBUG AssignmentFiroe.initialize: braneMemory=${braneMemory.stream.map(_.getClass.getSimpleName).mkString(", ")}")
 
   override def step(): Int =
     if result != null then
       return 0
 
+    // Check if we're constanic (e.g., unresolved due to missing identifier)
     if atConstanic then
       return 0
 
-    if !isInitialized then
-      initialize()
-      return 1
+    // Handle EVALUATING state - step the expression in braneMind
+    if getNyes == Nyes.EVALUATING then
+      // If braneMind is empty, expression is complete
+      if braneMind.isEmpty then
+        // Expression evaluated, store result and determine final state
+        if !braneMemory.isEmpty then
+          val res = braneMemory.get(0)
+          result = res
+          if res.atConstanic then
+            setNyes(Nyes.CONSTANIC)
+          else
+            setNyes(Nyes.CONSTANT)
+        else
+          setNyes(Nyes.CONSTANT)
+        return 1
 
-    // Let parent class handle braneMind stepping and state transitions
+      // Step the expression in braneMind
+      val current = braneMind.dequeue()
+      try
+        val w = current.step()
+        if current.isNye then
+          braneMind.enqueue(current)
+        // After stepping, check if braneMind is now empty (expression completed)
+        if braneMind.isEmpty then
+          // Expression is complete, store result
+          if !braneMemory.isEmpty then
+            val res = braneMemory.get(0)
+            result = res
+            if res.atConstanic then
+              setNyes(Nyes.CONSTANIC)
+            else
+              setNyes(Nyes.CONSTANT)
+        return w
+      catch
+        case e: Exception =>
+          braneMind.prepend(current)
+          throw RuntimeException("Error during expression evaluation", e)
+
+    // Let parent class handle initialization and other state transitions
     val work = super.step()
 
-    // Check if we can get the final result
-    if !super.isNye && !braneMemory.isEmpty then
-      val res = braneMemory.get(0)
-      result = res
-      if res.atConstanic then
-        setNyes(Nyes.CONSTANIC)
-      else
-        setNyes(Nyes.CONSTANT)
     work
 
   override def isAbstract: Boolean =
@@ -62,6 +96,17 @@ class AssignmentFiroe(assignment: AST.Assignment)
       true
     else
       result.isAbstract
+
+  override def isConstanic: Boolean =
+    if result != null then
+      // Use the result's isConstanic, but fall back to checking our own state
+      // if the result's isConstanic returns false (which can happen if the result
+      // has its own override that doesn't match the expected behavior)
+      result.isConstanic || getNyes == Nyes.CONSTANIC || getNyes == Nyes.CONSTANT
+    else if getNyes == Nyes.CONSTANIC then
+      true
+    else
+      super.isConstanic
 
   override def isNye: Boolean =
     result == null && !isConstanic
@@ -87,6 +132,14 @@ class AssignmentFiroe(assignment: AST.Assignment)
   override def toString: String =
     Sequencer4Human().sequence(this)
 
+  override def valuableSelf(): java.util.Optional[FIR] =
+    if result != null then
+      result.valuableSelf()
+    else if atConstanic then
+      java.util.Optional.empty[FIR]()
+    else
+      null
+
   override def cloneConstanic(newParent: FIR, targetNyes: Option[Nyes]): FIR =
     if !isConstanic then
       throw IllegalStateException(
@@ -95,14 +148,23 @@ class AssignmentFiroe(assignment: AST.Assignment)
     if isConstant then
       return this  // Share CONSTANT assignments completely
     // CONSTANIC: create copy manually to avoid cloning braneMemory items
-    val copy = new AssignmentFiroe(ast.asInstanceOf[AST.Assignment], newParent, _lhs)
-    // Don't copy result - let the clone re-evaluate from scratch to ensure
-    // it resolves identifiers in the new context (e.g., CMFir's parent brane)
-    copy.result = null
+    // which may contain non-constanic expressions that were replaced by result.
+    // Matches Java's behavior: use private constructor, don't call ordination.
+    val copy = new AssignmentFiroe(assignment.asInstanceOf[AST.Assignment], newParent, _lhs)
+    val originalHashCode = System.identityHashCode(this)
+    val copyHashCode = System.identityHashCode(copy)
+    val newParentHashCode = System.identityHashCode(newParent)
+    System.out.println(s"DEBUG AssignmentFiroe.cloneConstanic: original=$this originalHashCode=$originalHashCode copy=$copy copyHashCode=$copyHashCode newParent=$newParent newParentClass=${newParent.getClass.getSimpleName} newParentHashCode=$newParentHashCode")
+    // Set initialized so initialize() won't be called again when stepped
+    // (expressions are already stored via storeExprsQuietly in the constructor)
     copy.setInitialized()
-    copy.setNyes(getNyes)
-    // Set target state if specified
-    targetNyes.foreach(copy.setNyes)
+    // Apply targetNyes if specified (matches Java behavior)
+    // If not specified, copy inherits the original's state
+    if targetNyes.isDefined then
+      copy.setNyes(targetNyes.get)
+    else
+      copy.setNyes(this.getNyes)
+    System.out.println(s"DEBUG AssignmentFiroe.cloneConstanic: After targetNyes nyes=${copy.getNyes} targetNyes=$targetNyes copy.ordinated=${copy.ordinated}")
     copy
 
 object AssignmentFiroe:

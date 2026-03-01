@@ -13,7 +13,7 @@ class BinaryFiroe(binaryExpr: AST.BinaryExpr) extends FiroeWithBraneMind(binaryE
 
   override protected def initialize(): Unit =
     super.initialize()
-    enqueueExprs(binaryExpr.left(), binaryExpr.right())
+    storeExprs(binaryExpr.left(), binaryExpr.right())
 
   override def step(): Int =
     if result.isDefined then
@@ -24,7 +24,6 @@ class BinaryFiroe(binaryExpr: AST.BinaryExpr) extends FiroeWithBraneMind(binaryE
       case Nyes.UNINITIALIZED | Nyes.INITIALIZED | Nyes.CHECKED | Nyes.PRIMED =>
         // Let parent handle state progression through these phases
         super.step()
-        1
 
       case Nyes.EVALUATING =>
         // Step operands through evaluation

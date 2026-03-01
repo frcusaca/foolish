@@ -120,7 +120,7 @@ OB2;
 }
 
 UBC EVALUATION:
-Steps taken: 620
+Steps taken: 495
 
 FINAL RESULT:
 {
@@ -230,7 +230,7 @@ FINAL RESULT:
 ＿                                                  ＿     ＿a = 1;
 ＿                                                  ＿     ＿message = 2;
 ＿                                                  ＿     ＿only = 1;
-＿                                                  ＿     ＿whichˍ1 = ???;
+＿                                                  ＿     ＿whichˍ1 = 2;
 ＿                                                  ＿};
 ＿};
 }

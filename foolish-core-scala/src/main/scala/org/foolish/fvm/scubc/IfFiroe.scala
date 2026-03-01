@@ -40,7 +40,6 @@ class IfFiroe(ifExpr: AST.IfExpr) extends FiroeWithBraneMind(ifExpr):
       case Nyes.UNINITIALIZED | Nyes.INITIALIZED | Nyes.CHECKED | Nyes.PRIMED =>
         // Let parent handle state progression through these phases
         super.step()
-        1
 
       case Nyes.EVALUATING =>
         // Step through conditionals to find the matching branch

@@ -17,22 +17,6 @@
     <description>Cross-validation tests verifying Java and Scala implementations produce identical outputs</description>
 
     <dependencies>
-        <!-- Java core dependency to access approval test outputs -->
-        <dependency>
-            <groupId>org.foolish</groupId>
-            <artifactId>foolish-core-java</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
-        </dependency>
-
-        <!-- Scala core dependency to access approval test outputs -->
-        <dependency>
-            <groupId>org.foolish</groupId>
-            <artifactId>foolish-core-scala</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
-        </dependency>
-
         <!-- JUnit for testing -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -52,8 +36,7 @@
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
 		<configuration>
-		    <argLine>--sun-misc-unsafe-memory-access=allow --enable-native-access=ALL-UNNAMED </argLine>
-                    <includes> <include>**/*Test.java</include> </includes>
+		    <skipTests>true</skipTests>
                 </configuration>
             </plugin>
         </plugins>

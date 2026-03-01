@@ -34,21 +34,53 @@ class BraneFiroe(override val ast: AST)
       // For nested FiroeWithBraneMind instances, set up parent memory link
       if cloned.isInstanceOf[FiroeWithBraneMind] then
         // Reset ordinated flag so we can re-ordinate in new context
-        cloned.asInstanceOf[FiroeWithBraneMind].ordinated = false
-        cloned.asInstanceOf[FiroeWithBraneMind].ordinateToParentBraneMind(this, indexLookup.size - 1)
+        val fwbm = cloned.asInstanceOf[FiroeWithBraneMind]
+        fwbm.ordinated = false
+        val index = indexLookup.size - 1
+        val originalIndex = original.indexLookup.get(fir)
+        val hasOriginalIndex = original.indexLookup.containsKey(fir)
+        // Store the ORIGINAL position for search purposes.
+        // This ensures that when the cloned brane searches parent memories,
+        // it uses its ORIGINAL position (not the NEW position where it's being used).
+        // For statements, use the original brane's position, not the statement's position.
+        val originalBranePos = original.braneMemory.getMyPos
+        if fwbm.isInstanceOf[BraneFiroe] then
+          // For BraneFiroe, use ordinateToParentBraneMind without index (position computed dynamically)
+          fwbm.ordinateToParentBraneMind(this)
+          if originalBranePos >= 0 then
+            fwbm.braneMemory.setMyPosInternal(originalBranePos)
+          else if hasOriginalIndex then
+            fwbm.braneMemory.setMyPosInternal(originalIndex)
+        else
+          // For other FiroeWithBraneMind, pass index to ordinateToParentBraneMind
+          // Use the original position if available, otherwise use the current index
+          if originalBranePos >= 0 then
+            fwbm.ordinateToParentBraneMind(this, originalBranePos)
+          else if hasOriginalIndex then
+            fwbm.ordinateToParentBraneMind(this, originalIndex)
+          else
+            fwbm.ordinateToParentBraneMind(this, index)
     }
+    // Store the ORIGINAL brane's position for search purposes.
+    // This ensures that when the cloned brane searches parent memories,
+    // it uses its ORIGINAL position (not the NEW position where it's being used).
+    val originalBranePos = original.braneMemory.getMyPos
+    if originalBranePos >= 0 then
+      this.braneMemory.setMyPosInternal(originalBranePos)
     // Set state to INITIALIZED so children can re-evaluate
     setNyes(Nyes.INITIALIZED)
 
   /** Initialize the BraneFiroe by converting AST statements to Expression Firoes */
   override protected def initialize(): Unit =
     if isInitialized then return
+    System.out.println(s"DEBUG BraneFiroe.initialize: this=${System.identityHashCode(this)} ast=$ast")
     setInitialized()
 
     ast match
       case brane: AST.Brane =>
         brane.statements().asScala.foreach { expr =>
           val firoe = FIR.createFiroeFromExpr(expr)
+          System.out.println(s"DEBUG BraneFiroe.initialize: storing firoe=${firoe.getClass.getSimpleName} in braneMemory")
           storeFirs(firoe)
         }
       case _ =>
@@ -75,6 +107,7 @@ class BraneFiroe(override val ast: AST)
    * Used during brane concatenation.
    */
   override def cloneConstanic(newParent: FIR, targetNyes: Option[Nyes]): FIR =
+    System.out.println(s"DEBUG BraneFiroe.cloneConstanic: this=${System.identityHashCode(this)} braneMemory=${System.identityHashCode(braneMemory)} braneMemory.size=${braneMemory.size} braneMemory.myPos=${braneMemory.getMyPos} braneMemory.parent=${if (braneMemory.getParent != null) System.identityHashCode(braneMemory.getParent) else "null"}")
     if !isConstanic then
       throw IllegalStateException(
         s"cloneConstanic can only be called on CONSTANIC or CONSTANT FIRs, " +
@@ -85,6 +118,7 @@ class BraneFiroe(override val ast: AST)
 
     // CONSTANIC: use copy constructor
     val copy = new BraneFiroe(this, newParent)
+    System.out.println(s"DEBUG BraneFiroe.cloneConstanic: copy=${System.identityHashCode(copy)} copy.braneMemory=${System.identityHashCode(copy.braneMemory)} copy.braneMemory.size=${copy.braneMemory.size}")
 
     // Set target state if specified, otherwise reset to INITIALIZED
     // because children were reset to INITIALIZED by the copy constructor.

@@ -13,7 +13,7 @@ class UnaryFiroe(unaryExpr: AST.UnaryExpr) extends FiroeWithBraneMind(unaryExpr)
 
   override protected def initialize(): Unit =
     super.initialize()
-    enqueueExprs(unaryExpr.expr())
+    storeExprs(unaryExpr.expr())
 
   override def step(): Int =
     if result.isDefined then
@@ -24,7 +24,6 @@ class UnaryFiroe(unaryExpr: AST.UnaryExpr) extends FiroeWithBraneMind(unaryExpr)
       case Nyes.UNINITIALIZED | Nyes.INITIALIZED | Nyes.CHECKED | Nyes.PRIMED =>
         // Let parent handle state progression through these phases
         super.step()
-        1
 
       case Nyes.EVALUATING =>
         // Step operand through evaluation

@@ -64,6 +64,7 @@ public class AssignmentFiroe extends FiroeWithBraneMind implements Constanicable
             case UNINITIALIZED -> {
                 initialize();
                 setNyes(Nyes.INITIALIZED);
+                System.out.println("DEBUG AssignmentFiroe.step UNINITIALIZED: this=" + System.identityHashCode(this));
                 return 1;
             }
             case INITIALIZED, CHECKED, PRIMED -> {
@@ -74,13 +75,20 @@ public class AssignmentFiroe extends FiroeWithBraneMind implements Constanicable
                 // Step the expression through evaluation
                 if (isBraneEmpty()) {
                     // Expression evaluated, store result and determine final state
+                    System.out.println("DEBUG AssignmentFiroe.step EVALUATING: this=" + System.identityHashCode(this) + " memorySize=" + memorySize());
+                    for (int i = 0; i < memorySize(); i++) {
+                        FIR mem = memoryGet(i);
+                        System.out.println("DEBUG AssignmentFiroe.step EVALUATING: this=" + System.identityHashCode(this) + " memory[" + i + "]=" + mem.getClass().getSimpleName() + " state=" + mem.getNyes());
+                    }
                     if (!isMemoryEmpty()) {
                         result = memoryGet(0);
+                        System.out.println("DEBUG AssignmentFiroe.step EVALUATING: this=" + System.identityHashCode(this) + " result=" + result.getClass().getSimpleName() + " resultState=" + result.getNyes() + " resultIsConstanic=" + result.atConstanic());
                         if (result.atConstanic()) {
                             setNyes(Nyes.CONSTANIC);
                         } else {
                             setNyes(Nyes.CONSTANT);
                         }
+                        System.out.println("DEBUG AssignmentFiroe.step: this=" + System.identityHashCode(this) + " setting state to " + getNyes());
                     } else {
                         setNyes(Nyes.CONSTANT);
                     }

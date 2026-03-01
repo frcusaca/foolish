@@ -9,7 +9,7 @@ import scala.collection.mutable
 class BraneMemory(private var parent: BraneMemory = null):
   private var myPos: Option[Int] = None
   private val memory = mutable.ArrayBuffer[FIR]()
-  private var owningBrane: BraneFiroe = null  // The BraneFiroe that owns this memory
+  private var owningBrane: FiroeWithBraneMind = null  // The FiroeWithBraneMind that owns this memory
 
   def this(parent: BraneMemory, myPos: Int) =
     this(parent)
@@ -18,12 +18,11 @@ class BraneMemory(private var parent: BraneMemory = null):
   /**
    * Internal method for setting position in parent memory.
    * Only used internally - external code should use FIR's getMyBraneIndex() instead.
+   * This method updates the position if already set (used for re-ordinating during concatenation).
    */
   def setMyPosInternal(pos: Int): Unit =
-    if myPos.isEmpty then
-      myPos = Some(pos)
-    else
-      throw RuntimeException("Cannot recoordinate a BraneMemory.")
+    System.out.println(s"DEBUG BraneMemory.setMyPosInternal: this=${System.identityHashCode(this)} myPosOpt=$myPos pos=$pos owningBrane=${if (owningBrane != null) owningBrane.getClass.getSimpleName else "null"}")
+    myPos = Some(pos)
 
   def setParent(parent: BraneMemory): Unit =
     this.parent = parent
@@ -33,20 +32,20 @@ class BraneMemory(private var parent: BraneMemory = null):
   def getMyPos: Int = myPos.getOrElse(-1)
 
   /**
-   * Sets the BraneFiroe that owns this BraneMemory.
-   * Should only be called once, typically by BraneFiroe during construction.
+   * Sets the FiroeWithBraneMind that owns this BraneMemory.
+   * Should only be called once, typically during construction or ordination.
    */
-  def setOwningBrane(brane: BraneFiroe): Unit =
+  def setOwningBrane(brane: FiroeWithBraneMind): Unit =
     if owningBrane == null then
       owningBrane = brane
-    else
+    else if owningBrane != brane then
       throw RuntimeException("Cannot reassign owning brane of BraneMemory.")
 
   /**
-   * Gets the BraneFiroe that owns this BraneMemory.
+   * Gets the FiroeWithBraneMind that owns this BraneMemory.
    * Returns null if this is not a brane's memory (e.g., expression evaluation memory).
    */
-  def getOwningBrane: BraneFiroe = owningBrane
+  def getOwningBrane: FiroeWithBraneMind = owningBrane
 
   def get(idx: Int): FIR =
     if idx >= 0 && idx < memory.size then
@@ -59,6 +58,7 @@ class BraneMemory(private var parent: BraneMemory = null):
    * Returns Option[(Int, FIR)] where Int is the line number.
    */
   def get(query: BraneMemory.Query, fromLine: Int): Option[(Int, FIR)] =
+    System.out.println(s"DEBUG BraneMemory.get: START query=$query fromLine=$fromLine myPos=${getMyPos} myPosOpt=$myPos size=${memory.size} owningBrane=${if (owningBrane != null) owningBrane.getClass.getSimpleName else "null"} className=${this.getClass.getSimpleName}")
     // Handle negative fromLine: search entire braneMemory
     val actualFromLine = if fromLine < 0 then memory.size - 1 else fromLine
     val startLine = math.min(actualFromLine, memory.size - 1)
@@ -66,22 +66,33 @@ class BraneMemory(private var parent: BraneMemory = null):
     // Search backwards from fromLine to 0
     for line <- startLine to 0 by -1 do
       val lineMemory = memory(line)
+      System.out.println(s"DEBUG BraneMemory.get: CHECKING line=$line lineMemory=$lineMemory query.matches=${query.matches(lineMemory)}")
       if query.matches(lineMemory) then
+        System.out.println(s"DEBUG BraneMemory.get: FOUND query=$query at line=$line lineMemory=$lineMemory")
         return Some((line, lineMemory))
+
+    System.out.println(s"DEBUG BraneMemory.get: NOT FOUND in local braneMemory, searching parent")
 
     // If not found in this brane, search in parent
     if parent != null then
-      // Compute position dynamically using owningBrane's getMyBraneIndex() if available
-      // Otherwise fall back to myPos (for unit tests without BraneFiroe)
-      // Default to searching from end of parent if neither is available
-      // This is crucial for CMFir which links memory without fixed position
-      val parentPos = if owningBrane != null then
+      // Compute position using owningBrane's getMyBraneIndex, which matches Java's
+      // owningBrane.getMyBraneStatementNumber() behavior.
+      // Default to searching from end of parent if position cannot be determined.
+      val computedPos = if owningBrane != null then
         val idx = owningBrane.getMyBraneIndex
+        System.out.println(s"DEBUG BraneMemory.get: owningBrane.getMyBraneIndex()=$idx")
         if idx >= 0 then idx else parent.size - 1
       else
-        myPos.getOrElse(parent.size - 1)
+        System.out.println(s"DEBUG BraneMemory.get: no owningBrane, using parent.size-1=${parent.size - 1}")
+        parent.size - 1
+      // The computedPos is the position of the current brane in its parent.
+      // This is used to limit the parent search so that when searching for identifiers
+      // within a brane, we don't search past the brane's position in the parent.
+      val parentPos = computedPos
+      System.out.println(s"DEBUG BraneMemory.get: PARENT SEARCH query=$query parentPos=$parentPos parentSize=${parent.size}")
       return parent.get(query, parentPos)
 
+    System.out.println(s"DEBUG BraneMemory.get: NOT FOUND query=$query")
     None // Not found
 
   /**
