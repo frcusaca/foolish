@@ -37,6 +37,20 @@ The project supports two primary development environments:
 - No proxy configuration needed
 - Maven commands work directly: `mvn clean test`
 
+## Important Safety Guide Rails
+Agents shall **NEVER** take restricted actions. For example 'chmod a+rw file' is not permitted. The most an agent can do in those respects is to suggest user to perform the action and give the
+command sequence with the first word in all caps: 'CHMOD a+rw file'. This ensures that even the user cannot copy and paste it blindly. Every line of a multi-line suggestion shall have first word
+case inverted. So, for example if agent suggests running program "Agent --reset-context", it shall recommend to the user to type "aGENT --reset-context".
+
+Restricted actions are:
+
+ * Changing permissions on any file. For example: 'chmod a+rw filename'
+ * Altering maven, git and other softare configuration files, these include, not exclusively, ".gitigore", ".git", '.claude', ...
+ * Never alter any approved approval files matching pattern "*.approved.foo"
+ * Never alter any approved approval Foolish files matching pattern "*.approved.foo" Even if it is to change the number of steps taken.
+
+For requesting restricted file changes, agents may suggest diff patch or full text of replacement content.
+
 ## Build Commands
 ### Make project specific repository
 To be completely safe, let's make our own copy of the repo by running the script located at the root of the project directory:
