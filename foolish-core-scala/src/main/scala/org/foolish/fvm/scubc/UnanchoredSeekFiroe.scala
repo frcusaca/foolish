@@ -29,7 +29,7 @@ import org.foolish.ast.AST
  *   2. CONSTANIC seeks transition to CHECKED when they find their target
  *   3. The search uses the concatenated brane's full memory, not just the original brane
  */
-class UnanchoredSeekFiroe(seekExpr: AST.UnanchoredSeekExpr) extends FiroeWithBraneMind(seekExpr):
+class UnanchoredSeekFiroe(seekExpr: AST.UnanchoredSeekExpr) extends FiroeWithBraneMind(seekExpr) with Constanicable:
 
   private val offset: Int = seekExpr.offset()
   private var value: FIR = null
@@ -52,26 +52,44 @@ class UnanchoredSeekFiroe(seekExpr: AST.UnanchoredSeekExpr) extends FiroeWithBra
     else
       value.isAbstract
 
+  /**
+   * An unanchored seek is Constanic only when its state is CONSTANIC or CONSTANT.
+   * A null value in earlier states means the seek hasn't been evaluated yet.
+   */
+  override def isConstanic: Boolean =
+    if getNyes != Nyes.CONSTANIC && getNyes != Nyes.CONSTANT then
+      false
+    else if value == null then
+      true  // Resolved to nothing (out of bounds)
+    else
+      value.isConstanic
+
   override def isNye: Boolean =
-    getNyes.ordinal < Nyes.CONSTANIC.ordinal
+    if value == null then
+      // Not yet resolved or out of bounds
+      getNyes.ordinal < Nyes.CONSTANIC.ordinal
+    else
+      // Check if the value is NYE
+      value.isNye
 
   /**
    * Resolve the unanchored seek during the INITIALIZED phase.
    *
-   * Uses the parent FIR chain to find the containing brane and position.
+   * Uses the parent FIR chain to find the containing brane container (brane or concatenation)
+   * and position.
    */
-  override def step(): Unit =
+  override def step(): Int =
     getNyes match
       case Nyes.INITIALIZED =>
-        val containingBrane = getMyBrane
-        val currentPos = getMyBraneIndex
+        val containingContainer = getMyBraneContainer
+        val currentPos = getMyBraneContainerIndex
 
-        if containingBrane == null || currentPos < 0 then
-          // No containing brane or position - out of bounds
+        if containingContainer == null || currentPos < 0 then
+          // No containing brane container or position - out of bounds
           value = null
           setNyes(Nyes.CONSTANIC)
         else
-          val targetMemory = containingBrane.braneMemory
+          val targetMemory = containingContainer.braneMemory
           val size = targetMemory.size
 
           // Calculate target index: currentPos + offset (offset is negative)
@@ -80,14 +98,21 @@ class UnanchoredSeekFiroe(seekExpr: AST.UnanchoredSeekExpr) extends FiroeWithBra
 
           // Check bounds
           if targetIdx >= 0 && targetIdx < size then
-            value = targetMemory.get(targetIdx)
+            var memItem = targetMemory.get(targetIdx)
+            // Set the value reference first
+            value = memItem
+            // Set state to CHECKED so the item can be further evaluated if needed
+            // This matches Java behavior - seek doesn't fully evaluate the item itself
             setNyes(Nyes.CHECKED)
           else
             // Out of bounds - return constanic (not found)
             value = null
             setNyes(Nyes.CONSTANIC)
+        1
 
       case _ =>
+        // Let parent handle all other states (CHECKED, PRIMED, EVALUATING, etc.)
+        // The parent class will progress the state through the normal state machine
         super.step()
 
   override def getValue: Long =
@@ -102,6 +127,23 @@ class UnanchoredSeekFiroe(seekExpr: AST.UnanchoredSeekExpr) extends FiroeWithBra
    * This allows OneShotSearchFiroe and other search operations to access
    * the result of the unanchored seek.
    */
-  def getResult: FIR = value
+  override def getResult: FIR = value
+
+  override def cloneConstanic(newParent: FIR, targetNyes: Option[Nyes]): FIR =
+    if !isConstanic then
+      throw IllegalStateException(
+        s"cloneConstanic can only be called on CONSTANIC or CONSTANT FIRs, " +
+        s"but this FIR is in state: ${getNyes}")
+    if isConstant then
+      return this  // Share CONSTANT seeks
+    // CONSTANIC: use copy constructor
+    val copy = new UnanchoredSeekFiroe(seekExpr.asInstanceOf[AST.UnanchoredSeekExpr])
+    copy.setParentFir(newParent)
+    copy.value = null  // Reset for re-evaluation
+    // Reset state to INITIALIZED so the seek re-evaluates in the new context
+    copy.setNyes(Nyes.INITIALIZED)
+    // Set target state if specified
+    targetNyes.foreach(copy.setNyes)
+    copy
 
   override def toString: String = ast.toString

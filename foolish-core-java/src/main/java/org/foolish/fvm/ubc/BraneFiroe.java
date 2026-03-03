@@ -16,7 +16,7 @@ import java.util.List;
  *       Used to prevent infinite recursion and stack overflow.</li>
  * </ul>
  */
-public class BraneFiroe extends FiroeWithBraneMind {
+public class BraneFiroe extends FiroeWithBraneMind implements Constanicable {
 
     /**
      * EXPERIMENTAL: Maximum allowed brane depth before limiting instantiation.
@@ -78,7 +78,7 @@ public class BraneFiroe extends FiroeWithBraneMind {
         // Check if depth exceeds limit
         if (this.EXPRMNT_brane_depth >= EXPRMNT_MAX_BRANE_DEPTH) {
             // Immediately set to CONSTANT - this brane will not evaluate
-            setNyesConstant();
+            setNyes(Nyes.CONSTANT);
 
             // Raise medium level alarm
             org.foolish.fvm.AlarmSystem.raise(
@@ -149,6 +149,14 @@ public class BraneFiroe extends FiroeWithBraneMind {
     }
 
     /**
+     * For container types, getResult() returns this since the brane IS the result.
+     */
+    @Override
+    public FIR getResult() {
+        return this;
+    }
+
+    /**
      * Clones this CONSTANIC BraneFiroe with updated parent chain.
      * Uses copy constructor to create independent braneMind/braneMemory.
      */
@@ -168,10 +176,14 @@ public class BraneFiroe extends FiroeWithBraneMind {
         BraneFiroe copy = new BraneFiroe(this, newParent);
 
         // Set target state if specified, otherwise copy from original
+        // Set target state if specified, otherwise reset to INITIALIZED to ensure invariant
+        // because children were reset to INITIALIZED by the copy constructor.
         if (targetNyes.isPresent()) {
             copy.nyes = targetNyes.get();
         } else {
-            copy.nyes = this.nyes;
+            // Cannot copy this.nyes (CONSTANIC) because children are INITIALIZED.
+            // Must allow re-evaluation.
+            copy.nyes = Nyes.INITIALIZED;
         }
 
         return copy;
@@ -239,5 +251,17 @@ public class BraneFiroe extends FiroeWithBraneMind {
             return "BraneFiroe[depth-limited@" + EXPRMNT_brane_depth + "]";
         }
         return new Sequencer4Human().sequence(this);
+    }
+
+    public FIR getExpressionFiroeAt(int index) {
+        if (index < 0 || index >= getBraneMemory().size()) {
+            throw new IndexOutOfBoundsException("Index out of bounds: " + index);
+        }
+        switch (getBraneMemory().get(index)) {
+            case AssignmentFiroe af:
+                return af.getResult();
+            case FIR other:
+                return other;
+        }
     }
 }

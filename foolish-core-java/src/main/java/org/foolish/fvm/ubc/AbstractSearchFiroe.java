@@ -2,6 +2,7 @@ package org.foolish.fvm.ubc;
 
 import org.foolish.ast.AST;
 import org.foolish.ast.SearchOperator;
+import java.util.Optional;
 
 /**
  * Common logic for search operations (head/tail, pattern matching, etc.).
@@ -11,16 +12,40 @@ import org.foolish.ast.SearchOperator;
  *
  * Constanic branes can still have searchable constant elements (e.g., tail of {aa=⎵⎵; cc=9} is 9).
  */
-public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
+public abstract class AbstractSearchFiroe extends FiroeWithBraneMind implements Constanicable {
     protected final SearchOperator operator;
-    protected FIR searchResult = null;
+    protected Optional<FIR> searchResult = null;
     protected FIR unwrapAnchor = null;
-    protected boolean searchPerformed = false;
-    protected boolean found = false;
 
     protected AbstractSearchFiroe(AST.Expr ast, SearchOperator operator) {
         super(ast);
         this.operator = operator;
+    }
+
+    /**
+     * Copy constructor for cloneConstanic.
+     * Resets search state so the search can be re-executed in a new context.
+     */
+    protected AbstractSearchFiroe(AbstractSearchFiroe original, FIR newParent) {
+        super(original, newParent);
+        this.operator = original.operator;
+        this.unwrapAnchor = null;
+        
+        // C4: If search resulted in "Not Found" (Empty), reset it to null so we try again.
+        // If it was found (Present), we could conceptually keep it, but typically
+        // constanic cloning implies re-evaluation might be needed or context changed.
+        // However, per user request: reset ONLY if Optional.Empty.
+        if (original.searchResult != null && original.searchResult.isEmpty()) {
+            this.searchResult = null;
+        } else {
+             // If original was null (not run) or Present (found), keep it?
+             // If original was null, new one is null.
+             // If original was Present, we copy it? But wait, if Present, it might be
+             // a specific FIR instance that needs cloning if we want to be safe?
+             // Actually, usually we want to re-evaluate if we are being cloned into a new context.
+             // But adhering strictly to "reset to null ONLY WHEN Optional.Empty":
+             this.searchResult = original.searchResult;
+        }
     }
 
     protected void initialize() {
@@ -40,32 +65,51 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
                 return 1;
             }
             case CHECKED -> {
-                if (stepNonBranesUntilState(Nyes.CONSTANT)) {
+                boolean nonBranesReady = stepNonBranesUntilState(Nyes.CONSTANIC);
+                if (nonBranesReady) {
+                    // Initialize unwrapAnchor if needed to check if it's a Brane
+                    if (unwrapAnchor == null && !isMemoryEmpty()) {
+                        unwrapAnchor = memoryGetLast();
+                    }
+
+                    // Special handling for Brane anchors which are skipped by stepNonBranesUntilState
+                    // We must step them explicitly so they can progress (and step their children)
+                    if (unwrapAnchor != null && isBrane(unwrapAnchor) && unwrapAnchor.isNye()) {
+                         unwrapAnchor.step();
+                         return 1;
+                    }
+                    
                     if (isAnchorReady()) {
-                        performSearchStep();
-                        switch (searchResult) {
-                            case null -> {
-                                return 1;
-                            }
-                            case NKFiroe nk -> {
-                                found = false;
-                                setNyes(Nyes.CONSTANT);
-                                return 1;
-                            }
-                            default -> {
-                                found = true;
-                                if (searchResult.isNye()) {
-                                    searchResult.step();
-                                    return 1;
-                                }
-                                if (searchResult.atConstanic()) {
-                                    setNyes(Nyes.CONSTANIC);
-                                    return 1;
-                                }
-                                setNyes(Nyes.CONSTANT);
-                                return 1;
-                            }
+                        int work = performSearchStep();
+                        if (work == 0) {
+                             // Waiting for dependency
+                             return 0;
                         }
+                        
+                        if (searchResult == null) {
+                            // Search not completed (internal stepping)
+                            return 1;
+                        }
+                        
+                        if (searchResult.isEmpty()) {
+                            // Search completed and found nothing (or Constanic)
+                            setNyes(Nyes.CONSTANIC); 
+                            return 1;
+                        }
+
+                        // Search found a result
+                        FIR result = searchResult.get();
+                        
+                        // Wait for result to be ready
+                        if (result.isNye()) {
+                             return 1; 
+                        }
+                        if (result.atConstanic()) {
+                            setNyes(Nyes.CONSTANIC);
+                            return 1;
+                        }
+                        setNyes(Nyes.CONSTANT);
+                        return 1;
                     }
                 }
                 return 1;
@@ -79,181 +123,176 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind {
         }
     }
 
+    /**
+     * Takes one step on one brane not yet at target state (by numerical value).
+     * This method will not loop forever. But it is possible to call this method
+     * forever due to children branes not progressing.
+     * 
+     * @returns true when all branes are at target state
+     */
     protected boolean stepNonBranesUntilState(Nyes targetState) {
-        if (isBrainEmpty()) {
+        if (isBraneEmpty()) {
             return true;
         }
 
-        FIR current = brainDequeue();
-        current.step();
-
-        if (current.isNye()) {
-            brainEnqueue(current);
+        int size = braneSize();
+        for(int i = 0; i < size; ++i){
+            FIR current = braneDequeue();
+            
+            if (current.getNyes().ordinal() < targetState.ordinal()) {
+                current.step();
+                if (current.getNyes().ordinal() < targetState.ordinal()){
+                    braneEnqueue(current);
+                }
+                return isBraneEmpty();
+            }
         }
 
-        return current.getNyes().ordinal() >= targetState.ordinal();
+        return isBraneEmpty();
     }
 
     protected boolean isAnchorReady() {
-        if (isMemoryEmpty()) {
-            return false;
-        }
-
-        FIR anchor = memoryGetLast();
-
-        if (anchor.atConstanic()) {
-            return true;
-        }
-
-        FIR resolvedAnchor = anchor;
-        if (anchor instanceof IdentifierFiroe identifierFiroe) {
-            if (identifierFiroe.atConstanic()) {
-                return true;
-            }
-            if (identifierFiroe.value == null) return false;
-            resolvedAnchor = identifierFiroe.value;
-        }
-
-        if (resolvedAnchor == null) return false;
-        anchor = resolvedAnchor;
-
-        if (anchor instanceof AssignmentFiroe assignmentFiroe) {
-            if (assignmentFiroe.atConstanic()) {
-                return true;
-            }
-            if (assignmentFiroe.isNye()) {
-                assignmentFiroe.step();
-                return false;
-            }
-            if (assignmentFiroe.getResult() == null) return false;
-            anchor = assignmentFiroe.getResult();
-        }
-
-        if (anchor == null) return false;
-
-        if (anchor instanceof AbstractSearchFiroe abstractSearchFiroe) {
-             if (abstractSearchFiroe.atConstanic()) {
-                 return true;
-             }
-             if (abstractSearchFiroe.isNye()) {
-                 abstractSearchFiroe.step();
-                 return false;
-             }
-             return true;
-        }
-
-        return true;
+        // stepNonBranesUntilState(PRIMED) ensures general readiness.
+        // We just need to know if we have something to anchor to.
+        return !isMemoryEmpty();
     }
 
-    protected void performSearchStep() {
-        if (unwrapAnchor == null && !searchPerformed) {
+    protected int performSearchStep() {
+        if (searchResult != null) return 0; // Already finished search
+
+        if (unwrapAnchor == null) {
             if (isMemoryEmpty()) {
-                searchResult = new NKFiroe();
-                return;
+                // No anchor means empty set -> Not Found
+                searchResult = Optional.empty();
+                return 1;
             }
             unwrapAnchor = memoryGetLast();
         }
 
-        if (searchResult != null) return;
+        // Use valuableSelf() to resolve the anchor
+        Optional<FIR> valuable = unwrapAnchor.valuableSelf();
 
-        if (unwrapAnchor instanceof IdentifierFiroe identifierFiroe) {
-            if (identifierFiroe.value == null) {
-                if (!identifierFiroe.atConstanic()) {
-                    searchResult = new NKFiroe();
-                }
-                return;
-            }
-            unwrapAnchor = identifierFiroe.value;
-            return;
+        if (valuable == null) {
+            // Anchor not ready (pre-PRIMED or evaluating)
+            return 0; // Waiting
         }
 
-        if (unwrapAnchor instanceof AssignmentFiroe assignmentFiroe) {
-            if (assignmentFiroe.isNye()) {
-                assignmentFiroe.step();
-                return;
-            }
-            unwrapAnchor = assignmentFiroe.getResult();
-            if (unwrapAnchor == null) searchResult = new NKFiroe();
-            return;
+        if (valuable.isEmpty()) {
+            // Anchor is constanic/empty -> Search result is empty
+            searchResult = Optional.empty();
+            // By definition, valuableSelf() returns Empty when constanic.
+            setNyes(Nyes.CONSTANIC); 
+            return 1;
         }
 
-        if (unwrapAnchor instanceof AbstractSearchFiroe abstractSearchFiroe) {
-            if (abstractSearchFiroe.isNye()) {
-                abstractSearchFiroe.step();
-                return;
-            }
-            unwrapAnchor = abstractSearchFiroe.getResult();
-            if (unwrapAnchor == null) searchResult = new NKFiroe();
-            return;
-        }
+        FIR resolvedAnchor = valuable.get();
 
-        if (unwrapAnchor instanceof UnanchoredSeekFiroe unanchoredSeekFiroe) {
-            if (unanchoredSeekFiroe.isNye()) {
-                unanchoredSeekFiroe.step();
-                return;
-            }
-            unwrapAnchor = unanchoredSeekFiroe.getResult();
-            if (unwrapAnchor == null) {
-                searchResult = new NKFiroe();
-            }
-            return;
-        }
+        // If the resolved anchor is still something we need to process specifically
+        // (like BraneFiroe for searching), handle it.
+        // Note: valuableSelf() returns 'this' for BraneFiroe.
 
-        if (unwrapAnchor instanceof BraneFiroe braneFiroe) {
-             if (searchPerformed) {
-                 searchResult = braneFiroe;
-                 return;
-             }
-
-             FIR result = executeSearch(braneFiroe);
-             searchPerformed = true;
+        if (resolvedAnchor instanceof BraneFiroe braneFiroe) {
+             SearchCursor cursor = createCursor(braneFiroe);
+             FIR result = executeSearch(cursor);
 
              if (result == null) {
-                 searchResult = new NKFiroe();
-                 return;
+                 // Search incomplete/failed
+                 searchResult = Optional.empty();
+                 return 1;
              }
-
-             if (result instanceof AssignmentFiroe assignment) {
-                 result = assignment.getResult();
-                 if (result == null) result = new NKFiroe();
+             
+             // Unwrap the result using recursive valuableSelf()
+             Optional<FIR> val = result.valuableSelf();
+             if (val == null) {
+                 // Result depends on something not ready. Wait.
+                 return 0; // Waiting
              }
-
-             if (result instanceof IdentifierFiroe || result instanceof AssignmentFiroe
-                 || result instanceof AbstractSearchFiroe || result instanceof UnanchoredSeekFiroe) {
-                 unwrapAnchor = result;
-                 return;
-             }
-
-             searchResult = result;
-             return;
+             
+             // If val is empty (e.g. Constanic/Unresolved), searchResult is empty.
+             searchResult = val;
+             return 1;
         }
 
-        if (unwrapAnchor instanceof NKFiroe) {
-            searchResult = new NKFiroe();
-            return;
+        if (resolvedAnchor instanceof NKFiroe) {
+            searchResult = Optional.of(new NKFiroe());
+            return 1;
         }
 
-        if (searchPerformed) {
-            searchResult = unwrapAnchor;
-        } else {
-            searchResult = new NKFiroe();
+        // If we unwrapped something (e.g. Identifier -> Assignment), continue finding the anchor.
+        if (resolvedAnchor != unwrapAnchor && resolvedAnchor != null) {
+            unwrapAnchor = resolvedAnchor;
+            return 1; // Progress made (unwrapped)
         }
+
+        // Fallthrough: resolvedAnchor is the final result (e.g. constant value)
+        searchResult = Optional.of(resolvedAnchor);
+        return 1;
     }
 
-    protected abstract FIR executeSearch(BraneFiroe target);
+    protected SearchCursor createCursor(BraneFiroe target) {
+        ReadOnlyBraneMemory memory = target.getBraneMemory();
+        int size = memory.size();
+
+        // Handle empty memory gracefully
+        int lastIndex = Math.max(0, size - 1);
+        int firstIndex = 0;
+
+        // Note: boolean defaults: inclusive=true, braneBound=true (for now)
+        return switch (operator) {
+            case HEAD -> new SearchCursor(new FoolishCursor(target, firstIndex), true, true, true);
+            case TAIL -> new SearchCursor(new FoolishCursor(target, lastIndex), false, true, true);
+            
+            case REGEXP_LOCAL -> new SearchCursor(new FoolishCursor(target, lastIndex), false, true, true);
+            case REGEXP_GLOBAL -> new SearchCursor(new FoolishCursor(target, lastIndex), false, true, true);
+            case REGEXP_FORWARD_LOCAL -> new SearchCursor(new FoolishCursor(target, firstIndex), true, true, true);
+            case REGEXP_FORWARD_GLOBAL -> new SearchCursor(new FoolishCursor(target, firstIndex), true, true, true);
+            
+            // Default fallbacks
+            default -> new SearchCursor(new FoolishCursor(target, firstIndex), true, true, true);
+        };
+    }
+
+    protected abstract FIR executeSearch(SearchCursor cursor);
 
     public FIR getResult() {
-        return searchResult;
+        if (searchResult == null) return null;
+        return searchResult.orElse(null); // Or new NKFiroe()? Previously returned null if searchResult was null
     }
-
+    
     public boolean isFound() {
-        return found;
+        return searchResult != null && searchResult.isPresent();
     }
 
     public long getValue() {
         if (searchResult == null) {
             throw new IllegalStateException("Search not yet evaluated");
         }
-        return searchResult.getValue();
+        return searchResult.map(FIR::getValue).orElseThrow(() -> new IllegalStateException("Search result is empty/constanic"));
+    }
+
+    protected abstract FIR cloneConstanic(FIR newParent, Optional<Nyes> targetNyes);
+
+    @Override
+    public Optional<FIR> valuableSelf() {
+        // GIGANTIC TODO: CHECK FOR CIRCULAR REFERENCE
+        // Implementing simple recursion limit to prevent StackOverflow
+        if (FIR.RECURSION_DEPTH.get() > 100) {
+            return Optional.empty();
+        }
+
+        try {
+            FIR.RECURSION_DEPTH.set(FIR.RECURSION_DEPTH.get() + 1);
+            if (searchResult != null) {
+                // Found a result (could be empty if not found/constanic)
+                 if (searchResult.isEmpty()) {
+                     return Optional.empty();
+                 }
+                 return searchResult.get().valuableSelf();
+            }
+            // Not ready/evaluated yet
+            return null;
+        } finally {
+            FIR.RECURSION_DEPTH.set(FIR.RECURSION_DEPTH.get() - 1);
+        }
     }
 }

@@ -11,7 +11,7 @@ import org.foolish.ast.AST;
  *
  * Arithmetic errors during evaluation result in NK (not-known) values.
  */
-public class UnaryFiroe extends FiroeWithBraneMind {
+public class UnaryFiroe extends FiroeWithBraneMind implements Constanicable {
     private final String operator;
     private FIR operandFiroe;
     private FIR result;
@@ -44,27 +44,27 @@ public class UnaryFiroe extends FiroeWithBraneMind {
             }
             case EVALUATING -> {
                 // Step operand through evaluation
-                if (isBrainEmpty()) {
+                if (isBraneEmpty()) {
                     // Operand evaluated, compute result
                     computeResult();
                     return 1;
                 }
 
-                FIR current = brainDequeue();
+                FIR current = braneDequeue();
                 try {
                     int work = current.step();
                     if (current.isNye()) {
-                        brainEnqueue(current);
+                        braneEnqueue(current);
                     }
                     return work;
                 } catch (Exception e) {
-                    brainEnqueueFirst(current); // Re-enqueue on error
+                    braneEnqueueFirst(current); // Re-enqueue on error
                     throw new RuntimeException("Error during operand evaluation", e);
                 }
             }
             case CONSTANT -> {
                 // Should not reach here if result is null, but handle gracefully
-                if (result == null && isBrainEmpty()) {
+                if (result == null && isBraneEmpty()) {
                     computeResult();
                     return 1;
                 }
@@ -113,6 +113,11 @@ public class UnaryFiroe extends FiroeWithBraneMind {
         }
         if (getNyes() == Nyes.CONSTANT) return true; // Constant state but no result -> constanic
         return super.isConstanic();
+    }
+
+    @Override
+    public FIR getResult() {
+        return result;
     }
 
     /**

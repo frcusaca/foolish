@@ -47,10 +47,10 @@ public interface ReadOnlyBraneMemory extends Iterable<FIR> {
     boolean isEmpty();
 
     /**
-     * Gets the parent BraneMemory (read-only view).
-     * @return parent memory, or null if this is the root
+     * Gets the parent FiroeWithBraneMind (the owning FIR of the parent memory).
+     * @return parent brane FIR, or null if this is the root
      */
-    ReadOnlyBraneMemory getParent();
+    FiroeWithBraneMind getParentBrane();
 
     /**
      * Searches for an identifier matching the query.
@@ -88,4 +88,28 @@ public interface ReadOnlyBraneMemory extends Iterable<FIR> {
      * @return pair of (index, FIR) if found, empty otherwise
      */
     Optional<Pair<Integer, FIR>> getLocalForward(Query query, int fromLine);
+
+    /**
+     * Searches for an identifier matching the query starting from the cursor position.
+     * @param cursor the cursor indicating start position
+     * @param query the search query
+     * @return pair of (index, FIR) if found, empty otherwise
+     */
+    Optional<Pair<Integer, FIR>> get(Cursor cursor, Query query);
+
+    /**
+     * Searches locally (backward) starting from the cursor position.
+     * @param cursor the cursor indicating start position
+     * @param query the search query
+     * @return pair of (index, FIR) if found, empty otherwise
+     */
+    Optional<Pair<Integer, FIR>> getLocal(Cursor cursor, Query query);
+
+    /**
+     * Searches locally (forward) starting from the cursor position.
+     * @param cursor the cursor indicating start position
+     * @param query the search query
+     * @return pair of (index, FIR) if found, empty otherwise
+     */
+    Optional<Pair<Integer, FIR>> getLocalForward(Cursor cursor, Query query);
 }

@@ -1,6 +1,7 @@
 package org.foolish.fvm.ubc;
 
 import org.foolish.ast.AST;
+import java.util.Optional;
 
 /**
  * FIR for assignment expressions.
@@ -12,7 +13,7 @@ import org.foolish.ast.AST;
  * identifiers within the RHS expression tree will be represented as IdentifierFiroe
  * which internally uses CharacterizedIdentifier.
  */
-public class AssignmentFiroe extends FiroeWithBraneMind {
+public class AssignmentFiroe extends FiroeWithBraneMind implements Constanicable {
     private final CharacterizedIdentifier lhs;
     private FIR result;
 
@@ -23,12 +24,19 @@ public class AssignmentFiroe extends FiroeWithBraneMind {
     }
 
     /**
-     * Copy constructor for cloneConstanic.
+     * Constructor for cloneConstanic that avoids cloning braneMemory items.
+     * Instead, it creates a fresh AssignmentFiroe from the AST and copies the result.
      */
-    protected AssignmentFiroe(AssignmentFiroe original, FIR newParent) {
-        super(original, newParent);
-        this.lhs = original.lhs;  // CharacterizedIdentifier is immutable
-        this.result = null;  // Reset result for re-evaluation
+    private AssignmentFiroe(AST.Assignment assignment, FIR newParent, CharacterizedIdentifier lhs) {
+        super(assignment, null);
+        setParentFir(newParent);
+        this.lhs = lhs;  // Use provided lhs (same object as original, not final assignment)
+        this.result = null;
+        this.ordinated = false;
+        this.indexLookup = new java.util.IdentityHashMap<>();
+        // Initialize braneMemory from AST (same as original constructor)
+        // This must be called AFTER setting up the object but BEFORE marking as initialized
+        storeExprs(assignment.expr());
     }
 
     @Override
@@ -56,6 +64,7 @@ public class AssignmentFiroe extends FiroeWithBraneMind {
             case UNINITIALIZED -> {
                 initialize();
                 setNyes(Nyes.INITIALIZED);
+                System.out.println("DEBUG AssignmentFiroe.step UNINITIALIZED: this=" + System.identityHashCode(this));
                 return 1;
             }
             case INITIALIZED, CHECKED, PRIMED -> {
@@ -64,30 +73,37 @@ public class AssignmentFiroe extends FiroeWithBraneMind {
             }
             case EVALUATING -> {
                 // Step the expression through evaluation
-                if (isBrainEmpty()) {
+                if (isBraneEmpty()) {
                     // Expression evaluated, store result and determine final state
+                    System.out.println("DEBUG AssignmentFiroe.step EVALUATING: this=" + System.identityHashCode(this) + " memorySize=" + memorySize());
+                    for (int i = 0; i < memorySize(); i++) {
+                        FIR mem = memoryGet(i);
+                        System.out.println("DEBUG AssignmentFiroe.step EVALUATING: this=" + System.identityHashCode(this) + " memory[" + i + "]=" + mem.getClass().getSimpleName() + " state=" + mem.getNyes());
+                    }
                     if (!isMemoryEmpty()) {
                         result = memoryGet(0);
+                        System.out.println("DEBUG AssignmentFiroe.step EVALUATING: this=" + System.identityHashCode(this) + " result=" + result.getClass().getSimpleName() + " resultState=" + result.getNyes() + " resultIsConstanic=" + result.atConstanic());
                         if (result.atConstanic()) {
                             setNyes(Nyes.CONSTANIC);
                         } else {
                             setNyes(Nyes.CONSTANT);
                         }
+                        System.out.println("DEBUG AssignmentFiroe.step: this=" + System.identityHashCode(this) + " setting state to " + getNyes());
                     } else {
                         setNyes(Nyes.CONSTANT);
                     }
                     return 1;
                 }
 
-                FIR current = brainDequeue();
+                FIR current = braneDequeue();
                 try {
                     int work = current.step();
                     if (current.isNye()) {
-                        brainEnqueue(current);
+                        braneEnqueue(current);
                     }
                     return work;
                 } catch (Exception e) {
-                    brainEnqueueFirst(current); // Re-enqueue on error
+                    braneEnqueueFirst(current); // Re-enqueue on error
                     throw new RuntimeException("Error during expression evaluation", e);
                 }
             }
@@ -97,6 +113,7 @@ public class AssignmentFiroe extends FiroeWithBraneMind {
         }
         return 0;
     }
+
 
     @Override
     public boolean isConstanic() {
@@ -125,8 +142,8 @@ public class AssignmentFiroe extends FiroeWithBraneMind {
     }
 
     /**
-     * Gets the evaluated result FIR.
-     * Returns null if not yet evaluated.
+     * This is the RHS expression that gives this assignment
+     * its value.
      */
     public FIR getResult() {
         return result;
@@ -152,7 +169,7 @@ public class AssignmentFiroe extends FiroeWithBraneMind {
     }
 
     @Override
-    protected FIR cloneConstanic(FIR newParent, java.util.Optional<Nyes> targetNyes) {
+    protected FIR cloneConstanic(FIR newParent, Optional<Nyes> targetNyes) {
         if (!isConstanic()) {
             throw new IllegalStateException(
                 formatErrorMessage("cloneConstanic can only be called on CONSTANIC or CONSTANT FIRs, " +
@@ -163,16 +180,42 @@ public class AssignmentFiroe extends FiroeWithBraneMind {
             return this;  // Share CONSTANT assignments completely
         }
 
-        // CONSTANIC: use copy constructor
-        AssignmentFiroe copy = new AssignmentFiroe(this, newParent);
+        // CONSTANIC: create copy manually to avoid cloning braneMemory items
+        // which may contain non-constanic expressions that were replaced by result
+        AssignmentFiroe copy = new AssignmentFiroe((AST.Assignment) this.ast, newParent, this.lhs);
+        // Don't copy result - let the clone re-evaluate from scratch to ensure
+        // it resolves identifiers in the new context (e.g., CMFir's parent brane)
+        copy.result = null;
+        copy.setInitialized();
+        copy.nyes = this.nyes;  // Copy state directly
 
-        // Set target state if specified, otherwise copy from original
+        // Set target state if specified
         if (targetNyes.isPresent()) {
             copy.nyes = targetNyes.get();
-        } else {
-            copy.nyes = this.nyes;
         }
 
         return copy;
+    }
+
+    @Override
+    public Optional<FIR> valuableSelf() {
+        if (FIR.RECURSION_DEPTH.get() > 100) {
+            return Optional.empty();
+        }
+        try {
+            FIR.RECURSION_DEPTH.set(FIR.RECURSION_DEPTH.get() + 1);
+            // TODO: Check for circular reference
+            if (result != null) {
+                return result.valuableSelf();
+            }
+            if (atConstanic()) {
+                 // Constanic means we paused (e.g. missing var), effectively empty result
+                 return Optional.empty();
+            }
+            // If not ready yet, return null
+            return null;
+        } finally {
+            FIR.RECURSION_DEPTH.set(FIR.RECURSION_DEPTH.get() - 1);
+        }
     }
 }

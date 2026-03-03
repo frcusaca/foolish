@@ -1,0 +1,187 @@
+!!INPUT!!
+{
+   test_1_simple = {
+      x = 5;
+      A={a=1};
+      AA={a=x};
+      B={b=3};
+      C={c=AA.a};
+      f = A AA B C;
+   };
+
+   test_1_serach_concatenates_after_constanicity = {
+      OB={
+            a=2;
+            A={a=1};
+            AA={a=parameter};
+            B={b=3};
+            C={c=AA.a};   !! This finds AA, becomes constanic before concatenation and coordination
+            f = A AA B C;         !! Still constanic
+
+            parameter = 5;
+            r1 = f;
+
+            !! Just paranoid, checking if this comes through the same way?
+            r2 = A AA B C;
+      }
+      !! confirm = OB.r1.c == 5
+      !! confirm = OB.r2..c == 5
+   };
+
+
+   test_2_mixed_scope= {
+      OB={
+            AA={a=parameter+b};
+	    do_work={
+              b=-1;
+              call={paramter=5;}AA
+            }
+      }
+      !! confirm = OB.do_work$ == 4
+   }
+}
+
+!!!
+PARSED AST:
+{
+  testˍ1ˍsimple = {
+    x = 5;
+    A = {
+      a = 1;
+    };
+    AA = {
+      a = x;
+    };
+    B = {
+      b = 3;
+    };
+    C = {
+      c = AA.a;
+    };
+    f = A
+AA
+B
+C;
+  };
+  testˍ1ˍserachˍconcatenatesˍafterˍconstanicity = {
+    OB = {
+      a = 2;
+      A = {
+        a = 1;
+      };
+      AA = {
+        a = parameter;
+      };
+      B = {
+        b = 3;
+      };
+      C = {
+        c = AA.a;
+      };
+      f = A
+AA
+B
+C;
+      parameter = 5;
+      r1 = f;
+      r2 = A
+AA
+B
+C;
+    };
+  };
+  testˍ2ˍmixedˍscope = {
+    OB = {
+      AA = {
+        a = (parameter + b);
+      };
+      doˍwork = {
+        b = -1;
+        call = {
+          paramter = 5;
+        }
+AA;
+      };
+    };
+  };
+}
+
+UBC EVALUATION:
+Steps taken: 429
+
+FINAL RESULT:
+{
+＿testˍ1ˍsimple = {
+＿                ＿x = 5;
+＿                ＿A = {
+＿                ＿    ＿a = 1;
+＿                ＿};
+＿                ＿AA = {
+＿                ＿     ＿a = 5;
+＿                ＿};
+＿                ＿B = {
+＿                ＿    ＿b = 3;
+＿                ＿};
+＿                ＿C = {
+＿                ＿    ＿c = 5;
+＿                ＿};
+＿                ＿f = {
+＿                ＿    ＿a = 1;
+＿                ＿    ＿a = 5;
+＿                ＿    ＿b = 3;
+＿                ＿    ＿c = 5;
+＿                ＿};
+＿};
+＿testˍ1ˍserachˍconcatenatesˍafterˍconstanicity = {
+＿                                                ＿OB = {
+＿                                                ＿     ＿a = 2;
+＿                                                ＿     ＿A = {
+＿                                                ＿     ＿    ＿a = 1;
+＿                                                ＿     ＿};
+＿                                                ＿     ＿AA = {
+＿                                                ＿     ＿     ＿a = ⎵⎵ (CONSTANIC);
+＿                                                ＿     ＿};
+＿                                                ＿     ＿B = {
+＿                                                ＿     ＿    ＿b = 3;
+＿                                                ＿     ＿};
+＿                                                ＿     ＿C = {
+＿                                                ＿     ＿    ＿c = ⎵⎵ (CONSTANIC);
+＿                                                ＿     ＿};
+＿                                                ＿     ＿f = {
+＿                                                ＿     ＿    ＿a = 1;
+＿                                                ＿     ＿    ＿a = ⎵⎵ (CONSTANIC);
+＿                                                ＿     ＿    ＿b = 3;
+＿                                                ＿     ＿    ＿c = ⎵⎵ (CONSTANIC);
+＿                                                ＿     ＿};
+＿                                                ＿     ＿parameter = 5;
+＿                                                ＿     ＿r1 = {
+＿                                                ＿     ＿     ＿a = 1;
+＿                                                ＿     ＿     ＿a = ⎵⎵ (CONSTANIC);
+＿                                                ＿     ＿     ＿b = 3;
+＿                                                ＿     ＿     ＿c = ⎵⎵ (CONSTANIC);
+＿                                                ＿     ＿};
+＿                                                ＿     ＿r2 = {
+＿                                                ＿     ＿     ＿a = 1;
+＿                                                ＿     ＿     ＿b = 3;
+＿                                                ＿     ＿     ＿c = ⎵⎵ (CONSTANIC);
+＿                                                ＿     ＿};
+＿                                                ＿};
+＿};
+＿testˍ2ˍmixedˍscope = {
+＿                     ＿OB = {
+＿                     ＿     ＿AA = {
+＿                     ＿     ＿     ＿a = ⎵⎵ (CONSTANIC);
+＿                     ＿     ＿};
+＿                     ＿     ＿doˍwork = {
+＿                     ＿     ＿          ＿b = -1;
+＿                     ＿     ＿          ＿call = {
+＿                     ＿     ＿          ＿       ＿paramter = 5;
+＿                     ＿     ＿          ＿};
+＿                     ＿     ＿};
+＿                     ＿};
+＿};
+}
+
+COMPLETION STATUS:
+Complete: true
+!!!

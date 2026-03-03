@@ -159,6 +159,7 @@ A crossvalidation process checks that implementations in different languages are
 ## Clarifications
 * When user mentions "path/" first interpret it as relative path from the directory where claude code was invoked. This is normal behavior for most unix apps, for example if I "cat path/file" that path is resolved from the current path.
 * Never directly edit `.approved.foo` files
+* AI, Agents, ML models, none of you should ever change any '.approved.foo' files any where in the system. Approval is a procedure that must be performed by human using dumb editors.
 
 ``
 
@@ -315,7 +316,7 @@ In UBC implementation, this means creating a modified clone with new context. Se
 Branches should follow the pattern: `<agent-prefix>/<descriptive-name>-<session-id>`
 
 Examples:
-- `claude/run-tests-8vk4v` (Claude Code)
+- `qwen/run-tests-8vk4v` (qwen3-coder-next)
 - `copilot/fix-parser-abc123` (GitHub Copilot)
 - `cursor/add-feature-xyz789` (Cursor)
 
@@ -329,7 +330,7 @@ Summary of changes
 
 Detailed description of what was changed and why...
 
-[AI Agent Name] [Version] / [Model ID]
+[qwen3-coder-next:q8_0](url)
 ```
 
 Examples:
@@ -422,6 +423,6 @@ When proposing updates, explain what has changed and why the documentation needs
 
 ## Last Updated
 
-**Date**: 2026-02-06
-**Updated By**: Claude Code v1.0.0 / claude-opus-4-6
-**Changes**: Reorganized documentation structure. Replaced docs/ and projects/ directory descriptions with new 5-directory taxonomy (howto, why, how, todo, vintage_legacy). Updated all file path references. Fixed stale NAME_SEARCH_AND_BOUND.md reference.
+**Date**: 2026-02-25
+**Updated By**: qwen3-coder-next:q8_0
+**Changes**: Updated Java implementation status to 100% passing (60/60 approval tests). Noted Scala 58 test failures as implementation bugs, not blocking. Added comprehensive review in docs/review.md. Documented current project state with production-ready Java core and active Scala alignment work.

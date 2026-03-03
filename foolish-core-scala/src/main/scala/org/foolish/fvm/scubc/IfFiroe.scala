@@ -31,40 +31,70 @@ class IfFiroe(ifExpr: AST.IfExpr) extends FiroeWithBraneMind(ifExpr):
 
     nextPossibleIdx = 0
 
-  override def step(): Unit =
+  override def step(): Int =
     if result.isDefined then
       setNyes(Nyes.CONSTANT)
-      return
+      return 0
 
-    // Let parent class handle state transitions first
-    super.step()
+    getNyes match
+      case Nyes.UNINITIALIZED | Nyes.INITIALIZED | Nyes.CHECKED | Nyes.PRIMED =>
+        // Let parent handle state progression through these phases
+        super.step()
 
-    if getNyes != Nyes.CONSTANT then
-      return
+      case Nyes.EVALUATING =>
+        // Step through conditionals to find the matching branch
+        while nextPossibleIdx < braneMemory.size do
+          braneMemory.get(nextPossibleIdx) match
+            case cfiroe: ConditionalFiroe =>
+              if cfiroe.hasTrueCondition then
+                // Condition is true, evaluate then branch
+                val thenFir = cfiroe.getThenFir
+                val work =
+                  if thenFir.isNye then
+                    thenFir.step()
+                  else
+                    0
+                if !thenFir.isNye then
+                  result = Some(thenFir)
+                  return work
+              else if cfiroe.hasFalseCondition then
+                // Condition is false, move to next conditional
+                nextPossibleIdx += 1
+                1
+              else
+                // Condition is still evaluating, step it
+                cfiroe.step()
 
-    braneMemory.get(nextPossibleIdx) match
-      case cfiroe: ConditionalFiroe =>
-        if cfiroe.hasTrueCondition then
-          step()
-          val thenFir = cfiroe.getThenFir
-          if !thenFir.isNye then
-            result = Some(thenFir)
-        else if cfiroe.hasFalseCondition then
-          nextPossibleIdx += 1
-        else
-          // condition is nye, need to step further
-          cfiroe.step()
+            case firoe: FIR =>
+              // This is the else branch or NK
+              val work =
+                if firoe.isNye then
+                  firoe.step()
+                else
+                  0
+              if !firoe.isNye then
+                nextPossibleIdx = braneMemory.size - 1
+                result = Some(firoe)
+                return work
+              return 1  // Still evaluating, need another step
 
-      case firoe: FIR =>
-        // Else branch (explicitly provided or implicit ???) has been fully evaluated
-        nextPossibleIdx = braneMemory.size - 1
-        result = Some(firoe)
+            case _ =>
+              return 1  // Unknown, wait for next step
+
+          if result.isEmpty then
+            return 1  // Need another step to continue
+
+        1
+
+      case Nyes.CONSTANT | Nyes.CONSTANIC =>
+        // Already evaluated, nothing to do
+        0
 
   override def isNye: Boolean =
-    result.isEmpty || getNyes != Nyes.CONSTANT
+    result.isEmpty && getNyes != Nyes.CONSTANT && getNyes != Nyes.CONSTANIC
 
   /** Get the result of the if expression */
-  def getResult: Option[FIR] = result
+  override def getResult: FIR = result.orNull
 
   /**
    * ConditionalFiroe - private to ensure nothing else can insert into the else branch
@@ -79,20 +109,39 @@ class IfFiroe(ifExpr: AST.IfExpr) extends FiroeWithBraneMind(ifExpr):
     override protected def initialize(): Unit =
       super.initialize()
 
-    override def step(): Unit =
-      super.step()
-      // After stepping, check if condition has been evaluated
-      if conditionValue.isEmpty && !braneMemory.isEmpty && braneMemory.get(0).getNyes == Nyes.CONSTANT then
-        val conditionFir = braneMemory.get(0)
-        if !conditionFir.isAbstract then
-          val condValue = conditionFir.getValue
-          conditionValue = Some(condValue != 0)
-        else
-          // Condition is NK, treat as false
-          conditionValue = Some(false)
+    override def step(): Int =
+      getNyes match
+        case Nyes.UNINITIALIZED | Nyes.INITIALIZED | Nyes.CHECKED | Nyes.PRIMED =>
+          super.step()
+          1
+        case Nyes.EVALUATING =>
+          // Step operands
+          if braneMind.isEmpty then
+            // All operands evaluated, check condition value
+            if conditionValue.isEmpty && !braneMemory.isEmpty then
+              val conditionFir = braneMemory.get(0)
+              if !conditionFir.isAbstract && !conditionFir.isNye then
+                val condValue = conditionFir.getValue
+                conditionValue = Some(condValue != 0)
+              else if conditionFir.isNye then
+                conditionFir.step()
+              else
+                // Condition is NK (not known), treat as false
+                conditionValue = Some(false)
+            1
+          else
+            val current = braneMind.dequeue()
+            current.step()
+            if current.isNye then
+              braneMind.enqueue(current)
+            1
+        case Nyes.CONSTANT | Nyes.CONSTANIC =>
+          // Already evaluated, nothing to do
+          0
 
     override def isNye: Boolean =
-      hasUnknownCondition || (hasTrueCondition && super.isNye)
+      // Use parent's state-based isNye logic
+      super.isNye
 
     def hasUnknownCondition: Boolean = conditionValue.isEmpty
     def hasTrueCondition: Boolean = conditionValue.contains(true)
@@ -100,6 +149,24 @@ class IfFiroe(ifExpr: AST.IfExpr) extends FiroeWithBraneMind(ifExpr):
     def getThenFir: FIR = braneMemory.getLast
 
   end ConditionalFiroe
+
+  override def cloneConstanic(newParent: FIR, targetNyes: Option[Nyes]): FIR =
+    if !isConstanic then
+      throw IllegalStateException(
+        s"cloneConstanic can only be called on CONSTANIC or CONSTANT FIRs, " +
+        s"but this FIR is in state: ${getNyes}")
+    if isConstant then
+      return this  // Share CONSTANT if expressions completely
+    // CONSTANIC: create fresh copy from AST
+    val copy = new IfFiroe(ast.asInstanceOf[AST.IfExpr])
+    copy.setParentFir(newParent)
+    // Reset result for re-evaluation
+    copy.result = None
+    copy.nextPossibleIdx = 0
+    copy.setNyes(getNyes)
+    // Set target state if specified
+    targetNyes.foreach(copy.setNyes)
+    copy
 
 end IfFiroe
 

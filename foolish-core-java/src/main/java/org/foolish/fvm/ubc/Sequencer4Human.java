@@ -80,20 +80,11 @@ public class Sequencer4Human extends Sequencer<String> {
             var sb = new StringBuilder();
             sb.append(indent(depth)).append("{\n");
 
-            // Flatten: for each sub-brane, render its contents directly (not the brane wrapper)
+            // Render each item in the concatenation's flattened memory
+            // After performJoin, the concatenation contains individual statements (not nested branes)
             concat.stream().forEach(fir -> {
-                FIR unwrapped = unwrap(fir);
-                if (unwrapped instanceof FiroeWithBraneMind fwbm) {
-                    // Flatten this sub-brane's contents into the parent
-                    fwbm.stream().forEach(innerFir -> {
-                        sb.append(sequence(innerFir, depth + 1));
-                        sb.append(";\n");
-                    });
-                } else {
-                    // Non-brane items (values, etc.) render directly
-                    sb.append(sequence(fir, depth + 1));
-                    sb.append(";\n");
-                }
+                sb.append(sequence(fir, depth + 1));
+                sb.append(";\n");
             });
 
             sb.append(indent(depth)).append("}");
@@ -204,7 +195,9 @@ public class Sequencer4Human extends Sequencer<String> {
 
                 FIR unwrapped = unwrap(result);
 
-                if (unwrapped != null && unwrapped.atConstanic() && !(unwrapped instanceof BraneFiroe)) {
+                if (unwrapped != null && unwrapped.atConstanic()
+                    && !(unwrapped instanceof BraneFiroe)
+                    && !(unwrapped instanceof ConcatenationFiroe)) {
                     return indent(depth) + fullId + " = " + addNyesStateIfEnabled(CC_STR, unwrapped.getNyes());
                 }
 
@@ -288,12 +281,9 @@ public class Sequencer4Human extends Sequencer<String> {
     }
 
     protected String sequenceIdentifier(IdentifierFiroe identifier, int depth) {
-        if (identifier.atConstanic()) {
-            return indent(depth) + addNyesStateIfEnabled(CC_STR, identifier.getNyes());
-        }
-        if (!identifier.isNye()) {
-            // If the identifier resolved to a brane or concatenation, sequence that
-            FIR resolved = identifier.getResolvedFir();
+        // Even if constanic, try to expand if we can get the resolved FIR
+        FIR resolved = identifier.getResolvedFir();
+        if (resolved != null) {
             if (resolved instanceof BraneFiroe brane) {
                 return sequenceBrane(brane, depth);
             }
@@ -308,11 +298,17 @@ public class Sequencer4Human extends Sequencer<String> {
             if (unwrapped instanceof ConcatenationFiroe concat) {
                 return sequenceConcatenation(concat, depth);
             }
-            try {
-                return indent(depth) + identifier.getValue();
-            } catch (UnsupportedOperationException e) {
-                // Fall through to NK if getValue fails
+            if (!identifier.atConstanic()) {
+                try {
+                    return indent(depth) + identifier.getValue();
+                } catch (UnsupportedOperationException e) {
+                    // Fall through to CC_STR or NK_STR
+                }
             }
+        }
+
+        if (identifier.atConstanic()) {
+            return indent(depth) + CC_STR;
         }
         return indent(depth) + NK_STR;
     }

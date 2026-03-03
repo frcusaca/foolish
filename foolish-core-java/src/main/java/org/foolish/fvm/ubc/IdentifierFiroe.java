@@ -1,6 +1,7 @@
 package org.foolish.fvm.ubc;
 
 import org.foolish.ast.AST;
+import java.util.Optional;
 /**
  * IdentifierFiroe represents a characterized identifier reference in the UBC system.
  *
@@ -16,7 +17,8 @@ import org.foolish.ast.AST;
  * Currently, identifier lookup is not yet implemented in UBC, so this
  * returns NK (not-known) values.
  */
-public class IdentifierFiroe extends FiroeWithBraneMind {
+
+public class IdentifierFiroe extends FiroeWithBraneMind implements Constanicable {
     private final Query.StrictlyMatchingQuery identifier;
     FIR value = null; // Package-private for access by RegexpSearchFiroe
 
@@ -57,13 +59,21 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
         return value;
     }
 
+    @Override
+    public FIR getResult() {
+        return value;
+    }
+
     /**
      * An identifier is Constanic if it hasn't been resolved yet or if its resolved value is Constanic.
      */
     @Override
     public boolean isConstanic() {
+        if (getNyes() != Nyes.CONSTANIC && getNyes() != Nyes.CONSTANT) {
+            return false;
+        }
         if (value == null) {
-            return true; // Not yet resolved or missing
+            return true; // Resolved to nothing (CONSTANIC)
         }
         return value.isConstanic();
     }
@@ -103,28 +113,42 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
                 return 1;
             }
             case CHECKED -> {
-                // Identifier lookup is complete, check if value has reached final state
-                // Use atConstanic() to check for exactly CONSTANIC (unresolved)
-                // Use atConstant() to check for exactly CONSTANT (fully resolved)
                 if (value.atConstanic()) {
-                    setNyes(Nyes.CONSTANIC);
+                    Nyes targetNyes = value.getNyes() == Nyes.CONSTANIC || value.getNyes() == Nyes.CONSTANT
+                        ? value.getNyes() : Nyes.INITIALIZED;
+                    value = value.cloneConstanic(this, Optional.of(targetNyes));
+                    storeFirs(value);
+                    if (targetNyes != Nyes.CONSTANIC && targetNyes != Nyes.CONSTANT) {
+                        braneEnqueue(value);
+                    }
+                    setNyes(Nyes.PRIMED);
                 } else if (value.atConstant()) {
+                    storeFirs(value);
                     setNyes(Nyes.CONSTANT);
                 } else {
-                    // Value is still evaluating - shouldn't happen for identifiers
-                    // since we just store a reference, but handle gracefully
-                    setNyes(Nyes.EVALUATING);
+                    storeFirs(value);
+                    braneEnqueue(value);
+                    setNyes(Nyes.PRIMED);
                 }
                 return 1;
             }
+            case PRIMED -> {
+                // Transition to EVALUATING to step the coordinated value
+                setNyes(Nyes.EVALUATING);
+                return 1;
+            }
             case EVALUATING -> {
-                // Check if value completed evaluation
-                // Use atConstanic() and atConstant() for exact state checks
-                if (value.atConstanic()) {
-                    setNyes(Nyes.CONSTANIC);
-                } else if (value.atConstant()) {
-                    setNyes(Nyes.CONSTANT);
+                if (isBraneEmpty()) {
+                    if (value.isConstanic()) {
+                        setNyes(value.atConstanic() ? Nyes.CONSTANIC : Nyes.CONSTANT);
+                    } else {
+                        setNyes(Nyes.CONSTANT);
+                    }
+                    return 1;
                 }
+                FIR current = braneDequeue();
+                current.step();
+                if (current.isNye()) braneEnqueue(current);
                 return 1;
             }
             case CONSTANIC, CONSTANT -> {
@@ -154,7 +178,7 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
     }
 
     @Override
-    protected FIR cloneConstanic(FIR newParent, java.util.Optional<Nyes> targetNyes) {
+    protected FIR cloneConstanic(FIR newParent, Optional<Nyes> targetNyes) {
         if (!isConstanic()) {
             throw new IllegalStateException(
                 formatErrorMessage("cloneConstanic can only be called on CONSTANIC or CONSTANT FIRs, " +
@@ -176,5 +200,27 @@ public class IdentifierFiroe extends FiroeWithBraneMind {
         }
 
         return copy;
+    }
+
+    @Override
+    public Optional<FIR> valuableSelf() {
+        if (FIR.RECURSION_DEPTH.get() > 100) {
+            return Optional.empty();
+        }
+        try {
+            FIR.RECURSION_DEPTH.set(FIR.RECURSION_DEPTH.get() + 1);
+            // TODO: Check for circular reference
+            if (value != null) {
+                return value.valuableSelf();
+            }
+            if (atConstanic()) {
+                 // Constanic (e.g. not found), return Empty as requested
+                 return Optional.empty();
+            }
+            // Not ready yet
+            return null;
+        } finally {
+            FIR.RECURSION_DEPTH.set(FIR.RECURSION_DEPTH.get() - 1);
+        }
     }
 }

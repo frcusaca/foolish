@@ -1,0 +1,32 @@
+# Scala Test Fix Todo List
+
+## Debugging Sessions
+
+### Session 1: 2026-02-26 - Continued from previous context
+- Issue: Scala approval tests failing with 58 errors
+- Root cause: Several issues in Scala implementation
+
+## Tasks
+
+### 1. Debug unanchoredSeekBasic test failures (in_progress)
+The test shows h=$#-1, i=#-2$, j=^#-3 not resolving correctly.
+Scala shows ??? but Java shows correct values (9, 9, ⎵⎵ (CONSTANIC)).
+Need to investigate OneShotSearchFiroe and how the $/^ operators work with unanchored seeks.
+
+### 2. Fix ConcatenationFiroe implementation
+Implement ConcatenationFiroe.scala (NEW FILE) per refactoring plan - Change 9.
+This is a major implementation needed for brane concatenation.
+
+### 3. Fix FIR.unwrapConstanicable()
+Simplify FIR.scala unwrapConstanicable method per refactoring plan - Change 2.
+
+### 4. Fix AssignmentFiroe.step() result detection
+Fix AssignmentFiroe.scala step method result detection per refactoring plan - Change 4.
+
+### 5. Fix IdentifierFiroe.step() CHECKED state handling
+Fix IdentifierFiroe.scala step method CHECKED state handling per refactoring plan - Change 5.
+
+## Notes
+- The scala-refactoring-plan.md document was partially undertaken with manual .approved.md edits that were reverted
+- Java approved files should be considered the "correct" version
+- All approved files should match Java output exactly (including CONSTANIC annotations)

@@ -1,6 +1,7 @@
 package org.foolish.fvm.scubc
 
 import org.foolish.ast.AST
+import scala.jdk.CollectionConverters.*
 
 /**
  * Foolish Internal Representation (FIR).
@@ -35,10 +36,22 @@ abstract class FIR(val ast: AST, val comment: Option[String] = None):
    * Gets the parent FIR that contains this FIR.
    * Returns null if this FIR has no parent (e.g., root brane).
    */
-  protected def getParentFir: FIR = parentFir
+  protected[scubc] def getParentFir: FIR = parentFir
 
   final def atConstant: Boolean = nyes == Nyes.CONSTANT
   final def atConstanic: Boolean = nyes == Nyes.CONSTANIC
+
+  /**
+   * Returns true when nyes >= CONSTANIC (i.e., CONSTANIC OR CONSTANT)
+   * This is the Scala equivalent of Java's isConstanic() method.
+   */
+  def isConstanic: Boolean = nyes == Nyes.CONSTANIC || nyes == Nyes.CONSTANT
+
+  /**
+   * Returns true when nyes >= CONSTANT (i.e., CONSTANT only)
+   * This is the Scala equivalent of Java's isConstant() method.
+   */
+  final def isConstant: Boolean = nyes == Nyes.CONSTANT
 
   /**
    * Checks if this FIR has been initialized.
@@ -60,7 +73,7 @@ abstract class FIR(val ast: AST, val comment: Option[String] = None):
       setInitialized()
 
   /** Perform one step of evaluation on this FIR */
-  def step(): Unit
+  def step(): Int
 
   /**
    * Query method returning false if an additional step on this FIR does not change it.
@@ -81,6 +94,19 @@ abstract class FIR(val ast: AST, val comment: Option[String] = None):
    */
   def getValue: Long =
     throw UnsupportedOperationException(s"getValue not supported for ${getClass.getSimpleName}")
+
+  /**
+   * Returns the "valuable self" of this FIR, resolving wrappers to their significant values.
+   * <p>
+   * This matches Java's valuableSelf() method behavior:
+   * - Returns Some(this) by default (literal constants, branes, etc).
+   * - Returns result.valuableSelf() for AssignmentFiroe.
+   * - Returns value.valuableSelf() for IdentifierFiroe.
+   * - Returns None if the FIR is constanic/unresolved.
+   * - Returns null if the FIR shouldn't have been called yet (pre-PRIMED).
+   */
+  def valuableSelf(): java.util.Optional[FIR] =
+    java.util.Optional.of(this)
 
   /**
    * Gets the BraneFiroe that contains this FIR in its statement list.
@@ -105,7 +131,8 @@ abstract class FIR(val ast: AST, val comment: Option[String] = None):
 
   /**
    * Gets the index of this FIR in its containing brane's memory.
-   * Chains through parent FIRs to find the statement-level FIR, then returns its position.
+   * First finds the containing BraneFiroe using getMyBrane(), then returns its index.
+   * If not directly in the brane, delegates to parent.
    * <p>
    * The brane index defines the "order of expressions" within a height level.
    * All statements at the same brane level are parallel/same height, and the
@@ -119,10 +146,72 @@ abstract class FIR(val ast: AST, val comment: Option[String] = None):
    *         this FIR is not in a brane (root level)
    */
   def getMyBraneIndex: Int =
+    val containingBrane = getMyBrane
+    if containingBrane == null then
+      -1
+    else
+      val directIndex = containingBrane.getIndexOf(this)
+      if directIndex != -1 then
+        directIndex
+      else
+        // Not directly in the brane - delegate to parent
+        if parentFir != null then
+          parentFir.getMyBraneIndex
+        else
+          -1
+
+  /**
+   * Gets the FiroeWithBraneMind container (BraneFiroe or ConcatenationFiroe)
+   * that contains this FIR in its braneMemory.
+   * Chains through parent FIRs to find the container.
+   * <p>
+   * This method is used by unanchored seeks to find the scope of their backward search.
+   * The search scope includes both branes and concatenations (joined branes).
+   *
+   * Note: This method only returns BraneFiroe or ConcatenationFiroe, not other
+   * FiroeWithBraneMind subclasses like AssignmentFiroe or BinaryFiroe.
+   *
+   * @return the containing BraneFiroe or ConcatenationFiroe, or null if not contained
+   */
+  def getMyBraneContainer: BraneFiroe | ConcatenationFiroe =
     parentFir match
-      case null => -1
-      case bf: BraneFiroe => bf.getIndexOf(this)
-      case _ => parentFir.getMyBraneIndex
+      case bf: BraneFiroe => bf
+      case cf: ConcatenationFiroe => cf
+      case null => null
+      case _ => parentFir.getMyBraneContainer
+
+  /**
+   * Gets the index of this FIR in its containing brane container's memory.
+   * Chains through parent FIRs to find the statement-level FIR, then returns its position.
+   * <p>
+   * Works with both BraneFiroe and ConcatenationFiroe containers.
+   *
+   * Note: This method only considers BraneFiroe or ConcatenationFiroe as containers,
+   * not other FiroeWithBraneMind subclasses like AssignmentFiroe or BinaryFiroe.
+   *
+   * @return the index in the containing memory (0-based), or -1 if not in a container
+   */
+  def getMyBraneContainerIndex: Int =
+    parentFir match
+      case null =>
+        System.out.println(s"DEBUG getMyBraneContainerIndex: null parentFir returning -1 for $this")
+        -1
+      case bf: BraneFiroe =>
+        val idx = bf.getIndexOf(this)
+        System.out.println(s"DEBUG getMyBraneContainerIndex: parent is BraneFiroe (hashCode=${System.identityHashCode(bf)}), getIndexOf(this)=$idx for $this (hashCode=${System.identityHashCode(this)})")
+        if idx < 0 then
+          System.out.println(s"DEBUG getMyBraneContainerIndex: WARNING - idx < 0, searching parent chain")
+        idx
+      case cf: ConcatenationFiroe =>
+        val idx = cf.getIndexOf(this)
+        System.out.println(s"DEBUG getMyBraneContainerIndex: parent is ConcatenationFiroe (hashCode=${System.identityHashCode(cf)}), getIndexOf(this)=$idx for $this (hashCode=${System.identityHashCode(this)})")
+        if idx < 0 then
+          System.out.println(s"DEBUG getMyBraneContainerIndex: WARNING - idx < 0, searching parent chain")
+        idx
+      case _ =>
+        val parentIdx = parentFir.getMyBraneContainerIndex
+        System.out.println(s"DEBUG getMyBraneContainerIndex: parent is ${parentFir.getClass.getSimpleName} (hashCode=${System.identityHashCode(parentFir)}), chaining to parent, parentIdx=$parentIdx for $this (hashCode=${System.identityHashCode(this)})")
+        parentIdx
 
 object FIR:
   /** Creates a FIR from an AST expression */
@@ -135,15 +224,38 @@ object FIR:
     case assignment: AST.Assignment => AssignmentFiroe(assignment)
     case identifier: AST.Identifier => IdentifierFiroe(identifier)
     case regexpSearch: AST.RegexpSearchExpr =>
-      if (DerefSearchFiroe.isExactMatch(regexpSearch.pattern())) {
+      if DerefSearchFiroe.isExactMatch(regexpSearch.pattern()) then
         new DerefSearchFiroe(regexpSearch)
-      } else {
-        RegexpSearchFiroe(regexpSearch)
-      }
-    case oneShotSearch: AST.OneShotSearchExpr => OneShotSearchFiroe(oneShotSearch)
+      else
+        new RegexpSearchFiroe(regexpSearch)
+    case oneShotSearch: AST.OneShotSearchExpr => new OneShotSearchFiroe(oneShotSearch)
     case dereferenceExpr: AST.DereferenceExpr =>
       val synthetic = new AST.RegexpSearchExpr(dereferenceExpr.anchor(), org.foolish.ast.SearchOperator.REGEXP_LOCAL, dereferenceExpr.coordinate().toString)
       new DerefSearchFiroe(synthetic, dereferenceExpr)
     case seekExpr: AST.SeekExpr => SeekFiroe(seekExpr)
     case unanchoredSeekExpr: AST.UnanchoredSeekExpr => UnanchoredSeekFiroe(unanchoredSeekExpr)
+    case concatenation: AST.Concatenation => ConcatenationFiroe(concatenation)
     case _ => ValueFiroe(null, 0L) // Placeholder for unsupported types
+
+  /**
+   * Unwraps a Constanicable FIR to its resolved value.
+   *
+   * Follows the wrapper chain while the FIR is constanic:
+   * - IdentifierFiroe -> its value
+   * - AssignmentFiroe -> its result
+   * - SearchFiroe -> its searchResult
+   *
+   * Returns the first FIR in the chain that is either:
+   * - Not a Constanicable
+   * - A Constanicable with null or self-referential result
+   */
+  def unwrapConstanicable(fir: FIR): FIR =
+    var current = fir
+    while current != null do
+      if current.isInstanceOf[Constanicable] then
+        val result = current.asInstanceOf[Constanicable].getResult
+        if result == null || result == current then return current
+        current = result
+      else
+        return current
+    current

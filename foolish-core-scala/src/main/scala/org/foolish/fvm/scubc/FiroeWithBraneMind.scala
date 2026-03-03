@@ -2,21 +2,39 @@ package org.foolish.fvm.scubc
 
 import org.foolish.ast.AST
 import scala.collection.mutable
+import scala.jdk.CollectionConverters.*
 
 /**
  * FIR with a braneMind queue for managing evaluation tasks.
  * The braneMind enables breadth-first execution of nested expressions.
  */
-abstract class FiroeWithBraneMind(ast: AST, comment: Option[String] = None) extends FIR(ast, comment):
+abstract class FiroeWithBraneMind(ast: AST, comment: Option[String] = None)
+    extends FIR(ast, comment) with Constanicable:
 
-  protected val braneMind = mutable.Queue[FIR]()
-  protected[scubc] val braneMemory = new BraneMemory(null)
-  protected var ordinated: Boolean = false
+  protected[scubc] var braneMind = mutable.Queue[FIR]()
+  protected[scubc] var braneMemory = new BraneMemory(null)
+  protected[scubc] var ordinated: Boolean = false
   protected val indexLookup = new java.util.IdentityHashMap[FIR, Int]()
 
+  def ordinateToParentBraneMind(parent: FiroeWithBraneMind): Unit =
+    assert(!this.ordinated)
+    this.braneMemory.setParent(parent.braneMemory)
+    // Set this FIR as the owning brane for its memory.
+    // This is needed so that when this FIR's braneMemory searches the parent,
+    // it can determine the search position via owningBrane.getMyBraneIndex().
+    // This matches Java's behavior in ordinateToParentBraneMind().
+    this.braneMemory.setOwningBrane(this)
+    // Note: NOT setting myPos here - position will be computed dynamically via getMyBraneIndex()
+    // This is critical for proper search behavior when FIRs are stored (not enqueued)
+    this.ordinated = true
   def ordinateToParentBraneMind(parent: FiroeWithBraneMind, myPos: Int): Unit =
     assert(!this.ordinated)
     this.braneMemory.setParent(parent.braneMemory)
+    // Set this FIR as the owning brane for its memory.
+    // This is needed so that when this FIR's braneMemory searches the parent,
+    // it can determine the search position via owningBrane.getMyBraneIndex().
+    // This matches Java's behavior in ordinateToParentBraneMind().
+    this.braneMemory.setOwningBrane(this)
     // For BraneFiroe: position is tracked via parent FIR relationships (getMyBraneIndex)
     // For other FIRs (like IdentifierFiroe): we need to set myPos since they don't have owningBrane
     if !this.isInstanceOf[BraneFiroe] then
@@ -39,10 +57,99 @@ abstract class FiroeWithBraneMind(ast: AST, comment: Option[String] = None) exte
     }
 
   def getIndexOf(f: FIR): Int =
-    indexLookup.get(f)
+    val containsKey = indexLookup.containsKey(f)
+    val idx = if !containsKey then -1
+    else indexLookup.get(f).asInstanceOf[java.lang.Integer].intValue()
+    System.out.println(s"DEBUG getIndexOf: this=${this.getClass.getSimpleName}(hashCode=${System.identityHashCode(this)}) f=$f (hashCode=${System.identityHashCode(f)}) containsKey=$containsKey idx=$idx")
+    idx
+
+  /**
+   * Returns an iterator over all FIRs in braneMemory.
+   * Used by ConcatenationFiroe to iterate over statements.
+   */
+  def stream: Iterator[FIR] =
+    braneMemory.stream
+
+  /**
+   * Adds a FIR to braneMind only (not braneMemory).
+   * Used by IdentifierFiroe for delayed enqueuing.
+   */
+  protected def braneEnqueue(fir: FIR): Unit =
+    braneMind.enqueue(fir)
+
+  /**
+   * Stores FIRs in braneMemory only (not braneMind).
+   * Used by IdentifierFiroe and ConcatenationFiroe for storage without immediate evaluation.
+   * Calls ordinateToParentBraneMind for nested FiroeWithBraneMind instances that are not already ordinated.
+   */
+  protected def storeFirs(firs: FIR*): Unit =
+    firs.foreach { fir =>
+      braneMemory.put(fir)
+      val index = braneMemory.size - 1
+      indexLookup.put(fir, index)
+      // Set parent FIR relationship for proper getMyBrane() and getMyBraneIndex() tracking
+      fir.setParentFir(this)
+      // For nested FiroeWithBraneMind instances, update parent chain.
+      // This is critical for shared CONSTANT assignments to search in the correct parent.
+      if fir.isInstanceOf[FiroeWithBraneMind] then
+        val fwbm = fir.asInstanceOf[FiroeWithBraneMind]
+        if !fwbm.ordinated then
+          // Set myPos to this brane's position in the parent's memory.
+          // This limits search when the cloned brane searches parent memories.
+          // Only set if not already set (e.g., cloned branes have myPos set in copy constructor)
+          if fwbm.braneMemory.getMyPos < 0 then
+            fwbm.braneMemory.setMyPosInternal(index)
+          fwbm.ordinateToParentBraneMind(this)
+    }
+
+  /**
+   * Stores FIRs in braneMemory without calling ordinateToParentBraneMind.
+   * Used during cloneConstanic when the FIR will be added to a different parent's braneMemory later.
+   * Matches Java's behavior where cloned FIRs don't get ordinated immediately.
+   */
+  protected def storeFirsQuietly(firs: FIR*): Unit =
+    firs.foreach { fir =>
+      braneMemory.put(fir)
+      val index = braneMemory.size - 1
+      indexLookup.put(fir, index)
+      // Set parent FIR relationship for proper getMyBrane() and getMyBraneIndex() tracking
+      fir.setParentFir(this)
+      // Do NOT call ordinateToParentBraneMind - the FIR will be ordinated when added to the final parent
+    }
+
+  /**
+   * Enqueues non-constanic FIRs from braneMemory to braneMind.
+   * Used to transition from CHECKED to PRIMED state.
+   * Only enqueues items that are not at CONSTANIC or CONSTANT state.
+   */
+  protected def prime(): Unit =
+    System.out.println(s"DEBUG prime: this=${System.identityHashCode(this)} braneMemory.size=${braneMemory.size} braneMind.size=${braneMind.size}")
+    val iterator = braneMemory.iterator
+    while iterator.hasNext do
+      val fir = iterator.next()
+      System.out.println(s"DEBUG prime: checking fir=${fir.getClass.getSimpleName} state=${fir.getNyes} isConstanic=${fir.isConstanic}")
+      if !fir.isConstanic then
+        System.out.println(s"DEBUG prime: enqueueing fir=${fir.getClass.getSimpleName}")
+        braneMind.enqueue(fir)
+    System.out.println(s"DEBUG prime: after braneMind.size=${braneMind.size}")
 
   protected def enqueueExprs(exprs: AST.Expr*): Unit =
     exprs.foreach(expr => enqueueFirs(FIR.createFiroeFromExpr(expr)))
+
+  /**
+   * Stores FIRs from expressions in braneMemory only (not braneMind).
+   * Used by AssignmentFiroe's copy constructor for cloneConstanic.
+   */
+  protected def storeExprs(exprs: AST.Expr*): Unit =
+    exprs.foreach(expr => storeFirs(FIR.createFiroeFromExpr(expr)))
+
+  /**
+   * Stores FIRs from expressions in braneMemory without calling ordinateToParentBraneMind.
+   * Used during cloneConstanic when the FIR will be added to a different parent's braneMemory later.
+   * Matches Java's behavior where cloned FIRs don't get ordinated immediately.
+   */
+  protected def storeExprsQuietly(exprs: AST.Expr*): Unit =
+    exprs.foreach(expr => storeFirsQuietly(FIR.createFiroeFromExpr(expr)))
 
   protected def enqueueSubfirOfExprs(exprs: AST.Expr*): Unit =
     enqueueFirs(FiroeWithBraneMind.ofExpr(exprs*))
@@ -56,6 +163,77 @@ abstract class FiroeWithBraneMind(ast: AST, comment: Option[String] = None) exte
   /** Check if any FIRs in braneMind or braneMemory are abstract */
   def isAbstract: Boolean =
     braneMind.exists(_.isAbstract) || braneMemory.stream.exists(_.isAbstract)
+
+  /**
+   * Copy constructor for cloneConstanic.
+   * Creates an exact copy of braneMemory with cloned items (updated parent chains).
+   * BraneMemory is verified to be empty for CONSTANIC FIRs.
+   *
+   * @param original the FiroeWithBraneMind to copy
+   * @param newParent the new parent for this clone
+   */
+  protected def this(original: FiroeWithBraneMind, newParent: FIR) =
+    this(original.ast, original.comment)
+    setParentFir(newParent)
+
+    // Verify braneMind is empty (critical invariant for CONSTANIC FIRs)
+    if !original.braneMind.isEmpty then
+      throw IllegalStateException(
+        s"cloneConstanic requires empty braneMind, but found " +
+        s"${original.braneMind.size} items. " +
+        "This indicates the FIR is not truly CONSTANIC.")
+
+    // Create empty braneMind (already verified original is empty)
+    this.braneMind = mutable.Queue[FIR]()
+
+    // Create new braneMemory with null parent initially
+    // The parent will be set by ordinateToParentBraneMind
+    this.braneMemory = new BraneMemory(null)
+    var index = 0
+    original.braneMemory.stream.foreach { fir =>
+      // Clone each item, resetting to INITIALIZED so they will re-evaluate
+      // This is critical: nested FIRs must also be reset, not just the top-level brane
+      val clonedFir = fir.asInstanceOf[Constanicable].cloneConstanic(this, Some(Nyes.INITIALIZED))
+      this.braneMemory.put(clonedFir)
+
+      // Add to indexLookup so getIndexOf works for cloned FIRs
+      this.indexLookup.put(clonedFir, index)
+
+      // Link cloned FIR's braneMemory to this brane's memory (ordination)
+      // This is critical for identifier resolution in the new context
+      clonedFir match
+        case fwbm: FiroeWithBraneMind =>
+          // Reset ordinated flag so we can re-ordinate in new context
+          fwbm.ordinated = false
+          // Don't pass index - this matches Java's behavior where ordinateToParentBraneMind
+          // doesn't set myPos. The position is computed dynamically via getMyBraneIndex().
+          fwbm.ordinateToParentBraneMind(this)
+        case _ =>
+      index += 1
+    }
+
+    // Don't preserve original brane's position - this matches Java's behavior
+    // where the copy constructor doesn't set myPos on the cloned braneMemory.
+    // The position will be set when the cloned brane is stored in its new parent.
+
+    this.ordinated = original.ordinated
+    setInitialized()
+
+  override def getResult: FIR = this
+
+  /**
+   * Clones this Constanicable FIR for use in a new context.
+   * This base implementation creates a fresh copy from AST and sets up the
+   * parent memory link for nested FiroeWithBraneMind instances.
+   *
+   * @param newParent The new parent FIR for the clone
+   * @param targetNyes Optional target state to set on the clone
+   * @return A new clone of this FIR
+   */
+  override def cloneConstanic(newParent: FIR, targetNyes: Option[Nyes]): FIR =
+    throw UnsupportedOperationException(
+      s"cloneConstanic not supported for ${getClass.getSimpleName}. " +
+      "Subclasses must override this method if they need to be cloneable.")
 
   /**
    * Checks if a FIR is a brane (BraneFiroe).
@@ -73,45 +251,60 @@ abstract class FiroeWithBraneMind(ast: AST, comment: Option[String] = None) exte
    * - EVALUATING → CONSTANT: Step everything (including branes) until all complete
    *
    * Derived classes should override this method and call super.step() as needed.
+   *
+   * @return 1 for meaningful work, 0 for empty transitions (already evaluated)
    */
-  def step(): Unit =
+  def step(): Int =
     getNyes match
       case Nyes.UNINITIALIZED =>
         // First step: initialize this FIR
         initialize()
         setNyes(Nyes.INITIALIZED)
+        1
 
       case Nyes.INITIALIZED =>
         // Step non-brane expressions until all are CHECKED
         if stepNonBranesUntilState(Nyes.CHECKED) then
           // All non-branes have reached CHECKED
           setNyes(Nyes.CHECKED)
+        1
 
       case Nyes.CHECKED =>
-        // Immediate transition to EVALUATING when step() is called
+        // Prime braneMind with non-constanic items from braneMemory
+        prime()
+        setNyes(Nyes.PRIMED)
+        1
+
+      case Nyes.PRIMED =>
+        // Immediate transition to EVALUATING
         setNyes(Nyes.EVALUATING)
+        1
 
       case Nyes.EVALUATING =>
         // Step everything including sub-branes
         if braneMind.isEmpty then
-          // All expressions evaluated, transition to CONSTANT
-          setNyes(Nyes.CONSTANT)
-          return
+          // All expressions evaluated, check if any are CONSTANIC
+          val anyConstanic = braneMemory.stream.exists(_.atConstanic)
+          val newState = if anyConstanic then Nyes.CONSTANIC else Nyes.CONSTANT
+          setNyes(newState)
+          return 1
 
         val current = braneMind.dequeue()
         try
-          current.step()
-
+          val w = current.step()
           if current.isNye then
             braneMind.enqueue(current)
+          // Don't transition here - let the next step() call handle it when braneMind is empty at the start
+          // This matches Java's behavior where the final transition counts as an extra step
+          w.asInstanceOf[Int]
         catch
           case e: Exception =>
             braneMind.prepend(current) // Re-enqueue on error
             throw RuntimeException("Error during braneMind step execution", e)
-            //TODO: Handle this exception Foolishly
 
       case Nyes.CONSTANT | Nyes.CONSTANIC =>
         // Already evaluated, nothing to do
+        0
 
   /**
    * Steps non-brane FIRs until they reach the target state.

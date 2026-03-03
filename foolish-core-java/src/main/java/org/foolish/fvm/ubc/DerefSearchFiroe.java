@@ -20,6 +20,14 @@ public class DerefSearchFiroe extends RegexpSearchFiroe {
         this.originalAst = originalExpr;
     }
 
+    /**
+     * Copy constructor for cloneConstanic.
+     */
+    protected DerefSearchFiroe(DerefSearchFiroe original, FIR newParent) {
+        super(original, newParent);
+        this.originalAst = original.originalAst;
+    }
+
     @Override
     public String toString() {
         if (originalAst != null) {
@@ -41,5 +49,28 @@ public class DerefSearchFiroe extends RegexpSearchFiroe {
             }
         }
         return true;
+    }
+
+    @Override
+    protected FIR cloneConstanic(FIR newParent, java.util.Optional<Nyes> targetNyes) {
+        if (!isConstanic()) {
+            throw new IllegalStateException(
+                formatErrorMessage("cloneConstanic can only be called on CONSTANIC or CONSTANT FIRs, " +
+                    "but this FIR is in state: " + getNyes()));
+        }
+
+        if (isConstant()) {
+            return this;  // Share CONSTANT searches
+        }
+
+        DerefSearchFiroe copy = new DerefSearchFiroe(this, newParent);
+
+        if (targetNyes.isPresent()) {
+            copy.nyes = targetNyes.get();
+        } else {
+            copy.nyes = this.nyes;
+        }
+
+        return copy;
     }
 }

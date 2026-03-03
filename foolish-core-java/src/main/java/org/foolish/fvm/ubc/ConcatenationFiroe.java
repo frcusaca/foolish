@@ -30,7 +30,7 @@ import java.util.Optional;
  *
  * @see projects/009-Concatenation_Project.md for detailed design specification
  */
-public class ConcatenationFiroe extends FiroeWithBraneMind {
+public class ConcatenationFiroe extends FiroeWithBraneMind implements Constanicable {
 
     private final List<AST.Expr> sourceElements;  // Original element ASTs
     private ExecutionFir stageAExecutor;          // Coordinates stepping to PRIMED
@@ -69,18 +69,30 @@ public class ConcatenationFiroe extends FiroeWithBraneMind {
         setInitialized();
 
         // Create FIRs from source elements
-        // NOT in braneMemory yet - we'll move them after they reach PRIMED
-        // But we DO need to ordinate them so they can resolve identifiers through
-        // this concatenation's parent chain during Stage A
+        // NOT in braneMemory yet - we'll move them after they reach CONSTANIC
+        //
+        // Key semantics for "concatenates before resolution":
+        // - Brane elements (BraneFiroe, ConcatenationFiroe) are NOT ordinated, so their
+        //   contents cannot resolve identifiers from outer scope. This makes unresolved
+        //   identifiers inside branes become CONSTANIC, allowing re-resolution after join.
+        // - Non-brane elements (IdentifierFiroe, etc.) ARE ordinated so they can resolve
+        //   to find the branes they reference (e.g., `c = b1 b2` needs b1, b2 to resolve).
         sourceFirs = new ArrayList<>();
         int index = 0;
         for (AST.Expr element : sourceElements) {
             FIR fir = createFiroeFromExpr(element);
             fir.setParentFir(this);
-            // Ordinate FiroeWithBraneMind children so they can resolve identifiers
-            // through this concatenation's parent chain
+
+            // Only ordinate non-brane elements (identifiers, searches, etc.)
+            // Branes are kept isolated so their contents don't resolve to outer scope
             if (fir instanceof FiroeWithBraneMind fwbm) {
-                fwbm.ordinateToParentBraneMind(this, index);
+                if (!(fir instanceof BraneFiroe) && !(fir instanceof ConcatenationFiroe)) {
+                    // Non-brane FiroeWithBraneMind (like IdentifierFiroe) - ordinate for resolution
+                    // Add to indexLookup first so parent knows the index
+                    indexLookup.put(fir, index);
+                    fwbm.ordinateToParentBraneMind(this);
+                }
+                // BraneFiroe and ConcatenationFiroe - NOT ordinated (isolated during Stage A)
             }
             sourceFirs.add(fir);
             index++;
@@ -144,22 +156,53 @@ public class ConcatenationFiroe extends FiroeWithBraneMind {
     }
 
     /**
-     * Performs the join operation: clone all source FIRs and add to braneMemory.
-     * After this, later elements can see identifiers from earlier elements.
+     * Performs the join operation: flatten and clone all statements from source branes
+     * into this concatenation's braneMemory.
+     * <p>
+     * Each source brane's statements are cloned individually and reset to INITIALIZED
+     * (or kept as-is if CONSTANT). This flattening allows unanchored seeks (#-1, etc.)
+     * to find statements from earlier branes in the concatenation.
      * <p>
      * All elements must resolve to FiroeWithBraneMind (branes or concatenations).
      * If any element resolves to a non-brane, an alarm is raised.
      */
     private void performJoin() {
+        System.out.println("DEBUG performJoin: THIS ConcatenationFiroe hashCode=" + System.identityHashCode(this));
         for (FIR fir : sourceFirs) {
-            FIR resolved = unwrapToResolvedBrane(fir);
+            FIR resolved = FIR.unwrapConstanicable(fir);
+            System.out.println("DEBUG performJoin: fir=" + fir.getClass().getSimpleName() + ", resolved=" + resolved.getClass().getSimpleName() + ", resolvedState=" + resolved.getNyes());
 
             if (resolved instanceof FiroeWithBraneMind fwbm) {
-                // Clone the brane with this as new parent, reset to INITIALIZED
-                FIR cloned = fwbm.cloneConstanic(this, Optional.of(Nyes.INITIALIZED));
-                // Add cloned brane directly to memory without re-ordination
-                // since cloneConstanic already set up the memory structure properly
-                addClonedFirToMemory(cloned);
+                System.out.println("DEBUG performJoin: fwbm.stream.size = " + fwbm.stream().count());
+                // Flatten: iterate over the brane's statements and clone each one
+                // into this concatenation's braneMemory
+                fwbm.stream().forEach(statement -> {
+                    // Only clone constanic statements (CONSTANIC or CONSTANT)
+                    // Statements not yet at constanic should be stepped first
+                    if (!statement.isConstanic()) {
+                        // This should not happen - the statement should be constanic after step()
+                        // Skip for now and let it be processed in a later phase
+                        return;
+                    }
+                    // Clone each statement with this concatenation as new parent
+                    // CONSTANT items stay CONSTANT (they're fully resolved, immutable).
+                    // CONSTANIC items reset to INITIALIZED to re-evaluate in new context.
+                    Optional<Nyes> targetState = statement.isConstant()
+                        ? Optional.empty()  // Keep CONSTANT as-is
+                        : Optional.of(Nyes.INITIALIZED);  // Reset CONSTANIC to re-evaluate
+                    FIR cloned = statement.cloneConstanic(this, targetState);
+
+                    // Only reset ordinated flag for FIRs that are ACTUALLY NEW clones.
+                    // If cloned == statement, the object is being shared (CONSTANT FIRs)
+                    // and should NOT be re-ordinated - it belongs to its original parent.
+                    boolean isNewClone2 = cloned != statement;
+                    System.out.println("DEBUG performJoin: statement=" + statement.getClass().getSimpleName() + ", state=" + statement.getNyes() + ", isConstanic=" + statement.isConstanic() + ", isConstant=" + statement.isConstant());
+                    System.out.println("DEBUG performJoin: targetState=" + targetState + ", cloned=" + cloned.getClass().getSimpleName() + ", clonedState=" + cloned.getNyes() + ", isNewClone=" + isNewClone2);
+                    storeFirs(cloned);
+                    if (isNewClone2 && cloned instanceof FiroeWithBraneMind clonedFwbm) {
+                        clonedFwbm.ordinated = false;
+                    }
+                });
             } else {
                 // Non-brane in concatenation is a critical error
                 String errorMsg = "Concatenation element resolved to non-brane: " +
@@ -177,95 +220,11 @@ public class ConcatenationFiroe extends FiroeWithBraneMind {
     }
 
     /**
-     * Adds a cloned FIR to braneMemory without re-ordination.
-     * Used for cloned FiroeWithBraneMind instances that already have
-     * their memory structure set up from cloneConstanic.
+     * For container types, getResult() returns this since the concatenation IS the result.
      */
-    private void addClonedFirToMemory(FIR fir) {
-        // Create a simple store method that doesn't re-ordinate
-        addWithoutOrdination(fir);
-    }
-
-    /**
-     * Adds FIR to memory without calling ordination logic.
-     * This bypasses the storeFirs method to avoid re-coordination issues.
-     */
-    private void addWithoutOrdination(FIR fir) {
-        // Access parent's braneMemory through inheritance
-        java.lang.reflect.Field braneMemoryField;
-        try {
-            braneMemoryField = org.foolish.fvm.ubc.FiroeWithBraneMind.class.getDeclaredField("braneMemory");
-            braneMemoryField.setAccessible(true);
-            org.foolish.fvm.ubc.BraneMemory memory = 
-                (org.foolish.fvm.ubc.BraneMemory) braneMemoryField.get(this);
-            
-            java.lang.reflect.Field indexLookupField = 
-                org.foolish.fvm.ubc.FiroeWithBraneMind.class.getDeclaredField("indexLookup");
-            indexLookupField.setAccessible(true);
-            java.util.Map indexLookup = 
-                (java.util.Map) indexLookupField.get(this);
-            
-            // Add to memory and set up relationships without ordination
-            memory.put(fir);
-            fir.setParentFir(this);
-            int index = memory.size() - 1;
-            indexLookup.put(fir, index);
-            
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to add FIR without ordination", e);
-        }
-    }
-
-    /**
-     * Unwraps wrapper FIRs (Identifier, Search, CMFir, etc.) to get the resolved brane.
-     * Follows the chain of wrappers until reaching the actual resolved FIR.
-     *
-     * @param fir the FIR to unwrap
-     * @return the resolved FIR (should be a brane), or the original if not a wrapper
-     */
-    private FIR unwrapToResolvedBrane(FIR fir) {
-        FIR current = fir;
-
-        // Follow the wrapper chain
-        while (current != null && current.isConstanic()) {
-            switch (current) {
-                case IdentifierFiroe idFir -> {
-                    FIR resolved = idFir.getResolvedFir();
-                    if (resolved == null) return current;
-                    current = resolved;
-                }
-                case AbstractSearchFiroe searchFir -> {
-                    FIR result = searchFir.getResult();
-                    if (result == null) return current;
-                    current = result;
-                }
-                case CMFir cmFir -> {
-                    FIR result = cmFir.getResult();
-                    if (result == null) return current;
-                    current = result;
-                }
-                case AssignmentFiroe assignFir -> {
-                    FIR result = assignFir.getResult();
-                    if (result == null) return current;
-                    current = result;
-                }
-                case UnanchoredSeekFiroe seekFir -> {
-                    FIR result = seekFir.getResult();
-                    if (result == null) return current;
-                    current = result;
-                }
-                case FiroeWithBraneMind fwbm -> {
-                    // Reached a brane - stop unwrapping
-                    return current;
-                }
-                default -> {
-                    // Not a wrapper, return as-is
-                    return current;
-                }
-            }
-        }
-
-        return current;
+    @Override
+    public FIR getResult() {
+        return this;
     }
 
     @Override

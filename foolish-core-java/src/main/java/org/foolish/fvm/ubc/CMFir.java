@@ -1,6 +1,7 @@
 package org.foolish.fvm.ubc;
 
 import org.foolish.ast.AST;
+import java.util.Optional;
 
 /**
  * Context Manipulation FIR (CMFir).
@@ -40,7 +41,7 @@ import org.foolish.ast.AST;
  * </ul>
  * This ensures CMFir transparently reflects the state of its wrapped FIR.
  */
-public class CMFir extends FiroeWithoutBraneMind {
+public class CMFir extends FiroeWithoutBraneMind implements Constanicable {
     protected FIR o;
     protected FIR o2;
     protected boolean phaseBStarted = false;
@@ -80,7 +81,7 @@ public class CMFir extends FiroeWithoutBraneMind {
         phaseBStarted = true;
 
         // Clone the CONSTANIC FIR with updated parent chain and reset to INITIALIZED
-        o2 = o.cloneConstanic(this, java.util.Optional.of(Nyes.INITIALIZED));
+        o2 = o.cloneConstanic(this, Optional.of(Nyes.INITIALIZED));
 
         // If o2 is a BraneFiroe, recalculate its depth in the new context
         if (o2 instanceof BraneFiroe braneFiroe) {
@@ -88,12 +89,14 @@ public class CMFir extends FiroeWithoutBraneMind {
             braneFiroe.setExprmntBraneDepth(newDepth);
         }
 
-        // If o2 has a braneMind, link its memory to the containing brane's memory
+        // If o2 has a braneMind, link its memory to the containing brane
+        // The parent brane's indexLookup tracks this FIR's position via the CMFir's own position
         if (o2 instanceof FiroeWithBraneMind fwbm) {
             BraneFiroe myBrane = getMyBrane();
             if (myBrane != null) {
-                fwbm.linkMemoryParent(myBrane.getBraneMemory());
-                fwbm.setMemoryPosition(myBrane.memorySize() - 1);
+                fwbm.linkMemoryParent(myBrane);  // Links to parent FIR (not its memory)
+                // The CMFir itself is tracked in the parent brane's indexLookup.
+                // o2 uses CMFir's position for identifier resolution since o2.parentFir = this.
             }
         }
         syncO2Nyes();
@@ -182,6 +185,23 @@ public class CMFir extends FiroeWithoutBraneMind {
             return o.copy(targetNyes);
         } else {
             return super.copy(targetNyes);
+        }
+    }
+
+    @Override
+    public Optional<FIR> valuableSelf() {
+        if (FIR.RECURSION_DEPTH.get() > 100) {
+            return Optional.empty();
+        }
+        try {
+            FIR.RECURSION_DEPTH.set(FIR.RECURSION_DEPTH.get() + 1);
+            if (phaseBStarted) {
+                return o2.valuableSelf();
+            } else {
+                return o.valuableSelf();
+            }
+        } finally {
+            FIR.RECURSION_DEPTH.set(FIR.RECURSION_DEPTH.get() - 1);
         }
     }
 }

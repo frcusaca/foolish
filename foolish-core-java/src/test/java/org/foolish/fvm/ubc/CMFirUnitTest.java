@@ -71,16 +71,16 @@ class CMFirUnitTest {
      */
     private void evaluateFully(ReadOnlyBraneMemory context, FIR fir) {
         // Ensure all context items in the entire parent chain are stepped
-        ReadOnlyBraneMemory current = context;
+        FiroeWithBraneMind current = context.getParentBrane();
         while (current != null) {
-            for (FIR f : current) {
+            for (FIR f : current.getBraneMemory()) {
                 int steps = 0;
                 while (f.isNye() && steps < 1000) {
                     f.step();
                     steps++;
                 }
             }
-            current = current.getParent();
+            current = current.getBraneMemory().getParentBrane();
         }
 
         int steps = 0;
@@ -257,7 +257,7 @@ class CMFirUnitTest {
             )
         );
         BraneFiroe childBrane = new BraneFiroe(childAst);
-        childBrane.linkMemoryParent(rootBrane.getBraneMemory());
+        childBrane.linkMemoryParent(rootBrane);  // Pass FIR, not its memory
         childBrane.setParentFir(rootBrane);
         evaluateFully(childBrane);
 
