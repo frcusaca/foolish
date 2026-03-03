@@ -1437,13 +1437,55 @@ UBC2 behavior (correct):
 
 NK (`🧠???`) should only be produced when the UBC can prove the search will never succeed:
 
-- Anchored search on a CONSTANT brane that doesn't contain the target: The brane is fully
+- **Anchored search on a CONSTANT brane that doesn't contain the target**: The brane is fully
   evaluated and immutable. It will never gain new members. NK is correct.
+- **Anchored search on a CONSTANIC brane that doesn't contain the target**: A CONSTANIC brane has
+  completed its PREMBRYONIC stage, so its set of named identifiers is fully known. The CONSTANIC
+  state means the brane's *values* may change in a new context, but new *identifiers* will not
+  appear. An anchored search for a non-existent member is definitively failed.
+- **Searching on an NK anchor**: If the anchor expression itself is NK, any search on it is NK.
+- **Searching on a non-brane value**: Scalars (integers, strings) are not branes. Anchored search
+  on a scalar is NK.
 - Arithmetic errors: Division by zero, type mismatches, etc.
 - Depth limit exceeded: The brane tree is too deep to evaluate.
 
 Note: `🧠???` is a sequencer output symbol only. It is not typable Foolish source code — there is
 no input syntax for writing NK directly.
+
+### Binding Precedence: Why Anchored Search Produces NK
+
+The distinction between anchored (NK) and unanchored (CONSTANIC) outcomes for failed searches
+reflects the order of operations in UBC2. Anchored search binds at evaluation time, *before*
+concatenation can change the search context:
+
+```foolish
+{
+    e = {};
+    x = e.value;        !! e is CONSTANT {}, .value not found → 🧠??? (NK)
+    y = {value = 10} x; !! concatenation with x — but x is already NK
+}
+```
+
+The expression `e.value` is fully resolved when `e` is evaluated. Even though `x` is later used in
+a concatenation with `{value = 10}`, the concatenation operates on `x`'s *value* (which is NK),
+not on the search that produced it. Anchored search has higher binding precedence than
+concatenation.
+
+This contrasts with unanchored searches, where CONSTANIC specifically enables deferred resolution:
+
+```foolish
+{
+    f = {a = x;};       !! x not found → f is CONSTANIC (🧠??)
+    g = {x = 42;};
+    h = g f;            !! concatenation clones f into new context → x = 42
+}
+```
+
+The unanchored search for `x` produces CONSTANIC because concatenation *can* provide a new context
+where `x` is defined. The constanic cloning mechanism bridges the precedence gap.
+
+See [UBC2 Message Protocol](ubc2_message_protocol.md#order-of-precedence-search-and-concatenation)
+for the full precedence table and interaction summary.
 
 ### Tests That May Need Updating
 
@@ -2274,9 +2316,15 @@ These are noted in the design but deferred to later iterations:
 
 ## Last Updated
 
-Date: 2026-02-25
+Date: 2026-03-03
 Updated By: Claude Code v1.0.0 / claude-opus-4-6
-Changes: Reduced excessive bold/italic emphasis throughout for natural prose flow.
+Changes: Expanded "NK Is Reserved for Provably Unfindable Cases" to include
+anchored search on CONSTANIC branes (identifiers are known even if values aren't),
+NK anchors, and non-brane values. Added "Binding Precedence" subsection explaining
+why anchored searches produce NK (bind before concatenation) while unanchored
+searches produce CONSTANIC (deferred via constanic cloning). Cross-referenced the
+message protocol's Order of Precedence section.
+Previous (2026-02-25): Reduced excessive bold/italic emphasis throughout for natural prose flow.
 Converted inline `**Action N —**` patterns to `####` headings. Converted `**Note:**` /
 `**IMPORTANT:**` callouts to `>` blockquotes. De-bolded table cell labels (state names, role
 names). Removed bold from design principles leading phrases, running prose emphasis, and

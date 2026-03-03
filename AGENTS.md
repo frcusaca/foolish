@@ -309,8 +309,10 @@ In UBC implementation, this means creating a modified clone with new context. Se
 - See [Test section](## Test)
 
 ### Debugging
+There are many options for debugging the bahvior of code, they include in decreasing preferential order:
 
-- Reproduce errors in approval tests, breaking complex issues into smaller test cases
+- Reproduce errors in a small, new and targeted approval tests, breaking complex issues into smaller test cases.
+  Retain this test as regression test when appropriate.
 - Use configuration flags in test comments (`!! --verbose !!`) for verbose output
 - Printf-style debugging only as last resort
 - Verify fixes don't break other tests; keep useful intermediate tests as regression guards
