@@ -47,9 +47,9 @@ PARSED AST:
     bb = 3;
     cc = (bb * bb);
   };
-  h =$#-1;
-  i =$#-2;
-  j =^#-3;
+  h =$ #-1;
+  i =$ #-2;
+  j =^ #-3;
 }
 
 UBC EVALUATION:

@@ -14,7 +14,7 @@ PARSED AST:
     3;
     4;
   };
-  c =$#-1;
+  c =$ #-1;
 }
 
 UBC EVALUATION:
