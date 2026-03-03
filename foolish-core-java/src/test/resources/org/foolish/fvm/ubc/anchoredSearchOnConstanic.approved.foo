@@ -14,8 +14,8 @@ PARSED AST:
 {
   emptyBrane = {
   };
-  chainedConstanic =^emptyBrane;
-  doubleConstanic =$chainedConstanic;
+  chainedConstanic =^ emptyBrane;
+  doubleConstanic =$ chainedConstanic;
 }
 
 UBC EVALUATION:

@@ -22,8 +22,8 @@ PARSED AST:
   notFound = b ? γ;
   emptyBrane = {
   };
-  emptyHead =^emptyBrane;
-  emptyTail =$emptyBrane;
+  emptyHead =^ emptyBrane;
+  emptyTail =$ emptyBrane;
 }
 
 UBC EVALUATION:
