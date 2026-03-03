@@ -320,8 +320,8 @@ fragment UNICODE_CURRENCY
     | [\u00A2-\u00A5]    // Cent, Pound, Currency, Yen (¢, £, ¤, ¥)
     | [\u20A0-\u20CF]    // Currency Symbols Block (Euro €, Rupee ₹, etc.)
     ;
-BUSINESS_PART
-    | UNICODE_SUB_SUPER_SCRIPTS
+fragment BUSINESS_PART
+    : UNICODE_SUB_SUPER_SCRIPTS
     | UNICODE_LEGAL_SYMBOLS
     | UNICODE_BUSINESS_MARKS
     | UNICODE_CURRENCY
