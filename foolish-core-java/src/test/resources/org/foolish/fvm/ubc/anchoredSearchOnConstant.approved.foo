@@ -20,8 +20,8 @@ PARSED AST:
     α = 100;
     β = 200;
   };
-  head =^b;
-  tail =$b;
+  head =^ b;
+  tail =$ b;
   found = b ? α;
 }
 
