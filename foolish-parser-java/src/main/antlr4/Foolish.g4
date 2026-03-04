@@ -315,14 +315,14 @@ fragment UNICODE_BUSINESS_MARKS
     | '\u2117' // Sound Recording Copyright (℗)
     ;
 // --- Currency Symbols ---
+// Note: $ (U+0024) is intentionally excluded from UNICODE_CURRENCY because it's used as the TAIL operator (DOLLAR token)
 fragment UNICODE_CURRENCY
-    : [\u0024]           // Dollar ($)
-    | [\u00A2-\u00A5]    // Cent, Pound, Currency, Yen (¢, £, ¤, ¥)
+    : [\u00A2-\u00A5]    // Cent, Pound, Currency, Yen (¢, £, ¤, ¥)
     | [\u20A0-\u20CF]    // Currency Symbols Block (Euro €, Rupee ₹, etc.)
     ;
 fragment BUSINESS_PART
     : UNICODE_SUB_SUPER_SCRIPTS
     | UNICODE_LEGAL_SYMBOLS
     | UNICODE_BUSINESS_MARKS
-    | UNICODE_CURRENCY
+  | UNICODE_CURRENCY
     ;

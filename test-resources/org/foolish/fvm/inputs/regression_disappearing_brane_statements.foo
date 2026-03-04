@@ -9,7 +9,7 @@
     c = 3;
 
     !! This statement has invalid syntax and should cause a parse error
-    !! The syntax "d =$ 4" does not produce a value.
+    !! The syntax "d =$ 4" is invalid (should be "d = 4$" or similar)
     d =$ 4;
 
     !! These statements come AFTER the parse error

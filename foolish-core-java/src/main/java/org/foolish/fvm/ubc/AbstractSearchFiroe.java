@@ -224,6 +224,14 @@ public abstract class AbstractSearchFiroe extends FiroeWithBraneMind implements 
             return 1; // Progress made (unwrapped)
         }
 
+        // For one-shot searches (HEAD/TAIL), if the anchor is not a BraneFiroe, the result is ???
+        // (you can't get the head/tail of a literal value or other non-brane type)
+        if (operator == SearchOperator.HEAD || operator == SearchOperator.TAIL) {
+            searchResult = Optional.of(new NKFiroe());
+            setNyes(Nyes.CONSTANT);  // Complete, but result is ???
+            return 1;
+        }
+
         // Fallthrough: resolvedAnchor is the final result (e.g. constant value)
         searchResult = Optional.of(resolvedAnchor);
         return 1;

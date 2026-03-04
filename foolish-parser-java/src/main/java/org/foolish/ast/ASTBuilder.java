@@ -301,6 +301,9 @@ public class ASTBuilder extends FoolishBaseVisitor<AST> {
             } else if (postfixOp.DOLLAR() != null) {
                 // Handle tail: anchor$
                 anchor = new AST.OneShotSearchExpr(anchor, SearchOperator.TAIL);
+            } else {
+                // Debug: should not reach here
+                System.err.println("WARNING: Unrecognized postfix_op: " + postfixOp.getText());
             }
         }
 

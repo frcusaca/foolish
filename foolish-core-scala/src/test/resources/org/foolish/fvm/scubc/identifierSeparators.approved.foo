@@ -8,7 +8,67 @@
 
   foo_bar'x = 10;
   foo bar'x = 20;
-  fooˍbar'x
+  fooˍbar'x;
+
+  !! Multi-script identifiers
+  x = 1;
+  π = 3;
+  Б = 7;
+  א = 42;
+  سعر = 99;
+  值 = 100;
+  शून्य = 0;
+
+  x + π + Б + א + سعر + 值 + शून्य;
+
+  !! Retrieve each script's value by name
+  v1 = x;
+  v2 = π;
+  v3 = Б;
+  v4 = א;
+  v5 = سعر;
+  v6 = 值;
+  v7 = शून्य;
+
+  !! Mixed-script identifiers
+  Δx = 5;
+  πr2 = 314;
+  值count = 8;
+  शून्य_value = 0;
+  maxБ = 77;
+
+  !! Retrieve mixed-script values
+  m1 = Δx;
+  m2 = πr2;
+  m3 = 值count;
+  m4 = शून्य_value;
+  m5 = maxБ;
+
+  !! Math symbols
+  ℝ = 1;
+  ∀x = 2;
+  ∇f = 3;
+  x² = 4;
+  ℂ₀ = 5;
+
+  !! Retrieve math symbol values
+  s1 = ℝ;
+  s2 = ∀x;
+  s3 = ∇f;
+  s4 = x²;
+  s5 = ℂ₀;
+
+  !! Business symbols
+  ©acme = 100;
+  price€ = 50;
+  §clause = 7;
+  ™brand = 999;
+
+  !! Retrieve business symbol values
+  b1 = ©acme;
+  b2 = price€;
+  b3 = §clause;
+  b4 = ™brand
 }
 
 !!!
@@ -21,10 +81,53 @@ PARSED AST:
   fooˍbar'x = 10;
   fooˍbar'x = 20;
   fooˍbar'x;
+  x = 1;
+  π = 3;
+  Б = 7;
+  א = 42;
+  سعر = 99;
+  值 = 100;
+  शून्य = 0;
+  ((((((x + π) + Б) + א) + سعر) + 值) + शून्य);
+  v1 = x;
+  v2 = π;
+  v3 = Б;
+  v4 = א;
+  v5 = سعر;
+  v6 = 值;
+  v7 = शून्य;
+  Δx = 5;
+  πr2 = 314;
+  值count = 8;
+  शून्यˍvalue = 0;
+  maxБ = 77;
+  m1 = Δx;
+  m2 = πr2;
+  m3 = 值count;
+  m4 = शून्यˍvalue;
+  m5 = maxБ;
+  ℝ = 1;
+  ∀x = 2;
+  ∇f = 3;
+  x = 4;
+  ℂ₀ = 5;
+  s1 = ℝ;
+  s2 = ∀x;
+  s3 = ∇f;
+  s4 = x;
+  s5 = ℂ₀;
+  ©acme = 100;
+  price€ = 50;
+  §clause = 7;
+  ™brand = 999;
+  b1 = ©acme;
+  b2 = price€;
+  b3 = §clause;
+  b4 = ™brand;
 }
 
 UBC EVALUATION:
-Steps taken: 56
+Steps taken: 394
 
 FINAL RESULT:
 {
@@ -35,6 +138,49 @@ FINAL RESULT:
 ＿fooˍbar'x = 10;
 ＿fooˍbar'x = 20;
 ＿20;
+＿x = 1;
+＿π = 3;
+＿Б = 7;
+＿א = 42;
+＿سعر = 99;
+＿值 = 100;
+＿शून्य = 0;
+＿252;
+＿v1 = 1;
+＿v2 = 3;
+＿v3 = 7;
+＿v4 = 42;
+＿v5 = 99;
+＿v6 = 100;
+＿v7 = 0;
+＿Δx = 5;
+＿πr2 = 314;
+＿值count = 8;
+＿शून्यˍvalue = 0;
+＿maxБ = 77;
+＿m1 = 5;
+＿m2 = 314;
+＿m3 = 8;
+＿m4 = 0;
+＿m5 = 77;
+＿ℝ = 1;
+＿∀x = 2;
+＿∇f = 3;
+＿x = 4;
+＿ℂ₀ = 5;
+＿s1 = 1;
+＿s2 = 2;
+＿s3 = 3;
+＿s4 = 4;
+＿s5 = 5;
+＿©acme = 100;
+＿price€ = 50;
+＿§clause = 7;
+＿™brand = 999;
+＿b1 = 100;
+＿b2 = 50;
+＿b3 = 7;
+＿b4 = 999;
 }
 
 COMPLETION STATUS:
