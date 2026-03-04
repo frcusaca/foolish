@@ -1,26 +1,30 @@
-!! ============================================================================
+!! ============================================================================================================
 !! How to Express it in Foolish — Chapter 2: Searches and Patterns
-!! ============================================================================
+!! ============================================================================================================
 !!
-!! In Chapter 1, you learned the basics: branes, values, names, arithmetic,
-!! nesting, dot access, head/tail, index access, and unanchored seek.
+!! In Chapter 1, you learned the basics: branes, values, names, arithmetic, nesting, dot access,
+!! head/tail, index access, and unanchored seek.
 !!
-!! This chapter goes deeper into how Foolish finds things. We reveal that
-!! the dot operator you already know is actually a *search*, and show you
-!! the full search toolkit.
+!! This chapter goes deeper into how Foolish finds things. We reveal that the dot operator you
+!! already know is actually a *search*, and show you the full search toolkit.
 !!
-!! Topics:
+!! ── Table of Contents ───────────────────────────────────────────────────────────────────────
 !!
-!!   - Localized search with ?  (anchored, one brane only)
-!!   - The dot . as an alias for ?
-!!   - Regex pattern search: brane?pattern
-!!   - Forward search with ~ (anchored)
-!!   - Named shadowing and resolution order
-!!   - The constanic state: what happens when a name can't be found
+!!    TOC   Table of Contents 
+!!   S2.1  Localized Search: The ? Operator
+!!   S2.2  Forward Search: The ~ Operator
+!!   S2.3  Regex Pattern Search
+!!   S2.4  Dot as Backward Search
+!!   S2.5  Search on Inline Branes
+!!   S2.6  Anchored vs Unanchored
+!!   S2.7  Shadowing and Resolution Order
+!!   S2.8  The Constanic State
+!!
+!! ────────────────────────────────────────────────────────────────────────────────────────────────
 
-!! ============================================================================
-!! 1. LOCALIZED SEARCH: The ? Operator
-!! ============================================================================
+!! ============================================================================================================
+!! S2.1 ── LOCALIZED SEARCH: The ? Operator
+!! ============================================================================================================
 !!
 !! In Chapter 1, we used the dot to look inside branes: brane.name
 !!
@@ -63,9 +67,9 @@
 	!! just like in most programming languages.
 }
 
-!! ============================================================================
-!! 2. FORWARD SEARCH: The ~ Operator
-!! ============================================================================
+!! ============================================================================================================
+!! S2.2 ── FORWARD SEARCH: The ~ Operator
+!! ============================================================================================================
 !!
 !! While ? searches backward (from end toward beginning), the ~ operator
 !! searches *forward* (from beginning toward end).
@@ -109,9 +113,9 @@
 	bob3 = people.bob;         !! 200 (dot is alias for ?)
 }
 
-!! ============================================================================
-!! 3. REGEX PATTERN SEARCH
-!! ============================================================================
+!! ============================================================================================================
+!! S2.3 ── REGEX PATTERN SEARCH
+!! ============================================================================================================
 !!
 !! Both ? and ~ can match against regular expression patterns,
 !! not just exact names. This lets you search for ordinates by pattern.
@@ -148,9 +152,9 @@
 	some_app = config?app_.*;       !! 1 (last app_ entry)
 }
 
-!! ============================================================================
-!! 4. DOT AS BACKWARD SEARCH
-!! ============================================================================
+!! ============================================================================================================
+!! S2.4 ── DOT AS BACKWARD SEARCH
+!! ============================================================================================================
 !!
 !! Now you understand the full picture:
 !!
@@ -177,9 +181,9 @@
 	original = history~version;     !! "1.0"
 }
 
-!! ============================================================================
-!! 5. SEARCH ON INLINE BRANES
-!! ============================================================================
+!! ============================================================================================================
+!! S2.5 ── SEARCH ON INLINE BRANES
+!! ============================================================================================================
 !!
 !! You don't need to name a brane before searching it.
 !! Search operators work directly on inline brane expressions:
@@ -200,9 +204,9 @@
 	r3 = {alice = 1; bob = 2; charlie = 3}?(al.*);  !! 1
 }
 
-!! ============================================================================
-!! 6. ANCHORED vs UNANCHORED
-!! ============================================================================
+!! ============================================================================================================
+!! S2.6 ── ANCHORED vs UNANCHORED
+!! ============================================================================================================
 !!
 !! All the searches above are *anchored* — they search inside a specific
 !! brane that you point to. Let's clarify this distinction:
@@ -231,9 +235,9 @@
 	d = brn?outer_val;       !! ??? Not found and definitely won't be found.
 }
 
-!! ============================================================================
-!! 7. SHADOWING AND RESOLUTION ORDER
-!! ============================================================================
+!! ============================================================================================================
+!! S2.7 ── SHADOWING AND RESOLUTION ORDER
+!! ============================================================================================================
 !!
 !! Now that you understand searches, let's look at how Foolish resolves
 !! names in detail. This is the full resolution algorithm:
@@ -293,9 +297,9 @@
 !! *before* that reference, looking backward and then upward.
 !! This is Foolish's version of static single assignment.
 
-!! ============================================================================
-!! 8. THE CONSTANIC STATE
-!! ============================================================================
+!! ============================================================================================================
+!! S2.8 ── THE CONSTANIC STATE
+!! ============================================================================================================
 !!
 !! What happens when a name search fails everywhere — current brane,
 !! parent, grandparent, all the way up? The expression becomes
@@ -335,9 +339,9 @@
 !!
 !! We'll explore case 2 in Chapter 3 when we cover liberation branes.
 
-!! ============================================================================
+!! ============================================================================================================
 !! RECAP
-!! ============================================================================
+!! ============================================================================================================
 !!
 !! You now know Foolish's search system:
 !!

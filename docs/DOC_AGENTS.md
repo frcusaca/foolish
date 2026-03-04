@@ -148,6 +148,12 @@ here cover domain-specific conventions that supplement it.
 Nyes state names (PREMBRYONIC, EMBRYONIC, BRANING, CONSTANIC, etc.) need no additional emphasis
 when capitalized. The capitals already distinguish them from ordinary English.
 
+### Line Width
+
+All files in the documentation tree use a maximum line width of 108 characters. This applies to
+Markdown (`.md`), Foolish (`.foo`), and any other text files. For `.foo` files, the 108-character
+limit applies to comment lines (the `!!` prefix plus content) and code lines alike.
+
 ### Terminology Conventions
 
 State names are written in capitals when used as technical terms: PREMBRYONIC, EMBRYONIC,
@@ -202,6 +208,39 @@ future contexts. Ordinary search failure is CONSTANIC, not NK.
   but never in `.foo` source input files.
 - Full style reference: `how/foolish_style_guide.md`.
 
+### howto/ Table of Contents Convention
+
+Every `.foo` file in `howto/` must include a Table of Contents near the top of the file, after
+the chapter title block. The TOC uses section IDs of the form `S<chapter>.<section>` (e.g.,
+`S1.1`, `S1.2`, `S2.1`) so readers can navigate by searching for the ID string.
+
+The chapter number matches the file's numeric prefix (`01_` = chapter 1, `02_` = chapter 2).
+Subsections use dot-separated hierarchical numbers: `S1.2.1` for the first subsection of section 1.2,
+`S1.2.2` for the second, etc. For deeper nesting, continue the pattern: `S1.2.3.1`, `S1.2.3.2`.
+
+Each section heading in the file body must include the same ID, placed at the start of the
+heading line so that a text search for `S1.3` jumps directly to that section:
+
+```foolish
+!! S1.1 ── BRANES: The Container of Everything
+```
+
+The TOC block itself uses a simple list format:
+
+```foolish
+!! ── TOC Table of Contents ──────────────────────────────────────────────────────────────────────
+!!    TOC   Table of Contents
+!!   S1.1   Branes: The Container of Everything
+!!   S1.2   Naming Things: Identification
+!!   S1.2.1 Identifier Names: Multi-Word and Multi-Script
+!!   S1.3   Arithmetic: Computing with Values
+!!   ...
+!! ───────────────────────────────────────────────────────────────────────────────────────────────
+```
+
+When adding or reorganizing sections in a `howto/` file, always update both the TOC and the
+section headings to keep the IDs in sync.
+
 ---
 
 ## Concatenation Design Note
@@ -217,15 +256,17 @@ re-opening closed debates.
 
 ## Last Updated
 
-Date: 2026-02-27
+Date: 2026-03-04
 Updated By: Claude Code v1.0.0 / claude-opus-4-6
-Changes: Moved English prose style content (emphasis rules, structural elements table, code
-block guidance, rendering target, LLM over-emphasis note) into `styleguide.md`. Replaced
-verbose "Style Guide for New UBC2 Documents" section with compact "Style and Formatting"
-linking to `styleguide.md`. Added "Style Authority" section establishing `styleguide.md` as
-the comprehensive reference — strict for human docs, strongly preferred for agent docs, with
-`DOC_AGENTS.md` having final say on conflicts. Resolved `bold_emphasis` DEFERRED item in
-`styleguide.md`. Retained domain-specific subsections (Terminology, 🧠 Prefix, Java, Foolish).
+Changes: Updated "howto/ Table of Contents Convention" to add "TOC" prefix to section headers
+and specify dot-delimited hierarchical
+section IDs (S1.1, S1.2.1, S1.2.2, etc.) instead of letter suffixes (S1.2b). Updated section
+labels in docs/howto/01_howto_foolish.foo to use S1.2.1 and S1.4.1 for subsections.
+Added "Line Width" subsection (108 characters for all documentation files). Added
+"howto/ Table of Contents Convention" requiring S-numbered section IDs (S1.1, S2.3, etc.) in
+every howto/ .foo file for search-based navigation.
+Previous (2026-02-27): Moved English prose style content into `styleguide.md`. Added "Style
+Authority" section. Resolved `bold_emphasis` DEFERRED item.
 Previous (2026-02-26): Added Rendering Target subsection — markdown files target browser rendering, HTML
 entities acceptable when needed. Added Readability Priorities by Directory under Directory Map:
 `how/` and `todo/` prioritize agent readability (ongoing), `why/` and `howto/` prioritize human

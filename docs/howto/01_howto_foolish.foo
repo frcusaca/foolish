@@ -1,20 +1,40 @@
-!! ============================================================================
+!! ============================================================================================================
 !! How to Express it in Foolish — Chapter 1: The Basics
-!! ============================================================================
+!! ============================================================================================================
 !!
-!! Welcome, Foolisher! This tutorial teaches you the Foolish programming
-!! language by example. You are reading a real Foolish program right now.
-!! Everything between !! marks is a comment — the computer ignores it,
-!! but you can read it to learn.
+!! Welcome, Foolisher! This tutorial teaches you the Foolish programming language by example.
+!! You are reading a real Foolish program right now. Everything between !! marks is a comment —
+!! the computer ignores it, but you can read it to learn.
 !!
 !! To run this file:   (once tooling is available)
 !!   foolish 01_howto_foolish.foo
 !!
+!! ── Table of Contents ───────────────────────────────────────────────────────────────────────
+!!
+!!    TOC   Table of Contents 
+!!   S1.1   Branes: The Container of Everything
+!!   S1.2   Naming Things: Identification
+!!   S1.2.1 Identifier Names: Multi-Word and Multi-Script
+!!   S1.3   Arithmetic: Computing with Values
+!!   S1.4   Using Names in Expressions
+!!   S1.4.1 Shadowing: Reusing Names
+!!   S1.5   Comments
+!!   S1.6   The Unknown: ???
+!!   S1.7   Nested Branes
+!!   S1.8   Scope: What Can See What
+!!   S1.9   Dot Dereference: Looking Inside Branes
+!!   S1.10  Head and Tail: First and Last
+!!   S1.11  Index Access: The # Operator
+!!   S1.12  Unanchored Seek: Reaching Back by Position
+!!   S1.13  Putting It All Together
+!!
+!! ────────────────────────────────────────────────────────────────────────────────────────────────
+!!
 !! Let's begin.
 
-!! ============================================================================
-!! 1. BRANES: The Container of Everything
-!! ============================================================================
+!! ============================================================================================================
+!! S1.1 ── BRANES: The Container of Everything
+!! ============================================================================================================
 !!
 !! The most fundamental idea in Foolish is the *brane*. A brane is a
 !! container for values, enclosed in curly braces {}. Think of it like
@@ -55,9 +75,9 @@
 	100          !! Also, the last statement does not need a semi-colon.
 }
 
-!! ============================================================================
-!! 2. NAMING THINGS: Identification
-!! ============================================================================
+!! ============================================================================================================
+!! S1.2 ── NAMING THINGS: Identification
+!! ============================================================================================================
 !!
 !! Values on their own aren't very useful. We need to give them names
 !! so we can refer to them later. In Foolish, the = operator *identifies*
@@ -85,9 +105,9 @@
 	b = a;                 !! b is 10 — 'a' was defined above
 }
 
-!! ============================================================================
-!! 2b. IDENTIFIER NAMES: Multi-Word and Multi-Script
-!! ============================================================================
+!! ============================================================================================================
+!! S1.2.1 ── IDENTIFIER NAMES: Multi-Word and Multi-Script
+!! ============================================================================================================
 !!
 !! Foolish identifiers can be single words or multi-word names.
 !! For multi-word names, use _ (underscore) as an intra-identifier
@@ -152,9 +172,9 @@
 	!! long ones are rare but expressive when needed.
 }
 
-!! ============================================================================
-!! 3. ARITHMETIC: Computing with Values
-!! ============================================================================
+!! ============================================================================================================
+!! S1.3 ── ARITHMETIC: Computing with Values
+!! ============================================================================================================
 !!
 !! Foolish supports the standard arithmetic operations. Nothing
 !! surprising here — it works like you'd expect from math class.
@@ -185,9 +205,9 @@
 	oops = 10 / 0;        !! ??? "Division by zero is a no-no here."
 }
 
-!! ============================================================================
-!! 4. USING NAMES IN EXPRESSIONS
-!! ============================================================================
+!! ============================================================================================================
+!! S1.4 ── USING NAMES IN EXPRESSIONS
+!! ============================================================================================================
 !!
 !! Names and arithmetic combine naturally:
 
@@ -198,9 +218,9 @@
 	perimeter = 2 * (width + height) !! 30
 }
 
-!! ============================================================================
-!! 4b. SHADOWING: Reusing Names
-!! ============================================================================
+!! ============================================================================================================
+!! S1.4.1 ── SHADOWING: Reusing Names
+!! ============================================================================================================
 !!
 !! Foolish lets you reuse a name. Each new definition *shadows* the
 !! previous one. When you reference a name, Foolish searches backward
@@ -258,9 +278,9 @@
 	still_red = color;         !! "red" — the outer color is unchanged
 }
 
-!! ============================================================================
-!! 5. COMMENTS
-!! ============================================================================
+!! ============================================================================================================
+!! S1.5 ── COMMENTS
+!! ============================================================================================================
 !!
 !! You've already seen line comments (!!). There are also block comments
 !! that can span multiple lines, delimited by triple exclamation marks:
@@ -279,9 +299,9 @@
 	z = 3 !!! short block comment also ends the statement !!!
 }
 
-!! ============================================================================
-!! 6. THE UNKNOWN: ???
-!! ============================================================================
+!! ============================================================================================================
+!! S1.6 ── THE UNKNOWN: ???
+!! ============================================================================================================
 !!
 !! Foolish has a special value for things that are not known: ???
 !! We call it *NK* (Not Known), pronounced "no-no".
@@ -310,9 +330,9 @@
 	??? = 2;
 }
 
-!! ============================================================================
-!! 7. NESTED BRANES
-!! ============================================================================
+!! ============================================================================================================
+!! S1.7 ── NESTED BRANES
+!! ============================================================================================================
 !!
 !! Branes can contain other branes. This is how you build structure
 !! in Foolish — like boxes inside boxes.
@@ -338,9 +358,9 @@
 	};
 }
 
-!! ============================================================================
-!! 8. SCOPE: What Can See What
-!! ============================================================================
+!! ============================================================================================================
+!! S1.8 ── SCOPE: What Can See What
+!! ============================================================================================================
 !!
 !! This is one of the most important ideas in Foolish. Scope rules
 !! determine which names a statement can access.
@@ -384,9 +404,9 @@
 	third = second;    !! 1 — chains work, each looks backward
 }
 
-!! ============================================================================
-!! 9. DOT DEREFERENCE: Looking Inside Branes
-!! ============================================================================
+!! ============================================================================================================
+!! S1.9 ── DOT DEREFERENCE: Looking Inside Branes
+!! ============================================================================================================
 !!
 !! To access a named value inside another brane, use the dot operator.
 !! If you've used any programming language before, this will feel familiar.
@@ -412,9 +432,9 @@
 	nope = point.z;            !! ⎵⎵
 }
 
-!! ============================================================================
-!! 10. HEAD AND TAIL: First and Last
-!! ============================================================================
+!! ============================================================================================================
+!! S1.10 ── HEAD AND TAIL: First and Last
+!! ============================================================================================================
 !!
 !! Sometimes you want the first or last element of a brane without
 !! knowing its name. Use ^ for head (first) and $ for tail (last).
@@ -447,9 +467,9 @@
 	last_of_last = nested$.^;  !! Hmm, let's save chaining for later
 }
 
-!! ============================================================================
-!! 11. INDEX ACCESS: The # Operator
-!! ============================================================================
+!! ============================================================================================================
+!! S1.11 ── INDEX ACCESS: The # Operator
+!! ============================================================================================================
 !!
 !! Use # with a number to access a brane element by its position.
 !! Positive numbers count from the beginning (starting at 0).
@@ -477,9 +497,9 @@
         !!  But nothing1 and nothing2 from section 10 was ???
 }
 
-!! ============================================================================
-!! 12. UNANCHORED SEEK: Reaching Back by Position
-!! ============================================================================
+!! ============================================================================================================
+!! S1.12 ── UNANCHORED SEEK: Reaching Back by Position
+!! ============================================================================================================
 !!
 !! Sometimes you want to refer to a previous statement by its position
 !! rather than its name. The unanchored seek #-N lets you do this.
@@ -518,9 +538,9 @@
 	demo_2 = demo#-2;         !! Also ??? 2nd one from the back definitely no-no.
 }
 
-!! ============================================================================
-!! 13. PUTTING IT ALL TOGETHER
-!! ============================================================================
+!! ============================================================================================================
+!! S1.13 ── PUTTING IT ALL TOGETHER
+!! ============================================================================================================
 !!
 !! Let's use what we've learned to build a small example.
 
@@ -555,9 +575,9 @@
 	city = person.address.city;      !! "Foolsberg"
 }
 
-!! ============================================================================
+!! ============================================================================================================
 !! RECAP
-!! ============================================================================
+!! ============================================================================================================
 !!
 !! You now know the fundamentals of Foolish:
 !!

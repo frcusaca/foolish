@@ -1,6 +1,6 @@
 # StyleGuide.md — Foolish Language Documentation Style Guide
 
-> Version: 0.4.0-draft · Date: 2026-02-27
+> Version: 0.5.0-draft · Date: 2026-03-04
 > Audience: Human writers and LLM agents that author, review, or lint
 > documentation for the Foolish programming language.
 > License: To be determined.
@@ -742,7 +742,7 @@ marked [DEFERRED]. Undecided parameters remain open for resolution.
 | `bold_emphasis` | Bold use beyond UI labels | Restricted | Restricted | Not addressed | Restricted | Restricted | Restricted | Restricted | [DECIDED] Bold for small, easily misread words only; see guideline 5.3 |
 | `feature_name_capitalization` | Capitalize feature names as proper nouns | Conservative | Conservative | Per usage | Aggressive | Lowercase | Per vendor | Varies | [DEFERRED] Imported from DOC_AGENTS.md |
 | `indentation_depth` | Spaces per indent level (Markdown) | N/A | N/A | N/A | N/A | Spaces, no tabs | N/A | 2 or 4 | _(to be decided)_ |
-| `line_length_limit` | Max chars per Markdown source line | N/A | N/A | N/A | N/A | ~100 | N/A | 80–120 | _(to be decided)_ |
+| `line_length_limit` | Max chars per source line (all file types) | N/A | N/A | N/A | N/A | ~100 | N/A | 80–120 | [DECIDED] 108 characters. Applies to Markdown, Foolish `.foo`, and all documentation files. |
 | `placeholder_format` | Format for code placeholder values | `UPPER_SNAKE_CASE` | Italic or `<angle>` | N/A | Per format | `<angle_brackets>` | Monospace | `<PLACEHOLDER>` | _(to be decided)_ |
 | `list_marker` | Unordered list character in Markdown | N/A | N/A | N/A | N/A | Dash `-` | N/A | `-` or `*` | _(to be decided)_ |
 | `ordered_list_numbering` | Numbering scheme in Markdown source | N/A | N/A | N/A | N/A | All `1.` | N/A | `1.` or sequential | _(to be decided)_ |

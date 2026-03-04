@@ -1,13 +1,28 @@
-!! ============================================================================
+!! ============================================================================================================
 !! How to Express it in Foolish — Chapter 3: Topics To Be Written
-!! ============================================================================
+!! ============================================================================================================
 !!
-!! This file lists topics for future chapters. Each topic will likely
-!! expand into its own detailed chapter with many examples.
+!! This file lists topics for future chapters. Each topic will likely expand into its own
+!! detailed chapter with many examples.
+!!
+!! ── Table of Contents ───────────────────────────────────────────────────────────────────────
+!!
+!!    TOC   Table of Contents 
+!!   S3.1   Brane Concatenation — Proximity Creates Combination
+!!   S3.2   Liberation Branes [...] and Detachment
+!!   S3.3   Characterization — The ' Marker
+!!   S3.4   The Creation Postulate
+!!   S3.5   Equivalence
+!!   S3.6   Logic and Assertions
+!!   S3.7   Differentiation
+!!   S3.8   Globalized Search (??)
+!!   S3.9   Find-All Search (?*)
+!!
+!! ────────────────────────────────────────────────────────────────────────────────────────────────
 
-!! ============================================================================
-!! TOPIC: Brane Concatenation — Proximity Creates Combination
-!! ============================================================================
+!! ============================================================================================================
+!! S3.1 ── Brane Concatenation — Proximity Creates Combination
+!! ============================================================================================================
 !!
 !! Two adjacent branes combine (concatenate). The principle:
 !! proximity creates combination.
@@ -20,9 +35,9 @@
 !! This is how derivation (OO inheritance) works.
 !! Anonymous vs named concatenation have different evaluation timing.
 
-!! ============================================================================
-!! TOPIC: Liberation Branes [...] and Detachment
-!! ============================================================================
+!! ============================================================================================================
+!! S3.2 ── Liberation Branes [...] and Detachment
+!! ============================================================================================================
 !!
 !! Liberation branes free identifiers from their context, making them
 !! unbound (free variables) that must be supplied by the caller.
@@ -39,9 +54,9 @@
 !! Stay-foolish markers: <expr> reactivates liberations.
 !! Constanic assignment: f <=> g is shorthand for f = <g>.
 
-!! ============================================================================
-!! TOPIC: Characterization — The ' Marker
-!! ============================================================================
+!! ============================================================================================================
+!! S3.3 ── Characterization — The ' Marker
+!! ============================================================================================================
 !!
 !! Characterization is Foolish's approach to what other languages call
 !! "types." The syntax uses the ' (apostrophe) marker on identifiers.
@@ -67,18 +82,18 @@
 !! uses characterization syntax. The name before ' is characterized by
 !! the expression after '. Full semantics to be specified.
 
-!! ============================================================================
-!! TOPIC: The Creation Postulate
-!! ============================================================================
+!! ============================================================================================================
+!! S3.4 ── The Creation Postulate
+!! ============================================================================================================
 !!
 !! We postulate that one can always create a new value that is distinct
 !! from everything else ever seen before. The big black dot ⬤ represents
 !! this act. All concepts are constructed by creating new items and
 !! relating them.
 
-!! ============================================================================
-!! TOPIC: Equivalence
-!! ============================================================================
+!! ============================================================================================================
+!! S3.5 ── Equivalence
+!! ============================================================================================================
 !!
 !! Foolish has six kinds of equivalence:
 !!   =s=   Syntactic: bit-wise identical source code
@@ -88,31 +103,31 @@
 !!         Characterization: same characterized names
 !!         Value: same values appear
 
-!! ============================================================================
-!! TOPIC: Logic and Assertions
-!! ============================================================================
+!! ============================================================================================================
+!! S3.6 ── Logic and Assertions
+!! ============================================================================================================
 !!
 !! The assert operator |= (or ⊦) stipulates that the RHS evaluates
 !! to boolean true. The confirm keyword checks a boolean condition.
 
-!! ============================================================================
-!! TOPIC: Differentiation
-!! ============================================================================
+!! ============================================================================================================
+!! S3.7 ── Differentiation
+!! ============================================================================================================
 !!
 !! Program differentiation: calculating changes to output when knowing
 !! changes to input. Uses ∇ (gradient/nabla) and Δ (delta) symbols.
 !! Discrete domain differentiation, not continuous.
 
-!! ============================================================================
-!! TOPIC: Globalized Search (??)
-!! ============================================================================
+!! ============================================================================================================
+!! S3.8 ── Globalized Search (??)
+!! ============================================================================================================
 !!
 !! The ?? operator searches with parent brane lookup (crosses boundaries).
 !! Not yet fully implemented; reserved for future.
 
-!! ============================================================================
-!! TOPIC: Find-All Search (?*)
-!! ============================================================================
+!! ============================================================================================================
+!! S3.9 ── Find-All Search (?*)
+!! ============================================================================================================
 !!
 !! The ?* operator collects all matches within a brane.
 !! Not yet fully implemented; reserved for future.
