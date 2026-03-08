@@ -36,10 +36,12 @@ The development discipline is strict BDD. Tests come first:
 
 | Directory | Purpose | Numeric prefix means |
 |-----------|---------|----------------------|
-| `docs/how/` | Engineering reference and design specs | Lower = higher priority |
+| `docs/ubc1/how/` | UBC1 engineering reference and design specs | Lower = higher priority |
+| `docs/ubc1/todo/` | UBC1 project tracking, outstanding items, agent logs | Lower = higher priority |
+| `docs/ubc0_1/how/` | UBC0_1 engineering reference and design specs | Lower = higher priority |
+| `docs/ubc0_1/todo/` | UBC0_1 project tracking, outstanding items, agent logs | Lower = higher priority |
 | `docs/howto/` | Literate `.foo` tutorials (Foolish syntax) | Chapter order |
 | `docs/why/` | Philosophy and design rationale | — |
-| `docs/todo/` | Project tracking, outstanding items, agent logs | Lower = higher priority |
 | `docs/vintage_legacy/` | Pre-reorganization files; read for context, do not edit | — |
 
 Numeric file prefixes encode priority — a file numbered `0` is more important and more
@@ -48,7 +50,7 @@ tracking documents, choose a number that reflects where the work fits in the ove
 
 ### Readability Priorities by Directory
 
-The `how/` and `todo/` directories are working documents that agents read and update frequently.
+The `ubc1/how/` and `ubc1/todo/` directories are working documents that agents read and update frequently.
 These directories prioritize agent readability: unambiguous symbol references, consistent
 terminology, and structural clarity that an LLM can parse reliably. When editing files in these
 directories, maintain this standard on an ongoing basis — each edit should leave the file at
@@ -93,23 +95,23 @@ This requires that, outside this current markdown "## Interactions" section, we 
 
 | File | When to read |
 |------|-------------|
-| `todo/human_todo_index.md` | Always — authoritative list of outstanding design decisions |
-| `todo/agents.status.md` | Always — append-only progress log; scan recent entries |
-| `how/ubc2_design.md` | For any UBC2 design or implementation work |
-| `how/ubc_engineering.md` | For UBC1 reference (lessons learned, what not to repeat) |
-| `todo/0.a.concatenation.woes.md` | Before working on concatenation, search dereferencing, or WOCONSTANIC — captures the resolved debate that shaped the current design |
-| `todo/agents.scratch.log.md` | When a topic seems complex — prior sessions may have left reasoning here |
-| `how/SYMBOL_TABLE.md` | When adding or referencing any symbol |
+| `ubc1/todo/human_todo_index.md` | Always — authoritative list of outstanding design decisions |
+| `ubc1/todo/agents.status.md` | Always — append-only progress log; scan recent entries |
+| `ubc1/how/ubc2_design.md` | For any UBC2 design or implementation work |
+| `ubc1/how/ubc_engineering.md` | For UBC1 reference (lessons learned, what not to repeat) |
+| `ubc1/todo/0.a.concatenation.woes.md` | Before working on concatenation, search dereferencing, or WOCONSTANIC — captures the resolved debate that shaped the current design |
+| `ubc1/todo/agents.scratch.log.md` | When a topic seems complex — prior sessions may have left reasoning here |
+| `ubc1/how/SYMBOL_TABLE.md` | When adding or referencing any symbol |
 
 ---
 
 ## Mandatory Actions on Every Commit
 
-1. Update `todo/human_todo_index.md` — mark resolved items, add new ones if the work
+1. Update `ubc1/todo/human_todo_index.md` — mark resolved items, add new ones if the work
    revealed open questions.
-2. Append to `todo/agents.status.md` — one timestamped entry per commit summarising what
+2. Append to `ubc1/todo/agents.status.md` — one timestamped entry per commit summarising what
    changed and why. See format below.
-3. Append to `todo/agents.scratch.log.md` if the session involved non-trivial reasoning
+3. Append to `ubc1/todo/agents.scratch.log.md` if the session involved non-trivial reasoning
    that may be useful in future sessions (architecture debates, rejected alternatives, etc.).
 4. Update the `## Last Updated` section of any `*.md` file you modify. Use plain labels
    (`Date:`, `Updated By:`, `Changes:`, `Previous:`) — the colon already marks them as labels.
@@ -174,7 +176,7 @@ The 🧠 prefix is the Foolish semantic bracket prefix. `🧠e` is the single-to
 `🧠⟦e⟧` — the meaning of expression `e`. Writing `🧠1 🧠2 🧠+` token by token is equivalent
 to writing `🧠⟦1 + 2⟧` as a whole. It appears on literal branes (`🧠1`), system operators
 (`🧠+`), and state symbols (`🧠?`, `🧠??`, `🧠???`). None are source syntax; all are
-denotations. See `how/SYMBOL_TABLE.md` for unicode codepoints.
+denotations. See `ubc1/how/SYMBOL_TABLE.md` for unicode codepoints.
 
 The sequencer output state symbols are `🧠?` (WOCONSTANIC), `🧠??` (CONSTANIC), and `🧠???`
 (NK). NK (Not Known) is produced only when the UBC can prove a search fails in all possible
@@ -191,7 +193,7 @@ future contexts. Ordinary search failure is CONSTANIC, not NK.
   `"🧠?"` etc. as string literals in rendering code.
 - Prefer the shallow FIR hierarchy: one `ProtoBrane` class with traits (`hasBoundary`,
   `isDetachment`, `sfMode`) over subclasses per expression type. See
-  `how/ubc2_design.md § FIR Type Hierarchy`.
+  `ubc1/how/ubc2_design.md § FIR Type Hierarchy`.
 - Exception handling: catch only `ArithmeticException` in arithmetic FIRs. Let all other
   exceptions propagate (no silent NK wrapping of NPE / ClassCastException).
 
@@ -202,11 +204,11 @@ future contexts. Ordinary search failure is CONSTANIC, not NK.
   not source syntax; they are the meanings that source syntax maps to. A programmer writes
   `1 + 2`; the denotation is `{🧠1, 🧠2, 🧠+}`.
 - Indentation: tabs for brane depth, optional spaces for continuation alignment.
-  See `how/foolish_style_guide.md` for full rules.
+  See `ubc1/how/foolish_style_guide.md` for full rules.
 - Comments: `!!` starts an inline comment.
 - Sequencer output state symbols (`🧠?`, `🧠??`, `🧠???`) may appear in `.approved.foo` files
   but never in `.foo` source input files.
-- Full style reference: `how/foolish_style_guide.md`.
+- Full style reference: `ubc1/how/foolish_style_guide.md`.
 
 ### howto/ Table of Contents Convention
 
@@ -245,9 +247,9 @@ section headings to keep the IDs in sync.
 
 ## Concatenation Design Note
 
-The file `todo/0.a.concatenation.woes.md` documents the resolved design debate over search
+The file `ubc1/todo/0.a.concatenation.woes.md` documents the resolved design debate over search
 dereferencing and WOCONSTANIC race conditions. Its conclusions are now canonical parts of
-`how/ubc2_design.md`. Read it before working on concatenation, the ConcatenationBrane
+`ubc1/how/ubc2_design.md`. Read it before working on concatenation, the ConcatenationBrane
 lifecycle, or anything touching CONSTANIC/WOCONSTANIC state transitions. The document records
 *why* certain decisions were made, not just *what* was decided — this context prevents
 re-opening closed debates.
@@ -256,9 +258,11 @@ re-opening closed debates.
 
 ## Last Updated
 
-Date: 2026-03-04
-Updated By: Claude Code v1.0.0 / claude-opus-4-6
-Changes: Updated "howto/ Table of Contents Convention" to add "TOC" prefix to section headers
+Date: 2026-03-07
+Updated By: Claude Code / cyankiwi/Qwen3.5-27B-AWQ-BF16-INT8
+Changes: Updated all path references to use semantic versioning: `docs/how/` → `docs/ubc1/how/`,
+`docs/todo/` → `docs/ubc1/todo/`. Updated Directory Map table to show versioned structure.
+Previous (2026-03-04): Updated "howto/ Table of Contents Convention" to add "TOC" prefix to section headers
 and specify dot-delimited hierarchical
 section IDs (S1.1, S1.2.1, S1.2.2, etc.) instead of letter suffixes (S1.2b). Updated section
 labels in docs/howto/01_howto_foolish.foo to use S1.2.1 and S1.4.1 for subsections.

@@ -7,8 +7,8 @@
 - BraneFiroe: `foolish-core-java/src/main/java/org/foolish/fvm/ubc/BraneFiroe.java`
 - CMFir: `foolish-core-java/src/main/java/org/foolish/fvm/ubc/CMFir.java`
 - Nyes enum: `foolish-core-java/src/main/java/org/foolish/fvm/ubc/Nyes.java`
-- UBC2 design: `docs/how/ubc2_design.md` (large file, read in 200-line chunks)
-- Message protocol: `docs/how/ubc2_message_protocol.md`
+- UBC2 design: `docs/ubc1/how/ubc2_design.md` (large file, read in 200-line chunks)
+- Message protocol: `docs/ubc1/how/ubc2_message_protocol.md`
 - Doc conventions: `docs/DOC_AGENTS.md`
 
 ## Architecture Notes

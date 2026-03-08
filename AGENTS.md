@@ -368,17 +368,19 @@ GitHub Copilot / gpt-4
 - **AST**: `foolish-parser-java/src/main/java/org/foolish/ast/AST.java`
 - **Java UBC**: `foolish-core-java/src/main/java/org/foolish/fvm/ubc/`
 - **Scala UBC**: `foolish-core-scala/src/main/scala/org/foolish/fvm/scubc/`
-- **Documentation**: `docs/` (legacy docs in `docs/vintage_legacy/`; new docs in `docs/howto/`, `docs/why/`, `docs/how/`, `docs/todo/`)
+- **Documentation**: `docs/` (legacy docs in `docs/vintage_legacy/`; versioned docs in `docs/ubc1/` and `docs/ubc0_1/`; shared docs in `docs/howto/`, `docs/why/`)
 - **AI Instructions**: `.claude/CLAUDE.md` (Claude-specific guidance)
 
 ## Documentation
 
 ### Directory Structure
 
+- **`docs/ubc1/how`** - UBC1 engineering documentation - operational semantics, implementation details, reference
+- **`docs/ubc1/todo`** - UBC1 project tracking - active development roadmap
+- **`docs/ubc0_1/how`** - UBC0_1 engineering documentation
+- **`docs/ubc0_1/todo`** - UBC0_1 project tracking
 - **`docs/howto`** - "How to Express it in Foolish" - literate programming tutorials as .foo files
 - **`docs/why`** - "Philosophy of Foolish" - origins, inspirations, design philosophy
-- **`docs/how`** - "Engineering documentation" - operational semantics, implementation details, reference
-- **`docs/todo`** - "Project documentation" - active project tracking and growth plans
 - **`docs/vintage_legacy`** - Legacy documentation (being reorganized into the above directories)
 
 (The `projects/` directory has been retired; its contents are in `docs/vintage_legacy/`.)

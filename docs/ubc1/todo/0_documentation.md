@@ -9,24 +9,26 @@ legacy flat structure (now in `docs/vintage_legacy/`) into the new four-director
 
 | Directory | Title | Content Style |
 |-----------|-------|---------------|
+| `docs/ubc1/how` | UBC1 Engineering Documentation | Operational semantics, implementation details, reference |
+| `docs/ubc1/todo` | UBC1 Project Documentation | Active project tracking and growth plans |
+| `docs/ubc0_1/how` | UBC0_1 Engineering Documentation | UBC0 semantics with UBC1 microstate definitions |
+| `docs/ubc0_1/todo` | UBC0_1 Project Documentation | UBC0_1 tracking and development plans |
 | `docs/howto` | How to Express it in Foolish | Literate `.foo` files with documentation in comments |
 | `docs/why` | Philosophy of Foolish | English prose on origins, inspirations, design philosophy |
-| `docs/how` | Engineering Documentation | Operational semantics, implementation details, reference |
-| `docs/todo` | Project Documentation | Active project tracking and growth plans |
 | `docs/vintage_legacy` | Legacy Documentation | Pre-reorganization files, being migrated |
 
 ## Phase 1: Structure and Migration (COMPLETE)
 
-- [x] Create directory structure: docs/howto, docs/why, docs/how, docs/todo, docs/vintage_legacy
+- [x] Create directory structure: docs/howto, docs/why, docs/ubc1/how, docs/ubc1/todo, docs/ubc0_1/, docs/vintage_legacy
 - [x] Move all docs/ files to docs/vintage_legacy/
 - [x] Move all projects/ files to docs/vintage_legacy/
-- [x] Move SYMBOL_TABLE.md to docs/how/ as permanent reference
+- [x] Move SYMBOL_TABLE.md to docs/ubc1/how/ as permanent reference
 - [x] Update README.md links to point to docs/vintage_legacy/
 - [x] Update AGENTS.md documentation section
 - [x] Update CLAUDE.md documentation section
 - [x] Create this plan document
 
-## Phase 2: Populate `docs/how/` (Engineering Documentation)
+## Phase 2: Populate `docs/ubc1/how/` (Engineering Documentation)
 
 Content: Operational semantics expressed in UBC steps. Denotational semantics forthcoming.
 Implementation details.
@@ -56,12 +58,12 @@ Source material from `docs/vintage_legacy/` (formerly projects/):
 - 010-AlarmCode_Engineering.md - Alarm code engineering
 
 Tasks:
-- [x] Consolidated UBC engineering reference: `docs/how/ubc_engineering.md` (from ECOSYSTEM.md, UBC_FEATURES.md, search-semantics.md, 004-nyes-state-simplification.md, 008-cmfir-nyes-state-review.md)
-- [x] UBC2 design specification: `docs/how/ubc2_design.md` (new design doc for next-gen brane computer)
-- [x] Update README.md links to new docs/how/ files
+- [x] Consolidated UBC engineering reference: `docs/ubc1/how/ubc_engineering.md` (from ECOSYSTEM.md, UBC_FEATURES.md, search-semantics.md, 004-nyes-state-simplification.md, 008-cmfir-nyes-state-review.md)
+- [x] UBC2 design specification: `docs/ubc1/how/ubc2_design.md` (new design doc for next-gen brane computer)
+- [x] Update README.md links to new docs/ubc1/how/ files
 - [ ] Identify remaining content that describes operational semantics and extract/reorganize
-- [ ] Write additional docs/how/ files (detachment engineering, search semantics detail, alarm codes)
-- [ ] Update README.md links from docs/vintage_legacy/ to docs/how/ as more content migrates
+- [ ] Write additional docs/ubc1/how/ files (detachment engineering, search semantics detail, alarm codes)
+- [ ] Update README.md links from docs/vintage_legacy/ to docs/ubc1/how/ as more content migrates
 
 ## Phase 3: Populate `docs/why/` (Philosophy of Foolish)
 
@@ -104,7 +106,7 @@ Source material:
 - docs/vintage_legacy/NAMES_SEARCHES_N_BOUNDS.md code examples
 - Existing test input .foo files for reference patterns
 
-## Phase 5: Populate `docs/todo/` (Project Documentation)
+## Phase 5: Populate `docs/ubc1/todo/` (Project Documentation)
 
 Content: How we're growing Foolish. Active project tracking.
 
@@ -116,7 +118,7 @@ Source material from `docs/vintage_legacy/` (formerly projects/):
 - 007-foolish-indentation-style-guide.md - Style guide (may also fit docs/how/)
 
 Tasks:
-- [x] Create UBC2 design status and continuation guide: `docs/todo/agents.status.md`
+- [x] Create UBC2 design status and continuation guide: `docs/ubc1/todo/agents.status.md`
 - [ ] Review and consolidate active TODO items
 - [ ] Archive completed project items
 - [ ] Create new project tracking documents for active work
@@ -127,8 +129,8 @@ Once the new documentation directories are populated, README.md should be rewrit
 summary composed of the first chapters from each documentation area:
 - Opening from `docs/why/` (philosophy, why Foolish exists)
 - Quick start from `docs/howto/` (first tutorial excerpts)
-- Architecture overview from `docs/how/` (engineering summary)
-- Roadmap from `docs/todo/` (where we're going)
+- Architecture overview from `docs/ubc1/how/` (engineering summary)
+- Roadmap from `docs/ubc1/todo/` (where we're going)
 
 ## Phase 7: Cleanup
 
@@ -139,6 +141,8 @@ summary composed of the first chapters from each documentation area:
 
 ## Last Updated
 
-Date: 2026-02-20
-Updated By: Claude Code v1.0.0 / claude-opus-4-6
-Changes: Added UBC2 design status/continuation guide to Phase 5 tasks.
+Date: 2026-03-07
+Updated By: Claude Code / cyankiwi/Qwen3.5-27B-AWQ-BF16-INT8
+Changes: Updated all path references to use semantic versioning: `docs/how/` → `docs/ubc1/how/`,
+`docs/todo/` → `docs/ubc1/todo/`. Added ubc0_1 version directories.
+Previous (2026-02-20): Added UBC2 design status/continuation guide to Phase 5 tasks.

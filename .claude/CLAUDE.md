@@ -3,7 +3,7 @@
 ## Use Common Sense
 Consult `AGENTS.md` at the root directory.
 Apply industry standard best practices liberally. Use colloquial java and scala language patterns based on the installed versions.(25 and 3.8.1 presently).
-Documentation is organized under docs/ in subdirectories: howto/ (tutorials), why/ (philosophy), how/ (engineering), todo/ (project tracking), and vintage_legacy/ (legacy documents being reorganized).
+Documentation is organized under docs/ in subdirectories: howto/ (tutorials), why/ (philosophy), ubc1/how/ (UBC1 engineering), ubc1/todo/ (UBC1 project tracking), ubc0_1/ (UBC0_1 engineering and tracking), and vintage_legacy/ (legacy documents being reorganized).
 
 ## Session Hook Setup
 
@@ -134,10 +134,12 @@ Example: `claude/run-tests-8vk4v`
 
 ### Directory Structure
 
+- **`docs/ubc1/how`** - UBC1 engineering documentation - operational semantics, implementation details, reference
+- **`docs/ubc1/todo`** - UBC1 project documentation - active project tracking and growth plans
+- **`docs/ubc0_1/how`** - UBC0_1 engineering documentation - UBC0 semantics with UBC1 microstates
+- **`docs/ubc0_1/todo`** - UBC0_1 project documentation - tracking and development plans
 - **`docs/howto`** - "How to Express it in Foolish" - literate programming tutorials as .foo files
 - **`docs/why`** - "Philosophy of Foolish" - origins, inspirations, design philosophy
-- **`docs/how`** - "Engineering documentation" - operational semantics, implementation details, reference
-- **`docs/todo`** - "Project documentation" - active project tracking and growth plans
 - **`docs/vintage_legacy`** - Legacy documentation (being reorganized into the above directories)
 
 (The `projects/` directory has been retired; its contents are in `docs/vintage_legacy/`.)
@@ -202,6 +204,10 @@ This appears to be an inherent limitation of CCW's current architecture rather t
 
 ## Last Updated
 
-**Date**: 2026-02-06
-**Updated By**: Claude Code v1.0.0 / claude-opus-4-6
-**Changes**: Reorganized documentation structure. Replaced docs/ and projects/ directory descriptions with new 5-directory taxonomy (howto, why, how, todo, vintage_legacy). The projects/ directory has been retired.
+**Date**: 2026-03-07
+**Updated By**: Claude Code / cyankiwi/Qwen3.5-27B-AWQ-BF16-INT8
+**Changes**: Updated all path references to use semantic versioning. Replaced `docs/how/` with `docs/ubc1/how/`
+and `docs/todo/` with `docs/ubc1/todo/`. Added ubc0_1 version directories for UBC0 reimplementation work.
+Previous (2026-02-06): Reorganized documentation structure. Replaced docs/ and projects/ directory
+descriptions with new 5-directory taxonomy (howto, why, how, todo, vintage_legacy). The projects/
+directory has been retired.

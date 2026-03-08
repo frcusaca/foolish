@@ -63,7 +63,32 @@ combination** and **containment enables organization**. The language provides ri
 capabilities while maintaining interfaces that ground your computations to the physical and
 biological realities you want to model.
 
-Additional implementation notes are in the [docs/vintage_legacy](docs/vintage_legacy/) folder (being reorganized into docs/ subdirectories).
+## Versioned Documentation
+
+Foolish documentation is organized by version using semantic versioning:
+
+| Version | Location | Description |
+|---------|----------|-------------|
+| **ubc1** | `docs/ubc1/` | Current development version based on message-passing infrastructure |
+| **ubc0_1** | `docs/ubc0_1/` | Reimplementation of ubc0 semantics using clarified microstates from ubc1 design |
+| **ubc0 (legacy)** | `docs/vintage_legacy/` | Original UBC implementation - legacy reference |
+
+### Version Overview
+
+- **ubc1** - The current development track implementing the Unicellular Brane Computer using a message-passing infrastructure. This is where active development and design refinement occurs.
+
+- **ubc0_1** - A reimplementation of the original ubc0 semantics, but using the clarified microstate definitions from ubc1. This serves as a bridge, demonstrating how the original design goals can be achieved with the more rigorous state machine definitions developed for ubc1.
+
+- **ubc0 (legacy)** - The original UBC implementation documented in `vintage_legacy/`. Maintained for historical reference and understanding the evolution of the design.
+
+### Shared Documentation
+
+The following documentation applies across all versions and remains at `docs/`:
+
+- **why/** - Design philosophy and motivations (version-agnostic)
+- **howto/** - Literate programming tutorials
+- **styleguide.md** - Code style and formatting conventions
+- **DOC_AGENTS.md** - Guidance for AI agents working on the codebase
 
 ## For AI Agents and Contributors
 
@@ -344,23 +369,36 @@ For details on scope resolution and name reuse, see [Names, Searches, and Bounds
 
 ## Documentation
 
-Documentation is organized under `docs/` in purpose-driven subdirectories:
+### Versioned Documentation
 
-- **[How to Express it in Foolish](docs/howto/)** (`docs/howto`) - Literate programming tutorials as `.foo` files with documentation in comments. Cookbook style with decreasing documentation density.
-- **[Philosophy of Foolish](docs/why/)** (`docs/why`) - Origins, inspirations, and design philosophy in English prose. Why branes? Why openness? What we learn from nature.
-- **[Engineering Documentation](docs/how/)** (`docs/how`) - Operational semantics, implementation details, and permanent reference material.
-- **[Project Documentation](docs/todo/)** (`docs/todo`) - Active project tracking, growth plans, and roadmap.
-- **[Legacy Documentation](docs/vintage_legacy/)** (`docs/vintage_legacy`) - Pre-reorganization documentation, being migrated into the above directories.
+See the [Versioned Documentation](#versioned-documentation) section above for an overview of ubc0, ubc0_1, and ubc1.
 
-### Legacy References
+### Documentation Organization
 
-The following documents are in `docs/vintage_legacy/` and will be reorganized in future iterations:
+- **`docs/why/`** - "Philosophy of Foolish" - origins, inspirations, and design philosophy
+- **`docs/howto/`** - "How to Express it in Foolish" - literate programming tutorials as .foo files
+- **`docs/ubc1/how/`** - Engineering documentation for ubc1 (message-passing infrastructure)
+- **`docs/ubc1/todo/`** - Active project tracking for ubc1 development
+- **`docs/ubc0_1/how/`** - Engineering documentation for ubc0_1 (ubc0 semantics with ubc1 microstates)
+- **`docs/ubc0_1/todo/`** - Project tracking for ubc0_1 development
+- **`docs/vintage_legacy/`** - Legacy ubc0 documentation (historical reference)
+
+### Legacy References (ubc0)
+
+The following documents in `docs/vintage_legacy/` document the original ubc0 implementation:
 
 - **[Names, Searches, and Bounds](docs/vintage_legacy/NAMES_SEARCHES_N_BOUNDS.md)** - Comprehensive guide to naming
   systems, the search operators (`.`, `?`, `??`, `?*`, `:`, cursor movements), and how detachment
   branes `[...]` control scope boundaries for globalized searches
 - **[Advanced Features](docs/vintage_legacy/ADVANCED_FEATURES.md)** - Brane operations (concatenation, proximity
   is combination), control flow, and recursion
-- **[Ecosystem](docs/vintage_legacy/ECOSYSTEM.md)** - Implementation details including the Unicellular Brane
-  Computer (UBC), typing systems, and relational coordinates
-- **[Symbol Table](docs/how/SYMBOL_TABLE.md)** - Reference table of Foolish symbols and Unicode mappings
+- **[Ecosystem](docs/vintage_legacy/ECOSYSTEM.md)** - Implementation details including the original UBC, typing systems, and relational coordinates
+- **[Symbol Table](docs/ubc1/how/SYMBOL_TABLE.md)** - Reference table of Foolish symbols and Unicode mappings
+
+---
+
+## Last Updated
+
+**Date**: 2026-03-07
+**Updated By**: Claude Code / cyankiwi/Qwen3.5-27B-AWQ-BF16-INT8
+**Changes**: Introduced semantic versioning for documentation. Moved engineering docs (how/) and project tracking (todo/) to docs/ubc1/. Created docs/ubc0_1/ with parallel how/ and todo/ directories for reimplementation work. Added version overview explaining ubc0 (legacy), ubc0_1 (reimplementation using ubc1 microstates), and ubc1 (message-passing infrastructure).
