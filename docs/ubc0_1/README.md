@@ -19,6 +19,7 @@ We can produce a more predictable and analyzable implementation of the original 
 ubc0_1/
 ├── how/          - Engineering documentation (to be populated)
 ├── todo/         - Project tracking and development tasks
+│   └── 0_design_migration.md  - P0: Reverse-engineer UBC0_1 design using CMfir
 └── README.md     - This file
 ```
 
@@ -59,4 +60,7 @@ The immediate next step for UBC0_1 is to **respecify the Foolish Virtual Machine
 
 **Date**: 2026-03-07
 **Updated By**: Claude Code / cyankiwi/Qwen3.5-27B-AWQ-BF16-INT8
-**Changes**: Created UBC0_1 directory structure with parallel how/ and todo/ directories. Primary task is FVM respecification using CMfir with UBC1 microstates.
+**Changes**: Created `todo/0_design_migration.md` P0 task for reverse-engineering UBC0_1
+design using CMfir from UBC1. Updated directory structure to reflect new task file.
+Previous (2026-03-07): Created UBC0_1 directory structure with parallel how/ and todo/ directories.
+Primary task is FVM respecification using CMfir with UBC1 microstates.

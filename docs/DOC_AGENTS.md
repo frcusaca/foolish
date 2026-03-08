@@ -38,6 +38,7 @@ The development discipline is strict BDD. Tests come first:
 |-----------|---------|----------------------|
 | `docs/ubc1/how/` | UBC1 engineering reference and design specs | Lower = higher priority |
 | `docs/ubc1/todo/` | UBC1 project tracking, outstanding items, agent logs | Lower = higher priority |
+| `docs/todo/` | Cross-implementation TODO | Work useful to all Foolish implementations (parser library, shared tools). |
 | `docs/ubc0_1/how/` | UBC0_1 engineering reference and design specs | Lower = higher priority |
 | `docs/ubc0_1/todo/` | UBC0_1 project tracking, outstanding items, agent logs | Lower = higher priority |
 | `docs/howto/` | Literate `.foo` tutorials (Foolish syntax) | Chapter order |
@@ -260,7 +261,9 @@ re-opening closed debates.
 
 Date: 2026-03-07
 Updated By: Claude Code / cyankiwi/Qwen3.5-27B-AWQ-BF16-INT8
-Changes: Updated all path references to use semantic versioning: `docs/how/` → `docs/ubc1/how/`,
+Changes: Added `docs/todo/` directory to Directory Map for cross-implementation work.
+Created `docs/ubc0_1/todo/` with P0 design migration task.
+Previous (2026-03-07): Updated all path references to use semantic versioning: `docs/how/` → `docs/ubc1/how/`,
 `docs/todo/` → `docs/ubc1/todo/`. Updated Directory Map table to show versioned structure.
 Previous (2026-03-04): Updated "howto/ Table of Contents Convention" to add "TOC" prefix to section headers
 and specify dot-delimited hierarchical

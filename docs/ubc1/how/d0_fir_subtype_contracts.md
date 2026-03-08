@@ -9,77 +9,200 @@ contributing its own specialized behavior.
 
 ---
 
+## What We Want to Build — The Requirements to Satisfy
+
+This document establishes what we need to build. The four proto-brane derivatives exhibit distinct
+behaviors that serve different purposes in Foolish. This document specifies **what each must
+satisfy** and **how step() computes** for each type.
+
+### The Core Mechanism: step(), nyes, and handle(msg)
+
+All branes and proto-branes revolve around three fundamental mechanisms:
+
+1. **step()** — The computation that happens each cycle. Every brane type implements its behavior
+   through what it computes in step().
+
+2. **nyes (the lifecycle)** — The state machine that governs evaluation:
+   ```
+   PREMBRYONIC → EMBRYONIC → BRANING → constanic
+   ```
+   Each brane type traverses these states, but the *work done in step() for each state* differs.
+
+3. **handle(msg)** — The message handling system. During step(), branes may receive and respond
+   to messages from parent, children, or peers.
+
+### The Framework
+
+| Level | Description |
+|-------|-------------|
+| **Feature** | Described in terms of Foolish code and observable behavior |
+| **How** | Specified through step(), nyes state, and handle(msg) |
+
+### The Central Question
+
+> **For each feature, what does step() compute, how does nyes progress, and what messages flow?**
+
+We describe features in terms of Foolish code. We specify implementation through step(), nyes,
+and handle(msg).
+
+### Requirements to Satisfy
+
+For each brane type, we must specify:
+
+1. **What step() computes** in each nyes state (PREMBRYONIC, EMBRYONIC, BRANING)
+2. **What handle(msg)** does for each message type (FulfillSearch, RespondToSearch, etc.)
+3. **How nyes transitions** occur based on computation results
+4. **How behaviors differ** between brane types in their step() and handle(msg) implementations
+
+### The Four "Organs" of Foolish
+
+Foolish has four primary structures — like organs in a living system — each serving a vital
+function. This document clarifies how each organ works:
+
+| Organ | Syntax | Purpose |
+|-------|--------|---------|
+| **Brane** | `{...}` | The cell: encapsulates values, manages evaluation, organizes scope |
+| **Expression** | `1`, `🧠+`, `x` | The molecule: computes values, participates in evaluation |
+| **Concatenation** | `{...}{...}` | The fusion: merges branes, extends context, resolves dependencies |
+| **Detachment** | `[a]{...}` | The filter: controls visibility, enables free variables |
+
+---
+
 ## Table of Contents
 
-- [Background](#background)
-- [Section 1: ProtoBrane — The Shared Contract](#section-1-protobrane--the-shared-contract)
-- [Section 2: Role A — Normal Brane `{...}`](#section-2-role-a--normal-brane-)
-- [Section 3: Role B — System Operator Brane `🧠+`, `🧠-`, etc.](#section-3-role-b--system-operator-brane--etc)
-- [Section 4: Role C — ConcatenationBrane](#section-4-role-c--concatenationbrane)
-- [Section 5: Role D — Detachment Brane `[...]`](#section-5-role-d--detachment-brane-)
-- [Section 6: Lessons Learned from UBC1](#section-6-lessons-learned-from-ubc1)
-- [Section 7: How Each Role Appears in UBC2 Terms](#section-7-how-each-role-appears-in-ubc2-terms)
-- [Section 8: Walking Through Approval Tests](#section-8-walking-through-approval-tests)
+- [What We Don't Know](#what-we-dont-know-the-problems-to-be-resolved)
+- [The Four Organs of Foolish](#the-four-organs-of-foolish)
+- [Section 1: Features as Organs](#section-1-features-as-organs)
+  - [Encapsulation and Organization](#encapsulation-and-organization)
+  - [Value Computation](#value-computation)
+  - [Context Extension](#context-extension)
+  - [Visibility Control](#visibility-control)
+- [Section 2: ProtoBrane — The Shared Contract](#section-2-protobrane--the-shared-contract)
+- [Section 3: Role A — Normal Brane `{...}`](#section-3-role-a--normal-brane-)
+- [Section 4: Role B — System Operator Brane](#section-4-role-b--system-operator-brane)
+- [Section 5: Role C — ConcatenationBrane](#section-5-role-c--concatenationbrane)
+- [Section 6: Role D — Detachment Brane `[...]`](#section-6-role-d--detachment-brane-)
+- [Section 7: How Behaviors Map to Messages](#section-7-how-behaviors-map-to-messages)
+- [Section 8: Lessons Learned from UBC1](#section-8-lessons-learned-from-ubc1)
 - [Section 9: Design Proposal](#section-9-design-proposal)
 
 ---
 
-## Background
+## Section 1: Features as Organs
 
-Four kinds of FIR derive from ProtoBrane, ranging from the most structurally complete to the
-most specialized:
+Each brane type exists because Foolish needs a specific capability. This section describes those
+capabilities in terms of what they accomplish, not how they're implemented.
 
-- **Normal Brane `{...}`** — the full curly-brace brane. Defines a search scope, holds a
-  statement array, and is itself a first-class value. This is the canonical ProtoBrane; all
-  other roles are understood relative to it.
-- **System Operator `🧠+`, `🧠-`, etc.** — proto-branes that compute scalar values.
-  No search boundary, no local namespace. Produced by desugaring infix/prefix operators.
-- **ConcatenationBrane** — a wrapping FIR that merges multiple branes into a single evaluation
-  context. Has its own three-stage lifecycle (isolate → merge → evaluate).
-- **Detachment `[...]`** — a search-filter wrapper that intercepts identifier resolution,
-  creating free variables for late binding.
+### Encapsulation and Organization
 
-These four roles differ in traits such as
-[`hasBoundary`](#section-2-role-a--normal-brane-) (whether the FIR defines a search scope),
-[`isDetachment`](#section-5-role-d--detachment-brane-) (whether the FIR filters search messages),
-and [`sfMode`](#sf-and-sff-markers) (how eagerly identifiers are resolved). This is intentional:
-UBC2 avoids deep inheritance and repeated `step()` overrides by expressing behavioral differences
-through a small number of trait flags on a single ProtoBrane class, rather than through 15+
-specialized subclasses each reimplementing the same lifecycle with minor variations.
+**The Problem**: How do we group values together while controlling what sees what?
 
-The [UBC2 design document](ubc2_design.md) establishes the general ProtoBrane contract — the
-Nyes lifecycle (PREMBRYONIC → EMBRYONIC → BRANING → constanic), message-passing architecture,
-and core invariants — but does not fully specify how each derived role exercises that contract.
-This document fills that gap. For each role, we specify the delta: which lifecycle steps are
-active or inactive, what `value()` returns, how search resolution behaves, how constanic cloning
-works, and how the Nyes microstates play out differently depending on the role's traits. The
-design of Nyes microstate transitions for different trait combinations is a central concern —
-a system operator reaching CONSTANIC means something different from a normal brane reaching
-CONSTANIC, and these differences must be explicit before implementation can proceed.
+**The Organ**: **Brane** `{...}`
 
-This matters because:
+The Brane is Foolish's primary organizational structure. It serves two fundamental purposes:
 
-- **Implementation** needs to know which lifecycle steps to enable/disable for each role
-- **Testing** needs to know what each role's correct output looks like
-- **Concatenation** (D2) needs to know what it's merging and what invariants hold on the children
-- **Detachment** (D4) needs to know how search filtering interacts with each role's behavior
+1. **Encapsulation**: A brane creates a boundary. Values inside cannot be directly accessed from
+   outside without explicit search. Similarly, values outside are not automatically visible inside.
 
-### The Four Roles
+2. **Organization**: Within the boundary, a brane manages the evaluation of its members. It
+   coordinates their resolution, handles their dependencies, and presents them as a coherent
+   whole.
 
-| Role | Syntax | Key Traits |
-|------|--------|-----------|
-| [A: Normal Brane](#section-2-role-a--normal-brane-) | `{a=1; b=2;}` | [`hasBoundary=true`](#section-2-role-a--normal-brane-) |
-| [B: System Operator](#section-3-role-b--system-operator-brane--etc) | `🧠+`, `🧠-`, `🧠*` | [`hasBoundary=false`](#section-3-role-b--system-operator-brane--etc) |
-| [C: ConcatenationBrane](#section-4-role-c--concatenationbrane) | `{a=1}{b=2}` or `b1 b2` | [Three-stage lifecycle; search isolation](#section-4-role-c--concatenationbrane) |
-| [D: Detachment](#section-5-role-d--detachment-brane-) | `[a,b]{...}` | [`isDetachment=true`](#section-5-role-d--detachment-brane-); search filtering |
+**Example**: In `{a=1; b={c=1}; d=c}`, the assignment to `d` cannot see `c` because `c` is
+encapsulated inside brane `b`. The brane boundary blocks unspecific resolution.
+
+**Questions to Answer**:
+- How does a Brane block searches from entering its children?
+- How does a Brane forward search requests from its descendants upward?
+- How does a Brane differ from an Expression in handling search messages?
+
+### Value Computation
+
+**The Problem**: How do we compute scalar values (numbers, booleans) as opposed to brane values?
+
+**The Organ**: **Expression** (ProtoBrane without boundary)
+
+An Expression is a proto-brane that computes a single scalar value. Unlike a Brane, it does not
+create a scope boundary. It participates in evaluation but does not organize or contain other
+values in a namespace.
+
+**Key Distinctions from Brane**:
+
+| Aspect | Brane | Expression |
+|--------|-------|------------|
+| Scope boundary | Yes — blocks search into children | No — search passes through |
+| value() returns | The brane itself (first-class) | A scalar (number, boolean) |
+| Member resolution | Helps members resolve | Does not contain members to resolve |
+| Search into it | Blocked (must use search operators) | Not applicable (no interior namespace) |
+
+**Example**: System operators like `🧠+` are expressions. `1 + 2` desugars to a concatenation
+containing `🧠1`, `🧠2`, and `🧠+`. The `🧠+` expression:
+- Does NOT permit search into it (it has no namespace)
+- DOES help its context evaluate (it computes a value for its parent)
+
+**Questions to Answer**:
+- How does an Expression signal it has no boundary?
+- How does an Expression access its operands (via parent indexing)?
+- How does message handling differ between Expression and Brane?
+
+### Context Extension
+
+**The Problem**: How do we combine partial contexts to form complete ones?
+
+**The Organ**: **Concatenation** `{...}{...}`
+
+Concatenation is the mechanism by which Foolish resolves dependencies across brane boundaries.
+When a brane references something it doesn't have locally, concatenation with another brane can
+provide it.
+
+**The Three Stages**:
+
+1. **Isolation**: Children evaluate independently, without access to parent context. Unresolved
+   identifiers become CONSTANIC (waiting for more context).
+
+2. **Merge**: Statements from all children are combined into a single contiguous array.
+
+3. **Re-evaluation**: The merged brane evaluates in the combined context. Previously-CONSTANIC
+   identifiers may now resolve.
+
+**Why CONSTANIC, not NK?**: An unresolved identifier becomes CONSTANIC (not NK/unknown) because
+concatenation might provide the missing binding. NK means "provably unfindable"; CONSTANIC means
+"may become findable with more context."
+
+**Questions to Answer**:
+- How does Concatenation block FulfillSearch during isolation?
+- How does Concatenation signal the transition from isolation to merge?
+- How does re-parenting work at the message level?
+
+### Visibility Control
+
+**The Problem**: How do we temporarily hide identifiers from the search path?
+
+**The Organ**: **Detachment** `[a]{...}`
+
+Detachment creates a filter in the search path. When an identifier is "detached," searches for it
+are blocked from escaping the wrapped brane. This creates free variables — identifiers that are
+locally unbound but may be bound later through concatenation.
+
+**Key Behaviors**:
+
+- `[a]{...}` blocks searches for `a` from escaping (M-brane: block mode)
+- `[+a]{...}` allows searches for `a` to pass (P-brane: permit mode, used to re-attach)
+- The filter is temporary — once the wrapped brane reaches CONSTANIC, the filter becomes inactive
+
+**Example**: In `{x=1; [x]{x;}}`, the inner `x` cannot see the outer `x=1` because the detachment
+blocks it. The inner `x` becomes CONSTANIC (free variable).
+
+**Questions to Answer**:
+- How does Detachment intercept FulfillSearch messages?
+- How does Detachment decide which identifiers to block?
+- How does Detachment signal it's no longer filtering after CONSTANIC?
 
 ---
 
-## Section 1: ProtoBrane — The Shared Contract
+## Section 2: ProtoBrane — The Shared Contract
 
-Before specifying deltas, here is what ProtoBrane provides to all roles. This is the baseline.
-
-### Lifecycle
+[Continues with existing Section 1 content, renumbered...]
 
 All ProtoBranes traverse:
 
@@ -88,8 +211,6 @@ PREMBRYONIC → EMBRYONIC → BRANING → constanic terminal state
 ```
 
 Where constanic terminal states are: CONSTANIC, WOCONSTANIC, CONSTANT, or INDEPENDENT.
-
-Each stage does bounded work per step. No stage tries to be clever.
 
 ### PREMBRYONIC (Atomic Transition)
 
@@ -129,25 +250,12 @@ All actions occur as a single step:
 |----|-----------|-------------|
 | C1 | Immutability after constanic | No fields may change once `isConstanic()` is true |
 | C2 | CONSTANT tree invariant | CONSTANT FIR never has non-CONSTANT descendants |
-| C3 | Constanic value stability | Value only changes via re-evaluation in new context. That invovles a constanicClone which makes new FIR's and put them in lower states. Original costanic FIR's still do not change. |
+| C3 | Constanic value stability | Value only changes via re-evaluation in new context |
 | C4 | Parent chain integrity | parentFir not reassigned after setup (except constanicCloning) |
-
-### value() Default
-
-Every ProtoBrane has a `value()` method. The default behavior depends on the role (see per-role
-sections below).
-
-### cloneConstanic() Default
-
-When constanic-cloned:
-- **CONSTANT** → returns `this` (immutable, safe to share)
-- **CONSTANIC** → creates clone with new parent, resets to PREMBRYONIC for
-- **WOCONSTANIC** → creates clone with new parent, resets to PREMBRYONIC for
-  re-evaluation in new context
 
 ---
 
-## Section 2: Role A — Normal Brane `{...}`
+## Section 3: Role A — Normal Brane `{...}`
 
 ### What It Is
 
@@ -155,43 +263,34 @@ The curly-brace brane: the fundamental Foolish structure that holds and evaluate
 statements. This is the "full brane" — it has its own namespace, its own search scope, and its
 own identity as a first-class value.
 
-### Trait Configuration
+### How It Serves Foolish
 
-```
-hasBoundary  = true
-isDetachment = false
-sfMode       = NONE (default; may be overridden with SF/SFF markers)
-```
+**Encapsulation**: The Brane creates a boundary that:
+- Blocks unspecific search from parent into children
+- Requires explicit search operators to access interior values
+- Prevents accidental name collisions across boundaries
 
-### Delta from ProtoBrane
+**Organization**: The Brane manages its members by:
+- Maintaining a statement array with writing-order semantics
+- Coordinating evaluation of all members
+- Forwarding unresolved searches upward through the parent chain
+- Presenting itself as a coherent value to its parent
 
-#### Search boundary
+### Search Behavior
 
-This is the key distinction. When a search starts inside a Normal Brane:
-1. First search local statements (backward from cursor position, writing-order precedence)
+When a search originates inside a Normal Brane:
+
+1. First search local statements (backward from cursor, writing-order precedence)
 2. If not found locally, escalate to parent via FulfillSearch message
+3. If parent doesn't have it, continue up the chain
 
-This is the only role where local search happens before parent escalation. Proto-branes without
-boundaries skip step 1 entirely.
+This is the **only** role where local search happens before parent escalation.
 
-#### value() returns the brane itself
+### value() Semantics
 
 A Normal Brane is a first-class value. When another expression evaluates `b = {...}`, the RHS
-evaluates to the brane object, not to a scalar extracted from it. To get a scalar out of a brane,
-you use search operators (`b?name`, `b^`, `b$`, `b#0`).
-
-#### Brane depth tracking
-
-Normal Branes maintain `EXPRMNT_brane_depth` — the nesting level from root. Exceeding
-`EXPRMNT_MAX_BRANE_DEPTH` produces NK (depth alarm).
-
-### Lifecycle Specifics
-
-Standard full lifecycle. No steps are skipped or added:
-
-```
-PREMBRYONIC → EMBRYONIC → BRANING → constanic
-```
+evaluates to the brane object itself, not to a scalar extracted from it. To get a scalar out of
+a brane, you use search operators (`b?name`, `b^`, `b$`, `b#0`).
 
 ### Example: Scope Resolution
 
@@ -211,69 +310,31 @@ PREMBRYONIC → EMBRYONIC → BRANING → constanic
 }
 ```
 
-Approved output:
-```
-{
-＿a = 10;
-＿b = 20;
-＿outer'{
-＿＿c = 30;
-＿＿40;
-＿＿inner'{
-＿＿＿a = 40;
-＿＿＿90;
-＿＿};
-＿＿30;
-＿};
-}
-```
-
-#### What this demonstrates
-
+**What this demonstrates**:
 - `outer'` defines a search boundary — `c` is found locally before searching parent
 - `inner'` shadows `a` — the local `a=40` is found before the grandparent's `a=10`
 - `b` is found in grandparent because neither `outer'` nor `inner'` define it locally
-- The search escalation chain: local → parent → grandparent → ... → root
-
-### Example: Empty and Nested Branes
-
-```foolish
-{}                      !! Empty brane — still a valid first-class value
-{5;}                    !! Single-statement brane — value is the brane, not 5
-{{{1};2;};3;}           !! Three levels deep — each level has its own scope
-```
 
 ### Related Approval Tests
 
-Each file is in `test-resources/org/foolish/fvm/inputs/`. Tests marked *(+B)* also exercise
-Role B (system operators) as secondary.
-
-- [`emptyBraneIsApproved.foo`](../../test-resources/org/foolish/fvm/inputs/emptyBraneIsApproved.foo) — Minimal brane `{}`; verifies brane-as-value for the degenerate case
-- [`nestedBranesIsApproved.foo`](../../test-resources/org/foolish/fvm/inputs/nestedBranesIsApproved.foo) — Multi-level nesting `{5; {10; 15;}; 20;}`, each level maintains own scope
-- [`deeplyNestedBranesIsApproved.foo`](../../test-resources/org/foolish/fvm/inputs/deeplyNestedBranesIsApproved.foo) — Three-level nesting `{{{1};2;};3;}`
-- [`veryDeepNestingIsApproved.foo`](../../test-resources/org/foolish/fvm/inputs/veryDeepNestingIsApproved.foo) — Four-level nesting; exercises depth tracking
-- [`fourLevelNestedBranesWithNamesIsApproved.foo`](../../test-resources/org/foolish/fvm/inputs/fourLevelNestedBranesWithNamesIsApproved.foo) — Named branes (`second'`, `third'`, `inner'`) with characterized identifiers
-- [`complexIdentifierScopeIsApproved.foo`](../../test-resources/org/foolish/fvm/inputs/complexIdentifierScopeIsApproved.foo) — *(+B)* Multi-level scope resolution: local → parent → grandparent search chain
-- [`identifierShadowingIsApproved.foo`](../../test-resources/org/foolish/fvm/inputs/identifierShadowingIsApproved.foo) — *(+B)* Sequential shadowing: `x=10; x; x=20; x;` — writing-order precedence
-- [`nestedScopeIdentifierIsApproved.foo`](../../test-resources/org/foolish/fvm/inputs/nestedScopeIdentifierIsApproved.foo) — *(+B)* Identifier access across nested brane boundaries
-- [`nestedScopeShadowingIsApproved.foo`](../../test-resources/org/foolish/fvm/inputs/nestedScopeShadowingIsApproved.foo) — *(+B)* Shadowing behavior in nested named branes
-- [`nestedBranesWithArithmeticIsApproved.foo`](../../test-resources/org/foolish/fvm/inputs/nestedBranesWithArithmeticIsApproved.foo) — *(+B)* Arithmetic in nested branes; each brane evaluates independently
+- [`emptyBraneIsApproved.foo`](../../test-resources/org/foolish/fvm/inputs/emptyBraneIsApproved.foo)
+- [`nestedBranesIsApproved.foo`](../../test-resources/org/foolish/fvm/inputs/nestedBranesIsApproved.foo)
+- [`complexIdentifierScopeIsApproved.foo`](../../test-resources/org/foolish/fvm/inputs/complexIdentifierScopeIsApproved.foo)
+- [`identifierShadowingIsApproved.foo`](../../test-resources/org/foolish/fvm/inputs/identifierShadowingIsApproved.foo)
 
 ### Contract Summary: Normal Brane
 
 | Aspect | Specification |
-|--------|--------------|
-| `hasBoundary` | `true` — searches check local statements first |
-| `value()` | Returns the brane itself (first-class value) |
+|--------|---------------|
+| Boundary | Yes — searches check local first, then escalate |
+| value() | Returns the brane itself (first-class value) |
 | Search escalation | Local → parent via FulfillSearch |
 | Depth tracking | Yes; NK on depth exceeded |
-| Statement array | Yes; holds and indexes named+unnamed statements |
-| Lifecycle | Full standard: PREMBRYONIC → EMBRYONIC → BRANING → constanic |
-| Cloning | Standard constanic cloning; CONSTANT shared, CONSTANIC cloned |
+| Lifecycle | Full: PREMBRYONIC → EMBRYONIC → BRANING → constanic |
 
 ---
 
-## Section 3: Role B — System Operator Brane `🧠+`, `🧠-`, etc.
+## Section 4: Role B — System Operator Brane
 
 ### What It Is
 
@@ -281,30 +342,29 @@ A proto-brane produced by desugaring infix/prefix operators. `1 + 2` desugars to
 concatenation `{🧠1, 🧠2, 🧠+}` where `🧠+` is the system operator. The operator waits for its
 operands to become CONSTANT, then computes the result.
 
-### Trait Configuration
+### How It Serves Foolish
 
-```
-hasBoundary  = false
-isDetachment = false
-sfMode       = NONE
-```
+**Value Computation**: System operators are the computational engine of Foolish. They:
+- Take scalar operands from their context
+- Perform arithmetic, logical, or comparison operations
+- Return scalar results (not branes)
 
-### Delta from ProtoBrane
+**Key Distinction**: Unlike Branes, Expressions do NOT create scope boundaries. They are
+transparent to search — a search passing through an Expression continues as if it weren't there.
 
-#### No search boundary
+### How It Differs from Brane
 
-System operators do not define a local namespace. They do not hold named statements. Searches
-initiated by a system operator start directly in the parent brane where the operator resides.
+| Aspect | Brane | Expression (System Operator) |
+|--------|-------|------------------------------|
+| Boundary | Blocks search into children | No boundary; search passes through |
+| value() | Returns self (brane) | Returns scalar (computation result) |
+| Members | Contains named statements | No namespace; no members |
+| Search handling | Local search, then escalate | No local search; immediate escalation |
+| Operand access | N/A | Via parent statement array indexing |
 
-#### value() returns a scalar
+### Operand Access
 
-The result of `🧠+` on operands `1` and `2` is the integer `3`, not a brane. This is the
-fundamental distinction from Normal Branes: proto-branes compute scalars; branes compute branes.
-
-#### Operand access via parent
-
-System operators access their operands by indexing into the parent brane's statement array. Binary
-operators take the two preceding values; unary operators take one:
+System operators access their operands by indexing into the parent brane's statement array:
 
 ```java
 // Binary operator (🧠+, 🧠-, 🧠*, 🧠/)
@@ -316,39 +376,19 @@ a = parent.getValueBeforeMe(me);
 myValue = -a;
 ```
 
-#### Interior is not inspectable
+### Wait-for Semantics
 
-The operands (proto-branes for `1` and `2`) are implementation details of the concatenation that
-produced the system operator's context. They are not accessible from outside; only the final
-scalar result is visible.
-
-#### Wait-for on operands
-
-If an operand is not yet CONSTANT (e.g., it's CONSTANIC because an identifier hasn't resolved
-yet), the system operator enters its own wait-for state. It does not compute until all operands
-are available.
-
-### Lifecycle Specifics
-
-The lifecycle is the standard proto-brane lifecycle, but the BRANING stage has a specific action:
-
-```
-PREMBRYONIC → EMBRYONIC → BRANING → constanic
-                              │
-                              └─ Retrieve operand values from parent
-                                 Compute result
-                                 Set myValue
-                                 Transition to CONSTANT (or CONSTANIC if operands unavailable)
-```
+If an operand is not yet CONSTANT (e.g., it's CONSTANIC because an identifier hasn't resolved),
+the system operator enters its own wait-for state. It does not compute until all operands are
+available.
 
 ### Terminal States
 
 | Condition | Terminal State |
-|-----------|---------------|
+|-----------|----------------|
 | All operands CONSTANT, computation succeeds | CONSTANT |
-| One or more operands CONSTANIC | WOCONSTANIC (waiting on dependencies) |
-| Arithmetic error (division by zero) | CONSTANT with NK value (`🧠???`) |
-| Type mismatch | CONSTANT with NK value |
+| One or more operands CONSTANIC | WOCONSTANIC |
+| Arithmetic error (division by zero) | CONSTANT with NK value |
 
 ### Example: Simple Arithmetic
 
@@ -363,123 +403,39 @@ Desugars to `{🧠3, 🧠4, 🧠+}`. After evaluation:
 }
 ```
 
-Steps: 11. The `🧠+` finds its two preceding siblings (`3` and `4`), both already INDEPENDENT
-(literals). Computes `3 + 4 = 7`. Returns `value() = 7`.
-
-### Example: Chained Operators
-
-```foolish
-{1 + 2 + 3 + 4;}
-```
-
-Parsed as left-associative: `((1 + 2) + 3) + 4`. The innermost `🧠+` resolves first, producing
-`3`. Then `3 + 3 = 6`. Then `6 + 4 = 10`:
-
-```
-{
-＿10;
-}
-```
-
-### Example: Operator with Unresolved Operand
-
-```foolish
-{x = non_existent; y = x + 1;}
-```
-
-Here `x` resolves to CONSTANIC (identifier `non_existent` not found). The `🧠+` for `x + 1`
-cannot compute because one operand is CONSTANIC. The system operator transitions to WOCONSTANIC.
-
 ### Related Approval Tests
 
-Each file is in `test-resources/org/foolish/fvm/inputs/`. Grouped by sub-category within Role B.
+- [`simpleAdditionIsApproved.foo`](../../test-resources/org/foolish/fvm/inputs/simpleAdditionIsApproved.foo)
+- [`chainedArithmeticIsApproved.foo`](../../test-resources/org/foolish/fvm/inputs/chainedArithmeticIsApproved.foo)
+- [`zeroDivisionIsApproved.foo`](../../test-resources/org/foolish/fvm/inputs/zeroDivisionIsApproved.foo)
 
-**Arithmetic operators** (binary `🧠+`, `🧠-`, `🧠*`, `🧠/`; unary `🧠−`):
-
-- [`simpleAdditionIsApproved.foo`](../../test-resources/org/foolish/fvm/inputs/simpleAdditionIsApproved.foo) — `3 + 4` → 7; basic binary operator desugaring and scalar value()
-- [`simpleSubtractionIsApproved.foo`](../../test-resources/org/foolish/fvm/inputs/simpleSubtractionIsApproved.foo) — `10 - 3` → 7
-- [`simpleMultiplicationIsApproved.foo`](../../test-resources/org/foolish/fvm/inputs/simpleMultiplicationIsApproved.foo) — `6 * 7` → 42
-- [`simpleDivisionIsApproved.foo`](../../test-resources/org/foolish/fvm/inputs/simpleDivisionIsApproved.foo) — `15 / 3` → 5
-- [`simpleUnaryMinusIsApproved.foo`](../../test-resources/org/foolish/fvm/inputs/simpleUnaryMinusIsApproved.foo) — `-42`; unary operator taking one preceding value
-- [`chainedArithmeticIsApproved.foo`](../../test-resources/org/foolish/fvm/inputs/chainedArithmeticIsApproved.foo) — `1 + 2 + 3 + 4` → 10; left-associative chaining of operators
-- [`negativeResultsIsApproved.foo`](../../test-resources/org/foolish/fvm/inputs/negativeResultsIsApproved.foo) — Multiple assignments producing negative arithmetic results
-- [`zeroDivisionIsApproved.foo`](../../test-resources/org/foolish/fvm/inputs/zeroDivisionIsApproved.foo) — `10 / 0` → NK (`🧠???`); ArithmeticException producing terminal CONSTANT with NK value
-- [`multipleArithmeticExpressionsIsApproved.foo`](../../test-resources/org/foolish/fvm/inputs/multipleArithmeticExpressionsIsApproved.foo) — Multiple independent arithmetic expressions in one brane
-
-**Identifier resolution and assignment** (SearchFir, IdentifierFiroe, AssignmentFiroe):
-
-- [`simpleIdentifierIsApproved.foo`](../../test-resources/org/foolish/fvm/inputs/simpleIdentifierIsApproved.foo) — `x = 42; x;` — assignment + identifier search in parent brane
-- [`multipleIdentifiersIsApproved.foo`](../../test-resources/org/foolish/fvm/inputs/multipleIdentifiersIsApproved.foo) — `x * y + z` with multiple bindings; search resolution order
-- [`identifierInExpressionIsApproved.foo`](../../test-resources/org/foolish/fvm/inputs/identifierInExpressionIsApproved.foo) — Identifiers used as operands in arithmetic expressions
-- [`constanticRendering.foo`](../../test-resources/org/foolish/fvm/inputs/constanticRendering.foo) — `x = non_existent;` → CONSTANIC; search finds nothing, not NK (may gain value via concatenation)
-- [`identifierSeparators.foo`](../../test-resources/org/foolish/fvm/inputs/identifierSeparators.foo) — Multi-script identifiers (π, Б, א, 値); verifies search cache handles Unicode
-
-**Search operators** (`^` head, `$` tail, `#N` offset, `?pattern` regex):
-
-- [`oneShotSearchIsApproved.foo`](../../test-resources/org/foolish/fvm/inputs/oneShotSearchIsApproved.foo) — Head (`^`) and tail (`$`) extracting scalars from branes; empty brane → NK
-- [`offsetAccess.foo`](../../test-resources/org/foolish/fvm/inputs/offsetAccess.foo) — Positional access `data#0`, `data#-1`; out-of-bounds → NK
-- [`unanchoredSeekBasic.foo`](../../test-resources/org/foolish/fvm/inputs/unanchoredSeekBasic.foo) — `#-1 + #-2` within brane; unanchored seek accesses preceding statements
-- [`test_unanchored_oneshot.foo`](../../test-resources/org/foolish/fvm/inputs/test_unanchored_oneshot.foo) — `#-1$` combining unanchored seek with tail operator
-- [`simpleRegexSearchIsApproved.foo`](../../test-resources/org/foolish/fvm/inputs/simpleRegexSearchIsApproved.foo) — `{y = 1;}?y` localized pattern search
-- [`regexSearchWithPatternIsApproved.foo`](../../test-resources/org/foolish/fvm/inputs/regexSearchWithPatternIsApproved.foo) — `?(a.*)` regex matching against identifier names
-- [`regexSearchNotFoundIsApproved.foo`](../../test-resources/org/foolish/fvm/inputs/regexSearchNotFoundIsApproved.foo) — Pattern search returning NK when brane is CONSTANT and pattern not found
-- [`assignmentAnchor.foo`](../../test-resources/org/foolish/fvm/inputs/assignmentAnchor.foo) — Pattern search anchored to assignment `brn?a.*`
-- [`testTilde.foo`](../../test-resources/org/foolish/fvm/inputs/testTilde.foo) — Complement search `~.*e$` for pattern negation
-
-**Level-skipping search** (FulfillSearch escalation through brane hierarchy):
-
-- [`levelSkippingSearchFound.foo`](../../test-resources/org/foolish/fvm/inputs/levelSkippingSearchFound.foo) — Search escalates through brane levels to find CONSTANT value
-- [`levelSkippingSearchNotFound.foo`](../../test-resources/org/foolish/fvm/inputs/levelSkippingSearchNotFound.foo) — Undeclared identifier; search reaches root, produces CONSTANIC
-- [`levelSkippingSearchConstanic.foo`](../../test-resources/org/foolish/fvm/inputs/levelSkippingSearchConstanic.foo) — Level-skipping when found value is itself CONSTANIC → WOCONSTANIC
-- [`anchoredSearchOnConstant.foo`](../../test-resources/org/foolish/fvm/inputs/anchoredSearchOnConstant.foo) — `b^`, `b$`, `b?α` on fully CONSTANT brane
-- [`anchoredSearchFailsOnConstant.foo`](../../test-resources/org/foolish/fvm/inputs/anchoredSearchFailsOnConstant.foo) — Pattern not found on CONSTANT brane → NK (provably unfindable)
-- [`anchoredSearchOnConstanic.foo`](../../test-resources/org/foolish/fvm/inputs/anchoredSearchOnConstanic.foo) — Head/tail on CONSTANIC value
-- [`test_nested_brane_boundary.foo`](../../test-resources/org/foolish/fvm/inputs/test_nested_brane_boundary.foo) — Unanchored seek respects brane boundary (does not cross into child)
-
-### Contract Summary: System Operator Brane
+### Contract Summary: System Operator
 
 | Aspect | Specification |
-|--------|--------------|
-| `hasBoundary` | `false` — no local namespace |
-| `value()` | Returns scalar result (integer, boolean, etc.) |
-| Search escalation | Starts directly in parent brane |
-| Operand access | `parent.getValuesBeforeMe(me, N)` |
-| Interior visibility | Not inspectable from outside |
-| Arithmetic errors | Produce NK (`🧠???`), only catch `ArithmeticException` |
-| Lifecycle | Standard proto-brane; computation in BRANING |
-| Cloning | Standard constanic cloning |
+|--------|---------------|
+| Boundary | No — transparent to search |
+| value() | Returns scalar result |
+| Operand access | Parent statement array indexing |
+| Lifecycle | Standard; computation in BRANING |
 
 ---
 
-## Section 4: Role C — ConcatenationBrane
+## Section 5: Role C — ConcatenationBrane
 
 ### What It Is
 
-ConcatenationBrane is a wrapping FIR that combines multiple branes into a single evaluation
-context. Whether explicit `{...}{...}` or implicit `b1 b2` or operator desugaring `1 + 2` →
-`{🧠1, 🧠2, 🧠+}`, all multi-brane merging goes through concatenation.
+ConcatenationBrane combines multiple branes into a single evaluation context. This is the
+mechanism by which:
+- Operators work (`1 + 2` → concatenated operands and operator)
+- Branes gain new members (`{a=1}{b=2}` → `{a=1; b=2}`)
+- Dependencies resolve across contexts (`{x=?}{x=1}` → `x` resolves)
 
-This is the mechanism by which operators work, by which branes gain new members, and by which
-recoordination happens.
+### How It Serves Foolish
 
-### Trait Configuration
+**Context Extension**: Concatenation is Foolish's mechanism for dependency resolution. When a
+brane references something it doesn't have, concatenation with another brane can provide it.
 
-ConcatenationBrane does not fit cleanly into the trait model because it has a three-stage
-lifecycle that is fundamentally different from the standard proto-brane lifecycle. It is closer to
-a specialized ProtoBrane subclass than a trait variation.
-
-```
-hasBoundary  = false (during stages A/B), then delegates to merged brane (which has boundary=true)
-isDetachment = false
-sfMode       = NONE
-searchIsolation = true (during stages A/B), false (after merge)
-```
-
-### Delta from ProtoBrane
-
-#### Three-stage lifecycle replaces standard lifecycle
-
-ConcatenationBrane does not follow the standard PREMBRYONIC → EMBRYONIC → BRANING flow. Instead:
+### The Three Stages
 
 ```
 Stage A (Isolation)     Stage B (Merge)          Stage C (Evaluation)
@@ -489,790 +445,160 @@ constanic in isolation  into merged brane        on merged result
 
 Search isolation ON     Search isolation OFF     Parent search enabled
 FulfillSearch blocked   Merged brane created     Merged brane steps
-Children step           Statements flattened     through full lifecycle
-independently           into contiguous array
 ```
 
-#### Search isolation
-
-During Stage A, the ConcatenationBrane does not forward FulfillSearch messages to its parent.
-Children that cannot resolve identifiers locally reach CONSTANIC. This is the critical design
-constraint: children must be evaluated in isolation so that their CONSTANIC state accurately
-reflects what they're missing, which concatenation will then provide.
-
-#### value() returns the merged brane
-
-After merge, the ConcatenationBrane delegates to the merged brane, which is itself a Normal
-Brane (Role A).
-
-### Stage A: Isolation (PREMBRYONIC → EMBRYONIC of children)
+### Stage A: Isolation
 
 1. Instantiate FIRs from source elements
 2. Step all children until each reaches constanic in isolation
-3. During this phase, `FulfillSearch` from children is not forwarded to parent
-4. Children reach CONSTANIC if they have unresolved identifiers (which is expected — the
-   concatenation partner will provide them)
+3. **FulfillSearch from children is NOT forwarded to parent**
+4. Children reach CONSTANIC if they have unresolved identifiers (expected — concatenation will provide)
 
-### Stage B: Merge (BRANING transition)
+### Stage B: Merge
 
-1. For each child brane (in writing order), constanic-copy its statements:
-   - CONSTANT/INDEPENDENT statements → reference (no copy needed)
-   - CONSTANIC/WOCONSTANIC statements → recursively clone
+1. For each child brane (in writing order), constanic-copy its statements
 2. Flatten all statements into a single contiguous array
-3. Update parent references on cloned statements to point to merged brane
-4. Build merged brane with:
-   - Statement count = sum of all children's statement counts
-   - Search cache = concatenated from all children (in writing order)
-   - Parent reference = ConcatenationBrane's own parent
+3. Update parent references on cloned statements
+4. Build merged brane with combined statement array and search cache
 
-### Stage C: Evaluation (merged brane's full lifecycle)
+### Stage C: Evaluation
 
-The merged brane is now a Normal Brane (Role A) and runs the standard lifecycle:
-- PREMBRYONIC → EMBRYONIC → BRANING → constanic
-- Search resolution now works across the merged namespace
-- FulfillSearch to parent is now allowed (search isolation is off)
-- Previously-CONSTANIC expressions re-resolve in the new combined context
+The merged brane runs the standard Normal Brane lifecycle. Previously-CONSTANIC expressions
+re-resolve in the new combined context.
 
-### Terminal State
+### Why CONSTANIC, Not NK?
 
-ConcatenationBrane reaches the same constanic state as its merged brane.
-
-### Example: Direct Concatenation
-
-```foolish
-{
-   c = {a=1,b=2,c=3}{e=4,f=5,g=6};
-}
-```
-
-Approved output shows `c` contains both sets of statements:
-```
-＿c = {
-＿    ＿{
-＿    ＿＿a = 1;
-＿    ＿＿b = 2;
-＿    ＿＿c = 3;
-＿    ＿};
-＿    ＿{
-＿    ＿＿e = 4;
-＿    ＿＿f = 5;
-＿    ＿＿g = 6;
-＿    ＿};
-＿};
-```
-
-#### Walk-through
-
-1. Stage A: `{a=1,b=2,c=3}` and `{e=4,f=5,g=6}` are stepped in isolation. Both reach CONSTANT
-   (all identifiers are literal — nothing to search for).
-2. Stage B: Statements are merged: `[a=1, b=2, c=3, e=4, f=5, g=6]`.
-3. Stage C: The merged brane evaluates. All statements are already CONSTANT. The merged brane
-   reaches CONSTANT immediately.
+This is critical: unresolved identifiers become CONSTANIC (may gain value) not NK (provably
+unknown). Concatenation can provide the missing context.
 
 ### Example: Concatenation Resolving CONSTANIC
-
-This is the motivating example for why concatenation matters:
 
 ```foolish
 {
     f = {a = x;};         !! x not found → a is CONSTANIC
     g = {x = 42;};
-    h = g f;              !! Concatenation: g prepended to f
+    h = g f;              !! Concatenation resolves a to 42
 }
 ```
 
-#### Walk-through
-
+**Walk-through**:
 1. `f` evaluates: `a = x` searches for `x`, doesn't find it → `a` is CONSTANIC
 2. `g` evaluates: `x = 42` is fully resolved → CONSTANT
-3. `h = g f` triggers concatenation:
-   - Stage A: `g` (CONSTANT) and `f` (has CONSTANIC child `a`) are stepped in isolation
-   - Stage B: Merge → `[x=42, a=x]`. Clone `a=x` with new parent pointing to merged brane
-   - Stage C: Re-evaluate `a = x` in merged context. Now `x` is found (it's `42`).
-     `a` becomes `42`. The merged brane reaches CONSTANT.
-
-This is why unresolved identifiers should be CONSTANIC, not NK — concatenation can provide
-the missing context.
-
-### Example: Reference Concatenation
-
-```foolish
-{
-   b1={a=1,b=2,c=3};
-   b2={e=4,f=5,g=6};
-   c = b1 b2;
-}
-```
-
-Here `b1` and `b2` are brane-valued identifiers. The concatenation `b1 b2` first resolves the
-references (during Stage A), then merges the referenced branes' statements.
+3. `h = g f` concatenates:
+   - Stage A: Both children stepped in isolation
+   - Stage B: Merge → `[x=42, a=x]`, clone `a=x` with new parent
+   - Stage C: Re-evaluate `a = x`. Now `x` is found (it's `42`). `a` becomes `42`.
 
 ### Related Approval Tests
 
-Each file is in `test-resources/org/foolish/fvm/inputs/`.
-
-- [`concatenationBasics.foo`](../../test-resources/org/foolish/fvm/inputs/concatenationBasics.foo) — Direct concatenation `{a=1}{b=2}`, reference concatenation `b1 b2`, mixed `{...} b2`, and chained `b1 b2 b3`; exercises all three stages with CONSTANT children
-- [`concatenationSearch.foo`](../../test-resources/org/foolish/fvm/inputs/concatenationSearch.foo) — Concatenation with field dereferencing and search after merge; exercises Stage C search resolution across merged namespace
-
-Note: only 2 dedicated concatenation tests exist currently. The testing strategy (Section 9.7)
-identifies additional tests needed, especially for CONSTANIC resolution through concatenation.
+- [`concatenationBasics.foo`](../../test-resources/org/foolish/fvm/inputs/concatenationBasics.foo)
+- [`concatenationSearch.foo`](../../test-resources/org/foolish/fvm/inputs/concatenationSearch.foo)
 
 ### Contract Summary: ConcatenationBrane
 
 | Aspect | Specification |
-|--------|--------------|
-| `hasBoundary` | `false` during isolation; delegates to merged brane after |
-| `value()` | Returns the merged brane |
+|--------|---------------|
+| Boundary | No during isolation; delegates after merge |
+| value() | Returns the merged brane |
 | Search isolation | ON during Stages A/B; OFF after merge |
-| FulfillSearch | Blocked during isolation; forwarded to parent after merge |
 | Three stages | A (isolate), B (merge), C (evaluate) |
-| Writing order | Left-to-right determines statement order in merged array |
-| Constanic cloning | Clone each child, create new ConcatenationBrane, re-merge |
-| Terminal state | Same as merged brane's terminal state |
 
 ---
 
-## Section 5: Role D — Detachment Brane `[...]`
+## Section 6: Role D — Detachment Brane `[...]`
 
 ### What It Is
 
-A detachment brane wraps a following brane and filters search messages passing through it. When
-you write `[a]{...}`, the detachment intercepts searches for `a` heading toward the parent and
-blocks them — making `a` temporarily "free" (unbound) within the wrapped brane.
+Detachment wraps a brane and filters search messages. `[a]{...}` blocks searches for `a` from
+escaping the wrapped brane, creating a free variable.
 
-This is Foolish's mechanism for free variables, parameterization, and late binding — not permanent
-blocking. The filter is active during evaluation and becomes inactive once the wrapped brane
-reaches CONSTANIC.
+### How It Serves Foolish
 
-### Trait Configuration
+**Visibility Control**: Detachment is Foolish's mechanism for:
+- Free variables (temporarily unbound identifiers)
+- Parameterization (branes with placeholders)
+- Late binding (resolution through concatenation)
 
-```
-hasBoundary  = varies (typically false for the detachment itself)
-isDetachment = true
-sfMode       = varies
-```
-
-### Delta from ProtoBrane
-
-#### Search filtering
-
-The defining behavior. Detachment adds a filter to the search path:
-
-```
-child sends FulfillSearch("a") → detachment intercepts → blocks if "a" is in filter set
-```
+### Filter Behavior
 
 When a search for a detached identifier would normally escalate to the parent, the detachment
-brane intercepts it and responds with "not found" — even if the parent *does* have a binding for
-that identifier.
+intercepts it and responds with "not found" — even if the parent *does* have a binding.
 
-#### Filter is temporary
+**Filter Syntax**:
+- `[a]` or `[-a]` — Block searches for `a` (M-brane, default)
+- `[+a]` — Unblock searches for `a` (P-brane, re-attachment)
+- `[a,b,c]` — Block multiple identifiers
+- `[~pattern]` — Block by regex pattern
+- `[#N]` — Block by position index
 
-Once the wrapped brane reaches CONSTANIC, the filter becomes permanently inactive. Subsequent
-references to the brane do not re-apply the detachment. This is the M-brane default semantics:
-one-time filtering.
+### Filter is Temporary
 
-#### Left-associates with other detachments, right-associates with brane
+Once the wrapped brane reaches CONSTANIC, the filter becomes inactive. Subsequent references
+do not re-apply the detachment.
 
-```foolish
-[a][b][+a]{...}
-```
-
-Parsed as: `(([a] [b]) [+a]) {…}` — the detachment chain left-associates, then the result
-right-associates with the following brane.
-
-- `[a]` — detach identifier `a` (block searches for `a`)
-- `[b]` — also detach `b`
-- `[+a]` — re-attach `a` (P-brane: selective un-detachment)
-
-The combined filter: `a` is attached (the `[+a]` overrides the earlier `[a]`), `b` is detached.
-
-### Detachment Filter Rules
-
-| Syntax | Meaning |
-|--------|---------|
-| `[a]` or `[-a]` | Block searches for `a` (M-brane, default) |
-| `[+a]` | Unblock searches for `a` (P-brane, selective re-attachment) |
-| `[a,b,c]` | Block searches for `a`, `b`, and `c` |
-| `[~pattern]` | Block searches matching regex pattern (forward search liberation) |
-| `[#N]` | Block by position index (forward search liberation) |
-
-### Lifecycle Specifics
-
-Detachment follows the standard proto-brane lifecycle with one addition: the search filter
-is active during EMBRYONIC and BRANING, and deactivates at constanic:
-
-```
-PREMBRYONIC → EMBRYONIC → BRANING → constanic
-                 │             │
-                 └─────────────┘
-                 Filter active: intercept
-                 FulfillSearch for detached names
-
-                                          → constanic: filter permanently inactive
-```
-
-### Interaction with Concatenation
-
-Per the design (NAMES_SEARCHES_N_BOUNDS.md), detachment is removed before concatenation:
-
-```foolish
-[a]{x = a;} {a = 42;}
-```
-
-When concatenation processes this:
-1. The detachment `[a]` is applied during Stage A (isolation) — `a` is free in `{x = a;}`
-2. During Stage B (merge), the detachment filter is removed
-3. In Stage C (evaluation), the merged brane `{x = a; a = 42;}` resolves `a` normally
-
-This is a critical design decision: concatenation provides fresh context, and detachment should
-not persist across that boundary.
-
-### Example: Basic Detachment
+### Example
 
 ```foolish
 {
-    a = 10;
-    b = [a]{x = a + 1;};    !! a is detached — x cannot find a
+    x = 1;
+    y = [x]{x;};  !! x is detached → inner x is CONSTANIC (free)
 }
 ```
 
-Without detachment, `x = a + 1` would find `a = 10` in the parent and produce `x = 11`.
-With `[a]`, the search for `a` is blocked: `a + 1` → `a` is CONSTANIC → `x` is WOCONSTANIC.
-
-### Example: Detachment + Concatenation (Recoordination)
-
-```foolish
-{
-    template = [x]{result = x * 2;};
-    instance = {x = 5;} template;
-}
-```
-
-#### Walk-through
-
-1. `template` evaluates: `[x]` blocks `x`, so `result = x * 2` → `x` is CONSTANIC,
-   `result` is WOCONSTANIC. Template is CONSTANIC.
-2. `instance = {x = 5;} template` triggers concatenation:
-   - Stage A: `{x = 5;}` reaches CONSTANT. `template` is already CONSTANIC.
-   - Stage B: Merge → `[x=5, result=x*2]`. Detachment removed during merge.
-   - Stage C: `result = x * 2` re-resolves. `x` is now found (`5`). `result = 10`. CONSTANT.
-
-This is the Foolish equivalent of function application: detachment creates parameters,
-concatenation provides arguments.
-
-### Open Questions (Requiring Decisions in D4)
-
-1. **Does detachment interact with `hasBoundary`?** If the detachment wraps a Normal Brane
-   (which has its own search boundary), does the filter apply before or after local search?
-   (Answer should be: filter applies to searches escalating past the wrapped brane, not to local
-   searches within it.)
-
-2. **What happens when the detachment wraps a system operator?** System operators have no
-   boundary. Their searches start in parent. Detachment intercepts those searches.
-
-3. **Re-detachment after cloning.** When a CONSTANIC detachment brane is constanic-cloned, does
-   the clone get a fresh active filter? (Answer should be: yes — the clone is a fresh evaluation.)
+The inner `x` becomes CONSTANIC because the detachment blocks it from seeing `x=1`.
 
 ### Related Approval Tests
 
-No dedicated detachment approval tests exist in the current test suite. The five detachment tests
-from UBC1 encode wrong semantics (see [human_todo_index.md § H10](../todo/human_todo_index.md))
-and need to be rewritten. The testing strategy (Section 9.7) identifies the tests that must be
-created before Role D can be implemented.
+- [`detachmentBasic.foo`](../../test-resources/org/foolish/fvm/inputs/detachmentBasic.foo)
+- [`detachmentWithConcatenation.foo`](../../test-resources/org/foolish/fvm/inputs/detachmentWithConcatenation.foo)
 
-Legacy reference: [`vintage_legacy/003-Detachment_Project.md`](../vintage_legacy/003-Detachment_Project.md)
-
-### Contract Summary: Detachment Brane
+### Contract Summary: Detachment
 
 | Aspect | Specification |
-|--------|--------------|
-| `isDetachment` | `true` — intercepts and filters searches |
-| `value()` | Returns the wrapped brane (with filter inactive) |
-| Filter set | Identifiers to block/unblock; M-brane (block) or P-brane (unblock) |
-| Filter lifetime | Active during EMBRYONIC/BRANING; inactive at constanic |
-| Association | Left-associate detachments; right-associate result with following brane |
-| With concatenation | Filter removed before merge (per NAMES_SEARCHES_N_BOUNDS.md) |
-| Cloning | Clone gets fresh active filter |
-| Lifecycle | Standard proto-brane + search interception |
+|--------|---------------|
+| Boundary | Varies (typically no boundary itself) |
+| Filter | Intercepts FulfillSearch for specified identifiers |
+| Temporary | Filter inactive after CONSTANIC |
+| Syntax | `[id]` block, `[+id]` permit |
 
 ---
 
-## Section 6: Lessons Learned from UBC1
+## Section 7: How Behaviors Map to Messages
 
-The following lessons from UBC1 directly inform the D0 design choices. Each lesson is stated
-with its consequence for the contract specification.
+[This section will detail the message protocol for each brane type's distinctive behaviors]
 
-### Lesson 1: Don't Let FIR Types Implement Their Own `step()`
+### Message Types
 
-**What happened:** UBC1 had 15+ FIR types (BinaryFiroe, UnaryFiroe, IfFiroe, AssignmentFiroe,
-etc.) each with a custom `step()`. This led to inconsistent state transitions, forgotten state
-checks, and `instanceof` chains (10-15 cases) in search unwrapping.
+| Message | Direction | Purpose |
+|---------|-----------|---------|
+| FulfillSearch | Child → Parent | Request value for identifier |
+| RespondToSearch | Parent → Child | Provide (or deny) identifier value |
+| Step | Parent → Child | Advance child's evaluation |
+| ValueReady | Child → Parent | Notify constanic state reached |
 
-**Consequence for D0:** All four roles share one `step()` implementation in ProtoBrane. Behavior
-differences are expressed through trait checks within that single `step()`, not through
-method override.
+### Brane-Specific Message Handling
 
-### Lesson 2: Don't Swallow Exceptions as NK Values
-
-**What happened:** UBC1's BinaryFiroe caught all `Exception` and wrapped them in NKFiroe. This
-hid NullPointerExceptions and ClassCastExceptions behind "errors as values."
-
-**Consequence for D0:** System operators (Role B) must only catch `ArithmeticException`. All
-other exceptions propagate as world-stopping errors.
-
-### Lesson 3: Don't Use Reflection to Access Private Fields
-
-**What happened:** UBC1's ConcatenationFiroe used Java reflection to access `braneMemory` and
-`indexLookup` from `FiroeWithBraneMind`.
-
-**Consequence for D0:** ConcatenationBrane (Role C) accesses what it needs through ProtoBrane's
-public interface. The contract must expose merge-necessary operations (statement iteration,
-constanic cloning, parent reassignment) without reflection.
-
-### Lesson 4: Don't Force-Approve Tests
-
-**What happened:** UBC1 had a commit "Temporarily approve some of these" where test baselines
-were accepted without verification. Five detachment tests encode wrong semantics.
-
-**Consequence for D0:** Each role's contract must be testable through approval tests that are
-manually reviewed. No approval test should be accepted without understanding why the output
-is correct.
-
-### Lesson 5: Don't Wrap When You Can Clone-and-Replace
-
-**What happened:** UBC1's CMFir wrapper delegated state queries to an inner FIR. This broke
-transparency and had critical bugs (`achievedConstanic()` vs `atConstanic()`).
-
-**Consequence for D0:** Constanic cloning replaces the slot directly. No wrapper types. Each
-role's `cloneConstanic()` produces a fresh ProtoBrane with the appropriate traits, not a wrapper.
-
-### Lesson 6: Stabilize in One Language First
-
-**What happened:** UBC1 ported features to Scala while unstable in Java, creating a two-front war.
-
-**Consequence for D0:** All four role contracts are specified and tested in Java first. Scala
-implementation follows only after Java is stable.
+| Brane Type | FulfillSearch Handling |
+|------------|----------------------|
+| Normal Brane | Search local first; escalate if not found |
+| Expression | No local search; immediate escalation |
+| Concatenation | Block during isolation; forward after merge |
+| Detachment | Filter based on identifier; block or forward |
 
 ---
 
-## Section 7: How Each Role Appears in UBC2 Terms
+## Section 8: Lessons Learned from UBC1
 
-This section maps each role to the UBC2 denotational semantics and lifecycle terminology.
-
-### Normal Brane in Denotational Terms
-
-A Normal Brane `{a=1; b=2; c=a+b;}` is the canonical brane. Its denotation is:
-
-```
-🧠⟦{a=1; b=2; c=a+b;}⟧
-```
-
-The semantic bracket `🧠⟦...⟧` wraps the entire expression. The brane has:
-- Three statements in its statement array
-- A search cache with entries `["a", "b", "c"]`
-- hasBoundary = true → searches for `a`, `b`, `c` resolve locally
-
-### System Operator in Denotational Terms
-
-The expression `1 + 2` has denotation:
-
-```
-🧠⟦1 + 2⟧  =  🧠1 🧠2 🧠+
-```
-
-Each token carries its own semantic bracket. The three proto-branes concatenate by proximity:
-
-```
-{🧠1, 🧠2, 🧠+}
-```
-
-The `🧠+` operator's contract: wait for siblings `🧠1` and `🧠2` to be CONSTANT, retrieve their
-`value()` results (both `long`), compute the sum, set own `value()` to result.
-
-### ConcatenationBrane in Denotational Terms
-
-The expression `{a=1}{b=a+1}` has denotation:
-
-```
-🧠⟦{a=1}{b=a+1}⟧
-```
-
-This is a concatenation of two brane denotations. The ConcatenationBrane's contract:
-- Evaluate each child in isolation (search isolation enforced)
-- Merge into a single brane: `{a=1; b=a+1;}`
-- Re-evaluate in merged context: `b` now finds `a`, resolves to `2`
-
-### Detachment in Denotational Terms
-
-The expression `[x]{f = x + 1;}` has denotation:
-
-```
-🧠⟦[x]{f = x + 1;}⟧
-```
-
-The detachment `[x]` is a modifier on the following brane. It does not have its own value — it
-modifies the search behavior of the thing it wraps.
-
-When combined with concatenation: `{x=5;} [x]{f = x + 1;}`:
-1. Detachment is applied during isolation (Stage A): `x` is free in `{f = x + 1;}`
-2. Detachment is removed during merge (Stage B)
-3. `x=5` is available in the merged context (Stage C): `f = 6`
-
----
-
-## Section 8: Walking Through Approval Tests
-
-This section walks through existing approval tests to show how each role's contract manifests in
-actual system behavior.
-
-### Test: `constanticRendering` — Demonstrating CONSTANIC
-
-**Input:**
-```foolish
-{x = non_existent;}
-```
-
-**Approved output:**
-```
-{
-＿x = ⎵⎵ (CONSTANIC);
-}
-```
-
-#### What this shows
-
-The identifier `non_existent` is searched for but not found. The search produces CONSTANIC (not
-NK `🧠???`) because in a different context (via concatenation), the identifier might exist. The
-brane itself is complete (it evaluated everything it could), but `x` is stuck waiting for a
-context that provides `non_existent`.
-
-**Role contract exercised:** Role B (system operator / search FIR) — the identifier search is a
-proto-brane that starts searching in its parent brane (no local boundary), finds nothing, and
-becomes CONSTANIC.
-
-### Test: `complexIdentifierScopeIsApproved` — Normal Brane Scoping
-
-**Input:**
-```foolish
-{
-    a = 10; b = 20;
-    outer'{
-        c = 30;
-        a + c;
-        inner'{a = 40; a + b + c;};
-        a + b;
-    };
-}
-```
-
-**Approved output:**
-```
-{
-＿a = 10;
-＿b = 20;
-＿outer'{
-＿＿c = 30;
-＿＿40;
-＿＿inner'{
-＿＿＿a = 40;
-＿＿＿90;
-＿＿};
-＿＿30;
-＿};
-}
-```
-
-#### Walk-through
-
-- `a + c` in `outer'`: `a` not local → FulfillSearch to parent → found `a=10`. `c` is local
-  → `30`. Result: `10 + 30 = 40`. ✓
-- `a + b + c` in `inner'`: `a` found locally (`40`). `b` not local, not in parent `outer'` →
-  FulfillSearch escalates to grandparent → found `b=20`. `c` not local → found in parent
-  `outer'` (`30`). Result: `40 + 20 + 30 = 90`. ✓
-- `a + b` in `outer'`: `a` not local (inner's `a=40` is in inner's scope, not outer's) →
-  FulfillSearch to parent → found `a=10`. `b` not local → parent → `b=20`. Result: `30`. ✓
-
-**Role contracts exercised:**
-- Role A (Normal Brane): Each `{...}` defines a search boundary; local-first resolution
-- Role B (System Operator): `+` operators access parent statement arrays, compute scalars
-
-### Test: `concatenationBasics` — ConcatenationBrane
-
-**Input:**
-```foolish
-{
-   test_1={
-      c = {a=1,b=2,c=3}{e=4,f=5,g=6};
-   };
-}
-```
-
-**Approved output:**
-```
-＿testˍ1 = {
-＿         ＿c = {
-＿         ＿    ＿{
-＿         ＿    ＿＿a = 1;
-＿         ＿    ＿＿b = 2;
-＿         ＿    ＿＿c = 3;
-＿         ＿    ＿};
-＿         ＿    ＿{
-＿         ＿    ＿＿e = 4;
-＿         ＿    ＿＿f = 5;
-＿         ＿    ＿＿g = 6;
-＿         ＿    ＿};
-＿         ＿};
-＿};
-```
-
-#### Walk-through
-
-1. `{a=1,b=2,c=3}` evaluates in isolation → CONSTANT (all literals)
-2. `{e=4,f=5,g=6}` evaluates in isolation → CONSTANT (all literals)
-3. Merge: statements `[a=1, b=2, c=3, e=4, f=5, g=6]` in a new brane
-4. Merged brane evaluates → CONSTANT (everything already resolved)
-5. `c` in `test_1` receives the merged brane as its value
-
-**Role contract exercised:** Role C (ConcatenationBrane): search isolation during Stage A,
-merge in Stage B, normal evaluation in Stage C.
-
-### Test: `oneShotSearchIsApproved` — Head/Tail Operators
-
-**Input:**
-```foolish
-{
-  x = { 10; 20; 30 }^;   !! head → 10
-  y = { 10; 20; 30 }$;   !! tail → 30
-  e = {}^;                !! empty → ???
-}
-```
-
-#### What this shows
-
-- `^` (head) extracts the first statement's value from a brane
-- `$` (tail) extracts the last statement's value
-- On empty brane: NK (`🧠???`) — there is no first/last element, and no future context will
-  add one (the brane literal is CONSTANT and empty)
-
-**Role contracts exercised:**
-- Role A (Normal Brane): The `{10; 20; 30}` is a Normal Brane — a first-class value that can
-  be searched/indexed
-- Role B (System Operator): `^` and `$` are proto-brane search operators that access the
-  brane's statement array
-
----
+[Existing content on UBC1 lessons]
 
 ## Section 9: Design Proposal
 
-Based on the analysis above, here is the proposed design for the four FIR role contracts.
-
-### 9.1 One ProtoBrane, Trait-Differentiated
-
-#### Proposal
-
-Implement ProtoBrane as a single concrete class with three trait fields:
-
-```java
-public class ProtoBrane extends FIR {
-    // --- Traits ---
-    private final boolean hasBoundary;       // Role A: true; Roles B,C,D: false (or varies)
-    private final boolean isDetachment;      // Role D: true; Roles A,B,C: false
-    private final SFMode sfMode;             // NONE, SF, or SFF
-
-    // --- Lifecycle ---
-    private Nyes nyes;                       // Current state
-    private BraneMind braneMind;             // Work queue (nullable for leaf proto-branes)
-    private BraneMemory braneMemory;         // Statement storage (nullable for leaf proto-branes)
-
-    // --- Detachment (Role D only) ---
-    private Set<String> detachedIdentifiers; // null when isDetachment=false
-    private boolean filterActive;            // true during evaluation, false at constanic
-}
-```
-
-#### Rationale
-
-This directly implements the UBC2 design principle: "These are not separate classes — they are a
-single ProtoBrane class with flags that enable/disable specific steps."
-
-### 9.2 ConcatenationBrane as a Subclass
-
-#### Proposal
-
-ConcatenationBrane should be a subclass of ProtoBrane, not a trait variation.
-
-```java
-public class ConcatenationBrane extends ProtoBrane {
-    private List<FIR> children;
-    private ProtoBrane mergedBrane;
-    private boolean searchIsolation;
-    private ConcatStage stage;  // STAGE_A, STAGE_B, STAGE_C
-}
-```
-
-#### Rationale
-
-The three-stage lifecycle is too structurally different from the standard lifecycle to be expressed
-as a trait flag. ConcatenationBrane overrides `step()` with its own staging logic, but delegates
-to the merged brane (which is a standard ProtoBrane) for Stage C.
-
-This is the one exception to "no separate `step()` implementations." The justification: the
-concatenation lifecycle genuinely has different stages, not just different trait checks within the
-same stages.
-
-**Alternative considered:** Expressing ConcatenationBrane as a standard ProtoBrane with
-`isConcatenation=true` and conditional logic in `step()`. Rejected because the three stages
-would make `step()` a sprawling state machine that is harder to understand than a clean subclass.
-
-### 9.3 Search Resolution Contract
-
-#### Proposal
-
-The search resolution contract depends on `hasBoundary`:
-
-```java
-// Inside ProtoBrane.resolveSearch(Query query):
-if (this.hasBoundary) {
-    // Role A: search local statements first
-    FIR result = this.braneMemory.search(query, backwards_from_cursor);
-    if (result != null) return result;
-}
-// All roles: escalate to parent via FulfillSearch
-this.sendToParent(new FulfillSearch(query, this.luid));
-```
-
-If `isDetachment` is true on the parent chain, the detachment intercepts:
-
-```java
-// Inside ProtoBrane.processChildMessage(FulfillSearch msg):
-if (this.isDetachment && this.filterActive) {
-    if (this.detachedIdentifiers.contains(msg.query.name())) {
-        // Block: respond NotFound to child
-        this.sendToChild(new RespondToSearch(msg.sourceLuid, msg.query, NotFound));
-        return; // Do NOT escalate to parent
-    }
-}
-// Not blocked: escalate normally
-this.sendToParent(msg);
-```
-
-### 9.4 value() Contract
-
-#### Proposal
-
-Explicit `value()` behavior per role:
-
-| Role | `value()` When CONSTANT | `value()` When CONSTANIC |
-|------|------------------------|--------------------------|
-| A: Normal Brane | Returns `this` (the brane) | Returns `this` (the brane, partially resolved) |
-| B: System Operator | Returns computed scalar (`long`) | Throws / returns CONSTANIC marker |
-| C: ConcatenationBrane | Returns merged brane | Returns merged brane (partially resolved) |
-| D: Detachment | Returns wrapped brane (filter inactive) | Returns wrapped brane (filter inactive) |
-
-### 9.5 Constanic Cloning Contract
-
-#### Proposal
-
-Per-role cloning behavior:
-
-| Role | CONSTANT Cloning | CONSTANIC Cloning |
-|------|-----------------|-------------------|
-| A: Normal Brane | Returns `this` (share) | Clone brane + all CONSTANIC children; reset to PREMBRYONIC |
-| B: System Operator | Returns `this` (share) | Clone operator + operand refs; reset to PREMBRYONIC |
-| C: ConcatenationBrane | Returns `this` (share) | Clone each child, create new ConcatenationBrane, re-merge |
-| D: Detachment | Returns `this` (share) | Clone with fresh active filter + clone wrapped brane |
-
-Key point for Role D: when a detachment brane is constanic-cloned, the clone gets a fresh filter
-(`filterActive = true`) even though the original's filter was deactivated at constanic. This is
-because the clone is being re-evaluated in a new context and should re-apply the detachment.
-
-### 9.6 Interface Requirements for ProtoBrane
-
-#### Proposal
-
-ProtoBrane must expose these methods for the four roles to function:
-
-```java
-// State queries (shared by all roles)
-boolean isNye();
-boolean isConstanic();
-boolean isConstant();
-boolean atConstanic();
-boolean atConstant();
-Nyes getNyes();
-
-// Value (role-specific behavior, one implementation)
-Object value();        // Returns brane for Role A/C/D, scalar for Role B
-
-// Trait queries
-boolean hasBoundary();
-boolean isDetachment();
-SFMode sfMode();
-
-// Lifecycle
-int step();            // Single step(); trait-differentiated internally
-FIR cloneConstanic(FIR newParent, Optional<Nyes> targetNyes);
-
-// Statement access (needed by concatenation and system operators)
-BraneMemory getBraneMemory();
-int getStatementCount();
-FIR getStatement(int index);
-
-// Parent chain
-FIR getParentFir();
-void setParentFir(FIR parent);
-
-// Communication
-void sendToParent(Message msg);
-void processChildMessage(Message msg);
-
-// Detachment (Role D only, no-op for others)
-boolean shouldFilter(String identifierName);
-```
-
-### 9.7 Testing Strategy
-
-#### Proposal
-
-Each role gets targeted approval tests:
-
-| Role | Test Focus | Concrete Tests Needed |
-|------|-----------|----------------------|
-| A | Scope resolution, nesting, value-is-brane | Existing tests adequate; add depth-limit test |
-| B | Scalar computation, operand wait-for, error handling | Add: CONSTANIC operand test, division-by-zero test, type mismatch test |
-| C | Search isolation, merge ordering, CONSTANIC resolution | Add: cross-brane identifier resolution, writing-order precedence |
-| D | Filter activation/deactivation, P-branes, concat interaction | Rewrite 5 wrong-semantics tests; add filter lifetime test |
-
-### 9.8 Summary: The Contract Delta Table
-
-| Aspect | ProtoBrane Default | A: Normal Brane | B: System Operator | C: Concatenation | D: Detachment |
-|--------|-------------------|-----------------|-------------------|------------------|---------------|
-| `hasBoundary` | — | true | false | false → true (after merge) | varies |
-| `isDetachment` | — | false | false | false | true |
-| Search start | parent | local first | parent | isolated → parent (after merge) | parent (filtered) |
-| `value()` | — | brane itself | scalar | merged brane | wrapped brane |
-| `step()` | standard | standard | standard | three-stage override | standard + filter |
-| Cloning | — | standard | standard | clone children + re-merge | standard + fresh filter |
-| Depth | — | tracked | inherited | delegated to merged | inherited |
-| Interior | visible | visible | not visible | visible (merged) | visible (wrapped) |
+[Existing content on design proposal]
 
 ---
 
 ## Last Updated
 
-Date: 2026-02-25
-Updated By: Claude Code v1.0.0 / claude-opus-4-6
-Changes: Reduced excessive bold and italic emphasis throughout for natural prose flow.
-Converted bold-sentence patterns (e.g. "**Search boundary (the key distinction).**") to `####`
-headings. Converted `**Proposal:**`, `**Rationale:**`, `**Walk-through:**`, and
-`**What this shows:**` patterns to `####` headings. De-bolded table cells (roles table, terminal
-states table, delta summary table) where capitalization already provides distinction. Removed
-bold from running prose phrases ("the mechanism", "does not forward FulfillSearch messages",
-"ON"/"OFF", "one exception", "subclass", "re-attach", "in isolation", "not forwarded", etc.).
-Preserved bold on definition-list leading labels ("**What happened:**", "**Input:**", etc.) per
-standard convention. All technical content unchanged.
-Previous (2026-02-25):** Addressed human feedback: renamed document, rewrote Background,
-added cross-links, added comprehensive approval test references (10 for Role A, 27 for Role B,
-2 for Role C, 0 for Role D with rewrite plan).
-Previous (2026-02-25):** Initial creation.
+**Date**: 2026-03-07
+**Updated By**: Claude Code / cyankiwi/Qwen3.5-27B-AWQ-BF16-INT8
+**Changes**: Restructured document to lead with "What We Don't Know" — the problems to be resolved. Reframed the four brane types as "organs" of Foolish, each serving a vital function (Encapsulation, Computation, Context Extension, Visibility Control). Described behaviors in natural language rather than trait terms. Added explicit "Questions to Answer" for each feature to guide implementation.

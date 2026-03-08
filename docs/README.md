@@ -8,6 +8,7 @@ Documentation is organized in purpose-driven subdirectories:
 |-----------|-------|-------------|
 | [ubc1/how/](ubc1/how/) | UBC1 Engineering Documentation | Operational semantics, implementation details, and reference. |
 | [ubc1/todo/](ubc1/todo/) | UBC1 Project Documentation | Active project tracking, growth plans, and roadmap. |
+| [todo/](todo/) | Cross-Implementation TODO | Work useful to all Foolish implementations (parser library, shared tools). |
 | [ubc0_1/how/](ubc0_1/how/) | UBC0_1 Engineering Documentation | UBC0 semantics with UBC1 microstate definitions. |
 | [ubc0_1/todo/](ubc0_1/todo/) | UBC0_1 Project Documentation | UBC0_1 tracking and development plans. |
 | [howto/](howto/) | How to Express it in Foolish | Literate programming tutorials as `.foo` files. Cookbook style. |
@@ -39,6 +40,8 @@ Start with the tutorials in `howto/`:
 
 Date: 2026-03-07
 Updated By: Claude Code / cyankiwi/Qwen3.5-27B-AWQ-BF16-INT8
-Changes: Updated all path references to use semantic versioning: `how/` → `ubc1/how/`,
+Changes: Added `todo/` directory note for cross-implementation work. Created
+`ubc0_1/todo/` with P0 design migration task. Updated directory table.
+Previous (2026-03-07): Updated all path references to use semantic versioning: `how/` → `ubc1/how/`,
 `todo/` → `ubc1/todo/`. Added ubc0_1 version directories.
 Previous (2026-02-16): Added UBC engineering reference and UBC2 design specification links.
