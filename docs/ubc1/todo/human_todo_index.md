@@ -16,67 +16,44 @@ Each item links back to its full context in the engineering doc and/or the AI sc
 
 *Status: Needs decision and write-up*
 *Full context: [ubc2_design.md § FIR Type Hierarchy](../how/ubc2_design.md#fir-type-hierarchy)*
+*Related: [d0_fir_subtype_contracts.md](../how/d0_fir_subtype_contracts.md)*
 *Scratchpad cross-ref: [agents.status.md § FIR Type Hierarchy](agents.status.md#fir-type-hierarchy-independentfir--protobrane)*
 
 Four concrete FIR roles need their delta from ProtoBrane specified:
 
-**A. Normal brane `{...}`**
-The curly-brace brane that holds and evaluates expressions. Sets `hasBoundary = true`,
-defines search scope. `value()` returns the brane itself. Full PREMBRYONIC → CONSTANIC
-lifecycle.
-
-**B. System operator brane `🧠+`, `🧠-`, `🧠*`, etc.**
-An operation brane produced by desugaring `1 + 2` → `{1, 2, 🧠+}`. Sets
-`hasBoundary = false`. Resolves searches across its operands and manages their states.
-Runs the actual arithmetic operation only after all operands are CONSTANT.
-`value()` returns the scalar result of the operation, NOT the brane itself. The interior
-is not inspectable (operand proto-branes are implementation detail). Unary operators
-take one preceding value; binary take two.
-
-**C. ConcatenationBrane**
-Behaves as ProtoBrane except: search isolation (does not forward `FulfillSearch` to
-parent), waits for all children to be PREMBRYONIC-or-constanic AND BRANE-valued before
-merging, constanic-copies children's statements into a contiguous array, then executes
-PREMBRYONIC steps on the merged result.
-
-**D. Detachment brane `[...]`**
-A FIR wrapping the object to its right. Sets `isDetachment = true`. Does not define
-a search scope boundary. Its role is to intercept and filter search messages routed
-toward the parent — it can block, override, or selectively pass through results.
-Requires concatenation design before full specification.
+- **A. Normal brane `{...}`** — Curly-brace brane holding expressions. `hasBoundary = true`, defines search scope.
+- **B. System operator brane `🧠+`, `🧠-`, etc.** — Operation brane from desugaring. `hasBoundary = false`.
+- **C. ConcatenationBrane** — See D2 for detailed open sub-questions.
+- **D. Detachment brane `[...]`** — See D5 for detailed design.
 
 ---
 
-### D1. Grouping and Operator Precedence
+### D1. ~~Grouping and Operator Precedence~~
 
-*Status: Needs design*
-*Full context: [ubc2_design.md § Design TODO 1](../how/ubc2_design.md#1-grouping-and-operator-precedence)*
-*Scratchpad cross-ref: [agents.status.md § Design TODO 1](agents.status.md#1-brane-concatenation-highest-priority)*
+*Status: Moved to top-level todo/ as P2 item*
 
-How `(a + b) * c` groups differently from `a + b * c`. How grouped expressions appear
-in the AST. Interaction with proto-brane boundaries. Must work before concatenation
-can be implemented.
+This has been moved to `../../todo/01_grouping_and_precedence.md` as a P2 task for the
+shared parser library. Grouping and precedence operators are effects of brane concatenation,
+not a primal concern for UBC1 design.
 
 ---
 
-### D2. Brane Concatenation
+### D2. Brane Concatenation (open sub-questions for D0.C)
 
-*Status: Structure specified; implementation tasks remain*
+*Status: Structure specified; sub-questions remain*
 *Full context: [ubc2_design.md § Brane Concatenation](../how/ubc2_design.md#brane-concatenation)*
-*Scratchpad cross-ref: [agents.status.md § Design TODO 1](agents.status.md#1-brane-concatenation-highest-priority)*
-*Resolved debate: [0.a.concatenation.woes.md](0.a.concatenation.woes.md) — search dereferencing and WOCONSTANIC race conditions; conclusions now canonical in ubc2_design.md*
-*Legacy source: [vintage_legacy/009-Concatenation_Project.md](../vintage_legacy/009-Concatenation_Project.md)*
-*Legacy source: [vintage_legacy/NAMES_SEARCHES_N_BOUNDS.md](../vintage_legacy/NAMES_SEARCHES_N_BOUNDS.md)*
+*Resolved debate: [0.a.concatenation.woes.md](0.a.concatenation.woes.md)*
+*Legacy: [vintage_legacy/009-Concatenation_Project.md](../vintage_legacy/009-Concatenation_Project.md)*
 
-ConcatenationBrane lifecycle is written. Open sub-questions:
+Open sub-questions for ConcatenationBrane specification:
 - Three-level precedence rules from NAMES_SEARCHES_N_BOUNDS.md
 - Concatenating proto-branes (scalars) vs full branes — probably not allowed
-- Writing-order precedence across concatenated branes
+- Write-order precedence across concatenated branes
 - Eager vs lazy merging
 
 ---
 
-### D2.5. Nyes Microstates for Value Searches (precursor to D3)
+### D3. Nyes Microstates for Value Searches (precursor to D4)
 
 *Status: Needs deep investigation*
 *Full context: [ubc2_design.md § SearchFir Lifecycle](../how/ubc2_design.md#searchfir-lifecycle-integration)*
@@ -91,29 +68,26 @@ CONSTANIC, WOCONSTANIC, CONSTANT, INDEPENDENT) and specify exactly:
 - How does dereferencing interact when the search target is a system operator brane
   (whose `value()` is a scalar, not a brane)?
 
-This is a precursor to D3.
+This is a precursor to D4.
 
 ---
 
-### D3. Search-Based Path Selection (replaces if-then-else)
+### D4. Search-Based Path Selection (replaces if-then-else)
 
 *Status: Needs design; no mechanism proposed yet*
 *Full context: [ubc2_design.md § Design TODO 4](../how/ubc2_design.md#4-search-based-path-selection-replacing-if-then-else)*
-*Scratchpad cross-ref: [agents.status.md § Design TODO 3](agents.status.md#3-search-based-path-selection-high-replaces-if-then-else)*
 
 UBC2 has no `if-then-else`. Conditional/branching behavior is expressed via search.
-Mechanism is undesigned. Requires D2.5 (value search microstates) first. Also likely
+Mechanism is undesigned. Requires D3 (value search microstates) first. Also likely
 requires forward anchored search `B/pattern` (see H5/Issue 8).
 
 ---
 
-### D4. Detachment / Liberation Branes
+### D5. Detachment / Liberation Branes (D0.D specification)
 
 *Status: Needs design; depends on D2*
 *Full context: [ubc2_design.md § Design TODO 3](../how/ubc2_design.md#3-detachment-liberation-branes)*
-*Scratchpad cross-ref: [agents.status.md § Design TODO 2](agents.status.md#2-detachment--liberation-branes-highest-after-concatenation)*
-*Legacy source: [vintage_legacy/003-Detachment_Project.md](../vintage_legacy/003-Detachment_Project.md)*
-*Legacy source: [vintage_legacy/NAMES_SEARCHES_N_BOUNDS.md](../vintage_legacy/NAMES_SEARCHES_N_BOUNDS.md)*
+*Legacy: [vintage_legacy/003-Detachment_Project.md](../vintage_legacy/003-Detachment_Project.md)*
 
 Free variable semantics (NOT permanent blocking). `isDetachment` trait on ProtoBrane.
 Filter chain `[a][b][+a]` left-associates, right-associates with following brane.
@@ -146,7 +120,7 @@ How an EMBRYONIC brane handles search messages when a concatenation is actively 
 *Full context: [ubc2_design.md § Design TODO 4](../how/ubc2_design.md#4-search-based-path-selection-replacing-if-then-else)*
 *Scratchpad cross-ref: [agents.status.md § H3](agents.status.md#h3-if-then-else-replacement-blocking)*
 
-No mechanism yet. Blocked by D2.5 and possibly forward anchored search.
+No mechanism yet. Blocked by D3 (value search microstates) and possibly forward anchored search.
 
 ---
 
@@ -314,10 +288,14 @@ Foolish source syntax). Five detachment tests encode wrong semantics.
 
 ## Last Updated
 
-Date: 2026-02-26
-Updated By: Claude Code v1.0.0 / claude-opus-4-6
-Changes: Reviewed for emphasis — file already uses bold appropriately (definition-list leading
-labels only). No substantive changes needed.
+Date: 2026-03-07
+Updated By: Claude Code / cyankiwi/Qwen3.5-27B-AWQ-BF16-INT8
+Changes: Restored D0 as FIR Subtype Contracts overview (four roles: Normal brane, System operator,
+ConcatenationBrane, Detachment brane). Created D2 as separate item for Concatenation sub-questions.
+Shifted numbering: Value Searches → D3, Search-Based Path Selection → D4, Detachment → D5.
+Added reference to d0_fir_subtype_contracts.md. Previous: Rolled D2 into D0.C (reverted).
+Previous (2026-02-26): Reviewed for emphasis — file already uses bold appropriately
+(definition-list leading labels only). No substantive changes needed.
 Previous (2026-02-24): Added DOC_AGENTS.md notice header. Updated cross-refs from
 1_ubc2_design_status.md → agents.status.md. Added link to 0.a.concatenation.woes.md in D2.
 Previous (2026-02-24): Initial creation.
