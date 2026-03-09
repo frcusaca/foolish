@@ -51,6 +51,35 @@ Restricted actions are:
 
 For requesting restricted file changes, agents may suggest diff patch or full text of replacement content.
 
+
+## Task Management
+This project uses the todo skill for all task tracking. All todo files live
+in docs/.../todo/ and are exclusively maintained by the skill — do not edit
+them directly.
+
+### Default session file
+Each Claude Code session writes to its own todo file by default:
+docs/todo/claude-<session-id>.todo.md To switch to a project-specific todo
+file, say "use the sprint-3 todo" or invoke /todo-use sprint-3 at any point
+in the session.
+
+### When starting any multi-step task
+Before executing, read the active todo file and either map the work to
+existing open items or add new ones. Write a session started Log entry
+summarizing the plan and which IDs will be worked.
+
+### While executing
+Log progress on each item before starting it (in progress) and close it
+with a meaningful summary when done (/todo-done, /todo-abandon, or
+/todo-cancel). If new work is discovered mid-task, add it immediately.
+
+### When finishing or pausing
+Write a session ended Log entry listing what was completed, what remains,
+and any context the next session needs.  General rule Keep the todo file
+synchronized with actual work at all times using the commands of the skill.
+It is the record of what happened, not just what is planned.
+
+
 ## Build Commands
 ### Make project specific repository
 To be completely safe, let's make our own copy of the repo by running the script located at the root of the project directory:
