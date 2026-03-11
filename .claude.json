@@ -1,0 +1,15 @@
+{
+  "skipDangerousModePermissionPrompt": true,
+  "effortLevel": "high",
+  "mcpServers": {
+    "ddgs": {
+      "command": "/home/hcbusy/.local/bin/uvx",
+      "args": ["duckduckgo-mcp-server"]
+    },
+    "tavily": {
+      "type": "http",
+      "url": "https://mcp.tavily.com/mcp/?tavilyApiKey=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"
+    }
+  }
+}
+

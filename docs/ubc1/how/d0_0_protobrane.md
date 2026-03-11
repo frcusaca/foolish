@@ -49,14 +49,17 @@ occur as a single step, not sequential substeps.
 
 ### Actions (All Atomic)
 
+The following are performed in a single `step()`
+
 | # | Action | Purpose |
 |---|--------|---------|
 | 1 | **Count lines** | Establish statement array size |
-| 2 | **Establish statement array** | Create indexed array from AST |
+| 2 | **Establish statement array** | Create indexed array from AST, statement gains whole number index in this brane|
 | 3 | **Build search cache** | Cache fully-characterized identifier names for regex matching |
-| 4 | **Instantiate RHS FIRs** | Create child FIRs in PREMBRYONIC (do not step yet) |
-| 5 | **Append child branes** | Add PREMBRYONIC branes to braneMind heap in writing order |
+| 4 | **Instantiate RHS FIRs** | Create child FIRs in PREMBRYONIC (do not step yet). Note this step does not recurse, as this action happens only during stepping of a prembryonic brane.|
+| 5 | **Append child branes** | Add pre-Contanic branes to braneMind heap in writing order. |
 | 6 | **Establish LUID** | Locally unique identifier for message routing |
+| 3 | **Misc** | Perform other preparations to handle or route messaging between parent and descendent branes |
 
 ### What Does NOT Happen in PREMBRYONIC
 
@@ -78,20 +81,22 @@ nyes = EMBRYONIC;
 
 ### What Happens
 
-The proto-brane actively resolves its searches. This is where identifier resolution occurs.
+During stepping, the proto-brane actively resolves its searches. This is where identifier resolution occurs.
 
 ### step() in EMBRYONIC
 
 Each call to `step()` when `nyes == EMBRYONIC`:
 
 1. **Find searches in RHS** — Walk all RHS expressions and identify SearchFir instances
-   - Stop at brane boundaries (searches inside nested branes belong to those branes)
+   - This may be a local function call, the same that serves children searches for this brane.
+   - Stop at brane boundaries (do not search inside nested branes belong to those branes, depending on search configuration)
    - Maintain writing order for precedence (first-to-write-first-to-find)
    - This is the first thing an Embryonic brane does — it discovers what searches it must resolve
 
 2. **Handle inbound messages** — Process any `RespondToSearch` messages from parent
    - Apply results to unresolved searches
    - Forward results to child expressions that requested them
+   - Limit the number of inbound message to handle to a fixed "bandwidth" ensure fairness of compute allocation.
 
 3. **Process wait-for queue** — Re-check expressions waiting on nigh dependencies
    - Call `resolve()` again (idempotent)
@@ -99,8 +104,7 @@ Each call to `step()` when `nyes == EMBRYONIC`:
    - Remove finalized searches from wait-for queue
 
 3. **Dispatch searches** — For up to `search_bandwidth` unresolved searches:
-   - Attempt local resolution (for branes with boundary)
-   - If not found locally, send `FulfillSearch` message to parent
+   - For searches not found locally, send `FulfillSearch` message to parent
    - Track outstanding search count
 
 4. **Check transition** — If all searches resolved and wait-for queue empty:
