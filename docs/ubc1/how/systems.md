@@ -88,7 +88,7 @@ class SystemAddFir extends ProtoBrane {
         if (at_embryonic()) {
             // Wait for the two preceding values to become constanic
             FIR[] operands = parent.getValuesBeforeMe(this, 2);
-            if (operands[0].achievedConstanic() && operands[1].achievedConstanic()) {
+            if (operands[0].hasConstanicity() && operands[1].hasConstanicity()) {
                 try {
                     int a = operands[0].value();
                     int b = operands[1].value();
@@ -169,10 +169,12 @@ The following system operators are planned but not yet implemented:
 
 ## Last Updated
 
-Date: 2026-02-26
-Updated By: Claude Code v1.0.0 / claude-opus-4-6
-Changes: Reduced emphatic markings throughout — removed bold from execution model steps, error
-handling categories, operand access notes, future operator list, and label lines before code
-blocks. Retained bold only on "not" in error handling rule. First occurrence of "desugars"
+**Date**: 2026-03-12
+**Updated By**: Claude Code / cyankiwi/Qwen3.5-27B-AWQ-BF16-INT8
+**Changes**: Updated terminology: replaced `achievedConstanic()` with `hasConstanicity()` to align
+with the new term "constanicity" (pronounced "con-stan-ISS-ity").
+Previous (2026-02-26): Reduced emphatic markings throughout — removed bold from execution model
+steps, error handling categories, operand access notes, future operator list, and label lines before
+code blocks. Retained bold only on "not" in error handling rule. First occurrence of "desugars"
 italicized as a definition.
 Previous (2026-02-20): Initial creation by claude-sonnet-4-5-20250929.

@@ -103,8 +103,10 @@ The state machine was simplified from an earlier design that had intermediate st
 REFERENCES_IDENTIFIED, ALLOCATED, and RESOLVED between INITIALIZED and EVALUATING. These were
 condensed into the single CHECKED state.
 
-The generic term *constanic* (lowercase) refers to any terminal state — a FIR that is no longer
-stepping. The predicate `achievedConstanic` means `at_constanic || at_woconstanic || at_constant || at_independent`.
+The generic term *constanicity* (lowercase, pronounced "con-stan-ISS-ity") refers to the condition
+of being constant in context. An FIR has constanicity when it is in any terminal state
+(CONSTANIC, WOCONSTANIC, CONSTANT, or INDEPENDENT) — no longer stepping. The predicate
+`hasConstanicity` means `at_constanic || at_woconstanic || at_constant || at_independent`.
 
 ---
 
@@ -253,7 +255,7 @@ CMFir delegates state queries to the active phase's FIR:
 - Before Phase B: state comes from `o`
 - During Phase B: state comes from `o2`
 
-Use `atConstanic()` (exact match), not `achievedConstanic()` (≥ CONSTANIC), when deciding whether
+Use `atConstanic()` (exact match), not `hasConstanicity()` (≥ CONSTANIC), when deciding whether
 to start Phase B. The latter includes CONSTANT, which would incorrectly trigger re-evaluation of
 already-resolved expressions.
 
@@ -290,11 +292,10 @@ Depth is calculated by walking the `parentFir` chain and counting `BraneFiroe` a
 | `atConstant()` | `nyes == CONSTANT` | Exact check: fully evaluated |
 | `atConstanic()` | `nyes == CONSTANIC` | Exact check: paused, awaiting context |
 | `isConstant()` | `nyes >= CONSTANT` | At least CONSTANT (just CONSTANT today) |
-| `achievedConstanic()` | `nyes >= CONSTANIC` | At least CONSTANIC (CONSTANIC or CONSTANT) |
-| `isNigh()` | `nyes < CONSTANIC` | Still evaluating |
+| `hasConstanicity()` | `nyes >= CONSTANIC` | Has constanicity (CONSTANIC, WOCONSTANIC, CONSTANT, or INDEPENDENT) |
+| `isNigh()` | `nyes < CONSTANIC` | Still evaluating (no constanicity yet) |
 
-Use `at*` methods for control flow decisions that distinguish CONSTANIC from CONSTANT. Use `is*`
-methods for "are we done?" checks.
+Use `at*` methods for exact state checks. Use `hasConstanicity()` for "are we done?" checks.
 
 ---
 
@@ -321,10 +322,12 @@ Both implementations must produce byte-identical approval test outputs. Cross-va
 
 ## Last Updated
 
-Date: 2026-02-26
-Updated By: Claude Code v1.0.0 / claude-opus-4-6
-Changes: Reduced emphatic markings throughout — removed bold from invariant labels, definition
-list items, running-prose callouts, and search result descriptions. Prose now relies on sentence
-structure and capitalized state names rather than typographic emphasis.
+**Date**: 2026-03-12
+**Updated By**: Claude Code / cyankiwi/Qwen3.5-27B-AWQ-BF16-INT8
+**Changes**: Updated terminology: replaced "achievedConstanic" with "hasConstanicity" to align with
+the new term "constanicity" (pronounced "con-stan-ISS-ity"). Updated State Checking Methods table.
+Previous (2026-02-26): Reduced emphatic markings throughout — removed bold from invariant labels,
+definition list items, running-prose callouts, and search result descriptions. Prose now relies on
+sentence structure and capitalized state names rather than typographic emphasis.
 Previous (2026-02-16): Initial creation from ECOSYSTEM.md, UBC_FEATURES.md, search-semantics.md,
 004-nyes-state-simplification.md, and 008-cmfir-nyes-state-review.md.

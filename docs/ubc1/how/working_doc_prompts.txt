@@ -19,8 +19,8 @@ BRANING continues to communicate until CONSTANIC.
 
 update the equastion:
 
-"is constanic" = achievedConstanic = at_constanic || at_woconstanic || at_constant || at_independent.
-indicating the english has same meaning.
+"has constanicity" = hasConstanicity = at_constanic || at_woconstanic || at_constant || at_independent.
+indicating the English has same meaning.
 
 
 Constanic clone would throw exception if it is every called on something that is nigh.

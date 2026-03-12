@@ -160,13 +160,26 @@ limit applies to comment lines (the `!!` prefix plus content) and code lines ali
 ### Terminology Conventions
 
 State names are written in capitals when used as technical terms: PREMBRYONIC, EMBRYONIC,
-BRANING, CONSTANIC, WOCONSTANIC, CONSTANT, INDEPENDENT. Collectively the progression is
+BRANING, ECONSTANIC, WOCONSTANIC, CONSTANT, INDEPENDENT. Collectively the progression is
 called the *Nyes states* (proper noun; the enum is `Nyes`).
 
-For predicates, use `atCONSTANIC()` / `at_constanic()` for the exact-state check and
-`achievedConstanic()` / `achieved_constanic()` for "at or beyond CONSTANIC." The adjective
-*nigh* means pre-constanic (before and not including CONSTANIC). `isNigh()` returns true when
-the FIR has not yet achieved constanic.
+**Constanic** (adjective): Short for "Constant In Context." An FIR is constanic when it will
+not change unless its context changes. The states ECONSTANIC, WOCONSTANIC, CONSTANT, and
+INDEPENDENT are all constanic states.
+
+**Constanicity** (pronounced "con-stan-ISS-ity"): The property or fact that an FIR is constanic.
+Example: "The brane's value is stable due to its constanicity."
+
+**ECONSTANIC** (state): The exact state meaning "Exactly CONSTANIC." An FIR in ECONSTANIC
+state has completed identifier resolution and found all identifiers, but some resolved values
+are themselves not yet fully evaluated (they are constanic but not constant).
+
+For predicates:
+- `isEconstanic()` / `atEconstanic()` — exact-state check (nyes == ECONSTANIC only)
+- `isConstanic()` / `hasConstanicity()` — returns true for ECONSTANIC, WOCONSTANIC, CONSTANT, or INDEPENDENT
+
+The adjective *nigh* means pre-constanic (before and not including any constanic state).
+`isNigh()` returns true when the FIR is not yet constanic.
 
 "Nigh X" in prose means "before and not including X." There is no `X-` notation. `X+` in
 prose means "X and all states beyond it."
@@ -185,11 +198,11 @@ future contexts. Ordinary search failure is CONSTANIC, not NK.
 
 ### Java
 
-- State enum: `Nyes` (the enum type); `Nyes.PREMBRYONIC`, `Nyes.CONSTANIC`, etc.
-- Exact-state predicate: `fir.atConstanic()` — returns true only when `nyes == Nyes.CONSTANIC`.
-- Achieved-constanic predicate: `fir.achievedConstanic()` — equivalent to
-  `at_constanic || at_woconstanic || at_constant || at_independent`.
-- Nigh predicate: `fir.isNigh()` — returns true while the FIR has not yet achieved constanic.
+- State enum: `Nyes` (the enum type); `Nyes.PREMBRYONIC`, `Nyes.ECONSTANIC`, etc.
+- Exact-state predicate: `fir.isEconstanic()` — returns true only when `nyes == Nyes.ECONSTANIC`.
+- Constanic predicate: `fir.isConstanic()` — equivalent to
+  `is_econstanic || at_woconstanic || at_constant || at_independent`.
+- Nigh predicate: `fir.isNigh()` — returns true while the FIR is not yet constanic.
 - Denotational symbols live in `BraneSymbol` (planned enum) — do not hard-code
   `"🧠?"` etc. as string literals in rendering code.
 - Prefer the shallow FIR hierarchy: one `ProtoBrane` class with traits (`hasBoundary`,
@@ -259,9 +272,14 @@ re-opening closed debates.
 
 ## Last Updated
 
-Date: 2026-03-07
-Updated By: Claude Code / cyankiwi/Qwen3.5-27B-AWQ-BF16-INT8
-Changes: Added `docs/todo/` directory to Directory Map for cross-implementation work.
+**Date**: 2026-03-12
+**Updated By**: Claude Code / cyankiwi/Qwen3.5-27B-AWQ-BF16-INT8
+**Changes**: Updated terminology: replaced "achievedConstanic" with "hasConstanicity" to align with the
+new term "constanicity" (pronounced "con-stan-ISS-ity"). Constanicity is the condition of being
+constant in context — an FIR has constanicity when it is in CONSTANIC, WOCONSTANIC, CONSTANT, or
+INDEPENDENT state. The adjective "constanic" means "having constanicity or higher." Updated
+Terminology Conventions section and Java predicates table.
+Previous (2026-03-07): Added `docs/todo/` directory to Directory Map for cross-implementation work.
 Created `docs/ubc0_1/todo/` with P0 design migration task.
 Previous (2026-03-07): Updated all path references to use semantic versioning: `docs/how/` → `docs/ubc1/how/`,
 `docs/todo/` → `docs/ubc1/todo/`. Updated Directory Map table to show versioned structure.

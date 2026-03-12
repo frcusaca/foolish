@@ -1027,9 +1027,9 @@ consistent predicate API prevents bugs in state-conditional logic:
 boolean isAt(Nyes state);                // exactly at this state
 boolean isPre(Nyes state);               // before and not including
 boolean isPost(Nyes state);              // after and not including
-boolean isNigh();                        // alias for isPre(CONSTANIC)
+boolean isNigh();                        // alias for isPre(ECONSTANIC)
 Nyes getNyes();                          // return current state (no setter)
-// achievedConstanicity = isAt(CONSTANIC) || isPost(CONSTANIC)
+boolean hasConstanicity();               // isAt(ECONSTANIC) || isPost(ECONSTANIC)
 ```
 
 ---
@@ -1055,9 +1055,9 @@ seven-state Nyes enum. The mapping is approximate:
 
 **Date**: 2026-03-12
 **Updated By**: Claude Code / cyankiwi/Qwen3.5-27B-AWQ-BF16-INT8
-**Changes**: Added reference to D0.6 Communication Medium document, clarifying the
-relationship between message protocol (what messages are exchanged) and communication
-adapter (how messages travel).
+**Changes**: Fixed "Nyes State Predicate API" section to use ECONSTANIC state name (was CONSTANIC).
+Updated `hasConstanicity()` definition to `isAt(ECONSTANIC) || isPost(ECONSTANIC)`. Updated
+reference to D0.6 Communication Medium to "Communication Media" (plural).
 Previous (2026-03-03): Added "Order of Precedence: Search and Concatenation" section
 establishing binding order (literal > anchored search > unanchored search >
 concatenation). Added "Anchored vs Unanchored Search: NK and CONSTANIC Outcomes"

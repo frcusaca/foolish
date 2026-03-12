@@ -26,14 +26,14 @@ For the engineering reference of the current UBC1 implementation, see
   - [PREMBRYONIC](#prembryonic)
   - [EMBRYONIC](#embryonic)
   - [BRANING](#braning)
-  - [CONSTANIC Terminal States](#constanic-terminal-states)
+  - [ECONSTANIC Terminal States](#constanic-terminal-states)
 - [SF and SFF Markers](#sf-and-sff-markers)
 - [SearchFir: Search Resolution and Dereferencing](#searchfir-search-resolution-and-dereferencing)
 - [Constanic Cloning and Re-Coordination](#constanic-cloning-and-re-coordination)
 - [Brane Communication Protocol](#brane-communication-protocol)
 - [LUID: Locally Unique Identifiers](#luid-locally-unique-identifiers)
 - [Search Resolution and Precedence](#search-resolution-and-precedence)
-- [NK vs CONSTANIC: When Is a Search Truly Failed?](#nk-vs-constanic-when-is-a-search-truly-failed)
+- [NK vs ECONSTANIC: When Is a Search Truly Failed?](#nk-vs-constanic-when-is-a-search-truly-failed)
 - [Brane Concatenation](#brane-concatenation)
 - [System Operators](#system-operators)
 - [Sequencing: Human-Readable Output](#sequencing-human-readable-output)
@@ -70,7 +70,7 @@ FIR processing where each stage has clear entry conditions, work to perform, and
    Scope resolution is expressed as message exchange, not implicit traversal.
 4. Writing-order precedence. When multiple search results are possible, first-to-write wins.
    The order in which the programmer wrote the code is the order in which things are found.
-5. Explicit lifecycle. The stages PREMBRYONIC → EMBRYONIC → BRANING → CONSTANIC make visible
+5. Explicit lifecycle. The stages PREMBRYONIC → EMBRYONIC → BRANING → ECONSTANIC make visible
    what the UBC is doing at each point and why.
 
 ---
@@ -86,7 +86,7 @@ messages from its parent brane and its sub-branes (children). The message protoc
 | Respond to search | Parent → Child | "Here is the result of your search request." |
 
 A brane that cannot resolve a child's search forwards it to its own parent. Messages flow upward
-until resolved or until the root brane is reached (the unresolved search produces CONSTANIC — the
+until resolved or until the root brane is reached (the unresolved search produces ECONSTANIC — the
 search was performed and nothing was found).
 
 Each brane maintains a *braneMind* — the set of FIRs and pending communications it is actively
@@ -182,7 +182,7 @@ the parser maps each token to during AST-to-FIR conversion.
 ### Proto-Branes: Boundary-Less Expressions
 
 *Proto-branes* are expressions that participate in the full FIR lifecycle (PREMBRYONIC →
-EMBRYONIC → BRANING → CONSTANIC) but do not define a search boundary. This category includes:
+EMBRYONIC → BRANING → ECONSTANIC) but do not define a search boundary. This category includes:
 
 - Binary operations: `a + b`, `x * y`
 - Unary operations: `-x`, `!flag`
@@ -209,8 +209,8 @@ Every FIR in UBC2 has a `value()` method that returns its evaluated result:
 | FIR Type | `value()` Returns | Notes |
 |----------|------------------|-------|
 | Literal (INDEPENDENT) | The literal value (int, string) | Immediate; no evaluation needed |
-| Proto-brane (CONSTANIC) | Scalar value or search result | For integer literal proto-branes: returns `int`. For search proto-branes: returns the found FIR or CONSTANIC marker |
-| Brane (CONSTANIC) | The brane itself | Full branes are first-class values |
+| Proto-brane (ECONSTANIC) | Scalar value or search result | For integer literal proto-branes: returns `int`. For search proto-branes: returns the found FIR or ECONSTANIC marker |
+| Brane (ECONSTANIC) | The brane itself | Full branes are first-class values |
 
 The `value()` method is called by the VM when an expression reaches a terminal constanic state
 and the result is needed for further computation.
@@ -286,7 +286,7 @@ add boundary semantics on top.
 
 ## FIR Lifecycle Stages
 
-The significant reframing in UBC2 is what happens between Foolish code and CONSTANIC state. The
+The significant reframing in UBC2 is what happens between Foolish code and ECONSTANIC state. The
 UBC2 follows a conservative implementation style that identifies four explicit stages of FIR
 processing.
 
@@ -394,7 +394,7 @@ The parent brane responds with `RespondToSearch` messages. When a response arriv
 - Decrement the outstanding search count
 - Apply the result to the requesting expression
 - If the result is nigh (not-yet-evaluated), add to the wait-for queue
-- If the result is CONSTANIC or WOCONSTANIC, trigger constanic cloning
+- If the result is ECONSTANIC or WOCONSTANIC, trigger constanic cloning
 
 #### Communication
 
@@ -410,7 +410,7 @@ The parent brane responds with `RespondToSearch` messages. When a response arriv
 
 The braneMind is a min-heap keyed by `<state, cur_rank, intra_statement_order, fir>`:
 
-- **state** — The FIR's current lifecycle state (PREMBRYONIC < EMBRYONIC < BRANING < CONSTANIC)
+- **state** — The FIR's current lifecycle state (PREMBRYONIC < EMBRYONIC < BRANING < ECONSTANIC)
 - **cur_rank** — Initially the statement number; increases by `statement_count` each time a FIR is
   stepped and needs to requeue. This implements round-robin stepping.
 - **intra_statement_order** — Position within the statement (for expressions that share a statement)
@@ -426,8 +426,8 @@ queue are waiting for their targets to finish stepping (nigh → constanic trans
 
 For each search in the wait-for queue:
 1. Call `search.resolve()` again (resolve is idempotent)
-2. If target changed state (e.g., nigh → CONSTANIC), search will detect and update its own state
-3. Remove finalized searches (CONSTANIC, WOCONSTANIC, CONSTANT) from wait-for queue
+2. If target changed state (e.g., nigh → ECONSTANIC), search will detect and update its own state
+3. Remove finalized searches (ECONSTANIC, WOCONSTANIC, CONSTANT) from wait-for queue
 
 The dereferencing loop extends automatically when targets change state, because `resolve()` is
 called again and re-performs dereferencing based on current target states.
@@ -457,8 +457,8 @@ Special care is required depending on the terminal states of those dependencies:
 1. All dependencies CONSTANT. The statement evaluates to CONSTANT. No cloning is needed —
    CONSTANT values are immutable and can be referenced directly.
 
-2. One or more dependencies CONSTANIC (while brane is EMBRYONIC). The UBC2 must
-   constanic-clone and relocate the CONSTANIC result into the current brane before the brane
+2. One or more dependencies ECONSTANIC (while brane is EMBRYONIC). The UBC2 must
+   constanic-clone and relocate the ECONSTANIC result into the current brane before the brane
    transitions to BRANING. The cloned expression replaces the current object occupying its slot in
    the statement array. See [Constanic Cloning and Coordination](#constanic-cloning-and-coordination)
    for the full mechanism.
@@ -493,63 +493,83 @@ monopolizing the message channel.
 #### Transition Criterion
 
 The BRANING state persists until all work is complete:
-- All child branes have reached constanic states (CONSTANIC, WOCONSTANIC, CONSTANT, or INDEPENDENT)
+- All child branes have reached constanic states (ECONSTANIC, WOCONSTANIC, CONSTANT, or INDEPENDENT)
 - All expressions in the wait-for queue have resolved or reached constanic states
 - No outstanding search requests remain
 - The braneMind heap contains only constanic FIRs
 
-Transition to a constanic terminal state (CONSTANIC, WOCONSTANIC, CONSTANT, or INDEPENDENT)
+Transition to a constanic terminal state (ECONSTANIC, WOCONSTANIC, CONSTANT, or INDEPENDENT)
 depending on the resolution status of the proto-brane's own searches and dependencies.
 
-### CONSTANIC Terminal States
+### ECONSTANIC Terminal States
 
 A FIR that is not stepping is *constanic* (lowercase). This is the generic term for any of the
 terminal states:
 
 | State | Meaning |
 |-------|---------|
-| CONSTANIC | Constant In Context. Search was performed and nothing was found. The expression has unresolved searches with no binding. May gain value when recoordinated into a new context that provides the missing bindings. |
-| WOCONSTANIC | Waiting On CONSTANICs. Every search was found, but one or more of the found results are themselves CONSTANIC or WOCONSTANIC. The expression is waiting for its dependencies to settle. When those dependencies gain value (through recoordination), this expression can progress. |
+| ECONSTANIC | Constant In Context. Search was performed and nothing was found. The expression has unresolved searches with no binding. May gain value when recoordinated into a new context that provides the missing bindings. |
+| WOCONSTANIC | Waiting On ECONSTANICs. Every search was found, but one or more of the found results are themselves ECONSTANIC or WOCONSTANIC. The expression is waiting for its dependencies to settle. When those dependencies gain value (through recoordination), this expression can progress. |
 | CONSTANT | Fully evaluated. All searches resolved to CONSTANT or INDEPENDENT values. Immutable. |
 | INDEPENDENT | Promoted from CONSTANT. Detached from parent — although the parent may still hold a reference to it. Reserved for future development. |
-!!!@AGENT
-
-We need to specifically define program method names for accessing nyse status:
-
-isAt(Nyse_State);   // exactly at the state
-isPre(Nyse_State);  // before and not including the state, implemented as numerical comparison
-isPost(Nyse_State); // after and not including the state, implemented as numerical comparison
-isNigh();           // Alias for isPre(CONSTANIC)
-getNyse();          // return the num member. NB: no setNyse() as per design FIR Nyse is very private and self controled.
-
-Please make this update in **all of** UBC2 design and related documents. Recall in English we still say "at Constanic",
-"pre-Constanic", "post-Constanic", but when it needs to be formal, we use these methods to refer to them.
-
-This way the following can say 
-achievedConstanicty= isAt(CONSTANIC) || isPost(CONSTANIC)
-!!!
 #### The Constanic Predicate
+
+**Constanic** (adjective): Short for "Constant In Context." An FIR is constanic when it will
+not change unless its context changes.
+
+**Constanicity** (pronounced "con-stan-ISS-ity"): The property or fact that an FIR is constanic.
+Example: "The brane's value is stable due to its constanicity."
+
+**ECONSTANIC** (state): The exact state meaning "Exactly CONSTANIC." An FIR in ECONSTANIC
+state has completed identifier resolution but found no results for some searches. It needs
+to be placed in a new context where those symbols exist.
+
+**WOCONSTANIC** (state): Waiting On CONSTANICs. The FIR found all its identifiers, but one or
+more of the found results are themselves constanic (ECONSTANIC or WOCONSTANIC).
+
+An FIR is constanic when it is in any of these states: ECONSTANIC, WOCONSTANIC, CONSTANT, or INDEPENDENT.
+
+### State Access Methods
+
+The following methods access FIR state (Nyes enum):
+
+```java
+isAt(Nyes state);   // exactly at the state
+isPre(Nyes state);  // before and not including the state (numerical comparison)
+isPost(Nyes state); // after and not including the state (numerical comparison)
+isNigh();           // alias for isPre(ECONSTANIC)
+getNyes();          // returns the Nyes enum value (read-only; no setNyes())
+```
+
+In English prose we say "at Constanic", "pre-Constanic", "post-Constanic". For formal
+specification we use the methods above.
 
 The constanic predicate is defined as:
 
 ```
-achievedConstanicity = at_constanic || at_woconstanic || at_constant || at_independent
+hasConstanicity = isAt(ECONSTANIC) || isPost(ECONSTANIC)
 ```
 
-The English phrase "is constanic" has the same meaning. A FIR stops stepping when it reaches any
-terminal state.
+Or equivalently:
 
-> Note: Some WOCONSTANIC FIRs may have CONSTANIC children (or other constanic states
+```
+hasConstanicity = isAt(ECONSTANIC) || isAt(WOCONSTANIC) || isAt(CONSTANT) || isAt(INDEPENDENT)
+```
+
+The English phrase "is constanic" means the FIR has constanicity. A FIR stops stepping when it reaches any
+terminal state (any constanic state).
+
+> Note: Some WOCONSTANIC FIRs may have ECONSTANIC children (or other constanic states
 > that are earlier in the ordinal ordering). This violates the strict ordinal hierarchy assumption
 > that "children's states are >= parent state." Ordinal comparisons should still be
 > used for efficiency in checking constanic states, but implementations must handle the edge case
-> where WOCONSTANIC parents have CONSTANIC (or CONSTANT) children.
+> where WOCONSTANIC parents have ECONSTANIC (or CONSTANT) children.
 
-#### CONSTANIC vs WOCONSTANIC
+#### ECONSTANIC vs WOCONSTANIC
 
-The distinction between CONSTANIC and WOCONSTANIC is important:
+The distinction between ECONSTANIC and WOCONSTANIC is important:
 
-- CONSTANIC: The expression itself has searches that returned no result. It needs to be placed
+- ECONSTANIC: The expression itself has searches that returned no result. It needs to be placed
   in a new context where those symbols exist. Constanic cloning transitions the clone back to
   EMBRYONIC for fresh search resolution.
 - WOCONSTANIC: The expression found everything it was looking for, but some of those things
@@ -557,7 +577,7 @@ The distinction between CONSTANIC and WOCONSTANIC is important:
   context is needed — the dependencies just need to finish evaluating.
 
 This distinction matters for SF and SFF markers (see [SF and SFF Markers](#sf-and-sff-markers)):
-SFF-marked expressions are always CONSTANIC (nothing searched yet), while SF-marked expressions
+SFF-marked expressions are always ECONSTANIC (nothing searched yet), while SF-marked expressions
 are typically WOCONSTANIC (symbols found but not resolved further).
 
 #### INDEPENDENT
@@ -577,17 +597,17 @@ its identifiers. They interact with the lifecycle stages and terminal states in 
 ### SFF Marker: `<<expression>>`
 
 An SFF-marked expression (Stay-Fully-Foolish) is instantiated in PREMBRYONIC and transitions
-straight to CONSTANIC — it performs no search resolution at all.
+straight to ECONSTANIC — it performs no search resolution at all.
 
 A reference like `<<d>>` does not even resolve `d` within its own brane. The expression is frozen
 in its original AST form with all identifiers unresolved.
 
 Lifecycle shortcut:
 ```
-PREMBRYONIC → CONSTANIC
+PREMBRYONIC → ECONSTANIC
 ```
 
-SFF-marked expressions are always CONSTANIC (not WOCONSTANIC) because no searches were
+SFF-marked expressions are always ECONSTANIC (not WOCONSTANIC) because no searches were
 performed — everything is unfound.
 
 ### SF Marker: `<expression>`
@@ -609,13 +629,13 @@ to find symbols as best as it can with these restrictions:
 
 Lifecycle:
 ```
-PREMBRYONIC → EMBRYONIC (parent's) → CONSTANIC or WOCONSTANIC
+PREMBRYONIC → EMBRYONIC (parent's) → ECONSTANIC or WOCONSTANIC
 ```
 
 Once the SF-marked expression has resolved all its own searches to constanic targets, it becomes
 constanic itself:
 
-- If some searches were not found, the expression is CONSTANIC.
+- If some searches were not found, the expression is ECONSTANIC.
 - If all searches were found but the found targets are themselves constanic, the expression is
   WOCONSTANIC.
 - If all searches were found and all targets are CONSTANT/INDEPENDENT, the expression reaches
@@ -629,8 +649,8 @@ constanic itself:
 | Search resolution | Yes, own symbols only | None |
 | Child message forwarding | No | N/A (no children active) |
 | Resolves found results | No | N/A |
-| Typical terminal state | WOCONSTANIC | CONSTANIC |
-| Lifecycle | PREMBRYONIC → EMBRYONIC → constanic | PREMBRYONIC → CONSTANIC |
+| Typical terminal state | WOCONSTANIC | ECONSTANIC |
+| Lifecycle | PREMBRYONIC → EMBRYONIC → constanic | PREMBRYONIC → ECONSTANIC |
 
 ### Examples
 
@@ -639,12 +659,12 @@ constanic itself:
     a=1; b=2; c=3; d=4;
     f  = [a,b,c,d]{r = a+b+c+d};
 
-    !! SFF: <<f>> is CONSTANIC — 'f' is not even looked up
+    !! SFF: <<f>> is ECONSTANIC — 'f' is not even looked up
     f_sff = <<f>>;
 
     !! SF: <f> finds 'f' (it refers to the brane above), but does not
     !! resolve f's internals. f_sf is WOCONSTANIC — it found 'f' but
-    !! f itself is CONSTANIC (due to liberation of a,b,c,d).
+    !! f itself is ECONSTANIC (due to liberation of a,b,c,d).
     f_sf = <f>;
 }
 ```
@@ -663,7 +683,7 @@ independent lifecycle. Instead, it is driven by the proto-brane that contains it
 class SearchFir extends FIR {
     Query query;           // Pattern, anchored/unanchored, scope
     FIR target;            // The found result (after dereferencing)
-    Nyes state;            // CONSTANIC, WOCONSTANIC, CONSTANT (terminal states)
+    Nyes state;            // ECONSTANIC, WOCONSTANIC, CONSTANT (terminal states)
                            // Or nigh (still resolving)
 }
 ```
@@ -690,7 +710,7 @@ def resolve(parent_brane):
 
     if cur_res is None:
         # Search failed - identifier doesn't exist
-        self.state = CONSTANIC
+        self.state = ECONSTANIC
         return
 
     # Step 2: Dereferencing loop
@@ -703,7 +723,7 @@ def resolve(parent_brane):
 
         # Check state of the found search
         if cur_res.at_constanic():
-            # STOP: CONSTANIC is a dereferencing barrier
+            # STOP: ECONSTANIC is a dereferencing barrier
             # Search failed in original context, won't change without re-coordination
             self.state = WOCONSTANIC
             self.target = cur_res
@@ -748,22 +768,22 @@ def resolve(parent_brane):
 ### Key Dereferencing Rules
 
 1. WOCONSTANIC searches are transparent — follow through to their constanic target, then stop there and become WOCONSTANIC
-2. CONSTANIC searches are barriers — stop dereferencing and become WOCONSTANIC (waiting for re-coordination)
+2. ECONSTANIC searches are barriers — stop dereferencing and become WOCONSTANIC (waiting for re-coordination)
 3. CONSTANT searches are endpoints — stop dereferencing and become CONSTANT (search succeeded, has final value)
-4. Branes are opaque — don't dereference through branes (WOCONSTANIC or CONSTANIC)
+4. Branes are opaque — don't dereference through branes (WOCONSTANIC or ECONSTANIC)
 
 A WOCONSTANIC search has, by definition, already found what it was looking for — that is what
-distinguishes it from CONSTANIC. The found result is constanic (either CONSTANIC or WOCONSTANIC
+distinguishes it from ECONSTANIC. The found result is constanic (either ECONSTANIC or WOCONSTANIC
 itself), which is why the search is waiting. Because WOCONSTANIC can only arise when a search
 succeeded but the found result is itself constanic, the dereferencing loop follows through a
 WOCONSTANIC search to reach its target, then stops at that constanic FIR. WOCONSTANIC can only
-ever be waiting on CONSTANICs.
+ever be waiting on ECONSTANICs.
 
-CONSTANIC searches are different: the search failed in the current context and will not change
+ECONSTANIC searches are different: the search failed in the current context and will not change
 unless the FIR is re-coordinated. There is nothing to dereference through, so dereferencing stops
 and the current search becomes WOCONSTANIC, waiting for eventual re-coordination.
 
-Branes are first-class values. A WOCONSTANIC or CONSTANIC brane has unresolved searches inside it,
+Branes are first-class values. A WOCONSTANIC or ECONSTANIC brane has unresolved searches inside it,
 but the brane itself is the value we found — we treat it as an endpoint rather than looking inside.
 
 ### SearchFir Lifecycle Integration
@@ -778,11 +798,11 @@ searches that could be satisfied within the immediate containing brane are dispa
 to it, not answered inline. BRANING finishes the work by processing the resulting response
 messages. The response messages carry one of these outcomes, and SearchFir acts accordingly:
 
-- Not found — SearchFir becomes CONSTANIC
+- Not found — SearchFir becomes ECONSTANIC
 - Found, pre-constanic (nigh) — the brane registers interest and waits; when the nigh result
   becomes constanic it sends a message back to the brane, which routes it to the SearchFir to take
   further action (or a timeout fires if no such message arrives)
-- Found, CONSTANIC — SearchFir becomes WOCONSTANIC, waiting for re-coordination
+- Found, ECONSTANIC — SearchFir becomes WOCONSTANIC, waiting for re-coordination
 - Found, WOCONSTANIC — dereference through to the constanic target; SearchFir becomes WOCONSTANIC
 - Found, CONSTANT or INDEPENDENT — SearchFir becomes CONSTANT
 
@@ -793,11 +813,11 @@ The integration by proto-brane stage is:
 | PREMBRYONIC | SearchFir is instantiated, holds query pattern, no search dispatched yet |
 | EMBRYONIC | Proto-brane queues each search as a message to itself; SearchFir awaits the response |
 | BRANING | Proto-brane processes response messages; SearchFir applies the result and transitions to its terminal state; if the result is pre-constanic, the brane registers interest in it — a message from the nigh result upon becoming constanic (or a timeout) triggers the SearchFir to take further action |
-| CONSTANIC | SearchFir is in terminal state alongside the parent proto-brane |
+| ECONSTANIC | SearchFir is in terminal state alongside the parent proto-brane |
 
 ### Message-Based State Change Notification
 
-When a SearchFir becomes WOCONSTANIC — meaning it has dereferenced to a CONSTANIC target and is
+When a SearchFir becomes WOCONSTANIC — meaning it has dereferenced to a ECONSTANIC target and is
 waiting for that target to be re-coordinated — it needs to be notified when the target's state
 changes. This is handled through the messaging system (not callbacks).
 
@@ -832,7 +852,7 @@ When a WOCONSTANIC SearchFir receives a StateChange message:
 2. If yes, re-call `resolve()` to re-evaluate dereferencing
 3. Possible outcomes:
    - Target became CONSTANT → SearchFir becomes CONSTANT (dereference to final value)
-   - Target became CONSTANIC → SearchFir remains WOCONSTANIC (target re-coordinated but still unresolved)
+   - Target became ECONSTANIC → SearchFir remains WOCONSTANIC (target re-coordinated but still unresolved)
 
 Message-based triggering ensures:
 - No direct callback mechanism (avoids tight coupling)
@@ -846,35 +866,35 @@ A SearchFir reaches one of three terminal states after dereferencing:
 
 | State | Meaning | Sequencer Output |
 |-------|---------|-----------------|
-| CONSTANIC | Search itself found nothing (identifier doesn't exist) | `🧠??` |
-| WOCONSTANIC | Dereferencing chain ended at a CONSTANIC barrier (transparent WOCONSTANIC searches were followed through) | `🧠?` |
+| ECONSTANIC | Search itself found nothing (identifier doesn't exist) | `🧠??` |
+| WOCONSTANIC | Dereferencing chain ended at a ECONSTANIC barrier (transparent WOCONSTANIC searches were followed through) | `🧠?` |
 | CONSTANT | Dereferencing chain ended at CONSTANT or INDEPENDENT result | *(value)* |
 
-### Anchored Search into CONSTANIC or WOCONSTANIC Branes
+### Anchored Search into ECONSTANIC or WOCONSTANIC Branes
 
-When an anchored search targets a CONSTANIC or WOCONSTANIC brane, the search becomes WOCONSTANIC
+When an anchored search targets a ECONSTANIC or WOCONSTANIC brane, the search becomes WOCONSTANIC
 (waiting for the brane to resolve):
 
 ```foolish
 {
-    b = {x = y;};  // b is CONSTANIC (y not found)
+    b = {x = y;};  // b is ECONSTANIC (y not found)
     c = b.x;       // Anchored search: b.x
 }
 ```
 
 Resolution:
 1. `SearchFir(b.x).resolve()`: anchored search into brane `b`
-2. Brane `b` is CONSTANIC (has unresolved searches)
-3. Can we search inside a CONSTANIC brane? Yes — the brane's statement array exists.
+2. Brane `b` is ECONSTANIC (has unresolved searches)
+3. Can we search inside a ECONSTANIC brane? Yes — the brane's statement array exists.
 4. Search for `x` within brane `b` → finds `x` at statement 0
-5. `x` is bound to SearchFir(y), which is CONSTANIC
-6. SearchFir(b.x) becomes WOCONSTANIC (found `x`, but `x` is CONSTANIC)
+5. `x` is bound to SearchFir(y), which is ECONSTANIC
+6. SearchFir(b.x) becomes WOCONSTANIC (found `x`, but `x` is ECONSTANIC)
 
 Result:
 ```
 {
 ＿b = {＿＿x = 🧠??;};
-＿c = 🧠?;      // WOCONSTANIC (found b.x, but b.x is CONSTANIC)
+＿c = 🧠?;      // WOCONSTANIC (found b.x, but b.x is ECONSTANIC)
 }
 ```
 
@@ -916,24 +936,24 @@ PREMBRYONIC:
 - Statement 2: `c = SearchFir(b)` (not resolved)
 
 EMBRYONIC Step 1:
-- `SearchFir(a).resolve()`: searches for 'x' → not found → CONSTANIC
+- `SearchFir(a).resolve()`: searches for 'x' → not found → ECONSTANIC
 - `SearchFir(b).resolve()`: searches for 'a' → finds SearchFir(a) (nigh) → wait-for queue
 - `SearchFir(c).resolve()`: searches for 'b' → finds SearchFir(b) (nigh) → wait-for queue
 
 EMBRYONIC Step 2 (re-check wait-for queue):
-- `SearchFir(b).resolve()`: finds SearchFir(a), which is CONSTANIC → stop (CONSTANIC is a barrier) → WOCONSTANIC, target = SearchFir(a)
-- `SearchFir(c).resolve()`: finds SearchFir(b), which is WOCONSTANIC → dereference through to SearchFir(b).target = SearchFir(a) (CONSTANIC) → stop (CONSTANIC is a barrier) → WOCONSTANIC, target = SearchFir(a)
+- `SearchFir(b).resolve()`: finds SearchFir(a), which is ECONSTANIC → stop (ECONSTANIC is a barrier) → WOCONSTANIC, target = SearchFir(a)
+- `SearchFir(c).resolve()`: finds SearchFir(b), which is WOCONSTANIC → dereference through to SearchFir(b).target = SearchFir(a) (ECONSTANIC) → stop (ECONSTANIC is a barrier) → WOCONSTANIC, target = SearchFir(a)
 
 Result:
 ```
 {
-＿a = 🧠??;      // CONSTANIC
-＿b = 🧠?;      // WOCONSTANIC (found 'a', which is CONSTANIC)
-＿c = 🧠?;      // WOCONSTANIC (followed through WOCONSTANIC 'b' to its CONSTANIC target 'a')
+＿a = 🧠??;      // ECONSTANIC
+＿b = 🧠?;      // WOCONSTANIC (found 'a', which is ECONSTANIC)
+＿c = 🧠?;      // WOCONSTANIC (followed through WOCONSTANIC 'b' to its ECONSTANIC target 'a')
 }
 ```
 
-Both `b` and `c` end up WOCONSTANIC waiting on the same CONSTANIC FIR. SearchFir(c) dereferenced
+Both `b` and `c` end up WOCONSTANIC waiting on the same ECONSTANIC FIR. SearchFir(c) dereferenced
 transparently through SearchFir(b) to reach the actual constanic barrier.
 
 ### SearchFir value() Method
@@ -947,7 +967,7 @@ public Object value() {
         return target;  // Return the FIR we're waiting on
     }
     if (at_constanic()) {
-        return this;  // Return self as CONSTANIC marker
+        return this;  // Return self as ECONSTANIC marker
     }
     throw new IllegalStateException("Cannot get value of nigh SearchFir");
 }
@@ -958,7 +978,7 @@ public Object value() {
 ## Constanic Cloning and Re-Coordination
 
 *Constanic cloning* is the definitive mechanism for re-coordinating proto-branes into new
-contexts. When a CONSTANIC or WOCONSTANIC expression is referenced in a new context, it is cloned
+contexts. When a ECONSTANIC or WOCONSTANIC expression is referenced in a new context, it is cloned
 and given a chance to resolve in that context. This replaces UBC1's CMFir wrapper approach.
 
 ### The Re-Coordination Problem
@@ -978,11 +998,11 @@ the new context where `x = 42` exists. The mechanism: constanic cloning.
 ### When Constanic Cloning Occurs
 
 Constanic cloning is triggered when:
-1. A CONSTANIC or WOCONSTANIC FIR is found during search resolution
+1. A ECONSTANIC or WOCONSTANIC FIR is found during search resolution
 2. The FIR needs to be relocated into a new parent brane
 3. The clone will be re-evaluated in the new context
 
-Key timing: cloning occurs only after the source FIR reaches a constanic state (CONSTANIC,
+Key timing: cloning occurs only after the source FIR reaches a constanic state (ECONSTANIC,
 WOCONSTANIC, CONSTANT, or INDEPENDENT). The wait-for mechanism ensures we never try to clone nigh
 FIRs.
 
@@ -990,7 +1010,7 @@ FIRs.
 
 When a FIR is constanic-cloned, the clone receives a new parent reference. This
 ensures that:
-- CONSTANIC searches re-resolve in the new context (search the new parent brane)
+- ECONSTANIC searches re-resolve in the new context (search the new parent brane)
 - FulfillSearch messages are sent to the new parent (not the original parent)
 - The clone is fully integrated into the new brane's hierarchy
 
@@ -1002,7 +1022,7 @@ The parent chain update happens during the cloning process, before the clone beg
 |-------------|-------------|-------------------|-----------|
 | CONSTANT | Reference (no copy) | CONSTANT | Immutable value, safe to share. No cloning needed. |
 | INDEPENDENT | Reference (no copy) | INDEPENDENT | Immutable and detached, safe to share. No cloning needed. |
-| CONSTANIC | Recursive clone | EMBRYONIC | Search failed in original context. Re-search in new context: local scope first, then beyond boundary. New parent may provide missing bindings. |
+| ECONSTANIC | Recursive clone | EMBRYONIC | Search failed in original context. Re-search in new context: local scope first, then beyond boundary. New parent may provide missing bindings. |
 | WOCONSTANIC | Recursive clone | BRANING | Already found all symbols, waiting on dependencies. Don't re-search. Wait for cloned children to resolve, then re-evaluate dereferencing chain. Receives messages from children. |
 | nigh | Exception | N/A | Constanic cloning must only be called on constanic FIRs. Wait-for mechanism ensures source is constanic before cloning. |
 
@@ -1016,9 +1036,9 @@ shared across multiple contexts without cloning.
 
 Implementation: the clone is simply a reference to the original FIR. No recursion, no copying.
 
-#### CONSTANIC: Re-Search in New Context
+#### ECONSTANIC: Re-Search in New Context
 
-A CONSTANIC FIR has unresolved searches. In the original context, the searches failed (identifiers
+A ECONSTANIC FIR has unresolved searches. In the original context, the searches failed (identifiers
 not found). When constanic-cloned into a new context, the clone gets a fresh chance to find those
 identifiers.
 
@@ -1038,7 +1058,7 @@ Cloning process:
 Example:
 ```foolish
 {
-    fn = {a = x;};  // fn is CONSTANIC (x not found)
+    fn = {a = x;};  // fn is ECONSTANIC (x not found)
     x = 42;
     result = fn;    // Constanic-clone fn
 }
@@ -1054,7 +1074,7 @@ Cloning process:
 #### WOCONSTANIC: Wait for Children, Then Re-Dereference
 
 A WOCONSTANIC FIR has already resolved all its searches. It found all the identifiers it was
-looking for. It's just waiting for those identifiers to finish evaluating (they're CONSTANIC or
+looking for. It's just waiting for those identifiers to finish evaluating (they're ECONSTANIC or
 WOCONSTANIC themselves).
 
 Why BRANING?
@@ -1067,7 +1087,7 @@ Cloning process:
 1. Clone the FIR structure recursively
 2. Clone all sub-FIRs (children) using constanic cloning rules:
    - CONSTANT/INDEPENDENT children → reference (no copy)
-   - CONSTANIC children → recursive clone, transition to EMBRYONIC
+   - ECONSTANIC children → recursive clone, transition to EMBRYONIC
    - WOCONSTANIC children → recursive clone, transition to BRANING
 3. Update parent reference to new parent brane
 4. Transition clone to BRANING
@@ -1077,7 +1097,7 @@ Cloning process:
 Example:
 ```foolish
 {
-    fn = {a = x; b = a;};  // a is CONSTANIC, b is WOCONSTANIC (waiting on a)
+    fn = {a = x; b = a;};  // a is ECONSTANIC, b is WOCONSTANIC (waiting on a)
     x = 42;
     result = fn;           // Constanic-clone fn
 }
@@ -1085,7 +1105,7 @@ Example:
 
 Cloning process:
 1. Clone brane `fn` → new instance
-2. Clone SearchFir(a) → CONSTANIC, transitions to EMBRYONIC
+2. Clone SearchFir(a) → ECONSTANIC, transitions to EMBRYONIC
 3. Clone SearchFir(b) → WOCONSTANIC, transitions to BRANING
 4. New brane clone transitions to BRANING (waiting for children)
 
@@ -1107,7 +1127,7 @@ When a WOCONSTANIC SearchFir is constanic-cloned:
 
 Why this works:
 - WOCONSTANIC SearchFir already found the identifier (search succeeded)
-- The identifier it found is CONSTANIC or WOCONSTANIC (needs re-coordination)
+- The identifier it found is ECONSTANIC or WOCONSTANIC (needs re-coordination)
 - When the target is cloned and transitions to EMBRYONIC or BRANING, it will re-resolve
 - The SearchFir clone receives notification and re-dereferences
 - The dereferencing chain extends automatically through the message-passing system
@@ -1122,17 +1142,17 @@ Constanic cloning is recursive. When a brane is constanic-cloned:
    - Clone the LHS identifier (if named)
    - Clone the RHS expression using constanic cloning rules
    - Sub-expressions are constanic-cloned recursively
-4. Determine clone's initial state (EMBRYONIC for CONSTANIC, BRANING for WOCONSTANIC)
+4. Determine clone's initial state (EMBRYONIC for ECONSTANIC, BRANING for WOCONSTANIC)
 5. Clone begins stepping in its initial state
 
 > Note: CONSTANT and INDEPENDENT sub-expressions are **not** recursively cloned — they are
-> referenced directly. Only CONSTANIC and WOCONSTANIC sub-expressions require cloning.
+> referenced directly. Only ECONSTANIC and WOCONSTANIC sub-expressions require cloning.
 
 ### Coordination After Cloning
 
 After cloning, the clone participates in the brane's normal lifecycle:
 
-CONSTANIC clone (in EMBRYONIC):
+ECONSTANIC clone (in EMBRYONIC):
 1. Performs search resolution via SearchFir.resolve()
 2. Sends FulfillSearch messages to new parent for unresolved searches
 3. Receives RespondToSearch messages with results
@@ -1159,7 +1179,7 @@ parent's context.
 | Re-evaluation | CMFir Phase B steps clone | Clone re-enters EMBRYONIC or BRANING |
 | CONSTANT handling | CMFir short-circuits | Reference to immutable; no clone |
 | Parent chain update | Unclear/inconsistent | Explicit parent reference update during cloning |
-| WOCONSTANIC handling | Not distinguished from CONSTANIC | BRANING state, wait for children |
+| WOCONSTANIC handling | Not distinguished from ECONSTANIC | BRANING state, wait for children |
 
 ---
 
@@ -1205,7 +1225,7 @@ Sent from a FIR to all registered listeners when its state changes.
 StateChange {
     source_fir: FIR          // The FIR whose state changed
     old_state: Nyes          // Previous state (e.g., nigh, WOCONSTANIC)
-    new_state: Nyes          // Current state (e.g., CONSTANT, CONSTANIC)
+    new_state: Nyes          // Current state (e.g., CONSTANT, ECONSTANIC)
 }
 ```
 
@@ -1394,7 +1414,7 @@ RespondToSearch messages.
 
 ---
 
-## NK vs CONSTANIC: When Is a Search Truly Failed?
+## NK vs ECONSTANIC: When Is a Search Truly Failed?
 
 This is one of the most important semantic decisions in the UBC design. UBC1 struggled with this
 distinction across many iterations (the commit history shows clarification attempts as late as
@@ -1403,10 +1423,10 @@ February 2026). UBC2 establishes a clear rule.
 ### The Rule
 
 > A search result is NK (`🧠???`) only if the UBC can prove that the search will fail in ALL
-> possible future executions — including when CONSTANIC expressions are discovered by search and
-> coordinated elsewhere. Otherwise, the result is CONSTANIC.
+> possible future executions — including when ECONSTANIC expressions are discovered by search and
+> coordinated elsewhere. Otherwise, the result is ECONSTANIC.
 
-In other words: NK means "definitively not findable." CONSTANIC means "not found yet, but might
+In other words: NK means "definitively not findable." ECONSTANIC means "not found yet, but might
 be found in a future context."
 
 ### Why This Matters: Brane Concatenation Changes Everything
@@ -1434,7 +1454,7 @@ when the brane is concatenated with another brane that provides the missing bind
 
 This reverses the previous UBC1 decision that made certain intra-brane searches produce NK. For
 example, `{#-1}` (seek the previous line) was NK in UBC1 when there was no previous line. In
-UBC2, this is CONSTANIC — because a future concatenation could prepend content that provides a
+UBC2, this is ECONSTANIC — because a future concatenation could prepend content that provides a
 previous line.
 
 UBC1 behavior (superseded):
@@ -1447,7 +1467,7 @@ UBC1 behavior (superseded):
 UBC2 behavior (correct):
 ```foolish
 {
-    r = {#-1};   !! r is CONSTANIC (might gain value via concatenation)
+    r = {#-1};   !! r is ECONSTANIC (might gain value via concatenation)
 }
 ```
 
@@ -1457,8 +1477,8 @@ NK (`🧠???`) should only be produced when the UBC can prove the search will ne
 
 - **Anchored search on a CONSTANT brane that doesn't contain the target**: The brane is fully
   evaluated and immutable. It will never gain new members. NK is correct.
-- **Anchored search on a CONSTANIC brane that doesn't contain the target**: A CONSTANIC brane has
-  completed its PREMBRYONIC stage, so its set of named identifiers is fully known. The CONSTANIC
+- **Anchored search on a ECONSTANIC brane that doesn't contain the target**: A ECONSTANIC brane has
+  completed its PREMBRYONIC stage, so its set of named identifiers is fully known. The ECONSTANIC
   state means the brane's *values* may change in a new context, but new *identifiers* will not
   appear. An anchored search for a non-existent member is definitively failed.
 - **Searching on an NK anchor**: If the anchor expression itself is NK, any search on it is NK.
@@ -1472,7 +1492,7 @@ no input syntax for writing NK directly.
 
 ### Binding Precedence: Why Anchored Search Produces NK
 
-The distinction between anchored (NK) and unanchored (CONSTANIC) outcomes for failed searches
+The distinction between anchored (NK) and unanchored (ECONSTANIC) outcomes for failed searches
 reflects the order of operations in UBC2. Anchored search binds at evaluation time, *before*
 concatenation can change the search context:
 
@@ -1489,17 +1509,17 @@ a concatenation with `{value = 10}`, the concatenation operates on `x`'s *value*
 not on the search that produced it. Anchored search has higher binding precedence than
 concatenation.
 
-This contrasts with unanchored searches, where CONSTANIC specifically enables deferred resolution:
+This contrasts with unanchored searches, where ECONSTANIC specifically enables deferred resolution:
 
 ```foolish
 {
-    f = {a = x;};       !! x not found → f is CONSTANIC (🧠??)
+    f = {a = x;};       !! x not found → f is ECONSTANIC (🧠??)
     g = {x = 42;};
     h = g f;            !! concatenation clones f into new context → x = 42
 }
 ```
 
-The unanchored search for `x` produces CONSTANIC because concatenation *can* provide a new context
+The unanchored search for `x` produces ECONSTANIC because concatenation *can* provide a new context
 where `x` is defined. The constanic cloning mechanism bridges the precedence gap.
 
 See [UBC2 Message Protocol](ubc2_message_protocol.md#order-of-precedence-search-and-concatenation)
@@ -1507,7 +1527,7 @@ for the full precedence table and interaction summary.
 
 ### Tests That May Need Updating
 
-The following UBC1 approval tests may produce NK where UBC2 should produce CONSTANIC:
+The following UBC1 approval tests may produce NK where UBC2 should produce ECONSTANIC:
 
 - Any test where an intra-brane identifier search fails and produces `🧠???`
 - Any test where `{#-N}` produces `🧠???` due to insufficient preceding lines
@@ -1530,14 +1550,14 @@ approval tests. UBC2 updates the rendering to distinguish all constanic states c
 | Symbol | State | Meaning |
 |--------|-------|---------|
 | `🧠???` | NK | Not Known. The UBC has proven this search will fail in all possible future contexts. Definitively unfindable. |
-| `🧠??` | CONSTANIC | Constanic. Search was performed and nothing was found, but the result might change in a future context (e.g., via brane concatenation). |
-| `🧠?` | WOCONSTANIC | Waiting On Constanics. All searches were found, but one or more results are themselves CONSTANIC or WOCONSTANIC. Structurally complete, waiting on dependencies. |
+| `🧠??` | ECONSTANIC | Constanic. Search was performed and nothing was found, but the result might change in a future context (e.g., via brane concatenation). |
+| `🧠?` | WOCONSTANIC | Waiting On Constanics. All searches were found, but one or more results are themselves ECONSTANIC or WOCONSTANIC. Structurally complete, waiting on dependencies. |
 | *(value)* | CONSTANT | The fully evaluated result is shown directly. |
 | *(expanded)* | INDEPENDENT | Shown as value. Indistinguishable from CONSTANT in output. |
 
 The 🧠 prefix is the Foolish semantic bracket prefix — `🧠e` is the single-token form of
 `🧠⟦e⟧`. These output symbols are denotations of constanic states: `🧠??` is not Foolish
-syntax; it is the semantic rendering of what CONSTANIC *means* as an observable result. A
+syntax; it is the semantic rendering of what ECONSTANIC *means* as an observable result. A
 programmer cannot write `🧠??` in source because source is syntax, and this is semantics. A
 human writing an approval test types the same character sequence, but is expressing a
 denotation, not program text.
@@ -1567,7 +1587,7 @@ Rendered as `🧠???`, optionally with a comment explaining why:
 ＿div_zero = 🧠???;            !! Division by zero
 ```
 
-#### CONSTANIC Expressions
+#### ECONSTANIC Expressions
 
 Rendered as `🧠??` — the double question mark indicates "not found yet, might be found later":
 
@@ -1583,15 +1603,15 @@ Rendered as `🧠?` — the single question mark indicates "found everything, wa
 ＿sum = 🧠?;                  !! WOCONSTANIC — found a and b, but they are constanic
 ```
 
-#### CONSTANIC and WOCONSTANIC Branes (Expanded)
+#### ECONSTANIC and WOCONSTANIC Branes (Expanded)
 
-When a brane is CONSTANIC or WOCONSTANIC, its contents are expanded to show internal state.
+When a brane is ECONSTANIC or WOCONSTANIC, its contents are expanded to show internal state.
 This lets the reader see *what* is resolved and *what* is stuck:
 
 ```
 ＿f = {
 ＿＿a = 42;                   !! CONSTANT — fully resolved
-＿＿b = 🧠??;                  !! CONSTANIC — 'b' not found
+＿＿b = 🧠??;                  !! ECONSTANIC — 'b' not found
 ＿＿c = 🧠?;                   !! WOCONSTANIC — found, waiting on dependency
 ＿＿result = 🧠?;              !! WOCONSTANIC — depends on b and c
 ＿};
@@ -1666,7 +1686,7 @@ UBC2 output:
 {
 ＿a = 1;
 ＿b = {
-＿＿x = 🧠??;                 !! CONSTANIC — unknown_var not found
+＿＿x = 🧠??;                 !! ECONSTANIC — unknown_var not found
 ＿＿y = 1;                   !! CONSTANT — 'a' resolved to 1
 ＿};
 ＿c = 🧠?;                   !! WOCONSTANIC — b$ found b, but b is not CONSTANT
@@ -1702,7 +1722,7 @@ FIR (abstract base — state machine, depth, LUID, parent reference)
       │                       Added after concatenation is designed.
       │
       └── (sf/sff: yes)     — SF/SFF-marked expressions. Modified lifecycle
-                              (SF: no child forwarding; SFF: skip to CONSTANIC).
+                              (SF: no child forwarding; SFF: skip to ECONSTANIC).
 ```
 
 The key insight is that these are not separate classes — they are a single `ProtoBrane` class
@@ -1712,7 +1732,7 @@ with flags or traits that enable/disable specific steps in the lifecycle:
 |-------|-------------------|
 | `hasBoundary` | If true: searches within this brane check local statements first. If false: searches start in parent. |
 | `isDetachment` | If true: modifies search results passing through this brane (blocks/unblocks identifiers). |
-| `sfMode` | NONE: normal. SF: resolve own symbols only, no child forwarding. SFF: skip straight to CONSTANIC. |
+| `sfMode` | NONE: normal. SF: resolve own symbols only, no child forwarding. SFF: skip straight to ECONSTANIC. |
 
 This is additive/subtractive: the default ProtoBrane does the full lifecycle. Traits subtract
 steps (SFF subtracts all of EMBRYONIC) or add behavior (detachment adds search filtering).
@@ -1762,7 +1782,7 @@ class ConcatenationBrane extends ProtoBrane {
 #### PREMBRYONIC
 
 The ConcatenationBrane is instantiated with references to its child branes (the branes being
-joined). Each child is in PREMBRYONIC or CONSTANIC state.
+joined). Each child is in PREMBRYONIC or ECONSTANIC state.
 
 Actions:
 1. Store references to children
@@ -1772,12 +1792,12 @@ Actions:
 #### EMBRYONIC
 
 The ConcatenationBrane steps each child brane until all children are either:
-- PREMBRYONIC or CONSTANIC (not actively stepping), AND
+- PREMBRYONIC or ECONSTANIC (not actively stepping), AND
 - BRANE-valued (full branes, not proto-branes)
 
 Message handling:
 - FulfillSearch from children: do **not** forward to parent. Search isolation is enforced.
-  Children must resolve locally or reach CONSTANIC.
+  Children must resolve locally or reach ECONSTANIC.
 - StateChange from children: monitor for transitions to constanic states
 - RespondToSearch: not sent to children (no forwarding from parent)
 
@@ -1787,13 +1807,13 @@ BRANING
 
 #### BRANING
 
-Once all child branes are available (PREMBRYONIC or CONSTANIC) and BRANE-valued:
+Once all child branes are available (PREMBRYONIC or ECONSTANIC) and BRANE-valued:
 
 Step 1 — Constanic-copy statements:
 
 For each child brane, constanic-copy its statements into a new contiguous statement array:
 - CONSTANT and INDEPENDENT statements → reference (no copy)
-- CONSTANIC and WOCONSTANIC statements → recursively clone
+- ECONSTANIC and WOCONSTANIC statements → recursively clone
 - Update parent references on cloned statements to point to merged brane
 
 Step 2 — Create merged brane:
@@ -1826,9 +1846,9 @@ ConcatenationBrane transitions to BRANING (stepping child merged brane). The mer
 Transition criterion:
 Merged brane reaches constanic state → ConcatenationBrane reaches same constanic state
 
-#### CONSTANIC Terminal State
+#### ECONSTANIC Terminal State
 
-When the merged brane reaches a constanic state (CONSTANIC, WOCONSTANIC, or CONSTANT), the
+When the merged brane reaches a constanic state (ECONSTANIC, WOCONSTANIC, or CONSTANT), the
 ConcatenationBrane reaches the same state. The ConcatenationBrane's `value()` returns the merged
 brane.
 
@@ -1998,7 +2018,7 @@ System operator FIRs are proto-branes (not full branes). They:
 
 The "naive implementation" examples above are conceptual. The actual FIR implementation would:
 - Validate operand types
-- Handle CONSTANIC operands (wait-for mechanism)
+- Handle ECONSTANIC operands (wait-for mechanism)
 - Produce NK for arithmetic errors (division by zero, type mismatches)
 - Use the standard proto-brane step-based evaluation
 
@@ -2027,7 +2047,7 @@ Priority: Highest (after grouping). Brane concatenation is now fully specified i
 [Brane Concatenation](#brane-concatenation). Implementation tasks remaining:
 
 - Implement ConcatenationBrane FIR type
-- Test concatenation of CONSTANT + CONSTANIC branes
+- Test concatenation of CONSTANT + ECONSTANIC branes
 - Test concatenation of proto-branes vs full branes
 - Verify search isolation (children cannot search through concatenation boundary to parent)
 - Test writing-order precedence in concatenated branes
@@ -2064,7 +2084,7 @@ bugs and a fragile recursive `step()` design that is not carried forward.
 
 The following issues from the UBC1 review remain relevant to UBC2. They are organized by priority,
 updated to reflect decisions already made in this document. Items 1–7 from the original review
-have been addressed (NK vs CONSTANIC clarified, IfFiroe removed, concatenation and detachment
+have been addressed (NK vs ECONSTANIC clarified, IfFiroe removed, concatenation and detachment
 added to Design TODO, CMFir superseded, state machine redesigned, search churn acknowledged in
 Lessons Learned).
 
@@ -2084,7 +2104,7 @@ that already contain anchors — this logic needs fixing.
 
 `FIR.java` stubs SFF with `NKFiroe("SFF marker (<<==>> syntax) not yet implemented")`. The UBC2
 design now fully specifies SF/SFF lifecycle behavior (SF: resolve own symbols, no child forwarding;
-SFF: PREMBRYONIC → CONSTANIC). This is a fresh implementation — no UBC1 code to salvage.
+SFF: PREMBRYONIC → ECONSTANIC). This is a fresh implementation — no UBC1 code to salvage.
 
 *Priority: High. SF/SFF are central to the constanic cloning and coordination mechanism.*
 
@@ -2158,7 +2178,7 @@ implemented in UBC2.
 #### 17. Missing Test: Partial Parameter Specification
 
 A test is needed where `b?x` returns CONSTANT 10 even though `b` is WOCONSTANIC — demonstrating
-that anchored search can succeed on partially-evaluated branes. This validates the CONSTANIC vs
+that anchored search can succeed on partially-evaluated branes. This validates the ECONSTANIC vs
 WOCONSTANIC distinction in practice.
 
 *Priority: Lower. Validates the state split.*
@@ -2175,11 +2195,11 @@ approval tests.
 #### 19. Sequencer Rendering Updates
 
 The Sequencer4Human must be updated for:
-- `🧠??` for CONSTANIC (was `⎵⎵`)
+- `🧠??` for ECONSTANIC (was `⎵⎵`)
 - `🧠?` for WOCONSTANIC (new state, no prior rendering)
 - `🧠???` for NK (unchanged symbol count, now 🧠-prefixed)
-- Expanded rendering of CONSTANIC/WOCONSTANIC branes (show internal state)
-- Remove or update `(CONSTANIC)` state suffix display (the symbol itself now carries the meaning)
+- Expanded rendering of ECONSTANIC/WOCONSTANIC branes (show internal state)
+- Remove or update `(ECONSTANIC)` state suffix display (the symbol itself now carries the meaning)
 
 *Priority: Lower. Implementation task after design is stable.*
 
@@ -2221,13 +2241,13 @@ The UBC2 design is an evolution of UBC1, not a replacement of its semantics:
 | Implicit search resolution during evaluation | EMBRYONIC with message passing | Search resolution becomes visible communication |
 | CMFir wrapping for re-evaluation | Constanic cloning with slot replacement | Clone replaces slot; re-enters EMBRYONIC |
 | EVALUATING | BRANING | Explicit child-brane stepping with communication |
-| CONSTANIC / CONSTANT | CONSTANIC / WOCONSTANIC / CONSTANT / INDEPENDENT | CONSTANIC split: unfound vs waiting-on |
+| ECONSTANIC / CONSTANT | ECONSTANIC / WOCONSTANIC / CONSTANT / INDEPENDENT | ECONSTANIC split: unfound vs waiting-on |
 | `BraneMemory.get()` parent chain traversal | FulfillSearch / RespondToSearch messages | Same semantics, different mechanism |
 | `braneMind` as work queue | `braneMind` as work queue + message buffer | Extended to carry communication state |
 
 The Nyes state values are extended to represent the new stages (PREMBRYONIC, EMBRYONIC, BRANING),
-the split of CONSTANIC into CONSTANIC/WOCONSTANIC, and the INDEPENDENT terminal state. The
-constanic predicate `achievedConstanicity` encompasses CONSTANIC, WOCONSTANIC, CONSTANT, and INDEPENDENT.
+the split of ECONSTANIC into ECONSTANIC/WOCONSTANIC, and the INDEPENDENT terminal state. The
+constanicity predicate `hasConstanicity` encompasses ECONSTANIC, WOCONSTANIC, CONSTANT, and INDEPENDENT.
 
 ---
 
@@ -2268,7 +2288,7 @@ concatenation needs through its public interface, not through reflection hacks.
 
 UBC1 renamed "Constantic" → "Constanic" on day 63, and "Brain" → "Brane" on day 79. Late renames
 cause confusion across code, documentation, commit messages, and agent instructions. UBC2's
-terminology (PREMBRYONIC, EMBRYONIC, BRANING, CONSTANIC, WOCONSTANIC, CONSTANT, INDEPENDENT,
+terminology (PREMBRYONIC, EMBRYONIC, BRANING, ECONSTANIC, WOCONSTANIC, CONSTANT, INDEPENDENT,
 ProtoBrane) should be finalized before implementation begins.
 
 ### 6. Don't Wrap When You Can Clone-and-Replace
@@ -2276,7 +2296,7 @@ ProtoBrane) should be finalized before implementation begins.
 UBC1's CMFir was a wrapper that delegated state queries to an inner FIR. This broke transparency
 (code checking `this.nyes` directly bypassed the delegation) and required complex two-phase
 evaluation logic. CMFir was implemented, then reversed (with/without braneMind), and had critical
-state-checking bugs (`achievedConstanicity()` vs `atConstanic()`). UBC2's constanic cloning replaces the
+state-checking bugs (`hasConstanicity()` vs `atConstanic()`). UBC2's constanic cloning replaces the
 slot directly — no wrapper, no delegation, no phase confusion.
 
 ### 7. Don't Force-Approve Tests
@@ -2336,14 +2356,24 @@ These are noted in the design but deferred to later iterations:
 
 **Date**: 2026-03-12
 **Updated By**: Claude Code / cyankiwi/Qwen3.5-27B-AWQ-BF16-INT8
-**Changes**: Updated "Communication Medium" subsection to "Communication Media" (plural).
-Added mention of MVP (parent-to-ancestor chaining) and advanced options (delegated addressing).
-Updated link to D0.6 Communication Media.
+**Changes**: Fixed terminology typos from global replace: replaced all occurrences of WOECONSTANIC with
+WOCONSTANIC (the state name is WOCONSTANIC, not WOECONSTANIC). Replaced EECONSTANIC with ECONSTANIC
+(double-E typo). ECONSTANIC is the exact state name meaning "Exactly CONSTANIC", while WOCONSTANIC
+means "Waiting On CONSTANICs". Removed @AGENT comment block about state access methods and replaced
+with formal "State Access Methods" subsection defining isAt/isPre/isPost/isNigh/getNyes methods.
+Updated "The Constanic Predicate" section with formal predicate definition:
+hasConstanicity = isAt(ECONSTANIC) || isPost(ECONSTANIC). Updated terminology: replaced
+"achievedConstanicity" with "hasConstanicity". Added definition of "constanicity" (pronounced
+"con-stan-ISS-ity") as the condition of being constant in context. An FIR has constanicity when in
+ECONSTANIC, WOCONSTANIC, CONSTANT, or INDEPENDENT state. The adjective "constanic" means "having
+constanicity or higher." Updated "Communication Medium" subsection to "Communication Media"
+(plural). Added mention of MVP (parent-to-ancestor chaining) and advanced options (delegated
+addressing). Updated link to D0.6 Communication Media.
 Previous (2026-03-03): Expanded "NK Is Reserved for Provably Unfindable Cases" to include
-anchored search on CONSTANIC branes (identifiers are known even if values aren't),
+anchored search on ECONSTANIC branes (identifiers are known even if values aren't),
 NK anchors, and non-brane values. Added "Binding Precedence" subsection explaining
 why anchored searches produce NK (bind before concatenation) while unanchored
-searches produce CONSTANIC (deferred via constanic cloning). Cross-referenced the
+searches produce ECONSTANIC (deferred via constanic cloning). Cross-referenced the
 message protocol's Order of Precedence section.
 Previous (2026-02-25): Reduced excessive bold/italic emphasis throughout for natural prose flow.
 Converted inline `**Action N —**` patterns to `####` headings. Converted `**Note:**` /
@@ -2358,7 +2388,7 @@ Establishes that every literal is a single-element brane (`🧠1`, `🧠2`, etc.
 `🧠1$.value()`, and `🧠1^.value()` are all equivalent, and that this uniformity is what makes
 postfix operator syntax and proximity concatenation coherent.
 Previous (2026-02-24):** Applied 🧠 prefix to all sequencer output symbols throughout: `🧠?` (WOCONSTANIC),
-`🧠??` (CONSTANIC), `🧠???` (NK). Added BraneSymbol enum note. Fixed all rendered output
+`🧠??` (ECONSTANIC), `🧠???` (NK). Added BraneSymbol enum note. Fixed all rendered output
 examples in code blocks. Updated SYMBOL_TABLE.md references. Removed erroneous `???` parser
 token claim (all three symbols are sequencer output only). Fixed WOCONSTANIC example comment
 (was "constanic", now "woconstanic").
