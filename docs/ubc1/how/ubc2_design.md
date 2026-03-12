@@ -14,6 +14,7 @@ For the engineering reference of the current UBC1 implementation, see
 
 - [What Is the UBC2](#what-is-the-ubc2)
 - [Message-Passing Architecture](#message-passing-architecture)
+  - [Communication Medium](#communication-medium)
 - [Literal Values and Proto-Branes](#literal-values-and-proto-branes)
   - [Literal Values Are Always INDEPENDENT](#literal-values-are-always-independent)
   - [Literals Are Branes](#literals-are-branes)
@@ -91,6 +92,23 @@ search was performed and nothing was found).
 Each brane maintains a *braneMind* — the set of FIRs and pending communications it is actively
 working on. The braneMind aggregates unresolved searches for outbound communication and monitors
 for inbound search results.
+
+### Communication Media
+
+The UBC2 design specifies the communication adapter interface while leaving the concrete
+transport medium flexible. Each brane implements a *communication adapter* that abstracts
+the underlying mechanism. The MVP uses parent-to-ancestor chaining; advanced implementations
+may use delegated direct addressing or other media.
+
+The adapter encapsulates all medium-specific logic:
+- **Message serialization** — Convert internal messages to medium format
+- **Routing** — Determine destination addresses based on topology
+- **Queue management** — Buffer outgoing/incoming messages
+- **Flow control** — Respect communication bandwidth limits
+
+See [D0.6 Communication Media](d0_6_communication_medium.md) for the full specification of
+the adapter interface, MVP design, delegated addressing protocol, bandwidth semantics, and
+additional design alternatives.
 
 ### Circular Message-Passing Sanity Check
 
@@ -2316,9 +2334,12 @@ These are noted in the design but deferred to later iterations:
 
 ## Last Updated
 
-Date: 2026-03-03
-Updated By: Claude Code v1.0.0 / claude-opus-4-6
-Changes: Expanded "NK Is Reserved for Provably Unfindable Cases" to include
+**Date**: 2026-03-12
+**Updated By**: Claude Code / cyankiwi/Qwen3.5-27B-AWQ-BF16-INT8
+**Changes**: Updated "Communication Medium" subsection to "Communication Media" (plural).
+Added mention of MVP (parent-to-ancestor chaining) and advanced options (delegated addressing).
+Updated link to D0.6 Communication Media.
+Previous (2026-03-03): Expanded "NK Is Reserved for Provably Unfindable Cases" to include
 anchored search on CONSTANIC branes (identifiers are known even if values aren't),
 NK anchors, and non-brane values. Added "Binding Precedence" subsection explaining
 why anchored searches produce NK (bind before concatenation) while unanchored

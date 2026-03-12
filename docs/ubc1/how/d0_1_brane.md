@@ -5,6 +5,8 @@
 This document describes Normal Branes — the curly-brace structures that define search boundaries.
 Read [D0.0 ProtoBrane Lifecycle](d0_0_protobrane.md) first.
 
+For how branes communicate via the communication adapter, see [D0.6 Communication Medium](d0_6_communication_medium.md).
+
 Concatenating: `cat d0_0_protobrane.md d0_1_brane.md` produces a coherent document.
 
 ---
@@ -71,18 +73,23 @@ Same as ProtoBrane (see D0.0), plus:
 
 This is where the boundary behavior matters most.
 
+The brane uses its *communication adapter* to send and receive messages. The adapter abstracts
+the underlying communication medium — see [D0.6 Communication Medium](d0_6_communication_medium.md).
+
 ```java
 step() {
     if (nyes == EMBRYONIC) {
-        // 1. Handle inbound messages
-        handleInboundMessages();
+        // 1. Handle inbound messages (via communication adapter)
+        while (adapter.canReceive() && adapter.hasIncoming()) {
+            handle(adapter.receive());
+        }
 
         // 2. Process wait-for queue
         recheckWaitForQueue();
 
-        // 3. Resolve local searches (up to bandwidth)
+        // 3. Resolve local searches (up to compute bandwidth)
         for (SearchFir search : unresolvedSearches) {
-            if (searchBandwidthExhausted()) break;
+            if (computeBandwidthExhausted()) break;
 
             FIR result = searchLocally(search);
 
@@ -90,8 +97,10 @@ step() {
                 // Found locally — bind result
                 search.bind(result);
             } else {
-                // Not found locally — escalate to parent
-                sendToFulfillSearch(search);
+                // Not found locally — escalate to parent (via adapter)
+                if (adapter.canSend()) {
+                    adapter.send(new FulfillSearch(search));
+                }
             }
         }
 
@@ -102,6 +111,9 @@ step() {
     }
 }
 ```
+
+The adapter's `canReceive()` and `canSend()` methods enforce communication bandwidth limits.
+Pending messages queue until the next step.
 
 ### Local Search Algorithm
 
@@ -534,11 +546,13 @@ After reading this:
 - **d0_2_system_operator.md** — System operators
 - **d0_3_concatenation.md** — Concatenation semantics
 - **d0_4_detachment.md** — Detachment filters
+- **d0_6_communication_medium.md** — How branes exchange messages
 
 ---
 
 ## Last Updated
 
-**Date**: 2026-03-08
+**Date**: 2026-03-12
 **Updated By**: Claude Code / cyankiwi/Qwen3.5-27B-AWQ-BF16-INT8
-**Changes**: Initial creation describing Normal Brane with search boundary. Documented local search algorithm, message handling (FulfillSearch, RespondToSearch), shadowing behavior, anchored vs unanchored search. Included approval test examples with step-by-step lifecycle traces.
+**Changes**: Added reference to D0.6 Communication Medium. Updated EMBRYONIC lifecycle code to show communication adapter usage (adapter.canReceive(), adapter.send()). Separated compute bandwidth from communication bandwidth in step() method.
+Previous (2026-03-08): Initial creation describing Normal Brane with search boundary. Documented local search algorithm, message handling (FulfillSearch, RespondToSearch), shadowing behavior, anchored vs unanchored search. Included approval test examples with step-by-step lifecycle traces.

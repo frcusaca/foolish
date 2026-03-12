@@ -11,8 +11,9 @@ parent-attachment linkages that enable messaging, the lifecycle phases where eac
 message type is active, and the fate of messages during constanic cloning.
 
 For the broader FIR lifecycle, search resolution, and constanic cloning rules,
-see [UBC2 Design Specification](ubc2_design.md). This document is a companion
-that focuses on the mechanics of message exchange.
+see [UBC2 Design Specification](ubc2_design.md). For how the communication adapter
+abstracts the underlying medium, see [D0.6 Communication Medium](d0_6_communication_medium.md).
+This document focuses on the mechanics of message exchange.
 
 The message protocol described here is a design-forward specification. The
 current UBC1 codebase resolves searches synchronously through direct
@@ -1052,9 +1053,12 @@ seven-state Nyes enum. The mapping is approximate:
 
 ## Last Updated
 
-Date: 2026-03-03
-Updated By: Claude Code v1.0.0 / claude-opus-4-6
-Changes: Added "Order of Precedence: Search and Concatenation" section
+**Date**: 2026-03-12
+**Updated By**: Claude Code / cyankiwi/Qwen3.5-27B-AWQ-BF16-INT8
+**Changes**: Added reference to D0.6 Communication Medium document, clarifying the
+relationship between message protocol (what messages are exchanged) and communication
+adapter (how messages travel).
+Previous (2026-03-03): Added "Order of Precedence: Search and Concatenation" section
 establishing binding order (literal > anchored search > unanchored search >
 concatenation). Added "Anchored vs Unanchored Search: NK and CONSTANIC Outcomes"
 section explaining why unanchored searches produce CONSTANIC (concatenation can

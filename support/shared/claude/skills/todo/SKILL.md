@@ -3,13 +3,27 @@ name: todo
 description: Manages persistent, file-based todo lists in docs/todo/*.todo.md files. Use this skill whenever the user wants to add, complete, list, reprioritize, or work on tasks — including "add a todo", "what's next", "mark that done", "show my tasks", "move that up", "reprioritize", "what should I work on", or any reference to a project task list. The docs/todo/ directory and all *.todo.md files are exclusively owned and maintained by this skill.
 ---
 
-# Todo Skill
+# TODO v2.0: Task Management Skill
 
 Manages persistent todo lists in `docs/todo/*.todo.md`. The `docs/todo/` directory and every `*.todo.md` file within it are **exclusively maintained by this skill** — never create, edit, or delete these files by any other means.
+
+**Skill version**: v2.0
 
 ---
 
 ## Part 1: File Format
+
+### Version compatibility
+
+Each todo file declares its format version at the top. The skill must check version compatibility before operating on a file.
+
+```markdown
+# TODO v2.0: <File Title>
+```
+
+- **Skill v2.0** requires files with `# TODO v2.0:` header
+- If a file has a different version (e.g., `# TODO v1.0`), the skill must notify the user and offer to migrate or skip
+- All new files created by this skill use v2.0 format
 
 ### Location and naming
 
@@ -35,60 +49,106 @@ When a command doesn't specify a file, always use the active file for the sessio
 
 ### Structure
 
-Each file has exactly two top-level sections: `# Open (nextid)` and `# Log`.
+Each file has three top-level sections: `# TODO vX.X: Title`, `## Open`, and `## Completed`, followed by `## Log`.
 
 ```markdown
-# Open (3)
+# TODO v2.0: Session Tasks
 
-- [ ] (0) First task to do
+## Open
 
-- [ ] (1) Second task to do
-  This one has a multi-line description.
-  More detail here.
+### [ ] (0)
 
-- [ ] (2) Third task to do
+First task to do.
 
-# Log
+### [ ] (1)
 
-## (2) Third task to do
-*2025-03-08 10:14* created
+Second task to do. This one has a multi-line description.
+More detail here.
 
-## (1) Second task to do
-*2025-03-08 09:55* created
+### [ ] (2)
 
-Multi-line description noted at creation.
+Third task to do.
 
-## (0) First task to do
-*2025-03-08 09:50* created
+## Completed
+
+### [x] (a)
+
+Earlier completed task.
+
+## Log
+
+### (a)
+*2025-03-08 10:14* completed
+
+Task was finished successfully.
+
+### session started
+*2025-03-08 09:00* planning
+
+Working on initial setup.
 ```
+
+### Section organization
+
+| Section | Purpose | Marker |
+|---------|---------|--------|
+| `# TODO vX.X: Title` | File header with version and title | `#` |
+| `## Open` | Tasks not yet done | `##` |
+| `## Completed` | Tasks marked done/abandoned/canceled | `##` |
+| `## Log` | Append-only event history | `##` |
+
+### Task subsections
+
+Each task is a subsection under Open or Completed:
+
+- **Heading**: `### [ ] (id)` for open, `### [x] (id)` for completed (or `[?]` or `[-]`)
+- **Body**: Description goes in the body of the section (after the heading line)
+- **Separation**: Always have a blank line after the last line of each task subsection's body
+
+Example:
+```markdown
+### [ ] (0)
+
+First task description. This can span multiple lines.
+
+### [ ] (1)
+
+Second task description.
+```
+
+### Priority ordering
+
+- **Open section**: Tasks are in priority order — top = next up
+- **Completed section**: Tasks are in completion order — most recent at top
+- Tasks are **moved** from Open to Completed when closed (not copied)
 
 ### Markers
 
-| Marker | Where     | Meaning |
-|--------|-----------|---------|
-| `[ ]`  | Open      | Not yet done |
-| `[x]`  | Open→Log  | Completed successfully |
-| `[?]`  | Open→Log  | Abandoned — insufficient documentation or task didn't make sense |
-| `[-]`  | Open→Log  | Canceled — no longer needed |
+| Marker | Section     | Meaning |
+|--------|-------------|---------|
+| `[ ]`  | Open        | Not yet done |
+| `[x]`  | Completed   | Completed successfully |
+| `[?]`  | Completed   | Abandoned — insufficient documentation or task didn't make sense |
+| `[-]`  | Completed   | Canceled — no longer needed |
 
-Never use any other marker. Markers only appear in the Open list and in Log headings for closed items.
+Never use any other marker. Markers appear in task subsection headings.
 
-### Open section rules
+### Task subsection rules
 
-- Tasks appear as a markdown list under `# Open (nextid)`
-- Each task: `- [ ] (id) <description>`
-- Multi-line descriptions use indented continuation lines (two spaces) under the `- [ ]` line; the ID stays on the first line only
-- **A blank line (two consecutive EOL markers) is required after every list item** — this terminates the bullet body in the raw file. Without it, the next `- [ ]` is ambiguous to parsers and editors.
-- Tasks are in **priority order** — top = next up
-- Blank lines between items are structural, not cosmetic — always preserve them
+- Each task is a `###` subsection under Open or Completed
+- **Heading format**: `### [ ] (id)` for open, `### [x] (id)` for completed
+- **Body format**: Description goes in the body (lines after the heading)
+- **Separation**: Always have a blank line after the last line of each task's body
+- Tasks in Open are in **priority order** — top = next up
+- Tasks in Completed are in **completion order** — most recent at top
 
-### Log section rules
+### Log subsection rules
 
-- `# Log` contains one `##` entry per event — creation, closure, reprioritization, file switch, or any other mutation
-- Each entry heading: `## (id) <description>` for task-specific events, or `## <short label>` for file-level events
+- `## Log` contains one `###` entry per event — creation, closure, reprioritization, file switch, or any other mutation
+- Each entry heading: `### (id) <description>` for task-specific events, or `### <short label>` for file-level events
 - Immediately below the heading: `*YYYY-MM-DD HH:MM* <event type>` on its own line
 - Below that: optional free-form content — comments, reasons, context
-- Log entries are in **reverse chronological order** — most recent at the top (just after `# Log`)
+- Log entries are in **reverse chronological order** — most recent at the top (just after `## Log`)
 - **Never reorder or edit existing Log entries** — the Log is append-only (prepend-only in the file)
 - Every mutation command must write a Log entry — no silent changes
 
@@ -108,9 +168,9 @@ The parenthesized form makes IDs grep-friendly and visually distinct in a text e
 
 ### Counter
 
-The **next available ID** is stored in the `# Open` heading: `# Open (nextid)`.
+The **next available ID** is tracked internally by counting existing IDs (in both Open and Completed sections) and computing the next value.
 
-- A new file starts at `# Open (0)`
+- A new file starts with counter `0`
 - On `/todo-add`: assign the current counter value as the new task's ID, then increment the counter
 - Counter **never decrements** — closing, canceling, or abandoning a task does not affect it
 - IDs are never reused
@@ -126,9 +186,9 @@ Examples: `9→a`, `z→10`, `1z→20`, `zz→100`
 
 ### ID placement
 
-- Open list: `- [ ] (id) <description>` — ID immediately after the checkbox
-- Log headings for task events: `## (id) <description>` — ID immediately after `##`
-- Log headings for file-level events (session start/end, file switch): no ID prefix
+- Task subsections: `### [ ] (id) <description>` — ID immediately after the checkbox
+- Log subsections for task events: `### (id) <description>` — ID immediately after `###`
+- Log subsections for file-level events (session start/end, file switch): no ID prefix
 
 ---
 
@@ -156,22 +216,23 @@ Show the Open list with IDs and positions. Then show a compact summary of the Lo
 Switch the active todo file for this session.
 
 1. Resolve the filename: if it doesn't contain a path, prepend `docs/todo/`; if it lacks `.todo.md`, append it
-2. If the file doesn't exist, ask the user whether to create it
-3. Prepend a Log entry in the **previous** active file:
+2. Check version compatibility: read the file header and verify it starts with `# TODO v2.0:`
+3. If the file doesn't exist, ask the user whether to create it
+4. Prepend a Log subsection in the **previous** active file:
    ```
-   ## switched away
+   ### switched away
    *YYYY-MM-DD HH:MM* file switch
 
    Switched to: docs/todo/<new-file>
    ```
-4. Prepend a Log entry in the **new** active file (create it if needed):
+5. Prepend a Log subsection in the **new** active file (create it if needed):
    ```
-   ## switched here
+   ### switched here
    *YYYY-MM-DD HH:MM* file switch
 
    Switched from: docs/todo/<previous-file>
    ```
-5. Confirm to the user which file is now active
+6. Confirm to the user which file is now active
 
 ---
 
@@ -179,44 +240,61 @@ Switch the active todo file for this session.
 
 Add a new open task. Description may be multi-line.
 
-1. Read file (create `docs/todo/` dir and file with `# Open (0)\n\n# Log\n` if missing)
-2. Assign current counter `n` as the new ID; compute `n+1`
-3. Append to bottom of Open list:
-   ```
-   - [ ] (n) <description>
-     <continuation lines if multi-line>
+1. Read file (create `docs/todo/` dir and file with v2.0 header if missing):
+   ```markdown
+   # TODO v2.0: <Session or Project Name>
 
-   ```
-4. Update heading to `# Open (n+1)`
-5. Prepend Log entry:
-   ```
-   ## (n) <first line of description>
-   *YYYY-MM-DD HH:MM* created
+   ## Open
 
+   ## Completed
+
+   ## Log
+   ```
+2. Find the next ID by counting existing IDs (in both Open and Completed), compute next value
+3. Append to bottom of Open section (description in body, blank line after):
+   ```markdown
+   ### [ ] (n)
+
+   <description>
    <continuation lines if multi-line>
 
    ```
-6. Write full file; confirm with the assigned ID
+4. Prepend Log subsection:
+   ```markdown
+   ### (n)
+   *YYYY-MM-DD HH:MM* created
+
+   <description>
+   <continuation lines if multi-line>
+
+   ```
+5. Write full file; confirm with the assigned ID
 
 ---
 
 ### `/todo-done <task> -- <comment> [file]`
 
-Mark a task as completed (`[x]`), remove from Open, log it.
+Mark a task as completed (`[x]`), move from Open to Completed, log it.
 
 1. Find the matching open task
-2. Remove the full item (all lines + trailing blank line) from Open
-3. Prepend Log entry:
-   ```
-   ## [x] (id) <first line of description>
-   *YYYY-MM-DD HH:MM* completed
+2. Remove the full subsection (all lines + trailing blank line) from Open
+3. Change marker to `[x]` and prepend to top of Completed section:
+   ```markdown
+   ### [x] (id)
 
-   <original continuation lines if any>
+   <description>
+   <continuation lines if any>
+
+   ```
+4. Prepend Log subsection:
+   ```markdown
+   ### (id)
+   *YYYY-MM-DD HH:MM* completed
 
    <comment>
 
    ```
-4. Write full file; confirm
+5. Write full file; confirm
 
 `-- <comment>` required. If omitted, ask: "What was accomplished?"
 
@@ -244,7 +322,7 @@ Same as `/todo-done` but uses `[-]` marker and event label `canceled`.
 
 ### `/todo-next [file]`
 
-Show the first item in the Open list in full (ID, description, continuation lines). Ask: "Ready to start this? I can begin working on it now."
+Show the first task subsection in the Open section in full (ID, description, continuation lines). Ask: "Ready to start this? I can begin working on it now."
 
 If Open is empty, say so and offer to add a task.
 
@@ -252,11 +330,11 @@ If Open is empty, say so and offer to add a task.
 
 ### Reprioritization commands
 
-All reprioritization commands reorder items in the Open list only — the Log is never reordered. Each writes a Log entry describing the move.
+All reprioritization commands reorder subsections in the Open section only — the Log is never reordered. Each writes a Log subsection describing the move.
 
-Log entry format for moves:
-```
-## (id) <description>
+Log subsection format for moves:
+```markdown
+### (id) <description>
 *YYYY-MM-DD HH:MM* reprioritized — <human-readable description of the move>
 
 <optional comment if provided>
@@ -264,16 +342,16 @@ Log entry format for moves:
 ```
 
 #### `/todo-up <task> [-- <comment>] [file]`
-Move the task one position up (swap with the item above). No-op with notification if already at top.
+Move the task one position up (swap with the task above). No-op with notification if already at top.
 
 #### `/todo-down <task> [-- <comment>] [file]`
-Move the task one position down (swap with the item below). No-op with notification if already at bottom.
+Move the task one position down (swap with the task below). No-op with notification if already at bottom.
 
 #### `/todo-top <task> [-- <comment>] [file]`
-Move the task to position 1 (top of the Open list).
+Move the task to position 1 (top of the Open section).
 
 #### `/todo-bottom <task> [-- <comment>] [file]`
-Move the task to the last position in the Open list.
+Move the task to the last position in the Open section.
 
 #### `/todo-before <task> <target-id> [-- <comment>] [file]`
 Move `<task>` to the position immediately before `<target-id>`.
@@ -292,12 +370,13 @@ When the user asks Claude to plan or execute a multi-step task, the todo file is
 At the beginning of each session:
 
 1. Determine the active file: `docs/todo/claude-<session-id>.todo.md` unless the user specifies otherwise
-2. Create the file if it doesn't exist
-3. Read it fresh
-4. If the user has stated a task or goal, add todo items for each planned step before starting
-5. Prepend a session-start Log entry:
-   ```
-   ## session started
+2. Create the file if it doesn't exist (with v2.0 header)
+3. Check version compatibility: verify the file starts with `# TODO v2.0:`
+4. Read it fresh
+5. If the user has stated a task or goal, add todo items for each planned step before starting
+6. Prepend a session-start Log subsection:
+   ```markdown
+   ### session started
    *YYYY-MM-DD HH:MM* planning
 
    Working on: <brief description>
@@ -323,11 +402,10 @@ Poor: `-- completed`
 
 ### Session end
 
-When wrapping up or pausing, prepend a closing Log entry:
-```
-## session ended
+When wrapping up or pausing, prepend a closing Log subsection:
+```markdown
+### session ended
 *YYYY-MM-DD HH:MM* summary
-
 Completed: (id1), (id3)
 Remaining: (id2), (id4)
 <brief note on where things stand and what is next>
@@ -352,12 +430,13 @@ Remaining: (id2), (id4)
 ### Edge cases
 
 - `docs/todo/` doesn't exist → create it along with the file on first use
-- File has no `# Open` section → add one before inserting
-- File has no `# Log` section → add one before writing a log entry
+- File has no `# TODO vX.X:` header → add one before inserting (use v2.0)
+- File has no `## Open` section → add one before inserting
+- File has no `## Completed` section → add one before inserting completed tasks
+- File has no `## Log` section → add one before writing a log entry
 - User specifies filename without `.todo.md` suffix → append it automatically
 - User specifies filename without path → prepend `docs/todo/`
 - `/todo-up` at top or `/todo-down` at bottom → inform user, write no Log entry
 - `/todo-before` or `/todo-after` where target equals task → inform user, no-op
-- Multi-line task: first line becomes Log heading; continuation lines go into Log entry body
-- When removing an open item, remove its trailing blank line too — do not leave double blank lines
-- Closing a task does **not** change the `# Open (nextid)` counter
+- Multi-line task: description goes in body of the subsection
+- When removing a task subsection, remove its trailing blank line too — do not leave double blank lines
