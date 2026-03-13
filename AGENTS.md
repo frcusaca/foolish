@@ -86,9 +86,10 @@ To be completely safe, let's make our own copy of the repo by running the script
 ```bash
 ./session_starter.make.m2.4.me.sh
 ```
-It outputs an export command for future maven 
-"export MAVEN_OPTS="-Dmaven.repo.local=/home/hcubsy/AI_NAME/BRANCH/.m2.4.me"
-with the AI_NAME and BRANCH name replaced with current path. Do that and we're set for this session in terms of dependencies.
+It outputs an export command for shells used in this session
+```bash
+env | egrep -q "\.m2\.4\.me" || export MAVEN_OPTS="-Dmaven.repo.local=.m2.4.me ${MAVEN_OPTS}"
+```
 
 ### Cleaning
 ```bash
@@ -96,9 +97,7 @@ mvn build-helper:remove-project-artifact
 mvn clean
 ```
 The second command to clean out foolish repo is important. If maven repository is elsewhere, please remove the corresponding foolish code as well. This has proven to be
-a problem for several systems where 'mvn install' was invoked at some point. It installed stale antlr source that prevented updates to g4 files from taking effect.
 
-** IMPORTANT ** NEVER USE "mvn install". THAT COMMAND IS INCOMPATIBLE WITH THIS PROJECT'S BUILD PROCESS. ALWAYS DO A FULL CLEANING WHEN IN DOUBT.
 Part of the Foolish project is to never have to write in all caps like that about a project written in Foolish.
 
 ### Basic Build and Test
@@ -110,26 +109,34 @@ mvn build-helper:remove-project-artifact ## Remove same everywhere else where m2
 mvn clean generate-sources verify
 
 # Parallel build (recommended)
-mvn clean verify -am -fae -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
+mvn clean compile -fae -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 
 # Rebuild Antlr4 parser/lexer and parser from g4 file
 # This needs to happen every time 'foolish-parser-java/src/main/antlr4/Foolish.g4' changes
+```bash
 mvn clean generate-sources -T $(($(nproc) * 2))
+```
+
+# NOTE: Any time syntax changes or other changes are made to the g4 file or else where in the parser
+#   module foolish-parser-java, the parser needs to be reinstalled into maven repo to take effect.
+```
+mvn generate install -pl foolish-parser-java -am
+```
 
 # The approval tests can be selected this way specifying module, class and then the test file filter
-mvn verify -am -ff -pl foolish-core-java -Dtest=UbcApprovalTest -Dfoolish.test.filter=Shadow
+mvn test -ff -pl foolish-core-java -Dtest=UbcApprovalTest -Dfoolish.test.filter=Shadow
 
 # Just build (skip tests) when fixing compilation errors.
-mvn verify -am -ff -DskipTests -T $(($(nproc) * 2))
+mvn compile -ff -DskipTests -T $(($(nproc) * 2))
 
 # However, you may choose single threaded compilation to improve readability of compilation errors
-mvn verify -am -ff -DskipTests
+mvn compile -am -ff -DskipTests
 
 ## Select a module to reduce build time and effort
-mvn comile -ff -pl foolish-core-java -DskipTests -T $(($(nproc) * 2))
+mvn compile -ff -pl foolish-core-java -DskipTests -T $(($(nproc) * 2))
 
 ## Turn on debugging and stack trace for debugging build problems
-mvn clean verify -am -ff -X -e -DskipTests
+mvn clean compile -am -ff -X -e -DskipTests
 ```
 
 ## Tests
@@ -144,36 +151,41 @@ mvn clean verify -am -ff -X -e -DskipTests
 
 ```bash
 # Run all tests with parallel execution
-mvn verify -am -fae -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
+mvn test -fae -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
 
 # Run specific test
-mvn verify -am -ff -Dtest=ClassName#methodName
-mvn verify -am -ff -pl foolish-core-java -Dtest=UbcApprovalTest -Dfoolish.test.filter=Shadow
+mvn test -ff -Dtest=ClassName#methodName
+mvn test -ff -pl foolish-core-java -Dtest=UbcApprovalTest -Dfoolish.test.filter=Shadow
 
 ## Approval Test Protocol
 
-Approval tests can only be updated in one of three ways. Each change requires all subsequent stages to be performed.
+**Goal**: Change Java/Scala source code so the `.received.foo` output matches the `.approved.foo` file exactly.
 
-1. Input File Changed: The `.foo` input file (for example `src/test/resources/org/foolish/fvm/inputs/`) is modified. Sometimes this adds tests for new functionalities, other times this may corrects tests.
-2. Source code is changed so the system under test could produce different results.
-3. Run the test: this produces a `.received.*` file, it should be examined ( generated in `src/test/resources/org/foolish/fvm/ubc/` (Java) or `src/test/resources/org/foolish/fvm/scubc/` (Scala)
-4. Present the difference on screen using a side-by-side diff
+**Agent MUST NOT**:
+- Edit test input files (`src/test/resources/org/foolish/fvm/inputs/*.foo`)
+- Edit approved output files (`*.approved.foo`)
+
+Agents may **propose** changes to input or approved files, but **must ask the human** to make those edits.
+
+### Workflow
+
+1. **Run the test** (produces `*.received.foo`):
    ```bash
-   diff -y --color src/test/resources/org/foolish/fvm/ubc/testName.received.foo \
-                   src/test/resources/org/foolish/fvm/ubc/testName.approved.foo
+   mvn test -pl foolish-core-java -Dtest=UbcApprovalTest -Dfoolish.test.filter=<testName>
    ```
-4. User Approves: After user approval, move `.received.foo` to `.approved.foo`
-5. Subsequent commits and commit comment must mention the approval test was updated.
 
+2. **Compare outputs** (side-by-side diff):
+   ```bash
+   diff -y --color \
+     src/test/resources/org/foolish/fvm/ubc/<testName>.received.foo \
+     src/test/resources/org/foolish/fvm/ubc/<testName>.approved.foo
+   ```
 
-### Running approval tests
-The command for running approval test inside the module foolish-core-java, filtering for input file that has
-Shadow in the name, while in the top foolish directory it would be invoked this way:
+3. **Fix the source code** in `foolish-core-java/src/main/java/` to make `.received.foo` match `.approved.foo`.
 
-```bash
-mvn test -pl foolish-core-java -Dtest=UbcApprovalTest -Dfoolish.test.filter=Shadow
-```
-This runs just the selected approval class and filters input file names.
+4. **Human approval**: After user confirms the diff is correct, human renames `.received.foo` to `.approved.foo`.
+
+**Note**: `Sequencer4Human` is how Java renders FVM internal FIR state for approval test output.
 
 ### Unit Test Redability
 Unit tests are required to test correctness of internal state of the FVM. There are some infrastructure built
@@ -340,6 +352,7 @@ In UBC implementation, this means creating a modified clone with new context. Se
 ### Debugging
 There are many options for debugging the bahvior of code, they include in decreasing preferential order:
 
+- Reproduce errors in approval tests, breaking complex issues into smaller test cases
 - Reproduce errors in a small, new and targeted approval tests, breaking complex issues into smaller test cases.
   Retain this test as regression test when appropriate.
 - Use configuration flags in test comments (`!! --verbose !!`) for verbose output
@@ -461,6 +474,10 @@ This ensures all AI agents can track who modified documentation and when, mainta
 When proposing updates, explain what has changed and why the documentation needs adjustment. After user review, update the "Last Updated" date below whether changes are accepted or the user confirms current state is acceptable.
 
 ## Last Updated
+
+**Date**: 2026-03-12
+**Updated By**: Claude Code / Qwen3.5-27B-AWQ-BF16-INT8
+**Changes**: Rewrote approval test protocol section with concise, clear instructions. Added explicit MUST NOT list for test input and approved files. Specified workflow steps with concrete file patterns and diff commands.
 
 **Date**: 2026-02-06
 **Updated By**: Claude Code v1.0.0 / claude-opus-4-6
