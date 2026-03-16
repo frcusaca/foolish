@@ -139,7 +139,7 @@
         <!-- Maven Surefire plugin -->
         <plugin>
           <artifactId>maven-surefire-plugin</artifactId>
-          <version>3.2.5</version>
+          <version>3.5.5</version>
         </plugin>
 
         <!-- ScalaTest Maven plugin -->
@@ -157,7 +157,7 @@
                 <activation>
                         <activeByDefault>true</activeByDefault>
                 </activation>
-                <build> <plugins> <plugin> <artifactId>maven-surefire-plugin</artifactId> <version>3.2.5</version>
+                <build> <plugins> <plugin> <artifactId>maven-surefire-plugin</artifactId> <version>3.5.5</version>
 		<configuration> 
 		    <argLine>--sun-misc-unsafe-memory-access=allow --enable-native-access=ALL-UNNAMED </argLine>
 		    <includes> <include>**/*Test.java</include> </includes> 
@@ -169,7 +169,7 @@
                 <activation>
                         <activeByDefault>false</activeByDefault>
                 </activation>
-                <build> <plugins> <plugin> <artifactId>maven-surefire-plugin</artifactId> <version>3.2.5</version>
+                <build> <plugins> <plugin> <artifactId>maven-surefire-plugin</artifactId> <version>3.5.5</version>
 					<configuration>
 						<argLine>--sun-misc-unsafe-memory-access=allow --enable-native-access=ALL-UNNAMED </argLine>
 						<includes> <include>**/*UnitTest.java</include> </includes> 
@@ -181,7 +181,7 @@
                 <activation>
                         <activeByDefault>false</activeByDefault>
                 </activation>
-                <build> <plugins> <plugin> <artifactId>maven-surefire-plugin</artifactId> <version>3.2.5</version>
+                <build> <plugins> <plugin> <artifactId>maven-surefire-plugin</artifactId> <version>3.5.5</version>
 					<configuration> 
 						<argLine>--sun-misc-unsafe-memory-access=allow --enable-native-access=ALL-UNNAMED </argLine>
 						<includes> <include>**/*ApprovalTest.java</include> </includes> 
