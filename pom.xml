@@ -124,7 +124,7 @@
         <plugin>
           <groupId>net.alchim31.maven</groupId>
           <artifactId>scala-maven-plugin</artifactId>
-	  <version>4.9.9</version>
+	  <version>4.9.10</version>
 	  <configuration><jvmArgs><jvmArg>--sun-misc-unsafe-memory-access=allow</jvmArg><jvmArg>--enable-native-access=ALL-UNNAMED </jvmArg></jvmArgs></configuration>
         </plugin>
 
