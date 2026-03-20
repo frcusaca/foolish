@@ -56,11 +56,35 @@ Use these terms consistently in documentation and code:
 | **ordinate** | A name (axis/dimension) that an expression is ordinated to in a brane |
 | **coordination** | An expression becoming coordinated with other ordinates during evaluation |
 | **Foolisher** | A person who inhabits and develops Foolish |
-| **nye** | (says "nigh") Any pre-constanic state; a FIR not yet at CONSTANIC |
-| **constanic** | (says "cons-TAN-tic") Constant in context; may gain value in new context. Displays as `⎵⎵` |
+| **nye** / **nigh** | (pronounced "nigh", interchangeable) Any pre-constanic state; a FIR not yet at CONSTANIC |
+| **constanic** | (pronounced "con-TAN-tic") Adjective: constant in context; may gain value in new context. Use lowercase mid-sentence; "Constanic" at sentence start or in titles. |
+| **CONSTANIC** | (pronounced "con-TAN-tic") Noun: the exact Nyes state name. Always all-caps. |
+| **constanicity** | (pronounced "con-stan-ISS-ity") Noun: the property or fact of being constanic. |
 | **no-no** | The `???` value (Not Known); definitely unknown, a final state |
 | **retrospection** | Search upward/backward through scope |
-| **prospection** | Search downward/forward |
+| **prospection** | Search downward/forward through scope |
+
+### Nyes State Names (Always All-Caps)
+
+| State | Meaning |
+|-------|---------|
+| **PREMBRYONIC** | Holding AST; transitioning to structured representation |
+| **EMBRYONIC** | Actively resolving searches through local work and message passing |
+| **BRANING** | Child execution and message forwarding; monitoring dependencies |
+| **ECONSTANIC** | Exactly CONSTANIC: search found nothing, needs new context |
+| **WOCONSTANIC** | Waiting On CONSTANICs: found all identifiers but some are still constanic |
+| **CONSTANT** | Fully evaluated; immutable |
+| **INDEPENDENT** | Detached from parent; reserved for future development |
+
+### Usage Examples
+
+| Correct | Incorrect | Reason |
+|---------|-----------|--------|
+| "The FIR is constanic." | "The FIR is Constanic." | Adjective form is lowercase mid-sentence |
+| "Constanic states are terminal." | "constanic states are terminal." | Adjective capitalizes at sentence start |
+| "The FIR is in CONSTANIC state." | "The FIR is in Constanic state." | State name is always all-caps |
+| "The FIR is still nye." | "The FIR is still CONSTANIC." | "nye" = not yet constanic |
+| "The brane's constanicity ensures stability." | "The brane's constanic ensures stability." | Use noun form "constanicity" for the property |
 
 ### Development Stages
 
@@ -170,9 +194,8 @@ more precisely.
 
 ## Last Updated
 
-Date: 2026-02-26
-Updated By: Claude Code v1.0.0 / claude-opus-4-6
-Changes: Reduced emphatic markings — removed bold from running prose (tab characters, text
-width, Zipf distribution, voice/register transition phrases, approval test descriptions).
-Retained bold on definition-list labels in Terminology table.
-Previous (2026-02-06): Initial creation from vintage_legacy/STYLES.md.
+**Date**: 2026-03-20
+**Updated By**: Claude Code / cyankiwi/Qwen3.5-27B-AWQ-BF16-INT8
+**Changes**: Added comprehensive terminology table for constanic/CONSTANIC/constanicity distinction.
+Clarified nye/nigh as interchangeable. Added Nyes State Names table and Usage Examples table.
+Previous (2026-02-26): Reduced emphatic markings — removed bold from running prose.

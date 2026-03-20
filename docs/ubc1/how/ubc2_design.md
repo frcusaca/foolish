@@ -512,20 +512,16 @@ terminal states:
 | WOCONSTANIC | Waiting On ECONSTANICs. Every search was found, but one or more of the found results are themselves ECONSTANIC or WOCONSTANIC. The expression is waiting for its dependencies to settle. When those dependencies gain value (through recoordination), this expression can progress. |
 | CONSTANT | Fully evaluated. All searches resolved to CONSTANT or INDEPENDENT values. Immutable. |
 | INDEPENDENT | Promoted from CONSTANT. Detached from parent — although the parent may still hold a reference to it. Reserved for future development. |
-#### The Constanic Predicate
+#### Terminology: Constanic, CONSTANIC, and constanicity
 
-**Constanic** (adjective): Short for "Constant In Context." An FIR is constanic when it will
-not change unless its context changes.
+| Term | Usage | Example |
+|------|-------|---------|
+| **constanic** | Adjective meaning "constant in context". Use lowercase mid-sentence; capitalizes to "Constanic" at sentence start or in titles. | "The FIR is constanic." / "Constanic states are terminal." |
+| **CONSTANIC** | Proper name of the exact Nyes state. Always all-caps when referring to the state itself. | "The FIR is in CONSTANIC state." / "at CONSTANIC" |
+| **constanicity** | Noun (pronounced "con-stan-ISS-ity"). The property or fact of being constanic. Use when you need a noun form. | "The brane's constanicity ensures stability." |
+| **nye / nigh** | Interchangeable adjectives for pre-constanic states (same pronunciation: "nigh"). | "The FIR is still nye." / "The FIR is still nigh." |
 
-**Constanicity** (pronounced "con-stan-ISS-ity"): The property or fact that an FIR is constanic.
-Example: "The brane's value is stable due to its constanicity."
-
-**ECONSTANIC** (state): The exact state meaning "Exactly CONSTANIC." An FIR in ECONSTANIC
-state has completed identifier resolution but found no results for some searches. It needs
-to be placed in a new context where those symbols exist.
-
-**WOCONSTANIC** (state): Waiting On CONSTANICs. The FIR found all its identifiers, but one or
-more of the found results are themselves constanic (ECONSTANIC or WOCONSTANIC).
+**State Names (always all-caps):** ECONSTANIC, WOCONSTANIC, CONSTANT, INDEPENDENT
 
 An FIR is constanic when it is in any of these states: ECONSTANIC, WOCONSTANIC, CONSTANT, or INDEPENDENT.
 
@@ -541,7 +537,7 @@ isNigh();           // alias for isPre(ECONSTANIC)
 getNyes();          // returns the Nyes enum value (read-only; no setNyes())
 ```
 
-In English prose we say "at Constanic", "pre-Constanic", "post-Constanic". For formal
+In English prose we say "at CONSTANIC", "pre-CONSTANIC", "post-CONSTANIC". For formal
 specification we use the methods above.
 
 The constanic predicate is defined as:
@@ -1551,7 +1547,7 @@ approval tests. UBC2 updates the rendering to distinguish all constanic states c
 |--------|-------|---------|
 | `🧠???` | NK | Not Known. The UBC has proven this search will fail in all possible future contexts. Definitively unfindable. |
 | `🧠??` | ECONSTANIC | Constanic. Search was performed and nothing was found, but the result might change in a future context (e.g., via brane concatenation). |
-| `🧠?` | WOCONSTANIC | Waiting On Constanics. All searches were found, but one or more results are themselves ECONSTANIC or WOCONSTANIC. Structurally complete, waiting on dependencies. |
+| `🧠?` | WOCONSTANIC | Waiting On CONSTANICs. All searches were found, but one or more results are themselves ECONSTANIC or WOCONSTANIC. Structurally complete, waiting on dependencies. |
 | *(value)* | CONSTANT | The fully evaluated result is shown directly. |
 | *(expanded)* | INDEPENDENT | Shown as value. Indistinguishable from CONSTANT in output. |
 
@@ -2354,21 +2350,12 @@ These are noted in the design but deferred to later iterations:
 
 ## Last Updated
 
-**Date**: 2026-03-12
+**Date**: 2026-03-20
 **Updated By**: Claude Code / cyankiwi/Qwen3.5-27B-AWQ-BF16-INT8
-**Changes**: Fixed terminology typos from global replace: replaced all occurrences of WOECONSTANIC with
-WOCONSTANIC (the state name is WOCONSTANIC, not WOECONSTANIC). Replaced EECONSTANIC with ECONSTANIC
-(double-E typo). ECONSTANIC is the exact state name meaning "Exactly CONSTANIC", while WOCONSTANIC
-means "Waiting On CONSTANICs". Removed @AGENT comment block about state access methods and replaced
-with formal "State Access Methods" subsection defining isAt/isPre/isPost/isNigh/getNyes methods.
-Updated "The Constanic Predicate" section with formal predicate definition:
-hasConstanicity = isAt(ECONSTANIC) || isPost(ECONSTANIC). Updated terminology: replaced
-"achievedConstanicity" with "hasConstanicity". Added definition of "constanicity" (pronounced
-"con-stan-ISS-ity") as the condition of being constant in context. An FIR has constanicity when in
-ECONSTANIC, WOCONSTANIC, CONSTANT, or INDEPENDENT state. The adjective "constanic" means "having
-constanicity or higher." Updated "Communication Medium" subsection to "Communication Media"
-(plural). Added mention of MVP (parent-to-ancestor chaining) and advanced options (delegated
-addressing). Updated link to D0.6 Communication Media.
+**Changes**: Rewrote "The Constanic Predicate" section with clear terminology table distinguishing
+constanic (adjective), CONSTANIC (state name), and constanicity (noun). Added nye/nigh interchangeable
+note. Updated English prose examples to use all-caps CONSTANIC for state references.
+Previous (2026-03-12): Fixed terminology typos from global replace: replaced all occurrences of WOECONSTANIC with WOCONSTANIC.
 Previous (2026-03-03): Expanded "NK Is Reserved for Provably Unfindable Cases" to include
 anchored search on ECONSTANIC branes (identifiers are known even if values aren't),
 NK anchors, and non-brane values. Added "Binding Precedence" subsection explaining
