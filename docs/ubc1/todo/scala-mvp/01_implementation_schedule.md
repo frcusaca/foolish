@@ -49,14 +49,28 @@ complexity that caused so much grief in prior implementations.
 
 | MVP | Goal | Language features in scope |
 |-----|------|---------------------------|
-| **MVP1** | Language correctness demo | Branes, identification, arithmetic, backward-only search (exact + regex), constanic coordination, concatenation (sequential blocking). Target: all active approval tests pass. |
-| **MVP2** | Visual brane browser | Web demo visualizing the MVP1 features — brane tree, CONSTANIC highlighting, live evaluation. No new language features. |
-| **MVP3** | Usable language | Forward search (`~`), unanchored seek (`#-N`), detachment, SF/SFF marks, REPL with line editing. Language becomes practically usable. |
+| **MVP1** | Language correctness demo | Branes, identification, arithmetic, **unanchored backward search** (bare identifier + `#-N` + regex), anchored search (`.`, `?`, `^`, `$`, `#N`), constanic coordination, concatenation (sequential blocking). Target: all active approval tests pass. |
+| **MVP2** | Visual brane browser (LOD) | Web demo with **level-of-detail viewport** — screen shows a consecutive window into a brane; multiple viewports possible. Navigation powered by MVP1 search. No new language features. |
+| **MVP3** | Usable language | Forward search (`~`), REPL with persistent session + line editing, detachment, SF/SFF marks. |
 
-**Important note on identifiers**: there are no "variable references" — identifiers
-are exact-match search requests. `x` is shorthand for "search backward for the last
-statement named `x`". This distinction matters for implementation: lookup is always
-search, never a symbol-table pointer dereference.
+**Why unanchored search is MVP1, not MVP3**: it is the *only* mechanism that produces
+CONSTANIC results. When you write `user_name` as a bare identifier, that is an unanchored
+backward search. If `user_name` is not found in the current IB or any AB, the expression
+becomes CONSTANIC — which is a core language property, not an advanced feature. Without
+unanchored search there is no constanic, and without constanic there is no concatenation
+semantics. It must be in MVP1.
+
+**Important note on identifiers**: there are no "variable references" — all identifiers
+are unanchored backward search requests. `x` means "search backward through IB from the
+current statement, then up through each AB, and return the last statement named `x`."
+This is why a reference to a CONSTANIC statement makes the referencing expression
+CONSTANIC too — you found the thing you were searching for, but it hasn't resolved yet.
+
+**MVP2 LOD design**: a brane can have thousands of statements; the screen is finite.
+The viewer shows a *window* of consecutive statements within a brane, with controls to
+scroll. Multiple viewports can be open simultaneously, each focused on a different brane
+or a different region of the same brane. The MVP1 search operators (`?`, `~`, `#N`, etc.)
+drive navigation — jump to a named statement, regex-search within a brane, go to head/tail.
 
 ---
 
@@ -67,15 +81,14 @@ search, never a symbol-table pointer dereference.
 | **P1** | — | Parser + AST wiring | Shared parser produces AST; new Scala module wires it |
 | **P2** | — | Literal evaluation | Values, empty brane, output sequencer |
 | **P3** | — | Arithmetic | Operators, precedence, NK propagation |
-| **P4** | — | Branes + scope | Nested branes, identification, shadowing, scope chain |
-| **P5** | — | Constanic | Missing identifiers → CONSTANIC; output symbols |
-| **P6** | MVP1 | Anchored search | `.`, `?` (backward), `^`, `$`, `#N`, regex |
+| **P4** | — | Branes + scope | Nested branes, identification, shadowing, breadth-first eval |
+| **P5** | — | Unanchored search + constanic | Bare identifier = unanchored backward search; `#-N` seek; CONSTANIC when not found |
+| **P6** | MVP1 | Anchored search | `.`, `?` (backward), `~` forward within brane, `^`, `$`, `#N`, regex |
 | **P7** | MVP1 | Concatenation | Sequential blocking: A CONSTANT → B evaluates with A as AB |
 | **P8** | MVP1 | Approval test pass | All 60 active `.foo` tests green; cross-validate vs Java |
-| **P9** | MVP2 | Brane browser webapp | JSON API + frontend visualizing brane trees |
-| **P10** | MVP3 | Forward search + seek | `~`, `#-N`, unanchored regex |
-| **P11** | MVP3 | REPL | Persistent session brane, line editing, multiline input |
-| **P12** | MVP3 | Detachment | `[id]{...}`, P-brane, SF/SFF marks |
+| **P9** | MVP2 | LOD brane browser | JSON API + windowed viewport frontend; search-driven navigation |
+| **P10** | MVP3 | REPL | Persistent session brane, line editing, multiline input |
+| **P11** | MVP3 | Detachment | `[id]{...}`, P-brane `[+id]`, SF/SFF marks |
 
 ---
 
@@ -214,19 +227,31 @@ shebang.foo
 
 ---
 
-## Phase 5 — Constanic State
+## Phase 5 — Unanchored Search + Constanic
 
-**Goal**: Missing identifiers produce CONSTANIC (not NK). Output renders correctly.
+**Goal**: Bare identifiers and `#-N` are unanchored backward searches. When an
+unanchored search finds nothing, the expression is CONSTANIC. When it finds a
+CONSTANIC result, the referencing expression is also CONSTANIC.
+
+**This phase is the heart of the language.** Without unanchored search there is no
+constanic, and without constanic there is no meaningful concatenation.
 
 **Key distinction** (critical — this is where prior impls went wrong):
-- Anchored search fails on CONSTANT brane → `NK` (`🧠???`) — brane is done, name not there
-- Anchored search on CONSTANIC brane → `NK` (`🧠???`) — can't search a brane that isn't ready
-- Unanchored identifier not found in any scope → `CONSTANIC` (`🧠??`) — might resolve later
+- `user_name` (bare identifier) = unanchored backward search through IB then AB chain
+  - Found, CONSTANT result → expression is CONSTANT
+  - Found, CONSTANIC result → expression is CONSTANIC (you found it, but it's not ready)
+  - Not found anywhere → expression is CONSTANIC (might resolve in a new context)
+- `brane?name` (anchored) fails on CONSTANT brane → `NK` (`🧠???`) — definitely not there
+- `brane?name` on CONSTANIC brane → `NK` (`🧠???`) — can't search a brane that isn't ready
+- `10 / 0`, depth exceeded, etc. → `NK` (`🧠???`) — definitively unknown
 
 **What to build**:
-- Distinguish NK from CONSTANIC in output sequencer
-- `eval` returns `Constanic(ast)` when unanchored lookup fails entire scope chain
-- Brane's own state = worst of its statements (CONSTANIC if any statement is CONSTANIC)
+- Unanchored search: walk IB backward from `fromLine`, then each AB in order
+- `#-N` seek: N steps back within IB only; CONSTANIC if not enough prior statements
+- Distinguish NK from CONSTANIC in output sequencer (`🧠???` vs `🧠??`)
+- `eval` returns `Constanic(ast)` when unanchored lookup finds nothing
+- When found result is itself CONSTANIC → propagate CONSTANIC
+- Brane's state = worst of its statements (CONSTANIC beats CONSTANT)
 
 **Tests to enable**:
 ```
@@ -239,11 +264,14 @@ anchoredSearchOnConstanic.foo
 anchoredSearchFailsOnConstant.foo
 regression_disappearing_brane_statements.foo
 test_nested_brane_boundary.foo
+unanchoredSeekBasic.foo
+test_unanchored_oneshot.foo
 ```
 
 **Reorganize**: Split `levelSkippingSearch*.foo` into cleaner atomic tests:
 - `p5_constanic_unanchored_not_found.foo` — bare identifier not found → `🧠??`
 - `p5_constanic_chain.foo` — `a = b; b = missing` → both CONSTANIC
+- `p5_constanic_found_constanic.foo` — `a = missing; b = a` → b is CONSTANIC because a is
 - `p5_nk_anchored_not_found.foo` — `brane?missing` on CONSTANT brane → `🧠???`
 
 ---
@@ -290,58 +318,26 @@ test_syntax.foo
 
 ---
 
-## Phase 7 — Unanchored Search + Seek
-
-**Goal**: Bare `name` identifier search (backward + AB chain), `#-N` positional seek.
-
-**Rules**:
-- `name` alone: search IB backward from current statement, then AB, then AB's AB...
-- `#-N`: N statements back from current position in IB only (boundary-respecting)
-- `=$ expr` sugar: `result = expr$` (tail of expr)
-- `=^ expr` sugar: `result = expr^` (head of expr)
-- `=#N expr` sugar: `result = expr#N`
-
-**What to build**:
-- Unanchored search threading AB chain
-- `SeekFir`: positional `#-N` within IB, returns CONSTANIC if not enough prior statements
-- Sugar desugaring in eval (or in parser — check grammar)
-
-**Tests to enable**:
-```
-unanchoredSeekBasic.foo
-test_unanchored_oneshot.foo
-test_nested_brane_boundary.foo  (boundary behaviour of #-N)
-```
-
-**Reorganize**: `unanchoredSeekBasic.foo` has 8 sub-cases; split into:
-- `p7_seek_basic.foo` — `#-1`, `#-2`
-- `p7_seek_boundary.foo` — seek doesn't cross brane boundary
-- `p7_seek_sugar.foo` — `=$`, `=^`, `=#N` syntactic sugar
-
----
-
-## Phase 8 — Concatenation (Sequential Blocking)
+## Phase 7 — Concatenation (Sequential Blocking)
 
 **Goal**: `A B` — A must be fully CONSTANT before B evaluates, with A's statements
-prepended to B's scope (A becomes part of B's AB).
+prepended to B's scope (A becomes innermost layer of B's AB chain).
 
 **The simple model** (learned from prior failures):
 ```
-eval concat(A, B):
-  aResult = eval(A)
-  if aResult is not CONSTANT → whole concat is CONSTANIC
-  bResult = eval(B, ab = aResult prepended to existing AB)
-  return bResult (merged brane)
+eval(concat(A, B), ab, ib):
+  aResult = eval(A, ab, ib)
+  if aResult is not CONSTANT → whole concat is CONSTANIC (hold AST)
+  bResult = eval(B, ab = aResult :: ab, ib)
+  return merged brane (A statements followed by B statements)
 ```
 
-No isolation stage. No three-stage process. No cloning during evaluation.
-When A is CONSTANT, B just evaluates normally with A as extra scope — finding things
-in A that it couldn't find before.
+No isolation stage. No cloning. No three-stage process. B's unanchored searches
+find things in A first (A is the nearest AB layer), then look further up.
 
 **What to build**:
-- `ConcatFir`: evaluates left, blocks if not CONSTANT, then evaluates right with extended AB
-- AB threading: when B evaluates, A's statements are the innermost AB layer
-- Merging: result brane contains A's statements followed by B's statements
+- `eval` case for `AST.Concat`: evaluate left, gate on CONSTANT, evaluate right with extended AB
+- Merged result: A's statements followed by B's, presented as a single brane value
 
 **Tests to enable**:
 ```
@@ -351,65 +347,127 @@ concatenationSearch.foo
 concatenationResolutionAdv.foo
 ```
 
-**Reorganize**: Existing concatenation tests mix many scenarios; add focused tests:
-- `p8_concat_simple.foo` — `{a=1}{b=2}` → both visible
-- `p8_concat_resolution.foo` — B resolves identifier from A
-- `p8_concat_constanic_left.foo` — left side CONSTANIC → whole thing CONSTANIC
-- `p8_concat_chain.foo` — `A B C` left-associative
+**New focused tests**:
+- `p7_concat_simple.foo` — `{a=1}{b=2}` → both visible in result
+- `p7_concat_resolution.foo` — B finds identifier from A
+- `p7_concat_constanic_left.foo` — left CONSTANIC → whole concat CONSTANIC
+- `p7_concat_chain.foo` — `A B C` left-associative: `(A B) C`
 
 ---
 
-## Phase 9 — REPL MVP1
+## Phase 8 — Approval Test Pass (MVP1 complete)
 
-**Goal**: Working REPL where each line extends a persistent top-level brane.
+**Goal**: All 60 active `.foo` tests pass. Cross-validate output matches Java impl.
+
+**What to do**:
+- Run `ScUbc2ApprovalTest` against all active inputs
+- For any mismatch: read `.received.foo` vs `.approved.foo` side-by-side, understand before approving
+- Do NOT bulk-approve — each baseline must be understood (lesson from commit `0032e474`)
+- Run cross-validation against Java UBC1 output; document any intentional differences
+
+**Sugar forms to verify** (all covered by existing tests):
+- `=$ expr` — tail sugar (`assignmentAnchor.foo`, `test_unanchored_oneshot.foo`)
+- `=^ expr` — head sugar
+- `=#N expr` — index sugar
+
+---
+
+## Phase 9 — LOD Brane Browser (MVP2)
+
+**Goal**: Web viewer with level-of-detail windowed viewport into brane trees.
+
+**Core insight**: a brane can have thousands of statements; the screen is finite.
+The viewer shows a *window* of consecutive statements. Multiple viewports can be
+open simultaneously, each focused on a different brane or region.
+
+**Navigation is powered by MVP1 search**:
+- Jump to named statement via `?name` or `~name`
+- Go to `^` (head) or `$` (tail)
+- Jump to `#N` by index
+- Regex search within a brane
+
+**What to build**:
+- `POST /eval` — evaluate Foolish source, return brane tree as JSON
+- `GET /brane/:id/window?from=N&size=M` — windowed view of consecutive statements
+- `GET /brane/:id/search?q=pattern&dir=backward` — search within a brane, return index
+- Frontend: scrollable statement list, CONSTANIC statements visually distinct (`🧠??`),
+  click nested brane → open new viewport, search box drives navigation
+
+**Brane window JSON shape**:
+```json
+{
+  "braneId": "abc123",
+  "totalStatements": 1200,
+  "window": { "from": 40, "size": 20 },
+  "statements": [
+    {"index": 40, "name": "x", "state": "constant", "value": 42},
+    {"index": 41, "name": "y", "state": "constanic"},
+    {"index": 42, "name": null, "state": "constant", "value": {"type": "brane", "id": "def456", "size": 5}}
+  ]
+}
+```
+
+**Stack**: http4s + circe (pure Scala, lightweight); thin JS or htmx frontend.
+
+---
+
+## Phase 10 — REPL (MVP3)
+
+**Goal**: Interactive session where each line extends a persistent top-level brane.
 
 **Session model**:
 ```
-> x = 42          ← appended as statement 1
-> y = x + 1       ← appended as statement 2; sees x from statement 1
+> x = 42          ← statement 1; CONSTANT
+> y = x + 1       ← statement 2; sees x → CONSTANT 43
 => y = 43
-> z = missing     ← appended as statement 3
-=> z = 🧠??       ← CONSTANIC (might resolve if user types 'missing = ...' later)
+> z = missing     ← statement 3; CONSTANIC
+=> z = 🧠??
+> missing = 7     ← statement 4; now z can re-evaluate
+=> missing = 7
+=> z = 🧠??       ← still CONSTANIC: re-eval on next step or explicit :eval command
 ```
 
 **What to build**:
-- `FoolishRepl`: accumulates `List[Statement]` as the session brane
-- Each input line → parse → append to session brane → re-evaluate from last changed statement
-- Display only the result of the last statement (or all if in verbose mode)
-- Line editing: jline3 (already in JVM ecosystem, Scala-friendly)
+- Session brane accumulates statements; later lines see earlier names via unanchored search
+- jline3 for line editing and history
 - Error recovery: parse errors print message, don't kill session
-- Multiline input: detect unclosed `{` and prompt for continuation
-
-**New tests to write** (REPL-specific, not approval-test style):
-- `ReplSessionTest.scala` — unit tests for session accumulation
-- `ReplErrorRecoveryTest.scala` — parse errors don't corrupt session
+- Multiline: detect unclosed `{`, prompt for continuation with `..` prefix
 
 ---
 
-## Phase 10 — Detachment (Post-MVP1)
+## Phase 11 — Detachment (MVP3)
 
-The disabled tests define the scope. Implement in this sub-order:
+The 7 disabled tests define the scope. Implement in sub-order:
 
 | Sub-phase | Feature | Tests |
 |-----------|---------|-------|
-| P10a | Basic `[id]{...}` M-brane | `detachmentAlarms.foo` (test_1) |
-| P10b | P-brane `[+id]` partial application | `detachmentPBrane.foo` |
-| P10c | Re-detachment | `detachmentComplexTests.foo` (test_re_detachment) |
-| P10d | Forward search liberation `[~pat]` | `detachmentForwardSearch.foo` |
-| P10e | SF mark `<expr>` | `detachmentSFMark.foo`, `SFMarkWithoutDetachment.foo` |
-| P10f | SFF mark `<<expr>>` | `detachmentSFFMark.foo` |
-| P10g | Alarm system | `detachmentAlarms.foo` (test_2, test_3) |
-| P10h | Complex nested | `detachmentComplexTests.foo` (remaining) |
+| P11a | Basic `[id]{...}` M-brane | `detachmentAlarms.foo` (test_1) |
+| P11b | P-brane `[+id]` partial application | `detachmentPBrane.foo` |
+| P11c | Re-detachment | `detachmentComplexTests.foo` (test_re_detachment) |
+| P11d | Forward search liberation `[~pat]` | `detachmentForwardSearch.foo` |
+| P11e | SF mark `<expr>` | `detachmentSFMark.foo`, `SFMarkWithoutDetachment.foo` |
+| P11f | SFF mark `<<expr>>` | `detachmentSFFMark.foo` |
+| P11g | Alarm system | `detachmentAlarms.foo` (test_2, test_3) |
+| P11h | Complex nested + curry chains | `detachmentComplexTests.foo` (remaining) |
 
-**Note on SF/SFF semantics**: SF mark `<f>` resolves own symbols only, does not forward
-children's searches, does not step found results. SFF mark `<<f>>` skips straight to CONSTANIC
-without any resolution. These interact with concatenation to enable late binding.
+**Note on SF/SFF**: SF `<f>` resolves own symbols only, no child forwarding, does not
+step found results. SFF `<<f>>` skips straight to CONSTANIC. Both interact with
+concatenation to enable late binding and partial application.
 
 ---
 
-## Phase 11 — Webapp MVP2
+## Phase 12 — Forward Search (MVP3 polish)
 
-**Goal**: Browser UI for navigating and expanding branes.
+**Goal**: `~` operator (forward search within a named brane, finds first match).
+Deferred to MVP3 because: it requires a named brane to already be CONSTANT, doesn't
+interact with constanic/concatenation semantics, and is not needed for the approval
+tests that cover the core language.
+
+**Tests to enable**: `testTilde.foo`, `detachmentForwardSearch.foo` (partially)
+
+---
+
+## Phase 13 — Webapp MVP2
 
 **Stack** (recommendation, to be confirmed):
 - `http4s` + `circe` for JSON API (pure Scala, lightweight)
@@ -454,13 +512,14 @@ Some existing tests conflate multiple behaviours. Proposed splits:
 
 ```
 P1 (parser) → P2 (literals) → P3 (arithmetic)
-                            → P4 (branes/scope) → P5 (constanic)
+                            → P4 (branes/scope) → P5 (unanchored search + constanic)  ← MVP1 foundation
                                                  → P6 (anchored search)
-                                                 → P7 (unanchored/seek)
-                                               P5 + P6 + P7 → P8 (concatenation)
-                                                             → P9 (REPL MVP1)
-                                                             → P10 (detachment)
-                                                             P9 → P11 (webapp MVP2)
+                                               P5 + P6 → P7 (concatenation)
+                                                       → P8 (approval test pass)      ← MVP1 complete
+                                                       → P9 (LOD brane browser)       ← MVP2
+                                                       → P10 (REPL)                   ← MVP3
+                                                       → P11 (detachment)             ← MVP3
+                                                       → P12 (forward search)         ← MVP3 polish
 ```
 
 ---
