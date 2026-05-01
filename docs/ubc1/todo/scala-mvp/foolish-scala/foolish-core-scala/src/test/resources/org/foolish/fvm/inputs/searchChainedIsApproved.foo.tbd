@@ -1,0 +1,10 @@
+{
+	!! Test chained search operations
+	!! Based on existing regexSearchShadowy.foo test
+
+	!! Search a brane, then search the result
+	nested = {outer={inner={x=5; y=10;}}}?(outer)?inner;
+
+	!! Pattern to find a name, then another pattern
+	data = {result_a=1; result_b=2; result_c=3;}?(result_.*);
+}

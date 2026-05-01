@@ -1,0 +1,9 @@
+{
+  !! Test: Anchored search on CONSTANIC anchor
+  !! When anchor itself is constanic (???) -> result is ???
+
+  !! Chained constanic
+  emptyBrane = {};
+  chainedConstanic = emptyBrane^;  !! ???
+  doubleConstanic = chainedConstanic$;  !! ??? (searching on ???)
+}
