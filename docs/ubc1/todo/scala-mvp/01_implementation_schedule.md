@@ -78,8 +78,8 @@ drive navigation — jump to a named statement, regex-search within a brane, go 
 
 | Phase | MVP | Milestone | Description |
 |-------|-----|-----------|-------------|
-| **P1a** | — | Parser unit tests | ANTLR grammar parses all Foolish syntax; dedicated tests verify AST shape without evaluation |
-| **P1b** | — | Evaluator scaffold | New Scala module wires parser AST; skeleton `BraneComputer`; empty approval test harness |
+| **P1a** | — | Grammar + Scala AST | Strip `ifExpr`/detachment/SF/SFF from grammar; define Scala sealed-class AST; write parser unit tests |
+| **P1b** | — | Evaluator scaffold | Stub `BraneComputer` in `foolish-core-scala`; copy `.foo` inputs; empty approval test harness |
 | **P2** | — | Literal evaluation | Values, empty brane, output sequencer |
 | **P3** | — | Arithmetic | Operators, precedence, NK propagation |
 | **P4** | — | Branes + scope | Nested branes, identification, shadowing, breadth-first eval |
@@ -93,61 +93,101 @@ drive navigation — jump to a named statement, regex-search within a brane, go 
 
 ---
 
-## Phase 1a — Parser Unit Tests
+## Phase 1a — Grammar + Scala AST
 
-**Goal**: The ANTLR grammar (`foolish-parser-java`) correctly parses every Foolish
-syntax construct. Parsing is verified independently of any evaluation.
+**Goal**: A stripped grammar produces a clean Scala sealed-class AST. Only MVP1–MVP2
+syntax is included. No Java interop. No evaluation yet.
 
-**Why separate**: parsing can be wrong in ways that evaluation masks (e.g., a precedence
-mistake that happens to produce correct answers in simple tests). Unit tests at the AST
-level catch grammar bugs before the evaluator even exists.
+**New module**: `foolish-scala/` — fresh directory, not a rename of `foolish-core-scala`.
+Copy over only the approval test `.foo` files and build scaffolding. This avoids
+inheriting UBC1 Scala debt.
 
-**What to build**:
-- Scala test class `FoolishParserTest` (in `foolish-core-scala` or dedicated test module)
-- Each test: parse a Foolish snippet → assert the resulting AST matches expected shape
-- No evaluation, no output formatting — AST structure only
+**Grammar changes** (create `foolish-scala/src/main/antlr4/FoolishMvp.g4` from `Foolish.g4`):
 
-**Tests to write** (each is a Scala unit test, not a `.foo` approval test):
+Remove these grammar rules and their tokens — they are deferred to MVP3:
+- `ifExpr`, `ifExprHelperIf`, `ifExprHelperElif`, `ifExprHelperElse`, `endIf`
+  — tokens: `IF`, `THEN`, `ELIF`, `ELSE`, `FI`
+- `detach_brane`, `detach_stmt_list`, `detach_stmt` — tokens: `LBRACK`, `RBRACK`
+- `brane_search` (`UP` / `↑`) — token: `UP`
+- `LT_LT expr GT_GT` and `LT expr GT` alternatives in `primary` (SF / SFF markers)
+  — tokens: `LT_LT_EQ_GT_GT`, `LT_EQ_GT`, `LT_LT`, `GT_GT`, `LT`, `GT`
+- SF/SFF assignment alternatives in `assignment` rule (`LT_LT_EQ_GT_GT`, `LT_EQ_GT`)
+
+Keep everything else, including regex search, characterization, concatenation, `#-N` seek,
+assignment sugar (`=$ expr`, `=^ expr`), comments, shebang.
+
+**Scala sealed AST** (`FoolishAst.scala` in `foolish-scala`):
+
+```scala
+sealed trait Expr
+case class IntLit(value: Long)                                          extends Expr
+case class Identifier(characterizations: List[String], id: String)      extends Expr
+case class Brane(characterizations: List[String], stmts: List[Expr])    extends Expr
+case class Assignment(id: Identifier, op: AssignOp, rhs: Expr)          extends Expr
+case class BinaryExpr(op: String, left: Expr, right: Expr)              extends Expr
+case class UnaryExpr(op: String, expr: Expr)                            extends Expr
+case class Concatenation(elements: List[Expr])                          extends Expr
+case class DotSearch(anchor: Expr, name: Identifier)                    extends Expr
+case class RegexSearch(anchor: Expr, op: SearchOp, pattern: String)     extends Expr
+case class IndexAccess(anchor: Expr, index: Int)                        extends Expr
+case class OneShotSearch(anchor: Expr, op: SearchOp)                    extends Expr  // ^ $
+case class UnanchoredSeek(offset: Int)                                  extends Expr  // #-N
+case class UnknownExpr()                                                extends Expr  // ???
+
+case class Program(branes: List[Expr])
+
+enum AssignOp { case Normal, TailSugar, HeadSugar, IndexSugar(n: Int) }
+enum SearchOp { case Backward, Forward }
+```
+
+**ASTBuilder** (`FoolishAstBuilder.scala`): walks the ANTLR parse tree, produces
+`FoolishAst.Program`. One method per grammar rule. Exhaustive match on all rules
+in the stripped grammar — no `???` stubs, no fallthrough.
+
+**Tests to write** (each is a Scala unit test):
 
 | Test name | Foolish input | AST assertion |
 |-----------|--------------|---------------|
-| `parsesEmptyBrane` | `{}` | `Program(List(BraneExpr(Nil)))` |
-| `parsesIntLiteral` | `42` | `IntLit(42)` |
-| `parsesFloatLiteral` | `3.14` | `FloatLit(3.14)` |
-| `parsesStringLiteral` | `"hello"` | `StringLit("hello")` |
-| `parsesIdentification` | `x = 42` | `Identification("x", IntLit(42))` |
-| `parsesAddition` | `1 + 2` | `BinaryOp("+", IntLit(1), IntLit(2))` |
-| `parsesOperatorPrecedence` | `1 + 2 * 3` | `BinaryOp("+", IntLit(1), BinaryOp("*", IntLit(2), IntLit(3)))` |
-| `parsesNestedBrane` | `{x = {1}}` | nested `BraneExpr` |
-| `parsesUnanchoredSearch` | `user_name` | `Identifier("user_name")` |
-| `parsesAnchoredDot` | `b.x` | `AnchoredSearch(backward, "b", "x")` |
-| `parsesHeadTail` | `b^`, `b$` | `Head("b")`, `Tail("b")` |
-| `parsesIndex` | `b#3`, `b#-2` | `IndexAccess("b", 3)`, `IndexAccess("b", -2)` |
-| `parsesUnanchoredSeek` | `#-2` | `UnanchoredSeek(-2)` |
-| `parsesConcatenation` | `{a=1}{b=2}` | `Concat(BraneExpr(...), BraneExpr(...))` |
-| `parsesRegexSearch` | `b?(a.*)` | `AnchoredSearch(backward, "b", pattern="a.*")` |
-| `parsesComment` | `!! a comment\n42` | comment ignored; body = `IntLit(42)` |
-| `parsesShebang` | `#!/usr/bin/env foolish\n{}` | shebang ignored; body = `BraneExpr(Nil)` |
-| `parsesMultiStatements` | `{1; 2; 3}` | three-statement `BraneExpr` |
-| `parsesCharacterization` | `type'name` | `CharacterizedId("type", "name")` |
-| `parsesAssignmentSugar` | `=$ expr` | `TailAssign(expr)` |
+| `parsesEmptyBrane` | `{}` | `Brane(Nil, Nil)` |
+| `parsesIntLiteral` | `{42}` | `Brane(Nil, List(IntLit(42)))` |
+| `parsesIdentification` | `{x = 42}` | `Assignment(Identifier(Nil,"x"), Normal, IntLit(42))` |
+| `parsesAddition` | `{1 + 2}` | `BinaryExpr("+", IntLit(1), IntLit(2))` |
+| `parsesOperatorPrecedence` | `{1 + 2 * 3}` | `BinaryExpr("+", ..., BinaryExpr("*",...))` |
+| `parsesNestedBrane` | `{x = {1}}` | nested `Brane` |
+| `parsesUnanchoredSearch` | `{user_name}` | `Identifier(Nil, "user_name")` |
+| `parsesCharacterization` | `{type'name}` | `Identifier(List("type"), "name")` |
+| `parsesAnchoredDot` | `{b.x}` | `DotSearch(Identifier(Nil,"b"), Identifier(Nil,"x"))` |
+| `parsesHead` | `{b^}` | `OneShotSearch(Identifier(Nil,"b"), Backward)` |
+| `parsesTail` | `{b$}` | `OneShotSearch(Identifier(Nil,"b"), Forward)` |
+| `parsesIndex` | `{b#3}` | `IndexAccess(Identifier(Nil,"b"), 3)` |
+| `parsesNegativeIndex` | `{b#-2}` | `IndexAccess(Identifier(Nil,"b"), -2)` |
+| `parsesUnanchoredSeek` | `{#-2}` | `UnanchoredSeek(-2)` |
+| `parsesConcatenation` | `{a=1}{b=2}` | `Concatenation(List(Brane(...), Brane(...)))` |
+| `parsesRegexSearch` | `{b?(a.*)}` | `RegexSearch(Identifier(Nil,"b"), Backward, "a.*")` |
+| `parsesComment` | `{!! comment\n42}` | comment absent from AST; body = `IntLit(42)` |
+| `parsesShebang` | `#!/bin/foo\n{}` | shebang absent; body = `Brane(Nil, Nil)` |
+| `parsesMultiStatements` | `{1; 2; 3}` | `Brane` with 3 statements |
+| `parsesTailSugar` | `{x =$ {b$}}` | `Assignment(..., TailSugar, ...)` |
 
-**No approval tests needed here** — these are pure unit tests with inline expected values.
+**No approval tests in P1a** — pure unit tests, inline expected values.
 
 ---
 
 ## Phase 1b — Evaluator Scaffold
 
-**Goal**: New Scala module compiles and can round-trip the parser output without crashing.
-The evaluator exists as a skeleton; all tests trivially pass or are skipped.
+**Goal**: The new `foolish-scala/` module compiles end-to-end: parse → stub result → no crash.
+Approval test harness exists but all tests are pending/skipped.
 
 **What to build**:
-- New Maven module (or clean slate in existing `foolish-core-scala`)
-- Wire `foolish-parser-java` AST into Scala via Java interop
-- Skeleton `BraneComputer` object: `run(AST.Program): Result` — returns a stub
-- Empty approval test harness: `ScUbc2ApprovalTest` that runs `.foo` files and skips all
+- Maven `pom.xml` for `foolish-scala/`; add as module to root `pom.xml`
+- `BraneComputer.run(prog: FoolishAst.Program): EvalResult` — returns a stub `???` for now
+- `ScUbc2ApprovalTest` approval test harness — discovers all `.foo` files, runs each,
+  compares to `.approved.foo`; currently skips or trivially fails (no approved files yet)
+- Copy approval test input `.foo` files from `foolish-core-java/src/test/resources/`
+  into `foolish-scala/src/test/resources/`; do NOT copy Java `.approved.foo` files
+  (the new impl will generate its own baselines)
 
-**Tests to pass**: none yet (harness exists, all skip or trivially pass)
+**Tests to pass**: none yet
 
 **New `.foo` test to write**: `p1_scaffold.foo`
 ```foolish
@@ -347,6 +387,7 @@ oneShotSearchIsApproved.foo
 offsetAccess.foo
 searchPatternBasicsIsApproved.foo
 searchLocalizedVsGlobalizedIsApproved.foo
+simpleRegexSearchIsApproved.foo
 regexSearchWithPatternIsApproved.foo
 regexSearchNotFoundIsApproved.foo
 regexSearchShadowy.foo
@@ -357,6 +398,12 @@ anchoredSearchOnConstant.foo      (already in P5, verify here too)
 anchoredSearchFailsOnConstant.foo (already in P5)
 test_syntax.foo
 ```
+
+**`.tbd` tests** (5 files: `searchChained`, `searchDollarCaret`, `searchDotCoordinate`,
+`searchGlobalizedParent`, `searchNumericIndex`): these exist as inputs but have no
+approved output yet. They test chained dot access, `^`/`$` on named branes, and numeric
+index access — all features within P6 scope. **Treat them as new tests**: run, review
+received output, approve when correct.
 
 **New test to write**: `p6_chained_dot.foo` — `a.b.c` multi-level dot chain.
 
@@ -401,13 +448,13 @@ concatenationResolutionAdv.foo
 
 ## Phase 8 — Approval Test Pass (MVP1 complete)
 
-**Goal**: All 60 active `.foo` tests pass. Cross-validate output matches Java impl.
+**Goal**: All active `.foo` tests pass. (No cross-validation — Scala is now the sole implementation.)
 
 **What to do**:
 - Run `ScUbc2ApprovalTest` against all active inputs
 - For any mismatch: read `.received.foo` vs `.approved.foo` side-by-side, understand before approving
 - Do NOT bulk-approve — each baseline must be understood (lesson from commit `0032e474`)
-- Run cross-validation against Java UBC1 output; document any intentional differences
+- Intentional divergences from old Java output must be documented in the test file's header comment
 
 **Sugar forms to verify** (all covered by existing tests):
 - `=$ expr` — tail sugar (`assignmentAnchor.foo`, `test_unanchored_oneshot.foo`)
@@ -511,29 +558,6 @@ tests that cover the core language.
 
 ---
 
-## Phase 13 — Webapp MVP2
-
-**Stack** (recommendation, to be confirmed):
-- `http4s` + `circe` for JSON API (pure Scala, lightweight)
-- Thin JS frontend (or Scala.js) calling REST endpoints
-- Endpoints:
-  - `POST /eval` — evaluate Foolish source, return brane tree as JSON
-  - `GET /brane/:id` — expand a brane node
-  - `POST /session` — REPL session management
-
-**Brane tree JSON shape**:
-```json
-{
-  "type": "brane",
-  "statements": [
-    {"name": "x", "value": {"type": "constant", "v": 42}},
-    {"name": "y", "value": {"type": "constanic"}}
-  ]
-}
-```
-
----
-
 ## Test Reorganization Plan
 
 Some existing tests conflate multiple behaviours. Proposed splits:
@@ -588,6 +612,9 @@ Per implementation lessons:
 
 **Date**: 2026-04-30
 **Updated By**: Claude Code claude-sonnet-4-6
-**Changes**: Split Phase 1 into P1a (parser unit tests — verifies ANTLR grammar against
-expected AST shape, no evaluation) and P1b (evaluator scaffold — skeleton BraneComputer,
-approval test harness). Added parser unit test table to P1a. Updated dependency graph.
+**Changes**: Major review pass — removed cross-validation (Scala is sole impl); deleted
+duplicate P13; classified 5 `.tbd` tests and `simpleRegexSearchIsApproved` into P6;
+rewrote P1a/P1b: P1a strips grammar (remove ifExpr/detachment/SF/SFF), defines Scala
+sealed AST, writes parser unit tests; P1b stubs BraneComputer in `foolish-core-scala`.
+Module strategy: keep `foolish-parser-java`, build evaluation in `foolish-core-scala`
+starting from Java-AST-to-Scala-sealed-class conversion.
