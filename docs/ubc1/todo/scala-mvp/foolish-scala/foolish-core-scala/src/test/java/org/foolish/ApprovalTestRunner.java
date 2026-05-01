@@ -100,13 +100,7 @@ public class ApprovalTestRunner {
             String code = Files.readString(inputFile.toPath()).trim();
 
             // Execute tester - produces complete .approved.foo content
-            // Pass the filename for error reporting if the interpreter supports it
-            String approvalContent;
-            if (interpreter instanceof org.foolish.fvm.ubc.JavaUbcInterpreter javaInterpreter) {
-                approvalContent = javaInterpreter.execute(code, inputFile.getName());
-            } else {
-                approvalContent = interpreter.execute(code);
-            }
+            String approvalContent = interpreter.execute(code);
 
             // Create custom namer for output location
             String packageName = outputPath.replace('/', '.');
