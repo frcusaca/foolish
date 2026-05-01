@@ -9,74 +9,74 @@ import scala.jdk.CollectionConverters.*
 
 // Scala sealed hierarchy — convert from Java AST once at entry, evaluate entirely in Scala.
 //
-// Naming convention: every Scala case class begins with `F` (for Foolish) to avoid
+// Naming convention: every Scala case class ends with `Astn` (AST Node) to avoid
 // shadowing the Java AST.* nested types in pattern matches. Without this, Scala 3
 // resolves bare names like `Identifier` to the local case class and Java pattern
 // matching breaks. Do NOT rename them to match the Java side.
 //
 // See 02_implementor_reference.md for the full node inventory.
 
-sealed trait FoolishExpr
+sealed trait FoolishAstn
 
-case class FIntLit(value: Long)                                                extends FoolishExpr
-case class FIdentifier(characterizations: List[String], id: String)            extends FoolishExpr
-case class FBrane(characterizations: List[String], stmts: List[FoolishExpr])   extends FoolishExpr
-case class FBinaryExpr(op: String, left: FoolishExpr, right: FoolishExpr)      extends FoolishExpr
-case class FUnaryExpr(op: String, expr: FoolishExpr)                           extends FoolishExpr
-case class FConcatenation(elements: List[FoolishExpr])                         extends FoolishExpr
-case class FAssignment(id: FIdentifier, op: FAssignOp, rhs: FoolishExpr)       extends FoolishExpr
-case class FDotSearch(anchor: FoolishExpr, name: FIdentifier)                  extends FoolishExpr
-case class FRegexSearch(anchor: FoolishExpr, op: SearchOperator, pattern: String) extends FoolishExpr
-case class FIndexAccess(anchor: FoolishExpr, index: Int)                       extends FoolishExpr
-case class FOneShotSearch(anchor: FoolishExpr, op: SearchOperator)             extends FoolishExpr
-case class FUnanchoredSeek(offset: Int)                                        extends FoolishExpr  // offset already negative
-case object FNKLit                                                              extends FoolishExpr  // ??? literal
-case class FTopLevel(branes: List[FoolishExpr])                                extends FoolishExpr
-case class FNotImplemented(reason: String)                                     extends FoolishExpr  // MVP3-deferred nodes
+case class IntLitAstn(value: Long)                                                  extends FoolishAstn
+case class IdentifierAstn(characterizations: List[String], id: String)              extends FoolishAstn
+case class BraneAstn(characterizations: List[String], stmts: List[FoolishAstn])     extends FoolishAstn
+case class BinaryExprAstn(op: String, left: FoolishAstn, right: FoolishAstn)        extends FoolishAstn
+case class UnaryExprAstn(op: String, expr: FoolishAstn)                             extends FoolishAstn
+case class ConcatenationAstn(elements: List[FoolishAstn])                           extends FoolishAstn
+case class AssignmentAstn(id: IdentifierAstn, op: AssignOpAstn, rhs: FoolishAstn)   extends FoolishAstn
+case class DotSearchAstn(anchor: FoolishAstn, name: IdentifierAstn)                 extends FoolishAstn
+case class RegexSearchAstn(anchor: FoolishAstn, op: SearchOperator, pattern: String) extends FoolishAstn
+case class IndexAccessAstn(anchor: FoolishAstn, index: Int)                         extends FoolishAstn
+case class OneShotSearchAstn(anchor: FoolishAstn, op: SearchOperator)               extends FoolishAstn
+case class UnanchoredSeekAstn(offset: Int)                                          extends FoolishAstn  // offset already negative
+case object NKLitAstn                                                                extends FoolishAstn  // ??? literal
+case class TopLevelAstn(branes: List[FoolishAstn])                                  extends FoolishAstn
+case class NotImplementedAstn(reason: String)                                       extends FoolishAstn  // MVP3-deferred nodes
 
-enum FAssignOp:
+enum AssignOpAstn:
   case Normal
   case TailSugar   // id =$ rhs
   case HeadSugar   // id =^ rhs
 
-case class FProgram(expr: FTopLevel)
+case class ProgramAstn(expr: TopLevelAstn)
 
 object FoolishAst:
 
-  def fromJava(expr: AST.Expr): FoolishExpr = expr match
-    case lit: AST.IntegerLiteral      => FIntLit(lit.value())
-    case id: AST.Identifier           => FIdentifier(id.characterizations().asScala.toList, id.id())
-    case br: AST.Brane                => FBrane(br.characterizations().asScala.toList,
-                                                 br.statements().asScala.toList.map(fromJava))
-    case bin: AST.BinaryExpr          => FBinaryExpr(bin.op(), fromJava(bin.left()), fromJava(bin.right()))
-    case un: AST.UnaryExpr            => FUnaryExpr(un.op(), fromJava(un.expr()))
-    case cat: Concatenation           => FConcatenation(cat.elements().asScala.toList.map(fromJava))
+  def fromJava(expr: AST.Expr): FoolishAstn = expr match
+    case lit: AST.IntegerLiteral      => IntLitAstn(lit.value())
+    case id: AST.Identifier           => IdentifierAstn(id.characterizations().asScala.toList, id.id())
+    case br: AST.Brane                => BraneAstn(br.characterizations().asScala.toList,
+                                                    br.statements().asScala.toList.map(fromJava))
+    case bin: AST.BinaryExpr          => BinaryExprAstn(bin.op(), fromJava(bin.left()), fromJava(bin.right()))
+    case un: AST.UnaryExpr            => UnaryExprAstn(un.op(), fromJava(un.expr()))
+    case cat: Concatenation           => ConcatenationAstn(cat.elements().asScala.toList.map(fromJava))
     case deref: AST.DereferenceExpr   =>
-      val name = fromJava(deref.coordinate()).asInstanceOf[FIdentifier]
-      FDotSearch(fromJava(deref.anchor()), name)
-    case re: AST.RegexpSearchExpr     => FRegexSearch(fromJava(re.anchor()), re.operator(), re.pattern())
-    case seek: AST.SeekExpr           => FIndexAccess(fromJava(seek.anchor()), seek.offset())
-    case us: AST.UnanchoredSeekExpr   => FUnanchoredSeek(us.offset())
-    case os: AST.OneShotSearchExpr    => FOneShotSearch(fromJava(os.anchor()), os.operator())
-    case _: AST.UnknownExpr           => FNKLit
+      val name = fromJava(deref.coordinate()).asInstanceOf[IdentifierAstn]
+      DotSearchAstn(fromJava(deref.anchor()), name)
+    case re: AST.RegexpSearchExpr     => RegexSearchAstn(fromJava(re.anchor()), re.operator(), re.pattern())
+    case seek: AST.SeekExpr           => IndexAccessAstn(fromJava(seek.anchor()), seek.offset())
+    case us: AST.UnanchoredSeekExpr   => UnanchoredSeekAstn(us.offset())
+    case os: AST.OneShotSearchExpr    => OneShotSearchAstn(fromJava(os.anchor()), os.operator())
+    case _: AST.UnknownExpr           => NKLitAstn
     case asgn: AST.Assignment         =>
       val rhs = fromJava(asgn.expr())
       val op  = asgn.expr() match
         case oneShot: AST.OneShotSearchExpr =>
           oneShot.operator() match
-            case SearchOperator.TAIL => FAssignOp.TailSugar
-            case SearchOperator.HEAD => FAssignOp.HeadSugar
-            case _                   => FAssignOp.Normal
-        case _ => FAssignOp.Normal
-      FAssignment(fromJava(asgn.identifier()).asInstanceOf[FIdentifier], op, rhs)
-    case branes: AST.Branes           => FTopLevel(branes.branes().asScala.toList.map(fromJava))
+            case SearchOperator.TAIL => AssignOpAstn.TailSugar
+            case SearchOperator.HEAD => AssignOpAstn.HeadSugar
+            case _                   => AssignOpAstn.Normal
+        case _ => AssignOpAstn.Normal
+      AssignmentAstn(fromJava(asgn.identifier()).asInstanceOf[IdentifierAstn], op, rhs)
+    case branes: AST.Branes           => TopLevelAstn(branes.branes().asScala.toList.map(fromJava))
     // MVP3-deferred nodes — preserved as markers so the evaluator can produce a
     // structured "not yet implemented" result without crashing the harness.
-    case _: AST.IfExpr                => FNotImplemented("if-then-else removed in UBC2")
-    case _: AST.DetachmentBrane       => FNotImplemented("detachment deferred to MVP3")
-    case _: AST.SearchUP              => FNotImplemented("↑ search deferred to MVP3")
-    case _: AST.StayFoolishExpr       => FNotImplemented("SF marker deferred to MVP3")
-    case _: AST.StayFullyFoolishExpr  => FNotImplemented("SFF marker deferred to MVP3")
+    case _: AST.IfExpr                => NotImplementedAstn("if-then-else removed in UBC2")
+    case _: AST.DetachmentBrane       => NotImplementedAstn("detachment deferred to MVP3")
+    case _: AST.SearchUP              => NotImplementedAstn("↑ search deferred to MVP3")
+    case _: AST.StayFoolishExpr       => NotImplementedAstn("SF marker deferred to MVP3")
+    case _: AST.StayFullyFoolishExpr  => NotImplementedAstn("SFF marker deferred to MVP3")
 
-  def fromProgram(p: AST.Program): FProgram =
-    FProgram(fromJava(p.branes()).asInstanceOf[FTopLevel])
+  def fromProgram(p: AST.Program): ProgramAstn =
+    ProgramAstn(fromJava(p.branes()).asInstanceOf[TopLevelAstn])

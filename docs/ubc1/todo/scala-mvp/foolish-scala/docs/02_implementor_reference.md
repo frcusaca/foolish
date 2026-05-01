@@ -282,33 +282,36 @@ Two identifiers are equal iff `id` and `canonicalCharacterization()` match.
 
 Scala 3 can pattern-match Java sealed interfaces via `@unchecked` if needed, but
 the recommended approach is to convert to a Scala sealed hierarchy immediately on
-entry to the evaluator:
+entry to the evaluator. Scala case classes use the **`Astn` (AST Node) suffix** to
+avoid shadowing the Java `AST.*` nested types in pattern matches:
 
 ```scala
-def toScalaAst(expr: AST.Expr): FoolishExpr = expr match
-  case lit: AST.IntegerLiteral  => IntLit(lit.value())
-  case id: AST.Identifier       => Identifier(id.characterizations().asScala.toList, id.id())
-  case br: AST.Brane             => Brane(br.characterizations().asScala.toList,
-                                          br.statements().asScala.toList.map(toScalaAst))
-  case bin: AST.BinaryExpr       => BinaryExpr(bin.op(), toScalaAst(bin.left()), toScalaAst(bin.right()))
-  case un: AST.UnaryExpr         => UnaryExpr(un.op(), toScalaAst(un.expr()))
-  case cat: AST.Concatenation    => Concatenation(cat.elements().asScala.toList.map(toScalaAst))
-  case deref: AST.DereferenceExpr => DotSearch(toScalaAst(deref.anchor()), toScalaAst(deref.coordinate()).asInstanceOf[Identifier])
-  case re: AST.RegexpSearchExpr  => RegexSearch(toScalaAst(re.anchor()), re.operator(), re.pattern())
-  case seek: AST.SeekExpr        => IndexAccess(toScalaAst(seek.anchor()), seek.offset())
-  case oseek: AST.UnanchoredSeekExpr => UnanchoredSeek(oseek.offset())   // offset is already negative
-  case os: AST.OneShotSearchExpr  => OneShotSearch(toScalaAst(os.anchor()), os.operator())
-  case _: AST.UnknownExpr        => NKExpr                                // ??? literal
-  case asgn: AST.Assignment      => Assignment(toScalaAst(asgn.identifier()).asInstanceOf[Identifier],
-                                               asgn.operator(), toScalaAst(asgn.expr()))
-  case branes: AST.Branes        => TopLevel(branes.branes().asScala.toList.map(toScalaAst))
-  // Deferred to MVP3 — reject at conversion time:
-  case _: AST.IfExpr             => NotImplemented("if-then-else removed from UBC2")
-  case _: AST.DetachmentBrane    => NotImplemented("detachment deferred to MVP3")
-  case _: AST.SearchUP           => NotImplemented("↑ search deferred to MVP3")
-  case _: AST.StayFoolishExpr    => NotImplemented("SF marker deferred to MVP3")
-  case _: AST.StayFullyFoolishExpr => NotImplemented("SFF marker deferred to MVP3")
+sealed trait FoolishAstn
+
+case class IntLitAstn(value: Long)                                       extends FoolishAstn
+case class IdentifierAstn(characterizations: List[String], id: String)   extends FoolishAstn
+case class BraneAstn(characterizations: List[String], stmts: List[FoolishAstn]) extends FoolishAstn
+case class BinaryExprAstn(op: String, left: FoolishAstn, right: FoolishAstn)    extends FoolishAstn
+// ... etc; see foolish-core-scala/src/main/scala/.../FoolishAst.scala for the full set
+
+def fromJava(expr: AST.Expr): FoolishAstn = expr match
+  case lit: AST.IntegerLiteral      => IntLitAstn(lit.value())
+  case id: AST.Identifier           => IdentifierAstn(id.characterizations().asScala.toList, id.id())
+  case br: AST.Brane                => BraneAstn(br.characterizations().asScala.toList,
+                                                  br.statements().asScala.toList.map(fromJava))
+  case cat: Concatenation           => ConcatenationAstn(cat.elements().asScala.toList.map(fromJava))
+  // ... and so on; see FoolishAst.scala for the full match
 ```
+
+**Two name-resolution traps to know about:**
+
+1. **`AST.Concatenation` cannot be qualified** — Scala 3 fails to resolve it via the
+   nested path. Workaround: `import org.foolish.ast.AST.Concatenation` and reference
+   it bare. All other `AST.*` nested records work via the qualified path.
+
+2. **Scala case classes named the same as Java AST records cause silent shadowing**
+   in pattern matches. Always use the `Astn` suffix (`BraneAstn`, `IdentifierAstn`,
+   `ConcatenationAstn`, etc.) for the Scala side.
 
 Do the conversion once, at the top of `BraneComputer.run`, before any evaluation.
 The evaluator then works entirely in Scala sealed types.
