@@ -78,7 +78,8 @@ drive navigation — jump to a named statement, regex-search within a brane, go 
 
 | Phase | MVP | Milestone | Description |
 |-------|-----|-----------|-------------|
-| **P1** | — | Parser + AST wiring | Shared parser produces AST; new Scala module wires it |
+| **P1a** | — | Parser unit tests | ANTLR grammar parses all Foolish syntax; dedicated tests verify AST shape without evaluation |
+| **P1b** | — | Evaluator scaffold | New Scala module wires parser AST; skeleton `BraneComputer`; empty approval test harness |
 | **P2** | — | Literal evaluation | Values, empty brane, output sequencer |
 | **P3** | — | Arithmetic | Operators, precedence, NK propagation |
 | **P4** | — | Branes + scope | Nested branes, identification, shadowing, breadth-first eval |
@@ -92,24 +93,67 @@ drive navigation — jump to a named statement, regex-search within a brane, go 
 
 ---
 
-## Phase 1 — Parser + AST Wiring
+## Phase 1a — Parser Unit Tests
 
-**Goal**: New Scala module `foolish-core-scala2` (or rename existing) compiles and
-can round-trip the parser output.
+**Goal**: The ANTLR grammar (`foolish-parser-java`) correctly parses every Foolish
+syntax construct. Parsing is verified independently of any evaluation.
+
+**Why separate**: parsing can be wrong in ways that evaluation masks (e.g., a precedence
+mistake that happens to produce correct answers in simple tests). Unit tests at the AST
+level catch grammar bugs before the evaluator even exists.
+
+**What to build**:
+- Scala test class `FoolishParserTest` (in `foolish-core-scala` or dedicated test module)
+- Each test: parse a Foolish snippet → assert the resulting AST matches expected shape
+- No evaluation, no output formatting — AST structure only
+
+**Tests to write** (each is a Scala unit test, not a `.foo` approval test):
+
+| Test name | Foolish input | AST assertion |
+|-----------|--------------|---------------|
+| `parsesEmptyBrane` | `{}` | `Program(List(BraneExpr(Nil)))` |
+| `parsesIntLiteral` | `42` | `IntLit(42)` |
+| `parsesFloatLiteral` | `3.14` | `FloatLit(3.14)` |
+| `parsesStringLiteral` | `"hello"` | `StringLit("hello")` |
+| `parsesIdentification` | `x = 42` | `Identification("x", IntLit(42))` |
+| `parsesAddition` | `1 + 2` | `BinaryOp("+", IntLit(1), IntLit(2))` |
+| `parsesOperatorPrecedence` | `1 + 2 * 3` | `BinaryOp("+", IntLit(1), BinaryOp("*", IntLit(2), IntLit(3)))` |
+| `parsesNestedBrane` | `{x = {1}}` | nested `BraneExpr` |
+| `parsesUnanchoredSearch` | `user_name` | `Identifier("user_name")` |
+| `parsesAnchoredDot` | `b.x` | `AnchoredSearch(backward, "b", "x")` |
+| `parsesHeadTail` | `b^`, `b$` | `Head("b")`, `Tail("b")` |
+| `parsesIndex` | `b#3`, `b#-2` | `IndexAccess("b", 3)`, `IndexAccess("b", -2)` |
+| `parsesUnanchoredSeek` | `#-2` | `UnanchoredSeek(-2)` |
+| `parsesConcatenation` | `{a=1}{b=2}` | `Concat(BraneExpr(...), BraneExpr(...))` |
+| `parsesRegexSearch` | `b?(a.*)` | `AnchoredSearch(backward, "b", pattern="a.*")` |
+| `parsesComment` | `!! a comment\n42` | comment ignored; body = `IntLit(42)` |
+| `parsesShebang` | `#!/usr/bin/env foolish\n{}` | shebang ignored; body = `BraneExpr(Nil)` |
+| `parsesMultiStatements` | `{1; 2; 3}` | three-statement `BraneExpr` |
+| `parsesCharacterization` | `type'name` | `CharacterizedId("type", "name")` |
+| `parsesAssignmentSugar` | `=$ expr` | `TailAssign(expr)` |
+
+**No approval tests needed here** — these are pure unit tests with inline expected values.
+
+---
+
+## Phase 1b — Evaluator Scaffold
+
+**Goal**: New Scala module compiles and can round-trip the parser output without crashing.
+The evaluator exists as a skeleton; all tests trivially pass or are skipped.
 
 **What to build**:
 - New Maven module (or clean slate in existing `foolish-core-scala`)
-- Wire `foolish-parser-java` AST into Scala
-- Skeleton `BraneComputer` object: `run(AST.Program): Result`
-- Empty approval test harness: `ScUbc2ApprovalTest` that runs `.foo` files
+- Wire `foolish-parser-java` AST into Scala via Java interop
+- Skeleton `BraneComputer` object: `run(AST.Program): Result` — returns a stub
+- Empty approval test harness: `ScUbc2ApprovalTest` that runs `.foo` files and skips all
 
 **Tests to pass**: none yet (harness exists, all skip or trivially pass)
 
-**New test to write**: `p1_parser_wiring.foo`
+**New `.foo` test to write**: `p1_scaffold.foo`
 ```foolish
 {}
 ```
-Just verifies parse → AST → no crash.
+Just verifies parse → stub result → no crash.
 
 ---
 
@@ -511,15 +555,15 @@ Some existing tests conflate multiple behaviours. Proposed splits:
 ## Dependency Graph
 
 ```
-P1 (parser) → P2 (literals) → P3 (arithmetic)
-                            → P4 (branes/scope) → P5 (unanchored search + constanic)  ← MVP1 foundation
-                                                 → P6 (anchored search)
-                                               P5 + P6 → P7 (concatenation)
-                                                       → P8 (approval test pass)      ← MVP1 complete
-                                                       → P9 (LOD brane browser)       ← MVP2
-                                                       → P10 (REPL)                   ← MVP3
-                                                       → P11 (detachment)             ← MVP3
-                                                       → P12 (forward search)         ← MVP3 polish
+P1a (parser unit tests) → P1b (evaluator scaffold) → P2 (literals) → P3 (arithmetic)
+                                                                    → P4 (branes/scope) → P5 (unanchored search + constanic)  ← MVP1 foundation
+                                                                                         → P6 (anchored search)
+                                                                                       P5 + P6 → P7 (concatenation)
+                                                                                               → P8 (approval test pass)      ← MVP1 complete
+                                                                                               → P9 (LOD brane browser)       ← MVP2
+                                                                                               → P10 (REPL)                   ← MVP3
+                                                                                               → P11 (detachment)             ← MVP3
+                                                                                               → P12 (forward search)         ← MVP3 polish
 ```
 
 ---
@@ -544,5 +588,6 @@ Per implementation lessons:
 
 **Date**: 2026-04-30
 **Updated By**: Claude Code claude-sonnet-4-6
-**Changes**: Initial creation — implementation schedule for Scala MVP based on full
-docs/codebase read and human Q&A about root causes of prior failures.
+**Changes**: Split Phase 1 into P1a (parser unit tests — verifies ANTLR grammar against
+expected AST shape, no evaluation) and P1b (evaluator scaffold — skeleton BraneComputer,
+approval test harness). Added parser unit test table to P1a. Updated dependency graph.

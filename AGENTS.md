@@ -413,6 +413,24 @@ GitHub Copilot / gpt-4
 - **Documentation**: `docs/` (legacy docs in `docs/vintage_legacy/`; versioned docs in `docs/ubc1/` and `docs/ubc0_1/`; shared docs in `docs/howto/`, `docs/why/`)
 - **AI Instructions**: `.claude/CLAUDE.md` (Claude-specific guidance)
 
+## MCP and other tools
+### Java Code Analysis Preferences
+When it is available, prefer JavaLens MCP tools over text search for Java code analysis:
+- Use `find_references` instead of grep for finding usages
+- Use `find_implementations` instead of text search for implementations
+- Use `analyze_type` to understand a class before modifying it
+- Use refactoring tools (rename_symbol, extract_method) for safe changes
+
+Semantic analysis from JDT is more accurate than text-based search,
+especially for overloaded methods, inheritance, and generic types.
+
+### Computational Tools Preference
+When it is available, prefer to use python repl to perform math calculations, complex string manipulations, or even to perform regular expression substitutions.
+
+### JVM Exploration Tool Preference
+When it is available, prefer to use the scala repl to load a java class file or jar file. In this manner, the agent is able to explore structure and situation of
+a JVM object live.
+
 ## Documentation
 
 ### Directory Structure

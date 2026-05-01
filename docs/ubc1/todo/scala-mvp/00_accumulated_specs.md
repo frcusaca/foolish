@@ -26,6 +26,7 @@ Three axioms govern everything:
 1. **Containment is information** — branes organize scope
 2. **Proximity enables combination** — adjacent branes concatenate
 3. **Expression powers all** — every value is a brane or evaluates to one
+4. **Brane is coordinating** — expression values float around until they become part of a brane, at which point they are coordinated with other expressions on the brane.
 
 Design philosophy: inspired by the simplicity of DNA (4 base pairs → all life), Foolish tries to
 derive a rich language from a minimal set of primitives.
@@ -38,33 +39,33 @@ Features are categorized by implementation status in the test suite.
 
 ### Tier 1: Implemented and Tested (60 approval tests, active)
 
-| Feature | Key Behavior | Approval Tests |
+| Feature | Key Behavior | Approval Tests | Comments |
 |---------|-------------|----------------|
-| **Literal values** | int, float, string, empty brane `{}` | `simpleIntegerIsApproved` |
-| **Branes** | `{...}` container; statements separated by `;` or `,` or newline | `emptyBraneIsApproved`, `nestedBranesIsApproved` |
-| **Identification** | `name = expr` — ordination to a brane | `simpleIdentifierIsApproved` |
-| **Arithmetic** | `+`, `-`, `*`, `/`, `%`; unary `-` | `simpleAdditionIsApproved`, `zeroDivisionIsApproved` |
-| **NK (Not Known)** | `???` — definite unknown; div-by-zero produces it | `zeroDivisionIsApproved` |
-| **Constanic** | `🧠??` — "not known yet"; unresolved search produces it | `constanticRendering` |
-| **Comments** | `!! line comment`, `!!! block !!!` | `commentEndsStatement` |
-| **Multi-script identifiers** | Unicode letters + `_` / `ˍ` / narrow-no-break-space as word separator | `identifierSeparators` |
-| **Characterization** | `type'name` — disambiguating qualifier on identifiers | `complexIdentifierScopeIsApproved` |
-| **Shadowing** | Later definitions shadow earlier ones; backward search finds most recent | `identifierShadowingIsApproved` |
-| **Scope / retrospection** | Backward-then-up search: current brane → parent → grandparent | `nestedScopeIdentifierIsApproved` |
-| **Dot access (anchored backward search)** | `brane.name` ≡ `brane?name` — backward search within brane | `searchLocalizedVsGlobalizedIsApproved` |
-| **`?` localized search** | Backward anchored pattern/name search | `searchPatternBasicsIsApproved` |
-| **`~` forward search** | Forward anchored pattern/name search (first match) | `testTilde` |
-| **Regex patterns** | `brane?pattern`, `brane~pattern` | `regexSearchWithPatternIsApproved`, `searchRegexPatternsIsApproved` |
-| **Head `^` / tail `$`** | First / last element of brane | `oneShotSearchIsApproved` |
-| **Index access `#N`** | Nth statement (0-based forward, negative from end) | `offsetAccess` |
-| **Unanchored seek `#-N`** | N statements back from current position | `unanchoredSeekBasic` |
-| **Unanchored identifier search** | `name` without anchor — backward + parent chain | `levelSkippingSearchFound`, `levelSkippingSearchConstanic` |
-| **Anchored search on constant** | Returns `???` if not found (brane is fully known) | `anchoredSearchFailsOnConstant` |
-| **Anchored search on constanic** | Returns `🧠??` — search result may still resolve | `anchoredSearchOnConstanic` |
-| **Concatenation** | `{a}{b}` — three-stage: isolate, merge, re-evaluate | `concatenationBasics`, `concatenationResolution`, `concatenationResolutionAdv` |
-| **Assignment anchor** | `=$ expr`, `=^ expr`, `=#N expr` — syntactic sugar | `assignmentAnchor` |
-| **Shebang** | `#!/...` line ignored at top of file | `shebang` |
-| **Operator precedence** | `*`, `/`, `%` before `+`, `-`; parens override | `operatorPrecedenceIsApproved` |
+| **Literal values** | int, float, string, empty brane `{}` | `simpleIntegerIsApproved` | Expand to data types not covered |
+| **Branes** | `{...}` container; statements separated by `;` or `,` or newline | `emptyBraneIsApproved`, `nestedBranesIsApproved` | |
+| **Identification** | `name = expr` — ordination to a brane | `simpleIdentifierIsApproved` | |
+| **Arithmetic** | `+`, `-`, `*`, `/`, `%`; unary `-` | `simpleAdditionIsApproved`, `zeroDivisionIsApproved` | |
+| **NK (Not Known)** | `???` — definite unknown; div-by-zero produces it | `zeroDivisionIsApproved` | |
+| **Constanic** | `🧠??` — "not known yet"; unresolved search produces it | `constanticRendering` | |
+| **Comments** | `!! line comment`, `!!! block !!!` | `commentEndsStatement` | |
+| **Multi-script identifiers** | Unicode letters + `_` / `ˍ` / narrow-no-break-space as word separator | `identifierSeparators` | |
+| **Characterization** | `type'name` — disambiguating qualifier on identifiers | `complexIdentifierScopeIsApproved` | |
+| **Shadowing** | Later definitions shadow earlier ones; backward search finds most recent | `identifierShadowingIsApproved` | |
+| **Scope / retrospection** | Backward-then-up search: current brane → parent → grandparent | `nestedScopeIdentifierIsApproved` | |
+| **Dot access (anchored backward search)** | `brane.name` ≡ `brane?name` — backward search within brane | `searchLocalizedVsGlobalizedIsApproved` | |
+| **`?` localized search** | Backward anchored pattern/name search | `searchPatternBasicsIsApproved` | |
+| **`~` forward search** | Forward anchored pattern/name search (first match) | `testTilde` | |
+| **Regex patterns** | `brane?pattern`, `brane~pattern` | `regexSearchWithPatternIsApproved`, `searchRegexPatternsIsApproved` | |
+| **Head `^` / tail `$`** | First / last element of brane | `oneShotSearchIsApproved` | |
+| **Index access `#N`** | Nth statement (0-based forward, negative from end) | `offsetAccess` | |
+| **Unanchored seek `#-N`** | N statements back from current position | `unanchoredSeekBasic` | |
+| **Unanchored identifier search** | `name` without anchor — backward + parent chain | `levelSkippingSearchFound`, `levelSkippingSearchConstanic` | |
+| **Anchored search on constant** | Returns `???` if not found (brane is fully known) | `anchoredSearchFailsOnConstant` | |
+| **Anchored search on constanic** | Returns `🧠??` — search result may still resolve | `anchoredSearchOnConstanic` | |
+| **Concatenation** | `{a}{b}` — three-stage: isolate, merge, re-evaluate | `concatenationBasics`, `concatenationResolution`, `concatenationResolutionAdv` | |
+| **Assignment anchor** | `=$ expr`, `=^ expr`, `=#N expr` — syntactic sugar | `assignmentAnchor` | |
+| **Shebang** | `#!/...` line ignored at top of file | `shebang` | |
+| **Operator precedence** | `*`, `/`, `%` before `+`, `-`; parens override | `operatorPrecedenceIsApproved` | |
 
 ### Tier 2: Specified but Disabled (detachment tests — `.disabled` suffix)
 
