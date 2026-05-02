@@ -29,6 +29,20 @@
       <artifactId>scala3-library_3</artifactId>
     </dependency>
 
+    <!-- Circe for FIR JSON serialization (Phase 1 deliverable) -->
+    <dependency>
+      <groupId>io.circe</groupId>
+      <artifactId>circe-core_3</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.circe</groupId>
+      <artifactId>circe-generic_3</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.circe</groupId>
+      <artifactId>circe-parser_3</artifactId>
+    </dependency>
+
     <!-- Test: ScalaTest -->
     <dependency>
       <groupId>org.scalatest</groupId>
@@ -113,16 +127,29 @@
         </configuration>
       </plugin>
 
-      <!-- Surefire: run both Java and Scala test classes -->
+      <!-- Surefire: skip — ScalaTest plugin handles all test discovery -->
       <plugin>
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
-          <argLine>--sun-misc-unsafe-memory-access=allow --enable-native-access=ALL-UNNAMED</argLine>
-          <includes>
-            <include>**/*Test.java</include>
-            <include>**/*Test.scala</include>
-          </includes>
+          <skipTests>true</skipTests>
         </configuration>
+      </plugin>
+
+      <!-- ScalaTest plugin: discovers and runs ScalaTest suites -->
+      <plugin>
+        <groupId>org.scalatest</groupId>
+        <artifactId>scalatest-maven-plugin</artifactId>
+        <configuration>
+          <reportsDirectory>${project.build.directory}/scalatest-reports</reportsDirectory>
+          <junitxml>.</junitxml>
+          <argLine>--sun-misc-unsafe-memory-access=allow --enable-native-access=ALL-UNNAMED</argLine>
+        </configuration>
+        <executions>
+          <execution>
+            <id>test</id>
+            <goals><goal>test</goal></goals>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>

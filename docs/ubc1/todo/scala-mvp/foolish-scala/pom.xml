@@ -22,6 +22,7 @@
     <antlr4.version>4.13.2</antlr4.version>
     <scala.version>3.8.2</scala.version>
     <scala.binary.version>3</scala.binary.version>
+    <circe.version>0.14.10</circe.version>
   </properties>
 
   <dependencyManagement>
@@ -35,6 +36,22 @@
         <groupId>org.scala-lang</groupId>
         <artifactId>scala3-library_3</artifactId>
         <version>${scala.version}</version>
+      </dependency>
+      <!-- Circe for FIR JSON serialization -->
+      <dependency>
+        <groupId>io.circe</groupId>
+        <artifactId>circe-core_3</artifactId>
+        <version>${circe.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.circe</groupId>
+        <artifactId>circe-generic_3</artifactId>
+        <version>${circe.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.circe</groupId>
+        <artifactId>circe-parser_3</artifactId>
+        <version>${circe.version}</version>
       </dependency>
       <dependency>
         <groupId>org.scalatest</groupId>
