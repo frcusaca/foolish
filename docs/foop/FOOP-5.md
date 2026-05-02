@@ -73,34 +73,39 @@ If anything goes wrong, the layer of failure is unambiguous.
 
 - **Constant folding**: `1 + 2` does NOT become `ConstantIntFir(3)`. It
   becomes `BinaryOpFir("+", ConstantIntFir(1), ConstantIntFir(2),
-  state = Initialized)`.
+  state = EMBRYONIC)`.
 - **Search resolution**: `{a = 1, b = a}` does NOT have its `b = a`
-  resolved. The `a` becomes a `SearchFir` in `Initialized` state.
+  resolved. The `a` becomes a `SearchFir` in `EMBRYONIC` state.
 - **Dead-code elimination**: never.
 - **Type checking**: there are no static types in Foolish.
 - **Optimization** of any kind.
 
 ### Direct-compile cases
 
-Two AST nodes compile directly to a non-`Initialized` state because their
+Two AST nodes compile directly to a terminal Nyes state because their
 final state is determinable from the node alone:
 
-| AST node | FIR produced | State |
-|----------|-------------|-------|
-| `IntLitAstn(v)` | `ConstantIntFir(v)` | `Constant` |
+| AST node | FIR produced | Nyes |
+|----------|-------------|------|
+| `IntLitAstn(v)` | `ConstantIntFir(v)` | `INDEPENDENT` |
 | `NKLitAstn` | `NKFir(reason = "??? literal")` | `NK` |
 
-Every other AST node produces a FIR in `Initialized` state.
+Integer literals are `INDEPENDENT` (not just `CONSTANT`) because no future
+context can ever change a literal's value — `42` is `42` everywhere.
+This matters for `constanicClone` (FOOP-7), which short-circuits on
+`INDEPENDENT` exactly as on `CONSTANT`.
+
+Every other AST node produces a FIR in `EMBRYONIC` state.
 
 ### State invariant
 
 After Phase 1 compilation, every FIR in the tree is in exactly one of
-these states: `Initialized`, `Constant` (only for integer literals), or
-`NK` (only for `???` literals).
+these Nyes states: `EMBRYONIC`, `INDEPENDENT` (only for integer literals),
+or `NK` (only for `???` literals).
 
 After Phase 2 evaluation reaches a fixed point, every FIR is in exactly
-one of: `Constant`, `Constanic`, or `NK`. The `Initialized` state is
-the explicit signal that work remains.
+one of: `CONSTANT`, `INDEPENDENT`, `ECONSTANIC`, `WOCONSTANIC`, or `NK`.
+`EMBRYONIC` and `BRANING` are the explicit "work remains" signals.
 
 ## FIR Impact
 
@@ -114,13 +119,13 @@ state field is therefore part of the testing surface for the compiler
 
 ## UBC Step Impact
 
-Phase 2 reads `state == Initialized` as "work to do here." A correctly
-compiled tree has every non-leaf in `Initialized`. The evaluator's job
-is to step `Initialized` → (`Constant` | `Constanic` | `NK`).
+Phase 2 reads `state == EMBRYONIC` as "work to do here." A correctly
+compiled tree has every non-leaf in `EMBRYONIC`. The evaluator's job is
+to step `EMBRYONIC → BRANING → ...` through to a constanic terminal state.
 
 A Phase 2 evaluator MAY assume the input tree obeys the Phase 1 state
 invariant. It is not required to defend against a tree where, e.g., a
-`BinaryOpFir` arrives in `Constant` state — that's a contract violation
+`BinaryOpFir` arrives in `CONSTANT` state — that's a contract violation
 and a bug upstream.
 
 ## Test Plan
@@ -128,16 +133,16 @@ and a bug upstream.
 Compiler tests assert state explicitly:
 
 ```scala
-test("FOOP-5: 1 + 2 compiles to BinaryOpFir(Initialized) over two ConstantInts") {
+test("FOOP-5: 1 + 2 compiles to BinaryOpFir(EMBRYONIC) over two INDEPENDENTs") {
   val source = "{1 + 2}"
   val fir = Compiler.compileToFir(source)
   fir shouldBe TopLevelAstAsFir(
     NormalBraneFir(Nil, List(
       StatementFir(None, BinaryOpFir(
         op    = "+",
-        left  = ConstantIntFir(1),  // already Constant
-        right = ConstantIntFir(2),  // already Constant
-        state = FirState.Initialized  // BinaryOp itself: Initialized
+        left  = ConstantIntFir(1),  // INDEPENDENT
+        right = ConstantIntFir(2),  // INDEPENDENT
+        state = Nyes.EMBRYONIC      // BinaryOp itself: EMBRYONIC
       ))
     ))
   )
@@ -163,7 +168,7 @@ custom matcher needed.
 Cleaner separation in some sense. **Rejected**: adds a separate "input
 to evaluator" tree shape that differs from the in-flight FIR tree.
 Doubles the schema. The current design — `state` is on every FIR
-always, Phase 1 just sets it to `Initialized` (or `Constant` / `NK` for
+always, Phase 1 just sets it to `EMBRYONIC` (or `INDEPENDENT` / `NK` for
 the two literal cases) — is uniform.
 
 ### C. Compile lazily: a thunk-like FIR that re-runs the compiler when stepped
@@ -183,4 +188,6 @@ None.
 - `scala-mvp/foolish-scala/docs/phase1_compiler.md`: the implementation
   step list.
 - `scala-mvp/foolish-scala/foolish-core-scala/src/main/scala/org/foolish/fvm/scubc/Fir.scala`:
-  the FIR definitions and the FirState enum.
+  the FIR definitions and the `Nyes` enum.
+- FOOP-7: the constanic clone algorithm that exploits the EMBRYONIC/INDEPENDENT
+  distinction.

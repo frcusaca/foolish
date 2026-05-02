@@ -96,36 +96,67 @@ Features are categorized by implementation status in the test suite.
 
 The UBC2 is the reference implementation we are building toward. Key departure from UBC1:
 
-### Lifecycle States (PREMBRYONIC → EMBRYONIC → BRANING → constanic)
+### The Nyes Lifecycle — Not Yet Evaluated states
+
+The `Nyes` enum (Java: `Nyes`; Scala: `Nyes`) tracks where each FIR is in its
+evaluation lifecycle. Linear progression:
+
+```
+   PREMBRYONIC → EMBRYONIC → BRANING → ECONSTANIC ┐
+                                    ╲             ├→ (terminal — see recoordination)
+                                     ╲   WOCONSTANIC ┘
+                                      ╲
+                                       → CONSTANT → INDEPENDENT (terminal)
+
+   NK is a separate terminal state, reached when the result is definitively unknown.
+```
 
 | State | Meaning |
 |-------|---------|
-| `PREMBRYONIC` | Holds AST; atomic setup |
-| `EMBRYONIC` | Resolving searches via message passing |
-| `BRANING` | Stepping children; forwarding messages |
-| `CONSTANIC` | Terminal: paused, may resolve in new context |
-| `WOCONSTANIC` | Constanic, with constanic dependencies |
-| `CONSTANT` | Fully evaluated, immutable |
-| `INDEPENDENT` | Literals — always in this state |
+| `PREMBRYONIC` | Holds AST; atomic setup; the FIR has not yet been stepped. |
+| `EMBRYONIC` | Search resolution / re-resolution in progress. For search FIRs: the search is being attempted. For other FIRs: this state is brief and transitions immediately to BRANING. |
+| `BRANING` | Stepping children; waiting on constanic children. The FIR's own resolution depends on at least one child reaching a non-NIGH state. |
+| `ECONSTANIC` | "Exactly CONSTANIC" — a search FIR (and only a search FIR) that, after due effort, found nothing in its IB or any AB. May resolve via recoordination if the FIR is later cloned into a new context where the search succeeds. |
+| `WOCONSTANIC` | "Waiting On CONSTANIC" — an FIR that depends on at least one ECONSTANIC FIR. May be a search whose result was an ECONSTANIC, or an expression whose operands include an ECONSTANIC. |
+| `CONSTANT` | Fully evaluated, immutable. Safe to share via reference (no clone needed). May still be recoordinated if it is itself part of a larger structure that gets recoordinated, but the CONSTANT FIR itself is shared, never cloned. |
+| `INDEPENDENT` | A CONSTANT FIR that is *immune* to recoordination. Reserved for literals (integer literals, the `???` literal). An INDEPENDENT FIR has no possible meaning a new context could give it; recoordination is a guaranteed no-op. |
+| `NK` | "Not Known" — definitively unresolvable. Produced by div-by-zero, anchored search miss on a CONSTANT brane, depth limit exceeded. Terminal; recoordination cannot rescue it. |
+
+### Constanic and Nigh terminology
+
+**Constanic** (adjective): an FIR is *constanic* when it will not change unless its
+context changes. The states ECONSTANIC, WOCONSTANIC, CONSTANT, and INDEPENDENT are
+all constanic. (The states ECONSTANIC and WOCONSTANIC are "constanic but not yet
+constant"; CONSTANT and INDEPENDENT are "constanic and constant.")
+
+**Constanicity**: the property of being constanic.
+
+**Nigh** (adjective): an FIR is *nigh* when it has not yet reached any constanic
+state — i.e., it is in PREMBRYONIC, EMBRYONIC, or BRANING. Predicate: `isNigh()`.
+
+**Predicates** (defined on `Nyes` in `Fir.scala`):
+- `isConstanic(n)` — true for ECONSTANIC, WOCONSTANIC, CONSTANT, INDEPENDENT
+- `isNigh(n)` — true for PREMBRYONIC, EMBRYONIC, BRANING
+
+### What we adopt from UBC2 — and what we don't
+
+We **adopt**: the Nyes lifecycle, the FIR taxonomy (Normal Brane, System Operator,
+ConcatenationBrane, DetachmentBrane), the constanic/nigh terminology.
+
+We **do not adopt**: UBC2's message-passing evaluation model (`FulfillSearch` /
+`RespondToSearch` between FIRs). Phase 2's evaluator steps FIRs directly via
+function calls, not message passing. This is a deliberate simplification — the
+message-passing design solved problems that arise only with parallel breadth-first
+evaluation, which we defer to Phase 4.
 
 ### Four FIR Roles (all derive from ProtoBrane)
 
-| Role | Syntax | Boundary | `value()` |
-|------|--------|----------|-----------|
-| **Normal Brane** | `{...}` | Yes — local namespace | Returns self (first-class) |
-| **System Operator** | `🧠+`, `🧠-`, etc. | No — transparent | Returns scalar |
-| **ConcatenationBrane** | `A B` | Temporary isolation | Returns merged brane |
-| **DetachmentBrane** | `[id]{...}` | Filter (active in EMBRYONIC) | Returns wrapped brane |
-
-### Message Protocol
-
-Two message types flow between branes:
-
-- `FulfillSearch` (child → parent): "I need identifier X"
-- `RespondToSearch` (parent → child): "Here is X / not found"
-
-MVP communication medium: **parent-to-ancestor chaining** (simple hop-by-hop). Each brane knows
-only its immediate parent. Advanced optimization (delegated direct addressing) comes later.
+| Role | Syntax | Boundary | `value()` | Phase |
+|------|--------|----------|-----------|-------|
+| **Normal Brane** | `{...}` | Yes — local namespace | Returns self (first-class) | Phase 1 |
+| **System Operator** | `🧠+`, `🧠-`, etc. | No — transparent | Returns scalar | (compiled inline as BinaryOpFir/UnaryOpFir) |
+| **ConcatenationBrane** | `A B` | Temporary isolation | Returns merged brane | Phase 6 |
+| **DetachmentBrane** | `[id]{...}` | Filter (active in EMBRYONIC) | Returns wrapped brane | Phase 7 |
 
 ### Key Design Decisions from UBC2 Spec
 

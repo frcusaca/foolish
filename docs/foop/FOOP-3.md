@@ -33,28 +33,39 @@ UBC1 implemented concatenation with a three-stage protocol:
 2. **Merge**: combine results.
 3. **Re-evaluate**: walk the merged structure resolving cross-references.
 
-This was the source of the WOCONSTANIC state, the cursor cloning
-machinery, and a substantial fraction of UBC1's complexity. Repeated
-attempts to fix bugs in concatenation introduced more state. The whole
-arrangement was an early optimization for parallelism that was never
-actually parallel.
+This was the source of the WOCONSTANIC-during-merge race condition (a
+transient state where the merged brane was partly evaluated while children
+were still resolving), the cursor cloning machinery, and a substantial
+fraction of UBC1's complexity. Repeated attempts to fix bugs in
+concatenation introduced more state. The whole arrangement was an early
+optimization for parallelism that was never actually parallel.
 
-The simpler model: A blocks B. If A is `Constanic`, the concatenation is
-`Constanic` and we hold the AST. If A is `Constant`, B sees A's
-statements as if they were the innermost layer of B's surrounding scope.
-B's unanchored searches walk A first, then up the original AB chain.
+The simpler model: A blocks B. If A is constanic (any of ECONSTANIC,
+WOCONSTANIC), the concatenation is WOCONSTANIC and we hold the structure.
+If A is CONSTANT, B sees A's statements as if they were the innermost
+layer of B's surrounding scope. B's unanchored searches walk A first,
+then up the original AB chain.
 
 This eliminates:
 
-- The WOCONSTANIC state (no longer needed)
+- The WOCONSTANIC-during-merge race condition (the merge phase no longer
+  produces a transient half-evaluated state)
 - The three-stage cursor protocol
-- Cross-context cloning
-- Most of the "concatenation race" bugs
+- The need for a parallel "cross-context cloning" subsystem (constanic
+  cloning per FOOP-7 happens in the standard per-element step, not in a
+  separate concatenation phase)
+
+**Important clarification (added on review):** This FOOP eliminates the
+WOCONSTANIC-during-merge race in concatenation. **It does NOT eliminate
+the WOCONSTANIC state itself.** WOCONSTANIC is a first-class state in the
+Nyes lifecycle (see `00_accumulated_specs.md`) and is used throughout
+Phase 2 to mark FIRs that depend on at least one ECONSTANIC. See FOOP-7
+for the recoordination algorithm and the per-state cloning rules.
 
 It retains everything actually needed for concatenation semantics:
-B can refer to names defined in A; B's inability to resolve a name
-makes it Constanic; A being Constanic makes the whole concatenation
-Constanic.
+B can refer to names defined in A; B's inability to resolve a name makes
+its result ECONSTANIC; A being constanic makes the whole concatenation
+WOCONSTANIC.
 
 ## Specification
 

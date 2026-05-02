@@ -14,39 +14,64 @@ import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 // transitions on these same types. Later phases add more FIR variants
 // (ConcatenationFir, DetachmentFir, SystemOperatorFir, etc.).
 //
-// Lifecycle of a FIR:
-//   * Phase 1 (compilation): every FIR starts in `Initialized` state. No computation.
-//   * Phase 2 (UBC stepping): the evaluator transitions state Initialized → Constant
-//     or Initialized → Constanic by stepping the FIR tree.
+// Lifecycle (the Nyes states — see 00_accumulated_specs.md for full definitions):
+//   PREMBRYONIC → EMBRYONIC → BRANING → ECONSTANIC | WOCONSTANIC | CONSTANT | INDEPENDENT
+//   NK is a separate terminal state for definitively-unresolvable cases (div-by-zero,
+//   anchored search miss on a CONSTANT brane).
+//
+// Phase 1 emits these subset states only:
+//   * EMBRYONIC — every non-literal FIR (work remains for Phase 2's evaluator)
+//   * CONSTANT  — integer literals (already known at compile time)
+//   * INDEPENDENT — reserved for literals that can never become CONSTANIC by recoordination
+//   * NK        — the `???` literal
 
 // -----------------------------------------------------------------------------
-// FIR state — the evaluation lifecycle.
+// Nyes — "Not Yet Evaluated states." The lifecycle the UBC steps through.
 // -----------------------------------------------------------------------------
 
-enum FirState:
-  case Initialized                  // freshly compiled, evaluation not yet attempted
-  case Constant                     // fully evaluated to a definite value
-  case Constanic                    // CONSTANIC ("not known yet" — may resolve in new context)
-  case NK                           // definitively Not Known (div-by-zero, anchored search miss on CONSTANT brane, etc.)
+enum Nyes:
+  case PREMBRYONIC                   // holds AST; atomic setup; pre-step
+  case EMBRYONIC                     // search resolution / re-resolution in progress
+  case BRANING                       // stepping children; waiting on constanic children
+  case ECONSTANIC                    // search found nothing after due effort; needs new context to resolve
+  case WOCONSTANIC                   // depends on at least one ECONSTANIC FIR
+  case CONSTANT                      // fully evaluated, immutable; safe to share
+  case INDEPENDENT                   // CONSTANT and immune to recoordination (literals only)
+  case NK                            // definitively Not Known (div-by-zero, anchored miss on CONSTANT brane, depth exceeded)
 
-object FirState:
-  given Encoder[FirState] = Encoder.encodeString.contramap(_.toString)
-  given Decoder[FirState] = Decoder.decodeString.emap:
-    case "Initialized" => Right(Initialized)
-    case "Constant"    => Right(Constant)
-    case "Constanic"   => Right(Constanic)
+object Nyes:
+  given Encoder[Nyes] = Encoder.encodeString.contramap(_.toString)
+  given Decoder[Nyes] = Decoder.decodeString.emap:
+    case "PREMBRYONIC" => Right(PREMBRYONIC)
+    case "EMBRYONIC"   => Right(EMBRYONIC)
+    case "BRANING"     => Right(BRANING)
+    case "ECONSTANIC"  => Right(ECONSTANIC)
+    case "WOCONSTANIC" => Right(WOCONSTANIC)
+    case "CONSTANT"    => Right(CONSTANT)
+    case "INDEPENDENT" => Right(INDEPENDENT)
     case "NK"          => Right(NK)
-    case other         => Left(s"Unknown FirState: $other")
+    case other         => Left(s"Unknown Nyes: $other")
+
+  // An FIR is "constanic" if it is in any of these states. See 00_accumulated_specs.md.
+  def isConstanic(n: Nyes): Boolean = n match
+    case ECONSTANIC | WOCONSTANIC | CONSTANT | INDEPENDENT => true
+    case _                                                 => false
+
+  // An FIR is "nigh" if it has not yet reached any constanic state.
+  def isNigh(n: Nyes): Boolean = n match
+    case PREMBRYONIC | EMBRYONIC | BRANING => true
+    case _                                 => false
 
 // -----------------------------------------------------------------------------
 // FIR algebra — sealed hierarchy. All Phase 1 variants live here.
 // -----------------------------------------------------------------------------
 
 sealed trait Fir:
-  def state: FirState
+  def state: Nyes
 
-// A literal integer value. Compiled directly to Constant state — no evaluation needed.
-case class ConstantIntFir(value: Long, state: FirState = FirState.Constant) extends Fir
+// A literal integer value. Compiled directly to INDEPENDENT — it can never become
+// constanic via recoordination (no context could ever change `42`).
+case class ConstantIntFir(value: Long, state: Nyes = Nyes.INDEPENDENT) extends Fir
 
 // A normal brane: ordered list of named or anonymous statements.
 // Phase 1: NormalBrane is the only brane variant. ConcatenationBrane, DetachmentBrane
@@ -54,7 +79,7 @@ case class ConstantIntFir(value: Long, state: FirState = FirState.Constant) exte
 case class NormalBraneFir(
   characterizations: List[String],
   statements:        List[StatementFir],
-  state:             FirState = FirState.Initialized
+  state:             Nyes = Nyes.EMBRYONIC
 ) extends Fir
 
 // A statement inside a brane. Anonymous statements have name = None (e.g., bare `42`
@@ -62,31 +87,31 @@ case class NormalBraneFir(
 case class StatementFir(
   name: Option[String],
   body: Fir,
-  state: FirState = FirState.Initialized
+  state: Nyes = Nyes.EMBRYONIC
 )
 
 // Binary operator expression. Phase 1: AST tree only — no arithmetic computation.
-// Phase 2: evaluator collapses to ConstantIntFir if both operands are Constant.
+// Phase 2: evaluator collapses to ConstantIntFir if both operands are CONSTANT.
 case class BinaryOpFir(
   op:    String,    // "+", "-", "*", "/", "%"
   left:  Fir,
   right: Fir,
-  state: FirState = FirState.Initialized
+  state: Nyes = Nyes.EMBRYONIC
 ) extends Fir
 
 // Unary operator expression (e.g., `-42`).
 case class UnaryOpFir(
   op:    String,    // "+", "-", "*"
   expr:  Fir,
-  state: FirState = FirState.Initialized
+  state: Nyes = Nyes.EMBRYONIC
 ) extends Fir
 
 // Search operations. All searches in Phase 1 are pattern-based — bare identifiers like
-// `a_config` compile to a regex of `^a_config$`.
+// `a_config` compile to a regex of `^a_config$`. See FOOP-4.
 //
 // `anchored` distinguishes the two semantic flavors:
-//   - false: unanchored (bare identifier or `#-N`). Searches IB, then walks up AB chain.
-//            Not finding it produces CONSTANIC.
+//   - false: unanchored (bare identifier). Searches IB, then walks up AB chain.
+//            Not finding it produces ECONSTANIC.
 //   - true:  anchored (`brane.name`, `brane?pat`, `brane^`, `brane$`, `brane#N`).
 //            Searches only inside the specified brane. Not finding produces NK.
 //
@@ -104,11 +129,11 @@ object SearchDirection:
     case other      => Left(s"Unknown SearchDirection: $other")
 
 case class SearchFir(
-  pattern:   String,                     // regex pattern; bare names become "^name$"
+  pattern:   String,                     // regex pattern; bare names become "^name$" (FOOP-4)
   direction: SearchDirection,
   anchored:  Boolean,
   anchor:    Option[Fir],                // None for unanchored; Some(brane) for anchored
-  state:     FirState = FirState.Initialized
+  state:     Nyes = Nyes.EMBRYONIC
 ) extends Fir
 
 // Index access: `brane#N` (anchored) or `#-N` (unanchored seek).
@@ -116,7 +141,7 @@ case class IndexFir(
   index:    Int,
   anchored: Boolean,
   anchor:   Option[Fir],
-  state:    FirState = FirState.Initialized
+  state:    Nyes = Nyes.EMBRYONIC
 ) extends Fir
 
 // Head (`^`) and tail (`$`) — degenerate searches that always find the first/last.
@@ -124,23 +149,20 @@ case class HeadTailFir(
   isHead:   Boolean,                     // true = head (^), false = tail ($)
   anchored: Boolean,
   anchor:   Option[Fir],
-  state:    FirState = FirState.Initialized
+  state:    Nyes = Nyes.EMBRYONIC
 ) extends Fir
 
-// Identifier reference — at compilation time, this is an unanchored backward search.
-// Compilation desugars `x` into SearchFir(pattern = "^x$", Backward, anchored = false, anchor = None).
-// We keep this separate node only when characterizations are present, since
-// `type'name` carries semantic info beyond the bare name. Otherwise prefer SearchFir.
+// Identifier reference with characterizations — `type'name`. See FOOP-4.
 case class CharacterizedRefFir(
   characterizations: List[String],
   pattern:           String,
-  state:             FirState = FirState.Initialized
+  state:             Nyes = Nyes.EMBRYONIC
 ) extends Fir
 
 // The literal `???` (NK from source).
 case class NKFir(
   reason: String,
-  state:  FirState = FirState.NK
+  state:  Nyes = Nyes.NK
 ) extends Fir
 
 // -----------------------------------------------------------------------------

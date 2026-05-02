@@ -5,7 +5,7 @@ author: <Name> <email@example.com>
 status: Draft
 type: Standards
 created: <YYYY-MM-DD>
-phase: <phase-1 | phase-2 | phase-3 | phase-4 | phase-5 | phase-6 | meta>
+phase: <phase-1 | phase-2 | phase-3 | phase-4 | phase-5 | phase-6 | phase-7 | meta>
 supersedes: []
 ---
 
