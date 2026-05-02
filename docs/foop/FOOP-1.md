@@ -161,7 +161,7 @@ The index has columns: number, title, status, phase, created, author.
 
 ### 7. Phase Targeting
 
-Foolish development proceeds in numbered phases (Phase 1, 2, 3, 4, 4.5, 5;
+Foolish development proceeds in numbered phases (Phase 1, 2, 3, 4, 5, 6;
 see `scala-mvp/foolish-scala/docs/01_phases_overview.md`). Every Standards
 FOOP MUST list the phase its implementation targets. Process and
 Informational FOOPs may use `phase: meta`.

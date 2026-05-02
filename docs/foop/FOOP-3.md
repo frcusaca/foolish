@@ -5,7 +5,7 @@ author: hc <hc.busy@gmail.com>
 status: Brewing
 type: Standards
 created: 2026-04-22
-phase: phase-4.5
+phase: phase-5
 supersedes: []
 ---
 
@@ -23,7 +23,7 @@ no cloning, no three-stage protocol. This supersedes the UBC1
 three-stage isolate→merge→re-evaluate approach.
 
 Status is `Brewing` (not `Final`) because the implementation does not yet
-exist — it is targeted at Phase 4.5.
+exist — it is targeted at Phase 5.
 
 ## Motivation
 
@@ -100,7 +100,7 @@ case class ConcatenationFir(
 Roundtrip test required (FIR test layer 3).
 
 The Phase 1 compiler MUST reject `ConcatenationAstn` with a message
-naming this FOOP and the target phase (Phase 4.5).
+naming this FOOP and the target phase (Phase 5).
 
 ## UBC Step Impact
 
@@ -114,7 +114,7 @@ Constanic FIR needs (see `phase2_ubc.md`).
 
 ## Test Plan
 
-Phase 4.5 will revive these `.foo` files (currently in
+Phase 5 will revive these `.foo` files (currently in
 `foolish-core-scala/src/test/resources/.../inputs/`):
 
 - `concatenationBasics.foo`
@@ -157,13 +157,13 @@ the language's current scale.
 - **Does the merged brane retain a record of where each statement came
   from?** (For debugging, "this statement is from A, this from B".) Likely
   yes via an optional `origin` field on `StatementFir`. To be decided
-  during Phase 4.5 implementation.
+  during Phase 5 implementation.
 
 - **What happens if the concatenation is between branes with conflicting
   characterizations?** E.g., `type1'{...} type2'{...}`. To be decided.
 
 ## References
 
-- `scala-mvp/foolish-scala/docs/phase4.5_concatenation.md`: the phase
+- `scala-mvp/foolish-scala/docs/phase5_concatenation.md`: the phase
   document this FOOP backs.
 - UBC1's `ConcatenationFiroe.scala`: the prior (rejected) approach.

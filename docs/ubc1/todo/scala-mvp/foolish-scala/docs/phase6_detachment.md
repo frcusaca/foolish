@@ -1,4 +1,4 @@
-# Phase 5 — Detachment, SF/SFF, Advanced Features
+# Phase 6 — Detachment, SF/SFF, Advanced Features
 
 > Goal: The advanced language constructs that make Foolish a real programming
 > language — detachment (`[id]{...}`), Stay-Foolish markers (`<expr>`),
@@ -6,7 +6,7 @@
 
 ---
 
-## Phase 5 Deliverable
+## Phase 6 Deliverable
 
 Implement the 7 currently-disabled `.foo` test files:
 
@@ -24,14 +24,14 @@ Implement the 7 currently-disabled `.foo` test files:
 
 | Sub-phase | Feature | Tests |
 |-----------|---------|-------|
-| P5.1 | Basic `[id]{...}` M-brane | `detachmentAlarms.foo` (test_1) |
-| P5.2 | P-brane `[+id]` partial application | `detachmentPBrane.foo` |
-| P5.3 | Re-detachment | `detachmentComplexTests.foo` (test_re_detachment) |
-| P5.4 | Forward search liberation `[~pat]` | `detachmentForwardSearch.foo` |
-| P5.5 | SF mark `<expr>` | `detachmentSFMark.foo`, `SFMarkWithoutDetachment.foo` |
-| P5.6 | SFF mark `<<expr>>` | `detachmentSFFMark.foo` |
-| P5.7 | Alarm system | `detachmentAlarms.foo` (test_2, test_3) |
-| P5.8 | Complex nested + curry chains | `detachmentComplexTests.foo` (remaining) |
+| P6.1 | Basic `[id]{...}` M-brane | `detachmentAlarms.foo` (test_1) |
+| P6.2 | P-brane `[+id]` partial application | `detachmentPBrane.foo` |
+| P6.3 | Re-detachment | `detachmentComplexTests.foo` (test_re_detachment) |
+| P6.4 | Forward search liberation `[~pat]` | `detachmentForwardSearch.foo` |
+| P6.5 | SF mark `<expr>` | `detachmentSFMark.foo`, `SFMarkWithoutDetachment.foo` |
+| P6.6 | SFF mark `<<expr>>` | `detachmentSFFMark.foo` |
+| P6.7 | Alarm system | `detachmentAlarms.foo` (test_2, test_3) |
+| P6.8 | Complex nested + curry chains | `detachmentComplexTests.foo` (remaining) |
 
 ---
 
@@ -65,8 +65,8 @@ Each addition needs a roundtrip test in `FirRoundtripTest` and an AST→FIR test
 ## Out of Scope
 
 - `IfExpr` is permanently rejected (UBC2 design removed it; search-based selection
-  replaces it). Phase 5 does *not* re-introduce it.
-- `↑` upward search remains a possibility for a future Phase 6 if needed.
+  replaces it). Phase 6 does *not* re-introduce it.
+- `↑` upward search remains a possibility for a future Phase 7 if needed.
 
 ---
 
@@ -74,5 +74,5 @@ Each addition needs a roundtrip test in `FirRoundtripTest` and an AST→FIR test
 
 **Date**: 2026-05-01
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.7 (1M Context)
-**Changes**: Initial Phase 5 outline — detachment, SF/SFF, and remaining advanced
-language features.
+**Changes**: Renumbered Phase 5 → Phase 6. Detachment, SF/SFF, and remaining
+advanced language features.

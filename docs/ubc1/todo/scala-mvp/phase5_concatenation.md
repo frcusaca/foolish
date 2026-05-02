@@ -1,10 +1,9 @@
-# Phase 4.5 — Concatenation + Deferred Features
+# Phase 5 — Concatenation + Deferred Features
 
 > Goal: Add the language features deliberately deferred from earlier phases —
 > concatenation, forward search, and other constructs that benefit from a stable
-> base. Sequential numbering would suggest these come "after" Phase 4, but in
-> practice this phase can interleave with Phase 4 once the rhythm of language
-> growth is established.
+> base. May interleave with Phase 4 once the rhythm of language growth is
+> established.
 
 ---
 
@@ -71,7 +70,7 @@ These `.foo` files are deferred from Phase 2:
 
 ---
 
-## Phase 4.5 Exit Criteria
+## Phase 5 Exit Criteria
 
 - All concatenation `.foo` tests pass.
 - Forward search `~` works on Constant branes; produces NK on Constanic anchors.
@@ -84,5 +83,5 @@ These `.foo` files are deferred from Phase 2:
 
 **Date**: 2026-05-01
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.7 (1M Context)
-**Changes**: Initial Phase 4.5 outline — concatenation and forward search added
+**Changes**: Renumbered Phase 4.5 → Phase 5. Concatenation and forward search added
 once Phase 1–3 stabilize.

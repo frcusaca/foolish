@@ -1,10 +1,9 @@
 # Foolish Scala MVP — Phases Overview
 
-> The MVP is built in five sequential phases. Each phase has its own document.
+> The MVP is built in six sequential phases. Each phase has its own document.
 >
 > The MVP is the entire effort. The "MVP" terminology is dropped — we now refer
-> to the work as **Phase 1** through **Phase 5** (and a Phase 4.5 for deferred
-> language features).
+> to the work as **Phase 1** through **Phase 6**.
 
 ---
 
@@ -16,8 +15,8 @@
 | **Phase 2** | UBC — Step Evaluation | [phase2_ubc.md](phase2_ubc.md) | Read FIRs, step-evaluate until every node is `Constant` or `Constanic`. Approval tests live here. |
 | **Phase 3** | CLI | [phase3_cli.md](phase3_cli.md) | Wire compile + step into a usable command-line tool. |
 | **Phase 4** | Web Brane Browser | [phase4_browser.md](phase4_browser.md) | LOD viewer for browsing brane trees in a web UI. |
-| **Phase 4.5** | Concatenation + deferred features | [phase4.5_concatenation.md](phase4.5_concatenation.md) | Add concatenation, forward search, and other features once the core rhythm is established. |
-| **Phase 5** | Detachment, SF/SFF | [phase5_detachment.md](phase5_detachment.md) | The advanced language features. |
+| **Phase 5** | Concatenation + deferred features | [phase5_concatenation.md](phase5_concatenation.md) | Add concatenation, forward search, and other features once the core rhythm is established. |
+| **Phase 6** | Detachment, SF/SFF | [phase6_detachment.md](phase6_detachment.md) | The advanced language features. |
 
 ---
 
@@ -37,7 +36,7 @@ so any approval-test failure is unambiguously an evaluation bug.
 step gives a daily-driver tool for testing language behavior, without the overhead
 of a web stack. The web UI is a presentation layer over the same evaluator.
 
-**Phase 4.5 / 5:** concatenation and detachment are intentionally deferred. They
+**Phases 5 and 6:** concatenation and detachment are intentionally deferred. They
 interact with constanic semantics in subtle ways that benefit from a stable Phase 2
 implementation as foundation.
 
@@ -61,9 +60,9 @@ implementation as foundation.
 | Regex search | `SearchFir(pattern=..., ...)` | regex match |
 | Comments | stripped at parse | n/a |
 | Shebang | stripped at parse | n/a |
-| Concatenation `A B` | **deferred to Phase 4.5** | — |
-| `~` forward search | **deferred to Phase 4.5** | — |
-| Detachment, SF/SFF | **deferred to Phase 5** | — |
+| Concatenation `A B` | **deferred to Phase 5** | — |
+| `~` forward search | **deferred to Phase 5** | — |
+| Detachment, SF/SFF | **deferred to Phase 6** | — |
 | `if-then-else` | rejected at compile | — |
 
 ---
@@ -105,6 +104,5 @@ arrive in Phase 2.
 
 **Date**: 2026-05-01
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.7 (1M Context)
-**Changes**: New phase-based structure replacing the MVP-numbered scheme. Phase 1
-is now compile-only (FIR JSON output via Circe), Phase 2 is evaluation. Per-phase
-documents introduced. Concatenation moved to Phase 4.5; detachment to Phase 5.
+**Changes**: Renumbered Phase 4.5 → Phase 5 (concatenation), Phase 5 → Phase 6
+(detachment). Now six integer phases, no fractional numbers.

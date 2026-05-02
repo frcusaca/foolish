@@ -42,7 +42,7 @@ as the validation suite. Expected output format mirrors the Java UBC1 format
 
 When a SearchFir resolves to a Constanic FIR (e.g., `a = b; b = unknown`), the
 referencing FIR also becomes Constanic. When new context arrives (concatenation
-in Phase 4.5, REPL line input via Phase 3), previously Constanic FIRs may resolve.
+in Phase 5, REPL line input via Phase 3), previously Constanic FIRs may resolve.
 
 The Phase 2 evaluator needs to:
 1. **Detect when re-evaluation is possible** — keep enough state to know "this FIR

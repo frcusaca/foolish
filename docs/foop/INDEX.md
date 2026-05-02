@@ -11,7 +11,7 @@ Sort by hand when needed.
 |------|-------|--------|-------|---------|--------|
 | [FOOP-1](FOOP-1.md) | FOOP Purpose, Process, and Format | Final | meta | 2026-05-01 | hc |
 | [FOOP-2](FOOP-2.md) | Remove if-then-else from the language | Final | phase-1 | 2026-04-15 | hc |
-| [FOOP-3](FOOP-3.md) | Sequential blocking concatenation | Brewing | phase-4.5 | 2026-04-22 | hc |
+| [FOOP-3](FOOP-3.md) | Sequential blocking concatenation | Brewing | phase-5 | 2026-04-22 | hc |
 | [FOOP-4](FOOP-4.md) | Bare identifiers compile to anchored regex SearchFirs | Final | phase-1 | 2026-05-01 | hc |
 | [FOOP-5](FOOP-5.md) | Compile-time vs evaluation-time work — the FIR contract | Final | phase-1 | 2026-05-01 | hc |
 
@@ -28,7 +28,7 @@ Sort by hand when needed.
 
 ### Brewing
 
-- [FOOP-3](FOOP-3.md) — Sequential blocking concatenation (targets Phase 4.5)
+- [FOOP-3](FOOP-3.md) — Sequential blocking concatenation (targets Phase 5)
 
 ### Implementing
 
@@ -50,7 +50,7 @@ Sort by hand when needed.
 
 - [FOOP-2](FOOP-2.md), [FOOP-4](FOOP-4.md), [FOOP-5](FOOP-5.md)
 
-### phase-4.5
+### phase-5
 
 - [FOOP-3](FOOP-3.md)
 
@@ -76,4 +76,4 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 **Date**: 2026-05-01
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.7 (1M Context)
 **Changes**: Initial index — FOOP-1 (meta), FOOP-2/4/5 (Phase 1 retroactive),
-FOOP-3 (Phase 4.5 brewing).
+FOOP-3 (Phase 5 brewing).
