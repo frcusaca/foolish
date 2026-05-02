@@ -201,56 +201,59 @@ After Phase 2 steps the entire brane to completion:
 
 ---
 
-## Constanic Cloning — `constanicClone(R, newParent)`
+## Constanic Cloning — `constanicClone(R)`
 
-**Rule: every search result goes through `constanicClone` before being
-attached as a search's target.** The function is a no-op for CONSTANT/INDEPENDENT
-and does real work for ECONSTANIC/WOCONSTANIC. Calling sites do not need to
-branch on the search result's state.
+**Calling contract** (FOOP-7):
 
-```scala
-def constanicClone(original: Fir, newParent: Fir): Fir = original.state match
-  case Nyes.CONSTANT | Nyes.INDEPENDENT =>
-    original                                         // share, do not clone
+> **Every search result is `constanicClone`'d before being assigned to the
+> Search FIR's result field. UBC stepping, applied iteratively, takes care
+> of all subsequent state transitions.**
 
-  case Nyes.NK =>
-    original                                         // terminal, no recoordination
+After `constanicClone(R)` returns the clone, the caller assigns the clone's
+parent to the searcher's brane (FOOP-8: FIRs are mutable, parent set
+post-clone). Then UBC stepping handles the rest.
 
-  case Nyes.ECONSTANIC =>
-    val clone = original.deepCopyResettingTo(Nyes.EMBRYONIC, newParent)
-    clone                                            // re-step to retry search in new context
+The function's internal mechanics — when to share, when to deep-copy, when to
+recurse into children, what state to reset to — follow the rough idea of
+UBC2 d0_5 (see `docs/ubc1/how/d0_5_brane_recoordination.md` in the broader
+docs branch). Specifying the multi-step state transition cascade in prose
+is impractical; the language is operational, not declarative. The
+implementation is guided by the contract above and validated by approval
+tests.
 
-  case Nyes.WOCONSTANIC =>
-    val clonedChildren = original.children.map(c => constanicClone(c, /* clone */))
-    val clone          = original.deepCopyWithChildren(clonedChildren, Nyes.BRANING, newParent)
-    clone                                            // re-step to recurse into children
+### Per-state intent (rough guide for the implementer)
 
-  case Nyes.PREMBRYONIC | Nyes.EMBRYONIC | Nyes.BRANING =>
-    sys.error(s"constanicClone called on nigh FIR (state=${original.state})")
-```
+| `R.state` | Intent |
+|-----------|--------|
+| CONSTANT | share reference — immutable |
+| INDEPENDENT | share reference — literal, recoordination-immune (FOOP-5) |
+| NK | share reference — terminal |
+| ECONSTANIC | clone, reset to EMBRYONIC; re-runs search in new context |
+| WOCONSTANIC | clone with recursively-cloned constanic children, reset to BRANING; re-steps children |
+| PREMBRYONIC, EMBRYONIC, BRANING | caller bug — depth-first ordering means callers should never see these |
 
-### Per-state clone behavior table
-
-| Original state | Clone behavior | Initial Nyes of clone | Why |
-|----------------|---------------|----------------------|-----|
-| CONSTANT | not cloned, share reference | (n/a) | immutable, safe to share |
-| INDEPENDENT | not cloned, share reference | (n/a) | literal — recoordination cannot change it |
-| NK | not cloned, share reference | (n/a) | terminal, no work for recoordination to do |
-| ECONSTANIC | deep copy, re-parent | EMBRYONIC | re-runs the search in new context |
-| WOCONSTANIC | deep copy with cloned children, re-parent | BRANING | re-steps children which may now resolve |
-| PREMBRYONIC, EMBRYONIC, BRANING | error (caller bug) | (n/a) | callers must step to constanic before cloning |
+The exact behavior is what makes the approval tests pass. See FOOP-7 for the
+full contract specification.
 
 ### Why uniform invocation matters
 
-Phase 2 uses `constanicClone` even when there is no concatenation (no actual
-context change). For example, `{a = unknown, y = a}` — the search `a` finds
-`unknown`'s ECONSTANIC search FIR, and `constanicClone` clones it before binding
-to `y`'s body. The clone re-runs the search in `y`'s context, which is the same
-context, so it finds the same nothing.
+Phase 2 uses `constanicClone` on every search result, even when there is no
+concatenation (no actual context change). For example, given the brane:
 
-This is intentional. By making `constanicClone` uniform, Phase 6 (concatenation)
-inherits the recoordination machinery for free — concatenation is just another
-caller of `constanicClone` with a different `newParent`.
+```
+{
+  a = unknown,
+  y = a
+}
+```
+
+The search `a` (in statement `y = a`) finds `unknown`'s ECONSTANIC search
+FIR, and `constanicClone` is invoked before binding to `y`'s body's result.
+
+This is intentional. By making `constanicClone` uniform, Phase 6
+(concatenation) inherits the recoordination machinery for free —
+concatenation is just another caller of `constanicClone` operating in a
+context where the parent IS different.
 
 ---
 
@@ -437,9 +440,10 @@ Output format: `Sequencer4Human` style. The Phase 2 sequencer must distinguish:
 
 ## Last Updated
 
-**Date**: 2026-05-01
+**Date**: 2026-05-02
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.7 (1M Context)
-**Changes**: Major rewrite. Adopted UBC2 Nyes terminology; added worked example
-walking through ECONSTANIC/WOCONSTANIC/short-circuiting; added per-FIR step
-rules; added `constanicClone` algorithm and per-state clone behavior table.
-Phase 2 is depth-first sequential; breadth-first deferred to Phase 4.
+**Changes**: Replaced the prescriptive `constanicClone` algorithm with the
+calling contract from FOOP-7 (every search result is constanicClone'd before
+assignment to the Search FIR's result field; UBC stepping handles the rest).
+The per-state state transition cascade is intentionally not specified in
+prose — it's defined by what makes the approval tests pass.

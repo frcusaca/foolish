@@ -15,7 +15,8 @@ Sort by hand when needed.
 | [FOOP-4](FOOP-4.md) | Bare identifiers compile to anchored regex SearchFirs | Final | phase-1 | 2026-05-01 | hc |
 | [FOOP-5](FOOP-5.md) | Compile-time vs evaluation-time work — the FIR contract | Final | phase-1 | 2026-05-01 | hc |
 | [FOOP-6](FOOP-6.md) | Phase 2 evaluator is depth-first; breadth-first deferred to Phase 4 | Brewing | phase-2 | 2026-05-01 | hc |
-| [FOOP-7](FOOP-7.md) | Constanic Clone — recoordination algorithm | Brewing | phase-2 | 2026-05-01 | hc |
+| [FOOP-7](FOOP-7.md) | Constanic Clone — recoordination contract | Brewing | phase-2 | 2026-05-01 | hc |
+| [FOOP-8](FOOP-8.md) | FIRs are mutable; parent pointers are post-clone; Circe excludes parent | Brewing | phase-2 | 2026-05-02 | hc |
 
 ---
 
@@ -32,7 +33,8 @@ Sort by hand when needed.
 
 - [FOOP-3](FOOP-3.md) — Sequential blocking concatenation (targets Phase 6)
 - [FOOP-6](FOOP-6.md) — Phase 2 depth-first; Phase 4 breadth-first
-- [FOOP-7](FOOP-7.md) — Constanic Clone recoordination algorithm
+- [FOOP-7](FOOP-7.md) — Constanic Clone recoordination contract
+- [FOOP-8](FOOP-8.md) — FIRs are mutable; parent pointers post-clone; Circe excludes parent
 
 ### Implementing
 
@@ -56,7 +58,7 @@ Sort by hand when needed.
 
 ### phase-2
 
-- [FOOP-6](FOOP-6.md), [FOOP-7](FOOP-7.md)
+- [FOOP-6](FOOP-6.md), [FOOP-7](FOOP-7.md), [FOOP-8](FOOP-8.md)
 
 ### phase-6
 
@@ -81,8 +83,8 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 
 ## Last Updated
 
-**Date**: 2026-05-01
+**Date**: 2026-05-02
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.7 (1M Context)
-**Changes**: Added FOOP-6 (Phase 2 depth-first decision) and FOOP-7 (Constanic
-Clone recoordination algorithm). Renumbered FOOP-3's phase target from phase-5
-to phase-6 per the new 7-phase layout.
+**Changes**: Added FOOP-8 (FIR mutability + parent pointers + Circe handling).
+FOOP-7 retitled "recoordination contract" — its body was simplified to a
+contract-only spec instead of attempting to specify state transitions in prose.
