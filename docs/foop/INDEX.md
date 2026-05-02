@@ -2,17 +2,8 @@
 
 Canonical list of all Foolish Optimization Process documents.
 
-The order below uses the **little-endian collation** rule defined by FOOP-1
-§1: reverse the digit string, sort lexicographically. The natural left-to-right
-reading order matches the order of submission.
-
-To regenerate this list mechanically:
-```sh
-ls FOOP-*.md | grep -v template | grep -v INDEX | rev | LC_ALL=C sort | rev
-```
-
-The `LC_ALL=C` is required — locale-aware sorting produces wrong order for
-mixed-digit-width FOOPs (see FOOP-1 §1).
+FOOP numbers are little-endian: FOOP-`abcd` sorts by numerical value `dcba`.
+Sort by hand when needed.
 
 ---
 

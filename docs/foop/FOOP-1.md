@@ -58,37 +58,10 @@ FOOPs are numbered with **little-endian decimal**: `FOOP-1`, `FOOP-2`,
 `FOOP-9`, `FOOP-01`, `FOOP-11`, `FOOP-21`. Numbers are assigned sequentially
 in order of submission (not order of acceptance). Numbers are never reused.
 
-**Collation note**: little-endian numbering is unusual and intentional. To
-sort FOOPs in the order they were proposed, use this rule:
+**Collation rule**: FOOP-`abcd` sorts by numerical value `dcba`.
 
-1. Reverse the file name string.
-2. Sort lexicographically by **byte order** (locale-independent).
-3. Re-reverse for display.
-
-Implementation (sh): `ls FOOP-*.md | rev | LC_ALL=C sort | rev`
-
-The `LC_ALL=C` is mandatory: locale-aware sort treats punctuation
-inconsistently and produces wrong ordering for mixed-digit-width FOOPs.
-
-This gives an order grouped by **last digit first, then second-to-last, then
-third-to-last**, which is the natural reading of little-endian numbers. For
-example, given FOOPs numbered 1, 2, 3, 9, 01, 11, 21, 91, 02, 12, 002, 102,
-the collated order is:
-
-```
-1, 01, 11, 21, 91,        ← all numbers whose last digit (=units) is "1"
-2, 02, 002, 102, 12,      ← all numbers whose last digit is "2"
-3, 9                       ← then "3", then "9"
-```
-
-Within each "last-digit group," ordering is by the next-to-last digit
-(tens), then the next (hundreds), and so on. This batches related FOOPs
-naturally: a designer who proposes FOOP-N when most-recent is N-1 will find
-their proposal sorts adjacent to the predecessor.
-
-Tools that index FOOPs (`INDEX.md` generator, anything else) MUST use this
-collation with the C locale. Plain alphabetic sorting will produce a wrong
-order and is a bug.
+That is, read the digits in reverse and sort by the resulting number.
+There is no automated tool — sorting is done by hand when needed.
 
 Why little-endian? Two reasons. First, it dovetails with Foolish's general
 preference for non-conventional notations where the conventional one is
