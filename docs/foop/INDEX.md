@@ -11,12 +11,15 @@ Sort by hand when needed.
 |------|-------|--------|-------|---------|--------|
 | [FOOP-1](FOOP-1.md) | FOOP Purpose, Process, and Format | Final | meta | 2026-05-01 | hc |
 | [FOOP-2](FOOP-2.md) | Remove if-then-else from the language | Final | phase-1 | 2026-04-15 | hc |
-| [FOOP-3](FOOP-3.md) | Sequential blocking concatenation | Brewing | phase-6 | 2026-04-22 | hc |
+| [FOOP-3](FOOP-3.md) | Concatenation produces a new brane of constanicCloned elements; further steps delegate to the merged brane | Brewing | phase-3 | 2026-04-22 | hc |
 | [FOOP-4](FOOP-4.md) | Bare identifiers compile to anchored regex SearchFirs | Final | phase-1 | 2026-05-01 | hc |
 | [FOOP-5](FOOP-5.md) | Compile-time vs evaluation-time work — the FIR contract | Final | phase-1 | 2026-05-01 | hc |
-| [FOOP-6](FOOP-6.md) | Phase 2 evaluator is depth-first; breadth-first deferred to Phase 4 | Brewing | phase-2 | 2026-05-01 | hc |
+| [FOOP-6](FOOP-6.md) | Phase 2 evaluator is depth-first; breadth-first deferred to Phase 5 | Brewing | phase-2 | 2026-05-01 | hc |
 | [FOOP-7](FOOP-7.md) | Constanic Clone — recoordination contract | Brewing | phase-2 | 2026-05-01 | hc |
 | [FOOP-8](FOOP-8.md) | FIRs are mutable; parent pointers are post-clone; Circe excludes parent | Brewing | phase-2 | 2026-05-02 | hc |
+| [FOOP-9](FOOP-9.md) | Operators are brane-like FIRs with positional unnamed operands and no search boundary | Brewing | phase-1 | 2026-05-04 | hc |
+| [FOOP-10](FOOP-10.md) | Anchored search through constanic anchors — dereference searches, NK on missing brane names | Brewing | phase-2 | 2026-05-04 | hc |
+| [FOOP-11](FOOP-11.md) | Search stops at NK; search result becomes NK | Brewing | phase-2 | 2026-05-04 | hc |
 
 ---
 
@@ -31,10 +34,13 @@ Sort by hand when needed.
 
 ### Brewing
 
-- [FOOP-3](FOOP-3.md) — Sequential blocking concatenation (targets Phase 6)
-- [FOOP-6](FOOP-6.md) — Phase 2 depth-first; Phase 4 breadth-first
+- [FOOP-3](FOOP-3.md) — Concatenation algorithm (targets Phase 3)
+- [FOOP-6](FOOP-6.md) — Phase 2 depth-first; Phase 5 breadth-first
 - [FOOP-7](FOOP-7.md) — Constanic Clone recoordination contract
 - [FOOP-8](FOOP-8.md) — FIRs are mutable; parent pointers post-clone; Circe excludes parent
+- [FOOP-9](FOOP-9.md) — Operators are brane-like FIRs with positional unnamed operands
+- [FOOP-10](FOOP-10.md) — Anchored search through constanic anchors
+- [FOOP-11](FOOP-11.md) — Search stops at NK
 
 ### Implementing
 
@@ -54,13 +60,13 @@ Sort by hand when needed.
 
 ### phase-1
 
-- [FOOP-2](FOOP-2.md), [FOOP-4](FOOP-4.md), [FOOP-5](FOOP-5.md)
+- [FOOP-2](FOOP-2.md), [FOOP-4](FOOP-4.md), [FOOP-5](FOOP-5.md), [FOOP-9](FOOP-9.md)
 
 ### phase-2
 
-- [FOOP-6](FOOP-6.md), [FOOP-7](FOOP-7.md), [FOOP-8](FOOP-8.md)
+- [FOOP-6](FOOP-6.md), [FOOP-7](FOOP-7.md), [FOOP-8](FOOP-8.md), [FOOP-10](FOOP-10.md), [FOOP-11](FOOP-11.md)
 
-### phase-6
+### phase-3
 
 - [FOOP-3](FOOP-3.md)
 
@@ -83,8 +89,11 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 
 ## Last Updated
 
-**Date**: 2026-05-02
+**Date**: 2026-05-04
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.7 (1M Context)
-**Changes**: Added FOOP-8 (FIR mutability + parent pointers + Circe handling).
-FOOP-7 retitled "recoordination contract" — its body was simplified to a
-contract-only spec instead of attempting to specify state transitions in prose.
+**Changes**: Added FOOP-9 (operator FIR shape with positional operands and no
+search boundary), FOOP-10 (anchored search rules through constanic anchors),
+FOOP-11 (search stops at NK). Renumbered FOOP-3's phase target from phase-6
+to phase-3 (concatenation promoted to its own dedicated phase between UBC
+depth-first and CLI). Updated FOOP-3 abstract to reflect the constanicClone'd
+merged brane algorithm (was "sequential blocking" — older framing).

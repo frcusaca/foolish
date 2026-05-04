@@ -90,20 +90,30 @@ case class StatementFir(
   state: Nyes = Nyes.EMBRYONIC
 )
 
-// Binary operator expression. Phase 1: AST tree only — no arithmetic computation.
-// Phase 2: evaluator collapses to ConstantIntFir if both operands are CONSTANT.
-case class BinaryOpFir(
-  op:    String,    // "+", "-", "*", "/", "%"
-  left:  Fir,
-  right: Fir,
-  state: Nyes = Nyes.EMBRYONIC
-) extends Fir
-
-// Unary operator expression (e.g., `-42`).
-case class UnaryOpFir(
-  op:    String,    // "+", "-", "*"
-  expr:  Fir,
-  state: Nyes = Nyes.EMBRYONIC
+// Operator FIR (per FOOP-9). Replaces previous BinaryOpFir / UnaryOpFir.
+//
+// Operators are brane-like: an ordered list of operand FIRs, evaluated
+// left-to-right (sharing the children-stepping implementation with NormalBraneFir).
+// Operands are positional and unnamed.
+//
+// Crucially, operators have NO SEARCH BOUNDARY (FOOP-9): a search inside an
+// operand searches the operator's PARENT brane, not the operator itself.
+// This matters most for `#-N` seeks: in `a + b`, the `b` searches starting at
+// the brane containing `a + b`, not inside `+`. And `#-2 + #-1` does NOT have
+// the `#-1` find the `#-2` operand — they both search the enclosing brane.
+//
+// op encoding: arity is implicit by operands.length. Binary: ("+", List(l, r)).
+// Unary: ("-@unary", List(operand)) — the @unary suffix disambiguates from
+// binary. Implementer may choose a different convention; document in this file.
+//
+// Phase 1 emits this in EMBRYONIC state. Phase 2 evaluates it: when all
+// operands reach CONSTANT/INDEPENDENT, the operator reduces to a ConstantIntFir
+// with the computed value (the OperatorFir transitions to CONSTANT and
+// represents/holds the reduced value internally — implementer choice).
+case class OperatorFir(
+  op:       String,
+  operands: List[Fir],
+  state:    Nyes = Nyes.EMBRYONIC
 ) extends Fir
 
 // Search operations. All searches in Phase 1 are pattern-based — bare identifiers like

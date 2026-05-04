@@ -1,4 +1,4 @@
-# Phase 4 — UBC: Breadth-First Evaluation
+# Phase 5 — UBC: Breadth-First Evaluation
 
 > Goal: Re-implement UBC stepping in **breadth-first order** so deeply-nested
 > branes don't blow the JVM stack and so unrelated subtrees can progress
@@ -21,7 +21,7 @@
 
 2. **Independent subtrees**: in `{a = {long_subtree_1...}, b = {long_subtree_2...},
    c = a + b}`, depth-first evaluates `a`'s entire subtree before touching
-   `b`'s. Breadth-first interleaves them. For UI responsiveness in Phase 5
+   `b`'s. Breadth-first interleaves them. For UI responsiveness in Phase 6
    (web brane browser), partial progress on multiple subtrees is preferable
    to "all-or-nothing on the leftmost subtree."
 
@@ -36,7 +36,7 @@
 
 ---
 
-## What Phase 4 Must Preserve
+## What Phase 5 Must Preserve
 
 - **Identical observable output** for all Phase 2 approval tests. The 60+
   `.foo` files must produce the same final states.
@@ -48,7 +48,7 @@
 
 ---
 
-## What Phase 4 Changes
+## What Phase 5 Changes
 
 - **The driver loop**: instead of `stepToCompletion(child)` recursing eagerly
   into one child until done, the driver maintains a queue of FIRs ready to
@@ -66,7 +66,7 @@
 
 ## The Hard Part — Coordinating One Foolish-Machine
 
-This is the open design question. It is the central reason Phase 4 is its
+This is the open design question. It is the central reason Phase 5 is its
 own phase rather than a refactor of Phase 2.
 
 > **TODO — design discussion needed with HC**:
@@ -101,12 +101,12 @@ own phase rather than a refactor of Phase 2.
 3. **Step 3**: Add tests specific to breadth-first observable behavior
    (e.g., partial progress on a brane with mixed-depth subtrees).
 4. **Step 4**: Decide whether to retire the Phase 2 depth-first driver or
-   keep both. Likely retire, since Phase 5 (web browser) consumes the
+   keep both. Likely retire, since Phase 6 (web browser) consumes the
    breadth-first driver's output structure.
 
 ---
 
-## Phase 4 Exit Criteria
+## Phase 5 Exit Criteria
 
 - All Phase 2 approval tests pass with the breadth-first driver.
 - A new test exercises "partial progress on multiple subtrees" — verifying
@@ -119,5 +119,7 @@ own phase rather than a refactor of Phase 2.
 
 **Date**: 2026-05-01
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.7 (1M Context)
-**Changes**: Initial Phase 4 outline — placeholder with explicit TODO for
-design discussion with HC about single-Foolish-machine coordination.
+**Changes**: Renumbered Phase 4 → Phase 5 (after promoting Concatenation to
+Phase 3 and shifting CLI to Phase 4). Phase 6 (web browser) is the immediate
+consumer of breadth-first output. Still placeholder with TODO for design
+discussion with HC about single-Foolish-machine coordination.

@@ -64,10 +64,10 @@ foolish-scala/
 │   ├── 02_implementor_reference.md
 │   ├── phase1_compiler.md       ← active phase
 │   ├── phase2_ubc.md
-│   ├── phase3_cli.md
-│   ├── phase4_ubc_breadth_first.md
-│   ├── phase5_browser.md
-│   ├── phase6_concatenation.md
+│   ├── phase3_concatenation.md
+│   ├── phase4_cli.md
+│   ├── phase5_ubc_breadth_first.md
+│   ├── phase6_browser.md
 │   └── phase7_detachment.md
 ├── foolish-parser-java/         ← ANTLR grammar + Java AST records (parser stays Java)
 │   ├── pom.xml
@@ -134,7 +134,7 @@ See `docs/phase1_compiler.md` for the full list. Summary:
 | P1.8 | Anchored search operators: `.`, `?`, `^`, `$`, `#N` |
 | P1.9 | Assignment sugar `=$` and `=^` |
 | P1.10 | `???` literal → `NKFir` |
-| P1.11 | Reject Phase 6 / 7 features with clear errors |
+| P1.11 | Reject Phase 7 features with clear errors (Phase 3 concatenation is enabled when Phase 3 lands; remove ConcatenationAstn from rejection list at that point) |
 
 ## Phase 1 → Phase 2 handoff
 

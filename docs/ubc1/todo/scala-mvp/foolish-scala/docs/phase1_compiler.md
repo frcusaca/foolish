@@ -172,7 +172,7 @@ every input. Verify `mvn test` runs the existing `FirRoundtripTest`.
 |---|---|
 | `DotSearchAstn(anchor, name)` and `name.id` is exact match → `SearchFir("^"+name.id+"$", Backward, anchored=true, Some(compileExpr(anchor)))` | all 3 layers |
 | `RegexSearchAstn(anchor, REGEXP_LOCAL, pat) -> SearchFir(pat, Backward, anchored=true, Some(...))` | |
-| `RegexSearchAstn(anchor, REGEXP_FORWARD_LOCAL, pat)` — **defer to Phase 6** | reject in compileExpr |
+| `RegexSearchAstn(anchor, REGEXP_FORWARD_LOCAL, pat)` — **defer to a future phase** | reject in compileExpr |
 | `IndexAccessAstn(anchor, n) -> IndexFir(n, anchored=true, Some(compileExpr(anchor)))` | |
 | `OneShotSearchAstn(anchor, HEAD) -> HeadTailFir(true, anchored=true, Some(compileExpr(anchor)))` | |
 | `OneShotSearchAstn(anchor, TAIL) -> HeadTailFir(false, anchored=true, Some(compileExpr(anchor)))` | |
@@ -195,8 +195,8 @@ every input. Verify `mvn test` runs the existing `FirRoundtripTest`.
 For these AST node types, `compileExpr` must throw a clear compilation error:
 
 - `NotImplementedAstn(reason)` (Phase 7 features)
-- `ConcatenationAstn(_)` — Phase 6
-- `RegexSearchAstn(_, REGEXP_FORWARD_LOCAL | REGEXP_GLOBAL | REGEXP_FORWARD_GLOBAL, _)` — Phase 6
+- `ConcatenationAstn(_)` — **rejection lifted in Phase 3** (Phase 1 still rejects it; once Phase 3 lands, the compiler emits `ConcatenationFir`)
+- `RegexSearchAstn(_, REGEXP_FORWARD_LOCAL | REGEXP_GLOBAL | REGEXP_FORWARD_GLOBAL, _)` — deferred
 
 The error should name the construct and the phase that adds it.
 

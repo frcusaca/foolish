@@ -1,4 +1,4 @@
-# Phase 4 — Web Brane Browser (LOD)
+# Phase 6 — Web Brane Browser (LOD)
 
 > Goal: A browser-based viewer for Foolish brane trees, with level-of-detail
 > windowed viewports. The screen is finite; branes can have thousands of
@@ -6,11 +6,11 @@
 
 ---
 
-## Phase 4 Deliverable
+## Phase 6 Deliverable
 
 A web app that:
 
-1. Accepts Foolish source via `POST /eval` and runs it through Phase 1 + Phase 2.
+1. Accepts Foolish source via `POST /eval` and runs it through Phase 1 + Phase 2 + Phase 3 + Phase 5 (the breadth-first evaluator).
 2. Returns the resulting brane tree as JSON.
 3. Renders one or more viewports, each showing a *window* of consecutive statements
    into a brane.
@@ -56,7 +56,7 @@ A web app that:
 
 ---
 
-## Phase 4 Exit Criteria
+## Phase 6 Exit Criteria
 
 - Viewer renders a 1000-statement brane without browser jank (lazy load windows).
 - Multiple simultaneous viewports work (each independently scrollable / searchable).
@@ -69,4 +69,6 @@ A web app that:
 
 **Date**: 2026-05-01
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.7 (1M Context)
-**Changes**: Initial Phase 4 outline — LOD brane browser with windowed viewports.
+**Changes**: Renumbered Phase 4 → Phase 6 (after promoting Concatenation to
+Phase 3 and inserting CLI as Phase 4 / breadth-first as Phase 5). The browser
+consumes Phase 5's breadth-first evaluator output for partial-progress display.

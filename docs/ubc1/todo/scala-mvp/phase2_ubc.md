@@ -8,7 +8,7 @@
 
 > Phase 2 is **depth-first, sequential, no message passing**. We adopt UBC2's
 > Nyes lifecycle and FIR taxonomy but evaluate by direct function-call stepping.
-> Breadth-first parallel evaluation is deferred to Phase 4. See FOOP-6.
+> Breadth-first parallel evaluation is deferred to Phase 5. See FOOP-6.
 
 Read [00_accumulated_specs.md](00_accumulated_specs.md) for the Nyes state
 definitions before reading this document.
@@ -46,9 +46,9 @@ terminal states**. This is the foundation that enables search short-circuiting
 to be a simple in-step operation rather than a wake-up-queue mechanism.
 
 **Why depth-first and not breadth-first?** Breadth-first is correct (and is the
-target of Phase 4), but the bookkeeping required to interleave subtree evaluations
+target of Phase 5), but the bookkeeping required to interleave subtree evaluations
 correctly — wake-up queues, dependency tracking maps, the H-uman-style coordination
-mechanism — is substantial. Phase 2 deliberately punts these to Phase 4 so the
+mechanism — is substantial. Phase 2 deliberately punts these to Phase 5 so the
 core semantics (search resolution, constanic cloning, NK propagation, regex
 matching, scope walks) can be exercised against the full approval test suite first.
 
@@ -250,7 +250,7 @@ concatenation (no actual context change). For example, given the brane:
 The search `a` (in statement `y = a`) finds `unknown`'s ECONSTANIC search
 FIR, and `constanicClone` is invoked before binding to `y`'s body's result.
 
-This is intentional. By making `constanicClone` uniform, Phase 6
+This is intentional. By making `constanicClone` uniform, Phase 3
 (concatenation) inherits the recoordination machinery for free —
 concatenation is just another caller of `constanicClone` operating in a
 context where the parent IS different.
@@ -392,14 +392,14 @@ rule (a name is not visible to its own RHS).
 
 ## What Phase 2 Does NOT Do
 
-- **No concatenation** — `ConcatenationAstn` is rejected by the compiler (FOOP-3
-  scope, Phase 6).
+- **No concatenation** — `ConcatenationFir` is built in Phase 3, not Phase 2.
+  Phase 1's compiler still rejects `ConcatenationAstn` until Phase 3.
 - **No detachment, SF, SFF** — Phase 7.
 - **No REPL recoordination** — REPL lines are appended; backward search means a
-  later definition cannot retroactively resolve an earlier ECONSTANIC. Phase 3.
-- **No breadth-first / parallel** — Phase 4.
+  later definition cannot retroactively resolve an earlier ECONSTANIC. Phase 4.
+- **No breadth-first / parallel** — Phase 5.
 - **No wake-up queues, no dependency tracking maps, no message passing** — these
-  are Phase 4 concerns.
+  are Phase 5 concerns.
 
 ---
 

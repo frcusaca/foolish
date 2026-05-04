@@ -73,6 +73,6 @@ Each addition needs a roundtrip test in `FirRoundtripTest` and an AST→FIR test
 
 **Date**: 2026-05-01
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.7 (1M Context)
-**Changes**: Renumbered Phase 6 → Phase 7 (after inserting Phase 4 breadth-first).
-Adopted Nyes terminology in FIR snippets. SFF "skips to Constanic" → "skips to
-ECONSTANIC" for terminology precision.
+**Changes**: Phase number unchanged (still Phase 7) after the Phase 3
+concatenation promotion. Detachment depends on concatenation (Phase 3),
+breadth-first UBC (Phase 5), and the web browser (Phase 6) being stable.
