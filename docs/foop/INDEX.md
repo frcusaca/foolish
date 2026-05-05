@@ -20,6 +20,7 @@ Sort by hand when needed.
 | [FOOP-9](FOOP-9.md) | Operators are brane-like FIRs with positional unnamed operands and no search boundary | Brewing | phase-1 | 2026-05-04 | hc |
 | [FOOP-10](FOOP-10.md) | Anchored search through constanic anchors — dereference searches, NK on missing brane names | Brewing | phase-2 | 2026-05-04 | hc |
 | [FOOP-11](FOOP-11.md) | Search stops at NK; search result becomes NK | Brewing | phase-2 | 2026-05-04 | hc |
+| [FOOP-12](FOOP-12.md) | Alarms — diagnostic levels emitted by compiler and evaluator | Brewing | phase-1 | 2026-05-04 | hc |
 
 ---
 
@@ -41,6 +42,7 @@ Sort by hand when needed.
 - [FOOP-9](FOOP-9.md) — Operators are brane-like FIRs with positional unnamed operands
 - [FOOP-10](FOOP-10.md) — Anchored search through constanic anchors
 - [FOOP-11](FOOP-11.md) — Search stops at NK
+- [FOOP-12](FOOP-12.md) — Alarms (compiler + evaluator diagnostic levels)
 
 ### Implementing
 
@@ -60,7 +62,7 @@ Sort by hand when needed.
 
 ### phase-1
 
-- [FOOP-2](FOOP-2.md), [FOOP-4](FOOP-4.md), [FOOP-5](FOOP-5.md), [FOOP-9](FOOP-9.md)
+- [FOOP-2](FOOP-2.md), [FOOP-4](FOOP-4.md), [FOOP-5](FOOP-5.md), [FOOP-9](FOOP-9.md), [FOOP-12](FOOP-12.md)
 
 ### phase-2
 
@@ -91,9 +93,6 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 
 **Date**: 2026-05-04
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.7 (1M Context)
-**Changes**: Added FOOP-9 (operator FIR shape with positional operands and no
-search boundary), FOOP-10 (anchored search rules through constanic anchors),
-FOOP-11 (search stops at NK). Renumbered FOOP-3's phase target from phase-6
-to phase-3 (concatenation promoted to its own dedicated phase between UBC
-depth-first and CLI). Updated FOOP-3 abstract to reflect the constanicClone'd
-merged brane algorithm (was "sequential blocking" — older framing).
+**Changes**: Added FOOP-12 (alarm system — diagnostic levels emitted by
+compiler and evaluator, INFO/WARN/MILD/PANIC). Earlier same-day:
+FOOPs 9-11 added; FOOP-3 retitled and rephased to phase-3.

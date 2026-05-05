@@ -169,10 +169,47 @@ case class CharacterizedRefFir(
   state:             Nyes = Nyes.EMBRYONIC
 ) extends Fir
 
-// The literal `???` (NK from source).
+// -----------------------------------------------------------------------------
+// Alarm system (FOOP-12). Alarms are diagnostic messages emitted by the compiler
+// (Phase 1) and evaluator (Phase 2 onward) when conditions warrant surfacing
+// to the user. Levels: INFO, WARN (logged, never halts), MILD (produces NK with
+// alarm attached, brane survives), PANIC (halts the run).
+// -----------------------------------------------------------------------------
+
+enum AlarmLevel:
+  case INFO, WARN, MILD, PANIC
+
+object AlarmLevel:
+  given Encoder[AlarmLevel] = Encoder.encodeString.contramap(_.toString)
+  given Decoder[AlarmLevel] = Decoder.decodeString.emap:
+    case "INFO"  => Right(INFO)
+    case "WARN"  => Right(WARN)
+    case "MILD"  => Right(MILD)
+    case "PANIC" => Right(PANIC)
+    case other   => Left(s"Unknown AlarmLevel: $other")
+
+// Source location is optional — populated by the parser when known.
+case class SourceLocation(line: Int, column: Int)
+
+// Stable structured diagnostic. The `code` field is a stable identifier callers
+// can match on (e.g., "FOOP-2-IF-REJECTED", "DEPTH-EXCEEDED").
+case class Alarm(
+  level:   AlarmLevel,
+  code:    String,
+  message: String,
+  source:  Option[SourceLocation] = None,
+  context: Map[String, String]    = Map.empty
+)
+
+// The literal `???` (NK from source) plus runtime NKs (div-by-zero, depth-exceeded,
+// anchored search miss on CONSTANT brane). The `alarm` field carries diagnostic
+// context for MILD-level NKs so tree consumers (sequencer, debugger) can surface it.
+// Per FOOP-12, the alarm is also independently emitted to the AlarmSink at the
+// site where the NKFir is created.
 case class NKFir(
   reason: String,
-  state:  Nyes = Nyes.NK
+  alarm:  Option[Alarm] = None,
+  state:  Nyes          = Nyes.NK
 ) extends Fir
 
 // -----------------------------------------------------------------------------
@@ -183,7 +220,13 @@ object Fir:
   // Generic derivation handles every case class above. The `Fir` trait gets a
   // tagged-union encoding by default (a "type" discriminator field), which is
   // exactly what we want for round-trip.
-  given Encoder[StatementFir] = deriveEncoder
-  given Decoder[StatementFir] = deriveDecoder
-  given Encoder[Fir]          = deriveEncoder
-  given Decoder[Fir]          = deriveDecoder
+  // Codecs for Alarm and SourceLocation are derived first so NKFir's encoder
+  // can find them.
+  given Encoder[SourceLocation] = deriveEncoder
+  given Decoder[SourceLocation] = deriveDecoder
+  given Encoder[Alarm]          = deriveEncoder
+  given Decoder[Alarm]          = deriveDecoder
+  given Encoder[StatementFir]   = deriveEncoder
+  given Decoder[StatementFir]   = deriveDecoder
+  given Encoder[Fir]            = deriveEncoder
+  given Decoder[Fir]            = deriveDecoder

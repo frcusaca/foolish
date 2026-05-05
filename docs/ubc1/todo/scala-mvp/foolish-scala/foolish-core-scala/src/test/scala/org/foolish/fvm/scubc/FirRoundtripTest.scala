@@ -35,4 +35,21 @@ class FirRoundtripTest extends AnyFunSuite:
     roundtrip(fir)
   }
 
+  test("NKFir without alarm roundtrips") {
+    roundtrip(NKFir(reason = "??? literal"))
+  }
+
+  test("FOOP-12: NKFir with MILD alarm roundtrips") {
+    val nk = NKFir(
+      reason = "if-then-else removed",
+      alarm  = Some(Alarm(
+        level   = AlarmLevel.MILD,
+        code    = "FOOP-2-IF-REJECTED",
+        message = "if-then-else has been removed (FOOP-2)",
+        source  = Some(SourceLocation(line = 3, column = 5))
+      ))
+    )
+    roundtrip(nk)
+  }
+
   // TODO: add a test per FIR variant as Phase 1 grows.
