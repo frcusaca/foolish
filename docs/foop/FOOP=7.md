@@ -9,7 +9,7 @@ phase: phase-2
 supersedes: []
 ---
 
-# FOOP-7: Constanic Clone — recoordination contract
+# FOOP=7: Constanic Clone — recoordination contract
 
 ## Abstract
 
@@ -91,7 +91,7 @@ def constanicClone(original: Fir): Fir =
   //   nigh states               -> caller bug, throw
   //
   // The clone's parent pointer is set by the CALLER after this function
-  // returns (FIRs are mutable; see FOOP-8 for the parent-pointer
+  // returns (FIRs are mutable; see FOOP=8 for the parent-pointer
   // representation decision).
   //
   // Detailed multi-step state transitions are implementation-defined.
@@ -111,7 +111,7 @@ makes this trivial: by the time statement N is being stepped, statements
 | `original.state` | Intent | Refer to |
 |---|---|---|
 | CONSTANT | share reference | UBC2 d0_5 "CONSTANT references not cloned" |
-| INDEPENDENT | share reference | per FOOP-5 (literals are recoordination-immune) |
+| INDEPENDENT | share reference | per FOOP=5 (literals are recoordination-immune) |
 | NK | share reference | terminal |
 | ECONSTANIC | clone, reset to EMBRYONIC | re-runs search in new context |
 | WOCONSTANIC | clone with recursively-cloned constanic children, reset to BRANING | re-steps to recurse into children |
@@ -122,7 +122,7 @@ defined by what makes the approval tests pass.
 
 ## FIR Impact
 
-`Fir` instances are mutable (per FOOP-8). After `constanicClone` returns,
+`Fir` instances are mutable (per FOOP=8). After `constanicClone` returns,
 the caller assigns `.parent` on the returned FIR. The clone's `target`
 (if it's a SearchFir) and `state` may continue to mutate as UBC steps
 proceed.
@@ -186,7 +186,7 @@ the FIR tree to clone them, which is more complex than the uniform
 Don't clone constanic results; instead, when a context change happens,
 walk the FIR tree finding constanic FIRs and re-stepping them in place.
 **Rejected**: requires the wake-up queue + dependency map machinery that
-Phase 2 explicitly defers (FOOP-6). Also fights Foolish's semantics —
+Phase 2 explicitly defers (FOOP=6). Also fights Foolish's semantics —
 each searcher should resolve in *its own* context, so each needs its own
 clone, not a shared mutating original.
 
@@ -205,8 +205,8 @@ clone, not a shared mutating original.
 - `docs/ubc1/how/d0_5_brane_recoordination.md` (broader docs branch): the
   originating UBC2 design. Use as a reference for intent, not as a
   prescriptive specification.
-- FOOP-3: the WOCONSTANIC-during-merge race in concatenation was
+- FOOP=3: the WOCONSTANIC-during-merge race in concatenation was
   eliminated separately; the WOCONSTANIC state itself remains.
-- FOOP-6: depth-first ordering makes the caller invariant trivial in
+- FOOP=6: depth-first ordering makes the caller invariant trivial in
   Phase 2.
-- FOOP-8 (planned): FIR mutability and parent-pointer representation.
+- FOOP=8 (planned): FIR mutability and parent-pointer representation.

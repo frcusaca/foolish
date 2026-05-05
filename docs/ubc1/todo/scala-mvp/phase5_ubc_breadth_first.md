@@ -4,7 +4,7 @@
 > branes don't blow the JVM stack and so unrelated subtrees can progress
 > independently. All previous Foolish designs (UBC1, UBC2 design docs)
 > assumed breadth-first as the target evaluation order; Phase 2 used
-> depth-first as a deliberate simplification (FOOP-6).
+> depth-first as a deliberate simplification (FOOP=6).
 
 > **This phase has open design questions** noted at the bottom. The user (HC
 > = the H-uman) has design context that needs to be elicited before
@@ -31,7 +31,7 @@
 
 4. **Alignment with UBC2 design intent**: UBC2's message-passing model
    (`FulfillSearch`/`RespondToSearch`) implicitly assumed breadth-first
-   stepping. We didn't adopt the message-passing model in Phase 2 (FOOP-6)
+   stepping. We didn't adopt the message-passing model in Phase 2 (FOOP=6)
    but bringing it back as part of breadth-first remains an option.
 
 ---
@@ -41,7 +41,7 @@
 - **Identical observable output** for all Phase 2 approval tests. The 60+
   `.foo` files must produce the same final states.
 - The Nyes lifecycle (PREMBRYONIC → EMBRYONIC → BRANING → ECONSTANIC | WOCONSTANIC | CONSTANT | INDEPENDENT, plus NK).
-- The `constanicClone` recoordination algorithm (FOOP-7).
+- The `constanicClone` recoordination algorithm (FOOP=7).
 - Search short-circuiting through WOCONSTANIC chains.
 - Writing-order semantics (a name is not visible to its own RHS; backward
   search only finds statements written earlier).

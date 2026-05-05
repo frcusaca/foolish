@@ -8,7 +8,7 @@
 
 > Phase 2 is **depth-first, sequential, no message passing**. We adopt UBC2's
 > Nyes lifecycle and FIR taxonomy but evaluate by direct function-call stepping.
-> Breadth-first parallel evaluation is deferred to Phase 5. See FOOP-6.
+> Breadth-first parallel evaluation is deferred to Phase 5. See FOOP=6.
 
 Read [00_accumulated_specs.md](00_accumulated_specs.md) for the Nyes state
 definitions before reading this document.
@@ -203,14 +203,14 @@ After Phase 2 steps the entire brane to completion:
 
 ## Constanic Cloning — `constanicClone(R)`
 
-**Calling contract** (FOOP-7):
+**Calling contract** (FOOP=7):
 
 > **Every search result is `constanicClone`'d before being assigned to the
 > Search FIR's result field. UBC stepping, applied iteratively, takes care
 > of all subsequent state transitions.**
 
 After `constanicClone(R)` returns the clone, the caller assigns the clone's
-parent to the searcher's brane (FOOP-8: FIRs are mutable, parent set
+parent to the searcher's brane (FOOP=8: FIRs are mutable, parent set
 post-clone). Then UBC stepping handles the rest.
 
 The function's internal mechanics — when to share, when to deep-copy, when to
@@ -226,13 +226,13 @@ tests.
 | `R.state` | Intent |
 |-----------|--------|
 | CONSTANT | share reference — immutable |
-| INDEPENDENT | share reference — literal, recoordination-immune (FOOP-5) |
+| INDEPENDENT | share reference — literal, recoordination-immune (FOOP=5) |
 | NK | share reference — terminal |
 | ECONSTANIC | clone, reset to EMBRYONIC; re-runs search in new context |
 | WOCONSTANIC | clone with recursively-cloned constanic children, reset to BRANING; re-steps children |
 | PREMBRYONIC, EMBRYONIC, BRANING | caller bug — depth-first ordering means callers should never see these |
 
-The exact behavior is what makes the approval tests pass. See FOOP-7 for the
+The exact behavior is what makes the approval tests pass. See FOOP=7 for the
 full contract specification.
 
 ### Why uniform invocation matters
@@ -310,7 +310,7 @@ step(BinaryOpFir(op, left, right, state)):
 ```
 
 Note `compute(op, l, r)` performs the actual arithmetic. Phase 1 deliberately
-did not do this (FOOP-5); Phase 2 does.
+did not do this (FOOP=5); Phase 2 does.
 
 ### `UnaryOpFir`
 
@@ -327,7 +327,7 @@ step(SearchFir(pattern, Backward, anchored=false, anchor=None, state)):
       result match
         case None                  -> state' = ECONSTANIC; target = None
         case Some(found) ->
-          // Apply constanicClone — recoordination per FOOP-7
+          // Apply constanicClone — recoordination per FOOP=7
           target = constanicClone(found, /* this search's brane */)
           state' = match target.state
             case CONSTANT | INDEPENDENT -> CONSTANT
@@ -443,7 +443,7 @@ Output format: `Sequencer4Human` style. The Phase 2 sequencer must distinguish:
 **Date**: 2026-05-02
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.7 (1M Context)
 **Changes**: Replaced the prescriptive `constanicClone` algorithm with the
-calling contract from FOOP-7 (every search result is constanicClone'd before
+calling contract from FOOP=7 (every search result is constanicClone'd before
 assignment to the Search FIR's result field; UBC stepping handles the rest).
 The per-state state transition cascade is intentionally not specified in
 prose — it's defined by what makes the approval tests pass.

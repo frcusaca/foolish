@@ -10,7 +10,7 @@ supersedes: []
 implementation: scala-mvp/foolish-scala compiler rejects AST.IfExpr
 ---
 
-# FOOP-2: Remove if-then-else from the language
+# FOOP=2: Remove if-then-else from the language
 
 ## Abstract
 
@@ -60,7 +60,7 @@ nodes).
 
 The compiler MUST throw a `CompilationError` with the message:
 
-> "if-then-else has been removed from Foolish (FOOP-2). Use a brane with
+> "if-then-else has been removed from Foolish (FOOP=2). Use a brane with
 > named statements and search-based selection instead."
 
 ### Future grammar removal
@@ -83,10 +83,10 @@ None. The evaluator never sees an `IfFir`.
 A unit test in `CompilerTest`:
 
 ```scala
-test("rejects if-then-else with FOOP-2 message") {
+test("rejects if-then-else with FOOP=2 message") {
   val source = "{ if 1 then 2 else 3 fi }"
   val ex = intercept[CompilationError](Compiler.compileToJson(source))
-  ex.getMessage should include("FOOP-2")
+  ex.getMessage should include("FOOP=2")
 }
 ```
 

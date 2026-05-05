@@ -32,13 +32,13 @@ the JSON FIR format.
 **Phase 2 is depth-first sequential:** coordinating constanic values (the core UBC1
 stuckness) is hard. Phase 2 simplifies the implementation by guaranteeing that all
 dependencies are evaluated before their dependents. This makes search short-circuiting
-a synchronous in-step operation rather than a wake-up-queue mechanism. See FOOP-6.
+a synchronous in-step operation rather than a wake-up-queue mechanism. See FOOP=6.
 
 **Phase 3 is concatenation, before CLI:** concatenation is the first real exercise
-of `constanicClone` (FOOP-7) across actual context changes. It belongs before the
+of `constanicClone` (FOOP=7) across actual context changes. It belongs before the
 CLI because the CLI is significantly more useful when users can compose Foolish
 snippets. Promoting concatenation to Phase 3 (rather than deferring to Phase 6)
-also catches recoordination bugs earlier when they're easier to find. See FOOP-3
+also catches recoordination bugs earlier when they're easier to find. See FOOP=3
 (revised) for the algorithm.
 
 **Phase 4 (CLI) builds on Phases 1–3:** a CLI that exposes compile + run + REPL.
@@ -47,7 +47,7 @@ the daily-driver use case.
 
 **Phase 5 introduces breadth-first:** all previous Foolish designs assumed
 breadth-first. Phase 5 reintroduces it on a stable foundation, with the open
-design question of how to coordinate one Foolish-machine. See FOOP-6 and the
+design question of how to coordinate one Foolish-machine. See FOOP=6 and the
 Phase 5 TODO.
 
 **Phase 6 (Web Browser) requires Phase 5:** the LOD viewer benefits from
@@ -67,21 +67,21 @@ concatenation (Phase 3), breadth-first UBC (Phase 5), and the web browser
 | Integer literals | `ConstantIntFir` (already `INDEPENDENT`) | passes through | shared by reference (no clone) |
 | `???` literal | `NKFir` (already `NK`) | passes through | shared by reference |
 | Brane `{...}` | `NormalBraneFir(EMBRYONIC)` | steps to `CONSTANT` / `WOCONSTANIC` | one of these per concatenation element |
-| Identification `name = expr` | `StatementFir(Some(name), body, EMBRYONIC)` | mirrors body's state | cloned in merge per FOOP-7 |
-| Arithmetic `+ - * / %` | `OperatorFir(EMBRYONIC)` per FOOP-9 (operator FIR with operand list, no search boundary) | computes if all operands CONSTANT/INDEPENDENT | as inside any expression |
+| Identification `name = expr` | `StatementFir(Some(name), body, EMBRYONIC)` | mirrors body's state | cloned in merge per FOOP=7 |
+| Arithmetic `+ - * / %` | `OperatorFir(EMBRYONIC)` per FOOP=9 (operator FIR with operand list, no search boundary) | computes if all operands CONSTANT/INDEPENDENT | as inside any expression |
 | Unary `-` | `OperatorFir("-@unary", List(operand))` | same | same |
 | Bare identifier | `SearchFir(pattern="^x$", Backward, anchored=false, EMBRYONIC)` | walks IB then AB chain; ECONSTANIC if not found | re-walked in merged context if cloned |
 | `#-N` seek | `IndexFir(N, anchored=false)` | walks IB | re-walked in merged context |
-| Anchored `.`, `?` | `SearchFir(anchored=true, anchor=Some(...))` | local to anchor (FOOP-10 rules) | as before |
+| Anchored `.`, `?` | `SearchFir(anchored=true, anchor=Some(...))` | local to anchor (FOOP=10 rules) | as before |
 | `^` head, `$` tail | `HeadTailFir(anchored=true)` | first/last of anchor | — |
 | Anchored `#N` index | `IndexFir(N, anchored=true)` | nth of anchor | — |
 | Regex search | `SearchFir(pattern=..., ...)` | regex match | — |
 | Comments | stripped at parse | n/a | — |
 | Shebang | stripped at parse | n/a | — |
-| Concatenation `A B C` | rejected by Phase 1; **enabled in Phase 3** | — | `ConcatenationFir(elements)` per FOOP-3 |
+| Concatenation `A B C` | rejected by Phase 1; **enabled in Phase 3** | — | `ConcatenationFir(elements)` per FOOP=3 |
 | `~` forward search | rejected by Phase 1; deferred | — | — |
 | Detachment, SF/SFF | rejected by Phase 1; **deferred to Phase 7** | — | — |
-| `if-then-else` | rejected at compile (FOOP-2) | — | — |
+| `if-then-else` | rejected at compile (FOOP=2) | — | — |
 
 ---
 
@@ -126,12 +126,12 @@ in `docs/foop/`):
 
 | Phase | Governing FOOPs |
 |-------|----------------|
-| meta | FOOP-1 (the FOOP process itself) |
-| Phase 1 | FOOP-2 (no if-then-else), FOOP-4 (search regex pattern), FOOP-5 (compile-time vs eval-time), FOOP-9 (operator FIR shape) |
-| Phase 2 | FOOP-6 (depth-first), FOOP-7 (constanic clone contract), FOOP-8 (FIR mutability), FOOP-10 (anchored search rules), FOOP-11 (search stops at NK) |
-| Phase 3 | FOOP-3 (concatenation algorithm) |
+| meta | FOOP=1 (the FOOP process itself) |
+| Phase 1 | FOOP=2 (no if-then-else), FOOP=4 (search regex pattern), FOOP=5 (compile-time vs eval-time), FOOP=9 (operator FIR shape) |
+| Phase 2 | FOOP=6 (depth-first), FOOP=7 (constanic clone contract), FOOP=8 (FIR mutability), FOOP=10 (anchored search rules), FOOP=11 (search stops at NK) |
+| Phase 3 | FOOP=3 (concatenation algorithm) |
 | Phase 4 | (no governing FOOP — implementation only) |
-| Phase 5 | FOOP-6 also covers Phase 5 (it's the deferred-from-Phase-2 work) |
+| Phase 5 | FOOP=6 also covers Phase 5 (it's the deferred-from-Phase-2 work) |
 | Phase 6 | (no governing FOOP — application layer) |
 | Phase 7 | (FOOPs to be written when Phase 7 design begins) |
 
@@ -143,5 +143,5 @@ in `docs/foop/`):
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.7 (1M Context)
 **Changes**: Promoted Concatenation to Phase 3 (was Phase 6). Renumbered: CLI 3→4,
 breadth-first UBC 4→5, web browser 4→6 (was 5), detachment unchanged at 7.
-Added FOOP governance table mapping each phase to its FOOPs (now FOOP-1 through
-FOOP-11).
+Added FOOP governance table mapping each phase to its FOOPs (now FOOP=1 through
+FOOP=11).

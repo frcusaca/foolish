@@ -1,6 +1,6 @@
 # Phase 3 — Concatenation
 
-> Goal: Implement the concatenation operator `A B C ...` per FOOP-3
+> Goal: Implement the concatenation operator `A B C ...` per FOOP=3
 > (revised). Concatenation produces a new merged brane of
 > `constanicClone`'d copies of each input, in order, and delegates
 > further `step()` calls to that merged brane. This is the first phase
@@ -10,10 +10,10 @@
 
 > Phase 3 was inserted between Phase 2 (UBC depth-first) and Phase 4
 > (CLI) after design discussion. Concatenation deserves its own phase
-> because it's the first real exercise of `constanicClone` (FOOP-7) and
+> because it's the first real exercise of `constanicClone` (FOOP=7) and
 > it makes the CLI meaningfully more useful.
 
-Read [FOOP-3](../../../../foop/FOOP-3.md) for the full design rationale
+Read [FOOP=3](../../../../foop/FOOP=3.md) for the full design rationale
 before reading this document.
 
 ---
@@ -21,7 +21,7 @@ before reading this document.
 ## Phase 3 Deliverable
 
 A `ConcatenationFir` variant in `Fir.scala` plus a step rule that
-implements the FOOP-3 algorithm:
+implements the FOOP=3 algorithm:
 
 1. Each element FIR has reached a constanic terminal state
    (Phase 2's depth-first ordering guarantees this).
@@ -31,7 +31,7 @@ implements the FOOP-3 algorithm:
 3. Subsequent `step()` calls on the `ConcatenationFir` delegate to the
    merged brane (the `ConcatenationFir` either mutates to hold the
    merged brane or is replaced in its parent's statement list — implementer's
-   choice per FOOP-8).
+   choice per FOOP=8).
 
 The Phase 1 compiler is updated:
 - `ConcatenationAstn` now compiles to `ConcatenationFir(elements.map(compileExpr))`
@@ -55,7 +55,7 @@ value as a milestone:
 
 ---
 
-## Step Algorithm (per FOOP-3)
+## Step Algorithm (per FOOP=3)
 
 ```scala
 step(c: ConcatenationFir):
@@ -72,7 +72,7 @@ step(c: ConcatenationFir):
   val mergedStatements: List[StatementFir] = c.elements.flatMap { elem =>
     val resolvedBrane: NormalBraneFir = derefToBrane(elem)
     resolvedBrane.statements.map { stmt =>
-      val cloned = constanicClone(stmt)   // FOOP-7
+      val cloned = constanicClone(stmt)   // FOOP=7
       cloned.asInstanceOf[StatementFir]
     }
   }
@@ -124,7 +124,7 @@ case class ConcatenationFir(
 
 Roundtrip test required (Phase 1 test layer 3): construct a
 `ConcatenationFir`, encode to JSON, decode, compare structurally
-(per FOOP-8: parent and merged are excluded from JSON; equality is
+(per FOOP=8: parent and merged are excluded from JSON; equality is
 structural).
 
 ---
@@ -142,7 +142,7 @@ Existing `.foo` files (currently in
 These were deferred from Phase 2's approval suite. Move them into
 Phase 3's approval test runner.
 
-New dedicated tests (per FOOP-3 §Test Plan):
+New dedicated tests (per FOOP=3 §Test Plan):
 
 - **p3_concat_simple.foo**: `{a={x=1, y=2}, b={z=3}, c = a b}` →
   c is a merged brane with statements x=1, y=2, z=3 in order.
@@ -192,7 +192,7 @@ New dedicated tests (per FOOP-3 §Test Plan):
   statement carry a record of which input element it came from? Useful
   for debugging concatenation issues. Decide during implementation.
 - **Concatenation between branes with characterizations**: `type1'{...}
-  type2'{...}` — the merged brane is uncharacterized per FOOP-3.
+  type2'{...}` — the merged brane is uncharacterized per FOOP=3.
   Verify users are okay with that; revisit if not.
 
 ---
@@ -202,7 +202,7 @@ New dedicated tests (per FOOP-3 §Test Plan):
 **Date**: 2026-05-04
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.7 (1M Context)
 **Changes**: Promoted concatenation from Phase 6 to Phase 3 (its own
-dedicated phase between UBC depth-first and CLI). Rewrote per FOOP-3
+dedicated phase between UBC depth-first and CLI). Rewrote per FOOP=3
 revised algorithm (constanicClone'd merge + delegate-to-merged-brane).
 Removed forward search and other deferred features from this phase's
 scope.

@@ -9,7 +9,7 @@ phase: phase-1
 supersedes: []
 ---
 
-# FOOP-12: Alarms — diagnostic levels emitted by compiler and evaluator
+# FOOP=12: Alarms — diagnostic levels emitted by compiler and evaluator
 
 ## Abstract
 
@@ -42,7 +42,7 @@ fine for prototyping but brittle:
 UBC2 docs already mention alarms (`docs/ubc1/how/ubc2_design.md` §14:
 "depth exhaustion should produce an alarm through the message channel
 so the parent brane is aware evaluation was truncated"; `d0_4` §"Useless
-Detachment"; `d0_2` PANIC for circular messages). FOOP-12 codifies
+Detachment"; `d0_2` PANIC for circular messages). FOOP=12 codifies
 these into a uniform mechanism, starting at compile time.
 
 A unified alarm system also makes the CLI (Phase 4) easier: one error
@@ -66,7 +66,7 @@ Four levels, ordered by severity:
 ```scala
 case class Alarm(
   level:    AlarmLevel,
-  code:     String,         // stable identifier, e.g., "FOOP-2-IF-REJECTED" or "DEPTH-EXCEEDED"
+  code:     String,         // stable identifier, e.g., "FOOP=2-IF-REJECTED" or "DEPTH-EXCEEDED"
   message:  String,         // human-readable description
   source:   Option[SourceLocation],  // file/line if known (parser provides this)
   context:  Map[String, String] = Map.empty   // optional structured details
@@ -79,8 +79,8 @@ enum AlarmLevel:
 The `code` field is a stable identifier callers can match on. Codes
 follow the convention `<SUBSYSTEM>-<CONDITION>` for evaluator alarms
 (e.g., `DEPTH-EXCEEDED`, `DIV-BY-ZERO`, `USELESS-DETACHMENT`) and
-`<FOOP-N>-<CONDITION>` for compiler alarms tied to a specific FOOP
-decision (e.g., `FOOP-2-IF-REJECTED`).
+`<FOOP=N>-<CONDITION>` for compiler alarms tied to a specific FOOP
+decision (e.g., `FOOP=2-IF-REJECTED`).
 
 ### Alarm sink
 
@@ -140,9 +140,9 @@ The compiler emits alarms for:
 
 | Code | Level | Trigger |
 |------|-------|---------|
-| `FOOP-2-IF-REJECTED` | MILD | Source contains `if-then-else` |
-| `FOOP-3-CONCATENATION-DEFERRED` | MILD | Source contains concatenation before Phase 3 ships |
-| `FOOP-7-DEFERRED-FEATURE` | MILD | Source uses SF, SFF, detachment, ↑, or other Phase 7 features |
+| `FOOP=2-IF-REJECTED` | MILD | Source contains `if-then-else` |
+| `FOOP=3-CONCATENATION-DEFERRED` | MILD | Source contains concatenation before Phase 3 ships |
+| `FOOP=7-DEFERRED-FEATURE` | MILD | Source uses SF, SFF, detachment, ↑, or other Phase 7 features |
 | `PARSE-ERROR` | MILD | ANTLR parser produced an error |
 | `PARSER-INTERNAL` | PANIC | Parse tree is malformed in a way that breaks AST construction |
 | `UNSUPPORTED-CHARACTERIZATION` | WARN | A characterization is used in a way the current implementation doesn't fully handle (defer-and-warn for forward compat) |
@@ -160,7 +160,7 @@ it (e.g., for partial syntax highlighting) or discard it.
 | `DIV-BY-ZERO` | MILD | Integer division/modulo by zero. The OperatorFir becomes NK. |
 | `STEP-LIMIT-EXCEEDED` | MILD | A driver-defined step budget exceeded (prevents infinite loops in degenerate cases). |
 | `CONSTANIC-CLONE-INVARIANT` | PANIC | `constanicClone` called on a nigh FIR (caller bug). |
-| `CIRCULAR-PARENT` | PANIC | Parent chain has a cycle (caught by FOOP-8 invariant; should never happen). |
+| `CIRCULAR-PARENT` | PANIC | Parent chain has a cycle (caught by FOOP=8 invariant; should never happen). |
 | `USELESS-DETACHMENT` | WARN | Phase 7 detachment is on a name already resolved (per d0_4 §"Useless Detachment"). |
 
 ### Configuration
@@ -181,7 +181,7 @@ across REPL lines.
 Alarms render to stderr in the CLI as:
 
 ```
-[MILD] FOOP-2-IF-REJECTED at line 3:5: if-then-else has been removed (FOOP-2)
+[MILD] FOOP=2-IF-REJECTED at line 3:5: if-then-else has been removed (FOOP=2)
 [WARN] USELESS-DETACHMENT at line 7:12: detachment of 'a' has no effect; 'a' was already resolved
 ```
 
@@ -190,8 +190,8 @@ JSON serialization for tooling:
 ```json
 {
   "level": "MILD",
-  "code":  "FOOP-2-IF-REJECTED",
-  "message": "if-then-else has been removed (FOOP-2)",
+  "code":  "FOOP=2-IF-REJECTED",
+  "message": "if-then-else has been removed (FOOP=2)",
   "source": {"line": 3, "column": 5},
   "context": {}
 }
@@ -225,23 +225,23 @@ maximum emits DEPTH-EXCEEDED and returns NK.
 Phase 1 unit tests:
 
 ```scala
-test("FOOP-12: if-then-else emits MILD alarm and produces NK") {
+test("FOOP=12: if-then-else emits MILD alarm and produces NK") {
   val sink = new TestAlarmSink
   val fir  = Compiler.compileToJson("{ if 1 then 2 else 3 fi }", sink)
-  sink.alarms.map(_.code) should contain ("FOOP-2-IF-REJECTED")
+  sink.alarms.map(_.code) should contain ("FOOP=2-IF-REJECTED")
   sink.hasPanic shouldBe false
 }
 
-test("FOOP-12: parse error emits MILD alarm") {
+test("FOOP=12: parse error emits MILD alarm") {
   val sink = new TestAlarmSink
   Compiler.compileToJson("{ unclosed", sink)
   sink.alarms.map(_.code) should contain ("PARSE-ERROR")
 }
 
-test("FOOP-12: NKFir alarm field roundtrips") {
+test("FOOP=12: NKFir alarm field roundtrips") {
   val nk = NKFir(
     reason = "if-then-else removed",
-    alarm  = Some(Alarm(AlarmLevel.MILD, "FOOP-2-IF-REJECTED",
+    alarm  = Some(Alarm(AlarmLevel.MILD, "FOOP=2-IF-REJECTED",
                          "if-then-else has been removed",
                          Some(SourceLocation(3, 5))))
   )
@@ -252,13 +252,13 @@ test("FOOP-12: NKFir alarm field roundtrips") {
 Phase 2 unit tests:
 
 ```scala
-test("FOOP-12: division by zero emits MILD alarm and produces NK") {
+test("FOOP=12: division by zero emits MILD alarm and produces NK") {
   val sink = new TestAlarmSink
   val fir  = Ubc.runToCompletion(Compiler.compileSource("{x = 5 / 0}"), sink)
   sink.alarms.map(_.code) should contain ("DIV-BY-ZERO")
 }
 
-test("FOOP-12: depth limit produces DEPTH-EXCEEDED MILD alarm") {
+test("FOOP=12: depth limit produces DEPTH-EXCEEDED MILD alarm") {
   val sink = new TestAlarmSink
   val deeplyNested = generateNestedBrane(depth = 100000)
   Ubc.runToCompletion(deeplyNested, sink, maxDepth = 96485)
@@ -311,11 +311,11 @@ FOOP if the language gets a serious user base.
   CLI in verbose mode, suppressed otherwise. Implementation detail.
 - **Does the parent FIR see child alarms automatically?** Per UBC2
   d0_2 the alarm "propagates through the message channel." Since we
-  don't have message channels (FOOP-6 rejected message passing), the
+  don't have message channels (FOOP=6 rejected message passing), the
   sink is the only propagation. This is fine — the sink is the single
   source of truth.
 - **What happens to alarms during constanicClone of an NKFir?** NK is
-  shared, not cloned (FOOP-7), so the alarm field is shared too. This
+  shared, not cloned (FOOP=7), so the alarm field is shared too. This
   is correct — the alarm refers to the original error site.
 
 ## References
@@ -324,7 +324,7 @@ FOOP if the language gets a serious user base.
 - `docs/ubc1/how/d0_4_detachment.md` §"Useless Detachment": the
   WARN-level alarm pattern.
 - `docs/ubc1/how/d0_2_system_operator.md`: PANIC for circular messages.
-- FOOP-7: `constanicClone` callable invariant — PANIC if violated.
-- FOOP-8: parent chain invariant — PANIC if cycle detected.
-- FOOP-11: `NKFir` is the carrier for MILD alarm context.
+- FOOP=7: `constanicClone` callable invariant — PANIC if violated.
+- FOOP=8: parent chain invariant — PANIC if cycle detected.
+- FOOP=11: `NKFir` is the carrier for MILD alarm context.
 - `Fir.scala`: `NKFir` gets `alarm: Option[Alarm]` field.

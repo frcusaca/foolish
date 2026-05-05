@@ -9,7 +9,7 @@ phase: phase-2
 supersedes: []
 ---
 
-# FOOP-11: Search stops at NK; search result becomes NK
+# FOOP=11: Search stops at NK; search result becomes NK
 
 ## Abstract
 
@@ -138,7 +138,7 @@ None.
 
 - `scala-mvp/foolish-scala/docs/phase2_ubc.md`: search step rules
   follow this rule by default — no separate code path needed.
-- FOOP-10: anchored search through constanic anchors propagates NK
+- FOOP=10: anchored search through constanic anchors propagates NK
   consistently with this FOOP.
-- FOOP-7: `constanicClone(NK) = NK` (NK is shared, not cloned, and
+- FOOP=7: `constanicClone(NK) = NK` (NK is shared, not cloned, and
   remains NK).

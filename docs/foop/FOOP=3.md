@@ -9,7 +9,7 @@ phase: phase-3
 supersedes: []
 ---
 
-# FOOP-3: Concatenation produces a new brane of constanicCloned elements; further steps delegate to the merged brane
+# FOOP=3: Concatenation produces a new brane of constanicCloned elements; further steps delegate to the merged brane
 
 ## Abstract
 
@@ -42,9 +42,9 @@ ordinary `step()` cycle, applied to the merged brane, handles
 everything.
 
 This supersedes UBC1's three-stage isolate→merge→re-evaluate protocol
-and the prior version of FOOP-3 that described "sequential blocking
+and the prior version of FOOP=3 that described "sequential blocking
 where A blocks B." The new framing is closer to what UBC2's d0_3
-intends, mediated by `constanicClone` (FOOP-7).
+intends, mediated by `constanicClone` (FOOP=7).
 
 ## Motivation
 
@@ -82,7 +82,7 @@ element is placed in the merged brane, those searches need a chance to
 re-resolve in the new context (which now includes statements from
 sibling elements).
 
-`constanicClone` (FOOP-7) is exactly the mechanism for this: every
+`constanicClone` (FOOP=7) is exactly the mechanism for this: every
 constanic descendant gets a fresh re-stepping opportunity in the new
 context. If we shared the elements by reference instead of cloning,
 re-resolution would mutate the originals, which is wrong (the originals
@@ -102,7 +102,7 @@ Implementation-wise, this can be done by either:
 - Replacing the `ConcatenationFir` in its parent's statement list with
   the merged brane.
 
-Either is acceptable per FOOP-8 (FIRs are mutable). Implementer's
+Either is acceptable per FOOP=8 (FIRs are mutable). Implementer's
 choice.
 
 ### What this leaves out
@@ -194,7 +194,7 @@ write `type'(A B)` (or whatever the future syntax permits).
 Concatenation is being promoted from a deferred Phase 6 feature to a
 dedicated Phase 3 (between UBC depth-first and CLI) because:
 
-1. It's the first real exercise of `constanicClone` (FOOP-7) across
+1. It's the first real exercise of `constanicClone` (FOOP=7) across
    actual context changes — without it, the recoordination machinery is
    only theoretically tested.
 2. It's the first feature where Phase 2's depth-first guarantee
@@ -306,9 +306,9 @@ the language's current scale.
 - `scala-mvp/foolish-scala/docs/phase3_concatenation.md`: the phase
   document this FOOP backs.
 - UBC1's `ConcatenationFiroe.scala`: the prior (rejected) approach.
-- FOOP-7: `constanicClone` is the mechanism that handles recoordination
+- FOOP=7: `constanicClone` is the mechanism that handles recoordination
   during the merge.
-- FOOP-8: FIR mutability — the `becomeMergedBrane` operation requires
+- FOOP=8: FIR mutability — the `becomeMergedBrane` operation requires
   in-place mutation or parent-list replacement.
 - `docs/ubc1/how/d0_3_concatenation.md` (broader docs branch): UBC2's
   intent that this FOOP approximates.

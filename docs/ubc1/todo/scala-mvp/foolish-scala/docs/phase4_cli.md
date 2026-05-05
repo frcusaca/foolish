@@ -29,7 +29,7 @@ A `foolish` executable with subcommands:
 
 Each REPL line is appended as a new statement to one persistent
 top-level brane. Later lines see earlier names via unanchored backward
-search. Per Foolish's writing-order semantics (FOOP-2 area), **earlier
+search. Per Foolish's writing-order semantics (FOOP=2 area), **earlier
 statements do NOT retroactively see names defined by later lines** —
 backward search only walks backward.
 

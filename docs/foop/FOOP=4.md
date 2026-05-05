@@ -10,7 +10,7 @@ supersedes: []
 implementation: Compiler.compileExpr step P1.6 in phase1_compiler.md
 ---
 
-# FOOP-4: Bare identifiers compile to anchored regex SearchFirs
+# FOOP=4: Bare identifiers compile to anchored regex SearchFirs
 
 ## Abstract
 
@@ -116,7 +116,7 @@ fast path. Cache the compiled `Pattern` per `SearchFir` instance.
 Phase 1 unit tests in `CompilerTest.scala`:
 
 ```scala
-test("FOOP-4: bare identifier compiles to anchored backward search regex") {
+test("FOOP=4: bare identifier compiles to anchored backward search regex") {
   val ast = IdentifierAstn(Nil, "aˍconfig")
   Compiler.compileExpr(ast) shouldBe SearchFir(
     pattern   = "^aˍconfig$",
@@ -126,7 +126,7 @@ test("FOOP-4: bare identifier compiles to anchored backward search regex") {
   )
 }
 
-test("FOOP-4: dot access compiles to anchored backward search regex") {
+test("FOOP=4: dot access compiles to anchored backward search regex") {
   val ast = DotSearchAstn(IdentifierAstn(Nil, "b"), IdentifierAstn(Nil, "x"))
   // ... shouldBe SearchFir("^x$", Backward, anchored = true, Some(SearchFir("^b$", ...)))
 }
@@ -166,4 +166,4 @@ None. Implementation directly follows from the rule in §Specification.
   identifier) and P1.8 (anchored search).
 - `scala-mvp/foolish-scala/foolish-core-scala/src/main/scala/org/foolish/fvm/scubc/Fir.scala`:
   `SearchFir` definition.
-- FOOP-2: another simplification (one fewer code path).
+- FOOP=2: another simplification (one fewer code path).

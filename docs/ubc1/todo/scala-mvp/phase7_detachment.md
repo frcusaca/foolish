@@ -64,7 +64,7 @@ Each addition needs a roundtrip test in `FirRoundtripTest` and an AST→FIR test
 
 ## Out of Scope
 
-- `IfExpr` is permanently rejected (FOOP-2). Phase 7 does *not* re-introduce it.
+- `IfExpr` is permanently rejected (FOOP=2). Phase 7 does *not* re-introduce it.
 - `↑` upward search remains a possibility for a future Phase 8 if needed.
 
 ---

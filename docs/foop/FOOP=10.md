@@ -9,7 +9,7 @@ phase: phase-2
 supersedes: []
 ---
 
-# FOOP-10: Anchored search through constanic anchors — dereference searches, NK on missing brane names
+# FOOP=10: Anchored search through constanic anchors — dereference searches, NK on missing brane names
 
 ## Abstract
 
@@ -281,7 +281,7 @@ requirement.
 - `scala-mvp/foolish-scala/docs/00_accumulated_specs.md`: lifecycle
   table is consistent with this FOOP; the symbol mapping line is
   correct.
-- FOOP-7: constanicClone is invoked on the search result as usual.
-- FOOP-8: FIR mutability — anchor's `.state` is read directly.
-- FOOP-11: search-stops-at-NK rule is consistent with this FOOP's NK
+- FOOP=7: constanicClone is invoked on the search result as usual.
+- FOOP=8: FIR mutability — anchor's `.state` is read directly.
+- FOOP=11: search-stops-at-NK rule is consistent with this FOOP's NK
   propagation.
