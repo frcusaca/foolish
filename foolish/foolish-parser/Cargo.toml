@@ -1,0 +1,13 @@
+[package]
+name = "foolish-parser"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+serde = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+regex = { workspace = true }
+
+[dev-dependencies]
+insta = { workspace = true }

@@ -1,0 +1,9 @@
+[package]
+name = "foolish-cli"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+foolish-core = { path = "../foolish-core" }
+clap = { workspace = true }
+anyhow = { workspace = true }
