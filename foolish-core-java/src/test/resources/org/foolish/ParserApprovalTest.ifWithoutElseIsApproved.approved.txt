@@ -1,9 +1,0 @@
-INPUT:
-{
-            x = if a then 1;
-        }
-
-OUTPUT:
-{
-  x = if a then 1;
-}
