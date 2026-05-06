@@ -22,7 +22,7 @@ ls | rev | sort -V | rev
 | [FOOP-7](FOOP-7.md) | Constanic Clone — recoordination contract | Brewing | phase-2 | 2026-05-01 | hc |
 | [FOOP-8](FOOP-8.md) | FIRs are mutable; parent pointers are post-clone; Circe excludes parent | Brewing | phase-2 | 2026-05-02 | hc |
 | [FOOP-9](FOOP-9.md) | Operators are brane-like FIRs with positional unnamed operands and no search boundary | Brewing | phase-1 | 2026-05-04 | hc |
-| [FOOP-10](FOOP-10.md) | Anchored search through constanic anchors — dereference searches, NK on missing brane names | Brewing | phase-2 | 2026-05-04 | hc |
+| [FOOP01](FOOP01.md) | Anchored search through constanic anchors — dereference searches, NK on missing brane names | Brewing | phase-2 | 2026-05-04 | hc |
 | [FOOP-11](FOOP-11.md) | Search stops at NK; search result becomes NK | Brewing | phase-2 | 2026-05-04 | hc |
 | [FOOP-12](FOOP-12.md) | Alarms — diagnostic levels emitted by compiler and evaluator | Brewing | phase-1 | 2026-05-04 | hc |
 
@@ -44,7 +44,7 @@ ls | rev | sort -V | rev
 - [FOOP-7](FOOP-7.md) — Constanic Clone recoordination contract
 - [FOOP-8](FOOP-8.md) — FIRs are mutable; parent pointers post-clone; Circe excludes parent
 - [FOOP-9](FOOP-9.md) — Operators are brane-like FIRs with positional unnamed operands
-- [FOOP-10](FOOP-10.md) — Anchored search through constanic anchors
+- [FOOP01](FOOP01.md) — Anchored search through constanic anchors
 - [FOOP-11](FOOP-11.md) — Search stops at NK
 - [FOOP-12](FOOP-12.md) — Alarms (compiler + evaluator diagnostic levels)
 
@@ -70,7 +70,7 @@ ls | rev | sort -V | rev
 
 ### phase-2
 
-- [FOOP-6](FOOP-6.md), [FOOP-7](FOOP-7.md), [FOOP-8](FOOP-8.md), [FOOP-10](FOOP-10.md), [FOOP-11](FOOP-11.md)
+- [FOOP-6](FOOP-6.md), [FOOP-7](FOOP-7.md), [FOOP-8](FOOP-8.md), [FOOP01](FOOP01.md), [FOOP-11](FOOP-11.md)
 
 ### phase-3
 

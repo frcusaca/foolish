@@ -245,7 +245,7 @@ removal" was hard-won and would have been lost without explicit
 documentation. Even one implementer benefits from forcing the rationale
 into prose.
 
-### B. Big-endian numbering (FOOP-001, FOOP-002, ..., FOOP-100)
+### B. Big-endian numbering (FOOP-001, FOOP-002, ..., FOOP010)
 
 The conventional choice. **Rejected**: little-endian is more in keeping
 with Foolish's notational eccentricity, and the natural batching of

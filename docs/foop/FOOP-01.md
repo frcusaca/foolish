@@ -9,7 +9,7 @@ phase: phase-2
 supersedes: []
 ---
 
-# FOOP-10: Anchored search through constanic anchors — dereference searches, NK on missing brane names
+# FOOP01: Anchored search through constanic anchors — dereference searches, NK on missing brane names
 
 ## Abstract
 
