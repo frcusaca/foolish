@@ -9,7 +9,7 @@ phase: <phase-1 | phase-2 | phase-3 | phase-4 | phase-5 | phase-6 | phase-7 | me
 supersedes: []
 ---
 
-# FOOP=<NUMBER>: <TITLE>
+# FOOP-<NUMBER>: <TITLE>
 
 ## Abstract
 

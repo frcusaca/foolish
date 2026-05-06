@@ -10,7 +10,7 @@ supersedes: []
 implementation: scala-mvp/foolish-scala/docs/phase1_compiler.md and Fir.scala
 ---
 
-# FOOP=5: Compile-time vs evaluation-time work — the FIR contract
+# FOOP-5: Compile-time vs evaluation-time work — the FIR contract
 
 ## Abstract
 
@@ -47,7 +47,7 @@ This split makes the FIR JSON the precise contract between phases. A
 JSON FIR can be hand-written or hand-modified; whatever is in the JSON
 defines what Phase 2 sees, and the JSON has no compute side-effects.
 
-It also enables a clean test pyramid (see FOOP=6 if/when written for
+It also enables a clean test pyramid (see FOOP-6 if/when written for
 the test layering decision):
 
 - AST tests verify the parser without involving FIR.
@@ -92,7 +92,7 @@ final state is determinable from the node alone:
 
 Integer literals are `INDEPENDENT` (not just `CONSTANT`) because no future
 context can ever change a literal's value — `42` is `42` everywhere.
-This matters for `constanicClone` (FOOP=7), which short-circuits on
+This matters for `constanicClone` (FOOP-7), which short-circuits on
 `INDEPENDENT` exactly as on `CONSTANT`.
 
 Every other AST node produces a FIR in `EMBRYONIC` state.
@@ -133,7 +133,7 @@ and a bug upstream.
 Compiler tests assert state explicitly:
 
 ```scala
-test("FOOP=5: 1 + 2 compiles to BinaryOpFir(EMBRYONIC) over two INDEPENDENTs") {
+test("FOOP-5: 1 + 2 compiles to BinaryOpFir(EMBRYONIC) over two INDEPENDENTs") {
   val source = "{1 + 2}"
   val fir = Compiler.compileToFir(source)
   fir shouldBe TopLevelAstAsFir(
@@ -183,11 +183,11 @@ None.
 
 ## References
 
-- FOOP=2: another "do less at the wrong layer" decision.
-- FOOP=4: another "compile uniformly, evaluate uniformly" decision.
+- FOOP-2: another "do less at the wrong layer" decision.
+- FOOP-4: another "compile uniformly, evaluate uniformly" decision.
 - `scala-mvp/foolish-scala/docs/phase1_compiler.md`: the implementation
   step list.
 - `scala-mvp/foolish-scala/foolish-core-scala/src/main/scala/org/foolish/fvm/scubc/Fir.scala`:
   the FIR definitions and the `Nyes` enum.
-- FOOP=7: the constanic clone algorithm that exploits the EMBRYONIC/INDEPENDENT
+- FOOP-7: the constanic clone algorithm that exploits the EMBRYONIC/INDEPENDENT
   distinction.

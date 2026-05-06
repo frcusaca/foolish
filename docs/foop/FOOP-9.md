@@ -9,7 +9,7 @@ phase: phase-1
 supersedes: []
 ---
 
-# FOOP=9: Operators are brane-like FIRs with positional unnamed operands and no search boundary
+# FOOP-9: Operators are brane-like FIRs with positional unnamed operands and no search boundary
 
 ## Abstract
 
@@ -136,7 +136,7 @@ case class OperatorFir(
   // No `target` — operators don't dereference; they reduce.
 ```
 
-(Per FOOP=8: `state` and `parent` are mutable fields.)
+(Per FOOP-8: `state` and `parent` are mutable fields.)
 
 The `op` string disambiguates unary from binary by either:
 - Storing operands.length (unary = 1, binary = 2) implicitly, OR
@@ -205,7 +205,7 @@ case UnaryExprAstn(op, e)     => OperatorFir(s"$op@unary", List(compileExpr(e)))
 (Or use the arity-by-length scheme without the `@unary` tag — implementer's
 choice.)
 
-### Compile-time / evaluation-time work (FOOP=5 still applies)
+### Compile-time / evaluation-time work (FOOP-5 still applies)
 
 The compiler still does NO arithmetic. `1 + 2` compiles to:
 
@@ -267,7 +267,7 @@ to find the nearest NormalBraneFir.
 Phase 1 unit tests (Layer 2 — AST → FIR):
 
 ```scala
-test("FOOP=9: 1 + 2 compiles to OperatorFir(+, [Const(1), Const(2)])") {
+test("FOOP-9: 1 + 2 compiles to OperatorFir(+, [Const(1), Const(2)])") {
   val ast = BinaryExprAstn("+", IntLitAstn(1), IntLitAstn(2))
   Compiler.compileExpr(ast) shouldBe OperatorFir("+", List(
     ConstantIntFir(1),
@@ -275,7 +275,7 @@ test("FOOP=9: 1 + 2 compiles to OperatorFir(+, [Const(1), Const(2)])") {
   ))
 }
 
-test("FOOP=9: -42 compiles to OperatorFir(-@unary, [Const(42)])") {
+test("FOOP-9: -42 compiles to OperatorFir(-@unary, [Const(42)])") {
   val ast = UnaryExprAstn("-", IntLitAstn(42))
   Compiler.compileExpr(ast) shouldBe OperatorFir("-@unary", List(
     ConstantIntFir(42)
@@ -291,7 +291,7 @@ test("OperatorFir roundtrips") {
 }
 ```
 
-Phase 2 approval tests (after FOOP=9 is implemented):
+Phase 2 approval tests (after FOOP-9 is implemented):
 
 - `simpleAdditionIsApproved.foo` etc. — verify arithmetic still works.
 - `operatorPrecedenceIsApproved.foo` — confirm precedence is intact
@@ -363,7 +363,7 @@ Don't muddy the model.
 - `docs/ubc1/how/d0_2_system_operator.md` (broader docs branch):
   UBC2's no-boundary classification and the desugaring approach we did
   NOT adopt (Rejected Alternative C).
-- FOOP=5: compile-time vs evaluation-time work — still applies; the
+- FOOP-5: compile-time vs evaluation-time work — still applies; the
   compiler still does no arithmetic.
-- FOOP=8: FIRs are mutable; `OperatorFir.state` and `OperatorFir.parent`
+- FOOP-8: FIRs are mutable; `OperatorFir.state` and `OperatorFir.parent`
   are mutable per that FOOP.

@@ -9,7 +9,7 @@ phase: phase-2
 supersedes: []
 ---
 
-# FOOP=8: FIRs are mutable; parent pointers are post-clone; Circe excludes parent
+# FOOP-8: FIRs are mutable; parent pointers are post-clone; Circe excludes parent
 
 ## Abstract
 
@@ -28,13 +28,13 @@ in the brane tree's nesting — a deserializer reconstructs parent
 references by traversing the tree once after `decode`. JSON FIR documents
 remain acyclic.
 
-This FOOP supersedes the implicit assumption from FOOP=5 that all FIR
+This FOOP supersedes the implicit assumption from FOOP-5 that all FIR
 fields are immutable case-class fields fully covered by Circe generic
 derivation.
 
 ## Motivation
 
-The recoordination algorithm (FOOP=7) requires that a cloned FIR be
+The recoordination algorithm (FOOP-7) requires that a cloned FIR be
 re-parented to its new context. Previous design held the assumption that
 FIRs were pure immutable case classes covered by Circe's `deriveEncoder`
 / `deriveDecoder`. That assumption breaks `constanicClone` for two
@@ -210,7 +210,7 @@ there, the cell decision is best made at that time, not now).
 
 - **Parent pointer cycle detection**: what guards prevent a malformed FIR
   tree (where the parent chain loops) from causing infinite scope walks?
-  Possibly handled by depth limiting (FOOP=?). Defer.
+  Possibly handled by depth limiting (FOOP-?). Defer.
 - **Equals/hashCode policy**: structural-only, structural-plus-state, or
   a separate `structurallyEquivalent` method. Defer to implementation.
 
@@ -218,8 +218,8 @@ there, the cell decision is best made at that time, not now).
 
 - `scala-mvp/foolish-scala/foolish-core-scala/src/main/scala/org/foolish/fvm/scubc/Fir.scala`:
   the file to rewrite.
-- FOOP=5: the original "FIRs are immutable case classes" assumption,
+- FOOP-5: the original "FIRs are immutable case classes" assumption,
   now relaxed.
-- FOOP=7: the recoordination contract that requires post-clone parent
+- FOOP-7: the recoordination contract that requires post-clone parent
   assignment.
 - d0_5: UBC2 reference design also uses parent back-pointers.

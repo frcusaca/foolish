@@ -9,7 +9,7 @@ phase: phase-2
 supersedes: []
 ---
 
-# FOOP=6: Phase 2 evaluator is depth-first sequential; breadth-first deferred to Phase 4
+# FOOP-6: Phase 2 evaluator is depth-first sequential; breadth-first deferred to Phase 4
 
 ## Abstract
 
@@ -137,6 +137,6 @@ this open. Decision deferred to Phase 4 implementation experience.
   specification.
 - `scala-mvp/foolish-scala/docs/phase4_ubc_breadth_first.md`: the future
   breadth-first phase.
-- FOOP=7: constanic clone algorithm. Both depth-first and breadth-first
+- FOOP-7: constanic clone algorithm. Both depth-first and breadth-first
   call `constanicClone`; the algorithm is shared.
 - d0_5 in the broader docs branch: the original UBC2 recoordination design.
