@@ -1,0 +1,51 @@
+{
+  !! Comprehensive concatenation, shadowing, and scope resolution tests
+
+  !! Test 1: Basic scope shadowing — inner brane shadows outer name
+  outer_x = 99;
+  inner = {x = 1; z = x};
+  !! z should resolve to x=1 (inner scope), not outer_x=99
+
+  !! Test 2: Nested scope chain — each level shadows previous
+  x = 0;
+  level1 = {x = 10; level2 = {x = 20; c = x}};
+  !! c should resolve to x=20 (most local)
+  d = x;
+  !! d should resolve to x=0 (outer scope)
+
+  !! Test 3: Same name in parallel branes — concatenation preserves both
+  b1 = {x = 1; y = 2};
+  b2 = {x = 3; z = 4};
+  merged = b1 b2;
+  !! merged should have x=1, y=2, x=3, z=4
+
+  !! Test 4: Search in concatenated brane — finds first match
+  first_x = merged?x;
+  !! first_x should find x=1 (first in merged)
+  search_y = merged?y;
+  !! search_y should find y=2
+  search_z = merged?z;
+  !! search_z should find z=4
+
+  !! Test 5: Head and tail of concatenated brane
+  head_m = merged^;
+  !! head_m should find x=1 (first statement)
+  tail_m = merged$;
+  !! tail_m should find z=4 (last statement)
+
+  !! Test 6: Nested concatenation — multiple levels of merging
+  r = {x = 1};
+  s = {x = 2};
+  t = {x = 3};
+  u = {x = 4};
+  rs = r s;
+  tu = t u;
+  rstu = rs tu;
+  !! rstu should have x=1, x=2, x=3, x=4
+
+  !! Test 7: Unresolved reference in concatenation
+  brane_ok = {p = 1; q = 2};
+  brane_bad = {r = 3; s = undefined_var};
+  partial_merge = brane_ok brane_bad;
+  !! brane_bad has unresolved reference, so only brane_ok contributes
+}

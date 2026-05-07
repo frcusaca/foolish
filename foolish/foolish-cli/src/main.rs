@@ -94,7 +94,7 @@ fn cmd_step(file: &PathBuf) -> anyhow::Result<()> {
 }
 
 fn cmd_repl() -> anyhow::Result<()> {
-    println!("Foolish REPL (type {{ to start a brane)");
+    println!("Foolish REPL — type {{ to start a brane, evaluated to completion");
     let mut buf = String::new();
     let mut depth = 0i32;
     loop {
@@ -103,7 +103,12 @@ fn cmd_repl() -> anyhow::Result<()> {
         std::io::stdout().flush()?;
 
         let mut line = String::new();
-        std::io::stdin().read_line(&mut line)?;
+        match std::io::stdin().read_line(&mut line) {
+            Ok(0) => { println!(); return Ok(()); }
+            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => { println!(); return Ok(()); }
+            Ok(_) => {}
+            Err(e) => return Err(e.into()),
+        }
 
         for c in line.chars() {
             match c {
@@ -118,7 +123,14 @@ fn cmd_repl() -> anyhow::Result<()> {
             match Compiler::compile(&buf) {
                 Ok(firs) => {
                     for fir in &firs {
-                        println!("=> {}", foolish_core::fir_to_json(fir).unwrap_or_default());
+                        let mut fir_ref = Rc::new(RefCell::new(fir.clone()));
+                        match ubc::run_to_completion(&mut fir_ref) {
+                            Ok(()) => {
+                                let final_fir = fir_ref.borrow().clone();
+                                println!("=> {}", Sequencer::format(&final_fir));
+                            }
+                            Err(e) => eprintln!("Error: {}", e),
+                        }
                     }
                 }
                 Err(e) => eprintln!("Error: {}", e),

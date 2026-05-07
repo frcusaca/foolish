@@ -1,0 +1,43 @@
+{
+  !! Search and index failures in concatenated branes
+
+  !! Test 1: Search that fails within concatenated brane
+  b1 = {a = 1; b = 2};
+  b2 = {c = 3; d = 4};
+  merged = b1 b2;
+  search_found = merged?a;
+  search_not_found = merged?missing;
+  !! search_not_found should be NK
+
+  !! Test 2: Index operations on concatenated brane
+  index_0 = merged#0;
+  index_1 = merged#1;
+  index_last = merged#-1;
+  index_out_of_bounds = merged#99;
+  !! index_out_of_bounds should be NK
+
+  !! Test 3: Head and tail on concatenated brane
+  head = merged^;
+  tail = merged$;
+  !! head should be a=1, tail should be d=4
+
+  !! Test 4: Search fails in non-brane
+  search_in_int = 42?x;
+  search_in_nk = ??? ?x;
+  !! Both should be NK
+
+  !! Test 5: Concatenation with unresolved reference
+  ok = {p = 1};
+  bad = {q = undefined_ref};
+  partial = ok bad;
+  !! partial should only include ok's statements
+
+  !! Test 6: Nested brane shadowing in concatenation
+  x = 0;
+  inner1 = {x = 1; y = x};
+  inner2 = {x = 2; z = x};
+  combined = inner1 inner2;
+  !! combined should have x=1, y=1, x=2, z=2
+  !! search for x in combined finds x=1 (first)
+  combined_x = combined?x;
+}

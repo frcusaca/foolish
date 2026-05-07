@@ -70,6 +70,30 @@ For the breadth-first queue, Rust offers:
 For dependency tracking, a `HashMap<FirRef, Vec<FirRef>>` maps each
 ECONSTANIC FIR to its dependents.
 
+## Lessons from SF/SFF Implementation
+
+The Phase 2 SF/SFF implementation reveals several patterns that affect Phase 5:
+
+1. **SFF is naturally breadth-first friendly**: SFF blocks all expansion, so the
+   queue can skip it entirely. No queuing needed for SFF content.
+
+2. **SF needs its own stepping loop**: `step_except_brane_searches()` has its own
+   loop. In breadth-first, this logic needs to be integrated into the main queue
+   loop, likely as a per-FIR flag.
+
+3. **Scope carries evaluation context**: `block_brane_searches` is a Scope field.
+   Breadth-first will need per-thread context rather than a shared Scope.
+
+4. **`resolve_to_value()` unifies wrapper stripping**: breadth-first can use
+   `resolve_to_value()` for all operand resolution, eliminating the need for
+   `strip_sf_wrapper()` as a separate function.
+
+5. **RefCell borrow pattern**: the `Variant` enum pattern for releasing borrows
+   before mutation will be needed for any read-then-mutate step function.
+   Consider `Fir::into_variant()` as a general utility.
+
+See [phase2_sf_sff_seek_insights.md](phase2_sf_sff_seek_insights.md) for details.
+
 ---
 
 ## Phase 5 Exit Criteria
@@ -82,7 +106,12 @@ ECONSTANIC FIR to its dependents.
 
 ## Last Updated
 
+**Date**: 2026-05-06
+**Updated By**: Claude Code; Qwen3.6-27B-AWQ-BF16-INT4
+**Changes**: Added "Lessons from SF/SFF Implementation" section. Documents 5 key
+patterns from Phase 2 that affect Phase 5 design: SFF queuing, SF stepping,
+Scope context, resolve_to_value unification, and RefCell borrow pattern.
+
 **Date**: 2026-05-05
 **Updated By**: Claude Code; Qwen3.6-27B-AWQ-BF16-INT4
-**Changes**: Initial creation — Rust Phase 5 breadth-first plan. Added Rust-specific
-data structure considerations (VecDeque, BinaryHeap, crossbeam).
+**Changes**: Initial creation — Rust Phase 5 breadth-first plan.

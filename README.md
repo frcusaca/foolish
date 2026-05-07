@@ -52,7 +52,42 @@ no-no" when we see `???`. Fully evaluated expressions are values that have achie
 
 ---
 
-## Quick Start
+## Running the Rust Implementation
+
+The Rust implementation lives in the `foolish/` directory and requires Rust (cargo) installed.
+
+```bash
+cd foolish
+cargo build --package foolish-cli --release
+```
+
+**Run a `.foo` file:**
+
+```bash
+cargo run --package foolish-cli -- run path/to/program.foo
+```
+
+**Debug with step-by-step evaluation:**
+
+```bash
+cargo run --package foolish-cli -- step path/to/program.foo
+```
+
+**Interactive REPL:**
+
+```bash
+cargo run --package foolish-cli -- repl
+```
+
+Type `{` to start a brane — the REPL accumulates lines until braces balance, then compiles, evaluates, and prints the result. Press `^D` to exit.
+
+**Run all tests:**
+
+```bash
+cargo test --package foolish-core
+```
+
+## Quick Start (Java/Scala)
 
 ```bash
 mvn clean generate-sources compile test
@@ -398,6 +433,10 @@ The following documents in `docs/vintage_legacy/` document the original ubc0 imp
 ---
 
 ## Last Updated
+
+**Date**: 2026-05-06
+**Updated By**: Claude Code / cyankiwi/Qwen3.6-27B-AWQ-BF16-INT4
+**Changes**: Added "Running the Rust Implementation" section with build, run, step, REPL, and test commands. Renamed Java/Scala Quick Start section for clarity.
 
 **Date**: 2026-03-07
 **Updated By**: Claude Code / cyankiwi/Qwen3.5-27B-AWQ-BF16-INT8

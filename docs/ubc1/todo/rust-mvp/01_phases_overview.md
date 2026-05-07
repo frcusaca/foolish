@@ -17,7 +17,7 @@
 | **Phase 4** | CLI | [phase4_cli.md](phase4_cli.md) | Wire compile + step + concatenation into a usable command-line tool with REPL. |
 | **Phase 5** | UBC — Breadth-First Evaluation | [phase5_ubc_breadth_first.md](phase5_ubc_breadth_first.md) | Re-implement UBC stepping in breadth-first order. Stack-safe, supports independent subtree progress. |
 | **Phase 6** | Web Brane Browser | [phase6_browser.md](phase6_browser.md) | LOD viewer for browsing brane trees in a web UI. Consumes Phase 5's breadth-first output. |
-| **Phase 7** | Detachment, SF/SFF | [phase7_detachment.md](phase7_detachment.md) | The advanced language features. |
+| **Phase 7** | Detachment | [phase7_detachment.md](phase7_detachment.md) | Detachment branes, partial application, forward search liberation. (SF/SFF done in P2.) |
 
 ---
 
@@ -54,9 +54,10 @@ Phase 5 TODO.
 independent subtree progress (Phase 5's main observable benefit) so multiple
 viewports can show partial progress on different branes simultaneously.
 
-**Phase 7 (Detachment, SF/SFF):** the most advanced features. They depend on
-concatenation (Phase 3), breadth-first UBC (Phase 5), and the web browser
-(Phase 6) being stable.
+**Phase 7 (Detachment):** the most advanced features. SF/SFF were pulled forward
+to Phase 2 since they don't require detachment. Phase 7 now focuses on detachment
+branes (`[id]{...}`), partial application (`[+id]`), and forward search liberation
+(`[~pat]`). It depends on breadth-first UBC (Phase 5) being stable.
 
 ---
 
@@ -80,7 +81,8 @@ concatenation (Phase 3), breadth-first UBC (Phase 5), and the web browser
 | Shebang | stripped at parse | n/a | — |
 | Concatenation `A B C` | rejected by Phase 1; **enabled in Phase 3** | — | `ConcatenationFir(elements)` per FOOP=3 |
 | `~` forward search | rejected by Phase 1; deferred | — | — |
-| Detachment, SF/SFF | rejected by Phase 1; **deferred to Phase 7** | — | — |
+| SF `<expr>`, SFF `<<expr>>` | compiled by Phase 1; **implemented in Phase 2** | blocks search expansion | — |
+| Detachment `[id]{...}` | rejected by Phase 1; **deferred to Phase 7** | — | — |
 | `if-then-else` | rejected at compile (FOOP=2) | — | — |
 
 ---
@@ -139,8 +141,12 @@ in `docs/foop/`):
 
 ## Last Updated
 
+**Date**: 2026-05-06
+**Updated By**: Claude Code; Qwen3.6-27B-AWQ-BF16-INT4
+**Changes**: Updated phase roster: SF/SFF/Seek pulled forward to Phase 2, Phase 7
+now focuses on detachment only. Added SF/SFF row to language scope table. Updated
+Phase 7 ordering rationale. Created phase2_sf_sff_seek_insights.md.
+
 **Date**: 2026-05-05
 **Updated By**: Claude Code; Qwen3.6-27B-AWQ-BF16-INT4
-**Changes**: Initial creation — translated Scala MVP phases overview to Rust. Replaced
-Circe with serde, ScalaTest with cargo test, scoop with clap, http4s with axum.
-Adapted module structure and test layer descriptions for Rust conventions.
+**Changes**: Initial creation — translated Scala MVP phases overview to Rust.

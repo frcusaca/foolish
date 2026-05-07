@@ -361,10 +361,25 @@ fn step_search_anchored(fir: &FirRef) -> Result<(), UbcError> {
 
 ## What Phase 2 Does NOT Do
 
-- **No concatenation** — Phase 3
-- **No detachment, SF, SFF** — Phase 7
+- **No concatenation** — Phase 3 (done separately)
+- **No detachment** — Phase 7 (SF/SFF were pulled forward and implemented in P2)
 - **No breadth-first / parallel** — Phase 5
 - **No wake-up queues, no message passing**
+
+## SF/SFF/Seek — Pulled Forward from Phase 7
+
+SF (`<expr>`), SFF (`<<expr>>`), and unanchored/anchored seeks (`#-N`) were
+originally planned for Phase 7 but proved implementable as part of Phase 2.
+See [phase2_sf_sff_seek_insights.md](phase2_sf_sff_seek_insights.md) for
+implementation details and lessons learned.
+
+These features required:
+- Two new FIR variants: `StayFoolish` and `StayFullyFoolish`
+- `Scope` extension with `current_brane`, `current_stmt_idx`, and `block_brane_searches`
+- `constanic_clone(permit_nye: bool)` flag for SF/SFF coordination
+- `step_except_brane_searches()` for SF semantics
+- `strip_sf_wrapper()` for arithmetic operand unwrapping
+- Unanchored seek resolution via `Scope.current_brane` + `current_stmt_idx`
 
 ---
 
