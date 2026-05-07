@@ -12,3 +12,14 @@
 2026-05-07T07:40:19.643455Z  INFO serve_inner: rmcp::service: input stream terminated
 2026-05-07T07:40:19.643661Z  INFO serve_inner: rmcp::service: serve finished quit_reason=Closed
 2026-05-07T07:40:19.643801Z  INFO rust_mcp_server: Server closed normally
+2026-05-07T18:46:08.591509Z  INFO rust_mcp_server: Starting Rust MCP Server: Args { log_level: "info", log_file: Some("mcp.log"), disabled_tools: [], workspace: None, registry: None, generate_docs: None, no_recommendations: false }
+2026-05-07T18:46:08.591609Z  INFO rust_mcp_server: Server version: 0.3.7.
+2026-05-07T18:46:08.591624Z  INFO rust_mcp_server: RMCP crate version: unknown
+2026-05-07T18:46:08.591636Z  INFO rust_mcp_server: No workspace root specified, workspace auto-detection enabled
+2026-05-07T18:46:08.612173Z  INFO serve_inner: rmcp::service: Service initialized as server peer_info=Some(InitializeRequestParams { meta: None, protocol_version: ProtocolVersion("2025-11-25"), capabilities: ClientCapabilities { experimental: None, extensions: None, roots: None, sampling: None, elicitation: None, tasks: None }, client_info: Implementation { name: "opencode", title: None, version: "1.14.33", description: None, icons: None, website_url: None } })
+2026-05-07T18:46:08.674400Z  INFO serve_inner: rmcp::service: received notification notification=InitializedNotification(NotificationNoParam { method: InitializedNotificationMethod, extensions: Extensions })
+2026-05-07T18:46:08.674540Z  INFO serve_inner: rust_mcp_server::rmcp_server: MCP client initialized
+2026-05-07T18:46:08.674617Z  INFO serve_inner: rust_mcp_server::workspace: Checking current working directory for Cargo project: Some("/home/hcbusy/foolish-rust")
+2026-05-07T18:46:08.674657Z  INFO serve_inner: rust_mcp_server::workspace: No Cargo.toml in CWD (/home/hcbusy/foolish-rust), will attempt workspace detection via client roots
+2026-05-07T18:46:08.674674Z  INFO serve_inner: rust_mcp_server::workspace: Checking client roots capability: supports_roots=false
+2026-05-07T18:46:08.674690Z  WARN serve_inner: rust_mcp_server::workspace: Client does not support roots capability; cannot auto-detect workspace

@@ -95,11 +95,12 @@ This gives both agents and humans a clear view of how work is progressing over t
 #### Worktree Branch Tracking
 
 If a worktree branch is used for implementation, the plan **must** document the lifecycle of that worktree as explicit, separate checkbox tasks placed at appropriate points:
+If a worktree branch is used for implementation, the PLAN.md **must** document the lifecycle of that worktree as explicit, separate checkbox tasks placed at appropriate points in the plan. The workpath shall always be `FULL_WORKTREE_PATH=${HOME}/tmp/foolish-worktrees/${FOOP_AND_NUMBER}-${RANDOM}`, that random differentiator is set once while creating the plan file and stays consistent throughout the plan file.
 
 ```markdown
-- [ ] Create worktree at ${FULL_WORKTREE_PATH} with branch ${BRANCH_NAME}
+- [ ] Create worktree `git worktree add -b ${BRANCH_NAME} ${FULL_WORKTREE_PATH}}`
 ...
-  (implementation tasks here)
+  (implementation tasks go here)
 ...
 - [ ] Verify all work is complete in ${FULL_WORKTREE_PATH} and committed to ${BRANCH_NAME}
 - [ ] Merge ${BRANCH_NAME} to alpha
