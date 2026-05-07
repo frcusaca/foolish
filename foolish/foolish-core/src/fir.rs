@@ -71,17 +71,12 @@ impl std::fmt::Display for Nyes {
 }
 
 /// Search direction for anchored searches
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum SearchDirection {
     Forward,
+    #[default]
     Backward,
-}
-
-impl Default for SearchDirection {
-    fn default() -> Self {
-        SearchDirection::Backward
-    }
 }
 
 impl std::fmt::Display for SearchDirection {
@@ -99,9 +94,9 @@ pub type FirRef = Rc<RefCell<dyn Steppable>>;
 /// Statement: name -> body
 #[derive(Debug, Clone)]
 pub struct StatementFir {
-    pub name: Option<String>,
-    pub body: FirRef,
-    pub state: Nyes,
+    pub(crate) name: Option<String>,
+    pub(crate) body: FirRef,
+    pub(crate) state: Nyes,
 }
 
 impl StatementFir {
@@ -122,81 +117,81 @@ impl StatementFir {
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct ConstantIntFir {
-    pub value: i64,
-    pub state: Nyes,
+    pub(crate) value: i64,
+    pub(crate) state: Nyes,
 }
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct NkFir {
-    pub reason: String,
-    pub state: Nyes,
+    pub(crate) reason: String,
+    pub(crate) state: Nyes,
 }
 
 #[derive(Debug, Clone)]
 pub struct BinaryOpFir {
-    pub op: String,
-    pub left: FirRef,
-    pub right: FirRef,
-    pub state: Nyes,
+    pub(crate) op: String,
+    pub(crate) left: FirRef,
+    pub(crate) right: FirRef,
+    pub(crate) state: Nyes,
 }
 
 #[derive(Debug, Clone)]
 pub struct UnaryOpFir {
-    pub op: String,
-    pub expr: FirRef,
-    pub state: Nyes,
+    pub(crate) op: String,
+    pub(crate) expr: FirRef,
+    pub(crate) state: Nyes,
 }
 
 #[derive(Debug, Clone)]
 pub struct SearchFir {
-    pub pattern: String,
-    pub direction: SearchDirection,
-    pub anchored: bool,
-    pub anchor: Option<FirRef>,
-    pub target: Option<FirRef>,
-    pub state: Nyes,
+    pub(crate) pattern: String,
+    pub(crate) direction: SearchDirection,
+    pub(crate) anchored: bool,
+    pub(crate) anchor: Option<FirRef>,
+    pub(crate) target: Option<FirRef>,
+    pub(crate) state: Nyes,
 }
 
 #[derive(Debug, Clone)]
 pub struct IndexFir {
-    pub offset: i32,
-    pub anchored: bool,
-    pub anchor: Option<FirRef>,
-    pub state: Nyes,
+    pub(crate) offset: i32,
+    pub(crate) anchored: bool,
+    pub(crate) anchor: Option<FirRef>,
+    pub(crate) state: Nyes,
 }
 
 #[derive(Debug, Clone)]
 pub struct HeadTailFir {
-    pub is_head: bool,
-    pub anchored: bool,
-    pub anchor: Option<FirRef>,
-    pub state: Nyes,
+    pub(crate) is_head: bool,
+    pub(crate) anchored: bool,
+    pub(crate) anchor: Option<FirRef>,
+    pub(crate) state: Nyes,
 }
 
 #[derive(Debug, Clone)]
 pub struct StayFoolishFir {
-    pub expr: FirRef,
-    pub state: Nyes,
+    pub(crate) expr: FirRef,
+    pub(crate) state: Nyes,
 }
 
 #[derive(Debug, Clone)]
 pub struct StayFullyFoolishFir {
-    pub expr: FirRef,
-    pub state: Nyes,
+    pub(crate) expr: FirRef,
+    pub(crate) state: Nyes,
 }
 
 #[derive(Debug, Clone)]
 pub struct ConcatenationFir {
-    pub elements: Vec<FirRef>,
-    pub merged: Option<FirRef>,
-    pub state: Nyes,
+    pub(crate) elements: Vec<FirRef>,
+    pub(crate) merged: Option<FirRef>,
+    pub(crate) state: Nyes,
 }
 
 #[derive(Debug, Clone)]
 pub struct NormalBraneFir {
-    pub characterizations: Vec<String>,
-    pub statements: Vec<StatementFir>,
-    pub state: Nyes,
+    pub(crate) characterizations: Vec<String>,
+    pub(crate) statements: Vec<StatementFir>,
+    pub(crate) state: Nyes,
 }
 
 // ==================== Steppable Trait ====================
@@ -266,12 +261,12 @@ pub trait Steppable: std::fmt::Debug {
 // ==================== Fir Enum ====================
 
 /// Clone a FirRef into a Fir enum value.
-pub(crate) fn clone_steppable(fir: &FirRef) -> Fir {
+pub fn clone_steppable(fir: &FirRef) -> Fir {
     fir.borrow().clone_into_fir()
 }
 
 /// Wrap a Fir into a FirRef (Rc<RefCell<dyn Steppable>>).
-pub(crate) fn fir_to_ref(fir: Fir) -> FirRef {
+pub fn fir_to_ref(fir: Fir) -> FirRef {
     Rc::new(RefCell::new(fir))
 }
 
@@ -1104,6 +1099,10 @@ impl Fir {
 
 // ==================== Manual Serde for Fir ====================
 
+fn to_json_val<T: Serialize>(v: &T) -> serde_json::Value {
+    serde_json::to_value(v).expect("serde_json::to_value should succeed on serializable types")
+}
+
 fn fir_to_json(fir: &Fir) -> serde_json::Value {
     use serde_json::{Map, Value};
     match fir {
@@ -1111,14 +1110,14 @@ fn fir_to_json(fir: &Fir) -> serde_json::Value {
             let mut m = Map::new();
             m.insert("type".into(), Value::String("ConstantInt".into()));
             m.insert("value".into(), Value::Number(inner.value.into()));
-            m.insert("state".into(), serde_json::to_value(&inner.state).unwrap());
+            m.insert("state".into(), to_json_val(&inner.state));
             Value::Object(m)
         }
         Fir::Nk(inner) => {
             let mut m = Map::new();
             m.insert("type".into(), Value::String("Nk".into()));
             m.insert("reason".into(), Value::String(inner.reason.clone()));
-            m.insert("state".into(), serde_json::to_value(&inner.state).unwrap());
+            m.insert("state".into(), to_json_val(&inner.state));
             Value::Object(m)
         }
         Fir::BinaryOp(inner) => {
@@ -1127,7 +1126,7 @@ fn fir_to_json(fir: &Fir) -> serde_json::Value {
             m.insert("op".into(), Value::String(inner.op.clone()));
             m.insert("left".into(), fir_to_json(&clone_steppable(&inner.left)));
             m.insert("right".into(), fir_to_json(&clone_steppable(&inner.right)));
-            m.insert("state".into(), serde_json::to_value(&inner.state).unwrap());
+            m.insert("state".into(), to_json_val(&inner.state));
             Value::Object(m)
         }
         Fir::UnaryOp(inner) => {
@@ -1135,16 +1134,16 @@ fn fir_to_json(fir: &Fir) -> serde_json::Value {
             m.insert("type".into(), Value::String("UnaryOp".into()));
             m.insert("op".into(), Value::String(inner.op.clone()));
             m.insert("expr".into(), fir_to_json(&clone_steppable(&inner.expr)));
-            m.insert("state".into(), serde_json::to_value(&inner.state).unwrap());
+            m.insert("state".into(), to_json_val(&inner.state));
             Value::Object(m)
         }
         Fir::Search(inner) => {
             let mut m = Map::new();
             m.insert("type".into(), Value::String("Search".into()));
             m.insert("pattern".into(), Value::String(inner.pattern.clone()));
-            m.insert("direction".into(), serde_json::to_value(&inner.direction).unwrap());
+            m.insert("direction".into(), to_json_val(&inner.direction));
             m.insert("anchored".into(), Value::Bool(inner.anchored));
-            m.insert("state".into(), serde_json::to_value(&inner.state).unwrap());
+            m.insert("state".into(), to_json_val(&inner.state));
             if let Some(ref a) = inner.anchor { m.insert("anchor".into(), fir_to_json(&clone_steppable(a))); }
             if let Some(ref t) = inner.target { m.insert("target".into(), fir_to_json(&clone_steppable(t))); }
             Value::Object(m)
@@ -1154,7 +1153,7 @@ fn fir_to_json(fir: &Fir) -> serde_json::Value {
             m.insert("type".into(), Value::String("Index".into()));
             m.insert("offset".into(), Value::Number(inner.offset.into()));
             m.insert("anchored".into(), Value::Bool(inner.anchored));
-            m.insert("state".into(), serde_json::to_value(&inner.state).unwrap());
+            m.insert("state".into(), to_json_val(&inner.state));
             if let Some(ref a) = inner.anchor { m.insert("anchor".into(), fir_to_json(&clone_steppable(a))); }
             Value::Object(m)
         }
@@ -1163,7 +1162,7 @@ fn fir_to_json(fir: &Fir) -> serde_json::Value {
             m.insert("type".into(), Value::String("HeadTail".into()));
             m.insert("is_head".into(), Value::Bool(inner.is_head));
             m.insert("anchored".into(), Value::Bool(inner.anchored));
-            m.insert("state".into(), serde_json::to_value(&inner.state).unwrap());
+            m.insert("state".into(), to_json_val(&inner.state));
             if let Some(ref a) = inner.anchor { m.insert("anchor".into(), fir_to_json(&clone_steppable(a))); }
             Value::Object(m)
         }
@@ -1171,21 +1170,21 @@ fn fir_to_json(fir: &Fir) -> serde_json::Value {
             let mut m = Map::new();
             m.insert("type".into(), Value::String("StayFoolish".into()));
             m.insert("expr".into(), fir_to_json(&clone_steppable(&inner.expr)));
-            m.insert("state".into(), serde_json::to_value(&inner.state).unwrap());
+            m.insert("state".into(), to_json_val(&inner.state));
             Value::Object(m)
         }
         Fir::StayFullyFoolish(inner) => {
             let mut m = Map::new();
             m.insert("type".into(), Value::String("StayFullyFoolish".into()));
             m.insert("expr".into(), fir_to_json(&clone_steppable(&inner.expr)));
-            m.insert("state".into(), serde_json::to_value(&inner.state).unwrap());
+            m.insert("state".into(), to_json_val(&inner.state));
             Value::Object(m)
         }
         Fir::Concatenation(inner) => {
             let mut m = Map::new();
             m.insert("type".into(), Value::String("Concatenation".into()));
             m.insert("elements".into(), Value::Array(inner.elements.iter().map(|e| fir_to_json(&clone_steppable(e))).collect()));
-            m.insert("state".into(), serde_json::to_value(&inner.state).unwrap());
+            m.insert("state".into(), to_json_val(&inner.state));
             if let Some(ref mg) = inner.merged { m.insert("merged".into(), fir_to_json(&clone_steppable(mg))); }
             Value::Object(m)
         }
@@ -1196,12 +1195,12 @@ fn fir_to_json(fir: &Fir) -> serde_json::Value {
             let stmts: Vec<Value> = inner.statements.iter().map(|s| {
                 let mut sm = Map::new();
                 sm.insert("body".into(), fir_to_json(&clone_steppable(&s.body)));
-                sm.insert("state".into(), serde_json::to_value(&s.state).unwrap());
+                sm.insert("state".into(), to_json_val(&s.state));
                 if let Some(ref n) = s.name { sm.insert("name".into(), Value::String(n.clone())); }
                 Value::Object(sm)
             }).collect();
             m.insert("statements".into(), Value::Array(stmts));
-            m.insert("state".into(), serde_json::to_value(&inner.state).unwrap());
+            m.insert("state".into(), to_json_val(&inner.state));
             Value::Object(m)
         }
     }
@@ -1218,17 +1217,134 @@ impl<'de> Deserialize<'de> for Fir {
         let value = serde_json::Value::deserialize(deserializer)?;
         let obj = value.as_object().ok_or_else(|| serde::de::Error::custom("expected JSON object"))?;
         let type_name = obj.get("type").and_then(|v| v.as_str()).ok_or_else(|| serde::de::Error::custom("missing type field"))?;
-        let state = obj.get("state").and_then(|v| serde_json::from_value::<Nyes>(v.clone()).ok()).unwrap_or(Nyes::Embryonic);
+        let state = obj.get("state")
+            .and_then(|v| serde_json::from_value::<Nyes>(v.clone()).ok())
+            .ok_or_else(|| serde::de::Error::custom("missing or invalid state field"))?;
         match type_name {
             "ConstantInt" => {
-                let value = obj.get("value").and_then(|v| v.as_i64()).unwrap_or(0);
+                let value = obj.get("value").and_then(|v| v.as_i64())
+                    .ok_or_else(|| serde::de::Error::custom("missing value field"))?;
                 Ok(Fir::ConstantInt(Box::new(ConstantIntFir { value, state })))
             }
             "Nk" => {
-                let reason = obj.get("reason").and_then(|v| v.as_str()).unwrap_or("unknown").to_string();
+                let reason = obj.get("reason").and_then(|v| v.as_str())
+                    .ok_or_else(|| serde::de::Error::custom("missing reason field"))?
+                    .to_string();
                 Ok(Fir::Nk(Box::new(NkFir { reason, state })))
             }
-            _ => Err(serde::de::Error::custom(format!("unsupported Fir type for deserialization: {}", type_name))),
+            "BinaryOp" => {
+                let op = obj.get("op").and_then(|v| v.as_str())
+                    .ok_or_else(|| serde::de::Error::custom("missing op field"))?
+                    .to_string();
+                let left = obj.get("left").ok_or_else(|| serde::de::Error::custom("missing left field"))
+                    .and_then(|v| serde_json::from_value::<Fir>(v.clone()).map_err(serde::de::Error::custom))?;
+                let right = obj.get("right").ok_or_else(|| serde::de::Error::custom("missing right field"))
+                    .and_then(|v| serde_json::from_value::<Fir>(v.clone()).map_err(serde::de::Error::custom))?;
+                Ok(Fir::BinaryOp(Box::new(BinaryOpFir {
+                    op, left: fir_to_ref(left), right: fir_to_ref(right), state,
+                })))
+            }
+            "UnaryOp" => {
+                let op = obj.get("op").and_then(|v| v.as_str())
+                    .ok_or_else(|| serde::de::Error::custom("missing op field"))?
+                    .to_string();
+                let expr = obj.get("expr").ok_or_else(|| serde::de::Error::custom("missing expr field"))
+                    .and_then(|v| serde_json::from_value::<Fir>(v.clone()).map_err(serde::de::Error::custom))?;
+                Ok(Fir::UnaryOp(Box::new(UnaryOpFir {
+                    op, expr: fir_to_ref(expr), state,
+                })))
+            }
+            "Search" => {
+                let pattern = obj.get("pattern").and_then(|v| v.as_str())
+                    .ok_or_else(|| serde::de::Error::custom("missing pattern field"))?
+                    .to_string();
+                let direction = obj.get("direction")
+                    .and_then(|v| serde_json::from_value::<SearchDirection>(v.clone()).ok())
+                    .unwrap_or(SearchDirection::Backward);
+                let anchored = obj.get("anchored").and_then(|v| v.as_bool()).unwrap_or(false);
+                let anchor = obj.get("anchor")
+                    .and_then(|v| serde_json::from_value::<Fir>(v.clone()).ok())
+                    .map(fir_to_ref);
+                let target = obj.get("target")
+                    .and_then(|v| serde_json::from_value::<Fir>(v.clone()).ok())
+                    .map(fir_to_ref);
+                Ok(Fir::Search(Box::new(SearchFir {
+                    pattern, direction, anchored, anchor, target, state,
+                })))
+            }
+            "Index" => {
+                let offset = obj.get("offset").and_then(|v| v.as_i64()).map(|n| n as i32)
+                    .ok_or_else(|| serde::de::Error::custom("missing offset field"))?;
+                let anchored = obj.get("anchored").and_then(|v| v.as_bool()).unwrap_or(false);
+                let anchor = obj.get("anchor")
+                    .and_then(|v| serde_json::from_value::<Fir>(v.clone()).ok())
+                    .map(fir_to_ref);
+                Ok(Fir::Index(Box::new(IndexFir {
+                    offset, anchored, anchor, state,
+                })))
+            }
+            "HeadTail" => {
+                let is_head = obj.get("is_head").and_then(|v| v.as_bool())
+                    .ok_or_else(|| serde::de::Error::custom("missing is_head field"))?;
+                let anchored = obj.get("anchored").and_then(|v| v.as_bool()).unwrap_or(false);
+                let anchor = obj.get("anchor")
+                    .and_then(|v| serde_json::from_value::<Fir>(v.clone()).ok())
+                    .map(fir_to_ref);
+                Ok(Fir::HeadTail(Box::new(HeadTailFir {
+                    is_head, anchored, anchor, state,
+                })))
+            }
+            "StayFoolish" => {
+                let expr = obj.get("expr").ok_or_else(|| serde::de::Error::custom("missing expr field"))
+                    .and_then(|v| serde_json::from_value::<Fir>(v.clone()).map_err(serde::de::Error::custom))?;
+                Ok(Fir::StayFoolish(Box::new(StayFoolishFir {
+                    expr: fir_to_ref(expr), state,
+                })))
+            }
+            "StayFullyFoolish" => {
+                let expr = obj.get("expr").ok_or_else(|| serde::de::Error::custom("missing expr field"))
+                    .and_then(|v| serde_json::from_value::<Fir>(v.clone()).map_err(serde::de::Error::custom))?;
+                Ok(Fir::StayFullyFoolish(Box::new(StayFullyFoolishFir {
+                    expr: fir_to_ref(expr), state,
+                })))
+            }
+            "Concatenation" => {
+                let elements = obj.get("elements").and_then(|v| v.as_array())
+                    .ok_or_else(|| serde::de::Error::custom("missing elements field"))?
+                    .iter()
+                    .map(|v| serde_json::from_value::<Fir>(v.clone()).map_err(serde::de::Error::custom).map(fir_to_ref))
+                    .collect::<Result<Vec<_>, _>>()?;
+                let merged = obj.get("merged")
+                    .and_then(|v| serde_json::from_value::<Fir>(v.clone()).ok())
+                    .map(fir_to_ref);
+                Ok(Fir::Concatenation(Box::new(ConcatenationFir {
+                    elements, merged, state,
+                })))
+            }
+            "NormalBrane" => {
+                let characterizations = obj.get("characterizations").and_then(|v| v.as_array())
+                    .map(|arr| arr.iter().filter_map(|v| v.as_str()).map(|s| s.to_string()).collect())
+                    .unwrap_or_default();
+                let statements = obj.get("statements").and_then(|v| v.as_array())
+                    .ok_or_else(|| serde::de::Error::custom("missing statements field"))?
+                    .iter()
+                    .map(|v| {
+                        let stmt_obj = v.as_object().ok_or_else(|| serde::de::Error::custom("expected statement object"))?;
+                        let body = stmt_obj.get("body").ok_or_else(|| serde::de::Error::custom("missing body field"))
+                            .and_then(|bv| serde_json::from_value::<Fir>(bv.clone()).map_err(serde::de::Error::custom))?;
+                        let s = stmt_obj.get("state").and_then(|sv| serde_json::from_value::<Nyes>(sv.clone()).ok())
+                            .ok_or_else(|| serde::de::Error::custom("missing statement state"))?;
+                        let name = stmt_obj.get("name").and_then(|nv| nv.as_str()).map(|n| n.to_string());
+                        Ok(StatementFir {
+                            name, body: fir_to_ref(body), state: s,
+                        })
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                Ok(Fir::NormalBrane(Box::new(NormalBraneFir {
+                    characterizations, statements, state,
+                })))
+            }
+            _ => Err(serde::de::Error::custom(format!("unknown Fir type: {}", type_name))),
         }
     }
 }

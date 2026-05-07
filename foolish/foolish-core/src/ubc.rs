@@ -138,7 +138,7 @@ pub fn has_unresolved_forward_refs(fir: &FirRef) -> bool {
         "Concatenation" => {
             let f = fir.borrow().clone_into_fir();
             if let Fir::Concatenation(inner) = f {
-                inner.elements.iter().any(|e| has_unresolved_forward_refs_in_fir(e))
+                inner.elements.iter().any(has_unresolved_forward_refs_in_fir)
             } else { false }
         }
         "StayFullyFoolish" => false,
@@ -454,7 +454,10 @@ pub fn constanic_clone(source: &FirRef, permit_nye: bool) -> FirRef {
             if permit_nye {
                 fir_to_ref(source.borrow().clone_into_fir())
             } else {
-                panic!("constanic_clone called on nye FIR")
+                fir_to_ref(Fir::Nk(Box::new(crate::fir::NkFir {
+                    reason: "constanic_clone called on NYE FIR".to_string(),
+                    state: Nyes::Nk,
+                })))
             }
         }
     }

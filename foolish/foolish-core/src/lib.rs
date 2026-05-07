@@ -5,11 +5,12 @@ pub mod ubc;
 pub mod search;
 pub mod sequencer;
 
-pub use fir::*;
-pub use serialization::*;
-pub use compiler::*;
-pub use ubc::*;
-pub use sequencer::*;
+pub use fir::{Fir, FirRef, Nyes, SearchDirection, StatementFir, StepResult, Steppable,
+    clone_steppable, fir_to_ref};
+pub use serialization::{fir_from_json, fir_to_json, FirSerializer, JsonSerializer};
+pub use compiler::Compiler;
+pub use ubc::{UbcError, Scope, constanic_clone, resolve_to_value, run_to_completion, run_to_completion_with_scope, short_circuit, step_boxed};
+pub use sequencer::Sequencer;
 
 #[cfg(test)]
 mod approval_tests {
@@ -21,7 +22,8 @@ mod approval_tests {
     }
 
     fn run_foo(source: &str) -> String {
-        let firs = Compiler::compile(source).unwrap();
+        let firs = Compiler::compile(source)
+            .unwrap_or_else(|e| panic!("Failed to compile '{}': {}", source, e));
         let mut lines = vec![format!("INPUT: {}", source.lines().next().unwrap_or(source))];
         for (i, fir) in firs.iter().enumerate() {
             lines.push(format!("[{}] PARSED:", i));
@@ -43,7 +45,7 @@ mod approval_tests {
         let input_dir = format!("{}/../../test-resources/org/foolish/fvm/inputs", test_resources_dir());
         let input_path = Path::new(&input_dir).join(format!("{}.foo", name));
         let source = std::fs::read_to_string(&input_path)
-            .unwrap_or_else(|e| panic!("Failed to read {}: {}", input_path.display(), e));
+            .expect(&format!("test input file required: {}", input_path.display()));
         let output = run_foo(&source);
         insta::assert_snapshot!(name, output);
     }

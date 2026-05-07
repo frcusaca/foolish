@@ -1,14 +1,13 @@
 use crate::fir::{Fir, Steppable};
 
 /// Format a FIR tree as human-readable output (for approval tests).
+#[derive(Default)]
 pub struct Sequencer {
     steps: u64,
 }
 
 impl Sequencer {
-    pub fn new() -> Self {
-        Self { steps: 0 }
-    }
+    pub fn new() -> Self { Self::default() }
 
     pub fn steps(&self) -> u64 { self.steps }
 
