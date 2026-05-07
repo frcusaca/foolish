@@ -69,6 +69,12 @@ FOOP documents are the Foolish equivalent of Python's PEP or Scala's SIP. They p
 - **Meta-FOOP**: [FOOP-1](docs/foop/FOOP-1.md) defines the process itself
 
 A FOOP progresses through statuses: `Draft` → `Brewing` (ready for BDFL review) → `Final` (accepted) → `Implementing` (active coding) → complete. Each FOOP is assigned to a `phase` (phase-1 through phase-7, or `meta` for process documents).
+### FOOP Numbering is Little Endian
+FOOP-1 is before FOOP-2, FOOP-9 is the one before FOOP-01, and so on and so forth. To list the directory in order of oldest to newest, use this command:
+```bash
+ls docs/foop|rev|sort -V|rev
+```
+*always* use this command to list the FOOPs to establish ordering. 
 
 ### Plan Files for FOOP Implementation
 
