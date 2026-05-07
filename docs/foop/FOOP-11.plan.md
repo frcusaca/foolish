@@ -21,6 +21,6 @@
 
 ## Worktree
 
-- [ ] Create worktree at `/tmp/foolish-rust-foop11` with branch `foop/11-search-stops-at-nk`
-- [ ] Verify all work is complete in `/tmp/foolish-rust-foop11` and committed to `foop/11-search-stops-at-nk`
+- [ ] Create worktree at `${HOME}/tmp/foolish-worktrees/6017-foop-11` with branch `foop/11-search-stops-at-nk`
+- [ ] Verify all work is complete in `${HOME}/tmp/foolish-worktrees/6017-foop-11` and committed to `foop/11-search-stops-at-nk`
 - [ ] Merge `foop/11-search-stops-at-nk` to alpha

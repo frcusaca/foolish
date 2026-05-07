@@ -29,6 +29,6 @@
 
 ## Worktree
 
-- [ ] Create worktree at `/tmp/foolish-rust-foop9` with branch `foop/9-operator-fir`
-- [ ] Verify all work is complete in `/tmp/foolish-rust-foop9` and committed to `foop/9-operator-fir`
+- [ ] Create worktree at `${HOME}/tmp/foolish-worktrees/1563-foop-9` with branch `foop/9-operator-fir`
+- [ ] Verify all work is complete in `${HOME}/tmp/foolish-worktrees/1563-foop-9` and committed to `foop/9-operator-fir`
 - [ ] Merge `foop/9-operator-fir` to alpha

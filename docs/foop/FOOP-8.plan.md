@@ -26,6 +26,6 @@
 
 ## Worktree
 
-- [ ] Create worktree at `/tmp/foolish-rust-foop8` with branch `foop/8-mutable-fir`
-- [ ] Verify all work is complete in `/tmp/foolish-rust-foop8` and committed to `foop/8-mutable-fir`
+- [ ] Create worktree at `${HOME}/tmp/foolish-worktrees/7295-foop-8` with branch `foop/8-mutable-fir`
+- [ ] Verify all work is complete in `${HOME}/tmp/foolish-worktrees/7295-foop-8` and committed to `foop/8-mutable-fir`
 - [ ] Merge `foop/8-mutable-fir` to alpha

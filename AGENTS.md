@@ -74,6 +74,9 @@ FOOP-1 is before FOOP-2, FOOP-9 is the one before FOOP-01, and so on and so fort
 ```bash
 ls docs/foop|rev|sort -V|rev
 ```
+
+### FOOP Naming Convention (Critical)
+The identifier `FOOP-01` uniquely identifies an optimization step. In free text, use "FOOP 01" (no dash, space instead). This convention reduces the risk of digit reversal: writing "FOOP 01" in prose makes it harder to accidentally type "FOOP 10". In sentences, use the space form: "FOOP's 01, 11, 21 are the only pre-teen foops we will implement." Reserve the dash form `FOOP-01` for filenames, code references, and formal citations only.
 *always* use this command to list the FOOPs to establish ordering. 
 
 ### Plan Files for FOOP Implementation
@@ -94,19 +97,22 @@ This gives both agents and humans a clear view of how work is progressing over t
 
 #### Worktree Branch Tracking
 
-If a worktree branch is used for implementation, the plan **must** document the lifecycle of that worktree as explicit, separate checkbox tasks placed at appropriate points:
-If a worktree branch is used for implementation, the PLAN.md **must** document the lifecycle of that worktree as explicit, separate checkbox tasks placed at appropriate points in the plan. The workpath shall always be `FULL_WORKTREE_PATH=${HOME}/tmp/foolish-worktrees/${FOOP_AND_NUMBER}-${RANDOM}`, that random differentiator is set once while creating the plan file and stays consistent throughout the plan file.
+If a worktree branch is used for implementation, the plan **must** document the lifecycle of that worktree as explicit, separate checkbox tasks placed at appropriate points in the plan. The workpath shall always be:
 
-```markdown
-- [ ] Create worktree `git worktree add -b ${BRANCH_NAME} ${FULL_WORKTREE_PATH}}`
-...
-  (implementation tasks go here)
-...
-- [ ] Verify all work is complete in ${FULL_WORKTREE_PATH} and committed to ${BRANCH_NAME}
-- [ ] Merge ${BRANCH_NAME} to alpha
+```
+FULL_WORKTREE_PATH=${HOME}/tmp/foolish-worktrees/<RANDOM>-foop-<NUMBER>
 ```
 
-Replace `${FULL_WORKTREE_PATH}` and `${BRANCH_NAME}` with actual values when writing the plan.
+The `<RANDOM>` component is a random 4-digit number **generated at the moment the plan file is created**. Each plan file gets its own independent random number — different plans have different random numbers. The random number is concrete (not a variable) — it appears literally in the plan and never changes for the lifetime of that plan. For example: `3841-foop-7`, `1563-foop-9`, `4928-foop-01`.
+
+```markdown
+- [ ] Create worktree at ${HOME}/tmp/foolish-worktrees/3841-foop-7 with branch `foop/7-constanic-clone`
+...
+  (implementation tasks here)
+...
+- [ ] Verify all work is complete in ${HOME}/tmp/foolish-worktrees/3841-foop-7 and committed to `foop/7-constanic-clone`
+- [ ] Merge `foop/7-constanic-clone` to alpha
+```
 
 #### Sub-tasks
 

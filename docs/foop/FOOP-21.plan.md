@@ -40,6 +40,6 @@
 
 ## Worktree
 
-- [ ] Create worktree at `/tmp/foolish-rust-foop12` with branch `foop/12-alarms`
-- [ ] Verify all work is complete in `/tmp/foolish-rust-foop12` and committed to `foop/12-alarms`
+- [ ] Create worktree at `${HOME}/tmp/foolish-worktrees/2845-foop-12` with branch `foop/12-alarms`
+- [ ] Verify all work is complete in `${HOME}/tmp/foolish-worktrees/2845-foop-12` and committed to `foop/12-alarms`
 - [ ] Merge `foop/12-alarms` to alpha

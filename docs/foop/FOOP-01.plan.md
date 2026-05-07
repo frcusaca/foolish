@@ -21,6 +21,6 @@
 
 ## Worktree
 
-- [ ] Create worktree at `/tmp/foolish-rust-foop10` with branch `foop/10-anchored-constanic-search`
-- [ ] Verify all work is complete in `/tmp/foolish-rust-foop10` and committed to `foop/10-anchored-constanic-search`
-- [ ] Merge `foop/10-anchored-constanic-search` to alpha
+- [ ] Create worktree at `${HOME}/tmp/foolish-worktrees/4928-foop-01` with branch `foop/01-anchored-constanic-search`
+- [ ] Verify all work is complete in `${HOME}/tmp/foolish-worktrees/4928-foop-01` and committed to `foop/01-anchored-constanic-search`
+- [ ] Merge `foop/01-anchored-constanic-search` to alpha

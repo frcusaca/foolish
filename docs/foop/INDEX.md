@@ -25,6 +25,8 @@ ls | rev | sort -V | rev
 | [FOOP01](FOOP01.md) | Anchored search through constanic anchors — dereference searches, NK on missing brane names | Brewing | phase-2 | 2026-05-04 | hc |
 | [FOOP-11](FOOP-11.md) | Search stops at NK; search result becomes NK | Brewing | phase-2 | 2026-05-04 | hc |
 | [FOOP-12](FOOP-12.md) | Alarms — diagnostic levels emitted by compiler and evaluator | Brewing | phase-1 | 2026-05-04 | hc |
+| [FOOP-13](FOOP-31.md) | SPA1 — UBC reference implementation (depth-first) | Draft | meta | 2026-05-07 | hc |
+| [FOOP-14](FOOP-32.md) | UBCb — Message-passing brane computer variant; SPA1 parity plan | Draft | meta | 2026-05-07 | hc |
 
 ---
 
@@ -36,6 +38,11 @@ ls | rev | sort -V | rev
 - [FOOP-2](FOOP-2.md) — Remove if-then-else from the language
 - [FOOP-4](FOOP-4.md) — Bare identifiers compile to anchored regex SearchFirs
 - [FOOP-5](FOOP-5.md) — Compile-time vs evaluation-time work
+
+### Draft
+
+- [FOOP-13](FOOP-31.md) — SPA1 milestone (UBC reference implementation)
+- [FOOP-14](FOOP-32.md) — UBCb message-passing variant; SPA1 parity plan
 
 ### Brewing
 
@@ -62,7 +69,7 @@ ls | rev | sort -V | rev
 
 ### meta
 
-- [FOOP-1](FOOP-1.md)
+- [FOOP-1](FOOP-1.md), [FOOP-13](FOOP-31.md), [FOOP-14](FOOP-32.md)
 
 ### phase-1
 
@@ -94,6 +101,11 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 ---
 
 ## Last Updated
+
+**Date**: 2026-05-07
+**Updated By**: opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4
+**Changes**: Added FOOP-13 (SPA1 — UBC reference milestone) and FOOP-14
+(UBCb — message-passing variant parity plan). Added Draft status section.
 
 **Date**: 2026-05-04
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.7 (1M Context)

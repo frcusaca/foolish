@@ -20,6 +20,6 @@
 
 ## Worktree
 
-- [ ] Create worktree at `/tmp/foolish-rust-foop7` with branch `foop/7-constanic-clone`
-- [ ] Verify all work is complete in `/tmp/foolish-rust-foop7` and committed to `foop/7-constanic-clone`
+- [ ] Create worktree at `${HOME}/tmp/foolish-worktrees/3841-foop-7` with branch `foop/7-constanic-clone`
+- [ ] Verify all work is complete in `${HOME}/tmp/foolish-worktrees/3841-foop-7` and committed to `foop/7-constanic-clone`
 - [ ] Merge `foop/7-constanic-clone` to alpha
