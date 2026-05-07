@@ -1,0 +1,23 @@
+---
+source: foolish-core/src/lib.rs
+assertion_line: 122
+expression: output
+---
+INPUT: {x=42; b=<x>; b;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  x = 
+  Int(42) [INDEPENDENT]
+  b = 
+  StayFoolish [EMBRYONIC]
+    Search(pattern='^x$', dir=BACKWARD, FREE) [EMBRYONIC]
+  Search(pattern='^b$', dir=BACKWARD, FREE) [EMBRYONIC]
+RESULT:
+Brane [CONSTANT]
+  x = 
+  Int(42) [INDEPENDENT]
+  b = 
+  StayFoolish [CONSTANT]
+    Search(pattern='^x$', dir=BACKWARD, FREE) [CONSTANT]
+      Int(42) [INDEPENDENT]
+  Int(42) [INDEPENDENT]

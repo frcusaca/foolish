@@ -1,0 +1,19 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {a=<<3>>; a + 7;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  a = 
+  StayFullyFoolish [INDEPENDENT]
+    Int(3) [INDEPENDENT]
+  BinaryOp(+) [EMBRYONIC]
+    Search(pattern='^a$', dir=BACKWARD, FREE) [EMBRYONIC]
+    Int(7) [INDEPENDENT]
+RESULT:
+Brane [CONSTANT]
+  a = 
+  StayFullyFoolish [INDEPENDENT]
+    Int(3) [INDEPENDENT]
+  Int(10) [CONSTANT]

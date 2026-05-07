@@ -1,0 +1,35 @@
+---
+source: foolish-core/src/lib.rs
+assertion_line: 83
+expression: output
+---
+INPUT: {a=1,b=2; c=<<a+b>>; c; c;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  a = 
+  Int(1) [INDEPENDENT]
+  b = 
+  Int(2) [INDEPENDENT]
+  c = 
+  StayFullyFoolish [INDEPENDENT]
+    BinaryOp(+) [EMBRYONIC]
+      Search(pattern='^a$', dir=BACKWARD, FREE) [EMBRYONIC]
+      Search(pattern='^b$', dir=BACKWARD, FREE) [EMBRYONIC]
+  Search(pattern='^c$', dir=BACKWARD, FREE) [EMBRYONIC]
+  Search(pattern='^c$', dir=BACKWARD, FREE) [EMBRYONIC]
+RESULT:
+Brane [WOCONSTANIC]
+  a = 
+  Int(1) [INDEPENDENT]
+  b = 
+  Int(2) [INDEPENDENT]
+  c = 
+  StayFullyFoolish [INDEPENDENT]
+    BinaryOp(+) [EMBRYONIC]
+      Search(pattern='^a$', dir=BACKWARD, FREE) [CONSTANT]
+      Search(pattern='^b$', dir=BACKWARD, FREE) [CONSTANT]
+  Int(3) [CONSTANT]
+  Search(pattern='^c$', dir=BACKWARD, FREE) [WOCONSTANIC]
+    BinaryOp(+) [WOCONSTANIC]
+      Search(pattern='^a$', dir=BACKWARD, FREE) [CONSTANT]
+      Search(pattern='^b$', dir=BACKWARD, FREE) [CONSTANT]

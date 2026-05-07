@@ -1,8 +1,6 @@
-use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::fir::{Fir, FirRef, Nyes, StatementFir};
-use crate::search;
+use crate::fir::{Fir, FirRef, Nyes, StatementFir, Steppable, NormalBraneFir, clone_steppable, fir_to_ref};
 
 #[derive(Debug, thiserror::Error)]
 pub enum UbcError {
@@ -10,11 +8,38 @@ pub enum UbcError {
     Eval(String),
 }
 
+/// Resolve a FIR to its concrete value. For resolved searches, returns the target.
+/// For SFF/SF, strips the wrapper.
+pub fn resolve_to_value(fir: &FirRef) -> FirRef {
+    match fir.borrow().fir_variant() {
+        "Search" => {
+            if let Some(target) = fir.borrow().search_target_ref() {
+                let st = fir.borrow().state();
+                if st == Nyes::Constant || st == Nyes::Independent {
+                    return target;
+                }
+            }
+            Rc::clone(fir)
+        }
+        "StayFullyFoolish" | "StayFoolish" => {
+            let fir_clone = fir.borrow().clone_into_fir();
+            match fir_clone {
+                Fir::StayFullyFoolish(inner) => Rc::clone(&inner.expr),
+                Fir::StayFoolish(inner) => Rc::clone(&inner.expr),
+                _ => Rc::clone(fir),
+            }
+        }
+        _ => Rc::clone(fir),
+    }
+}
+
 /// Scope chain: list of (name, FirRef) pairs, most recent first.
-/// Unanchored searches search backwards through this chain.
 #[derive(Debug, Default, Clone)]
 pub struct Scope {
     entries: Vec<(String, FirRef)>,
+    current_brane: Option<FirRef>,
+    current_stmt_idx: Option<usize>,
+    block_brane_searches: bool,
 }
 
 impl Scope {
@@ -24,8 +49,12 @@ impl Scope {
         self.entries.push((name, fir));
     }
 
-    /// Search backwards for a name matching the regex pattern.
-    /// Returns the first (most recent) match.
+    pub fn with_brane(mut self, brane: FirRef, stmt_idx: usize) -> Self {
+        self.current_brane = Some(brane);
+        self.current_stmt_idx = Some(stmt_idx);
+        self
+    }
+
     pub fn search(&self, pattern: &str) -> Option<FirRef> {
         let re = regex::Regex::new(pattern).ok()?;
         for (name, fir) in self.entries.iter().rev() {
@@ -35,6 +64,16 @@ impl Scope {
         }
         None
     }
+
+    pub fn block_brane_searches(&self) -> bool { self.block_brane_searches }
+
+    pub fn set_block_brane_searches(&mut self, v: bool) { self.block_brane_searches = v; }
+
+    pub fn current_brane(&self) -> Option<FirRef> {
+        self.current_brane.as_ref().map(Rc::clone)
+    }
+
+    pub fn current_stmt_idx(&self) -> Option<usize> { self.current_stmt_idx }
 }
 
 /// Run a FIR tree to completion with an empty scope.
@@ -45,339 +84,385 @@ pub fn run_to_completion(fir: &mut FirRef) -> Result<(), UbcError> {
 /// Run a FIR tree to completion with a scope chain.
 pub fn run_to_completion_with_scope(fir: &mut FirRef, scope: &Scope) -> Result<(), UbcError> {
     let mut max_steps = 100000;
-    while !fir.borrow().state().is_constanic() && fir.borrow().state() != Nyes::Nk {
+    loop {
         if max_steps == 0 {
             return Err(UbcError::Eval("infinite loop detected".to_string()));
         }
         max_steps -= 1;
+        let prev_state = fir.borrow().state();
+        if prev_state == Nyes::Constant || prev_state == Nyes::Independent || prev_state == Nyes::Nk {
+            break;
+        }
         let replacement = step_with_scope(fir, scope)?;
         if let Some(repl) = replacement {
-            *fir = Rc::new(RefCell::new(repl));
+            *fir = fir_to_ref(repl);
+        }
+        let new_state = fir.borrow().state();
+        if prev_state == new_state {
+            break;
+        }
+        if new_state == Nyes::Woconstanic && !has_unresolved_forward_refs(fir) {
+            break;
         }
     }
     Ok(())
 }
 
-/// Step a FIR with scope. Returns Some(Fir) if the node should be replaced entirely.
+/// Check if any descendant FIR has ECONSTANIC state.
+pub fn has_unresolved_forward_refs(fir: &FirRef) -> bool {
+    match fir.borrow().fir_variant() {
+        "NormalBrane" => {
+            let f = fir.borrow().clone_into_fir();
+            if let Fir::NormalBrane(inner) = f {
+                inner.statements.iter().any(|s| s.state == Nyes::Econstanic || has_unresolved_forward_refs_in_fir(&s.body))
+            } else { false }
+        }
+        "BinaryOp" => {
+            let f = fir.borrow().clone_into_fir();
+            if let Fir::BinaryOp(inner) = f {
+                has_unresolved_forward_refs_in_fir(&inner.left) || has_unresolved_forward_refs_in_fir(&inner.right)
+            } else { false }
+        }
+        "UnaryOp" => {
+            let f = fir.borrow().clone_into_fir();
+            if let Fir::UnaryOp(inner) = f {
+                has_unresolved_forward_refs_in_fir(&inner.expr)
+            } else { false }
+        }
+        "Search" => {
+            let f = fir.borrow().clone_into_fir();
+            if let Fir::Search(inner) = f {
+                inner.state == Nyes::Econstanic
+            } else { false }
+        }
+        "Concatenation" => {
+            let f = fir.borrow().clone_into_fir();
+            if let Fir::Concatenation(inner) = f {
+                inner.elements.iter().any(|e| has_unresolved_forward_refs_in_fir(e))
+            } else { false }
+        }
+        "StayFullyFoolish" => false,
+        "StayFoolish" => {
+            let f = fir.borrow().clone_into_fir();
+            if let Fir::StayFoolish(inner) = f {
+                has_unresolved_forward_refs_in_fir(&inner.expr)
+            } else { false }
+        }
+        _ => false,
+    }
+}
+
+fn has_unresolved_forward_refs_in_fir(fir: &FirRef) -> bool {
+    has_unresolved_forward_refs(fir)
+}
+
+/// Step a FIR with scope. Returns Some(Fir) if the node should be replaced.
 pub fn step_with_scope(fir: &FirRef, scope: &Scope) -> Result<Option<Fir>, UbcError> {
-    macro_rules! step_if {
-        ($variant:pat, $fn:ident) => {
-            if matches!(&*fir.borrow(), $variant) {
-                return $fn(fir, scope);
-            }
-        };
+    let repl = fir.borrow_mut().step_one(scope)?;
+    Ok(repl)
+}
+
+/// Clone a FIR, step it to completion with scope, return result as Fir.
+pub fn step_boxed(fir: &FirRef, scope: &Scope) -> Result<Fir, UbcError> {
+    let inner = fir.borrow().clone_into_fir();
+    let mut ref_fir = fir_to_ref(inner);
+    run_to_completion_with_scope(&mut ref_fir, scope)?;
+    Ok(ref_fir.borrow().clone_into_fir())
+}
+
+/// Recompute brane state from statements and update the brane in-place.
+pub fn re_step_brane_bodies(brane: &mut NormalBraneFir, scope: &Scope) -> Result<(), UbcError> {
+    let statements: Vec<StatementFir> = brane.statements.clone();
+
+    let statements: Vec<StatementFir> = statements.into_iter().map(|s| {
+        let body_fir = clone_steppable(&s.body);
+        let body = reset_searches(body_fir);
+        StatementFir {
+            name: s.name,
+            body: fir_to_ref(body),
+            state: Nyes::Embryonic,
+        }
+    }).collect();
+
+    let mut local_scope = scope.clone();
+    for stmt in &statements {
+        if let Some(ref name) = stmt.name {
+            local_scope.push(name.clone(), Rc::clone(&stmt.body));
+        }
     }
-    step_if!(Fir::ConstantInt { .. }, step_noop);
-    step_if!(Fir::Nk { .. }, step_noop);
-    step_if!(Fir::NormalBrane { .. }, step_brane);
-    step_if!(Fir::BinaryOp { .. }, step_binary_op);
-    step_if!(Fir::UnaryOp { .. }, step_unary_op);
-    step_if!(Fir::Search { .. }, step_search);
-    step_if!(Fir::Index { .. }, step_index);
-    step_if!(Fir::HeadTail { .. }, step_head_tail);
-    step_if!(Fir::Concatenation { .. }, step_concatenation);
-    Ok(None)
-}
 
-fn step_noop(_fir: &FirRef) -> Result<Option<Fir>, UbcError> { Ok(None) }
-
-/// Clone a Box<Fir>, step it to completion, return result
-fn step_boxed(child: &Box<Fir>) -> Result<Fir, UbcError> {
-    let inner = (**child).clone();
-    let mut ref_fir = Rc::new(RefCell::new(inner));
-    run_to_completion(&mut ref_fir)?;
-    Ok(ref_fir.borrow().clone())
-}
-
-/// Clone an Option<Box<Fir>>, step it to completion, return result
-fn step_opt_boxed(child: &Option<Box<Fir>>) -> Result<Option<Fir>, UbcError> {
-    match child {
-        Some(boxed) => Ok(Some(step_boxed(boxed)?)),
-        None => Ok(None),
+    let mut stepped = Vec::new();
+    for (idx, stmt) in statements.iter().enumerate() {
+        let scoped = local_scope.clone()
+            .with_brane(fir_to_ref(Fir::NormalBrane(Box::new(NormalBraneFir {
+                characterizations: brane.characterizations.clone(),
+                statements: brane.statements.clone(),
+                state: brane.state,
+            }))), idx);
+        let body = step_boxed(&stmt.body, &scoped)?;
+        stepped.push(StatementFir {
+            name: stmt.name.clone(),
+            state: body.state(),
+            body: fir_to_ref(body),
+        });
     }
+
+    let brane_state = compute_brane_state(&stepped);
+    brane.statements = stepped;
+    brane.state = brane_state;
+    Ok(())
 }
 
-fn step_brane(fir: &FirRef) -> Result<Option<Fir>, UbcError> {
-    let state = fir.borrow().state();
-    match state {
-        Nyes::Prembrionic => { fir.borrow_mut().set_state(Nyes::Embryonic); }
-        Nyes::Embryonic => { fir.borrow_mut().set_state(Nyes::Braning); }
-        Nyes::Braning => {
-            let statements = {
-                if let Fir::NormalBrane { statements, .. } = &*fir.borrow() {
-                    Some(statements.clone())
-                } else { None }
-            };
-            if let Some(stmts) = statements {
-                let mut stepped = Vec::new();
-                for stmt in stmts {
-                    let body = step_boxed(&Box::new(stmt.body.clone()))?;
-                    stepped.push(StatementFir {
-                        name: stmt.name.clone(),
-                        state: body.state(),
-                        body,
-                    });
+/// Recursively reset all Search FIRs to EMBRYONIC state.
+fn reset_searches(fir: Fir) -> Fir {
+    match fir {
+        Fir::Search(inner) => {
+            let mut s = *inner;
+            s.target = None;
+            s.state = Nyes::Embryonic;
+            s.anchor = s.anchor.map(|a| fir_to_ref(reset_searches(clone_steppable(&a))));
+            Fir::Search(Box::new(s))
+        }
+        Fir::BinaryOp(inner) => {
+            let mut b = *inner;
+            b.left = fir_to_ref(reset_searches(clone_steppable(&b.left)));
+            b.right = fir_to_ref(reset_searches(clone_steppable(&b.right)));
+            b.state = Nyes::Embryonic;
+            Fir::BinaryOp(Box::new(b))
+        }
+        Fir::UnaryOp(inner) => {
+            let mut u = *inner;
+            u.expr = fir_to_ref(reset_searches(clone_steppable(&u.expr)));
+            u.state = Nyes::Embryonic;
+            Fir::UnaryOp(Box::new(u))
+        }
+        Fir::NormalBrane(inner) => {
+            let mut nb = *inner;
+            nb.statements = nb.statements.into_iter().map(|s| {
+                StatementFir {
+                    name: s.name,
+                    body: fir_to_ref(reset_searches(clone_steppable(&s.body))),
+                    state: Nyes::Embryonic,
                 }
-                let brane_state = compute_brane_state(&stepped);
-                fir.borrow_mut().normal_brane_statements(stepped);
-                fir.borrow_mut().set_state(brane_state);
-            }
+            }).collect();
+            nb.state = Nyes::Embryonic;
+            Fir::NormalBrane(Box::new(nb))
         }
-        _ => {} // terminal
+        Fir::Index(inner) => {
+            let mut ix = *inner;
+            ix.anchor = ix.anchor.map(|a| fir_to_ref(reset_searches(clone_steppable(&a))));
+            ix.state = Nyes::Embryonic;
+            Fir::Index(Box::new(ix))
+        }
+        Fir::HeadTail(inner) => {
+            let mut ht = *inner;
+            ht.anchor = ht.anchor.map(|a| fir_to_ref(reset_searches(clone_steppable(&a))));
+            ht.state = Nyes::Embryonic;
+            Fir::HeadTail(Box::new(ht))
+        }
+        Fir::Concatenation(inner) => {
+            let mut c = *inner;
+            c.elements = c.elements.into_iter().map(|e| {
+                fir_to_ref(reset_searches(clone_steppable(&e)))
+            }).collect();
+            c.merged = c.merged.map(|m| fir_to_ref(reset_searches(clone_steppable(&m))));
+            c.state = Nyes::Embryonic;
+            Fir::Concatenation(Box::new(c))
+        }
+        Fir::StayFullyFoolish(inner) => {
+            let mut sff = *inner;
+            sff.state = Nyes::Independent;
+            Fir::StayFullyFoolish(Box::new(sff))
+        }
+        Fir::StayFoolish(inner) => {
+            let mut sf = *inner;
+            sf.expr = fir_to_ref(reset_searches(clone_steppable(&sf.expr)));
+            sf.state = Nyes::Embryonic;
+            Fir::StayFoolish(Box::new(sf))
+        }
+        _ => fir,
     }
-    Ok(None)
 }
 
-fn step_binary_op(fir: &FirRef) -> Result<Option<Fir>, UbcError> {
-    let op = {
-        if let Fir::BinaryOp { op, .. } = &*fir.borrow() {
-            op.clone()
-        } else {
-            return Ok(None);
-        }
-    };
-
-    // Step left operand - clone, step, write back
-    let left_fir = {
-        if let Fir::BinaryOp { left, .. } = &*fir.borrow() {
-            (**left).clone()
-        } else { return Ok(None); }
-    };
-    let left_stepped = step_boxed(&Box::new(left_fir))?;
-
-    // Step right operand
-    let right_fir = {
-        if let Fir::BinaryOp { right, .. } = &*fir.borrow() {
-            (**right).clone()
-        } else { return Ok(None); }
-    };
-    let right_stepped = step_boxed(&Box::new(right_fir))?;
-
-    // Write back
-    fir.borrow_mut().set_binary_operands(left_stepped, right_stepped);
-
-    // Check results
-    let ls = fir.borrow().left_state();
-    let rs = fir.borrow().right_state();
-
-    if ls == Nyes::Nk || rs == Nyes::Nk {
-        fir.borrow_mut().set_state(Nyes::Nk);
-        return Ok(None);
+/// Strip SFF/SF wrappers from a FIR, recursively.
+fn strip_sf_wrapper(fir: Fir) -> Fir {
+    match fir {
+        Fir::StayFullyFoolish(inner) => strip_sf_wrapper(clone_steppable(&inner.expr)),
+        Fir::StayFoolish(inner) => strip_sf_wrapper(clone_steppable(&inner.expr)),
+        other => other,
     }
-
-    if (ls == Nyes::Constant || ls == Nyes::Independent)
-        && (rs == Nyes::Constant || rs == Nyes::Independent)
-    {
-        if let Some((l, r)) = fir.borrow().binary_values() {
-            return Ok(Some(compute_binary(&op, l, r)?));
-        }
-    }
-
-    if ls.is_constanic() && rs.is_constanic() {
-        fir.borrow_mut().set_state(Nyes::Woconstanic);
-    }
-    Ok(None)
 }
 
-fn step_unary_op(fir: &FirRef) -> Result<Option<Fir>, UbcError> {
-    let op = {
-        if let Fir::UnaryOp { op, .. } = &*fir.borrow() {
-            op.clone()
-        } else {
-            return Ok(None);
+/// Step a FIR but block searches that would resolve to brane targets.
+pub fn step_except_brane_searches(fir: &FirRef, scope: &Scope) -> Result<Fir, UbcError> {
+    let inner = fir.borrow().clone_into_fir();
+    let mut ref_fir = fir_to_ref(inner);
+    step_except_brane_searches_ref(&mut ref_fir, scope)?;
+    Ok(ref_fir.borrow().clone_into_fir())
+}
+
+fn step_except_brane_searches_ref(fir: &mut FirRef, scope: &Scope) -> Result<(), UbcError> {
+    let mut max_steps = 10000;
+    loop {
+        if max_steps == 0 { break; }
+        max_steps -= 1;
+        let prev = fir.borrow().state();
+        if prev.is_constanic() { break; }
+        let repl = step_except_brane_one(fir, scope)?;
+        if let Some(r) = repl {
+            *fir = fir_to_ref(r);
         }
-    };
+        if fir.borrow().state() == prev { break; }
+    }
+    Ok(())
+}
 
-    // Step operand - clone, step, write back
-    let expr_fir = {
-        if let Fir::UnaryOp { expr, .. } = &*fir.borrow() {
-            (**expr).clone()
-        } else { return Ok(None); }
-    };
-    let expr_stepped = step_boxed(&Box::new(expr_fir))?;
-    fir.borrow_mut().set_unary_expr(expr_stepped);
+/// Extract variant data without holding RefCell borrows for mutations.
+enum Variant {
+    UnanchoredSearch(String),
+    AnchoredSearch,
+    BinaryOp(String, Fir, Fir),
+    UnaryOp(String, Fir),
+    StayFullyFoolish,
+    Terminal,
+    Other,
+}
 
-    let es = fir.borrow().expr_state();
-
-    match es {
-        Nyes::Nk => { fir.borrow_mut().set_state(Nyes::Nk); Ok(None) }
-        Nyes::Constant | Nyes::Independent => {
-            if let Some(val) = fir.borrow().unary_value() {
-                Ok(Some(compute_unary(&op, val)?))
+fn extract_variant(fir: &FirRef) -> Variant {
+    let fir_clone = fir.borrow().clone_into_fir();
+    match fir_clone {
+        Fir::Search(inner) => {
+            if inner.anchored {
+                Variant::AnchoredSearch
             } else {
-                Ok(None)
+                Variant::UnanchoredSearch(inner.pattern)
             }
         }
-        _ => { fir.borrow_mut().set_state(Nyes::Woconstanic); Ok(None) }
+        Fir::BinaryOp(inner) => {
+            Variant::BinaryOp(inner.op, clone_steppable(&inner.left), clone_steppable(&inner.right))
+        }
+        Fir::UnaryOp(inner) => {
+            Variant::UnaryOp(inner.op, clone_steppable(&inner.expr))
+        }
+        Fir::StayFullyFoolish(_) => Variant::StayFullyFoolish,
+        Fir::ConstantInt(_) | Fir::Nk(_) => Variant::Terminal,
+        _ => Variant::Other,
     }
 }
 
-fn step_search(fir: &FirRef) -> Result<Option<Fir>, UbcError> {
-    if fir.borrow().state().is_constanic() {
-        return Ok(None);
-    }
-    if fir.borrow().search_anchored() {
-        step_search_anchored(fir)
-    } else {
-        fir.borrow_mut().set_state(Nyes::Econstanic);
-        Ok(None)
-    }
-}
+fn step_except_brane_one(fir: &FirRef, scope: &Scope) -> Result<Option<Fir>, UbcError> {
+    let variant = extract_variant(fir);
 
-fn step_search_anchored(fir: &FirRef) -> Result<Option<Fir>, UbcError> {
-    let anchor = fir.borrow().search_anchor_ref();
-    if let Some(mut anchor) = anchor {
-        run_to_completion(&mut anchor)?;
-        let anchor_state = anchor.borrow().state();
-        match anchor_state {
-            Nyes::Nk => fir.borrow_mut().set_state(Nyes::Nk),
-            Nyes::Constant | Nyes::Independent => {
-                let pattern = fir.borrow().search_pattern();
-                match search::search_in_brane(&anchor, &pattern) {
-                    None => fir.borrow_mut().set_state(Nyes::Nk),
-                    Some(found) => {
-                        let cloned = constanic_clone(&found);
-                        fir.borrow_mut().set_search_target(cloned.clone());
-                        let cs = cloned.borrow().state();
-                        if cs == Nyes::Constant || cs == Nyes::Independent {
-                            fir.borrow_mut().set_state(Nyes::Constant);
-                        } else if cs.is_constanic() {
-                            short_circuit(fir);
-                            fir.borrow_mut().set_state(Nyes::Woconstanic);
-                        }
+    match variant {
+        Variant::UnanchoredSearch(pattern) => {
+            match scope.search(&pattern) {
+                Some(found) => {
+                    let is_brane = found.borrow().fir_variant() == "NormalBrane";
+                    if is_brane {
+                        fir.borrow_mut().set_state(Nyes::Econstanic);
+                    } else {
+                        let stripped = strip_sf_wrapper(clone_steppable(&found));
+                        let mut found_rc: FirRef = fir_to_ref(stripped);
+                        run_to_completion_with_scope(&mut found_rc, scope)?;
+                        fir.borrow_mut().set_search_target(Rc::clone(&found_rc));
+                        let cs = found_rc.borrow().state();
+                        fir.borrow_mut().set_state(
+                            if cs == Nyes::Constant || cs == Nyes::Independent {
+                                Nyes::Constant
+                            } else {
+                                Nyes::Woconstanic
+                            }
+                        );
+                    }
+                }
+                None => fir.borrow_mut().set_state(Nyes::Econstanic),
+            }
+            Ok(None)
+        }
+        Variant::AnchoredSearch => {
+            let repl = fir.borrow_mut().step_one(scope)?;
+            Ok(repl)
+        }
+        Variant::BinaryOp(op, left, right) => {
+            let left_ref: FirRef = fir_to_ref(left);
+            let right_ref: FirRef = fir_to_ref(right);
+            let left_stepped = step_except_brane_searches(&left_ref, scope)?;
+            let right_stepped = step_except_brane_searches(&right_ref, scope)?;
+            fir.borrow_mut().set_binary_operands(left_stepped.clone(), right_stepped.clone());
+            let ls = Steppable::state(&left_stepped);
+            let rs = Steppable::state(&right_stepped);
+            if (ls == Nyes::Constant || ls == Nyes::Independent)
+                && (rs == Nyes::Constant || rs == Nyes::Independent)
+            {
+                let fir_clone = fir.borrow().clone_into_fir();
+                if let Fir::BinaryOp(inner) = fir_clone {
+                    if let Some((l, r)) = inner.binary_values() {
+                        return Ok(Some(compute_binary(&op, l, r)?));
                     }
                 }
             }
-            _ => fir.borrow_mut().set_state(Nyes::Nk),
-        }
-    } else {
-        fir.borrow_mut().set_state(Nyes::Econstanic);
-    }
-    Ok(None)
-}
-
-fn step_index(fir: &FirRef) -> Result<Option<Fir>, UbcError> {
-    let anchored = fir.borrow().index_anchored();
-    if anchored {
-        let anchor = fir.borrow().index_anchor_ref();
-        if let Some(mut anchor) = anchor {
-            run_to_completion(&mut anchor)?;
-            let offset = fir.borrow().index_offset();
-            match anchor.borrow().state() {
-                Nyes::Nk => fir.borrow_mut().set_state(Nyes::Nk),
-                Nyes::Constant | Nyes::Independent => {
-                    match search::index_in_brane(&anchor, offset) {
-                        None => fir.borrow_mut().set_state(Nyes::Nk),
-                        Some(found) => {
-                            let cloned = constanic_clone(&found);
-                            return Ok(Some(cloned.borrow().clone()));
-                        }
-                    }
-                }
-                _ => fir.borrow_mut().set_state(Nyes::Nk),
+            if ls.is_constanic() && rs.is_constanic() {
+                fir.borrow_mut().set_state(Nyes::Woconstanic);
             }
+            Ok(None)
         }
-    } else {
-        fir.borrow_mut().set_state(Nyes::Econstanic);
-    }
-    Ok(None)
-}
-
-fn step_head_tail(fir: &FirRef) -> Result<Option<Fir>, UbcError> {
-    let is_head = fir.borrow().headtail_is_head();
-    let anchor = fir.borrow().headtail_anchor_ref();
-    if let Some(mut anchor) = anchor {
-        run_to_completion(&mut anchor)?;
-        match anchor.borrow().state() {
-            Nyes::Nk => fir.borrow_mut().set_state(Nyes::Nk),
-            Nyes::Constant | Nyes::Independent => {
-                let found = if is_head {
-                    search::head_of_brane(&anchor)
-                } else {
-                    search::tail_of_brane(&anchor)
-                };
-                match found {
-                    None => fir.borrow_mut().set_state(Nyes::Nk),
-                    Some(f) => {
-                        let cloned = constanic_clone(&f);
-                        return Ok(Some(cloned.borrow().clone()));
-                    }
+        Variant::UnaryOp(op, expr) => {
+            let expr_ref: FirRef = fir_to_ref(expr);
+            let stepped = step_except_brane_searches(&expr_ref, scope)?;
+            fir.borrow_mut().set_unary_expr(stepped.clone());
+            let es = Steppable::state(&stepped);
+            if es == Nyes::Constant || es == Nyes::Independent {
+                if let Some(v) = stepped.as_int() {
+                    return Ok(Some(compute_unary(&op, v)?));
                 }
             }
-            _ => fir.borrow_mut().set_state(Nyes::Nk),
+            fir.borrow_mut().set_state(Nyes::Woconstanic);
+            Ok(None)
+        }
+        Variant::StayFullyFoolish => Ok(None),
+        Variant::Terminal => Ok(None),
+        Variant::Other => {
+            if !fir.borrow().state().is_constanic() {
+                fir.borrow_mut().set_state(Nyes::Woconstanic);
+            }
+            Ok(None)
         }
     }
-    Ok(None)
 }
 
-fn step_concatenation(fir: &FirRef) -> Result<Option<Fir>, UbcError> {
-    let elements = fir.borrow().concat_elements();
-
-    // Step each element to completion
-    let stepped: Vec<Fir> = elements
-        .iter()
-        .map(|e| step_boxed(&Box::new(e.clone())))
-        .collect::<Result<_, _>>()?;
-
-    // NK propagation
-    if stepped.iter().any(|e| e.state() == Nyes::Nk) {
-        fir.borrow_mut().set_state(Nyes::Nk);
-        return Ok(None);
+/// Constanic clone per FOOP=7.
+pub fn constanic_clone(source: &FirRef, permit_nye: bool) -> FirRef {
+    if source.borrow().fir_variant() == "StayFullyFoolish" {
+        let f = source.borrow().clone_into_fir();
+        if let Fir::StayFullyFoolish(inner) = f {
+            return constanic_clone(&inner.expr, permit_nye);
+        }
     }
-
-    // Build merged brane
-    let merged_statements: Vec<StatementFir> = stepped
-        .iter()
-        .flat_map(|elem| {
-            let elem_ref = Rc::new(RefCell::new(elem.clone()));
-            match &*elem_ref.borrow() {
-                Fir::NormalBrane { statements, .. } => {
-                    statements.iter().map(|stmt| {
-                        let body_ref = Rc::new(RefCell::new(stmt.body.clone()));
-                        let cloned = constanic_clone(&body_ref);
-                        StatementFir {
-                            name: stmt.name.clone(),
-                            body: cloned.borrow().clone(),
-                            state: Nyes::Embryonic,
-                        }
-                    }).collect::<Vec<_>>()
-                }
-                _ => vec![],
-            }
-        })
-        .collect();
-
-    let merged = Fir::NormalBrane {
-        characterizations: vec![],
-        statements: merged_statements,
-        state: Nyes::Embryonic,
-    };
-    fir.borrow_mut().set_concat_merged(Rc::new(RefCell::new(merged)));
-    fir.borrow_mut().set_state(Nyes::Embryonic);
-    Ok(None)
-}
-
-/// Constanic clone per FOOP=7
-pub fn constanic_clone(source: &FirRef) -> FirRef {
     match source.borrow().state() {
         Nyes::Constant | Nyes::Independent | Nyes::Nk => Rc::clone(source),
         Nyes::Econstanic => {
-            let r = Rc::new(RefCell::new(source.borrow().clone()));
+            let r = fir_to_ref(source.borrow().clone_into_fir());
             r.borrow_mut().set_state(Nyes::Embryonic);
             r
         }
         Nyes::Woconstanic => {
-            let r = Rc::new(RefCell::new(source.borrow().clone()));
+            let r = fir_to_ref(source.borrow().clone_into_fir());
             r.borrow_mut().set_state(Nyes::Braning);
             r
         }
-        _ => panic!("constanic_clone called on nye FIR"),
+        _ => {
+            if permit_nye {
+                fir_to_ref(source.borrow().clone_into_fir())
+            } else {
+                panic!("constanic_clone called on nye FIR")
+            }
+        }
     }
 }
 
-fn short_circuit(fir: &FirRef) {
-    // Follow WOCONSTANIC chain
-    let mut end_target: Option<Fir> = None;
+/// Follow WOCONSTANIC chain for short-circuiting.
+pub fn short_circuit(fir: &FirRef) {
+    let mut end_target: Option<FirRef> = None;
     let mut current = fir.borrow().search_target_ref();
     loop {
         let local_rc = match current {
@@ -386,18 +471,19 @@ fn short_circuit(fir: &FirRef) {
         };
         let state = local_rc.borrow().state();
         if state != Nyes::Woconstanic {
-            end_target = Some(local_rc.borrow().clone());
+            end_target = Some(local_rc);
             break;
         }
         let next_target = local_rc.borrow().search_target_ref();
         current = next_target;
     }
     if let Some(end) = end_target {
-        fir.borrow_mut().set_search_target_direct(Some(Rc::new(RefCell::new(end))));
+        fir.borrow_mut().set_search_target_direct(Some(Rc::clone(&end)));
     }
 }
 
-fn compute_brane_state(statements: &[StatementFir]) -> Nyes {
+/// Compute brane state from statements.
+pub fn compute_brane_state(statements: &[StatementFir]) -> Nyes {
     if statements.is_empty() {
         return Nyes::Constant;
     }
@@ -412,30 +498,38 @@ fn compute_brane_state(statements: &[StatementFir]) -> Nyes {
     }
 }
 
-fn compute_binary(op: &str, left: i64, right: i64) -> Result<Fir, UbcError> {
+/// Compute binary operation result.
+pub fn compute_binary(op: &str, left: i64, right: i64) -> Result<Fir, UbcError> {
     let result = match op {
         "+" => left + right,
         "-" => left - right,
         "*" => left * right,
         "/" => {
             if right == 0 {
-                return Ok(Fir::Nk {
+                return Ok(Fir::Nk(Box::new(crate::fir::NkFir {
                     reason: "division by zero".to_string(),
                     state: Nyes::Nk,
-                });
+                })));
             }
             left / right
         }
         _ => return Err(UbcError::Eval(format!("unknown op: {}", op))),
     };
-    Ok(Fir::ConstantInt { value: result, state: Nyes::Constant })
+    Ok(Fir::ConstantInt(Box::new(crate::fir::ConstantIntFir {
+        value: result,
+        state: Nyes::Constant,
+    })))
 }
 
-fn compute_unary(op: &str, val: i64) -> Result<Fir, UbcError> {
+/// Compute unary operation result.
+pub fn compute_unary(op: &str, val: i64) -> Result<Fir, UbcError> {
     let result = match op {
         "-" => -val,
         "+" => val,
         _ => return Err(UbcError::Eval(format!("unknown unary op: {}", op))),
     };
-    Ok(Fir::ConstantInt { value: result, state: Nyes::Constant })
+    Ok(Fir::ConstantInt(Box::new(crate::fir::ConstantIntFir {
+        value: result,
+        state: Nyes::Constant,
+    })))
 }

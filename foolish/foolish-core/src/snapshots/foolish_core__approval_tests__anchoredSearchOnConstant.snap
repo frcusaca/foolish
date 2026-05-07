@@ -19,7 +19,7 @@ Brane [EMBRYONIC]
   found = 
   Search(pattern='α', dir=BACKWARD, ANCHORED) [EMBRYONIC]
 RESULT:
-Brane [NK]
+Brane [CONSTANT]
   b = 
   Brane [CONSTANT]
     α = 
@@ -27,8 +27,8 @@ Brane [NK]
     β = 
     Int(200) [INDEPENDENT]
   head = 
-  HeadTail(HEAD, ANCHORED) [NK]
+  Int(100) [INDEPENDENT]
   tail = 
-  HeadTail(TAIL, ANCHORED) [NK]
+  Int(200) [INDEPENDENT]
   found = 
-  Search(pattern='α', dir=BACKWARD, ANCHORED) [NK]
+  Int(100) [INDEPENDENT]

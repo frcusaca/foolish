@@ -1,0 +1,158 @@
+---
+source: foolish-core/src/lib.rs
+assertion_line: 50
+expression: output
+---
+INPUT: {
+[0] PARSED:
+Brane [EMBRYONIC]
+  b1 = 
+  Brane [EMBRYONIC]
+    a = 
+    Int(1) [INDEPENDENT]
+    b = 
+    Int(2) [INDEPENDENT]
+  b2 = 
+  Brane [EMBRYONIC]
+    c = 
+    Int(3) [INDEPENDENT]
+    d = 
+    Int(4) [INDEPENDENT]
+  merged = 
+  Concatenation(elements=2) [EMBRYONIC]
+    Search(pattern='^b1$', dir=BACKWARD, FREE) [EMBRYONIC]
+    Search(pattern='^b2$', dir=BACKWARD, FREE) [EMBRYONIC]
+  searchˍfound = 
+  Search(pattern='a', dir=BACKWARD, ANCHORED) [EMBRYONIC]
+  searchˍnotˍfound = 
+  Search(pattern='missing', dir=BACKWARD, ANCHORED) [EMBRYONIC]
+  indexˍ0 = 
+  Index(offset=0, ANCHORED) [EMBRYONIC]
+  indexˍ1 = 
+  Index(offset=1, ANCHORED) [EMBRYONIC]
+  indexˍlast = 
+  Index(offset=-1, ANCHORED) [EMBRYONIC]
+  indexˍoutˍofˍbounds = 
+  Index(offset=99, ANCHORED) [EMBRYONIC]
+  head = 
+  HeadTail(HEAD, ANCHORED) [EMBRYONIC]
+  tail = 
+  HeadTail(TAIL, ANCHORED) [EMBRYONIC]
+  searchˍinˍint = 
+  Search(pattern='x', dir=BACKWARD, ANCHORED) [EMBRYONIC]
+  searchˍinˍnk = 
+  Search(pattern='x', dir=BACKWARD, ANCHORED) [EMBRYONIC]
+  ok = 
+  Brane [EMBRYONIC]
+    p = 
+    Int(1) [INDEPENDENT]
+  bad = 
+  Brane [EMBRYONIC]
+    q = 
+    Search(pattern='^undefinedˍref$', dir=BACKWARD, FREE) [EMBRYONIC]
+  partial = 
+  Concatenation(elements=2) [EMBRYONIC]
+    Search(pattern='^ok$', dir=BACKWARD, FREE) [EMBRYONIC]
+    Search(pattern='^bad$', dir=BACKWARD, FREE) [EMBRYONIC]
+  x = 
+  Int(0) [INDEPENDENT]
+  inner1 = 
+  Brane [EMBRYONIC]
+    x = 
+    Int(1) [INDEPENDENT]
+    y = 
+    Search(pattern='^x$', dir=BACKWARD, FREE) [EMBRYONIC]
+  inner2 = 
+  Brane [EMBRYONIC]
+    x = 
+    Int(2) [INDEPENDENT]
+    z = 
+    Search(pattern='^x$', dir=BACKWARD, FREE) [EMBRYONIC]
+  combined = 
+  Concatenation(elements=2) [EMBRYONIC]
+    Search(pattern='^inner1$', dir=BACKWARD, FREE) [EMBRYONIC]
+    Search(pattern='^inner2$', dir=BACKWARD, FREE) [EMBRYONIC]
+  combinedˍx = 
+  Search(pattern='x', dir=BACKWARD, ANCHORED) [EMBRYONIC]
+RESULT:
+Brane [NK]
+  b1 = 
+  Brane [CONSTANT]
+    a = 
+    Int(1) [INDEPENDENT]
+    b = 
+    Int(2) [INDEPENDENT]
+  b2 = 
+  Brane [CONSTANT]
+    c = 
+    Int(3) [INDEPENDENT]
+    d = 
+    Int(4) [INDEPENDENT]
+  merged = 
+  Brane [CONSTANT]
+    a = 
+    Int(1) [INDEPENDENT]
+    b = 
+    Int(2) [INDEPENDENT]
+    c = 
+    Int(3) [INDEPENDENT]
+    d = 
+    Int(4) [INDEPENDENT]
+  searchˍfound = 
+  Int(1) [INDEPENDENT]
+  searchˍnotˍfound = 
+  Search(pattern='missing', dir=BACKWARD, ANCHORED) [NK]
+  indexˍ0 = 
+  Int(1) [INDEPENDENT]
+  indexˍ1 = 
+  Int(2) [INDEPENDENT]
+  indexˍlast = 
+  Int(4) [INDEPENDENT]
+  indexˍoutˍofˍbounds = 
+  Index(offset=99, ANCHORED) [NK]
+  head = 
+  Int(1) [INDEPENDENT]
+  tail = 
+  Int(4) [INDEPENDENT]
+  searchˍinˍint = 
+  Search(pattern='x', dir=BACKWARD, ANCHORED) [NK]
+  searchˍinˍnk = 
+  Search(pattern='x', dir=BACKWARD, ANCHORED) [NK]
+  ok = 
+  Brane [CONSTANT]
+    p = 
+    Int(1) [INDEPENDENT]
+  bad = 
+  Brane [WOCONSTANIC]
+    q = 
+    Search(pattern='^undefinedˍref$', dir=BACKWARD, FREE) [ECONSTANIC]
+  partial = 
+  Brane [CONSTANT]
+    p = 
+    Int(1) [INDEPENDENT]
+  x = 
+  Int(0) [INDEPENDENT]
+  inner1 = 
+  Brane [CONSTANT]
+    x = 
+    Int(1) [INDEPENDENT]
+    y = 
+    Int(1) [INDEPENDENT]
+  inner2 = 
+  Brane [CONSTANT]
+    x = 
+    Int(2) [INDEPENDENT]
+    z = 
+    Int(2) [INDEPENDENT]
+  combined = 
+  Brane [CONSTANT]
+    x = 
+    Int(1) [INDEPENDENT]
+    y = 
+    Int(1) [INDEPENDENT]
+    x = 
+    Int(2) [INDEPENDENT]
+    z = 
+    Int(2) [INDEPENDENT]
+  combinedˍx = 
+  Int(1) [INDEPENDENT]
