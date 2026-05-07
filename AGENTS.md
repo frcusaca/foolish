@@ -55,7 +55,67 @@ Software projects May be large or small. Their complexity and diffiulty may also
     - Example: Alter spelling of "Fortias" to "Foretias" in rs code.
 It is very important, given a request from user that correspond to a feature request or software change, to set a scope size. After scoping, perhaps the new request may be placed into an existing larger sized poject, or cause a split of existing project to form similar sized projects. Ultimately correctness and implementation efficiency is the goal achieved through organization, consideration and communication.
 
-When request is small, you may combine Major/Phase/Stage into 
+When request is small, you may combine Major/Phase/Stage into a single unit.
+
+## Development Organization
+
+### FOOP (Foolish Optimization Process)
+
+FOOP documents are the Foolish equivalent of Python's PEP or Scala's SIP. They propose, discuss, and track changes to the Foolish language and its reference implementations.
+
+- **Location**: `docs/foop/FOOP-###.md`
+- **Index**: `docs/foop/INDEX.md` (canonical list, sorted by number)
+- **Template**: `docs/foop/FOOP-template.md`
+- **Meta-FOOP**: [FOOP-1](docs/foop/FOOP-1.md) defines the process itself
+
+A FOOP progresses through statuses: `Draft` → `Brewing` (ready for BDFL review) → `Final` (accepted) → `Implementing` (active coding) → complete. Each FOOP is assigned to a `phase` (phase-1 through phase-7, or `meta` for process documents).
+
+### Plan Files for FOOP Implementation
+
+When implementing a FOOP, write a detailed plan to `docs/foop/FOOP-###.plan.md` (lowercase extension). The plan breaks the FOOP into concrete, trackable tasks using checkboxes.
+
+#### Checkbox Format
+
+Checkboxes in a plan file track progress. When an item is checked off, **always place a timestamp (to the minute) next to the checkbox**:
+
+```markdown
+- [ ] Task not yet done
+- [x] Task completed                    ← bad (no timestamp)
+- [x](2026-05-06 13:11) Task completed  ← good (timestamped)
+```
+
+This gives both agents and humans a clear view of how work is progressing over time.
+
+#### Worktree Branch Tracking
+
+If a worktree branch is used for implementation, the plan **must** document the lifecycle of that worktree as explicit, separate checkbox tasks placed at appropriate points:
+
+```markdown
+- [ ] Create worktree at ${FULL_WORKTREE_PATH} with branch ${BRANCH_NAME}
+...
+  (implementation tasks here)
+...
+- [ ] Verify all work is complete in ${FULL_WORKTREE_PATH} and committed to ${BRANCH_NAME}
+- [ ] Merge ${BRANCH_NAME} to alpha
+```
+
+Replace `${FULL_WORKTREE_PATH}` and `${BRANCH_NAME}` with actual values when writing the plan.
+
+#### Sub-tasks
+
+If a task proves larger than expected and splits into multiple sub-tasks, indent them under the parent. Use completed sub-tasks to justify why the split occurred:
+
+```markdown
+- [ ] Merge ${BRANCH_NAME} to alpha
+  - [x](2026-05-06 14:00) Detected complex merge situation requiring additional work
+  - [ ] Update ${BRANCH_NAME} to follow new coding style
+  - [ ] Update ${BRANCH_NAME} to use new API call convention
+  - [x](2026-05-06 14:31) Merged breaking changes from alpha
+  - [ ] Repair ALL tests in alpha
+  - [ ] Cleanup ${FULL_WORKTREE_PATH} after successful merge
+```
+
+This pattern is common because Foolish uses `git merge` (not rebase), so merge conflicts on `alpha` may trigger follow-up repair work.
 
 ## Development tools
 Please use plugins and mcp's for performing disk operations, file searches and file edits. Use fully specified regular expressions (covering various cases), through mcp or using `sed` directly. These means of editing are much faster than regenerating the entire document. Each time regexp is used to for updates, please reread updated document before replacing original document.  Use Github mcp to perform git related actions.
@@ -882,6 +942,10 @@ When proposing updates, explain what has changed and why the documentation needs
 
 
 ## Last Updated
+
+**Date**: 2026-05-07
+**Updated By**: opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4
+**Changes**: Added "Development Organization" section with FOOP system overview (location, statuses, phases), plan file conventions (FOOP-###.plan.md), checkbox timestamp format, worktree branch tracking, and sub-task indentation for merge repairs.
 
 **Date**: 2026-03-12
 **Updated By**: Claude Code / Qwen3.5-27B-AWQ-BF16-INT8
