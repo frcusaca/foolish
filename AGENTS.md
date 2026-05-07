@@ -27,15 +27,642 @@ Foolish is a revolutionary programming language with parallel Java and Scala imp
 - **Build Tool**: Maven (multi-module project)
 - **ANTLR**: 4.13.2 (for grammar generation)
 
+## Project Segmentation
+Software projects May be large or small. Their complexity and diffiulty may also vary. Generally speaking we use these terms for disjoint components of softare:
+  - Major
+    - This is a noun, That "specification file is for a major", or an adjective "that is a major specification"
+    - This is a very large feature, that may break many existing functionalities while implementing
+    - Some extensive exchange with human may be required.
+    - Some multi-modal analysis, including web-searches, prototyping, analysis, etc.
+    - aka Major Feature, Major release, Major upgrade, etc.
+    - Example: "Centralize and fully sepcification of CLI interface by gathering features from all the existing implementations. Resolve any conflicts or redundancies. Then update all implementation to follow new specification."
+    - Example: "DHT for discovering peers for different purposes: mutual attestation, calendar replication, capability-matching, etc."
+  - Phase
+    - a Major feature may be implemented in many phases
+    - Example: Research, Discuss and Q&A with Human, Design and implement tests, Implementation feature, Code Review, Security Review, Fresh-eye review, merge to alpha, etc.
+  - Stage
+    - each phase may contain many stages
+    - Example for Research: Analyze code, web search, pose research questions, combination and synthesis, etc.
+  - Step
+    - Each stage may be several steps.
+    - Example: Search Arxiv, Search Google Schollar, Search wikipedia, Search reddit, Search Google Groups,
+    - Example: Change the entire project name from "Fortias" to "Foretias".
+  - Task
+    - Each step may be several tasks.
+    - Tasks are smaller very well defined jobs, typically using tool or simple updates.
+    - Example: Alter spelling of "Fortias" to "Foretias" in all file names
+    - Example: Alter spelling of "Fortias" to "Foretias" in C11 code.
+    - Example: Alter spelling of "Fortias" to "Foretias" in rs code.
+It is very important, given a request from user that correspond to a feature request or software change, to set a scope size. After scoping, perhaps the new request may be placed into an existing larger sized poject, or cause a split of existing project to form similar sized projects. Ultimately correctness and implementation efficiency is the goal achieved through organization, consideration and communication.
+
+When request is small, you may combine Major/Phase/Stage into 
+
+## Development tools
+Please use plugins and mcp's for performing disk operations, file searches and file edits. Use fully specified regular expressions (covering various cases), through mcp or using `sed` directly. These means of editing are much faster than regenerating the entire document. Each time regexp is used to for updates, please reread updated document before replacing original document.  Use Github mcp to perform git related actions.
+
+When commiting to Git, always state project segment and software version and model version:
+```git
+Major: Refactor CLI, Phase: Discussion with Human--complete
+opencode 1.14.39, Qwen3.6-27B-AWQ-BF16-INT4
+```
+
+## Development Rules
+**NEVER** start file changes for project Phase or larger WHEN any tests are broken.
+**NEVER** start large project segment work WHEN ANY tests are broken even if there're notes indicating those breakage are known. The test has to be manually disabled by human OR repaired and committed.
+
+## How To Write Rust Code
+
+This chapter applies to Rust code in both projects:
+
+Optimize in this order:
+
+1. **Correctness**
+2. **Readability and maintainability**
+3. **Testability**
+4. **Efficiency**
+5. **Style principles**
+
+Do not sacrifice correctness for cleverness, abstraction, minimalism, or performance. Do not sacrifice readability unless there is a measured, justified efficiency need.
+
+### General Rust Style
+
+Write Rust that a careful human maintainer can understand quickly.
+
+Prefer:
+
+- Prefer: Explicit data flow.
+- Prefer: Small functions with clear names.
+- Prefer: Local reasoning over global cleverness.
+- Prefer: Strong types over comments explaining weak types.
+- Prefer: Exhaustive matching over implicit behavior.
+- Prefer: Simple ownership over shared mutable state.
+- Prefer: Boring, obvious code over clever code.
+
+Avoid:
+
+- Avoid: Magic behavior hidden behind traits, macros, or global state.
+- Avoid: Type gymnastics that obscure intent.
+- Avoid: Excessive generic abstraction.
+- Avoid: Large functions that mix validation, transformation, I/O, and mutation.
+- Avoid: Panics in library or protocol logic.
+- Avoid: Silent error recovery in security-sensitive code.
+
+Use comments to explain **why**, not what. If the code needs a comment to explain what it does, first try to make the code clearer.
+
+### Project-Aware Priorities
+
+Code is **ALWAYD** security-critical.
+
+Rust code must make invalid protocol states difficult or impossible to represent. Prefer explicit state machines, newtypes, checked constructors, and narrow APIs. Be strict with parsing, validation, serialization, signatures, timestamps, peer identity, replay protection, and boundary checks.
+
+Parser, compiler, and interpreter code should make phases obvious. Keep syntax trees, typed representations, lowered forms, bytecode/intermediate forms, environments, and runtime values distinct unless there is a strong reason to merge them.
+
+### API Design
+
+Design APIs around invariants.
+Document behaviors and invariances by writing tests before coding.
+Code deliberately to satisfy features.
+Pass tests before comit.
+Prefer constructors that validate:
+
+```rust
+impl Timestamp {
+    pub fn new(value: u64) -> Result<Self, TimestampError> {
+        if value == 0 {
+            return Err(TimestampError::Zero);
+        }
+
+        Ok(Self(value))
+    }
+}
+
+Do not expose fields that allow invalid states unless the type is intentionally plain data.
+
+Prefer narrow public APIs. Keep modules private by default. Expose only what other modules actually need.
+
+Use newtypes for semantically distinct values:
+
+```rust
+pub struct PeerIdBytes(Vec<u8>);
+pub struct SignatureBytes(Vec<u8>);
+pub struct AttestationId([u8; 32]);
+```
+
+Do not pass unrelated byte arrays, strings, or integers through the same generic type if the values mean different things.
+
+### Error Handling
+
+Use `Result<T, E>` for recoverable failures.
+
+Do not use `unwrap`, `expect`, or `panic!` in production logic except when proving an internal invariant that truly cannot fail. In security, protocol, parser, compiler, interpreter, FFI, and network code, avoid them almost entirely.
+
+Good:
+
+```rust
+let message = Message::decode(bytes)
+    .map_err(ProtocolError::InvalidMessage)?;
+```
+
+Bad:
+
+```rust
+let message = Message::decode(bytes).unwrap();
+```
+
+Errors should be specific enough for callers to act on them.
+
+Prefer domain errors:
+
+```rust
+pub enum AttestationError {
+    InvalidTimestamp,
+    InvalidSignature,
+    UnknownPeer,
+    ReplayDetected,
+    StorageFailure(StorageError),
+}
+```
+
+Avoid stringly-typed errors for core logic.
+
+Error messages may be human-readable, but program logic should not depend on parsing error strings.
+
+For Foolish diagnostics, distinguish internal errors from user-facing language errors. A syntax error in user code is not a Rust panic.
+
+### Enum Dispatch
+
+Matching on enums is acceptable and often preferred.
+
+It is fine to dispatch by matching an enum and then calling a concrete method, including a fully qualified method path when that is clearer or more efficient.
+
+Example:
+
+```rust
+match node {
+    Expr::Call(call) => CallExpr::type_check(call, ctx),
+    Expr::Lambda(lambda) => LambdaExpr::type_check(lambda, ctx),
+    Expr::Literal(literal) => LiteralExpr::type_check(literal, ctx),
+}
+```
+
+This is acceptable even if the method belongs to a trait implemented by the struct holding the data, especially when it improves readability, avoids unnecessary dynamic dispatch, or makes optimization easier.
+
+Do not replace clear enum dispatch with trait objects solely because “polymorphism is cleaner.” Use trait objects when runtime extensibility or object-safe abstraction is genuinely useful.
+
+Prefer enums when:
+
+* The set of variants is known and finite.
+* Exhaustiveness matters.
+* State transitions must be explicit.
+* Serialization/deserialization depends on variant identity.
+* Compiler optimization benefits from static dispatch.
+
+Prefer traits when:
+
+* Multiple independent types share behavior.
+* The set of implementors may grow externally.
+* The API needs behavior abstraction more than variant inspection.
+
+### Traits and Generics
+
+Use traits to express meaningful behavior, not to hide simple function calls.
+
+Good traits are small, named after capabilities, and have stable semantics:
+
+```rust
+pub trait Clock {
+    fn now(&self) -> Result<Timestamp, ClockError>;
+}
+```
+
+Avoid broad traits with many unrelated methods.
+
+Avoid generic parameters unless they provide real value. A concrete type is often easier to read, test, and optimize.
+
+Good:
+
+```rust
+pub fn verify_attestation(
+    attestation: &Attestation,
+    keyring: &Keyring,
+) -> Result<(), VerificationError> {
+    // ...
+}
+```
+
+Do not write generic abstraction just in case future code might need it.
+
+When using generics, keep bounds close to the function that needs them. Avoid spreading complex bounds across the codebase.
+
+### Ownership and Borrowing
+
+Prefer clear ownership boundaries.
+
+Use borrowed data when the caller retains ownership:
+
+```rust
+pub fn parse_module(source: &str) -> Result<ModuleAst, ParseError>
+```
+
+Use owned data when the value must outlive the caller or cross threads/tasks:
+
+```rust
+pub struct NetworkCommand {
+    pub payload: Vec<u8>,
+}
+```
+
+Avoid unnecessary cloning. But do not contort code into unreadable shapes to avoid a cheap clone outside hot paths.
+
+If cloning is meaningful or expensive, make it visible and intentional.
+
+Use `Arc` for shared ownership across threads/tasks. Use `Rc` only in single-threaded code. Use interior mutability only when it simplifies a real ownership problem, not as a shortcut around design.
+
+Avoid shared mutable state. If needed, isolate it behind a small API.
+
+### Concurrency and Async
+
+Concurrency must be explicit and testable.
+
+For Foretias network and P2P code, separate:
+
+* Protocol state.
+* Network I/O.
+* Storage.
+* Cryptographic verification.
+* Time sources.
+* Peer management.
+* Retry/backoff logic.
+
+Do not bury protocol decisions inside async tasks where they are hard to test.
+
+Prefer message-passing or narrow synchronization APIs over wide shared locks.
+
+Avoid holding locks across `.await`.
+
+Bad:
+
+```rust
+let mut state = self.state.lock().await;
+self.network.send(message).await?;
+state.mark_sent(id);
+```
+
+Better:
+
+```rust
+{
+    let mut state = self.state.lock().await;
+    state.mark_pending(id);
+}
+
+self.network.send(message).await?;
+
+{
+    let mut state = self.state.lock().await;
+    state.mark_sent(id);
+}
+```
+
+Keep task lifetimes clear. Every spawned task should have:
+
+* A clear owner.
+* A shutdown path.
+* Error handling.
+* Tests where practical.
+
+Do not ignore `JoinHandle`s unless the task is intentionally detached and documented.
+
+### Cryptographic and Security-Sensitive Code
+
+For Foretias, cryptographic code must be conservative.
+
+Never invent cryptographic protocols or alter protocol details casually.
+
+Do not use non-constant-time comparisons for secrets, signatures, MACs, or authentication tags when constant-time comparison is required.
+
+Do not log secrets, private keys, raw credentials, sensitive peer material, or unreduced protocol internals.
+
+Do not continue after cryptographic verification failure unless the protocol explicitly requires it.
+
+Validate before trust:
+
+```rust
+let signed = SignedMessage::decode(bytes)?;
+signed.verify(&trusted_keys)?;
+let message = signed.into_verified_message();
+```
+
+Prefer types that distinguish unverified from verified data:
+
+```rust
+pub struct UnverifiedAttestation {
+    bytes: Vec<u8>,
+}
+
+pub struct VerifiedAttestation {
+    inner: Attestation,
+}
+```
+
+Only trusted constructors should create verified types.
+
+Do not expose test-only shortcuts in production APIs.
+
+### Time Handling
+
+Do not call system time deep inside protocol logic. Inject a clock.
+
+Good:
+
+```rust
+pub trait Clock {
+    fn now(&self) -> Result<Timestamp, ClockError>;
+}
+```
+
+This makes tests deterministic and prevents hidden dependencies.
+
+Distinguish:
+
+* Local observation time.
+* Claimed timestamp.
+* Verified timestamp.
+* Network receive time.
+* Consensus or attestation time, if applicable.
+
+Never compare timestamps without knowing which kind they are.
+
+### FFI and C11 Core Boundaries
+
+Rust code that crosses into or out of the C11 core must be defensive.
+
+FFI boundaries must:
+
+* Validate pointers.
+* Validate lengths.
+* Define ownership clearly.
+* Avoid panics crossing the boundary.
+* Return explicit status/error codes.
+* Document allocation and deallocation responsibility.
+* Treat foreign data as untrusted.
+
+Do not expose Rust references, Rust-owned layout assumptions, or panic behavior over FFI.
+
+Use `#[repr(C)]` for FFI structs. Keep FFI types simple.
+
+Wrap unsafe code in small safe abstractions:
+
+```rust
+pub fn verify_with_c_core(input: &[u8]) -> Result<VerificationResult, CoreError> {
+    // Small, audited unsafe section.
+    unsafe {
+        // ...
+    }
+}
+```
+
+Every `unsafe` block must have a nearby safety comment explaining the invariant being upheld.
+
+Unsafe code should be rare, isolated, and easy to audit.
+
+### Serialization and Parsing
+
+Parsing must be strict.
+
+Reject malformed, ambiguous, non-canonical, or trailing data unless the format explicitly allows it.
+
+Do not accept multiple encodings for the same logical value in security-sensitive formats unless required by protocol.
+
+Keep parsing and validation separate when useful:
+
+```rust
+let raw = RawMessage::decode(bytes)?;
+let message = raw.validate()?;
+```
+
+For Foolish, parser code should preserve source spans. Diagnostics should point to source locations wherever possible.
+
+For Foretias, decoded wire messages must not become trusted domain objects until validation succeeds.
+
+### Foolish Compiler and Interpreter Code
+
+Keep language phases distinct.
+
+Prefer separate types for:
+
+* Tokens.
+* Parsed AST.
+* Desugared AST.
+* Typed AST.
+* Intermediate representation.
+* Runtime values.
+* Bytecode or lowered forms, if applicable.
+* Diagnostics.
+
+Avoid using one loose enum for every phase unless the project has deliberately chosen that architecture.
+
+Compiler transformations should be explicit:
+
+```rust
+let tokens = lexer.lex(source)?;
+let ast = parser.parse(tokens)?;
+let typed = type_checker.check(ast)?;
+let lowered = lowerer.lower(typed)?;
+```
+
+Each phase should be independently testable.
+
+Interpreter behavior should be deterministic unless nondeterminism is a deliberate language feature.
+
+Avoid mixing user-language errors with Rust implementation errors. User programs should not crash the interpreter through ordinary invalid input.
+
+### Modules and File Organization
+
+Organize code by responsibility, not by vague utility.
+
+Good module names:
+
+* `parser`
+* `lexer`
+* `diagnostics`
+* `attestation`
+* `verification`
+* `wire`
+* `peer`
+* `storage`
+* `clock`
+* `ffi`
+
+Avoid dumping unrelated helpers into large `utils` modules. A small helper module is acceptable only when the functions genuinely belong together.
+
+Keep public module surfaces small. Re-export intentionally.
+
+### Testing Requirements
+
+Write tests for behavior, invariants, and edge cases.
+
+Prefer deterministic tests. Inject clocks, RNGs, network handles, and storage backends where needed.
+
+For Foretias, include tests for:
+
+* Valid attestation verification.
+* Invalid signatures.
+* Timestamp boundary cases.
+* Replay attempts.
+* Malformed wire messages.
+* Peer identity errors.
+* Serialization round trips.
+* FFI boundary failures.
+* Shutdown and cancellation paths where applicable.
+
+For Foolish, include tests for:
+
+* Lexing.
+* Parsing precedence and associativity.
+* Syntax errors with spans.
+* Type checking success and failure.
+* Interpreter semantics.
+* Compiler lowering.
+* Regression cases.
+* Invalid programs that should produce diagnostics, not panics.
+
+Use property tests or fuzz tests where useful, especially for parsers, decoders, serialization, and protocol messages.
+
+A bug fix should usually begin with writing of a a regression test that reporduces the error condition, repair, and commit of code passing new regression test.
+
+### Performance
+
+Write efficient Rust, but measure before making code obscure.
+
+Prefer straightforward code unless profiling or clear algorithmic reasoning shows a problem.
+
+Optimize algorithms before micro-optimizing syntax.
+
+Accept enum matching, static dispatch, slices, iterators, and clear loops. Use whichever is more readable in context.
+
+Avoid unnecessary allocations in hot paths. Prefer borrowing, slices, and preallocation where clear.
+
+Do not introduce unsafe code for performance without strong justification and tests.
+
+Document performance-sensitive decisions:
+
+```rust
+// This avoids allocating during peer message validation, which is on the inbound hot path.
+```
+
+### Logging and Observability
+
+Logs should help diagnose behavior without leaking secrets.
+
+Use structured logging where the project already does so.
+
+Log:
+
+* State transitions.
+* Protocol failures.
+* Peer connection changes.
+* Retry exhaustion.
+* Storage failures.
+* Compiler phase failures when debugging Foolish.
+
+Do not log:
+
+* Private keys.
+* Secret material.
+* Raw credentials.
+* Full untrusted payloads unless sanitized.
+* User source code in contexts where that may be sensitive.
+
+Errors should carry enough context for debugging, but not sensitive data.
+
+### Panics and Assertions
+
+Use `debug_assert!` for internal invariants that help catch bugs during development.
+
+Use normal error handling for invalid external input.
+
+External input includes:
+
+* Network messages.
+* Files.
+* User source code.
+* FFI input.
+* Client-language bindings.
+* Serialized data.
+* Peer-provided data.
+* Clock or storage failures.
+
+A malformed packet, invalid program, bad timestamp, or null FFI pointer is not a reason to panic.
+
+### Macros
+
+Use macros sparingly.
+
+A macro is acceptable when it removes unavoidable repetition while preserving clarity.
+
+Avoid macros that hide control flow, error behavior, security checks, or generated public APIs.
+
+Prefer functions, traits, or ordinary modules unless a macro is clearly better.
+
+### Dependencies
+
+Do not add dependencies casually.
+
+Before adding a crate, consider:
+
+* Security posture.
+* Maintenance status.
+* API stability.
+* Transitive dependency weight.
+* `no_std` or FFI implications, if relevant.
+* Whether the project already has an equivalent dependency.
+* Whether the crate affects cryptography, parsing, networking, or serialization.
+
+For security-sensitive dependencies, prefer mature, audited, widely used crates.
+
+Do not change cryptographic dependencies, serialization formats, protocol behavior, or public APIs without understanding compatibility and security impact.
+
+### Client Bindings
+
+Rust APIs exposed to Python, Java, C, or other clients must be stable, narrow, and explicit.
+
+Do not leak internal Rust types into public binding contracts.
+
+Separate internal errors from binding-layer errors.
+
+Validate all foreign inputs. Convert foreign data into internal Rust domain types only after checks pass.
+
+Binding APIs should be boring and hard to misuse.
+
+### Code Review Checklist for AI Agents
+
+Before finishing Rust changes, check:
+
+* Does this preserve correctness?
+* Are invalid states prevented or checked?
+* Are all external inputs validated?
+* Are errors explicit and useful?
+* Are panics avoided in production paths?
+* Is unsafe code isolated and justified?
+* Are secrets protected from logs and errors?
+* Is concurrency shutdown/error behavior clear?
+* Are locks not held across `.await`?
+* Are tests added or updated?
+* Is the code readable by a human maintainer?
+* Is performance acceptable without obscuring intent?
+* Did public APIs, wire formats, FFI contracts, or serialized formats change?
+
+If a change affects security, protocol compatibility, storage compatibility, language semantics, or public bindings, treat it as high-risk and document the reasoning in the code, tests, or commit notes.
+
+### Final Rule
+
+When uncertain, choose the design that is easiest to prove correct, easiest to test, and easiest for the next human to understand.
+
+Correctness first. Then readability and maintainability. Then efficiency. Then principles and asethetics.
+
+
 ## Environment Detection
-
-The project supports two primary development environments:
-
-### Local Development
-- Standard development environment on developer's machine
-- Assumes Java 25 is already installed
-- No proxy configuration needed
-- Maven commands work directly: `mvn clean test`
 
 ## Important Safety Guide Rails
 Agents shall **NEVER** take restricted actions. For example 'chmod a+rw file' is not permitted. The most an agent can do in those respects is to suggest user to perform the action and give the
@@ -58,8 +685,8 @@ in docs/.../todo/ and are exclusively maintained by the skill — do not edit
 them directly.
 
 ### Default session file
-Each Claude Code session writes to its own todo file by default:
-docs/todo/claude-<session-id>.todo.md To switch to a project-specific todo
+Each AI session writes to its own todo file by default:
+docs/todo/AIAGENT-<session-id>.todo.md To switch to a project-specific todo
 file, say "use the sprint-3 todo" or invoke /todo-use sprint-3 at any point
 in the session.
 
@@ -81,111 +708,9 @@ It is the record of what happened, not just what is planned.
 
 
 ## Build Commands
-### Make project specific repository
-To be completely safe, let's make our own copy of the repo by running the script located at the root of the project directory:
-```bash
-./session_starter.make.m2.4.me.sh
-```
-It outputs an export command for shells used in this session
-```bash
-env | egrep -q "\.m2\.4\.me" || export MAVEN_OPTS="-Dmaven.repo.local=.m2.4.me ${MAVEN_OPTS}"
-```
-
-### Cleaning
-```bash
-mvn build-helper:remove-project-artifact
-mvn clean
-```
-The second command to clean out foolish repo is important. If maven repository is elsewhere, please remove the corresponding foolish code as well. This has proven to be
-
-Part of the Foolish project is to never have to write in all caps like that about a project written in Foolish.
-
-### Basic Build and Test
-
-```bash
-# Full clean build. Do this at beginning of a session and after every merge or rebase operation. Also, anytime when debugging took more than 13 minutes, do a full rebuild.
-# Everytime the 'foolish-parser-java/src/main/antlr4/Foolish.g4' file is updated, this command must be run at the root of the project to regenerate the parser.
-mvn build-helper:remove-project-artifact ## Remove same everywhere else where m2 may store repository.
-mvn clean generate-sources verify
-
-# Parallel build (recommended)
-mvn clean compile -fae -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
-
-# Rebuild Antlr4 parser/lexer and parser from g4 file
-# This needs to happen every time 'foolish-parser-java/src/main/antlr4/Foolish.g4' changes
-```bash
-mvn clean generate-sources -T $(($(nproc) * 2))
-```
-
-# NOTE: Any time syntax changes or other changes are made to the g4 file or else where in the parser
-#   module foolish-parser-java, the parser needs to be reinstalled into maven repo to take effect.
-```
-mvn generate install -pl foolish-parser-java -am
-```
-
-# The approval tests can be selected this way specifying module, class and then the test file filter
-mvn test -ff -pl foolish-core-java -Dtest=UbcApprovalTest -Dfoolish.test.filter=Shadow
-
-# Just build (skip tests) when fixing compilation errors.
-mvn compile -ff -DskipTests -T $(($(nproc) * 2))
-
-# However, you may choose single threaded compilation to improve readability of compilation errors
-mvn compile -am -ff -DskipTests
-
-## Select a module to reduce build time and effort
-mvn compile -ff -pl foolish-core-java -DskipTests -T $(($(nproc) * 2))
-
-## Turn on debugging and stack trace for debugging build problems
-mvn clean compile -am -ff -X -e -DskipTests
-```
-
-## Tests
-### Overview
-
-- Unit tests verify correctness of each component
-- Approval tests illustrate behavior to users - focus on IMPORTANT and EASILY CONFUSED aspects
-- Use sensible variable names from all available alphabets to improve expressivity
-- New tests should use power-law distributed variable name lengths
-
-### Running tests
-
-```bash
-# Run all tests with parallel execution
-mvn test -fae -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
-
-# Run specific test
-mvn test -ff -Dtest=ClassName#methodName
-mvn test -ff -pl foolish-core-java -Dtest=UbcApprovalTest -Dfoolish.test.filter=Shadow
-
-## Approval Test Protocol
-
-**Goal**: Change Java/Scala source code so the `.received.foo` output matches the `.approved.foo` file exactly.
-
-**Agent MUST NOT**:
-- Edit test input files (`src/test/resources/org/foolish/fvm/inputs/*.foo`)
-- Edit approved output files (`*.approved.foo`)
-
-Agents may **propose** changes to input or approved files, but **must ask the human** to make those edits.
-
-### Workflow
-
-1. **Run the test** (produces `*.received.foo`):
-   ```bash
-   mvn test -pl foolish-core-java -Dtest=UbcApprovalTest -Dfoolish.test.filter=<testName>
-   ```
-
-2. **Compare outputs** (side-by-side diff):
-   ```bash
-   diff -y --color \
-     src/test/resources/org/foolish/fvm/ubc/<testName>.received.foo \
-     src/test/resources/org/foolish/fvm/ubc/<testName>.approved.foo
-   ```
-
-3. **Fix the source code** in `foolish-core-java/src/main/java/` to make `.received.foo` match `.approved.foo`.
-
-4. **Human approval**: After user confirms the diff is correct, human renames `.received.foo` to `.approved.foo`.
-
-**Note**: `Sequencer4Human` is how Java renders FVM internal FIR state for approval test output.
+TBD
+## Run specific test
+TBD
 
 ### Unit Test Redability
 Unit tests are required to test correctness of internal state of the FVM. There are some infrastructure built
@@ -208,30 +733,6 @@ A crossvalidation process checks that implementations in different languages are
 * When user mentions "path/" first interpret it as relative path from the directory where claude code was invoked. This is normal behavior for most unix apps, for example if I "cat path/file" that path is resolved from the current path.
 * Never directly edit `.approved.foo` files
 
-``
-
-## Project Structure
-
-### Multi-Module Maven Structure
-
-The codebase uses a **multi-module Maven project** with parallel Java and Scala implementations:
-
-```
-foolish-parent (root POM)
-├── foolish-parser-java       (ANTLR grammar, AST, shared by both implementations)
-├── foolish-core-java         (Java UBC implementation)
-├── foolish-core-scala        (Scala UBC implementation)
-├── foolish-lsp-java          (Language Server Protocol)
-└── foolish-crossvalidation   (Cross-validation tests verifying Java/Scala output identity)
-```
-
-**Key Dependencies:**
-- Both Java and Scala core modules depend on the shared parser
-- Scala core depends on Java core for shared test utilities
-- LSP server uses the Java implementation
-- Cross-validation module depends on both Java and Scala core modules
-- Requirements: Java 25, Scala 3.3.7, ANTLR 4.13.2
-
 ### The Unicellular Brane Computer (UBC)
 
 The **UBC is the reference implementation of Foolish**. It implements a unique evaluation model based on branes (containment structures).
@@ -241,29 +742,10 @@ The **UBC is the reference implementation of Foolish**. It implements a unique e
 FIR objects represent expressions during evaluation and progress through a multi-stage state machine:
 
 ```
-UNINITIALIZED → INITIALIZED → CHECKED → EVALUATING → CONSTANIC → CONSTANT
-```
-
-- `CONSTANT`: Fully evaluated (not "nye" = Not Yet Evaluated)
+## TBD: put NYSE state here:
+- `CONSTANT`: ...
 - `CONSTANIC` (say "CON-STAN-NICK"): CONSTANt IN Context - evaluation paused due to missing information (unbound identifiers)
-
-**Key FIR Types:**
-- `ValueFiroe` - constants (integers, strings)
-- `NKFiroe` - "Not Known" values (`???`), errors
-- `BraneFiroe` - evaluates branes `{...}`
-- `AssignmentFiroe` - variable bindings `x = expr`
-- `IdentifierFiroe` - variable references with optional characterizations
-- `BinaryFiroe` / `UnaryFiroe` - arithmetic/logical operators
-- `IfFiroe` - conditional expressions
-- `SearchUpFiroe` - `↑` operator for upward scope traversal
-- `RegexpSearchFiroe` - pattern-based brane search
-
-#### BraneMemory: Hierarchical Scoping
-
-`BraneMemory` implements Foolish's unique scope resolution:
-- **Retrospective search**: searches backwards in current brane, then upwards through parent branes
-- Names resolve based on proximity: "containment creates organization, proximity creates combination"
-- Supports both exact identifier matching and regular expression queries
+...
 
 #### Brane Reference Semantics: AB and IB
 
@@ -279,58 +761,21 @@ UNINITIALIZED → INITIALIZED → CHECKED → EVALUATING → CONSTANIC → CONST
 
 In UBC implementation, this means creating a modified clone with new context. See `docs/vintage_legacy/ECOSYSTEM.md` for detailed semantics.
 
-#### Evaluation Strategy
-
-`FiroeWithBraneMind` implements **breadth-first evaluation** with state-aware stepping:
-- Maintains `braneMind` (LinkedList<FIR>) - evaluation queue
-- Maintains `braneMemory` (BraneMemory) - completed evaluations
-- Different phases prevent evaluation order issues and enable partial/abstract evaluation
-
-### Parallel Java/Scala Implementations
-
-**Shared Components:**
-- AST (Java records in parser module)
-- ANTLR grammar (`Foolish.g4`)
-- Test input files (`.foo` programs in `test-resources/`)
-
-**Parallel Components:**
-- FIR implementations (`org.foolish.fvm.ubc` vs `org.foolish.fvm.scubc`)
-- Test classes (JUnit vs ScalaTest)
-- Separate approval output directories
-
-**Critical Constraint:** Both implementations must produce **byte-identical** approval outputs. Cross-validation tests in the `foolish-crossvalidation` module enforce this by comparing all approval files.
-
 ### Test Infrastructure
 
 **Three-Tier Testing:**
 
 1. **Unit Tests** (`*UnitTest.java`) - focused component tests in Java and Scala modules
 2. **Approval Tests** (`*ApprovalTest.{java,scala}`) - snapshot-based integration tests in Java and Scala modules
-3. **Cross-Validation** (separate `foolish-crossvalidation` module) - runs after Java and Scala tests to ensure output identity
+3. **Cross-Validation** (separate `foolish-crossvalidation` module) - Cross validation will test different parser/compiler/vm implementations to check whether they behave the same way.
 
 #### Approval Test Workflow
-
-**Directory Structure:**
-- **Inputs (shared)**: `test-resources/org/foolish/fvm/inputs/*.foo`
-- **Java outputs**: `foolish-core-java/src/test/resources/org/foolish/fvm/ubc/*.approved.foo`
-- **Scala outputs**: `foolish-core-scala/src/test/resources/org/foolish/fvm/scubc/*.approved.foo`
-
-**Test Classes:**
-- `ParserApprovalTest.java` - AST parsing verification
-- `UbcApprovalTest.java` - Java UBC evaluation
-- `ScUbcApprovalTest.scala` - Scala UBC evaluation
-
-**Output Format:**
-- Approval files show: Input → Parsed AST → UBC Evaluation steps → Final Result
-- Use full-width space (＿) to show indentation depth precisely
-- Both Java and Scala implementations already (and must continue to) produce byte-identical outputs
-
-## Language-Specific Conventions
-
+TBD
 ### Foolish Terminology (from STYLES.md)
 
 - **Foolisher** - developer/user of Foolish
-- **Nye** (say "nigh") - Not Yet Evaluated state
+- **Nye** (say "nigh") - Not Yet Evaluated
+- **NYES** (say "nice") - Not Yet Evaluated State
 - **No-no** - The `???` unknown value
 - **Ordinate** - a name associated with a brane
 - **Coordinate** - brane member names used for relational access
@@ -345,32 +790,6 @@ In UBC implementation, this means creating a modified clone with new context. Se
 - Full-width space (＿) in approval tests shows indentation precisely
 - Variable names follow power-law distribution (mean 3.5 chars short, 5 chars long)
 - Use diverse Unicode: Latin, Greek, Cyrillic, Hebrew, Arabic, Chinese, Sanskrit
-
-### Writing Tests
-- See [Test section](## Test)
-
-### Debugging
-There are many options for debugging the bahvior of code, they include in decreasing preferential order:
-
-- Reproduce errors in approval tests, breaking complex issues into smaller test cases
-- Reproduce errors in a small, new and targeted approval tests, breaking complex issues into smaller test cases.
-  Retain this test as regression test when appropriate.
-- Use configuration flags in test comments (`!! --verbose !!`) for verbose output
-- Printf-style debugging only as last resort
-- Verify fixes don't break other tests; keep useful intermediate tests as regression guards
-
-## Git Workflow for AI Agents
-
-### Branch Naming
-
-Branches should follow the pattern: `<agent-prefix>/<descriptive-name>-<session-id>`
-
-Examples:
-- `claude/run-tests-8vk4v` (Claude Code)
-- `copilot/fix-parser-abc123` (GitHub Copilot)
-- `cursor/add-feature-xyz789` (Cursor)
-
-**Note**: Some repositories may enforce specific branch naming patterns. Check repository settings or consult with maintainers.
 
 ### Commit Message Format
 
@@ -399,37 +818,8 @@ Fix type inference bug in FIR resolution
 GitHub Copilot / gpt-4
 ```
 
-### Push Guidelines
-
-- Always use: `git push -u origin <branch-name>` for first push
-- If push fails with network errors, retry up to 4 times with exponential backoff (2s, 4s, 8s, 16s)
-
-## Important Files
-
-- **Grammar**: `foolish-parser-java/src/main/antlr4/Foolish.g4`
-- **AST**: `foolish-parser-java/src/main/java/org/foolish/ast/AST.java`
-- **Java UBC**: `foolish-core-java/src/main/java/org/foolish/fvm/ubc/`
-- **Scala UBC**: `foolish-core-scala/src/main/scala/org/foolish/fvm/scubc/`
-- **Documentation**: `docs/` (legacy docs in `docs/vintage_legacy/`; versioned docs in `docs/ubc1/` and `docs/ubc0_1/`; shared docs in `docs/howto/`, `docs/why/`)
-- **AI Instructions**: `.claude/CLAUDE.md` (Claude-specific guidance)
-
-## MCP and other tools
-### Java Code Analysis Preferences
-When it is available, prefer JavaLens MCP tools over text search for Java code analysis:
-- Use `find_references` instead of grep for finding usages
-- Use `find_implementations` instead of text search for implementations
-- Use `analyze_type` to understand a class before modifying it
-- Use refactoring tools (rename_symbol, extract_method) for safe changes
-
-Semantic analysis from JDT is more accurate than text-based search,
-especially for overloaded methods, inheritance, and generic types.
-
 ### Computational Tools Preference
 When it is available, prefer to use python repl to perform math calculations, complex string manipulations, or even to perform regular expression substitutions.
-
-### JVM Exploration Tool Preference
-When it is available, prefer to use the scala repl to load a java class file or jar file. In this manner, the agent is able to explore structure and situation of
-a JVM object live.
 
 ## Documentation
 
@@ -442,9 +832,7 @@ a JVM object live.
 - **`docs/howto`** - "How to Express it in Foolish" - literate programming tutorials as .foo files
 - **`docs/why`** - "Philosophy of Foolish" - origins, inspirations, design philosophy
 - **`docs/vintage_legacy`** - Legacy documentation (being reorganized into the above directories)
-
-(The `projects/` directory has been retired; its contents are in `docs/vintage_legacy/`.)
-
+- **`docs/todo`** - todo lists
 
 ### Additional Resources
 
@@ -490,6 +878,8 @@ This ensures all AI agents can track who modified documentation and when, mainta
 8. Update the Last Updated section below--even if user makes no changes
 
 When proposing updates, explain what has changed and why the documentation needs adjustment. After user review, update the "Last Updated" date below whether changes are accepted or the user confirms current state is acceptable.
+
+
 
 ## Last Updated
 
