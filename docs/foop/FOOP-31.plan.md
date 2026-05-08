@@ -3,13 +3,14 @@
 ## Current State (2026-05-08)
 
 - All 21 parser tests pass
-- All 32 core tests pass (18 approval + 14 unit)
+- All 221 core tests pass (207 approval + 14 unit), 192 unique snapshots
 - CLI: `compile`, `run`, `step`, `repl` commands implemented
 - FIR types: all 10 variants (ConstantInt, Nk, Operator, Search, Index, HeadTail, StayFoolish, StayFullyFoolish, Concatenation, NormalBrane)
 - UBC evaluator: depth-first stepping, constanic clone, short-circuiting, search transparency
 - JSON serialization/deserialization: complete with manual Serde impl
 - FOOP-9 complete: BinaryOpFir/UnaryOpFir replaced with unified OperatorFir
 - FOOP-12 complete: Alarm system with AlarmLevel, Alarm, AlarmSink, NKFir alarm integration
+- 54 input files tested (of 57 total; 3 have unsupported syntax)
 
 ## Phase 1: Compiler (FOOP-9, FOOP-12)
 
@@ -55,6 +56,40 @@
 - [x] Implement `foolish step` — debug output showing parsed + result
 - [x] Implement `foolish repl` — multiline input with brace-depth tracking
 - [ ] Add CLI functional tests
+
+## Semantic Questions (from test analysis)
+
+The following questions were discovered while writing and reviewing 200+ approval tests. These require BDFL resolution before the implementation can be considered correct.
+
+### Q1. `$` and `^` prefix syntax after assignment
+
+`h =$ #-1` is parsed as `Operator($, [Index(-1), Index(-1)])` — a binary operator with two operands. The intended semantics (from test_syntax.foo) are "tail of #-1". The correct syntax `#-1$` parses as `HeadTail(TAIL, anchor=#-1)` and works correctly. Should prefix `$` and `^` after `=` be:
+- A) A syntax error (parser should reject)
+- B) Supported as "tail/head of next expression"
+- C) Something else?
+
+Same issue for `j =^ #-3` — parsed as `Operator(^, [Index(-1), Index(-3)])`.
+
+### Q2. Tilde (`~`) search direction
+
+`brn~.*e$` on `{alice=2; bob=3; charlie=4}` returns `alice=2`. Both "alice" and "charlie" match `.*e$`. Forward search (`FORWARD` direction) finds the *last* match in forward order. Is this correct? Or should `~` search backward from the end?
+
+### Q3. Unanchored seek across deep brane boundaries
+
+In `unanchoredSeekBasic.foo`, `f = #-1 + #-2 + ... + #-8` reaches too far back. The seek chain hits the nested brane `g` boundary, producing NK. The test comments suggest the result should be 59, but the evaluator produces NK because some seeks reach beyond available statements. Is the current NK result correct, or should unanchored seeks traverse deeper?
+
+### Q4. `constanic_clone` on NYE FIR
+
+Multiple tests produce NK with "constanic_clone called on NYE FIR" messages. This triggers INVARIANT-VIOLATED alarms. Cases include:
+- `#-1` from inside deeply nested branes reaching outside
+- Unanchored seeks that resolve to NYE values
+- Head/tail on empty branes (expected `???`, currently NK with alarm)
+
+Is this the intended behavior, or should these cases produce `???` without an alarm?
+
+### Q5. Empty brane head/tail
+
+`{}^` and `{}$` produce NK with INVARIANT-VIOLATED alarm. The spec comments say they should be `???`. Should empty brane head/tail produce NK silently (no alarm), or is NK with alarm correct?
 
 ## Final Verification
 
