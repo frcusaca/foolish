@@ -32,6 +32,7 @@ impl Compiler {
             Astn::UnknownLit => Ok(Fir::Nk(Box::new(NkFir {
                 reason: "??? literal".to_string(),
                 state: Nyes::Nk,
+                alarm: None,
             }))),
 
             Astn::Identifier { id, .. } => {

@@ -6,6 +6,92 @@ use std::rc::Rc;
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
 pub use crate::ubc::UbcError;
 
+/// Diagnostic severity levels for compiler and evaluator alarms
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum AlarmLevel {
+    Info,    // Trace-level: useful for debugging
+    Warn,    // Potential issue in user code
+    Mild,    // Notable event (division by zero, etc.)
+    Panic,   // Internal error — should never happen
+}
+
+impl std::fmt::Display for AlarmLevel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AlarmLevel::Info => write!(f, "INFO"),
+            AlarmLevel::Warn => write!(f, "WARN"),
+            AlarmLevel::Mild => write!(f, "MILD"),
+            AlarmLevel::Panic => write!(f, "PANIC"),
+        }
+    }
+}
+
+/// Source of an alarm (compiler or evaluator)
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum AlarmSource {
+    Compiler,
+    Evaluator,
+}
+
+/// A structured diagnostic message
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Alarm {
+    pub level: AlarmLevel,
+    pub code: String,
+    pub message: String,
+    pub source: AlarmSource,
+}
+
+impl std::fmt::Display for Alarm {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[{}] {}: {}", self.level, self.code, self.message)
+    }
+}
+
+/// Trait for recording alarms
+pub trait AlarmSink {
+    fn record(&self, alarm: Alarm);
+}
+
+/// Collects alarms into a Vec
+pub struct VecAlarmSink {
+    alarms: RefCell<Vec<Alarm>>,
+}
+
+impl VecAlarmSink {
+    pub fn new() -> Self {
+        Self { alarms: RefCell::new(Vec::new()) }
+    }
+
+    pub fn get_alarms(&self) -> Vec<Alarm> {
+        self.alarms.borrow().clone()
+    }
+}
+
+impl AlarmSink for VecAlarmSink {
+    fn record(&self, alarm: Alarm) {
+        self.alarms.borrow_mut().push(alarm);
+    }
+}
+
+impl Default for VecAlarmSink {
+    fn default() -> Self { Self::new() }
+}
+
+impl Clone for VecAlarmSink {
+    fn clone(&self) -> Self {
+        Self { alarms: RefCell::new(self.alarms.borrow().clone()) }
+    }
+}
+
+impl std::fmt::Debug for VecAlarmSink {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("VecAlarmSink")
+            .field("alarms", &self.alarms.borrow())
+            .finish()
+    }
+}
+
 /// Result of a single step operation (for step_members reporting)
 #[derive(Debug, Clone, PartialEq)]
 pub enum StepResult {
@@ -125,6 +211,8 @@ pub struct ConstantIntFir {
 pub struct NkFir {
     pub(crate) reason: String,
     pub(crate) state: Nyes,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) alarm: Option<Alarm>,
 }
 
 #[derive(Debug, Clone)]
@@ -674,6 +762,12 @@ impl SearchFir {
             }
             None => {
                 self.state = Nyes::Econstanic;
+                scope.emit(Alarm {
+                    level: AlarmLevel::Info,
+                    code: "UNBOUND-NAME".to_string(),
+                    message: format!("Search '{}' became ECONSTANIC (unbound name)", self.pattern),
+                    source: AlarmSource::Evaluator,
+                });
             }
         }
         Ok(None)
@@ -1070,6 +1164,9 @@ fn fir_to_json(fir: &Fir) -> serde_json::Value {
             m.insert("type".into(), Value::String("Nk".into()));
             m.insert("reason".into(), Value::String(inner.reason.clone()));
             m.insert("state".into(), to_json_val(&inner.state));
+            if let Some(ref alarm) = inner.alarm {
+                m.insert("alarm".into(), to_json_val(alarm));
+            }
             Value::Object(m)
         }
         Fir::Operator(inner) => {
@@ -1173,7 +1270,9 @@ impl<'de> Deserialize<'de> for Fir {
                 let reason = obj.get("reason").and_then(|v| v.as_str())
                     .ok_or_else(|| serde::de::Error::custom("missing reason field"))?
                     .to_string();
-                Ok(Fir::Nk(Box::new(NkFir { reason, state })))
+                let alarm = obj.get("alarm")
+                    .and_then(|v| serde_json::from_value::<Alarm>(v.clone()).ok());
+                Ok(Fir::Nk(Box::new(NkFir { reason, state, alarm })))
             }
             "Operator" => {
                 let op = obj.get("op").and_then(|v| v.as_str())

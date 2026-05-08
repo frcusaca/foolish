@@ -34,12 +34,49 @@ pub fn resolve_to_value(fir: &FirRef) -> FirRef {
 }
 
 /// Scope chain: list of (name, FirRef) pairs, most recent first.
-#[derive(Debug, Default, Clone)]
 pub struct Scope {
     entries: Vec<(String, FirRef)>,
     current_brane: Option<FirRef>,
     current_stmt_idx: Option<usize>,
     block_brane_searches: bool,
+    #[allow(dead_code)]
+    alarms: Option<Rc<dyn crate::fir::AlarmSink>>,
+}
+
+impl std::fmt::Debug for Scope {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Scope")
+            .field("entries", &self.entries)
+            .field("current_brane", &self.current_brane)
+            .field("current_stmt_idx", &self.current_stmt_idx)
+            .field("block_brane_searches", &self.block_brane_searches)
+            .field("alarms", &self.alarms.as_ref().map(|_| "AlarmSink"))
+            .finish()
+    }
+}
+
+impl Default for Scope {
+    fn default() -> Self {
+        Self {
+            entries: Vec::new(),
+            current_brane: None,
+            current_stmt_idx: None,
+            block_brane_searches: false,
+            alarms: None,
+        }
+    }
+}
+
+impl Clone for Scope {
+    fn clone(&self) -> Self {
+        Self {
+            entries: self.entries.clone(),
+            current_brane: self.current_brane.clone(),
+            current_stmt_idx: self.current_stmt_idx,
+            block_brane_searches: self.block_brane_searches,
+            alarms: self.alarms.clone(),
+        }
+    }
 }
 
 impl Scope {
@@ -74,6 +111,17 @@ impl Scope {
     }
 
     pub fn current_stmt_idx(&self) -> Option<usize> { self.current_stmt_idx }
+
+    pub fn with_alarms(mut self, sink: Rc<dyn crate::fir::AlarmSink>) -> Self {
+        self.alarms = Some(sink);
+        self
+    }
+
+    pub fn emit(&self, alarm: crate::fir::Alarm) {
+        if let Some(ref sink) = self.alarms {
+            sink.record(alarm);
+        }
+    }
 }
 
 /// Run a FIR tree to completion with an empty scope.
@@ -433,6 +481,12 @@ pub fn constanic_clone(source: &FirRef, permit_nye: bool) -> FirRef {
                 fir_to_ref(Fir::Nk(Box::new(crate::fir::NkFir {
                     reason: "constanic_clone called on NYE FIR".to_string(),
                     state: Nyes::Nk,
+                    alarm: Some(crate::fir::Alarm {
+                        level: crate::fir::AlarmLevel::Panic,
+                        code: "INVARIANT-VIOLATED".to_string(),
+                        message: "constanic_clone called on NYE FIR".to_string(),
+                        source: crate::fir::AlarmSource::Evaluator,
+                    }),
                 })))
             }
         }
@@ -507,6 +561,12 @@ pub fn compute_operator(op: &str, operands: &[i64]) -> Result<Fir, UbcError> {
                         return Ok(Fir::Nk(Box::new(crate::fir::NkFir {
                             reason: "division by zero".to_string(),
                             state: Nyes::Nk,
+                            alarm: Some(crate::fir::Alarm {
+                                level: crate::fir::AlarmLevel::Mild,
+                                code: "DIV-BY-ZERO".to_string(),
+                                message: "Division by zero produces NK".to_string(),
+                                source: crate::fir::AlarmSource::Evaluator,
+                            }),
                         })));
                     }
                     acc = acc / v;
