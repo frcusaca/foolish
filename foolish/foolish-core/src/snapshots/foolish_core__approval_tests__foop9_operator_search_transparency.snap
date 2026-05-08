@@ -1,0 +1,24 @@
+---
+source: foolish-core/src/lib.rs
+assertion_line: 145
+expression: output
+---
+INPUT: {x=5, y=7, z=#-2 + #-1;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  x = 
+  Int(5) [INDEPENDENT]
+  y = 
+  Int(7) [INDEPENDENT]
+  z = 
+  Operator(+) [EMBRYONIC]
+    Index(offset=-2, FREE) [EMBRYONIC]
+    Index(offset=-1, FREE) [EMBRYONIC]
+RESULT:
+Brane [CONSTANT]
+  x = 
+  Int(5) [INDEPENDENT]
+  y = 
+  Int(7) [INDEPENDENT]
+  z = 
+  Int(12) [CONSTANT]

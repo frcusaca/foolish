@@ -4,7 +4,7 @@ use std::rc::Rc;
 use foolish_parser::Astn;
 use crate::fir::{Fir, FirRef, Nyes, SearchDirection, StatementFir, Steppable,
     ConstantIntFir, NkFir, SearchFir, NormalBraneFir,
-    BinaryOpFir, UnaryOpFir, IndexFir, HeadTailFir,
+    OperatorFir, IndexFir, HeadTailFir,
     StayFoolishFir, StayFullyFoolishFir, ConcatenationFir};
 
 /// Helper: wrap a Fir in a FirRef (Rc<RefCell<dyn Steppable>>)
@@ -142,19 +142,18 @@ impl Compiler {
             Astn::BinaryOp { op, left, right } => {
                 let left_fir = Self::compile_astn(*left)?;
                 let right_fir = Self::compile_astn(*right)?;
-                Ok(Fir::BinaryOp(Box::new(BinaryOpFir {
+                Ok(Fir::Operator(Box::new(OperatorFir {
                     op,
-                    left: to_ref(left_fir),
-                    right: to_ref(right_fir),
+                    operands: vec![to_ref(left_fir), to_ref(right_fir)],
                     state: Nyes::Embryonic,
                 })))
             }
 
             Astn::UnaryOp { op, expr } => {
                 let expr_fir = Self::compile_astn(*expr)?;
-                Ok(Fir::UnaryOp(Box::new(UnaryOpFir {
+                Ok(Fir::Operator(Box::new(OperatorFir {
                     op,
-                    expr: to_ref(expr_fir),
+                    operands: vec![to_ref(expr_fir)],
                     state: Nyes::Embryonic,
                 })))
             }

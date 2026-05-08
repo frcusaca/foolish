@@ -117,16 +117,10 @@ pub fn has_unresolved_forward_refs(fir: &FirRef) -> bool {
                 inner.statements.iter().any(|s| s.state == Nyes::Econstanic || has_unresolved_forward_refs_in_fir(&s.body))
             } else { false }
         }
-        "BinaryOp" => {
+        "Operator" => {
             let f = fir.borrow().clone_into_fir();
-            if let Fir::BinaryOp(inner) = f {
-                has_unresolved_forward_refs_in_fir(&inner.left) || has_unresolved_forward_refs_in_fir(&inner.right)
-            } else { false }
-        }
-        "UnaryOp" => {
-            let f = fir.borrow().clone_into_fir();
-            if let Fir::UnaryOp(inner) = f {
-                has_unresolved_forward_refs_in_fir(&inner.expr)
+            if let Fir::Operator(inner) = f {
+                inner.operands.iter().any(has_unresolved_forward_refs_in_fir)
             } else { false }
         }
         "Search" => {
@@ -223,18 +217,13 @@ fn reset_searches(fir: Fir) -> Fir {
             s.anchor = s.anchor.map(|a| fir_to_ref(reset_searches(clone_steppable(&a))));
             Fir::Search(Box::new(s))
         }
-        Fir::BinaryOp(inner) => {
-            let mut b = *inner;
-            b.left = fir_to_ref(reset_searches(clone_steppable(&b.left)));
-            b.right = fir_to_ref(reset_searches(clone_steppable(&b.right)));
-            b.state = Nyes::Embryonic;
-            Fir::BinaryOp(Box::new(b))
-        }
-        Fir::UnaryOp(inner) => {
-            let mut u = *inner;
-            u.expr = fir_to_ref(reset_searches(clone_steppable(&u.expr)));
-            u.state = Nyes::Embryonic;
-            Fir::UnaryOp(Box::new(u))
+        Fir::Operator(inner) => {
+            let mut op = *inner;
+            op.operands = op.operands.into_iter().map(|e| {
+                fir_to_ref(reset_searches(clone_steppable(&e)))
+            }).collect();
+            op.state = Nyes::Embryonic;
+            Fir::Operator(Box::new(op))
         }
         Fir::NormalBrane(inner) => {
             let mut nb = *inner;
@@ -321,8 +310,7 @@ fn step_except_brane_searches_ref(fir: &mut FirRef, scope: &Scope) -> Result<(),
 enum Variant {
     UnanchoredSearch(String),
     AnchoredSearch,
-    BinaryOp(String, Fir, Fir),
-    UnaryOp(String, Fir),
+    Operator(String, Vec<Fir>),
     StayFullyFoolish,
     Terminal,
     Other,
@@ -338,11 +326,8 @@ fn extract_variant(fir: &FirRef) -> Variant {
                 Variant::UnanchoredSearch(inner.pattern)
             }
         }
-        Fir::BinaryOp(inner) => {
-            Variant::BinaryOp(inner.op, clone_steppable(&inner.left), clone_steppable(&inner.right))
-        }
-        Fir::UnaryOp(inner) => {
-            Variant::UnaryOp(inner.op, clone_steppable(&inner.expr))
+        Fir::Operator(inner) => {
+            Variant::Operator(inner.op, inner.operands.iter().map(|o| clone_steppable(o)).collect())
         }
         Fir::StayFullyFoolish(_) => Variant::StayFullyFoolish,
         Fir::ConstantInt(_) | Fir::Nk(_) => Variant::Terminal,
@@ -383,41 +368,32 @@ fn step_except_brane_one(fir: &FirRef, scope: &Scope) -> Result<Option<Fir>, Ubc
             let repl = fir.borrow_mut().step_one(scope)?;
             Ok(repl)
         }
-        Variant::BinaryOp(op, left, right) => {
-            let left_ref: FirRef = fir_to_ref(left);
-            let right_ref: FirRef = fir_to_ref(right);
-            let left_stepped = step_except_brane_searches(&left_ref, scope)?;
-            let right_stepped = step_except_brane_searches(&right_ref, scope)?;
-            fir.borrow_mut().set_binary_operands(left_stepped.clone(), right_stepped.clone());
-            let ls = Steppable::state(&left_stepped);
-            let rs = Steppable::state(&right_stepped);
-            if (ls == Nyes::Constant || ls == Nyes::Independent)
-                && (rs == Nyes::Constant || rs == Nyes::Independent)
-            {
-                let fir_clone = fir.borrow().clone_into_fir();
-                if let Fir::BinaryOp(inner) = fir_clone {
-                    if let Some((l, r)) = inner.binary_values() {
-                        return Ok(Some(compute_binary(&op, l, r)?));
-                    }
+        Variant::Operator(op, operands) => {
+            let stepped: Vec<Fir> = operands.iter().map(|o| {
+                let oref: FirRef = fir_to_ref(o.clone());
+                step_except_brane_searches(&oref, scope)
+            }).collect::<Result<_, _>>()?;
+            let states: Vec<Nyes> = stepped.iter().map(|s| s.state()).collect();
+
+            let all_constant = states.iter().all(|s| *s == Nyes::Constant || *s == Nyes::Independent);
+            if all_constant {
+                let vals: Vec<i64> = stepped.iter().filter_map(|s| s.as_int()).collect();
+                if vals.len() == operands.len() {
+                    return Ok(Some(compute_operator(&op, &vals)?));
                 }
             }
-            if ls.is_constanic() && rs.is_constanic() {
-                fir.borrow_mut().set_state(Nyes::Woconstanic);
-            }
-            Ok(None)
-        }
-        Variant::UnaryOp(op, expr) => {
-            let expr_ref: FirRef = fir_to_ref(expr);
-            let stepped = step_except_brane_searches(&expr_ref, scope)?;
-            fir.borrow_mut().set_unary_expr(stepped.clone());
-            let es = Steppable::state(&stepped);
-            if es == Nyes::Constant || es == Nyes::Independent {
-                if let Some(v) = stepped.as_int() {
-                    return Ok(Some(compute_unary(&op, v)?));
-                }
-            }
-            fir.borrow_mut().set_state(Nyes::Woconstanic);
-            Ok(None)
+            // Reconstruct operator with stepped operands
+            let new_state = if states.iter().all(|s| s.is_constanic()) {
+                Nyes::Woconstanic
+            } else {
+                fir.borrow().state()
+            };
+            let new_op = Fir::Operator(Box::new(crate::fir::OperatorFir {
+                op,
+                operands: stepped.into_iter().map(fir_to_ref).collect(),
+                state: new_state,
+            }));
+            Ok(Some(new_op))
         }
         Variant::StayFullyFoolish => Ok(None),
         Variant::Terminal => Ok(None),
@@ -501,35 +477,46 @@ pub fn compute_brane_state(statements: &[StatementFir]) -> Nyes {
     }
 }
 
-/// Compute binary operation result.
-pub fn compute_binary(op: &str, left: i64, right: i64) -> Result<Fir, UbcError> {
+/// Compute operator result from operand values.
+pub fn compute_operator(op: &str, operands: &[i64]) -> Result<Fir, UbcError> {
     let result = match op {
-        "+" => left + right,
-        "-" => left - right,
-        "*" => left * right,
-        "/" => {
-            if right == 0 {
-                return Ok(Fir::Nk(Box::new(crate::fir::NkFir {
-                    reason: "division by zero".to_string(),
-                    state: Nyes::Nk,
-                })));
+        "+" => {
+            if operands.len() == 1 { operands[0] }
+            else { operands.iter().copied().sum() }
+        }
+        "-" | "*" => {
+            if operands.len() == 1 {
+                if op == "-" { -operands[0] } else { operands[0] }
+            } else if operands.len() >= 2 {
+                let mut acc = operands[0];
+                for &v in &operands[1..] {
+                    acc = if op == "-" { acc - v } else { acc * v };
+                }
+                acc
+            } else {
+                return Err(UbcError::Eval(format!("op {} needs >=2 operands", op)));
             }
-            left / right
+        }
+        "/" => {
+            if operands.len() == 1 {
+                operands[0]
+            } else if operands.len() >= 2 {
+                let mut acc = operands[0];
+                for &v in &operands[1..] {
+                    if v == 0 {
+                        return Ok(Fir::Nk(Box::new(crate::fir::NkFir {
+                            reason: "division by zero".to_string(),
+                            state: Nyes::Nk,
+                        })));
+                    }
+                    acc = acc / v;
+                }
+                acc
+            } else {
+                return Err(UbcError::Eval(format!("op {} needs >=2 operands", op)));
+            }
         }
         _ => return Err(UbcError::Eval(format!("unknown op: {}", op))),
-    };
-    Ok(Fir::ConstantInt(Box::new(crate::fir::ConstantIntFir {
-        value: result,
-        state: Nyes::Constant,
-    })))
-}
-
-/// Compute unary operation result.
-pub fn compute_unary(op: &str, val: i64) -> Result<Fir, UbcError> {
-    let result = match op {
-        "-" => -val,
-        "+" => val,
-        _ => return Err(UbcError::Eval(format!("unknown unary op: {}", op))),
     };
     Ok(Fir::ConstantInt(Box::new(crate::fir::ConstantIntFir {
         value: result,

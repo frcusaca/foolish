@@ -25,8 +25,8 @@ ls | rev | sort -V | rev
 | [FOOP01](FOOP01.md) | Anchored search through constanic anchors — dereference searches, NK on missing brane names | Brewing | phase-2 | 2026-05-04 | hc |
 | [FOOP-11](FOOP-11.md) | Search stops at NK; search result becomes NK | Brewing | phase-2 | 2026-05-04 | hc |
 | [FOOP-12](FOOP-12.md) | Alarms — diagnostic levels emitted by compiler and evaluator | Brewing | phase-1 | 2026-05-04 | hc |
-| [FOOP-13](FOOP-31.md) | SPA1 — UBC reference implementation (depth-first) | Draft | meta | 2026-05-07 | hc |
-| [FOOP-14](FOOP-32.md) | UBCb — Message-passing brane computer variant; SPA1 parity plan | Draft | meta | 2026-05-07 | hc |
+| [FOOP-31](FOOP-31.md) | SPA1 — UBC reference implementation (depth-first) | Draft | meta | 2026-05-07 | hc |
+| [FOOP-32](FOOP-32.md) | UBCb — Message-passing brane computer variant; SPA1 parity plan | Draft | meta | 2026-05-07 | hc |
 
 ---
 
@@ -41,8 +41,8 @@ ls | rev | sort -V | rev
 
 ### Draft
 
-- [FOOP-13](FOOP-31.md) — SPA1 milestone (UBC reference implementation)
-- [FOOP-14](FOOP-32.md) — UBCb message-passing variant; SPA1 parity plan
+- [FOOP-31](FOOP-31.md) — SPA1 milestone (UBC reference implementation)
+- [FOOP-32](FOOP-32.md) — UBCb message-passing variant; SPA1 parity plan
 
 ### Brewing
 
@@ -69,7 +69,7 @@ ls | rev | sort -V | rev
 
 ### meta
 
-- [FOOP-1](FOOP-1.md), [FOOP-13](FOOP-31.md), [FOOP-14](FOOP-32.md)
+- [FOOP-1](FOOP-1.md), [FOOP-31](FOOP-31.md), [FOOP-32](FOOP-32.md)
 
 ### phase-1
 
@@ -104,7 +104,7 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 
 **Date**: 2026-05-07
 **Updated By**: opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4
-**Changes**: Added FOOP-13 (SPA1 — UBC reference milestone) and FOOP-14
+**Changes**: Added FOOP-31 (SPA1 — UBC reference milestone) and FOOP-32
 (UBCb — message-passing variant parity plan). Added Draft status section.
 
 **Date**: 2026-05-04

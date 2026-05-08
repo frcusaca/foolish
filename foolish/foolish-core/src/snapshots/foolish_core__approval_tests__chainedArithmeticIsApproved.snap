@@ -6,9 +6,9 @@ expression: output
 INPUT: {1 + 2 + 3 + 4;}
 [0] PARSED:
 Brane [EMBRYONIC]
-  BinaryOp(+) [EMBRYONIC]
-    BinaryOp(+) [EMBRYONIC]
-      BinaryOp(+) [EMBRYONIC]
+  Operator(+) [EMBRYONIC]
+    Operator(+) [EMBRYONIC]
+      Operator(+) [EMBRYONIC]
         Int(1) [INDEPENDENT]
         Int(2) [INDEPENDENT]
       Int(3) [INDEPENDENT]

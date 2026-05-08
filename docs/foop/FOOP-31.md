@@ -1,5 +1,5 @@
 ---
-foop: 13
+foop: 31
 title: SPA1 — Semi-Privately Available milestone: UBC reference implementation (depth-first)
 author: hc <hc.busy@gmail.com>
 status: Draft
@@ -9,7 +9,7 @@ phase: meta
 supersedes: []
 ---
 
-# FOOP-13: SPA1 — Semi-Privately Available milestone (UBC reference)
+# FOOP-31: SPA1 — Semi-Privately Available milestone (UBC reference)
 
 ## Abstract
 

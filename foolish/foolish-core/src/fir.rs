@@ -128,17 +128,9 @@ pub struct NkFir {
 }
 
 #[derive(Debug, Clone)]
-pub struct BinaryOpFir {
+pub struct OperatorFir {
     pub(crate) op: String,
-    pub(crate) left: FirRef,
-    pub(crate) right: FirRef,
-    pub(crate) state: Nyes,
-}
-
-#[derive(Debug, Clone)]
-pub struct UnaryOpFir {
-    pub(crate) op: String,
-    pub(crate) expr: FirRef,
+    pub(crate) operands: Vec<FirRef>,
     pub(crate) state: Nyes,
 }
 
@@ -274,8 +266,7 @@ pub fn fir_to_ref(fir: Fir) -> FirRef {
 pub enum Fir {
     ConstantInt(Box<ConstantIntFir>),
     Nk(Box<NkFir>),
-    BinaryOp(Box<BinaryOpFir>),
-    UnaryOp(Box<UnaryOpFir>),
+    Operator(Box<OperatorFir>),
     Search(Box<SearchFir>),
     Index(Box<IndexFir>),
     HeadTail(Box<HeadTailFir>),
@@ -298,8 +289,7 @@ impl Steppable for Fir {
         match self {
             Fir::ConstantInt(inner) => inner.step_one(scope),
             Fir::Nk(inner) => inner.step_one(scope),
-            Fir::BinaryOp(inner) => inner.step_one(scope),
-            Fir::UnaryOp(inner) => inner.step_one(scope),
+            Fir::Operator(inner) => inner.step_one(scope),
             Fir::Search(inner) => inner.step_one(scope),
             Fir::Index(inner) => inner.step_one(scope),
             Fir::HeadTail(inner) => inner.step_one(scope),
@@ -314,8 +304,7 @@ impl Steppable for Fir {
         match self {
             Fir::ConstantInt(i) => i.state(),
             Fir::Nk(i) => i.state(),
-            Fir::BinaryOp(i) => i.state(),
-            Fir::UnaryOp(i) => i.state(),
+            Fir::Operator(i) => i.state(),
             Fir::Search(i) => i.state(),
             Fir::Index(i) => i.state(),
             Fir::HeadTail(i) => i.state(),
@@ -330,8 +319,7 @@ impl Steppable for Fir {
         match self {
             Fir::ConstantInt(i) => i.set_state(s),
             Fir::Nk(i) => i.set_state(s),
-            Fir::BinaryOp(i) => i.set_state(s),
-            Fir::UnaryOp(i) => i.set_state(s),
+            Fir::Operator(i) => i.set_state(s),
             Fir::Search(i) => i.set_state(s),
             Fir::Index(i) => i.set_state(s),
             Fir::HeadTail(i) => i.set_state(s),
@@ -346,8 +334,7 @@ impl Steppable for Fir {
         match self {
             Fir::ConstantInt(i) => i.children_mut(),
             Fir::Nk(i) => i.children_mut(),
-            Fir::BinaryOp(i) => i.children_mut(),
-            Fir::UnaryOp(i) => i.children_mut(),
+            Fir::Operator(i) => i.children_mut(),
             Fir::Search(i) => i.children_mut(),
             Fir::Index(i) => i.children_mut(),
             Fir::HeadTail(i) => i.children_mut(),
@@ -362,8 +349,7 @@ impl Steppable for Fir {
         match self {
             Fir::ConstantInt(i) => i.format(buf, depth),
             Fir::Nk(i) => i.format(buf, depth),
-            Fir::BinaryOp(i) => i.format(buf, depth),
-            Fir::UnaryOp(i) => i.format(buf, depth),
+            Fir::Operator(i) => i.format(buf, depth),
             Fir::Search(i) => i.format(buf, depth),
             Fir::Index(i) => i.format(buf, depth),
             Fir::HeadTail(i) => i.format(buf, depth),
@@ -382,8 +368,7 @@ impl Steppable for Fir {
         match self {
             Fir::ConstantInt(_) => "ConstantInt",
             Fir::Nk(_) => "Nk",
-            Fir::BinaryOp(_) => "BinaryOp",
-            Fir::UnaryOp(_) => "UnaryOp",
+            Fir::Operator(_) => "Operator",
             Fir::Search(_) => "Search",
             Fir::Index(_) => "Index",
             Fir::HeadTail(_) => "HeadTail",
@@ -400,9 +385,10 @@ impl Steppable for Fir {
     }
 
     fn binary_values(&self) -> Option<(i64, i64)> {
-        if let Fir::BinaryOp(inner) = self {
-            let l = inner.left.borrow().as_int()?;
-            let r = inner.right.borrow().as_int()?;
+        if let Fir::Operator(inner) = self {
+            if inner.operands.len() != 2 { return None; }
+            let l = inner.operands[0].borrow().as_int()?;
+            let r = inner.operands[1].borrow().as_int()?;
             Some((l, r))
         } else { None }
     }
@@ -444,19 +430,27 @@ impl Steppable for Fir {
     }
 
     fn left_state(&self) -> Nyes {
-        if let Fir::BinaryOp(inner) = self { inner.left.borrow().state() } else { Nyes::Nk }
+        if let Fir::Operator(inner) = self {
+            if inner.operands.is_empty() { Nyes::Nk } else { inner.operands[0].borrow().state() }
+        } else { Nyes::Nk }
     }
 
     fn right_state(&self) -> Nyes {
-        if let Fir::BinaryOp(inner) = self { inner.right.borrow().state() } else { Nyes::Nk }
+        if let Fir::Operator(inner) = self {
+            if inner.operands.len() < 2 { Nyes::Nk } else { inner.operands[1].borrow().state() }
+        } else { Nyes::Nk }
     }
 
     fn expr_state(&self) -> Nyes {
-        if let Fir::UnaryOp(inner) = self { inner.expr.borrow().state() } else { Nyes::Nk }
+        if let Fir::Operator(inner) = self {
+            if inner.operands.is_empty() { Nyes::Nk } else { inner.operands[0].borrow().state() }
+        } else { Nyes::Nk }
     }
 
     fn unary_value(&self) -> Option<i64> {
-        if let Fir::UnaryOp(inner) = self { inner.expr.borrow().as_int() } else { None }
+        if let Fir::Operator(inner) = self {
+            if inner.operands.is_empty() { None } else { inner.operands[0].borrow().as_int() }
+        } else { None }
     }
 
     fn concat_merged_ref(&self) -> Option<FirRef> {
@@ -488,15 +482,14 @@ impl Steppable for Fir {
     }
 
     fn set_binary_operands(&mut self, left: Fir, right: Fir) {
-        if let Fir::BinaryOp(inner) = self {
-            inner.left = fir_to_ref(left);
-            inner.right = fir_to_ref(right);
+        if let Fir::Operator(inner) = self {
+            inner.operands = vec![fir_to_ref(left), fir_to_ref(right)];
         }
     }
 
     fn set_unary_expr(&mut self, expr: Fir) {
-        if let Fir::UnaryOp(inner) = self {
-            inner.expr = fir_to_ref(expr);
+        if let Fir::Operator(inner) = self {
+            inner.operands = vec![fir_to_ref(expr)];
         }
     }
 
@@ -570,28 +563,28 @@ impl Steppable for NkFir {
     fn fir_variant(&self) -> &'static str { "Nk" }
 }
 
-impl Steppable for BinaryOpFir {
+impl Steppable for OperatorFir {
     fn step_one(&mut self, scope: &crate::ubc::Scope) -> Result<Option<Fir>, UbcError> {
-        // Step children in-place
         self.step_members(scope)?;
 
-        let ls = self.left.borrow().state();
-        let rs = self.right.borrow().state();
+        let operand_states: Vec<Nyes> = self.operands.iter().map(|o| o.borrow().state()).collect();
 
-        if ls == Nyes::Nk || rs == Nyes::Nk {
+        if operand_states.iter().any(|s| *s == Nyes::Nk) {
             self.state = Nyes::Nk;
             return Ok(None);
         }
 
-        if (ls == Nyes::Constant || ls == Nyes::Independent)
-            && (rs == Nyes::Constant || rs == Nyes::Independent)
-        {
-            if let Some((l, r)) = self.binary_values_own() {
-                return Ok(Some(crate::ubc::compute_binary(&self.op, l, r)?));
+        let all_constant = operand_states.iter().all(|s| *s == Nyes::Constant || *s == Nyes::Independent);
+        if all_constant {
+            let vals: Vec<i64> = self.operands.iter()
+                .filter_map(|o| o.borrow().as_int())
+                .collect();
+            if vals.len() == operand_states.len() {
+                return Ok(Some(crate::ubc::compute_operator(&self.op, &vals)?));
             }
         }
 
-        if ls.is_constanic() && rs.is_constanic() {
+        if operand_states.iter().all(|s| s.is_constanic()) {
             self.state = Nyes::Woconstanic;
         }
         Ok(None)
@@ -599,56 +592,18 @@ impl Steppable for BinaryOpFir {
     fn state(&self) -> Nyes { self.state }
     fn set_state(&mut self, s: Nyes) { self.state = s; }
     fn children_mut(&mut self) -> Vec<&mut FirRef> {
-        vec![&mut self.left, &mut self.right]
+        self.operands.iter_mut().collect()
     }
     fn format(&self, buf: &mut String, depth: usize) -> std::fmt::Result {
         let indent = "  ".repeat(depth);
-        writeln!(buf,"{}BinaryOp({}) [{}]", indent, self.op, self.state)?;
-        self.left.borrow().format(buf,depth + 1)?;
-        self.right.borrow().format(buf,depth + 1)?;
+        writeln!(buf,"{}Operator({}) [{}]", indent, self.op, self.state)?;
+        for operand in &self.operands {
+            operand.borrow().format(buf, depth + 1)?;
+        }
         Ok(())
     }
-    fn clone_into_fir(&self) -> Fir { Fir::BinaryOp(Box::new(self.clone())) }
-    fn fir_variant(&self) -> &'static str { "BinaryOp" }
-    fn binary_values(&self) -> Option<(i64, i64)> { self.binary_values_own() }
-}
-
-impl BinaryOpFir {
-    fn binary_values_own(&self) -> Option<(i64, i64)> {
-        let l = self.left.borrow().as_int()?;
-        let r = self.right.borrow().as_int()?;
-        Some((l, r))
-    }
-}
-
-impl Steppable for UnaryOpFir {
-    fn step_one(&mut self, scope: &crate::ubc::Scope) -> Result<Option<Fir>, UbcError> {
-        self.step_members(scope)?;
-        let es = self.expr.borrow().state();
-
-        match es {
-            Nyes::Nk => { self.state = Nyes::Nk; Ok(None) }
-            Nyes::Constant | Nyes::Independent => {
-                if let Some(val) = self.expr.borrow().as_int() {
-                    return Ok(Some(crate::ubc::compute_unary(&self.op, val)?));
-                }
-                Ok(None)
-            }
-            _ => { self.state = Nyes::Woconstanic; Ok(None) }
-        }
-    }
-    fn state(&self) -> Nyes { self.state }
-    fn set_state(&mut self, s: Nyes) { self.state = s; }
-    fn children_mut(&mut self) -> Vec<&mut FirRef> { vec![&mut self.expr] }
-    fn format(&self, buf: &mut String, depth: usize) -> std::fmt::Result {
-        let indent = "  ".repeat(depth);
-        writeln!(buf,"{}UnaryOp({}) [{}]", indent, self.op, self.state)?;
-        self.expr.borrow().format(buf,depth + 1)
-    }
-    fn clone_into_fir(&self) -> Fir { Fir::UnaryOp(Box::new(self.clone())) }
-    fn fir_variant(&self) -> &'static str { "UnaryOp" }
-    fn unary_value(&self) -> Option<i64> { self.expr.borrow().as_int() }
-    fn expr_state(&self) -> Nyes { self.expr.borrow().state() }
+    fn clone_into_fir(&self) -> Fir { Fir::Operator(Box::new(self.clone())) }
+    fn fir_variant(&self) -> &'static str { "Operator" }
 }
 
 impl Steppable for SearchFir {
@@ -1068,11 +1023,8 @@ impl Fir {
     pub fn as_nk(&self) -> Option<&NkFir> {
         if let Fir::Nk(inner) = self { Some(inner) } else { None }
     }
-    pub fn as_binary_op(&self) -> Option<&BinaryOpFir> {
-        if let Fir::BinaryOp(inner) = self { Some(inner) } else { None }
-    }
-    pub fn as_unary_op(&self) -> Option<&UnaryOpFir> {
-        if let Fir::UnaryOp(inner) = self { Some(inner) } else { None }
+    pub fn as_operator(&self) -> Option<&OperatorFir> {
+        if let Fir::Operator(inner) = self { Some(inner) } else { None }
     }
     pub fn as_search(&self) -> Option<&SearchFir> {
         if let Fir::Search(inner) = self { Some(inner) } else { None }
@@ -1120,20 +1072,11 @@ fn fir_to_json(fir: &Fir) -> serde_json::Value {
             m.insert("state".into(), to_json_val(&inner.state));
             Value::Object(m)
         }
-        Fir::BinaryOp(inner) => {
+        Fir::Operator(inner) => {
             let mut m = Map::new();
-            m.insert("type".into(), Value::String("BinaryOp".into()));
+            m.insert("type".into(), Value::String("Operator".into()));
             m.insert("op".into(), Value::String(inner.op.clone()));
-            m.insert("left".into(), fir_to_json(&clone_steppable(&inner.left)));
-            m.insert("right".into(), fir_to_json(&clone_steppable(&inner.right)));
-            m.insert("state".into(), to_json_val(&inner.state));
-            Value::Object(m)
-        }
-        Fir::UnaryOp(inner) => {
-            let mut m = Map::new();
-            m.insert("type".into(), Value::String("UnaryOp".into()));
-            m.insert("op".into(), Value::String(inner.op.clone()));
-            m.insert("expr".into(), fir_to_json(&clone_steppable(&inner.expr)));
+            m.insert("operands".into(), Value::Array(inner.operands.iter().map(|o| fir_to_json(&clone_steppable(o))).collect()));
             m.insert("state".into(), to_json_val(&inner.state));
             Value::Object(m)
         }
@@ -1232,26 +1175,17 @@ impl<'de> Deserialize<'de> for Fir {
                     .to_string();
                 Ok(Fir::Nk(Box::new(NkFir { reason, state })))
             }
-            "BinaryOp" => {
+            "Operator" => {
                 let op = obj.get("op").and_then(|v| v.as_str())
                     .ok_or_else(|| serde::de::Error::custom("missing op field"))?
                     .to_string();
-                let left = obj.get("left").ok_or_else(|| serde::de::Error::custom("missing left field"))
-                    .and_then(|v| serde_json::from_value::<Fir>(v.clone()).map_err(serde::de::Error::custom))?;
-                let right = obj.get("right").ok_or_else(|| serde::de::Error::custom("missing right field"))
-                    .and_then(|v| serde_json::from_value::<Fir>(v.clone()).map_err(serde::de::Error::custom))?;
-                Ok(Fir::BinaryOp(Box::new(BinaryOpFir {
-                    op, left: fir_to_ref(left), right: fir_to_ref(right), state,
-                })))
-            }
-            "UnaryOp" => {
-                let op = obj.get("op").and_then(|v| v.as_str())
-                    .ok_or_else(|| serde::de::Error::custom("missing op field"))?
-                    .to_string();
-                let expr = obj.get("expr").ok_or_else(|| serde::de::Error::custom("missing expr field"))
-                    .and_then(|v| serde_json::from_value::<Fir>(v.clone()).map_err(serde::de::Error::custom))?;
-                Ok(Fir::UnaryOp(Box::new(UnaryOpFir {
-                    op, expr: fir_to_ref(expr), state,
+                let operands = obj.get("operands").and_then(|v| v.as_array())
+                    .ok_or_else(|| serde::de::Error::custom("missing operands field"))?
+                    .iter()
+                    .map(|v| serde_json::from_value::<Fir>(v.clone()).map_err(serde::de::Error::custom).map(fir_to_ref))
+                    .collect::<Result<Vec<_>, _>>()?;
+                Ok(Fir::Operator(Box::new(OperatorFir {
+                    op, operands, state,
                 })))
             }
             "Search" => {

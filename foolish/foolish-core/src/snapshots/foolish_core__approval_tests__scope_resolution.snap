@@ -9,7 +9,7 @@ Brane [EMBRYONIC]
   x = 
   Int(42) [INDEPENDENT]
   y = 
-  BinaryOp(+) [EMBRYONIC]
+  Operator(+) [EMBRYONIC]
     Search(pattern='^x$', dir=BACKWARD, FREE) [EMBRYONIC]
     Int(8) [INDEPENDENT]
 RESULT:

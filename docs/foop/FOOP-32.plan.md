@@ -1,4 +1,4 @@
-# FOOP-14: UBCb — Message-passing brane computer; SPA1 parity plan — Implementation Plan
+# FOOP-32: UBCb — Message-passing brane computer; SPA1 parity plan — Implementation Plan
 
 ## CP-0: Parser and FIR (shared with UBC)
 

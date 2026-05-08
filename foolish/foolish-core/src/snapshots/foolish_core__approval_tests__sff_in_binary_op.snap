@@ -1,5 +1,6 @@
 ---
 source: foolish-core/src/lib.rs
+assertion_line: 115
 expression: output
 ---
 INPUT: {a=<<3>>; a + 7;}
@@ -8,7 +9,7 @@ Brane [EMBRYONIC]
   a = 
   StayFullyFoolish [INDEPENDENT]
     Int(3) [INDEPENDENT]
-  BinaryOp(+) [EMBRYONIC]
+  Operator(+) [EMBRYONIC]
     Search(pattern='^a$', dir=BACKWARD, FREE) [EMBRYONIC]
     Int(7) [INDEPENDENT]
 RESULT:

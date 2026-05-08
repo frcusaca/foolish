@@ -1,5 +1,5 @@
 ---
-foop: 14
+foop: 32
 title: UBCb — Message-passing brane computer variant; SPA1 parity plan
 author: hc <hc.busy@gmail.com>
 status: Draft
@@ -9,7 +9,7 @@ phase: meta
 supersedes: []
 ---
 
-# FOOP-14: UBCb — Message-passing brane computer variant; SPA1 parity plan
+# FOOP-32: UBCb — Message-passing brane computer variant; SPA1 parity plan
 
 ## Abstract
 
