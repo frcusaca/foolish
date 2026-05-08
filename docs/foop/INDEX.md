@@ -21,10 +21,10 @@ ls | rev | sort -V | rev
 | [FOOP-6](FOOP-6.md) | Phase 2 evaluator is depth-first; breadth-first deferred to Phase 5 | Brewing | phase-2 | 2026-05-01 | hc |
 | [FOOP-7](FOOP-7.md) | Constanic Clone — recoordination contract | Brewing | phase-2 | 2026-05-01 | hc |
 | [FOOP-8](FOOP-8.md) | FIRs are mutable; parent pointers are post-clone; Circe excludes parent | Brewing | phase-2 | 2026-05-02 | hc |
-| [FOOP-9](FOOP-9.md) | Operators are brane-like FIRs with positional unnamed operands and no search boundary | Brewing | phase-1 | 2026-05-04 | hc |
+| [FOOP-9](FOOP-9.md) | Operators are brane-like FIRs with positional unnamed operands and no search boundary | Implementing | phase-1 | 2026-05-04 | hc |
 | [FOOP01](FOOP01.md) | Anchored search through constanic anchors — dereference searches, NK on missing brane names | Brewing | phase-2 | 2026-05-04 | hc |
 | [FOOP-11](FOOP-11.md) | Search stops at NK; search result becomes NK | Brewing | phase-2 | 2026-05-04 | hc |
-| [FOOP-12](FOOP-12.md) | Alarms — diagnostic levels emitted by compiler and evaluator | Brewing | phase-1 | 2026-05-04 | hc |
+| [FOOP-12](FOOP-12.md) | Alarms — diagnostic levels emitted by compiler and evaluator | Implementing | phase-1 | 2026-05-04 | hc |
 | [FOOP-31](FOOP-31.md) | SPA1 — UBC reference implementation (depth-first) | Draft | meta | 2026-05-07 | hc |
 | [FOOP-32](FOOP-32.md) | UBCb — Message-passing brane computer variant; SPA1 parity plan | Draft | meta | 2026-05-07 | hc |
 
@@ -50,14 +50,13 @@ ls | rev | sort -V | rev
 - [FOOP-6](FOOP-6.md) — Phase 2 depth-first; Phase 5 breadth-first
 - [FOOP-7](FOOP-7.md) — Constanic Clone recoordination contract
 - [FOOP-8](FOOP-8.md) — FIRs are mutable; parent pointers post-clone; Circe excludes parent
-- [FOOP-9](FOOP-9.md) — Operators are brane-like FIRs with positional unnamed operands
 - [FOOP01](FOOP01.md) — Anchored search through constanic anchors
 - [FOOP-11](FOOP-11.md) — Search stops at NK
-- [FOOP-12](FOOP-12.md) — Alarms (compiler + evaluator diagnostic levels)
 
 ### Implementing
 
-(none yet)
+- [FOOP-9](FOOP-9.md) — Unified OperatorFir (was BinaryOpFir/UnaryOpFir)
+- [FOOP-12](FOOP-12.md) — Alarms (compiler + evaluator diagnostic levels)
 
 ### Withdrawn / Rejected / Superseded
 
@@ -101,6 +100,10 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 ---
 
 ## Last Updated
+
+**Date**: 2026-05-08
+**Updated By**: cyankiwi/Qwen3.6-27B-AWQ-BF16-INT4
+**Changes**: Promoted FOOP-9 and FOOP-12 from Brewing to Implementing status.
 
 **Date**: 2026-05-07
 **Updated By**: opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4

@@ -3,12 +3,13 @@
 ## Current State (2026-05-08)
 
 - All 21 parser tests pass
-- All 23 core tests pass (18 approval + 5 unit)
+- All 32 core tests pass (18 approval + 14 unit)
 - CLI: `compile`, `run`, `step`, `repl` commands implemented
 - FIR types: all 10 variants (ConstantInt, Nk, Operator, Search, Index, HeadTail, StayFoolish, StayFullyFoolish, Concatenation, NormalBrane)
 - UBC evaluator: depth-first stepping, constanic clone, short-circuiting, search transparency
 - JSON serialization/deserialization: complete with manual Serde impl
 - FOOP-9 complete: BinaryOpFir/UnaryOpFir replaced with unified OperatorFir
+- FOOP-12 complete: Alarm system with AlarmLevel, Alarm, AlarmSink, NKFir alarm integration
 
 ## Phase 1: Compiler (FOOP-9, FOOP-12)
 
@@ -21,14 +22,14 @@
   - [x](2026-05-08 22:31) Update `ubc.rs`: `compute_binary`, `compute_unary` → generic `compute_operator`
   - [x](2026-05-08 22:31) Update approval tests, verify all pass
   - [x](2026-05-08 22:31) Add 5 unit tests (binary, unary, roundtrip, chained, search transparency regression)
-- [ ] Complete FOOP-12: Alarms — diagnostic levels
-  - [ ] Write FOOP-12 spec document
-  - [ ] Add `AlarmLevel` enum (INFO, WARN, MILD, PANIC)
-  - [ ] Add `Alarm` struct and `AlarmSink` trait
-  - [ ] Add `alarm` field to `NkFir`
-  - [ ] Thread `AlarmSink` through `Compiler` and `Ubc`
-  - [ ] Implement compiler alarm sources (PARSE-ERROR, etc.)
-  - [ ] Implement evaluator alarm sources (DIV-BY-ZERO, DEPTH-EXCEEDED, etc.)
+- [x] Complete FOOP-12: Alarms — diagnostic levels
+  - [x](2026-05-08 23:00) Write FOOP-12 spec document (FOOP012.md)
+  - [x](2026-05-08 23:00) Add `AlarmLevel` enum (Info, Warn, Mild, Panic)
+  - [x](2026-05-08 23:00) Add `Alarm` struct and `AlarmSink` trait
+  - [x](2026-05-08 23:00) Add `alarm` field to `NkFir`
+  - [x](2026-05-08 23:00) Thread `AlarmSink` through `Scope` (Rc<dyn AlarmSink>)
+  - [x](2026-05-08 23:00) Implement evaluator alarm sources (DIV-BY-ZERO, UNBOUND-NAME, INVARIANT-VIOLATED)
+  - [x](2026-05-08 23:00) Add 10 unit tests (level display, serialization, display, VecAlarmSink, NKFir roundtrip, div-by-zero, unknown literal, scope emit, scope without sink)
 - [ ] Verify all Phase 1 tests pass
 
 ## Phase 2: UBC (FOOP-6, FOOP-7, FOOP-8, FOOP-10, FOOP-11)
