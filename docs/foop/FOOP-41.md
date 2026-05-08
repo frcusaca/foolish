@@ -9,7 +9,7 @@ phase: meta
 supersedes: []
 ---
 
-# FOOP-32: UBCb — Message-passing brane computer variant; SPA1 parity plan
+# FOOP-(41): UBCb — Message-passing brane computer variant; SPA1 parity plan
 
 ## Abstract
 
@@ -187,7 +187,7 @@ approved baselines byte-for-byte.
 
 ### 2026-05-08: UBC Step Taxonomy and NYES Stage Analysis
 
-> **WARNING: BDFL reviewed this analysis and decided to alter the stage-wise fairness model in FOOP-31.** The findings below are retained as background research documenting the problem space. **They are EXPECTED TO CHANGE before FOOP-32 implementation begins.** Consult FOOP-31 for the current authoritative design direction.
+> **WARNING: BDFL reviewed this analysis and decided to alter the stage-wise fairness model in FOOP-31.** The findings below are retained as background research documenting the problem space. **They are EXPECTED TO CHANGE before FOOP-(41) implementation begins.** Consult FOOP-31 for the current authoritative design direction.
 
 Detailed analysis of UBC's evaluation loop across `ubc_engineering.md`, `ubc2_design.md`, `ubc2_message_protocol.md`, and the Rust implementation (`foolish-core/src/ubc.rs`, `fir.rs`) produced the seven-category step taxonomy above and the following detailed NYES stage analysis.
 
