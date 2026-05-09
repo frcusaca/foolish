@@ -1,0 +1,34 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {a = 1; b = {c = a + 1; d = c + 1};}
+[0] PARSED:
+Brane [EMBRYONIC]
+  a = 
+  Int(1) [INDEPENDENT]
+  b = 
+  Brane [EMBRYONIC]
+    c = 
+    Operator(+) [EMBRYONIC]
+      Search(pattern='^a$', dir=BACKWARD, FREE) [EMBRYONIC]
+      Int(1) [INDEPENDENT]
+    d = 
+    Operator(+) [EMBRYONIC]
+      Search(pattern='^c$', dir=BACKWARD, FREE) [EMBRYONIC]
+      Int(1) [INDEPENDENT]
+RESULT:
+Brane [WOCONSTANIC]
+  a = 
+  Int(1) [INDEPENDENT]
+  b = 
+  Brane [WOCONSTANIC]
+    c = 
+    Int(2) [CONSTANT]
+    d = 
+    Operator(+) [WOCONSTANIC]
+      Search(pattern='^c$', dir=BACKWARD, FREE) [WOCONSTANIC]
+        Operator(+) [WOCONSTANIC]
+          Search(pattern='^a$', dir=BACKWARD, FREE) [CONSTANT]
+          Int(1) [INDEPENDENT]
+      Int(1) [INDEPENDENT]

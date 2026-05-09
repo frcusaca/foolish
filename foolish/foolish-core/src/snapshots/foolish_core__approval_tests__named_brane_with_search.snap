@@ -1,0 +1,27 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {x = 42; outer'{inner = {y = x}; val = inner.y};}
+[0] PARSED:
+Brane [EMBRYONIC]
+  x = 
+  Int(42) [INDEPENDENT]
+  outer'Brane [EMBRYONIC]
+    inner = 
+    Brane [EMBRYONIC]
+      y = 
+      Search(pattern='^x$', dir=BACKWARD, FREE) [EMBRYONIC]
+    val = 
+    Search(pattern='^y$', dir=BACKWARD, ANCHORED) [EMBRYONIC]
+RESULT:
+Brane [CONSTANT]
+  x = 
+  Int(42) [INDEPENDENT]
+  outer'Brane [CONSTANT]
+    inner = 
+    Brane [CONSTANT]
+      y = 
+      Int(42) [INDEPENDENT]
+    val = 
+    Int(42) [INDEPENDENT]

@@ -1,0 +1,17 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {e = {}^; f = {}$;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  e = 
+  HeadTail(HEAD, ANCHORED) [EMBRYONIC]
+  f = 
+  HeadTail(TAIL, ANCHORED) [EMBRYONIC]
+RESULT:
+Brane [NK]
+  e = 
+  HeadTail(HEAD, ANCHORED) [NK]
+  f = 
+  HeadTail(TAIL, ANCHORED) [NK]

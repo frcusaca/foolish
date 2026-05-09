@@ -1,0 +1,37 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {
+[0] PARSED:
+Brane [EMBRYONIC]
+  b = 
+  Brane [EMBRYONIC]
+    α = 
+    Int(100) [INDEPENDENT]
+    β = 
+    Int(200) [INDEPENDENT]
+  notFound = 
+  Search(pattern='γ', dir=BACKWARD, ANCHORED) [EMBRYONIC]
+  emptyBrane = 
+  Brane [EMBRYONIC]
+  emptyHead = 
+  HeadTail(HEAD, ANCHORED) [EMBRYONIC]
+  emptyTail = 
+  HeadTail(TAIL, ANCHORED) [EMBRYONIC]
+RESULT:
+Brane [NK]
+  b = 
+  Brane [CONSTANT]
+    α = 
+    Int(100) [INDEPENDENT]
+    β = 
+    Int(200) [INDEPENDENT]
+  notFound = 
+  Search(pattern='γ', dir=BACKWARD, ANCHORED) [NK]
+  emptyBrane = 
+  Brane [CONSTANT]
+  emptyHead = 
+  HeadTail(HEAD, ANCHORED) [NK]
+  emptyTail = 
+  HeadTail(TAIL, ANCHORED) [NK]

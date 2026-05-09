@@ -1,11 +1,11 @@
-# FOOP-(41): UBCb — Message-passing brane computer; SPA1 parity plan — Implementation Plan
+# FOOP-41: UBCb — Message-passing brane computer; SPA1 parity plan — Implementation Plan
 
 ## CP-0: Parser and FIR (shared with UBC)
 
 - [ ] Share UBC's parser, compiler, and FIR algebra
 - [ ] Add message-passing fields to FIR types (LUID, message queue)
 - [ ] Verify FIR roundtrip tests pass (shared with UBC)
-- [ ] Governing FOOPs: FOOP-2, FOOP-4, FOOP-5, FOOP-9, FOOP-12
+- [ ] Governing FOOPs: FOOP-2, FOOP-4, FOOP-5, FOOP-9, FOOP-21
 
 ## CP-1: Basic evaluation (new UBCb FOOPs needed)
 

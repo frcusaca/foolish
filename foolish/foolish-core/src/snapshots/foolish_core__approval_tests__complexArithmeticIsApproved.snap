@@ -1,0 +1,17 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {(5 + 3) * 2 - 1;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  Operator(-) [EMBRYONIC]
+    Operator(*) [EMBRYONIC]
+      Operator(+) [EMBRYONIC]
+        Int(5) [INDEPENDENT]
+        Int(3) [INDEPENDENT]
+      Int(2) [INDEPENDENT]
+    Int(1) [INDEPENDENT]
+RESULT:
+Brane [CONSTANT]
+  Int(15) [CONSTANT]

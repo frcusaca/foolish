@@ -1,0 +1,23 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {a = -3 * 4; b = -3 + 4;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  a = 
+  Operator(*) [EMBRYONIC]
+    Operator(-) [EMBRYONIC]
+      Int(3) [INDEPENDENT]
+    Int(4) [INDEPENDENT]
+  b = 
+  Operator(+) [EMBRYONIC]
+    Operator(-) [EMBRYONIC]
+      Int(3) [INDEPENDENT]
+    Int(4) [INDEPENDENT]
+RESULT:
+Brane [CONSTANT]
+  a = 
+  Int(-12) [CONSTANT]
+  b = 
+  Int(1) [CONSTANT]

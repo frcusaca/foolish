@@ -1,0 +1,21 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {a = 1; b = 2; c = 3;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  a = 
+  Int(1) [INDEPENDENT]
+  b = 
+  Int(2) [INDEPENDENT]
+  c = 
+  Int(3) [INDEPENDENT]
+RESULT:
+Brane [CONSTANT]
+  a = 
+  Int(1) [INDEPENDENT]
+  b = 
+  Int(2) [INDEPENDENT]
+  c = 
+  Int(3) [INDEPENDENT]

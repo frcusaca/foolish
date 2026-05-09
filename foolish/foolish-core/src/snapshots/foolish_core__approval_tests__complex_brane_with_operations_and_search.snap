@@ -1,0 +1,40 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {x=10; y=20; z=30; sum = x + y + z; avg = sum / 3;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  x = 
+  Int(10) [INDEPENDENT]
+  y = 
+  Int(20) [INDEPENDENT]
+  z = 
+  Int(30) [INDEPENDENT]
+  sum = 
+  Operator(+) [EMBRYONIC]
+    Operator(+) [EMBRYONIC]
+      Search(pattern='^x$', dir=BACKWARD, FREE) [EMBRYONIC]
+      Search(pattern='^y$', dir=BACKWARD, FREE) [EMBRYONIC]
+    Search(pattern='^z$', dir=BACKWARD, FREE) [EMBRYONIC]
+  avg = 
+  Operator(/) [EMBRYONIC]
+    Search(pattern='^sum$', dir=BACKWARD, FREE) [EMBRYONIC]
+    Int(3) [INDEPENDENT]
+RESULT:
+Brane [WOCONSTANIC]
+  x = 
+  Int(10) [INDEPENDENT]
+  y = 
+  Int(20) [INDEPENDENT]
+  z = 
+  Int(30) [INDEPENDENT]
+  sum = 
+  Int(60) [CONSTANT]
+  avg = 
+  Operator(/) [WOCONSTANIC]
+    Search(pattern='^sum$', dir=BACKWARD, FREE) [WOCONSTANIC]
+      Operator(+) [WOCONSTANIC]
+        Int(30) [CONSTANT]
+        Search(pattern='^z$', dir=BACKWARD, FREE) [CONSTANT]
+    Int(3) [INDEPENDENT]

@@ -1,0 +1,25 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {a=1; b=2; c=3; d=#-100;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  a = 
+  Int(1) [INDEPENDENT]
+  b = 
+  Int(2) [INDEPENDENT]
+  c = 
+  Int(3) [INDEPENDENT]
+  d = 
+  Index(offset=-100, FREE) [EMBRYONIC]
+RESULT:
+Brane [CONSTANT]
+  a = 
+  Int(1) [INDEPENDENT]
+  b = 
+  Int(2) [INDEPENDENT]
+  c = 
+  Int(3) [INDEPENDENT]
+  d = 
+  Int(1) [INDEPENDENT]

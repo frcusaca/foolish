@@ -1,0 +1,61 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {
+[0] PARSED:
+Brane [EMBRYONIC]
+  x = 
+  HeadTail(HEAD, ANCHORED) [EMBRYONIC]
+  y = 
+  HeadTail(TAIL, ANCHORED) [EMBRYONIC]
+  a = 
+  HeadTail(HEAD, ANCHORED) [EMBRYONIC]
+  b = 
+  HeadTail(TAIL, ANCHORED) [EMBRYONIC]
+  c = 
+  HeadTail(HEAD, ANCHORED) [EMBRYONIC]
+  d = 
+  HeadTail(TAIL, ANCHORED) [EMBRYONIC]
+  e = 
+  HeadTail(HEAD, ANCHORED) [EMBRYONIC]
+  f = 
+  HeadTail(TAIL, ANCHORED) [EMBRYONIC]
+  brane = 
+  Brane [EMBRYONIC]
+    Int(1) [INDEPENDENT]
+    Int(2) [INDEPENDENT]
+    Int(3) [INDEPENDENT]
+  val = 
+  HeadTail(HEAD, ANCHORED) [EMBRYONIC]
+  scalar = 
+  HeadTail(TAIL, ANCHORED) [EMBRYONIC]
+RESULT:
+Brane [NK]
+  x = 
+  Int(10) [INDEPENDENT]
+  y = 
+  Int(30) [INDEPENDENT]
+  a = 
+  Int(100) [INDEPENDENT]
+  b = 
+  Brane [CONSTANT]
+    Int(3) [INDEPENDENT]
+    Int(4) [INDEPENDENT]
+  c = 
+  Int(3) [INDEPENDENT]
+  d = 
+  Int(4) [INDEPENDENT]
+  e = 
+  HeadTail(HEAD, ANCHORED) [NK]
+  f = 
+  HeadTail(TAIL, ANCHORED) [NK]
+  brane = 
+  Brane [CONSTANT]
+    Int(1) [INDEPENDENT]
+    Int(2) [INDEPENDENT]
+    Int(3) [INDEPENDENT]
+  val = 
+  Int(1) [INDEPENDENT]
+  scalar = 
+  Int(42) [INDEPENDENT]

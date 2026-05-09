@@ -1,0 +1,17 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {empty = {}; result = empty#0;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  empty = 
+  Brane [EMBRYONIC]
+  result = 
+  Index(offset=0, ANCHORED) [EMBRYONIC]
+RESULT:
+Brane [NK]
+  empty = 
+  Brane [CONSTANT]
+  result = 
+  Index(offset=0, ANCHORED) [NK]

@@ -1,0 +1,37 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {x = 5; y = 10; inner = {calc = <<x + y>>; doubled = calc * 2};}
+[0] PARSED:
+Brane [EMBRYONIC]
+  x = 
+  Int(5) [INDEPENDENT]
+  y = 
+  Int(10) [INDEPENDENT]
+  inner = 
+  Brane [EMBRYONIC]
+    calc = 
+    StayFullyFoolish [INDEPENDENT]
+      Operator(+) [EMBRYONIC]
+        Search(pattern='^x$', dir=BACKWARD, FREE) [EMBRYONIC]
+        Search(pattern='^y$', dir=BACKWARD, FREE) [EMBRYONIC]
+    doubled = 
+    Operator(*) [EMBRYONIC]
+      Search(pattern='^calc$', dir=BACKWARD, FREE) [EMBRYONIC]
+      Int(2) [INDEPENDENT]
+RESULT:
+Brane [CONSTANT]
+  x = 
+  Int(5) [INDEPENDENT]
+  y = 
+  Int(10) [INDEPENDENT]
+  inner = 
+  Brane [CONSTANT]
+    calc = 
+    StayFullyFoolish [INDEPENDENT]
+      Operator(+) [EMBRYONIC]
+        Search(pattern='^x$', dir=BACKWARD, FREE) [CONSTANT]
+        Search(pattern='^y$', dir=BACKWARD, FREE) [CONSTANT]
+    doubled = 
+    Int(30) [CONSTANT]

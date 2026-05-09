@@ -1,0 +1,21 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {a = 10 / 3; b = 9 / 3;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  a = 
+  Operator(/) [EMBRYONIC]
+    Int(10) [INDEPENDENT]
+    Int(3) [INDEPENDENT]
+  b = 
+  Operator(/) [EMBRYONIC]
+    Int(9) [INDEPENDENT]
+    Int(3) [INDEPENDENT]
+RESULT:
+Brane [CONSTANT]
+  a = 
+  Int(3) [CONSTANT]
+  b = 
+  Int(3) [CONSTANT]

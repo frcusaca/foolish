@@ -98,6 +98,25 @@ This runs just the selected approval class and filters input file names.
 * When user mentions "path/" first interpret it as relative path from the directory where claude code was invoked. This is normal behavior for most unix apps, for example if I "cat path/file" that path is resolved from the current path.
 * Never directly edit `.approved.foo` files
 
+## FOOP Numbering Helper
+
+FOOP filenames use little-endian digits (FOOP-31 sorts after FOOP-21
+because reversed digits give 13 > 12). The filename digits ARE the
+identifier — never use the frontmatter `foop:` sort key as the
+identifier in prose.
+
+When creating a new FOOP, **always** run the helper script first to
+get the correct filename and identifier:
+
+```bash
+python3 docs/foop/scripts/foop_check.py gen_next   # next FOOP filename
+python3 docs/foop/scripts/foop_check.py check      # verify no gaps
+python3 docs/foop/scripts/foop_check.py list       # all FOOPs in order
+```
+
+See AGENTS.md "FOOP Naming Convention (Critical)" and "FOOP Numbering
+Helper Script" sections for the full convention.
+
 ## Git
 
 ### Git Commit Message Format
@@ -203,6 +222,13 @@ This appears to be an inherent limitation of CCW's current architecture rather t
 ---
 
 ## Last Updated
+
+**Date**: 2026-05-08
+**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.7 xHigh effort
+**Changes**: Added "FOOP Numbering Helper" section pointing to
+`docs/foop/scripts/foop_check.py`. Reminds Claude Code sessions to run
+`gen_next` before creating new FOOPs and to use filename digits (not
+the frontmatter sort key) as identifiers in prose.
 
 **Date**: 2026-03-07
 **Updated By**: Claude Code / cyankiwi/Qwen3.5-27B-AWQ-BF16-INT8

@@ -1,0 +1,32 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {
+[0] PARSED:
+Brane [EMBRYONIC]
+  a = 
+  Operator(-) [EMBRYONIC]
+    Int(10) [INDEPENDENT]
+  second'Brane [EMBRYONIC]
+    b = 
+    Int(20) [INDEPENDENT]
+    third'Brane [EMBRYONIC]
+      c = 
+      Int(30) [INDEPENDENT]
+      inner'Brane [EMBRYONIC]
+        d = 
+        Int(40) [INDEPENDENT]
+RESULT:
+Brane [CONSTANT]
+  a = 
+  Int(-10) [CONSTANT]
+  second'Brane [CONSTANT]
+    b = 
+    Int(20) [INDEPENDENT]
+    third'Brane [CONSTANT]
+      c = 
+      Int(30) [INDEPENDENT]
+      inner'Brane [CONSTANT]
+        d = 
+        Int(40) [INDEPENDENT]

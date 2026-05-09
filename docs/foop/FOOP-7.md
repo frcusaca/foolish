@@ -1,6 +1,6 @@
 ---
 foop: 7
-title: Constanic Clone — recoordination contract
+title: Constanic Clone — recoordination contract (revised to consume AB)
 author: hc <hc.busy@gmail.com>
 status: Brewing
 type: Standards
@@ -9,204 +9,272 @@ phase: phase-2
 supersedes: []
 ---
 
-# FOOP-7: Constanic Clone — recoordination contract
+# FOOP-7: Constanic Clone — recoordination contract (revised to consume AB)
 
 ## Abstract
 
-Defines the **calling contract** for `constanicClone(R)` — the function
-invoked at every search-result attachment point. The contract is:
+Defines the **calling contract** and **algorithm** for `constanic_clone(R)` —
+the function invoked at every search-result attachment point. The contract
+is:
 
-> **Every search result is `constanicClone`'d before being assigned to the
-> Search FIR's result field. UBC stepping, applied iteratively, takes care
-> of all subsequent state transitions.**
+> **Every search result is `constanic_clone`'d before being assigned to
+> the Search FIR's `search_result` field. The clone is a shallow
+> structural copy of the original FIR with its AB extended by the
+> original's parent.**
 
-The internal mechanics of `constanicClone` per Nyes state (CONSTANT shared,
-ECONSTANIC cloned-and-reset, WOCONSTANIC cloned-with-recursive-children,
-etc.) follow the rough idea of UBC2 d0_5. Specifying the multi-step state
-transition cascade in prose is impractical — the language is operational,
-not declarative. The implementation must be guided by the contract above
-and validated by approval tests, not by attempting to predict each step's
-intermediate state in English.
+The algorithm is **AB-extension only**. Constanic clone does not
+recursively descend into children, does not reset state, and does not
+dispatch on NYES state. The original FIR's children are shared by
+reference; only the cloned root carries an extended AB. This is
+correct because AB is consulted by descendants only when their search
+walks up to the cloned root (which then provides AB-aware resolution).
+
+This FOOP was revised on 2026-05-08. The previous version described a
+recursive clone-and-reset algorithm dispatching on NYES state. That
+algorithm is superseded by the AB model defined in FOOP 51. See
+"Revision history" below for details.
 
 ## Motivation
 
-Foolish's recoordination semantics (a constanic FIR may resolve when
-placed in a new context) require that constanic search results be
-*cloned* into the searcher's context rather than shared by reference. If
-shared, a future context change to the original search result would
-affect every searcher that pointed at it — wrong, because each search
-should resolve in its own context.
+Foolish's recoordination semantics — a FIR resolves names against the
+context it was born into, not necessarily the context it currently
+inhabits — require that search results be **cloned** into the searcher's
+context rather than shared by reference. If shared, a future context
+change to the original would affect every searcher pointing at it.
 
-But not all results need cloning:
-- CONSTANT FIRs are immutable; sharing is correct and saves memory.
-- INDEPENDENT FIRs are CONSTANTs that no context could change (literals);
-  sharing is doubly correct.
-- NK is terminal; recoordination cannot rescue it.
+Under FOOP 51's AB model, "the context it was born into" is captured
+explicitly in the FIR's `ab` field. Constanic clone's job is to extend
+AB so that the clone, in its new home, can still resolve names against
+the original ancestral context.
 
-Only ECONSTANIC and WOCONSTANIC need actual structural clones.
-ECONSTANIC clones re-attempt their search in the new context.
-WOCONSTANIC clones recursively recoordinate their constanic children.
-
-The d0_5 doc in the broader docs branch describes the original UBC2
-algorithm. This FOOP adopts its rough shape but **does not attempt to
-prescribe the exact step sequence**, because:
-
-1. The state-transition cascade involves multiple FIRs across multiple
-   UBC steps; tracing it in prose loses precision.
-2. The sub-cases (WOCONSTANIC search vs WOCONSTANIC expression vs
-   WOCONSTANIC brane) interact with the dereferencing chain in ways that
-   are easier to implement and test than to describe.
-3. The implementer's job is to satisfy the calling contract and the
-   approval tests, not to mechanically translate this FOOP into code.
+The previous algorithm — recursive descent with state reset and per-NYES
+dispatch — became unnecessary once AB existed. AB makes re-coordination
+a structural operation: extend the list, install the clone. No
+recursion, no state reset, no dispatch. See FOOP 51's motivation
+section for the three problems this revision addresses
+(unbounded clone cost, non-monotonic state, no first-class ancestral
+context).
 
 ## Specification
 
 ### The contract
 
-```scala
-// Pseudocode at the search-step site:
-val rawResult = scopeWalk(this.pattern, this.parentBrane)
-rawResult match
-  case None        => this.state = Nyes.ECONSTANIC
-  case Some(found) =>
-    // CONTRACT: constanicClone is called on every search result.
-    // Never assign a raw search result directly to .target.
-    this.target = constanicClone(found)
-    // The next UBC step will propagate state from this.target into this.
+> **At every site where a search resolves to a result, `constanic_clone`
+> is called on that result. The output is assigned to the Search FIR's
+> `search_result` field. The raw search result is NEVER assigned
+> directly.**
+
+```rust
+// At the search-step site:
+let raw_result: Option<FirRef> = scope.search(pattern);
+match raw_result {
+    None => self.state = Nyes::Econstanic,
+    Some(found) => {
+        // CONTRACT: constanic_clone is called on every search result.
+        // Never assign a raw search result directly to search_result.
+        let cloned = constanic_clone(&found);
+        self.search_result = Some(cloned);
+        // Subsequent UBC steps propagate state from search_result into self.
+    }
+}
 ```
 
-The Search FIR's `target` field is **always** the output of `constanicClone`,
-never the raw search result.
+### The algorithm
 
-### The function
+```rust
+/// Constanic clone: produce a new FIR identical to `source` except that
+/// its AB has been extended by `source`'s parent (and the line in that
+/// parent at which `source` sits).
+///
+/// Children of `source` are shared by reference. Only the root of the
+/// cloned subtree gains an extended AB; descendants reach the new AB by
+/// walking up to the cloned root via their parent pointers during their
+/// own searches.
+///
+/// Works on any NYES state. No state is reset; no recursion; no
+/// per-state dispatch.
+pub fn constanic_clone(source: &FirRef) -> FirRef {
+    let parent = source.borrow().parent();
+    let line = source.borrow().line_in_parent();
 
-```scala
-def constanicClone(original: Fir): Fir =
-  // Dispatches on original.state. Roughly per UBC2 d0_5:
-  //
-  //   CONSTANT, INDEPENDENT, NK -> return original (share, do not clone)
-  //   ECONSTANIC                -> deep copy, reset to EMBRYONIC
-  //   WOCONSTANIC               -> deep copy with recursively-cloned
-  //                                constanic children, reset to BRANING
-  //   nigh states               -> caller bug, throw
-  //
-  // The clone's parent pointer is set by the CALLER after this function
-  // returns (FIRs are mutable; see FOOP-8 for the parent-pointer
-  // representation decision).
-  //
-  // Detailed multi-step state transitions are implementation-defined.
-  // Validate against approval tests, not against prose.
-  ???
+    let new_ab = source.borrow().ab().append((parent, line));
+
+    BuilderFrom::new(source)
+        .with_ab(new_ab)
+        .build()
+}
 ```
+
+The implementation may special-case FIRs that perform no searches
+(`ConstantInt`, `Independent` literals, `Nk`) by returning the source
+unchanged — the AB extension on these is observably a no-op since they
+never consult AB. This is an optimization, not a semantic distinction.
+
+### The `BuilderFrom` mechanism
+
+FIR construction uses the Builder / BuilderFrom patterns introduced in
+FOOP 51. `BuilderFrom::new(source).with_ab(new_ab).build()` produces a
+shallow structural copy of `source` with the specified field overridden.
+This is the canonical mechanism for constanic clone and for short-circuit
+accumulation (also defined in FOOP 51).
+
+### Per-state notes
+
+| `source.state` | Behavior under revised algorithm |
+|---|---|
+| PREMBRYONIC, EMBRYONIC, BRANING | Clone with extended AB. Subsequent stepping resolves searches against the new AB. |
+| ECONSTANIC | Clone with extended AB. Subsequent stepping may now find what it previously couldn't, because the new AB provides additional context. |
+| WOCONSTANIC | Clone with extended AB. The cloned `search_result` pointers remain valid (FOOP 51 determinism invariant). |
+| CONSTANT | Clone with extended AB. The clone's value is identical; AB extension is observably a no-op for terminal values. May be optimized to share by reference. |
+| INDEPENDENT | Already detached. AB is empty; parent is None. Sharing by reference is correct. |
+| NK | Terminal error. Sharing by reference is correct. |
+
+The previous version of this FOOP required dispatching on NYES state
+(reset ECONSTANIC to EMBRYONIC, reset WOCONSTANIC to BRANING, etc.).
+Under FOOP 51's AB model, this is unnecessary and incorrect — state
+resets violate the determinism invariant.
 
 ### Caller invariant
 
-Callers MUST step the search result FIR to a constanic terminal state
-(or NK) before invoking `constanicClone`. Phase 2's depth-first ordering
-makes this trivial: by the time statement N is being stepped, statements
-0..N-1 have all completed.
+In Phase 2 (depth-first), callers MAY invoke `constanic_clone` on a
+source at any NYES state. The clone's stepping picks up where the
+original left off, advancing through its remaining states using the new
+AB.
 
-### Per-state intent (rough)
-
-| `original.state` | Intent | Refer to |
-|---|---|---|
-| CONSTANT | share reference | UBC2 d0_5 "CONSTANT references not cloned" |
-| INDEPENDENT | share reference | per FOOP-5 (literals are recoordination-immune) |
-| NK | share reference | terminal |
-| ECONSTANIC | clone, reset to EMBRYONIC | re-runs search in new context |
-| WOCONSTANIC | clone with recursively-cloned constanic children, reset to BRANING | re-steps to recurse into children |
-| PREMBRYONIC, EMBRYONIC, BRANING | error (caller bug) | violate caller invariant |
-
-The "intent" column is a guide for the implementer. The exact behavior is
-defined by what makes the approval tests pass.
+The previous caller invariant ("step the source to a constanic terminal
+state before invoking `constanic_clone`") is **removed**. AB makes
+mid-evaluation cloning safe.
 
 ## FIR Impact
 
-`Fir` instances are mutable (per FOOP-8). After `constanicClone` returns,
-the caller assigns `.parent` on the returned FIR. The clone's `target`
-(if it's a SearchFir) and `state` may continue to mutate as UBC steps
-proceed.
+See FOOP 51 for the AB field definition and the BuilderFrom mechanism.
 
-Circe serialization excludes `parent` (the parent pointer is not part of
-the JSON contract; on deserialization, the consumer re-establishes
-parent pointers by traversing the brane tree).
+`constanic_clone` consumes AB but does not introduce additional FIR
+schema changes beyond what FOOP 51 specifies.
 
 ## UBC Step Impact
 
-`constanicClone` is invoked at every site where a search resolves to a
-result. See `phase2_ubc.md` per-FIR step rules. The function does NOT
-itself perform any stepping — it produces a fresh structural FIR ready
-for the UBC driver to step.
+The function is invoked at every site where a search resolves to a
+result (in `SearchFir::step_one`). It does NOT itself perform any
+stepping — it produces a fresh structural FIR ready for the UBC driver
+to step. The UBC driver continues to advance the cloned FIR through its
+NYES states using the new AB.
+
+The previous version's interaction with `re_step_brane_bodies` and
+`reset_searches` is removed. FOOP 51 deletes `reset_searches` entirely;
+`re_step_brane_bodies` no longer needs to reset clones because clones
+arrive with valid state.
 
 ## Test Plan
 
-The contract is verified by approval tests. Specifically:
+### Constanic clone on every NYES state
 
-- The worked example in `phase2_ubc.md` (`{y=z, x=y, w=x, v=w+x, u=v+w}`)
-  produces the documented final-state table.
-- Phase 6 (concatenation) approval tests exercise actual context changes
-  — `f = {a=x}; g = {x=42}; h = g f` produces the expected merged result.
-- A unit test asserts the calling-site invariant: every Search FIR's
-  `target`, after stepping completes, is the output of `constanicClone`
-  (verified by post-condition: `target` is never `==` to the raw search
-  result for non-CONSTANT/INDEPENDENT/NK results).
+Unit tests construct a FIR at each NYES state (PREMBRYONIC through NK)
+and invoke `constanic_clone`. Assert:
 
-Per-state unit tests of `constanicClone` itself are valuable but
-**secondary** to the approval-test validation, because the function's
-contract is "satisfy the approval tests," not "produce a specific FIR
-shape per state."
+- Returned FIR is structurally a copy of the source.
+- Returned FIR's AB is `source.ab.append((source.parent, source.line))`.
+- Returned FIR's state equals `source.state`.
+- Returned FIR's children are reference-shared with the source (same
+  Rc, no recursive copy).
+
+### Approval test parity
+
+The 60+ Phase 2 approval tests exercise constanic clone via search
+resolution and concatenation. All must pass without modification.
+
+### Determinism interaction
+
+In conjunction with FOOP 51's determinism tests: a search that has
+resolved (with `search_result = Some(cloned)`) must produce identical
+output whether stepped normally or with `search_result` cleared and
+re-resolved.
+
+### Mid-evaluation clone
+
+A test specifically exercises constanic clone on an EMBRYONIC or
+BRANING source, verifying that the clone steps to completion correctly
+in its new home using the extended AB.
 
 ## Rejected Alternatives
 
-### A. Prescribe the exact multi-step state transition cascade in this FOOP
+### A. Keep the recursive clone-and-reset algorithm (the previous version)
 
-Tempting because it would make the algorithm look "complete." **Rejected**:
-the cascade involves multiple FIRs across multiple UBC steps. Tracing it
-in prose loses precision. Foolish exists because English is unsuitable
-for this kind of operational specification — let the implementation
-speak for itself, validated by approval tests.
+Retain dispatch on NYES state; reset ECONSTANIC to EMBRYONIC, etc.
+**Rejected**: per FOOP 51, this violates the determinism invariant and
+is unnecessary now that AB carries ancestral context structurally.
 
-### B. Always clone, even CONSTANT
+### B. Always share by reference; never clone
 
-Simplest possible algorithm: every search result becomes a fresh clone.
-**Rejected**: O(n) memory blowup on programs with many references to the
-same constant. The CONSTANT/INDEPENDENT case being a no-op is an
-important optimization that costs essentially nothing in code complexity.
+Don't clone search results at all. **Rejected**: violates Foolish
+recoordination semantics — each searcher must see the result in its
+own context. Sharing only works for context-immune values
+(INDEPENDENT, NK), which is the optimization noted in the algorithm.
 
-### C. Never clone in Phase 2; defer all cloning to Phase 6 (concatenation)
+### C. Recursively extend AB on every descendant
 
-Saves implementation work in Phase 2. **Rejected**: makes
-`constanicClone` an isolated Phase 6 special case rather than a uniform
-operation. Forces Phase 6 to retroactively trace every search target in
-the FIR tree to clone them, which is more complex than the uniform
-"clone at search resolution" rule.
+Walk the source subtree and extend each descendant's AB at clone time.
+**Rejected**: unnecessary. Descendants reach the new AB by walking up
+to the cloned root during their searches. Recursive extension would
+duplicate ancestral context information across every descendant,
+violating the "AB is shallow" property of FOOP 51.
 
-### D. Use a wake-up queue instead of cloning
+### D. Clone only at constanic terminal states
 
-Don't clone constanic results; instead, when a context change happens,
-walk the FIR tree finding constanic FIRs and re-stepping them in place.
-**Rejected**: requires the wake-up queue + dependency map machinery that
-Phase 2 explicitly defers (FOOP-6). Also fights Foolish's semantics —
-each searcher should resolve in *its own* context, so each needs its own
-clone, not a shared mutating original.
+Require callers to step the source to CONSTANT/WOCONSTANIC/ECONSTANIC
+before cloning. **Rejected**: the AB model makes mid-evaluation cloning
+safe, and this restriction would force the depth-first driver to spin
+to completion at every search site, defeating any future
+breadth-first optimization.
 
 ## Open Questions
 
-- **Equals/hashCode for FIRs**: with `parent` excluded from comparison,
-  case classes' default `equals` may need overriding to also exclude
-  state fields that change after clone (or `equals` may be redefined
-  entirely for FIR comparison purposes). Defer to implementation.
+- **Performance: skip clone for context-immune FIRs.** The
+  algorithm's per-state notes mention that CONSTANT/INDEPENDENT/NK
+  could be returned unchanged. The exact set of "skip-clone-safe"
+  variants depends on which FIRs ever consult AB. This is an
+  implementation optimization, not a semantic question.
+- **Scope ownership for UBCb.** The contract calls
+  `scope.search(pattern)` to find the raw result. UBCb (FOOP 41) needs
+  this scope walk to be addressable via messages. Deferred to FOOP 41
+  follow-up.
+
+## Revision history
+
+**2026-05-08 — Major revision (Brewing)**: Replaced the recursive
+clone-and-reset algorithm with AB extension. Removed per-NYES-state
+dispatch. Removed the caller invariant requiring constanic terminal
+state. Added BuilderFrom mechanism. Reasoning: FOOP 51 introduces the
+AB model, which makes recoordination a structural operation. The
+previous algorithm's recursive descent and state reset are unnecessary
+under AB and violate the determinism invariant.
+
+**2026-05-01 — Initial draft (Brewing)**: Original calling contract
+with recursive algorithm dispatching on NYES state. See git history
+for the prior text.
 
 ## References
 
-- `scala-mvp/foolish-scala/docs/phase2_ubc.md`: where `constanicClone` is
-  invoked (per-FIR step rules).
-- `scala-mvp/foolish-scala/docs/00_accumulated_specs.md`: Nyes lifecycle.
-- `docs/ubc1/how/d0_5_brane_recoordination.md` (broader docs branch): the
-  originating UBC2 design. Use as a reference for intent, not as a
-  prescriptive specification.
-- FOOP-3: the WOCONSTANIC-during-merge race in concatenation was
-  eliminated separately; the WOCONSTANIC state itself remains.
-- FOOP-6: depth-first ordering makes the caller invariant trivial in
-  Phase 2.
-- FOOP-8 (planned): FIR mutability and parent-pointer representation.
+- FOOP 51: AB list, name resolution, search_result, short-circuit
+  accumulation. The AB model that this FOOP consumes.
+- FOOP 6: Phase 2 evaluator is depth-first sequential.
+- FOOP 8 (planned): FIR mutability and parent-pointer representation.
+- FOOP 41: UBCb message-passing variant. Constanic clone's
+  AB-extension form is friendly to UBCb's message protocol.
+- Code: `foolish/foolish-core/src/ubc.rs:458-493` — current
+  `constanic_clone` implementation, to be replaced.
+- `docs/vintage_legacy/d0_5_brane_recoordination.md` — original UBC2
+  recoordination design (now superseded by FOOP 51's AB model).
+
+## Last Updated
+
+**Date**: 2026-05-08
+**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.7 xHigh effort
+**Changes**: Major revision — replaced recursive clone-and-reset with
+AB extension per FOOP 51. Removed per-NYES dispatch. Added BuilderFrom
+construction pattern. Updated motivation, algorithm, FIR impact, UBC
+step impact, test plan, and rejected alternatives sections.
+
+**Date**: 2026-05-01
+**Updated By**: hc
+**Changes**: Initial draft.

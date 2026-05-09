@@ -1,5 +1,5 @@
 ---
-foop: 32
+foop: 14
 title: UBCb — Message-passing brane computer variant; SPA1 parity plan
 author: hc <hc.busy@gmail.com>
 status: Draft
@@ -9,7 +9,7 @@ phase: meta
 supersedes: []
 ---
 
-# FOOP-(41): UBCb — Message-passing brane computer variant; SPA1 parity plan
+# FOOP-41: UBCb — Message-passing brane computer variant; SPA1 parity plan
 
 ## Abstract
 
@@ -84,7 +84,7 @@ UBC's capabilities:
 |------|----------------------------------------------|
 | Scope | Phase 1 (compiler) — no evaluation |
 | Delivered | Same FIR JSON contract as UBC |
-| Governing FOOPs | FOOP-2, FOOP-4, FOOP-5, FOOP-9, FOOP-12 |
+| Governing FOOPs | FOOP-2, FOOP-4, FOOP-5, FOOP-9, FOOP-21 |
 
 UBCb shares the parser and compiler infrastructure with UBC. The FIR algebra is
 identical (same serde schema). UBCb adds message-passing fields (LUID, message
@@ -143,11 +143,11 @@ different). Both implementations produce identical output on all approval tests.
 | FOOP-4 | Bare identifiers → SearchFirs | CP-0 |
 | FOOP-5 | FIR contract | CP-0 |
 | FOOP-9 | OperatorFir | CP-0 |
-| FOOP-12 | Alarms | CP-0 |
+| FOOP-21 | Alarms | CP-0 |
 | FOOP-6 | Depth-first evaluator (UBC only; UBCb is breadth-first by design) | — |
 | FOOP-7 | Constanic Clone contract | CP-2 |
 | FOOP-8 | FIR mutability | CP-0 |
-| FOOP-10 | Anchored search through constanic anchors | CP-2 |
+| FOOP-01 | Anchored search through constanic anchors | CP-2 |
 | FOOP-11 | Search stops at NK | CP-2 |
 | FOOP-3 | Concatenation algorithm | CP-3 |
 | **New FOOPs** (to be written) | UBCb message protocol specifications | CP-1 through CP-4 |
@@ -187,7 +187,7 @@ approved baselines byte-for-byte.
 
 ### 2026-05-08: UBC Step Taxonomy and NYES Stage Analysis
 
-> **WARNING: BDFL reviewed this analysis and decided to alter the stage-wise fairness model in FOOP-31.** The findings below are retained as background research documenting the problem space. **They are EXPECTED TO CHANGE before FOOP-(41) implementation begins.** Consult FOOP-31 for the current authoritative design direction.
+> **WARNING: BDFL reviewed this analysis and decided to alter the stage-wise fairness model in FOOP-31.** The findings below are retained as background research documenting the problem space. **They are EXPECTED TO CHANGE before FOOP-41 implementation begins.** Consult FOOP-31 for the current authoritative design direction.
 
 Detailed analysis of UBC's evaluation loop across `ubc_engineering.md`, `ubc2_design.md`, `ubc2_message_protocol.md`, and the Rust implementation (`foolish-core/src/ubc.rs`, `fir.rs`) produced the seven-category step taxonomy above and the following detailed NYES stage analysis.
 

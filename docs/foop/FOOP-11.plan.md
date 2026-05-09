@@ -11,7 +11,7 @@
 ## Integration
 
 - [ ] Confirm consistency with FOOP-7: `constanicClone(NK) = NK` (shared, not cloned)
-- [ ] Confirm consistency with FOOP-10: NK propagation through constanic anchor chains
+- [ ] Confirm consistency with FOOP-01: NK propagation through constanic anchor chains
 
 ## Tests
 

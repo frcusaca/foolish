@@ -1,0 +1,13 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {6 * 7;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  Operator(*) [EMBRYONIC]
+    Int(6) [INDEPENDENT]
+    Int(7) [INDEPENDENT]
+RESULT:
+Brane [CONSTANT]
+  Int(42) [CONSTANT]

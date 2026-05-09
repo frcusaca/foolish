@@ -1,0 +1,25 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {good = 42; bad = 1 / 0; also_good = 10 + 20;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  good = 
+  Int(42) [INDEPENDENT]
+  bad = 
+  Operator(/) [EMBRYONIC]
+    Int(1) [INDEPENDENT]
+    Int(0) [INDEPENDENT]
+  alsoˍgood = 
+  Operator(+) [EMBRYONIC]
+    Int(10) [INDEPENDENT]
+    Int(20) [INDEPENDENT]
+RESULT:
+Brane [NK]
+  good = 
+  Int(42) [INDEPENDENT]
+  bad = 
+  ??? (division by zero) [NK]
+  alsoˍgood = 
+  Int(30) [CONSTANT]

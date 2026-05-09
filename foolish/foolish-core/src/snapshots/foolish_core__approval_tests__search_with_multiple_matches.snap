@@ -1,0 +1,29 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {b = {a1 = 1; a2 = 2; a3 = 3}; r = b?a.*;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  b = 
+  Brane [EMBRYONIC]
+    a1 = 
+    Int(1) [INDEPENDENT]
+    a2 = 
+    Int(2) [INDEPENDENT]
+    a3 = 
+    Int(3) [INDEPENDENT]
+  r = 
+  Search(pattern='a.*', dir=BACKWARD, ANCHORED) [EMBRYONIC]
+RESULT:
+Brane [CONSTANT]
+  b = 
+  Brane [CONSTANT]
+    a1 = 
+    Int(1) [INDEPENDENT]
+    a2 = 
+    Int(2) [INDEPENDENT]
+    a3 = 
+    Int(3) [INDEPENDENT]
+  r = 
+  Int(1) [INDEPENDENT]

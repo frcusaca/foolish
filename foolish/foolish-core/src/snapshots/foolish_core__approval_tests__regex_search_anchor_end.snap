@@ -1,0 +1,13 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {result = {alice = 1; charlie = 2; bob = 3;}?e$;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  result = 
+  Search(pattern='e$', dir=BACKWARD, ANCHORED) [EMBRYONIC]
+RESULT:
+Brane [CONSTANT]
+  result = 
+  Int(1) [INDEPENDENT]

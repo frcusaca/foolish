@@ -1,0 +1,27 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {
+[0] PARSED:
+Brane [EMBRYONIC]
+  x = 
+  Int(5) [INDEPENDENT]
+  y = 
+  Int(3) [INDEPENDENT]
+  z = 
+  Int(2) [INDEPENDENT]
+  Operator(+) [EMBRYONIC]
+    Operator(*) [EMBRYONIC]
+      Search(pattern='^x$', dir=BACKWARD, FREE) [EMBRYONIC]
+      Search(pattern='^y$', dir=BACKWARD, FREE) [EMBRYONIC]
+    Search(pattern='^z$', dir=BACKWARD, FREE) [EMBRYONIC]
+RESULT:
+Brane [CONSTANT]
+  x = 
+  Int(5) [INDEPENDENT]
+  y = 
+  Int(3) [INDEPENDENT]
+  z = 
+  Int(2) [INDEPENDENT]
+  Int(17) [CONSTANT]

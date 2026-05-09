@@ -1,0 +1,25 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {b = {x = 100; y = 200}; notFound = b?γ;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  b = 
+  Brane [EMBRYONIC]
+    x = 
+    Int(100) [INDEPENDENT]
+    y = 
+    Int(200) [INDEPENDENT]
+  notFound = 
+  Search(pattern='γ', dir=BACKWARD, ANCHORED) [EMBRYONIC]
+RESULT:
+Brane [NK]
+  b = 
+  Brane [CONSTANT]
+    x = 
+    Int(100) [INDEPENDENT]
+    y = 
+    Int(200) [INDEPENDENT]
+  notFound = 
+  Search(pattern='γ', dir=BACKWARD, ANCHORED) [NK]

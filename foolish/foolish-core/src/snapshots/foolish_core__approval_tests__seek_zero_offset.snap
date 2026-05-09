@@ -1,0 +1,23 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {b = {10; 20; 30}; first = b#0;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  b = 
+  Brane [EMBRYONIC]
+    Int(10) [INDEPENDENT]
+    Int(20) [INDEPENDENT]
+    Int(30) [INDEPENDENT]
+  first = 
+  Index(offset=0, ANCHORED) [EMBRYONIC]
+RESULT:
+Brane [CONSTANT]
+  b = 
+  Brane [CONSTANT]
+    Int(10) [INDEPENDENT]
+    Int(20) [INDEPENDENT]
+    Int(30) [INDEPENDENT]
+  first = 
+  Int(10) [INDEPENDENT]

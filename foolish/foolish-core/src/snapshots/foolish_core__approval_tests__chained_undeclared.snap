@@ -1,0 +1,23 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {bad = undeclared; y = bad; z = y;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  bad = 
+  Search(pattern='^undeclared$', dir=BACKWARD, FREE) [EMBRYONIC]
+  y = 
+  Search(pattern='^bad$', dir=BACKWARD, FREE) [EMBRYONIC]
+  z = 
+  Search(pattern='^y$', dir=BACKWARD, FREE) [EMBRYONIC]
+RESULT:
+Brane [WOCONSTANIC]
+  bad = 
+  Search(pattern='^undeclared$', dir=BACKWARD, FREE) [ECONSTANIC]
+  y = 
+  Search(pattern='^bad$', dir=BACKWARD, FREE) [WOCONSTANIC]
+    Search(pattern='^undeclared$', dir=BACKWARD, FREE) [ECONSTANIC]
+  z = 
+  Search(pattern='^y$', dir=BACKWARD, FREE) [WOCONSTANIC]
+    Search(pattern='^undeclared$', dir=BACKWARD, FREE) [ECONSTANIC]

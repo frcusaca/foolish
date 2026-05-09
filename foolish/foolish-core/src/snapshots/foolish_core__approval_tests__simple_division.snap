@@ -1,0 +1,13 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {15 / 3;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  Operator(/) [EMBRYONIC]
+    Int(15) [INDEPENDENT]
+    Int(3) [INDEPENDENT]
+RESULT:
+Brane [CONSTANT]
+  Int(5) [CONSTANT]

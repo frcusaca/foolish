@@ -1,0 +1,25 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {
+[0] PARSED:
+Brane [EMBRYONIC]
+  aliceˍmatch = 
+  Search(pattern='(al.*)', dir=BACKWARD, ANCHORED) [EMBRYONIC]
+  firstˍa = 
+  Search(pattern='^a', dir=BACKWARD, ANCHORED) [EMBRYONIC]
+  endsˍwithˍe = 
+  Search(pattern='e$', dir=BACKWARD, ANCHORED) [EMBRYONIC]
+  tempˍvars = 
+  Search(pattern='(tmpˍ.*)', dir=BACKWARD, ANCHORED) [EMBRYONIC]
+RESULT:
+Brane [CONSTANT]
+  aliceˍmatch = 
+  Int(1) [INDEPENDENT]
+  firstˍa = 
+  Int(1) [INDEPENDENT]
+  endsˍwithˍe = 
+  Int(1) [INDEPENDENT]
+  tempˍvars = 
+  Int(10) [INDEPENDENT]

@@ -1,0 +1,19 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {outer = {inner = 5 / 0};}
+[0] PARSED:
+Brane [EMBRYONIC]
+  outer = 
+  Brane [EMBRYONIC]
+    inner = 
+    Operator(/) [EMBRYONIC]
+      Int(5) [INDEPENDENT]
+      Int(0) [INDEPENDENT]
+RESULT:
+Brane [NK]
+  outer = 
+  Brane [NK]
+    inner = 
+    ??? (division by zero) [NK]

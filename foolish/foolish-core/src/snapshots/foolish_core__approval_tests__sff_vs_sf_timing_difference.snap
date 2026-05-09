@@ -1,0 +1,34 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {x = 1; sf = <x>; sff = <<x>>; x = 10; sf; sff;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  x = 
+  Int(1) [INDEPENDENT]
+  sf = 
+  StayFoolish [EMBRYONIC]
+    Search(pattern='^x$', dir=BACKWARD, FREE) [EMBRYONIC]
+  sff = 
+  StayFullyFoolish [INDEPENDENT]
+    Search(pattern='^x$', dir=BACKWARD, FREE) [EMBRYONIC]
+  x = 
+  Int(10) [INDEPENDENT]
+  Search(pattern='^sf$', dir=BACKWARD, FREE) [EMBRYONIC]
+  Search(pattern='^sff$', dir=BACKWARD, FREE) [EMBRYONIC]
+RESULT:
+Brane [CONSTANT]
+  x = 
+  Int(1) [INDEPENDENT]
+  sf = 
+  StayFoolish [CONSTANT]
+    Search(pattern='^x$', dir=BACKWARD, FREE) [CONSTANT]
+      Int(10) [INDEPENDENT]
+  sff = 
+  StayFullyFoolish [INDEPENDENT]
+    Search(pattern='^x$', dir=BACKWARD, FREE) [EMBRYONIC]
+  x = 
+  Int(10) [INDEPENDENT]
+  Int(10) [INDEPENDENT]
+  Int(10) [INDEPENDENT]

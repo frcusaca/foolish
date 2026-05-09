@@ -1,0 +1,25 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {
+[0] PARSED:
+Brane [EMBRYONIC]
+  x = 
+  Search(pattern='^undeclaredIdentifier$', dir=BACKWARD, FREE) [EMBRYONIC]
+  outer = 
+  Brane [EMBRYONIC]
+    inner = 
+    Brane [EMBRYONIC]
+      y = 
+      Search(pattern='^missingValue$', dir=BACKWARD, FREE) [EMBRYONIC]
+RESULT:
+Brane [WOCONSTANIC]
+  x = 
+  Search(pattern='^undeclaredIdentifier$', dir=BACKWARD, FREE) [ECONSTANIC]
+  outer = 
+  Brane [WOCONSTANIC]
+    inner = 
+    Brane [WOCONSTANIC]
+      y = 
+      Search(pattern='^missingValue$', dir=BACKWARD, FREE) [ECONSTANIC]

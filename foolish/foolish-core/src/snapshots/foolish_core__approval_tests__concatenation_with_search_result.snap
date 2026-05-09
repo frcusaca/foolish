@@ -1,0 +1,41 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {target = {a=1, b=2, c={x=10}}; result = {y=5} target.c;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  target = 
+  Brane [EMBRYONIC]
+    a = 
+    Int(1) [INDEPENDENT]
+    b = 
+    Int(2) [INDEPENDENT]
+    c = 
+    Brane [EMBRYONIC]
+      x = 
+      Int(10) [INDEPENDENT]
+  result = 
+  Concatenation(elements=2) [EMBRYONIC]
+    Brane [EMBRYONIC]
+      y = 
+      Int(5) [INDEPENDENT]
+    Search(pattern='^c$', dir=BACKWARD, ANCHORED) [EMBRYONIC]
+RESULT:
+Brane [CONSTANT]
+  target = 
+  Brane [CONSTANT]
+    a = 
+    Int(1) [INDEPENDENT]
+    b = 
+    Int(2) [INDEPENDENT]
+    c = 
+    Brane [CONSTANT]
+      x = 
+      Int(10) [INDEPENDENT]
+  result = 
+  Brane [CONSTANT]
+    y = 
+    Int(5) [INDEPENDENT]
+    x = 
+    Int(10) [INDEPENDENT]

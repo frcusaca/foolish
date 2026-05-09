@@ -1,4 +1,4 @@
-# FOOP-10: Anchored search through constanic anchors — Implementation Plan
+# FOOP-01: Anchored search through constanic anchors — Implementation Plan
 
 ## Search Step Rule
 

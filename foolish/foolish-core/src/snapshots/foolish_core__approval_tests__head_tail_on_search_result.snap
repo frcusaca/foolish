@@ -1,0 +1,31 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {b = {x = {1; 2; 3}}; h = b.x^; t = b.x$;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  b = 
+  Brane [EMBRYONIC]
+    x = 
+    Brane [EMBRYONIC]
+      Int(1) [INDEPENDENT]
+      Int(2) [INDEPENDENT]
+      Int(3) [INDEPENDENT]
+  h = 
+  HeadTail(HEAD, ANCHORED) [EMBRYONIC]
+  t = 
+  HeadTail(TAIL, ANCHORED) [EMBRYONIC]
+RESULT:
+Brane [CONSTANT]
+  b = 
+  Brane [CONSTANT]
+    x = 
+    Brane [CONSTANT]
+      Int(1) [INDEPENDENT]
+      Int(2) [INDEPENDENT]
+      Int(3) [INDEPENDENT]
+  h = 
+  Int(1) [INDEPENDENT]
+  t = 
+  Int(3) [INDEPENDENT]

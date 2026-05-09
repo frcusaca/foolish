@@ -1,0 +1,43 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {
+[0] PARSED:
+Brane [EMBRYONIC]
+  a = 
+  Int(10) [INDEPENDENT]
+  b = 
+  Int(20) [INDEPENDENT]
+  outer'Brane [EMBRYONIC]
+    c = 
+    Int(30) [INDEPENDENT]
+    Operator(+) [EMBRYONIC]
+      Search(pattern='^a$', dir=BACKWARD, FREE) [EMBRYONIC]
+      Search(pattern='^c$', dir=BACKWARD, FREE) [EMBRYONIC]
+    inner'Brane [EMBRYONIC]
+      a = 
+      Int(40) [INDEPENDENT]
+      Operator(+) [EMBRYONIC]
+        Operator(+) [EMBRYONIC]
+          Search(pattern='^a$', dir=BACKWARD, FREE) [EMBRYONIC]
+          Search(pattern='^b$', dir=BACKWARD, FREE) [EMBRYONIC]
+        Search(pattern='^c$', dir=BACKWARD, FREE) [EMBRYONIC]
+    Operator(+) [EMBRYONIC]
+      Search(pattern='^a$', dir=BACKWARD, FREE) [EMBRYONIC]
+      Search(pattern='^b$', dir=BACKWARD, FREE) [EMBRYONIC]
+RESULT:
+Brane [CONSTANT]
+  a = 
+  Int(10) [INDEPENDENT]
+  b = 
+  Int(20) [INDEPENDENT]
+  outer'Brane [CONSTANT]
+    c = 
+    Int(30) [INDEPENDENT]
+    Int(40) [CONSTANT]
+    inner'Brane [CONSTANT]
+      a = 
+      Int(40) [INDEPENDENT]
+      Int(90) [CONSTANT]
+    Int(30) [CONSTANT]

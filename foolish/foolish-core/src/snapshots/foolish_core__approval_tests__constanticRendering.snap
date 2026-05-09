@@ -1,0 +1,13 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {
+[0] PARSED:
+Brane [EMBRYONIC]
+  x = 
+  Search(pattern='^nonˍexistent$', dir=BACKWARD, FREE) [EMBRYONIC]
+RESULT:
+Brane [WOCONSTANIC]
+  x = 
+  Search(pattern='^nonˍexistent$', dir=BACKWARD, FREE) [ECONSTANIC]

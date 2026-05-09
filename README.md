@@ -142,6 +142,28 @@ The following documentation applies across all versions and remains at `docs/`:
 `AGENTS.md` is specifically written to enable AI agents to effectively contribute to the Foolish
 project with minimal friction.
 
+### Working with FOOPs (Foolish Optimization Process)
+
+Language design proposals are tracked as FOOPs in `docs/foop/`. FOOP
+filenames use a little-endian numbering convention — the digits in
+`FOOP-XY.md` are written front-to-back, so `FOOP-31.md` is the FOOP
+*after* `FOOP-21.md` (chronological order is recovered by reversing the
+digits). The filename digits are the identifier; do not use the
+frontmatter `foop:` sort key as the identifier in prose.
+
+When creating a new FOOP or auditing the directory, use the helper
+script — it handles the encoding for you:
+
+```bash
+python3 docs/foop/scripts/foop_check.py check      # verify no numbering gaps
+python3 docs/foop/scripts/foop_check.py gen_next   # filename for the next FOOP
+python3 docs/foop/scripts/foop_check.py list       # all FOOPs in chronological order
+python3 docs/foop/scripts/foop_check.py get_last   # most-recently-created FOOP
+```
+
+See [AGENTS.md](AGENTS.md) §"FOOP Naming Convention (Critical)" for the
+full specification.
+
 ## Key Features That Set Foolish Apart
 
 ### 🧬 Bio-Inspired Programming Model
@@ -433,6 +455,13 @@ The following documents in `docs/vintage_legacy/` document the original ubc0 imp
 ---
 
 ## Last Updated
+
+**Date**: 2026-05-08
+**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.7 xHigh effort
+**Changes**: Added "Working with FOOPs" subsection under "For AI Agents
+and Contributors" — documents the little-endian numbering convention and
+points users to the `docs/foop/scripts/foop_check.py` helper script for
+listing, checking, and generating new FOOP filenames.
 
 **Date**: 2026-05-06
 **Updated By**: Claude Code / cyankiwi/Qwen3.6-27B-AWQ-BF16-INT4

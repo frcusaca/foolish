@@ -1,0 +1,29 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {x = 1; π = 3; Б = 7; sum = x + π + Б;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  x = 
+  Int(1) [INDEPENDENT]
+  π = 
+  Int(3) [INDEPENDENT]
+  Б = 
+  Int(7) [INDEPENDENT]
+  sum = 
+  Operator(+) [EMBRYONIC]
+    Operator(+) [EMBRYONIC]
+      Search(pattern='^x$', dir=BACKWARD, FREE) [EMBRYONIC]
+      Search(pattern='^π$', dir=BACKWARD, FREE) [EMBRYONIC]
+    Search(pattern='^Б$', dir=BACKWARD, FREE) [EMBRYONIC]
+RESULT:
+Brane [CONSTANT]
+  x = 
+  Int(1) [INDEPENDENT]
+  π = 
+  Int(3) [INDEPENDENT]
+  Б = 
+  Int(7) [INDEPENDENT]
+  sum = 
+  Int(11) [CONSTANT]

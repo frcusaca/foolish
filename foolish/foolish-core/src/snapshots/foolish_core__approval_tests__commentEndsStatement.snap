@@ -1,0 +1,49 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {
+[0] PARSED:
+Brane [EMBRYONIC]
+  x = 
+  Int(1) [INDEPENDENT]
+  y = 
+  Int(2) [INDEPENDENT]
+  z = 
+  Int(3) [INDEPENDENT]
+  z = 
+  Int(3) [INDEPENDENT]
+  z = 
+  Int(3) [INDEPENDENT]
+  z = 
+  Int(3) [INDEPENDENT]
+  can = 
+  Int(4) [INDEPENDENT]
+  we = 
+  Int(5) [INDEPENDENT]
+  this = 
+  Int(6) [INDEPENDENT]
+  okay = 
+  Int(1) [INDEPENDENT]
+RESULT:
+Brane [CONSTANT]
+  x = 
+  Int(1) [INDEPENDENT]
+  y = 
+  Int(2) [INDEPENDENT]
+  z = 
+  Int(3) [INDEPENDENT]
+  z = 
+  Int(3) [INDEPENDENT]
+  z = 
+  Int(3) [INDEPENDENT]
+  z = 
+  Int(3) [INDEPENDENT]
+  can = 
+  Int(4) [INDEPENDENT]
+  we = 
+  Int(5) [INDEPENDENT]
+  this = 
+  Int(6) [INDEPENDENT]
+  okay = 
+  Int(1) [INDEPENDENT]

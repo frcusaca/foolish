@@ -9,7 +9,7 @@ phase: phase-1
 supersedes: []
 ---
 
-# FOOP-12: Alarms — diagnostic levels emitted by compiler and evaluator
+# FOOP-21: Alarms — diagnostic levels emitted by compiler and evaluator
 
 ## Abstract
 
@@ -42,7 +42,7 @@ fine for prototyping but brittle:
 UBC2 docs already mention alarms (`docs/ubc1/how/ubc2_design.md` §14:
 "depth exhaustion should produce an alarm through the message channel
 so the parent brane is aware evaluation was truncated"; `d0_4` §"Useless
-Detachment"; `d0_2` PANIC for circular messages). FOOP-12 codifies
+Detachment"; `d0_2` PANIC for circular messages). FOOP-21 codifies
 these into a uniform mechanism, starting at compile time.
 
 A unified alarm system also makes the CLI (Phase 4) easier: one error
@@ -225,20 +225,20 @@ maximum emits DEPTH-EXCEEDED and returns NK.
 Phase 1 unit tests:
 
 ```scala
-test("FOOP-12: if-then-else emits MILD alarm and produces NK") {
+test("FOOP-21: if-then-else emits MILD alarm and produces NK") {
   val sink = new TestAlarmSink
   val fir  = Compiler.compileToJson("{ if 1 then 2 else 3 fi }", sink)
   sink.alarms.map(_.code) should contain ("FOOP-2-IF-REJECTED")
   sink.hasPanic shouldBe false
 }
 
-test("FOOP-12: parse error emits MILD alarm") {
+test("FOOP-21: parse error emits MILD alarm") {
   val sink = new TestAlarmSink
   Compiler.compileToJson("{ unclosed", sink)
   sink.alarms.map(_.code) should contain ("PARSE-ERROR")
 }
 
-test("FOOP-12: NKFir alarm field roundtrips") {
+test("FOOP-21: NKFir alarm field roundtrips") {
   val nk = NKFir(
     reason = "if-then-else removed",
     alarm  = Some(Alarm(AlarmLevel.MILD, "FOOP-2-IF-REJECTED",
@@ -252,13 +252,13 @@ test("FOOP-12: NKFir alarm field roundtrips") {
 Phase 2 unit tests:
 
 ```scala
-test("FOOP-12: division by zero emits MILD alarm and produces NK") {
+test("FOOP-21: division by zero emits MILD alarm and produces NK") {
   val sink = new TestAlarmSink
   val fir  = Ubc.runToCompletion(Compiler.compileSource("{x = 5 / 0}"), sink)
   sink.alarms.map(_.code) should contain ("DIV-BY-ZERO")
 }
 
-test("FOOP-12: depth limit produces DEPTH-EXCEEDED MILD alarm") {
+test("FOOP-21: depth limit produces DEPTH-EXCEEDED MILD alarm") {
   val sink = new TestAlarmSink
   val deeplyNested = generateNestedBrane(depth = 100000)
   Ubc.runToCompletion(deeplyNested, sink, maxDepth = 96485)

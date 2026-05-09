@@ -1,5 +1,5 @@
 ---
-foop: 31
+foop: 13
 title: SPA1 — Semi-Privately Available milestone: UBC reference implementation (depth-first)
 author: hc <hc.busy@gmail.com>
 status: Draft
@@ -57,7 +57,7 @@ SPA1 includes all of Phases 1 through 4 of the Rust MVP plan:
 | Arithmetic `+ - * / %` | 1, 2 | FOOP-9 |
 | Unary `-` | 1, 2 | FOOP-9 |
 | Bare identifiers (unanchored search) | 1, 2 | FOOP-4 |
-| Anchored search `.`, `?`, `^`, `$`, `#N` | 1, 2 | FOOP-10 |
+| Anchored search `.`, `?`, `^`, `$`, `#N` | 1, 2 | FOOP-01 |
 | `#-N` unanchored seek | 1, 2 | FOOP-4 |
 | SF `<expr>` and SFF `<<expr>>` | 2 | — |
 | Concatenation `A B C ...` | 3 | FOOP-3 |
@@ -74,11 +74,11 @@ SPA1 includes all of Phases 1 through 4 of the Rust MVP plan:
 | FOOP-4 | Phase 1 | Final | Bare identifiers compile to anchored regex SearchFirs |
 | FOOP-5 | Phase 1 | Final | Compile-time vs evaluation-time work — the FIR contract |
 | FOOP-9 | Phase 1 | Brewing | Operators are brane-like FIRs with positional unnamed operands |
-| FOOP-12 | Phase 1 | Brewing | Alarms — diagnostic levels emitted by compiler and evaluator |
+| FOOP-21 | Phase 1 | Brewing | Alarms — diagnostic levels emitted by compiler and evaluator |
 | FOOP-6 | Phase 2 | Brewing | Phase 2 evaluator is depth-first sequential |
 | FOOP-7 | Phase 2 | Brewing | Constanic Clone — recoordination contract |
 | FOOP-8 | Phase 2 | Brewing | FIRs are mutable; parent pointers are post-clone |
-| FOOP-10 | Phase 2 | Brewing | Anchored search through constanic anchors |
+| FOOP-01 | Phase 2 | Brewing | Anchored search through constanic anchors |
 | FOOP-11 | Phase 2 | Brewing | Search stops at NK; search result becomes NK |
 | FOOP-3 | Phase 3 | Brewing | Concatenation algorithm |
 
@@ -87,7 +87,7 @@ SPA1 includes all of Phases 1 through 4 of the Rust MVP plan:
 - **Phase 5** — Breadth-first evaluation (deferred, UBC-specific)
 - **Phase 6** — Web brane browser (application layer, post-SPA1)
 - **Phase 7** — Detachment branes, partial application, forward search liberation
-- **UBCb** — The message-passing variant (governed by FOOP-14)
+- **UBCb** — The message-passing variant (governed by FOOP-41)
 - **Scala/Java** — Parallel language implementations (post-SPA1 cross-validation)
 
 ## UBC as Reference Implementation
@@ -111,7 +111,7 @@ tests are the ground truth.
 
 ## UBCb Relationship
 
-UBCb (governed by FOOP-14) is a **separate development track** that:
+UBCb (governed by FOOP-41) is a **separate development track** that:
 
 1. Starts with a subset of SPA1 capabilities.
 2. Uses a message-passing architecture (per the UBC2 design docs in `docs/ubc1/how/`).
@@ -153,9 +153,9 @@ Phase 5 is a UBC-specific enhancement, not a language requirement.
 ## Open Questions
 
 - What is the initial feature set for UBCb's first parity checkpoint? (Deferred to
-  FOOP-14.)
+  FOOP-41.)
 - How many approval tests must UBCb pass before its first public demonstration?
-  (Deferred to FOOP-14.)
+  (Deferred to FOOP-41.)
 - Should SPA1 include a version string or release tag in the CLI? Implementation
   detail.
 

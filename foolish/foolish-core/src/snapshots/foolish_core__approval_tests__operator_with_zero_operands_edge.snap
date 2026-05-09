@@ -1,0 +1,21 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {a = 0 * 100; b = 0 + 999;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  a = 
+  Operator(*) [EMBRYONIC]
+    Int(0) [INDEPENDENT]
+    Int(100) [INDEPENDENT]
+  b = 
+  Operator(+) [EMBRYONIC]
+    Int(0) [INDEPENDENT]
+    Int(999) [INDEPENDENT]
+RESULT:
+Brane [CONSTANT]
+  a = 
+  Int(0) [CONSTANT]
+  b = 
+  Int(999) [CONSTANT]

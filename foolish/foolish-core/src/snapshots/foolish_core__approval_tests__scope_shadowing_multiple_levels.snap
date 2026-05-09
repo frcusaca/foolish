@@ -1,0 +1,41 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {x = 1; b = {x = 2; c = {x = 3; val = x}; val2 = x}; val3 = x;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  x = 
+  Int(1) [INDEPENDENT]
+  b = 
+  Brane [EMBRYONIC]
+    x = 
+    Int(2) [INDEPENDENT]
+    c = 
+    Brane [EMBRYONIC]
+      x = 
+      Int(3) [INDEPENDENT]
+      val = 
+      Search(pattern='^x$', dir=BACKWARD, FREE) [EMBRYONIC]
+    val2 = 
+    Search(pattern='^x$', dir=BACKWARD, FREE) [EMBRYONIC]
+  val3 = 
+  Search(pattern='^x$', dir=BACKWARD, FREE) [EMBRYONIC]
+RESULT:
+Brane [CONSTANT]
+  x = 
+  Int(1) [INDEPENDENT]
+  b = 
+  Brane [CONSTANT]
+    x = 
+    Int(2) [INDEPENDENT]
+    c = 
+    Brane [CONSTANT]
+      x = 
+      Int(3) [INDEPENDENT]
+      val = 
+      Int(3) [INDEPENDENT]
+    val2 = 
+    Int(2) [INDEPENDENT]
+  val3 = 
+  Int(1) [INDEPENDENT]

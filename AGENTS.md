@@ -77,7 +77,34 @@ ls docs/foop|rev|sort -V|rev
 
 ### FOOP Naming Convention (Critical)
 The identifier `FOOP-01` uniquely identifies an optimization step. In free text, use "FOOP 01" (no dash, space instead). This convention reduces the risk of digit reversal: writing "FOOP 01" in prose makes it harder to accidentally type "FOOP 10". In sentences, use the space form: "FOOP's 01, 11, 21 are the only pre-teen foops we will implement." Reserve the dash form `FOOP-01` for filenames, code references, and formal citations only.
-*always* use this command to list the FOOPs to establish ordering. 
+*always* use this command to list the FOOPs to establish ordering.
+
+The **filename digits ARE the identifier**. The `foop:` frontmatter
+field is a separate numeric sort key, equal to the digits reversed.
+Do NOT use the sort-key value as the identifier in prose. Examples:
+
+| Filename     | Identifier (use this) | Sort key (frontmatter only) |
+|--------------|-----------------------|-----------------------------|
+| `FOOP-9.md`  | FOOP-9                | 9                           |
+| `FOOP-01.md` | FOOP-01               | 10                          |
+| `FOOP-21.md` | FOOP-21               | 12                          |
+| `FOOP-51.md` | FOOP-51               | 15                          |
+
+### FOOP Numbering Helper Script
+
+Use `docs/foop/scripts/foop_check.py` to manage FOOP numbering. Run it
+before creating a new FOOP and periodically to catch drift:
+
+```bash
+python3 docs/foop/scripts/foop_check.py check     # verify consecutive numbering
+python3 docs/foop/scripts/foop_check.py get_last  # most recent FOOP
+python3 docs/foop/scripts/foop_check.py gen_next  # filename for next FOOP
+python3 docs/foop/scripts/foop_check.py list      # all FOOPs in chronological order
+```
+
+When creating a new FOOP, **always** run `gen_next` first to get the
+correct filename and identifier. The script handles the little-endian
+encoding for you.
 
 ### Plan Files for FOOP Implementation
 
@@ -955,6 +982,15 @@ When proposing updates, explain what has changed and why the documentation needs
 
 
 ## Last Updated
+
+**Date**: 2026-05-08
+**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.7 xHigh effort
+**Changes**: Clarified FOOP naming convention — filename digits ARE the
+identifier; the `foop:` frontmatter is a separate sort key. Added
+"FOOP Numbering Helper Script" section pointing to
+`docs/foop/scripts/foop_check.py` with `check`, `get_last`, `gen_next`,
+and `list` commands. Agents must run `gen_next` before creating a new
+FOOP.
 
 **Date**: 2026-05-07
 **Updated By**: opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4

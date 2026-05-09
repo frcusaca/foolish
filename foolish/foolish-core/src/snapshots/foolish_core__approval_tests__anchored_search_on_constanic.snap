@@ -1,0 +1,17 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {emptyBrane = {}; chained = emptyBrane^;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  emptyBrane = 
+  Brane [EMBRYONIC]
+  chained = 
+  HeadTail(HEAD, ANCHORED) [EMBRYONIC]
+RESULT:
+Brane [NK]
+  emptyBrane = 
+  Brane [CONSTANT]
+  chained = 
+  HeadTail(HEAD, ANCHORED) [NK]

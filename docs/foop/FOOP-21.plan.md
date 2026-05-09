@@ -1,4 +1,4 @@
-# FOOP-12: Alarms — diagnostic levels emitted by compiler and evaluator — Implementation Plan
+# FOOP-21: Alarms — diagnostic levels emitted by compiler and evaluator — Implementation Plan
 
 ## Alarm Infrastructure
 

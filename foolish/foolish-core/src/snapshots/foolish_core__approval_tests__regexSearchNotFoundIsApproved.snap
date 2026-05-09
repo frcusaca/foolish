@@ -1,0 +1,13 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {
+[0] PARSED:
+Brane [EMBRYONIC]
+  result = 
+  Search(pattern='notfound', dir=BACKWARD, ANCHORED) [EMBRYONIC]
+RESULT:
+Brane [NK]
+  result = 
+  Search(pattern='notfound', dir=BACKWARD, ANCHORED) [NK]

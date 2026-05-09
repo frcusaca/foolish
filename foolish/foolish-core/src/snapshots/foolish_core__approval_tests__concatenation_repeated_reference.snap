@@ -1,0 +1,27 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {a = {x=1}; c = a a;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  a = 
+  Brane [EMBRYONIC]
+    x = 
+    Int(1) [INDEPENDENT]
+  c = 
+  Concatenation(elements=2) [EMBRYONIC]
+    Search(pattern='^a$', dir=BACKWARD, FREE) [EMBRYONIC]
+    Search(pattern='^a$', dir=BACKWARD, FREE) [EMBRYONIC]
+RESULT:
+Brane [CONSTANT]
+  a = 
+  Brane [CONSTANT]
+    x = 
+    Int(1) [INDEPENDENT]
+  c = 
+  Brane [CONSTANT]
+    x = 
+    Int(1) [INDEPENDENT]
+    x = 
+    Int(1) [INDEPENDENT]

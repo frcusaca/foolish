@@ -1,0 +1,25 @@
+---
+source: foolish-core/src/lib.rs
+expression: output
+---
+INPUT: {x = undeclared; outer = {inner = {y = missing};};}
+[0] PARSED:
+Brane [EMBRYONIC]
+  x = 
+  Search(pattern='^undeclared$', dir=BACKWARD, FREE) [EMBRYONIC]
+  outer = 
+  Brane [EMBRYONIC]
+    inner = 
+    Brane [EMBRYONIC]
+      y = 
+      Search(pattern='^missing$', dir=BACKWARD, FREE) [EMBRYONIC]
+RESULT:
+Brane [WOCONSTANIC]
+  x = 
+  Search(pattern='^undeclared$', dir=BACKWARD, FREE) [ECONSTANIC]
+  outer = 
+  Brane [WOCONSTANIC]
+    inner = 
+    Brane [WOCONSTANIC]
+      y = 
+      Search(pattern='^missing$', dir=BACKWARD, FREE) [ECONSTANIC]

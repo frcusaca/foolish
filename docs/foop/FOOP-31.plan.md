@@ -9,10 +9,10 @@
 - UBC evaluator: depth-first stepping, constanic clone, short-circuiting, search transparency
 - JSON serialization/deserialization: complete with manual Serde impl
 - FOOP-9 complete: BinaryOpFir/UnaryOpFir replaced with unified OperatorFir
-- FOOP-12 complete: Alarm system with AlarmLevel, Alarm, AlarmSink, NKFir alarm integration
+- FOOP-21 complete: Alarm system with AlarmLevel, Alarm, AlarmSink, NKFir alarm integration
 - 54 input files tested (of 57 total; 3 have unsupported syntax)
 
-## Phase 1: Compiler (FOOP-9, FOOP-12)
+## Phase 1: Compiler (FOOP-9, FOOP-21)
 
 - [x] Complete FOOP-9: OperatorFir — replace BinaryOpFir/UnaryOpFir with unified OperatorFir
   - [x](2026-05-08 22:31) Add `OperatorFir(op, operands: Vec<FirRef>)` to `fir.rs`
@@ -23,8 +23,8 @@
   - [x](2026-05-08 22:31) Update `ubc.rs`: `compute_binary`, `compute_unary` → generic `compute_operator`
   - [x](2026-05-08 22:31) Update approval tests, verify all pass
   - [x](2026-05-08 22:31) Add 5 unit tests (binary, unary, roundtrip, chained, search transparency regression)
-- [x] Complete FOOP-12: Alarms — diagnostic levels
-  - [x](2026-05-08 23:00) Write FOOP-12 spec document (FOOP012.md)
+- [x] Complete FOOP-21: Alarms — diagnostic levels
+  - [x](2026-05-08 23:00) Write FOOP-21 spec document (FOOP-21.md)
   - [x](2026-05-08 23:00) Add `AlarmLevel` enum (Info, Warn, Mild, Panic)
   - [x](2026-05-08 23:00) Add `Alarm` struct and `AlarmSink` trait
   - [x](2026-05-08 23:00) Add `alarm` field to `NkFir`
@@ -33,11 +33,11 @@
   - [x](2026-05-08 23:00) Add 10 unit tests (level display, serialization, display, VecAlarmSink, NKFir roundtrip, div-by-zero, unknown literal, scope emit, scope without sink)
 - [ ] Verify all Phase 1 tests pass
 
-## Phase 2: UBC (FOOP-6, FOOP-7, FOOP-8, FOOP-10, FOOP-11)
+## Phase 2: UBC (FOOP-6, FOOP-7, FOOP-8, FOOP-01, FOOP-11)
 
 - [x] Complete FOOP-8: FIRs are mutable; parent pointers are post-clone (already implemented — state is mutable field)
 - [x] Complete FOOP-7: Constanic Clone contract (`constanic_clone()` implemented in `ubc.rs:434`)
-- [x] Complete FOOP-10: Anchored search through constanic anchors (implemented in `SearchFir::step_anchored`)
+- [x] Complete FOOP-01: Anchored search through constanic anchors (implemented in `SearchFir::step_anchored`)
 - [x] Complete FOOP-11: Search stops at NK (NK propagation implemented in SearchFir step rules)
 - [x] Complete FOOP-6: Depth-first evaluator (implemented in `run_to_completion_with_scope`)
 - [ ] Run 60+ Phase 2 approval tests (currently 16 tests exist — need more test input files)
