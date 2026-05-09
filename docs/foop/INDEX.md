@@ -28,6 +28,7 @@ ls | rev | sort -V | rev
 | [FOOP-31](FOOP-31.md) | SPA1 — UBC reference implementation (depth-first) | Draft | meta | 2026-05-07 | hc |
 | [FOOP-41](FOOP-41.md) | UBCb — Message-passing brane computer variant; SPA1 parity plan | Draft | meta | 2026-05-07 | hc |
 | [FOOP-51](FOOP-51.md) | AB list, name resolution, search_result, and short-circuit accumulation | Brewing | phase-2 | 2026-05-08 | hc |
+| [FOOP-61](FOOP-61.md) | UBCb State Machine — Per-Variant NYES Table | Draft | phase-2 | 2026-05-09 | hc |
 
 ---
 
@@ -44,6 +45,7 @@ ls | rev | sort -V | rev
 
 - [FOOP-31](FOOP-31.md) — SPA1 milestone (UBC reference implementation)
 - [FOOP-41](FOOP-41.md) — UBCb message-passing variant; SPA1 parity plan
+- [FOOP-61](FOOP-61.md) — UBCb State Machine — Per-Variant NYES Table
 
 ### Brewing
 
@@ -78,7 +80,7 @@ ls | rev | sort -V | rev
 
 ### phase-2
 
-- [FOOP-6](FOOP-6.md), [FOOP-7](FOOP-7.md), [FOOP-8](FOOP-8.md), [FOOP-01](FOOP-01.md), [FOOP-11](FOOP-11.md), [FOOP-51](FOOP-51.md)
+- [FOOP-6](FOOP-6.md), [FOOP-7](FOOP-7.md), [FOOP-8](FOOP-8.md), [FOOP-01](FOOP-01.md), [FOOP-11](FOOP-11.md), [FOOP-51](FOOP-51.md), [FOOP-61](FOOP-61.md)
 
 ### phase-3
 

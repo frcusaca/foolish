@@ -23,11 +23,18 @@ Implementation-wise, AB is represented as an immutable list of
 `(brane, line_number)` pairs, but the conceptual model is one
 flattened brane.
 
-AB makes constanic clone an O(1)-shaped structural operation: cloning
-extends AB rather than recursively rewriting state. The Search FIR's
-resolved target is renamed `search_result` and is governed by a
-determinism invariant: the stored result must always equal what
-re-walking would produce.
+AB makes re-coordination a structural operation. Per FOOP-7,
+`constanic_clone` resets WOCONSTANIC/NOTFOUNDIC state to BRANING and
+recurses into children rewriting parent pointers; the new parent (set
+by the caller's `.setParent(...).build()` chain) provides the new
+ancestral context via its own AB chain. AB on the cloned root is
+preserved as-is. (A separate operation, `preconstanic_clone`,
+extends AB with FOOP-51 line-aware compression — used only for
+pre-constanic sources in a future special case.)
+
+The Search FIR's resolved target is renamed `search_result` and is
+governed by a determinism invariant: the stored result must always
+equal what re-walking would produce.
 
 A new step is introduced between CONSTANT and INDEPENDENT that releases
 AB and the parent reference; INDEPENDENT becomes the fully-detached
@@ -184,7 +191,7 @@ resolve_search(F, pattern):
                 cur_brane = parent;
                 cur_line = line_in_parent;
             }
-            None => return Econstanic
+            None => return Notfoundic
         }
     }
 ```
@@ -259,6 +266,95 @@ the walk is a deterministic function of the FIR's structure and AB.
 
 The invariant is enforced by **mandatory unit tests** (see Test Plan).
 
+### AB compression
+
+Constanic clone and short-circuit accumulation can produce AB lists
+with redundant entries. For example, repeatedly cloning out of nested
+contexts that share an ancestor leaves multiple entries pointing at the
+same brane. These entries waste space and slow down search resolution
+without changing semantics.
+
+**The compression rule:**
+
+> Walking the AB list left to right, drop any entry `(b, n)` if an
+> earlier entry `(b, m)` exists in the list with `m ≥ n`.
+
+**Why this is correct.** A search through `(b, m)` consults statements
+in `b` at indices strictly less than `m`. A later entry `(b, n)` with
+`n ≤ m` only adds statements in indices already covered by `(b, m)`.
+Because search resolution returns the first match (front-to-back walk),
+a name resolvable through both entries gets resolved by the earlier
+one; the later entry contributes nothing.
+
+**Idempotence of search.** `b.search_local(pattern, n)` is a
+deterministic function of `(b, pattern, n)` — calling it twice with
+the same arguments returns the same result. Critically, the same is
+true of the full search procedure `b.search(pattern, n)` (which walks
+own statements, then `b`'s own AB, then `b`'s parent): it is also a
+deterministic function of `(b, pattern, n)`. So whether an AB entry
+delegates to local search or to global search, consulting the same
+`(b, line)` pair twice produces the same result both times.
+Consulting `b` once with line bound `m` and once with `n ≤ m` adds
+no resolution power beyond the broader (earlier) bound, regardless
+of which search primitive is invoked.
+
+**Why we keep `(b, n)` when `n > m` for an earlier `(b, m)`.** The later
+entry exposes statements in `b` at indices `[m, n)` that the earlier
+entry hides. Those statements may resolve names the earlier entry
+cannot. Keeping the later entry preserves resolution power.
+
+**Examples:**
+
+```
+[(b1, 5), (b2, 3), (b1, 12), (b3, 7), (b1, 2)]
+                            ^             ^
+                            keep         drop — (b1, 2) ⊆ (b1, 5)
+  =>  [(b1, 5), (b2, 3), (b1, 12), (b3, 7)]
+
+[(b1, 12), (b2, 3), (b1, 5), (b3, 7)]
+                    ^
+                    drop — (b1, 5) ⊆ (b1, 12)
+  =>  [(b1, 12), (b2, 3), (b3, 7)]
+
+[(b1, 5), (b1, 5)]
+          ^
+          drop — identical
+  =>  [(b1, 5)]
+```
+
+**When to compress.** Compression is applied:
+
+1. After every constanic clone, on the resulting clone's AB.
+2. After every short-circuit accumulation, on the accumulated AB
+   before installation.
+3. Optionally during serialization (compressed AB serializes smaller).
+
+Compression preserves the determinism invariant: a compressed AB
+produces the same search results as the uncompressed AB by the
+correctness argument above. Unit tests verify this by constructing a
+FIR with an uncompressed AB, recording its search results, compressing
+the AB, and asserting identical results.
+
+**Algorithm (line-aware dedup):**
+
+```
+fn compress_ab(ab: ImmutableList<(Rc<Brane>, usize)>)
+    -> ImmutableList<(Rc<Brane>, usize)>:
+    let mut seen: HashMap<BraneLuid, usize> = empty
+    let mut result = []
+    for (brane, line) in ab.iter_front_to_back():
+        match seen.get(&brane.luid()):
+            Some(prev_line) if prev_line >= line:
+                continue  // earlier entry covers this one
+            _:
+                seen.insert(brane.luid(), line)
+                result.push((brane, line))
+    return result
+```
+
+The hash key is the brane's identity (LUID or Rc address). The cost
+is O(|ab|) with O(|ab|) extra space.
+
 ### Short-circuit accumulation
 
 When a `SearchFir` `S₁`'s `search_result` is itself a `SearchFir`, and
@@ -321,7 +417,7 @@ but *before* INDEPENDENT, should such operations be discovered.
 NK is unaffected by this rule; NK FIRs are born without meaningful
 ab/parent references and remain at NK.
 
-WOCONSTANIC and ECONSTANIC retain their AB. Releasing AB on these states
+WOCONSTANIC and NOTFOUNDIC retain their AB. Releasing AB on these states
 is an optimization that requires walking descendants to confirm no live
 search depends on it; it is deferred to a future FOOP unless profiling
 shows it matters.
@@ -353,13 +449,13 @@ impl Nyes {
 ```
 
 CONSTANT is no longer treated as a loop-terminating state; the driver
-runs one more step to perform detachment. WOCONSTANIC and ECONSTANIC
+runs one more step to perform detachment. WOCONSTANIC and NOTFOUNDIC
 continue to terminate the loop via the existing
 `has_unresolved_forward_refs` check.
 
 ### WOCONSTANIC under the AB model
 
-A `SearchFir` that has resolved to a CONSTANIC-but-not-CONSTANT target
+A `SearchFir` that has resolved to a WOCONSTANIC-but-not-CONSTANT target
 sits in WOCONSTANIC, holding its `search_result` pointer. When the
 target eventually advances (to CONSTANT, then INDEPENDENT), the search
 wakes up and reads the value without re-walking the resolution path.
@@ -370,7 +466,7 @@ Under the AB model:
   WOCONSTANIC search inside a cloned subtree keeps its `search_result`;
   the target it points at remains valid because AB makes re-resolution
   unnecessary.
-- WOCONSTANIC → ECONSTANIC re-fire becomes obsolete. There is no path
+- WOCONSTANIC → NOTFOUNDIC re-fire becomes obsolete. There is no path
   by which a stored `search_result` becomes stale; the determinism
   invariant guarantees this.
 
@@ -423,19 +519,26 @@ NYE-eligible FIRs, NK for NkFir, etc.), and result fields (None). The
 parser/compiler uses builders so the addition of AB does not force
 changes throughout the compilation pipeline.
 
-**BuilderFrom** (used during evaluation, especially constanic clone):
+**BuilderFrom** (used during evaluation, especially constanic clone
+and short-circuit accumulation):
 
 ```rust
-// Constanic clone is a structural copy with extended AB:
-let clone = SearchFirBuilderFrom::new(&original)
-    .extend_ab(original.parent.clone(), original.line_in_parent)
+// constanic_clone returns a builder; caller sets parent then builds:
+let installed = constanic_clone(&original)
+    .setParent(host_parent_ref)
     .build();
+
+// preconstanic_clone (reserved future feature) extends AB with
+// compression and preserves NYES state:
+let preconstanic_copy = preconstanic_clone(&pre_constanic_source)
+    .build();  // AB already extended-and-compressed by the operation
 ```
 
 `BuilderFrom` takes an existing FIR and produces a modified copy. It is
-the primary mechanism for constanic clone (FOOP 7) and short-circuit
-accumulation. It enforces that fields the FOOP 51 invariants depend on
-(state, search_result identity) are preserved unless explicitly changed.
+the primary mechanism for both `constanic_clone` (FOOP 7) and
+`preconstanic_clone`, plus short-circuit accumulation. It enforces
+that fields the FOOP 51 invariants depend on (state, search_result
+identity) are preserved unless explicitly changed.
 
 **Implementation note.** The exact builder API (Rust traits, derive
 macros, hand-written) is an implementation detail. The requirement is
@@ -492,7 +595,7 @@ Scenarios to cover:
    `anc_line` in an AB entry; verify it is NOT matched (only earlier
    statements are visible).
 5. Parent-chain hit: search resolves through live parent ascent.
-6. ECONSTANIC: search exhausts all phases without a match.
+6. NOTFOUNDIC: search exhausts all phases without a match.
 7. WOCONSTANIC pointing at NYE target.
 8. WOCONSTANIC pointing at CONSTANT target.
 9. Short-circuited chain (S₁ → S₂ → T) — verify accumulated AB on T.
@@ -520,10 +623,10 @@ asserts: at termination, every CONSTANT-eligible descendant has
 
 ## Rejected Alternatives
 
-### A. Drop AB on WOCONSTANIC and ECONSTANIC also
+### A. Drop AB on WOCONSTANIC and NOTFOUNDIC also
 
 Free AB on every constanic state, not just at the CONSTANT → INDEPENDENT
-detach step. **Rejected** for now: WOCONSTANIC and ECONSTANIC FIRs may
+detach step. **Rejected** for now: WOCONSTANIC and NOTFOUNDIC FIRs may
 be containers (branes, operators, concatenations) whose interior
 descendants still consult their AB during evaluation. Determining when
 it is safe to drop their AB requires walking descendants. Deferred to a
@@ -587,7 +690,7 @@ orthogonal.
   structurally-shared list (with front-to-back walk via reverse
   iteration) is a future optimization.
 - **Future: WOCONSTANIC AB release.** Profiling may justify releasing
-  AB on WOCONSTANIC/ECONSTANIC under specific conditions (no live
+  AB on WOCONSTANIC/NOTFOUNDIC under specific conditions (no live
   descendant searches). Defer until measured.
 
 ## Related issues NOT addressed by this FOOP
@@ -643,6 +746,14 @@ These are noted here so future FOOPs can reference the residual list.
 - `docs/vintage_legacy/ECOSYSTEM.md` — original UBC2 AB/IB semantics.
 
 ## Last Updated
+
+**Date**: 2026-05-09
+**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.7 xHigh effort
+**Changes**: Updated abstract and BuilderFrom usage to reflect FOOP-7's
+split into `constanic_clone` (no AB extension; caller sets parent via
+`.setParent(...).build()` chain) and `preconstanic_clone` (extends AB
+with FOOP-51 compression; reserved future feature). Added line-aware
+AB compression rule.
 
 **Date**: 2026-05-08
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.7 xHigh effort
