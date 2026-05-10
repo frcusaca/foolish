@@ -139,7 +139,7 @@ Agent with permission to work on the main foolish directory also has permission 
 - [ ] Merge `foop/7-constanic-clone` to alpha
 ```
 
-#### Sub-tasks
+#### Sub-Tasks
 
 If a task proves larger than expected and splits into multiple sub-tasks, indent them under the parent. Use completed sub-tasks to justify why the split occurred:
 
@@ -150,7 +150,10 @@ If a task proves larger than expected and splits into multiple sub-tasks, indent
   - [ ] Update ${BRANCH_NAME} to use new API call convention
   - [x](2026-05-06 14:31) Merged breaking changes from alpha
   - [ ] Repair ALL tests in alpha
-  - [ ] Cleanup ${FULL_WORKTREE_PATH} after successful merge
+  - [ ] Cleanup ${FULL_WORKTREE_PATH}
+    - [ ] Check that _PLAN.md has all but Cleanup checkboxes completed
+    - [ ] Remove "${FULL_WORKTREE_PATH}"
+    - [ ] This is the last checkbox to be checked in my _PLAN.md
 ```
 
 This pattern is common because Foolish uses `git merge` (not rebase), so merge conflicts on `alpha` may trigger follow-up repair work.
@@ -806,9 +809,46 @@ It is the record of what happened, not just what is planned.
 
 
 ## Build Commands
-TBD
-## Run specific test
-TBD
+
+All commands below run from the workspace root `/home/hcbusy/foolish-rust/foolish`.
+
+### Rust Implementation
+
+```bash
+cd /home/hcbusy/foolish-rust/foolish
+
+cargo check --workspace                          # Quick check (fastest validation)
+cargo build --workspace                          # Build everything
+cargo build --workspace --release               # Release build (LTO, stripped)
+```
+
+Binary after release: `target/release/foolish`
+
+### Unit Tests
+
+```bash
+cargo test --workspace                           # All unit tests
+cargo test -p foolish-core                       # One crate
+cargo test -p foolish-core -- brane_search       # Specific test (substring match)
+```
+
+### Approval Tests (insta snapshots)
+
+Approval tests live in `foolish-core` as `mod approval_tests` and use `insta` YAML snapshots stored in `foolish-core/src/snapshots/`.
+
+```bash
+cargo test -p foolish-core -- approval           # All approval tests
+cargo test -p foolish-core -- chainedArithmeticIsApproved  # One approval test
+INSTA_UPDATE=always cargo test -p foolish-core -- approval   # Update snapshots
+```
+
+### CLI Usage
+
+```bash
+cargo run -p foolish-cli -- run path/to/program.foo    # Evaluate a .foo file
+cargo run -p foolish-cli -- step path/to/program.foo   # Step-by-step (debug)
+cargo run -p foolish-cli -- repl                       # Interactive REPL
+```
 
 ### Unit Test Redability
 Unit tests are required to test correctness of internal state of the FVM. There are some infrastructure built
