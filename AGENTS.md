@@ -9,9 +9,6 @@ Documentation is organized under docs/ in subdirectories: howto/ (tutorials), wh
 
 ## Development process
 Due to the nature of human-driven development, AI should always write the tests first. Approval tests and unit tests, write the tests with most important features, and unclear corner cases written as tests to not only check behavior, but also to document what it looks like.
-
-Always write feature in Java first. Work until all java tests are passing before starting to code the same feature in any other languages.
-
 Ask permission before coding new features or reparing bugs in languages other than ANTLR4, Java or Foolish. Ignore build errors in other language directories if you must and `test -amd` in the java directories.
 
 ## Overview
@@ -131,6 +128,7 @@ FULL_WORKTREE_PATH=${HOME}/tmp/foolish-worktrees/<RANDOM>-foop-<NUMBER>
 ```
 
 The `<RANDOM>` component is a random 4-digit number **generated at the moment the plan file is created**. Each plan file gets its own independent random number — different plans have different random numbers. The random number is concrete (not a variable) — it appears literally in the plan and never changes for the lifetime of that plan. For example: `3841-foop-7`, `1563-foop-9`, `4928-foop-01`.
+Agent with permission to work on the main foolish directory also has permission to work on a worktree added from the foretias directory. If asking for permission, ask once for the entire worktree branch: "${FULL_WORKTREE_PATH}" not a subdirectory.
 
 ```markdown
 - [ ] Create worktree at ${HOME}/tmp/foolish-worktrees/3841-foop-7 with branch `foop/7-constanic-clone`
