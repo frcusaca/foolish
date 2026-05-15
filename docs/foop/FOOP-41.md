@@ -2,11 +2,12 @@
 foop: 14
 title: UBCb — Message-passing brane computer variant; SPA1 parity plan
 author: hc <hc.busy@gmail.com>
-status: Draft
+status: Implementing
 type: Milestone
 created: 2026-05-07
 phase: meta
 supersedes: []
+completed: 2026-05-15
 ---
 
 # FOOP-41: UBCb — Message-passing brane computer variant; SPA1 parity plan
