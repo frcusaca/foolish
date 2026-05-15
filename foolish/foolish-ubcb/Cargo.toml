@@ -1,0 +1,15 @@
+[package]
+name = "foolish-ubcb"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+foolish-core = { path = "../foolish-core" }
+serde = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+insta = { workspace = true }
+
+[lints.rust]
+unsafe_code = "warn"

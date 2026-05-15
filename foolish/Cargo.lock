@@ -274,6 +274,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "foolish-ubcb"
+version = "0.1.0"
+dependencies = [
+ "foolish-core",
+ "insta",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "foolish-ubcb-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "foolish-core",
+ "foolish-ubcb",
+ "regex",
+]
+
+[[package]]
 name = "foolish-web"
 version = "0.1.0"
 dependencies = [

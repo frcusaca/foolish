@@ -1,0 +1,7 @@
+{brn = Brane [EMBRYONIC]
+  alice = 
+  Int(2) [INDEPENDENT]
+  bob = 
+  Int(3) [INDEPENDENT]
+  charlie = 
+  Int(4); result1 = Search(pattern='a.*', direction=BACKWARD, anchor="brn"); result2 = Search(pattern='b.*', direction=BACKWARD, anchor="brn");}

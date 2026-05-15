@@ -1,0 +1,10 @@
+{x = Int(1); y = Int(2); c = StayFullyFoolish [INDEPENDENT]
+  Operator(+) [EMBRYONIC]
+    Search(pattern='^x$', dir=BACKWARD, FREE) [EMBRYONIC]
+    Search(pattern='^y$', dir=BACKWARD, FREE); Search(result=StayFullyFoolish [INDEPENDENT]
+  Operator(+) [EMBRYONIC]
+    Search(pattern='^x$', dir=BACKWARD, FREE) [EMBRYONIC]
+    Search(pattern='^y$', dir=BACKWARD, FREE), pattern='^c$', direction=BACKWARD); Search(result=StayFullyFoolish [INDEPENDENT]
+  Operator(+) [EMBRYONIC]
+    Search(pattern='^x$', dir=BACKWARD, FREE) [EMBRYONIC]
+    Search(pattern='^y$', dir=BACKWARD, FREE), pattern='^c$', direction=BACKWARD);}

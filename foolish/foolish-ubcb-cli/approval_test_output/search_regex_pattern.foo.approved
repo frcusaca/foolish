@@ -1,0 +1,7 @@
+{result = Search(pattern='a.*', direction=BACKWARD, anchor="Brane [EMBRYONIC]
+  alice = 
+  Int(1) [INDEPENDENT]
+  bob = 
+  Int(2) [INDEPENDENT]
+  charlie = 
+  Int(3)");}

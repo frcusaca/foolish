@@ -197,6 +197,10 @@ impl StatementFir {
     pub fn anonymous(body: FirRef) -> Self {
         Self::new(None, body)
     }
+
+    pub fn name(&self) -> &Option<String> { &self.name }
+    pub fn body(&self) -> &FirRef { &self.body }
+    pub fn state(&self) -> Nyes { self.state }
 }
 
 // ==================== FIR Struct Definitions ====================
@@ -215,11 +219,29 @@ pub struct NkFir {
     pub(crate) alarm: Option<Alarm>,
 }
 
+impl NkFir {
+    pub fn with_reason(reason: String) -> Self {
+        Self {
+            reason,
+            state: Nyes::Nk,
+            alarm: None,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct OperatorFir {
     pub(crate) op: String,
     pub(crate) operands: Vec<FirRef>,
     pub(crate) state: Nyes,
+}
+
+impl OperatorFir {
+    /// Return the operator name (e.g. "+", "-", "*").
+    pub fn op_name(&self) -> &str { &self.op }
+
+    /// Return the operand list.
+    pub fn operands(&self) -> &[FirRef] { &self.operands }
 }
 
 #[derive(Debug, Clone)]
@@ -272,6 +294,10 @@ pub struct NormalBraneFir {
     pub(crate) characterizations: Vec<String>,
     pub(crate) statements: Vec<StatementFir>,
     pub(crate) state: Nyes,
+}
+
+impl NormalBraneFir {
+    pub fn statements(&self) -> &Vec<StatementFir> { &self.statements }
 }
 
 // ==================== Steppable Trait ====================

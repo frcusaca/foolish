@@ -1,0 +1,1 @@
+{a = Int(1) [INDEPENDENT]; b = Int(2) [INDEPENDENT]; c = Index(offset=-1, FREE) [EMBRYONIC];}

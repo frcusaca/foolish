@@ -4,6 +4,8 @@ members = [
     "foolish-core",
     "foolish-cli",
     "foolish-web",
+    "foolish-ubcb",
+    "foolish-ubcb-cli",
 ]
 resolver = "2"
 

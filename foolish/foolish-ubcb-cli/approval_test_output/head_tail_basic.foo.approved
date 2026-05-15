@@ -1,0 +1,1 @@
+{x = HeadTail(HEAD, ANCHORED); y = HeadTail(TAIL, ANCHORED);}
