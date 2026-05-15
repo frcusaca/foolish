@@ -127,16 +127,17 @@ If a worktree branch is used for implementation, the plan **must** document the 
 FULL_PATH_TO_WORKTREE=${HOME}/tmp/foolish-worktrees/short_description-foop-<NUMBER>
 ```
 
-The `<RANDOM>` component is a random 4-digit number **generated at the moment the plan file is created**. Each plan file gets its own independent random number — different plans have different random numbers. The random number is concrete (not a variable) — it appears literally in the plan and never changes for the lifetime of that plan. For example: `3841-foop-7`, `1563-foop-9`, `4928-foop-01`.
+The short_description in the path should be generated as part of the .plan.md generation. It is possible because the specification is already made and a short description should be possible. the "foop-<NUBER>" suffix should match the name of the foop file as well as the plan file. Once set, this path name
+
 Agent with permission to work on the main foolish directory also has permission to work on a worktree added from the foretias directory. If asking for permission, ask once for the entire worktree branch: "${FULL_PATH_TO_WORKTREE}" not a subdirectory.
 
 ```markdown
-- [ ] Create worktree at ${HOME}/tmp/foolish-worktrees/3841-foop-7 with branch `foop/7-constanic-clone`
+- [ ] Create worktree at ${HOME}/tmp/foolish-worktrees/constanic-clone-foop-7 with branch `foop/foop-7-constanic-clone`
 ...
   (implementation tasks here)
 ...
-- [ ] Verify all work is complete in ${HOME}/tmp/foolish-worktrees/3841-foop-7 and committed to `foop/7-constanic-clone`
-- [ ] Merge `foop/7-constanic-clone` to alpha
+- [ ] Verify all work is complete in ${HOME}/tmp/foolish-worktrees/3841-foop-7 and committed to `foop/foop-7-constanic-clone`
+- [ ] Merge `foop/foop-7-constanic-clone` to alpha
 ```
 
 #### Sub-Tasks
