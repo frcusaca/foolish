@@ -29,6 +29,7 @@ ls | rev | sort -V | rev
 | [FOOP-41](FOOP-41.md) | UBCb — Message-passing brane computer variant; SPA1 parity plan | Draft | meta | 2026-05-07 | hc |
 | [FOOP-51](FOOP-51.md) | AB list, name resolution, search_result, and short-circuit accumulation | Brewing | phase-2 | 2026-05-08 | hc |
 | [FOOP-61](FOOP-61.md) | UBCb State Machine — Per-Variant NYES Table | Draft | phase-2 | 2026-05-09 | hc |
+| [FOOP-71](FOOP-71.md) | Snapshot testing with cargo-insta for UBCb — approval testing infrastructure | Draft | meta | 2026-05-15 | Sisyphus |
 
 ---
 
@@ -46,6 +47,7 @@ ls | rev | sort -V | rev
 - [FOOP-31](FOOP-31.md) — SPA1 milestone (UBC reference implementation)
 - [FOOP-41](FOOP-41.md) — UBCb message-passing variant; SPA1 parity plan
 - [FOOP-61](FOOP-61.md) — UBCb State Machine — Per-Variant NYES Table
+- [FOOP-71](FOOP-71.md) — Snapshot testing with cargo-insta for UBCb (approval testing infrastructure)
 
 ### Brewing
 

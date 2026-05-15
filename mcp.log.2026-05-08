@@ -1,3 +1,0 @@
-2026-05-08T19:08:24.747779Z  INFO serve_inner: rmcp::service: input stream terminated
-2026-05-08T19:08:24.748175Z  INFO serve_inner: rmcp::service: serve finished quit_reason=Closed
-2026-05-08T19:08:24.748381Z  INFO rust_mcp_server: Server closed normally

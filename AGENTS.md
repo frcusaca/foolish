@@ -124,11 +124,11 @@ This gives both agents and humans a clear view of how work is progressing over t
 If a worktree branch is used for implementation, the plan **must** document the lifecycle of that worktree as explicit, separate checkbox tasks placed at appropriate points in the plan. The workpath shall always be:
 
 ```
-FULL_WORKTREE_PATH=${HOME}/tmp/foolish-worktrees/<RANDOM>-foop-<NUMBER>
+FULL_PATH_TO_WORKTREE=${HOME}/tmp/foolish-worktrees/short_description-foop-<NUMBER>
 ```
 
 The `<RANDOM>` component is a random 4-digit number **generated at the moment the plan file is created**. Each plan file gets its own independent random number — different plans have different random numbers. The random number is concrete (not a variable) — it appears literally in the plan and never changes for the lifetime of that plan. For example: `3841-foop-7`, `1563-foop-9`, `4928-foop-01`.
-Agent with permission to work on the main foolish directory also has permission to work on a worktree added from the foretias directory. If asking for permission, ask once for the entire worktree branch: "${FULL_WORKTREE_PATH}" not a subdirectory.
+Agent with permission to work on the main foolish directory also has permission to work on a worktree added from the foretias directory. If asking for permission, ask once for the entire worktree branch: "${FULL_PATH_TO_WORKTREE}" not a subdirectory.
 
 ```markdown
 - [ ] Create worktree at ${HOME}/tmp/foolish-worktrees/3841-foop-7 with branch `foop/7-constanic-clone`
@@ -150,9 +150,9 @@ If a task proves larger than expected and splits into multiple sub-tasks, indent
   - [ ] Update ${BRANCH_NAME} to use new API call convention
   - [x](2026-05-06 14:31) Merged breaking changes from alpha
   - [ ] Repair ALL tests in alpha
-  - [ ] Cleanup ${FULL_WORKTREE_PATH}
+  - [ ] Cleanup ${FULL_PATH_TO_WORKTREE}
     - [ ] Check that _PLAN.md has all but Cleanup checkboxes completed
-    - [ ] Remove "${FULL_WORKTREE_PATH}"
+    - [ ] Remove "${FULL_PATH_TO_WORKTREE}"
     - [ ] This is the last checkbox to be checked in my _PLAN.md
 ```
 
