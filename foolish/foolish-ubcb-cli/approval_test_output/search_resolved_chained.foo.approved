@@ -1,0 +1,1 @@
+{a = Int(10); b = Search(result=Int(10), pattern='^a$', direction=BACKWARD); c = Search(result=Search(result=Int(10), pattern='^a$', direction=BACKWARD), pattern='^b$', direction=BACKWARD);}

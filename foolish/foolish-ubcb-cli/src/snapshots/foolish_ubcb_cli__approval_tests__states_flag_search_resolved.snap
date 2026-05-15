@@ -1,0 +1,5 @@
+---
+source: foolish-ubcb-cli/src/main.rs
+expression: output
+---
+{a = Int(2) [INDEPENDENT]; b = Search(result=Int(2) [INDEPENDENT], pattern='^a$', direction=BACKWARD) [INDEPENDENT];}

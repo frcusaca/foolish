@@ -1,0 +1,5 @@
+---
+source: foolish-ubcb-cli/src/main.rs
+expression: output
+---
+{Int(7);}

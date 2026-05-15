@@ -1,0 +1,1 @@
+{x = Int(10) [INDEPENDENT]; y = Search(result=Int(20) [INDEPENDENT], pattern='^x$', direction=BACKWARD) [INDEPENDENT]; x = Int(20) [INDEPENDENT]; Search(result=Search(result=Int(20) [INDEPENDENT], pattern='^x$', direction=BACKWARD) [INDEPENDENT], pattern='^y$', direction=BACKWARD) [INDEPENDENT];}

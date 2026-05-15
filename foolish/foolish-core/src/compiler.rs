@@ -5,7 +5,7 @@ use foolish_parser::Astn;
 use crate::fir::{Fir, FirRef, Nyes, SearchDirection, StatementFir, Steppable,
     ConstantIntFir, NkFir, SearchFir, NormalBraneFir,
     OperatorFir, IndexFir, HeadTailFir,
-    StayFoolishFir, StayFullyFoolishFir, ConcatenationFir};
+    StayFoolishFir, StayFullyFoolishFir, ConcatenationFir, Alarm, AlarmLevel, AlarmSource};
 
 /// Helper: wrap a Fir in a FirRef (Rc<RefCell<dyn Steppable>>)
 fn to_ref(fir: Fir) -> FirRef { Rc::new(RefCell::new(fir)) }

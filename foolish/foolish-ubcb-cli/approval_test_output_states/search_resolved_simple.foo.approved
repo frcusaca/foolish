@@ -1,0 +1,1 @@
+{a = Int(2) [INDEPENDENT]; b = Search(result=Int(2) [INDEPENDENT], pattern='^a$', direction=BACKWARD) [INDEPENDENT];}
