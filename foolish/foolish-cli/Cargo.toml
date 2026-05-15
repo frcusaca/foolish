@@ -8,22 +8,5 @@ foolish-core = { path = "../foolish-core" }
 clap = { workspace = true }
 anyhow = { workspace = true }
 
-
-[workspace.lints.rust]
+[lints.rust]
 unsafe_code = "warn"
-
-[profile.release]
-opt-level = 3
-lto       = true
-strip     = true
-debug = 0
-
-[profile.dev]
-codegen-units = 256
-debug = 1
-opt-level = 0
-
-[profile.test]
-opt-level = 1           # Slightly optimize tests for faster execution
-debug = 1
-debug-assertions = true # Keep safety checks enabled
