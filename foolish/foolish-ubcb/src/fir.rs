@@ -1,4 +1,4 @@
-use foolish_core::{FirRef, Nyes};
+use foolish_core::{FirRef, Nyes, SequenceableFir, clone_steppable};
 
 use crate::luid::Luid;
 use crate::messages::UbcbMessage;
@@ -37,6 +37,11 @@ impl UbcbFir {
 
     pub fn fir_variant(&self) -> &'static str {
         self.fir.borrow().fir_variant()
+    }
+
+    pub fn to_sequenceable(&self) -> SequenceableFir {
+        let fir = clone_steppable(&self.fir);
+        SequenceableFir::from(fir)
     }
 }
 

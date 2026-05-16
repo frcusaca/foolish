@@ -6,11 +6,11 @@ pub mod search;
 pub mod sequencer;
 
 pub use fir::{Fir, FirRef, Nyes, SearchDirection, StatementFir, StepResult, Steppable, OperatorFir,
-    clone_steppable, fir_to_ref};
+    clone_steppable, fir_to_ref, SequenceableFir, SequenceableStatement, SequenceableError};
 pub use serialization::{fir_from_json, fir_to_json, FirSerializer, JsonSerializer};
 pub use compiler::Compiler;
 pub use ubc::{UbcError, Scope, constanic_clone, resolve_to_value, run_to_completion, run_to_completion_with_scope, short_circuit, step_boxed, compute_operator};
-pub use sequencer::Sequencer;
+pub use sequencer::{Sequencer, HumanizingSequencer};
 
 #[cfg(test)]
 mod unit_tests {
@@ -1399,5 +1399,404 @@ mod approval_tests {
         // The =$ prefix followed by a value is parsed as $ (tail) of the following expression.
         let output = run_foo("{a = 1; b = 2; d =$ 4; e = 5; f = 6; g = 7;}");
         insta::assert_snapshot!("regression_disappearing_brane_statements", output);
+    }
+}
+
+// ============================================================================
+// Sequencer Tests: SequenceableFir + HumanizingSequencer
+// ============================================================================
+
+#[cfg(test)]
+mod sequencer_tests {
+    use super::*;
+    use crate::fir::{SequenceableFir, SequenceableStatement, SequenceableError, Nyes, SearchDirection, Alarm, AlarmLevel, AlarmSource};
+    use crate::HumanizingSequencer;
+
+    // ── helpers ──────────────────────────────────────────────────────────
+
+    fn seq_const_int(value: i64, state: Nyes) -> SequenceableFir {
+        SequenceableFir::ConstantInt { value, state }
+    }
+
+    fn seq_nk(reason: &str, state: Nyes) -> SequenceableFir {
+        SequenceableFir::Nk { reason: reason.to_string(), state, alarm: None }
+    }
+
+    fn seq_nk_with_alarm(reason: &str, state: Nyes) -> SequenceableFir {
+        let alarm = Alarm {
+            level: AlarmLevel::Mild,
+            code: "TEST".to_string(),
+            message: "test alarm".to_string(),
+            source: AlarmSource::Evaluator,
+        };
+        SequenceableFir::Nk { reason: reason.to_string(), state, alarm: Some(alarm) }
+    }
+
+    fn seq_operator(op: &str, operands: Vec<SequenceableFir>, state: Nyes) -> SequenceableFir {
+        SequenceableFir::Operator { op: op.to_string(), operands, state }
+    }
+
+    fn seq_search(pattern: &str, direction: SearchDirection, anchored: bool,
+                  anchor: Option<Box<SequenceableFir>>,
+                  target: Option<Box<SequenceableFir>>, state: Nyes) -> SequenceableFir {
+        SequenceableFir::Search { pattern: pattern.to_string(), direction, anchored, anchor, target, state }
+    }
+
+    fn seq_index(offset: i32, anchored: bool) -> SequenceableFir {
+        SequenceableFir::Index { offset, anchored, anchor: None, state: Nyes::Constant }
+    }
+
+    fn seq_headtail(is_head: bool, anchored: bool) -> SequenceableFir {
+        SequenceableFir::HeadTail { is_head, anchored, anchor: None, state: Nyes::Constant }
+    }
+
+    fn seq_concatenation(elements: Vec<SequenceableFir>, merged: Option<Box<SequenceableFir>>) -> SequenceableFir {
+        SequenceableFir::Concatenation { elements, merged, state: Nyes::Constant }
+    }
+
+    fn seq_stay_foolish(expr: SequenceableFir) -> SequenceableFir {
+        SequenceableFir::StayFoolish { expr: Box::new(expr), state: Nyes::Constant }
+    }
+
+    fn seq_stay_fully_foolish(expr: SequenceableFir) -> SequenceableFir {
+        SequenceableFir::StayFullyFoolish { expr: Box::new(expr), state: Nyes::Constant }
+    }
+
+    fn seq_brane(characterizations: Vec<String>, statements: Vec<SequenceableStatement>) -> SequenceableFir {
+        SequenceableFir::NormalBrane { characterizations, statements, state: Nyes::Constant }
+    }
+
+    fn format_hs(fir: &SequenceableFir) -> String {
+        HumanizingSequencer::new(fir.clone()).format_for_snap_test(0)
+    }
+
+    // ── SequenceableFir::from(Fir) conversion ────────────────────────────
+
+    #[test]
+    fn test_from_constant_int() {
+        let firs = Compiler::compile("{42}").unwrap();
+        let seq = SequenceableFir::from(firs[0].clone());
+        assert!(matches!(&seq, SequenceableFir::NormalBrane { statements, .. } if statements.len() == 1));
+        if let SequenceableFir::NormalBrane { statements, .. } = seq {
+            assert!(matches!(&statements[0].body, SequenceableFir::ConstantInt { value: 42, .. }));
+        }
+    }
+
+    #[test]
+    fn test_from_nk() {
+        let firs = Compiler::compile("{???}").unwrap();
+        let seq = SequenceableFir::from(firs[0].clone());
+        if let SequenceableFir::NormalBrane { statements, .. } = &seq {
+            assert!(matches!(&statements[0].body, SequenceableFir::Nk { .. }));
+        } else {
+            panic!("Expected NormalBrane containing Nk");
+        }
+    }
+
+    #[test]
+    fn test_from_operator() {
+        let firs = Compiler::compile("{1 + 2}").unwrap();
+        let seq = SequenceableFir::from(firs[0].clone());
+        if let SequenceableFir::NormalBrane { statements, .. } = &seq {
+            assert_eq!(statements.len(), 1);
+            if let SequenceableFir::Operator { op, operands, .. } = &statements[0].body {
+                assert_eq!(op, "+");
+                assert_eq!(operands.len(), 2);
+            } else {
+                panic!("Expected Operator");
+            }
+        } else {
+            panic!("Expected NormalBrane");
+        }
+    }
+
+    #[test]
+    fn test_from_search() {
+        let firs = Compiler::compile("{x = 1; y = x; }").unwrap();
+        let seq = SequenceableFir::from(firs[0].clone());
+        // Second statement body should be a Search (compiler anchors pattern with ^$)
+        if let SequenceableFir::NormalBrane { statements, .. } = &seq {
+            assert!(matches!(&statements[1].body, SequenceableFir::Search { pattern, .. } if pattern.contains("x")),
+                "Expected Search containing 'x', got: {:?}", statements[1].body);
+        } else {
+            panic!("Expected NormalBrane");
+        }
+    }
+
+    #[test]
+    fn test_from_normal_brane() {
+        let firs = Compiler::compile("{a = 1; b = 2; }").unwrap();
+        let seq = SequenceableFir::from(firs[0].clone());
+        if let SequenceableFir::NormalBrane { statements, .. } = &seq {
+            assert_eq!(statements.len(), 2);
+        } else {
+            panic!("Expected NormalBrane");
+        }
+    }
+
+    // ── Accessor methods ─────────────────────────────────────────────────
+
+    #[test]
+    fn test_get_hs_type_all_variants() {
+        assert_eq!(seq_const_int(42, Nyes::Constant).get_hs_type(), "ConstantInt");
+        assert_eq!(seq_nk("unknown", Nyes::Nk).get_hs_type(), "Nk");
+        assert_eq!(seq_operator("+", vec![seq_const_int(1, Nyes::Constant), seq_const_int(2, Nyes::Constant)], Nyes::Constant).get_hs_type(), "Operator");
+        assert_eq!(seq_search("x", SearchDirection::Backward, false, None, None, Nyes::Econstanic).get_hs_type(), "Search");
+        assert_eq!(seq_index(1, false).get_hs_type(), "Index");
+        assert_eq!(seq_headtail(true, false).get_hs_type(), "HeadTail");
+        assert_eq!(seq_stay_foolish(seq_const_int(1, Nyes::Constant)).get_hs_type(), "StayFoolish");
+        assert_eq!(seq_stay_fully_foolish(seq_const_int(1, Nyes::Constant)).get_hs_type(), "StayFullyFoolish");
+        assert_eq!(seq_concatenation(vec![seq_const_int(1, Nyes::Constant)], None).get_hs_type(), "Concatenation");
+        assert_eq!(seq_brane(vec![], vec![]).get_hs_type(), "NormalBrane");
+    }
+
+    #[test]
+    fn test_hs_get_nyes() {
+        assert_eq!(seq_const_int(42, Nyes::Constant).hs_get_nyes(), Nyes::Constant);
+        assert_eq!(seq_nk("err", Nyes::Nk).hs_get_nyes(), Nyes::Nk);
+        assert_eq!(seq_search("x", SearchDirection::Backward, false, None, None, Nyes::Econstanic).hs_get_nyes(), Nyes::Econstanic);
+        assert_eq!(seq_operator("*", vec![], Nyes::Embryonic).hs_get_nyes(), Nyes::Embryonic);
+        assert_eq!(seq_brane(vec![], vec![]).hs_get_nyes(), Nyes::Constant);
+        assert_eq!(seq_index(0, true).hs_get_nyes(), Nyes::Constant);
+        assert_eq!(seq_headtail(false, true).hs_get_nyes(), Nyes::Constant);
+        assert_eq!(seq_stay_foolish(seq_const_int(0, Nyes::Braning)).hs_get_nyes(), Nyes::Constant); // outer state
+        assert_eq!(seq_concatenation(vec![], None).hs_get_nyes(), Nyes::Constant);
+        assert_eq!(seq_stay_fully_foolish(seq_const_int(0, Nyes::Prembrionic)).hs_get_nyes(), Nyes::Constant); // outer state
+    }
+
+    #[test]
+    fn test_get_hs_children_operator() {
+        let c1 = seq_const_int(1, Nyes::Constant);
+        let c2 = seq_const_int(2, Nyes::Constant);
+        let op = seq_operator("+", vec![c1, c2], Nyes::Constant);
+        assert_eq!(op.get_hs_children().len(), 2);
+    }
+
+    #[test]
+    fn test_get_hs_children_brane() {
+        let stmts = vec![
+            SequenceableStatement { name: Some("a".to_string()), body: seq_const_int(1, Nyes::Constant) },
+            SequenceableStatement { name: Some("b".to_string()), body: seq_const_int(2, Nyes::Constant) },
+        ];
+        let brane = seq_brane(vec![], stmts);
+        assert_eq!(brane.get_hs_children().len(), 2);
+    }
+
+    #[test]
+    fn test_get_hs_children_constant() {
+        let c = seq_const_int(42, Nyes::Constant);
+        assert!(c.get_hs_children().is_empty());
+    }
+
+    #[test]
+    fn test_get_hs_parent_none() {
+        assert!(seq_const_int(42, Nyes::Constant).get_hs_parent().is_none());
+        assert!(seq_nk("x", Nyes::Nk).get_hs_parent().is_none());
+        assert!(seq_brane(vec![], vec![]).get_hs_parent().is_none());
+    }
+
+    // ── get_hs_value() — search chain resolution ─────────────────────────
+
+    #[test]
+    fn test_get_hs_value_constanic() {
+        let c = seq_const_int(42, Nyes::Constant);
+        let val = c.get_hs_value().unwrap();
+        assert!(matches!(&val, SequenceableFir::ConstantInt { value: 42, .. }));
+    }
+
+    #[test]
+    fn test_get_hs_value_search_chain() {
+        let target = seq_const_int(42, Nyes::Constant);
+        // Search is non-constanic (Embryonic) so resolve follows the target
+        let search = seq_search("x", SearchDirection::Backward, false, None, Some(Box::new(target)), Nyes::Embryonic);
+        let val = search.get_hs_value().unwrap();
+        assert!(matches!(&val, SequenceableFir::ConstantInt { value: 42, .. }));
+    }
+
+    #[test]
+    fn test_get_hs_value_loop_detection() {
+        // Chain of non-constanic searches deeper than MAX_DEPTH (100)
+        let mut current = seq_search("end", SearchDirection::Backward, false, None, None, Nyes::Embryonic);
+        for _ in 0..105 {
+            current = seq_search("x", SearchDirection::Backward, false, None, Some(Box::new(current)), Nyes::Embryonic);
+        }
+        let result = current.get_hs_value();
+        assert!(matches!(&result, Err(SequenceableError::LoopDetected { depth }) if *depth >= 100));
+    }
+
+    #[test]
+    fn test_get_hs_value_deep_chain_resolves() {
+        // Chain of non-constanic searches; last one has no target so resolve returns it
+        let mut current = seq_search("end", SearchDirection::Backward, false, None, None, Nyes::Embryonic);
+        for _ in 0..50 {
+            current = seq_search("x", SearchDirection::Backward, false, None, Some(Box::new(current)), Nyes::Embryonic);
+        }
+        let val = current.get_hs_value().unwrap();
+        assert!(matches!(&val, SequenceableFir::Search { pattern, .. } if pattern == "end"));
+    }
+
+    // ── get_hs_int_value() ───────────────────────────────────────────────
+
+    #[test]
+    fn test_get_hs_int_value() {
+        assert_eq!(seq_const_int(42, Nyes::Constant).get_hs_int_value(), Some(42));
+    }
+
+    #[test]
+    fn test_get_hs_int_value_none() {
+        assert_eq!(seq_nk("unknown", Nyes::Nk).get_hs_int_value(), None);
+    }
+
+    // ── HumanizingSequencer::format_for_snap_test() ──────────────────────
+
+    #[test]
+    fn test_format_empty_brane() {
+        let brane = seq_brane(vec![], vec![]);
+        assert_eq!(format_hs(&brane), "Brane{}");
+    }
+
+    #[test]
+    fn test_format_constant_int() {
+        let c = seq_const_int(42, Nyes::Constant);
+        assert_eq!(format_hs(&c), "Int(42)");
+    }
+
+    #[test]
+    fn test_format_named_statement() {
+        let stmts = vec![SequenceableStatement { name: Some("x".to_string()), body: seq_const_int(42, Nyes::Constant) }];
+        let brane = seq_brane(vec![], stmts);
+        let s = format_hs(&brane);
+        assert!(s.contains("x = Int(42)"), "Expected 'x = Int(42)' in: {}", s);
+    }
+
+    #[test]
+    fn test_format_multi_statement() {
+        let stmts = vec![
+            SequenceableStatement { name: Some("a".to_string()), body: seq_const_int(1, Nyes::Constant) },
+            SequenceableStatement { name: Some("b".to_string()), body: seq_const_int(2, Nyes::Constant) },
+        ];
+        let brane = seq_brane(vec![], stmts);
+        let s = format_hs(&brane);
+        assert!(s.contains("a = Int(1)"), "Expected 'a = Int(1)' in: {}", s);
+        assert!(s.contains("b = Int(2)"), "Expected 'b = Int(2)' in: {}", s);
+        assert!(s.contains(";"), "Expected semicolon separator in: {}", s);
+    }
+
+    #[test]
+    fn test_format_search() {
+        let search = seq_search("x", SearchDirection::Backward, false, None, None, Nyes::Econstanic);
+        let s = format_hs(&search);
+        assert!(s.starts_with("Search("), "Expected Search( in: {}", s);
+        assert!(s.contains("pattern='x'"), "Expected pattern='x' in: {}", s);
+    }
+
+    #[test]
+    fn test_format_nk() {
+        let nk = seq_nk("unknown", Nyes::Nk);
+        let s = format_hs(&nk);
+        assert!(s.starts_with("NK("), "Expected NK( in: {}", s);
+    }
+
+    #[test]
+    fn test_format_nk_with_alarm() {
+        let nk = seq_nk_with_alarm("div-by-zero", Nyes::Nk);
+        let s = format_hs(&nk);
+        assert!(s.starts_with("NK("), "Expected NK( in: {}", s);
+        assert!(s.contains("test alarm"), "Expected alarm message in: {}", s);
+    }
+
+    #[test]
+    fn test_format_operator() {
+        let op = seq_operator("+", vec![seq_const_int(1, Nyes::Constant), seq_const_int(2, Nyes::Constant)], Nyes::Constant);
+        let s = format_hs(&op);
+        assert!(s.contains("Operator(op='+'"), "Expected Operator(op='+' in: {}", s);
+        assert!(s.contains("Int(1)"), "Expected Int(1) in: {}", s);
+        assert!(s.contains("Int(2)"), "Expected Int(2) in: {}", s);
+    }
+
+    #[test]
+    fn test_format_concatenation() {
+        let conc = seq_concatenation(vec![seq_const_int(1, Nyes::Constant), seq_const_int(2, Nyes::Constant)], None);
+        let s = format_hs(&conc);
+        assert!(s.starts_with("Concatenation("), "Expected Concatenation( in: {}", s);
+        assert!(s.contains("elements=2"), "Expected elements=2 in: {}", s);
+    }
+
+    #[test]
+    fn test_format_concatenation_merged() {
+        let merged = seq_const_int(99, Nyes::Constant);
+        let conc = seq_concatenation(vec![seq_const_int(1, Nyes::Constant)], Some(Box::new(merged)));
+        let s = format_hs(&conc);
+        assert!(s.contains("merged="), "Expected merged= in: {}", s);
+    }
+
+    #[test]
+    fn test_format_index() {
+        let idx = seq_index(1, false);
+        let s = format_hs(&idx);
+        assert!(s.contains("Index(offset=1, FREE)"), "Expected 'Index(offset=1, FREE)' in: {}", s);
+    }
+
+    #[test]
+    fn test_format_index_anchored() {
+        let idx = seq_index(0, true);
+        let s = format_hs(&idx);
+        assert!(s.contains("Index(offset=0, ANCHORED)"), "Expected 'Index(offset=0, ANCHORED)' in: {}", s);
+    }
+
+    #[test]
+    fn test_format_headtail_head() {
+        let ht = seq_headtail(true, false);
+        let s = format_hs(&ht);
+        assert!(s.contains("HeadTail(HEAD, FREE)"), "Expected 'HeadTail(HEAD, FREE)' in: {}", s);
+    }
+
+    #[test]
+    fn test_format_headtail_tail_anchored() {
+        let ht = seq_headtail(false, true);
+        let s = format_hs(&ht);
+        assert!(s.contains("HeadTail(TAIL, ANCHORED)"), "Expected 'HeadTail(TAIL, ANCHORED)' in: {}", s);
+    }
+
+    #[test]
+    fn test_format_stay_foolish() {
+        let sf = seq_stay_foolish(seq_const_int(1, Nyes::Constant));
+        let s = format_hs(&sf);
+        assert!(s.starts_with("StayFoolish("), "Expected StayFoolish( in: {}", s);
+        assert!(s.contains("Int(1)"), "Expected Int(1) in: {}", s);
+    }
+
+    #[test]
+    fn test_format_stay_fully_foolish() {
+        let sff = seq_stay_fully_foolish(seq_const_int(2, Nyes::Constant));
+        let s = format_hs(&sff);
+        assert!(s.starts_with("StayFullyFoolish("), "Expected StayFullyFoolish( in: {}", s);
+        assert!(s.contains("Int(2)"), "Expected Int(2) in: {}", s);
+    }
+
+    // ── Integration: Compile → Convert → Format ──────────────────────────
+
+    #[test]
+    fn test_integration_compile_convert_format() {
+        let firs = Compiler::compile("{x = 1 + 2}").unwrap();
+        let seq = SequenceableFir::from(firs[0].clone());
+        let formatted = format_hs(&seq);
+
+        // Output should contain the statement name and the operator structure
+        assert!(formatted.contains("x ="), "Expected 'x =' in: {}", formatted);
+        assert!(formatted.contains("Operator(op='+'"), "Expected operator in: {}", formatted);
+        assert!(formatted.contains("Int(1)"), "Expected Int(1) in: {}", formatted);
+        assert!(formatted.contains("Int(2)"), "Expected Int(2) in: {}", formatted);
+    }
+
+    #[test]
+    fn test_integration_multi_statement_roundtrip() {
+        let firs = Compiler::compile("{a = 1; b = 2; c = 3}").unwrap();
+        let seq = SequenceableFir::from(firs[0].clone());
+        let formatted = format_hs(&seq);
+
+        assert!(formatted.contains("a = Int(1)"), "Expected 'a = Int(1)' in: {}", formatted);
+        assert!(formatted.contains("b = Int(2)"), "Expected 'b = Int(2)' in: {}", formatted);
+        assert!(formatted.contains("c = Int(3)"), "Expected 'c = Int(3)' in: {}", formatted);
     }
 }

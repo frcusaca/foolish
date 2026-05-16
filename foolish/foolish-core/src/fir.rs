@@ -396,6 +396,198 @@ impl Fir {
     }
 }
 
+// ==================== SequenceableFir ====================
+
+/// Error for SequenceableFir operations.
+#[derive(Debug, thiserror::Error)]
+pub enum SequenceableError {
+    #[error("Loop detected in search chain (depth: {depth})")]
+    LoopDetected { depth: usize },
+}
+
+/// Detached, printable copy of a Fir — no Rc/RefCell, exhaustive match.
+#[derive(Debug, Clone, PartialEq)]
+pub enum SequenceableFir {
+    ConstantInt { value: i64, state: Nyes },
+    Nk { reason: String, state: Nyes, alarm: Option<Alarm> },
+    Operator { op: String, operands: Vec<SequenceableFir>, state: Nyes },
+    Search { pattern: String, direction: SearchDirection, anchored: bool,
+              anchor: Option<Box<SequenceableFir>>,
+              target: Option<Box<SequenceableFir>>, state: Nyes },
+    Index { offset: i32, anchored: bool,
+             anchor: Option<Box<SequenceableFir>>, state: Nyes },
+    HeadTail { is_head: bool, anchored: bool,
+                anchor: Option<Box<SequenceableFir>>, state: Nyes },
+    StayFoolish { expr: Box<SequenceableFir>, state: Nyes },
+    StayFullyFoolish { expr: Box<SequenceableFir>, state: Nyes },
+    Concatenation { elements: Vec<SequenceableFir>,
+                    merged: Option<Box<SequenceableFir>>, state: Nyes },
+    NormalBrane { characterizations: Vec<String>,
+                  statements: Vec<SequenceableStatement>, state: Nyes },
+}
+
+/// Statement for SequenceableFir (detached from Rc<RefCell>).
+#[derive(Debug, Clone, PartialEq)]
+pub struct SequenceableStatement {
+    pub name: Option<String>,
+    pub body: SequenceableFir,
+}
+
+/// Convert a Fir enum into a detached SequenceableFir.
+impl From<Fir> for SequenceableFir {
+    fn from(fir: Fir) -> Self {
+        match fir {
+            Fir::ConstantInt(inner) => SequenceableFir::ConstantInt { value: inner.value, state: inner.state },
+            Fir::Nk(inner) => SequenceableFir::Nk { reason: inner.reason, state: inner.state, alarm: inner.alarm },
+            Fir::Operator(inner) => SequenceableFir::Operator {
+                op: inner.op,
+                operands: inner.operands.iter().map(|o| SequenceableFir::from(clone_steppable(o))).collect(),
+                state: inner.state,
+            },
+            Fir::Search(inner) => SequenceableFir::Search {
+                pattern: inner.pattern,
+                direction: inner.direction,
+                anchored: inner.anchored,
+                anchor: inner.anchor.map(|a| Box::new(SequenceableFir::from(clone_steppable(&a)))),
+                target: inner.target.map(|t| Box::new(SequenceableFir::from(clone_steppable(&t)))),
+                state: inner.state,
+            },
+            Fir::Index(inner) => SequenceableFir::Index {
+                offset: inner.offset,
+                anchored: inner.anchored,
+                anchor: inner.anchor.map(|a| Box::new(SequenceableFir::from(clone_steppable(&a)))),
+                state: inner.state,
+            },
+            Fir::HeadTail(inner) => SequenceableFir::HeadTail {
+                is_head: inner.is_head,
+                anchored: inner.anchored,
+                anchor: inner.anchor.map(|a| Box::new(SequenceableFir::from(clone_steppable(&a)))),
+                state: inner.state,
+            },
+            Fir::StayFoolish(inner) => SequenceableFir::StayFoolish {
+                expr: Box::new(SequenceableFir::from(clone_steppable(&inner.expr))),
+                state: inner.state,
+            },
+            Fir::StayFullyFoolish(inner) => SequenceableFir::StayFullyFoolish {
+                expr: Box::new(SequenceableFir::from(clone_steppable(&inner.expr))),
+                state: inner.state,
+            },
+            Fir::Concatenation(inner) => SequenceableFir::Concatenation {
+                elements: inner.elements.iter().map(|e| SequenceableFir::from(clone_steppable(e))).collect(),
+                merged: inner.merged.map(|m| Box::new(SequenceableFir::from(clone_steppable(&m)))),
+                state: inner.state,
+            },
+            Fir::NormalBrane(inner) => SequenceableFir::NormalBrane {
+                characterizations: inner.characterizations,
+                statements: inner.statements.iter().map(|s| SequenceableStatement {
+                    name: s.name.clone(),
+                    body: SequenceableFir::from(clone_steppable(&s.body)),
+                }).collect(),
+                state: inner.state,
+            },
+        }
+    }
+}
+
+impl SequenceableFir {
+    /// Return the variant identifier string.
+    pub fn get_hs_type(&self) -> &'static str {
+        match self {
+            SequenceableFir::ConstantInt { .. } => "ConstantInt",
+            SequenceableFir::Nk { .. } => "Nk",
+            SequenceableFir::Operator { .. } => "Operator",
+            SequenceableFir::Search { .. } => "Search",
+            SequenceableFir::Index { .. } => "Index",
+            SequenceableFir::HeadTail { .. } => "HeadTail",
+            SequenceableFir::StayFoolish { .. } => "StayFoolish",
+            SequenceableFir::StayFullyFoolish { .. } => "StayFullyFoolish",
+            SequenceableFir::Concatenation { .. } => "Concatenation",
+            SequenceableFir::NormalBrane { .. } => "NormalBrane",
+        }
+    }
+
+    /// Return the NYES state.
+    pub fn hs_get_nyes(&self) -> Nyes {
+        match self {
+            SequenceableFir::ConstantInt { state, .. }
+          | SequenceableFir::Nk { state, .. }
+          | SequenceableFir::Operator { state, .. }
+          | SequenceableFir::Search { state, .. }
+          | SequenceableFir::Index { state, .. }
+          | SequenceableFir::HeadTail { state, .. }
+          | SequenceableFir::StayFoolish { state, .. }
+          | SequenceableFir::StayFullyFoolish { state, .. }
+          | SequenceableFir::Concatenation { state, .. }
+          | SequenceableFir::NormalBrane { state, .. } => *state,
+        }
+    }
+
+    /// Return child SequenceableFir references.
+    pub fn get_hs_children(&self) -> Vec<&SequenceableFir> {
+        match self {
+            SequenceableFir::ConstantInt { .. } => vec![],
+            SequenceableFir::Nk { .. } => vec![],
+            SequenceableFir::Operator { operands, .. } => operands.iter().collect(),
+            SequenceableFir::Search { anchor, target, .. } => {
+                let mut c = vec![];
+                if let Some(a) = anchor { c.push(a.as_ref()); }
+                if let Some(t) = target { c.push(t.as_ref()); }
+                c
+            },
+            SequenceableFir::Index { anchor, .. } => {
+                anchor.as_ref().map(|a| vec![a.as_ref()]).unwrap_or_default()
+            },
+            SequenceableFir::HeadTail { anchor, .. } => {
+                anchor.as_ref().map(|a| vec![a.as_ref()]).unwrap_or_default()
+            },
+            SequenceableFir::StayFoolish { expr, .. } => vec![expr.as_ref()],
+            SequenceableFir::StayFullyFoolish { expr, .. } => vec![expr.as_ref()],
+            SequenceableFir::Concatenation { elements, merged, .. } => {
+                let mut c: Vec<&SequenceableFir> = elements.iter().collect();
+                if let Some(m) = merged { c.push(m.as_ref()); }
+                c
+            },
+            SequenceableFir::NormalBrane { statements, .. } => {
+                statements.iter().map(|s| &s.body).collect()
+            },
+        }
+    }
+
+    /// Always None — sequenceable FIRs are detached copies without parent links.
+    pub fn get_hs_parent(&self) -> Option<&SequenceableFir> {
+        None
+    }
+
+    /// Resolve search chain: follow Search targets until constanic value or loop.
+    pub fn get_hs_value(&self) -> Result<SequenceableFir, SequenceableError> {
+        const MAX_DEPTH: usize = 100;
+        Self::resolve(self, 0, MAX_DEPTH)
+    }
+
+    fn resolve(current: &SequenceableFir, depth: usize, max: usize) -> Result<SequenceableFir, SequenceableError> {
+        if depth >= max {
+            return Err(SequenceableError::LoopDetected { depth });
+        }
+        if current.hs_get_nyes().is_constanic() {
+            return Ok(current.clone());
+        }
+        if let SequenceableFir::Search { target, .. } = current {
+            if let Some(t) = target {
+                return Self::resolve(t, depth + 1, max);
+            }
+        }
+        Ok(current.clone())
+    }
+
+    /// Get the integer value for ConstantInt variants.
+    pub fn get_hs_int_value(&self) -> Option<i64> {
+        match self {
+            SequenceableFir::ConstantInt { value, .. } => Some(*value),
+            _ => None,
+        }
+    }
+}
+
 // ==================== Fir: Steppable (dispatches to inner struct) ====================
 
 impl Steppable for Fir {

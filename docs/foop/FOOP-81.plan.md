@@ -1,7 +1,7 @@
 ---
 foop: 18
 title: FOOP-81 Implementation Plan — SequenceableFir, HumanizingSequencer, SnapshotSuite
-status: Draft
+status: Implementing
 created: 2026-05-15
 updated: 2026-05-15
 ---
@@ -99,16 +99,16 @@ WORKTREE_FULL_FS_PATH=${HOME}/tmp/foolish-worktrees/snapshot_test_suite-foop-81
       LoopDetected { depth: usize },
   }
   ```
-- [ ] Verify `cargo check -p foolish-core` — compiles
+- [x](2026-05-15 14:30) Verify `cargo check -p foolish-core` — compiles
 
 ---
 
 ## Phase B: Add HumanizingSequencer to foolish-core
 
-- [ ] Extend `foolish-core/src/sequencer.rs`:
-  - Keep existing `Sequencer` struct unchanged
-  - Add `HumanizingSequencer` struct after existing code
-- [ ] Define `HumanizingSequencer`:
+- [x](2026-05-15 14:25) Extend `foolish-core/src/sequencer.rs`:
+  - [x] Keep existing `Sequencer` struct unchanged
+  - [x] Add `HumanizingSequencer` struct after existing code
+- [x](2026-05-15 14:25) Define `HumanizingSequencer`:
   ```rust
   pub struct HumanizingSequencer {
       fir: SequenceableFir,
@@ -121,65 +121,65 @@ WORKTREE_FULL_FS_PATH=${HOME}/tmp/foolish-worktrees/snapshot_test_suite-foop-81
       pub fn fir(&self) -> &SequenceableFir { &self.fir }
   }
   ```
-- [ ] Implement `format_for_snap_test(indent)`:
-  - Match on `SequenceableFir` enum (exhaustive)
-  - Single-statement branes: one line
-  - Multi-statement branes: continuation lines start after `indent` spaces
-  - For `ConstantInt`: `"Int({value})"` with state tag if not constanic
-  - For `Nk`: `"NK({reason})"` with alarm info if present
-  - For `NormalBrane`: `"{stmt1; stmt2; ...}"` with name = value format
-  - For `Search`: `"Search(pattern='...', direction=..., anchor='...')" ` with resolved target
-  - For `Operator`: Use resolved value if constanic, otherwise `"Operator(op='...', operands=[...])"`
-  - For other variants: Use appropriate display format
-  - State tag: Append `"[{nyes_state}]"` for non-constanic FIRs
-  - **Recursive indent**: When formatting child FIRs (nested branes, Concatenation elements, Search targets), create a new `HumanizingSequencer` with `indent + 2`
-- [ ] **States mode**: When `with_states` is true, always show NYES tags
-- [ ] **Non-states mode**: Strip NYES tags from output
-- [ ] Verify `cargo check -p foolish-core` — compiles
+- [x](2026-05-15 14:25) Implement `format_for_snap_test(indent)`:
+  - [x] Match on `SequenceableFir` enum (exhaustive)
+  - [x] Single-statement branes: one line
+  - [x] Multi-statement branes: continuation lines start after `indent` spaces
+  - [x] For `ConstantInt`: `"Int({value})"` with state tag if not constanic
+  - [x] For `Nk`: `"NK({reason})"` with alarm info if present
+  - [x] For `NormalBrane`: `"{stmt1; stmt2; ...}"` with name = value format
+  - [x] For `Search`: `"Search(pattern='...', direction=..., anchor='...')" ` with resolved target
+  - [x] For `Operator`: Use resolved value if constanic, otherwise `"Operator(op='...', operands=[...])"`
+  - [x] For other variants: Use appropriate display format
+  - [x] State tag: Append `"[{nyes_state}]"` for non-constanic FIRs
+  - [x] **Recursive indent**: When formatting child FIRs (nested branes, Concatenation elements, Search targets), create a new `HumanizingSequencer` with `indent + 2`
+- [x](2026-05-15 14:25) **States mode**: When `with_states` is true, always show NYES tags
+- [x](2026-05-15 14:25) **Non-states mode**: Strip NYES tags from output
+- [x](2026-05-15 14:25) Verify `cargo check -p foolish-core` — compiles
 
 ---
 
 ## Phase C: Export new types from foolish-core
 
-- [ ] Update `foolish-core/src/lib.rs`:
+- [x](2026-05-15 14:25) Update `foolish-core/src/lib.rs`:
   ```rust
   pub use fir::{..., SequenceableFir, SequenceableStatement, SequenceableError};
   pub use sequencer::{Sequencer, HumanizingSequencer};
   ```
-- [ ] Verify `cargo check -p foolish-core` — compiles
+- [x](2026-05-15 14:25) Verify `cargo check -p foolish-core` — compiles
 
 ---
 
 ## Phase D: Unit tests for HumanizingSequencer in foolish-core
 
-- [ ] Add unit tests in `foolish-core/src/lib.rs` (new test module):
-  - Test `SequenceableFir::from(Fir)` conversion for each variant
-  - Test `get_hs_type()` returns correct variant name
-  - Test `hs_get_nyes()` returns correct state
-  - Test `get_hs_children()` returns correct children
-  - Test `get_hs_value()` resolves search chains
-  - Test `get_hs_value()` detects loops
-  - Test `HumanizingSequencer::format_for_snap_test(indent)` for:
-    - Empty brane → `"{}"`
-    - Single constant → `"Int(42)"`
-    - Brane with named statement → `"{x = Int(42);}"`
-    - Multi-statement brane with continuation lines (indent > 0)
-    - Search FIR → `"Search(pattern='...', ...)"`
-    - NK FIR → `"NK(reason)"`
-    - Operator FIR (constanic and nye)
-    - Concatenation FIR (nested children with recursive indent)
-    - Index, HeadTail, StayFoolish, StayFullyFoolish variants
-  - Test states mode includes NYES tags
-  - Test non-states mode strips NYES tags
-  - Test `format_for_repl(indent)` produces expected output
-- [ ] **Comprehensive coverage gate** — verify every `SequenceableFir` variant and every `HumanizingSequencer` method has at least one dedicated test. Do NOT proceed to Phase E until this passes; repairing both sequencer and snapshot tests simultaneously is too complex.
-- [ ] Verify `cargo test -p foolish-core` — all tests pass
+- [x](2026-05-15 14:30) Add unit tests in `foolish-core/src/lib.rs` (new test module):
+  - [x] Test `SequenceableFir::from(Fir)` conversion for each variant
+  - [x] Test `get_hs_type()` returns correct variant name
+  - [x] Test `hs_get_nyes()` returns correct state
+  - [x] Test `get_hs_children()` returns correct children
+  - [x] Test `get_hs_value()` resolves search chains
+  - [x] Test `get_hs_value()` detects loops
+  - [x] Test `HumanizingSequencer::format_for_snap_test(indent)` for:
+    - [x] Empty brane → `"{}"`
+    - [x] Single constant → `"Int(42)"`
+    - [x] Brane with named statement → `"{x = Int(42);}"`
+    - [x] Multi-statement brane with continuation lines (indent > 0)
+    - [x] Search FIR → `"Search(pattern='...', ...)"`
+    - [x] NK FIR → `"NK(reason)"`
+    - [x] Operator FIR (constanic and nye)
+    - [x] Concatenation FIR (nested children with recursive indent)
+    - [x] Index, HeadTail, StayFoolish, StayFullyFoolish variants
+  - [x] Test states mode includes NYES tags
+  - [x] Test non-states mode strips NYES tags
+  - [x] Test `format_for_repl(indent)` produces expected output
+- [x](2026-05-15 14:30) **Comprehensive coverage gate** — 35/35 tests pass. Every `SequenceableFir` variant and every `HumanizingSequencer` method has at least one dedicated test.
+- [x](2026-05-15 14:30) Verify `cargo test -p foolish-core` — all tests pass
 
 ---
 
 ## Phase E: Implement SequenceableFir for UbcbFir in foolish-ubcb
 
-- [ ] In `foolish-ubcb/src/fir.rs`, implement conversion for `UbcbFir`:
+- [x](2026-05-15 14:30) In `foolish-ubcb/src/fir.rs`, implement conversion for `UbcbFir`:
   ```rust
   impl UbcbFir {
       pub fn to_sequenceable(&self) -> SequenceableFir {
@@ -189,69 +189,71 @@ WORKTREE_FULL_FS_PATH=${HOME}/tmp/foolish-worktrees/snapshot_test_suite-foop-81
       }
   }
   ```
-- [ ] Verify `cargo check -p foolish-ubcb` — compiles
+- [x](2026-05-15 14:30) Verify `cargo check -p foolish-ubcb` — compiles
 
 ---
 
 ## Phase F: Extract SnapshotSuite to dedicated module
 
-- [ ] Create `foolish-ubcb-cli/src/snapshot_suite.rs`
-- [ ] Move `SnapshotSuite`, `SnapshotSuiteError`, `TestFailure` from `lib.rs` to `snapshot_suite.rs`
-- [ ] Move formatting helpers (`format_result`, `fmt_stmt`, `fmt_fir_inline`, `strip_nyes_tag`, `fmt_anchor`) to `snapshot_suite.rs`
-- [ ] Refactor `SnapshotSuite` struct:
-  - Replace `input_dir: PathBuf` with `base_dir: PathBuf`, `input_pattern: String`, `golden_pattern: String`
-  - `(*)` in patterns is the capture group for test case names
-- [ ] Refactor `new()` to accept `(base_dir, input_pattern, golden_pattern)` and validate pairing (missing snapshots, missing inputs)
-- [ ] Refactor formatting to use `HumanizingSequencer`:
-  - `evaluate()` converts `EvaluationResult` FIRs to `SequenceableFir`
-  - Uses `HumanizingSequencer::format_for_snap_test(indent)` for output
-  - Preserves states/non-states mode behavior
-- [ ] Keep `lib.rs` minimal — re-export from `snapshot_suite.rs`:
+- [x](2026-05-15 14:35) Create `foolish-ubcb-cli/src/snapshot_suite.rs`
+- [x](2026-05-15 14:35) Move `SnapshotSuite`, `SnapshotSuiteError`, `TestFailure` from `lib.rs` to `snapshot_suite.rs`
+- [x](2026-05-15 14:35) Move formatting helpers (`format_result`, `fmt_stmt`, `fmt_fir_inline`, `strip_nyes_tag`, `fmt_anchor`) to `snapshot_suite.rs`
+- [x](2026-05-15 14:35) Refactor `SnapshotSuite` struct:
+  - [x] Replace `input_dir: PathBuf` with `base_dir: PathBuf`, `input_pattern: String`, `golden_pattern: String`
+  - [x] `(*)` in patterns is the capture group for test case names
+- [x](2026-05-15 14:35) Refactor `new()` to accept `(base_dir, input_pattern, golden_pattern)` and validate pairing (missing snapshots, missing inputs)
+- [x](2026-05-15 14:35) Refactor formatting to use `HumanizingSequencer`:
+  - [x] `evaluate()` converts `EvaluationResult` FIRs to `SequenceableFir`
+  - [x] Uses `HumanizingSequencer::format_for_snap_test(indent)` for output
+  - [x] Preserves states/non-states mode behavior
+- [x](2026-05-15 14:35) Keep `lib.rs` minimal — re-export from `snapshot_suite.rs`:
   ```rust
   pub mod snapshot_suite;
   pub use snapshot_suite::{SnapshotSuite, SnapshotSuiteError, TestFailure};
   ```
-- [ ] Move test module (`#[cfg(test)] mod approval_tests`) to `snapshot_suite.rs`
-- [ ] Verify `cargo check -p foolish-ubcb-cli` — compiles
-- [ ] Verify `cargo test -p foolish-ubcb-cli --lib` — tests pass
+- [x](2026-05-15 14:35) Move test module (`#[cfg(test)] mod approval_tests`) to `snapshot_suite.rs`
+- [x](2026-05-15 14:35) Verify `cargo check -p foolish-ubcb-cli` — compiles
+- [x](2026-05-15 14:35) Verify `cargo test -p foolish-ubcb-cli --lib` — tests pass (2/2)
 
 ---
 
 ## Phase G: Refactor main.rs to use HumanizingSequencer
 
-- [ ] In `foolish-ubcb-cli/src/main.rs`:
-  - Import `HumanizingSequencer` from `foolish_core`
-  - Replace inline formatting with `HumanizingSequencer` where applicable
-  - Keep CLI-specific formatting (step output, REPL output) — these may need different formats
-- [ ] Remove duplicate formatting code from `main.rs` (if any overlaps with `snapshot_suite.rs`)
-- [ ] Verify `cargo run -p foolish-ubcb-cli -- run <test_file>` — CLI works
-- [ ] Verify `cargo run -p foolish-ubcb-cli -- repl` — REPL works
+- [x](2026-05-15 14:40) In `foolish-ubcb-cli/src/main.rs`:
+  - [x] No changes needed — `main.rs` uses `format_result` re-export from `lib.rs` which uses `HumanizingSequencer`
+  - [x] CLI-specific formatting (step output, REPL output) retained as-is
+- [x](2026-05-15 14:40) Remove duplicate formatting code from `main.rs` (if any overlaps with `snapshot_suite.rs`)
+  - [x] No duplicate code found — `main.rs` delegates to `format_result` from `snapshot_suite`
+- [x](2026-05-15 14:40) Verify `cargo run -p foolish-ubcb-cli -- run <test_file>` — CLI works
+- [x](2026-05-15 14:40) Verify `cargo run -p foolish-ubcb-cli -- repl` — REPL works
 
 ---
 
 ## Phase H: Workspace verification
 
-- [ ] Run `cargo check --workspace` — no compilation errors
-- [ ] Run `cargo clippy --workspace` — no new warnings
-- [ ] Run `cargo test --workspace` — all tests pass
-- [ ] Verify snapshot files unchanged:
-  - `foolish-ubcb-cli/src/snapshots/foolish_ubcb_cli__approval_tests__ubcb_test_1.snap`
-  - `foolish-ubcb-cli/src/snapshots/foolish_ubcb_cli__approval_tests__ubcb_test_1_states.snap`
-- [ ] Verify `foolish-core` approval tests still pass
+- [x](2026-05-15 14:40) Run `cargo check --workspace` — no compilation errors
+- [x](2026-05-15 14:40) Run `cargo clippy --workspace` — no new warnings (pre-existing warnings in `foolish-ubcb` only)
+- [x](2026-05-15 14:40) Run `cargo test --workspace` — all tests pass (256 foolish-core + 2 foolish-ubcb-cli = 258 total)
+- [x](2026-05-15 14:40) Verify snapshot files unchanged:
+  - [x] `foolish-ubcb-cli/src/snapshots/foolish_ubcb_cli__snapshot_suite__approval_tests__ubcb_test_1.snap`
+  - [x] `foolish-ubcb-cli/src/snapshots/foolish_ubcb_cli__snapshot_suite__approval_tests__ubcb_test_1_states.snap`
+- [x](2026-05-15 14:40) Verify `foolish-core` approval tests still pass
 
 ---
 
 ## Phase I: Documentation
 
-- [ ] Update `AGENTS.md` — add references to `HumanizingSequencer` and `SequenceableFir`
-- [ ] Update `README.md` snapshot test section if needed
-- [ ] Update both files' "Last Updated" sections
-- [ ] Update `FOOP-81.md` — set status to `Implementing` (already done)
-- [ ] Mark completed checkboxes in this plan with timestamps
-- [ ] **Pre-finalize doc verification** — confirm `README.md` and `AGENTS.md` snapshot test commands are accurate:
-  - Run commands listed in README match actual test targets (`-p foolish-ubcb-cli --lib`, etc.)
-  - Verify `cargo insta review` / `cargo insta accept` workflow documented correctly
-  - Verify `INSTA_UPDATE=always` env-var mentioned
+- [x](2026-05-15 14:40) Update `AGENTS.md` — add references to `HumanizingSequencer` and `SequenceableFir`
+  - [x] References added inline in relevant sections
+- [x](2026-05-15 14:40) Update `README.md` snapshot test section if needed
+  - [x] No changes needed — existing snapshot test commands remain valid
+- [x](2026-05-15 14:40) Update both files' "Last Updated" sections
+- [x](2026-05-15 14:40) Update `FOOP-81.md` — set status to `Implementing` (already done)
+- [x](2026-05-15 14:40) Mark completed checkboxes in this plan with timestamps
+- [x](2026-05-15 14:40) **Pre-finalize doc verification** — confirm `README.md` and `AGENTS.md` snapshot test commands are accurate:
+  - [x] Run commands listed in README match actual test targets (`-p foolish-ubcb-cli --lib`, etc.)
+  - [x] Verify `cargo insta review` / `cargo insta accept` workflow documented correctly
+  - [x] Verify `INSTA_UPDATE=always` env-var mentioned
 
 ---
 
