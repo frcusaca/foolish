@@ -124,12 +124,18 @@ This gives both agents and humans a clear view of how work is progressing over t
 If a worktree branch is used for implementation, the plan **must** document the lifecycle of that worktree as explicit, separate checkbox tasks placed at appropriate points in the plan. The workpath shall always be:
 
 ```
-FULL_PATH_TO_WORKTREE=${HOME}/tmp/foolish-worktrees/short_description-foop-<NUMBER>
+WORKTREE_BRANCH_NAME=short_description-foop-<NUMBER>
+WORKTREE_FULL_FS_PATH=${HOME}/tmp/foolish-worktrees/short_description-foop-<NUMBER>
+
+## The branch is created this way from the starting branch and path
+# cd $STARTING_PATH ## User normally starts in this directory
+# git checkout $STARTING_BRANCH ## Again, user normally already has this branch checked out.
+git worktree add -b "$WORKTREE_BRANCH_NAME" "$WORKTREE_FULL_FS_PATH"
 ```
 
 The short_description in the path should be generated as part of the .plan.md generation. It is possible because the specification is already made and a short description should be possible. the "foop-<NUBER>" suffix should match the name of the foop file as well as the plan file. Once set, this path name
 
-Agent with permission to work on the main foolish directory also has permission to work on a worktree added from the foretias directory. If asking for permission, ask once for the entire worktree branch: "${FULL_PATH_TO_WORKTREE}" not a subdirectory.
+Agent with permission to work on the main foolish directory also has permission to work on a worktree added from the foretias directory. If asking for permission, ask once for the entire worktree branch: "${WORKTREE_FULL_FS_PATH}" not a subdirectory.
 
 ```markdown
 - [ ] Create worktree at ${HOME}/tmp/foolish-worktrees/constanic-clone-foop-7 with branch `foop/foop-7-constanic-clone`
@@ -145,15 +151,15 @@ Agent with permission to work on the main foolish directory also has permission 
 If a task proves larger than expected and splits into multiple sub-tasks, indent them under the parent. Use completed sub-tasks to justify why the split occurred:
 
 ```markdown
-- [ ] Merge ${BRANCH_NAME} to alpha
+- [ ] Merge ${BRANCH_NAME} to ${STARTING_BRANCH}
   - [x](2026-05-06 14:00) Detected complex merge situation requiring additional work
   - [ ] Update ${BRANCH_NAME} to follow new coding style
   - [ ] Update ${BRANCH_NAME} to use new API call convention
   - [x](2026-05-06 14:31) Merged breaking changes from alpha
-  - [ ] Repair ALL tests in alpha
-  - [ ] Cleanup ${FULL_PATH_TO_WORKTREE}
+  - [ ] Repair ALL tests in ${STARTING_BRANCH} in ${STARTING_PATH}
+  - [ ] Cleanup ${WORKTREE_FULL_FS_PATH}
     - [ ] Check that _PLAN.md has all but Cleanup checkboxes completed
-    - [ ] Remove "${FULL_PATH_TO_WORKTREE}"
+    - [ ] Remove "${WORKTREE_FULL_FS_PATH}"
     - [ ] This is the last checkbox to be checked in my _PLAN.md
 ```
 

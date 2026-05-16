@@ -11,9 +11,11 @@ updated: 2026-05-15
 ## Worktree
 
 ```
-FULL_WORKTREE_PATH=${HOME}/tmp/foolish-worktrees/____-foop-81
+STARTING_PATH=/home/hcbusy/foolish-rust
+STARTING_BRANCH=foolish-rust
+WORKTREE_BRANCH_NAME=snapshot_test_suite-foop-81
+WORKTREE_FULL_FS_PATH=${HOME}/tmp/foolish-worktrees/snapshot_test_suite-foop-81
 ```
-(Generate random 4-digit prefix when plan execution begins.)
 
 ## Current State (Updated)
 
@@ -261,6 +263,7 @@ FULL_WORKTREE_PATH=${HOME}/tmp/foolish-worktrees/____-foop-81
     - [ ] Repair conflicts
     - [ ] Re-run `cargo test --workspace`
     - [ ] Re-commit
+    - [ ] Check that everything works in `/home/hcbusy/foolish-rust` while on branch `foolish-rust`
 - [ ] Cleanup worktree (if used)
   - [ ] Check that this plan has all but Cleanup checkboxes completed
   - [ ] Remove the worktree directory
