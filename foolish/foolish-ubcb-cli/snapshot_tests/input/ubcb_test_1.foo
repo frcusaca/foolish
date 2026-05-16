@@ -23,13 +23,13 @@
       a = b;  !! this should show a constanic search for the identifier b.
       b = 1;  !! b=1
       c = a;  !! c=1
-   }
+   };
 
    test_preserving_constanics{
       a = b;  !! this should show a constanic search for the identifier b.
       b = 1;  !! b=1
       c = a;  !! c=1
-   }
+   };
 
 
    test_preserving_constanics_over_shadows{
@@ -40,9 +40,9 @@
         a = 0;
         b = 0;
         r = a + b + c + d;
-      }
+      };
       g = f;
-      d = 0
+      d = 0;
       r = g;
    }
 }
