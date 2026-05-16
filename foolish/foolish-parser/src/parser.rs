@@ -338,13 +338,18 @@ impl Parser {
     }
 
     fn is_concatenation_continuation(&self) -> bool {
-        let current_line = match self.current() {
-            Some(t) => t.line,
+        let current_token = match self.current() {
+            Some(t) => t.clone(),
             None => return false,
         };
-        match self.peek_token() {
-            Some(Token::LBrace | Token::Ident(_) | Token::Up) => {
-                self.current().map(|t| t.line == current_line).unwrap_or(false)
+        match current_token.token {
+            Token::LBrace | Token::Ident(_) | Token::Up => {
+                let Some(prev_idx) = self.pos.checked_sub(1) else {
+                    return false;
+                };
+                self.tokens.get(prev_idx)
+                    .map(|t| t.line == current_token.line)
+                    .unwrap_or(false)
             }
             _ => false,
         }

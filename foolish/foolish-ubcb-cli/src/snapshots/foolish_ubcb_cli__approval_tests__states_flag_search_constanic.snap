@@ -1,5 +1,0 @@
----
-source: foolish-ubcb-cli/src/main.rs
-expression: output
----
-{Search(pattern='^b$', direction=BACKWARD, anchor="a") [EMBRYONIC];}

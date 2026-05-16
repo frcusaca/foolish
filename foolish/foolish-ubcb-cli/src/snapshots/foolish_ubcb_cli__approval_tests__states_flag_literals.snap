@@ -1,5 +1,0 @@
----
-source: foolish-ubcb-cli/src/main.rs
-expression: output
----
-{Int(1) [INDEPENDENT]; Int(2) [INDEPENDENT]; Int(3) [INDEPENDENT];}

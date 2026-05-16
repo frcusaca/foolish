@@ -87,6 +87,17 @@ Type `{` to start a brane — the REPL accumulates lines until braces balance, t
 cargo test --package foolish-core
 ```
 
+**Snapshot tests (insta):**
+
+```bash
+cargo test -p foolish-ubcb-cli --lib                          # run all suites
+cargo test -p foolish-ubcb-cli --lib -- approval_all         # run one suite
+cargo test -p foolish-ubcb-cli --lib -- ubcb_test_literals   # run one file
+INSTA_UPDATE=always cargo test -p foolish-ubcb-cli --lib     # auto-accept all
+cargo insta review                                           # interactive review
+cargo insta accept                                           # accept all .snap.new
+```
+
 ## Quick Start (Java/Scala)
 
 ```bash
@@ -455,6 +466,10 @@ The following documents in `docs/vintage_legacy/` document the original ubc0 imp
 ---
 
 ## Last Updated
+
+**Date**: 2026-05-15
+**Updated By**: opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4
+**Changes**: Added UBCb snapshot test command to Rust test section.
 
 **Date**: 2026-05-08
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.7 xHigh effort

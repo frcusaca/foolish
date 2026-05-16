@@ -835,12 +835,18 @@ cargo test -p foolish-core -- brane_search       # Specific test (substring matc
 
 ### Approval Tests (insta snapshots)
 
-Approval tests live in `foolish-core` as `mod approval_tests` and use `insta` YAML snapshots stored in `foolish-core/src/snapshots/`.
+**foolish-core** approval tests use `insta` YAML snapshots stored in `foolish-core/src/snapshots/`.
+
+**foolish-ubcb-cli** snapshot tests use `SnapshotSuite` (parallel eval via Rayon, sequential insta assertion). Snapshots live in `foolish-ubcb-cli/src/snapshots/`. When output differs from an approved `.snap`, insta writes a `.snap.new`. Review and approve with `cargo insta review` or accept all with `cargo insta accept`. To auto-accept in CI, set `INSTA_UPDATE=always`.
 
 ```bash
-cargo test -p foolish-core -- approval           # All approval tests
-cargo test -p foolish-core -- chainedArithmeticIsApproved  # One approval test
-INSTA_UPDATE=always cargo test -p foolish-core -- approval   # Update snapshots
+cargo test -p foolish-core -- approval                     # all core approval tests
+cargo test -p foolish-ubcb-cli --lib                       # all UBCb snapshot suites
+cargo test -p foolish-ubcb-cli --lib -- approval_all       # one suite (all files)
+cargo test -p foolish-ubcb-cli --lib -- ubcb_test_literals # one file in a suite
+INSTA_UPDATE=always cargo test -p foolish-ubcb-cli --lib   # auto-accept all new
+cargo insta review                                         # interactive review/approve
+cargo insta accept                                         # accept all .snap.new
 ```
 
 ### CLI Usage
@@ -865,8 +871,12 @@ as it matches the expected output byte for byte, it is correct. The approval tes
 just the final brane, it outputs alarms generated along the way as well as number of steps it took to execute
 the FVM before the input Foolish file became isConstanic.
 
-Separate langauges read from the same test input resources directory to produce their own approval output.
+Separate languages read from the same test input resources directory to produce their own approval output.
 A crossvalidation process checks that implementations in different languages are behaving identically.
+
+**Snapshot workflow**: Run a test → if output differs, insta writes `.snap.new` →
+`cargo insta review` to interactively approve/reject → `cargo insta accept` to bulk accept →
+`INSTA_UPDATE=always` to auto-accept (useful in CI).
 
 ## Clarifications
 * When user mentions "path/" first interpret it as relative path from the directory where claude code was invoked. This is normal behavior for most unix apps, for example if I "cat path/file" that path is resolved from the current path.
@@ -1021,6 +1031,11 @@ When proposing updates, explain what has changed and why the documentation needs
 
 
 ## Last Updated
+
+**Date**: 2026-05-15
+**Updated By**: opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4
+**Changes**: Added UBCb SnapshotSuite test commands section with parallel
+execution, snapshot acceptance, and cargo insta review references.
 
 **Date**: 2026-05-08
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.7 xHigh effort
