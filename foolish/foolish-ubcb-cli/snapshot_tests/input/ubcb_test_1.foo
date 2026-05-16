@@ -44,5 +44,12 @@
       g = f;
       d = 0;
       r = g;
-   }
+   };
+
+
+   test_simple_concatenation ={
+      b1 = {a=1,b=2,c=3,r=0};
+      b2 = {d=4,e=5,f=6,r=1};
+      b3 = b1 b2;
+   };
 }
