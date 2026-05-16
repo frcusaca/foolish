@@ -157,6 +157,7 @@ If a task proves larger than expected and splits into multiple sub-tasks, indent
   - [ ] Update ${BRANCH_NAME} to use new API call convention
   - [x](2026-05-06 14:31) Merged breaking changes from alpha
   - [ ] Repair ALL tests in ${STARTING_BRANCH} in ${STARTING_PATH}
+  - [ ] STOP! STOP!! STOP!!! ASK HUMAN to check this box before continuing. UNDER NO CIRCUMSTANCES will Agent continue past this point automatically!!
   - [ ] Cleanup ${WORKTREE_FULL_FS_PATH}
     - [ ] Check that _PLAN.md has all but Cleanup checkboxes completed
     - [ ] Remove "${WORKTREE_FULL_FS_PATH}"
