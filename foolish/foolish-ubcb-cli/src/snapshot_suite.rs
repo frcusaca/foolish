@@ -71,34 +71,37 @@ impl std::fmt::Display for TestFailure {
 
 /// Orchestrator for snapshot-based approval testing of UBCb evaluation.
 ///
-/// Scans `approval_test_input/` for `.foo` source files and compares
-/// UBCb evaluation output against insta snapshots. Supports parallel
-/// evaluation via Rayon with sequential insta assertion (thread-safety).
+/// Scans `snapshot_tests/input/` for `.foo` source files and compares
+/// UBCb evaluation output against approved snapshots in `snapshot_tests/approved/`.
+/// Supports parallel evaluation via Rayon with sequential insta assertion (thread-safety).
 pub struct SnapshotSuite {
     input_dir: PathBuf,
+    approved_dir: PathBuf,
 }
 
 impl SnapshotSuite {
-    /// Create a new suite.
+    /// Create a new suite for a pair of input/approved directories.
     ///
     /// Discovers `.foo` files in `input_dir` (excluding `.foo.disabled`).
-    /// Panics if extraneous insta snapshots exist without matching inputs.
-    pub fn new(input_dir: impl Into<PathBuf>) -> Result<Self, SnapshotSuiteError> {
+    /// Panics if extraneous approved snapshots exist without matching inputs.
+    pub fn new(input_dir: impl Into<PathBuf>, approved_dir: impl Into<PathBuf>) -> Result<Self, SnapshotSuiteError> {
         let input_dir = input_dir.into();
-        let suite = Self { input_dir };
+        let approved_dir = approved_dir.into();
+        let suite = Self { input_dir, approved_dir };
 
-        // Validate: no extraneous snapshots
-        let snapshots_dir = suite.snapshots_dir();
-        if snapshots_dir.exists() {
-            let snapshot_names: HashSet<String> = match fs::read_dir(&snapshots_dir) {
+        if suite.approved_dir.exists() {
+            let snapshot_names: HashSet<String> = match fs::read_dir(&suite.approved_dir) {
                 Ok(entries) => entries
                     .flatten()
                     .filter(|e| e.path().extension().is_some_and(|ext| ext == "snap"))
                     .filter_map(|e| {
                         e.file_name()
                             .to_str()
-                            .map(|s| s.replace(&format!("{}__approval_tests__", suite.snap_prefix()), ""))
-                            .map(|s| s.trim_end_matches(".snap").to_string())
+                            .and_then(|s| s.strip_suffix(".snap"))
+                            .and_then(|s| {
+                                let without_states = s.strip_suffix("_states").unwrap_or(s);
+                                without_states.strip_suffix(".foo").map(|n| n.to_string())
+                            })
                     })
                     .collect(),
                 Err(_) => HashSet::new(),
@@ -108,9 +111,7 @@ impl SnapshotSuite {
             let mut extraneous = Vec::new();
 
             for name in &snapshot_names {
-                // Check both normal and states variants
-                let normal_name = name.trim_end_matches("_states");
-                if !input_names.contains(normal_name) {
+                if !input_names.contains(name) {
                     extraneous.push(name.clone());
                 }
             }
@@ -122,16 +123,6 @@ impl SnapshotSuite {
         }
 
         Ok(suite)
-    }
-
-    fn snap_prefix(&self) -> &str {
-        "foolish_ubcb_cli__snapshot_suite"
-    }
-
-    fn snapshots_dir(&self) -> PathBuf {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("src")
-            .join("snapshots")
     }
 
     /// Extract test names from `.foo` files in input directory.
@@ -211,14 +202,13 @@ impl SnapshotSuite {
         })
     }
 
-    /// Return sorted list of input names that have no corresponding snapshot.
+    /// Return sorted list of input names that have no corresponding approved snapshot.
     pub fn get_missing_snapshots(&self) -> Vec<String> {
         let input_names = self.input_names();
-        let snapshots_dir = self.snapshots_dir();
         let mut missing = Vec::new();
 
         for name in &input_names {
-            let snap_path = snapshots_dir.join(format!("{}__approval_tests__{}.snap", self.snap_prefix(), name));
+            let snap_path = self.approved_dir.join(format!("{}.foo.snap", name));
             if !snap_path.exists() {
                 missing.push(name.clone());
             }
@@ -227,20 +217,18 @@ impl SnapshotSuite {
         missing
     }
 
-    /// Return sorted list of snapshot names that have no corresponding input.
+    /// Return sorted list of approved snapshot names that have no corresponding input.
     pub fn get_missing_inputs(&self) -> Vec<String> {
         let input_names = self.input_names();
-        let snapshots_dir = self.snapshots_dir();
         let mut missing = Vec::new();
 
-        if let Ok(entries) = fs::read_dir(&snapshots_dir) {
-            let prefix = format!("{}__approval_tests__", self.snap_prefix());
+        if let Ok(entries) = fs::read_dir(&self.approved_dir) {
             for entry in entries.flatten() {
                 let fname = entry.file_name().to_string_lossy().to_string();
-                if let Some(rest) = fname.strip_prefix(&prefix)
-                    .and_then(|s| s.strip_suffix(".snap"))
+                if let Some(rest) = fname.strip_suffix(".snap")
+                    .and_then(|s| s.strip_suffix(".foo"))
                 {
-                    let normal_name = rest.trim_end_matches("_states");
+                    let normal_name = rest.strip_suffix("_states").unwrap_or(rest);
                     if !input_names.contains(normal_name) {
                         missing.push(normal_name.to_string());
                     }
@@ -297,37 +285,54 @@ mod approval_tests {
 
     fn suite() -> SnapshotSuite {
         SnapshotSuite::new(
-            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("approval_test_input"),
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("snapshot_tests").join("input"),
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("snapshot_tests").join("approved"),
         ).expect("SnapshotSuite initialization failed")
     }
 
     #[test]
     fn approval_all() {
         let evaluations = suite().evaluate_all(num_cpus::get(), false);
-        for (name, result) in evaluations {
-            match result {
-                Ok(output) => {
-                    insta::assert_snapshot!(name.as_str(), output);
-                }
-                Err(msg) => {
-                    panic!("Evaluation error for {}: {}", name, msg);
+        let mut settings = insta::Settings::clone_current();
+        settings.set_snapshot_path(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("snapshot_tests").join("approved"),
+        );
+        settings.set_prepend_module_to_snapshot(false);
+        settings.set_omit_expression(true);
+        settings.bind(|| {
+            for (name, result) in evaluations {
+                match result {
+                    Ok(output) => {
+                        insta::assert_snapshot!(format!("{}.foo", name), output);
+                    }
+                    Err(msg) => {
+                        panic!("Evaluation error for {}: {}", name, msg);
+                    }
                 }
             }
-        }
+        });
     }
 
     #[test]
     fn approval_all_states() {
         let evaluations = suite().evaluate_all(num_cpus::get(), true);
-        for (name, result) in evaluations {
-            match result {
-                Ok(output) => {
-                    insta::assert_snapshot!(format!("{}_states", name), output);
-                }
-                Err(msg) => {
-                    panic!("Evaluation error for {}: {}", name, msg);
+        let mut settings = insta::Settings::clone_current();
+        settings.set_snapshot_path(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("snapshot_tests").join("approved"),
+        );
+        settings.set_prepend_module_to_snapshot(false);
+        settings.set_omit_expression(true);
+        settings.bind(|| {
+            for (name, result) in evaluations {
+                match result {
+                    Ok(output) => {
+                        insta::assert_snapshot!(format!("{}_states.foo", name), output);
+                    }
+                    Err(msg) => {
+                        panic!("Evaluation error for {}: {}", name, msg);
+                    }
                 }
             }
-        }
+        });
     }
 }

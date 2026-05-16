@@ -1,1 +1,0 @@
-{x = Int(42); y = Search(result=Int(42), pattern='^x$', direction=BACKWARD);}

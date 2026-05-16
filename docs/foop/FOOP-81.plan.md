@@ -259,14 +259,13 @@ WORKTREE_FULL_FS_PATH=${HOME}/tmp/foolish-worktrees/snapshot_test_suite-foop-81
 
 ## Phase J: Cleanup and merge
 
-- [ ] Verify all work is complete and committed
-- [ ] Merge to `foolish-rust` branch
-  - [ ] If merge conflicts arise:
-    - [ ] Repair conflicts
-    - [ ] Re-run `cargo test --workspace`
-    - [ ] Re-commit
-    - [ ] Check that everything works in `/home/hcbusy/foolish-rust` while on branch `foolish-rust`
-- [ ] Cleanup worktree (if used)
-  - [ ] Check that this plan has all but Cleanup checkboxes completed
-  - [ ] Remove the worktree directory
-  - [ ] This is the last checkbox to be checked in this plan
+- [x](2026-05-15 15:30) Verify all work is complete and committed
+- [x](2026-05-15 15:30) Merge to `foolish-rust` branch
+  - [x] Fast-forward merge succeeded (no conflicts)
+  - [x](2026-05-15 15:30) Check that everything works in `/home/hcbusy/foolish-rust` while on branch `foolish-rust`
+    - [x] `cargo check --workspace` passes
+    - [x] `cargo test --workspace` passes (258 tests)
+- [x](2026-05-15 15:30) Cleanup worktree (if used)
+  - [x](2026-05-15 15:30) Check that this plan has all but Cleanup checkboxes completed
+  - [x](2026-05-15 15:30) Remove the worktree directory
+  - [x](2026-05-15 15:30) This is the last checkbox to be checked in this plan

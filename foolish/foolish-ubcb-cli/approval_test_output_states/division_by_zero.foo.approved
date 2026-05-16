@@ -1,1 +1,0 @@
-{a = Int(5) [CONSTANT]; b = ??? (division by zero) [NK]; c = Int(5) [CONSTANT];}

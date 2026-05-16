@@ -1,3 +1,0 @@
-{x = Int(10) [INDEPENDENT]; y = StayFoolish [EMBRYONIC]
-  Search(pattern='^x$', dir=BACKWARD, FREE) [INDEPENDENT]
-    Int(20) [INDEPENDENT]; x = Int(20) [INDEPENDENT]; Search(pattern='^y$', direction=BACKWARD) [EMBRYONIC];}

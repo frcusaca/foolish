@@ -1,6 +1,5 @@
 ---
 source: foolish-ubcb-cli/src/snapshot_suite.rs
-assertion_line: 310
-expression: output
+assertion_line: 306
 ---
 {start = Int(1); testˍidentifier = Brane{a = Int(1); b = Search(pattern='^a$', direction=BACKWARD, FREE);}; Concatenation(elements=2); Concatenation(elements=2); Concatenation(elements=2);}
