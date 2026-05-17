@@ -251,6 +251,7 @@ pub struct SearchFir {
     pub(crate) anchored: bool,
     pub(crate) anchor: Option<FirRef>,
     pub(crate) target: Option<FirRef>,
+    pub(crate) parent: Option<FirRef>,
     pub(crate) state: Nyes,
 }
 
@@ -294,6 +295,7 @@ pub struct NormalBraneFir {
     pub(crate) characterizations: Vec<String>,
     pub(crate) statements: Vec<StatementFir>,
     pub(crate) state: Nyes,
+    pub(crate) parent: Option<FirRef>,
 }
 
 impl NormalBraneFir {
@@ -336,6 +338,7 @@ pub trait Steppable: std::fmt::Debug {
     fn as_int(&self) -> Option<i64> { None }
     fn binary_values(&self) -> Option<(i64, i64)> { None }
     fn search_target_ref(&self) -> Option<FirRef> { None }
+    fn search_parent_ref(&self) -> Option<FirRef> { None }
     fn search_pattern(&self) -> Option<String> { None }
     fn search_anchored(&self) -> bool { false }
     fn search_anchor_ref(&self) -> Option<FirRef> { None }
@@ -360,6 +363,7 @@ pub trait Steppable: std::fmt::Debug {
     fn set_unary_expr(&mut self, _expr: Fir) {}
     fn set_search_target(&mut self, _target: FirRef) {}
     fn set_search_target_direct(&mut self, _target: Option<FirRef>) {}
+    fn set_search_parent(&mut self, _parent: FirRef) {}
     fn set_concat_merged(&mut self, _merged: FirRef) {}
     fn set_concat_merged_direct(&mut self, _merged: Option<FirRef>) {}
 }
@@ -703,6 +707,10 @@ impl Steppable for Fir {
         if let Fir::Search(inner) = self { inner.target.clone() } else { None }
     }
 
+    fn search_parent_ref(&self) -> Option<FirRef> {
+        if let Fir::Search(inner) = self { inner.parent.clone() } else { None }
+    }
+
     fn search_pattern(&self) -> Option<String> {
         if let Fir::Search(inner) = self { Some(inner.pattern.clone()) } else { None }
     }
@@ -808,6 +816,12 @@ impl Steppable for Fir {
     fn set_search_target_direct(&mut self, target: Option<FirRef>) {
         if let Fir::Search(inner) = self {
             inner.target = target;
+        }
+    }
+
+    fn set_search_parent(&mut self, parent: FirRef) {
+        if let Fir::Search(inner) = self {
+            inner.parent = Some(parent);
         }
     }
 
@@ -940,6 +954,7 @@ impl Steppable for SearchFir {
     fn search_pattern(&self) -> Option<String> { Some(self.pattern.clone()) }
     fn search_anchored(&self) -> bool { self.anchored }
     fn search_target_ref(&self) -> Option<FirRef> { self.target.clone() }
+    fn search_parent_ref(&self) -> Option<FirRef> { self.parent.clone() }
     fn search_anchor_ref(&self) -> Option<FirRef> { self.anchor.clone() }
     fn clone_into_fir(&self) -> Fir { Fir::Search(Box::new(self.clone())) }
     fn fir_variant(&self) -> &'static str { "Search" }
@@ -1254,6 +1269,7 @@ impl Steppable for ConcatenationFir {
             characterizations: vec![],
             statements: merged_statements,
             state: brane_state,
+            parent: None,
         }));
         self.merged = Some(fir_to_ref(merged));
         self.state = Nyes::Braning;
@@ -1520,7 +1536,7 @@ impl<'de> Deserialize<'de> for Fir {
                     .and_then(|v| serde_json::from_value::<Fir>(v.clone()).ok())
                     .map(fir_to_ref);
                 Ok(Fir::Search(Box::new(SearchFir {
-                    pattern, direction, anchored, anchor, target, state,
+                    pattern, direction, anchored, anchor, target, parent: None, state,
                 })))
             }
             "Index" => {
@@ -1592,7 +1608,7 @@ impl<'de> Deserialize<'de> for Fir {
                     })
                     .collect::<Result<Vec<_>, _>>()?;
                 Ok(Fir::NormalBrane(Box::new(NormalBraneFir {
-                    characterizations, statements, state,
+                    characterizations, statements, state, parent: None,
                 })))
             }
             _ => Err(serde::de::Error::custom(format!("unknown Fir type: {}", type_name))),

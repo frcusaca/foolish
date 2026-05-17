@@ -130,13 +130,16 @@ impl UbcbEngine {
     fn step_all(&mut self) -> Vec<(Luid, Nyes, Nyes)> {
         let mut changes = Vec::new();
 
+        // Phase 1: Embryonic — local resolution within brane scope
         let luids: Vec<Luid> = self.firs.keys().copied().collect();
         for luid in luids {
             let fir = self.firs[&luid].clone();
             let old_state = fir.borrow().state();
 
-            Self::resolve_search(&fir, &self.local_scope, &self.firs);
-            Self::resolve_search_operands(&fir, &self.local_scope, &self.firs);
+            if old_state == Nyes::Embryonic {
+                Self::resolve_search_local(&fir, &self.local_scope, &self.firs);
+                Self::resolve_search_operands_local(&fir, &self.local_scope, &self.firs);
+            }
 
             let new_state = fir.borrow().state();
             if new_state != old_state {
@@ -144,6 +147,24 @@ impl UbcbEngine {
             }
         }
 
+        // Phase 2: Braning — parent resolution for unresolved searches
+        let luids: Vec<Luid> = self.firs.keys().copied().collect();
+        for luid in luids {
+            let fir = self.firs[&luid].clone();
+            let old_state = fir.borrow().state();
+
+            if old_state == Nyes::Braning {
+                Self::resolve_search_parent(&fir, &self.local_scope, &self.firs);
+                Self::resolve_search_operands_parent(&fir, &self.local_scope, &self.firs);
+            }
+
+            let new_state = fir.borrow().state();
+            if new_state != old_state {
+                changes.push((luid, old_state, new_state));
+            }
+        }
+
+        // Phase 3: Operators
         let luids: Vec<Luid> = self.firs.keys().copied().collect();
         for luid in luids {
             let old_state = self.firs[&luid].borrow().state();
@@ -165,7 +186,7 @@ impl UbcbEngine {
         changes
     }
 
-    fn resolve_search(fir: &FirRef, local_scope: &HashMap<String, Luid>, firs: &HashMap<Luid, FirRef>) {
+    fn resolve_search_local(fir: &FirRef, local_scope: &HashMap<String, Luid>, firs: &HashMap<Luid, FirRef>) {
         if fir.borrow().search_anchored() {
             return;
         }
@@ -190,7 +211,7 @@ impl UbcbEngine {
         }
     }
 
-    fn resolve_search_operands(fir: &FirRef, local_scope: &HashMap<String, Luid>, firs: &HashMap<Luid, FirRef>) {
+    fn resolve_search_operands_local(fir: &FirRef, local_scope: &HashMap<String, Luid>, firs: &HashMap<Luid, FirRef>) {
         let children: Vec<FirRef> = {
             let mut guard = fir.borrow_mut();
             guard.children_mut().into_iter().map(|c| Rc::clone(c)).collect()
@@ -198,7 +219,68 @@ impl UbcbEngine {
 
         for child in children {
             if child.borrow().fir_variant() == "Search" && !child.borrow().search_anchored() {
-                Self::resolve_search(&child, local_scope, firs);
+                Self::resolve_search_local(&child, local_scope, firs);
+            }
+        }
+    }
+
+    fn resolve_search_parent(fir: &FirRef, local_scope: &HashMap<String, Luid>, firs: &HashMap<Luid, FirRef>) {
+        if fir.borrow().search_anchored() {
+            return;
+        }
+        let pattern = match fir.borrow().search_pattern() {
+            Some(p) => p,
+            None => return,
+        };
+        let name = strip_anchors(&pattern);
+
+        // Local resolution
+        if let Some(&target_luid) = local_scope.get(name) {
+            let target = firs[&target_luid].clone();
+            let target_state = target.borrow().state();
+            if target_state == Nyes::Constant || target_state == Nyes::Independent {
+                fir.borrow_mut().set_search_target(target);
+                fir.borrow_mut().set_state(target_state);
+            } else if target_state.is_constanic() {
+                fir.borrow_mut().set_search_target(target);
+                fir.borrow_mut().set_state(Nyes::Woconstanic);
+            }
+        }
+        // Parent resolution
+        else if let Some(parent_ref) = fir.borrow().search_parent_ref() {
+            // Search in parent brane's scope via trait method
+            let parent_stmts = parent_ref.borrow().normal_brane_statements();
+            let mut found = None;
+            for stmt in parent_stmts {
+                if let Some(stmt_name) = stmt.name() {
+                    if strip_anchors(&format!("^{}$", stmt_name)) == name {
+                        found = Some(stmt.body().clone());
+                        break;
+                    }
+                }
+            }
+            if let Some(target) = found {
+                let target_state = target.borrow().state();
+                if target_state == Nyes::Constant || target_state == Nyes::Independent {
+                    fir.borrow_mut().set_search_target(target);
+                    fir.borrow_mut().set_state(target_state);
+                } else if target_state.is_constanic() {
+                    fir.borrow_mut().set_search_target(target);
+                    fir.borrow_mut().set_state(Nyes::Woconstanic);
+                }
+            }
+        }
+    }
+
+    fn resolve_search_operands_parent(fir: &FirRef, local_scope: &HashMap<String, Luid>, firs: &HashMap<Luid, FirRef>) {
+        let children: Vec<FirRef> = {
+            let mut guard = fir.borrow_mut();
+            guard.children_mut().into_iter().map(|c| Rc::clone(c)).collect()
+        };
+
+        for child in children {
+            if child.borrow().fir_variant() == "Search" && !child.borrow().search_anchored() {
+                Self::resolve_search_parent(&child, local_scope, firs);
             }
         }
     }

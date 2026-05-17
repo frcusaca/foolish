@@ -1,0 +1,2 @@
+[snapshot_tests]
+snapshot_path = "snapshot_tests/approved"

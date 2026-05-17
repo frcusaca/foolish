@@ -99,8 +99,9 @@ impl SnapshotSuite {
                             .to_str()
                             .and_then(|s| s.strip_suffix(".snap"))
                             .and_then(|s| {
-                                let without_states = s.strip_suffix("_states").unwrap_or(s);
-                                without_states.strip_suffix(".foo").map(|n| n.to_string())
+                                let without_foo = s.strip_suffix(".foo").unwrap_or(s);
+                                let without_states = without_foo.strip_suffix("_states").unwrap_or(without_foo);
+                                Some(without_states.to_string())
                             })
                     })
                     .collect(),
@@ -240,27 +241,22 @@ impl SnapshotSuite {
     }
 }
 
-/// Format an EvaluationResult as a single-line string using HumanizingSequencer.
+/// Format an EvaluationResult as a multiline string using HumanizingSequencer.
 pub fn format_result(result: &EvaluationResult, states: bool) -> String {
     if result.statements.is_empty() {
         return "{}".to_string();
     }
 
-    if result.statements.len() == 1 {
-        let fmt = fmt_stmt(&result.statements[0], states);
-        return format!("{{{};}}", fmt);
-    }
-
     let stmts: Vec<String> = result.statements.iter()
-        .map(|s| fmt_stmt(s, states))
+        .map(|s| format!("  {};", fmt_stmt(s, 2, states)))
         .collect();
 
-    format!("{{{};}}", stmts.join("; "))
+    format!("\n{}\n}}", stmts.join("\n"))
 }
 
 /// Format a single statement result using HumanizingSequencer.
-fn fmt_stmt(stmt: &StatementResult, states: bool) -> String {
-    let value = fmt_fir_inline(&stmt.fir, states);
+fn fmt_stmt(stmt: &StatementResult, indent: usize, states: bool) -> String {
+    let value = fmt_fir_inline(&stmt.fir, indent, states);
     match &stmt.name {
         Some(name) => format!("{name} = {value}"),
         None => value,
@@ -268,10 +264,10 @@ fn fmt_stmt(stmt: &StatementResult, states: bool) -> String {
 }
 
 /// Format a FIR inline using HumanizingSequencer.
-fn fmt_fir_inline(fir: &FirRef, states: bool) -> String {
+fn fmt_fir_inline(fir: &FirRef, indent: usize, states: bool) -> String {
     let seq = SequenceableFir::from(clone_steppable(fir));
     let sequencer = HumanizingSequencer::new(seq);
-    let output = sequencer.format_for_snap_test(0);
+    let output = sequencer.format_with_indent(indent);
     if states {
         format!("{} [{}]", output, fir.borrow().state())
     } else {

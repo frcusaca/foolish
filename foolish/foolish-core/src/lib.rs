@@ -1467,7 +1467,7 @@ mod sequencer_tests {
     }
 
     fn format_hs(fir: &SequenceableFir) -> String {
-        HumanizingSequencer::new(fir.clone()).format_for_snap_test(0)
+        HumanizingSequencer::new(fir.clone()).format_for_snap_test()
     }
 
     // ── SequenceableFir::from(Fir) conversion ────────────────────────────

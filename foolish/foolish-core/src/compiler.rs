@@ -42,6 +42,7 @@ impl Compiler {
                     anchored: false,
                     anchor: None,
                     target: None,
+                    parent: None,
                     state: Nyes::Embryonic,
                 })))
             }
@@ -94,6 +95,7 @@ impl Compiler {
                     characterizations,
                     statements: stmt_firs,
                     state: Nyes::Embryonic,
+                    parent: None,
                 })))
             }
 
@@ -137,6 +139,7 @@ impl Compiler {
                         state,
                     }],
                     state: Nyes::Embryonic,
+                    parent: None,
                 })))
             }
 
@@ -167,6 +170,7 @@ impl Compiler {
                     anchored: true,
                     anchor: Some(to_ref(anchor_fir)),
                     target: None,
+                    parent: None,
                     state: Nyes::Embryonic,
                 })))
             }
@@ -183,6 +187,7 @@ impl Compiler {
                     anchored: true,
                     anchor: Some(to_ref(anchor_fir)),
                     target: None,
+                    parent: None,
                     state: Nyes::Embryonic,
                 })))
             }
