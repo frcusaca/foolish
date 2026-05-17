@@ -1,6 +1,6 @@
 ---
 foop: 20
-title: Move SnapshotSuite to foolish-core and unify approval testing
+title: Consolidate FIR formatting into HumanizingSequencer; move SnapshotSuite to core
 author: opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4
 status: Draft
 type: Refactor
@@ -9,150 +9,246 @@ phase: phase-3
 supersedes: []
 ---
 
-# FOOP-02: Move SnapshotSuite to foolish-core and unify approval testing
+# FOOP-02: Consolidate FIR formatting; unify approval testing
 
 ## Abstract
 
-Move `SnapshotSuite` from `foolish-ubcb-cli` into `foolish-core` and unify
-approval testing so both the original UBC (`foolish-core::ubc`) and UBCb
-(`foolish-ubcb`) use the same snapshot infrastructure. This eliminates
-duplicated test harness code and ensures consistent output formatting
-across implementations.
+Three-step refactor (in order):
+
+**Step 1** - Introduce `FirQueryable` trait so `HumanizingSequencer` formats `Fir` directly without cloning to `SequenceableFir`. Remove all `format()` implementations from `Steppable`. All FIR-to-String formatting lives in one place.
+
+**Step 2** - Move `SnapshotSuite` from `foolish-ubcb-cli` to `foolish-core`, generalized over an evaluator function instead of hardcoded to `UbcbEngine`.
+
+**Step 3** - Adapt original UBC evaluated FIRs into `SnapshotSuite` via `FirQueryable`. Both UBC and UBCb use the same snapshot harness.
 
 ## Motivation
 
-Currently `SnapshotSuite` lives in `foolish-ubcb-cli` and is tightly coupled
-to `UbcbEngine::evaluate` which returns `EvaluationResult` / `StatementResult`
-(types defined in `foolish-ubcb`). The original UBC in `foolish-core::ubc` has
-its own approval tests in `lib.rs` that manually compile, evaluate, and format
-output. This duplication means:
+### Current state - two formatting paths, ~800 lines combined
 
-1. Format changes must be applied in two places.
-2. New tests added to one harness don't automatically cover the other.
-3. The snapshot suite cannot be reused for UBC tests.
+**Path A - `Sequencer` (used by `foolish-cli`, inline UBC tests):**
+- `Sequencer::format(fir: &Fir)` delegates to `Steppable::format(&self, buf: &mut String, depth: usize)`
+- 10 separate `impl Steppable` blocks across `fir.rs` (~658-1342), each 15-40 lines
+- Writes into `&mut String` buffer, recursive with depth tracking
+- Used by: `foolish-cli` (REPL, run, step), `lib.rs` inline tests
 
-After this refactor, `SnapshotSuite` is a generic approval test harness in
-`foolish-core` that accepts any evaluator function. Both UBC and UBCb plug in
-their respective evaluators.
+**Path B - `HumanizingSequencer` (used by `SnapshotSuite`, sequencer unit tests):**
+- Single match on `SequenceableFir` in `sequencer.rs` lines 55-134 (~100 lines)
+- Returns owned `String`, recursive with indent parameter
+- Requires `SequenceableFir::from(Fir)` clone first (deep clone via `clone_steppable`)
+- Used by: `foolish-ubcb-cli/snapshot_suite.rs`, `lib.rs` sequencer tests
+
+**SnapshotSuite problem:**
+- Lives in `foolish-ubcb-cli`, coupled to `UbcbEngine` + `EvaluationResult` + `StatementResult` (types in `foolish-ubcb`)
+- Original UBC has 130+ inline `#[test]` in `lib.rs` with manual compile/evaluate/format
+- Adding a test to one harness does not cover the other
+
+### Target state
+
+- ONE formatting path: `HumanizingSequencer` operates on `FirQueryable` trait
+- `Sequencer` becomes a thin wrapper that adapts `&Fir` to `&dyn FirQueryable`
+- `SnapshotSuite` in `foolish-core` accepts any evaluator closure
+- `SequenceableFir` retained for hand-constructed test FIRs (avoids parser overhead)
+- `Steppable::format()` removed entirely
 
 ## Specification
 
-### Current State
+### Step 1: Trait-based sequencing
 
-**`foolish-ubcb-cli/src/snapshot_suite.rs`** (~334 lines):
-- `SnapshotSuite` struct — discovers `.foo` files, runs evaluation, compares snapshots
-- `SnapshotSuiteError`, `TestFailure` error types
-- `format_result` / `fmt_fir_inline` — uses `SequenceableFir` + `HumanizingSequencer` (from core)
-- `UbcbEngine`-specific: calls `UbcbEngine::evaluate`, formats `EvaluationResult`
-- Test module: `approval_all`, `approval_all_states` — uses `insta`
+**Scope:** `foolish-core/src/fir.rs`, `foolish-core/src/sequencer.rs`
 
-**`foolish-core/src/lib.rs`** — approval tests:
-- `run_foo()` — compiles, evaluates with `ubc::run_to_completion`, formats with `Sequencer`
-- 100+ `#[test]` functions, each calling `insta::assert_snapshot!` directly
-- No `SnapshotSuite`-style file discovery or parallel evaluation
+#### 1A. New trait: `FirQueryable`
 
-**Key types:**
-| Type | Location | Used by |
-|------|----------|---------|
-| `SequenceableFir`, `SequenceableStatement` | `foolish-core::fir` | Both |
-| `HumanizingSequencer` | `foolish-core::sequencer` | Both |
-| `EvaluationResult`, `StatementResult` | `foolish-ubcb::engine` | UBCb only |
-| `UbcbEngine` | `foolish-ubcb::engine` | UBCb only |
+Define in `fir.rs`. Structured accessors for every FIR variant. Both `Fir` and `SequenceableFir` implement it. This is the ONLY interface `HumanizingSequencer` knows about.
 
-### Target Architecture
+Trait sketch (not exhaustive - implementors fill in each method):
 
 ```
-foolish-core/
-  src/
-    snapshot_suite.rs   <-- NEW (moved from ubcb-cli, generalized)
-    lib.rs              <-- exports SnapshotSuite, removes inline approval tests
+pub trait FirQueryable: std::fmt::Debug {
+    // Identity
+    fn hs_variant(&self) -> &'static str;
+    fn hs_state(&self) -> Nyes;
 
-foolish-ubcb-cli/
-  src/
-    lib.rs              <-- re-exports from core, provides UBCb evaluator adapter
-    main.rs             <-- unchanged
+    // Each variant returns Option<...> - Some only for matching variant, None otherwise.
+    // This avoids exhaustive match in the trait, new variants just add new methods.
 
-foolish-core/
-  snapshot_tests/       <-- NEW: UBC approval test inputs
-    input/              <-- .foo files (shared or UBC-specific)
-    approved/           <-- .snap files
+    fn hs_constant_int(&self) -> Option<i64>;
 
-foolish-ubcb-cli/
-  snapshot_tests/       <-- EXISTING: UBCb approval test inputs (unchanged)
-    input/
-    approved/
+    fn hs_nk(&self) -> Option<(&str, &Option<Alarm>)>;
+    // returns (reason, &alarm)
+
+    fn hs_operator(&self) -> Option<(&str, Vec<Box<dyn FirQueryable>>)>;
+    // returns (op, operands)
+
+    fn hs_search(&self) -> Option<(
+        &str,              // pattern
+        SearchDirection,
+        bool,              // anchored
+        Option<Box<dyn FirQueryable>>,  // anchor FIR
+        Option<Box<dyn FirQueryable>>,  // target FIR
+    )>;
+
+    fn hs_index(&self) -> Option<(i32, bool, Option<Box<dyn FirQueryable>>)
+    // returns (offset, anchored, anchor FIR)
+
+    fn hs_head_tail(&self) -> Option<(bool, bool, Option<Box<dyn FirQueryable>>)
+    // returns (is_head, anchored, anchor FIR)
+
+    fn hs_stay_foolish(&self) -> Option<Box<dyn FirQueryable>>;
+    fn hs_stay_fully_foolish(&self) -> Option<Box<dyn FirQueryable>>;
+
+    fn hs_concatenation(&self) -> Option<(Vec<Box<dyn FirQueryable>>, Option<Box<dyn FirQueryable>>)
+    // returns (elements, merged)
+
+    fn hs_brane(&self) -> Option<(Vec<&str>, Vec<SequenceableStatement>)
+    // returns (characterizations, statements)
+    // Note: statements use SequenceableStatement (name: Option<String>, body: SequenceableFir)
+    // because statement bodies need to be boxed recursively
+}
 ```
 
-### Changes
+**Key design decision:** The trait returns `Box<dyn FirQueryable>` for child FIRs. For `Fir`, this means we need to wrap `Rc<RefCell<Fir>>` children in a lightweight wrapper that implements `FirQueryable`. For `SequenceableFir`, the children are already owned so boxing is cheap.
 
-#### 1. Move and generalize `SnapshotSuite` to `foolish-core`
+#### 1B. Implement `FirQueryable` for `Fir`
 
-**File:** `foolish-core/src/snapshot_suite.rs` (new)
+Each method returns `Some(...)` for the matching variant and `None` otherwise. Child FIRs (`Rc<RefCell<Fir>>`) are wrapped in a thin adapter:
 
-The `SnapshotSuite` struct moves largely unchanged, but the `evaluate` method
-becomes generic over an evaluator function instead of being hardcoded to
-`UbcbEngine`:
+```
+pub struct FirChildRef {
+    inner: Rc<RefCell<Fir>>,
+}
+impl FirQueryable for FirChildRef { ... }
+```
 
-```rust
-// Before (in ubcb-cli):
+This avoids cloning. The adapter simply borrows through the Rc.
+
+**Where:** New section in `fir.rs`, after the `SequenceableFir::from(Fir)` impl.
+
+**Methods to implement:** ~12 accessor methods, each is a small match on the `Fir` enum.
+
+#### 1C. Implement `FirQueryable` for `SequenceableFir`
+
+Each method returns `Some(...)` for the matching variant. Child `SequenceableFir`s are boxed directly.
+
+**Where:** New section in `fir.rs`.
+
+**Methods to implement:** Same ~12 accessor methods.
+
+#### 1D. Rewrite `HumanizingSequencer`
+
+Replace `HumanizingSequencer { fir: SequenceableFir }` with:
+
+```
+pub struct HumanizingSequencer<'a> {
+    fir: &'a dyn FirQueryable,
+}
+```
+
+OR keep it generic over owned `SequenceableFir` AND add a `HumanizingSequencerRef` for borrowed `&dyn FirQueryable`. The trait methods produce the same data, so the `format_fir` match can be shared.
+
+**Preferred approach:** Keep `HumanizingSequencer` as-is for `SequenceableFir` (preserves existing API). Add a new method or wrapper struct `HumanizingSequencerRef` that works with `&dyn FirQueryable`. Both use the same internal `format_fir` logic - the trait just provides the data, the formatting logic is identical.
+
+Actually, simplest: make `format_fir` a free function that takes `&dyn FirQueryable`. Both `HumanizingSequencer` and `HumanizingSequencerRef` call it.
+
+```
+fn hs_format_fir(fir: &dyn FirQueryable, indent: usize) -> String {
+    // dispatch via trait methods:
+    if let Some(val) = fir.hs_constant_int() { ... }
+    else if let Some((reason, alarm)) = fir.hs_nk() { ... }
+    ...
+}
+```
+
+This replaces the current `match fir { SequenceableFir::... }` pattern.
+
+#### 1E. Remove `Steppable::format()`
+
+After Step 1D, remove `format(&self, buf: &mut String, depth: usize)` from the `Steppable` trait and all 10 implementations. Update `Sequencer::format` to adapt `&Fir` to `&dyn FirQueryable` and call `HumanizingSequencer`.
+
+**Files affected:**
+- `fir.rs` - remove `format` from trait + 10 impls (~350 lines removed)
+- `sequencer.rs` - `Sequencer::format` now delegates to `HumanizingSequencer`
+- `foolish-cli/src/main.rs` - may need `FirQueryable` import
+
+#### 1F. Update callers of `Sequencer::format`
+
+- `foolish-cli/src/main.rs` - uses `Sequencer::format(&final_fir)` - works via adapter
+- `lib.rs` inline tests - uses `Sequencer::format` - works via adapter
+- No behavior change - just a different internal path
+
+### Step 2: Move SnapshotSuite to foolish-core
+
+**Scope:** `foolish-core/src/snapshot_suite.rs` (new), `foolish-ubcb-cli/src/snapshot_suite.rs` (deleted), `foolish-ubcb-cli/src/lib.rs` (updated), `foolish-core/Cargo.toml`, `foolish-ubcb-cli/Cargo.toml`
+
+#### 2A. Move `SnapshotSuite` struct
+
+Move largely unchanged from `foolish-ubcb-cli/src/snapshot_suite.rs` to `foolish-core/src/snapshot_suite.rs`. The `SnapshotSuite` struct (discovery, input/approved directories) is engine-agnostic.
+
+#### 2B. Generalize evaluation
+
+Replace `UbcbEngine`-specific `evaluate` with a closure parameter:
+
+Before:
+```
 pub fn evaluate(&self, path: &Path, with_states: bool) -> Result<String, String> {
     let source = fs::read_to_string(path)?;
     let mut engine = UbcbEngine::new();
     let result = engine.evaluate(&source)?;
     Ok(format_result(&result, with_states))
 }
+```
 
-// After (in foolish-core):
+After:
+```
 pub fn evaluate<F>(&self, path: &Path, with_states: bool, evaluator: &F) -> Result<String, String>
-where
-    F: Fn(&str) -> Result<Vec<StatementOutput>, String>,
+where F: Fn(&str) -> Result<Vec<StatementOutput>, String>
 {
-    let source = fs::read_to_string(path)?;
-    let stmts = evaluator(&source)?;
+    let source = fs::read_to_string(path)
+        .map_err(|e| format!("Failed to read {}: {}", path.display(), e))?;
+    let stmts = evaluator(&source)
+        .map_err(|e| format!("Evaluation failed: {}", e))?;
     Ok(format_statements(&stmts, with_states))
 }
 ```
 
 `StatementOutput` is a new lightweight type in `foolish-core`:
-```rust
+```
 pub struct StatementOutput {
     pub name: Option<String>,
-    pub fir: FirRef,
+    pub fir: FirRef,  // Rc<RefCell<Fir>>
 }
 ```
 
-This replaces `StatementResult` (which lives in `foolish-ubcb` and includes
-extra fields like `state`).
+#### 2C. Move formatting helpers
 
-The formatting functions (`format_statements`, `fmt_fir_inline`) move to core.
-They use `SequenceableFir::from(clone_steppable(fir))` + `HumanizingSequencer`
-which are already in core.
+Move `format_result`, `fmt_stmt`, `fmt_fir_inline` to core. After Step 1, `fmt_fir_inline` uses `HumanizingSequencer` via `FirQueryable`:
 
-Remove `SnapshotSuiteError` and `TestFailure` — these are internal to the
-suite and don't need to be public API. Keep `SnapshotSuite` and its methods
-public.
+```
+fn fmt_fir_inline(fir: &FirRef, indent: usize, states: bool) -> String {
+    let wrapper = FirChildRef { inner: Rc::clone(fir) };
+    let output = hs_format_fir(&wrapper, indent);
+    if states {
+        format!("{} [{}]", output, fir.borrow().state())
+    } else {
+        output
+    }
+}
+```
 
-#### 2. Add `foolish-ubcb` as a dev-dependency to `foolish-core`
+#### 2D. Add dev-dependencies to foolish-core
 
-To allow UBCb snapshot tests to run from `foolish-core`, add:
-```toml
-# foolish-core/Cargo.toml
-[dev-dependencies]
+```
+# foolish-core/Cargo.toml [dev-dependencies]
 foolish-ubcb = { path = "../foolish-ubcb" }
 rayon = "1"
 num_cpus = "1"
 ```
 
-`insta` is already a dev-dependency.
+`insta` is already present.
 
-#### 3. Provide UBCb evaluator adapter in `foolish-ubcb-cli`
+#### 2E. Provide UBCb adapter in foolish-ubcb-cli
 
-**File:** `foolish-ubcb-cli/src/lib.rs`
-
-Provide an adapter function that wraps `UbcbEngine::evaluate` into the
-`SnapshotSuite` signature:
-
-```rust
+`foolish-ubcb-cli/src/lib.rs`:
+```
 pub fn ubcb_evaluator(source: &str) -> Result<Vec<foolish_core::StatementOutput>, String> {
     let mut engine = foolish_ubcb::UbcbEngine::new();
     let result = engine.evaluate(source)
@@ -164,31 +260,23 @@ pub fn ubcb_evaluator(source: &str) -> Result<Vec<foolish_core::StatementOutput>
 }
 ```
 
-Add UBCb approval tests in `foolish-ubcb-cli`:
-```rust
-#[cfg(test)]
-mod approval_tests {
-    use foolish_core::SnapshotSuite;
-    use super::ubcb_evaluator;
+UBCb approval tests call `suite().evaluate_all(...)` with `&ubcb_evaluator`.
 
-    fn suite() -> SnapshotSuite { /* ... */ }
+Remove `snapshot_suite.rs` from `foolish-ubcb-cli`.
 
-    #[test] fn approval_all() { /* suite + evaluator + insta */ }
-    #[test] fn approval_all_states() { /* same with states=true */ }
-}
+#### 2F. Update foolish-ubcb-cli Cargo.toml
+
+Remove `rayon` from `[dependencies]` (no longer needed). Keep `rayon` and `num_cpus` in `[dev-dependencies]` for tests.
+
+### Step 3: Sequence UBC FIRs for SnapshotSuite
+
+**Scope:** `foolish-core/src/lib.rs` (new adapter + tests), `foolish-core/snapshot_tests/` (new directory)
+
+#### 3A. UBC evaluator adapter
+
+The original UBC evaluates a single `FirRef` via `ubc::run_to_completion`. After evaluation, extract statements from the brane:
+
 ```
-
-Remove `snapshot_suite.rs` from `foolish-ubcb-cli` (deleted).
-
-#### 4. Provide UBC evaluator adapter and tests in `foolish-core`
-
-This is the **potentially challenging step** (see "Open Questions" below).
-
-The original UBC evaluates a single `FirRef` via `ubc::run_to_completion`.
-After evaluation, the brane's `statements` need to be extracted and formatted
-as `StatementOutput` items.
-
-```rust
 pub fn ubc_evaluator(source: &str) -> Result<Vec<StatementOutput>, String> {
     let firs = Compiler::compile(source)
         .map_err(|e| format!("Compilation failed: {}", e))?;
@@ -197,7 +285,6 @@ pub fn ubc_evaluator(source: &str) -> Result<Vec<StatementOutput>, String> {
         .map_err(|e| format!("Evaluation failed: {}", e))?;
     let final_fir = clone_steppable(&fir_ref);
 
-    // Extract statements from the brane
     match final_fir {
         Fir::NormalBrane(nb) => {
             Ok(nb.statements.iter().map(|stmt| StatementOutput {
@@ -210,54 +297,47 @@ pub fn ubc_evaluator(source: &str) -> Result<Vec<StatementOutput>, String> {
 }
 ```
 
-**Risk:** The UBC may produce FIR structures where the `body` references don't
-map cleanly to independent `FirRef` items suitable for `SequenceableFir`
-conversion. If `SequenceableFir::from(Fir)` expects a fully cloned/deep-copied
-tree, `clone_steppable` on each statement body may be needed.
+**Risk / Open Question:** The `Rc::clone(&stmt.body)` may not produce a fully independent `FirRef` suitable for `FirQueryable` formatting if the UBC evaluation leaves internal references (Rc loops, shared RefCell state). If `clone_steppable` on each statement body is needed instead, that's a one-line fix. **If this proves difficult, I will ask before proceeding.**
 
-UBC approval tests in `foolish-core`:
-```rust
+#### 3B. UBC approval tests
+
+Add to `lib.rs` (or new module):
+```
 #[cfg(test)]
-mod approval_tests {
+mod ubc_approval_tests {
     use super::ubc_evaluator;
     use crate::SnapshotSuite;
 
-    fn suite() -> SnapshotSuite { /* ... */ }
+    fn suite() -> SnapshotSuite { ... }
 
-    #[test] fn approval_all() { /* ... */ }
-    #[test] fn approval_all_states() { /* ... */ }
+    #[test] fn approval_all() { ... }
+    #[test] fn approval_all_states() { ... }
 }
 ```
 
-Remove the current inline approval test module (~600 tests) from `lib.rs`.
-These tests become file-driven via `SnapshotSuite`. Each existing test
-corresponds to a `.foo` file in `snapshot_tests/input/`.
-
-**Sub-question:** Should we keep the inline tests for speed (no file I/O,
-targeted test names) and add `SnapshotSuite` tests alongside? This is
-discussed in "Rejected Alternatives."
-
-#### 5. Set up `snapshot_tests/` directory structure for UBC
+#### 3C. Populate snapshot_tests/input
 
 Create `foolish-core/snapshot_tests/input/` and `foolish-core/snapshot_tests/approved/`.
-Populate with `.foo` files that correspond to the existing inline approval
-tests. Each file named `{test_name}.foo` contains the source, e.g.:
 
-```
-foolish-core/snapshot_tests/input/simple_addition.foo
-{3 + 4;}
-```
+Two options:
+1. **Convert existing inline tests to `.foo` files** - each test source becomes a file. High fidelity but labor intensive (~130 files).
+2. **Start with a representative subset** - pick the most important tests (arithmetic, search, concatenation, scope, alarms) as seed files, grow incrementally.
 
-The approved snapshots can be generated by running the tests once with
-`INSTA_UPDATE=always`.
+**Recommendation:** Option 2. Start with ~20 representative files. The inline tests can coexist until migration is complete.
 
-### Dependency Flow (After)
+#### 3D. Remove inline approval tests (eventually)
+
+The 130+ inline `#[test]` functions in `lib.rs` approval_tests module are replaced by `SnapshotSuite` tests. This is a final cleanup step - do it after `SnapshotSuite` coverage is verified equivalent.
+
+## Dependency Flow (After)
 
 ```
 foolish-core
   ├── foolish-parser
-  ├── snapshot_suite.rs (new)
-  ├── ubc_evaluator (new, in test module or public)
+  ├── FirQueryable trait (fir.rs)
+  ├── HumanizingSequencer (sequencer.rs) - single formatting path
+  ├── SnapshotSuite (snapshot_suite.rs) - generic harness
+  ├── ubc_evaluator (lib.rs, test module)
   └── dev-deps: insta, rayon, num_cpus, foolish-ubcb
 
 foolish-ubcb
@@ -271,71 +351,95 @@ foolish-ubcb-cli
 
 ## FIR Impact
 
-None.
+None. `Fir` struct unchanged. `Steppable::format()` removed but `Steppable` trait remains for `step()` semantics.
 
 ## UBC Step Impact
 
-None.
+None. Evaluation logic unchanged. Only formatting path changes.
 
 ## Test Plan
 
-1. **Verify UBCb tests still pass** after moving `SnapshotSuite`:
-   - `cargo test -p foolish-ubcb-cli --lib`
-   - Confirm all snapshot tests pass with existing approved files.
+**Phase-gated execution - each step verified before proceeding:**
 
-2. **Verify UBC tests pass** with new `SnapshotSuite`-based tests:
-   - `cargo test -p foolish-core -- approval`
-   - Generate initial snapshots: `INSTA_UPDATE=always cargo test -p foolish-core -- approval`
-
-3. **Full workspace check**:
-   - `cargo check --workspace`
-   - `cargo test --workspace`
+1. **After Step 1:** `cargo test -p foolish-core --workspace` - all tests pass. `foolish-cli` still produces identical output.
+2. **After Step 2:** `cargo test -p foolish-ubcb-cli --lib` - UBCb tests still pass with existing approved files.
+3. **After Step 3:** `cargo test -p foolish-core -- approval` - UBC tests pass (snapshots generated with `INSTA_UPDATE=always` first).
+4. **Full workspace:** `cargo check --workspace && cargo test --workspace`
 
 ## Rejected Alternatives
 
-### A. Keep `SnapshotSuite` in `foolish-ubcb-cli`, create separate suite for UBC
+### A. Keep both formatting paths
 
-This maintains the status quo of duplicated infrastructure. Any format
-change requires updating both. Rejected because it defeats the purpose of
-unification.
+Maintains duplication. Any future change requires updating both. Rejected.
 
-### B. Keep inline tests in `lib.rs`, don't convert to file-driven
+### B. Keep SnapshotSuite in ubcb-cli, create parallel suite for UBC
 
-Inline tests are fast and provide clear test names. However, they can't
-leverage `SnapshotSuite`'s parallel evaluation or file discovery. A
-hybrid approach (keep inline tests AND add `SnapshotSuite` tests) doubles
-the test count. Rejected as the primary approach — inline tests are removed
-in favor of file-driven tests for consistency.
+Two harnesses, two format functions, two sets of test infrastructure. Defeats the purpose. Rejected.
 
-### C. Make `SnapshotSuite` a standalone crate
+### C. Keep inline tests AND add SnapshotSuite tests
+
+Doubles test count (~260 tests). Rejected as primary approach - migrate to file-driven.
+
+### D. Make SnapshotSuite a standalone crate
 
 Over-engineering for two consumers. A module in `foolish-core` suffices.
 
 ## Open Questions
 
-1. **UBC FIR extraction:** Can `clone_steppable` on each `StatementFir.body`
-   produce a valid `Fir` for `SequenceableFir::from()`? If the UBC evaluation
-   leaves bodies in a state where the clone is incomplete or references are
-   broken, this needs investigation. **If this proves difficult, ask the
-   human before proceeding.**
+1. **UBC FIR extraction (Step 3A):** Does `Rc::clone(&stmt.body)` produce a valid `FirRef` for `FirQueryable` formatting, or is `clone_steppable` needed? **If cloning breaks references, ask human before proceeding.**
 
-2. **Inline vs. file-driven tests:** Should we keep some inline tests in
-   `lib.rs` for rapid development (no file I/O, easy to add new cases),
-   and use `SnapshotSuite` only for the full approval suite?
+2. **SequenceableFir retention:** Keep `SequenceableFir` and `SequenceableStatement` for hand-constructed tests in `lib.rs` sequencer_tests module? Yes - these avoid parser/compiler overhead.
 
-3. **Shared input files:** Should UBC and UBCb share the same `.foo` input
-   files (cross-validation), or maintain separate directories? Sharing
-   enables automatic cross-validation but may require different approved
-   snapshots if implementations diverge.
+3. **Shared vs separate input files:** Should UBC and UBCb share `.foo` inputs (cross-validation) or maintain separate directories? Separate initially, merge later once outputs match.
 
-4. **`_states` variant:** Should the `with_states` flag (which appends FIR
-   state to output) become a configurable option on `SnapshotSuite`
-   construction, or remain a per-call parameter?
+4. **Inline test migration:** How many `.foo` files to create initially? Recommendation: ~20 representative files for seed, grow incrementally.
+
+## Plan / Checkboxes
+
+### Step 1: Trait-based sequencing
+
+- [ ] Define `FirQueryable` trait in `fir.rs`
+- [ ] Define `FirChildRef` wrapper for `Rc<RefCell<Fir>>` children
+- [ ] Implement `FirQueryable` for `Fir`
+- [ ] Implement `FirQueryable` for `SequenceableFir`
+- [ ] Rewrite `HumanizingSequencer` / `hs_format_fir` to use trait
+- [ ] Update `Sequencer::format` to delegate to `HumanizingSequencer`
+- [ ] Remove `format()` from `Steppable` trait and all impls
+- [ ] Update callers (`foolish-cli`, inline tests)
+- [ ] Verify: `cargo test --workspace` passes
+
+### Step 2: Move SnapshotSuite to core
+
+- [ ] Create `foolish-core/src/snapshot_suite.rs` (moved + generalized)
+- [ ] Define `StatementOutput` struct in `foolish-core`
+- [ ] Move formatting helpers (`format_statements`, `fmt_fir_inline`)
+- [ ] Add dev-dependencies to `foolish-core/Cargo.toml`
+- [ ] Provide `ubcb_evaluator` adapter in `foolish-ubcb-cli`
+- [ ] Remove `snapshot_suite.rs` from `foolish-ubcb-cli`
+- [ ] Verify: `cargo test -p foolish-ubcb-cli --lib` passes
+- [ ] Verify: `cargo test --workspace` passes
+
+### Step 3: Sequence UBC FIRs
+
+- [ ] Implement `ubc_evaluator` adapter
+- [ ] Create `foolish-core/snapshot_tests/input/` directory
+- [ ] Create ~20 representative `.foo` input files
+- [ ] Add UBC approval tests module
+- [ ] Generate initial snapshots (`INSTA_UPDATE=always`)
+- [ ] Verify: `cargo test -p foolish-core -- approval` passes
+- [ ] (Later) Remove inline approval tests from `lib.rs`
 
 ## References
 
-- Current snapshot suite: `foolish-ubcb-cli/src/snapshot_suite.rs`
-- UBC approval tests: `foolish-core/src/lib.rs` (lines 262-1403)
-- HumanizingSequencer: `foolish-core/src/sequencer.rs`
-- `SequenceableFir`, `SequenceableStatement`: `foolish-core/src/fir.rs`
-- `EvaluationResult`, `StatementResult`: `foolish-ubcb/src/engine.rs`
+- Current `Steppable::format`: `foolish-core/src/fir.rs` lines ~658-1342 (10 impls)
+- Current `HumanizingSequencer`: `foolish-core/src/sequencer.rs` lines 32-155
+- Current `SnapshotSuite`: `foolish-ubcb-cli/src/snapshot_suite.rs` (334 lines)
+- Current inline UBC tests: `foolish-core/src/lib.rs` lines 262-1403 (~130 tests)
+- `SequenceableFir`: `foolish-core/src/fir.rs` lines 403-540
+- `EvaluationResult`, `StatementResult`: `foolish-ubcb/src/engine.rs` lines 13-25
+
+## Last Updated
+
+**Date**: 2026-05-17
+**Updated By**: opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4
+**Changes**: Initial plan created. Three-step refactor: trait-based sequencing, move SnapshotSuite to core, adapt UBC FIRs for snapshot testing.
