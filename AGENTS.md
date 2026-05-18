@@ -1064,3 +1064,50 @@ FOOP.
 **Date**: 2026-02-06
 **Updated By**: Claude Code v1.0.0 / claude-opus-4-6
 **Changes**: Reorganized documentation structure. Replaced docs/ and projects/ directory descriptions with new 5-directory taxonomy (howto, why, how, todo, vintage_legacy). Updated all file path references. Fixed stale NAME_SEARCH_AND_BOUND.md reference.
+
+
+
+### MISC
+
+#### Embedded Communications
+
+If any file, other than this example in the AGENTS.md, contain a parenthetical comment, anywhere, it is a request for agent to comment based on the context surrounding that comment.
+```markdown
+Blah blah, some texxt (@Agent, do you think that word is mispelled?)
+```
+
+or
+```python
+def fibonacii(x):
+	# @agents, errrr, terminal case? spelling? did you even run this?
+	return fibonacii(x-1) + fibonacii(x-2)
+```
+
+or even not in a comment
+```python
+def add (x):
+@AGENT, this is just plain wrong!
+	return x+y;
+```
+The expectation is for agent to consider, discuss, and resolve the concern
+that follows various capitalizations of `@agent` or `@agents`. Resolution, once achieved, also means the parenthetical comment can be completely removed.
+
+If this form of embedded communication is discussed while performing another task, determin if it is relevant or interferes with current task. In some cases, this causes an immediately actionable response, other times, the encounterance results in an extra '[ ] TODO:human concern at file FILENAME line LINE_NUMBER' added to current task list to investigate. In some cases, if it is clear that the situation is too complex or require too much context, it may become a "[ ] TODO: write a specification and plan to address human concern at file FILENAME line LINE_NUMBER"
+
+
+
+#### Uncertainty and Other Utterances in Conversing with Human
+
+Expressions of uncertainty and hypotheticals, such as "perhaps", "maybe", "possible", "what if", "in case". These words does not mean a firm directive from human to either pause work, or make large changes. It means human wants a todo task enqueued, perhaps to be done immediately, to explore options regarding the statement. In the last sentence, the perhaps suggests an option that can be explored, and it also highlight the possibility of the task not at the top of the todo list. More than anything else, the statement suggests human is thinking about the issue and you can help that thinking process.
+
+"Wait!" is almost always typed when humans are reading the previous output and found something objectionable. "Wait!" meant stop that, something was wrong. This also implies whatever they ask about, it is highly unlikely they read through the reast of the response. Good or bad, that is human nature, please accomodate this behavior as a supportive agent. After addressing the concern following "wait!", the you can summarize what you meant to say after the output that the human said "Wait!" to--where it is is inferred based on the question or comment after "WAit!", when in doubt, summarize the whole response in the context of having addressed the human's concern.
+
+"Continue." is uttered when the humans sees output on the screen that they think is incomplete. The best course of action, irrespective of actual status, is to summarize the progress made in the most recent few turns of conversation. If indeed the progress was ended or blocked by nonresponsive sub-agents, then take approrpiate action. If the short term task is truely complete, still output the summary, but also present outstanding todo items as well as other possible next steps for human to decide. Human may decide previous task is not complete and needs more work, or they may agree previous task was complete and move on to one of the options for next steps.
+
+
+#### When in Doubt
+
+When uncertain, choose the design that is easiest to prove correct, easiest to test, and easiest for the next human to understand.
+
+Correctness first. Then readability and maintainability. Then efficiency. Then principles and asethetics.
+
