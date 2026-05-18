@@ -54,6 +54,32 @@ and format. Adding a test to one harness doesn't cover the other.
 
 ## Specification
 
+### Core Invariant: Single Formatting Path
+
+**`HumanizingSequencer` (via `FirQueryable` trait) is THE ONLY path for converting
+any `Fir` into human-readable strings — period.**
+
+After this FOOP:
+- Every `Fir` → `String` conversion goes through `HumanizingSequencerRef::new(&dyn FirQueryable)`.
+- `SnapshotSuite` never formats FIR directly — it delegates to `HumanizingSequencer`.
+- `foolish-cli` (REPL, run, step) formats via `Sequencer::format` which delegates to `HumanizingSequencer`.
+- No `Steppable::format()`, no `Display` on FIR, no ad-hoc formatting anywhere.
+
+### HumanizingSequencer Formatting Rules
+
+`HumanizingSequencer` produces properly indented, multi-line output:
+
+1. **Single-statement branes** are rendered inline: `Brane{a = Int(1)}`
+2. **Multi-statement branes** are rendered with each statement on its own indented line:
+   ```
+   Brane{
+     a = Int(1);
+     b = Int(2);
+   }
+   ```
+3. **Indentation propagates recursively** — nested branes inherit the parent's indent level plus the standard increment (2 spaces).
+4. **This formatting behavior is permanent** — it exists in `foolish-core` and is preserved across all refactors, including the move of `SnapshotSuite` to core.
+
 ### Step 1: Trait-based sequencing (all FIR-to-String in HumanizingSequencer)
 
 **Scope:** `foolish-core/src/fir.rs`, `foolish-core/src/sequencer.rs`
@@ -140,7 +166,11 @@ Current: `fn format_fir(fir: &SequenceableFir, indent: usize) -> String` with
 a `match fir { SequenceableFir::... }` on 10 variants.
 
 New: `fn hs_format_fir(fir: &dyn FirQueryable, indent: usize) -> String` that
-dispatches via trait accessor methods:
+dispatches via trait accessor methods.
+
+`HumanizingSequencer` (owned `SequenceableFir`) is removed entirely. Only
+`HumanizingSequencerRef` (`&dyn FirQueryable`) remains. This is THE formatting
+path — `SnapshotSuite` uses it exclusively. No direct FIR formatting anywhere.
 
 ```
 fn hs_format_fir(fir: &dyn FirQueryable, indent: usize) -> String {
@@ -159,8 +189,7 @@ fn hs_format_fir(fir: &dyn FirQueryable, indent: usize) -> String {
 The formatting logic is identical -- only the dispatch mechanism changes from
 pattern matching on an enum to querying trait accessors.
 
-Keep `HumanizingSequencer` struct for `SequenceableFir` (preserves existing API
-for hand-constructed test FIRs). Add `HumanizingSequencerRef` for `&dyn FirQueryable`:
+Only `HumanizingSequencerRef` for `&dyn FirQueryable`:
 
 ```
 pub struct HumanizingSequencerRef<'a> { fir: &'a dyn FirQueryable }
@@ -169,8 +198,6 @@ impl<'a> HumanizingSequencerRef<'a> {
     pub fn format_with_indent(&self, indent: usize) -> String { ... }
 }
 ```
-
-Both call `hs_format_fir`.
 
 #### 1E. Remove `Steppable::format()` and update `Sequencer`
 
@@ -193,6 +220,77 @@ pub fn format(fir: &Fir) -> String {
 - `foolish-ubcb-cli/snapshot_suite.rs` -- uses `HumanizingSequencer` -- no change
   (Step 2 will migrate this to `HumanizingSequencerRef`)
 
+### Step 1.5: FIR Builders (UBC and UBCb)
+
+**Scope:** `foolish-core/src/fir.rs`, `foolish-ubcb/src/fir.rs`
+
+#### 1.5A. UBC FIR Builders
+
+Remove `SequenceableFir`, `SequenceableStatement`, `SequenceableError` entirely.
+
+Introduce one builder struct per FIR variant. Each builder uses a fluent API:
+
+```
+pub struct ConstantIntFirBuilder {
+    value: i64,
+    state: Nyes,
+}
+impl ConstantIntFirBuilder {
+    pub fn new(value: i64) -> Self { Self { value, state: Nyes::Prembrionic } }
+    pub fn state(mut self, state: Nyes) -> Self { self.state = state; self }
+    pub fn build(self) -> Fir {
+        Fir::ConstantInt(Box::new(ConstantIntFir { value: self.value, state: self.state }))
+    }
+}
+```
+
+Full set: `ConstantIntFirBuilder`, `NkFirBuilder`, `OperatorFirBuilder`,
+`SearchFirBuilder`, `IndexFirBuilder`, `HeadTailFirBuilder`,
+`StayFoolishFirBuilder`, `StayFullyFoolishFirBuilder`, `ConcatenationFirBuilder`,
+`NormalBraneFirBuilder`.
+
+#### 1.5B. Builder Unit Tests
+
+Each builder gets unit tests:
+- Construct with minimal fields, verify `build()` produces correct `Fir`.
+- Set all optional fields, verify correctness.
+- Wrap result in `FirRef`, format via `FirQueryable`, verify output.
+
+#### 1.5C. UBCb FIR Builders
+
+Analogous builders in `foolish-ubcb/src/fir.rs` that construct `UbcbFir`
+instead of `Fir`. Same fluent pattern. Same test structure.
+
+#### 1.5D. Migrate Sequencer Tests
+
+Hand-constructed sequencer tests in `lib.rs` (~140 lines) are rewritten. Two
+options for constructing test FIRs — use whichever is clearer for the test:
+
+**Option A — Builder (preferred for unit tests):** Direct, no parser overhead.
+```
+let fir = OperatorFirBuilder::new("+")
+    .add_operand(ConstantIntFirBuilder::new(1).build())
+    .add_operand(ConstantIntFirBuilder::new(2).build())
+    .state(Nyes::Constant)
+    .build();
+```
+
+**Option B — Parse from Foolish source:** When the test is about
+compiler/evaluator behavior, parse through the normal pipeline:
+```
+let firs = Compiler::compile("{a = 1 + 2;}").unwrap();
+let fir = firs[0].clone();
+```
+
+Use builders for focused unit tests (single FIR, specific state, edge cases).
+Use parse/compile for integration tests (full pipeline, scope resolution, etc.).
+No separate FIR class needed for either approach.
+
+#### 1.5E. Remove `SequenceableFir` from `HumanizingSequencer`
+
+`HumanizingSequencer` (owned `SequenceableFir`) is removed. Only
+`HumanizingSequencerRef` (`&dyn FirQueryable`) remains.
+
 ### Step 2: Move SnapshotSuite to foolish-core
 
 **Scope:** `foolish-core/src/snapshot_suite.rs` (new), `foolish-ubcb-cli/src/snapshot_suite.rs` (deleted),
@@ -203,7 +301,17 @@ pub fn format(fir: &Fir) -> String {
 The `SnapshotSuite` struct (discovery, input/approved directory management) is
 engine-agnostic. Move to `foolish-core/src/snapshot_suite.rs`.
 
-#### 2B. Replace hardcoded `UbcbEngine` with evaluator function
+#### 2B. SnapshotSuite must NOT format FIR directly
+
+`SnapshotSuite` is an orchestrator — it discovers files, runs evaluators, and
+delegates ALL formatting to `HumanizingSequencerRef` via `FirQueryable`.
+It must never contain its own FIR-to-String logic.
+
+The `fmt_fir_inline`, `fmt_stmt`, and `format_result` helpers in the current
+`snapshot_suite.rs` are moved to `foolish-core` and rewritten to use
+`HumanizingSequencerRef`. No FIR formatting escapes this single path.
+
+#### 2C. Replace hardcoded `UbcbEngine` with evaluator function
 
 Current `evaluate` is hardcoded:
 
@@ -229,23 +337,6 @@ where F: Fn(&str) -> Result<Vec<StatementOutput>, String>
 pub struct StatementOutput {
     pub name: Option<String>,
     pub fir: FirRef,  // Rc<RefCell<Fir>>
-}
-```
-
-#### 2C. Move formatting helpers to core
-
-`format_result`, `fmt_stmt`, `fmt_fir_inline` move to `foolish-core`.
-After Step 1, `fmt_fir_inline` uses `HumanizingSequencerRef`:
-
-```
-fn fmt_fir_inline(fir: &FirRef, indent: usize, states: bool) -> String {
-    let wrapper = FirChildRef { inner: Rc::clone(fir) };
-    let output = HumanizingSequencerRef::new(&wrapper).format_with_indent(indent);
-    if states {
-        format!("{} [{}]", output, fir.borrow().state())
-    } else {
-        output
-    }
 }
 ```
 
@@ -372,28 +463,37 @@ Doubles test count (~260). Rejected as primary approach -- migrate to file-drive
 
 Over-engineering for two consumers. A module in `foolish-core` suffices.
 
-## Open Questions
+## Design Decisions
 
-1. **UBC FIR extraction (Step 3A):** Does `Rc::clone(&stmt.body)` produce a valid
-   `FirRef` for `FirQueryable` formatting, or is `clone_steppable` needed?
-   **If cloning breaks references, ask human before proceeding.**
+1. **UBC FIR extraction (Step 3A):** `Rc::clone(&stmt.body)` is sufficient.
+   `FirChildRef` wraps `Rc<RefCell<Fir>>` and implements `FirQueryable` by
+   borrowing — zero cloning, zero allocation. `clone_steppable` is only needed
+   for independent mutable copies, not read-only formatting.
 
-2. **SequenceableFir retention:** Keep `SequenceableFir` and `SequenceableStatement`
-   for hand-constructed tests in the sequencer_tests module? Yes -- they avoid
-   parser/compiler overhead.
+2. **Remove SequenceableFir entirely. Introduce FIR builders for both UBC and UBCb.**
+   No separate FIR class for testing. Both UBC and UBCb get their own builder
+   structs — one per FIR variant — that construct and return `Fir` values directly.
+   Example: `ConstantIntFirBuilder::new(42).state(Nyes::Constant).build()`.
+   Builders have their own unit tests. Snapshot tests parse `.foo` files through
+   the normal compiler pipeline. The existing `*Fir` structs
+   (`ConstantIntFir`, `NkFir`, `OperatorFir`, etc.) serve as the basis for
+   builder APIs. UBCb gets analogous builders for `UbcbFir`.
 
-3. **Shared vs separate input files:** Should UBC and UBCb share `.foo` inputs
-   (cross-validation) or maintain separate directories? Separate initially, merge
-   later once outputs match.
+3. **Separate input files:** UBC and UBCb maintain separate `snapshot_tests/input/`
+   directories. They are at too different stages of development to share inputs.
 
-4. **Inline test migration:** How many `.foo` files initially? Recommendation:
-   ~20 representative files for seed, grow incrementally.
+4. **Inline test migration:** Copy ALL ~256 inline approval tests to `.foo` files.
+   Leave everything failing initially — the point is to have the full test corpus
+   in the snapshot harness, not to have passing tests immediately.
 
 ## References
 
 - `Steppable::format` implementations: `foolish-core/src/fir.rs` lines ~658-1342 (10 impls)
-- `HumanizingSequencer`: `foolish-core/src/sequencer.rs` lines 32-155
+- `HumanizingSequencer` / `HumanizingSequencerRef`: `foolish-core/src/sequencer.rs`
 - `SnapshotSuite`: `foolish-ubcb-cli/src/snapshot_suite.rs` (334 lines)
 - Inline UBC tests: `foolish-core/src/lib.rs` lines 262-1403 (~130 tests)
-- `SequenceableFir`: `foolish-core/src/fir.rs` lines 403-540
+- Sequencer unit tests (hand-constructed): `foolish-core/src/lib.rs` lines 1406-1795 (~140 lines)
+- `SequenceableFir` (to be removed): `foolish-core/src/fir.rs` lines 403-920
+- `*Fir` structs (builder basis): `foolish-core/src/fir.rs` lines 209-310
+- `UbcbFir`: `foolish-ubcb/src/fir.rs`
 - `EvaluationResult`, `StatementResult`: `foolish-ubcb/src/engine.rs` lines 13-25

@@ -384,15 +384,22 @@ Doubles test count (~260 tests). Rejected as primary approach - migrate to file-
 
 Over-engineering for two consumers. A module in `foolish-core` suffices.
 
-## Open Questions
+## Design Decisions
 
-1. **UBC FIR extraction (Step 3A):** Does `Rc::clone(&stmt.body)` produce a valid `FirRef` for `FirQueryable` formatting, or is `clone_steppable` needed? **If cloning breaks references, ask human before proceeding.**
+1. **UBC FIR extraction (Step 3A):** `Rc::clone(&stmt.body)` is sufficient. `FirChildRef` wraps `Rc<RefCell<Fir>>` and implements `FirQueryable` by borrowing — zero cloning, zero allocation. `clone_steppable` is only needed for independent mutable copies, not read-only formatting.
 
-2. **SequenceableFir retention:** Keep `SequenceableFir` and `SequenceableStatement` for hand-constructed tests in `lib.rs` sequencer_tests module? Yes - these avoid parser/compiler overhead.
+2. **Remove SequenceableFir entirely. Introduce FIR builders for both UBC and UBCb.**
+   No separate FIR class for testing. Both UBC and UBCb get their own builder
+   structs — one per FIR variant — that construct and return `Fir` values directly.
+   Example: `ConstantIntFirBuilder::new(42).state(Nyes::Constant).build()`.
+   Builders have their own unit tests. Snapshot tests parse `.foo` files through
+   the normal compiler pipeline. The existing `*Fir` structs
+   (`ConstantIntFir`, `NkFir`, `OperatorFir`, etc.) serve as the basis for
+   builder APIs. UBCb gets analogous builders for `UbcbFir`.
 
-3. **Shared vs separate input files:** Should UBC and UBCb share `.foo` inputs (cross-validation) or maintain separate directories? Separate initially, merge later once outputs match.
+3. **Separate input files:** UBC and UBCb maintain separate `snapshot_tests/input/` directories. They are at too different stages of development to share inputs.
 
-4. **Inline test migration:** How many `.foo` files to create initially? Recommendation: ~20 representative files for seed, grow incrementally.
+4. **Inline test migration:** Copy ALL ~256 inline approval tests to `.foo` files. Leave everything failing initially — the full test corpus enters the snapshot harness, not a subset.
 
 ## Plan / Checkboxes
 
@@ -401,11 +408,23 @@ Over-engineering for two consumers. A module in `foolish-core` suffices.
 - [ ] Define `FirQueryable` trait in `fir.rs`
 - [ ] Define `FirChildRef` wrapper for `Rc<RefCell<Fir>>` children
 - [ ] Implement `FirQueryable` for `Fir`
-- [ ] Implement `FirQueryable` for `SequenceableFir`
 - [ ] Rewrite `HumanizingSequencer` / `hs_format_fir` to use trait
 - [ ] Update `Sequencer::format` to delegate to `HumanizingSequencer`
 - [ ] Remove `format()` from `Steppable` trait and all impls
 - [ ] Update callers (`foolish-cli`, inline tests)
+- [ ] Verify: `cargo test --workspace` passes
+
+### Step 1.5: FIR Builders (UBC and UBCb)
+
+- [ ] Define `*FirBuilder` structs in `foolish-core/src/fir.rs` (one per FIR variant: `ConstantIntFirBuilder`, `NkFirBuilder`, `OperatorFirBuilder`, `SearchFirBuilder`, `IndexFirBuilder`, `HeadTailFirBuilder`, `StayFoolishFirBuilder`, `StayFullyFoolishFirBuilder`, `ConcatenationFirBuilder`, `NormalBraneFirBuilder`)
+- [ ] Each builder: fluent API with `.field(value).state(Nyes).build() -> Fir`
+- [ ] Unit tests for each builder (construct, verify fields, wrap in `FirRef`, format via `FirQueryable`)
+- [ ] Define `UbcbFirBuilder` structs in `foolish-ubcb/src/fir.rs` (analogous, returns `UbcbFir`)
+- [ ] Unit tests for UBCb builders
+- [ ] Remove `SequenceableFir`, `SequenceableStatement`, `SequenceableError` from `fir.rs`
+- [ ] Remove `SequenceableFir` usage from `foolish-ubcb/src/fir.rs`
+- [ ] Update `HumanizingSequencer` — remove owned `SequenceableFir` variant, keep only `HumanizingSequencerRef` for `&dyn FirQueryable`
+- [ ] Migrate hand-constructed sequencer tests in `lib.rs` to use builders + parse-based tests
 - [ ] Verify: `cargo test --workspace` passes
 
 ### Step 2: Move SnapshotSuite to core
