@@ -1,16 +1,12 @@
 ---
-source: foolish-core/src/lib.rs
+source: foolish-core/src/ubc_snapshot_tester.rs
 ---
-INPUT: {a=<<3>>; a + 7;}
-[0] PARSED:
-Brane [EMBRYONIC]
-  a = 
-  StayFullyFoolish [INDEPENDENT]
-    Int(3) [INDEPENDENT]
-  Operator(+) [EMBRYONIC]
-    Search(pattern='^a$', dir=BACKWARD, FREE) [EMBRYONIC]
-    Int(7) [INDEPENDENT]
-RESULT:
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 RloEHmf5rLfOjWxYHY6c6cMkwiS0unIpf1KQr1dK/NaYnSxDC8vXd6WMPJuWUl/UhCJ4k5nzH+QsqOxMYYL8Dw==
+INPUT:
+```foolish
+{a=<<3>>; a + 7;}
+```
+[0] RESULT:
 Brane [CONSTANT]
   a = 
   StayFullyFoolish [INDEPENDENT]

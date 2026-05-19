@@ -1,10 +1,11 @@
 ---
-source: foolish-core/src/lib.rs
+source: foolish-core/src/ubc_snapshot_tester.rs
 ---
-INPUT: {((((5))));}
-[0] PARSED:
-Brane [EMBRYONIC]
-  Int(5) [INDEPENDENT]
-RESULT:
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 RayDE9YKR/NULiujaJ7xWVcpjeMiAe4vRtvSafinExRDYCQMBKreJpBAkTlU8EI4CdCzukhaE3B+ZoSvDUQNAg==
+INPUT:
+```foolish
+{((((5))));}
+```
+[0] RESULT:
 Brane [CONSTANT]
   Int(5) [INDEPENDENT]

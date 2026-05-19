@@ -1,18 +1,12 @@
 ---
-source: foolish-core/src/lib.rs
+source: foolish-core/src/ubc_snapshot_tester.rs
 ---
-INPUT: {nested = {inner = {val = x}}; x = 42;}
-[0] PARSED:
-Brane [EMBRYONIC]
-  nested = 
-  Brane [EMBRYONIC]
-    inner = 
-    Brane [EMBRYONIC]
-      val = 
-      Search(pattern='^x$', dir=BACKWARD, FREE) [EMBRYONIC]
-  x = 
-  Int(42) [INDEPENDENT]
-RESULT:
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 dct7S1xt4BQlrVSe20zSejRWopMd5WAIV2n3zrW7K1tYqgXNp3fSPSQKHKK5cqT+oEDbEo1Ytg5ww9j+8ME3Aw==
+INPUT:
+```foolish
+{nested = {inner = {val = x}}; x = 42;}
+```
+[0] RESULT:
 Brane [CONSTANT]
   nested = 
   Brane [CONSTANT]

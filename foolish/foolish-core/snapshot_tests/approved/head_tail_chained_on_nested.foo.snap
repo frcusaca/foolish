@@ -1,22 +1,12 @@
 ---
-source: foolish-core/src/lib.rs
+source: foolish-core/src/ubc_snapshot_tester.rs
 ---
-INPUT: {b = {{{1; 2}; 3}; 4}; h = b^; hh = b^^;}
-[0] PARSED:
-Brane [EMBRYONIC]
-  b = 
-  Brane [EMBRYONIC]
-    Brane [EMBRYONIC]
-      Brane [EMBRYONIC]
-        Int(1) [INDEPENDENT]
-        Int(2) [INDEPENDENT]
-      Int(3) [INDEPENDENT]
-    Int(4) [INDEPENDENT]
-  h = 
-  HeadTail(HEAD, ANCHORED) [EMBRYONIC]
-  hh = 
-  HeadTail(HEAD, ANCHORED) [EMBRYONIC]
-RESULT:
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 efN9fyZ/xDjuTG5BJQg2f5XufugV0r1dZZ++KC3sibHT5oeesOpkvoq5A+rgVVoI9acFm+rO66Zbh4OyTr23Dg==
+INPUT:
+```foolish
+{b = {{{1; 2}; 3}; 4}; h = b^; hh = b^^;}
+```
+[0] RESULT:
 Brane [CONSTANT]
   b = 
   Brane [CONSTANT]

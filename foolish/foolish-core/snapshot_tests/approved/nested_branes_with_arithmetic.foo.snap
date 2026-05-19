@@ -1,27 +1,12 @@
 ---
-source: foolish-core/src/lib.rs
+source: foolish-core/src/ubc_snapshot_tester.rs
 ---
-INPUT: {2 + 3; {4 * 5; {6 - 1}; 7 + 8}; 9 / 3;}
-[0] PARSED:
-Brane [EMBRYONIC]
-  Operator(+) [EMBRYONIC]
-    Int(2) [INDEPENDENT]
-    Int(3) [INDEPENDENT]
-  Brane [EMBRYONIC]
-    Operator(*) [EMBRYONIC]
-      Int(4) [INDEPENDENT]
-      Int(5) [INDEPENDENT]
-    Brane [EMBRYONIC]
-      Operator(-) [EMBRYONIC]
-        Int(6) [INDEPENDENT]
-        Int(1) [INDEPENDENT]
-    Operator(+) [EMBRYONIC]
-      Int(7) [INDEPENDENT]
-      Int(8) [INDEPENDENT]
-  Operator(/) [EMBRYONIC]
-    Int(9) [INDEPENDENT]
-    Int(3) [INDEPENDENT]
-RESULT:
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 vLLvb0I0Anfoue0c0KAuKUmSBTQ1wQVabMp+iQCAL77geoqgDopV7aya4Myum/1wp9N677tDDCDmw9t16CXcDw==
+INPUT:
+```foolish
+{2 + 3; {4 * 5; {6 - 1}; 7 + 8}; 9 / 3;}
+```
+[0] RESULT:
 Brane [CONSTANT]
   Int(5) [CONSTANT]
   Brane [CONSTANT]

@@ -88,47 +88,10 @@ impl SnapshotSuite {
     /// Create a new suite for a pair of input/approved directories.
     ///
     /// Discovers `.foo` files in `input_dir` (excluding `.foo.disabled`).
-    /// Returns error if extraneous approved snapshots exist without matching inputs.
-    pub fn new(input_dir: impl Into<PathBuf>, approved_dir: impl Into<PathBuf>) -> Result<Self, SnapshotSuiteError> {
+    pub fn new(input_dir: impl Into<PathBuf>, approved_dir: impl Into<PathBuf>) -> Self {
         let input_dir = input_dir.into();
         let approved_dir = approved_dir.into();
-        let suite = Self { input_dir, approved_dir };
-
-        if suite.approved_dir.exists() {
-            let snapshot_names: HashSet<String> = match fs::read_dir(&suite.approved_dir) {
-                Ok(entries) => entries
-                    .flatten()
-                    .filter(|e| e.path().extension().is_some_and(|ext| ext == "snap"))
-                    .filter_map(|e| {
-                        e.file_name()
-                            .to_str()
-                            .and_then(|s| s.strip_suffix(".snap"))
-                            .and_then(|s| {
-                                let without_foo = s.strip_suffix(".foo").unwrap_or(s);
-                                let without_states = without_foo.strip_suffix("_states").unwrap_or(without_foo);
-                                Some(without_states.to_string())
-                            })
-                    })
-                    .collect(),
-                Err(_) => HashSet::new(),
-            };
-
-            let input_names = suite.input_names();
-            let mut extraneous = Vec::new();
-
-            for name in &snapshot_names {
-                if !input_names.contains(name) {
-                    extraneous.push(name.clone());
-                }
-            }
-
-            if !extraneous.is_empty() {
-                extraneous.sort();
-                return Err(SnapshotSuiteError::ExtraneousOutputs { files: extraneous });
-            }
-        }
-
-        Ok(suite)
+        Self { input_dir, approved_dir }
     }
 
     /// Extract test names from `.foo` files in input directory.

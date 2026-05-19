@@ -1,22 +1,12 @@
 ---
-source: foolish-core/src/lib.rs
+source: foolish-core/src/ubc_snapshot_tester.rs
 ---
-INPUT: {x = 1; π = 3; Б = 7; sum = x + π + Б;}
-[0] PARSED:
-Brane [EMBRYONIC]
-  x = 
-  Int(1) [INDEPENDENT]
-  π = 
-  Int(3) [INDEPENDENT]
-  Б = 
-  Int(7) [INDEPENDENT]
-  sum = 
-  Operator(+) [EMBRYONIC]
-    Operator(+) [EMBRYONIC]
-      Search(pattern='^x$', dir=BACKWARD, FREE) [EMBRYONIC]
-      Search(pattern='^π$', dir=BACKWARD, FREE) [EMBRYONIC]
-    Search(pattern='^Б$', dir=BACKWARD, FREE) [EMBRYONIC]
-RESULT:
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 HnEQDbZR9OCXyBhLSgHekAsp7uFfJlxgFgaUux6s3Sf5N7qj4s4ZmDhQW1+0mAydYssLalsUBecHY8NKLRLOAw==
+INPUT:
+```foolish
+{x = 1; π = 3; Б = 7; sum = x + π + Б;}
+```
+[0] RESULT:
 Brane [CONSTANT]
   x = 
   Int(1) [INDEPENDENT]

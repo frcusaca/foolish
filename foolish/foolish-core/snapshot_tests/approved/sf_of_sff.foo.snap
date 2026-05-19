@@ -1,26 +1,12 @@
 ---
-source: foolish-core/src/lib.rs
+source: foolish-core/src/ubc_snapshot_tester.rs
 ---
-INPUT: {a = 1; b = 2; sff = <<a + b>>; sf = <sff>; a = 10; sf; sff;}
-[0] PARSED:
-Brane [EMBRYONIC]
-  a = 
-  Int(1) [INDEPENDENT]
-  b = 
-  Int(2) [INDEPENDENT]
-  sff = 
-  StayFullyFoolish [INDEPENDENT]
-    Operator(+) [EMBRYONIC]
-      Search(pattern='^a$', dir=BACKWARD, FREE) [EMBRYONIC]
-      Search(pattern='^b$', dir=BACKWARD, FREE) [EMBRYONIC]
-  sf = 
-  StayFoolish [EMBRYONIC]
-    Search(pattern='^sff$', dir=BACKWARD, FREE) [EMBRYONIC]
-  a = 
-  Int(10) [INDEPENDENT]
-  Search(pattern='^sf$', dir=BACKWARD, FREE) [EMBRYONIC]
-  Search(pattern='^sff$', dir=BACKWARD, FREE) [EMBRYONIC]
-RESULT:
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 h1VqZ8FgnPZ2bLsAmCfvaSczq/hrg2qLt+NCDHxlJTO58pkS3WuR3DKlCs5mxYNflR4ATJy8+l662ISwvkxvDA==
+INPUT:
+```foolish
+{a = 1; b = 2; sff = <<a + b>>; sf = <sff>; a = 10; sf; sff;}
+```
+[0] RESULT:
 Brane [WOCONSTANIC]
   a = 
   Int(1) [INDEPENDENT]

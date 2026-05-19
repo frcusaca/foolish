@@ -1,26 +1,12 @@
 ---
-source: foolish-core/src/lib.rs
+source: foolish-core/src/ubc_snapshot_tester.rs
 ---
-INPUT: {x=10; y=20; z=30; sum = x + y + z; avg = sum / 3;}
-[0] PARSED:
-Brane [EMBRYONIC]
-  x = 
-  Int(10) [INDEPENDENT]
-  y = 
-  Int(20) [INDEPENDENT]
-  z = 
-  Int(30) [INDEPENDENT]
-  sum = 
-  Operator(+) [EMBRYONIC]
-    Operator(+) [EMBRYONIC]
-      Search(pattern='^x$', dir=BACKWARD, FREE) [EMBRYONIC]
-      Search(pattern='^y$', dir=BACKWARD, FREE) [EMBRYONIC]
-    Search(pattern='^z$', dir=BACKWARD, FREE) [EMBRYONIC]
-  avg = 
-  Operator(/) [EMBRYONIC]
-    Search(pattern='^sum$', dir=BACKWARD, FREE) [EMBRYONIC]
-    Int(3) [INDEPENDENT]
-RESULT:
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 eIJL0ws12Aay/OZZDwEfhuORsRcoD771FKTX/isyLfFNwYZ+cAlF3iL6fReWj0duYc02l/q9RN6crj+iPp0rAg==
+INPUT:
+```foolish
+{x=10; y=20; z=30; sum = x + y + z; avg = sum / 3;}
+```
+[0] RESULT:
 Brane [WOCONSTANIC]
   x = 
   Int(10) [INDEPENDENT]

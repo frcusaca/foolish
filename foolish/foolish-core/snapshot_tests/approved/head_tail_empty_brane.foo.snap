@@ -1,14 +1,12 @@
 ---
-source: foolish-core/src/lib.rs
+source: foolish-core/src/ubc_snapshot_tester.rs
 ---
-INPUT: {e = {}^; f = {}$;}
-[0] PARSED:
-Brane [EMBRYONIC]
-  e = 
-  HeadTail(HEAD, ANCHORED) [EMBRYONIC]
-  f = 
-  HeadTail(TAIL, ANCHORED) [EMBRYONIC]
-RESULT:
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 Op9FpCPn6rtPcl85nBOO3159u9dxIZzkrOB3FYyixEo+iNyZBhQFQ9yjqfcCtZEUyM4t3IzLMRmIlnJVe2deBw==
+INPUT:
+```foolish
+{e = {}^; f = {}$;}
+```
+[0] RESULT:
 Brane [NK]
   e = 
   HeadTail(HEAD, ANCHORED) [NK]

@@ -1,18 +1,12 @@
 ---
-source: foolish-core/src/lib.rs
+source: foolish-core/src/ubc_snapshot_tester.rs
 ---
-INPUT: {a = 0 * 100; b = 0 + 999;}
-[0] PARSED:
-Brane [EMBRYONIC]
-  a = 
-  Operator(*) [EMBRYONIC]
-    Int(0) [INDEPENDENT]
-    Int(100) [INDEPENDENT]
-  b = 
-  Operator(+) [EMBRYONIC]
-    Int(0) [INDEPENDENT]
-    Int(999) [INDEPENDENT]
-RESULT:
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 LGovan4yHWJcpoEzNulGo/lrFG4UB/sBJXtPZEYRtu0BAdGrQDcSN6iywxab5AEU0PYpQfeOXiDIyyryLWa/Bw==
+INPUT:
+```foolish
+{a = 0 * 100; b = 0 + 999;}
+```
+[0] RESULT:
 Brane [CONSTANT]
   a = 
   Int(0) [CONSTANT]

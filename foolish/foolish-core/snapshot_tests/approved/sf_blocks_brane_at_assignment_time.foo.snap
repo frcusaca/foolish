@@ -1,22 +1,12 @@
 ---
-source: foolish-core/src/lib.rs
+source: foolish-core/src/ubc_snapshot_tester.rs
 ---
-INPUT: {a={x=1, y=2}; s=<a>; a=99; s;}
-[0] PARSED:
-Brane [EMBRYONIC]
-  a = 
-  Brane [EMBRYONIC]
-    x = 
-    Int(1) [INDEPENDENT]
-    y = 
-    Int(2) [INDEPENDENT]
-  s = 
-  StayFoolish [EMBRYONIC]
-    Search(pattern='^a$', dir=BACKWARD, FREE) [EMBRYONIC]
-  a = 
-  Int(99) [INDEPENDENT]
-  Search(pattern='^s$', dir=BACKWARD, FREE) [EMBRYONIC]
-RESULT:
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 r9cVsMVy9IKQUvI6rQnmYcfv40up0dd5AhbtoMFl72TT9TjvhiLZuxtnFgHI3eXA5c6ToFS7wW+gRqjBqQxxCw==
+INPUT:
+```foolish
+{a={x=1, y=2}; s=<a>; a=99; s;}
+```
+[0] RESULT:
 Brane [CONSTANT]
   a = 
   Brane [CONSTANT]

@@ -1,18 +1,12 @@
 ---
-source: foolish-core/src/lib.rs
+source: foolish-core/src/ubc_snapshot_tester.rs
 ---
-INPUT: {my_var = 10; another_var = 20; result = my_var + another_var;}
-[0] PARSED:
-Brane [EMBRYONIC]
-  myˍvar = 
-  Int(10) [INDEPENDENT]
-  anotherˍvar = 
-  Int(20) [INDEPENDENT]
-  result = 
-  Operator(+) [EMBRYONIC]
-    Search(pattern='^myˍvar$', dir=BACKWARD, FREE) [EMBRYONIC]
-    Search(pattern='^anotherˍvar$', dir=BACKWARD, FREE) [EMBRYONIC]
-RESULT:
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 YL60MVPYRdNx2UuAR4BhiYrezotRIEzx0SZmsdhFsp8e5vISvZ55YHcEdhuEOgFMIqpxGK/Mrm1cFuCpi6RAAQ==
+INPUT:
+```foolish
+{my_var = 10; another_var = 20; result = my_var + another_var;}
+```
+[0] RESULT:
 Brane [CONSTANT]
   myˍvar = 
   Int(10) [INDEPENDENT]

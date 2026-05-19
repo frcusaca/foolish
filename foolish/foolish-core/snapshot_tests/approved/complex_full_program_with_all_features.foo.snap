@@ -1,26 +1,12 @@
 ---
-source: foolish-core/src/lib.rs
+source: foolish-core/src/ubc_snapshot_tester.rs
 ---
-INPUT: {a = 10; b = 20; sum = a + b; nested = {inner = sum / 2}; result = nested.inner;}
-[0] PARSED:
-Brane [EMBRYONIC]
-  a = 
-  Int(10) [INDEPENDENT]
-  b = 
-  Int(20) [INDEPENDENT]
-  sum = 
-  Operator(+) [EMBRYONIC]
-    Search(pattern='^a$', dir=BACKWARD, FREE) [EMBRYONIC]
-    Search(pattern='^b$', dir=BACKWARD, FREE) [EMBRYONIC]
-  nested = 
-  Brane [EMBRYONIC]
-    inner = 
-    Operator(/) [EMBRYONIC]
-      Search(pattern='^sum$', dir=BACKWARD, FREE) [EMBRYONIC]
-      Int(2) [INDEPENDENT]
-  result = 
-  Search(pattern='^inner$', dir=BACKWARD, ANCHORED) [EMBRYONIC]
-RESULT:
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 1SXA6C7yxC6ZpiMvulmMy1eFI1Es1+sQ6hUtwarY1vKYOMtGrpNqx+rd59gPsyK1pqAjtcEAE57YwFIWqdU2CA==
+INPUT:
+```foolish
+{a = 10; b = 20; sum = a + b; nested = {inner = sum / 2}; result = nested.inner;}
+```
+[0] RESULT:
 Brane [NK]
   a = 
   Int(10) [INDEPENDENT]

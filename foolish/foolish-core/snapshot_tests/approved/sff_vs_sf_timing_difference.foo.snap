@@ -1,22 +1,12 @@
 ---
-source: foolish-core/src/lib.rs
+source: foolish-core/src/ubc_snapshot_tester.rs
 ---
-INPUT: {x = 1; sf = <x>; sff = <<x>>; x = 10; sf; sff;}
-[0] PARSED:
-Brane [EMBRYONIC]
-  x = 
-  Int(1) [INDEPENDENT]
-  sf = 
-  StayFoolish [EMBRYONIC]
-    Search(pattern='^x$', dir=BACKWARD, FREE) [EMBRYONIC]
-  sff = 
-  StayFullyFoolish [INDEPENDENT]
-    Search(pattern='^x$', dir=BACKWARD, FREE) [EMBRYONIC]
-  x = 
-  Int(10) [INDEPENDENT]
-  Search(pattern='^sf$', dir=BACKWARD, FREE) [EMBRYONIC]
-  Search(pattern='^sff$', dir=BACKWARD, FREE) [EMBRYONIC]
-RESULT:
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 1T4n3g/X8HUF4ks72E7lyvCYn9OelhLPSBr7ockhII5PkT0EVw7Amz08EWaUU87H3l3wpZOYiwTv12S1ZPHVBA==
+INPUT:
+```foolish
+{x = 1; sf = <x>; sff = <<x>>; x = 10; sf; sff;}
+```
+[0] RESULT:
 Brane [CONSTANT]
   x = 
   Int(1) [INDEPENDENT]

@@ -1,14 +1,12 @@
 ---
-source: foolish-core/src/lib.rs
+source: foolish-core/src/ubc_snapshot_tester.rs
 ---
-INPUT: {x = {10; 20; 30}^; y = {10; 20; 30}$;}
-[0] PARSED:
-Brane [EMBRYONIC]
-  x = 
-  HeadTail(HEAD, ANCHORED) [EMBRYONIC]
-  y = 
-  HeadTail(TAIL, ANCHORED) [EMBRYONIC]
-RESULT:
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 H6qRVntwKvC0a4FpMDE/EgiX8clsQl9wsrl9OfUoes5B9RPH8IXTNM4NjU/HlZGcFSztGukvBfLCU35AgBdsDQ==
+INPUT:
+```foolish
+{x = {10; 20; 30}^; y = {10; 20; 30}$;}
+```
+[0] RESULT:
 Brane [CONSTANT]
   x = 
   Int(10) [INDEPENDENT]

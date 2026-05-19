@@ -1,16 +1,12 @@
 ---
-source: foolish-core/src/lib.rs
+source: foolish-core/src/ubc_snapshot_tester.rs
 ---
-INPUT: {{{{x = 42; x};};};}
-[0] PARSED:
-Brane [EMBRYONIC]
-  Brane [EMBRYONIC]
-    Brane [EMBRYONIC]
-      Brane [EMBRYONIC]
-        x = 
-        Int(42) [INDEPENDENT]
-        Search(pattern='^x$', dir=BACKWARD, FREE) [EMBRYONIC]
-RESULT:
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 Y6n20+pmIHuScYeHgxuPG8M5BO/gc0rTQZSyzS4Bta3dbhJ39IuX+kvl1OMGnijziXfIwsJqptTNa2wQjVeOAQ==
+INPUT:
+```foolish
+{{{{x = 42; x};};};}
+```
+[0] RESULT:
 Brane [CONSTANT]
   Brane [CONSTANT]
     Brane [CONSTANT]

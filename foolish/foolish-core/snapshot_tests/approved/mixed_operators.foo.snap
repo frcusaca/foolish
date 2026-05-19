@@ -1,16 +1,11 @@
 ---
-source: foolish-core/src/lib.rs
+source: foolish-core/src/ubc_snapshot_tester.rs
 ---
-INPUT: {10 + 5 - 3 * 2;}
-[0] PARSED:
-Brane [EMBRYONIC]
-  Operator(-) [EMBRYONIC]
-    Operator(+) [EMBRYONIC]
-      Int(10) [INDEPENDENT]
-      Int(5) [INDEPENDENT]
-    Operator(*) [EMBRYONIC]
-      Int(3) [INDEPENDENT]
-      Int(2) [INDEPENDENT]
-RESULT:
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 fysCNlDdf+8ar2KsG8i9PQKYuNDFmFyoKboNzVpunEciBj5xAFioRK94ORpMa0X1A2j50hl2q+iGTEL5l2EbAA==
+INPUT:
+```foolish
+{10 + 5 - 3 * 2;}
+```
+[0] RESULT:
 Brane [CONSTANT]
   Int(9) [CONSTANT]

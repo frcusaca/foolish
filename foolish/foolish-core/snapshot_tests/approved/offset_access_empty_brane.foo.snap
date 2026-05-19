@@ -1,14 +1,12 @@
 ---
-source: foolish-core/src/lib.rs
+source: foolish-core/src/ubc_snapshot_tester.rs
 ---
-INPUT: {empty = {}; result = empty#0;}
-[0] PARSED:
-Brane [EMBRYONIC]
-  empty = 
-  Brane [EMBRYONIC]
-  result = 
-  Index(offset=0, ANCHORED) [EMBRYONIC]
-RESULT:
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 JI35BO/LYAqVxA74+it8/mQgGw1ylzq4Y/Ev2S/JTh2Ck5W3W98gnxrHouJtQswqUSWKzejSlRPusvvqRMQ/AA==
+INPUT:
+```foolish
+{empty = {}; result = empty#0;}
+```
+[0] RESULT:
 Brane [NK]
   empty = 
   Brane [CONSTANT]

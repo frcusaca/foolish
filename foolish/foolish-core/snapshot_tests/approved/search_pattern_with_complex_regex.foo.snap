@@ -1,24 +1,12 @@
 ---
-source: foolish-core/src/lib.rs
+source: foolish-core/src/ubc_snapshot_tester.rs
 ---
-INPUT: {b = {tmp_a = 1; result = 2; tmp_b = 3; output = 4}; r1 = b?tmp_.*; r2 = b?result;}
-[0] PARSED:
-Brane [EMBRYONIC]
-  b = 
-  Brane [EMBRYONIC]
-    tmpˍa = 
-    Int(1) [INDEPENDENT]
-    result = 
-    Int(2) [INDEPENDENT]
-    tmpˍb = 
-    Int(3) [INDEPENDENT]
-    output = 
-    Int(4) [INDEPENDENT]
-  r1 = 
-  Search(pattern='tmpˍ.*', dir=BACKWARD, ANCHORED) [EMBRYONIC]
-  r2 = 
-  Search(pattern='result', dir=BACKWARD, ANCHORED) [EMBRYONIC]
-RESULT:
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 7NEp1YnLYuCfsI67t4Rd/ifucEcudy+rM9iBWs21OTYUeIBSIaDmGFkBKspARTYnph1eTh6gKRTjxRNTspmwBg==
+INPUT:
+```foolish
+{b = {tmp_a = 1; result = 2; tmp_b = 3; output = 4}; r1 = b?tmp_.*; r2 = b?result;}
+```
+[0] RESULT:
 Brane [CONSTANT]
   b = 
   Brane [CONSTANT]

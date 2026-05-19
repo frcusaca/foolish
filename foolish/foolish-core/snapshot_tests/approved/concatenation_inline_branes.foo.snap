@@ -1,26 +1,12 @@
 ---
-source: foolish-core/src/lib.rs
+source: foolish-core/src/ubc_snapshot_tester.rs
 ---
-INPUT: {c = {a=1, b=2, c=3}{e=4, f=5, g=6};}
-[0] PARSED:
-Brane [EMBRYONIC]
-  c = 
-  Concatenation(elements=2) [EMBRYONIC]
-    Brane [EMBRYONIC]
-      a = 
-      Int(1) [INDEPENDENT]
-      b = 
-      Int(2) [INDEPENDENT]
-      c = 
-      Int(3) [INDEPENDENT]
-    Brane [EMBRYONIC]
-      e = 
-      Int(4) [INDEPENDENT]
-      f = 
-      Int(5) [INDEPENDENT]
-      g = 
-      Int(6) [INDEPENDENT]
-RESULT:
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 Yyy/jMH9SMSnCnxCzunc8XwQ3N6XFlQcdc5qGEaVPgjpAm3QT6n+BobbEqFSh/9+yzxZ6wo9sQ8sMBPIOzTcDQ==
+INPUT:
+```foolish
+{c = {a=1, b=2, c=3}{e=4, f=5, g=6};}
+```
+[0] RESULT:
 Brane [CONSTANT]
   c = 
   Brane [CONSTANT]

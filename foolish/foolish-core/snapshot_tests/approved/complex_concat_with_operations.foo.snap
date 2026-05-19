@@ -1,26 +1,12 @@
 ---
-source: foolish-core/src/lib.rs
+source: foolish-core/src/ubc_snapshot_tester.rs
 ---
-INPUT: {a = {x=1+2}; b = {y=3*4}; c = a b;}
-[0] PARSED:
-Brane [EMBRYONIC]
-  a = 
-  Brane [EMBRYONIC]
-    x = 
-    Operator(+) [EMBRYONIC]
-      Int(1) [INDEPENDENT]
-      Int(2) [INDEPENDENT]
-  b = 
-  Brane [EMBRYONIC]
-    y = 
-    Operator(*) [EMBRYONIC]
-      Int(3) [INDEPENDENT]
-      Int(4) [INDEPENDENT]
-  c = 
-  Concatenation(elements=2) [EMBRYONIC]
-    Search(pattern='^a$', dir=BACKWARD, FREE) [EMBRYONIC]
-    Search(pattern='^b$', dir=BACKWARD, FREE) [EMBRYONIC]
-RESULT:
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 hQZ3XlbJGCwNVmkTvvRiWQV1g6p/STn4Fd9yT0++sGLitIb/zHnnNHPywvmqVpMHd5cktMT7LFhzayFSXQ4mAw==
+INPUT:
+```foolish
+{a = {x=1+2}; b = {y=3*4}; c = a b;}
+```
+[0] RESULT:
 Brane [CONSTANT]
   a = 
   Brane [CONSTANT]

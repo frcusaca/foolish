@@ -1,27 +1,12 @@
 ---
-source: foolish-core/src/lib.rs
+source: foolish-core/src/ubc_snapshot_tester.rs
 ---
-INPUT: {b1={a=1, b=2, c=3}; c = {x=10} b1 {y=20};}
-[0] PARSED:
-Brane [EMBRYONIC]
-  b1 = 
-  Brane [EMBRYONIC]
-    a = 
-    Int(1) [INDEPENDENT]
-    b = 
-    Int(2) [INDEPENDENT]
-    c = 
-    Int(3) [INDEPENDENT]
-  c = 
-  Concatenation(elements=3) [EMBRYONIC]
-    Brane [EMBRYONIC]
-      x = 
-      Int(10) [INDEPENDENT]
-    Search(pattern='^b1$', dir=BACKWARD, FREE) [EMBRYONIC]
-    Brane [EMBRYONIC]
-      y = 
-      Int(20) [INDEPENDENT]
-RESULT:
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 IeZT4ziW59yCqqwf5il8/UazFL6k4GxaW68stl0o2YGoEK6MxdWTghWDe2P5s4Pt7hkaUemACjxYrXbioVxcCg==
+INPUT:
+```foolish
+{b1={a=1, b=2, c=3}; c = {x=10} b1 {y=20};}
+```
+[0] RESULT:
 Brane [CONSTANT]
   b1 = 
   Brane [CONSTANT]

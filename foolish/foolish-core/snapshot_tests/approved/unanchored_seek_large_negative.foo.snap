@@ -1,18 +1,12 @@
 ---
-source: foolish-core/src/lib.rs
+source: foolish-core/src/ubc_snapshot_tester.rs
 ---
-INPUT: {a=1; b=2; c=3; d=#-100;}
-[0] PARSED:
-Brane [EMBRYONIC]
-  a = 
-  Int(1) [INDEPENDENT]
-  b = 
-  Int(2) [INDEPENDENT]
-  c = 
-  Int(3) [INDEPENDENT]
-  d = 
-  Index(offset=-100, FREE) [EMBRYONIC]
-RESULT:
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 2l4QU+sEHRi97uSsSCi4Gm5FE0WWc5ezldHMisV8/FJzYWajGPXFS0WRmToY5R51bPsaG6mDwrUSl6t8utLNAA==
+INPUT:
+```foolish
+{a=1; b=2; c=3; d=#-100;}
+```
+[0] RESULT:
 Brane [CONSTANT]
   a = 
   Int(1) [INDEPENDENT]

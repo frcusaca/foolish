@@ -1,18 +1,12 @@
 ---
-source: foolish-core/src/lib.rs
+source: foolish-core/src/ubc_snapshot_tester.rs
 ---
-INPUT: {x = 42; b = {y = x + 1};}
-[0] PARSED:
-Brane [EMBRYONIC]
-  x = 
-  Int(42) [INDEPENDENT]
-  b = 
-  Brane [EMBRYONIC]
-    y = 
-    Operator(+) [EMBRYONIC]
-      Search(pattern='^x$', dir=BACKWARD, FREE) [EMBRYONIC]
-      Int(1) [INDEPENDENT]
-RESULT:
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 a2EHfjlv4/xgltU75YJ4bjNfPd6HVSagAu6bn0bsfw4HVnqCl0/M3s704cb/TVH0rPXvnH8RN5KIqWjnVWZ1Bw==
+INPUT:
+```foolish
+{x = 42; b = {y = x + 1};}
+```
+[0] RESULT:
 Brane [CONSTANT]
   x = 
   Int(42) [INDEPENDENT]

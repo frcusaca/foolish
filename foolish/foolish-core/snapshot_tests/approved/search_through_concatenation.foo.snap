@@ -1,24 +1,12 @@
 ---
-source: foolish-core/src/lib.rs
+source: foolish-core/src/ubc_snapshot_tester.rs
 ---
-INPUT: {b={x=10}; c = b {y=20}; result = c.x + c.y;}
-[0] PARSED:
-Brane [EMBRYONIC]
-  b = 
-  Brane [EMBRYONIC]
-    x = 
-    Int(10) [INDEPENDENT]
-  c = 
-  Concatenation(elements=2) [EMBRYONIC]
-    Search(pattern='^b$', dir=BACKWARD, FREE) [EMBRYONIC]
-    Brane [EMBRYONIC]
-      y = 
-      Int(20) [INDEPENDENT]
-  result = 
-  Operator(+) [EMBRYONIC]
-    Search(pattern='^x$', dir=BACKWARD, ANCHORED) [EMBRYONIC]
-    Search(pattern='^y$', dir=BACKWARD, ANCHORED) [EMBRYONIC]
-RESULT:
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 9DLYRoHvr3V1/5qjv3++3QYoGXWioowdvBAbjKn8LjHxI1Wl1cKHUPfJwwRGXhOaznyIGi9JwcVLQUcPqv+EAQ==
+INPUT:
+```foolish
+{b={x=10}; c = b {y=20}; result = c.x + c.y;}
+```
+[0] RESULT:
 Brane [CONSTANT]
   b = 
   Brane [CONSTANT]

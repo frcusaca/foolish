@@ -1,20 +1,12 @@
 ---
-source: foolish-core/src/lib.rs
+source: foolish-core/src/ubc_snapshot_tester.rs
 ---
-INPUT: {b = {a1 = 1; a2 = 2; a3 = 3}; r = b?a.*;}
-[0] PARSED:
-Brane [EMBRYONIC]
-  b = 
-  Brane [EMBRYONIC]
-    a1 = 
-    Int(1) [INDEPENDENT]
-    a2 = 
-    Int(2) [INDEPENDENT]
-    a3 = 
-    Int(3) [INDEPENDENT]
-  r = 
-  Search(pattern='a.*', dir=BACKWARD, ANCHORED) [EMBRYONIC]
-RESULT:
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 ftH8dTA78ga8T03BJZTg7u6rt1xShIINY/hS8wcvR5RnCtlueKZalhtVnTkvsLJxlkQmOJivBQ7Gbm0k+slkCQ==
+INPUT:
+```foolish
+{b = {a1 = 1; a2 = 2; a3 = 3}; r = b?a.*;}
+```
+[0] RESULT:
 Brane [CONSTANT]
   b = 
   Brane [CONSTANT]

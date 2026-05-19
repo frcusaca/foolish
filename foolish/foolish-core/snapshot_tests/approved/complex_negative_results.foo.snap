@@ -1,22 +1,12 @@
 ---
-source: foolish-core/src/lib.rs
+source: foolish-core/src/ubc_snapshot_tester.rs
 ---
-INPUT: {a = 5 - 10; b = 3 * 2; c = 15 + 7;}
-[0] PARSED:
-Brane [EMBRYONIC]
-  a = 
-  Operator(-) [EMBRYONIC]
-    Int(5) [INDEPENDENT]
-    Int(10) [INDEPENDENT]
-  b = 
-  Operator(*) [EMBRYONIC]
-    Int(3) [INDEPENDENT]
-    Int(2) [INDEPENDENT]
-  c = 
-  Operator(+) [EMBRYONIC]
-    Int(15) [INDEPENDENT]
-    Int(7) [INDEPENDENT]
-RESULT:
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 w0kRz9DrOhrLrXchn/UL2sGvqOvxyKftnm2oPB3qFJVbAJ+jHdFxqn19CiTIOUNiYg1a9L3xBe0N6AkgwxU4Dg==
+INPUT:
+```foolish
+{a = 5 - 10; b = 3 * 2; c = 15 + 7;}
+```
+[0] RESULT:
 Brane [CONSTANT]
   a = 
   Int(-5) [CONSTANT]

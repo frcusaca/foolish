@@ -1,18 +1,12 @@
 ---
-source: foolish-core/src/lib.rs
+source: foolish-core/src/ubc_snapshot_tester.rs
 ---
-INPUT: {a = 1000000; b = 999999; c = a - b;}
-[0] PARSED:
-Brane [EMBRYONIC]
-  a = 
-  Int(1000000) [INDEPENDENT]
-  b = 
-  Int(999999) [INDEPENDENT]
-  c = 
-  Operator(-) [EMBRYONIC]
-    Search(pattern='^a$', dir=BACKWARD, FREE) [EMBRYONIC]
-    Search(pattern='^b$', dir=BACKWARD, FREE) [EMBRYONIC]
-RESULT:
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 V9gX+iMWLRiEznd+jAB0+5004O4k8VncOLu0+TP1BOjxHtENGxa5zNiA/mCj753+k9RIj6DkbSgmznmNvzBGDw==
+INPUT:
+```foolish
+{a = 1000000; b = 999999; c = a - b;}
+```
+[0] RESULT:
 Brane [CONSTANT]
   a = 
   Int(1000000) [INDEPENDENT]

@@ -1,24 +1,12 @@
 ---
-source: foolish-core/src/lib.rs
+source: foolish-core/src/ubc_snapshot_tester.rs
 ---
-INPUT: { a={p=1;q=2}; b={r=3}; c = a b; }
-[0] PARSED:
-Brane [EMBRYONIC]
-  a = 
-  Brane [EMBRYONIC]
-    p = 
-    Int(1) [INDEPENDENT]
-    q = 
-    Int(2) [INDEPENDENT]
-  b = 
-  Brane [EMBRYONIC]
-    r = 
-    Int(3) [INDEPENDENT]
-  c = 
-  Concatenation(elements=2) [EMBRYONIC]
-    Search(pattern='^a$', dir=BACKWARD, FREE) [EMBRYONIC]
-    Search(pattern='^b$', dir=BACKWARD, FREE) [EMBRYONIC]
-RESULT:
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 FG6PlQG327u13c4LARrKoRGZ9A08IMiN15Yo0FO4sGLjzx4Dkschb3e2cXqr0oCFpdHVjgGzDUAHmKblbLjxCw==
+INPUT:
+```foolish
+{ a={p=1;q=2}; b={r=3}; c = a b; }
+```
+[0] RESULT:
 Brane [CONSTANT]
   a = 
   Brane [CONSTANT]

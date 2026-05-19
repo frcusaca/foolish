@@ -1,12 +1,12 @@
 ---
-source: foolish-core/src/lib.rs
+source: foolish-core/src/ubc_snapshot_tester.rs
 ---
-INPUT: {x = non_existent;}
-[0] PARSED:
-Brane [EMBRYONIC]
-  x = 
-  Search(pattern='^nonˍexistent$', dir=BACKWARD, FREE) [EMBRYONIC]
-RESULT:
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 OUDClvBDQDI4jMLtSBkX4ByLqXugKbw59gsG9cg9ypiX3np+sdMdg4y0aiyNnJTQgpPswkylfDc5eQqlCU9dBg==
+INPUT:
+```foolish
+{x = non_existent;}
+```
+[0] RESULT:
 Brane [WOCONSTANIC]
   x = 
   Search(pattern='^nonˍexistent$', dir=BACKWARD, FREE) [ECONSTANIC]

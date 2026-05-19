@@ -1,22 +1,12 @@
 ---
-source: foolish-core/src/lib.rs
+source: foolish-core/src/ubc_snapshot_tester.rs
 ---
-INPUT: {val1 = 3; val2 = 4; val3 = 5; sum = #-1 + #-2 + #-3;}
-[0] PARSED:
-Brane [EMBRYONIC]
-  val1 = 
-  Int(3) [INDEPENDENT]
-  val2 = 
-  Int(4) [INDEPENDENT]
-  val3 = 
-  Int(5) [INDEPENDENT]
-  sum = 
-  Operator(+) [EMBRYONIC]
-    Operator(+) [EMBRYONIC]
-      Index(offset=-1, FREE) [EMBRYONIC]
-      Index(offset=-2, FREE) [EMBRYONIC]
-    Index(offset=-3, FREE) [EMBRYONIC]
-RESULT:
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 4Op9a4SD82NnhuqkFocpP8S6SDOGc1oqG7ozVwycClN+D3+mH7iKx6DP5nFjdxEqYwI0cpD5g9WHvUtEsJiOAQ==
+INPUT:
+```foolish
+{val1 = 3; val2 = 4; val3 = 5; sum = #-1 + #-2 + #-3;}
+```
+[0] RESULT:
 Brane [CONSTANT]
   val1 = 
   Int(3) [INDEPENDENT]

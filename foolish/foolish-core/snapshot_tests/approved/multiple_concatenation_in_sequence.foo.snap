@@ -1,34 +1,12 @@
 ---
-source: foolish-core/src/lib.rs
+source: foolish-core/src/ubc_snapshot_tester.rs
 ---
-INPUT: {a={1;2}; b={3;4}; c={5;6}; r1 = a b; r2 = b c; r3 = a c;}
-[0] PARSED:
-Brane [EMBRYONIC]
-  a = 
-  Brane [EMBRYONIC]
-    Int(1) [INDEPENDENT]
-    Int(2) [INDEPENDENT]
-  b = 
-  Brane [EMBRYONIC]
-    Int(3) [INDEPENDENT]
-    Int(4) [INDEPENDENT]
-  c = 
-  Brane [EMBRYONIC]
-    Int(5) [INDEPENDENT]
-    Int(6) [INDEPENDENT]
-  r1 = 
-  Concatenation(elements=2) [EMBRYONIC]
-    Search(pattern='^a$', dir=BACKWARD, FREE) [EMBRYONIC]
-    Search(pattern='^b$', dir=BACKWARD, FREE) [EMBRYONIC]
-  r2 = 
-  Concatenation(elements=2) [EMBRYONIC]
-    Search(pattern='^b$', dir=BACKWARD, FREE) [EMBRYONIC]
-    Search(pattern='^c$', dir=BACKWARD, FREE) [EMBRYONIC]
-  r3 = 
-  Concatenation(elements=2) [EMBRYONIC]
-    Search(pattern='^a$', dir=BACKWARD, FREE) [EMBRYONIC]
-    Search(pattern='^c$', dir=BACKWARD, FREE) [EMBRYONIC]
-RESULT:
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 7vk3EGmD0ghrY75TKkhVNhfKfiBI2/IhbSWUXB142Bwcg6vllrvTMc3B/9Uv8NXkkikI4A1iqLrJn2CxhX9IBA==
+INPUT:
+```foolish
+{a={1;2}; b={3;4}; c={5;6}; r1 = a b; r2 = b c; r3 = a c;}
+```
+[0] RESULT:
 Brane [CONSTANT]
   a = 
   Brane [CONSTANT]

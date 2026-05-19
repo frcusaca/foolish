@@ -1,14 +1,12 @@
 ---
-source: foolish-core/src/lib.rs
+source: foolish-core/src/ubc_snapshot_tester.rs
 ---
-INPUT: {simple = {x=10; y=20; z=30;}?y; notfound = {a=1; b=2;}?missing;}
-[0] PARSED:
-Brane [EMBRYONIC]
-  simple = 
-  Search(pattern='y', dir=BACKWARD, ANCHORED) [EMBRYONIC]
-  notfound = 
-  Search(pattern='missing', dir=BACKWARD, ANCHORED) [EMBRYONIC]
-RESULT:
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 eV0YrRvg3770OYhPxsiEd05uVkwn8GBa4pv1nL+IPrjHCxA96VDjBRbCj6OanoRVTSgb4QqikKJcyu/wdRe0AQ==
+INPUT:
+```foolish
+{simple = {x=10; y=20; z=30;}?y; notfound = {a=1; b=2;}?missing;}
+```
+[0] RESULT:
 Brane [NK]
   simple = 
   Int(20) [INDEPENDENT]
