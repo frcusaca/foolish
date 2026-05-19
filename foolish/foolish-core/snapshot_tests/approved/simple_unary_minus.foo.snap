@@ -1,0 +1,11 @@
+---
+source: foolish-core/src/lib.rs
+---
+INPUT: {-42;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  Operator(-) [EMBRYONIC]
+    Int(42) [INDEPENDENT]
+RESULT:
+Brane [CONSTANT]
+  Int(-42) [CONSTANT]

@@ -1,0 +1,28 @@
+---
+source: foolish-core/src/lib.rs
+---
+INPUT: {a=1, b=2, c=3; result = #-1 * #-2 + #-3;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  a = 
+  Int(1) [INDEPENDENT]
+  b = 
+  Int(2) [INDEPENDENT]
+  c = 
+  Int(3) [INDEPENDENT]
+  result = 
+  Operator(+) [EMBRYONIC]
+    Operator(*) [EMBRYONIC]
+      Index(offset=-1, FREE) [EMBRYONIC]
+      Index(offset=-2, FREE) [EMBRYONIC]
+    Index(offset=-3, FREE) [EMBRYONIC]
+RESULT:
+Brane [CONSTANT]
+  a = 
+  Int(1) [INDEPENDENT]
+  b = 
+  Int(2) [INDEPENDENT]
+  c = 
+  Int(3) [INDEPENDENT]
+  result = 
+  Int(7) [CONSTANT]

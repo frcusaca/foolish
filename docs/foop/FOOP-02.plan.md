@@ -2,7 +2,7 @@
 foop: 20
 title: Consolidate FIR formatting into HumanizingSequencer; move SnapshotSuite to core
 author: opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4
-status: Draft
+status: Implementing
 type: Refactor
 created: 2026-05-17
 phase: phase-3

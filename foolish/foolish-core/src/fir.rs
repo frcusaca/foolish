@@ -1,5 +1,4 @@
 use std::cell::RefCell;
-use std::fmt::Write;
 use std::rc::Rc;
 
 // Re-export for external use
@@ -326,8 +325,6 @@ pub trait Steppable: std::fmt::Debug {
         Ok(())
     }
 
-    fn format(&self, buf: &mut String, depth: usize) -> std::fmt::Result;
-
     /// Clone this Steppable into a Fir enum (bypasses dyn Clone limitation).
     fn clone_into_fir(&self) -> Fir;
 
@@ -400,195 +397,204 @@ impl Fir {
     }
 }
 
-// ==================== SequenceableFir ====================
+// ==================== FirQueryable Trait ====================
 
-/// Error for SequenceableFir operations.
-#[derive(Debug, thiserror::Error)]
-pub enum SequenceableError {
-    #[error("Loop detected in search chain (depth: {depth})")]
-    LoopDetected { depth: usize },
-}
-
-/// Detached, printable copy of a Fir — no Rc/RefCell, exhaustive match.
-#[derive(Debug, Clone, PartialEq)]
-pub enum SequenceableFir {
-    ConstantInt { value: i64, state: Nyes },
-    Nk { reason: String, state: Nyes, alarm: Option<Alarm> },
-    Operator { op: String, operands: Vec<SequenceableFir>, state: Nyes },
-    Search { pattern: String, direction: SearchDirection, anchored: bool,
-              anchor: Option<Box<SequenceableFir>>,
-              target: Option<Box<SequenceableFir>>, state: Nyes },
-    Index { offset: i32, anchored: bool,
-             anchor: Option<Box<SequenceableFir>>, state: Nyes },
-    HeadTail { is_head: bool, anchored: bool,
-                anchor: Option<Box<SequenceableFir>>, state: Nyes },
-    StayFoolish { expr: Box<SequenceableFir>, state: Nyes },
-    StayFullyFoolish { expr: Box<SequenceableFir>, state: Nyes },
-    Concatenation { elements: Vec<SequenceableFir>,
-                    merged: Option<Box<SequenceableFir>>, state: Nyes },
-    NormalBrane { characterizations: Vec<String>,
-                  statements: Vec<SequenceableStatement>, state: Nyes },
-}
-
-/// Statement for SequenceableFir (detached from Rc<RefCell>).
-#[derive(Debug, Clone, PartialEq)]
-pub struct SequenceableStatement {
-    pub name: Option<String>,
-    pub body: SequenceableFir,
-}
-
-/// Convert a Fir enum into a detached SequenceableFir.
-impl From<Fir> for SequenceableFir {
-    fn from(fir: Fir) -> Self {
-        match fir {
-            Fir::ConstantInt(inner) => SequenceableFir::ConstantInt { value: inner.value, state: inner.state },
-            Fir::Nk(inner) => SequenceableFir::Nk { reason: inner.reason, state: inner.state, alarm: inner.alarm },
-            Fir::Operator(inner) => SequenceableFir::Operator {
-                op: inner.op,
-                operands: inner.operands.iter().map(|o| SequenceableFir::from(clone_steppable(o))).collect(),
-                state: inner.state,
-            },
-            Fir::Search(inner) => SequenceableFir::Search {
-                pattern: inner.pattern,
-                direction: inner.direction,
-                anchored: inner.anchored,
-                anchor: inner.anchor.map(|a| Box::new(SequenceableFir::from(clone_steppable(&a)))),
-                target: inner.target.map(|t| Box::new(SequenceableFir::from(clone_steppable(&t)))),
-                state: inner.state,
-            },
-            Fir::Index(inner) => SequenceableFir::Index {
-                offset: inner.offset,
-                anchored: inner.anchored,
-                anchor: inner.anchor.map(|a| Box::new(SequenceableFir::from(clone_steppable(&a)))),
-                state: inner.state,
-            },
-            Fir::HeadTail(inner) => SequenceableFir::HeadTail {
-                is_head: inner.is_head,
-                anchored: inner.anchored,
-                anchor: inner.anchor.map(|a| Box::new(SequenceableFir::from(clone_steppable(&a)))),
-                state: inner.state,
-            },
-            Fir::StayFoolish(inner) => SequenceableFir::StayFoolish {
-                expr: Box::new(SequenceableFir::from(clone_steppable(&inner.expr))),
-                state: inner.state,
-            },
-            Fir::StayFullyFoolish(inner) => SequenceableFir::StayFullyFoolish {
-                expr: Box::new(SequenceableFir::from(clone_steppable(&inner.expr))),
-                state: inner.state,
-            },
-            Fir::Concatenation(inner) => SequenceableFir::Concatenation {
-                elements: inner.elements.iter().map(|e| SequenceableFir::from(clone_steppable(e))).collect(),
-                merged: inner.merged.map(|m| Box::new(SequenceableFir::from(clone_steppable(&m)))),
-                state: inner.state,
-            },
-            Fir::NormalBrane(inner) => SequenceableFir::NormalBrane {
-                characterizations: inner.characterizations,
-                statements: inner.statements.iter().map(|s| SequenceableStatement {
-                    name: s.name.clone(),
-                    body: SequenceableFir::from(clone_steppable(&s.body)),
-                }).collect(),
-                state: inner.state,
-            },
-        }
-    }
-}
-
-impl SequenceableFir {
-    /// Return the variant identifier string.
-    pub fn get_hs_type(&self) -> &'static str {
-        match self {
-            SequenceableFir::ConstantInt { .. } => "ConstantInt",
-            SequenceableFir::Nk { .. } => "Nk",
-            SequenceableFir::Operator { .. } => "Operator",
-            SequenceableFir::Search { .. } => "Search",
-            SequenceableFir::Index { .. } => "Index",
-            SequenceableFir::HeadTail { .. } => "HeadTail",
-            SequenceableFir::StayFoolish { .. } => "StayFoolish",
-            SequenceableFir::StayFullyFoolish { .. } => "StayFullyFoolish",
-            SequenceableFir::Concatenation { .. } => "Concatenation",
-            SequenceableFir::NormalBrane { .. } => "NormalBrane",
-        }
-    }
-
+/// Trait for querying FIR properties without mutation.
+/// Used by HumanizingSequencer for format dispatch.
+pub trait FirQueryable: std::fmt::Debug {
+    /// Return variant identifier string.
+    fn hs_variant(&self) -> &'static str;
     /// Return the NYES state.
-    pub fn hs_get_nyes(&self) -> Nyes {
+    fn hs_state(&self) -> Nyes;
+
+    // Accessors — each returns Option, Some only for matching variant:
+    fn hs_constant_int(&self) -> Option<i64>;
+    fn hs_nk(&self) -> Option<(String, Option<Alarm>)>;
+    fn hs_operator(&self) -> Option<(String, Vec<Box<dyn FirQueryable>>)>;
+    fn hs_search(&self) -> Option<(String, SearchDirection, bool, Option<Box<dyn FirQueryable>>, Option<Box<dyn FirQueryable>>)>;
+    fn hs_index(&self) -> Option<(i32, bool, Option<Box<dyn FirQueryable>>)>;
+    fn hs_head_tail(&self) -> Option<(bool, bool, Option<Box<dyn FirQueryable>>)>;
+    fn hs_stay_foolish(&self) -> Option<Box<dyn FirQueryable>>;
+    fn hs_stay_fully_foolish(&self) -> Option<Box<dyn FirQueryable>>;
+    fn hs_concatenation(&self) -> Option<(Vec<Box<dyn FirQueryable>>, Option<Box<dyn FirQueryable>>)>;
+    fn hs_brane(&self) -> Option<(Vec<String>, Vec<StatementSimple>)>;
+}
+
+/// Wrapper for FirRef (Rc<RefCell<dyn Steppable>>) that implements FirQueryable.
+pub struct FirChildRef {
+    inner: FirRef,
+}
+
+impl FirChildRef {
+    pub fn new(inner: FirRef) -> Self {
+        Self { inner }
+    }
+}
+
+impl std::fmt::Debug for FirChildRef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let fir = clone_steppable(&self.inner);
+        fir.fmt(f)
+    }
+}
+
+impl FirQueryable for FirChildRef {
+    fn hs_variant(&self) -> &'static str {
+        self.inner.borrow().fir_variant()
+    }
+    fn hs_state(&self) -> Nyes {
+        self.inner.borrow().state()
+    }
+    fn hs_constant_int(&self) -> Option<i64> {
+        self.inner.borrow().as_int()
+    }
+    fn hs_nk(&self) -> Option<(String, Option<Alarm>)> {
+        let fir = clone_steppable(&self.inner);
+        if let Fir::Nk(i) = fir {
+            Some((i.reason, i.alarm))
+        } else { None }
+    }
+    fn hs_operator(&self) -> Option<(String, Vec<Box<dyn FirQueryable>>)> {
+        let fir = clone_steppable(&self.inner);
+        fir.hs_operator()
+    }
+    fn hs_search(&self) -> Option<(String, SearchDirection, bool, Option<Box<dyn FirQueryable>>, Option<Box<dyn FirQueryable>>)> {
+        let fir = clone_steppable(&self.inner);
+        fir.hs_search()
+    }
+    fn hs_index(&self) -> Option<(i32, bool, Option<Box<dyn FirQueryable>>)> {
+        let fir = clone_steppable(&self.inner);
+        fir.hs_index()
+    }
+    fn hs_head_tail(&self) -> Option<(bool, bool, Option<Box<dyn FirQueryable>>)> {
+        let fir = clone_steppable(&self.inner);
+        fir.hs_head_tail()
+    }
+    fn hs_stay_foolish(&self) -> Option<Box<dyn FirQueryable>> {
+        let fir = clone_steppable(&self.inner);
+        fir.hs_stay_foolish()
+    }
+    fn hs_stay_fully_foolish(&self) -> Option<Box<dyn FirQueryable>> {
+        let fir = clone_steppable(&self.inner);
+        fir.hs_stay_fully_foolish()
+    }
+    fn hs_concatenation(&self) -> Option<(Vec<Box<dyn FirQueryable>>, Option<Box<dyn FirQueryable>>)> {
+        let fir = clone_steppable(&self.inner);
+        fir.hs_concatenation()
+    }
+    fn hs_brane(&self) -> Option<(Vec<String>, Vec<StatementSimple>)> {
+        let fir = clone_steppable(&self.inner);
+        fir.hs_brane()
+    }
+}
+
+/// Fir implements FirQueryable by matching variants and wrapping children in FirChildRef.
+impl FirQueryable for Fir {
+    fn hs_variant(&self) -> &'static str {
         match self {
-            SequenceableFir::ConstantInt { state, .. }
-          | SequenceableFir::Nk { state, .. }
-          | SequenceableFir::Operator { state, .. }
-          | SequenceableFir::Search { state, .. }
-          | SequenceableFir::Index { state, .. }
-          | SequenceableFir::HeadTail { state, .. }
-          | SequenceableFir::StayFoolish { state, .. }
-          | SequenceableFir::StayFullyFoolish { state, .. }
-          | SequenceableFir::Concatenation { state, .. }
-          | SequenceableFir::NormalBrane { state, .. } => *state,
+            Fir::ConstantInt(_) => "ConstantInt",
+            Fir::Nk(_) => "Nk",
+            Fir::Operator(_) => "Operator",
+            Fir::Search(_) => "Search",
+            Fir::Index(_) => "Index",
+            Fir::HeadTail(_) => "HeadTail",
+            Fir::StayFoolish(_) => "StayFoolish",
+            Fir::StayFullyFoolish(_) => "StayFullyFoolish",
+            Fir::Concatenation(_) => "Concatenation",
+            Fir::NormalBrane(_) => "NormalBrane",
         }
     }
-
-    /// Return child SequenceableFir references.
-    pub fn get_hs_children(&self) -> Vec<&SequenceableFir> {
+    fn hs_state(&self) -> Nyes {
         match self {
-            SequenceableFir::ConstantInt { .. } => vec![],
-            SequenceableFir::Nk { .. } => vec![],
-            SequenceableFir::Operator { operands, .. } => operands.iter().collect(),
-            SequenceableFir::Search { anchor, target, .. } => {
-                let mut c = vec![];
-                if let Some(a) = anchor { c.push(a.as_ref()); }
-                if let Some(t) = target { c.push(t.as_ref()); }
-                c
-            },
-            SequenceableFir::Index { anchor, .. } => {
-                anchor.as_ref().map(|a| vec![a.as_ref()]).unwrap_or_default()
-            },
-            SequenceableFir::HeadTail { anchor, .. } => {
-                anchor.as_ref().map(|a| vec![a.as_ref()]).unwrap_or_default()
-            },
-            SequenceableFir::StayFoolish { expr, .. } => vec![expr.as_ref()],
-            SequenceableFir::StayFullyFoolish { expr, .. } => vec![expr.as_ref()],
-            SequenceableFir::Concatenation { elements, merged, .. } => {
-                let mut c: Vec<&SequenceableFir> = elements.iter().collect();
-                if let Some(m) = merged { c.push(m.as_ref()); }
-                c
-            },
-            SequenceableFir::NormalBrane { statements, .. } => {
-                statements.iter().map(|s| &s.body).collect()
-            },
+            Fir::ConstantInt(i) => i.state,
+            Fir::Nk(i) => i.state,
+            Fir::Operator(i) => i.state,
+            Fir::Search(i) => i.state,
+            Fir::Index(i) => i.state,
+            Fir::HeadTail(i) => i.state,
+            Fir::StayFoolish(i) => i.state,
+            Fir::StayFullyFoolish(i) => i.state,
+            Fir::Concatenation(i) => i.state,
+            Fir::NormalBrane(i) => i.state,
         }
     }
-
-    /// Always None — sequenceable FIRs are detached copies without parent links.
-    pub fn get_hs_parent(&self) -> Option<&SequenceableFir> {
-        None
+    fn hs_constant_int(&self) -> Option<i64> {
+        if let Fir::ConstantInt(i) = self { Some(i.value) } else { None }
     }
-
-    /// Resolve search chain: follow Search targets until constanic value or loop.
-    pub fn get_hs_value(&self) -> Result<SequenceableFir, SequenceableError> {
-        const MAX_DEPTH: usize = 100;
-        Self::resolve(self, 0, MAX_DEPTH)
+    fn hs_nk(&self) -> Option<(String, Option<Alarm>)> {
+        if let Fir::Nk(i) = self {
+            Some((i.reason.clone(), i.alarm.clone()))
+        } else { None }
     }
-
-    fn resolve(current: &SequenceableFir, depth: usize, max: usize) -> Result<SequenceableFir, SequenceableError> {
-        if depth >= max {
-            return Err(SequenceableError::LoopDetected { depth });
-        }
-        if current.hs_get_nyes().is_constanic() {
-            return Ok(current.clone());
-        }
-        if let SequenceableFir::Search { target, .. } = current {
-            if let Some(t) = target {
-                return Self::resolve(t, depth + 1, max);
-            }
-        }
-        Ok(current.clone())
+    fn hs_operator(&self) -> Option<(String, Vec<Box<dyn FirQueryable>>)> {
+        if let Fir::Operator(i) = self {
+            Some((
+                i.op.clone(),
+                i.operands.iter()
+                    .map(|o| Box::new(FirChildRef::new(Rc::clone(o))) as Box<dyn FirQueryable>)
+                    .collect(),
+            ))
+        } else { None }
     }
-
-    /// Get the integer value for ConstantInt variants.
-    pub fn get_hs_int_value(&self) -> Option<i64> {
-        match self {
-            SequenceableFir::ConstantInt { value, .. } => Some(*value),
-            _ => None,
-        }
+    fn hs_search(&self) -> Option<(String, SearchDirection, bool, Option<Box<dyn FirQueryable>>, Option<Box<dyn FirQueryable>>)> {
+        if let Fir::Search(i) = self {
+            Some((
+                i.pattern.clone(),
+                i.direction,
+                i.anchored,
+                i.anchor.as_ref().map(|a| Box::new(FirChildRef::new(Rc::clone(a))) as Box<dyn FirQueryable>),
+                i.target.as_ref().map(|t| Box::new(FirChildRef::new(Rc::clone(t))) as Box<dyn FirQueryable>),
+            ))
+        } else { None }
+    }
+    fn hs_index(&self) -> Option<(i32, bool, Option<Box<dyn FirQueryable>>)> {
+        if let Fir::Index(i) = self {
+            Some((
+                i.offset,
+                i.anchored,
+                i.anchor.as_ref().map(|a| Box::new(FirChildRef::new(Rc::clone(a))) as Box<dyn FirQueryable>),
+            ))
+        } else { None }
+    }
+    fn hs_head_tail(&self) -> Option<(bool, bool, Option<Box<dyn FirQueryable>>)> {
+        if let Fir::HeadTail(i) = self {
+            Some((
+                i.is_head,
+                i.anchored,
+                i.anchor.as_ref().map(|a| Box::new(FirChildRef::new(Rc::clone(a))) as Box<dyn FirQueryable>),
+            ))
+        } else { None }
+    }
+    fn hs_stay_foolish(&self) -> Option<Box<dyn FirQueryable>> {
+        if let Fir::StayFoolish(i) = self {
+            Some(Box::new(FirChildRef::new(Rc::clone(&i.expr))) as Box<dyn FirQueryable>)
+        } else { None }
+    }
+    fn hs_stay_fully_foolish(&self) -> Option<Box<dyn FirQueryable>> {
+        if let Fir::StayFullyFoolish(i) = self {
+            Some(Box::new(FirChildRef::new(Rc::clone(&i.expr))) as Box<dyn FirQueryable>)
+        } else { None }
+    }
+    fn hs_concatenation(&self) -> Option<(Vec<Box<dyn FirQueryable>>, Option<Box<dyn FirQueryable>>)> {
+        if let Fir::Concatenation(i) = self {
+            Some((
+                i.elements.iter()
+                    .map(|e| Box::new(FirChildRef::new(Rc::clone(e))) as Box<dyn FirQueryable>)
+                    .collect(),
+                i.merged.as_ref().map(|m| Box::new(FirChildRef::new(Rc::clone(m))) as Box<dyn FirQueryable>),
+            ))
+        } else { None }
+    }
+    fn hs_brane(&self) -> Option<(Vec<String>, Vec<StatementSimple>)> {
+        if let Fir::NormalBrane(i) = self {
+            Some((
+                i.characterizations.clone(),
+                i.statements.iter().map(|s| StatementSimple {
+                    name: s.name.clone(),
+                    body: Box::new(FirChildRef::new(Rc::clone(&s.body))) as Box<dyn FirQueryable>,
+                }).collect(),
+            ))
+        } else { None }
     }
 }
 
@@ -652,21 +658,6 @@ impl Steppable for Fir {
             Fir::StayFullyFoolish(i) => i.children_mut(),
             Fir::Concatenation(i) => i.children_mut(),
             Fir::NormalBrane(i) => i.children_mut(),
-        }
-    }
-
-    fn format(&self, buf: &mut String, depth: usize) -> std::fmt::Result {
-        match self {
-            Fir::ConstantInt(i) => i.format(buf, depth),
-            Fir::Nk(i) => i.format(buf, depth),
-            Fir::Operator(i) => i.format(buf, depth),
-            Fir::Search(i) => i.format(buf, depth),
-            Fir::Index(i) => i.format(buf, depth),
-            Fir::HeadTail(i) => i.format(buf, depth),
-            Fir::StayFoolish(i) => i.format(buf, depth),
-            Fir::StayFullyFoolish(i) => i.format(buf, depth),
-            Fir::Concatenation(i) => i.format(buf, depth),
-            Fir::NormalBrane(i) => i.format(buf, depth),
         }
     }
 
@@ -862,9 +853,6 @@ impl Steppable for ConstantIntFir {
     fn state(&self) -> Nyes { self.state }
     fn set_state(&mut self, s: Nyes) { self.state = s; }
     fn children_mut(&mut self) -> Vec<&mut FirRef> { vec![] }
-    fn format(&self, buf: &mut String, depth: usize) -> std::fmt::Result {
-        writeln!(buf, "{}Int({}) [{}]", "  ".repeat(depth), self.value, self.state)
-    }
     fn clone_into_fir(&self) -> Fir { Fir::ConstantInt(Box::new(self.clone())) }
     fn fir_variant(&self) -> &'static str { "ConstantInt" }
 }
@@ -876,9 +864,6 @@ impl Steppable for NkFir {
     fn state(&self) -> Nyes { self.state }
     fn set_state(&mut self, s: Nyes) { self.state = s; }
     fn children_mut(&mut self) -> Vec<&mut FirRef> { vec![] }
-    fn format(&self, buf: &mut String, depth: usize) -> std::fmt::Result {
-        writeln!(buf, "{}??? ({}) [{}]", "  ".repeat(depth), self.reason, self.state)
-    }
     fn clone_into_fir(&self) -> Fir { Fir::Nk(Box::new(self.clone())) }
     fn fir_variant(&self) -> &'static str { "Nk" }
 }
@@ -914,14 +899,6 @@ impl Steppable for OperatorFir {
     fn children_mut(&mut self) -> Vec<&mut FirRef> {
         self.operands.iter_mut().collect()
     }
-    fn format(&self, buf: &mut String, depth: usize) -> std::fmt::Result {
-        let indent = "  ".repeat(depth);
-        writeln!(buf,"{}Operator({}) [{}]", indent, self.op, self.state)?;
-        for operand in &self.operands {
-            operand.borrow().format(buf, depth + 1)?;
-        }
-        Ok(())
-    }
     fn clone_into_fir(&self) -> Fir { Fir::Operator(Box::new(self.clone())) }
     fn fir_variant(&self) -> &'static str { "Operator" }
 }
@@ -940,17 +917,6 @@ impl Steppable for SearchFir {
     fn state(&self) -> Nyes { self.state }
     fn set_state(&mut self, s: Nyes) { self.state = s; }
     fn children_mut(&mut self) -> Vec<&mut FirRef> { vec![] }
-    fn format(&self, buf: &mut String, depth: usize) -> std::fmt::Result {
-        let anchor_str = if self.anchored { "ANCHORED" } else { "FREE" };
-        let indent = "  ".repeat(depth);
-        writeln!(buf,"{}Search(pattern='{}', dir={}, {}) [{}]",
-            indent, self.pattern, self.direction, anchor_str, self.state)?;
-        if let Some(ref target) = self.target {
-            target.borrow().format(buf,depth + 1)
-        } else {
-            Ok(())
-        }
-    }
     fn search_pattern(&self) -> Option<String> { Some(self.pattern.clone()) }
     fn search_anchored(&self) -> bool { self.anchored }
     fn search_target_ref(&self) -> Option<FirRef> { self.target.clone() }
@@ -1077,11 +1043,6 @@ impl Steppable for IndexFir {
     fn state(&self) -> Nyes { self.state }
     fn set_state(&mut self, s: Nyes) { self.state = s; }
     fn children_mut(&mut self) -> Vec<&mut FirRef> { vec![] }
-    fn format(&self, buf: &mut String, depth: usize) -> std::fmt::Result {
-        let anchor_str = if self.anchored { "ANCHORED" } else { "FREE" };
-        let indent = "  ".repeat(depth);
-        writeln!(buf, "{}Index(offset={}, {}) [{}]", indent, self.offset, anchor_str, self.state)
-    }
     fn index_offset(&self) -> i32 { self.offset }
     fn index_anchored(&self) -> bool { self.anchored }
     fn index_anchor_ref(&self) -> Option<FirRef> { self.anchor.clone() }
@@ -1162,12 +1123,6 @@ impl Steppable for HeadTailFir {
     fn state(&self) -> Nyes { self.state }
     fn set_state(&mut self, s: Nyes) { self.state = s; }
     fn children_mut(&mut self) -> Vec<&mut FirRef> { vec![] }
-    fn format(&self, buf: &mut String, depth: usize) -> std::fmt::Result {
-        let ht = if self.is_head { "HEAD" } else { "TAIL" };
-        let anchor_str = if self.anchored { "ANCHORED" } else { "FREE" };
-        let indent = "  ".repeat(depth);
-        writeln!(buf, "{}HeadTail({}, {}) [{}]", indent, ht, anchor_str, self.state)
-    }
     fn headtail_is_head(&self) -> bool { self.is_head }
     fn headtail_anchor_ref(&self) -> Option<FirRef> { self.anchor.clone() }
     fn clone_into_fir(&self) -> Fir { Fir::HeadTail(Box::new(self.clone())) }
@@ -1192,11 +1147,6 @@ impl Steppable for StayFoolishFir {
     fn state(&self) -> Nyes { self.state }
     fn set_state(&mut self, s: Nyes) { self.state = s; }
     fn children_mut(&mut self) -> Vec<&mut FirRef> { vec![&mut self.expr] }
-    fn format(&self, buf: &mut String, depth: usize) -> std::fmt::Result {
-        let indent = "  ".repeat(depth);
-        writeln!(buf,"{}StayFoolish [{}]", indent, self.state)?;
-        self.expr.borrow().format(buf,depth + 1)
-    }
     fn clone_into_fir(&self) -> Fir { Fir::StayFoolish(Box::new(self.clone())) }
     fn fir_variant(&self) -> &'static str { "StayFoolish" }
 }
@@ -1208,11 +1158,6 @@ impl Steppable for StayFullyFoolishFir {
     fn state(&self) -> Nyes { self.state }
     fn set_state(&mut self, s: Nyes) { self.state = s; }
     fn children_mut(&mut self) -> Vec<&mut FirRef> { vec![&mut self.expr] }
-    fn format(&self, buf: &mut String, depth: usize) -> std::fmt::Result {
-        let indent = "  ".repeat(depth);
-        writeln!(buf,"{}StayFullyFoolish [{}]", indent, self.state)?;
-        self.expr.borrow().format(buf,depth + 1)
-    }
     fn clone_into_fir(&self) -> Fir { Fir::StayFullyFoolish(Box::new(self.clone())) }
     fn fir_variant(&self) -> &'static str { "StayFullyFoolish" }
 }
@@ -1280,14 +1225,6 @@ impl Steppable for ConcatenationFir {
     fn children_mut(&mut self) -> Vec<&mut FirRef> {
         self.elements.iter_mut().collect()
     }
-    fn format(&self, buf: &mut String, depth: usize) -> std::fmt::Result {
-        let indent = "  ".repeat(depth);
-        writeln!(buf,"{}Concatenation(elements={}) [{}]", indent, self.elements.len(), self.state)?;
-        for elem in &self.elements {
-            elem.borrow().format(buf,depth + 1)?;
-        }
-        Ok(())
-    }
     fn concat_merged_ref(&self) -> Option<FirRef> { self.merged.clone() }
     fn clone_into_fir(&self) -> Fir { Fir::Concatenation(Box::new(self.clone())) }
     fn fir_variant(&self) -> &'static str { "Concatenation" }
@@ -1318,22 +1255,6 @@ impl Steppable for NormalBraneFir {
     fn set_state(&mut self, s: Nyes) { self.state = s; }
     fn children_mut(&mut self) -> Vec<&mut FirRef> {
         self.statements.iter_mut().map(|s| &mut s.body).collect()
-    }
-    fn format(&self, buf: &mut String, depth: usize) -> std::fmt::Result {
-        let chars = if self.characterizations.is_empty() {
-            String::new()
-        } else {
-            format!("{}'", self.characterizations.join(" "))
-        };
-        let indent = "  ".repeat(depth);
-        writeln!(buf,"{}{}Brane [{}]", indent, chars, self.state)?;
-        for stmt in &self.statements {
-            if let Some(ref name) = stmt.name {
-                writeln!(buf,"{}{} = ", "  ".repeat(depth + 1), name)?;
-            }
-            stmt.body.borrow().format(buf,depth + 1)?;
-        }
-        Ok(())
     }
     fn normal_brane_statements(&self) -> Vec<StatementFir> { self.statements.clone() }
     fn as_brane_statements(&self) -> Option<Vec<StatementFir>> { Some(self.statements.clone()) }
@@ -1612,6 +1533,675 @@ impl<'de> Deserialize<'de> for Fir {
                 })))
             }
             _ => Err(serde::de::Error::custom(format!("unknown Fir type: {}", type_name))),
+        }
+    }
+}
+
+// ==================== StatementSimple ====================
+
+/// Simple statement (name + body) used as return value of hs_brane().
+/// Replaces SequenceableStatement; body is a Box<dyn FirQueryable>.
+#[derive(Debug)]
+pub struct StatementSimple {
+    pub name: Option<String>,
+    pub body: Box<dyn FirQueryable>,
+}
+
+// ==================== FIR Builders ====================
+
+/// Builder for ConstantIntFir.
+pub struct ConstantIntFirBuilder {
+    value: i64,
+    state: Nyes,
+}
+
+impl ConstantIntFirBuilder {
+    pub fn new(value: i64) -> Self {
+        Self { value, state: Nyes::Constant }
+    }
+    pub fn state(mut self, state: Nyes) -> Self {
+        self.state = state;
+        self
+    }
+    pub fn build(self) -> Fir {
+        Fir::ConstantInt(Box::new(ConstantIntFir { value: self.value, state: self.state }))
+    }
+}
+
+/// Builder for NkFir.
+pub struct NkFirBuilder {
+    reason: String,
+    state: Nyes,
+    alarm: Option<Alarm>,
+}
+
+impl NkFirBuilder {
+    pub fn new(reason: impl Into<String>) -> Self {
+        Self { reason: reason.into(), state: Nyes::Nk, alarm: None }
+    }
+    pub fn state(mut self, state: Nyes) -> Self {
+        self.state = state;
+        self
+    }
+    pub fn alarm(mut self, alarm: Alarm) -> Self {
+        self.alarm = Some(alarm);
+        self
+    }
+    pub fn build(self) -> Fir {
+        Fir::Nk(Box::new(NkFir { reason: self.reason, state: self.state, alarm: self.alarm }))
+    }
+}
+
+/// Builder for OperatorFir.
+pub struct OperatorFirBuilder {
+    op: String,
+    operands: Vec<FirRef>,
+    state: Nyes,
+}
+
+impl OperatorFirBuilder {
+    pub fn new(op: impl Into<String>) -> Self {
+        Self { op: op.into(), operands: Vec::new(), state: Nyes::Embryonic }
+    }
+    pub fn operand(mut self, child: Fir) -> Self {
+        self.operands.push(fir_to_ref(child));
+        self
+    }
+    pub fn operands(mut self, children: Vec<Fir>) -> Self {
+        self.operands = children.into_iter().map(fir_to_ref).collect();
+        self
+    }
+    pub fn state(mut self, state: Nyes) -> Self {
+        self.state = state;
+        self
+    }
+    pub fn build(self) -> Fir {
+        Fir::Operator(Box::new(OperatorFir { op: self.op, operands: self.operands, state: self.state }))
+    }
+}
+
+/// Builder for SearchFir.
+pub struct SearchFirBuilder {
+    pattern: String,
+    direction: SearchDirection,
+    anchored: bool,
+    anchor: Option<FirRef>,
+    target: Option<FirRef>,
+    parent: Option<FirRef>,
+    state: Nyes,
+}
+
+impl SearchFirBuilder {
+    pub fn new(pattern: impl Into<String>) -> Self {
+        Self {
+            pattern: pattern.into(),
+            direction: SearchDirection::Backward,
+            anchored: false,
+            anchor: None,
+            target: None,
+            parent: None,
+            state: Nyes::Embryonic,
+        }
+    }
+    pub fn direction(mut self, direction: SearchDirection) -> Self {
+        self.direction = direction;
+        self
+    }
+    pub fn anchored(mut self, anchored: bool) -> Self {
+        self.anchored = anchored;
+        self
+    }
+    pub fn anchor(mut self, anchor: Fir) -> Self {
+        self.anchor = Some(fir_to_ref(anchor));
+        self
+    }
+    pub fn target(mut self, target: Fir) -> Self {
+        self.target = Some(fir_to_ref(target));
+        self
+    }
+    pub fn parent(mut self, parent: Fir) -> Self {
+        self.parent = Some(fir_to_ref(parent));
+        self
+    }
+    pub fn state(mut self, state: Nyes) -> Self {
+        self.state = state;
+        self
+    }
+    pub fn build(self) -> Fir {
+        Fir::Search(Box::new(SearchFir {
+            pattern: self.pattern,
+            direction: self.direction,
+            anchored: self.anchored,
+            anchor: self.anchor,
+            target: self.target,
+            parent: self.parent,
+            state: self.state,
+        }))
+    }
+}
+
+/// Builder for IndexFir.
+pub struct IndexFirBuilder {
+    offset: i32,
+    anchored: bool,
+    anchor: Option<FirRef>,
+    state: Nyes,
+}
+
+impl IndexFirBuilder {
+    pub fn new(offset: i32) -> Self {
+        Self { offset, anchored: false, anchor: None, state: Nyes::Embryonic }
+    }
+    pub fn anchored(mut self, anchored: bool) -> Self {
+        self.anchored = anchored;
+        self
+    }
+    pub fn anchor(mut self, anchor: Fir) -> Self {
+        self.anchor = Some(fir_to_ref(anchor));
+        self
+    }
+    pub fn state(mut self, state: Nyes) -> Self {
+        self.state = state;
+        self
+    }
+    pub fn build(self) -> Fir {
+        Fir::Index(Box::new(IndexFir {
+            offset: self.offset,
+            anchored: self.anchored,
+            anchor: self.anchor,
+            state: self.state,
+        }))
+    }
+}
+
+/// Builder for HeadTailFir.
+pub struct HeadTailFirBuilder {
+    is_head: bool,
+    anchored: bool,
+    anchor: Option<FirRef>,
+    state: Nyes,
+}
+
+impl HeadTailFirBuilder {
+    pub fn new(is_head: bool) -> Self {
+        Self { is_head, anchored: false, anchor: None, state: Nyes::Embryonic }
+    }
+    pub fn anchored(mut self, anchored: bool) -> Self {
+        self.anchored = anchored;
+        self
+    }
+    pub fn anchor(mut self, anchor: Fir) -> Self {
+        self.anchor = Some(fir_to_ref(anchor));
+        self
+    }
+    pub fn state(mut self, state: Nyes) -> Self {
+        self.state = state;
+        self
+    }
+    pub fn build(self) -> Fir {
+        Fir::HeadTail(Box::new(HeadTailFir {
+            is_head: self.is_head,
+            anchored: self.anchored,
+            anchor: self.anchor,
+            state: self.state,
+        }))
+    }
+}
+
+/// Builder for StayFoolishFir.
+pub struct StayFoolishFirBuilder {
+    expr: FirRef,
+    state: Nyes,
+}
+
+impl StayFoolishFirBuilder {
+    pub fn new(expr: Fir) -> Self {
+        Self { expr: fir_to_ref(expr), state: Nyes::Embryonic }
+    }
+    pub fn state(mut self, state: Nyes) -> Self {
+        self.state = state;
+        self
+    }
+    pub fn build(self) -> Fir {
+        Fir::StayFoolish(Box::new(StayFoolishFir { expr: self.expr, state: self.state }))
+    }
+}
+
+/// Builder for StayFullyFoolishFir.
+pub struct StayFullyFoolishFirBuilder {
+    expr: FirRef,
+    state: Nyes,
+}
+
+impl StayFullyFoolishFirBuilder {
+    pub fn new(expr: Fir) -> Self {
+        Self { expr: fir_to_ref(expr), state: Nyes::Embryonic }
+    }
+    pub fn state(mut self, state: Nyes) -> Self {
+        self.state = state;
+        self
+    }
+    pub fn build(self) -> Fir {
+        Fir::StayFullyFoolish(Box::new(StayFullyFoolishFir { expr: self.expr, state: self.state }))
+    }
+}
+
+/// Builder for ConcatenationFir.
+pub struct ConcatenationFirBuilder {
+    elements: Vec<FirRef>,
+    merged: Option<FirRef>,
+    state: Nyes,
+}
+
+impl ConcatenationFirBuilder {
+    pub fn new() -> Self {
+        Self { elements: Vec::new(), merged: None, state: Nyes::Embryonic }
+    }
+    pub fn element(mut self, child: Fir) -> Self {
+        self.elements.push(fir_to_ref(child));
+        self
+    }
+    pub fn elements(mut self, children: Vec<Fir>) -> Self {
+        self.elements = children.into_iter().map(fir_to_ref).collect();
+        self
+    }
+    pub fn merged(mut self, merged: Fir) -> Self {
+        self.merged = Some(fir_to_ref(merged));
+        self
+    }
+    pub fn state(mut self, state: Nyes) -> Self {
+        self.state = state;
+        self
+    }
+    pub fn build(self) -> Fir {
+        Fir::Concatenation(Box::new(ConcatenationFir {
+            elements: self.elements,
+            merged: self.merged,
+            state: self.state,
+        }))
+    }
+}
+
+/// Builder for NormalBraneFir.
+pub struct NormalBraneFirBuilder {
+    characterizations: Vec<String>,
+    statements: Vec<StatementFir>,
+    state: Nyes,
+    parent: Option<FirRef>,
+}
+
+impl NormalBraneFirBuilder {
+    pub fn new() -> Self {
+        Self {
+            characterizations: Vec::new(),
+            statements: Vec::new(),
+            state: Nyes::Embryonic,
+            parent: None,
+        }
+    }
+    pub fn characterization(mut self, c: impl Into<String>) -> Self {
+        self.characterizations.push(c.into());
+        self
+    }
+    pub fn characterizations(mut self, chars: Vec<String>) -> Self {
+        self.characterizations = chars;
+        self
+    }
+    pub fn statement(mut self, name: Option<String>, body: Fir) -> Self {
+        self.statements.push(StatementFir::new(name, fir_to_ref(body)));
+        self
+    }
+    pub fn anonymous_statement(mut self, body: Fir) -> Self {
+        self.statements.push(StatementFir::anonymous(fir_to_ref(body)));
+        self
+    }
+    pub fn statements(mut self, stmts: Vec<(Option<String>, Fir)>) -> Self {
+        self.statements = stmts.into_iter()
+            .map(|(name, body)| StatementFir::new(name, fir_to_ref(body)))
+            .collect();
+        self
+    }
+    pub fn state(mut self, state: Nyes) -> Self {
+        self.state = state;
+        self
+    }
+    pub fn parent(mut self, parent: Fir) -> Self {
+        self.parent = Some(fir_to_ref(parent));
+        self
+    }
+    pub fn build(self) -> Fir {
+        Fir::NormalBrane(Box::new(NormalBraneFir {
+            characterizations: self.characterizations,
+            statements: self.statements,
+            state: self.state,
+            parent: self.parent,
+        }))
+    }
+}
+
+/// Builder for StatementFir.
+pub struct StatementFirBuilder {
+    name: Option<String>,
+    body: FirRef,
+    state: Nyes,
+}
+
+impl StatementFirBuilder {
+    pub fn new(name: Option<String>, body: Fir) -> Self {
+        Self { name, body: fir_to_ref(body), state: Nyes::Embryonic }
+    }
+    pub fn anonymous(body: Fir) -> Self {
+        Self { name: None, body: fir_to_ref(body), state: Nyes::Embryonic }
+    }
+    pub fn state(mut self, state: Nyes) -> Self {
+        self.state = state;
+        self
+    }
+    pub fn build(self) -> StatementFir {
+        StatementFir { name: self.name, body: self.body, state: self.state }
+    }
+}
+
+// ==================== Builder Unit Tests ====================
+
+#[cfg(test)]
+mod builder_tests {
+    use super::*;
+
+    #[test]
+    fn test_constant_int_builder() {
+        let fir = ConstantIntFirBuilder::new(42).build();
+        assert!(matches!(fir, Fir::ConstantInt(ref i) if i.value == 42));
+        if let Fir::ConstantInt(i) = fir {
+            assert_eq!(i.state, Nyes::Constant);
+        }
+    }
+
+    #[test]
+    fn test_constant_int_builder_state() {
+        let fir = ConstantIntFirBuilder::new(7).state(Nyes::Embryonic).build();
+        if let Fir::ConstantInt(i) = fir {
+            assert_eq!(i.state, Nyes::Embryonic);
+        } else {
+            panic!("Expected ConstantInt");
+        }
+    }
+
+    #[test]
+    fn test_nk_builder() {
+        let fir = NkFirBuilder::new("unknown").build();
+        if let Fir::Nk(i) = fir {
+            assert_eq!(i.reason, "unknown");
+            assert_eq!(i.state, Nyes::Nk);
+            assert!(i.alarm.is_none());
+        } else {
+            panic!("Expected Nk");
+        }
+    }
+
+    #[test]
+    fn test_nk_builder_with_alarm() {
+        let alarm = Alarm {
+            level: AlarmLevel::Mild,
+            code: "TEST".into(),
+            message: "test".into(),
+            source: AlarmSource::Evaluator,
+        };
+        let fir = NkFirBuilder::new("err").alarm(alarm).state(Nyes::Constant).build();
+        if let Fir::Nk(i) = fir {
+            assert!(i.alarm.is_some());
+            assert_eq!(i.state, Nyes::Constant);
+        } else {
+            panic!("Expected Nk");
+        }
+    }
+
+    #[test]
+    fn test_operator_builder() {
+        let left = ConstantIntFirBuilder::new(1).build();
+        let right = ConstantIntFirBuilder::new(2).build();
+        let fir = OperatorFirBuilder::new("+")
+            .operand(left).operand(right)
+            .state(Nyes::Constant)
+            .build();
+        if let Fir::Operator(i) = fir {
+            assert_eq!(i.op, "+");
+            assert_eq!(i.operands.len(), 2);
+            assert_eq!(i.state, Nyes::Constant);
+        } else {
+            panic!("Expected Operator");
+        }
+    }
+
+    #[test]
+    fn test_operator_builder_vec() {
+        let ops = vec![
+            ConstantIntFirBuilder::new(1).build(),
+            ConstantIntFirBuilder::new(2).build(),
+            ConstantIntFirBuilder::new(3).build(),
+        ];
+        let fir = OperatorFirBuilder::new("*").operands(ops).build();
+        if let Fir::Operator(i) = fir {
+            assert_eq!(i.operands.len(), 3);
+        } else {
+            panic!("Expected Operator");
+        }
+    }
+
+    #[test]
+    fn test_search_builder() {
+        let fir = SearchFirBuilder::new("^x$")
+            .direction(SearchDirection::Forward)
+            .anchored(true)
+            .state(Nyes::Econstanic)
+            .build();
+        if let Fir::Search(i) = fir {
+            assert_eq!(i.pattern, "^x$");
+            assert_eq!(i.direction, SearchDirection::Forward);
+            assert!(i.anchored);
+            assert_eq!(i.state, Nyes::Econstanic);
+            assert!(i.target.is_none());
+        } else {
+            panic!("Expected Search");
+        }
+    }
+
+    #[test]
+    fn test_search_builder_with_target() {
+        let target = ConstantIntFirBuilder::new(42).build();
+        let fir = SearchFirBuilder::new("x").target(target).build();
+        if let Fir::Search(i) = fir {
+            assert!(i.target.is_some());
+        } else {
+            panic!("Expected Search");
+        }
+    }
+
+    #[test]
+    fn test_index_builder() {
+        let fir = IndexFirBuilder::new(5)
+            .anchored(true)
+            .state(Nyes::Constant)
+            .build();
+        if let Fir::Index(i) = fir {
+            assert_eq!(i.offset, 5);
+            assert!(i.anchored);
+            assert_eq!(i.state, Nyes::Constant);
+        } else {
+            panic!("Expected Index");
+        }
+    }
+
+    #[test]
+    fn test_headtail_builder_head() {
+        let fir = HeadTailFirBuilder::new(true).state(Nyes::Constant).build();
+        if let Fir::HeadTail(i) = fir {
+            assert!(i.is_head);
+            assert!(!i.anchored);
+        } else {
+            panic!("Expected HeadTail");
+        }
+    }
+
+    #[test]
+    fn test_headtail_builder_tail_anchored() {
+        let anchor = ConstantIntFirBuilder::new(0).build();
+        let fir = HeadTailFirBuilder::new(false)
+            .anchored(true)
+            .anchor(anchor)
+            .build();
+        if let Fir::HeadTail(i) = fir {
+            assert!(!i.is_head);
+            assert!(i.anchored);
+            assert!(i.anchor.is_some());
+        } else {
+            panic!("Expected HeadTail");
+        }
+    }
+
+    #[test]
+    fn test_stay_foolish_builder() {
+        let inner = ConstantIntFirBuilder::new(99).build();
+        let fir = StayFoolishFirBuilder::new(inner)
+            .state(Nyes::Constant)
+            .build();
+        if let Fir::StayFoolish(i) = fir {
+            assert_eq!(i.state, Nyes::Constant);
+            assert_eq!(i.expr.borrow().as_int(), Some(99));
+        } else {
+            panic!("Expected StayFoolish");
+        }
+    }
+
+    #[test]
+    fn test_stay_fully_foolish_builder() {
+        let inner = NkFirBuilder::new("nope").build();
+        let fir = StayFullyFoolishFirBuilder::new(inner).build();
+        if let Fir::StayFullyFoolish(i) = fir {
+            assert_eq!(i.expr.borrow().fir_variant(), "Nk");
+        } else {
+            panic!("Expected StayFullyFoolish");
+        }
+    }
+
+    #[test]
+    fn test_concatenation_builder() {
+        let e1 = ConstantIntFirBuilder::new(1).build();
+        let e2 = ConstantIntFirBuilder::new(2).build();
+        let merged = ConstantIntFirBuilder::new(3).build();
+        let fir = ConcatenationFirBuilder::new()
+            .element(e1).element(e2)
+            .merged(merged)
+            .state(Nyes::Constant)
+            .build();
+        if let Fir::Concatenation(i) = fir {
+            assert_eq!(i.elements.len(), 2);
+            assert!(i.merged.is_some());
+        } else {
+            panic!("Expected Concatenation");
+        }
+    }
+
+    #[test]
+    fn test_concatenation_builder_vec() {
+        let elems = vec![
+            ConstantIntFirBuilder::new(1).build(),
+            ConstantIntFirBuilder::new(2).build(),
+        ];
+        let fir = ConcatenationFirBuilder::new().elements(elems).build();
+        if let Fir::Concatenation(i) = fir {
+            assert_eq!(i.elements.len(), 2);
+        } else {
+            panic!("Expected Concatenation");
+        }
+    }
+
+    #[test]
+    fn test_normal_brane_builder() {
+        let body = ConstantIntFirBuilder::new(42).build();
+        let fir = NormalBraneFirBuilder::new()
+            .statement(Some("x".into()), body)
+            .state(Nyes::Constant)
+            .build();
+        if let Fir::NormalBrane(i) = fir {
+            assert_eq!(i.statements.len(), 1);
+            assert_eq!(i.statements[0].name, Some("x".into()));
+            assert_eq!(i.state, Nyes::Constant);
+        } else {
+            panic!("Expected NormalBrane");
+        }
+    }
+
+    #[test]
+    fn test_normal_brane_builder_multi() {
+        let s = vec![
+            (Some("a".into()), ConstantIntFirBuilder::new(1).build()),
+            (Some("b".into()), ConstantIntFirBuilder::new(2).build()),
+        ];
+        let fir = NormalBraneFirBuilder::new().statements(s).build();
+        if let Fir::NormalBrane(i) = fir {
+            assert_eq!(i.statements.len(), 2);
+        } else {
+            panic!("Expected NormalBrane");
+        }
+    }
+
+    #[test]
+    fn test_normal_brane_empty() {
+        let fir = NormalBraneFirBuilder::new().build();
+        if let Fir::NormalBrane(i) = fir {
+            assert!(i.statements.is_empty());
+            assert!(i.characterizations.is_empty());
+        } else {
+            panic!("Expected NormalBrane");
+        }
+    }
+
+    #[test]
+    fn test_statement_builder() {
+        let body = ConstantIntFirBuilder::new(10).build();
+        let stmt = StatementFirBuilder::new(Some("y".into()), body)
+            .state(Nyes::Constant)
+            .build();
+        assert_eq!(stmt.name, Some("y".into()));
+        assert_eq!(stmt.state, Nyes::Constant);
+        assert_eq!(stmt.body.borrow().as_int(), Some(10));
+    }
+
+    #[test]
+    fn test_statement_anonymous() {
+        let body = ConstantIntFirBuilder::new(10).build();
+        let stmt = StatementFirBuilder::anonymous(body).build();
+        assert!(stmt.name.is_none());
+    }
+
+    // ── Builder + FirQueryable integration ──
+
+    #[test]
+    fn test_builder_constant_int_queryable() {
+        let fir = ConstantIntFirBuilder::new(42).build();
+        assert_eq!(fir.hs_variant(), "ConstantInt");
+        assert_eq!(fir.hs_constant_int(), Some(42));
+        assert_eq!(fir.hs_state(), Nyes::Constant);
+    }
+
+    #[test]
+    fn test_builder_nested_brane_queryable() {
+        let body = OperatorFirBuilder::new("+")
+            .operand(ConstantIntFirBuilder::new(1).build())
+            .operand(ConstantIntFirBuilder::new(2).build())
+            .build();
+        let fir = NormalBraneFirBuilder::new()
+            .statement(Some("x".into()), body)
+            .build();
+        assert_eq!(fir.hs_variant(), "NormalBrane");
+        if let Some((chars, stmts)) = fir.hs_brane() {
+            assert!(chars.is_empty());
+            assert_eq!(stmts.len(), 1);
+            assert_eq!(stmts[0].name, Some("x".into()));
+            assert_eq!(stmts[0].body.hs_variant(), "Operator");
+        } else {
+            panic!("Expected hs_brane to return Some");
         }
     }
 }

@@ -1,0 +1,40 @@
+---
+source: foolish-core/src/lib.rs
+---
+INPUT: {data = {a=10; b=20; c=30; d=40; e=50}; last = data#-1; second_last = data#-2;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  data = 
+  Brane [EMBRYONIC]
+    a = 
+    Int(10) [INDEPENDENT]
+    b = 
+    Int(20) [INDEPENDENT]
+    c = 
+    Int(30) [INDEPENDENT]
+    d = 
+    Int(40) [INDEPENDENT]
+    e = 
+    Int(50) [INDEPENDENT]
+  last = 
+  Index(offset=-1, ANCHORED) [EMBRYONIC]
+  secondˍlast = 
+  Index(offset=-2, ANCHORED) [EMBRYONIC]
+RESULT:
+Brane [CONSTANT]
+  data = 
+  Brane [CONSTANT]
+    a = 
+    Int(10) [INDEPENDENT]
+    b = 
+    Int(20) [INDEPENDENT]
+    c = 
+    Int(30) [INDEPENDENT]
+    d = 
+    Int(40) [INDEPENDENT]
+    e = 
+    Int(50) [INDEPENDENT]
+  last = 
+  Int(50) [INDEPENDENT]
+  secondˍlast = 
+  Int(40) [INDEPENDENT]

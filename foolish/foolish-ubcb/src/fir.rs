@@ -1,4 +1,4 @@
-use foolish_core::{FirRef, Nyes, SequenceableFir, clone_steppable};
+use foolish_core::{FirRef, Nyes};
 
 use crate::luid::Luid;
 use crate::messages::UbcbMessage;
@@ -38,10 +38,23 @@ impl UbcbFir {
     pub fn fir_variant(&self) -> &'static str {
         self.fir.borrow().fir_variant()
     }
+}
 
-    pub fn to_sequenceable(&self) -> SequenceableFir {
-        let fir = clone_steppable(&self.fir);
-        SequenceableFir::from(fir)
+/// Builder for UbcbFir.
+pub struct UbcbFirBuilder {
+    luid: Luid,
+    fir: FirRef,
+}
+
+impl UbcbFirBuilder {
+    pub fn new(luid: Luid, fir: foolish_core::Fir) -> Self {
+        Self { luid, fir: foolish_core::fir_to_ref(fir) }
+    }
+    pub fn with_ref(luid: Luid, fir: FirRef) -> Self {
+        Self { luid, fir }
+    }
+    pub fn build(self) -> UbcbFir {
+        UbcbFir { luid: self.luid, fir: self.fir, inbox: Vec::new() }
     }
 }
 
@@ -138,5 +151,31 @@ mod tests {
         let fir = make_stub_fir();
         let ubcb = UbcbFir::new(0, fir);
         assert_eq!(ubcb.fir_variant(), "NormalBrane");
+    }
+
+    // ── UbcbFirBuilder tests ─────────────────────────────────────────────
+
+    #[test]
+    fn ubcb_builder_new_stores_luid_and_fir() {
+        let firs = Compiler::compile("{42}").expect("compile");
+        let fir_val = firs[0].clone();
+        let ubcb = UbcbFirBuilder::new(99, fir_val).build();
+        assert_eq!(ubcb.luid, 99);
+        assert!(ubcb.inbox.is_empty());
+    }
+
+    #[test]
+    fn ubcb_builder_with_ref() {
+        let fir = make_stub_fir();
+        let ubcb = UbcbFirBuilder::with_ref(42, fir).build();
+        assert_eq!(ubcb.luid, 42);
+        assert_eq!(ubcb.fir_variant(), "NormalBrane");
+    }
+
+    #[test]
+    fn ubcb_builder_state_reflects_inner() {
+        let firs = Compiler::compile("{42}").expect("compile");
+        let ubcb = UbcbFirBuilder::new(0, firs[0].clone()).build();
+        assert_eq!(ubcb.state(), Nyes::Embryonic);
     }
 }

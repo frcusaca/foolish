@@ -1,0 +1,24 @@
+---
+source: foolish-core/src/lib.rs
+---
+INPUT: {x = 42; y = x; nested = {z = x};}
+[0] PARSED:
+Brane [EMBRYONIC]
+  x = 
+  Int(42) [INDEPENDENT]
+  y = 
+  Search(pattern='^x$', dir=BACKWARD, FREE) [EMBRYONIC]
+  nested = 
+  Brane [EMBRYONIC]
+    z = 
+    Search(pattern='^x$', dir=BACKWARD, FREE) [EMBRYONIC]
+RESULT:
+Brane [CONSTANT]
+  x = 
+  Int(42) [INDEPENDENT]
+  y = 
+  Int(42) [INDEPENDENT]
+  nested = 
+  Brane [CONSTANT]
+    z = 
+    Int(42) [INDEPENDENT]

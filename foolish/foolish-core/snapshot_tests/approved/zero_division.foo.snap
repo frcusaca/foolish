@@ -1,0 +1,12 @@
+---
+source: foolish-core/src/lib.rs
+---
+INPUT: {10 / 0;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  Operator(/) [EMBRYONIC]
+    Int(10) [INDEPENDENT]
+    Int(0) [INDEPENDENT]
+RESULT:
+Brane [NK]
+  ??? (division by zero) [NK]

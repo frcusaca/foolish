@@ -1,0 +1,20 @@
+---
+source: foolish-core/src/lib.rs
+---
+INPUT: {{{{x = 42; x};};};}
+[0] PARSED:
+Brane [EMBRYONIC]
+  Brane [EMBRYONIC]
+    Brane [EMBRYONIC]
+      Brane [EMBRYONIC]
+        x = 
+        Int(42) [INDEPENDENT]
+        Search(pattern='^x$', dir=BACKWARD, FREE) [EMBRYONIC]
+RESULT:
+Brane [CONSTANT]
+  Brane [CONSTANT]
+    Brane [CONSTANT]
+      Brane [CONSTANT]
+        x = 
+        Int(42) [INDEPENDENT]
+        Int(42) [INDEPENDENT]

@@ -1,0 +1,22 @@
+---
+source: foolish-core/src/lib.rs
+---
+INPUT: {x = 42; b = {y = x + 1};}
+[0] PARSED:
+Brane [EMBRYONIC]
+  x = 
+  Int(42) [INDEPENDENT]
+  b = 
+  Brane [EMBRYONIC]
+    y = 
+    Operator(+) [EMBRYONIC]
+      Search(pattern='^x$', dir=BACKWARD, FREE) [EMBRYONIC]
+      Int(1) [INDEPENDENT]
+RESULT:
+Brane [CONSTANT]
+  x = 
+  Int(42) [INDEPENDENT]
+  b = 
+  Brane [CONSTANT]
+    y = 
+    Int(43) [CONSTANT]

@@ -1,0 +1,38 @@
+---
+source: foolish-core/src/lib.rs
+---
+INPUT: {b = {{{1; 2}; 3}; 4}; h = b^; hh = b^^;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  b = 
+  Brane [EMBRYONIC]
+    Brane [EMBRYONIC]
+      Brane [EMBRYONIC]
+        Int(1) [INDEPENDENT]
+        Int(2) [INDEPENDENT]
+      Int(3) [INDEPENDENT]
+    Int(4) [INDEPENDENT]
+  h = 
+  HeadTail(HEAD, ANCHORED) [EMBRYONIC]
+  hh = 
+  HeadTail(HEAD, ANCHORED) [EMBRYONIC]
+RESULT:
+Brane [CONSTANT]
+  b = 
+  Brane [CONSTANT]
+    Brane [CONSTANT]
+      Brane [CONSTANT]
+        Int(1) [INDEPENDENT]
+        Int(2) [INDEPENDENT]
+      Int(3) [INDEPENDENT]
+    Int(4) [INDEPENDENT]
+  h = 
+  Brane [CONSTANT]
+    Brane [CONSTANT]
+      Int(1) [INDEPENDENT]
+      Int(2) [INDEPENDENT]
+    Int(3) [INDEPENDENT]
+  hh = 
+  Brane [CONSTANT]
+    Int(1) [INDEPENDENT]
+    Int(2) [INDEPENDENT]

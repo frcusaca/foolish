@@ -1,0 +1,30 @@
+---
+source: foolish-core/src/lib.rs
+---
+INPUT: {a = 1; b = {10; 20; 30}; c = #-1; d = #-1$;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  a = 
+  Int(1) [INDEPENDENT]
+  b = 
+  Brane [EMBRYONIC]
+    Int(10) [INDEPENDENT]
+    Int(20) [INDEPENDENT]
+    Int(30) [INDEPENDENT]
+  c = 
+  Index(offset=-1, FREE) [EMBRYONIC]
+  d = 
+  HeadTail(TAIL, ANCHORED) [EMBRYONIC]
+RESULT:
+Brane [NK]
+  a = 
+  Int(1) [INDEPENDENT]
+  b = 
+  Brane [CONSTANT]
+    Int(10) [INDEPENDENT]
+    Int(20) [INDEPENDENT]
+    Int(30) [INDEPENDENT]
+  c = 
+  ??? (constanic_clone called on NYE FIR) [NK]
+  d = 
+  HeadTail(TAIL, ANCHORED) [NK]

@@ -1,0 +1,33 @@
+---
+source: foolish-core/src/lib.rs
+---
+INPUT: {a={x=1, y=2}; s=<a>; a=99; s;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  a = 
+  Brane [EMBRYONIC]
+    x = 
+    Int(1) [INDEPENDENT]
+    y = 
+    Int(2) [INDEPENDENT]
+  s = 
+  StayFoolish [EMBRYONIC]
+    Search(pattern='^a$', dir=BACKWARD, FREE) [EMBRYONIC]
+  a = 
+  Int(99) [INDEPENDENT]
+  Search(pattern='^s$', dir=BACKWARD, FREE) [EMBRYONIC]
+RESULT:
+Brane [CONSTANT]
+  a = 
+  Brane [CONSTANT]
+    x = 
+    Int(1) [INDEPENDENT]
+    y = 
+    Int(2) [INDEPENDENT]
+  s = 
+  StayFoolish [CONSTANT]
+    Search(pattern='^a$', dir=BACKWARD, FREE) [CONSTANT]
+      Int(99) [INDEPENDENT]
+  a = 
+  Int(99) [INDEPENDENT]
+  Int(99) [INDEPENDENT]

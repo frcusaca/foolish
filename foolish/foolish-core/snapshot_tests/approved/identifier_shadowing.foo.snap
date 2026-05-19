@@ -1,0 +1,20 @@
+---
+source: foolish-core/src/lib.rs
+---
+INPUT: {x = 10; x; x = 20; x;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  x = 
+  Int(10) [INDEPENDENT]
+  Search(pattern='^x$', dir=BACKWARD, FREE) [EMBRYONIC]
+  x = 
+  Int(20) [INDEPENDENT]
+  Search(pattern='^x$', dir=BACKWARD, FREE) [EMBRYONIC]
+RESULT:
+Brane [CONSTANT]
+  x = 
+  Int(10) [INDEPENDENT]
+  Int(20) [INDEPENDENT]
+  x = 
+  Int(20) [INDEPENDENT]
+  Int(20) [INDEPENDENT]

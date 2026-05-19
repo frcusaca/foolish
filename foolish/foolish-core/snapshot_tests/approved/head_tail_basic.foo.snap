@@ -1,0 +1,16 @@
+---
+source: foolish-core/src/lib.rs
+---
+INPUT: {x = {10; 20; 30}^; y = {10; 20; 30}$;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  x = 
+  HeadTail(HEAD, ANCHORED) [EMBRYONIC]
+  y = 
+  HeadTail(TAIL, ANCHORED) [EMBRYONIC]
+RESULT:
+Brane [CONSTANT]
+  x = 
+  Int(10) [INDEPENDENT]
+  y = 
+  Int(30) [INDEPENDENT]

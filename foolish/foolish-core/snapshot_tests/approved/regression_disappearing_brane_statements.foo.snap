@@ -1,0 +1,37 @@
+---
+source: foolish-core/src/lib.rs
+---
+INPUT: {a = 1; b = 2; d =$ 4; e = 5; f = 6; g = 7;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  a = 
+  Int(1) [INDEPENDENT]
+  b = 
+  Int(2) [INDEPENDENT]
+  d = 
+  Operator($) [EMBRYONIC]
+    Index(offset=-1, FREE) [EMBRYONIC]
+    Int(4) [INDEPENDENT]
+  e = 
+  Int(5) [INDEPENDENT]
+  f = 
+  Int(6) [INDEPENDENT]
+  g = 
+  Int(7) [INDEPENDENT]
+RESULT:
+Brane [BRANING]
+  a = 
+  Int(1) [INDEPENDENT]
+  b = 
+  Int(2) [INDEPENDENT]
+  d = 
+  Operator($) [EMBRYONIC]
+    Index(offset=-1, FREE) [EMBRYONIC]
+    Int(4) [INDEPENDENT]
+  e = 
+  Int(5) [INDEPENDENT]
+  f = 
+  Int(6) [INDEPENDENT]
+  g = 
+  Int(7) [INDEPENDENT]
+ERROR: evaluation error: unknown op: $

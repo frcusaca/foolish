@@ -1,0 +1,16 @@
+---
+source: foolish-core/src/lib.rs
+---
+INPUT: {x = ???; y = 42;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  x = 
+  ??? (??? literal) [NK]
+  y = 
+  Int(42) [INDEPENDENT]
+RESULT:
+Brane [NK]
+  x = 
+  ??? (??? literal) [NK]
+  y = 
+  Int(42) [INDEPENDENT]

@@ -1,0 +1,22 @@
+---
+source: foolish-core/src/lib.rs
+---
+INPUT: {a={1,2,3}; a#1; a#-1;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  a = 
+  Brane [EMBRYONIC]
+    Int(1) [INDEPENDENT]
+    Int(2) [INDEPENDENT]
+    Int(3) [INDEPENDENT]
+  Index(offset=1, ANCHORED) [EMBRYONIC]
+  Index(offset=-1, ANCHORED) [EMBRYONIC]
+RESULT:
+Brane [CONSTANT]
+  a = 
+  Brane [CONSTANT]
+    Int(1) [INDEPENDENT]
+    Int(2) [INDEPENDENT]
+    Int(3) [INDEPENDENT]
+  Int(2) [INDEPENDENT]
+  Int(3) [INDEPENDENT]

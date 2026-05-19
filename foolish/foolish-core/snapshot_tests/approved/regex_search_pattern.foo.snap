@@ -1,0 +1,12 @@
+---
+source: foolish-core/src/lib.rs
+---
+INPUT: {result = {alice = 1; bob = 2; charlie = 3;}?(a.*);}
+[0] PARSED:
+Brane [EMBRYONIC]
+  result = 
+  Search(pattern='(a.*)', dir=BACKWARD, ANCHORED) [EMBRYONIC]
+RESULT:
+Brane [CONSTANT]
+  result = 
+  Int(1) [INDEPENDENT]

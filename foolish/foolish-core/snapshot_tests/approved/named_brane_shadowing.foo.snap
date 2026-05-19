@@ -1,0 +1,22 @@
+---
+source: foolish-core/src/lib.rs
+---
+INPUT: {x = 100; inner'{x = 200; x}; x;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  x = 
+  Int(100) [INDEPENDENT]
+  inner'Brane [EMBRYONIC]
+    x = 
+    Int(200) [INDEPENDENT]
+    Search(pattern='^x$', dir=BACKWARD, FREE) [EMBRYONIC]
+  Search(pattern='^x$', dir=BACKWARD, FREE) [EMBRYONIC]
+RESULT:
+Brane [CONSTANT]
+  x = 
+  Int(100) [INDEPENDENT]
+  inner'Brane [CONSTANT]
+    x = 
+    Int(200) [INDEPENDENT]
+    Int(200) [INDEPENDENT]
+  Int(100) [INDEPENDENT]

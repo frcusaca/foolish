@@ -1,0 +1,26 @@
+---
+source: foolish-core/src/lib.rs
+---
+INPUT: {a = 10 / 2; b = 10 / 0; c = 20 / 4;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  a = 
+  Operator(/) [EMBRYONIC]
+    Int(10) [INDEPENDENT]
+    Int(2) [INDEPENDENT]
+  b = 
+  Operator(/) [EMBRYONIC]
+    Int(10) [INDEPENDENT]
+    Int(0) [INDEPENDENT]
+  c = 
+  Operator(/) [EMBRYONIC]
+    Int(20) [INDEPENDENT]
+    Int(4) [INDEPENDENT]
+RESULT:
+Brane [NK]
+  a = 
+  Int(5) [CONSTANT]
+  b = 
+  ??? (division by zero) [NK]
+  c = 
+  Int(5) [CONSTANT]

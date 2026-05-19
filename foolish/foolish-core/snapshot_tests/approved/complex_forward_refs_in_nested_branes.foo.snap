@@ -1,0 +1,24 @@
+---
+source: foolish-core/src/lib.rs
+---
+INPUT: {nested = {inner = {val = x}}; x = 42;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  nested = 
+  Brane [EMBRYONIC]
+    inner = 
+    Brane [EMBRYONIC]
+      val = 
+      Search(pattern='^x$', dir=BACKWARD, FREE) [EMBRYONIC]
+  x = 
+  Int(42) [INDEPENDENT]
+RESULT:
+Brane [CONSTANT]
+  nested = 
+  Brane [CONSTANT]
+    inner = 
+    Brane [CONSTANT]
+      val = 
+      Int(42) [INDEPENDENT]
+  x = 
+  Int(42) [INDEPENDENT]

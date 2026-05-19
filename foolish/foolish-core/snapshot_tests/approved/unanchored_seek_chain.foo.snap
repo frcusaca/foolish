@@ -1,0 +1,28 @@
+---
+source: foolish-core/src/lib.rs
+---
+INPUT: {val1 = 3; val2 = 4; val3 = 5; sum = #-1 + #-2 + #-3;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  val1 = 
+  Int(3) [INDEPENDENT]
+  val2 = 
+  Int(4) [INDEPENDENT]
+  val3 = 
+  Int(5) [INDEPENDENT]
+  sum = 
+  Operator(+) [EMBRYONIC]
+    Operator(+) [EMBRYONIC]
+      Index(offset=-1, FREE) [EMBRYONIC]
+      Index(offset=-2, FREE) [EMBRYONIC]
+    Index(offset=-3, FREE) [EMBRYONIC]
+RESULT:
+Brane [CONSTANT]
+  val1 = 
+  Int(3) [INDEPENDENT]
+  val2 = 
+  Int(4) [INDEPENDENT]
+  val3 = 
+  Int(5) [INDEPENDENT]
+  sum = 
+  Int(12) [CONSTANT]

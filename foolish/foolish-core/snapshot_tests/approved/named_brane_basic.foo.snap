@@ -1,0 +1,18 @@
+---
+source: foolish-core/src/lib.rs
+---
+INPUT: {x = 10; myname'{val = x};}
+[0] PARSED:
+Brane [EMBRYONIC]
+  x = 
+  Int(10) [INDEPENDENT]
+  myname'Brane [EMBRYONIC]
+    val = 
+    Search(pattern='^x$', dir=BACKWARD, FREE) [EMBRYONIC]
+RESULT:
+Brane [CONSTANT]
+  x = 
+  Int(10) [INDEPENDENT]
+  myname'Brane [CONSTANT]
+    val = 
+    Int(10) [INDEPENDENT]

@@ -1,0 +1,40 @@
+---
+source: foolish-core/src/lib.rs
+---
+INPUT: {a=1,b=2; c=<<a+<<b>>>>; c; c;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  a = 
+  Int(1) [INDEPENDENT]
+  b = 
+  Int(2) [INDEPENDENT]
+  c = 
+  StayFullyFoolish [INDEPENDENT]
+    Operator(+) [EMBRYONIC]
+      Search(pattern='^a$', dir=BACKWARD, FREE) [EMBRYONIC]
+      StayFullyFoolish [INDEPENDENT]
+        Search(pattern='^b$', dir=BACKWARD, FREE) [EMBRYONIC]
+  Search(pattern='^c$', dir=BACKWARD, FREE) [EMBRYONIC]
+  Search(pattern='^c$', dir=BACKWARD, FREE) [EMBRYONIC]
+RESULT:
+Brane [WOCONSTANIC]
+  a = 
+  Int(1) [INDEPENDENT]
+  b = 
+  Int(2) [INDEPENDENT]
+  c = 
+  StayFullyFoolish [INDEPENDENT]
+    Operator(+) [EMBRYONIC]
+      Search(pattern='^a$', dir=BACKWARD, FREE) [CONSTANT]
+      StayFullyFoolish [INDEPENDENT]
+        Search(pattern='^b$', dir=BACKWARD, FREE) [EMBRYONIC]
+  Search(pattern='^c$', dir=BACKWARD, FREE) [WOCONSTANIC]
+    Operator(+) [WOCONSTANIC]
+      Int(1) [INDEPENDENT]
+      StayFullyFoolish [INDEPENDENT]
+        Search(pattern='^b$', dir=BACKWARD, FREE) [EMBRYONIC]
+  Search(pattern='^c$', dir=BACKWARD, FREE) [WOCONSTANIC]
+    Operator(+) [WOCONSTANIC]
+      Search(pattern='^a$', dir=BACKWARD, FREE) [CONSTANT]
+      StayFullyFoolish [INDEPENDENT]
+        Search(pattern='^b$', dir=BACKWARD, FREE) [EMBRYONIC]

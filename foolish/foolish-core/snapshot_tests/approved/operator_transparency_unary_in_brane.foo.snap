@@ -1,0 +1,17 @@
+---
+source: foolish-core/src/lib.rs
+---
+INPUT: {a=5, b=-a;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  a = 
+  Int(5) [INDEPENDENT]
+  b = 
+  Operator(-) [EMBRYONIC]
+    Search(pattern='^a$', dir=BACKWARD, FREE) [EMBRYONIC]
+RESULT:
+Brane [CONSTANT]
+  a = 
+  Int(5) [INDEPENDENT]
+  b = 
+  Int(-5) [CONSTANT]

@@ -1,0 +1,40 @@
+---
+source: foolish-core/src/lib.rs
+---
+INPUT: {data = {a=10; b=20; c=30; d=40; e=50}; oob = data#5; oob_neg = data#-6;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  data = 
+  Brane [EMBRYONIC]
+    a = 
+    Int(10) [INDEPENDENT]
+    b = 
+    Int(20) [INDEPENDENT]
+    c = 
+    Int(30) [INDEPENDENT]
+    d = 
+    Int(40) [INDEPENDENT]
+    e = 
+    Int(50) [INDEPENDENT]
+  oob = 
+  Index(offset=5, ANCHORED) [EMBRYONIC]
+  oobˍneg = 
+  Index(offset=-6, ANCHORED) [EMBRYONIC]
+RESULT:
+Brane [NK]
+  data = 
+  Brane [CONSTANT]
+    a = 
+    Int(10) [INDEPENDENT]
+    b = 
+    Int(20) [INDEPENDENT]
+    c = 
+    Int(30) [INDEPENDENT]
+    d = 
+    Int(40) [INDEPENDENT]
+    e = 
+    Int(50) [INDEPENDENT]
+  oob = 
+  Index(offset=5, ANCHORED) [NK]
+  oobˍneg = 
+  Int(10) [INDEPENDENT]

@@ -1,6 +1,6 @@
 ---
 source: foolish-ubcb-cli/src/snapshot_suite.rs
-assertion_line: 302
+assertion_line: 88
 ---
 
   start = Int(1);

@@ -1,0 +1,16 @@
+---
+source: foolish-core/src/lib.rs
+---
+INPUT: {a = 1; b = #-1;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  a = 
+  Int(1) [INDEPENDENT]
+  b = 
+  Index(offset=-1, FREE) [EMBRYONIC]
+RESULT:
+Brane [CONSTANT]
+  a = 
+  Int(1) [INDEPENDENT]
+  b = 
+  Int(1) [INDEPENDENT]

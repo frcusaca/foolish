@@ -1,0 +1,58 @@
+---
+source: foolish-core/src/lib.rs
+---
+INPUT: {b1={a=1, b=2, c=3}; b2={e=4, f=5, g=6}; c = b1 b2;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  b1 = 
+  Brane [EMBRYONIC]
+    a = 
+    Int(1) [INDEPENDENT]
+    b = 
+    Int(2) [INDEPENDENT]
+    c = 
+    Int(3) [INDEPENDENT]
+  b2 = 
+  Brane [EMBRYONIC]
+    e = 
+    Int(4) [INDEPENDENT]
+    f = 
+    Int(5) [INDEPENDENT]
+    g = 
+    Int(6) [INDEPENDENT]
+  c = 
+  Concatenation(elements=2) [EMBRYONIC]
+    Search(pattern='^b1$', dir=BACKWARD, FREE) [EMBRYONIC]
+    Search(pattern='^b2$', dir=BACKWARD, FREE) [EMBRYONIC]
+RESULT:
+Brane [CONSTANT]
+  b1 = 
+  Brane [CONSTANT]
+    a = 
+    Int(1) [INDEPENDENT]
+    b = 
+    Int(2) [INDEPENDENT]
+    c = 
+    Int(3) [INDEPENDENT]
+  b2 = 
+  Brane [CONSTANT]
+    e = 
+    Int(4) [INDEPENDENT]
+    f = 
+    Int(5) [INDEPENDENT]
+    g = 
+    Int(6) [INDEPENDENT]
+  c = 
+  Brane [CONSTANT]
+    a = 
+    Int(1) [INDEPENDENT]
+    b = 
+    Int(2) [INDEPENDENT]
+    c = 
+    Int(3) [INDEPENDENT]
+    e = 
+    Int(4) [INDEPENDENT]
+    f = 
+    Int(5) [INDEPENDENT]
+    g = 
+    Int(6) [INDEPENDENT]

@@ -1,0 +1,26 @@
+---
+source: foolish-core/src/lib.rs
+---
+INPUT: {brane = {1; 2; 3}; val = brane^; last = brane$;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  brane = 
+  Brane [EMBRYONIC]
+    Int(1) [INDEPENDENT]
+    Int(2) [INDEPENDENT]
+    Int(3) [INDEPENDENT]
+  val = 
+  HeadTail(HEAD, ANCHORED) [EMBRYONIC]
+  last = 
+  HeadTail(TAIL, ANCHORED) [EMBRYONIC]
+RESULT:
+Brane [CONSTANT]
+  brane = 
+  Brane [CONSTANT]
+    Int(1) [INDEPENDENT]
+    Int(2) [INDEPENDENT]
+    Int(3) [INDEPENDENT]
+  val = 
+  Int(1) [INDEPENDENT]
+  last = 
+  Int(3) [INDEPENDENT]

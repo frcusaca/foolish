@@ -1,0 +1,52 @@
+---
+source: foolish-core/src/lib.rs
+---
+INPUT: {a = 10; b = 20; outer = {c = 30; ac = a + c; inner = {a = 40; abc = a + b + c}; ab = a + b};}
+[0] PARSED:
+Brane [EMBRYONIC]
+  a = 
+  Int(10) [INDEPENDENT]
+  b = 
+  Int(20) [INDEPENDENT]
+  outer = 
+  Brane [EMBRYONIC]
+    c = 
+    Int(30) [INDEPENDENT]
+    ac = 
+    Operator(+) [EMBRYONIC]
+      Search(pattern='^a$', dir=BACKWARD, FREE) [EMBRYONIC]
+      Search(pattern='^c$', dir=BACKWARD, FREE) [EMBRYONIC]
+    inner = 
+    Brane [EMBRYONIC]
+      a = 
+      Int(40) [INDEPENDENT]
+      abc = 
+      Operator(+) [EMBRYONIC]
+        Operator(+) [EMBRYONIC]
+          Search(pattern='^a$', dir=BACKWARD, FREE) [EMBRYONIC]
+          Search(pattern='^b$', dir=BACKWARD, FREE) [EMBRYONIC]
+        Search(pattern='^c$', dir=BACKWARD, FREE) [EMBRYONIC]
+    ab = 
+    Operator(+) [EMBRYONIC]
+      Search(pattern='^a$', dir=BACKWARD, FREE) [EMBRYONIC]
+      Search(pattern='^b$', dir=BACKWARD, FREE) [EMBRYONIC]
+RESULT:
+Brane [CONSTANT]
+  a = 
+  Int(10) [INDEPENDENT]
+  b = 
+  Int(20) [INDEPENDENT]
+  outer = 
+  Brane [CONSTANT]
+    c = 
+    Int(30) [INDEPENDENT]
+    ac = 
+    Int(40) [CONSTANT]
+    inner = 
+    Brane [CONSTANT]
+      a = 
+      Int(40) [INDEPENDENT]
+      abc = 
+      Int(90) [CONSTANT]
+    ab = 
+    Int(30) [CONSTANT]

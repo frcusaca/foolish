@@ -1,0 +1,22 @@
+---
+source: foolish-core/src/lib.rs
+---
+INPUT: {b = {42}; h = b^; t = b$;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  b = 
+  Brane [EMBRYONIC]
+    Int(42) [INDEPENDENT]
+  h = 
+  HeadTail(HEAD, ANCHORED) [EMBRYONIC]
+  t = 
+  HeadTail(TAIL, ANCHORED) [EMBRYONIC]
+RESULT:
+Brane [CONSTANT]
+  b = 
+  Brane [CONSTANT]
+    Int(42) [INDEPENDENT]
+  h = 
+  Int(42) [INDEPENDENT]
+  t = 
+  Int(42) [INDEPENDENT]

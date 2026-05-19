@@ -1,0 +1,28 @@
+---
+source: foolish-core/src/lib.rs
+---
+INPUT: {outer = {inner = {a = 5 / 0; b = 10 / 2};};}
+[0] PARSED:
+Brane [EMBRYONIC]
+  outer = 
+  Brane [EMBRYONIC]
+    inner = 
+    Brane [EMBRYONIC]
+      a = 
+      Operator(/) [EMBRYONIC]
+        Int(5) [INDEPENDENT]
+        Int(0) [INDEPENDENT]
+      b = 
+      Operator(/) [EMBRYONIC]
+        Int(10) [INDEPENDENT]
+        Int(2) [INDEPENDENT]
+RESULT:
+Brane [NK]
+  outer = 
+  Brane [NK]
+    inner = 
+    Brane [NK]
+      a = 
+      ??? (division by zero) [NK]
+      b = 
+      Int(5) [CONSTANT]

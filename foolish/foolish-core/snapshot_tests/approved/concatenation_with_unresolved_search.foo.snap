@@ -1,0 +1,32 @@
+---
+source: foolish-core/src/lib.rs
+---
+INPUT: {a = {x=ref}; b = {y=2}; c = a b;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  a = 
+  Brane [EMBRYONIC]
+    x = 
+    Search(pattern='^ref$', dir=BACKWARD, FREE) [EMBRYONIC]
+  b = 
+  Brane [EMBRYONIC]
+    y = 
+    Int(2) [INDEPENDENT]
+  c = 
+  Concatenation(elements=2) [EMBRYONIC]
+    Search(pattern='^a$', dir=BACKWARD, FREE) [EMBRYONIC]
+    Search(pattern='^b$', dir=BACKWARD, FREE) [EMBRYONIC]
+RESULT:
+Brane [WOCONSTANIC]
+  a = 
+  Brane [WOCONSTANIC]
+    x = 
+    Search(pattern='^ref$', dir=BACKWARD, FREE) [ECONSTANIC]
+  b = 
+  Brane [CONSTANT]
+    y = 
+    Int(2) [INDEPENDENT]
+  c = 
+  Brane [CONSTANT]
+    y = 
+    Int(2) [INDEPENDENT]

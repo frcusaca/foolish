@@ -1,0 +1,41 @@
+---
+source: foolish-core/src/lib.rs
+---
+INPUT: {a = 10; b = 20; sum = a + b; nested = {inner = sum / 2}; result = nested.inner;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  a = 
+  Int(10) [INDEPENDENT]
+  b = 
+  Int(20) [INDEPENDENT]
+  sum = 
+  Operator(+) [EMBRYONIC]
+    Search(pattern='^a$', dir=BACKWARD, FREE) [EMBRYONIC]
+    Search(pattern='^b$', dir=BACKWARD, FREE) [EMBRYONIC]
+  nested = 
+  Brane [EMBRYONIC]
+    inner = 
+    Operator(/) [EMBRYONIC]
+      Search(pattern='^sum$', dir=BACKWARD, FREE) [EMBRYONIC]
+      Int(2) [INDEPENDENT]
+  result = 
+  Search(pattern='^inner$', dir=BACKWARD, ANCHORED) [EMBRYONIC]
+RESULT:
+Brane [NK]
+  a = 
+  Int(10) [INDEPENDENT]
+  b = 
+  Int(20) [INDEPENDENT]
+  sum = 
+  Int(30) [CONSTANT]
+  nested = 
+  Brane [WOCONSTANIC]
+    inner = 
+    Operator(/) [WOCONSTANIC]
+      Search(pattern='^sum$', dir=BACKWARD, FREE) [WOCONSTANIC]
+        Operator(+) [WOCONSTANIC]
+          Search(pattern='^a$', dir=BACKWARD, FREE) [CONSTANT]
+          Search(pattern='^b$', dir=BACKWARD, FREE) [CONSTANT]
+      Int(2) [INDEPENDENT]
+  result = 
+  Search(pattern='^inner$', dir=BACKWARD, ANCHORED) [NK]

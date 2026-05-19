@@ -287,6 +287,8 @@ dependencies = [
  "anyhow",
  "foolish-parser",
  "insta",
+ "num_cpus",
+ "rayon",
  "regex",
  "serde",
  "serde_json",

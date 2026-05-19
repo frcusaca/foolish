@@ -1,0 +1,44 @@
+---
+source: foolish-core/src/lib.rs
+---
+INPUT: {a=1, b=2; inner = {c = <<a+b>>; c}; inner;}
+[0] PARSED:
+Brane [EMBRYONIC]
+  a = 
+  Int(1) [INDEPENDENT]
+  b = 
+  Int(2) [INDEPENDENT]
+  inner = 
+  Brane [EMBRYONIC]
+    c = 
+    StayFullyFoolish [INDEPENDENT]
+      Operator(+) [EMBRYONIC]
+        Search(pattern='^a$', dir=BACKWARD, FREE) [EMBRYONIC]
+        Search(pattern='^b$', dir=BACKWARD, FREE) [EMBRYONIC]
+    Search(pattern='^c$', dir=BACKWARD, FREE) [EMBRYONIC]
+  Search(pattern='^inner$', dir=BACKWARD, FREE) [EMBRYONIC]
+RESULT:
+Brane [WOCONSTANIC]
+  a = 
+  Int(1) [INDEPENDENT]
+  b = 
+  Int(2) [INDEPENDENT]
+  inner = 
+  Brane [CONSTANT]
+    c = 
+    StayFullyFoolish [INDEPENDENT]
+      Operator(+) [EMBRYONIC]
+        Search(pattern='^a$', dir=BACKWARD, FREE) [CONSTANT]
+        Search(pattern='^b$', dir=BACKWARD, FREE) [CONSTANT]
+    Int(3) [CONSTANT]
+  Search(pattern='^inner$', dir=BACKWARD, FREE) [WOCONSTANIC]
+    Brane [WOCONSTANIC]
+      c = 
+      StayFullyFoolish [INDEPENDENT]
+        Operator(+) [EMBRYONIC]
+          Search(pattern='^a$', dir=BACKWARD, FREE) [CONSTANT]
+          Search(pattern='^b$', dir=BACKWARD, FREE) [CONSTANT]
+      Search(pattern='^c$', dir=BACKWARD, FREE) [WOCONSTANIC]
+        Operator(+) [WOCONSTANIC]
+          Search(pattern='^a$', dir=BACKWARD, FREE) [CONSTANT]
+          Search(pattern='^b$', dir=BACKWARD, FREE) [CONSTANT]
