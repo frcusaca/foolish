@@ -9,6 +9,10 @@ use foolish_core::{Compiler, clone_steppable, fir_to_json, fir_to_ref, Sequencer
 #[command(name = "foolish")]
 #[command(about = "Foolish language CLI")]
 struct Cli {
+    /// Signing passphrase for snapshot signing (defaults to empty string)
+    #[arg(long, env = "SIGNING_PASSPHRASE", default_value = "")]
+    signing_passphrase: String,
+
     #[command(subcommand)]
     command: Commands,
 }

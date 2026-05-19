@@ -1,6 +1,5 @@
 ---
 source: foolish-core/src/lib.rs
-assertion_line: 71
 expression: output
 ---
 INPUT: { a={p=1;q=2}; b={r=3}; c = a b; }

@@ -325,6 +325,30 @@ pub trait Steppable: std::fmt::Debug {
         Ok(())
     }
 
+    /// Return owned clones of all child FirRefs (for formatting / query purposes).
+    fn fir_children(&self) -> Vec<FirRef> {
+        match self.clone_into_fir() {
+            Fir::Operator(v) => v.operands,
+            Fir::Search(v) => {
+                let mut c = vec![];
+                if let Some(a) = v.anchor { c.push(a); }
+                if let Some(t) = v.target { c.push(t); }
+                c
+            }
+            Fir::Index(v) => v.anchor.into_iter().collect(),
+            Fir::HeadTail(v) => v.anchor.into_iter().collect(),
+            Fir::StayFoolish(v) => vec![v.expr],
+            Fir::StayFullyFoolish(v) => vec![v.expr],
+            Fir::Concatenation(v) => {
+                let mut c = v.elements;
+                if let Some(m) = v.merged { c.push(m); }
+                c
+            }
+            Fir::NormalBrane(v) => v.statements.iter().map(|s| Rc::clone(&s.body)).collect(),
+            Fir::ConstantInt(_) | Fir::Nk(_) => vec![],
+        }
+    }
+
     /// Clone this Steppable into a Fir enum (bypasses dyn Clone limitation).
     fn clone_into_fir(&self) -> Fir;
 

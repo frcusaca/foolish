@@ -3,26 +3,26 @@ source: foolish-ubcb-cli/src/snapshot_suite.rs
 ---
 
   start = Int(1);
-  testˍidentifier = Brane{
-    a = Int(1);
-    b = Search(result=Int(1), pattern='^a$', direction=BACKWARD, FREE);
-    };
-  Concatenation(elements=2);
-  Concatenation(elements=2);
-  Concatenation(elements=2);
-  testˍsimpleˍconcatenation = Brane{
-    b1 = Brane{
-      a = Int(1);
-      b = Int(2);
-      c = Int(3);
-      r = Int(0);
-      };
-    b2 = Brane{
-      d = Int(4);
-      e = Int(5);
-      f = Int(6);
-      r = Int(1);
-      };
-    b3 = Concatenation(elements=2);
-    };
+  testˍidentifier = Brane{ [EMBRYONIC]
+    a = Int(1)
+    b = Search('^a$', BACKWARD, FREE)
+  };
+  Concatenation(elements=2, [EMBRYONIC]);
+  Concatenation(elements=2, [EMBRYONIC]);
+  Concatenation(elements=2, [EMBRYONIC]);
+  testˍsimpleˍconcatenation = Brane{ [EMBRYONIC]
+    b1 = Brane{ [EMBRYONIC]
+           a = Int(1)
+           b = Int(2)
+           c = Int(3)
+           r = Int(0)
+         }
+    b2 = Brane{ [EMBRYONIC]
+           d = Int(4)
+           e = Int(5)
+           f = Int(6)
+           r = Int(1)
+         }
+    b3 = Concatenation(elements=2, [EMBRYONIC])
+  };
 }

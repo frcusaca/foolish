@@ -11,6 +11,8 @@ regex = { workspace = true }
 anyhow = { workspace = true }
 thiserror = { workspace = true }
 rayon = { version = "1", optional = true }
+ed25519-dalek = { version = "2.2.0", features = ["rand_core"] }
+argon2 = "0.5.3"
 
 [dev-dependencies]
 insta = { workspace = true }

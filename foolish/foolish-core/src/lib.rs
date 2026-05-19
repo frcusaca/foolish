@@ -5,6 +5,7 @@ pub mod ubc;
 pub mod search;
 pub mod sequencer;
 pub mod snapshot_suite;
+pub mod signature;
 
 pub use fir::{Fir, FirRef, Nyes, SearchDirection, StatementFir, StepResult, Steppable, OperatorFir,
     clone_steppable, fir_to_ref, FirQueryable, StatementSimple};
@@ -13,6 +14,7 @@ pub use compiler::Compiler;
 pub use ubc::{UbcError, Scope, constanic_clone, resolve_to_value, run_to_completion, run_to_completion_with_scope, short_circuit, step_boxed, compute_operator};
 pub use sequencer::{Sequencer, HumanizingSequencerRef};
 pub use snapshot_suite::{SnapshotSuite, SnapshotSuiteError, TestFailure, Evaluator};
+pub use signature::{derive_keypair, sign_content, verify_signature};
 
 /// UBC evaluator adapter for SnapshotSuite.
 ///

@@ -1,6 +1,5 @@
 ---
 source: foolish-core/src/lib.rs
-assertion_line: 115
 expression: output
 ---
 INPUT: {a=<<3>>; a + 7;}

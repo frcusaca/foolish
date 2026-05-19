@@ -1,6 +1,5 @@
 ---
 source: foolish-core/src/lib.rs
-assertion_line: 145
 expression: output
 ---
 INPUT: {x=5, y=7, z=#-2 + #-1;}

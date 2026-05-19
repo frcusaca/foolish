@@ -1,6 +1,5 @@
 ---
 source: foolish-core/src/lib.rs
-assertion_line: 122
 expression: output
 ---
 INPUT: {x=42; b=<x>; b;}

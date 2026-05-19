@@ -1,7 +1,6 @@
 use std::fmt::Write;
 use crate::fir::{Fir, FirQueryable, StatementSimple};
 
-/// Format a FIR tree as human-readable output (for approval tests).
 #[derive(Default)]
 pub struct Sequencer {
     steps: u64,
@@ -9,15 +8,12 @@ pub struct Sequencer {
 
 impl Sequencer {
     pub fn new() -> Self { Self::default() }
-
     pub fn steps(&self) -> u64 { self.steps }
-
     pub fn format(fir: &Fir) -> String {
         let mut buf = String::new();
         format_fir_q(&mut buf, fir, 0);
         buf.trim_end().to_string()
     }
-
     pub fn format_with_header(source: &str, fir: &Fir, steps: u64) -> String {
         let body = Self::format(fir);
         format!("INPUT: {}\nPARSED:\n{}\nSTEPS: {}", source.trim(), body, steps)
