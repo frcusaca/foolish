@@ -11,6 +11,15 @@ supersedes: []
 
 # FOOP-02: Consolidate FIR formatting; unify approval testing
 
+## Worktree
+
+```
+STARTING_PATH=/home/hcbusy/foolish-rust
+STARTING_BRANCH=foolish-rust
+WORKTREE_BRANCH_NAME=foop/ubc-humanizing-seq-round1
+WORKTREE_FULL_FS_PATH=${HOME}/tmp/foolish-worktrees/ubc-humanizing-seq-round1-foop
+```
+
 ## Abstract
 
 Three-step refactor (in order):

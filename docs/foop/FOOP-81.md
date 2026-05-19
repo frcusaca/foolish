@@ -2,11 +2,13 @@
 foop: 18
 title: Enhanced SnapshotSuite with HumanizingSequencer and SequenceableFir
 author: Sisyphus <agent>
-status: Implementing
+status: Superseded
+superseded_by: [FOOP-02]
 type: Standards
 created: 2026-05-15
 phase: meta
 supersedes: []
+superseded_by: [FOOP-02]
 enhances: [FOOP-71]
 ---
 
@@ -301,6 +303,16 @@ None. Evaluation semantics are unchanged.
 - `HumanizingSequencer::format_for_repl()` (snap_test format is priority)
 - Cross-validation snapshot testing between UBC and UBCb (separate FOOP)
 - UBC snapshot inspection — review 194 existing `foolish-core` snapshots (separate FOOP)
+
+## Superseded by FOOP-02
+
+FOOP-81 was merged to `foolish-rust` on 2026-05-15 and introduced `SequenceableFir`,
+`HumanizingSequencer`, and extracted `SnapshotSuite`. FOOP-02 supersedes this work
+with a different architectural direction: `FirQueryable` trait (no `SequenceableFir`),
+single `HumanizingSequencer` via trait dispatch, and `SnapshotSuite` moved to `foolish-core`.
+
+Implementation of FOOP-02 proceeds on branch `foop/ubc-humanizing-seq-round1`
+(worktree: `${HOME}/tmp/foolish-worktrees/ubc-humanizing-seq-round1-foop`).
 
 ## Rejected Alternatives
 

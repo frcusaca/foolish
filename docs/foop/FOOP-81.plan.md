@@ -1,12 +1,17 @@
 ---
 foop: 18
 title: FOOP-81 Implementation Plan — SequenceableFir, HumanizingSequencer, SnapshotSuite
-status: Implementing
+status: Superseded
+superseded_by: [FOOP-02]
 created: 2026-05-15
 updated: 2026-05-15
 ---
 
 # FOOP-81 Implementation Plan
+
+- [x] Canceled. Superseded by FOOP-02 which uses FirQueryable trait instead of SequenceableFir,
+      single HumanizingSequencer via trait dispatch, and moves SnapshotSuite to foolish-core.
+      (2026-05-19 12:00)
 
 ## Worktree
 
@@ -48,224 +53,91 @@ WORKTREE_FULL_FS_PATH=${HOME}/tmp/foolish-worktrees/snapshot_test_suite-foop-81
 
 ## Phase A: Define SequenceableFir enum in foolish-core
 
-- [ ] Add `SequenceableFir` enum to `foolish-core/src/fir.rs` after `Fir` enum:
-  ```rust
-  pub enum SequenceableFir {
-      ConstantInt { value: i64, state: Nyes },
-      Nk { reason: String, state: Nyes, alarm: Option<Alarm> },
-      Operator { op: String, operands: Vec<SequenceableFir>, state: Nyes },
-      Search { pattern: String, direction: SearchDirection, anchored: bool,
-                anchor: Option<Box<SequenceableFir>>,
-                target: Option<Box<SequenceableFir>>, state: Nyes },
-      Index { offset: i32, anchored: bool,
-               anchor: Option<Box<SequenceableFir>>, state: Nyes },
-      HeadTail { is_head: bool, anchored: bool,
-                 anchor: Option<Box<SequenceableFir>>, state: Nyes },
-      StayFoolish { expr: Box<SequenceableFir>, state: Nyes },
-      StayFullyFoolish { expr: Box<SequenceableFir>, state: Nyes },
-      Concatenation { elements: Vec<SequenceableFir>,
-                      merged: Option<Box<SequenceableFir>>, state: Nyes },
-      NormalBrane { characterizations: Vec<String>,
-                    statements: Vec<SequenceableStatement>, state: Nyes },
-  }
-  ```
-- [ ] Add `SequenceableStatement` struct:
-  ```rust
-  pub struct SequenceableStatement {
-      pub name: Option<String>,
-      pub body: SequenceableFir,
-  }
-  ```
-- [ ] Implement `From<Fir> for SequenceableFir`:
-  - Recursively convert each `Fir` variant to corresponding `SequenceableFir` variant
-  - For `FirRef` children (operands, anchors, targets, elements, statements), dereference and recurse
-  - Must handle the `Rc<RefCell<dyn Steppable>>` indirection
-- [ ] Implement accessor methods on `SequenceableFir`:
-  - `get_hs_type(&self) -> &'static str` — variant name
-  - `hs_get_nyes(&self) -> Nyes` — state
-  - `get_hs_children(&self) -> Vec<&SequenceableFir>` — child references
-  - `get_hs_parent(&self) -> Option<&SequenceableFir>` — always `None`
-  - `get_hs_value(&self) -> Result<SequenceableFir, SequenceableError>` — resolve search chain
-- [ ] Implement `get_hs_value()` logic:
-  - If FIR is constanic → return clone of self
-  - If FIR is `Search` with a `target` → recurse on target
-  - If chain loops (visited set exceeds threshold) → return error
-  - For `ConstantInt` variant: `get_hs_int_value(&self) -> i64`
-- [ ] Define `SequenceableError`:
-  ```rust
-  #[derive(Debug, thiserror::Error)]
-  pub enum SequenceableError {
-      #[error("Loop detected in search chain (depth: {depth})")]
-      LoopDetected { depth: usize },
-  }
-  ```
-- [x](2026-05-15 14:30) Verify `cargo check -p foolish-core` — compiles
+- [-] Add `SequenceableFir` enum to `foolish-core/src/fir.rs` after `Fir` enum (superseded — FOOP-02 removes SequenceableFir)
+- [-] Add `SequenceableStatement` struct (superseded)
+- [-] Implement `From<Fir> for SequenceableFir` (superseded)
+- [-] Implement accessor methods on `SequenceableFir` (superseded)
+- [-] Implement `get_hs_value()` logic (superseded)
+- [-] Define `SequenceableError` (superseded)
+- [-] Verify `cargo check -p foolish-core` — compiles (superseded)
 
 ---
 
 ## Phase B: Add HumanizingSequencer to foolish-core
 
-- [x](2026-05-15 14:25) Extend `foolish-core/src/sequencer.rs`:
-  - [x] Keep existing `Sequencer` struct unchanged
-  - [x] Add `HumanizingSequencer` struct after existing code
-- [x](2026-05-15 14:25) Define `HumanizingSequencer`:
-  ```rust
-  pub struct HumanizingSequencer {
-      fir: SequenceableFir,
-  }
-
-  impl HumanizingSequencer {
-      pub fn new(fir: SequenceableFir) -> Self { Self { fir } }
-      pub fn format_for_snap_test(&self, indent: usize) -> String;
-      pub fn format_for_repl(&self, indent: usize) -> String;
-      pub fn fir(&self) -> &SequenceableFir { &self.fir }
-  }
-  ```
-- [x](2026-05-15 14:25) Implement `format_for_snap_test(indent)`:
-  - [x] Match on `SequenceableFir` enum (exhaustive)
-  - [x] Single-statement branes: one line
-  - [x] Multi-statement branes: continuation lines start after `indent` spaces
-  - [x] For `ConstantInt`: `"Int({value})"` with state tag if not constanic
-  - [x] For `Nk`: `"NK({reason})"` with alarm info if present
-  - [x] For `NormalBrane`: `"{stmt1; stmt2; ...}"` with name = value format
-  - [x] For `Search`: `"Search(pattern='...', direction=..., anchor='...')" ` with resolved target
-  - [x] For `Operator`: Use resolved value if constanic, otherwise `"Operator(op='...', operands=[...])"`
-  - [x] For other variants: Use appropriate display format
-  - [x] State tag: Append `"[{nyes_state}]"` for non-constanic FIRs
-  - [x] **Recursive indent**: When formatting child FIRs (nested branes, Concatenation elements, Search targets), create a new `HumanizingSequencer` with `indent + 2`
-- [x](2026-05-15 14:25) **States mode**: When `with_states` is true, always show NYES tags
-- [x](2026-05-15 14:25) **Non-states mode**: Strip NYES tags from output
-- [x](2026-05-15 14:25) Verify `cargo check -p foolish-core` — compiles
+- [-] Extend `foolish-core/src/sequencer.rs` (superseded — FOOP-02 rewrites HumanizingSequencer via FirQueryable)
+- [-] Define `HumanizingSequencer` (superseded)
+- [-] Implement `format_for_snap_test(indent)` (superseded)
+- [-] States mode / Non-states mode (superseded)
+- [-] Verify `cargo check -p foolish-core` (superseded)
 
 ---
 
 ## Phase C: Export new types from foolish-core
 
-- [x](2026-05-15 14:25) Update `foolish-core/src/lib.rs`:
-  ```rust
-  pub use fir::{..., SequenceableFir, SequenceableStatement, SequenceableError};
-  pub use sequencer::{Sequencer, HumanizingSequencer};
-  ```
-- [x](2026-05-15 14:25) Verify `cargo check -p foolish-core` — compiles
+- [-] Update `foolish-core/src/lib.rs` (superseded)
+- [-] Verify `cargo check -p foolish-core` (superseded)
 
 ---
 
 ## Phase D: Unit tests for HumanizingSequencer in foolish-core
 
-- [x](2026-05-15 14:30) Add unit tests in `foolish-core/src/lib.rs` (new test module):
-  - [x] Test `SequenceableFir::from(Fir)` conversion for each variant
-  - [x] Test `get_hs_type()` returns correct variant name
-  - [x] Test `hs_get_nyes()` returns correct state
-  - [x] Test `get_hs_children()` returns correct children
-  - [x] Test `get_hs_value()` resolves search chains
-  - [x] Test `get_hs_value()` detects loops
-  - [x] Test `HumanizingSequencer::format_for_snap_test(indent)` for:
-    - [x] Empty brane → `"{}"`
-    - [x] Single constant → `"Int(42)"`
-    - [x] Brane with named statement → `"{x = Int(42);}"`
-    - [x] Multi-statement brane with continuation lines (indent > 0)
-    - [x] Search FIR → `"Search(pattern='...', ...)"`
-    - [x] NK FIR → `"NK(reason)"`
-    - [x] Operator FIR (constanic and nye)
-    - [x] Concatenation FIR (nested children with recursive indent)
-    - [x] Index, HeadTail, StayFoolish, StayFullyFoolish variants
-  - [x] Test states mode includes NYES tags
-  - [x] Test non-states mode strips NYES tags
-  - [x] Test `format_for_repl(indent)` produces expected output
-- [x](2026-05-15 14:30) **Comprehensive coverage gate** — 35/35 tests pass. Every `SequenceableFir` variant and every `HumanizingSequencer` method has at least one dedicated test.
-- [x](2026-05-15 14:30) Verify `cargo test -p foolish-core` — all tests pass
+- [-] Add unit tests (superseded — FOOP-02 has new sequencer tests)
+- [-] Comprehensive coverage gate — 35/35 tests (superseded)
+- [-] Verify `cargo test -p foolish-core` (superseded)
 
 ---
 
 ## Phase E: Implement SequenceableFir for UbcbFir in foolish-ubcb
 
-- [x](2026-05-15 14:30) In `foolish-ubcb/src/fir.rs`, implement conversion for `UbcbFir`:
-  ```rust
-  impl UbcbFir {
-      pub fn to_sequenceable(&self) -> SequenceableFir {
-          // Convert inner FirRef to SequenceableFir
-          let fir = clone_steppable(&self.fir);
-          SequenceableFir::from(fir)
-      }
-  }
-  ```
-- [x](2026-05-15 14:30) Verify `cargo check -p foolish-ubcb` — compiles
+- [-] Implement `to_sequenceable()` for `UbcbFir` (superseded — FOOP-02 uses `to_fir()` via FirQueryable)
+- [-] Verify `cargo check -p foolish-ubcb` (superseded)
 
 ---
 
 ## Phase F: Extract SnapshotSuite to dedicated module
 
-- [x](2026-05-15 14:35) Create `foolish-ubcb-cli/src/snapshot_suite.rs`
-- [x](2026-05-15 14:35) Move `SnapshotSuite`, `SnapshotSuiteError`, `TestFailure` from `lib.rs` to `snapshot_suite.rs`
-- [x](2026-05-15 14:35) Move formatting helpers (`format_result`, `fmt_stmt`, `fmt_fir_inline`, `strip_nyes_tag`, `fmt_anchor`) to `snapshot_suite.rs`
-- [x](2026-05-15 14:35) Refactor `SnapshotSuite` struct:
-  - [x] Replace `input_dir: PathBuf` with `base_dir: PathBuf`, `input_pattern: String`, `golden_pattern: String`
-  - [x] `(*)` in patterns is the capture group for test case names
-- [x](2026-05-15 14:35) Refactor `new()` to accept `(base_dir, input_pattern, golden_pattern)` and validate pairing (missing snapshots, missing inputs)
-- [x](2026-05-15 14:35) Refactor formatting to use `HumanizingSequencer`:
-  - [x] `evaluate()` converts `EvaluationResult` FIRs to `SequenceableFir`
-  - [x] Uses `HumanizingSequencer::format_for_snap_test(indent)` for output
-  - [x] Preserves states/non-states mode behavior
-- [x](2026-05-15 14:35) Keep `lib.rs` minimal — re-export from `snapshot_suite.rs`:
-  ```rust
-  pub mod snapshot_suite;
-  pub use snapshot_suite::{SnapshotSuite, SnapshotSuiteError, TestFailure};
-  ```
-- [x](2026-05-15 14:35) Move test module (`#[cfg(test)] mod approval_tests`) to `snapshot_suite.rs`
-- [x](2026-05-15 14:35) Verify `cargo check -p foolish-ubcb-cli` — compiles
-- [x](2026-05-15 14:35) Verify `cargo test -p foolish-ubcb-cli --lib` — tests pass (2/2)
+- [-] Create `foolish-ubcb-cli/src/snapshot_suite.rs` (superseded — FOOP-02 moves to foolish-core)
+- [-] Move `SnapshotSuite`, formatting helpers (superseded)
+- [-] Refactor `SnapshotSuite` struct (superseded)
+- [-] Refactor formatting to use `HumanizingSequencer` (superseded)
+- [-] Keep `lib.rs` minimal (superseded)
+- [-] Move test module (superseded)
+- [-] Verify `cargo check` and `cargo test` (superseded)
 
 ---
 
 ## Phase G: Refactor main.rs to use HumanizingSequencer
 
-- [x](2026-05-15 14:40) In `foolish-ubcb-cli/src/main.rs`:
-  - [x] No changes needed — `main.rs` uses `format_result` re-export from `lib.rs` which uses `HumanizingSequencer`
-  - [x] CLI-specific formatting (step output, REPL output) retained as-is
-- [x](2026-05-15 14:40) Remove duplicate formatting code from `main.rs` (if any overlaps with `snapshot_suite.rs`)
-  - [x] No duplicate code found — `main.rs` delegates to `format_result` from `snapshot_suite`
-- [x](2026-05-15 14:40) Verify `cargo run -p foolish-ubcb-cli -- run <test_file>` — CLI works
-- [x](2026-05-15 14:40) Verify `cargo run -p foolish-ubcb-cli -- repl` — REPL works
+- [-] No changes needed (superseded)
+- [-] Remove duplicate code (superseded)
+- [-] Verify CLI and REPL (superseded)
 
 ---
 
 ## Phase H: Workspace verification
 
-- [x](2026-05-15 14:40) Run `cargo check --workspace` — no compilation errors
-- [x](2026-05-15 14:40) Run `cargo clippy --workspace` — no new warnings (pre-existing warnings in `foolish-ubcb` only)
-- [x](2026-05-15 14:40) Run `cargo test --workspace` — all tests pass (256 foolish-core + 2 foolish-ubcb-cli = 258 total)
-- [x](2026-05-15 14:40) Verify snapshot files unchanged:
-  - [x] `foolish-ubcb-cli/src/snapshots/foolish_ubcb_cli__snapshot_suite__approval_tests__ubcb_test_1.snap`
-  - [x] `foolish-ubcb-cli/src/snapshots/foolish_ubcb_cli__snapshot_suite__approval_tests__ubcb_test_1_states.snap`
-- [x](2026-05-15 14:40) Verify `foolish-core` approval tests still pass
+- [-] Run `cargo check --workspace` (superseded)
+- [-] Run `cargo clippy --workspace` (superseded)
+- [-] Run `cargo test --workspace` (superseded)
+- [-] Verify snapshots unchanged (superseded)
+- [-] Verify `foolish-core` approval tests (superseded)
 
 ---
 
 ## Phase I: Documentation
 
-- [x](2026-05-15 14:40) Update `AGENTS.md` — add references to `HumanizingSequencer` and `SequenceableFir`
-  - [x] References added inline in relevant sections
-- [x](2026-05-15 14:40) Update `README.md` snapshot test section if needed
-  - [x] No changes needed — existing snapshot test commands remain valid
-- [x](2026-05-15 14:40) Update both files' "Last Updated" sections
-- [x](2026-05-15 14:40) Update `FOOP-81.md` — set status to `Implementing` (already done)
-- [x](2026-05-15 14:40) Mark completed checkboxes in this plan with timestamps
-- [x](2026-05-15 14:40) **Pre-finalize doc verification** — confirm `README.md` and `AGENTS.md` snapshot test commands are accurate:
-  - [x] Run commands listed in README match actual test targets (`-p foolish-ubcb-cli --lib`, etc.)
-  - [x] Verify `cargo insta review` / `cargo insta accept` workflow documented correctly
-  - [x] Verify `INSTA_UPDATE=always` env-var mentioned
+- [-] Update `AGENTS.md` (superseded)
+- [-] Update `README.md` (superseded)
+- [-] Update "Last Updated" sections (superseded)
+- [-] Update `FOOP-81.md` status (superseded)
+- [-] Mark completed checkboxes (superseded)
+- [-] Pre-finalize doc verification (superseded)
 
 ---
 
 ## Phase J: Cleanup and merge
 
-- [x](2026-05-15 15:30) Verify all work is complete and committed
-- [x](2026-05-15 15:30) Merge to `foolish-rust` branch
-  - [x] Fast-forward merge succeeded (no conflicts)
-  - [x](2026-05-15 15:30) Check that everything works in `/home/hcbusy/foolish-rust` while on branch `foolish-rust`
-    - [x] `cargo check --workspace` passes
-    - [x] `cargo test --workspace` passes (258 tests)
-- [x](2026-05-15 15:30) Cleanup worktree (if used)
-  - [x](2026-05-15 15:30) Check that this plan has all but Cleanup checkboxes completed
-  - [x](2026-05-15 15:30) Remove the worktree directory
-  - [x](2026-05-15 15:30) This is the last checkbox to be checked in this plan
+- [-] Verify all work complete and committed (superseded — FOOP-81 merged 2026-05-15)
+- [-] Merge to `foolish-rust` branch (superseded — fast-forward merge completed)
+- [-] Cleanup worktree (superseded)
