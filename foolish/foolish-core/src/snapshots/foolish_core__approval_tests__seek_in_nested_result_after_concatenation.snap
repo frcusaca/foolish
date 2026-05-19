@@ -2,6 +2,7 @@
 source: foolish-core/src/lib.rs
 expression: output
 ---
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 RNiNPEwLenZ5qQ8IrKVRmvegrqFsSlPRLcwAXgEkS211ejWL2v7JKcICf0WN7buFEXk3GKSdEr7tlsEuhbUuAg==
 INPUT: {OB1={a=1; message=2; only=1}; OB2={which_1 = #-1 + 1}; OB = OB1 OB2;}
 [0] PARSED:
 Brane [EMBRYONIC]

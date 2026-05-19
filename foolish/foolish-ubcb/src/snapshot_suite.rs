@@ -1,12 +1,7 @@
-use std::path::PathBuf;
-
-use foolish_core::{clone_steppable, FirRef};
+use foolish_core::{clone_steppable, FirRef, Evaluator};
 use foolish_core::sequencer::{format_fir_simple_with_indent, HumanizingSequencerRef};
-use foolish_core::snapshot_suite::Evaluator;
-use foolish_ubcb::{EvaluationResult, StatementResult, UbcbEngine};
 
-/// Re-exports from foolish-core for backward compatibility.
-pub use foolish_core::snapshot_suite::{SnapshotSuite, SnapshotSuiteError, TestFailure};
+use crate::{EvaluationResult, StatementResult, UbcbEngine};
 
 /// Format an EvaluationResult as a multiline string using HumanizingSequencer.
 pub fn format_result(result: &EvaluationResult, states: bool) -> String {
@@ -40,44 +35,42 @@ fn fmt_fir_inline(fir: &FirRef, indent: usize, states: bool) -> String {
     }
 }
 
-/// Evaluator adapter that uses UbcbEngine to evaluate Foolish source.
-pub struct UbcbEvaluator {
-    with_states: bool,
-}
-
-impl UbcbEvaluator {
-    pub fn new(with_states: bool) -> Self {
-        Self { with_states }
-    }
-}
+/// UBCb evaluator adapter for SnapshotSuite.
+pub struct UbcbEvaluator;
 
 impl Evaluator for UbcbEvaluator {
-    fn evaluate(&self, source: &str) -> Result<String, String> {
+    fn evaluate(&self, source: &str) -> Result<Vec<FirRef>, String> {
         let mut engine = UbcbEngine::new();
         let result = engine.evaluate(source)
             .map_err(|e| format!("Evaluation failed: {}", e))?;
-        Ok(format_result(&result, self.with_states))
+        let mut firs = Vec::new();
+        for stmt in result.statements {
+            firs.push(stmt.fir);
+        }
+        Ok(firs)
     }
 }
 
 #[cfg(test)]
 mod approval_tests {
     use super::*;
+    use std::path::PathBuf;
 
-    fn suite() -> SnapshotSuite {
-        SnapshotSuite::new(
-            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("snapshot_tests").join("input"),
-            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("snapshot_tests").join("approved"),
+    fn suite() -> foolish_core::SnapshotSuite {
+        foolish_core::SnapshotSuite::new(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../foolish-ubcb-cli/snapshot_tests/input"),
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../foolish-ubcb-cli/snapshot_tests/approved"),
         ).expect("SnapshotSuite initialization failed")
     }
 
     #[test]
     fn approval_all() {
-        let eval = UbcbEvaluator::new(false);
-        let evaluations = suite().evaluate_all(num_cpus::get(), &eval);
+        let eval = UbcbEvaluator;
+        let suite = suite();
+        let evaluations = suite.evaluate_all(num_cpus::get(), &eval);
         let mut settings = insta::Settings::clone_current();
         settings.set_snapshot_path(
-            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("snapshot_tests").join("approved"),
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../foolish-ubcb-cli/snapshot_tests/approved"),
         );
         settings.set_prepend_module_to_snapshot(false);
         settings.set_omit_expression(true);
@@ -97,11 +90,12 @@ mod approval_tests {
 
     #[test]
     fn approval_all_states() {
-        let eval = UbcbEvaluator::new(true);
-        let evaluations = suite().evaluate_all(num_cpus::get(), &eval);
+        let eval = UbcbEvaluator;
+        let suite = suite();
+        let evaluations = suite.evaluate_all(num_cpus::get(), &eval);
         let mut settings = insta::Settings::clone_current();
         settings.set_snapshot_path(
-            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("snapshot_tests").join("approved"),
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../foolish-ubcb-cli/snapshot_tests/approved"),
         );
         settings.set_prepend_module_to_snapshot(false);
         settings.set_omit_expression(true);

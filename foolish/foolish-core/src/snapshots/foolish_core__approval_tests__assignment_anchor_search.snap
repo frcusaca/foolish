@@ -2,6 +2,7 @@
 source: foolish-core/src/lib.rs
 expression: output
 ---
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 S7axxAw46wNbIWrnAromvX5DKUSP0qaaDU7K1zcHxlpyYUFBQ2KDrXDjcckeVpmzM5LTLyb5F/4vEDeD/2ZOCg==
 INPUT: {brn = {alice = 2; bob = 3; charlie = 4}; result1 = brn?a.*; result2 = brn?b.*;}
 [0] PARSED:
 Brane [EMBRYONIC]

@@ -2,6 +2,7 @@
 source: foolish-core/src/lib.rs
 expression: output
 ---
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 ybdROz5QGBY6fQyxiCpKFIpwKDEh1ntE8ph28oSRTUPj2mRsU2kMpjx0OpG9E9+Sks/3y+GYQUmUc79NavvcDA==
 INPUT: {x=10; y=20; z=30; sum = x + y + z; avg = sum / 3;}
 [0] PARSED:
 Brane [EMBRYONIC]

@@ -1,18 +1,9 @@
 ---
 source: foolish-core/src/lib.rs
 ---
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 smAiTsm5+PIvpJ5BUHb2KPcH/vV4OigR8DsqQqQu5ankfsvdaVsO6TlKgPUA+6D9ASbJ0ZfZULIy1gTmv6F1DQ==
 INPUT: {b = {x = 100; y = 200}; notFound = b?γ;}
-[0] PARSED:
-Brane [EMBRYONIC]
-  b = 
-  Brane [EMBRYONIC]
-    x = 
-    Int(100) [INDEPENDENT]
-    y = 
-    Int(200) [INDEPENDENT]
-  notFound = 
-  Search(pattern='γ', dir=BACKWARD, ANCHORED) [EMBRYONIC]
-RESULT:
+[0] RESULT:
 Brane [NK]
   b = 
   Brane [CONSTANT]

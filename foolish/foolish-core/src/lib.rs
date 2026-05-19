@@ -17,30 +17,21 @@ pub use snapshot_suite::{SnapshotSuite, SnapshotSuiteError, TestFailure, Evaluat
 pub use signature::{derive_keypair, sign_content, verify_signature};
 
 /// UBC evaluator adapter for SnapshotSuite.
-///
-/// Compiles source via `Compiler`, evaluates to completion with `run_to_completion`,
-/// and formats the result using `Sequencer` matching the existing inline test format.
+/// Compiles source via `Compiler`, evaluates to completion with `run_to_completion`.
 pub struct UbcEvaluator;
 
 impl Evaluator for UbcEvaluator {
-    fn evaluate(&self, source: &str) -> Result<String, String> {
+    fn evaluate(&self, source: &str) -> Result<Vec<FirRef>, String> {
         let firs = Compiler::compile(source)
             .map_err(|e| format!("Compilation failed: {}", e))?;
-        let mut lines =
-            vec![format!("INPUT: {}", source.lines().next().unwrap_or(source))];
-        for (i, fir) in firs.iter().enumerate() {
-            lines.push(format!("[{}] PARSED:", i));
-            lines.push(Sequencer::format(fir));
-            let mut fir_ref = fir_to_ref(fir.clone());
-            let result = ubc::run_to_completion(&mut fir_ref);
-            let final_fir = clone_steppable(&fir_ref);
-            lines.push("RESULT:".to_string());
-            lines.push(Sequencer::format(&final_fir));
-            if let Err(e) = result {
-                lines.push(format!("ERROR: {}", e));
-            }
+        let mut result = Vec::new();
+        for fir in firs {
+            let mut fir_ref = fir_to_ref(fir);
+            ubc::run_to_completion(&mut fir_ref)
+                .map_err(|e| format!("Evaluation failed: {}", e))?;
+            result.push(fir_ref);
         }
-        Ok(lines.join("\n"))
+        Ok(result)
     }
 }
 
@@ -302,11 +293,12 @@ mod approval_tests {
     fn run_foo(source: &str) -> String {
         let firs = Compiler::compile(source)
             .unwrap_or_else(|e| panic!("Failed to compile '{}': {}", source, e));
-        let mut lines = vec![format!("INPUT: {}", source.lines().next().unwrap_or(source))];
+        let mut lines = vec![];
+        lines.push(signature::sign_input_line(source));
+        lines.push(format!("INPUT: {}", source.lines().next().unwrap_or(source)));
         for (i, fir) in firs.iter().enumerate() {
             lines.push(format!("[{}] PARSED:", i));
             lines.push(Sequencer::format(fir));
-            // Evaluate
             let mut fir_ref = fir_to_ref(fir.clone());
             let result = ubc::run_to_completion(&mut fir_ref);
             let final_fir = clone_steppable(&fir_ref);

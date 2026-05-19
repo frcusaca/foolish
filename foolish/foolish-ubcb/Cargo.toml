@@ -10,6 +10,7 @@ thiserror = { workspace = true }
 
 [dev-dependencies]
 insta = { workspace = true }
+num_cpus = "1"
 
 [lints.rust]
 unsafe_code = "warn"

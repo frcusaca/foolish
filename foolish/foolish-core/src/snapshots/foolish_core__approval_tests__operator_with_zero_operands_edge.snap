@@ -2,6 +2,7 @@
 source: foolish-core/src/lib.rs
 expression: output
 ---
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 JdSrw7paaGbR20lmFfoA1Vs9qYeN3+grBFQYYH78CsIfG7zNGENi0Ss+R07YGgrArWMnRh5EIBlZvMzWxsRgCA==
 INPUT: {a = 0 * 100; b = 0 + 999;}
 [0] PARSED:
 Brane [EMBRYONIC]

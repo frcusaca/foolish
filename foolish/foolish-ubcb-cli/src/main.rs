@@ -4,8 +4,24 @@ use std::path::PathBuf;
 use anyhow::Context;
 use clap::{Parser, Subcommand};
 
+use foolish_core::Sequencer;
 use foolish_ubcb::UbcbEngine;
-use foolish_ubcb_cli::format_result;
+
+pub fn format_result(result: &foolish_ubcb::EvaluationResult, states: bool) -> String {
+    if result.statements.is_empty() {
+        return "{}".to_string();
+    }
+    let mut lines = vec![];
+    for stmt in &result.statements {
+        let fir = foolish_core::clone_steppable(&stmt.fir);
+        let formatted = Sequencer::format(&fir);
+        match &stmt.name {
+            Some(name) => lines.push(format!("{name} = {formatted}")),
+            None => lines.push(formatted),
+        }
+    }
+    format!("{{\n  {}\n}}", lines.join(",\n  "))
+}
 
 #[derive(Parser)]
 #[command(name = "foolish-ubcb-cli")]

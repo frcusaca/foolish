@@ -1,22 +1,9 @@
 ---
 source: foolish-core/src/lib.rs
 ---
-INPUT: {l1 = {l2 = {l3 = {bad = 1 / 0; good = 42};};};}
-[0] PARSED:
-Brane [EMBRYONIC]
-  l1 = 
-  Brane [EMBRYONIC]
-    l2 = 
-    Brane [EMBRYONIC]
-      l3 = 
-      Brane [EMBRYONIC]
-        bad = 
-        Operator(/) [EMBRYONIC]
-          Int(1) [INDEPENDENT]
-          Int(0) [INDEPENDENT]
-        good = 
-        Int(42) [INDEPENDENT]
-RESULT:
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 9+hN9xh2AnvpsWWuGKsfidEhKUxSf4S277v595KftDtGXxhmA+l67pau06eTwSEhoUa+db/KrL8m5f7YXhr0CA==
+INPUT: {
+[0] RESULT:
 Brane [NK]
   l1 = 
   Brane [NK]

@@ -1,2 +1,1 @@
-pub mod snapshot_suite;
-pub use snapshot_suite::{SnapshotSuite, SnapshotSuiteError, TestFailure, format_result, UbcbEvaluator};
+pub use foolish_ubcb::UbcbEvaluator;

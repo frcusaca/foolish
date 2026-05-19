@@ -17,6 +17,8 @@
 
 use ed25519_dalek::{Signer, SigningKey, VerifyingKey, Signature};
 use argon2::Argon2;
+use base64::engine::general_purpose::STANDARD as B64;
+use base64::Engine;
 
 /// Fixed salt for deterministic key derivation.
 const SALT: &[u8] = b"foolish-rust:snapshot-sig:v1";
@@ -94,6 +96,41 @@ pub fn verify_signature(
         Err(_) => return false,
     };
     verifying_key.verify_strict(content.as_bytes(), &sig).is_ok()
+}
+
+/// Sign `input` with the default keypair and return a `SIG:` line.
+pub fn sign_input_line(input: &str) -> String {
+    let (sk, vk) = derive_keypair("");
+    let (_, sig) = sign_content(&sk, input);
+    let b64 = B64.encode(&sig);
+    format!("SIG: {} {}", hex::encode(&vk.to_bytes()), b64)
+}
+
+/// Verify a `SIG:` line against the original input.
+pub fn verify_input_line(line: &str, input: &str) -> bool {
+    let Some(rest) = line.strip_prefix("SIG: ") else {
+        return false;
+    };
+    let parts: Vec<&str> = rest.split_whitespace().collect();
+    if parts.len() != 2 {
+        return false;
+    }
+    let vk_bytes: [u8; 32] = match hex::decode(parts[0])
+        .ok()
+        .and_then(|v| v.try_into().ok())
+    {
+        Some(b) => b,
+        None => return false,
+    };
+    let vk = match VerifyingKey::from_bytes(&vk_bytes) {
+        Ok(k) => k,
+        Err(_) => return false,
+    };
+    let sig_bytes: Vec<u8> = match B64.decode(parts[1]) {
+        Ok(b) => b,
+        Err(_) => return false,
+    };
+    verify_signature(&vk, input, &sig_bytes)
 }
 
 // ============================================================================

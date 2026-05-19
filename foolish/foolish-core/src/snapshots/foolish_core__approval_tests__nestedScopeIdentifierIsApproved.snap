@@ -2,6 +2,7 @@
 source: foolish-core/src/lib.rs
 expression: output
 ---
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 uytTGAtrn1F4i0KUUFaMUSm50h6Fi99JEFVHj0iWWj3NUdvJk0jpaoDyluL6MzYNV6FKUIPTyFPdPRg7a/u5BA==
 INPUT: {
 [0] PARSED:
 Brane [EMBRYONIC]

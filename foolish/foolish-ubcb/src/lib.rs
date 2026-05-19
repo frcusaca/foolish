@@ -3,8 +3,10 @@ pub mod messages;
 pub mod channel;
 pub mod fir;
 pub mod engine;
+pub mod snapshot_suite;
 
 pub use engine::{UbcbEngine, EvaluationResult, StatementResult, EvalError};
+pub use snapshot_suite::{format_result, UbcbEvaluator};
 pub use luid::{Luid, LuidGenerator};
 pub use messages::UbcbMessage;
 pub use channel::MessageChannel;

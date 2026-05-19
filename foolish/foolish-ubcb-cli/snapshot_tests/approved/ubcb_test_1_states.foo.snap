@@ -1,28 +1,119 @@
 ---
-source: foolish-ubcb-cli/src/snapshot_suite.rs
+source: foolish-ubcb/src/snapshot_suite.rs
 ---
-
-  start = Int(1) [INDEPENDENT];
-  testˍidentifier = Brane{ [EMBRYONIC]
-    a = Int(1)
-    b = Search('^a$', BACKWARD, FREE)
-  } [EMBRYONIC];
-  Concatenation(elements=2, [EMBRYONIC]) [EMBRYONIC];
-  Concatenation(elements=2, [EMBRYONIC]) [EMBRYONIC];
-  Concatenation(elements=2, [EMBRYONIC]) [EMBRYONIC];
-  testˍsimpleˍconcatenation = Brane{ [EMBRYONIC]
-    b1 = Brane{ [EMBRYONIC]
-           a = Int(1)
-           b = Int(2)
-           c = Int(3)
-           r = Int(0)
-         }
-    b2 = Brane{ [EMBRYONIC]
-           d = Int(4)
-           e = Int(5)
-           f = Int(6)
-           r = Int(1)
-         }
-    b3 = Concatenation(elements=2, [EMBRYONIC])
-  } [EMBRYONIC];
-}
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 w+WjlGApfgjVezWjdJm9utgOEhqX7Eu6w0aiA/OjA01qv24zJpXWwZsZ98X326mJwUdROypdvYkdkVDDkHSTDg==
+INPUT: {
+[0] RESULT:
+Int(1) [INDEPENDENT]
+[1] RESULT:
+Brane [EMBRYONIC]
+  a = 
+  Int(1) [INDEPENDENT]
+  b = 
+  Search(pattern='^a$', dir=BACKWARD, FREE) [ECONSTANIC]
+[2] RESULT:
+Concatenation(elements=2) [EMBRYONIC]
+  Search(pattern='^testˍancestralˍidentifierˍwithˍshadow$', dir=BACKWARD, FREE) [ECONSTANIC]
+  Brane [EMBRYONIC]
+    a = 
+    Int(1) [INDEPENDENT]
+    n1 = 
+    Brane [EMBRYONIC]
+      c = 
+      Operator(-) [EMBRYONIC]
+        Int(1) [INDEPENDENT]
+      b = 
+      Search(pattern='^a$', dir=BACKWARD, FREE) [EMBRYONIC]
+      a = 
+      Int(2) [INDEPENDENT]
+      n2 = 
+      Brane [EMBRYONIC]
+        a = 
+        Int(3) [INDEPENDENT]
+        b = 
+        Search(pattern='^c$', dir=BACKWARD, FREE) [EMBRYONIC]
+        d = 
+        Operator(-) [EMBRYONIC]
+          Search(pattern='^b$', dir=BACKWARD, FREE) [EMBRYONIC]
+        e = 
+        Operator(+) [EMBRYONIC]
+          Operator(+) [EMBRYONIC]
+            Operator(+) [EMBRYONIC]
+              Search(pattern='^a$', dir=BACKWARD, FREE) [EMBRYONIC]
+              Search(pattern='^b$', dir=BACKWARD, FREE) [EMBRYONIC]
+            Search(pattern='^c$', dir=BACKWARD, FREE) [EMBRYONIC]
+          Search(pattern='^d$', dir=BACKWARD, FREE) [EMBRYONIC]
+    a = 
+    Search(pattern='^b$', dir=BACKWARD, FREE) [EMBRYONIC]
+    b = 
+    Int(1) [INDEPENDENT]
+    c = 
+    Search(pattern='^a$', dir=BACKWARD, FREE) [EMBRYONIC]
+[3] RESULT:
+Concatenation(elements=2) [EMBRYONIC]
+  Search(pattern='^testˍpreservingˍconstanics$', dir=BACKWARD, FREE) [ECONSTANIC]
+  Brane [EMBRYONIC]
+    a = 
+    Search(pattern='^b$', dir=BACKWARD, FREE) [EMBRYONIC]
+    b = 
+    Int(1) [INDEPENDENT]
+    c = 
+    Search(pattern='^a$', dir=BACKWARD, FREE) [EMBRYONIC]
+[4] RESULT:
+Concatenation(elements=2) [EMBRYONIC]
+  Search(pattern='^testˍpreservingˍconstanicsˍoverˍshadows$', dir=BACKWARD, FREE) [ECONSTANIC]
+  Brane [EMBRYONIC]
+    a = 
+    Search(pattern='^b$', dir=BACKWARD, FREE) [EMBRYONIC]
+    b = 
+    Int(1) [INDEPENDENT]
+    f = 
+    Brane [EMBRYONIC]
+      c = 
+      Operator(+) [EMBRYONIC]
+        Search(pattern='^b$', dir=BACKWARD, FREE) [EMBRYONIC]
+        Int(1) [INDEPENDENT]
+      a = 
+      Int(0) [INDEPENDENT]
+      b = 
+      Int(0) [INDEPENDENT]
+      r = 
+      Operator(+) [EMBRYONIC]
+        Operator(+) [EMBRYONIC]
+          Operator(+) [EMBRYONIC]
+            Search(pattern='^a$', dir=BACKWARD, FREE) [EMBRYONIC]
+            Search(pattern='^b$', dir=BACKWARD, FREE) [EMBRYONIC]
+          Search(pattern='^c$', dir=BACKWARD, FREE) [EMBRYONIC]
+        Search(pattern='^d$', dir=BACKWARD, FREE) [EMBRYONIC]
+    g = 
+    Search(pattern='^f$', dir=BACKWARD, FREE) [EMBRYONIC]
+    d = 
+    Int(0) [INDEPENDENT]
+    r = 
+    Search(pattern='^g$', dir=BACKWARD, FREE) [EMBRYONIC]
+[5] RESULT:
+Brane [EMBRYONIC]
+  b1 = 
+  Brane [EMBRYONIC]
+    a = 
+    Int(1) [INDEPENDENT]
+    b = 
+    Int(2) [INDEPENDENT]
+    c = 
+    Int(3) [INDEPENDENT]
+    r = 
+    Int(0) [INDEPENDENT]
+  b2 = 
+  Brane [EMBRYONIC]
+    d = 
+    Int(4) [INDEPENDENT]
+    e = 
+    Int(5) [INDEPENDENT]
+    f = 
+    Int(6) [INDEPENDENT]
+    r = 
+    Int(1) [INDEPENDENT]
+  b3 = 
+  Concatenation(elements=2) [EMBRYONIC]
+    Search(pattern='^b1$', dir=BACKWARD, FREE) [EMBRYONIC]
+    Search(pattern='^b2$', dir=BACKWARD, FREE) [EMBRYONIC]

@@ -2,10 +2,14 @@ use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use crate::FirRef;
+use crate::sequencer::format_fir_simple_with_indent;
+
 /// Trait for evaluators that can evaluate a Foolish source file.
+/// Returns the evaluated FIRs (final brane and statements).
 pub trait Evaluator {
-    /// Evaluate source code and return formatted output.
-    fn evaluate(&self, source: &str) -> Result<String, String>;
+    /// Evaluate source code and return the final evaluated FIRs.
+    fn evaluate(&self, source: &str) -> Result<Vec<FirRef>, String>;
 }
 
 /// Error type for SnapshotSuite initialization failures.
@@ -164,11 +168,22 @@ impl SnapshotSuite {
     }
 
     /// Evaluate a single `.foo` file using the provided evaluator and return formatted output.
+    ///
+    /// Flow: read source → sign input → evaluate → humanize sequence → format output.
     pub fn evaluate(&self, path: &Path, evaluator: &dyn Evaluator) -> Result<String, String> {
         let source = fs::read_to_string(path)
             .map_err(|e| format!("Failed to read {}: {}", path.display(), e))?;
 
-        evaluator.evaluate(&source)
+        let firs = evaluator.evaluate(&source)?;
+        let sig = crate::signature::sign_input_line(&source);
+        let mut lines = vec![sig];
+        lines.push(format!("INPUT: {}", source.lines().next().unwrap_or(&source)));
+        for (i, fir_ref) in firs.iter().enumerate() {
+            let fir = crate::clone_steppable(fir_ref);
+            lines.push(format!("[{}] RESULT:", i));
+            lines.push(crate::Sequencer::format(&fir));
+        }
+        Ok(lines.join("\n"))
     }
 
     /// Run all snapshot tests with parallel evaluation.

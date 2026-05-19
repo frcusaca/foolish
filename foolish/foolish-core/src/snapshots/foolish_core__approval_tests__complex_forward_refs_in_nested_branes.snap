@@ -2,6 +2,7 @@
 source: foolish-core/src/lib.rs
 expression: output
 ---
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 ISeK/6h+zyPEW1xtkg8dBV+JOpwY5VioKymchgvacxYBoWUiNDdksEqbdiu5MArxt3RhqKJ1st9smQybc0/UBw==
 INPUT: {nested = {inner = {val = x}}; x = 42;}
 [0] PARSED:
 Brane [EMBRYONIC]

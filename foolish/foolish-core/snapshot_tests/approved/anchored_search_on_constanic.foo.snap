@@ -1,14 +1,9 @@
 ---
 source: foolish-core/src/lib.rs
 ---
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 oB/r33QRdUQFLBKbVSYWEI6VnaBBz7sVV6q5wjQOzqn1ouLQ6wc7+rEwPF47u2C08Nk3Rrw7xaUn52YmW2bYDQ==
 INPUT: {emptyBrane = {}; chained = emptyBrane^;}
-[0] PARSED:
-Brane [EMBRYONIC]
-  emptyBrane = 
-  Brane [EMBRYONIC]
-  chained = 
-  HeadTail(HEAD, ANCHORED) [EMBRYONIC]
-RESULT:
+[0] RESULT:
 Brane [NK]
   emptyBrane = 
   Brane [CONSTANT]

@@ -1,23 +1,9 @@
 ---
 source: foolish-core/src/lib.rs
 ---
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 dEw6jU81DB4pwBon+7AZB/PO00sJWMdOR2hMGqx44OBELsrv08/am2JlvRklSe3BN6YwhSx3MaUKT0MbbwOiCA==
 INPUT: {b = {10; 20; 30}; first = b#0; second = b#1; third = b#2; oob = b#3;}
-[0] PARSED:
-Brane [EMBRYONIC]
-  b = 
-  Brane [EMBRYONIC]
-    Int(10) [INDEPENDENT]
-    Int(20) [INDEPENDENT]
-    Int(30) [INDEPENDENT]
-  first = 
-  Index(offset=0, ANCHORED) [EMBRYONIC]
-  second = 
-  Index(offset=1, ANCHORED) [EMBRYONIC]
-  third = 
-  Index(offset=2, ANCHORED) [EMBRYONIC]
-  oob = 
-  Index(offset=3, ANCHORED) [EMBRYONIC]
-RESULT:
+[0] RESULT:
 Brane [NK]
   b = 
   Brane [CONSTANT]

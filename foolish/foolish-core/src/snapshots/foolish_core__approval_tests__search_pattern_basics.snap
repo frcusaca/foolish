@@ -2,6 +2,7 @@
 source: foolish-core/src/lib.rs
 expression: output
 ---
+SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 qqXo6t9m+cY5PnYDNBXwF6nEWO4AuCmrvDF5HnEj9Ce4mca5LDRNVkLRw/fpZQECaxJ7QTBDMfwayI5lTTTcAg==
 INPUT: {simple = {x=10; y=20; z=30;}?y; notfound = {a=1; b=2;}?missing;}
 [0] PARSED:
 Brane [EMBRYONIC]
