@@ -1,8 +1,11 @@
 ---
-source: foolish-core/src/lib.rs
+source: foolish-core/src/ubc_snapshot_tester.rs
 ---
 SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 gvKrH1bsn9QVcyXqkbc0hR4kUMJq3+tW1PimVP+cOkUuDFySMFn68os3pxSYk7Efd/rzIWpvqgFsYLlN7ryMCg==
-INPUT: {outer = {inner = 5 / 0};}
+INPUT:
+```foolish
+{outer = {inner = 5 / 0};}
+```
 [0] RESULT:
 Brane [NK]
   outer = 

@@ -1,8 +1,11 @@
 ---
-source: foolish-core/src/lib.rs
+source: foolish-core/src/ubc_snapshot_tester.rs
 ---
 SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 BKWu/+nqbIOBuwM+3c1LykkZos0sjI0tNOXKBnetgwOiqEAp50mz8FDztfNVy37v3uU6mgOmEfP2GNtPXKS6AA==
-INPUT: {a={1,2,3}; a#1; a#-1;}
+INPUT:
+```foolish
+{a={1,2,3}; a#1; a#-1;}
+```
 [0] RESULT:
 Brane [CONSTANT]
   a = 

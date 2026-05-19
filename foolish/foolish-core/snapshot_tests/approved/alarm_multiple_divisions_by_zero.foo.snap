@@ -1,8 +1,11 @@
 ---
-source: foolish-core/src/lib.rs
+source: foolish-core/src/ubc_snapshot_tester.rs
 ---
 SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 J6vDnAXsJg+GZvTRthFUnRw+A4dE5yKGm5C0E70ARHJzKvpxFAlNpaFk+XVPX94IwwVB2O9qchh5bMQohmFbAw==
-INPUT: {a = 1 / 0; b = 2 / 0; c = 3 / 0;}
+INPUT:
+```foolish
+{a = 1 / 0; b = 2 / 0; c = 3 / 0;}
+```
 [0] RESULT:
 Brane [NK]
   a = 

@@ -34,7 +34,10 @@ mod approval_tests {
             .unwrap_or_else(|e| panic!("Failed to compile '{}': {}", source, e));
         let mut lines = vec![];
         lines.push(signature::sign_input_line(source));
-        lines.push(format!("INPUT: {}", source.lines().next().unwrap_or(source)));
+        lines.push("INPUT:".to_string());
+        lines.push("```foolish".to_string());
+        lines.push(source.trim_end().to_string());
+        lines.push("```".to_string());
         for (i, fir) in firs.iter().enumerate() {
             lines.push(format!("[{}] PARSED:", i));
             lines.push(Sequencer::format(fir));

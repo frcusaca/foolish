@@ -177,7 +177,10 @@ impl SnapshotSuite {
         let firs = evaluator.evaluate(&source)?;
         let sig = crate::signature::sign_input_line(&source);
         let mut lines = vec![sig];
-        lines.push(format!("INPUT: {}", source.lines().next().unwrap_or(&source)));
+        lines.push("INPUT:".to_string());
+        lines.push("```foolish".to_string());
+        lines.push(source.trim_end().to_string());
+        lines.push("```".to_string());
         for (i, fir_ref) in firs.iter().enumerate() {
             let fir = crate::clone_steppable(fir_ref);
             lines.push(format!("[{}] RESULT:", i));

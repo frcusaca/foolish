@@ -1,8 +1,11 @@
 ---
-source: foolish-core/src/lib.rs
+source: foolish-core/src/ubc_snapshot_tester.rs
 ---
 SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 smAiTsm5+PIvpJ5BUHb2KPcH/vV4OigR8DsqQqQu5ankfsvdaVsO6TlKgPUA+6D9ASbJ0ZfZULIy1gTmv6F1DQ==
-INPUT: {b = {x = 100; y = 200}; notFound = b?γ;}
+INPUT:
+```foolish
+{b = {x = 100; y = 200}; notFound = b?γ;}
+```
 [0] RESULT:
 Brane [NK]
   b = 

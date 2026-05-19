@@ -1,8 +1,65 @@
 ---
-source: foolish-ubcb/src/snapshot_suite.rs
+source: foolish-ubcb/src/ubcb_snapshot_tester.rs
 ---
 SIG: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683 w+WjlGApfgjVezWjdJm9utgOEhqX7Eu6w0aiA/OjA01qv24zJpXWwZsZ98X326mJwUdROypdvYkdkVDDkHSTDg==
-INPUT: {
+INPUT:
+```foolish
+{
+   !! This is a comment
+   start=1;
+
+   test_identifier={
+      a=1;
+      b=a;
+   };
+
+   test_ancestral_identifier_with_shadow{
+      a = 1;           !! a = 1
+      n1 = {
+        c = -1;        !! c = -1;
+        b = a;         !! b = 1
+        a = 2;         !! a = 2
+        n2 = {
+          a = 3;       !! a = -4
+          b = c;       !! b = -1;
+          d = -b;       !! d = 1;
+          e = a+b+c+d  !! e = 0 (3 + -1 + -1 + -1)
+        }
+      }
+      a = b;  !! this should show a constanic search for the identifier b.
+      b = 1;  !! b=1
+      c = a;  !! c=1
+   };
+
+   test_preserving_constanics{
+      a = b;  !! this should show a constanic search for the identifier b.
+      b = 1;  !! b=1
+      c = a;  !! c=1
+   };
+
+
+   test_preserving_constanics_over_shadows{
+      a = b;  !! this should show a constanic search for the identifier b.
+      b = 1;  !! b=1
+      f = {
+        c = b+1;
+        a = 0;
+        b = 0;
+        r = a + b + c + d;
+      };
+      g = f;
+      d = 0;
+      r = g;
+   };
+
+
+   test_simple_concatenation ={
+      b1 = {a=1,b=2,c=3,r=0};
+      b2 = {d=4,e=5,f=6,r=1};
+      b3 = b1 b2;
+   };
+}
+```
 [0] RESULT:
 Int(1) [INDEPENDENT]
 [1] RESULT:
