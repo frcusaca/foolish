@@ -109,15 +109,35 @@ When implementing a FOOP, write a detailed plan to `docs/foop/FOOP-###.plan.md` 
 
 #### Checkbox Format
 
-Checkboxes in a plan file track progress. When an item is checked off, **always place a timestamp (to the minute) next to the checkbox**:
+Checkboxes in a plan file track progress. When an item is checked off, **always place a timestamp (to the minute) on the next line with indent into the bulleted list**:
 
 ```markdown
 - [ ] Task not yet done
 - [x] Task completed                    ← bad (no timestamp)
-- [x](2026-05-06 13:11) Task completed  ← good (timestamped)
+- [x] Task completed                    ← good it is
+      (2026-05-06 13:11)                ← timestamped properly
 ```
 
 This gives both agents and humans a clear view of how work is progressing over time.
+
+When a specification is considered VERY important but interfering with current highest priorities, it is marked with `[x] backburnered`. To be revived by removing the `[x] backburnered` marker. These plans are to be excluded when agent or human asks for plans that are: ready, pending, iterating, in progress, developing, active, etc. backburnered plans can only be found and addressed directly by using the words "backburnered plan(s)".
+
+```markdown
+- [x] backburnered
+      (2026-05-06 14:00)
+- [ ] Do this or system will break
+- [ ] And fix that bug
+- [ ] ...
+```
+
+Canceled features shall be marked as "not to be done" using the marker "[-] don't do this". An entirely deprecated plans hall have a "[x] canceled" box at the top. The agent should first add the canceled check item, then mark all todo's with per-item cancelation "[-] each one". Here is the example of properly canceled spec
+```markdown
+- [x] canceled. Optionally explain there's a new spec see FOOP-####
+      (2026-05-06 14:00)
+- [-] Do this or system will break
+- [-] And fix that bug
+- [-] ...
+```
 
 #### Worktree Branch Tracking
 
@@ -152,10 +172,12 @@ If a task proves larger than expected and splits into multiple sub-tasks, indent
 
 ```markdown
 - [ ] Merge ${BRANCH_NAME} to ${STARTING_BRANCH}
-  - [x](2026-05-06 14:00) Detected complex merge situation requiring additional work
+  - [x] Detected complex merge situation requiring additional work
+        (2026-05-06 14:00)
   - [ ] Update ${BRANCH_NAME} to follow new coding style
   - [ ] Update ${BRANCH_NAME} to use new API call convention
-  - [x](2026-05-06 14:31) Merged breaking changes from alpha
+  - [x] Merged breaking changes from alpha
+        (2026-05-06 14:31)
   - [ ] Repair ALL tests in ${STARTING_BRANCH} in ${STARTING_PATH}
   - [ ] STOP! STOP!! STOP!!! ASK HUMAN to check this box before continuing. UNDER NO CIRCUMSTANCES will Agent continue past this point automatically!!
   - [ ] Cleanup ${WORKTREE_FULL_FS_PATH}
