@@ -1,0 +1,25 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{a = -(-5); b = -(-(-3));}
+```
+[0] RESULT:
+```hssnap
+Brane [CONSTANT]
+  a = 
+  Int(5) [CONSTANT]
+  b = 
+  Int(-3) [CONSTANT]
+```
+COMMENTS:
+```markdown
+chained_unary_operators
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: kiNVOLwv/jrjOVkHoD+trP+GtqjZ0F5/+ipES3CpFENY3I+4p/cigoi+MXbywS0r6UAGfx3/iyYgSStikNBwCg==
+HS signature: LvAiwIUh5cZJuhKbdcrTG+PorP9yH5JynjD/Gtv19xnUFWYCTtD2uV4qRI2OQ7AOXLbTAd2DBMbymaBlGsp6Dw==
+Comments signature: HfKHeqeHYcvJM+ivHI4Lr9iVAL2kazqLqaJQgoUrTcJuOdJGpTYKoIRjXBfuq1n6UnXHLb1bfGkA+PtioGBvCA==

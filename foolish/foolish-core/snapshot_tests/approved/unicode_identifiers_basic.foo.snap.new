@@ -1,0 +1,29 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{x = 1; π = 3; Б = 7; sum = x + π + Б;}
+```
+[0] RESULT:
+```hssnap
+Brane [CONSTANT]
+  x = 
+  Int(1) [INDEPENDENT]
+  π = 
+  Int(3) [INDEPENDENT]
+  Б = 
+  Int(7) [INDEPENDENT]
+  sum = 
+  Int(11) [CONSTANT]
+```
+COMMENTS:
+```markdown
+unicode_identifiers_basic
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: HnEQDbZR9OCXyBhLSgHekAsp7uFfJlxgFgaUux6s3Sf5N7qj4s4ZmDhQW1+0mAydYssLalsUBecHY8NKLRLOAw==
+HS signature: 9bGvc/AXEiIZ8LJ6wEM/3PW1HsYgEc1h2bok038FmBUEIM8e9yVlWsULhFGPaqunct8hQuWpgGSdbZfz3Kb9Dw==
+Comments signature: 5/h+RXAejtsk2B09xYeVWbEX3LIrb8WRmXuauNXP4VvoKPWfYRI9vSFYmlKl/5eQC9B47VCFgk95l9PqIbEODA==

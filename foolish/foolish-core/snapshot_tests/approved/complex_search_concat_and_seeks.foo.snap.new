@@ -1,0 +1,43 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{data = {x=1, y=2, z=3}; copy = data {w=4}; last = copy#-1; first = copy#0;}
+```
+[0] RESULT:
+```hssnap
+Brane [CONSTANT]
+  data = 
+  Brane [CONSTANT]
+    x = 
+    Int(1) [INDEPENDENT]
+    y = 
+    Int(2) [INDEPENDENT]
+    z = 
+    Int(3) [INDEPENDENT]
+  copy = 
+  Brane [CONSTANT]
+    x = 
+    Int(1) [INDEPENDENT]
+    y = 
+    Int(2) [INDEPENDENT]
+    z = 
+    Int(3) [INDEPENDENT]
+    w = 
+    Int(4) [INDEPENDENT]
+  last = 
+  Int(4) [INDEPENDENT]
+  first = 
+  Int(1) [INDEPENDENT]
+```
+COMMENTS:
+```markdown
+complex_search_concat_and_seeks
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: 2sGCo//bsMS6EbNWvLkDc/IST2lRsoHgtK6Fc0UBF834NnteSGmsi8JcAAOcOFOaH7GJfG8BAJfr4Duct/GuCg==
+HS signature: P+CG/uC34R9Cw5Y7RZzPRNOCCauN/8hAm0Tjr/O5+nXvehaY76G/xXbKnnlWIT0/SrF4f9LIsG7ekDYGkndSCQ==
+Comments signature: lYIuBKlvTlRaJpC9LSTiviL7hih/3BKUCu0uSXY5eQBnUBWn4hySb4IGhtwH/+Ztl219XetwIMuUCCxbxNzwCg==

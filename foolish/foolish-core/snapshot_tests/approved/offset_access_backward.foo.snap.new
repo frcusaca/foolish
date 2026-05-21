@@ -1,0 +1,37 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{data = {a=10; b=20; c=30; d=40; e=50}; last = data#-1; second_last = data#-2;}
+```
+[0] RESULT:
+```hssnap
+Brane [CONSTANT]
+  data = 
+  Brane [CONSTANT]
+    a = 
+    Int(10) [INDEPENDENT]
+    b = 
+    Int(20) [INDEPENDENT]
+    c = 
+    Int(30) [INDEPENDENT]
+    d = 
+    Int(40) [INDEPENDENT]
+    e = 
+    Int(50) [INDEPENDENT]
+  last = 
+  Int(50) [INDEPENDENT]
+  secondˍlast = 
+  Int(40) [INDEPENDENT]
+```
+COMMENTS:
+```markdown
+offset_access_backward
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: pUK/KiH0zwQnihUUZLIFN0rbZjiDGsozeTatGMfVSiarmKniRHUlOgIqYpG5AwWsxLiIZ84011ivpiB/j01nCw==
+HS signature: d+WuKBD85vQiAJGQsByYJoqFNKqRDvTRobAxXoZu+5FR8+NYXa2urCw1z9Ds3UMj+KVEyLK4QyAm9ER78us7AQ==
+Comments signature: 5/MHFmuYOkp7kzj5wyWApvwXenDKDUBCBt1gFFER74iZ8xIFlHYYkpbwD8KHqUf3bC0w1+/9mwlXrtLm5BRlBA==

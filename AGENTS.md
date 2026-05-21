@@ -864,19 +864,80 @@ cargo test -p foolish-core -- brane_search       # Specific test (substring matc
 
 ### Approval Tests (insta snapshots)
 
-**foolish-core** approval tests use `insta` YAML snapshots stored in `foolish-core/src/snapshots/`.
+**foolish-core** snapshot tests use `SnapshotSuite` and `insta`. Snapshots live in
+`foolish-core/snapshot_tests/approved/`.
 
-**foolish-ubcb-cli** snapshot tests use `SnapshotSuite` (parallel eval via Rayon, sequential insta assertion). Snapshots live in `foolish-ubcb-cli/src/snapshots/`. When output differs from an approved `.snap`, insta writes a `.snap.new`. Review and approve with `cargo insta review` or accept all with `cargo insta accept`. To auto-accept in CI, set `INSTA_UPDATE=always`.
+**foolish-ubcb** snapshot tests also use `SnapshotSuite`. Snapshots live in
+`foolish-ubcb/snapshot_tests/approved/`.
+
+Each snapshot file has the format:
+```
+INPUT:
+```foolish
+<source>
+```
+[0] RESULT:
+```hssnap
+<humanizing-sequencer output>
+```
+Public key: <hex>
+Foolish signature: <base64>
+HS signature: <base64>
+```
+Signatures are Ed25519, derived from a passphrase via Argon2id. The default (empty)
+passphrase is the computer/AI-agent key. Human reviewers can re-sign with their own
+passphrase using the `verify_signatures --write-verified` tool.
+
+#### Key commands
 
 ```bash
-cargo test -p foolish-core -- approval                     # all core approval tests
-cargo test -p foolish-ubcb-cli --lib                       # all UBCb snapshot suites
-cargo test -p foolish-ubcb-cli --lib -- approval_all       # one suite (all files)
-cargo test -p foolish-ubcb-cli --lib -- ubcb_test_literals # one file in a suite
-INSTA_UPDATE=always cargo test -p foolish-ubcb-cli --lib   # auto-accept all new
-cargo insta review                                         # interactive review/approve
-cargo insta accept                                         # accept all .snap.new
+cargo test -p foolish-core --lib                           # all core snapshot tests
+cargo test -p foolish-core --lib -- approval_all           # just the approval suite
+cargo test -p foolish-ubcb --lib                           # all UBCb snapshot tests
 ```
+
+#### Generating .snap.new files for review
+
+**Important**: `cargo test` only produces ONE `.snap.new` per test function because
+insta panics on the first mismatch and aborts the loop. To generate `.snap.new` files
+for ALL mismatching snapshots, use `cargo insta test` instead — it defers failures to
+the end of each test function so the loop completes:
+
+```bash
+cargo insta test -p foolish-core --lib                     # write .snap.new for every mismatch
+cargo insta test -p foolish-ubcb --lib
+cargo insta review                                         # interactive approve/reject per file
+cargo insta accept                                         # accept all .snap.new at once
+```
+
+#### Auto-accepting (CI / bulk regeneration)
+
+```bash
+INSTA_UPDATE=always cargo test -p foolish-core --lib       # update .snap files in place, no .snap.new
+INSTA_UPDATE=always cargo test -p foolish-ubcb --lib
+```
+
+#### Signature verification
+
+```bash
+# Build the tool (once, from the foolish/ workspace root)
+cargo build -p foolish-core --bin verify_signatures
+
+# Verify all snapshots with the default computer key
+./target/debug/verify_signatures foolish-core/snapshot_tests/approved/
+
+# Verify a single file
+./target/debug/verify_signatures path/to/file.foo.snap
+
+# Re-sign files with the computer key (e.g. after regenerating snaps manually)
+./target/debug/verify_signatures --write-verified foolish-core/snapshot_tests/approved/
+
+# Re-sign with a human passphrase (reads from stdin)
+./target/debug/verify_signatures --stdin-passphrase --write-verified foolish-core/snapshot_tests/approved/
+```
+
+Output columns: `key match: yes, foolish: yes, hs: yes  <path>`
+Values are `yes`, ` no` (space-padded), or `n/a` (unsigned/old-format file).
 
 ### CLI Usage
 
@@ -1060,6 +1121,17 @@ When proposing updates, explain what has changed and why the documentation needs
 
 
 ## Last Updated
+
+**Date**: 2026-05-20
+**Updated By**: Claude Code 2.1.119 (Claude Code); Sonnet 4.6
+**Changes**: Updated "Approval Tests (insta snapshots)" section: corrected
+snapshot paths (`foolish-core/snapshot_tests/approved/`,
+`foolish-ubcb/snapshot_tests/approved/`), corrected package name
+(`foolish-ubcb` not `foolish-ubcb-cli`), added critical note that
+`cargo insta test` must be used (not `cargo test`) to generate ALL
+`.snap.new` files. Added `verify_signatures` binary documentation with
+column output format (`key match: yes/no, foolish: yes/no, hs: yes/no`)
+and note that `n/a` means unsigned (no footer in file).
 
 **Date**: 2026-05-15
 **Updated By**: opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4

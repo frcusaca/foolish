@@ -1,0 +1,40 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{
+	l1={
+       l2={
+          l3={
+              bad=1/0;
+              good=42
+             }
+          }
+      }
+}
+```
+[0] RESULT:
+```hssnap
+Brane [NK]
+  l1 = 
+  Brane [NK]
+    l2 = 
+    Brane [NK]
+      l3 = 
+      Brane [NK]
+        bad = 
+        ??? (division by zero) [NK]
+        good = 
+        Int(42) [INDEPENDENT]
+```
+COMMENTS:
+```markdown
+alarm_division_by_zero_deeply_nested
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: 9+hN9xh2AnvpsWWuGKsfidEhKUxSf4S277v595KftDtGXxhmA+l67pau06eTwSEhoUa+db/KrL8m5f7YXhr0CA==
+HS signature: C22WaissNcqs1zh1yMgjV4GM3K/iqkosi/XEK/dEniJ8prnmXHO4pv6Vd1JVHhfY6sI1SPGHCh2+sdSbZT4uAg==
+Comments signature: Wz+Js85v3I4w7fTMLjaEka+zuL9Y0kc4eTUWjIT9uaKV7aoq2lm/MudWHZAzyfKZiNQAYo0YYX1zoIYAjppfDw==

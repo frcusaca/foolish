@@ -1,0 +1,27 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{a = 10 / 2; b = 10 / 0; c = 20 / 4;}
+```
+[0] RESULT:
+```hssnap
+Brane [NK]
+  a = 
+  Int(5) [CONSTANT]
+  b = 
+  ??? (division by zero) [NK]
+  c = 
+  Int(5) [CONSTANT]
+```
+COMMENTS:
+```markdown
+alarm_division_by_zero_in_brane
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: R5NlChpi9B03XMNXz5w8KRK+Sd2plSW6cxbcAimBapvhbQ80i2CDfkavPhCpAMdIMWlRdbvEmEYXMv2d78/2Aw==
+HS signature: saxepKbb7X+QCWrFTE+02JD0SN9QFDhgw3td5Tcb0u6A/qFtGUAEfpWDmHhu8zrzIucanf84aHg949FVhL5yCA==
+Comments signature: dTaHD93x7JRa228PCCuR8QG4Kf8E+9c+UYMKgYLJ/JeTvmxisxgFmbegkdLhbGs17f4tkRDe2ThXJWB4nEvlCQ==

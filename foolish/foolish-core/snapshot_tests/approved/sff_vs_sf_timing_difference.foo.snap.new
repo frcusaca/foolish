@@ -1,0 +1,34 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{x = 1; sf = <x>; sff = <<x>>; x = 10; sf; sff;}
+```
+[0] RESULT:
+```hssnap
+Brane [CONSTANT]
+  x = 
+  Int(1) [INDEPENDENT]
+  sf = 
+  StayFoolish [CONSTANT]
+    Search(pattern='^x$', dir=BACKWARD, FREE) [CONSTANT]
+      Int(10) [INDEPENDENT]
+  sff = 
+  StayFullyFoolish [INDEPENDENT]
+    Search(pattern='^x$', dir=BACKWARD, FREE) [EMBRYONIC]
+  x = 
+  Int(10) [INDEPENDENT]
+  Int(10) [INDEPENDENT]
+  Int(10) [INDEPENDENT]
+```
+COMMENTS:
+```markdown
+sff_vs_sf_timing_difference
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: 1T4n3g/X8HUF4ks72E7lyvCYn9OelhLPSBr7ockhII5PkT0EVw7Amz08EWaUU87H3l3wpZOYiwTv12S1ZPHVBA==
+HS signature: 6vMY+Xv5xkRa2aBID68Iv/6hnO6A24RFoehFutRsgZw2GQH9s9DdHYsAsdS3AG+xA4XJ70ZJHuH7cFaAB+BYDQ==
+Comments signature: a9YYDz29sM1UGn8i4bH1kBBJIPDF7M94NuQsryjqGG5FXgogPxybnt4E64NduAYo/SDWl1WJglceRCJW8Dt+Cw==

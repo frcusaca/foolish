@@ -1,0 +1,31 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{add = 1 + 2; sub = 10 - 3; mul = 4 * 5; div = 20 / 4; neg = -7;}
+```
+[0] RESULT:
+```hssnap
+Brane [CONSTANT]
+  add = 
+  Int(3) [CONSTANT]
+  sub = 
+  Int(7) [CONSTANT]
+  mul = 
+  Int(20) [CONSTANT]
+  div = 
+  Int(5) [CONSTANT]
+  neg = 
+  Int(-7) [CONSTANT]
+```
+COMMENTS:
+```markdown
+complex_brane_with_all_operator_types
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: hqeO50VGIdDIO3wZcz25VVeUZef54veeVOxlx1MmVZKB8DMszHYbRyT7n7qP+IAEflplyRVzpHwt+i//yxwYDw==
+HS signature: qVdFJnHv5tLcStYUcyMi3rdCKzKEasA3dQE8xUdO6kgAtykvMmQcFbHTzxStMLbUngiIeZpATMw/f1f0TwwqBg==
+Comments signature: B8nRok0UmLb2ZukC6P+S2irFCpXsp5bK+M6ytBCrhWUlyIE9q8KGJDn62YQwCaER//mjCOxh8PNz0K9hgfgQAA==

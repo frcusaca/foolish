@@ -1,0 +1,27 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{{{{x = 42; x};};};}
+```
+[0] RESULT:
+```hssnap
+Brane [CONSTANT]
+  Brane [CONSTANT]
+    Brane [CONSTANT]
+      Brane [CONSTANT]
+        x = 
+        Int(42) [INDEPENDENT]
+        Int(42) [INDEPENDENT]
+```
+COMMENTS:
+```markdown
+regression_deep_nesting_does_not_lose_values
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: Y6n20+pmIHuScYeHgxuPG8M5BO/gc0rTQZSyzS4Bta3dbhJ39IuX+kvl1OMGnijziXfIwsJqptTNa2wQjVeOAQ==
+HS signature: ZTCHkUD1/KHCb7ntqWUqicoRUdosNZAVJuiSE6Pjp3rCpD03k+n8gPbGWSjb99YCX5sK8u8hU/5IvQBceVNLAA==
+Comments signature: afzfJvsTwZipC8ReLhPFIXKQaRT2vJ5VHB04a80xNFo2VgELR0ITIJuTZHeeIGm5Ju8BVxbsP2RQ80Nga8jKCQ==

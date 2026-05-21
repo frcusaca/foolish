@@ -1,0 +1,27 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{a = {}; b = {}; c = a b;}
+```
+[0] RESULT:
+```hssnap
+Brane [CONSTANT]
+  a = 
+  Brane [CONSTANT]
+  b = 
+  Brane [CONSTANT]
+  c = 
+  Brane [CONSTANT]
+```
+COMMENTS:
+```markdown
+concatenation_of_empty_branes
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: 7gJt+oMWH4+YgPm9Uw8lVZlF8NlFLq4pxJ1pyyADx7RgCY4Am1hwqecYiBiRwl7wEyLcpd5lOt9SpRdooqtOAg==
+HS signature: H5dCFZ6MdV19vwtjp/w1++e7rrTPoapujjfsNqodMNd7XITOwizjM5ilB/h+1B1E9qoOuppsBQd9U17YmHVIDg==
+Comments signature: 5qlQ3YmiRkKVvyevJPndykTS1prhetVxamBlT19OnRmIVvB/Lqt9/EDYlOewD8mASmoO+a5xHlnVMQ1OiwMrCw==

@@ -1,0 +1,25 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{simple = {x=10; y=20; z=30;}?y; notfound = {a=1; b=2;}?missing;}
+```
+[0] RESULT:
+```hssnap
+Brane [NK]
+  simple = 
+  Int(20) [INDEPENDENT]
+  notfound = 
+  Search(pattern='missing', dir=BACKWARD, ANCHORED) [NK]
+```
+COMMENTS:
+```markdown
+search_pattern_basics
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: eV0YrRvg3770OYhPxsiEd05uVkwn8GBa4pv1nL+IPrjHCxA96VDjBRbCj6OanoRVTSgb4QqikKJcyu/wdRe0AQ==
+HS signature: GyZFhXhVDgY/V5YiO16Ry/iywdFuXH19lDgQJx/0zA8oilitwmMhsnU9PTQC0nCNW7qp5X4z2jcJNCTO1h/NBg==
+Comments signature: 6Obc9qnUA+B3ivSmz68saZqI1zzg8IZ4uJw4mF7qRIjIgbzeU+fSFEetlAgQj/4s5zP2z7PER0/frmkaLCp1Cg==

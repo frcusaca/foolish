@@ -1,7 +1,7 @@
 ---
 foop: 21
 title: Snapshot Canonicalization and Dual-Signing Verification
-status: Draft
+status: Final
 phase: phase-5
 author: Sisyphus
 created: 2026-05-19
@@ -51,18 +51,14 @@ INPUT:
 ```foolish
 <canonicalized input>
 ```
-[0] RESULT:
+RESULT:
 ```hssnap
-<canonicalized sequencer output for FIR 0>
-```
-[1] RESULT:
-```hssnap
-<canonicalized sequencer output for FIR 1>
+<canonicalized sequencer output for the FIR compute from input>
 ```
 ...
 Public key: <hex-encoded verifying key>
-Foolish signature: <base64 signature of canonicalized input>
-HS signature: <base64 signature of canonicalized HS output>
+INPUT Foolish signature: <base64 signature of canonicalized INPUT block>
+RESULT HS signature: <base64 signature of canonicalized RESULT block>
 ```
 
 ## Verification Utility
@@ -90,17 +86,12 @@ One line per `.snap` or `.snap.new` file:
 
 ## Implementation Location
 
-This FOOP and plan are created directly in the worktree branch:
-`/home/hcbusy/tmp/foolish-worktrees/ubc-humanizing-seq-round1-foop/foolish/`
-
-This is an exception to the standard workflow.
-
 ## Migration
 
-Existing snapshots will be regenerated with the new format. The `SnapshotSuite` will:
-1. Apply canonicalization before signing.
-2. Generate both signatures.
-3. Write the new format with signatures at the bottom.
+Existing snapshots will be regenerated with the new format. Check that `SnapshotSuite` has:
+1. Applied canonicalization before signing.
+2. Generated both signatures.
+3. Wrote the new format with signatures at the bottom.
 
 ## Verification
 
@@ -108,3 +99,9 @@ The `verify_signatures` utility must be able to:
 - Verify all existing snapshots with the default (empty) passphrase.
 - Detect snapshots signed by different keys.
 - Report unsigned or tampered snapshots.
+
+## Last Updated
+
+**Date**: 2026-05-21
+**Updated By**: Claude Code 2.1.119 (Claude Code); Sonnet 4.6
+**Changes**: Status updated Draft → Final after merge to alpha (d6eaa782).

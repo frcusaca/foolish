@@ -1,0 +1,36 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{x=10; y=20; z=30; sum = x + y + z; avg = sum / 3;}
+```
+[0] RESULT:
+```hssnap
+Brane [WOCONSTANIC]
+  x = 
+  Int(10) [INDEPENDENT]
+  y = 
+  Int(20) [INDEPENDENT]
+  z = 
+  Int(30) [INDEPENDENT]
+  sum = 
+  Int(60) [CONSTANT]
+  avg = 
+  Operator(/) [WOCONSTANIC]
+    Search(pattern='^sum$', dir=BACKWARD, FREE) [WOCONSTANIC]
+      Operator(+) [WOCONSTANIC]
+        Int(30) [CONSTANT]
+        Search(pattern='^z$', dir=BACKWARD, FREE) [CONSTANT]
+    Int(3) [INDEPENDENT]
+```
+COMMENTS:
+```markdown
+complex_brane_with_operations_and_search
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: eIJL0ws12Aay/OZZDwEfhuORsRcoD771FKTX/isyLfFNwYZ+cAlF3iL6fReWj0duYc02l/q9RN6crj+iPp0rAg==
+HS signature: 9Ih8PZU/BOCqius/xJCyCNc5cRMevj+Fy5CabWbGrnk9K7lutqq3rfz1syiU1HxmhBOjPlr7qUTa2iXwg11TDw==
+Comments signature: uekA9zudJt5Lwivs8RWSkU3epXIOSUgPVO5nC4hlxwi2dECf7KgXTOjjCjb42lxiyY9/SuU3paGzx+kv4n7iBQ==

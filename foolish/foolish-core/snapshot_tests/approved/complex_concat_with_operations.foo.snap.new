@@ -1,0 +1,35 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{a = {x=1+2}; b = {y=3*4}; c = a b;}
+```
+[0] RESULT:
+```hssnap
+Brane [CONSTANT]
+  a = 
+  Brane [CONSTANT]
+    x = 
+    Int(3) [CONSTANT]
+  b = 
+  Brane [CONSTANT]
+    y = 
+    Int(12) [CONSTANT]
+  c = 
+  Brane [CONSTANT]
+    x = 
+    Int(3) [CONSTANT]
+    y = 
+    Int(12) [CONSTANT]
+```
+COMMENTS:
+```markdown
+complex_concat_with_operations
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: hQZ3XlbJGCwNVmkTvvRiWQV1g6p/STn4Fd9yT0++sGLitIb/zHnnNHPywvmqVpMHd5cktMT7LFhzayFSXQ4mAw==
+HS signature: pWexDYaGPngQExjFh/SyyGoO4c6eCDzDun5lRMZJARW6zJKfaaG7Qg5o9ivOir+JKXNi/6r5TOMbxG1CG8QsBA==
+Comments signature: JtNr0aSEKfu8D7Kq2f9avo/3C1VAcliwA/MhA8JuqEBK0LZXuq+InyKac4EUHiGcJJNGEBAmhp/Xabmp4VxrBA==

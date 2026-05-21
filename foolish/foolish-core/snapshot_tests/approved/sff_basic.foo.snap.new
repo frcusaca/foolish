@@ -1,0 +1,35 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{a=1,b=2; c=<<a+b>>; c; c;}
+```
+[0] RESULT:
+```hssnap
+Brane [WOCONSTANIC]
+  a = 
+  Int(1) [INDEPENDENT]
+  b = 
+  Int(2) [INDEPENDENT]
+  c = 
+  StayFullyFoolish [INDEPENDENT]
+    Operator(+) [EMBRYONIC]
+      Search(pattern='^a$', dir=BACKWARD, FREE) [CONSTANT]
+      Search(pattern='^b$', dir=BACKWARD, FREE) [CONSTANT]
+  Int(3) [CONSTANT]
+  Search(pattern='^c$', dir=BACKWARD, FREE) [WOCONSTANIC]
+    Operator(+) [WOCONSTANIC]
+      Search(pattern='^a$', dir=BACKWARD, FREE) [CONSTANT]
+      Search(pattern='^b$', dir=BACKWARD, FREE) [CONSTANT]
+```
+COMMENTS:
+```markdown
+sff_basic
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: M+ozF2oYm4cROdzChLuxt5BpEqob22mvstBM9GOfw2F2UXnwZmokwfQrB8XQTBKx4VH4eIRMpmKFp8pMSK/mCg==
+HS signature: yMQif0DNzesqo8EDpD+0vRn++Sl63N6lTr4/U6Zb6+fOUNfJYfYSo9UcosW1bOjXTZhdUxk0I58ubRa6IQRYDg==
+Comments signature: 06IySpCdlV4QMTPR5hRBIirtUnnmB7d79VYeNNK3G/4IZBQoY4GI0k9BP96w2vr2smtEQFGBl3mVz2XAXVNtDw==

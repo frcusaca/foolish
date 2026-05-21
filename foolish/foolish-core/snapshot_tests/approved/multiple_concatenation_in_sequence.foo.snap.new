@@ -1,0 +1,51 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{a={1;2}; b={3;4}; c={5;6}; r1 = a b; r2 = b c; r3 = a c;}
+```
+[0] RESULT:
+```hssnap
+Brane [CONSTANT]
+  a = 
+  Brane [CONSTANT]
+    Int(1) [INDEPENDENT]
+    Int(2) [INDEPENDENT]
+  b = 
+  Brane [CONSTANT]
+    Int(3) [INDEPENDENT]
+    Int(4) [INDEPENDENT]
+  c = 
+  Brane [CONSTANT]
+    Int(5) [INDEPENDENT]
+    Int(6) [INDEPENDENT]
+  r1 = 
+  Brane [CONSTANT]
+    Int(1) [INDEPENDENT]
+    Int(2) [INDEPENDENT]
+    Int(3) [INDEPENDENT]
+    Int(4) [INDEPENDENT]
+  r2 = 
+  Brane [CONSTANT]
+    Int(3) [INDEPENDENT]
+    Int(4) [INDEPENDENT]
+    Int(5) [INDEPENDENT]
+    Int(6) [INDEPENDENT]
+  r3 = 
+  Brane [CONSTANT]
+    Int(1) [INDEPENDENT]
+    Int(2) [INDEPENDENT]
+    Int(5) [INDEPENDENT]
+    Int(6) [INDEPENDENT]
+```
+COMMENTS:
+```markdown
+multiple_concatenation_in_sequence
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: 7vk3EGmD0ghrY75TKkhVNhfKfiBI2/IhbSWUXB142Bwcg6vllrvTMc3B/9Uv8NXkkikI4A1iqLrJn2CxhX9IBA==
+HS signature: Z9WOR9e+XRgUK+wCPW0Z5TxOhUjPtUFjojXelJMtnzVpLhdB8gOESkgSCZ9S75I/t17oQOz0ayQxvgdZOtmNAg==
+Comments signature: hR73PwBkCeaTZKd4gTUa5rhsF0C8Jmd6n6273YLDoQaVn42EBYHoNlt2VWm0Zu8XysTPDy8IhX9pMlUaUcCWCA==

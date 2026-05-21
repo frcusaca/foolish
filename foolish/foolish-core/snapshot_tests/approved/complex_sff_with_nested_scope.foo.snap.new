@@ -1,0 +1,34 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{x = 5; y = 10; inner = {calc = <<x + y>>; doubled = calc * 2};}
+```
+[0] RESULT:
+```hssnap
+Brane [CONSTANT]
+  x = 
+  Int(5) [INDEPENDENT]
+  y = 
+  Int(10) [INDEPENDENT]
+  inner = 
+  Brane [CONSTANT]
+    calc = 
+    StayFullyFoolish [INDEPENDENT]
+      Operator(+) [EMBRYONIC]
+        Search(pattern='^x$', dir=BACKWARD, FREE) [CONSTANT]
+        Search(pattern='^y$', dir=BACKWARD, FREE) [CONSTANT]
+    doubled = 
+    Int(30) [CONSTANT]
+```
+COMMENTS:
+```markdown
+complex_sff_with_nested_scope
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: 8qfr0jpSsMP6MZAsD56aGbduYNh+nJ3slMhr8S+O04N/0gGhEQnVaYe41x8MuuHjYIaXc8UxZ9Qo9GNdgbECCw==
+HS signature: W6GuiXPe2qf/D6HBfPACnmTln1/rukJONwmpdM0+OVbN+T2RiwvmL6Flz7Y8z8EX2FI1UEZm3AmJlNdLYsdGCw==
+Comments signature: tctYTujBTYBDoMohyB4/RsKExyLm/zk5BkfSdoEjXnMty7lp0dQgprArWRIXRx3Ugo/1HN9UeTc6ygKmlf3QAQ==

@@ -1,0 +1,37 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{data = {a=10; b=20; c=30; d=40; e=50}; oob = data#5; oob_neg = data#-6;}
+```
+[0] RESULT:
+```hssnap
+Brane [NK]
+  data = 
+  Brane [CONSTANT]
+    a = 
+    Int(10) [INDEPENDENT]
+    b = 
+    Int(20) [INDEPENDENT]
+    c = 
+    Int(30) [INDEPENDENT]
+    d = 
+    Int(40) [INDEPENDENT]
+    e = 
+    Int(50) [INDEPENDENT]
+  oob = 
+  Index(offset=5, ANCHORED) [NK]
+  oobˍneg = 
+  Int(10) [INDEPENDENT]
+```
+COMMENTS:
+```markdown
+offset_access_out_of_bounds
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: 6Kl8xVNkjnIERBDU/geunFvLzDwGt1gky5mwIgSBP1dQgu+YNxT3ZSO6QwAgC6Z5TXmrDgzy09gMUkyVCy/yDQ==
+HS signature: 8SxxcDNePPF/eEseOk212beUATY9q7BuA2+YnMO0Shd8uF9gWGLfAJlJM7ArBI6q0f7/L7oFKWIbK6rH41udAA==
+Comments signature: m6KkWBqFvDdjZsq2VEEOdrBl/IxbBisa717QMF7Y/8aM8DAko1KcNq1iQCHJk6r7MaPE/t2tWLKlukRlCwWnBA==

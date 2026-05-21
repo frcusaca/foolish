@@ -1,0 +1,24 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{5 + 3; 10 - 4; 2 * 6;}
+```
+[0] RESULT:
+```hssnap
+Brane [CONSTANT]
+  Int(8) [CONSTANT]
+  Int(6) [CONSTANT]
+  Int(12) [CONSTANT]
+```
+COMMENTS:
+```markdown
+multiple_arithmetic_expressions
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: he2EhlKiJQWK7iMgA9X50L4+ogjjgSD6EF5BbVaewnkzq4qkOlqdbke0RZvmX6vWftUamGhLGkUqXFqMVa51Cw==
+HS signature: 1jY5ZNgt7mn8A2LJ2asLxJvhPGttzzqyXJg7YuEp05PQvbWEP2KPhqNjpCOQ7t9ovynOwQMLH8L9IDuWK/ItDQ==
+Comments signature: KILdS86j8okzRadZP2Npi2miyaHIJICNC85neVvyqpHXfR3hojhNP9b1yFIT6yhp6zbMYr3xKp219SE9GOVmCg==

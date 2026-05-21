@@ -1,0 +1,33 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{a = {x=ref}; b = {y=2}; c = a b;}
+```
+[0] RESULT:
+```hssnap
+Brane [WOCONSTANIC]
+  a = 
+  Brane [WOCONSTANIC]
+    x = 
+    Search(pattern='^ref$', dir=BACKWARD, FREE) [ECONSTANIC]
+  b = 
+  Brane [CONSTANT]
+    y = 
+    Int(2) [INDEPENDENT]
+  c = 
+  Brane [CONSTANT]
+    y = 
+    Int(2) [INDEPENDENT]
+```
+COMMENTS:
+```markdown
+concatenation_with_unresolved_search
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: 0nn0zHTItXiXgst2fdcj8qAcRecdM81vlZuNywRWyn84nf//TMf+OoPKmkpI5ilJaZfp/Hi3oChYXZ3rYHqDDw==
+HS signature: Iurj/zJaSrxEikeldn73ch5e+irU9EkuJvOxLajWWUUcwUpK/BE9flbXTUo3iQ9W3Focqy0zBxz/pKvcFRXfDw==
+Comments signature: HzwGaIsXVUGj5ePKbAlAvDvMJyQO/6Qx9nR894jghmkmu+tQ4YpVKX5Rif+nfH8crLOSnC+zoyryFnLIIcTzDw==

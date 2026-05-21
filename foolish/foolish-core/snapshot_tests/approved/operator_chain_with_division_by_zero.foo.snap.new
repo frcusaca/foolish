@@ -1,0 +1,25 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{a = 10 / 0 * 5;}
+```
+[0] RESULT:
+```hssnap
+Brane [NK]
+  a = 
+  Operator(*) [NK]
+    ??? (division by zero) [NK]
+    Int(5) [INDEPENDENT]
+```
+COMMENTS:
+```markdown
+operator_chain_with_division_by_zero
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: 6xXzDmW2bk9uVdNo1pzmVAA2klNUYqIJzyzRRur13WEKdH01Vv7fQ6m36WCD7FUBwOglGTO0GBrc4OjNE2iRCw==
+HS signature: YQ9zzw03/Wg1WUZhycTd5SdRhrpDHXxzTSAFPk7h5ZTw860FxPaEM15M7qZAppG8zQUa29eCXX7+P6IQamqyDA==
+Comments signature: GbXeLtbgnVTBv5GdEBB7HKvT2huZpQ3+OxXcemcqEJDUBe+aWkKBS+gDjU3ariMHkuX29avwKkusRhTtpsq5Ag==

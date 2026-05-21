@@ -1,0 +1,29 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{bad = undeclared; y = bad; z = y;}
+```
+[0] RESULT:
+```hssnap
+Brane [WOCONSTANIC]
+  bad = 
+  Search(pattern='^undeclared$', dir=BACKWARD, FREE) [ECONSTANIC]
+  y = 
+  Search(pattern='^bad$', dir=BACKWARD, FREE) [WOCONSTANIC]
+    Search(pattern='^undeclared$', dir=BACKWARD, FREE) [ECONSTANIC]
+  z = 
+  Search(pattern='^y$', dir=BACKWARD, FREE) [WOCONSTANIC]
+    Search(pattern='^undeclared$', dir=BACKWARD, FREE) [ECONSTANIC]
+```
+COMMENTS:
+```markdown
+chained_undeclared
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: eB8BINHym3bU4SkJcN6e2J7Nyt8aIXqpM17n8dWWv10YjHURVEWNewoNwCdC9djfutCCillXxps0lBuGqyWABw==
+HS signature: RCp5vW2RZVO6G21Lo7Jlf5QH9S1lQZY7yiNeY0exbWiIzofOUPxSh1VCTSGWMm/hyktepAQSr11NCUSWaxOpCw==
+Comments signature: TbbLsDKzGaia8OGHhrOD52iYxfII4o69uC7Ll6tkFlpvMGw44EE72y6Rbg0HN5dIehN9cbu3GOf4+w8N7VUIBw==

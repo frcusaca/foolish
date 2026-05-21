@@ -1,0 +1,39 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{a = 10; b = 20; outer = {c = 30; ac = a + c; inner = {a = 40; abc = a + b + c}; ab = a + b};}
+```
+[0] RESULT:
+```hssnap
+Brane [CONSTANT]
+  a = 
+  Int(10) [INDEPENDENT]
+  b = 
+  Int(20) [INDEPENDENT]
+  outer = 
+  Brane [CONSTANT]
+    c = 
+    Int(30) [INDEPENDENT]
+    ac = 
+    Int(40) [CONSTANT]
+    inner = 
+    Brane [CONSTANT]
+      a = 
+      Int(40) [INDEPENDENT]
+      abc = 
+      Int(90) [CONSTANT]
+    ab = 
+    Int(30) [CONSTANT]
+```
+COMMENTS:
+```markdown
+complex_nested_scope
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: lATSCngkRPllgcpySFfij40IPvVOdXraCOLxdoTraAIlOXvsQXwD75sktfcSMNYGZLCpgFdy1utwkByduMRmCw==
+HS signature: 7U4fow/RXNbCw48ZqrLhZo1fNkqFY2zk6aKmb6izv/rO829RZaX9YCSzTsDPL9rnYdpZw45ZKt1sPKTjvrXtAw==
+Comments signature: X34Z8VbC2D2K6aky5OOotL17LZct9+B+UgfVL7NPYlZPKx3+Cqc8ZuA7BZX8nxd8CZt0Yi0qwcJD7/FTE+K/DQ==

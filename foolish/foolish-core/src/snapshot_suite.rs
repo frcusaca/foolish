@@ -3,7 +3,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::FirRef;
-use crate::sequencer::format_fir_simple_with_indent;
 
 /// Trait for evaluators that can evaluate a Foolish source file.
 /// Returns the evaluated FIRs (final brane and statements).
@@ -132,23 +131,42 @@ impl SnapshotSuite {
 
     /// Evaluate a single `.foo` file using the provided evaluator and return formatted output.
     ///
-    /// Flow: read source → sign input → evaluate → humanize sequence → format output.
+    /// Format: INPUT block → RESULT blocks → COMMENTS block → signature footer.
+    /// The COMMENTS block always begins with the file stem (test name).
     pub fn evaluate(&self, path: &Path, evaluator: &dyn Evaluator) -> Result<String, String> {
         let source = fs::read_to_string(path)
             .map_err(|e| format!("Failed to read {}: {}", path.display(), e))?;
 
         let firs = evaluator.evaluate(&source)?;
-        let sig = crate::signature::sign_input_line(&source);
-        let mut lines = vec![sig];
+
+        let hs_outputs: Vec<String> = firs.iter().map(|fir_ref| {
+            let fir = crate::clone_steppable(fir_ref);
+            crate::Sequencer::format(&fir)
+        }).collect();
+
+        let test_name = path.file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("unknown");
+        let comments = test_name.to_string();
+
+        let sig = crate::signature::sign_snapshot("", &source, &hs_outputs, &comments);
+
+        let mut lines = Vec::new();
         lines.push("INPUT:".to_string());
         lines.push("```foolish".to_string());
         lines.push(source.trim_end().to_string());
         lines.push("```".to_string());
-        for (i, fir_ref) in firs.iter().enumerate() {
-            let fir = crate::clone_steppable(fir_ref);
+        for (i, hs_output) in hs_outputs.iter().enumerate() {
             lines.push(format!("[{}] RESULT:", i));
-            lines.push(crate::Sequencer::format(&fir));
+            lines.push("```hssnap".to_string());
+            lines.push(hs_output.trim_end().to_string());
+            lines.push("```".to_string());
         }
+        lines.push("COMMENTS:".to_string());
+        lines.push("```markdown".to_string());
+        lines.push(comments.trim_end().to_string());
+        lines.push("```".to_string());
+        lines.push(sig.format_footer());
         Ok(lines.join("\n"))
     }
 

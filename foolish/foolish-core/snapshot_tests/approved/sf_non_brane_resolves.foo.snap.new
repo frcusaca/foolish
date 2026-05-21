@@ -1,0 +1,28 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{x=42; b=<x>; b;}
+```
+[0] RESULT:
+```hssnap
+Brane [CONSTANT]
+  x = 
+  Int(42) [INDEPENDENT]
+  b = 
+  StayFoolish [CONSTANT]
+    Search(pattern='^x$', dir=BACKWARD, FREE) [CONSTANT]
+      Int(42) [INDEPENDENT]
+  Int(42) [INDEPENDENT]
+```
+COMMENTS:
+```markdown
+sf_non_brane_resolves
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: wpG5PzL0aT/dCITFTxzEgJxHJgS7NQxU2cb06vvG0yZq0vT6FtVFq2FGtLL7fbxIv37INbW2WXBeK/4/bDZ3Cg==
+HS signature: pHa+k4DQrOdjXz1cvaK3QKg7YxZss375pc0xsSIlZF21KJjY+x3V9YBzlFbxyrwqaI4DvSXubA+DChIle6lIDA==
+Comments signature: RS14FGCuupvO2+SPto6I0PibpC0sTDUUV9SnvTFcPMNEoO9+Yxr/p3WUrhPwTu81GhcSzbxZ8zXYkPYlMm4ZDw==

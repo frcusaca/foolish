@@ -1,0 +1,27 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{a = 5 - 10; b = 3 * 2; c = 15 + 7;}
+```
+[0] RESULT:
+```hssnap
+Brane [CONSTANT]
+  a = 
+  Int(-5) [CONSTANT]
+  b = 
+  Int(6) [CONSTANT]
+  c = 
+  Int(22) [CONSTANT]
+```
+COMMENTS:
+```markdown
+complex_negative_results
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: w0kRz9DrOhrLrXchn/UL2sGvqOvxyKftnm2oPB3qFJVbAJ+jHdFxqn19CiTIOUNiYg1a9L3xBe0N6AkgwxU4Dg==
+HS signature: DWcT7KWNL28ZOLX4fQmGz3EmpzPgJAlrAF6eGB7Tt+NSLwlJeN2iPj/NVs8cIxsyGT3FEXBl4LsGLEe7zRq4Dw==
+Comments signature: dqWNQ2fPuFRQIi/aPj6PrkZXVKTPpOqq+C05uSStJyb+yiFGaDCD18v+9jnWdTa98afSxiZ2V8kkLskVQ5MwBA==

@@ -1,0 +1,34 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{a={x=1, y=2}; s=<a>; a=99; s;}
+```
+[0] RESULT:
+```hssnap
+Brane [CONSTANT]
+  a = 
+  Brane [CONSTANT]
+    x = 
+    Int(1) [INDEPENDENT]
+    y = 
+    Int(2) [INDEPENDENT]
+  s = 
+  StayFoolish [CONSTANT]
+    Search(pattern='^a$', dir=BACKWARD, FREE) [CONSTANT]
+      Int(99) [INDEPENDENT]
+  a = 
+  Int(99) [INDEPENDENT]
+  Int(99) [INDEPENDENT]
+```
+COMMENTS:
+```markdown
+sf_blocks_brane_at_assignment_time
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: r9cVsMVy9IKQUvI6rQnmYcfv40up0dd5AhbtoMFl72TT9TjvhiLZuxtnFgHI3eXA5c6ToFS7wW+gRqjBqQxxCw==
+HS signature: Mxhv2DOOkK8T4pI/gn0DIYn/YfqUjnGGi8m6+uW/Qz/E38zfKiYdu3L2RF9FIdCXF23llqqNKNJ7RSBGJNmgBQ==
+Comments signature: +Rgxi2meoEndTjQtvLLdQcOzcFrhmxmDaRCx5N+LcHdQklCGvvt89mtpwguhaicxQmQO4iC1BCE3Dn9Owgg0Aw==

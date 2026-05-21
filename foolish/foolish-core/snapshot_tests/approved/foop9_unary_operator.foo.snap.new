@@ -1,0 +1,23 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{a=-42;}
+```
+[0] RESULT:
+```hssnap
+Brane [CONSTANT]
+  a = 
+  Int(-42) [CONSTANT]
+```
+COMMENTS:
+```markdown
+foop9_unary_operator
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: ukh+as1Lkfnuso67ombT4vmv7YznRor8R+RJSrbbfMtJ1vtk5zNt0LgpNwj5z1SV0ZDpDMuB8Q8j42iFaebTCg==
+HS signature: pfo1hm9mbBqXK1CjzpZXX1XphclyEnGStRAJxxKOk1rBS2UIghucK2BDl7QY/sjUqYxY63iN996tg3KEosREBg==
+Comments signature: Q8wqIq2Bp1lpdRSOsw02eQAc/qaMQn/PuDjQKmCUOrsGUQ+PXcVswIe1Fub6Zhj+hlAmET2gvQmFvLMKrR5OBg==

@@ -1,0 +1,30 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{brane = {1; 2; 3}; val = brane^; last = brane$;}
+```
+[0] RESULT:
+```hssnap
+Brane [CONSTANT]
+  brane = 
+  Brane [CONSTANT]
+    Int(1) [INDEPENDENT]
+    Int(2) [INDEPENDENT]
+    Int(3) [INDEPENDENT]
+  val = 
+  Int(1) [INDEPENDENT]
+  last = 
+  Int(3) [INDEPENDENT]
+```
+COMMENTS:
+```markdown
+head_tail_on_named_brane
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: Ii+46C/OR69N2BxyZd79ujKdb9mxlfW4eba4JmqDLeJcqey2PvhHmnj6wIGcV+1BH/cWmNpNxwcRNl4HxaksCw==
+HS signature: KKnmMyJWUQ3xxUHURlo/aXidrGx1r+dl77BtYRUNfFsZsziMaOdpvG4qXCIyLIMJvI/kvop/UlYjoGDeJU6WBg==
+Comments signature: oicvkdkjB8ysE24ul5xMtFpkfQY50nRPYhAOaYT3+ZuxVsHm8D2jAL2vRK5bqBjijXXsrS3M5LGSowDaRxGgCA==

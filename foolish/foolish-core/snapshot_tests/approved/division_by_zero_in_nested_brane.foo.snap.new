@@ -1,0 +1,29 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{outer = {inner = {a = 5 / 0; b = 10 / 2};};}
+```
+[0] RESULT:
+```hssnap
+Brane [NK]
+  outer = 
+  Brane [NK]
+    inner = 
+    Brane [NK]
+      a = 
+      ??? (division by zero) [NK]
+      b = 
+      Int(5) [CONSTANT]
+```
+COMMENTS:
+```markdown
+division_by_zero_in_nested_brane
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: W1zBkb1fJQ63LLY9g/QRi37Clj3tpEEEqrpkjeunXBZU5DfofDGNYGPYrq2xkAD6bVAnbRk4EmxkKKYBO2e1DQ==
+HS signature: /pWrXmc1dho4h6m+hbWwi5IgQfHbrTpq+5FPDZZ8RqaMXmVMKK4O81NFd4eX0BR1XdyVMmddxspBZLvAmRZrCQ==
+Comments signature: 4Y5TtrFYC/7XAXWcvMYVzeD6f7nnvU9DtciAVYLLuK0s4Vq+sGcwqgubmwJu3HbpHNv9mMfGvXyuFsTz28dtDg==

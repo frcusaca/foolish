@@ -1,0 +1,53 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{b1={a=1, b=2}; b2={c=3, d=4}; b3={e=5, f=6}; c = b1 b2 b3;}
+```
+[0] RESULT:
+```hssnap
+Brane [CONSTANT]
+  b1 = 
+  Brane [CONSTANT]
+    a = 
+    Int(1) [INDEPENDENT]
+    b = 
+    Int(2) [INDEPENDENT]
+  b2 = 
+  Brane [CONSTANT]
+    c = 
+    Int(3) [INDEPENDENT]
+    d = 
+    Int(4) [INDEPENDENT]
+  b3 = 
+  Brane [CONSTANT]
+    e = 
+    Int(5) [INDEPENDENT]
+    f = 
+    Int(6) [INDEPENDENT]
+  c = 
+  Brane [CONSTANT]
+    a = 
+    Int(1) [INDEPENDENT]
+    b = 
+    Int(2) [INDEPENDENT]
+    c = 
+    Int(3) [INDEPENDENT]
+    d = 
+    Int(4) [INDEPENDENT]
+    e = 
+    Int(5) [INDEPENDENT]
+    f = 
+    Int(6) [INDEPENDENT]
+```
+COMMENTS:
+```markdown
+concatenation_three_way
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: zgDGPaRZ67OS5/FDL7cVVyzomAU33mI0l9F74iTjCX58eRVgUPm75hnZr3+UojuQTXvSOxln1xzDVp+nXbDPBg==
+HS signature: EDIjMtId6Ubo+IrOAF6hGxmcEjtkS7MaZhEpPlri9ncwm/MXxp+na6cGzAZy1KXWFWy3P1/j2+WRNALnxSP2Bw==
+Comments signature: gcJO9CwVpF3/WOxsj5DnVNtYwCkl5tbR41bzo9lhmLeUvufukp4E8Pi7HnpYZn8gmxN+X6+d7JVG9sZ6QRP/AQ==

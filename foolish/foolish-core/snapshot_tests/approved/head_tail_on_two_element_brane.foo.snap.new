@@ -1,0 +1,29 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{b = {10; 20}; h = b^; t = b$;}
+```
+[0] RESULT:
+```hssnap
+Brane [CONSTANT]
+  b = 
+  Brane [CONSTANT]
+    Int(10) [INDEPENDENT]
+    Int(20) [INDEPENDENT]
+  h = 
+  Int(10) [INDEPENDENT]
+  t = 
+  Int(20) [INDEPENDENT]
+```
+COMMENTS:
+```markdown
+head_tail_on_two_element_brane
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: hXuWNVPIS9jC7Vg4gjE5WO61S8BSIYnPdQu5Kga/ypS8XauCes46MwxnSqQ1mFUmZhOptDgewq2nC53EqQrGCw==
+HS signature: 7QwNtlTwjDT3U6ViqsMvs3KZ1AfVb4QEitxVpFJH+Z0Wu86sWuM/MzAQIxpK1v5tvLXjIco/h0AiuQTaHjoeDw==
+Comments signature: 3qoNGLK/nI8Vj+kBvjeRZR+CeJJduL+kBovudy/5DlYwZFCd7an9uV+5gbmY3cYgh602pBibpdMcLbS+vVHdDw==
