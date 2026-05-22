@@ -98,6 +98,8 @@ cargo insta review                                           # interactive revie
 cargo insta accept                                           # accept all .snap.new
 ```
 
+When viewing a `.snap` file with `less`, use `less -- path/to/test_name.snap` — the `--` disables the `LESSOPEN` environment variable from trying to decompress the file. `more`, `cat`, and `view` work unmodified.
+
 ## Quick Start (Java/Scala)
 
 ```bash
