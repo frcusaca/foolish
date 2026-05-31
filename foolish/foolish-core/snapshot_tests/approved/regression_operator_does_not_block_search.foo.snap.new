@@ -1,6 +1,5 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 52
 ---
 INPUT:
 ```foolish
@@ -8,21 +7,21 @@ INPUT:
 ```
 [0] RESULT:
 ```hssnap
-Brane [CONSTANT]
+Brane
   a = 
-  Int(1) [INDEPENDENT]
+  Int(1)
   b = 
-  Int(2) [INDEPENDENT]
+  Int(2)
   c = 
-  Int(3) [INDEPENDENT]
+  Int(3)
   d = 
-  Int(4) [INDEPENDENT]
+  Int(4)
   e = 
-  Int(5) [INDEPENDENT]
+  Int(5)
   f = 
-  Int(6) [INDEPENDENT]
+  Int(6)
   expr = 
-  Int(21) [CONSTANT]
+  Int(21)
 ```
 COMMENTS:
 ```markdown
@@ -31,5 +30,5 @@ regression_operator_does_not_block_search
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: bYX93PDykhN+mQfQ7rg4OIdl9Uy6rMGF44BhMSX0IhhHegCLkcg2bBwSki2B1EC9Owjsm3ed895QVx1BKX/yAA==
-HS signature: hzwlyKDxb3MB9hf+iwswAMFqO7lIJHVK45lc/QAGnNofBRXU/JY6NbWuXAsCBYuAeaIMiVe0GG3nIehhuWe9Aw==
-Comments signature: 3Cf9hCfhLOuZGze4v/JiffQNGcNo/5FCqWCPM+JMDKH3keShpoGr6Td+D7cFASNsKA9ag7u7LJsbbDjFXhNrAw==
+HS signature: x/m189cobajL8lNwOuOSeuq1ngdDFT3ZCqJxdWTf2srEnKrVp0S51Jto3gZUv8puEfDw6Zted4Gin8Tm1kNNCg==
+Comments signature: dOe0dTn8msRKSIBbcm+GpiKInpDUo84E8E0GmMg1YN5udlDcFWoMGk8noj1BmBB/g7wMzKFC8+pgzUuoMH5nCQ==

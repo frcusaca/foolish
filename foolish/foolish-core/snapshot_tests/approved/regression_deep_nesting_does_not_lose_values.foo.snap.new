@@ -1,6 +1,5 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 52
 ---
 INPUT:
 ```foolish
@@ -8,13 +7,13 @@ INPUT:
 ```
 [0] RESULT:
 ```hssnap
-Brane [CONSTANT]
-  Brane [CONSTANT]
-    Brane [CONSTANT]
-      Brane [CONSTANT]
+Brane
+  Brane
+    Brane
+      Brane
         x = 
-        Int(42) [INDEPENDENT]
-        Int(42) [INDEPENDENT]
+        Int(42)
+        Int(42)
 ```
 COMMENTS:
 ```markdown
@@ -23,5 +22,5 @@ regression_deep_nesting_does_not_lose_values
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: Y6n20+pmIHuScYeHgxuPG8M5BO/gc0rTQZSyzS4Bta3dbhJ39IuX+kvl1OMGnijziXfIwsJqptTNa2wQjVeOAQ==
-HS signature: ZTCHkUD1/KHCb7ntqWUqicoRUdosNZAVJuiSE6Pjp3rCpD03k+n8gPbGWSjb99YCX5sK8u8hU/5IvQBceVNLAA==
-Comments signature: afzfJvsTwZipC8ReLhPFIXKQaRT2vJ5VHB04a80xNFo2VgELR0ITIJuTZHeeIGm5Ju8BVxbsP2RQ80Nga8jKCQ==
+HS signature: HpPt7Ac3biMBBrG/LfC49ao9qlnIqDjiNPmW7VzNPLyzjn9L7HB2CjK3xtlfpTtQ1JJWxjcEoSwE8uhLdVudCA==
+Comments signature: m+vwCDuz5XZD+p2dhFc9OF+nKT7MIP1w7X7g9iCAM7pzA7Agfm6xSEZ0ulre19g3lvux/8hhyu7ygDuZ01KrDg==

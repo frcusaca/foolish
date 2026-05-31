@@ -1,6 +1,5 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 52
 ---
 INPUT:
 ```foolish
@@ -8,13 +7,13 @@ INPUT:
 ```
 [0] RESULT:
 ```hssnap
-Brane [CONSTANT]
+Brane
   x = 
-  Int(5) [INDEPENDENT]
+  Int(5)
   y = 
-  Int(7) [INDEPENDENT]
+  Int(7)
   z = 
-  Int(12) [CONSTANT]
+  Int(12)
 ```
 COMMENTS:
 ```markdown
@@ -23,5 +22,5 @@ foop9_operator_search_transparency_regression
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: PYhytaiEamiA/S2o5rGD76QUvFFhZbL1b7bgeBFjGOdqrw0IHZU+efdY5b+P7jJMWrV15t/QMCYvtJFocpXXAw==
-HS signature: WVCqKdRRqhy+fOnEpnxRwHxy9OBWJB1fMrXSWZ31oJnS/h9GL5abhaN7Y2iFvPXpTR78t8GC9NIhfGnNeMPVDQ==
-Comments signature: jGM4WxozAg5nyvRFfOSqYTgArJSYO2QA814twkp+qroG7UyZxJJYdWmJ6UPP7GEMSMxI07u9D55ho/zYbiGJCA==
+HS signature: K5ebke/2oWPhcvgykhxNrxBfsTYkIuY0jYiPTwu3FMvDSFI6CzJHJ3uun4p08wILBLA3t3tqsHxjx9gschY0Bg==
+Comments signature: FC2mt0nJuSyqHFONtcRQKUY80A4VPCiYa5bChasPzpNtpc09plpo0xArvG1wTYteB2xnjnxbKnFc/cTkDmhlDQ==

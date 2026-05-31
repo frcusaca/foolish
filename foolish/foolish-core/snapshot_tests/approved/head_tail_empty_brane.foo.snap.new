@@ -1,6 +1,5 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 52
 ---
 INPUT:
 ```foolish
@@ -10,9 +9,9 @@ INPUT:
 ```hssnap
 Brane [NK]
   e = 
-  HeadTail(HEAD, ANCHORED) [NK]
+  HeadTail(HEAD, ANCHORED, [NK])
   f = 
-  HeadTail(TAIL, ANCHORED) [NK]
+  HeadTail(TAIL, ANCHORED, [NK])
 ```
 COMMENTS:
 ```markdown
@@ -21,5 +20,5 @@ head_tail_empty_brane
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: Op9FpCPn6rtPcl85nBOO3159u9dxIZzkrOB3FYyixEo+iNyZBhQFQ9yjqfcCtZEUyM4t3IzLMRmIlnJVe2deBw==
-HS signature: LrZIwHRFls8SpyYFWakCHG0+i4k9P9/Mm/ILLv3LXmiGEakFGUPf+RxpOLOyDE6rGNDJjcfa+3g9PLDgcaUODg==
-Comments signature: Z1yv/KRG7FnWgme1CvgyvNxXAIZFRQx/vSMOqKSp2hwtsaWbRYzSfMIG9Fbd/NlzME167vJIlCCIN59iKtKJDA==
+HS signature: WFNkgZJn7jMgxdqr7fzGjdW6HO14GUtfRRIWBnRB7v8UX9eVXt4A4LIUfJxZGwgiByPl+D1w0Mckrwj1tD1jAA==
+Comments signature: obIHje7njEH3nDrzW3/XrcaJL8yw2g+AmMVLISNMjk86SzFF1II9RSOn/7BcTVrJEr/2BkCsF25tDzn1ldGPDw==

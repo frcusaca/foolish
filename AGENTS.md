@@ -896,26 +896,28 @@ cargo test -p foolish-core --lib -- approval_all           # just the approval s
 cargo test -p foolish-ubcb --lib                           # all UBCb snapshot tests
 ```
 
-#### Generating .snap.new files for review
+#### ⚠️ CRITICAL: NEVER AUTO-ACCEPT SNAPSHOTS ⚠️
 
-**Important**: `cargo test` only produces ONE `.snap.new` per test function because
-insta panics on the first mismatch and aborts the loop. To generate `.snap.new` files
-for ALL mismatching snapshots, use `cargo insta test` instead — it defers failures to
-the end of each test function so the loop completes:
+**AI AGENTS MUST NEVER RUN `cargo insta accept` OR `INSTA_UPDATE=always`.**
 
-```bash
-cargo insta test -p foolish-core --lib                     # write .snap.new for every mismatch
-cargo insta test -p foolish-ubcb --lib
-cargo insta review                                         # interactive approve/reject per file
-cargo insta accept                                         # accept all .snap.new at once
-```
+Snapshots are the authoritative record of correct Foolish VM behavior. They are cryptographically
+signed to distinguish AI-generated output from human-reviewed output. Auto-accepting snapshots
+bypasses this verification and corrupts the approval chain.
 
-#### Auto-accepting (CI / bulk regeneration)
+**The correct workflow is:**
 
-```bash
-INSTA_UPDATE=always cargo test -p foolish-core --lib       # update .snap files in place, no .snap.new
-INSTA_UPDATE=always cargo test -p foolish-ubcb --lib
-```
+1. Run `cargo insta test -p foolish-core --lib` to generate `.snap.new` files.
+2. Present the `.snap.new` files to the human for review.
+3. **WAIT for explicit human approval** before accepting any snapshots.
+4. Only after human confirmation: run `cargo insta accept` or `cargo insta review`.
+
+**Forbidden actions (will be rejected):**
+- `cargo insta accept` — NEVER run this without explicit human approval.
+- `INSTA_UPDATE=always cargo test ...` — NEVER auto-update snapshots.
+- Silently accepting snapshots that change evaluation semantics.
+
+**Remember:** A snapshot change may indicate a VM bug, not a formatting improvement.
+Always verify the semantic correctness of output before accepting.
 
 #### Signature verification
 
@@ -965,8 +967,8 @@ Separate languages read from the same test input resources directory to produce 
 A crossvalidation process checks that implementations in different languages are behaving identically.
 
 **Snapshot workflow**: Run a test → if output differs, insta writes `.snap.new` →
-`cargo insta review` to interactively approve/reject → `cargo insta accept` to bulk accept →
-`INSTA_UPDATE=always` to auto-accept (useful in CI).
+**PRESENT TO HUMAN FOR REVIEW** → human runs `cargo insta review` or `cargo insta accept`.
+AI agents MUST NEVER accept snapshots. See the ⚠️ CRITICAL section above.
 
 ## Clarifications
 * When user mentions "path/" first interpret it as relative path from the directory where claude code was invoked. This is normal behavior for most unix apps, for example if I "cat path/file" that path is resolved from the current path.

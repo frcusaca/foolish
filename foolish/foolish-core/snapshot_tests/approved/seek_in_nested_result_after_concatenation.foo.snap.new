@@ -1,6 +1,5 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 52
 ---
 INPUT:
 ```foolish
@@ -10,27 +9,27 @@ INPUT:
 ```hssnap
 Brane [NK]
   OB1 = 
-  Brane [CONSTANT]
+  Brane
     a = 
-    Int(1) [INDEPENDENT]
+    Int(1)
     message = 
-    Int(2) [INDEPENDENT]
+    Int(2)
     only = 
-    Int(1) [INDEPENDENT]
+    Int(1)
   OB2 = 
   Brane [NK]
     whichˍ1 = 
-    Operator(+) [NK]
-      ??? (constanic_clone called on NYE FIR) [NK]
-      Int(1) [INDEPENDENT]
+    Operator(+, [NK])
+      ??? (constanic_clone called on NYE FIR, [NK])
+      Int(1)
   OB = 
-  Brane [CONSTANT]
+  Brane
     a = 
-    Int(1) [INDEPENDENT]
+    Int(1)
     message = 
-    Int(2) [INDEPENDENT]
+    Int(2)
     only = 
-    Int(1) [INDEPENDENT]
+    Int(1)
 ```
 COMMENTS:
 ```markdown
@@ -39,5 +38,5 @@ seek_in_nested_result_after_concatenation
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: cfGCMZeXg+6MU8S60P/lQKJXQwIqnmSUM7cERCO9n5/1ZhE2hBqSo3GjNILf1x3L9vm63msdnpdaCuA/vEhcBw==
-HS signature: xYeLxUluFkobpGRSxbknBtoo2/6lB8CrNRJ/SOvUMWgq5yrtZiz8+zsChOnXzQg2p0sdO7OmuOMPbZUFGhhsAA==
-Comments signature: 8sl4IjuPrGsm8EJXR3eIi3WFh+jJnsQNdJDiL9pfpeZS5qfYTLC8gBkL/jdC6sW1WNI31/F7xzaIJX3nxRoQCw==
+HS signature: 9t6iFg7Ql4m2brPBc4NaQg3dCJafL46K244zirXXxGx98DnnXcu3vRuWXozookrNCu8bDmAzjmHICB1R2TVNAQ==
+Comments signature: l6R6qgjtugrnfGo9Lqs2ACNE3x7oytd9VcmZ/g36+I4IiV7T7HFMRYllUhWaMbLJU5dIAcVkJRA34jt+y757Ag==

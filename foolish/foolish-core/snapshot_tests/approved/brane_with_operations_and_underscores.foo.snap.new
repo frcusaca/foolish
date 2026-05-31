@@ -1,6 +1,5 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 52
 ---
 INPUT:
 ```foolish
@@ -8,13 +7,13 @@ INPUT:
 ```
 [0] RESULT:
 ```hssnap
-Brane [CONSTANT]
+Brane
   myˍvar = 
-  Int(10) [INDEPENDENT]
+  Int(10)
   anotherˍvar = 
-  Int(20) [INDEPENDENT]
+  Int(20)
   result = 
-  Int(30) [CONSTANT]
+  Int(30)
 ```
 COMMENTS:
 ```markdown
@@ -23,5 +22,5 @@ brane_with_operations_and_underscores
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: YL60MVPYRdNx2UuAR4BhiYrezotRIEzx0SZmsdhFsp8e5vISvZ55YHcEdhuEOgFMIqpxGK/Mrm1cFuCpi6RAAQ==
-HS signature: 3HZt+lZu96DhPqCj1XikuDdaGqanON1YVOS0gQ3vmTJ27xuPWfme8wyEStQX3mZYpdLZwSESASCVV0Hilsq4AA==
-Comments signature: 3cusBdSwCs+w8mRFXveNz1Npk+IznCuArObTs1iw+YQUvEgp4xQXeW64Xms3ldySYAJ6i5OUNRIooGogJQnLBg==
+HS signature: nC3O8EORRgGCxtwIbHe3A/3gb4gTbO14bvlzVPep1hiwPdM3yiMEsmDsBShmhVDcx3dZqx6zpbuTmiboo9ysBg==
+Comments signature: CdGIfYq2aZ2qd5pKrNuQcG8pdsb7WOjQYHtoCJTqwfS5PAhk1z6Q8uez7f1xeK/Fp58rOZJTgwaQgS5w9tDdDQ==

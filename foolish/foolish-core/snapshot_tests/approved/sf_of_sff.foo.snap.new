@@ -1,6 +1,5 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 52
 ---
 INPUT:
 ```foolish
@@ -10,29 +9,29 @@ INPUT:
 ```hssnap
 Brane [WOCONSTANIC]
   a = 
-  Int(1) [INDEPENDENT]
+  Int(1)
   b = 
-  Int(2) [INDEPENDENT]
+  Int(2)
   sff = 
-  StayFullyFoolish [INDEPENDENT]
-    Operator(+) [EMBRYONIC]
-      Search(pattern='^a$', dir=BACKWARD, FREE) [CONSTANT]
-      Search(pattern='^b$', dir=BACKWARD, FREE) [CONSTANT]
+  StayFullyFoolish()
+    Operator(+, [EMBRYONIC])
+      Search(pattern='^a$', dir=BACKWARD, FREE)
+      Search(pattern='^b$', dir=BACKWARD, FREE)
   sf = 
-  StayFoolish [CONSTANT]
-    Search(pattern='^sff$', dir=BACKWARD, FREE) [CONSTANT]
-      Int(12) [CONSTANT]
+  StayFoolish()
+    Search(pattern='^sff$', dir=BACKWARD, FREE)
+      Int(12)
   a = 
-  Int(10) [INDEPENDENT]
-  Search(pattern='^sf$', dir=BACKWARD, FREE) [WOCONSTANIC]
-    Search(pattern='^sff$', dir=BACKWARD, FREE) [WOCONSTANIC]
-      Operator(+) [WOCONSTANIC]
-        Search(pattern='^a$', dir=BACKWARD, FREE) [CONSTANT]
-        Search(pattern='^b$', dir=BACKWARD, FREE) [CONSTANT]
-  Search(pattern='^sff$', dir=BACKWARD, FREE) [WOCONSTANIC]
-    Operator(+) [WOCONSTANIC]
-      Search(pattern='^a$', dir=BACKWARD, FREE) [CONSTANT]
-      Search(pattern='^b$', dir=BACKWARD, FREE) [CONSTANT]
+  Int(10)
+  Search(pattern='^sf$', dir=BACKWARD, FREE, [WOCONSTANIC])
+    Search(pattern='^sff$', dir=BACKWARD, FREE, [WOCONSTANIC])
+      Operator(+, [WOCONSTANIC])
+        Search(pattern='^a$', dir=BACKWARD, FREE)
+        Search(pattern='^b$', dir=BACKWARD, FREE)
+  Search(pattern='^sff$', dir=BACKWARD, FREE, [WOCONSTANIC])
+    Operator(+, [WOCONSTANIC])
+      Search(pattern='^a$', dir=BACKWARD, FREE)
+      Search(pattern='^b$', dir=BACKWARD, FREE)
 ```
 COMMENTS:
 ```markdown
@@ -41,5 +40,5 @@ sf_of_sff
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: h1VqZ8FgnPZ2bLsAmCfvaSczq/hrg2qLt+NCDHxlJTO58pkS3WuR3DKlCs5mxYNflR4ATJy8+l662ISwvkxvDA==
-HS signature: LAGRLFLOeT4nEt7ZEFdZdzLHRK6DZLFC4YYdiT2bIp49QtTM67dObqUlzgpaC7St31WGDfzSgVxMGOGekghFDA==
-Comments signature: sf4XvuuSQ/CBf+d5vStyAXhvWKutxtYDpqtKOdG9BXVPS7+F166e/IRLZhWLf2nyhdm/r0N4Hoku9zD2rVyvDA==
+HS signature: G3C99/oIoW5dzOU3CMb2YrJmh4M/yN7xNdkkDJE9fOsXajOtuuPHs3Rc8/hVmsNTtOemtA0AEnQ+QPegHvnPBA==
+Comments signature: X8gChgDBbVfp4KfctKLxkXVDrXh6z7ctpakq7bGR+8qsiz9Jg+FaE9nmnwUi/8rvS2bETlJxTjQtw1XCZVfiAA==

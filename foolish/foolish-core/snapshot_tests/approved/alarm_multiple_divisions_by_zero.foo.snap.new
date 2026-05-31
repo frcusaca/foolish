@@ -1,6 +1,5 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 52
 ---
 INPUT:
 ```foolish
@@ -10,11 +9,11 @@ INPUT:
 ```hssnap
 Brane [NK]
   a = 
-  ??? (division by zero) [NK]
+  ??? (division by zero, [NK])
   b = 
-  ??? (division by zero) [NK]
+  ??? (division by zero, [NK])
   c = 
-  ??? (division by zero) [NK]
+  ??? (division by zero, [NK])
 ```
 COMMENTS:
 ```markdown
@@ -23,5 +22,5 @@ alarm_multiple_divisions_by_zero
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: J6vDnAXsJg+GZvTRthFUnRw+A4dE5yKGm5C0E70ARHJzKvpxFAlNpaFk+XVPX94IwwVB2O9qchh5bMQohmFbAw==
-HS signature: Yxqu3IjkmOk0ccOkpTQgoU/iQWrU7Uzlt81M8NiVTJCEn+G87j5HAzsDZm2gjI+86yF6zDiAERDgM/jN7uBHAQ==
-Comments signature: PLT6Le9seT4qvo0PIvzmnG3IhtMEmvfednEGmUEMs3Qtr1+LYu2lBvhpeFv9j7GvbYM+VrzGCajmdSXbZSlNBw==
+HS signature: eaT8Xfx21tAaOyYI9mO/WzGnIoVj8aj1PGtl7Stpqf/4pdBdotp8YLD/KgpwTJa7nTGvuUFZsIJy8R6/Ly4dBw==
+Comments signature: Hd7iBc1iGe2ZRci49uVn52lFTKV711iPObS814cgyhvug8PM/bE3eo7k/ct5GZnZQMa9E8EGY5QqyyH5Y72GBA==

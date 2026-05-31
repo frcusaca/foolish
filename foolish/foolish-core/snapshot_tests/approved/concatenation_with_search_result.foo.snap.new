@@ -1,6 +1,5 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 52
 ---
 INPUT:
 ```foolish
@@ -8,23 +7,23 @@ INPUT:
 ```
 [0] RESULT:
 ```hssnap
-Brane [CONSTANT]
+Brane
   target = 
-  Brane [CONSTANT]
+  Brane
     a = 
-    Int(1) [INDEPENDENT]
+    Int(1)
     b = 
-    Int(2) [INDEPENDENT]
+    Int(2)
     c = 
-    Brane [CONSTANT]
+    Brane
       x = 
-      Int(10) [INDEPENDENT]
+      Int(10)
   result = 
-  Brane [CONSTANT]
+  Brane
     y = 
-    Int(5) [INDEPENDENT]
+    Int(5)
     x = 
-    Int(10) [INDEPENDENT]
+    Int(10)
 ```
 COMMENTS:
 ```markdown
@@ -33,5 +32,5 @@ concatenation_with_search_result
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: AE4NWe1esM7AiX9UCTCuRmfoZVYDPRMjEDUAfhkLurW//hIsdHCvmiMPKV6i4753j3Gzd/UOwLq1s1dI1zG5DQ==
-HS signature: rbldl4R0c2IOOc8c4IguhyK0/4X+VphWw6H1vUzG8R5ihR+sgql++mmZ7lAgPc3kngNV/qhsF9CflgXmAeuzDw==
-Comments signature: JJxl0tUGJhFPOITMXi25N3Jz/mq9WPtEodFpncSQY1zLaO09c9+pcht9z5tmzwD35XYk0dw+1xgI3610AH2wBg==
+HS signature: kzEp/eIQdIR5sIrEPl52KxtTQaAMHdt2//3ispXxVEdswDivTTghhzGDVCUivUFNEZYwbKeSODU2PEQCEnrbCg==
+Comments signature: dkkP4eAnqbvJ7efCGbKI58UU860XHVghiCKLmgeLv6nGQKLLm//iSveiK6q0sfMVGf50pf5P+SSZkTONTrTYAw==

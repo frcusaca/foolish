@@ -1,6 +1,5 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 52
 ---
 INPUT:
 ```foolish
@@ -8,17 +7,17 @@ INPUT:
 ```
 [0] RESULT:
 ```hssnap
-Brane [CONSTANT]
+Brane
   add = 
-  Int(3) [CONSTANT]
+  Int(3)
   sub = 
-  Int(7) [CONSTANT]
+  Int(7)
   mul = 
-  Int(20) [CONSTANT]
+  Int(20)
   div = 
-  Int(5) [CONSTANT]
+  Int(5)
   neg = 
-  Int(-7) [CONSTANT]
+  Int(-7)
 ```
 COMMENTS:
 ```markdown
@@ -27,5 +26,5 @@ complex_brane_with_all_operator_types
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: hqeO50VGIdDIO3wZcz25VVeUZef54veeVOxlx1MmVZKB8DMszHYbRyT7n7qP+IAEflplyRVzpHwt+i//yxwYDw==
-HS signature: qVdFJnHv5tLcStYUcyMi3rdCKzKEasA3dQE8xUdO6kgAtykvMmQcFbHTzxStMLbUngiIeZpATMw/f1f0TwwqBg==
-Comments signature: B8nRok0UmLb2ZukC6P+S2irFCpXsp5bK+M6ytBCrhWUlyIE9q8KGJDn62YQwCaER//mjCOxh8PNz0K9hgfgQAA==
+HS signature: +IT34ez+NuFBwHMOa0J4HrVd0qIHsh00yMb/zyoWVOhRjgjDmD5yHpyQ66UBaYZ6xrMdfWvy3h7DOKRsniR0Dg==
+Comments signature: TpFU4HQpVeHua/RlRBHXZotT7xZXIoej4u75TERHuU0TB/Ssfht5Mu+ZfYKLGiSvM7MIMr09u6Zt4hCF4EirAw==

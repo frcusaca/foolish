@@ -1,6 +1,5 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 52
 ---
 INPUT:
 ```foolish
@@ -8,14 +7,14 @@ INPUT:
 ```
 [0] RESULT:
 ```hssnap
-Brane [CONSTANT]
+Brane
   x = 
-  Int(100) [INDEPENDENT]
-  inner'Brane [CONSTANT]
+  Int(100)
+  inner'Brane
     x = 
-    Int(200) [INDEPENDENT]
-    Int(200) [INDEPENDENT]
-  Int(100) [INDEPENDENT]
+    Int(200)
+    Int(200)
+  Int(100)
 ```
 COMMENTS:
 ```markdown
@@ -24,5 +23,5 @@ named_brane_shadowing
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: mx8JvvVUtoqj+DYr8lPDPGXQwSzgE1GLzEfRrSJfv8hJr+tOlL6305JGTZPbod8PdVrEwMMaY6/deyosAiOVAQ==
-HS signature: VK6oIyo7yZ+h6XsaHP+hf588WORZ2DR1TI0lfPC/VCZJQi4niJriy4qe3BpIKE4yvdBdVnBPEV/K3KyMb/OzCg==
-Comments signature: nzXZS9yw22vZ6rxtLkS3btbEwWwB6oYQ6pPrOJklEeBMtAXFiHX/+OlWnv8YAtTb8YC7//NIJv4h39EO7qC7DQ==
+HS signature: bC1VcHkz6Nbdo9Qzu5lprldt90z1/Cf2UmbS3DX33CmWsapqII/llpCEznDWkx52xuJdvoUCuPoAyK6L2DRNAA==
+Comments signature: f6Yo9ZgSvBXGMBMJLBE8K39yuT2p11LrlbLKyJZUcL0fuT6N3v0t2LwQ/fV10E+voTezqqNW+X89zr1xWaW7DA==

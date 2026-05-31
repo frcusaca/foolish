@@ -1,6 +1,5 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 52
 ---
 INPUT:
 ```foolish
@@ -10,15 +9,15 @@ INPUT:
 ```hssnap
 Brane [NK]
   a = 
-  Int(1) [INDEPENDENT]
+  Int(1)
   b = 
-  Int(2) [INDEPENDENT]
+  Int(2)
   inner = 
   Brane [NK]
     x = 
-    ??? (constanic_clone called on NYE FIR) [NK]
+    ??? (constanic_clone called on NYE FIR, [NK])
   c = 
-  ??? (constanic_clone called on NYE FIR) [NK]
+  ??? (constanic_clone called on NYE FIR, [NK])
 ```
 COMMENTS:
 ```markdown
@@ -27,5 +26,5 @@ seek_across_nested_brane_boundary
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: qHhVG+/rGflTEQweRwhvs0vucXoLRK+H6RJdjNB+gWtdhgTqnxZcClDudeKTm+l2m7S3WlWhKsAjxLIZOE2LBQ==
-HS signature: grkSRD8zWAg16GyjoisigEND0QFn8aig098sIiW+ysTF8iFvdwD+efB/6Uo5bxelLgyOSXG6YvM24DRL8PA0CQ==
-Comments signature: IGjiWkW4YEST7WcuaUJccZzhwXQnUoPBlvhtvAY8RScy+VuSDWVp7/yP7shgbq19CLVqnPEbGsEeMptJjqURCg==
+HS signature: qvN/ujv7a8ozfL3P6hmHWk9fuWtCGz7wUYcKKqM/csk2dA7+n0W9qiaAPAS+LdyMostzlHEzEuR8HXa1VferBw==
+Comments signature: sSLhh460lqPjAp5IKKs9xZ/riRSOWBY6e/sVfGGpNj900OotyMwe4RdETnT+znc/yoLRKmLucx2WcoDrB3aEDg==

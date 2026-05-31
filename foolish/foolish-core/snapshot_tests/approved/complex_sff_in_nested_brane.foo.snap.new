@@ -1,6 +1,5 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 52
 ---
 INPUT:
 ```foolish
@@ -10,28 +9,28 @@ INPUT:
 ```hssnap
 Brane [WOCONSTANIC]
   a = 
-  Int(1) [INDEPENDENT]
+  Int(1)
   b = 
-  Int(2) [INDEPENDENT]
+  Int(2)
   inner = 
-  Brane [CONSTANT]
+  Brane
     c = 
-    StayFullyFoolish [INDEPENDENT]
-      Operator(+) [EMBRYONIC]
-        Search(pattern='^a$', dir=BACKWARD, FREE) [CONSTANT]
-        Search(pattern='^b$', dir=BACKWARD, FREE) [CONSTANT]
-    Int(3) [CONSTANT]
-  Search(pattern='^inner$', dir=BACKWARD, FREE) [WOCONSTANIC]
+    StayFullyFoolish()
+      Operator(+, [EMBRYONIC])
+        Search(pattern='^a$', dir=BACKWARD, FREE)
+        Search(pattern='^b$', dir=BACKWARD, FREE)
+    Int(3)
+  Search(pattern='^inner$', dir=BACKWARD, FREE, [WOCONSTANIC])
     Brane [WOCONSTANIC]
       c = 
-      StayFullyFoolish [INDEPENDENT]
-        Operator(+) [EMBRYONIC]
-          Search(pattern='^a$', dir=BACKWARD, FREE) [CONSTANT]
-          Search(pattern='^b$', dir=BACKWARD, FREE) [CONSTANT]
-      Search(pattern='^c$', dir=BACKWARD, FREE) [WOCONSTANIC]
-        Operator(+) [WOCONSTANIC]
-          Search(pattern='^a$', dir=BACKWARD, FREE) [CONSTANT]
-          Search(pattern='^b$', dir=BACKWARD, FREE) [CONSTANT]
+      StayFullyFoolish()
+        Operator(+, [EMBRYONIC])
+          Search(pattern='^a$', dir=BACKWARD, FREE)
+          Search(pattern='^b$', dir=BACKWARD, FREE)
+      Search(pattern='^c$', dir=BACKWARD, FREE, [WOCONSTANIC])
+        Operator(+, [WOCONSTANIC])
+          Search(pattern='^a$', dir=BACKWARD, FREE)
+          Search(pattern='^b$', dir=BACKWARD, FREE)
 ```
 COMMENTS:
 ```markdown
@@ -40,5 +39,5 @@ complex_sff_in_nested_brane
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: ZIgjfGeL3aOiCFGthil+qpoFORBgbUiJ34yeWevLnvPP3orwUnFqJRnzpA9oKsQVY98pCPWMFeTGN4RdIqe4DA==
-HS signature: nMd24vix5uBFyV4s0fFClmcho4cf7H8/KweSkkyRucuNk2LGnhseqsCzCkJPWVOS1qbgbB+CT2/pPm6vXA2NCQ==
-Comments signature: Tte7A54BtFtQKQGZs0fTnPNENg39+t2ss8iI2dV1vLGnG9CikDFOZNxl2q/+vD43Neah5F4/UxCbmapiUqXxBQ==
+HS signature: NDTcYP3d7ykorAYA2szxi287plpDGzC5ovqQtDfOLnxYLvJWL2jpEBzZnFobUDkDhpYqrpz6Lle0AtwD8qNgAw==
+Comments signature: 5Y523YlTgfQ2ZlGeV3EJoD+XhDcRrNJnPiTzzD5d7M3NsN5dLTspHrTYOBwRxbWwEeDnnK8+AKG9JS+vCc2YCw==

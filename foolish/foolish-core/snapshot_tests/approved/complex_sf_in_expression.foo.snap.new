@@ -1,6 +1,5 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 52
 ---
 INPUT:
 ```foolish
@@ -8,15 +7,15 @@ INPUT:
 ```
 [0] RESULT:
 ```hssnap
-Brane [CONSTANT]
+Brane
   x = 
-  Int(10) [INDEPENDENT]
+  Int(10)
   y = 
-  StayFoolish [CONSTANT]
-    Search(pattern='^x$', dir=BACKWARD, FREE) [CONSTANT]
-      Int(10) [INDEPENDENT]
+  StayFoolish()
+    Search(pattern='^x$', dir=BACKWARD, FREE)
+      Int(10)
   z = 
-  Int(15) [CONSTANT]
+  Int(15)
 ```
 COMMENTS:
 ```markdown
@@ -25,5 +24,5 @@ complex_sf_in_expression
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: ssYnBrajHlb2cVUC/spi1Y1l7ZOUOAtBU9tKjkOZwgNiXuUhpiQ/YY2Xvj6PFPFVUSh/2ZDKxaiD2vH8VNYWDw==
-HS signature: hX6Br0jblkEOJwEwHPiRUy9lIOTy5rE4A1jaY37y1H2Xd63iISUHdAxCiePcxM5jqxn4W90TOILnDo9nOA8YDw==
-Comments signature: uFV0C2N654tG0bEVN4nJ0zxE8eHQjK3957EMACkWG8wk1MnvUFh1hIqaNKpLe9QEXzKzDlPTjvxkJB6qOOfzAg==
+HS signature: xhHCqDLPAxro+yIKY71FOkX74aavyU33rXyPIALhOBmTUO+gsFZCpiePR8wA/rlDlKQTIxyMHQimxlmMXHdaAQ==
+Comments signature: VvZiVaBwS6hxZKH9APtIavRqiRR5prH/+bE6AFihteO6+TUuqJtBZRfWxEqC0l5AFE9ulVRVvNPsoC+WjUKFDw==

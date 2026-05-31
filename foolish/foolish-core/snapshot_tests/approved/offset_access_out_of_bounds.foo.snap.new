@@ -1,6 +1,5 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 52
 ---
 INPUT:
 ```foolish
@@ -10,21 +9,21 @@ INPUT:
 ```hssnap
 Brane [NK]
   data = 
-  Brane [CONSTANT]
+  Brane
     a = 
-    Int(10) [INDEPENDENT]
+    Int(10)
     b = 
-    Int(20) [INDEPENDENT]
+    Int(20)
     c = 
-    Int(30) [INDEPENDENT]
+    Int(30)
     d = 
-    Int(40) [INDEPENDENT]
+    Int(40)
     e = 
-    Int(50) [INDEPENDENT]
+    Int(50)
   oob = 
-  Index(offset=5, ANCHORED) [NK]
+  Index(offset=5, ANCHORED, [NK])
   oobˍneg = 
-  Int(10) [INDEPENDENT]
+  Int(10)
 ```
 COMMENTS:
 ```markdown
@@ -33,5 +32,5 @@ offset_access_out_of_bounds
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 6Kl8xVNkjnIERBDU/geunFvLzDwGt1gky5mwIgSBP1dQgu+YNxT3ZSO6QwAgC6Z5TXmrDgzy09gMUkyVCy/yDQ==
-HS signature: 8SxxcDNePPF/eEseOk212beUATY9q7BuA2+YnMO0Shd8uF9gWGLfAJlJM7ArBI6q0f7/L7oFKWIbK6rH41udAA==
-Comments signature: m6KkWBqFvDdjZsq2VEEOdrBl/IxbBisa717QMF7Y/8aM8DAko1KcNq1iQCHJk6r7MaPE/t2tWLKlukRlCwWnBA==
+HS signature: 7Sz6vfXNgcJV8twuR08B6fhICQ0fhtwr0DDwyDlOtFOxREhIxrLV6HpXUoNduaqAb8amBDqkkmYBdyMjf3dDDg==
+Comments signature: NS8Ut2tRDAlfR7Vb7yHvfhCg3HK9FRqqPcjRP+eCAhQlcfRwGVaXY9edISrHUWxzev1HEOOsSoIu/nL0i5ACDw==

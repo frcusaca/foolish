@@ -1,6 +1,5 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 52
 ---
 INPUT:
 ```foolish
@@ -8,11 +7,11 @@ INPUT:
 ```
 [0] RESULT:
 ```hssnap
-Brane [CONSTANT]
-  Int(42) [INDEPENDENT]
-  Int(14) [CONSTANT]
-  Int(-15) [CONSTANT]
-  Int(20) [CONSTANT]
+Brane
+  Int(42)
+  Int(14)
+  Int(-15)
+  Int(20)
 ```
 COMMENTS:
 ```markdown
@@ -21,5 +20,5 @@ mixed_expressions
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 4wx79F1aYwHPhfWD1a8N/NWLXRXqUirlVwEswv4TlLrzJFdCp9EFg1+HT955yyElfG1Cu32iCuG+lysHu8kXBw==
-HS signature: RSn62FXABEch3B73N68yP62nDsLc1ebFEslpQm5EcD/CCLugoHJkNVP+iNcdzv4P+eWhvoQUUzuVIYJ+8EztBQ==
-Comments signature: jU00Oo+RLmYgzUOQV0eI0JNOrAF0foVXxLVuQKZUtKVO4D6oiKg8Fe7af+/1V+8YaZhh2sDywaaQoU4mhnlBCQ==
+HS signature: 016eunLNxw9K1ORX7KEHLl48vw6g1rETrHfdI0GxpCg53MQ8UDffEhwsa4x/QMO56AFOaCGwZ7cmV6kpzBhjDA==
+Comments signature: AlqJKWdFDTitmU//lB+x71DIBokDQ3BybbZjBwf7QnhrjX5m1MSGHZl8Zo2LDwHJ4W5e3juRaB3yw6CbeCf/DA==

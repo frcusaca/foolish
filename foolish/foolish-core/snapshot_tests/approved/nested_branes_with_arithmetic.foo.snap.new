@@ -1,6 +1,5 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 52
 ---
 INPUT:
 ```foolish
@@ -8,14 +7,14 @@ INPUT:
 ```
 [0] RESULT:
 ```hssnap
-Brane [CONSTANT]
-  Int(5) [CONSTANT]
-  Brane [CONSTANT]
-    Int(20) [CONSTANT]
-    Brane [CONSTANT]
-      Int(5) [CONSTANT]
-    Int(15) [CONSTANT]
-  Int(3) [CONSTANT]
+Brane
+  Int(5)
+  Brane
+    Int(20)
+    Brane
+      Int(5)
+    Int(15)
+  Int(3)
 ```
 COMMENTS:
 ```markdown
@@ -24,5 +23,5 @@ nested_branes_with_arithmetic
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: vLLvb0I0Anfoue0c0KAuKUmSBTQ1wQVabMp+iQCAL77geoqgDopV7aya4Myum/1wp9N677tDDCDmw9t16CXcDw==
-HS signature: vBvEGXtp19S3znorsx3J3fDlz6wOZJwlGHTZ2mNB+2VYz+7YkkWCzKharp7kZy1VWMmmveaiI/ltoHOyOTs9CA==
-Comments signature: DWwr9lcWfVyE9YdAgwck5yKACOc3jNe38sAfgwwbrgN2z0f8ZFyMWveJvvzR3AE6PgMrN27qLGuXUG5VQlxBDA==
+HS signature: WS5S54P4+P3uCfNn+saywW3XUbmn58ykiImUkCSpMQ59OxK/Ul6wAqoqWXowcxgT32r3NXvG0xoBGgppOqONBA==
+Comments signature: bXGSA7Sy2J4hrBYYTcsKbTHjWS1LdS08mCTWQv4mOnnjMHG1+lsYZJl/7BSh/aY3oMLcQX5L3BqLyU+tKyxsDQ==

@@ -131,28 +131,28 @@ fn test_format_concatenation_merged() {
 fn test_format_index() {
     let idx = IndexFirBuilder::new(1).build();
     let s = format_fir_simple(&idx);
-    assert!(s.contains("Index(offset=1, FREE)"), "Expected 'Index(offset=1, FREE)' in: {}", s);
+    assert!(s.contains("Index(offset=1, FREE,"), "Expected 'Index(offset=1, FREE,' in: {}", s);
 }
 
 #[test]
 fn test_format_index_anchored() {
     let idx = IndexFirBuilder::new(0).anchored(true).build();
     let s = format_fir_simple(&idx);
-    assert!(s.contains("Index(offset=0, ANCHORED)"), "Expected 'Index(offset=0, ANCHORED)' in: {}", s);
+    assert!(s.contains("Index(offset=0, ANCHORED,"), "Expected 'Index(offset=0, ANCHORED,' in: {}", s);
 }
 
 #[test]
 fn test_format_headtail_head() {
     let ht = HeadTailFirBuilder::new(true).build();
     let s = format_fir_simple(&ht);
-    assert!(s.contains("HeadTail(HEAD, FREE)"), "Expected 'HeadTail(HEAD, FREE)' in: {}", s);
+    assert!(s.contains("HeadTail(HEAD, FREE,"), "Expected 'HeadTail(HEAD, FREE,' in: {}", s);
 }
 
 #[test]
 fn test_format_headtail_tail_anchored() {
     let ht = HeadTailFirBuilder::new(false).anchored(true).build();
     let s = format_fir_simple(&ht);
-    assert!(s.contains("HeadTail(TAIL, ANCHORED)"), "Expected 'HeadTail(TAIL, ANCHORED)' in: {}", s);
+    assert!(s.contains("HeadTail(TAIL, ANCHORED,"), "Expected 'HeadTail(TAIL, ANCHORED,' in: {}", s);
 }
 
 #[test]

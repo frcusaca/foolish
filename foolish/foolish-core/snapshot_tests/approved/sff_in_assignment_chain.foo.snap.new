@@ -1,6 +1,5 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 52
 ---
 INPUT:
 ```foolish
@@ -8,19 +7,19 @@ INPUT:
 ```
 [0] RESULT:
 ```hssnap
-Brane [CONSTANT]
+Brane
   a = 
-  Int(1) [INDEPENDENT]
+  Int(1)
   b = 
-  Int(2) [INDEPENDENT]
+  Int(2)
   c = 
-  StayFullyFoolish [INDEPENDENT]
-    Operator(+) [EMBRYONIC]
-      Search(pattern='^a$', dir=BACKWARD, FREE) [CONSTANT]
-      Search(pattern='^b$', dir=BACKWARD, FREE) [CONSTANT]
+  StayFullyFoolish()
+    Operator(+, [EMBRYONIC])
+      Search(pattern='^a$', dir=BACKWARD, FREE)
+      Search(pattern='^b$', dir=BACKWARD, FREE)
   a = 
-  Int(100) [INDEPENDENT]
-  Int(102) [CONSTANT]
+  Int(100)
+  Int(102)
 ```
 COMMENTS:
 ```markdown
@@ -29,5 +28,5 @@ sff_in_assignment_chain
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: W39zs+UId/DzfxHfL4QgQfryXimg6He4zOPcvtPzRzzWL/XwvRD91ZNi0vO2yL2wEXrlywGGMoz/vf+tEpgQDQ==
-HS signature: t8cXuUnJ4nceWcR2YqOtlAHcrOAzrcFrM/r8C/z/O56/QjtpgFX9mu2Mwi/D3ULoMmSc06irKi+uC/19MIeHAw==
-Comments signature: G+rdYUQWJrbymGWW6QGIbv5WrqS3vfVvC5z1t9Xw9ndYd/tKOiy/trnciKq7/LJq24p14j9C0CfJDRzWbSqRDg==
+HS signature: uylJ9Y3ByB+lz2DQEmRPA2m+kpoNo7YnXS6QYsh4ZFssGRRbfLa+VZCjjJLTLs9B51mrhFaeD4ZpGtjra31mAQ==
+Comments signature: yecAqeGoW91e1lA+wbTb5bj7sahw7mb++IYMr32RWjMTnIBZAnAl4ONAPVszQZFLOoLZ+e6HS+J3IKoL3HcHAg==

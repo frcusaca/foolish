@@ -1,6 +1,5 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 52
 ---
 INPUT:
 ```foolish
@@ -8,13 +7,13 @@ INPUT:
 ```
 [0] RESULT:
 ```hssnap
-Brane [CONSTANT]
+Brane
   x = 
-  Int(10) [INDEPENDENT]
+  Int(10)
   b = 
-  Brane [CONSTANT]
+  Brane
     y = 
-    Int(23) [CONSTANT]
+    Int(23)
 ```
 COMMENTS:
 ```markdown
@@ -23,5 +22,5 @@ operator_in_nested_brane_with_scope
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 2LdCkc6rsRqGv7R+cztwZPz1JFjaxMSoxge2QrVdgiDe95zOWLsqBvlVo4jDw3Gg/EV33s4ft3Nqe6gWAPxwAg==
-HS signature: cFyjp5p7H5Wf0E5w1aA2scNLpcpVD6EP6bA0tV4MhDJyO6Pw+GW/1fXOX84vvgsz/vDOAu3X+uaDz74HDWTbBA==
-Comments signature: TvV9f86hFOvfhuvKJqZs/4VJ163X7FFYdqBXispb0ww6Vv+Obq6O1N/HvnqfnU3CxHjXMpPwVkyyRJsJT7i9AA==
+HS signature: 3WodaiGaKbdKhjsKSU1hi52wVLXbHEZYV0m6b33m8Bqu+skG3kCvblLiCWHmPGgILbQ7ylY41MbvvEZ7lxBuDQ==
+Comments signature: 3w2bZ9FKP9DR5bBd39CFVY1MLFkQuDrLkhps64b0PK5TzVGpYgsvWwrIKaiK7TXRPJ3jrj4FIK0ob9GEy/t6BQ==

@@ -1,6 +1,5 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 52
 ---
 INPUT:
 ```foolish
@@ -10,13 +9,13 @@ INPUT:
 ```hssnap
 Brane [NK]
   b = 
-  Brane [CONSTANT]
+  Brane
     x = 
-    Int(100) [INDEPENDENT]
+    Int(100)
     y = 
-    Int(200) [INDEPENDENT]
+    Int(200)
   notFound = 
-  Search(pattern='γ', dir=BACKWARD, ANCHORED) [NK]
+  Search(pattern='γ', dir=BACKWARD, ANCHORED, [NK])
 ```
 COMMENTS:
 ```markdown
@@ -25,5 +24,5 @@ anchored_search_fails_on_constant
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: smAiTsm5+PIvpJ5BUHb2KPcH/vV4OigR8DsqQqQu5ankfsvdaVsO6TlKgPUA+6D9ASbJ0ZfZULIy1gTmv6F1DQ==
-HS signature: Ox83df6xFalAzwyb9LFFc06MTk7TTI1c59Sd/6+eD9GxHBbwfSgSfICmXil7G0LXTQoayrtGLO+IUnn2jEW/Dg==
-Comments signature: Uw1TAER1IMtO404ixdO+2rPSU2P/KH7uVMdMXNU+R1sQi3XQTyE/tiKJZq/f13kxn3XZc/zuO7YcV3nl82uFBg==
+HS signature: oFbV7r2dA0zjrRoQemcScpTt5MxQ7ncF7KocFJXuYwlSvc7hAFYS3SOxC+hrELZN0ddWAZKe9HfhSDVzl5mIBA==
+Comments signature: dwSXJRPIXW9ZfpgsFmJxfoIG4b4i2rj1wgWVireYB6jA3mz7nDvYlhlpoSwDOiqebt6cdOcRUgbPPc3wPkfrAg==

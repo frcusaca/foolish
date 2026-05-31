@@ -1,6 +1,5 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 52
 ---
 INPUT:
 ```foolish
@@ -10,11 +9,11 @@ INPUT:
 ```hssnap
 Brane [NK]
   good = 
-  Int(42) [INDEPENDENT]
+  Int(42)
   bad = 
-  ??? (division by zero) [NK]
+  ??? (division by zero, [NK])
   alsoˍgood = 
-  Int(30) [CONSTANT]
+  Int(30)
 ```
 COMMENTS:
 ```markdown
@@ -23,5 +22,5 @@ alarm_mixed_alarms_and_normals
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: kBaaMzbnr4qDtWJNdcICY6jK5Ykr2LoUMV2dcZKcsk5rCWB5pYd+j4zzXUYfpPvvzmjGwRirqIcXmCMQCYBuBg==
-HS signature: 4WCMpy6OA6X0JaMzpv/Nm00u4rud7/XytJgdwlA4rS3WgCvJ3eSWkQW1BelqFYLSpc3F9XWeClcet+FSi3OjCQ==
-Comments signature: HlwGnv53NLAg8vwGPJy93k0CX/Aq3m0pUj0bZHrSq52APXChzQa1zW4ajDEJ8/0JPtBpV43cAk/+o5S7olmZCw==
+HS signature: huynB+QMYtj7wvAH48tvpvDZTpARGZvs3Fja1TIdZOmy3C4QyT/ofIeFZW1l7JgABZFDXClNJwdP9veHvmDEDA==
+Comments signature: EpvQZb7r76EozpKZyB+kt/mSRnF3BYGyKmH0IQRCt+GV8N3h8ccgvau2TKklVv9f7v0O7fCBbhrKY1NLH8AZBw==

@@ -1,6 +1,5 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 52
 ---
 INPUT:
 ```foolish
@@ -10,7 +9,7 @@ INPUT:
 ```hssnap
 Brane [WOCONSTANIC]
   x = 
-  Search(pattern='^nonˍexistent$', dir=BACKWARD, FREE) [ECONSTANIC]
+  Search(pattern='^nonˍexistent$', dir=BACKWARD, FREE, [ECONSTANIC])
 ```
 COMMENTS:
 ```markdown
@@ -19,5 +18,5 @@ undeclared_identifier
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: OUDClvBDQDI4jMLtSBkX4ByLqXugKbw59gsG9cg9ypiX3np+sdMdg4y0aiyNnJTQgpPswkylfDc5eQqlCU9dBg==
-HS signature: yv7dFVpiro+rm2l1smEyQLRiwQYjb+yTmPRjD1Jc0/GoJk6a4VQ8X9C7RBMcn1Kv76/mOGCgu9Wamg3S0DlACA==
-Comments signature: dydC9j8MeBf9s4eNcA8Wy3mO8dWF6/tSf71hW5CoXMcbK6KNpC8YYe4zU8HRC923k2B/BYGmk12wZNPqL14PCQ==
+HS signature: mHq1jhLlwLrbT6aTo1nMamvq4RUrY+fC4MakaLge9Gv41eT1vZfnYL+CQqFq61rAsDE2IA8cUNfrXc5HVkNXCw==
+Comments signature: KgNZknaKOa74vqCXjDUVpwuMV5pomfr8ZXFrdfhA/wA99EVlcuduS5YsUOOYkhqrs6ZS3h3Hz+/x1khA/6UsAw==

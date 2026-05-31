@@ -1,6 +1,5 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 52
 ---
 INPUT:
 ```foolish
@@ -12,7 +11,7 @@ Brane [NK]
   outer = 
   Brane [NK]
     inner = 
-    ??? (division by zero) [NK]
+    ??? (division by zero, [NK])
 ```
 COMMENTS:
 ```markdown
@@ -21,5 +20,5 @@ alarm_nested_division_by_zero
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: gvKrH1bsn9QVcyXqkbc0hR4kUMJq3+tW1PimVP+cOkUuDFySMFn68os3pxSYk7Efd/rzIWpvqgFsYLlN7ryMCg==
-HS signature: TCbaUwXNikw73uTS9ES2DAN2PrZjSOW/d8lSXINZ3vCpNWiaFIz0lFd0zL2/uykbW190xyWglTidp4riReKfCQ==
-Comments signature: ChwdwcA14CceVE1nypjgv2Wb+cNAkKg54+eVEWLgeSQ6Q1oTiUTu4pEdvKt2x7GLt822NgXU7R/2Yy+aZmYqCA==
+HS signature: p6RzciovZIMUUW2kvyykHz0/FDdkLERRGSERSevIKZQP8Y4+OQRYd5Ul7KeBItMKDrbmDuUhXFYvBnud9bbVAg==
+Comments signature: ZW7JDnFYVFHMc7+U/qK0nWzAq8usEdlLs+yrKBGwVyOKbGGsdxUovcI3ybf9PINKD/MKFCqS0gBZq5KDGueACA==

@@ -1,6 +1,5 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 52
 ---
 INPUT:
 ```foolish
@@ -10,22 +9,22 @@ INPUT:
 ```hssnap
 Brane [NK]
   a = 
-  Int(10) [INDEPENDENT]
+  Int(10)
   b = 
-  Int(20) [INDEPENDENT]
+  Int(20)
   sum = 
-  Int(30) [CONSTANT]
+  Int(30)
   nested = 
   Brane [WOCONSTANIC]
     inner = 
-    Operator(/) [WOCONSTANIC]
-      Search(pattern='^sum$', dir=BACKWARD, FREE) [WOCONSTANIC]
-        Operator(+) [WOCONSTANIC]
-          Search(pattern='^a$', dir=BACKWARD, FREE) [CONSTANT]
-          Search(pattern='^b$', dir=BACKWARD, FREE) [CONSTANT]
-      Int(2) [INDEPENDENT]
+    Operator(/, [WOCONSTANIC])
+      Search(pattern='^sum$', dir=BACKWARD, FREE, [WOCONSTANIC])
+        Operator(+, [WOCONSTANIC])
+          Search(pattern='^a$', dir=BACKWARD, FREE)
+          Search(pattern='^b$', dir=BACKWARD, FREE)
+      Int(2)
   result = 
-  Search(pattern='^inner$', dir=BACKWARD, ANCHORED) [NK]
+  Search(pattern='^inner$', dir=BACKWARD, ANCHORED, [NK])
 ```
 COMMENTS:
 ```markdown
@@ -34,5 +33,5 @@ complex_full_program_with_all_features
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 1SXA6C7yxC6ZpiMvulmMy1eFI1Es1+sQ6hUtwarY1vKYOMtGrpNqx+rd59gPsyK1pqAjtcEAE57YwFIWqdU2CA==
-HS signature: bjFpcGkFQC+eFoou26ErD+MtVy5qdL/IKDgubAnaY5WPjXAwImDCMI2DFNtfCS+4W9ZltcXOzkVpwAxKadC3AQ==
-Comments signature: lRGp1lYL5WrrojPNKDu7Ux1LbaWnYIZ3iho/1PvJfAMvBrvRHB04kDpLIWmXSbeqWwMiK2CAfN2TkLhVPja/Cg==
+HS signature: YWfNWUIkVhNOKUm6ZlOCi7JSlyFmBl968Km1132Od8iNbmaObyrSUXUeY1jNX8HpDiwuQLadu1l22omfLnbZBQ==
+Comments signature: ndFMTUFY6gWJD763eTF1FiKnC5ddQONzRCi76rzc8RKN6cfQ89DaLV/WB9FVM/+QmhHsEkHctpg7WHbCVZ9ABg==

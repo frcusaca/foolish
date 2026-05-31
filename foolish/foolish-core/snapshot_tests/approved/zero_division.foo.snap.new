@@ -1,6 +1,5 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 52
 ---
 INPUT:
 ```foolish
@@ -9,7 +8,7 @@ INPUT:
 [0] RESULT:
 ```hssnap
 Brane [NK]
-  ??? (division by zero) [NK]
+  ??? (division by zero, [NK])
 ```
 COMMENTS:
 ```markdown
@@ -18,5 +17,5 @@ zero_division
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: MqfcZ+B4+sfvfkqh+l3YEXn1XcyDhPWyCqpUdeyaz9oeWtbJwhLg+KgVIQGkOFXTI97+o2ocezXlr3okML49Dw==
-HS signature: 5mpZ0/WjggyQvhXwZR49jzf12TodwF8WIoaIWkySJYJbi0ChQWr/PBXKfahiz9KNYbQQQPg1KnzB3kAnYYoXCQ==
-Comments signature: 3lqnca7BnQzap9IcjADITov4kNFGvUrwVjL4NZryFQdVfDboXZDR1Hy0Vj2lo47kBqBPESf+0h7MOWHvNuUMCg==
+HS signature: PwPDLGtYkDp3aPeImPchFD0jGhBlOmFihk3Ocapas/u0FHj0Ul25LYc2h/022FUMpZwvPa9C+wZt6mlW53AoCA==
+Comments signature: PxBDrI6Zccvm1qhy8ZUCIcA84w6IRWO1WtRy6D2aCB8ifTCDvTCVEcEtrRsrXhnrzhye+8dOrj88GnYNx+KNBg==

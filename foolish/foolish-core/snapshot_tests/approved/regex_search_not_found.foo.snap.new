@@ -1,6 +1,5 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 52
 ---
 INPUT:
 ```foolish
@@ -10,7 +9,7 @@ INPUT:
 ```hssnap
 Brane [NK]
   result = 
-  Search(pattern='notfound', dir=BACKWARD, ANCHORED) [NK]
+  Search(pattern='notfound', dir=BACKWARD, ANCHORED, [NK])
 ```
 COMMENTS:
 ```markdown
@@ -19,5 +18,5 @@ regex_search_not_found
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: DCCa1KU2iJkvywVWNJJreMY4bbb7kUGS86ZCjJxMT4Dw84x8CU9JGaVm0hvY8QGoAEdCrTmuIwF94eFMIJL/Aw==
-HS signature: n+S35V3XtTO4NmfS3xS2V5yZs0TmkBxDsBQN46+M9zwJAoQs32pmFtKhG9C3Rs7OHbfgQQSFUyF7D5Zawx36CQ==
-Comments signature: 5s/Yi3I/ptWQT0u3WUzomDisEEp3ePwLPy03rj5epoCT1GKAcWZKxK35i1yqtBGsUr6m0+SiONYUT+f3Pix8Cw==
+HS signature: MsvFSyUP/NsbIgpVjRczWUqSWQDkgc/5wT2DXbVr59HnQ40eq+h5TSWxxRpaiX59WZHgWutMyDtcKGnvpO1XAg==
+Comments signature: Dygbi4SB75WF98ijL1ipJ4PWxgtcqz0aoD404IZogCLWgoUJbTpRKZ5NZKJTGqzGLrvPrwCGTSlHF/vskccADQ==

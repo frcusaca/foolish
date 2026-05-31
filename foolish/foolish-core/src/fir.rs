@@ -138,6 +138,20 @@ impl Nyes {
     pub fn is_nye(&self) -> bool {
         matches!(self, Nyes::Prembrionic | Nyes::Embryonic | Nyes::Braning)
     }
+
+    /// Returns true when the nyès should be displayed in the humanizing
+    /// sequencer output. CONSTANT and INDEPENDENT are always omitted.
+    pub fn should_show_nyes(&self) -> bool {
+        matches!(
+            self,
+            Nyes::Prembrionic
+                | Nyes::Embryonic
+                | Nyes::Braning
+                | Nyes::Econstanic
+                | Nyes::Woconstanic
+                | Nyes::Nk
+        )
+    }
 }
 
 impl std::fmt::Display for Nyes {
