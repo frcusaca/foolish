@@ -65,78 +65,83 @@ Int(1)
 ```
 [1] RESULT:
 ```hssnap
-Brane [EMBRYONIC]
+Brane [EMBRYONIC]{
   a = 
   Int(1)
   b = 
-  Search(pattern='^a$', dir=BACKWARD, FREE, [ECONSTANIC])
+  Search(pattern='^a$', dir=BACKWARD, UNANCHORED, [ECONSTANIC])
+}
 ```
 [2] RESULT:
 ```hssnap
 Concatenation(elements=2, [EMBRYONIC])
-  Search(pattern='^testˍancestralˍidentifierˍwithˍshadow$', dir=BACKWARD, FREE, [ECONSTANIC])
-  Brane [EMBRYONIC]
+  Search(pattern='^testˍancestralˍidentifierˍwithˍshadow$', dir=BACKWARD, UNANCHORED, [ECONSTANIC])
+  Brane [EMBRYONIC]{
     a = 
     Int(1)
     n1 = 
-    Brane [EMBRYONIC]
+    Brane [EMBRYONIC]{
       c = 
       Operator(-, [EMBRYONIC])
         Int(1)
       b = 
-      Search(pattern='^a$', dir=BACKWARD, FREE, [EMBRYONIC])
+      Search(pattern='^a$', dir=BACKWARD, UNANCHORED, [EMBRYONIC])
       a = 
       Int(2)
       n2 = 
-      Brane [EMBRYONIC]
+      Brane [EMBRYONIC]{
         a = 
         Int(3)
         b = 
-        Search(pattern='^c$', dir=BACKWARD, FREE, [EMBRYONIC])
+        Search(pattern='^c$', dir=BACKWARD, UNANCHORED, [EMBRYONIC])
         d = 
         Operator(-, [EMBRYONIC])
-          Search(pattern='^b$', dir=BACKWARD, FREE, [EMBRYONIC])
+          Search(pattern='^b$', dir=BACKWARD, UNANCHORED, [EMBRYONIC])
         e = 
         Operator(+, [EMBRYONIC])
           Operator(+, [EMBRYONIC])
             Operator(+, [EMBRYONIC])
-              Search(pattern='^a$', dir=BACKWARD, FREE, [EMBRYONIC])
-              Search(pattern='^b$', dir=BACKWARD, FREE, [EMBRYONIC])
-            Search(pattern='^c$', dir=BACKWARD, FREE, [EMBRYONIC])
-          Search(pattern='^d$', dir=BACKWARD, FREE, [EMBRYONIC])
+              Search(pattern='^a$', dir=BACKWARD, UNANCHORED, [EMBRYONIC])
+              Search(pattern='^b$', dir=BACKWARD, UNANCHORED, [EMBRYONIC])
+            Search(pattern='^c$', dir=BACKWARD, UNANCHORED, [EMBRYONIC])
+          Search(pattern='^d$', dir=BACKWARD, UNANCHORED, [EMBRYONIC])
+      }
+    }
     a = 
-    Search(pattern='^b$', dir=BACKWARD, FREE, [EMBRYONIC])
+    Search(pattern='^b$', dir=BACKWARD, UNANCHORED, [EMBRYONIC])
     b = 
     Int(1)
     c = 
-    Search(pattern='^a$', dir=BACKWARD, FREE, [EMBRYONIC])
+    Search(pattern='^a$', dir=BACKWARD, UNANCHORED, [EMBRYONIC])
+  }
 ```
 [3] RESULT:
 ```hssnap
 Concatenation(elements=2, [EMBRYONIC])
-  Search(pattern='^testˍpreservingˍconstanics$', dir=BACKWARD, FREE, [ECONSTANIC])
-  Brane [EMBRYONIC]
+  Search(pattern='^testˍpreservingˍconstanics$', dir=BACKWARD, UNANCHORED, [ECONSTANIC])
+  Brane [EMBRYONIC]{
     a = 
-    Search(pattern='^b$', dir=BACKWARD, FREE, [EMBRYONIC])
+    Search(pattern='^b$', dir=BACKWARD, UNANCHORED, [EMBRYONIC])
     b = 
     Int(1)
     c = 
-    Search(pattern='^a$', dir=BACKWARD, FREE, [EMBRYONIC])
+    Search(pattern='^a$', dir=BACKWARD, UNANCHORED, [EMBRYONIC])
+  }
 ```
 [4] RESULT:
 ```hssnap
 Concatenation(elements=2, [EMBRYONIC])
-  Search(pattern='^testˍpreservingˍconstanicsˍoverˍshadows$', dir=BACKWARD, FREE, [ECONSTANIC])
-  Brane [EMBRYONIC]
+  Search(pattern='^testˍpreservingˍconstanicsˍoverˍshadows$', dir=BACKWARD, UNANCHORED, [ECONSTANIC])
+  Brane [EMBRYONIC]{
     a = 
-    Search(pattern='^b$', dir=BACKWARD, FREE, [EMBRYONIC])
+    Search(pattern='^b$', dir=BACKWARD, UNANCHORED, [EMBRYONIC])
     b = 
     Int(1)
     f = 
-    Brane [EMBRYONIC]
+    Brane [EMBRYONIC]{
       c = 
       Operator(+, [EMBRYONIC])
-        Search(pattern='^b$', dir=BACKWARD, FREE, [EMBRYONIC])
+        Search(pattern='^b$', dir=BACKWARD, UNANCHORED, [EMBRYONIC])
         Int(1)
       a = 
       Int(0)
@@ -146,22 +151,24 @@ Concatenation(elements=2, [EMBRYONIC])
       Operator(+, [EMBRYONIC])
         Operator(+, [EMBRYONIC])
           Operator(+, [EMBRYONIC])
-            Search(pattern='^a$', dir=BACKWARD, FREE, [EMBRYONIC])
-            Search(pattern='^b$', dir=BACKWARD, FREE, [EMBRYONIC])
-          Search(pattern='^c$', dir=BACKWARD, FREE, [EMBRYONIC])
-        Search(pattern='^d$', dir=BACKWARD, FREE, [EMBRYONIC])
+            Search(pattern='^a$', dir=BACKWARD, UNANCHORED, [EMBRYONIC])
+            Search(pattern='^b$', dir=BACKWARD, UNANCHORED, [EMBRYONIC])
+          Search(pattern='^c$', dir=BACKWARD, UNANCHORED, [EMBRYONIC])
+        Search(pattern='^d$', dir=BACKWARD, UNANCHORED, [EMBRYONIC])
+    }
     g = 
-    Search(pattern='^f$', dir=BACKWARD, FREE, [EMBRYONIC])
+    Search(pattern='^f$', dir=BACKWARD, UNANCHORED, [EMBRYONIC])
     d = 
     Int(0)
     r = 
-    Search(pattern='^g$', dir=BACKWARD, FREE, [EMBRYONIC])
+    Search(pattern='^g$', dir=BACKWARD, UNANCHORED, [EMBRYONIC])
+  }
 ```
 [5] RESULT:
 ```hssnap
-Brane [EMBRYONIC]
+Brane [EMBRYONIC]{
   b1 = 
-  Brane [EMBRYONIC]
+  Brane [EMBRYONIC]{
     a = 
     Int(1)
     b = 
@@ -170,8 +177,9 @@ Brane [EMBRYONIC]
     Int(3)
     r = 
     Int(0)
+  }
   b2 = 
-  Brane [EMBRYONIC]
+  Brane [EMBRYONIC]{
     d = 
     Int(4)
     e = 
@@ -180,10 +188,12 @@ Brane [EMBRYONIC]
     Int(6)
     r = 
     Int(1)
+  }
   b3 = 
   Concatenation(elements=2, [EMBRYONIC])
-    Search(pattern='^b1$', dir=BACKWARD, FREE, [EMBRYONIC])
-    Search(pattern='^b2$', dir=BACKWARD, FREE, [EMBRYONIC])
+    Search(pattern='^b1$', dir=BACKWARD, UNANCHORED, [EMBRYONIC])
+    Search(pattern='^b2$', dir=BACKWARD, UNANCHORED, [EMBRYONIC])
+}
 ```
 COMMENTS:
 ```markdown
@@ -192,5 +202,5 @@ ubcb_test_1
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: w+WjlGApfgjVezWjdJm9utgOEhqX7Eu6w0aiA/OjA01qv24zJpXWwZsZ98X326mJwUdROypdvYkdkVDDkHSTDg==
-HS signature: E1UKaoouAxL1hF9rG+zQyiwAPtvyUYqS3khCGIUS1lfjp36hrwWUo1tE2yAYSUAEE+aM28zNHO0wCBScynu1DQ==
-Comments signature: lWNWHBvqC/2nzZiUJRJAbuEjlrg/7OwRlkGj8pPeo/BoyCk6F5d89NzXaJonnmud+USDj1+OK4GU3cYQhBL1Ag==
+HS signature: Wez3ar/ZcV1dOYGZys0MjReXU1auyf/79cMGK+B9QTAXzLiU4e9mxE3/JsUDjGOcDagq/nCNAk7ZhT8jo4oqDQ==
+Comments signature: OV+91DghEP94MTHH3NjZQ5foVbyRY6Ex7ZvZriHCBlmhYHY113OTXBRERFAzpP63HjfnIfCG7PkrBZ3E4YDXBg==
