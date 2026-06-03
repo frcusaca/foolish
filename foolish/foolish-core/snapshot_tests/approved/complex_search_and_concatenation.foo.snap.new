@@ -29,7 +29,7 @@ Brane
   result = 
   Brane
     x = 
-    Int(10)
+    Int(10) (@Agent this is WRONG. "result = b1 target.c" should be "result = {x=10} {a=1, b=2, c=3}" which evaluates to "result={x=10; a=1; b=2; c=3}" Please fix this concatenation. You might debug with "result = b1 (target.c)" to see if the problem is with precendence, search has higher precedence than concatenation)
 ```
 COMMENTS:
 ```markdown

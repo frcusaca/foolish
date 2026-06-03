@@ -9,7 +9,7 @@ INPUT:
 ```hssnap
 Brane
   b = 
-  Brane
+  Brane    (@Agent, this brane is supposed to surround it's content with '{' and '}' please correct this.
     Int(10)
     Int(20)
     Int(30)
@@ -20,7 +20,7 @@ Brane
   first = 
   Int(10)
   oob = 
-  Int(10)
+  Int(10) (@Agent this is incorrect, the out-of-bound (oob) should result in NK)
 ```
 COMMENTS:
 ```markdown

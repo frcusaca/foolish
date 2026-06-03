@@ -18,7 +18,7 @@ Brane [NK]
   Brane [WOCONSTANIC]
     inner = 
     Operator(/, [WOCONSTANIC])
-      Search(pattern='^sum$', dir=BACKWARD, FREE, [WOCONSTANIC])
+      Search(pattern='^sum$', dir=BACKWARD, FREE, [WOCONSTANIC]) (@Agents, this is wrong, it should have found sum who (as you can see above, has a int value)
         Operator(+, [WOCONSTANIC])
           Search(pattern='^a$', dir=BACKWARD, FREE)
           Search(pattern='^b$', dir=BACKWARD, FREE)

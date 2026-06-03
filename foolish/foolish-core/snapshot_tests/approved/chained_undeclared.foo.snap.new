@@ -12,10 +12,10 @@ Brane [WOCONSTANIC]
   Search(pattern='^undeclared$', dir=BACKWARD, FREE, [ECONSTANIC])
   y = 
   Search(pattern='^bad$', dir=BACKWARD, FREE, [WOCONSTANIC])
-    Search(pattern='^undeclared$', dir=BACKWARD, FREE, [ECONSTANIC])
+    Search(pattern='^undeclared$', dir=BACKWARD, FREE, [ECONSTANIC])       (@Agent This search_result field should be INSIDE the '()')
   z = 
   Search(pattern='^y$', dir=BACKWARD, FREE, [WOCONSTANIC])
-    Search(pattern='^undeclared$', dir=BACKWARD, FREE, [ECONSTANIC])
+    Search(pattern='^undeclared$', dir=BACKWARD, FREE, [ECONSTANIC])       (@Agent This search_result field should be INSIDE the '()')
 ```
 COMMENTS:
 ```markdown

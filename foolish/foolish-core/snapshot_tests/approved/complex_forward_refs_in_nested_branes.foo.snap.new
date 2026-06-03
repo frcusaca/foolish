@@ -13,9 +13,9 @@ Brane
     inner = 
     Brane
       val = 
-      Int(42)
+      Int(42) (@Agent, this is WRONG!. x is outside and blocked by TWO BRANES, AND X comes after, this should not have resolved)
   x = 
-  Int(42)
+  Int(42) 
 ```
 COMMENTS:
 ```markdown

@@ -9,14 +9,14 @@ INPUT:
 ```hssnap
 Brane [NK]
   b = 
-  Brane
+  Brane    (@Agent, again, brane should be "Brane{ Int(10);...}", on multiple lines, it is even more important to have the curly bracket enclosures.)
     Int(10)
     Int(20)
     Int(30)
   first = 
   Int(10)
   second = 
-  Int(20)
+  Int(20) 
   third = 
   Int(30)
   oob = 
