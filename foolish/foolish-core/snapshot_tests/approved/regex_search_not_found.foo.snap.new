@@ -1,0 +1,23 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{result = {x = 100; y = 200;}?notfound;}
+```
+[0] RESULT:
+```hssnap
+Brane [NK]{
+    result = Search(pattern='notfound', dir=BACKWARD, ANCHORED, [NK])
+}
+```
+COMMENTS:
+```markdown
+regex_search_not_found
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: DCCa1KU2iJkvywVWNJJreMY4bbb7kUGS86ZCjJxMT4Dw84x8CU9JGaVm0hvY8QGoAEdCrTmuIwF94eFMIJL/Aw==
+HS signature: GZJWHX6k+luFi0bPnHRlzK/f0QVEw6hy/VmDCo5O9tt8jnRxX5Tw+saglx2cH44B8/hCbYYalFDzfXAt89BmBw==
+Comments signature: A79XlqRKn/m/IA0aczm/jQB7QRNwjgmKsTs4aRTlBZhEcfz+21j7ObiKPERSWP3hxTWGEpwZjDppNIWo29NLCA==

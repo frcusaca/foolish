@@ -1,0 +1,26 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{x = 42; b = {y = x + 1};}
+```
+[0] RESULT:
+```hssnap
+Brane{
+    x = 42;
+    b = Brane{
+        y = 43
+    }
+}
+```
+COMMENTS:
+```markdown
+nested_search_in_brane
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: a2EHfjlv4/xgltU75YJ4bjNfPd6HVSagAu6bn0bsfw4HVnqCl0/M3s704cb/TVH0rPXvnH8RN5KIqWjnVWZ1Bw==
+HS signature: z084pp9ML3F9BiNfHTsMaFTj/E/QLv01WKdTosJhY3n0AFTXDrGvTvavsQT0V/imcD5zBIqouXASQ8GAgqBMBg==
+Comments signature: 5QZiDejiGzG/bAn2pal3hSAbWAMf4oEIk/syo/wjH6IzPIYWTz27M1vHyXBhPaxrG7chcSvct2MSPMcjfs8qCQ==

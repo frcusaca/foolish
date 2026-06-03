@@ -1,0 +1,25 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{a=<<3>>; a + 7;}
+```
+[0] RESULT:
+```hssnap
+Brane{
+    a = StayFullyFoolish()
+      3;
+    10
+}
+```
+COMMENTS:
+```markdown
+sff_in_binary_op
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: RloEHmf5rLfOjWxYHY6c6cMkwiS0unIpf1KQr1dK/NaYnSxDC8vXd6WMPJuWUl/UhCJ4k5nzH+QsqOxMYYL8Dw==
+HS signature: Oj6HdLmULP2WUZvsy84DYqV30lXdNOwejXpl4M1L2l1C4fKDnTMGR6qPer/nozA+qJO/ZMCgCPfYu9SIIYbuCA==
+Comments signature: c/+yV9WNIVBamboNqHb1xGGVvMxbc1PHlYD82jJ85zIJWWB2oObndfj3k72My2rm6s2SXOG0FR3+H/X5/h0NBg==

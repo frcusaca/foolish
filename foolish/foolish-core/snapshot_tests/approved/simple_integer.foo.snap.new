@@ -1,0 +1,23 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{5;}
+```
+[0] RESULT:
+```hssnap
+Brane{
+    5
+}
+```
+COMMENTS:
+```markdown
+simple_integer
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: mKeQcIJEqkHJ/vaGQBdsuVvdJyil+f35P5XHGhdzcQZhwfmHPdksT8vNBKfAi7binZaSKDhvvsp3Q4kAY8cbDA==
+HS signature: ij0xDjyCN460H2sVg9w7bP0ikRyBP39h5THvZiwLbEb8EGkixb2Y6sBptiF7X2nutn9GBrv0OFoLu0VC6Z2CAw==
+Comments signature: 5cHOZdV7au7Rbw3KMk4GyqcPvoG7ZXk87ueGsJPNIHVAUk8v4XOTbPBBesbaGwndWwgCIc0/JVNUAIFRLVzLDw==
