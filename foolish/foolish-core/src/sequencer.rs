@@ -1,5 +1,5 @@
-use std::fmt::Write;
 use crate::fir::{Fir, FirQueryable, StatementSimple};
+use std::fmt::Write;
 
 #[derive(Default)]
 pub struct Sequencer {
@@ -7,8 +7,12 @@ pub struct Sequencer {
 }
 
 impl Sequencer {
-    pub fn new() -> Self { Self::default() }
-    pub fn steps(&self) -> u64 { self.steps }
+    pub fn new() -> Self {
+        Self::default()
+    }
+    pub fn steps(&self) -> u64 {
+        self.steps
+    }
     pub fn format(fir: &Fir) -> String {
         let mut buf = String::new();
         format_fir_q(&mut buf, fir, 0);
@@ -16,7 +20,12 @@ impl Sequencer {
     }
     pub fn format_with_header(source: &str, fir: &Fir, steps: u64) -> String {
         let body = Self::format(fir);
-        format!("INPUT: {}\nPARSED:\n{}\nSTEPS: {}", source.trim(), body, steps)
+        format!(
+            "INPUT: {}\nPARSED:\n{}\nSTEPS: {}",
+            source.trim(),
+            body,
+            steps
+        )
     }
 }
 
@@ -73,23 +82,34 @@ fn format_fir_q(buf: &mut String, fir: &dyn FirQueryable, depth: usize) {
         return;
     }
     if let Some((pattern, direction, anchored, _anchor, target)) = fir.hs_search() {
-        let anchor_str = if anchored { "ANCHORED" } else { "FREE" };
-        let _ = writeln!(buf, "{}Search(pattern='{}', dir={}, {}{})",
-            indent, pattern, direction, anchor_str, state_sfx);
+        let anchor_str = if anchored { "ANCHORED" } else { "UNANCHORED" };
+        let _ = writeln!(
+            buf,
+            "{}Search(pattern='{}', dir={}, {}{})",
+            indent, pattern, direction, anchor_str, state_sfx
+        );
         if let Some(ref t) = target {
             format_fir_q(buf, &**t, depth + 1);
         }
         return;
     }
     if let Some((offset, anchored, _anchor)) = fir.hs_index() {
-        let anchor_str = if anchored { "ANCHORED" } else { "FREE" };
-        let _ = writeln!(buf, "{}Index(offset={}, {}{})", indent, offset, anchor_str, state_sfx);
+        let anchor_str = if anchored { "ANCHORED" } else { "UNANCHORED" };
+        let _ = writeln!(
+            buf,
+            "{}Index(offset={}, {}{})",
+            indent, offset, anchor_str, state_sfx
+        );
         return;
     }
     if let Some((is_head, anchored, _anchor)) = fir.hs_head_tail() {
         let ht = if is_head { "HEAD" } else { "TAIL" };
-        let anchor_str = if anchored { "ANCHORED" } else { "FREE" };
-        let _ = writeln!(buf, "{}HeadTail({}, {}{})", indent, ht, anchor_str, state_sfx);
+        let anchor_str = if anchored { "ANCHORED" } else { "UNANCHORED" };
+        let _ = writeln!(
+            buf,
+            "{}HeadTail({}, {}{})",
+            indent, ht, anchor_str, state_sfx
+        );
         return;
     }
     if let Some(ref expr) = fir.hs_stay_foolish() {
@@ -103,7 +123,13 @@ fn format_fir_q(buf: &mut String, fir: &dyn FirQueryable, depth: usize) {
         return;
     }
     if let Some((elements, merged)) = fir.hs_concatenation() {
-        let _ = writeln!(buf, "{}Concatenation(elements={}{})", indent, elements.len(), state_sfx);
+        let _ = writeln!(
+            buf,
+            "{}Concatenation(elements={}{})",
+            indent,
+            elements.len(),
+            state_sfx
+        );
         for elem in &elements {
             format_fir_q(buf, &**elem, depth + 1);
         }
@@ -173,26 +199,36 @@ fn format_fir_simple_indent(fir: &dyn FirQueryable, indent: usize) -> String {
         };
     }
     if let Some((op, operands)) = fir.hs_operator() {
-        let child_fmts: Vec<String> = operands.iter()
+        let child_fmts: Vec<String> = operands
+            .iter()
             .map(|o| format_fir_simple_indent(&**o, indent))
             .collect();
-        format!("Operator(op='{}', operands=[{}]{})", op, child_fmts.join(", "), state_sfx)
+        format!(
+            "Operator(op='{}', operands=[{}]{})",
+            op,
+            child_fmts.join(", "),
+            state_sfx
+        )
     } else if let Some((pattern, direction, anchored, _anchor, target)) = fir.hs_search() {
-        let anchor_str = if anchored { "ANCHORED" } else { "FREE" };
+        let anchor_str = if anchored { "ANCHORED" } else { "UNANCHORED" };
         if let Some(ref t) = target {
             let t_fmt = format_fir_simple_indent(&**t, indent);
-            format!("Search(result={}, pattern='{}', direction={}, {}{})",
-                t_fmt, pattern, direction, anchor_str, state_sfx)
+            format!(
+                "Search(result={}, pattern='{}', direction={}, {}{})",
+                t_fmt, pattern, direction, anchor_str, state_sfx
+            )
         } else {
-            format!("Search(pattern='{}', direction={}, {}{})",
-                pattern, direction, anchor_str, state_sfx)
+            format!(
+                "Search(pattern='{}', direction={}, {}{})",
+                pattern, direction, anchor_str, state_sfx
+            )
         }
     } else if let Some((offset, anchored, _anchor)) = fir.hs_index() {
-        let anchor_str = if anchored { "ANCHORED" } else { "FREE" };
+        let anchor_str = if anchored { "ANCHORED" } else { "UNANCHORED" };
         format!("Index(offset={}, {}{})", offset, anchor_str, state_sfx)
     } else if let Some((is_head, anchored, _anchor)) = fir.hs_head_tail() {
         let ht = if is_head { "HEAD" } else { "TAIL" };
-        let anchor_str = if anchored { "ANCHORED" } else { "FREE" };
+        let anchor_str = if anchored { "ANCHORED" } else { "UNANCHORED" };
         format!("HeadTail({}, {}{})", ht, anchor_str, state_sfx)
     } else if let Some(ref expr) = fir.hs_stay_foolish() {
         let inner = format_fir_simple_indent(&**expr, indent);
@@ -203,7 +239,12 @@ fn format_fir_simple_indent(fir: &dyn FirQueryable, indent: usize) -> String {
     } else if let Some((elements, merged)) = fir.hs_concatenation() {
         if let Some(ref m) = merged {
             let m_fmt = format_fir_simple_indent(&**m, indent);
-            format!("Concatenation(elements={}, merged={}{})", elements.len(), m_fmt, state_sfx)
+            format!(
+                "Concatenation(elements={}, merged={}{})",
+                elements.len(),
+                m_fmt,
+                state_sfx
+            )
         } else {
             format!("Concatenation(elements={}{})", elements.len(), state_sfx)
         }
@@ -222,15 +263,26 @@ fn format_fir_simple_indent(fir: &dyn FirQueryable, indent: usize) -> String {
             format!("{}Brane{}{{}}", chars, state_display)
         } else if statements.len() == 1 {
             let stmt_fmt = format_statement_simple(&statements[0], indent + 2);
-            format!("{}Brane{}{{\n{}\n{}}}", chars, state_display,
+            format!(
+                "{}Brane{}{{\n{}\n{}}}",
+                chars,
+                state_display,
                 format!("{}{}", " ".repeat(indent + 2), stmt_fmt),
-                " ".repeat(indent + 2))
+                " ".repeat(indent + 2)
+            )
         } else {
             let inner_pad = " ".repeat(indent + 2);
-            let stmts: Vec<String> = statements.iter()
+            let stmts: Vec<String> = statements
+                .iter()
                 .map(|s| format!("{}{};", inner_pad, format_statement_simple(s, indent + 2)))
                 .collect();
-            format!("{}Brane{}{{\n{}\n{}}}", chars, state_display, stmts.join("\n"), inner_pad)
+            format!(
+                "{}Brane{}{{\n{}\n{}}}",
+                chars,
+                state_display,
+                stmts.join("\n"),
+                inner_pad
+            )
         }
     } else {
         format!("Unknown({})", fir.hs_variant())
