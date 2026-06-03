@@ -7,11 +7,12 @@ INPUT:
 ```
 [0] RESULT:
 ```hssnap
-Brane [NK]
+Brane [NK]{
   x = 
   ??? (??? literal, [NK])
   y = 
   Int(42)
+}
 ```
 COMMENTS:
 ```markdown
@@ -20,5 +21,5 @@ alarm_unknown_literal_no_alarm
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 6zk70qVxfd8FcX1zclhQ0Wd7dQbtCArSO63cu1AjnWk+ps00vt6z3P/tZA7SlAOn8jtsAI6m99n+OrpsWlQQAw==
-HS signature: +gqUoC/qVvE9EUN3tzEzmVS6bwo3tJeBOB4Gl/rygr6IUwKpHOAQJyZk1F4i7GGtqGUzkKZkfHVjJ971axVIBg==
-Comments signature: 3F1zWjkDzR+9jeRLISKDNguKFW83Z00eLT30pTjqpj8v+Z9ctQZWEtc80+8Q8igexNZ4amvzmpY16kFn3GXxCQ==
+HS signature: tzLNwfHoDEfR74t0p9Zldvg9OmV8eh2sW6kQ8ofN0XlR2C9I0CK04x1ZkpLT++maxUEIuCae4P3fzn+zatm8Bw==
+Comments signature: QzMp/Kw4b+55wBTk5gu7V4J/+2YfMsX4k4OtBwmdVfd8K0S6LGsBMJRt2afGXTOoPIMmDF+lGkh0t45s/Ke8Dw==

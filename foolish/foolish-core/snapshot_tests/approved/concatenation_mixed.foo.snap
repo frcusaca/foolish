@@ -1,0 +1,43 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+---
+INPUT:
+```foolish
+{b1={a=1, b=2, c=3}; c = {x=10} b1 {y=20};}
+```
+[0] RESULT:
+```hssnap
+Brane{
+  b1 = 
+  Brane{
+    a = 
+    Int(1)
+    b = 
+    Int(2)
+    c = 
+    Int(3)
+  }
+  c = 
+  Brane{
+    x = 
+    Int(10)
+    a = 
+    Int(1)
+    b = 
+    Int(2)
+    c = 
+    Int(3)
+    y = 
+    Int(20)
+  }
+}
+```
+COMMENTS:
+```markdown
+concatenation_mixed
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: IeZT4ziW59yCqqwf5il8/UazFL6k4GxaW68stl0o2YGoEK6MxdWTghWDe2P5s4Pt7hkaUemACjxYrXbioVxcCg==
+HS signature: 0gzpkTJmUI7rqQJ3ePZXMubstW73n2F8NKUjKW/9FQMk0RtiEpgQF/rfvVxM5zQ7N/8oLmzKGFoBOoxcGlXIBQ==
+Comments signature: qRitO2FUJohnEBU8A54wgdlFhIzbhkFyRB5Mk8s3XLcOOzD98WAaluOP2KfqK2ztSLLlvX079Hy1FFf0qVfpBQ==

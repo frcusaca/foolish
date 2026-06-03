@@ -7,13 +7,14 @@ INPUT:
 ```
 [0] RESULT:
 ```hssnap
-Brane [NK]
+Brane [NK]{
   a = 
   Int(5)
   b = 
   ??? (division by zero, [NK])
   c = 
   Int(5)
+}
 ```
 COMMENTS:
 ```markdown
@@ -22,5 +23,5 @@ alarm_division_by_zero_in_brane
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: R5NlChpi9B03XMNXz5w8KRK+Sd2plSW6cxbcAimBapvhbQ80i2CDfkavPhCpAMdIMWlRdbvEmEYXMv2d78/2Aw==
-HS signature: QfLud7UvN23g4j3vLOg8EI6ArFABbALJ2B3nTaLiu0rlYXgz18WzPjRKWcYCfa+SGjWSr0DXpfRCsUHc17XYDA==
-Comments signature: Xoc3pvx4uxa6uIcS4z6LKvJtS2Low9nLsm9XKXpTWGsXhWyypsRnQ7LZhQpQiAbmeakBahl5bzuMvrGrv6iTDw==
+HS signature: pP1PRhOqGV3e6I4E5//hJdhNHRIInMJjX/TW4jtcBZblIbqr/bntJDg1MhH0Mc4aXhAPWSajzxjHK7tgZviMBw==
+Comments signature: gbKOzSJzsMhu/6sk+e3JHrFcznXzlyIaAsb3vqK3CtYp8nE1Bf7DjchQHa7nsKSGvzlUw8G0fHKv3TJU+y23DQ==

@@ -1,0 +1,27 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+---
+INPUT:
+```foolish
+{a = 1; b = 2; c = 3;}
+```
+[0] RESULT:
+```hssnap
+Brane{
+  a = 
+  Int(1)
+  b = 
+  Int(2)
+  c = 
+  Int(3)
+}
+```
+COMMENTS:
+```markdown
+regression_regression_disappearing_brane
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: 6Cva3ZXt8cVDwKEN9Fm8XgEgPsJzc1AyhVxotnLVMl4si4lUyd4P8Hc8LK7Y8yt65g7tSc8m0+C1iKAC/ZHeAw==
+HS signature: m0XNESkroRvEUCFmwkk6vYoj6t8ZZMSHWQq+4iKvhwLws01E155IkoL7K22YKBFAYwbqYR2YUV/34y+Qx3wOBQ==
+Comments signature: mUN+iKEiEBTGp36X0/4Om56DNSmNsC4AEAfpLSQu7BYSPCLBVcMme/E7sODIS6bz9SM+LYA+BnZDPj92sJPCAQ==

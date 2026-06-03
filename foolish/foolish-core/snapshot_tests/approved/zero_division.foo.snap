@@ -1,0 +1,22 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+---
+INPUT:
+```foolish
+{10 / 0;}
+```
+[0] RESULT:
+```hssnap
+Brane [NK]{
+  ??? (division by zero, [NK])
+}
+```
+COMMENTS:
+```markdown
+zero_division
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: MqfcZ+B4+sfvfkqh+l3YEXn1XcyDhPWyCqpUdeyaz9oeWtbJwhLg+KgVIQGkOFXTI97+o2ocezXlr3okML49Dw==
+HS signature: p2fd4RD/h5DdM9aZv5vX4pWZ3FsRsFZXLiebmG03jeGTfhD9+1OBrX2OSmEH9J3429Ugvmm74GQKOd7urv0+CQ==
+Comments signature: F1eqkCKBI1PYsDbCvr/j9qAsRoh1xCagYsgWlZDaLcs1gZBDlB+X/ez6ieZsD8ivVBthTjDyLo+lsA2jMRR0CA==

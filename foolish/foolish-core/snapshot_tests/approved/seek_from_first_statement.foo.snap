@@ -1,0 +1,25 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+---
+INPUT:
+```foolish
+{a = 1; b = #-1;}
+```
+[0] RESULT:
+```hssnap
+Brane{
+  a = 
+  Int(1)
+  b = 
+  Int(1)
+}
+```
+COMMENTS:
+```markdown
+seek_from_first_statement
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: UNZZmGXCUwcRIyaBKVviamDvSd7kgxUsKh4TpUyP59PI4OMZ9kd41u44Zfr8n/w0xXs3hhe0ifdK3insI/42AQ==
+HS signature: OvL3CuqS7WBScSZwG3tXdEkFeIbEueYkUtpbLQUMdSDchWr+d2czHU3IJiYKAprnlCFTk5CfWr/mMX7TKgT7Dw==
+Comments signature: c8EQbKJDQsrGd4RSeWN6cls4+p0sENr+DQMaw8GtGki7cukKEvc5FV2e+XC6wKiAE8yhgPYVtDDIGDodhaFQAQ==

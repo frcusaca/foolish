@@ -1,0 +1,42 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+---
+INPUT:
+```foolish
+{a=1, b=2; inner = {c = <<a+b>>; c}; inner;}
+```
+[0] RESULT:
+```hssnap
+Brane{
+  a = 
+  Int(1)
+  b = 
+  Int(2)
+  inner = 
+  Brane{
+    c = 
+    StayFullyFoolish()
+      Operator(+, [EMBRYONIC])
+        Search(pattern='^a$', dir=BACKWARD, UNANCHORED)
+        Search(pattern='^b$', dir=BACKWARD, UNANCHORED)
+    Int(3)
+  }
+  Brane{
+    c = 
+    StayFullyFoolish()
+      Operator(+, [EMBRYONIC])
+        Search(pattern='^a$', dir=BACKWARD, UNANCHORED)
+        Search(pattern='^b$', dir=BACKWARD, UNANCHORED)
+    Int(3)
+  }
+}
+```
+COMMENTS:
+```markdown
+complex_sff_in_nested_brane
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: ZIgjfGeL3aOiCFGthil+qpoFORBgbUiJ34yeWevLnvPP3orwUnFqJRnzpA9oKsQVY98pCPWMFeTGN4RdIqe4DA==
+HS signature: 0iHHgqoBuKS/hgcVLoufFy7/JXGxCef+qGusbfRDCaMQ13kSaKxmZ6iAg36B70uLEvHlQwqMEvD/41+dmBf9Dg==
+Comments signature: wpv5gSKNJ7aQ/qJCJey4vX2xSTOk0SgIoD1ynZzzvXQHbL3lVSbPjp6fwtlJJGKUZHJxXGi7fySOZjAC/9CpAw==

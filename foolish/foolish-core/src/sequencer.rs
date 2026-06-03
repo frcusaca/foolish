@@ -149,13 +149,14 @@ fn format_fir_q(buf: &mut String, fir: &dyn FirQueryable, depth: usize) {
         } else {
             String::new()
         };
-        let _ = writeln!(buf, "{}{}Brane{}", indent, chars, brane_state);
+        let _ = writeln!(buf, "{}{}Brane{}{{", indent, chars, brane_state);
         for stmt in &statements {
             if let Some(ref name) = stmt.name {
                 let _ = writeln!(buf, "{}{} = ", "  ".repeat(depth + 1), name);
             }
             format_fir_q(buf, &*stmt.body, depth + 1);
         }
+        let _ = writeln!(buf, "{}}}", indent);
         return;
     }
     let _ = writeln!(buf, "{}Unknown({})", indent, fir.hs_variant());

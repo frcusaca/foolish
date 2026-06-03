@@ -1,0 +1,32 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+---
+INPUT:
+```foolish
+{x=10; y=<x>; z=y + 5;}
+```
+[0] RESULT:
+```hssnap
+Brane [WOCONSTANIC]{
+  x = 
+  Int(10)
+  y = 
+  StayFoolish()
+    Search(pattern='^x$', dir=BACKWARD, UNANCHORED)
+      Int(10)
+  z = 
+  Operator(+, [WOCONSTANIC])
+    Search(pattern='^x$', dir=BACKWARD, UNANCHORED)
+      Int(10)
+    Int(5)
+}
+```
+COMMENTS:
+```markdown
+complex_sf_in_expression
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: ssYnBrajHlb2cVUC/spi1Y1l7ZOUOAtBU9tKjkOZwgNiXuUhpiQ/YY2Xvj6PFPFVUSh/2ZDKxaiD2vH8VNYWDw==
+HS signature: QuhyLKStcM3H5WZ+quhwCSumfBWGgbDzvI/wU56kEQ9dYF77H7DdvBh/meuy5GfT6eLOQC0WrFfSGLxJyTl0AA==
+Comments signature: uNsiAgQsUkfLQ1l2SCLi1uNLkR8NWXhoRpSuI5raSTdBYX5+BQoUZGgbQQ1rUyXc0hg/tsWTMt36wKrmCu8iBw==

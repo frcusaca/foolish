@@ -1,0 +1,42 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+---
+INPUT:
+```foolish
+{a = 1; b = 2; sff = <<a + b>>; sf = <sff>; a = 10; sf; sff;}
+```
+[0] RESULT:
+```hssnap
+Brane [WOCONSTANIC]{
+  a = 
+  Int(1)
+  b = 
+  Int(2)
+  sff = 
+  StayFullyFoolish()
+    Operator(+, [EMBRYONIC])
+      Search(pattern='^a$', dir=BACKWARD, UNANCHORED)
+      Search(pattern='^b$', dir=BACKWARD, UNANCHORED)
+  sf = 
+  StayFoolish()
+    Search(pattern='^sff$', dir=BACKWARD, UNANCHORED)
+      Int(3)
+  a = 
+  Int(10)
+  Search(pattern='^sff$', dir=BACKWARD, UNANCHORED)
+    Int(3)
+  Search(pattern='^sff$', dir=BACKWARD, UNANCHORED, [WOCONSTANIC])
+    Operator(+, [WOCONSTANIC])
+      Search(pattern='^a$', dir=BACKWARD, UNANCHORED)
+      Search(pattern='^b$', dir=BACKWARD, UNANCHORED)
+}
+```
+COMMENTS:
+```markdown
+sf_of_sff
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: h1VqZ8FgnPZ2bLsAmCfvaSczq/hrg2qLt+NCDHxlJTO58pkS3WuR3DKlCs5mxYNflR4ATJy8+l662ISwvkxvDA==
+HS signature: zHOgAztJ0XEeKqTi6EderxJoq0utlEjxhYmd5+u+n4pdl9pYRy13ixlcAgRNVuxXnEuhpSOHz99HO4nq1ssbDQ==
+Comments signature: xyDuOr9wGudj/3xAnamq60xvJbl6PlUYe3DOMWDQaBtcARAicTKmW5tJV34wB7xEG0+kptYpEDpT6LOAFw2aCA==

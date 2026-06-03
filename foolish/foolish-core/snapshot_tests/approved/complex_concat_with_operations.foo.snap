@@ -7,21 +7,25 @@ INPUT:
 ```
 [0] RESULT:
 ```hssnap
-Brane
+Brane{
   a = 
-  Brane
+  Brane{
     x = 
     Int(3)
+  }
   b = 
-  Brane
+  Brane{
     y = 
     Int(12)
+  }
   c = 
-  Brane
+  Brane{
     x = 
     Int(3)
     y = 
     Int(12)
+  }
+}
 ```
 COMMENTS:
 ```markdown
@@ -30,5 +34,5 @@ complex_concat_with_operations
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: hQZ3XlbJGCwNVmkTvvRiWQV1g6p/STn4Fd9yT0++sGLitIb/zHnnNHPywvmqVpMHd5cktMT7LFhzayFSXQ4mAw==
-HS signature: e5Y9U29iHKvWw9sj+JEn+W6sI4G0Q4/njDv126YX+wkKCoPq94kwPJfS5bVkzFTsPoy00iBhf/nd0PPcjnzdAw==
-Comments signature: ggkNtaAQCszrVKpqrulVfK8dn5Tr5B+i3cexXFZhzBgR+Ur9/UHGBonlafzzrRe30qCqktpc8XyEcEzL6WjpBg==
+HS signature: l7jSUcqgEpVpFGz7W+nd2xRazmCZyI0T6T5cizbQ4ip9RMHEJkkBkmvrNhhtESRd9+AIxJGh+IAZHsJ6j5/jCg==
+Comments signature: /cKQ2IcA1C/6cFIydqqWnBFDb8IJZbYXztH3Bv0NjNMLtwbpmzhNVC1A66XIWwlm1IdTpU3jwZTiVdCBtIG9CA==

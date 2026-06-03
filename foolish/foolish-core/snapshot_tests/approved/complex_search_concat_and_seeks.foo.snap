@@ -7,17 +7,18 @@ INPUT:
 ```
 [0] RESULT:
 ```hssnap
-Brane
+Brane{
   data = 
-  Brane
+  Brane{
     x = 
     Int(1)
     y = 
     Int(2)
     z = 
     Int(3)
+  }
   copy = 
-  Brane
+  Brane{
     x = 
     Int(1)
     y = 
@@ -26,10 +27,12 @@ Brane
     Int(3)
     w = 
     Int(4)
+  }
   last = 
   Int(4)
   first = 
   Int(1)
+}
 ```
 COMMENTS:
 ```markdown
@@ -38,5 +41,5 @@ complex_search_concat_and_seeks
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 2sGCo//bsMS6EbNWvLkDc/IST2lRsoHgtK6Fc0UBF834NnteSGmsi8JcAAOcOFOaH7GJfG8BAJfr4Duct/GuCg==
-HS signature: nAp2Bq2fwZtVD88B3QR0gRt04PnbX71P0rAhAS/MKGjgacl2TLpATN7dXkElXU7+2hkqjiJltsKLZMvlKmB7BA==
-Comments signature: 1EW5+3+nWCChlB/YGF3hN5RrNgPP2oBDluRbYGAOE3ftxM9ClPWuOOljrkzQLPsd1bZ8dvsvhoc4Uk/SR5/xDA==
+HS signature: hWrsha/Pxho079SQ7RbIQNFwiEUkHF5qu05CNQWBmK5UeeqYx/w8GKhE1H94pbr9R/mbQiSPRXUKliEz0JDFDA==
+Comments signature: xTWFAYjgJ16jme708CkcrCqJVkIAWx1T/G6lb/r3CUTu/L9kPtXCPv4JN3047X16TuAGg1+EtXqTE78kb0vnCw==

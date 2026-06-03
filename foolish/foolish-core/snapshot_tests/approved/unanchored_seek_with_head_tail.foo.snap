@@ -1,0 +1,33 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+---
+INPUT:
+```foolish
+{a = 1; b = {10; 20; 30}; c = #-1; d = #-1$;}
+```
+[0] RESULT:
+```hssnap
+Brane [NK]{
+  a = 
+  Int(1)
+  b = 
+  Brane{
+    Int(10)
+    Int(20)
+    Int(30)
+  }
+  c = 
+  ??? (constanic_clone called on NYE FIR, [NK])
+  d = 
+  HeadTail(TAIL, ANCHORED, [NK])
+}
+```
+COMMENTS:
+```markdown
+unanchored_seek_with_head_tail
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: jv0+vXjnH9cz10jLSBUMwSz7eQc18uc8awWMpnBak7csmepQPgR6cGGgPa630VQqQgiIf5gKsDB506wsSjNaCA==
+HS signature: NbnWpgJxCxr85JdATy87iSXX3/0neRnllNRQ1uv9PyNJijlXp5feFNZr2UBjwAd+osdi3KptXZCBnwBEpOdmAA==
+Comments signature: iBWV3Sub4f3voV4wtH0JXLoQxdjmQW3UheSKQJyHcNXqOt32zZO6vt3ZgTSUWKjHmX6HAttDuuyizdbzyDhaBQ==

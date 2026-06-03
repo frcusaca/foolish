@@ -1,0 +1,29 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+---
+INPUT:
+```foolish
+{val1 = 3; val2 = 4; val3 = 5; sum = #-1 + #-2 + #-3;}
+```
+[0] RESULT:
+```hssnap
+Brane{
+  val1 = 
+  Int(3)
+  val2 = 
+  Int(4)
+  val3 = 
+  Int(5)
+  sum = 
+  Int(12)
+}
+```
+COMMENTS:
+```markdown
+unanchored_seek_chain
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: 4Op9a4SD82NnhuqkFocpP8S6SDOGc1oqG7ozVwycClN+D3+mH7iKx6DP5nFjdxEqYwI0cpD5g9WHvUtEsJiOAQ==
+HS signature: pSjb9xZPAWUdEhFw3dgEJA7pE2jaLPAmy8REnYKs1kzgI0n4Ia2Ve5ea7Lu6/cQX1gBJVBDHoX0eOv2C5lwODA==
+Comments signature: kNgRB035amPI33Ulla8ktQ7XW2Q4eYqROdn/EJPRl9vYXuYoa/eN8RZZiSvQLQVJ6jZk5m+dkdfqo7+2q9/pCw==
