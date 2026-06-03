@@ -1,0 +1,27 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+---
+INPUT:
+```foolish
+{x = 10; myname'{val = x};}
+```
+[0] RESULT:
+```hssnap
+Brane{
+  x = 
+  Int(10)
+  myname'Brane{
+    val = 
+    Int(10)
+  }
+}
+```
+COMMENTS:
+```markdown
+named_brane_basic
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: iqtjWzJGJYCUCiXY8U5l6RGjdcGU8kbk8Lt7KzvMxAoj27tth4Hvs0gyc5LF3byE4FCFG8j2cLLV1zhUyERrCQ==
+HS signature: m3NEgQbTHIaJSgta9XLQ9IBml3ftULwD9OgGYBYtZI/izRof2vqxJ6poMkC6TbLhir64cB73OtU1e0cv8gNYAw==
+Comments signature: NpNd6WYdEL7WjbTI0J3eLFwXG9tXsixBN57IF+wwt8SrQ0A2LAEiU3LrOI6uy0uHFc+qD/Ax1oqFiM8wIWW4Bg==

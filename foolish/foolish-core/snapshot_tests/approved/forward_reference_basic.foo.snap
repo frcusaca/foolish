@@ -1,0 +1,25 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+---
+INPUT:
+```foolish
+{y = x; x = 42;}
+```
+[0] RESULT:
+```hssnap
+Brane [WOCONSTANIC]{
+  y = 
+  Search(pattern='^x$', dir=BACKWARD, UNANCHORED, [ECONSTANIC])
+  x = 
+  Int(42)
+}
+```
+COMMENTS:
+```markdown
+forward_reference_basic
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: HTTRgMabwliS9L5HdnJgH76bNg+VgP5cFCCmfEJGWwMX4ci2arPG1x7acmsFpyqLAWBux5GYq5irG+YVu5OqDw==
+HS signature: xbTsFtK31btcpbz1zhTgc8UebUTmfXrTqauNJjDcfEn1O2/K64owH+Ta2tPJF3WsI0+RdApcPQujoEHuzsjnDQ==
+Comments signature: ldicC7oJcfKhJxAUsxlfERcksrL/r5vNlJiDibrgOlarJlQnkEJ8owxeokHpW4fP5m1NCcrXaiKzbkEN/r0DBg==

@@ -1,0 +1,31 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+---
+INPUT:
+```foolish
+{nested = {inner = {val = x}}; x = 42;}
+```
+[0] RESULT:
+```hssnap
+Brane [WOCONSTANIC]{
+  nested = 
+  Brane [WOCONSTANIC]{
+    inner = 
+    Brane [WOCONSTANIC]{
+      val = 
+      Search(pattern='^x$', dir=BACKWARD, UNANCHORED, [ECONSTANIC])
+    }
+  }
+  x = 
+  Int(42)
+}
+```
+COMMENTS:
+```markdown
+complex_forward_refs_in_nested_branes
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: dct7S1xt4BQlrVSe20zSejRWopMd5WAIV2n3zrW7K1tYqgXNp3fSPSQKHKK5cqT+oEDbEo1Ytg5ww9j+8ME3Aw==
+HS signature: +OVU8v9i8PO8cSMb6To69wB4Iji9iOB2zPSS8NCtoiheb0WYLBSdHfDoAwN6RNR2vlihjwQ3SHFw6h4X6DveAA==
+Comments signature: q83RPT5VEjaK2tL0KpIPrMTpKAgsIb5+HwxaV8noOTCZBE46Uq0VAeWEehEcCsLoO3teaGCDXoUBplJchLC4DQ==

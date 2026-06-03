@@ -7,14 +7,16 @@ INPUT:
 ```
 [0] RESULT:
 ```hssnap
-Brane
+Brane{
   b = 
-  Brane
+  Brane{
     Int(42)
+  }
   h = 
   Int(42)
   t = 
   Int(42)
+}
 ```
 COMMENTS:
 ```markdown
@@ -23,5 +25,5 @@ brane_with_single_value_head_tail
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: Tq1w19+A470fPIptb2wFZnTxYSpskC6MdJ7ASRFV9QUfO5wS0xySTGF67G1N0cabm0/WjR0iUvteZl9gXvolBg==
-HS signature: Dvm33nWipjKMCF7Bxpugs/is7nDsh9npBJDoRdF8Ybtjkz/uEUyABEZva20+hxcNC4YbyFtd5ka/qwXf6JoUBQ==
-Comments signature: p1zy6HnjugvEBurW50n7QWJRTc422ojEttI2YPxDcRbUN9Fi4jjpjeteZ9iZySKUHJWTjTnTVmcNqxANGDYdDg==
+HS signature: bFOqOnh+TnAui3LNE12JfbXZTu1eQPh+Wx7HnIJOJyrxf3e0jBTd3CM0xJIzvdDwbKr56uLqgDFuByGH+PYVBg==
+Comments signature: uBdm1ByxUhRe+lVFrMWSmoKkfPIzFZ73dUdR8isRBjxhb3gGDpFXkxHosdVf1/4zCgS4gzUBSQ1GEFFDVvD3DA==

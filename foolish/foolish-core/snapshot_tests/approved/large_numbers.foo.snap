@@ -1,0 +1,27 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+---
+INPUT:
+```foolish
+{a = 1000000; b = 999999; c = a - b;}
+```
+[0] RESULT:
+```hssnap
+Brane{
+  a = 
+  Int(1000000)
+  b = 
+  Int(999999)
+  c = 
+  Int(1)
+}
+```
+COMMENTS:
+```markdown
+large_numbers
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: V9gX+iMWLRiEznd+jAB0+5004O4k8VncOLu0+TP1BOjxHtENGxa5zNiA/mCj753+k9RIj6DkbSgmznmNvzBGDw==
+HS signature: ek1WtvfzZFHprRzf3BE0/fpvL7qce4+UBpU8rCAweM03CF9t5Ai9/qPTmWRC83fqqaSa2llz4MB4BhQWmvEoBg==
+Comments signature: 6guzZvB0AJn2m7LeqL6EIJtFbNJfgwAdRWM48Tc1Hj8JNOLJh+NItAgK5BD2989ikhWa+bAm5kIuWHJ7PcA6Cw==

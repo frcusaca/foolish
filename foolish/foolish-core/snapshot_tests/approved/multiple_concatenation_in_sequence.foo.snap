@@ -1,0 +1,57 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+---
+INPUT:
+```foolish
+{a={1;2}; b={3;4}; c={5;6}; r1 = a b; r2 = b c; r3 = a c;}
+```
+[0] RESULT:
+```hssnap
+Brane{
+  a = 
+  Brane{
+    Int(1)
+    Int(2)
+  }
+  b = 
+  Brane{
+    Int(3)
+    Int(4)
+  }
+  c = 
+  Brane{
+    Int(5)
+    Int(6)
+  }
+  r1 = 
+  Brane{
+    Int(1)
+    Int(2)
+    Int(3)
+    Int(4)
+  }
+  r2 = 
+  Brane{
+    Int(3)
+    Int(4)
+    Int(5)
+    Int(6)
+  }
+  r3 = 
+  Brane{
+    Int(1)
+    Int(2)
+    Int(5)
+    Int(6)
+  }
+}
+```
+COMMENTS:
+```markdown
+multiple_concatenation_in_sequence
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: 7vk3EGmD0ghrY75TKkhVNhfKfiBI2/IhbSWUXB142Bwcg6vllrvTMc3B/9Uv8NXkkikI4A1iqLrJn2CxhX9IBA==
+HS signature: Znjb8uuwR4qy2+EBm5jACRKppONaAe2LB/EehiDzXKAA8DpgfpiikwU6p00q+uSeT4sjtnZtomHsCO0fXG0tBA==
+Comments signature: 3zb0mrhmvqenTdiCCU2yvzmDhz4Aq8ysKqVi+iRWIZcjY4pFcHo8Xs4VPk/1OKcWWu91IplY1hkDQY9RPUXHDw==

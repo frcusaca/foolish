@@ -7,11 +7,12 @@ INPUT:
 ```
 [0] RESULT:
 ```hssnap
-Brane
+Brane{
   a = 
   Int(5)
   b = 
   Int(-3)
+}
 ```
 COMMENTS:
 ```markdown
@@ -20,5 +21,5 @@ chained_unary_operators
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: kiNVOLwv/jrjOVkHoD+trP+GtqjZ0F5/+ipES3CpFENY3I+4p/cigoi+MXbywS0r6UAGfx3/iyYgSStikNBwCg==
-HS signature: Hsg92DM9RVKGbOH78Z2rhodTG/0aaE+qXhMCaQ1jXOABrWIOpv6/vLvVWRb1+xYg/FtewqR8DQbL7IdtjbjKCg==
-Comments signature: fnmMxqeowZxN3UvbZbbdvteSXXSSjnLuezNHAqWSRE4tPWJuFUVXW50ab2ukfgkCuV8ffCVPSE21O7SNopMKDA==
+HS signature: RsdXxrPtQOQG3OFVmq3Hafx9qF5d1iegXFPFrWgW/dHVR+qweBoyz20n7wbaEEkuWjuFH9ee7Gi5lOIhwrMgDQ==
+Comments signature: mTtQfLeweDkgJND6hMQtuWUweyfddkc1RIC50ziYs2gHtG+Ns8F6vMUK27V2NUe1WhpsCDmy41VsbgKV5U58DA==

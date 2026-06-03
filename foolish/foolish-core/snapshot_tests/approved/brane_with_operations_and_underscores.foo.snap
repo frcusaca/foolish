@@ -7,13 +7,14 @@ INPUT:
 ```
 [0] RESULT:
 ```hssnap
-Brane
+Brane{
   myˍvar = 
   Int(10)
   anotherˍvar = 
   Int(20)
   result = 
   Int(30)
+}
 ```
 COMMENTS:
 ```markdown
@@ -22,5 +23,5 @@ brane_with_operations_and_underscores
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: YL60MVPYRdNx2UuAR4BhiYrezotRIEzx0SZmsdhFsp8e5vISvZ55YHcEdhuEOgFMIqpxGK/Mrm1cFuCpi6RAAQ==
-HS signature: nC3O8EORRgGCxtwIbHe3A/3gb4gTbO14bvlzVPep1hiwPdM3yiMEsmDsBShmhVDcx3dZqx6zpbuTmiboo9ysBg==
-Comments signature: CdGIfYq2aZ2qd5pKrNuQcG8pdsb7WOjQYHtoCJTqwfS5PAhk1z6Q8uez7f1xeK/Fp58rOZJTgwaQgS5w9tDdDQ==
+HS signature: AYEe/dy+BcF01424tMywVojVYid3sLh8+1aHPmfnXre1+iPnhDnc9gDzYFc1n4NcwZqs2ugmbJunZ7UutaJLAw==
+Comments signature: 7rp4Qvu/mc1pCWC22AfIWrMH9zgpPW+n1zz0QJzIPvQQgCLz+GyRL5XoLZrh4RGYxXDre4xN32epGQqXpAq2Cg==

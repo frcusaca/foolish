@@ -7,7 +7,7 @@ INPUT:
 ```
 [0] RESULT:
 ```hssnap
-Brane [WOCONSTANIC]
+Brane{
   x = 
   Int(10)
   y = 
@@ -17,12 +17,8 @@ Brane [WOCONSTANIC]
   sum = 
   Int(60)
   avg = 
-  Operator(/, [WOCONSTANIC])
-    Search(pattern='^sum$', dir=BACKWARD, FREE, [WOCONSTANIC])
-      Operator(+, [WOCONSTANIC])
-        Int(30)
-        Search(pattern='^z$', dir=BACKWARD, FREE)
-    Int(3)
+  Int(20)
+}
 ```
 COMMENTS:
 ```markdown
@@ -31,5 +27,5 @@ complex_brane_with_operations_and_search
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: eIJL0ws12Aay/OZZDwEfhuORsRcoD771FKTX/isyLfFNwYZ+cAlF3iL6fReWj0duYc02l/q9RN6crj+iPp0rAg==
-HS signature: 7baRhA9TvpFTFFhxysgFkkdv2dChrRNR8f3onwHnbHndd+UWFxqIO5NTkNc445GNMZvYd9c+Wg4ENYLZg9XoCw==
-Comments signature: 0mxAnhwGZ03S1IPHCdRgtzs6hk6neVT0+h+/jcGv9H3BvfDjc2wxWfhy9yfveBWJf7v041lhayqQFU4eChUNBg==
+HS signature: mTx3vJIu9i5WjpMekXTkZzzQhKX+4YnxB7EfhR6okHPvyAJIvPKf2xjKe14BV+8nlqb9RdKPHRw8ZlFpUwSKCg==
+Comments signature: Mi2kOZWbl6QnRaAFZa3tlYyn/80gkxEuqJnqR4JFqNI3ApVwZ0xUjCEfUbsNkm+Po3BQ6ppJ6WXf8QsVR6cNBg==

@@ -7,7 +7,7 @@ INPUT:
 ```
 [0] RESULT:
 ```hssnap
-Brane
+Brane{
   add = 
   Int(3)
   sub = 
@@ -18,6 +18,7 @@ Brane
   Int(5)
   neg = 
   Int(-7)
+}
 ```
 COMMENTS:
 ```markdown
@@ -26,5 +27,5 @@ complex_brane_with_all_operator_types
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: hqeO50VGIdDIO3wZcz25VVeUZef54veeVOxlx1MmVZKB8DMszHYbRyT7n7qP+IAEflplyRVzpHwt+i//yxwYDw==
-HS signature: +IT34ez+NuFBwHMOa0J4HrVd0qIHsh00yMb/zyoWVOhRjgjDmD5yHpyQ66UBaYZ6xrMdfWvy3h7DOKRsniR0Dg==
-Comments signature: TpFU4HQpVeHua/RlRBHXZotT7xZXIoej4u75TERHuU0TB/Ssfht5Mu+ZfYKLGiSvM7MIMr09u6Zt4hCF4EirAw==
+HS signature: 3geG01XRJ10eha+LoB/KNfQ0klSKOl+6AHBZZbS8nNkuR3GNAuKyp2psuBNyV9trpQ2MPZtZQqFmYVHQ41qOBA==
+Comments signature: YaOsWcozuCTwpaeYIpJv73KnP9hINgUG9TJ+WbfVkoN+grWwBOD9Hdz3FKBWYUyqpyns7OPZGRWiwpzdLxHQCA==

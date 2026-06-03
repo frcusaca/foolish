@@ -1,0 +1,35 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+---
+INPUT:
+```foolish
+{b = {10; 20; 30}; last = b#-1; second = b#1; first = b#-3; oob = b#-4;}
+```
+[0] RESULT:
+```hssnap
+Brane [NK]{
+  b = 
+  Brane{
+    Int(10)
+    Int(20)
+    Int(30)
+  }
+  last = 
+  Int(30)
+  second = 
+  Int(20)
+  first = 
+  Int(10)
+  oob = 
+  Index(offset=-4, ANCHORED, [NK])
+}
+```
+COMMENTS:
+```markdown
+anchored_seek_negative_boundary
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: Hz+E00U3C3CsBvmDBDvsvrUBkxqorumzrBINQuB6usuo3Tc+B3G3S66sRaCAd8nWs36mDjbYF6rjX7Ps0UoJBw==
+HS signature: v3vzjMvGI1RQGajHcUI2TztbWoIMoJ4IloaQetrG2QS655GCqxsUazObuUoGZMTqwsBFmzwMjkIVGunbqxIcCg==
+Comments signature: fwkZ2CYk4ZvRE5K/YNc3Sv85n7ntLWaANzp0LweMlZJXrcsWKdqQwbx83BbVjCVNnwYCBOUZ3R6tmc4wGksgCg==

@@ -7,13 +7,14 @@ INPUT:
 ```
 [0] RESULT:
 ```hssnap
-Brane [NK]
+Brane [NK]{
   good = 
   Int(42)
   bad = 
   ??? (division by zero, [NK])
   alsoˍgood = 
   Int(30)
+}
 ```
 COMMENTS:
 ```markdown
@@ -22,5 +23,5 @@ alarm_mixed_alarms_and_normals
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: kBaaMzbnr4qDtWJNdcICY6jK5Ykr2LoUMV2dcZKcsk5rCWB5pYd+j4zzXUYfpPvvzmjGwRirqIcXmCMQCYBuBg==
-HS signature: huynB+QMYtj7wvAH48tvpvDZTpARGZvs3Fja1TIdZOmy3C4QyT/ofIeFZW1l7JgABZFDXClNJwdP9veHvmDEDA==
-Comments signature: EpvQZb7r76EozpKZyB+kt/mSRnF3BYGyKmH0IQRCt+GV8N3h8ccgvau2TKklVv9f7v0O7fCBbhrKY1NLH8AZBw==
+HS signature: agRFRaAQSmc1XAqzkFFW5y+dw/+T3toQGlrXUVsUXq+lrWso70Z0lF2QGVvBlO12eg5G6p706hPnX+x0/wtkCA==
+Comments signature: LS4vPYMwHZMzCP0OmgxTNViR1Tp5sj37py7eQGQXCLDz3JuMfqQ9jE4kSUYqOoCL/D0Y9aCmTkMzGSM0o5PxDA==

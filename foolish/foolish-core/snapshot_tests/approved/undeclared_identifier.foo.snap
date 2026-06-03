@@ -1,0 +1,23 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+---
+INPUT:
+```foolish
+{x = non_existent;}
+```
+[0] RESULT:
+```hssnap
+Brane [WOCONSTANIC]{
+  x = 
+  Search(pattern='^nonˍexistent$', dir=BACKWARD, UNANCHORED, [ECONSTANIC])
+}
+```
+COMMENTS:
+```markdown
+undeclared_identifier
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: OUDClvBDQDI4jMLtSBkX4ByLqXugKbw59gsG9cg9ypiX3np+sdMdg4y0aiyNnJTQgpPswkylfDc5eQqlCU9dBg==
+HS signature: BnRTrzRE6WpfNAtI8ENb976nA7gU/+b4fIm/XXvm89i/m0xd0Ksb7+axAiYI7Mi46Yo/lWM7JTZX104a8+7sCQ==
+Comments signature: JojiGTcK8CRW28MH0K8h1GG83Tec8g8BxGOxDTgRrzN/aas8eHxtRjAf2rbdtVg+Fjgas/1MqfF0hWLZjHAmBw==

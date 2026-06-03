@@ -1,0 +1,29 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+---
+INPUT:
+```foolish
+{b = {10; 20; 30}; first = b#0;}
+```
+[0] RESULT:
+```hssnap
+Brane{
+  b = 
+  Brane{
+    Int(10)
+    Int(20)
+    Int(30)
+  }
+  first = 
+  Int(10)
+}
+```
+COMMENTS:
+```markdown
+seek_zero_offset
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: S48Uo+2tKexUvhtRGj3pJkt5qkd+zFAzgsc5fglpMeea4d5nYpf6CS4J54uwDBiv4peq4bkgjhJ+WHoAUQxcBw==
+HS signature: o/EyGJlse7qd9t6hRiT/lpH32CrdwTejKYKhUy6zvYP7kSUH4DPd6vyLp2clEcI+i6r3Hr7y22vQU/hkKj0GAw==
+Comments signature: MpVO7hKCzDkPOdFgQuwBKsiQAxNrNDpfWZkY3G8TilLhetdLWd/tjLjyl3JFhSFZ3vEIX7xShMhp0N7nX2OyCw==

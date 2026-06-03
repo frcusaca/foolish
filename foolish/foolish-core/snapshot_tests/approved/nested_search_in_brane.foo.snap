@@ -1,0 +1,28 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+---
+INPUT:
+```foolish
+{x = 42; b = {y = x + 1};}
+```
+[0] RESULT:
+```hssnap
+Brane{
+  x = 
+  Int(42)
+  b = 
+  Brane{
+    y = 
+    Int(43)
+  }
+}
+```
+COMMENTS:
+```markdown
+nested_search_in_brane
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: a2EHfjlv4/xgltU75YJ4bjNfPd6HVSagAu6bn0bsfw4HVnqCl0/M3s704cb/TVH0rPXvnH8RN5KIqWjnVWZ1Bw==
+HS signature: 4Cm3bO4dZGrpmGMT5vMHPpaUqDkkz+i4ObZomfNtsAHOFoGc9U/k3XwfUYRYZUZ2OpMWNk0vuzoTpFa/Pd+eCQ==
+Comments signature: sSWKjgP9sRu/xCl97RfeOJnvEJIsxE69QrREP9ISOHtk/LslgLHAPxV6keRgHD+/iDl/M6rUwfsEO48f5XKzCQ==

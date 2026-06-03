@@ -7,25 +7,28 @@ INPUT:
 ```
 [0] RESULT:
 ```hssnap
-Brane
+Brane{
   a = 
   Int(10)
   b = 
   Int(20)
   outer = 
-  Brane
+  Brane{
     c = 
     Int(30)
     ac = 
     Int(40)
     inner = 
-    Brane
+    Brane{
       a = 
       Int(40)
       abc = 
       Int(90)
+    }
     ab = 
     Int(30)
+  }
+}
 ```
 COMMENTS:
 ```markdown
@@ -34,5 +37,5 @@ complex_nested_scope
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: lATSCngkRPllgcpySFfij40IPvVOdXraCOLxdoTraAIlOXvsQXwD75sktfcSMNYGZLCpgFdy1utwkByduMRmCw==
-HS signature: bdR2e59Y+Ab0GR11aEVVlfgWppaYXg35wEALDrjw11XGI+5dTUV/XRM8r3o7q4aQsmR96WhBnff4OBhKvdYPBw==
-Comments signature: vsaEF/AqTmlo5CgpQhF9Hb8NZXruw3eWG6pJDNFjVD0VdJfp5Wy+OEpFW1jva1rpJBP1iZvcDyZWnufrBWFyCA==
+HS signature: hVx2mAUWOc9EDLgussHk1r8CAkCkpBrHcrD+JOvCX/Io9bYni6m2bwCBmsiCuB5IIxcawx/OsFZ1J8zNzZUEDQ==
+Comments signature: c0klRXWgIqqW7ajd+iE6BSx8UKN4uMExj/6FSbC8sM3yLN9mXY9jvm/bBR+zwmt79PH7YOHk2HSBdA4VPCPSCg==

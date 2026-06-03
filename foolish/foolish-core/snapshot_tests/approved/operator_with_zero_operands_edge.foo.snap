@@ -1,0 +1,25 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+---
+INPUT:
+```foolish
+{a = 0 * 100; b = 0 + 999;}
+```
+[0] RESULT:
+```hssnap
+Brane{
+  a = 
+  Int(0)
+  b = 
+  Int(999)
+}
+```
+COMMENTS:
+```markdown
+operator_with_zero_operands_edge
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: LGovan4yHWJcpoEzNulGo/lrFG4UB/sBJXtPZEYRtu0BAdGrQDcSN6iywxab5AEU0PYpQfeOXiDIyyryLWa/Bw==
+HS signature: rWrj8IXz42ghn/FhSP1JYhoM5zeCCyGrn1lVim5o9fLfDkTz071wgihPOyCubNTW0lr4HHnalW0y3gIMCowrCA==
+Comments signature: 3VAx+e5dZmIRFmhYgK1nCaM9VIQKFfws22c0/ZCKp11WhsUECFqT8LzCfV59Y9jwuX4gvv6zIPKWUyo8XAIVDg==
