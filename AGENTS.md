@@ -908,7 +908,7 @@ bypasses this verification and corrupts the approval chain.
 
 1. Run `cargo insta test -p foolish-core --lib` to generate `.snap.new` files.
 2. Present the `.snap.new` files to the human for review.
-3. **WAIT for explicit human approval** before accepting any snapshots.
+3. **WAIT for explicit human approval** before accepting any snapshots. The approval can come as embedded '(@Agent LGTM)' or similar very brief and direct approvals, agent may move .snap.new files to .snap in these cases ONLY.
 4. Only after human confirmation: run `cargo insta accept` or `cargo insta review`.
 
 **Forbidden actions (will be rejected):**
