@@ -30,6 +30,8 @@ ls | rev | sort -V | rev
 | [FOOP-51](FOOP-51.md) | AB list, name resolution, search_result, and short-circuit accumulation | Brewing | phase-2 | 2026-05-08 | hc |
 | [FOOP-61](FOOP-61.md) | UBCb State Machine — Per-Variant NYES Table | Draft | phase-2 | 2026-05-09 | hc |
 | [FOOP-71](FOOP-71.md) | Snapshot testing with cargo-insta for UBCb — approval testing infrastructure | Draft | meta | 2026-05-15 | Sisyphus |
+| [FOOP-22](FOOP-22.md) | Multi-signer snapshot signatures with appended utility signing and entire-file integrity | Draft | meta | 2026-06-01 | Sisyphus |
+| [FOOP-32](FOOP-32.md) | Repair rudimentary FVM evaluation and Sequencer formatting bugs found in snapshot review | Final | phase-2 | 2026-06-01 | Sisyphus |
 
 ---
 
@@ -41,6 +43,7 @@ ls | rev | sort -V | rev
 - [FOOP-2](FOOP-2.md) — Remove if-then-else from the language
 - [FOOP-4](FOOP-4.md) — Bare identifiers compile to anchored regex SearchFirs
 - [FOOP-5](FOOP-5.md) — Compile-time vs evaluation-time work
+- [FOOP-32](FOOP-32.md) — Repair rudimentary FVM evaluation and Sequencer formatting bugs
 
 ### Draft
 
@@ -48,6 +51,7 @@ ls | rev | sort -V | rev
 - [FOOP-41](FOOP-41.md) — UBCb message-passing variant; SPA1 parity plan
 - [FOOP-61](FOOP-61.md) — UBCb State Machine — Per-Variant NYES Table
 - [FOOP-71](FOOP-71.md) — Snapshot testing with cargo-insta for UBCb (approval testing infrastructure)
+- [FOOP-22](FOOP-22.md) — Multi-signer snapshot signatures with appended utility signing
 
 ### Brewing
 
@@ -74,7 +78,7 @@ ls | rev | sort -V | rev
 
 ### meta
 
-- [FOOP-1](FOOP-1.md), [FOOP-31](FOOP-31.md), [FOOP-41](FOOP-41.md)
+- [FOOP-1](FOOP-1.md), [FOOP-31](FOOP-31.md), [FOOP-41](FOOP-41.md), [FOOP-22](FOOP-22.md)
 
 ### phase-1
 
@@ -82,7 +86,7 @@ ls | rev | sort -V | rev
 
 ### phase-2
 
-- [FOOP-6](FOOP-6.md), [FOOP-7](FOOP-7.md), [FOOP-8](FOOP-8.md), [FOOP-01](FOOP-01.md), [FOOP-11](FOOP-11.md), [FOOP-51](FOOP-51.md), [FOOP-61](FOOP-61.md)
+- [FOOP-6](FOOP-6.md), [FOOP-7](FOOP-7.md), [FOOP-8](FOOP-8.md), [FOOP-01](FOOP-01.md), [FOOP-11](FOOP-11.md), [FOOP-51](FOOP-51.md), [FOOP-61](FOOP-61.md), [FOOP-32](FOOP-32.md)
 
 ### phase-3
 
@@ -106,6 +110,16 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 ---
 
 ## Last Updated
+
+**Date**: 2026-06-03
+**Updated By**: opencode / xiaomi/mimo-v2.5
+**Changes**: Promoted FOOP-32 from Draft to Final (all bugs fixed).
+
+**Date**: 2026-06-01
+**Updated By**: opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4
+**Changes**: Added FOOP-22 (multi-signer snapshot signatures) and FOOP-32
+(repair rudimentary FVM evaluation and Sequencer formatting bugs). Added
+to main index table, Draft status section, and respective phase sections.
 
 **Date**: 2026-05-08
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.7 xHigh effort
