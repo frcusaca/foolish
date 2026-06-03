@@ -1,22 +1,25 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
 ---
 INPUT:
 ```foolish
-{b = {x = 100; y = 200}; notFound = b?γ;}
+{b = {x = 100; y = 200, z={}}; not_found = b?γ; also_not_found=b.z^; still_not_found=b.z$; yet_not_found=b.w; this_too=not_found.everywhere}
 ```
 [0] RESULT:
 ```hssnap
 Brane [NK]{
-  b = 
-  Brane{
-    x = 
-    Int(100)
-    y = 
-    Int(200)
-  }
-  notFound = 
-  Search(pattern='γ', dir=BACKWARD, ANCHORED, [NK])
+    b = Brane{
+        x = 100;
+        y = 200;
+        z = Brane{
+        }
+    };
+    notˍfound = Search(pattern='γ', dir=BACKWARD, ANCHORED, [NK]);
+    alsoˍnotˍfound = HeadTail(HEAD, ANCHORED, [NK]);
+    stillˍnotˍfound = HeadTail(TAIL, ANCHORED, [NK]);
+    yetˍnotˍfound = Search(pattern='^w$', dir=BACKWARD, ANCHORED, [NK]);
+    thisˍtoo = Search(pattern='^everywhere$', dir=BACKWARD, ANCHORED, [NK])
 }
 ```
 COMMENTS:
@@ -25,6 +28,6 @@ anchored_search_fails_on_constant
 ```
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
-Foolish signature: smAiTsm5+PIvpJ5BUHb2KPcH/vV4OigR8DsqQqQu5ankfsvdaVsO6TlKgPUA+6D9ASbJ0ZfZULIy1gTmv6F1DQ==
-HS signature: cVCZ+sub8bEyFuAurNcUT4YmDANZDGfLd0FUJKkYv0gtNj7WKrecPza/z5HHlOOQPhmuRmkJaF5+qbe8k3JGDw==
-Comments signature: vSc9Nq+frPZA9Eon66g0MpoF64G/BDmXoDzDY/Jwk1Thwh+nRALXBmJ+ZXmSutRa0X1L1brM6JWO4aRNXJ0wBA==
+Foolish signature: oyctbt/35FijmRX65WsH2kUKpHWxRX0YKT6TiVa88Ud+6vC2moolessj1ZQt9iZomK1vPzCQk2tPh+nFa+WsBQ==
+HS signature: E4YW1JCsQOHayF201eERAuA4YV7lEKC5GBn354Cx/A3JxLpuZ/z5gF0r71Fbi3UL4yLPfNUV1pg/SjU4DzZcCw==
+Comments signature: ab83BYfD+CqGkKuZkpkxC1Os2+lonAgGR1rEVCHWoMm75xGuPA/qZEi5hmnGSxu2AHzlnXJwINTielg8VMN5CA==

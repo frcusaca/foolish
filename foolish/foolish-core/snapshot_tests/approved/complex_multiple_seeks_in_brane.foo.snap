@@ -8,22 +8,14 @@ INPUT:
 [0] RESULT:
 ```hssnap
 Brane{
-  a = 
-  Int(1)
-  b = 
-  Int(2)
-  c = 
-  Int(3)
-  d = 
-  Int(4)
-  e = 
-  Int(5)
-  s1 = 
-  Int(5)
-  s2 = 
-  Int(5)
-  s3 = 
-  Int(5)
+    a = 1;
+    b = 2;
+    c = 3;
+    d = 4;
+    e = 5;
+    s1 = 5;
+    s2 = 5;
+    s3 = 5
 }
 ```
 COMMENTS:
@@ -33,5 +25,5 @@ complex_multiple_seeks_in_brane
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: Gfc297+p/ydY63wBgTxhLSfebMocMRu7Rt2GSgnRvjPSnOYRxVBia/hTz9j1+PpLQHOJUdFU4Ra6+9IOoppVBQ==
-HS signature: edj5SyZtXPS84ENKkytDYKj88cVAGulEYy9I3fThO+iVMFOCd0nAg1C2/LE+ge+q9gSRp9ZF8X5fi3y/prXMDQ==
-Comments signature: ep5RsYvS8DNF9NmH1krXYXaqEMh/LLh5UAWqF4IcrtyQCrfsp+xmJnJG1NXXpUGh/uS2odiKhnjpRmALUHATCQ==
+HS signature: tc7QCk7pecIuP7iEHqFfTqL7h/reqNptYPKaXRKIVdYxGLGxseeETRSQSLBPYp/r6nsjkasxRofgvq4PXPC0Bw==
+Comments signature: /RSlMXYEj0dvA/0FMiGI4cjd8dsa7ANTs5jA8+74gUFgWI8/fqNlyrvt/X5rsSR3AoWMGHannobLTL3AgtDzCQ==

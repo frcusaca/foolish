@@ -158,26 +158,36 @@ Bug B may be a parser precedence issue or an evaluation order issue. Isolate fir
 - [x] Run `cargo test -p foolish-core --lib` — all tests pass
       (2026-06-01 15:50) — 91/91 passed
 - [x] Run `cargo check --workspace` — no compilation errors
-- [ ] Run `cargo clippy -p foolish-core` — no new warnings
-- [ ] Verify all 7 bug files are now `.snap` (promoted from `.snap.new`)
-- [ ] Verify no `@Agent` comments remain in any `.snap` file
-- [ ] Run `cargo test --workspace` — full workspace passes
+- [x] Run `cargo clippy -p foolish-core` — no new warnings
+      (2026-06-01 15:55) — 19 pre-existing warnings, none from our changes
+- [x] Verify all 7 bug files are now `.snap` (promoted from `.snap.new`)
+      (2026-06-01 15:55) — 0 .snap.new, 134 .snap
+- [x] Verify no `@Agent` comments remain in any `.snap` file
+      (2026-06-01 15:55) — 0 @Agent comments
+- [x] Run `cargo test --workspace` — full workspace passes
+      (2026-06-01 16:00) — all pass after merge
 
 ## Phase F: Documentation updates
 
-- [ ] Update `AGENTS.md` Last Updated section
-- [ ] Update FOOP-32.md status from Draft → Implementing → complete
-- [ ] Update FOOP-32.bugs.md status to "All bugs fixed"
+- [x] Update `AGENTS.md` Last Updated section
+      (2026-06-01 16:00)
+- [x] Update FOOP-32.md status from Draft → Final
+      (2026-06-01 16:00)
+- [x] Update FOOP-32.bugs.md status to "All bugs fixed"
+      (2026-06-01 16:00)
 
 ## Phase G: Cleanup and merge
 
-- [ ] Verify all work is complete in ${WORKTREE_FULL_FS_PATH} and committed to `foop/bugfix-rudimentary-foop-32`
-- [ ] Merge `foop/bugfix-rudimentary-foop-32` to alpha
-  - [ ] If merge conflicts arise:
-    - [ ] Repair conflicts
-    - [ ] Re-run `cargo test --workspace`
-    - [ ] Re-commit
-- [ ] Cleanup ${WORKTREE_FULL_FS_PATH}
-  - [ ] Check that this plan has all but Cleanup checkboxes completed
-  - [ ] Remove "${WORKTREE_FULL_FS_PATH}"
-  - [ ] This is the last checkbox to be checked in this plan
+- [x] Verify all work is complete in ${WORKTREE_FULL_FS_PATH} and committed to `foop/bugfix-rudimentary-foop-32`
+      (2026-06-01 16:00) — 3 commits: bug fixes, UBCb snapshots, doc updates
+- [x] Merge `foop/bugfix-rudimentary-foop-32` to alpha
+      (2026-06-01 16:05) — merge commit 07a89403
+  - [x] If merge conflicts arise:
+    - [x] Repair conflicts (discarded stale .snap.new in main repo)
+    - [x] Re-run `cargo test --workspace` — passes
+    - [x] Re-commit
+- [x] Cleanup ${WORKTREE_FULL_FS_PATH}
+      (2026-06-01 16:05)
+  - [x] Check that this plan has all but Cleanup checkboxes completed
+  - [x] Remove "${WORKTREE_FULL_FS_PATH}"
+  - [x] This is the last checkbox to be checked in this plan

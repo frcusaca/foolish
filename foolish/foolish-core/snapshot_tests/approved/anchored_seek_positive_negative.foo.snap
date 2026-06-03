@@ -8,14 +8,13 @@ INPUT:
 [0] RESULT:
 ```hssnap
 Brane{
-  a = 
-  Brane{
-    Int(1)
-    Int(2)
-    Int(3)
-  }
-  Int(2)
-  Int(3)
+    a = Brane{
+        1;
+        2;
+        3
+    };
+    2;
+    3
 }
 ```
 COMMENTS:
@@ -25,5 +24,5 @@ anchored_seek_positive_negative
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: BKWu/+nqbIOBuwM+3c1LykkZos0sjI0tNOXKBnetgwOiqEAp50mz8FDztfNVy37v3uU6mgOmEfP2GNtPXKS6AA==
-HS signature: W2T71p2wgytr+1c6fTZdIpK0XYIJx/CMjUN3agdzNh5nxHo2QsyKWAwC+60qPWQdx4gGpsqPCdAjgkpTmxnpAg==
-Comments signature: Hz1HiwACaHsWXt2ZjE66Y+HONGHWk9j7rW2SKeoL6q46pSjQZIvLxz01EIF4q1f5k8KBSIFs/8KLPtMJJIC0DA==
+HS signature: fedYUsYjpEplWgTZbsqnBFutSwx4vXT+RGsdkI0fNWtm69QXAJf+6nW+KXqdpXOQhpE1FjkLSTnY9+7pS1OfBw==
+Comments signature: zVQ5AslryJOTycI3D0iJrLJAr2gxNTzQENOODOxAZQ4Q5ZpoA5znDS8ZRTBwkofg9tF4w0n1mQQ82FvOJv59CQ==

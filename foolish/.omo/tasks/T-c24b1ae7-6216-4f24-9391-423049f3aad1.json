@@ -1,0 +1,10 @@
+{
+  "id": "T-c24b1ae7-6216-4f24-9391-423049f3aad1",
+  "subject": "Fix Bug B: Search precedence breaks implicit concatenation",
+  "description": "Fix Bug B where `b1 target.c` parses incorrectly — search has higher precedence than concat. Run isolation test first to determine if parser or evaluator issue. Work in worktree: /home/hcbusy/opencodes/mimo/tmp/foolish-worktrees/bugfix-rudimentary-foop-32/foolish",
+  "status": "completed",
+  "activeForm": "Diagnosing search vs concatenation precedence bug",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_17217e90cffegBlIfwBAwupgt6"
+}

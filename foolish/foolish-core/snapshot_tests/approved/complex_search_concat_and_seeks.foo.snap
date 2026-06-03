@@ -8,30 +8,19 @@ INPUT:
 [0] RESULT:
 ```hssnap
 Brane{
-  data = 
-  Brane{
-    x = 
-    Int(1)
-    y = 
-    Int(2)
-    z = 
-    Int(3)
-  }
-  copy = 
-  Brane{
-    x = 
-    Int(1)
-    y = 
-    Int(2)
-    z = 
-    Int(3)
-    w = 
-    Int(4)
-  }
-  last = 
-  Int(4)
-  first = 
-  Int(1)
+    data = Brane{
+        x = 1;
+        y = 2;
+        z = 3
+    };
+    copy = Brane{
+        x = 1;
+        y = 2;
+        z = 3;
+        w = 4
+    };
+    last = 4;
+    first = 1
 }
 ```
 COMMENTS:
@@ -41,5 +30,5 @@ complex_search_concat_and_seeks
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 2sGCo//bsMS6EbNWvLkDc/IST2lRsoHgtK6Fc0UBF834NnteSGmsi8JcAAOcOFOaH7GJfG8BAJfr4Duct/GuCg==
-HS signature: hWrsha/Pxho079SQ7RbIQNFwiEUkHF5qu05CNQWBmK5UeeqYx/w8GKhE1H94pbr9R/mbQiSPRXUKliEz0JDFDA==
-Comments signature: xTWFAYjgJ16jme708CkcrCqJVkIAWx1T/G6lb/r3CUTu/L9kPtXCPv4JN3047X16TuAGg1+EtXqTE78kb0vnCw==
+HS signature: sZvgcR+OF814TOkbHN1M3oYKwz9ZvGmKrGDvXVrzy4zchJFgTMPVaOq3XFoCXN/9bpFUkvdU0Tj3V1e5yYtWAg==
+Comments signature: ht+tno5zHnwBYIrDA6ZwP+4EzKw6crixw0OW1Cxthp968wPjIbLfCzZov1+cHosileIVHeQpkpe8TkENp9s6CQ==

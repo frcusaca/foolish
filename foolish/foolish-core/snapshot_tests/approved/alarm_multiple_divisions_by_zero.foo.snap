@@ -8,12 +8,9 @@ INPUT:
 [0] RESULT:
 ```hssnap
 Brane [NK]{
-  a = 
-  ??? (division by zero, [NK])
-  b = 
-  ??? (division by zero, [NK])
-  c = 
-  ??? (division by zero, [NK])
+    a = ??? (division by zero, [NK]);
+    b = ??? (division by zero, [NK]);
+    c = ??? (division by zero, [NK])
 }
 ```
 COMMENTS:
@@ -23,5 +20,5 @@ alarm_multiple_divisions_by_zero
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: J6vDnAXsJg+GZvTRthFUnRw+A4dE5yKGm5C0E70ARHJzKvpxFAlNpaFk+XVPX94IwwVB2O9qchh5bMQohmFbAw==
-HS signature: qXSpMk6ALoH1DMq+8wS8MzFa7WIjWKQ5C6llIcahaUxVqJ3k4K3ZY89A3uA7kF1moPvH/wzG29cJfv5axy3IDg==
-Comments signature: YrEPXxR6UjeGLeLjJHm3g9GBOH7J0sDECrXEUzKrrR1VOdVwPvLgPBn9DT5N5fb2J9zsBUhXJbL5rpohIoiBCg==
+HS signature: swz2mr8Wjb1W+uXv7L44nGmGhU17FkCA3j1pbVJZCA4J04BIkaJM7jGyXS1R6tr/BlMeC2OMeMV2acnKzDVYDA==
+Comments signature: kS7dqCmM8CVkIC7FVF3nw6Xb20zEgyxnMrTsWVJIMqoeFBfjLpnqiTKXhvEFW5w9ykyOBuv//mRTYrelsCtqDQ==

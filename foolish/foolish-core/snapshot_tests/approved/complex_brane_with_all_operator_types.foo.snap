@@ -8,16 +8,11 @@ INPUT:
 [0] RESULT:
 ```hssnap
 Brane{
-  add = 
-  Int(3)
-  sub = 
-  Int(7)
-  mul = 
-  Int(20)
-  div = 
-  Int(5)
-  neg = 
-  Int(-7)
+    add = 3;
+    sub = 7;
+    mul = 20;
+    div = 5;
+    neg = -7
 }
 ```
 COMMENTS:
@@ -27,5 +22,5 @@ complex_brane_with_all_operator_types
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: hqeO50VGIdDIO3wZcz25VVeUZef54veeVOxlx1MmVZKB8DMszHYbRyT7n7qP+IAEflplyRVzpHwt+i//yxwYDw==
-HS signature: 3geG01XRJ10eha+LoB/KNfQ0klSKOl+6AHBZZbS8nNkuR3GNAuKyp2psuBNyV9trpQ2MPZtZQqFmYVHQ41qOBA==
-Comments signature: YaOsWcozuCTwpaeYIpJv73KnP9hINgUG9TJ+WbfVkoN+grWwBOD9Hdz3FKBWYUyqpyns7OPZGRWiwpzdLxHQCA==
+HS signature: 6ZwTkspYewPPHJUIGeyKtQhTatuwx8Vp4WsTLgb5EWc1IclQGckAdZKl+ECYej3S7SpFiQWemzqfATPzw1yvCQ==
+Comments signature: EAOlztCzD/zBejdaRj16OiwNjH8CpTiZhMq2+C9kmtJHy/tsHffwANe9MRzaQ05aWTIDXsO6gYIpctTdIQnABQ==

@@ -8,12 +8,9 @@ INPUT:
 [0] RESULT:
 ```hssnap
 Brane{
-  a = 
-  Int(-5)
-  b = 
-  Int(6)
-  c = 
-  Int(22)
+    a = -5;
+    b = 6;
+    c = 22
 }
 ```
 COMMENTS:
@@ -23,5 +20,5 @@ complex_negative_results
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: w0kRz9DrOhrLrXchn/UL2sGvqOvxyKftnm2oPB3qFJVbAJ+jHdFxqn19CiTIOUNiYg1a9L3xBe0N6AkgwxU4Dg==
-HS signature: R/2ScOH9ysZdrTsujgfMKkrs3nz2YdL5BDpeut+Hz1rCQuNMjfDBxoL5mfm6B+2dMnkQ40hS7wL9bfXkPMTfCQ==
-Comments signature: fbzT38e/eKaNfzcz13DIp2/rToVuL0SuViijkxlxOFP4mqRokK+mIQdU+0FCutaCtjYhOtliM3sYh52f4+FDDQ==
+HS signature: dBe6Yrzer8iyyE6pYsRyewDR7PALF5+wtqev4ZGDzMR3s1lrjEj1Ay+CAYSmMN4Ex/jcVr2Bm41Q8qR0RsX9BQ==
+Comments signature: /p/Oci/q4ON53PnmX9MpLKWb3TB0nGmq5CG7+0hV42f21dVGxPteqPZecgEFvBcs+Yo+fHuJX3EF6tml6uGUCQ==

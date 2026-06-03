@@ -8,16 +8,11 @@ INPUT:
 [0] RESULT:
 ```hssnap
 Brane{
-  x = 
-  Int(10)
-  y = 
-  Int(20)
-  z = 
-  Int(30)
-  sum = 
-  Int(60)
-  avg = 
-  Int(20)
+    x = 10;
+    y = 20;
+    z = 30;
+    sum = 60;
+    avg = 20
 }
 ```
 COMMENTS:
@@ -27,5 +22,5 @@ complex_brane_with_operations_and_search
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: eIJL0ws12Aay/OZZDwEfhuORsRcoD771FKTX/isyLfFNwYZ+cAlF3iL6fReWj0duYc02l/q9RN6crj+iPp0rAg==
-HS signature: mTx3vJIu9i5WjpMekXTkZzzQhKX+4YnxB7EfhR6okHPvyAJIvPKf2xjKe14BV+8nlqb9RdKPHRw8ZlFpUwSKCg==
-Comments signature: Mi2kOZWbl6QnRaAFZa3tlYyn/80gkxEuqJnqR4JFqNI3ApVwZ0xUjCEfUbsNkm+Po3BQ6ppJ6WXf8QsVR6cNBg==
+HS signature: kl4mumUxktrW/UJTHeqSBdn9BH5FQfRqA8Y6HI4qjLL9u06AzBPT7euT+3w4fF5PSlUAEWS+nkR5yHi9zNi7Bg==
+Comments signature: 2eAtnpssgwPGU4L8l08h1cTwlYSGZiSv2i4oo4PpJl8I2IroLi8B65i4E4JFVyI4XBGYl91AvnL5nbfcWfefCQ==

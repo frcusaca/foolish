@@ -8,12 +8,9 @@ INPUT:
 [0] RESULT:
 ```hssnap
 Brane [NK]{
-  a = 
-  Int(5)
-  b = 
-  ??? (division by zero, [NK])
-  c = 
-  Int(5)
+    a = 5;
+    b = ??? (division by zero, [NK]);
+    c = 5
 }
 ```
 COMMENTS:
@@ -23,5 +20,5 @@ alarm_division_by_zero_in_brane
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: R5NlChpi9B03XMNXz5w8KRK+Sd2plSW6cxbcAimBapvhbQ80i2CDfkavPhCpAMdIMWlRdbvEmEYXMv2d78/2Aw==
-HS signature: pP1PRhOqGV3e6I4E5//hJdhNHRIInMJjX/TW4jtcBZblIbqr/bntJDg1MhH0Mc4aXhAPWSajzxjHK7tgZviMBw==
-Comments signature: gbKOzSJzsMhu/6sk+e3JHrFcznXzlyIaAsb3vqK3CtYp8nE1Bf7DjchQHa7nsKSGvzlUw8G0fHKv3TJU+y23DQ==
+HS signature: /lWY9ibJCXGFCcUkN9UU6FuUN/AnxOy2V6kfZ4S8uKoS8YLsVWuluFNMbSF2JXcuNmAZTImui1pMa9FoJmAKDQ==
+Comments signature: VjTscSfC6U24LjXt+ms9JclUARo0TSKxli7OS0rkl46Kd2/pFHSPRVDqgPmqAiJOk0ZuKlcRVZPng2F+4UzRCQ==

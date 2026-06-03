@@ -8,19 +8,13 @@ INPUT:
 [0] RESULT:
 ```hssnap
 Brane{
-  a = 
-  Int(10)
-  b = 
-  Int(20)
-  sum = 
-  Int(30)
-  nested = 
-  Brane{
-    inner = 
-    Int(15)
-  }
-  result = 
-  Int(15)
+    a = 10;
+    b = 20;
+    sum = 30;
+    nested = Brane{
+        inner = 15
+    };
+    result = 15
 }
 ```
 COMMENTS:
@@ -30,5 +24,5 @@ complex_full_program_with_all_features
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 1SXA6C7yxC6ZpiMvulmMy1eFI1Es1+sQ6hUtwarY1vKYOMtGrpNqx+rd59gPsyK1pqAjtcEAE57YwFIWqdU2CA==
-HS signature: vfIK0+kvQjUN3ZI5QBGFgNDJ1AeNgUv1GILLyJNce6H2XBWLe1gDzL4Miq9+HFx8bvmXtBV1kc5wtr4X66eJDA==
-Comments signature: 61QrNkMU2KGxxFZ1FJMmx25znx8RshpkW9yDftmkNRB7KmuA0frIrj+5Qf14xTzvgSqdy2g4EE8dokg0BD3bAQ==
+HS signature: a7MDFHJOtUt9TbsTzTwSJi1VblHUeBPUmK7JpDV/v05/tFjwK89IqmWal6nNrW8NxU1AYh1/QpiyiNOUu9KlDQ==
+Comments signature: OdIuqVLr/mwPqNvE6PQIJ+ko1h5fvLPQBEKS3H9PDLrux7M/izXSmE7T+NyiRPsxXH5S2EcV+eQcFohzRQYVAQ==

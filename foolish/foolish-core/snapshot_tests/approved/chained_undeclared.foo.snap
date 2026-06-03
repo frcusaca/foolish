@@ -8,14 +8,11 @@ INPUT:
 [0] RESULT:
 ```hssnap
 Brane [WOCONSTANIC]{
-  bad = 
-  Search(pattern='^undeclared$', dir=BACKWARD, UNANCHORED, [ECONSTANIC])
-  y = 
-  Search(pattern='^bad$', dir=BACKWARD, UNANCHORED, [WOCONSTANIC])
-    Search(pattern='^undeclared$', dir=BACKWARD, UNANCHORED, [ECONSTANIC])
-  z = 
-  Search(pattern='^y$', dir=BACKWARD, UNANCHORED, [WOCONSTANIC])
-    Search(pattern='^undeclared$', dir=BACKWARD, UNANCHORED, [ECONSTANIC])
+    bad = Search(pattern='^undeclared$', dir=BACKWARD, UNANCHORED, [ECONSTANIC]);
+    y = Search(pattern='^bad$', dir=BACKWARD, UNANCHORED, [WOCONSTANIC])
+      Search(pattern='^undeclared$', dir=BACKWARD, UNANCHORED, [ECONSTANIC]);
+    z = Search(pattern='^y$', dir=BACKWARD, UNANCHORED, [WOCONSTANIC])
+      Search(pattern='^undeclared$', dir=BACKWARD, UNANCHORED, [ECONSTANIC])
 }
 ```
 COMMENTS:
@@ -25,5 +22,5 @@ chained_undeclared
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: eB8BINHym3bU4SkJcN6e2J7Nyt8aIXqpM17n8dWWv10YjHURVEWNewoNwCdC9djfutCCillXxps0lBuGqyWABw==
-HS signature: EaId7SEIdP6z+LnegZqkdacly0XjekT663bwLF30Z/V4WxTpJBAud2IwCLDApBiYJnI52NN8Q3B1G4OZvQr7CA==
-Comments signature: 7GlH+y/3d52d1SfVC//JwcaIchpunfX+7j8WWAvcLHc0FcPPMZc/LOQmsKtpGLFzz4jzJQ+7UT20gM5CRBCFBQ==
+HS signature: fvGK/ri+ayk9TPju1WiEv6JuQL/1ZHQYhJ7zlcmL/oKF5uXKsNp+KvO2M0UkLFMaJiX49U7Z9h7qTDj019mXBQ==
+Comments signature: VIQdLSBcVyfz+urgCKsE8zQdMGq2AnQUD8cshTPZO/XjQP4CI6W5RDkEoMFFfCNFzc8KtOqzVgvIOoVbsxIJAg==

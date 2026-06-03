@@ -8,20 +8,15 @@ INPUT:
 [0] RESULT:
 ```hssnap
 Brane [NK]{
-  b = 
-  Brane{
-    Int(10)
-    Int(20)
-    Int(30)
-  }
-  last = 
-  Int(30)
-  second = 
-  Int(20)
-  first = 
-  Int(10)
-  oob = 
-  Index(offset=-4, ANCHORED, [NK])
+    b = Brane{
+        10;
+        20;
+        30
+    };
+    last = 30;
+    second = 20;
+    first = 10;
+    oob = Index(offset=-4, ANCHORED, [NK])
 }
 ```
 COMMENTS:
@@ -31,5 +26,5 @@ anchored_seek_negative_boundary
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: Hz+E00U3C3CsBvmDBDvsvrUBkxqorumzrBINQuB6usuo3Tc+B3G3S66sRaCAd8nWs36mDjbYF6rjX7Ps0UoJBw==
-HS signature: v3vzjMvGI1RQGajHcUI2TztbWoIMoJ4IloaQetrG2QS655GCqxsUazObuUoGZMTqwsBFmzwMjkIVGunbqxIcCg==
-Comments signature: fwkZ2CYk4ZvRE5K/YNc3Sv85n7ntLWaANzp0LweMlZJXrcsWKdqQwbx83BbVjCVNnwYCBOUZ3R6tmc4wGksgCg==
+HS signature: HXPasRh95I1JYf0Y8UAWJ5VlRl/yLgl0CkFgeVT0x5WYLi3e1fMp/XEcRwtJQt/Of3bBAcK1KZI90Bc4Bg+/CQ==
+Comments signature: 0mYf8q6+o4eewvBZqL5X1+ueroM4O26FuL+ng+mHsL8E43/75ym+1mHHMFuPBaIt/SVlKMOwSVPEGmVELmnpCQ==

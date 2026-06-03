@@ -1,0 +1,10 @@
+{
+  "id": "T-6b5516c8-f949-4870-aadf-1c950992cd68",
+  "subject": "Fix scope resolution bugs A and C in nested brane evaluation",
+  "description": "Bug A: Forward reference resolves across 2 brane boundaries. Bug C: Parent scope variable not found in nested brane.",
+  "status": "completed",
+  "activeForm": "Fixing scope resolution bugs A and C",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_171ff351fffe5s9piUxjSfEJFr"
+}

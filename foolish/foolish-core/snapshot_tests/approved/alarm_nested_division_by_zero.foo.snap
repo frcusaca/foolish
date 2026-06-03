@@ -8,11 +8,9 @@ INPUT:
 [0] RESULT:
 ```hssnap
 Brane [NK]{
-  outer = 
-  Brane [NK]{
-    inner = 
-    ??? (division by zero, [NK])
-  }
+    outer = Brane [NK]{
+        inner = ??? (division by zero, [NK])
+    }
 }
 ```
 COMMENTS:
@@ -22,5 +20,5 @@ alarm_nested_division_by_zero
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: gvKrH1bsn9QVcyXqkbc0hR4kUMJq3+tW1PimVP+cOkUuDFySMFn68os3pxSYk7Efd/rzIWpvqgFsYLlN7ryMCg==
-HS signature: NW0gDqK0iIQadcJ3mP4a2UtxtExFYovSsuGl3Yliy+ItsklJh+sQpz3U82/Kl8wjUPMYNCn6mJM0YtOWHknxDw==
-Comments signature: +kuLaHY79COJavkrPdryOe4rM/ahZVjylf8CBjSWcjCbbrKnKXmHadjzj5+3hI1HvX9/pRSvvd/voPCUAYDCCg==
+HS signature: 7GcnwhbLlYb061L1HKWPmHt0ldI/+4g5o3ZiWcJdSykU4K5DnnlcVgEVDFQFS4vHMGKevenvcA8Sn1kLep2OAg==
+Comments signature: KMFheEzNj8ZoN9UEOoGWE00oNo1T7yuJocVb/KOZOnWn/iOUkXzFWtxxd7b1b5Q3pU9KznSmxkcSQM9O4J4eDw==

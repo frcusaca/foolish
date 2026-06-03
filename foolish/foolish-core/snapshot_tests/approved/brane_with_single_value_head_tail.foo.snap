@@ -8,14 +8,11 @@ INPUT:
 [0] RESULT:
 ```hssnap
 Brane{
-  b = 
-  Brane{
-    Int(42)
-  }
-  h = 
-  Int(42)
-  t = 
-  Int(42)
+    b = Brane{
+        42
+    };
+    h = 42;
+    t = 42
 }
 ```
 COMMENTS:
@@ -25,5 +22,5 @@ brane_with_single_value_head_tail
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: Tq1w19+A470fPIptb2wFZnTxYSpskC6MdJ7ASRFV9QUfO5wS0xySTGF67G1N0cabm0/WjR0iUvteZl9gXvolBg==
-HS signature: bFOqOnh+TnAui3LNE12JfbXZTu1eQPh+Wx7HnIJOJyrxf3e0jBTd3CM0xJIzvdDwbKr56uLqgDFuByGH+PYVBg==
-Comments signature: uBdm1ByxUhRe+lVFrMWSmoKkfPIzFZ73dUdR8isRBjxhb3gGDpFXkxHosdVf1/4zCgS4gzUBSQ1GEFFDVvD3DA==
+HS signature: 9y3Yz6t8ZyYLrhk/fYqWjKUapAmjN7v9i3Am4+60bYLEGkBaxxZ5HHMG1ZZrGVHESh+d2Y+eNjmeT8pSVnjfDw==
+Comments signature: yQM80kfiyRNm8PSg/rX7jcHxC8vzCXFlgPS558nzRHQUUZOa8wFaSJWhBrM5zpskhLEIqE4h4+ye7ZN50yAZDw==

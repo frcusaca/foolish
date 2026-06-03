@@ -299,7 +299,7 @@ fn test_sequencer_ref_format_constant() {
     let fir = ConstantIntFirBuilder::new(42).build();
     let ref_seq = HumanizingSequencerRef::new(&fir);
     let out = ref_seq.format_for_snap_test();
-    assert!(out.contains("Int(42)"), "Expected Int(42) in: {}", out);
+    assert!(out.contains("42"), "Expected 42 in: {}", out);
 }
 
 #[test]

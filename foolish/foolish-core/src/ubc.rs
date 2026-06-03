@@ -244,8 +244,7 @@ pub fn step_boxed(fir: &FirRef, scope: &Scope) -> Result<Fir, UbcError> {
 /// Recompute brane state from statements and update the brane in-place.
 /// Uses progressive scoping: only names from statements evaluated before
 /// the current index are visible. This prevents forward references from
-/// resolving across brane boundaries (Bug A) and avoids Rc mutation of
-/// shared scope entries (Bug C).
+/// resolving across brane boundaries.
 pub fn re_step_brane_bodies(brane: &mut NormalBraneFir, scope: &Scope) -> Result<(), UbcError> {
     let statements: Vec<StatementFir> = brane.statements.clone();
 

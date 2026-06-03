@@ -8,23 +8,16 @@ INPUT:
 [0] RESULT:
 ```hssnap
 Brane{
-  a = 
-  Brane{
-    x = 
-    Int(3)
-  }
-  b = 
-  Brane{
-    y = 
-    Int(12)
-  }
-  c = 
-  Brane{
-    x = 
-    Int(3)
-    y = 
-    Int(12)
-  }
+    a = Brane{
+        x = 3
+    };
+    b = Brane{
+        y = 12
+    };
+    c = Brane{
+        x = 3;
+        y = 12
+    }
 }
 ```
 COMMENTS:
@@ -34,5 +27,5 @@ complex_concat_with_operations
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: hQZ3XlbJGCwNVmkTvvRiWQV1g6p/STn4Fd9yT0++sGLitIb/zHnnNHPywvmqVpMHd5cktMT7LFhzayFSXQ4mAw==
-HS signature: l7jSUcqgEpVpFGz7W+nd2xRazmCZyI0T6T5cizbQ4ip9RMHEJkkBkmvrNhhtESRd9+AIxJGh+IAZHsJ6j5/jCg==
-Comments signature: /cKQ2IcA1C/6cFIydqqWnBFDb8IJZbYXztH3Bv0NjNMLtwbpmzhNVC1A66XIWwlm1IdTpU3jwZTiVdCBtIG9CA==
+HS signature: wwokplVTK7LpkJIOw2EtN5aaR5RCkREZwP4Qv4C1YniTG7BIELwkid5IJmF25/LG4Pck4wG9bcrkiZUCsN30BA==
+Comments signature: QfdqrVTB+lZEEjbDdteHxn/o7icjUSbG3ZLHXoV5HjBe8AEBEFQN2X4N9rwEmZYLpF+vxoIzkoqFyUeUWjzBCw==

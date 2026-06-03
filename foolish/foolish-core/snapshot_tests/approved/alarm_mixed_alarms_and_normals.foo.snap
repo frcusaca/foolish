@@ -8,12 +8,9 @@ INPUT:
 [0] RESULT:
 ```hssnap
 Brane [NK]{
-  good = 
-  Int(42)
-  bad = 
-  ??? (division by zero, [NK])
-  alsoˍgood = 
-  Int(30)
+    good = 42;
+    bad = ??? (division by zero, [NK]);
+    alsoˍgood = 30
 }
 ```
 COMMENTS:
@@ -23,5 +20,5 @@ alarm_mixed_alarms_and_normals
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: kBaaMzbnr4qDtWJNdcICY6jK5Ykr2LoUMV2dcZKcsk5rCWB5pYd+j4zzXUYfpPvvzmjGwRirqIcXmCMQCYBuBg==
-HS signature: agRFRaAQSmc1XAqzkFFW5y+dw/+T3toQGlrXUVsUXq+lrWso70Z0lF2QGVvBlO12eg5G6p706hPnX+x0/wtkCA==
-Comments signature: LS4vPYMwHZMzCP0OmgxTNViR1Tp5sj37py7eQGQXCLDz3JuMfqQ9jE4kSUYqOoCL/D0Y9aCmTkMzGSM0o5PxDA==
+HS signature: ZBkEYFav79sTtCUuQri7/di+IS557HJusGjLmsRp1N7MTyloTGY2XmHpZulbhnRaXxRtJDj+GqxlPJ18hAmvDQ==
+Comments signature: 4TiNkI64ICtu2cx/tLzv+uLky0jTjxGDtR0JgiM5nUdebjPuLpkvj6ja3A3FGTIPsQUi0QLbmqft8Han39cCBQ==

@@ -17,19 +17,14 @@ INPUT:
 [0] RESULT:
 ```hssnap
 Brane [NK]{
-  l1 = 
-  Brane [NK]{
-    l2 = 
-    Brane [NK]{
-      l3 = 
-      Brane [NK]{
-        bad = 
-        ??? (division by zero, [NK])
-        good = 
-        Int(42)
-      }
+    l1 = Brane [NK]{
+        l2 = Brane [NK]{
+            l3 = Brane [NK]{
+                bad = ??? (division by zero, [NK]);
+                good = 42
+            }
+        }
     }
-  }
 }
 ```
 COMMENTS:
@@ -39,5 +34,5 @@ alarm_division_by_zero_deeply_nested
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 9+hN9xh2AnvpsWWuGKsfidEhKUxSf4S277v595KftDtGXxhmA+l67pau06eTwSEhoUa+db/KrL8m5f7YXhr0CA==
-HS signature: gvADSb0eOtcnOggKdC8fMzqib+oV+A6hE+hW0z5LOInfhyGr8ME3UCP/0ymIq1EknDtMC0lx5E1oxQpTSYmRCQ==
-Comments signature: oTbZV87oS1QY9shVFF3ZX/jaOh7/9CqgJjHhK3VfC3Lr76+hBOfmL9vWDxFNgCwC6PjKTFES/G0IKSrhK9PRDA==
+HS signature: apxTG8q1BbodPq4nH33HlquJlxk/UCkLOHJbNiFll9/eI05Gi+Fu5JKs0Z/egxnwimRA5uGY1tkk9cvADq/4CQ==
+Comments signature: z7NacD7atqbiz73u4K6V2FmkqTW3PijZeZR2PbDbX6Zu2SlOCFOo1pkdAYhQ4FfyBjQGGnHbObNK4IsMq3tnDw==

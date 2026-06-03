@@ -1,6 +1,9 @@
 use crate::fir::{Fir, FirQueryable, StatementSimple};
 use std::fmt::Write;
 
+/// Indentation depth for brane body content relative to the brane's `{` line.
+const INDENTATION_BODY_OF_BRANE: usize = 2;
+
 #[derive(Default)]
 pub struct Sequencer {
     steps: u64,
@@ -67,7 +70,7 @@ fn format_fir_q(buf: &mut String, fir: &dyn FirQueryable, depth: usize) {
     };
 
     if let Some(value) = fir.hs_constant_int() {
-        let _ = writeln!(buf, "{}Int({})", indent, value);
+        let _ = writeln!(buf, "{}{}", indent, value);
         return;
     }
     if let Some((reason, _alarm)) = fir.hs_nk() {
@@ -150,16 +153,134 @@ fn format_fir_q(buf: &mut String, fir: &dyn FirQueryable, depth: usize) {
             String::new()
         };
         let _ = writeln!(buf, "{}{}Brane{}{{", indent, chars, brane_state);
-        for stmt in &statements {
+        let body_depth = depth + INDENTATION_BODY_OF_BRANE;
+        let body_indent = "  ".repeat(body_depth);
+        let last = statements.len().saturating_sub(1);
+        for (i, stmt) in statements.iter().enumerate() {
             if let Some(ref name) = stmt.name {
-                let _ = writeln!(buf, "{}{} = ", "  ".repeat(depth + 1), name);
+                let _ = write!(buf, "{}{} = ", body_indent, name);
+                format_fir_q_inline(buf, &*stmt.body, body_depth);
+            } else {
+                format_fir_q(buf, &*stmt.body, body_depth);
             }
-            format_fir_q(buf, &*stmt.body, depth + 1);
+            if i < last && buf.ends_with('\n') {
+                buf.pop();
+                buf.push(';');
+                buf.push('\n');
+            }
         }
         let _ = writeln!(buf, "{}}}", indent);
         return;
     }
     let _ = writeln!(buf, "{}Unknown({})", indent, fir.hs_variant());
+}
+
+/// Like `format_fir_q` but skips the leading indent on the first line.
+/// Used when the first line is already positioned (e.g., after `name = `).
+fn format_fir_q_inline(buf: &mut String, fir: &dyn FirQueryable, depth: usize) {
+    let indent = "  ".repeat(depth);
+    let state = fir.hs_state();
+    let state_sfx = if state.should_show_nyes() {
+        format!(", [{}]", state)
+    } else {
+        String::new()
+    };
+
+    if let Some(value) = fir.hs_constant_int() {
+        let _ = writeln!(buf, "{}", value);
+        return;
+    }
+    if let Some((reason, _alarm)) = fir.hs_nk() {
+        let _ = writeln!(buf, "??? ({}{})", reason, state_sfx);
+        return;
+    }
+    if let Some((op, operands)) = fir.hs_operator() {
+        let _ = writeln!(buf, "Operator({}{})", op, state_sfx);
+        for operand in &operands {
+            format_fir_q(buf, &**operand, depth + 1);
+        }
+        return;
+    }
+    if let Some((pattern, direction, anchored, _anchor, target)) = fir.hs_search() {
+        let anchor_str = if anchored { "ANCHORED" } else { "UNANCHORED" };
+        let _ = writeln!(
+            buf,
+            "Search(pattern='{}', dir={}, {}{})",
+            pattern, direction, anchor_str, state_sfx
+        );
+        if let Some(ref t) = target {
+            format_fir_q(buf, &**t, depth + 1);
+        }
+        return;
+    }
+    if let Some((offset, anchored, _anchor)) = fir.hs_index() {
+        let anchor_str = if anchored { "ANCHORED" } else { "UNANCHORED" };
+        let _ = writeln!(buf, "Index(offset={}, {}{})", offset, anchor_str, state_sfx);
+        return;
+    }
+    if let Some((is_head, anchored, _anchor)) = fir.hs_head_tail() {
+        let ht = if is_head { "HEAD" } else { "TAIL" };
+        let anchor_str = if anchored { "ANCHORED" } else { "UNANCHORED" };
+        let _ = writeln!(buf, "HeadTail({}, {}{})", ht, anchor_str, state_sfx);
+        return;
+    }
+    if let Some(ref expr) = fir.hs_stay_foolish() {
+        let _ = writeln!(buf, "StayFoolish({})", state_sfx);
+        format_fir_q(buf, &**expr, depth + 1);
+        return;
+    }
+    if let Some(ref expr) = fir.hs_stay_fully_foolish() {
+        let _ = writeln!(buf, "StayFullyFoolish({})", state_sfx);
+        format_fir_q(buf, &**expr, depth + 1);
+        return;
+    }
+    if let Some((elements, merged)) = fir.hs_concatenation() {
+        let _ = writeln!(
+            buf,
+            "Concatenation(elements={}{})",
+            elements.len(),
+            state_sfx
+        );
+        for elem in &elements {
+            format_fir_q(buf, &**elem, depth + 1);
+        }
+        if let Some(ref m) = merged {
+            format_fir_q(buf, &**m, depth + 1);
+        }
+        return;
+    }
+    if let Some((characterizations, statements)) = fir.hs_brane() {
+        let chars = if characterizations.is_empty() {
+            String::new()
+        } else {
+            format!("{}'", characterizations.join(" "))
+        };
+        let brane_state = if state.should_show_nyes() {
+            format!(" [{}]", state)
+        } else {
+            String::new()
+        };
+        let _ = writeln!(buf, "{}Brane{}{{", chars, brane_state);
+        let body_depth = depth + INDENTATION_BODY_OF_BRANE;
+        let body_indent = "  ".repeat(body_depth);
+        let last = statements.len().saturating_sub(1);
+        for (i, stmt) in statements.iter().enumerate() {
+            if let Some(ref name) = stmt.name {
+                let _ = write!(buf, "{}{} = ", body_indent, name);
+                format_fir_q_inline(buf, &*stmt.body, body_depth);
+            } else {
+                format_fir_q(buf, &*stmt.body, body_depth);
+            }
+            if i < last && buf.ends_with('\n') {
+                buf.pop();
+                buf.push(';');
+                buf.push('\n');
+            }
+        }
+        let _ = writeln!(buf, "{}}}", indent);
+        return;
+    }
+    let _ = writeln!(buf, "Unknown({})", fir.hs_variant());
 }
 
 /// Format a StatementSimple inline for compact output (character-based indent).
