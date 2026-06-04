@@ -7,7 +7,7 @@ INPUT:
 {b={x=10}; c = b {y=20}; result = c.x + c.y;}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane{
     b = Brane{
         x = 10
@@ -26,5 +26,5 @@ search_through_concatenation
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 9DLYRoHvr3V1/5qjv3++3QYoGXWioowdvBAbjKn8LjHxI1Wl1cKHUPfJwwRGXhOaznyIGi9JwcVLQUcPqv+EAQ==
-HS signature: NIuXlCdcqmmNtCFnFxXxU1C++hkcwGGaTMPoxR9uw8AMerwwBPisr/BqXv9Z2F5in6KByOmRKqyRy3sGkihHCg==
+HFS signature: NIuXlCdcqmmNtCFnFxXxU1C++hkcwGGaTMPoxR9uw8AMerwwBPisr/BqXv9Z2F5in6KByOmRKqyRy3sGkihHCg==
 Comments signature: whYem98ARc6wh7FoEtJDcj5btR+jG/zcS0G40wpRvma3TteGmqoYk2mbSEXXFgJdz78w+T0iMcJYXylJy5YEBw==

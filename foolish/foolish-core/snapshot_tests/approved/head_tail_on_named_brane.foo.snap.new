@@ -7,7 +7,7 @@ INPUT:
 {brane = {1; 2; 3}; val = brane^; last = brane$;}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane{
     brane = Brane{
         1;
@@ -25,5 +25,5 @@ head_tail_on_named_brane
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: Ii+46C/OR69N2BxyZd79ujKdb9mxlfW4eba4JmqDLeJcqey2PvhHmnj6wIGcV+1BH/cWmNpNxwcRNl4HxaksCw==
-HS signature: t8zIUU/SvNI5wnbBSB6ieqbPb/ILZjwSN7uaU12f+bQ8yTt2mFcC6jXDb97sLQm6gqDkMdSnkUN9JVc7EO52CQ==
+HFS signature: t8zIUU/SvNI5wnbBSB6ieqbPb/ILZjwSN7uaU12f+bQ8yTt2mFcC6jXDb97sLQm6gqDkMdSnkUN9JVc7EO52CQ==
 Comments signature: kvHe39nIQrEakNsTvKc/E9/w6yiZjBt44YXE4vHuB7ygw9cMh+KTJM/UtK5EDxdPSQHkMB+sqCIRFnhcGv3xDQ==

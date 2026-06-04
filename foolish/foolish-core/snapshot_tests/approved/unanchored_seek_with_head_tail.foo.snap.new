@@ -7,7 +7,7 @@ INPUT:
 {a = 1; b = {10; 20; 30}; c = #-1; d = #-1$;}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane [NK]{
     a = 1;
     b = Brane{
@@ -26,5 +26,5 @@ unanchored_seek_with_head_tail
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: jv0+vXjnH9cz10jLSBUMwSz7eQc18uc8awWMpnBak7csmepQPgR6cGGgPa630VQqQgiIf5gKsDB506wsSjNaCA==
-HS signature: WPfIYCgymx/TLZdFWMXoqBtigsw9irouQdIYAh0rYDmMmrXmvuat5FvJ5GY/FaDMhEh8HATW8Lg0ZRm1e3aBBA==
+HFS signature: WPfIYCgymx/TLZdFWMXoqBtigsw9irouQdIYAh0rYDmMmrXmvuat5FvJ5GY/FaDMhEh8HATW8Lg0ZRm1e3aBBA==
 Comments signature: cwop1SRVMLezkyviztoZlEXvTzdC77ymd6OaXkBQ/HjYEILsFhCMjTOdJxaTUm1Mg+CFDHeYwTd6jQ7l3YWpAA==

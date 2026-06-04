@@ -7,7 +7,7 @@ INPUT:
 {a = 1; b = 2; c = 3;}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane{
     a = 1;
     b = 2;
@@ -21,5 +21,5 @@ regression_regression_disappearing_brane
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 6Cva3ZXt8cVDwKEN9Fm8XgEgPsJzc1AyhVxotnLVMl4si4lUyd4P8Hc8LK7Y8yt65g7tSc8m0+C1iKAC/ZHeAw==
-HS signature: 256+4xuLCHNngBFdAth0coa+NOn169uoiv4UsWXodoPPaPW3DqRbrGL+m0QhvC6y8eauKGySfeZAL4+Vtd2DBw==
+HFS signature: 256+4xuLCHNngBFdAth0coa+NOn169uoiv4UsWXodoPPaPW3DqRbrGL+m0QhvC6y8eauKGySfeZAL4+Vtd2DBw==
 Comments signature: yCidBRvT83l4gAaShI8r59lozfDKqo/AzTWHZfNkkgy716HxUgmrWyzgjRh2yVC9Opp7IN75t0apYGUEyXifBQ==

@@ -7,7 +7,7 @@ INPUT:
 {result = {alice = 1; bob = 2; charlie = 3;}?(a.*);}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane{
     result = 3
 }
@@ -19,5 +19,5 @@ regex_search_pattern
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: gPEWkJgJ2JByiuGpIhkdf4rhGb2oaAirpYS0Z1qtJ0q9Y9gfvYFv9pnD6mBMqwXeuOrxSOmv5n1TnGcIidrCDg==
-HS signature: mgLG62mfqafWXRumAwx/DMLcUKPhFIQffbMOj9Pn9PaAVQYTIfrU8QBTfvJqLvHt7Qig1uvBn7Tx1KKD7fBKAg==
+HFS signature: mgLG62mfqafWXRumAwx/DMLcUKPhFIQffbMOj9Pn9PaAVQYTIfrU8QBTfvJqLvHt7Qig1uvBn7Tx1KKD7fBKAg==
 Comments signature: y8Z237L4g0w6UwKeWxagHzHO+xvbc9xlPAkhqUw9TkLGDTsgntsmPMJqDsI/V0VPPud3lA3vQKUdrUyxcGcaDQ==

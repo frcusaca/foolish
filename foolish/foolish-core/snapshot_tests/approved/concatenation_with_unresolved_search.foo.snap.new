@@ -7,7 +7,7 @@ INPUT:
 {a = {x=ref}; b = {y=2}; c = a b;}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane [WOCONSTANIC]{
     a = Brane [WOCONSTANIC]{
         x = Search(pattern='^ref$', dir=BACKWARD, UNANCHORED, [ECONSTANIC])
@@ -27,5 +27,5 @@ concatenation_with_unresolved_search
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 0nn0zHTItXiXgst2fdcj8qAcRecdM81vlZuNywRWyn84nf//TMf+OoPKmkpI5ilJaZfp/Hi3oChYXZ3rYHqDDw==
-HS signature: x9Ohbic9s0KqQZDtZWdb0TfEwGXs+8SelsEZe7JLMPrSLMg4WwJGsUKfvuL/LTFbVOFcWtsEt3zsbcRibDL4Cw==
+HFS signature: x9Ohbic9s0KqQZDtZWdb0TfEwGXs+8SelsEZe7JLMPrSLMg4WwJGsUKfvuL/LTFbVOFcWtsEt3zsbcRibDL4Cw==
 Comments signature: HlzcfmWFsiRVFZjWcHuIXoaA8YdLvkyk/wvGxSm2W9iXFb7CN7o5wC9c4y6n/hCowwaVAVWPD/l5o1dLm03eBA==

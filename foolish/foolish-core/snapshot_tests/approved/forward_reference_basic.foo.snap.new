@@ -7,7 +7,7 @@ INPUT:
 {y = x; x = 42;}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane [WOCONSTANIC]{
     y = Search(pattern='^x$', dir=BACKWARD, UNANCHORED, [ECONSTANIC]);
     x = 42
@@ -20,5 +20,5 @@ forward_reference_basic
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: HTTRgMabwliS9L5HdnJgH76bNg+VgP5cFCCmfEJGWwMX4ci2arPG1x7acmsFpyqLAWBux5GYq5irG+YVu5OqDw==
-HS signature: rdQ8gORnpLFONKN4SZsPOrGHCPEk46j1q7JQsxHUDLqKpecsZrayQV6MIXQFxYe1qVfwOHHKZ7jSwoOZj1SOAQ==
+HFS signature: rdQ8gORnpLFONKN4SZsPOrGHCPEk46j1q7JQsxHUDLqKpecsZrayQV6MIXQFxYe1qVfwOHHKZ7jSwoOZj1SOAQ==
 Comments signature: +C9QTF6beaJJX3wI3SNyRS8wlTcUCF3Jbn9q9168O1Xvst8/xqtVgrvxyxCVK3CsiADwgmG6Odn3Sre+UtyLAw==

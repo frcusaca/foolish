@@ -7,7 +7,7 @@ INPUT:
 {a={1;2}; b={3;4}; c={5;6}; r1 = a b; r2 = b c; r3 = a c;}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane{
     a = Brane{
         1;
@@ -48,5 +48,5 @@ multiple_concatenation_in_sequence
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 7vk3EGmD0ghrY75TKkhVNhfKfiBI2/IhbSWUXB142Bwcg6vllrvTMc3B/9Uv8NXkkikI4A1iqLrJn2CxhX9IBA==
-HS signature: 38bTs8lXowCfSgYhdkEvYUNX3YhRCUfHNcjq31yT9Uosoa8rx0CoHYjEvuLzr4puWNK3gUN+Wg4L3nfN/UnGDg==
+HFS signature: 38bTs8lXowCfSgYhdkEvYUNX3YhRCUfHNcjq31yT9Uosoa8rx0CoHYjEvuLzr4puWNK3gUN+Wg4L3nfN/UnGDg==
 Comments signature: iF+y3zeudbanrvPk4c/apeLYe1kkRAqgnHFPIp5QxGdLeIwba+oV+DXGM5Nb21Xjb8KcR+oi6fRCaRxdda7iBg==

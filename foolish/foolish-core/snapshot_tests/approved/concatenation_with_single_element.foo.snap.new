@@ -7,7 +7,7 @@ INPUT:
 {a = {x=1}; b = {y=2}; c = a b;}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane{
     a = Brane{
         x = 1
@@ -28,5 +28,5 @@ concatenation_with_single_element
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: sWh7CjmRGkXIPkFIg/LTUsxw2hvbgrrY4wS/FmlI3H7prmqidIJxiMcwLdAT6WPD5rvbb8VR4wNF8EtuJH7UBg==
-HS signature: IIOq7dym4uWQCNCN1ZmWKEhiN0/bVlRhgXVpZmSVxwltqDVNoz8gXX8znBUPrBG6TQbHrAhzfY6LbiYeFUbZAg==
+HFS signature: IIOq7dym4uWQCNCN1ZmWKEhiN0/bVlRhgXVpZmSVxwltqDVNoz8gXX8znBUPrBG6TQbHrAhzfY6LbiYeFUbZAg==
 Comments signature: jUENC5dWqGpiwQI2wdhN9+4mbvpET6nIDD1unKJF76R7Ve5DY1HtBVYGQlZHHlkHOlsD0UBBxAHeFUnLTs2PCA==

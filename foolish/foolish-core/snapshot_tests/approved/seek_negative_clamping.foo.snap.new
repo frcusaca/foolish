@@ -7,7 +7,7 @@ INPUT:
 {a=1,b=2; c=#-99;}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane [NK]{
     a = 1;
     b = 2;
@@ -21,5 +21,5 @@ seek_negative_clamping
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: NoYstMUV/HYiPrUdGZYrOPXqfuxY/iosQzxQcL/u3DYrialCc8thrC8gVhxYtihhLtFKQ7i5L/3CSCR6CvPmBw==
-HS signature: 2xoj60qDYbjSgt7Gm3acW3MmSalmWNAF/UdPUAPwVJm6SobiEsga2/vn02vQUrXWKugrBukaD3k/G/fcuMlTCA==
+HFS signature: 2xoj60qDYbjSgt7Gm3acW3MmSalmWNAF/UdPUAPwVJm6SobiEsga2/vn02vQUrXWKugrBukaD3k/G/fcuMlTCA==
 Comments signature: vNBfZyu7PA4Bq/xLVkuE2tetb5WNeQ/tk8uIxoCk9QEnnPzmvbjwLgYBtX+9c3+u/xLCKr4Y4mQ8YASDKZyqBw==

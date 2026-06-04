@@ -7,7 +7,7 @@ INPUT:
 {{{1;}; 2}; 3;}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane{
     Brane{
         Brane{
@@ -25,5 +25,5 @@ deeply_nested_branes
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: ts+is4fU9t4OKbPpTLF2vuDeokiDmOhmSuEDQxR7v4b4DyejSg2w73lBXK3fIZWaQ3w6YAc8t0p6L4m2vEgLAQ==
-HS signature: cF3Df48cV/jtTqrkG1YxjmJtamtIm41D9bbrU5m83ujKWVmWviH8PVZ51BgpdTkClw29JUEzYzwrixjFrFfeAA==
+HFS signature: cF3Df48cV/jtTqrkG1YxjmJtamtIm41D9bbrU5m83ujKWVmWviH8PVZ51BgpdTkClw29JUEzYzwrixjFrFfeAA==
 Comments signature: GCcAweXUtcCrsHKUBKTUVWTHLpsXkFJSeTuXujiZ4s7zZdr6IsZ2v++47ApRJ2qmaHUUyBCNDhZJIOdke7+yAw==

@@ -7,7 +7,7 @@ INPUT:
 {a=1, b=2, c=3, d=4, e=5, f=6; expr = #-1 + #-2 + #-3 + #-4 + #-5 + #-6;}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane{
     a = 1;
     b = 2;
@@ -25,5 +25,5 @@ regression_operator_does_not_block_search
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: bYX93PDykhN+mQfQ7rg4OIdl9Uy6rMGF44BhMSX0IhhHegCLkcg2bBwSki2B1EC9Owjsm3ed895QVx1BKX/yAA==
-HS signature: PW+zJ+CUBFIDPMtk1GESM8GRWVW4oK+i5QdyoCjc2gku8sz9lOZpvtnu9iAxF2GfJqVqDfic/8ePcF6ofhDLDQ==
+HFS signature: PW+zJ+CUBFIDPMtk1GESM8GRWVW4oK+i5QdyoCjc2gku8sz9lOZpvtnu9iAxF2GfJqVqDfic/8ePcF6ofhDLDQ==
 Comments signature: V4F4T+aLofm73n7YxMnpm59CZWdljO9ZYF3SvF342T94UyZyggHDq+yYANrLqXBHAjC7zgB/QudEGeXoFqEXAw==

@@ -60,18 +60,18 @@ INPUT:
 }
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 1
 ```
 [1] RESULT:
-```hssnap
+```hfssnap
 Brane [EMBRYONIC]{
     a = 1;
     b = Search(pattern='^a$', dir=BACKWARD, UNANCHORED, [ECONSTANIC])
 }
 ```
 [2] RESULT:
-```hssnap
+```hfssnap
 Concatenation(elements=2, [EMBRYONIC])
   Search(pattern='^testˍancestralˍidentifierˍwithˍshadow$', dir=BACKWARD, UNANCHORED, [ECONSTANIC])
   Brane [EMBRYONIC]{
@@ -101,7 +101,7 @@ Concatenation(elements=2, [EMBRYONIC])
   }
 ```
 [3] RESULT:
-```hssnap
+```hfssnap
 Concatenation(elements=2, [EMBRYONIC])
   Search(pattern='^testˍpreservingˍconstanics$', dir=BACKWARD, UNANCHORED, [ECONSTANIC])
   Brane [EMBRYONIC]{
@@ -111,7 +111,7 @@ Concatenation(elements=2, [EMBRYONIC])
   }
 ```
 [4] RESULT:
-```hssnap
+```hfssnap
 Concatenation(elements=2, [EMBRYONIC])
   Search(pattern='^testˍpreservingˍconstanicsˍoverˍshadows$', dir=BACKWARD, UNANCHORED, [ECONSTANIC])
   Brane [EMBRYONIC]{
@@ -137,7 +137,7 @@ Concatenation(elements=2, [EMBRYONIC])
   }
 ```
 [5] RESULT:
-```hssnap
+```hfssnap
 Brane [EMBRYONIC]{
     b1 = Brane [EMBRYONIC]{
         a = 1;
@@ -163,5 +163,5 @@ ubcb_test_1
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: w+WjlGApfgjVezWjdJm9utgOEhqX7Eu6w0aiA/OjA01qv24zJpXWwZsZ98X326mJwUdROypdvYkdkVDDkHSTDg==
-HS signature: o5S772A2zJHQMu6IF7U0paD2RzCqDFKmR28bm448Sk1aNT8GwQSQBwGTL4mD2yNYrV4+WfojbcgKnA2vqCJvCQ==
+HFS signature: o5S772A2zJHQMu6IF7U0paD2RzCqDFKmR28bm448Sk1aNT8GwQSQBwGTL4mD2yNYrV4+WfojbcgKnA2vqCJvCQ==
 Comments signature: QbI92C262Ev74gHT2k2RM4xWp7WpsSAPajnETlfzP0hYCIX9hQ2cCHsoa27LhrW+TdjcYqA/WOKKB+OKGdS4Cw==

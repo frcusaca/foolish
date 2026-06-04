@@ -141,7 +141,7 @@ impl SnapshotSuite {
 
         let hs_outputs: Vec<String> = firs.iter().map(|fir_ref| {
             let fir = crate::clone_steppable(fir_ref);
-            crate::Sequencer::format(&fir)
+            crate::FirSequencer::format(&fir)
         }).collect();
 
         let test_name = path.file_stem()
@@ -158,7 +158,7 @@ impl SnapshotSuite {
         lines.push("```".to_string());
         for (i, hs_output) in hs_outputs.iter().enumerate() {
             lines.push(format!("[{}] RESULT:", i));
-            lines.push("```hssnap".to_string());
+            lines.push("```hfssnap".to_string());
             lines.push(hs_output.trim_end().to_string());
             lines.push("```".to_string());
         }

@@ -7,7 +7,7 @@ INPUT:
 {10 + 5 - 3 * 2;}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane{
     9
 }
@@ -19,5 +19,5 @@ mixed_operators
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: fysCNlDdf+8ar2KsG8i9PQKYuNDFmFyoKboNzVpunEciBj5xAFioRK94ORpMa0X1A2j50hl2q+iGTEL5l2EbAA==
-HS signature: ZylCAzhNPsWW9Hb/5YBKoxZiiGAEfb/xXFn7EUDlXyelvmncbznLuzgJJjjH2TeVwh0zrtnBFBK34WHbABKFAw==
+HFS signature: ZylCAzhNPsWW9Hb/5YBKoxZiiGAEfb/xXFn7EUDlXyelvmncbznLuzgJJjjH2TeVwh0zrtnBFBK34WHbABKFAw==
 Comments signature: 7mikFGBxjeUtBC2JvRb/s5m/lOPYsLNpza/QHT9O1FEuOrHymn1+ZotaXgJrs8LMXpkg6/HYAAx4dqkiDuHSAA==

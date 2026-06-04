@@ -7,7 +7,7 @@ INPUT:
 {b = {x = 100; y = 200, z={}}; not_found = b?γ; also_not_found=b.z^; still_not_found=b.z$; yet_not_found=b.w; this_too=not_found.everywhere}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane [NK]{
     b = Brane{
         x = 100;
@@ -29,5 +29,5 @@ anchored_search_fails_on_constant
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: oyctbt/35FijmRX65WsH2kUKpHWxRX0YKT6TiVa88Ud+6vC2moolessj1ZQt9iZomK1vPzCQk2tPh+nFa+WsBQ==
-HS signature: E4YW1JCsQOHayF201eERAuA4YV7lEKC5GBn354Cx/A3JxLpuZ/z5gF0r71Fbi3UL4yLPfNUV1pg/SjU4DzZcCw==
+HFS signature: E4YW1JCsQOHayF201eERAuA4YV7lEKC5GBn354Cx/A3JxLpuZ/z5gF0r71Fbi3UL4yLPfNUV1pg/SjU4DzZcCw==
 Comments signature: ab83BYfD+CqGkKuZkpkxC1Os2+lonAgGR1rEVCHWoMm75xGuPA/qZEi5hmnGSxu2AHzlnXJwINTielg8VMN5CA==

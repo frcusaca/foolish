@@ -7,7 +7,7 @@ INPUT:
 {b = {{{1; 2}; 3}; 4}; h = b^; hh = b^^;}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane{
     b = Brane{
         Brane{
@@ -39,5 +39,5 @@ head_tail_chained_on_nested
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: efN9fyZ/xDjuTG5BJQg2f5XufugV0r1dZZ++KC3sibHT5oeesOpkvoq5A+rgVVoI9acFm+rO66Zbh4OyTr23Dg==
-HS signature: PXUVTjH6ZAzLfGDDgLwyB0yLNFq/ZVvnUiTPDy9t2f3dO32X1cZJ0Bopdh857uhGaU1HZLEh59iuSXVDGg51BQ==
+HFS signature: PXUVTjH6ZAzLfGDDgLwyB0yLNFq/ZVvnUiTPDy9t2f3dO32X1cZJ0Bopdh857uhGaU1HZLEh59iuSXVDGg51BQ==
 Comments signature: h99jxT3KOMl9zjibMhFgAINqIMi2qzVKpAqCLkQ468pv+nU5PSyQVfDgU1olC+dQ3tSFwGIvjAZ8G73obMXGAQ==

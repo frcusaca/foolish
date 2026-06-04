@@ -2,11 +2,11 @@ use crate::fir::{Fir, FirQueryable, StatementSimple};
 use std::fmt::Write;
 
 #[derive(Default)]
-pub struct Sequencer {
+pub struct FirSequencer {
     steps: u64,
 }
 
-impl Sequencer {
+impl FirSequencer {
     pub fn new() -> Self {
         Self::default()
     }
@@ -30,11 +30,11 @@ impl Sequencer {
 }
 
 /// Human-readable sequencer for any FirQueryable (borrowed).
-pub struct HumanizingSequencerRef<'a> {
+pub struct HumanizingFirSequencerRef<'a> {
     fir: &'a dyn FirQueryable,
 }
 
-impl<'a> HumanizingSequencerRef<'a> {
+impl<'a> HumanizingFirSequencerRef<'a> {
     pub fn new(fir: &'a dyn FirQueryable) -> Self {
         Self { fir }
     }

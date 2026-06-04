@@ -7,7 +7,7 @@ INPUT:
 {data = {a=10; b=20; c=30; d=40; e=50}; last = data#-1; second_last = data#-2;}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane{
     data = Brane{
         a = 10;
@@ -27,5 +27,5 @@ offset_access_backward
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: pUK/KiH0zwQnihUUZLIFN0rbZjiDGsozeTatGMfVSiarmKniRHUlOgIqYpG5AwWsxLiIZ84011ivpiB/j01nCw==
-HS signature: kUwnx/EBORPZQ1Wiqe3LzcO3WgNNfu5tVcYsbFphkKSfS1WGnIW97jTaTGPdixracWyAffN0ifLDFHPPsu/UAQ==
+HFS signature: kUwnx/EBORPZQ1Wiqe3LzcO3WgNNfu5tVcYsbFphkKSfS1WGnIW97jTaTGPdixracWyAffN0ifLDFHPPsu/UAQ==
 Comments signature: w8j1XFnqCybx8R86T1+WMXVGwipdjmbfQY56+A1MR3uqmRdKKr3sNnstfkK9ku9Rx2tPUrazcN6vT5tDGL9RBQ==

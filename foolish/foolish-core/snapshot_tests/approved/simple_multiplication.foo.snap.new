@@ -7,7 +7,7 @@ INPUT:
 {6 * 7;}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane{
     42
 }
@@ -19,5 +19,5 @@ simple_multiplication
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 0eJHBdd6c9QI9it3UN7jD/wKKYD6m7an0sVGq7AUh5VyTXEIVa5h1bT5b7UWIP7F5YcDhA2XVj+wX+okK4mFBQ==
-HS signature: 5N7Nuh0cti52iGO+Hrf3otbH7mxbD4HzwH9iA/Nl7NOSom0sAAa6xI8sqb74WDh4yY671v5G7vy7kbtPsqupBA==
+HFS signature: 5N7Nuh0cti52iGO+Hrf3otbH7mxbD4HzwH9iA/Nl7NOSom0sAAa6xI8sqb74WDh4yY671v5G7vy7kbtPsqupBA==
 Comments signature: O92x0tGgXMEvX9M9eY8CyAvJpRHugiHQI76XGu2hT+9Ib3hvrHZme9oeu0drnctRDNQIYugMO2A9O/EmI8sDDA==

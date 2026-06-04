@@ -6,7 +6,7 @@ INPUT:
 {a = 10; b = 20; outer = {c = 30; ac = a + c; inner = {a = 40; abc = a + b + c}; ab = a + b};}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane{
     a = 10;
     b = 20;
@@ -28,5 +28,5 @@ complex_nested_scope
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: lATSCngkRPllgcpySFfij40IPvVOdXraCOLxdoTraAIlOXvsQXwD75sktfcSMNYGZLCpgFdy1utwkByduMRmCw==
-HS signature: 83andG1qNW9q/Klk5/jgOPxTHqkqEY1zRHbQpNtfflCgahcNrDwzLKDvn2sYDnwAH1UDYURzZfcTVXsx5mMkDQ==
+HFS signature: 83andG1qNW9q/Klk5/jgOPxTHqkqEY1zRHbQpNtfflCgahcNrDwzLKDvn2sYDnwAH1UDYURzZfcTVXsx5mMkDQ==
 Comments signature: TZQzpceTaRPzoj6FShJWIexvNX8YYT0FkYW/d1dLHpc702aVF4JDfGO/THZbzU9vXmEoXl2hB9cvAEqmWmW8DA==

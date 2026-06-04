@@ -7,7 +7,7 @@ INPUT:
 {simple = {x=10; y=20; z=30;}?y; notfound = {a=1; b=2;}?missing;}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane [NK]{
     simple = 20;
     notfound = Search(pattern='missing', dir=BACKWARD, ANCHORED, [NK])
@@ -20,5 +20,5 @@ search_pattern_basics
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: eV0YrRvg3770OYhPxsiEd05uVkwn8GBa4pv1nL+IPrjHCxA96VDjBRbCj6OanoRVTSgb4QqikKJcyu/wdRe0AQ==
-HS signature: AYk7eumEUVF5E8ZlIbO2EyMB0ogjC3Fhdi68S3WDoMyS2BY9tcEnKqt5uMALDgtwD3FN0UdjzaYz/VA6REvQDw==
+HFS signature: AYk7eumEUVF5E8ZlIbO2EyMB0ogjC3Fhdi68S3WDoMyS2BY9tcEnKqt5uMALDgtwD3FN0UdjzaYz/VA6REvQDw==
 Comments signature: J3DD723/3YvnZ1UGbpEekH5cFFNs+dqH6Bjq1jcxg2nU6GW1J5mLXRt/jqAdU0azfulNQw48bWtUC0Jd4KgSCw==

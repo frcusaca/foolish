@@ -7,7 +7,7 @@ INPUT:
 {5 + 3; 10 - 4; 2 * 6;}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane{
     8;
     6;
@@ -21,5 +21,5 @@ multiple_arithmetic_expressions
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: he2EhlKiJQWK7iMgA9X50L4+ogjjgSD6EF5BbVaewnkzq4qkOlqdbke0RZvmX6vWftUamGhLGkUqXFqMVa51Cw==
-HS signature: Tqf+jQ2ci55XLtBn4uQg+1f19nmHfggQf4JsqDKmp7ICbJSVtCSxJqg2mj3CeuW9SclfkkXwaHBDovmw/NPxCA==
+HFS signature: Tqf+jQ2ci55XLtBn4uQg+1f19nmHfggQf4JsqDKmp7ICbJSVtCSxJqg2mj3CeuW9SclfkkXwaHBDovmw/NPxCA==
 Comments signature: 8eR3N9ofeRgESUf6gOq9+yjnUCSoiBa+xn4/G61N1pGa/2BH+PvKO+xTwMuIW82PB0fBPUc+tDZ5ZCzIkGAaBw==

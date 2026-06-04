@@ -7,7 +7,7 @@ INPUT:
 {outer = {val = x}; x = 100;}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane [WOCONSTANIC]{
     outer = Brane [WOCONSTANIC]{
         val = Search(pattern='^x$', dir=BACKWARD, UNANCHORED, [ECONSTANIC])
@@ -22,5 +22,5 @@ forward_reference_in_nested_brane
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 4Hrk0bGHevnzjxmT3mTiVfE/SdOH3DkL204YIpF8TAA86wWU62uSPxtRN+7sPiYHW8uMNL4wUnQSSeFIzcMiCw==
-HS signature: Op7U93JInAal/xW39QbUNJx3Chh84d5N0hZifdYUeU47/S01O9wchHe2hjlXvMOo6Av14Hx9slabRDPOdA+vDg==
+HFS signature: Op7U93JInAal/xW39QbUNJx3Chh84d5N0hZifdYUeU47/S01O9wchHe2hjlXvMOo6Av14Hx9slabRDPOdA+vDg==
 Comments signature: 2u46qQvZXamYFlyjZE7xKMY1q4TCkP1ITDZKYAY0jKNQITc1pmug4m6CbwHpFPMmGPWZT7ng6eVAyjtkqdBVDA==

@@ -6,7 +6,7 @@ INPUT:
 {data = {x=1, y=2, z=3}; copy = data {w=4}; last = copy#-1; first = copy#0;}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane{
     data = Brane{
         x = 1;
@@ -30,5 +30,5 @@ complex_search_concat_and_seeks
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 2sGCo//bsMS6EbNWvLkDc/IST2lRsoHgtK6Fc0UBF834NnteSGmsi8JcAAOcOFOaH7GJfG8BAJfr4Duct/GuCg==
-HS signature: sZvgcR+OF814TOkbHN1M3oYKwz9ZvGmKrGDvXVrzy4zchJFgTMPVaOq3XFoCXN/9bpFUkvdU0Tj3V1e5yYtWAg==
+HFS signature: sZvgcR+OF814TOkbHN1M3oYKwz9ZvGmKrGDvXVrzy4zchJFgTMPVaOq3XFoCXN/9bpFUkvdU0Tj3V1e5yYtWAg==
 Comments signature: ht+tno5zHnwBYIrDA6ZwP+4EzKw6crixw0OW1Cxthp968wPjIbLfCzZov1+cHosileIVHeQpkpe8TkENp9s6CQ==

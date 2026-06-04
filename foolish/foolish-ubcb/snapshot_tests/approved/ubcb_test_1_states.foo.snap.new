@@ -60,11 +60,11 @@ INPUT:
 }
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Int(1)
 ```
 [1] RESULT:
-```hssnap
+```hfssnap
 Brane [EMBRYONIC]
   a = 
   Int(1)
@@ -72,7 +72,7 @@ Brane [EMBRYONIC]
   Search(pattern='^a$', dir=BACKWARD, FREE, [ECONSTANIC])
 ```
 [2] RESULT:
-```hssnap
+```hfssnap
 Concatenation(elements=2, [EMBRYONIC])
   Search(pattern='^testˍancestralˍidentifierˍwithˍshadow$', dir=BACKWARD, FREE, [ECONSTANIC])
   Brane [EMBRYONIC]
@@ -112,7 +112,7 @@ Concatenation(elements=2, [EMBRYONIC])
     Search(pattern='^a$', dir=BACKWARD, FREE, [EMBRYONIC])
 ```
 [3] RESULT:
-```hssnap
+```hfssnap
 Concatenation(elements=2, [EMBRYONIC])
   Search(pattern='^testˍpreservingˍconstanics$', dir=BACKWARD, FREE, [ECONSTANIC])
   Brane [EMBRYONIC]
@@ -124,7 +124,7 @@ Concatenation(elements=2, [EMBRYONIC])
     Search(pattern='^a$', dir=BACKWARD, FREE, [EMBRYONIC])
 ```
 [4] RESULT:
-```hssnap
+```hfssnap
 Concatenation(elements=2, [EMBRYONIC])
   Search(pattern='^testˍpreservingˍconstanicsˍoverˍshadows$', dir=BACKWARD, FREE, [ECONSTANIC])
   Brane [EMBRYONIC]
@@ -158,7 +158,7 @@ Concatenation(elements=2, [EMBRYONIC])
     Search(pattern='^g$', dir=BACKWARD, FREE, [EMBRYONIC])
 ```
 [5] RESULT:
-```hssnap
+```hfssnap
 Brane [EMBRYONIC]
   b1 = 
   Brane [EMBRYONIC]
@@ -192,5 +192,5 @@ ubcb_test_1
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: w+WjlGApfgjVezWjdJm9utgOEhqX7Eu6w0aiA/OjA01qv24zJpXWwZsZ98X326mJwUdROypdvYkdkVDDkHSTDg==
-HS signature: E1UKaoouAxL1hF9rG+zQyiwAPtvyUYqS3khCGIUS1lfjp36hrwWUo1tE2yAYSUAEE+aM28zNHO0wCBScynu1DQ==
+HFS signature: E1UKaoouAxL1hF9rG+zQyiwAPtvyUYqS3khCGIUS1lfjp36hrwWUo1tE2yAYSUAEE+aM28zNHO0wCBScynu1DQ==
 Comments signature: lWNWHBvqC/2nzZiUJRJAbuEjlrg/7OwRlkGj8pPeo/BoyCk6F5d89NzXaJonnmud+USDj1+OK4GU3cYQhBL1Ag==

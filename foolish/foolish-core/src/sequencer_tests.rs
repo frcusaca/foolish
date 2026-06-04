@@ -5,11 +5,11 @@ use crate::fir::{
     StayFullyFoolishFirBuilder,
 };
 use crate::sequencer::format_fir_simple;
-use crate::HumanizingSequencerRef;
+use crate::HumanizingFirSequencerRef;
 use crate::*;
 
 fn format_fir_ref(fir: &Fir) -> String {
-    HumanizingSequencerRef::new(fir).format_for_snap_test()
+    HumanizingFirSequencerRef::new(fir).format_for_snap_test()
 }
 
 #[test]
@@ -297,7 +297,7 @@ fn test_integration_multi_statement_roundtrip() {
 #[test]
 fn test_sequencer_ref_format_constant() {
     let fir = ConstantIntFirBuilder::new(42).build();
-    let ref_seq = HumanizingSequencerRef::new(&fir);
+    let ref_seq = HumanizingFirSequencerRef::new(&fir);
     let out = ref_seq.format_for_snap_test();
     assert!(out.contains("Int(42)"), "Expected Int(42) in: {}", out);
 }
@@ -305,7 +305,7 @@ fn test_sequencer_ref_format_constant() {
 #[test]
 fn test_sequencer_format_with_header() {
     let fir = ConstantIntFirBuilder::new(42).build();
-    let out = Sequencer::format_with_header("{42}", &fir, 0);
+    let out = FirSequencer::format_with_header("{42}", &fir, 0);
     assert!(out.contains("INPUT:"));
     assert!(out.contains("STEPS:"));
 }

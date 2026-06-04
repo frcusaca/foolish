@@ -7,7 +7,7 @@ INPUT:
 {a=-42;}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane{
     a = -42
 }
@@ -19,5 +19,5 @@ foop9_unary_operator
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: ukh+as1Lkfnuso67ombT4vmv7YznRor8R+RJSrbbfMtJ1vtk5zNt0LgpNwj5z1SV0ZDpDMuB8Q8j42iFaebTCg==
-HS signature: j3316JJNPn6ORG1k8VVtV8z87fBPWI9jj/Ccl+CNShGJyLxiB7aD4ZHGyUbMcLVM4QPZqjczFi4q4ItDD1ilCQ==
+HFS signature: j3316JJNPn6ORG1k8VVtV8z87fBPWI9jj/Ccl+CNShGJyLxiB7aD4ZHGyUbMcLVM4QPZqjczFi4q4ItDD1ilCQ==
 Comments signature: aMjpdgJ6X/hAoD4e56ThMY6EgRyXIJ9C7GYWYYcVy5kPbgQLBYAOIr4Thhm03Mr5zLBY5BdrpIU9lHp580WuCw==

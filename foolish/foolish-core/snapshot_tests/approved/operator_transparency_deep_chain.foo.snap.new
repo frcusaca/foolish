@@ -7,7 +7,7 @@ INPUT:
 {a=1, b=2, c=3, d=4, e=5; result = #-1 + #-2 + #-3 + #-4 + #-5;}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane{
     a = 1;
     b = 2;
@@ -24,5 +24,5 @@ operator_transparency_deep_chain
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 1J/FfB3vm4verJnjxwK27i02BzU66rCLoz8i0+HEOcB4fUgTuLdOBWg7TzflRwoKPcTBraqFVD8B1hTqeUyzDw==
-HS signature: WIgJxUdtXbBATGqKAnjr/c9Wdna+6xIw0c5LN/d3ZS6zPteDdAAIMVDq6R6vmAlkUPGPSDzfqXLe80KsQJ3HCg==
+HFS signature: WIgJxUdtXbBATGqKAnjr/c9Wdna+6xIw0c5LN/d3ZS6zPteDdAAIMVDq6R6vmAlkUPGPSDzfqXLe80KsQJ3HCg==
 Comments signature: wVjbhdhxpbNJCm8w33zuBXWE82JsSxCSKzC/vcEQUh/P8NRzq8q9RFhCMi2cmSperu0q0o45iHSREwEuOM7sDw==

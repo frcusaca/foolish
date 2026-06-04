@@ -7,7 +7,7 @@ INPUT:
 {a={x=1, y=2}; s=<a>; a=99; s;}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane [WOCONSTANIC]{
     a = Brane{
         x = 1;
@@ -27,5 +27,5 @@ sf_blocks_brane_at_assignment_time
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: r9cVsMVy9IKQUvI6rQnmYcfv40up0dd5AhbtoMFl72TT9TjvhiLZuxtnFgHI3eXA5c6ToFS7wW+gRqjBqQxxCw==
-HS signature: L2lupGBZoJTN/AvSEIstlMQLTw1xSUEaVt38Il/fn45zvRvj3lalz5ZLyooW7/yW5pgD8yRab+nvNiXEX+HQCQ==
+HFS signature: L2lupGBZoJTN/AvSEIstlMQLTw1xSUEaVt38Il/fn45zvRvj3lalz5ZLyooW7/yW5pgD8yRab+nvNiXEX+HQCQ==
 Comments signature: /J2ynp3v/igNWmjXxUR0h/FPW7wWTpJzAoeB5bhXRm1iYudzWSq5vdDUfd5WFnufD9qCEfoqpUw+j16tKNtjDw==

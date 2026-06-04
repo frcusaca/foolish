@@ -211,23 +211,23 @@ fn extract_snapshot_content(text: &str) -> Option<(String, Vec<String>, String)>
     let mut hs_outputs: Vec<String> = Vec::new();
     let mut comments: Option<String> = None;
     let mut in_foolish  = false;
-    let mut in_hssnap   = false;
+    let mut in_hfssnap   = false;
     let mut in_markdown = false;
     let mut block: Vec<&str> = Vec::new();
 
     for line in text.lines() {
         match line {
             "```foolish"  => { in_foolish  = true; block.clear(); }
-            "```hssnap"   => { in_hssnap   = true; block.clear(); }
+            "```hfssnap"   => { in_hfssnap   = true; block.clear(); }
             "```markdown" => { in_markdown = true; block.clear(); }
             "```" if in_foolish => {
                 input = Some(block.join("\n"));
                 in_foolish = false;
                 block.clear();
             }
-            "```" if in_hssnap => {
+            "```" if in_hfssnap => {
                 hs_outputs.push(block.join("\n"));
-                in_hssnap = false;
+                in_hfssnap = false;
                 block.clear();
             }
             "```" if in_markdown => {
@@ -235,7 +235,7 @@ fn extract_snapshot_content(text: &str) -> Option<(String, Vec<String>, String)>
                 in_markdown = false;
                 block.clear();
             }
-            _ if in_foolish || in_hssnap || in_markdown => { block.push(line); }
+            _ if in_foolish || in_hfssnap || in_markdown => { block.push(line); }
             _ => {}
         }
     }

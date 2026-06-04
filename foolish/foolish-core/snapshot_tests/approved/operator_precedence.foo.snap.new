@@ -7,7 +7,7 @@ INPUT:
 {2 + 3 * 4 - 5;}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane{
     9
 }
@@ -19,5 +19,5 @@ operator_precedence
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: njDuTr1PQxQKxfsqrYd3orAalh+E3f9bgMOxsN30HLrqpHipGR58G7igIfpIKSLylmcoHtsDEU+tRvMNsfvjAg==
-HS signature: s52aldJvNPFdwIanih1cnjlz3hG8EJs7J+B5pqfYp+SYZTy6XffTlzfKmvx32cvO2mojXa+on4+leFUBpCTcDQ==
+HFS signature: s52aldJvNPFdwIanih1cnjlz3hG8EJs7J+B5pqfYp+SYZTy6XffTlzfKmvx32cvO2mojXa+on4+leFUBpCTcDQ==
 Comments signature: xzcS+pjtINO2lJgB0FpQCuOE5uqnBW9h0AWc6Pw3AVC38vblPu6fOeSPpNXQl65pvl9Rj40mX9LTjFwd+6nrBQ==

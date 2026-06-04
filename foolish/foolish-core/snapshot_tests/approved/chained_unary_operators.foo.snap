@@ -6,7 +6,7 @@ INPUT:
 {a = -(-5); b = -(-(-3));}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane{
     a = 5;
     b = -3
@@ -19,5 +19,5 @@ chained_unary_operators
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: kiNVOLwv/jrjOVkHoD+trP+GtqjZ0F5/+ipES3CpFENY3I+4p/cigoi+MXbywS0r6UAGfx3/iyYgSStikNBwCg==
-HS signature: UhktCANsdJgZVsSRQdOD9SNHTPIYXcYVIkKoPUlERBlJQoqCmJLq/OkINLQwxoyr3lzz7YWjWQ9SkPAEho9LDQ==
+HFS signature: UhktCANsdJgZVsSRQdOD9SNHTPIYXcYVIkKoPUlERBlJQoqCmJLq/OkINLQwxoyr3lzz7YWjWQ9SkPAEho9LDQ==
 Comments signature: OSaJE6Bai8fDc1ZbYy0DvAqog7iyne+B0uBnam10vaqlp9swdaOziGSCvGkJW2LIGGIgZh8OhtxsAVb0IzWSBA==

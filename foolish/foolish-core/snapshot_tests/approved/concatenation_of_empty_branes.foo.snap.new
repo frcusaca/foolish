@@ -7,7 +7,7 @@ INPUT:
 {a = {}; b = {}; c = a b;}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane{
     a = Brane{
     };
@@ -24,5 +24,5 @@ concatenation_of_empty_branes
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 7gJt+oMWH4+YgPm9Uw8lVZlF8NlFLq4pxJ1pyyADx7RgCY4Am1hwqecYiBiRwl7wEyLcpd5lOt9SpRdooqtOAg==
-HS signature: A1goewGFIibeU6TXdB4bRF/Kn0XV9o2WRAGvcABmzC1AcR669wMTeinPABDZyGpcrL1qUfSzttafNPfeOU7wCg==
+HFS signature: A1goewGFIibeU6TXdB4bRF/Kn0XV9o2WRAGvcABmzC1AcR669wMTeinPABDZyGpcrL1qUfSzttafNPfeOU7wCg==
 Comments signature: 3uO8G2b3Mok9B7hniAPrVqkXmllITM2NpdEWKJMag1toJYyf1dzDI76RCxEwQjILcQd3wxROqIXsXqXJNtofAA==

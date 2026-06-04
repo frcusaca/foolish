@@ -7,7 +7,7 @@ INPUT:
 {15 / 3;}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane{
     5
 }
@@ -19,5 +19,5 @@ simple_division
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: FfuRrrGJ0oqv+YIiYmMuSHOX+lJy5J2nph5+Du3XXGKn/OslnClYI5n+CVMb4HFnKXWfRaZFnuKUn/Od0CQbBQ==
-HS signature: AoLhbAOQ7D9gBI8siE1392IqvZCCYj2fAoOue+i0f7S+b9PdgGyGoWBfLzQkgKbzi7IHnTaPRvqKUoiuva0CDQ==
+HFS signature: AoLhbAOQ7D9gBI8siE1392IqvZCCYj2fAoOue+i0f7S+b9PdgGyGoWBfLzQkgKbzi7IHnTaPRvqKUoiuva0CDQ==
 Comments signature: LLiqtVZVFfMTghOC6KW68eAGAZcaY8KTnekxxwZwJMj8wqfdxcAUtdGviVQ4Jupyqz6F6+38bIRNtfqvxzE9Cw==

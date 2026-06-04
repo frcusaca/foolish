@@ -6,7 +6,7 @@ INPUT:
 {nested = {inner = {val = x}}; x = 42;}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane [WOCONSTANIC]{
     nested = Brane [WOCONSTANIC]{
         inner = Brane [WOCONSTANIC]{
@@ -23,5 +23,5 @@ complex_forward_refs_in_nested_branes
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: dct7S1xt4BQlrVSe20zSejRWopMd5WAIV2n3zrW7K1tYqgXNp3fSPSQKHKK5cqT+oEDbEo1Ytg5ww9j+8ME3Aw==
-HS signature: 9YEOJVn3k2gW7rjNI+Jgzd4b9qg74yUAnCtdYL46Uj9RmuqijJTTpsPgh13rNlK/H0kiebBlO47jibErkQ6MCw==
+HFS signature: 9YEOJVn3k2gW7rjNI+Jgzd4b9qg74yUAnCtdYL46Uj9RmuqijJTTpsPgh13rNlK/H0kiebBlO47jibErkQ6MCw==
 Comments signature: MFnpGD3Rmd73OMr/SHkJ6bkgh7GMrpFFvYBVOB96XPDzYENjijOm/RXBwuKsiGsk1zCHHw+NKfxg+Xo7wtb5DQ==

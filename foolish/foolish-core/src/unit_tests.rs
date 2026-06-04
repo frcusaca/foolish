@@ -216,12 +216,12 @@ fn run_foo(source: &str) -> String {
     let mut lines = vec![format!("INPUT: {}", source.lines().next().unwrap_or(source))];
     for (i, fir) in firs.iter().enumerate() {
         lines.push(format!("[{}] PARSED:", i));
-        lines.push(Sequencer::format(fir));
+        lines.push(FirSequencer::format(fir));
         let mut fir_ref = fir_to_ref(fir.clone());
         let result = ubc::run_to_completion(&mut fir_ref);
         let final_fir = clone_steppable(&fir_ref);
         lines.push("RESULT:".to_string());
-        lines.push(Sequencer::format(&final_fir));
+        lines.push(FirSequencer::format(&final_fir));
         if let Err(e) = result {
             lines.push(format!("ERROR: {}", e));
         }

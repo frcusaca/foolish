@@ -7,7 +7,7 @@ INPUT:
 {b = {x = {1; 2; 3}}; h = b.x^; t = b.x$;}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane{
     b = Brane{
         x = Brane{
@@ -27,5 +27,5 @@ head_tail_on_search_result
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: JPe0K36mu+mYlG+TuEQ7EZpyi0cpKTy0oXVkC4uqV2hjLTd0Zntev8P0lsStHiszszWgg0gFW526YDxPkkCaDA==
-HS signature: XBcv4kYEv1Q2lT1qZL1S/YpyJVaaHbOp5TpuJxh2Lzflb6a+/G5a3o4VjGc2S0aCMfSaadrp4fb61++VjkpbCQ==
+HFS signature: XBcv4kYEv1Q2lT1qZL1S/YpyJVaaHbOp5TpuJxh2Lzflb6a+/G5a3o4VjGc2S0aCMfSaadrp4fb61++VjkpbCQ==
 Comments signature: Nd/DyGHher3n6+3sqRfWWqMNSR/+pjhKP9+KkpcqhZOPAZ7CvZeN4D2JkPERFEEH+CQfOfI3f421L+tfFs/mCg==

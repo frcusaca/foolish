@@ -7,7 +7,7 @@ INPUT:
 {a=1, b=2; inner = {c = <<a+b>>; c}; inner;}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane{
     a = 1;
     b = 2;
@@ -34,5 +34,5 @@ complex_sff_in_nested_brane
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: ZIgjfGeL3aOiCFGthil+qpoFORBgbUiJ34yeWevLnvPP3orwUnFqJRnzpA9oKsQVY98pCPWMFeTGN4RdIqe4DA==
-HS signature: JXNVd7CPFKNYyyfGbVK838wi/sHmp+9pc6UuvJxcusW8zbbHwB1f2mrojc2/2YC0ICekBBn0YGCSorWccsiGAg==
+HFS signature: JXNVd7CPFKNYyyfGbVK838wi/sHmp+9pc6UuvJxcusW8zbbHwB1f2mrojc2/2YC0ICekBBn0YGCSorWccsiGAg==
 Comments signature: p3CNoRHTG9epeOFHCK2ncQDbnkm8rBm/G9y9NM5IgVXfev4+QpNFr8n+mgRqQ5YCDTKLa56iXXsfK6io0zVCCQ==

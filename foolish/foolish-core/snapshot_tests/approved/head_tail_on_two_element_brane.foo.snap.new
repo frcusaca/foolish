@@ -7,7 +7,7 @@ INPUT:
 {b = {10; 20}; h = b^; t = b$;}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane{
     b = Brane{
         10;
@@ -24,5 +24,5 @@ head_tail_on_two_element_brane
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: hXuWNVPIS9jC7Vg4gjE5WO61S8BSIYnPdQu5Kga/ypS8XauCes46MwxnSqQ1mFUmZhOptDgewq2nC53EqQrGCw==
-HS signature: WKuQ9PrAoXfxb0zqGQab65ib2UVASAWZGUOAc3sg0eCp7LCBv27KatVaKvcGRM2wGLztz4Uoovsa9l0lgpSiBA==
+HFS signature: WKuQ9PrAoXfxb0zqGQab65ib2UVASAWZGUOAc3sg0eCp7LCBv27KatVaKvcGRM2wGLztz4Uoovsa9l0lgpSiBA==
 Comments signature: S7Jqjm+6AO0MN7JkhoHL2AlZK7OGAR39/bVCxlKgYEIL0Qvdxfo2nu1kR94cEZExS9YeICXQeB6gizd3eigHAA==

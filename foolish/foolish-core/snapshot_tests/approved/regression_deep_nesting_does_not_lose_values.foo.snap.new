@@ -7,7 +7,7 @@ INPUT:
 {{{{x = 42; x};};};}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane{
     Brane{
         Brane{
@@ -26,5 +26,5 @@ regression_deep_nesting_does_not_lose_values
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: Y6n20+pmIHuScYeHgxuPG8M5BO/gc0rTQZSyzS4Bta3dbhJ39IuX+kvl1OMGnijziXfIwsJqptTNa2wQjVeOAQ==
-HS signature: WmDwg8bYswDnWqNd9Tpyxz+QeCLolltt4x20KEj/Rk9yruPeKJEuJRujuC1AklzGf3Di8K5zzu7VENGo32/iBQ==
+HFS signature: WmDwg8bYswDnWqNd9Tpyxz+QeCLolltt4x20KEj/Rk9yruPeKJEuJRujuC1AklzGf3Di8K5zzu7VENGo32/iBQ==
 Comments signature: BNy8zUcV8rP1hZ4Fapf5uuiFiDWcK6YKA3sSIJAsyrgM3NoJQokvrTPzIFumM0MNXTbHrS+8yiQx0EUKslukDQ==

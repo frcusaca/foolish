@@ -6,7 +6,7 @@ INPUT:
 {a = 10 / 2; b = 10 / 0; c = 20 / 4;}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane [NK]{
     a = 5;
     b = ??? (division by zero, [NK]);
@@ -20,5 +20,5 @@ alarm_division_by_zero_in_brane
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: R5NlChpi9B03XMNXz5w8KRK+Sd2plSW6cxbcAimBapvhbQ80i2CDfkavPhCpAMdIMWlRdbvEmEYXMv2d78/2Aw==
-HS signature: /lWY9ibJCXGFCcUkN9UU6FuUN/AnxOy2V6kfZ4S8uKoS8YLsVWuluFNMbSF2JXcuNmAZTImui1pMa9FoJmAKDQ==
+HFS signature: /lWY9ibJCXGFCcUkN9UU6FuUN/AnxOy2V6kfZ4S8uKoS8YLsVWuluFNMbSF2JXcuNmAZTImui1pMa9FoJmAKDQ==
 Comments signature: VjTscSfC6U24LjXt+ms9JclUARo0TSKxli7OS0rkl46Kd2/pFHSPRVDqgPmqAiJOk0ZuKlcRVZPng2F+4UzRCQ==

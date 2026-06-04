@@ -7,7 +7,7 @@ INPUT:
 {x = {10; 20; 30}^; y = {10; 20; 30}$;}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane{
     x = 10;
     y = 30
@@ -20,5 +20,5 @@ head_tail_basic
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: H6qRVntwKvC0a4FpMDE/EgiX8clsQl9wsrl9OfUoes5B9RPH8IXTNM4NjU/HlZGcFSztGukvBfLCU35AgBdsDQ==
-HS signature: JDNb/Qp6y29cCTqIltYD5LmE1U0nKqhkFbhfzONwJkxsgjodFVyV47+M5TQ3RSjUhn7TB5YqPDlTUKkW3FHSDg==
+HFS signature: JDNb/Qp6y29cCTqIltYD5LmE1U0nKqhkFbhfzONwJkxsgjodFVyV47+M5TQ3RSjUhn7TB5YqPDlTUKkW3FHSDg==
 Comments signature: GP6XfHZT3Nvocqnw4A4HFABtaw1uwQ79R4T/lVrYnFfzGujBNnPEudaPz7+A5V4rEMB8fnPqrFexVS6F/0E+Aw==

@@ -7,7 +7,7 @@ INPUT:
 {x = 42; outer'{inner = {y = x}; val = inner.y};}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane{
     x = 42;
     outer'Brane{
@@ -25,5 +25,5 @@ named_brane_with_search
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: uW0Fcz4/He1+/wYA73PfbBiUXSnClodQHbuQS3KqBlXTf3obUd47n2iWlxW1sx7B4SWwogfl6PdjqGpme5csBw==
-HS signature: zdHPIW5STmbyAZrE8F4CrF9gpjfYUObDOPllmZtWzSosRJ2RqNE+3LBDI3LoOPWuvQXAyyg0HmqoxQF+C4vPBA==
+HFS signature: zdHPIW5STmbyAZrE8F4CrF9gpjfYUObDOPllmZtWzSosRJ2RqNE+3LBDI3LoOPWuvQXAyyg0HmqoxQF+C4vPBA==
 Comments signature: 69BzjUV99LEO/lGAYTwdnK49+J6FZ98GtJzAWpcZQHuuEcKn6apM8iACnCM1eT7xVaPWL0jN0ky5YZdgmmluAA==

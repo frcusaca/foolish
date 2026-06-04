@@ -7,7 +7,7 @@ INPUT:
 {val1 = 3; val2 = 4; val3 = 5; sum = #-1 + #-2 + #-3;}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane{
     val1 = 3;
     val2 = 4;
@@ -22,5 +22,5 @@ unanchored_seek_chain
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 4Op9a4SD82NnhuqkFocpP8S6SDOGc1oqG7ozVwycClN+D3+mH7iKx6DP5nFjdxEqYwI0cpD5g9WHvUtEsJiOAQ==
-HS signature: lj0ZlaOkLGI1JDlxF986AvJ+k9Foit6rShHqypVuBcYFXa+2uB3SQXOWK95ROGfx9OCGaJ/Jlqa88GNvW6jsCg==
+HFS signature: lj0ZlaOkLGI1JDlxF986AvJ+k9Foit6rShHqypVuBcYFXa+2uB3SQXOWK95ROGfx9OCGaJ/Jlqa88GNvW6jsCg==
 Comments signature: MomaiFhNLZQoScpjPdCQMZtCDoMuXvLRVIo+wbFy9Q7xQAC7uY0ZL3N8ft8N3BlAKP1v34jFFN05cErSKiksBA==

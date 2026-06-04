@@ -7,7 +7,7 @@ INPUT:
 {a=1,b=2; c=<<a+<<b>>>>; c; c;}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane [WOCONSTANIC]{
     a = 1;
     b = 2;
@@ -35,5 +35,5 @@ sff_nested
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: lhcizF48neDw/0Ot29cyjAKKVN2RJsqhMEqKOBwHi1AC7LmDHeXb9dBvby6kqQzBJhSJHHAXCtmjZ9gbF1ZHAw==
-HS signature: m8QvP/6FT3CZJfAIJbWTBD2dqyNWgmZTsx2I7E2jIxUXcejdSna/AY75T2ciM86N+Y1DWxmW0owXC+OA/tYBAA==
+HFS signature: m8QvP/6FT3CZJfAIJbWTBD2dqyNWgmZTsx2I7E2jIxUXcejdSna/AY75T2ciM86N+Y1DWxmW0owXC+OA/tYBAA==
 Comments signature: A3CRlUIvSEu4O8b7QxAuxkYvQANRePR7AxBJygGXShro/qkmkehozbim87i3/YlMmQ6FSYHhDN+hfmFM6tKXCg==

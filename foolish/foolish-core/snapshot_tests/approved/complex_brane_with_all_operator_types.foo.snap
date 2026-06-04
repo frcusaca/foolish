@@ -6,7 +6,7 @@ INPUT:
 {add = 1 + 2; sub = 10 - 3; mul = 4 * 5; div = 20 / 4; neg = -7;}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane{
     add = 3;
     sub = 7;
@@ -22,5 +22,5 @@ complex_brane_with_all_operator_types
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: hqeO50VGIdDIO3wZcz25VVeUZef54veeVOxlx1MmVZKB8DMszHYbRyT7n7qP+IAEflplyRVzpHwt+i//yxwYDw==
-HS signature: 6ZwTkspYewPPHJUIGeyKtQhTatuwx8Vp4WsTLgb5EWc1IclQGckAdZKl+ECYej3S7SpFiQWemzqfATPzw1yvCQ==
+HFS signature: 6ZwTkspYewPPHJUIGeyKtQhTatuwx8Vp4WsTLgb5EWc1IclQGckAdZKl+ECYej3S7SpFiQWemzqfATPzw1yvCQ==
 Comments signature: EAOlztCzD/zBejdaRj16OiwNjH8CpTiZhMq2+C9kmtJHy/tsHffwANe9MRzaQ05aWTIDXsO6gYIpctTdIQnABQ==

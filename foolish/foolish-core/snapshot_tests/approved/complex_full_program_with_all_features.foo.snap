@@ -6,7 +6,7 @@ INPUT:
 {a = 10; b = 20; sum = a + b; nested = {inner = sum / 2}; result = nested.inner;}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane{
     a = 10;
     b = 20;
@@ -24,5 +24,5 @@ complex_full_program_with_all_features
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 1SXA6C7yxC6ZpiMvulmMy1eFI1Es1+sQ6hUtwarY1vKYOMtGrpNqx+rd59gPsyK1pqAjtcEAE57YwFIWqdU2CA==
-HS signature: a7MDFHJOtUt9TbsTzTwSJi1VblHUeBPUmK7JpDV/v05/tFjwK89IqmWal6nNrW8NxU1AYh1/QpiyiNOUu9KlDQ==
+HFS signature: a7MDFHJOtUt9TbsTzTwSJi1VblHUeBPUmK7JpDV/v05/tFjwK89IqmWal6nNrW8NxU1AYh1/QpiyiNOUu9KlDQ==
 Comments signature: OdIuqVLr/mwPqNvE6PQIJ+ko1h5fvLPQBEKS3H9PDLrux7M/izXSmE7T+NyiRPsxXH5S2EcV+eQcFohzRQYVAQ==

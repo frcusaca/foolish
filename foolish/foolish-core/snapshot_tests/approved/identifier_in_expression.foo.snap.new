@@ -7,7 +7,7 @@ INPUT:
 {x = 10; y = 20; x + y;}
 ```
 [0] RESULT:
-```hssnap
+```hfssnap
 Brane{
     x = 10;
     y = 20;
@@ -21,5 +21,5 @@ identifier_in_expression
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 7ozt9RCYuoElt8AT/8HwQXLNolGwQeGfGp6QXW2l4G9HiDSqgMoDrlfV0a8zVJmnIMocjtS988Zlpfk+glwEBQ==
-HS signature: 5UFIssO1QWtnnfgAIngWhRIsbMspwS5xCuOQ8EedoVXA6idTtDncENNFxE5gfjMuU9E18Zc1I3YHO9T6XxBmCw==
+HFS signature: 5UFIssO1QWtnnfgAIngWhRIsbMspwS5xCuOQ8EedoVXA6idTtDncENNFxE5gfjMuU9E18Zc1I3YHO9T6XxBmCw==
 Comments signature: QC5xgMq0Ony7LJpt5GRL+n6O9PgJUmDxDmPFXYIL7A6BPHtuu499SUIILcvjJ4inn0D9c0PIrarCDGFibmvlCA==
