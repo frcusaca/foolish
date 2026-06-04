@@ -1,7 +1,8 @@
 ---
-foop: 24
-title: Humanizing Sequencer formatting specification
+foop: d24
+title: Humanizing FIR Sequencer formatting specification
 author: opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4
+credits: Harold Cooper (hcbusy) — indentation model, proto-brane abstraction, line_hint design
 status: Draft
 type: Specification
 created: 2026-06-03
@@ -9,500 +10,758 @@ phase: phase-2
 supersedes: []
 ---
 
-# FOOP-42: Humanizing Sequencer formatting specification
+# FOOP-42: Humanizing FIR Sequencer formatting specification
+
+## Nomenclature
+
+As part of this FOOP, the Humanizing Sequencer is renamed to better reflect its
+domain:
+
+| Old Name | New Name | Short Form |
+|----------|----------|------------|
+| Humanizing Sequencer | Humanizing FIR Sequencer | HFS |
+| `HumanizingSequencerRef` | `HumanizingFirSequencerRef` | `hfs` |
+| `Sequencer` | `FirSequencer` | — |
+
+The short form **HFS** (or lowercase **hfs** for Rust identifiers) replaces **HS**
+in documentation, log output, snapshot footers, and code comments.  Both UBC and
+UBCb codebases are updated to use the new names.
+
+The snapshot output header changes from `[0] RESULT:\n\`\`\`hssnap` to
+`[0] RESULT:\n\`\`\`hfssnap`.
 
 ## Overview
 
-The Humanizing Sequencer (HS) renders FIR (Foolish Internal Representation) into
-human-readable text for snapshot approval tests. This specification defines the
+The Humanizing FIR Sequencer (HFS) renders FIR (Foolish Internal Representation)
+into human-readable text for snapshot approval tests. This specification defines the
 output format for every FIR variant, the indentation model, state display rules,
 and rendering conventions.
 
 All FIR and their sub-FIR are recursively represented in the output.
 
+### Why a Custom Formatter
+
+The HFS is the debugging and testing lens into the Foolish VM. Its output is the
+authoritative record of correct evaluation behavior in approval (snapshot) tests.
+We cannot rely on third-party formatters — they change between versions, make
+arbitrary layout choices, and cannot understand FIR semantics. The sequencer
+must produce reliable, informative FIR information in a repeatable manner, byte
+for byte identical across runs, implementations (UBC and UBCb), and machines.
+
+Every whitespace decision is deliberate. Indentation conveys containment
+structure. State tokens reveal evaluation progress. The format is designed to
+be readable by humans comparing snapshot diffs and by tools verifying
+cross-implementation parity.
+
 ## Indentation Model
 
-Two orthogonal indentations compose the visual layout:
+Each formatter returns a list of `(prefix, text)` pairs.  It does **not**
+materialize space characters or place delimiters.  The parent adds its own
+`body_indent` to every child prefix.  Only the outermost level converts
+prefixes to actual spaces.
 
-- **B_DENTS** — body indentationis a configurable, default 2, spaces applied at each structural
-  nesting level (entering a `{`, a `Search(...) FIR`, etc.).
-- **A_DENTS** — alignment indentation, computed dynamically as the count of
-  characters from the start of the current indentation prefix to (and including)
-  the opening delimiter (`{` or `(`). This ensures child content aligns under the
-  opening delimiter.
+### Parameters
 
-When a node opens a new nesting scope, the child block's indent is:
+| Term | Meaning |
+|------|---------|
+| `open_indent` | Hint: columns from parent body start to the child's opening delimiter |
+| `close_indent` | Hint: columns from parent body start to the child's closing delimiter |
+| `B_DENT` | Fixed body indent — **constant, value 2** |
+| `body_indent` | Prefix for body lines: `min(open_indent − close_indent + B_DENT, 2 × B_DENT)` |
 
+`open_indent` and `close_indent` are **hints**, not instructions.  The formatter
+does not place the opening or closing delimiter — the parent handles that inline.
+The hints tell the formatter where the delimiters sit so it can compute how much
+space is available for body content.
+
+### Rules
+
+1. **Body lines** get prefix `body_indent`.
+2. **Closer** gets prefix `0` — the parent positions it at the parent's
+   `body_indent`, which is where the `result=` label or statement name starts.
+3. The parent adds its own `body_indent` to every child pair.
+4. The formula `min(open_indent − close_indent + B_DENT, 2 × B_DENT)` caps the
+   body prefix at `2 × B_DENT = 4`.  Combined with the parent's own `body_indent`,
+   the total indentation from the grandparent can reach ~`3 × B_DENT`.
+5. For root branes and unnamed nested branes: `open_indent = 0`, `close_indent = 0`.
+6. For named statements (`name = {`): `open_indent = len(name) + 1` (for `=`),
+   `close_indent = 0`.
+
+### Worked Example
+
+Source: `{a=1; b={c={d=10; e=10;}}}`
+
+**Rendered output with column positions:**
+
+| 0    | 1   | 2   | 3   | 4   | 5   | 6   | 7   | 8   | 9   | 10+      | Annotation                     |
+| ---  |---  |---  |---  |---  |---  |---  |---  |---  |---  |          | ------------------------------ |
+|  `{` |     |     |     |     |     |     |     |     |     |          | root open on col 0             |
+|      |     | `a` | `=` | `1` | `;` |     |     |     |     |          | stmt at col 2                  |
+|      |     | `b` | `=` | `{` |     |     |     |     |     |          | stmt at col 2, `{` at col 4    |
+|      |     |     |     |     |     | `c` | `=` | `{` |     |          | stmt at col 6, `{` at col 8    |
+|      |     |     |     |     |     |     |     |     |     | `d=10;`  | stmt at col 10                 |
+|      |     |     |     |     |     |     |     |     |     | `e=10;`  | stmt at col 10                 |
+|      |     |     |     |     |     | `}` |     |     |     |          | c close at col 6               |
+|      |     | `}` |     |     |     |     |     |     |     |          | b close at col 2               |
+|  `}` |     |     |     |     |     |     |     |     |     |          | root close at col 0            |
+
+**Indentation chain:**
+
+```hfs
+Root:   open=0, close=0  → body_indent = min(0−0+2, 4) = 2   → stmts at prefix 2
+
+b={}:   open=2, close=0  → body_indent = min(2−0+2, 4) = 4   → stmts at prefix 2+4 = 6
+        (open=2 because "b=" is 2 cols from stmt start)
+
+c={}:   open=2, close=0  → body_indent = min(2−0+2, 4) = 4   → stmts at prefix 6+4 = 10
+        (open=2 because "c=" is 2 cols from stmt start)
 ```
-child_indent = current_indent + A_DENTS + B_DENTS
+
+Each level's `body_indent` is a prefix that the parent adds to.  The closer gets
+prefix `0`, so it appears at the parent's `body_indent` (the statement start).
+
+### Summary
+
+- `body_indent = min(open_indent − close_indent + B_DENT, 2 × B_DENT)` — prefix, capped at 4
+- Closer prefix is always `0` — parent positions it
+- Parent adds its `body_indent` to all child prefixes
+- Formatter does NOT place delimiters — parent handles inline merging
+- Named statements: `open_indent = len(name) + 1`, `close_indent = 0`
+- Root / unnamed: `open_indent = 0`, `close_indent = 0`
+
+## Proto-Brane Formatter
+
+Branes, searches, operators, HeadTail, Index, StayFoolish, StayFullyFoolish, and
+Concatenation all share the same structural pattern: an opening line, indented body
+content, and a closing line. A single **proto-brane formatter** handles all of them.
+
+The formatter does NOT place delimiters — the parent handles that inline.
+The formatter receives `open_indent` and `close_indent` as **hints** about where
+the delimiters sit, computes `body_indent`, and returns body lines with prefixes.
+
+### Parameters
+
+| Parameter | Meaning |
+|-----------|---------|
+| `pbid` | Proto-brane identifier (source trigger) |
+| `opener` | Opening delimiter string (`"{"`, `"("`, `"<<"`) |
+| `closer` | Closing delimiter string (`"}"`, `")"`, `">>"`) |
+| `open_indent` | Hint: cols from parent body to child's opener |
+| `close_indent` | Hint: cols from parent body to child's closer |
+
+### Indent Computation
+
+```hfs
+body_indent = min(open_indent − close_indent + B_DENT, 2 × B_DENT)
 ```
 
-where `A_DENTS` is the horizontal position of the opening delimiter relative to
-the current indent. The closing delimiter aligns with the start of the opener's
-line (i.e. at `current_indent`).
+- **Body lines**: prefix = `body_indent`
+- **Closer line**: prefix = `0` (parent positions it)
+- Parent adds its own `body_indent` to all child prefixes
 
-### Configuration
+### Configuration Table
 
-| Parameter | Value | Description |
-|-----------|-------|-------------|
-| `B_DENTS` | 2 | Fixed body indentation per nesting level |
+| FIR Variant | `pbid` | `opener` | `closer` | `internal` |
+|-------------|--------|----------|----------|------------|
+| NormalBrane | `""` | `"{"` | `"}"` | 1 |
+| Search (←) | `"?"` | `"("` | `")"` | 2 |
+| Search (→) | `"/"` | `"("` | `")"` | 2 |
+| HeadTail (head) | `"^"` | `"("` | `")"` | 2 |
+| HeadTail (tail) | `"$"` | `"("` | `")"` | 2 |
+| Index | `"#"` | `"("` | `")"` | 2 |
+| Operator | op string | `"("` | `")"` | len(op) + 1 |
+| StayFoolish | `""` | `"<"` | `">"` | 1 |
+| StayFullyFoolish | `""` | `"<<"` | `">>"` | 2 |
+| Concatenation | `"⨃"` | `"("` | `")"` | 4 |
 
-`A_DENTS` is always computed dynamically and is never zero for a multi-line child.
+### Example: Search (backward, ECONSTANIC — failed)
 
-### Example (annotated)
+```hfs
+open_indent = 4, close_indent = 0  (inside "a = ?(...)")
+body_indent = min(4 − 0 + 2, 4) = min(6, 4) = 4
 
+Returns:
+  (4, "pattern='^x$',")       ← trailing comma
+  (4, "UNANCHORED,")          ← trailing comma
+  (4, "UNANCHORED, ECONSTANIC")  ← last item, no comma... wait, state is separate
+
+Actually, the items are comma-separated by the formatter:
+  (4, "pattern='^x$',")
+  (4, "UNANCHORED,")
+  (4, "ECONSTANIC")           ← last item, no comma
+
+Parent places opener "?(" and closer ")" inline.
 ```
+
+### Example: Search (backward, WOCONSTANIC — multi-line result)
+
+When the result is a brane, the result line starts at `body_indent` and the
+brane's closer aligns at `close_indent` (= `body_indent` from the caller).
+
+```hfs
 {
-  a=1;
-  b=2;
+  a = ?(result={
+              aha=1;
+              oohoo=2;
+              yoohooooooooooooooooooooooooooooooo=20
+          },
+          pattern='^x$',
+          UNANCHORED,
+          WOCONSTANIC)
 }
 ```
 
-Annotated:
-```
-{
-BB     ← root brane, B_DENTS=2 on top of A_DENTS=0
-  a=1;
-  b=2;
-}           ← closing at root indent
+**How the indentation works:**
+
+The search formatter generates non-result items first, then the result last.
+The brane receives `open_indent = 7` (len("result=")) and `close_indent = 0`.
+
+```hfs
+search body_indent = min(4 − 0 + 2, 4) = 4   (open=4 from "a = " prefix)
+brane body_indent  = min(7 − 0 + 2, 4) = 4   (open=7 from "result=" prefix)
 ```
 
-Nested branes add A_DENTS:
+The brane body prefix (4) is added by the search to its own body_indent.
+The brane closer prefix (0) places `}` at the search's body_indent.
 
-```
-{
-BB        ← root B_DENTS=2 (A_DENTS=0 for root)
-  a=1;
-  b={
-BBAAA   ← A_DENTS: count chars including `{` = 2+3=5
-     BB    ← b's B_DENTS=2
-       c={
-BBAAABBAAA ← c's A_DENTS: count chars including `{` = 2+3+2+3=10
-          BB  ← c's B_DENTS=2
-            d=10;
-            e=10;
-       }
-  }
-}
+### Example: Search (backward, CONSTANT — found a value)
+
+```hfs
+Returns (single line):
+  (body_indent, "result=42,")
+  (body_indent, "pattern='^x$',")
+  (body_indent, "UNANCHORED")
 ```
 
-The character-counting rule: when a statement on line L opens a brane, measure
-how many characters on line L appear before the `{` (starting from the current
-indent), inclusive. That is `A_DENTS` for the child brane's body. A rendered
-version without annotations:
+### Example: Operator (EMBRYONIC)
 
+```hfs
+Returns:
+  (body_indent, "10,")
+  (body_indent, "20,")
+  (body_indent, "EMBRYONIC")
 ```
-{
-  a=1;
-  b={
-      c={
-        d=10;
-        e=10;
-      }
-  }
-}
+
+### Example: StayFoolish (WOCONSTANIC)
+
+State on opener line, body is inner FIR:
+```hfs
+open_indent = 0, close_indent = 0
+body_indent = min(0−0+2, 4) = 2
+
+Parent places "<WOCONSTANIC" inline, then body at prefix 2, then ">" at prefix 0.
 ```
 
 ## FIR Variants
 
+Every variant whose FIR body contains children uses the proto-brane formatter
+(see above). Only variant-specific details — which args appear, result handling,
+state placement, transparency rules — are listed here.
+
+All body lines produced by the proto-brane formatter carry a trailing comma
+**except the last**.  Commas are appended by the current formatter itself,
+not by the parent.  This invariant means a parent can freely adjust prefix
+spacing without breaking the separator syntax.
+
+For branes, the separator is `;` instead of `,` — same rule: trailing `;` on
+all body lines except the last.
+
 ### 1. ConstantInt (Integer Literal)
 
-Rendered as the integer's decimal representation. No state suffix.
+Rendered as the integer's decimal representation. No state suffix. For CONSTANT
+and INDEPENDENT states only — non-terminal ints should not occur.
 
-```
+```hfs
 10
 ```
 
-Only for CONSTANT and INDEPENDENT states. If a ConstantInt has a non-terminal
-state, see the Non-Terminal FIR rule.
-
 ### 2. NK (Not Known / ???)
 
-Rendered as:
-
-```
+```hfs
 ??? (reason)
 ```
 
-If an alarm is present, append it:
-```
+With an alarm:
+```hfs
 ??? (reason, ALARM_CODE: message)
 ```
 
-NK always displays this way regardless of state.
+NK always displays this way regardless of state. No proto-brane formatter needed.
 
 ### 3. Operator
 
-Non-constant and non-independent operators render as:
+Proto-brane: `pbid = op_string` (e.g. `"+"`, `"-"`, `"*"`, `"/"`), `opener = "("`,
+`closer = ")"`.
 
-```
-name(args) STATE_TOKEN
-```
+**CONSTANT or INDEPENDENT**: transparent — renders the computed value inline
+(e.g. `60`). The FIR has been replaced by its result.
 
-Where STATE_TOKEN is one of `ECONSTANIC`, `WOCONSTANIC`, `PREMBRIONIC`,
-`EMBRYONIC`, `BRANING`. For CONSTANT and INDEPENDENT operators, the value is
-rendered (see below).
+**EMBRYONIC** (operands ready, not yet stepped): operands comma-separated,
+state at end:
 
-Operators that have reduced to a constant/independent value render their result
-inline (as the value, not a labeled struct):
-
-```
-60
+```hfs
++(10, 20, EMBRYONIC)
 ```
 
-(no `Operator(+) → 60` wrapping — the FIR is transparent).
+**WOCONSTANIC** (some operands constanic): inline children, state at end:
+
+```hfs
++(?(result=<x>, pattern='^x$', UNANCHORED, WOCONSTANIC), 20, WOCONSTANIC)
+```
+
+When expanded to multi-line:
+
+```hfs
++(
+  ?(result=<x>, pattern='^x$', UNANCHORED, WOCONSTANIC),
+  20,
+  WOCONSTANIC
+)
+```
 
 ### 4. Search
 
-Search renders one of two ways:
+Proto-brane: `opener = "("`, `closer = ")"`.  The `pbid` is the **source trigger**:
+`"?"` for backward search, `"/"` for forward search (matching Foolish source
+`?(expr)` and `/(expr)`).  Direction is implicit — not an arg.
 
-**Without a result** (still searching, or ended with NK/ECONSTANIC):
-```
-Search(pattern='^x$', dir=BACKWARD, UNANCHORED) STATE_TOKEN
+**ECONSTANIC** (not found): args then state at end:
+
+```hfs
+?(pattern='^x$', UNANCHORED, ECONSTANIC)
 ```
 
-**With a constant result:**
+**CONSTANT** (found, resolved): result first, skip state:
+
+```hfs
+?(result=42, pattern='^x$', UNANCHORED)
 ```
-Search(pattern='^x$', dir=BACKWARD, UNANCHORED,
-       result=RESULT
+
+**WOCONSTANIC** (found but target is constanic): result first, keep state:
+
+```hfs
+?(result=<target>, pattern='^x$', UNANCHORED, WOCONSTANIC)
+```
+
+Multi-line with nested result:
+
+```hfs
+?(
+  result=?(
+    pattern='^y$',
+    UNANCHORED,
+    ECONSTANIC
+  ),
+  pattern='^x$',
+  UNANCHORED,
+  WOCONSTANIC
 )
 ```
-The `result=` line starts at `B_DENTS` from the opening line's indent. RESULT
-is recursively rendered at its own indent.
-
-**With a non-constant result (e.g. another Search):**
-```
-Search(pattern='^x$', dir=BACKWARD, UNANCHORED) STATE_TOKEN
-       result=
-         Search(pattern='^y$', ...)
-```
-
-When the result is another Search, it starts on its own indented line.
-
-If result is raw value:
-```
-Search(pattern='^x$', dir=BACKWARD, UNANCHORED,
-       result=10
-)
-```
-
-Parameters: `pattern`, `dir` (BACKWARD/FORWARD), `UNANCHORED`/`ANCHORED`.
-
-For ANCHORED searches, anchor is implicit (not displayed separately) — the
-anchor resolved what the search targets on.
 
 ### 5. HeadTail
 
-HeadTail format:
+Proto-brane: `opener = "("`, `closer = ")"`.  `pbid = "^"` for head, `pbid = "$"`
+for tail (matching Foolish source `^` and `$`).  Always ANCHORED — not listed.
+
+**NK** (empty brane): state at end:
+
+```hfs
+^(NK)
 ```
-HeadTail(HEAD, WOCONSTANIC)
-HeadTail(TAIL, ECONSTANIC,
-         result=RESULT
-)
+no result needed here. But if `^` found a search that resulted in NK, it would be
+```hfs
+^(result=Search(..., NK), NK)
 ```
 
-HeadTail can only be ANCHORED (per language semantics). The `HEAD`/`TAIL` token
-appears as the first argument. The state appears as the second positional token
-(unbracketed), or omitted if CONSTANT/INDEPENDENT.
+**ECONSTANIC** (not found): state at end:
+
+```hfs
+^(ECONSTANIC)
+```
+
+**CONSTANT** (found, resolved): transparent — renders the extracted value.
+
+**WOCONSTANIC** (found, target constanic): result first, keep state:
+
+```hfs
+$(result=<target>, WOCONSTANIC)
+```
 
 ### 6. Index (Seek)
 
+Proto-brane: `opener = "("`, `closer = ")"`.  `pbid = "#"` (matching Foolish
+source `#N`).
+
+**NK** (out of bounds): `offset`, anchor kind, state:
+
+```hfs
+#(offset=99, ANCHORED, NK)
 ```
-Index(offset=3, UNANCHORED) ECONSTANIC
-Index(offset=-1, ANCHORED,
-      result=RESULT
-)
+
+**CONSTANT** (found): result first, inline args:
+
+```hfs
+#(result=30, offset=0, ANCHORED)
+```
+
+**ECONSTANIC** (not found):
+
+```hfs
+#(offset=3, UNANCHORED, ECONSTANIC)
 ```
 
 ### 7. StayFoolish (SF)
 
+Proto-brane: `pbid = ""`, `opener = "<"`, `closer = ">"`.
+
+Like a brane with angle-bracket delimiters.  State (if non-constant) follows `<`
+with no space; body is the inner FIR.  CONSTANT/INDEPENDENT SF renders the inner
+value transparently.
+
+```hfs
+<WOCONSTANIC
+  ?(pattern='^sf_target$', UNANCHORED, ECONSTANIC)
+>
 ```
-StayFoolish(WOCONSTANIC)
-StayFoolish(
-  BODY
-)
+```hfs
+<
+  { ... }
+>
 ```
 
 ### 8. StayFullyFoolish (SFF)
 
+Proto-brane: `pbid = ""`, `opener = "<<"`, `closer = ">>"`.
+
+2-character delimiters, otherwise identical to StayFoolish.
+
+```hfs
+<<EMBRYONIC
+  ?(pattern='^sff_target$', UNANCHORED)
+>>
 ```
-StayFullyFoolish(WOCONSTANIC)
-StayFullyFoolish(
-  BODY
-)
+```hfs
+<<
+  { ... }
+>>
 ```
 
 ### 9. Concatenation
 
+Proto-brane: `pbid = "⨃"` (U+2A03, n-ary union), `opener = "("`, `closer = ")"`.
+
+Elements comma-separated, state at end if non-constant:
+
+```hfs
+⨃(elements=3, EMBRYONIC)
 ```
-Concatenation(elements=3) WOCONSTANIC
-Concatenation(
-  ELEM1,
-  ELEM2,
-  ELEM3
+
+Multi-line:
+
+```hfs
+⨃(
+  {a=1; b=2},
+  {c=3; d=4},
+  {e=5; f=6},
+  EMBRYONIC
 )
 ```
 
-When merged, the merged result follows the elements as an additional indented
-block.
+CONSTANT/INDEPENDENT: renders as a brane with `⨃` prefix:
+
+```hfs
+⨃{a=1; b=2; c=3; d=4; e=5; f=6}
+```
 
 ### 10. NormalBrane
 
-Brane format:
-```
-{
-  stmt1;
-  stmt2;
-  stmt3
-}
-```
+Proto-brane: `pbid = ""`, `opener = "{"`, `closer = "}"`.
 
-Statements are separated by `;` appended to each line (except the last).
-Statements with names are rendered as `name = body`. The body is inline if it
-is an atomic value or an NK; multi-line otherwise.
+Body: statement lines separated by `;` (trailing on all non-last lines, appended
+by the brane formatter itself). If the brane has characterizations, they appear
+before `{`: `name'{`.
 
-If the brane is in a non-CONSTANT/non-INDEPENDENT state:
-```
+State token (if non-constant) appears immediately after `{` with no space:
+
+```hfs
 {WOCONSTANIC
-  ...
+  stmt1;
+  stmt2
 }
 ```
 
-The state token appears immediately after the opening `{`, no space.
-
-Nested branes:
+Empty branes render on one line:
+```hfs
+{}
 ```
+
+Named statements in the enclosing brane body pass `opener_indent = len(name) + 1`
+to the child brane's proto-brane formatter, with the `{` merged inline:
+
+```hfs
 {
   outer = {
            inner = {
                    deep = 10;
-                   deeper = 20;
+                   deeper = 20
            }
   }
 }
 ```
 
-Note the A_DENTS alignment: `outer = ` is 8 chars, `{` is the 9th, so the body
-of outer's brane starts 9 chars in from outer's statement indent (A_DENTS=9),
-then adds B_DENTS=2 for 11 total. `;` is appended to each statement line except
-the last.
+Note: `;` on all but last stmt line.  `deep = 10;` gets it, `deeper = 20` does not.
 
-## Rendering Algorithm (Pseudo-Code)
+## Rendering Algorithm
 
-The HS traverses the FIR tree recursively. Each node knows its current indent
-(`indent` — a non-negative integer counting total spaces from column 0), and
-whether it is being rendered inline (after `name = `) or at its own line.
+The HFS dispatches on FIR variant, returning `[(prefix, text), ...]` pairs.
+Atomic types (ConstantInt, NK) produce a single pair.  All non-atomic types
+delegate to `proto_brane_formatter`.
+
+### Core Dispatch
 
 ```
-function render(node: FirQueryable, indent: int, inline: bool, prefix: str) -> string
-
+function render(node, open_indent, close_indent)
   state := node.state()
   show_state := state ∉ {CONSTANT, INDEPENDENT}
 
-  // ── Literal ──
+  // ── Atomic ──
   if value := node.constant_int()
-    if show_state:
-      // Non-terminal int should not happen; fallback
-      return format("{STATE_TOKEN} {value}")
-    return format("{value}")
+    return [(open_indent, format("{value}"))]
 
-  // ── NK ──
   if (reason, alarm) := node.nk()
     let msg := "??? ({reason}"
     if alarm: msg += ", {alarm.code}: {alarm.message}"
     msg += ")"
-    if not inline: msg = spaces(indent) + msg
-    return msg
+    return [(open_indent, msg)]
 
-  // ── Operator ──
+  // ── Operator (transparent when constant) ──
   if (op_name, operands) := node.operator()
-    if state ∈ {CONSTANT, INDEPENDENT}:
-      // Transparent — render the computed value (not the operator label)
-      // In practice this means the operator has been reduced and we should
-      // show the result. For now, the HS receives the reduced FIR, so the
-      // operator will have been replaced by a ConstantInt in the brane body.
-      // If still an Operator that happens to be CONSTANT, render as value:
-      return render_reduced_value(node, indent, inline)
-    else:
-      return render_non_atomic("Operator", [op_name], [], indent, inline, state,
-                               None, operands)
+    if state ∈ {CONSTANT, INDEPENDENT}
+      return [(open_indent, format("{reduced_value}"))]
+    let body_items := []
+    for op in operands:
+      body_items += [render_to_string(op)]
+    if show_state:
+      body_items += [format("{state}")]
+    return proto_brane_formatter(
+      pbid:          op_name,
+      opener:        "(",
+      closer:        ")",
+      open_indent:   open_indent,
+      close_indent:  close_indent,
+      items:         body_items,
+    )
 
   // ── Search ──
-  if (pattern, direction, anchored, anchor, target) := node.search()
-    let params := "{pattern}, {direction}, {ANCHORED|UNANCHORED}"
-    let header := format("Search({params})")
-    if show_state: header += " " + state
-    return render_with_optional_result("Search", params, indent, inline,
-                                       state, show_state, target,
-                                       {has_result: target.is_some()})
+  if (pattern, direction, anchored, _, target) := node.search()
+    let trigger := direction == BACKWARD ? "?" : "/"
+    let anchor_str := anchored ? "ANCHORED" : "UNANCHORED"
+    // Deferred result: generate non-result items first, result last
+    let non_result_items := ["pattern='{pattern}'", anchor_str]
+    if state ∈ {WOCONSTANIC, ECONSTANIC}:
+      non_result_items += [format("{state}")]
+    else if state ∉ {CONSTANT, INDEPENDENT}:
+      non_result_items += [format("{state}")]
+    return proto_brane_formatter_with_result(
+      pbid:          trigger,
+      opener:        "(",
+      closer:        ")",
+      open_indent:   open_indent,
+      close_indent:  close_indent,
+      non_result:    non_result_items,
+      result:        target,             // rendered last; its close_indent = parent body_indent
+    )
 
   // ── HeadTail ──
-  if (is_head, anchored, anchor) := node.head_tail()
-    let ht := is_head ? "HEAD" : "TAIL"
-    let params := "{ht}"
-    if show_state: params += ", " + state
-    else: params += ", "  // placeholder
-    return render_with_optional_result("HeadTail", params, indent, inline,
-                                       state, show_state, anchor,
-                                       {has_result: anchor.is_some()})
+  if (is_head, _, anchor) := node.head_tail()
+    let trigger := is_head ? "^" : "$"
+    let non_result_items := []
+    if state ∈ {WOCONSTANIC, ECONSTANIC}:
+      non_result_items += [format("{state}")]
+    else if state ∉ {CONSTANT, INDEPENDENT}:
+      non_result_items += [format("{state}")]
+    return proto_brane_formatter_with_result(
+      pbid:          trigger,
+      opener:        "(",
+      closer:        ")",
+      open_indent:   open_indent,
+      close_indent:  close_indent,
+      non_result:    non_result_items,
+      result:        anchor,
+    )
 
   // ── Index ──
   if (offset, anchored, anchor) := node.index()
-    let anchor_kind := anchored ? "ANCHORED" : "UNANCHORED"
-    let params := "offset={offset}, {anchor_kind}"
-    if show_state: params += ", " + state
-    return render_with_optional_result("Index", params, indent, inline,
-                                       state, show_state, anchor,
-                                       {has_result: anchor.is_some()})
+    let ak := anchored ? "ANCHORED" : "UNANCHORED"
+    let non_result_items := ["offset={offset}", ak]
+    if state ∈ {WOCONSTANIC, ECONSTANIC}:
+      non_result_items += [format("{state}")]
+    else if state ∉ {CONSTANT, INDEPENDENT}:
+      non_result_items += [format("{state}")]
+    return proto_brane_formatter_with_result(
+      pbid:          "#",
+      opener:        "(",
+      closer:        ")",
+      open_indent:   open_indent,
+      close_indent:  close_indent,
+      non_result:    non_result_items,
+      result:        anchor,
+    )
 
-  // ── StayFoolish / StayFullyFoolish ──
-  if expr := node.stay_foolish()
-    let name := "StayFoolish"
-    return render_with_required_body(name, indent, inline, state, show_state, expr)
+  // ── StayFoolish ──
+  if inner := node.stay_foolish()
+    return proto_brane_formatter(
+      pbid:          "",
+      opener:        "<",
+      closer:        ">",
+      open_indent:   open_indent,
+      close_indent:  close_indent,
+      opener_state:  show_state ? format("{state}") : None,
+      body:          render(inner, ...),
+    )
 
-  if expr := node.stay_fully_foolish()
-    let name := "StayFullyFoolish"
-    return render_with_required_body(name, indent, inline, state, show_state, expr)
+  // ── StayFullyFoolish ──
+  if inner := node.stay_fully_foolish()
+    return proto_brane_formatter(
+      pbid:          "",
+      opener:        "<<",
+      closer:        ">>",
+      open_indent:   open_indent,
+      close_indent:  close_indent,
+      opener_state:  show_state ? format("{state}") : None,
+      body:          render(inner, ...),
+    )
 
   // ── Concatenation ──
   if (elements, merged) := node.concatenation()
-    let name := "Concatenation"
-    let label := format("elements={len(elements)}")
-    return render_non_atomic(name, [label], [], indent, inline, state,
-                             merged, elements)
+    let body_items := ["elements={len(elements)}"]
+    for elem in elements:
+      body_items += [render_to_string(elem)]
+    if merged is Some(m):
+      body_items += ["merged=" + render_to_string(m)]
+    if show_state:
+      body_items += [format("{state}")]
+    return proto_brane_formatter(
+      pbid:          "⨃",
+      opener:        "(",
+      closer:        ")",
+      open_indent:   open_indent,
+      close_indent:  close_indent,
+      items:         body_items,
+    )
 
   // ── NormalBrane ──
-  if (characterizations, statements) := node.brane()
-    return render_brane(characterizations, statements, indent, inline, state, show_state)
+  if (charact, statements) := node.brane()
+    return proto_brane_formatter(
+      pbid:          charact,             // "" or "name'"
+      opener:        "{",
+      closer:        "}",
+      open_indent:   open_indent,         // 0 for root/unnamed
+      close_indent:  close_indent,
+      opener_state:  show_state ? format("{state}") : None,
+      body:          render_statements(statements, ...),
+    )
 
-  return "Unknown({node.variant()})"
+  return [(open_indent, "Unknown({node.variant()})")]
+```
 
+### Proto-Brane Formatter
 
-function render_brane(chars, stmts, indent, inline, state, show_state) -> string
-  let buf := ""
-  if not inline: buf += spaces(indent)
+Two variants: `items`-based (comma-separated args list) and `body` + `opener_state`-based
+(branes, SF, SFF where body is multi-line child content).  A third variant
+`proto_brane_formatter_with_result` handles Search/HeadTail/Index with deferred
+result generation.
 
-  buf += "{"
-  if show_state: buf += state
+```
+function proto_brane_formatter(pbid, opener, closer, open_indent, close_indent,
+                               items, opener_state, body)
 
-  if stmts.is_empty():
-    buf += "}"
-    return buf
+  // body_indent is a PREFIX for body lines, relative to the formatter's origin.
+  // Parent adds its own body_indent to all returned prefixes.
+  let body_indent := min(open_indent − close_indent + B_DENT, 2 × B_DENT)
 
-  buf += "\n"
+  let lines := []
 
-  let a_dents := compute_a_dents(indent, inline, starting_col)
-  // a_dents counts chars from current indent start to and including the '{'
-  // For a top-level brane, a_dents = 1 (the '{' character itself)
-  let body_indent := indent + a_dents + B_DENTS
-  // B_DENTS = 2
-
-  let last := stmts.len() - 1
-  for (i, stmt) in stmts:
-    if stmt.name is Some(name):
-      buf += spaces(body_indent) + name + " = "
-      // The name assignment line establishes the alignment
-      // The body A_DENTS is computed from the '=' to the '{'
-      let name_line_cols := len(name) + 3  // " = "
-      let a_dents_body := name_line_cols + 1  // include the '{'
-      buf += render(stmt.body, body_indent + a_dents_body + B_DENTS, true, name)
-      // Wait, actually for name = body, the body renders inline or multi-line
-      // from the position after "name = "
-      let body_prefix := spaces(body_indent) + name + " = "
-      let rendered := render_to_string(stmt.body, body_indent, true)
-      // For multi-line bodies, subsequent lines get body_indent + A_DENTS + B_DENTS
-      if rendered is single_line:
-        buf += rendered
-      else:
-        buf += rendered  // already has proper indentation
+  if items is not None:
+    // Comma-separated items.  Single-line if fits; multi-line with trailing
+    // commas on all but last.  Comma appended by this formatter, not parent.
+    let last := items.len() - 1
+    if can_single_line(items, line_hint):
+      let joined := items.join(", ")
+      lines += [(body_indent, joined)]
     else:
-      let rendered := render(stmt.body, body_indent, false, "")
-      buf += rendered
+      for (i, item) in items:
+        let suffix := if i < last then "," else ""
+        lines += [(body_indent, item + suffix)]
 
-    buf += "\n"
-    // Append ';' to all lines except the last
-    if i < last:
-      // Replace trailing newline with ';\n'
-      buf := buf.strip_suffix('\n') + ";\n"
+  if body is not None:
+    // Multi-line body for branes/SF/SFF
+    for line in body:
+      lines += [(body_indent + line.prefix, line.text)]
 
-  buf += spaces(indent) + "}"
-  return buf
+    // `;` on all non-last stmt lines (branes); appended by this formatter
 
+  // Closer at prefix 0 — parent positions it at parent's body_indent
+  lines += [(0, closer)]
 
-function render_non_atomic(name, inline_args, body_args, indent, inline,
-                            state, show_state, result, children) -> string
-  // Construct the opening line
-  let open_line := name + "(" + inline_args.join(", ")
-  if show_state: open_line += ", " + state
-  open_line += ")"
+  return lines
+```
 
-  let buf := spaces(indent) + open_line
+**Deferred result variant** for Search/HeadTail/Index:
 
-  let has_body := children.is_not_empty() || result.is_some()
-  if not has_body: return buf
+```
+function proto_brane_formatter_with_result(pbid, opener, closer,
+                                            open_indent, close_indent,
+                                            non_result, result)
 
-  buf += "\n"
+  let body_indent := min(open_indent − close_indent + B_DENT, 2 × B_DENT)
 
-  let a_dents := len(name)  // chars from indent to '(' — but simpler:
-  // a_dents = number of chars from indent start to and including '('
-  // For name(args) the '(' is at position len(name)
-  let a_dents := len(name) + 1  // include '('
-  let body_indent := indent + a_dents + B_DENTS
+  let lines := []
 
-  // Render children indented to body_indent
-  for child in children:
-    buf += render(child, body_indent, false, "") + "\n"
+  // Pass 1: generate non-result items (pattern, anchor, state)
+  let non_result_last := non_result.len() - 1
+  for (i, item) in non_result:
+    let suffix := if i < non_result_last then "," else ""
+    lines += [(body_indent, item + suffix)]
 
-  if result is Some(res):
-    buf += spaces(body_indent) + "result=" + render(res, body_indent, true, "result=")
-    buf += "\n"
+  // Pass 2: generate result last — now we know the line budget
+  if result is Some(t):
+    let result_label := "result="
+    // Result child: open_indent = len("result=") + len(pbid + opener)
+    //               close_indent = 0 (closer aligns with this formatter's body_indent)
+    let inner_open  := len(result_label) + len(pbid + opener)
+    let inner_close := 0
+    let result_lines := render(t, inner_open, inner_close)
+    // Prepend "result=" label to first result line
+    result_lines[0].text = result_label + result_lines[0].text
+    // Add comma after result if there were non-result items
+    if non_result.len() > 0:
+      result_lines[last].text += ","
+    lines += result_lines
 
-  // Closing ')'
-  buf += spaces(indent) + ")"
-  return buf
+  // Closer at prefix 0
+  lines += [(0, closer)]
 
+  return lines
+```
 
-function render_with_optional_result(name, params, indent, inline,
-                                      state, show_state, target,
-                                      has_result) -> string
-  let open_line := name + "(" + params + ")"
+### Statement Rendering in Branes
 
-  if has_result and state == CONSTANT:
-    // Result was found, display multi-line
-    let buf := spaces(indent) + open_line + ",\n"
-    let a_dents := len(name) + 1  // '('
-    let res_indent := indent + a_dents + B_DENTS
-    buf += spaces(res_indent) + "result="
-    buf += render(target, res_indent + 7, true, "result=")  // 7 = len("result=")
-    buf += "\n" + spaces(indent) + ")"
-    return buf
-  else:
-    // No result or result still evaluating
-    let buf := spaces(indent) + open_line
-    if show_state: buf += " " + state
-    if has_result and show_state:
-      // Result exists but non-constant, show on next line
-      buf += "\n"
-      let a_dents := len(name) + 1
-      let res_indent := indent + a_dents + B_DENTS
-      buf += spaces(res_indent) + "result=\n"
-      buf += render(target, res_indent + B_DENTS, false, "")
-    return buf
-
-
-function render_with_required_body(name, indent, inline, state, show_state, expr) -> string
-  let open_line := name
-  if show_state: open_line += "(" + state + ")"
-  else: open_line += "("
-
-  let buf := spaces(indent) + open_line + "\n"
-
-  let a_dents := len(name) + 1  // '('
-  let body_indent := indent + a_dents + B_DENTS
-
-  buf += render(expr, body_indent, false, "")
-  buf += "\n" + spaces(indent) + ")"
-  return buf
+```
+function render_statements(statements, body_indent)
+  let lines := []
+  let last := statements.len() - 1
+  for (i, stmt) in statements:
+    if stmt.name is Some(name):
+      lines += [(body_indent, name + "=")]    // { merges inline from child
+      let child := render(stmt.body, body_indent + len(name) + 1)
+      merge_first_child_line_inline(lines, child, "=")
+    else:
+      lines += render(stmt.body, body_indent)
+  // Trailing ; on all non-last; appended by THIS formatter
+  for i in 0..last:
+    lines[i].text += ";"
+  return lines
 ```
 
 ## State Display Summary
@@ -516,14 +775,14 @@ function render_with_required_body(name, indent, inline, state, show_state, expr
 | PREMBRIONIC | Yes | Same |
 | EMBRYONIC | Yes | Same |
 | BRANING | Yes | Same |
-| NK | Yes | `??? (reason)` format |
+| NK | Yes | `??? (reason)` format — applies to both standalone NK FIRs and NK state on branes |
 
 State tokens are displayed WITHOUT brackets. The `[STATE]` bracket syntax is
 replaced by bare tokens (e.g., `ECONSTANIC`, not `[ECONSTANIC]`).
 
 ## Complete Examples
 
-### Example 1: Simple branch with operations
+### Example 1: Simple brane with operations
 
 Input:
 ```foolish
@@ -559,10 +818,10 @@ Input:
 
 Output:
 ```
-NK{
-  l1=NK{
-      l2=NK{
-           l3=NK{
+??? (division by zero){
+  l1=??? (division by zero){
+      l2=??? (division by zero){
+           l3=??? (division by zero){
                 bad=??? (division by zero);
                 good=42
            }
@@ -571,63 +830,86 @@ NK{
 }
 ```
 
-### Example 3: Searches
+### Example 3: Forward reference (ECONSTANIC)
 
+Input:
+```foolish
+{fwd=x; x=42;}
 ```
-{
-  r=Search(pattern='^x$', dir=BACKWARD, UNANCHORED) ECONSTANIC;
-  r=Search(pattern='^x$', dir=BACKWARD, UNANCHORED) WOCONSTANIC,
-     result=Search(pattern='^y$', ...);
-  r=Search(pattern='^x$', dir=BACKWARD, UNANCHORED,
-            result=1
-  );
-  r=Search(pattern='^x$', dir=BACKWARD, ANCHORED) ECONSTANIC;
-  r=Search(pattern='^x$', dir=BACKWARD, ANCHORED) WOCONSTANIC,
-     result=1;
-  r=Search(pattern='^x$', dir=BACKWARD, ANCHORED) WOCONSTANIC,
-     result=Search(pattern='^x$', ...);
-  r=HeadTail(HEAD, WOCONSTANIC);
-  r=HeadTail(HEAD,,
-     result=1;
-  r=HeadTail(TAIL, ECONSTANIC,
-             result=Search(pattern='^x$', ...)
-  )
+
+Output:
+```
+WOCONSTANIC{
+  fwd=?(pattern='^x$', UNANCHORED, ECONSTANIC);
+  x=42
 }
 ```
 
-### Example 4: NK with alarm
+### Example 4: Search with result, HeadTail, Index
 
 ```
-??? (division by zero)
-??? (unknown identifier)
+{
+  found=?(result=42, pattern='^x$', UNANCHORED);
+  not_found=?(pattern='^γ$', UNANCHORED, NK);
+  empty_head=^(NK);
+  head_with_result=^(result=10);
+  seek_oob=#(offset=99, ANCHORED, NK);
+  seek_found=#(result=30, offset=0, ANCHORED);
+  concat=⨃(elements=2, WOCONSTANIC)
+}
+```
+
+### Example 5: StayFoolish and StayFullyFoolish
+
+```
+{
+  sf=<WOCONSTANIC
+      ?(pattern='^target$', UNANCHORED, ECONSTANIC)
+  >;
+  sff=<<EMBRYONIC
+        ?(pattern='^target$', UNANCHORED)
+  >>;
+  sf_resolved=<{a=1; b=2}>
+}
+```
+
+### Example 6: Multi-line operator with constanic operands
+
+```
+sum=+(
+  ?(result=<x>, pattern='^x$', UNANCHORED, WOCONSTANIC),
+  ?(result=<y>, pattern='^y$', UNANCHORED, WOCONSTANIC),
+  WOCONSTANIC
+)
 ```
 
 ## Implementation Notes
 
-1. **The HS should use character-based alignment**, not depth-based indentation.
-   The current `format_fir_q` uses `"  ".repeat(depth)` which gives uniform 2-space
-   nesting but does not align child content under the opening delimiter. The new
-   format uses A_DENTS (dynamic, computed from opening delimiter position) and
-   B_DENTS (fixed 2-space body indent).
+1. **The HFS uses character-based alignment.** Predecessor code used depth-count
+   (`"  ".repeat(depth)`). FOOP-42 replaces this with `open_indent`/`close_indent`
+   hints: `body_indent = min(open_indent − close_indent + B_DENT, 2 × B_DENT)`.
 
-2. **Operators are transparent when constant.** A `+` operator that has reduced to
-   `60` should render as `60`, not `Operator(+) → 60`. The current implementation
-   renders operators as `Operator(+, [EMBRYONIC])` with child indentation. The new
-   format only renders non-constant/non-independent operators as labeled structs.
+2. **Operators are transparent when CONSTANT/INDEPENDENT.** A `+` that reduced
+   to `60` renders as `60`.  Only non-terminal operators show the proto-brane
+   wrapper with comma-separated operands and trailing state.
 
-3. **Brane state is inlined after `{`**. Current format: `Brane [NK]{`. New format:
-   `{` for constant branes, `NK{` for NK branes, `WOCONSTANIC{` for WOConstanic
-   branes, etc.
+3. **State placement**: inside proto-brane parentheses, state is a trailing
+   comma-separated item (ALL CAPS).  For branes/SF/SFF, state follows the
+   opener inline (e.g. `??? (division by zero){`, `<WOCONSTANIC`).
 
-4. **No `Brane` keyword.** The current `Brane{...}` prefix is removed. A bare `{`
-   is the brane delimiter.
+4. **Commas on body lines**: appended by the formatter itself on all body
+   lines except the last.  `;` for branes.
 
-5. **Statements use `;` separators.** All statements except the last in a brane are
-   terminated with `;`.
+5. **Two indent parameters**: `open_indent` (where opener goes) and
+   `close_indent` (where closer goes).  Usually identical; differ for
+   `result=` children where closer aligns at parent's body_indent.
 
-6. **Both UBC and UBCb must produce identical output.** The HS is shared code in
-   `foolish-core/src/sequencer.rs`. Both evaluators use the same `Sequencer::format`
-   function. Any format change affects both snapshot test suites simultaneously.
+6. **Deferred result generation**: Search/HeadTail/Index generate non-result
+   items first, then result last.  The result child receives `close_indent`
+   = parent body_indent, so its `)` aligns with the `result=` label.
+
+7. **Both UBC and UBCb** produce identical output — they share the same
+   `FirSequencer::format()` code.
 
 ## Acceptance Test
 
@@ -644,7 +926,7 @@ under `foolish-core/snapshot_tests/input/`. This single large test file exercise
   anchored/unanchored searches, HeadTail, Index/seeks, StayFoolish,
   StayFullyFoolish, concatenation, named branes, unary operators, empty branes
 
-**Iteration rule**: HS implementation continues until this test file produces
+**Iteration rule**: HFS implementation continues until this test file produces
 output that exactly matches the FOOP-42 format specification. Run `cargo test -p
 foolish-core --lib` after each change, inspect the `.snap.new`, fix discrepancies,
 repeat.
@@ -657,39 +939,24 @@ After implementation:
 3. Present ALL `.snap.new` files to human for review
 4. AFTER human approval: accept snapshots
 
-## Open Questions
-
-1. Should the `Search` function-call parentheses close on the same line as the
-   last argument, or on their own line? Current draft uses `)` on its own line
-   aligned with `Search`.
-
-2. Should `HeadTail` always include the anchor kind despite being always ANCHORED?
-   Current draft omits it since there's no UNANCHORED HeadTail.
-
-3. Should `Index` include its resolved position or only the offset? Current draft
-   shows offset only.
-
-4. Should the root brane in snapshot output be visually contained, or is the
-   `[0] RESULT:` header sufficient? Current draft renders the root brane with braces.
-
 ## References
 
-- Current HS implementation: `foolish-core/src/sequencer.rs`
+- Current HFS implementation: `foolish-core/src/sequencer.rs`
 - FIR type definitions: `foolish-core/src/fir.rs`
 - UBC evaluator: `foolish-core/src/ubc.rs`
 - UBCb evaluator: `foolish-ubcb/src/ubcb.rs`
 - Snapshot test infrastructure: `foolish-core/src/snapshot_suite.rs`
-- Prior HS spec: `UBC_humanizing_sequence_round_1.spec.md`
-- **Acceptance test**: `foolish-core/snapshot_tests/input/foop42_humanizing_sequencer_formatting_exhaustive.foo`
-- **Current baseline**: `foolish-core/snapshot_tests/approved/foop42_humanizing_sequencer_formatting_exhaustive.foo.snap.new`
-- **Implementation plan**: `docs/foop/FOOP-42.plan.md`
+- Prior HFS spec: `UBC_humanizing_sequence_round_1.spec.md`
 
 ## Last Updated
 
-**Date**: 2026-06-03
+**Date**: 2026-06-04
 **Updated By**: opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4
-**Changes**: Fleshed out FOOP-42 draft with comprehensive requirements: indentation
-model (A_DENTS + B_DENTS), per-FIR-variant formatting rules, recursive rendering
-pseudo-code, full annotated examples, state display table, and implementation notes.
-Added explicit coverage for all 10 FIR variants, search result display, non-atomic
-function-call formatting, and transparent constant operators.
+**Changes**: Rewrote Indentation Model with hints-based approach: `open_indent` and
+`close_indent` are hints to the formatter about delimiter positions, not instructions.
+Formula: `body_indent = min(open_indent − close_indent + B_DENT, 2 × B_DENT)` as a
+prefix. Closer prefix always 0. Formatter does NOT place delimiters — parent handles
+inline merging. Updated proto_brane_formatter pseudo-code to match. Cleaned up examples
+section — removed confused analysis, added three clean demonstrations matching user's
+idealized output. Deferred result variant updated with correct inner_open/inner_close
+computation.

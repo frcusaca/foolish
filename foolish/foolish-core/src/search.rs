@@ -1,33 +1,15 @@
-use crate::fir::{FirRef, SearchDirection};
 use std::rc::Rc;
+use crate::fir::FirRef;
 
 /// Search within a brane's statements for a name matching the pattern.
-/// Backward direction (default): last match wins (most recent binding).
-/// Forward direction: first match wins (earliest in brane).
-pub fn search_in_brane(
-    brane: &FirRef,
-    pattern: &str,
-    direction: SearchDirection,
-) -> Option<FirRef> {
+/// Returns the first match (writing-order: earliest in brane).
+pub fn search_in_brane(brane: &FirRef, pattern: &str) -> Option<FirRef> {
     let statements = brane.borrow().as_brane_statements()?;
     let re = regex::Regex::new(pattern).ok()?;
-    match direction {
-        SearchDirection::Backward => {
-            for stmt in statements.iter().rev() {
-                if let Some(ref name) = stmt.name {
-                    if re.is_match(name) {
-                        return Some(Rc::clone(&stmt.body));
-                    }
-                }
-            }
-        }
-        SearchDirection::Forward => {
-            for stmt in &statements {
-                if let Some(ref name) = stmt.name {
-                    if re.is_match(name) {
-                        return Some(Rc::clone(&stmt.body));
-                    }
-                }
+    for stmt in &statements {
+        if let Some(ref name) = stmt.name {
+            if re.is_match(name) {
+                return Some(Rc::clone(&stmt.body));
             }
         }
     }
@@ -38,11 +20,7 @@ pub fn search_in_brane(
 pub fn index_in_brane(brane: &FirRef, offset: i32) -> Option<FirRef> {
     let len = brane.borrow().brane_statement_count() as i32;
     let idx = if offset < 0 {
-        let adjusted = len + offset;
-        if adjusted < 0 {
-            return None;
-        }
-        adjusted as usize
+        (len + offset).max(0) as usize
     } else {
         offset as usize
     };

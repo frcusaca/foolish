@@ -1,1 +1,1 @@
-{b = {x = 100; y = 200, z={}}; not_found = b?γ; also_not_found=b.z^; still_not_found=b.z$; yet_not_found=b.w; this_too=not_found.everywhere}
+{b = {x = 100; y = 200}; notFound = b?γ;}
