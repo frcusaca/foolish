@@ -1,5 +1,5 @@
 ---
-foop: <NUMBER>
+foop: D<NUMBER>
 title: <SHORT TITLE — one line, no trailing period>
 author: <Name> <email@example.com>
 status: Draft
@@ -10,6 +10,18 @@ supersedes: []
 ---
 
 # FOOP-<NUMBER>: <TITLE>
+The foop uses little-endian decimal as default numbering scheme, so when we want to
+render a foop number in normal decimal, we precede it with D, for big endian decimal
+number. FOOP-D24 is same as FOOP-42; this also applies to the front matter of this
+document it either match the file name number:
+```markdown
+foop: <NUMBER>
+```
+Or converting to decimal:
+```markdown
+foop: D<NUMBER>
+```
+In all cases, the `FOOP-<NUMBER>.md` file name is ultimately the right numbering.
 
 ## Abstract
 
