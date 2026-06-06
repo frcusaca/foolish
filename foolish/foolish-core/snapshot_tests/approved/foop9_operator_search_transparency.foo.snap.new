@@ -8,10 +8,10 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane{
-    x = 5;
-    y = 7;
-    z = 12
+{
+  x=5;
+  y=7;
+  z=12
 }
 ```
 COMMENTS:
@@ -21,5 +21,5 @@ foop9_operator_search_transparency
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: PYhytaiEamiA/S2o5rGD76QUvFFhZbL1b7bgeBFjGOdqrw0IHZU+efdY5b+P7jJMWrV15t/QMCYvtJFocpXXAw==
-HFS signature: K4hszF3U/Shz8usnBoBLRkXU5P/PA8p1iF93uY89UhP/UCdO6/RM4ayE7oWeXL0kZfVoC+HwgllvFvLx2lfNDw==
-Comments signature: tJWxVU6EYK2kSYHSvafvY8+WlDnXAF31LaKZ/PL/rPkwSLC7oOrvzHNnpmSmfsr+hQUPVuy4DdfFn01+MM0CBw==
+HFS signature: knZ4Kub+z29hHttnX3+oyknw4f7vvAsQhll1QZWc2mJEYZj7zKZlwMYUc1T88hGgOzXCZ+yeFEafY0MFf1x+DQ==
+Comments signature: HH8sX3TktViJV6CVH01ayoVaFZPkqtwKB3DnF6kRbdsb15FwcwJYkPTN7FOqTZz2dHmNRVHCAw1JGt9mUj1fDQ==

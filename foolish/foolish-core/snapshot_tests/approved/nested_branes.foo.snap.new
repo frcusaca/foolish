@@ -8,13 +8,13 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane{
-    5;
-    Brane{
-        10;
-        15
-    };
-    20
+{
+  5;
+  {
+    10;
+    15
+  };
+  20
 }
 ```
 COMMENTS:
@@ -24,5 +24,5 @@ nested_branes
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: DNMbUgFLpUekXtHU6l4jP7OiII9bQR3fqzheeARpJ+zKviOrvKwJb55p/jAy+MerguHcF6N4byNwV5e4qO83AQ==
-HFS signature: D9/4e7m8w8TmJlprEXOaQV9ZGpPy7QRw5eWr/UnUp6n+TzGXc7in43GaGZ7I52Is4CuN1ka0MGRY9GNneTbjDw==
-Comments signature: SXNWrBBaZx/CPUcxJRQHe+QT+aUjYAQIDh3nUvzoYHjwqk9eN9AVVvStOnXzGg9n8IAnjuErjwWU80RrsxmoCQ==
+HFS signature: s/1w8hMypI7JbKV2fh4XwISdxlZ+rvTdFpvnWpU6+KywmDzsY1BjyYq0OId0RDgG8qCO4Ea9ghpBpknoRh+XCg==
+Comments signature: M6bpgjTxtOT6BaG5olxu35FEu6E3J6zqdjxlKneyrgwSX3Wlti20MqHi1OUfAAgTCXzfHTNwOCt4zeIAUMw9Ag==

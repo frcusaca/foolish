@@ -8,12 +8,12 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane{
-    x = 42;
-    y = 42;
-    nested = Brane{
-        z = 42
-    }
+{
+  x=42;
+  y=42;
+  nested={
+      z=42
+  }
 }
 ```
 COMMENTS:
@@ -23,5 +23,5 @@ level_skipping_search_found
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: vlBlJKYHK8ONE5n4q4OyvT2jmTTcBgHl9fQW6hJwWU2p+6ZGvrZoX2t3mRDSr9t3uAMnb4w0t2LBjUQivuKrDQ==
-HFS signature: AD7Kob1qN+MKEyvz87zx/RSBxW/HqqDlbHG4MGsV4Bd3BHS06fA9U+Mu7bh80iNI/0fo+oKeqcG1fVDTVrJCCg==
-Comments signature: 8KojtgtED6An9HgDKk2Tomh7Kxj7dt1y8w4us0ycT6syRW7tnL3iEdQ2hnNFdkW9QiXlH9OJa2GNUqwJN68bDA==
+HFS signature: SjEqqRb9ppuSP+3It/w/ofuWv/VQqPRSXhuIPmnnbkBuIvIBNRxa95z/LiTQXOEdKG0gf+HlrBu8HtfrTmbQCA==
+Comments signature: ove+R2IC6JszZu2buEnzWHrtegPv7+DJDv8i7HvlUfMbBqds2ksEug2mHZivmIwQJo0InbblVvr7pWzaQ4fBCQ==

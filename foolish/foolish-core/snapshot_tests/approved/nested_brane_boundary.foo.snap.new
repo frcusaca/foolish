@@ -8,14 +8,14 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane [NK]{
-    a = 1;
-    b = Brane [NK]{
-        c = ??? (constanic_clone called on NYE FIR, [NK]);
-        d = 2;
-        e = 2
-    };
-    f = ??? (constanic_clone called on NYE FIR, [NK])
+{NK
+  a=1;
+  b={NK
+      c=??? (constanic_clone called on NYE FIR), INVARIANT-VIOLATED: constanic_clone called on NYE FIR;
+      d=2;
+      e=2
+  };
+  f=??? (constanic_clone called on NYE FIR), INVARIANT-VIOLATED: constanic_clone called on NYE FIR
 }
 ```
 COMMENTS:
@@ -25,5 +25,5 @@ nested_brane_boundary
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: DaGfc59AvcqkrMo/U46I/VuEskxj1E1HlplxglYD6o/VwALnr9puDJQXy+Di9FY5i8235oxneyNKyJsoEbnjDw==
-HFS signature: 6BuMvP4PX2ThzGfzo3AO694Goovy5mePZRyMdQavXrj9o17n2lNqPUdo0Bqb7RZBXEoHMK1jPAeA2AW+PVa+BA==
-Comments signature: Ev2nK4JIDC51sA5Zs5IJiErWrFj8QL0U5w6aMmKFQmRvccwyC7utAk2j1SRbKntt+RHUKnTxLjgaUSLwtm/6CQ==
+HFS signature: l3t71y5Kl81Hk3hQNNyxyWZH9coEaPZPS7ho2k2ZbiroaTF4ieJNgKBriVQjv/s8O3X0vB1EczD4tY0pMTpwAQ==
+Comments signature: RYxaRbF78bmbfQpjdskaTSYoP6WOYXfR4eUkT29eJPpc+X9/9zYA9II2y6bxMArGaKdqVgZEfFFqWMa21+2CAQ==

@@ -8,9 +8,9 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane [NK]{
-    simple = 20;
-    notfound = Search(pattern='missing', dir=BACKWARD, ANCHORED, [NK])
+{NK
+  simple=20;
+  notfound=?(pattern='missing', ANCHORED, NK)
 }
 ```
 COMMENTS:
@@ -20,5 +20,5 @@ search_pattern_basics
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: eV0YrRvg3770OYhPxsiEd05uVkwn8GBa4pv1nL+IPrjHCxA96VDjBRbCj6OanoRVTSgb4QqikKJcyu/wdRe0AQ==
-HFS signature: AYk7eumEUVF5E8ZlIbO2EyMB0ogjC3Fhdi68S3WDoMyS2BY9tcEnKqt5uMALDgtwD3FN0UdjzaYz/VA6REvQDw==
-Comments signature: J3DD723/3YvnZ1UGbpEekH5cFFNs+dqH6Bjq1jcxg2nU6GW1J5mLXRt/jqAdU0azfulNQw48bWtUC0Jd4KgSCw==
+HFS signature: /2BJZqKLZYwrMR7D8hNTm9tB3rVATkjK4KIhOjNZhjV0GE8q5ax4GoIqoPIYHKyK7yaQNSrGKNnfrECUXXvKDQ==
+Comments signature: hO60vvhoqY6pmESwo/196e1xDOsa0jky9FiJ77Q1LU72jzap5wiT7bBejcTdPvnq88amHUTJzaKb14GrUSBLBQ==

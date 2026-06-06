@@ -8,11 +8,11 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane [NK]{
-    a = 1;
-    b = 2;
-    c = 3;
-    d = Index(offset=-100, UNANCHORED, [NK])
+{
+  a=1;
+  b=2;
+  c=3;
+  d=1
 }
 ```
 COMMENTS:
@@ -22,5 +22,5 @@ unanchored_seek_large_negative
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 2l4QU+sEHRi97uSsSCi4Gm5FE0WWc5ezldHMisV8/FJzYWajGPXFS0WRmToY5R51bPsaG6mDwrUSl6t8utLNAA==
-HFS signature: /062kJvSW10N4/Up+u6XaFbr+dlWB/3+y2BZV27cXMJYJmr4f1DNMUAeTGT6yhQFWNCDQbImdmcqwk5g0tuADw==
-Comments signature: cPwJJyO//psjVIUos2mb5DEWgnv0H3tyji9V2TqiFaGdTKwA7Rtwt7gIfsyHbzhfULSy7PXFqIc+s35xdozUCw==
+HFS signature: CdSEj/S6PvHGS/yK3ffzXjRDE5fT/RwWt8gTle7tgJn9L/T0bZH7vwtb2CGfj2//cBunFeefq3cFZYV3b6GSCw==
+Comments signature: Jft0C6k9O2avXf2kL4I+IBcIVcOTtVJeAwJ+u7e8OcCCDektvKxtRr+az/Ba+UMEI389S6fifRDIE74kbV2bBQ==

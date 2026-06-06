@@ -1,5 +1,6 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
 ---
 INPUT:
 ```foolish
@@ -7,12 +8,12 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane{
-    x = 10;
-    y = 20;
-    z = 30;
-    sum = 60;
-    avg = 20
+{WOCONSTANIC
+  x=10;
+  y=20;
+  z=30;
+  sum=60;
+  avg=/(?(result=+(30, ?(pattern='^z$', UNANCHORED), WOCONSTANIC), pattern='^sum$', UNANCHORED, WOCONSTANIC), 3, WOCONSTANIC)
 }
 ```
 COMMENTS:
@@ -22,5 +23,5 @@ complex_brane_with_operations_and_search
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: eIJL0ws12Aay/OZZDwEfhuORsRcoD771FKTX/isyLfFNwYZ+cAlF3iL6fReWj0duYc02l/q9RN6crj+iPp0rAg==
-HFS signature: kl4mumUxktrW/UJTHeqSBdn9BH5FQfRqA8Y6HI4qjLL9u06AzBPT7euT+3w4fF5PSlUAEWS+nkR5yHi9zNi7Bg==
-Comments signature: 2eAtnpssgwPGU4L8l08h1cTwlYSGZiSv2i4oo4PpJl8I2IroLi8B65i4E4JFVyI4XBGYl91AvnL5nbfcWfefCQ==
+HFS signature: hVfCASDAESsNyIH0lkpHwdoib5nWefVE28SzTs+pqIfieu9KfmhLNWxxoXtV7FbG1IEE9c4zsvFd+w8Lwk6DCQ==
+Comments signature: EY1vVeIgXAi1d147rejiXAL4shtNN8Crsmv/iz2dPExztyWKkXlmdntutJiJ7+qkcouXRznOeNkgKq3ntwuACQ==

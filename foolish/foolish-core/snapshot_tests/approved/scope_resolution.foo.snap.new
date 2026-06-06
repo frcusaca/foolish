@@ -8,9 +8,9 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane{
-    x = 42;
-    y = 50
+{
+  x=42;
+  y=50
 }
 ```
 COMMENTS:
@@ -20,5 +20,5 @@ scope_resolution
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: uIzL3+z9GBylCCyyD9+30xLVYCXWtUzl38HSPovj1PfQKciWFegKxKhLdUBUV4gsKH/sllVja3iEwWHqcjbHAw==
-HFS signature: djm2Xt3dMVnkSop4kbzJ8OHcW8DTIX4E1ROBQF+NNIB/HMk5AAD6V3PBalqfkWsHgvu2d390ANbQY3YGByuUCg==
-Comments signature: uki1rXV+WAzsavlILZ3bKJ5Q0wVJSfCWgL5lbFZK3xdxdxa1LBEwYcooeNYn4kFgS9687GarrLEVxZZlIkQvCg==
+HFS signature: ZIv8MRRr4ua7O4YStJNYiCM/mLkShDTjMOrU7Jm1D85IDSR0qzgsU8AvI1E8tCfaT/R2SxtQNQLhQQlFQZstBQ==
+Comments signature: w8Sy+fWK0n+GIS0PC7aNEwQiovWuxtSkgI0mN7jTwT+JYN5yyuXMuAw/R42qQFswNJ22FM7DyvJLRBiFOd1UCw==

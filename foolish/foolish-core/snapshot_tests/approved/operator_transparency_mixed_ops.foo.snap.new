@@ -8,11 +8,11 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane{
-    a = 1;
-    b = 2;
-    c = 3;
-    result = 7
+{
+  a=1;
+  b=2;
+  c=3;
+  result=7
 }
 ```
 COMMENTS:
@@ -22,5 +22,5 @@ operator_transparency_mixed_ops
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: Dx6cEGwDlqXzWfQYuA7RC2uLXGYxQx4LJZ7qcwW/uhX4dSpJpl4BA85IAtCac3U7fx+NiVcd7lG6RK6SSN7HBQ==
-HFS signature: mZNt549Q3LS3/hmSgoKdDnohN7pXHarzrD9Gf1PH71Ct0DJ2S6RARZBGJghyE3feFzF01RlcT9WBx+ipkz1ZCQ==
-Comments signature: Nrlz23J16ZeAkZVa+D/kVGKDIE1Ypc8vr+RPpJiK121lvXB/I4z1QnGWK7ve7FKNNOvNNZp7GtK3fXewyZfrAA==
+HFS signature: xNBsFr375M+yUHhy4GWiHuPkI0X3Y4Wkv57R4B2RqTr71bk26kUjIW23YgaBvfwqtvSgUrePg/CJA33ubvDsDQ==
+Comments signature: ALV5rJVYy5LKJSfJwAlybvIaUIT1CaQK+xsLH0M8JL3g+FV6FOEFFMU8Pu39S2ZPr8Ropjx/wErcSb/GBO41Dw==

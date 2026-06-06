@@ -8,13 +8,13 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane [WOCONSTANIC]{
-    x = Search(pattern='^undeclared$', dir=BACKWARD, UNANCHORED, [ECONSTANIC]);
-    outer = Brane [WOCONSTANIC]{
-        inner = Brane [WOCONSTANIC]{
-            y = Search(pattern='^missing$', dir=BACKWARD, UNANCHORED, [ECONSTANIC])
-        }
-    }
+{WOCONSTANIC
+  x=?(pattern='^undeclared$', UNANCHORED, ECONSTANIC);
+  outer={WOCONSTANIC
+      inner={WOCONSTANIC
+          y=?(pattern='^missing$', UNANCHORED, ECONSTANIC)
+      }
+  }
 }
 ```
 COMMENTS:
@@ -24,5 +24,5 @@ level_skipping_search_not_found
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 6cfxO0pvysGshp3iwHVldd7QI9VF/bKo2szwZGqqTnz3T9DRkVMVpRPcq2/fLja8AHoRQJz2UAS2Q7qaDsJpBQ==
-HFS signature: iyRDzZHGMsoPKfjDJJxvUJ5YTmnGHQbGn1RndStp+2cscnEMAzqJj+y7LdtaJeOlhWNCb5VcQZqMGtk998u0Cw==
-Comments signature: xBNIdxbAXQrd8Zk1V3Lp9AbY9TsUEcJmylQiSCRKu9++stFT+84t1BvHuvZqHYLBQ/AiFrr7QNdhCarKb/8zDA==
+HFS signature: GKJMBAMxpX+GgDmZFyxaLtktXa22loGgKjHAgNcsHf9gOPPqRGdUOsuCXjq8K0ajv3PtonafW1M6Fg4lAWDMCw==
+Comments signature: RxM+gZpoJEL9QnRry7QXGD1k3hYNyVLTLMzVuynDmpJ6STxr4P59pxJ6Vv03tktog0anSb5lLAlUqowvzuA3Cg==

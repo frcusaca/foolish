@@ -8,9 +8,9 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane{
-    a = 3;
-    b = 3
+{
+  a=3;
+  b=3
 }
 ```
 COMMENTS:
@@ -20,5 +20,5 @@ division_exact_and_remainder
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: lt3Wh3MZFW8wwVDtezwSbjkS1/VTQdG2puK4Rqi5D2/CucRvua6eMl3SCUxF04zjZm7fHJw9Pr3M0S/o0Ex5Dw==
-HFS signature: 3dOMre82k2pYBCBMgKry7JrjxpUkSoJjkXV/lOrCDQ///wpprShKc8Jq3XGhiHJoSwPIQ9uyFid8lFF91WybBQ==
-Comments signature: GztDJB+pg1glYMjMgj+XKrIdkE8WlSwtTTatL3Az4H9Bd58Bd9qUVFZD5PMmw/X1ZZO7o9I3Y0qCyujB2OMMCA==
+HFS signature: LcVe4VKrUxpSXCq+nx/CxuTq0NwE9ebNY9DCqGCqyiBEThw/Pi9VFhd/iCa2dy9NLshlQSKM9TR7RRBiYDh3Dw==
+Comments signature: +pWzn0Td7rwk/op2TtrwsIALe6RIKTFl02CAJ2aDKGk2VlN1b5VLJYKn4N6Kx3DpUZnTnr88asReBidCuTM1Dw==

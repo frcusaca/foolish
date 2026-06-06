@@ -1,5 +1,6 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
 ---
 INPUT:
 ```foolish
@@ -7,10 +8,10 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane [NK]{
-    outer = Brane [NK]{
-        inner = ??? (division by zero, [NK])
-    }
+{NK
+  outer={NK
+      inner=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK
+  }
 }
 ```
 COMMENTS:
@@ -20,5 +21,5 @@ alarm_nested_division_by_zero
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: gvKrH1bsn9QVcyXqkbc0hR4kUMJq3+tW1PimVP+cOkUuDFySMFn68os3pxSYk7Efd/rzIWpvqgFsYLlN7ryMCg==
-HFS signature: 7GcnwhbLlYb061L1HKWPmHt0ldI/+4g5o3ZiWcJdSykU4K5DnnlcVgEVDFQFS4vHMGKevenvcA8Sn1kLep2OAg==
-Comments signature: KMFheEzNj8ZoN9UEOoGWE00oNo1T7yuJocVb/KOZOnWn/iOUkXzFWtxxd7b1b5Q3pU9KznSmxkcSQM9O4J4eDw==
+HFS signature: tPn528EXjfpaPNj3Xo8AWaFMZnHvWwWa1gyvemN8dwgTRjat4MB3OH8466Gayr11Et7fivgocfElHvOLov69Bg==
+Comments signature: sjFIVItl+XopdLIIKLeJlWk5K02aU4Os4Zs8kTuk/uGW4zIvLnYeueNYiDojRdOi4Nh6FlHpcacCDTxWChZ0Ag==

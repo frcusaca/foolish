@@ -8,16 +8,16 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane [WOCONSTANIC]{
-    a = Brane [WOCONSTANIC]{
-        x = Search(pattern='^ref$', dir=BACKWARD, UNANCHORED, [ECONSTANIC])
-    };
-    b = Brane{
-        y = 2
-    };
-    c = Brane{
-        y = 2
-    }
+{WOCONSTANIC
+  a={WOCONSTANIC
+      x=?(pattern='^ref$', UNANCHORED, ECONSTANIC)
+  };
+  b={
+      y=2
+  };
+  c={
+      y=2
+  }
 }
 ```
 COMMENTS:
@@ -27,5 +27,5 @@ concatenation_with_unresolved_search
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 0nn0zHTItXiXgst2fdcj8qAcRecdM81vlZuNywRWyn84nf//TMf+OoPKmkpI5ilJaZfp/Hi3oChYXZ3rYHqDDw==
-HFS signature: x9Ohbic9s0KqQZDtZWdb0TfEwGXs+8SelsEZe7JLMPrSLMg4WwJGsUKfvuL/LTFbVOFcWtsEt3zsbcRibDL4Cw==
-Comments signature: HlzcfmWFsiRVFZjWcHuIXoaA8YdLvkyk/wvGxSm2W9iXFb7CN7o5wC9c4y6n/hCowwaVAVWPD/l5o1dLm03eBA==
+HFS signature: LsrN0km2BPGdctciXnqpsqbermNflR5ssRRCXkRpEK9deLbf2riCxhZ/tfhBRcezp8kwr1ZsaRkEmF5pl5XRBg==
+Comments signature: bfVgv26MKAREUZM3D3x4zH84F4N7pw1Fk6uvA5tuBEGDw0BZBfwzYAN118fNNSRxLndS1w2f3ESGwBpGQ/+tCg==

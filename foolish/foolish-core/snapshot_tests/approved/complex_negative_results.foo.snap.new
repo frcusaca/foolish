@@ -1,5 +1,6 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
 ---
 INPUT:
 ```foolish
@@ -7,10 +8,10 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane{
-    a = -5;
-    b = 6;
-    c = 22
+{
+  a=-5;
+  b=6;
+  c=22
 }
 ```
 COMMENTS:
@@ -20,5 +21,5 @@ complex_negative_results
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: w0kRz9DrOhrLrXchn/UL2sGvqOvxyKftnm2oPB3qFJVbAJ+jHdFxqn19CiTIOUNiYg1a9L3xBe0N6AkgwxU4Dg==
-HFS signature: dBe6Yrzer8iyyE6pYsRyewDR7PALF5+wtqev4ZGDzMR3s1lrjEj1Ay+CAYSmMN4Ex/jcVr2Bm41Q8qR0RsX9BQ==
-Comments signature: /p/Oci/q4ON53PnmX9MpLKWb3TB0nGmq5CG7+0hV42f21dVGxPteqPZecgEFvBcs+Yo+fHuJX3EF6tml6uGUCQ==
+HFS signature: NPvU5xEM5u4B3ItcfTUGBFEnzsG2FPwPg5a0y43ljYDVBeYKVZZDN6WtSVrbqcrUcCpZUEh12DzK4TC2hYK7DQ==
+Comments signature: pmxNFMBUjAq7/PJG+5APfU+7k5kFLvCsMzsPTn2wDbKDHOoG51hecwS5XASDJYfUxb/LIcQLLXkpNZqpB9M3Ag==

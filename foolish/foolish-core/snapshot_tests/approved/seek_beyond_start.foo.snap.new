@@ -8,9 +8,9 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane [NK]{
-    a = 1;
-    c = Index(offset=-99, UNANCHORED, [NK])
+{
+  a=1;
+  c=1
 }
 ```
 COMMENTS:
@@ -20,5 +20,5 @@ seek_beyond_start
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: EEcHR4nXGkYSqtq2Ht4wQBl1aBm0S8Jgc4SObfpY401+u6fEKaTJFYDIOpqsdhP6dlFe1HFtwZoD41C3z1zhAg==
-HFS signature: 7RAUonQEtQe4LsgHkCGUgWhLklWUqIPLFM6M4s15joFvbuGmv0aD5rN1YoO+Zr4R/GhqjLIQiOuesW1sSBaXCQ==
-Comments signature: XMIAaWoSGZyjU64BNoJ8CN5u0sxikX5UdpPatJykRTJHzLIhitIz7tEo1ZRFl5+1FSm0KBlkFsShSWkHKjMODQ==
+HFS signature: p4a/ojt3k6ZyTfkG9sEBWMMUe6itxQsBR/coWW9Nh77DJ0SKMziTUcgywoPp2m2y5kuHZ2yU+T3gtdweBej/Aw==
+Comments signature: tu5dpQ7BrROQiERVgfuJh9FYoQiNRNmYBr3TR/wP+EUAyNvvQWiBxuezzX+4K7GGYYAqmqS2ZZs00eFN2bZOCw==

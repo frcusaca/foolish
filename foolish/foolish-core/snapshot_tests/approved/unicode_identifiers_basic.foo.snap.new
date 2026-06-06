@@ -8,11 +8,11 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane{
-    x = 1;
-    π = 3;
-    Б = 7;
-    sum = 11
+{
+  x=1;
+  π=3;
+  Б=7;
+  sum=11
 }
 ```
 COMMENTS:
@@ -22,5 +22,5 @@ unicode_identifiers_basic
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: HnEQDbZR9OCXyBhLSgHekAsp7uFfJlxgFgaUux6s3Sf5N7qj4s4ZmDhQW1+0mAydYssLalsUBecHY8NKLRLOAw==
-HFS signature: GcFWU0NsoTKECq7Ysb7f6HBEE3C9nPQjeMntGEreiyAUc1WQ2LnL8NQs1vuWpNTfTY+YO3HREvjHZ+JwjiAiCQ==
-Comments signature: nlI9+mxartWdf5nkesqbDMjN85RfyxsWQuStM7Evar9tf/ShqPhG8zSAgT3sn5azroHGgdPI1IXEtiUXPyuxBw==
+HFS signature: WlrBCiPVU1AzdhtjFAnQvJe/VNOZ9pIySbl+5rX1xdbW8y6LgjQZyf3LYd1NXGm69m7IjYAnh6FcwflxE2jeDQ==
+Comments signature: GngpHV+QeFak6eCZHO3ziUu+NlT6E1MLfFmioSzEgcDGNEWwoFFOziQxgYxY43+Ub+zYCfbssqKajVCH1Gw8AA==

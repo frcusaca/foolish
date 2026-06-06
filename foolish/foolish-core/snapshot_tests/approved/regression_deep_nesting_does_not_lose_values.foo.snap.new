@@ -8,15 +8,15 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane{
-    Brane{
-        Brane{
-            Brane{
-                x = 42;
-                42
-            }
-        }
+{
+  {
+    {
+      {
+        x=42;
+        42
+      }
     }
+  }
 }
 ```
 COMMENTS:
@@ -26,5 +26,5 @@ regression_deep_nesting_does_not_lose_values
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: Y6n20+pmIHuScYeHgxuPG8M5BO/gc0rTQZSyzS4Bta3dbhJ39IuX+kvl1OMGnijziXfIwsJqptTNa2wQjVeOAQ==
-HFS signature: WmDwg8bYswDnWqNd9Tpyxz+QeCLolltt4x20KEj/Rk9yruPeKJEuJRujuC1AklzGf3Di8K5zzu7VENGo32/iBQ==
-Comments signature: BNy8zUcV8rP1hZ4Fapf5uuiFiDWcK6YKA3sSIJAsyrgM3NoJQokvrTPzIFumM0MNXTbHrS+8yiQx0EUKslukDQ==
+HFS signature: fzeCVQwGOjz7Se+fZLjUy6CLcCD0nxjMEELsnucoOy6T8AGXw8xw612LF0Yrlm09+EZSWHK/PmH36//SEpf/Aw==
+Comments signature: Dm+NPWgkWSmVqVum+elOQ5/s2TMBBfdMHRMrG61LqOjvwk36ErUmw3gCEyyZ2uy6UwIirn5l0/W1Phz6LpelBA==

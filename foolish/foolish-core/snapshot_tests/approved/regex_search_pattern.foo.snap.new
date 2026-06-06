@@ -8,8 +8,8 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane{
-    result = 3
+{
+  result=1
 }
 ```
 COMMENTS:
@@ -19,5 +19,5 @@ regex_search_pattern
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: gPEWkJgJ2JByiuGpIhkdf4rhGb2oaAirpYS0Z1qtJ0q9Y9gfvYFv9pnD6mBMqwXeuOrxSOmv5n1TnGcIidrCDg==
-HFS signature: mgLG62mfqafWXRumAwx/DMLcUKPhFIQffbMOj9Pn9PaAVQYTIfrU8QBTfvJqLvHt7Qig1uvBn7Tx1KKD7fBKAg==
-Comments signature: y8Z237L4g0w6UwKeWxagHzHO+xvbc9xlPAkhqUw9TkLGDTsgntsmPMJqDsI/V0VPPud3lA3vQKUdrUyxcGcaDQ==
+HFS signature: clRdgITBc6v+V5VLpf4oypYdcF2WRHifZwARZOab909iXBTxdthuPiljroUYx5FILtwfDoUr3aguzbrxJCLWBw==
+Comments signature: o41efUw9yZn7QEla25VtYAyYDmIu1mdz1cCVWJGZa5pEYRyvknzDBAGzguUIzD/JyJpq2rSDPcgtNizCePjoDA==

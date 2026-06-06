@@ -8,15 +8,12 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane{
-    a = 1;
-    b = 2;
-    s = StayFullyFoolish()
-      Operator(+, [EMBRYONIC])
-        Search(pattern='^a$', dir=BACKWARD, UNANCHORED)
-        Search(pattern='^b$', dir=BACKWARD, UNANCHORED);
-    a = 10;
-    12
+{
+  a=1;
+  b=2;
+  s=+(?(pattern='^a$', UNANCHORED), ?(pattern='^b$', UNANCHORED), EMBRYONIC);
+  a=10;
+  12
 }
 ```
 COMMENTS:
@@ -26,5 +23,5 @@ sff_resolves_on_each_use
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: dvgS2SgQxTH17MqJ0GvfsJzYlhZVovt+9HhyksPNiUsLfJeYshVu9Gse0wzatDFWaIIIRlYQ4UG+eFcEHxFuBw==
-HFS signature: 4+h9ppWEDJW68sprosWqaTXYF5cZ+emU8sIqA/lJXoAsS7eP6z4M1oDOKdnNHAMqruCCZBY4nN2FG71p6pGZDQ==
-Comments signature: jWUxhON/wVzYG8uSXCVr5VdJNtVpaMDk7hFFpgJqodpAU2+1PHF7DMKcIUgHTqLwozzBuOyawuUImApOKaK8BA==
+HFS signature: N1tg1JNNaPS/pMByqOKLYjoyxlGp7ZF72/v/yIcImX1NBaqBHIy/l1feMoIQptfvgiXXhlAxiFvYdSM/YFHWBQ==
+Comments signature: 4NaJkG3L+YIjcd36taGzlhxhDGe8s4WCDiTR04VSixHxfaokABuNuIZ+AooadxbvQOqIqZ1E6A6+pbS3hn3WBw==

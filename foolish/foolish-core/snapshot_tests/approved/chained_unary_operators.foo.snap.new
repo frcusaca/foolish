@@ -1,5 +1,6 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
 ---
 INPUT:
 ```foolish
@@ -7,9 +8,9 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane{
-    a = 5;
-    b = -3
+{
+  a=5;
+  b=-3
 }
 ```
 COMMENTS:
@@ -19,5 +20,5 @@ chained_unary_operators
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: kiNVOLwv/jrjOVkHoD+trP+GtqjZ0F5/+ipES3CpFENY3I+4p/cigoi+MXbywS0r6UAGfx3/iyYgSStikNBwCg==
-HFS signature: UhktCANsdJgZVsSRQdOD9SNHTPIYXcYVIkKoPUlERBlJQoqCmJLq/OkINLQwxoyr3lzz7YWjWQ9SkPAEho9LDQ==
-Comments signature: OSaJE6Bai8fDc1ZbYy0DvAqog7iyne+B0uBnam10vaqlp9swdaOziGSCvGkJW2LIGGIgZh8OhtxsAVb0IzWSBA==
+HFS signature: nTqNOGwWVvbXFWvqLKMRdJaoP7/oYx12tfq+jze4TIth6sAj3Q/GCRCqhITkXYLqZfPVJLDHAvxPnIL81NBWDw==
+Comments signature: K5ScRSWwOBh61cyNQN7+MnzFpT68P1oqtsiC/Vq8uMlrMjepZPj3k+xJaSuQPgD9A9uawtDUtajhVpfucZ25Cg==

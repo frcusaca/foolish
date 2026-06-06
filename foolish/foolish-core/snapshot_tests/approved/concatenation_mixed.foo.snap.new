@@ -8,19 +8,19 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane{
-    b1 = Brane{
-        a = 1;
-        b = 2;
-        c = 3
-    };
-    c = Brane{
-        x = 10;
-        a = 1;
-        b = 2;
-        c = 3;
-        y = 20
-    }
+{
+  b1={
+      a=1;
+      b=2;
+      c=3
+  };
+  c={
+      x=10;
+      a=1;
+      b=2;
+      c=3;
+      y=20
+  }
 }
 ```
 COMMENTS:
@@ -30,5 +30,5 @@ concatenation_mixed
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: IeZT4ziW59yCqqwf5il8/UazFL6k4GxaW68stl0o2YGoEK6MxdWTghWDe2P5s4Pt7hkaUemACjxYrXbioVxcCg==
-HFS signature: MJ/DF/n3Jn/vkjIzYr/qbKMBACcRIOo24FsisWKf7WnoV7hidfh7EHz3kJ7rJTz319YsUgji8M4yYoNjoC0eDw==
-Comments signature: V5KLnr84gYbGUtiWL1PB2rj94f7QW7Jo8UD4iwDCFd84CyKfbzcuHRVMScPwVFtB21r8KpeyVDZajfx4YOgwBQ==
+HFS signature: BOoz6fCmTs+7kf/YpDpZs0jGcP+by8RQn6bKcZdpz7/vUZJdOrmb+DVoMfhExSgNtq+YnJUAPKoKaoESTkbMDw==
+Comments signature: 4y8rNggV8PicubJ2HCClC5OkqYCDVTBGmzT7ES+FRwq5mdV1pIpCVwU6Ujw6vHRTQMxDVSWzcx5MekBROmBOBQ==

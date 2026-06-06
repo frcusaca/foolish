@@ -8,16 +8,13 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane [WOCONSTANIC]{
-    a = Brane{
-        x = 1
-    };
-    b = StayFoolish(, [WOCONSTANIC])
-      Search(pattern='^a$', dir=BACKWARD, UNANCHORED, [ECONSTANIC]);
-    a = 42;
-    d = StayFoolish()
-      Search(pattern='^a$', dir=BACKWARD, UNANCHORED)
-        42
+{
+  a={
+      x=1
+  };
+  b=?(result=42, pattern='^a$', UNANCHORED);
+  a=42;
+  d=?(result=42, pattern='^a$', UNANCHORED)
 }
 ```
 COMMENTS:
@@ -27,5 +24,5 @@ sf_brane_blocking
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: Ky3iGog7YnykQ9G+x+TqZfAttBMYl/mu1d1TaY7LzXz1PLNKvLoVoAmNAW65ylpxQ/pnLEDYYKIJUSAyikrMCg==
-HFS signature: f4Eoa8W0i8LQAIHTaZYaZQv88u75o9dmp8xGdiql8TcPvr9IZyxT3/lblBWmoC4ASdYmLvyyOk50MznZwRPcAg==
-Comments signature: GlsMHb2SOMSXq4HKZx914Ch/2dYvCWEKDriiuvCECcW3A99+mMdpZXYju1Ma/FXV5/QHku67X+uScgc/Rx6FBA==
+HFS signature: 0Cp+Gz7GTXZbkks+Z65MAako20zYwKt256FdO++VvQMqLmvKNEV2LiJ7qXJEC47+4p0Q31lQHsPnj5972DzqCg==
+Comments signature: RDBnGXQgbRnxHgprlMf1kLUzB278gxZwfJwduyyzHMgisD8hueLRDpGmwabNsVVnVt7voId3qsbzlinziaIbAw==

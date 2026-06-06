@@ -1,5 +1,6 @@
 ---
 source: foolish-ubcb/src/ubcb_snapshot_tester.rs
+assertion_line: 47
 ---
 INPUT:
 ```foolish
@@ -61,129 +62,107 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Int(1)
+1
 ```
 [1] RESULT:
 ```hfssnap
-Brane [EMBRYONIC]
-  a = 
-  Int(1)
-  b = 
-  Search(pattern='^a$', dir=BACKWARD, FREE, [ECONSTANIC])
+{EMBRYONIC
+  a=1;
+  b=?(pattern='^a$', UNANCHORED, ECONSTANIC)
+}
 ```
 [2] RESULT:
 ```hfssnap
-Concatenation(elements=2, [EMBRYONIC])
-  Search(pattern='^testˍancestralˍidentifierˍwithˍshadow$', dir=BACKWARD, FREE, [ECONSTANIC])
-  Brane [EMBRYONIC]
-    a = 
-    Int(1)
-    n1 = 
-    Brane [EMBRYONIC]
-      c = 
-      Operator(-, [EMBRYONIC])
-        Int(1)
-      b = 
-      Search(pattern='^a$', dir=BACKWARD, FREE, [EMBRYONIC])
-      a = 
-      Int(2)
-      n2 = 
-      Brane [EMBRYONIC]
-        a = 
-        Int(3)
-        b = 
-        Search(pattern='^c$', dir=BACKWARD, FREE, [EMBRYONIC])
-        d = 
-        Operator(-, [EMBRYONIC])
-          Search(pattern='^b$', dir=BACKWARD, FREE, [EMBRYONIC])
-        e = 
-        Operator(+, [EMBRYONIC])
-          Operator(+, [EMBRYONIC])
-            Operator(+, [EMBRYONIC])
-              Search(pattern='^a$', dir=BACKWARD, FREE, [EMBRYONIC])
-              Search(pattern='^b$', dir=BACKWARD, FREE, [EMBRYONIC])
-            Search(pattern='^c$', dir=BACKWARD, FREE, [EMBRYONIC])
-          Search(pattern='^d$', dir=BACKWARD, FREE, [EMBRYONIC])
-    a = 
-    Search(pattern='^b$', dir=BACKWARD, FREE, [EMBRYONIC])
-    b = 
-    Int(1)
-    c = 
-    Search(pattern='^a$', dir=BACKWARD, FREE, [EMBRYONIC])
+⨃(
+  elements=2,
+  ?(pattern='^testˍancestralˍidentifierˍwithˍshadow$', UNANCHORED, ECONSTANIC),
+  {EMBRYONIC
+  a=1;
+  n1={EMBRYONIC
+      c=-(1, EMBRYONIC);
+      b=?(pattern='^a$', UNANCHORED, EMBRYONIC);
+      a=2;
+      n2={EMBRYONIC
+          a=3;
+          b=?(pattern='^c$', UNANCHORED, EMBRYONIC);
+          d=-(?(pattern='^b$', UNANCHORED, EMBRYONIC), EMBRYONIC);
+          e=+(
+              +(
+                +(?(pattern='^a$', UNANCHORED, EMBRYONIC), ?(pattern='^b$', UNANCHORED, EMBRYONIC), EMBRYONIC),
+                ?(pattern='^c$', UNANCHORED, EMBRYONIC),
+                EMBRYONIC
+              ),
+              ?(pattern='^d$', UNANCHORED, EMBRYONIC),
+              EMBRYONIC
+          )
+      }
+  };
+  a=?(pattern='^b$', UNANCHORED, EMBRYONIC);
+  b=1;
+  c=?(pattern='^a$', UNANCHORED, EMBRYONIC)
+},
+  EMBRYONIC
+)
 ```
 [3] RESULT:
 ```hfssnap
-Concatenation(elements=2, [EMBRYONIC])
-  Search(pattern='^testˍpreservingˍconstanics$', dir=BACKWARD, FREE, [ECONSTANIC])
-  Brane [EMBRYONIC]
-    a = 
-    Search(pattern='^b$', dir=BACKWARD, FREE, [EMBRYONIC])
-    b = 
-    Int(1)
-    c = 
-    Search(pattern='^a$', dir=BACKWARD, FREE, [EMBRYONIC])
+⨃(
+  elements=2,
+  ?(pattern='^testˍpreservingˍconstanics$', UNANCHORED, ECONSTANIC),
+  {EMBRYONIC
+  a=?(pattern='^b$', UNANCHORED, EMBRYONIC);
+  b=1;
+  c=?(pattern='^a$', UNANCHORED, EMBRYONIC)
+},
+  EMBRYONIC
+)
 ```
 [4] RESULT:
 ```hfssnap
-Concatenation(elements=2, [EMBRYONIC])
-  Search(pattern='^testˍpreservingˍconstanicsˍoverˍshadows$', dir=BACKWARD, FREE, [ECONSTANIC])
-  Brane [EMBRYONIC]
-    a = 
-    Search(pattern='^b$', dir=BACKWARD, FREE, [EMBRYONIC])
-    b = 
-    Int(1)
-    f = 
-    Brane [EMBRYONIC]
-      c = 
-      Operator(+, [EMBRYONIC])
-        Search(pattern='^b$', dir=BACKWARD, FREE, [EMBRYONIC])
-        Int(1)
-      a = 
-      Int(0)
-      b = 
-      Int(0)
-      r = 
-      Operator(+, [EMBRYONIC])
-        Operator(+, [EMBRYONIC])
-          Operator(+, [EMBRYONIC])
-            Search(pattern='^a$', dir=BACKWARD, FREE, [EMBRYONIC])
-            Search(pattern='^b$', dir=BACKWARD, FREE, [EMBRYONIC])
-          Search(pattern='^c$', dir=BACKWARD, FREE, [EMBRYONIC])
-        Search(pattern='^d$', dir=BACKWARD, FREE, [EMBRYONIC])
-    g = 
-    Search(pattern='^f$', dir=BACKWARD, FREE, [EMBRYONIC])
-    d = 
-    Int(0)
-    r = 
-    Search(pattern='^g$', dir=BACKWARD, FREE, [EMBRYONIC])
+⨃(
+  elements=2,
+  ?(pattern='^testˍpreservingˍconstanicsˍoverˍshadows$', UNANCHORED, ECONSTANIC),
+  {EMBRYONIC
+  a=?(pattern='^b$', UNANCHORED, EMBRYONIC);
+  b=1;
+  f={EMBRYONIC
+      c=+(?(pattern='^b$', UNANCHORED, EMBRYONIC), 1, EMBRYONIC);
+      a=0;
+      b=0;
+      r=+(
+          +(
+            +(?(pattern='^a$', UNANCHORED, EMBRYONIC), ?(pattern='^b$', UNANCHORED, EMBRYONIC), EMBRYONIC),
+            ?(pattern='^c$', UNANCHORED, EMBRYONIC),
+            EMBRYONIC
+          ),
+          ?(pattern='^d$', UNANCHORED, EMBRYONIC),
+          EMBRYONIC
+      )
+  };
+  g=?(pattern='^f$', UNANCHORED, EMBRYONIC);
+  d=0;
+  r=?(pattern='^g$', UNANCHORED, EMBRYONIC)
+},
+  EMBRYONIC
+)
 ```
 [5] RESULT:
 ```hfssnap
-Brane [EMBRYONIC]
-  b1 = 
-  Brane [EMBRYONIC]
-    a = 
-    Int(1)
-    b = 
-    Int(2)
-    c = 
-    Int(3)
-    r = 
-    Int(0)
-  b2 = 
-  Brane [EMBRYONIC]
-    d = 
-    Int(4)
-    e = 
-    Int(5)
-    f = 
-    Int(6)
-    r = 
-    Int(1)
-  b3 = 
-  Concatenation(elements=2, [EMBRYONIC])
-    Search(pattern='^b1$', dir=BACKWARD, FREE, [EMBRYONIC])
-    Search(pattern='^b2$', dir=BACKWARD, FREE, [EMBRYONIC])
+{EMBRYONIC
+  b1={EMBRYONIC
+      a=1;
+      b=2;
+      c=3;
+      r=0
+  };
+  b2={EMBRYONIC
+      d=4;
+      e=5;
+      f=6;
+      r=1
+  };
+  b3=⨃(elements=2, ?(pattern='^b1$', UNANCHORED, EMBRYONIC), ?(pattern='^b2$', UNANCHORED, EMBRYONIC), EMBRYONIC)
+}
 ```
 COMMENTS:
 ```markdown
@@ -192,5 +171,5 @@ ubcb_test_1
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: w+WjlGApfgjVezWjdJm9utgOEhqX7Eu6w0aiA/OjA01qv24zJpXWwZsZ98X326mJwUdROypdvYkdkVDDkHSTDg==
-HFS signature: E1UKaoouAxL1hF9rG+zQyiwAPtvyUYqS3khCGIUS1lfjp36hrwWUo1tE2yAYSUAEE+aM28zNHO0wCBScynu1DQ==
-Comments signature: lWNWHBvqC/2nzZiUJRJAbuEjlrg/7OwRlkGj8pPeo/BoyCk6F5d89NzXaJonnmud+USDj1+OK4GU3cYQhBL1Ag==
+HFS signature: Vl1rH/TuYxT8vsvUjAT24YYTQgrP2IR3t5lwENjbQxMVpQP2RhAxl27pcIV9ojYTmSGHxiCl3VYmg+YLahvZBQ==
+Comments signature: zrNC1gkkfVISIkqDOkzbDFHDVx6DzQ8Iw9Pgj91I8/zlKatZpA2pjKFgo9PujQ2j9fKkXD6kW5u/Lad1Xa/BAQ==

@@ -8,14 +8,14 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane{
-    Brane{
-        Brane{
-            1
-        };
-        2
+{
+  {
+    {
+      1
     };
-    3
+    2
+  };
+  3
 }
 ```
 COMMENTS:
@@ -25,5 +25,5 @@ deeply_nested_branes
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: ts+is4fU9t4OKbPpTLF2vuDeokiDmOhmSuEDQxR7v4b4DyejSg2w73lBXK3fIZWaQ3w6YAc8t0p6L4m2vEgLAQ==
-HFS signature: cF3Df48cV/jtTqrkG1YxjmJtamtIm41D9bbrU5m83ujKWVmWviH8PVZ51BgpdTkClw29JUEzYzwrixjFrFfeAA==
-Comments signature: GCcAweXUtcCrsHKUBKTUVWTHLpsXkFJSeTuXujiZ4s7zZdr6IsZ2v++47ApRJ2qmaHUUyBCNDhZJIOdke7+yAw==
+HFS signature: AY1Gonyro9R1laNwHBInaw+jzE7w5DRhCiwVsliT+EquGoT1dd0xQChoGR0alwEKhIXkw88a23F+I90chilPBg==
+Comments signature: vEgyDeQz7ApO6R8Nl1niIAmar/2h25NffrXwYx1go74ZbNtewSlClpnaZpqauuZ/c3jfUDr4sCHc/qP4SbBPBA==

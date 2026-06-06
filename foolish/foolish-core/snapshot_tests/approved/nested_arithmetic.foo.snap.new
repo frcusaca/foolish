@@ -8,8 +8,8 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane{
-    3
+{
+  3
 }
 ```
 COMMENTS:
@@ -19,5 +19,5 @@ nested_arithmetic
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 2xJRqhQvpI6DTYdJIiXBa0nNhgLmeQ3FTA9UZVbqf98rmvwjn4k8re5SClW3PD8Yvg/Sc4CVjfGShDtccF8tAA==
-HFS signature: PtXWJYw8hgHJg775l565avocD1kPH1oEGUvukiCj7kf7DfvH1m0g5Aprof2H9A3XgBYjcPngngpAo6ELQPe/BQ==
-Comments signature: 4GE6GQm/LY8Mt2mW5he2VQn4MzTZ9BmfPpetaPWoD7N9TqYt67Nx9iP4t4wfIRoHWe/jcgWabkbeqX2if/frAg==
+HFS signature: ikD3I01dnKLFN+lBisOcbz0xwCY+ULRX3+2eL91QCiOKlWqzG1MFzMYtuW2LVHBEVQROzLaaWCo6cfGLTv0hAw==
+Comments signature: gqepmw4iTNeEgpGkcyX+WllLBHN7w3gx6hsT28pPSwmbpZtTmH3g8y7mO0PQbJRYnTtLg5ggb4aMFM4Lb8x/BQ==

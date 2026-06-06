@@ -8,9 +8,9 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane{
-    a = 0;
-    b = 999
+{
+  a=0;
+  b=999
 }
 ```
 COMMENTS:
@@ -20,5 +20,5 @@ operator_with_zero_operands_edge
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: LGovan4yHWJcpoEzNulGo/lrFG4UB/sBJXtPZEYRtu0BAdGrQDcSN6iywxab5AEU0PYpQfeOXiDIyyryLWa/Bw==
-HFS signature: 1n8/9NR4ZTSv6qeKnkNd0RKBtlHC5zwbrv4Om3Vn/OVwqP0QWZKmUX5ftBhTqGaPI4/uJZKqUexgCWVfg8D9Cg==
-Comments signature: mGbYGSTZPwFtn3VjPaREIqT1Uz/6biimUkERNCW0ndYZCK1FxB/j4TiNPJ5RBMwr50BLqkyJFoVHt2o+t1LkCw==
+HFS signature: PMPeYlhA6H2cvuWNDE2Xofy9fOQTlbhvUTc5w4FDH/4f5EdQgorqKIza0aAWu7v+DJ5g3Z9G7RR87nLZujgeCA==
+Comments signature: k1Fr9T9lMmHCyktvjtpE6Uc3aBaxCsr21POAwicTn372/QmA34u6wSmTsKw0grKYjRajpMeyBmaOWM0oZQ8yDA==

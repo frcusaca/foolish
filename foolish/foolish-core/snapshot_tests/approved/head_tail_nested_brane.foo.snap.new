@@ -8,13 +8,13 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane{
-    b = Brane{
-        3;
-        4
-    };
-    c = 3;
-    d = 4
+{
+  b={
+      3;
+      4
+  };
+  c=3;
+  d=4
 }
 ```
 COMMENTS:
@@ -24,5 +24,5 @@ head_tail_nested_brane
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: jh9Rw0hsUe1GdZ1yiS2UkwCcgh9TnWkLANYSkt6ggCnN+0e5029VmFjCTqi1VtjZiGFBc417hy3SNRS4pHXEBg==
-HFS signature: La5PaXjvGwKjUlhZlhVGpy67mzF2x2Au8VJZXle3+xZpvaeoLxhuVDmK/AdpacKzX1hOhz4GYyWtZb0j6y9kBg==
-Comments signature: +0dxju52D6P1Xy1jzdjazXNIT3bpyebpMJ+qqALDlgELeId7qKDn+X4aspcUMzN0UP5zi1eVb+Zq6U/xCV0jDQ==
+HFS signature: BnFzngzsWuHGW9sGRzYfuQJ1CCXkS8wxW78ZfjrZotZXio8RHKK4V/BVmdIAf352VzZvUvR7sc5KWXLVpz07Dw==
+Comments signature: 3mLOtima7FgscvY39gfeA+9NenF7xj7ekUz7iz2YZZPInvceyVoqVjZCE0ELYzCrvEuSOiF2IEUEJpEoMWVUDA==

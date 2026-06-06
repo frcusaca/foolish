@@ -8,8 +8,8 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane [WOCONSTANIC]{
-    x = Search(pattern='^nonˍexistent$', dir=BACKWARD, UNANCHORED, [ECONSTANIC])
+{WOCONSTANIC
+  x=?(pattern='^nonˍexistent$', UNANCHORED, ECONSTANIC)
 }
 ```
 COMMENTS:
@@ -19,5 +19,5 @@ undeclared_identifier
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: OUDClvBDQDI4jMLtSBkX4ByLqXugKbw59gsG9cg9ypiX3np+sdMdg4y0aiyNnJTQgpPswkylfDc5eQqlCU9dBg==
-HFS signature: AEkTeo3iDwR4uhKZKJ4TxbJxdA9TmGy++ETDpMgbLqkZW9xAbqEDIPRGaqsWeAcgubBFlvJ/s2sG2i/By9epCg==
-Comments signature: rh6A6JHKVvrA8QmEKJ+6s5hIhh/GWKg2wIdgJRdtnJmVgKKP+f5pfNBjvcRPT0N7kPiFt9fRog/MHYE6boZYBg==
+HFS signature: 3+pzzmDcbvgi3M/YAVMpzMP3zWBCeKqMTB7Vg5ZNg/GINYXm31biOVUO25+QYd/BqlUth7sXXAwz39YA3hubCw==
+Comments signature: L45fVbzmg/jEDuYKC0oGlg3OV50Zpe0b63uEG48sqMw0Tw9dhTaf0RYS/4+YvfiBn0EqI6oy8mC1GC1tfHNsBQ==

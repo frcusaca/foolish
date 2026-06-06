@@ -1,0 +1,38 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{a = 10; b = 20; sum = a + b; nested = {inner = sum / 2}; result = nested.inner;}
+```
+[0] RESULT:
+```hfssnap
+{NK
+  a=10;
+  b=20;
+  sum=30;
+  nested={WOCONSTANIC
+      inner=/(
+          ?(
+            result=+(?(pattern='^a$', UNANCHORED), ?(pattern='^b$', UNANCHORED), WOCONSTANIC),
+            pattern='^sum$',
+            UNANCHORED,
+            WOCONSTANIC
+          ),
+          2,
+          WOCONSTANIC
+      )
+  };
+  result=?(pattern='^inner$', ANCHORED, NK)
+}
+```
+COMMENTS:
+```markdown
+complex_full_program_with_all_features
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: 1SXA6C7yxC6ZpiMvulmMy1eFI1Es1+sQ6hUtwarY1vKYOMtGrpNqx+rd59gPsyK1pqAjtcEAE57YwFIWqdU2CA==
+HFS signature: fOkvb+iUwCFH3zgsi5DKaeGu5A45HE+IhzXMh9RYzXVlmPMGYv4mnMHlN/IrIS5mgY2p4VKBSyDBWpePloo/CQ==
+Comments signature: HNmtOaw5hkzfcxTZ+BV3KGqtvYqYm3XuFSDhuJQBt5iSQrP1+xwQeCMv2ewma+YO7JzGc6bcbqAgYXyAiGx4Bw==

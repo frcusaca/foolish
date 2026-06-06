@@ -8,23 +8,29 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane [WOCONSTANIC]{
-    a = 1;
-    b = 2;
-    sff = StayFullyFoolish()
-      Operator(+, [EMBRYONIC])
-        Search(pattern='^a$', dir=BACKWARD, UNANCHORED)
-        Search(pattern='^b$', dir=BACKWARD, UNANCHORED);
-    sf = StayFoolish()
-      Search(pattern='^sff$', dir=BACKWARD, UNANCHORED)
-        3;
-    a = 10;
-    Search(pattern='^sff$', dir=BACKWARD, UNANCHORED)
-      3;
-    Search(pattern='^sff$', dir=BACKWARD, UNANCHORED, [WOCONSTANIC])
-      Operator(+, [WOCONSTANIC])
-        Search(pattern='^a$', dir=BACKWARD, UNANCHORED)
-        Search(pattern='^b$', dir=BACKWARD, UNANCHORED)
+{WOCONSTANIC
+  a=1;
+  b=2;
+  sff=+(?(pattern='^a$', UNANCHORED), ?(pattern='^b$', UNANCHORED), EMBRYONIC);
+  sf=?(result=12, pattern='^sff$', UNANCHORED);
+  a=10;
+  ?(
+    result=?(
+        result=+(?(pattern='^a$', UNANCHORED), ?(pattern='^b$', UNANCHORED), WOCONSTANIC),
+        pattern='^sff$',
+        UNANCHORED,
+        WOCONSTANIC
+    ),
+    pattern='^sf$',
+    UNANCHORED,
+    WOCONSTANIC
+  );
+  ?(
+    result=+(?(pattern='^a$', UNANCHORED), ?(pattern='^b$', UNANCHORED), WOCONSTANIC),
+    pattern='^sff$',
+    UNANCHORED,
+    WOCONSTANIC
+  )
 }
 ```
 COMMENTS:
@@ -34,5 +40,5 @@ sf_of_sff
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: h1VqZ8FgnPZ2bLsAmCfvaSczq/hrg2qLt+NCDHxlJTO58pkS3WuR3DKlCs5mxYNflR4ATJy8+l662ISwvkxvDA==
-HFS signature: oizDnoqZ3L28jay6ldgBJ3OiyL5Yme8xTopIreT3LP65OelNtzU5RuW+JJ96aRK6bw9shRrZnyIG5laODM4qCg==
-Comments signature: pIRZRvXolBNro75V2pcKyfepL0dBrfoUiR4kMpbqBH6SZpQ1pDcO75aov4l5n3pOLbrGaLOaFPIA+N3sVdyyBQ==
+HFS signature: 0vEftqMLm1JAdNV6M3YsyKS7pUgfrpQFe7DctJHxyX8HZ5sMauVfyYfYOMvLgOd+JfBp0FySIIi2PVZ4PeJhBA==
+Comments signature: K+chJ08VCRYPlFfqrNRFjye2gkkDw3Y+5zJZHfxsPrvnWB9kmp4FdFo4bC7805twCWtuaRah1svoYjmPIOWWAw==

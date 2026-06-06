@@ -8,9 +8,9 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane [WOCONSTANIC]{
-    y = Search(pattern='^x$', dir=BACKWARD, UNANCHORED, [ECONSTANIC]);
-    x = 42
+{
+  y=42;
+  x=42
 }
 ```
 COMMENTS:
@@ -20,5 +20,5 @@ forward_reference_basic
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: HTTRgMabwliS9L5HdnJgH76bNg+VgP5cFCCmfEJGWwMX4ci2arPG1x7acmsFpyqLAWBux5GYq5irG+YVu5OqDw==
-HFS signature: rdQ8gORnpLFONKN4SZsPOrGHCPEk46j1q7JQsxHUDLqKpecsZrayQV6MIXQFxYe1qVfwOHHKZ7jSwoOZj1SOAQ==
-Comments signature: +C9QTF6beaJJX3wI3SNyRS8wlTcUCF3Jbn9q9168O1Xvst8/xqtVgrvxyxCVK3CsiADwgmG6Odn3Sre+UtyLAw==
+HFS signature: hqS9QBCuWRS30aQwL179P+d5phrmKzTewiLvRTcBLWQ8m2PE6FhOK1paWx412iu33v4+Px5CidKDN5p8x3reAw==
+Comments signature: 3CpwSsn4QCb7bSvS/9P0iy4O73TCP4gmhYKNTmJJBeHzlUDQjrtq8UyRWmje/S/yaSx+amw/QcnR3ZasQSwfDg==

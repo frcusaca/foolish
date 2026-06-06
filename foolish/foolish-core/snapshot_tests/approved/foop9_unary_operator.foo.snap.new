@@ -8,8 +8,8 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane{
-    a = -42
+{
+  a=-42
 }
 ```
 COMMENTS:
@@ -19,5 +19,5 @@ foop9_unary_operator
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: ukh+as1Lkfnuso67ombT4vmv7YznRor8R+RJSrbbfMtJ1vtk5zNt0LgpNwj5z1SV0ZDpDMuB8Q8j42iFaebTCg==
-HFS signature: j3316JJNPn6ORG1k8VVtV8z87fBPWI9jj/Ccl+CNShGJyLxiB7aD4ZHGyUbMcLVM4QPZqjczFi4q4ItDD1ilCQ==
-Comments signature: aMjpdgJ6X/hAoD4e56ThMY6EgRyXIJ9C7GYWYYcVy5kPbgQLBYAOIr4Thhm03Mr5zLBY5BdrpIU9lHp580WuCw==
+HFS signature: WyS9QY3eBSASvX29ggY1iEUFYU6aCkLw99SVrZlJBOeXm3PIu1Jbe2vo8iMy2QnQEqNiWVuTEHaSlIVXBdgmCA==
+Comments signature: gOtoyb55SwPFyMuVcB7yvPdzhSWYmabB9EBX1jZv00zvwS6EZp3FRsiDvnnDy0DxBPz4sBRc6KUFiLouDh9gDw==

@@ -8,22 +8,20 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane [NK]{
-    OB1 = Brane{
-        a = 1;
-        message = 2;
-        only = 1
-    };
-    OB2 = Brane [NK]{
-        whichˍ1 = Operator(+, [NK])
-          ??? (constanic_clone called on NYE FIR, [NK])
-          1
-    };
-    OB = Brane{
-        a = 1;
-        message = 2;
-        only = 1
-    }
+{NK
+  OB1={
+      a=1;
+      message=2;
+      only=1
+  };
+  OB2={NK
+      whichˍ1=+(??? (constanic_clone called on NYE FIR), INVARIANT-VIOLATED: constanic_clone called on NYE FIR, 1, NK)
+  };
+  OB={
+      a=1;
+      message=2;
+      only=1
+  }
 }
 ```
 COMMENTS:
@@ -33,5 +31,5 @@ seek_in_nested_result_after_concatenation
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: cfGCMZeXg+6MU8S60P/lQKJXQwIqnmSUM7cERCO9n5/1ZhE2hBqSo3GjNILf1x3L9vm63msdnpdaCuA/vEhcBw==
-HFS signature: cqZ6I6Zj02ayDBFNL72AeNRs7CuVsVXg2Uf8LDY7R6NTeZG3thPqs9f17dqO+SwYoWmFtbuP/YoHqv+bPX+gAA==
-Comments signature: 3QxaMxVgCJ5R3ravoFscvuox9+uNHoo9pPJxq+H2zGDyOdxN4HEoTUx2uH6hxtJrqPPBbORcBl32ICkPNqzwDA==
+HFS signature: pO+pCbgsfIy23kxuJtzb37a8a0jG0ragxeFvKEELhSvVJlfX9WrmqgVkv3zN4dVVAzAu2hfzl3ZTaquFk94KBw==
+Comments signature: 7xUd0wyijp+COOIs56QNzVumaqCjhhJPSVhc/TeZIVZ/VSGbwIqgOObCIxid0CJhTa1ucE0QG+7eUiyh7l8mBw==

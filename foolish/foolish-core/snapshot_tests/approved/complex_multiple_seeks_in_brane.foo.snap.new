@@ -1,5 +1,6 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
 ---
 INPUT:
 ```foolish
@@ -7,15 +8,15 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane{
-    a = 1;
-    b = 2;
-    c = 3;
-    d = 4;
-    e = 5;
-    s1 = 5;
-    s2 = 5;
-    s3 = 5
+{
+  a=1;
+  b=2;
+  c=3;
+  d=4;
+  e=5;
+  s1=5;
+  s2=5;
+  s3=5
 }
 ```
 COMMENTS:
@@ -25,5 +26,5 @@ complex_multiple_seeks_in_brane
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: Gfc297+p/ydY63wBgTxhLSfebMocMRu7Rt2GSgnRvjPSnOYRxVBia/hTz9j1+PpLQHOJUdFU4Ra6+9IOoppVBQ==
-HFS signature: tc7QCk7pecIuP7iEHqFfTqL7h/reqNptYPKaXRKIVdYxGLGxseeETRSQSLBPYp/r6nsjkasxRofgvq4PXPC0Bw==
-Comments signature: /RSlMXYEj0dvA/0FMiGI4cjd8dsa7ANTs5jA8+74gUFgWI8/fqNlyrvt/X5rsSR3AoWMGHannobLTL3AgtDzCQ==
+HFS signature: UbzWpZeqxLIOMs+p62iX/NHNlW9FbmFFBPG5Hs+D1Pg7UiUGQDpew48q5iPwyEDgA6eQR2HNhhU4C2X9kgucCQ==
+Comments signature: EaDJG3p2av9ONB5Z94xWCpF6qhkYVLskMVvPv/yHXby1CfVvNQBUhT+gJ2GKZOBMWTOFrEi6j6v1wwzl+7PIBA==

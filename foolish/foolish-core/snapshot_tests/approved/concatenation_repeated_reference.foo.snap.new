@@ -8,14 +8,14 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane{
-    a = Brane{
-        x = 1
-    };
-    c = Brane{
-        x = 1;
-        x = 1
-    }
+{
+  a={
+      x=1
+  };
+  c={
+      x=1;
+      x=1
+  }
 }
 ```
 COMMENTS:
@@ -25,5 +25,5 @@ concatenation_repeated_reference
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: NFJbInnfc3XLURxjKZH9y3pXykHfOrnvHPR6ku8T29aze9FiDt88RRvu+zD8+2rqbcfaFnIHPInukeoW70QqBQ==
-HFS signature: GqDTVA9FBdMoJq72c9wgh1yv7+b3miIFRxIAMRW3/5swwmHBmq5j9DIGDj5NwOqZXCm9XllHJhMOyTxQ47/kAQ==
-Comments signature: KxCGwk89DFst8LrXx5XXIA9VL962UThMvshbtvI7i/1/YxNQEAMtsYshc9JFnab7xkerFoPKELmfVO+KWFB6Bg==
+HFS signature: hOUmOo+2B+MMKyFRIf9acihJeZmpMb/GzfRxQywAf9+kGX0NYTHjg0PyF+sV/dldV9qgs+JUPa54+gRDZHcpBw==
+Comments signature: tiRt9M6vh/12sphdeurIWqrb8j/hsejDfLGYOsCgby5CiEKJhMukrHd6MLpjPEr6EMbWf54Vz3MNV5GpAcpgDg==

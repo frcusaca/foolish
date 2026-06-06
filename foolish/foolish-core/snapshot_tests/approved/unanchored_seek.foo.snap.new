@@ -8,10 +8,10 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane{
-    a = 1;
-    b = 2;
-    c = 2
+{
+  a=1;
+  b=2;
+  c=2
 }
 ```
 COMMENTS:
@@ -21,5 +21,5 @@ unanchored_seek
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: Y2bLnIwh84MVCk6sBwhw9T042j8TuuIN41GxlAP80ebUAFV0VnIfCnAdi2Y052yEAigwrLZIBMm1I1MNDI/iDg==
-HFS signature: SqygirlOX9n+UdCNJg3mQurtqs5GIOoShOSgB8pYZsd+KAZacFBkFFU4WLvgsNoV0jOSTZq2Zdl0tBTQ5SzCDQ==
-Comments signature: W8/hfo89/b/q++49L50En+sevUpbYph9CjKBv+rT5VRU9nq/c5AItiF84BK9ARfE51jQgUYMPJcwK/GDDaa0CQ==
+HFS signature: fDlyvdPhZXvAbVNAkspB2oryGwYUYKVSwz0Oux2bEe6JvStbIJbD5w7ZCW3CMKyXYhji1z6Ih2G1Nr5fcxn1Ag==
+Comments signature: 4Id4v1fWBnfYoam42M5JkefRjufgUDhcKUQGBzIr611yruzeBSEk+uwpbX+DnOX+sl8l2wMlsAptGcmOBimMCQ==

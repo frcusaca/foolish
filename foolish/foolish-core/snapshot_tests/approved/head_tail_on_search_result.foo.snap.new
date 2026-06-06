@@ -8,16 +8,16 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane{
-    b = Brane{
-        x = Brane{
-            1;
-            2;
-            3
-        }
-    };
-    h = 1;
-    t = 3
+{
+  b={
+      x={
+          1;
+          2;
+          3
+      }
+  };
+  h=1;
+  t=3
 }
 ```
 COMMENTS:
@@ -27,5 +27,5 @@ head_tail_on_search_result
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: JPe0K36mu+mYlG+TuEQ7EZpyi0cpKTy0oXVkC4uqV2hjLTd0Zntev8P0lsStHiszszWgg0gFW526YDxPkkCaDA==
-HFS signature: XBcv4kYEv1Q2lT1qZL1S/YpyJVaaHbOp5TpuJxh2Lzflb6a+/G5a3o4VjGc2S0aCMfSaadrp4fb61++VjkpbCQ==
-Comments signature: Nd/DyGHher3n6+3sqRfWWqMNSR/+pjhKP9+KkpcqhZOPAZ7CvZeN4D2JkPERFEEH+CQfOfI3f421L+tfFs/mCg==
+HFS signature: Cniyb6nD1JkWD+RRgzWaRBCISttSyOUNUYdikXgWoG/lLKi4ekk8H9me8+jysZ5Nuh5jrteLp/uUW01mDN36BQ==
+Comments signature: hwkFk/aCakcywzeG4NXChIgtCHZrtmOmqxgf7J0rbyqdmRUwTF9K34z3d4clngf08Ue+caz1bUb2QJ2VB9pNBg==

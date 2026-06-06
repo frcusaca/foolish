@@ -1,5 +1,6 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
 ---
 INPUT:
 ```foolish
@@ -7,18 +8,18 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane{
-    a = 10;
-    b = 20;
-    outer = Brane{
-        c = 30;
-        ac = 40;
-        inner = Brane{
-            a = 40;
-            abc = 90
-        };
-        ab = 30
-    }
+{
+  a=10;
+  b=20;
+  outer={
+      c=30;
+      ac=40;
+      inner={
+          a=40;
+          abc=90
+      };
+      ab=30
+  }
 }
 ```
 COMMENTS:
@@ -28,5 +29,5 @@ complex_nested_scope
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: lATSCngkRPllgcpySFfij40IPvVOdXraCOLxdoTraAIlOXvsQXwD75sktfcSMNYGZLCpgFdy1utwkByduMRmCw==
-HFS signature: 83andG1qNW9q/Klk5/jgOPxTHqkqEY1zRHbQpNtfflCgahcNrDwzLKDvn2sYDnwAH1UDYURzZfcTVXsx5mMkDQ==
-Comments signature: TZQzpceTaRPzoj6FShJWIexvNX8YYT0FkYW/d1dLHpc702aVF4JDfGO/THZbzU9vXmEoXl2hB9cvAEqmWmW8DA==
+HFS signature: hZF/OW24c9ZKoIWsid3Kq+X4xfyYp81/FQKGZ9w0V7NmDtnSZdTI7NwT+Mk6cWQaDoNxmqwH1XIdDktPArwTAw==
+Comments signature: 2YilZZCYEwnYW//FDrYZfMYxWr/vbzXOWyBk1vRXdW44FeOPNc9wIMYzfzK2Fo3cvdm3UMEPNb+Axz8n8+uiDg==

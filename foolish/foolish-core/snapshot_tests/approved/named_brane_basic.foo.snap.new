@@ -8,11 +8,11 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane{
-    x = 10;
-    myname'Brane{
-        val = 10
-    }
+{
+  x=10;
+  myname'{
+    val=10
+  }
 }
 ```
 COMMENTS:
@@ -22,5 +22,5 @@ named_brane_basic
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: iqtjWzJGJYCUCiXY8U5l6RGjdcGU8kbk8Lt7KzvMxAoj27tth4Hvs0gyc5LF3byE4FCFG8j2cLLV1zhUyERrCQ==
-HFS signature: AiRK90Ls+yzZlrrGKZl/gTkVq+iaxo+58CtZrKqr+1OtMTKES+yXXYrbMUJWYGjjqu/FPqomW4Z8MxI6mwdEDw==
-Comments signature: emEkVhlsa89zSJnwStGY6jt7gIR7yJFNmwW2VC1M37oH/4cDooiBJUeSxOprl59fRXyylv5ZlPqyxalMqx3qBw==
+HFS signature: fKg7n6U/lzaahZkp3ooNYLwcBlOSyVlB8/NT8/c/l2LvX3ofF2t+xNobhrZLB8HTRzKoVJng6todls0EU/M8Bw==
+Comments signature: jdGm6TQuzTWJAHHvTMCA+gzlZox7wXsKm0wipECYtQ6fzW3U50N8ZF3JyvR+HrSArYHQBEHBDR091W40t4RJBg==

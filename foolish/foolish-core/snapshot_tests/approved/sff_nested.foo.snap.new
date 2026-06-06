@@ -8,24 +8,17 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane [WOCONSTANIC]{
-    a = 1;
-    b = 2;
-    c = StayFullyFoolish()
-      Operator(+, [EMBRYONIC])
-        Search(pattern='^a$', dir=BACKWARD, UNANCHORED)
-        StayFullyFoolish()
-          Search(pattern='^b$', dir=BACKWARD, UNANCHORED, [EMBRYONIC]);
-    Search(pattern='^c$', dir=BACKWARD, UNANCHORED, [WOCONSTANIC])
-      Operator(+, [WOCONSTANIC])
-        1
-        StayFullyFoolish()
-          Search(pattern='^b$', dir=BACKWARD, UNANCHORED, [EMBRYONIC]);
-    Search(pattern='^c$', dir=BACKWARD, UNANCHORED, [WOCONSTANIC])
-      Operator(+, [WOCONSTANIC])
-        Search(pattern='^a$', dir=BACKWARD, UNANCHORED)
-        StayFullyFoolish()
-          Search(pattern='^b$', dir=BACKWARD, UNANCHORED, [EMBRYONIC])
+{WOCONSTANIC
+  a=1;
+  b=2;
+  c=+(?(pattern='^a$', UNANCHORED), ?(pattern='^b$', UNANCHORED, EMBRYONIC), EMBRYONIC);
+  ?(result=+(1, ?(pattern='^b$', UNANCHORED, EMBRYONIC), WOCONSTANIC), pattern='^c$', UNANCHORED, WOCONSTANIC);
+  ?(
+    result=+(?(pattern='^a$', UNANCHORED), ?(pattern='^b$', UNANCHORED, EMBRYONIC), WOCONSTANIC),
+    pattern='^c$',
+    UNANCHORED,
+    WOCONSTANIC
+  )
 }
 ```
 COMMENTS:
@@ -35,5 +28,5 @@ sff_nested
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: lhcizF48neDw/0Ot29cyjAKKVN2RJsqhMEqKOBwHi1AC7LmDHeXb9dBvby6kqQzBJhSJHHAXCtmjZ9gbF1ZHAw==
-HFS signature: m8QvP/6FT3CZJfAIJbWTBD2dqyNWgmZTsx2I7E2jIxUXcejdSna/AY75T2ciM86N+Y1DWxmW0owXC+OA/tYBAA==
-Comments signature: A3CRlUIvSEu4O8b7QxAuxkYvQANRePR7AxBJygGXShro/qkmkehozbim87i3/YlMmQ6FSYHhDN+hfmFM6tKXCg==
+HFS signature: b6ESsWrl8NsRKaSZ7X4/S++04VaulO817t2FHe08R9YsNFrMDqGcVFQ2bA6F9MbpJua9mB62rT5EYcl074FiDA==
+Comments signature: NIbux+X2g4vkzkmyuq4wgD8XA3sOSdZur/E1hH0+Ru+fHX71TIiIhm+MwdUWcA5ymVFOW/UW8uugO9fSmuwgBw==

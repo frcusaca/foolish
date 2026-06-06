@@ -8,9 +8,9 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-Brane [NK]{
-    e = HeadTail(HEAD, ANCHORED, [NK]);
-    f = HeadTail(TAIL, ANCHORED, [NK])
+{NK
+  e=^(result={}, NK);
+  f=$(result={}, NK)
 }
 ```
 COMMENTS:
@@ -20,5 +20,5 @@ head_tail_empty_brane
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: Op9FpCPn6rtPcl85nBOO3159u9dxIZzkrOB3FYyixEo+iNyZBhQFQ9yjqfcCtZEUyM4t3IzLMRmIlnJVe2deBw==
-HFS signature: RNViGNw+fSc8L9oTJh/kIW8lreYj288NPj7mIz6fIePI7q8WRlkvGbgdlRlsU38znDpFKB+oNYJLRCKvQWYbDA==
-Comments signature: pOghzwRS6YiImIF22WlXS8ixrUWoxBfVPntcgi35nlgbtfperbPC8+0Y7Wu9b0Z2KdSKgxD/yMX7tTZhbYYvCQ==
+HFS signature: ROMg6mZiCqjoOgxf1o+U+B/wXrta99Le7U1FB8mBqhCf72BK7lLJXjrrvmE18rQfuxskCRZRiKWOTtVJNfV+AQ==
+Comments signature: UJ2kV5p+cV3dt2AjlihHOC9H/AQZoeHu/zFsd8DP9Q7OKsIxIgpGJ7DsEgzHAAKHQP/ntp9R4i/T89RDg9P9AQ==
