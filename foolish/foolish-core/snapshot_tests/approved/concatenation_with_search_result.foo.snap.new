@@ -7,19 +7,19 @@ INPUT:
 {target = {a=1, b=2, c={x=10}}; result = {y=5} target.c;}
 ```
 [0] RESULT:
-```hssnap
-Brane{
-    target = Brane{
-        a = 1;
-        b = 2;
-        c = Brane{
-            x = 10
-        }
-    };
-    result = Brane{
-        y = 5;
-        x = 10
-    }
+```hfssnap
+{
+  target={
+      a=1;
+      b=2;
+      c={
+          x=10
+      }
+  };
+  result={
+      y=5;
+      x=10
+  }
 }
 ```
 COMMENTS:
@@ -29,5 +29,5 @@ concatenation_with_search_result
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: AE4NWe1esM7AiX9UCTCuRmfoZVYDPRMjEDUAfhkLurW//hIsdHCvmiMPKV6i4753j3Gzd/UOwLq1s1dI1zG5DQ==
-HS signature: i/x+V8n0NoaKDc7r092HUQ87AFo2sC3/WJxAly9UjNyx+23tChm0tTSLAaGInOhTweuKZrGnCd9YvXtsa6y1Bg==
-Comments signature: /xSJlqKdiEMUCjuPQaW/MU0864PavmajXwyYaDQVxNN78XsPQkmJrIGpfk/ntqsawu3aKVN2Kg0ap4hxdAc6CA==
+HFS signature: 6RD0DZkf1FfymZKYgBuR8VLMnLTZDrnUhkg0WfDUxpIw1LJxoPxAvYeeEExpPwrBPM6bouBnjaXNcyqDKovUBw==
+Comments signature: BWmFg9ZbZSRj9TbU0lEFtiEeMtyQpFvFX5xESiEaNeaO+716n+mnhSjQYa5LptonD58ew4DNI4HmbzZS6LLaAA==

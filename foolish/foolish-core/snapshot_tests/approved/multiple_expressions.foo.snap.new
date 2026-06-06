@@ -7,11 +7,11 @@ INPUT:
 {1; 2; 3;}
 ```
 [0] RESULT:
-```hssnap
-Brane{
-    1;
-    2;
-    3
+```hfssnap
+{
+  1;
+  2;
+  3
 }
 ```
 COMMENTS:
@@ -21,5 +21,5 @@ multiple_expressions
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: tnMzXNrZZK7VjsIYvpYGGsnwkt0PmTObXmzbxITf2B/7GtrESZ0dvosHspYDWKGoBfrIC+wdLZ+9xPtYj8d9Bw==
-HS signature: TwOLtysMYG1bhPcLk7Yp0TXroet25fx7HYimJkfbtdsjKRva7ig4B7DXWIbgoWEnLj382yV0xWoh/GOqvCbZAQ==
-Comments signature: jXss5CNy9XWXdr2iyyzHxOvUzA2VYuJnMzInU4xsBpmgqbMhivlknj1fvWpFCv7Z5opWvPNzf3ErUbyzhbiHCw==
+HFS signature: i7jWUtacqo2dR73kz1VuwTi7ZhGabLccGhv0/1Dg77fFdB4/NbCo0w92uAFw6BEQVYIHICZL0IGdO3UR1yUACA==
+Comments signature: qh5w6tP7OPlgWPOUyyodb72sBa/LHnZbujS/q7+OzsZ8l2wGxcbukIVFXcZUGklnnHksaEO2VjlU7mkLIykQAA==

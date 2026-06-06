@@ -7,17 +7,14 @@ INPUT:
 {x = 5; y = 10; inner = {calc = <<x + y>>; doubled = calc * 2};}
 ```
 [0] RESULT:
-```hssnap
-Brane{
-    x = 5;
-    y = 10;
-    inner = Brane{
-        calc = StayFullyFoolish()
-          Operator(+, [EMBRYONIC])
-            Search(pattern='^x$', dir=BACKWARD, UNANCHORED)
-            Search(pattern='^y$', dir=BACKWARD, UNANCHORED);
-        doubled = 30
-    }
+```hfssnap
+{
+  x=5;
+  y=10;
+  inner={
+      calc=Op+(?(pattern='^x$', UNANCHORED), ?(pattern='^y$', UNANCHORED), EMBRYONIC);
+      doubled=30
+  }
 }
 ```
 COMMENTS:
@@ -27,5 +24,5 @@ complex_sff_with_nested_scope
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 8qfr0jpSsMP6MZAsD56aGbduYNh+nJ3slMhr8S+O04N/0gGhEQnVaYe41x8MuuHjYIaXc8UxZ9Qo9GNdgbECCw==
-HS signature: 1p1fpjHcEAQzy5wqh52Kabhnzi8j2X4VZRrRzYOfIQ0BIcoWYCyZ0RjbHmIEDYQXDflS0g3YC5FBpZd7EwkGDg==
-Comments signature: qMFHIUUijTQA8xHS1CWDHkT3P90bbuX8Xc8K6tIa/pRtABaidH9hk/oXmhVrAiF966u6K7HV66gQGTKXPoKrDQ==
+HFS signature: CDi88AUGwQXoX1GEulwK16PkeBe9OHbapdMZFkCUgBago7uatyIdTPs8Til2RL0jHCgznDXzkswoldyIuDR2AQ==
+Comments signature: sXLTakyyRlh+2i0QbtukUF5ZVQ1n8nKmfi57FPy24tQV9tuoHh6uIHu575uLJB1v9OlU8iW/+PgzylndUkYhAQ==

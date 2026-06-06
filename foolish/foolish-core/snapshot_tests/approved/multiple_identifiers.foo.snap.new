@@ -7,12 +7,12 @@ INPUT:
 {x = 5; y = 3; z = 2; x * y + z;}
 ```
 [0] RESULT:
-```hssnap
-Brane{
-    x = 5;
-    y = 3;
-    z = 2;
-    17
+```hfssnap
+{
+  x=5;
+  y=3;
+  z=2;
+  17
 }
 ```
 COMMENTS:
@@ -22,5 +22,5 @@ multiple_identifiers
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: g5XLxAtNDPB0o4w3UI2WQL/742yZ4CL1ZAcbzufFwj+I4B2+aEa5hlx1zAHrERbRwefF6xuhvWX/3oIgLYvOAg==
-HS signature: u2ogZTCDakS6Df5H6LJoqjo6iQD1hMI03T1yo6dq5CIO0nnGYp/VMHElyMf/phTJ7WFO/LXI0AubVHVP5hH0Bw==
-Comments signature: 6EnIrkVPVB54gDF5TAA7KPiIgQkB2CnBLBd1X0om8EhmW7zU0okevSo0N6DtSF0xZix5jLzIgormjFPvMz0IAA==
+HFS signature: OzD2ikSThGEB1hIIh5k1GHgQT5oj7VKy0OFTDFCWK7Z687cCcfZA2+o1suDaAffs3kzgeREYiYJVcD+7vggRBg==
+Comments signature: r+9CM+7caeOLkDFUDHKxRNU1qT8ic9f3nYIvTdsJ7080Oelj1/vvN+BOxT3QzT4YkZFksSDRjSm9RlC2BOZPDw==

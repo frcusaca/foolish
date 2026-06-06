@@ -7,10 +7,10 @@ INPUT:
 {a=5, b=-a;}
 ```
 [0] RESULT:
-```hssnap
-Brane{
-    a = 5;
-    b = -5
+```hfssnap
+{
+  a=5;
+  b=-5
 }
 ```
 COMMENTS:
@@ -20,5 +20,5 @@ operator_transparency_unary_in_brane
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: IxabrfS2SVopx4Vm9Ky3l/IETllm+xgZnLiFY9pWrt0BZ/ZWr5ovgYnsNbUfj8ueJgdUU47nVSR35/jMUHa/Cw==
-HS signature: M5N3K/cEUyudEi3hynswl5dYhv8HLIUcEdeiqYN2q7hG89kixVBZqx1Blpjuf5bevqb69vTsDKlAqHK6E4w8BA==
-Comments signature: RC4dXU12ytPXV3ROJHPp6+2nofhkx+XAZbM8rza/1fAHixYs5FgH8kmnoC+FWkgfoIe6MYsoTjEqkN+OfjvtAQ==
+HFS signature: TA78CTDDQr8nPACBK2wFOblz3wzT+6ZH7LS396M0ba2zCd8J//BECADcIK3+QFzU2sEjYuCgmpPTyG5RFeOGCQ==
+Comments signature: 8aqjqXLrnxoH6wvQZR/X5w2Qv6EQyX8l2nQ3Aw9tksG2p974/Bdr/AToe9bb5qzdQGvO+QaYzh3UF3ipZPgqDQ==

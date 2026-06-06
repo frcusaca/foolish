@@ -1,6 +1,6 @@
+use crate::fir::AlarmSink;
 use crate::*;
 use std::rc::Rc;
-use crate::fir::AlarmSink;
 
 #[test]
 fn foop9_binary_compiles_to_operator() {
@@ -40,7 +40,10 @@ fn foop9_operator_json_roundtrip() {
     let recovered = fir_from_json(&json).unwrap();
     if let Fir::NormalBrane(nb) = &recovered {
         assert_eq!(nb.statements.len(), 1);
-        assert!(matches!(nb.statements[0].body.borrow().fir_variant(), "Operator"));
+        assert!(matches!(
+            nb.statements[0].body.borrow().fir_variant(),
+            "Operator"
+        ));
     } else {
         panic!("Expected NormalBrane");
     }
@@ -80,7 +83,7 @@ fn count_operators(fir: &Fir) -> usize {
 #[test]
 fn foop9_operator_search_transparency_regression() {
     let output = run_foo("{x=5, y=7, z=#-2 + #-1;}");
-    assert!(output.contains("Int(12)"), "Expected z=12 but got: {}", output);
+    assert!(output.contains("z=12"), "Expected z=12 but got: {}", output);
 }
 
 #[test]
@@ -213,15 +216,18 @@ fn foop12_scope_without_sink_no_panic() {
 fn run_foo(source: &str) -> String {
     let firs = Compiler::compile(source)
         .unwrap_or_else(|e| panic!("Failed to compile '{}': {}", source, e));
-    let mut lines = vec![format!("INPUT: {}", source.lines().next().unwrap_or(source))];
+    let mut lines = vec![format!(
+        "INPUT: {}",
+        source.lines().next().unwrap_or(source)
+    )];
     for (i, fir) in firs.iter().enumerate() {
         lines.push(format!("[{}] PARSED:", i));
-        lines.push(Sequencer::format(fir));
+        lines.push(FirSequencer::format(fir));
         let mut fir_ref = fir_to_ref(fir.clone());
         let result = ubc::run_to_completion(&mut fir_ref);
         let final_fir = clone_steppable(&fir_ref);
         lines.push("RESULT:".to_string());
-        lines.push(Sequencer::format(&final_fir));
+        lines.push(FirSequencer::format(&final_fir));
         if let Err(e) = result {
             lines.push(format!("ERROR: {}", e));
         }

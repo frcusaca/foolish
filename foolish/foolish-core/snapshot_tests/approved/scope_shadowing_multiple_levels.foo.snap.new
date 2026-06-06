@@ -7,18 +7,18 @@ INPUT:
 {x = 1; b = {x = 2; c = {x = 3; val = x}; val2 = x}; val3 = x;}
 ```
 [0] RESULT:
-```hssnap
-Brane{
-    x = 1;
-    b = Brane{
-        x = 2;
-        c = Brane{
-            x = 3;
-            val = 3
-        };
-        val2 = 2
-    };
-    val3 = 1
+```hfssnap
+{
+  x=1;
+  b={
+      x=2;
+      c={
+          x=3;
+          val=3
+      };
+      val2=2
+  };
+  val3=1
 }
 ```
 COMMENTS:
@@ -28,5 +28,5 @@ scope_shadowing_multiple_levels
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: gUXLCgqgJEuIu1kG42MxdyL2sEV/P9Ga8pd2Fomplk27LG/psjqZQ0V3JHaPDLWaP1SDuwm7spDWd87kZ94hDw==
-HS signature: OZhmiB88erHQHL4kRKxit7k7rEruf1fTcwpo8T8QxVBVpXmoFutzKYQIB25tkTysZWYRfgo6pROaB/6H72zVAA==
-Comments signature: uW3Yquttp0RSb5GfJ59B6wPpBaRSi/Ewv3FmbjPQtzMRPlgE8fpZOQ/7Brhe11q0SVVXpQ5OpFumzkMVuKUcBQ==
+HFS signature: uZgEtel3wPmWV0MaGZMe0UyddWbNS79bszrf4Sin70q9/2eX3BCqH+A2sOEL6hjKLsidy+HJfZugw9rEG9bOAw==
+Comments signature: NNMuegFeXantSZdx5B/d2y2beprLscJtCOLasSz2S/+fnhzIAerVuH5L7icTSvHd+zGD61AT8FkuXWgVfVhCCg==

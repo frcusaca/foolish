@@ -7,16 +7,11 @@ INPUT:
 {x=10; y=<x>; z=y + 5;}
 ```
 [0] RESULT:
-```hssnap
-Brane [WOCONSTANIC]{
-    x = 10;
-    y = StayFoolish()
-      Search(pattern='^x$', dir=BACKWARD, UNANCHORED)
-        10;
-    z = Operator(+, [WOCONSTANIC])
-      Search(pattern='^x$', dir=BACKWARD, UNANCHORED)
-        10
-      5
+```hfssnap
+{
+  x=10;
+  y=?(result=10, pattern='^x$', UNANCHORED);
+  z=15
 }
 ```
 COMMENTS:
@@ -26,5 +21,5 @@ complex_sf_in_expression
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: ssYnBrajHlb2cVUC/spi1Y1l7ZOUOAtBU9tKjkOZwgNiXuUhpiQ/YY2Xvj6PFPFVUSh/2ZDKxaiD2vH8VNYWDw==
-HS signature: suRlVeDtXoiJexFQqMLNNhArw/qwVpFfhAnTNnI7Spay3X30Gldjnfu5im5XNzfvDs2p7R3gKcOfkTLCNtXdBw==
-Comments signature: JBo0yBL7EqF5F/nYCfS1kEJ+rqtjsgTmDoUoBDpWCqZgXiOvXlwQsFPS/XmrLG0WIyf/fNcEG54+hXGCVJB+AQ==
+HFS signature: GBYzLOf+zdmT2LBGQgZMOaC4zr8A8K64z0YNUnCmtHDcXjM4q00nFu/uv0p8KN+4wRdliCezuRxo+LvVQtKaAg==
+Comments signature: K0SyLnKQpQKU319fGNTNmjkJtxfjwGhMt7yHyKv9QaxJ9k3Iqv4VbV3dJmWfZbk+sTBZP5dMqKj4dzxIxEqrBQ==

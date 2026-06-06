@@ -7,18 +7,14 @@ INPUT:
 {x = 1; sf = <x>; sff = <<x>>; x = 10; sf; sff;}
 ```
 [0] RESULT:
-```hssnap
-Brane{
-    x = 1;
-    sf = StayFoolish()
-      Search(pattern='^x$', dir=BACKWARD, UNANCHORED)
-        1;
-    sff = StayFullyFoolish()
-      Search(pattern='^x$', dir=BACKWARD, UNANCHORED, [EMBRYONIC]);
-    x = 10;
-    Search(pattern='^x$', dir=BACKWARD, UNANCHORED)
-      1;
-    10
+```hfssnap
+{
+  x=1;
+  sf=?(result=10, pattern='^x$', UNANCHORED);
+  sff=?(pattern='^x$', UNANCHORED, EMBRYONIC);
+  x=10;
+  10;
+  10
 }
 ```
 COMMENTS:
@@ -28,5 +24,5 @@ sff_vs_sf_timing_difference
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 1T4n3g/X8HUF4ks72E7lyvCYn9OelhLPSBr7ockhII5PkT0EVw7Amz08EWaUU87H3l3wpZOYiwTv12S1ZPHVBA==
-HS signature: BPS5pgXlx8Av68SA3wZ6gfomUJg7z7vcs7AcRjS6Uzji+3TsDBxaz7GVEWR+Ll+Ft4L7v8tL9+H4otg9mtFwBA==
-Comments signature: pkt61xFPd8WVg/21Yh34ugulwKiQyAlpMuGMpoEnKzStQIkr+2SLrEjjyCwA5fCVm5hOQFxDzBzYYOmxjX7xBg==
+HFS signature: pLGhaqNx+D2sNWV0Up5ZXio7CjAA+QxxVRADJE8yGW5OaemrVkwYCADkduc++1ia67uhCJCSztf2wftcO7CODA==
+Comments signature: uKJ7AdF/T19vzSol5Epf2hqQzPUjyJ4K137OKeOG6ibFuL+sro/PmON6jjadjS8Xtzq4TQ8tzNlnRZzZTB7KBg==

@@ -7,9 +7,9 @@ INPUT:
 {2 + 3 * 4 - 5;}
 ```
 [0] RESULT:
-```hssnap
-Brane{
-    9
+```hfssnap
+{
+  9
 }
 ```
 COMMENTS:
@@ -19,5 +19,5 @@ operator_precedence
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: njDuTr1PQxQKxfsqrYd3orAalh+E3f9bgMOxsN30HLrqpHipGR58G7igIfpIKSLylmcoHtsDEU+tRvMNsfvjAg==
-HS signature: s52aldJvNPFdwIanih1cnjlz3hG8EJs7J+B5pqfYp+SYZTy6XffTlzfKmvx32cvO2mojXa+on4+leFUBpCTcDQ==
-Comments signature: xzcS+pjtINO2lJgB0FpQCuOE5uqnBW9h0AWc6Pw3AVC38vblPu6fOeSPpNXQl65pvl9Rj40mX9LTjFwd+6nrBQ==
+HFS signature: n2UmzLp/Sf92xdwZZ0WFjyoFD8/4b32olnjT7lWdBLCSkM1uBdwRILAJrt/5hPMdGX8EqoG0LxYCfoiaW8a/BQ==
+Comments signature: ertJF5O+b+TvDctj+iN3qtdjmJDRaY6McZUoz9h3/ChdckIuf2W1mjFAdT71aeGBg2prYh4svTcZbnRv2n/bCg==

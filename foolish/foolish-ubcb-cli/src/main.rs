@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use anyhow::Context;
 use clap::{Parser, Subcommand};
 
-use foolish_core::Sequencer;
+use foolish_core::FirSequencer;
 use foolish_ubcb::UbcbEngine;
 
 pub fn format_result(result: &foolish_ubcb::EvaluationResult, states: bool) -> String {
@@ -14,7 +14,7 @@ pub fn format_result(result: &foolish_ubcb::EvaluationResult, states: bool) -> S
     let mut lines = vec![];
     for stmt in &result.statements {
         let fir = foolish_core::clone_steppable(&stmt.fir);
-        let formatted = Sequencer::format(&fir);
+        let formatted = FirSequencer::format(&fir);
         match &stmt.name {
             Some(name) => lines.push(format!("{name} = {formatted}")),
             None => lines.push(formatted),

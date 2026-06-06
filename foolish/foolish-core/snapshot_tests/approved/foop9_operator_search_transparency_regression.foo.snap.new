@@ -7,11 +7,11 @@ INPUT:
 {x=5, y=7, z=#-2 + #-1;}
 ```
 [0] RESULT:
-```hssnap
-Brane{
-    x = 5;
-    y = 7;
-    z = 12
+```hfssnap
+{
+  x=5;
+  y=7;
+  z=12
 }
 ```
 COMMENTS:
@@ -21,5 +21,5 @@ foop9_operator_search_transparency_regression
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: PYhytaiEamiA/S2o5rGD76QUvFFhZbL1b7bgeBFjGOdqrw0IHZU+efdY5b+P7jJMWrV15t/QMCYvtJFocpXXAw==
-HS signature: K4hszF3U/Shz8usnBoBLRkXU5P/PA8p1iF93uY89UhP/UCdO6/RM4ayE7oWeXL0kZfVoC+HwgllvFvLx2lfNDw==
-Comments signature: XWB4p8LftPGntzBqchN0JFRIGBfSegZ5Cwr2Vy1EOJYXTrsr3XnqGiK8ZYASHKxvXR0HWdNQki90YIxt6YIDBg==
+HFS signature: knZ4Kub+z29hHttnX3+oyknw4f7vvAsQhll1QZWc2mJEYZj7zKZlwMYUc1T88hGgOzXCZ+yeFEafY0MFf1x+DQ==
+Comments signature: 8ZNnHG4cdTC/SwL1YoJJG7yFVoUXBPRlm1MYuo4oqiVC8AOWDBRzI1mBzsjIphpxwiIVE74rUHQkosQ6QoEvCw==

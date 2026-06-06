@@ -1,0 +1,24 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{emptyBrane = {}; chained = emptyBrane^;}
+```
+[0] RESULT:
+```hfssnap
+{NK
+  emptyBrane={};
+  chained=^(result=?(pattern='^emptyBrane$', UNANCHORED), NK)
+}
+```
+COMMENTS:
+```markdown
+anchored_search_on_constanic
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: oB/r33QRdUQFLBKbVSYWEI6VnaBBz7sVV6q5wjQOzqn1ouLQ6wc7+rEwPF47u2C08Nk3Rrw7xaUn52YmW2bYDQ==
+HFS signature: IbKmwuaBw7aXNNfT3VYK03BrY/+Nd7yS+7tmewGw7upyCQXcZ6lAfpKGalHzXBK/dEbmiL/4vZWLewVmeuYkDw==
+Comments signature: 6uSvlsYOLyu5MKRWdd4ZceUMSxGyaPzo41xipV7mD6bHrYZxKYAyfrxwwGFD0XNfalG4rkZdfmcC5Y+M2+/gCg==

@@ -7,11 +7,9 @@ INPUT:
 {a = 10 / 0 * 5;}
 ```
 [0] RESULT:
-```hssnap
-Brane [NK]{
-    a = Operator(*, [NK])
-      ??? (division by zero, [NK])
-      5
+```hfssnap
+{NK
+  a=Op*(??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, 5, NK)
 }
 ```
 COMMENTS:
@@ -21,5 +19,5 @@ operator_chain_with_division_by_zero
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 6xXzDmW2bk9uVdNo1pzmVAA2klNUYqIJzyzRRur13WEKdH01Vv7fQ6m36WCD7FUBwOglGTO0GBrc4OjNE2iRCw==
-HS signature: KZrFBH7aZxlmrw9d7DxaGufGCT3wFtycTEoRobTW0BLIxlw97bhfOtUaDsbvGGwvnjTvOcu4MwnxhHu4bI83CA==
-Comments signature: bn7427jlXbstKhWQy8GnAcy2mBjT03/UQ3rXSCi8ZV65mzTqfm27niKoYvmwfd7Q4VIqQ4dXw9u+hSqwO/mDBg==
+HFS signature: 9OSVDYG1mpTFWcGWuWXNcSlNJnO8B1tkRqP+dJ2mw43nZltY+fHb167aO22TuFRT95lObtzB7c10lWOckMjbAA==
+Comments signature: U2GZeXd+JUv9iLU9ZVhwBqjy66w8OmaAXHOMwZlh81BKq1bTBSjp0iumUZ+YKdp3KSie6gIBVqWYU2uO+T/SAw==

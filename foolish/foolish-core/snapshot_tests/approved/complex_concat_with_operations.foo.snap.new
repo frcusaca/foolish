@@ -1,23 +1,24 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
 ---
 INPUT:
 ```foolish
 {a = {x=1+2}; b = {y=3*4}; c = a b;}
 ```
 [0] RESULT:
-```hssnap
-Brane{
-    a = Brane{
-        x = 3
-    };
-    b = Brane{
-        y = 12
-    };
-    c = Brane{
-        x = 3;
-        y = 12
-    }
+```hfssnap
+{
+  a={
+      x=3
+  };
+  b={
+      y=12
+  };
+  c={
+      x=3;
+      y=12
+  }
 }
 ```
 COMMENTS:
@@ -27,5 +28,5 @@ complex_concat_with_operations
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: hQZ3XlbJGCwNVmkTvvRiWQV1g6p/STn4Fd9yT0++sGLitIb/zHnnNHPywvmqVpMHd5cktMT7LFhzayFSXQ4mAw==
-HS signature: wwokplVTK7LpkJIOw2EtN5aaR5RCkREZwP4Qv4C1YniTG7BIELwkid5IJmF25/LG4Pck4wG9bcrkiZUCsN30BA==
-Comments signature: QfdqrVTB+lZEEjbDdteHxn/o7icjUSbG3ZLHXoV5HjBe8AEBEFQN2X4N9rwEmZYLpF+vxoIzkoqFyUeUWjzBCw==
+HFS signature: +qQ+wF9/ea8K5G1zrxYaEuxJ5OnFgtHKmEr4CAwWqJf4eTpPQVW01/AHFkkSwRDlGVqpO4E6tnLiLJii6YuVBA==
+Comments signature: A/q5Bj1wTS/ng6plaPSr1iRf9lpo+Tp5TyCWLfIcFd6G9U1hooHeJhQR2MtC2DBZkBKAL8BoWDSyWK7rKDkkAQ==

@@ -7,12 +7,12 @@ INPUT:
 {x = 10; b = {y = x * 2 + 3};}
 ```
 [0] RESULT:
-```hssnap
-Brane{
-    x = 10;
-    b = Brane{
-        y = 23
-    }
+```hfssnap
+{
+  x=10;
+  b={
+      y=23
+  }
 }
 ```
 COMMENTS:
@@ -22,5 +22,5 @@ operator_in_nested_brane_with_scope
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 2LdCkc6rsRqGv7R+cztwZPz1JFjaxMSoxge2QrVdgiDe95zOWLsqBvlVo4jDw3Gg/EV33s4ft3Nqe6gWAPxwAg==
-HS signature: Yq/CZUmVFcERDrkumEwHh8+Um+HUi7L4zalR3rPqhagxrMpNqHWuXBbkc1Fen7vkaZ/5xFCrly10n0+f3MSZAg==
-Comments signature: lhHgSj8KtxKKjQ2ovY5Zpqb1ZKGutR3km4gRt2onkudZzEH/4O/83goqE6+QyGTijJnBemT7N2bqpl6dqzNhBg==
+HFS signature: 2P+e9gZ4SwFTqd8kZ6zL5KEvRb8PGsTqpFJ3ixXI2ZzhsUB/q7czD/y9zIJffFsbQkG6hSFI8ZuS+X5FdqGiCQ==
+Comments signature: d8hpio/60FwivWb7pF6O7AtuUYgDThIMb5UsHZJKsc5kZVRJu+trCGQT7fnTbHlfIM8WWUsiNCyWEx97wfyXCQ==

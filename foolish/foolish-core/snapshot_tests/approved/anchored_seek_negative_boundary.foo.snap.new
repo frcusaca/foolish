@@ -1,22 +1,23 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
 ---
 INPUT:
 ```foolish
 {b = {10; 20; 30}; last = b#-1; second = b#1; first = b#-3; oob = b#-4;}
 ```
 [0] RESULT:
-```hssnap
-Brane [NK]{
-    b = Brane{
-        10;
-        20;
-        30
-    };
-    last = 30;
-    second = 20;
-    first = 10;
-    oob = Index(offset=-4, ANCHORED, [NK])
+```hfssnap
+{
+  b={
+      10;
+      20;
+      30
+  };
+  last=30;
+  second=20;
+  first=10;
+  oob=10
 }
 ```
 COMMENTS:
@@ -26,5 +27,5 @@ anchored_seek_negative_boundary
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: Hz+E00U3C3CsBvmDBDvsvrUBkxqorumzrBINQuB6usuo3Tc+B3G3S66sRaCAd8nWs36mDjbYF6rjX7Ps0UoJBw==
-HS signature: HXPasRh95I1JYf0Y8UAWJ5VlRl/yLgl0CkFgeVT0x5WYLi3e1fMp/XEcRwtJQt/Of3bBAcK1KZI90Bc4Bg+/CQ==
-Comments signature: 0mYf8q6+o4eewvBZqL5X1+ueroM4O26FuL+ng+mHsL8E43/75ym+1mHHMFuPBaIt/SVlKMOwSVPEGmVELmnpCQ==
+HFS signature: 0ZUdUu3Abu7h4L+Zd9bq/J5jFiZ2n4/9Aj79E0oRlku5V+2EiM7WvKvIkidAiRQWBJRZw9+1hQ0sxFphdczeCw==
+Comments signature: u1O06N6I+Tm1IKqytWHsd87Ap0q9CV34njdBCce4MamPfavUfNvseeJRAfO36RJn7an5Py+JpxDD/eD65lLjDw==

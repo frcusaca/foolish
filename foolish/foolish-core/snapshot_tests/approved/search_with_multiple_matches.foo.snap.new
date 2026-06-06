@@ -7,14 +7,14 @@ INPUT:
 {b = {a1 = 1; a2 = 2; a3 = 3}; r = b?a.*;}
 ```
 [0] RESULT:
-```hssnap
-Brane{
-    b = Brane{
-        a1 = 1;
-        a2 = 2;
-        a3 = 3
-    };
-    r = 3
+```hfssnap
+{
+  b={
+      a1=1;
+      a2=2;
+      a3=3
+  };
+  r=1
 }
 ```
 COMMENTS:
@@ -24,5 +24,5 @@ search_with_multiple_matches
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: ftH8dTA78ga8T03BJZTg7u6rt1xShIINY/hS8wcvR5RnCtlueKZalhtVnTkvsLJxlkQmOJivBQ7Gbm0k+slkCQ==
-HS signature: eGeklyjsW28yRUya2yrliQmS56bL1AYa+3gXadFu6zAfM0JFow6L3q52avdNeO/ycpBuEPS0vfs5kB0o/3q6DA==
-Comments signature: eUTXtb+lJSdNJLDVATy03hRo70vSaJr68FPNS+Z4VFXAOXAaxiu+WbsuUy2eiMa077pK6hsj7K7WWWXNkHnBAQ==
+HFS signature: rQavPbhuyK2cDT9Qa+pmrwc4shgiFydRPbirMhoUvbvVZZDJjhPYgefCwbA+gyClzQtHTZ3ehLii3JvUEfJIAg==
+Comments signature: fXAJf7+ITg5ASQB3lsocbkTg5q+WAbcViyrY++mRDDhOoUGN/lTiYvbSxgO2r6lr+5CzIqxCQQzyeGKxpu6qAg==

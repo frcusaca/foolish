@@ -7,16 +7,16 @@ INPUT:
 {b = {tmp_a = 1; result = 2; tmp_b = 3; output = 4}; r1 = b?tmp_.*; r2 = b?result;}
 ```
 [0] RESULT:
-```hssnap
-Brane{
-    b = Brane{
-        tmpˍa = 1;
-        result = 2;
-        tmpˍb = 3;
-        output = 4
-    };
-    r1 = 3;
-    r2 = 2
+```hfssnap
+{
+  b={
+      tmpˍa=1;
+      result=2;
+      tmpˍb=3;
+      output=4
+  };
+  r1=1;
+  r2=2
 }
 ```
 COMMENTS:
@@ -26,5 +26,5 @@ search_pattern_with_complex_regex
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 7NEp1YnLYuCfsI67t4Rd/ifucEcudy+rM9iBWs21OTYUeIBSIaDmGFkBKspARTYnph1eTh6gKRTjxRNTspmwBg==
-HS signature: k1G8GRU8vDa1NmTRssvH8m53brAL5MPwlFmL/jh8iQ2x+h943CXXZvVGcQFs0uh7QcT8KK+ibZKt3yBSl0fdDQ==
-Comments signature: K0y2wwdZu9m7miUn+fvvVxmAy6G9ku1fNOdT+G+jNho6cGT9kvEw8a1Kp6qcx8IaWivmySG3tUcpTwCB5HbBBw==
+HFS signature: jn90LXQkZxWnGDcv2z2C1vjlBuGlcAW502PEBTFvNm32u6WD+DDVITSy2fOFkCbnrYM4BLVQ8Id4j4iCtoFBCg==
+Comments signature: 4jt8YvlaJPdKmCuHaqake5BUvZ4/6uNU1W9jWe5SdraTz4kWKNuq1Jr+1l4yzBIi5Pmg5AxIgaAdBSTd4NFrBw==

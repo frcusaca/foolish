@@ -7,24 +7,28 @@ INPUT:
 {a=1, b=2; inner = {c = <<a+b>>; c}; inner;}
 ```
 [0] RESULT:
-```hssnap
-Brane{
-    a = 1;
-    b = 2;
-    inner = Brane{
-        c = StayFullyFoolish()
-          Operator(+, [EMBRYONIC])
-            Search(pattern='^a$', dir=BACKWARD, UNANCHORED)
-            Search(pattern='^b$', dir=BACKWARD, UNANCHORED);
-        3
-    };
-    Brane{
-        c = StayFullyFoolish()
-          Operator(+, [EMBRYONIC])
-            Search(pattern='^a$', dir=BACKWARD, UNANCHORED)
-            Search(pattern='^b$', dir=BACKWARD, UNANCHORED);
-        3
-    }
+```hfssnap
+{WOCONSTANIC
+  a=1;
+  b=2;
+  inner={
+      c=Op+(?(pattern='^a$', UNANCHORED), ?(pattern='^b$', UNANCHORED), EMBRYONIC);
+      3
+  };
+  ?(
+    result={WOCONSTANIC
+        c=Op+(?(pattern='^a$', UNANCHORED), ?(pattern='^b$', UNANCHORED), EMBRYONIC);
+        ?(
+          result=Op+(?(pattern='^a$', UNANCHORED), ?(pattern='^b$', UNANCHORED), WOCONSTANIC),
+          pattern='^c$',
+          UNANCHORED,
+          WOCONSTANIC
+        )
+    },
+    pattern='^inner$',
+    UNANCHORED,
+    WOCONSTANIC
+  )
 }
 ```
 COMMENTS:
@@ -34,5 +38,5 @@ complex_sff_in_nested_brane
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: ZIgjfGeL3aOiCFGthil+qpoFORBgbUiJ34yeWevLnvPP3orwUnFqJRnzpA9oKsQVY98pCPWMFeTGN4RdIqe4DA==
-HS signature: JXNVd7CPFKNYyyfGbVK838wi/sHmp+9pc6UuvJxcusW8zbbHwB1f2mrojc2/2YC0ICekBBn0YGCSorWccsiGAg==
-Comments signature: p3CNoRHTG9epeOFHCK2ncQDbnkm8rBm/G9y9NM5IgVXfev4+QpNFr8n+mgRqQ5YCDTKLa56iXXsfK6io0zVCCQ==
+HFS signature: nNcB6L8dDKzACIkBLvYaablwO0w3+Uq/sJn2JA7ut9AA9z111cEATOz+FmVvu4wVbjdMARL5/+DeqYPGVT1AAw==
+Comments signature: w7JuMN5yoEBQ6/JQ9qWbkin40PL3ARdGq+zd4scLtG9L67m+6/cQoL6Zd30B8sIRqMBoWhunxcYeiGXsDtUPCQ==

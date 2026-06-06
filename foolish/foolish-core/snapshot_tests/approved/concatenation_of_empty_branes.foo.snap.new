@@ -7,14 +7,11 @@ INPUT:
 {a = {}; b = {}; c = a b;}
 ```
 [0] RESULT:
-```hssnap
-Brane{
-    a = Brane{
-    };
-    b = Brane{
-    };
-    c = Brane{
-    }
+```hfssnap
+{
+  a={};
+  b={};
+  c={}
 }
 ```
 COMMENTS:
@@ -24,5 +21,5 @@ concatenation_of_empty_branes
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 7gJt+oMWH4+YgPm9Uw8lVZlF8NlFLq4pxJ1pyyADx7RgCY4Am1hwqecYiBiRwl7wEyLcpd5lOt9SpRdooqtOAg==
-HS signature: A1goewGFIibeU6TXdB4bRF/Kn0XV9o2WRAGvcABmzC1AcR669wMTeinPABDZyGpcrL1qUfSzttafNPfeOU7wCg==
-Comments signature: 3uO8G2b3Mok9B7hniAPrVqkXmllITM2NpdEWKJMag1toJYyf1dzDI76RCxEwQjILcQd3wxROqIXsXqXJNtofAA==
+HFS signature: jEe356nCV1NIK8g8tsxzhIwQaXmGbU2Gf8UaUC4mgxaNSvJgMgjUfRVEyGgZAjNhLDF/Rhp0FNk5lnTONlCSCw==
+Comments signature: lJriTBoA9RWAOefFM/3bJtHG/C8C6ENbZF9LkdvvLHJKM8+AfE7d0SW80gXfpAlvfwdi+AOy39Dr/iLzKXmhCA==

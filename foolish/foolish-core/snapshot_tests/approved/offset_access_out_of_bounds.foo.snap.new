@@ -7,17 +7,17 @@ INPUT:
 {data = {a=10; b=20; c=30; d=40; e=50}; oob = data#5; oob_neg = data#-6;}
 ```
 [0] RESULT:
-```hssnap
-Brane [NK]{
-    data = Brane{
-        a = 10;
-        b = 20;
-        c = 30;
-        d = 40;
-        e = 50
-    };
-    oob = Index(offset=5, ANCHORED, [NK]);
-    oobˍneg = Index(offset=-6, ANCHORED, [NK])
+```hfssnap
+{NK
+  data={
+      a=10;
+      b=20;
+      c=30;
+      d=40;
+      e=50
+  };
+  oob=#(result=?(pattern='^data$', UNANCHORED), offset=5, ANCHORED, NK);
+  oobˍneg=10
 }
 ```
 COMMENTS:
@@ -27,5 +27,5 @@ offset_access_out_of_bounds
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 6Kl8xVNkjnIERBDU/geunFvLzDwGt1gky5mwIgSBP1dQgu+YNxT3ZSO6QwAgC6Z5TXmrDgzy09gMUkyVCy/yDQ==
-HS signature: RO8OjlVJsUDdlv1w7J4iK/ZlWWb1LZfu7zGewIEw8Y16qcTp9FKT6Pvb2u4kykS+qZTta0ELf2FEA4uZmLk1CQ==
-Comments signature: yXanPXRzl9xIzhNQydWB8YQteO8PwEluwDOYdF45JMP7vl3khhH9DxbCBDYvoPc8TO8trlqlxNSzBp4AQaCJBQ==
+HFS signature: szJf1GDjz0JBNtfZXrcWG9j8g/AoId52rsGSIGG7Fw4gEG4bpOxkdL4qEyLBszCUJxkb6zqTFyyrQCwSA+hzAQ==
+Comments signature: hgXnf+A7RAUvWdw8fA8pTaupJaeWJhCd1NkU9l2G0/JpjvVWVSiRFGfYSlNG6TpUYzmMdc+aQQK9zAdVLiV/Bg==

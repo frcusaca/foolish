@@ -72,5 +72,5 @@ zero_div_in_op=10/0+42;
 nested_op_transparent=(a+bb)*(ccc-dddd)/3;
 inspect_sff=<sff_target>;
 inspect_sff_again=<<sff_target>>;
-win={w_in={in_in={in_in_in=101010}}}};
+win={w_in={in_in={in_in_in=101010}}};
 }

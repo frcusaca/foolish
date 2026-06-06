@@ -7,27 +7,27 @@ INPUT:
 {a = {1; 2; 3}; b = {x = {10; 20; 30}}; c = {d = {e = {42}}};}
 ```
 [0] RESULT:
-```hssnap
-Brane{
-    a = Brane{
-        1;
-        2;
-        3
-    };
-    b = Brane{
-        x = Brane{
-            10;
-            20;
-            30
-        }
-    };
-    c = Brane{
-        d = Brane{
-            e = Brane{
-                42
-            }
-        }
-    }
+```hfssnap
+{
+  a={
+      1;
+      2;
+      3
+  };
+  b={
+      x={
+          10;
+          20;
+          30
+      }
+  };
+  c={
+      d={
+          e={
+              42
+          }
+      }
+  }
 }
 ```
 COMMENTS:
@@ -37,5 +37,5 @@ hs_brane_indentation
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: A7pIQJnl9cSrMhM5u8FUc9YPbkPs0zaodNiIKgp8aWGfKm8rIzBUYkMxdeJpVmcoMrLIynSTW5bNfWnCMWmyBg==
-HS signature: 0WS0Nk825bd2G2ITOrzZrm5/5KWXIVgIVcrdobLb7AQlXgIReDUUqWEKm6ENEwZCbqNhW4BlPT7pV1mso1FDAw==
-Comments signature: c4BMX/r0Td14XSJg7KbUQQ/G1JiJfTuTodoSoWvkKnsfwroFAKeAj/kYKmnbXaK3+kgA6dIX92JJFl/pCSrjCg==
+HFS signature: lJyi6pgzandTZVeyPKc+QqNJCLL6mgeFugTMZHon/UTaBzS+7bMj2kqNdwHDoYeunodB3kT8pZ9KNqLYlzbcCA==
+Comments signature: 80+BBoqI6bil3ca0fIBuHuH/TPlin+xiK9Cs+8g2z3Xltov4u7Q/aOzogY8VCTxfLuIl/PKDc6IdDXsOtOJnDQ==

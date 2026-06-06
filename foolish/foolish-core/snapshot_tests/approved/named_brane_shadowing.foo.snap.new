@@ -7,14 +7,14 @@ INPUT:
 {x = 100; inner'{x = 200; x}; x;}
 ```
 [0] RESULT:
-```hssnap
-Brane{
-    x = 100;
-    inner'Brane{
-        x = 200;
-        200
-    };
-    100
+```hfssnap
+{
+  x=100;
+  inner'{
+    x=200;
+    200
+  };
+  100
 }
 ```
 COMMENTS:
@@ -24,5 +24,5 @@ named_brane_shadowing
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: mx8JvvVUtoqj+DYr8lPDPGXQwSzgE1GLzEfRrSJfv8hJr+tOlL6305JGTZPbod8PdVrEwMMaY6/deyosAiOVAQ==
-HS signature: 1YIV3C4qFveKgDqgQX6BYkli8HISW7em1owUUkz8NIqIHqeuqfHhKLQiAaAUzMhiP60TdbcmXogehy426p1KAg==
-Comments signature: jn0CadSHCq78qmnbonNOqXMVyq52YeidCsvrSk5es9vApKkQxZ5cMz4kCC1XjV8AcOfQ6cEnGQsHBGI6IBCGDw==
+HFS signature: dUaorQcVl1Ps1GtvgKwoV/rDLaYTbRDTxnlc1d1d41gEZB0g+8h60+VIFaU/wgnonO0sJlWUNvFZsCD9Rb6PAA==
+Comments signature: 71Gue/iYkg4abupdeTVjgT4RcjtS7S753h88yE9Zyv3+vZPuRHUaqVCgOWyukEHdPKZFFM/qq2CIJ41wXYfmBA==

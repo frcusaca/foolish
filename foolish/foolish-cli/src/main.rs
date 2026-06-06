@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use anyhow::Context;
 use clap::{Parser, Subcommand};
-use foolish_core::{Compiler, clone_steppable, fir_to_json, fir_to_ref, Sequencer, ubc};
+use foolish_core::{Compiler, clone_steppable, fir_to_json, fir_to_ref, FirSequencer, ubc};
 
 #[derive(Parser)]
 #[command(name = "foolish")]
@@ -68,7 +68,7 @@ fn cmd_run(file: &PathBuf) -> anyhow::Result<()> {
         ubc::run_to_completion(&mut fir_ref)
             .with_context(|| "Evaluation failed")?;
         let final_fir = clone_steppable(&fir_ref);
-        let output = Sequencer::format(&final_fir);
+        let output = FirSequencer::format(&final_fir);
         println!("{}", output);
     }
     Ok(())
@@ -80,14 +80,14 @@ fn cmd_step(file: &PathBuf) -> anyhow::Result<()> {
     let firs = Compiler::compile(&source)?;
     for (i, fir) in firs.iter().enumerate() {
         println!("[{}] PARSED:", i);
-        println!("{}", Sequencer::format(fir));
+        println!("{}", FirSequencer::format(fir));
 
         let mut fir_ref = fir_to_ref(fir.clone());
         match ubc::run_to_completion(&mut fir_ref) {
             Ok(()) => {
                 let final_fir = clone_steppable(&fir_ref);
                 println!("RESULT:");
-                println!("{}", Sequencer::format(&final_fir));
+                println!("{}", FirSequencer::format(&final_fir));
             }
             Err(e) => eprintln!("ERROR: {}", e),
         }
@@ -129,7 +129,7 @@ fn cmd_repl() -> anyhow::Result<()> {
                         match ubc::run_to_completion(&mut fir_ref) {
                             Ok(()) => {
                                 let final_fir = clone_steppable(&fir_ref);
-                                println!("=> {}", Sequencer::format(&final_fir));
+                                println!("=> {}", FirSequencer::format(&final_fir));
                             }
                             Err(e) => eprintln!("Error: {}", e),
                         }

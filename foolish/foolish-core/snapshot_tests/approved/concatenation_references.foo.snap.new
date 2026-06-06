@@ -7,26 +7,26 @@ INPUT:
 {b1={a=1, b=2, c=3}; b2={e=4, f=5, g=6}; c = b1 b2;}
 ```
 [0] RESULT:
-```hssnap
-Brane{
-    b1 = Brane{
-        a = 1;
-        b = 2;
-        c = 3
-    };
-    b2 = Brane{
-        e = 4;
-        f = 5;
-        g = 6
-    };
-    c = Brane{
-        a = 1;
-        b = 2;
-        c = 3;
-        e = 4;
-        f = 5;
-        g = 6
-    }
+```hfssnap
+{
+  b1={
+      a=1;
+      b=2;
+      c=3
+  };
+  b2={
+      e=4;
+      f=5;
+      g=6
+  };
+  c={
+      a=1;
+      b=2;
+      c=3;
+      e=4;
+      f=5;
+      g=6
+  }
 }
 ```
 COMMENTS:
@@ -36,5 +36,5 @@ concatenation_references
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 9mQ3JvBrwjOjzgKfPPmA+EOIAqwajOWBr8fjY9atkucWtm2YVnhDXylzCOOPwy3US62kN04Fm+gj0b6kgCPsDA==
-HS signature: QTML1bnuN10ebBmed/8YXPw0xtlfYH1zUzisoE+Dlit5jhiT/TJ7KuX9Ksu+34MnETzwVgRq3QnguEns2RzCDQ==
-Comments signature: l7wVzDCF90DEhk67ZB3qInXt/7DG596d/hzc5V3yJe5wgNGgBGv7yluAKYwooDWkbrlgqBbFpVn24P87IyQVCw==
+HFS signature: BlrsdkQlZ5M9a4mQGTH1Vvkzy7NUwjDPt2ydwSSoJ0BsD+riBi0ooywTCpsIDqYkfBIakjiuqIKUM6VOC8l5Bg==
+Comments signature: AuUBZw9dXubNZEnXHN2L58MHLOSYVwaJTCS0dTl1N/fKnwPv9zJgriwjZriNIol7sun8uD0KLnRg6uf8P4FgCg==

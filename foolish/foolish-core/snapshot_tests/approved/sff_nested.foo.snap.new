@@ -7,25 +7,18 @@ INPUT:
 {a=1,b=2; c=<<a+<<b>>>>; c; c;}
 ```
 [0] RESULT:
-```hssnap
-Brane [WOCONSTANIC]{
-    a = 1;
-    b = 2;
-    c = StayFullyFoolish()
-      Operator(+, [EMBRYONIC])
-        Search(pattern='^a$', dir=BACKWARD, UNANCHORED)
-        StayFullyFoolish()
-          Search(pattern='^b$', dir=BACKWARD, UNANCHORED, [EMBRYONIC]);
-    Search(pattern='^c$', dir=BACKWARD, UNANCHORED, [WOCONSTANIC])
-      Operator(+, [WOCONSTANIC])
-        1
-        StayFullyFoolish()
-          Search(pattern='^b$', dir=BACKWARD, UNANCHORED, [EMBRYONIC]);
-    Search(pattern='^c$', dir=BACKWARD, UNANCHORED, [WOCONSTANIC])
-      Operator(+, [WOCONSTANIC])
-        Search(pattern='^a$', dir=BACKWARD, UNANCHORED)
-        StayFullyFoolish()
-          Search(pattern='^b$', dir=BACKWARD, UNANCHORED, [EMBRYONIC])
+```hfssnap
+{WOCONSTANIC
+  a=1;
+  b=2;
+  c=Op+(?(pattern='^a$', UNANCHORED), ?(pattern='^b$', UNANCHORED, EMBRYONIC), EMBRYONIC);
+  ?(result=Op+(1, ?(pattern='^b$', UNANCHORED, EMBRYONIC), WOCONSTANIC), pattern='^c$', UNANCHORED, WOCONSTANIC);
+  ?(
+    result=Op+(?(pattern='^a$', UNANCHORED), ?(pattern='^b$', UNANCHORED, EMBRYONIC), WOCONSTANIC),
+    pattern='^c$',
+    UNANCHORED,
+    WOCONSTANIC
+  )
 }
 ```
 COMMENTS:
@@ -35,5 +28,5 @@ sff_nested
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: lhcizF48neDw/0Ot29cyjAKKVN2RJsqhMEqKOBwHi1AC7LmDHeXb9dBvby6kqQzBJhSJHHAXCtmjZ9gbF1ZHAw==
-HS signature: m8QvP/6FT3CZJfAIJbWTBD2dqyNWgmZTsx2I7E2jIxUXcejdSna/AY75T2ciM86N+Y1DWxmW0owXC+OA/tYBAA==
-Comments signature: A3CRlUIvSEu4O8b7QxAuxkYvQANRePR7AxBJygGXShro/qkmkehozbim87i3/YlMmQ6FSYHhDN+hfmFM6tKXCg==
+HFS signature: iES8iJDJiHaSK6YKDMiq08RtGOZ0T/OYVef7xVMMyHF5iL7sltie7MQULzYAbSxoc/IXik1i+O7FtV79j0t9CQ==
+Comments signature: hhR4rVztMeI3OTxBygA8u69DXlkUgmOLxr6NiWbSAPDxpMBzBUUHzeOpVAbg9eheN5Jm+ZYMavtR2kKLSdjbAw==

@@ -7,9 +7,9 @@ INPUT:
 {((((5))));}
 ```
 [0] RESULT:
-```hssnap
-Brane{
-    5
+```hfssnap
+{
+  5
 }
 ```
 COMMENTS:
@@ -19,5 +19,5 @@ single_parenthesized_expression
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: RayDE9YKR/NULiujaJ7xWVcpjeMiAe4vRtvSafinExRDYCQMBKreJpBAkTlU8EI4CdCzukhaE3B+ZoSvDUQNAg==
-HS signature: J+PqX7jx8tbzdvXDqYbkfjH0LN6VoSIdPezmoVhcrQjErbKCQfXNDSls1BL3qBOJnPmDkIyou8D4UL0FjeKrAA==
-Comments signature: 58wqu7NNEWoX5IBftZDI9km2Ridt+93bkYF0vi14hmSxpzK8p2n/v5qVWyk0vO/iP76gSaWMq6NezYTUcSzBAw==
+HFS signature: i4vOVJV4CVdZdVeyRVGIy2HYq3mySXFJXKDocMcfjLEgfmdUr1QMvV3I3gJ3YuD78fMApdNqlJinqbY5R7TgCA==
+Comments signature: tR6eMmiXNRExT4rYidA7YFd60CfLoec13NPjulV3omZ/pFGy8WAWBOSwTqKs0E7Sk/4qrRihAFX7GY2EGOfbBg==

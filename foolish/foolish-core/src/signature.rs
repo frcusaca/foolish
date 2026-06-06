@@ -188,7 +188,7 @@ impl SnapshotSignature {
     /// Render the SIGNATURES section: label line followed by the four key/sig lines.
     pub fn format_footer(&self) -> String {
         format!(
-            "SIGNATURES:\nPublic key: {}\nFoolish signature: {}\nHS signature: {}\nComments signature: {}",
+            "SIGNATURES:\nPublic key: {}\nFoolish signature: {}\nHFS signature: {}\nComments signature: {}",
             self.public_key_hex,
             self.foolish_sig_b64,
             self.hs_sig_b64,
@@ -204,7 +204,7 @@ pub struct SnapshotVerification {
     pub key_match: bool,
     /// The Foolish signature verifies over `canon_input`.
     pub foolish_ok: bool,
-    /// The HS signature verifies over `canon_input + canon_hs`.
+    /// The HFS signature verifies over `canon_input + canon_hs`.
     pub hs_ok: bool,
     /// The comments signature verifies over `canon_input + canon_hs + canon_comments`.
     pub comments_ok: bool,
@@ -319,7 +319,7 @@ pub fn parse_snapshot_footer(snapshot_text: &str) -> Option<SnapshotSignature> {
     }
     let public_key_hex   = after[0].strip_prefix("Public key: ")?.trim().to_string();
     let foolish_sig_b64  = after[1].strip_prefix("Foolish signature: ")?.trim().to_string();
-    let hs_sig_b64       = after[2].strip_prefix("HS signature: ")?.trim().to_string();
+    let hs_sig_b64       = after[2].strip_prefix("HFS signature: ")?.trim().to_string();
     let comments_sig_b64 = after[3].strip_prefix("Comments signature: ")?.trim().to_string();
     if public_key_hex.is_empty() || foolish_sig_b64.is_empty()
         || hs_sig_b64.is_empty() || comments_sig_b64.is_empty()
@@ -632,13 +632,13 @@ mod tests {
     #[test]
     fn parse_snapshot_footer_no_signatures_label_returns_none() {
         // Lines with the right prefixes but no SIGNATURES: marker → None
-        let old = "Public key: abc\nFoolish signature: def\nHS signature: ghi\nComments signature: jkl";
+        let old = "Public key: abc\nFoolish signature: def\nHFS signature: ghi\nComments signature: jkl";
         assert!(parse_snapshot_footer(old).is_none());
     }
 
     #[test]
     fn parse_snapshot_footer_wrong_prefixes_returns_none() {
-        let bad = "SIGNATURES:\nPublic key: abc\nBad prefix: xyz\nHS signature: def\nComments signature: jkl";
+        let bad = "SIGNATURES:\nPublic key: abc\nBad prefix: xyz\nHFS signature: def\nComments signature: jkl";
         assert!(parse_snapshot_footer(bad).is_none());
     }
 }
