@@ -13,8 +13,8 @@ INPUT:
   b=20;
   c=30;
   result=50;
-  result2=*(??? (constanic_clone called on NYE FIR), INVARIANT-VIOLATED: constanic_clone called on NYE FIR, 30, NK);
-  result3=-(
+  result2=Op*(??? (constanic_clone called on NYE FIR), INVARIANT-VIOLATED: constanic_clone called on NYE FIR, 30, NK);
+  result3=Op-(
       ??? (constanic_clone called on NYE FIR), INVARIANT-VIOLATED: constanic_clone called on NYE FIR,
       ??? (constanic_clone called on NYE FIR), INVARIANT-VIOLATED: constanic_clone called on NYE FIR,
       NK
@@ -28,5 +28,5 @@ complex_unanchored_seeks_with_operations
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: M/yC8Ry9PdL1vl1T64COjmRKRiQiZKNUZ7UMAvW5Fy8SvMWDMzhwNCdj0Q62bord7I5ft8E7lK0CQANONGtHAQ==
-HFS signature: 3fX1D4exmYWmSvr3VjHz1Jvwv42rwW4994DBHK5ZbUIaCBgRyWlbfmT7XKquqOwsURK9LsVHvIQxfm5Hh7mODA==
-Comments signature: 7ClgqWuOBdf2kCMhJGdnu4wb7IkvA4Dj+26D5JfwTsPrmgRnIhz1nw0I/9lITng0pPJ9miOp2U183HecSZwdCQ==
+HFS signature: 8rEFettkvElJsu+bi3mEJ2PH4HsAhMh1Bge1PyMRD3vTebpqRDV5/XacFC74QoYIVAD4znoZct2Wo3nxzzbZCg==
+Comments signature: kDFMYodx4vGLnxzcYmgkc2RjVTgx7em9bDJ0OvOpjfZdN72rIDeECS/c7ClsxVrOeuVVhdpU14ZX9YYmysZTBg==

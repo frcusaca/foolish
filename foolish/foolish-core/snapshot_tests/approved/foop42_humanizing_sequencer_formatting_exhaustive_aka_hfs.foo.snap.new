@@ -89,9 +89,9 @@ win={w_in={in_in={in_in_in=101010}}};
   ccc=3;
   dddd=4;
   shortˍsum=10;
-  longˍnamedˍresultˍshowsˍalignment=+(
-      ?(result=+(6, ?(pattern='^dddd$', UNANCHORED), WOCONSTANIC), pattern='^shortˍsum$', UNANCHORED, WOCONSTANIC),
-      ?(result=+(6, ?(pattern='^dddd$', UNANCHORED), WOCONSTANIC), pattern='^shortˍsum$', UNANCHORED, WOCONSTANIC),
+  longˍnamedˍresultˍshowsˍalignment=Op+(
+      ?(result=Op+(6, ?(pattern='^dddd$', UNANCHORED), WOCONSTANIC), pattern='^shortˍsum$', UNANCHORED, WOCONSTANIC),
+      ?(result=Op+(6, ?(pattern='^dddd$', UNANCHORED), WOCONSTANIC), pattern='^shortˍsum$', UNANCHORED, WOCONSTANIC),
       WOCONSTANIC
   );
   veryˍlongˍidentifierˍnameˍforˍtestingˍindent=100;
@@ -103,7 +103,7 @@ win={w_in={in_in={in_in_in=101010}}};
   oneˍzero=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK;
   divˍbyˍzeroˍinˍbraneˍmethod=?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED, WOCONSTANIC);
   threeˍzero=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK;
-  badˍinˍarithmetic=+(
+  badˍinˍarithmetic=Op+(
       ?(
         result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK,
         pattern='^oneˍzero$',
@@ -113,8 +113,8 @@ win={w_in={in_in={in_in_in=101010}}};
       5,
       WOCONSTANIC
   );
-  chainedˍbad=+(
-      +(
+  chainedˍbad=Op+(
+      Op+(
         10,
         ?(
           result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK,
@@ -270,13 +270,13 @@ win={w_in={in_in={in_in_in=101010}}};
   unaryˍneg=-5;
   unaryˍdouble=3;
   unaryˍinˍexpr=0;
-  opˍtransparent=*(
+  opˍtransparent=Op*(
       ??? (constanic_clone called on NYE FIR), INVARIANT-VIOLATED: constanic_clone called on NYE FIR,
       ??? (constanic_clone called on NYE FIR), INVARIANT-VIOLATED: constanic_clone called on NYE FIR,
       NK
   );
   chainedˍops=5;
-  zeroˍdivˍinˍop=+(??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, 42, NK);
+  zeroˍdivˍinˍop=Op+(??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, 42, NK);
   nestedˍopˍtransparent=-1;
   inspectˍsff=<WOCONSTANIC
       ?(pattern='^sffˍtarget$', UNANCHORED, ECONSTANIC)
@@ -298,5 +298,5 @@ foop42_humanizing_sequencer_formatting_exhaustive_aka_hfs
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 5CYQ9TTMJwxdSRqdDbNvIcEuEjzF0rs9DSJO0IFb7JZX52hw7oNCOG0pcpoYozWuyHWmpPLVgx2jGmPxDfKBDA==
-HFS signature: ski36BZ8YTqaAvZnKuSL9Xo0wnWkBM/nKySPrMywsl0ZO3rpaZfw/Er4DkV6WoSahlMrcHDMdIxQSFjQmJ6dBA==
-Comments signature: MG/powRh4KgNhesOus9iphvlVrK06S4TtQUVUgZzrS3A6ss5u8NBxhy15OToabef6Nqq5uqPmaiMUUUVpY8fDw==
+HFS signature: OVoQDyhvZTa9hwQqvocoKiursu/RsGI3HqWMs1FpWz2Qu18ejGdZhcOy+7vW54MPaOuZ9NlsTB04WmxrjpTeDA==
+Comments signature: s2XSEFHd2PEoMScwldIj7aF2UETTZfz2/h7N2aMzi7vdsqf7iY5YgYLrXbCEfz6hwJ2ghlggx2Ce/R6+ZkqsCA==

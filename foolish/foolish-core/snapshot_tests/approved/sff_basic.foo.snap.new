@@ -11,9 +11,14 @@ INPUT:
 {WOCONSTANIC
   a=1;
   b=2;
-  c=+(?(pattern='^a$', UNANCHORED), ?(pattern='^b$', UNANCHORED), EMBRYONIC);
+  c=Op+(?(pattern='^a$', UNANCHORED), ?(pattern='^b$', UNANCHORED), EMBRYONIC);
   3;
-  ?(result=+(?(pattern='^a$', UNANCHORED), ?(pattern='^b$', UNANCHORED), WOCONSTANIC), pattern='^c$', UNANCHORED, WOCONSTANIC)
+  ?(
+    result=Op+(?(pattern='^a$', UNANCHORED), ?(pattern='^b$', UNANCHORED), WOCONSTANIC),
+    pattern='^c$',
+    UNANCHORED,
+    WOCONSTANIC
+  )
 }
 ```
 COMMENTS:
@@ -23,5 +28,5 @@ sff_basic
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: M+ozF2oYm4cROdzChLuxt5BpEqob22mvstBM9GOfw2F2UXnwZmokwfQrB8XQTBKx4VH4eIRMpmKFp8pMSK/mCg==
-HFS signature: 9JGhYUstN2R8XLjEGrLwxiy0Td2tVk7CW+RtGDiTixswEINx6px1fdIgMzN08I/7zUtscFxbTQhqwNS9wjXFDw==
-Comments signature: EyIhAr69AoIG/4k8o1yepJrZqMdWogoiNWCjq8q3qqbr5s+miRLCFdn6ZSO2G/o9O8+CzdvlTgljPv0CH/MeDg==
+HFS signature: F+4BH5Femui5MfLsMAohGjJvl27O+pUIQQ6+9vTgnRgxwyWkauI+1oGU9Kdf5NmTqnKfVECnIWk1JfT5tIclBQ==
+Comments signature: rOCFSRgmKsQierfNgODO1xdIAn0HSOPFPl9GsGgM3nzTA3bwetn2BM5CQblyAnGNbtpay+fThMxdFVYP2yStDg==

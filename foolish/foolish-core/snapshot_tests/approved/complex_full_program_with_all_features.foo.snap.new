@@ -13,9 +13,9 @@ INPUT:
   b=20;
   sum=30;
   nested={WOCONSTANIC
-      inner=/(
+      inner=Op/(
           ?(
-            result=+(?(pattern='^a$', UNANCHORED), ?(pattern='^b$', UNANCHORED), WOCONSTANIC),
+            result=Op+(?(pattern='^a$', UNANCHORED), ?(pattern='^b$', UNANCHORED), WOCONSTANIC),
             pattern='^sum$',
             UNANCHORED,
             WOCONSTANIC
@@ -34,5 +34,5 @@ complex_full_program_with_all_features
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 1SXA6C7yxC6ZpiMvulmMy1eFI1Es1+sQ6hUtwarY1vKYOMtGrpNqx+rd59gPsyK1pqAjtcEAE57YwFIWqdU2CA==
-HFS signature: fOkvb+iUwCFH3zgsi5DKaeGu5A45HE+IhzXMh9RYzXVlmPMGYv4mnMHlN/IrIS5mgY2p4VKBSyDBWpePloo/CQ==
-Comments signature: HNmtOaw5hkzfcxTZ+BV3KGqtvYqYm3XuFSDhuJQBt5iSQrP1+xwQeCMv2ewma+YO7JzGc6bcbqAgYXyAiGx4Bw==
+HFS signature: KqNcvYFEVtS0hEPBrpFpAygRYLV9hPwNzK5ArHnZeJeXr/DGJEGYwOlXBgyZA5Y0MV66e/38ot06PcLlCTTnAQ==
+Comments signature: esSvKP3csx6bGqNogm9wRAiv4iuQlHRtO0mZj553HiGa65GKy0y4uyD5OWvf7PUeNJckCf1QuWAZeFltHy7KDw==

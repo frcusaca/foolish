@@ -12,7 +12,11 @@ INPUT:
   a=1;
   b={WOCONSTANIC
       c=2;
-      d=+(?(result=+(?(pattern='^a$', UNANCHORED), 1, WOCONSTANIC), pattern='^c$', UNANCHORED, WOCONSTANIC), 1, WOCONSTANIC)
+      d=Op+(
+          ?(result=Op+(?(pattern='^a$', UNANCHORED), 1, WOCONSTANIC), pattern='^c$', UNANCHORED, WOCONSTANIC),
+          1,
+          WOCONSTANIC
+      )
   }
 }
 ```
@@ -23,5 +27,5 @@ cross_scope_reference_chain
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: tNHk0722tO1WsAYqGXU6E4LyluowMjg1/r7fpl7OaiRQ6cyKBRGbEhFie/i1WiZLeArBNQ7RkQ9aHdYqQ37sDg==
-HFS signature: CZVhzc7MMEZ/e0SEWbB8qWHJzH0IcByghvRpRDshm0iqqQa8IMu71BkeU5NCF+b45xd3isB510jGr9ZrUvF7Bw==
-Comments signature: We7K86bcxabyY2Q1N5uAhmXlOXR5IkdAAEofGhbUe1Zj228azctrUvhLczYsww/7zCFgCPm1RwlaxWK3EF9rAQ==
+HFS signature: G7wgpRqhav21R9kcQecpD05nCEFJKhBlGWQFn55Q/u71jG8OUl0do025nSpIgWGyiNpdKC8orJiLJNX7Vfo1Cg==
+Comments signature: 1yMyT7InN6ycIfxn44+DFtcnrikVFolrdrXoPD/vTXFDha4qdtAk4dcAVP2Px36FhJpJeE3Ydp33J8zQFOSBAw==

@@ -13,7 +13,7 @@ INPUT:
   y=20;
   z=30;
   sum=60;
-  avg=/(?(result=+(30, ?(pattern='^z$', UNANCHORED), WOCONSTANIC), pattern='^sum$', UNANCHORED, WOCONSTANIC), 3, WOCONSTANIC)
+  avg=Op/(?(result=Op+(30, ?(pattern='^z$', UNANCHORED), WOCONSTANIC), pattern='^sum$', UNANCHORED, WOCONSTANIC), 3, WOCONSTANIC)
 }
 ```
 COMMENTS:
@@ -23,5 +23,5 @@ complex_brane_with_operations_and_search
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: eIJL0ws12Aay/OZZDwEfhuORsRcoD771FKTX/isyLfFNwYZ+cAlF3iL6fReWj0duYc02l/q9RN6crj+iPp0rAg==
-HFS signature: hVfCASDAESsNyIH0lkpHwdoib5nWefVE28SzTs+pqIfieu9KfmhLNWxxoXtV7FbG1IEE9c4zsvFd+w8Lwk6DCQ==
-Comments signature: EY1vVeIgXAi1d147rejiXAL4shtNN8Crsmv/iz2dPExztyWKkXlmdntutJiJ7+qkcouXRznOeNkgKq3ntwuACQ==
+HFS signature: LQan65KAeG535Wy7Lf/4539FjaOrX2gew4rwiaJNjxbTriBR5TFa8lGLGjMelpakxFvagqqaTOIzAFVRVqTyDA==
+Comments signature: L24J9N6eXOWkZcvmbaSFCLSmU2zXyIDBNcpixumhovrG4nGJQaF7UxauCFr2g2IG7tA0ialiYG0R6mwuCebrDg==

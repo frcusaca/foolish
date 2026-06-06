@@ -79,16 +79,16 @@ INPUT:
   {EMBRYONIC
   a=1;
   n1={EMBRYONIC
-      c=-(1, EMBRYONIC);
+      c=Op-(1, EMBRYONIC);
       b=?(pattern='^a$', UNANCHORED, EMBRYONIC);
       a=2;
       n2={EMBRYONIC
           a=3;
           b=?(pattern='^c$', UNANCHORED, EMBRYONIC);
-          d=-(?(pattern='^b$', UNANCHORED, EMBRYONIC), EMBRYONIC);
-          e=+(
-              +(
-                +(?(pattern='^a$', UNANCHORED, EMBRYONIC), ?(pattern='^b$', UNANCHORED, EMBRYONIC), EMBRYONIC),
+          d=Op-(?(pattern='^b$', UNANCHORED, EMBRYONIC), EMBRYONIC);
+          e=Op+(
+              Op+(
+                Op+(?(pattern='^a$', UNANCHORED, EMBRYONIC), ?(pattern='^b$', UNANCHORED, EMBRYONIC), EMBRYONIC),
                 ?(pattern='^c$', UNANCHORED, EMBRYONIC),
                 EMBRYONIC
               ),
@@ -126,12 +126,12 @@ INPUT:
   a=?(pattern='^b$', UNANCHORED, EMBRYONIC);
   b=1;
   f={EMBRYONIC
-      c=+(?(pattern='^b$', UNANCHORED, EMBRYONIC), 1, EMBRYONIC);
+      c=Op+(?(pattern='^b$', UNANCHORED, EMBRYONIC), 1, EMBRYONIC);
       a=0;
       b=0;
-      r=+(
-          +(
-            +(?(pattern='^a$', UNANCHORED, EMBRYONIC), ?(pattern='^b$', UNANCHORED, EMBRYONIC), EMBRYONIC),
+      r=Op+(
+          Op+(
+            Op+(?(pattern='^a$', UNANCHORED, EMBRYONIC), ?(pattern='^b$', UNANCHORED, EMBRYONIC), EMBRYONIC),
             ?(pattern='^c$', UNANCHORED, EMBRYONIC),
             EMBRYONIC
           ),
@@ -171,5 +171,5 @@ ubcb_test_1
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: w+WjlGApfgjVezWjdJm9utgOEhqX7Eu6w0aiA/OjA01qv24zJpXWwZsZ98X326mJwUdROypdvYkdkVDDkHSTDg==
-HFS signature: Vl1rH/TuYxT8vsvUjAT24YYTQgrP2IR3t5lwENjbQxMVpQP2RhAxl27pcIV9ojYTmSGHxiCl3VYmg+YLahvZBQ==
-Comments signature: zrNC1gkkfVISIkqDOkzbDFHDVx6DzQ8Iw9Pgj91I8/zlKatZpA2pjKFgo9PujQ2j9fKkXD6kW5u/Lad1Xa/BAQ==
+HFS signature: eYZyqkQtUmvhVYV9ABa50BLR7HtMXTKYHbncHB1iL5y2vDVEWLIn4DeEqFJYqxMYPUqXDmLWr+jgnPZD1Z8gAQ==
+Comments signature: +FGLFmkDBoS9qyEZCZo4pURyFUlEHB456KieKR1UtiulgEhjch/HUuOO1Bhyxu+Ynj92Z7LTjchsZFFoWua7Bg==
