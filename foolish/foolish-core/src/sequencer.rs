@@ -322,7 +322,7 @@ fn render_fir(
             let body_items: Vec<String> = operand_lines.iter().map(|l| materialize(l)).collect();
             let mut items = body_items;
             items.push(state.to_string());
-            let opener = format!("{}(", op);
+            let opener = format!("Op{}(", op);
             return proto_brane_formatter(
                 &opener,
                 ")",
@@ -335,7 +335,7 @@ fn render_fir(
 
         // Multi-line: opener on its own line, operands at body_indent
         let mut lines: FormattedLines = Vec::new();
-        lines.push((0, format!("{}(", op)));
+        lines.push((0, format!("Op{}(", op)));
         let last_op = operands.len().saturating_sub(1);
         for (oi, oplines) in operand_lines.into_iter().enumerate() {
             let is_last_op = oi == last_op;
