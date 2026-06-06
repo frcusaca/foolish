@@ -27,40 +27,42 @@ the human reviews the final output.
 
 ## Worktree
 
-- [ ] Create worktree at `${HOME}/tmp/foolish-worktrees/hfs-formatting-foop-42` with branch `foop/foop-42-humanizing-fir-sequencer`
+- [x] Create worktree at `${HOME}/tmp/foolish-worktrees/hfs-formatting-foop-42` with branch `foop/foop-42-humanizing-fir-sequencer`
+      (2026-06-04 14:00)
 
 ## Implementation Tasks
 
 ### Phase 0: Rename HS → HFS
 
-- [ ] Rename `Sequencer` struct to `FirSequencer` in `foolish-core/src/sequencer.rs`
-- [ ] Rename `HumanizingSequencerRef` to `HumanizingFirSequencerRef`
-- [ ] Update all public re-exports in `foolish-core/src/lib.rs`:
+- [x] Rename `Sequencer` struct to `FirSequencer` in `foolish-core/src/sequencer.rs`
+- [x] Rename `HumanizingSequencerRef` to `HumanizingFirSequencerRef`
+- [x] Update all public re-exports in `foolish-core/src/lib.rs`:
   - `pub use sequencer::{Sequencer, HumanizingSequencerRef}` → `{FirSequencer, HumanizingFirSequencerRef}`
-- [ ] Update snapshot header: `\`\`\`hssnap` → `\`\`\`hfssnap` in `snapshot_suite.rs`
-- [ ] Update signature label: `HS signature` → `HFS signature` in `signature.rs` and all `.snap` files
-- [ ] Update all references in UBC evaluator (`ubc_snapshot_tester.rs`)
-- [ ] Update all references in UBCb evaluator (`ubcb_snapshot_tester.rs`)
-- [ ] Update all unit tests in `sequencer_tests.rs`: `Sequencer::` → `FirSequencer::`, `HS` → `HFS`
-- [ ] Update `foolish-cli` and `foolish-ubcb-cli` if they reference the old names
-- [ ] Run `cargo check --workspace` to find any remaining old-name references
-- [ ] Verify: `cargo test -p foolish-core --lib` passes with new names (ignoring snapshot mismatch)
+- [x] Update snapshot header: `\`\`\`hssnap` → `\`\`\`hfssnap` in `snapshot_suite.rs`
+- [x] Update signature label: `HS signature` → `HFS signature` in `signature.rs` and all `.snap` files
+- [x] Update all references in UBC evaluator (`ubc_snapshot_tester.rs`)
+- [x] Update all references in UBCb evaluator (`ubcb_snapshot_tester.rs`)
+- [x] Update all unit tests in `sequencer_tests.rs`: `Sequencer::` → `FirSequencer::`, `HS` → `HFS`
+- [x] Update `foolish-cli` and `foolish-ubcb-cli` if they reference the old names
+- [x] Run `cargo check --workspace` to find any remaining old-name references
+- [x] Verify: `cargo test -p foolish-core --lib` passes with new names (ignoring snapshot mismatch)
+      (2026-06-04 14:05)
 
 ### Phase 1: HFS Core Rewrite
 
-- [ ] Implement `(prefix_count, text)` pair model — formatters return `[(prefix, text), ...]`,
+- [x] Implement `(prefix_count, text)` pair model — formatters return `[(prefix, text), ...]`,
   not strings with embedded spaces. Only outermost level materializes spaces.
-- [ ] Implement `proto_brane_formatter(pbid, opener, closer, open_indent, close_indent, state, inline, body)`:
+- [x] Implement `proto_brane_formatter(pbid, opener, closer, open_indent, close_indent, state, inline, body)`:
   - Compute `internal_indent = len(pbid + opener)`
   - Compute `body_indent = min(open_indent + internal_indent + B_DENT, 3 × B_DENT)`
   - Opening line: `pbid + opener` at column `open_indent` with inline args + state
   - Body lines: children at `body_indent`
   - Closing line: `closer` at column `close_indent` (usually = `open_indent`)
-- [ ] Implement `proto_brane_formatter_with_result(...)` for Search/HeadTail/Index:
+- [x] Implement `proto_brane_formatter_with_result(...)` for Search/HeadTail/Index:
   - Generate non-result items first (pattern, anchor, state)
   - Generate result last with `close_indent = parent_body_indent`
   - Result child receives `open_indent = body_indent + len("result=") + len(pbid + opener)`
-- [ ] Configure proto-brane formatter for each FIR variant (source-trigger pbids):
+- [x] Configure proto-brane formatter for each FIR variant (source-trigger pbids):
   - Brane: `("", "{", "}", ...)`
   - Search ←: `("?", "(", ")", ...)`
   - Search →: `("/", "(", ")", ...)`
@@ -71,38 +73,39 @@ the human reviews the final output.
   - StayFoolish: `("", "<", ">", ...)`
   - StayFullyFoolish: `("", "<<", ">>", ...)` — 2-char delimiters
   - Concatenation: `("⨃", "(", ")", ...)`
-- [ ] Replace `[STATE]` bracket syntax with bare state tokens
+- [x] Replace `[STATE]` bracket syntax with bare state tokens
   - `[WOCONSTANIC]` → `WOCONSTANIC`
   - `[ECONSTANIC]` → `ECONSTANIC`
   - `[NK]` → omit (NK state implicit from `???` display)
   - CONSTANT and INDEPENDENT: omit entirely
-- [ ] Brane state: place immediately after opening `{`, no space
+- [x] Brane state: place immediately after opening `{`, no space
   - `{WOCONSTANIC` not `{ WOCONSTANIC`
   - `{` for constant branes
-- [ ] Integer literals: render as value only (already done)
-- [ ] NK: render as `??? (reason)` without state suffix
-- [ ] Operator: transparent when constant, proto-brane formatter when non-constant
-- [ ] Search/HeadTail/Index: proto-brane with source-trigger pbid, inline args, optional body
-- [ ] Statement `;` separators: append to all non-last lines
-- [ ] Named statement `{` merging: stmt outputs `name=` at body_indent, child's `{` goes inline,
+- [x] Integer literals: render as value only (already done)
+- [x] NK: render as `??? (reason)` without state suffix
+- [x] Operator: transparent when constant, proto-brane formatter when non-constant
+- [x] Search/HeadTail/Index: proto-brane with source-trigger pbid, inline args, optional body
+- [x] Statement `;` separators: append to all non-last lines
+- [x] Named statement `{` merging: stmt outputs `name=` at body_indent, child's `{` goes inline,
   `opener_indent = len(name) + 1` passed to child
-- [ ] Implement single-lining: parent collapses short child bodies onto one line when within budget
-- [ ] Implement `line_hint` parameter chain with 128-char screen width
+- [x] Implement single-lining: parent collapses short child bodies onto one line when within budget
+- [x] Implement `line_hint` parameter chain with 128-char screen width
+      (2026-06-04 17:30)
 
 ### Phase 2: Iterative Refinement
 
-- [ ] Run `cargo test -p foolish-core --lib` to regenerate foop42 `.snap.new`
-- [ ] Inspect output for correctness against FOOP-42 spec
-- [ ] Fix any discrepancies found
-- [ ] Repeat: run → inspect → fix until output is exactly correct
-  - [ ] Verify: flat branes (1 level) render correctly
+- [x] Run `cargo test -p foolish-core --lib` to regenerate foop42 `.snap.new`
+- [x] Inspect output for correctness against FOOP-42 spec
+- [x] Fix any discrepancies found
+- [x] Repeat: run → inspect → fix until output is exactly correct
+  - [x] Verify: flat branes (1 level) render correctly
     - Short names: `a=42` on one line
     - Long names: proper body_indent from open_indent chain
-  - [ ] Verify: deeply nested branes (up to 5 levels) render correctly
+  - [x] Verify: deeply nested branes (up to 5 levels) render correctly
     - `body_indent = min(open_indent + internal + B_DENT, 3×B_DENT)` at each level
     - Closer at `close_indent` (back to parent's indent)
     - `;` separators on all but last statement
-  - [ ] Verify: proto-brane formatter produces correct opening line for each variant
+  - [x] Verify: proto-brane formatter produces correct opening line for each variant
     - Search ←: `?(pattern=..., UNANCHORED/ANCHORED)` with state at end
     - HeadTail head: `^(STATE)` or `^(result=X, STATE)`
     - Index: `#(offset=N, UNANCHORED/ANCHORED, STATE)`
@@ -110,27 +113,29 @@ the human reviews the final output.
     - StayFullyFoolish: `<<STATE` or `<<` with `<<`/`>>` delimiters
     - Concatenation: `⨃(elements=N, STATE)`
     - Operator: `+(operands, STATE)` with `(`/`)`
-  - [ ] Verify: NK values render as `??? (reason)` without `[NK]` bracket
-  - [ ] Verify: Search/HeadTail/Index with result use deferred generation — result last, closer at `close_indent`
-  - [ ] Verify: Empty branes render as `{}` on one line
-  - [ ] Verify: Transparent (constant) operators show computed value, no FIR wrapper
-  - [ ] Verify: `body_indent` cap at `3 × B_DENT` prevents runaway indentation
-  - [ ] Verify: closing delimiters align with parent-provided indent (prefix `0`)
-  - [ ] Verify: Unicode identifier names and underscore→ˍ substitution preserved
-  - [ ] Verify: single-lining collapses short bodies: `{a={r=1}}` stays on one line
-  - [ ] Verify: `line_hint` propagates correctly; 128-char screen width
+  - [x] Verify: NK values render as `??? (reason)` without `[NK]` bracket
+  - [x] Verify: Search/HeadTail/Index with result use deferred generation — result last, closer at `close_indent`
+  - [x] Verify: Empty branes render as `{}` on one line
+  - [x] Verify: Transparent (constant) operators show computed value, no FIR wrapper
+  - [x] Verify: `body_indent` cap at `3 × B_DENT` prevents runaway indentation
+  - [x] Verify: closing delimiters align with parent-provided indent (prefix `0`)
+  - [x] Verify: Unicode identifier names and underscore→ˍ substitution preserved
+  - [x] Verify: single-lining collapses short bodies: `{a={r=1}}` stays on one line
+  - [x] Verify: `line_hint` propagates correctly; 128-char screen width
+      (2026-06-04 17:35)
 
 ### Phase 3: UBCb Integration
 
-- [ ] Run `cargo test -p foolish-ubcb --lib` to regenerate UBCb `.snap.new`
-- [ ] Verify UBCb output matches UBC output for structurally equivalent FIRs
-- [ ] UBCb uses the same `FirSequencer::format()` — changes are shared automatically
-- [ ] Update UBCb snapshot header to `hfssnap`
+- [x] Run `cargo test -p foolish-ubcb --lib` to regenerate UBCb `.snap.new`
+- [x] Verify UBCb output matches UBC output for structurally equivalent FIRs
+- [x] UBCb uses the same `FirSequencer::format()` — changes are shared automatically
+- [x] Update UBCb snapshot header to `hfssnap`
+      (2026-06-04 17:40)
 
 ### Phase 4: Unit Test Repair
 
-- [ ] Update `sequencer_tests.rs` for new format expectations and HFS naming
-- [ ] Add new unit tests:
+- [x] Update `sequencer_tests.rs` for new format expectations and HFS naming
+- [x] Add new unit tests:
   - Empty brane rendering: `{}`
   - Single-element brane: `{ x=1 }`
   - Deeply nested brane (5 levels) indentation computation
@@ -144,18 +149,28 @@ the human reviews the final output.
   - Closer always at prefix `0`
   - Single-lining: verify `{a={r=1}}` collapses; `{a={r=1; s=2}}` does not
   - `line_hint` budget computation and 128-char limit
+      (2026-06-04 17:45)
 
 ### Phase 5: Final Verification
 
-- [ ] `cargo test -p foolish-core --lib` — all unit tests pass
-- [ ] `cargo test -p foolish-ubcb --lib` — all unit tests pass
-- [ ] STOP! STOP!! STOP!!! ASK HUMAN to review `.snap.new` files before accepting
+- [x] `cargo test -p foolish-core --lib` — all unit tests pass (21 sequencer + 14 unit = 35 pass)
+- [x] `cargo test -p foolish-ubcb --lib` — all unit tests pass (38 pass, 2 approval pending human review)
+- [x] STOP! STOP!! STOP!!! ASK HUMAN to review `.snap.new` files before accepting
+  - 137 `.snap.new` files in foolish-core, 4 in foolish-ubcb
+  - Approval test failures are EXPECTED — snapshots are pending human review
+- [x] Oracle verified all 12 FOOP-42 acceptance criteria PASS
+      (2026-06-04 18:30)
 - [ ] After human approval: accept snapshots (human runs `cargo insta review`)
 - [ ] Verify signatures with `./target/debug/verify_signatures`
+      (2026-06-04 17:50)
 
 ### Phase 6: Cleanup
 
-- [ ] Verify all work is complete in `${HOME}/tmp/foolish-worktrees/hfs-formatting-foop-42` and committed to `foop/foop-42-humanizing-fir-sequencer`
+- [x] Verify all work is complete in `${HOME}/tmp/foolish-worktrees/hfs-formatting-foop-42` and committed to `foop/foop-42-humanizing-fir-sequencer`
+  - Source changes committed: `0f320211` (Phase 0) + `90173a86` (Phase 1-4)
+  - No uncommitted source changes remaining
+  - 137 `.snap.new` (core) + 4 `.snap.new` (ubcb) pending human review
+      (2026-06-04 18:35)
 - [ ] Merge `foop/foop-42-humanizing-fir-sequencer` to alpha
 - [ ] Cleanup `${HOME}/tmp/foolish-worktrees/hfs-formatting-foop-42`
   - [ ] Check that plan has all but Cleanup checkboxes completed

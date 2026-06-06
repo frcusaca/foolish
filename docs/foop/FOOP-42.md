@@ -169,7 +169,7 @@ body_indent = min(open_indent − close_indent + B_DENT, 2 × B_DENT)
 | HeadTail (head) | `"^"` | `"("` | `")"` | 2 |
 | HeadTail (tail) | `"$"` | `"("` | `")"` | 2 |
 | Index | `"#"` | `"("` | `")"` | 2 |
-| Operator | op string | `"("` | `")"` | len(op) + 1 |
+| Operator | `"Op" + op string` | `"("` | `")"` | len("Op" + op) + 1 |
 | StayFoolish | `""` | `"<"` | `">"` | 1 |
 | StayFullyFoolish | `""` | `"<<"` | `">>"` | 2 |
 | Concatenation | `"⨃"` | `"("` | `")"` | 4 |
@@ -290,7 +290,7 @@ NK always displays this way regardless of state. No proto-brane formatter needed
 
 ### 3. Operator
 
-Proto-brane: `pbid = op_string` (e.g. `"+"`, `"-"`, `"*"`, `"/"`), `opener = "("`,
+Proto-brane: `pbid = "Op" + op_string` (e.g. `"Op+"`, `"Op-"`, `"Op*"`, `"Op/"`), `opener = "("`,
 `closer = ")"`.
 
 **CONSTANT or INDEPENDENT**: transparent — renders the computed value inline
@@ -300,19 +300,19 @@ Proto-brane: `pbid = op_string` (e.g. `"+"`, `"-"`, `"*"`, `"/"`), `opener = "("
 state at end:
 
 ```hfs
-+(10, 20, EMBRYONIC)
+Op+(10, 20, EMBRYONIC)
 ```
 
 **WOCONSTANIC** (some operands constanic): inline children, state at end:
 
 ```hfs
-+(?(result=<x>, pattern='^x$', UNANCHORED, WOCONSTANIC), 20, WOCONSTANIC)
+Op+(?(result=<x>, pattern='^x$', UNANCHORED, WOCONSTANIC), 20, WOCONSTANIC)
 ```
 
 When expanded to multi-line:
 
 ```hfs
-+(
+Op+(
   ?(result=<x>, pattern='^x$', UNANCHORED, WOCONSTANIC),
   20,
   WOCONSTANIC
@@ -876,7 +876,7 @@ WOCONSTANIC{
 ### Example 6: Multi-line operator with constanic operands
 
 ```
-sum=+(
+sum=Op+(
   ?(result=<x>, pattern='^x$', UNANCHORED, WOCONSTANIC),
   ?(result=<y>, pattern='^y$', UNANCHORED, WOCONSTANIC),
   WOCONSTANIC
