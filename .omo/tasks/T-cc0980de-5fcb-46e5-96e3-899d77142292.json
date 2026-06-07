@@ -1,0 +1,10 @@
+{
+  "id": "T-cc0980de-5fcb-46e5-96e3-899d77142292",
+  "subject": "Add !!! WIP FOOP-52 !!! markers to 15 input .foo files",
+  "description": "Add a new comment line `!!! WIP FOOP-52 !!!` at the end of each of the 15 problematic input .foo files",
+  "status": "completed",
+  "activeForm": "Adding WIP markers to input files",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_15f458af4ffe6rl4iglzN55mCC"
+}

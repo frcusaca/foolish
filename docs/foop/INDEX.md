@@ -32,6 +32,7 @@ ls | rev | sort -V | rev
 | [FOOP-71](FOOP-71.md) | Snapshot testing with cargo-insta for UBCb — approval testing infrastructure | Draft | meta | 2026-05-15 | Sisyphus |
 | [FOOP-22](FOOP-22.md) | Multi-signer snapshot signatures with appended utility signing and entire-file integrity | Draft | meta | 2026-06-01 | Sisyphus |
 | [FOOP-32](FOOP-32.md) | Repair rudimentary FVM evaluation and Sequencer formatting bugs found in snapshot review | Final | phase-2 | 2026-06-01 | Sisyphus |
+| [FOOP-52](FOOP-52.md) | Repair FVM evaluation bugs found in snapshot review round 2 | Draft | phase-2 | 2026-06-06 | opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4 |
 
 ---
 
@@ -49,6 +50,7 @@ ls | rev | sort -V | rev
 
 - [FOOP-31](FOOP-31.md) — SPA1 milestone (UBC reference implementation)
 - [FOOP-41](FOOP-41.md) — UBCb message-passing variant; SPA1 parity plan
+- [FOOP-52](FOOP-52.md) — Repair FVM evaluation bugs found in snapshot review round 2
 - [FOOP-61](FOOP-61.md) — UBCb State Machine — Per-Variant NYES Table
 - [FOOP-71](FOOP-71.md) — Snapshot testing with cargo-insta for UBCb (approval testing infrastructure)
 - [FOOP-22](FOOP-22.md) — Multi-signer snapshot signatures with appended utility signing
@@ -86,7 +88,7 @@ ls | rev | sort -V | rev
 
 ### phase-2
 
-- [FOOP-6](FOOP-6.md), [FOOP-7](FOOP-7.md), [FOOP-8](FOOP-8.md), [FOOP-01](FOOP-01.md), [FOOP-11](FOOP-11.md), [FOOP-51](FOOP-51.md), [FOOP-61](FOOP-61.md), [FOOP-32](FOOP-32.md)
+- [FOOP-6](FOOP-6.md), [FOOP-7](FOOP-7.md), [FOOP-8](FOOP-8.md), [FOOP-01](FOOP-01.md), [FOOP-11](FOOP-11.md), [FOOP-51](FOOP-51.md), [FOOP-61](FOOP-61.md), [FOOP-32](FOOP-32.md), [FOOP-52](FOOP-52.md)
 
 ### phase-3
 
@@ -110,6 +112,11 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 ---
 
 ## Last Updated
+
+**Date**: 2026-06-06
+**Updated By**: opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4
+**Changes**: Added FOOP-52 (repair FVM evaluation bugs round 2). Added
+to main index table, Draft status section, and phase-2 section.
 
 **Date**: 2026-06-03
 **Updated By**: opencode / xiaomi/mimo-v2.5

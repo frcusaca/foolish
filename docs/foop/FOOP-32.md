@@ -203,3 +203,11 @@ Other delimiters would be inconsistent with the language.
 - UBC evaluation: `foolish-core/src/ubc.rs`
 - Search implementation: `foolish-core/src/search.rs`
 - Related: FOOP-7 (Constanic Clone — recoordination contract)
+
+## Last Updated
+
+**Date**: 2026-06-06
+**Updated By**: opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4
+**Changes**: `anchored_seek_negative_boundary.foo` (Bug 4 from FOOP-32) is being
+fixed as part of FOOP-52. WIP marker restored. When complete, both FOOP-32 and
+FOOP-52 shall be updated to note its completion. FOOP-32 status remains Final.

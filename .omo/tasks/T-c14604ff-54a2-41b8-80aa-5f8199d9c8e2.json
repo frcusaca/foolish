@@ -1,0 +1,10 @@
+{
+  "id": "T-c14604ff-54a2-41b8-80aa-5f8199d9c8e2",
+  "subject": "Fix FOOP-52 documents (10 concerns)",
+  "description": "Address all 10 review concerns: bug count, backward search, fir_variant enum, SFF ECONSTANIC, constanic_clone explanation, SFF descriptions, tests, Bug 5.3 framing, Phase 3 grouping, FOOP-32 reference",
+  "status": "pending",
+  "activeForm": "Fixing FOOP-52 documents",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_15f458af4ffe6rl4iglzN55mCC"
+}
