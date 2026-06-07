@@ -1,3 +1,4 @@
+(@agent, this test failed!!)
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
 assertion_line: 52
@@ -10,9 +11,9 @@ INPUT:
 ```hfssnap
 {
   x=10;
-  20;
+  20;  !! @Agent, NOPE this is wrong, at this point x is 10 not 20Z.
   x=20;
-  20
+  20   !! @Agent THIS is right.
 }
 ```
 COMMENTS:

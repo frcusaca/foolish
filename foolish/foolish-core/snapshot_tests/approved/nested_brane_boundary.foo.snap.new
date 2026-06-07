@@ -1,3 +1,4 @@
+(@agent, this test failed!!)
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
 assertion_line: 52
@@ -14,7 +15,7 @@ INPUT:
       c=??? (constanic_clone called on NYE FIR), INVARIANT-VIOLATED: constanic_clone called on NYE FIR;
       d=2;
       e=2
-  };
+  };!! All good until below, f should be found as the brane that b is assigned to
   f=??? (constanic_clone called on NYE FIR), INVARIANT-VIOLATED: constanic_clone called on NYE FIR
 }
 ```
