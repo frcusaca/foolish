@@ -1,4 +1,3 @@
-(@agent, this test failed!!)
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
 assertion_line: 52
@@ -6,6 +5,7 @@ assertion_line: 52
 INPUT:
 ```foolish
 {a = {x=ref}; b = {y=2}; c = a b;}
+!!! WIP FOOP-52 !!!
 ```
 [0] RESULT:
 ```hfssnap
@@ -16,7 +16,7 @@ INPUT:
   b={
       y=2
   };
-  c={   !!@AGent, there should be a WConstanic search `x=Search(...` as first element of this c.
+  c={
       y=2
   }
 }
@@ -27,6 +27,6 @@ concatenation_with_unresolved_search
 ```
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
-Foolish signature: 0nn0zHTItXiXgst2fdcj8qAcRecdM81vlZuNywRWyn84nf//TMf+OoPKmkpI5ilJaZfp/Hi3oChYXZ3rYHqDDw==
-HFS signature: LsrN0km2BPGdctciXnqpsqbermNflR5ssRRCXkRpEK9deLbf2riCxhZ/tfhBRcezp8kwr1ZsaRkEmF5pl5XRBg==
-Comments signature: bfVgv26MKAREUZM3D3x4zH84F4N7pw1Fk6uvA5tuBEGDw0BZBfwzYAN118fNNSRxLndS1w2f3ESGwBpGQ/+tCg==
+Foolish signature: tsYbHI1y7Swru8F/Se2G7dsOl7kP/w4a7H4e56cf3eJXKfqtPL3jmimI0oQgcJ1weEjnZpCBtTWPkOYX2avSDQ==
+HFS signature: DcIMwohcS9b2uK+Mh0y89RpBoaniyk5GNdVP8qKJrj9leUwI6gsiZu6x5mu9Qv3n+AKQnAT/5jF6hDXeaQLmDQ==
+Comments signature: kYBOVwJgq78C62nz3gBjoXeEudcbWxrht+SponHUuZH25CS+nquiSmQBGTxzGSLkpJmaxbRco3DP+LfPUxv3BQ==

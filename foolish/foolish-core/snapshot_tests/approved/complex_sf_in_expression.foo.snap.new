@@ -1,4 +1,3 @@
-(@agent, this test failed!!)
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
 assertion_line: 52
@@ -6,12 +5,13 @@ assertion_line: 52
 INPUT:
 ```foolish
 {x=10; y=<x>; z=y + 5;}
+!!! WIP FOOP-52 !!!
 ```
 [0] RESULT:
 ```hfssnap
 {
   x=10;
-  y=?(result=10, pattern='^x$', UNANCHORED); !! @Agent, like the SFF Marker, the SF Marker is also underspecified. The SF Marker means perform searches, but when the search is being copied, they do not reset to embryonic for searching in this context. Here is an example: `{f=a+b; a=1,b=2; g=<f*c>; c=10, result=g}`. In this example when g is given `f*c`, the furtherest that statement can progress is that the serach for f finds `a+b`(Woconstanic for two econstanics(a,b)) and c is econstanic. g is `(a+b)*c` all three searches ECONSTANIC. However, when we get to result, and g is found and not constrainted by SF or SFF markers, it does the normal thing, performes search, and the last entry of the brane should result in a CONSTANT result.
+  y=?(result=10, pattern='^x$', UNANCHORED);
   z=15
 }
 ```
@@ -21,6 +21,6 @@ complex_sf_in_expression
 ```
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
-Foolish signature: ssYnBrajHlb2cVUC/spi1Y1l7ZOUOAtBU9tKjkOZwgNiXuUhpiQ/YY2Xvj6PFPFVUSh/2ZDKxaiD2vH8VNYWDw==
-HFS signature: GBYzLOf+zdmT2LBGQgZMOaC4zr8A8K64z0YNUnCmtHDcXjM4q00nFu/uv0p8KN+4wRdliCezuRxo+LvVQtKaAg==
-Comments signature: K0SyLnKQpQKU319fGNTNmjkJtxfjwGhMt7yHyKv9QaxJ9k3Iqv4VbV3dJmWfZbk+sTBZP5dMqKj4dzxIxEqrBQ==
+Foolish signature: sL+NnMzZbFjymJXNoxx5sjJ8U5ANLoel7ubrdJBI/QEoozdx1eUXjEamzuwAoBdQ0vuypVgCF/yq/NYb95FtAQ==
+HFS signature: o9MkcfAvdn/twQ1DfDOWmNBBmmQdACWi7QbFPbfMbRGWwsj6mcZ5otc+mOEIuF4naRcCQ4tq/qcVAj7+4LS1Bg==
+Comments signature: mT2VEWCTCqnkGpiQE+Njh/efVetXbjnM9i/wKWnhI6rYIIdC8+7uGDbMnoh9EpYWtGnCDbCzr2CxADeFzDc3CQ==

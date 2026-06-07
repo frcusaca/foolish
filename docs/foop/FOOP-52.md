@@ -1,24 +1,99 @@
 ---
 foop: 25
-title: Repair FVM evaluation bugs found in snapshot review round 2
-author: opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4
+title: Owned-FIR evaluator rewrite + repair FVM evaluation bugs (snapshot review round 2)
+author: opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4 (rewritten by Claude Code; Sonnet 4.6)
 status: Draft
-type: Bugfix
+type: Major
 created: 2026-06-06
 phase: phase-2
 supersedes: []
 ---
 
-# FOOP-52: Repair FVM evaluation bugs found in snapshot review round 2
+# FOOP-52: Owned-FIR evaluator rewrite + repair FVM evaluation bugs
 
 ## Abstract
 
-Fifteen bugs discovered during human review of `.snap.new` files in
-`foolish-core/snapshot_tests/approved/`. These are the second batch of bugs
-(after FOOP-32's eight bugs). They fall into six categories: forward reference
-resolution, scope resolution across brane boundaries, search/concatenation
-precedence, operator transparency, SFF/SF marker semantics, and unanchored seek
-invariant violations. Includes Bug 15 (boundary clamping) from FOOP-32.
+This FOOP does two things, in order:
+
+1. **Rework the FVM scope / search machinery.** The FIR keeps its
+   `Rc<RefCell<Fir>>` children (shared, mutable-through-`RefCell` as evaluation
+   progresses), and gains **used `Weak<RefCell<Fir>>` parent back-pointers**. Search
+   becomes a recursion over the FIR graph itself — a brane searches its own
+   statements backward from a line, and on a miss widens to the next enclosing brane
+   (reached by walking the parent pointers up to the containing brane) — replacing the
+   accumulating flat `Scope`. Evaluation trickles
+   **down** from the root (`child.step()`), each FIR reads up and down the graph but
+   **mutates only itself**, and the outermost owning call commits the result. The
+   gate for this phase is that all 64 existing approved snapshots pass
+   **byte-identical** — the proof that the rework is behavior-preserving.
+
+2. **Repair 15 bugs** discovered during human review of `.snap.new` files in
+   `foolish-core/snapshot_tests/approved/` (the second batch after FOOP-32's eight).
+   They fall into six categories: forward reference resolution, scope resolution
+   across brane boundaries, search/concatenation precedence, operator transparency,
+   SF/SFF marker semantics, and unanchored seek invariant violations. Includes Bug 15
+   (negative-seek boundary clamping) from FOOP-32. The 15 WIP files are the
+   acceptance test for the rework.
+
+**Why a rework, not a patch:** the bugs share root causes that the current scope
+machinery makes hard to fix cleanly. The original `Scope` is an accumulating flat
+list that pre-pushes all names (so forward references wrongly resolve) and clones
+itself plus the entire statement vector inside its per-statement loop (O(n²)). The
+fix is to let the FIR graph *be* the scope: each brane resolves names by searching
+its own statements backward from the requesting line, then asking its parent. This
+needs the parent pointers to be real and used (they exist today but are vestigial),
+and it lets the flat `Scope` accumulation go away. The ownership model is unchanged —
+`Rc` children, `Weak` parents — so this is a targeted rework of search + scope, not
+an evaluator rewrite. See [Implementation Approach](#implementation-approach) and the
+plan file `docs/foop/FOOP-52.plan.md`.
+
+**Ownership model (settled):** each node owns its children (`Rc`) and holds a
+readable, non-owning pointer to its structural parent (`Weak`); writes land on self.
+- **Children:** `Rc<RefCell<Fir>>` — FIRs are shared (a resolved search holds a
+  read-only reference to the immutable CONSTANT/INDEPENDENT node it found — shared,
+  never copied) and mutate through `RefCell` as evaluation advances.
+- **Parents:** `Weak<RefCell<Fir>>` — a child holds a *readable, non-owning*
+  back-pointer to its **immediate structural parent**, which is usually NOT a brane
+  (`x` and `y` → the `+` operator → the statement → the brane → the parent brane's
+  statement → …). `Weak` makes the up-edge readable without an ownership cycle.
+  Finding the nearest enclosing *brane* is `get_brane()`'s job (walk up until a brane
+  is reached), distinct from `get_parent()`.
+- **Access up and down, mutate only self.** A FIR may read its children and its
+  ancestors to compute, but writes only itself; the owning caller commits.
+
+(`Box<Fir>` owned bodies were considered and rejected: CONSTANT/INDEPENDENT nodes
+are shared by read-only reference and children need readable parent pointers, so
+unique `Box` ownership does not fit. `Rc`/`Weak` is the idiomatic and smaller change —
+the code is already `Rc<RefCell>`.)
+
+## Exception to the "no failing tests" rule (read first)
+
+AGENTS.md states: **"NEVER start large project segment work WHEN ANY tests are
+broken."** FOOP-52 is explicitly granted an **exception** to that rule, because the
+broken tests ARE the work:
+
+- The 15 WIP input files (`!!! WIP FOOP-52 !!!`) have no approved `.snap` yet, so
+  under plain `cargo test -p foolish-core --lib` they fail (insta stops on the first,
+  alphabetically `anchored_seek_negative_boundary`). This is by design — they are the
+  acceptance test for the fixes, not a regression.
+- The real baseline is GREEN: `cargo insta test -p foolish-core --lib` passes (insta
+  defers snapshot mismatches to `.snap.new` rather than failing). The 64 approved
+  snapshots are the stable oracle.
+
+**Therefore:** do NOT halt FOOP-52 on the "no failing tests" rule, and do NOT try to
+make the 15 WIP files pass by any means other than fixing the bugs. The discipline
+this FOOP keeps in place instead:
+
+1. **Phase 1 (the rewrite) must keep the 64 approved snapshots byte-identical.** That
+   is the gate. The rewrite touches nothing the bugs touch; if a `.snap` moves, stop
+   and investigate (likely `wo_short_circuit`).
+2. The 15 WIP files stay failing through Phase 1 (expected) and are fixed + promoted
+   one bug group at a time in Phases 2+.
+3. Do not fix the ~58 other pending `.snap.new` files — out of scope.
+
+The exception is narrow: it permits *starting* Major work with the 15 WIP files red.
+It does NOT permit ignoring NEW breakage — any of the 64 approved snapshots breaking,
+or any unit test breaking, halts work as usual.
 
 ## Motivation
 
@@ -300,7 +375,7 @@ tree instead of extracting the constant value.
 
 The SFF (`<<...>>`) and SF (`<...>`) markers have underspecified behavior
 regarding how searches inside them should transition states. See the
-[SFF/SF Marker Specification](#sfsf-marker-specification-ubc-specific) section
+[SFF/SF Marker Specification](#sfsff-marker-specification-ubc-specific) section
 for the full operational definition.
 
 #### Bug 5.1: SFF searches stay EMBRYONIC instead of ECONSTANIC
@@ -468,7 +543,7 @@ collapsed to the resolved value, not preserved as-is.
 ### SFF/SF Marker State Machine
 
 Bugs 5.1–5.3 all relate to underspecified SFF/SF marker behavior. The
-specification is now defined in [SF/SF Marker Specification](#sfsf-marker-specification-ubc-specific).
+specification is now defined in [SF/SFF Marker Specification](#sfsff-marker-specification-ubc-specific).
 The implementation must:
 - SFF: Searches start at ECONSTANIC directly (skip EMBRYONIC/BRANING)
 - SF: constanic_clone uses sfcc=True to preserve ECONSTANIC/WOCONSTANIC states
@@ -500,231 +575,301 @@ Index. No additional safety check is needed — the invariant is correct.
 
 ---
 
-## Scope Refactoring (Top Priority)
+## Architecture: parent-linked FIR graph + recursive search
 
-The current `Scope` implementation is an accumulating struct that clones for
-children. This must be refactored before any other Phase 1 work.
+This is Phase 1. It must be done before any bug repair, and its gate is that all
+64 existing snapshots pass byte-identical.
 
-### Current Design (to be replaced)
+### Ownership model: Rc children, Weak parents, mutate-self
+
+The FIR keeps `Rc<RefCell<Fir>>` children and gains *used* `Weak<RefCell<Fir>>`
+parent back-pointers. Parent owns children; children read parent.
+
+- **Children — `Rc<RefCell<Fir>>`.** FIRs are shared, not uniquely owned: a resolved
+  search holds a **read-only reference** (an `Rc` handle) to the immutable
+  CONSTANT/INDEPENDENT node it found — shared, never deep-copied (`constanic_clone`
+  of CONSTANT/INDEPENDENT/NK already returns `Rc::clone(source)`, `ubc.rs:467`). FIRs
+  mutate through `RefCell` as evaluation advances.
+- **Parents — `Weak<RefCell<Fir>>`.** Each FIR holds a *readable, non-owning*
+  back-pointer to its parent: `x` and `y` → the `+` operator → the statement → the
+  brane → the parent brane's statement → … . `Weak` makes the up-edge readable
+  (`upgrade()` to access) without creating an ownership cycle or leak.
+- **Statements — `NormalBraneFir.statements: Vec<Rc<RefCell<StatementFir>>>`, a
+  FIXED-SIZE vector.** A brane holds its statements as shared, mutable handles
+  (changed from the current `Vec<StatementFir>`). The vector is allocated once when
+  the brane is built from the AST; its length never changes during evaluation —
+  statements are stepped/replaced in place, never appended or removed.
+  `StatementFir` already exists (`fir.rs:195`): minimally an RHS `body: FirRef`,
+  optionally an LHS `name: Option<String>` (the assignment identifier — plain or
+  characterized identifier string; either is fine), plus `state`. It GAINS two fields,
+  **both set at construction** (and re-set on recoordination/clone): `parent:
+  Weak<RefCell<Fir>>` pointing to the owning brane, and `line_number: usize` — its own
+  0-based index into the parent's `statements` vec. So a statement always knows both
+  its brane and exactly where it sits: `parent.statements[line_number]` is itself.
+  Search iterates the vector and matches on each statement's LHS `name`. The stored
+  `line_number` makes "which line am I?" a field read — no scan — so an unanchored
+  search gets its `from_line` directly, and `line_of_child` is a trivial lookup (or
+  unnecessary).
+- **Access up and down, mutate only self.** Evaluation trickles **down** from the
+  root brane (`child.step()`; the parent reaches children through
+  `RefCell::borrow_mut`). A FIR may *read* its children and its ancestors to compute,
+  but *writes only itself*. The outermost owning call commits the result.
+
+Two trait methods give every FIR its upward access:
+
+- **`get_parent(&self) -> Option<FirRef>`** — the immediate structural parent
+  (`upgrade()` of the `Weak`). For the search `c` in `{b = 1 + c}`, the chain is
+  `c` → `+` → statement `b` → the brane.
+- **`get_brane(&self) -> Option<FirRef>`** — the nearest enclosing brane, defined
+  recursively: *return `get_parent()` if it is a brane, else
+  `get_parent().get_brane()`*. For `c` in `{b = 1 + c}`, `get_brane()` skips past `+`
+  and statement `b` and returns the brane that contains `b` — exactly the brane whose
+  earlier statements `c` should search.
+
+  ```rust
+  fn get_brane(&self) -> Option<FirRef> {
+      let parent = self.get_parent()?;
+      if parent.borrow().kind() == FirKind::NormalBrane {
+          Some(parent)
+      } else {
+          parent.borrow().get_brane()
+      }
+  }
+  ```
+
+  `get_brane()` is the bridge a Search FIR uses to *start* resolution: an unanchored
+  search calls `get_brane()` to find its home brane, takes its originating line from
+  the enclosing statement's stored `line_number`, then calls
+  `search_ancestral_branes(pattern, line_number)`.
+
+Why not owned `Box<Fir>` (considered and rejected): CONSTANT/INDEPENDENT nodes are
+shared by read-only reference, and children need readable parent pointers — neither
+fits unique `Box` ownership without deep-copying immutable nodes (wrong) or raw
+self-referential pointers (`unsafe`, fragile). `Rc`/`Weak` is the idiomatic, safe,
+and *smaller* change — the code is already `Rc<RefCell>`. For UBC this is arguably
+heavier than strictly needed, but for UBCb (which shuffles and replaces FIRs) `Rc` is
+the right choice anyway, so one model serves both.
+
+### What replaces the flat Scope
+
+The current `Scope` (`ubc.rs:37-45`) is the thing to retire:
 
 ```rust
-// ubc.rs:37-45
 struct Scope {
-    entries: Vec<(String, FirRef)>,  // accumulating flat list
-    current_brane: Option<FirRef>,   // stale reference to reset brane
+    entries: Vec<(String, FirRef)>,  // accumulating flat list — pre-pushes ALL names
+    current_brane: Option<FirRef>,   // stale snapshot of reset (EMBRYONIC) bodies
     current_stmt_idx: Option<usize>,
-    block_brane_searches: bool,
-    parent: Option<Box<Scope>>,      // cloned parent
     // ...
 }
 ```
 
-Problems:
-- `entries` accumulates all names (including forward references)
-- Cloning for children is expensive and creates stale references
-- `current_brane` points to reset (EMBRYONIC) bodies, not evaluated ones
-- Flat search doesn't respect positional backward search
+Problems: `entries` accumulates every name including forward references (root of
+Bugs 1.x/2.3); it is cloned per statement (O(n²), `ubc.rs:238`); `current_brane`
+points at reset EMBRYONIC bodies (root of the Bug 6.x NYE invariant violations).
 
-### Proposed Design
+**The FIR graph IS the scope.** There is no separate `Scope` object holding a name
+list. A brane resolves names by searching its own statements, then delegating to its
+parent through the `Weak` parent pointer.
 
-Scope is a lightweight wrapper around a Brane reference. It holds the current
-position (statement index) and a reference to the parent scope. No cloning
-needed for children — just pass references.
+### Search = recursion over local members
+
+Search is plain recursion; each function touches only its own struct's members:
+
+- **`Brane::search_immediate_brane(pattern, from_line, direction)`** — search this
+  brane's own statements, starting at `from_line`, going `direction` (backward for
+  normal name resolution). Uses **`Brane::iterate_immediate_brane(from_line,
+  direction)`** to walk its statements. Nearest match in the requested direction
+  wins (correct shadowing/SSA). It does **not** see statements past `from_line` in
+  the backward case → forward references are simply out of range.
+- **`Brane::search_ancestral_branes(...)`** — when the immediate-brane search does
+  not resolve and the situation demands widening, follow the `Weak` parent up to the
+  containing brane and call *its* `search_immediate_brane`, bounded by the line at
+  which this brane sits in its parent. This is the up-walk: a name defined before the
+  nested brane resolves; one defined after does not — one mechanism covers both
+  forward-ref suppression (Bugs 1.x) and legitimate parent resolution (Bug 2.1).
+- **Unanchored seek (`#-1`, `#-2`)** indexes the immediate brane relative to
+  `from_line`, reading already-evaluated earlier statements — never a NYE body, which
+  is what makes the Bug 6.x `constanic_clone`-on-NYE violations unreachable.
+
+Each of these is a method on the brane, accessing only local members. **The final
+mutation is performed by the outermost call** — a method on the struct being
+mutated (the search FIR records its resolved target; the brane records its statement
+bodies). Reads go up and down the graph; the write lands on `self`.
+
+`reset_searches` (`ubc.rs:260-323`) is removed: with positional `from_line` search,
+forward references are out of range and never resolve, so there is nothing to reset.
+`constanic_clone` still performs the per-reuse state reset when a brane is reused in
+a new context (`ubc.rs:466-477`: ECONSTANIC→EMBRYONIC, WOCONSTANIC→BRANING).
+
+### The three brane search methods (normative)
+
+Search is **not** a free-standing recursive walker over a separate scope object — it
+is three methods **on `NormalBraneFir`**, each touching only its own members. The
+same `iterate_immediate_brane` / `search_immediate_brane` pair serves **both anchored
+and unanchored** searches (anchored = "search this specific brane"; unanchored =
+"search my own brane, then ancestors"). That shared factoring is the most
+straightforward to implement and is required, not optional.
+
+Storage: `statements: Vec<Rc<RefCell<StatementFir>>>` — a **fixed-size** vector
+(allocated once when the brane is built from the AST; statements are stepped/replaced
+in place, never appended or removed during evaluation). Each statement's `parent`
+points to the owning brane (set at construction). `from_line` is the 0-based
+statement index the search starts from. The iterator yields **statement handles**
+(`Rc` clones) — it cannot return borrows out of a `RefCell`, so callers `borrow()`
+the handle to read `name`/`body`.
 
 ```rust
-struct Scope<'a> {
-    brane: &'a NormalBraneFir,       // reference to the brane being evaluated
-    stmt_idx: usize,                  // current statement position
-    parent: Option<&'a Scope<'a>>,    // parent scope (for upward search)
-    stmts: &'a [StatementFir],        // iterable slice of brane statements
-}
-```
-
-### Backward Search Iterator
-
-Each scope creates iterators that walk backward through brane statements:
-
-**`ib_stmts`** (Immediate Brane statements): Iterates statements of the current
-brane from `(stmt_idx - 1)` to `0` inclusive. This is the local backward search —
-only the current brane, starting from the statement before the current one.
-
-**`abib_stmts`** (Ancestral Brane + Immediate Brane statements): Iterates
-`ib_stmts` first, then delegates to `parent.abib_stmts`. Termination condition is
-when `parent` is `None` (no more ancestor branes). This is the full backward
-search chain — local brane first, then parent branes all the way up.
-
-```rust
-struct IbStmtsIterator<'a> {
-    stmts: &'a [StatementFir],
-    current_idx: usize,  // starts at stmt_idx - 1, decrements to 0
-}
-
-impl<'a> Iterator for IbStmtsIterator<'a> {
-    type Item = (&'a str, &'a FirRef);
-    
-    fn next(&mut self) -> Option<Self::Item> {
-        while self.current_idx > 0 {
-            self.current_idx -= 1;
-            let stmt = &self.stmts[self.current_idx];
-            if let Some(ref name) = stmt.name {
-                return Some((name, &stmt.body));
-            }
-        }
-        None
-    }
-}
-
-struct AbibStmtsIterator<'a> {
-    scope: &'a Scope<'a>,
-    ib_iter: IbStmtsIterator<'a>,  // current ib iteration
-    parent_exhausted: bool,
-}
-
-impl<'a> Iterator for AbibStmtsIterator<'a> {
-    type Item = (&'a str, &'a FirRef);
-    
-    fn next(&mut self) -> Option<Self::Item> {
-        // Try current ib_iter first
-        if let Some(item) = self.ib_iter.next() {
-            return Some(item);
-        }
-        // Current brane exhausted — delegate to parent
-        if self.parent_exhausted {
-            return None;
-        }
-        let parent = match self.scope.parent {
-            Some(p) => p,
-            None => return None,  // termination: no parent
+impl NormalBraneFir {
+    /// Walk THIS brane's own statements from `from_line` in `direction`, yielding a
+    /// handle to each NAMED statement. Touches only self.statements.
+    /// Backward: from_line-1 down to 0. Forward: from_line+1 up to len-1.
+    /// Shared by anchored and unanchored search, and by the SFF/SF machinery.
+    fn iterate_immediate_brane(
+        &self,
+        from_line: usize,
+        direction: SearchDirection,
+    ) -> impl Iterator<Item = Rc<RefCell<StatementFir>>> + '_ {
+        let range: Box<dyn Iterator<Item = usize>> = match direction {
+            SearchDirection::Backward => Box::new((0..from_line).rev()),
+            SearchDirection::Forward  => Box::new((from_line + 1)..self.statements.len()),
         };
-        // Start parent's ib iteration from ITS stmt_idx
-        self.scope = parent;
-        self.ib_iter = IbStmtsIterator {
-            stmts: parent.stmts,
-            current_idx: parent.stmt_idx,
-        };
-        self.parent_exhausted = parent.parent.is_none();
-        self.ib_iter.next()
+        range.filter_map(move |i| {
+            let stmt = &self.statements[i];
+            if stmt.borrow().name().is_some() { Some(Rc::clone(stmt)) } else { None }
+        })
     }
-}
-```
 
-### Search API
-
-```rust
-impl<'a> Scope<'a> {
-    /// Search backward through immediate brane only (ib_stmts).
-    fn search_local(&self, pattern: &str) -> Option<&'a FirRef> {
+    /// Resolve `pattern` within THIS brane only (no ancestor delegation).
+    /// Returns the first matching statement's RHS body, in `direction` from
+    /// `from_line`. This is what an ANCHORED search (`a.foo`) calls on the anchor's
+    /// brane, and what `search_ancestral_branes` calls at each level.
+    fn search_immediate_brane(
+        &self,
+        pattern: &str,
+        from_line: usize,
+        direction: SearchDirection,
+    ) -> Option<FirRef> {
         let re = regex::Regex::new(pattern).ok()?;
-        for (name, body) in self.ib_stmts() {
-            if re.is_match(name) {
-                return Some(body);
+        for stmt in self.iterate_immediate_brane(from_line, direction) {
+            let s = stmt.borrow();
+            if s.name().as_deref().is_some_and(|n| re.is_match(n)) {
+                return Some(Rc::clone(s.body()));
             }
         }
         None
     }
-    
-    /// Search backward through all ancestor branes (abib_stmts).
-    fn search(&self, pattern: &str) -> Option<&'a FirRef> {
-        let re = regex::Regex::new(pattern).ok()?;
-        for (name, body) in self.abib_stmts() {
-            if re.is_match(name) {
-                return Some(body);
-            }
+
+    /// Resolve `pattern` for an UNANCHORED search: this brane first, then walk up
+    /// the `Weak` parent chain. `from_line` is where the search originates in THIS
+    /// brane. When delegating, the parent is searched from the line at which THIS
+    /// brane sits in it (so names defined after the nested brane are out of range).
+    /// Each step touches only local members; ancestry is the `Weak` parent pointer.
+    fn search_ancestral_branes(
+        &self,
+        pattern: &str,
+        from_line: usize,
+    ) -> Option<FirRef> {
+        // 1. Try our own brane, backward from the originating line.
+        if let Some(found) =
+            self.search_immediate_brane(pattern, from_line, SearchDirection::Backward)
+        {
+            return Some(found);
         }
-        None
-    }
-    
-    /// Create a child scope for a nested brane evaluation.
-    /// No cloning — just a reference to the child brane and its parent.
-    fn child(&'a self, brane: &'a NormalBraneFir, stmt_idx: usize) -> Scope<'a> {
-        Scope {
-            brane,
-            stmt_idx,
-            parent: Some(self),
-            stmts: &brane.statements,
-        }
-    }
-    
-    /// Immediate Brane iterator: backward from stmt_idx-1 to 0.
-    fn ib_stmts(&'a self) -> IbStmtsIterator<'a> {
-        IbStmtsIterator {
-            stmts: self.stmts,
-            current_idx: self.stmt_idx,
-        }
-    }
-    
-    /// Ancestral + Immediate Brane iterator: ib_stmts then parent.abib_stmts.
-    fn abib_stmts(&'a self) -> AbibStmtsIterator<'a> {
-        AbibStmtsIterator {
-            scope: self,
-            ib_iter: self.ib_stmts(),
-            parent_exhausted: self.parent.is_none(),
-        }
-    }
-    
-    /// Get statement at offset from current position (for unanchored seek).
-    fn stmt_at_offset(&self, offset: i32) -> Option<&'a FirRef> {
-        let target = self.stmt_idx as i32 + offset;
-        if target < 0 || target >= self.stmts.len() as i32 {
-            return None;
-        }
-        Some(&self.stmts[target as usize].body)
+        // 2. Widen to the enclosing brane, searched from where THIS brane sits.
+        //    This brane's parent is the STATEMENT whose body it is; that statement
+        //    knows its own line_number and its owning brane. No scan.
+        let stmt_cell = self.enclosing_statement()?;        // None at root
+        let stmt = stmt_cell.borrow();
+        let our_line = stmt.line_number();                  // stored 0-based index
+        let outer_brane_cell = stmt.parent_brane()?;        // the statement's brane
+        outer_brane_cell.borrow().as_normal_brane()?
+            .search_ancestral_branes(pattern, our_line)
     }
 }
 ```
 
-### Impact on braning_step
+Notes for the implementer:
 
-The current `braning_step` (ubc.rs:216) clones the scope and pushes all
-names. With the new design, `reset_searches` is no longer needed:
+- **Statements are a fixed-size `Vec<Rc<RefCell<StatementFir>>>`.** Built once from
+  the AST; the count never changes during evaluation (statements are stepped in
+  place). Search matches on each statement's LHS `name()` (the assignment
+  identifier — plain or characterized identifier string).
+- **Each statement stores `parent` (owning brane) and `line_number` (its 0-based
+  index in that brane's vec), both set at construction.** So `parent.statements[
+  line_number]` is the statement itself. Widening in `search_ancestral_branes` is
+  therefore a field read, not a search: take the enclosing statement, read its
+  `line_number`, hop to its brane, recurse. `line_of_child` (if kept at all) is just
+  `child.line_number()`; `Rc::ptr_eq` remains available as a debug-assert that
+  `parent.statements[line_number]` really is the child.
+- **Recursion = the `search_ancestral_branes` → parent `search_ancestral_branes`
+  call**, terminating when `self.parent.upgrade()` is `None` (root brane). Ordinary
+  recursive method call; the only subtlety is borrowing the parent through the
+  `Weak`/`RefCell` (`upgrade()` then `borrow()`), so do not hold a `borrow_mut` on a
+  node while recursing into its parent.
+- **How a search starts (uses `get_brane`/`line_of_child`):** an unanchored Search
+  FIR for `foo` calls `self.get_brane()` to find its home brane, asks that brane
+  `line_of_child(self_or_enclosing_statement)` for its originating line, then calls
+  `home_brane.search_ancestral_branes("^foo$", that_line)`.
+- **Anchored search reuses the same primitives:** `a.foo` evaluates `a` to a brane,
+  then calls `search_immediate_brane("^foo$", len, Backward)` on THAT brane — no
+  ancestral widening, no `get_brane`. One `iterate_immediate_brane` underlies both.
+- **Mutation stays at the caller:** these methods are pure reads (they return a found
+  `FirRef`); the *search FIR's* `step` records the result on itself, and the brane's
+  `step` records statement bodies. Reads go up/down the graph; writes land on `self`.
+- **`SearchDirection`** already exists (`fir.rs:175`). Backward is the default for
+  name resolution; forward exists for the forward-seek cases.
 
-1. **Forward reference prevention**: The scope's backward search from current
-   position naturally prevents forward references — no reset needed
-2. **No stale references**: The scope points to evaluated bodies, not reset ones
-3. **`constanic_clone` handles resets**: When a brane is used in a new context,
-   `constanic_clone` already resets ECONSTANIC→EMBRYONIC and WOCONSTANIC→BRANING
+### Required unit tests for the search methods
 
-```rust
-fn braning_step(brane: &mut NormalBraneFir, parent_scope: &Scope) {
-    // No scope cloning needed
-    // No reset_searches needed — scope handles forward reference prevention
-    for (idx, stmt) in brane.statements.iter().enumerate() {
-        let scope = parent_scope.child(brane, idx);
-        let body = step_boxed(&stmt.body, &scope)?;
-        // ... update statement body
-    }
-}
-```
+In addition to the snapshot tests, write **direct unit tests** (in `unit_tests.rs`)
+for these brane methods, on both a flat brane and nested branes — they are the load-
+bearing primitives and must be tested in isolation, not only through whole-program
+snapshots:
 
-`reset_searches` (ubc.rs:260) should be removed entirely.
+- `iterate_immediate_brane`: backward and forward yields, skips anonymous statements,
+  empty brane, `from_line` at 0 and at len.
+- `search_immediate_brane`: hit / miss / nearest-match-wins (shadowing) / pattern is
+  a regex / `from_line` excludes later statements (forward-ref not found).
+- `search_ancestral_branes`: resolves in immediate brane; resolves in parent when not
+  local; does NOT resolve a name defined in the parent AFTER the nested brane;
+  terminates at root (returns None) without panic; two-level nesting (grandparent).
+- `line_of_child`: finds the correct parent line; behaves for deeply nested branes.
+- `get_parent` / `get_brane`: for `{b = 1 + c}`, `c`'s `get_parent()` is the `+` (or
+  enclosing statement); `c`'s `get_brane()` skips operator + statement and returns the
+  containing brane. `get_brane()` on a statement returns its brane; on the root brane
+  returns None; nested-brane case returns the *immediate* enclosing brane.
+
+Build the test branes with the parser + the root brane's `.search(...)` per AGENTS.md
+"Unit Test Readability" so the tests read clearly to human reviewers.
 
 ### Key Properties
 
-- **No cloning**: Scope holds references, not owned data
-- **No stale references**: `brane` points to the actual brane being evaluated
-  (which contains evaluated bodies as stepping progresses)
-- **Positional backward search**: Iterator starts at `stmt_idx` and goes backward
-- **Parent delegation**: When local brane is exhausted, search continues in parent
-  from the position where the brane was defined
-- **Depth-first compatible**: Parent's `stmt_idx` IS the statement currently being
-  evaluated — no ambiguity
-- **Nested scoping**: Iteration through a brane constructs small scope objects for
-  each line, recursively passed into the next level of evaluation. Each statement
-  gets its own scope pointing to the brane at its position.
+- **Linear, not quadratic** — no per-statement clone of a flat scope list; search
+  reads the brane's own statements directly and walks parents by `Weak` pointer.
+- **`Rc` children, `Weak` parents** — shared FIRs (incl. read-only shared CONSTANT
+  nodes), readable non-owning up-edge, mutate-self via `RefCell`.
+- **Positional search** — `from_line` excludes forward references; nearest match in
+  `direction` wins (correct shadowing).
+- **Parent delegation bounded by `line_of_child`** — one mechanism handles both
+  forward-ref suppression and legitimate parent-scope resolution.
+- **Seek reads evaluated bodies** — unanchored seek indexes already-stepped earlier
+  statements, never a NYE body → the `constanic_clone`-on-NYE violation is unreachable.
 
-### Implementation Order
+### Phase 1 checklist
 
-This refactoring is Phase 0 — it must be done before any other Phase 1 work.
-All other phases depend on the scope working correctly.
-
-- [ ] Define `Scope<'a>` struct with brane reference, stmt_idx, parent
-- [ ] Implement `BackwardSearchIterator` with parent delegation
-- [ ] Implement `Scope::search()` using the iterator
-- [ ] Implement `Scope::child()` for nested brane evaluation
-- [ ] Refactor `braning_step` to use new scope
-- [ ] Remove `reset_searches` (ubc.rs:260) — no longer needed
-- [ ] Remove old `Scope` struct and `entries` accumulation
-- [ ] Verify all existing tests pass with new scope
+The full, annotated checklist lives in `docs/foop/FOOP-52.plan.md` (Phase 1). In
+brief: make `SearchFir.parent` / `NormalBraneFir.parent` real `Weak<RefCell<Fir>>`
+back-pointers, set during construction/recoordination and USED by search; implement
+`iterate_immediate_brane` / `search_immediate_brane` / `search_ancestral_branes` (+
+`line_of_child`) as above; retire the flat `Scope` (`entries`/`current_brane`); keep
+`step_one(&mut self, ...)` mutating self (replacement only on type change); add
+`is_search()` trait predicate (Search/Index/HeadTail → true); replace
+`fir_variant() -> &str` with `kind() -> FirKind`; remove `reset_searches`; rename
+`short_circuit` → `wo_short_circuit` and reframe it as a query
+(`wo_short_circuit(&self) -> &Fir`: follow the WOCONSTANIC target chain, return the
+first non-WOCONSTANIC terminus or `self`; call site
+`self.target = search_result_target.wo_short_circuit()`); add the search-method unit
+tests; **gate: 64 snapshots byte-identical**.
 
 ---
 
@@ -746,7 +891,7 @@ repairs.
 
 ---
 
-## SF/SF Marker Specification (UBC-specific)
+## SF/SFF Marker Specification (UBC-specific)
 
 This section defines the operational semantics of SF (`<...>`) and SFF (`<<...>>`)
 markers as implemented in the UBC (Unicellular Brane Computer). These markers
@@ -760,10 +905,21 @@ The base constanic_clone behavior (without markers):
 | Source State | Result State |
 | ------------ | ------------ |
 | CONSTANT     | CONSTANT     |
+| INDEPENDENT  | INDEPENDENT  |
+| NK           | NK           |
 | ECONSTANIC   | EMBRYONIC    |
 | WOCONSTANIC  | BRANING      |
+| PREMBRYONIC / EMBRYONIC / BRANING (NYE) | **INVARIANT-VIOLATED** |
 
-With SF marker context (`sfcc=True`):
+The NYE rows are the FOOP's central invariant: `constanic_clone` must NEVER be
+called on a Not-Yet-Evaluated FIR. If it is, that is a bug in the caller (a stale
+or unstepped body reached the clone), and the clone produces an NK with an
+INVARIANT-VIOLATED alarm (`ubc.rs:478-492`). The owned-body rewrite makes this
+unreachable for seeks — `Scope::stmt_at_offset` returns only stepped earlier
+siblings (see Bugs 6.1/6.2).
+
+With SF marker context (`sfcc=True`), the search-result states are preserved
+instead of reset:
 
 | Source State | Result State |
 | ------------ | ------------ |
@@ -771,16 +927,31 @@ With SF marker context (`sfcc=True`):
 | ECONSTANIC   | ECONSTANIC   |
 | WOCONSTANIC  | WOCONSTANIC  |
 
-SFF has no constanic_clone table because SFF does not perform searches — there
-are no search results to clone.
+SFF has no constanic_clone table of its own: SFF suppresses search *execution* (it
+sets searches ECONSTANIC at creation), so at clone time its searches follow the
+sfcc rules like any other.
 
 ### SFF (`<<...>>`) — Suppress Search / Code Template
 
-SFF suppresses search execution. ALL searches inside `<<...>>` are generated as
-Search FIRs but skip EMBRYONIC/BRANING — they enter ECONSTANIC directly. This
-includes searches that would normally become NK (e.g., `{}^` — seek beyond brane
-bounds). Inside SFF, these also start at ECONSTANIC. All other evaluation
-(operators on literals, etc.) proceeds normally.
+**What counts as a "search" (important):** a search is any FIR that consults the
+surrounding brane to find a value — name **Search**, positional **Index/seek**
+(`#-1`), and **HeadTail** (`{}^`). These are exactly the FIRs for which
+`is_search()` is `true`. This matters because of the underlying invariant:
+
+> Once a Foolish expression's *text* is composed, the ONLY thing still indeterminate
+> is its searches. Everything else has singular invariant meaning from its text
+> alone.
+
+So suppressing searches turns SFF into a pure **Foolish-code copier**: the code is
+held, and the only parts that defer (resolve later, in a new context) are the
+searches.
+
+SFF suppresses search execution. ALL `is_search()` FIRs inside `<<...>>` are
+generated but skip EMBRYONIC/BRANING — they enter ECONSTANIC directly. This applies
+uniformly to name searches, `#-1` seeks, and `{}^` head/tail. Example consequence:
+`{ ...; b = <<#-1>>; ... }` leaves `b` ECONSTANIC at definition; it resolves only
+when `b` is referenced/coordinated elsewhere. All other evaluation (operators on
+literals, etc.) proceeds normally.
 
 **Normative description (state machine)**: SFF suppresses search execution.
 Searches inside `<<...>>` are generated as Search FIRs but skip EMBRYONIC/BRANING
@@ -792,23 +963,34 @@ referred to later, the LHS symbol is replaced with the Foolish code within the
 `<<...>>` markers. The SFF content is stored unevaluated and substituted as-is
 when referenced.
 
-These two descriptions are equivalent for simple cases. They diverge when SFF
-content references names that are in scope at definition time:
+These two descriptions agree when the SFF body contains only name searches and
+literals. The key thing both capture: the stored code is **re-resolved at each
+reference site**, not captured-by-value at definition. This example makes that
+observable by referencing `f` twice, around a redefinition of `a`:
 
 ```foolish
 {
     a = 1;
-    f = <<a + b>>;   !! State machine: a=ECONSTANIC, b=ECONSTANIC (both searches)
-                       !! Code template: stores `a + b` unevaluated
+    f = <<a + b>>;   !! stored: Op+(Search(a, ECONSTANIC), Search(b, ECONSTANIC)), WOCONSTANIC
+    g1 = f;          !! clone strips SFFMark, resets searches, re-resolves AT g1:
+                       !!   nearest a = 1, b not found → g1 = `1 + b` (WOCONSTANIC, b ECONSTANIC)
     a = 2;           !! a is now 2
-    g = f;           !! State machine: searches reset, find a=2, b=? → WOCONSTANIC or CONSTANT
-                       !! Code template: substitute `a + b`, find a=2, b=? → same result
+    g2 = f;          !! same, re-resolved AT g2: nearest a = 2 → g2 = `2 + b` (b still ECONSTANIC)
 }
 ```
 
-In this case both descriptions produce the same result because the searches are
-reset when `f` is cloned to `g`. The state machine description is normative
-because it maps directly to the FIR state transitions.
+`g1` is `1 + b` and `g2` is `2 + b` — same stored code, different `a` because each
+reference re-resolves at its own position. `b` (never defined) stays ECONSTANIC in
+both. The state-machine description is normative because it maps directly to the FIR
+state transitions.
+
+**Where the descriptions diverge (open caveat):** the code-template phrasing
+("store the Foolish code, substitute as text") implies *everything* inside `<<...>>`
+is deferred, but the precise rule is narrower-and-exact: defer the `is_search()`
+FIRs. For a body containing only searches + literals these coincide. For a body with
+a non-search construct that the template reading would also defer but that has
+singular meaning from its text, prefer the state-machine rule. (This is why `#-1`
+and `{}^` are classified as searches — see above — so the two readings line up.)
 
 ```foolish
 f = <<a + b>>;
@@ -854,36 +1036,53 @@ Here `a.result` retrieves the entry `result` which contains a Search FIR for
 SF performs searches normally (through EMBRYONIC/BRANING). The key behavior is
 how constanic_clone handles the search results inside an SF context.
 
-**Conceptual description**: SF Mark allows us to refer to code from elsewhere
-(permit one level of search), but when the pieces are stitched together, their
-naivety is maintained. What they didn't know before, they still don't know — even
-if the new context might provide for some of their ECONSTANIC searches. SFMark
-lets us find and combine code without being affected by the current environment.
+**Conceptual description**: SF Mark lets us refer to code from elsewhere (permit
+one level of search) and combine pieces, while keeping their *naivety* — but only
+**while they remain sealed inside an SF marker**. What a sealed piece didn't know
+before, it still doesn't know, even if the new context could provide for some of its
+ECONSTANIC searches. The naivety is **conditional**, not absolute: a piece stays
+naive as long as it is reused through another SF marker (`<...>`); a plain bare
+reference re-resolves it normally against wherever it lands.
 
-Imagine assembling a creature: head from arctic snowball, foot from volcanic lava.
-SFMark lets you find them and assemble in a factory in Foxconn. The assembled
-creature doesn't know about Foxconn's environment. Only when you call on this
-creature from, say, a moonbase, do the pieces try to find what they need.
+Imagine a Foxconn factory on the moon that gets an order to assemble a creature:
 
-Operationally: searches inside `<...>` happen normally. When the SFMark's result
-is cloned (constanic_clone with sfcc=True), ECONSTANIC and WOCONSTANIC states are
-preserved — the searches don't learn from the new context. Only when the assembled
-result is later used in a normal (non-SF) context do the searches reset and
-resolve against whatever is available.
+```foolish
+{ foxconn_moon = <{head = arctic.snow_ball, body = california.redwood, legs = volcano.lava}> }
+!! Illustrative only — arctic / california / volcano are evocative, not defined branes.
+```
 
-**Two distinct constanic_clone concerns:**
+The factory *finds* these parts and describes what it would do with them, but the SF
+marker says: don't let them touch the moon's context yet. If the parts actually
+arrived into the factory's environment they would change irreversibly. They stay
+naive **as long as they're held inside the SF crate**. Only when you later
+*coordinate from* `foxconn_moon` in some real context does the thing materialize
+there and the parts resolve against that environment. Keep shipping it sealed in an
+SF crate (`<foxconn_moon>`) and it stays naive; unwrap it with a bare reference
+(`x = foxconn_moon`) and it adapts to wherever it is.
 
-**Concern 1 — Cloning an SFMark FIR itself**: When a later search finds an
-SFMark, `constanic_clone` strips the SFMark wrapper and clones only the inner
-content: `constanic_clone(SFMark(INSIDE))` → `constanic_clone(INSIDE)`.
+Operationally: searches inside `<...>` happen normally at assembly. When the SF
+body's results are cloned into the SFMark (sfcc=True), ECONSTANIC/WOCONSTANIC are
+preserved. When the assembled value is later used **bare** (non-SF context), that
+clone is normal (sfcc=False) and the searches reset and resolve.
 
-**Concern 2 — Cloning used BY SFMark**: When SFMark performs searches inside
-`<...>`, those search results need to be constanic_cloned into the SFMark's
-location as children. These clones use `sfcc=True`, which is passed recursively
-to all nested constanic_clones. With `sfcc=True`:
+**Two constanic_clone directions (the asymmetry IS the mechanism):**
+
+**Concern 2 — ASSEMBLE (sfcc=True).** RHS is the SF marker, e.g. `a = <b>`. The
+search for `b` runs; its result is `constanic_clone`d **with sfcc=True** into the
+SFMark's result field. sfcc=True is passed recursively to all nested clones:
 - ECONSTANIC stays ECONSTANIC (instead of resetting to EMBRYONIC)
 - WOCONSTANIC stays WOCONSTANIC (instead of resetting to BRANING)
 - CONSTANT stays CONSTANT (unchanged either way)
+
+**Concern 1 — CONSUME (sfcc=False, normal).** A later bare reference finds an
+SFMark, e.g. `c = a` where `a` was `<b>`. `constanic_clone` strips the SFMark
+wrapper and clones the inner content with a **normal (sfcc=False)** clone:
+`constanic_clone(SFMark(INSIDE))` → `constanic_clone(INSIDE)` — so the searches
+reset and re-resolve in `c`'s context. (Stripping the wrapper applies whether the
+consuming clone is normal or sfcc; what differs is the reset.)
+
+This asymmetry is why `aa = a` re-resolves while `aaa = <a>` preserves (Example 7).
+The sealed-crate naivety holds only along the sfcc=True path.
 
 **SFFMark inside SF**: When SF contains a nested SFFMark (`<...<<...>>...>`),
 the SFFMark's searches start at ECONSTANIC directly. When SF's constanic_clone
@@ -1004,73 +1203,52 @@ finds `f=1`, everything resolves to CONSTANT.
 
 ## Implementation Approach
 
-### Phase 1: Source-Order Resolution / Backward Search (Bugs 1.1–1.3, 2.3, 6.1–6.2)
+The phase ordering, checkboxes, and per-task notes live in the plan file
+`docs/foop/FOOP-52.plan.md`. The spine: **Task 0** organize AGENTS.md → **Phase 1**
+scope/search rework — `Weak` parents + the three recursive brane search methods,
+keep `Rc<RefCell>` children (gate: 64 snapshots byte-identical) → **Phases 2+**
+repair the 15 WIP files, one bug group per phase. This section records *how each bug
+group is fixed conceptually*; the plan records *the steps*.
 
-Implement proper backward search: each statement loops backward from its position
-in the brane's statement array. If not found, ask the parent brane — the parent
-knows where the search came from because depth-first evaluation means the parent's
-statement currently being evaluated IS the starting position.
+### Backward search / source order (Bugs 1.1–1.3, 2.3, 6.1–6.2)
 
-Also resolves Bugs 6.1–6.2 (invariant violations) — when the scope's brane
-references evaluated bodies, `constanic_clone` will never see NYE.
+The positional backward-search `Scope` (Phase 1) fixes these at the root. A search
+sees only earlier siblings of the immediate brane, then delegates to the parent
+(bounded by the parent's position). Forward references are out of range → stay
+ECONSTANIC; nearest-earlier wins → correct shadowing (Bug 2.3). Bugs 6.1–6.2 are the
+same root cause via a different symptom: the old scope handed seeks RESET/EMBRYONIC
+bodies, so `constanic_clone` hit NYE. With the scope reading stepped earlier
+siblings, the seek never sees NYE — the invariant violation is unreachable, no
+`permit_nye` hack. (Bug 15, negative-seek out-of-bounds, is a related `index_in_brane`
+clamping fix — see the plan, Phase 2.)
 
-### Phase 2: Scope Boundary Correctness (Bug 2.1)
+### Scope boundary correctness (Bug 2.1)
 
-Fix the search to correctly cross parent brane boundaries when the identifier IS
-defined before the nested brane in source order. This requires careful interaction
-with Phase 1 — the search must check both source order AND brane depth.
+The OPPOSITE symptom of Bugs 1.x (too restrictive vs too permissive) — the SAME
+mechanism. Parent delegation bounded by the parent's `stmt_idx` lets a name defined
+BEFORE the nested brane resolve, while still excluding forward references.
 
-### Phase 3: Search Tree Resolution (Bugs 2.2, 3.2, 4.1)
+### Search-tree resolution (Bugs 2.2, 3.2, 4.1)
 
-When a search resolves to a CONSTANT value, collapse the search tree in the
-substituted expression. When a search is unresolved (ECONSTANIC/WOCONSTANIC),
-preserve it through operations like concatenation. The rule: collapse what's
-resolved, preserve what's not.
-- Spurious inner searches from leaking into outer expressions (Bug 2.2)
-- Unresolved searches from being dropped during concatenation (Bug 3.2)
-- Resolved operators from staying WOCONSTANIC (Bug 4.1)
+Rule: collapse what's resolved, preserve what's not. When a search resolves to
+CONSTANT, the substituted expression uses the value (not the search tree) → no
+spurious inner search leaks into an outer AST (Bug 2.2). When a search is unresolved,
+it is preserved through concatenation (Bug 3.2). Bug 4.1 (operator stays WOCONSTANIC
+when its operand is already resolved) likely improves for free once searches return
+inlined owned values rather than Rc-wrapped trees — verify before adding logic.
 
-### Phase 4: Concatenation Precedence (Bug 3.1)
+### Concatenation precedence (Bug 3.1)
 
-Fix the parser/evaluator to correctly handle `a b` as concatenation of two
-operands, not as `a` followed by `b` as a search on `a`. This may require parser
-changes to the precedence rules.
+`a b` must parse/evaluate as concatenation of two operands, not `a` searched by `b`.
+This is the one bug group likely to require **parser** changes (precedence rules).
 
-### Phase 5: SFF/SF Marker Implementation (Bugs 5.1–5.3)
+### SF/SFF markers (Bugs 5.1–5.3)
 
-Implement the SF/SF Marker Specification (UBC-specific):
-
-**SFF (`<<...>>`)**:
-- Searches inside SFF skip EMBRYONIC/BRANING — start at ECONSTANIC directly
-- SFFMark is transparent to constanic_clone: strips wrapper, clones inner content
-- No internal cloning (SFF doesn't perform searches)
-
-**SF (`<...>`)**:
-- Searches happen normally (through EMBRYONIC/BRANING)
-- SFMark is transparent to constanic_clone: strips wrapper, clones inner content
-- When SFMark clones search results into its location (Concern 2), use sfcc=True:
-  ECONSTANIC stays ECONSTANIC, WOCONSTANIC stays WOCONSTANIC
-- sfcc=True is passed recursively to all nested constanic_clones
-
-**Implementation steps:**
-- [ ] Modify search initialization: inside SFF, set search state to ECONSTANIC
-      (not EMBRYONIC)
-- [ ] Modify constanic_clone: when sfcc=True, preserve ECONSTANIC/WOCONSTANIC
-      states (instead of resetting to EMBRYONIC/BRANING)
-- [ ] Modify constanic_clone: strip SFMark/SFFMark wrappers (clone inner content)
-- [ ] Pass sfcc=True recursively when cloning inside SF context
-- [ ] Test Bug 5.1: `{a=1, b=2; inner={c=<<a+b>>; c}; inner;}` — searches should
-      be ECONSTANIC, not EMBRYONIC
-- [ ] Test Bug 5.2: `{x=5; y=10; inner={calc=<<x+y>>; doubled=calc*2};}` — same
-      ECONSTANIC requirement
-- [ ] Test Bug 5.3: `{x=10; y=<x>; z=y+5;}` — verify SF behavior is correct
-- [ ] Verify no regressions in 64 approved snapshots
-
-### Phase 6: Verification (Bugs 6.1–6.2)
-
-Confirm that Phase 1's backward search fix resolves the invariant violations.
-`constanic_clone` should NEVER encounter NYE — the invariant is correct, the bug
-was the stale scope. No additional safety check is needed.
+Per the [SF/SFF Marker Specification](#sfsff-marker-specification-ubc-specific):
+- **SFF**: mark ALL `is_search()` FIRs ECONSTANIC at creation (Search, `#-1`, `{}^`).
+- **SF**: assemble-time clone of the body's search results uses sfcc=True (preserve);
+  a later bare reference that finds an SFMark uses a normal clone (re-resolve).
+- Both markers are transparent to `constanic_clone` (wrapper stripped, inner cloned).
 
 ---
 
@@ -1090,11 +1268,40 @@ was the stale scope. No additional safety check is needed.
 
 ### A. Fix all bugs in one pass
 
-Description: Address all 14 bugs simultaneously without phasing.
+Description: Address all 15 bugs simultaneously without phasing.
 
 Reason for rejection: The bugs have dependencies (e.g., source-order fix affects
 scope resolution). Phasing reduces risk of introducing new bugs and makes each
 change independently testable.
+
+### C. Owned `Box<Fir>` bodies (drop `Rc`/`RefCell`)
+
+Description: replace `Rc<RefCell<Fir>>` children with owned `Box<Fir>`, so
+`step(&mut self, ...)` self-mutates a uniquely-owned subtree, using `split_at_mut`
+for disjoint sibling access.
+
+Reason for rejection: the FIR is **not** uniquely owned. Resolved searches hold a
+read-only reference to immutable CONSTANT/INDEPENDENT nodes — shared, not copied
+(`constanic_clone` returns `Rc::clone`, `ubc.rs:467`) — and every FIR needs a
+*readable parent pointer*. Unique `Box` ownership fits neither: it would force
+deep-copying immutable nodes (wrong — changes identity/cost) or `unsafe`
+self-referential raw parent pointers (fragile). `Rc<RefCell>` children + `Weak`
+parents is the idiomatic, safe model — and the smaller change, since the code is
+already on it. (An earlier draft of this FOOP wrongly concluded the FIR was a pure
+tree and proposed this; corrected during plan review.)
+
+### D. Lifetime-borrowed `Scope<'a>` over the live brane
+
+Description: a `Scope<'a>` holding `&'a` borrows into the brane being evaluated, with
+backward-search iterators.
+
+Reason for rejection: it does not compile against this codebase — a scope borrowing
+the brane's statements needs that brane simultaneously immutably borrowed (scope)
+and mutably borrowed (write-back), and `RefCell` only turns the compile error into a
+runtime panic. The chosen design avoids a separate `Scope` object entirely: search is
+recursive methods on the brane that read its own statements and walk the `Weak`
+parent chain. See
+[Architecture](#architecture-parent-linked-fir-graph--recursive-search).
 
 ### B. Skip SFF/SF formalization
 
@@ -1107,22 +1314,40 @@ the language.
 
 ## Open Questions
 
-- Should the source-order check apply at parse time (AST annotation) or
-  evaluation time (runtime search)?
-- What is the exact precedence relationship between search, concatenation, and
-  other operators?
-- Should `constanic_clone` be allowed on NYE FIRs in any context, or is it
-  always an error?
+- **Source-order check at parse time or eval time?** Resolved: evaluation time, via
+  the positional backward-search `Scope` (the search only sees earlier siblings). No
+  AST annotation needed.
+- **`constanic_clone` on NYE — allowed?** Resolved: never. It is always an error
+  (INVARIANT-VIOLATED). The owned-body rewrite makes it unreachable for seeks
+  (`Scope::stmt_at_offset` returns only stepped earlier siblings). No `permit_nye`
+  escape hatch needed.
+- **Exact precedence of search vs concatenation vs other operators?** Still open —
+  resolved during Phase 5 (concatenation precedence, Bug 3.1); may require parser
+  changes. This is the one genuinely open design question.
 
-## Code Quality Note: fir_variant String Typing
+## Code Quality (folded into Phase 1)
 
-The `fir_variant()` method on FIR types currently returns `&'static str` (string
-comparisons like `fir_variant() == "StayFullyFoolish"`). This should be refactored
-to return an enum for type safety and exhaustiveness checking. The `Variant` enum
-already exists in `ubc.rs` (line 358) but is local — it should be promoted to a
-shared type and used as the return type of `fir_variant()`. This is not a bug fix
-but a code quality improvement that should be done as part of Phase 5
-implementation.
+These are not separate cleanups — the rewrite touches these call sites, so they are
+done as part of Phase 1:
+
+- **`is_search()` predicate on the FIR trait.** A search is any FIR that consults the
+  surrounding brane: name **Search**, positional **Index/seek** (`#-1`), **HeadTail**
+  (`{}^`). `is_search()` defaults to `false` and is overridden `true` on those three.
+  Its doc comment carries the invariant ("only searches are indeterminate once the
+  text is composed"). This is the canonical home for the classification and is what
+  SFF suppression and `has_unresolved_forward_refs` key off — fixing the latent gap
+  where `has_unresolved_forward_refs` (`ubc.rs:160`) ignored Index/HeadTail.
+- **`fir_variant() -> &'static str` → `kind() -> FirKind`.** String comparisons like
+  `fir_variant() == "StayFullyFoolish"` become enum/match dispatch. A local `Variant`
+  enum already exists (`ubc.rs:359`) — promote it to a shared `FirKind`. Keep `kind()`
+  (dispatch) distinct from `is_search()` (classification predicate); they have
+  different homes by design.
+- **Drop dead fields:** `SearchFir.parent` (set, never read) and
+  `NormalBraneFir.parent` (never set or read).
+- **Encapsulation:** free functions in `ubc.rs` that reach into FIRs
+  (`re_step_brane_bodies`, `reset_searches`, `step_except_brane_one`,
+  `strip_sf_wrapper`) move onto the types per the AGENTS.md encapsulation rule
+  (Task 0). `reset_searches` is removed entirely (positional search makes it moot).
 
 ## References
 
@@ -1132,15 +1357,39 @@ implementation.
 
 ## Last Updated
 
-**Date**: 2026-06-06
-**Updated By**: opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4
-**Changes**: Added `reset_searches` removal analysis (scope handles forward
-reference prevention, `constanic_clone` handles NYES transitions). Added
-Semantic Immutability Principle section. Added `ib_stmts` and `abib_stmts`
-iterators to Scope specification. Added `Scope::stmt_at_offset` for unanchored
-seek. Updated `braning_step` to not use `reset_searches`. Added `stmts: &'a
-[StatementFir]` field to Scope struct. Restored `anchored_seek_negative_boundary`
-as Bug 15 (FOOP-32 bug being fixed in FOOP-52). Updated bug count to 15.
+**Date**: 2026-06-07 (later, correction)
+**Updated By**: Claude Code 2.1.119 (Claude Code); Sonnet 4.6
+**Changes**: CORRECTED the architecture — the prior entry's "FIR is a tree → owned
+`Box<Fir>` mechanical rewrite" conclusion was WRONG. The FIR is a parent-linked graph:
+CONSTANT/INDEPENDENT nodes are shared by read-only reference (`constanic_clone` returns
+`Rc::clone`, `ubc.rs:467`), and every FIR has a readable parent back-pointer. Settled
+model: `Rc<RefCell<Fir>>` children + `Weak<RefCell<Fir>>` parents, mutate-self;
+`Box<Fir>` rejected. Search is now three recursive methods ON the brane
+(`iterate_immediate_brane` / `search_immediate_brane` / `search_ancestral_branes` +
+`line_of_child`), written out normatively, sharing one iterator for anchored AND
+unanchored search; the flat `Scope` is retired. Added a REQUIRED unit-test list for
+those methods (flat + nested branes), in addition to snapshot tests. Updated abstract,
+Architecture section, plan Phase 1, rejected alternatives C (now = Box) and D, and the
+worktree branch (`scope-search-rework-foop-52`). Added the "Foolish Semantic
+Immutability vs FIR Evaluation State" principle to AGENTS.md.
+
+**Date**: 2026-06-07
+**Updated By**: Claude Code 2.1.119 (Claude Code); Sonnet 4.6
+**Changes**: Reframed as Major. Added §"Exception to the 'no failing
+tests' rule" — FOOP-52 is explicitly excepted from AGENTS.md's no-broken-tests rule
+because the 15 WIP failures ARE the work (green oracle = `cargo insta test`); the
+exception is narrow (new breakage still halts). [Note: this entry's "owned `Box<Fir>`"
+architecture was superseded by the correction above.] Corrected the SF/SFF spec (review Findings A–E):
+SFF suppresses ALL `is_search()` FIRs — Search, Index/`#-1`, HeadTail/`{}^` — per
+the "only searches are indeterminate" invariant; replaced the vacuous SFF example
+with the g1/g2 re-resolution example; made SF naivety conditional on SF-wrapped
+reuse and fixed the Foxconn metaphor (`arctic.snow_ball`, illustrative-only); made
+the SF Concern 1 (consume/normal) vs Concern 2 (assemble/sfcc=True) asymmetry
+explicit; added NYE → INVARIANT-VIOLATED rows to the constanic_clone table; fixed
+"SF/SF" → "SF/SFF". Folded in `is_search()` trait predicate, `fir_variant()` →
+`FirKind`, dead-field removal. Normalized bug count to 15. Implementation Approach
+now defers phase ordering to the plan file. Added rejected alternatives C
+(patch-in-place) and D (lifetime-borrowed Scope).
 
 **Date**: 2026-06-06
 **Updated By**: opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4

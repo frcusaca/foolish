@@ -1,4 +1,3 @@
-(@agent, this test failed!!)
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
 assertion_line: 52
@@ -6,6 +5,7 @@ assertion_line: 52
 INPUT:
 ```foolish
 {x = 5; y = 10; inner = {calc = <<x + y>>; doubled = calc * 2};}
+!!! WIP FOOP-52 !!!
 ```
 [0] RESULT:
 ```hfssnap
@@ -13,7 +13,7 @@ INPUT:
   x=5;
   y=10;
   inner={
-      calc=Op+(?(pattern='^x$', UNANCHORED), ?(pattern='^y$', UNANCHORED), EMBRYONIC); !! @Agents, again, SFF marker means all Foolish code inside it enteres ECONSTANIC immediately, then normal brane evaluation continues.
+      calc=Op+(?(pattern='^x$', UNANCHORED), ?(pattern='^y$', UNANCHORED), EMBRYONIC);
       doubled=30
   }
 }
@@ -24,6 +24,6 @@ complex_sff_with_nested_scope
 ```
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
-Foolish signature: 8qfr0jpSsMP6MZAsD56aGbduYNh+nJ3slMhr8S+O04N/0gGhEQnVaYe41x8MuuHjYIaXc8UxZ9Qo9GNdgbECCw==
-HFS signature: CDi88AUGwQXoX1GEulwK16PkeBe9OHbapdMZFkCUgBago7uatyIdTPs8Til2RL0jHCgznDXzkswoldyIuDR2AQ==
-Comments signature: sXLTakyyRlh+2i0QbtukUF5ZVQ1n8nKmfi57FPy24tQV9tuoHh6uIHu575uLJB1v9OlU8iW/+PgzylndUkYhAQ==
+Foolish signature: O9RufhqRtqVD7KZq9GXdPWglKJ0TbIvBa9A6bCinwC3IE/Boz+uwSOSExiKLRUFNXRiruNi1HEi8lCZX+6+UCw==
+HFS signature: B5CLEAtmKoX5u1k5+Ow/7oLuVI2gqXr57wUndcG7M1kRAWfdq377OKmI7nkuitaEftBkQ4I6MIR1j0AH4GycBw==
+Comments signature: cygM/n9Iu6g26G7tsehGXueAIz+OMNEkdSm9t0LZ0zRlcfImnX6wRiKnINo75lnHZkigkVII2fqH7oBYt41WBw==

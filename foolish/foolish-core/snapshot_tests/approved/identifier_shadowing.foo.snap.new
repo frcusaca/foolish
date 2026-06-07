@@ -1,4 +1,3 @@
-(@agent, this test failed!!)
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
 assertion_line: 52
@@ -6,14 +5,15 @@ assertion_line: 52
 INPUT:
 ```foolish
 {x = 10; x; x = 20; x;}
+!!! WIP FOOP-52 !!!
 ```
 [0] RESULT:
 ```hfssnap
 {
   x=10;
-  20;  !! @Agent, NOPE this is wrong, at this point x is 10 not 20Z.
+  20;
   x=20;
-  20   !! @Agent THIS is right.
+  20
 }
 ```
 COMMENTS:
@@ -22,6 +22,6 @@ identifier_shadowing
 ```
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
-Foolish signature: 8Uxj9w7vjwmh10b6G+RKk1SGm3OLb1VpuRz+GasG0YksbWAEHlQVx8Fo4pXIZpg27euDLxao6VfZpchiKpNaDQ==
-HFS signature: n12OtFN/fn0VQ0M5KOMt2P6IEQHcv4XDTyiwM3oH6d5BoiuN1L5KC237mFA57b9xGSJEVqSKm3dMd1CgIb6bDQ==
-Comments signature: vIH8XvQdrkJbmha5RTJHhIu5HBfpryQJrAWAdeZjc/gxdtVSPJrYW3L5L6WwwQoPVXrW2lQ5loIt+ILXEfYkDQ==
+Foolish signature: 0LnVc9iN5etP716tReYxIWJAavSvzKqo2J51roEUQjIlOoRp3A25PALj+4NCIrje1FSg1OZKDRStMSoxxEtRCQ==
+HFS signature: z6YNy0NPiYv84iUQYCrZblbTAjMaLvaz6ou5nYftBKKbQ2vvVdb9mCdkOvCWc5m3Q4HOWv5k6m8wiopybOzKBw==
+Comments signature: ehPJN4DcitOBpCJityPiuyIh3iYwe6cxTdSAmdH83jOf2AAVrj7hldhUsGJfIyKBOVrzc59UnoHRjnM3cSxHAg==

@@ -4,6 +4,12 @@
 **Source**: `@Agent` / `@Agents` comments found in `.snap.new` files before promotion to `.snap`
 **Status**: All bugs documented, fixes pending
 
+> These 15 bugs are the **acceptance test** for the owned-FIR evaluator rewrite (see
+> FOOP-52.md and FOOP-52.plan.md). They are fixed in Phases 2+, *after* Phase 1
+> (the rewrite) lands with all 64 existing snapshots passing byte-identical. The 15
+> WIP input files (`!!! WIP FOOP-52 !!!`) are the only bug-scope files; the other
+> pending `.snap.new` files are out of scope.
+
 ---
 
 ## Summary
@@ -24,6 +30,7 @@
 | 12 | `complex_sf_in_expression` | SF Marker | Medium | 5 |
 | 13 | `complex_unanchored_seeks_with_operations` | Invariant Violation | Critical | 6 |
 | 14 | `nested_brane_boundary` | Invariant Violation | Critical | 6 |
+| 15 | `anchored_seek_negative_boundary` | Boundary Clamping | High | 6 (from FOOP-32) |
 
 ---
 
@@ -330,7 +337,7 @@ Current output appears correct for this simple case. SF (`<...>`) performs searc
 normally — `x` is found immediately, so `y` is CONSTANT(10). When `z = y + 5`
 clones `y`, it's already CONSTANT, so `z = 15`.
 
-The SF marker semantics are now formally specified in FOOP-52 §"SF/SF Marker
+The SF marker semantics are now formally specified in FOOP-52 §"SF/SFF Marker
 Specification". The key behavior is constanic_clone with sfcc=True: when cloning
 inside an SF context, ECONSTANIC and WOCONSTANIC states are preserved (not reset
 to EMBRYONIC/BRANING). This test doesn't exercise that behavior because everything
@@ -434,6 +441,13 @@ and negative offsets.
 - 58 unreviewed snapshots remain as `.snap.new`
 
 ## Last Updated
+
+**Date**: 2026-06-07
+**Updated By**: Claude Code 2.1.119 (Claude Code); Sonnet 4.6
+**Changes**: Added Bug 15 row to the summary table (was only in prose). Added the
+acceptance-test framing note at top (these 15 are the acceptance test for the
+owned-FIR rewrite; fixed in Phases 2+ after the Phase 1 gate; WIP files are the only
+bug-scope files). No bug descriptions changed — they remain accurate.
 
 **Date**: 2026-06-06
 **Updated By**: opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4

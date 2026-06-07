@@ -1,11 +1,11 @@
-(@agent, this test failed!!)
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
 assertion_line: 52
 ---
 INPUT:
 ```foolish
-{target = {a=1; c=2; c={a=1, b=2, c=3}}; b1 = {x=10}; result = b1 target.c;}
+{target = {a=1; c=2; c={a=1, b=2, c=3}}; b1 = {x=10}; result_1= b1(target.c); result_2 = b1 target.c;}
+!!! WIP FOOP-52 !!!
 ```
 [0] RESULT:
 ```hfssnap
@@ -22,7 +22,11 @@ INPUT:
   b1={
       x=10
   };
-  result={  !!@Agents, b1 is `{x=10}`, target.c is `{a=1,b=2,c=3}`, so their concatenation, `{x=10}{a=1,b=2,c=3}` should result in `{x=10,a=1,b=2,c=3}`, this result here is missing something. I've updated this test to check two things, result_1, and result_2, both of which should be the same 4-valued brane.
+  resultˍ1={
+      x=10
+  };
+  2;
+  resultˍ2={
       x=10
   }
 }
@@ -33,6 +37,6 @@ complex_search_and_concatenation
 ```
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
-Foolish signature: L09fnPEvbEureznI5hrCr2JI1Q5m0YKKnak+QHXUlUDG6AfxuGSymxI+GrUIWZRVmGXU1SdNg+SQjo7NBZvrBw==
-HFS signature: DroSRSXDA5Xlve23XtR0hy8w4elfdPBkN8ui9+wb3pqF/SNn0R6TPwXJjyC9HWMqFgHiBM9iaykZa+XtFFRhDg==
-Comments signature: 45zY1A9nTbZiFQkmjj8g3JCK/KnP0DW26s8SvXY2SvI2eM/q723ov5E7+kP62UpynnWNV5HYkLAUj9ZvUnPBAQ==
+Foolish signature: BCo2tqkYqHmMh4mpysBL1po6ZfYMrb0uz1sZizT72OOYrl8+HngA7xjij7LxHxu3lS679VZQbqyIJuAB9P1yAA==
+HFS signature: oKYJPMMpieFpAU2sBskcrhuFpQPufsOwBq4+50ln5G1xV2ALRYDVvX9rf/zomJE7VMqCoZvtzGVi4L2e/X7vCA==
+Comments signature: zjgsG/AYFvdFIa4TWap/M2npd21EbSmJSAugp8tEs8Lhl8BfOpbrFTgPGH7tma9j5kRQWAV2Z+EeKlWWs8eWDw==

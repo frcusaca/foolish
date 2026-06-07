@@ -28,29 +28,9 @@
   ```
 
 ### Test Code Formatting
-- When writing Foolish code in test files, use **triple-quoted multi-line strings**
-- This allows proper indentation and readability
-- Format:
-  ```java
-  verifyApprovalOf("""
-      {
-          x = 1 + 2;
-          y = x * 3;
-      }
-      """);
-  ```
-
-### Java Code
-- Follow existing project conventions
-- Use descriptive variable and method names
-- Add comments for complex logic
+- When writing Foolish code in test files, use raw string literals or multi-line strings for readability.
 
 ## Testing
-- All changes must pass the full test suite (`mvn test`)
-- Approval tests are in `src/test/resources/`
-- When approval tests fail, review the `.received.txt` files before approving
-- Only approve changes that are semantically correct
-
-## Build and Development
-- Build tool: Maven
-- Java version: 25
+- All changes must pass the full test suite (`cargo test --workspace`)
+- Approval (insta snapshot) tests: see AGENTS.md "Approval Tests (insta snapshots)" for workflow.
+- Never auto-accept snapshots — see the CRITICAL warning in AGENTS.md.

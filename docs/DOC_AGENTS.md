@@ -196,21 +196,6 @@ The sequencer output state symbols are `🧠?` (WOCONSTANIC), `🧠??` (CONSTANI
 (NK). NK (Not Known) is produced only when the UBC can prove a search fails in all possible
 future contexts. Ordinary search failure is CONSTANIC, not NK.
 
-### Java
-
-- State enum: `Nyes` (the enum type); `Nyes.PREMBRYONIC`, `Nyes.ECONSTANIC`, etc.
-- Exact-state predicate: `fir.isEconstanic()` — returns true only when `nyes == Nyes.ECONSTANIC`.
-- Constanic predicate: `fir.isConstanic()` — equivalent to
-  `is_econstanic || at_woconstanic || at_constant || at_independent`.
-- Nigh predicate: `fir.isNigh()` — returns true while the FIR is not yet constanic.
-- Denotational symbols live in `BraneSymbol` (planned enum) — do not hard-code
-  `"🧠?"` etc. as string literals in rendering code.
-- Prefer the shallow FIR hierarchy: one `ProtoBrane` class with traits (`hasBoundary`,
-  `isDetachment`, `sfMode`) over subclasses per expression type. See
-  `ubc1/how/ubc2_design.md § FIR Type Hierarchy`.
-- Exception handling: catch only `ArithmeticException` in arithmetic FIRs. Let all other
-  exceptions propagate (no silent NK wrapping of NPE / ClassCastException).
-
 ### Foolish
 
 - Brane literals: `{...}` for full branes, `[...]` for detachment/liberation branes.
@@ -271,6 +256,11 @@ re-opening closed debates.
 ---
 
 ## Last Updated
+
+**Date**: 2026-06-07
+**Updated By**: Claude Code 2.1.119 (Claude Code); Sonnet 4.6
+**Changes**: Removed the `### Java` terminology/predicates section (Java implementation retired).
+Rust implementation uses equivalent concepts — see Rust source for current naming.
 
 **Date**: 2026-03-12
 **Updated By**: Claude Code / cyankiwi/Qwen3.5-27B-AWQ-BF16-INT8

@@ -1,4 +1,3 @@
-(@agent, this test failed!!)
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
 assertion_line: 52
@@ -6,6 +5,7 @@ assertion_line: 52
 INPUT:
 ```foolish
 {b = {10; 20; 30}; last = b#-1; second = b#1; first = b#-3; oob = b#-4;}
+!!! WIP FOOP-52 !!!
 ```
 [0] RESULT:
 ```hfssnap
@@ -18,7 +18,7 @@ INPUT:
   last=30;
   second=20;
   first=10;
-  oob=10     !! @Agent, there is no forth item back, `b#-4` should fail here
+  oob=10
 }
 ```
 COMMENTS:
@@ -27,6 +27,6 @@ anchored_seek_negative_boundary
 ```
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
-Foolish signature: Hz+E00U3C3CsBvmDBDvsvrUBkxqorumzrBINQuB6usuo3Tc+B3G3S66sRaCAd8nWs36mDjbYF6rjX7Ps0UoJBw==
-HFS signature: 0ZUdUu3Abu7h4L+Zd9bq/J5jFiZ2n4/9Aj79E0oRlku5V+2EiM7WvKvIkidAiRQWBJRZw9+1hQ0sxFphdczeCw==
-Comments signature: u1O06N6I+Tm1IKqytWHsd87Ap0q9CV34njdBCce4MamPfavUfNvseeJRAfO36RJn7an5Py+JpxDD/eD65lLjDw==
+Foolish signature: M1Xr7t25sxzndKK8LXchuUOjGApbjtMU1oDmRAMkAbSXGSq+9o/0LT6cefwmkYCgp2HNRdr0wqhP2TXOhpPTDg==
+HFS signature: CnixeN6qDJKySqX89wbv9GEJiUm9B7AIzyO7lYOcxeT4HDL2gBDGxjw1/E4RtItcW9Ghom5i1wtJ1E0qhiQhCA==
+Comments signature: 8uINA9Zkk6N9LMyg9ngWXif7D1Qe4pvSEmKk2zDp+GGVr8jLjJyHhfsDWsV7kdhk+D0S6z09i/ZDItUcyFduDA==

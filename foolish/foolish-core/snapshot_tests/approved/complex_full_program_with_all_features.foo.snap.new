@@ -1,4 +1,3 @@
-(@agent, this test failed!!)
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
 assertion_line: 52
@@ -6,6 +5,7 @@ assertion_line: 52
 INPUT:
 ```foolish
 {a = 10; b = 20; sum = a + b; nested = {inner = sum / 2}; result = nested.inner;}
+!!! WIP FOOP-52 !!!
 ```
 [0] RESULT:
 ```hfssnap
@@ -13,7 +13,7 @@ INPUT:
   a=10;
   b=20;
   sum=30;
-  nested={WOCONSTANIC    !!@Agents, this is wrong. sum is known at the time of `nested` definition. inner should be calculable to a constant.
+  nested={WOCONSTANIC
       inner=Op/(
           ?(
             result=Op+(?(pattern='^a$', UNANCHORED), ?(pattern='^b$', UNANCHORED), WOCONSTANIC),
@@ -25,7 +25,7 @@ INPUT:
           WOCONSTANIC
       )
   };
-  result=?(pattern='^inner$', ANCHORED, NK)  !!Agent, when `nested` is calculated to constant, this search result, too, should be constant.
+  result=?(pattern='^inner$', ANCHORED, NK)
 }
 ```
 COMMENTS:
@@ -34,6 +34,6 @@ complex_full_program_with_all_features
 ```
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
-Foolish signature: 1SXA6C7yxC6ZpiMvulmMy1eFI1Es1+sQ6hUtwarY1vKYOMtGrpNqx+rd59gPsyK1pqAjtcEAE57YwFIWqdU2CA==
-HFS signature: KqNcvYFEVtS0hEPBrpFpAygRYLV9hPwNzK5ArHnZeJeXr/DGJEGYwOlXBgyZA5Y0MV66e/38ot06PcLlCTTnAQ==
-Comments signature: esSvKP3csx6bGqNogm9wRAiv4iuQlHRtO0mZj553HiGa65GKy0y4uyD5OWvf7PUeNJckCf1QuWAZeFltHy7KDw==
+Foolish signature: vAsqO1BWF7v72Osb6fyVk5h9tewM7bO2X9fHhfQtdKwFmPVnjosL4lbjMkYy2HgDj5RkZJtwlIquM/EXm+0mCQ==
+HFS signature: LxFtkZHXjkrykEbUNq7LGOtKdvmQ2KwTFhBrLHxsN4kA31tUURC2Sj9YWoZDq8ukWmlzMZUwjuaO5uFcDSMFCQ==
+Comments signature: g2XFv9TknWZuqmFpPh84id4mL3oz3gXTUufJXuab7djH2iDqPTkMgXvd5ZerV2b0fSESbWD70EZhW4dT6gT0BA==

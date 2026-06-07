@@ -1,239 +1,45 @@
-# CLAUDE.md
+# CLAUDE.md — Claude Code-Specific Configuration
 
-## Use Common Sense
-Consult `AGENTS.md` at the root directory.
-Apply industry standard best practices liberally. Use colloquial java and scala language patterns based on the installed versions.(25 and 3.8.1 presently).
-Documentation is organized under docs/ in subdirectories: howto/ (tutorials), why/ (philosophy), ubc1/how/ (UBC1 engineering), ubc1/todo/ (UBC1 project tracking), ubc0_1/ (UBC0_1 engineering and tracking), and vintage_legacy/ (legacy documents being reorganized).
+> **All project-wide agent guidance lives in `AGENTS.md` at the repo root.**
+> This file contains only Claude Code-specific configuration that other agents do not need.
+> When in doubt, `AGENTS.md` takes precedence.
 
-## Session Hook Setup
+---
 
-The project includes a SessionStart hook in `.claude/settings.json` that configures the development environment. The hook may output environment variable settings that need to be run manually in the shell before builds work.
-
-**After starting a new session:**
-1. Check the hook output for any environment variable exports (e.g., `export JAVA_HOME=...`, `export PATH=...`)
-2. If the session start hook provides additional instructions in the output, run them.
-3. Then proceed with Maven builds
-
-
-## Build and Test Skills
-
-Claude Code provides specialized skills for build management. For comprehensive Maven build strategies with parallel execution, intelligent test running, and targeted debugging workflows, use:
-
-```bash
-/skill maven-builder-for-foolish-language
-```
-
-This skill provides:
-- Parallel execution strategies with dynamic resource detection
-- Test debugging workflows
-- Approval test management and parallelization
-- Compilation error handling
-- Decision trees for build selection
-- Output analysis strategies
-
-See `.claude/skills/maven-builder-for-foolish-language/` for full documentation.
-
-## Quick Build Reference
-
-Basic build and test:
-```bash
-mvn clean generate-sources compile test
-```
-
-Optimized parallel builds:
-```bash
-# Clean parallel build (2 threads per core, dynamically calculated)
-mvn clean compile -T $(($(nproc) * 2))
-
-# Parallel tests (4 threads per core for test execution)
-mvn test -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
-
-# Combined clean build with parallel tests
-mvn clean test -T $(($(nproc) * 2)) -Dparallel=classesAndMethods -DthreadCount=$(($(nproc) * 4))
-```
-
-When fixing compilation errors, always skip tests first:
-```bash
-mvn clean compile -DskipTests
-# Or even turn on debugging 
-mvn clean compile -X -DskipTests
-```
-
-For detailed build strategies and debugging patterns, use the `maven-builder-for-foolish-language` skill.
-
-### Grammar File Changes
-
-Whenever the ANTLR grammar file is modified (`foolish-parser-java/src/main/antlr4/Foolish.g4`), you must regenerate
-sources before that takes effect. Maven sometimes fails to see the file has changed.  This regenerates the parser/lexer from the grammar.
-
-```bash
-mvn clean generate-sources
-```
-
-### Approval Test Protocol
-
-Approval tests can only be updated in one of three ways. Each change requires all subsequent stages to be performed.
-
-1. Input File Changed: The `.foo` input file (for example `src/test/resources/org/foolish/fvm/inputs/`) is modified. Sometimes this adds tests for new functionalities, other times this may corrects tests.
-2. Source code is changed so the system under test could produce different results.
-3. Run the test: this produces a `.received.*` file, it should be examined ( generated in `src/test/resources/org/foolish/fvm/ubc/` (Java) or `src/test/resources/org/foolish/fvm/scubc/` (Scala)
-4. Present the difference on screen using a side-by-side diff
-   ```bash
-   diff -y --color src/test/resources/org/foolish/fvm/ubc/testName.received.foo \
-                   src/test/resources/org/foolish/fvm/ubc/testName.approved.foo
-   ```
-4. User Approves: After user approval, move `.received.foo` to `.approved.foo`
-5. Subsequent commits and commit comment must mention the approval test was updated.
-
-
-### Running approval tests
-The command for running approval test inside the module foolish-core-java, filtering for input file that has
-Shadow in the name, while in the top foolish directory it would be invoked this way:
-```bash
-mvn test -pl foolish-core-java -Dtest=UbcApprovalTest -Dfoolish.test.filter=Shadow
-```
-This runs just the selected approval class and filters input file names.
-
-## Clarifications
-* When user mentions "path/" first interpret it as relative path from the directory where claude code was invoked. This is normal behavior for most unix apps, for example if I "cat path/file" that path is resolved from the current path.
-* Never directly edit `.approved.foo` files
-
-## FOOP Numbering Helper
-
-FOOP filenames use little-endian digits (FOOP-31 sorts after FOOP-21
-because reversed digits give 13 > 12). The filename digits ARE the
-identifier — never use the frontmatter `foop:` sort key as the
-identifier in prose.
-
-When creating a new FOOP, **always** run the helper script first to
-get the correct filename and identifier:
-
-```bash
-python3 docs/foop/scripts/foop_check.py gen_next   # next FOOP filename
-python3 docs/foop/scripts/foop_check.py check      # verify no gaps
-python3 docs/foop/scripts/foop_check.py list       # all FOOPs in order
-```
-
-See AGENTS.md "FOOP Naming Convention (Critical)" and "FOOP Numbering
-Helper Script" sections for the full convention.
-
-## Git
-
-### Git Commit Message Format
-
-Claude Code commit messages should include:
-- Current version of Claude Code
-- Model identifier
-
-Example:
-```
-Add RegExp search to brane operations
-
-Implemented pattern-based search using RegexpSearchFiroe.
-Added tests and updated documentation.
-
-Claude Code v1.0.0 / claude-sonnet-4-5-20250929
-```
-
+## Git (Claude Code-Specific)
 
 ### Branch Naming
+
 Branches must follow: `claude/<descriptive-name>-<session-id>`
 
 Example: `claude/run-tests-8vk4v`
 
-**CRITICAL**: Branch must start with `claude/` and end with matching session ID, otherwise push will fail with 403 HTTP error.
+**CRITICAL**: Branch must start with `claude/` and end with the matching session ID, otherwise push will fail with a 403 HTTP error.
 
 ### Push Guidelines
+
 - Always use: `git push -u origin <branch-name>`
-- If push fails with network errors, retry up to 4 times with exponential backoff (2s, 4s, 8s, 16s)
-
-
-
-## Documentation Organization
-
-### Directory Structure
-
-- **`docs/ubc1/how`** - UBC1 engineering documentation - operational semantics, implementation details, reference
-- **`docs/ubc1/todo`** - UBC1 project documentation - active project tracking and growth plans
-- **`docs/ubc0_1/how`** - UBC0_1 engineering documentation - UBC0 semantics with UBC1 microstates
-- **`docs/ubc0_1/todo`** - UBC0_1 project documentation - tracking and development plans
-- **`docs/howto`** - "How to Express it in Foolish" - literate programming tutorials as .foo files
-- **`docs/why`** - "Philosophy of Foolish" - origins, inspirations, design philosophy
-- **`docs/vintage_legacy`** - Legacy documentation (being reorganized into the above directories)
-
-(The `projects/` directory has been retired; its contents are in `docs/vintage_legacy/`.)
-
-### Markdown File Update Protocol
-
-**IMPORTANT**: When you modify any `*.md` file in this repository, you MUST update the "## Last Updated" section at the end of that file. See `AGENTS.md` for the complete protocol. Always include:
-
-1. **Current timestamp** (YYYY-MM-DD format)
-2. **Your agent identifier** (Claude Code v1.0.0 / claude-sonnet-4-5-20250929)
-3. **Brief summary** of what was changed
-
-This ensures all AI agents collaborating on this project can track documentation changes.
-
-## Maintenance Instructions
-
-**Weekly Check**: After one week past the day of last update to this file (either by git timestamp or the Last Updated section below) please review this CLAUDE.md file for accuracy:
-
-1. Verify that Claude Code-specific content (skills, session hooks) is still accurate
-2. Check if new Claude Code features need documentation
-3. Ensure `AGENTS.md` is properly referenced and contains all project-specific details
-4. Confirm this file focuses ONLY on Claude Code-specific features
-5. Propose updates to the user if discrepancies are found
-6. Update the Last Updated section below--even if user makes no changes
-
-When proposing updates, explain what has changed and why the documentation needs adjustment. After user review, update the "Last Updated" date below whether changes are accepted or the user confirms current state is acceptable.
+- If push fails with network errors, retry up to 4 times with exponential backoff (2s, 4s, 8s, 16s).
 
 ---
 
-## Historical: Claude Code Web (CCW) Notes
+## Maintenance Instructions
 
-**Note**: The following section documents historical attempts to use Claude Code Web with this project. As of January 2026, CCW is not recommended for this Maven-based Java project due to network limitations.
+**Weekly Check**: After one week past the last update date below, review this file for accuracy:
 
-### CCW Limitations (January 2026)
-
-**Date**: 2026-01-19
-**Model**: claude-sonnet-4-5-20250929
-
-This project requires Java 25 and Maven for builds. Claude Code Web is not currently configured to support Maven-based Java development.
-
-**What Works in CCW:**
-- Java 25 installation (via SessionStart hook using SDKMAN)
-- Basic Java compilation
-- Code editing and file management
-
-**What Does Not Work:**
-- Maven dependency downloads from Maven Central
-- Full Maven builds requiring external artifacts
-- Running tests that depend on Maven dependencies
-
-**Why Maven Doesn't Work:**
-
-As of January 2026, Claude Code Web's network security model prevents standard Maven dependency resolution. The environment's egress filtering interferes with Maven's HTTPS connections to artifact repositories. Various workarounds were attempted (proxy configuration, certificate manipulation, SSL bypasses) but each approach was progressively blocked or rendered ineffective by the security infrastructure.
-
-This appears to be an inherent limitation of CCW's current architecture rather than a simple configuration issue. The same challenges affected other language ecosystems (like Rust) initially, so support may improve over time.
-
-**Recommendation:**
-
-**Use local development for this project.** All Maven functionality works normally in a local environment with Java 25 installed. CCW is approximately 3 months old (as of January 2026) and still maturing its support for different development stacks.
+1. Verify Claude Code-specific content is still accurate.
+2. Confirm this file focuses ONLY on Claude Code-specific features — everything else belongs in `AGENTS.md`.
+3. Update the Last Updated section below even if no changes are made.
 
 ---
 
 ## Last Updated
 
-**Date**: 2026-05-08
-**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.7 xHigh effort
-**Changes**: Added "FOOP Numbering Helper" section pointing to
-`docs/foop/scripts/foop_check.py`. Reminds Claude Code sessions to run
-`gen_next` before creating new FOOPs and to use filename digits (not
-the frontmatter sort key) as identifiers in prose.
-
-**Date**: 2026-03-07
-**Updated By**: Claude Code / cyankiwi/Qwen3.5-27B-AWQ-BF16-INT8
-**Changes**: Updated all path references to use semantic versioning. Replaced `docs/how/` with `docs/ubc1/how/`
-and `docs/todo/` with `docs/ubc1/todo/`. Added ubc0_1 version directories for UBC0 reimplementation work.
-Previous (2026-02-06): Reorganized documentation structure. Replaced docs/ and projects/ directory
-descriptions with new 5-directory taxonomy (howto, why, how, todo, vintage_legacy). The projects/
-directory has been retired.
+**Date**: 2026-06-07
+**Updated By**: Claude Code 2.1.119 (Claude Code); Sonnet 4.6
+**Changes**: Merged CLAUDE.md with AGENTS.md. Removed all duplicate content (now lives in
+AGENTS.md only): FOOP conventions, documentation structure, markdown update protocol,
+clarifications, Rust code style, task management, development rules, UBC terminology,
+commit message format, and build commands. Also removed all Java/Maven/Scala/ANTLR content
+(Java implementation has been retired). CLAUDE.md now contains only the Claude Code branch
+naming and push guidelines. Added prominent pointer to AGENTS.md as the primary reference.

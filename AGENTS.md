@@ -3,26 +3,23 @@
 This document provides instructions for AI agents (including Claude Code, GitHub Copilot, Cursor, and other AI coding assistants) working on the Foolish project.
 
 ## Use Common Sense
-Apply industry standard best practices liberally. Use colloquial java and scala language patterns based on the installed versions.(25 and 3.8.1 presently).
+Apply industry standard best practices liberally. Use colloquial rust to most correctly, efficiently and readably implement the system. Colloquial rust tend to be most supported and most optimized.
 Documentation is organized under docs/ in subdirectories: howto/ (tutorials), why/ (philosophy), how/ (engineering), todo/ (project tracking), and vintage_legacy/ (legacy documents being reorganized).
 
 
 ## Development process
 Due to the nature of human-driven development, AI should always write the tests first. Approval tests and unit tests, write the tests with most important features, and unclear corner cases written as tests to not only check behavior, but also to document what it looks like.
-Ask permission before coding new features or reparing bugs in languages other than ANTLR4, Java or Foolish. Ignore build errors in other language directories if you must and `test -amd` in the java directories.
+Ask permission before coding new features or repairing bugs in languages other than Rust or Foolish.
 
 ## Overview
 
-Foolish is a revolutionary programming language with parallel Java and Scala implementations. This guide helps AI agents navigate the unique build requirements and environment-specific setup needed for development.
+Foolish is a revolutionary programming language implemented in Rust. This guide helps AI agents navigate the unique build requirements and environment-specific setup needed for development.
 
 **Multiple AI agents collaborate on this project.** This document serves as the shared knowledge base for all AI coding assistants (Claude Code, GitHub Copilot, Cursor, and others) to ensure consistent understanding of the project structure, build processes, testing workflows, and coding conventions.
 
 ## Build Requirements
 
-- **Java Version**: Java 25 (Temurin recommended)
-- **Scala Version**: 3.8.1
-- **Build Tool**: Maven (multi-module project)
-- **ANTLR**: 4.13.2 (for grammar generation)
+- **Rust**: current stable toolchain (see `foolish/` workspace)
 
 ## Project Segmentation
 Software projects May be large or small. Their complexity and diffiulty may also vary. Generally speaking we use these terms for disjoint components of softare:
@@ -58,7 +55,7 @@ When request is small, you may combine Major/Phase/Stage into a single unit.
 
 ### FOOP (Foolish Optimization Process)
 
-FOOP documents are the Foolish equivalent of Python's PEP or Scala's SIP. They propose, discuss, and track changes to the Foolish language and its reference implementations.
+FOOP documents are the Foolish equivalent of Python's PEP or Rust's RFC. They propose, discuss, and track changes to the Foolish language and its reference implementations.
 
 - **Location**: `docs/foop/FOOP-###.md`
 - **Index**: `docs/foop/INDEX.md` (canonical list, sorted by number)
@@ -319,6 +316,21 @@ Avoid stringly-typed errors for core logic.
 Error messages may be human-readable, but program logic should not depend on parsing error strings.
 
 For Foolish diagnostics, distinguish internal errors from user-facing language errors. A syntax error in user code is not a Rust panic.
+
+### Encapsulation
+A type (struct or enum) owns its data, the methods that mutate that data, the logic that reasons about itself, and the methods that report its information. Behavior lives in the impl block for the type that holds the data—do not write free functions that reach into data structures.
+
+State and methods travel together: Fields are strictly private; callers must go through methods. A type's invariants are enforced by its own constructor/methods, making it impossible to bypass them from the outside (e.g., Timestamp::new validates the data; there is no way to construct an invalid instance).
+
+Self-mutation takes &mut self: An operation that changes a value without changing its type mutates in place. Use the Typestate Pattern when a value must become a different type (e.g., a Search resolving to an Int). In this case, consume self and return the new type for the caller to swap in.
+
+A type answers questions about itself: Predicates and projections (e.g., state(), is_search(), as_int()) must be methods on the type. Hide match statements inside these methods rather than forcing the caller to match on external tags or variants. Reports should return owned values or short-lived borrows—never a long-lived handle that allows a caller to mutate shared state behind the owner's back.
+
+### Foolish Semantic Immutability vs FIR Evaluation State
+
+Foolish statements are immutable and invariant once written, with the exception of searches. However FIR in the FVM can change as evaluation progresses. FIR should always faithfully represent the semantic meaning of the Foolish that it came from, considering Nyes (Not Yet Evaluated State).
+
+In other words: the *meaning* of a Foolish expression is fixed by its text — only its searches are indeterminate until resolved. The FIR is the implementation's evolving record of evaluating that fixed meaning; its state transitions track progress, but at every step the FIR must still denote the same Foolish, read through its current Nyes.
 
 ### Enum Dispatch
 
@@ -1004,14 +1016,10 @@ In UBC implementation, this means creating a modified clone with new context. Se
 
 ### Test Infrastructure
 
-**Three-Tier Testing:**
+**Two-Tier Testing:**
 
-1. **Unit Tests** (`*UnitTest.java`) - focused component tests in Java and Scala modules
-2. **Approval Tests** (`*ApprovalTest.{java,scala}`) - snapshot-based integration tests in Java and Scala modules
-3. **Cross-Validation** (separate `foolish-crossvalidation` module) - Cross validation will test different parser/compiler/vm implementations to check whether they behave the same way.
-
-#### Approval Test Workflow
-TBD
+1. **Unit Tests** — focused component tests in Rust (`cargo test`)
+2. **Approval Tests** — insta snapshot-based integration tests (see Build Commands above)
 ### Foolish Terminology (from STYLES.md)
 
 - **Foolisher** - developer/user of Foolish
@@ -1123,6 +1131,20 @@ When proposing updates, explain what has changed and why the documentation needs
 
 
 ## Last Updated
+
+**Date**: 2026-06-07
+**Updated By**: Claude Code 2.1.119 (Claude Code); Sonnet 4.6
+**Changes**: Removed all Java/Maven/Scala/ANTLR references (Java implementation retired).
+Updated Overview, Build Requirements, Development Process, Test Infrastructure, and FOOP
+description to reflect Rust-only implementation. Changed FOOP analogy from "Scala's SIP"
+to "Rust's RFC". Added `### Encapsulation` subsection under "How To Write Rust Code"
+(struct owns its data + self-mutating methods + reasoning about itself + reporting
+methods; self-mutate via `&mut self`, return replacement only on type change; answer
+questions about self via methods not tag-matches, no leaked mutable aliases) — per
+FOOP-52 Task 0. Also added `### Foolish Semantic Immutability vs FIR Evaluation State`
+(Foolish statements are immutable/invariant once written except searches; FIR may
+change as evaluation progresses but must always faithfully represent the source
+Foolish, considering Nyes) — per FOOP-52 Task 0.
 
 **Date**: 2026-05-20
 **Updated By**: Claude Code 2.1.119 (Claude Code); Sonnet 4.6
