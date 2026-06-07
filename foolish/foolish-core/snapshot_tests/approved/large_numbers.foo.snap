@@ -1,0 +1,25 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{a = 1000000; b = 999999; c = a - b;}
+```
+[0] RESULT:
+```hfssnap
+{
+  a=1000000;
+  b=999999;
+  c=1
+}
+```
+COMMENTS:
+```markdown
+large_numbers
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: V9gX+iMWLRiEznd+jAB0+5004O4k8VncOLu0+TP1BOjxHtENGxa5zNiA/mCj753+k9RIj6DkbSgmznmNvzBGDw==
+HFS signature: fCWN4vAF3CBhLLR3IB/2ZK/i0cFWfMQQvNqeaCZA0opI8g3lXWtH/P8Y0jxCkKN46GK8cggGj1AemesxOzQABA==
+Comments signature: M942NoqTI9IMNRDXE+lA/UB+Q6cctERpgARiz2ECF9FcOx9DnCp2EYg63VBsf4pyxwohiBMpYVUdMF8ua4jtBg==

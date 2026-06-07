@@ -1,0 +1,43 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{b = {{{1; 2}; 3}; 4}; h = b^; hh = b^^;}
+```
+[0] RESULT:
+```hfssnap
+{
+  b={
+      {
+        {
+          1;
+          2
+        };
+        3
+      };
+      4
+  };
+  h={
+      {
+        1;
+        2
+      };
+      3
+  };
+  hh={
+      1;
+      2
+  }
+}
+```
+COMMENTS:
+```markdown
+head_tail_chained_on_nested
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: efN9fyZ/xDjuTG5BJQg2f5XufugV0r1dZZ++KC3sibHT5oeesOpkvoq5A+rgVVoI9acFm+rO66Zbh4OyTr23Dg==
+HFS signature: 13CVrAK3dAnbnY5yzr9TolmXDWC+fQ36kzYKkADm7EdEAw5K373Np0epDJ5ZSbRtsOCiy5KwI8PPRfd1N+KDAg==
+Comments signature: 84784+aUkms5QY4khR0oAq1iYSDx9A9YTZrxG6FF/zlavzhtiOuLMN8XIYMsumLP79cx7Xmqa8HzPyWs1WngDw==
