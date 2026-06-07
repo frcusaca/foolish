@@ -1,1 +1,2 @@
 {a = 10; b = 20; sum = a + b; nested = {inner = sum / 2}; result = nested.inner;}
+!!! WIP FOOP-52 !!!

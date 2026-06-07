@@ -1,1 +1,2 @@
 {x=10; y=20; z=30; sum = x + y + z; avg = sum / 3;}
+!!! WIP FOOP-52 !!!

@@ -1,1 +1,2 @@
 {a = {x=ref}; b = {y=2}; c = a b;}
+!!! WIP FOOP-52 !!!
