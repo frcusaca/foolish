@@ -1,3 +1,4 @@
+(@agent, this test failed!!)
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
 assertion_line: 52
@@ -9,7 +10,7 @@ INPUT:
 [0] RESULT:
 ```hfssnap
 {
-  y=42;
+  y=42; ! @AGent, x's not defined yet this shoudl display: 1.) It's a ssearch, 2.) search has no result and nyes of EConstanic
   x=42
 }
 ```

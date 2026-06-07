@@ -1,3 +1,4 @@
+(@agent, this test failed!!)
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
 assertion_line: 52
@@ -10,7 +11,7 @@ INPUT:
 ```hfssnap
 {
   x=10;
-  y=?(result=10, pattern='^x$', UNANCHORED);
+  y=?(result=10, pattern='^x$', UNANCHORED); !! @Agent, like the SFF Marker, the SF Marker is also underspecified. The SF Marker means perform searches, but when the search is being copied, they do not reset to embryonic for searching in this context. Here is an example: `{f=a+b; a=1,b=2; g=<f*c>; c=10, result=g}`. In this example when g is given `f*c`, the furtherest that statement can progress is that the serach for f finds `a+b`(Woconstanic for two econstanics(a,b)) and c is econstanic. g is `(a+b)*c` all three searches ECONSTANIC. However, when we get to result, and g is found and not constrainted by SF or SFF markers, it does the normal thing, performes search, and the last entry of the brane should result in a CONSTANT result.
   z=15
 }
 ```

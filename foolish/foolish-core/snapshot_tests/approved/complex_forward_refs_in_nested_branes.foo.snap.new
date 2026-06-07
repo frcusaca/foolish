@@ -1,3 +1,4 @@
+(@agent, this test failed!!)
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
 assertion_line: 52
@@ -11,7 +12,7 @@ INPUT:
 {
   nested={
       inner={
-          val=42
+          val=42  !!@Agent, this is wrong. X comes after the nested statement, it cannot be found at this point, not yet.
       }
   };
   x=42

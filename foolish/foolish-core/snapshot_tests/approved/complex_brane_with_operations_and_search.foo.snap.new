@@ -1,3 +1,4 @@
+(@agent, this test failed!!)
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
 assertion_line: 52
@@ -13,7 +14,7 @@ INPUT:
   y=20;
   z=30;
   sum=60;
-  avg=Op/(?(result=Op+(30, ?(pattern='^z$', UNANCHORED), WOCONSTANIC), pattern='^sum$', UNANCHORED, WOCONSTANIC), 3, WOCONSTANIC)
+  avg=Op/(?(result=Op+(30, ?(pattern='^z$', UNANCHORED), WOCONSTANIC), pattern='^sum$', UNANCHORED, WOCONSTANIC), 3, WOCONSTANIC) !!@Agent, here, since sum is constant, the avg should be computable, a WOCOSTANIC result is wrong.
 }
 ```
 COMMENTS:

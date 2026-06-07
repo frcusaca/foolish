@@ -1,3 +1,4 @@
+(@agent, this test failed!!)
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
 assertion_line: 52
@@ -12,9 +13,9 @@ INPUT:
   a=10;
   b=20;
   c=30;
-  result=50;
-  result2=Op*(??? (constanic_clone called on NYE FIR), INVARIANT-VIOLATED: constanic_clone called on NYE FIR, 30, NK);
-  result3=Op-(
+  result=50;   !! @Agents, this is correct.
+  result2=Op*(??? (constanic_clone called on NYE FIR), INVARIANT-VIOLATED: constanic_clone called on NYE FIR, 30, NK);  !!@AGent this should find result and c to add to 80.
+  result3=Op-(  !!@Agents, somethign is wrong, this shouldn't happen, in UBC, this should never happen, last statement should have full time to execute everything and arrive at CONSTANT state.
       ??? (constanic_clone called on NYE FIR), INVARIANT-VIOLATED: constanic_clone called on NYE FIR,
       ??? (constanic_clone called on NYE FIR), INVARIANT-VIOLATED: constanic_clone called on NYE FIR,
       NK

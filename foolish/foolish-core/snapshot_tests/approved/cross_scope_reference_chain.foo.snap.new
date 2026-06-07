@@ -1,3 +1,4 @@
+(@agent, this test failed!!)
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
 assertion_line: 52
@@ -12,7 +13,7 @@ INPUT:
   a=1;
   b={WOCONSTANIC
       c=2;
-      d=Op+(
+      d=Op+(   !! @Agent this is completely wrong. th eAST should have no serach for `a` under the `d =` statement. Please fix this!!
           ?(result=Op+(?(pattern='^a$', UNANCHORED), 1, WOCONSTANIC), pattern='^c$', UNANCHORED, WOCONSTANIC),
           1,
           WOCONSTANIC

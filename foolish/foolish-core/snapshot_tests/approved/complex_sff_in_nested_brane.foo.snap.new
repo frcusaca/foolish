@@ -1,3 +1,4 @@
+(@agent, this test failed!!)
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
 assertion_line: 52
@@ -12,10 +13,10 @@ INPUT:
   a=1;
   b=2;
   inner={
-      c=Op+(?(pattern='^a$', UNANCHORED), ?(pattern='^b$', UNANCHORED), EMBRYONIC);
-      3
+      c=Op+(?(pattern='^a$', UNANCHORED), ?(pattern='^b$', UNANCHORED), EMBRYONIC); !! @Agent, this is not completely correct. I believe there may be a slight underspescification to what happens in SFF case. in SFF, the most important thing is for **ALL SERCHES** within the markers to immediately enter ECONSTANIC state. Everything else shall evaluate normally from there, so mostly WOConstanics, but some operators on literals may be computed. I'm not sure how thi sstayed embryonic right now after evaluation, that facility should be replaced with setting all searches to ECONSTANIC immediately and performing normal evaluations.
+      3  !! @Agents, Very good, this is actually correct behavior. c should evaluate when search finds it. Ahtough this might want to be rendered as `Search(result=3, pattern='^c$'...`, right? the serach should show up as search even if result is constant.
   };
-  ?(
+  ?( !! @Agent, at this point, referring to inner, the `inner.c` should resolve further since a and b are available, so the two values insdie this result's brane should be first the op(result=...) and search(result=...)
     result={WOCONSTANIC
         c=Op+(?(pattern='^a$', UNANCHORED), ?(pattern='^b$', UNANCHORED), EMBRYONIC);
         ?(

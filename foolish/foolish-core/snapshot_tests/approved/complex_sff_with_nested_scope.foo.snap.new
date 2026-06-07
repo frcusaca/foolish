@@ -1,3 +1,4 @@
+(@agent, this test failed!!)
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
 assertion_line: 52
@@ -12,7 +13,7 @@ INPUT:
   x=5;
   y=10;
   inner={
-      calc=Op+(?(pattern='^x$', UNANCHORED), ?(pattern='^y$', UNANCHORED), EMBRYONIC);
+      calc=Op+(?(pattern='^x$', UNANCHORED), ?(pattern='^y$', UNANCHORED), EMBRYONIC); !! @Agents, again, SFF marker means all Foolish code inside it enteres ECONSTANIC immediately, then normal brane evaluation continues.
       doubled=30
   }
 }

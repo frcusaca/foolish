@@ -1,3 +1,4 @@
+(@agent, this test failed!!)
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
 assertion_line: 52
@@ -21,7 +22,7 @@ INPUT:
   b1={
       x=10
   };
-  result={
+  result={  !!@Agents, b1 is `{x=10}`, target.c is `{a=1,b=2,c=3}`, so their concatenation, `{x=10}{a=1,b=2,c=3}` should result in `{x=10,a=1,b=2,c=3}`, this result here is missing something. I've updated this test to check two things, result_1, and result_2, both of which should be the same 4-valued brane.
       x=10
   }
 }

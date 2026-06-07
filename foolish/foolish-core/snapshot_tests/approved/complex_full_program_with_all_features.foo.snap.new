@@ -1,3 +1,4 @@
+(@agent, this test failed!!)
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
 assertion_line: 52
@@ -12,7 +13,7 @@ INPUT:
   a=10;
   b=20;
   sum=30;
-  nested={WOCONSTANIC
+  nested={WOCONSTANIC    !!@Agents, this is wrong. sum is known at the time of `nested` definition. inner should be calculable to a constant.
       inner=Op/(
           ?(
             result=Op+(?(pattern='^a$', UNANCHORED), ?(pattern='^b$', UNANCHORED), WOCONSTANIC),
@@ -24,7 +25,7 @@ INPUT:
           WOCONSTANIC
       )
   };
-  result=?(pattern='^inner$', ANCHORED, NK)
+  result=?(pattern='^inner$', ANCHORED, NK)  !!Agent, when `nested` is calculated to constant, this search result, too, should be constant.
 }
 ```
 COMMENTS:
