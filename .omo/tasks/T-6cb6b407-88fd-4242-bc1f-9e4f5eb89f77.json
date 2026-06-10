@@ -1,0 +1,10 @@
+{
+  "id": "T-6cb6b407-88fd-4242-bc1f-9e4f5eb89f77",
+  "subject": "Implement compiler.rs — AST to ProtoBrane FIR nodes",
+  "description": "Create /home/hcbusy/tmp/foolish-worktrees/ubca-two-store-proto-brane-foop-62/foolish/foolish-ubca/src/compiler.rs translating foolish_parser::Astn into Rc<RefCell<dyn Fir>> using Rc::new_cyclic for parent wiring.",
+  "status": "pending",
+  "activeForm": "Implementing compiler.rs",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_14c24d505ffeLSpiXK9tuBNJ1F"
+}

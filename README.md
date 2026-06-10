@@ -175,8 +175,10 @@ python3 docs/foop/scripts/foop_check.py list       # all FOOPs in chronological 
 python3 docs/foop/scripts/foop_check.py get_last   # most-recently-created FOOP
 ```
 
-See [AGENTS.md](AGENTS.md) §"FOOP Naming Convention (Critical)" for the
-full specification.
+See [foop.md](foop.md) for the full FOOP specification — the numbering
+convention, the two-file (`FOOP-#.md` spec / `FOOP-#.plan.md` plan) layout,
+plan construction, and the checkbox lifecycle. `AGENTS.md` carries only a
+short summary and likewise points to `foop.md`.
 
 ## Key Features That Set Foolish Apart
 

@@ -36,3 +36,6 @@ opt-level = 0
 opt-level = 1           # Slightly optimize tests for faster execution
 debug = 1
 debug-assertions = true # Keep safety checks enabled
+
+[build]
+jobs = 16

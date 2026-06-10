@@ -1,2 +1,1 @@
 {b = {10; 20; 30}; last = b#-1; second = b#1; first = b#-3; oob = b#-4;}
-!!! WIP FOOP-52 !!!

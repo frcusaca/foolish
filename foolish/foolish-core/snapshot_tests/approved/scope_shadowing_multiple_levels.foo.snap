@@ -1,0 +1,32 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 50
+---
+INPUT:
+```foolish
+{x = 1; b = {x = 2; c = {x = 3; val = x}; val2 = x}; val3 = x;}
+```
+[0] RESULT:
+```hfssnap
+{
+  x=1;
+  b={
+      x=2;
+      c={
+          x=3;
+          val=3
+      };
+      val2=2
+  };
+  val3=1
+}
+```
+COMMENTS:
+```markdown
+scope_shadowing_multiple_levels
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: gUXLCgqgJEuIu1kG42MxdyL2sEV/P9Ga8pd2Fomplk27LG/psjqZQ0V3JHaPDLWaP1SDuwm7spDWd87kZ94hDw==
+HFS signature: uZgEtel3wPmWV0MaGZMe0UyddWbNS79bszrf4Sin70q9/2eX3BCqH+A2sOEL6hjKLsidy+HJfZugw9rEG9bOAw==
+Comments signature: NNMuegFeXantSZdx5B/d2y2beprLscJtCOLasSz2S/+fnhzIAerVuH5L7icTSvHd+zGD61AT8FkuXWgVfVhCCg==

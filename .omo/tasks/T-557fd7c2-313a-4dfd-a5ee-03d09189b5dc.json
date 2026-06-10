@@ -1,0 +1,10 @@
+{
+  "id": "T-557fd7c2-313a-4dfd-a5ee-03d09189b5dc",
+  "subject": "Fix SearchFir target stepping in fir.rs",
+  "description": "Fix SearchFir::children_mut() to include target, and step_one() to step members and check target resolution",
+  "status": "completed",
+  "activeForm": "Fixing SearchFir target stepping",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_154db8052ffe4Hq91iIHLFuUTh"
+}

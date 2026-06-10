@@ -1,0 +1,30 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 50
+---
+INPUT:
+```foolish
+{b = {tmp_a = 1; result = 2; tmp_b = 3; output = 4}; r1 = b?tmp_.*; r2 = b?result;}
+```
+[0] RESULT:
+```hfssnap
+{
+  b={
+      tmpˍa=1;
+      result=2;
+      tmpˍb=3;
+      output=4
+  };
+  r1=3;
+  r2=2
+}
+```
+COMMENTS:
+```markdown
+search_pattern_with_complex_regex
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: 7NEp1YnLYuCfsI67t4Rd/ifucEcudy+rM9iBWs21OTYUeIBSIaDmGFkBKspARTYnph1eTh6gKRTjxRNTspmwBg==
+HFS signature: WNOpDWwHzxBo7HvBwTE4xIE2TG3IXvxMjUncfp44jqw0cORyNBkprSAiisVDiEX5WtLDqVPDyM87xSYGe6NrDg==
+Comments signature: NIIlc3Zg5pQ7EJaEoMaQRLBnZVRjuS4ZOpYvTgz9am2iLUbyfK5mnIpfJvJIs1lpIFm7EnOnYUZ+nbSPp4SRDg==

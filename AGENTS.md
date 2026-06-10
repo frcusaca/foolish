@@ -55,135 +55,52 @@ When request is small, you may combine Major/Phase/Stage into a single unit.
 
 ### FOOP (Foolish Optimization Process)
 
-FOOP documents are the Foolish equivalent of Python's PEP or Rust's RFC. They propose, discuss, and track changes to the Foolish language and its reference implementations.
+FOOP documents are the Foolish equivalent of Python's PEP or Rust's RFC. They
+propose, discuss, and track changes to the Foolish language and its reference
+implementations.
 
-- **Location**: `docs/foop/FOOP-###.md`
-- **Index**: `docs/foop/INDEX.md` (canonical list, sorted by number)
-- **Template**: `docs/foop/FOOP-template.md`
-- **Meta-FOOP**: [FOOP-1](docs/foop/FOOP-1.md) defines the process itself
+> ## ⛔ STOP — READ `foop.md` BEFORE TOUCHING ANY FOOP's ⛔
+> **WHEN you need to read or write foop, you MUST first read `foop.md` (in the
+> repository root, next to this file) in full — every line. That document is the
+> authoritative reference for the FOOP process, its philosophy, the numbering
+> system, the file layout, plan construction, project/branch management, and the
+> full checkbox lifecycle. The summary below covers only the few common,
+> every-day uses; for anything beyond them, `foop.md` governs.
 
-A FOOP progresses through statuses: `Draft` → `Brewing` (ready for BDFL review) → `Final` (accepted) → `Implementing` (active coding) → complete. Each FOOP is assigned to a `phase` (phase-1 through phase-7, or `meta` for process documents).
-### FOOP Numbering is Little Endian
-FOOP-1 is before FOOP-2, FOOP-9 is the one before FOOP-01, and so on and so forth. To list the directory in order of oldest to newest, use this command:
-```bash
-ls docs/foop|rev|sort -V|rev
-```
+A few common every-day uses (full detail lives in `foop.md`):
 
-### FOOP Naming Convention (Critical)
-The identifier `FOOP-01` uniquely identifies an optimization step. In free text, use "FOOP 01" (no dash, space instead). This convention reduces the risk of digit reversal: writing "FOOP 01" in prose makes it harder to accidentally type "FOOP 10". In sentences, use the space form: "FOOP's 01, 11, 21 are the only pre-teen foops we will implement." Reserve the dash form `FOOP-01` for filenames, code references, and formal citations only.
-*always* use this command to list the FOOPs to establish ordering.
+- **Numbering & the helper utility.** FOOP numbering is *little-endian*: the
+  filename digits ARE the identifier, while the `foop:` frontmatter is a
+  separate sort key (the digits reversed). Manage numbering with the helper
+  script — always run `gen_next` before creating a new FOOP:
 
-The **filename digits ARE the identifier**. The `foop:` frontmatter
-field is a separate numeric sort key, equal to the digits reversed.
-Do NOT use the sort-key value as the identifier in prose. Examples:
+  ```bash
+  python3 docs/foop/scripts/foop_check.py check     # verify consecutive numbering
+  python3 docs/foop/scripts/foop_check.py get_last  # most recent FOOP
+  python3 docs/foop/scripts/foop_check.py gen_next  # filename for next FOOP
+  python3 docs/foop/scripts/foop_check.py list      # all FOOPs in chronological order
+  ```
 
-| Filename     | Identifier (use this) | Sort key (frontmatter only) |
-|--------------|-----------------------|-----------------------------|
-| `FOOP-9.md`  | FOOP-9                | 9                           |
-| `FOOP-01.md` | FOOP-01               | 10                          |
-| `FOOP-21.md` | FOOP-21               | 12                          |
-| `FOOP-51.md` | FOOP-51               | 15                          |
+- **The two files of a FOOP.** `FOOP-#.md` is the **specification** (the what, why,
+  and how). `FOOP-#.plan.md` is a **checkboxed plan** meant to be executed
+  sequentially from top to bottom(this is the how to get there roadmap). **Executing
+  a FOOP plan requires reading BOTH `FOOP-#.md` and `FOOP-#.plan.md`** — the plan
+  assumes the specification's context.
 
-### FOOP Numbering Helper Script
+- **Constructing the plan.** How to decompose a specification into an ordered
+  `FOOP-#.plan.md` (concrete sequential tasks, worktree lifecycle checkboxes,
+  sub-task splits) is described in `foop.md`.
 
-Use `docs/foop/scripts/foop_check.py` to manage FOOP numbering. Run it
-before creating a new FOOP and periodically to catch drift:
+- **Checkbox lifecycle.** How to use checkboxes — completing them with a
+  timestamp on the indented next line, delaying them with `[x]
+  backburnered`, and cancelling them with `[x] Canceled` plus per-item `[-]`
+  markers — is described in `foop.md`.
 
-```bash
-python3 docs/foop/scripts/foop_check.py check     # verify consecutive numbering
-python3 docs/foop/scripts/foop_check.py get_last  # most recent FOOP
-python3 docs/foop/scripts/foop_check.py gen_next  # filename for next FOOP
-python3 docs/foop/scripts/foop_check.py list      # all FOOPs in chronological order
-```
+Whenever the task involves reading or writing FOOPs (creating, planning,
+implementing, checking boxes, or merging), **read `foop.md` first** and follow
+it exactly.
 
-When creating a new FOOP, **always** run `gen_next` first to get the
-correct filename and identifier. The script handles the little-endian
-encoding for you.
 
-### Plan Files for FOOP Implementation
-
-When implementing a FOOP, write a detailed plan to `docs/foop/FOOP-###.plan.md` (lowercase extension). The plan breaks the FOOP into concrete, trackable tasks using checkboxes.
-
-#### Checkbox Format
-
-Checkboxes in a plan file track progress. When an item is checked off, **always place a timestamp (to the minute) on the next line with indent into the bulleted list**:
-
-```markdown
-- [ ] Task not yet done
-- [x] Task completed                    ← bad (no timestamp)
-- [x] Task completed                    ← good it is
-      (2026-05-06 13:11)                ← timestamped properly
-```
-
-This gives both agents and humans a clear view of how work is progressing over time.
-
-When a specification is considered VERY important but interfering with current highest priorities, it is marked with `[x] backburnered`. To be revived by removing the `[x] backburnered` marker. These plans are to be excluded when agent or human asks for plans that are: ready, pending, iterating, in progress, developing, active, etc. backburnered plans can only be found and addressed directly by using the words "backburnered plan(s)".
-
-```markdown
-- [x] backburnered
-      (2026-05-06 14:00)
-- [ ] Do this or system will break
-- [ ] And fix that bug
-- [ ] ...
-```
-
-Canceled features shall be marked as "not to be done" using the marker "[-] don't do this". An entirely deprecated plans hall have a "[x] canceled" box at the top. The agent should first add the canceled check item, then mark all todo's with per-item cancelation "[-] each one". The deprecation can have elaboration regarding the reasons and context on the same line after the initial "[x] Canceled." text. Here is the example of properly canceled spec:
-```markdown
-- [x] Canceled. Optionally explain there's a new spec see FOOP-####
-      (2026-05-06 14:00)
-- [-] Do this or system will break
-- [-] And fix that bug
-- [-] ...
-```
-
-#### Worktree Branch Tracking
-
-If a worktree branch is used for implementation, the plan **must** document the lifecycle of that worktree as explicit, separate checkbox tasks placed at appropriate points in the plan. The workpath shall always be:
-
-```
-WORKTREE_BRANCH_NAME=short_description-foop-<NUMBER>
-WORKTREE_FULL_FS_PATH=${HOME}/tmp/foolish-worktrees/short_description-foop-<NUMBER>
-
-## The branch is created this way from the starting branch and path
-# cd $STARTING_PATH ## User normally starts in this directory
-# git checkout $STARTING_BRANCH ## Again, user normally already has this branch checked out.
-git worktree add -b "$WORKTREE_BRANCH_NAME" "$WORKTREE_FULL_FS_PATH"
-```
-
-The short_description in the path should be generated as part of the .plan.md generation. It is possible because the specification is already made and a short description should be possible. the "foop-<NUBER>" suffix should match the name of the foop file as well as the plan file. Once set, this path name
-
-Agent with permission to work on the main foolish directory also has permission to work on a worktree added from the foretias directory. If asking for permission, ask once for the entire worktree branch: "${WORKTREE_FULL_FS_PATH}" not a subdirectory.
-
-```markdown
-- [ ] Create worktree at ${HOME}/tmp/foolish-worktrees/constanic-clone-foop-7 with branch `foop/foop-7-constanic-clone`
-...
-  (implementation tasks here)
-...
-- [ ] Verify all work is complete in ${HOME}/tmp/foolish-worktrees/3841-foop-7 and committed to `foop/foop-7-constanic-clone`
-- [ ] Merge `foop/foop-7-constanic-clone` to alpha
-```
-
-#### Sub-Tasks
-
-If a task proves larger than expected and splits into multiple sub-tasks, indent them under the parent. Use completed sub-tasks to justify why the split occurred:
-
-```markdown
-- [ ] Merge ${BRANCH_NAME} to ${STARTING_BRANCH}
-  - [x] Detected complex merge situation requiring additional work
-        (2026-05-06 14:00)
-  - [ ] Update ${BRANCH_NAME} to follow new coding style
-  - [ ] Update ${BRANCH_NAME} to use new API call convention
-  - [x] Merged breaking changes from alpha
-        (2026-05-06 14:31)
-  - [ ] Repair ALL tests in ${STARTING_BRANCH} in ${STARTING_PATH}
-  - [ ] STOP! STOP!! STOP!!! ASK HUMAN to check this box before continuing. UNDER NO CIRCUMSTANCES will Agent continue past this point automatically!!
-  - [ ] Cleanup ${WORKTREE_FULL_FS_PATH}
-    - [ ] Check that _PLAN.md has all but Cleanup checkboxes completed
-    - [ ] Remove "${WORKTREE_FULL_FS_PATH}"
-    - [ ] This is the last checkbox to be checked in my _PLAN.md
-```
-
-This pattern is common because Foolish uses `git merge` (not rebase), so merge conflicts on `alpha` may trigger follow-up repair work.
 
 ## Development tools
 Please use plugins and mcp's for performing disk operations, file searches and file edits. Use fully specified regular expressions (covering various cases), through mcp or using `sed` directly. These means of editing are much faster than regenerating the entire document. Each time regexp is used to for updates, please reread updated document before replacing original document.  Use Github mcp to perform git related actions.
@@ -200,610 +117,27 @@ opencode 1.14.39, Qwen3.6-27B-AWQ-BF16-INT4
 
 ## How To Write Rust Code
 
-This chapter applies to Rust code in both projects:
-
-Optimize in this order:
-
-1. **Correctness**
-2. **Readability and maintainability**
-3. **Testability**
-4. **Efficiency**
-5. **Style principles**
-
-Do not sacrifice correctness for cleverness, abstraction, minimalism, or performance. Do not sacrifice readability unless there is a measured, justified efficiency need.
-
-### General Rust Style
-
-Write Rust that a careful human maintainer can understand quickly.
-
-Prefer:
-
-- Prefer: Explicit data flow.
-- Prefer: Small functions with clear names.
-- Prefer: Local reasoning over global cleverness.
-- Prefer: Strong types over comments explaining weak types.
-- Prefer: Exhaustive matching over implicit behavior.
-- Prefer: Simple ownership over shared mutable state.
-- Prefer: Boring, obvious code over clever code.
-
-Avoid:
-
-- Avoid: Magic behavior hidden behind traits, macros, or global state.
-- Avoid: Type gymnastics that obscure intent.
-- Avoid: Excessive generic abstraction.
-- Avoid: Large functions that mix validation, transformation, I/O, and mutation.
-- Avoid: Panics in library or protocol logic.
-- Avoid: Silent error recovery in security-sensitive code.
-
-Use comments to explain **why**, not what. If the code needs a comment to explain what it does, first try to make the code clearer.
-
-### Project-Aware Priorities
-
-Code is **ALWAYD** security-critical.
-
-Rust code must make invalid protocol states difficult or impossible to represent. Prefer explicit state machines, newtypes, checked constructors, and narrow APIs. Be strict with parsing, validation, serialization, signatures, timestamps, peer identity, replay protection, and boundary checks.
-
-Parser, compiler, and interpreter code should make phases obvious. Keep syntax trees, typed representations, lowered forms, bytecode/intermediate forms, environments, and runtime values distinct unless there is a strong reason to merge them.
-
-### API Design
-
-Design APIs around invariants.
-Document behaviors and invariances by writing tests before coding.
-Code deliberately to satisfy features.
-Pass tests before comit.
-Prefer constructors that validate:
-
-```rust
-impl Timestamp {
-    pub fn new(value: u64) -> Result<Self, TimestampError> {
-        if value == 0 {
-            return Err(TimestampError::Zero);
-        }
-
-        Ok(Self(value))
-    }
-}
-
-Do not expose fields that allow invalid states unless the type is intentionally plain data.
-
-Prefer narrow public APIs. Keep modules private by default. Expose only what other modules actually need.
-
-Use newtypes for semantically distinct values:
-
-```rust
-pub struct PeerIdBytes(Vec<u8>);
-pub struct SignatureBytes(Vec<u8>);
-pub struct AttestationId([u8; 32]);
-```
-
-Do not pass unrelated byte arrays, strings, or integers through the same generic type if the values mean different things.
-
-### Error Handling
-
-Use `Result<T, E>` for recoverable failures.
-
-Do not use `unwrap`, `expect`, or `panic!` in production logic except when proving an internal invariant that truly cannot fail. In security, protocol, parser, compiler, interpreter, FFI, and network code, avoid them almost entirely.
-
-Good:
-
-```rust
-let message = Message::decode(bytes)
-    .map_err(ProtocolError::InvalidMessage)?;
-```
-
-Bad:
-
-```rust
-let message = Message::decode(bytes).unwrap();
-```
-
-Errors should be specific enough for callers to act on them.
-
-Prefer domain errors:
-
-```rust
-pub enum AttestationError {
-    InvalidTimestamp,
-    InvalidSignature,
-    UnknownPeer,
-    ReplayDetected,
-    StorageFailure(StorageError),
-}
-```
-
-Avoid stringly-typed errors for core logic.
-
-Error messages may be human-readable, but program logic should not depend on parsing error strings.
-
-For Foolish diagnostics, distinguish internal errors from user-facing language errors. A syntax error in user code is not a Rust panic.
-
-### Encapsulation
-A type (struct or enum) owns its data, the methods that mutate that data, the logic that reasons about itself, and the methods that report its information. Behavior lives in the impl block for the type that holds the data—do not write free functions that reach into data structures.
-
-State and methods travel together: Fields are strictly private; callers must go through methods. A type's invariants are enforced by its own constructor/methods, making it impossible to bypass them from the outside (e.g., Timestamp::new validates the data; there is no way to construct an invalid instance).
-
-Self-mutation takes &mut self: An operation that changes a value without changing its type mutates in place. Use the Typestate Pattern when a value must become a different type (e.g., a Search resolving to an Int). In this case, consume self and return the new type for the caller to swap in.
-
-A type answers questions about itself: Predicates and projections (e.g., state(), is_search(), as_int()) must be methods on the type. Hide match statements inside these methods rather than forcing the caller to match on external tags or variants. Reports should return owned values or short-lived borrows—never a long-lived handle that allows a caller to mutate shared state behind the owner's back.
-
-### Foolish Semantic Immutability vs FIR Evaluation State
-
-Foolish statements are immutable and invariant once written, with the exception of searches. However FIR in the FVM can change as evaluation progresses. FIR should always faithfully represent the semantic meaning of the Foolish that it came from, considering Nyes (Not Yet Evaluated State).
-
-In other words: the *meaning* of a Foolish expression is fixed by its text — only its searches are indeterminate until resolved. The FIR is the implementation's evolving record of evaluating that fixed meaning; its state transitions track progress, but at every step the FIR must still denote the same Foolish, read through its current Nyes.
-
-### Enum Dispatch
-
-Matching on enums is acceptable and often preferred.
-
-It is fine to dispatch by matching an enum and then calling a concrete method, including a fully qualified method path when that is clearer or more efficient.
-
-Example:
-
-```rust
-match node {
-    Expr::Call(call) => CallExpr::type_check(call, ctx),
-    Expr::Lambda(lambda) => LambdaExpr::type_check(lambda, ctx),
-    Expr::Literal(literal) => LiteralExpr::type_check(literal, ctx),
-}
-```
-
-This is acceptable even if the method belongs to a trait implemented by the struct holding the data, especially when it improves readability, avoids unnecessary dynamic dispatch, or makes optimization easier.
-
-Do not replace clear enum dispatch with trait objects solely because “polymorphism is cleaner.” Use trait objects when runtime extensibility or object-safe abstraction is genuinely useful.
-
-Prefer enums when:
-
-* The set of variants is known and finite.
-* Exhaustiveness matters.
-* State transitions must be explicit.
-* Serialization/deserialization depends on variant identity.
-* Compiler optimization benefits from static dispatch.
-
-Prefer traits when:
-
-* Multiple independent types share behavior.
-* The set of implementors may grow externally.
-* The API needs behavior abstraction more than variant inspection.
-
-### Traits and Generics
-
-Use traits to express meaningful behavior, not to hide simple function calls.
-
-Good traits are small, named after capabilities, and have stable semantics:
-
-```rust
-pub trait Clock {
-    fn now(&self) -> Result<Timestamp, ClockError>;
-}
-```
-
-Avoid broad traits with many unrelated methods.
-
-Avoid generic parameters unless they provide real value. A concrete type is often easier to read, test, and optimize.
-
-Good:
-
-```rust
-pub fn verify_attestation(
-    attestation: &Attestation,
-    keyring: &Keyring,
-) -> Result<(), VerificationError> {
-    // ...
-}
-```
-
-Do not write generic abstraction just in case future code might need it.
-
-When using generics, keep bounds close to the function that needs them. Avoid spreading complex bounds across the codebase.
-
-### Ownership and Borrowing
-
-Prefer clear ownership boundaries.
-
-Use borrowed data when the caller retains ownership:
-
-```rust
-pub fn parse_module(source: &str) -> Result<ModuleAst, ParseError>
-```
-
-Use owned data when the value must outlive the caller or cross threads/tasks:
-
-```rust
-pub struct NetworkCommand {
-    pub payload: Vec<u8>,
-}
-```
-
-Avoid unnecessary cloning. But do not contort code into unreadable shapes to avoid a cheap clone outside hot paths.
-
-If cloning is meaningful or expensive, make it visible and intentional.
-
-Use `Arc` for shared ownership across threads/tasks. Use `Rc` only in single-threaded code. Use interior mutability only when it simplifies a real ownership problem, not as a shortcut around design.
-
-Avoid shared mutable state. If needed, isolate it behind a small API.
-
-### Concurrency and Async
-
-Concurrency must be explicit and testable.
-
-For Foretias network and P2P code, separate:
-
-* Protocol state.
-* Network I/O.
-* Storage.
-* Cryptographic verification.
-* Time sources.
-* Peer management.
-* Retry/backoff logic.
-
-Do not bury protocol decisions inside async tasks where they are hard to test.
-
-Prefer message-passing or narrow synchronization APIs over wide shared locks.
-
-Avoid holding locks across `.await`.
-
-Bad:
-
-```rust
-let mut state = self.state.lock().await;
-self.network.send(message).await?;
-state.mark_sent(id);
-```
-
-Better:
-
-```rust
-{
-    let mut state = self.state.lock().await;
-    state.mark_pending(id);
-}
-
-self.network.send(message).await?;
-
-{
-    let mut state = self.state.lock().await;
-    state.mark_sent(id);
-}
-```
-
-Keep task lifetimes clear. Every spawned task should have:
-
-* A clear owner.
-* A shutdown path.
-* Error handling.
-* Tests where practical.
-
-Do not ignore `JoinHandle`s unless the task is intentionally detached and documented.
-
-### Cryptographic and Security-Sensitive Code
-
-For Foretias, cryptographic code must be conservative.
-
-Never invent cryptographic protocols or alter protocol details casually.
-
-Do not use non-constant-time comparisons for secrets, signatures, MACs, or authentication tags when constant-time comparison is required.
-
-Do not log secrets, private keys, raw credentials, sensitive peer material, or unreduced protocol internals.
-
-Do not continue after cryptographic verification failure unless the protocol explicitly requires it.
-
-Validate before trust:
-
-```rust
-let signed = SignedMessage::decode(bytes)?;
-signed.verify(&trusted_keys)?;
-let message = signed.into_verified_message();
-```
-
-Prefer types that distinguish unverified from verified data:
-
-```rust
-pub struct UnverifiedAttestation {
-    bytes: Vec<u8>,
-}
-
-pub struct VerifiedAttestation {
-    inner: Attestation,
-}
-```
-
-Only trusted constructors should create verified types.
-
-Do not expose test-only shortcuts in production APIs.
-
-### Time Handling
-
-Do not call system time deep inside protocol logic. Inject a clock.
-
-Good:
-
-```rust
-pub trait Clock {
-    fn now(&self) -> Result<Timestamp, ClockError>;
-}
-```
-
-This makes tests deterministic and prevents hidden dependencies.
-
-Distinguish:
-
-* Local observation time.
-* Claimed timestamp.
-* Verified timestamp.
-* Network receive time.
-* Consensus or attestation time, if applicable.
-
-Never compare timestamps without knowing which kind they are.
-
-### FFI and C11 Core Boundaries
-
-Rust code that crosses into or out of the C11 core must be defensive.
-
-FFI boundaries must:
-
-* Validate pointers.
-* Validate lengths.
-* Define ownership clearly.
-* Avoid panics crossing the boundary.
-* Return explicit status/error codes.
-* Document allocation and deallocation responsibility.
-* Treat foreign data as untrusted.
-
-Do not expose Rust references, Rust-owned layout assumptions, or panic behavior over FFI.
-
-Use `#[repr(C)]` for FFI structs. Keep FFI types simple.
-
-Wrap unsafe code in small safe abstractions:
-
-```rust
-pub fn verify_with_c_core(input: &[u8]) -> Result<VerificationResult, CoreError> {
-    // Small, audited unsafe section.
-    unsafe {
-        // ...
-    }
-}
-```
-
-Every `unsafe` block must have a nearby safety comment explaining the invariant being upheld.
-
-Unsafe code should be rare, isolated, and easy to audit.
-
-### Serialization and Parsing
-
-Parsing must be strict.
-
-Reject malformed, ambiguous, non-canonical, or trailing data unless the format explicitly allows it.
-
-Do not accept multiple encodings for the same logical value in security-sensitive formats unless required by protocol.
-
-Keep parsing and validation separate when useful:
-
-```rust
-let raw = RawMessage::decode(bytes)?;
-let message = raw.validate()?;
-```
-
-For Foolish, parser code should preserve source spans. Diagnostics should point to source locations wherever possible.
-
-For Foretias, decoded wire messages must not become trusted domain objects until validation succeeds.
-
-### Foolish Compiler and Interpreter Code
-
-Keep language phases distinct.
-
-Prefer separate types for:
-
-* Tokens.
-* Parsed AST.
-* Desugared AST.
-* Typed AST.
-* Intermediate representation.
-* Runtime values.
-* Bytecode or lowered forms, if applicable.
-* Diagnostics.
-
-Avoid using one loose enum for every phase unless the project has deliberately chosen that architecture.
-
-Compiler transformations should be explicit:
-
-```rust
-let tokens = lexer.lex(source)?;
-let ast = parser.parse(tokens)?;
-let typed = type_checker.check(ast)?;
-let lowered = lowerer.lower(typed)?;
-```
-
-Each phase should be independently testable.
-
-Interpreter behavior should be deterministic unless nondeterminism is a deliberate language feature.
-
-Avoid mixing user-language errors with Rust implementation errors. User programs should not crash the interpreter through ordinary invalid input.
-
-### Modules and File Organization
-
-Organize code by responsibility, not by vague utility.
-
-Good module names:
-
-* `parser`
-* `lexer`
-* `diagnostics`
-* `attestation`
-* `verification`
-* `wire`
-* `peer`
-* `storage`
-* `clock`
-* `ffi`
-
-Avoid dumping unrelated helpers into large `utils` modules. A small helper module is acceptable only when the functions genuinely belong together.
-
-Keep public module surfaces small. Re-export intentionally.
-
-### Testing Requirements
-
-Write tests for behavior, invariants, and edge cases.
-
-Prefer deterministic tests. Inject clocks, RNGs, network handles, and storage backends where needed.
-
-For Foretias, include tests for:
-
-* Valid attestation verification.
-* Invalid signatures.
-* Timestamp boundary cases.
-* Replay attempts.
-* Malformed wire messages.
-* Peer identity errors.
-* Serialization round trips.
-* FFI boundary failures.
-* Shutdown and cancellation paths where applicable.
-
-For Foolish, include tests for:
-
-* Lexing.
-* Parsing precedence and associativity.
-* Syntax errors with spans.
-* Type checking success and failure.
-* Interpreter semantics.
-* Compiler lowering.
-* Regression cases.
-* Invalid programs that should produce diagnostics, not panics.
-
-Use property tests or fuzz tests where useful, especially for parsers, decoders, serialization, and protocol messages.
-
-A bug fix should usually begin with writing of a a regression test that reporduces the error condition, repair, and commit of code passing new regression test.
-
-### Performance
-
-Write efficient Rust, but measure before making code obscure.
-
-Prefer straightforward code unless profiling or clear algorithmic reasoning shows a problem.
-
-Optimize algorithms before micro-optimizing syntax.
-
-Accept enum matching, static dispatch, slices, iterators, and clear loops. Use whichever is more readable in context.
-
-Avoid unnecessary allocations in hot paths. Prefer borrowing, slices, and preallocation where clear.
-
-Do not introduce unsafe code for performance without strong justification and tests.
-
-Document performance-sensitive decisions:
-
-```rust
-// This avoids allocating during peer message validation, which is on the inbound hot path.
-```
-
-### Logging and Observability
-
-Logs should help diagnose behavior without leaking secrets.
-
-Use structured logging where the project already does so.
-
-Log:
-
-* State transitions.
-* Protocol failures.
-* Peer connection changes.
-* Retry exhaustion.
-* Storage failures.
-* Compiler phase failures when debugging Foolish.
-
-Do not log:
-
-* Private keys.
-* Secret material.
-* Raw credentials.
-* Full untrusted payloads unless sanitized.
-* User source code in contexts where that may be sensitive.
-
-Errors should carry enough context for debugging, but not sensitive data.
-
-### Panics and Assertions
-
-Use `debug_assert!` for internal invariants that help catch bugs during development.
-
-Use normal error handling for invalid external input.
-
-External input includes:
-
-* Network messages.
-* Files.
-* User source code.
-* FFI input.
-* Client-language bindings.
-* Serialized data.
-* Peer-provided data.
-* Clock or storage failures.
-
-A malformed packet, invalid program, bad timestamp, or null FFI pointer is not a reason to panic.
-
-### Macros
-
-Use macros sparingly.
-
-A macro is acceptable when it removes unavoidable repetition while preserving clarity.
-
-Avoid macros that hide control flow, error behavior, security checks, or generated public APIs.
-
-Prefer functions, traits, or ordinary modules unless a macro is clearly better.
-
-### Dependencies
-
-Do not add dependencies casually.
-
-Before adding a crate, consider:
-
-* Security posture.
-* Maintenance status.
-* API stability.
-* Transitive dependency weight.
-* `no_std` or FFI implications, if relevant.
-* Whether the project already has an equivalent dependency.
-* Whether the crate affects cryptography, parsing, networking, or serialization.
-
-For security-sensitive dependencies, prefer mature, audited, widely used crates.
-
-Do not change cryptographic dependencies, serialization formats, protocol behavior, or public APIs without understanding compatibility and security impact.
-
-### Client Bindings
-
-Rust APIs exposed to Python, Java, C, or other clients must be stable, narrow, and explicit.
-
-Do not leak internal Rust types into public binding contracts.
-
-Separate internal errors from binding-layer errors.
-
-Validate all foreign inputs. Convert foreign data into internal Rust domain types only after checks pass.
-
-Binding APIs should be boring and hard to misuse.
-
-### Code Review Checklist for AI Agents
-
-Before finishing Rust changes, check:
-
-* Does this preserve correctness?
-* Are invalid states prevented or checked?
-* Are all external inputs validated?
-* Are errors explicit and useful?
-* Are panics avoided in production paths?
-* Is unsafe code isolated and justified?
-* Are secrets protected from logs and errors?
-* Is concurrency shutdown/error behavior clear?
-* Are locks not held across `.await`?
-* Are tests added or updated?
-* Is the code readable by a human maintainer?
-* Is performance acceptable without obscuring intent?
-* Did public APIs, wire formats, FFI contracts, or serialized formats change?
-
-If a change affects security, protocol compatibility, storage compatibility, language semantics, or public bindings, treat it as high-risk and document the reasoning in the code, tests, or commit notes.
-
-### Final Rule
-
-When uncertain, choose the design that is easiest to prove correct, easiest to test, and easiest for the next human to understand.
-
-Correctness first. Then readability and maintainability. Then efficiency. Then principles and asethetics.
-
+> ## ⛔ STOP — READ `rust_instructions.md` BEFORE TOUCHING ANY RUST ⛔
+>
+> **EVERY** coding agent — Claude Code, Copilot, Cursor, or any other — **MUST**
+> read [`rust_instructions.md`](rust_instructions.md) at the repository root
+> **before reading or writing a single line of Rust in this repository**, and
+> **MUST** follow it. This is not optional and not negotiable.
+>
+> `rust_instructions.md` is the **single authoritative source** for how Rust is
+> written here. It contains the full guidance — optimization priorities,
+> ownership and borrowing, encapsulation, enum dispatch, error handling, the
+> Foolish/Foretias project-specific rules (FIR semantics, compiler phases,
+> cryptography, FFI, bindings), testing requirements, and the hard tooling gates
+> (`cargo fmt`, `cargo clippy -D warnings`, tests). All of it formerly lived in
+> this section and now lives there.
+>
+> If you are about to edit Rust and have not read `rust_instructions.md` this
+> session, **stop and read it now.**
+
+<!-- The detailed Rust guidance previously inlined here has been moved verbatim
+     (and integrated with a cited general-Rust ruleset) into rust_instructions.md.
+     Do not re-add Rust style content to AGENTS.md — keep it in one place. -->
 
 ## Environment Detection
 
@@ -1086,6 +420,7 @@ When it is available, prefer to use python repl to perform math calculations, co
 ### Additional Resources
 
 For complete details on:
+- **How to write Rust (REQUIRED before any Rust work) → See `rust_instructions.md`**
 - Language features and semantics → See `README.md`
 - Terminology and conventions → See `docs/vintage_legacy/STYLES.md`
 - UBC architecture → See `docs/vintage_legacy/ECOSYSTEM.md`
@@ -1128,62 +463,10 @@ This ensures all AI agents can track who modified documentation and when, mainta
 
 When proposing updates, explain what has changed and why the documentation needs adjustment. After user review, update the "Last Updated" date below whether changes are accepted or the user confirms current state is acceptable.
 
-
-
 ## Last Updated
 
-**Date**: 2026-06-07
-**Updated By**: Claude Code 2.1.119 (Claude Code); Sonnet 4.6
-**Changes**: Removed all Java/Maven/Scala/ANTLR references (Java implementation retired).
-Updated Overview, Build Requirements, Development Process, Test Infrastructure, and FOOP
-description to reflect Rust-only implementation. Changed FOOP analogy from "Scala's SIP"
-to "Rust's RFC". Added `### Encapsulation` subsection under "How To Write Rust Code"
-(struct owns its data + self-mutating methods + reasoning about itself + reporting
-methods; self-mutate via `&mut self`, return replacement only on type change; answer
-questions about self via methods not tag-matches, no leaked mutable aliases) — per
-FOOP-52 Task 0. Also added `### Foolish Semantic Immutability vs FIR Evaluation State`
-(Foolish statements are immutable/invariant once written except searches; FIR may
-change as evaluation progresses but must always faithfully represent the source
-Foolish, considering Nyes) — per FOOP-52 Task 0.
-
-**Date**: 2026-05-20
-**Updated By**: Claude Code 2.1.119 (Claude Code); Sonnet 4.6
-**Changes**: Updated "Approval Tests (insta snapshots)" section: corrected
-snapshot paths (`foolish-core/snapshot_tests/approved/`,
-`foolish-ubcb/snapshot_tests/approved/`), corrected package name
-(`foolish-ubcb` not `foolish-ubcb-cli`), added critical note that
-`cargo insta test` must be used (not `cargo test`) to generate ALL
-`.snap.new` files. Added `verify_signatures` binary documentation with
-column output format (`key match: yes/no, foolish: yes/no, hs: yes/no`)
-and note that `n/a` means unsigned (no footer in file).
-
-**Date**: 2026-05-15
-**Updated By**: opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4
-**Changes**: Added UBCb SnapshotSuite test commands section with parallel
-execution, snapshot acceptance, and cargo insta review references.
-
-**Date**: 2026-05-08
-**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.7 xHigh effort
-**Changes**: Clarified FOOP naming convention — filename digits ARE the
-identifier; the `foop:` frontmatter is a separate sort key. Added
-"FOOP Numbering Helper Script" section pointing to
-`docs/foop/scripts/foop_check.py` with `check`, `get_last`, `gen_next`,
-and `list` commands. Agents must run `gen_next` before creating a new
-FOOP.
-
-**Date**: 2026-05-07
-**Updated By**: opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4
-**Changes**: Added "Development Organization" section with FOOP system overview (location, statuses, phases), plan file conventions (FOOP-###.plan.md), checkbox timestamp format, worktree branch tracking, and sub-task indentation for merge repairs.
-
-**Date**: 2026-03-12
-**Updated By**: Claude Code / Qwen3.5-27B-AWQ-BF16-INT8
-**Changes**: Rewrote approval test protocol section with concise, clear instructions. Added explicit MUST NOT list for test input and approved files. Specified workflow steps with concrete file patterns and diff commands.
-
-**Date**: 2026-02-06
-**Updated By**: Claude Code v1.0.0 / claude-opus-4-6
-**Changes**: Reorganized documentation structure. Replaced docs/ and projects/ directory descriptions with new 5-directory taxonomy (howto, why, how, todo, vintage_legacy). Updated all file path references. Fixed stale NAME_SEARCH_AND_BOUND.md reference.
-
-
+**Date**: 2026-06-10
+**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
 
 ### MISC
 

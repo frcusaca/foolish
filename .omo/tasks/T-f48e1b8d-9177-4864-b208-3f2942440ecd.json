@@ -1,0 +1,10 @@
+{
+  "id": "T-f48e1b8d-9177-4864-b208-3f2942440ecd",
+  "subject": "Implement scope.rs — search_ib, search_ab, index methods",
+  "description": "Implement Scope capability methods: search_ib (backward in immediate brane), search_ab (ancestral widening), index (relative positional).",
+  "status": "pending",
+  "activeForm": "Implementing scope.rs",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_14c24d505ffeLSpiXK9tuBNJ1F"
+}

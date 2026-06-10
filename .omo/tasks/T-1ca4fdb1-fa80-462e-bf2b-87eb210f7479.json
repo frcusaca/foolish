@@ -1,0 +1,10 @@
+{
+  "id": "T-1ca4fdb1-fa80-462e-bf2b-87eb210f7479",
+  "subject": "Fix constanic_clone NYE handling in ubc.rs",
+  "description": "Change the _ arm in constanic_clone to always clone and reset to Embryonic, remove permit_nye parameter since all callers pass false",
+  "status": "completed",
+  "activeForm": "Fixing constanic_clone NYE handling",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_154db8052ffe4Hq91iIHLFuUTh"
+}

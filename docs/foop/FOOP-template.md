@@ -10,18 +10,20 @@ supersedes: []
 ---
 
 # FOOP-<NUMBER>: <TITLE>
-The foop uses little-endian decimal as default numbering scheme, so when we want to
-render a foop number in normal decimal, we precede it with D, for big endian decimal
-number. FOOP-D24 is same as FOOP-42; this also applies to the front matter of this
-document it either match the file name number:
+FOOP numbering is little-endian; the full rules live in `foop.md` at the
+repository root — **read it before creating or editing a FOOP.** The one
+template-specific note: the `foop:` front-matter field may either match the
+filename digits directly:
 ```markdown
 foop: <NUMBER>
 ```
-Or converting to decimal:
+or give the big-endian decimal value, preceded by `D` (so `foop: D42` is the
+same as `foop: 24`, i.e. the file `FOOP-24.md`):
 ```markdown
 foop: D<NUMBER>
 ```
-In all cases, the `FOOP-<NUMBER>.md` file name is ultimately the right numbering.
+In all cases, the `FOOP-<NUMBER>.md` file name is ultimately the right
+numbering.
 
 ## Abstract
 
@@ -36,14 +38,20 @@ look like today, and what does it look like after this FOOP is implemented?
 ## Specification
 
 The design itself. Be precise. If a feature has syntax, give the grammar
-fragment. If it adds an FIR variant, give the case class. If it changes a
-step rule, give the before/after.
+fragment. If it adds an FIR variant, give the Rust struct and its `Fir` enum
+arm. If it changes a step rule, give the before/after.
 
 Use code blocks for anything formal:
 
-```scala
-// example: FIR variant
-case class FooFir(bar: String, state: FirState = FirState.Initialized) extends Fir
+```rust
+// example: FIR variant — a per-variant struct carrying its Nyes state,
+// plus the arm added to the `Fir` enum in foolish-core/src/fir.rs.
+pub struct FooFir {
+    pub(crate) bar: String,
+    pub(crate) state: Nyes,
+}
+
+// enum Fir { ... Foo(FooFir), ... }
 ```
 
 ## FIR Impact

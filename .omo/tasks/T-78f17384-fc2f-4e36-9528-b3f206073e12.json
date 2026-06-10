@@ -1,0 +1,10 @@
+{
+  "id": "T-78f17384-fc2f-4e36-9528-b3f206073e12",
+  "subject": "Verify compilation",
+  "description": "Verify all changes compile with cargo check -p foolish-core",
+  "status": "completed",
+  "activeForm": "Running cargo check",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_154db8052ffe4Hq91iIHLFuUTh"
+}

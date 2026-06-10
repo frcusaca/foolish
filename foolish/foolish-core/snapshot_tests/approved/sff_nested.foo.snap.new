@@ -1,6 +1,6 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 52
+assertion_line: 50
 ---
 INPUT:
 ```foolish
@@ -11,10 +11,35 @@ INPUT:
 {WOCONSTANIC
   a=1;
   b=2;
-  c=Op+(?(pattern='^a$', UNANCHORED), ?(pattern='^b$', UNANCHORED, EMBRYONIC), EMBRYONIC);
-  ?(result=Op+(1, ?(pattern='^b$', UNANCHORED, EMBRYONIC), WOCONSTANIC), pattern='^c$', UNANCHORED, WOCONSTANIC);
+  c=<<WOCONSTANIC
+      Op+(
+        ?(pattern='^a$', UNANCHORED, ECONSTANIC),
+        <<WOCONSTANIC
+          ?(pattern='^b$', UNANCHORED, ECONSTANIC)
+        >>,
+        WOCONSTANIC
+      )
+  >>;
   ?(
-    result=Op+(?(pattern='^a$', UNANCHORED), ?(pattern='^b$', UNANCHORED, EMBRYONIC), WOCONSTANIC),
+    result=Op+(
+        ?(pattern='^a$', UNANCHORED, ECONSTANIC),
+        <<WOCONSTANIC
+          ?(pattern='^b$', UNANCHORED, ECONSTANIC)
+        >>,
+        WOCONSTANIC
+    ),
+    pattern='^c$',
+    UNANCHORED,
+    WOCONSTANIC
+  );
+  ?(
+    result=Op+(
+        ?(pattern='^a$', UNANCHORED, ECONSTANIC),
+        <<WOCONSTANIC
+          ?(pattern='^b$', UNANCHORED, ECONSTANIC)
+        >>,
+        WOCONSTANIC
+    ),
     pattern='^c$',
     UNANCHORED,
     WOCONSTANIC
@@ -28,5 +53,5 @@ sff_nested
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: lhcizF48neDw/0Ot29cyjAKKVN2RJsqhMEqKOBwHi1AC7LmDHeXb9dBvby6kqQzBJhSJHHAXCtmjZ9gbF1ZHAw==
-HFS signature: iES8iJDJiHaSK6YKDMiq08RtGOZ0T/OYVef7xVMMyHF5iL7sltie7MQULzYAbSxoc/IXik1i+O7FtV79j0t9CQ==
-Comments signature: hhR4rVztMeI3OTxBygA8u69DXlkUgmOLxr6NiWbSAPDxpMBzBUUHzeOpVAbg9eheN5Jm+ZYMavtR2kKLSdjbAw==
+HFS signature: 44+vX3MShJRdE3vp2gYGgdj6iss4Iz06+OWY+Ko21kzVkFf7ZJ9QOkUaRs+2MICGLH5Ol5yPJ7wOs5dGEBtnBA==
+Comments signature: h6QHfb7uEKMk+5tN3UB0Uui1wfLk+vW2Nss4Q6Fuy4cd8Mh1og+UF41Z7tYMF0HNP3o2qCxTrj6E4jfY+0/QCw==

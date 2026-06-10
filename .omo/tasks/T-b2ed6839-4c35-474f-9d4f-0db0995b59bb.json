@@ -1,0 +1,10 @@
+{
+  "id": "T-b2ed6839-4c35-474f-9d4f-0db0995b59bb",
+  "subject": "Implement stepping.rs — step_fir_ref + fir_op_step per kind",
+  "description": "Complete stepping.rs with brane re-step logic and per-kind fir_op_step implementations mirroring UBC transitions.",
+  "status": "pending",
+  "activeForm": "Implementing stepping.rs",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_14c24d505ffeLSpiXK9tuBNJ1F"
+}
