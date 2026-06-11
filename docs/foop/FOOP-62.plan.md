@@ -4,8 +4,8 @@
 > All FOOP-62 work happens in a dedicated worktree:
 >
 > ```
-> WORKTREE_BRANCH_NAME=foop-62-ubca
-> WORKTREE_FULL_FS_PATH=${HOME}/tmp/foolish-worktrees/foop-62-ubca
+> WORKTREE_BRANCH_NAME=foop-62-ubca-mimo
+> WORKTREE_FULL_FS_PATH=${HOME}/tmp/foolish-worktrees/foop-62-ubca-mimo
 > ```
 >
 > Created from the starting branch/path:
@@ -21,7 +21,7 @@
 
 ## Phase 0 — Gate & baseline (BLOCKING)
 
-- [ ] Create worktree at `${HOME}/tmp/foolish-worktrees/foop-62-ubca` with branch `foop-62-ubca`
+- [ ] Create worktree at `${HOME}/tmp/foolish-worktrees/foop-62-ubca-mimo` with branch `foop-62-ubca-mimo`
 - [ ] Confirm spec FOOP-62.md is reviewed/approved by human (status Draft → Brewing/Final)
 - [ ] Establish GREEN baseline before any code. AGENTS.md: never start Phase-or-larger
       work while any test is broken. The branch currently has uncommitted edits
@@ -279,12 +279,12 @@ through.
       Under no circumstances retire UBC automatically.
 - [ ] Per human decision: either leave UBC in place, or migrate callers UBC→UBCa and
       remove UBC (separate, human-gated step)
-- [ ] Verify all work is complete in `${HOME}/tmp/foolish-worktrees/foop-62-ubca` and committed to `foop-62-ubca`
-- [ ] Merge `foop-62-ubca` to alpha
+- [ ] Verify all work is complete in `${HOME}/tmp/foolish-worktrees/foop-62-ubca-mimo` and committed to `foop-62-ubca-mimo`
+- [ ] Merge `foop-62-ubca-mimo` to alpha
 - [ ] Update FOOP-62.md status; clear Open Questions; update INDEX.md
-- [ ] Cleanup `${HOME}/tmp/foolish-worktrees/foop-62-ubca`
+- [ ] Cleanup `${HOME}/tmp/foolish-worktrees/foop-62-ubca-mimo`
   - [ ] Check that FOOP-62.plan.md has all but Cleanup checkboxes completed
-  - [ ] Remove `${HOME}/tmp/foolish-worktrees/foop-62-ubca`
+  - [ ] Remove `${HOME}/tmp/foolish-worktrees/foop-62-ubca-mimo`
   - [ ] This is the last checkbox to be checked in FOOP-62.plan.md
 
 ## Notes / discoveries
@@ -296,8 +296,8 @@ through.
 **Date**: 2026-06-10 (third update — worktree declaration)
 **Updated By**: Claude Code 2.1.119 (Claude Code); Sonnet 4.6
 **Changes**: Replaced "WORKED IN PLACE" on FOOP-52 worktree with a dedicated worktree
-declaration: `foop-62-ubca` at
-`${HOME}/tmp/foolish-worktrees/foop-62-ubca`. Added worktree
+declaration: `foop-62-ubca-mimo` at
+`${HOME}/tmp/foolish-worktrees/foop-62-ubca-mimo`. Added worktree
 lifecycle tasks: create worktree (Phase 0), verify+merge+cleanup (Phase 5) per AGENTS.md.
 
 **Date**: 2026-06-10 (second update — spec rev 6 sync)

@@ -1,0 +1,9 @@
+{
+  "id": "T-6b526f0c-595a-4ea5-ba12-64d5fd7ea37b",
+  "subject": "Fix division-by-zero in OperatorFir to return Nk",
+  "description": "Change compute_operator to return NkFir instead of Err for division by zero, matching UBC behavior.",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_148dbf6b6ffeu57sDCF5H15Jrx"
+}

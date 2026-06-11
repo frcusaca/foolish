@@ -180,13 +180,17 @@ the lifecycle of that worktree as explicit, separate checkbox tasks placed
 at appropriate points in the plan. The workpath shall always be:
 
 ```
+WORKTREE_ORIGIN_BRANCH=alpha
+WORKTREE_ORIGIN_PATH=$(pwd)
 WORKTREE_BRANCH_NAME=foop-<NUMBER>-short_description
 WORKTREE_FULL_FS_PATH=${HOME}/tmp/foolish-worktrees/foop-<NUMBER>-short_description
 
-## The branch is created this way from the starting branch and path
-# cd $STARTING_PATH ## User normally starts in this directory
-# git checkout $STARTING_BRANCH ## Again, user normally already has this branch checked out.
+## The branch is created this way from the ${WORKTREE_ORIGIN_BRANCH} branch and path
+# cd $WORKTREE_ORIGIN_PATH ## User normally starts in this directory
+# git checkout $WORKTREE_ORIGIN_BRANCH ## Again, user normally already has this branch checked out.
 git worktree add -b "$WORKTREE_BRANCH_NAME" "$WORKTREE_FULL_FS_PATH"
+cd "$WORKTREE_FULL_FS_PATH"
+# Now commence work here.
 ```
 
 The short_description in the path should be generated as part of the
@@ -206,7 +210,7 @@ for permission, ask once for the entire worktree branch:
   (implementation tasks here)
 ...
 - [ ] Verify all work is complete in ${HOME}/tmp/foolish-worktrees/3841-foop-7 and committed to `foop/foop-7-constanic-clone`
-- [ ] Merge `foop/foop-7-constanic-clone` to alpha
+- [ ] Merge `foop/foop-7-constanic-clone` to `alpha` #Btw, These branches reflect expanded $WORKTREE_BRANCH_NAME and $WORKTREE_ORIGIN_BRANCH, which should be known at time the _PLAN.md'a creation. Fillers such as the literal '$WORKTREE_ORIGIN_BRANCH' should be replaced with real values before starting work on the plan.
 ```
 
 ### Sub-Tasks
@@ -216,19 +220,19 @@ indent them under the parent. Use completed sub-tasks to justify why the
 split occurred:
 
 ```markdown
-- [ ] Merge ${BRANCH_NAME} to ${STARTING_BRANCH}
+- [ ] Merge ${WORKTREE_BRANCH_NAME} to ${WORKTREE_ORIGIN_BRANCH} # <-- this checkbox is the last to be checked after all the work is done.
   - [x] Detected complex merge situation requiring additional work
         (2026-05-06 14:00)
-  - [ ] Update ${BRANCH_NAME} to follow new coding style
-  - [ ] Update ${BRANCH_NAME} to use new API call convention
-  - [x] Merged breaking changes from alpha
+  - [ ] Update ${WORKTREE_BRANCH_NAME} to follow new coding style
+  - [ ] Update ${WORKTREE_BRANCH_NAME} to use new API call convention
+  - [x] Merged breaking changes from ${WORKTREE_ORIGIN_BRANCH}
         (2026-05-06 14:31)
-  - [ ] Repair ALL tests in ${STARTING_BRANCH} in ${STARTING_PATH}
+  - [ ] Repair ALL tests in ${WORKTREE_ORIGIN_BRANCH} in ${WORKTREE_ORIGIN_PATH}
   - [ ] STOP! STOP!! STOP!!! ASK HUMAN to check this box before continuing. UNDER NO CIRCUMSTANCES will Agent continue past this point automatically!!
   - [ ] Cleanup ${WORKTREE_FULL_FS_PATH}
     - [ ] Check that _PLAN.md has all but Cleanup checkboxes completed
     - [ ] Remove "${WORKTREE_FULL_FS_PATH}"
-    - [ ] This is the last checkbox to be checked in my _PLAN.md
+    - [ ] This is the last sub-task checkbox to be checked in this block of subtasks
 ```
 
 This pattern is common because Foolish uses `git merge` (not rebase), so

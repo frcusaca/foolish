@@ -1,0 +1,10 @@
+{
+  "id": "T-c2f3de81-ea1e-4a1a-aee1-941602fab1ba",
+  "subject": "Fix 35 UBCa cross-check failures via re-evaluation model",
+  "description": "Implement re-evaluation model in UBCa to match UBC's re_step_brane_bodies behavior. Steps:\n1. Read and understand UBC's re_step_brane_bodies/reset_searches\n2. Read UBCa's current evaluator and FIR kinds\n3. Implement reset_searches for ProtoBrane FIR\n4. Implement re-evaluation loop in evaluate_brane\n5. Fix SF/SFF semantics\n6. Fix remaining seek edge cases\n7. Verify all tests pass",
+  "status": "in_progress",
+  "activeForm": "Implementing UBCa re-evaluation model",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_147ba8493ffemVOmnXpitXuwwP"
+}

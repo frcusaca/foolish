@@ -1,0 +1,9 @@
+{
+  "id": "T-87fd0432-8e8b-4efb-8197-bfe9dd4298e0",
+  "subject": "Phase 3a: Rework Scope with Ignorance enum and full capability surface",
+  "description": "Replace ignorance bool with Ignorance enum, update alarms to use AlarmSink, implement proper search_ib bounded by stmt_idx, search_ab with parent-chain walk, and index with unanchored negative offsets.",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_14a15ee1cffeSJnMegdCvUuy7v"
+}

@@ -1,0 +1,10 @@
+{
+  "id": "T-09e3e5ee-fbb4-4751-92ee-ae4985ff7965",
+  "subject": "Create compiler.rs for ProtoBrane tree construction",
+  "description": "Build ProtoBrane/FirRef trees from .foo source AST. Parse using foolish_parser, convert AST nodes to ProtoBrane FIR kinds, wire parent pointers.",
+  "status": "completed",
+  "activeForm": "Creating ProtoBrane compiler",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_149fe78d0ffenmFDkJpQxkph8x"
+}

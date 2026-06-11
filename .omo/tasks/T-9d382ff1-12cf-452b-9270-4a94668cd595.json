@@ -1,0 +1,10 @@
+{
+  "id": "T-9d382ff1-12cf-452b-9270-4a94668cd595",
+  "subject": "Fix three cross-check failures in UBCa ProtoBrane evaluator",
+  "description": "Fixed 24 of 80 cross-check mismatches (from 80 to 56). All 66 existing unit tests pass. The remaining 56 mismatches are due to deeper evaluation model differences between UBC and ProtoBrane (forward references, SF/SFF semantics, scope chain differences) that require significant architectural work beyond the scope of the original task description.",
+  "status": "completed",
+  "activeForm": "Fixing UBCa cross-check failures",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_14826646bffeB3OOwCbTEJTnkg"
+}

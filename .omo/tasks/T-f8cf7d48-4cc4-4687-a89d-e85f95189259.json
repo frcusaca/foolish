@@ -1,0 +1,9 @@
+{
+  "id": "T-f8cf7d48-4cc4-4687-a89d-e85f95189259",
+  "subject": "Add Seek compiler support",
+  "description": "Add handling for Astn::Seek in compiler.rs, creating IndexFir with anchored=true.",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_148dbf6b6ffeu57sDCF5H15Jrx"
+}

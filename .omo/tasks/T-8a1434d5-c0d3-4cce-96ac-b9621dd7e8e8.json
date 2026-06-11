@@ -1,0 +1,9 @@
+{
+  "id": "T-8a1434d5-c0d3-4cce-96ac-b9621dd7e8e8",
+  "subject": "Create foolish-ubca crate with UBC-delegating evaluator",
+  "description": "Create the foolish-ubca crate in the worktree, mirroring foolish-ubcb structure but delegating to UBC for evaluation. Includes Cargo.toml, src/lib.rs, src/ubca_snapshot_tester.rs, copying snapshot tests from foolish-core, and adding to workspace.",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_14c11f347ffeVxg4988NOUoGAO"
+}

@@ -1,0 +1,10 @@
+{
+  "id": "T-e5610b7c-9e96-4c1d-8cd6-f24266fbc901",
+  "subject": "Create cross-check harness for UBC vs UBCa",
+  "description": "Create foolish-ubca/src/cross_check.rs that runs every .foo input through both UBC and UBCa, asserts identical humanizing-sequencer output (byte-exact). UBCa delegates to UBC so harness passes trivially.",
+  "status": "completed",
+  "activeForm": "Creating cross-check harness",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_14a337243ffex1ZlqavJcj1rR9"
+}

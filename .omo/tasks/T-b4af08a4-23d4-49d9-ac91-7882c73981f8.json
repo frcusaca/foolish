@@ -1,0 +1,9 @@
+{
+  "id": "T-b4af08a4-23d4-49d9-ac91-7882c73981f8",
+  "subject": "Phase 3b: Add upward navigation trio on ProtoBrane",
+  "description": "Add get_parent(), get_parent_statement(), get_parent_brane() methods. Fix is_root() for self-Weak root pattern.",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_14a15ee1cffeSJnMegdCvUuy7v"
+}
