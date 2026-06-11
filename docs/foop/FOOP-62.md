@@ -14,8 +14,10 @@ supersedes: []
 > **WORKTREE.** This FOOP is implemented in its own worktree:
 >
 > ```
-> WORKTREE_BRANCH_NAME=ubca-two-store-proto-brane-foop-62
-> WORKTREE_FULL_FS_PATH=${HOME}/tmp/foolish-worktrees/ubca-two-store-proto-brane-foop-62
+> WORKTREE_ORIGIN_BRANCH=alpha
+> WORKTREE_ORIGIN_PATH=$(pwd)
+> WORKTREE_BRANCH_NAME=foop-62-ubca-mimo
+> WORKTREE_FULL_FS_PATH=${HOME}/tmp/foolish-worktrees/foop-62-ubca-mimo
 > ```
 >
 > All paths below are relative to that directory's `foolish/` workspace unless stated
@@ -39,6 +41,28 @@ written **once** as defaults; each FIR kind supplies only its own per-node work
 the existing UBC interface and tests, gutting the implementation, and rebuilding on the
 new structure — keeping the original **UBC as a byte-for-byte correctness oracle** to
 diff against during development.
+
+## Terminology: "constanic" in UBCa
+
+Throughout this FOOP and its implementation, **constanic** (adjective, "constant in
+context") means a FIR that has reached one of the terminal evaluation states and requires
+no further stepping in the current context. In UBCa the constanic states are precisely:
+
+| State | Meaning |
+|-------|---------|
+| **ECONSTANIC** | Exactly constanic — search performed, nothing found. May gain value via recoordination. |
+| **WOCONSTANIC** | Waiting On CONSTANICs — all searches found, but dependencies are themselves constanic. |
+| **CONSTANT** | Fully evaluated — a genuine value. |
+| **INDEPENDENT** | Self-contained constant — no context dependencies. |
+| **NK** | Not Knowable — provably unfindable (`???`). Terminal. |
+
+**Pre-constanic** (or **nigh**) means the FIR is in a non-terminal state
+(PREMBRYONIC, EMBRYONIC, or BRANING) where more evaluation / stepping is
+appropriate. The predicate `is_settled()` returns `true` for all constanic
+states including NK; `is_constanic()` returns `true` for ECONSTANIC,
+WOCONSTANIC, CONSTANT, and INDEPENDENT (excludes NK). The outer acceptance
+predicate remains `is_constanic()` — NK is a terminal that produces no value,
+but it is settled so it does not block the task queue.
 
 ## Motivation
 
@@ -434,12 +458,31 @@ This NYES-driven, one-transition-per-`step()`, queue-drain model reproduces UBC'
 rendered states** — the snapshot oracle. (It does not reproduce UBC's step *counts*, and need
 not: counts are not in snapshots.)
 
-### 4. Re-stepping
+### 4. Re-stepping (UBCa job queue replaces UBC's `re_step_brane_bodies`)
 
-To recompute (after a forward reference resolves, an anchor moves, etc.): **clear
-`ubc_children` and re-derive.** Because `foolish_children` is the untouched source
-meaning, re-derivation is always well-defined. This replaces the ad-hoc
-`re_step_brane_bodies` reset logic.
+UBCa **deprecates** UBC's `re_step_brane_bodies` concept entirely. UBCa uses a per-node
+job queue instead, and the mechanism makes explicit re-stepping unnecessary for normal
+evaluation:
+
+**The job queue mechanism.** Each ProtoBrane's `tasks` VecDeque operates as follows:
+ProtoBrane enqueues non-constanic branes from `foolish_children` in the order they are
+specified. Each `step()` call works the child at the **front** of the queue. If that child
+returns any constanic state (settled — ECONSTANIC, WOCONSTANIC, CONSTANT, INDEPENDENT, or
+NK), it is **popped** and the next child becomes the front. If the step returns that the
+child is still pre-constanic (nigh), the child **stays at the front** — the next `step()`
+call dequeues it immediately and works on it again. This continues until the front child
+reaches a settled state.
+
+This behavior is attractive because it guarantees that **later children, when searching,
+should always result constanically in finite steps**: the language guarantees every FIR
+reaches a constanic NYES in finite time (see §3.1), so the front child always eventually
+settles, and the queue always makes progress through its children.
+
+To recompute after a forward reference resolves, an anchor moves, etc.: **clear
+`ubc_children`, rebuild `tasks` from `foolish_children`** (re-enqueue all; already-constanic
+ones pop immediately on their next visit). Because `foolish_children` is the untouched
+source meaning, re-derivation is always well-defined. §9 elaborates on the re-step-rebuild
+task and the Econstanic-pop trap.
 
 ### 5. Parent link (first-class)
 
@@ -673,23 +716,28 @@ UBCa follows the UBCb precedent: its own crate.)
 
 - The existing UBC implementation in `foolish-core` (`fir.rs`, `ubc.rs`) stays **untouched**
   as the reference oracle.
-- **`foolish-ubca`** is created by cloning the UBC *public interface and tests* (the `Scope`
-  API, `run_to_completion*`, the snapshot suite harness, the `.foo` inputs), then **gutting**
-  the internals and rebuilding on the ProtoBrane two-store structure. Add `foolish-ubca`
-  (and, if a CLI parity is wanted later, `foolish-ubca-cli`) to the workspace `members`,
-  mirroring the `foolish-ubcb` / `foolish-ubcb-cli` pair.
+- **`foolish-ubca`** is created by cloning the UBC *public interface* (the `Scope` API,
+  `run_to_completion*`, the snapshot suite harness), then **gutting** the internals and
+  rebuilding on the ProtoBrane two-store structure. Add `foolish-ubca` (and, if a CLI
+  parity is wanted later, `foolish-ubca-cli`) to the workspace `members`, mirroring the
+  `foolish-ubcb` / `foolish-ubcb-cli` pair.
+- **UBC's snap tests are copied to UBCa as-is without change.** Both the `input/` directory
+  (the `.foo` test programs) and the `approved/` directory (the finalized `.snap` files)
+  are copied byte-for-byte from UBC's `snapshot_tests/` into UBCa's snapshot test
+  directories. These are the shared test inputs and the oracle corpus. Only finalized
+  (approved, signed) `.snap` files — never `.snap.new`, which are pending human review.
+  Copying approved snapshots is permitted; **re-accepting/regenerating them is not** without
+  human review (AGENTS.md no-auto-accept rule).
+- **The humanizer sequencer is developed for UBCa's new FIR classes.** Everything else
+  beyond the copied snap tests is implemented according to this FOOP's design: the ProtoBrane
+  two-store structure, the `trait Fir` dyn-dispatch surface, the task-list stepping, and the
+  reworked Scope. The sequencer must read UBCa's FIR types (ProtoBrane's `foolish_children` /
+  `ubc_children` stores + leaf accessors via `kind()`) and produce output that is
+  byte-identical to UBC's approved snapshots. This is the **hard acceptance constraint** (§8).
 - A cross-check runs the same `.foo` inputs through both UBC (in `foolish-core`) and
   `foolish-ubca` and asserts identical **humanizing-sequencer output** (byte-exact).
   Step counts are NOT compared — the two stepping models differ in granularity by design
   and counts are not snapshot-visible (see UBC Step Impact).
-- **All finalized (approved, signed) `.snap` files are brought over from UBC to UBCa.**
-  `foolish-ubca`'s approved-snapshot set is seeded by copying every finalized
-  `foolish-core/snapshot_tests/approved/*.foo.snap` into `foolish-ubca`'s approved directory,
-  so UBCa is held to the *exact same* approved outputs as UBC from day one. (Only finalized
-  `.snap` files — never `.snap.new`, which are pending human review.) UBCa is "done" only
-  when it reproduces every one of these byte-for-byte. Copying approved snapshots is
-  permitted; **re-accepting/regenerating them is not** without human review (AGENTS.md
-  no-auto-accept rule).
 
 ### 8. The humanizing sequencer is a HARD acceptance constraint
 
@@ -1248,11 +1296,24 @@ already-accepted FOOPs, which is corroborating evidence the model is right:
 
 ## Last Updated
 
+**Date**: 2026-06-11 (revision 8 — terminology, ORIGIN, snap copy, job queue)
+**Updated By**: Sisyphus / mimo-v2.5-pro
+**Changes**: (a) Added **§Terminology** section defining "constanic" for UBCa: includes
+ECONSTANIC, WOCONSTANIC, CONSTANT, INDEPENDENT, and NK (all settled states); pre-constanic
+(nigh) = PREMBRYONIC/EMBRYONIC/BRANING requiring further stepping. (b) Added **ORIGIN
+variables** to worktree declaration per updated foop.md template. (c) Standardized worktree
+name to `foop-62-ubca-mimo` (reconciled spec header with plan). (d) **§4 rewritten**:
+deprecates UBC's `re_step_brane_bodies` entirely; UBCa uses a per-node job queue where the
+front child is stepped until settled (constanic including NK), then popped; guarantees later
+children always result constanically in finite steps. (e) **§7 clarified**: UBC's snap tests
+(input/ and approved/) are copied to UBCa as-is without change; the humanizer sequencer is
+developed for UBCa's new FIR classes (ProtoBrane two-store structure).
+
 **Date**: 2026-06-10 (revision 7 — worktree declaration)
 **Updated By**: Claude Code 2.1.119 (Claude Code); Sonnet 4.6
 **Changes**: Replaced "WORKED IN PLACE" on FOOP-52 worktree with a dedicated worktree
-declaration: `ubca-two-store-proto-brane-foop-62` at
-`${HOME}/tmp/foolish-worktrees/ubca-two-store-proto-brane-foop-62`. Removed stale
+declaration: `foop-62-ubca-mimo` at
+`${HOME}/tmp/foolish-worktrees/foop-62-ubca-mimo`. Removed stale
 "same worktree/branch as FOOP-52" references from the header and References section.
 
 **Date**: 2026-06-09

@@ -329,10 +329,20 @@ The **UBC is the reference implementation of Foolish**. It implements a unique e
 FIR objects represent expressions during evaluation and progress through a multi-stage state machine:
 
 ```
-## TBD: put NYSE state here:
-- `CONSTANT`: ...
-- `CONSTANIC` (say "CON-STAN-NICK"): CONSTANt IN Context - evaluation paused due to missing information (unbound identifiers)
-...
+## NYES states (Not Yet Evaluated State):
+- `PREMBRYONIC`: initial state, not yet stepped
+- `EMBRYONIC`: stepping begun, task queue built
+- `BRANING`: stepping in progress, draining child tasks
+- `ECONSTANIC` (say "ee-con-STAN-nic"): Exactly CONSTANt IN Context — search performed, nothing found. May gain value via recoordination.
+- `WOCONSTANIC`: Waiting On CONSTANICs — all searches found, dependencies themselves constanic.
+- `CONSTANT`: Fully evaluated — a genuine value.
+- `INDEPENDENT`: Self-contained constant — no context dependencies.
+- `NK`: Not Knowable — provably unfindable (`???`). Terminal.
+
+**Constanic** (adjective): a FIR in ANY terminal state — ECONSTANIC, WOCONSTANIC, CONSTANT,
+INDEPENDENT, or NK. Pre-constanic (nigh) = PREMBRYONIC, EMBRYONIC, BRANING — more stepping
+is appropriate. See FOOP-62 §Terminology for the authoritative UBCa definition.
+```
 
 #### Brane Reference Semantics: AB and IB
 
@@ -360,6 +370,8 @@ In UBC implementation, this means creating a modified clone with new context. Se
 - **Nye** (say "nigh") - Not Yet Evaluated
 - **NYES** (say "nice") - Not Yet Evaluated State
 - **No-no** - The `???` unknown value
+- **Constanic** (say "cons-TAN-nic") - Constant in Context. Any terminal NYES state:
+  ECONSTANIC, WOCONSTANIC, CONSTANT, INDEPENDENT, or NK. Pre-constanic (nigh) = needs more stepping.
 - **Ordinate** - a name associated with a brane
 - **Coordinate** - brane member names used for relational access
 - **Lexed** - feature parses to AST
@@ -464,6 +476,12 @@ This ensures all AI agents can track who modified documentation and when, mainta
 When proposing updates, explain what has changed and why the documentation needs adjustment. After user review, update the "Last Updated" date below whether changes are accepted or the user confirms current state is acceptable.
 
 ## Last Updated
+
+**Date**: 2026-06-11
+**Updated By**: Sisyphus / mimo-v2.5-pro
+**Changes**: Updated NYES state section with complete UBCa states (PREMBRYONIC through NK).
+Added "Constanic" to Foolish Terminology. Corrected pronunciation: "cons-TAN-nic" not
+"CON-STAN-NICK".
 
 **Date**: 2026-06-10
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8

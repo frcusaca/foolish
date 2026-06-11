@@ -46,9 +46,11 @@ building toward a future where programming is:
   implementations
 
 A Foolisher might say the variable is *nye* (says 'nigh', any pre-constanic state) when they
-encounter a FIR that has not reached CONSTANIC, or that it's *constanic* (says 'cons-TAN-tic',
-constant in context) when it may gain value when associated with new context. We say "that's a
-no-no" when we see `???`. Fully evaluated expressions are values that have achieved CONSTANT.
+encounter a FIR that has not reached constanic, or that it's *constanic* (says 'cons-TAN-nic',
+constant in context) when it has reached a terminal evaluation state — one of WOCONSTANIC,
+ECONSTANIC, CONSTANT, INDEPENDENT, or NK — and no further stepping is needed in the current
+context. We say "that's a no-no" when we see `???` (NK). Fully evaluated expressions are values
+that have achieved CONSTANT.
 
 ---
 
@@ -471,6 +473,12 @@ The following documents in `docs/vintage_legacy/` document the original ubc0 imp
 ---
 
 ## Last Updated
+
+**Date**: 2026-06-11
+**Updated By**: Sisyphus / mimo-v2.5-pro
+**Changes**: Updated "constanic" terminology to align with FOOP-62's UBCa definition:
+constanic now means any terminal evaluation state (WOCONSTANIC, ECONSTANIC, CONSTANT,
+INDEPENDENT, or NK), not just "may gain value when associated with new context."
 
 **Date**: 2026-05-15
 **Updated By**: opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4

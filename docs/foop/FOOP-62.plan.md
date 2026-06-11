@@ -4,14 +4,16 @@
 > All FOOP-62 work happens in a dedicated worktree:
 >
 > ```
+> WORKTREE_ORIGIN_BRANCH=alpha
+> WORKTREE_ORIGIN_PATH=$(pwd)
 > WORKTREE_BRANCH_NAME=foop-62-ubca-mimo
 > WORKTREE_FULL_FS_PATH=${HOME}/tmp/foolish-worktrees/foop-62-ubca-mimo
 > ```
 >
 > Created from the starting branch/path:
 > ```
-> cd $STARTING_PATH   # User normally starts in this directory
-> git checkout $STARTING_BRANCH
+> cd $WORKTREE_ORIGIN_PATH
+> git checkout $WORKTREE_ORIGIN_BRANCH
 > git worktree add -b "$WORKTREE_BRANCH_NAME" "$WORKTREE_FULL_FS_PATH"
 > ```
 >
@@ -81,16 +83,25 @@
 - [ ] Create new crate `foolish-ubca/` (mirror `foolish-ubcb/` Cargo.toml shape; add to
       workspace `members`), re-exporting/cloning the UBC public surface: `Scope`,
       `run_to_completion[_with_scope]`, `UbcError`, the snapshot harness
-      (`snapshot_suite.rs`, `ubc_snapshot_tester.rs`), and shared `.foo` inputs
+      (`snapshot_suite.rs`, `ubc_snapshot_tester.rs`)
+- [ ] Copy UBC's snap tests to UBCa **as-is without change**: both `snapshot_tests/input/`
+      (the `.foo` test programs) and `snapshot_tests/approved/` (the finalized, signed
+      `.snap` files) are copied byte-for-byte. These are the shared test inputs and the
+      oracle corpus. Only finalized `.snap` files — never `.snap.new`. Copying approved
+      snapshots is permitted; re-accepting/regenerating is not (AGENTS.md no-auto-accept).
 - [ ] Cross-check harness (write FIRST): runs each `.foo` in
       `foolish-core/snapshot_tests/input/` through BOTH UBC and UBCa, asserts identical
       humanizing-sequencer OUTPUT (NOT step counts — not snapshot-visible). Initially UBCa
       delegates to UBC so the harness passes — proves the harness before we gut anything.
+- [ ] Develop the **humanizer sequencer for UBCa's new FIR classes**. The sequencer reads
+      UBCa's FIR types (ProtoBrane's `foolish_children`/`ubc_children` stores + leaf
+      accessors via `kind()`) and must produce byte-identical output to UBC's approved
+      snapshots. This is the hard acceptance constraint (spec §8). Default path: thin
+      `FirQueryable` adapter over ProtoBrane (~100 lines glue); prove corpus green through
+      the adapter FIRST. Retiring the adapter is a later optional cleanup OFF the
+      acceptance path.
 - [ ] Genericize the `Evaluator` trait over the FIR ref type (or thin adapter) so the harness
       can drive UBCa's `Rc<RefCell<dyn Fir>>` (currently pinned to `dyn Steppable`) — mimo #5
-- [ ] Bring over the finalized snapshot corpus: copy every approved
-      `snapshot_tests/approved/*.foo.snap` (NOT `.snap.new`) into UBCa's approved dir as its
-      oracle set. Copying finalized snaps is allowed; re-accepting is not (AGENTS.md)
 - [ ] Snapshot testing FULLY implemented in foolish-ubca — the complete SnapshotSuite
       machinery (runner, .snap.new generation, signature verification), running ALL of
       UBC's snapshot tests (every input `.foo`, every approved snap), not a subset or stub.
