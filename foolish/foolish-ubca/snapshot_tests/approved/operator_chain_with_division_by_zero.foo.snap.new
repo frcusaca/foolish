@@ -1,0 +1,23 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{a = 10 / 0 * 5;}
+```
+[0] RESULT:
+```hfssnap
+{NK
+  a=??? (operator nk)
+}
+```
+COMMENTS:
+```markdown
+operator_chain_with_division_by_zero
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: 6xXzDmW2bk9uVdNo1pzmVAA2klNUYqIJzyzRRur13WEKdH01Vv7fQ6m36WCD7FUBwOglGTO0GBrc4OjNE2iRCw==
+HFS signature: LZ4l/J7p/C5M84dej0j3/Xkmz3jr/lMhUXzEdDcoSecN2FmxbT9O6OVWq+19b6gz0C0dzzfA+eqGKnvmuuqtAQ==
+Comments signature: XCGn3HJV2zbM0/ZVS6uAG4+J5OPtZ+vn5FOfEiz3QfsXSgDoxyIyd/tOJ7ZDkDfc0939ByA01V2MzGUOXAWICA==

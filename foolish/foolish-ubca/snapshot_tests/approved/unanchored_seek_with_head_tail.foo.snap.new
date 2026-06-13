@@ -1,0 +1,30 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{a = 1; b = {10; 20; 30}; c = #-1; d = #-1$;}
+```
+[0] RESULT:
+```hfssnap
+{BRANING
+  a=1;
+  b={
+      10;
+      20;
+      30
+  };
+  c=#(offset=-1, UNANCHORED, BRANING);
+  d=$(BRANING)
+}
+```
+COMMENTS:
+```markdown
+unanchored_seek_with_head_tail
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: jv0+vXjnH9cz10jLSBUMwSz7eQc18uc8awWMpnBak7csmepQPgR6cGGgPa630VQqQgiIf5gKsDB506wsSjNaCA==
+HFS signature: gbxEKjAWGsg/xE1UI6lylrfVnfLYeBnxOvkoQAG+ArPjJyEXGLb0l2L3nwZEWMM0vplQlnLwky4bAQX99L6kDA==
+Comments signature: HAvgWO2i4f4wev8MZ9SHqmQZH5o4NrgASpUUrwLqF4/eC0GxKT9Jw56oTft1viQFYnB276J7njVtoMsuZpuoBA==

@@ -1,0 +1,29 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{a = {x=1}; c = a a;}
+```
+[0] RESULT:
+```hfssnap
+{
+  a={
+      x=1
+  };
+  c=⨃{
+    ?(pattern='^a$', UNANCHORED)
+    ?(pattern='^a$', UNANCHORED)
+  }
+}
+```
+COMMENTS:
+```markdown
+concatenation_repeated_reference
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: NFJbInnfc3XLURxjKZH9y3pXykHfOrnvHPR6ku8T29aze9FiDt88RRvu+zD8+2rqbcfaFnIHPInukeoW70QqBQ==
+HFS signature: gMAsUdgnKOchX7KcQ83pTed1bOAePLaxdyGYcbmDZJXjrCjJwf/6Raleq+fTZ6fw5Uf5x/8W5E95d6dz4PxeCA==
+Comments signature: db5pEni2lIWcnDaalDpiGsuV6QeR5igmY6uvRJ7JHiZjtVHIq/+n3fh3PzYNd4DV7z07CsbAZdeH2FdIQI5fDg==

@@ -1,0 +1,27 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{x=10; y=20; z=30; sum = x + y + z; avg = sum / 3;}
+```
+[0] RESULT:
+```hfssnap
+{WOCONSTANIC
+  x=10;
+  y=20;
+  z=30;
+  sum=Op+(Op+(?(pattern='^x$', UNANCHORED), ?(pattern='^y$', UNANCHORED), WOCONSTANIC), ?(pattern='^z$', UNANCHORED), WOCONSTANIC);
+  avg=Op/(?(pattern='^sum$', UNANCHORED, WOCONSTANIC), 3, WOCONSTANIC)
+}
+```
+COMMENTS:
+```markdown
+complex_brane_with_operations_and_search
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: eIJL0ws12Aay/OZZDwEfhuORsRcoD771FKTX/isyLfFNwYZ+cAlF3iL6fReWj0duYc02l/q9RN6crj+iPp0rAg==
+HFS signature: Bfyi5O9A1ws8CsnlK4vw7I7YdIqt5f1o5DxIXHv5d5JbpIMofm78DvcjRYj2Mb8ibPEC6llYwnqHvu0TZ/+qBg==
+Comments signature: JFzWuErAdzbeRw26/YEyRZuMmwEzokcKR6PbRnik9rMPRgEh1uic0ndVeW/nyvMyDgG6dvz8pEenDfWr4Q6DCQ==

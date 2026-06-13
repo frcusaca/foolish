@@ -1,0 +1,23 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{((2 + 3) * (4 - 1)) / 5;}
+```
+[0] RESULT:
+```hfssnap
+{WOCONSTANIC
+  Op/(Op*(5, 3, WOCONSTANIC), 5, WOCONSTANIC)
+}
+```
+COMMENTS:
+```markdown
+nested_arithmetic
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: 2xJRqhQvpI6DTYdJIiXBa0nNhgLmeQ3FTA9UZVbqf98rmvwjn4k8re5SClW3PD8Yvg/Sc4CVjfGShDtccF8tAA==
+HFS signature: AIyXU2f16NxwjEcie/s7jjzy7YdmIHMZvwp1JKJ1lSPDcuk2J3FpuT8FyVmTu6SfluEx9tEOw1BnO3WKNArqDg==
+Comments signature: ih+jrHXL/ppADpQoM08lZ5JXMHrmnKwHChZxgtfqCOqavHrw65T9fN/eYA9LlR40yjCk0L4YrvmXlkZI+m7jDQ==

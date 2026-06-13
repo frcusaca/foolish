@@ -1,0 +1,25 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{good = 42; bad = 1 / 0; also_good = 10 + 20;}
+```
+[0] RESULT:
+```hfssnap
+{NK
+  good=42;
+  bad=??? (operator nk);
+  alsoˍgood=30
+}
+```
+COMMENTS:
+```markdown
+alarm_mixed_alarms_and_normals
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: kBaaMzbnr4qDtWJNdcICY6jK5Ykr2LoUMV2dcZKcsk5rCWB5pYd+j4zzXUYfpPvvzmjGwRirqIcXmCMQCYBuBg==
+HFS signature: OXrx2mqIxkhWKkiiqD7Yid+yaHSh/lEU3/QSasJZurXZ/DCpSmGEzrJOlyR874cU5h9T1HV1JaF+ej69fja1Bg==
+Comments signature: E7bR021AWqQM/yp2gvrb4S+/5pvIvroCvIpg/nXBLMbv9V+iRaUNsbhcQNmebH+jnKQvuzQFKTkRDrKYo2rADQ==

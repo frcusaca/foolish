@@ -1,0 +1,29 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{a = 10; b = 20; sum = a + b; nested = {inner = sum / 2}; result = nested.inner;}
+```
+[0] RESULT:
+```hfssnap
+{
+  a=10;
+  b=20;
+  sum=30;
+  nested={
+      inner=15
+  };
+  result=15
+}
+```
+COMMENTS:
+```markdown
+complex_full_program_with_all_features
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: 1SXA6C7yxC6ZpiMvulmMy1eFI1Es1+sQ6hUtwarY1vKYOMtGrpNqx+rd59gPsyK1pqAjtcEAE57YwFIWqdU2CA==
+HFS signature: 4pdHUTtG2ESa5dmTj6onER+DvM/cvYZXvBTfgDBHBOv1K4jrvrNd7+Bd5QgGjdisX1uMYr6VBB4hEbvp1lanAA==
+Comments signature: hXR4J7O2DqDyXMahIYnbzIYvfZER+DNPmY2lz+QTQ8CjEZGXhC66RJg4fNGUTJVtoDIX/SyH8UQ7O9LQmqgPAQ==

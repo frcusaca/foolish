@@ -1,0 +1,26 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{outer = {val = x}; x = 100;}
+```
+[0] RESULT:
+```hfssnap
+{
+  outer={
+      val=?(pattern='^x$', UNANCHORED)
+  };
+  x=100
+}
+```
+COMMENTS:
+```markdown
+forward_reference_in_nested_brane
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: 4Hrk0bGHevnzjxmT3mTiVfE/SdOH3DkL204YIpF8TAA86wWU62uSPxtRN+7sPiYHW8uMNL4wUnQSSeFIzcMiCw==
+HFS signature: AXTHX0P5V2F4aDlhb6MajYJ/kdcp9KC4RBXrlL8rV0us5q+W4RJOd+172fuUs7WO4zrWTKJX61+DFdjQUIBYBA==
+Comments signature: cnf4Z+BVr3iIIpWHwNNYl9EFs7WROeS2605yYuRad9km2ndddvqN4um5dQvYv5zphuddpVK+VL+0F4p7Of1/Dg==

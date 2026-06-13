@@ -1,0 +1,26 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{42; (3 + 4) * 2; -15; 100 / 5;}
+```
+[0] RESULT:
+```hfssnap
+{WOCONSTANIC
+  42;
+  Op*(7, 2, WOCONSTANIC);
+  -15;
+  20
+}
+```
+COMMENTS:
+```markdown
+mixed_expressions
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: 4wx79F1aYwHPhfWD1a8N/NWLXRXqUirlVwEswv4TlLrzJFdCp9EFg1+HT955yyElfG1Cu32iCuG+lysHu8kXBw==
+HFS signature: EcjH+xmqmd/c/LbPjK/fh0Hf1nY5ujJYT4eQkXDWRnsGvBZuA/cMswrxezBaWjZMSBkwq8qWZPvMvBj8a4roBA==
+Comments signature: RfVPTy/K1hEF4cJUHejSB25CBuEkZCuATdIwcbWBCajMtuDj9V+RtmJjqWqS166KYDGXdmHWs0jOfEaRCfXaAg==

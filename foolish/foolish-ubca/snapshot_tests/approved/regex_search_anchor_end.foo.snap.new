@@ -1,0 +1,23 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{result = {alice = 1; charlie = 2; bob = 3;}?e$;}
+```
+[0] RESULT:
+```hfssnap
+{WOCONSTANIC
+  result=?(pattern='e$', ANCHORED, ECONSTANIC)
+}
+```
+COMMENTS:
+```markdown
+regex_search_anchor_end
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: xrlA6fAMJIelwry/k4cc6F5hg3eTX2XHh0I8jocMH5e5zKgs6uvBpPmB41eZR5eTakQrPYDp+0eEiTlTweeeCg==
+HFS signature: qYkj9rEX+6oRdW5T60MbFsBsiOaxLxUGseGBer9rKSSEkridH5SthMYoelDhStS0Hc2jctpr8Arl1SIum9HDAw==
+Comments signature: yfzkNbrNPf1MS9BscrkkYFRB/7YPnW0iG7SGRP1Ca6WERZaIHLfqiFWB/So/FCDRCJ9eWp+JiN3Xy5AMpOFFCw==

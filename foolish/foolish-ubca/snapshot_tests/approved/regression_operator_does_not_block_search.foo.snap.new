@@ -1,0 +1,45 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{a=1, b=2, c=3, d=4, e=5, f=6; expr = #-1 + #-2 + #-3 + #-4 + #-5 + #-6;}
+```
+[0] RESULT:
+```hfssnap
+{BRANING
+  a=1;
+  b=2;
+  c=3;
+  d=4;
+  e=5;
+  f=6;
+  expr=Op+(
+      Op+(
+        Op+(
+          Op+(
+            Op+(#(offset=-1, UNANCHORED, BRANING), #(offset=-2, UNANCHORED, PREMBRIONIC), BRANING),
+            #(offset=-3, UNANCHORED, PREMBRIONIC),
+            BRANING
+          ),
+          #(offset=-4, UNANCHORED, PREMBRIONIC),
+          BRANING
+        ),
+        #(offset=-5, UNANCHORED, PREMBRIONIC),
+        BRANING
+      ),
+      #(offset=-6, UNANCHORED, PREMBRIONIC),
+      BRANING
+  )
+}
+```
+COMMENTS:
+```markdown
+regression_operator_does_not_block_search
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: bYX93PDykhN+mQfQ7rg4OIdl9Uy6rMGF44BhMSX0IhhHegCLkcg2bBwSki2B1EC9Owjsm3ed895QVx1BKX/yAA==
+HFS signature: NvAFmL3Ux69kcPYWyrK//IRaqHKo3PpDk/Vi4kL3BpnTDoMcntKMKGLcO6dx4IFhk4hNnfzNsg7qPwP3UyoBCg==
+Comments signature: 7HPPmFd9xMnLQnfFGdqa0yhK084hVWYKAiua0PuEPwkC9QL+qvn6o52resu5NhTwUMu21vcjo/wwuKjnc3kICQ==

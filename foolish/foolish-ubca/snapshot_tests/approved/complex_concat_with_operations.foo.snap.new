@@ -1,0 +1,32 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{a = {x=1+2}; b = {y=3*4}; c = a b;}
+```
+[0] RESULT:
+```hfssnap
+{
+  a={
+      x=3
+  };
+  b={
+      y=12
+  };
+  c=⨃{
+    ?(pattern='^a$', UNANCHORED)
+    ?(pattern='^b$', UNANCHORED)
+  }
+}
+```
+COMMENTS:
+```markdown
+complex_concat_with_operations
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: hQZ3XlbJGCwNVmkTvvRiWQV1g6p/STn4Fd9yT0++sGLitIb/zHnnNHPywvmqVpMHd5cktMT7LFhzayFSXQ4mAw==
+HFS signature: Mch9diEgwDXJJ5wRqIvSRBhKxPWUuiLCRm0IoTWqc+dKA4G+tizP7vRtRBYYucB1/TC3kNODgqwnvzW0YpKsBg==
+Comments signature: i/nwDRIGE1LItktpJyzIUVOz9rV2oStBWjj6gQvf/w/hn/h3tvnDMQX549jy+QaJ4fp7hvbq6mBo+9iVULnBAg==

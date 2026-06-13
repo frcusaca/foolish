@@ -1,0 +1,26 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{x = 42; b = {y = x + 1};}
+```
+[0] RESULT:
+```hfssnap
+{WOCONSTANIC
+  x=42;
+  b={WOCONSTANIC
+      y=Op+(?(pattern='^x$', UNANCHORED), 1, WOCONSTANIC)
+  }
+}
+```
+COMMENTS:
+```markdown
+nested_search_in_brane
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: a2EHfjlv4/xgltU75YJ4bjNfPd6HVSagAu6bn0bsfw4HVnqCl0/M3s704cb/TVH0rPXvnH8RN5KIqWjnVWZ1Bw==
+HFS signature: V2y+YyqfE/k4pzrNbOpHtBh6MwHKh+LJJ9n82178dF55sJ9WzZ3VnNM+qzrOzmAh4XuOVp7Nfkqt4l39vZ2hDA==
+Comments signature: EyoMDOK6krwvnze80IDCu4bq7v6HePK8SWBuzidIsBMx4cNs+0m7tRMA3OurWmjZVRrxy819a01ad4S0QB3jCQ==

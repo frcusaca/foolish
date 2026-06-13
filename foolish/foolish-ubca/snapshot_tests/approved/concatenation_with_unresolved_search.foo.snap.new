@@ -1,0 +1,29 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{a = {x=ref}; b = {y=2}; c = a b;}
+```
+[0] RESULT:
+```hfssnap
+{WOCONSTANIC
+  a={WOCONSTANIC
+      x=?(pattern='^ref$', UNANCHORED, ECONSTANIC)
+  };
+  b={
+      y=2
+  };
+  c=⨃(elements=2, ?(pattern='^a$', UNANCHORED, WOCONSTANIC), ?(pattern='^b$', UNANCHORED), WOCONSTANIC)
+}
+```
+COMMENTS:
+```markdown
+concatenation_with_unresolved_search
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: 0nn0zHTItXiXgst2fdcj8qAcRecdM81vlZuNywRWyn84nf//TMf+OoPKmkpI5ilJaZfp/Hi3oChYXZ3rYHqDDw==
+HFS signature: 1V+T7/YrXiAJUKiT5HaWpurcXBGdeI2HId7pAHb+VAPu6bqJlFbMsY7xxuh6oEVO1Jxn6R0IX8/QOjlkWUCtDg==
+Comments signature: rmfJZ6g0xU1RDtH5GD5padwkn0CvTjJOgwgEms5yq70TZQ/y/wvyFhW5YlRXU2AHDitLWJ6aqJlyHXyHd4PBDQ==

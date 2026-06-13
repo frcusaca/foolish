@@ -1,0 +1,27 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{b = {42}; h = b^; t = b$;}
+```
+[0] RESULT:
+```hfssnap
+{WOCONSTANIC
+  b={
+      42
+  };
+  h=^(ECONSTANIC);
+  t=$(ECONSTANIC)
+}
+```
+COMMENTS:
+```markdown
+brane_with_single_value_head_tail
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: Tq1w19+A470fPIptb2wFZnTxYSpskC6MdJ7ASRFV9QUfO5wS0xySTGF67G1N0cabm0/WjR0iUvteZl9gXvolBg==
+HFS signature: +hxwPuV+Ja7tyum1rF4DlNv9gg/uIRNWyPZSaJ6D6X/Yx75wO051ak5J737p5CoDd8O27dFAY78llJx2/ZKcBg==
+Comments signature: Yu2QuFA+/NmLl12xnRGAKWK1kjEKiWoiMve3neX87nKMVC0V9YVQSUvXqr3OkTCYUv+vd5PEKNOnFfNQE5bcAA==

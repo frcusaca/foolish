@@ -1,0 +1,29 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{a={x=1, y=2}; s=<a>; a=99; s;}
+```
+[0] RESULT:
+```hfssnap
+{
+  a={
+      x=1;
+      y=2
+  };
+  s=?(pattern='^a$', UNANCHORED);
+  a=99;
+  ?(pattern='^s$', UNANCHORED)
+}
+```
+COMMENTS:
+```markdown
+sf_blocks_brane_at_assignment_time
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: r9cVsMVy9IKQUvI6rQnmYcfv40up0dd5AhbtoMFl72TT9TjvhiLZuxtnFgHI3eXA5c6ToFS7wW+gRqjBqQxxCw==
+HFS signature: B2unTuFrx5FFiuPjYzX4cuYk799nbZfERt0zMb739L2IUOoQOPHL+eM6o8FEgObojsJvCTj0LeWOnzUJK3c2BA==
+Comments signature: zaEOWlChU6+6WRtgG6UUrGOHygNTXQTl7IHuu5h6j12S0lIUT9fB8fMd60YeE/gaUrBYQ7BREYyjksHy1ybkCw==

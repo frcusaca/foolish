@@ -1,0 +1,29 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{a = 1; b = {c = #-1; d = 2; e = #-1}; f = #-1;}
+```
+[0] RESULT:
+```hfssnap
+{BRANING
+  a=1;
+  b={BRANING
+      c=#(offset=-1, UNANCHORED, BRANING);
+      d=2;
+      e=#(offset=-1, UNANCHORED, BRANING)
+  };
+  f=#(offset=-1, UNANCHORED, PREMBRIONIC)
+}
+```
+COMMENTS:
+```markdown
+nested_brane_boundary
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: DaGfc59AvcqkrMo/U46I/VuEskxj1E1HlplxglYD6o/VwALnr9puDJQXy+Di9FY5i8235oxneyNKyJsoEbnjDw==
+HFS signature: Gn98lvCpTFovo6N5cO/fqJkIc9aaOWiWLaOD4jmBOLxdiAhJkeyh/0KA4Iqb1F9MC/GF7aIDD1uK9FsR1+9tDg==
+Comments signature: DNxUM8jd75Yo1rVcKIRaoT7DaRq2osmpzknyomGw3+gFI42UhY4eSdCM+D3zshQvSmGo7LmPmstMZxEtqi8lAw==

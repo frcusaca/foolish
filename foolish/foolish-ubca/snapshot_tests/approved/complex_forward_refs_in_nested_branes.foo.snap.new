@@ -1,0 +1,28 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{nested = {inner = {val = x}}; x = 42;}
+```
+[0] RESULT:
+```hfssnap
+{
+  nested={
+      inner={
+          val=?(pattern='^x$', UNANCHORED)
+      }
+  };
+  x=42
+}
+```
+COMMENTS:
+```markdown
+complex_forward_refs_in_nested_branes
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: dct7S1xt4BQlrVSe20zSejRWopMd5WAIV2n3zrW7K1tYqgXNp3fSPSQKHKK5cqT+oEDbEo1Ytg5ww9j+8ME3Aw==
+HFS signature: 36TcwDdY4CjDLBFMFvr29Ni4rHntYIGQ72lsR3YxO2sa5GXUBC7WBOSolIyLN3HHGF4vf4E5oHB9Ji7J2yLqAQ==
+Comments signature: NCU+5aXAyZ+rXjKFiBb2cWCWK2LNAsSy0ZG5V6ABNs84/aCUf/k/qf4aQsmTQ1H5k82XgDqKOcsTIj8MkmB6Bw==

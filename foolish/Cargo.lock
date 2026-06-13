@@ -458,6 +458,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "foolish-ubca"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "foolish-core",
+ "foolish-parser",
+ "insta",
+ "num_cpus",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "foolish-ubcb"
 version = "0.1.0"
 dependencies = [

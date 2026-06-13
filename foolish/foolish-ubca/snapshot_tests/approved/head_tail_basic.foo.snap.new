@@ -1,0 +1,24 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{x = {10; 20; 30}^; y = {10; 20; 30}$;}
+```
+[0] RESULT:
+```hfssnap
+{
+  x=^();
+  y=$()
+}
+```
+COMMENTS:
+```markdown
+head_tail_basic
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: H6qRVntwKvC0a4FpMDE/EgiX8clsQl9wsrl9OfUoes5B9RPH8IXTNM4NjU/HlZGcFSztGukvBfLCU35AgBdsDQ==
+HFS signature: yUyGNBO2ADm38yM25VwHXiCPA4DcvcNpbRnYoMl1QOGUHTexAX6c4DuEMfY+tuW1iMJ8BYf+i9x7In+VaFJVCw==
+Comments signature: ceJDI/nODzRTRF7jDx9X3mQmjRuqMh21+X1kc5jkJ0FxLrI1AOhRni3Zk+gCgFiaT9vHxP7Lx4bRsZThHuhDBw==

@@ -1,0 +1,26 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 50
+---
+INPUT:
+```foolish
+{val1 = 3; val2 = 4; val3 = 5; sum = #-1 + #-2 + #-3;}
+```
+[0] RESULT:
+```hfssnap
+{
+  val1=3;
+  val2=4;
+  val3=5;
+  sum=12
+}
+```
+COMMENTS:
+```markdown
+unanchored_seek_chain
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: 4Op9a4SD82NnhuqkFocpP8S6SDOGc1oqG7ozVwycClN+D3+mH7iKx6DP5nFjdxEqYwI0cpD5g9WHvUtEsJiOAQ==
+HFS signature: OkQ7hVLlF3hcEH2htvMqbjZGDPyWbhmSuPYT56EFtr45pDKguRbBmRgsz21g2ZlVHTVzbA+9CqQjfQj+vw05Ag==
+Comments signature: M3DRY8OaNEQQ8TwwYU4AwKq8eQzfwkbYEhqOQyiWXAHCfH4yoBTccPFnoZVH6EEEMMMUm4lNLsSOaDDP1J+ACw==

@@ -1,0 +1,32 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{b={x=10}; c = b {y=20}; result = c.x + c.y;}
+```
+[0] RESULT:
+```hfssnap
+{WOCONSTANIC
+  b={
+      x=10
+  };
+  c=⨃{
+    ?(pattern='^b$', UNANCHORED)
+    {
+      y=20
+    }
+  };
+  result=Op+(?(pattern='^x$', ANCHORED, ECONSTANIC), ?(pattern='^y$', ANCHORED, ECONSTANIC), WOCONSTANIC)
+}
+```
+COMMENTS:
+```markdown
+search_through_concatenation
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: 9DLYRoHvr3V1/5qjv3++3QYoGXWioowdvBAbjKn8LjHxI1Wl1cKHUPfJwwRGXhOaznyIGi9JwcVLQUcPqv+EAQ==
+HFS signature: mF6JLLQ93qBO/vjs5Ep8h3c37W01YeCU06hpm1xc2jIjSk9s8nRhRRzfoZLqXk7Tn0ojBRwugqwueUOVPyugBA==
+Comments signature: DxBtB6yJ1kaugNkaat7IA6C8DPEE0qdC0uDNWV2bIc3plvHJI1VjKHPC3Ib920J74SYhTldZbJ0XwST9CZQ2CA==

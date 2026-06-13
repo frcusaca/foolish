@@ -1,0 +1,25 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{my_var = 10; another_var = 20; result = my_var + another_var;}
+```
+[0] RESULT:
+```hfssnap
+{
+  myˍvar=10;
+  anotherˍvar=20;
+  result=30
+}
+```
+COMMENTS:
+```markdown
+brane_with_operations_and_underscores
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: YL60MVPYRdNx2UuAR4BhiYrezotRIEzx0SZmsdhFsp8e5vISvZ55YHcEdhuEOgFMIqpxGK/Mrm1cFuCpi6RAAQ==
+HFS signature: rtjJZs2tJuQbJhnLmyId0CSe78TiS4AJVdwAnXPp0Knk9myauyVU+KdiXfikhgSdZnk+Zrij0qu6HYKRsRq1BQ==
+Comments signature: HIFEXhkGMJM1wGO2SkuUimS8DBXxuQDo4aSmrYgNgOKUE6eMA/R2l8sGIELjiAMDm2kvsmin3KRsJDPyjvpfBw==

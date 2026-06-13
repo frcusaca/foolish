@@ -1,0 +1,25 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{a = 1 / 0; b = 2 / 0; c = 3 / 0;}
+```
+[0] RESULT:
+```hfssnap
+{NK
+  a=??? (operator nk);
+  b=??? (operator nk);
+  c=??? (operator nk)
+}
+```
+COMMENTS:
+```markdown
+alarm_multiple_divisions_by_zero
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: J6vDnAXsJg+GZvTRthFUnRw+A4dE5yKGm5C0E70ARHJzKvpxFAlNpaFk+XVPX94IwwVB2O9qchh5bMQohmFbAw==
+HFS signature: AX3uL3kORQWAlru71SxIBP+3S1Mo7hwqSNZVbKI7JYFJJ2PLSLa6/fHTTTMcTyzX8Lk3P8u0C6n9Aqyh4vr8CQ==
+Comments signature: abcdsQRH+23DwcxJSazuFqJxC+GGPZufq9Pamasex6ybvuJnl3oO74koXDdIlEk6m/kXKyCBYSHHC1HNGtvsBA==

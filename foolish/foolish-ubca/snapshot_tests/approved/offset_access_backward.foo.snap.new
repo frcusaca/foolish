@@ -1,0 +1,31 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{data = {a=10; b=20; c=30; d=40; e=50}; last = data#-1; second_last = data#-2;}
+```
+[0] RESULT:
+```hfssnap
+{WOCONSTANIC
+  data={
+      a=10;
+      b=20;
+      c=30;
+      d=40;
+      e=50
+  };
+  last=#(offset=-1, ANCHORED, ECONSTANIC);
+  secondˍlast=#(offset=-2, ANCHORED, ECONSTANIC)
+}
+```
+COMMENTS:
+```markdown
+offset_access_backward
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: pUK/KiH0zwQnihUUZLIFN0rbZjiDGsozeTatGMfVSiarmKniRHUlOgIqYpG5AwWsxLiIZ84011ivpiB/j01nCw==
+HFS signature: AI2MaH6YrPRKOlqhLsKACxpRJlNbXBqwcRCgAXad53CqgQw3NeHNWLSfq1jPADVVcQQruASATbqF1jDxagQUDA==
+Comments signature: aFP2+zK3Ziw2Zl/5dCA0NKfQBnrHGx9K9TN5TM81Rho7O/LJObH9AvrxhzqHvucmhz1RZu3QAr+hqEs9kTnnBA==

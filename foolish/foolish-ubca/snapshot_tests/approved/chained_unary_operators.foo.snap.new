@@ -1,0 +1,24 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{a = -(-5); b = -(-(-3));}
+```
+[0] RESULT:
+```hfssnap
+{WOCONSTANIC
+  a=Op-(-5, WOCONSTANIC);
+  b=Op-(Op-(-3, WOCONSTANIC), WOCONSTANIC)
+}
+```
+COMMENTS:
+```markdown
+chained_unary_operators
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: kiNVOLwv/jrjOVkHoD+trP+GtqjZ0F5/+ipES3CpFENY3I+4p/cigoi+MXbywS0r6UAGfx3/iyYgSStikNBwCg==
+HFS signature: 1a6NLll3xfmN4xW/2qBPFyAVNB501FECTqVvyGzuh5VpSQXPH6DmVsHej1i/2lV/aEkqobxkbH33xMhGG7nCBA==
+Comments signature: aLizWYB4FtFAmEXr38b2nn1wQOCce2JIvPzC6WqEqkGVEaAx1bsmow6Na/iG5P33/DnGAJDqcIJEJCuIWdVyBw==

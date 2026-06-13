@@ -1,0 +1,30 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{a=1, b=2, c=3; result = #-1 * #-2 + #-3;}
+```
+[0] RESULT:
+```hfssnap
+{BRANING
+  a=1;
+  b=2;
+  c=3;
+  result=Op+(
+      Op*(#(offset=-1, UNANCHORED, BRANING), #(offset=-2, UNANCHORED, PREMBRIONIC), BRANING),
+      #(offset=-3, UNANCHORED, PREMBRIONIC),
+      BRANING
+  )
+}
+```
+COMMENTS:
+```markdown
+operator_transparency_mixed_ops
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: Dx6cEGwDlqXzWfQYuA7RC2uLXGYxQx4LJZ7qcwW/uhX4dSpJpl4BA85IAtCac3U7fx+NiVcd7lG6RK6SSN7HBQ==
+HFS signature: bLBArEWC3dXmE2qzDQTdF4ATZIyTYnGof2AXi8+hN7JbKUAuWXqmj+49FuFfeSq8HCmN4bjGU9zNPMKnqlefCA==
+Comments signature: 7nphFgxGpPTGukU0drekzrM/mMWPDWmVFbbG9MZEUYuTQ6IQuY7nv5CrMujMFJ9C56wqXtlTSNjOiWf7Z0lzAw==

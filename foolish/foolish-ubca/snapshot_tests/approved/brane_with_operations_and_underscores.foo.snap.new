@@ -1,0 +1,25 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{my_var = 10; another_var = 20; result = my_var + another_var;}
+```
+[0] RESULT:
+```hfssnap
+{WOCONSTANIC
+  myˍvar=10;
+  anotherˍvar=20;
+  result=Op+(?(pattern='^myˍvar$', UNANCHORED), ?(pattern='^anotherˍvar$', UNANCHORED), WOCONSTANIC)
+}
+```
+COMMENTS:
+```markdown
+brane_with_operations_and_underscores
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: YL60MVPYRdNx2UuAR4BhiYrezotRIEzx0SZmsdhFsp8e5vISvZ55YHcEdhuEOgFMIqpxGK/Mrm1cFuCpi6RAAQ==
+HFS signature: r1N+5lFzb4rN6EtIob7S0q2cO9OQT+Lr1y4lh2ezYwX2HP7QrgwkcatI4tWKajchYAJJaumDnoBLfCyhGBTdBA==
+Comments signature: D9f9evgSlVpZSOCLN0JU0h7ks12ImQKZYMN/tFaxt+q0Evt/68N2hclwnV7EV2WTBX/ZdnkgEgmFclhV6Q5zDg==

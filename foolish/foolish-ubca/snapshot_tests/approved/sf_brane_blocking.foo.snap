@@ -1,0 +1,30 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 50
+---
+INPUT:
+```foolish
+{a={x=1}; b=<a>; a=42; d=<a>;}
+```
+[0] RESULT:
+```hfssnap
+{WOCONSTANIC
+  a={
+      x=1
+  };
+  b=<WOCONSTANIC
+      ?(pattern='^a$', UNANCHORED, ECONSTANIC)
+  >;
+  a=42;
+  d=?(result=42, pattern='^a$', UNANCHORED)
+}
+```
+COMMENTS:
+```markdown
+sf_brane_blocking
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: Ky3iGog7YnykQ9G+x+TqZfAttBMYl/mu1d1TaY7LzXz1PLNKvLoVoAmNAW65ylpxQ/pnLEDYYKIJUSAyikrMCg==
+HFS signature: Z90qsxUU4Oftl0O0BaYa8TX2wrt3MAGTZnC7RcwbeymgfYeGVkARwNBeTSQzZ40zT/zqMlOXioFOADcHM80zCg==
+Comments signature: dUZiSNQfkoaVXeyHiGYH0oTZZWWtB69h1aSM+uuJ8cNTe4L3NnaepgsBZAerBxrC+uWADdsiXt9q1Jy8RJbfBQ==

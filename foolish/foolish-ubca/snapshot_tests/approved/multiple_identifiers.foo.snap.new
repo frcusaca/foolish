@@ -1,0 +1,26 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{x = 5; y = 3; z = 2; x * y + z;}
+```
+[0] RESULT:
+```hfssnap
+{WOCONSTANIC
+  x=5;
+  y=3;
+  z=2;
+  Op+(Op*(?(pattern='^x$', UNANCHORED), ?(pattern='^y$', UNANCHORED), WOCONSTANIC), ?(pattern='^z$', UNANCHORED), WOCONSTANIC)
+}
+```
+COMMENTS:
+```markdown
+multiple_identifiers
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: g5XLxAtNDPB0o4w3UI2WQL/742yZ4CL1ZAcbzufFwj+I4B2+aEa5hlx1zAHrERbRwefF6xuhvWX/3oIgLYvOAg==
+HFS signature: aBvnYaYvOp15ItEUqvlYzFCFpKx0NXPujOPEanJLA9FkNvCmIlqOUgQS+TS0WAcy3TTP2RuQvqXrW7nqGSnbCQ==
+Comments signature: kxXXT/rAaB5Qh6ByJkjHK3b/yK1FWLDJUrzsb8HET1EYcYALyfeoQwXE5K5I+UMm6ynqqRmBVLLrxHqC8OsGBA==

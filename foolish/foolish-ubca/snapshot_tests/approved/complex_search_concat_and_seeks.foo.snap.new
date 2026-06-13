@@ -1,0 +1,35 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{data = {x=1, y=2, z=3}; copy = data {w=4}; last = copy#-1; first = copy#0;}
+```
+[0] RESULT:
+```hfssnap
+{WOCONSTANIC
+  data={
+      x=1;
+      y=2;
+      z=3
+  };
+  copy=⨃{
+    ?(pattern='^data$', UNANCHORED)
+    {
+      w=4
+    }
+  };
+  last=#(offset=-1, ANCHORED, ECONSTANIC);
+  first=#(offset=0, ANCHORED, ECONSTANIC)
+}
+```
+COMMENTS:
+```markdown
+complex_search_concat_and_seeks
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: 2sGCo//bsMS6EbNWvLkDc/IST2lRsoHgtK6Fc0UBF834NnteSGmsi8JcAAOcOFOaH7GJfG8BAJfr4Duct/GuCg==
+HFS signature: jrZn7JSGeFrRMsRWa/FyRSwnO7EEd/H2DiMu1SyNCo87ZiBVBUxlF1/zqGnfg1lGSNn/GFt7ETmU5uQIZwiEDw==
+Comments signature: YF033p5BcBmroA2wa8M8fDrECp6ib+IU9mXdmbPcFU1gijPzPCtykfxsyU/Lz9EYBEv5/tsXu1Rz7MvnCafNDw==

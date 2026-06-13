@@ -1,0 +1,27 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{a=1; b=2; s=<<a+b>>; a=10; s;}
+```
+[0] RESULT:
+```hfssnap
+{
+  a=1;
+  b=2;
+  s=Op+(?(pattern='^a$', UNANCHORED, PREMBRIONIC), ?(pattern='^b$', UNANCHORED, PREMBRIONIC), PREMBRIONIC);
+  a=10;
+  ?(pattern='^s$', UNANCHORED)
+}
+```
+COMMENTS:
+```markdown
+sff_resolves_on_each_use
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: dvgS2SgQxTH17MqJ0GvfsJzYlhZVovt+9HhyksPNiUsLfJeYshVu9Gse0wzatDFWaIIIRlYQ4UG+eFcEHxFuBw==
+HFS signature: TkQz/yoifGi1nXCo0jAy2mcji4GAlG1TM6MjRxJQVSDMmPedg3HYE74Pfq4ZWScheX2vFiODcoY1HpJCTly0Cw==
+Comments signature: 2VxD/0OhfGmpgDMAUtRFqLA1gCYqcWVhwj+I8JdylX57jGfDd6jRI1l6PcI1idluutvNBR84QO3ZOySYPBzpAQ==

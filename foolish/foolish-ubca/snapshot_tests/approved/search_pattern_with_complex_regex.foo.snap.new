@@ -1,0 +1,30 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{b = {tmp_a = 1; result = 2; tmp_b = 3; output = 4}; r1 = b?tmp_.*; r2 = b?result;}
+```
+[0] RESULT:
+```hfssnap
+{WOCONSTANIC
+  b={
+      tmpˍa=1;
+      result=2;
+      tmpˍb=3;
+      output=4
+  };
+  r1=?(pattern='tmpˍ.*', ANCHORED, ECONSTANIC);
+  r2=?(pattern='result', ANCHORED, ECONSTANIC)
+}
+```
+COMMENTS:
+```markdown
+search_pattern_with_complex_regex
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: 7NEp1YnLYuCfsI67t4Rd/ifucEcudy+rM9iBWs21OTYUeIBSIaDmGFkBKspARTYnph1eTh6gKRTjxRNTspmwBg==
+HFS signature: 14+sXRnKnPtW1oC20uxJ3GKEJt9+x2jXL9QLX2xIJrzv4i9yaEaRXrR5kxjUWuxYQiMOglHwI+BMMxXYCQJPDA==
+Comments signature: LP9TsOHZ29nsSQh1DD13duNlE2DUkVYvuYEkJjGyi2ITpLSb9UT3/+65GaX35S5MMCOpjAEiAedtruXFbQg4Bw==
