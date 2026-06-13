@@ -1,0 +1,10 @@
+{
+  "id": "T-936756c6-68db-492b-ba99-2e1112945395",
+  "subject": "Implement StatementFir and BraneFir in fir_kinds.rs",
+  "description": "Add StatementFir { core, name, line_number } and BraneFir { core } with their fir_op_step logic, builders, and unit tests.",
+  "status": "completed",
+  "activeForm": "Implementing StatementFir and BraneFir",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_143b30158ffeFjZcezJswJ44s6"
+}

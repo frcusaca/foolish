@@ -1,0 +1,9 @@
+{
+  "id": "T-1e88030a-1324-41d4-ae65-db4cdd27c5e8",
+  "subject": "Implement OperatorFir in fir_kinds.rs",
+  "description": "Add OperatorFir struct, Fir impl, operator() builder, and unit tests",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_143b994f7ffeVY3LOZgsgTovxv"
+}

@@ -1,0 +1,10 @@
+{
+  "id": "T-ecdc9598-45f4-4353-84af-b38f52b1c77d",
+  "subject": "Update README.md: constanic terminology alignment",
+  "description": "Update README.md's constanic definition to align with FOOP-62's UBCa: constanic = {WOCONSTANIC, ECONSTANIC, CONSTANT, INDEPENDENT, NK}.",
+  "status": "completed",
+  "activeForm": "Updating README.md",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_1473ab1bbffe7dwYszj01mt7mP"
+}

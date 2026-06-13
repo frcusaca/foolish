@@ -7,7 +7,7 @@
 > WORKTREE_ORIGIN_BRANCH=alpha
 > WORKTREE_ORIGIN_PATH=$(pwd)
 > WORKTREE_BRANCH_NAME=foop-62-ubca-mimo
-> WORKTREE_FULL_FS_PATH=${HOME}/tmp/foolish-worktrees/foop-62-ubca-mimo
+> WORKTREE_FULL_FS_PATH=/home/hcbusy/tmp/foolish-worktrees/foop-62-ubca-mimo
 > ```
 >
 > Created from the starting branch/path:
@@ -23,31 +23,23 @@
 
 ## Phase 0 — Gate & baseline (BLOCKING)
 
-- [ ] Create worktree at `${HOME}/tmp/foolish-worktrees/foop-62-ubca-mimo` with branch `foop-62-ubca-mimo`
+- [ ] Create worktree at `/home/hcbusy/tmp/foolish-worktrees/foop-62-ubca-mimo` with branch `foop-62-ubca-mimo`
 - [ ] Confirm spec FOOP-62.md is reviewed/approved by human (status Draft → Brewing/Final)
-- [ ] Establish GREEN baseline before any code. AGENTS.md: never start Phase-or-larger
-      work while any test is broken. The branch currently has uncommitted edits
-      (`fir.rs`/`ubc.rs`/`engine.rs`) and ~12 `.snap.new` files — resolve their status:
-  - [ ] Run `cargo test --workspace`; record pass/fail
-  - [ ] Determine whether the `.snap.new` files are pending-human-review (per the
-        no-auto-accept rule) or actual regressions
-  - [ ] If red: STOP. Either human repairs/commits the baseline, or human explicitly
-        disables the broken tests. Do NOT begin Phase 1 against a red tree.
-- [x] DECIDED: UBCa is a new sibling CRATE `foolish-ubca` (like `foolish-ubcb`), NOT an
+- [ ] DECIDED: UBCa is a new sibling CRATE `foolish-ubca` (like `foolish-ubcb`), NOT an
       in-crate module; original UBC stays in `foolish-core`. Task queue = `std::VecDeque`.
       (2026-06-09 14:45)
-- [x] Human approval to add `bon` (`3.x`) to `[workspace.dependencies]` (new third-party dep)
+- [ ] Human approval to add `bon` (`3.x`) to `[workspace.dependencies]` (new third-party dep)
       — APPROVED by Atlas: add latest stable bon
       (2026-06-09 14:30)
-- [x] DECIDED (post deepseek+mimo review): composition = kinds CONTAIN a `ProtoBraneImpl`;
+- [ ] DECIDED (post deepseek+mimo review): composition = kinds CONTAIN a `ProtoBraneImpl`;
       `trait ProtoBrane` (shared code as defaults over `core()`), `trait Fir: ProtoBrane`
       (per-kind); `FirRef = Rc<RefCell<dyn Fir>>` (enum + clone_into_fir retired). Parent
       wiring = nested `Rc::new_cyclic`, parent immutable at construction.
       (2026-06-09 15:30)
-- [x] DECIDED: step counts are NOT an acceptance constraint (snapshots carry no step count —
+- [ ] DECIDED: step counts are NOT an acceptance constraint (snapshots carry no step count —
       verified snapshot_suite.rs:135). Acceptance = byte-exact sequencer output only.
       (2026-06-09 15:30)
-- [x] DECIDED (spec rev 4, borrow-discipline experiment in /tmp/foop62-lang-experiment):
+- [ ] DECIDED (spec rev 4, borrow-discipline experiment in /tmp/foop62-lang-experiment):
       shared topology = INHERENT methods on `struct ProtoBrane` (renamed from
       ProtoBraneImpl; the old `trait ProtoBrane` is eliminated); stepping =
       `step_fir_ref(&FirRef, &Scope)` FREE FUNCTION with transient borrows (nested
@@ -56,7 +48,7 @@
       when nyes unchanged); task-queue pop predicate is `is_settled()` =
       `is_constanic() || == Nk` (Nk is settled or it blocks the queue forever).
       (2026-06-10 09:00)
-- [x] DECIDED (spec rev 5, Atlas direction): Scope is reworked into the search-capability
+- [ ] DECIDED (spec rev 5, Atlas direction): Scope is reworked into the search-capability
       surface (spec §10): `entries` flat name list REMOVED (parent chain IS the name
       table); public surface = `search_ib`/`search_ab`/`index(offset)`/`get_ignorance()`/
       `emit()`; positional fields private. `EvalContext{Normal,Sf,Sff}` RENAMED
@@ -64,42 +56,38 @@
       BraneFir (`search(pattern,from,to)`, `index(n)`, `head()`, `tail()`), NOT on Scope.
       Scope is built with `bon` fluent builders like every FIR node.
       (2026-06-10 09:00)
-- [x] RULED by Atlas (2026-06-10): unanchored index (`a = #-1 + #-2`) permits ONLY negative
+- [ ] RULED by Atlas (2026-06-10): unanchored index (`a = #-1 + #-2`) permits ONLY negative
       offsets, [-k, -1]; out-of-range (incl. 0/positive) ⇒ NK. Anchored index (`b#1`/`b#-1`)
       is a DISTINCT operation, both signs valid. UBC's positive-offset acceptance in
       step_unanchored (fir.rs:1874) is a latent bug, not language behavior.
       (2026-06-10 10:30)
-- [x] Residual corpus check: verify no approved snapshot exercises a positive UNANCHORED
+- [ ] Residual corpus check: verify no approved snapshot exercises a positive UNANCHORED
       index offset — VERIFIED NONE: regex over snapshot_tests/input/ finds 19 files with
       unanchored NEGATIVE forms (`=#-2`, `#-1 + #-2`, …) and ZERO unanchored positive;
       every positive `#N` in the corpus is anchored (`b#1`, `data#0`, `index_brane#99`).
       No collision between the ruling and byte-exactness. Bonus: seek_negative_clamping.foo
       (`c=#-99`) already snapshot-covers unanchored out-of-range.
       (2026-06-10 10:45)
+- [ ] DECIDED: Temporarily abandon UBC/UBCb development — UBCa implementation proceeds on
+      alpha; UBC's pre-existing snapshot failure (anchored_search_foward.foo: `youˍis=5→2`)
+      is a known UBC issue, not a blocker for UBCa.
+      (2026-06-11 12:00)
 - [ ] See `FOOP-62.feedback-synthesis.md` for the full 13-item action list behind these.
 
 ## Phase 1 — Clone the UBC interface + tests into UBCa (no new behavior)
 
 - [ ] Create new crate `foolish-ubca/` (mirror `foolish-ubcb/` Cargo.toml shape; add to
-      workspace `members`), re-exporting/cloning the UBC public surface: `Scope`,
-      `run_to_completion[_with_scope]`, `UbcError`, the snapshot harness
-      (`snapshot_suite.rs`, `ubc_snapshot_tester.rs`)
+      workspace `members`)
+- [ ] **"Clone the UBC interface" means: same input (.foo files) and same output format
+      (Humanizing sequence for snapshot testing).** NOT cloning the internal implementation.
+      UBCa gets its own compiler, evaluator, and sequencer that produce byte-identical
+      snapshot output.
 - [ ] Copy UBC's snap tests to UBCa **as-is without change**: both `snapshot_tests/input/`
       (the `.foo` test programs) and `snapshot_tests/approved/` (the finalized, signed
-      `.snap` files) are copied byte-for-byte. These are the shared test inputs and the
-      oracle corpus. Only finalized `.snap` files — never `.snap.new`. Copying approved
-      snapshots is permitted; re-accepting/regenerating is not (AGENTS.md no-auto-accept).
-- [ ] Cross-check harness (write FIRST): runs each `.foo` in
-      `foolish-core/snapshot_tests/input/` through BOTH UBC and UBCa, asserts identical
-      humanizing-sequencer OUTPUT (NOT step counts — not snapshot-visible). Initially UBCa
-      delegates to UBC so the harness passes — proves the harness before we gut anything.
-- [ ] Develop the **humanizer sequencer for UBCa's new FIR classes**. The sequencer reads
-      UBCa's FIR types (ProtoBrane's `foolish_children`/`ubc_children` stores + leaf
-      accessors via `kind()`) and must produce byte-identical output to UBC's approved
-      snapshots. This is the hard acceptance constraint (spec §8). Default path: thin
-      `FirQueryable` adapter over ProtoBrane (~100 lines glue); prove corpus green through
-      the adapter FIRST. Retiring the adapter is a later optional cleanup OFF the
-      acceptance path.
+      `.snap` files) are copied byte-for-byte.
+- [ ] Cross-check harness: runs each `.foo` through UBCa, compares Humanizing sequence
+      output against approved snapshots. Initially UBCa produces `.snap.new` files for
+      human review — **never auto-accept** (AGENTS.md).
 - [ ] Genericize the `Evaluator` trait over the FIR ref type (or thin adapter) so the harness
       can drive UBCa's `Rc<RefCell<dyn Fir>>` (currently pinned to `dyn Steppable`) — mimo #5
 - [ ] Snapshot testing FULLY implemented in foolish-ubca — the complete SnapshotSuite
@@ -264,13 +252,24 @@ through.
       CONSTRAINT (§8): byte-exact; `result=` from ubc_children (order significant). Retiring the
       trait is a LATER optional cleanup OFF the acceptance path.
 
-### Phase 3b — Compiler parent-wiring refactor (HIGHEST RISK — mimo #4)
+### Phase 3b — New compiler in foolish-ubca (snapshot-driven development)
 
-- [ ] Refactor `compiler.rs`: `compile_astn` gains `parent: Weak<RefCell<dyn Fir>>` threaded
-      downward; each brane uses `Rc::new_cyclic` to mint its own `Weak` before compiling its
-      children (nested cyclic construction). Children only STORE the Weak, never upgrade during
-      construction. Replaces 12+ bottom-up `ParentPtr::new()` sites. Root's Weak is self-ref.
-      (This is the single highest-risk part of the migration — touches every FIR-creation path.)
+- [ ] **DECIDED (2026-06-11): Write a NEW compiler in `foolish-ubca/src/compiler.rs`** that
+      converts AST → ProtoBrane tree directly, instead of refactoring UBC's compiler or
+      converting UBC's Fir enum. The parser (`foolish-parser`) is shared; the compiler is
+      new. This avoids a conversion layer and lets snapshot tests drive FIR kind
+      implementation incrementally.
+- [ ] `compile_astn` gains `parent: Weak<RefCell<dyn Fir>>` threaded downward; each brane
+      uses `Rc::new_cyclic` to mint its own `Weak` before compiling its children (nested
+      cyclic construction). Children only STORE the Weak, never upgrade during construction.
+      Root's Weak is self-ref.
+- [ ] Wire up snapshot harness EARLY: copy UBC's input/approved tests, create
+      `UbcaEvaluator` that uses the new compiler + step loop, run snapshot tests.
+      Each failing test reveals which FIR kind needs work. Let the tests drive
+      implementation order (most failures = highest priority kind).
+- [ ] Implement remaining FIR kinds as snapshot tests demand them:
+      SearchFir, IndexFir, HeadTailFir, StayFoolishFir, StayFullyFoolishFir,
+      ConcatenationFir. Each kind gets unit tests before moving to the next.
 
 ## Phase 4 — Switch UBCa off the UBC delegation; cross-check is the oracle
 
@@ -290,12 +289,12 @@ through.
       Under no circumstances retire UBC automatically.
 - [ ] Per human decision: either leave UBC in place, or migrate callers UBC→UBCa and
       remove UBC (separate, human-gated step)
-- [ ] Verify all work is complete in `${HOME}/tmp/foolish-worktrees/foop-62-ubca-mimo` and committed to `foop-62-ubca-mimo`
+- [ ] Verify all work is complete in `/home/hcbusy/tmp/foolish-worktrees/foop-62-ubca-mimo` and committed to `foop-62-ubca-mimo`
 - [ ] Merge `foop-62-ubca-mimo` to alpha
 - [ ] Update FOOP-62.md status; clear Open Questions; update INDEX.md
-- [ ] Cleanup `${HOME}/tmp/foolish-worktrees/foop-62-ubca-mimo`
+- [ ] Cleanup `/home/hcbusy/tmp/foolish-worktrees/foop-62-ubca-mimo`
   - [ ] Check that FOOP-62.plan.md has all but Cleanup checkboxes completed
-  - [ ] Remove `${HOME}/tmp/foolish-worktrees/foop-62-ubca-mimo`
+  - [ ] Remove `/home/hcbusy/tmp/foolish-worktrees/foop-62-ubca-mimo`
   - [ ] This is the last checkbox to be checked in FOOP-62.plan.md
 
 ## Notes / discoveries
@@ -308,7 +307,7 @@ through.
 **Updated By**: Claude Code 2.1.119 (Claude Code); Sonnet 4.6
 **Changes**: Replaced "WORKED IN PLACE" on FOOP-52 worktree with a dedicated worktree
 declaration: `foop-62-ubca-mimo` at
-`${HOME}/tmp/foolish-worktrees/foop-62-ubca-mimo`. Added worktree
+`/home/hcbusy/tmp/foolish-worktrees/foop-62-ubca-mimo`. Added worktree
 lifecycle tasks: create worktree (Phase 0), verify+merge+cleanup (Phase 5) per AGENTS.md.
 
 **Date**: 2026-06-10 (second update — spec rev 6 sync)

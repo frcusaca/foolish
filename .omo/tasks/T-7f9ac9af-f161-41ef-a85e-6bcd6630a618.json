@@ -1,0 +1,9 @@
+{
+  "id": "T-7f9ac9af-f161-41ef-a85e-6bcd6630a618",
+  "subject": "Add as_i64() to Fir trait in fir_trait.rs",
+  "description": "Add default method for reading integer values from ConstantInt nodes",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_143b994f7ffeVY3LOZgsgTovxv"
+}

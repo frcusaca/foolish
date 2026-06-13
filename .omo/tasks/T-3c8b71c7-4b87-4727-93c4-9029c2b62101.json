@@ -1,0 +1,10 @@
+{
+  "id": "T-3c8b71c7-4b87-4727-93c4-9029c2b62101",
+  "subject": "Create evaluator.rs with proto_to_core_fir bridge",
+  "description": "Create evaluator.rs with proto_to_core_fir bridge and UBcaEvaluator implementing core Evaluator trait",
+  "status": "completed",
+  "activeForm": "Creating evaluator.rs",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_1425adcf2ffewdvuTi9K1opdH0"
+}

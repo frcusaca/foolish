@@ -121,6 +121,10 @@ ordered list of checkbox tasks. Build the plan so that:
   Tracking" below).
 - Tasks that prove larger than expected split into indented sub-tasks (see
   "Sub-Tasks" below).
+- All RHS variables should be expanded and literally placed into the plan
+  file as the plan is being created.
+- Once work begins on a foop, all updates, including to the foop folder
+  *MUST* be written *ONLY* to the worktree. This continues until merge time.
 
 ### Checkbox Format
 
@@ -210,7 +214,7 @@ for permission, ask once for the entire worktree branch:
   (implementation tasks here)
 ...
 - [ ] Verify all work is complete in ${HOME}/tmp/foolish-worktrees/3841-foop-7 and committed to `foop/foop-7-constanic-clone`
-- [ ] Merge `foop/foop-7-constanic-clone` to `alpha` #Btw, These branches reflect expanded $WORKTREE_BRANCH_NAME and $WORKTREE_ORIGIN_BRANCH, which should be known at time the _PLAN.md'a creation. Fillers such as the literal '$WORKTREE_ORIGIN_BRANCH' should be replaced with real values before starting work on the plan.
+- [ ] Merge `foop/foop-7-constanic-clone` to `alpha` #Btw, These branch names and paths reflect expanded $HOME, $WORKTREE_BRANCH_NAME and $WORKTREE_ORIGIN_BRANCH, which should be known and specified by the time of _PLAN.md's completion. Fillers such as the literal '$WORKTREE_ORIGIN_BRANCH' should be replaced with real values before starting work on the plan. "${HOME}" should be the full path to "${HOME}" when the plan is generated.
 ```
 
 ### Sub-Tasks
@@ -236,7 +240,20 @@ split occurred:
 ```
 
 This pattern is common because Foolish uses `git merge` (not rebase), so
-merge conflicts on `alpha` may trigger follow-up repair work.
+merge conflicts on `alpha` may trigger follow-up repair work. NB: The environmental
+variable exprssions within "${}" should be expanded to actual names and full
+paths by the time each plan file is finalized.
+
+### Plan execution
+
+Expect to executed each task one after another. parent tasks should not be checked off
+until children are complete. One project starts, the 'begun [ ]' checkbox is checked in
+the origin directory. The foop file is committed stating that work has commenced on such
+and such foop. The worktree/branches are created. From that point onward, all work is to
+be completed in the worktree directory. This may include updates to the FOOP file or the
+plan itself, these changes are to occur ONLY in the worktree. Good progress should be
+commited regularly. Upon completion or at request of user, the branc is merged according
+to the stated plan.
 
 ---
 

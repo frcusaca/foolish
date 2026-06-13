@@ -1,0 +1,10 @@
+{
+  "id": "T-3ec6daa6-ae5e-4d33-bedc-f6e56d25cb03",
+  "subject": "Create snapshot tester and wire up tests",
+  "description": "Create ubca_snapshot_tester.rs, copy snapshot tests, update lib.rs, verify build and test",
+  "status": "completed",
+  "activeForm": "Creating snapshot tester",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_1425adcf2ffewdvuTi9K1opdH0"
+}

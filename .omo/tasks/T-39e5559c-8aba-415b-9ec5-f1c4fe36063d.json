@@ -1,0 +1,10 @@
+{
+  "id": "T-39e5559c-8aba-415b-9ec5-f1c4fe36063d",
+  "subject": "Implement SearchFir real stepping + unit tests",
+  "description": "Replace SearchFir stub with real fir_op_step that searches brane children for name matches. Add tests for found and not-found cases.",
+  "status": "completed",
+  "activeForm": "Implementing SearchFir stepping",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_1423b96cdffe75NnBg4kqu6uDr"
+}

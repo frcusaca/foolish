@@ -1,0 +1,10 @@
+{
+  "id": "T-70d5efa3-edbf-46aa-9a8e-43f6d5879bc2",
+  "subject": "Implement StayFoolishFir and StayFullyFoolishFir real stepping",
+  "description": "Implement fir_op_step for both kinds in fir_kinds.rs, add unit tests, run test suite",
+  "status": "completed",
+  "activeForm": "Implementing SF/SFF stepping",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_142242396ffe1PJRU4h9Ld1s5t"
+}

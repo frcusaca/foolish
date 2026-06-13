@@ -1,0 +1,10 @@
+{
+  "id": "T-9498af52-b152-4814-860b-0bd8819b7275",
+  "subject": "Add stub FIR kinds (Search, Index, HeadTail, SF, SFF, Concatenation)",
+  "description": "Add SearchFir, IndexFir, HeadTailFir, StayFoolishFir, StayFullyFoolishFir, ConcatenationFir stubs to fir_kinds.rs",
+  "status": "completed",
+  "activeForm": "Adding stub FIR kinds",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_1425adcf2ffewdvuTi9K1opdH0"
+}
