@@ -23,7 +23,7 @@ INPUT:
   last={
       w=4
   };
-  first=#(result=?(pattern='^copy$', UNANCHORED), offset=0, ANCHORED, NK)
+  first=^(result=?(pattern='^copy$', UNANCHORED), NK)
 }
 ```
 COMMENTS:
@@ -33,5 +33,5 @@ complex_search_concat_and_seeks
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 2sGCo//bsMS6EbNWvLkDc/IST2lRsoHgtK6Fc0UBF834NnteSGmsi8JcAAOcOFOaH7GJfG8BAJfr4Duct/GuCg==
-HFS signature: Z/a0AoJmbgwW48F5I6hYonWhS/QUw076eEWFaSJbaqg+ejihWdioa42uGuSpozkDJVtB4jPRbgC5JYQTNf68Bw==
-Comments signature: GT1ueKlRjzW+8G+NJCcCNuP14YA5TdoSCyPJE4h08l/91NApMNcY360y4mnjyV2ExXkkMwg9jBNAaTnplzTuBA==
+HFS signature: d8lH75Vp3akFXyz4UDIo2kv2o0TqmkGE10rAv0uxv4GvPr11kRTfy3/F0rR+bC4BE7jljvZVjX8D5o8XHs8WBA==
+Comments signature: 8hwtGgKdZAeGzoCrV8hgPpq9v7Tf/4DUEb5EN5cp8b9q76xt79/IIonWeCP+mLwQ96AiQ/H0Jz+lStuZccOlBw==

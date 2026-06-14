@@ -36,22 +36,18 @@ INPUT:
       UNANCHORED
   );
   sffsf=?(pattern='^sf$', UNANCHORED, PREMBRIONIC);
-  sfsf=?(result=?(pattern='^sf$', UNANCHORED, PREMBRIONIC), pattern='^sf$', UNANCHORED);
+  sfsf=?(result=3, pattern='^sf$', UNANCHORED);
   sffsff=?(pattern='^sff$', UNANCHORED, PREMBRIONIC);
   x=-2;
-  rsff=?(pattern='^sff$', UNANCHORED, PREMBRIONIC);
-  rsf=?(pattern='^sff$', UNANCHORED, PREMBRIONIC);
+  rsff=Op+(?(pattern='^x$', UNANCHORED, PREMBRIONIC), ?(pattern='^y$', UNANCHORED, PREMBRIONIC), PREMBRIONIC);
+  rsf=3;
   rsfsff=?(
       result=Op+(?(pattern='^x$', UNANCHORED, PREMBRIONIC), ?(pattern='^y$', UNANCHORED, PREMBRIONIC), PREMBRIONIC),
       pattern='^sff$',
       UNANCHORED
   );
-  rsffsf=?(pattern='^sff$', UNANCHORED, PREMBRIONIC);
-  rsfsf=?(
-      result=Op+(?(pattern='^x$', UNANCHORED, PREMBRIONIC), ?(pattern='^y$', UNANCHORED, PREMBRIONIC), PREMBRIONIC),
-      pattern='^sff$',
-      UNANCHORED
-  );
+  rsffsf=?(pattern='^sf$', UNANCHORED, PREMBRIONIC);
+  rsfsf=?(result=3, pattern='^sf$', UNANCHORED);
   rsffsff=?(pattern='^sff$', UNANCHORED, PREMBRIONIC)
 }
 ```
@@ -62,5 +58,5 @@ sf_sff_nested_combined
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: tT8UqgoaX2cQknxaTSOxGoatqdbkUElQJTZXD4wK3f2mTtwOZwiBraFW1mIiflGHyg6zn6JuaExvI+DIT6sOBg==
-HFS signature: AUrVlq1nNv8Anon6t9jxAptgvfJpnLhRAT/gNvJrPnFuPpjOIKmImTkWCRQCp/QOYX5MYD7umEwsmEB3GN+1Cw==
-Comments signature: L9O4pQEjXWWQUV+P0sx/1ITe0bG8PpO4sVUVT2bEAOYg1L0E31PnjDKjHBVIb0j1xyT9C0lvBmdJzPabyq85AQ==
+HFS signature: cjtNwf6t7oQ+9ktYMuT5PlIYS1fBkeRs+pQOcFE2jieYr4vgUmv7vrDie4kQG4Hfa+BKvsB4A77wegcJ0ooGAA==
+Comments signature: Wa8p31vFkEA8LJ39Njtae5cxOmXbLRx98JGxTbF28/GlksV3pGGzRBTIk1OkJXUaPtNwAJiiUH7r/NgoZdiEBg==

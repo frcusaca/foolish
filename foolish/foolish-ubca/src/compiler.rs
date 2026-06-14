@@ -5,8 +5,8 @@ use anyhow::anyhow;
 use foolish_parser::{AssignmentOperator, Astn, SearchOperator};
 
 use crate::fir_kinds::{
-    BraneFir, ConcatenationFir, ConstantIntFir, HeadTailFir, IndexFir, NkFir, OperatorFir,
-    SearchFir, StatementFir, StayFoolishFir, StayFullyFoolishFir,
+    BraneFir, ConcatenationFir, ConstantIntFir, IndexFir, NkFir, OperatorFir, SearchFir,
+    StatementFir, StayFoolishFir, StayFullyFoolishFir,
 };
 use crate::fir_trait::{Fir, FirRef};
 use crate::proto_brane::ProtoBrane;
@@ -155,12 +155,13 @@ fn build_standalone(ast: Astn) -> FirRef {
                 anchored: true,
             })
         }),
-        Astn::HeadTail { is_head, anchor } => Rc::new_cyclic(|me: &Weak<RefCell<HeadTailFir>>| {
+        Astn::HeadTail { is_head, anchor } => Rc::new_cyclic(|me: &Weak<RefCell<IndexFir>>| {
             let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
             let a = build_astn(*anchor, &self_weak);
-            RefCell::new(HeadTailFir {
+            let offset = if is_head { 0 } else { -1 };
+            RefCell::new(IndexFir {
                 core: ProtoBrane::new(vec![a], self_weak, Nyes::Prembrionic),
-                is_head,
+                offset,
                 anchored: true,
             })
         }),
@@ -290,12 +291,13 @@ fn build_astn(ast: Astn, parent: &Weak<RefCell<dyn Fir>>) -> FirRef {
                 anchored: true,
             })
         }),
-        Astn::HeadTail { is_head, anchor } => Rc::new_cyclic(|me: &Weak<RefCell<HeadTailFir>>| {
+        Astn::HeadTail { is_head, anchor } => Rc::new_cyclic(|me: &Weak<RefCell<IndexFir>>| {
             let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
             let a = build_astn(*anchor, &self_weak);
-            RefCell::new(HeadTailFir {
+            let offset = if is_head { 0 } else { -1 };
+            RefCell::new(IndexFir {
                 core: ProtoBrane::new(vec![a], parent.clone(), Nyes::Prembrionic),
-                is_head,
+                offset,
                 anchored: true,
             })
         }),

@@ -13,7 +13,7 @@ INPUT:
   sf=?(result=1, pattern='^x$', UNANCHORED);
   sff=?(pattern='^x$', UNANCHORED, PREMBRIONIC);
   x=10;
-  ?(pattern='^x$', UNANCHORED, PREMBRIONIC);
+  ?(result=1, pattern='^x$', UNANCHORED);
   ?(pattern='^x$', UNANCHORED, PREMBRIONIC)
 }
 ```
@@ -24,5 +24,5 @@ sff_vs_sf_timing_difference
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 1T4n3g/X8HUF4ks72E7lyvCYn9OelhLPSBr7ockhII5PkT0EVw7Amz08EWaUU87H3l3wpZOYiwTv12S1ZPHVBA==
-HFS signature: Bs+9uaVGenMGbmNh+JlcTxzM1Sf7YuLJ0E+x3hC8bTxauhCSgfkVGahb+l0b8azqTIU1/FjHn4RnteQlkqpeDw==
-Comments signature: 7Thxv1CTJOHvpOB/pg99sHEiu9wVJqfW8zTf6Vzbx5fVbOkQvA0yvsl4w0fXe7WbsYJbLwX/mcIWp9zeXUGCBA==
+HFS signature: RwD4ReSw3o5zpMhJ6UD3l83Jyzn6963qEW3XuUaMvPJ3IMG3EfeSZhbkG9PAQyAUvwAN/FhGo0CnYrknRcCwCQ==
+Comments signature: oT31IUJwmvAug41YcYF2sCcbYfmy5T+++cDxnlXtGNIxVqQhsB6l4O1+VVFSRMr4fCWbUt0oh0OyNuDtvektDg==

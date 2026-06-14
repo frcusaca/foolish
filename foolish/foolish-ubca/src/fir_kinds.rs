@@ -444,7 +444,7 @@ impl Fir for SearchFir {
                     self.core.push_task(anchor);
                     self.core.set_nyes(Nyes::Braning);
                 } else {
-                    let name = extract_simple_name(&self.pattern);
+                    let name = &self.pattern;
                     let mut current = self.core.parent();
                     while let Some(node) = current {
                         if node.borrow().kind() == FirKind::Statement {
@@ -486,7 +486,7 @@ impl Fir for SearchFir {
                 if self.anchored {
                     let anchor = Rc::clone(&self.core.foolish_children()[0]);
                     let resolved = resolve_anchor(&anchor);
-                    let name = extract_simple_name(&self.pattern);
+                    let name = &self.pattern;
                     if let Some((body, nyes)) = search_brane_children(&resolved, name, None, self.forward) {
                         self.core.push_ubc_child(body);
                         let search_nyes = if nyes == Nyes::Econstanic || nyes == Nyes::Woconstanic {
