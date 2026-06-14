@@ -8,20 +8,22 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{WOCONSTANIC
+{NK
   data={
       x=1;
       y=2;
       z=3
   };
-  copy=⨃{
-    ?(pattern='^data$', UNANCHORED)
-    {
+  copy={
+      x=1;
+      y=2;
+      z=3;
       w=4
-    }
   };
-  last=#(offset=-1, ANCHORED, ECONSTANIC);
-  first=#(offset=0, ANCHORED, ECONSTANIC)
+  last={
+      w=4
+  };
+  first=#(result=?(pattern='^copy$', UNANCHORED), offset=0, ANCHORED, NK)
 }
 ```
 COMMENTS:
@@ -31,5 +33,5 @@ complex_search_concat_and_seeks
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 2sGCo//bsMS6EbNWvLkDc/IST2lRsoHgtK6Fc0UBF834NnteSGmsi8JcAAOcOFOaH7GJfG8BAJfr4Duct/GuCg==
-HFS signature: jrZn7JSGeFrRMsRWa/FyRSwnO7EEd/H2DiMu1SyNCo87ZiBVBUxlF1/zqGnfg1lGSNn/GFt7ETmU5uQIZwiEDw==
-Comments signature: YF033p5BcBmroA2wa8M8fDrECp6ib+IU9mXdmbPcFU1gijPzPCtykfxsyU/Lz9EYBEv5/tsXu1Rz7MvnCafNDw==
+HFS signature: Z/a0AoJmbgwW48F5I6hYonWhS/QUw076eEWFaSJbaqg+ejihWdioa42uGuSpozkDJVtB4jPRbgC5JYQTNf68Bw==
+Comments signature: GT1ueKlRjzW+8G+NJCcCNuP14YA5TdoSCyPJE4h08l/91NApMNcY360y4mnjyV2ExXkkMwg9jBNAaTnplzTuBA==

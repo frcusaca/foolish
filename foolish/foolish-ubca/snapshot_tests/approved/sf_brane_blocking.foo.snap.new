@@ -12,9 +12,15 @@ INPUT:
   a={
       x=1
   };
-  b=?(pattern='^a$', UNANCHORED);
+  b=?(
+      result={
+          x=1
+      },
+      pattern='^a$',
+      UNANCHORED
+  );
   a=42;
-  d=?(pattern='^a$', UNANCHORED)
+  d=?(result=42, pattern='^a$', UNANCHORED)
 }
 ```
 COMMENTS:
@@ -24,5 +30,5 @@ sf_brane_blocking
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: Ky3iGog7YnykQ9G+x+TqZfAttBMYl/mu1d1TaY7LzXz1PLNKvLoVoAmNAW65ylpxQ/pnLEDYYKIJUSAyikrMCg==
-HFS signature: Iz7x3/XT86GiAqKA9qgAQWSbxwTqLE4AnlpENl1WxUAqd0r/wJKpFA1vwd8F5l7YK1JXzjHqNgBKe1PNXTakBg==
-Comments signature: xnWfv/6ICtxgILpC5zD3t9fRo7FF+D2ntklXZ6UOEzmTVgO+b3rKqrQ91AFiJUWVaaCC/jm42fFjelbX78p5Dg==
+HFS signature: HEWWlXquYlffufIqWQg0E9X/u4xLMcdbl7KIXYviopBHWaYOC6Kce0utcP94uDRXGVYRt+ERoaLsUulLFSOQDA==
+Comments signature: pbQHS8beVZvA18PX1UYW7SK+DV3L4AGn+Eek0TnodkXl0ul59yDql9dCJt6wvl63GLVls3ww15m5ckje7IOHCQ==

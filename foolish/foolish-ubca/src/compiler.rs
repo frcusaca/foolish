@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::rc::{Rc, Weak};
 
 use anyhow::anyhow;
-use foolish_parser::{AssignmentOperator, Astn};
+use foolish_parser::{AssignmentOperator, Astn, SearchOperator};
 
 use crate::fir_kinds::{
     BraneFir, ConcatenationFir, ConstantIntFir, HeadTailFir, IndexFir, NkFir, OperatorFir,
@@ -80,13 +80,14 @@ fn build_standalone(ast: Astn) -> FirRef {
             })
         }),
         Astn::Brane {
-            characterizations: _,
+            characterizations,
             statements,
         } => Rc::new_cyclic(|me: &Weak<RefCell<BraneFir>>| {
             let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
             let children = build_stmts(statements, &self_weak);
             RefCell::new(BraneFir {
                 core: ProtoBrane::new(children, self_weak, Nyes::Prembrionic),
+                characterizations,
             })
         }),
         Astn::BinaryOp { op, left, right } => Rc::new_cyclic(|me: &Weak<RefCell<OperatorFir>>| {
@@ -112,6 +113,7 @@ fn build_standalone(ast: Astn) -> FirRef {
                 core: ProtoBrane::new(vec![], parent, Nyes::Prembrionic),
                 pattern: format!("^{}$", id),
                 anchored: false,
+                forward: false,
                 found_body: RefCell::new(None),
             })
         }),
@@ -123,12 +125,16 @@ fn build_standalone(ast: Astn) -> FirRef {
                     core: ProtoBrane::new(vec![a], self_weak, Nyes::Prembrionic),
                     pattern: format!("^{}$", coordinate),
                     anchored: true,
+                    forward: false,
                     found_body: RefCell::new(None),
                 })
             })
         }
         Astn::RegexpSearch {
-            anchor, pattern, ..
+            anchor,
+            pattern,
+            operator,
+            ..
         } => Rc::new_cyclic(|me: &Weak<RefCell<SearchFir>>| {
             let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
             let a = build_astn(*anchor, &self_weak);
@@ -136,6 +142,7 @@ fn build_standalone(ast: Astn) -> FirRef {
                 core: ProtoBrane::new(vec![a], self_weak, Nyes::Prembrionic),
                 pattern,
                 anchored: true,
+                forward: operator == SearchOperator::RegexpForward,
                 found_body: RefCell::new(None),
             })
         }),
@@ -214,16 +221,18 @@ fn build_astn(ast: Astn, parent: &Weak<RefCell<dyn Fir>>) -> FirRef {
             core: ProtoBrane::new(vec![], parent.clone(), Nyes::Prembrionic),
             pattern: format!("^{}$", id),
             anchored: false,
+            forward: false,
             found_body: RefCell::new(None),
         })),
         Astn::Brane {
-            characterizations: _,
+            characterizations,
             statements,
         } => Rc::new_cyclic(|me: &Weak<RefCell<BraneFir>>| {
             let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
             let children = build_stmts(statements, &self_weak);
             RefCell::new(BraneFir {
                 core: ProtoBrane::new(children, parent.clone(), Nyes::Prembrionic),
+                characterizations,
             })
         }),
         Astn::BinaryOp { op, left, right } => Rc::new_cyclic(|me: &Weak<RefCell<OperatorFir>>| {
@@ -251,12 +260,16 @@ fn build_astn(ast: Astn, parent: &Weak<RefCell<dyn Fir>>) -> FirRef {
                     core: ProtoBrane::new(vec![a], parent.clone(), Nyes::Prembrionic),
                     pattern: format!("^{}$", coordinate),
                     anchored: true,
+                    forward: false,
                     found_body: RefCell::new(None),
                 })
             })
         }
         Astn::RegexpSearch {
-            anchor, pattern, ..
+            anchor,
+            pattern,
+            operator,
+            ..
         } => Rc::new_cyclic(|me: &Weak<RefCell<SearchFir>>| {
             let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
             let a = build_astn(*anchor, &self_weak);
@@ -264,6 +277,7 @@ fn build_astn(ast: Astn, parent: &Weak<RefCell<dyn Fir>>) -> FirRef {
                 core: ProtoBrane::new(vec![a], parent.clone(), Nyes::Prembrionic),
                 pattern,
                 anchored: true,
+                forward: operator == SearchOperator::RegexpForward,
                 found_body: RefCell::new(None),
             })
         }),

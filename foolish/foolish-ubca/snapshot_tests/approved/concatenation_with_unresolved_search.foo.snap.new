@@ -15,7 +15,21 @@ INPUT:
   b={
       y=2
   };
-  c=⨃(elements=2, ?(pattern='^a$', UNANCHORED, WOCONSTANIC), ?(pattern='^b$', UNANCHORED), WOCONSTANIC)
+  c=⨃(
+      elements=2,
+      ?(
+  result={WOCONSTANIC
+      x=?(pattern='^ref$', UNANCHORED, ECONSTANIC)
+  },
+  pattern='^a$',
+  UNANCHORED,
+  WOCONSTANIC
+),
+      {
+  y=2
+},
+      WOCONSTANIC
+  )
 }
 ```
 COMMENTS:
@@ -25,5 +39,5 @@ concatenation_with_unresolved_search
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 0nn0zHTItXiXgst2fdcj8qAcRecdM81vlZuNywRWyn84nf//TMf+OoPKmkpI5ilJaZfp/Hi3oChYXZ3rYHqDDw==
-HFS signature: 1V+T7/YrXiAJUKiT5HaWpurcXBGdeI2HId7pAHb+VAPu6bqJlFbMsY7xxuh6oEVO1Jxn6R0IX8/QOjlkWUCtDg==
-Comments signature: rmfJZ6g0xU1RDtH5GD5padwkn0CvTjJOgwgEms5yq70TZQ/y/wvyFhW5YlRXU2AHDitLWJ6aqJlyHXyHd4PBDQ==
+HFS signature: uzwXVk7B2+HFM4RZjtxZ+uYbeBs++dhwKrV1hE9eINeT5jgw8RRFX1SfNCwHlAVzXu6GYnTO9H9zKu8nVjlDAQ==
+Comments signature: ZdccBwmAtjxMn1AwzunRfUXpdiFCgUy0Z0vC7yseq3N/27ov8oQnGSx+NE4cDow+iwLT9+Gmr40Py+EuFSurDg==

@@ -8,21 +8,17 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{WOCONSTANIC
+{
   a=10;
   b=20;
-  outer={WOCONSTANIC
+  outer={
       c=30;
-      ac=Op+(?(pattern='^a$', UNANCHORED), ?(pattern='^c$', UNANCHORED), WOCONSTANIC);
-      inner={WOCONSTANIC
+      ac=40;
+      inner={
           a=40;
-          abc=Op+(
-              Op+(?(pattern='^a$', UNANCHORED), ?(pattern='^b$', UNANCHORED), WOCONSTANIC),
-              ?(pattern='^c$', UNANCHORED),
-              WOCONSTANIC
-          )
+          abc=100
       };
-      ab=Op+(?(pattern='^a$', UNANCHORED), ?(pattern='^b$', UNANCHORED), WOCONSTANIC)
+      ab=60
   }
 }
 ```
@@ -33,5 +29,5 @@ complex_nested_scope
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: lATSCngkRPllgcpySFfij40IPvVOdXraCOLxdoTraAIlOXvsQXwD75sktfcSMNYGZLCpgFdy1utwkByduMRmCw==
-HFS signature: xrtybqcE6Fnt/NmjdGUmpsBoleAjOBzpX9ONEfrHGhTa/+WbOSdvZ4GCcDLtXCtcgsmlcL/X1/TppZ/mOwvrCA==
-Comments signature: 3PQFGdmQiwo+9c911DL5VcsH7LEOpCkX2qJZ/v87cjULsNG4QYbgq4dU1/ThXV3egku3qMntoFszpH+ZQ1KFDQ==
+HFS signature: v0g9ZXTZ6Yjt1AsGlA8YB77Jw6iJtx0PCyAY6WQkxyTEybwKhd4FHUE0l2kIt2toIOx0GrYRRtBFJfgpo9/8AQ==
+Comments signature: QgXC3UpKUgxntlVJQoAAkKCXXzX51cNEmRC/FneujY6idVwHNowBDJoGKQ9Y/NTiYj/V+55Lewp9yvJ0SvFKDg==

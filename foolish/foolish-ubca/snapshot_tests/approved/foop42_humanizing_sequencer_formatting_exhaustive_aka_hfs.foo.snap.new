@@ -88,37 +88,46 @@ win={w_in={in_in={in_in_in=101010}}};
   bb=2;
   ccc=3;
   dddd=4;
-  shortˍsum=Op+(
-      Op+(
-        Op+(?(pattern='^a$', UNANCHORED), ?(pattern='^bb$', UNANCHORED), WOCONSTANIC),
-        ?(pattern='^ccc$', UNANCHORED),
-        WOCONSTANIC
-      ),
-      ?(pattern='^dddd$', UNANCHORED),
-      WOCONSTANIC
-  );
-  longˍnamedˍresultˍshowsˍalignment=Op+(?(pattern='^shortˍsum$', UNANCHORED, WOCONSTANIC), ?(pattern='^shortˍsum$', UNANCHORED, WOCONSTANIC), WOCONSTANIC);
+  shortˍsum=10;
+  longˍnamedˍresultˍshowsˍalignment=20;
   veryˍlongˍidentifierˍnameˍforˍtestingˍindent=100;
   evenˍlongerˍnameˍthatˍmayˍwrapˍorˍpushˍcolumnsˍ1234567890=500;
   unicodeˍidentifiersˍπΔΣ=Op+(
-      Op+(?(pattern='^π$', UNANCHORED), ?(pattern='^Δ$', UNANCHORED), WOCONSTANIC),
-      ?(pattern='^Σ$', UNANCHORED),
+      Op+(?(pattern='^π$', UNANCHORED, ECONSTANIC), ?(pattern='^Δ$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
+      ?(pattern='^Σ$', UNANCHORED, ECONSTANIC),
       WOCONSTANIC
   );
   π=3;
   Δ=7;
   Σ=10;
-  oneˍzero=??? (operator nk);
-  divˍbyˍzeroˍinˍbraneˍmethod=?(pattern='^oneˍzero$', UNANCHORED, NK);
-  threeˍzero=??? (operator nk);
-  badˍinˍarithmetic=??? (operator nk);
-  chainedˍbad=??? (operator nk);
-  aliasˍofˍbad=?(pattern='^oneˍzero$', UNANCHORED, NK);
-  fwdˍx=?(pattern='^x$', UNANCHORED);
+  oneˍzero=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK;
+  divˍbyˍzeroˍinˍbraneˍmethod=?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED, NK);
+  threeˍzero=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK;
+  badˍinˍarithmetic=Op+(
+      ?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED, NK),
+      5,
+      NK
+  );
+  chainedˍbad=Op+(
+      Op+(
+        10,
+        ?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED, NK),
+        NK
+      ),
+      20,
+      NK
+  );
+  aliasˍofˍbad=?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED, NK);
+  fwdˍx=?(pattern='^x$', UNANCHORED, ECONSTANIC);
   x=42;
-  xˍagain=?(pattern='^x$', UNANCHORED);
-  fwdˍdeep=?(pattern='^y$', UNANCHORED);
-  y=?(pattern='^z$', UNANCHORED);
+  xˍagain=42;
+  fwdˍdeep=?(
+      result=?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED, NK),
+      pattern='^y$',
+      UNANCHORED,
+      NK
+  );
+  y=?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^z$', UNANCHORED, NK);
   z=99;
   flatˍempty={};
   flatˍsingle={
@@ -129,27 +138,45 @@ win={w_in={in_in={in_in_in=101010}}};
       name=7;
       final=0
   };
-  headˍofˍflat=^(ECONSTANIC);
-  tailˍofˍflat=$(ECONSTANIC);
-  headˍofˍempty=^(ECONSTANIC);
-  tailˍofˍempty=$(ECONSTANIC);
+  headˍofˍflat=42;
+  tailˍofˍflat=0;
+  headˍofˍempty=^(result=?(pattern='^flatˍempty$', UNANCHORED), NK);
+  tailˍofˍempty=$(result=?(pattern='^flatˍempty$', UNANCHORED), NK);
   indexˍbrane={
       first=10;
       second=20;
       third=30;
       fourth=40
   };
-  indexˍfirst=#(offset=0, ANCHORED, ECONSTANIC);
-  indexˍlast=#(offset=-1, ANCHORED, ECONSTANIC);
-  indexˍoutˍofˍbounds=#(offset=99, ANCHORED, ECONSTANIC);
-  seekˍunanchored=#(offset=-2, UNANCHORED);
+  indexˍfirst=10;
+  indexˍlast=40;
+  indexˍoutˍofˍbounds=#(result=?(pattern='^indexˍbrane$', UNANCHORED), offset=99, ANCHORED, NK);
+  seekˍunanchored=40;
   sfˍtarget={
       a=1;
       b=2
   };
-  sfˍvalue=?(pattern='^sfˍtarget$', UNANCHORED);
-  sfˍtoˍconstant=?(pattern='^π$', UNANCHORED);
-  sfˍchain=?(pattern='^sfˍvalue$', UNANCHORED);
+  sfˍvalue=?(
+      result={
+          a=1;
+          b=2
+      },
+      pattern='^sfˍtarget$',
+      UNANCHORED
+  );
+  sfˍtoˍconstant=?(result=3, pattern='^π$', UNANCHORED);
+  sfˍchain=?(
+      result=?(
+          result={
+              a=1;
+              b=2
+          },
+          pattern='^sfˍtarget$',
+          UNANCHORED
+      ),
+      pattern='^sfˍvalue$',
+      UNANCHORED
+  );
   sffˍtarget={
       x=10;
       y=20
@@ -163,28 +190,24 @@ win={w_in={in_in={in_in_in=101010}}};
       rightˍa=3;
       rightˍb=4
   };
-  concatˍresult=⨃{
-    ?(pattern='^concatˍleft$', UNANCHORED)
-    ?(pattern='^concatˍright$', UNANCHORED)
+  concatˍresult={
+      leftˍa=1;
+      leftˍb=2;
+      rightˍa=3;
+      rightˍb=4
   };
-  threeˍwayˍconcat=⨃{
-    {
+  threeˍwayˍconcat={
       a=1;
-      b=2
-    }
-    {
+      b=2;
       c=3;
-      d=4
-    }
-    {
+      d=4;
       e=5;
       f=6
-    }
   };
   charˍval=42;
   twoˍdeep={NK
       innerˍ1=30;
-      innerˍnk=??? (operator nk)
+      innerˍnk=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK
   };
   threeˍdeep={
       L2={
@@ -205,7 +228,7 @@ win={w_in={in_in={in_in_in=101010}}};
           l2={NK
               l3={NK
                   l4={NK
-                      badˍdiv=??? (operator nk);
+                      badˍdiv=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK;
                       good=42
                   }
               }
@@ -229,41 +252,40 @@ win={w_in={in_in={in_in_in=101010}}};
   shadowˍ2={
       val=2
   };
-  rootˍshadow=Op+(?(pattern='^val$', ANCHORED, ECONSTANIC), ?(pattern='^val$', ANCHORED, ECONSTANIC), WOCONSTANIC);
+  rootˍshadow=3;
   emptyˍbraneˍshadow={
       inner={}
   };
-  anchoredˍlookupˍfail=?(pattern='noˍsuchˍfield', ANCHORED, ECONSTANIC);
+  anchoredˍlookupˍfail=?(pattern='noˍsuchˍfield', ANCHORED, NK);
   braneˍwithˍstuff={
       fieldˍa=10;
       fieldˍb=20
   };
-  anchoredˍlookupˍok=?(pattern='fieldˍa', ANCHORED, ECONSTANIC);
-  dotˍlookup=?(pattern='^fieldˍb$', ANCHORED, ECONSTANIC);
-  chainedˍdot=Op+(?(pattern='^fieldˍa$', ANCHORED, ECONSTANIC), ?(pattern='^fieldˍb$', ANCHORED, ECONSTANIC), WOCONSTANIC);
+  anchoredˍlookupˍok=10;
+  dotˍlookup=20;
+  chainedˍdot=30;
   regexˍtarget={
       alice=1;
       bob=2;
       charlie=3
   };
-  regexˍres=?(pattern='(^b)', ANCHORED, ECONSTANIC);
-  regexˍnoˍmatch=?(pattern='(^z.*)', ANCHORED, ECONSTANIC);
+  regexˍres=2;
+  regexˍnoˍmatch=?(pattern='(^z.*)', ANCHORED, NK);
   unaryˍneg=-5;
-  unaryˍdouble=Op-(-3, WOCONSTANIC);
-  unaryˍinˍexpr=Op+(10, Op*(-5, 2, WOCONSTANIC), WOCONSTANIC);
-  opˍtransparent=Op*(#(offset=-2, UNANCHORED), #(offset=-1, UNANCHORED), WOCONSTANIC);
-  chainedˍops=Op-(Op+(1, 6, WOCONSTANIC), 2, WOCONSTANIC);
-  zeroˍdivˍinˍop=??? (operator nk);
-  nestedˍopˍtransparent=Op/(
-      Op*(
-        Op+(?(pattern='^a$', UNANCHORED), ?(pattern='^bb$', UNANCHORED), WOCONSTANIC),
-        Op-(?(pattern='^ccc$', UNANCHORED), ?(pattern='^dddd$', UNANCHORED), WOCONSTANIC),
-        WOCONSTANIC
-      ),
-      3,
-      WOCONSTANIC
+  unaryˍdouble=3;
+  unaryˍinˍexpr=0;
+  opˍtransparent=0;
+  chainedˍops=5;
+  zeroˍdivˍinˍop=Op+(??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, 42, NK);
+  nestedˍopˍtransparent=-2;
+  inspectˍsff=?(
+      result={
+          x=10;
+          y=20
+      },
+      pattern='^sffˍtarget$',
+      UNANCHORED
   );
-  inspectˍsff=?(pattern='^sffˍtarget$', UNANCHORED);
   inspectˍsffˍagain=?(pattern='^sffˍtarget$', UNANCHORED, PREMBRIONIC);
   win={
       wˍin={
@@ -281,5 +303,5 @@ foop42_humanizing_sequencer_formatting_exhaustive_aka_hfs
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 5CYQ9TTMJwxdSRqdDbNvIcEuEjzF0rs9DSJO0IFb7JZX52hw7oNCOG0pcpoYozWuyHWmpPLVgx2jGmPxDfKBDA==
-HFS signature: 8WV9giRDrhC8eRB40iUwCZa8awCvUXOqqAzMJlnosGAk+CXGGXS5IGjbYLKmW9+r9pfmd2zPuAIwmy8dnDPyCg==
-Comments signature: eOxEX8z7LRQfGNLqxv6q7doeoZy2UTWjQbrRSd4sUgQfE1jXM/Gp/UPGSH6G3+20devREUQVkpAGOeKwestlCQ==
+HFS signature: n4Y8zbl7XuBch4P/omLFvNxJQ7Cq3E+DqEv/im20/VjFw1wtJH7VdeOszUszxeMaftSRA9tB3/bOZ0YYZ+NJDQ==
+Comments signature: TRs20U77xT0gzuEDOZ33N6AmKb6nzRcojz67ikX49h9FXJB31Iz5yO5G+7Mnhn7bN9q/rAhfdgo8K7GCrjliDQ==

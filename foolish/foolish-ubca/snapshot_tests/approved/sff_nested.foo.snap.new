@@ -18,8 +18,20 @@ INPUT:
       >>,
       PREMBRIONIC
   );
-  ?(pattern='^c$', UNANCHORED);
-  ?(pattern='^c$', UNANCHORED)
+  Op+(
+    ?(pattern='^a$', UNANCHORED, PREMBRIONIC),
+    <<PREMBRIONIC
+      ?(pattern='^b$', UNANCHORED, PREMBRIONIC)
+    >>,
+    PREMBRIONIC
+  );
+  Op+(
+    ?(pattern='^a$', UNANCHORED, PREMBRIONIC),
+    <<PREMBRIONIC
+      ?(pattern='^b$', UNANCHORED, PREMBRIONIC)
+    >>,
+    PREMBRIONIC
+  )
 }
 ```
 COMMENTS:
@@ -29,5 +41,5 @@ sff_nested
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: lhcizF48neDw/0Ot29cyjAKKVN2RJsqhMEqKOBwHi1AC7LmDHeXb9dBvby6kqQzBJhSJHHAXCtmjZ9gbF1ZHAw==
-HFS signature: trqplYEuuFQdc4sSIbCaO2zQLMhPRmiVEa/RXwINgcw4aTHSnJjEi1qMDvCmhBslSiIBJJciNXdRqn1DCIzOAw==
-Comments signature: /At9iu0KRy8xNvjkuVAGrq0ViWRlFfUgp9ctovrjhjRnhcmzIXwucmULFgOC/jCsklyprMkTE1t6/7RxcYAtAA==
+HFS signature: 1N7cFLhKoDek+YnBLQxmaEZ903PeMMJnvCMn3/jYNWJtVakoPxmCi1cHYaTExHonrQLNO1kOpQp/T3Uv2wEpCQ==
+Comments signature: nVL7st7IBEm6TqE44QM35HTXznDHGDFGVdT/8zzjMpmgp/yVC09J8FA2JFJgRpq6k+ARQdhCkeK4kL4/o9kAAw==

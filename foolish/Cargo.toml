@@ -38,6 +38,7 @@ opt-level = 0
 opt-level = 1           # Slightly optimize tests for faster execution
 debug = 1
 debug-assertions = true # Keep safety checks enabled
+panic = "unwind"        # Catch panics per-test, not process-wide (FOOP-62 §3.4)
 
 [build]
 jobs = 16

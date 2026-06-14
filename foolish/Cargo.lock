@@ -466,6 +466,7 @@ dependencies = [
  "foolish-parser",
  "insta",
  "num_cpus",
+ "regex",
  "serde",
  "thiserror",
 ]

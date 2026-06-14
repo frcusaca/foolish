@@ -93,9 +93,11 @@ pub trait Fir: std::fmt::Debug {
     /// Identify the kind of FIR node.
     fn kind(&self) -> FirKind;
 
-    /// Read the integer value if this is a ConstantInt. Default: None.
+    /// Read the integer value. Default: look through ubc_children for resolved
+    /// results. ConstantIntFir overrides to return `Some(value)`.
     fn as_i64(&self) -> Option<i64> {
-        None
+        let ubc = self.core().ubc_children();
+        ubc.first().and_then(|c| c.borrow().as_i64())
     }
 
     // ── Accessors for proto_to_core_fir bridge ──

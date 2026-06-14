@@ -8,17 +8,15 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{WOCONSTANIC
+{NK
   b={
       x=10
   };
-  c=⨃{
-    ?(pattern='^b$', UNANCHORED)
-    {
+  c={
+      x=10;
       y=20
-    }
   };
-  result=Op+(?(pattern='^x$', ANCHORED, ECONSTANIC), ?(pattern='^y$', ANCHORED, ECONSTANIC), WOCONSTANIC)
+  result=Op+(?(pattern='^x$', ANCHORED, NK), ?(pattern='^y$', ANCHORED, NK), NK)
 }
 ```
 COMMENTS:
@@ -28,5 +26,5 @@ search_through_concatenation
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 9DLYRoHvr3V1/5qjv3++3QYoGXWioowdvBAbjKn8LjHxI1Wl1cKHUPfJwwRGXhOaznyIGi9JwcVLQUcPqv+EAQ==
-HFS signature: mF6JLLQ93qBO/vjs5Ep8h3c37W01YeCU06hpm1xc2jIjSk9s8nRhRRzfoZLqXk7Tn0ojBRwugqwueUOVPyugBA==
-Comments signature: DxBtB6yJ1kaugNkaat7IA6C8DPEE0qdC0uDNWV2bIc3plvHJI1VjKHPC3Ib920J74SYhTldZbJ0XwST9CZQ2CA==
+HFS signature: ki33HZvgudZOBqNQsP2Lte5jXY9ZxiT+xiNU0Xuv4dJvY8Ng6nYovfW3GMaqnutZ+rPc/8juxBr4wkED51rQBQ==
+Comments signature: 6/nPKQQBWYJ27DkwKR7HoWaQynBNgCweY+nKY2hqgxPR0QV6/KQ8g5Ar+qxhYBu2dw8a0/yKGSdOLwrUl/q7AQ==

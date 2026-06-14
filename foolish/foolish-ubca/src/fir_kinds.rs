@@ -9,6 +9,7 @@ use std::cell::RefCell;
 use std::rc::{Rc, Weak};
 
 use foolish_core::fir::Nyes;
+use regex::Regex;
 
 use crate::fir_trait::{Fir, FirKind, FirRef, Scope, UbcError};
 use crate::nyes_ext::NyesExt;
@@ -127,6 +128,24 @@ impl Fir for OperatorFir {
                     .iter()
                     .any(|c| c.borrow().core().get_nyes() == Nyes::Nk);
                 if any_nk {
+                    let nk_ref: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<NkFir>>| {
+                        let parent: Weak<RefCell<dyn Fir>> = me.clone();
+                        let reason = children.iter()
+                            .find_map(|c| {
+                                let b = c.borrow();
+                                if b.core().get_nyes() == Nyes::Nk {
+                                    b.as_nk_reason().map(|s| s.to_string())
+                                } else {
+                                    None
+                                }
+                            })
+                            .unwrap_or_else(|| "operator nk".to_string());
+                        RefCell::new(NkFir {
+                            core: ProtoBrane::new(vec![], parent, Nyes::Nk),
+                            reason,
+                        })
+                    });
+                    self.core.push_ubc_child(nk_ref);
                     self.core.set_nyes(Nyes::Nk);
                     return Ok(());
                 }
@@ -147,6 +166,14 @@ impl Fir for OperatorFir {
                     "*" if values.len() == 2 => values[0] * values[1],
                     "/" if values.len() == 2 => {
                         if values[1] == 0 {
+                            let nk_ref: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<NkFir>>| {
+                                let parent: Weak<RefCell<dyn Fir>> = me.clone();
+                                RefCell::new(NkFir {
+                                    core: ProtoBrane::new(vec![], parent, Nyes::Nk),
+                                    reason: "division by zero".to_string(),
+                                })
+                            });
+                            self.core.push_ubc_child(nk_ref);
                             self.core.set_nyes(Nyes::Nk);
                             return Ok(());
                         }
@@ -154,6 +181,14 @@ impl Fir for OperatorFir {
                     }
                     "%" if values.len() == 2 => {
                         if values[1] == 0 {
+                            let nk_ref: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<NkFir>>| {
+                                let parent: Weak<RefCell<dyn Fir>> = me.clone();
+                                RefCell::new(NkFir {
+                                    core: ProtoBrane::new(vec![], parent, Nyes::Nk),
+                                    reason: "division by zero".to_string(),
+                                })
+                            });
+                            self.core.push_ubc_child(nk_ref);
                             self.core.set_nyes(Nyes::Nk);
                             return Ok(());
                         }
@@ -268,6 +303,7 @@ impl Fir for StatementFir {
 #[derive(Debug)]
 pub struct BraneFir {
     pub(crate) core: ProtoBrane,
+    pub(crate) characterizations: Vec<String>,
 }
 
 impl Fir for BraneFir {
@@ -315,6 +351,10 @@ impl Fir for BraneFir {
     fn kind(&self) -> FirKind {
         FirKind::Brane
     }
+
+    fn as_brane_characterizations(&self) -> &[String] {
+        &self.characterizations
+    }
 }
 
 // ── SearchFir ────────────────────────────────────────────────────────────────
@@ -324,6 +364,7 @@ pub struct SearchFir {
     pub(crate) core: ProtoBrane,
     pub(crate) pattern: String,
     pub(crate) anchored: bool,
+    pub(crate) forward: bool,
     pub(crate) found_body: RefCell<Option<FirRef>>,
 }
 
@@ -332,15 +373,60 @@ fn extract_simple_name(pattern: &str) -> &str {
     s.strip_suffix('$').unwrap_or(s)
 }
 
-fn search_brane_children(brane: &FirRef, name: &str) -> Option<(FirRef, Nyes)> {
+/// Resolve an anchor node to its actual value.
+///
+/// When an anchor (e.g. a SearchFir for `hw`) settles, its resolved value
+/// is stored in `ubc_children`. This helper returns the resolved value if
+/// available, otherwise returns the anchor itself.
+fn resolve_anchor(anchor: &FirRef) -> FirRef {
+    let borrowed = anchor.borrow();
+    if borrowed.core().get_nyes().is_settled() {
+        if let Some(resolved) = borrowed.core().ubc_children().first() {
+            return Rc::clone(resolved);
+        }
+    }
+    Rc::clone(anchor)
+}
+
+fn find_stmt_index_in_brane(stmt: &FirRef, brane: &FirRef) -> Option<usize> {
     let brane_borrowed = brane.borrow();
-    for child in brane_borrowed.core().foolish_children() {
+    for (i, child) in brane_borrowed.core().foolish_children().iter().enumerate() {
+        if Rc::ptr_eq(child, stmt) {
+            return Some(i);
+        }
+    }
+    None
+}
+
+fn matches_pattern(stmt_name: &str, pattern: &str) -> bool {
+    if stmt_name == pattern {
+        return true;
+    }
+    if let Ok(re) = Regex::new(pattern) {
+        return re.is_match(stmt_name);
+    }
+    false
+}
+
+fn search_brane_children(brane: &FirRef, name: &str, before: Option<usize>, forward: bool) -> Option<(FirRef, Nyes)> {
+    let brane_borrowed = brane.borrow();
+    let children = brane_borrowed.core().foolish_children();
+    let end = before.unwrap_or(children.len());
+    let range = children[..end].iter();
+    let iter: Box<dyn Iterator<Item = &FirRef>> = if forward {
+        Box::new(range)
+    } else {
+        Box::new(range.rev())
+    };
+    for child in iter {
         let child_borrowed = child.borrow();
-        if child_borrowed.as_stmt_name() == Some(name)
-            && let Some(body) = child_borrowed.core().foolish_children().first()
-        {
-            let body_nyes = body.borrow().core().get_nyes();
-            return Some((Rc::clone(body), body_nyes));
+        if let Some(sn) = child_borrowed.as_stmt_name() {
+            if matches_pattern(sn, name)
+                && let Some(body) = child_borrowed.core().foolish_children().first()
+            {
+                let body_nyes = body.borrow().core().get_nyes();
+                return Some((Rc::clone(body), body_nyes));
+            }
         }
     }
     None
@@ -361,18 +447,30 @@ impl Fir for SearchFir {
                     let name = extract_simple_name(&self.pattern);
                     let mut current = self.core.parent();
                     while let Some(node) = current {
-                        if node.borrow().kind() == FirKind::Brane
-                            && let Some((body, nyes)) = search_brane_children(&node, name)
-                        {
-                            if nyes.is_settled() {
-                                self.core.push_ubc_child(body);
-                                self.core.set_nyes(nyes);
-                            } else {
-                                self.core.push_task(Rc::clone(&body));
-                                *self.found_body.borrow_mut() = Some(body);
-                                self.core.set_nyes(Nyes::Braning);
+                        if node.borrow().kind() == FirKind::Statement {
+                            let brane = {
+                                let borrowed = node.borrow();
+                                find_parent_brane(borrowed.core())
+                            };
+                            if let Some(ref brane_ref) = brane {
+                                let before_idx = find_stmt_index_in_brane(&node, brane_ref);
+                                if let Some((body, nyes)) = search_brane_children(brane_ref, name, before_idx, self.forward) {
+                                    if nyes.is_settled() {
+                                        self.core.push_ubc_child(body);
+                                        let search_nyes = if nyes == Nyes::Econstanic || nyes == Nyes::Woconstanic {
+                                            Nyes::Woconstanic
+                                        } else {
+                                            nyes
+                                        };
+                                        self.core.set_nyes(search_nyes);
+                                    } else {
+                                        self.core.push_task(Rc::clone(&body));
+                                        *self.found_body.borrow_mut() = Some(body);
+                                        self.core.set_nyes(Nyes::Braning);
+                                    }
+                                    return Ok(());
+                                }
                             }
-                            return Ok(());
                         }
                         let next = node.borrow().core().parent();
                         match next {
@@ -387,17 +485,33 @@ impl Fir for SearchFir {
             Nyes::Braning => {
                 if self.anchored {
                     let anchor = Rc::clone(&self.core.foolish_children()[0]);
+                    let resolved = resolve_anchor(&anchor);
                     let name = extract_simple_name(&self.pattern);
-                    if let Some((body, nyes)) = search_brane_children(&anchor, name) {
+                    if let Some((body, nyes)) = search_brane_children(&resolved, name, None, self.forward) {
                         self.core.push_ubc_child(body);
-                        self.core.set_nyes(nyes);
+                        let search_nyes = if nyes == Nyes::Econstanic || nyes == Nyes::Woconstanic {
+                            Nyes::Woconstanic
+                        } else {
+                            nyes
+                        };
+                        self.core.set_nyes(search_nyes);
                     } else {
-                        self.core.set_nyes(Nyes::Econstanic);
+                        self.core.set_nyes(Nyes::Nk);
                     }
                 } else if let Some(body) = self.found_body.borrow_mut().take() {
                     let nyes = body.borrow().core().get_nyes();
-                    self.core.push_ubc_child(body);
-                    self.core.set_nyes(nyes);
+                    if nyes.is_settled() {
+                        self.core.push_ubc_child(body);
+                        let search_nyes = if nyes == Nyes::Econstanic || nyes == Nyes::Woconstanic {
+                            Nyes::Woconstanic
+                        } else {
+                            nyes
+                        };
+                        self.core.set_nyes(search_nyes);
+                    } else {
+                        // Body not settled yet — keep waiting
+                        *self.found_body.borrow_mut() = Some(body);
+                    }
                 }
             }
             _ => {}
@@ -445,6 +559,47 @@ fn index_into_brane(brane: &FirRef, offset: i32) -> Option<(FirRef, Nyes)> {
     Some((body, body_nyes))
 }
 
+fn index_into_brane_relative(brane: &FirRef, stmt_idx: usize, offset: i32) -> Option<(FirRef, Nyes)> {
+    let (body, body_nyes) = {
+        let body: FirRef = {
+            let borrowed = brane.borrow();
+            let children = borrowed.core().foolish_children();
+            let idx = stmt_idx as i32 + offset;
+            if idx < 0 || idx >= children.len() as i32 {
+                return None;
+            }
+            let stmt = Rc::clone(&children[idx as usize]);
+            Rc::clone(stmt.borrow().core().foolish_children().first()?)
+        };
+        let body_nyes = body.borrow().core().get_nyes();
+        (body, body_nyes)
+    };
+    Some((body, body_nyes))
+}
+
+fn find_enclosing_stmt_and_brane(start: &ProtoBrane) -> Option<(FirRef, FirRef)> {
+    let mut current = start.parent();
+    while let Some(node) = current {
+        let kind = node.borrow().kind();
+        if kind == FirKind::Statement {
+            let brane = {
+                let borrowed = node.borrow();
+                find_parent_brane(borrowed.core())
+            };
+            if let Some(brane) = brane {
+                return Some((node, brane));
+            }
+        }
+        let next = node.borrow().core().parent();
+        match next {
+            Some(ref n) if Rc::ptr_eq(n, &node) => break,
+            None => break,
+            _ => current = next,
+        }
+    }
+    None
+}
+
 fn find_parent_brane(start: &ProtoBrane) -> Option<FirRef> {
     let mut current = start.parent();
     while let Some(node) = current {
@@ -473,28 +628,31 @@ impl Fir for IndexFir {
                     self.core.push_task(anchor);
                     self.core.set_nyes(Nyes::Braning);
                 } else {
-                    // Unanchored: only negative offsets allowed (FOOP-62 ruling).
                     if self.offset >= 0 {
                         return Err(UbcError::Eval(
                             "unanchored index requires negative offset".to_owned(),
                         ));
                     }
-                    match find_parent_brane(&self.core) {
-                        Some(brane_ref) => {
-                            if let Some((body, nyes)) = index_into_brane(&brane_ref, self.offset) {
-                                if nyes.is_settled() {
-                                    self.core.push_ubc_child(body);
-                                    self.core.set_nyes(nyes);
+                    match find_enclosing_stmt_and_brane(&self.core) {
+                        Some((stmt_ref, brane_ref)) => {
+                            if let Some(idx) = find_stmt_index_in_brane(&stmt_ref, &brane_ref) {
+                                if let Some((body, nyes)) = index_into_brane_relative(&brane_ref, idx, self.offset) {
+                                    if nyes.is_settled() {
+                                        self.core.push_ubc_child(body);
+                                        self.core.set_nyes(nyes);
+                                    } else {
+                                        self.core.push_task(Rc::clone(&body));
+                                        self.core.set_nyes(Nyes::Braning);
+                                    }
                                 } else {
-                                    self.core.push_task(Rc::clone(&body));
-                                    self.core.set_nyes(Nyes::Braning);
+                                    self.core.set_nyes(Nyes::Nk);
                                 }
                             } else {
-                                self.core.set_nyes(Nyes::Econstanic);
+                                self.core.set_nyes(Nyes::Nk);
                             }
                         }
                         None => {
-                            self.core.set_nyes(Nyes::Econstanic);
+                            self.core.set_nyes(Nyes::Nk);
                         }
                     }
                 }
@@ -502,27 +660,29 @@ impl Fir for IndexFir {
             Nyes::Braning => {
                 if self.anchored {
                     let anchor = Rc::clone(&self.core.foolish_children()[0]);
-                    if let Some((body, nyes)) = index_into_brane(&anchor, self.offset) {
+                    let resolved = resolve_anchor(&anchor);
+                    if let Some((body, nyes)) = index_into_brane(&resolved, self.offset) {
                         self.core.push_ubc_child(body);
                         self.core.set_nyes(nyes);
                     } else {
-                        self.core.set_nyes(Nyes::Econstanic);
+                        self.core.set_nyes(Nyes::Nk);
                     }
                 } else {
-                    // Unanchored body was pushed as task; it should be settled now.
-                    match find_parent_brane(&self.core) {
-                        Some(brane_ref) => {
-                            if let Some((body, nyes)) =
-                                index_into_brane(&brane_ref, self.offset)
-                            {
-                                self.core.push_ubc_child(body);
-                                self.core.set_nyes(nyes);
+                    match find_enclosing_stmt_and_brane(&self.core) {
+                        Some((stmt_ref, brane_ref)) => {
+                            if let Some(idx) = find_stmt_index_in_brane(&stmt_ref, &brane_ref) {
+                                if let Some((body, nyes)) = index_into_brane_relative(&brane_ref, idx, self.offset) {
+                                    self.core.push_ubc_child(body);
+                                    self.core.set_nyes(nyes);
+                                } else {
+                                    self.core.set_nyes(Nyes::Nk);
+                                }
                             } else {
-                                self.core.set_nyes(Nyes::Econstanic);
+                                self.core.set_nyes(Nyes::Nk);
                             }
                         }
                         None => {
-                            self.core.set_nyes(Nyes::Econstanic);
+                            self.core.set_nyes(Nyes::Nk);
                         }
                     }
                 }
@@ -564,28 +724,31 @@ impl Fir for HeadTailFir {
                     self.core.push_task(anchor);
                     self.core.set_nyes(Nyes::Braning);
                 } else {
-                    // Unanchored: only negative offsets (tail) allowed unanchored.
                     if offset >= 0 {
                         return Err(UbcError::Eval(
                             "unanchored head/tail requires tail (negative offset)".to_owned(),
                         ));
                     }
-                    match find_parent_brane(&self.core) {
-                        Some(brane_ref) => {
-                            if let Some((body, nyes)) = index_into_brane(&brane_ref, offset) {
-                                if nyes.is_settled() {
-                                    self.core.push_ubc_child(body);
-                                    self.core.set_nyes(nyes);
+                    match find_enclosing_stmt_and_brane(&self.core) {
+                        Some((stmt_ref, brane_ref)) => {
+                            if let Some(idx) = find_stmt_index_in_brane(&stmt_ref, &brane_ref) {
+                                if let Some((body, nyes)) = index_into_brane_relative(&brane_ref, idx, offset) {
+                                    if nyes.is_settled() {
+                                        self.core.push_ubc_child(body);
+                                        self.core.set_nyes(nyes);
+                                    } else {
+                                        self.core.push_task(Rc::clone(&body));
+                                        self.core.set_nyes(Nyes::Braning);
+                                    }
                                 } else {
-                                    self.core.push_task(Rc::clone(&body));
-                                    self.core.set_nyes(Nyes::Braning);
+                                    self.core.set_nyes(Nyes::Nk);
                                 }
                             } else {
-                                self.core.set_nyes(Nyes::Econstanic);
+                                self.core.set_nyes(Nyes::Nk);
                             }
                         }
                         None => {
-                            self.core.set_nyes(Nyes::Econstanic);
+                            self.core.set_nyes(Nyes::Nk);
                         }
                     }
                 }
@@ -593,25 +756,29 @@ impl Fir for HeadTailFir {
             Nyes::Braning => {
                 if self.anchored {
                     let anchor = Rc::clone(&self.core.foolish_children()[0]);
-                    if let Some((body, nyes)) = index_into_brane(&anchor, offset) {
+                    let resolved = resolve_anchor(&anchor);
+                    if let Some((body, nyes)) = index_into_brane(&resolved, offset) {
                         self.core.push_ubc_child(body);
                         self.core.set_nyes(nyes);
                     } else {
-                        self.core.set_nyes(Nyes::Econstanic);
+                        self.core.set_nyes(Nyes::Nk);
                     }
                 } else {
-                    // Unanchored body was pushed as task; it should be settled now.
-                    match find_parent_brane(&self.core) {
-                        Some(brane_ref) => {
-                            if let Some((body, nyes)) = index_into_brane(&brane_ref, offset) {
-                                self.core.push_ubc_child(body);
-                                self.core.set_nyes(nyes);
+                    match find_enclosing_stmt_and_brane(&self.core) {
+                        Some((stmt_ref, brane_ref)) => {
+                            if let Some(idx) = find_stmt_index_in_brane(&stmt_ref, &brane_ref) {
+                                if let Some((body, nyes)) = index_into_brane_relative(&brane_ref, idx, offset) {
+                                    self.core.push_ubc_child(body);
+                                    self.core.set_nyes(nyes);
+                                } else {
+                                    self.core.set_nyes(Nyes::Nk);
+                                }
                             } else {
-                                self.core.set_nyes(Nyes::Econstanic);
+                                self.core.set_nyes(Nyes::Nk);
                             }
                         }
                         None => {
-                            self.core.set_nyes(Nyes::Econstanic);
+                            self.core.set_nyes(Nyes::Nk);
                         }
                     }
                 }
@@ -736,6 +903,7 @@ impl Fir for ConcatenationFir {
                             let parent: Weak<RefCell<dyn Fir>> = me.clone();
                             RefCell::new(BraneFir {
                                 core: ProtoBrane::new(vec![], parent, Nyes::Constant),
+                                characterizations: Vec::new(),
                             })
                         });
                     self.core.push_ubc_child(result_ref);
@@ -764,11 +932,27 @@ impl Fir for ConcatenationFir {
                     self.core.set_nyes(Nyes::Woconstanic);
                     return Ok(());
                 }
-                let elements = children;
+                let mut merged_stmts: Vec<FirRef> = Vec::new();
+                for child in &children {
+                    let resolved = {
+                        let borrowed = child.borrow();
+                        if borrowed.core().get_nyes().is_settled() {
+                            borrowed.core().ubc_children().into_iter().next()
+                        } else {
+                            None
+                        }
+                    };
+                    let source = resolved.as_ref().unwrap_or(child);
+                    let borrowed = source.borrow();
+                    for stmt in borrowed.core().foolish_children() {
+                        merged_stmts.push(Rc::clone(stmt));
+                    }
+                }
                 let result_ref: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<BraneFir>>| {
                     let parent: Weak<RefCell<dyn Fir>> = me.clone();
                     RefCell::new(BraneFir {
-                        core: ProtoBrane::new(elements, parent, Nyes::Constant),
+                        core: ProtoBrane::new(merged_stmts, parent, Nyes::Constant),
+                        characterizations: Vec::new(),
                     })
                 });
                 self.core.push_ubc_child(result_ref);
@@ -831,6 +1015,7 @@ pub fn statement(
 pub fn brane(children: Vec<FirRef>, parent: Weak<RefCell<dyn Fir>>) -> FirRef {
     Rc::new(RefCell::new(BraneFir {
         core: ProtoBrane::new(children, parent, Nyes::Prembrionic),
+        characterizations: Vec::new(),
     }))
 }
 
@@ -1096,6 +1281,7 @@ mod tests {
             let parent: Weak<RefCell<dyn Fir>> = me.clone();
             RefCell::new(BraneFir {
                 core: ProtoBrane::new(children, parent, Nyes::Prembrionic),
+                characterizations: Vec::new(),
             })
         })
     }
@@ -1107,6 +1293,7 @@ mod tests {
                 core: ProtoBrane::new(foolish_children, parent, Nyes::Prembrionic),
                 pattern: pattern.to_owned(),
                 anchored,
+                forward: false,
                 found_body: RefCell::new(None),
             })
         })
@@ -1259,7 +1446,8 @@ mod tests {
         }
 
         assert_eq!(op.borrow().core().get_nyes(), Nyes::Nk);
-        assert_eq!(op.borrow().core().ubc_children().len(), 0);
+        assert_eq!(op.borrow().core().ubc_children().len(), 1);
+        assert_eq!(op.borrow().core().ubc_children()[0].borrow().kind(), FirKind::Nk);
     }
 
     #[test]
@@ -1499,7 +1687,7 @@ mod tests {
     }
 
     #[test]
-    fn search_not_found_becomes_econstanic() {
+    fn search_not_found_becomes_nk() {
         let val = make_constant_int(42);
         let stmt = make_statement("y", 0, Rc::clone(&val));
         let brane = make_brane(vec![Rc::clone(&stmt)]);
@@ -1509,7 +1697,7 @@ mod tests {
         let transitions = step_to_settled(&search, &scope);
         eprintln!("Search(not found) NYES transitions: {transitions:?}");
 
-        assert_eq!(search.borrow().core().get_nyes(), Nyes::Econstanic);
+        assert_eq!(search.borrow().core().get_nyes(), Nyes::Nk);
         assert!(search.borrow().core().ubc_children().is_empty());
     }
 
@@ -1556,7 +1744,7 @@ mod tests {
     }
 
     #[test]
-    fn index_out_of_bounds_is_econstanic() {
+    fn index_out_of_bounds_is_nk() {
         let val = make_constant_int(42);
         let stmt = make_statement("x", 1, Rc::clone(&val));
         let brane = make_brane(vec![Rc::clone(&stmt)]);
@@ -1567,7 +1755,7 @@ mod tests {
         let transitions = step_to_settled(&idx, &scope);
         eprintln!("Index(oob) NYES transitions: {transitions:?}");
 
-        assert_eq!(idx.borrow().core().get_nyes(), Nyes::Econstanic);
+        assert_eq!(idx.borrow().core().get_nyes(), Nyes::Nk);
         assert!(idx.borrow().core().ubc_children().is_empty());
     }
 
@@ -1696,7 +1884,7 @@ mod tests {
     }
 
     #[test]
-    fn headtail_empty_brane_is_econstanic() {
+    fn headtail_empty_brane_is_nk() {
         let brane = make_brane(vec![]);
         let ht = make_headtail(true, true, vec![Rc::clone(&brane)]);
         let scope = Scope::empty();
@@ -1704,7 +1892,7 @@ mod tests {
         let transitions = step_to_settled(&ht, &scope);
         eprintln!("HeadTail(empty) NYES transitions: {transitions:?}");
 
-        assert_eq!(ht.borrow().core().get_nyes(), Nyes::Econstanic);
+        assert_eq!(ht.borrow().core().get_nyes(), Nyes::Nk);
         assert!(ht.borrow().core().ubc_children().is_empty());
     }
 

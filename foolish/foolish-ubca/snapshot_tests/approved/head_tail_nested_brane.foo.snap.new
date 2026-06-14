@@ -8,10 +8,23 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{WOCONSTANIC
-  b=$();
-  c=^(ECONSTANIC);
-  d=$(ECONSTANIC)
+{
+  b={
+      3;
+      4
+  };
+  c={
+      {
+        1;
+        2
+      }
+  };
+  d={
+      {
+        1;
+        2
+      }
+  }
 }
 ```
 COMMENTS:
@@ -21,5 +34,5 @@ head_tail_nested_brane
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: jh9Rw0hsUe1GdZ1yiS2UkwCcgh9TnWkLANYSkt6ggCnN+0e5029VmFjCTqi1VtjZiGFBc417hy3SNRS4pHXEBg==
-HFS signature: AnYzChUsyUo4L+0ZuZwMiZuMnuFjpPfc0R5psJtWvchxC9oTkxrnG4T4Dz/3CWXrLO+OEEr8uXrM0YIWvbwwAA==
-Comments signature: haLNVqUY/7cvuVi13gH3bwotFvINxaKkwndgOwHeQL0hlQDeEetP8Z//p4edxcFhKVIDOUp6eXJYhihb8JMQCg==
+HFS signature: BEhQrHbxruzU5St2+c57ibnVv7JWXM76uyyNEMivCmaysWlMyDnZC548nIBZXlYWJDKU/efaD3O/PSK2g9IqAQ==
+Comments signature: /b3mMCbrHGWXSvf7QWZQdzZVWrWcuYs+l+gj/haBMPyiNf32XiyguZR7RtWKQEVbLotKWwChLysa/1GXlrwtCQ==

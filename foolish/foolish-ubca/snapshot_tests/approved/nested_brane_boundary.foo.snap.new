@@ -8,14 +8,14 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{BRANING
+{NK
   a=1;
-  b={BRANING
-      c=#(offset=-1, UNANCHORED, BRANING);
+  b={NK
+      c=#(offset=-1, UNANCHORED, NK);
       d=2;
-      e=#(offset=-1, UNANCHORED, BRANING)
+      e=2
   };
-  f=#(offset=-1, UNANCHORED, PREMBRIONIC)
+  f=#(offset=-1, UNANCHORED, NK)
 }
 ```
 COMMENTS:
@@ -25,5 +25,5 @@ nested_brane_boundary
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: DaGfc59AvcqkrMo/U46I/VuEskxj1E1HlplxglYD6o/VwALnr9puDJQXy+Di9FY5i8235oxneyNKyJsoEbnjDw==
-HFS signature: Gn98lvCpTFovo6N5cO/fqJkIc9aaOWiWLaOD4jmBOLxdiAhJkeyh/0KA4Iqb1F9MC/GF7aIDD1uK9FsR1+9tDg==
-Comments signature: DNxUM8jd75Yo1rVcKIRaoT7DaRq2osmpzknyomGw3+gFI42UhY4eSdCM+D3zshQvSmGo7LmPmstMZxEtqi8lAw==
+HFS signature: EkyCt78A1zoY3torrsm/rJYq4Lo2o0YmukP8SJAzdeik2JQIsK5/4+2B4c4TUP9YwT+t/+KRBdKKNcqYk2yqBQ==
+Comments signature: YdoD4bGqNqaowa378wf3bwCf5LG9olAhQmBABpNL2DerFBh0152FF5GiyhvFfPcmZ3Rjsz870DpnQYVSFrPcBg==
