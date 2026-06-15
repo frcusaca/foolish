@@ -88,9 +88,11 @@ impl ProtoBrane {
 
     // --- ubc mutation (the ONLY public topology mutators) ---
 
-    /// Push a compute-time child.
+    /// Push a compute-time child AND enqueue it as a task (FIFO).
+    /// New additions always go to the end of the job queue.
     pub fn push_ubc_child(&self, child: FirRef) {
-        self.ubc_children.borrow_mut().push(child);
+        self.ubc_children.borrow_mut().push(Rc::clone(&child));
+        self.tasks.borrow_mut().push_back(child);
     }
 
     /// Clear all compute-time children.

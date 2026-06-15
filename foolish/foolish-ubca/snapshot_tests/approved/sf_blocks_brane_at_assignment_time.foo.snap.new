@@ -22,14 +22,10 @@ INPUT:
       UNANCHORED
   );
   a=99;
-  ?(
-    result={
-        x=1;
-        y=2
-    },
-    pattern='^a$',
-    UNANCHORED
-  )
+  {
+    x=1;
+    y=2
+  }
 }
 ```
 COMMENTS:
@@ -39,5 +35,5 @@ sf_blocks_brane_at_assignment_time
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: r9cVsMVy9IKQUvI6rQnmYcfv40up0dd5AhbtoMFl72TT9TjvhiLZuxtnFgHI3eXA5c6ToFS7wW+gRqjBqQxxCw==
-HFS signature: 5LnyyDCg0mNEvHO1hmBgA8gHt+vJ7VJ7pRTmNCI9T4S3j7QQ2LIgE7S3vu9LwphkDCnyMnwNkYk6DR9nrAWtCw==
-Comments signature: /EhbXjHPyPWV3kFqFPyIniBAzBuV00clVqC2LOoswy3yBir7655/xYQyHvSjlBLm6bEaQDjPbkPp0hxuUhUfBA==
+HFS signature: 4Yi39BSpBFlFOixyIvNLaG0aG3Lq958doYFSeFtG7GTo2QjriFXQ23butwvAAh/RN0xQ9zg4e2zFH919LXhQDQ==
+Comments signature: 9itBCnNhqm8tfDWIrZXey36oxINuuhY3CptVnfdMv6PxXtTCmxOoV/pvZtYJwTWyha6/g1j/0PM675B6ULRWDg==

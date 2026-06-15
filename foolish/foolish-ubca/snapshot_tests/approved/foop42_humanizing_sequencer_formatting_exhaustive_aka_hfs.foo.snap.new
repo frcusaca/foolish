@@ -101,23 +101,33 @@ win={w_in={in_in={in_in_in=101010}}};
   Δ=7;
   Σ=10;
   oneˍzero=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK;
-  divˍbyˍzeroˍinˍbraneˍmethod=?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED, NK);
+  divˍbyˍzeroˍinˍbraneˍmethod=?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED, WOCONSTANIC);
   threeˍzero=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK;
   badˍinˍarithmetic=Op+(
-      ?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED, NK),
+      ?(
+        result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK,
+        pattern='^oneˍzero$',
+        UNANCHORED,
+        WOCONSTANIC
+      ),
       5,
-      NK
+      WOCONSTANIC
   );
   chainedˍbad=Op+(
       Op+(
         10,
-        ?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED, NK),
-        NK
+        ?(
+          result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK,
+          pattern='^oneˍzero$',
+          UNANCHORED,
+          WOCONSTANIC
+        ),
+        WOCONSTANIC
       ),
       20,
-      NK
+      WOCONSTANIC
   );
-  aliasˍofˍbad=?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED, NK);
+  aliasˍofˍbad=?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED, WOCONSTANIC);
   fwdˍx=?(pattern='^x$', UNANCHORED, ECONSTANIC);
   x=42;
   xˍagain=42;
@@ -176,7 +186,14 @@ win={w_in={in_in={in_in_in=101010}}};
       x=10;
       y=20
   };
-  sffˍvalue=?(pattern='^sffˍtarget$', UNANCHORED, PREMBRIONIC);
+  sffˍvalue=?(
+      result={
+          x=10;
+          y=20
+      },
+      pattern='^sffˍtarget$',
+      UNANCHORED
+  );
   concatˍleft={
       leftˍa=1;
       leftˍb=2
@@ -281,7 +298,14 @@ win={w_in={in_in={in_in_in=101010}}};
       pattern='^sffˍtarget$',
       UNANCHORED
   );
-  inspectˍsffˍagain=?(pattern='^sffˍtarget$', UNANCHORED, PREMBRIONIC);
+  inspectˍsffˍagain=?(
+      result={
+          x=10;
+          y=20
+      },
+      pattern='^sffˍtarget$',
+      UNANCHORED
+  );
   win={
       wˍin={
           inˍin={
@@ -298,5 +322,5 @@ foop42_humanizing_sequencer_formatting_exhaustive_aka_hfs
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 5CYQ9TTMJwxdSRqdDbNvIcEuEjzF0rs9DSJO0IFb7JZX52hw7oNCOG0pcpoYozWuyHWmpPLVgx2jGmPxDfKBDA==
-HFS signature: 2BC6HQkftZCoAH9G3oMJMmMlnfC8NRotf1bLHomnee09c+iJvdOhLAFfF+wnkfUMpU3vgXLdRHjNwmi7FvXMDw==
-Comments signature: XtqHQosprhIbpHoz6/RqaB7JaEKKs4c7dftvUR/SZiaypie5L8zI6jtJWmWrA9A47Tf84cyU4tyGNiZCN4RCDg==
+HFS signature: 2wItvhX59G8Zo7eIqRZjEHwIm6vhzaK65MLNp233DpUIg/LbK+anTpVMCPlS0Eb9/ZM8/oeGCyh2JETTg0WRAQ==
+Comments signature: Dh8bMKd1UJWxgWPYyQhTrn5+sFeveE4nrSL2NwvdJwyegfPLClrz/bs8LiPuj3fPIsODtkajsa+D+SdnAl/DDg==

@@ -1,6 +1,6 @@
 ---
-source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 52
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
 ---
 INPUT:
 ```foolish
@@ -11,7 +11,12 @@ INPUT:
 {WOCONSTANIC
   bad=?(pattern='^undeclared$', UNANCHORED, ECONSTANIC);
   y=?(result=?(pattern='^undeclared$', UNANCHORED, ECONSTANIC), pattern='^bad$', UNANCHORED, WOCONSTANIC);
-  z=?(result=?(pattern='^undeclared$', UNANCHORED, ECONSTANIC), pattern='^y$', UNANCHORED, WOCONSTANIC)
+  z=?(
+      result=?(result=?(pattern='^undeclared$', UNANCHORED, ECONSTANIC), pattern='^bad$', UNANCHORED, WOCONSTANIC),
+      pattern='^y$',
+      UNANCHORED,
+      WOCONSTANIC
+  )
 }
 ```
 COMMENTS:
@@ -21,5 +26,5 @@ chained_undeclared
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: eB8BINHym3bU4SkJcN6e2J7Nyt8aIXqpM17n8dWWv10YjHURVEWNewoNwCdC9djfutCCillXxps0lBuGqyWABw==
-HFS signature: ib2VZJDe1WXZ/fgovpZUhq+YjVnfo4yHrLsvwvhCyWIQw1ZiKguwqubNUkvxEHJIMzxsfQpsW3l5+pr7IlUIBg==
-Comments signature: nqiWFQB45FPwoyhosLtQIGqesoqf358UbliLZBbVs+XlJ887WJ58tjvUMZlps8KjpLYHT7UiA8ARGau3fi1zAQ==
+HFS signature: gz+Fg1JD23XlqEX/piA6ffxjGkYIoWEIOnfh0Icv1s+uNhg4qCwcJggKxVbOFrlGTdTIgiALhAVE/AWLEoxZBA==
+Comments signature: OSmQjcezn/jrmI95E3H+s3ZNkhtPRwmpfCTLykei4KsfqgM+86CPWql7q9IKrBzY0pkRbo8R/6VaGYZT9H2zDQ==

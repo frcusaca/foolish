@@ -11,9 +11,9 @@ INPUT:
 {
   a=1;
   b=2;
-  c=Op+(?(pattern='^a$', UNANCHORED, PREMBRIONIC), ?(pattern='^b$', UNANCHORED, PREMBRIONIC), PREMBRIONIC);
-  Op+(?(pattern='^a$', UNANCHORED, PREMBRIONIC), ?(pattern='^b$', UNANCHORED, PREMBRIONIC), PREMBRIONIC);
-  Op+(?(pattern='^a$', UNANCHORED, PREMBRIONIC), ?(pattern='^b$', UNANCHORED, PREMBRIONIC), PREMBRIONIC)
+  c=3;
+  3;
+  3
 }
 ```
 COMMENTS:
@@ -23,5 +23,5 @@ sff_basic
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: M+ozF2oYm4cROdzChLuxt5BpEqob22mvstBM9GOfw2F2UXnwZmokwfQrB8XQTBKx4VH4eIRMpmKFp8pMSK/mCg==
-HFS signature: gj5lgEVgTMO86Pk7mCinKTu9lE6yK/GzYAWoJJGmlCYICkBaGOxuanJJyjXdkb5S33gugOeT4fGBc+pGDAxzCQ==
-Comments signature: puv84JfJrJADMNwm0fX0Y+jrVr6x3eenvyltv09jnJYPCM3jaezjnAdkyZ9QzksXMJ+1t/OythqvjI8wayKpAA==
+HFS signature: BJ4LWvknNIs4egEVuKAOetywNCcSIYmxWtPOhamhu0Ldb2cPRsWtsvW1z2A6axYTTp9N4bNNw07hgyFmRRYtBg==
+Comments signature: +GSGPXRXZkHy2Gf9f9phDCqIgehG6g14+qXuV2GA+9HoBDLX57qvIIo3E2pcLyZWHYFWF4oLnB3W26lUzS0gAg==

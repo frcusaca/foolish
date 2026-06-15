@@ -28,27 +28,19 @@ INPUT:
 {
   x=1;
   y=2;
-  sff=Op+(?(pattern='^x$', UNANCHORED, PREMBRIONIC), ?(pattern='^y$', UNANCHORED, PREMBRIONIC), PREMBRIONIC);
+  sff=3;
   sf=3;
-  sfsff=?(
-      result=Op+(?(pattern='^x$', UNANCHORED, PREMBRIONIC), ?(pattern='^y$', UNANCHORED, PREMBRIONIC), PREMBRIONIC),
-      pattern='^sff$',
-      UNANCHORED
-  );
-  sffsf=?(pattern='^sf$', UNANCHORED, PREMBRIONIC);
+  sfsff=?(result=3, pattern='^sff$', UNANCHORED);
+  sffsf=?(result=3, pattern='^sf$', UNANCHORED);
   sfsf=?(result=3, pattern='^sf$', UNANCHORED);
-  sffsff=?(pattern='^sff$', UNANCHORED, PREMBRIONIC);
+  sffsff=?(result=3, pattern='^sff$', UNANCHORED);
   x=-2;
-  rsff=Op+(?(pattern='^x$', UNANCHORED, PREMBRIONIC), ?(pattern='^y$', UNANCHORED, PREMBRIONIC), PREMBRIONIC);
+  rsff=3;
   rsf=3;
-  rsfsff=?(
-      result=Op+(?(pattern='^x$', UNANCHORED, PREMBRIONIC), ?(pattern='^y$', UNANCHORED, PREMBRIONIC), PREMBRIONIC),
-      pattern='^sff$',
-      UNANCHORED
-  );
-  rsffsf=?(pattern='^sf$', UNANCHORED, PREMBRIONIC);
-  rsfsf=?(result=3, pattern='^sf$', UNANCHORED);
-  rsffsff=?(pattern='^sff$', UNANCHORED, PREMBRIONIC)
+  rsfsff=3;
+  rsffsf=3;
+  rsfsf=3;
+  rsffsff=3
 }
 ```
 COMMENTS:
@@ -58,5 +50,5 @@ sf_sff_nested_combined
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: tT8UqgoaX2cQknxaTSOxGoatqdbkUElQJTZXD4wK3f2mTtwOZwiBraFW1mIiflGHyg6zn6JuaExvI+DIT6sOBg==
-HFS signature: cjtNwf6t7oQ+9ktYMuT5PlIYS1fBkeRs+pQOcFE2jieYr4vgUmv7vrDie4kQG4Hfa+BKvsB4A77wegcJ0ooGAA==
-Comments signature: Wa8p31vFkEA8LJ39Njtae5cxOmXbLRx98JGxTbF28/GlksV3pGGzRBTIk1OkJXUaPtNwAJiiUH7r/NgoZdiEBg==
+HFS signature: DLKxF6VFRRqcJCPTluRd8o+Gov3Gcg/0FvB4UM74EXw7EJm0flnqUgTPiWOh+zUcxFFMDVt6Auui3wHrx/OkDA==
+Comments signature: Lo64gzhuMLo/356k5iCcV5wpFneOlViLTatOZ51g55C+tEllI0FUj9PCRn+Oc5Azsx7OEV7fyAaMvXQvOP+ADg==

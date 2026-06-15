@@ -30,9 +30,9 @@ INPUT:
   },
   pattern='^OB2$',
   UNANCHORED,
-  NK
+  WOCONSTANIC
 ),
-      NK
+      WOCONSTANIC
   )
 }
 ```
@@ -43,5 +43,5 @@ seek_in_nested_result_after_concatenation
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: cfGCMZeXg+6MU8S60P/lQKJXQwIqnmSUM7cERCO9n5/1ZhE2hBqSo3GjNILf1x3L9vm63msdnpdaCuA/vEhcBw==
-HFS signature: eAF3kIiopS6lzD74YFhQWz0epKA9dw6QF1AC4B6cHV370xl+wpGmQaavCZATBQk25a/hXjhTlbjnbTwy9VjgDg==
-Comments signature: STsBBWhevnSs+kEbqKKHS2bXEWxBsNbhdz1GvsGNXRA+g+HfGMD9/MTa7MWYVvV3NAX/ubZ26jdbi8g8+gnkAA==
+HFS signature: m1OPQsID5umfLIYN7lS18/8GlkO/lKw4I6gLl4D/ZIAcMINJxu133jgVc6XF9jG8GkOLj/Nyc8EeP+UAeED9AA==
+Comments signature: 6hNvteaVVyLukkuuwHhmNa4sUt+o0npHh2rDKbGpnNd6kGZiMjvxYkBQ8D1Jg4di7Y8epqjOjH6r3jnX6OzbCQ==

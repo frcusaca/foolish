@@ -12,12 +12,12 @@ INPUT:
   a=1;
   b=2;
   inner={
-      c=Op+(?(pattern='^a$', UNANCHORED, PREMBRIONIC), ?(pattern='^b$', UNANCHORED, PREMBRIONIC), PREMBRIONIC);
-      Op+(?(pattern='^a$', UNANCHORED, PREMBRIONIC), ?(pattern='^b$', UNANCHORED, PREMBRIONIC), PREMBRIONIC)
+      c=3;
+      3
   };
   {
-    c=Op+(?(pattern='^a$', UNANCHORED, PREMBRIONIC), ?(pattern='^b$', UNANCHORED, PREMBRIONIC), PREMBRIONIC);
-    Op+(?(pattern='^a$', UNANCHORED, PREMBRIONIC), ?(pattern='^b$', UNANCHORED, PREMBRIONIC), PREMBRIONIC)
+    c=3;
+    3
   }
 }
 ```
@@ -28,5 +28,5 @@ complex_sff_in_nested_brane
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: ZIgjfGeL3aOiCFGthil+qpoFORBgbUiJ34yeWevLnvPP3orwUnFqJRnzpA9oKsQVY98pCPWMFeTGN4RdIqe4DA==
-HFS signature: huSR/pBvg2JLpE9Orl2SZAex5Qotif97GXAxfChdM/dSeIe77Cil9/Kk2U0LqOO8k/mhMimsW8TgNKyzmEwpDA==
-Comments signature: qhUMWFvYaGprEgYyEP7VWuHYDPA0L811rYy2qADinrU/OlIJ+9DT5B3RF90kjTZPHDgcxn9p6gp+iS+ilamMBw==
+HFS signature: vfqfFiILsOwrHtRjZJeYPM40gkx/MMm2Iuyam+utADXRpRVfE4N3WSugFjDcl//jqlBGeJxvv+8OauWDRb1TDA==
+Comments signature: arBFg2ljHiF9w0MHHL0wZdcOxdmk4G8vsgtEKZZteb7nu1iMBonoTQjTy9x5ZDDZacgcc9N09FkmdZXw35twAw==

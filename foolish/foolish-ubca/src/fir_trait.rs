@@ -158,6 +158,31 @@ pub trait Fir: std::fmt::Debug {
     }
 }
 
+/// Returns the deepest resolved value this FIR represents.
+///
+/// When a FIR settles, it may store its result in `ubc_children[0]`
+/// (e.g. SearchFir, OperatorFir, IndexFir). That result may itself be a
+/// wrapper with its own `ubc_children`. This function recursively unwraps
+/// the chain until it reaches a terminal value (one that has no
+/// `ubc_children`, like ConstantInt, Nk, or BraneFir).
+///
+/// For pre-constanic FIRs or FIRs without `ubc_children`, returns `self`.
+pub fn get_value(fir_ref: &FirRef) -> FirRef {
+    // Extract first ubc_child under a short borrow, then drop it before recursing.
+    let child: Option<FirRef> = {
+        let borrowed = fir_ref.borrow();
+        if borrowed.core().get_nyes().is_settled() {
+            borrowed.core().ubc_children().into_iter().next()
+        } else {
+            None
+        }
+    };
+    match child {
+        Some(c) => get_value(&c),
+        None => Rc::clone(fir_ref),
+    }
+}
+
 /// The shared step function — written ONCE, called as a free function over a
 /// `&FirRef`.
 ///
@@ -466,5 +491,367 @@ pub(crate) mod tests {
         // If borrow discipline were wrong (nested borrow_mut), this would panic
         let result = step_fir_ref(&outer, &scope);
         assert!(result.is_ok());
+    }
+}
+
+#[cfg(test)]
+mod get_value_tests {
+    use super::*;
+    use crate::fir_kinds::{
+        BraneFir, ConcatenationFir, ConstantIntFir, IndexFir, NkFir, OperatorFir, SearchFir,
+        StatementFir, StayFoolishFir, StayFullyFoolishFir,
+    };
+    use crate::nyes_ext::NyesExt;
+    use foolish_core::fir::Nyes;
+    use std::rc::Weak;
+
+    fn make_ci(v: i64) -> FirRef {
+        Rc::new_cyclic(|me: &Weak<RefCell<ConstantIntFir>>| {
+            let parent: Weak<RefCell<dyn Fir>> = me.clone();
+            RefCell::new(ConstantIntFir {
+                core: ProtoBrane::new(vec![], parent, Nyes::Prembrionic),
+                value: v,
+            })
+        })
+    }
+
+    fn make_nk_node(reason: &str) -> FirRef {
+        Rc::new_cyclic(|me: &Weak<RefCell<NkFir>>| {
+            let parent: Weak<RefCell<dyn Fir>> = me.clone();
+            RefCell::new(NkFir {
+                core: ProtoBrane::new(vec![], parent, Nyes::Prembrionic),
+                reason: reason.to_owned(),
+            })
+        })
+    }
+
+    fn make_op(op: &str, operands: Vec<FirRef>) -> FirRef {
+        Rc::new_cyclic(|me: &Weak<RefCell<OperatorFir>>| {
+            let parent: Weak<RefCell<dyn Fir>> = me.clone();
+            RefCell::new(OperatorFir {
+                core: ProtoBrane::new(operands, parent, Nyes::Prembrionic),
+                op: op.to_owned(),
+            })
+        })
+    }
+
+    fn make_stmt(name: &str, line: usize, body: FirRef) -> FirRef {
+        Rc::new_cyclic(|me: &Weak<RefCell<StatementFir>>| {
+            let parent: Weak<RefCell<dyn Fir>> = me.clone();
+            RefCell::new(StatementFir {
+                core: ProtoBrane::new(vec![body], parent, Nyes::Prembrionic),
+                name: name.to_owned(),
+                line_number: line,
+            })
+        })
+    }
+
+    fn make_brn(children: Vec<FirRef>) -> FirRef {
+        Rc::new_cyclic(|me: &Weak<RefCell<BraneFir>>| {
+            let parent: Weak<RefCell<dyn Fir>> = me.clone();
+            RefCell::new(BraneFir {
+                core: ProtoBrane::new(children, parent, Nyes::Prembrionic),
+                characterizations: Vec::new(),
+            })
+        })
+    }
+
+    fn make_search(pattern: &str, anchored: bool, children: Vec<FirRef>) -> FirRef {
+        Rc::new_cyclic(|me: &Weak<RefCell<SearchFir>>| {
+            let parent: Weak<RefCell<dyn Fir>> = me.clone();
+            RefCell::new(SearchFir {
+                core: ProtoBrane::new(children, parent, Nyes::Prembrionic),
+                pattern: pattern.to_owned(),
+                anchored,
+                forward: false,
+                found_body: RefCell::new(None),
+            })
+        })
+    }
+
+    fn make_index(offset: i32, anchored: bool, children: Vec<FirRef>) -> FirRef {
+        Rc::new_cyclic(|me: &Weak<RefCell<IndexFir>>| {
+            let parent: Weak<RefCell<dyn Fir>> = me.clone();
+            RefCell::new(IndexFir {
+                core: ProtoBrane::new(children, parent, Nyes::Prembrionic),
+                offset,
+                anchored,
+            })
+        })
+    }
+
+    fn make_sf(expr: FirRef) -> FirRef {
+        Rc::new_cyclic(|me: &Weak<RefCell<StayFoolishFir>>| {
+            let parent: Weak<RefCell<dyn Fir>> = me.clone();
+            RefCell::new(StayFoolishFir {
+                core: ProtoBrane::new(vec![expr], parent, Nyes::Prembrionic),
+            })
+        })
+    }
+
+    fn make_sff(expr: FirRef) -> FirRef {
+        Rc::new_cyclic(|me: &Weak<RefCell<StayFullyFoolishFir>>| {
+            let parent: Weak<RefCell<dyn Fir>> = me.clone();
+            RefCell::new(StayFullyFoolishFir {
+                core: ProtoBrane::new(vec![expr], parent, Nyes::Prembrionic),
+            })
+        })
+    }
+
+    fn make_cat(elements: Vec<FirRef>) -> FirRef {
+        Rc::new_cyclic(|me: &Weak<RefCell<ConcatenationFir>>| {
+            let parent: Weak<RefCell<dyn Fir>> = me.clone();
+            RefCell::new(ConcatenationFir {
+                core: ProtoBrane::new(elements, parent, Nyes::Prembrionic),
+            })
+        })
+    }
+
+    fn settle(node: &FirRef) {
+        let scope = Scope::empty();
+        for _ in 0..50 {
+            let report = step_fir_ref(node, &scope).unwrap();
+            if let StepReport::Progress(nyes) = report
+                && nyes.is_settled()
+            {
+                return;
+            }
+        }
+        panic!("did not settle within 50 steps");
+    }
+
+    // ── 1. ConstantInt ──────────────────────────────────────────────────────
+
+    #[test]
+    fn get_value_constant_int_returns_self() {
+        let ci = make_ci(42);
+        settle(&ci);
+        assert_eq!(ci.borrow().core().get_nyes(), Nyes::Constant);
+        assert!(ci.borrow().core().ubc_children().is_empty());
+
+        let result = get_value(&ci);
+        assert!(Rc::ptr_eq(&result, &ci));
+        assert_eq!(result.borrow().kind(), FirKind::ConstantInt);
+        assert_eq!(result.borrow().as_i64(), Some(42));
+    }
+
+    // ── 2. Nk ───────────────────────────────────────────────────────────────
+
+    #[test]
+    fn get_value_nk_returns_self() {
+        let nk = make_nk_node("unbound");
+        settle(&nk);
+        assert_eq!(nk.borrow().core().get_nyes(), Nyes::Nk);
+        assert!(nk.borrow().core().ubc_children().is_empty());
+
+        let result = get_value(&nk);
+        assert!(Rc::ptr_eq(&result, &nk));
+        assert_eq!(result.borrow().kind(), FirKind::Nk);
+    }
+
+    // ── 3. OperatorFir settled ──────────────────────────────────────────────
+
+    #[test]
+    fn get_value_operator_settled_returns_result() {
+        let a = make_ci(3);
+        let b = make_ci(5);
+        let op = make_op("+", vec![Rc::clone(&a), Rc::clone(&b)]);
+        settle(&op);
+        assert_eq!(op.borrow().core().get_nyes(), Nyes::Constant);
+        assert_eq!(op.borrow().core().ubc_children().len(), 1);
+
+        let result = get_value(&op);
+        assert!(!Rc::ptr_eq(&result, &op));
+        assert_eq!(result.borrow().kind(), FirKind::ConstantInt);
+        assert_eq!(result.borrow().as_i64(), Some(8));
+    }
+
+    // ── 4. OperatorFir not settled ──────────────────────────────────────────
+
+    #[test]
+    fn get_value_operator_not_settled_returns_self() {
+        let a = make_ci(3);
+        let b = make_ci(5);
+        let op = make_op("+", vec![Rc::clone(&a), Rc::clone(&b)]);
+        assert!(!op.borrow().core().get_nyes().is_settled());
+
+        let result = get_value(&op);
+        assert!(Rc::ptr_eq(&result, &op));
+    }
+
+    // ── 5. SearchFir settled with result ────────────────────────────────────
+
+    #[test]
+    fn get_value_search_settled_with_result_returns_body() {
+        let val = make_ci(42);
+        let stmt = make_stmt("x", 0, Rc::clone(&val));
+        let brane = make_brn(vec![Rc::clone(&stmt)]);
+        let search = make_search("^x$", true, vec![Rc::clone(&brane)]);
+        settle(&search);
+        assert_eq!(search.borrow().core().get_nyes(), Nyes::Constant);
+        assert_eq!(search.borrow().core().ubc_children().len(), 1);
+
+        let result = get_value(&search);
+        assert_eq!(result.borrow().kind(), FirKind::ConstantInt);
+        assert_eq!(result.borrow().as_i64(), Some(42));
+    }
+
+    // ── 6. SearchFir settled no result (Econstanic) ─────────────────────────
+
+    #[test]
+    fn get_value_search_settled_no_result_returns_self() {
+        // A non-anchored search with a self-rooting parent won't find an
+        // enclosing brane → steps to Econstanic with no ubc_children.
+        let search = make_search("^nonexistent$", false, vec![]);
+        settle(&search);
+        assert_eq!(search.borrow().core().get_nyes(), Nyes::Econstanic);
+        assert!(search.borrow().core().ubc_children().is_empty());
+
+        let result = get_value(&search);
+        assert!(Rc::ptr_eq(&result, &search));
+    }
+
+    // ── 7. SearchFir not settled ────────────────────────────────────────────
+
+    #[test]
+    fn get_value_search_not_settled_returns_self() {
+        let search = make_search("^x$", false, vec![]);
+        assert!(!search.borrow().core().get_nyes().is_settled());
+
+        let result = get_value(&search);
+        assert!(Rc::ptr_eq(&result, &search));
+    }
+
+    // ── 8. IndexFir settled ─────────────────────────────────────────────────
+
+    #[test]
+    fn get_value_index_settled_returns_element() {
+        let val_a = make_ci(10);
+        let val_b = make_ci(20);
+        let val_c = make_ci(30);
+        let stmt_a = make_stmt("a", 1, Rc::clone(&val_a));
+        let stmt_b = make_stmt("b", 2, Rc::clone(&val_b));
+        let stmt_c = make_stmt("c", 3, Rc::clone(&val_c));
+        let brane = make_brn(vec![
+            Rc::clone(&stmt_a),
+            Rc::clone(&stmt_b),
+            Rc::clone(&stmt_c),
+        ]);
+        let idx = make_index(1, true, vec![Rc::clone(&brane)]);
+        settle(&idx);
+        assert_eq!(idx.borrow().core().get_nyes(), Nyes::Constant);
+        assert_eq!(idx.borrow().core().ubc_children().len(), 1);
+
+        let result = get_value(&idx);
+        assert_eq!(result.borrow().kind(), FirKind::ConstantInt);
+        assert_eq!(result.borrow().as_i64(), Some(20));
+    }
+
+    // ── 9. IndexFir not settled ─────────────────────────────────────────────
+
+    #[test]
+    fn get_value_index_not_settled_returns_self() {
+        let brane = make_brn(vec![]);
+        let idx = make_index(0, true, vec![Rc::clone(&brane)]);
+        assert!(!idx.borrow().core().get_nyes().is_settled());
+
+        let result = get_value(&idx);
+        assert!(Rc::ptr_eq(&result, &idx));
+    }
+
+    // ── 10. BraneFir ────────────────────────────────────────────────────────
+
+    #[test]
+    fn get_value_brane_returns_self() {
+        let a = make_ci(10);
+        let b = make_ci(20);
+        let brane = make_brn(vec![Rc::clone(&a), Rc::clone(&b)]);
+        settle(&brane);
+        assert!(brane.borrow().core().get_nyes().is_settled());
+        assert!(brane.borrow().core().ubc_children().is_empty());
+
+        let result = get_value(&brane);
+        assert!(Rc::ptr_eq(&result, &brane));
+        assert_eq!(result.borrow().kind(), FirKind::Brane);
+    }
+
+    // ── 11. StatementFir ────────────────────────────────────────────────────
+
+    #[test]
+    fn get_value_statement_returns_self() {
+        let body = make_ci(42);
+        let stmt = make_stmt("x", 1, Rc::clone(&body));
+        settle(&stmt);
+        assert!(stmt.borrow().core().get_nyes().is_settled());
+        assert!(stmt.borrow().core().ubc_children().is_empty());
+
+        let result = get_value(&stmt);
+        assert!(Rc::ptr_eq(&result, &stmt));
+        assert_eq!(result.borrow().kind(), FirKind::Statement);
+    }
+
+    // ── 12. ConcatenationFir settled ────────────────────────────────────────
+
+    #[test]
+    fn get_value_concatenation_settled_returns_result_brane() {
+        let a = make_ci(1);
+        let b = make_ci(2);
+        let stmt_a = make_stmt("a", 1, Rc::clone(&a));
+        let stmt_b = make_stmt("b", 2, Rc::clone(&b));
+        let brane1 = make_brn(vec![Rc::clone(&stmt_a)]);
+        let brane2 = make_brn(vec![Rc::clone(&stmt_b)]);
+        let cat = make_cat(vec![Rc::clone(&brane1), Rc::clone(&brane2)]);
+        settle(&cat);
+        assert_eq!(cat.borrow().core().get_nyes(), Nyes::Constant);
+        assert_eq!(cat.borrow().core().ubc_children().len(), 1);
+
+        let result = get_value(&cat);
+        assert!(!Rc::ptr_eq(&result, &cat));
+        assert_eq!(result.borrow().kind(), FirKind::Brane);
+        assert_eq!(result.borrow().core().foolish_children().len(), 2);
+    }
+
+    // ── 13. ConcatenationFir not settled ────────────────────────────────────
+
+    #[test]
+    fn get_value_concatenation_not_settled_returns_self() {
+        let brane = make_brn(vec![]);
+        let cat = make_cat(vec![Rc::clone(&brane)]);
+        assert!(!cat.borrow().core().get_nyes().is_settled());
+
+        let result = get_value(&cat);
+        assert!(Rc::ptr_eq(&result, &cat));
+    }
+
+    // ── 14. StayFoolishFir ──────────────────────────────────────────────────
+
+    #[test]
+    fn get_value_stay_foolish_returns_inner_value() {
+        let body = make_ci(42);
+        let sf = make_sf(Rc::clone(&body));
+        settle(&sf);
+        assert!(sf.borrow().core().get_nyes().is_settled());
+        // SF constanic-clones the expr result into ubc_children
+        assert_eq!(sf.borrow().core().ubc_children().len(), 1);
+
+        let result = get_value(&sf);
+        assert!(!Rc::ptr_eq(&result, &sf));
+        assert_eq!(result.borrow().kind(), FirKind::ConstantInt);
+        assert_eq!(result.borrow().as_i64(), Some(42));
+    }
+
+    // ── 15. StayFullyFoolishFir ─────────────────────────────────────────────
+
+    #[test]
+    fn get_value_stay_fully_foolish_returns_self() {
+        let body = make_ci(42);
+        let sff = make_sff(Rc::clone(&body));
+        settle(&sff);
+        assert!(sff.borrow().core().get_nyes().is_settled());
+        assert!(sff.borrow().core().ubc_children().is_empty());
+
+        let result = get_value(&sff);
+        assert!(Rc::ptr_eq(&result, &sff));
+        assert_eq!(result.borrow().kind(), FirKind::StayFullyFoolish);
     }
 }
