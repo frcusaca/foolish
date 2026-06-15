@@ -1,6 +1,6 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 50
+assertion_line: 52
 ---
 INPUT:
 ```foolish
@@ -11,16 +11,24 @@ INPUT:
 {WOCONSTANIC
   a=1;
   b=2;
-  inner={WOCONSTANIC
-      c=<<WOCONSTANIC
-          Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
-      >>;
+  inner={
+      c=Op+(?(pattern='^a$', UNANCHORED), ?(pattern='^b$', UNANCHORED), EMBRYONIC);
       3
   };
-  {
-    c=3;
-    3
-  }
+  ?(
+    result={WOCONSTANIC
+        c=Op+(?(pattern='^a$', UNANCHORED), ?(pattern='^b$', UNANCHORED), EMBRYONIC);
+        ?(
+          result=Op+(?(pattern='^a$', UNANCHORED), ?(pattern='^b$', UNANCHORED), WOCONSTANIC),
+          pattern='^c$',
+          UNANCHORED,
+          WOCONSTANIC
+        )
+    },
+    pattern='^inner$',
+    UNANCHORED,
+    WOCONSTANIC
+  )
 }
 ```
 COMMENTS:
@@ -30,5 +38,5 @@ complex_sff_in_nested_brane
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: ZIgjfGeL3aOiCFGthil+qpoFORBgbUiJ34yeWevLnvPP3orwUnFqJRnzpA9oKsQVY98pCPWMFeTGN4RdIqe4DA==
-HFS signature: DKbcC6vKQb4iSXqnjr0kWskNO+D+nEg8SPaM9N5Srash+dxHEBtp0ze5ILqQ3scdGFQNZn0zprUtUp4L2XB7Ag==
-Comments signature: /KlPu+cVg9kDnP2+587ZHbdWWqwnMMafSOjUgkHXDZRzav3ZRLX6id2M93tuvcA45klYe0umWObyIdvCHVPNDw==
+HFS signature: nNcB6L8dDKzACIkBLvYaablwO0w3+Uq/sJn2JA7ut9AA9z111cEATOz+FmVvu4wVbjdMARL5/+DeqYPGVT1AAw==
+Comments signature: w7JuMN5yoEBQ6/JQ9qWbkin40PL3ARdGq+zd4scLtG9L67m+6/cQoL6Zd30B8sIRqMBoWhunxcYeiGXsDtUPCQ==

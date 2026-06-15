@@ -1,6 +1,6 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 50
+assertion_line: 52
 ---
 INPUT:
 ```foolish

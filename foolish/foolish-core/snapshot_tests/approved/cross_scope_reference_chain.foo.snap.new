@@ -5,7 +5,6 @@ assertion_line: 52
 INPUT:
 ```foolish
 {a = 1; b = {c = a + 1; d = c + 1};}
-!!! WIP FOOP-52 !!!
 ```
 [0] RESULT:
 ```hfssnap
@@ -27,6 +26,6 @@ cross_scope_reference_chain
 ```
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
-Foolish signature: 58qDHOxYJF9SPMYaUriic1xhAH0q3V1Kr7cqFOQRNYstq9HGurGrUB05qUZGwF354lRfD1ofbjH+Ssss1INKDA==
-HFS signature: ZUSAB+9mOVDzJ9ovA6fQaflP5vAovqO7SfatN+C4epGs9wUIJ6tBl5mP609xe0xxdp+0zvH6xxpjXGie1yAWAQ==
-Comments signature: VRha42Q3NhJLP/XaZ80nTbgfslgBrOEPjIIIcmQahWNMh9ec6jpB6oXIc9EumKsujaqPCaECWpM84ZbuYqGfDQ==
+Foolish signature: tNHk0722tO1WsAYqGXU6E4LyluowMjg1/r7fpl7OaiRQ6cyKBRGbEhFie/i1WiZLeArBNQ7RkQ9aHdYqQ37sDg==
+HFS signature: G7wgpRqhav21R9kcQecpD05nCEFJKhBlGWQFn55Q/u71jG8OUl0do025nSpIgWGyiNpdKC8orJiLJNX7Vfo1Cg==
+Comments signature: 1yMyT7InN6ycIfxn44+DFtcnrikVFolrdrXoPD/vTXFDha4qdtAk4dcAVP2Px36FhJpJeE3Ydp33J8zQFOSBAw==

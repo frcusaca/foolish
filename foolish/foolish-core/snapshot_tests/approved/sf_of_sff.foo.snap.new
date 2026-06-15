@@ -1,6 +1,6 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 50
+assertion_line: 52
 ---
 INPUT:
 ```foolish
@@ -11,21 +11,12 @@ INPUT:
 {WOCONSTANIC
   a=1;
   b=2;
-  sff=<<WOCONSTANIC
-      Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
-  >>;
-  sf=<WOCONSTANIC
-      ?(
-        result=Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
-        pattern='^sff$',
-        UNANCHORED,
-        WOCONSTANIC
-      )
-  >;
+  sff=Op+(?(pattern='^a$', UNANCHORED), ?(pattern='^b$', UNANCHORED), EMBRYONIC);
+  sf=?(result=12, pattern='^sff$', UNANCHORED);
   a=10;
   ?(
     result=?(
-        result=Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
+        result=Op+(?(pattern='^a$', UNANCHORED), ?(pattern='^b$', UNANCHORED), WOCONSTANIC),
         pattern='^sff$',
         UNANCHORED,
         WOCONSTANIC
@@ -35,7 +26,7 @@ INPUT:
     WOCONSTANIC
   );
   ?(
-    result=Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
+    result=Op+(?(pattern='^a$', UNANCHORED), ?(pattern='^b$', UNANCHORED), WOCONSTANIC),
     pattern='^sff$',
     UNANCHORED,
     WOCONSTANIC
@@ -49,5 +40,5 @@ sf_of_sff
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: h1VqZ8FgnPZ2bLsAmCfvaSczq/hrg2qLt+NCDHxlJTO58pkS3WuR3DKlCs5mxYNflR4ATJy8+l662ISwvkxvDA==
-HFS signature: mm09v9++9FacCgssPE/pQPyvpI10NZW9bOOXeo3zbGm1biTfmMKNmh11C1EWKYy+WpkeNy8DZrqDfCB61aYgBw==
-Comments signature: 7wtZu2dq8wmwG9+kKlf4PbTu41N9I9762Pic7hvtI5TMTKttZkR2LyRFBWOJB621oJnYlMKxx9R1xz6H5+LJCA==
+HFS signature: EiJf3+z8G6f/S5+o6Xjp+J8tgtVQ9ScTiNycg9Mio4YzMOLFOsuM5/JWnHF2HE5ECFf50aYxYfbdmnN2f0hEDg==
+Comments signature: Wxevteo3Wn4Y7Rrgt7IlWxZiR6XgO8GbtA+iy88ezHbx3FlhGH5PeA0bzow1UL3qUShuMJXAZrStf+2EfnhJBg==

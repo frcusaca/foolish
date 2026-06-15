@@ -5,7 +5,6 @@ assertion_line: 52
 INPUT:
 ```foolish
 {nested = {inner = {val = x}}; x = 42;}
-!!! WIP FOOP-52 !!!
 ```
 [0] RESULT:
 ```hfssnap
@@ -24,6 +23,6 @@ complex_forward_refs_in_nested_branes
 ```
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
-Foolish signature: OSgoG1J4UFXlEafasPvIU/TLvHuxuROYK7AB/0T/7qcayUadLJ2G0XCjofySo+69FPfKMs3eudDbn1XmJ/ovAw==
-HFS signature: ab4IhLDTIl6dCYWXXZyi9vxdiDd7FPNm8+YJBZr1+d8U4WeyYjgasbnok0OqST01HCnkwzWp2I61T5Ol+mvSDw==
-Comments signature: QG+U9ZDVgE0ULzXEf8RoHpYQ/jGBuSPCDk9YoLc9c/QUdZDWn4+ME+1Odc93nqTPsFgi6Xe6P9A5wl/MlJhlCg==
+Foolish signature: dct7S1xt4BQlrVSe20zSejRWopMd5WAIV2n3zrW7K1tYqgXNp3fSPSQKHKK5cqT+oEDbEo1Ytg5ww9j+8ME3Aw==
+HFS signature: oT0t4TWRFV8JaWvL3fHB9Im3cQvPnoXR0ODJQRAK5O10MwsFwX6QAYc4yBx+dLYlvSakabaiP8YzycwwaOtaDg==
+Comments signature: 7HuCAqEbNGyqb80xCB3mc0nCBKc+DzkyHKKtzdM7sY7376u6d0hnmdB+Bb7KLVVcDJk5psMlLYOiP0Tgb+P5BA==

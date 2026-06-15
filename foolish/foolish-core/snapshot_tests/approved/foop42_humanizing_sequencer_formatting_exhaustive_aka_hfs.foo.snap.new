@@ -1,6 +1,6 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 50
+assertion_line: 52
 ---
 INPUT:
 ```foolish
@@ -89,14 +89,14 @@ win={w_in={in_in={in_in_in=101010}}};
   ccc=3;
   dddd=4;
   shortˍsum=10;
-  longˍnamedˍresultˍshowsˍalignment=20;
-  veryˍlongˍidentifierˍnameˍforˍtestingˍindent=100;
-  evenˍlongerˍnameˍthatˍmayˍwrapˍorˍpushˍcolumnsˍ1234567890=500;
-  unicodeˍidentifiersˍπΔΣ=Op+(
-      Op+(?(pattern='^π$', UNANCHORED, ECONSTANIC), ?(pattern='^Δ$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
-      ?(pattern='^Σ$', UNANCHORED, ECONSTANIC),
+  longˍnamedˍresultˍshowsˍalignment=Op+(
+      ?(result=Op+(6, ?(pattern='^dddd$', UNANCHORED), WOCONSTANIC), pattern='^shortˍsum$', UNANCHORED, WOCONSTANIC),
+      ?(result=Op+(6, ?(pattern='^dddd$', UNANCHORED), WOCONSTANIC), pattern='^shortˍsum$', UNANCHORED, WOCONSTANIC),
       WOCONSTANIC
   );
+  veryˍlongˍidentifierˍnameˍforˍtestingˍindent=100;
+  evenˍlongerˍnameˍthatˍmayˍwrapˍorˍpushˍcolumnsˍ1234567890=500;
+  unicodeˍidentifiersˍπΔΣ=20;
   π=3;
   Δ=7;
   Σ=10;
@@ -128,11 +128,11 @@ win={w_in={in_in={in_in_in=101010}}};
       WOCONSTANIC
   );
   aliasˍofˍbad=?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED, WOCONSTANIC);
-  fwdˍx=?(pattern='^x$', UNANCHORED, ECONSTANIC);
+  fwdˍx=42;
   x=42;
   xˍagain=42;
-  fwdˍdeep=?(pattern='^y$', UNANCHORED, ECONSTANIC);
-  y=?(pattern='^z$', UNANCHORED, ECONSTANIC);
+  fwdˍdeep=99;
+  y=99;
   z=99;
   flatˍempty={};
   flatˍsingle={
@@ -156,7 +156,7 @@ win={w_in={in_in={in_in_in=101010}}};
   indexˍfirst=10;
   indexˍlast=40;
   indexˍoutˍofˍbounds=#(result=?(pattern='^indexˍbrane$', UNANCHORED), offset=99, ANCHORED, NK);
-  seekˍunanchored=40;
+  seekˍunanchored=??? (constanic_clone called on NYE FIR), INVARIANT-VIOLATED: constanic_clone called on NYE FIR;
   sfˍtarget={
       a=1;
       b=2
@@ -165,16 +165,19 @@ win={w_in={in_in={in_in_in=101010}}};
       ?(pattern='^sfˍtarget$', UNANCHORED, ECONSTANIC)
   >;
   sfˍtoˍconstant=?(result=3, pattern='^π$', UNANCHORED);
-  sfˍchain=<WOCONSTANIC
-      ?(result=?(pattern='^sfˍtarget$', UNANCHORED, ECONSTANIC), pattern='^sfˍvalue$', UNANCHORED, WOCONSTANIC)
-  >;
+  sfˍchain=?(
+      result={
+          a=1;
+          b=2
+      },
+      pattern='^sfˍvalue$',
+      UNANCHORED
+  );
   sffˍtarget={
       x=10;
       y=20
   };
-  sffˍvalue=<<WOCONSTANIC
-      ?(pattern='^sffˍtarget$', UNANCHORED, ECONSTANIC)
-  >>;
+  sffˍvalue=?(pattern='^sffˍtarget$', UNANCHORED, EMBRYONIC);
   concatˍleft={
       leftˍa=1;
       leftˍb=2
@@ -267,16 +270,18 @@ win={w_in={in_in={in_in_in=101010}}};
   unaryˍneg=-5;
   unaryˍdouble=3;
   unaryˍinˍexpr=0;
-  opˍtransparent=0;
+  opˍtransparent=Op*(
+      ??? (constanic_clone called on NYE FIR), INVARIANT-VIOLATED: constanic_clone called on NYE FIR,
+      ??? (constanic_clone called on NYE FIR), INVARIANT-VIOLATED: constanic_clone called on NYE FIR,
+      NK
+  );
   chainedˍops=5;
   zeroˍdivˍinˍop=Op+(??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, 42, NK);
   nestedˍopˍtransparent=-1;
   inspectˍsff=<WOCONSTANIC
       ?(pattern='^sffˍtarget$', UNANCHORED, ECONSTANIC)
   >;
-  inspectˍsffˍagain=<<WOCONSTANIC
-      ?(pattern='^sffˍtarget$', UNANCHORED, ECONSTANIC)
-  >>;
+  inspectˍsffˍagain=?(pattern='^sffˍtarget$', UNANCHORED, EMBRYONIC);
   win={
       wˍin={
           inˍin={
@@ -293,5 +298,5 @@ foop42_humanizing_sequencer_formatting_exhaustive_aka_hfs
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 5CYQ9TTMJwxdSRqdDbNvIcEuEjzF0rs9DSJO0IFb7JZX52hw7oNCOG0pcpoYozWuyHWmpPLVgx2jGmPxDfKBDA==
-HFS signature: VKU/TgSxU9TktzyeWAdo8muM2pZbo4JlgyEKkHUFno+HkZ1748iihTIv4gmebY7enTI7sMFNhc9qHCTF9gU5CA==
-Comments signature: xSdbvmn1oEiJ5MQ4CCdGMx6oCZ1WFqw4JWQg+BGMRCk++P/stP3KsD4tMh9O5UghFd2qm/lktuMI/HSv7PutDw==
+HFS signature: OVoQDyhvZTa9hwQqvocoKiursu/RsGI3HqWMs1FpWz2Qu18ejGdZhcOy+7vW54MPaOuZ9NlsTB04WmxrjpTeDA==
+Comments signature: s2XSEFHd2PEoMScwldIj7aF2UETTZfz2/h7N2aMzi7vdsqf7iY5YgYLrXbCEfz6hwJ2ghlggx2Ce/R6+ZkqsCA==

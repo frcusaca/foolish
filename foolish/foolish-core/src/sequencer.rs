@@ -404,23 +404,53 @@ fn render_fir(
 
     // ── 6. Index ──
     if let Some((offset, anchored, anchor)) = fir.hs_index() {
-        let anchor_str = if anchored { "ANCHORED" } else { "UNANCHORED" };
-        let mut non_result_items = vec![format!("offset={}", offset), anchor_str.to_string()];
-
-        if show_state {
-            non_result_items.push(state.to_string());
+        if anchored && offset == 0 {
+            let mut non_result_items = Vec::new();
+            if show_state {
+                non_result_items.push(state.to_string());
+            }
+            let opener = "^(".to_string();
+            return proto_brane_formatter_with_result(
+                &opener,
+                ")",
+                open_indent,
+                close_indent,
+                &non_result_items,
+                anchor.as_deref(),
+                line_hint,
+            );
+        } else if anchored && offset == -1 {
+            let mut non_result_items = Vec::new();
+            if show_state {
+                non_result_items.push(state.to_string());
+            }
+            let opener = "$(".to_string();
+            return proto_brane_formatter_with_result(
+                &opener,
+                ")",
+                open_indent,
+                close_indent,
+                &non_result_items,
+                anchor.as_deref(),
+                line_hint,
+            );
+        } else {
+            let anchor_str = if anchored { "ANCHORED" } else { "UNANCHORED" };
+            let mut non_result_items = vec![format!("offset={}", offset), anchor_str.to_string()];
+            if show_state {
+                non_result_items.push(state.to_string());
+            }
+            let opener = "#(".to_string();
+            return proto_brane_formatter_with_result(
+                &opener,
+                ")",
+                open_indent,
+                close_indent,
+                &non_result_items,
+                anchor.as_deref(),
+                line_hint,
+            );
         }
-
-        let opener = "#(".to_string();
-        return proto_brane_formatter_with_result(
-            &opener,
-            ")",
-            open_indent,
-            close_indent,
-            &non_result_items,
-            anchor.as_deref(),
-            line_hint,
-        );
     }
 
     // ── 7. StayFoolish ──

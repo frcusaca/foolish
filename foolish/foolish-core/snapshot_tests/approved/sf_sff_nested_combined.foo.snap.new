@@ -1,6 +1,6 @@
 ---
 source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 50
+assertion_line: 52
 ---
 INPUT:
 ```foolish
@@ -28,50 +28,30 @@ INPUT:
 {WOCONSTANIC
   x=1;
   y=2;
-  sff=<<WOCONSTANIC
-      Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
-  >>;
+  sff=Op+(?(pattern='^x$', UNANCHORED), ?(pattern='^y$', UNANCHORED), EMBRYONIC);
   sf=<WOCONSTANIC
-      Op+(?(result=1, pattern='^x$', UNANCHORED), ?(result=2, pattern='^y$', UNANCHORED), WOCONSTANIC)
+      Op+(?(result=-2, pattern='^x$', UNANCHORED), ?(result=2, pattern='^y$', UNANCHORED), WOCONSTANIC)
   >;
-  sfsff=<WOCONSTANIC
-      ?(
-        result=Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
-        pattern='^sff$',
-        UNANCHORED,
-        WOCONSTANIC
-      )
-  >;
-  sffsf=<<WOCONSTANIC
-      ?(pattern='^sf$', UNANCHORED, ECONSTANIC)
-  >>;
-  sfsf=<WOCONSTANIC
-      ?(
-        result=Op+(?(result=1, pattern='^x$', UNANCHORED), ?(result=2, pattern='^y$', UNANCHORED), WOCONSTANIC),
-        pattern='^sf$',
-        UNANCHORED,
-        WOCONSTANIC
-      )
-  >;
-  sffsff=<<WOCONSTANIC
-      ?(pattern='^sff$', UNANCHORED, ECONSTANIC)
-  >>;
+  sfsff=?(result=0, pattern='^sff$', UNANCHORED);
+  sffsf=?(pattern='^sf$', UNANCHORED, EMBRYONIC);
+  sfsf=?(result=0, pattern='^sf$', UNANCHORED);
+  sffsff=?(pattern='^sff$', UNANCHORED, EMBRYONIC);
   x=-2;
   rsff=?(
-      result=Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
+      result=Op+(?(pattern='^x$', UNANCHORED), ?(pattern='^y$', UNANCHORED), WOCONSTANIC),
       pattern='^sff$',
       UNANCHORED,
       WOCONSTANIC
   );
   rsf=?(
-      result=Op+(?(result=1, pattern='^x$', UNANCHORED), ?(result=2, pattern='^y$', UNANCHORED), WOCONSTANIC),
+      result=Op+(?(pattern='^x$', UNANCHORED), ?(pattern='^y$', UNANCHORED), WOCONSTANIC),
       pattern='^sf$',
       UNANCHORED,
       WOCONSTANIC
   );
   rsfsff=?(
       result=?(
-          result=Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
+          result=Op+(?(pattern='^x$', UNANCHORED), ?(pattern='^y$', UNANCHORED), WOCONSTANIC),
           pattern='^sff$',
           UNANCHORED,
           WOCONSTANIC
@@ -80,10 +60,20 @@ INPUT:
       UNANCHORED,
       WOCONSTANIC
   );
-  rsffsf=?(result=?(pattern='^sf$', UNANCHORED, ECONSTANIC), pattern='^sffsf$', UNANCHORED, WOCONSTANIC);
+  rsffsf=?(
+      result=?(
+          result=Op+(?(pattern='^x$', UNANCHORED), ?(pattern='^y$', UNANCHORED), WOCONSTANIC),
+          pattern='^sf$',
+          UNANCHORED,
+          WOCONSTANIC
+      ),
+      pattern='^sffsf$',
+      UNANCHORED,
+      WOCONSTANIC
+  );
   rsfsf=?(
       result=?(
-          result=Op+(?(result=1, pattern='^x$', UNANCHORED), ?(result=2, pattern='^y$', UNANCHORED), WOCONSTANIC),
+          result=Op+(?(pattern='^x$', UNANCHORED), ?(pattern='^y$', UNANCHORED), WOCONSTANIC),
           pattern='^sf$',
           UNANCHORED,
           WOCONSTANIC
@@ -92,7 +82,17 @@ INPUT:
       UNANCHORED,
       WOCONSTANIC
   );
-  rsffsff=?(result=?(pattern='^sff$', UNANCHORED, ECONSTANIC), pattern='^sffsff$', UNANCHORED, WOCONSTANIC)
+  rsffsff=?(
+      result=?(
+          result=Op+(?(pattern='^x$', UNANCHORED), ?(pattern='^y$', UNANCHORED), WOCONSTANIC),
+          pattern='^sff$',
+          UNANCHORED,
+          WOCONSTANIC
+      ),
+      pattern='^sffsff$',
+      UNANCHORED,
+      WOCONSTANIC
+  )
 }
 ```
 COMMENTS:
@@ -102,5 +102,5 @@ sf_sff_nested_combined
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: tT8UqgoaX2cQknxaTSOxGoatqdbkUElQJTZXD4wK3f2mTtwOZwiBraFW1mIiflGHyg6zn6JuaExvI+DIT6sOBg==
-HFS signature: +q8U7lZi4wxPFBZeye3brT++p4plkedDxJNdgwCCDY4ejj5uOLu6BW8Et4PXexijcppnkZOq9+uvy2zkYYYdAw==
-Comments signature: jLl9RjfP5EueyweirAFbpjkD6GfybmdZvvD5pEhseUfY0Pm72Rw1KtkpHTpHg85fUtcrwdJp3bPB1Z/ivzOTDQ==
+HFS signature: 93YkMJV1rznMulUMZB/Ep5YKucslmRhxOODvlmWRAjpzb0Ujvk0epjiJLtDX2reV6k0UbJpKkeQDca5VbE7tCA==
+Comments signature: QZYF2v2QI4ms73yU0uQBsK2A+KlAe55XdSML7m+I7NVGqiCs2/8S7Qsulg7zv5vqmkewIxaGx/Zwt8dAAvwzCw==

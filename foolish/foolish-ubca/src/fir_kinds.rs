@@ -15,6 +15,36 @@ use crate::fir_trait::{Fir, FirKind, FirRef, Scope, UbcError, get_value};
 use crate::nyes_ext::NyesExt;
 use crate::proto_brane::ProtoBrane;
 
+// ── Default NYES classification ──────────────────────────────────────────────
+
+/// Determine the NYES for a node based on its children's states.
+///
+/// Priority order (worst wins):
+///   NK > WOCONSTANIC/ECONSTANIC > CONSTANT > INDEPENDENT
+///
+/// Used by BraneFir directly. OperatorFir uses this as a base but may override
+/// (e.g., `1/0` → NK even though children are CONSTANT).
+///
+/// Returns `None` if not all children are constanic yet (stay BRANING).
+pub fn decide_nyes_due_to_children(children: &[FirRef]) -> Option<Nyes> {
+    if !children.iter().all(|c| c.borrow().core().get_nyes().is_constanic()) {
+        return None; // Not all settled — stay BRANING
+    }
+    if children.iter().any(|c| c.borrow().core().get_nyes() == Nyes::Nk) {
+        return Some(Nyes::Nk);
+    }
+    if children.iter().any(|c| {
+        let n = c.borrow().core().get_nyes();
+        n == Nyes::Econstanic || n == Nyes::Woconstanic
+    }) {
+        return Some(Nyes::Woconstanic);
+    }
+    if children.iter().any(|c| c.borrow().core().get_nyes() == Nyes::Constant) {
+        return Some(Nyes::Constant);
+    }
+    Some(Nyes::Independent)
+}
+
 // ── ConstantIntFir ──────────────────────────────────────────────────────────
 
 /// A leaf FIR representing a known integer constant.
@@ -326,22 +356,9 @@ impl Fir for BraneFir {
             }
             Nyes::Braning => {
                 let children = self.core.foolish_children().to_vec();
-                let any_nk = children
-                    .iter()
-                    .any(|c| c.borrow().core().get_nyes() == Nyes::Nk);
-                if any_nk {
-                    self.core.set_nyes(Nyes::Nk);
-                    return Ok(());
+                if let Some(nyes) = decide_nyes_due_to_children(&children) {
+                    self.core.set_nyes(nyes);
                 }
-                let any_woconstanic = children.iter().any(|c| {
-                    let n = c.borrow().core().get_nyes();
-                    n == Nyes::Econstanic || n == Nyes::Woconstanic
-                });
-                if any_woconstanic {
-                    self.core.set_nyes(Nyes::Woconstanic);
-                    return Ok(());
-                }
-                self.core.set_nyes(Nyes::Constant);
             }
             _ => {}
         }

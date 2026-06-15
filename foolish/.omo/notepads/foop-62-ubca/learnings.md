@@ -19,3 +19,13 @@
 **SearchFir::found_body**: Changed from `Option<FirRef>` to `RefCell<Option<FirRef>>` for interior mutability.
 
 **ubc_children() API Change**: Returns `Vec<FirRef>` (cloned) instead of `&[FirRef]` because the underlying data is behind RefCell. Callers that index into the result need a local variable.
+
+## Search Scoping Fix (2026-06-14)
+
+**Root cause**: `matches_pattern()` used unanchored regex as fallback. `extract_simple_name("^a$")` stripped anchors to `"a"`, then `Regex::new("a")` matched `"ac"` (containing `a`).
+
+**Fix**: Use `&self.pattern` (full anchored pattern like `"^a$"`) instead of `extract_simple_name(&self.pattern)`. The regex `^a$` correctly rejects `"ac"`.
+
+**Key insight**: `matches_pattern()` has two paths - exact match and regex fallback. For simple names like `"a"`, the exact match fails against statement names, and the unanchored regex `/a/` falsely matches any name containing `a`. Anchoring the regex (`^a$`) fixes this.
+
+**Debug approach**: Added eprintln! tracing to the search loop to see which brane children were searched and which matched. The output `[1] name='ac' ... -> FOUND!` revealed the false match immediately.

@@ -10,7 +10,7 @@ INPUT:
 ```hfssnap
 {NK
   empty={};
-  result=#(result=?(pattern='^empty$', UNANCHORED), offset=0, ANCHORED, NK)
+  result=^(result=?(pattern='^empty$', UNANCHORED), NK)
 }
 ```
 COMMENTS:
@@ -20,5 +20,5 @@ offset_access_empty_brane
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: JI35BO/LYAqVxA74+it8/mQgGw1ylzq4Y/Ev2S/JTh2Ck5W3W98gnxrHouJtQswqUSWKzejSlRPusvvqRMQ/AA==
-HFS signature: wh7h28zVg7QVYeVwAK1nTKkUSAxftq2HobxQ3p/NoY/B5pUIAUyUBzhz/yhuBu7LDKzmX8viMocW3Dcrjed5BA==
-Comments signature: lE7UM42Oo6c9zDYLpdzNOELfn5m/XzltGtXFmfmr0C2X8ZTDXkE9zwxPYPDAe6MquPOTfNRlQo9RsFJjRubICQ==
+HFS signature: xOA0/BPCiwJCUCpW+RF105PaFtqDIW8FCi62zE3wPWtd3ou7DTI4VnyJ0WhUBl9HMuukTwnTJE04eTuESH6/Cg==
+Comments signature: Tjon4a4uE0LLIISViQ4q3H/9B4dWWzaXPaqzotkniG0B/lRK5AB5tgJfvhhPQdFYCIfLVqX8j8e/S5z9mhyhBw==

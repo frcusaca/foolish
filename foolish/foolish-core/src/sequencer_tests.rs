@@ -172,11 +172,7 @@ fn test_format_index() {
 fn test_format_index_anchored() {
     let idx = IndexFirBuilder::new(0).anchored(true).build();
     let s = format_fir_simple(&idx);
-    assert!(
-        s.contains("#(offset=0, ANCHORED,"),
-        "Expected '#(offset=0, ANCHORED,' in: {}",
-        s
-    );
+    assert!(s.starts_with("^("), "Expected '^(' in: {}", s);
 }
 
 #[test]
