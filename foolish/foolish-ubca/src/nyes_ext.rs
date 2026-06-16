@@ -47,70 +47,73 @@ impl NyesExt for Nyes {
 mod tests {
     use super::*;
 
+    const ALL_NYES: &[Nyes] = &[
+        Nyes::Prembrionic,
+        Nyes::Embryonic,
+        Nyes::Braning,
+        Nyes::Econstanic,
+        Nyes::Woconstanic,
+        Nyes::Constant,
+        Nyes::Independent,
+        Nyes::Nk,
+    ];
+
     #[test]
     fn constanic_states() {
-        assert!(Nyes::Econstanic.is_constanic());
-        assert!(Nyes::Woconstanic.is_constanic());
-        // constantew ⊂ constanic
-        assert!(Nyes::Constant.is_constanic());
-        assert!(Nyes::Independent.is_constanic());
-        assert!(Nyes::Nk.is_constanic());
-        assert!(!Nyes::Prembrionic.is_constanic());
+        // constanic = ECONSTANIC | WOCONSTANIC | CONSTANT | INDEPENDENT | NK
+        for &nyes in ALL_NYES {
+            let expected = !matches!(nyes, Nyes::Prembrionic | Nyes::Embryonic | Nyes::Braning);
+            assert_eq!(nyes.is_constanic(), expected, "{nyes:?}");
+        }
     }
 
     #[test]
     fn constantew_states() {
-        assert!(Nyes::Constant.is_constantew());
-        assert!(Nyes::Independent.is_constantew());
-        assert!(Nyes::Nk.is_constantew());
-        assert!(!Nyes::Econstanic.is_constantew());
-        assert!(!Nyes::Woconstanic.is_constantew());
+        // constantew = CONSTANT | INDEPENDENT | NK
+        for &nyes in ALL_NYES {
+            let expected = matches!(nyes, Nyes::Constant | Nyes::Independent | Nyes::Nk);
+            assert_eq!(nyes.is_constantew(), expected, "{nyes:?}");
+        }
+    }
+
+    #[test]
+    fn nnk_constanic_states() {
+        // nnk_constanic = constanic && !NK
+        for &nyes in ALL_NYES {
+            let expected = nyes.is_constanic() && nyes != Nyes::Nk;
+            assert_eq!(nyes.is_nnk_constanic(), expected, "{nyes:?}");
+        }
     }
 
     #[test]
     fn settled_states() {
-        assert!(Nyes::Econstanic.is_settled());
-        assert!(Nyes::Woconstanic.is_settled());
-        assert!(Nyes::Constant.is_settled());
-        assert!(Nyes::Independent.is_settled());
-        assert!(Nyes::Nk.is_settled());
+        // settled = constanic (which includes constantew)
+        for &nyes in ALL_NYES {
+            assert_eq!(nyes.is_settled(), nyes.is_constanic(), "{nyes:?}");
+        }
     }
 
     #[test]
-    fn pre_constanic_states_are_not_settled() {
-        assert!(!Nyes::Prembrionic.is_settled());
-        assert!(!Nyes::Embryonic.is_settled());
-        assert!(!Nyes::Braning.is_settled());
-    }
-
-    #[test]
-    fn settled_is_either_constanic_or_constantew() {
-        for nyes in [
-            Nyes::Prembrionic,
-            Nyes::Embryonic,
-            Nyes::Braning,
-            Nyes::Econstanic,
-            Nyes::Woconstanic,
-            Nyes::Constant,
-            Nyes::Independent,
-            Nyes::Nk,
-        ] {
-            if nyes.is_settled() {
+    fn constantew_is_subset_of_constanic() {
+        for &nyes in ALL_NYES {
+            if nyes.is_constantew() {
                 assert!(
-                    nyes.is_constanic() || nyes.is_constantew(),
-                    "{nyes} is settled but neither constanic nor constantew"
+                    nyes.is_constanic(),
+                    "{nyes:?} is constantew but not constanic"
                 );
             }
         }
     }
 
     #[test]
-    fn nnk_constanic_excludes_nk() {
-        assert!(Nyes::Econstanic.is_nnk_constanic());
-        assert!(Nyes::Woconstanic.is_nnk_constanic());
-        assert!(Nyes::Constant.is_nnk_constanic());
-        assert!(Nyes::Independent.is_nnk_constanic());
-        assert!(!Nyes::Nk.is_nnk_constanic());
-        assert!(!Nyes::Prembrionic.is_nnk_constanic());
+    fn settled_is_either_constanic_or_constantew() {
+        for &nyes in ALL_NYES {
+            if nyes.is_settled() {
+                assert!(
+                    nyes.is_constanic() || nyes.is_constantew(),
+                    "{nyes:?} is settled but neither constanic nor constantew"
+                );
+            }
+        }
     }
 }
