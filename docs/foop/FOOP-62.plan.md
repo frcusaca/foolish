@@ -254,31 +254,52 @@ through.
 
 ### Phase 3b — New compiler in foolish-ubca (snapshot-driven development)
 
-- [ ] **DECIDED (2026-06-11): Write a NEW compiler in `foolish-ubca/src/compiler.rs`** that
+- [x] **DECIDED (2026-06-11): Write a NEW compiler in `foolish-ubca/src/compiler.rs`** that
       converts AST → ProtoBrane tree directly, instead of refactoring UBC's compiler or
       converting UBC's Fir enum. The parser (`foolish-parser`) is shared; the compiler is
       new. This avoids a conversion layer and lets snapshot tests drive FIR kind
       implementation incrementally.
-- [ ] `compile_astn` gains `parent: Weak<RefCell<dyn Fir>>` threaded downward; each brane
+      (2026-06-13: compiler implemented, handles all AST variants)
+- [x] `compile_astn` gains `parent: Weak<RefCell<dyn Fir>>` threaded downward; each brane
       uses `Rc::new_cyclic` to mint its own `Weak` before compiling its children (nested
       cyclic construction). Children only STORE the Weak, never upgrade during construction.
       Root's Weak is self-ref.
-- [ ] Wire up snapshot harness EARLY: copy UBC's input/approved tests, create
+      (2026-06-13: implemented in compiler.rs)
+- [x] Wire up snapshot harness EARLY: copy UBC's input/approved tests, create
       `UbcaEvaluator` that uses the new compiler + step loop, run snapshot tests.
       Each failing test reveals which FIR kind needs work. Let the tests drive
       implementation order (most failures = highest priority kind).
-- [ ] Implement remaining FIR kinds as snapshot tests demand them:
+      (2026-06-13: harness working, 118/143 snapshot tests pass)
+- [x] Implement remaining FIR kinds as snapshot tests demand them:
       SearchFir, IndexFir, HeadTailFir, StayFoolishFir, StayFullyFoolishFir,
       ConcatenationFir. Each kind gets unit tests before moving to the next.
+      (2026-06-13: all kinds implemented, 64 unit tests pass)
+- [ ] **REMAINING (13 snap.new files):** 4 real failures + 9 new tests needing approval:
+      - Real failures (all SF/SFF semantic rendering):
+        - `sf_blocks_brane_at_assignment_time`: SF shows resolved brane, UBC shows search wrapper
+        - `sf_of_sff`: SF wrapping SFF shows different format
+        - `foop42_hfs`: SF chain rendering differences
+        - `seek_in_nested_result_after_concatenation`: concatenation result format
+      - New tests (no approved ref): sff_basic, sff_in_assignment_chain, sff_in_binary_op,
+        sff_nested, sff_resolves_on_each_use, sff_vs_sf_timing_difference, sf_sff_nested_combined,
+        undeclared_identifier, unicode_identifiers_basic
+      - **Progress**: 130/143 snapshot tests pass (90%), 86 unit tests pass
+      - **Key decisions**: NK is constanic (constantew ⊂ constanic), decide_nyes_due_to_children() helper,
+        is_nnk_constanic() for 'constanic but not NK' cases, SFF is immediately Independent
+      - **Sequencer rendering rules** (spec §9): nnk_constanic+result → no nyes;
+        no result+EMBRYONIC → no nyes; else show nyes (especially NK with reason)
 
 ## Phase 4 — Switch UBCa off the UBC delegation; cross-check is the oracle
 
-- [ ] Point UBCa at its own ProtoBrane impl (stop delegating to UBC)
+- [x] Point UBCa at its own ProtoBrane impl (stop delegating to UBC)
+      (2026-06-13: UBCa uses its own compiler + evaluator, not UBC delegation)
 - [ ] Run the Phase-1 cross-check harness; iterate UBCa until **sequencer output** matches
       UBC byte-for-byte on every `.foo` input (step counts are NOT compared)
+      (2026-06-13: 118/143 pass, 25 remain — deep semantic issues)
 - [ ] Reproduce all currently-approved `*.foo.snap` byte-for-byte via UBCa.
       Generate `.snap.new` only; **present to human — NEVER auto-accept** (AGENTS.md)
 - [ ] All new unit tests (Phase 2) pass
+      (2026-06-13: 64 unit tests pass)
 
 ## Phase 5 — Review, decide UBC's fate, integrate
 
@@ -299,9 +320,14 @@ through.
 
 ## Notes / discoveries
 
-- (log split sub-tasks and timestamps here as work proceeds)
+- 2026-06-13: UBCa implementation progress — 118/143 snapshot tests pass (83%), 64 unit tests pass. Remaining 25 failures are deep semantic issues (SF/SFF context, brane NYES classification, search scoping). The RefCell borrow discipline was fixed by using interior mutability (Cell/RefCell for mutable fields, fir_op_step takes &self). The snapshot harness captures panics gracefully per FOOP-62 §3.4.
 
 ## Last Updated
+
+**Date**: 2026-06-13 (fourth update — implementation progress)
+**Updated By**: Sisyphus / mimo-v2.5-pro
+**Changes**: Updated Phase 3b and Phase 4 with implementation progress. Added notes about
+current state (118/143 snapshots, 64 unit tests). Added runtime safety section to spec (§3.4).
 
 **Date**: 2026-06-10 (third update — worktree declaration)
 **Updated By**: Claude Code 2.1.119 (Claude Code); Sonnet 4.6
@@ -336,6 +362,13 @@ the rev-4 composition (no trait ProtoBrane, dyn-compatible trait Fir, is_settled
 NoProgress-based outer loop); new Phase 3a — Scope rework task group (Ignorance enum,
 private positional fields, capability methods, BraneFir search/index/head/tail replacing
 search.rs free functions, bon-built Scope).
+
+**Date**: 2026-06-14
+**Updated By**: Sisyphus / mimo-v2.5-pro
+**Changes**: Major implementation progress. 130/143 snapshots pass (90%), 86 unit tests pass.
+Added constanic/constantew/nnk_constanic terminology, decide_nyes_due_to_children() helper,
+SFF immediately Independent, SF/SFF rendering rules, NK is constanic.
+Remaining: 4 real failures (SF/SFF semantic rendering), 9 new tests needing approval.
 
 **Date**: 2026-06-09
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8

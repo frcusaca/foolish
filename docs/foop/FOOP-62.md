@@ -42,26 +42,29 @@ the existing UBC interface and tests, gutting the implementation, and rebuilding
 new structure — keeping the original **UBC as a byte-for-byte correctness oracle** to
 diff against during development.
 
-## Terminology: "constanic" in UBCa
+## Terminology: NYES states in UBCa
 
-Throughout this FOOP and its implementation, **constanic** (adjective, "constant in
-context") means a FIR that has reached one of the terminal evaluation states and requires
-no further stepping in the current context. In UBCa the constanic states are precisely:
+UBCa classifies NYES states into three categories:
 
-| State | Meaning |
-|-------|---------|
-| **ECONSTANIC** | Exactly constanic — search performed, nothing found. May gain value via recoordination. |
-| **WOCONSTANIC** | Waiting On CONSTANICs — all searches found, but dependencies are themselves constanic. |
-| **CONSTANT** | Fully evaluated — a genuine value. |
-| **INDEPENDENT** | Self-contained constant — no context dependencies. |
-| **NK** | Not Knowable — provably unfindable (`???`). Terminal. |
+**Pre-constanic (nigh)** — more evaluation/stepping needed:
+- PREMBRYONIC, EMBRYONIC, BRANING
 
-**Pre-constanic** (or **nigh**) means the FIR is in a non-terminal state
-(PREMBRYONIC, EMBRYONIC, or BRANING) where more evaluation / stepping is
-appropriate. The predicate `is_settled()` returns `true` for all constanic
-states including NK; `is_constanic()` returns `true` for ECONSTANIC,
-WOCONSTANIC, CONSTANT, and INDEPENDENT (excludes NK). The outer acceptance
-predicate remains `is_constanic()` — NK is a terminal that produces no value,
+**Constanic** — context-dependent terminal (WOCONSTANIC/ECONSTANIC):
+- **ECONSTANIC**: search performed, nothing found. May gain value via recoordination.
+- **WOCONSTANIC**: Waiting On CONSTANICs — all searches found, but dependencies are themselves constanic.
+
+**Constantew** — constant everywhere (CONSTANT/INDEPENDENT/NK):
+- **CONSTANT**: Fully evaluated — a genuine value.
+- **INDEPENDENT**: Self-contained constant — no context dependencies.
+- **NK**: Not Knowable — provably unfindable (`???`). Terminal.
+
+**Classification priority** (worst wins): NK > WOCONSTANIC/ECONSTANIC > CONSTANT > INDEPENDENT
+
+**Predicates:**
+- `is_settled()` = all terminal states (constanic + constantew)
+- `is_constanic()` = ECONSTANIC, WOCONSTANIC, CONSTANT, INDEPENDENT, or NK (all terminal states; constantew ⊂ constanic)
+- `is_constantew()` = CONSTANT, INDEPENDENT, or NK (constant everywhere)
+- `is_nnk_constanic()` = constanic but NOT NK — for code that needs "constanic but not NK" (e.g., search results that propagate NK separately)
 but it is settled so it does not block the task queue.
 
 ## Motivation
@@ -458,6 +461,91 @@ This NYES-driven, one-transition-per-`step()`, queue-drain model reproduces UBC'
 rendered states** — the snapshot oracle. (It does not reproduce UBC's step *counts*, and need
 not: counts are not in snapshots.)
 
+#### 3.3.1 NYES classification for Brane and Operator
+
+**A node whose children are ECONSTANIC does NOT automatically become WOCONSTANIC.**
+This is especially true for Brane and Operator where multiple children will step.
+
+The NYES classification happens naturally through the depth-first FIFO work queue:
+- **Nothing departs until constanic** — a node stays in the queue until settled
+- **Fir state doesn't improve until queue is empty** — the node's NYES only advances when all child tasks drain
+- **Even then, distinguish WOCONSTANIC vs CONSTANT** — after queue empties, `fir_op_step` classifies:
+  - ALL children constanic AND some are WOCONSTANIC/ECONSTANIC → WOCONSTANIC
+  - ALL children constanic AND all are CONSTANT/INDEPENDENT → CONSTANT
+  - Otherwise → BRANING (still waiting for children)
+
+The classification is NOT a separate step — it's what `fir_op_step` does when the task queue empties.
+
+**Default classification rule (ProtoBrane).** A ProtoBrane's default NYES transition from
+BRANING to a constanic state follows this priority order:
+
+1. **Stay BRANING** until EVERY child is settled (constanic including NK)
+2. Then pick the **worst** state:
+   - **NK** if ANY descendant is NK
+   - **WOCONSTANIC** if ANY descendant is WOCONSTANIC or ECONSTANIC
+   - **CONSTANT** if there is a constant child (and no NK/WOCONSTANIC/ECONSTANIC)
+   - **INDEPENDENT** only if ALL children are independent
+
+This is implemented as `decide_nyes_due_to_children(children: &[FirRef]) -> Option<Nyes>`
+in `fir_kinds.rs`. Returns `None` if not all children are settled yet (stay BRANING).
+Used by BraneFir directly. OperatorFir uses this as a base but may override
+(e.g., `1/0` → NK even though children are CONSTANT).
+
+#### 3.4 Runtime safety: depth limits and panic resilience in tests
+
+UBCa's recursive stepping (`step_fir_ref` descends into children) can trigger two
+runtime failures: stack overflow from deep recursion, and `RefCell already mutably
+borrowed` panics from borrow discipline violations. Both must be caught gracefully
+in tests rather than crashing the test runner.
+
+**Depth limit.** `step_fir_ref` accepts a `depth` parameter (default 0) and returns
+`NoProgress` when depth exceeds `MAX_DEPTH` (100). The outer `step_fir_ref(this, scope)`
+entry point calls the inner function with `depth=0`. This prevents stack overflow on
+pathologically deep brane trees.
+
+**Test runner configuration.** The crate's `Cargo.toml` must ensure `panic = "unwind"`
+for test/dev profiles (the default). Never set `panic = "abort"` for tests — this kills
+the entire test runner on any RefCell panic, preventing other tests from running:
+
+```toml
+[profile.test]
+panic = "unwind"   # catch panics per-test, not process-wide
+```
+
+**Graceful RefCell handling in snapshot tests.** The snapshot test harness should use
+`std::panic::catch_unwind` around evaluation to capture RefCell panics as test output
+rather than crashing. When a panic occurs, the snapshot output should include the panic
+message (e.g., `"RefCell already mutably borrowed"`) so the human reviewer can diagnose
+the borrow discipline violation from the `.snap.new` file:
+
+```rust
+// In the snapshot tester:
+for (name, source) in tests {
+    let result = std::panic::catch_unwind(|| {
+        evaluator.evaluate(&source)
+    });
+    match result {
+        Ok(Ok(output)) => /* normal snapshot comparison */,
+        Ok(Err(e)) => /* evaluation error in output */,
+        Err(panic) => {
+            let msg = panic.downcast_ref::<&str>()
+                .unwrap_or(&"unknown panic");
+            // Write panic info as the snapshot output so reviewer sees it
+            insta::assert_snapshot!(name, format!("PANIC: {}", msg));
+        }
+    }
+}
+```
+
+**`#[should_panic]` for borrow discipline tests.** Unit tests that verify RefCell
+borrow violations are caught should use `#[should_panic(expected = "already borrowed")]`
+to confirm the panic happens without crashing the runner.
+
+**`try_borrow()` for defensive checks.** In `fir_op_step` implementations that walk
+the parent chain or access siblings, use `try_borrow()` with graceful fallback instead
+of `borrow()` when the node might be the one currently being stepped. This converts
+a hard panic into a recoverable `NoProgress` or `Econstanic`.
+
 ### 4. Re-stepping (UBCa job queue replaces UBC's `re_step_brane_bodies`)
 
 UBCa **deprecates** UBC's `re_step_brane_bodies` concept entirely. UBCa uses a per-node
@@ -841,14 +929,69 @@ flux); the instant `step()` returns, the invariant holds again. Consequences tha
   `step` wrapper remains the fallback.)
 - **SF/SFF: difference is constructional, not behavioral (NO `step` override).** An SF/SFF
   wrapper is a len-1 ProtoBrane over its expr. Its semantics (SF ⇒ `Ignorance::Foolishly` —
-  brane search results not consumed; SFF ⇒ `Ignorance::Fully` — inner searches go
-  ECONSTANIC) are realized by **constructing the wrapped child in the right state** — and,
+  searches run and results are constanic-cloned with Foolishly flag; SFF ⇒ children
+  instantiated as ECONSTANIC via builder, no searches run, no cloning) are realized by **constructing the wrapped child in the right state** — and,
   when an SF/SFF value is found as a search result, by `constanic_clone` rebuilding it with
   the right states. The *normal* drain then produces the correct behavior. The ignorance
   level carries on `Scope` (`how_ignorant()`, §10.1 — renamed from `EvalContext`). So
   SF/SFF need no special stepping — only special construction. (This corrects the review's
   reading of `step_except_brane_searches` as a separate algorithm: in the ProtoBrane model
   that work moves into construction-time state, not a per-call override.)
+- **SF Ignorance propagates recursively downward.** When an SF-marked expression `<x>` is
+  encountered, the `Ignorance::Foolishly` flag is set on the Scope and **propagates
+  recursively to all child evaluations** within that SF expression. This means searches
+  inside nested branes within the SF expression also see `Foolishly` ignorance. The flag
+  is inherited by children unless overridden by a deeper SF marker. SFF does not use
+  Ignorance — its children are instantiated as ECONSTANIC via builder setup.
+- **Constanic-clone behavior varies by ignorance flag.** The constanic-clone operation
+  behaves differently depending on the `Ignorance` level of the current scope:
+
+  **Under `Foolishly` flag (SF context):**
+  - Constants/independents are **referenced** (not copied or cloned)
+  - All constanic states are **copied with their constanic state**
+  - The result is that coordination does NOT trigger new searches or results
+  - This allows combining code elements with their existing search results,
+    without triggering new searches
+  - Example: SF `<x>` where `x=10` → constanic-clone `Int(10)` with Foolishly →
+    the clone is Constant, no new search triggered
+
+  **Under `Normally` flag (normal context):**
+  - Constants/independents are **referenced** (not copied or cloned)
+  - All constanic states are **reset to pre-constanic states** so they may
+    re-evaluate within their new context
+  - This triggers new searches when the cloned value is coordinated into a new context
+  - Example: normal `b = a` where `a=10` → constanic-clone `Int(10)` with Normally →
+    the clone is Prembrionic, ready to re-evaluate in new context
+
+  **SFF context (no Ignorance flag):**
+  - SFF never runs searches — children are instantiated as ECONSTANIC via builder
+  - No constanic-clone occurs (nothing to clone)
+  - SFF is immediately Independent (self-contained constant)
+
+- **HFS rendering of constant search results.** When a search resolves to a constant
+  value (e.g., `x=42`), the Humanizing FIR Sequencer (HFS) may render the constant
+  directly (`42`) rather than preserving the full search wrapper
+  (`?(result=42, pattern='^x$', UNANCHORED)`). This is acceptable — `get_value()` on
+  a settled search returns the resolved constant, and HFS renders that. Non-constanic
+  searches still render with the full wrapper. This decision was made during FOOP-62
+  implementation when `sf_non_brane_resolves` snapshot showed `42` instead of
+  `?(result=42, ...)`.
+
+- **HFS NYES display rules for searches.** The Humanizing FIR Sequencer follows these
+  rules for when to show the NYES state on search/Index/HeadTail renders:
+  - **Case a)** When there IS a result, and the search is `nnk_constanic` (constanic but
+    not NK), do NOT show nyes — the reader can infer from the result object.
+  - **Case b)** When there is NO result, and the state is EMBRYONIC, do NOT show nyes.
+  - **In all other cases**, show nyes even if it is PREMBRYONIC.
+  - **Especially**: show NK with reason (e.g., `??? (division by zero)`).
+
+- **Constanic-clone of SF-markers.** When constanic-clone is called ON an SF-marker, it
+  **ignores the SF-marker** and returns the constanic-clone of its only child. The search
+  sets its result to the output of a normally constanic-clone, which resets search states
+  to pre-constanic. This means:
+  - `constanic_clone(SF<x>)` = `constanic_clone(x)` (SF is transparent)
+  - The result uses the `Normally` flag (resets constanic states to pre-constanic)
+  - The SF wrapper is stripped — only the inner value is cloned
 
 ### 10. Scope: the search-capability surface (no name accumulation)
 
@@ -871,8 +1014,11 @@ enough — the scope already knows the line number to track `-1` from.
 /// Renamed from EvalContext { Normal, Sf, Sff }.
 pub enum Ignorance {
     Normally,   // sees everything (was: Normal)
-    Foolishly,  // SF: ignores branes — brane search results are not consumed (was: Sf)
-    Fully,      // SFF: fully ignorant — all searches go ECONSTANIC (was: Sff)
+    Foolishly,  // SF: runs searches and uses a special constanic-clone (carrying the Foolishly flag) to clone the result; propagates recursively downward (was: Sf)
+    // Note: Fully Foolish constanic clone does not exist.
+    // SFF marker means the expression is instantiated with all descendant children
+    // created as ECONSTANIC (via builder setup, not cloning). SFF never clones because
+    // it executes zero searches.
 }
 
 impl Scope {
@@ -899,9 +1045,9 @@ impl Scope {
     // --- context gates ---
 
     /// 4. How ignorant is the current evaluation context? (asked and matched as
-    ///    an adverb: how_ignorant() -> Normally / Foolishly / Fully)
-    ///    Fully     ⇒ searches do not run at all (go ECONSTANIC immediately).
-    ///    Foolishly ⇒ searches run but a found BRANE is not consumed (ECONSTANIC).
+    ///    an adverb: how_ignorant() -> Normally / Foolishly)
+    ///    Foolishly ⇒ searches run and results are constanic-cloned with Foolishly flag.
+    ///    SFF does not use Ignorance — children are instantiated as ECONSTANIC.
     ///    Normally  ⇒ unrestricted.
     pub fn how_ignorant(&self) -> Ignorance;
 
@@ -991,7 +1137,7 @@ constructor (or `#[derive(bon::Builder)]`), so optional parts are simply omitted
 let scope = Scope::builder()
     .current_brane(brane_rc)
     .current_stmt_idx(3)
-    .ignorance(Ignorance::Fully)   // optional; defaults to Normally
+    .ignorance(Ignorance::Foolishly)   // SF context; optional; defaults to Normally
     // .alarms(sink)               // optional; omitted here
     .build();
 ```
@@ -1037,7 +1183,7 @@ Large. This is a representation change:
 - **Scope reworked into a capability surface (§10)**: `entries` flat name list REMOVED
   (the parent chain is the name table); positional fields private; public surface =
   `search_ib` / `search_ab` / `index` / `how_ignorant` / `emit`. `EvalContext { Normal,
-  Sf, Sff }` renamed to **`Ignorance { Normally, Foolishly, Fully }`** with accessor
+  Sf, Sff }` renamed to **`Ignorance { Normally, Foolishly }`** with accessor
   `how_ignorant()`; the separate `block_brane_searches` bool is derived from
   `Ignorance::Foolishly` and dropped as a field. Anchored search helpers move from free
   functions in `search.rs` onto `BraneFir` as inherent methods (`search(pattern, from,
@@ -1138,7 +1284,7 @@ Significant, but **behavior-preserving by construction** (the snapshots are the 
   - **Woconstanic short-circuit** preserved — chain collapses into `ubc_children`, output
     matches UBC byte-for-byte.
   - **`Ignorance` carry-over (§10.1)** — `Foolishly` (SF): a found brane is not consumed
-    (search goes Econstanic); `Fully` (SFF): searches go Econstanic without running;
+    (search goes Econstanic); SFF: children instantiated as ECONSTANIC via builder, no searches run;
     threaded via `Scope` into the child's step.
   - **Scope capability surface (§10)** — `search_ib` finds only names BEFORE
     `current_stmt_idx`; `search_ab` widens via `get_parent_brane()` bounded at each
@@ -1296,6 +1442,41 @@ already-accepted FOOPs, which is corroborating evidence the model is right:
 
 ## Last Updated
 
+**Date**: 2026-06-14 (revision 13 — HFS constant rendering decision)
+**Updated By**: Sisyphus / mimo-v2.5-pro
+**Changes**: Added "HFS rendering of constant search results" decision: searches that
+resolve to constants can render as the constant directly. Approved sf_non_brane_resolves
+snapshot based on this decision.
+
+**Date**: 2026-06-14 (revision 12 — NYES classification clarification)
+**Updated By**: Sisyphus / mimo-v2.5-pro
+**Changes**: Added §3.3.1 "NYES classification for Brane and Operator" — clarifies that
+nodes whose children are ECONSTANIC do NOT automatically become WOCONSTANIC. Brane/Operator
+stays BRANING until ALL children are constanic AND some are WOCONSTANIC/ECONSTANIC.
+
+**Date**: 2026-06-14 (revision 11 — remove Fully ignorance, SFF clarification)
+**Updated By**: Sisyphus / mimo-v2.5-pro
+**Changes**: Removed `Fully` from `Ignorance` enum. SFF marker means children are
+instantiated as ECONSTANIC via builder setup (not cloning). SFF never clones because
+it executes zero searches. Added comment that "Fully Foolish constanic clone does not exist."
+Updated all references to `Fully` throughout the spec.
+
+**Date**: 2026-06-14 (revision 10 — constanic-clone semantics, SF/SFF clarification)
+**Updated By**: Sisyphus / mimo-v2.5-pro
+**Changes**: Clarified constanic-clone behavior by ignorance flag:
+- Foolishly (SF): constants/independents referenced, constanic states copied with state, no new searches triggered
+- Normally: constants/independents referenced, constanic states reset to pre-constanic for re-evaluation
+- SFF: children instantiated as ECONSTANIC via builder, no searches run, no cloning
+Updated Ignorance enum comment to reflect SF runs searches and uses special constanic-clone.
+Added SF constanic clone behavior section.
+
+**Date**: 2026-06-13 (revision 9 — runtime safety, depth limit, panic resilience)
+**Updated By**: Sisyphus / mimo-v2.5-pro
+**Changes**: Added §3.4 "Runtime safety: depth limits and panic resilience in tests".
+Covers depth limit parameter for `step_fir_ref`, `panic = "unwind"` test configuration,
+`catch_unwind` in snapshot harness for graceful RefCell panic capture, `#[should_panic]`
+for borrow discipline tests, and `try_borrow()` for defensive checks.
+
 **Date**: 2026-06-11 (revision 8 — terminology, ORIGIN, snap copy, job queue)
 **Updated By**: Sisyphus / mimo-v2.5-pro
 **Changes**: (a) Added **§Terminology** section defining "constanic" for UBCa: includes
@@ -1405,7 +1586,7 @@ public methods are `search_ib(pattern)` (backward in immediate brane), `search_a
 (IB then recursive parent-chain widening), `index(offset)` (offset relative to the current
 statement k, valid `[-k, -1]`), `get_ignorance()`, `emit(alarm)`. `scope.index(-1)` is
 enough — Scope holds the line number. (c) **`EvalContext { Normal, Sf, Sff }` renamed
-`Ignorance { Normally, Foolishly, Fully }`** ("fully ignorant"); `block_brane_searches`
+`Ignorance { Normally, Foolishly }`**; `block_brane_searches`
 derived from `Foolishly`, dropped as a field. (d) **Anchored searches live on `BraneFir`,
 not Scope** (§10.2): `search(pattern, from_idx, to_idx)` (from > to ⇒ backward),
 `index(n)` (n≥0 front / n<0 back), `head()`/`tail()` = `#0`/`#-1`; replaces `search.rs`
@@ -1424,7 +1605,7 @@ negative offsets, `[-k, -1]`; out-of-range (incl. 0/positive) ⇒ NK; anchored i
 (`b#1`/`b#-1`) is a distinct operation, both signs valid. UBC's positive-offset acceptance
 in `step_unanchored` is a latent bug; residual corpus check stays in Phase 0. Range checks
 get BOTH unit tests and NK snapshot coverage. (b) **`get_ignorance()` renamed
-`how_ignorant()`** — asked and matched as an adverb (Normally/Foolishly/Fully). (c) **Upward
+`how_ignorant()`** — asked and matched as an adverb (Normally/Foolishly). (c) **Upward
 navigation trio**: every Fir exposes `get_parent()` / `get_parent_statement()` /
 `get_parent_brane()` (inherent on ProtoBrane, walking the parent Weak chain);
 `BraneFir::search_ab(pattern, from_line)` recurses upward obtaining each level's bound via
