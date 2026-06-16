@@ -161,14 +161,9 @@ win={w_in={in_in={in_in_in=101010}}};
       a=1;
       b=2
   };
-  sfˍvalue=?(
-      result={
-          a=1;
-          b=2
-      },
-      pattern='^sfˍtarget$',
-      UNANCHORED
-  );
+  sfˍvalue=<WOCONSTANIC
+      ?(pattern='^sfˍtarget$', UNANCHORED, ECONSTANIC)
+  >;
   sfˍtoˍconstant=?(result=3, pattern='^π$', UNANCHORED);
   sfˍchain=?(
       result=?(
@@ -186,14 +181,7 @@ win={w_in={in_in={in_in_in=101010}}};
       x=10;
       y=20
   };
-  sffˍvalue=?(
-      result={
-          x=10;
-          y=20
-      },
-      pattern='^sffˍtarget$',
-      UNANCHORED
-  );
+  sffˍvalue=?(pattern='^sffˍtarget$', UNANCHORED, EMBRYONIC);
   concatˍleft={
       leftˍa=1;
       leftˍb=2
@@ -290,22 +278,10 @@ win={w_in={in_in={in_in_in=101010}}};
   chainedˍops=5;
   zeroˍdivˍinˍop=Op+(??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, 42, NK);
   nestedˍopˍtransparent=-1;
-  inspectˍsff=?(
-      result={
-          x=10;
-          y=20
-      },
-      pattern='^sffˍtarget$',
-      UNANCHORED
-  );
-  inspectˍsffˍagain=?(
-      result={
-          x=10;
-          y=20
-      },
-      pattern='^sffˍtarget$',
-      UNANCHORED
-  );
+  inspectˍsff=<WOCONSTANIC
+      ?(pattern='^sffˍtarget$', UNANCHORED, ECONSTANIC)
+  >;
+  inspectˍsffˍagain=?(pattern='^sffˍtarget$', UNANCHORED, EMBRYONIC);
   win={
       wˍin={
           inˍin={
@@ -322,5 +298,5 @@ foop42_humanizing_sequencer_formatting_exhaustive_aka_hfs
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 5CYQ9TTMJwxdSRqdDbNvIcEuEjzF0rs9DSJO0IFb7JZX52hw7oNCOG0pcpoYozWuyHWmpPLVgx2jGmPxDfKBDA==
-HFS signature: 2wItvhX59G8Zo7eIqRZjEHwIm6vhzaK65MLNp233DpUIg/LbK+anTpVMCPlS0Eb9/ZM8/oeGCyh2JETTg0WRAQ==
-Comments signature: Dh8bMKd1UJWxgWPYyQhTrn5+sFeveE4nrSL2NwvdJwyegfPLClrz/bs8LiPuj3fPIsODtkajsa+D+SdnAl/DDg==
+HFS signature: d45T0KuMr9ovgjkT2cq6c2fakO4kAeGUtKR62NIu3XY4ODpyvpO9em03k1SYJH6UMJhREIXUoLtqOxRzczD0DA==
+Comments signature: BhR6xYO3Z5wwVDXA9dHNCXyMxWizd2i/ZY0ZLq7f+1NU6FlChqSQTbzGYjc/th+V58X1yr+FWmK6qa5fMq/aCg==

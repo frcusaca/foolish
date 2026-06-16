@@ -17,23 +17,12 @@ INPUT:
   OB2={NK
       whichˍ1=Op+(#(offset=-1, UNANCHORED, NK), 1, NK)
   };
-  OB=⨃(
-      elements=2,
-      {
-  a=1;
-  message=2;
-  only=1
-},
-      ?(
-  result={NK
+  OB={WOCONSTANIC
+      a=1;
+      message=2;
+      only=1;
       whichˍ1=Op+(#(offset=-1, UNANCHORED, NK), 1, NK)
-  },
-  pattern='^OB2$',
-  UNANCHORED,
-  WOCONSTANIC
-),
-      WOCONSTANIC
-  )
+  }
 }
 ```
 COMMENTS:
@@ -43,5 +32,5 @@ seek_in_nested_result_after_concatenation
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: cfGCMZeXg+6MU8S60P/lQKJXQwIqnmSUM7cERCO9n5/1ZhE2hBqSo3GjNILf1x3L9vm63msdnpdaCuA/vEhcBw==
-HFS signature: m1OPQsID5umfLIYN7lS18/8GlkO/lKw4I6gLl4D/ZIAcMINJxu133jgVc6XF9jG8GkOLj/Nyc8EeP+UAeED9AA==
-Comments signature: 6hNvteaVVyLukkuuwHhmNa4sUt+o0npHh2rDKbGpnNd6kGZiMjvxYkBQ8D1Jg4di7Y8epqjOjH6r3jnX6OzbCQ==
+HFS signature: BFLlgVeRcQfTb8moD82LN5yfypoBSsto7V2JOcz1uU61GPzDwSdRr5iD82PHMM1KrcfQXAOC0xFO/oRih5CiBw==
+Comments signature: qGw2vQ7OiWr/UqhI7T1m9QrXLnz6SJ9SlQUPSCMHWaqfDoln7CuhLbVBbu8bL1SeT5JVYRu8wgxeXSASmy6iAg==

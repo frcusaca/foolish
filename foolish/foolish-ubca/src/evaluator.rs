@@ -50,6 +50,59 @@ fn proto_to_core_fir(ubca_ref: &FirRef) -> core_fir::Fir {
     proto_to_core_fir_inner(ubca_ref, false)
 }
 
+/// Convert an SFF body expression. Top-level searches get EMBRYONIC state
+/// (shown by sequencer). Operator operands get CONSTANT state (hidden).
+/// Operators get EMBRYONIC state. This matches UBC behavior.
+fn proto_to_core_fir_sff_body(ubca_ref: &FirRef) -> core_fir::Fir {
+    let borrowed = ubca_ref.borrow();
+    let kind = borrowed.kind();
+    match kind {
+        FirKind::Search => SearchFirBuilder::new(borrowed.as_search_pattern().unwrap_or(""))
+            .anchored(borrowed.as_search_anchored())
+            .state(Nyes::Embryonic)
+            .build(),
+        FirKind::Operator => {
+            let op = borrowed.as_op_name().unwrap_or("?").to_string();
+            let operand_firs: Vec<core_fir::Fir> = borrowed
+                .core()
+                .foolish_children()
+                .iter()
+                .map(|c| proto_to_core_fir_sff_operand(c))
+                .collect();
+            OperatorFirBuilder::new(op)
+                .operands(operand_firs)
+                .state(Nyes::Embryonic)
+                .build()
+        }
+        FirKind::ConstantInt => ConstantIntFirBuilder::new(borrowed.as_i64().unwrap_or(0))
+            .state(Nyes::Constant)
+            .build(),
+        FirKind::Nk => NkFirBuilder::new(borrowed.as_nk_reason().unwrap_or("unknown"))
+            .state(Nyes::Nk)
+            .build(),
+        _ => proto_to_core_fir_inner(ubca_ref, true),
+    }
+}
+
+/// Convert an SFF operator operand. Searches get CONSTANT state (no state shown).
+fn proto_to_core_fir_sff_operand(ubca_ref: &FirRef) -> core_fir::Fir {
+    let borrowed = ubca_ref.borrow();
+    let kind = borrowed.kind();
+    match kind {
+        FirKind::Search => SearchFirBuilder::new(borrowed.as_search_pattern().unwrap_or(""))
+            .anchored(borrowed.as_search_anchored())
+            .state(Nyes::Constant)
+            .build(),
+        FirKind::ConstantInt => ConstantIntFirBuilder::new(borrowed.as_i64().unwrap_or(0))
+            .state(Nyes::Constant)
+            .build(),
+        FirKind::Nk => NkFirBuilder::new(borrowed.as_nk_reason().unwrap_or("unknown"))
+            .state(Nyes::Nk)
+            .build(),
+        _ => proto_to_core_fir_inner(ubca_ref, true),
+    }
+}
+
 fn anchor_to_core_fir(ubca_ref: &FirRef) -> core_fir::Fir {
     let borrowed = ubca_ref.borrow();
     let kind = borrowed.kind();
@@ -156,10 +209,27 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                     (name, body_fir)
                 })
                 .collect();
+            // Recompute brane state from converted children: if any child body
+            // is ECONSTANIC or WOCONSTANIC, the brane is WOCONSTANIC.
+            let mut effective_state = state;
+            if state == Nyes::Constant || state == Nyes::Independent {
+                use foolish_core::fir::FirQueryable;
+                for (_, body) in &stmt_tuples {
+                    let body_state = body.hs_state();
+                    if body_state == Nyes::Econstanic || body_state == Nyes::Woconstanic {
+                        effective_state = Nyes::Woconstanic;
+                        break;
+                    }
+                    if body_state == Nyes::Nk {
+                        effective_state = Nyes::Nk;
+                        break;
+                    }
+                }
+            }
             NormalBraneFirBuilder::new()
                 .characterizations(borrowed.as_brane_characterizations().to_vec())
                 .statements(stmt_tuples)
-                .state(state)
+                .state(effective_state)
                 .build()
         }
         FirKind::Search => {
@@ -191,8 +261,13 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                 if let Some(result) = ubc.first() {
                     let resolved = proto_to_core_fir_inner(result, preserve_search);
                     let resolved_state = result.borrow().core().get_nyes();
+                    let result_kind = result.borrow().kind();
+                    // Unwrap when: constant/independent, OR the result is a Brane
+                    // (index into a brane returns the brane itself, not the index wrapper)
                     if !preserve_search
-                        && (resolved_state == Nyes::Constant || resolved_state == Nyes::Independent)
+                        && (resolved_state == Nyes::Constant
+                            || resolved_state == Nyes::Independent
+                            || result_kind == FirKind::Brane)
                     {
                         return resolved;
                     }
@@ -223,8 +298,11 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                 if let Some(result) = ubc.first() {
                     let resolved = proto_to_core_fir_inner(result, preserve_search);
                     let resolved_state = result.borrow().core().get_nyes();
+                    let result_kind = result.borrow().kind();
                     if !preserve_search
-                        && (resolved_state == Nyes::Constant || resolved_state == Nyes::Independent)
+                        && (resolved_state == Nyes::Constant
+                            || resolved_state == Nyes::Independent
+                            || result_kind == FirKind::Brane)
                     {
                         return resolved;
                     }
@@ -251,20 +329,51 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
             builder.build()
         }
         FirKind::StayFoolish => {
-            let expr_fir = borrowed
-                .core()
-                .foolish_children()
-                .first()
+            let inner = borrowed.core().foolish_children();
+            let inner_ref = inner.first();
+            // When SF wraps a search that found a complex value (Brane, Operator, etc.),
+            // UBC shows <WOCONSTANIC ?(pattern=..., ECONSTANIC)>. For simple values
+            // (ConstantInt, NK), SF is transparent. Detect by checking the search's
+            // ubc_child kind.
+            if let Some(expr_ref) = inner_ref {
+                let expr_borrowed = expr_ref.borrow();
+                if expr_borrowed.kind() == FirKind::Search
+                    && expr_borrowed.core().get_nyes().is_settled()
+                {
+                    let ubc = expr_borrowed.core().ubc_children();
+                    if let Some(result) = ubc.first() {
+                        let result_kind = result.borrow().kind();
+                        if result_kind == FirKind::Brane
+                            || result_kind == FirKind::Operator
+                            || result_kind == FirKind::StayFoolish
+                            || result_kind == FirKind::StayFullyFoolish
+                        {
+                            let search_fir = SearchFirBuilder::new(
+                                expr_borrowed.as_search_pattern().unwrap_or(""),
+                            )
+                            .anchored(expr_borrowed.as_search_anchored())
+                            .state(Nyes::Econstanic)
+                            .build();
+                            return StayFoolishFirBuilder::new(search_fir)
+                                .state(Nyes::Woconstanic)
+                                .build();
+                        }
+                    }
+                }
+            }
+            let expr_fir = inner_ref
                 .map(|c| proto_to_core_fir_inner(c, true))
                 .unwrap_or_else(|| NkFirBuilder::new("empty sf").build());
             StayFoolishFirBuilder::new(expr_fir).state(state).build()
         }
         FirKind::StayFullyFoolish => {
+            // In UBC, SFF stores the expression with searches at EMBRYONIC
+            // (not evaluated). Force inner searches to EMBRYONIC state.
             let expr_fir = borrowed
                 .core()
                 .foolish_children()
                 .first()
-                .map(|c| proto_to_core_fir_inner(c, true))
+                .map(|c| proto_to_core_fir_sff_body(c))
                 .unwrap_or_else(|| NkFirBuilder::new("empty sff").build());
             StayFullyFoolishFirBuilder::new(expr_fir)
                 .state(state)

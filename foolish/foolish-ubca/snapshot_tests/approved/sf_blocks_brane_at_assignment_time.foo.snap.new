@@ -8,19 +8,14 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{
+{WOCONSTANIC
   a={
       x=1;
       y=2
   };
-  s=?(
-      result={
-          x=1;
-          y=2
-      },
-      pattern='^a$',
-      UNANCHORED
-  );
+  s=<WOCONSTANIC
+      ?(pattern='^a$', UNANCHORED, ECONSTANIC)
+  >;
   a=99;
   {
     x=1;
@@ -35,5 +30,5 @@ sf_blocks_brane_at_assignment_time
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: r9cVsMVy9IKQUvI6rQnmYcfv40up0dd5AhbtoMFl72TT9TjvhiLZuxtnFgHI3eXA5c6ToFS7wW+gRqjBqQxxCw==
-HFS signature: 4Yi39BSpBFlFOixyIvNLaG0aG3Lq958doYFSeFtG7GTo2QjriFXQ23butwvAAh/RN0xQ9zg4e2zFH919LXhQDQ==
-Comments signature: 9itBCnNhqm8tfDWIrZXey36oxINuuhY3CptVnfdMv6PxXtTCmxOoV/pvZtYJwTWyha6/g1j/0PM675B6ULRWDg==
+HFS signature: FKWUtAQ9MrhRAt1VSxK6s+jR2nhW/GEu0mR5t+6UC531Nrpaua3hyS0F3N7zJ7uUjsuG7y/32qJcCAg+h0/EBQ==
+Comments signature: QCN94DOPulDOaNoVGcoUCJj2oozPYHlL3BMz6BQkSo6DgtHwBxR2XquWqoycQVZEgbaQQejf9F2a+v0lGLcfCQ==

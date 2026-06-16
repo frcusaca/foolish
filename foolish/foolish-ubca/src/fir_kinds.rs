@@ -948,30 +948,11 @@ impl Fir for StayFullyFoolishFir {
         &self.core
     }
     fn fir_op_step(&self, _scope: &Scope) -> Result<(), UbcError> {
-        match self.core.get_nyes() {
-            Nyes::Prembrionic => {
-                // SFF evaluates its child like a single-membered brane.
-                // Push child as task, move to Braning.
-                let children: Vec<FirRef> = self.core.foolish_children().to_vec();
-                if children.is_empty() {
-                    self.core.set_nyes(Nyes::Constant);
-                } else {
-                    self.core.set_nyes(Nyes::Braning);
-                    for child in children {
-                        self.core.push_task(child);
-                    }
-                }
-            }
-            Nyes::Braning => {
-                // All child tasks have drained. Copy the child's NYES to self.
-                // SFF inherits its child's state.
-                let children = self.core.foolish_children().to_vec();
-                if let Some(child) = children.first() {
-                    let child_nyes = child.borrow().core().get_nyes();
-                    self.core.set_nyes(child_nyes);
-                }
-            }
-            _ => {}
+        // SFF is immediately settled: the wrapped expression is never evaluated.
+        // Searches inside will go Econstanic because the child tasks are never pushed.
+        // When accessed, constanic-clone strips the SFF and evaluates lazily.
+        if !self.core.get_nyes().is_settled() {
+            self.core.set_nyes(Nyes::Independent);
         }
         Ok(())
     }
@@ -1026,10 +1007,6 @@ impl Fir for ConcatenationFir {
                     let n = c.borrow().core().get_nyes();
                     n == Nyes::Econstanic || n == Nyes::Woconstanic
                 });
-                if any_woconstanic {
-                    self.core.set_nyes(Nyes::Woconstanic);
-                    return Ok(());
-                }
                 let mut merged_stmts: Vec<FirRef> = Vec::new();
                 for child in &children {
                     let resolved = {
@@ -1046,15 +1023,20 @@ impl Fir for ConcatenationFir {
                         merged_stmts.push(Rc::clone(stmt));
                     }
                 }
+                let merged_state = if any_woconstanic {
+                    Nyes::Woconstanic
+                } else {
+                    Nyes::Constant
+                };
                 let result_ref: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<BraneFir>>| {
                     let parent: Weak<RefCell<dyn Fir>> = me.clone();
                     RefCell::new(BraneFir {
-                        core: ProtoBrane::new(merged_stmts, parent, Nyes::Constant),
+                        core: ProtoBrane::new(merged_stmts, parent, merged_state),
                         characterizations: Vec::new(),
                     })
                 });
                 self.core.push_ubc_child(result_ref);
-                self.core.set_nyes(Nyes::Constant);
+                self.core.set_nyes(merged_state);
             }
             _ => {}
         }
@@ -2289,23 +2271,18 @@ mod tests {
     }
 
     #[test]
-    fn stay_fully_foolish_body_is_evaluated() {
+    fn stay_fully_foolish_body_is_never_evaluated() {
         let body = make_constant_int(42);
         let sff = make_stay_fully_foolish(Rc::clone(&body));
         let scope = Scope::empty();
 
-        // Step SFF to settled (multiple steps needed: Prembrionic → Braning → Constant)
-        for _ in 0..10 {
-            let report = step_fir_ref(&sff, &scope).unwrap();
-            match report {
-                StepReport::Progress(nyes) if nyes.is_settled() => break,
-                StepReport::NoProgress => break,
-                _ => {}
-            }
-        }
+        // SFF settles immediately to Independent
+        let report = step_fir_ref(&sff, &scope).unwrap();
+        assert!(matches!(report, StepReport::Progress(Nyes::Independent)));
+        assert!(sff.borrow().core().get_nyes().is_settled());
 
-        // The body IS evaluated (SFF evaluates its child)
-        assert!(body.borrow().core().get_nyes().is_settled());
+        // Body stays at Prembrionic (never evaluated)
+        assert_eq!(body.borrow().core().get_nyes(), Nyes::Prembrionic);
     }
 
     #[test]

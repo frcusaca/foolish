@@ -11,7 +11,7 @@ INPUT:
 {
   a=1;
   b=2;
-  s=3;
+  s=Op+(?(pattern='^a$', UNANCHORED), ?(pattern='^b$', UNANCHORED), EMBRYONIC);
   a=10;
   3
 }
@@ -23,5 +23,5 @@ sff_resolves_on_each_use
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: dvgS2SgQxTH17MqJ0GvfsJzYlhZVovt+9HhyksPNiUsLfJeYshVu9Gse0wzatDFWaIIIRlYQ4UG+eFcEHxFuBw==
-HFS signature: zhOiJ/wcrRLiuqQXPELsyOEdNABpW3FXzTTp/YGeRtzF5l16JXzJExGLN77JrgIZ3i5se/2gVC7rGgqfRWKDAQ==
-Comments signature: E2YasL6drs9CP84G11erS5ai0c6Ra6WZcWyoc/HSLMA99/drXq09wzniGfQxaA18PLdbmw0KvNCt19lx1UusDg==
+HFS signature: /v6Iq6NLqzl+pkPua4Ydk4it2tLAGpJe3u0n/MffPUT+2L25hC5jiSnTef6l7ro1tRLcVHTBV/NOI0ek+NOVBg==
+Comments signature: pqpJCRkxQc5/9oKdbfw0S2k6lcfe7rQfgWY1m5TZydXM+pR3vV9mL8kObrykWO82V4h+QaFyEzqYTGCMoHQPCQ==
