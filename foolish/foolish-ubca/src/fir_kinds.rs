@@ -27,9 +27,11 @@ use crate::proto_brane::ProtoBrane;
 ///
 /// Returns `None` if not all children are constanic yet (stay BRANING).
 pub fn decide_nyes_due_to_children(children: &[FirRef]) -> Option<Nyes> {
-    if !children.iter().all(|c| c.borrow().core().get_nyes().is_constanic()) {
-        return None; // Not all settled — stay BRANING
+    // Stay BRANING until every child is settled (constanic including NK)
+    if !children.iter().all(|c| c.borrow().core().get_nyes().is_settled()) {
+        return None;
     }
+    // Pick the worst: NK > WOCONSTANIC/ECONSTANIC > CONSTANT > INDEPENDENT
     if children.iter().any(|c| c.borrow().core().get_nyes() == Nyes::Nk) {
         return Some(Nyes::Nk);
     }
