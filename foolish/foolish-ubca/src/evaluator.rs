@@ -331,10 +331,9 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
         FirKind::StayFoolish => {
             let inner = borrowed.core().foolish_children();
             let inner_ref = inner.first();
-            // When SF wraps a search that found a complex value (Brane, Operator, etc.),
-            // UBC shows <WOCONSTANIC ?(pattern=..., ECONSTANIC)>. For simple values
-            // (ConstantInt, NK), SF is transparent. Detect by checking the search's
-            // ubc_child kind.
+            // SF is transparent for simple values (ConstantInt, NK) — unwrap to value.
+            // For complex values (Brane, Operator, Search with non-constant result),
+            // preserve the search wrapper. Detect by checking the search's ubc_child.
             if let Some(expr_ref) = inner_ref {
                 let expr_borrowed = expr_ref.borrow();
                 if expr_borrowed.kind() == FirKind::Search
