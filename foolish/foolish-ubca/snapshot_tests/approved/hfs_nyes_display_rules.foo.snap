@@ -13,12 +13,12 @@ INPUT:
   b=2;
   c=??? (??? literal);
   s=?(result=1, pattern='^a$', UNANCHORED);
-  bad=?(result=??? (??? literal), pattern='^c$', UNANCHORED, WOCONSTANIC);
-  sfˍbad=?(result=??? (??? literal), pattern='^c$', UNANCHORED, WOCONSTANIC);
+  bad=?(result=??? (??? literal), pattern='^c$', UNANCHORED, NK);
+  sfˍbad=?(result=??? (??? literal), pattern='^c$', UNANCHORED, NK);
   d=3;
-  e=Op+(?(result=??? (??? literal), pattern='^c$', UNANCHORED, WOCONSTANIC), 1, WOCONSTANIC);
+  e=Op+(?(result=??? (??? literal), pattern='^c$', UNANCHORED, NK), 1, NK);
   f=1;
-  g=?(result=??? (??? literal), pattern='^c$', UNANCHORED, WOCONSTANIC)
+  g=?(result=??? (??? literal), pattern='^c$', UNANCHORED, NK)
 }
 ```
 COMMENTS:
