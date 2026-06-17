@@ -274,16 +274,10 @@ through.
       SearchFir, IndexFir, HeadTailFir, StayFoolishFir, StayFullyFoolishFir,
       ConcatenationFir. Each kind gets unit tests before moving to the next.
       (2026-06-13: all kinds implemented, 64 unit tests pass)
-- [ ] **REMAINING (13 snap.new files):** 4 real failures + 9 new tests needing approval:
-      - Real failures (SF/SFF semantic rendering — proto_to_core_fir differences):
-        - `sf_blocks_brane_at_assignment_time`: SF wraps search that found brane, UBCa shows brane directly
-        - `sf_of_sff`: SF wrapping SFF shows different format
-        - `foop42_hfs`: SF chain rendering differences
-        - `seek_in_nested_result_after_concatenation`: concatenation result format
-      - New tests (no approved ref): sff_basic, sff_in_assignment_chain, sff_in_binary_op,
-        sff_nested, sff_resolves_on_each_use, sff_vs_sf_timing_difference, sf_sff_nested_combined,
-        undeclared_identifier, unicode_identifiers_basic
-      - **Progress**: 130/143 snapshot tests pass (91%), 86 unit tests pass
+- [ ] **REMAINING (2 snap.new files):** 2 real failures:
+      - `sf_of_sff`: SF wrapping SFF shows different format (UBCa: `3; 3`, UBC: `?(result=3, ...)`)
+      - `sf_sff_nested_combined`: SF wrapper format differs (UBCa: `?(result=3, ...)`, UBC: `<WOCONSTANIC ?(...)>`)
+      - **Progress**: 141/143 snapshot tests pass (99%), 86 unit tests pass
       - **Key decisions**: NK is constanic (constantew ⊂ constanic), decide_nyes_due_to_children() helper,
         is_nnk_constanic() for 'constanic but not NK' cases, SFF immediately Independent
       - **HFS NYES display rules** (spec §9): nnk_constanic+result → no nyes;
@@ -292,6 +286,7 @@ through.
         FOOLISHLY only for searches with SF in direct ancestral chain
       - **SF in proto_to_core_fir**: SF wrapping complex values preserves search wrapper with
         target=result. SF wrapping simple values is transparent (unwrap to value).
+      - **Constanic-clone at index**: uses `.enumerate()` for correct line_number; clones ubc_children too
 
 ## Phase 4 — Switch UBCa off the UBC delegation; cross-check is the oracle
 
