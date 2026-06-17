@@ -290,6 +290,8 @@ through.
         no result+EMBRYONIC → no nyes; else show nyes (especially NK with reason)
       - **Constanic-clone ignorance rules**: SFF during clone → NORMAL; SF during clone → NORMAL;
         FOOLISHLY only for searches with SF in direct ancestral chain
+      - **SF in proto_to_core_fir**: SF wrapping complex values preserves search wrapper with
+        target=result. SF wrapping simple values is transparent (unwrap to value).
 
 ## Phase 4 — Switch UBCa off the UBC delegation; cross-check is the oracle
 
