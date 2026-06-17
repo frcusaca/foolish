@@ -1,0 +1,123 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{
+  !! Constants
+  a = 1;
+  b = 2;
+  c = 3;
+  
+  !! Operators
+  sum = a + b;
+  product = a * b;
+  divide = a / b;
+  subtract = a - b;
+  
+  !! NK from division by zero
+  bad = 1 / 0;
+  
+  !! Nested brane
+  inner = {
+    x = 10;
+    y = 20;
+    z = x + y;
+  };
+  
+  !! Search
+  found = a;
+  
+  !! SF (StayFoolish)
+  sf_val = <a>;
+  
+  !! SFF (StayFullyFoolish)
+  sff_val = <<b>>;
+  
+  !! Concatenation
+  concat = {p = 1; q = 2} ⨃ {r = 3; s = 4};
+  
+  !! Index
+  idx = inner#0;
+  
+  !! Head/Tail
+  hd = inner^;
+  tl = inner$;
+  
+  !! Forward reference
+  fwd = later;
+  later = 99;
+  
+  !! Deeply nested
+  deep = {
+    level1 = {
+      level2 = {
+        level3 = {
+          val = 42;
+        };
+      };
+    };
+  };
+  
+  !! Search through nesting
+  deep_search = deep.level1.level2.level3.val;
+  
+  !! Result
+  result = sum + product;
+}
+```
+[0] RESULT:
+```hfssnap
+{NK
+  a=1;
+  b=2;
+  c=3;
+  sum=3;
+  product=2;
+  divide=0;
+  subtract=-1;
+  bad=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK;
+  inner={
+      x=10;
+      y=20;
+      z=30
+  };
+  found=1;
+  sfˍval=?(result=1, pattern='^a$', UNANCHORED);
+  sffˍval=?(pattern='^b$', UNANCHORED, EMBRYONIC);
+  concat={
+      p=1;
+      q=2
+  };
+  {
+    r=3;
+    s=4
+  };
+  idx=10;
+  hd=10;
+  tl=30;
+  fwd=?(pattern='^later$', UNANCHORED, ECONSTANIC);
+  later=99;
+  deep={
+      level1={
+          level2={
+              level3={
+                  val=42
+              }
+          }
+      }
+  };
+  deepˍsearch=42;
+  result=5
+}
+```
+COMMENTS:
+```markdown
+sequencer_comprehensive
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: yRrAujGcUxFVRv3py0aRxROx0nS23e0Skv55N03B6p11gjR6/Lz2aGyCo9RdJNwwhIVH8bas/we3pbzhiHt8Bg==
+HFS signature: 1jecEgTi9m81SFqhkeGiGvRFOYKa8tv5ZwEIAZVZL5RJNZNAkqeT6pWMbUjiDKa+3ki8nJOvVviq5eICtX/3DA==
+Comments signature: hRZYtwjFNV4LCf/lcoAzpfW0VDUeIOUqehpR2LIAJUw19YGrMS6jokYxGz6kZEri8biRVVMqP3e/jD1/xsk8DA==
