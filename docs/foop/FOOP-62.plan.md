@@ -274,19 +274,22 @@ through.
       SearchFir, IndexFir, HeadTailFir, StayFoolishFir, StayFullyFoolishFir,
       ConcatenationFir. Each kind gets unit tests before moving to the next.
       (2026-06-13: all kinds implemented, 64 unit tests pass)
-- [ ] **REMAINING (2 snap.new files):** 2 real failures:
-      - `sf_of_sff`: SF wrapping SFF shows different format (UBCa: `3; 3`, UBC: `?(result=3, ...)`)
-      - `sf_sff_nested_combined`: SF wrapper format differs (UBCa: `?(result=3, ...)`, UBC: `<WOCONSTANIC ?(...)>`)
-      - **Progress**: 141/143 snapshot tests pass (99%), 86 unit tests pass
+- [x] **ALL 144 SNAPSHOT TESTS PASS!** 86/86 unit tests pass. 84/84 foolish-core tests pass.
+      - **Progress**: 144/144 snapshot tests pass (100%), 86 unit tests pass
       - **Key decisions**: NK is constanic (constantew ⊂ constanic), decide_nyes_due_to_children() helper,
         is_nnk_constanic() for 'constanic but not NK' cases, SFF immediately Independent
-      - **HFS NYES display rules** (spec §9): nnk_constanic+result → no nyes;
-        no result+EMBRYONIC → no nyes; else show nyes (especially NK with reason)
+      - **should_show_nyes simplified**: only CONSTANT/INDEPENDENT are hidden. EMBRYONIC, WOCONSTANIC,
+        ECONSTANIC, NK, PREMBRIONIC, BRANING all shown. Removed has_result parameter.
       - **Constanic-clone ignorance rules**: SFF during clone → NORMAL; SF during clone → NORMAL;
         FOOLISHLY only for searches with SF in direct ancestral chain
-      - **SF in proto_to_core_fir**: SF wrapping complex values preserves search wrapper with
-        target=result. SF wrapping simple values is transparent (unwrap to value).
-      - **Constanic-clone at index**: uses `.enumerate()` for correct line_number; clones ubc_children too
+      - **SF evaluates lazily** using current context (not frozen values)
+      - **SF wrapper preservation**: SF inner pattern preserved in SearchFir
+      - **Concatenation NK fix**: use get_value() to detect NK from inner values
+      - **SFF body state**: ECONSTANIC for searches, WOCONSTANIC for operators with ECONSTANIC operands
+      - **is_settled removed** — use is_constanic() everywhere (settled == constanic)
+      - **^/$ → #0/#-1 translation**: compiler translates HeadTail to Index
+      - **RefCell borrow discipline**: interior mutability pattern, step_fir_ref as free function
+      - **Runtime safety**: depth limit, panic = "unwind", catch_unwind in snapshot harness
 
 ## Phase 4 — Switch UBCa off the UBC delegation; cross-check is the oracle
 
