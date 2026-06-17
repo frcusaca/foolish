@@ -171,7 +171,7 @@ pub fn get_value(fir_ref: &FirRef) -> FirRef {
     // Extract first ubc_child under a short borrow, then drop it before recursing.
     let child: Option<FirRef> = {
         let borrowed = fir_ref.borrow();
-        if borrowed.core().get_nyes().is_settled() {
+        if borrowed.core().get_nyes().is_constanic() {
             borrowed.core().ubc_children().into_iter().next()
         } else {
             None
@@ -209,7 +209,7 @@ fn step_fir_ref_inner(this: &FirRef, scope: &Scope, depth: usize) -> Result<Step
 
     match front {
         Some(front_rc) => {
-            if front_rc.borrow().core().get_nyes().is_settled() {
+            if front_rc.borrow().core().get_nyes().is_constanic() {
                 this.borrow().core().pop_front_task();
             } else {
                 step_fir_ref_inner(&front_rc, scope, depth + 1)?;
@@ -248,9 +248,9 @@ pub(crate) mod tests {
         }
         fn fir_op_step(&self, _scope: &Scope) -> Result<(), UbcError> {
             // Leaf: no children, no tasks — advance directly to terminal.
-            // In the real model, fir_op_step produces a settled state or pushes
+            // In the real model, fir_op_step produces a constanic state or pushes
             // more tasks. A leaf's work is immediate.
-            if !self.core.get_nyes().is_settled() {
+            if !self.core.get_nyes().is_constanic() {
                 self.core.set_nyes(Nyes::Woconstanic);
             }
             Ok(())
@@ -285,10 +285,10 @@ pub(crate) mod tests {
                 Nyes::Braning | Nyes::Woconstanic => {
                     // Classification: check children's states
                     let children = self.core.foolish_children().to_vec();
-                    let all_settled = children
+                    let all_constanic = children
                         .iter()
-                        .all(|c| c.borrow().core().get_nyes().is_settled());
-                    if all_settled {
+                        .all(|c| c.borrow().core().get_nyes().is_constanic());
+                    if all_constanic {
                         let any_nk = children
                             .iter()
                             .any(|c| c.borrow().core().get_nyes() == Nyes::Nk);
@@ -366,7 +366,7 @@ pub(crate) mod tests {
     #[test]
     fn step_leaf_through_nyes_transitions() {
         // A leaf starts at Prembrionic and should step through:
-        // Prembrionic → Embryonic → Braning → Woconstanic (settled)
+        // Prembrionic → Embryonic → Braning → Woconstanic (constanic)
         let leaf = make_leaf(Nyes::Prembrionic);
         let scope = Scope::empty();
 
@@ -378,7 +378,7 @@ pub(crate) mod tests {
             match report {
                 StepReport::Progress(nyes) => {
                     transitions.push(nyes);
-                    if nyes.is_settled() {
+                    if nyes.is_constanic() {
                         break;
                     }
                 }
@@ -410,7 +410,7 @@ pub(crate) mod tests {
                     root_transitions.push(nyes);
                     // Track child's state too
                     child_transitions.push(child.borrow().core().get_nyes());
-                    if nyes.is_settled() {
+                    if nyes.is_constanic() {
                         break;
                     }
                 }
@@ -424,14 +424,14 @@ pub(crate) mod tests {
         // Root should eventually reach Woconstanic (child settled as Woconstanic)
         let final_root = root.borrow().core().get_nyes();
         assert!(
-            final_root.is_settled(),
+            final_root.is_constanic(),
             "root should be settled, got {final_root}"
         );
 
         // Child should be settled
         let final_child = child.borrow().core().get_nyes();
         assert!(
-            final_child.is_settled(),
+            final_child.is_constanic(),
             "child should be settled, got {final_child}"
         );
     }
@@ -451,7 +451,7 @@ pub(crate) mod tests {
             match report {
                 StepReport::Progress(nyes) => {
                     root_nyes_log.push((i, nyes));
-                    if nyes.is_settled() {
+                    if nyes.is_constanic() {
                         break;
                     }
                 }
@@ -462,10 +462,10 @@ pub(crate) mod tests {
         eprintln!("Root NYES log: {root_nyes_log:?}");
 
         // Both children should be settled
-        assert!(child_a.borrow().core().get_nyes().is_settled());
-        assert!(child_b.borrow().core().get_nyes().is_settled());
+        assert!(child_a.borrow().core().get_nyes().is_constanic());
+        assert!(child_b.borrow().core().get_nyes().is_constanic());
         // Root should be settled
-        assert!(root.borrow().core().get_nyes().is_settled());
+        assert!(root.borrow().core().get_nyes().is_constanic());
     }
 
     #[test]
@@ -612,7 +612,7 @@ mod get_value_tests {
         for _ in 0..50 {
             let report = step_fir_ref(node, &scope).unwrap();
             if let StepReport::Progress(nyes) = report
-                && nyes.is_settled()
+                && nyes.is_constanic()
             {
                 return;
             }
@@ -673,7 +673,7 @@ mod get_value_tests {
         let a = make_ci(3);
         let b = make_ci(5);
         let op = make_op("+", vec![Rc::clone(&a), Rc::clone(&b)]);
-        assert!(!op.borrow().core().get_nyes().is_settled());
+        assert!(!op.borrow().core().get_nyes().is_constanic());
 
         let result = get_value(&op);
         assert!(Rc::ptr_eq(&result, &op));
@@ -716,7 +716,7 @@ mod get_value_tests {
     #[test]
     fn get_value_search_not_settled_returns_self() {
         let search = make_search("^x$", false, vec![]);
-        assert!(!search.borrow().core().get_nyes().is_settled());
+        assert!(!search.borrow().core().get_nyes().is_constanic());
 
         let result = get_value(&search);
         assert!(Rc::ptr_eq(&result, &search));
@@ -753,7 +753,7 @@ mod get_value_tests {
     fn get_value_index_not_settled_returns_self() {
         let brane = make_brn(vec![]);
         let idx = make_index(0, true, vec![Rc::clone(&brane)]);
-        assert!(!idx.borrow().core().get_nyes().is_settled());
+        assert!(!idx.borrow().core().get_nyes().is_constanic());
 
         let result = get_value(&idx);
         assert!(Rc::ptr_eq(&result, &idx));
@@ -767,7 +767,7 @@ mod get_value_tests {
         let b = make_ci(20);
         let brane = make_brn(vec![Rc::clone(&a), Rc::clone(&b)]);
         settle(&brane);
-        assert!(brane.borrow().core().get_nyes().is_settled());
+        assert!(brane.borrow().core().get_nyes().is_constanic());
         assert!(brane.borrow().core().ubc_children().is_empty());
 
         let result = get_value(&brane);
@@ -782,7 +782,7 @@ mod get_value_tests {
         let body = make_ci(42);
         let stmt = make_stmt("x", 1, Rc::clone(&body));
         settle(&stmt);
-        assert!(stmt.borrow().core().get_nyes().is_settled());
+        assert!(stmt.borrow().core().get_nyes().is_constanic());
         assert!(stmt.borrow().core().ubc_children().is_empty());
 
         let result = get_value(&stmt);
@@ -817,7 +817,7 @@ mod get_value_tests {
     fn get_value_concatenation_not_settled_returns_self() {
         let brane = make_brn(vec![]);
         let cat = make_cat(vec![Rc::clone(&brane)]);
-        assert!(!cat.borrow().core().get_nyes().is_settled());
+        assert!(!cat.borrow().core().get_nyes().is_constanic());
 
         let result = get_value(&cat);
         assert!(Rc::ptr_eq(&result, &cat));
@@ -830,7 +830,7 @@ mod get_value_tests {
         let body = make_ci(42);
         let sf = make_sf(Rc::clone(&body));
         settle(&sf);
-        assert!(sf.borrow().core().get_nyes().is_settled());
+        assert!(sf.borrow().core().get_nyes().is_constanic());
         // SF constanic-clones the expr result into ubc_children
         assert_eq!(sf.borrow().core().ubc_children().len(), 1);
 
@@ -847,7 +847,7 @@ mod get_value_tests {
         let body = make_ci(42);
         let sff = make_sff(Rc::clone(&body));
         settle(&sff);
-        assert!(sff.borrow().core().get_nyes().is_settled());
+        assert!(sff.borrow().core().get_nyes().is_constanic());
         assert!(sff.borrow().core().ubc_children().is_empty());
 
         let result = get_value(&sff);

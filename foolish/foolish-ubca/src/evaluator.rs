@@ -38,7 +38,7 @@ fn step_to_settled(
     for _ in 0..MAX_STEPS {
         let report = crate::step_fir_ref(fir_ref, scope)?;
         match report {
-            StepReport::Progress(nyes) if nyes.is_settled() => return Ok(()),
+            StepReport::Progress(nyes) if nyes.is_constanic() => return Ok(()),
             StepReport::NoProgress => return Ok(()),
             _ => {}
         }
@@ -233,7 +233,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                 .build()
         }
         FirKind::Search => {
-            if state.is_settled() {
+            if state.is_constanic() {
                 let ubc = borrowed.core().ubc_children();
                 if let Some(result) = ubc.first() {
                     // When the ubc_child is a settled search whose own ubc_child
@@ -242,7 +242,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                     // wrapper in this case rather than resolving to the final value.
                     let result_borrowed = result.borrow();
                     if result_borrowed.kind() == FirKind::Search
-                        && result_borrowed.core().get_nyes().is_settled()
+                        && result_borrowed.core().get_nyes().is_constanic()
                     {
                         let inner_ubc = result_borrowed.core().ubc_children();
                         let has_complex = inner_ubc.first().map_or(false, |r| {
@@ -315,7 +315,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                 .build()
         }
         FirKind::Index => {
-            if state.is_settled() {
+            if state.is_constanic() {
                 let ubc = borrowed.core().ubc_children();
                 if let Some(result) = ubc.first() {
                     let resolved = proto_to_core_fir_inner(result, preserve_search);
@@ -352,7 +352,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
             builder.build()
         }
         FirKind::HeadTail => {
-            if state.is_settled() {
+            if state.is_constanic() {
                 let ubc = borrowed.core().ubc_children();
                 if let Some(result) = ubc.first() {
                     let resolved = proto_to_core_fir_inner(result, preserve_search);
@@ -393,7 +393,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
             if let Some(expr_ref) = inner_ref {
                 let expr_borrowed = expr_ref.borrow();
                 if expr_borrowed.kind() == FirKind::Search
-                    && expr_borrowed.core().get_nyes().is_settled()
+                    && expr_borrowed.core().get_nyes().is_constanic()
                 {
                     let ubc = expr_borrowed.core().ubc_children();
                     if let Some(result) = ubc.first() {
@@ -475,7 +475,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                 .build()
         }
         FirKind::Concatenation => {
-            if state.is_settled() {
+            if state.is_constanic() {
                 let ubc = borrowed.core().ubc_children();
                 if let Some(result) = ubc.first() {
                     return proto_to_core_fir_inner(result, preserve_search);

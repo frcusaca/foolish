@@ -9,12 +9,8 @@ use foolish_core::fir::Nyes;
 
 /// Extension trait adding UBCa-specific predicates to `Nyes`.
 pub trait NyesExt {
-    /// Returns true when the NYES should be popped from the task queue.
-    /// All constanic + constantew states are settled.
-    fn is_settled(&self) -> bool;
-
     /// All terminal states: ECONSTANIC, WOCONSTANIC, CONSTANT, INDEPENDENT, NK.
-    /// constantew ⊂ constanic.
+    /// constantew ⊂ constanic. Used as task-queue pop predicate and outer acceptance.
     fn is_constanic(&self) -> bool;
 
     /// Constant everywhere: CONSTANT, INDEPENDENT, or NK.
@@ -26,10 +22,6 @@ pub trait NyesExt {
 }
 
 impl NyesExt for Nyes {
-    fn is_settled(&self) -> bool {
-        self.is_constanic() || self.is_constantew()
-    }
-
     fn is_constanic(&self) -> bool {
         matches!(self, Nyes::Econstanic | Nyes::Woconstanic) || self.is_constantew()
     }
@@ -69,7 +61,6 @@ mod tests {
 
     #[test]
     fn constantew_states() {
-        // constantew = CONSTANT | INDEPENDENT | NK
         for &nyes in ALL_NYES {
             let expected = matches!(nyes, Nyes::Constant | Nyes::Independent | Nyes::Nk);
             assert_eq!(nyes.is_constantew(), expected, "{nyes:?}");
@@ -78,18 +69,9 @@ mod tests {
 
     #[test]
     fn nnk_constanic_states() {
-        // nnk_constanic = constanic && !NK
         for &nyes in ALL_NYES {
             let expected = nyes.is_constanic() && nyes != Nyes::Nk;
             assert_eq!(nyes.is_nnk_constanic(), expected, "{nyes:?}");
-        }
-    }
-
-    #[test]
-    fn settled_states() {
-        // settled = constanic (which includes constantew)
-        for &nyes in ALL_NYES {
-            assert_eq!(nyes.is_settled(), nyes.is_constanic(), "{nyes:?}");
         }
     }
 
@@ -106,14 +88,9 @@ mod tests {
     }
 
     #[test]
-    fn settled_is_either_constanic_or_constantew() {
-        for &nyes in ALL_NYES {
-            if nyes.is_settled() {
-                assert!(
-                    nyes.is_constanic() || nyes.is_constantew(),
-                    "{nyes:?} is settled but neither constanic nor constantew"
-                );
-            }
+    fn pre_constanic_are_not_constanic() {
+        for &nyes in &[Nyes::Prembrionic, Nyes::Embryonic, Nyes::Braning] {
+            assert!(!nyes.is_constanic(), "{nyes:?} should not be constanic");
         }
     }
 }

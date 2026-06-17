@@ -107,7 +107,7 @@ impl ProtoBrane {
         self.tasks.borrow().front().cloned()
     }
 
-    /// Pop the front task (called when it reaches a settled state).
+    /// Pop the front task (called when it reaches a constanic state).
     pub(crate) fn pop_front_task(&self) {
         self.tasks.borrow_mut().pop_front();
     }

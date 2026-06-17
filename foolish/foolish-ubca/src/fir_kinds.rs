@@ -28,7 +28,7 @@ use crate::proto_brane::ProtoBrane;
 /// Returns `None` if not all children are constanic yet (stay BRANING).
 pub fn decide_nyes_due_to_children(children: &[FirRef]) -> Option<Nyes> {
     // Stay BRANING until every child is settled (constanic including NK)
-    if !children.iter().all(|c| c.borrow().core().get_nyes().is_settled()) {
+    if !children.iter().all(|c| c.borrow().core().get_nyes().is_constanic()) {
         return None;
     }
     // Pick the worst: NK > WOCONSTANIC/ECONSTANIC > CONSTANT > INDEPENDENT
@@ -72,7 +72,7 @@ impl Fir for ConstantIntFir {
 
     fn fir_op_step(&self, _scope: &Scope) -> Result<(), UbcError> {
         // Leaf: no children, no tasks — advance directly to terminal.
-        if !self.core.get_nyes().is_settled() {
+        if !self.core.get_nyes().is_constanic() {
             self.core.set_nyes(Nyes::Constant);
         }
         Ok(())
@@ -112,7 +112,7 @@ impl Fir for NkFir {
 
     fn fir_op_step(&self, _scope: &Scope) -> Result<(), UbcError> {
         // Leaf: no children, no tasks — advance directly to terminal.
-        if !self.core.get_nyes().is_settled() {
+        if !self.core.get_nyes().is_constanic() {
             self.core.set_nyes(Nyes::Nk);
         }
         Ok(())
@@ -300,7 +300,7 @@ impl Fir for StatementFir {
                 let children = self.core.foolish_children().to_vec();
                 if let Some(body) = children.first() {
                     let body_nyes = body.borrow().core().get_nyes();
-                    if body_nyes.is_settled() {
+                    if body_nyes.is_constanic() {
                         self.core.set_nyes(body_nyes);
                     }
                 }
@@ -507,7 +507,7 @@ impl Fir for SearchFir {
                             if let Some(ref brane_ref) = brane {
                                 let before_idx = find_stmt_index_in_brane(&node, brane_ref);
                                 if let Some((body, nyes)) = search_brane_children(brane_ref, name, before_idx, self.forward) {
-                                    if nyes.is_settled() {
+                                    if nyes.is_constanic() {
                                         self.core.push_ubc_child(body);
                                         // Econstanic/Woconstanic/Nk found → search becomes Woconstanic
                                         // (found something, but it's not a value yet)
@@ -560,7 +560,7 @@ impl Fir for SearchFir {
                     }
                 } else if let Some(body) = self.found_body.borrow_mut().take() {
                     let nyes = body.borrow().core().get_nyes();
-                    if nyes.is_settled() {
+                    if nyes.is_constanic() {
                         self.core.push_ubc_child(body);
                         let search_nyes = if nyes == Nyes::Econstanic || nyes == Nyes::Woconstanic {
                             Nyes::Woconstanic
@@ -697,7 +697,7 @@ impl Fir for IndexFir {
                         Some((stmt_ref, brane_ref)) => {
                             if let Some(idx) = find_stmt_index_in_brane(&stmt_ref, &brane_ref) {
                                 if let Some((body, nyes)) = index_into_brane_relative(&brane_ref, idx, self.offset) {
-                                    if nyes.is_settled() {
+                                    if nyes.is_constanic() {
                                         self.core.push_ubc_child(body);
                                         self.core.set_nyes(nyes);
                                     } else {
@@ -793,7 +793,7 @@ impl Fir for HeadTailFir {
                         Some((stmt_ref, brane_ref)) => {
                             if let Some(idx) = find_stmt_index_in_brane(&stmt_ref, &brane_ref) {
                                 if let Some((body, nyes)) = index_into_brane_relative(&brane_ref, idx, offset) {
-                                    if nyes.is_settled() {
+                                    if nyes.is_constanic() {
                                         self.core.push_ubc_child(body);
                                         self.core.set_nyes(nyes);
                                     } else {
@@ -900,7 +900,7 @@ impl Fir for StayFoolishFir {
                 let children = self.core.foolish_children().to_vec();
                 if let Some(expr) = children.first() {
                     let expr_nyes = expr.borrow().core().get_nyes();
-                    if expr_nyes.is_settled() {
+                    if expr_nyes.is_constanic() {
                         let (result, result_nyes) = {
                             let borrowed = expr.borrow();
                             let ubc = borrowed.core().ubc_children();
@@ -951,7 +951,7 @@ impl Fir for StayFullyFoolishFir {
         // SFF is immediately settled: the wrapped expression is never evaluated.
         // Searches inside will go Econstanic because the child tasks are never pushed.
         // When accessed, constanic-clone strips the SFF and evaluates lazily.
-        if !self.core.get_nyes().is_settled() {
+        if !self.core.get_nyes().is_constanic() {
             self.core.set_nyes(Nyes::Independent);
         }
         Ok(())
@@ -1011,7 +1011,7 @@ impl Fir for ConcatenationFir {
                 for child in &children {
                     let resolved = {
                         let borrowed = child.borrow();
-                        if borrowed.core().get_nyes().is_settled() {
+                        if borrowed.core().get_nyes().is_constanic() {
                             borrowed.core().ubc_children().into_iter().next()
                         } else {
                             None
@@ -1197,7 +1197,7 @@ mod tests {
         assert_eq!(transitions, vec![Nyes::Prembrionic, Nyes::Constant]);
 
         // Settled after one step
-        assert!(node.borrow().core().get_nyes().is_settled());
+        assert!(node.borrow().core().get_nyes().is_constanic());
 
         // Value is accessible
         assert_eq!(node.borrow().core().get_nyes(), Nyes::Constant);
@@ -1244,7 +1244,7 @@ mod tests {
         assert_eq!(transitions, vec![Nyes::Prembrionic, Nyes::Nk]);
 
         // Settled after one step
-        assert!(node.borrow().core().get_nyes().is_settled());
+        assert!(node.borrow().core().get_nyes().is_constanic());
 
         // Kind check
         assert_eq!(node.borrow().kind(), FirKind::Nk);
@@ -1269,8 +1269,8 @@ mod tests {
         let scope = Scope::empty();
 
         // Neither is settled before stepping
-        assert!(!ci.borrow().core().get_nyes().is_settled());
-        assert!(!nk.borrow().core().get_nyes().is_settled());
+        assert!(!ci.borrow().core().get_nyes().is_constanic());
+        assert!(!nk.borrow().core().get_nyes().is_constanic());
 
         // One step each
         let r1 = step_fir_ref(&ci, &scope).unwrap();
@@ -1280,8 +1280,8 @@ mod tests {
         assert!(matches!(r2, StepReport::Progress(Nyes::Nk)));
 
         // Both settled
-        assert!(ci.borrow().core().get_nyes().is_settled());
-        assert!(nk.borrow().core().get_nyes().is_settled());
+        assert!(ci.borrow().core().get_nyes().is_constanic());
+        assert!(nk.borrow().core().get_nyes().is_constanic());
     }
 
     #[test]
@@ -1397,7 +1397,7 @@ mod tests {
             match report {
                 StepReport::Progress(nyes) => {
                     transitions.push(nyes);
-                    if nyes.is_settled() {
+                    if nyes.is_constanic() {
                         break;
                     }
                 }
@@ -1422,7 +1422,7 @@ mod tests {
             match report {
                 StepReport::Progress(nyes) => {
                     transitions.push(nyes);
-                    if nyes.is_settled() {
+                    if nyes.is_constanic() {
                         break;
                     }
                 }
@@ -1432,8 +1432,8 @@ mod tests {
 
         eprintln!("Operator(+) NYES transitions: {transitions:?}");
 
-        assert!(a.borrow().core().get_nyes().is_settled());
-        assert!(b.borrow().core().get_nyes().is_settled());
+        assert!(a.borrow().core().get_nyes().is_constanic());
+        assert!(b.borrow().core().get_nyes().is_constanic());
         assert_eq!(op.borrow().core().get_nyes(), Nyes::Constant);
         assert_eq!(op.borrow().kind(), FirKind::Operator);
 
@@ -1453,7 +1453,7 @@ mod tests {
         for _ in 0..20 {
             let report = step_fir_ref(&op, &scope).unwrap();
             if let StepReport::Progress(nyes) = report {
-                if nyes.is_settled() {
+                if nyes.is_constanic() {
                     break;
                 }
             }
@@ -1475,7 +1475,7 @@ mod tests {
         for _ in 0..20 {
             let report = step_fir_ref(&op, &scope).unwrap();
             if let StepReport::Progress(nyes) = report {
-                if nyes.is_settled() {
+                if nyes.is_constanic() {
                     break;
                 }
             }
@@ -1497,7 +1497,7 @@ mod tests {
         for _ in 0..20 {
             let report = step_fir_ref(&op, &scope).unwrap();
             if let StepReport::Progress(nyes) = report {
-                if nyes.is_settled() {
+                if nyes.is_constanic() {
                     break;
                 }
             }
@@ -1519,7 +1519,7 @@ mod tests {
         for _ in 0..20 {
             let report = step_fir_ref(&op, &scope).unwrap();
             if let StepReport::Progress(nyes) = report {
-                if nyes.is_settled() {
+                if nyes.is_constanic() {
                     break;
                 }
             }
@@ -1540,7 +1540,7 @@ mod tests {
         for _ in 0..20 {
             let report = step_fir_ref(&op, &scope).unwrap();
             if let StepReport::Progress(nyes) = report {
-                if nyes.is_settled() {
+                if nyes.is_constanic() {
                     break;
                 }
             }
@@ -1580,7 +1580,7 @@ mod tests {
         assert_eq!(transitions.last(), Some(&Nyes::Constant));
         assert!(transitions.contains(&Nyes::Braning));
         assert_eq!(stmt.borrow().kind(), FirKind::Statement);
-        assert!(stmt.borrow().core().get_nyes().is_settled());
+        assert!(stmt.borrow().core().get_nyes().is_constanic());
     }
 
     #[test]
@@ -1668,8 +1668,8 @@ mod tests {
         let mut child_a_settled_first = false;
         for _ in 0..20 {
             let _ = step_fir_ref(&brane, &scope).unwrap();
-            let a_settled = a.borrow().core().get_nyes().is_settled();
-            let b_settled = b.borrow().core().get_nyes().is_settled();
+            let a_settled = a.borrow().core().get_nyes().is_constanic();
+            let b_settled = b.borrow().core().get_nyes().is_constanic();
             if a_settled && !b_settled {
                 child_a_settled_first = true;
             }
@@ -1697,8 +1697,8 @@ mod tests {
         let transitions = step_to_settled(&outer, &scope);
         eprintln!("Nested brane NYES transitions: {transitions:?}");
 
-        assert!(inner.borrow().core().get_nyes().is_settled());
-        assert!(outer.borrow().core().get_nyes().is_settled());
+        assert!(inner.borrow().core().get_nyes().is_constanic());
+        assert!(outer.borrow().core().get_nyes().is_constanic());
         assert_eq!(inner.borrow().core().get_nyes(), Nyes::Constant);
         assert_eq!(outer.borrow().core().get_nyes(), Nyes::Constant);
     }
@@ -2150,7 +2150,7 @@ mod tests {
         let transitions = step_to_settled(&sf, &scope);
         eprintln!("SF(Econstanic body) NYES transitions: {transitions:?}");
 
-        assert!(sf.borrow().core().get_nyes().is_settled());
+        assert!(sf.borrow().core().get_nyes().is_constanic());
     }
 
     #[test]
@@ -2258,7 +2258,7 @@ mod tests {
             match report {
                 StepReport::Progress(nyes) => {
                     transitions.push(nyes);
-                    if nyes.is_settled() {
+                    if nyes.is_constanic() {
                         break;
                     }
                 }
@@ -2266,7 +2266,7 @@ mod tests {
             }
         }
         eprintln!("SFF NYES transitions: {transitions:?}");
-        assert!(sff.borrow().core().get_nyes().is_settled());
+        assert!(sff.borrow().core().get_nyes().is_constanic());
         assert_eq!(sff.borrow().kind(), FirKind::StayFullyFoolish);
     }
 
@@ -2279,7 +2279,7 @@ mod tests {
         // SFF settles immediately to Independent
         let report = step_fir_ref(&sff, &scope).unwrap();
         assert!(matches!(report, StepReport::Progress(Nyes::Independent)));
-        assert!(sff.borrow().core().get_nyes().is_settled());
+        assert!(sff.borrow().core().get_nyes().is_constanic());
 
         // Body stays at Prembrionic (never evaluated)
         assert_eq!(body.borrow().core().get_nyes(), Nyes::Prembrionic);
