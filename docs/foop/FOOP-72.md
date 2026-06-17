@@ -263,10 +263,11 @@ The `fns markdown` command shows dependencies in the **Deps** column as
 a comma-separated list of FOOP IDs, or `—` when none are declared.
 
 **Dependency rules:**
-1. Dependencies must reference existing FOOPs (validated by `fns check`).
-2. A FOOP cannot depend on a later-numbered FOOP (no forward dependencies).
-3. Circular dependencies are rejected by `fns check`.
-4. The `## Dependencies` body section is mandatory when `dependencies:` is
+1. Dependencies are optional — a FOOP need not reference anything. If
+   `dependencies:` is present, each entry must reference an existing FOOP
+   with a lower FNS number (older FOOPs only).
+2. Circular dependencies are rejected by `fns check`.
+3. The `## Dependencies` body section is mandatory when `dependencies:` is
    non-empty; `fns check` flags its absence.
 
 **Grep-friendly design.** Each column is pipe-delimited so downstream

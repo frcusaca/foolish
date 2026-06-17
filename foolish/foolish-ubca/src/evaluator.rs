@@ -52,7 +52,7 @@ fn proto_to_core_fir(ubca_ref: &FirRef) -> core_fir::Fir {
 
 /// Convert an SFF body expression. Top-level searches get EMBRYONIC state
 /// (shown by sequencer). Operator operands get CONSTANT state (hidden).
-/// Operators get EMBRYONIC state. This matches UBC behavior.
+/// Operators get WOCONSTANIC or CONSTANT state based on operand states.
 fn proto_to_core_fir_sff_body(ubca_ref: &FirRef) -> core_fir::Fir {
     let borrowed = ubca_ref.borrow();
     let kind = borrowed.kind();

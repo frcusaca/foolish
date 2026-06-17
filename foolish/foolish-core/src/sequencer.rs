@@ -1,4 +1,4 @@
-use crate::fir::{Fir, FirQueryable, SearchDirection, StatementSimple};
+use crate::fir::{Fir, FirQueryable, Nyes, SearchDirection, StatementSimple};
 
 /// A formatted line with its prefix (indent level in characters).
 /// Only the outermost level materializes spaces.
@@ -283,7 +283,6 @@ fn render_fir(
     line_hint: usize,
 ) -> FormattedLines {
     let state = fir.hs_state();
-    let show_state = state.should_show_nyes();
 
     // ── 1. ConstantInt ──
     if let Some(value) = fir.hs_constant_int() {
@@ -301,6 +300,8 @@ fn render_fir(
 
     // ── 3. Operator ──
     if let Some((op, operands)) = fir.hs_operator() {
+        let show_state =
+            state.should_show_nyes();
         // Transparent when CONSTANT/INDEPENDENT
         if !show_state {
             if let Some(first) = operands.first() {
@@ -357,6 +358,7 @@ fn render_fir(
 
     // ── 4. Search ──
     if let Some((pattern, direction, anchored, _anchor, target)) = fir.hs_search() {
+        let show_state = state.should_show_nyes();
         let pbid = if direction == SearchDirection::Backward {
             "?"
         } else {
@@ -383,6 +385,7 @@ fn render_fir(
 
     // ── 5. HeadTail ──
     if let Some((is_head, _anchored, anchor)) = fir.hs_head_tail() {
+        let show_state = state.should_show_nyes();
         let pbid = if is_head { "^" } else { "$" };
         let mut non_result_items = Vec::new();
 
@@ -404,6 +407,7 @@ fn render_fir(
 
     // ── 6. Index ──
     if let Some((offset, anchored, anchor)) = fir.hs_index() {
+        let show_state = state.should_show_nyes();
         if anchored && offset == 0 {
             let mut non_result_items = Vec::new();
             if show_state {
@@ -455,6 +459,7 @@ fn render_fir(
 
     // ── 7. StayFoolish ──
     if let Some(expr) = fir.hs_stay_foolish() {
+        let show_state = state.should_show_nyes();
         if !show_state {
             return render_fir(&*expr, open_indent, close_indent, line_hint);
         }
@@ -471,6 +476,7 @@ fn render_fir(
 
     // ── 8. StayFullyFoolish ──
     if let Some(expr) = fir.hs_stay_fully_foolish() {
+        let show_state = state.should_show_nyes();
         if !show_state {
             return render_fir(&*expr, open_indent, close_indent, line_hint);
         }
@@ -487,6 +493,7 @@ fn render_fir(
 
     // ── 9. Concatenation ──
     if let Some((elements, merged)) = fir.hs_concatenation() {
+        let show_state = state.should_show_nyes();
         if !show_state {
             if let Some(m) = &merged {
                 let mut brane_lines = render_fir(&**m, 0, 0, line_hint);
@@ -542,6 +549,7 @@ fn render_fir(
 
     // ── 10. NormalBrane ──
     if let Some((characterizations, statements)) = fir.hs_brane() {
+        let show_state = state.should_show_nyes();
         let chars = if characterizations.is_empty() {
             String::new()
         } else {

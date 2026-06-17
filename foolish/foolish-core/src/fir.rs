@@ -145,18 +145,14 @@ impl Nyes {
         matches!(self, Nyes::Prembrionic | Nyes::Embryonic | Nyes::Braning)
     }
 
-    /// Returns true when the nyès should be displayed in the humanizing
-    /// sequencer output. CONSTANT and INDEPENDENT are always omitted.
+    /// Returns true when the NYES should be displayed in the humanizing
+    /// sequencer output.
+    ///
+    /// Rules (FOOP-62 §9):
+    /// - CONSTANT/INDEPENDENT → no nyes (always omitted)
+    /// - else → show nyes (including EMBRYONIC, NK, WOCONSTANIC, etc.)
     pub fn should_show_nyes(&self) -> bool {
-        matches!(
-            self,
-            Nyes::Prembrionic
-                | Nyes::Embryonic
-                | Nyes::Braning
-                | Nyes::Econstanic
-                | Nyes::Woconstanic
-                | Nyes::Nk
-        )
+        !matches!(self, Nyes::Constant | Nyes::Independent)
     }
 }
 
