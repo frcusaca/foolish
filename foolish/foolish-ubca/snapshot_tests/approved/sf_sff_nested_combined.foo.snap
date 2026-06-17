@@ -1,6 +1,5 @@
 ---
 source: foolish-ubca/src/ubca_snapshot_tester.rs
-assertion_line: 34
 ---
 INPUT:
 ```foolish
@@ -25,22 +24,26 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{
+{WOCONSTANIC
   x=1;
   y=2;
   sff=Op+(?(pattern='^x$', UNANCHORED), ?(pattern='^y$', UNANCHORED), EMBRYONIC);
   sf=3;
-  sfsff=?(result=3, pattern='^sff$', UNANCHORED);
+  sfsff=<WOCONSTANIC
+      ?(pattern='^sff$', UNANCHORED, ECONSTANIC)
+  >;
   sffsf=?(pattern='^sf$', UNANCHORED, EMBRYONIC);
-  sfsf=?(result=3, pattern='^sf$', UNANCHORED);
+  sfsf=<WOCONSTANIC
+      ?(pattern='^sf$', UNANCHORED, ECONSTANIC)
+  >;
   sffsff=?(pattern='^sff$', UNANCHORED, EMBRYONIC);
   x=-2;
   rsff=3;
   rsf=3;
-  rsfsff=3;
-  rsffsf=3;
-  rsfsf=3;
-  rsffsff=3
+  rsfsff=?(result=?(pattern='^sff$', UNANCHORED, ECONSTANIC), pattern='^sfsff$', UNANCHORED, WOCONSTANIC);
+  rsffsf=?(result=?(pattern='^sf$', UNANCHORED, ECONSTANIC), pattern='^sffsf$', UNANCHORED, WOCONSTANIC);
+  rsfsf=?(result=?(pattern='^sf$', UNANCHORED, ECONSTANIC), pattern='^sfsf$', UNANCHORED, WOCONSTANIC);
+  rsffsff=?(result=?(pattern='^sff$', UNANCHORED, ECONSTANIC), pattern='^sffsff$', UNANCHORED, WOCONSTANIC)
 }
 ```
 COMMENTS:
@@ -50,5 +53,5 @@ sf_sff_nested_combined
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: tT8UqgoaX2cQknxaTSOxGoatqdbkUElQJTZXD4wK3f2mTtwOZwiBraFW1mIiflGHyg6zn6JuaExvI+DIT6sOBg==
-HFS signature: jlMNZzPdk52pNEZNp/8l/C+Fta4WX/l25M15Kmr8VpN8ugOf9dNEwbjxRoCs+K+JYngpOjOEv2UJdXSx/PiWAA==
-Comments signature: Iyb9z3S8gfsOA9ru6p4KYi3hbB6v5se+vBprcdbkO+vah5QSsb7oLCVyIxVcZ7gV9Dfp25xQnRssGo82Ed6KDA==
+HFS signature: YFuq93OFtG5hmJy/muZW5Z8d6OJLI9Dvxk4VQnACc4Z7Xd4jxxdgTC514QCWd5pcsfbmHJU4ijKldB3gKaR0BA==
+Comments signature: y2NlM25nc1XDqqoIOz2Nl6N6HKmnevtQHZGcP40bGHz1kd1TBw/2JTYOO+EeDFcvZpUMMlXNns985HkxqRnqBQ==

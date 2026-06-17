@@ -1,6 +1,5 @@
 ---
-source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 52
+source: foolish-ubca/src/ubca_snapshot_tester.rs
 ---
 INPUT:
 ```foolish
@@ -14,7 +13,7 @@ INPUT:
     inner={
         y=42
     };
-    val=42
+    val=?(result=42, pattern='^x$', UNANCHORED)
   }
 }
 ```
@@ -25,5 +24,5 @@ named_brane_with_search
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: uW0Fcz4/He1+/wYA73PfbBiUXSnClodQHbuQS3KqBlXTf3obUd47n2iWlxW1sx7B4SWwogfl6PdjqGpme5csBw==
-HFS signature: 1jDXKIDpgGpBXAeyTlPIP+Onk1dQ+qYS1sT/GQxlBfm6sjOAv5ME2P8OO1/i9bTAdNotxpzNKGjAKFuP0YAFAQ==
-Comments signature: kjNnppWMiBgp5R8uczF4HxG+SuxntdGOsioKok8E1JBrLnfVwuqF9aN7bfo4h+eNHj786QYfK0eXfOaP3h4+Cg==
+HFS signature: M2Y69xkx1MirV36/f+BXQB/RXpX/l25EgS1z8+bBuL8gp7UOpVtoT9onA32LKYmJT1t0D2w0RnvjZupd0UcEDQ==
+Comments signature: Khly1ZMQZjeQx8Jc5r9fVUS0Hjl6jbxe+R8AkGOgw9WP2U2MluRPPrT1GO7EWCp37XGnpikxib6FSIk/Sw2SAw==

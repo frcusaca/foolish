@@ -236,6 +236,65 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
             if state.is_settled() {
                 let ubc = borrowed.core().ubc_children();
                 if let Some(result) = ubc.first() {
+                    // When the ubc_child is a settled search whose own ubc_child
+                    // is a complex type (Brane, Operator, SF, SFF), this search
+                    // came from unwrapping an SF value. UBC preserves the search
+                    // wrapper in this case rather than resolving to the final value.
+                    let result_borrowed = result.borrow();
+                    if result_borrowed.kind() == FirKind::Search
+                        && result_borrowed.core().get_nyes().is_settled()
+                    {
+                        let inner_ubc = result_borrowed.core().ubc_children();
+                        let has_complex = inner_ubc.first().map_or(false, |r| {
+                            let rb = r.borrow();
+                            let is_complex_type = matches!(
+                                rb.kind(),
+                                FirKind::Brane
+                                    | FirKind::Operator
+                                    | FirKind::StayFoolish
+                                    | FirKind::StayFullyFoolish
+                            );
+                            let has_resolved_value = rb.core().ubc_children().first().is_some();
+                            is_complex_type && !has_resolved_value
+                        });
+                        if has_complex {
+                            let inner_fir = SearchFirBuilder::new(
+                                result_borrowed.as_search_pattern().unwrap_or(""),
+                            )
+                            .anchored(result_borrowed.as_search_anchored())
+                            .state(Nyes::Econstanic)
+                            .build();
+                            drop(result_borrowed);
+                            return SearchFirBuilder::new(
+                                borrowed.as_search_pattern().unwrap_or(""),
+                            )
+                            .anchored(borrowed.as_search_anchored())
+                            .target(inner_fir)
+                            .state(Nyes::Woconstanic)
+                            .build();
+                        }
+                        // Simple result (ConstantInt/NK): build inner search with resolved value.
+                        // For other cases (Search chains), fall through to the normal path
+                        // which correctly wraps in the outer search.
+                        let first_inner_kind = inner_ubc.first().map(|r| r.borrow().kind());
+                        let has_simple = first_inner_kind
+                            .map_or(false, |k| matches!(k, FirKind::ConstantInt | FirKind::Nk));
+                        if has_simple {
+                            let inner_result_fir =
+                                proto_to_core_fir_inner(inner_ubc.first().unwrap(), false);
+                            let inner_search = SearchFirBuilder::new(
+                                result_borrowed.as_search_pattern().unwrap_or(""),
+                            )
+                            .anchored(result_borrowed.as_search_anchored())
+                            .target(inner_result_fir)
+                            .state(result_borrowed.core().get_nyes())
+                            .build();
+                            drop(result_borrowed);
+                            return inner_search;
+                        }
+                    }
+                    drop(result_borrowed);
+
                     let resolved = proto_to_core_fir_inner(result, preserve_search);
                     if !preserve_search {
                         let resolved_state = result.borrow().core().get_nyes();
@@ -331,9 +390,6 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
         FirKind::StayFoolish => {
             let inner = borrowed.core().foolish_children();
             let inner_ref = inner.first();
-            // SF is transparent for simple values (ConstantInt, NK) — unwrap to value.
-            // For complex values (Brane, Operator, Search with non-constant result),
-            // preserve the search wrapper. Detect by checking the search's ubc_child.
             if let Some(expr_ref) = inner_ref {
                 let expr_borrowed = expr_ref.borrow();
                 if expr_borrowed.kind() == FirKind::Search
@@ -347,6 +403,16 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                             || result_kind == FirKind::StayFoolish
                             || result_kind == FirKind::StayFullyFoolish
                         {
+                            if result.borrow().core().ubc_children().first().is_some() {
+                                let inner_result_fir = proto_to_core_fir_inner(result, false);
+                                return SearchFirBuilder::new(
+                                    expr_borrowed.as_search_pattern().unwrap_or(""),
+                                )
+                                .anchored(expr_borrowed.as_search_anchored())
+                                .target(inner_result_fir)
+                                .state(expr_borrowed.core().get_nyes())
+                                .build();
+                            }
                             let search_fir = SearchFirBuilder::new(
                                 expr_borrowed.as_search_pattern().unwrap_or(""),
                             )
@@ -356,6 +422,36 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                             return StayFoolishFirBuilder::new(search_fir)
                                 .state(Nyes::Woconstanic)
                                 .build();
+                        }
+                        if result_kind == FirKind::Search {
+                            let inner_borrowed = result.borrow();
+                            let inner_fir = SearchFirBuilder::new(
+                                inner_borrowed.as_search_pattern().unwrap_or(""),
+                            )
+                            .anchored(inner_borrowed.as_search_anchored())
+                            .state(Nyes::Econstanic)
+                            .build();
+                            drop(inner_borrowed);
+                            let outer_search = SearchFirBuilder::new(
+                                expr_borrowed.as_search_pattern().unwrap_or(""),
+                            )
+                            .anchored(expr_borrowed.as_search_anchored())
+                            .target(inner_fir)
+                            .state(Nyes::Woconstanic)
+                            .build();
+                            return StayFoolishFirBuilder::new(outer_search)
+                                .state(Nyes::Woconstanic)
+                                .build();
+                        }
+                        if result_kind == FirKind::ConstantInt || result_kind == FirKind::Nk {
+                            let inner_result_fir = proto_to_core_fir_inner(result, false);
+                            return SearchFirBuilder::new(
+                                expr_borrowed.as_search_pattern().unwrap_or(""),
+                            )
+                            .anchored(expr_borrowed.as_search_anchored())
+                            .target(inner_result_fir)
+                            .state(expr_borrowed.core().get_nyes())
+                            .build();
                         }
                     }
                 }
