@@ -1,5 +1,6 @@
 ---
 source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
 ---
 INPUT:
 ```foolish
@@ -16,7 +17,7 @@ INPUT:
   OB2={NK
       whichˍ1=Op+(#(offset=-1, UNANCHORED, NK), 1, NK)
   };
-  OB={WOCONSTANIC
+  OB={NK
       a=1;
       message=2;
       only=1;
@@ -31,5 +32,5 @@ seek_in_nested_result_after_concatenation
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: cfGCMZeXg+6MU8S60P/lQKJXQwIqnmSUM7cERCO9n5/1ZhE2hBqSo3GjNILf1x3L9vm63msdnpdaCuA/vEhcBw==
-HFS signature: BFLlgVeRcQfTb8moD82LN5yfypoBSsto7V2JOcz1uU61GPzDwSdRr5iD82PHMM1KrcfQXAOC0xFO/oRih5CiBw==
-Comments signature: qGw2vQ7OiWr/UqhI7T1m9QrXLnz6SJ9SlQUPSCMHWaqfDoln7CuhLbVBbu8bL1SeT5JVYRu8wgxeXSASmy6iAg==
+HFS signature: VazLcFoAuWa9NzeqmxO82JVI1i8tajkHQGr7rx1UDv0pnfZsDvF0LZ9o33ibWFDIkjjGUpERmyWfvVJay5GcBA==
+Comments signature: Y5syVpBHAQbP3F6rZXZYBuMfvr3czZrCUc6e9cGG0sQhZIDVNM4pu+82P/LZGEvtk1xG6cbr/HE0Me31mRb8CA==

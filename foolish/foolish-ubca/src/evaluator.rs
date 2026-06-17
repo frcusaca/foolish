@@ -69,9 +69,18 @@ fn proto_to_core_fir_sff_body(ubca_ref: &FirRef) -> core_fir::Fir {
                 .iter()
                 .map(|c| proto_to_core_fir_sff_operand(c))
                 .collect();
+            use foolish_core::fir::FirQueryable;
+            let op_state = if operand_firs.iter().any(|f| {
+                let s = f.hs_state();
+                s == Nyes::Econstanic || s == Nyes::Woconstanic
+            }) {
+                Nyes::Woconstanic
+            } else {
+                Nyes::Constant
+            };
             OperatorFirBuilder::new(op)
                 .operands(operand_firs)
-                .state(Nyes::Embryonic)
+                .state(op_state)
                 .build()
         }
         FirKind::ConstantInt => ConstantIntFirBuilder::new(borrowed.as_i64().unwrap_or(0))
@@ -91,7 +100,7 @@ fn proto_to_core_fir_sff_operand(ubca_ref: &FirRef) -> core_fir::Fir {
     match kind {
         FirKind::Search => SearchFirBuilder::new(borrowed.as_search_pattern().unwrap_or(""))
             .anchored(borrowed.as_search_anchored())
-            .state(Nyes::Constant)
+            .state(Nyes::Econstanic)
             .build(),
         FirKind::ConstantInt => ConstantIntFirBuilder::new(borrowed.as_i64().unwrap_or(0))
             .state(Nyes::Constant)
@@ -299,6 +308,12 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                     if !preserve_search {
                         let resolved_state = result.borrow().core().get_nyes();
                         if resolved_state == Nyes::Constant || resolved_state == Nyes::Independent {
+                            if let Some(sf_pat) = borrowed.as_sf_inner_pattern() {
+                                return SearchFirBuilder::new(sf_pat)
+                                    .target(resolved)
+                                    .state(resolved_state)
+                                    .build();
+                            }
                             return resolved;
                         }
                     }
@@ -404,6 +419,18 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                             || result_kind == FirKind::StayFullyFoolish
                         {
                             if result.borrow().core().ubc_children().first().is_some() {
+                                let inner_result_fir = proto_to_core_fir_inner(result, false);
+                                return SearchFirBuilder::new(
+                                    expr_borrowed.as_search_pattern().unwrap_or(""),
+                                )
+                                .anchored(expr_borrowed.as_search_anchored())
+                                .target(inner_result_fir)
+                                .state(expr_borrowed.core().get_nyes())
+                                .build();
+                            }
+                            // A Brane or other complex type that is itself
+                            // constanic IS the value — no ubc_children needed.
+                            if result.borrow().core().get_nyes().is_constanic() {
                                 let inner_result_fir = proto_to_core_fir_inner(result, false);
                                 return SearchFirBuilder::new(
                                     expr_borrowed.as_search_pattern().unwrap_or(""),

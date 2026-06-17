@@ -1,6 +1,6 @@
 ---
-source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 52
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
 ---
 INPUT:
 ```foolish
@@ -161,13 +161,23 @@ win={w_in={in_in={in_in_in=101010}}};
       a=1;
       b=2
   };
-  sfˍvalue=<WOCONSTANIC
-      ?(pattern='^sfˍtarget$', UNANCHORED, ECONSTANIC)
-  >;
+  sfˍvalue=?(
+      result={
+          a=1;
+          b=2
+      },
+      pattern='^sfˍtarget$',
+      UNANCHORED
+  );
   sfˍtoˍconstant=?(result=3, pattern='^π$', UNANCHORED);
-  sfˍchain=<WOCONSTANIC
-      ?(result=?(pattern='^sfˍtarget$', UNANCHORED, ECONSTANIC), pattern='^sfˍvalue$', UNANCHORED, WOCONSTANIC)
-  >;
+  sfˍchain=?(
+      result={
+          a=1;
+          b=2
+      },
+      pattern='^sfˍvalue$',
+      UNANCHORED
+  );
   sffˍtarget={
       x=10;
       y=20
@@ -269,9 +279,14 @@ win={w_in={in_in={in_in_in=101010}}};
   chainedˍops=5;
   zeroˍdivˍinˍop=Op+(??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, 42, NK);
   nestedˍopˍtransparent=-1;
-  inspectˍsff=<WOCONSTANIC
-      ?(pattern='^sffˍtarget$', UNANCHORED, ECONSTANIC)
-  >;
+  inspectˍsff=?(
+      result={
+          x=10;
+          y=20
+      },
+      pattern='^sffˍtarget$',
+      UNANCHORED
+  );
   inspectˍsffˍagain=?(pattern='^sffˍtarget$', UNANCHORED, EMBRYONIC);
   win={
       wˍin={
@@ -289,5 +304,5 @@ foop42_humanizing_sequencer_formatting_exhaustive_aka_hfs
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 5CYQ9TTMJwxdSRqdDbNvIcEuEjzF0rs9DSJO0IFb7JZX52hw7oNCOG0pcpoYozWuyHWmpPLVgx2jGmPxDfKBDA==
-HFS signature: wAH9y1kQs/v/cy/r6Swu/Jas6CypM6AhXS3EBQ1sVXKI2oMklXrCNdi1Li94mWbC9bshVZXYluS0gtctd7SkBw==
-Comments signature: ooBLWxeS+WDPypgFNhtYouwkDnEjutILuFZtTyIHMV5nB9ly+6SodZJipF9VFB4rhFoEBmPy1VyIjwuFyI8kAw==
+HFS signature: AbMqhtaGJhmXGLItpkGm9iL40pVgNDqbgojXVcZdXBBkwCTV6vZ5T9k0r3vueP80AFD6rC/jjlNyGwrs/UfeCQ==
+Comments signature: TmdkcTgIu5Acjzm8NpvL57AQYZ7sU3qEmA6BENd3YOM1UD0p6Q1AE+fLduN38Zl9SWFZZOMjUMJWwhxYqyghAw==

@@ -1,5 +1,6 @@
 ---
 source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
 ---
 INPUT:
 ```foolish
@@ -10,7 +11,7 @@ INPUT:
 {WOCONSTANIC
   a=1;
   b=2;
-  c=Op+(?(pattern='^a$', UNANCHORED), ?(pattern='^b$', UNANCHORED, EMBRYONIC), EMBRYONIC);
+  c=Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, EMBRYONIC), WOCONSTANIC);
   ?(result=Op+(1, ?(pattern='^b$', UNANCHORED, EMBRYONIC), WOCONSTANIC), pattern='^c$', UNANCHORED, WOCONSTANIC);
   ?(result=Op+(1, ?(pattern='^b$', UNANCHORED, EMBRYONIC), WOCONSTANIC), pattern='^c$', UNANCHORED, WOCONSTANIC)
 }
@@ -22,5 +23,5 @@ sff_nested
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: lhcizF48neDw/0Ot29cyjAKKVN2RJsqhMEqKOBwHi1AC7LmDHeXb9dBvby6kqQzBJhSJHHAXCtmjZ9gbF1ZHAw==
-HFS signature: H84gNzdc8i6JhS37npNGEKF9S+oXy84XejuJaxN/F9QJrJXZYutT8Wrr7OGR+Hv7nFzwDSyN/vcTfZyBUpt+CA==
-Comments signature: lr4SdnSi+1mE2iMFduCl+mzBNsGAgobOqtEKV2Y1+iddYMsvS7npWmZOcQp/oRndAQuiwY2MHvP/pRuqvJW2Dg==
+HFS signature: Lh6gJXqdGeI6xFu+rHY22wHH+br71M/+3lSKkBX82JfH7u5hqO9cBE4tbLO7A0Wsq/4vIRZp2+WyA4EN3/VhCw==
+Comments signature: r41wrRESaF4aHzIv+BuOXk76Z3/7hWsQubdVMbNd1lxSJvRjVg+MYPRc+R+wHiizKMTBZfYnIHks/GjheQQhBQ==

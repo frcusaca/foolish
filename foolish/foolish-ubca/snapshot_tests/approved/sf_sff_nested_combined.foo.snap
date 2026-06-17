@@ -1,5 +1,6 @@
 ---
 source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
 ---
 INPUT:
 ```foolish
@@ -24,26 +25,22 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{WOCONSTANIC
+{
   x=1;
   y=2;
-  sff=Op+(?(pattern='^x$', UNANCHORED), ?(pattern='^y$', UNANCHORED), EMBRYONIC);
+  sff=Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), WOCONSTANIC);
   sf=3;
-  sfsff=<WOCONSTANIC
-      ?(pattern='^sff$', UNANCHORED, ECONSTANIC)
-  >;
+  sfsff=?(result=3, pattern='^sff$', UNANCHORED);
   sffsf=?(pattern='^sf$', UNANCHORED, EMBRYONIC);
-  sfsf=<WOCONSTANIC
-      ?(pattern='^sf$', UNANCHORED, ECONSTANIC)
-  >;
+  sfsf=?(result=3, pattern='^sf$', UNANCHORED);
   sffsff=?(pattern='^sff$', UNANCHORED, EMBRYONIC);
   x=-2;
   rsff=3;
   rsf=3;
-  rsfsff=?(result=?(pattern='^sff$', UNANCHORED, ECONSTANIC), pattern='^sfsff$', UNANCHORED, WOCONSTANIC);
-  rsffsf=?(result=?(pattern='^sf$', UNANCHORED, ECONSTANIC), pattern='^sffsf$', UNANCHORED, WOCONSTANIC);
-  rsfsf=?(result=?(pattern='^sf$', UNANCHORED, ECONSTANIC), pattern='^sfsf$', UNANCHORED, WOCONSTANIC);
-  rsffsff=?(result=?(pattern='^sff$', UNANCHORED, ECONSTANIC), pattern='^sffsff$', UNANCHORED, WOCONSTANIC)
+  rsfsff=?(result=3, pattern='^sff$', UNANCHORED);
+  rsffsf=?(result=3, pattern='^sf$', UNANCHORED);
+  rsfsf=?(result=3, pattern='^sf$', UNANCHORED);
+  rsffsff=?(result=3, pattern='^sff$', UNANCHORED)
 }
 ```
 COMMENTS:
@@ -53,5 +50,5 @@ sf_sff_nested_combined
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: tT8UqgoaX2cQknxaTSOxGoatqdbkUElQJTZXD4wK3f2mTtwOZwiBraFW1mIiflGHyg6zn6JuaExvI+DIT6sOBg==
-HFS signature: YFuq93OFtG5hmJy/muZW5Z8d6OJLI9Dvxk4VQnACc4Z7Xd4jxxdgTC514QCWd5pcsfbmHJU4ijKldB3gKaR0BA==
-Comments signature: y2NlM25nc1XDqqoIOz2Nl6N6HKmnevtQHZGcP40bGHz1kd1TBw/2JTYOO+EeDFcvZpUMMlXNns985HkxqRnqBQ==
+HFS signature: Yv5IV9JQlBoktQwU4GzfijFthZk7h1QeLYDbfki2Zn0xLm1Wl6kdt4OAXKIk0c3tVPII54+W1TbbtM9GF7ZgDg==
+Comments signature: 04bw9yKoqfGZSl6+/92r/iBZfqrY1W3ybZLKc1yF4ed0EdC/UKKWO+MBIX7cZlDGNFXF0IOdiXSuF1IPnTy6AA==

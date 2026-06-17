@@ -1,5 +1,6 @@
 ---
 source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
 ---
 INPUT:
 ```foolish
@@ -10,7 +11,7 @@ INPUT:
 {
   a=1;
   b=2;
-  c=Op+(?(pattern='^a$', UNANCHORED), ?(pattern='^b$', UNANCHORED), EMBRYONIC);
+  c=Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC);
   a=100;
   3
 }
@@ -22,5 +23,5 @@ sff_in_assignment_chain
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: W39zs+UId/DzfxHfL4QgQfryXimg6He4zOPcvtPzRzzWL/XwvRD91ZNi0vO2yL2wEXrlywGGMoz/vf+tEpgQDQ==
-HFS signature: Pdd/RVczxA68NzNVrmveFcVNH4kKp4AHHZEuM0ruPBUe0gRtpMld6G8qJ+TrtcSJFOYamIyWDCMqCHvT3IcHCg==
-Comments signature: Asjef7JI0IGZcuzjuGjGbGpNr63KvGJpYITb8wcROIAAeGSfRO3Xp79hNQqw+HhTv3nXm2BuRSkfeevYM5nADg==
+HFS signature: oTdq+xlI+x9qRjJEBatlYZnKnChynJDDitG868bbjz2dx5wWOOCsizH/KG32vr/51xKKdgys2/hJMDyiTHdDAQ==
+Comments signature: uK8fBq52KB2stNnFUTUNCxXxHi+I18ZRWMKRQTm0wRjj+ubVYsbFK5IjKMsX/bm9ivof4szpabpu3LFFYnA2Aw==

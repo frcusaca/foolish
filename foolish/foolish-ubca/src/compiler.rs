@@ -115,6 +115,7 @@ fn build_standalone(ast: Astn) -> FirRef {
                 anchored: false,
                 forward: false,
                 found_body: RefCell::new(None),
+                sf_inner_pattern: RefCell::new(None),
             })
         }),
         Astn::DotSearch { anchor, coordinate } => {
@@ -127,6 +128,7 @@ fn build_standalone(ast: Astn) -> FirRef {
                     anchored: true,
                     forward: false,
                     found_body: RefCell::new(None),
+                    sf_inner_pattern: RefCell::new(None),
                 })
             })
         }
@@ -144,6 +146,7 @@ fn build_standalone(ast: Astn) -> FirRef {
                 anchored: true,
                 forward: operator == SearchOperator::RegexpForward,
                 found_body: RefCell::new(None),
+                sf_inner_pattern: RefCell::new(None),
             })
         }),
         Astn::Seek { anchor, offset } => Rc::new_cyclic(|me: &Weak<RefCell<IndexFir>>| {
@@ -224,6 +227,7 @@ fn build_astn(ast: Astn, parent: &Weak<RefCell<dyn Fir>>) -> FirRef {
             anchored: false,
             forward: false,
             found_body: RefCell::new(None),
+            sf_inner_pattern: RefCell::new(None),
         })),
         Astn::Brane {
             characterizations,
@@ -263,6 +267,7 @@ fn build_astn(ast: Astn, parent: &Weak<RefCell<dyn Fir>>) -> FirRef {
                     anchored: true,
                     forward: false,
                     found_body: RefCell::new(None),
+                    sf_inner_pattern: RefCell::new(None),
                 })
             })
         }
@@ -280,6 +285,7 @@ fn build_astn(ast: Astn, parent: &Weak<RefCell<dyn Fir>>) -> FirRef {
                 anchored: true,
                 forward: operator == SearchOperator::RegexpForward,
                 found_body: RefCell::new(None),
+                sf_inner_pattern: RefCell::new(None),
             })
         }),
         Astn::Seek { anchor, offset } => Rc::new_cyclic(|me: &Weak<RefCell<IndexFir>>| {

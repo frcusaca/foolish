@@ -385,6 +385,7 @@ pub struct SearchFir {
     pub(crate) anchored: bool,
     pub(crate) forward: bool,
     pub(crate) found_body: RefCell<Option<FirRef>>,
+    pub(crate) sf_inner_pattern: RefCell<Option<String>>,
 }
 
 /// Recursively advance all PREMBRIONIC nodes to EMBRYONIC.
@@ -458,15 +459,19 @@ fn unwrap_sf_sff(fir_ref: &FirRef) -> FirRef {
     }
 }
 
-fn search_brane_children(brane: &FirRef, name: &str, before: Option<usize>, forward: bool) -> Option<(FirRef, Nyes)> {
-    let brane_borrowed = brane.borrow();
-    let children = brane_borrowed.core().foolish_children();
-    let end = before.unwrap_or(children.len());
-    let range = children[..end].iter();
+fn search_brane_children(brane: &FirRef, name: &str, before: Option<usize>, forward: bool) -> Option<(FirRef, Nyes, Option<String>)> {
+    // Clone children to release the brane borrow before potential recursive calls.
+    let (children_vec, end) = {
+        let brane_borrowed = brane.borrow();
+        let c: Vec<FirRef> = brane_borrowed.core().foolish_children().to_vec();
+        let e = before.unwrap_or(c.len());
+        (c, e)
+    };
+    let range = &children_vec[..end];
     let iter: Box<dyn Iterator<Item = &FirRef>> = if forward {
-        Box::new(range)
+        Box::new(range.iter())
     } else {
-        Box::new(range.rev())
+        Box::new(range.iter().rev())
     };
     for child in iter {
         let child_borrowed = child.borrow();
@@ -474,10 +479,41 @@ fn search_brane_children(brane: &FirRef, name: &str, before: Option<usize>, forw
             if matches_pattern(sn, name)
                 && let Some(body) = child_borrowed.core().foolish_children().first()
             {
-                // Unwrap SF/SFF wrappers — UBC does this in resolve_to_value
+                // SF/SFF wrapping an unanchored search: re-evaluate the search
+                // pattern in the current context.  SF evaluates lazily — the
+                // inner search captured the value at assignment time, but when
+                // the SF is accessed later, the search should use the current
+                // context (which may have later reassignments).
+                let sf_inner_pattern = {
+                    let bb = body.borrow();
+                    if bb.kind() == FirKind::StayFoolish
+                        || bb.kind() == FirKind::StayFullyFoolish
+                    {
+                        bb.core().foolish_children().first().and_then(|inner| {
+                            let ib = inner.borrow();
+                            if ib.kind() == FirKind::Search && !ib.as_search_anchored() {
+                                ib.as_search_pattern().map(|s| s.to_string())
+                            } else {
+                                None
+                            }
+                        })
+                    } else {
+                        None
+                    }
+                };
+                if let Some(ref pattern) = sf_inner_pattern {
+                    let sf_pat = pattern.clone();
+                    drop(child_borrowed);
+                    if let Some((body, nyes, _)) = search_brane_children(brane, pattern, before, forward) {
+                        return Some((body, nyes, Some(sf_pat)));
+                    }
+                    return None;
+                }
+                // Non-SF path: unwrap SF/SFF wrappers — UBC does this in
+                // resolve_to_value.
                 let unwrapped = unwrap_sf_sff(body);
                 let body_nyes = unwrapped.borrow().core().get_nyes();
-                return Some((unwrapped, body_nyes));
+                return Some((unwrapped, body_nyes, None));
             }
         }
     }
@@ -506,9 +542,12 @@ impl Fir for SearchFir {
                             };
                             if let Some(ref brane_ref) = brane {
                                 let before_idx = find_stmt_index_in_brane(&node, brane_ref);
-                                if let Some((body, nyes)) = search_brane_children(brane_ref, name, before_idx, self.forward) {
+                                if let Some((body, nyes, sf_pat)) = search_brane_children(brane_ref, name, before_idx, self.forward) {
                                     if nyes.is_constanic() {
                                         self.core.push_ubc_child(body);
+                                        if let Some(p) = sf_pat {
+                                            *self.sf_inner_pattern.borrow_mut() = Some(p);
+                                        }
                                         // Econstanic/Woconstanic/Nk found → search becomes Woconstanic
                                         // (found something, but it's not a value yet)
                                         let search_nyes = if nyes == Nyes::Econstanic
@@ -544,7 +583,7 @@ impl Fir for SearchFir {
                     let anchor = Rc::clone(&self.core.foolish_children()[0]);
                     let resolved = resolve_anchor(&anchor);
                     let name = &self.pattern;
-                    if let Some((body, nyes)) = search_brane_children(&resolved, name, None, self.forward) {
+                    if let Some((body, nyes, _sf_pat)) = search_brane_children(&resolved, name, None, self.forward) {
                         self.core.push_ubc_child(body);
                         let search_nyes = if nyes == Nyes::Econstanic
                             || nyes == Nyes::Woconstanic
@@ -586,6 +625,9 @@ impl Fir for SearchFir {
     }
     fn as_search_anchored(&self) -> bool {
         self.anchored
+    }
+    fn as_sf_inner_pattern(&self) -> Option<String> {
+        self.sf_inner_pattern.borrow().clone()
     }
 }
 
@@ -996,15 +1038,15 @@ impl Fir for ConcatenationFir {
             }
             Nyes::Braning => {
                 let children = self.core.foolish_children().to_vec();
-                let any_nk = children
-                    .iter()
-                    .any(|c| c.borrow().core().get_nyes() == Nyes::Nk);
-                if any_nk {
-                    self.core.set_nyes(Nyes::Nk);
-                    return Ok(());
-                }
+                // Resolve through search wrappers — searches map NK→WOCONSTANIC,
+                // so checking the wrapper state misses NK from inner values.
+                let any_nk = children.iter().any(|c| {
+                    let resolved = get_value(c);
+                    resolved.borrow().core().get_nyes() == Nyes::Nk
+                });
                 let any_woconstanic = children.iter().any(|c| {
-                    let n = c.borrow().core().get_nyes();
+                    let resolved = get_value(c);
+                    let n = resolved.borrow().core().get_nyes();
                     n == Nyes::Econstanic || n == Nyes::Woconstanic
                 });
                 let mut merged_stmts: Vec<FirRef> = Vec::new();
@@ -1023,7 +1065,9 @@ impl Fir for ConcatenationFir {
                         merged_stmts.push(Rc::clone(stmt));
                     }
                 }
-                let merged_state = if any_woconstanic {
+                let merged_state = if any_nk {
+                    Nyes::Nk
+                } else if any_woconstanic {
                     Nyes::Woconstanic
                 } else {
                     Nyes::Constant
@@ -1375,6 +1419,7 @@ mod tests {
                 anchored,
                 forward: false,
                 found_body: RefCell::new(None),
+                sf_inner_pattern: RefCell::new(None),
             })
         })
     }

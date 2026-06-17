@@ -156,6 +156,12 @@ pub trait Fir: std::fmt::Debug {
     fn as_brane_characterizations(&self) -> &[String] {
         &[]
     }
+
+    /// SF inner search pattern — set when a search resolved through SF
+    /// re-evaluation. Used by the humanizer to preserve the search wrapper.
+    fn as_sf_inner_pattern(&self) -> Option<String> {
+        None
+    }
 }
 
 /// Returns the deepest resolved value this FIR represents.
@@ -565,6 +571,7 @@ mod get_value_tests {
                 anchored,
                 forward: false,
                 found_body: RefCell::new(None),
+                sf_inner_pattern: RefCell::new(None),
             })
         })
     }
