@@ -1,0 +1,32 @@
+{
+  !! Test the HFS NYES display rules from FOOP-62 §9
+  
+  !! 1. Constants — never show nyes
+  a = 1;
+  b = 2;
+  
+  !! 2. Operator with result (nnk_constanic) — no nyes
+  sum = a + b;
+  
+  !! 3. NK — always show with reason
+  bad = 1 / 0;
+  
+  !! 4. Search that finds a constant — no nyes (nnk_constanic + result)
+  found = a;
+  
+  !! 5. Search that doesn't find anything — ECONSTANIC shown
+  missing = nowhere;
+  
+  !! 6. SFF body — searches inside stay EMBRYONIC
+  sff_val = <<a + b>>;
+  
+  !! 7. SF wrapping search — should show search wrapper
+  sf_val = <a>;
+  
+  !! 8. Forward reference — WOCONSTANIC shown
+  fwd = later;
+  later = 99;
+  
+  !! 9. Brane with mixed children
+  result = sum + found;
+}
