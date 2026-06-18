@@ -274,8 +274,8 @@ through.
       SearchFir, IndexFir, HeadTailFir, StayFoolishFir, StayFullyFoolishFir,
       ConcatenationFir. Each kind gets unit tests before moving to the next.
       (2026-06-13: all kinds implemented, 64 unit tests pass)
-- [x] **ALL 144 SNAPSHOT TESTS PASS!** 86/86 unit tests pass. 84/84 foolish-core tests pass.
-      - **Progress**: 144/144 snapshot tests pass (100%), 86 unit tests pass
+- [x] **ALL 146 SNAPSHOT TESTS PASS!** 86/86 unit tests pass. 84/84 foolish-core tests pass.
+      - **Progress**: 146/146 snapshot tests pass (100%), 86 unit tests pass
       - **Key decisions**: NK is constanic (constantew ⊂ constanic), decide_nyes_due_to_children() helper,
         is_nnk_constanic() for 'constanic but not NK' cases, SFF immediately Independent
       - **should_show_nyes simplified**: only CONSTANT/INDEPENDENT are hidden. EMBRYONIC, WOCONSTANIC,
@@ -290,6 +290,7 @@ through.
       - **^/$ → #0/#-1 translation**: compiler translates HeadTail to Index
       - **RefCell borrow discipline**: interior mutability pattern, step_fir_ref as free function
       - **Runtime safety**: depth limit, panic = "unwind", catch_unwind in snapshot harness
+      - **Sequencer tests**: sequencer_nyes_display.foo and sequencer_edge_cases.foo added
 
 ## Phase 4 — Switch UBCa off the UBC delegation; cross-check is the oracle
 
