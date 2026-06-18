@@ -1,0 +1,32 @@
+{
+  !! Sequencer edge cases for FOOP-62 §9 rendering rules
+  
+  !! 1. Nested SFF — inner searches stay EMBRYONIC
+  nested_sff = <<a + <<b>>>>;
+  
+  !! 2. SF wrapping SFF — should show SF wrapper
+  sf_of_sff = <sff_val>;
+  sff_val = <<a>>;
+  
+  !! 3. Search chain — nested searches
+  chain = missing;
+  missing = nowhere;
+  
+  !! 4. Operator with NK operand
+  nk_op = 1 / 0 + 5;
+  
+  !! 5. Concatenation with NK
+  nk_concat = {bad = 1 / 0} ⨃ {good = 42};
+  
+  !! 6. Forward reference chain
+  fwd1 = fwd2;
+  fwd2 = fwd3;
+  fwd3 = 99;
+  
+  !! 7. Deeply nested SF
+  deep_sf = <a>;
+  
+  !! 8. Mixed SF/SFF in same brane
+  mixed_sf = <a>;
+  mixed_sff = <<b>>;
+}
