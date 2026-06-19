@@ -1,0 +1,32 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{a=10, b=20, c=30, result=#-1 + #-2, result2=#-1 * #-2, result3=#-1 - #-2;}
+```
+[0] RESULT:
+```hfssnap
+{NK
+  a=10;
+  b=20;
+  c=30;
+  result=50;
+  result2=Op*(??? (constanic_clone called on NYE FIR), INVARIANT-VIOLATED: constanic_clone called on NYE FIR, 30, NK);
+  result3=Op-(
+      ??? (constanic_clone called on NYE FIR), INVARIANT-VIOLATED: constanic_clone called on NYE FIR,
+      ??? (constanic_clone called on NYE FIR), INVARIANT-VIOLATED: constanic_clone called on NYE FIR,
+      NK
+  )
+}
+```
+COMMENTS:
+```markdown
+complex_unanchored_seeks_with_operations
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: M/yC8Ry9PdL1vl1T64COjmRKRiQiZKNUZ7UMAvW5Fy8SvMWDMzhwNCdj0Q62bord7I5ft8E7lK0CQANONGtHAQ==
+HFS signature: 8rEFettkvElJsu+bi3mEJ2PH4HsAhMh1Bge1PyMRD3vTebpqRDV5/XacFC74QoYIVAD4znoZct2Wo3nxzzbZCg==
+Comments signature: kDFMYodx4vGLnxzcYmgkc2RjVTgx7em9bDJ0OvOpjfZdN72rIDeECS/c7ClsxVrOeuVVhdpU14ZX9YYmysZTBg==

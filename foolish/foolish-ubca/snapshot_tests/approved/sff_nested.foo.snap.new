@@ -1,0 +1,27 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{a=1,b=2; c=<<a+<<b>>>>; c; c;}
+```
+[0] RESULT:
+```hfssnap
+{WOCONSTANIC
+  a=1;
+  b=2;
+  c=Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, EMBRYONIC), WOCONSTANIC);
+  ?(result=Op+(1, ?(pattern='^b$', UNANCHORED, EMBRYONIC), PREMBRIONIC), pattern='^c$', UNANCHORED, WOCONSTANIC);
+  ?(result=Op+(1, ?(pattern='^b$', UNANCHORED, EMBRYONIC), PREMBRIONIC), pattern='^c$', UNANCHORED, WOCONSTANIC)
+}
+```
+COMMENTS:
+```markdown
+sff_nested
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: lhcizF48neDw/0Ot29cyjAKKVN2RJsqhMEqKOBwHi1AC7LmDHeXb9dBvby6kqQzBJhSJHHAXCtmjZ9gbF1ZHAw==
+HFS signature: qFz5SiR1Fe5LEzKZWktrZiJNPVgMjJPK3Iv1tg5hUsTxsXIRoorbJa1COPEu+RXEz94j521TGEzhZHByq045Bw==
+Comments signature: 5eYObsx1SJX2yD0pFFkQFty1jbMlqlll2KxpOU0VjIa+u9+NGIvpzswEFBx0TPpW9KwvuKZwa9JcIvy8I4YUCw==
