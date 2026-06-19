@@ -52,14 +52,30 @@ pub struct Scope {
     pub current_brane: Option<FirRef>,
     /// Placeholder: current statement index
     pub current_stmt_idx: Option<usize>,
+    /// True when the current evaluation is inside an SF-mark's RHS (FOOP-62 §10.1,
+    /// "Terminology: ignorance"). `step()` carries this down the step recursion; it
+    /// seeds each `constanic_clone`'s `descendent_of_sfm_and_foolishly_ignorant`.
+    /// When true, clones copy ALL NYES unchanged (foolishly ignorant); when false,
+    /// the normal NYES-transfer rule applies.
+    pub has_ancestral_sfm: bool,
 }
 
 impl Scope {
-    /// Create a minimal scope with no position.
+    /// Create a minimal scope with no position (not foolishly ignorant).
     pub fn empty() -> Self {
         Self {
             current_brane: None,
             current_stmt_idx: None,
+            has_ancestral_sfm: false,
+        }
+    }
+
+    /// Return a copy of this scope with `has_ancestral_sfm` set — used when
+    /// descending into an SF-mark's RHS so descendants clone foolishly ignorant.
+    pub fn with_ancestral_sfm(&self, has_ancestral_sfm: bool) -> Self {
+        Self {
+            has_ancestral_sfm,
+            ..self.clone()
         }
     }
 }
@@ -218,7 +234,15 @@ fn step_fir_ref_inner(this: &FirRef, scope: &Scope, depth: usize) -> Result<Step
             if front_rc.borrow().core().get_nyes().is_constanic() {
                 this.borrow().core().pop_front_task();
             } else {
-                step_fir_ref_inner(&front_rc, scope, depth + 1)?;
+                // Descending into an SF-mark's RHS turns on foolish ignorance for the
+                // whole subtree (FOOP-62 §10.1): the child and its descendants clone
+                // foolishly ignorant. Once set, the flag stays set for deeper levels.
+                let child_scope = if this.borrow().kind() == FirKind::StayFoolish {
+                    scope.with_ancestral_sfm(true)
+                } else {
+                    scope.clone()
+                };
+                step_fir_ref_inner(&front_rc, &child_scope, depth + 1)?;
             }
             Ok(StepReport::Progress(this.borrow().core().get_nyes()))
         }
