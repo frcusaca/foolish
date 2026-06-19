@@ -125,6 +125,12 @@ impl ProtoBrane {
         self.parent.upgrade()
     }
 
+    /// Clone the parent Weak. Used by fir_op_step for constanic-clone
+    /// of results pushed to ubc_children.
+    pub fn parent_weak(&self) -> Weak<RefCell<dyn Fir>> {
+        self.parent.clone()
+    }
+
     /// Root iff parent upgrades to a node that is pointer-equal to self.
     /// Caller passes `self_rc` because ProtoBrane has no back-pointer.
     pub fn is_root(&self, self_rc: &FirRef) -> bool {

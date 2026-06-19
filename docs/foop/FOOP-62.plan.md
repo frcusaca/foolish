@@ -21,13 +21,65 @@
 >
 > Spec: `docs/foop/FOOP-62.md`. Memory: [[foop62-ubca-two-store-protobrane]].
 
+## Phase −1 — HIGH PRIORITY: implement & verify foolish-ignorance clone model (BLOCKING)
+
+> Raised 2026-06-19 (Atlas + previous coding agent's open concern). Spec rev 14 defines the
+> **ignorance** model: a `Scope.has_ancestral_sfm: bool` carried by `step()`, seeding each
+> `constanic_clone`'s `descendent_of_sfm_and_foolishly_ignorant: bool`. Ground truth as of SHA
+> `cc3fe590` on branch `foop-62-ubca-mimo` in directory
+> `/home/hcbusy/tmp/foolish-worktrees/foop-62-ubca-mimo` (plus this session's uncommitted
+> doc-comment edits), in `foolish/foolish-ubca/src/`:
+>   - `Scope` is a 2-field STUB in `fir_trait.rs` (`current_brane`, `current_stmt_idx`) with
+>     `Scope::empty()`. `step_fir_ref`/`fir_op_step` already take `&Scope` but ignore it; no
+>     `has_ancestral_sfm`. `bon` is NOT used in this crate.
+>   - `constanic_clone_normal_at(fir_ref, new_parent, index)` has NO flag param; only normal
+>     mode exists.
+> Each item corrects code to match spec. These BLOCK further FOOP-62 work (they change
+> evaluation semantics, hence snapshots).
+
+- [ ] **Add `has_ancestral_sfm: bool` to `Scope`** (`fir_trait.rs`), default false; thread it
+      through `step_fir_ref`/`fir_op_step` (already take `&Scope`). Set true when entering an
+      SF-mark's RHS; carried down the step recursion.
+- [ ] **Add `descendent_of_sfm_and_foolishly_ignorant: bool` param to the clone** (rename/
+      generalize `constanic_clone_normal_at`). Call sites in `step()` pass
+      `scope.has_ancestral_sfm`; the clone's OWN recursion passes the CALLER's flag (the two
+      recursions are independent — do NOT re-read scope inside clone recursion).
+- [ ] **NYES-transfer rule by mode (spec Terminology + §6b).**
+      - flag = false (normal): constanic NYES transfer UNCHANGED; pre-constanic → PREMBRYONIC.
+        KNOWN GAP: compound kinds (Operator/Search/Index/HeadTail/Brane/Statement/Concatenation)
+        hard-code `Nyes::Prembrionic` regardless of source — fix to carry NYES when constanic.
+      - flag = true (foolish): ALL NYES copied unchanged (constanic AND pre-constanic).
+      Then re-run snapshots; PRESENT `.snap.new` to human (NEVER auto-accept).
+- [ ] **ConstantInt / Nk leaves transfer NYES unchanged** — verify they stay unchanged (both
+      modes) after the fix above.
+- [ ] **THE BIG BUT — later search of an SF-mark strips the mark, runs normal (spec §9.x +
+      §10.1).** KNOWN GAP: clone has `FirKind::StayFoolish` arm that rebuilds a `StayFoolishFir`
+      at PREMBRYONIC. Fix: when a SEARCH clones an SF-mark, STRIP the mark (clone the inner
+      expression) with the flag FALSE (normal mode), so an ECONSTANIC inner re-resolves. Re-run
+      snapshots; PRESENT to human.
+- [ ] **SFF / fully-foolish construction (spec Terminology + §10.1).** Verify SFF is realized
+      purely at CONSTRUCTION (descendants built ECONSTANIC); confirm the
+      `FirKind::StayFullyFoolish` clone arm against the UBC oracle (currently rebuilds a wrapper
+      at PREMBRYONIC) and correct to match oracle + spec.
+- [ ] **Add/strengthen unit tests:** (a) normal clone — constanic (ECONSTANIC) compound stays
+      ECONSTANIC, pre-constanic compound → PREMBRYONIC; (b) foolish clone (flag true) — ALL NYES
+      copied verbatim; (c) `has_ancestral_sfm` propagation through step + clone recursion;
+      (d) later search of an SF yields inner result with NO `StayFoolish` kind present and the
+      inner re-resolves; (e) leaves unchanged in both modes.
+- [ ] **Re-verify against the UBC oracle** (cross-check harness, Phase 1) after the fixes —
+      UBCa sequencer output must still match UBC byte-for-byte. Any snapshot delta is
+      PRESENTED to human; AI MUST NOT auto-accept.
+
 ## Phase 0 — Gate & baseline (BLOCKING)
 
-- [ ] Create worktree at `/home/hcbusy/tmp/foolish-worktrees/foop-62-ubca-mimo` with branch `foop-62-ubca-mimo`
+- [x] Create worktree at `/home/hcbusy/tmp/foolish-worktrees/foop-62-ubca-mimo` with branch `foop-62-ubca-mimo`
+      (worktree exists; `foolish-ubca` crate present and compiling)
+      (2026-06-19)
 - [ ] Confirm spec FOOP-62.md is reviewed/approved by human (status Draft → Brewing/Final)
-- [ ] DECIDED: UBCa is a new sibling CRATE `foolish-ubca` (like `foolish-ubcb`), NOT an
+- [x] DECIDED: UBCa is a new sibling CRATE `foolish-ubca` (like `foolish-ubcb`), NOT an
       in-crate module; original UBC stays in `foolish-core`. Task queue = `std::VecDeque`.
-      (2026-06-09 14:45)
+      (decided 2026-06-09 14:45; crate `foolish/foolish-ubca/` created and building 2026-06-19)
+      (2026-06-19)
 - [x] Human approval to add `bon` (`3.x`) to `[workspace.dependencies]` (new third-party dep)
       — APPROVED by Atlas: add latest stable bon
       (2026-06-09 14:30)
@@ -302,6 +354,18 @@ through.
 - (log split sub-tasks and timestamps here as work proceeds)
 
 ## Last Updated
+
+**Date**: 2026-06-19 (Phase −1 added — constanic-clone semantics verification)
+**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
+**Changes**: Added a HIGH-PRIORITY blocking **Phase −1** at the top of the plan to verify the
+spec-rev-14 ignorance semantics against the code and correct each divergence:
+(1) normally-ignorant NYES-transfer rule (constanic transfers unchanged; pre-constanic →
+PREMBRYONIC) — KNOWN GAP: compound kinds hard-coded to PREMBRYONIC; (2) SF wrapper must never
+be cloned (constanic-clone of an SF FIR = clone of its frozen inner result) — KNOWN GAP:
+`FirKind::StayFoolish` clone arm re-wraps; (3) SFF fully-foolish construction check; plus unit
+tests and UBC-oracle re-verification. Marked Phase 0 worktree-creation and "new sibling crate"
+boxes done (`foolish-ubca` exists and compiles; 85/86 ubca snapshots pass, the 1 failure is a
+parser edge case in `chained_undeclared.foo`). Merged FOOP-62.md (spec rev 14) is in place.
 
 **Date**: 2026-06-10 (third update — worktree declaration)
 **Updated By**: Claude Code 2.1.119 (Claude Code); Sonnet 4.6
