@@ -67,6 +67,90 @@ UBCa classifies NYES states into three categories:
 - `is_nnk_constanic()` = constanic but NOT NK — for code that needs "constanic but not NK" (e.g., search results that propagate NK separately)
 but it is settled so it does not block the task queue.
 
+## Terminology: ignorance — normally ignorant, foolishly ignorant, fully foolish
+
+Every clone and every premembryonic construction in UBCa happens with a *degree of
+ignorance* — how much of its surroundings the resulting FIR is permitted to see and
+re-resolve. There are exactly two **modes of `constanic_clone`** (normal and foolishly
+ignorant) plus one **construction** behavior (fully foolish). The whole spec uses these three
+words for them.
+
+`constanic_clone` is **one function** carrying a boolean mode flag, named very descriptively:
+
+```text
+constanic_clone(source, new_parent, descendent_of_sfm_and_foolishly_ignorant: bool = false)
+```
+
+**Two independent recursions, one flag bridged between them.** The `step()` recursion carries
+a `Scope` (parent, line number, …) which also holds **`has_ancestral_sfm: bool`** — true when
+the current evaluation is inside an SF-mark's RHS. The `constanic_clone` recursion is *separate*
+and carries its own `descendent_of_sfm_and_foolishly_ignorant` parameter. They connect thus:
+- **When `step()` calls `constanic_clone`**, it passes `descendent_of_sfm_and_foolishly_ignorant
+  = scope.has_ancestral_sfm`.
+- **When `constanic_clone` calls itself recursively**, the child inherits the **caller's**
+  `descendent_of_sfm_and_foolishly_ignorant` (it does NOT re-read any scope — clone recursion
+  propagates its own flag).
+
+**Normally ignorant** — `descendent_of_sfm_and_foolishly_ignorant == false` (the default).
+A FIR cloned *normally ignorant* is **not blind**: it sees its new surroundings and
+re-resolves there. The clone's NYES is set by a single precise rule:
+
+> **NYES-transfer rule (normal mode).** *Constanic* NYES are transferred **unchanged** to the
+> clone; *pre-constanic* states (PREMBRYONIC/EMBRYONIC/BRANING) are transferred as
+> **PREMBRYONIC** to the clone.
+
+Concretely, applying that rule:
+- CONSTANT / INDEPENDENT children are already resolved (constanic everywhere): their NYES
+  transfers **unchanged**, so they are effectively **referenced** rather than re-resolved.
+- ECONSTANIC / WOCONSTANIC / NK children are constanic-in-context: their NYES **also
+  transfers unchanged** — an ECONSTANIC clone stays ECONSTANIC, a WOCONSTANIC clone stays
+  WOCONSTANIC. (Recoordination may later let an ECONSTANIC clone find a value in its new
+  AB/IB, but that happens through ordinary stepping, NOT by pre-resetting it at clone time.)
+- PREMBRYONIC / EMBRYONIC / BRANING children (pre-constanic) are transferred as
+  **PREMBRYONIC**, so their searches re-run against the new AB/IB. This is ordinary
+  recoordination (FOOP-7).
+
+**Foolishly ignorant** — `descendent_of_sfm_and_foolishly_ignorant == true`. In this mode
+the clone is *foolish*: **ALL NYES are copied unchanged** — constanic AND pre-constanic alike,
+with **no reset to PREMBRYONIC**. The clone stubbornly keeps every node exactly as it was
+found instead of re-resolving anything.
+
+> **When the flag is set.** Processing the **RHS of an assignment whose RHS carries an
+> SF-mark (`<…>`)** sets **`scope.has_ancestral_sfm = true`** on the `step()` Scope, which is
+> carried down through the step recursion. Each `constanic_clone` invoked from `step()` is then
+> passed `descendent_of_sfm_and_foolishly_ignorant = scope.has_ancestral_sfm`, and clone's own
+> recursion **propagates that flag downward** to every descendant cloned while building that
+> frozen RHS value. (Hence the names: Scope's `has_ancestral_sfm`; clone's
+> `descendent_of_sfm_and_foolishly_ignorant`.) This is how an SF freezes its result at
+> assignment time.
+
+> **⚠ THE VERY BIG BUT — a later search of an SF-mark.** When a *later search* resolves to an
+> **SF-mark node** and calls `constanic_clone` on it, that clone:
+> 1. **automatically STRIPS the SF-mark** (the `StayFoolish` wrapper is removed — the clone is
+>    the inner expression, not a re-wrapped SF node), AND
+> 2. **does NOT set `descendent_of_sfm_and_foolishly_ignorant`** — it proceeds in **normal
+>    mode**. So an ECONSTANIC inner value **re-resolves** in the new context via ordinary
+>    stepping, exactly as any normal clone would.
+> This is the asymmetry that has caused repeated confusion: building an SF's RHS is foolish
+> (everything frozen), but consuming an SF later via search is normal (mark stripped, normal
+> NYES-transfer, re-resolution allowed).
+
+**Fully foolish construction** — the *premembryonic construction* behavior used for an
+SFF-marker (`<<…>>`). Here we say: **"this is fully foolish construction of the FIR tree
+from here onward."** The SFF-marked expression is constructed with **all descendant search
+FIRs instantiated directly as ECONSTANIC** (built that way at construction; nothing is
+cloned, because no search ever runs). The marker is then immediately settled from its
+child's NYES (e.g. `<<1+1>>` → CONSTANT, `<<a+b>>` → WOCONSTANIC). Fully foolish is a
+*construction-time* property, never a clone — SFF executes zero searches, so there is
+nothing to clone.
+
+| word | flag / when | act | NYES handling |
+|---|---|---|---|
+| **normally ignorant** | clone flag = false (default); `scope.has_ancestral_sfm = false` | clone | constanic unchanged; pre-constanic → PREMBRYONIC |
+| **foolishly ignorant** | clone flag = true, seeded from `scope.has_ancestral_sfm` while building SF-marked RHS; propagates through clone recursion | clone | **ALL NYES copied unchanged** |
+| **(BUT) later search of an SF-mark** | clone flag = false | clone, **mark stripped** | normal rule (re-resolves) |
+| **fully foolish** | SFF `<<…>>` premembryonic | construction | descendants built ECONSTANIC; no clone |
+
 ## Motivation
 
 ### The problem today
@@ -780,6 +864,18 @@ fn constanic_clone(source: OperatorFir, new_parent: Weak<RefCell<dyn Fir>>) -> F
 - This makes constanic clone go **through the same builder** as fresh construction — so
   6a's "only the builder creates Firs" holds for clones too. There is no separate
   `clone()`-then-mutate path that could bypass the builder.
+- **Ignorance of the clone (see Terminology).** `constanic_clone` carries one boolean mode
+  flag, `descendent_of_sfm_and_foolishly_ignorant` (default `false`):
+    - **`false` (normally ignorant):** obeys the NYES-transfer rule — **constanic NYES transfer
+      unchanged** (CONSTANT/INDEPENDENT referenced; ECONSTANIC/WOCONSTANIC/NK keep their state
+      and re-resolve later via stepping), **pre-constanic states transfer as PREMBRYONIC**.
+    - **`true` (foolishly ignorant):** **ALL NYES copied unchanged** (constanic and
+      pre-constanic alike, no reset). Set when building the RHS of an SF-marked assignment;
+      propagates recursively to descendants.
+  **THE BIG BUT:** when a later *search* clones an **SF-mark node**, the clone **strips the
+  SF-mark** and runs with the flag **`false`** (normal mode), so the inner value re-resolves
+  normally. **Fully foolish** (SFF) is not a clone at all: SFF construction builds its
+  descendants ECONSTANIC up front (§10.1).
 - `updater(self)` is the value→builder bridge; `#[builder(on(_, overwritable))]` is what lets
   the seeded `parent`/`nyes` be overwritten. (Confirmed against `bon`'s documented updater
   pattern.) `nyes` set here is one of the three sanctioned NYES writers (constanic clone, §1).
@@ -927,43 +1023,51 @@ flux); the instant `step()` returns, the invariant holds again. Consequences tha
   because `scope.search_ib`/`search_ab` are bounded backward from `current_stmt_idx`, and
   tasks drain in statement order. (PROPOSED; validate in Phase 3 — if it fails, the brane
   `step` wrapper remains the fallback.)
-- **SF/SFF: difference is constructional, not behavioral (NO `step` override).** An SF/SFF
-  wrapper is a len-1 ProtoBrane over its expr. Its semantics (SF ⇒ `Ignorance::Foolishly` —
-  searches run and results are constanic-cloned with Foolishly flag; SFF ⇒ children
-  instantiated as ECONSTANIC via builder, no searches run, no cloning) are realized by **constructing the wrapped child in the right state** — and,
-  when an SF/SFF value is found as a search result, by `constanic_clone` rebuilding it with
-  the right states. The *normal* drain then produces the correct behavior. The ignorance
-  level carries on `Scope` (`how_ignorant()`, §10.1 — renamed from `EvalContext`). So
-  SF/SFF need no special stepping — only special construction. (This corrects the review's
-  reading of `step_except_brane_searches` as a separate algorithm: in the ProtoBrane model
-  that work moves into construction-time state, not a per-call override.)
-- **SF Ignorance propagates recursively downward.** When an SF-marked expression `<x>` is
-  encountered, the `Ignorance::Foolishly` flag is set on the Scope and **propagates
-  recursively to all child evaluations** within that SF expression. This means searches
-  inside nested branes within the SF expression also see `Foolishly` ignorance. The flag
-  is inherited by children unless overridden by a deeper SF marker. SFF does not use
-  Ignorance — its children are instantiated as ECONSTANIC via builder setup.
-- **Constanic-clone behavior varies by ignorance flag.** The constanic-clone operation
-  behaves differently depending on the `Ignorance` level of the current scope:
+- **SF/SFF: difference is in clone-mode + construction, not in stepping (NO `step` override).**
+  An SF/SFF wrapper is a len-1 ProtoBrane over its expr. SF ⇒ **foolishly ignorant**: building
+  its RHS clones with `descendent_of_sfm_and_foolishly_ignorant = true` (ALL NYES copied
+  unchanged, propagated recursively), freezing the result. SFF ⇒ **fully foolish construction**:
+  children instantiated as ECONSTANIC via builder, no searches run, no cloning. The *normal*
+  drain then produces the correct behavior; no live `Ignorance` field on `Scope` is required.
+  So SF/SFF need no special stepping — only the clone-mode flag (SF) and special construction
+  (SFF). (This corrects the review's reading of `step_except_brane_searches` as a separate
+  algorithm: in the ProtoBrane model that work moves into the clone flag + construction state,
+  not a per-call step override.)
+- **Foolish ignorance propagates recursively downward — but a later search of an SF strips it.**
+  When the RHS of an SF-marked assignment is built, `descendent_of_sfm_and_foolishly_ignorant`
+  is `true` and **propagates recursively to all descendant clones** within that SF expression,
+  so everything is copied verbatim (frozen). **THE BIG BUT:** when a later *search* resolves to
+  the **SF-mark node** and clones it, the clone **strips the SF-mark** and runs with the flag
+  **`false`** (normal mode) — the inner value re-resolves normally. SFF is not a clone behavior
+  at all — it is **fully foolish construction**: descendants instantiated as ECONSTANIC.
+- **`constanic_clone` mode flag governs the NYES handling** (see Terminology):
 
-  **Under `Foolishly` flag (SF context):**
-  - Constants/independents are **referenced** (not copied or cloned)
-  - All constanic states are **copied with their constanic state**
-  - The result is that coordination does NOT trigger new searches or results
-  - This allows combining code elements with their existing search results,
-    without triggering new searches
-  - Example: SF `<x>` where `x=10` → constanic-clone `Int(10)` with Foolishly →
-    the clone is Constant, no new search triggered
+  **Foolishly ignorant (`descendent_of_sfm_and_foolishly_ignorant = true`, building an SF RHS):**
+  - **ALL NYES are copied unchanged** — constanic and pre-constanic alike, no reset. The whole
+    SF subtree is frozen exactly as found; the flag propagates recursively to descendants.
+  - The effect is that the SF keeps the answer(s) it first found: nothing re-resolves.
+  - Example: `b = <a>` where `a` is an unresolved search (ECONSTANIC) → the SF freezes `a`'s
+    subtree with every NYES copied verbatim (the ECONSTANIC stays ECONSTANIC, NOT reset).
 
-  **Under `Normally` flag (normal context):**
-  - Constants/independents are **referenced** (not copied or cloned)
-  - All constanic states are **reset to pre-constanic states** so they may
-    re-evaluate within their new context
-  - This triggers new searches when the cloned value is coordinated into a new context
-  - Example: normal `b = a` where `a=10` → constanic-clone `Int(10)` with Normally →
-    the clone is Prembrionic, ready to re-evaluate in new context
+  **Later search of an SF-mark (flag = false, mark stripped):**
+  - The `StayFoolish` wrapper is **removed**; the clone is the inner expression in **normal
+    mode**, so its NYES follow the normal NYES-transfer rule and ECONSTANIC inners re-resolve.
+  - Example: a later search finds `b` (an SF) → clone strips the mark and re-resolves the inner
+    value in the searching context, normally ignorant.
 
-  **SFF context (no Ignorance flag):**
+  **Normally ignorant (normal context)** — applies the NYES-transfer rule (Terminology):
+  - **Constanic** NYES are transferred **unchanged** (CONSTANT/INDEPENDENT are effectively
+    referenced; ECONSTANIC stays ECONSTANIC, WOCONSTANIC stays WOCONSTANIC, NK stays NK).
+  - **Pre-constanic** states (PREMBRYONIC/EMBRYONIC/BRANING) are transferred as **PREMBRYONIC**
+    so they re-evaluate within their new context.
+  - A re-resolvable clone is an ECONSTANIC one: it re-runs its search through ordinary
+    stepping in the new context — it is NOT pre-reset to pre-constanic at clone time.
+  - Example: normal `b = a` where `a` is an unresolved search (ECONSTANIC) → normally-ignorant
+    clone stays **ECONSTANIC**, then re-resolves via stepping in `b`'s context.
+  - Example: normal `b = a` where `a=10` (CONSTANT) → clone's NYES transfers unchanged
+    (CONSTANT) — already a value, nothing to re-evaluate.
+
+  **Fully foolish construction (SFF context):**
   - SFF never runs searches — children are instantiated as ECONSTANIC via builder
   - No constanic-clone occurs (nothing to clone)
   - SFF is immediately Independent (self-contained constant)
@@ -1009,18 +1113,61 @@ enough — the scope already knows the line number to track `-1` from.
 
 #### 10.1 The capability surface
 
-```rust
-/// Ignorance — how much of its surroundings a search is permitted to see.
-/// Renamed from EvalContext { Normal, Sf, Sff }.
-pub enum Ignorance {
-    Normally,   // sees everything (was: Normal)
-    Foolishly,  // SF: runs searches and uses a special constanic-clone (carrying the Foolishly flag) to clone the result; propagates recursively downward (was: Sf)
-    // Note: Fully Foolish constanic clone does not exist.
-    // SFF marker means the expression is instantiated with all descendant children
-    // created as ECONSTANIC (via builder setup, not cloning). SFF never clones because
-    // it executes zero searches.
-}
+The two clone modes + one construction behavior (Terminology). The two clone modes are a
+boolean flag on `constanic_clone`, **not** a `Scope` field:
 
+```rust
+/// `constanic_clone`'s mode flag (default false). NOT a Scope field.
+/// descendent_of_sfm_and_foolishly_ignorant:
+///   false (NORMALLY ignorant): constanic NYES copied unchanged; pre-constanic → PREMBRYONIC.
+///   true  (FOOLISHLY ignorant): ALL NYES copied unchanged (constanic AND pre-constanic).
+///     Set when building the RHS of an SF-marked assignment; propagates recursively to
+///     descendant clones.
+///
+/// THE BIG BUT: when a later SEARCH clones an SF-mark node, the clone STRIPS the SF-mark and
+/// runs with the flag = false (normal mode) — the inner value re-resolves normally.
+///
+/// Fully foolish (SFF `<<…>>`) is a CONSTRUCTION property, not a clone: descendant search
+/// FIRs are instantiated as ECONSTANIC at construction; SFF runs zero searches, never clones.
+//
+// (Historical: this distinction was once sketched as `enum Ignorance { Normally, Foolishly }`,
+//  renamed from EvalContext { Normal, Sf, Sff }. The accepted design carries it as the clone
+//  flag above, so there is NO live `enum Ignorance` / `Scope.ignorance` field.)
+```
+
+**Implementation note (reconciled with the reference UBCa, branch `foop-62-ubca-mimo`).**
+The accepted UBCa implementation does **not** carry this as a runtime field on `Scope`. The
+two clone modes are the **`descendent_of_sfm_and_foolishly_ignorant` flag on the single
+`constanic_clone`** (false = normal NYES-transfer rule; true = ALL NYES copied unchanged,
+set while building an SF-marked RHS and propagated to descendants). Fully-foolish (SFF) is
+realized by building descendants ECONSTANIC at construction. So the three ignorance words are
+the **canonical vocabulary** and the contract every implementation must honor; there is no
+`enum Ignorance` / `Scope.ignorance` field — if you went looking for one in the code and could
+not find it, this is why.
+
+> **⚠ Implementation gap (unresolved as of 2026-06-19).**
+> Ground truth as of SHA `cc3fe590` on branch `foop-62-ubca-mimo` in directory
+> `/home/hcbusy/tmp/foolish-worktrees/foop-62-ubca-mimo` (plus this session's uncommitted
+> doc-comment edits to `fir_kinds.rs`):
+> - **`Scope` is a 2-field STUB** in `foolish-ubca/src/fir_trait.rs` (`current_brane:
+>   Option<FirRef>`, `current_stmt_idx: Option<usize>`) with a `Scope::empty()` constructor.
+>   `step_fir_ref(this, scope: &Scope)` and `fir_op_step(&self, scope: &Scope)` already thread
+>   it, but every kind ignores it (`_scope`) and call sites pass `Scope::empty()`. There is
+>   **no `has_ancestral_sfm` field yet**, and **`bon` is not used** in this crate (no builder).
+> - **`constanic_clone_normal_at(fir_ref, new_parent, index)` has NO flag parameter** — only
+>   the normal mode exists; the foolishly-ignorant (build-SF-RHS) path is unimplemented.
+> - **Compound NYES reset wrongly even in normal mode** — Operator/Search/Index/HeadTail/
+>   Brane/Statement/Concatenation clones hard-code `Nyes::Prembrionic` regardless of source
+>   NYES, so a *constanic* compound (ECONSTANIC/WOCONSTANIC) is wrongly reset.
+> - **SF/SFF re-wrapped on clone** — `FirKind::StayFoolish`/`FirKind::StayFullyFoolish` arms
+>   rebuild the wrapper; per "THE BIG BUT" a later search cloning an SF-mark must **strip the
+>   mark** (clone the inner expression in normal mode), NOT re-wrap.
+> Target: add `has_ancestral_sfm: bool` to `Scope`; add
+> `descendent_of_sfm_and_foolishly_ignorant: bool` to the clone; seed clone-from-step with
+> `scope.has_ancestral_sfm`; clone-recursion inherits the caller's flag. Tracked in
+> FOOP-62.plan.md Phase −1.
+
+```rust
 impl Scope {
     // --- unanchored searches (Scope supplies the position) ---
 
@@ -1044,11 +1191,17 @@ impl Scope {
 
     // --- context gates ---
 
-    /// 4. How ignorant is the current evaluation context? (asked and matched as
-    ///    an adverb: how_ignorant() -> Normally / Foolishly)
-    ///    Foolishly ⇒ searches run and results are constanic-cloned with Foolishly flag.
-    ///    SFF does not use Ignorance — children are instantiated as ECONSTANIC.
-    ///    Normally  ⇒ unrestricted.
+    /// 4. Is the current evaluation inside an SF-mark's RHS? Read `has_ancestral_sfm`
+    ///    (true ⇒ foolishly ignorant). `step()` seeds each constanic_clone's
+    ///    `descendent_of_sfm_and_foolishly_ignorant` from this field.
+    ///    has_ancestral_sfm = true (foolishly ignorant) ⇒ constanic_clone copies ALL NYES
+    ///      unchanged (constanic AND pre-constanic), freezing the SF RHS, recursively.
+    ///    has_ancestral_sfm = false (normally ignorant) ⇒ NYES-transfer rule: constanic
+    ///      unchanged, pre-constanic → PREMBRYONIC; ECONSTANIC re-resolves via stepping.
+    ///    THE BIG BUT: a later search cloning an SF-mark STRIPS the mark and runs with
+    ///      the flag false (normal), so the inner value re-resolves.
+    ///    Fully foolish (SFF) does NOT flow through here — descendants constructed ECONSTANIC.
+    pub fn has_ancestral_sfm(&self) -> bool;
     pub fn how_ignorant(&self) -> Ignorance;
 
     /// 5. Diagnostic sink (UNBOUND-NAME etc.).
@@ -1056,11 +1209,16 @@ impl Scope {
 }
 ```
 
-Private internals: `current_brane: FirRef`, `current_stmt_idx: usize`, `ignorance:
-Ignorance`, `alarms: Option<Rc<dyn AlarmSink>>`. No `entries`. The positional fields are
+Private internals: `current_brane: FirRef`, `current_stmt_idx: usize`,
+**`has_ancestral_sfm: bool`** (true inside an SF-mark's RHS; seeds each `constanic_clone`'s
+`descendent_of_sfm_and_foolishly_ignorant` — see Terminology), `alarms:
+Option<Rc<dyn AlarmSink>>`. No `entries`. There is **no** `ignorance: Ignorance` field — the
+normal/foolish distinction is the `has_ancestral_sfm` flag carried here plus the clone's own
+`descendent_of_sfm_and_foolishly_ignorant`; fully-foolish (SFF) is construction-time. The
+positional fields are
 **private** — no public `current_brane()`/`current_stmt_idx()` getters; FIRs interact only
 through the capability methods. (`block_brane_searches` as a separate bool disappears: it is
-derived from `Ignorance::Foolishly`. Verify during implementation that no current code path
+subsumed by `has_ancestral_sfm`. Verify during implementation that no current code path
 sets `block_brane_searches` independently of the SF context — flagged in Open Questions.)
 
 **Upward navigation: every Fir exposes `get_parent()`, `get_parent_statement()`, and
@@ -1137,7 +1295,9 @@ constructor (or `#[derive(bon::Builder)]`), so optional parts are simply omitted
 let scope = Scope::builder()
     .current_brane(brane_rc)
     .current_stmt_idx(3)
-    .ignorance(Ignorance::Foolishly)   // SF context; optional; defaults to Normally
+    .has_ancestral_sfm(true)      // optional; defaults false. true inside an SF-mark's RHS;
+                                  // seeds each constanic_clone's
+                                  // descendent_of_sfm_and_foolishly_ignorant (§10.1, Terminology).
     // .alarms(sink)               // optional; omitted here
     .build();
 ```
@@ -1441,6 +1601,26 @@ already-accepted FOOPs, which is corroborating evidence the model is right:
   rules.
 
 ## Last Updated
+
+**Date**: 2026-06-19 (revision 14 — ignorance terminology + foolish-flag model)
+**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
+**Changes**: Merged the `alpha` spec with the `foop-62-ubca-mimo` implementation's design and
+defined the **ignorance** terminology in its own section, used consistently in §6b/§9.x/§10:
+- **normally ignorant** = `constanic_clone` with `descendent_of_sfm_and_foolishly_ignorant =
+  false`: NYES-transfer rule — constanic NYES copied unchanged, pre-constanic → PREMBRYONIC.
+- **foolishly ignorant** = the same clone with the flag `true`: **ALL NYES copied unchanged**.
+  The flag is sourced from a new `Scope` field **`has_ancestral_sfm: bool`** (true inside an
+  SF-mark's RHS); `step()` seeds each clone with `scope.has_ancestral_sfm`, and clone's own
+  recursion inherits the **caller's** flag (two independent recursions).
+- **THE BIG BUT**: a later *search* that clones an SF-mark **strips the mark** and runs with
+  the flag `false` (normal), so the inner value re-resolves.
+- **fully foolish** = SFF construction (descendants built ECONSTANIC); not a clone.
+There is no live `enum Ignorance` / `Scope.ignorance` — this answers "why is there no enum for
+ignorance." Verified ground truth against `-mimo`: `Scope` is a 2-field stub in
+`fir_trait.rs`, `step` already takes `&Scope`, `bon` is not used, and
+`constanic_clone_normal_at` has no flag and re-wraps SF/SFF + hard-codes PREMBRYONIC for
+compounds — all flagged as the ⚠ implementation gap and tracked in FOOP-62.plan.md Phase −1.
+This spec is placed in both the `alpha` and `foop-62-ubca-mimo` worktrees.
 
 **Date**: 2026-06-14 (revision 13 — HFS constant rendering decision)
 **Updated By**: Sisyphus / mimo-v2.5-pro
