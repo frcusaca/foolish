@@ -8,15 +8,15 @@ pub enum UbcError {
     Eval(String),
 }
 
-/// Resolve a FIR to its concrete value. For resolved searches, returns the target.
+/// Resolve a FIR to its concrete value. For resolved searches, returns the result.
 /// For SFF/SF, strips the wrapper.
 pub fn resolve_to_value(fir: &FirRef) -> FirRef {
     match fir.borrow().fir_variant() {
         "Search" => {
-            if let Some(target) = fir.borrow().search_target_ref() {
+            if let Some(result) = fir.borrow().search_result_ref() {
                 let st = fir.borrow().state();
                 if st == Nyes::Constant || st == Nyes::Independent {
-                    return target;
+                    return result;
                 }
             }
             Rc::clone(fir)
@@ -261,7 +261,7 @@ fn reset_searches(fir: Fir) -> Fir {
     match fir {
         Fir::Search(inner) => {
             let mut s = *inner;
-            s.target = None;
+            s.result = None;
             s.state = Nyes::Embryonic;
             s.anchor = s.anchor.map(|a| fir_to_ref(reset_searches(clone_steppable(&a))));
             Fir::Search(Box::new(s))
@@ -398,7 +398,7 @@ fn step_except_brane_one(fir: &FirRef, scope: &Scope) -> Result<Option<Fir>, Ubc
                         let stripped = strip_sf_wrapper(clone_steppable(&found));
                         let mut found_rc: FirRef = fir_to_ref(stripped);
                         run_to_completion_with_scope(&mut found_rc, scope)?;
-                        fir.borrow_mut().set_search_target(Rc::clone(&found_rc));
+                        fir.borrow_mut().set_search_result(Rc::clone(&found_rc));
                         let cs = found_rc.borrow().state();
                         fir.borrow_mut().set_state(
                             if cs == Nyes::Constant || cs == Nyes::Independent {
@@ -496,8 +496,8 @@ pub fn constanic_clone(source: &FirRef, permit_nye: bool) -> FirRef {
 
 /// Follow WOCONSTANIC chain for short-circuiting.
 pub fn short_circuit(fir: &FirRef) {
-    let mut end_target: Option<FirRef> = None;
-    let mut current = fir.borrow().search_target_ref();
+    let mut end_result: Option<FirRef> = None;
+    let mut current = fir.borrow().search_result_ref();
     loop {
         let local_rc = match current {
             Some(rc) => rc,
@@ -505,14 +505,14 @@ pub fn short_circuit(fir: &FirRef) {
         };
         let state = local_rc.borrow().state();
         if state != Nyes::Woconstanic {
-            end_target = Some(local_rc);
+            end_result = Some(local_rc);
             break;
         }
-        let next_target = local_rc.borrow().search_target_ref();
-        current = next_target;
+        let next_result = local_rc.borrow().search_result_ref();
+        current = next_result;
     }
-    if let Some(end) = end_target {
-        fir.borrow_mut().set_search_target_direct(Some(Rc::clone(&end)));
+    if let Some(end) = end_result {
+        fir.borrow_mut().set_search_result_direct(Some(Rc::clone(&end)));
     }
 }
 

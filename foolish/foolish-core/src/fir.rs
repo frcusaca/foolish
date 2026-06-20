@@ -161,7 +161,7 @@ impl Nyes {
     }
 
     /// HFS NYES display rule for search / Index / HeadTail renders (FOOP-62 §9.x).
-    /// These nodes carry a result (the resolved target/anchor), so the display
+    /// These nodes carry a result (the resolved result/anchor), so the display
     /// rule depends on whether a result is present:
     /// - a) result present AND nnk_constanic → do NOT show nyes (the reader infers
     ///   it from the result object).
@@ -297,7 +297,7 @@ pub struct SearchFir {
     pub(crate) direction: SearchDirection,
     pub(crate) anchored: bool,
     pub(crate) anchor: Option<FirRef>,
-    pub(crate) target: Option<FirRef>,
+    pub(crate) result: Option<FirRef>,
     pub(crate) parent: Option<FirRef>,
     pub(crate) state: Nyes,
 }
@@ -384,7 +384,7 @@ pub trait Steppable: std::fmt::Debug {
                 if let Some(a) = v.anchor {
                     c.push(a);
                 }
-                if let Some(t) = v.target {
+                if let Some(t) = v.result {
                     c.push(t);
                 }
                 c
@@ -420,7 +420,7 @@ pub trait Steppable: std::fmt::Debug {
     fn binary_values(&self) -> Option<(i64, i64)> {
         None
     }
-    fn search_target_ref(&self) -> Option<FirRef> {
+    fn search_result_ref(&self) -> Option<FirRef> {
         None
     }
     fn search_parent_ref(&self) -> Option<FirRef> {
@@ -484,8 +484,8 @@ pub trait Steppable: std::fmt::Debug {
     // Mutation methods (defaults: no-op)
     fn set_binary_operands(&mut self, _left: Fir, _right: Fir) {}
     fn set_unary_expr(&mut self, _expr: Fir) {}
-    fn set_search_target(&mut self, _target: FirRef) {}
-    fn set_search_target_direct(&mut self, _target: Option<FirRef>) {}
+    fn set_search_result(&mut self, _result: FirRef) {}
+    fn set_search_result_direct(&mut self, _result: Option<FirRef>) {}
     fn set_search_parent(&mut self, _parent: FirRef) {}
     fn set_concat_merged(&mut self, _merged: FirRef) {}
     fn set_concat_merged_direct(&mut self, _merged: Option<FirRef>) {}
@@ -710,7 +710,7 @@ impl FirQueryable for Fir {
                 i.anchor
                     .as_ref()
                     .map(|a| Box::new(FirChildRef::new(Rc::clone(a))) as Box<dyn FirQueryable>),
-                i.target
+                i.result
                     .as_ref()
                     .map(|t| Box::new(FirChildRef::new(Rc::clone(t))) as Box<dyn FirQueryable>),
             ))
@@ -898,9 +898,9 @@ impl Steppable for Fir {
         }
     }
 
-    fn search_target_ref(&self) -> Option<FirRef> {
+    fn search_result_ref(&self) -> Option<FirRef> {
         if let Fir::Search(inner) = self {
-            inner.target.clone()
+            inner.result.clone()
         } else {
             None
         }
@@ -1086,15 +1086,15 @@ impl Steppable for Fir {
         }
     }
 
-    fn set_search_target(&mut self, target: FirRef) {
+    fn set_search_result(&mut self, result: FirRef) {
         if let Fir::Search(inner) = self {
-            inner.target = Some(target);
+            inner.result = Some(result);
         }
     }
 
-    fn set_search_target_direct(&mut self, target: Option<FirRef>) {
+    fn set_search_result_direct(&mut self, result: Option<FirRef>) {
         if let Fir::Search(inner) = self {
-            inner.target = target;
+            inner.result = result;
         }
     }
 
@@ -1249,8 +1249,8 @@ impl Steppable for SearchFir {
     fn search_anchored(&self) -> bool {
         self.anchored
     }
-    fn search_target_ref(&self) -> Option<FirRef> {
-        self.target.clone()
+    fn search_result_ref(&self) -> Option<FirRef> {
+        self.result.clone()
     }
     fn search_parent_ref(&self) -> Option<FirRef> {
         self.parent.clone()
@@ -1286,11 +1286,11 @@ impl SearchFir {
                 } else {
                     let mut found_rc: FirRef = fir_to_ref(stripped_fir);
                     crate::ubc::run_to_completion_with_scope(&mut found_rc, scope)?;
-                    self.target = Some(Rc::clone(&found_rc));
+                    self.result = Some(Rc::clone(&found_rc));
                     let cs = found_rc.borrow().state();
                     if cs == Nyes::Constant || cs == Nyes::Independent {
                         self.state = Nyes::Constant;
-                        return Ok(self.target.take().map(|t| clone_steppable(&t)));
+                        return Ok(self.result.take().map(|t| clone_steppable(&t)));
                     } else if cs.is_constanic() {
                         self.short_circuit_self();
                         self.state = Nyes::Woconstanic;
@@ -1329,11 +1329,11 @@ impl SearchFir {
                         }
                         Some(found) => {
                             let cloned = crate::ubc::constanic_clone(&found, false);
-                            self.target = Some(cloned);
-                            let cs = self.target.as_ref().unwrap().borrow().state();
+                            self.result = Some(cloned);
+                            let cs = self.result.as_ref().unwrap().borrow().state();
                             if cs == Nyes::Constant || cs == Nyes::Independent {
                                 self.state = Nyes::Constant;
-                                return Ok(self.target.take().map(|t| clone_steppable(&t)));
+                                return Ok(self.result.take().map(|t| clone_steppable(&t)));
                             } else if cs.is_constanic() {
                                 self.short_circuit_self();
                                 self.state = Nyes::Woconstanic;
@@ -1353,7 +1353,7 @@ impl SearchFir {
 
     /// Follow WOCONSTANIC chain in-place.
     fn short_circuit_self(&mut self) {
-        let mut current = self.target.clone();
+        let mut current = self.result.clone();
         loop {
             let local_rc = match current {
                 Some(rc) => rc,
@@ -1361,12 +1361,12 @@ impl SearchFir {
             };
             let state = local_rc.borrow().state();
             if state != Nyes::Woconstanic {
-                self.target = Some(local_rc);
+                self.result = Some(local_rc);
                 break;
             }
             // Follow chain
             let next = if local_rc.borrow().fir_variant() == "Search" {
-                local_rc.borrow().search_target_ref()
+                local_rc.borrow().search_result_ref()
             } else {
                 None
             };
@@ -1443,8 +1443,8 @@ impl IndexFir {
 
     fn step_unanchored(&mut self, scope: &crate::ubc::Scope) -> Result<Option<Fir>, UbcError> {
         if let (Some(brane), Some(stmt_idx)) = (scope.current_brane(), scope.current_stmt_idx()) {
-            let target = stmt_idx as i32 + self.offset;
-            match crate::search::index_in_brane(&brane, target) {
+            let index_pos = stmt_idx as i32 + self.offset;
+            match crate::search::index_in_brane(&brane, index_pos) {
                 None => {
                     self.state = Nyes::Nk;
                 }
@@ -1834,8 +1834,8 @@ fn fir_to_json(fir: &Fir) -> serde_json::Value {
             if let Some(ref a) = inner.anchor {
                 m.insert("anchor".into(), fir_to_json(&clone_steppable(a)));
             }
-            if let Some(ref t) = inner.target {
-                m.insert("target".into(), fir_to_json(&clone_steppable(t)));
+            if let Some(ref t) = inner.result {
+                m.insert("result".into(), fir_to_json(&clone_steppable(t)));
             }
             Value::Object(m)
         }
@@ -2011,8 +2011,8 @@ impl<'de> Deserialize<'de> for Fir {
                     .get("anchor")
                     .and_then(|v| serde_json::from_value::<Fir>(v.clone()).ok())
                     .map(fir_to_ref);
-                let target = obj
-                    .get("target")
+                let result = obj
+                    .get("result")
                     .and_then(|v| serde_json::from_value::<Fir>(v.clone()).ok())
                     .map(fir_to_ref);
                 Ok(Fir::Search(Box::new(SearchFir {
@@ -2020,7 +2020,7 @@ impl<'de> Deserialize<'de> for Fir {
                     direction,
                     anchored,
                     anchor,
-                    target,
+                    result,
                     parent: None,
                     state,
                 })))
@@ -2280,7 +2280,7 @@ pub struct SearchFirBuilder {
     direction: SearchDirection,
     anchored: bool,
     anchor: Option<FirRef>,
-    target: Option<FirRef>,
+    result: Option<FirRef>,
     parent: Option<FirRef>,
     state: Nyes,
 }
@@ -2292,7 +2292,7 @@ impl SearchFirBuilder {
             direction: SearchDirection::Backward,
             anchored: false,
             anchor: None,
-            target: None,
+            result: None,
             parent: None,
             state: Nyes::Embryonic,
         }
@@ -2309,8 +2309,8 @@ impl SearchFirBuilder {
         self.anchor = Some(fir_to_ref(anchor));
         self
     }
-    pub fn target(mut self, target: Fir) -> Self {
-        self.target = Some(fir_to_ref(target));
+    pub fn result(mut self, result: Fir) -> Self {
+        self.result = Some(fir_to_ref(result));
         self
     }
     pub fn parent(mut self, parent: Fir) -> Self {
@@ -2327,7 +2327,7 @@ impl SearchFirBuilder {
             direction: self.direction,
             anchored: self.anchored,
             anchor: self.anchor,
-            target: self.target,
+            result: self.result,
             parent: self.parent,
             state: self.state,
         }))
@@ -2699,18 +2699,18 @@ mod builder_tests {
             assert_eq!(i.direction, SearchDirection::Forward);
             assert!(i.anchored);
             assert_eq!(i.state, Nyes::Econstanic);
-            assert!(i.target.is_none());
+            assert!(i.result.is_none());
         } else {
             panic!("Expected Search");
         }
     }
 
     #[test]
-    fn test_search_builder_with_target() {
-        let target = ConstantIntFirBuilder::new(42).build();
-        let fir = SearchFirBuilder::new("x").target(target).build();
+    fn test_search_builder_with_result() {
+        let result = ConstantIntFirBuilder::new(42).build();
+        let fir = SearchFirBuilder::new("x").result(result).build();
         if let Fir::Search(i) = fir {
-            assert!(i.target.is_some());
+            assert!(i.result.is_some());
         } else {
             panic!("Expected Search");
         }

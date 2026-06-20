@@ -278,7 +278,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                                 borrowed.as_search_pattern().unwrap_or(""),
                             )
                             .anchored(borrowed.as_search_anchored())
-                            .target(inner_fir)
+                            .result(inner_fir)
                             .state(Nyes::Woconstanic)
                             .build();
                         }
@@ -295,7 +295,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                                 result_borrowed.as_search_pattern().unwrap_or(""),
                             )
                             .anchored(result_borrowed.as_search_anchored())
-                            .target(inner_result_fir)
+                            .result(inner_result_fir)
                             .state(result_borrowed.core().get_nyes())
                             .build();
                             drop(result_borrowed);
@@ -310,7 +310,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                         if resolved_state == Nyes::Constant || resolved_state == Nyes::Independent {
                             if let Some(sf_pat) = borrowed.as_sf_inner_pattern() {
                                 return SearchFirBuilder::new(sf_pat)
-                                    .target(resolved)
+                                    .result(resolved)
                                     .state(resolved_state)
                                     .build();
                             }
@@ -319,7 +319,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                     }
                     return SearchFirBuilder::new(borrowed.as_search_pattern().unwrap_or(""))
                         .anchored(borrowed.as_search_anchored())
-                        .target(resolved)
+                        .result(resolved)
                         .state(state)
                         .build();
                 }
@@ -424,7 +424,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                                     expr_borrowed.as_search_pattern().unwrap_or(""),
                                 )
                                 .anchored(expr_borrowed.as_search_anchored())
-                                .target(inner_result_fir)
+                                .result(inner_result_fir)
                                 .state(expr_borrowed.core().get_nyes())
                                 .build();
                             }
@@ -436,7 +436,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                                     expr_borrowed.as_search_pattern().unwrap_or(""),
                                 )
                                 .anchored(expr_borrowed.as_search_anchored())
-                                .target(inner_result_fir)
+                                .result(inner_result_fir)
                                 .state(expr_borrowed.core().get_nyes())
                                 .build();
                             }
@@ -463,7 +463,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                                 expr_borrowed.as_search_pattern().unwrap_or(""),
                             )
                             .anchored(expr_borrowed.as_search_anchored())
-                            .target(inner_fir)
+                            .result(inner_fir)
                             .state(Nyes::Woconstanic)
                             .build();
                             return StayFoolishFirBuilder::new(outer_search)
@@ -476,7 +476,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                                 expr_borrowed.as_search_pattern().unwrap_or(""),
                             )
                             .anchored(expr_borrowed.as_search_anchored())
-                            .target(inner_result_fir)
+                            .result(inner_result_fir)
                             .state(expr_borrowed.core().get_nyes())
                             .build();
                         }

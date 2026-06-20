@@ -189,12 +189,12 @@ fn proto_brane_formatter_with_result(
     let body_indent = body_indent_compute(open_indent, close_indent);
 
     // Compute result lines first (if any) — no trailing comma yet
-    let mut result_lines: FormattedLines = if let Some(target) = result {
+    let mut result_lines: FormattedLines = if let Some(result) = result {
         let result_label = "result=";
         let inner_open = result_label.len();
         let inner_close = 0;
         let mut rl = render_fir(
-            target,
+            result,
             inner_open,
             inner_close,
             line_hint.saturating_sub(body_indent),
@@ -357,9 +357,9 @@ fn render_fir(
     }
 
     // ── 4. Search ──
-    if let Some((pattern, direction, anchored, _anchor, target)) = fir.hs_search() {
+    if let Some((pattern, direction, anchored, _anchor, result)) = fir.hs_search() {
         // HFS §9.x: result present + nnk_constanic ⇒ hide nyes; no result + EMBRYONIC ⇒ hide.
-        let show_state = state.should_show_search_nyes(target.is_some());
+        let show_state = state.should_show_search_nyes(result.is_some());
         let pbid = if direction == SearchDirection::Backward {
             "?"
         } else {
@@ -379,7 +379,7 @@ fn render_fir(
             open_indent,
             close_indent,
             &non_result_items,
-            target.as_deref(),
+            result.as_deref(),
             line_hint,
         );
     }

@@ -41,7 +41,7 @@ impl Compiler {
                     direction: SearchDirection::Backward,
                     anchored: false,
                     anchor: None,
-                    target: None,
+                    result: None,
                     parent: None,
                     state: Nyes::Embryonic,
                 })))
@@ -169,7 +169,7 @@ impl Compiler {
                     direction: SearchDirection::Backward,
                     anchored: true,
                     anchor: Some(to_ref(anchor_fir)),
-                    target: None,
+                    result: None,
                     parent: None,
                     state: Nyes::Embryonic,
                 })))
@@ -186,7 +186,7 @@ impl Compiler {
                     },
                     anchored: true,
                     anchor: Some(to_ref(anchor_fir)),
-                    target: None,
+                    result: None,
                     parent: None,
                     state: Nyes::Embryonic,
                 })))
