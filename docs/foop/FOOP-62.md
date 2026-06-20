@@ -931,6 +931,16 @@ existing approved `.snap` corpus exactly. This pins concrete requirements on the
   (`foolish-core/src/sequencer.rs`, `proto_brane_formatter_with_result`, ~line 180). In the
   two-store model, **the `result=` item(s) come from `ubc_children`** and the other items
   from `foolish_children`. This is *why* `ubc_children` order is snapshot-significant (§1).
+- **`result` vs `anchor` for searches (search / Index / HeadTail).** The `result=` of a search
+  FIR is **the FIR the search PRODUCED** (what it found by searching / indexing / head-tail).
+  The **anchor** — the FIR a search searches *within/relative to* (e.g. `data` in `data#5`) —
+  is a **non-result** item, never the `result=`. (The word "target" is banned as ambiguous; use
+  `anchor` and `result`.) An out-of-bounds / not-found search settles NK with **no** `result=`.
+- **SINGULAR-RESULT INVARIANT.** Every search FIR we currently implement produces **at most one
+  result**, so its `ubc_children` holds **at most one** entry, and that entry IS the result.
+  This is documented and **runtime-verified** (`ProtoBrane::push_search_result` debug-asserts
+  `ubc_children` is empty before pushing). (Multi-result searches are a future extension that
+  will hold more `ubc_children`; not implemented now.)
 - **Today the sequencer reads FIR through the `FirQueryable` fat trait** (`hs_operator`,
   `hs_search`, `hs_concatenation`, `hs_brane`, `hs_variant`, …). FOOP-62 proposes retiring
   that mirror trait and re-expressing the sequencer over **`kind()` + the uniform child
