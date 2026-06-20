@@ -107,17 +107,21 @@
 
 ### DESIGN — task #11: Index/HeadTail `result=` is the indexed result (Atlas ruling)
 
+TERMINOLOGY (Atlas 2026-06-20): the field/word is **`result`**, never "target". SearchFir's
+existing `target` field is to be RENAMED `result` for consistency.
+
 The `result=` slot of a search/Index/HeadTail is the **result of the search**, never the anchor.
-Today `hs_search` returns `(pattern, dir, anchored, anchor, target)` and renders `target` as
-`result=` (correct). But `hs_index`→`(offset, anchored, anchor)` and `hs_head_tail`→`(is_head,
-anchored, anchor)` carry NO target; the sequencer falls back to rendering the **anchor** as
-`result=` (wrong). Fix span:
-1. core_fir `IndexFir`/`HeadTailFir` gain a `target` (result) field + builder method (mirror
-   `SearchFir`). The anchor stays a separate non-result item.
-2. `hs_index`→`(offset, anchored, anchor, target)`; `hs_head_tail`→`(is_head, anchored, anchor,
-   target)`.
-3. sequencer Index/HeadTail arms: render `target` as `result=`; anchor becomes a non-result item.
-4. ubca→core bridge: set `.target(resolved)` from `ubc_children` (the indexed result).
+Today `hs_search` returns `(pattern, dir, anchored, anchor, result)` and renders the result as
+`result=` (correct, but the field is misnamed `target`). But `hs_index`→`(offset, anchored,
+anchor)` and `hs_head_tail`→`(is_head, anchored, anchor)` carry NO result; the sequencer falls
+back to rendering the **anchor** as `result=` (wrong). Fix span:
+1. Rename SearchFir's `target` field/builder/accessors → `result` (drop "target" everywhere).
+2. core_fir `IndexFir`/`HeadTailFir` gain a `result` field + builder method (mirror `SearchFir`).
+   The anchor stays a separate non-result item.
+3. `hs_index`→`(offset, anchored, anchor, result)`; `hs_head_tail`→`(is_head, anchored, anchor,
+   result)`.
+4. sequencer Index/HeadTail arms: render `result` as `result=`; anchor becomes a non-result item.
+5. ubca→core bridge: set `.result(resolved)` from `ubc_children` (the indexed result).
 Multi-file (foolish-core + foolish-ubca). Snapshots will shift (present for review).
 
 ### DESIGN — task #10: unify nyes determination (Atlas direction)
