@@ -84,15 +84,21 @@
       the foolish flag; do NOT force Normally / do NOT reset constanic).
       (2026-06-19 — shifts the `test_format_index` unit test + some search snapshots, AS DESIGNED.
       commit bab85b50)
-- [ ] **HUMAN CONCERN (nested_brane_boundary.foo.snap.new, lines 19-20).** For input
-      `{a=1; b={c=#-1;d=2;e=#-1}; f=#-1;}`, `f` resolves to brane `b` and constanic-clones it; the
-      clone's inner `c=#(offset=-1,...)` shows PREMBRIONIC. The PREMBRIONIC right after a
-      constanic-clone from `#-1` is NOT wrong, BUT it should have triggered the outer brane to keep
-      stepping `f` until constanic. → DRIVER/RE-STEP bug (spec §4 job queue): after
-      `constanic_clone` places a fresh pre-constanic subtree into `ubc_children`, the step driver
-      must continue stepping it to a constanic state. Tracked as task #7.
-- [ ] **HUMAN REVIEW of new UBCa snapshot outputs** — present `.snap.new` deltas; AI MUST NOT
-      auto-accept. UBCa snapshots are UBCa's own source of truth.
+- [x] **HUMAN CONCERN RESOLVED (nested_brane_boundary, lines 19-20): re-step cloned result.**
+      For `{a=1; b={c=#-1;d=2;e=#-1}; f=#-1;}`, `f` constanic-cloned brane `b` and left the inner
+      `c=#-1` stuck PREMBRIONIC because the Index settled immediately. FIX: IndexFir now pushes the
+      cloned result (push_ubc_child already enqueues it as a task), goes BRANING, and settles from
+      the DRAINED result via settle_from_ubc_result() — re-enqueue, pop, step, settle. Now `f`
+      settles to NK and matches its approved snapshot (no .snap.new).
+      (2026-06-19 — commit ce58bfd4. The same pattern in Search/HeadTail/SFF is the next step.)
+- [ ] **HUMAN REVIEW of the new UBCa snapshot review set (12 files; AI MUST NOT auto-accept).**
+      Differences fall in two intended categories:
+      (A) **Sequencer HFS NYES-display rule** (§9.x): e.g. `hfs_nyes_display_rules` — a WOCONSTANIC
+      search WITH a result no longer prints `WOCONSTANIC` (case a). CORRECT per spec.
+      (B) **Index re-step side effects**: e.g. `offset_access_out_of_bounds`,
+      `anchored_seek_*` — the resolved anchor search now displays `INDEPENDENT`. NEEDS A RULING:
+      should a resolved anchor inside `result=` show its constanic state, or be hidden?
+      Plus `chained_undeclared` (pre-existing parser edge case, unrelated).
 - [x] **DECIDED (2026-06-19, Atlas): UBCa is its own source of truth; the "match UBC
       byte-for-byte" requirement is REMOVED.** Rationale: foolish-core UBC snapshots are
       pre-existingly stale (confirmed by stashing all session changes) — many committed
