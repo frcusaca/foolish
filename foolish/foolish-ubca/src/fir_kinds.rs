@@ -756,6 +756,22 @@ fn search_brane_children(brane: &FirRef, name: &str, before: Option<usize>, forw
     None
 }
 
+/// The nyes a SEARCH takes from the body it found (FOOP-62 §3.3.1, Atlas ruling).
+/// A search computes its own nyes from its searching act — it is **never INDEPENDENT**
+/// (a search is context-dependent, not a self-contained constant). It CAN be CONSTANT
+/// when it resolves to a knowable constant (e.g. `{a={b=1}.b}` = 1).
+///   - found ECONSTANIC / WOCONSTANIC / NK  → WOCONSTANIC (found something, not a value yet)
+///   - found CONSTANT / INDEPENDENT         → CONSTANT     (resolved to a value; capped — a
+///                                                          search is never INDEPENDENT)
+fn search_nyes_from_found(found: Nyes) -> Nyes {
+    match found {
+        Nyes::Econstanic | Nyes::Woconstanic | Nyes::Nk => Nyes::Woconstanic,
+        Nyes::Constant | Nyes::Independent => Nyes::Constant,
+        // Pre-constanic shouldn't reach here (callers gate on is_constanic), but be safe.
+        other => other,
+    }
+}
+
 impl Fir for SearchFir {
     fn core(&self) -> &ProtoBrane {
         &self.core
@@ -785,17 +801,7 @@ impl Fir for SearchFir {
                                         if let Some(p) = sf_pat {
                                             *self.sf_inner_pattern.borrow_mut() = Some(p);
                                         }
-                                        // Econstanic/Woconstanic/Nk found → search becomes Woconstanic
-                                        // (found something, but it's not a value yet)
-                                        let search_nyes = if nyes == Nyes::Econstanic
-                                            || nyes == Nyes::Woconstanic
-                                            || nyes == Nyes::Nk
-                                        {
-                                            Nyes::Woconstanic
-                                        } else {
-                                            nyes
-                                        };
-                                        self.core.set_nyes(search_nyes);
+                                        self.core.set_nyes(search_nyes_from_found(nyes));
                                     } else {
                                         self.core.push_task(Rc::clone(&body));
                                         *self.found_body.borrow_mut() = Some(body);
@@ -823,15 +829,7 @@ impl Fir for SearchFir {
                     if let Some((body, nyes, _sf_pat)) = search_brane_children(&resolved, name, None, self.forward) {
                         let self_weak = self.core.parent_weak();
                         self.core.push_ubc_child(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
-                        let search_nyes = if nyes == Nyes::Econstanic
-                            || nyes == Nyes::Woconstanic
-                            || nyes == Nyes::Nk
-                        {
-                            Nyes::Woconstanic
-                        } else {
-                            nyes
-                        };
-                        self.core.set_nyes(search_nyes);
+                        self.core.set_nyes(search_nyes_from_found(nyes));
                     } else {
                         self.core.set_nyes(Nyes::Nk);
                     }
@@ -840,12 +838,7 @@ impl Fir for SearchFir {
                     if nyes.is_constanic() {
                         let self_weak = self.core.parent_weak();
                         self.core.push_ubc_child(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
-                        let search_nyes = if nyes == Nyes::Econstanic || nyes == Nyes::Woconstanic {
-                            Nyes::Woconstanic
-                        } else {
-                            nyes
-                        };
-                        self.core.set_nyes(search_nyes);
+                        self.core.set_nyes(search_nyes_from_found(nyes));
                     } else {
                         // Body not settled yet — keep waiting
                         *self.found_body.borrow_mut() = Some(body);

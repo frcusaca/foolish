@@ -145,7 +145,7 @@ win={w_in={in_in={in_in_in=101010}}};
   };
   indexˍfirst=10;
   indexˍlast=40;
-  indexˍoutˍofˍbounds=#(result=?(pattern='^indexˍbrane$', UNANCHORED, INDEPENDENT), offset=99, ANCHORED, NK);
+  indexˍoutˍofˍbounds=#(result=?(pattern='^indexˍbrane$', UNANCHORED, CONSTANT), offset=99, ANCHORED, NK);
   seekˍunanchored=40;
   sfˍtarget={
       a=1;
@@ -294,5 +294,5 @@ foop42_humanizing_sequencer_formatting_exhaustive_aka_hfs
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 5CYQ9TTMJwxdSRqdDbNvIcEuEjzF0rs9DSJO0IFb7JZX52hw7oNCOG0pcpoYozWuyHWmpPLVgx2jGmPxDfKBDA==
-HFS signature: FNQkOMMcfeqB/feb/9Q3xTBVJPFFjTTd3hhYxFXQch3uzxQ4DxbAJ/n0ITLyo6JNNbJdC9dM8xs0yARY0ZXHBw==
-Comments signature: T9c33KILAOejNXX0TAADNjLEtvHsG1cBEh9StUu3O5wUbLoq8BCNDp73kyQYWH9uOZfH9dLPOKzayJFQkZFoDA==
+HFS signature: yYi8MDKWsDhyxjq5qFp3PCOQNBgN8Nls2MtgwRo6Cx5KB5ikpqcjAmgul4xHX1/QOqR8hP0J+U5OAOGSIdsjCQ==
+Comments signature: nqqcVvG817g+/NSvlT1qa8BYFR5gN4bGVvqg/v2fBDOYgVAeyY/MVcG4YP4qrcyxj29vafvyCmmpy/IKjY1hAw==

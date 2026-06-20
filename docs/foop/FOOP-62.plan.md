@@ -92,13 +92,22 @@
       settles to NK and matches its approved snapshot (no .snap.new).
       (2026-06-19 — commit ce58bfd4. The same pattern in Search/HeadTail/SFF is the next step.)
 - [ ] **HUMAN REVIEW of the new UBCa snapshot review set (12 files; AI MUST NOT auto-accept).**
-      Differences fall in two intended categories:
+      Differences fall in these categories:
       (A) **Sequencer HFS NYES-display rule** (§9.x): e.g. `hfs_nyes_display_rules` — a WOCONSTANIC
       search WITH a result no longer prints `WOCONSTANIC` (case a). CORRECT per spec.
-      (B) **Index re-step side effects**: e.g. `offset_access_out_of_bounds`,
-      `anchored_seek_*` — the resolved anchor search now displays `INDEPENDENT`. NEEDS A RULING:
-      should a resolved anchor inside `result=` show its constanic state, or be hidden?
+      (B) **Search never INDEPENDENT** (Atlas ruling, commit pending): a search that resolves to a
+      value is now CONSTANT, never INDEPENDENT (a search is context-dependent; it CAN be CONSTANT
+      e.g. `{a={b=1}.b}`=1). `search_nyes_from_found()` caps found CONSTANT/INDEPENDENT → CONSTANT.
+      So `offset_access_out_of_bounds` etc. now show `?(... CONSTANT)` not `INDEPENDENT`.
+      (C) **OPEN DISPLAY QUESTION**: the anchor search rendered as an Index's `result=` shows no
+      nested `result=` of its own (pre-existing; only the state label is new). Should a resolved
+      anchor search display `?(result=<found>, ..., CONSTANT)`? Needs a ruling — part of task #10
+      (unify nyes/representation).
       Plus `chained_undeclared` (pre-existing parser edge case, unrelated).
+- [ ] **TODO (task #10): unify nyes determination** — nyes is a cached field that MUST be correct
+      at the end of every mutating borrow (set at instantiation + re-established each step); each
+      kind computes its own nyes (own act + progress), optionally consulting
+      `_decide_nyes_due_to_children`. §9.0 Quiescent-Representation Invariant for the nyes cache.
 - [x] **DECIDED (2026-06-19, Atlas): UBCa is its own source of truth; the "match UBC
       byte-for-byte" requirement is REMOVED.** Rationale: foolish-core UBC snapshots are
       pre-existingly stale (confirmed by stashing all session changes) — many committed

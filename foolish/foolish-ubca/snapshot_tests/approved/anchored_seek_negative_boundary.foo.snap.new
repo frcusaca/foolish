@@ -17,7 +17,7 @@ INPUT:
   last=30;
   second=20;
   first=10;
-  oob=#(result=?(pattern='^b$', UNANCHORED, INDEPENDENT), offset=-4, ANCHORED, NK)
+  oob=#(result=?(pattern='^b$', UNANCHORED, CONSTANT), offset=-4, ANCHORED, NK)
 }
 ```
 COMMENTS:
@@ -27,5 +27,5 @@ anchored_seek_negative_boundary
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: Hz+E00U3C3CsBvmDBDvsvrUBkxqorumzrBINQuB6usuo3Tc+B3G3S66sRaCAd8nWs36mDjbYF6rjX7Ps0UoJBw==
-HFS signature: kMTvHl3JQEjoha1X3DJ8J9Igv6SUOTCPDh+iIPHZkRCffVOIleYFH4VWbqtCMGcYRvKCFFibV/647Y5+hMR6Cw==
-Comments signature: yAZFVppB+dyhZRhJsLb0ARLGndUKkgoCP5Efl7Ja7KEKMib0vtS88CDHL8X+QB8sgYG5db+esqdkbehugDcYBg==
+HFS signature: XjYTGSOZnx+piAr/cd1WHWXjdzgDaqjYp3+hHjTpd99A7pOaQPHa5xtDzDo4K0FZtgbJEyEGzxFCKAbuBRNzCA==
+Comments signature: rrNn9slXDcSlqGNmNO3xz+twrIqElncJvcbiVE2KSbxTweYWfOdJ7nxObgoWmppX/TbqhH1K988RLL0k907KDw==
