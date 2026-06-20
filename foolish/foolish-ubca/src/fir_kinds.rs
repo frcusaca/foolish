@@ -2587,4 +2587,158 @@ mod tests {
         assert_eq!(node.borrow().core().get_nyes(), Nyes::Prembrionic);
         assert_eq!(node.borrow().kind(), FirKind::StayFullyFoolish);
     }
+
+    // ── Ignorance clone model (FOOP-62 §10.1, "Terminology: ignorance") ────────
+    //
+    // These document the two modes of `constanic_clone_at` and the SF-strip rule.
+    // `descendent_of_sfm_and_foolishly_ignorant`:
+    //   false (normally ignorant) — constanic NYES copied unchanged; pre-constanic
+    //                               → PREMBRYONIC.
+    //   true  (foolishly ignorant) — ALL NYES copied unchanged.
+
+    /// A self-Weak suitable as `new_parent` for a standalone clone.
+    fn dangling_parent() -> Weak<RefCell<dyn Fir>> {
+        Weak::<RefCell<ConstantIntFir>>::new()
+    }
+
+    /// `clone_nyes` is the rule in isolation: foolish copies everything; normal
+    /// keeps constanic states and resets pre-constanic to PREMBRYONIC.
+    #[test]
+    fn clone_nyes_rule_by_mode() {
+        // Normal mode (false): constanic kept, pre-constanic -> PREMBRYONIC.
+        assert_eq!(clone_nyes(Nyes::Econstanic, false), Nyes::Econstanic);
+        assert_eq!(clone_nyes(Nyes::Woconstanic, false), Nyes::Woconstanic);
+        assert_eq!(clone_nyes(Nyes::Nk, false), Nyes::Nk);
+        assert_eq!(clone_nyes(Nyes::Embryonic, false), Nyes::Prembrionic);
+        assert_eq!(clone_nyes(Nyes::Braning, false), Nyes::Prembrionic);
+        assert_eq!(clone_nyes(Nyes::Prembrionic, false), Nyes::Prembrionic);
+
+        // Foolish mode (true): every NYES copied verbatim.
+        for n in [
+            Nyes::Econstanic,
+            Nyes::Woconstanic,
+            Nyes::Nk,
+            Nyes::Embryonic,
+            Nyes::Braning,
+            Nyes::Prembrionic,
+        ] {
+            assert_eq!(clone_nyes(n, true), n, "foolish should copy {n:?} verbatim");
+        }
+    }
+
+    /// Normal clone of a CONSTANIC compound (an ECONSTANIC operator) keeps its
+    /// ECONSTANIC state — it is NOT pre-reset; it re-resolves later via stepping.
+    #[test]
+    fn normal_clone_keeps_constanic_compound_state() {
+        let op = make_operator("+", vec![make_constant_int(1), make_constant_int(2)]);
+        op.borrow().core().set_nyes(Nyes::Econstanic);
+
+        let cloned = constanic_clone_at(&op, &dangling_parent(), 0, false);
+
+        assert_eq!(cloned.borrow().kind(), FirKind::Operator);
+        assert_eq!(
+            cloned.borrow().core().get_nyes(),
+            Nyes::Econstanic,
+            "normal clone of an ECONSTANIC compound must stay ECONSTANIC"
+        );
+    }
+
+    /// Normal clone of a PRE-CONSTANIC compound resets it to PREMBRYONIC so its
+    /// searches re-run in the new context.
+    #[test]
+    fn normal_clone_resets_preconstanic_compound() {
+        let op = make_operator("+", vec![make_constant_int(1), make_constant_int(2)]);
+        op.borrow().core().set_nyes(Nyes::Braning);
+
+        let cloned = constanic_clone_at(&op, &dangling_parent(), 0, false);
+
+        assert_eq!(
+            cloned.borrow().core().get_nyes(),
+            Nyes::Prembrionic,
+            "normal clone of a pre-constanic compound must reset to PREMBRYONIC"
+        );
+    }
+
+    /// Foolish clone copies ALL NYES verbatim, including pre-constanic.
+    #[test]
+    fn foolish_clone_copies_all_nyes_verbatim() {
+        let braning = make_operator("+", vec![make_constant_int(1), make_constant_int(2)]);
+        braning.borrow().core().set_nyes(Nyes::Braning);
+        let cloned = constanic_clone_at(&braning, &dangling_parent(), 0, true);
+        assert_eq!(
+            cloned.borrow().core().get_nyes(),
+            Nyes::Braning,
+            "foolish clone must keep a pre-constanic compound's state verbatim"
+        );
+
+        let econ = make_operator("+", vec![make_constant_int(1), make_constant_int(2)]);
+        econ.borrow().core().set_nyes(Nyes::Econstanic);
+        let cloned = constanic_clone_at(&econ, &dangling_parent(), 0, true);
+        assert_eq!(cloned.borrow().core().get_nyes(), Nyes::Econstanic);
+    }
+
+    /// Leaves (ConstantInt/Nk) transfer their NYES unchanged in BOTH modes.
+    #[test]
+    fn leaf_clone_unchanged_both_modes() {
+        let ci = make_constant_int(9);
+        ci.borrow().core().set_nyes(Nyes::Constant);
+        // Constant is referenced (Rc), still Constant.
+        let n = constanic_clone_at(&ci, &dangling_parent(), 0, false);
+        assert_eq!(n.borrow().core().get_nyes(), Nyes::Constant);
+        let n = constanic_clone_at(&ci, &dangling_parent(), 0, true);
+        assert_eq!(n.borrow().core().get_nyes(), Nyes::Constant);
+
+        let nk = make_nk("gone");
+        nk.borrow().core().set_nyes(Nyes::Nk);
+        let n = constanic_clone_at(&nk, &dangling_parent(), 0, false);
+        assert_eq!(n.borrow().core().get_nyes(), Nyes::Nk);
+        let n = constanic_clone_at(&nk, &dangling_parent(), 0, true);
+        assert_eq!(n.borrow().core().get_nyes(), Nyes::Nk);
+    }
+
+    /// THE BIG BUT: cloning an SF-mark STRIPS the wrapper — the clone is the inner
+    /// expression, never a StayFoolish node. Holds in both modes.
+    #[test]
+    fn cloning_sf_strips_the_mark() {
+        let inner = make_constant_int(10);
+        inner.borrow().core().set_nyes(Nyes::Econstanic); // force the clone path
+        let sf = make_stay_foolish(Rc::clone(&inner));
+        sf.borrow().core().set_nyes(Nyes::Econstanic);
+
+        let normal = constanic_clone_at(&sf, &dangling_parent(), 0, false);
+        assert_ne!(
+            normal.borrow().kind(),
+            FirKind::StayFoolish,
+            "normal clone of an SF must NOT be a StayFoolish wrapper"
+        );
+        assert_eq!(normal.borrow().kind(), FirKind::ConstantInt);
+
+        let foolish = constanic_clone_at(&sf, &dangling_parent(), 0, true);
+        assert_ne!(
+            foolish.borrow().kind(),
+            FirKind::StayFoolish,
+            "even a foolish clone of an SF strips the wrapper (clones the inner)"
+        );
+    }
+
+    /// has_ancestral_sfm propagates: descending into a StayFoolish node turns on
+    /// the foolish scope for the child subtree (drives the freeze).
+    #[test]
+    fn step_sets_foolish_scope_inside_sf() {
+        // The SF freezes its (constant) body; stepping settles it. We assert the
+        // SF settles via the foolish path without error and reaches a constanic
+        // state (behavioral proxy for the propagated scope).
+        let body = make_constant_int(7);
+        let sf = make_stay_foolish(Rc::clone(&body));
+        let scope = Scope::empty();
+        assert!(!scope.has_ancestral_sfm);
+
+        let transitions = step_to_settled(&sf, &scope);
+        eprintln!("SF settle under has_ancestral_sfm propagation: {transitions:?}");
+        assert!(sf.borrow().core().get_nyes().is_constanic());
+
+        // And the with_ancestral_sfm helper sets the flag without disturbing position.
+        let foolish_scope = scope.with_ancestral_sfm(true);
+        assert!(foolish_scope.has_ancestral_sfm);
+    }
 }

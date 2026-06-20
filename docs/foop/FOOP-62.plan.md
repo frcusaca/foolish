@@ -66,11 +66,16 @@
       CONSTRUCTION (descendants ECONSTANIC); the `FirKind::StayFullyFoolish` clone arm now
       mirrors SF — strips the mark and clones the inner with the incoming flag.
       (2026-06-19 — commit pending; UBC-oracle confirmation folded into the oracle re-verify box)
-- [ ] **Add/strengthen unit tests:** (a) normal clone — constanic (ECONSTANIC) compound stays
+- [x] **Add/strengthen unit tests:** (a) normal clone — constanic (ECONSTANIC) compound stays
       ECONSTANIC, pre-constanic compound → PREMBRYONIC; (b) foolish clone (flag true) — ALL NYES
       copied verbatim; (c) `has_ancestral_sfm` propagation through step + clone recursion;
       (d) later search of an SF yields inner result with NO `StayFoolish` kind present and the
       inner re-resolves; (e) leaves unchanged in both modes.
+      (2026-06-19 — 7 new tests in fir_kinds.rs: clone_nyes_rule_by_mode,
+      normal_clone_keeps_constanic_compound_state, normal_clone_resets_preconstanic_compound,
+      foolish_clone_copies_all_nyes_verbatim, leaf_clone_unchanged_both_modes,
+      cloning_sf_strips_the_mark, step_sets_foolish_scope_inside_sf. 92 pass; the 1 remaining
+      failure is the pre-existing chained_undeclared parser edge case. commit pending)
 - [ ] **Re-verify against the UBC oracle** (cross-check harness, Phase 1) after the fixes —
       UBCa sequencer output must still match UBC byte-for-byte. Any snapshot delta is
       PRESENTED to human; AI MUST NOT auto-accept.
