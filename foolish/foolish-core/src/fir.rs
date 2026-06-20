@@ -145,6 +145,11 @@ impl Nyes {
         matches!(self, Nyes::Prembrionic | Nyes::Embryonic | Nyes::Braning)
     }
 
+    /// Constanic but NOT NK (FOOP-62 Terminology) — for the HFS search display rule.
+    pub fn is_nnk_constanic(&self) -> bool {
+        self.is_constanic() && !matches!(self, Nyes::Nk)
+    }
+
     /// Returns true when the NYES should be displayed in the humanizing
     /// sequencer output.
     ///
@@ -153,6 +158,23 @@ impl Nyes {
     /// - else → show nyes (including EMBRYONIC, NK, WOCONSTANIC, etc.)
     pub fn should_show_nyes(&self) -> bool {
         !matches!(self, Nyes::Constant | Nyes::Independent)
+    }
+
+    /// HFS NYES display rule for search / Index / HeadTail renders (FOOP-62 §9.x).
+    /// These nodes carry a result (the resolved target/anchor), so the display
+    /// rule depends on whether a result is present:
+    /// - a) result present AND nnk_constanic → do NOT show nyes (the reader infers
+    ///   it from the result object).
+    /// - b) no result AND EMBRYONIC → do NOT show nyes.
+    /// - otherwise → show nyes (even PREMBRYONIC). NK still shows (with its reason).
+    pub fn should_show_search_nyes(&self, has_result: bool) -> bool {
+        if has_result && self.is_nnk_constanic() {
+            return false;
+        }
+        if !has_result && matches!(self, Nyes::Embryonic) {
+            return false;
+        }
+        true
     }
 }
 

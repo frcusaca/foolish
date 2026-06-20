@@ -76,9 +76,23 @@
       foolish_clone_copies_all_nyes_verbatim, leaf_clone_unchanged_both_modes,
       cloning_sf_strips_the_mark, step_sets_foolish_scope_inside_sf. 92 pass; the 1 remaining
       failure is the pre-existing chained_undeclared parser edge case. commit pending)
-- [ ] **Re-verify against the UBC oracle** (cross-check harness, Phase 1) after the fixes —
-      UBCa sequencer output must still match UBC byte-for-byte. Any snapshot delta is
-      PRESENTED to human; AI MUST NOT auto-accept.
+- [x] **Sequencer: HFS NYES display rule for searches (spec §9.x, §8 hard constraint).**
+      `should_show_search_nyes(has_result)` added to `Nyes` (fir.rs) + `is_nnk_constanic()`;
+      wired into the search / HeadTail / Index render arms in sequencer.rs. Implements case a)
+      result present + nnk_constanic ⇒ hide nyes; case b) no result + EMBRYONIC ⇒ hide; else show.
+      Also fixed stale spec §9.x "Constanic-clone of SF-markers" note to rev-14 (strip + pass on
+      the foolish flag; do NOT force Normally / do NOT reset constanic).
+      (2026-06-19 — shifts the `test_format_index` unit test + some search snapshots, AS DESIGNED.
+      commit pending)
+- [ ] **HUMAN REVIEW of new snapshot outputs** — present `.snap.new` deltas; AI MUST NOT
+      auto-accept. NOTE the two delta categories below.
+- [ ] **⚠ FINDING (2026-06-19): foolish-core UBC oracle snapshots are PRE-EXISTINGLY STALE.**
+      Independent of this session (confirmed by stashing all my changes), many committed
+      `foolish-core/snapshot_tests/approved/*.foo.snap` disagree with the CURRENT core evaluator
+      — not state-label diffs but deep VALUE diffs (e.g. `avg=20` → an unresolved `Op/(...)`,
+      `inner=15` → `Op/(...)`, whole branes collapsing). So "UBCa must match UBC byte-for-byte"
+      cannot be the clean gate until the core oracle itself is reconciled. DECIDE: regenerate +
+      human-review the core oracle snapshots, OR treat UBCa snapshots as the new source of truth.
 
 ## Phase 0 — Gate & baseline (BLOCKING)
 

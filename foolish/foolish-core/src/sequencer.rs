@@ -358,7 +358,8 @@ fn render_fir(
 
     // ── 4. Search ──
     if let Some((pattern, direction, anchored, _anchor, target)) = fir.hs_search() {
-        let show_state = state.should_show_nyes();
+        // HFS §9.x: result present + nnk_constanic ⇒ hide nyes; no result + EMBRYONIC ⇒ hide.
+        let show_state = state.should_show_search_nyes(target.is_some());
         let pbid = if direction == SearchDirection::Backward {
             "?"
         } else {
@@ -385,7 +386,7 @@ fn render_fir(
 
     // ── 5. HeadTail ──
     if let Some((is_head, _anchored, anchor)) = fir.hs_head_tail() {
-        let show_state = state.should_show_nyes();
+        let show_state = state.should_show_search_nyes(anchor.is_some());
         let pbid = if is_head { "^" } else { "$" };
         let mut non_result_items = Vec::new();
 
@@ -407,7 +408,7 @@ fn render_fir(
 
     // ── 6. Index ──
     if let Some((offset, anchored, anchor)) = fir.hs_index() {
-        let show_state = state.should_show_nyes();
+        let show_state = state.should_show_search_nyes(anchor.is_some());
         if anchored && offset == 0 {
             let mut non_result_items = Vec::new();
             if show_state {
