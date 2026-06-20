@@ -953,6 +953,21 @@ fn find_parent_brane(start: &ProtoBrane) -> Option<FirRef> {
     None
 }
 
+impl IndexFir {
+    /// Settle this node's nyes from its (now-drained) cloned result in ubc_children.
+    /// The driver steps the cloned result to constanic before re-running us, so reading
+    /// its nyes here yields the final state. NK if no result was produced.
+    fn settle_from_ubc_result(&self) {
+        let nyes = self
+            .core
+            .ubc_children()
+            .first()
+            .map(|r| r.borrow().core().get_nyes())
+            .unwrap_or(Nyes::Nk);
+        self.core.set_nyes(nyes);
+    }
+}
+
 impl Fir for IndexFir {
     fn core(&self) -> &ProtoBrane {
         &self.core
@@ -973,15 +988,14 @@ impl Fir for IndexFir {
                     match find_enclosing_stmt_and_brane(&self.core) {
                         Some((stmt_ref, brane_ref)) => {
                             if let Some(idx) = find_stmt_index_in_brane(&stmt_ref, &brane_ref) {
-                                if let Some((body, nyes)) = index_into_brane_relative(&brane_ref, idx, self.offset) {
-                                    if nyes.is_constanic() {
-                                        let self_weak = self.core.parent_weak();
-                                        self.core.push_ubc_child(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
-                                        self.core.set_nyes(nyes);
-                                    } else {
-                                        self.core.push_task(Rc::clone(&body));
-                                        self.core.set_nyes(Nyes::Braning);
-                                    }
+                                if let Some((body, _nyes)) = index_into_brane_relative(&brane_ref, idx, self.offset) {
+                                    // Clone the indexed body into ubc_children — push_ubc_child
+                                    // ALSO enqueues it as a task. Go BRANING so the driver steps
+                                    // the (possibly pre-constanic) clone to constanic before we
+                                    // settle from it in the Braning arm. (Re-enqueue, pop, step.)
+                                    let self_weak = self.core.parent_weak();
+                                    self.core.push_ubc_child(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
+                                    self.core.set_nyes(Nyes::Braning);
                                 } else {
                                     self.core.set_nyes(Nyes::Nk);
                                 }
@@ -996,35 +1010,26 @@ impl Fir for IndexFir {
                 }
             }
             Nyes::Braning => {
-                if self.anchored {
+                // If we already have a cloned result, the driver has drained it to constanic
+                // (push_ubc_child enqueues it; the driver steps it before re-running us). Settle
+                // our own nyes from that result's final state. (Re-enqueue, pop, step, settle.)
+                if !self.core.ubc_children().is_empty() {
+                    self.settle_from_ubc_result();
+                } else if self.anchored {
                     let anchor = Rc::clone(&self.core.foolish_children()[0]);
                     let resolved = resolve_anchor(&anchor);
-                    if let Some((body, nyes)) = index_into_brane(&resolved, self.offset) {
+                    if let Some((body, _nyes)) = index_into_brane(&resolved, self.offset) {
                         let self_weak = self.core.parent_weak();
                         self.core.push_ubc_child(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
-                        self.core.set_nyes(nyes);
+                        // Stay BRANING; the driver drains the clone, then we settle above.
                     } else {
                         self.core.set_nyes(Nyes::Nk);
                     }
                 } else {
-                    match find_enclosing_stmt_and_brane(&self.core) {
-                        Some((stmt_ref, brane_ref)) => {
-                            if let Some(idx) = find_stmt_index_in_brane(&stmt_ref, &brane_ref) {
-                                if let Some((body, nyes)) = index_into_brane_relative(&brane_ref, idx, self.offset) {
-                                    let self_weak = self.core.parent_weak();
-                                    self.core.push_ubc_child(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
-                                    self.core.set_nyes(nyes);
-                                } else {
-                                    self.core.set_nyes(Nyes::Nk);
-                                }
-                            } else {
-                                self.core.set_nyes(Nyes::Nk);
-                            }
-                        }
-                        None => {
-                            self.core.set_nyes(Nyes::Nk);
-                        }
-                    }
+                    // Unanchored result was cloned+pushed in the Prembrionic arm; nothing more to
+                    // do here until it drains (we only reach this when ubc_children is empty,
+                    // i.e. the resolve produced nothing) — treat as NK.
+                    self.core.set_nyes(Nyes::Nk);
                 }
             }
             _ => {}

@@ -101,11 +101,23 @@ win={w_in={in_in={in_in_in=101010}}};
   Δ=7;
   Σ=10;
   oneˍzero=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK;
-  divˍbyˍzeroˍinˍbraneˍmethod=?(result=Op/(1, 0, PREMBRIONIC), pattern='^oneˍzero$', UNANCHORED, WOCONSTANIC);
+  divˍbyˍzeroˍinˍbraneˍmethod=?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED);
   threeˍzero=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK;
-  badˍinˍarithmetic=Op+(?(result=Op/(1, 0, PREMBRIONIC), pattern='^oneˍzero$', UNANCHORED, WOCONSTANIC), 5, WOCONSTANIC);
-  chainedˍbad=Op+(Op+(10, ?(result=Op/(1, 0, PREMBRIONIC), pattern='^oneˍzero$', UNANCHORED, WOCONSTANIC), WOCONSTANIC), 20, WOCONSTANIC);
-  aliasˍofˍbad=?(result=Op/(1, 0, PREMBRIONIC), pattern='^oneˍzero$', UNANCHORED, WOCONSTANIC);
+  badˍinˍarithmetic=Op+(
+      ?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED),
+      5,
+      WOCONSTANIC
+  );
+  chainedˍbad=Op+(
+      Op+(
+        10,
+        ?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED),
+        WOCONSTANIC
+      ),
+      20,
+      WOCONSTANIC
+  );
+  aliasˍofˍbad=?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED);
   fwdˍx=?(pattern='^x$', UNANCHORED, ECONSTANIC);
   x=42;
   xˍagain=42;
@@ -123,8 +135,8 @@ win={w_in={in_in={in_in_in=101010}}};
   };
   headˍofˍflat=42;
   tailˍofˍflat=0;
-  headˍofˍempty=^(result=?(pattern='^flatˍempty$', UNANCHORED), NK);
-  tailˍofˍempty=$(result=?(pattern='^flatˍempty$', UNANCHORED), NK);
+  headˍofˍempty=^(result=?(pattern='^flatˍempty$', UNANCHORED, CONSTANT), NK);
+  tailˍofˍempty=$(result=?(pattern='^flatˍempty$', UNANCHORED, CONSTANT), NK);
   indexˍbrane={
       first=10;
       second=20;
@@ -133,7 +145,7 @@ win={w_in={in_in={in_in_in=101010}}};
   };
   indexˍfirst=10;
   indexˍlast=40;
-  indexˍoutˍofˍbounds=#(result=?(pattern='^indexˍbrane$', UNANCHORED), offset=99, ANCHORED, NK);
+  indexˍoutˍofˍbounds=#(result=?(pattern='^indexˍbrane$', UNANCHORED, INDEPENDENT), offset=99, ANCHORED, NK);
   seekˍunanchored=40;
   sfˍtarget={
       a=1;
@@ -160,7 +172,7 @@ win={w_in={in_in={in_in_in=101010}}};
       x=10;
       y=20
   };
-  sffˍvalue=?(pattern='^sffˍtarget$', UNANCHORED, EMBRYONIC);
+  sffˍvalue=?(pattern='^sffˍtarget$', UNANCHORED);
   concatˍleft={
       leftˍa=1;
       leftˍb=2
@@ -265,7 +277,7 @@ win={w_in={in_in={in_in_in=101010}}};
       pattern='^sffˍtarget$',
       UNANCHORED
   );
-  inspectˍsffˍagain=?(pattern='^sffˍtarget$', UNANCHORED, EMBRYONIC);
+  inspectˍsffˍagain=?(pattern='^sffˍtarget$', UNANCHORED);
   win={
       wˍin={
           inˍin={
@@ -282,5 +294,5 @@ foop42_humanizing_sequencer_formatting_exhaustive_aka_hfs
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 5CYQ9TTMJwxdSRqdDbNvIcEuEjzF0rs9DSJO0IFb7JZX52hw7oNCOG0pcpoYozWuyHWmpPLVgx2jGmPxDfKBDA==
-HFS signature: C7OM/vhwiPzz/xArhlLyKaKhF5K4Wb7/0L1arpOX2BeUaWyVINXIeGphZNFuDKb/Ed97wilbU4I9Mtkrmw8VCw==
-Comments signature: oC7CCDpwOpKLb/kbTEh7ATcv29PbTZYjtgsFEvocNZLRmgmje+D0BqCDQKLMrCgaOn97rsfUJ8L0Add6ciB/Aw==
+HFS signature: FNQkOMMcfeqB/feb/9Q3xTBVJPFFjTTd3hhYxFXQch3uzxQ4DxbAJ/n0ITLyo6JNNbJdC9dM8xs0yARY0ZXHBw==
+Comments signature: T9c33KILAOejNXX0TAADNjLEtvHsG1cBEh9StUu3O5wUbLoq8BCNDp73kyQYWH9uOZfH9dLPOKzayJFQkZFoDA==

@@ -65,7 +65,7 @@
 - [x] **SFF / fully-foolish construction (spec Terminology + §10.1).** SFF realized at
       CONSTRUCTION (descendants ECONSTANIC); the `FirKind::StayFullyFoolish` clone arm now
       mirrors SF — strips the mark and clones the inner with the incoming flag.
-      (2026-06-19 — commit pending; UBC-oracle confirmation folded into the oracle re-verify box)
+      (2026-06-19 — commit 94ed10d2)
 - [x] **Add/strengthen unit tests:** (a) normal clone — constanic (ECONSTANIC) compound stays
       ECONSTANIC, pre-constanic compound → PREMBRYONIC; (b) foolish clone (flag true) — ALL NYES
       copied verbatim; (c) `has_ancestral_sfm` propagation through step + clone recursion;
@@ -83,16 +83,24 @@
       Also fixed stale spec §9.x "Constanic-clone of SF-markers" note to rev-14 (strip + pass on
       the foolish flag; do NOT force Normally / do NOT reset constanic).
       (2026-06-19 — shifts the `test_format_index` unit test + some search snapshots, AS DESIGNED.
-      commit pending)
-- [ ] **HUMAN REVIEW of new snapshot outputs** — present `.snap.new` deltas; AI MUST NOT
-      auto-accept. NOTE the two delta categories below.
-- [ ] **⚠ FINDING (2026-06-19): foolish-core UBC oracle snapshots are PRE-EXISTINGLY STALE.**
-      Independent of this session (confirmed by stashing all my changes), many committed
-      `foolish-core/snapshot_tests/approved/*.foo.snap` disagree with the CURRENT core evaluator
-      — not state-label diffs but deep VALUE diffs (e.g. `avg=20` → an unresolved `Op/(...)`,
-      `inner=15` → `Op/(...)`, whole branes collapsing). So "UBCa must match UBC byte-for-byte"
-      cannot be the clean gate until the core oracle itself is reconciled. DECIDE: regenerate +
-      human-review the core oracle snapshots, OR treat UBCa snapshots as the new source of truth.
+      commit bab85b50)
+- [ ] **HUMAN CONCERN (nested_brane_boundary.foo.snap.new, lines 19-20).** For input
+      `{a=1; b={c=#-1;d=2;e=#-1}; f=#-1;}`, `f` resolves to brane `b` and constanic-clones it; the
+      clone's inner `c=#(offset=-1,...)` shows PREMBRIONIC. The PREMBRIONIC right after a
+      constanic-clone from `#-1` is NOT wrong, BUT it should have triggered the outer brane to keep
+      stepping `f` until constanic. → DRIVER/RE-STEP bug (spec §4 job queue): after
+      `constanic_clone` places a fresh pre-constanic subtree into `ubc_children`, the step driver
+      must continue stepping it to a constanic state. Tracked as task #7.
+- [ ] **HUMAN REVIEW of new UBCa snapshot outputs** — present `.snap.new` deltas; AI MUST NOT
+      auto-accept. UBCa snapshots are UBCa's own source of truth.
+- [x] **DECIDED (2026-06-19, Atlas): UBCa is its own source of truth; the "match UBC
+      byte-for-byte" requirement is REMOVED.** Rationale: foolish-core UBC snapshots are
+      pre-existingly stale (confirmed by stashing all session changes) — many committed
+      `foolish-core/...approved/*.foo.snap` disagree with the current core evaluator (deep VALUE
+      diffs: `avg=20` → unresolved `Op/(...)`, `inner=15` → `Op/(...)`, branes collapsing). UBC is
+      no longer an authoritative oracle. UBCa is validated byte-for-byte against its OWN approved
+      snapshots. Spec + plan scrubbed of the cross-check-against-UBC requirement.
+      (2026-06-19)
 
 ## Phase 0 — Gate & baseline (BLOCKING)
 
@@ -158,19 +166,17 @@
       (Humanizing sequence for snapshot testing).** NOT cloning the internal implementation.
       UBCa gets its own compiler, evaluator, and sequencer that produce byte-identical
       snapshot output.
-- [ ] Copy UBC's snap tests to UBCa **as-is without change**: both `snapshot_tests/input/`
-      (the `.foo` test programs) and `snapshot_tests/approved/` (the finalized, signed
-      `.snap` files) are copied byte-for-byte.
-- [ ] Cross-check harness: runs each `.foo` through UBCa, compares Humanizing sequence
-      output against approved snapshots. Initially UBCa produces `.snap.new` files for
-      human review — **never auto-accept** (AGENTS.md).
+- [ ] Seed UBCa's `snapshot_tests/input/` from UBC's `.foo` test programs. UBCa then maintains
+      its OWN `snapshot_tests/approved/` corpus (its source of truth) — UBC's approved `.snap`
+      are NOT required to be reproduced.
+- [ ] Snapshot harness: runs each `.foo` through UBCa, compares Humanizing sequencer output
+      against **UBCa's own approved snapshots**. New/changed output produces `.snap.new` for
+      human review — **never auto-accept** (AGENTS.md). NOT diffed against UBC.
 - [ ] Genericize the `Evaluator` trait over the FIR ref type (or thin adapter) so the harness
       can drive UBCa's `Rc<RefCell<dyn Fir>>` (currently pinned to `dyn Steppable`) — mimo #5
 - [ ] Snapshot testing FULLY implemented in foolish-ubca — the complete SnapshotSuite
-      machinery (runner, .snap.new generation, signature verification), running ALL of
-      UBC's snapshot tests (every input `.foo`, every approved snap), not a subset or stub.
-      Gate: UBCa's suite enumerates the same test count as UBC's.
-- [ ] Verify UBC remains untouched and still green (it is the oracle)
+      machinery (runner, .snap.new generation, signature verification), running UBCa's own
+      snapshot suite, not a subset or stub.
 
 ## Phase 2 — Tests first for the new structure (write before impl)
 
@@ -347,13 +353,17 @@ through.
       SearchFir, IndexFir, HeadTailFir, StayFoolishFir, StayFullyFoolishFir,
       ConcatenationFir. Each kind gets unit tests before moving to the next.
 
-## Phase 4 — Switch UBCa off the UBC delegation; cross-check is the oracle
+## Phase 4 — Switch UBCa off the UBC delegation; UBCa's own snapshots are the gate
+
+> UBCa is its own source of truth. The "match UBC byte-for-byte" requirement is REMOVED
+> (2026-06-19, Atlas): UBC's snapshots have drifted from its evaluator and UBC is no longer an
+> authoritative oracle. UBCa is validated byte-for-byte against its OWN approved snapshots.
 
 - [ ] Point UBCa at its own ProtoBrane impl (stop delegating to UBC)
-- [ ] Run the Phase-1 cross-check harness; iterate UBCa until **sequencer output** matches
-      UBC byte-for-byte on every `.foo` input (step counts are NOT compared)
-- [ ] Reproduce all currently-approved `*.foo.snap` byte-for-byte via UBCa.
-      Generate `.snap.new` only; **present to human — NEVER auto-accept** (AGENTS.md)
+- [ ] Iterate UBCa until its **sequencer output is byte-exact against UBCa's own approved
+      snapshots** on every `.foo` input (step counts are NOT compared). NOT diffed against UBC.
+- [ ] For any UBCa snapshot delta, generate `.snap.new` only; **present to human — NEVER
+      auto-accept** (AGENTS.md). UBCa snapshots are established/reviewed on UBCa's own terms.
 - [ ] All new unit tests (Phase 2) pass
 
 ## Phase 5 — Review, decide UBC's fate, integrate
@@ -361,8 +371,8 @@ through.
 - [ ] `cargo fmt --all`, `cargo clippy --all-targets --all-features -- -D warnings`,
       full `cargo test --workspace` green (per rust_instructions.md hard gates)
 - [ ] Human review of UBCa diff + any `.snap.new`
-- [ ] STOP! ASK HUMAN: keep UBC permanently as oracle, or retire UBC and promote UBCa?
-      Under no circumstances retire UBC automatically.
+- [ ] STOP! ASK HUMAN: keep UBC around for reference, or retire it and promote UBCa? (UBC is
+      no longer the acceptance oracle regardless.) Under no circumstances retire UBC automatically.
 - [ ] Per human decision: either leave UBC in place, or migrate callers UBC→UBCa and
       remove UBC (separate, human-gated step)
 - [ ] Verify all work is complete in `/home/hcbusy/tmp/foolish-worktrees/foop-62-ubca-mimo` and committed to `foop-62-ubca-mimo`

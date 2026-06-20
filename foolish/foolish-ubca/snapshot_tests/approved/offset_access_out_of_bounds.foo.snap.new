@@ -1,0 +1,31 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{data = {a=10; b=20; c=30; d=40; e=50}; oob = data#5; oob_neg = data#-6;}
+```
+[0] RESULT:
+```hfssnap
+{NK
+  data={
+      a=10;
+      b=20;
+      c=30;
+      d=40;
+      e=50
+  };
+  oob=#(result=?(pattern='^data$', UNANCHORED, INDEPENDENT), offset=5, ANCHORED, NK);
+  oobˍneg=#(result=?(pattern='^data$', UNANCHORED, INDEPENDENT), offset=-6, ANCHORED, NK)
+}
+```
+COMMENTS:
+```markdown
+offset_access_out_of_bounds
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: 6Kl8xVNkjnIERBDU/geunFvLzDwGt1gky5mwIgSBP1dQgu+YNxT3ZSO6QwAgC6Z5TXmrDgzy09gMUkyVCy/yDQ==
+HFS signature: A1CoMDMoFXpWuFpdim4q9fpbPfNxdWuLDavwALxNNOm2UQpbbnou4Uzrp20c6ghHSKwsPnh0222GQGHBgS1rAQ==
+Comments signature: 6a49n/TJw8fODAyMg0RvgmHdBHszq+QP7+W+eWPRZToNrPBHphYwl6jsBrY5cFfSDZv9FXNAptg+xWe5pnDOAw==
