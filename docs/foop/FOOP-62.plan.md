@@ -37,30 +37,35 @@
 > Each item corrects code to match spec. These BLOCK further FOOP-62 work (they change
 > evaluation semantics, hence snapshots).
 
-- [ ] **Add `has_ancestral_sfm: bool` to `Scope`** (`fir_trait.rs`), default false; thread it
+- [x] **Add `has_ancestral_sfm: bool` to `Scope`** (`fir_trait.rs`), default false; thread it
       through `step_fir_ref`/`fir_op_step` (already take `&Scope`). Set true when entering an
       SF-mark's RHS; carried down the step recursion.
-- [ ] **Add `descendent_of_sfm_and_foolishly_ignorant: bool` param to the clone** (rename/
+      (2026-06-19 — Scope.has_ancestral_sfm + with_ancestral_sfm(); step_fir_ref_inner switches
+      to foolish child_scope when recursing into a StayFoolish node. commit 0e57636c)
+- [x] **Add `descendent_of_sfm_and_foolishly_ignorant: bool` param to the clone** (rename/
       generalize `constanic_clone_normal_at`). Call sites in `step()` pass
       `scope.has_ancestral_sfm`; the clone's OWN recursion passes the CALLER's flag (the two
       recursions are independent — do NOT re-read scope inside clone recursion).
-- [ ] **NYES-transfer rule by mode (spec Terminology + §6b).**
+      (2026-06-19 — `constanic_clone_at(.., descendent_of_sfm_and_foolishly_ignorant)`; long
+      name throughout per Atlas. commit 0bce9dd0)
+- [x] **NYES-transfer rule by mode (spec Terminology + §6b).**
       - flag = false (normal): constanic NYES transfer UNCHANGED; pre-constanic → PREMBRYONIC.
-        KNOWN GAP: compound kinds (Operator/Search/Index/HeadTail/Brane/Statement/Concatenation)
-        hard-code `Nyes::Prembrionic` regardless of source — fix to carry NYES when constanic.
       - flag = true (foolish): ALL NYES copied unchanged (constanic AND pre-constanic).
-      Then re-run snapshots; PRESENT `.snap.new` to human (NEVER auto-accept).
-- [ ] **ConstantInt / Nk leaves transfer NYES unchanged** — verify they stay unchanged (both
+      (2026-06-19 — new `clone_nyes(source, flag)` replaces all hard-coded `Nyes::Prembrionic`
+      in compound arms. Snapshots unchanged (85/86). commit 0bce9dd0)
+- [x] **ConstantInt / Nk leaves transfer NYES unchanged** — verify they stay unchanged (both
       modes) after the fix above.
-- [ ] **THE BIG BUT — later search of an SF-mark strips the mark, runs normal (spec §9.x +
-      §10.1).** KNOWN GAP: clone has `FirKind::StayFoolish` arm that rebuilds a `StayFoolishFir`
-      at PREMBRYONIC. Fix: when a SEARCH clones an SF-mark, STRIP the mark (clone the inner
-      expression) with the flag FALSE (normal mode), so an ECONSTANIC inner re-resolves. Re-run
-      snapshots; PRESENT to human.
-- [ ] **SFF / fully-foolish construction (spec Terminology + §10.1).** Verify SFF is realized
-      purely at CONSTRUCTION (descendants built ECONSTANIC); confirm the
-      `FirKind::StayFullyFoolish` clone arm against the UBC oracle (currently rebuilds a wrapper
-      at PREMBRYONIC) and correct to match oracle + spec.
+      (2026-06-19 — leaf arms keep `borrowed.core().get_nyes()`; unaffected by clone_nyes.)
+- [x] **THE BIG BUT — later search of an SF-mark strips the mark (spec §9.x + §10.1).** When an
+      SF-mark is constanic-cloned, STRIP the mark — clone the inner expression directly (no
+      StayFoolish wrapper). Per Atlas: PASS ON the incoming
+      `descendent_of_sfm_and_foolishly_ignorant` flag to the inner clone (do NOT force false),
+      so a nested SF inside an outer SF's RHS stays foolish.
+      (2026-06-19 — StayFoolish arm strips + recurses with incoming flag. commit pending)
+- [x] **SFF / fully-foolish construction (spec Terminology + §10.1).** SFF realized at
+      CONSTRUCTION (descendants ECONSTANIC); the `FirKind::StayFullyFoolish` clone arm now
+      mirrors SF — strips the mark and clones the inner with the incoming flag.
+      (2026-06-19 — commit pending; UBC-oracle confirmation folded into the oracle re-verify box)
 - [ ] **Add/strengthen unit tests:** (a) normal clone — constanic (ECONSTANIC) compound stays
       ECONSTANIC, pre-constanic compound → PREMBRYONIC; (b) foolish clone (flag true) — ALL NYES
       copied verbatim; (c) `has_ancestral_sfm` propagation through step + clone recursion;

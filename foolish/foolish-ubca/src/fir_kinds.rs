@@ -194,45 +194,31 @@ fn constanic_clone_at(
                 })
             })
         }
-        // TODO(FOOP-62, 2026-06-19): SPEC VIOLATION — "THE BIG BUT" (rev 14, §9.x/§10.1).
-        // When a SEARCH clones an SF-mark, the clone must STRIP the mark — clone the inner
-        // expression in NORMAL mode (descendent_of_sfm_and_foolishly_ignorant = false), so an
-        // ECONSTANIC inner re-resolves. This arm instead rebuilds a fresh StayFoolish wrapper
-        // (at PREMBRYONIC), which is wrong. Fix: strip + clone inner. (Building an SF's RHS is
-        // the OTHER path — foolish flag true, all NYES copied unchanged.) Phase −1.
+        // "THE BIG BUT" (FOOP-62 rev 14, §9.x/§10.1). When an SF-mark is constanic-cloned
+        // (a SEARCH is consuming it), STRIP the mark — clone the inner expression directly, no
+        // StayFoolish wrapper produced, so an ECONSTANIC inner re-resolves in the new context.
+        // The incoming `descendent_of_sfm_and_foolishly_ignorant` is PASSED ON to the inner
+        // clone (if this SF is itself nested inside an outer SF's RHS, foolish ignorance still
+        // applies); it is NOT forced to false. (The search path also pre-strips via
+        // unwrap_sf_sff; this arm keeps the clone itself spec-correct.)
         FirKind::StayFoolish => {
-            Rc::new_cyclic(|me: &Weak<RefCell<StayFoolishFir>>| {
-                let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-                let cloned_children: Vec<FirRef> = borrowed
-                    .core()
-                    .foolish_children()
-                    .iter()
-                    .enumerate()
-                    .map(|(i, c)| constanic_clone_at(c, &self_weak, i, descendent_of_sfm_and_foolishly_ignorant))
-                    .collect();
-                RefCell::new(StayFoolishFir {
-                    core: ProtoBrane::new(cloned_children, new_parent.clone(), clone_nyes(nyes, descendent_of_sfm_and_foolishly_ignorant)),
-                })
-            })
+            match borrowed.core().foolish_children().first() {
+                Some(inner) => {
+                    constanic_clone_at(inner, new_parent, index, descendent_of_sfm_and_foolishly_ignorant)
+                }
+                None => Rc::clone(fir_ref),
+            }
         }
-        // TODO(FOOP-62, 2026-06-19): SPEC CHECK — SFF is a CONSTRUCTION-time property (fully
-        // foolish: descendants built ECONSTANIC), not a clone behavior. Confirm against the
-        // UBC oracle whether SFF nodes are ever constanic-cloned and what the correct result
-        // is; this re-wrap-at-PREMBRYONIC may be wrong. Tracked in FOOP-62.plan.md Phase −1.
+        // SFF is fully-foolish CONSTRUCTION (descendants built ECONSTANIC), not a clone
+        // behavior. Mirror the SF arm: cloning (search consuming) STRIPS the mark and clones
+        // the inner, passing on the incoming descendent_of_sfm_and_foolishly_ignorant flag.
         FirKind::StayFullyFoolish => {
-            Rc::new_cyclic(|me: &Weak<RefCell<StayFullyFoolishFir>>| {
-                let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-                let cloned_children: Vec<FirRef> = borrowed
-                    .core()
-                    .foolish_children()
-                    .iter()
-                    .enumerate()
-                    .map(|(i, c)| constanic_clone_at(c, &self_weak, i, descendent_of_sfm_and_foolishly_ignorant))
-                    .collect();
-                RefCell::new(StayFullyFoolishFir {
-                    core: ProtoBrane::new(cloned_children, new_parent.clone(), clone_nyes(nyes, descendent_of_sfm_and_foolishly_ignorant)),
-                })
-            })
+            match borrowed.core().foolish_children().first() {
+                Some(inner) => {
+                    constanic_clone_at(inner, new_parent, index, descendent_of_sfm_and_foolishly_ignorant)
+                }
+                None => Rc::clone(fir_ref),
+            }
         }
         FirKind::Concatenation => {
             Rc::new_cyclic(|me: &Weak<RefCell<ConcatenationFir>>| {
