@@ -75,13 +75,37 @@ pub fn decide_nyes_due_to_children(children: &[FirRef]) -> Option<Nyes> {
 ///      an SF-mark must STRIP the mark (clone the inner expression, normal mode), NOT re-wrap.
 ///
 /// The index parameter tracks position for correct line_number on StatementFir.
-fn constanic_clone_normal_at(fir_ref: &FirRef, new_parent: &Weak<RefCell<dyn Fir>>, index: usize) -> FirRef {
+/// NYES-transfer rule (FOOP-62 §10.1, "Terminology: ignorance").
+///
+/// Compute the NYES a clone receives given the source NYES and whether the clone is
+/// foolishly ignorant (`descendent_of_sfm_and_foolishly_ignorant`):
+/// - foolishly ignorant (true): ALL NYES copied UNCHANGED (constanic AND pre-constanic).
+/// - normally ignorant (false): constanic NYES copied UNCHANGED; pre-constanic → PREMBRYONIC.
+fn clone_nyes(source: Nyes, descendent_of_sfm_and_foolishly_ignorant: bool) -> Nyes {
+    if descendent_of_sfm_and_foolishly_ignorant || source.is_constanic() {
+        source
+    } else {
+        Nyes::Prembrionic
+    }
+}
+
+/// Constanic-clone of a result for `ubc_children`.
+///
+/// `descendent_of_sfm_and_foolishly_ignorant` selects the mode (see `clone_nyes`). At the
+/// step→clone boundary callers pass `scope.has_ancestral_sfm`; the recursion below propagates
+/// the CALLER's flag (the step and clone recursions are independent — §10.1).
+fn constanic_clone_at(
+    fir_ref: &FirRef,
+    new_parent: &Weak<RefCell<dyn Fir>>,
+    index: usize,
+    descendent_of_sfm_and_foolishly_ignorant: bool,
+) -> FirRef {
     let nyes = fir_ref.borrow().core().get_nyes();
-    // Constant/Independent: just reference, don't clone
+    // Constant/Independent: just reference, don't clone (constanic-everywhere, identical in
+    // both modes — NYES transfers unchanged either way).
     if nyes == Nyes::Constant || nyes == Nyes::Independent {
         return Rc::clone(fir_ref);
     }
-    // Other constanic states: clone with reset to pre-constanic
     let borrowed = fir_ref.borrow();
     let kind = borrowed.kind();
     match kind {
@@ -97,11 +121,6 @@ fn constanic_clone_normal_at(fir_ref: &FirRef, new_parent: &Weak<RefCell<dyn Fir
                 reason: borrowed.as_nk_reason().unwrap_or("unknown").to_owned(),
             }))
         }
-        // TODO(FOOP-62, 2026-06-19): NYES-transfer rule (applies to ALL compound arms below:
-        // Operator/Search/Index/HeadTail/Brane/Statement/Concatenation). They hard-code
-        // `Nyes::Prembrionic`, but the spec (rev 14) says constanic NYES transfer UNCHANGED
-        // (so an ECONSTANIC/WOCONSTANIC source must KEEP its state), and only pre-constanic
-        // sources reset to PREMBRYONIC. Fix all these arms. Tracked in FOOP-62.plan.md Phase −1.
         FirKind::Operator => {
             let op_name = borrowed.as_op_name().unwrap_or("?").to_owned();
             Rc::new_cyclic(|me: &Weak<RefCell<OperatorFir>>| {
@@ -111,11 +130,11 @@ fn constanic_clone_normal_at(fir_ref: &FirRef, new_parent: &Weak<RefCell<dyn Fir
                     .foolish_children()
                     .iter()
                     .enumerate()
-                    .map(|(i, c)| constanic_clone_normal_at(c, &self_weak, i))
+                    .map(|(i, c)| constanic_clone_at(c, &self_weak, i, descendent_of_sfm_and_foolishly_ignorant))
                     .collect();
-                let mut core = ProtoBrane::new(cloned_children, new_parent.clone(), Nyes::Prembrionic);
+                let mut core = ProtoBrane::new(cloned_children, new_parent.clone(), clone_nyes(nyes, descendent_of_sfm_and_foolishly_ignorant));
                 for ubc in borrowed.core().ubc_children() {
-                    core.push_ubc_child(constanic_clone_normal_at(&ubc, &self_weak, 0));
+                    core.push_ubc_child(constanic_clone_at(&ubc, &self_weak, 0, descendent_of_sfm_and_foolishly_ignorant));
                 }
                 RefCell::new(OperatorFir { core, op: op_name })
             })
@@ -126,10 +145,10 @@ fn constanic_clone_normal_at(fir_ref: &FirRef, new_parent: &Weak<RefCell<dyn Fir
                 .foolish_children()
                 .iter()
                 .enumerate()
-                .map(|(i, c)| constanic_clone_normal_at(c, new_parent, i))
+                .map(|(i, c)| constanic_clone_at(c, new_parent, i, descendent_of_sfm_and_foolishly_ignorant))
                 .collect();
             Rc::new(RefCell::new(SearchFir {
-                core: ProtoBrane::new(children, new_parent.clone(), Nyes::Prembrionic),
+                core: ProtoBrane::new(children, new_parent.clone(), clone_nyes(nyes, descendent_of_sfm_and_foolishly_ignorant)),
                 pattern: borrowed.as_search_pattern().unwrap_or("").to_owned(),
                 anchored: borrowed.as_search_anchored(),
                 forward: false,
@@ -147,10 +166,10 @@ fn constanic_clone_normal_at(fir_ref: &FirRef, new_parent: &Weak<RefCell<dyn Fir
                     .foolish_children()
                     .iter()
                     .enumerate()
-                    .map(|(i, c)| constanic_clone_normal_at(c, &self_weak, i))
+                    .map(|(i, c)| constanic_clone_at(c, &self_weak, i, descendent_of_sfm_and_foolishly_ignorant))
                     .collect();
                 RefCell::new(IndexFir {
-                    core: ProtoBrane::new(cloned_children, new_parent.clone(), Nyes::Prembrionic),
+                    core: ProtoBrane::new(cloned_children, new_parent.clone(), clone_nyes(nyes, descendent_of_sfm_and_foolishly_ignorant)),
                     offset,
                     anchored,
                 })
@@ -166,10 +185,10 @@ fn constanic_clone_normal_at(fir_ref: &FirRef, new_parent: &Weak<RefCell<dyn Fir
                     .foolish_children()
                     .iter()
                     .enumerate()
-                    .map(|(i, c)| constanic_clone_normal_at(c, &self_weak, i))
+                    .map(|(i, c)| constanic_clone_at(c, &self_weak, i, descendent_of_sfm_and_foolishly_ignorant))
                     .collect();
                 RefCell::new(HeadTailFir {
-                    core: ProtoBrane::new(cloned_children, new_parent.clone(), Nyes::Prembrionic),
+                    core: ProtoBrane::new(cloned_children, new_parent.clone(), clone_nyes(nyes, descendent_of_sfm_and_foolishly_ignorant)),
                     is_head,
                     anchored,
                 })
@@ -189,10 +208,10 @@ fn constanic_clone_normal_at(fir_ref: &FirRef, new_parent: &Weak<RefCell<dyn Fir
                     .foolish_children()
                     .iter()
                     .enumerate()
-                    .map(|(i, c)| constanic_clone_normal_at(c, &self_weak, i))
+                    .map(|(i, c)| constanic_clone_at(c, &self_weak, i, descendent_of_sfm_and_foolishly_ignorant))
                     .collect();
                 RefCell::new(StayFoolishFir {
-                    core: ProtoBrane::new(cloned_children, new_parent.clone(), Nyes::Prembrionic),
+                    core: ProtoBrane::new(cloned_children, new_parent.clone(), clone_nyes(nyes, descendent_of_sfm_and_foolishly_ignorant)),
                 })
             })
         }
@@ -208,10 +227,10 @@ fn constanic_clone_normal_at(fir_ref: &FirRef, new_parent: &Weak<RefCell<dyn Fir
                     .foolish_children()
                     .iter()
                     .enumerate()
-                    .map(|(i, c)| constanic_clone_normal_at(c, &self_weak, i))
+                    .map(|(i, c)| constanic_clone_at(c, &self_weak, i, descendent_of_sfm_and_foolishly_ignorant))
                     .collect();
                 RefCell::new(StayFullyFoolishFir {
-                    core: ProtoBrane::new(cloned_children, new_parent.clone(), Nyes::Prembrionic),
+                    core: ProtoBrane::new(cloned_children, new_parent.clone(), clone_nyes(nyes, descendent_of_sfm_and_foolishly_ignorant)),
                 })
             })
         }
@@ -223,10 +242,10 @@ fn constanic_clone_normal_at(fir_ref: &FirRef, new_parent: &Weak<RefCell<dyn Fir
                     .foolish_children()
                     .iter()
                     .enumerate()
-                    .map(|(i, c)| constanic_clone_normal_at(c, &self_weak, i))
+                    .map(|(i, c)| constanic_clone_at(c, &self_weak, i, descendent_of_sfm_and_foolishly_ignorant))
                     .collect();
                 RefCell::new(ConcatenationFir {
-                    core: ProtoBrane::new(cloned_children, new_parent.clone(), Nyes::Prembrionic),
+                    core: ProtoBrane::new(cloned_children, new_parent.clone(), clone_nyes(nyes, descendent_of_sfm_and_foolishly_ignorant)),
                 })
             })
         }
@@ -240,10 +259,10 @@ fn constanic_clone_normal_at(fir_ref: &FirRef, new_parent: &Weak<RefCell<dyn Fir
                     .foolish_children()
                     .iter()
                     .enumerate()
-                    .map(|(i, c)| constanic_clone_normal_at(c, &self_weak, i))
+                    .map(|(i, c)| constanic_clone_at(c, &self_weak, i, descendent_of_sfm_and_foolishly_ignorant))
                     .collect();
                 RefCell::new(StatementFir {
-                    core: ProtoBrane::new(cloned_children, new_parent.clone(), Nyes::Prembrionic),
+                    core: ProtoBrane::new(cloned_children, new_parent.clone(), clone_nyes(nyes, descendent_of_sfm_and_foolishly_ignorant)),
                     name,
                     line_number: line,
                 })
@@ -257,10 +276,10 @@ fn constanic_clone_normal_at(fir_ref: &FirRef, new_parent: &Weak<RefCell<dyn Fir
                     .foolish_children()
                     .iter()
                     .enumerate()
-                    .map(|(i, c)| constanic_clone_normal_at(c, &self_weak, i))
+                    .map(|(i, c)| constanic_clone_at(c, &self_weak, i, descendent_of_sfm_and_foolishly_ignorant))
                     .collect();
                 RefCell::new(BraneFir {
-                    core: ProtoBrane::new(cloned_children, new_parent.clone(), Nyes::Prembrionic),
+                    core: ProtoBrane::new(cloned_children, new_parent.clone(), clone_nyes(nyes, descendent_of_sfm_and_foolishly_ignorant)),
                     characterizations: borrowed.as_brane_characterizations().to_vec(),
                 })
             })
@@ -370,7 +389,7 @@ impl Fir for OperatorFir {
     fn core(&self) -> &ProtoBrane {
         &self.core
     }
-    fn fir_op_step(&self, _scope: &Scope) -> Result<(), UbcError> {
+    fn fir_op_step(&self, scope: &Scope) -> Result<(), UbcError> {
         match self.core.get_nyes() {
             Nyes::Prembrionic => {
                 self.core.set_nyes(Nyes::Braning);
@@ -404,7 +423,7 @@ impl Fir for OperatorFir {
                             reason,
                         })
                     });
-                    self.core.push_ubc_child(constanic_clone_normal_at(&nk_ref, &self_weak, 0));
+                    self.core.push_ubc_child(constanic_clone_at(&nk_ref, &self_weak, 0, scope.has_ancestral_sfm));
                     self.core.set_nyes(Nyes::Nk);
                     return Ok(());
                 }
@@ -432,7 +451,7 @@ impl Fir for OperatorFir {
                                     reason: "division by zero".to_string(),
                                 })
                             });
-                            self.core.push_ubc_child(constanic_clone_normal_at(&nk_ref, &self_weak, 0));
+                            self.core.push_ubc_child(constanic_clone_at(&nk_ref, &self_weak, 0, scope.has_ancestral_sfm));
                             self.core.set_nyes(Nyes::Nk);
                             return Ok(());
                         }
@@ -447,7 +466,7 @@ impl Fir for OperatorFir {
                                     reason: "division by zero".to_string(),
                                 })
                             });
-                            self.core.push_ubc_child(constanic_clone_normal_at(&nk_ref, &self_weak, 0));
+                            self.core.push_ubc_child(constanic_clone_at(&nk_ref, &self_weak, 0, scope.has_ancestral_sfm));
                             self.core.set_nyes(Nyes::Nk);
                             return Ok(());
                         }
@@ -469,7 +488,7 @@ impl Fir for OperatorFir {
                         value: result,
                     })
                 });
-                self.core.push_ubc_child(constanic_clone_normal_at(&result_ref, &self_weak, 0));
+                self.core.push_ubc_child(constanic_clone_at(&result_ref, &self_weak, 0, scope.has_ancestral_sfm));
                 self.core.set_nyes(Nyes::Constant);
             }
             _ => {}
@@ -751,7 +770,7 @@ impl Fir for SearchFir {
     fn core(&self) -> &ProtoBrane {
         &self.core
     }
-    fn fir_op_step(&self, _scope: &Scope) -> Result<(), UbcError> {
+    fn fir_op_step(&self, scope: &Scope) -> Result<(), UbcError> {
         match self.core.get_nyes() {
             Nyes::Prembrionic => {
                 if self.anchored {
@@ -772,7 +791,7 @@ impl Fir for SearchFir {
                                 if let Some((body, nyes, sf_pat)) = search_brane_children(brane_ref, name, before_idx, self.forward) {
                                     if nyes.is_constanic() {
                                         let self_weak = self.core.parent_weak();
-                                        self.core.push_ubc_child(constanic_clone_normal_at(&body, &self_weak, 0));
+                                        self.core.push_ubc_child(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
                                         if let Some(p) = sf_pat {
                                             *self.sf_inner_pattern.borrow_mut() = Some(p);
                                         }
@@ -813,7 +832,7 @@ impl Fir for SearchFir {
                     let name = &self.pattern;
                     if let Some((body, nyes, _sf_pat)) = search_brane_children(&resolved, name, None, self.forward) {
                         let self_weak = self.core.parent_weak();
-                        self.core.push_ubc_child(constanic_clone_normal_at(&body, &self_weak, 0));
+                        self.core.push_ubc_child(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
                         let search_nyes = if nyes == Nyes::Econstanic
                             || nyes == Nyes::Woconstanic
                             || nyes == Nyes::Nk
@@ -830,7 +849,7 @@ impl Fir for SearchFir {
                     let nyes = body.borrow().core().get_nyes();
                     if nyes.is_constanic() {
                         let self_weak = self.core.parent_weak();
-                        self.core.push_ubc_child(constanic_clone_normal_at(&body, &self_weak, 0));
+                        self.core.push_ubc_child(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
                         let search_nyes = if nyes == Nyes::Econstanic || nyes == Nyes::Woconstanic {
                             Nyes::Woconstanic
                         } else {
@@ -952,7 +971,7 @@ impl Fir for IndexFir {
     fn core(&self) -> &ProtoBrane {
         &self.core
     }
-    fn fir_op_step(&self, _scope: &Scope) -> Result<(), UbcError> {
+    fn fir_op_step(&self, scope: &Scope) -> Result<(), UbcError> {
         match self.core.get_nyes() {
             Nyes::Prembrionic => {
                 if self.anchored {
@@ -971,7 +990,7 @@ impl Fir for IndexFir {
                                 if let Some((body, nyes)) = index_into_brane_relative(&brane_ref, idx, self.offset) {
                                     if nyes.is_constanic() {
                                         let self_weak = self.core.parent_weak();
-                                        self.core.push_ubc_child(constanic_clone_normal_at(&body, &self_weak, 0));
+                                        self.core.push_ubc_child(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
                                         self.core.set_nyes(nyes);
                                     } else {
                                         self.core.push_task(Rc::clone(&body));
@@ -996,7 +1015,7 @@ impl Fir for IndexFir {
                     let resolved = resolve_anchor(&anchor);
                     if let Some((body, nyes)) = index_into_brane(&resolved, self.offset) {
                         let self_weak = self.core.parent_weak();
-                        self.core.push_ubc_child(constanic_clone_normal_at(&body, &self_weak, 0));
+                        self.core.push_ubc_child(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
                         self.core.set_nyes(nyes);
                     } else {
                         self.core.set_nyes(Nyes::Nk);
@@ -1007,7 +1026,7 @@ impl Fir for IndexFir {
                             if let Some(idx) = find_stmt_index_in_brane(&stmt_ref, &brane_ref) {
                                 if let Some((body, nyes)) = index_into_brane_relative(&brane_ref, idx, self.offset) {
                                     let self_weak = self.core.parent_weak();
-                                    self.core.push_ubc_child(constanic_clone_normal_at(&body, &self_weak, 0));
+                                    self.core.push_ubc_child(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
                                     self.core.set_nyes(nyes);
                                 } else {
                                     self.core.set_nyes(Nyes::Nk);
@@ -1050,7 +1069,7 @@ impl Fir for HeadTailFir {
     fn core(&self) -> &ProtoBrane {
         &self.core
     }
-    fn fir_op_step(&self, _scope: &Scope) -> Result<(), UbcError> {
+    fn fir_op_step(&self, scope: &Scope) -> Result<(), UbcError> {
         let offset: i32 = if self.is_head { 0 } else { -1 };
         match self.core.get_nyes() {
             Nyes::Prembrionic => {
@@ -1070,7 +1089,7 @@ impl Fir for HeadTailFir {
                                 if let Some((body, nyes)) = index_into_brane_relative(&brane_ref, idx, offset) {
                                     if nyes.is_constanic() {
                                         let self_weak = self.core.parent_weak();
-                                        self.core.push_ubc_child(constanic_clone_normal_at(&body, &self_weak, 0));
+                                        self.core.push_ubc_child(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
                                         self.core.set_nyes(nyes);
                                     } else {
                                         self.core.push_task(Rc::clone(&body));
@@ -1095,7 +1114,7 @@ impl Fir for HeadTailFir {
                     let resolved = resolve_anchor(&anchor);
                     if let Some((body, nyes)) = index_into_brane(&resolved, offset) {
                         let self_weak = self.core.parent_weak();
-                        self.core.push_ubc_child(constanic_clone_normal_at(&body, &self_weak, 0));
+                        self.core.push_ubc_child(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
                         self.core.set_nyes(nyes);
                     } else {
                         self.core.set_nyes(Nyes::Nk);
@@ -1106,7 +1125,7 @@ impl Fir for HeadTailFir {
                             if let Some(idx) = find_stmt_index_in_brane(&stmt_ref, &brane_ref) {
                                 if let Some((body, nyes)) = index_into_brane_relative(&brane_ref, idx, offset) {
                                     let self_weak = self.core.parent_weak();
-                                    self.core.push_ubc_child(constanic_clone_normal_at(&body, &self_weak, 0));
+                                    self.core.push_ubc_child(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
                                     self.core.set_nyes(nyes);
                                 } else {
                                     self.core.set_nyes(Nyes::Nk);
