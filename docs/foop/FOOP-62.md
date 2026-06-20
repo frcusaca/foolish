@@ -1090,12 +1090,14 @@ flux); the instant `step()` returns, the invariant holds again. Consequences tha
   - **Especially**: show NK with reason (e.g., `??? (division by zero)`).
 
 - **Constanic-clone of SF-markers.** When constanic-clone is called ON an SF-marker, it
-  **ignores the SF-marker** and returns the constanic-clone of its only child. The search
-  sets its result to the output of a normally constanic-clone, which resets search states
-  to pre-constanic. This means:
-  - `constanic_clone(SF<x>)` = `constanic_clone(x)` (SF is transparent)
-  - The result uses the `Normally` flag (resets constanic states to pre-constanic)
-  - The SF wrapper is stripped — only the inner value is cloned
+  **strips the SF-marker** and returns the constanic-clone of its only (inner) child. This
+  means:
+  - `constanic_clone(SF<x>)` = `constanic_clone(x)` (SF is transparent to cloning)
+  - The SF wrapper is stripped — only the inner value is cloned; no `StayFoolish` re-wrap.
+  - The incoming `descendent_of_sfm_and_foolishly_ignorant` flag is **passed on** to the inner
+    clone (NOT forced to false): a normal search consuming an SF clones the inner *normally*
+    (constanic NYES kept unchanged per the NYES-transfer rule, pre-constanic → PREMBRYONIC),
+    while an SF nested inside an outer SF's RHS keeps the foolish flag and copies NYES verbatim.
 
 ### 10. Scope: the search-capability surface (no name accumulation)
 
