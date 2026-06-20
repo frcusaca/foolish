@@ -39,8 +39,10 @@ this with a single uniform container — the **ProtoBrane** — that holds child
 written **once** as defaults; each FIR kind supplies only its own per-node work
 (`fir_op_step`) and its leaf data. We build this as a **new crate/module `UBCa`** by cloning
 the existing UBC interface and tests, gutting the implementation, and rebuilding on the
-new structure — keeping the original **UBC as a byte-for-byte correctness oracle** to
-diff against during development.
+new structure. UBCa is **its own source of truth**: it is validated **byte-for-byte against
+its own approved snapshot corpus** (`foolish-ubca/snapshot_tests/`). UBC may be consulted
+informally during development, but UBCa is **NOT** required to match UBC's output — UBC's own
+snapshots have drifted from its evaluator and UBC is no longer an authoritative oracle.
 
 ## Terminology: NYES states in UBCa
 
@@ -509,12 +511,12 @@ Two facts that follow (both confirmed during design):
 
 #### 3.3 How `nyes` actually advances — first pass MIRRORS UBC
 
-The exact NYES progression is the **implementer's choice; the first pass mirrors UBC**. This
-FOOP fixes the *mechanism* (task-list drain + `fir_op_step`), not the transition table — UBC
-is the oracle for the transitions, and UBCa must reproduce the **final states** that the
-sequencer renders. (UBCa need NOT reproduce UBC's step *counts* — those are not in snapshots;
-only the rendered output is. See UBC Step Impact.) The concrete transition target is UBC's
-`step_one` per kind + `compute_brane_state` (`ubc.rs:639`).
+The exact NYES progression is the **implementer's choice**. This FOOP fixes the *mechanism*
+(task-list drain + `fir_op_step`), not the transition table. The **final states** that the
+sequencer renders are pinned by **UBCa's own approved snapshots** (the acceptance gate); UBCa
+need NOT reproduce UBC's step *counts* (not in snapshots) and is NOT required to match UBC's
+output. UBC's `step_one` per kind + `compute_brane_state` (`ubc.rs:639`) may be consulted as a
+*reference* for a reasonable progression, but it is not authoritative.
 
 - Early progression `Prembrionic → Embryonic → Braning` (Braning possibly for several steps)
   is **UBC-defined**; UBCa replicates it. The task queue is built at `Embryonic`.
@@ -541,9 +543,9 @@ only the rendered output is. See UBC Step Impact.) The concrete transition targe
   }
   ```
 
-This NYES-driven, one-transition-per-`step()`, queue-drain model reproduces UBC's **final
-rendered states** — the snapshot oracle. (It does not reproduce UBC's step *counts*, and need
-not: counts are not in snapshots.)
+This NYES-driven, one-transition-per-`step()`, queue-drain model produces the **final
+rendered states** pinned by UBCa's own approved snapshots — the acceptance gate. (It does not
+reproduce UBC's step *counts*, and need not: counts are not in snapshots.)
 
 #### 3.3.1 NYES classification for Brane and Operator
 
@@ -898,30 +900,25 @@ UBCa is a **new workspace crate `foolish-ubca`**, parallel to the original UBC a
 inside `foolish-core` (`src/fir.rs`, `src/ubc.rs`); UBCb is its own crate `foolish-ubcb`.
 UBCa follows the UBCb precedent: its own crate.)
 
-- The existing UBC implementation in `foolish-core` (`fir.rs`, `ubc.rs`) stays **untouched**
-  as the reference oracle.
+- The existing UBC implementation in `foolish-core` (`fir.rs`, `ubc.rs`) stays in place for
+  reference, but is **no longer an authoritative oracle** (its approved snapshots have drifted
+  from its evaluator). UBCa is validated against its own snapshots, not UBC's.
 - **`foolish-ubca`** is created by cloning the UBC *public interface* (the `Scope` API,
   `run_to_completion*`, the snapshot suite harness), then **gutting** the internals and
   rebuilding on the ProtoBrane two-store structure. Add `foolish-ubca` (and, if a CLI
   parity is wanted later, `foolish-ubca-cli`) to the workspace `members`, mirroring the
   `foolish-ubcb` / `foolish-ubcb-cli` pair.
-- **UBC's snap tests are copied to UBCa as-is without change.** Both the `input/` directory
-  (the `.foo` test programs) and the `approved/` directory (the finalized `.snap` files)
-  are copied byte-for-byte from UBC's `snapshot_tests/` into UBCa's snapshot test
-  directories. These are the shared test inputs and the oracle corpus. Only finalized
-  (approved, signed) `.snap` files — never `.snap.new`, which are pending human review.
-  Copying approved snapshots is permitted; **re-accepting/regenerating them is not** without
-  human review (AGENTS.md no-auto-accept rule).
+- **UBC's `.foo` test inputs are copied to UBCa as starting inputs.** The `input/` directory
+  (the `.foo` test programs) is copied as a starting point. UBCa then maintains its **own**
+  `approved/` snapshot corpus under `foolish-ubca/snapshot_tests/approved/` — that corpus is
+  UBCa's source of truth, reviewed and signed on UBCa's own terms (AGENTS.md no-auto-accept
+  rule still applies). UBCa's snapshots are **NOT** required to equal UBC's snapshots.
 - **The humanizer sequencer is developed for UBCa's new FIR classes.** Everything else
-  beyond the copied snap tests is implemented according to this FOOP's design: the ProtoBrane
+  beyond the copied inputs is implemented according to this FOOP's design: the ProtoBrane
   two-store structure, the `trait Fir` dyn-dispatch surface, the task-list stepping, and the
-  reworked Scope. The sequencer must read UBCa's FIR types (ProtoBrane's `foolish_children` /
-  `ubc_children` stores + leaf accessors via `kind()`) and produce output that is
-  byte-identical to UBC's approved snapshots. This is the **hard acceptance constraint** (§8).
-- A cross-check runs the same `.foo` inputs through both UBC (in `foolish-core`) and
-  `foolish-ubca` and asserts identical **humanizing-sequencer output** (byte-exact).
-  Step counts are NOT compared — the two stepping models differ in granularity by design
-  and counts are not snapshot-visible (see UBC Step Impact).
+  reworked Scope. The sequencer reads UBCa's FIR types (ProtoBrane's `foolish_children` /
+  `ubc_children` stores + leaf accessors via `kind()`) and its output must be **byte-identical
+  to UBCa's own approved snapshots**. This is the **hard acceptance constraint** (§8).
 
 ### 8. The humanizing sequencer is a HARD acceptance constraint
 
@@ -947,8 +944,9 @@ existing approved `.snap` corpus exactly. This pins concrete requirements on the
     tuples carry.
   - `hs_search -> (pattern, direction, anchored, anchor, target)` maps to: leaf data
     (pattern/direction/anchored) + `foolish_children[anchor]` + `ubc_children[result]`.
-- **Acceptance rule**: if the sequencer produces any byte difference from the approved
-  corpus, it is a UBCa bug — *not* a snapshot to re-accept.
+- **Acceptance rule**: if the sequencer produces any byte difference from **UBCa's own
+  approved corpus**, it is either a UBCa bug or a deliberate semantic change — present the
+  `.snap.new` to a human for review; never auto-accept. (The corpus is UBCa's, not UBC's.)
 - **DEFAULT PLAN (both reviewers concur): keep a thin `FirQueryable` adapter over ProtoBrane
   as the first-pass sequencer path.** The adapter reads the two stores + leaf accessors and
   returns the same tuples the sequencer expects (~100 lines of glue vs ~400 lines of
@@ -1363,7 +1361,7 @@ Large. This is a representation change:
   behavior dyn-dispatched through `trait Fir` (§1 composition model). This also means the
   `Evaluator` trait (`snapshot_suite.rs`, pinned
   to `dyn Steppable`) must be **genericized over the FIR ref type** (or fronted by a thin
-  adapter) for the cross-check harness — ~50 lines.
+  adapter) for UBCa's own snapshot harness — ~50 lines.
 - **Woconstanic short-circuit is preserved** (Deepseek #9). Current `wo_short_circuit`
   (`fir.rs:1770-1789`) follows a Woconstanic chain and collapses it; this is
   **snapshot-visible** (the short-circuited end differs from the chain). UBCa must reproduce
@@ -1408,16 +1406,16 @@ Significant, but **behavior-preserving by construction** (the snapshots are the 
 
 ## Test Plan
 
-- **Oracle cross-check** (new): a harness runs every `.foo` in
-  `foolish-core/snapshot_tests/input/` through both UBC and UBCa and asserts identical
-  **humanizing-sequencer output** (the primary acceptance gate). It does **not** compare step
-  counts — they are not in snapshots and the two stepping models differ in granularity by
-  design (see UBC Step Impact).
-- **Bring over the finalized snapshot corpus**: copy every finalized (approved, signed)
-  `foolish-core/snapshot_tests/approved/*.foo.snap` into UBCa's approved directory as its
-  starting oracle set. UBCa must reproduce all of them **byte-for-byte**. Do NOT copy any
-  `.snap.new` (those are pending human review). No new `.snap` is accepted without human
-  review; copying *already-finalized* ones across is fine (it is not re-acceptance).
+- **UBCa's own snapshot suite is the primary acceptance gate.** A harness runs every `.foo`
+  in `foolish-ubca/snapshot_tests/input/` through UBCa and asserts its **humanizing-sequencer
+  output is byte-exact against UBCa's own approved `.snap` corpus**. Step counts are not in
+  snapshots and are not compared (see UBC Step Impact).
+- **UBCa is NOT diffed against UBC.** UBC is no longer an authoritative oracle (its own
+  approved snapshots have drifted from its evaluator). The cross-check-against-UBC requirement
+  is **removed**. UBC may be consulted informally, but matching UBC is not a gate.
+- **Seeding the corpus**: UBC's `.foo` *inputs* may be copied as starting points; UBCa's
+  approved `.snap` files are then established and reviewed on UBCa's own terms. No `.snap` is
+  accepted without human review (AGENTS.md no-auto-accept rule).
 - **New unit tests** (write FIRST, per AGENTS.md dev process) covering:
   - `foolish_children` immutability (no public mutator; length stable across stepping).
   - `ubc_children` expand AND shrink (push a result; clear on re-step; re-derive).
@@ -1444,7 +1442,7 @@ Significant, but **behavior-preserving by construction** (the snapshots are the 
   - **Termination over progress (§7)** — a brane whose root NYES sits at `Braning` for many
     calls does NOT stop early; the loop stops only on constanic-or-no-progress.
   - **Woconstanic short-circuit** preserved — chain collapses into `ubc_children`, output
-    matches UBC byte-for-byte.
+    byte-exact against UBCa's own approved snapshot.
   - **`Ignorance` carry-over (§10.1)** — `Foolishly` (SF): a found brane is not consumed
     (search goes Econstanic); SFF: children instantiated as ECONSTANIC via builder, no searches run;
     threaded via `Scope` into the child's step.
@@ -1471,7 +1469,8 @@ Significant, but **behavior-preserving by construction** (the snapshots are the 
     Nk, no stall.
   - **Unresolvable forward ref terminates cleanly** — via `NoProgress`, NOT via the
     `max_steps` guard.
-- **Existing tests to update**: only UBCa-side; UBC tests stay frozen as the oracle.
+- **Existing tests to update**: only UBCa-side; UBC tests are left as-is (UBC is not the
+  acceptance oracle — UBCa is validated against its own snapshots).
 
 ## Rejected Alternatives
 
@@ -1499,11 +1498,13 @@ only narrows a *single* parent-vec borrow. The task-list step (work the front ta
 transition at a time, mutate only own `tasks`/`ubc_children`) achieves all required mutation
 without the hazard.
 
-### D. In-place full rewrite of `foolish-core` (no UBC oracle)
+### D. In-place full rewrite of `foolish-core`
 
-Gut `fir.rs`/`ubc.rs` directly. Rejected: loses the byte-for-byte reference to diff
-against during a high-risk representation change. Cloning to UBCa costs duplication
-temporarily but makes every behavioral divergence immediately visible.
+Gut `fir.rs`/`ubc.rs` directly. Rejected: a high-risk representation change is safer in a
+fresh, isolated crate (`foolish-ubca`) that can be validated against its own snapshot corpus
+while the old code keeps the workspace building. (Note: the original rationale also cited UBC
+as a byte-for-byte diff oracle; that no longer holds — UBC's snapshots have drifted from its
+evaluator and UBCa is its own source of truth — but the isolation argument still stands.)
 
 ## Open Questions
 
@@ -1531,8 +1532,9 @@ temporarily but makes every behavioral divergence immediately visible.
   reaches a constanic NYES in finite time (so the task-list drain terminates). Locate where
   this guarantee is documented (a FOOP, STYLES, or ECOSYSTEM) and cite it; if it is only
   implicit, this FOOP should state it explicitly.
-- **Task-list NYES transitions**: the first pass mirrors UBC's transition table (§3.3); the
-  exact per-kind progression is deferred to "match UBC" rather than legislated here.
+- **Task-list NYES transitions**: the exact per-kind progression is the implementer's choice,
+  pinned by UBCa's own approved snapshots (§3.3). UBC's transition table may be consulted as a
+  reference but is not authoritative.
 - ~~Unanchored `index` range~~ — **RULED by Atlas (2026-06-10)**: the two index forms are
   distinct operations. UNANCHORED index (syntax `a = #-1 + #-2`) permits ONLY negative
   offsets, valid `[-k, -1]` for statement k; out-of-range (including 0 and positives) ⇒
@@ -1603,6 +1605,17 @@ already-accepted FOOPs, which is corroborating evidence the model is right:
   rules.
 
 ## Last Updated
+
+**Date**: 2026-06-19 (revision 15 — UBCa is its own source of truth; drop "match UBC")
+**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
+**Changes**: REMOVED the "UBCa must match UBC byte-for-byte" requirement throughout (Atlas
+ruling). UBC is no longer an authoritative oracle — its committed approved snapshots have
+drifted from its own evaluator (confirmed by stashing all session changes: deep VALUE diffs,
+not just state labels). UBCa is now validated **byte-for-byte against its OWN approved snapshot
+corpus**. Scrubbed the Abstract, §7 (crate layout / snap copy), §8 (acceptance rule), §9
+(transition oracle), Test Plan (oracle cross-check removed), FIR Impact (harness), and Rejected
+Alternative D. "byte-exact" as the snapshot mechanism is retained — only the *cross-check
+against UBC* is removed. Synced to alpha + the -mimo plan (Phase 1 & 4 reworded).
 
 **Date**: 2026-06-19 (revision 14 — ignorance terminology + foolish-flag model)
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
