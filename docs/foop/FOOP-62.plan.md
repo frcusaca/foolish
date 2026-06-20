@@ -138,7 +138,28 @@ returned nyes. So **track and set nyes as stepping happens**.
   computed value or div-by-zero; BraneFir folds in `_decide_nyes_due_to_children`).
 - This is §9.0 (Quiescent-Representation Invariant) specialized to the nyes cache. Audit every
   `set_nyes` / `borrow_mut` so none releases a write-borrow with a stale nyes.
-APPROACH: design (this section) → implement per-kind incrementally, committing each → snapshots.
+- **Work the nyes around the job queue** (Atlas): the queue state drives the phase. Tasks
+  pending ⇒ pre-constanic; queue drained ⇒ the node runs its own act (in `fir_op_step`) and
+  computes its terminal nyes from the now-constanic children/results. `fir_op_step` IS the
+  "queue-drained, do my act" hook (the driver only calls it when `front_task()` is empty).
+
+### DESIGN — task #14: EMBRYONIC = within-brane stage (preserve; reintroduce)
+
+Atlas: EMBRYONIC is NOT vestigial — UBCa currently skips it (Prembrionic→Braning), a
+regression. Intended meaning, **worked around the job queue**:
+- **EMBRYONIC**: the node does its **immediate-brane** work — `ib_search` (Immediate Brane
+  search, within the brane). Everything that stays inside the brane happens here. (Unanchored
+  searches only.)
+- **BRANING**: the node crosses brane boundaries — `ab_search` (Ancestral Brane search) **AND
+  anchored searches** (anchored searches typically cross brane boundaries, so they belong to
+  BRANING, never EMBRYONIC).
+- Progression for an unanchored search: `Prembrionic → Embryonic (ib_search) → Braning
+  (ab_search) → constanic`. An anchored search skips the EMBRYONIC ib_search and does its work
+  in BRANING. Other kinds enqueue children and pass through the stages as their queue drains.
+SEQUENCING: fold into #10 if not too large; else implement #10 first (queue-driven nyes,
+Prembrionic→Braning) and add EMBRYONIC as a follow-on — but preserve the stage + this meaning.
+
+APPROACH: design (these sections) → implement per-kind incrementally, committing each → snapshots.
 - [x] **DECIDED (2026-06-19, Atlas): UBCa is its own source of truth; the "match UBC
       byte-for-byte" requirement is REMOVED.** Rationale: foolish-core UBC snapshots are
       pre-existingly stale (confirmed by stashing all session changes) — many committed
