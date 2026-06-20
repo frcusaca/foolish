@@ -17,16 +17,20 @@ use crate::proto_brane::ProtoBrane;
 
 // ── Default NYES classification ──────────────────────────────────────────────
 
-/// Determine the NYES for a node based on its children's states.
+/// PROTECTED HELPER (FOOP-62 §3.3.1). A *suggestion* a fir kind MAY consult — NOT the
+/// authority on a node's nyes. Each fir kind computes/updates its OWN nyes from its
+/// initialization + stepping progress (its own act: a search must actually search, an
+/// operator must compute, etc.), optionally folding in this helper's child-based view.
 ///
-/// Priority order (worst wins):
+/// Determines a candidate NYES purely from children's states. Priority (worst wins):
 ///   NK > WOCONSTANIC/ECONSTANIC > CONSTANT > INDEPENDENT
 ///
-/// Used by BraneFir directly. OperatorFir uses this as a base but may override
-/// (e.g., `1/0` → NK even though children are CONSTANT).
+/// Used by BraneFir directly. OperatorFir uses it as a base but may override (e.g. `1/0`
+/// → NK though children are CONSTANT). A SearchFir must NOT simply adopt INDEPENDENT from
+/// here — a search is never self-contained; see SearchFir's own logic.
 ///
 /// Returns `None` if not all children are constanic yet (stay BRANING).
-pub fn decide_nyes_due_to_children(children: &[FirRef]) -> Option<Nyes> {
+pub(crate) fn _decide_nyes_due_to_children(children: &[FirRef]) -> Option<Nyes> {
     // Stay BRANING until every child is settled (constanic including NK)
     if !children.iter().all(|c| c.borrow().core().get_nyes().is_constanic()) {
         return None;
@@ -590,7 +594,7 @@ impl Fir for BraneFir {
             }
             Nyes::Braning => {
                 let children = self.core.foolish_children().to_vec();
-                if let Some(nyes) = decide_nyes_due_to_children(&children) {
+                if let Some(nyes) = _decide_nyes_due_to_children(&children) {
                     self.core.set_nyes(nyes);
                 }
             }
