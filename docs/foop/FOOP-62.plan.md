@@ -99,15 +99,42 @@
       value is now CONSTANT, never INDEPENDENT (a search is context-dependent; it CAN be CONSTANT
       e.g. `{a={b=1}.b}`=1). `search_nyes_from_found()` caps found CONSTANT/INDEPENDENT → CONSTANT.
       So `offset_access_out_of_bounds` etc. now show `?(... CONSTANT)` not `INDEPENDENT`.
-      (C) **OPEN DISPLAY QUESTION**: the anchor search rendered as an Index's `result=` shows no
-      nested `result=` of its own (pre-existing; only the state label is new). Should a resolved
-      anchor search display `?(result=<found>, ..., CONSTANT)`? Needs a ruling — part of task #10
-      (unify nyes/representation).
+      (C) **RULED (Atlas 2026-06-20): `result=` is the SEARCH RESULT, not the anchor.** For
+      search/Index/HeadTail (all classified as searches), `result=` is the FIR found by
+      searching/indexing/head-tail. The current Index/HeadTail render wrongly puts the ANCHOR in
+      `result=`. → task #11.
       Plus `chained_undeclared` (pre-existing parser edge case, unrelated).
-- [ ] **TODO (task #10): unify nyes determination** — nyes is a cached field that MUST be correct
-      at the end of every mutating borrow (set at instantiation + re-established each step); each
-      kind computes its own nyes (own act + progress), optionally consulting
-      `_decide_nyes_due_to_children`. §9.0 Quiescent-Representation Invariant for the nyes cache.
+
+### DESIGN — task #11: Index/HeadTail `result=` is the indexed result (Atlas ruling)
+
+The `result=` slot of a search/Index/HeadTail is the **result of the search**, never the anchor.
+Today `hs_search` returns `(pattern, dir, anchored, anchor, target)` and renders `target` as
+`result=` (correct). But `hs_index`→`(offset, anchored, anchor)` and `hs_head_tail`→`(is_head,
+anchored, anchor)` carry NO target; the sequencer falls back to rendering the **anchor** as
+`result=` (wrong). Fix span:
+1. core_fir `IndexFir`/`HeadTailFir` gain a `target` (result) field + builder method (mirror
+   `SearchFir`). The anchor stays a separate non-result item.
+2. `hs_index`→`(offset, anchored, anchor, target)`; `hs_head_tail`→`(is_head, anchored, anchor,
+   target)`.
+3. sequencer Index/HeadTail arms: render `target` as `result=`; anchor becomes a non-result item.
+4. ubca→core bridge: set `.target(resolved)` from `ubc_children` (the indexed result).
+Multi-file (foolish-core + foolish-ubca). Snapshots will shift (present for review).
+
+### DESIGN — task #10: unify nyes determination (Atlas direction)
+
+`nyes` is a cached mutable field with a getter. **Invariant: any time a FIR is borrowed for
+writing, before that borrow expires `nyes` must be correct** — set at instantiation AND
+re-established during stepping. Besides instantiation, the place that matters is **stepping**:
+the updated nyes is driven by (a) which `step` branch ran and (b) the children's post-step
+returned nyes. So **track and set nyes as stepping happens**.
+- Each kind owns its nyes computation (its own act + progress). It MAY consult
+  `_decide_nyes_due_to_children` (a suggestion, not the authority).
+- A per-kind helper may be introduced where useful; its required parameters differ by kind
+  (e.g. SearchFir needs the found body's nyes via `search_nyes_from_found`; OperatorFir needs the
+  computed value or div-by-zero; BraneFir folds in `_decide_nyes_due_to_children`).
+- This is §9.0 (Quiescent-Representation Invariant) specialized to the nyes cache. Audit every
+  `set_nyes` / `borrow_mut` so none releases a write-borrow with a stale nyes.
+APPROACH: design (this section) → implement per-kind incrementally, committing each → snapshots.
 - [x] **DECIDED (2026-06-19, Atlas): UBCa is its own source of truth; the "match UBC
       byte-for-byte" requirement is REMOVED.** Rationale: foolish-core UBC snapshots are
       pre-existingly stale (confirmed by stashing all session changes) — many committed
