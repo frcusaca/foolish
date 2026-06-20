@@ -385,8 +385,9 @@ fn render_fir(
     }
 
     // ── 5. HeadTail ──
-    if let Some((is_head, _anchored, anchor)) = fir.hs_head_tail() {
-        let show_state = state.should_show_search_nyes(anchor.is_some());
+    // `result` (the FIR head/tail found) is the result= slot; the anchor is a non-result item.
+    if let Some((is_head, _anchored, _anchor, result)) = fir.hs_head_tail() {
+        let show_state = state.should_show_search_nyes(result.is_some());
         let pbid = if is_head { "^" } else { "$" };
         let mut non_result_items = Vec::new();
 
@@ -401,14 +402,15 @@ fn render_fir(
             open_indent,
             close_indent,
             &non_result_items,
-            anchor.as_deref(),
+            result.as_deref(),
             line_hint,
         );
     }
 
     // ── 6. Index ──
-    if let Some((offset, anchored, anchor)) = fir.hs_index() {
-        let show_state = state.should_show_search_nyes(anchor.is_some());
+    // `result` (the FIR found at the offset) is the result= slot; the anchor is NOT the result.
+    if let Some((offset, anchored, _anchor, result)) = fir.hs_index() {
+        let show_state = state.should_show_search_nyes(result.is_some());
         if anchored && offset == 0 {
             let mut non_result_items = Vec::new();
             if show_state {
@@ -421,7 +423,7 @@ fn render_fir(
                 open_indent,
                 close_indent,
                 &non_result_items,
-                anchor.as_deref(),
+                result.as_deref(),
                 line_hint,
             );
         } else if anchored && offset == -1 {
@@ -436,7 +438,7 @@ fn render_fir(
                 open_indent,
                 close_indent,
                 &non_result_items,
-                anchor.as_deref(),
+                result.as_deref(),
                 line_hint,
             );
         } else {
@@ -452,7 +454,7 @@ fn render_fir(
                 open_indent,
                 close_indent,
                 &non_result_items,
-                anchor.as_deref(),
+                result.as_deref(),
                 line_hint,
             );
         }

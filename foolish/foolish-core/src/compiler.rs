@@ -198,6 +198,7 @@ impl Compiler {
                     offset,
                     anchored: true,
                     anchor: Some(to_ref(anchor_fir)),
+                    result: None,
                     state: Nyes::Embryonic,
                 })))
             }
@@ -208,6 +209,7 @@ impl Compiler {
                     is_head,
                     anchored: true,
                     anchor: Some(to_ref(anchor_fir)),
+                    result: None,
                     state: Nyes::Embryonic,
                 })))
             }
@@ -217,6 +219,7 @@ impl Compiler {
                     offset,
                     anchored: false,
                     anchor: None,
+                    result: None,
                     state: Nyes::Embryonic,
                 })))
             }

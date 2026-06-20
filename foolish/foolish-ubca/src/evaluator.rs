@@ -345,8 +345,10 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                     {
                         return resolved;
                     }
+                    // `resolved` is the indexed RESULT — it goes in the result= slot.
                     let mut builder = IndexFirBuilder::new(borrowed.as_index_offset())
                         .anchored(borrowed.as_index_anchored())
+                        .result(resolved)
                         .state(state);
                     if borrowed.as_index_anchored() {
                         if let Some(anchor_ref) = borrowed.core().foolish_children().first() {
@@ -380,8 +382,10 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                     {
                         return resolved;
                     }
+                    // `resolved` is the head/tail RESULT — it goes in the result= slot.
                     let mut builder = HeadTailFirBuilder::new(borrowed.as_headtail_is_head())
                         .anchored(borrowed.as_headtail_anchored())
+                        .result(resolved)
                         .state(state);
                     if borrowed.as_headtail_anchored() {
                         if let Some(anchor_ref) = borrowed.core().foolish_children().first() {

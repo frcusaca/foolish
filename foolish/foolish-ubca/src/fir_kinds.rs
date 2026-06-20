@@ -797,7 +797,7 @@ impl Fir for SearchFir {
                                 if let Some((body, nyes, sf_pat)) = search_brane_children(brane_ref, name, before_idx, self.forward) {
                                     if nyes.is_constanic() {
                                         let self_weak = self.core.parent_weak();
-                                        self.core.push_ubc_child(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
+                                        self.core.push_search_result(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
                                         if let Some(p) = sf_pat {
                                             *self.sf_inner_pattern.borrow_mut() = Some(p);
                                         }
@@ -828,7 +828,7 @@ impl Fir for SearchFir {
                     let name = &self.pattern;
                     if let Some((body, nyes, _sf_pat)) = search_brane_children(&resolved, name, None, self.forward) {
                         let self_weak = self.core.parent_weak();
-                        self.core.push_ubc_child(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
+                        self.core.push_search_result(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
                         self.core.set_nyes(search_nyes_from_found(nyes));
                     } else {
                         self.core.set_nyes(Nyes::Nk);
@@ -837,7 +837,7 @@ impl Fir for SearchFir {
                     let nyes = body.borrow().core().get_nyes();
                     if nyes.is_constanic() {
                         let self_weak = self.core.parent_weak();
-                        self.core.push_ubc_child(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
+                        self.core.push_search_result(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
                         self.core.set_nyes(search_nyes_from_found(nyes));
                     } else {
                         // Body not settled yet — keep waiting
@@ -991,7 +991,7 @@ impl Fir for IndexFir {
                                     // the (possibly pre-constanic) clone to constanic before we
                                     // settle from it in the Braning arm. (Re-enqueue, pop, step.)
                                     let self_weak = self.core.parent_weak();
-                                    self.core.push_ubc_child(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
+                                    self.core.push_search_result(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
                                     self.core.set_nyes(Nyes::Braning);
                                 } else {
                                     self.core.set_nyes(Nyes::Nk);
@@ -1017,7 +1017,7 @@ impl Fir for IndexFir {
                     let resolved = resolve_anchor(&anchor);
                     if let Some((body, _nyes)) = index_into_brane(&resolved, self.offset) {
                         let self_weak = self.core.parent_weak();
-                        self.core.push_ubc_child(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
+                        self.core.push_search_result(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
                         // Stay BRANING; the driver drains the clone, then we settle above.
                     } else {
                         self.core.set_nyes(Nyes::Nk);
@@ -1077,7 +1077,7 @@ impl Fir for HeadTailFir {
                                 if let Some((body, nyes)) = index_into_brane_relative(&brane_ref, idx, offset) {
                                     if nyes.is_constanic() {
                                         let self_weak = self.core.parent_weak();
-                                        self.core.push_ubc_child(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
+                                        self.core.push_search_result(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
                                         self.core.set_nyes(nyes);
                                     } else {
                                         self.core.push_task(Rc::clone(&body));
@@ -1102,7 +1102,7 @@ impl Fir for HeadTailFir {
                     let resolved = resolve_anchor(&anchor);
                     if let Some((body, nyes)) = index_into_brane(&resolved, offset) {
                         let self_weak = self.core.parent_weak();
-                        self.core.push_ubc_child(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
+                        self.core.push_search_result(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
                         self.core.set_nyes(nyes);
                     } else {
                         self.core.set_nyes(Nyes::Nk);
@@ -1113,7 +1113,7 @@ impl Fir for HeadTailFir {
                             if let Some(idx) = find_stmt_index_in_brane(&stmt_ref, &brane_ref) {
                                 if let Some((body, nyes)) = index_into_brane_relative(&brane_ref, idx, offset) {
                                     let self_weak = self.core.parent_weak();
-                                    self.core.push_ubc_child(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
+                                    self.core.push_search_result(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
                                     self.core.set_nyes(nyes);
                                 } else {
                                     self.core.set_nyes(Nyes::Nk);

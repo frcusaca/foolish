@@ -307,6 +307,9 @@ pub struct IndexFir {
     pub(crate) offset: i32,
     pub(crate) anchored: bool,
     pub(crate) anchor: Option<FirRef>,
+    /// The FIR this index PRODUCED (the element found at the offset). The anchor is
+    /// what we index INTO; the result is what indexing yields. Rendered as `result=`.
+    pub(crate) result: Option<FirRef>,
     pub(crate) state: Nyes,
 }
 
@@ -315,6 +318,8 @@ pub struct HeadTailFir {
     pub(crate) is_head: bool,
     pub(crate) anchored: bool,
     pub(crate) anchor: Option<FirRef>,
+    /// The FIR head/tail PRODUCED (the element found). Rendered as `result=`.
+    pub(crate) result: Option<FirRef>,
     pub(crate) state: Nyes,
 }
 
@@ -546,8 +551,22 @@ pub trait FirQueryable: std::fmt::Debug {
         Option<Box<dyn FirQueryable>>,
         Option<Box<dyn FirQueryable>>,
     )>;
-    fn hs_index(&self) -> Option<(i32, bool, Option<Box<dyn FirQueryable>>)>;
-    fn hs_head_tail(&self) -> Option<(bool, bool, Option<Box<dyn FirQueryable>>)>;
+    fn hs_index(
+        &self,
+    ) -> Option<(
+        i32,
+        bool,
+        Option<Box<dyn FirQueryable>>,
+        Option<Box<dyn FirQueryable>>,
+    )>;
+    fn hs_head_tail(
+        &self,
+    ) -> Option<(
+        bool,
+        bool,
+        Option<Box<dyn FirQueryable>>,
+        Option<Box<dyn FirQueryable>>,
+    )>;
     fn hs_stay_foolish(&self) -> Option<Box<dyn FirQueryable>>;
     fn hs_stay_fully_foolish(&self) -> Option<Box<dyn FirQueryable>>;
     fn hs_concatenation(
@@ -608,11 +627,25 @@ impl FirQueryable for FirChildRef {
         let fir = clone_steppable(&self.inner);
         fir.hs_search()
     }
-    fn hs_index(&self) -> Option<(i32, bool, Option<Box<dyn FirQueryable>>)> {
+    fn hs_index(
+        &self,
+    ) -> Option<(
+        i32,
+        bool,
+        Option<Box<dyn FirQueryable>>,
+        Option<Box<dyn FirQueryable>>,
+    )> {
         let fir = clone_steppable(&self.inner);
         fir.hs_index()
     }
-    fn hs_head_tail(&self) -> Option<(bool, bool, Option<Box<dyn FirQueryable>>)> {
+    fn hs_head_tail(
+        &self,
+    ) -> Option<(
+        bool,
+        bool,
+        Option<Box<dyn FirQueryable>>,
+        Option<Box<dyn FirQueryable>>,
+    )> {
         let fir = clone_steppable(&self.inner);
         fir.hs_head_tail()
     }
@@ -718,7 +751,14 @@ impl FirQueryable for Fir {
             None
         }
     }
-    fn hs_index(&self) -> Option<(i32, bool, Option<Box<dyn FirQueryable>>)> {
+    fn hs_index(
+        &self,
+    ) -> Option<(
+        i32,
+        bool,
+        Option<Box<dyn FirQueryable>>,
+        Option<Box<dyn FirQueryable>>,
+    )> {
         if let Fir::Index(i) = self {
             Some((
                 i.offset,
@@ -726,12 +766,22 @@ impl FirQueryable for Fir {
                 i.anchor
                     .as_ref()
                     .map(|a| Box::new(FirChildRef::new(Rc::clone(a))) as Box<dyn FirQueryable>),
+                i.result
+                    .as_ref()
+                    .map(|t| Box::new(FirChildRef::new(Rc::clone(t))) as Box<dyn FirQueryable>),
             ))
         } else {
             None
         }
     }
-    fn hs_head_tail(&self) -> Option<(bool, bool, Option<Box<dyn FirQueryable>>)> {
+    fn hs_head_tail(
+        &self,
+    ) -> Option<(
+        bool,
+        bool,
+        Option<Box<dyn FirQueryable>>,
+        Option<Box<dyn FirQueryable>>,
+    )> {
         if let Fir::HeadTail(i) = self {
             Some((
                 i.is_head,
@@ -739,6 +789,9 @@ impl FirQueryable for Fir {
                 i.anchor
                     .as_ref()
                     .map(|a| Box::new(FirChildRef::new(Rc::clone(a))) as Box<dyn FirQueryable>),
+                i.result
+                    .as_ref()
+                    .map(|t| Box::new(FirChildRef::new(Rc::clone(t))) as Box<dyn FirQueryable>),
             ))
         } else {
             None
@@ -1848,6 +1901,9 @@ fn fir_to_json(fir: &Fir) -> serde_json::Value {
             if let Some(ref a) = inner.anchor {
                 m.insert("anchor".into(), fir_to_json(&clone_steppable(a)));
             }
+            if let Some(ref t) = inner.result {
+                m.insert("result".into(), fir_to_json(&clone_steppable(t)));
+            }
             Value::Object(m)
         }
         Fir::HeadTail(inner) => {
@@ -1858,6 +1914,9 @@ fn fir_to_json(fir: &Fir) -> serde_json::Value {
             m.insert("state".into(), to_json_val(&inner.state));
             if let Some(ref a) = inner.anchor {
                 m.insert("anchor".into(), fir_to_json(&clone_steppable(a)));
+            }
+            if let Some(ref t) = inner.result {
+                m.insert("result".into(), fir_to_json(&clone_steppable(t)));
             }
             Value::Object(m)
         }
@@ -2039,10 +2098,15 @@ impl<'de> Deserialize<'de> for Fir {
                     .get("anchor")
                     .and_then(|v| serde_json::from_value::<Fir>(v.clone()).ok())
                     .map(fir_to_ref);
+                let result = obj
+                    .get("result")
+                    .and_then(|v| serde_json::from_value::<Fir>(v.clone()).ok())
+                    .map(fir_to_ref);
                 Ok(Fir::Index(Box::new(IndexFir {
                     offset,
                     anchored,
                     anchor,
+                    result,
                     state,
                 })))
             }
@@ -2059,10 +2123,15 @@ impl<'de> Deserialize<'de> for Fir {
                     .get("anchor")
                     .and_then(|v| serde_json::from_value::<Fir>(v.clone()).ok())
                     .map(fir_to_ref);
+                let result = obj
+                    .get("result")
+                    .and_then(|v| serde_json::from_value::<Fir>(v.clone()).ok())
+                    .map(fir_to_ref);
                 Ok(Fir::HeadTail(Box::new(HeadTailFir {
                     is_head,
                     anchored,
                     anchor,
+                    result,
                     state,
                 })))
             }
@@ -2339,6 +2408,7 @@ pub struct IndexFirBuilder {
     offset: i32,
     anchored: bool,
     anchor: Option<FirRef>,
+    result: Option<FirRef>,
     state: Nyes,
 }
 
@@ -2348,6 +2418,7 @@ impl IndexFirBuilder {
             offset,
             anchored: false,
             anchor: None,
+            result: None,
             state: Nyes::Embryonic,
         }
     }
@@ -2357,6 +2428,10 @@ impl IndexFirBuilder {
     }
     pub fn anchor(mut self, anchor: Fir) -> Self {
         self.anchor = Some(fir_to_ref(anchor));
+        self
+    }
+    pub fn result(mut self, result: Fir) -> Self {
+        self.result = Some(fir_to_ref(result));
         self
     }
     pub fn state(mut self, state: Nyes) -> Self {
@@ -2368,6 +2443,7 @@ impl IndexFirBuilder {
             offset: self.offset,
             anchored: self.anchored,
             anchor: self.anchor,
+            result: self.result,
             state: self.state,
         }))
     }
@@ -2378,6 +2454,7 @@ pub struct HeadTailFirBuilder {
     is_head: bool,
     anchored: bool,
     anchor: Option<FirRef>,
+    result: Option<FirRef>,
     state: Nyes,
 }
 
@@ -2387,6 +2464,7 @@ impl HeadTailFirBuilder {
             is_head,
             anchored: false,
             anchor: None,
+            result: None,
             state: Nyes::Embryonic,
         }
     }
@@ -2398,6 +2476,10 @@ impl HeadTailFirBuilder {
         self.anchor = Some(fir_to_ref(anchor));
         self
     }
+    pub fn result(mut self, result: Fir) -> Self {
+        self.result = Some(fir_to_ref(result));
+        self
+    }
     pub fn state(mut self, state: Nyes) -> Self {
         self.state = state;
         self
@@ -2407,6 +2489,7 @@ impl HeadTailFirBuilder {
             is_head: self.is_head,
             anchored: self.anchored,
             anchor: self.anchor,
+            result: self.result,
             state: self.state,
         }))
     }

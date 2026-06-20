@@ -105,7 +105,17 @@
       `result=`. → task #11.
       Plus `chained_undeclared` (pre-existing parser edge case, unrelated).
 
-### DESIGN — task #11: Index/HeadTail `result=` is the indexed result (Atlas ruling)
+### DESIGN — task #11: Index/HeadTail `result=` is the indexed result (Atlas ruling) — DONE 2026-06-20
+
+STATUS: COMPLETE. IndexFir/HeadTailFir core_fir gained a `result` field + builder; hs_index/
+hs_head_tail return `(.., anchor, result)`; sequencer renders `result` as `result=` (anchor is a
+non-result item); ubca bridge sets `.result(resolved)`. Result now correct: `b#0`→`10`,
+out-of-bounds `b#3`→`#(offset=3, ANCHORED, NK)` (no result=, anchor no longer shown as result).
+SINGULAR-RESULT invariant documented (spec §8) + runtime-verified
+(`ProtoBrane::push_search_result` debug-asserts ubc_children empty; all 8 search-kind result
+pushes routed through it). 92 ubca unit tests pass; snapshot shifts are the intended review set.
+
+
 
 TERMINOLOGY (Atlas 2026-06-20): the field/word is **`result`**, never "target". SearchFir's
 existing `target` field is to be RENAMED `result` for consistency.

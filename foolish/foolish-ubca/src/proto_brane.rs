@@ -95,6 +95,21 @@ impl ProtoBrane {
         self.tasks.borrow_mut().push_back(child);
     }
 
+    /// Push the SINGULAR result of a search FIR (search / Index / HeadTail).
+    ///
+    /// SINGULAR-RESULT INVARIANT (FOOP-62): every search FIR we currently implement produces
+    /// at most ONE result, so its `ubc_children` holds at most one entry and that entry IS the
+    /// result. (Multi-result searches are a future extension that will hold more children.)
+    /// This is the result-pushing path for search kinds; it runtime-verifies the invariant.
+    pub fn push_search_result(&self, result: FirRef) {
+        debug_assert!(
+            self.ubc_children.borrow().is_empty(),
+            "search FIR already has a result; existing searches are singular-result \
+             (ubc_children must be <= 1)"
+        );
+        self.push_ubc_child(result);
+    }
+
     /// Clear all compute-time children.
     pub fn clear_ubc_children(&self) {
         self.ubc_children.borrow_mut().clear();

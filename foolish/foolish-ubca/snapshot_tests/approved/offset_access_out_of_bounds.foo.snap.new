@@ -16,8 +16,8 @@ INPUT:
       d=40;
       e=50
   };
-  oob=#(result=?(pattern='^data$', UNANCHORED, CONSTANT), offset=5, ANCHORED, NK);
-  oobˍneg=#(result=?(pattern='^data$', UNANCHORED, CONSTANT), offset=-6, ANCHORED, NK)
+  oob=#(offset=5, ANCHORED, NK);
+  oobˍneg=#(offset=-6, ANCHORED, NK)
 }
 ```
 COMMENTS:
@@ -27,5 +27,5 @@ offset_access_out_of_bounds
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 6Kl8xVNkjnIERBDU/geunFvLzDwGt1gky5mwIgSBP1dQgu+YNxT3ZSO6QwAgC6Z5TXmrDgzy09gMUkyVCy/yDQ==
-HFS signature: r4joFR3i1qH8PB7IfHpzGTbwZ05Pe87iGZWTfH2S4bBbWc7VYpRgGRRoZOxYQRYHscnwaokBHs1DJ+tvDJ5PAg==
-Comments signature: UQkxOoS+cNLYCs8wjTTDJAAmpGPxLqCAqcHdzu5Of6gK58l7vG3r0LKmJql/ptBu7KfQSQbtG8nhYAZ1vLGCAw==
+HFS signature: e210DQkLKVSIRbu43ynMf3AG48GCMi0dK9Ifx+/YBb+1P7x8dokqaiH9BkZXvLNrNkjXNJ/m6TFwLQo4x3osAQ==
+Comments signature: IQ1VYH+vUWCp74iQTV1A67dJt9MxERH+2GzbWURvjJZ6DLojIpn/2Vo1hWqpYEtgzOi7ctoF/VeyS6Pd6IlZCA==
