@@ -760,6 +760,105 @@ fn search_nyes_from_found(found: Nyes) -> Nyes {
     }
 }
 
+/// IB SEARCH (Immediate Brane) — FOOP-62 #14, the EMBRYONIC-stage search.
+///
+/// Search ONLY the immediate enclosing brane (the first brane up the parent chain), bounded
+/// before the enclosing statement. Does NOT cross into ancestral branes. Returns the found
+/// `(body, nyes, sf_pattern)` or `None` if not present in the immediate brane.
+fn ib_search(start: &ProtoBrane, name: &str, forward: bool) -> Option<(FirRef, Nyes, Option<String>)> {
+    let mut current = start.parent();
+    while let Some(node) = current {
+        if node.borrow().kind() == FirKind::Statement {
+            let brane = {
+                let borrowed = node.borrow();
+                find_parent_brane(borrowed.core())
+            };
+            if let Some(ref brane_ref) = brane {
+                // The FIRST enclosing statement+brane is the immediate brane. Search it and
+                // STOP — ib_search never climbs to ancestral branes.
+                let before_idx = find_stmt_index_in_brane(&node, brane_ref);
+                return search_brane_children(brane_ref, name, before_idx, forward);
+            }
+        }
+        let next = node.borrow().core().parent();
+        match next {
+            Some(ref n) if Rc::ptr_eq(n, &node) => break,
+            None => break,
+            _ => current = next,
+        }
+    }
+    None
+}
+
+/// AB SEARCH (Ancestral Brane) — FOOP-62 #14, the BRANING-stage search.
+///
+/// Search the ANCESTRAL branes — every enclosing brane ABOVE the immediate one. Skips the
+/// immediate brane (already tried by `ib_search` in EMBRYONIC) and climbs the rest of the
+/// chain, searching each bounded before its enclosing statement. Returns the first match or
+/// `None` when the chain is exhausted.
+fn ab_search(start: &ProtoBrane, name: &str, forward: bool) -> Option<(FirRef, Nyes, Option<String>)> {
+    let mut current = start.parent();
+    let mut seen_immediate = false;
+    while let Some(node) = current {
+        if node.borrow().kind() == FirKind::Statement {
+            let brane = {
+                let borrowed = node.borrow();
+                find_parent_brane(borrowed.core())
+            };
+            if let Some(ref brane_ref) = brane {
+                if !seen_immediate {
+                    // This is the immediate brane (ib_search's domain) — skip it.
+                    seen_immediate = true;
+                } else {
+                    let before_idx = find_stmt_index_in_brane(&node, brane_ref);
+                    if let Some(found) = search_brane_children(brane_ref, name, before_idx, forward) {
+                        return Some(found);
+                    }
+                }
+            }
+        }
+        let next = node.borrow().core().parent();
+        match next {
+            Some(ref n) if Rc::ptr_eq(n, &node) => break,
+            None => break,
+            _ => current = next,
+        }
+    }
+    None
+}
+
+impl SearchFir {
+    /// Handle a `(body, nyes, sf_pat)` that a search found in some brane.
+    /// - If the body is already constanic: push it as our singular result and settle our nyes
+    ///   (via `search_nyes_from_found`). A search is never INDEPENDENT (capped at CONSTANT).
+    /// - Else: stash the body, push it as a task, and go BRANING to WAIT for it to settle (the
+    ///   Braning arm's `found_body` branch finishes it). Returns true (handled).
+    fn handle_found(
+        &self,
+        body: FirRef,
+        nyes: Nyes,
+        sf_pat: Option<String>,
+        scope: &Scope,
+    ) {
+        if nyes.is_constanic() {
+            let self_weak = self.core.parent_weak();
+            self.core
+                .push_search_result(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
+            if let Some(p) = sf_pat {
+                *self.sf_inner_pattern.borrow_mut() = Some(p);
+            }
+            self.core.set_nyes(search_nyes_from_found(nyes));
+        } else {
+            if let Some(p) = sf_pat {
+                *self.sf_inner_pattern.borrow_mut() = Some(p);
+            }
+            self.core.push_task(Rc::clone(&body));
+            *self.found_body.borrow_mut() = Some(body);
+            self.core.set_nyes(Nyes::Braning);
+        }
+    }
+}
+
 impl Fir for SearchFir {
     fn core(&self) -> &ProtoBrane {
         &self.core
@@ -768,45 +867,22 @@ impl Fir for SearchFir {
         match self.core.get_nyes() {
             Nyes::Prembrionic => {
                 if self.anchored {
+                    // Anchored searches cross brane boundaries → they run in BRANING, never
+                    // in the EMBRYONIC ib_search stage (FOOP-62 #14).
                     let anchor = Rc::clone(&self.core.foolish_children()[0]);
                     self.core.push_task(anchor);
                     self.core.set_nyes(Nyes::Braning);
                 } else {
-                    let name = &self.pattern;
-                    let mut current = self.core.parent();
-                    while let Some(node) = current {
-                        if node.borrow().kind() == FirKind::Statement {
-                            let brane = {
-                                let borrowed = node.borrow();
-                                find_parent_brane(borrowed.core())
-                            };
-                            if let Some(ref brane_ref) = brane {
-                                let before_idx = find_stmt_index_in_brane(&node, brane_ref);
-                                if let Some((body, nyes, sf_pat)) = search_brane_children(brane_ref, name, before_idx, self.forward) {
-                                    if nyes.is_constanic() {
-                                        let self_weak = self.core.parent_weak();
-                                        self.core.push_search_result(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
-                                        if let Some(p) = sf_pat {
-                                            *self.sf_inner_pattern.borrow_mut() = Some(p);
-                                        }
-                                        self.core.set_nyes(search_nyes_from_found(nyes));
-                                    } else {
-                                        self.core.push_task(Rc::clone(&body));
-                                        *self.found_body.borrow_mut() = Some(body);
-                                        self.core.set_nyes(Nyes::Braning);
-                                    }
-                                    return Ok(());
-                                }
-                            }
-                        }
-                        let next = node.borrow().core().parent();
-                        match next {
-                            Some(ref n) if Rc::ptr_eq(n, &node) => break,
-                            None => break,
-                            _ => current = next,
-                        }
-                    }
-                    self.core.set_nyes(Nyes::Econstanic);
+                    // Unanchored: enter EMBRYONIC to do the immediate-brane (ib_search) work.
+                    self.core.set_nyes(Nyes::Embryonic);
+                }
+            }
+            Nyes::Embryonic => {
+                // EMBRYONIC = ib_search: search ONLY the immediate brane (FOOP-62 #14).
+                // Found → handle it (settle or wait). Not found → escalate to BRANING (ab_search).
+                match ib_search(&self.core, &self.pattern, self.forward) {
+                    Some((body, nyes, sf_pat)) => self.handle_found(body, nyes, sf_pat, scope),
+                    None => self.core.set_nyes(Nyes::Braning),
                 }
             }
             Nyes::Braning => {
@@ -822,6 +898,7 @@ impl Fir for SearchFir {
                         self.core.set_nyes(Nyes::Nk);
                     }
                 } else if let Some(body) = self.found_body.borrow_mut().take() {
+                    // Waiting on a found (IB or AB) body to settle.
                     let nyes = body.borrow().core().get_nyes();
                     if nyes.is_constanic() {
                         let self_weak = self.core.parent_weak();
@@ -830,6 +907,13 @@ impl Fir for SearchFir {
                     } else {
                         // Body not settled yet — keep waiting
                         *self.found_body.borrow_mut() = Some(body);
+                    }
+                } else {
+                    // BRANING = ab_search: ib_search (EMBRYONIC) found nothing, so climb the
+                    // ANCESTRAL branes (FOOP-62 #14). Found → handle; exhausted → ECONSTANIC.
+                    match ab_search(&self.core, &self.pattern, self.forward) {
+                        Some((body, nyes, sf_pat)) => self.handle_found(body, nyes, sf_pat, scope),
+                        None => self.core.set_nyes(Nyes::Econstanic),
                     }
                 }
             }
@@ -3025,5 +3109,131 @@ mod tests {
         // SFF is fully-foolish construction → settles INDEPENDENT (self-contained constant),
         // in a single step (Prembrionic → Independent).
         assert_progression(&trace, Nyes::Independent, "StayFullyFoolish");
+    }
+
+    // ── IB/AB search context by stage (FOOP-62 #14) ───────────────────────────
+    //
+    // EMBRYONIC does ib_search (immediate brane only); BRANING does ab_search
+    // (ancestral branes) + anchored searches. These tests compile real Foolish so
+    // parent pointers are properly wired, then verify the RIGHT thing is found in
+    // the RIGHT context at each stage.
+
+    use crate::compiler::Compiler;
+
+    /// Recursively find the first SearchFir with the given pattern in a tree
+    /// (searches foolish_children depth-first).
+    fn find_search(node: &FirRef, pattern: &str) -> Option<FirRef> {
+        if node.borrow().kind() == FirKind::Search
+            && node.borrow().as_search_pattern() == Some(pattern)
+        {
+            return Some(Rc::clone(node));
+        }
+        let children: Vec<FirRef> = node.borrow().core().foolish_children().to_vec();
+        for c in children {
+            if let Some(found) = find_search(&c, pattern) {
+                return Some(found);
+            }
+        }
+        None
+    }
+
+    /// ib_search resolves a name defined in the IMMEDIATE brane during EMBRYONIC —
+    /// the search settles without ever needing to escalate to ab_search/BRANING for
+    /// the *find* (it may pass through Braning only to drain the found body).
+    #[test]
+    fn ib_context_resolves_in_immediate_brane() {
+        // `a` is in the same (immediate) brane as the search `a` inside `b`'s value.
+        let root = Compiler::compile("{a = 1; b = a;}").unwrap().pop().unwrap();
+        let search = find_search(&root, "^a$").expect("search for a");
+
+        // Directly: ib_search must find `a` (it's in the immediate brane).
+        let ib = ib_search(&search.borrow().core(), "^a$", false);
+        assert!(ib.is_some(), "ib_search must find a name in the immediate brane");
+
+        // Stepping the whole program settles it (the search resolves to 1).
+        let scope = Scope::empty();
+        let _ = step_to_settled(&root, &scope);
+        assert!(search.borrow().core().get_nyes().is_constanic());
+    }
+
+    /// A name defined ONLY in an ANCESTRAL brane is NOT found by ib_search (immediate
+    /// brane) but IS found by ab_search — i.e. it resolves only after escalating to
+    /// BRANING. This is the core IB-vs-AB context discrimination.
+    #[test]
+    fn ab_context_name_not_in_immediate_brane() {
+        // `a` is in the OUTER brane; the search `a` lives inside inner brane `b`,
+        // whose immediate brane (b's body) does NOT contain `a`.
+        let root = Compiler::compile("{a = 1; b = {c = a;};}").unwrap().pop().unwrap();
+        let search = find_search(&root, "^a$").expect("search for a");
+
+        // ib_search (immediate brane = b's body {c=...}) must NOT find `a`;
+        // ab_search (climb to the outer brane) MUST find `a`.
+        {
+            let b = search.borrow();
+            assert!(
+                ib_search(b.core(), "^a$", false).is_none(),
+                "ib_search must NOT find an ancestral-only name in the immediate brane"
+            );
+            assert!(
+                ab_search(b.core(), "^a$", false).is_some(),
+                "ab_search must find the ancestral name"
+            );
+        }
+
+        // Full stepping resolves it (via EMBRYONIC-miss → BRANING ab_search).
+        let scope = Scope::empty();
+        let _ = step_to_settled(&root, &scope);
+        assert!(search.borrow().core().get_nyes().is_constanic());
+    }
+
+    /// Shadowing: a name in BOTH the immediate and an ancestral brane resolves to the
+    /// IMMEDIATE one (ib_search wins at EMBRYONIC, before ab_search is consulted).
+    #[test]
+    fn ib_shadows_ab_immediate_wins() {
+        // Outer `a = 1`; inner brane redefines `a = 2`, then searches `a`.
+        let root = Compiler::compile("{a = 1; b = {a = 2; c = a;};}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        // The search `a` used by `c` is inside inner brane b; its immediate `a` is 2.
+        let search = find_search(&root, "^a$").expect("search for a");
+        {
+            let b = search.borrow();
+            let ib = ib_search(b.core(), "^a$", false);
+            assert!(ib.is_some(), "ib_search must find the immediate (shadowing) a");
+        }
+
+        let scope = Scope::empty();
+        let _ = step_to_settled(&root, &scope);
+        // The resolved value must be the IMMEDIATE a (2), not the ancestral a (1).
+        assert!(search.borrow().core().get_nyes().is_constanic());
+        let result = get_value(&search);
+        assert_eq!(
+            result.borrow().as_i64(),
+            Some(2),
+            "shadowing: search must resolve to the immediate-brane a (2), not ancestral (1)"
+        );
+    }
+
+    /// Stage discrimination via the search's own progression: an ancestral-only name
+    /// passes THROUGH Embryonic (ib miss) into Braning (ab find) before settling.
+    #[test]
+    fn ancestral_search_passes_through_embryonic_then_braning() {
+        let root = Compiler::compile("{a = 1; b = {c = a;};}").unwrap().pop().unwrap();
+        let search = find_search(&root, "^a$").expect("search for a");
+        let scope = Scope::empty();
+
+        // Drive the whole program so the inner search gets stepped in context.
+        let trace = step_to_settled(&search, &scope);
+        eprintln!("ancestral search nyes: {trace:?}");
+        // It must have entered EMBRYONIC (ib_search) and then BRANING (ab_search).
+        assert!(
+            trace.contains(&Nyes::Embryonic),
+            "ancestral search must pass through EMBRYONIC (ib_search stage)"
+        );
+        assert!(
+            trace.contains(&Nyes::Braning),
+            "ancestral search must reach BRANING (ab_search stage)"
+        );
     }
 }

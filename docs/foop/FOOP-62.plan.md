@@ -186,7 +186,24 @@ returned nyes. So **track and set nyes as stepping happens**.
   computes its terminal nyes from the now-constanic children/results. `fir_op_step` IS the
   "queue-drained, do my act" hook (the driver only calls it when `front_task()` is empty).
 
-### DESIGN — task #14: EMBRYONIC = within-brane stage (preserve; reintroduce)
+### DESIGN — task #14: EMBRYONIC = within-brane stage (preserve; reintroduce) — DONE 2026-06-21
+
+STATUS: COMPLETE. Reintroduced EMBRYONIC for unanchored searches:
+- New `ib_search` (immediate brane only) and `ab_search` (ancestral branes, skipping the
+  immediate) helpers in fir_kinds.rs.
+- SearchFir step is now: Prembrionic → (anchored: push anchor, Braning) | (unanchored:
+  Embryonic). EMBRYONIC runs `ib_search`; miss → Braning. BRANING runs `ab_search` (or, for
+  anchored, the anchor search; or drains a found-but-pre-constanic body). Exhausted → ECONSTANIC.
+- `handle_found` helper unifies settle-now vs wait-for-body across IB/AB.
+- Anchored searches stay in BRANING (never EMBRYONIC) per design.
+Verified: `Search(not found)` trace = [Prembrionic, Embryonic, Braning, Econstanic]; ancestral
+search = [Prembrionic, Embryonic, Braning, Constant]. 4 new IB/AB CONTEXT tests (compile real
+Foolish, parent-wired): ib_context_resolves_in_immediate_brane, ab_context_name_not_in_immediate
+_brane (ib_search misses ancestral-only name, ab_search finds it), ib_shadows_ab_immediate_wins
+(shadowing → immediate `a`=2 not ancestral `a`=1), ancestral_search_passes_through_embryonic
+_then_braning. 116 ubca unit tests pass; only approval_all (14-file review set) fails.
+
+
 
 Atlas: EMBRYONIC is NOT vestigial — UBCa currently skips it (Prembrionic→Braning), a
 regression. Intended meaning, **worked around the job queue**:
