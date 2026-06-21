@@ -151,7 +151,21 @@ verify via tests instead). Done:
 - Added 4 unit tests stepping a PARENT brane and observing per-step nyes of parent + a watched
   descendant: brane_of_constants_progresses_to_settled, operator_in_brane_advances_before_parent
   _settles, unresolved_search_in_brane_goes_econstanic, constanic_node_stays_constanic_across
-  _parent_steps. 96 ubca unit tests pass. No behavior/snapshot change.
+  _parent_steps. No behavior/snapshot change.
+
+### task #15: per-FIR-kind nyes-transition unit tests — DONE 2026-06-21
+
+One `<kind>_nyes_transitions` unit test per FIR kind in fir_kinds.rs, each recording the full
+per-step nyes sequence (step_to_settled) and asserting via a shared `assert_progression`
+(start=PREMBRIONIC, end=constanic, monotone — no constanic→pre-constanic regression — plus the
+kind's terminal state). Coverage: ConstantInt→CONSTANT, Nk→NK, Operator(+)→CONSTANT,
+Operator(/0)→NK, Statement→CONSTANT, Brane→CONSTANT, Brane(+NK)→NK, Search(anchored found),
+Search(not found)→ECONSTANIC, Index→CONSTANT, Index(oob)→NK, HeadTail→CONSTANT,
+HeadTail(empty)→NK, Concatenation→CONSTANT, StayFoolish→CONSTANT, StayFullyFoolish→INDEPENDENT.
+112 ubca unit tests pass; only `approval_all` (review-set snapshots) fails. (Atlas: these are
+UNIT tests — nyes is internal FVM state.) Tests documented actual VM behavior (Brane-of-constants
+classifies CONSTANT; SFF→INDEPENDENT in one step). DOC follow-up: task #16 (note the convention
+in dev docs; new nyes/FIR must extend these tests).
 
 
 

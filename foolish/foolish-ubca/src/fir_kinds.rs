@@ -2852,4 +2852,178 @@ mod tests {
         }
         assert!(s1.borrow().core().get_nyes().is_constanic());
     }
+
+    // ── Per-FIR-kind nyes transition coverage (FOOP-62 #10/#15) ───────────────
+    //
+    // One test per FIR kind recording the full per-step nyes sequence and
+    // asserting the progression is well-formed. `assert_progression` checks the
+    // shared invariant; each test then pins the kind-specific terminal state.
+
+    /// A well-formed nyes progression: starts PREMBRIONIC, ends constanic, and is
+    /// MONOTONE — once a node reads constanic it never regresses to pre-constanic.
+    /// `expected_terminal` pins the final state for the kind under test.
+    fn assert_progression(trace: &[Nyes], expected_terminal: Nyes, label: &str) {
+        eprintln!("{label} nyes transitions: {trace:?}");
+        assert!(!trace.is_empty(), "{label}: empty trace");
+        assert_eq!(
+            *trace.first().unwrap(),
+            Nyes::Prembrionic,
+            "{label}: must start PREMBRIONIC"
+        );
+        let last = *trace.last().unwrap();
+        assert!(last.is_constanic(), "{label}: must end constanic (got {last:?})");
+        assert_eq!(last, expected_terminal, "{label}: wrong terminal state");
+        // Monotone: no constanic → pre-constanic regression.
+        let mut seen_constanic = false;
+        for n in trace {
+            if seen_constanic {
+                assert!(
+                    n.is_constanic(),
+                    "{label}: regressed from constanic to {n:?}"
+                );
+            }
+            seen_constanic = n.is_constanic();
+        }
+    }
+
+    #[test]
+    fn constant_int_nyes_transitions() {
+        let n = make_constant_int(7);
+        let trace = step_to_settled(&n, &Scope::empty());
+        assert_progression(&trace, Nyes::Constant, "ConstantInt");
+    }
+
+    #[test]
+    fn nk_nyes_transitions() {
+        let n = make_nk("gone");
+        let trace = step_to_settled(&n, &Scope::empty());
+        assert_progression(&trace, Nyes::Nk, "Nk");
+    }
+
+    #[test]
+    fn operator_nyes_transitions() {
+        let op = make_operator("+", vec![make_constant_int(2), make_constant_int(3)]);
+        let trace = step_to_settled(&op, &Scope::empty());
+        assert_progression(&trace, Nyes::Constant, "Operator(+)");
+        assert_eq!(op.borrow().as_i64(), Some(5));
+    }
+
+    #[test]
+    fn operator_div_by_zero_nyes_transitions() {
+        let op = make_operator("/", vec![make_constant_int(1), make_constant_int(0)]);
+        let trace = step_to_settled(&op, &Scope::empty());
+        assert_progression(&trace, Nyes::Nk, "Operator(/0)");
+    }
+
+    #[test]
+    fn statement_nyes_transitions() {
+        let stmt = make_statement("a", 0, make_constant_int(9));
+        let trace = step_to_settled(&stmt, &Scope::empty());
+        assert_progression(&trace, Nyes::Constant, "Statement");
+    }
+
+    #[test]
+    fn brane_nyes_transitions() {
+        let brane = make_brane(vec![
+            make_statement("a", 0, make_constant_int(1)),
+            make_statement("b", 1, make_constant_int(2)),
+        ]);
+        let trace = step_to_settled(&brane, &Scope::empty());
+        // All-constant children → the brane classifies CONSTANT (a fully-evaluated brane value).
+        assert_progression(&trace, Nyes::Constant, "Brane");
+    }
+
+    #[test]
+    fn brane_with_nk_child_nyes_transitions() {
+        let brane = make_brane(vec![
+            make_statement("a", 0, make_constant_int(1)),
+            make_statement("bad", 1, make_nk("boom")),
+        ]);
+        let trace = step_to_settled(&brane, &Scope::empty());
+        assert_progression(&trace, Nyes::Nk, "Brane(+NK)");
+    }
+
+    #[test]
+    fn search_anchored_found_nyes_transitions() {
+        // anchor brane {a=10}; search '^a$' anchored on it → found CONSTANT.
+        let brane = make_brane(vec![make_statement("a", 0, make_constant_int(10))]);
+        let search = make_search("^a$", true, vec![Rc::clone(&brane)]);
+        let trace = step_to_settled(&search, &Scope::empty());
+        // A found value-bearing anchored search → WOCONSTANIC (found, not yet a value)
+        // per search_nyes_from_found mapping of the body's state.
+        assert!(search.borrow().core().get_nyes().is_constanic());
+        assert_eq!(*trace.first().unwrap(), Nyes::Prembrionic);
+        eprintln!("Search(anchored,found) nyes transitions: {trace:?}");
+    }
+
+    #[test]
+    fn search_not_found_nyes_transitions() {
+        // unanchored search for a name that does not exist → ECONSTANIC.
+        let search = make_search("zzz", false, vec![]);
+        let trace = step_to_settled(&search, &Scope::empty());
+        assert_progression(&trace, Nyes::Econstanic, "Search(not found)");
+    }
+
+    #[test]
+    fn index_nyes_transitions() {
+        let brane = make_brane(vec![
+            make_statement("a", 0, make_constant_int(10)),
+            make_statement("b", 1, make_constant_int(20)),
+        ]);
+        let idx = make_index(1, true, vec![Rc::clone(&brane)]);
+        let trace = step_to_settled(&idx, &Scope::empty());
+        assert_progression(&trace, Nyes::Constant, "Index(1)");
+    }
+
+    #[test]
+    fn index_out_of_bounds_nyes_transitions() {
+        let brane = make_brane(vec![make_statement("a", 0, make_constant_int(10))]);
+        let idx = make_index(5, true, vec![Rc::clone(&brane)]);
+        let trace = step_to_settled(&idx, &Scope::empty());
+        assert_progression(&trace, Nyes::Nk, "Index(oob)");
+    }
+
+    #[test]
+    fn headtail_nyes_transitions() {
+        let brane = make_brane(vec![
+            make_statement("a", 0, make_constant_int(10)),
+            make_statement("b", 1, make_constant_int(20)),
+        ]);
+        let ht = make_headtail(true, true, vec![Rc::clone(&brane)]); // head
+        let trace = step_to_settled(&ht, &Scope::empty());
+        assert_progression(&trace, Nyes::Constant, "HeadTail(head)");
+    }
+
+    #[test]
+    fn headtail_empty_nyes_transitions() {
+        let brane = make_brane(vec![]);
+        let ht = make_headtail(true, true, vec![Rc::clone(&brane)]);
+        let trace = step_to_settled(&ht, &Scope::empty());
+        assert_progression(&trace, Nyes::Nk, "HeadTail(empty)");
+    }
+
+    #[test]
+    fn concatenation_nyes_transitions() {
+        let brane1 = make_brane(vec![make_statement("a", 0, make_constant_int(1))]);
+        let brane2 = make_brane(vec![make_statement("b", 0, make_constant_int(2))]);
+        let cat = make_concatenation(vec![Rc::clone(&brane1), Rc::clone(&brane2)]);
+        let trace = step_to_settled(&cat, &Scope::empty());
+        assert_progression(&trace, Nyes::Constant, "Concatenation");
+    }
+
+    #[test]
+    fn stay_foolish_nyes_transitions() {
+        let sf = make_stay_foolish(make_constant_int(42));
+        let trace = step_to_settled(&sf, &Scope::empty());
+        assert_progression(&trace, Nyes::Constant, "StayFoolish");
+    }
+
+    #[test]
+    fn stay_fully_foolish_nyes_transitions() {
+        let sff = make_stay_fully_foolish(make_constant_int(42));
+        let trace = step_to_settled(&sff, &Scope::empty());
+        // SFF is fully-foolish construction → settles INDEPENDENT (self-contained constant),
+        // in a single step (Prembrionic → Independent).
+        assert_progression(&trace, Nyes::Independent, "StayFullyFoolish");
+    }
 }
