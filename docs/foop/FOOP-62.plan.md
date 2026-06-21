@@ -134,7 +134,26 @@ back to rendering the **anchor** as `result=` (wrong). Fix span:
 5. ubca→core bridge: set `.result(resolved)` from `ubc_children` (the indexed result).
 Multi-file (foolish-core + foolish-ubca). Snapshots will shift (present for review).
 
-### DESIGN — task #10: unify nyes determination (Atlas direction)
+### DESIGN — task #10: unify nyes determination (Atlas direction) — DONE 2026-06-21
+
+STATUS: COMPLETE. Audit finding: nyes was ALREADY FIR-owned — `nyes: Cell<Nyes>` is private on
+ProtoBrane, `set_nyes` is `pub(crate)`, and every real call is `self.core.set_nyes(...)` inside
+the kind's own `fir_op_step`; the ONLY external setter was the DEAD `advance_to_embryonic` free
+fn. So #10 was small (Atlas: "I don't foresee a lot of changes" — correct). NO choke point
+(Atlas: transitions like Prembrionic→Braning are sequential, not pure functions of children —
+verify via tests instead). Done:
+- Removed the dead `advance_to_embryonic` (the lone from-outside nyes setter); EMBRYONIC intent
+  moved to #14.
+- Documented the OWNERSHIP CONTRACT on `ProtoBrane::set_nyes`: only a FIR on itself in its own
+  step, or construction (`ProtoBrane::new`, incl. constanic-clone via `clone_nyes`). Matches the
+  spec's existing "three sanctioned writers" (§1 nyes field doc).
+- Caveat honored: nyes IS still set when cloning — via `ProtoBrane::new(.., clone_nyes(..))`.
+- Added 4 unit tests stepping a PARENT brane and observing per-step nyes of parent + a watched
+  descendant: brane_of_constants_progresses_to_settled, operator_in_brane_advances_before_parent
+  _settles, unresolved_search_in_brane_goes_econstanic, constanic_node_stays_constanic_across
+  _parent_steps. 96 ubca unit tests pass. No behavior/snapshot change.
+
+
 
 `nyes` is a cached mutable field with a getter. **Invariant: any time a FIR is borrowed for
 writing, before that borrow expires `nyes` must be correct** — set at instantiation AND

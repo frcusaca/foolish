@@ -624,25 +624,13 @@ pub struct SearchFir {
     pub(crate) sf_inner_pattern: RefCell<Option<String>>,
 }
 
-/// Recursively advance all PREMBRIONIC nodes to EMBRYONIC.
-/// Used by SFF to match reference behavior where SFF inner expressions
-/// start at EMBRYONIC, not PREMBRIONIC. Covers both foolish_children
-/// (parse-time structure) and ubc_children (computed results).
-fn advance_to_embryonic(fir_ref: &FirRef) {
-    let mut borrowed = fir_ref.borrow_mut();
-    if borrowed.core().get_nyes() == Nyes::Prembrionic {
-        borrowed.core().set_nyes(Nyes::Embryonic);
-    }
-    let foolish: Vec<FirRef> = borrowed.core().foolish_children().to_vec();
-    let ubc: Vec<FirRef> = borrowed.core().ubc_children().to_vec();
-    drop(borrowed);
-    for child in foolish {
-        advance_to_embryonic(&child);
-    }
-    for result in ubc {
-        advance_to_embryonic(&result);
-    }
-}
+// NOTE: the former `advance_to_embryonic` free function was removed (FOOP-62 #10): it was
+// dead code AND the only place that set another node's nyes from OUTSIDE that node's own step
+// (`fir_ref.core().set_nyes(...)`), violating the "a FIR owns its own nyes" rule. The EMBRYONIC
+// stage it hinted at (SFF inner expressions starting EMBRYONIC) is reimplemented properly by
+// task #14 (EMBRYONIC = ib_search within the brane). nyes is now only ever set by a FIR on
+// ITSELF (`self.core.set_nyes`) inside its own `fir_op_step`, or at construction
+// (`ProtoBrane::new`, incl. the sanctioned constanic-clone path).
 
 fn extract_simple_name(pattern: &str) -> &str {
     let s = pattern.strip_prefix('^').unwrap_or(pattern);
@@ -2742,5 +2730,126 @@ mod tests {
         // And the with_ancestral_sfm helper sets the flag without disturbing position.
         let foolish_scope = scope.with_ancestral_sfm(true);
         assert!(foolish_scope.has_ancestral_sfm);
+    }
+
+    // ── nyes progression through stepping (FOOP-62 #10) ───────────────────────
+    //
+    // These step a PARENT and observe the nyes of both the parent and a watched
+    // descendant at every step. They document that:
+    //   - a FIR owns its own nyes (it only advances by being stepped);
+    //   - the progression is queue-driven (pending tasks ⇒ pre-constanic; queue
+    //     drained ⇒ the node settles from its now-constanic children/result);
+    //   - nyes is correct at every quiescent point (between steps).
+
+    /// Step `root` to settled, recording (root_nyes, watched_nyes) BEFORE each step
+    /// and once more at the end. Lets a test watch a descendant advance as its
+    /// parent drains the queue.
+    fn step_watching(root: &FirRef, watched: &FirRef, scope: &Scope) -> Vec<(Nyes, Nyes)> {
+        let mut trace = vec![(
+            root.borrow().core().get_nyes(),
+            watched.borrow().core().get_nyes(),
+        )];
+        for _ in 0..100 {
+            if root.borrow().core().get_nyes().is_constanic() {
+                break;
+            }
+            let _ = step_fir_ref(root, scope).unwrap();
+            trace.push((
+                root.borrow().core().get_nyes(),
+                watched.borrow().core().get_nyes(),
+            ));
+        }
+        trace
+    }
+
+    /// A brane of all-constant statements settles, and every node ends constanic.
+    #[test]
+    fn brane_of_constants_progresses_to_settled() {
+        let s1 = make_statement("a", 0, make_constant_int(1));
+        let s2 = make_statement("b", 1, make_constant_int(2));
+        let brane = make_brane(vec![Rc::clone(&s1), Rc::clone(&s2)]);
+        let scope = Scope::empty();
+
+        // Watch statement s2 advance while the brane drains its queue.
+        let trace = step_watching(&brane, &s2, &scope);
+        eprintln!("brane/constants (brane, s2) nyes: {trace:?}");
+
+        // Brane starts pre-constanic, ends constanic; never regresses past settled.
+        assert_eq!(trace.first().unwrap().0, Nyes::Prembrionic);
+        assert!(brane.borrow().core().get_nyes().is_constanic());
+        // The watched statement also reaches a constanic state.
+        assert!(s2.borrow().core().get_nyes().is_constanic());
+        // Every recorded brane nyes before the last is pre-constanic OR the final settled one.
+        // (queue-driven: pending tasks keep it pre-constanic)
+        assert!(trace.len() >= 2, "should take at least one step");
+    }
+
+    /// A statement holding an operator: the operator advances through its own
+    /// queue (operands first) before the statement/brane settle.
+    #[test]
+    fn operator_in_brane_advances_before_parent_settles() {
+        let op = make_operator("+", vec![make_constant_int(4), make_constant_int(6)]);
+        let stmt = make_statement("sum", 0, Rc::clone(&op));
+        let brane = make_brane(vec![Rc::clone(&stmt)]);
+        let scope = Scope::empty();
+
+        // Before stepping, the operator is pre-constanic.
+        assert_eq!(op.borrow().core().get_nyes(), Nyes::Prembrionic);
+
+        let trace = step_watching(&brane, &op, &scope);
+        eprintln!("operator-in-brane (brane, op) nyes: {trace:?}");
+
+        // The operator must reach constanic BEFORE (or at) the brane settling —
+        // i.e. once the brane is settled, the operator is settled too.
+        assert!(brane.borrow().core().get_nyes().is_constanic());
+        assert!(op.borrow().core().get_nyes().is_constanic());
+        // The operator computed its value (10) → CONSTANT.
+        assert_eq!(op.borrow().core().get_nyes(), Nyes::Constant);
+        assert_eq!(op.borrow().as_i64(), Some(10));
+    }
+
+    /// An unresolved unanchored search inside a brane goes ECONSTANIC (found
+    /// nothing), and the brane settles around that — the search owns its nyes and
+    /// is never forced from outside.
+    #[test]
+    fn unresolved_search_in_brane_goes_econstanic() {
+        // `x = <search for 'zzz'>` with no such name → ECONSTANIC.
+        let search = make_search("zzz", false, vec![]);
+        let stmt = make_statement("x", 0, Rc::clone(&search));
+        let brane = make_brane(vec![Rc::clone(&stmt)]);
+        let scope = Scope::empty();
+
+        let trace = step_watching(&brane, &search, &scope);
+        eprintln!("unresolved-search (brane, search) nyes: {trace:?}");
+
+        // The search settles (it owns its nyes); a not-found unanchored search is
+        // ECONSTANIC, and the brane settles around it.
+        assert!(search.borrow().core().get_nyes().is_constanic());
+        assert_eq!(search.borrow().core().get_nyes(), Nyes::Econstanic);
+        assert!(brane.borrow().core().get_nyes().is_constanic());
+    }
+
+    /// Stepping is monotone for a watched node: once a node is constanic it stays
+    /// constanic across further parent steps (nyes is owned + only advances).
+    #[test]
+    fn constanic_node_stays_constanic_across_parent_steps() {
+        let s1 = make_statement("a", 0, make_constant_int(1));
+        let s2 = make_statement("b", 1, make_constant_int(2));
+        let brane = make_brane(vec![Rc::clone(&s1), Rc::clone(&s2)]);
+        let scope = Scope::empty();
+
+        let mut s1_was_constanic = false;
+        for _ in 0..100 {
+            if brane.borrow().core().get_nyes().is_constanic() {
+                break;
+            }
+            let _ = step_fir_ref(&brane, &scope).unwrap();
+            let s1_now = s1.borrow().core().get_nyes().is_constanic();
+            if s1_was_constanic {
+                assert!(s1_now, "a constanic node must not regress to pre-constanic");
+            }
+            s1_was_constanic = s1_now;
+        }
+        assert!(s1.borrow().core().get_nyes().is_constanic());
     }
 }

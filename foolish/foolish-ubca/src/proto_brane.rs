@@ -161,8 +161,15 @@ impl ProtoBrane {
         self.nyes.get()
     }
 
-    /// Set the NYES state. Only `fir_op_step` and the builder call this.
-    #[allow(dead_code)]
+    /// Set the NYES state.
+    ///
+    /// OWNERSHIP CONTRACT (FOOP-62 #10): a FIR owns its own nyes — nyes must NOT be changed
+    /// from outside the FIR. The ONLY sanctioned writers are:
+    ///   1. a FIR on ITSELF, inside its own `fir_op_step` (`self.core.set_nyes(...)`); and
+    ///   2. construction — `ProtoBrane::new(.., nyes)` (builders, and the constanic-clone path,
+    ///      which legitimately sets the clone's nyes at construction via `clone_nyes`).
+    /// No code may call `set_nyes` on a node it does not own. (`pub(crate)` is the tightest the
+    /// type system allows here since each FIR kind is a sibling type reaching its own `core`.)
     pub(crate) fn set_nyes(&self, n: Nyes) {
         self.nyes.set(n);
     }
