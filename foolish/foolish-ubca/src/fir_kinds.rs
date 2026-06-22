@@ -397,6 +397,16 @@ pub struct OperatorFir {
     pub(crate) op: String,
 }
 
+impl OperatorFir {
+    /// Returns true iff every operand is already constanic.
+    fn operands_all_constanic(&self) -> bool {
+        self.core()
+            .foolish_children()
+            .iter()
+            .all(|c| c.borrow().core().get_nyes().is_constanic())
+    }
+}
+
 impl Fir for OperatorFir {
     fn core(&self) -> &ProtoBrane {
         &self.core
@@ -404,13 +414,43 @@ impl Fir for OperatorFir {
     fn fir_op_step(&self, scope: &Scope) -> Result<(), UbcError> {
         match self.core.get_nyes() {
             Nyes::Prembrionic | Nyes::Embryonic => {
+                // EMBRYONIC literal/constant handling (FOOP-62 #22): the operator does NOT skip
+                // stages — it always advances EMBRYONIC → BRANING (one transition this step),
+                // and the combine happens in BRANING. What EMBRYONIC decides is whether to
+                // enqueue operands: if they are ALREADY all constanic (literals/constants, or a
+                // re-stepped clone whose operands are settled), there is nothing to drain, so we
+                // just advance — BRANING will then combine immediately. Otherwise enqueue them
+                // so they drain to constanic first.
                 self.core.set_nyes(Nyes::Braning);
-                let children: Vec<FirRef> = self.core.foolish_children().to_vec();
-                for child in children {
-                    self.core.push_task(child);
+                if !self.operands_all_constanic() {
+                    let children: Vec<FirRef> = self.core.foolish_children().to_vec();
+                    for child in children {
+                        self.core.push_task(child);
+                    }
                 }
             }
             Nyes::Braning => {
+                return self.combine(scope);
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    fn kind(&self) -> FirKind {
+        FirKind::Operator
+    }
+
+    fn as_op_name(&self) -> Option<&str> {
+        Some(&self.op)
+    }
+}
+
+impl OperatorFir {
+    /// Combine the (settled) operands into this operator's result + nyes. Called from BRANING,
+    /// and from the EMBRYONIC fast-path when operands are already constanic.
+    fn combine(&self, scope: &Scope) -> Result<(), UbcError> {
+        {
                 let self_weak = self.core.parent_weak();
                 let children = self.core.foolish_children().to_vec();
 
@@ -502,18 +542,8 @@ impl Fir for OperatorFir {
                 });
                 self.core.push_ubc_child(constanic_clone_at(&result_ref, &self_weak, 0, scope.has_ancestral_sfm));
                 self.core.set_nyes(Nyes::Constant);
-            }
-            _ => {}
         }
         Ok(())
-    }
-
-    fn kind(&self) -> FirKind {
-        FirKind::Operator
-    }
-
-    fn as_op_name(&self) -> Option<&str> {
-        Some(&self.op)
     }
 }
 
