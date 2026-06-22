@@ -186,6 +186,31 @@ returned nyes. So **track and set nyes as stepping happens**.
   computes its terminal nyes from the now-constanic children/results. `fir_op_step` IS the
   "queue-drained, do my act" hook (the driver only calls it when `front_task()` is empty).
 
+### tasks #20–#23: NICC / EMBRYONIC re-step / WOCONSTANIC chain — DONE 2026-06-22
+
+Fixes the sff_basic regression and finalizes the constanic-clone semantics:
+- **#20 NICC nyes rule** (`clone_nyes`): asserts CONSTANIC input. NICC keeps Constantew
+  (CONSTANT/INDEPENDENT/NK); resets ECONSTANIC/WOCONSTANIC → **EMBRYONIC** (the "start working"
+  stage where searches re-progress IB→AB). FICC unchanged (copies verbatim). EMBRYONIC is now
+  universal — every non-search kind's begin-arm matches `Prembrionic | Embryonic`.
+- **#22 operator EMBRYONIC** (no stage skip): EMBRYONIC decides whether to enqueue operands (skip
+  if already constanic); combine stays in BRANING. `combine` extracted.
+- **#23 search settle-from-drained** (NOT re-stepping): a search that finds a constanic body
+  NICC-clones it + goes BRANING without settling; the ordinary drain finishes the (possibly
+  EMBRYONIC) clone, then `settle_from_ubc_result` settles from it.
+- **#21 generic ubc clone + WOCONSTANIC chain shorten**: `constanic_clone_at` clones ubc_children
+  for ALL kinds; a WOCONSTANIC search clone shortens its chain to the NICC of the deepest
+  ECONSTANIC (`deepest_econstanic_in_chain`). "Result present → don't search" guard on the search
+  EMBRYONIC/BRANING arms. Singular-result + this guard are SEARCH-SPECIFIC; multi-result
+  ProtoBranes (Op+, brane) use plain push_ubc_child, unaffected.
+Result: sff_basic and the nested/complex SFF cases resolve correctly. 119 ubca unit tests pass;
+review set 21 → 17.
+
+### docs #13/#16 — DONE 2026-06-22
+FOOP-62.md "Terminology: anchor and result (NOT 'target')" section; AGENTS.md
+"NYES transition tests (*_nyes_transitions)" subsection (new FIR kinds / NYES states must
+extend them). Synced to alpha. (commit 225369ae)
+
 ### DESIGN — task #14: EMBRYONIC = within-brane stage (preserve; reintroduce) — DONE 2026-06-21
 
 STATUS: COMPLETE. Reintroduced EMBRYONIC for unanchored searches:
