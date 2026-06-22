@@ -1,6 +1,6 @@
 ---
-source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 52
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
 ---
 INPUT:
 ```foolish
@@ -17,7 +17,7 @@ INPUT:
   last=30;
   second=20;
   first=10;
-  oob=#(result=?(pattern='^b$', UNANCHORED), offset=-4, ANCHORED, NK)
+  oob=#(offset=-4, ANCHORED, NK)
 }
 ```
 COMMENTS:
@@ -25,7 +25,7 @@ COMMENTS:
 anchored_seek_negative_boundary
 ```
 SIGNATURES:
-Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
-Foolish signature: Hz+E00U3C3CsBvmDBDvsvrUBkxqorumzrBINQuB6usuo3Tc+B3G3S66sRaCAd8nWs36mDjbYF6rjX7Ps0UoJBw==
-HFS signature: bwfyi1JNHDIF+aA01i6mZkABdjwwNQkS/m2QktXozCEfLvMox1w0HOOOz0AryRd5RMsk6Xf0JNzx9ro/q7PVCg==
-Comments signature: tXLnxbWejJHGshEKY/tK3avztg1uYttGsa28QSD1ayONkt4OSuX1yWQhO/rrcp5c+flLw+X2Yeog9P4R/S7mDw==
+Public key: eb9604b1e50d6df60ea71cded2d51b4031b14e9d8911866fcfff4afb00075e65
+Foolish signature: Fobb83xE+74aV702CLwIUovMaEa14+kQZgmQkGkqGEImyiicu6eXnI3coUp5nQ38FfnyP97kWZCbsbtaqDvtAg==
+HFS signature: Ji0k+U6E1a/D/fiRDdrv+R/WsFhFiUpJOYyuIQhmTU+knbJpvD4vogdlz+Pg+JYNyPkCGKdIPrWoOfAWG4eZCA==
+Comments signature: t7nELpsT7r1+6wmnOo7EpoMHfGyKaJ1x9QMU0OLgizROazPkFV4F7AwdZKdFKC/mIx1x4eWbqmv+OutkkdVnCw==

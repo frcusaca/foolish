@@ -1,0 +1,33 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{bad = undeclared; y = bad; z = y;}
+```
+[0] RESULT:
+```hfssnap
+{WOCONSTANIC
+  bad=?(pattern='^undeclared$', UNANCHORED, ECONSTANIC);
+  y=?(result=?(pattern='^undeclared$', UNANCHORED, ECONSTANIC), pattern='^bad$', UNANCHORED);
+(@Agents, shouldn't the z have traversed through ALL the woconstanics and just appears as:
+z=?(result=?(pattern="undeclared", UNANCHORED, ECONSTANIC), WCONSTANIC);
+or something similar to that???
+)
+  z=?(
+      result=?(result=?(pattern='^undeclared$', UNANCHORED, ECONSTANIC), pattern='^bad$', UNANCHORED),
+      pattern='^y$',
+      UNANCHORED
+  )
+}
+```
+COMMENTS:
+```markdown
+chained_undeclared
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: eB8BINHym3bU4SkJcN6e2J7Nyt8aIXqpM17n8dWWv10YjHURVEWNewoNwCdC9djfutCCillXxps0lBuGqyWABw==
+HFS signature: 7RLwB3dHmpAWzs1SNWksZgH0XCMbqaYU6OFkyh9YYD3VrwtsWhZJNr820KHiJ2Y1xzgtQ2IUkv5J5Wkne2s7Ag==
+Comments signature: Gon7X3rLCPxLDQ/QaW5E1ImqizjdJqyJcLABrFCltOEqZqjPD1R1q0oWQJym9lAzFNIb6n5pTMQpcS0AI2NkCQ==

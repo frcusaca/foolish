@@ -13,12 +13,12 @@ INPUT:
   b=2;
   c=??? (??? literal);
   s=?(result=1, pattern='^a$', UNANCHORED);
-  bad=?(result=??? (??? literal), pattern='^c$', UNANCHORED, WOCONSTANIC);
-  sfˍbad=?(result=??? (??? literal), pattern='^c$', UNANCHORED, WOCONSTANIC);
+  bad=?(result=??? (??? literal), pattern='^c$', UNANCHORED);
+  sfˍbad=?(result=??? (??? literal), pattern='^c$', UNANCHORED);
   d=3;
-  e=Op+(?(result=??? (??? literal), pattern='^c$', UNANCHORED, WOCONSTANIC), 1, WOCONSTANIC);
+  e=Op+(?(result=??? (??? literal), pattern='^c$', UNANCHORED), 1, WOCONSTANIC);
   f=1;
-  g=?(result=??? (??? literal), pattern='^c$', UNANCHORED, WOCONSTANIC)
+  g=?(result=??? (??? literal), pattern='^c$', UNANCHORED)
 }
 ```
 COMMENTS:
@@ -26,7 +26,7 @@ COMMENTS:
 hfs_nyes_display_rules
 ```
 SIGNATURES:
-Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
-Foolish signature: lOzIlpYscAmbG4Y9d9v65sk1C6nC6J2xeGlM47hbCGP82TowRKPNI/5YakMa9E6OfuFm6HJyXoD6U12jHj3gBg==
-HFS signature: urNiK7TSaH81aj37F1ridUJDwCJUcw+sxVTTKvOa9rO6kpXEiRT94v0eoKr6QY5TB6BojsC9gZ8Hao5yqqeQAg==
-Comments signature: kclqBh6ap3iSjFyMTgX16ZhITgd3p0qLK4asrdXMhBHXtOJCcEtgPlQWtnv8QZELIbm2Yewq94T285W/2jX9Aw==
+Public key: eb9604b1e50d6df60ea71cded2d51b4031b14e9d8911866fcfff4afb00075e65
+Foolish signature: LP3ptfVb/TktmKr/hAk3yTuy/6Tyee9WqazfXMwVprKFjSZTwZwP5JDqg9haSOTTYidICx+qE5sVLJMsUH+2AQ==
+HFS signature: S3muwVzRqjgHyDBuL94HZQDEqGteaIaxbezOxdq9aGK7riQb1dykOvBGUIurxvikNCuccZ9ZXl4Jjc3WS2VCCg==
+Comments signature: TCtekjHC/vu19ZHdTD4H3aX/fwBtM0Zkr1IcCuQsakEFQ3No6JHciYPfNP5piZx3PyVHnQ6sdC5fjdU4dE4LAA==

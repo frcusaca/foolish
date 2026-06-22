@@ -13,7 +13,7 @@ INPUT:
   b=2;
   s=Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC);
   a=10;
-  3
+  12
 }
 ```
 COMMENTS:
@@ -21,7 +21,7 @@ COMMENTS:
 sff_resolves_on_each_use
 ```
 SIGNATURES:
-Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
-Foolish signature: dvgS2SgQxTH17MqJ0GvfsJzYlhZVovt+9HhyksPNiUsLfJeYshVu9Gse0wzatDFWaIIIRlYQ4UG+eFcEHxFuBw==
-HFS signature: 50vzJjP1lSucCEr32N9S49TVjHcKj1kwa+NwkZyeL/1xuCasAL3phHa0ew1F1dQjah47C4eS6VU2HJFo7VIoCQ==
-Comments signature: 3a3omgU8ibbcAwofX3ae15UjQ5SJLMAJ2IhuRX65iF3gkIMWJVC16z3q6RRTT2Jwm+d9OpfIrl9/KYRwZjkNBA==
+Public key: eb9604b1e50d6df60ea71cded2d51b4031b14e9d8911866fcfff4afb00075e65
+Foolish signature: 3EIGMgM4btww7UJrO95GiiO4u5gcIapCuxPBVHUbmkuFKQnhTS1Ycjq87cPMtCmfNgxR1fQ2NoEuphBVezOiBg==
+HFS signature: kOq+wd2GDuhkq6aJmc+bWgA3xVx562OhrCXP7063Dv00ZQAETPLZy2h/qG6Y1QuoEhHYl8OjvBUkpJw5rvMTCQ==
+Comments signature: 3fJTOSEg2a/Yp/9CARsxBM0EYs4VanbJFW2HlBIEjsTLGI1EJJt62fsLCy68cHokQV/VUg8Fzj1gIQzuqsq4Dg==

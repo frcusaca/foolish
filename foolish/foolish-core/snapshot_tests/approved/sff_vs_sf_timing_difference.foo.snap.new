@@ -11,7 +11,7 @@ INPUT:
 {
   x=1;
   sf=?(result=10, pattern='^x$', UNANCHORED);
-  sff=?(pattern='^x$', UNANCHORED, EMBRYONIC);
+  sff=?(pattern='^x$', UNANCHORED);
   x=10;
   10;
   10
@@ -24,5 +24,5 @@ sff_vs_sf_timing_difference
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 1T4n3g/X8HUF4ks72E7lyvCYn9OelhLPSBr7ockhII5PkT0EVw7Amz08EWaUU87H3l3wpZOYiwTv12S1ZPHVBA==
-HFS signature: pLGhaqNx+D2sNWV0Up5ZXio7CjAA+QxxVRADJE8yGW5OaemrVkwYCADkduc++1ia67uhCJCSztf2wftcO7CODA==
-Comments signature: uKJ7AdF/T19vzSol5Epf2hqQzPUjyJ4K137OKeOG6ibFuL+sro/PmON6jjadjS8Xtzq4TQ8tzNlnRZzZTB7KBg==
+HFS signature: JecTVlso4e2HEIVRrTlvwXZ2HapbEuH8Qij6+xjwmcXLfkZNgowxwGPDoLrAOtl5yvVfEnCc1LEMfhtmZVHZAQ==
+Comments signature: TkTVzN79jpDxdu3EKdjbYsqb7aQ0pvJ4xTbksphrVW14WswB+AhqekzpwhACXgsD+euTW3GsefZgshe5g8fODA==

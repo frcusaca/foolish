@@ -1,6 +1,6 @@
 ---
-source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 50
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
 ---
 INPUT:
 ```foolish
@@ -19,7 +19,7 @@ COMMENTS:
 regression_regression_disappearing_brane
 ```
 SIGNATURES:
-Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
-Foolish signature: 6Cva3ZXt8cVDwKEN9Fm8XgEgPsJzc1AyhVxotnLVMl4si4lUyd4P8Hc8LK7Y8yt65g7tSc8m0+C1iKAC/ZHeAw==
-HFS signature: DcPPf0nFhOgz5QuRjNR8VnoTaW/dTwvlCQxacEgaFgrPpxWVl5NXt+84vbusGboY1iP0KEOow/qF301r/RceDA==
-Comments signature: CljqElhY4AF7t8XfjtzPIJX/rNJiiE2QPb1Bph4wFTW6u5dQ59xSsWXGhBEMNd9h9iUz0EcU/hJTu4EdPmBECA==
+Public key: eb9604b1e50d6df60ea71cded2d51b4031b14e9d8911866fcfff4afb00075e65
+Foolish signature: Gzzo61fYiG7wULNEjwJD0bApRYjhuvVn3S6S9FV2qH2ik6/MSH9gGunq1yioVMT5H+KAgwzoQ6TZvnFz1THuDQ==
+HFS signature: pjmAFzb6buZL5Oz5VeJS69VGw8J0m+xGTrfLYw0DAG3go8I8KSNM7qr4QcWeT6oNlfrDtfXipKz6jYGNk4vYAQ==
+Comments signature: bRTa/kTniPdpHh0KdUYwfZRUn0C0q5ATICn7Wq29RAjOdINEtR5t4ZxmcpwcTk6XGroxXenWAwXZSJ45tZTJAA==

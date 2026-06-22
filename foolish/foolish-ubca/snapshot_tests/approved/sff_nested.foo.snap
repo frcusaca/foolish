@@ -8,12 +8,18 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{WOCONSTANIC
+{
   a=1;
   b=2;
-  c=Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, EMBRYONIC), WOCONSTANIC);
-  ?(result=Op+(1, ?(pattern='^b$', UNANCHORED, EMBRYONIC), WOCONSTANIC), pattern='^c$', UNANCHORED, WOCONSTANIC);
-  ?(result=Op+(1, ?(pattern='^b$', UNANCHORED, EMBRYONIC), WOCONSTANIC), pattern='^c$', UNANCHORED, WOCONSTANIC)
+  c=Op+(
+      ?(pattern='^a$', UNANCHORED, ECONSTANIC),
+      <<PREMBRIONIC
+        ?(pattern='^b$', UNANCHORED)
+      >>,
+      WOCONSTANIC
+  );
+  3;
+  3
 }
 ```
 COMMENTS:
@@ -21,7 +27,7 @@ COMMENTS:
 sff_nested
 ```
 SIGNATURES:
-Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
-Foolish signature: lhcizF48neDw/0Ot29cyjAKKVN2RJsqhMEqKOBwHi1AC7LmDHeXb9dBvby6kqQzBJhSJHHAXCtmjZ9gbF1ZHAw==
-HFS signature: Lh6gJXqdGeI6xFu+rHY22wHH+br71M/+3lSKkBX82JfH7u5hqO9cBE4tbLO7A0Wsq/4vIRZp2+WyA4EN3/VhCw==
-Comments signature: r41wrRESaF4aHzIv+BuOXk76Z3/7hWsQubdVMbNd1lxSJvRjVg+MYPRc+R+wHiizKMTBZfYnIHks/GjheQQhBQ==
+Public key: eb9604b1e50d6df60ea71cded2d51b4031b14e9d8911866fcfff4afb00075e65
+Foolish signature: Y6Z2MpkKisEYguRMh6Y5timXHntVEjCkP8iWkhfwYGLT//OoE2ir0rzZ1LL+AVro4xHZYaEwaute2NuWuWPxCw==
+HFS signature: 6f/LDNCEjOHPnDEqBPw1tyGdgMJk3zrkCA1GckgSM1TUwrsHyilH0GVyQ+MBDRJ6ngU40+8f915snDMvtspNAg==
+Comments signature: VRzHH0fNcNkbb4vwiCdjrAmlrv5vLLU4FcwbbQDv9/h2uZCZuQBSsPecyvKgZTFT/XZ0gCeKPJmj1sjIvCyuCg==

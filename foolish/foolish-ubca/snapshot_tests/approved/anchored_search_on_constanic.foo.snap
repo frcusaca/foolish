@@ -1,6 +1,6 @@
 ---
-source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 52
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
 ---
 INPUT:
 ```foolish
@@ -10,7 +10,7 @@ INPUT:
 ```hfssnap
 {NK
   emptyBrane={};
-  chained=^(result=?(pattern='^emptyBrane$', UNANCHORED), NK)
+  chained=^(NK)
 }
 ```
 COMMENTS:
@@ -18,7 +18,7 @@ COMMENTS:
 anchored_search_on_constanic
 ```
 SIGNATURES:
-Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
-Foolish signature: oB/r33QRdUQFLBKbVSYWEI6VnaBBz7sVV6q5wjQOzqn1ouLQ6wc7+rEwPF47u2C08Nk3Rrw7xaUn52YmW2bYDQ==
-HFS signature: IbKmwuaBw7aXNNfT3VYK03BrY/+Nd7yS+7tmewGw7upyCQXcZ6lAfpKGalHzXBK/dEbmiL/4vZWLewVmeuYkDw==
-Comments signature: 6uSvlsYOLyu5MKRWdd4ZceUMSxGyaPzo41xipV7mD6bHrYZxKYAyfrxwwGFD0XNfalG4rkZdfmcC5Y+M2+/gCg==
+Public key: eb9604b1e50d6df60ea71cded2d51b4031b14e9d8911866fcfff4afb00075e65
+Foolish signature: 2/NRnjjWcwKaKN+F3qj0MEMA9rifc7t0uYTfl1m65IJQWFW22xunzeeut+QYZ1IHmPzMowoVGYPCUrVuPywxDA==
+HFS signature: nZVFesFcFHzLbhOpN5sJqyOzExDysAE1IDQCioIPVRdvucaVdcKrw3of2O6owjEPOnYl0Ldp4xJe11NZk6GvBA==
+Comments signature: PyB8/l7UEWXmlovBoaS5XEOSAoBi128W2zJ8MmwV9in0gQK5IlEw+AuxxCiz4ctu13Qn2KH/xUstb0pMB8/5Aw==

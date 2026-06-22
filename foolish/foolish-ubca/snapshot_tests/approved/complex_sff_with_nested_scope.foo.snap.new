@@ -8,20 +8,12 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{WOCONSTANIC
+{
   x=5;
   y=10;
-  inner={WOCONSTANIC
+  inner={
       calc=Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), WOCONSTANIC);
-      doubled=Op*(
-          ?(
-            result=Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
-            pattern='^calc$',
-            UNANCHORED
-          ),
-          2,
-          WOCONSTANIC
-      )
+      doubled=30
   }
 }
 ```
@@ -32,5 +24,5 @@ complex_sff_with_nested_scope
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 8qfr0jpSsMP6MZAsD56aGbduYNh+nJ3slMhr8S+O04N/0gGhEQnVaYe41x8MuuHjYIaXc8UxZ9Qo9GNdgbECCw==
-HFS signature: veaIO7eq+PFOF7frzVczoEa5wSvnIlSYmnzU7aSYju4d+jRJmfhoObxw3MYDMduPbuijJr+YXkyMwJiYtelXAg==
-Comments signature: 7HAvLV1Lp5TzfX7dyY+kb1w+yzmLWK7Rem8q71p7RD52Ix/h9WHn6u7P/scpZN+HDfqQQPE9H36aBB+bWUMKDA==
+HFS signature: JPIDbhfGhnAOSgZbR2+3O7gkERzqNXpKGYsFktwu2QeJ1JRDUEPLRyJjARLF1BPwFnvZdHhC8ZXFaIrk2DjEDw==
+Comments signature: psFY9lQ6MFUOtgIlb78A6yl8kvh+J6QDLxtw0kiE/PaeLf42Owh21D1IaETU1HTsMbyM8btaysLWuK23+pG+AA==

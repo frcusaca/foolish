@@ -90,8 +90,8 @@ win={w_in={in_in={in_in_in=101010}}};
   dddd=4;
   shortˍsum=10;
   longˍnamedˍresultˍshowsˍalignment=Op+(
-      ?(result=Op+(6, ?(pattern='^dddd$', UNANCHORED), WOCONSTANIC), pattern='^shortˍsum$', UNANCHORED, WOCONSTANIC),
-      ?(result=Op+(6, ?(pattern='^dddd$', UNANCHORED), WOCONSTANIC), pattern='^shortˍsum$', UNANCHORED, WOCONSTANIC),
+      ?(result=Op+(6, ?(pattern='^dddd$', UNANCHORED, CONSTANT), WOCONSTANIC), pattern='^shortˍsum$', UNANCHORED),
+      ?(result=Op+(6, ?(pattern='^dddd$', UNANCHORED, CONSTANT), WOCONSTANIC), pattern='^shortˍsum$', UNANCHORED),
       WOCONSTANIC
   );
   veryˍlongˍidentifierˍnameˍforˍtestingˍindent=100;
@@ -101,33 +101,23 @@ win={w_in={in_in={in_in_in=101010}}};
   Δ=7;
   Σ=10;
   oneˍzero=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK;
-  divˍbyˍzeroˍinˍbraneˍmethod=?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED, WOCONSTANIC);
+  divˍbyˍzeroˍinˍbraneˍmethod=?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED);
   threeˍzero=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK;
   badˍinˍarithmetic=Op+(
-      ?(
-        result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK,
-        pattern='^oneˍzero$',
-        UNANCHORED,
-        WOCONSTANIC
-      ),
+      ?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED),
       5,
       WOCONSTANIC
   );
   chainedˍbad=Op+(
       Op+(
         10,
-        ?(
-          result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK,
-          pattern='^oneˍzero$',
-          UNANCHORED,
-          WOCONSTANIC
-        ),
+        ?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED),
         WOCONSTANIC
       ),
       20,
       WOCONSTANIC
   );
-  aliasˍofˍbad=?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED, WOCONSTANIC);
+  aliasˍofˍbad=?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED);
   fwdˍx=42;
   x=42;
   xˍagain=42;
@@ -145,8 +135,8 @@ win={w_in={in_in={in_in_in=101010}}};
   };
   headˍofˍflat=42;
   tailˍofˍflat=0;
-  headˍofˍempty=^(result=?(pattern='^flatˍempty$', UNANCHORED), NK);
-  tailˍofˍempty=$(result=?(pattern='^flatˍempty$', UNANCHORED), NK);
+  headˍofˍempty=^(NK);
+  tailˍofˍempty=$(NK);
   indexˍbrane={
       first=10;
       second=20;
@@ -155,7 +145,7 @@ win={w_in={in_in={in_in_in=101010}}};
   };
   indexˍfirst=10;
   indexˍlast=40;
-  indexˍoutˍofˍbounds=#(result=?(pattern='^indexˍbrane$', UNANCHORED), offset=99, ANCHORED, NK);
+  indexˍoutˍofˍbounds=#(offset=99, ANCHORED, NK);
   seekˍunanchored=??? (constanic_clone called on NYE FIR), INVARIANT-VIOLATED: constanic_clone called on NYE FIR;
   sfˍtarget={
       a=1;
@@ -177,7 +167,7 @@ win={w_in={in_in={in_in_in=101010}}};
       x=10;
       y=20
   };
-  sffˍvalue=?(pattern='^sffˍtarget$', UNANCHORED, EMBRYONIC);
+  sffˍvalue=?(pattern='^sffˍtarget$', UNANCHORED);
   concatˍleft={
       leftˍa=1;
       leftˍb=2
@@ -281,7 +271,7 @@ win={w_in={in_in={in_in_in=101010}}};
   inspectˍsff=<WOCONSTANIC
       ?(pattern='^sffˍtarget$', UNANCHORED, ECONSTANIC)
   >;
-  inspectˍsffˍagain=?(pattern='^sffˍtarget$', UNANCHORED, EMBRYONIC);
+  inspectˍsffˍagain=?(pattern='^sffˍtarget$', UNANCHORED);
   win={
       wˍin={
           inˍin={
@@ -298,5 +288,5 @@ foop42_humanizing_sequencer_formatting_exhaustive_aka_hfs
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 5CYQ9TTMJwxdSRqdDbNvIcEuEjzF0rs9DSJO0IFb7JZX52hw7oNCOG0pcpoYozWuyHWmpPLVgx2jGmPxDfKBDA==
-HFS signature: OVoQDyhvZTa9hwQqvocoKiursu/RsGI3HqWMs1FpWz2Qu18ejGdZhcOy+7vW54MPaOuZ9NlsTB04WmxrjpTeDA==
-Comments signature: s2XSEFHd2PEoMScwldIj7aF2UETTZfz2/h7N2aMzi7vdsqf7iY5YgYLrXbCEfz6hwJ2ghlggx2Ce/R6+ZkqsCA==
+HFS signature: H82/uSByKh1PEnHaNmHA8vt/8RY5Lrc1LTuoI+b9FvDPIF3uFNIkGqhFlhWcCQJDccCIydZX0Yjf0oQ7L/XbCA==
+Comments signature: SdpXxKzOCbmkHnGKQ+YtqjqvoiwEgVZ/a7IYLUeyJDHcgdczLoyfbHpXDIp/FEymhcgsf6uQzrEEu1aBVKQgCg==

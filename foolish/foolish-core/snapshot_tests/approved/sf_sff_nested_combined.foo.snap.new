@@ -28,70 +28,60 @@ INPUT:
 {WOCONSTANIC
   x=1;
   y=2;
-  sff=Op+(?(pattern='^x$', UNANCHORED), ?(pattern='^y$', UNANCHORED), EMBRYONIC);
+  sff=Op+(?(pattern='^x$', UNANCHORED, CONSTANT), ?(pattern='^y$', UNANCHORED, CONSTANT), EMBRYONIC);
   sf=<WOCONSTANIC
       Op+(?(result=-2, pattern='^x$', UNANCHORED), ?(result=2, pattern='^y$', UNANCHORED), WOCONSTANIC)
   >;
   sfsff=?(result=0, pattern='^sff$', UNANCHORED);
-  sffsf=?(pattern='^sf$', UNANCHORED, EMBRYONIC);
+  sffsf=?(pattern='^sf$', UNANCHORED);
   sfsf=?(result=0, pattern='^sf$', UNANCHORED);
-  sffsff=?(pattern='^sff$', UNANCHORED, EMBRYONIC);
+  sffsff=?(pattern='^sff$', UNANCHORED);
   x=-2;
   rsff=?(
-      result=Op+(?(pattern='^x$', UNANCHORED), ?(pattern='^y$', UNANCHORED), WOCONSTANIC),
+      result=Op+(?(pattern='^x$', UNANCHORED, CONSTANT), ?(pattern='^y$', UNANCHORED, CONSTANT), WOCONSTANIC),
       pattern='^sff$',
-      UNANCHORED,
-      WOCONSTANIC
+      UNANCHORED
   );
   rsf=?(
-      result=Op+(?(pattern='^x$', UNANCHORED), ?(pattern='^y$', UNANCHORED), WOCONSTANIC),
+      result=Op+(?(pattern='^x$', UNANCHORED, CONSTANT), ?(pattern='^y$', UNANCHORED, CONSTANT), WOCONSTANIC),
       pattern='^sf$',
-      UNANCHORED,
-      WOCONSTANIC
+      UNANCHORED
   );
   rsfsff=?(
       result=?(
-          result=Op+(?(pattern='^x$', UNANCHORED), ?(pattern='^y$', UNANCHORED), WOCONSTANIC),
+          result=Op+(?(pattern='^x$', UNANCHORED, CONSTANT), ?(pattern='^y$', UNANCHORED, CONSTANT), WOCONSTANIC),
           pattern='^sff$',
-          UNANCHORED,
-          WOCONSTANIC
+          UNANCHORED
       ),
       pattern='^sfsff$',
-      UNANCHORED,
-      WOCONSTANIC
+      UNANCHORED
   );
   rsffsf=?(
       result=?(
-          result=Op+(?(pattern='^x$', UNANCHORED), ?(pattern='^y$', UNANCHORED), WOCONSTANIC),
+          result=Op+(?(pattern='^x$', UNANCHORED, CONSTANT), ?(pattern='^y$', UNANCHORED, CONSTANT), WOCONSTANIC),
           pattern='^sf$',
-          UNANCHORED,
-          WOCONSTANIC
+          UNANCHORED
       ),
       pattern='^sffsf$',
-      UNANCHORED,
-      WOCONSTANIC
+      UNANCHORED
   );
   rsfsf=?(
       result=?(
-          result=Op+(?(pattern='^x$', UNANCHORED), ?(pattern='^y$', UNANCHORED), WOCONSTANIC),
+          result=Op+(?(pattern='^x$', UNANCHORED, CONSTANT), ?(pattern='^y$', UNANCHORED, CONSTANT), WOCONSTANIC),
           pattern='^sf$',
-          UNANCHORED,
-          WOCONSTANIC
+          UNANCHORED
       ),
       pattern='^sfsf$',
-      UNANCHORED,
-      WOCONSTANIC
+      UNANCHORED
   );
   rsffsff=?(
       result=?(
-          result=Op+(?(pattern='^x$', UNANCHORED), ?(pattern='^y$', UNANCHORED), WOCONSTANIC),
+          result=Op+(?(pattern='^x$', UNANCHORED, CONSTANT), ?(pattern='^y$', UNANCHORED, CONSTANT), WOCONSTANIC),
           pattern='^sff$',
-          UNANCHORED,
-          WOCONSTANIC
+          UNANCHORED
       ),
       pattern='^sffsff$',
-      UNANCHORED,
-      WOCONSTANIC
+      UNANCHORED
   )
 }
 ```
@@ -102,5 +92,5 @@ sf_sff_nested_combined
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: tT8UqgoaX2cQknxaTSOxGoatqdbkUElQJTZXD4wK3f2mTtwOZwiBraFW1mIiflGHyg6zn6JuaExvI+DIT6sOBg==
-HFS signature: 93YkMJV1rznMulUMZB/Ep5YKucslmRhxOODvlmWRAjpzb0Ujvk0epjiJLtDX2reV6k0UbJpKkeQDca5VbE7tCA==
-Comments signature: QZYF2v2QI4ms73yU0uQBsK2A+KlAe55XdSML7m+I7NVGqiCs2/8S7Qsulg7zv5vqmkewIxaGx/Zwt8dAAvwzCw==
+HFS signature: b3DnmoJqhGwh8rlFcAawnuEMtNhQcBkiDorijDEMrBK0MQKJC1k0mGh4hv9dz3blHzCfVKVnkkaLRWMOvRU/DQ==
+Comments signature: L8jmU+4sw0kNQhGw2X7byIagr1xMD/m1CvoWllNbdRHDM1EiBCdp0T0Pc9V0YxMYUBwC7mCeb48oAKhB75e8AA==

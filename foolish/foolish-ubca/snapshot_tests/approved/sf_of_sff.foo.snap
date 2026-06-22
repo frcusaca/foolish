@@ -8,14 +8,18 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{
+{WOCONSTANIC
   a=1;
   b=2;
   sff=Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC);
-  sf=?(result=3, pattern='^sff$', UNANCHORED);
+  sf=?(
+      result=Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
+      pattern='^sff$',
+      UNANCHORED
+  );
   a=10;
-  ?(result=3, pattern='^sff$', UNANCHORED);
-  3
+  ?(result=12, pattern='^sff$', UNANCHORED);
+  12
 }
 ```
 COMMENTS:
@@ -23,7 +27,7 @@ COMMENTS:
 sf_of_sff
 ```
 SIGNATURES:
-Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
-Foolish signature: h1VqZ8FgnPZ2bLsAmCfvaSczq/hrg2qLt+NCDHxlJTO58pkS3WuR3DKlCs5mxYNflR4ATJy8+l662ISwvkxvDA==
-HFS signature: skM0OymO8oarMIybTFOiUae0Rlb7Gmib4YyUnk42EwCtyJP0d67FmNb5i5jS1HGXQO+fpnlpV66sZtk6LF1ZDA==
-Comments signature: vAsA3S6L6Ou+3D835MoD/WfvK1Ytw5yL6q0VgNW6JxWzhNaG8ux9P2mta4dnIlvV+TeHB7u7vUL/lsJw4MIkCw==
+Public key: eb9604b1e50d6df60ea71cded2d51b4031b14e9d8911866fcfff4afb00075e65
+Foolish signature: qKZKzv7amPDTeKPW9wmIrI2CdQ8gTr1KUFsUXJpsyyR07kHD2ByvtS/2HI5lRsWttEBCf8C82ezp6SltrfhyBA==
+HFS signature: Vo49rR1wpbY6xNAwqypSIoVU+IOl205BF4hIW2vi7bFet0jtpcSS/heJrW/VSlXsPqXXD6X1d+2SXIFh2nTDDw==
+Comments signature: BoifCFZwtk4GcCs3UMHLa/13pEnJbWbA/lFVXU7xAGgzc+Yg00XfCVHvTlo8Wd0LL3ThyS3ehV/SayVMWQHsCQ==

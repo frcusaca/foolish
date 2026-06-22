@@ -116,7 +116,6 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
             pattern: format!("^{}$", id),
             anchored: false,
             forward: false,
-            found_body: RefCell::new(None),
             sf_inner_pattern: RefCell::new(None),
         })),
         Astn::Brane {
@@ -147,18 +146,19 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
                 op,
             })
         }),
-        Astn::DotSearch { anchor, coordinate } => Rc::new_cyclic(|me: &Weak<RefCell<SearchFir>>| {
-            let me_dyn: Weak<RefCell<dyn Fir>> = me.clone();
-            let a = build_fir(*anchor, Some(&me_dyn), under_sff);
-            RefCell::new(SearchFir {
-                core: ProtoBrane::new(vec![a], child_parent!(), search_nyes),
-                pattern: format!("^{}$", coordinate),
-                anchored: true,
-                forward: false,
-                found_body: RefCell::new(None),
-                sf_inner_pattern: RefCell::new(None),
+        Astn::DotSearch { anchor, coordinate } => {
+            Rc::new_cyclic(|me: &Weak<RefCell<SearchFir>>| {
+                let me_dyn: Weak<RefCell<dyn Fir>> = me.clone();
+                let a = build_fir(*anchor, Some(&me_dyn), under_sff);
+                RefCell::new(SearchFir {
+                    core: ProtoBrane::new(vec![a], child_parent!(), search_nyes),
+                    pattern: format!("^{}$", coordinate),
+                    anchored: true,
+                    forward: false,
+                    sf_inner_pattern: RefCell::new(None),
+                })
             })
-        }),
+        }
         Astn::RegexpSearch {
             anchor,
             pattern,
@@ -172,7 +172,6 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
                 pattern,
                 anchored: true,
                 forward: operator == SearchOperator::RegexpForward,
-                found_body: RefCell::new(None),
                 sf_inner_pattern: RefCell::new(None),
             })
         }),
@@ -200,16 +199,18 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
             offset,
             anchored: false,
         })),
-        Astn::Concatenation { elements } => Rc::new_cyclic(|me: &Weak<RefCell<ConcatenationFir>>| {
-            let me_dyn: Weak<RefCell<dyn Fir>> = me.clone();
-            let children: Vec<FirRef> = elements
-                .into_iter()
-                .map(|e| build_fir(e, Some(&me_dyn), under_sff))
-                .collect();
-            RefCell::new(ConcatenationFir {
-                core: ProtoBrane::new(children, child_parent!(), Nyes::Prembrionic),
+        Astn::Concatenation { elements } => {
+            Rc::new_cyclic(|me: &Weak<RefCell<ConcatenationFir>>| {
+                let me_dyn: Weak<RefCell<dyn Fir>> = me.clone();
+                let children: Vec<FirRef> = elements
+                    .into_iter()
+                    .map(|e| build_fir(e, Some(&me_dyn), under_sff))
+                    .collect();
+                RefCell::new(ConcatenationFir {
+                    core: ProtoBrane::new(children, child_parent!(), Nyes::Prembrionic),
+                })
             })
-        }),
+        }
         Astn::StayFoolish { expr } => Rc::new_cyclic(|me: &Weak<RefCell<StayFoolishFir>>| {
             let me_dyn: Weak<RefCell<dyn Fir>> = me.clone();
             // SF does NOT make descendants econstanic — only SFF does; preserve any inherited flag.
@@ -218,14 +219,16 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
                 core: ProtoBrane::new(vec![e], child_parent!(), Nyes::Prembrionic),
             })
         }),
-        Astn::StayFullyFoolish { expr } => Rc::new_cyclic(|me: &Weak<RefCell<StayFullyFoolishFir>>| {
-            let me_dyn: Weak<RefCell<dyn Fir>> = me.clone();
-            // SFF marker: from here down, searches are built ECONSTANIC.
-            let e = build_fir(*expr, Some(&me_dyn), true);
-            RefCell::new(StayFullyFoolishFir {
-                core: ProtoBrane::new(vec![e], child_parent!(), Nyes::Prembrionic),
+        Astn::StayFullyFoolish { expr } => {
+            Rc::new_cyclic(|me: &Weak<RefCell<StayFullyFoolishFir>>| {
+                let me_dyn: Weak<RefCell<dyn Fir>> = me.clone();
+                // SFF marker: from here down, searches are built ECONSTANIC.
+                let e = build_fir(*expr, Some(&me_dyn), true);
+                RefCell::new(StayFullyFoolishFir {
+                    core: ProtoBrane::new(vec![e], child_parent!(), Nyes::Prembrionic),
+                })
             })
-        }),
+        }
         Astn::Assignment { .. } => {
             unreachable!("standalone Assignment should be wrapped in Brane by parser")
         }
@@ -244,7 +247,12 @@ fn build_stmts(asts: Vec<Astn>, parent: &Weak<RefCell<dyn Fir>>, under_sff: bool
 /// The sequencer renders a statement named `???` WITHOUT a `name=` prefix (FOOP-62 #19).
 pub(crate) const ANON_STMT_NAME: &str = "???";
 
-fn build_as_statement(ast: Astn, parent: &Weak<RefCell<dyn Fir>>, line: usize, under_sff: bool) -> FirRef {
+fn build_as_statement(
+    ast: Astn,
+    parent: &Weak<RefCell<dyn Fir>>,
+    line: usize,
+    under_sff: bool,
+) -> FirRef {
     // Decide the statement's name once: the LHS identifier for an assignment, else `???`
     // (anonymous bare expression). The body is built the same way regardless, via
     // build_expr_with_operator (Assign is the no-op operator), so there is ONE Rc::new_cyclic.
@@ -255,7 +263,11 @@ fn build_as_statement(ast: Astn, parent: &Weak<RefCell<dyn Fir>>, line: usize, u
             expr,
             ..
         } => (identifier, *expr, operator),
-        other => (ANON_STMT_NAME.to_string(), other, AssignmentOperator::Assign),
+        other => (
+            ANON_STMT_NAME.to_string(),
+            other,
+            AssignmentOperator::Assign,
+        ),
     };
     Rc::new_cyclic(move |me: &Weak<RefCell<StatementFir>>| {
         let stmt_weak: Weak<RefCell<dyn Fir>> = me.clone();

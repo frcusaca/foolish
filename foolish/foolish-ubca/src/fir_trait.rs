@@ -594,7 +594,6 @@ mod get_value_tests {
                 pattern: pattern.to_owned(),
                 anchored,
                 forward: false,
-                found_body: RefCell::new(None),
                 sf_inner_pattern: RefCell::new(None),
             })
         })

@@ -1,6 +1,6 @@
 ---
-source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 52
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
 ---
 INPUT:
 ```foolish
@@ -23,7 +23,7 @@ COMMENTS:
 complex_full_program_with_all_features
 ```
 SIGNATURES:
-Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
-Foolish signature: 1SXA6C7yxC6ZpiMvulmMy1eFI1Es1+sQ6hUtwarY1vKYOMtGrpNqx+rd59gPsyK1pqAjtcEAE57YwFIWqdU2CA==
-HFS signature: 4pdHUTtG2ESa5dmTj6onER+DvM/cvYZXvBTfgDBHBOv1K4jrvrNd7+Bd5QgGjdisX1uMYr6VBB4hEbvp1lanAA==
-Comments signature: hXR4J7O2DqDyXMahIYnbzIYvfZER+DNPmY2lz+QTQ8CjEZGXhC66RJg4fNGUTJVtoDIX/SyH8UQ7O9LQmqgPAQ==
+Public key: eb9604b1e50d6df60ea71cded2d51b4031b14e9d8911866fcfff4afb00075e65
+Foolish signature: wbBIFgGvRE5uXtS64gpV57Q70eL/B2eFaZbZxp4M9l65nX4lA3Ump+OiPkcdrLbzmGcLjLclJ+K4Rz/hu2M/Cg==
+HFS signature: +74L678M258+e2MTKhmdoWQn9Yce4lMY1UKRnW/E64CZnzZPRAE5IKKWUUvCcmWKE8+G3ZDPUdONVtuXmHqWAA==
+Comments signature: MHkdho7DaMNZ2KM7IDm5SoAYndejrohQmNIUj53YpS989TGXz8E9HNRZdGLdJ1AJTMjDjWFxD+VRZlM7KkF8Cg==

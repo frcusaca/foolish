@@ -1,6 +1,6 @@
 ---
-source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 50
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
 ---
 INPUT:
 ```foolish
@@ -24,7 +24,7 @@ COMMENTS:
 regression_deep_nesting_does_not_lose_values
 ```
 SIGNATURES:
-Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
-Foolish signature: Y6n20+pmIHuScYeHgxuPG8M5BO/gc0rTQZSyzS4Bta3dbhJ39IuX+kvl1OMGnijziXfIwsJqptTNa2wQjVeOAQ==
-HFS signature: fzeCVQwGOjz7Se+fZLjUy6CLcCD0nxjMEELsnucoOy6T8AGXw8xw612LF0Yrlm09+EZSWHK/PmH36//SEpf/Aw==
-Comments signature: Dm+NPWgkWSmVqVum+elOQ5/s2TMBBfdMHRMrG61LqOjvwk36ErUmw3gCEyyZ2uy6UwIirn5l0/W1Phz6LpelBA==
+Public key: eb9604b1e50d6df60ea71cded2d51b4031b14e9d8911866fcfff4afb00075e65
+Foolish signature: hnk9P9af7Z8DsMuq0SddWw3WP5LiHOHI7ctbAj2Z+ECxd/Hulc89RcjOZuqQRFhbT+2Y1RBbGxwssv5LE6pDCw==
+HFS signature: /T+gg92w8T5bFtACdYAkLoH8qPqOrHET9AXHcRH+sJr4YpaJr15Ym+QFQhAXStaR86vw4DMoae+0qf/Eh801BQ==
+Comments signature: +SRoRCGjkCcNQfDVdv4LQKfyNPhTHaQCaCj4y+LJvNWqzjTOiIDU+7s425MVWt5REikojEMnsFufN7cLW6pzAg==

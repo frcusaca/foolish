@@ -1,0 +1,55 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{
+  hw = {
+     hello = 1;
+     world = 2;
+     how   = 3;
+     are   = 4;
+     you   = 5;
+     today = 6;
+  };
+  how_is      = hw.how;
+  how_is_also = hw~how;
+  how_is_also = hw?(h.*);
+  how_is_also = hw~(.o.);
+  hello_is    = hw~(h.*);
+  you_is      = hw?(.o.);
+  world_is    = hw~(.o...);
+  today_is    = hw?(.o...);
+}
+```
+[0] RESULT:
+```hfssnap
+{
+  hw={
+      hello=1;
+      world=2;
+      how=3;
+      are=4;
+      you=5;
+      today=6
+  };
+  howˍis=3;
+  howˍisˍalso=3;
+  howˍisˍalso=3;
+  howˍisˍalso=3;
+  helloˍis=1;
+  youˍis=5;
+  worldˍis=2;
+  todayˍis=6
+}
+```
+COMMENTS:
+```markdown
+anchored_search_suite
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: vmVHgzGuMt3+1u2GmOKn4Ia3P0kK5SqlSjNSoh49Mt3GryScQBTtaMv69vcxhI70XkJRXcsdJe693lqaFmnyCw==
+HFS signature: RWRqzFdlSm9Gl6uVRZe6qKwVqbHw7bH5y4Ugyd2NHlPA1JG5ddfd8t3k5IID+vhKP0XARFiulPVPhBJ+VX8EAQ==
+Comments signature: 2NvsrmhfoI9wi4WFLjETe+4eONELnDXg30iM5MWeHBaYdxLI1+K8M3MzXCyIDxhJ5Bu2O11sZFpWk+jWlqlzBQ==

@@ -1,0 +1,34 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{a=1, b=2; inner = {c = <<a+b>>; c}; inner;}
+```
+[0] RESULT:
+```hfssnap
+{
+  a=1;
+  b=2;
+  inner={
+      c=Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC);
+      3
+  };
+  {
+(@Agents, this line below should have found c=3. when inner is recoordinated here, it should have been able to find the a and b)
+    c=Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC);
+
+    3
+  }
+}
+```
+COMMENTS:
+```markdown
+complex_sff_in_nested_brane
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: ZIgjfGeL3aOiCFGthil+qpoFORBgbUiJ34yeWevLnvPP3orwUnFqJRnzpA9oKsQVY98pCPWMFeTGN4RdIqe4DA==
+HFS signature: 2XcwPB/eCpejAoisXkWVZqr0XgAmIN8QfHxeYQebQ6TBOrSPZeg+Q6Tgs6eW5pTfIBCE8UUveEOeTn2NSri3Ag==
+Comments signature: s2wU3t9DYFJeLfNmE8EqDBUSKXuO0u/FXBYJy0bgxQkT2qjH5ss+oTh3zIHkBj5JG8Njw9A1tu8lc3D+QzM/BA==

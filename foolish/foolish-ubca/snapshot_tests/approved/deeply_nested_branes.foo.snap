@@ -1,6 +1,6 @@
 ---
-source: foolish-core/src/ubc_snapshot_tester.rs
-assertion_line: 52
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
 ---
 INPUT:
 ```foolish
@@ -23,7 +23,7 @@ COMMENTS:
 deeply_nested_branes
 ```
 SIGNATURES:
-Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
-Foolish signature: ts+is4fU9t4OKbPpTLF2vuDeokiDmOhmSuEDQxR7v4b4DyejSg2w73lBXK3fIZWaQ3w6YAc8t0p6L4m2vEgLAQ==
-HFS signature: AY1Gonyro9R1laNwHBInaw+jzE7w5DRhCiwVsliT+EquGoT1dd0xQChoGR0alwEKhIXkw88a23F+I90chilPBg==
-Comments signature: vEgyDeQz7ApO6R8Nl1niIAmar/2h25NffrXwYx1go74ZbNtewSlClpnaZpqauuZ/c3jfUDr4sCHc/qP4SbBPBA==
+Public key: eb9604b1e50d6df60ea71cded2d51b4031b14e9d8911866fcfff4afb00075e65
+Foolish signature: 4iFsiIiQe2f2szvQxrDGPCZ+pus10UpQ6l6Ic2WzZ7fadFFhQgOtHvUlNDpJ7KGVHg+Ya6d00u/09piIOUbhAw==
+HFS signature: XHqLa7HCusQLtEuqucyv83Zb9QNj2v3A1y3lmB5XJ+ImXGAtecnntp6BAFQ7pLHGRA0E3GB0HtLikcMs142qDQ==
+Comments signature: z6JDZXviS0MM6s+gO5qoIzR+jrZATYWPf4N371B7yQtKDNJ3Lji2gquGyGDJMDPRgma28vUvGDawsu5NxyThAw==
