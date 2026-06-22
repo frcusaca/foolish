@@ -302,6 +302,19 @@ then alter the initialized Foolish FIR, adding/subtracting or otherwise mutating
 situation. It is free to use the parser, the FoolishIndex and the root Brane's '.search(...)' method to make
 the test itself easier to read to human reviewers of the test.
 
+#### NYES transition tests (`*_nyes_transitions`)
+Every FIR kind has a unit test named `<kind>_nyes_transitions` in
+`foolish/foolish-ubca/src/fir_kinds.rs` (tests module). Each steps the FIR to settled, records
+the per-step NYES sequence, and asserts the progression via the shared `assert_progression`
+helper: it must start `PREMBRIONIC`, end constanic, be monotone (no constanic → pre-constanic
+regression), and reach the kind's expected terminal state. There are also context tests that
+compile real Foolish and check the right thing is found in the right stage (e.g. IB search in
+EMBRYONIC vs AB search in BRANING).
+
+**REQUIREMENT:** when you add a NEW FIR kind, or add/change a NYES state or transition, you
+MUST add or extend the corresponding `*_nyes_transitions` test(s) so the new progression is
+documented and pinned. These are unit tests (NYES is internal FVM state), not approval cases.
+
 ### Approval Test
 Approval tests demonstrate the behavior of the Foolish VM by writing inputs in '.foo' files, running a special
 VM to produce a final result. Sometimes the results could be Constanic other times they could be NK. As long
@@ -476,6 +489,12 @@ This ensures all AI agents can track who modified documentation and when, mainta
 When proposing updates, explain what has changed and why the documentation needs adjustment. After user review, update the "Last Updated" date below whether changes are accepted or the user confirms current state is acceptable.
 
 ## Last Updated
+
+**Date**: 2026-06-22
+**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
+**Changes**: Added "NYES transition tests (`*_nyes_transitions`)" subsection under Unit Test
+Redability: every FIR kind has a `<kind>_nyes_transitions` unit test (assert_progression);
+new FIR kinds / NYES states/transitions MUST extend these tests. (FOOP-62 #16.)
 
 **Date**: 2026-06-11
 **Updated By**: Sisyphus / mimo-v2.5-pro
