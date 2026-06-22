@@ -3286,5 +3286,22 @@ mod tests {
             "sf=<sff> must freeze the SFF's Op+ body, not resolve it to a value"
         );
     }
+
+    /// Anonymous statements (a bare expression with no LHS) are named `???`
+    /// (compiler::ANON_STMT_NAME); named assignments carry their LHS identifier
+    /// (FOOP-62 #19). The sequencer renders `???`-named statements without a prefix.
+    #[test]
+    fn anonymous_statement_named_question_marks() {
+        // `a = 1` is a named statement; the bare `a` is anonymous.
+        let root = Compiler::compile("{a = 1; a;}").unwrap().pop().unwrap();
+        let stmts: Vec<FirRef> = root.borrow().core().foolish_children().to_vec();
+        assert_eq!(stmts.len(), 2);
+        assert_eq!(stmts[0].borrow().as_stmt_name(), Some("a"), "named assignment keeps its LHS");
+        assert_eq!(
+            stmts[1].borrow().as_stmt_name(),
+            Some(crate::compiler::ANON_STMT_NAME),
+            "anonymous bare expression is named ???"
+        );
+    }
 }
 

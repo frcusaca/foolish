@@ -240,32 +240,32 @@ fn build_stmts(asts: Vec<Astn>, parent: &Weak<RefCell<dyn Fir>>, under_sff: bool
         .collect()
 }
 
+/// The name used for an anonymous statement (a bare expression with no LHS identifier).
+/// The sequencer renders a statement named `???` WITHOUT a `name=` prefix (FOOP-62 #19).
+pub(crate) const ANON_STMT_NAME: &str = "???";
+
 fn build_as_statement(ast: Astn, parent: &Weak<RefCell<dyn Fir>>, line: usize, under_sff: bool) -> FirRef {
-    match ast {
+    // Decide the statement's name once: the LHS identifier for an assignment, else `???`
+    // (anonymous bare expression). The body is built the same way regardless, via
+    // build_expr_with_operator (Assign is the no-op operator), so there is ONE Rc::new_cyclic.
+    let (name, expr, operator) = match ast {
         Astn::Assignment {
             identifier,
             operator,
             expr,
             ..
-        } => Rc::new_cyclic(move |me: &Weak<RefCell<StatementFir>>| {
-            let stmt_weak: Weak<RefCell<dyn Fir>> = me.clone();
-            let body = build_expr_with_operator(*expr, operator, &stmt_weak, under_sff);
-            RefCell::new(StatementFir {
-                core: ProtoBrane::new(vec![body], parent.clone(), Nyes::Prembrionic),
-                name: identifier,
-                line_number: line,
-            })
-        }),
-        other => Rc::new_cyclic(move |me: &Weak<RefCell<StatementFir>>| {
-            let stmt_weak: Weak<RefCell<dyn Fir>> = me.clone();
-            let body = build_fir(other, Some(&stmt_weak), under_sff);
-            RefCell::new(StatementFir {
-                core: ProtoBrane::new(vec![body], parent.clone(), Nyes::Prembrionic),
-                name: String::new(),
-                line_number: line,
-            })
-        }),
-    }
+        } => (identifier, *expr, operator),
+        other => (ANON_STMT_NAME.to_string(), other, AssignmentOperator::Assign),
+    };
+    Rc::new_cyclic(move |me: &Weak<RefCell<StatementFir>>| {
+        let stmt_weak: Weak<RefCell<dyn Fir>> = me.clone();
+        let body = build_expr_with_operator(expr, operator, &stmt_weak, under_sff);
+        RefCell::new(StatementFir {
+            core: ProtoBrane::new(vec![body], parent.clone(), Nyes::Prembrionic),
+            name,
+            line_number: line,
+        })
+    })
 }
 
 fn build_expr_with_operator(

@@ -11,6 +11,18 @@ use crate::nyes_ext::NyesExt;
 
 const MAX_STEPS: usize = 10_000;
 
+/// The display name for a statement (FOOP-62 #19): an anonymous statement is named `???`
+/// (`compiler::ANON_STMT_NAME`), which the sequencer must render WITHOUT a `name=` prefix.
+/// Map `???` (and any empty name) to `None` so no prefix is emitted; a real LHS identifier
+/// passes through as `Some(name)`.
+fn display_stmt_name(name: Option<&str>) -> Option<String> {
+    match name {
+        Some(n) if n.is_empty() || n == crate::compiler::ANON_STMT_NAME => None,
+        Some(n) => Some(n.to_string()),
+        None => None,
+    }
+}
+
 pub struct UbcaEvaluator;
 
 impl foolish_core::Evaluator for UbcaEvaluator {
@@ -189,7 +201,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                 .build()
         }
         FirKind::Statement => {
-            let name = borrowed.as_stmt_name().map(|s| s.to_string());
+            let name = display_stmt_name(borrowed.as_stmt_name());
             let body_fir = borrowed
                 .core()
                 .foolish_children()
@@ -208,7 +220,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                 .iter()
                 .map(|c| {
                     let cb = c.borrow();
-                    let name = cb.as_stmt_name().map(|s| s.to_string());
+                    let name = display_stmt_name(cb.as_stmt_name());
                     let body_fir = cb
                         .core()
                         .foolish_children()

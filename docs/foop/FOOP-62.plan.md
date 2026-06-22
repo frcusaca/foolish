@@ -203,7 +203,23 @@ _brane (ib_search misses ancestral-only name, ab_search finds it), ib_shadows_ab
 (shadowing → immediate `a`=2 not ancestral `a`=1), ancestral_search_passes_through_embryonic
 _then_braning. 116 ubca unit tests pass; only approval_all (14-file review set) fails.
 
+### task #17: SFF builds descendant searches ECONSTANIC — DONE 2026-06-21
+Build-from-Foolish-code rule: `under_sff` flag through the build_ chain; under an SFF
+(`<<…>>`), descendant searches are constructed ECONSTANIC and never run. Fixes sf_of_sff:
+`sff` AND `sf=<sff>` both freeze as `Op+(?a ECONSTANIC, ?b ECONSTANIC, WOCONSTANIC)`. Does NOT
+affect constanic-cloning of an SFF child (normal nyes rules). 2 unit tests.
 
+### task #18: consolidate build_standalone + build_astn into build_fir — DONE 2026-06-22
+One `build_fir(ast, parent: Option<&Weak>, under_sff)`: `parent=None` ⇒ ROOT (self-parent;
+ONLY a Brane may be root — compile_standalone enforces; non-Brane arms expect a parent). Removed
+the `under_sff`-dropping fallthrough. Correctness side-effect: SFF-econstanic (#17) now applies
+consistently to nested/standalone SFF — 6 more SFF snapshots freeze correctly.
+
+### task #19: simplify build_as_statement + `???`-LHS sequencer rule — DONE 2026-06-22
+build_as_statement now decides the name once (LHS identifier, or `???` = ANON_STMT_NAME for a
+bare/anonymous statement) and writes ONE Rc::new_cyclic. NEW SPEC RULE: a statement named `???`
+renders WITHOUT a `name=` prefix (display_stmt_name maps `???`/empty → None). Behavior-preserving
+for rendering. 1 unit test (anonymous_statement_named_question_marks). 119 ubca unit tests pass.
 
 Atlas: EMBRYONIC is NOT vestigial — UBCa currently skips it (Prembrionic→Braning), a
 regression. Intended meaning, **worked around the job queue**:

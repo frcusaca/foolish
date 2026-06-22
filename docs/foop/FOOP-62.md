@@ -931,6 +931,10 @@ existing approved `.snap` corpus exactly. This pins concrete requirements on the
   (`foolish-core/src/sequencer.rs`, `proto_brane_formatter_with_result`, ~line 180). In the
   two-store model, **the `result=` item(s) come from `ubc_children`** and the other items
   from `foolish_children`. This is *why* `ubc_children` order is snapshot-significant (§1).
+- **Anonymous statements are named `???` and render WITHOUT a `name=` prefix.** A statement
+  with an LHS identifier (`a = …`) carries that identifier as its name and renders `a=…`. A
+  bare expression statement (no LHS) is named **`???`** (`compiler::ANON_STMT_NAME`); the
+  sequencer renders such a statement as just its value, with **no** `name=`/`???=` prefix.
 - **`result` vs `anchor` for searches (search / Index / HeadTail).** The `result=` of a search
   FIR is **the FIR the search PRODUCED** (what it found by searching / indexing / head-tail).
   The **anchor** — the FIR a search searches *within/relative to* (e.g. `data` in `data#5`) —
