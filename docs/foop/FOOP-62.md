@@ -153,6 +153,29 @@ nothing to clone.
 | **(BUT) later search of an SF-mark** | clone flag = false | clone, **mark stripped** | normal rule (re-resolves) |
 | **fully foolish** | SFF `<<…>>` premembryonic | construction | descendants built ECONSTANIC; no clone |
 
+## Terminology: anchor and result (NOT "target")
+
+A *search* FIR — and the kinds we classify as searches: plain/dot/regexp **search**,
+**Index** (`#`/seek), and **HeadTail** (head/tail) — relates to two distinct other FIRs.
+Name them precisely; the word **"target" is BANNED** because it ambiguously meant either one.
+(This restates definitions that recur across FOOPs, and records this revision's correction
+away from "target".)
+
+- **anchor** — the FIR a search searches **within / relative to**. Example: in `data#5`, the
+  `data` brane is the anchor (we index *into* it). An unanchored search (e.g. a bare name) has
+  no explicit anchor; it searches its surrounding branes (IB/AB — see §10). The anchor is a
+  **non-result** item in the sequencer rendering.
+- **result** — the FIR the search **produces** (what it *found*): the resolved value/brane for
+  a search, the indexed element for Index, the head/tail element for HeadTail. The result is
+  rendered as `result=…` and lives in the search FIR's `ubc_children`. Existing searches are
+  **singular-result** (at most one `ubc_children` entry — see §8); an out-of-bounds / not-found
+  search settles NK with **no** result.
+
+> **Correction (this revision): use `anchor` and `result`, never `target`.** Earlier code
+> named the search-result field `target`, which was ambiguous (it could be read as the anchor).
+> All occurrences were renamed to `result` (the produced FIR) or `anchor` (the searched-within
+> FIR) per actual use; `target` no longer appears in the UBCa FIR vocabulary.
+
 ## Motivation
 
 ### The problem today
@@ -1619,6 +1642,15 @@ already-accepted FOOPs, which is corroborating evidence the model is right:
   rules.
 
 ## Last Updated
+
+**Date**: 2026-06-22 (revision 16 — anchor/result terminology + ???-LHS + impl docs)
+**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
+**Changes**: Added a "Terminology: anchor and result (NOT 'target')" section formally defining
+**anchor** (the FIR a search searches within/relative to) and **result** (the FIR a search
+produces), and recording the correction away from the banned word "target". §8 already
+documents the singular-result invariant, the `result`-vs-`anchor` rendering rule, and the
+`???`-LHS rule (anonymous statements named `???` render without a `name=` prefix). These
+capture the FOOP-62 #11/#13/#17/#19 implementation. Synced to alpha.
 
 **Date**: 2026-06-19 (revision 15 — UBCa is its own source of truth; drop "match UBC")
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
