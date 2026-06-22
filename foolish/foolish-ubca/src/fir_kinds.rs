@@ -83,13 +83,35 @@ pub(crate) fn _decide_nyes_due_to_children(children: &[FirRef]) -> Option<Nyes> 
 ///
 /// Compute the NYES a clone receives given the source NYES and whether the clone is
 /// foolishly ignorant (`descendent_of_sfm_and_foolishly_ignorant`):
-/// - foolishly ignorant (true): ALL NYES copied UNCHANGED (constanic AND pre-constanic).
-/// - normally ignorant (false): constanic NYES copied UNCHANGED; pre-constanic → PREMBRYONIC.
+///
+/// A constanic clone is only ever taken of a CONSTANIC (settled) FIR, so `source` is always
+/// one of the terminal states (Constantew, ECONSTANIC, WOCONSTANIC) — never pre-constanic.
+/// (Hence there is no BRANING→EMBRYONIC etc. transition here.) This is debug-asserted.
+///
+/// - **foolishly ignorant (true), i.e. FICC:** ALL NYES copied UNCHANGED.
+/// - **normally ignorant (false), i.e. NICC** (FOOP-62, Atlas):
+///     - **Constantew (CONSTANT / INDEPENDENT / NK) → unchanged** — constant everywhere;
+///       re-stepping cannot change them.
+///     - **ECONSTANIC / WOCONSTANIC → EMBRYONIC** — the reset to EMBRYONIC (the "start working"
+///       stage) IS the mechanism that re-steps the clone under its new parent: it re-progresses
+///       through the (new) IB then (new) AB and re-resolves. (The *fancy* part of WOCONSTANIC
+///       NICC — collapse to its econstanic result and NICC that into the clone's result — is a
+///       SEPARATE larger refactor, task #21; the nyes reset belongs here.)
 fn clone_nyes(source: Nyes, descendent_of_sfm_and_foolishly_ignorant: bool) -> Nyes {
-    if descendent_of_sfm_and_foolishly_ignorant || source.is_constanic() {
-        source
-    } else {
-        Nyes::Prembrionic
+    debug_assert!(
+        source.is_constanic(),
+        "constanic clone takes only a CONSTANIC source; got {source:?}"
+    );
+    if descendent_of_sfm_and_foolishly_ignorant {
+        return source;
+    }
+    match source {
+        // Constantew is kept as-is under NICC.
+        Nyes::Constant | Nyes::Independent | Nyes::Nk => source,
+        // The context-dependent constanics reset to EMBRYONIC to re-step (IB then AB).
+        Nyes::Econstanic | Nyes::Woconstanic => Nyes::Embryonic,
+        // Pre-constanic inputs are a bug (asserted above); be safe → EMBRYONIC.
+        Nyes::Prembrionic | Nyes::Embryonic | Nyes::Braning => Nyes::Embryonic,
     }
 }
 
@@ -381,7 +403,7 @@ impl Fir for OperatorFir {
     }
     fn fir_op_step(&self, scope: &Scope) -> Result<(), UbcError> {
         match self.core.get_nyes() {
-            Nyes::Prembrionic => {
+            Nyes::Prembrionic | Nyes::Embryonic => {
                 self.core.set_nyes(Nyes::Braning);
                 let children: Vec<FirRef> = self.core.foolish_children().to_vec();
                 for child in children {
@@ -525,7 +547,7 @@ impl Fir for StatementFir {
 
     fn fir_op_step(&self, _scope: &Scope) -> Result<(), UbcError> {
         match self.core.get_nyes() {
-            Nyes::Prembrionic => {
+            Nyes::Prembrionic | Nyes::Embryonic => {
                 self.core.set_nyes(Nyes::Braning);
                 let children: Vec<FirRef> = self.core.foolish_children().to_vec();
                 for child in children {
@@ -581,7 +603,7 @@ impl Fir for BraneFir {
 
     fn fir_op_step(&self, _scope: &Scope) -> Result<(), UbcError> {
         match self.core.get_nyes() {
-            Nyes::Prembrionic => {
+            Nyes::Prembrionic | Nyes::Embryonic => {
                 let children: Vec<FirRef> = self.core.foolish_children().to_vec();
                 if children.is_empty() {
                     self.core.set_nyes(Nyes::Constant);
@@ -1043,7 +1065,7 @@ impl Fir for IndexFir {
     }
     fn fir_op_step(&self, scope: &Scope) -> Result<(), UbcError> {
         match self.core.get_nyes() {
-            Nyes::Prembrionic => {
+            Nyes::Prembrionic | Nyes::Embryonic => {
                 if self.anchored {
                     let anchor = Rc::clone(&self.core.foolish_children()[0]);
                     self.core.push_task(anchor);
@@ -1132,7 +1154,7 @@ impl Fir for HeadTailFir {
     fn fir_op_step(&self, scope: &Scope) -> Result<(), UbcError> {
         let offset: i32 = if self.is_head { 0 } else { -1 };
         match self.core.get_nyes() {
-            Nyes::Prembrionic => {
+            Nyes::Prembrionic | Nyes::Embryonic => {
                 if self.anchored {
                     let anchor = Rc::clone(&self.core.foolish_children()[0]);
                     self.core.push_task(anchor);
@@ -1237,7 +1259,7 @@ impl Fir for StayFoolishFir {
     }
     fn fir_op_step(&self, _scope: &Scope) -> Result<(), UbcError> {
         match self.core.get_nyes() {
-            Nyes::Prembrionic => {
+            Nyes::Prembrionic | Nyes::Embryonic => {
                 // SF has a single expression child. Push it as a task and move
                 // to Braning — the expr will drain first.
                 let children: Vec<FirRef> = self.core.foolish_children().to_vec();
@@ -1331,7 +1353,7 @@ impl Fir for ConcatenationFir {
     }
     fn fir_op_step(&self, _scope: &Scope) -> Result<(), UbcError> {
         match self.core.get_nyes() {
-            Nyes::Prembrionic => {
+            Nyes::Prembrionic | Nyes::Embryonic => {
                 let children: Vec<FirRef> = self.core.foolish_children().to_vec();
                 if children.is_empty() {
                     let result_ref: FirRef =
@@ -2675,35 +2697,43 @@ mod tests {
         Weak::<RefCell<ConstantIntFir>>::new()
     }
 
-    /// `clone_nyes` is the rule in isolation: foolish copies everything; normal
-    /// keeps constanic states and resets pre-constanic to PREMBRYONIC.
+    /// `clone_nyes` rule in isolation. Input is always CONSTANIC (a constanic clone is only
+    /// taken of a settled FIR). FICC copies everything; NICC keeps Constantew and resets the
+    /// context-dependent constanics (ECONSTANIC/WOCONSTANIC) to EMBRYONIC (re-progress).
     #[test]
     fn clone_nyes_rule_by_mode() {
-        // Normal mode (false): constanic kept, pre-constanic -> PREMBRYONIC.
-        assert_eq!(clone_nyes(Nyes::Econstanic, false), Nyes::Econstanic);
-        assert_eq!(clone_nyes(Nyes::Woconstanic, false), Nyes::Woconstanic);
+        // NICC (normal, false): Constantew (CONSTANT/INDEPENDENT/NK) kept;
+        // ECONSTANIC/WOCONSTANIC -> EMBRYONIC.
+        assert_eq!(clone_nyes(Nyes::Constant, false), Nyes::Constant);
+        assert_eq!(clone_nyes(Nyes::Independent, false), Nyes::Independent);
         assert_eq!(clone_nyes(Nyes::Nk, false), Nyes::Nk);
-        assert_eq!(clone_nyes(Nyes::Embryonic, false), Nyes::Prembrionic);
-        assert_eq!(clone_nyes(Nyes::Braning, false), Nyes::Prembrionic);
-        assert_eq!(clone_nyes(Nyes::Prembrionic, false), Nyes::Prembrionic);
+        assert_eq!(
+            clone_nyes(Nyes::Econstanic, false),
+            Nyes::Embryonic,
+            "NICC resets ECONSTANIC to EMBRYONIC so it re-steps (IB then AB)"
+        );
+        assert_eq!(
+            clone_nyes(Nyes::Woconstanic, false),
+            Nyes::Embryonic,
+            "NICC resets WOCONSTANIC to EMBRYONIC too (nyes part; collapse is task #21)"
+        );
 
-        // Foolish mode (true): every NYES copied verbatim.
+        // FICC (foolish, true) is UNCHANGED: every CONSTANIC NYES copied verbatim.
         for n in [
+            Nyes::Constant,
+            Nyes::Independent,
             Nyes::Econstanic,
             Nyes::Woconstanic,
             Nyes::Nk,
-            Nyes::Embryonic,
-            Nyes::Braning,
-            Nyes::Prembrionic,
         ] {
-            assert_eq!(clone_nyes(n, true), n, "foolish should copy {n:?} verbatim");
+            assert_eq!(clone_nyes(n, true), n, "FICC must copy {n:?} verbatim");
         }
     }
 
-    /// Normal clone of a CONSTANIC compound (an ECONSTANIC operator) keeps its
-    /// ECONSTANIC state — it is NOT pre-reset; it re-resolves later via stepping.
+    /// NICC of an ECONSTANIC FIR resets it to EMBRYONIC — that reset IS the mechanism
+    /// that re-steps the clone under its new parent (Atlas ruling). It does NOT stay ECONSTANIC.
     #[test]
-    fn normal_clone_keeps_constanic_compound_state() {
+    fn nicc_resets_econstanic_to_embryonic() {
         let op = make_operator("+", vec![make_constant_int(1), make_constant_int(2)]);
         op.borrow().core().set_nyes(Nyes::Econstanic);
 
@@ -2712,37 +2742,39 @@ mod tests {
         assert_eq!(cloned.borrow().kind(), FirKind::Operator);
         assert_eq!(
             cloned.borrow().core().get_nyes(),
-            Nyes::Econstanic,
-            "normal clone of an ECONSTANIC compound must stay ECONSTANIC"
+            Nyes::Embryonic,
+            "NICC of an ECONSTANIC compound must reset to EMBRYONIC (so it re-steps)"
         );
     }
 
-    /// Normal clone of a PRE-CONSTANIC compound resets it to PREMBRYONIC so its
-    /// searches re-run in the new context.
+    /// NICC of a WOCONSTANIC compound resets it to EMBRYONIC too (the nyes part; the fancy
+    /// collapse is task #21). (A constanic clone is only taken of a constanic source — a
+    /// pre-constanic input is asserted against in clone_nyes/constanic_clone_at.)
     #[test]
-    fn normal_clone_resets_preconstanic_compound() {
+    fn nicc_resets_woconstanic_compound_to_embryonic() {
         let op = make_operator("+", vec![make_constant_int(1), make_constant_int(2)]);
-        op.borrow().core().set_nyes(Nyes::Braning);
+        op.borrow().core().set_nyes(Nyes::Woconstanic);
 
         let cloned = constanic_clone_at(&op, &dangling_parent(), 0, false);
 
         assert_eq!(
             cloned.borrow().core().get_nyes(),
-            Nyes::Prembrionic,
-            "normal clone of a pre-constanic compound must reset to PREMBRYONIC"
+            Nyes::Embryonic,
+            "NICC of a WOCONSTANIC compound must reset to EMBRYONIC"
         );
     }
 
-    /// Foolish clone copies ALL NYES verbatim, including pre-constanic.
+    /// FICC (foolish clone) copies a CONSTANIC source's nyes verbatim (ECONSTANIC stays
+    /// ECONSTANIC, WOCONSTANIC stays WOCONSTANIC).
     #[test]
-    fn foolish_clone_copies_all_nyes_verbatim() {
-        let braning = make_operator("+", vec![make_constant_int(1), make_constant_int(2)]);
-        braning.borrow().core().set_nyes(Nyes::Braning);
-        let cloned = constanic_clone_at(&braning, &dangling_parent(), 0, true);
+    fn foolish_clone_copies_constanic_nyes_verbatim() {
+        let woc = make_operator("+", vec![make_constant_int(1), make_constant_int(2)]);
+        woc.borrow().core().set_nyes(Nyes::Woconstanic);
+        let cloned = constanic_clone_at(&woc, &dangling_parent(), 0, true);
         assert_eq!(
             cloned.borrow().core().get_nyes(),
-            Nyes::Braning,
-            "foolish clone must keep a pre-constanic compound's state verbatim"
+            Nyes::Woconstanic,
+            "FICC must keep a constanic compound's state verbatim"
         );
 
         let econ = make_operator("+", vec![make_constant_int(1), make_constant_int(2)]);
@@ -3304,4 +3336,5 @@ mod tests {
         );
     }
 }
+
 
