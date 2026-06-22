@@ -115,6 +115,36 @@ fn clone_nyes(source: Nyes, descendent_of_sfm_and_foolishly_ignorant: bool) -> N
     }
 }
 
+/// WOCONSTANIC search-chain collapse (FOOP-62 #21). A WOCONSTANIC search "waits on" an
+/// ECONSTANIC: its result (`ubc_children[0]`) is the next link, which may itself be a
+/// WOCONSTANIC search, ending in an ECONSTANIC search. Follow that chain from `search` and
+/// return the DEEPEST ECONSTANIC search (the end of the chain). Returns None if there is no
+/// such chain (no result, or the result isn't a search ending in ECONSTANIC).
+///
+/// Used by NICC of a search: the clone's result becomes the NICC of this deepest ECONSTANIC,
+/// collapsing the intermediate WOCONSTANIC links.
+fn deepest_econstanic_in_chain(search: &FirRef) -> Option<FirRef> {
+    let mut current = Rc::clone(search);
+    loop {
+        let (kind, nyes, result) = {
+            let b = current.borrow();
+            let result = b.core().ubc_children().into_iter().next();
+            (b.kind(), b.core().get_nyes(), result)
+        };
+        if kind != FirKind::Search {
+            return None;
+        }
+        match nyes {
+            Nyes::Econstanic => return Some(current),
+            Nyes::Woconstanic => match result {
+                Some(next) => current = next,
+                None => return None,
+            },
+            _ => return None,
+        }
+    }
+}
+
 /// Constanic-clone of a result for `ubc_children`.
 ///
 /// `descendent_of_sfm_and_foolishly_ignorant` selects the mode (see `clone_nyes`). At the
@@ -166,21 +196,51 @@ fn constanic_clone_at(
             })
         }
         FirKind::Search => {
-            let children: Vec<FirRef> = borrowed
-                .core()
-                .foolish_children()
-                .iter()
-                .enumerate()
-                .map(|(i, c)| constanic_clone_at(c, new_parent, i, descendent_of_sfm_and_foolishly_ignorant))
-                .collect();
-            Rc::new(RefCell::new(SearchFir {
-                core: ProtoBrane::new(children, new_parent.clone(), clone_nyes(nyes, descendent_of_sfm_and_foolishly_ignorant)),
-                pattern: borrowed.as_search_pattern().unwrap_or("").to_owned(),
-                anchored: borrowed.as_search_anchored(),
-                forward: false,
-                found_body: RefCell::new(None),
-                sf_inner_pattern: RefCell::new(None),
-            }))
+            let clone_nyes_val = clone_nyes(nyes, descendent_of_sfm_and_foolishly_ignorant);
+            let pattern = borrowed.as_search_pattern().unwrap_or("").to_owned();
+            let anchored = borrowed.as_search_anchored();
+            // WOCONSTANIC search-chain collapse under NICC (FOOP-62 #21): a WOCONSTANIC search
+            // is waiting on an ECONSTANIC at the end of a chain of WOCONSTANIC search results.
+            // The clone's result becomes the NICC of that DEEPEST ECONSTANIC (collapsing the
+            // intermediate links); both the cloned search and its result are EMBRYONIC and
+            // re-progress via normal stepping. (Only under NICC; FICC copies verbatim below.)
+            let chain_econstanic = if !descendent_of_sfm_and_foolishly_ignorant
+                && nyes == Nyes::Woconstanic
+            {
+                deepest_econstanic_in_chain(fir_ref)
+            } else {
+                None
+            };
+            Rc::new_cyclic(|me: &Weak<RefCell<SearchFir>>| {
+                let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
+                let children: Vec<FirRef> = borrowed
+                    .core()
+                    .foolish_children()
+                    .iter()
+                    .enumerate()
+                    .map(|(i, c)| constanic_clone_at(c, &self_weak, i, descendent_of_sfm_and_foolishly_ignorant))
+                    .collect();
+                let core = ProtoBrane::new(children, new_parent.clone(), clone_nyes_val);
+                if let Some(ref econ) = chain_econstanic {
+                    // The search's ONE special job: SHORTEN the WOCONSTANIC search chain — the
+                    // clone's result is the NICC of the DEEPEST ECONSTANIC (not the immediate
+                    // chain link). EMBRYONIC, parented at this search; re-progresses via stepping.
+                    core.push_ubc_child(constanic_clone_at(econ, &self_weak, 0, false));
+                } else {
+                    // Otherwise clone ubc_children generically (like every kind).
+                    for ubc in borrowed.core().ubc_children() {
+                        core.push_ubc_child(constanic_clone_at(&ubc, &self_weak, 0, descendent_of_sfm_and_foolishly_ignorant));
+                    }
+                }
+                RefCell::new(SearchFir {
+                    core,
+                    pattern,
+                    anchored,
+                    forward: false,
+                    found_body: RefCell::new(None),
+                    sf_inner_pattern: RefCell::new(None),
+                })
+            })
         }
         FirKind::Index => {
             let offset = borrowed.as_index_offset();
@@ -194,11 +254,11 @@ fn constanic_clone_at(
                     .enumerate()
                     .map(|(i, c)| constanic_clone_at(c, &self_weak, i, descendent_of_sfm_and_foolishly_ignorant))
                     .collect();
-                RefCell::new(IndexFir {
-                    core: ProtoBrane::new(cloned_children, new_parent.clone(), clone_nyes(nyes, descendent_of_sfm_and_foolishly_ignorant)),
-                    offset,
-                    anchored,
-                })
+                let core = ProtoBrane::new(cloned_children, new_parent.clone(), clone_nyes(nyes, descendent_of_sfm_and_foolishly_ignorant));
+                for ubc in borrowed.core().ubc_children() {
+                    core.push_ubc_child(constanic_clone_at(&ubc, &self_weak, 0, descendent_of_sfm_and_foolishly_ignorant));
+                }
+                RefCell::new(IndexFir { core, offset, anchored })
             })
         }
         FirKind::HeadTail => {
@@ -213,11 +273,11 @@ fn constanic_clone_at(
                     .enumerate()
                     .map(|(i, c)| constanic_clone_at(c, &self_weak, i, descendent_of_sfm_and_foolishly_ignorant))
                     .collect();
-                RefCell::new(HeadTailFir {
-                    core: ProtoBrane::new(cloned_children, new_parent.clone(), clone_nyes(nyes, descendent_of_sfm_and_foolishly_ignorant)),
-                    is_head,
-                    anchored,
-                })
+                let core = ProtoBrane::new(cloned_children, new_parent.clone(), clone_nyes(nyes, descendent_of_sfm_and_foolishly_ignorant));
+                for ubc in borrowed.core().ubc_children() {
+                    core.push_ubc_child(constanic_clone_at(&ubc, &self_weak, 0, descendent_of_sfm_and_foolishly_ignorant));
+                }
+                RefCell::new(HeadTailFir { core, is_head, anchored })
             })
         }
         // "THE BIG BUT" (FOOP-62 rev 14, §9.x/§10.1). When an SF-mark is constanic-cloned
@@ -256,9 +316,11 @@ fn constanic_clone_at(
                     .enumerate()
                     .map(|(i, c)| constanic_clone_at(c, &self_weak, i, descendent_of_sfm_and_foolishly_ignorant))
                     .collect();
-                RefCell::new(ConcatenationFir {
-                    core: ProtoBrane::new(cloned_children, new_parent.clone(), clone_nyes(nyes, descendent_of_sfm_and_foolishly_ignorant)),
-                })
+                let core = ProtoBrane::new(cloned_children, new_parent.clone(), clone_nyes(nyes, descendent_of_sfm_and_foolishly_ignorant));
+                for ubc in borrowed.core().ubc_children() {
+                    core.push_ubc_child(constanic_clone_at(&ubc, &self_weak, 0, descendent_of_sfm_and_foolishly_ignorant));
+                }
+                RefCell::new(ConcatenationFir { core })
             })
         }
         FirKind::Statement => {
@@ -273,11 +335,11 @@ fn constanic_clone_at(
                     .enumerate()
                     .map(|(i, c)| constanic_clone_at(c, &self_weak, i, descendent_of_sfm_and_foolishly_ignorant))
                     .collect();
-                RefCell::new(StatementFir {
-                    core: ProtoBrane::new(cloned_children, new_parent.clone(), clone_nyes(nyes, descendent_of_sfm_and_foolishly_ignorant)),
-                    name,
-                    line_number: line,
-                })
+                let core = ProtoBrane::new(cloned_children, new_parent.clone(), clone_nyes(nyes, descendent_of_sfm_and_foolishly_ignorant));
+                for ubc in borrowed.core().ubc_children() {
+                    core.push_ubc_child(constanic_clone_at(&ubc, &self_weak, 0, descendent_of_sfm_and_foolishly_ignorant));
+                }
+                RefCell::new(StatementFir { core, name, line_number: line })
             })
         }
         FirKind::Brane => {
@@ -290,8 +352,12 @@ fn constanic_clone_at(
                     .enumerate()
                     .map(|(i, c)| constanic_clone_at(c, &self_weak, i, descendent_of_sfm_and_foolishly_ignorant))
                     .collect();
+                let core = ProtoBrane::new(cloned_children, new_parent.clone(), clone_nyes(nyes, descendent_of_sfm_and_foolishly_ignorant));
+                for ubc in borrowed.core().ubc_children() {
+                    core.push_ubc_child(constanic_clone_at(&ubc, &self_weak, 0, descendent_of_sfm_and_foolishly_ignorant));
+                }
                 RefCell::new(BraneFir {
-                    core: ProtoBrane::new(cloned_children, new_parent.clone(), clone_nyes(nyes, descendent_of_sfm_and_foolishly_ignorant)),
+                    core,
                     characterizations: borrowed.as_brane_characterizations().to_vec(),
                 })
             })
@@ -947,11 +1013,17 @@ impl Fir for SearchFir {
                 }
             }
             Nyes::Embryonic => {
-                // EMBRYONIC = ib_search: search ONLY the immediate brane (FOOP-62 #14).
-                // Found → handle it (settle or wait). Not found → escalate to BRANING (ab_search).
-                match ib_search(&self.core, &self.pattern, self.forward) {
-                    Some((body, nyes, sf_pat)) => self.handle_found(body, nyes, sf_pat, scope),
-                    None => self.core.set_nyes(Nyes::Braning),
+                // If a result is already present (carried by a NICC clone, e.g. a collapsed
+                // WOCONSTANIC chain), do NOT search again — settle from it (FOOP-62 #21).
+                if !self.core.ubc_children().is_empty() {
+                    self.settle_from_ubc_result();
+                } else {
+                    // EMBRYONIC = ib_search: search ONLY the immediate brane (FOOP-62 #14).
+                    // Found → handle it. Not found → escalate to BRANING (ab_search).
+                    match ib_search(&self.core, &self.pattern, self.forward) {
+                        Some((body, nyes, sf_pat)) => self.handle_found(body, nyes, sf_pat, scope),
+                        None => self.core.set_nyes(Nyes::Braning),
+                    }
                 }
             }
             Nyes::Braning => {
