@@ -84,7 +84,8 @@ fn build_standalone(ast: Astn) -> FirRef {
             statements,
         } => Rc::new_cyclic(|me: &Weak<RefCell<BraneFir>>| {
             let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-            let children = build_stmts(statements, &self_weak);
+            // Top-level (standalone) brane: no SFF ancestor possible here.
+            let children = build_stmts(statements, &self_weak, false);
             RefCell::new(BraneFir {
                 core: ProtoBrane::new(children, self_weak, Nyes::Prembrionic),
                 characterizations,
@@ -212,6 +213,17 @@ fn build_standalone(ast: Astn) -> FirRef {
 }
 
 fn build_astn(ast: Astn, parent: &Weak<RefCell<dyn Fir>>) -> FirRef {
+    build_astn_ctx(ast, parent, false)
+}
+
+/// `under_sff` (FOOP-62 #17): true when an SFF (`<<…>>`) is an ANCESTOR being built from
+/// Foolish code. While true, descendant SEARCH FIRs (plain/dot/regexp searches, Index, HeadTail)
+/// are CONSTRUCTED at ECONSTANIC so they never run — the SFF's expression is frozen unevaluated.
+/// This is a BUILD-FROM-CODE rule ONLY; it does NOT affect constanic-cloning of a child of SFF
+/// (that clone skips the SFF marker and uses normal constanic-clone nyes rules).
+fn build_astn_ctx(ast: Astn, parent: &Weak<RefCell<dyn Fir>>, under_sff: bool) -> FirRef {
+    // Searches built under an SFF start ECONSTANIC; otherwise PREMBRIONIC.
+    let search_nyes = if under_sff { Nyes::Econstanic } else { Nyes::Prembrionic };
     match ast {
         Astn::IntLit(n) => Rc::new(RefCell::new(ConstantIntFir {
             core: ProtoBrane::new(vec![], parent.clone(), Nyes::Independent),
@@ -222,7 +234,7 @@ fn build_astn(ast: Astn, parent: &Weak<RefCell<dyn Fir>>) -> FirRef {
             reason: "??? literal".to_string(),
         })),
         Astn::Identifier { id, .. } => Rc::new(RefCell::new(SearchFir {
-            core: ProtoBrane::new(vec![], parent.clone(), Nyes::Prembrionic),
+            core: ProtoBrane::new(vec![], parent.clone(), search_nyes),
             pattern: format!("^{}$", id),
             anchored: false,
             forward: false,
@@ -234,7 +246,7 @@ fn build_astn(ast: Astn, parent: &Weak<RefCell<dyn Fir>>) -> FirRef {
             statements,
         } => Rc::new_cyclic(|me: &Weak<RefCell<BraneFir>>| {
             let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-            let children = build_stmts(statements, &self_weak);
+            let children = build_stmts(statements, &self_weak, under_sff);
             RefCell::new(BraneFir {
                 core: ProtoBrane::new(children, parent.clone(), Nyes::Prembrionic),
                 characterizations,
@@ -242,8 +254,8 @@ fn build_astn(ast: Astn, parent: &Weak<RefCell<dyn Fir>>) -> FirRef {
         }),
         Astn::BinaryOp { op, left, right } => Rc::new_cyclic(|me: &Weak<RefCell<OperatorFir>>| {
             let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-            let l = build_astn(*left, &self_weak);
-            let r = build_astn(*right, &self_weak);
+            let l = build_astn_ctx(*left, &self_weak, under_sff);
+            let r = build_astn_ctx(*right, &self_weak, under_sff);
             RefCell::new(OperatorFir {
                 core: ProtoBrane::new(vec![l, r], parent.clone(), Nyes::Prembrionic),
                 op,
@@ -251,7 +263,7 @@ fn build_astn(ast: Astn, parent: &Weak<RefCell<dyn Fir>>) -> FirRef {
         }),
         Astn::UnaryOp { op, expr } => Rc::new_cyclic(|me: &Weak<RefCell<OperatorFir>>| {
             let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-            let e = build_astn(*expr, &self_weak);
+            let e = build_astn_ctx(*expr, &self_weak, under_sff);
             RefCell::new(OperatorFir {
                 core: ProtoBrane::new(vec![e], parent.clone(), Nyes::Prembrionic),
                 op,
@@ -260,9 +272,9 @@ fn build_astn(ast: Astn, parent: &Weak<RefCell<dyn Fir>>) -> FirRef {
         Astn::DotSearch { anchor, coordinate } => {
             Rc::new_cyclic(|me: &Weak<RefCell<SearchFir>>| {
                 let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-                let a = build_astn(*anchor, &self_weak);
+                let a = build_astn_ctx(*anchor, &self_weak, under_sff);
                 RefCell::new(SearchFir {
-                    core: ProtoBrane::new(vec![a], parent.clone(), Nyes::Prembrionic),
+                    core: ProtoBrane::new(vec![a], parent.clone(), search_nyes),
                     pattern: format!("^{}$", coordinate),
                     anchored: true,
                     forward: false,
@@ -278,9 +290,9 @@ fn build_astn(ast: Astn, parent: &Weak<RefCell<dyn Fir>>) -> FirRef {
             ..
         } => Rc::new_cyclic(|me: &Weak<RefCell<SearchFir>>| {
             let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-            let a = build_astn(*anchor, &self_weak);
+            let a = build_astn_ctx(*anchor, &self_weak, under_sff);
             RefCell::new(SearchFir {
-                core: ProtoBrane::new(vec![a], parent.clone(), Nyes::Prembrionic),
+                core: ProtoBrane::new(vec![a], parent.clone(), search_nyes),
                 pattern,
                 anchored: true,
                 forward: operator == SearchOperator::RegexpForward,
@@ -290,25 +302,25 @@ fn build_astn(ast: Astn, parent: &Weak<RefCell<dyn Fir>>) -> FirRef {
         }),
         Astn::Seek { anchor, offset } => Rc::new_cyclic(|me: &Weak<RefCell<IndexFir>>| {
             let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-            let a = build_astn(*anchor, &self_weak);
+            let a = build_astn_ctx(*anchor, &self_weak, under_sff);
             RefCell::new(IndexFir {
-                core: ProtoBrane::new(vec![a], parent.clone(), Nyes::Prembrionic),
+                core: ProtoBrane::new(vec![a], parent.clone(), search_nyes),
                 offset,
                 anchored: true,
             })
         }),
         Astn::HeadTail { is_head, anchor } => Rc::new_cyclic(|me: &Weak<RefCell<IndexFir>>| {
             let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-            let a = build_astn(*anchor, &self_weak);
+            let a = build_astn_ctx(*anchor, &self_weak, under_sff);
             let offset = if is_head { 0 } else { -1 };
             RefCell::new(IndexFir {
-                core: ProtoBrane::new(vec![a], parent.clone(), Nyes::Prembrionic),
+                core: ProtoBrane::new(vec![a], parent.clone(), search_nyes),
                 offset,
                 anchored: true,
             })
         }),
         Astn::UnanchoredSeek { offset } => Rc::new(RefCell::new(IndexFir {
-            core: ProtoBrane::new(vec![], parent.clone(), Nyes::Prembrionic),
+            core: ProtoBrane::new(vec![], parent.clone(), search_nyes),
             offset,
             anchored: false,
         })),
@@ -317,7 +329,7 @@ fn build_astn(ast: Astn, parent: &Weak<RefCell<dyn Fir>>) -> FirRef {
                 let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
                 let children: Vec<FirRef> = elements
                     .into_iter()
-                    .map(|e| build_astn(e, &self_weak))
+                    .map(|e| build_astn_ctx(e, &self_weak, under_sff))
                     .collect();
                 RefCell::new(ConcatenationFir {
                     core: ProtoBrane::new(children, parent.clone(), Nyes::Prembrionic),
@@ -326,7 +338,9 @@ fn build_astn(ast: Astn, parent: &Weak<RefCell<dyn Fir>>) -> FirRef {
         }
         Astn::StayFoolish { expr } => Rc::new_cyclic(|me: &Weak<RefCell<StayFoolishFir>>| {
             let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-            let e = build_astn(*expr, &self_weak);
+            // SF does NOT make descendants econstanic — only SFF does. Preserve under_sff
+            // if we're already inside one, else stay normal.
+            let e = build_astn_ctx(*expr, &self_weak, under_sff);
             RefCell::new(StayFoolishFir {
                 core: ProtoBrane::new(vec![e], parent.clone(), Nyes::Prembrionic),
             })
@@ -334,7 +348,8 @@ fn build_astn(ast: Astn, parent: &Weak<RefCell<dyn Fir>>) -> FirRef {
         Astn::StayFullyFoolish { expr } => {
             Rc::new_cyclic(|me: &Weak<RefCell<StayFullyFoolishFir>>| {
                 let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-                let e = build_astn(*expr, &self_weak);
+                // SFF marker: from here down, searches are built ECONSTANIC.
+                let e = build_astn_ctx(*expr, &self_weak, true);
                 RefCell::new(StayFullyFoolishFir {
                     core: ProtoBrane::new(vec![e], parent.clone(), Nyes::Prembrionic),
                 })
@@ -344,14 +359,14 @@ fn build_astn(ast: Astn, parent: &Weak<RefCell<dyn Fir>>) -> FirRef {
     }
 }
 
-fn build_stmts(asts: Vec<Astn>, parent: &Weak<RefCell<dyn Fir>>) -> Vec<FirRef> {
+fn build_stmts(asts: Vec<Astn>, parent: &Weak<RefCell<dyn Fir>>, under_sff: bool) -> Vec<FirRef> {
     asts.into_iter()
         .enumerate()
-        .map(|(i, ast)| build_as_statement(ast, parent, i))
+        .map(|(i, ast)| build_as_statement(ast, parent, i, under_sff))
         .collect()
 }
 
-fn build_as_statement(ast: Astn, parent: &Weak<RefCell<dyn Fir>>, line: usize) -> FirRef {
+fn build_as_statement(ast: Astn, parent: &Weak<RefCell<dyn Fir>>, line: usize, under_sff: bool) -> FirRef {
     match ast {
         Astn::Assignment {
             identifier,
@@ -360,7 +375,7 @@ fn build_as_statement(ast: Astn, parent: &Weak<RefCell<dyn Fir>>, line: usize) -
             ..
         } => Rc::new_cyclic(move |me: &Weak<RefCell<StatementFir>>| {
             let stmt_weak: Weak<RefCell<dyn Fir>> = me.clone();
-            let body = build_expr_with_operator(*expr, operator, &stmt_weak);
+            let body = build_expr_with_operator(*expr, operator, &stmt_weak, under_sff);
             RefCell::new(StatementFir {
                 core: ProtoBrane::new(vec![body], parent.clone(), Nyes::Prembrionic),
                 name: identifier,
@@ -369,7 +384,7 @@ fn build_as_statement(ast: Astn, parent: &Weak<RefCell<dyn Fir>>, line: usize) -
         }),
         other => Rc::new_cyclic(move |me: &Weak<RefCell<StatementFir>>| {
             let stmt_weak: Weak<RefCell<dyn Fir>> = me.clone();
-            let body = build_astn(other, &stmt_weak);
+            let body = build_astn_ctx(other, &stmt_weak, under_sff);
             RefCell::new(StatementFir {
                 core: ProtoBrane::new(vec![body], parent.clone(), Nyes::Prembrionic),
                 name: String::new(),
@@ -383,8 +398,11 @@ fn build_expr_with_operator(
     expr: Astn,
     operator: AssignmentOperator,
     parent: &Weak<RefCell<dyn Fir>>,
+    under_sff: bool,
 ) -> FirRef {
-    let body = build_astn(expr, parent);
+    // An SFF assignment operator makes its body's descendant searches econstanic.
+    let body_under_sff = under_sff || operator == AssignmentOperator::SFF;
+    let body = build_astn_ctx(expr, parent, body_under_sff);
     match operator {
         AssignmentOperator::Assign => body,
         AssignmentOperator::SF => Rc::new(RefCell::new(StayFoolishFir {

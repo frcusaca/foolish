@@ -3236,4 +3236,55 @@ mod tests {
             "ancestral search must reach BRANING (ab_search stage)"
         );
     }
+
+    // ── SFF builds descendant searches ECONSTANIC (FOOP-62 #17) ───────────────
+
+    /// `sff = <<a + b>>`: SFF descendant searches are built ECONSTANIC and never run,
+    /// so the SFF body stays a frozen `Op+(?a ECONSTANIC, ?b ECONSTANIC)` (WOCONSTANIC).
+    #[test]
+    fn sff_descendant_searches_are_econstanic_at_build() {
+        let root = Compiler::compile("{a = 1; b = 2; sff = <<a + b>>;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        // Both inner searches of the SFF's Op+ must be ECONSTANIC even before stepping.
+        let sa = find_search(&root, "^a$").expect("search a");
+        let sb = find_search(&root, "^b$").expect("search b");
+        assert_eq!(sa.borrow().core().get_nyes(), Nyes::Econstanic, "SFF search a built ECONSTANIC");
+        assert_eq!(sb.borrow().core().get_nyes(), Nyes::Econstanic, "SFF search b built ECONSTANIC");
+
+        // Stepping does NOT resolve them (they never run) — they stay ECONSTANIC.
+        let scope = Scope::empty();
+        for _ in 0..200 {
+            if root.borrow().core().get_nyes().is_constanic() { break; }
+            let _ = step_fir_ref(&root, &scope).unwrap();
+        }
+        assert_eq!(sa.borrow().core().get_nyes(), Nyes::Econstanic, "SFF search a stays ECONSTANIC after stepping");
+        assert_eq!(sb.borrow().core().get_nyes(), Nyes::Econstanic, "SFF search b stays ECONSTANIC after stepping");
+    }
+
+    /// `sf = <sff>`: the SF foolishly copies the SFF's frozen body — the search for `sff`
+    /// resolves to the Op+ (searches still ECONSTANIC), NOT the evaluated value 3. (The
+    /// constanic-clone of an SFF child strips the SFF marker but copies NYES verbatim.)
+    #[test]
+    fn sf_of_sff_freezes_econstanic_body() {
+        let root = Compiler::compile("{a = 1; b = 2; sff = <<a + b>>; sf = <sff>;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        let scope = Scope::empty();
+        for _ in 0..200 {
+            if root.borrow().core().get_nyes().is_constanic() { break; }
+            let _ = step_fir_ref(&root, &scope).unwrap();
+        }
+        let sff_search = find_search(&root, "^sff$").expect("search sff");
+        assert!(sff_search.borrow().core().get_nyes().is_constanic());
+        let result = get_value(&sff_search);
+        assert_eq!(
+            result.borrow().kind(),
+            FirKind::Operator,
+            "sf=<sff> must freeze the SFF's Op+ body, not resolve it to a value"
+        );
+    }
 }
+
