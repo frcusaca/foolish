@@ -881,10 +881,15 @@ fn ab_search(start: &ProtoBrane, name: &str, forward: bool) -> Option<(FirRef, N
 
 impl SearchFir {
     /// Handle a `(body, nyes, sf_pat)` that a search found in some brane.
-    /// - If the body is already constanic: push it as our singular result and settle our nyes
-    ///   (via `search_nyes_from_found`). A search is never INDEPENDENT (capped at CONSTANT).
-    /// - Else: stash the body, push it as a task, and go BRANING to WAIT for it to settle (the
-    ///   Braning arm's `found_body` branch finishes it). Returns true (handled).
+    ///
+    /// - If the found body is **constanic**: NICC-clone it into our `ubc_children` (the singular
+    ///   result). The clone may itself be non-constanic — NICC resets ECONSTANIC/WOCONSTANIC to
+    ///   EMBRYONIC so the clone re-progresses (IB then AB) under its new parent. `push_search_result`
+    ///   enqueues the clone; we then go BRANING (NOT settling yet) so the ordinary task drain
+    ///   finishes the clone, and the Braning arm settles us from the *drained clone's* nyes.
+    ///   This is the normal drain — nothing is re-stepped.
+    /// - If the found body is NOT yet constanic: stash it, enqueue it, and wait in BRANING for it
+    ///   to settle (the `found_body` branch), then NICC-clone it.
     fn handle_found(
         &self,
         body: FirRef,
@@ -892,22 +897,34 @@ impl SearchFir {
         sf_pat: Option<String>,
         scope: &Scope,
     ) {
+        if let Some(p) = sf_pat {
+            *self.sf_inner_pattern.borrow_mut() = Some(p);
+        }
         if nyes.is_constanic() {
             let self_weak = self.core.parent_weak();
             self.core
                 .push_search_result(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
-            if let Some(p) = sf_pat {
-                *self.sf_inner_pattern.borrow_mut() = Some(p);
-            }
-            self.core.set_nyes(search_nyes_from_found(nyes));
+            // Go BRANING; the Braning arm settles from the (now/soon-drained) ubc result. The
+            // clone may be EMBRYONIC (NICC reset) and needs the driver to drain it first.
+            self.core.set_nyes(Nyes::Braning);
         } else {
-            if let Some(p) = sf_pat {
-                *self.sf_inner_pattern.borrow_mut() = Some(p);
-            }
             self.core.push_task(Rc::clone(&body));
             *self.found_body.borrow_mut() = Some(body);
             self.core.set_nyes(Nyes::Braning);
         }
+    }
+
+    /// Settle this search's nyes from its (drained) cloned result in `ubc_children`.
+    /// Called in BRANING once the result is present; the driver has drained it to constanic
+    /// before re-running us. A search is never INDEPENDENT — `search_nyes_from_found` caps it.
+    fn settle_from_ubc_result(&self) {
+        let result_nyes = self
+            .core
+            .ubc_children()
+            .first()
+            .map(|r| r.borrow().core().get_nyes())
+            .unwrap_or(Nyes::Nk);
+        self.core.set_nyes(search_nyes_from_found(result_nyes));
     }
 }
 
@@ -938,24 +955,28 @@ impl Fir for SearchFir {
                 }
             }
             Nyes::Braning => {
-                if self.anchored {
+                if !self.core.ubc_children().is_empty() {
+                    // A result was already cloned into ubc_children (by handle_found or the
+                    // anchored branch); the driver has drained it to constanic. Settle from it.
+                    self.settle_from_ubc_result();
+                } else if self.anchored {
                     let anchor = Rc::clone(&self.core.foolish_children()[0]);
                     let resolved = resolve_anchor(&anchor);
                     let name = &self.pattern;
-                    if let Some((body, nyes, _sf_pat)) = search_brane_children(&resolved, name, None, self.forward) {
-                        let self_weak = self.core.parent_weak();
-                        self.core.push_search_result(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
-                        self.core.set_nyes(search_nyes_from_found(nyes));
+                    if let Some((body, nyes, sf_pat)) = search_brane_children(&resolved, name, None, self.forward) {
+                        // Push the NICC'd result + go BRANING; settle from the drained clone next
+                        // step (don't settle prematurely — the clone may be EMBRYONIC under NICC).
+                        self.handle_found(body, nyes, sf_pat, scope);
                     } else {
                         self.core.set_nyes(Nyes::Nk);
                     }
                 } else if let Some(body) = self.found_body.borrow_mut().take() {
-                    // Waiting on a found (IB or AB) body to settle.
+                    // Waiting on a found (IB or AB) body to settle before we clone it.
                     let nyes = body.borrow().core().get_nyes();
                     if nyes.is_constanic() {
                         let self_weak = self.core.parent_weak();
                         self.core.push_search_result(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
-                        self.core.set_nyes(search_nyes_from_found(nyes));
+                        // Stay BRANING; settle_from_ubc_result runs next step once drained.
                     } else {
                         // Body not settled yet — keep waiting
                         *self.found_body.borrow_mut() = Some(body);

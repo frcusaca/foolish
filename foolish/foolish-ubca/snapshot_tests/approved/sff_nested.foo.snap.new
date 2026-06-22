@@ -12,16 +12,8 @@ INPUT:
   a=1;
   b=2;
   c=Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED), WOCONSTANIC);
-  ?(
-    result=Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED), WOCONSTANIC),
-    pattern='^c$',
-    UNANCHORED
-  );
-  ?(
-    result=Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED), WOCONSTANIC),
-    pattern='^c$',
-    UNANCHORED
-  )
+  ?(result=Op+(1, ?(pattern='^b$', UNANCHORED), WOCONSTANIC), pattern='^c$', UNANCHORED);
+  ?(result=Op+(1, ?(pattern='^b$', UNANCHORED), WOCONSTANIC), pattern='^c$', UNANCHORED)
 }
 ```
 COMMENTS:
@@ -31,5 +23,5 @@ sff_nested
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: lhcizF48neDw/0Ot29cyjAKKVN2RJsqhMEqKOBwHi1AC7LmDHeXb9dBvby6kqQzBJhSJHHAXCtmjZ9gbF1ZHAw==
-HFS signature: By1PT0LrLgvq7eJ39xOJNdURF0Gyrss6VmXNnRnfQ5PgArmFlEosJmPforAZ9Pnfq6mAiiN4lLD2cQLFpjDGDQ==
-Comments signature: fYdybCxlWCzqz+XC2CoOdqqgb+zw1pamoYGaVun1ZLs8YZTlJX49twm23zN/gArvpHoYsCqPauCpuuvi96LbAw==
+HFS signature: n7MSdpQ0DcBXf0jw3iQ1G3jW5d4AzOubu5YfcsLObqq2Zwu00+ec9uRBKemTx/Yarsa69ac5nVgFJ0NNu9J6Cw==
+Comments signature: FXaWc3Yg5xanIS/j0Bj4A6PFDlUvv/FZNadavrTpMKOK9Svc84An5Rgo47UC0EjH3A1niy0aCNuCDk7r4PwZCA==
