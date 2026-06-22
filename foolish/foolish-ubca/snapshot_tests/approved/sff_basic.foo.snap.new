@@ -1,0 +1,35 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{a=1,b=2; c=<<a+b>>; c; c;}
+```
+[0] RESULT:
+```hfssnap
+{WOCONSTANIC
+  a=1;
+  b=2;
+  c=Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC);
+  ?(
+    result=Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
+    pattern='^c$',
+    UNANCHORED
+  );
+  ?(
+    result=Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
+    pattern='^c$',
+    UNANCHORED
+  )
+}
+```
+COMMENTS:
+```markdown
+sff_basic
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: M+ozF2oYm4cROdzChLuxt5BpEqob22mvstBM9GOfw2F2UXnwZmokwfQrB8XQTBKx4VH4eIRMpmKFp8pMSK/mCg==
+HFS signature: +e63s6Arj6Uu9y8Yr+j1pMeqS0cntbiJZ1Ozaw2o+zanAVJ2uMmG2t6x9tD4m/Resr/bBUI5ej0DFWsU0xDVCQ==
+Comments signature: BsCcwURIB5QbPG10MlVASOumy+dZXd8wR19enhBVpTKSAMwhPxUNiuWc1hvDbKOQ/SnTs0og5/XW4VUzu4YhCg==

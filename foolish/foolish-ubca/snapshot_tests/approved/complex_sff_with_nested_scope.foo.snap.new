@@ -1,0 +1,36 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{x = 5; y = 10; inner = {calc = <<x + y>>; doubled = calc * 2};}
+```
+[0] RESULT:
+```hfssnap
+{WOCONSTANIC
+  x=5;
+  y=10;
+  inner={WOCONSTANIC
+      calc=Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), WOCONSTANIC);
+      doubled=Op*(
+          ?(
+            result=Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
+            pattern='^calc$',
+            UNANCHORED
+          ),
+          2,
+          WOCONSTANIC
+      )
+  }
+}
+```
+COMMENTS:
+```markdown
+complex_sff_with_nested_scope
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: 8qfr0jpSsMP6MZAsD56aGbduYNh+nJ3slMhr8S+O04N/0gGhEQnVaYe41x8MuuHjYIaXc8UxZ9Qo9GNdgbECCw==
+HFS signature: veaIO7eq+PFOF7frzVczoEa5wSvnIlSYmnzU7aSYju4d+jRJmfhoObxw3MYDMduPbuijJr+YXkyMwJiYtelXAg==
+Comments signature: 7HAvLV1Lp5TzfX7dyY+kb1w+yzmLWK7Rem8q71p7RD52Ix/h9WHn6u7P/scpZN+HDfqQQPE9H36aBB+bWUMKDA==
