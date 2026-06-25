@@ -31,25 +31,43 @@ use crate::proto_brane::ProtoBrane;
 ///
 /// Returns `None` if not all children are constanic yet (stay BRANING).
 pub(crate) fn _decide_nyes_due_to_children(children: &[FirRef]) -> Option<Nyes> {
-    // Stay BRANING until every child is settled (constanic including NK)
-    if !children.iter().all(|c| c.borrow().core().get_nyes().is_constanic()) {
+    let mut all_constanic = true;
+    let mut all_constant = true;
+    let mut all_independent = true;
+    let mut nk_count = 0usize;
+    let mut econstanic_woconstanic_count = 0usize;
+
+    for c in children {
+        let n = c.borrow().core().get_nyes();
+        if !n.is_constanic() {
+            all_constanic = false;
+        }
+        if n != Nyes::Constant {
+            all_constant = false;
+        }
+        if n != Nyes::Independent {
+            all_independent = false;
+        }
+        match n {
+            Nyes::Nk => nk_count += 1,
+            Nyes::Econstanic | Nyes::Woconstanic => econstanic_woconstanic_count += 1,
+            _ => {}
+        }
+    }
+
+    if !all_constanic {
         return None;
     }
-    // Pick the worst: NK > WOCONSTANIC/ECONSTANIC > CONSTANT > INDEPENDENT
-    // ALL must agree for CONSTANT or INDEPENDENT; ANY ECONSTANIC/WOCONSTANIC/NK wins.
-    if children.iter().any(|c| c.borrow().core().get_nyes() == Nyes::Nk) {
+    if nk_count > 0 {
         return Some(Nyes::Nk);
     }
-    if children.iter().any(|c| {
-        let n = c.borrow().core().get_nyes();
-        n == Nyes::Econstanic || n == Nyes::Woconstanic
-    }) {
+    if econstanic_woconstanic_count > 0 {
         return Some(Nyes::Woconstanic);
     }
-    if children.iter().all(|c| c.borrow().core().get_nyes() == Nyes::Constant) {
+    if all_constant {
         return Some(Nyes::Constant);
     }
-    if children.iter().all(|c| c.borrow().core().get_nyes() == Nyes::Independent) {
+    if all_independent {
         return Some(Nyes::Independent);
     }
     Some(Nyes::Woconstanic)
