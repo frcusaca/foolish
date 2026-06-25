@@ -823,6 +823,11 @@ settling. Likely a task-drain ordering issue or a missing re-step after SF/SFF r
       over `foolish_children` when stripping SF/SFF markers. Find and correct the spec text
       (FOOP-62.md), code comments, and any FOOP guidance that led to the re-evaluation design.
 
+- [ ] **Remove "frozen/freeze" wording from code, docs, and FOOPs.** Replace with the correct
+      Foolish terminology: "constanic" (terminal NYES state), "constanew" (newly constanic),
+      or "non-constanew constanic" (pre-existing constanic). The word "frozen" implies a
+      mechanical action that doesn't match the NYES-based stepping model.
+
 ## Notes / discoveries
 
 - [ ] **Explore `bon` + `build_from` pattern for constanic cloning.** The current
