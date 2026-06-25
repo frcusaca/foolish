@@ -33,7 +33,8 @@ INPUT:
   sfsff=?(
       result=Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
       pattern='^sff$',
-      UNANCHORED
+      UNANCHORED,
+      WOCONSTANIC
   );
   sffsf=?(pattern='^sf$', UNANCHORED);
   sfsf=?(result=3, pattern='^sf$', UNANCHORED);
@@ -54,5 +55,5 @@ sf_sff_nested_combined
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: tT8UqgoaX2cQknxaTSOxGoatqdbkUElQJTZXD4wK3f2mTtwOZwiBraFW1mIiflGHyg6zn6JuaExvI+DIT6sOBg==
-HFS signature: 1TWqlL0hSThOYiBz1FatyaBpi2doi+4USz/zQZpDTOeZKoJ4kkOkm2tBB9TEjUxAWyP9IkbGnkJf9LASs+kuBA==
-Comments signature: Bw9URMi5BGA9N9DicvlZI33+YzFzVA1KS2wHncxoCJv/dMvlBozJmvM7FRPgqKfz4vmFPopJ+5d5dJulw2/oBQ==
+HFS signature: JUYv6r89IIoFIhzVdccdWty7Rt7rG7q9QgcVOU1aC4MGD4in8Bl7yMeXFjO0QIgEVnt/aYGFsQbooC5AQllGAA==
+Comments signature: ejb5WX8JgK5Q5p0H7e5cAvjPx8n5WRMumoGRPvUdy/KAeS8juugVajb/ktU3AIE6k8zdWmMqXj5YQxN/gM6rAA==

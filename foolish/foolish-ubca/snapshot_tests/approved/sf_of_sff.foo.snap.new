@@ -15,7 +15,8 @@ INPUT:
   sf=?(
       result=Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
       pattern='^sff$',
-      UNANCHORED
+      UNANCHORED,
+      WOCONSTANIC
   );
   a=10;
   12;
@@ -29,5 +30,5 @@ sf_of_sff
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: h1VqZ8FgnPZ2bLsAmCfvaSczq/hrg2qLt+NCDHxlJTO58pkS3WuR3DKlCs5mxYNflR4ATJy8+l662ISwvkxvDA==
-HFS signature: pAE2jko5/ZwTlB9rfpEpD5zPuFMdK1OBRQgbqRJDNJSLhM+h0jgW8qZxdF1S+jCDdRNRw2TkqXdE7OHzZG+3DQ==
-Comments signature: QTm27BT3kO/VdPPO3A/Pju936/I4ws906bOIQUIW07Woy9dyMkEIa0nbfk/w1+OEMbMFaLLEw3nCbZftBP96Bg==
+HFS signature: 4KxeICGxEZ/mTLcsycwwr3qpLZFfExBwnDvTXZNl4XWBucW7mepGr/yFg4h5bX9bM6IYa+DtQHAJPnJyjyryAQ==
+Comments signature: fhDpBiaOM6p2dP/bd8CioLAGLUVR/9ZPY76xjo706A9ulMYF62ekAXk12BMW3gtz/OKqTbELQTIf9dFRGeSaBw==

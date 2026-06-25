@@ -168,7 +168,7 @@ impl Nyes {
     /// - b) no result AND EMBRYONIC → do NOT show nyes.
     /// - otherwise → show nyes (even PREMBRYONIC). NK still shows (with its reason).
     pub fn should_show_search_nyes(&self, has_result: bool) -> bool {
-        if has_result && self.is_nnk_constanic() {
+        if has_result && matches!(self, Nyes::Constant | Nyes::Independent) {
             return false;
         }
         if !has_result && matches!(self, Nyes::Embryonic) {

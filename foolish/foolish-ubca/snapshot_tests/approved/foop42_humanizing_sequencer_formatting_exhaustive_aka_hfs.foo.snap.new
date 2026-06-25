@@ -101,23 +101,33 @@ win={w_in={in_in={in_in_in=101010}}};
   Δ=7;
   Σ=10;
   oneˍzero=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK;
-  divˍbyˍzeroˍinˍbraneˍmethod=?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED);
+  divˍbyˍzeroˍinˍbraneˍmethod=?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED, WOCONSTANIC);
   threeˍzero=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK;
   badˍinˍarithmetic=Op+(
-      ?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED),
+      ?(
+        result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK,
+        pattern='^oneˍzero$',
+        UNANCHORED,
+        WOCONSTANIC
+      ),
       5,
       WOCONSTANIC
   );
   chainedˍbad=Op+(
       Op+(
         10,
-        ?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED),
+        ?(
+          result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK,
+          pattern='^oneˍzero$',
+          UNANCHORED,
+          WOCONSTANIC
+        ),
         WOCONSTANIC
       ),
       20,
       WOCONSTANIC
   );
-  aliasˍofˍbad=?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED);
+  aliasˍofˍbad=?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED, WOCONSTANIC);
   fwdˍx=?(pattern='^x$', UNANCHORED, ECONSTANIC);
   x=42;
   xˍagain=42;
@@ -294,5 +304,5 @@ foop42_humanizing_sequencer_formatting_exhaustive_aka_hfs
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 5CYQ9TTMJwxdSRqdDbNvIcEuEjzF0rs9DSJO0IFb7JZX52hw7oNCOG0pcpoYozWuyHWmpPLVgx2jGmPxDfKBDA==
-HFS signature: fVu5RtaxSpGRbvMbiWu2dI7hCewuUozpP5zF0mSuKkdoB+jPvLRIY1vuWNU301MyOiqp5xGbSy2qoxl3rR5qBQ==
-Comments signature: UGKwKpIo04HKJNWCYWYT2qD9dM56Swx+fPNwYS7ZfKFj5BYtdXxEbJHvD21URox4eRTtMTOJlHhXYG6LNY+gDQ==
+HFS signature: NAczUSAhziXE2J3jk+6HwDvTv5lW2SjeOrfEpxw/UWjpMk+8L9lE+zQHpeIfwE1TamZzMRD6p2kK0Ifrjl98Cw==
+Comments signature: z6oDi4bSq1Xeuz7gK3XO3VQqKn6ie7Wm/15Vpqbob7M0LIqp3VrimoO893nGk8CtA2+ppSFJqJ2f6FWexVwnBQ==

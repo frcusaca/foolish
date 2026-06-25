@@ -13,12 +13,12 @@ INPUT:
   b=2;
   c=??? (??? literal);
   s=?(result=1, pattern='^a$', UNANCHORED);
-  bad=?(result=??? (??? literal), pattern='^c$', UNANCHORED);
-  sfˍbad=?(result=??? (??? literal), pattern='^c$', UNANCHORED);
+  bad=?(result=??? (??? literal), pattern='^c$', UNANCHORED, WOCONSTANIC);
+  sfˍbad=?(result=??? (??? literal), pattern='^c$', UNANCHORED, WOCONSTANIC);
   d=3;
-  e=Op+(?(result=??? (??? literal), pattern='^c$', UNANCHORED), 1, WOCONSTANIC);
+  e=Op+(?(result=??? (??? literal), pattern='^c$', UNANCHORED, WOCONSTANIC), 1, WOCONSTANIC);
   f=1;
-  g=?(result=??? (??? literal), pattern='^c$', UNANCHORED)
+  g=?(result=??? (??? literal), pattern='^c$', UNANCHORED, WOCONSTANIC)
 }
 ```
 COMMENTS:
@@ -28,5 +28,5 @@ hfs_nyes_display_rules
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: lOzIlpYscAmbG4Y9d9v65sk1C6nC6J2xeGlM47hbCGP82TowRKPNI/5YakMa9E6OfuFm6HJyXoD6U12jHj3gBg==
-HFS signature: RqIHU+oCMBv/fwkIiGGVpOYZa3stb4eqRp/yFLsQ8vplbkjK9sLtuu0LF9/hs8M/vGwvhF5KI7NZAdSXfrk4AA==
-Comments signature: muHPKyy8LCUDRJfd8SFaS12DFisO/nSKt/pkYiUD0MW2ong49vdapqs6b3mDNnlQDvm3h+YDoapM4g7Tb79FCQ==
+HFS signature: urNiK7TSaH81aj37F1ridUJDwCJUcw+sxVTTKvOa9rO6kpXEiRT94v0eoKr6QY5TB6BojsC9gZ8Hao5yqqeQAg==
+Comments signature: kclqBh6ap3iSjFyMTgX16ZhITgd3p0qLK4asrdXMhBHXtOJCcEtgPlQWtnv8QZELIbm2Yewq94T285W/2jX9Aw==
