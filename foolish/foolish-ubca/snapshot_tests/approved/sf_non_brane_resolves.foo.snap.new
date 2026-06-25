@@ -8,7 +8,7 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{
+{WOCONSTANIC
   x=42;
   b=?(result=42, pattern='^x$', UNANCHORED);
   42
@@ -21,5 +21,5 @@ sf_non_brane_resolves
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: wpG5PzL0aT/dCITFTxzEgJxHJgS7NQxU2cb06vvG0yZq0vT6FtVFq2FGtLL7fbxIv37INbW2WXBeK/4/bDZ3Cg==
-HFS signature: /e1f57s71s1JFTQuoFbo8Qj7t7z5nM661AnfoM1wPs/CuKsQeaTOUMYsIPPRG5gWkrHBJpU+tnIomKm/7ZLNAw==
-Comments signature: bZENC9re7WTrlzHO6HWmfXe1uNQLlHTP2xbZIXN39UFgMqZpOhmsA1vq860a1EiB7jsT18249U2ycjw+iDHJDQ==
+HFS signature: 4bk6AtiuZp6i0AK59Ha7cSgsZuy+59sK1U06sFwwOID0SHkOalLx0sWeQ4Cymu/3oRSu9linakxyKNoawBaNCw==
+Comments signature: IMjYQneXZZ/x+mNT4hmwTPVSa/22yrypqh+/PX5Ichny5tQoqAQK2Ee0kwjmCXQBRx1YROsbFk4z/r54MI0wDg==

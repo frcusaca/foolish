@@ -8,10 +8,12 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{
+{WOCONSTANIC
   a=1;
   b=2;
-  s=Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC);
+  s=<<WOCONSTANIC
+      Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
+  >>;
   a=10;
   12
 }
@@ -23,5 +25,5 @@ sff_resolves_on_each_use
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: dvgS2SgQxTH17MqJ0GvfsJzYlhZVovt+9HhyksPNiUsLfJeYshVu9Gse0wzatDFWaIIIRlYQ4UG+eFcEHxFuBw==
-HFS signature: CNBdWZf3ybmfUMvjJlh4EjSW6vUf0cPH76hHE0QvJTYooWXH8oO+/c1OIDWxHvn/diFNfaoEmT87f5m/93UOBg==
-Comments signature: yQHVYyp7nkNLLnY8xw5aZ+7Ymx4r0gqNF0AZXk9NIPCG/Tu2S6o3BieAuLfBQMiJ3l3PcNL8XvUh+jKy2ziMAA==
+HFS signature: j45qp2cEHrekUgITjc7DGi5p9R4TNeEuoUwh4R/+z1y4Jl01gnjxEMnqWFXNbs4WsqleL1MQvuiT5L0c9011Cg==
+Comments signature: EcaZ2ff2RROqtA8yqahCCrccafBIrAwXiySVtwjNGYNSIvx/05OtrdjgH2F5/Ood9JA2ZEkkN350uclDWlHoAw==

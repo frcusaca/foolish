@@ -8,7 +8,7 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{
+{WOCONSTANIC
   x=10;
   myname'{
     val=10
@@ -22,5 +22,5 @@ named_brane_basic
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: iqtjWzJGJYCUCiXY8U5l6RGjdcGU8kbk8Lt7KzvMxAoj27tth4Hvs0gyc5LF3byE4FCFG8j2cLLV1zhUyERrCQ==
-HFS signature: fKg7n6U/lzaahZkp3ooNYLwcBlOSyVlB8/NT8/c/l2LvX3ofF2t+xNobhrZLB8HTRzKoVJng6todls0EU/M8Bw==
-Comments signature: jdGm6TQuzTWJAHHvTMCA+gzlZox7wXsKm0wipECYtQ6fzW3U50N8ZF3JyvR+HrSArYHQBEHBDR091W40t4RJBg==
+HFS signature: tGVAZEnsraZoqqHklAGIspNC3WZ8axUGIAShr+WlvI0a8umtTDS5+0gkrcyvRQC51yD0l7s7Ex9mvjSqF5QJAw==
+Comments signature: 9QYoJ6kUu26Cuy/bGN/ihdEhqSvd50N31kzOMXOCDkO8HQ7/IbGVI0vwiEp2RYX9UsruvLiW24BZ/N1dfi3MCA==

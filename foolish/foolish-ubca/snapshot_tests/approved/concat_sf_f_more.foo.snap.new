@@ -42,11 +42,17 @@ INPUT:
   f1={BRANING
       b=Op+(
           Op+(
-            Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
-            ?(pattern='^a$', UNANCHORED),
+            <<WOCONSTANIC
+              Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
+            >>,
+            <<WOCONSTANIC
+              ?(pattern='^a$', UNANCHORED)
+            >>,
             WOCONSTANIC
           ),
-          Op+(?(pattern='^b$', UNANCHORED, ECONSTANIC), ?(pattern='^c$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
+          <<WOCONSTANIC
+            Op+(?(pattern='^b$', UNANCHORED, ECONSTANIC), ?(pattern='^c$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
+          >>,
           WOCONSTANIC
       );
       a=Op+(-29, ?(pattern='^b$', UNANCHORED, BRANING), BRANING)
@@ -118,5 +124,5 @@ concat_sf_f_more
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 6AzGNJXm5wdZXyTwBHCaOcttoyncBzE4/K7NCfCD8jdXPNYArg7otv7CUSNuPLngLFQu7qOC522o+6GlZlm+Dg==
-HFS signature: 5qnopc+IIz0nO7rYmv7hCSmhxO1Cn28OGFsBF3m78w6NVm4nmVN3gcCB9skimdwPbLJS05YYmuFwBjNCo1MiDg==
-Comments signature: sBDoSQq8d/S1n03AarQLnhg79BlfDPMzk5DV1ciqOvV+TPI1zlM95xTGq9ClilbjVJZPdbVz5WuuQCL8ABmACQ==
+HFS signature: oggMCT7WP6LvvOKpqAcdfH/6RJbDpfoF8qNaLR2/iFVAEmyludYaaKJFs85S0VK1r5eo5vgnIHxuGOZCdLcSAA==
+Comments signature: 3yLdLvHNg/bHt8j90HacCR02i1UvjAVV0ffABc8my+jaoQV3HlN6u7Ukjpo+aWNiwUBob0H6D8ydPet6XQBbAQ==

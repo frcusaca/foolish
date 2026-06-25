@@ -8,10 +8,12 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{
+{WOCONSTANIC
   a=1;
   b=2;
-  c=Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC);
+  c=<<WOCONSTANIC
+      Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
+  >>;
   a=100;
   102
 }
@@ -23,5 +25,5 @@ sff_in_assignment_chain
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: W39zs+UId/DzfxHfL4QgQfryXimg6He4zOPcvtPzRzzWL/XwvRD91ZNi0vO2yL2wEXrlywGGMoz/vf+tEpgQDQ==
-HFS signature: dB6gZJ2QqutYMC+MiSMtIjXVohS0dmgfVnzh6noFoqOMgI8RTKoKXSIFgPEiuhKAiPs8JxJ0nkURl+Ns13+9DQ==
-Comments signature: CpcRzPHpa6q30SMKshfSsLhS61hQ3yRgZyHl8KH3jFmoA/Gz2nvBdERFhBy335cbgbTJ7D+GuLWVG2q0BWQLDQ==
+HFS signature: C55yf8iMjVKh2fo9U0DVIIRaVa7VdFicH7V6SwsoldwnNpUs+sl8MUCxDrTu2aQ6QpuJkZh/qNiXmNG1L72ACg==
+Comments signature: j4fg6FG9FVxuS+VVGCGWWOopIhz/K03AqFeGRL+7HmujroSTxwDTpYy7laUAkJzO8joBObMJHahF1IyPb9XaDA==

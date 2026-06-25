@@ -8,16 +8,18 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{
+{WOCONSTANIC
   a=1;
   b=2;
-  c=Op+(
-      ?(pattern='^a$', UNANCHORED, ECONSTANIC),
-      <<PREMBRIONIC
-        ?(pattern='^b$', UNANCHORED)
-      >>,
-      WOCONSTANIC
-  );
+  c=<<WOCONSTANIC
+      Op+(
+        ?(pattern='^a$', UNANCHORED, ECONSTANIC),
+        <<WOCONSTANIC
+          ?(pattern='^b$', UNANCHORED)
+        >>,
+        WOCONSTANIC
+      )
+  >>;
   3;
   3
 }
@@ -29,5 +31,5 @@ sff_nested
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: lhcizF48neDw/0Ot29cyjAKKVN2RJsqhMEqKOBwHi1AC7LmDHeXb9dBvby6kqQzBJhSJHHAXCtmjZ9gbF1ZHAw==
-HFS signature: PtfvJvQhEKmQ2k3XRrMl1b6OEhhaoPLWsP8RE8aa2hhvnKtBqAFOeyctm5mMjN3x1ncSj1F62J3UNurk9Q7iAA==
-Comments signature: 6RDn9pCadbme02jMGWSJ2IUbAOZNj2pLl3YGiTBdaGwoSh313z2URTQvVypTwdspKy/5JA4c2b4gSIY6uqtLDQ==
+HFS signature: acHcmM1J5FMRL/b54tmQxiDNXAcdeM/WprzQrU+v5uOQQY6a/7bhTZjGClWcEqhcBCEZj966Eua1SSCLKpuCCA==
+Comments signature: MyNz7dwtdAQQLcvsvebZ1761M1n8w9286nOhQg0oHyADFC3wrQ0yxnjRAkdG1qGvHI5AE6n4d4NoIJGvxVmLBw==

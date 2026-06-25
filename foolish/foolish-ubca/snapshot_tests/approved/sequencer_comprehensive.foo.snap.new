@@ -78,14 +78,16 @@ INPUT:
   divide=0;
   subtract=-1;
   bad=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK;
-  inner={
+  inner={WOCONSTANIC
       x=10;
       y=20;
       z=30
   };
   found=1;
   sfˍval=?(result=1, pattern='^a$', UNANCHORED);
-  sffˍval=?(pattern='^b$', UNANCHORED);
+  sffˍval=<<WOCONSTANIC
+      ?(pattern='^b$', UNANCHORED)
+  >>;
   concat={
       p=1;
       q=2
@@ -119,5 +121,5 @@ sequencer_comprehensive
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: yRrAujGcUxFVRv3py0aRxROx0nS23e0Skv55N03B6p11gjR6/Lz2aGyCo9RdJNwwhIVH8bas/we3pbzhiHt8Bg==
-HFS signature: v/JaFU44dywDFh87OBJjEnpbB8cs8BLsQwsDBO06Q3TgBCpt09Es5f6NiLSxuQBMenDTReenJNKMYHXfbmCkDw==
-Comments signature: sYvncxUJZefLMemPSrSLzgvonnEAzM+SyT/MdW+QqUMe4f4YpP2phy4VFuwSQJNpNmw2kPdcKijqcRbxi8rHDg==
+HFS signature: +Xp9J6q6Alv4sWncmfnrGBzycXotce0ga5Mqd5cDhOdQAAr4jKG3B4K2OCBvyGvu2sAShSSv5bl0auW394rcBQ==
+Comments signature: 714agXRteekUoW5eE3NNNs6xVbpmjizyClyx+ywLsz8LqKJcIy1f8EgJAY3JKUk8BuNHJkDDpfQBBiRQiQIxCw==
