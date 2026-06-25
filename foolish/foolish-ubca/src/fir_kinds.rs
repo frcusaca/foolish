@@ -458,6 +458,12 @@ impl OperatorFir {
             .iter()
             .all(|c| c.borrow().core().get_nyes().is_constanic())
     }
+    fn operands_all_settled(&self) -> bool {
+        self.core()
+            .foolish_children()
+            .iter()
+            .all(|c| matches!(c.borrow().core().get_nyes(), Nyes::Constant | Nyes::Independent))
+    }
 }
 
 impl Fir for OperatorFir {
@@ -475,7 +481,7 @@ impl Fir for OperatorFir {
                 // just advance — BRANING will then combine immediately. Otherwise enqueue them
                 // so they drain to constanic first.
                 self.core.set_nyes(Nyes::Braning);
-                if !self.operands_all_constanic() {
+                if !self.operands_all_settled() {
                     let children: Vec<FirRef> = self.core.foolish_children().to_vec();
                     for child in children {
                         self.core.push_task(child);
