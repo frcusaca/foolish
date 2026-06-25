@@ -25,6 +25,21 @@ shopt -u nullglob
 if [[ ${#files[@]} -eq 0 ]]; then
     echo "No .snap.new files to review."
     exit 0
+else
+  reread=$((${#files[@]}/10))
+  reread=$(( reread > 0 ? reread : 1))
+  for rereadfn in $( ls *.snap | shuf|head -n $reread); do
+	 if [ $reread -gt 0 ]; then
+      if [ ! -e ${rereadfn}.new]; then
+        echo marking $rereadfn for rereading
+        cp $rereadfn ${rereadfn}.new
+        files+=(${rereadfn}.new)
+        ((reread--))
+      fi
+    else
+       break
+    fi
+  done
 fi
 
 CNT=0
@@ -39,9 +54,12 @@ for x in "${files[@]}"; do
 	 if [ ! -e ${x%%.new} -o $DC -gt 0 ]; then 
 				sleep 2s
 				vimdiff "${x%%.new}" "$x"
-				if grep -qi '@agent' "$x"; then
+				if grep -qi '@agent, skip' "$x"; then
+					echo "Skipping $x"
+				elif grep -qi '@agent' "$x"; then
 					 echo "  → agent notified about $x"
-                mv "$x" "${x}.check"
+					 (echo -n "$(date) cat $x"; cat "$x") >> "${x}.check"
+                rm "$x"
 				else
 					 echo "  → approved $x"
 				    af="${x}.approved"
