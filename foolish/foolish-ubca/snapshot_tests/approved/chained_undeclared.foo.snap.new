@@ -11,10 +11,6 @@ INPUT:
 {WOCONSTANIC
   bad=?(pattern='^undeclared$', UNANCHORED, ECONSTANIC);
   y=?(result=?(pattern='^undeclared$', UNANCHORED, ECONSTANIC), pattern='^bad$', UNANCHORED);
-(@Agents, shouldn't the z have traversed through ALL the woconstanics and just appears as:
-z=?(result=?(pattern="undeclared", UNANCHORED, ECONSTANIC), WCONSTANIC);
-or something similar to that???
-)
   z=?(
       result=?(result=?(pattern='^undeclared$', UNANCHORED, ECONSTANIC), pattern='^bad$', UNANCHORED),
       pattern='^y$',

@@ -1,4 +1,3 @@
-(@agents, don't touch this)
 ---
 source: foolish-ubca/src/ubca_snapshot_tester.rs
 assertion_line: 34

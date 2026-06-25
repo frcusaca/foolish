@@ -16,9 +16,7 @@ INPUT:
       3
   };
   {
-(@Agents, this line below should have found c=3. when inner is recoordinated here, it should have been able to find the a and b)
     c=Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC);
-
     3
   }
 }

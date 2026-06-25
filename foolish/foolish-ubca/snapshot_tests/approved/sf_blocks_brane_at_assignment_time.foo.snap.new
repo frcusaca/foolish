@@ -22,8 +22,10 @@ INPUT:
       UNANCHORED
   );
   a=99;
-(@agents, this is still wrong below it should NOT have found 99, it should have found {x=1,y=2})
-  ?(result=99, pattern='^a$', UNANCHORED)
+  {
+    x=1;
+    y=2
+  }
 }
 ```
 COMMENTS:
@@ -33,5 +35,5 @@ sf_blocks_brane_at_assignment_time
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: r9cVsMVy9IKQUvI6rQnmYcfv40up0dd5AhbtoMFl72TT9TjvhiLZuxtnFgHI3eXA5c6ToFS7wW+gRqjBqQxxCw==
-HFS signature: gX+zWZOrjvfTFgqdRFs3HAyS4wVDkGbktcnDUyavzBX4aXQM0qZjZJrG5pWa/xOanhLSPTpvs2vxLDKYKlFIAw==
-Comments signature: xtBFHeogs+eKG5G5u4UBEANVZANT2ionOj+QDqZrMG4w2z3xltFsmTeJvj+Tk2a9pOqdbB32LtWyRehN6lCWBw==
+HFS signature: 4Yi39BSpBFlFOixyIvNLaG0aG3Lq958doYFSeFtG7GTo2QjriFXQ23butwvAAh/RN0xQ9zg4e2zFH919LXhQDQ==
+Comments signature: 9itBCnNhqm8tfDWIrZXey36oxINuuhY3CptVnfdMv6PxXtTCmxOoV/pvZtYJwTWyha6/g1j/0PM675B6ULRWDg==

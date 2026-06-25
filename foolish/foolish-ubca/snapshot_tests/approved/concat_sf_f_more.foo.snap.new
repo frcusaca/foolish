@@ -1,5 +1,3 @@
-(@agents, the f1, f2, f3 are utterly wrong they should never be in those nyes. Should always be constanic
-in snapshots we run them to constanic states)
 ---
 source: foolish-ubca/src/ubca_snapshot_tester.rs
 assertion_line: 34
@@ -41,7 +39,6 @@ INPUT:
   x=-10;
   y=-20;
   z=-30;
-(@agents, this should never be in braning, should run this to completion)
   f1={BRANING
       b=Op+(
           Op+(

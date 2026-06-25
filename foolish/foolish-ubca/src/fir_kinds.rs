@@ -157,7 +157,12 @@ fn constanic_clone_at(
     descendent_of_sfm_and_foolishly_ignorant: bool,
 ) -> FirRef {
     if matches!(fir_ref.borrow().kind(), FirKind::StayFoolish | FirKind::StayFullyFoolish) {
-        if let Some(inner) = fir_ref.borrow().core().foolish_children().first().cloned() {
+        let source = fir_ref.borrow();
+        // Prefer the frozen result (ubc_children) over the inner expression (foolish_children).
+        if let Some(frozen) = source.core().ubc_children().into_iter().next() {
+            return constanic_clone_at(&frozen, new_parent, index, descendent_of_sfm_and_foolishly_ignorant);
+        }
+        if let Some(inner) = source.core().foolish_children().first().cloned() {
             return constanic_clone_at(&inner, new_parent, index, descendent_of_sfm_and_foolishly_ignorant);
         }
         eprintln!("ALARM: SF/SFF node has no children — cloning wrapper as-is");
@@ -807,41 +812,6 @@ fn search_brane_children(brane: &FirRef, name: &str, before: Option<usize>, forw
             if matches_pattern(sn, name)
                 && let Some(body) = child_borrowed.core().foolish_children().first()
             {
-                // SF/SFF wrapping an unanchored search: re-evaluate the search
-                // pattern in the current context.  SF evaluates lazily — the
-                // inner search captured the value at assignment time, but when
-                // the SF is accessed later, the search should use the current
-                // context (which may have later reassignments).
-                let sf_inner_pattern = {
-                    let bb = body.borrow();
-                    if bb.kind() == FirKind::StayFoolish
-                        || bb.kind() == FirKind::StayFullyFoolish
-                    {
-                        bb.core().foolish_children().first().and_then(|inner| {
-                            let ib = inner.borrow();
-                            if ib.kind() == FirKind::Search && !ib.as_search_anchored() {
-                                ib.as_search_pattern().map(|s| s.to_string())
-                            } else {
-                                None
-                            }
-                        })
-                    } else {
-                        None
-                    }
-                };
-                if let Some(ref pattern) = sf_inner_pattern {
-                    let sf_pat = pattern.clone();
-                    drop(child_borrowed);
-                    if let Some((body, nyes, _)) = search_brane_children(brane, pattern, before, forward) {
-                        return Some((body, nyes, Some(sf_pat)));
-                    }
-                    return None;
-                }
-                // Non-SF/SFF-inner-search path: return the body as-is.
-                // If the body is an SF/SFF (wrapping a non-search), return it
-                // frozen — the caller will NICC-clone the SF/SFF with its
-                // semantics intact. Unwrapping happens later during value
-                // resolution, not during the search phase.
                 let body_nyes = body.borrow().core().get_nyes();
                 return Some((Rc::clone(body), body_nyes, None));
             }

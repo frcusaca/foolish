@@ -724,6 +724,45 @@ its NYES because the result itself is not a final value.
 
 ---
 
+### Fix F — SF frozen value lost on constanic-clone (`sff_vs_sf_timing_difference`)
+
+**Status:** [ ] NOT STARTED
+**File:** `foolish/foolish-ubca/src/fir_kinds.rs`
+**Diagnosis:** Input `{x = 1; sf = <x>; sff = <<x>>; x = 10; sf; sff;}` — when `sf;` is
+referenced later, it re-searches for `x` and finds `10` instead of the frozen `1`. The SF
+froze `x=1` at assignment time, but the constanic-clone of `sf` lost the frozen value.
+`sff;` is correct (shows `10` because SFF builds ECONSTANIC at construction, not frozen).
+**Fix plan:** Verify that constanic-clone of an SF-marked FIR preserves the frozen
+`ubc_children` result. Related to Fix B (search returns frozen result, not inner).
+
+**Tests to verify:**
+```
+>>> FIX F TEST START: sff_vs_sf_timing_difference.foo
+>>> FIX F TEST END
+```
+
+---
+
+### Fix G — Complex SF/SFF concatenation stuck in BRANING (`concat_sf_f_more`)
+
+**Status:** [ ] NOT STARTED
+**File:** `foolish/foolish-ubca/src/fir_kinds.rs`
+**Diagnosis:** Input with nested SF/SFF in concatenations (`f1`, `f2`, `f3`) — evaluation
+gets stuck in BRANING/PREMBRIONIC instead of reaching constanic. "the f1, f2, f3 are
+utterly wrong they should never be in those nyes. Should always be constanic in snapshots
+we run them to constanic states." The outer brane also shows BRANING when it should be
+constanic.
+**Fix plan:** Investigate why nested SF/SFF in concatenations prevent the outer brane from
+settling. Likely a task-drain ordering issue or a missing re-step after SF/SFF resolution.
+
+**Tests to verify:**
+```
+>>> FIX G TEST START: concat_sf_f_more.foo
+>>> FIX G TEST END
+```
+
+---
+
 ## Bug fix set — from @agent snapshot review (2026-06-22)
 
 > Extracted from `foolish-ubca/snapshot_tests/approved/*.snap.new` flagged with `@agent`.
@@ -771,9 +810,18 @@ its NYES because the result itself is not a final value.
       "let's combine all these seek tests into a single snapshot test."
 
 ### Deferred (no action now)
-- `foop42_humanizing_sequencer_formatting_exhaustive_aka_hfs.foo.snap.new` — "leave this one alone"
-- `sequencer_comprehensive.foo.snap.new` — "hold please"
+- `foop42_humanizing_sequencer_formatting_exhaustive_aka_hfs.foo.snap.new.check` — "don't touch this"
+- `sequencer_comprehensive.foo.snap.new.check` — "don't touch this one"
 - `anchored_search_suite.foo.snap.new` — "hold on on this one"
+
+- [ ] **Correct documentation that led to SF re-evaluation in search code.** The removed
+      `sf_inner_pattern` block in `search_brane_children` (Fix B, 2026-06-23) was written
+      based on incorrect guidance that SF-marked searches should re-evaluate in the current
+      context. The correct resolution centrally relies on NYES state and progressive stepping:
+      `search_brane_children` finds the named statement and returns its body as-is; the
+      SF's frozen result lives in `ubc_children`; `constanic_clone_at` prefers `ubc_children`
+      over `foolish_children` when stripping SF/SFF markers. Find and correct the spec text
+      (FOOP-62.md), code comments, and any FOOP guidance that led to the re-evaluation design.
 
 ## Notes / discoveries
 
