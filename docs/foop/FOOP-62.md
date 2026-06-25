@@ -69,6 +69,15 @@ UBCa classifies NYES states into three categories:
 - `is_nnk_constanic()` = constanic but NOT NK — for code that needs "constanic but not NK" (e.g., search results that propagate NK separately)
 but it is settled so it does not block the task queue.
 
+> **Terminology note (2026-06-23):** The words "freeze" and "frozen" are **deprecated** in
+> this spec and in code. Use instead:
+> - **constanic** — a FIR in any terminal NYES state (wouldn't change unless context changes)
+> - **constanew** — a FIR that won't change no matter what (included in "constanic")
+> - **non-constanew constanic** — a FIR whose value may change when context is recoordinated
+> - **"step to constanic"** — when a FIR progresses through stepping
+> - **"set NYES to constanic"** — when NYES is directly assigned
+> - **"clone with constanic NYES"** — when cloning preserves constanic state
+
 ## Terminology: ignorance — normally ignorant, foolishly ignorant, fully foolish
 
 Every clone and every premembryonic construction in UBCa happens with a *degree of
@@ -122,8 +131,8 @@ found instead of re-resolving anything.
 > carried down through the step recursion. Each `constanic_clone` invoked from `step()` is then
 > passed `descendent_of_sfm_and_foolishly_ignorant = scope.has_ancestral_sfm`, and clone's own
 > recursion **propagates that flag downward** to every descendant cloned while building that
-> frozen RHS value. (Hence the names: Scope's `has_ancestral_sfm`; clone's
-> `descendent_of_sfm_and_foolishly_ignorant`.) This is how an SF freezes its result at
+> constanic RHS value. (Hence the names: Scope's `has_ancestral_sfm`; clone's
+> `descendent_of_sfm_and_foolishly_ignorant`.) This is how an SF clones its result with constanic NYES at
 > assignment time.
 
 > **⚠ THE VERY BIG BUT — a later search of an SF-mark.** When a *later search* resolves to an
@@ -134,7 +143,7 @@ found instead of re-resolving anything.
 >    mode**. So an ECONSTANIC inner value **re-resolves** in the new context via ordinary
 >    stepping, exactly as any normal clone would.
 > This is the asymmetry that has caused repeated confusion: building an SF's RHS is foolish
-> (everything frozen), but consuming an SF later via search is normal (mark stripped, normal
+> (everything cloned with constanic NYES), but consuming an SF later via search is normal (mark stripped, normal
 > NYES-transfer, re-resolution allowed).
 
 **Fully foolish construction** — the *premembryonic construction* behavior used for an
@@ -248,7 +257,7 @@ pub struct ProtoBrane {
     /// Parse-time children: created by reading Foolish source, before any stepping.
     /// FIXED: the vector never grows or shrinks and no Rc slot is ever re-seated
     /// once built. The referenced Fir structs DO step and compute in place within
-    /// this same vector (interior evolution), but the topology here is frozen.
+    /// this same vector (interior evolution), but the topology here is constanic.
     foolish_children: Vec<FirRef>,                // FirRef = Rc<RefCell<dyn Fir>>
 
     /// Compute-time children: FIR created unavoidably during evaluation —
@@ -1071,7 +1080,7 @@ flux); the instant `step()` returns, the invariant holds again. Consequences tha
 - **Foolish ignorance propagates recursively downward — but a later search of an SF strips it.**
   When the RHS of an SF-marked assignment is built, `descendent_of_sfm_and_foolishly_ignorant`
   is `true` and **propagates recursively to all descendant clones** within that SF expression,
-  so everything is copied verbatim (frozen). **THE BIG BUT:** when a later *search* resolves to
+  so everything is cloned with constanic NYES (copied verbatim). **THE BIG BUT:** when a later *search* resolves to
   the **SF-mark node** and clones it, the clone **strips the SF-mark** and runs with the flag
   **`false`** (normal mode) — the inner value re-resolves normally. SFF is not a clone behavior
   at all — it is **fully foolish construction**: descendants instantiated as ECONSTANIC.
@@ -1079,9 +1088,9 @@ flux); the instant `step()` returns, the invariant holds again. Consequences tha
 
   **Foolishly ignorant (`descendent_of_sfm_and_foolishly_ignorant = true`, building an SF RHS):**
   - **ALL NYES are copied unchanged** — constanic and pre-constanic alike, no reset. The whole
-    SF subtree is frozen exactly as found; the flag propagates recursively to descendants.
+    SF subtree is cloned with constanic NYES exactly as found; the flag propagates recursively to descendants.
   - The effect is that the SF keeps the answer(s) it first found: nothing re-resolves.
-  - Example: `b = <a>` where `a` is an unresolved search (ECONSTANIC) → the SF freezes `a`'s
+  - Example: `b = <a>` where `a` is an unresolved search (ECONSTANIC) → the SF makes `a`'s
     subtree with every NYES copied verbatim (the ECONSTANIC stays ECONSTANIC, NOT reset).
 
   **Later search of an SF-mark (flag = false, mark stripped):**
