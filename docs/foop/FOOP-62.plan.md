@@ -671,10 +671,10 @@ clone with reset children.
 
 ### Fix D — Sequencer: `should_show_search_nyes` for WOCONSTANIC-with-result
 
-**Status:** [x] DONE 2026-06-23
+**Status:** [ ] PARTIAL 2026-06-23
 **File:** `foolish-core/src/fir.rs`
-**Changes:** `should_show_search_nyes` now only hides NYES for CONSTANT/INDEPENDENT with result (not WOCONSTANIC). WOCONSTANIC means the result is not final.
-**Result:** `chained_undeclared` — y and z now show WOCONSTANIC.
+**Changes so far:** `should_show_search_nyes` now only hides NYES for CONSTANT/INDEPENDENT with result (not WOCONSTANIC). WOCONSTANIC means the result is not final.
+**Remaining:** `chained_undeclared.foo` — `z`'s `result=` shows a WOCONSTANIC fir but should show the ECONSTANIC fir (the deepest unresolved search). The constanic-clone chain is returning the wrong level.
 
 **Tests to verify:**
 ```
@@ -739,48 +739,23 @@ settling. Likely a task-drain ordering issue or a missing re-step after SF/SFF r
 
 ---
 
-## Bug fix set — from @agent snapshot review (2026-06-22)
+## Outstanding issues — from @agent snapshot review (2026-06-22)
 
-> Extracted from `foolish-ubca/snapshot_tests/approved/*.snap.new` flagged with `@agent`.
-> Working directory: `foolish/foolish-ubca/snapshot_tests/approved/`
-> **Higher priority than Notes / discoveries items below.**
-> **SUPERSEDED** by the crash-isolated repair cycle above (2026-06-23). Original items
-> preserved below for reference.
-
-- [x] **1. SF constanic-clone resets NYES incorrectly (HIGH — core eval bug).**
-      File: `sf_blocks_brane_at_assignment_time.foo.snap.new`
-      Input: `{a={x=1, y=2}; s=<a>; a=99; s;}`
-      **RESOLVED by Fix B.** s now returns frozen {x=1,y=2}.
+> Original items 1, 3, 4, 5 resolved. Fix F resolved (same as Fix B). Only unresolved items tracked here.
 
 - [ ] **2. SFF re-coordination in nested brane (HIGH — core eval bug).**
-      File: `complex_sff_in_nested_brane.foo.snap.new`
+      File: `complex_sff_in_nested_brane.foo`
       Input: `{a=1, b=2; inner = {c = <<a+b>>; c}; inner;}`
       **PARTIAL — see Fix C.** OperatorFir enqueues ECONSTANIC operands, but searches still ECONSTANIC.
 
-- [x] **3. Missing NYES display on chained searches (sequencer rendering).**
-      File: `chained_undeclared.foo.snap.new`
-      Input: `{bad = undeclared; y = bad; z = y;}`
-      **RESOLVED by Fix D.** y and z now show WOCONSTANIC.
-
-- [x] **4. Regex search result incorrect (test input update).**
-      File: `regex_search_pattern.foo.snap.new`
-      Input: `{result = {alice = 1; bob = 2; charlie = 3;}?(a.*);}`
-      **RESOLVED by Fix E.** Input updated to `^a.*`.
-
-- [x] **5. Test input pattern wrong (test input fix).**
-      File: `anchored_search_foward.foo.snap.new`
-      `hw~(.o.)` matches "wor" of "world" — should be `hw~(^.o.$)`.
-      **RESOLVED by Fix E.** Pattern corrected.
-
 - [ ] **6. Combine seek tests (test consolidation).**
-      Files: `anchored_seek_positive_boundary.foo.snap.new`,
-      `anchored_seek_positive_negative.foo.snap.new`
+      Files: `anchored_seek_positive_boundary.foo`, `anchored_seek_positive_negative.foo`
       "let's combine all these seek tests into a single snapshot test."
 
 ### Deferred (no action now)
-- `foop42_humanizing_sequencer_formatting_exhaustive_aka_hfs.foo.snap.new.check` — "don't touch this"
-- `sequencer_comprehensive.foo.snap.new.check` — "don't touch this one"
-- `anchored_search_suite.foo.snap.new` — "hold on on this one"
+- `foop42_humanizing_sequencer_formatting_exhaustive_aka_hfs.foo` — "don't touch this"
+- `sequencer_comprehensive.foo` — "don't touch this one"
+- `anchored_search_suite.foo` — "hold on on this one"
 
 - [ ] **Correct documentation that led to SF re-evaluation in search code.** The removed
       `sf_inner_pattern` block in `search_brane_children` (Fix B, 2026-06-23) was written
@@ -791,10 +766,12 @@ settling. Likely a task-drain ordering issue or a missing re-step after SF/SFF r
       over `foolish_children` when stripping SF/SFF markers. Find and correct the spec text
       (FOOP-62.md), code comments, and any FOOP guidance that led to the re-evaluation design.
 
-- [ ] **Remove "frozen/freeze" wording from code, docs, and FOOPs.** Replace with the correct
+- [x] **Remove "frozen/freeze" wording from code, docs, and FOOPs.** Replace with the correct
       Foolish terminology: "constanic" (terminal NYES state), "constanew" (newly constanic),
       or "non-constanew constanic" (pre-existing constanic). The word "frozen" implies a
       mechanical action that doesn't match the NYES-based stepping model.
+      (2026-06-23 — all occurrences in ubca source, FOOP-62.md, and FOOP-62.plan.md replaced.
+      Added terminology note to FOOP-62.md §Terminology.)
 
 ## Notes / discoveries
 

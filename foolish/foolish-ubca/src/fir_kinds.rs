@@ -158,9 +158,9 @@ fn constanic_clone_at(
 ) -> FirRef {
     if matches!(fir_ref.borrow().kind(), FirKind::StayFoolish | FirKind::StayFullyFoolish) {
         let source = fir_ref.borrow();
-        // Prefer the frozen result (ubc_children) over the inner expression (foolish_children).
-        if let Some(frozen) = source.core().ubc_children().into_iter().next() {
-            return constanic_clone_at(&frozen, new_parent, index, descendent_of_sfm_and_foolishly_ignorant);
+        // Prefer the constanic result (ubc_children) over the inner expression (foolish_children).
+        if let Some(constanic_result) = source.core().ubc_children().into_iter().next() {
+            return constanic_clone_at(&constanic_result, new_parent, index, descendent_of_sfm_and_foolishly_ignorant);
         }
         if let Some(inner) = source.core().foolish_children().first().cloned() {
             return constanic_clone_at(&inner, new_parent, index, descendent_of_sfm_and_foolishly_ignorant);
@@ -1301,7 +1301,7 @@ impl Fir for HeadTailFir {
 
 /// A StayFoolish FIR wrapping a single expression child.
 ///
-/// SF freezes the result at assignment time: the expr child is evaluated once,
+/// SF steps its child to constanic at assignment time: the expr child is evaluated once,
 /// then the result is constanic-cloned into ubc_children. No re-evaluation on
 /// subsequent accesses. The clone carries the Foolishly flag (used when Scope
 /// is implemented).
@@ -2550,7 +2550,7 @@ mod tests {
     }
 
     #[test]
-    fn stay_foolish_freezes_constant_body() {
+    fn stay_foolish_sets_constant_body_constanic() {
         let body = make_constant_int(42);
         let sf = make_stay_foolish(Rc::clone(&body));
         let scope = Scope::empty();
@@ -2565,7 +2565,7 @@ mod tests {
     }
 
     #[test]
-    fn stay_foolish_freezes_nk_body() {
+    fn stay_foolish_sets_nk_body_constanic() {
         let body = make_nk("unbound");
         let sf = make_stay_foolish(Rc::clone(&body));
         let scope = Scope::empty();
@@ -2579,7 +2579,7 @@ mod tests {
     }
 
     #[test]
-    fn stay_foolish_freezes_econstanic_body() {
+    fn stay_foolish_sets_econstanic_body_constanic() {
         // A search that doesn't find anything → Econstanic
         let val = make_constant_int(1);
         let stmt = make_statement("x", 1, Rc::clone(&val));
@@ -2887,10 +2887,10 @@ mod tests {
     }
 
     /// has_ancestral_sfm propagates: descending into a StayFoolish node turns on
-    /// the foolish scope for the child subtree (drives the freeze).
+    /// the foolish scope for the child subtree (drives stepping to constanic).
     #[test]
     fn step_sets_foolish_scope_inside_sf() {
-        // The SF freezes its (constant) body; stepping settles it. We assert the
+        // The SF steps its (constant) body to constanic; stepping settles it. We assert the
         // SF settles via the foolish path without error and reaches a constanic
         // state (behavioral proxy for the propagated scope).
         let body = make_constant_int(7);
@@ -3331,7 +3331,7 @@ mod tests {
     // ── SFF builds descendant searches ECONSTANIC (FOOP-62 #17) ───────────────
 
     /// `sff = <<a + b>>`: SFF descendant searches are built ECONSTANIC and never run,
-    /// so the SFF body stays a frozen `Op+(?a ECONSTANIC, ?b ECONSTANIC)` (WOCONSTANIC).
+    /// so the SFF body stays a constanic `Op+(?a ECONSTANIC, ?b ECONSTANIC)` (WOCONSTANIC).
     #[test]
     fn sff_descendant_searches_are_econstanic_at_build() {
         let root = Compiler::compile("{a = 1; b = 2; sff = <<a + b>>;}")
@@ -3354,11 +3354,11 @@ mod tests {
         assert_eq!(sb.borrow().core().get_nyes(), Nyes::Econstanic, "SFF search b stays ECONSTANIC after stepping");
     }
 
-    /// `sf = <sff>`: the SF foolishly copies the SFF's frozen body — the search for `sff`
+    /// `sf = <sff>`: the SF foolishly copies the SFF's constanic body — the search for `sff`
     /// resolves to the Op+ (searches still ECONSTANIC), NOT the evaluated value 3. (The
     /// constanic-clone of an SFF child strips the SFF marker but copies NYES verbatim.)
     #[test]
-    fn sf_of_sff_freezes_econstanic_body() {
+    fn sf_of_sff_sets_econstanic_body_constanic() {
         let root = Compiler::compile("{a = 1; b = 2; sff = <<a + b>>; sf = <sff>;}")
             .unwrap()
             .pop()
@@ -3374,7 +3374,7 @@ mod tests {
         assert_eq!(
             result.borrow().kind(),
             FirKind::Operator,
-            "sf=<sff> must freeze the SFF's Op+ body, not resolve it to a value"
+            "sf=<sff> must make the SFF's Op+ body constanic, not resolve it to a value"
         );
     }
 

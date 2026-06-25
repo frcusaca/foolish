@@ -77,7 +77,7 @@ fn validate_astn(ast: &Astn) -> anyhow::Result<()> {
 ///
 /// `under_sff` (FOOP-62 #17): true when an SFF (`<<…>>`) is an ANCESTOR being built from
 /// Foolish code. While true, descendant SEARCH FIRs (plain/dot/regexp searches, Index,
-/// HeadTail) are CONSTRUCTED at ECONSTANIC so they never run — the SFF body is frozen
+/// HeadTail) are CONSTRUCTED at ECONSTANIC so they never run — the SFF body is constanic
 /// unevaluated. This is a BUILD-FROM-CODE rule ONLY; it does NOT affect constanic-cloning of
 /// an SFF child (that strips the marker and uses normal constanic-clone nyes rules).
 fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool) -> FirRef {

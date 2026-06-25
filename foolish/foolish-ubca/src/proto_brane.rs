@@ -29,7 +29,7 @@ use crate::fir_trait::{Fir, FirRef};
 pub struct ProtoBrane {
     /// Parse-time children. FIXED: the vector never grows or shrinks and no Rc
     /// slot is ever re-seated once built. The referenced FIR structs DO step
-    /// and compute in place (interior evolution), but the topology is frozen.
+    /// and compute in place (interior evolution), but the topology is constanic.
     foolish_children: Vec<FirRef>,
 
     /// Compute-time children. FIR created during evaluation — search results,
