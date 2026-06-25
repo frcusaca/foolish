@@ -40,48 +40,58 @@ INPUT:
   rsff=?(
       result=Op+(?(pattern='^x$', UNANCHORED, CONSTANT), ?(pattern='^y$', UNANCHORED, CONSTANT), WOCONSTANIC),
       pattern='^sff$',
-      UNANCHORED
+      UNANCHORED,
+      WOCONSTANIC
   );
   rsf=?(
       result=Op+(?(pattern='^x$', UNANCHORED, CONSTANT), ?(pattern='^y$', UNANCHORED, CONSTANT), WOCONSTANIC),
       pattern='^sf$',
-      UNANCHORED
+      UNANCHORED,
+      WOCONSTANIC
   );
   rsfsff=?(
       result=?(
           result=Op+(?(pattern='^x$', UNANCHORED, CONSTANT), ?(pattern='^y$', UNANCHORED, CONSTANT), WOCONSTANIC),
           pattern='^sff$',
-          UNANCHORED
+          UNANCHORED,
+          WOCONSTANIC
       ),
       pattern='^sfsff$',
-      UNANCHORED
+      UNANCHORED,
+      WOCONSTANIC
   );
   rsffsf=?(
       result=?(
           result=Op+(?(pattern='^x$', UNANCHORED, CONSTANT), ?(pattern='^y$', UNANCHORED, CONSTANT), WOCONSTANIC),
           pattern='^sf$',
-          UNANCHORED
+          UNANCHORED,
+          WOCONSTANIC
       ),
       pattern='^sffsf$',
-      UNANCHORED
+      UNANCHORED,
+      WOCONSTANIC
   );
   rsfsf=?(
       result=?(
           result=Op+(?(pattern='^x$', UNANCHORED, CONSTANT), ?(pattern='^y$', UNANCHORED, CONSTANT), WOCONSTANIC),
           pattern='^sf$',
-          UNANCHORED
+          UNANCHORED,
+          WOCONSTANIC
       ),
       pattern='^sfsf$',
-      UNANCHORED
+      UNANCHORED,
+      WOCONSTANIC
   );
   rsffsff=?(
       result=?(
           result=Op+(?(pattern='^x$', UNANCHORED, CONSTANT), ?(pattern='^y$', UNANCHORED, CONSTANT), WOCONSTANIC),
           pattern='^sff$',
-          UNANCHORED
+          UNANCHORED,
+          WOCONSTANIC
       ),
       pattern='^sffsff$',
-      UNANCHORED
+      UNANCHORED,
+      WOCONSTANIC
   )
 }
 ```
@@ -92,5 +102,5 @@ sf_sff_nested_combined
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: tT8UqgoaX2cQknxaTSOxGoatqdbkUElQJTZXD4wK3f2mTtwOZwiBraFW1mIiflGHyg6zn6JuaExvI+DIT6sOBg==
-HFS signature: b3DnmoJqhGwh8rlFcAawnuEMtNhQcBkiDorijDEMrBK0MQKJC1k0mGh4hv9dz3blHzCfVKVnkkaLRWMOvRU/DQ==
-Comments signature: L8jmU+4sw0kNQhGw2X7byIagr1xMD/m1CvoWllNbdRHDM1EiBCdp0T0Pc9V0YxMYUBwC7mCeb48oAKhB75e8AA==
+HFS signature: Qt3JL8gAI1JulEiUmydZnoVmZ2DRaPO2y3trkCLC27iFSxcbtTvf1DqMjtTuArgYXjTOzWrZcGUDN3VC1rj3Dg==
+Comments signature: 9ofD5YmhByHb6BCBHiIFQRRoqGeOvUEwZYjlk14edw160Kqe0j4oaV9aeS4vR3SU2FhIBXjfz8qWJrcCY0OcCg==

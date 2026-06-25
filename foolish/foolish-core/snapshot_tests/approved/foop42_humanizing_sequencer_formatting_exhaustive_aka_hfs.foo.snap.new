@@ -90,8 +90,18 @@ win={w_in={in_in={in_in_in=101010}}};
   dddd=4;
   shortˍsum=10;
   longˍnamedˍresultˍshowsˍalignment=Op+(
-      ?(result=Op+(6, ?(pattern='^dddd$', UNANCHORED, CONSTANT), WOCONSTANIC), pattern='^shortˍsum$', UNANCHORED),
-      ?(result=Op+(6, ?(pattern='^dddd$', UNANCHORED, CONSTANT), WOCONSTANIC), pattern='^shortˍsum$', UNANCHORED),
+      ?(
+        result=Op+(6, ?(pattern='^dddd$', UNANCHORED, CONSTANT), WOCONSTANIC),
+        pattern='^shortˍsum$',
+        UNANCHORED,
+        WOCONSTANIC
+      ),
+      ?(
+        result=Op+(6, ?(pattern='^dddd$', UNANCHORED, CONSTANT), WOCONSTANIC),
+        pattern='^shortˍsum$',
+        UNANCHORED,
+        WOCONSTANIC
+      ),
       WOCONSTANIC
   );
   veryˍlongˍidentifierˍnameˍforˍtestingˍindent=100;
@@ -101,23 +111,33 @@ win={w_in={in_in={in_in_in=101010}}};
   Δ=7;
   Σ=10;
   oneˍzero=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK;
-  divˍbyˍzeroˍinˍbraneˍmethod=?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED);
+  divˍbyˍzeroˍinˍbraneˍmethod=?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED, WOCONSTANIC);
   threeˍzero=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK;
   badˍinˍarithmetic=Op+(
-      ?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED),
+      ?(
+        result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK,
+        pattern='^oneˍzero$',
+        UNANCHORED,
+        WOCONSTANIC
+      ),
       5,
       WOCONSTANIC
   );
   chainedˍbad=Op+(
       Op+(
         10,
-        ?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED),
+        ?(
+          result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK,
+          pattern='^oneˍzero$',
+          UNANCHORED,
+          WOCONSTANIC
+        ),
         WOCONSTANIC
       ),
       20,
       WOCONSTANIC
   );
-  aliasˍofˍbad=?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED);
+  aliasˍofˍbad=?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED, WOCONSTANIC);
   fwdˍx=42;
   x=42;
   xˍagain=42;
@@ -288,5 +308,5 @@ foop42_humanizing_sequencer_formatting_exhaustive_aka_hfs
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 5CYQ9TTMJwxdSRqdDbNvIcEuEjzF0rs9DSJO0IFb7JZX52hw7oNCOG0pcpoYozWuyHWmpPLVgx2jGmPxDfKBDA==
-HFS signature: H82/uSByKh1PEnHaNmHA8vt/8RY5Lrc1LTuoI+b9FvDPIF3uFNIkGqhFlhWcCQJDccCIydZX0Yjf0oQ7L/XbCA==
-Comments signature: SdpXxKzOCbmkHnGKQ+YtqjqvoiwEgVZ/a7IYLUeyJDHcgdczLoyfbHpXDIp/FEymhcgsf6uQzrEEu1aBVKQgCg==
+HFS signature: YHKXemqmU3AfP1XlSfi+Fm+vjiTu2qHymWsP2wMRJac3/Tzg5uE7h6EvdM1fbsPT1uIomiU0lQdZQMqwZRQoAQ==
+Comments signature: rNWgDu1WHhi5Nwm8qyunQ6OLe9/Zwg3NjXVSIuI1PQwYv3G1p2TVH5ewy08PU6Lfv40uc1bldQmlD3X86yAkBw==

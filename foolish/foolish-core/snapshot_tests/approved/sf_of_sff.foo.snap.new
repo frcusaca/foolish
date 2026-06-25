@@ -18,15 +18,18 @@ INPUT:
     result=?(
         result=Op+(?(pattern='^a$', UNANCHORED, CONSTANT), ?(pattern='^b$', UNANCHORED, CONSTANT), WOCONSTANIC),
         pattern='^sff$',
-        UNANCHORED
+        UNANCHORED,
+        WOCONSTANIC
     ),
     pattern='^sf$',
-    UNANCHORED
+    UNANCHORED,
+    WOCONSTANIC
   );
   ?(
     result=Op+(?(pattern='^a$', UNANCHORED, CONSTANT), ?(pattern='^b$', UNANCHORED, CONSTANT), WOCONSTANIC),
     pattern='^sff$',
-    UNANCHORED
+    UNANCHORED,
+    WOCONSTANIC
   )
 }
 ```
@@ -37,5 +40,5 @@ sf_of_sff
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: h1VqZ8FgnPZ2bLsAmCfvaSczq/hrg2qLt+NCDHxlJTO58pkS3WuR3DKlCs5mxYNflR4ATJy8+l662ISwvkxvDA==
-HFS signature: RNpcWcSi+DADRblkxH4AEvH7uIDkBefXv1NcqF/RBSvxyVwvKViqYeTzEP/5D8fKhbohYdVxZjMVd8JrNpsfAw==
-Comments signature: LgYe1ea9b90i0UHpIiT6z6eQ1Pf/LAsqMEvHyJBFsNuCju1L4UYr2SQxDG15CQsQtCUYjg8Tp6YtTsJK86IZAw==
+HFS signature: 1vREeptOi76fBSEqr3PXfzUcm3Tl6zhAtt1qJM/RExeufRrV2NiJo3d0JUUQFUOOIa1/wjvR8ol9tuT95BMBDg==
+Comments signature: ZT2RUrRl+X2o0zKfiXT12kdT0TiPN9qninR6mj6ZcZyHRnN7lfqomqpqmrDSTxHGzEmVAQQKHnvJUyHMwyJ/CQ==

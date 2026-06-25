@@ -21,11 +21,13 @@ INPUT:
         ?(
           result=Op+(?(pattern='^a$', UNANCHORED, CONSTANT), ?(pattern='^b$', UNANCHORED, CONSTANT), WOCONSTANIC),
           pattern='^c$',
-          UNANCHORED
+          UNANCHORED,
+          WOCONSTANIC
         )
     },
     pattern='^inner$',
-    UNANCHORED
+    UNANCHORED,
+    WOCONSTANIC
   )
 }
 ```
@@ -36,5 +38,5 @@ complex_sff_in_nested_brane
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: ZIgjfGeL3aOiCFGthil+qpoFORBgbUiJ34yeWevLnvPP3orwUnFqJRnzpA9oKsQVY98pCPWMFeTGN4RdIqe4DA==
-HFS signature: eDuwubJ7MS8lz0Z19ZNn89st9Ve+G07nSk6VRY2nMzkI8YwHAJ5t+2TevxAhMiX7PJoEN529JfhizOwvyaFHDw==
-Comments signature: 8EHtjavMMSuyvd6n0TKjOrnNg+g3R7NO0Sqn5iPmRJRW/IYzWBX3QLKk2FaxmtpHARb/RhMnhqRTihdzvK9NAA==
+HFS signature: Y6HRquQVEm7E+Q7S6EKTY5klFtr6wA6SmAyriQVF4QFwwcS8nrmP24T29tFO0w0mkEUEVQhcB5chnJMmGc7BBw==
+Comments signature: 4KQYpTKz8LFh/BQNmKtrRdcqT0GpjkDDRZ4smGhxtEfgEoO8VQN8j4mnQcbwctPbF6kI3EhCu/ZpQSEmOGrwCQ==

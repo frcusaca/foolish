@@ -13,7 +13,7 @@ INPUT:
   b={WOCONSTANIC
       c=2;
       d=Op+(
-          ?(result=Op+(?(pattern='^a$', UNANCHORED, CONSTANT), 1, WOCONSTANIC), pattern='^c$', UNANCHORED),
+          ?(result=Op+(?(pattern='^a$', UNANCHORED, CONSTANT), 1, WOCONSTANIC), pattern='^c$', UNANCHORED, WOCONSTANIC),
           1,
           WOCONSTANIC
       )
@@ -27,5 +27,5 @@ cross_scope_reference_chain
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: tNHk0722tO1WsAYqGXU6E4LyluowMjg1/r7fpl7OaiRQ6cyKBRGbEhFie/i1WiZLeArBNQ7RkQ9aHdYqQ37sDg==
-HFS signature: ZRdvUybiHOv4zQIj6GMyxaH5UkMRe8grD9SEEINEf49SzwHKUfnYUWy1gqfIyumSiYNRtSzQICk1HHI8hxj3Dg==
-Comments signature: 6BrhshugPSekc8j38yP7+b6v4DLDC4zsSqXRNnAB4ULXWjZljTNR279ch2LwrOqoFx8XKQpywzEzizRZyNvhDA==
+HFS signature: /AN4+aNUTtViSCvicIYNgWIiuv3JOaRZPXXxgm3KJQ2E0ILu+p29yOsB/xQjzukbBxTyBYx/x5pi18XjQI0EDA==
+Comments signature: KzAhB7OMWhGPsLeCiAKEv7+0Ko/rPd4pp5opqf0G73cz+6j89Bogr1eEQWL45vv1lEt//DrV0ASWWRUtNuiSBw==

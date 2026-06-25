@@ -17,7 +17,8 @@ INPUT:
           ?(
             result=Op+(?(pattern='^a$', UNANCHORED, CONSTANT), ?(pattern='^b$', UNANCHORED, CONSTANT), WOCONSTANIC),
             pattern='^sum$',
-            UNANCHORED
+            UNANCHORED,
+            WOCONSTANIC
           ),
           2,
           WOCONSTANIC
@@ -33,5 +34,5 @@ complex_full_program_with_all_features
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 1SXA6C7yxC6ZpiMvulmMy1eFI1Es1+sQ6hUtwarY1vKYOMtGrpNqx+rd59gPsyK1pqAjtcEAE57YwFIWqdU2CA==
-HFS signature: KlhLEmk6cUlMpDwc6Z+m/YO0CNqytoSvamPEYflVuVgbKY1YfwopK/KeD09wpLvCI5SMBf3f9qnqtIxx3BpfDw==
-Comments signature: da6rX9k7ckRu7+3sbfUj04VSmozVPbE3xApnRDCHgBH6mRKeRI+vpP5M58fTL2v1UB7hdKN2G3hyJ5MiST5uAg==
+HFS signature: kdQuSrXZ7uq00cH+MwlyfNGAl4pY9jks4MP4KFhgEQCz2DZ/XBvjweZCfbgldEAL/ZMNL2dp82ZupT3wrnysDw==
+Comments signature: Gt+IIBK9QsG6gu75zcFVawrBvSqj86khBJbgnTQpVYTXdyJGUNaAN+DpsaY9C0ecWVH4EfR/W5dxoX9bhI/VCg==

@@ -16,7 +16,8 @@ INPUT:
   ?(
     result=Op+(?(pattern='^a$', UNANCHORED, CONSTANT), ?(pattern='^b$', UNANCHORED, CONSTANT), WOCONSTANIC),
     pattern='^c$',
-    UNANCHORED
+    UNANCHORED,
+    WOCONSTANIC
   )
 }
 ```
@@ -27,5 +28,5 @@ sff_basic
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: M+ozF2oYm4cROdzChLuxt5BpEqob22mvstBM9GOfw2F2UXnwZmokwfQrB8XQTBKx4VH4eIRMpmKFp8pMSK/mCg==
-HFS signature: hfTfoTi4FEMgtimdDU3bhcScFXBMsHzsG+PEeqBN0IvmWB2nEQXYvXLQbackLLQtDEgYZzwSFp6R5ZuD9ZCbBA==
-Comments signature: FJVH3fQ4vd5XNRDLu8BrMoLfSqXahTwNxKpEbRhEyOvA9xT0uAJjg83Nxn4hQOafD6VWLxef57vJSiVEAtbcAg==
+HFS signature: Hs5m2ZfvOks1OIKs5rAIGNCuF7RDCBfMwYH4GqPF67NkDC9aIlUrZsbwCQDxfiguKXWUkh8EvEvr/taqjnPzBA==
+Comments signature: sJq+hut2+bCAMB7O8Xm50mD59Vt6Lem61Pjb4Id1XCaGVf/NKqKF26Kork1SgfMDwUNP58qAIJXYqkJyRJI1Cg==
