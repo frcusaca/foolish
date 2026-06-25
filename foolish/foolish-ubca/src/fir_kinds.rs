@@ -31,31 +31,39 @@ use crate::proto_brane::ProtoBrane;
 ///
 /// Returns `None` if not all children are constanic yet (stay BRANING).
 pub(crate) fn _decide_nyes_due_to_children(children: &[FirRef]) -> Option<Nyes> {
-    let mut all_constanic = true;
     let mut all_constant = true;
     let mut all_independent = true;
+    let mut preconstanic_count = 0usize;
     let mut nk_count = 0usize;
     let mut econstanic_woconstanic_count = 0usize;
 
     for c in children {
-        let n = c.borrow().core().get_nyes();
-        if !n.is_constanic() {
-            all_constanic = false;
-        }
-        if n != Nyes::Constant {
-            all_constant = false;
-        }
-        if n != Nyes::Independent {
-            all_independent = false;
-        }
-        match n {
-            Nyes::Nk => nk_count += 1,
-            Nyes::Econstanic | Nyes::Woconstanic => econstanic_woconstanic_count += 1,
-            _ => {}
+        match c.borrow().core().get_nyes() {
+            Nyes::Prembrionic | Nyes::Embryonic | Nyes::Braning => {
+                preconstanic_count += 1;
+                all_constant = false;
+                all_independent = false;
+            }
+            Nyes::Nk => {
+                nk_count += 1;
+                all_constant = false;
+                all_independent = false;
+            }
+            Nyes::Econstanic | Nyes::Woconstanic => {
+                econstanic_woconstanic_count += 1;
+                all_constant = false;
+                all_independent = false;
+            }
+            Nyes::Constant => {
+                all_independent = false;
+            }
+            Nyes::Independent => {
+                all_constant = false;
+            }
         }
     }
 
-    if !all_constanic {
+    if preconstanic_count > 0 {
         return None;
     }
     if nk_count > 0 {
