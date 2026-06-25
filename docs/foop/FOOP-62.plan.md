@@ -630,18 +630,15 @@ clone with reset children.
 
 ### Fix B — `search_brane_children`: return SF frozen result, don't unwrap inner
 
-**Status:** [ ] NOT STARTED
-**File:** `foolish/foolish-worktrees/foop-62-ubca-mimo/foolish/foolish-ubca/src/fir_kinds.rs`
-**Diagnosis:** `search_brane_children` (line 839) calls `unwrap_sf_sff(body)` when a search
-finds an SF/SFF statement. This returns the **inner expression** (e.g., the search FIR `?a`)
-instead of the SF's **frozen result** from `ubc_children`. The inner search then re-resolves
-in the current context, picking up later reassignments (`a=99`).
-
-**Fix plan:**
-1. In `search_brane_children` (line 838-841), before calling `unwrap_sf_sff`, check if the
-   body is SF/SFF AND has `ubc_children` (frozen result). If so, return the frozen result
-   (`ubc_children[0]`) instead of unwrapping.
-2. Only unwrap to the inner expression if the SF hasn't settled yet (no `ubc_children`).
+**Status:** [x] DONE 2026-06-23
+**File:** `foolish/foolish-ubca/src/fir_kinds.rs`
+**Changes:**
+- Removed the `sf_inner_pattern` re-evaluation block from `search_brane_children` — search
+  finds the named statement and returns its body as-is.
+- `constanic_clone_at` now prefers `ubc_children` (frozen result) over `foolish_children`
+  (inner expression) when stripping SF/SFF markers.
+- Resolution centrally relies on NYES state and progressive stepping.
+**Result:** `sf_blocks_brane_at_assignment_time` now returns `{x=1,y=2}` (frozen). `sff_vs_sf_timing_difference`: sf=1 (frozen), sff=10 (correct).
 
 **Tests to verify:**
 ```
@@ -656,21 +653,10 @@ in the current context, picking up later reassignments (`a=99`).
 
 ### Fix C — SFF re-coordination: NICC-cloned descendants re-step against new parent chain
 
-**Status:** [ ] NOT STARTED
+**Status:** [ ] PARTIAL 2026-06-23
 **File:** `foolish/foolish-ubca/src/fir_kinds.rs`
-**Diagnosis:** When `{a=1, b=2; inner = {c = <<a+b>>; c}; inner;}` is evaluated, `inner;`
-NICC-clones the brane `{c = <<a+b>>; c}`. The SFF `<<a+b>>` has descendant searches built
-as ECONSTANIC at construction. After NICC strips the SFF mark (line 159-164), the inner
-OperatorFir's searches (reset to EMBRYONIC by NICC) should re-step against the new parent
-chain. They remain ECONSTANIC because the parent chain from the clone doesn't reach the
-outer brane where `a` and `b` live.
-
-**Fix plan:**
-1. Verify `constanic_clone_at` correctly wires the parent chain when stripping SFF marks
-   (line 161: the inner clone gets `new_parent`, not the SFF's original parent).
-2. Check that the cloned OperatorFir's searches can climb through the parent chain to find
-   `a` and `b` in the outer brane.
-3. If the parent chain is broken, fix the wiring in the SFF-stripping path.
+**Changes so far:** OperatorFir EMBRYONIC arm now uses `operands_all_settled()` (CONSTANT/INDEPENDENT only) instead of `operands_all_constanic()`. ECONSTANIC/WOCONSTANIC operands are enqueued for re-evaluation.
+**Remaining:** Search operands still show ECONSTANIC after NICC clone — the searches are not re-resolving in the new parent chain. Needs deeper investigation of the SFF stripping + NICC clone path.
 
 **Tests to verify:**
 ```
@@ -685,16 +671,10 @@ outer brane where `a` and `b` live.
 
 ### Fix D — Sequencer: `should_show_search_nyes` for WOCONSTANIC-with-result
 
-**Status:** [ ] NOT STARTED
-**File:** `foolish/foolish-ubca/src/sequencer.rs` (or wherever `should_show_search_nyes` lives)
-**Diagnosis:** `should_show_search_nyes(has_result)` suppresses NYES display when a search
-has a result AND is nnk_constanic. A WOCONSTANIC search with a result should still show
-its NYES because the result itself is not a final value.
-
-**Fix plan:**
-1. Locate `should_show_search_nyes` and the search render arms in the sequencer.
-2. Adjust the rule: show NYES for WOCONSTANIC searches even when they have a result.
-   Hide NYES only for CONSTANT/INDEPENDENT searches with a result.
+**Status:** [x] DONE 2026-06-23
+**File:** `foolish-core/src/fir.rs`
+**Changes:** `should_show_search_nyes` now only hides NYES for CONSTANT/INDEPENDENT with result (not WOCONSTANIC). WOCONSTANIC means the result is not final.
+**Result:** `chained_undeclared` — y and z now show WOCONSTANIC.
 
 **Tests to verify:**
 ```
@@ -706,12 +686,12 @@ its NYES because the result itself is not a final value.
 
 ### Fix E — Test input fixes
 
-**Status:** [ ] NOT STARTED
+**Status:** [ ] PARTIAL 2026-06-23
 **Files:** `foolish-ubca/snapshot_tests/input/*.foo`
 
-1. **regex_search_pattern.foo:** Update input to produce correct result.
-2. **anchored_search_foward.foo:** Change `hw~(.o.)` to `hw~(^.o.$)`.
-3. **Seek tests:** Consolidate `anchored_seek_positive_boundary.foo` and
+1. [x] **regex_search_pattern.foo:** Input already updated to `^a.*`.
+2. [x] **anchored_search_foward.foo:** Changed `hw~(.o.)` to `hw~(^.o.$)`.
+3. [ ] **Seek tests:** Consolidate `anchored_seek_positive_boundary.foo` and
    `anchored_seek_positive_negative.foo` into a single test.
 
 **Tests to verify:**
@@ -726,14 +706,10 @@ its NYES because the result itself is not a final value.
 
 ### Fix F — SF frozen value lost on constanic-clone (`sff_vs_sf_timing_difference`)
 
-**Status:** [ ] NOT STARTED
+**Status:** [x] DONE 2026-06-23 (same fix as Fix B)
 **File:** `foolish/foolish-ubca/src/fir_kinds.rs`
-**Diagnosis:** Input `{x = 1; sf = <x>; sff = <<x>>; x = 10; sf; sff;}` — when `sf;` is
-referenced later, it re-searches for `x` and finds `10` instead of the frozen `1`. The SF
-froze `x=1` at assignment time, but the constanic-clone of `sf` lost the frozen value.
-`sff;` is correct (shows `10` because SFF builds ECONSTANIC at construction, not frozen).
-**Fix plan:** Verify that constanic-clone of an SF-marked FIR preserves the frozen
-`ubc_children` result. Related to Fix B (search returns frozen result, not inner).
+**Changes:** Fixed by the same change as Fix B — `constanic_clone_at` prefers `ubc_children` over `foolish_children` when stripping SF/SFF.
+**Result:** `sff_vs_sf_timing_difference` — sf=1 (frozen), sff=10 (re-resolved, correct).
 
 **Tests to verify:**
 ```
@@ -771,38 +747,30 @@ settling. Likely a task-drain ordering issue or a missing re-step after SF/SFF r
 > **SUPERSEDED** by the crash-isolated repair cycle above (2026-06-23). Original items
 > preserved below for reference.
 
-- [ ] **1. SF constanic-clone resets NYES incorrectly (HIGH — core eval bug).**
+- [x] **1. SF constanic-clone resets NYES incorrectly (HIGH — core eval bug).**
       File: `sf_blocks_brane_at_assignment_time.foo.snap.new`
       Input: `{a={x=1, y=2}; s=<a>; a=99; s;}`
-      Expected: `s` = `{x=1, y=2}` (SF freezes at assignment time).
-      Actual: `s` = `99` — SF-marked search re-resolved instead of staying frozen.
-      Diagnosis: "if SFMARK(Search for a) was incorrectly constanic_copied resetting the
-      nyes, then this error occurs." This is the NYES-transfer rule bug tracked in Phase −1.
+      **RESOLVED by Fix B.** s now returns frozen {x=1,y=2}.
 
 - [ ] **2. SFF re-coordination in nested brane (HIGH — core eval bug).**
       File: `complex_sff_in_nested_brane.foo.snap.new`
       Input: `{a=1, b=2; inner = {c = <<a+b>>; c}; inner;}`
-      Expected: `inner` resolves with searches settled (WOCONSTANIC/CONSTANT).
-      Actual: searches still show `ECONSTANIC` — `inner;` reference didn't trigger
-      re-coordination. "above the `inner;` should have triggered inner.c to coordinate
-      and resolve correctly."
+      **PARTIAL — see Fix C.** OperatorFir enqueues ECONSTANIC operands, but searches still ECONSTANIC.
 
-- [ ] **3. Missing NYES display on chained searches (sequencer rendering).**
+- [x] **3. Missing NYES display on chained searches (sequencer rendering).**
       File: `chained_undeclared.foo.snap.new`
       Input: `{bad = undeclared; y = bad; z = y;}`
-      `y` and `z` search nodes don't display their NYES — should show WOCONSTANIC.
-      Sequencer suppresses NYES when it shouldn't.
+      **RESOLVED by Fix D.** y and z now show WOCONSTANIC.
 
-- [ ] **4. Regex search result incorrect (test input update).**
+- [x] **4. Regex search result incorrect (test input update).**
       File: `regex_search_pattern.foo.snap.new`
       Input: `{result = {alice = 1; bob = 2; charlie = 3;}?(a.*);}`
-      Result `3` is wrong. User: "I've updated the input" — needs input file updated
-      and result re-verified.
+      **RESOLVED by Fix E.** Input updated to `^a.*`.
 
-- [ ] **5. Test input pattern wrong (test input fix).**
+- [x] **5. Test input pattern wrong (test input fix).**
       File: `anchored_search_foward.foo.snap.new`
       `hw~(.o.)` matches "wor" of "world" — should be `hw~(^.o.$)`.
-      `hw?(.o.)` "got luck, let's keep it" — correct by accident.
+      **RESOLVED by Fix E.** Pattern corrected.
 
 - [ ] **6. Combine seek tests (test consolidation).**
       Files: `anchored_seek_positive_boundary.foo.snap.new`,
