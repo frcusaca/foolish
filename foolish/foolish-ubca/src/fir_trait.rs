@@ -178,6 +178,32 @@ pub trait Fir: std::fmt::Debug {
     fn as_sf_inner_pattern(&self) -> Option<String> {
         None
     }
+
+    fn get_my_statement(&self, self_ref: &FirRef) -> FirRef {
+        if self.kind() == FirKind::Statement {
+            return Rc::clone(self_ref);
+        }
+        match self.core().parent() {
+            Some(p) => {
+                let p_borrowed = p.borrow();
+                p_borrowed.get_my_statement(&p)
+            }
+            None => Rc::clone(self_ref),
+        }
+    }
+
+    fn get_my_brane(&self) -> Option<FirRef> {
+        match self.core().parent() {
+            Some(p) => {
+                if p.borrow().kind() == FirKind::Brane {
+                    Some(p)
+                } else {
+                    p.borrow().get_my_brane()
+                }
+            }
+            None => None,
+        }
+    }
 }
 
 /// Returns the deepest resolved value this FIR represents.
@@ -883,5 +909,56 @@ mod get_value_tests {
         let result = get_value(&sff);
         assert!(Rc::ptr_eq(&result, &sff));
         assert_eq!(result.borrow().kind(), FirKind::StayFullyFoolish);
+    }
+
+    #[test]
+    fn get_my_statement_returns_self_if_statement() {
+        let ci = make_ci(42);
+        let stmt = make_stmt("x", 10, ci);
+        let result = stmt.borrow().get_my_statement(&stmt);
+        assert!(Rc::ptr_eq(&result, &stmt));
+    }
+
+    #[test]
+    fn get_my_statement_climbs_to_parent_statement() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile("{x = 1 + 2;}").unwrap().pop().unwrap();
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let stmt = &stmts[0];
+        let body = stmt.borrow().core().foolish_children().first().unwrap().clone();
+        let result = body.borrow().get_my_statement(&body);
+        assert!(Rc::ptr_eq(&result, stmt));
+    }
+
+    #[test]
+    fn get_my_brane_returns_parent_brane() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile("{x = 1;}").unwrap().pop().unwrap();
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let stmt = &stmts[0];
+        let result = stmt.borrow().get_my_brane();
+        assert!(result.is_some());
+        assert!(Rc::ptr_eq(&result.unwrap(), &root));
+    }
+
+    #[test]
+    fn get_my_brane_climbs_through_operator() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile("{x = 1 + 2;}").unwrap().pop().unwrap();
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let stmt = &stmts[0];
+        let body = stmt.borrow().core().foolish_children().first().unwrap().clone();
+        let result = body.borrow().get_my_brane();
+        assert!(result.is_some());
+        assert!(Rc::ptr_eq(&result.unwrap(), &root));
+    }
+
+    #[test]
+    fn get_my_brane_returns_self_for_root_brane() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile("{x = 1;}").unwrap().pop().unwrap();
+        let result = root.borrow().get_my_brane();
+        assert!(result.is_some());
+        assert!(Rc::ptr_eq(&result.unwrap(), &root));
     }
 }
