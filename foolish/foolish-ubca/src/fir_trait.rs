@@ -202,11 +202,11 @@ pub trait Fir: std::fmt::Debug {
         }
     }
 
-    fn ib_search(&self, _self_ref: &FirRef, _name: &str, _forward: bool) -> Option<(FirRef, Nyes)> {
+    fn ib_search(&self, _self_ref: &FirRef, _name: &str) -> Option<(FirRef, Nyes)> {
         None
     }
 
-    fn ab_search(&self, _self_ref: &FirRef, _name: &str, _forward: bool) -> Option<(FirRef, Nyes)> {
+    fn ab_search(&self, _self_ref: &FirRef, _name: &str) -> Option<(FirRef, Nyes)> {
         None
     }
 }
@@ -973,7 +973,7 @@ mod get_value_tests {
         let root = Compiler::compile("{x = 1; y = x;}").unwrap().pop().unwrap();
         let stmts = root.borrow().core().foolish_children().to_vec();
         let y_stmt = &stmts[1]; // y = x
-        let result = y_stmt.borrow().ib_search(y_stmt, "x", false);
+        let result = y_stmt.borrow().ib_search(y_stmt, "x");
         assert!(result.is_some());
         let (body, nyes) = result.unwrap();
         assert_eq!(body.borrow().kind(), FirKind::IndepInt);
@@ -986,7 +986,7 @@ mod get_value_tests {
         let root = Compiler::compile("{x = 1;}").unwrap().pop().unwrap();
         let stmts = root.borrow().core().foolish_children().to_vec();
         let x_stmt = &stmts[0];
-        let result = x_stmt.borrow().ib_search(x_stmt, "missing", false);
+        let result = x_stmt.borrow().ib_search(x_stmt, "missing");
         assert!(result.is_none());
     }
 
@@ -999,9 +999,9 @@ mod get_value_tests {
         let inner_brane = inner_stmt.borrow().core().foolish_children().first().unwrap().clone();
         let inner_stmts = inner_brane.borrow().core().foolish_children().to_vec();
         let y_stmt = &inner_stmts[0]; // y = x
-        let result = y_stmt.borrow().ib_search(y_stmt, "x", false);
+        let result = y_stmt.borrow().ib_search(y_stmt, "x");
         assert!(result.is_none(), "x should not be found in inner brane");
-        let result = inner_brane.borrow().ab_search(&inner_brane, "x", false);
+        let result = inner_brane.borrow().ab_search(&inner_brane, "x");
         assert!(result.is_some(), "x should be found via ab_search");
         let (body, nyes) = result.unwrap();
         assert_eq!(body.borrow().kind(), FirKind::IndepInt);
