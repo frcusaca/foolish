@@ -595,7 +595,7 @@ impl Fir for BraneFir {
 }
 
 impl BraneFir {
-    fn _search_brane(&self, expression: &str, starting_index: usize, ending_index: usize) -> Option<(FirRef, Nyes)> {
+    fn _search_brane(&self, expression: &str, starting_index: usize, ending_index: usize) -> Option<(usize, FirRef, Nyes)> {
         let children = self.core.foolish_children();
         if starting_index >= children.len() || ending_index >= children.len() {
             panic!("_search_brane: index out of bounds (start={}, end={}, len={})",
@@ -613,7 +613,7 @@ impl BraneFir {
                 if matches_pattern(sn, expression) {
                     if let Some(body) = child_borrowed.core().foolish_children().first() {
                         let body_nyes = body.borrow().core().get_nyes();
-                        return Some((Rc::clone(body), body_nyes));
+                        return Some((i, Rc::clone(body), body_nyes));
                     }
                 }
             }
