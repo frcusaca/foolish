@@ -528,7 +528,7 @@ impl Fir for StatementFir {
     }
 
     fn ib_search(&self, self_ref: &FirRef, name: &str) -> Option<(FirRef, Nyes)> {
-        let brane = self.get_my_brane()?;
+        let brane = self.get_my_brane(self_ref)?;
         search_brane_children(&brane, name, Some(self.line_number), false)
             .map(|(body, nyes, _sf_pat)| (body, nyes))
     }
@@ -585,7 +585,10 @@ impl Fir for BraneFir {
             return Some((body, nyes));
         }
         drop(stmt_borrowed);
-        let parent_brane = self.get_my_brane()?;
+        let parent_brane = self.get_my_brane(self_ref)?;
+        if Rc::ptr_eq(&parent_brane, self_ref) {
+            return None;
+        }
         let pb = parent_brane.borrow();
         pb.ab_search(&parent_brane, name)
     }

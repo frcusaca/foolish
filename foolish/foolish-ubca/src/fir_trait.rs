@@ -183,19 +183,28 @@ pub trait Fir: std::fmt::Debug {
         match self.kind() {
             FirKind::Statement => Rc::clone(self_ref),
             _ => match self.core().parent() {
-                Some(p) => p.borrow().get_my_statement(&p),
+                Some(p) => {
+                    if Rc::ptr_eq(&p, self_ref) {
+                        Rc::clone(self_ref)
+                    } else {
+                        p.borrow().get_my_statement(&p)
+                    }
+                }
                 None => Rc::clone(self_ref),
             },
         }
     }
 
-    fn get_my_brane(&self) -> Option<FirRef> {
+    fn get_my_brane(&self, self_ref: &FirRef) -> Option<FirRef> {
         match self.core().parent() {
             Some(p) => {
+                if Rc::ptr_eq(&p, self_ref) {
+                    return None;
+                }
                 let kind = p.borrow().kind();
                 match kind {
                     FirKind::Brane => Some(p),
-                    _ => p.borrow().get_my_brane(),
+                    _ => p.borrow().get_my_brane(&p),
                 }
             }
             None => None,
@@ -941,7 +950,7 @@ mod get_value_tests {
         let root = Compiler::compile("{x = 1;}").unwrap().pop().unwrap();
         let stmts = root.borrow().core().foolish_children().to_vec();
         let stmt = &stmts[0];
-        let result = stmt.borrow().get_my_brane();
+        let result = stmt.borrow().get_my_brane(stmt);
         assert!(result.is_some());
         assert!(Rc::ptr_eq(&result.unwrap(), &root));
     }
@@ -953,7 +962,7 @@ mod get_value_tests {
         let stmts = root.borrow().core().foolish_children().to_vec();
         let stmt = &stmts[0];
         let body = stmt.borrow().core().foolish_children().first().unwrap().clone();
-        let result = body.borrow().get_my_brane();
+        let result = body.borrow().get_my_brane(&body);
         assert!(result.is_some());
         assert!(Rc::ptr_eq(&result.unwrap(), &root));
     }
@@ -962,9 +971,8 @@ mod get_value_tests {
     fn get_my_brane_returns_self_for_root_brane() {
         use crate::compiler::Compiler;
         let root = Compiler::compile("{x = 1;}").unwrap().pop().unwrap();
-        let result = root.borrow().get_my_brane();
-        assert!(result.is_some());
-        assert!(Rc::ptr_eq(&result.unwrap(), &root));
+        let result = root.borrow().get_my_brane(&root);
+        assert!(result.is_none());
     }
 
     #[test]
@@ -1005,5 +1013,16 @@ mod get_value_tests {
         assert!(result.is_some(), "x should be found via ab_search");
         let (body, nyes) = result.unwrap();
         assert_eq!(body.borrow().kind(), FirKind::IndepInt);
+    }
+
+    #[test]
+    fn ab_search_returns_none_when_not_found() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile("{x = 1; inner = {y = x;};}").unwrap().pop().unwrap();
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let inner_stmt = &stmts[1]; // inner = {y = x;}
+        let inner_brane = inner_stmt.borrow().core().foolish_children().first().unwrap().clone();
+        let result = inner_brane.borrow().ab_search(&inner_brane, "nonexistent");
+        assert!(result.is_none(), "nonexistent should not be found anywhere");
     }
 }
