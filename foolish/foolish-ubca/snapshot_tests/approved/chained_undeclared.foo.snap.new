@@ -1,4 +1,4 @@
-Thu Jun 25 05:17:53 PM PDT 2026 cat chained_undeclared.foo.snap.new---
+---
 source: foolish-ubca/src/ubca_snapshot_tester.rs
 assertion_line: 34
 ---
@@ -10,10 +10,9 @@ INPUT:
 ```hfssnap
 {WOCONSTANIC
   bad=?(pattern='^undeclared$', UNANCHORED, ECONSTANIC);
-  y=?(result=?(pattern='^undeclared$', UNANCHORED, ECONSTANIC), pattern='^bad$', UNANCHORED, WOCONSTANIC); 
+  y=?(result=?(pattern='^undeclared$', UNANCHORED, ECONSTANIC), pattern='^bad$', UNANCHORED, WOCONSTANIC);
   z=?(
       result=?(result=?(pattern='^undeclared$', UNANCHORED, ECONSTANIC), pattern='^bad$', UNANCHORED, WOCONSTANIC),
-@agent, still too many layers of woconstanics0
       pattern='^y$',
       UNANCHORED,
       WOCONSTANIC

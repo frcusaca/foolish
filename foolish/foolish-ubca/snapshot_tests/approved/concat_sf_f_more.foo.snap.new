@@ -1,4 +1,4 @@
-Thu Jun 25 05:15:18 PM PDT 2026 cat concat_sf_f_more.foo.snap.new---
+---
 source: foolish-ubca/src/ubca_snapshot_tester.rs
 assertion_line: 34
 ---
@@ -114,7 +114,7 @@ INPUT:
   <<PREMBRIONIC
     ?(pattern='^f3$', UNANCHORED)
   >>;
-  d=$(PREMBRIONIC) @agents, this is obviously wrong
+  d=$(PREMBRIONIC)
 }
 ```
 COMMENTS:
