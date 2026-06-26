@@ -180,15 +180,12 @@ pub trait Fir: std::fmt::Debug {
     }
 
     fn get_my_statement(&self, self_ref: &FirRef) -> FirRef {
-        if self.kind() == FirKind::Statement {
-            return Rc::clone(self_ref);
-        }
-        match self.core().parent() {
-            Some(p) => {
-                let p_borrowed = p.borrow();
-                p_borrowed.get_my_statement(&p)
-            }
-            None => Rc::clone(self_ref),
+        match self.kind() {
+            FirKind::Statement => Rc::clone(self_ref),
+            _ => match self.core().parent() {
+                Some(p) => p.borrow().get_my_statement(&p),
+                None => Rc::clone(self_ref),
+            },
         }
     }
 
