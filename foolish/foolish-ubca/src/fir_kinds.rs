@@ -1,6 +1,6 @@
 //! FIR kinds — leaf, operator, statement, and brane nodes.
 //!
-//! Leaf kinds (ConstantInt, Nk) are the simplest: no children, no task queue,
+//! Leaf kinds (IndepInt, Nk) are the simplest: no children, no task queue,
 //! immediate terminal NYES states.  Operator has two operand children.
 //! Statement wraps a single body expression.  Brane contains an ordered list
 //! of statement children that drain sequentially.
@@ -72,6 +72,7 @@ pub(crate) fn _decide_nyes_due_to_children(children: &[FirRef]) -> Option<Nyes> 
         return Some(Nyes::Nk);
     }
 
+    eprintln!("ALARM: could not decide Nyes due to children.");
     return None;
 }
 
@@ -169,6 +170,24 @@ fn deepest_econstanic_in_chain(search: &FirRef) -> Option<FirRef> {
     }
 }
 
+/// Clone a ProtoBrane's children (foolish + ubc) via `constanic_clone_at`.
+/// Expands inline to avoid double-borrow issues with `Rc::new_cyclic`.
+macro_rules! clone_proto_brane {
+    ($source:expr, $self_weak:expr, $new_parent:expr, $nyes:expr, $foolish:expr) => {{
+        let cloned_children: Vec<FirRef> = $source
+            .foolish_children()
+            .iter()
+            .enumerate()
+            .map(|(i, c)| constanic_clone_at(c, &$self_weak, i, $foolish))
+            .collect();
+        let core = ProtoBrane::new(cloned_children, $new_parent.clone(), clone_nyes($nyes, $foolish));
+        for ubc in $source.ubc_children() {
+            core.push_ubc_child(constanic_clone_at(&ubc, &$self_weak, 0, $foolish));
+        }
+        core
+    }};
+}
+
 /// Constanic-clone of a result for `ubc_children`.
 ///
 /// `descendent_of_sfm_and_foolishly_ignorant` selects the mode (see `clone_nyes`). At the
@@ -208,8 +227,8 @@ fn constanic_clone_at(
     let borrowed = fir_ref.borrow();
     let kind = borrowed.kind();
     match kind {
-        FirKind::ConstantInt => {
-            Rc::new(RefCell::new(ConstantIntFir {
+        FirKind::IndepInt => {
+            Rc::new(RefCell::new(IndepIntFir {
                 core: ProtoBrane::new(vec![], new_parent.clone(), borrowed.core().get_nyes()),
                 value: borrowed.as_i64().unwrap_or(0),
             }))
@@ -224,17 +243,7 @@ fn constanic_clone_at(
             let op_name = borrowed.as_op_name().unwrap_or("?").to_owned();
             Rc::new_cyclic(|me: &Weak<RefCell<OperatorFir>>| {
                 let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-                let cloned_children: Vec<FirRef> = borrowed
-                    .core()
-                    .foolish_children()
-                    .iter()
-                    .enumerate()
-                    .map(|(i, c)| constanic_clone_at(c, &self_weak, i, descendent_of_sfm_and_foolishly_ignorant))
-                    .collect();
-                let core = ProtoBrane::new(cloned_children, new_parent.clone(), clone_nyes(nyes, descendent_of_sfm_and_foolishly_ignorant));
-                for ubc in borrowed.core().ubc_children() {
-                    core.push_ubc_child(constanic_clone_at(&ubc, &self_weak, 0, descendent_of_sfm_and_foolishly_ignorant));
-                }
+                let core = clone_proto_brane!(borrowed.core(), self_weak, new_parent, nyes, descendent_of_sfm_and_foolishly_ignorant);
                 RefCell::new(OperatorFir { core, op: op_name })
             })
         }
@@ -289,17 +298,7 @@ fn constanic_clone_at(
             let anchored = borrowed.as_index_anchored();
             Rc::new_cyclic(|me: &Weak<RefCell<IndexFir>>| {
                 let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-                let cloned_children: Vec<FirRef> = borrowed
-                    .core()
-                    .foolish_children()
-                    .iter()
-                    .enumerate()
-                    .map(|(i, c)| constanic_clone_at(c, &self_weak, i, descendent_of_sfm_and_foolishly_ignorant))
-                    .collect();
-                let core = ProtoBrane::new(cloned_children, new_parent.clone(), clone_nyes(nyes, descendent_of_sfm_and_foolishly_ignorant));
-                for ubc in borrowed.core().ubc_children() {
-                    core.push_ubc_child(constanic_clone_at(&ubc, &self_weak, 0, descendent_of_sfm_and_foolishly_ignorant));
-                }
+                let core = clone_proto_brane!(borrowed.core(), self_weak, new_parent, nyes, descendent_of_sfm_and_foolishly_ignorant);
                 RefCell::new(IndexFir { core, offset, anchored })
             })
         }
@@ -308,17 +307,7 @@ fn constanic_clone_at(
             let anchored = borrowed.as_headtail_anchored();
             Rc::new_cyclic(|me: &Weak<RefCell<HeadTailFir>>| {
                 let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-                let cloned_children: Vec<FirRef> = borrowed
-                    .core()
-                    .foolish_children()
-                    .iter()
-                    .enumerate()
-                    .map(|(i, c)| constanic_clone_at(c, &self_weak, i, descendent_of_sfm_and_foolishly_ignorant))
-                    .collect();
-                let core = ProtoBrane::new(cloned_children, new_parent.clone(), clone_nyes(nyes, descendent_of_sfm_and_foolishly_ignorant));
-                for ubc in borrowed.core().ubc_children() {
-                    core.push_ubc_child(constanic_clone_at(&ubc, &self_weak, 0, descendent_of_sfm_and_foolishly_ignorant));
-                }
+                let core = clone_proto_brane!(borrowed.core(), self_weak, new_parent, nyes, descendent_of_sfm_and_foolishly_ignorant);
                 RefCell::new(HeadTailFir { core, is_head, anchored })
             })
         }
@@ -328,53 +317,23 @@ fn constanic_clone_at(
         FirKind::Concatenation => {
             Rc::new_cyclic(|me: &Weak<RefCell<ConcatenationFir>>| {
                 let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-                let cloned_children: Vec<FirRef> = borrowed
-                    .core()
-                    .foolish_children()
-                    .iter()
-                    .enumerate()
-                    .map(|(i, c)| constanic_clone_at(c, &self_weak, i, descendent_of_sfm_and_foolishly_ignorant))
-                    .collect();
-                let core = ProtoBrane::new(cloned_children, new_parent.clone(), clone_nyes(nyes, descendent_of_sfm_and_foolishly_ignorant));
-                for ubc in borrowed.core().ubc_children() {
-                    core.push_ubc_child(constanic_clone_at(&ubc, &self_weak, 0, descendent_of_sfm_and_foolishly_ignorant));
-                }
+                let core = clone_proto_brane!(borrowed.core(), self_weak, new_parent, nyes, descendent_of_sfm_and_foolishly_ignorant);
                 RefCell::new(ConcatenationFir { core })
             })
         }
         FirKind::Statement => {
             let name = borrowed.as_stmt_name().unwrap_or("").to_owned();
-            let line = index; // Use the index parameter as line_number
+            let line = index;
             Rc::new_cyclic(|me: &Weak<RefCell<StatementFir>>| {
                 let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-                let cloned_children: Vec<FirRef> = borrowed
-                    .core()
-                    .foolish_children()
-                    .iter()
-                    .enumerate()
-                    .map(|(i, c)| constanic_clone_at(c, &self_weak, i, descendent_of_sfm_and_foolishly_ignorant))
-                    .collect();
-                let core = ProtoBrane::new(cloned_children, new_parent.clone(), clone_nyes(nyes, descendent_of_sfm_and_foolishly_ignorant));
-                for ubc in borrowed.core().ubc_children() {
-                    core.push_ubc_child(constanic_clone_at(&ubc, &self_weak, 0, descendent_of_sfm_and_foolishly_ignorant));
-                }
+                let core = clone_proto_brane!(borrowed.core(), self_weak, new_parent, nyes, descendent_of_sfm_and_foolishly_ignorant);
                 RefCell::new(StatementFir { core, name, line_number: line })
             })
         }
         FirKind::Brane => {
             Rc::new_cyclic(|me: &Weak<RefCell<BraneFir>>| {
                 let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-                let cloned_children: Vec<FirRef> = borrowed
-                    .core()
-                    .foolish_children()
-                    .iter()
-                    .enumerate()
-                    .map(|(i, c)| constanic_clone_at(c, &self_weak, i, descendent_of_sfm_and_foolishly_ignorant))
-                    .collect();
-                let core = ProtoBrane::new(cloned_children, new_parent.clone(), clone_nyes(nyes, descendent_of_sfm_and_foolishly_ignorant));
-                for ubc in borrowed.core().ubc_children() {
-                    core.push_ubc_child(constanic_clone_at(&ubc, &self_weak, 0, descendent_of_sfm_and_foolishly_ignorant));
-                }
+                let core = clone_proto_brane!(borrowed.core(), self_weak, new_parent, nyes, descendent_of_sfm_and_foolishly_ignorant);
                 RefCell::new(BraneFir {
                     core,
                     characterizations: borrowed.as_brane_characterizations().to_vec(),
@@ -390,25 +349,25 @@ fn constanic_clone_at(
     }
 }
 
-// ── ConstantIntFir ──────────────────────────────────────────────────────────
+// ── IndepIntFir ──────────────────────────────────────────────────────────
 
 /// A leaf FIR representing a known integer constant.
 ///
 /// NYES progression: Prembrionic → Constant (immediate, one step).
 #[derive(Debug)]
-pub struct ConstantIntFir {
+pub struct IndepIntFir {
     pub(crate) core: ProtoBrane,
     pub(crate) value: i64,
 }
 
-impl ConstantIntFir {
+impl IndepIntFir {
     /// The integer value held by this leaf.
     pub fn value(&self) -> i64 {
         self.value
     }
 }
 
-impl Fir for ConstantIntFir {
+impl Fir for IndepIntFir {
     fn core(&self) -> &ProtoBrane {
         &self.core
     }
@@ -422,7 +381,7 @@ impl Fir for ConstantIntFir {
     }
 
     fn kind(&self) -> FirKind {
-        FirKind::ConstantInt
+        FirKind::IndepInt
     }
 
     fn as_i64(&self) -> Option<i64> {
@@ -625,9 +584,9 @@ impl OperatorFir {
                     }
                 };
 
-                let result_ref: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<ConstantIntFir>>| {
+                let result_ref: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<IndepIntFir>>| {
                     let parent: Weak<RefCell<dyn Fir>> = me.clone();
-                    RefCell::new(ConstantIntFir {
+                    RefCell::new(IndepIntFir {
                         core: ProtoBrane::new(vec![], parent, Nyes::Constant),
                         value: result,
                     })
@@ -1538,11 +1497,11 @@ impl Fir for ConcatenationFir {
 
 // ── Builders ────────────────────────────────────────────────────────────────
 
-/// Build a `ConstantIntFir` leaf wrapped in `FirRef`.
+/// Build a `IndepIntFir` leaf wrapped in `FirRef`.
 ///
 /// Starts at Prembrionic; stepping transitions it to Constant.
 pub fn constant_int(value: i64, parent: Weak<RefCell<dyn Fir>>) -> FirRef {
-    Rc::new(RefCell::new(ConstantIntFir {
+    Rc::new(RefCell::new(IndepIntFir {
         core: ProtoBrane::new(vec![], parent, Nyes::Prembrionic),
         value,
     }))
@@ -1643,9 +1602,9 @@ mod tests {
     /// Helper: create a self-rooting FirRef for standalone testing.
     /// The parent Weak points at the node itself (root convention).
     fn make_constant_int(value: i64) -> FirRef {
-        Rc::new_cyclic(|me: &Weak<RefCell<ConstantIntFir>>| {
+        Rc::new_cyclic(|me: &Weak<RefCell<IndepIntFir>>| {
             let parent: Weak<RefCell<dyn Fir>> = me.clone();
-            RefCell::new(ConstantIntFir {
+            RefCell::new(IndepIntFir {
                 core: ProtoBrane::new(vec![], parent, Nyes::Prembrionic),
                 value,
             })
@@ -1682,7 +1641,7 @@ mod tests {
             StepReport::NoProgress => panic!("expected progress on first step"),
         }
 
-        eprintln!("ConstantInt NYES transitions: {transitions:?}");
+        eprintln!("IndepInt NYES transitions: {transitions:?}");
         assert_eq!(transitions, vec![Nyes::Prembrionic, Nyes::Constant]);
 
         // Settled after one step
@@ -1691,11 +1650,11 @@ mod tests {
         // Value is accessible
         assert_eq!(node.borrow().core().get_nyes(), Nyes::Constant);
         // Access value through the concrete type via FirRef
-        // (we know it's a ConstantIntFir from construction)
+        // (we know it's a IndepIntFir from construction)
         let borrowed = node.borrow();
         assert_eq!(borrowed.core().get_nyes(), Nyes::Constant);
         // The value is accessible via downcast or the kind() check
-        assert_eq!(borrowed.kind(), FirKind::ConstantInt);
+        assert_eq!(borrowed.kind(), FirKind::IndepInt);
     }
 
     #[test]
@@ -1707,7 +1666,7 @@ mod tests {
         let _ = step_fir_ref(&node, &scope).unwrap();
 
         // Verify the value via the Fir trait's kind()
-        assert_eq!(node.borrow().kind(), FirKind::ConstantInt);
+        assert_eq!(node.borrow().kind(), FirKind::IndepInt);
     }
 
     #[test]
@@ -1794,9 +1753,9 @@ mod tests {
     #[test]
     fn constant_int_builder_sets_prembrionic() {
         // Use the public builder with a dummy parent Weak
-        let dummy: Rc<RefCell<dyn Fir>> = Rc::new_cyclic(|me: &Weak<RefCell<ConstantIntFir>>| {
+        let dummy: Rc<RefCell<dyn Fir>> = Rc::new_cyclic(|me: &Weak<RefCell<IndepIntFir>>| {
             let parent: Weak<RefCell<dyn Fir>> = me.clone();
-            RefCell::new(ConstantIntFir {
+            RefCell::new(IndepIntFir {
                 core: ProtoBrane::new(vec![], parent, Nyes::Constant),
                 value: 0,
             })
@@ -1805,7 +1764,7 @@ mod tests {
         let node = constant_int(99, parent_weak);
 
         assert_eq!(node.borrow().core().get_nyes(), Nyes::Prembrionic);
-        assert_eq!(node.borrow().kind(), FirKind::ConstantInt);
+        assert_eq!(node.borrow().kind(), FirKind::IndepInt);
     }
 
     #[test]
@@ -1928,7 +1887,7 @@ mod tests {
 
         let ubc = op.borrow().core().ubc_children().to_vec();
         assert_eq!(ubc.len(), 1);
-        assert_eq!(ubc[0].borrow().kind(), FirKind::ConstantInt);
+        assert_eq!(ubc[0].borrow().kind(), FirKind::IndepInt);
         assert_eq!(ubc[0].borrow().as_i64(), Some(8));
     }
 
@@ -2040,9 +1999,9 @@ mod tests {
 
     #[test]
     fn operator_builder_sets_prembrionic() {
-        let dummy: Rc<RefCell<dyn Fir>> = Rc::new_cyclic(|me: &Weak<RefCell<ConstantIntFir>>| {
+        let dummy: Rc<RefCell<dyn Fir>> = Rc::new_cyclic(|me: &Weak<RefCell<IndepIntFir>>| {
             let parent: Weak<RefCell<dyn Fir>> = me.clone();
-            RefCell::new(ConstantIntFir {
+            RefCell::new(IndepIntFir {
                 core: ProtoBrane::new(vec![], parent, Nyes::Constant),
                 value: 0,
             })
@@ -2063,7 +2022,7 @@ mod tests {
         let scope = Scope::empty();
 
         let transitions = step_to_settled(&stmt, &scope);
-        eprintln!("Statement(ConstantInt) NYES transitions: {transitions:?}");
+        eprintln!("Statement(IndepInt) NYES transitions: {transitions:?}");
 
         assert_eq!(transitions.first(), Some(&Nyes::Prembrionic));
         assert_eq!(transitions.last(), Some(&Nyes::Constant));
@@ -2098,9 +2057,9 @@ mod tests {
 
     #[test]
     fn statement_builder_sets_prembrionic() {
-        let dummy: Rc<RefCell<dyn Fir>> = Rc::new_cyclic(|me: &Weak<RefCell<ConstantIntFir>>| {
+        let dummy: Rc<RefCell<dyn Fir>> = Rc::new_cyclic(|me: &Weak<RefCell<IndepIntFir>>| {
             let parent: Weak<RefCell<dyn Fir>> = me.clone();
-            RefCell::new(ConstantIntFir {
+            RefCell::new(IndepIntFir {
                 core: ProtoBrane::new(vec![], parent, Nyes::Constant),
                 value: 0,
             })
@@ -2205,9 +2164,9 @@ mod tests {
 
     #[test]
     fn brane_builder_sets_prembrionic() {
-        let dummy: Rc<RefCell<dyn Fir>> = Rc::new_cyclic(|me: &Weak<RefCell<ConstantIntFir>>| {
+        let dummy: Rc<RefCell<dyn Fir>> = Rc::new_cyclic(|me: &Weak<RefCell<IndepIntFir>>| {
             let parent: Weak<RefCell<dyn Fir>> = me.clone();
-            RefCell::new(ConstantIntFir {
+            RefCell::new(IndepIntFir {
                 core: ProtoBrane::new(vec![], parent, Nyes::Constant),
                 value: 0,
             })
@@ -2604,7 +2563,7 @@ mod tests {
         let scope = Scope::empty();
 
         let transitions = step_to_settled(&sf, &scope);
-        eprintln!("SF(ConstantInt) NYES transitions: {transitions:?}");
+        eprintln!("SF(IndepInt) NYES transitions: {transitions:?}");
 
         assert_eq!(transitions.first(), Some(&Nyes::Prembrionic));
         assert_eq!(transitions.last(), Some(&Nyes::Constant));
@@ -2644,9 +2603,9 @@ mod tests {
 
     #[test]
     fn stay_foolish_builder_sets_prembrionic() {
-        let dummy: Rc<RefCell<dyn Fir>> = Rc::new_cyclic(|me: &Weak<RefCell<ConstantIntFir>>| {
+        let dummy: Rc<RefCell<dyn Fir>> = Rc::new_cyclic(|me: &Weak<RefCell<IndepIntFir>>| {
             let parent: Weak<RefCell<dyn Fir>> = me.clone();
-            RefCell::new(ConstantIntFir {
+            RefCell::new(IndepIntFir {
                 core: ProtoBrane::new(vec![], parent, Nyes::Constant),
                 value: 0,
             })
@@ -2670,7 +2629,7 @@ mod tests {
         assert_eq!(sf.borrow().core().get_nyes(), Nyes::Constant);
         let ubc = sf.borrow().core().ubc_children();
         assert_eq!(ubc.len(), 1, "SF should constanic-clone result into ubc_children");
-        assert_eq!(ubc[0].borrow().kind(), FirKind::ConstantInt);
+        assert_eq!(ubc[0].borrow().kind(), FirKind::IndepInt);
         assert_eq!(ubc[0].borrow().as_i64(), Some(42));
     }
 
@@ -2779,9 +2738,9 @@ mod tests {
 
     #[test]
     fn stay_fully_foolish_builder_sets_prembrionic() {
-        let dummy: Rc<RefCell<dyn Fir>> = Rc::new_cyclic(|me: &Weak<RefCell<ConstantIntFir>>| {
+        let dummy: Rc<RefCell<dyn Fir>> = Rc::new_cyclic(|me: &Weak<RefCell<IndepIntFir>>| {
             let parent: Weak<RefCell<dyn Fir>> = me.clone();
-            RefCell::new(ConstantIntFir {
+            RefCell::new(IndepIntFir {
                 core: ProtoBrane::new(vec![], parent, Nyes::Constant),
                 value: 0,
             })
@@ -2804,7 +2763,7 @@ mod tests {
 
     /// A self-Weak suitable as `new_parent` for a standalone clone.
     fn dangling_parent() -> Weak<RefCell<dyn Fir>> {
-        Weak::<RefCell<ConstantIntFir>>::new()
+        Weak::<RefCell<IndepIntFir>>::new()
     }
 
     /// `clone_nyes` rule in isolation. Input is always CONSTANIC (a constanic clone is only
@@ -2893,7 +2852,7 @@ mod tests {
         assert_eq!(cloned.borrow().core().get_nyes(), Nyes::Econstanic);
     }
 
-    /// Leaves (ConstantInt/Nk) transfer their NYES unchanged in BOTH modes.
+    /// Leaves (IndepInt/Nk) transfer their NYES unchanged in BOTH modes.
     #[test]
     fn leaf_clone_unchanged_both_modes() {
         let ci = make_constant_int(9);
@@ -2927,7 +2886,7 @@ mod tests {
             FirKind::StayFoolish,
             "normal clone of an SF must NOT be a StayFoolish wrapper"
         );
-        assert_eq!(normal.borrow().kind(), FirKind::ConstantInt);
+        assert_eq!(normal.borrow().kind(), FirKind::IndepInt);
 
         let foolish = constanic_clone_at(&sf, &dangling_parent(), 0, true);
         assert_ne!(
@@ -3116,7 +3075,7 @@ mod tests {
     fn constant_int_nyes_transitions() {
         let n = make_constant_int(7);
         let trace = step_to_settled(&n, &Scope::empty());
-        assert_progression(&trace, Nyes::Constant, "ConstantInt");
+        assert_progression(&trace, Nyes::Constant, "IndepInt");
     }
 
     #[test]
@@ -3248,7 +3207,7 @@ mod tests {
     fn stay_fully_foolish_nyes_transitions() {
         let sff = make_stay_fully_foolish(make_constant_int(42));
         let trace = step_to_settled(&sff, &Scope::empty());
-        // SFF steps child (ConstantInt 42 → CONSTANT), then settles to CONSTANT.
+        // SFF steps child (IndepInt 42 → CONSTANT), then settles to CONSTANT.
         assert_progression(&trace, Nyes::Constant, "StayFullyFoolish");
     }
 

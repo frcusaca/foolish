@@ -556,6 +556,13 @@ through.
   - [ ] Remove `/home/hcbusy/tmp/foolish-worktrees/foop-62-ubca-mimo`
   - [ ] This is the last checkbox to be checked in FOOP-62.plan.md
 
+- [ ] **Centralize ProtoBrane constanic cloning.** Every FirKind match arm in `constanic_clone_at`
+      duplicates the same pattern: clone `foolish_children` recursively, create `ProtoBrane::new`
+      with `clone_nyes`, clone `ubc_children` recursively. Extract this into a single
+      `clone_proto_brane(source: &ProtoBrane, new_parent, index, foolish_flag)` helper that all
+      compound kinds call. This eliminates ~200 lines of duplicated clone logic and ensures new
+      FIR kinds automatically get correct clone behavior.
+
 ## Bug fix set — crash-isolated repair cycle (2026-06-23)
 
 > **CRASH ISOLATION PROTOCOL.** One snapshot test triggers a Rust runtime error that kills the

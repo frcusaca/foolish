@@ -5,7 +5,7 @@ use anyhow::anyhow;
 use foolish_parser::{AssignmentOperator, Astn, SearchOperator};
 
 use crate::fir_kinds::{
-    BraneFir, ConcatenationFir, ConstantIntFir, IndexFir, NkFir, OperatorFir, SearchFir,
+    BraneFir, ConcatenationFir, IndepIntFir, IndexFir, NkFir, OperatorFir, SearchFir,
     StatementFir, StayFoolishFir, StayFullyFoolishFir,
 };
 use crate::fir_trait::{Fir, FirRef};
@@ -103,7 +103,7 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
     }
     match ast {
         // Leaves have no children, so they never self-root and need no self-Weak.
-        Astn::IntLit(n) => Rc::new(RefCell::new(ConstantIntFir {
+        Astn::IntLit(n) => Rc::new(RefCell::new(IndepIntFir {
             core: ProtoBrane::new(vec![], child_parent!(), Nyes::Independent),
             value: n as i64,
         })),

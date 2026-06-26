@@ -32,7 +32,7 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-??? (ubca evaluation error: ALARM: not constanic after 9999 steps. 913974487})
+??? (ubca evaluation error: ALARM: not constanic after 9999 steps. 642994647})
 ```
 COMMENTS:
 ```markdown
@@ -41,5 +41,5 @@ concat_sf_f_more
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 6AzGNJXm5wdZXyTwBHCaOcttoyncBzE4/K7NCfCD8jdXPNYArg7otv7CUSNuPLngLFQu7qOC522o+6GlZlm+Dg==
-HFS signature: stnw7ABKsbNVjg3nUncWb0szkLfOhsf3rPzTb53XBSQA06hfvNklSJFZnxjvVcxXZyuE4UjbhNW8bTmunUy0Dw==
-Comments signature: 4yq3Hw/QTNrVzBK+tbvHZG5cEbQ7rtAjLIsvc6i99v9varM5faEdjMIjTohwBIPfps3TOt+rk5zjPejRW2KEBQ==
+HFS signature: 8Gz1wKq8uGiMssdSwg78ct6B0ZUeUPprHVTnwaszcAWBw/rlzMR0NSqsYiPu7UEumezriep2YXGgvoYa095nAQ==
+Comments signature: KpVhRvgpoIjhyW002wn60blUKF5H7TMM3NyAiuFF6Fpv0nuCpOEu50R+dOTqd/UGB8ABFUyMJii23pUY2fz3AQ==

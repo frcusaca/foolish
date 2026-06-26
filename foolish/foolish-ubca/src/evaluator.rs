@@ -117,7 +117,7 @@ fn proto_to_core_fir_sff_body(ubca_ref: &FirRef) -> core_fir::Fir {
                 .state(op_state)
                 .build()
         }
-        FirKind::ConstantInt => ConstantIntFirBuilder::new(borrowed.as_i64().unwrap_or(0))
+        FirKind::IndepInt => ConstantIntFirBuilder::new(borrowed.as_i64().unwrap_or(0))
             .state(Nyes::Constant)
             .build(),
         FirKind::Nk => NkFirBuilder::new(borrowed.as_nk_reason().unwrap_or("unknown"))
@@ -136,7 +136,7 @@ fn proto_to_core_fir_sff_operand(ubca_ref: &FirRef) -> core_fir::Fir {
             .anchored(borrowed.as_search_anchored())
             .state(Nyes::Econstanic)
             .build(),
-        FirKind::ConstantInt => ConstantIntFirBuilder::new(borrowed.as_i64().unwrap_or(0))
+        FirKind::IndepInt => ConstantIntFirBuilder::new(borrowed.as_i64().unwrap_or(0))
             .state(Nyes::Constant)
             .build(),
         FirKind::Nk => NkFirBuilder::new(borrowed.as_nk_reason().unwrap_or("unknown"))
@@ -167,7 +167,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
     let state = borrowed.core().get_nyes();
 
     match kind {
-        FirKind::ConstantInt => ConstantIntFirBuilder::new(borrowed.as_i64().unwrap_or(0))
+        FirKind::IndepInt => ConstantIntFirBuilder::new(borrowed.as_i64().unwrap_or(0))
             .state(state)
             .build(),
         FirKind::Nk => {
@@ -316,12 +316,12 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                             .state(Nyes::Woconstanic)
                             .build();
                         }
-                        // Simple result (ConstantInt/NK): build inner search with resolved value.
+                        // Simple result (IndepInt/NK): build inner search with resolved value.
                         // For other cases (Search chains), fall through to the normal path
                         // which correctly wraps in the outer search.
                         let first_inner_kind = inner_ubc.first().map(|r| r.borrow().kind());
                         let has_simple = first_inner_kind
-                            .map_or(false, |k| matches!(k, FirKind::ConstantInt | FirKind::Nk));
+                            .map_or(false, |k| matches!(k, FirKind::IndepInt | FirKind::Nk));
                         if has_simple {
                             let inner_result_fir =
                                 proto_to_core_fir_inner(inner_ubc.first().unwrap(), false);
@@ -508,7 +508,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                                 .state(Nyes::Woconstanic)
                                 .build();
                         }
-                        if result_kind == FirKind::ConstantInt || result_kind == FirKind::Nk {
+                        if result_kind == FirKind::IndepInt || result_kind == FirKind::Nk {
                             let inner_result_fir = proto_to_core_fir_inner(result, false);
                             return SearchFirBuilder::new(
                                 expr_borrowed.as_search_pattern().unwrap_or(""),

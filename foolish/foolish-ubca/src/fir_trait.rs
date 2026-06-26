@@ -38,7 +38,7 @@ pub enum FirKind {
     StayFoolish,
     StayFullyFoolish,
     Concatenation,
-    ConstantInt,
+    IndepInt,
     Nk,
     /// Placeholder for test stubs before real kinds are implemented.
     Unknown,
@@ -110,7 +110,7 @@ pub trait Fir: std::fmt::Debug {
     fn kind(&self) -> FirKind;
 
     /// Read the integer value. Default: look through ubc_children for resolved
-    /// results. ConstantIntFir overrides to return `Some(value)`.
+    /// results. IndepIntFir overrides to return `Some(value)`.
     fn as_i64(&self) -> Option<i64> {
         let ubc = self.core().ubc_children();
         ubc.first().and_then(|c| c.borrow().as_i64())
@@ -186,7 +186,7 @@ pub trait Fir: std::fmt::Debug {
 /// (e.g. SearchFir, OperatorFir, IndexFir). That result may itself be a
 /// wrapper with its own `ubc_children`. This function recursively unwraps
 /// the chain until it reaches a terminal value (one that has no
-/// `ubc_children`, like ConstantInt, Nk, or BraneFir).
+/// `ubc_children`, like IndepInt, Nk, or BraneFir).
 ///
 /// For pre-constanic FIRs or FIRs without `ubc_children`, returns `self`.
 pub fn get_value(fir_ref: &FirRef) -> FirRef {
@@ -528,7 +528,7 @@ pub(crate) mod tests {
 mod get_value_tests {
     use super::*;
     use crate::fir_kinds::{
-        BraneFir, ConcatenationFir, ConstantIntFir, IndexFir, NkFir, OperatorFir, SearchFir,
+        BraneFir, ConcatenationFir, IndepIntFir, IndexFir, NkFir, OperatorFir, SearchFir,
         StatementFir, StayFoolishFir, StayFullyFoolishFir,
     };
     use crate::nyes_ext::NyesExt;
@@ -536,9 +536,9 @@ mod get_value_tests {
     use std::rc::Weak;
 
     fn make_ci(v: i64) -> FirRef {
-        Rc::new_cyclic(|me: &Weak<RefCell<ConstantIntFir>>| {
+        Rc::new_cyclic(|me: &Weak<RefCell<IndepIntFir>>| {
             let parent: Weak<RefCell<dyn Fir>> = me.clone();
-            RefCell::new(ConstantIntFir {
+            RefCell::new(IndepIntFir {
                 core: ProtoBrane::new(vec![], parent, Nyes::Prembrionic),
                 value: v,
             })
@@ -650,7 +650,7 @@ mod get_value_tests {
         panic!("did not settle within 50 steps");
     }
 
-    // ── 1. ConstantInt ──────────────────────────────────────────────────────
+    // ── 1. IndepInt ──────────────────────────────────────────────────────
 
     #[test]
     fn get_value_constant_int_returns_self() {
@@ -661,7 +661,7 @@ mod get_value_tests {
 
         let result = get_value(&ci);
         assert!(Rc::ptr_eq(&result, &ci));
-        assert_eq!(result.borrow().kind(), FirKind::ConstantInt);
+        assert_eq!(result.borrow().kind(), FirKind::IndepInt);
         assert_eq!(result.borrow().as_i64(), Some(42));
     }
 
@@ -692,7 +692,7 @@ mod get_value_tests {
 
         let result = get_value(&op);
         assert!(!Rc::ptr_eq(&result, &op));
-        assert_eq!(result.borrow().kind(), FirKind::ConstantInt);
+        assert_eq!(result.borrow().kind(), FirKind::IndepInt);
         assert_eq!(result.borrow().as_i64(), Some(8));
     }
 
@@ -722,7 +722,7 @@ mod get_value_tests {
         assert_eq!(search.borrow().core().ubc_children().len(), 1);
 
         let result = get_value(&search);
-        assert_eq!(result.borrow().kind(), FirKind::ConstantInt);
+        assert_eq!(result.borrow().kind(), FirKind::IndepInt);
         assert_eq!(result.borrow().as_i64(), Some(42));
     }
 
@@ -773,7 +773,7 @@ mod get_value_tests {
         assert_eq!(idx.borrow().core().ubc_children().len(), 1);
 
         let result = get_value(&idx);
-        assert_eq!(result.borrow().kind(), FirKind::ConstantInt);
+        assert_eq!(result.borrow().kind(), FirKind::IndepInt);
         assert_eq!(result.borrow().as_i64(), Some(20));
     }
 
@@ -866,7 +866,7 @@ mod get_value_tests {
 
         let result = get_value(&sf);
         assert!(!Rc::ptr_eq(&result, &sf));
-        assert_eq!(result.borrow().kind(), FirKind::ConstantInt);
+        assert_eq!(result.borrow().kind(), FirKind::IndepInt);
         assert_eq!(result.borrow().as_i64(), Some(42));
     }
 
