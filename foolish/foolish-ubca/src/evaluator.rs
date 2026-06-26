@@ -47,7 +47,7 @@ fn step_to_settled(
     fir_ref: &FirRef,
     scope: &crate::fir_trait::Scope,
 ) -> Result<(), crate::fir_trait::UbcError> {
-    for _ in 0..MAX_STEPS {
+    for step in 0..MAX_STEPS {
         let report = crate::step_fir_ref(fir_ref, scope)?;
         match report {
             StepReport::Progress(nyes) if nyes.is_constanic() => return Ok(()),
@@ -55,7 +55,16 @@ fn step_to_settled(
             _ => {}
         }
     }
-    Ok(())
+    // Not constanic after MAX_STEPS — generate a unique alarm token so the
+    // snapshot can never be accidentally approved (random number changes each run).
+    let random_id = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .subsec_nanos();
+    Err(crate::fir_trait::UbcError::Eval(format!(
+        "ALARM: not constanic after {} steps. {random_id}}}",
+        MAX_STEPS
+    )))
 }
 
 fn proto_to_core_fir(ubca_ref: &FirRef) -> core_fir::Fir {
