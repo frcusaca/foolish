@@ -594,6 +594,33 @@ impl Fir for BraneFir {
     }
 }
 
+impl BraneFir {
+    fn _search_brane(&self, expression: &str, starting_index: usize, ending_index: usize) -> Option<(FirRef, Nyes)> {
+        let children = self.core.foolish_children();
+        if starting_index >= children.len() || ending_index >= children.len() {
+            panic!("_search_brane: index out of bounds (start={}, end={}, len={})",
+                starting_index, ending_index, children.len());
+        }
+        let range = if starting_index >= ending_index {
+            Box::new((ending_index..=starting_index).rev()) as Box<dyn Iterator<Item = usize>>
+        } else {
+            Box::new((starting_index..=ending_index)) as Box<dyn Iterator<Item = usize>>
+        };
+        for i in range {
+            let child = &children[i];
+            let child_borrowed = child.borrow();
+            if let Some(sn) = child_borrowed.as_stmt_name() {
+                if matches_pattern(sn, expression) {
+                    if let Some(body) = child_borrowed.core().foolish_children().first() {
+                        let body_nyes = body.borrow().core().get_nyes();
+                        return Some((Rc::clone(body), body_nyes));
+                    }
+                }
+            }
+        }
+        None
+    }
+}
 
 #[derive(Debug)]
 pub struct SearchFir {
