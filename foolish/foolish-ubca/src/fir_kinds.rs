@@ -529,8 +529,7 @@ impl Fir for StatementFir {
 
     fn ib_search(&self, self_ref: &FirRef, name: &str) -> Option<(FirRef, Nyes)> {
         let brane = self.get_my_brane()?;
-        let brane_ref = brane;
-        search_brane_children(&brane_ref, name, Some(self.line_number), false)
+        search_brane_children(&brane, name, Some(self.line_number), false)
             .map(|(body, nyes, _sf_pat)| (body, nyes))
     }
 }
