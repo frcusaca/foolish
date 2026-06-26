@@ -3359,5 +3359,56 @@ mod tests {
     }
 }
 
+#[cfg(test)]
+mod concat_sf_f_more_debug {
+    use super::*;
+    use crate::compiler::Compiler;
+    use crate::fir_trait::{step_fir_ref, Scope, StepReport};
 
+    #[test]
+    fn trace_concat_sf_f_more() {
+        let root = Compiler::compile(
+            "{a=1; b=2; c=3; x=-10; y=-20; z=-30; \
+             f1 = {b= <<x+y>> + <<a>> + <<b + c>>; a= <x+y> + a + b;}; \
+             f2 = {b= <<x+z>> + <a + <<b>> + <c> >;}; \
+             f3 = {c= <a + <<b + <x + y + z> >> + <c> >;}; \
+             b = f1 <f2> <<f3>>; \
+             d= b$;}",
+        )
+        .unwrap()
+        .pop()
+        .unwrap();
+        let scope = Scope::empty();
+
+        for step in 0..200 {
+            let nyes = root.borrow().core().get_nyes();
+            let children: Vec<_> = root
+                .borrow()
+                .core()
+                .foolish_children()
+                .iter()
+                .map(|c| {
+                    let b = c.borrow();
+                    (b.as_stmt_name().unwrap_or("???").to_string(), b.core().get_nyes())
+                })
+                .collect();
+            let all_constanic = children.iter().all(|(_, n)| n.is_constanic());
+            eprintln!(
+                "step {step}: outer={nyes:?} all_children_constanic={all_constanic} children={children:?}"
+            );
+
+            if nyes.is_constanic() {
+                eprintln!("SETTLED at step {step}");
+                return;
+            }
+
+            let report = step_fir_ref(&root, &scope).unwrap();
+            if let StepReport::NoProgress = report {
+                eprintln!("NoProgress at step {step}");
+                break;
+            }
+        }
+        panic!("concat_sf_f_more did not settle");
+    }
+}
 
