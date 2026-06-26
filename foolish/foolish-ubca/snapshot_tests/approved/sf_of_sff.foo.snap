@@ -11,14 +11,17 @@ INPUT:
 {WOCONSTANIC
   a=1;
   b=2;
-  sff=Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC);
+  sff=<<WOCONSTANIC
+      Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
+  >>;
   sf=?(
       result=Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
       pattern='^sff$',
-      UNANCHORED
+      UNANCHORED,
+      WOCONSTANIC
   );
   a=10;
-  ?(result=12, pattern='^sff$', UNANCHORED);
+  12;
   12
 }
 ```
@@ -29,5 +32,5 @@ sf_of_sff
 SIGNATURES:
 Public key: eb9604b1e50d6df60ea71cded2d51b4031b14e9d8911866fcfff4afb00075e65
 Foolish signature: qKZKzv7amPDTeKPW9wmIrI2CdQ8gTr1KUFsUXJpsyyR07kHD2ByvtS/2HI5lRsWttEBCf8C82ezp6SltrfhyBA==
-HFS signature: Vo49rR1wpbY6xNAwqypSIoVU+IOl205BF4hIW2vi7bFet0jtpcSS/heJrW/VSlXsPqXXD6X1d+2SXIFh2nTDDw==
-Comments signature: BoifCFZwtk4GcCs3UMHLa/13pEnJbWbA/lFVXU7xAGgzc+Yg00XfCVHvTlo8Wd0LL3ThyS3ehV/SayVMWQHsCQ==
+HFS signature: WR90uq14IjxoEggExVRFmEG4eR/xiTAjFikUb3gnSO5aofjainOF6O4W3ARyRfcEdDzsz/NaGd5bnFsJJLk8CA==
+Comments signature: niRFBWuhEUHkk3YxctQKTFu4ENR7eoshdlGEjOf0RGs6jb2G81xA1rKWNK8QRXVU8nkrzV8Gf2IptNDlK+szAA==

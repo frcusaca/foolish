@@ -1,4 +1,4 @@
----
+Thu Jun 25 05:13:38 PM PDT 2026 cat sff_nested.foo.snap.new---
 source: foolish-ubca/src/ubca_snapshot_tester.rs
 assertion_line: 34
 ---
@@ -15,7 +15,7 @@ INPUT:
       Op+(
         ?(pattern='^a$', UNANCHORED, ECONSTANIC),
         <<WOCONSTANIC
-          ?(pattern='^b$', UNANCHORED)
+          ?(pattern='^b$', UNANCHORED) @agents, why this doesn't have econstanic marker?
         >>,
         WOCONSTANIC
       )

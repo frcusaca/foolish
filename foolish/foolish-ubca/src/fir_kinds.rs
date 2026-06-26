@@ -31,7 +31,7 @@ use crate::proto_brane::ProtoBrane;
 ///
 /// Returns `None` if not all children are constanic yet (stay BRANING).
 pub(crate) fn _decide_nyes_due_to_children(children: &[FirRef]) -> Option<Nyes> {
-    let mut all_constant = true;
+    let mut all_constantew = true;
     let mut all_independent = true;
     let mut preconstanic_count = 0usize;
     let mut nk_count = 0usize;
@@ -41,44 +41,38 @@ pub(crate) fn _decide_nyes_due_to_children(children: &[FirRef]) -> Option<Nyes> 
         match c.borrow().core().get_nyes() {
             Nyes::Prembrionic | Nyes::Embryonic | Nyes::Braning => {
                 preconstanic_count += 1;
-                all_constant = false;
+                all_constantew = false;
                 all_independent = false;
             }
             Nyes::Nk => {
                 nk_count += 1;
-                all_constant = false;
+                all_constantew = false;
                 all_independent = false;
             }
             Nyes::Econstanic | Nyes::Woconstanic => {
                 econstanic_woconstanic_count += 1;
-                all_constant = false;
+					 all_constantew  = false;
                 all_independent = false;
             }
             Nyes::Constant => {
                 all_independent = false;
             }
-            Nyes::Independent => {
-                all_constant = false;
-            }
+            _ => {}
         }
-    }
-
-    if preconstanic_count > 0 {
-        return None;
-    }
-    if nk_count > 0 {
-        return Some(Nyes::Nk);
-    }
-    if econstanic_woconstanic_count > 0 {
-        return Some(Nyes::Woconstanic);
-    }
-    if all_constant {
-        return Some(Nyes::Constant);
     }
     if all_independent {
         return Some(Nyes::Independent);
+    } else if all_constantew {
+        return Some(Nyes::Constant);
+    } else if preconstanic_count > 0 {
+        return Some(Nyes::Braning);
+    } else if econstanic_woconstanic_count > 0 {
+        return Some(Nyes::Woconstanic);
+    } else if nk_count > 0 {
+        return Some(Nyes::Nk);
     }
-    Some(Nyes::Woconstanic)
+
+    return None;
 }
 
 /// Constanic-clone for `ubc_children` results.
@@ -237,7 +231,7 @@ fn constanic_clone_at(
                     .enumerate()
                     .map(|(i, c)| constanic_clone_at(c, &self_weak, i, descendent_of_sfm_and_foolishly_ignorant))
                     .collect();
-                let mut core = ProtoBrane::new(cloned_children, new_parent.clone(), clone_nyes(nyes, descendent_of_sfm_and_foolishly_ignorant));
+                let core = ProtoBrane::new(cloned_children, new_parent.clone(), clone_nyes(nyes, descendent_of_sfm_and_foolishly_ignorant));
                 for ubc in borrowed.core().ubc_children() {
                     core.push_ubc_child(constanic_clone_at(&ubc, &self_weak, 0, descendent_of_sfm_and_foolishly_ignorant));
                 }

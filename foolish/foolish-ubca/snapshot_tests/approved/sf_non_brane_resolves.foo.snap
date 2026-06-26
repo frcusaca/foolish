@@ -11,7 +11,7 @@ INPUT:
 {
   x=42;
   b=?(result=42, pattern='^x$', UNANCHORED);
-  ?(result=42, pattern='^x$', UNANCHORED)
+  42
 }
 ```
 COMMENTS:
@@ -21,5 +21,5 @@ sf_non_brane_resolves
 SIGNATURES:
 Public key: eb9604b1e50d6df60ea71cded2d51b4031b14e9d8911866fcfff4afb00075e65
 Foolish signature: D4CM1JNtb8jFoo9IUEo2QisDtzqQ4XKo6YvCy/5tDAZJ52fmmC25+Sdvuv49pIAWs2U0c+INcYYvZB5Z1k94Ag==
-HFS signature: eW4KLUgtXCd01612nDw6B1aWw/xWx7mz8qlDauqjygUZ1U0IkDS0gY9v5h+RwFLhmBfLgJKDAecRQBsAscdKAQ==
-Comments signature: Na9CQZn2wgNpcZDgaEp7ccqQZZEFUwUuxTOn/PXzYMf7oghI1tOy2F79k7cxO7aZZq10Dq73IGwklyllX7IzBA==
+HFS signature: 1ksY2zJ9XMkzg+Akh8xmnP6C5veMrjckWJF+elPCrv5D7il4Lo26QIHNSSYKzjVI7kI6lHkoHlYgdGGApSG1Cg==
+Comments signature: sszIzGErS7+RRwYJaUe8BnkUS00zoyEC622DNNvmNY7Z9hdyn1xSdMr7eet94DjBWbv8dUntw6b1/rmAV4cyAA==

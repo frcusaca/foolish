@@ -22,18 +22,18 @@ if [[ -z "$APPROVED_DIR" ]]; then
     exit 1
 fi
 
-# Collect all .snap.approved files
+# Collect all .snap.new.approved files
 files=()
 while IFS= read -r -d '' f; do
     files+=("$f")
-done < <(find "$APPROVED_DIR" -name '*.snap.approved' -print0)
+done < <(find "$APPROVED_DIR" -name '*.snap.new.approved' -print0)
 
 if [[ ${#files[@]} -eq 0 ]]; then
-    echo "No .snap.approved files found."
+    echo "No .snap.new.approved files found."
     exit 0
 fi
 
-echo "Found ${#files[@]} .snap.approved files:"
+echo "Found ${#files[@]} .snap.new.approved files:"
 printf '  %s\n' "${files[@]}"
 echo ""
 
@@ -42,9 +42,9 @@ echo "Enter passphrase (will be used for all files):"
 "$SIGNER" --stdin-passphrase --write-verified "${files[@]}"
 
 echo ""
-echo "Moving .snap.approved → .snap ..."
+echo "Moving .snap.new.approved → .snap ..."
 for f in "${files[@]}"; do
-    target="${f%.approved}"
+    target="${f%.new.approved}"
     mv "$f" "$target"
     echo "  $(basename "$target")"
 done

@@ -1,4 +1,4 @@
----
+Thu Jun 25 05:11:35 PM PDT 2026 cat sff_vs_sf_timing_difference.foo.snap.new---
 source: foolish-ubca/src/ubca_snapshot_tester.rs
 assertion_line: 34
 ---
@@ -12,7 +12,7 @@ INPUT:
   x=1;
   sf=?(result=1, pattern='^x$', UNANCHORED);
   sff=<<WOCONSTANIC
-      ?(pattern='^x$', UNANCHORED)
+      ?(pattern='^x$', UNANCHORED) (@agents, this should have an EConstanic marker)
   >>;
   x=10;
   1;

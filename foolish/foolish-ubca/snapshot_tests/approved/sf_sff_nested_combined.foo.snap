@@ -28,23 +28,30 @@ INPUT:
 {WOCONSTANIC
   x=1;
   y=2;
-  sff=Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), WOCONSTANIC);
+  sff=<<WOCONSTANIC
+      Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
+  >>;
   sf=3;
   sfsff=?(
       result=Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
       pattern='^sff$',
-      UNANCHORED
+      UNANCHORED,
+      WOCONSTANIC
   );
-  sffsf=?(pattern='^sf$', UNANCHORED);
+  sffsf=<<WOCONSTANIC
+      ?(pattern='^sf$', UNANCHORED)
+  >>;
   sfsf=?(result=3, pattern='^sf$', UNANCHORED);
-  sffsff=?(pattern='^sff$', UNANCHORED);
+  sffsff=<<WOCONSTANIC
+      ?(pattern='^sff$', UNANCHORED)
+  >>;
   x=-2;
   rsff=0;
   rsf=3;
-  rsfsff=?(result=0, pattern='^sff$', UNANCHORED);
+  rsfsff=0;
   rsffsf=?(result=3, pattern='^sf$', UNANCHORED);
-  rsfsf=?(result=3, pattern='^sf$', UNANCHORED);
-  rsffsff=?(result=0, pattern='^sff$', UNANCHORED)
+  rsfsf=3;
+  rsffsff=0
 }
 ```
 COMMENTS:
@@ -54,5 +61,5 @@ sf_sff_nested_combined
 SIGNATURES:
 Public key: eb9604b1e50d6df60ea71cded2d51b4031b14e9d8911866fcfff4afb00075e65
 Foolish signature: Cf/wROXse3p6yZccaRSVAMaL/AOPXJUUdpLTyXzDMR8PK3OMg4+4m3lBPEmU8RPfqbsOmpU8fwGKxfm4k32LDA==
-HFS signature: On7Jrygv5c6XDwhfgu5F8t7fWEkt2LrPfRckdnucNsqiosnOuEOrgSlXg/zR94Fb9vpCXCab8SYp2L35OgE5CQ==
-Comments signature: zfFoBCXe+WDrse1Hv87NTcwoMfjh1+z++Z1xAmMkRUwqQXUtDIyM4sdP01gc9IsNWeq0HliZ4J3RfCkI1SkzCQ==
+HFS signature: shrTWCNeXiWgNxsfwHK9FlGyxjNPZNPdKHB+6YgW8fIfztj9cjYX8YiJDaKL9ATIJKr+S1YlH9jPAjlJXQkGAw==
+Comments signature: 8wzmespzTat329h9cfoGPcaWtig56Xw9wuxCwv2Y1ir3MbqNMGl509o8EL03/Z+ZMbS2MkmxAHPvsq5ngAxwDA==

@@ -1,3 +1,4 @@
+@agents, skip 
 ---
 source: foolish-ubca/src/ubca_snapshot_tester.rs
 assertion_line: 34
@@ -83,7 +84,7 @@ win={w_in={in_in={in_in_in=101010}}};
 ```
 [0] RESULT:
 ```hfssnap
-{NK
+{WOCONSTANIC
   a=1;
   bb=2;
   ccc=3;
@@ -308,5 +309,5 @@ foop42_humanizing_sequencer_formatting_exhaustive_aka_hfs
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 5CYQ9TTMJwxdSRqdDbNvIcEuEjzF0rs9DSJO0IFb7JZX52hw7oNCOG0pcpoYozWuyHWmpPLVgx2jGmPxDfKBDA==
-HFS signature: IR07G+8N65lUlEwyinJFXtMqZDe9kcEaV3eJJlOev/apiLuNDRt57vTxrYMiAhSkYzUaGj1ZQmj3Ca2LMF+pBg==
-Comments signature: a7kRZJAkrQBu8JPCcxQdjON7/FsrEDlUuupw1lf4jYyoTiCyQTiF5wlzOMRS3RFH6hLhOgIfuYJtG8uKUc7HAw==
+HFS signature: UEferzJ1AszA9hlTXY7zLIe0nvgs7j7hLKd2ZnyESXf2utQYxFiYOiCmOX6YYVrgCn5JoY09WjC6eBKwWE0wDg==
+Comments signature: TryZpATsPUtmjRam8ciQuysieafr7LHdMM/affkZP9BkYmgi9SLMPA41lDtHwoL6dWrz7g5B/fBNp7+HXgyUAw==

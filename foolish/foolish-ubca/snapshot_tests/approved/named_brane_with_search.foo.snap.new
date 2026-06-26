@@ -8,7 +8,7 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{WOCONSTANIC
+{
   x=42;
   outer'{
     inner={
@@ -25,5 +25,5 @@ named_brane_with_search
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: uW0Fcz4/He1+/wYA73PfbBiUXSnClodQHbuQS3KqBlXTf3obUd47n2iWlxW1sx7B4SWwogfl6PdjqGpme5csBw==
-HFS signature: EwztOyeQEtPUKq+1mGRQmDJbmtUq5gJVxWBZysPxCkLrUd7B6+DqH2NLuZDdq3Pbuz6Dv7n1iIjNxW9LEEMqDA==
-Comments signature: TkTc+Red0CDKnRnkSommQNBryveYTshu3H6bSLpLaT2v19Jt+JUA0oGWQYFdQGhUM+B7ZxT8wARPOhcTMEg6BQ==
+HFS signature: M2Y69xkx1MirV36/f+BXQB/RXpX/l25EgS1z8+bBuL8gp7UOpVtoT9onA32LKYmJT1t0D2w0RnvjZupd0UcEDQ==
+Comments signature: Khly1ZMQZjeQx8Jc5r9fVUS0Hjl6jbxe+R8AkGOgw9WP2U2MluRPPrT1GO7EWCp37XGnpikxib6FSIk/Sw2SAw==

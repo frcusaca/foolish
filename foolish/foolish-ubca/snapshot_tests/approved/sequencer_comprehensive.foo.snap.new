@@ -1,3 +1,4 @@
+@agents, skip
 ---
 source: foolish-ubca/src/ubca_snapshot_tester.rs
 assertion_line: 34
@@ -69,7 +70,7 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{NK
+{WOCONSTANIC
   a=1;
   b=2;
   c=3;
@@ -78,7 +79,7 @@ INPUT:
   divide=0;
   subtract=-1;
   bad=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK;
-  inner={WOCONSTANIC
+  inner={
       x=10;
       y=20;
       z=30
@@ -121,5 +122,5 @@ sequencer_comprehensive
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: yRrAujGcUxFVRv3py0aRxROx0nS23e0Skv55N03B6p11gjR6/Lz2aGyCo9RdJNwwhIVH8bas/we3pbzhiHt8Bg==
-HFS signature: +Xp9J6q6Alv4sWncmfnrGBzycXotce0ga5Mqd5cDhOdQAAr4jKG3B4K2OCBvyGvu2sAShSSv5bl0auW394rcBQ==
-Comments signature: 714agXRteekUoW5eE3NNNs6xVbpmjizyClyx+ywLsz8LqKJcIy1f8EgJAY3JKUk8BuNHJkDDpfQBBiRQiQIxCw==
+HFS signature: axilXBH00PhoAfxvivhk/nxVEyQi/lP5pLW5CwUMe0rmjVQ0ISAzewRJsOMqmvKEna2v1Orh7yuHULWkrll9Cw==
+Comments signature: BTEUkWh1dw7NOeJf8ITg0m3IF0Q9l5WTb6b63nv0AXsZ9Xv7VV1rCGUYDUOxUu2K6yCLi5IqDZuIS5c4qJ62Cg==

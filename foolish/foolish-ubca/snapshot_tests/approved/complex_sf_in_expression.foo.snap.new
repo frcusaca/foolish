@@ -8,7 +8,7 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{WOCONSTANIC
+{
   x=10;
   y=?(result=10, pattern='^x$', UNANCHORED);
   z=15
@@ -21,5 +21,5 @@ complex_sf_in_expression
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: ssYnBrajHlb2cVUC/spi1Y1l7ZOUOAtBU9tKjkOZwgNiXuUhpiQ/YY2Xvj6PFPFVUSh/2ZDKxaiD2vH8VNYWDw==
-HFS signature: h9Ghs3Xv8g9ETppX6qVPc5ybzK7XoXCxHJ3RjHFyPoED7DKqJBHo+JBpoODPyIYF3FsqP06lIU3492KeRVBrAQ==
-Comments signature: OKAQrNp/YSKlFvBr9l0qJ1weSC6V90aB28uCW5KKCcfQEEvAOySlhd88ZXn1RNWOoMu3bO78jaJ3cF9aVjYVCw==
+HFS signature: GBYzLOf+zdmT2LBGQgZMOaC4zr8A8K64z0YNUnCmtHDcXjM4q00nFu/uv0p8KN+4wRdliCezuRxo+LvVQtKaAg==
+Comments signature: K0SyLnKQpQKU319fGNTNmjkJtxfjwGhMt7yHyKv9QaxJ9k3Iqv4VbV3dJmWfZbk+sTBZP5dMqKj4dzxIxEqrBQ==

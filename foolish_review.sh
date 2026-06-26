@@ -30,7 +30,7 @@ else
   reread=$(( reread > 0 ? reread : 1))
   for rereadfn in $( ls *.snap | shuf|head -n $reread); do
 	 if [ $reread -gt 0 ]; then
-      if [ ! -e ${rereadfn}.new]; then
+      if [ ! -e ${rereadfn}.new ]; then
         echo marking $rereadfn for rereading
         cp $rereadfn ${rereadfn}.new
         files+=(${rereadfn}.new)
