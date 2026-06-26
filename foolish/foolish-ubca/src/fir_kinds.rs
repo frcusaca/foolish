@@ -17,19 +17,13 @@ use crate::proto_brane::ProtoBrane;
 
 // ── Default NYES classification ──────────────────────────────────────────────
 
-/// PROTECTED HELPER (FOOP-62 §3.3.1). A *suggestion* a fir kind MAY consult — NOT the
-/// authority on a node's nyes. Each fir kind computes/updates its OWN nyes from its
-/// initialization + stepping progress (its own act: a search must actually search, an
-/// operator must compute, etc.), optionally folding in this helper's child-based view.
-///
-/// Determines a candidate NYES purely from children's states. Priority (worst wins):
+/// Candidate NYES from children's states. Worst wins:
 ///   NK > WOCONSTANIC/ECONSTANIC > CONSTANT > INDEPENDENT
 ///
-/// Used by BraneFir directly. OperatorFir uses it as a base but may override (e.g. `1/0`
-/// → NK though children are CONSTANT). A SearchFir must NOT simply adopt INDEPENDENT from
-/// here — a search is never self-contained; see SearchFir's own logic.
+/// Used by BraneFir. OperatorFir may override (e.g. `1/0` → NK though children are CONSTANT).
+/// SearchFir must NOT adopt INDEPENDENT — a search is never self-contained.
 ///
-/// Returns `None` if not all children are constanic yet (stay BRANING).
+/// Returns `None` if not all children are constanic yet.
 pub(crate) fn _decide_nyes_due_to_children(children: &[FirRef]) -> Option<Nyes> {
     let mut all_constantew = true;
     let mut all_independent = true;
@@ -71,83 +65,44 @@ pub(crate) fn _decide_nyes_due_to_children(children: &[FirRef]) -> Option<Nyes> 
     } else if nk_count > 0 {
         return Some(Nyes::Nk);
     }
-
-    eprintln!("ALARM: could not decide Nyes due to children.");
-    return None;
+    unreachable!("ALARM: _decide_nyes_due_to_children: no decision made.");
+    None
 }
 
 /// Constanic-clone for `ubc_children` results.
 ///
-/// SPEC (FOOP-62 rev 14, "Terminology: ignorance" + §6b, §9.x, §10.1). `constanic_clone`
-/// carries a mode flag `descendent_of_sfm_and_foolishly_ignorant` (default false), sourced from
-/// `Scope.has_ancestral_sfm` at the step→clone boundary; clone's own recursion inherits the
-/// CALLER's flag (the step and clone recursions are independent):
-/// - **false (NORMALLY ignorant):** NYES-transfer rule —
-///     - Constanic NYES transfer UNCHANGED (CONSTANT/INDEPENDENT referenced; ECONSTANIC/
-///       WOCONSTANIC/NK keep their state and re-resolve LATER via stepping — NOT pre-reset).
-///     - Pre-constanic (PREMBRYONIC/EMBRYONIC/BRANING) transfer as PREMBRYONIC.
-/// - **true (FOOLISHLY ignorant, building an SF-mark's RHS):** ALL NYES copied UNCHANGED
-///     (constanic AND pre-constanic alike).
+/// `descendent_of_sfm_and_foolishly_ignorant` selects the mode (see `clone_nyes`). At the
+/// step→clone boundary callers pass `scope.has_ancestral_sfm`; the recursion below propagates
+/// the CALLER's flag (the step and clone recursions are independent):
+/// - **false (normally ignorant):** constanic NYES transfer unchanged; pre-constanic → EMBRYONIC.
+/// - **true (foolishly ignorant, building SF RHS):** ALL NYES copied unchanged.
 ///
-/// THE BIG BUT: when a SEARCH clones an SF-mark node, it STRIPS the mark (clones the inner
-/// expression) with the flag FALSE (normal mode), so an ECONSTANIC inner re-resolves.
-///
-/// TODO(FOOP-62, raised 2026-06-19): the code below DIVERGES from the spec and must be
-/// corrected (tracked in FOOP-62.plan.md Phase −1):
-///   1. There is NO `descendent_of_sfm_and_foolishly_ignorant` flag yet — only normal mode
-///      exists; add the flag + `Scope.has_ancestral_sfm` and seed/propagate per spec.
-///   2. Compound kinds (Operator/Search/Index/HeadTail/Brane/Statement/Concatenation) are
-///      hard-coded to `Nyes::Prembrionic` regardless of source NYES — wrongly resets a
-///      *constanic* (ECONSTANIC/WOCONSTANIC) source even in normal mode. Carry source NYES
-///      when constanic; reset to PREMBRYONIC only when pre-constanic.
-///   3. The `StayFoolish` / `StayFullyFoolish` arms rebuild a fresh wrapper — a SEARCH cloning
-///      an SF-mark must STRIP the mark (clone the inner expression, normal mode), NOT re-wrap.
+/// SF/SFF markers are stripped at the top — the child is cloned directly.
 ///
 /// The index parameter tracks position for correct line_number on StatementFir.
-/// NYES-transfer rule (FOOP-62 §10.1, "Terminology: ignorance").
+/// NYES-transfer rule for constanic cloning.
 ///
-/// Compute the NYES a clone receives given the source NYES and whether the clone is
-/// foolishly ignorant (`descendent_of_sfm_and_foolishly_ignorant`):
+/// - **foolishly ignorant (true):** ALL NYES copied unchanged.
+/// - **normally ignorant (false):** constanew (CONSTANT/INDEPENDENT/NK) unchanged;
+///   ECONSTANIC/WOCONSTANIC → EMBRYONIC (re-step under new parent);
+///   pre-constanic → EMBRYONIC.
 ///
-/// A constanic clone is only ever taken of a CONSTANIC (settled) FIR, so `source` is always
-/// one of the terminal states (Constantew, ECONSTANIC, WOCONSTANIC) — never pre-constanic.
-/// (Hence there is no BRANING→EMBRYONIC etc. transition here.) This is debug-asserted.
-///
-/// - **foolishly ignorant (true), i.e. FICC:** ALL NYES copied UNCHANGED.
-/// - **normally ignorant (false), i.e. NICC** (FOOP-62, Atlas):
-///     - **Constantew (CONSTANT / INDEPENDENT / NK) → unchanged** — constant everywhere;
-///       re-stepping cannot change them.
-///     - **ECONSTANIC / WOCONSTANIC → EMBRYONIC** — the reset to EMBRYONIC (the "start working"
-///       stage) IS the mechanism that re-steps the clone under its new parent: it re-progresses
-///       through the (new) IB then (new) AB and re-resolves. (The *fancy* part of WOCONSTANIC
-///       NICC — collapse to its econstanic result and NICC that into the clone's result — is a
-///       SEPARATE larger refactor, task #21; the nyes reset belongs here.)
+/// Source is always constanic when called from the top-level clone; recursive clones
+/// of children may be pre-constanic (handled gracefully).
 fn clone_nyes(source: Nyes, descendent_of_sfm_and_foolishly_ignorant: bool) -> Nyes {
-    // NOTE: the top-level `constanic_clone_at` caller should pass a constanic source,
-    // but recursive clones of children (e.g. OperatorFir foolish_children) can be
-    // pre-constanic. This function handles both cases gracefully.
     if descendent_of_sfm_and_foolishly_ignorant {
         return source;
     }
     match source {
-        // Constantew is kept as-is under NICC.
         Nyes::Constant | Nyes::Independent | Nyes::Nk => source,
-        // The context-dependent constanics reset to EMBRYONIC to re-step (IB then AB).
         Nyes::Econstanic | Nyes::Woconstanic => Nyes::Embryonic,
-        // Pre-constanic children (from recursive clone of a compound kind's foolish_children)
-        // reset to EMBRYONIC so they re-progress under the new parent.
         Nyes::Prembrionic | Nyes::Embryonic | Nyes::Braning => Nyes::Embryonic,
     }
 }
 
-/// WOCONSTANIC search-chain collapse (FOOP-62 #21). A WOCONSTANIC search "waits on" an
-/// ECONSTANIC: its result (`ubc_children[0]`) is the next link, which may itself be a
-/// WOCONSTANIC search, ending in an ECONSTANIC search. Follow that chain from `search` and
-/// return the DEEPEST ECONSTANIC search (the end of the chain). Returns None if there is no
-/// such chain (no result, or the result isn't a search ending in ECONSTANIC).
-///
-/// Used by NICC of a search: the clone's result becomes the NICC of this deepest ECONSTANIC,
-/// collapsing the intermediate WOCONSTANIC links.
+/// Follow a WOCONSTANIC search chain to its deepest ECONSTANIC link.
+/// A WOCONSTANIC search's result (`ubc_children[0]`) may itself be a WOCONSTANIC search,
+/// ending in an ECONSTANIC. Returns the deepest ECONSTANIC, or None if no chain exists.
 fn deepest_econstanic_in_chain(search: &FirRef) -> Option<FirRef> {
     let mut current = Rc::clone(search);
     loop {
@@ -199,6 +154,7 @@ fn constanic_clone_at(
     index: usize,
     descendent_of_sfm_and_foolishly_ignorant: bool,
 ) -> FirRef {
+    // SF/SFF markers are transparent to cloning — recurse into their child.
     if matches!(fir_ref.borrow().kind(), FirKind::StayFoolish | FirKind::StayFullyFoolish) {
         let source = fir_ref.borrow();
         if source.kind() == FirKind::StayFoolish {
@@ -215,10 +171,8 @@ fn constanic_clone_at(
         eprintln!("ALARM: SF/SFF node has no children — cloning wrapper as-is");
     }
     let nyes = fir_ref.borrow().core().get_nyes();
-    // Constant/Independent: just reference, don't clone (constanic-everywhere, identical in
-    // both modes — NYES transfers unchanged either way). EXCEPTION: BraneFir must always be
-    // cloned — its children need re-coordination in the new context even if the brane itself
-    // is constanic.
+    // CONSTANT/INDEPENDENT: just reference. Exception: BraneFir always cloned
+    // (children need re-coordination in new context).
     if nyes == Nyes::Constant || nyes == Nyes::Independent {
         if fir_ref.borrow().kind() != FirKind::Brane {
             return Rc::clone(fir_ref);
@@ -312,7 +266,7 @@ fn constanic_clone_at(
             })
         }
         FirKind::StayFoolish | FirKind::StayFullyFoolish => {
-            unreachable!("SF/SFF resolved to source at fn top")
+            unreachable!("SF/SFF stripped at fn top")
         }
         FirKind::Concatenation => {
             Rc::new_cyclic(|me: &Weak<RefCell<ConcatenationFir>>| {
