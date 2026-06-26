@@ -573,7 +573,8 @@ impl OperatorFir {
 
                 let values: Vec<i64> = children
                     .iter()
-                    .filter_map(|c| c.borrow().as_i64())
+                    .map(|c| get_value(c))
+                    .filter_map(|v| v.borrow().as_i64())
                     .collect();
 
                 if values.len() != children.len() {
