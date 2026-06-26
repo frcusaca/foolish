@@ -526,6 +526,13 @@ impl Fir for StatementFir {
     fn as_stmt_line_number(&self) -> Option<usize> {
         Some(self.line_number)
     }
+
+    fn ib_search(&self, self_ref: &FirRef, name: &str, forward: bool) -> Option<(FirRef, Nyes)> {
+        let brane = self.get_my_brane()?;
+        let brane_ref = brane;
+        search_brane_children(&brane_ref, name, Some(self.line_number), forward)
+            .map(|(body, nyes, _sf_pat)| (body, nyes))
+    }
 }
 
 
@@ -570,6 +577,18 @@ impl Fir for BraneFir {
 
     fn as_brane_characterizations(&self) -> &[String] {
         &self.characterizations
+    }
+
+    fn ab_search(&self, self_ref: &FirRef, name: &str, forward: bool) -> Option<(FirRef, Nyes)> {
+        let stmt = self.get_my_statement(self_ref);
+        let stmt_borrowed = stmt.borrow();
+        if let Some((body, nyes)) = stmt_borrowed.ib_search(&stmt, name, forward) {
+            return Some((body, nyes));
+        }
+        drop(stmt_borrowed);
+        let parent_brane = self.get_my_brane()?;
+        let pb = parent_brane.borrow();
+        pb.ab_search(&parent_brane, name, forward)
     }
 }
 

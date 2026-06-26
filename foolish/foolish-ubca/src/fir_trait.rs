@@ -204,6 +204,14 @@ pub trait Fir: std::fmt::Debug {
             None => None,
         }
     }
+
+    fn ib_search(&self, _self_ref: &FirRef, _name: &str, _forward: bool) -> Option<(FirRef, Nyes)> {
+        None
+    }
+
+    fn ab_search(&self, _self_ref: &FirRef, _name: &str, _forward: bool) -> Option<(FirRef, Nyes)> {
+        None
+    }
 }
 
 /// Returns the deepest resolved value this FIR represents.
