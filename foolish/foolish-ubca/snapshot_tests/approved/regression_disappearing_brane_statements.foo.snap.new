@@ -1,0 +1,21 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{a = 1; b = 2; d =$ 4; e = 5; f = 6; g = 7;}
+```
+[0] RESULT:
+```hfssnap
+??? (ubca evaluation error: unknown operator: $ (2 operands))
+```
+COMMENTS:
+```markdown
+regression_disappearing_brane_statements
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: qS9Bn6LPpgc9n2zm9hKw+Zak0ycRtchAMDvOsMUQqt3oH2KO0KMsKoWnMzlBKfh8IPgpwbKQDEq7xfePkYskDw==
+HFS signature: QK3oqtaXw1TyLiu4Tmv+7nTfByjRiz7p7ks4TpqvPiQMDfR2VT42XKcvnqQxAdYSP+oTrcNuoXOgCefS80EIBQ==
+Comments signature: GSM3oDUlSVuDAM/o4ixLunFhpPRyZ91P/SSXtZV5zO0FAiLEhHiypqel69DbUqltIDYuF9ljPVtsCnkFhn28CA==

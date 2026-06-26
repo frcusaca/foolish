@@ -32,90 +32,7 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{BRANING
-  a=1;
-  b=2;
-  c=3;
-  x=-10;
-  y=-20;
-  z=-30;
-  f1={BRANING
-      b=Op+(
-          Op+(
-            <<WOCONSTANIC
-              Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
-            >>,
-            <<WOCONSTANIC
-              ?(pattern='^a$', UNANCHORED)
-            >>,
-            WOCONSTANIC
-          ),
-          <<WOCONSTANIC
-            Op+(?(pattern='^b$', UNANCHORED, ECONSTANIC), ?(pattern='^c$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
-          >>,
-          WOCONSTANIC
-      );
-      a=Op+(-29, ?(pattern='^b$', UNANCHORED, BRANING), BRANING)
-  };
-  f2={PREMBRIONIC
-      b=Op+(
-          <<PREMBRIONIC
-            Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^z$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
-          >>,
-          <PREMBRIONIC
-            Op+(
-              Op+(
-                ?(pattern='^a$', UNANCHORED, PREMBRIONIC),
-                <<PREMBRIONIC
-                  ?(pattern='^b$', UNANCHORED)
-                >>,
-                PREMBRIONIC
-              ),
-              <PREMBRIONIC
-                ?(pattern='^c$', UNANCHORED, PREMBRIONIC)
-              >,
-              PREMBRIONIC
-            )
-          >,
-          PREMBRIONIC
-      )
-  };
-  f3={PREMBRIONIC
-      c=<PREMBRIONIC
-          Op+(
-            Op+(
-              ?(pattern='^a$', UNANCHORED, PREMBRIONIC),
-              <<PREMBRIONIC
-                Op+(
-                  ?(pattern='^b$', UNANCHORED, ECONSTANIC),
-                  <PREMBRIONIC
-                    Op+(
-                      Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), PREMBRIONIC),
-                      ?(pattern='^z$', UNANCHORED, ECONSTANIC),
-                      PREMBRIONIC
-                    )
-                  >,
-                  WOCONSTANIC
-                )
-              >>,
-              PREMBRIONIC
-            ),
-            <PREMBRIONIC
-              ?(pattern='^c$', UNANCHORED, PREMBRIONIC)
-            >,
-            PREMBRIONIC
-          )
-      >
-  };
-  b=?(pattern='^f1$', UNANCHORED, PREMBRIONIC);
-  <PREMBRIONIC
-    ?(pattern='^f2$', UNANCHORED, PREMBRIONIC)
-  >;
-  <<PREMBRIONIC
-    ?(pattern='^f3$', UNANCHORED)
-  >>;
-  d=$(PREMBRIONIC)
-}
+??? (ubca evaluation error: ALARM: not constanic after 9999 steps. 913974487})
 ```
 COMMENTS:
 ```markdown
@@ -124,5 +41,5 @@ concat_sf_f_more
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 6AzGNJXm5wdZXyTwBHCaOcttoyncBzE4/K7NCfCD8jdXPNYArg7otv7CUSNuPLngLFQu7qOC522o+6GlZlm+Dg==
-HFS signature: oggMCT7WP6LvvOKpqAcdfH/6RJbDpfoF8qNaLR2/iFVAEmyludYaaKJFs85S0VK1r5eo5vgnIHxuGOZCdLcSAA==
-Comments signature: 3yLdLvHNg/bHt8j90HacCR02i1UvjAVV0ffABc8my+jaoQV3HlN6u7Ukjpo+aWNiwUBob0H6D8ydPet6XQBbAQ==
+HFS signature: stnw7ABKsbNVjg3nUncWb0szkLfOhsf3rPzTb53XBSQA06hfvNklSJFZnxjvVcxXZyuE4UjbhNW8bTmunUy0Dw==
+Comments signature: 4yq3Hw/QTNrVzBK+tbvHZG5cEbQ7rtAjLIsvc6i99v9varM5faEdjMIjTohwBIPfps3TOt+rk5zjPejRW2KEBQ==

@@ -34,9 +34,17 @@ impl foolish_core::Evaluator for UbcaEvaluator {
         let mut results = Vec::new();
 
         for fir_ref in &ubca_firs {
-            step_to_settled(fir_ref, &scope).map_err(|e| format!("Evaluation failed: {}", e))?;
-            let core_fir = proto_to_core_fir(fir_ref);
-            results.push(core_fir::fir_to_ref(core_fir));
+            if let Err(alarm) = step_to_settled(fir_ref, &scope) {
+                // Non-constanic after stepping — include the alarm in the output
+                // so it appears in the snapshot (with random ID to prevent approval).
+                let alarm_fir = core_fir::NkFirBuilder::new(&alarm.to_string())
+                    .state(foolish_core::Nyes::Nk)
+                    .build();
+                results.push(core_fir::fir_to_ref(alarm_fir));
+            } else {
+                let core_fir = proto_to_core_fir(fir_ref);
+                results.push(core_fir::fir_to_ref(core_fir));
+            }
         }
 
         Ok(results)
@@ -47,24 +55,29 @@ fn step_to_settled(
     fir_ref: &FirRef,
     scope: &crate::fir_trait::Scope,
 ) -> Result<(), crate::fir_trait::UbcError> {
+    let mut last_step = 0;
     for step in 0..MAX_STEPS {
         let report = crate::step_fir_ref(fir_ref, scope)?;
+        last_step = step;
         match report {
             StepReport::Progress(nyes) if nyes.is_constanic() => return Ok(()),
-            StepReport::NoProgress => return Ok(()),
+            StepReport::NoProgress => break,
             _ => {}
         }
     }
-    // Not constanic after MAX_STEPS — generate a unique alarm token so the
+    // Not constanic after stepping — generate a unique alarm token so the
     // snapshot can never be accidentally approved (random number changes each run).
-    let random_id = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .subsec_nanos();
-    Err(crate::fir_trait::UbcError::Eval(format!(
-        "ALARM: not constanic after {} steps. {random_id}}}",
-        MAX_STEPS
-    )))
+    if !fir_ref.borrow().core().get_nyes().is_constanic() {
+        let random_id = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .subsec_nanos();
+        return Err(crate::fir_trait::UbcError::Eval(format!(
+            "ALARM: not constanic after {} steps. {random_id}}}",
+            last_step
+        )));
+    }
+    Ok(())
 }
 
 fn proto_to_core_fir(ubca_ref: &FirRef) -> core_fir::Fir {
