@@ -192,10 +192,10 @@ pub trait Fir: std::fmt::Debug {
     fn get_my_brane(&self) -> Option<FirRef> {
         match self.core().parent() {
             Some(p) => {
-                if p.borrow().kind() == FirKind::Brane {
-                    Some(p)
-                } else {
-                    p.borrow().get_my_brane()
+                let kind = p.borrow().kind();
+                match kind {
+                    FirKind::Brane => Some(p),
+                    _ => p.borrow().get_my_brane(),
                 }
             }
             None => None,
