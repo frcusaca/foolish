@@ -211,12 +211,22 @@ pub trait Fir: std::fmt::Debug {
         }
     }
 
-    fn ib_search(&self, _self_ref: &FirRef, _name: &str) -> Option<(FirRef, Nyes)> {
-        None
+    fn ib_search(&self, self_ref: &FirRef, name: &str) -> Option<(FirRef, Nyes)> {
+        let stmt = self.get_my_statement(self_ref);
+        if Rc::ptr_eq(&stmt, self_ref) && self.kind() != FirKind::Statement {
+            return None;
+        }
+        let borrowed = stmt.borrow();
+        borrowed.ib_search(&stmt, name)
     }
 
-    fn ab_search(&self, _self_ref: &FirRef, _name: &str) -> Option<(FirRef, Nyes)> {
-        None
+    fn ab_search(&self, self_ref: &FirRef, name: &str) -> Option<(FirRef, Nyes)> {
+        let brane = self.get_my_brane(self_ref)?;
+        if Rc::ptr_eq(&brane, self_ref) {
+            return None;
+        }
+        let borrowed = brane.borrow();
+        borrowed.ab_search(&brane, name)
     }
 }
 
