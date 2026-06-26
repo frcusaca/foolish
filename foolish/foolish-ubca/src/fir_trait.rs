@@ -969,4 +969,44 @@ mod get_value_tests {
         assert!(result.is_some());
         assert!(Rc::ptr_eq(&result.unwrap(), &root));
     }
+
+    #[test]
+    fn ib_search_finds_variable_in_same_brane() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile("{x = 1; y = x;}").unwrap().pop().unwrap();
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let y_stmt = &stmts[1]; // y = x
+        let result = y_stmt.borrow().ib_search(y_stmt, "x", false);
+        assert!(result.is_some());
+        let (body, nyes) = result.unwrap();
+        assert_eq!(body.borrow().kind(), FirKind::IndepInt);
+        assert!(nyes.is_constanic());
+    }
+
+    #[test]
+    fn ib_search_returns_none_for_missing_name() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile("{x = 1;}").unwrap().pop().unwrap();
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let x_stmt = &stmts[0];
+        let result = x_stmt.borrow().ib_search(x_stmt, "missing", false);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn ab_search_finds_in_ancestor_brane() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile("{x = 1; inner = {y = x;};}").unwrap().pop().unwrap();
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let inner_stmt = &stmts[1]; // inner = {y = x;}
+        let inner_brane = inner_stmt.borrow().core().foolish_children().first().unwrap().clone();
+        let inner_stmts = inner_brane.borrow().core().foolish_children().to_vec();
+        let y_stmt = &inner_stmts[0]; // y = x
+        let result = y_stmt.borrow().ib_search(y_stmt, "x", false);
+        assert!(result.is_none(), "x should not be found in inner brane");
+        let result = inner_brane.borrow().ab_search(&inner_brane, "x", false);
+        assert!(result.is_some(), "x should be found via ab_search");
+        let (body, nyes) = result.unwrap();
+        assert_eq!(body.borrow().kind(), FirKind::IndepInt);
+    }
 }
