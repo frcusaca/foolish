@@ -92,7 +92,9 @@ impl ProtoBrane {
     /// New additions always go to the end of the job queue.
     pub fn push_ubc_child(&self, child: FirRef) {
         self.ubc_children.borrow_mut().push(Rc::clone(&child));
-        self.tasks.borrow_mut().push_back(child);
+        if !child.borrow().core().get_nyes().is_constanic() {
+            self.tasks.borrow_mut().push_back(child);
+        }
     }
 
     /// Push the SINGULAR result of a search FIR (search / Index / HeadTail).
