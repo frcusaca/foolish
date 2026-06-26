@@ -35,16 +35,14 @@ impl foolish_core::Evaluator for UbcaEvaluator {
 
         for fir_ref in &ubca_firs {
             if let Err(alarm) = step_to_settled(fir_ref, &scope) {
-                // Non-constanic after stepping — include the alarm in the output
-                // so it appears in the snapshot (with random ID to prevent approval).
-                let alarm_fir = core_fir::NkFirBuilder::new(&alarm.to_string())
-                    .state(foolish_core::Nyes::Nk)
-                    .build();
-                results.push(core_fir::fir_to_ref(alarm_fir));
-            } else {
-                let core_fir = proto_to_core_fir(fir_ref);
-                results.push(core_fir::fir_to_ref(core_fir));
+                // Non-constanic after stepping — set the brane's NYES to NK with the alarm
+                // message so the sequencer renders the full state with the alarm reason.
+                let alarm_msg = alarm.to_string();
+                fir_ref.borrow().core().set_nyes(Nyes::Nk);
+                eprintln!("ALARM: {alarm_msg}");
             }
+            let core_fir = proto_to_core_fir(fir_ref);
+            results.push(core_fir::fir_to_ref(core_fir));
         }
 
         Ok(results)
