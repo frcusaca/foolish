@@ -1,9 +1,3 @@
-//! FIR kinds — leaf, operator, statement, and brane nodes.
-//!
-//! Leaf kinds (IndepInt, Nk) are the simplest: no children, no task queue,
-//! immediate terminal NYES states.  Operator has two operand children.
-//! Statement wraps a single body expression.  Brane contains an ordered list
-//! of statement children that drain sequentially.
 
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};
@@ -15,15 +9,7 @@ use crate::fir_trait::{Fir, FirKind, FirRef, Scope, UbcError, get_value};
 use crate::nyes_ext::NyesExt;
 use crate::proto_brane::ProtoBrane;
 
-// ── Default NYES classification ──────────────────────────────────────────────
 
-/// Candidate NYES from children's states. Worst wins:
-///   NK > WOCONSTANIC/ECONSTANIC > CONSTANT > INDEPENDENT
-///
-/// Used by BraneFir. OperatorFir may override (e.g. `1/0` → NK though children are CONSTANT).
-/// SearchFir must NOT adopt INDEPENDENT — a search is never self-contained.
-///
-/// Returns `None` if not all children are constanic yet.
 pub(crate) fn _decide_nyes_due_to_children(children: &[FirRef]) -> Option<Nyes> {
     let mut all_constantew = true;
     let mut all_independent = true;
@@ -69,26 +55,6 @@ pub(crate) fn _decide_nyes_due_to_children(children: &[FirRef]) -> Option<Nyes> 
     None
 }
 
-/// Constanic-clone for `ubc_children` results.
-///
-/// `descendent_of_sfm_and_foolishly_ignorant` selects the mode (see `clone_nyes`). At the
-/// step→clone boundary callers pass `scope.has_ancestral_sfm`; the recursion below propagates
-/// the CALLER's flag (the step and clone recursions are independent):
-/// - **false (normally ignorant):** constanic NYES transfer unchanged; pre-constanic → EMBRYONIC.
-/// - **true (foolishly ignorant, building SF RHS):** ALL NYES copied unchanged.
-///
-/// SF/SFF markers are stripped at the top — the child is cloned directly.
-///
-/// The index parameter tracks position for correct line_number on StatementFir.
-/// NYES-transfer rule for constanic cloning.
-///
-/// - **foolishly ignorant (true):** ALL NYES copied unchanged.
-/// - **normally ignorant (false):** constanew (CONSTANT/INDEPENDENT/NK) unchanged;
-///   ECONSTANIC/WOCONSTANIC → EMBRYONIC (re-step under new parent);
-///   pre-constanic → EMBRYONIC.
-///
-/// Source is always constanic when called from the top-level clone; recursive clones
-/// of children may be pre-constanic (handled gracefully).
 fn clone_nyes(source: Nyes, descendent_of_sfm_and_foolishly_ignorant: bool) -> Nyes {
     if descendent_of_sfm_and_foolishly_ignorant {
         return source;
@@ -100,9 +66,6 @@ fn clone_nyes(source: Nyes, descendent_of_sfm_and_foolishly_ignorant: bool) -> N
     }
 }
 
-/// Follow a WOCONSTANIC search chain to its deepest ECONSTANIC link.
-/// A WOCONSTANIC search's result (`ubc_children[0]`) may itself be a WOCONSTANIC search,
-/// ending in an ECONSTANIC. Returns the deepest ECONSTANIC, or None if no chain exists.
 fn deepest_econstanic_in_chain(search: &FirRef) -> Option<FirRef> {
     let mut current = Rc::clone(search);
     loop {
@@ -125,8 +88,6 @@ fn deepest_econstanic_in_chain(search: &FirRef) -> Option<FirRef> {
     }
 }
 
-/// Clone a ProtoBrane's children (foolish + ubc) via `constanic_clone_at`.
-/// Expands inline to avoid double-borrow issues with `Rc::new_cyclic`.
 macro_rules! clone_proto_brane {
     ($source:expr, $self_weak:expr, $new_parent:expr, $nyes:expr, $foolish:expr) => {{
         let cloned_children: Vec<FirRef> = $source
@@ -143,36 +104,25 @@ macro_rules! clone_proto_brane {
     }};
 }
 
-/// Constanic-clone of a result for `ubc_children`.
-///
-/// `descendent_of_sfm_and_foolishly_ignorant` selects the mode (see `clone_nyes`). At the
-/// step→clone boundary callers pass `scope.has_ancestral_sfm`; the recursion below propagates
-/// the CALLER's flag (the step and clone recursions are independent — §10.1).
 fn constanic_clone_at(
     fir_ref: &FirRef,
     new_parent: &Weak<RefCell<dyn Fir>>,
     index: usize,
     descendent_of_sfm_and_foolishly_ignorant: bool,
 ) -> FirRef {
-    // SF/SFF markers are transparent to cloning — recurse into their child.
     if matches!(fir_ref.borrow().kind(), FirKind::StayFoolish | FirKind::StayFullyFoolish) {
         let source = fir_ref.borrow();
         if source.kind() == FirKind::StayFoolish {
-            // SF: prefer constanic result (ubc_children) — the SF's evaluated value.
             if let Some(constanic_result) = source.core().ubc_children().into_iter().next() {
                 return constanic_clone_at(&constanic_result, new_parent, index, descendent_of_sfm_and_foolishly_ignorant);
             }
         }
-        // SFF (or SF without ubc_children): clone the original construction (foolish_children).
-        // SFF children are built ECONSTANIC and need re-evaluation in the new context.
         if let Some(inner) = source.core().foolish_children().first().cloned() {
             return constanic_clone_at(&inner, new_parent, index, descendent_of_sfm_and_foolishly_ignorant);
         }
         eprintln!("ALARM: SF/SFF node has no children — cloning wrapper as-is");
     }
     let nyes = fir_ref.borrow().core().get_nyes();
-    // CONSTANT/INDEPENDENT: just reference. Exception: BraneFir always cloned
-    // (children need re-coordination in new context).
     if nyes == Nyes::Constant || nyes == Nyes::Independent {
         if fir_ref.borrow().kind() != FirKind::Brane {
             return Rc::clone(fir_ref);
@@ -205,11 +155,6 @@ fn constanic_clone_at(
             let clone_nyes_val = clone_nyes(nyes, descendent_of_sfm_and_foolishly_ignorant);
             let pattern = borrowed.as_search_pattern().unwrap_or("").to_owned();
             let anchored = borrowed.as_search_anchored();
-            // WOCONSTANIC search-chain collapse under NICC (FOOP-62 #21): a WOCONSTANIC search
-            // is waiting on an ECONSTANIC at the end of a chain of WOCONSTANIC search results.
-            // The clone's result becomes the NICC of that DEEPEST ECONSTANIC (collapsing the
-            // intermediate links); both the cloned search and its result are EMBRYONIC and
-            // re-progress via normal stepping. (Only under NICC; FICC copies verbatim below.)
             let chain_econstanic = if !descendent_of_sfm_and_foolishly_ignorant
                 && nyes == Nyes::Woconstanic
             {
@@ -228,12 +173,8 @@ fn constanic_clone_at(
                     .collect();
                 let core = ProtoBrane::new(children, new_parent.clone(), clone_nyes_val);
                 if let Some(ref econ) = chain_econstanic {
-                    // The search's ONE special job: SHORTEN the WOCONSTANIC search chain — the
-                    // clone's result is the NICC of the DEEPEST ECONSTANIC (not the immediate
-                    // chain link). EMBRYONIC, parented at this search; re-progresses via stepping.
                     core.push_ubc_child(constanic_clone_at(econ, &self_weak, 0, false));
                 } else {
-                    // Otherwise clone ubc_children generically (like every kind).
                     for ubc in borrowed.core().ubc_children() {
                         core.push_ubc_child(constanic_clone_at(&ubc, &self_weak, 0, descendent_of_sfm_and_foolishly_ignorant));
                     }
@@ -303,11 +244,7 @@ fn constanic_clone_at(
     }
 }
 
-// ── IndepIntFir ──────────────────────────────────────────────────────────
 
-/// A leaf FIR representing a known integer constant.
-///
-/// NYES progression: Prembrionic → Constant (immediate, one step).
 #[derive(Debug)]
 pub struct IndepIntFir {
     pub(crate) core: ProtoBrane,
@@ -315,7 +252,6 @@ pub struct IndepIntFir {
 }
 
 impl IndepIntFir {
-    /// The integer value held by this leaf.
     pub fn value(&self) -> i64 {
         self.value
     }
@@ -327,7 +263,6 @@ impl Fir for IndepIntFir {
     }
 
     fn fir_op_step(&self, _scope: &Scope) -> Result<(), UbcError> {
-        // Leaf: no children, no tasks — advance directly to terminal.
         if !self.core.get_nyes().is_constanic() {
             self.core.set_nyes(Nyes::Constant);
         }
@@ -343,11 +278,7 @@ impl Fir for IndepIntFir {
     }
 }
 
-// ── NkFir ───────────────────────────────────────────────────────────────────
 
-/// A leaf FIR representing a provably unknowable value (`???`).
-///
-/// NYES progression: Prembrionic → Nk (immediate, one step).
 #[derive(Debug)]
 pub struct NkFir {
     pub(crate) core: ProtoBrane,
@@ -355,7 +286,6 @@ pub struct NkFir {
 }
 
 impl NkFir {
-    /// The reason this value is unknowable.
     pub fn reason(&self) -> &str {
         &self.reason
     }
@@ -367,7 +297,6 @@ impl Fir for NkFir {
     }
 
     fn fir_op_step(&self, _scope: &Scope) -> Result<(), UbcError> {
-        // Leaf: no children, no tasks — advance directly to terminal.
         if !self.core.get_nyes().is_constanic() {
             self.core.set_nyes(Nyes::Nk);
         }
@@ -383,12 +312,7 @@ impl Fir for NkFir {
     }
 }
 
-// ── OperatorFir ─────────────────────────────────────────────────────────────
 
-/// An operator FIR with 2 operand children in `foolish_children`.
-///
-/// NYES progression: Prembrionic → Braning (task queue built) →
-/// (children drain) → Constant (result computed and pushed to ubc_children).
 #[derive(Debug)]
 pub struct OperatorFir {
     pub(crate) core: ProtoBrane,
@@ -396,7 +320,6 @@ pub struct OperatorFir {
 }
 
 impl OperatorFir {
-    /// Returns true iff every operand is already constanic.
     fn operands_all_constanic(&self) -> bool {
         self.core()
             .foolish_children()
@@ -418,13 +341,6 @@ impl Fir for OperatorFir {
     fn fir_op_step(&self, scope: &Scope) -> Result<(), UbcError> {
         match self.core.get_nyes() {
             Nyes::Prembrionic | Nyes::Embryonic => {
-                // EMBRYONIC literal/constant handling (FOOP-62 #22): the operator does NOT skip
-                // stages — it always advances EMBRYONIC → BRANING (one transition this step),
-                // and the combine happens in BRANING. What EMBRYONIC decides is whether to
-                // enqueue operands: if they are ALREADY all constanic (literals/constants, or a
-                // re-stepped clone whose operands are settled), there is nothing to drain, so we
-                // just advance — BRANING will then combine immediately. Otherwise enqueue them
-                // so they drain to constanic first.
                 self.core.set_nyes(Nyes::Braning);
                 if !self.operands_all_settled() {
                     let children: Vec<FirRef> = self.core.foolish_children().to_vec();
@@ -451,8 +367,6 @@ impl Fir for OperatorFir {
 }
 
 impl OperatorFir {
-    /// Combine the (settled) operands into this operator's result + nyes. Called from BRANING,
-    /// and from the EMBRYONIC fast-path when operands are already constanic.
     fn combine(&self, scope: &Scope) -> Result<(), UbcError> {
         {
                 let self_weak = self.core.parent_weak();
@@ -552,12 +466,7 @@ impl OperatorFir {
     }
 }
 
-// ── StatementFir ─────────────────────────────────────────────────────────────
 
-/// A statement FIR wrapping a single body expression.
-///
-/// NYES progression: Prembrionic → Braning (body task pushed) →
-/// (body drains) → body's NYES copied to self.
 #[derive(Debug)]
 pub struct StatementFir {
     pub(crate) core: ProtoBrane,
@@ -619,12 +528,7 @@ impl Fir for StatementFir {
     }
 }
 
-// ── BraneFir ────────────────────────────────────────────────────────────────
 
-/// A brane FIR containing an ordered list of statement children.
-///
-/// NYES progression: Prembrionic → Braning (all children pushed as tasks) →
-/// (children drain in order) → classified (Constant / Nk / Woconstanic).
 #[derive(Debug)]
 pub struct BraneFir {
     pub(crate) core: ProtoBrane,
@@ -669,7 +573,6 @@ impl Fir for BraneFir {
     }
 }
 
-// ── SearchFir ────────────────────────────────────────────────────────────────
 
 #[derive(Debug)]
 pub struct SearchFir {
@@ -680,24 +583,12 @@ pub struct SearchFir {
     pub(crate) sf_inner_pattern: RefCell<Option<String>>,
 }
 
-// NOTE: the former `advance_to_embryonic` free function was removed (FOOP-62 #10): it was
-// dead code AND the only place that set another node's nyes from OUTSIDE that node's own step
-// (`fir_ref.core().set_nyes(...)`), violating the "a FIR owns its own nyes" rule. The EMBRYONIC
-// stage it hinted at (SFF inner expressions starting EMBRYONIC) is reimplemented properly by
-// task #14 (EMBRYONIC = ib_search within the brane). nyes is now only ever set by a FIR on
-// ITSELF (`self.core.set_nyes`) inside its own `fir_op_step`, or at construction
-// (`ProtoBrane::new`, incl. the sanctioned constanic-clone path).
 
 fn extract_simple_name(pattern: &str) -> &str {
     let s = pattern.strip_prefix('^').unwrap_or(pattern);
     s.strip_suffix('$').unwrap_or(s)
 }
 
-/// Resolve an anchor node to its actual value.
-///
-/// When an anchor (e.g. a SearchFir for `hw`) settles, its resolved value
-/// is stored in `ubc_children`. This helper returns the resolved value if
-/// available, otherwise returns the anchor itself.
 fn resolve_anchor(anchor: &FirRef) -> FirRef {
     get_value(anchor)
 }
@@ -727,9 +618,6 @@ fn matches_pattern(stmt_name: &str, pattern: &str) -> bool {
     false
 }
 
-/// Unwrap SF/SFF wrappers to get the inner expression.
-/// UBC does this in resolve_to_value: when a search finds an SF/SFF expression,
-/// it returns the inner expression, not the wrapper.
 fn unwrap_sf_sff(fir_ref: &FirRef) -> FirRef {
     let kind = fir_ref.borrow().kind();
     match kind {
@@ -745,7 +633,6 @@ fn unwrap_sf_sff(fir_ref: &FirRef) -> FirRef {
 }
 
 fn search_brane_children(brane: &FirRef, name: &str, before: Option<usize>, forward: bool) -> Option<(FirRef, Nyes, Option<String>)> {
-    // Clone children to release the brane borrow before potential recursive calls.
     let (children_vec, end) = {
         let brane_borrowed = brane.borrow();
         let c: Vec<FirRef> = brane_borrowed.core().foolish_children().to_vec();
@@ -772,27 +659,14 @@ fn search_brane_children(brane: &FirRef, name: &str, before: Option<usize>, forw
     None
 }
 
-/// The nyes a SEARCH takes from the body it found (FOOP-62 §3.3.1, Atlas ruling).
-/// A search computes its own nyes from its searching act — it is **never INDEPENDENT**
-/// (a search is context-dependent, not a self-contained constant). It CAN be CONSTANT
-/// when it resolves to a knowable constant (e.g. `{a={b=1}.b}` = 1).
-///   - found ECONSTANIC / WOCONSTANIC / NK  → WOCONSTANIC (found something, not a value yet)
-///   - found CONSTANT / INDEPENDENT         → CONSTANT     (resolved to a value; capped — a
-///                                                          search is never INDEPENDENT)
 fn search_nyes_from_found(found: Nyes) -> Nyes {
     match found {
         Nyes::Econstanic | Nyes::Woconstanic | Nyes::Nk => Nyes::Woconstanic,
         Nyes::Constant | Nyes::Independent => Nyes::Constant,
-        // Pre-constanic shouldn't reach here (callers gate on is_constanic), but be safe.
         other => other,
     }
 }
 
-/// IB SEARCH (Immediate Brane) — FOOP-62 #14, the EMBRYONIC-stage search.
-///
-/// Search ONLY the immediate enclosing brane (the first brane up the parent chain), bounded
-/// before the enclosing statement. Does NOT cross into ancestral branes. Returns the found
-/// `(body, nyes, sf_pattern)` or `None` if not present in the immediate brane.
 fn ib_search(start: &ProtoBrane, name: &str, forward: bool) -> Option<(FirRef, Nyes, Option<String>)> {
     let mut current = start.parent();
     while let Some(node) = current {
@@ -807,6 +681,7 @@ fn ib_search(start: &ProtoBrane, name: &str, forward: bool) -> Option<(FirRef, N
                     if nyes.is_constanic() {
                         return Some((body, nyes, sf_pat));
                     }
+                    eprintln!("ib_search: found '{name}' but nyes={nyes:?} is not constanic — skipping");
                 }
                 return None;
             }
@@ -821,12 +696,6 @@ fn ib_search(start: &ProtoBrane, name: &str, forward: bool) -> Option<(FirRef, N
     None
 }
 
-/// AB SEARCH (Ancestral Brane) — FOOP-62 #14, the BRANING-stage search.
-///
-/// Search the ANCESTRAL branes — every enclosing brane ABOVE the immediate one. Skips the
-/// immediate brane (already tried by `ib_search` in EMBRYONIC) and climbs the rest of the
-/// chain, searching each bounded before its enclosing statement. Returns the first match or
-/// `None` when the chain is exhausted.
 fn ab_search(start: &ProtoBrane, name: &str, forward: bool) -> Option<(FirRef, Nyes, Option<String>)> {
     let mut current = start.parent();
     let mut seen_immediate = false;
@@ -838,7 +707,6 @@ fn ab_search(start: &ProtoBrane, name: &str, forward: bool) -> Option<(FirRef, N
             };
             if let Some(ref brane_ref) = brane {
                 if !seen_immediate {
-                    // This is the immediate brane (ib_search's domain) — skip it.
                     seen_immediate = true;
                 } else {
                     let before_idx = find_stmt_index_in_brane(&node, brane_ref);
@@ -861,13 +729,6 @@ fn ab_search(start: &ProtoBrane, name: &str, forward: bool) -> Option<(FirRef, N
 }
 
 impl SearchFir {
-    /// Handle a `(body, nyes, sf_pat)` that a search found in some brane.
-    ///
-    /// The body is always constanic (task queue discipline: parent brane drains all
-    /// foolish_children to constanic before any child's fir_op_step runs). NICC-clone
-    /// it into our `ubc_children`. The clone may be EMBRYONIC (NICC resets ECONSTANIC/WOCONSTANIC)
-    /// and needs the driver to drain it. We go BRANING; the Braning arm settles from
-    /// the drained clone's nyes.
     fn handle_found(
         &self,
         body: FirRef,
@@ -884,9 +745,6 @@ impl SearchFir {
         self.core.set_nyes(Nyes::Braning);
     }
 
-    /// Settle this search's nyes from its (drained) cloned result in `ubc_children`.
-    /// Called in BRANING once the result is present; the driver has drained it to constanic
-    /// before re-running us. A search is never INDEPENDENT — `search_nyes_from_found` caps it.
     fn settle_from_ubc_result(&self) {
         let result_nyes = self
             .core
@@ -906,34 +764,31 @@ impl Fir for SearchFir {
         match self.core.get_nyes() {
             Nyes::Prembrionic => {
                 if self.anchored {
-                    // Anchored searches cross brane boundaries → they run in BRANING, never
-                    // in the EMBRYONIC ib_search stage (FOOP-62 #14).
                     let anchor = Rc::clone(&self.core.foolish_children()[0]);
                     self.core.push_task(anchor);
                     self.core.set_nyes(Nyes::Braning);
                 } else {
-                    // Unanchored: enter EMBRYONIC to do the immediate-brane (ib_search) work.
                     self.core.set_nyes(Nyes::Embryonic);
                 }
             }
             Nyes::Embryonic => {
-                // If a result is already present (carried by a NICC clone, e.g. a collapsed
-                // WOCONSTANIC chain), do NOT search again — settle from it (FOOP-62 #21).
                 if !self.core.ubc_children().is_empty() {
                     self.settle_from_ubc_result();
                 } else {
-                    // EMBRYONIC = ib_search: search ONLY the immediate brane (FOOP-62 #14).
-                    // Found → handle it. Not found → escalate to BRANING (ab_search).
                     match ib_search(&self.core, &self.pattern, self.forward) {
-                        Some((body, nyes, sf_pat)) => self.handle_found(body, nyes, sf_pat, scope),
-                        None => self.core.set_nyes(Nyes::Braning),
+                        Some((body, nyes, sf_pat)) => {
+                            eprintln!("ib_search: found '{}' nyes={:?} — handle_found", self.pattern, nyes);
+                            self.handle_found(body, nyes, sf_pat, scope);
+                        }
+                        None => {
+                            eprintln!("ib_search: '{}' not found — escalating", self.pattern);
+                            self.core.set_nyes(Nyes::Braning);
+                        }
                     }
                 }
             }
             Nyes::Braning => {
                 if !self.core.ubc_children().is_empty() {
-                    // A result was already cloned into ubc_children (by handle_found or the
-                    // anchored branch); the driver has drained it to constanic. Settle from it.
                     self.settle_from_ubc_result();
                 } else if self.anchored {
                     let anchor = Rc::clone(&self.core.foolish_children()[0]);
@@ -945,8 +800,6 @@ impl Fir for SearchFir {
                         self.core.set_nyes(Nyes::Nk);
                     }
                 } else {
-                    // BRANING = ab_search: ib_search (EMBRYONIC) found nothing, so climb the
-                    // ANCESTRAL branes (FOOP-62 #14). Found → handle; exhausted → ECONSTANIC.
                     match ab_search(&self.core, &self.pattern, self.forward) {
                         Some((body, nyes, sf_pat)) => self.handle_found(body, nyes, sf_pat, scope),
                         None => self.core.set_nyes(Nyes::Econstanic),
@@ -971,7 +824,6 @@ impl Fir for SearchFir {
     }
 }
 
-// ── IndexFir (stub) ────────────────────────────────────────────────────────
 
 #[derive(Debug)]
 pub struct IndexFir {
@@ -981,7 +833,6 @@ pub struct IndexFir {
 }
 
 fn index_into_brane(brane: &FirRef, offset: i32) -> Option<(FirRef, Nyes)> {
-    // Clone all handles under short borrows, then drop ALL borrows before accessing.
     let (body, body_nyes) = {
         let body: FirRef = {
             let borrowed = brane.borrow();
@@ -1059,9 +910,6 @@ fn find_parent_brane(start: &ProtoBrane) -> Option<FirRef> {
 }
 
 impl IndexFir {
-    /// Settle this node's nyes from its (now-drained) cloned result in ubc_children.
-    /// The driver steps the cloned result to constanic before re-running us, so reading
-    /// its nyes here yields the final state. NK if no result was produced.
     fn settle_from_ubc_result(&self) {
         let nyes = self
             .core
@@ -1141,7 +989,6 @@ impl Fir for IndexFir {
     }
 }
 
-// ── HeadTailFir (stub) ─────────────────────────────────────────────────────
 
 #[derive(Debug)]
 pub struct HeadTailFir {
@@ -1248,17 +1095,7 @@ impl Fir for HeadTailFir {
     }
 }
 
-// ── StayFoolishFir ────────────────────────────────────────────────────────
 
-/// A StayFoolish FIR wrapping a single expression child.
-///
-/// SF steps its child to constanic at assignment time: the expr child is evaluated once,
-/// then the result is constanic-cloned into ubc_children. No re-evaluation on
-/// subsequent accesses. The clone carries the Foolishly flag (used when Scope
-/// is implemented).
-///
-/// NYES progression: Prembrionic → Braning (expr task pushed) →
-/// (expr drains) → constanic-clone result → expr's NYES copied to self.
 #[derive(Debug)]
 pub struct StayFoolishFir {
     pub(crate) core: ProtoBrane,
@@ -1271,11 +1108,8 @@ impl Fir for StayFoolishFir {
     fn fir_op_step(&self, _scope: &Scope) -> Result<(), UbcError> {
         match self.core.get_nyes() {
             Nyes::Prembrionic | Nyes::Embryonic => {
-                // SF has a single expression child. Push it as a task and move
-                // to Braning — the expr will drain first.
                 let children: Vec<FirRef> = self.core.foolish_children().to_vec();
                 if children.is_empty() {
-                    // No child — immediately constanic (empty SF is constant).
                     self.core.set_nyes(Nyes::Constant);
                 } else {
                     self.core.set_nyes(Nyes::Braning);
@@ -1285,8 +1119,6 @@ impl Fir for StayFoolishFir {
                 }
             }
             Nyes::Braning => {
-                // Constanic-clone: when expr settles, clone result into ubc_children.
-                // Foolishly flag (documented; refined when Scope is implemented).
                 let children = self.core.foolish_children().to_vec();
                 if let Some(expr) = children.first() {
                     let expr_nyes = expr.borrow().core().get_nyes();
@@ -1316,18 +1148,7 @@ impl Fir for StayFoolishFir {
     }
 }
 
-// ── StayFullyFoolishFir ────────────────────────────────────────────────────
 
-/// A StayFullyFoolish FIR wrapping an expression.
-///
-/// SFF evaluates its child like a single-membered brane. The only special
-/// behavior is that descendant search FIRs are created as ECONSTANIC
-/// (searches never run). The SFF marker's state depends on its child:
-/// - `<<1+1>>` → Constant 2 (all children are constants)
-/// - `<<a+b>>` → WOCONSTANIC (a,b are ECONSTANIC searches)
-///
-/// NYES progression: Prembrionic → Braning (child pushed as task) →
-/// (child drains) → child's NYES copied to self.
 #[derive(Debug)]
 pub struct StayFullyFoolishFir {
     pub(crate) core: ProtoBrane,
@@ -1361,7 +1182,6 @@ impl Fir for StayFullyFoolishFir {
     }
 }
 
-// ── ConcatenationFir (stub) ────────────────────────────────────────────────
 
 #[derive(Debug)]
 pub struct ConcatenationFir {
@@ -1396,8 +1216,6 @@ impl Fir for ConcatenationFir {
             }
             Nyes::Braning => {
                 let children = self.core.foolish_children().to_vec();
-                // Resolve through search wrappers — searches map NK→WOCONSTANIC,
-                // so checking the wrapper state misses NK from inner values.
                 let any_nk = children.iter().any(|c| {
                     let resolved = get_value(c);
                     resolved.borrow().core().get_nyes() == Nyes::Nk
@@ -1449,11 +1267,7 @@ impl Fir for ConcatenationFir {
     }
 }
 
-// ── Builders ────────────────────────────────────────────────────────────────
 
-/// Build a `IndepIntFir` leaf wrapped in `FirRef`.
-///
-/// Starts at Prembrionic; stepping transitions it to Constant.
 pub fn constant_int(value: i64, parent: Weak<RefCell<dyn Fir>>) -> FirRef {
     Rc::new(RefCell::new(IndepIntFir {
         core: ProtoBrane::new(vec![], parent, Nyes::Prembrionic),
@@ -1461,9 +1275,6 @@ pub fn constant_int(value: i64, parent: Weak<RefCell<dyn Fir>>) -> FirRef {
     }))
 }
 
-/// Build an `NkFir` leaf wrapped in `FirRef`.
-///
-/// Starts at Prembrionic; stepping transitions it to Nk.
 pub fn nk(reason: &str, parent: Weak<RefCell<dyn Fir>>) -> FirRef {
     Rc::new(RefCell::new(NkFir {
         core: ProtoBrane::new(vec![], parent, Nyes::Prembrionic),
@@ -1471,9 +1282,6 @@ pub fn nk(reason: &str, parent: Weak<RefCell<dyn Fir>>) -> FirRef {
     }))
 }
 
-/// Build an `OperatorFir` wrapped in `FirRef`.
-///
-/// `operands` become `foolish_children`. Starts at Prembrionic.
 pub fn operator(op: &str, operands: Vec<FirRef>, parent: Weak<RefCell<dyn Fir>>) -> FirRef {
     Rc::new(RefCell::new(OperatorFir {
         core: ProtoBrane::new(operands, parent, Nyes::Prembrionic),
@@ -1545,7 +1353,6 @@ pub fn stay_fully_foolish(expr: FirRef, parent: Weak<RefCell<dyn Fir>>) -> FirRe
     }))
 }
 
-// ── Tests ───────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
 mod tests {
@@ -1553,8 +1360,6 @@ mod tests {
     use crate::fir_trait::step_fir_ref;
     use crate::fir_trait::StepReport;
 
-    /// Helper: create a self-rooting FirRef for standalone testing.
-    /// The parent Weak points at the node itself (root convention).
     fn make_constant_int(value: i64) -> FirRef {
         Rc::new_cyclic(|me: &Weak<RefCell<IndepIntFir>>| {
             let parent: Weak<RefCell<dyn Fir>> = me.clone();
@@ -1565,7 +1370,6 @@ mod tests {
         })
     }
 
-    /// Helper: create a self-rooting NkFir for standalone testing.
     fn make_nk(reason: &str) -> FirRef {
         Rc::new_cyclic(|me: &Weak<RefCell<NkFir>>| {
             let parent: Weak<RefCell<dyn Fir>> = me.clone();
@@ -1581,11 +1385,9 @@ mod tests {
         let node = make_constant_int(42);
         let scope = Scope::empty();
 
-        // Before stepping: Prembrionic
         assert_eq!(node.borrow().core().get_nyes(), Nyes::Prembrionic);
         let mut transitions = vec![Nyes::Prembrionic];
 
-        // Step once
         let report = step_fir_ref(&node, &scope).unwrap();
         match report {
             StepReport::Progress(nyes) => {
@@ -1598,16 +1400,11 @@ mod tests {
         eprintln!("IndepInt NYES transitions: {transitions:?}");
         assert_eq!(transitions, vec![Nyes::Prembrionic, Nyes::Constant]);
 
-        // Settled after one step
         assert!(node.borrow().core().get_nyes().is_constanic());
 
-        // Value is accessible
         assert_eq!(node.borrow().core().get_nyes(), Nyes::Constant);
-        // Access value through the concrete type via FirRef
-        // (we know it's a IndepIntFir from construction)
         let borrowed = node.borrow();
         assert_eq!(borrowed.core().get_nyes(), Nyes::Constant);
-        // The value is accessible via downcast or the kind() check
         assert_eq!(borrowed.kind(), FirKind::IndepInt);
     }
 
@@ -1616,10 +1413,8 @@ mod tests {
         let node = make_constant_int(-7);
         let scope = Scope::empty();
 
-        // Step to settled
         let _ = step_fir_ref(&node, &scope).unwrap();
 
-        // Verify the value via the Fir trait's kind()
         assert_eq!(node.borrow().kind(), FirKind::IndepInt);
     }
 
@@ -1628,11 +1423,9 @@ mod tests {
         let node = make_nk("unbound name");
         let scope = Scope::empty();
 
-        // Before stepping: Prembrionic
         assert_eq!(node.borrow().core().get_nyes(), Nyes::Prembrionic);
         let mut transitions = vec![Nyes::Prembrionic];
 
-        // Step once
         let report = step_fir_ref(&node, &scope).unwrap();
         match report {
             StepReport::Progress(nyes) => {
@@ -1645,10 +1438,8 @@ mod tests {
         eprintln!("NkFir NYES transitions: {transitions:?}");
         assert_eq!(transitions, vec![Nyes::Prembrionic, Nyes::Nk]);
 
-        // Settled after one step
         assert!(node.borrow().core().get_nyes().is_constanic());
 
-        // Kind check
         assert_eq!(node.borrow().kind(), FirKind::Nk);
     }
 
@@ -1657,10 +1448,8 @@ mod tests {
         let node = make_nk("division by zero");
         let scope = Scope::empty();
 
-        // Step to settled
         let _ = step_fir_ref(&node, &scope).unwrap();
 
-        // Verify the kind
         assert_eq!(node.borrow().kind(), FirKind::Nk);
     }
 
@@ -1670,18 +1459,15 @@ mod tests {
         let nk = make_nk("nope");
         let scope = Scope::empty();
 
-        // Neither is settled before stepping
         assert!(!ci.borrow().core().get_nyes().is_constanic());
         assert!(!nk.borrow().core().get_nyes().is_constanic());
 
-        // One step each
         let r1 = step_fir_ref(&ci, &scope).unwrap();
         let r2 = step_fir_ref(&nk, &scope).unwrap();
 
         assert!(matches!(r1, StepReport::Progress(Nyes::Constant)));
         assert!(matches!(r2, StepReport::Progress(Nyes::Nk)));
 
-        // Both settled
         assert!(ci.borrow().core().get_nyes().is_constanic());
         assert!(nk.borrow().core().get_nyes().is_constanic());
     }
@@ -1692,11 +1478,9 @@ mod tests {
         let nk = make_nk("done");
         let scope = Scope::empty();
 
-        // Step to settle
         let _ = step_fir_ref(&ci, &scope).unwrap();
         let _ = step_fir_ref(&nk, &scope).unwrap();
 
-        // Step again — should remain at same terminal state
         let r1 = step_fir_ref(&ci, &scope).unwrap();
         let r2 = step_fir_ref(&nk, &scope).unwrap();
 
@@ -1706,7 +1490,6 @@ mod tests {
 
     #[test]
     fn constant_int_builder_sets_prembrionic() {
-        // Use the public builder with a dummy parent Weak
         let dummy: Rc<RefCell<dyn Fir>> = Rc::new_cyclic(|me: &Weak<RefCell<IndepIntFir>>| {
             let parent: Weak<RefCell<dyn Fir>> = me.clone();
             RefCell::new(IndepIntFir {
@@ -1967,7 +1750,6 @@ mod tests {
         assert_eq!(node.borrow().kind(), FirKind::Operator);
     }
 
-    // ── StatementFir tests ──────────────────────────────────────────────────
 
     #[test]
     fn statement_wrapping_constant_copies_body_nyes() {
@@ -2004,7 +1786,6 @@ mod tests {
         let body = make_constant_int(1);
         let stmt = make_statement("myvar", 42, Rc::clone(&body));
         assert_eq!(stmt.borrow().kind(), FirKind::Statement);
-        // Access through concrete downcast
         let borrowed = stmt.borrow();
         assert_eq!(borrowed.kind(), FirKind::Statement);
     }
@@ -2026,7 +1807,6 @@ mod tests {
         assert_eq!(node.borrow().kind(), FirKind::Statement);
     }
 
-    // ── BraneFir tests ──────────────────────────────────────────────────────
 
     #[test]
     fn brane_two_constant_children_classifies_constant() {
@@ -2062,11 +1842,9 @@ mod tests {
         let brane = make_brane(vec![Rc::clone(&a), Rc::clone(&b)]);
         let scope = Scope::empty();
 
-        // Step once: Prembrionic → Braning (tasks pushed)
         let r1 = step_fir_ref(&brane, &scope).unwrap();
         assert!(matches!(r1, StepReport::Progress(Nyes::Braning)));
 
-        // Next steps should drain child a first
         let mut child_a_settled_first = false;
         for _ in 0..20 {
             let _ = step_fir_ref(&brane, &scope).unwrap();
@@ -2087,12 +1865,10 @@ mod tests {
 
     #[test]
     fn brane_nested_brane_drains_inner_first() {
-        // Inner brane with 2 constant children
         let inner_a = make_constant_int(100);
         let inner_b = make_constant_int(200);
         let inner = make_brane(vec![Rc::clone(&inner_a), Rc::clone(&inner_b)]);
 
-        // Outer brane containing inner as only child
         let outer = make_brane(vec![Rc::clone(&inner)]);
         let scope = Scope::empty();
 
@@ -2134,8 +1910,6 @@ mod tests {
 
     #[test]
     fn statement_wrapping_operator_propagates() {
-        // Statement wrapping an operator: 3 + 5 → body becomes Constant(8),
-        // statement copies Constant.
         let a = make_constant_int(3);
         let b = make_constant_int(5);
         let op = make_operator("+", vec![Rc::clone(&a), Rc::clone(&b)]);
@@ -2149,7 +1923,6 @@ mod tests {
         assert_eq!(op.borrow().core().get_nyes(), Nyes::Constant);
     }
 
-    // ── SearchFir tests ──────────────────────────────────────────────────────
 
     #[test]
     fn search_finds_name_in_anchored_brane() {
@@ -2194,11 +1967,9 @@ mod tests {
         let transitions = step_to_settled(&search, &scope);
         eprintln!("Search(nk body) NYES transitions: {transitions:?}");
 
-        // NK found → search becomes Woconstanic (found something, but it's not a value)
         assert_eq!(search.borrow().core().get_nyes(), Nyes::Woconstanic);
     }
 
-    // ── IndexFir tests ─────────────────────────────────────────────────────
 
     #[test]
     fn index_finds_element_at_offset_in_anchor_brane() {
@@ -2301,7 +2072,6 @@ mod tests {
         assert_eq!(idx.borrow().core().get_nyes(), Nyes::Nk);
     }
 
-    // ── HeadTailFir helpers & tests ────────────────────────────────────────
 
     fn make_headtail(is_head: bool, anchored: bool, foolish_children: Vec<FirRef>) -> FirRef {
         Rc::new_cyclic(|me: &Weak<RefCell<HeadTailFir>>| {
@@ -2413,7 +2183,6 @@ mod tests {
         assert_eq!(ht.borrow().core().get_nyes(), Nyes::Nk);
     }
 
-    // ── ConcatenationFir helpers & tests ──────────────────────────────────
 
     fn make_concatenation(elements: Vec<FirRef>) -> FirRef {
         Rc::new_cyclic(|me: &Weak<RefCell<ConcatenationFir>>| {
@@ -2499,7 +2268,6 @@ mod tests {
         assert_eq!(ubc[0].borrow().core().foolish_children().len(), 1);
     }
 
-    // ── StayFoolishFir helpers & tests ────────────────────────────────────
 
     fn make_stay_foolish(expr: FirRef) -> FirRef {
         Rc::new_cyclic(|me: &Weak<RefCell<StayFoolishFir>>| {
@@ -2541,7 +2309,6 @@ mod tests {
 
     #[test]
     fn stay_foolish_sets_econstanic_body_constanic() {
-        // A search that doesn't find anything → Econstanic
         let val = make_constant_int(1);
         let stmt = make_statement("x", 1, Rc::clone(&val));
         let brane = make_brane(vec![Rc::clone(&stmt)]);
@@ -2634,7 +2401,6 @@ mod tests {
         assert_eq!(ubc[0].borrow().as_i64(), Some(10));
     }
 
-    // ── StayFullyFoolishFir helpers & tests ───────────────────────────────
 
     fn make_stay_fully_foolish(expr: FirRef) -> FirRef {
         Rc::new_cyclic(|me: &Weak<RefCell<StayFullyFoolishFir>>| {
@@ -2651,8 +2417,6 @@ mod tests {
         let sff = make_stay_fully_foolish(Rc::clone(&body));
         let scope = Scope::empty();
 
-        // SFF evaluates its child like a single-membered brane.
-        // Prembrionic → Braning (child pushed) → Constant (child settled)
         assert_eq!(sff.borrow().core().get_nyes(), Nyes::Prembrionic);
         let mut transitions = vec![Nyes::Prembrionic];
         for _ in 0..10 {
@@ -2678,7 +2442,6 @@ mod tests {
         let sff = make_stay_fully_foolish(Rc::clone(&body));
         let scope = Scope::empty();
 
-        // SFF: push child → step child → pop child → settle to child's NYES
         step_fir_ref(&sff, &scope).unwrap(); // Prembrionic → Braning (child pushed)
         step_fir_ref(&sff, &scope).unwrap(); // child stepped to CONSTANT
         step_fir_ref(&sff, &scope).unwrap(); // child popped (constanic)
@@ -2686,7 +2449,6 @@ mod tests {
         assert!(matches!(report, StepReport::Progress(Nyes::Constant)));
         assert!(sff.borrow().core().get_nyes().is_constanic());
 
-        // Body was stepped to CONSTANT
         assert_eq!(body.borrow().core().get_nyes(), Nyes::Constant);
     }
 
@@ -2707,26 +2469,13 @@ mod tests {
         assert_eq!(node.borrow().kind(), FirKind::StayFullyFoolish);
     }
 
-    // ── Ignorance clone model (FOOP-62 §10.1, "Terminology: ignorance") ────────
-    //
-    // These document the two modes of `constanic_clone_at` and the SF-strip rule.
-    // `descendent_of_sfm_and_foolishly_ignorant`:
-    //   false (normally ignorant) — constanic NYES copied unchanged; pre-constanic
-    //                               → PREMBRYONIC.
-    //   true  (foolishly ignorant) — ALL NYES copied unchanged.
 
-    /// A self-Weak suitable as `new_parent` for a standalone clone.
     fn dangling_parent() -> Weak<RefCell<dyn Fir>> {
         Weak::<RefCell<IndepIntFir>>::new()
     }
 
-    /// `clone_nyes` rule in isolation. Input is always CONSTANIC (a constanic clone is only
-    /// taken of a settled FIR). FICC copies everything; NICC keeps Constantew and resets the
-    /// context-dependent constanics (ECONSTANIC/WOCONSTANIC) to EMBRYONIC (re-progress).
     #[test]
     fn clone_nyes_rule_by_mode() {
-        // NICC (normal, false): Constantew (CONSTANT/INDEPENDENT/NK) kept;
-        // ECONSTANIC/WOCONSTANIC -> EMBRYONIC.
         assert_eq!(clone_nyes(Nyes::Constant, false), Nyes::Constant);
         assert_eq!(clone_nyes(Nyes::Independent, false), Nyes::Independent);
         assert_eq!(clone_nyes(Nyes::Nk, false), Nyes::Nk);
@@ -2741,7 +2490,6 @@ mod tests {
             "NICC resets WOCONSTANIC to EMBRYONIC too (nyes part; collapse is task #21)"
         );
 
-        // FICC (foolish, true) is UNCHANGED: every CONSTANIC NYES copied verbatim.
         for n in [
             Nyes::Constant,
             Nyes::Independent,
@@ -2753,8 +2501,6 @@ mod tests {
         }
     }
 
-    /// NICC of an ECONSTANIC FIR resets it to EMBRYONIC — that reset IS the mechanism
-    /// that re-steps the clone under its new parent (Atlas ruling). It does NOT stay ECONSTANIC.
     #[test]
     fn nicc_resets_econstanic_to_embryonic() {
         let op = make_operator("+", vec![make_constant_int(1), make_constant_int(2)]);
@@ -2770,9 +2516,6 @@ mod tests {
         );
     }
 
-    /// NICC of a WOCONSTANIC compound resets it to EMBRYONIC too (the nyes part; the fancy
-    /// collapse is task #21). (A constanic clone is only taken of a constanic source — a
-    /// pre-constanic input is asserted against in clone_nyes/constanic_clone_at.)
     #[test]
     fn nicc_resets_woconstanic_compound_to_embryonic() {
         let op = make_operator("+", vec![make_constant_int(1), make_constant_int(2)]);
@@ -2787,8 +2530,6 @@ mod tests {
         );
     }
 
-    /// FICC (foolish clone) copies a CONSTANIC source's nyes verbatim (ECONSTANIC stays
-    /// ECONSTANIC, WOCONSTANIC stays WOCONSTANIC).
     #[test]
     fn foolish_clone_copies_constanic_nyes_verbatim() {
         let woc = make_operator("+", vec![make_constant_int(1), make_constant_int(2)]);
@@ -2806,12 +2547,10 @@ mod tests {
         assert_eq!(cloned.borrow().core().get_nyes(), Nyes::Econstanic);
     }
 
-    /// Leaves (IndepInt/Nk) transfer their NYES unchanged in BOTH modes.
     #[test]
     fn leaf_clone_unchanged_both_modes() {
         let ci = make_constant_int(9);
         ci.borrow().core().set_nyes(Nyes::Constant);
-        // Constant is referenced (Rc), still Constant.
         let n = constanic_clone_at(&ci, &dangling_parent(), 0, false);
         assert_eq!(n.borrow().core().get_nyes(), Nyes::Constant);
         let n = constanic_clone_at(&ci, &dangling_parent(), 0, true);
@@ -2825,8 +2564,6 @@ mod tests {
         assert_eq!(n.borrow().core().get_nyes(), Nyes::Nk);
     }
 
-    /// THE BIG BUT: cloning an SF-mark STRIPS the wrapper — the clone is the inner
-    /// expression, never a StayFoolish node. Holds in both modes.
     #[test]
     fn cloning_sf_strips_the_mark() {
         let inner = make_constant_int(10);
@@ -2850,13 +2587,8 @@ mod tests {
         );
     }
 
-    /// has_ancestral_sfm propagates: descending into a StayFoolish node turns on
-    /// the foolish scope for the child subtree (drives stepping to constanic).
     #[test]
     fn step_sets_foolish_scope_inside_sf() {
-        // The SF steps its (constant) body to constanic; stepping settles it. We assert the
-        // SF settles via the foolish path without error and reaches a constanic
-        // state (behavioral proxy for the propagated scope).
         let body = make_constant_int(7);
         let sf = make_stay_foolish(Rc::clone(&body));
         let scope = Scope::empty();
@@ -2866,23 +2598,11 @@ mod tests {
         eprintln!("SF settle under has_ancestral_sfm propagation: {transitions:?}");
         assert!(sf.borrow().core().get_nyes().is_constanic());
 
-        // And the with_ancestral_sfm helper sets the flag without disturbing position.
         let foolish_scope = scope.with_ancestral_sfm(true);
         assert!(foolish_scope.has_ancestral_sfm);
     }
 
-    // ── nyes progression through stepping (FOOP-62 #10) ───────────────────────
-    //
-    // These step a PARENT and observe the nyes of both the parent and a watched
-    // descendant at every step. They document that:
-    //   - a FIR owns its own nyes (it only advances by being stepped);
-    //   - the progression is queue-driven (pending tasks ⇒ pre-constanic; queue
-    //     drained ⇒ the node settles from its now-constanic children/result);
-    //   - nyes is correct at every quiescent point (between steps).
 
-    /// Step `root` to settled, recording (root_nyes, watched_nyes) BEFORE each step
-    /// and once more at the end. Lets a test watch a descendant advance as its
-    /// parent drains the queue.
     fn step_watching(root: &FirRef, watched: &FirRef, scope: &Scope) -> Vec<(Nyes, Nyes)> {
         let mut trace = vec![(
             root.borrow().core().get_nyes(),
@@ -2901,7 +2621,6 @@ mod tests {
         trace
     }
 
-    /// A brane of all-constant statements settles, and every node ends constanic.
     #[test]
     fn brane_of_constants_progresses_to_settled() {
         let s1 = make_statement("a", 0, make_constant_int(1));
@@ -2909,22 +2628,15 @@ mod tests {
         let brane = make_brane(vec![Rc::clone(&s1), Rc::clone(&s2)]);
         let scope = Scope::empty();
 
-        // Watch statement s2 advance while the brane drains its queue.
         let trace = step_watching(&brane, &s2, &scope);
         eprintln!("brane/constants (brane, s2) nyes: {trace:?}");
 
-        // Brane starts pre-constanic, ends constanic; never regresses past settled.
         assert_eq!(trace.first().unwrap().0, Nyes::Prembrionic);
         assert!(brane.borrow().core().get_nyes().is_constanic());
-        // The watched statement also reaches a constanic state.
         assert!(s2.borrow().core().get_nyes().is_constanic());
-        // Every recorded brane nyes before the last is pre-constanic OR the final settled one.
-        // (queue-driven: pending tasks keep it pre-constanic)
         assert!(trace.len() >= 2, "should take at least one step");
     }
 
-    /// A statement holding an operator: the operator advances through its own
-    /// queue (operands first) before the statement/brane settle.
     #[test]
     fn operator_in_brane_advances_before_parent_settles() {
         let op = make_operator("+", vec![make_constant_int(4), make_constant_int(6)]);
@@ -2932,27 +2644,19 @@ mod tests {
         let brane = make_brane(vec![Rc::clone(&stmt)]);
         let scope = Scope::empty();
 
-        // Before stepping, the operator is pre-constanic.
         assert_eq!(op.borrow().core().get_nyes(), Nyes::Prembrionic);
 
         let trace = step_watching(&brane, &op, &scope);
         eprintln!("operator-in-brane (brane, op) nyes: {trace:?}");
 
-        // The operator must reach constanic BEFORE (or at) the brane settling —
-        // i.e. once the brane is settled, the operator is settled too.
         assert!(brane.borrow().core().get_nyes().is_constanic());
         assert!(op.borrow().core().get_nyes().is_constanic());
-        // The operator computed its value (10) → CONSTANT.
         assert_eq!(op.borrow().core().get_nyes(), Nyes::Constant);
         assert_eq!(op.borrow().as_i64(), Some(10));
     }
 
-    /// An unresolved unanchored search inside a brane goes ECONSTANIC (found
-    /// nothing), and the brane settles around that — the search owns its nyes and
-    /// is never forced from outside.
     #[test]
     fn unresolved_search_in_brane_goes_econstanic() {
-        // `x = <search for 'zzz'>` with no such name → ECONSTANIC.
         let search = make_search("zzz", false, vec![]);
         let stmt = make_statement("x", 0, Rc::clone(&search));
         let brane = make_brane(vec![Rc::clone(&stmt)]);
@@ -2961,15 +2665,11 @@ mod tests {
         let trace = step_watching(&brane, &search, &scope);
         eprintln!("unresolved-search (brane, search) nyes: {trace:?}");
 
-        // The search settles (it owns its nyes); a not-found unanchored search is
-        // ECONSTANIC, and the brane settles around it.
         assert!(search.borrow().core().get_nyes().is_constanic());
         assert_eq!(search.borrow().core().get_nyes(), Nyes::Econstanic);
         assert!(brane.borrow().core().get_nyes().is_constanic());
     }
 
-    /// Stepping is monotone for a watched node: once a node is constanic it stays
-    /// constanic across further parent steps (nyes is owned + only advances).
     #[test]
     fn constanic_node_stays_constanic_across_parent_steps() {
         let s1 = make_statement("a", 0, make_constant_int(1));
@@ -2992,15 +2692,7 @@ mod tests {
         assert!(s1.borrow().core().get_nyes().is_constanic());
     }
 
-    // ── Per-FIR-kind nyes transition coverage (FOOP-62 #10/#15) ───────────────
-    //
-    // One test per FIR kind recording the full per-step nyes sequence and
-    // asserting the progression is well-formed. `assert_progression` checks the
-    // shared invariant; each test then pins the kind-specific terminal state.
 
-    /// A well-formed nyes progression: starts PREMBRIONIC, ends constanic, and is
-    /// MONOTONE — once a node reads constanic it never regresses to pre-constanic.
-    /// `expected_terminal` pins the final state for the kind under test.
     fn assert_progression(trace: &[Nyes], expected_terminal: Nyes, label: &str) {
         eprintln!("{label} nyes transitions: {trace:?}");
         assert!(!trace.is_empty(), "{label}: empty trace");
@@ -3012,7 +2704,6 @@ mod tests {
         let last = *trace.last().unwrap();
         assert!(last.is_constanic(), "{label}: must end constanic (got {last:?})");
         assert_eq!(last, expected_terminal, "{label}: wrong terminal state");
-        // Monotone: no constanic → pre-constanic regression.
         let mut seen_constanic = false;
         for n in trace {
             if seen_constanic {
@@ -3068,7 +2759,6 @@ mod tests {
             make_statement("b", 1, make_constant_int(2)),
         ]);
         let trace = step_to_settled(&brane, &Scope::empty());
-        // All-constant children → the brane classifies CONSTANT (a fully-evaluated brane value).
         assert_progression(&trace, Nyes::Constant, "Brane");
     }
 
@@ -3084,12 +2774,9 @@ mod tests {
 
     #[test]
     fn search_anchored_found_nyes_transitions() {
-        // anchor brane {a=10}; search '^a$' anchored on it → found CONSTANT.
         let brane = make_brane(vec![make_statement("a", 0, make_constant_int(10))]);
         let search = make_search("^a$", true, vec![Rc::clone(&brane)]);
         let trace = step_to_settled(&search, &Scope::empty());
-        // A found value-bearing anchored search → WOCONSTANIC (found, not yet a value)
-        // per search_nyes_from_found mapping of the body's state.
         assert!(search.borrow().core().get_nyes().is_constanic());
         assert_eq!(*trace.first().unwrap(), Nyes::Prembrionic);
         eprintln!("Search(anchored,found) nyes transitions: {trace:?}");
@@ -3097,7 +2784,6 @@ mod tests {
 
     #[test]
     fn search_not_found_nyes_transitions() {
-        // unanchored search for a name that does not exist → ECONSTANIC.
         let search = make_search("zzz", false, vec![]);
         let trace = step_to_settled(&search, &Scope::empty());
         assert_progression(&trace, Nyes::Econstanic, "Search(not found)");
@@ -3161,21 +2847,12 @@ mod tests {
     fn stay_fully_foolish_nyes_transitions() {
         let sff = make_stay_fully_foolish(make_constant_int(42));
         let trace = step_to_settled(&sff, &Scope::empty());
-        // SFF steps child (IndepInt 42 → CONSTANT), then settles to CONSTANT.
         assert_progression(&trace, Nyes::Constant, "StayFullyFoolish");
     }
 
-    // ── IB/AB search context by stage (FOOP-62 #14) ───────────────────────────
-    //
-    // EMBRYONIC does ib_search (immediate brane only); BRANING does ab_search
-    // (ancestral branes) + anchored searches. These tests compile real Foolish so
-    // parent pointers are properly wired, then verify the RIGHT thing is found in
-    // the RIGHT context at each stage.
 
     use crate::compiler::Compiler;
 
-    /// Recursively find the first SearchFir with the given pattern in a tree
-    /// (searches foolish_children depth-first).
     fn find_search(node: &FirRef, pattern: &str) -> Option<FirRef> {
         if node.borrow().kind() == FirKind::Search
             && node.borrow().as_search_pattern() == Some(pattern)
@@ -3191,37 +2868,24 @@ mod tests {
         None
     }
 
-    /// ib_search resolves a name defined in the IMMEDIATE brane during EMBRYONIC —
-    /// the search settles without ever needing to escalate to ab_search/BRANING for
-    /// the *find* (it may pass through Braning only to drain the found body).
     #[test]
     fn ib_context_resolves_in_immediate_brane() {
-        // `a` is in the same (immediate) brane as the search `a` inside `b`'s value.
         let root = Compiler::compile("{a = 1; b = a;}").unwrap().pop().unwrap();
         let search = find_search(&root, "^a$").expect("search for a");
 
-        // Directly: ib_search must find `a` (it's in the immediate brane).
         let ib = ib_search(&search.borrow().core(), "^a$", false);
         assert!(ib.is_some(), "ib_search must find a name in the immediate brane");
 
-        // Stepping the whole program settles it (the search resolves to 1).
         let scope = Scope::empty();
         let _ = step_to_settled(&root, &scope);
         assert!(search.borrow().core().get_nyes().is_constanic());
     }
 
-    /// A name defined ONLY in an ANCESTRAL brane is NOT found by ib_search (immediate
-    /// brane) but IS found by ab_search — i.e. it resolves only after escalating to
-    /// BRANING. This is the core IB-vs-AB context discrimination.
     #[test]
     fn ab_context_name_not_in_immediate_brane() {
-        // `a` is in the OUTER brane; the search `a` lives inside inner brane `b`,
-        // whose immediate brane (b's body) does NOT contain `a`.
         let root = Compiler::compile("{a = 1; b = {c = a;};}").unwrap().pop().unwrap();
         let search = find_search(&root, "^a$").expect("search for a");
 
-        // ib_search (immediate brane = b's body {c=...}) must NOT find `a`;
-        // ab_search (climb to the outer brane) MUST find `a`.
         {
             let b = search.borrow();
             assert!(
@@ -3234,22 +2898,17 @@ mod tests {
             );
         }
 
-        // Full stepping resolves it (via EMBRYONIC-miss → BRANING ab_search).
         let scope = Scope::empty();
         let _ = step_to_settled(&root, &scope);
         assert!(search.borrow().core().get_nyes().is_constanic());
     }
 
-    /// Shadowing: a name in BOTH the immediate and an ancestral brane resolves to the
-    /// IMMEDIATE one (ib_search wins at EMBRYONIC, before ab_search is consulted).
     #[test]
     fn ib_shadows_ab_immediate_wins() {
-        // Outer `a = 1`; inner brane redefines `a = 2`, then searches `a`.
         let root = Compiler::compile("{a = 1; b = {a = 2; c = a;};}")
             .unwrap()
             .pop()
             .unwrap();
-        // The search `a` used by `c` is inside inner brane b; its immediate `a` is 2.
         let search = find_search(&root, "^a$").expect("search for a");
         {
             let b = search.borrow();
@@ -3259,7 +2918,6 @@ mod tests {
 
         let scope = Scope::empty();
         let _ = step_to_settled(&root, &scope);
-        // The resolved value must be the IMMEDIATE a (2), not the ancestral a (1).
         assert!(search.borrow().core().get_nyes().is_constanic());
         let result = get_value(&search);
         assert_eq!(
@@ -3269,18 +2927,14 @@ mod tests {
         );
     }
 
-    /// Stage discrimination via the search's own progression: an ancestral-only name
-    /// passes THROUGH Embryonic (ib miss) into Braning (ab find) before settling.
     #[test]
     fn ancestral_search_passes_through_embryonic_then_braning() {
         let root = Compiler::compile("{a = 1; b = {c = a;};}").unwrap().pop().unwrap();
         let search = find_search(&root, "^a$").expect("search for a");
         let scope = Scope::empty();
 
-        // Drive the whole program so the inner search gets stepped in context.
         let trace = step_to_settled(&search, &scope);
         eprintln!("ancestral search nyes: {trace:?}");
-        // It must have entered EMBRYONIC (ib_search) and then BRANING (ab_search).
         assert!(
             trace.contains(&Nyes::Embryonic),
             "ancestral search must pass through EMBRYONIC (ib_search stage)"
@@ -3291,23 +2945,18 @@ mod tests {
         );
     }
 
-    // ── SFF builds descendant searches ECONSTANIC (FOOP-62 #17) ───────────────
 
-    /// `sff = <<a + b>>`: SFF descendant searches are built ECONSTANIC and never run,
-    /// so the SFF body stays a constanic `Op+(?a ECONSTANIC, ?b ECONSTANIC)` (WOCONSTANIC).
     #[test]
     fn sff_descendant_searches_are_econstanic_at_build() {
         let root = Compiler::compile("{a = 1; b = 2; sff = <<a + b>>;}")
             .unwrap()
             .pop()
             .unwrap();
-        // Both inner searches of the SFF's Op+ must be ECONSTANIC even before stepping.
         let sa = find_search(&root, "^a$").expect("search a");
         let sb = find_search(&root, "^b$").expect("search b");
         assert_eq!(sa.borrow().core().get_nyes(), Nyes::Econstanic, "SFF search a built ECONSTANIC");
         assert_eq!(sb.borrow().core().get_nyes(), Nyes::Econstanic, "SFF search b built ECONSTANIC");
 
-        // Stepping does NOT resolve them (they never run) — they stay ECONSTANIC.
         let scope = Scope::empty();
         for _ in 0..200 {
             if root.borrow().core().get_nyes().is_constanic() { break; }
@@ -3317,9 +2966,6 @@ mod tests {
         assert_eq!(sb.borrow().core().get_nyes(), Nyes::Econstanic, "SFF search b stays ECONSTANIC after stepping");
     }
 
-    /// `sf = <sff>`: the SF foolishly copies the SFF's constanic body — the search for `sff`
-    /// resolves to the Op+ (searches still ECONSTANIC), NOT the evaluated value 3. (The
-    /// constanic-clone of an SFF child strips the SFF marker but copies NYES verbatim.)
     #[test]
     fn sf_of_sff_sets_econstanic_body_constanic() {
         let root = Compiler::compile("{a = 1; b = 2; sff = <<a + b>>; sf = <sff>;}")
@@ -3341,12 +2987,8 @@ mod tests {
         );
     }
 
-    /// Anonymous statements (a bare expression with no LHS) are named `???`
-    /// (compiler::ANON_STMT_NAME); named assignments carry their LHS identifier
-    /// (FOOP-62 #19). The sequencer renders `???`-named statements without a prefix.
     #[test]
     fn anonymous_statement_named_question_marks() {
-        // `a = 1` is a named statement; the bare `a` is anonymous.
         let root = Compiler::compile("{a = 1; a;}").unwrap().pop().unwrap();
         let stmts: Vec<FirRef> = root.borrow().core().foolish_children().to_vec();
         assert_eq!(stmts.len(), 2);
@@ -3380,25 +3022,35 @@ mod concat_sf_f_more_debug {
         .unwrap();
         let scope = Scope::empty();
 
-        for step in 0..200 {
-            let nyes = root.borrow().core().get_nyes();
-            let children: Vec<_> = root
-                .borrow()
-                .core()
-                .foolish_children()
-                .iter()
-                .map(|c| {
-                    let b = c.borrow();
-                    (b.as_stmt_name().unwrap_or("???").to_string(), b.core().get_nyes())
-                })
-                .collect();
-            let all_constanic = children.iter().all(|(_, n)| n.is_constanic());
-            eprintln!(
-                "step {step}: outer={nyes:?} all_children_constanic={all_constanic} children={children:?}"
-            );
+        for step in 0..100 {
+            let stmts = root.borrow().core().foolish_children().to_vec();
+            let f1_stmt = stmts.iter().find(|s| s.borrow().as_stmt_name() == Some("f1")).unwrap();
+            let f1_body = f1_stmt.borrow().core().foolish_children().first().unwrap().clone();
+            let f1 = f1_body.borrow();
 
-            if nyes.is_constanic() {
-                eprintln!("SETTLED at step {step}");
+            let a_stmt = f1.core().foolish_children().iter().find(|s| s.borrow().as_stmt_name() == Some("a")).unwrap();
+            let a_body = a_stmt.borrow().core().foolish_children().first().unwrap().clone();
+            let a = a_body.borrow();
+            let a_nyes = a.core().get_nyes();
+
+            if a_nyes == Nyes::Braning {
+                let ubc = a.core().ubc_children();
+                if !ubc.is_empty() {
+                    let b_clone = &ubc[0];
+                    let bb = b_clone.borrow();
+                    eprintln!("step {step}: f1.a=Braning, ubc[0] kind={:?} nyes={:?} children={}",
+                        bb.kind(), bb.core().get_nyes(), bb.core().foolish_children().len());
+                    for (i, c) in bb.core().foolish_children().iter().enumerate() {
+                        let cb = c.borrow();
+                        eprintln!("  child[{i}]: kind={:?} nyes={:?}", cb.kind(), cb.core().get_nyes());
+                    }
+                } else {
+                    eprintln!("step {step}: f1.a=Braning, NO ubc_children");
+                }
+            }
+
+            if a_nyes.is_constanic() {
+                eprintln!("f1.a SETTLED at step {step}: {a_nyes:?}");
                 return;
             }
 
@@ -3408,7 +3060,7 @@ mod concat_sf_f_more_debug {
                 break;
             }
         }
-        panic!("concat_sf_f_more did not settle");
+        panic!("f1.a did not settle");
     }
 }
 
