@@ -527,7 +527,7 @@ impl Fir for StatementFir {
         Some(self.line_number)
     }
 
-    fn ib_search(&self, self_ref: &FirRef, name: &str) -> Option<(FirRef, Nyes)> {
+    fn _ib_search(&self, self_ref: &FirRef, name: &str) -> Option<(FirRef, Nyes)> {
         let brane = self.get_my_brane(self_ref)?;
         let brane_borrowed = brane.borrow();
         brane_borrowed._search_brane(name, self.line_number.saturating_sub(1), 0)
@@ -579,10 +579,13 @@ impl Fir for BraneFir {
         &self.characterizations
     }
 
-    fn ab_search(&self, self_ref: &FirRef, name: &str) -> Option<(FirRef, Nyes)> {
+    fn _ab_search(&self, self_ref: &FirRef, name: &str) -> Option<(FirRef, Nyes)> {
         let stmt = self.get_my_statement(self_ref);
+        if Rc::ptr_eq(&stmt, self_ref) {
+            return None;
+        }
         let stmt_borrowed = stmt.borrow();
-        if let Some((body, nyes)) = stmt_borrowed.ib_search(&stmt, name) {
+        if let Some((body, nyes)) = stmt_borrowed._ib_search(&stmt, name) {
             return Some((body, nyes));
         }
         drop(stmt_borrowed);
@@ -591,7 +594,7 @@ impl Fir for BraneFir {
             return None;
         }
         let pb = parent_brane.borrow();
-        pb.ab_search(&parent_brane, name)
+        pb._ab_search(&parent_brane, name)
     }
 
     fn _search_brane(&self, expression: &str, starting_index: usize, ending_index: usize) -> Option<(usize, FirRef, Nyes)> {

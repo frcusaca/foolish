@@ -61,7 +61,6 @@ pub struct Scope {
 }
 
 impl Scope {
-    /// Create a minimal scope with no position (not foolishly ignorant).
     pub fn empty() -> Self {
         Self {
             current_brane: None,
@@ -70,13 +69,21 @@ impl Scope {
         }
     }
 
-    /// Return a copy of this scope with `has_ancestral_sfm` set — used when
-    /// descending into an SF-mark's RHS so descendants clone foolishly ignorant.
     pub fn with_ancestral_sfm(&self, has_ancestral_sfm: bool) -> Self {
         Self {
             has_ancestral_sfm,
             ..self.clone()
         }
+    }
+
+    pub fn get_my_statement(&self) -> Option<FirRef> {
+        let brane = self.current_brane.as_ref()?;
+        let idx = self.current_stmt_idx?;
+        brane.borrow().core().foolish_children().get(idx).cloned()
+    }
+
+    pub fn get_my_brane(&self) -> Option<FirRef> {
+        self.current_brane.clone()
     }
 }
 
@@ -211,22 +218,28 @@ pub trait Fir: std::fmt::Debug {
         }
     }
 
-    fn ib_search(&self, self_ref: &FirRef, name: &str) -> Option<(FirRef, Nyes)> {
+    fn _ib_search(&self, self_ref: &FirRef, name: &str) -> Option<(FirRef, Nyes)> {
         let stmt = self.get_my_statement(self_ref);
-        if Rc::ptr_eq(&stmt, self_ref) && self.kind() != FirKind::Statement {
-            return None;
-        }
         let borrowed = stmt.borrow();
-        borrowed.ib_search(&stmt, name)
+        borrowed._ib_search(&stmt, name)
     }
 
-    fn ab_search(&self, self_ref: &FirRef, name: &str) -> Option<(FirRef, Nyes)> {
+    fn ib_search(&self, scope: &Scope, name: &str) -> Option<(FirRef, Nyes)> {
+        let stmt = scope.get_my_statement()?;
+        let borrowed = stmt.borrow();
+        borrowed._ib_search(&stmt, name)
+    }
+
+    fn _ab_search(&self, self_ref: &FirRef, name: &str) -> Option<(FirRef, Nyes)> {
         let brane = self.get_my_brane(self_ref)?;
-        if Rc::ptr_eq(&brane, self_ref) {
-            return None;
-        }
         let borrowed = brane.borrow();
-        borrowed.ab_search(&brane, name)
+        borrowed._ab_search(&brane, name)
+    }
+
+    fn ab_search(&self, scope: &Scope, name: &str) -> Option<(FirRef, Nyes)> {
+        let brane = scope.get_my_brane()?;
+        let borrowed = brane.borrow();
+        borrowed._ab_search(&brane, name)
     }
 
     fn _search_brane(&self, _expression: &str, _starting_index: usize, _ending_index: usize) -> Option<(usize, FirRef, Nyes)> {
@@ -995,7 +1008,12 @@ mod get_value_tests {
         let root = Compiler::compile("{x = 1; y = x;}").unwrap().pop().unwrap();
         let stmts = root.borrow().core().foolish_children().to_vec();
         let y_stmt = &stmts[1]; // y = x
-        let result = y_stmt.borrow().ib_search(y_stmt, "x");
+        let scope = Scope {
+            current_brane: Some(Rc::clone(&root)),
+            current_stmt_idx: Some(1),
+            has_ancestral_sfm: false,
+        };
+        let result = y_stmt.borrow().ib_search(&scope, "x");
         assert!(result.is_some());
         let (body, nyes) = result.unwrap();
         assert_eq!(body.borrow().kind(), FirKind::IndepInt);
@@ -1008,7 +1026,12 @@ mod get_value_tests {
         let root = Compiler::compile("{x = 1;}").unwrap().pop().unwrap();
         let stmts = root.borrow().core().foolish_children().to_vec();
         let x_stmt = &stmts[0];
-        let result = x_stmt.borrow().ib_search(x_stmt, "missing");
+        let scope = Scope {
+            current_brane: Some(Rc::clone(&root)),
+            current_stmt_idx: Some(0),
+            has_ancestral_sfm: false,
+        };
+        let result = x_stmt.borrow().ib_search(&scope, "missing");
         assert!(result.is_none());
     }
 
@@ -1021,9 +1044,14 @@ mod get_value_tests {
         let inner_brane = inner_stmt.borrow().core().foolish_children().first().unwrap().clone();
         let inner_stmts = inner_brane.borrow().core().foolish_children().to_vec();
         let y_stmt = &inner_stmts[0]; // y = x
-        let result = y_stmt.borrow().ib_search(y_stmt, "x");
+        let scope = Scope {
+            current_brane: Some(Rc::clone(&inner_brane)),
+            current_stmt_idx: Some(0),
+            has_ancestral_sfm: false,
+        };
+        let result = y_stmt.borrow().ib_search(&scope, "x");
         assert!(result.is_none(), "x should not be found in inner brane");
-        let result = inner_brane.borrow().ab_search(&inner_brane, "x");
+        let result = inner_brane.borrow().ab_search(&scope, "x");
         assert!(result.is_some(), "x should be found via ab_search");
         let (body, nyes) = result.unwrap();
         assert_eq!(body.borrow().kind(), FirKind::IndepInt);
@@ -1036,7 +1064,12 @@ mod get_value_tests {
         let stmts = root.borrow().core().foolish_children().to_vec();
         let inner_stmt = &stmts[1]; // inner = {y = x;}
         let inner_brane = inner_stmt.borrow().core().foolish_children().first().unwrap().clone();
-        let result = inner_brane.borrow().ab_search(&inner_brane, "nonexistent");
+        let scope = Scope {
+            current_brane: Some(Rc::clone(&inner_brane)),
+            current_stmt_idx: Some(0),
+            has_ancestral_sfm: false,
+        };
+        let result = inner_brane.borrow().ab_search(&scope, "nonexistent");
         assert!(result.is_none(), "nonexistent should not be found anywhere");
     }
 }
