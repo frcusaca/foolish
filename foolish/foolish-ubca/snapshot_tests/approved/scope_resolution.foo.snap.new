@@ -8,9 +8,9 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{
+{WOCONSTANIC
   x=42;
-  y=50
+  y=Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), 8, WOCONSTANIC)
 }
 ```
 COMMENTS:
@@ -20,5 +20,5 @@ scope_resolution
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: uIzL3+z9GBylCCyyD9+30xLVYCXWtUzl38HSPovj1PfQKciWFegKxKhLdUBUV4gsKH/sllVja3iEwWHqcjbHAw==
-HFS signature: ZIv8MRRr4ua7O4YStJNYiCM/mLkShDTjMOrU7Jm1D85IDSR0qzgsU8AvI1E8tCfaT/R2SxtQNQLhQQlFQZstBQ==
-Comments signature: w8Sy+fWK0n+GIS0PC7aNEwQiovWuxtSkgI0mN7jTwT+JYN5yyuXMuAw/R42qQFswNJ22FM7DyvJLRBiFOd1UCw==
+HFS signature: /98IjFh0W78I8cSU/VPNhXsOTwt3vacFbBw0KkUb05eY3NlG4EBaQKV5vPxcGGsDguMP8tU7Wscd/wE0ICa4Bw==
+Comments signature: iek0rgAh5rSa0emxx/ld0c03oa7G9WL90q7Z1sXS7HcJJsLuaLkliM2YnVH6yBZqzmCH3SfaJuxkcha3/c4nBw==

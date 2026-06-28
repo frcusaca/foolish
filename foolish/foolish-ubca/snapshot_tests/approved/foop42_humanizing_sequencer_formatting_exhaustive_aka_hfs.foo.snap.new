@@ -88,8 +88,16 @@ win={w_in={in_in={in_in_in=101010}}};
   bb=2;
   ccc=3;
   dddd=4;
-  shortˍsum=10;
-  longˍnamedˍresultˍshowsˍalignment=20;
+  shortˍsum=Op+(
+      Op+(
+        Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^bb$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
+        ?(pattern='^ccc$', UNANCHORED, ECONSTANIC),
+        WOCONSTANIC
+      ),
+      ?(pattern='^dddd$', UNANCHORED, ECONSTANIC),
+      WOCONSTANIC
+  );
+  longˍnamedˍresultˍshowsˍalignment=Op+(?(pattern='^shortˍsum$', UNANCHORED, ECONSTANIC), ?(pattern='^shortˍsum$', UNANCHORED, ECONSTANIC), WOCONSTANIC);
   veryˍlongˍidentifierˍnameˍforˍtestingˍindent=100;
   evenˍlongerˍnameˍthatˍmayˍwrapˍorˍpushˍcolumnsˍ1234567890=500;
   unicodeˍidentifiersˍπΔΣ=Op+(
@@ -101,36 +109,14 @@ win={w_in={in_in={in_in_in=101010}}};
   Δ=7;
   Σ=10;
   oneˍzero=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK;
-  divˍbyˍzeroˍinˍbraneˍmethod=?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED, WOCONSTANIC);
+  divˍbyˍzeroˍinˍbraneˍmethod=?(pattern='^oneˍzero$', UNANCHORED, ECONSTANIC);
   threeˍzero=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK;
-  badˍinˍarithmetic=Op+(
-      ?(
-        result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK,
-        pattern='^oneˍzero$',
-        UNANCHORED,
-        WOCONSTANIC
-      ),
-      5,
-      WOCONSTANIC
-  );
-  chainedˍbad=Op+(
-      Op+(
-        10,
-        ?(
-          result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK,
-          pattern='^oneˍzero$',
-          UNANCHORED,
-          WOCONSTANIC
-        ),
-        WOCONSTANIC
-      ),
-      20,
-      WOCONSTANIC
-  );
-  aliasˍofˍbad=?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED, WOCONSTANIC);
+  badˍinˍarithmetic=Op+(?(pattern='^oneˍzero$', UNANCHORED, ECONSTANIC), 5, WOCONSTANIC);
+  chainedˍbad=Op+(Op+(10, ?(pattern='^oneˍzero$', UNANCHORED, ECONSTANIC), WOCONSTANIC), 20, WOCONSTANIC);
+  aliasˍofˍbad=?(pattern='^oneˍzero$', UNANCHORED, ECONSTANIC);
   fwdˍx=?(pattern='^x$', UNANCHORED, ECONSTANIC);
   x=42;
-  xˍagain=42;
+  xˍagain=?(pattern='^x$', UNANCHORED, ECONSTANIC);
   fwdˍdeep=?(pattern='^y$', UNANCHORED, ECONSTANIC);
   y=?(pattern='^z$', UNANCHORED, ECONSTANIC);
   z=99;
@@ -143,8 +129,8 @@ win={w_in={in_in={in_in_in=101010}}};
       name=7;
       final=0
   };
-  headˍofˍflat=42;
-  tailˍofˍflat=0;
+  headˍofˍflat=^(NK);
+  tailˍofˍflat=$(NK);
   headˍofˍempty=^(NK);
   tailˍofˍempty=$(NK);
   indexˍbrane={
@@ -153,31 +139,23 @@ win={w_in={in_in={in_in_in=101010}}};
       third=30;
       fourth=40
   };
-  indexˍfirst=10;
-  indexˍlast=40;
+  indexˍfirst=^(NK);
+  indexˍlast=$(NK);
   indexˍoutˍofˍbounds=#(offset=99, ANCHORED, NK);
-  seekˍunanchored=40;
+  seekˍunanchored=#(result=$(NK), offset=-2, UNANCHORED, NK);
   sfˍtarget={
       a=1;
       b=2
   };
-  sfˍvalue=?(
-      result={
-          a=1;
-          b=2
-      },
-      pattern='^sfˍtarget$',
-      UNANCHORED
-  );
-  sfˍtoˍconstant=?(result=3, pattern='^π$', UNANCHORED);
-  sfˍchain=?(
-      result={
-          a=1;
-          b=2
-      },
-      pattern='^sfˍvalue$',
-      UNANCHORED
-  );
+  sfˍvalue=<ECONSTANIC
+      ?(pattern='^sfˍtarget$', UNANCHORED, ECONSTANIC)
+  >;
+  sfˍtoˍconstant=<ECONSTANIC
+      ?(pattern='^π$', UNANCHORED, ECONSTANIC)
+  >;
+  sfˍchain=<ECONSTANIC
+      ?(pattern='^sfˍvalue$', UNANCHORED, ECONSTANIC)
+  >;
   sffˍtarget={
       x=10;
       y=20
@@ -193,12 +171,7 @@ win={w_in={in_in={in_in_in=101010}}};
       rightˍa=3;
       rightˍb=4
   };
-  concatˍresult={
-      leftˍa=1;
-      leftˍb=2;
-      rightˍa=3;
-      rightˍb=4
-  };
+  concatˍresult={};
   threeˍwayˍconcat={
       a=1;
       b=2;
@@ -255,7 +228,7 @@ win={w_in={in_in={in_in_in=101010}}};
   shadowˍ2={
       val=2
   };
-  rootˍshadow=3;
+  rootˍshadow=Op+(?(pattern='^val$', ANCHORED, NK), ?(pattern='^val$', ANCHORED, NK), NK);
   emptyˍbraneˍshadow={
       inner={}
   };
@@ -264,15 +237,15 @@ win={w_in={in_in={in_in_in=101010}}};
       fieldˍa=10;
       fieldˍb=20
   };
-  anchoredˍlookupˍok=10;
-  dotˍlookup=20;
-  chainedˍdot=30;
+  anchoredˍlookupˍok=?(pattern='fieldˍa', ANCHORED, NK);
+  dotˍlookup=?(pattern='^fieldˍb$', ANCHORED, NK);
+  chainedˍdot=Op+(?(pattern='^fieldˍa$', ANCHORED, NK), ?(pattern='^fieldˍb$', ANCHORED, NK), NK);
   regexˍtarget={
       alice=1;
       bob=2;
       charlie=3
   };
-  regexˍres=2;
+  regexˍres=?(pattern='(^b)', ANCHORED, NK);
   regexˍnoˍmatch=?(pattern='(^z.*)', ANCHORED, NK);
   unaryˍneg=-5;
   unaryˍdouble=3;
@@ -280,15 +253,18 @@ win={w_in={in_in={in_in_in=101010}}};
   opˍtransparent=0;
   chainedˍops=5;
   zeroˍdivˍinˍop=Op+(??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, 42, NK);
-  nestedˍopˍtransparent=-1;
-  inspectˍsff=?(
-      result={
-          x=10;
-          y=20
-      },
-      pattern='^sffˍtarget$',
-      UNANCHORED
+  nestedˍopˍtransparent=Op/(
+      Op*(
+        Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^bb$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
+        Op-(?(pattern='^ccc$', UNANCHORED, ECONSTANIC), ?(pattern='^dddd$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
+        WOCONSTANIC
+      ),
+      3,
+      WOCONSTANIC
   );
+  inspectˍsff=<ECONSTANIC
+      ?(pattern='^sffˍtarget$', UNANCHORED, ECONSTANIC)
+  >;
   inspectˍsffˍagain=<<WOCONSTANIC
       ?(pattern='^sffˍtarget$', UNANCHORED)
   >>;
@@ -308,5 +284,5 @@ foop42_humanizing_sequencer_formatting_exhaustive_aka_hfs
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 5CYQ9TTMJwxdSRqdDbNvIcEuEjzF0rs9DSJO0IFb7JZX52hw7oNCOG0pcpoYozWuyHWmpPLVgx2jGmPxDfKBDA==
-HFS signature: UEferzJ1AszA9hlTXY7zLIe0nvgs7j7hLKd2ZnyESXf2utQYxFiYOiCmOX6YYVrgCn5JoY09WjC6eBKwWE0wDg==
-Comments signature: TryZpATsPUtmjRam8ciQuysieafr7LHdMM/affkZP9BkYmgi9SLMPA41lDtHwoL6dWrz7g5B/fBNp7+HXgyUAw==
+HFS signature: /EqTjycKD8GGfaG9GNfZX8eIfvokSc0CKPYr6FNviKSfX12pJkhsV7wfY78FFxRA+FW0cMpU3pohseBUELrVCg==
+Comments signature: SGKzEWqbNGQ+ujP9jhH3Y58L52gbgiTL/yrJR8fXFqe0fddXfPM0fz16eoDLvL4ZUoqHzi5BNu0mujB2J2X/DQ==

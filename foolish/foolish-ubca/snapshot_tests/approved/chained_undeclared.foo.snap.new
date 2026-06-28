@@ -10,13 +10,8 @@ INPUT:
 ```hfssnap
 {WOCONSTANIC
   bad=?(pattern='^undeclared$', UNANCHORED, ECONSTANIC);
-  y=?(result=?(pattern='^undeclared$', UNANCHORED, ECONSTANIC), pattern='^bad$', UNANCHORED, WOCONSTANIC);
-  z=?(
-      result=?(result=?(pattern='^undeclared$', UNANCHORED, ECONSTANIC), pattern='^bad$', UNANCHORED, WOCONSTANIC),
-      pattern='^y$',
-      UNANCHORED,
-      WOCONSTANIC
-  )
+  y=?(pattern='^bad$', UNANCHORED, ECONSTANIC);
+  z=?(pattern='^y$', UNANCHORED, ECONSTANIC)
 }
 ```
 COMMENTS:
@@ -26,5 +21,5 @@ chained_undeclared
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: eB8BINHym3bU4SkJcN6e2J7Nyt8aIXqpM17n8dWWv10YjHURVEWNewoNwCdC9djfutCCillXxps0lBuGqyWABw==
-HFS signature: gz+Fg1JD23XlqEX/piA6ffxjGkYIoWEIOnfh0Icv1s+uNhg4qCwcJggKxVbOFrlGTdTIgiALhAVE/AWLEoxZBA==
-Comments signature: OSmQjcezn/jrmI95E3H+s3ZNkhtPRwmpfCTLykei4KsfqgM+86CPWql7q9IKrBzY0pkRbo8R/6VaGYZT9H2zDQ==
+HFS signature: G3zxB1ZOT5helFZPV82TgkgrlMIjkFc+GByOs9lq/l+bIpJwSFGPeBHiQPEbQK6kmN/IQs+QBwyl6ztJM/PpCA==
+Comments signature: 66/cWSHkEaObcW5rtNjp6qjv5UouvTjBmBl7+SDgrfRVQ+IVAA+n4qhyy9nUfgOH1bVN2SkeUhGZPV0pcc+TBQ==

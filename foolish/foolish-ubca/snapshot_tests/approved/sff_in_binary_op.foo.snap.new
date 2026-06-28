@@ -8,9 +8,9 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{
+{WOCONSTANIC
   a=3;
-  10
+  Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), 7, WOCONSTANIC)
 }
 ```
 COMMENTS:
@@ -20,5 +20,5 @@ sff_in_binary_op
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: RloEHmf5rLfOjWxYHY6c6cMkwiS0unIpf1KQr1dK/NaYnSxDC8vXd6WMPJuWUl/UhCJ4k5nzH+QsqOxMYYL8Dw==
-HFS signature: lxqhwnvp/8TAu5jOjff9HqlYh5z+Wl9y1vL02bagCsb+L8PgOTMjQ/pdbNGICc1BxwoB2DiP8PrVoK5gP1g/Bw==
-Comments signature: wQiKltUdwvHf2HNlxTk1iLC1qVcvhsA8vgW1ZP8m0KaeiiUMtdp8oXtVsj2SN+zMt29XPFqRYYEFN5FNrBGFDA==
+HFS signature: 72YGeuZFCh8m0bwr+m6eHquQK18vwXLDNojDhd9HCM2DCjSvqOHQWEgsQyl2c3VHTtVkVDDveAP1fuhV5qmICA==
+Comments signature: ARytaDjN/m3YsyCHy7IuwgE88mEIva+w2EO4M/7QU2NlYQXO63OuV2+QpyOImVSs7xVdBrZtWLOTCbGnDCaaDQ==

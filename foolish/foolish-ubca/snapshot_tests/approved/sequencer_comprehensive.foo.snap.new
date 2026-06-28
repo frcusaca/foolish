@@ -73,18 +73,20 @@ INPUT:
   a=1;
   b=2;
   c=3;
-  sum=3;
-  product=2;
-  divide=0;
-  subtract=-1;
+  sum=Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC);
+  product=Op*(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC);
+  divide=Op/(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC);
+  subtract=Op-(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC);
   bad=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK;
-  inner={
+  inner={WOCONSTANIC
       x=10;
       y=20;
-      z=30
+      z=Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
   };
-  found=1;
-  sfˍval=?(result=1, pattern='^a$', UNANCHORED);
+  found=?(pattern='^a$', UNANCHORED, ECONSTANIC);
+  sfˍval=<ECONSTANIC
+      ?(pattern='^a$', UNANCHORED, ECONSTANIC)
+  >;
   sffˍval=<<WOCONSTANIC
       ?(pattern='^b$', UNANCHORED)
   >>;
@@ -96,9 +98,9 @@ INPUT:
     r=3;
     s=4
   };
-  idx=10;
-  hd=10;
-  tl=30;
+  idx=^(NK);
+  hd=^(NK);
+  tl=$(NK);
   fwd=?(pattern='^later$', UNANCHORED, ECONSTANIC);
   later=99;
   deep={
@@ -110,8 +112,8 @@ INPUT:
           }
       }
   };
-  deepˍsearch=42;
-  result=5
+  deepˍsearch=?(pattern='^val$', ANCHORED, NK);
+  result=Op+(?(pattern='^sum$', UNANCHORED, ECONSTANIC), ?(pattern='^product$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
 }
 ```
 COMMENTS:
@@ -121,5 +123,5 @@ sequencer_comprehensive
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: yRrAujGcUxFVRv3py0aRxROx0nS23e0Skv55N03B6p11gjR6/Lz2aGyCo9RdJNwwhIVH8bas/we3pbzhiHt8Bg==
-HFS signature: axilXBH00PhoAfxvivhk/nxVEyQi/lP5pLW5CwUMe0rmjVQ0ISAzewRJsOMqmvKEna2v1Orh7yuHULWkrll9Cw==
-Comments signature: BTEUkWh1dw7NOeJf8ITg0m3IF0Q9l5WTb6b63nv0AXsZ9Xv7VV1rCGUYDUOxUu2K6yCLi5IqDZuIS5c4qJ62Cg==
+HFS signature: 2eiky3zCxg7ggM45+NVtmBj5ejIUVSCk/pr89YpM2YCP5VX6g/56dRMwcY9OUrJiAY7aejNO+IftfOdOOJVYDw==
+Comments signature: NTDk4BjY7kb6obkqQH1g/pGN42SsXOeWArFtCFJ9LN9MVLer2aA8qyx8MI883DAGIB2lEkl0qgnQ/AKud7ymBg==

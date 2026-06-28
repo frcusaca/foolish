@@ -20,8 +20,8 @@ INPUT:
         WOCONSTANIC
       )
   >>;
-  3;
-  3
+  ?(pattern='^c$', UNANCHORED, ECONSTANIC);
+  ?(pattern='^c$', UNANCHORED, ECONSTANIC)
 }
 ```
 COMMENTS:
@@ -31,5 +31,5 @@ sff_nested
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: lhcizF48neDw/0Ot29cyjAKKVN2RJsqhMEqKOBwHi1AC7LmDHeXb9dBvby6kqQzBJhSJHHAXCtmjZ9gbF1ZHAw==
-HFS signature: acHcmM1J5FMRL/b54tmQxiDNXAcdeM/WprzQrU+v5uOQQY6a/7bhTZjGClWcEqhcBCEZj966Eua1SSCLKpuCCA==
-Comments signature: MyNz7dwtdAQQLcvsvebZ1761M1n8w9286nOhQg0oHyADFC3wrQ0yxnjRAkdG1qGvHI5AE6n4d4NoIJGvxVmLBw==
+HFS signature: fNZWA2wVhnLZLQzT/KYC8QOP10+MJus5+y7tXpk7bJhFfSc6mYjWEvqfcXHSQoRp1yoec74KN4UC+UQ6Hmi2AA==
+Comments signature: thTlTxCpRt3K1Chq3eTOIpPeWRYclnO8wgTi1lh8QklAjFleP+xOZdaRLDm43PWw0lIJZlp5PHSnCY1prRoFBQ==

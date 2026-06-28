@@ -8,20 +8,17 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{
+{WOCONSTANIC
   data={
       x=1;
       y=2;
       z=3
   };
-  copy={
-      x=1;
-      y=2;
-      z=3;
+  copy={WOCONSTANIC
       w=4
   };
-  last=4;
-  first=1
+  last=$(NK);
+  first=^(NK)
 }
 ```
 COMMENTS:
@@ -31,5 +28,5 @@ complex_search_concat_and_seeks
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 2sGCo//bsMS6EbNWvLkDc/IST2lRsoHgtK6Fc0UBF834NnteSGmsi8JcAAOcOFOaH7GJfG8BAJfr4Duct/GuCg==
-HFS signature: XoPBzQWsS3ADEFlQjGk3+X0nLJG3vfzZzT0EYXbdTCjDu8Zlr8aiSjDRPOkBv5h9ZKO3R7Z/M02Hl8AKGbcvBQ==
-Comments signature: rJ4ek/+7yOSKLDXPxzorKxKnyDfTnOpUvXoz6vzjRwe+rkQjAeTK5pwvUAAfK06muaNaDj3rzHl9LzsfwKx9Ag==
+HFS signature: vObB4J91u8YzdDWkOUzsOyNEPLrWEmMLvZb5iaWgPZP5sbxpCnH+B2Y/8iBlOWQaZYLGvw6fJdZJzvNuf+1KBg==
+Comments signature: vCFayzk83JSUpAleNr3OkbOMUc7c/S0sa/n73XmH6LEhsj5m7xQtZDNPqrRK34NtmkixyJw/cjAxgOnFzoEwAA==

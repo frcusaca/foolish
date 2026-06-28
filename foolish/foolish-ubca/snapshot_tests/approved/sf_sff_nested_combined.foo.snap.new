@@ -31,27 +31,28 @@ INPUT:
   sff=<<WOCONSTANIC
       Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
   >>;
-  sf=3;
-  sfsff=?(
-      result=Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
-      pattern='^sff$',
-      UNANCHORED,
-      WOCONSTANIC
-  );
+  sf=<WOCONSTANIC
+      Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
+  >;
+  sfsff=<ECONSTANIC
+      ?(pattern='^sff$', UNANCHORED, ECONSTANIC)
+  >;
   sffsf=<<WOCONSTANIC
       ?(pattern='^sf$', UNANCHORED)
   >>;
-  sfsf=?(result=3, pattern='^sf$', UNANCHORED);
+  sfsf=<ECONSTANIC
+      ?(pattern='^sf$', UNANCHORED, ECONSTANIC)
+  >;
   sffsff=<<WOCONSTANIC
       ?(pattern='^sff$', UNANCHORED)
   >>;
   x=-2;
-  rsff=0;
-  rsf=3;
-  rsfsff=0;
-  rsffsf=?(result=3, pattern='^sf$', UNANCHORED);
-  rsfsf=3;
-  rsffsff=0
+  rsff=?(pattern='^sff$', UNANCHORED, ECONSTANIC);
+  rsf=?(pattern='^sf$', UNANCHORED, ECONSTANIC);
+  rsfsff=?(pattern='^sfsff$', UNANCHORED, ECONSTANIC);
+  rsffsf=?(pattern='^sffsf$', UNANCHORED, ECONSTANIC);
+  rsfsf=?(pattern='^sfsf$', UNANCHORED, ECONSTANIC);
+  rsffsff=?(pattern='^sffsff$', UNANCHORED, ECONSTANIC)
 }
 ```
 COMMENTS:
@@ -61,5 +62,5 @@ sf_sff_nested_combined
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: tT8UqgoaX2cQknxaTSOxGoatqdbkUElQJTZXD4wK3f2mTtwOZwiBraFW1mIiflGHyg6zn6JuaExvI+DIT6sOBg==
-HFS signature: 383ihgDs/KqSr1ta6hZzSUbwIpBK0xbxzXs6a51InL6pT5FLHimRkUdZUciT8YVjS2NqLJ2t+OpHHicP/HgjDg==
-Comments signature: 2oRfZP6sbJ/1OatHtiMr84flkSXsDkzh11JdgWmkG5xMYTfWob6vKzu5PFAt/z6jR8xLzKxnNPCd5L8Ld272CQ==
+HFS signature: kr8jvLq9G9VIk3QSJumDy8/HHlaKbRZMpZxa/LYGOV0s1gyndedFqm6PLNVYzDcmNf8AdzsblgKRfRjDpMxYBQ==
+Comments signature: 2vQQVGZQ7ML2D0kUu5LaQ7GRVNiAH4xcN822huOy8cyG6mcQxM9h9zntXX9vU+kymUpQ7c+HcHnhFDJmZbd5Aw==

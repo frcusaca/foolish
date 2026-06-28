@@ -840,10 +840,10 @@ impl Fir for SearchFir {
                     let anchor = Rc::clone(&self.core.foolish_children()[0]);
                     let resolved = resolve_anchor(&anchor);
                     let name = &self.pattern;
-                    if resolved.borrow().kind() != FirKind::Brane {
+					     let resolved_borrowed = resolved.borrow();
+                    if resolved_borrowed.kind() != FirKind::Brane {
                         self.core.set_nyes(Nyes::Nk);
                     } else {
-                        let resolved_borrowed = resolved.borrow();
                         if let Some((_idx, body, nyes)) = resolved_borrowed._search_brane(
                             name,
                             resolved

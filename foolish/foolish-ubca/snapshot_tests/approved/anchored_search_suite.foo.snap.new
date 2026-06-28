@@ -38,18 +38,18 @@ INPUT:
       you=5;
       today=6
   };
-  howˍis=3;
-  howˍisˍalso=3;
-  howˍisˍalso=3;
-  howˍisˍalso=3;
+  howˍis=?(pattern='^how$', ANCHORED, NK);
+  howˍisˍalso=?(pattern='how', ANCHORED, NK);
+  howˍisˍalso=?(pattern='(h.*)', ANCHORED, NK);
+  howˍisˍalso=?(pattern='(.o.)', ANCHORED, NK);
   howˍisˍnot=?(pattern='(ho)', ANCHORED, NK);
-  howˍisˍfuzzy=3;
-  helloˍis=1;
-  helloˍfuzzy=1;
-  helloˍfuzzy2=1;
-  youˍis=5;
-  worldˍis=2;
-  todayˍis=6
+  howˍisˍfuzzy=?(pattern='(^ho)', ANCHORED, NK);
+  helloˍis=?(pattern='(h.*)', ANCHORED, NK);
+  helloˍfuzzy=?(pattern='(^h)', ANCHORED, NK);
+  helloˍfuzzy2=?(pattern='(^he)', ANCHORED, NK);
+  youˍis=?(pattern='(.o.)', ANCHORED, NK);
+  worldˍis=?(pattern='(.o...)', ANCHORED, NK);
+  todayˍis=?(pattern='(.o...)', ANCHORED, NK)
 }
 ```
 COMMENTS:
@@ -59,5 +59,5 @@ anchored_search_suite
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: YcWoL55AP8jO9KJL+2NSvXYeQ/JgxbTE7LNCCzPabfLjepQFlCB0lsPxUFfjeo5d1OgeMEgCkrVpomQvNwswDg==
-HFS signature: OxdCB5Jz6LyYIKGRoabDaEMbhuxNF2bzOARoVStF3wgDdr4d7XPkg90W5rXWzGaLdiOUmVf2KQxeiU9Wf2bCAA==
-Comments signature: /f+9/M9HtyrdWh005tJxgbxNUqXvnwtY2jgkZsIST5EvZ6j24VyG3B3se2jch6O7D5ShYoDYHHM/c8kUVi+4Dg==
+HFS signature: GAALKb9eVQo5nmfhCZYsPjLBhUcPKj782lvp9B0et6T3zU0CE1Fu2VQ/ER4nZv2KtJtvmWClV8bh4e1fMQKrDA==
+Comments signature: t+ZVKERCS7SzVByq6D7ds8N6n0ixQQNA/ZT0Q/UcGTqUJukEFLFQk8v8iVbjuoB13t2giJcST7mjGj4VvFtwBg==

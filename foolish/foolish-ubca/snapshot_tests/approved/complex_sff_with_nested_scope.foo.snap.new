@@ -15,7 +15,7 @@ INPUT:
       calc=<<WOCONSTANIC
           Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
       >>;
-      doubled=30
+      doubled=Op*(?(pattern='^calc$', UNANCHORED, ECONSTANIC), 2, WOCONSTANIC)
   }
 }
 ```
@@ -26,5 +26,5 @@ complex_sff_with_nested_scope
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 8qfr0jpSsMP6MZAsD56aGbduYNh+nJ3slMhr8S+O04N/0gGhEQnVaYe41x8MuuHjYIaXc8UxZ9Qo9GNdgbECCw==
-HFS signature: Z8oOGIf1+XhnZ3+ugufK2SuxFOLR6V5r/QFrZOpHnkIRyeRfpZ054Y7jRW68ileynB+g9mZMiffE3An7WjxoDg==
-Comments signature: 4ASH3jEG5ZQcArq98x1XjN0lGqRUrE7HMSJusJABm1O9b8wdDIrp0176yfipjZlMtuzrwv4gwNchbqJ4H/PWDA==
+HFS signature: YECOiBv+12DDoBeL+pSahf2ZgAOCTriL8ax0pwDAyMDiaw47yeN0wd+yKlxNBPBo2uyKrspkMgAQJIMHlpKVDA==
+Comments signature: 6bdx8w7tcvNL8q8oxfc9ZQ8ASs/jpYPtvET1tcKFhz0syzU6T4rKbWQFqKwFJ8ptq0t1u+M8cZ2rTP8GWB/uAA==

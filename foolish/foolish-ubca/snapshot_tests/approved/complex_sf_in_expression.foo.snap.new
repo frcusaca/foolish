@@ -8,10 +8,12 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{
+{WOCONSTANIC
   x=10;
-  y=?(result=10, pattern='^x$', UNANCHORED);
-  z=15
+  y=<ECONSTANIC
+      ?(pattern='^x$', UNANCHORED, ECONSTANIC)
+  >;
+  z=Op+(?(pattern='^y$', UNANCHORED, ECONSTANIC), 5, WOCONSTANIC)
 }
 ```
 COMMENTS:
@@ -21,5 +23,5 @@ complex_sf_in_expression
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: ssYnBrajHlb2cVUC/spi1Y1l7ZOUOAtBU9tKjkOZwgNiXuUhpiQ/YY2Xvj6PFPFVUSh/2ZDKxaiD2vH8VNYWDw==
-HFS signature: GBYzLOf+zdmT2LBGQgZMOaC4zr8A8K64z0YNUnCmtHDcXjM4q00nFu/uv0p8KN+4wRdliCezuRxo+LvVQtKaAg==
-Comments signature: K0SyLnKQpQKU319fGNTNmjkJtxfjwGhMt7yHyKv9QaxJ9k3Iqv4VbV3dJmWfZbk+sTBZP5dMqKj4dzxIxEqrBQ==
+HFS signature: cYetS3NGmUnYcd6U++QMAXEfMCGjjea15ZZaLPtSTEmPnbzyDx34dS1w6SbMdjOHLbYYeLyv2vgMWd6zYDpDDQ==
+Comments signature: 5G1ds83ssOK2VtuNip9akgzlKGulepNhogHFzIi0oAJO2E8WBxaEahuYa1tQfpM4Lmae4M+1mpVFHxtTf0flBg==

@@ -8,13 +8,13 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{
+{WOCONSTANIC
   x=100;
-  inner'{
+  inner'{WOCONSTANIC
     x=200;
-    200
+    ?(pattern='^x$', UNANCHORED, ECONSTANIC)
   };
-  100
+  ?(pattern='^x$', UNANCHORED, ECONSTANIC)
 }
 ```
 COMMENTS:
@@ -24,5 +24,5 @@ named_brane_shadowing
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: mx8JvvVUtoqj+DYr8lPDPGXQwSzgE1GLzEfRrSJfv8hJr+tOlL6305JGTZPbod8PdVrEwMMaY6/deyosAiOVAQ==
-HFS signature: dUaorQcVl1Ps1GtvgKwoV/rDLaYTbRDTxnlc1d1d41gEZB0g+8h60+VIFaU/wgnonO0sJlWUNvFZsCD9Rb6PAA==
-Comments signature: 71Gue/iYkg4abupdeTVjgT4RcjtS7S753h88yE9Zyv3+vZPuRHUaqVCgOWyukEHdPKZFFM/qq2CIJ41wXYfmBA==
+HFS signature: hp0UjJxY9IaragaOV60ES3FAh0qRGvQ/x75KPyn+X+U8sdhMM2dQsV8XB8JgWqUB6AV9wdEpYGvRSS0FWzDtBQ==
+Comments signature: Bcg86u1eYnIAwb5KKhNsli5rJqlGS1IaVQ4uq00lMT6A4yvg7fimbl63u4rv5CryKSOnsY7nS40+A6Eud925Cw==

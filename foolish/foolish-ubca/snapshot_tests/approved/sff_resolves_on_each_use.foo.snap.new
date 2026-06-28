@@ -15,7 +15,7 @@ INPUT:
       Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
   >>;
   a=10;
-  12
+  ?(pattern='^s$', UNANCHORED, ECONSTANIC)
 }
 ```
 COMMENTS:
@@ -25,5 +25,5 @@ sff_resolves_on_each_use
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: dvgS2SgQxTH17MqJ0GvfsJzYlhZVovt+9HhyksPNiUsLfJeYshVu9Gse0wzatDFWaIIIRlYQ4UG+eFcEHxFuBw==
-HFS signature: j45qp2cEHrekUgITjc7DGi5p9R4TNeEuoUwh4R/+z1y4Jl01gnjxEMnqWFXNbs4WsqleL1MQvuiT5L0c9011Cg==
-Comments signature: EcaZ2ff2RROqtA8yqahCCrccafBIrAwXiySVtwjNGYNSIvx/05OtrdjgH2F5/Ood9JA2ZEkkN350uclDWlHoAw==
+HFS signature: f5tQJpjHtXVjLQOwve6cLN4UtnSUkll7kmgwRZqaGQyFkDpk+RqrZ/OImRzCjDbH7mbQ5kEREPhVJptkUBaRAw==
+Comments signature: wLYHAV/uPmV1XfP0zKuFTAE9gI/dWiEcWXJ2mrJ/rxXbsGaDunovqViUWNdSTS5YP9Aa6btnU8Fh/m3QGFFODQ==

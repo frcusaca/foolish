@@ -8,11 +8,15 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{
+{WOCONSTANIC
   x=1;
   π=3;
   Б=7;
-  sum=11
+  sum=Op+(
+      Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^π$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
+      ?(pattern='^Б$', UNANCHORED, ECONSTANIC),
+      WOCONSTANIC
+  )
 }
 ```
 COMMENTS:
@@ -22,5 +26,5 @@ unicode_identifiers_basic
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: HnEQDbZR9OCXyBhLSgHekAsp7uFfJlxgFgaUux6s3Sf5N7qj4s4ZmDhQW1+0mAydYssLalsUBecHY8NKLRLOAw==
-HFS signature: WlrBCiPVU1AzdhtjFAnQvJe/VNOZ9pIySbl+5rX1xdbW8y6LgjQZyf3LYd1NXGm69m7IjYAnh6FcwflxE2jeDQ==
-Comments signature: GngpHV+QeFak6eCZHO3ziUu+NlT6E1MLfFmioSzEgcDGNEWwoFFOziQxgYxY43+Ub+zYCfbssqKajVCH1Gw8AA==
+HFS signature: IxeOstthTHiqTxtFfrb0wOZaJDD4xDlgLdKKHJg9w71+/0ERbdlyMQw+HbIAui3UZC3YxEgbTCuU2kAm92ybAg==
+Comments signature: MbbYkKNukyAhXTQzWCk56wLAYPcAEzlGqCs9pc68kxD/q7/cyb1gEUhsXo/lz60PXUdJD5DDNVe1RnwL6MCTCA==

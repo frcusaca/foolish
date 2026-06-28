@@ -15,12 +15,9 @@ INPUT:
       c=<<WOCONSTANIC
           Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
       >>;
-      3
+      ?(pattern='^c$', UNANCHORED, ECONSTANIC)
   };
-  {
-    c=3;
-    3
-  }
+  ?(pattern='^inner$', UNANCHORED, ECONSTANIC)
 }
 ```
 COMMENTS:
@@ -30,5 +27,5 @@ complex_sff_in_nested_brane
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: ZIgjfGeL3aOiCFGthil+qpoFORBgbUiJ34yeWevLnvPP3orwUnFqJRnzpA9oKsQVY98pCPWMFeTGN4RdIqe4DA==
-HFS signature: DKbcC6vKQb4iSXqnjr0kWskNO+D+nEg8SPaM9N5Srash+dxHEBtp0ze5ILqQ3scdGFQNZn0zprUtUp4L2XB7Ag==
-Comments signature: /KlPu+cVg9kDnP2+587ZHbdWWqwnMMafSOjUgkHXDZRzav3ZRLX6id2M93tuvcA45klYe0umWObyIdvCHVPNDw==
+HFS signature: YibMrv8KWgI2VHgw4zhKTThk+UsKu0u2XCrzvo8zjjTHi35HyrXlWvzHiDIdilW5Dwct5VvfVWmpKphdQxuuDQ==
+Comments signature: 6Z6hTFeV+mJQvsupdhOuJKvREgUgd0TScDJoEiuhRSUjX6xrr41xe2LFCXXHLynEutGsNP8eszDFeZ8QfdQQCQ==

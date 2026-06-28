@@ -8,7 +8,7 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{
+{WOCONSTANIC
   a={
       1;
       2
@@ -21,24 +21,9 @@ INPUT:
       5;
       6
   };
-  r1={
-      1;
-      2;
-      3;
-      4
-  };
-  r2={
-      3;
-      4;
-      5;
-      6
-  };
-  r3={
-      1;
-      2;
-      5;
-      6
-  }
+  r1={};
+  r2={};
+  r3={}
 }
 ```
 COMMENTS:
@@ -48,5 +33,5 @@ multiple_concatenation_in_sequence
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 7vk3EGmD0ghrY75TKkhVNhfKfiBI2/IhbSWUXB142Bwcg6vllrvTMc3B/9Uv8NXkkikI4A1iqLrJn2CxhX9IBA==
-HFS signature: w5m5UNSXoXowZH9reSrJf9AJfkh8djD7csrIy8XF9ofjlX+7W1t/dXX86dZmXYO33FJe1bLfAjq+axP0mfaFDQ==
-Comments signature: 5hFBus+CyvYHUTdIwGPXkkFb8NOlGBuKj9+oBxRoZa6QHifw5RrvrVhUWAH9EaNutoSlm2UqrHQr2cwF+gAXAQ==
+HFS signature: GPdoD6xlXeHaEnOXgvcfYq6gXcT7WUY4eqicwsO5vx2OtvvKzGMBIpvTivUkt7PsUCVx5soTvOkao8DW/cViAw==
+Comments signature: 8dIVloLLHt2KgjoX5IoFo1ljfh5JRFbFjLmBvsAqkCSQI8TYGQzqlw1wvJZj/EM+SpuWpzQo7Woe4irzJL34CQ==

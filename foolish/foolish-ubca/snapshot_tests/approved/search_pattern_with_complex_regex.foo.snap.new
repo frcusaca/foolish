@@ -8,15 +8,15 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{
+{NK
   b={
       tmpˍa=1;
       result=2;
       tmpˍb=3;
       output=4
   };
-  r1=3;
-  r2=2
+  r1=?(pattern='tmpˍ.*', ANCHORED, NK);
+  r2=?(pattern='result', ANCHORED, NK)
 }
 ```
 COMMENTS:
@@ -26,5 +26,5 @@ search_pattern_with_complex_regex
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 7NEp1YnLYuCfsI67t4Rd/ifucEcudy+rM9iBWs21OTYUeIBSIaDmGFkBKspARTYnph1eTh6gKRTjxRNTspmwBg==
-HFS signature: WNOpDWwHzxBo7HvBwTE4xIE2TG3IXvxMjUncfp44jqw0cORyNBkprSAiisVDiEX5WtLDqVPDyM87xSYGe6NrDg==
-Comments signature: NIIlc3Zg5pQ7EJaEoMaQRLBnZVRjuS4ZOpYvTgz9am2iLUbyfK5mnIpfJvJIs1lpIFm7EnOnYUZ+nbSPp4SRDg==
+HFS signature: u/3AJfR09BFwSNdgUo+/reABhWahpenl7GE1so2UWX7eYHMMc0tqo61rUwvscurNFWGwLIJ4c7jj4jJ2KxG9Cg==
+Comments signature: VUQTTg6t9giOjmJkMaQtLgC1RQXXOH46LeNb1rrImTmL3OtrPvd2jRjSm3Xlw6/wRJUe3wq7ulvKxZsPYLSRCA==

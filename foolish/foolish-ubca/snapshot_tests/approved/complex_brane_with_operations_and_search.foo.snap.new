@@ -8,12 +8,16 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{
+{WOCONSTANIC
   x=10;
   y=20;
   z=30;
-  sum=60;
-  avg=20
+  sum=Op+(
+      Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
+      ?(pattern='^z$', UNANCHORED, ECONSTANIC),
+      WOCONSTANIC
+  );
+  avg=Op/(?(pattern='^sum$', UNANCHORED, ECONSTANIC), 3, WOCONSTANIC)
 }
 ```
 COMMENTS:
@@ -23,5 +27,5 @@ complex_brane_with_operations_and_search
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: eIJL0ws12Aay/OZZDwEfhuORsRcoD771FKTX/isyLfFNwYZ+cAlF3iL6fReWj0duYc02l/q9RN6crj+iPp0rAg==
-HFS signature: zAb1P2roYoRLFR+KMh1j7ZoQU+0STNY9Zep2orXi9wAvi4F75e+fokdQMGxARGNdQmAmhW8ZWZKGLwPVdJ/SCw==
-Comments signature: iJksncLPzZdcLRDyueG+iwQTHSqpAh0RHA9V6MMLKw4VHsf9H13HpSeweCxNCNURw/7mZW0ixk+MqeavjeTDDg==
+HFS signature: VYjNeaC8nC144JK/aj0fsTvkLGG3ZFhCjLrE0/pDGXIqFayBd8sooBG4efB699DCk4bFSaSAi20iA3iSQMpdAA==
+Comments signature: udZ/tXqzfyB7qB9H17oy6FC7WnhccTTN6vJCHysxm0q5VwF16lbdahffxtvHYfuTwACXMMz6n08MLXCvlzgmBA==

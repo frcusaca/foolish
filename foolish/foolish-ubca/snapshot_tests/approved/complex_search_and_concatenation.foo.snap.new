@@ -8,7 +8,7 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{
+{WOCONSTANIC
   target={
       a=1;
       c=2;
@@ -21,19 +21,10 @@ INPUT:
   b1={
       x=10
   };
-  resultˍ1={
-      x=10
-  };
-  {
-    a=1;
-    b=2;
-    c=3
-  };
-  resultˍ2={
-      x=10;
-      a=1;
-      b=2;
-      c=3
+  resultˍ1=?(pattern='^b1$', UNANCHORED, ECONSTANIC);
+  ?(pattern='^c$', ANCHORED, NK);
+  resultˍ2={NK
+      ??? (empty body)
   }
 }
 ```
@@ -44,5 +35,5 @@ complex_search_and_concatenation
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: QwS6koSaXIc2SJUrPaaPbWpmXRelzotPS7Lvx0Ag11296Ubk6q7XHE6O87YdsEIpEojATxfkVO90iG96nWEgBQ==
-HFS signature: /75fjy8pMSe5AxcRhKsnKpzZem+IEzG2rmwez++p4NE1Of9MlxOBedhiY1FFLA2ja/A6iut+FaOAERHgGUntDA==
-Comments signature: Svc76YuzmIWPNTUM+Eay9dpG6AubkIaOhDX+54Hv6QxNyF9TVQdfvsH2S0T8KaECWNh1Laab+5zqa8nDRnmxDg==
+HFS signature: 2kFXNw1f3VWASQCng1tmZ0Rv3jGgPFaGmZmi9k3sDfAvUl6n+Q/nDYA8LCF71yiNpJ1o1mnERpibBaGU/8SnCg==
+Comments signature: zyfX3IQF039hryqPoYKXBArBIMar7tC5P8kHbipXHX9gbB447qI3+8cQPKCbG+7Byl/caz6a2z0840NjNDS+DQ==

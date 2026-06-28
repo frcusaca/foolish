@@ -8,10 +8,10 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{
+{WOCONSTANIC
   x=10;
-  b={
-      y=23
+  b={WOCONSTANIC
+      y=Op+(Op*(?(pattern='^x$', UNANCHORED, ECONSTANIC), 2, WOCONSTANIC), 3, WOCONSTANIC)
   }
 }
 ```
@@ -22,5 +22,5 @@ operator_in_nested_brane_with_scope
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 2LdCkc6rsRqGv7R+cztwZPz1JFjaxMSoxge2QrVdgiDe95zOWLsqBvlVo4jDw3Gg/EV33s4ft3Nqe6gWAPxwAg==
-HFS signature: 2P+e9gZ4SwFTqd8kZ6zL5KEvRb8PGsTqpFJ3ixXI2ZzhsUB/q7czD/y9zIJffFsbQkG6hSFI8ZuS+X5FdqGiCQ==
-Comments signature: d8hpio/60FwivWb7pF6O7AtuUYgDThIMb5UsHZJKsc5kZVRJu+trCGQT7fnTbHlfIM8WWUsiNCyWEx97wfyXCQ==
+HFS signature: b7PYEjaEul7oeoNcPHfvINNKl11WfnjmtCwpv6L+KehmyglhNXfhZeAXsoe8Azt8G6OsK4aoQbHr9JeQ+gXtBw==
+Comments signature: un0tK5uQ4fj2icYJpDx3x5xRh5xusnGzJ47SKDukIowIiLVMjN2j8SNe/MTxBiASFkqgEgtOUo4YQFYorhrUAA==

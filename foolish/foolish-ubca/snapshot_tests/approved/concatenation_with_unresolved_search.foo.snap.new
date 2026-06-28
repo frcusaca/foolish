@@ -15,10 +15,7 @@ INPUT:
   b={
       y=2
   };
-  c={WOCONSTANIC
-      x=?(pattern='^ref$', UNANCHORED, ECONSTANIC);
-      y=2
-  }
+  c={}
 }
 ```
 COMMENTS:
@@ -28,5 +25,5 @@ concatenation_with_unresolved_search
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 0nn0zHTItXiXgst2fdcj8qAcRecdM81vlZuNywRWyn84nf//TMf+OoPKmkpI5ilJaZfp/Hi3oChYXZ3rYHqDDw==
-HFS signature: nxIqvhHs1SP4zKvYMU0FNX3uCq2SyaOlRqkzZX6vLmF0PjHbf7o9SyYB2pi6U4reWnwR6NHqAuRE4qD22MkgDQ==
-Comments signature: zZ/2pQaYRaYyj7Ied4euavEqjgEHdtqYsa7JN2bm3dYOLUWuff0pe+VuFt3nKgAOX/ttgx3MriW8GN+eIpkJDw==
+HFS signature: JGj9jOn1u+YPTdjVU3BkNK+FlRO67eSpga57w1tYO/jem8765dsnslplTAJyLHT5CHfXsK923YrJMhuU40jXBQ==
+Comments signature: JJy+1/6VL3NBwnKohaSiNMIX5w+h96jcHBrlAoHKwB+E4s3Zi/xmz2nhYd/NQvRCb6c6aRI/uyWVdRRtoFBbCA==

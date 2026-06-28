@@ -15,7 +15,7 @@ INPUT:
       Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
   >>;
   a=100;
-  102
+  ?(pattern='^c$', UNANCHORED, ECONSTANIC)
 }
 ```
 COMMENTS:
@@ -25,5 +25,5 @@ sff_in_assignment_chain
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: W39zs+UId/DzfxHfL4QgQfryXimg6He4zOPcvtPzRzzWL/XwvRD91ZNi0vO2yL2wEXrlywGGMoz/vf+tEpgQDQ==
-HFS signature: C55yf8iMjVKh2fo9U0DVIIRaVa7VdFicH7V6SwsoldwnNpUs+sl8MUCxDrTu2aQ6QpuJkZh/qNiXmNG1L72ACg==
-Comments signature: j4fg6FG9FVxuS+VVGCGWWOopIhz/K03AqFeGRL+7HmujroSTxwDTpYy7laUAkJzO8joBObMJHahF1IyPb9XaDA==
+HFS signature: 6OwsFK00530LzfHookELeWpdmQBnUgjKOBaoV8D+qf2SkPEe4zzPWWW6BHNmTEElEZSePVPb0Rv77twMvvYVAQ==
+Comments signature: wbhG+g/hLfAVnItZan5CCMJpKF+9q0s0ytNljF+1FCcK9yy1K0oFdIASTgvipuYDBLZe4p+EOtojz7Ug2KX7CQ==
