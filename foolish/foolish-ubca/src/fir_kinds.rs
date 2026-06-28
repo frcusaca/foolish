@@ -853,14 +853,15 @@ impl Fir for SearchFir {
                     let result = if self.anchored {
                         let anchor = Rc::clone(&self.core.foolish_children()[0]);
                         let resolved = resolve_anchor(&anchor);
-                        if resolved.borrow().kind() != FirKind::Brane {
-                            None
-                        } else {
-                            let resolved_borrowed = resolved.borrow();
-                            let len = resolved.borrow().core().foolish_children().len();
-                            resolved_borrowed
-                                ._search_brane(&self.pattern, len.saturating_sub(1), 0)
-                                .map(|(_idx, stmt, nyes)| (stmt, nyes))
+                        let resolved_borrowed = resolved.borrow();
+                        match resolved_borrowed.kind() {
+                            FirKind::Brane => {
+                                let len = resolved.borrow().core().foolish_children().len();
+                                resolved_borrowed
+                                    ._search_brane(&self.pattern, len.saturating_sub(1), 0)
+                                    .map(|(_idx, stmt, nyes)| (stmt, nyes))
+                            }
+                            _ => None,
                         }
                     } else {
                         self.ab_search(scope, &self.pattern)
