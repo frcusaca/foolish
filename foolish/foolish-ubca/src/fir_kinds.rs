@@ -1,14 +1,12 @@
-
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};
 
 use foolish_core::fir::Nyes;
 use regex::Regex;
 
-use crate::fir_trait::{Fir, FirKind, FirRef, Scope, UbcError, get_value};
+use crate::fir_trait::{get_value, Fir, FirKind, FirRef, Scope, UbcError};
 use crate::nyes_ext::NyesExt;
 use crate::proto_brane::ProtoBrane;
-
 
 pub(crate) fn _decide_nyes_due_to_children(children: &[FirRef]) -> Option<Nyes> {
     let mut all_constantew = true;
@@ -31,7 +29,7 @@ pub(crate) fn _decide_nyes_due_to_children(children: &[FirRef]) -> Option<Nyes> 
             }
             Nyes::Econstanic | Nyes::Woconstanic => {
                 econstanic_woconstanic_count += 1;
-					 all_constantew  = false;
+                all_constantew = false;
                 all_independent = false;
             }
             Nyes::Constant => {
@@ -96,7 +94,11 @@ macro_rules! clone_proto_brane {
             .enumerate()
             .map(|(i, c)| constanic_clone_at(c, &$self_weak, i, $foolish))
             .collect();
-        let core = ProtoBrane::new(cloned_children, $new_parent.clone(), clone_nyes($nyes, $foolish));
+        let core = ProtoBrane::new(
+            cloned_children,
+            $new_parent.clone(),
+            clone_nyes($nyes, $foolish),
+        );
         for ubc in $source.ubc_children() {
             core.push_ubc_child(constanic_clone_at(&ubc, &$self_weak, 0, $foolish));
         }
@@ -110,15 +112,28 @@ fn constanic_clone_at(
     index: usize,
     descendent_of_sfm_and_foolishly_ignorant: bool,
 ) -> FirRef {
-    if matches!(fir_ref.borrow().kind(), FirKind::StayFoolish | FirKind::StayFullyFoolish) {
+    if matches!(
+        fir_ref.borrow().kind(),
+        FirKind::StayFoolish | FirKind::StayFullyFoolish
+    ) {
         let source = fir_ref.borrow();
         if source.kind() == FirKind::StayFoolish {
             if let Some(constanic_result) = source.core().ubc_children().into_iter().next() {
-                return constanic_clone_at(&constanic_result, new_parent, index, descendent_of_sfm_and_foolishly_ignorant);
+                return constanic_clone_at(
+                    &constanic_result,
+                    new_parent,
+                    index,
+                    descendent_of_sfm_and_foolishly_ignorant,
+                );
             }
         }
         if let Some(inner) = source.core().foolish_children().first().cloned() {
-            return constanic_clone_at(&inner, new_parent, index, descendent_of_sfm_and_foolishly_ignorant);
+            return constanic_clone_at(
+                &inner,
+                new_parent,
+                index,
+                descendent_of_sfm_and_foolishly_ignorant,
+            );
         }
         eprintln!("ALARM: SF/SFF node has no children — cloning wrapper as-is");
     }
@@ -131,23 +146,25 @@ fn constanic_clone_at(
     let borrowed = fir_ref.borrow();
     let kind = borrowed.kind();
     match kind {
-        FirKind::IndepInt => {
-            Rc::new(RefCell::new(IndepIntFir {
-                core: ProtoBrane::new(vec![], new_parent.clone(), borrowed.core().get_nyes()),
-                value: borrowed.as_i64().unwrap_or(0),
-            }))
-        }
-        FirKind::Nk => {
-            Rc::new(RefCell::new(NkFir {
-                core: ProtoBrane::new(vec![], new_parent.clone(), borrowed.core().get_nyes()),
-                reason: borrowed.as_nk_reason().unwrap_or("unknown").to_owned(),
-            }))
-        }
+        FirKind::IndepInt => Rc::new(RefCell::new(IndepIntFir {
+            core: ProtoBrane::new(vec![], new_parent.clone(), borrowed.core().get_nyes()),
+            value: borrowed.as_i64().unwrap_or(0),
+        })),
+        FirKind::Nk => Rc::new(RefCell::new(NkFir {
+            core: ProtoBrane::new(vec![], new_parent.clone(), borrowed.core().get_nyes()),
+            reason: borrowed.as_nk_reason().unwrap_or("unknown").to_owned(),
+        })),
         FirKind::Operator => {
             let op_name = borrowed.as_op_name().unwrap_or("?").to_owned();
             Rc::new_cyclic(|me: &Weak<RefCell<OperatorFir>>| {
                 let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-                let core = clone_proto_brane!(borrowed.core(), self_weak, new_parent, nyes, descendent_of_sfm_and_foolishly_ignorant);
+                let core = clone_proto_brane!(
+                    borrowed.core(),
+                    self_weak,
+                    new_parent,
+                    nyes,
+                    descendent_of_sfm_and_foolishly_ignorant
+                );
                 RefCell::new(OperatorFir { core, op: op_name })
             })
         }
@@ -155,13 +172,12 @@ fn constanic_clone_at(
             let clone_nyes_val = clone_nyes(nyes, descendent_of_sfm_and_foolishly_ignorant);
             let pattern = borrowed.as_search_pattern().unwrap_or("").to_owned();
             let anchored = borrowed.as_search_anchored();
-            let chain_econstanic = if !descendent_of_sfm_and_foolishly_ignorant
-                && nyes == Nyes::Woconstanic
-            {
-                deepest_econstanic_in_chain(fir_ref)
-            } else {
-                None
-            };
+            let chain_econstanic =
+                if !descendent_of_sfm_and_foolishly_ignorant && nyes == Nyes::Woconstanic {
+                    deepest_econstanic_in_chain(fir_ref)
+                } else {
+                    None
+                };
             Rc::new_cyclic(|me: &Weak<RefCell<SearchFir>>| {
                 let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
                 let children: Vec<FirRef> = borrowed
@@ -169,14 +185,26 @@ fn constanic_clone_at(
                     .foolish_children()
                     .iter()
                     .enumerate()
-                    .map(|(i, c)| constanic_clone_at(c, &self_weak, i, descendent_of_sfm_and_foolishly_ignorant))
+                    .map(|(i, c)| {
+                        constanic_clone_at(
+                            c,
+                            &self_weak,
+                            i,
+                            descendent_of_sfm_and_foolishly_ignorant,
+                        )
+                    })
                     .collect();
                 let core = ProtoBrane::new(children, new_parent.clone(), clone_nyes_val);
                 if let Some(ref econ) = chain_econstanic {
                     core.push_ubc_child(constanic_clone_at(econ, &self_weak, 0, false));
                 } else {
                     for ubc in borrowed.core().ubc_children() {
-                        core.push_ubc_child(constanic_clone_at(&ubc, &self_weak, 0, descendent_of_sfm_and_foolishly_ignorant));
+                        core.push_ubc_child(constanic_clone_at(
+                            &ubc,
+                            &self_weak,
+                            0,
+                            descendent_of_sfm_and_foolishly_ignorant,
+                        ));
                     }
                 }
                 RefCell::new(SearchFir {
@@ -193,8 +221,18 @@ fn constanic_clone_at(
             let anchored = borrowed.as_index_anchored();
             Rc::new_cyclic(|me: &Weak<RefCell<IndexFir>>| {
                 let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-                let core = clone_proto_brane!(borrowed.core(), self_weak, new_parent, nyes, descendent_of_sfm_and_foolishly_ignorant);
-                RefCell::new(IndexFir { core, offset, anchored })
+                let core = clone_proto_brane!(
+                    borrowed.core(),
+                    self_weak,
+                    new_parent,
+                    nyes,
+                    descendent_of_sfm_and_foolishly_ignorant
+                );
+                RefCell::new(IndexFir {
+                    core,
+                    offset,
+                    anchored,
+                })
             })
         }
         FirKind::HeadTail => {
@@ -202,48 +240,73 @@ fn constanic_clone_at(
             let anchored = borrowed.as_headtail_anchored();
             Rc::new_cyclic(|me: &Weak<RefCell<HeadTailFir>>| {
                 let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-                let core = clone_proto_brane!(borrowed.core(), self_weak, new_parent, nyes, descendent_of_sfm_and_foolishly_ignorant);
-                RefCell::new(HeadTailFir { core, is_head, anchored })
+                let core = clone_proto_brane!(
+                    borrowed.core(),
+                    self_weak,
+                    new_parent,
+                    nyes,
+                    descendent_of_sfm_and_foolishly_ignorant
+                );
+                RefCell::new(HeadTailFir {
+                    core,
+                    is_head,
+                    anchored,
+                })
             })
         }
         FirKind::StayFoolish | FirKind::StayFullyFoolish => {
             unreachable!("SF/SFF stripped at fn top")
         }
-        FirKind::Concatenation => {
-            Rc::new_cyclic(|me: &Weak<RefCell<ConcatenationFir>>| {
-                let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-                let core = clone_proto_brane!(borrowed.core(), self_weak, new_parent, nyes, descendent_of_sfm_and_foolishly_ignorant);
-                RefCell::new(ConcatenationFir { core })
-            })
-        }
+        FirKind::Concatenation => Rc::new_cyclic(|me: &Weak<RefCell<ConcatenationFir>>| {
+            let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
+            let core = clone_proto_brane!(
+                borrowed.core(),
+                self_weak,
+                new_parent,
+                nyes,
+                descendent_of_sfm_and_foolishly_ignorant
+            );
+            RefCell::new(ConcatenationFir { core })
+        }),
         FirKind::Statement => {
             let name = borrowed.as_stmt_name().unwrap_or("").to_owned();
             let line = index;
             Rc::new_cyclic(|me: &Weak<RefCell<StatementFir>>| {
                 let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-                let core = clone_proto_brane!(borrowed.core(), self_weak, new_parent, nyes, descendent_of_sfm_and_foolishly_ignorant);
-                RefCell::new(StatementFir { core, name, line_number: line })
-            })
-        }
-        FirKind::Brane => {
-            Rc::new_cyclic(|me: &Weak<RefCell<BraneFir>>| {
-                let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-                let core = clone_proto_brane!(borrowed.core(), self_weak, new_parent, nyes, descendent_of_sfm_and_foolishly_ignorant);
-                RefCell::new(BraneFir {
+                let core = clone_proto_brane!(
+                    borrowed.core(),
+                    self_weak,
+                    new_parent,
+                    nyes,
+                    descendent_of_sfm_and_foolishly_ignorant
+                );
+                RefCell::new(StatementFir {
                     core,
-                    characterizations: borrowed.as_brane_characterizations().to_vec(),
+                    name,
+                    line_number: line,
                 })
             })
         }
-        FirKind::Unknown => {
-            Rc::new(RefCell::new(NkFir {
-                core: ProtoBrane::new(vec![], new_parent.clone(), Nyes::Nk),
-                reason: "unknown fir kind".to_owned(),
-            }))
-        }
+        FirKind::Brane => Rc::new_cyclic(|me: &Weak<RefCell<BraneFir>>| {
+            let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
+            let core = clone_proto_brane!(
+                borrowed.core(),
+                self_weak,
+                new_parent,
+                nyes,
+                descendent_of_sfm_and_foolishly_ignorant
+            );
+            RefCell::new(BraneFir {
+                core,
+                characterizations: borrowed.as_brane_characterizations().to_vec(),
+            })
+        }),
+        FirKind::Unknown => Rc::new(RefCell::new(NkFir {
+            core: ProtoBrane::new(vec![], new_parent.clone(), Nyes::Nk),
+            reason: "unknown fir kind".to_owned(),
+        })),
     }
 }
-
 
 #[derive(Debug)]
 pub struct IndepIntFir {
@@ -278,7 +341,6 @@ impl Fir for IndepIntFir {
     }
 }
 
-
 #[derive(Debug)]
 pub struct NkFir {
     pub(crate) core: ProtoBrane,
@@ -312,7 +374,6 @@ impl Fir for NkFir {
     }
 }
 
-
 #[derive(Debug)]
 pub struct OperatorFir {
     pub(crate) core: ProtoBrane,
@@ -327,10 +388,12 @@ impl OperatorFir {
             .all(|c| c.borrow().core().get_nyes().is_constanic())
     }
     fn operands_all_settled(&self) -> bool {
-        self.core()
-            .foolish_children()
-            .iter()
-            .all(|c| matches!(c.borrow().core().get_nyes(), Nyes::Constant | Nyes::Independent))
+        self.core().foolish_children().iter().all(|c| {
+            matches!(
+                c.borrow().core().get_nyes(),
+                Nyes::Constant | Nyes::Independent
+            )
+        })
     }
 }
 
@@ -369,103 +432,123 @@ impl Fir for OperatorFir {
 impl OperatorFir {
     fn combine(&self, scope: &Scope) -> Result<(), UbcError> {
         {
-                let self_weak = self.core.parent_weak();
-                let children = self.core.foolish_children().to_vec();
+            let self_weak = self.core.parent_weak();
+            let children = self.core.foolish_children().to_vec();
 
-                let any_nk = children
-                    .iter()
-                    .any(|c| c.borrow().core().get_nyes() == Nyes::Nk);
-                if any_nk {
-                    let nk_ref: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<NkFir>>| {
-                        let parent: Weak<RefCell<dyn Fir>> = me.clone();
-                        let reason = children.iter()
-                            .find_map(|c| {
-                                let b = c.borrow();
-                                if b.core().get_nyes() == Nyes::Nk {
-                                    b.as_nk_reason().map(|s| s.to_string())
-                                } else {
-                                    None
-                                }
-                            })
-                            .unwrap_or_else(|| "operator nk".to_string());
-                        RefCell::new(NkFir {
-                            core: ProtoBrane::new(vec![], parent, Nyes::Nk),
-                            reason,
-                        })
-                    });
-                    self.core.push_ubc_child(constanic_clone_at(&nk_ref, &self_weak, 0, scope.has_ancestral_sfm));
-                    self.core.set_nyes(Nyes::Nk);
-                    return Ok(());
-                }
-
-                let values: Vec<i64> = children
-                    .iter()
-                    .map(|c| get_value(c))
-                    .filter_map(|v| v.borrow().as_i64())
-                    .collect();
-
-                if values.len() != children.len() {
-                    self.core.set_nyes(Nyes::Woconstanic);
-                    return Ok(());
-                }
-
-                let result = match self.op.as_str() {
-                    "+" if values.len() == 2 => values[0] + values[1],
-                    "-" if values.len() == 2 => values[0] - values[1],
-                    "*" if values.len() == 2 => values[0] * values[1],
-                    "/" if values.len() == 2 => {
-                        if values[1] == 0 {
-                            let nk_ref: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<NkFir>>| {
-                                let parent: Weak<RefCell<dyn Fir>> = me.clone();
-                                RefCell::new(NkFir {
-                                    core: ProtoBrane::new(vec![], parent, Nyes::Nk),
-                                    reason: "division by zero".to_string(),
-                                })
-                            });
-                            self.core.push_ubc_child(constanic_clone_at(&nk_ref, &self_weak, 0, scope.has_ancestral_sfm));
-                            self.core.set_nyes(Nyes::Nk);
-                            return Ok(());
-                        }
-                        values[0] / values[1]
-                    }
-                    "%" if values.len() == 2 => {
-                        if values[1] == 0 {
-                            let nk_ref: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<NkFir>>| {
-                                let parent: Weak<RefCell<dyn Fir>> = me.clone();
-                                RefCell::new(NkFir {
-                                    core: ProtoBrane::new(vec![], parent, Nyes::Nk),
-                                    reason: "division by zero".to_string(),
-                                })
-                            });
-                            self.core.push_ubc_child(constanic_clone_at(&nk_ref, &self_weak, 0, scope.has_ancestral_sfm));
-                            self.core.set_nyes(Nyes::Nk);
-                            return Ok(());
-                        }
-                        values[0] % values[1]
-                    }
-                    "-" if values.len() == 1 => -values[0], // unary negation
-                    op => {
-                        return Err(UbcError::Eval(format!(
-                            "unknown operator: {op} ({} operands)",
-                            values.len()
-                        )));
-                    }
-                };
-
-                let result_ref: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<IndepIntFir>>| {
+            let any_nk = children
+                .iter()
+                .any(|c| c.borrow().core().get_nyes() == Nyes::Nk);
+            if any_nk {
+                let nk_ref: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<NkFir>>| {
                     let parent: Weak<RefCell<dyn Fir>> = me.clone();
-                    RefCell::new(IndepIntFir {
-                        core: ProtoBrane::new(vec![], parent, Nyes::Constant),
-                        value: result,
+                    let reason = children
+                        .iter()
+                        .find_map(|c| {
+                            let b = c.borrow();
+                            if b.core().get_nyes() == Nyes::Nk {
+                                b.as_nk_reason().map(|s| s.to_string())
+                            } else {
+                                None
+                            }
+                        })
+                        .unwrap_or_else(|| "operator nk".to_string());
+                    RefCell::new(NkFir {
+                        core: ProtoBrane::new(vec![], parent, Nyes::Nk),
+                        reason,
                     })
                 });
-                self.core.push_ubc_child(constanic_clone_at(&result_ref, &self_weak, 0, scope.has_ancestral_sfm));
-                self.core.set_nyes(Nyes::Constant);
+                self.core.push_ubc_child(constanic_clone_at(
+                    &nk_ref,
+                    &self_weak,
+                    0,
+                    scope.has_ancestral_sfm,
+                ));
+                self.core.set_nyes(Nyes::Nk);
+                return Ok(());
+            }
+
+            let values: Vec<i64> = children
+                .iter()
+                .map(|c| get_value(c))
+                .filter_map(|v| v.borrow().as_i64())
+                .collect();
+
+            if values.len() != children.len() {
+                self.core.set_nyes(Nyes::Woconstanic);
+                return Ok(());
+            }
+
+            let result = match self.op.as_str() {
+                "+" if values.len() == 2 => values[0] + values[1],
+                "-" if values.len() == 2 => values[0] - values[1],
+                "*" if values.len() == 2 => values[0] * values[1],
+                "/" if values.len() == 2 => {
+                    if values[1] == 0 {
+                        let nk_ref: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<NkFir>>| {
+                            let parent: Weak<RefCell<dyn Fir>> = me.clone();
+                            RefCell::new(NkFir {
+                                core: ProtoBrane::new(vec![], parent, Nyes::Nk),
+                                reason: "division by zero".to_string(),
+                            })
+                        });
+                        self.core.push_ubc_child(constanic_clone_at(
+                            &nk_ref,
+                            &self_weak,
+                            0,
+                            scope.has_ancestral_sfm,
+                        ));
+                        self.core.set_nyes(Nyes::Nk);
+                        return Ok(());
+                    }
+                    values[0] / values[1]
+                }
+                "%" if values.len() == 2 => {
+                    if values[1] == 0 {
+                        let nk_ref: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<NkFir>>| {
+                            let parent: Weak<RefCell<dyn Fir>> = me.clone();
+                            RefCell::new(NkFir {
+                                core: ProtoBrane::new(vec![], parent, Nyes::Nk),
+                                reason: "division by zero".to_string(),
+                            })
+                        });
+                        self.core.push_ubc_child(constanic_clone_at(
+                            &nk_ref,
+                            &self_weak,
+                            0,
+                            scope.has_ancestral_sfm,
+                        ));
+                        self.core.set_nyes(Nyes::Nk);
+                        return Ok(());
+                    }
+                    values[0] % values[1]
+                }
+                "-" if values.len() == 1 => -values[0], // unary negation
+                op => {
+                    return Err(UbcError::Eval(format!(
+                        "unknown operator: {op} ({} operands)",
+                        values.len()
+                    )));
+                }
+            };
+
+            let result_ref: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<IndepIntFir>>| {
+                let parent: Weak<RefCell<dyn Fir>> = me.clone();
+                RefCell::new(IndepIntFir {
+                    core: ProtoBrane::new(vec![], parent, Nyes::Constant),
+                    value: result,
+                })
+            });
+            self.core.push_ubc_child(constanic_clone_at(
+                &result_ref,
+                &self_weak,
+                0,
+                scope.has_ancestral_sfm,
+            ));
+            self.core.set_nyes(Nyes::Constant);
         }
         Ok(())
     }
 }
-
 
 #[derive(Debug)]
 pub struct StatementFir {
@@ -530,11 +613,11 @@ impl Fir for StatementFir {
     fn _ib_search(&self, self_ref: &FirRef, name: &str) -> Option<(FirRef, Nyes)> {
         let brane = self.get_my_brane(self_ref)?;
         let brane_borrowed = brane.borrow();
-        brane_borrowed._search_brane(name, self.line_number.saturating_sub(1), 0)
+        brane_borrowed
+            ._search_brane(name, self.line_number.saturating_sub(1), 0)
             .map(|(_idx, body, nyes)| (body, nyes))
     }
 }
-
 
 #[derive(Debug)]
 pub struct BraneFir {
@@ -597,11 +680,20 @@ impl Fir for BraneFir {
         pb._ab_search(&parent_brane, name)
     }
 
-    fn _search_brane(&self, expression: &str, starting_index: usize, ending_index: usize) -> Option<(usize, FirRef, Nyes)> {
+    fn _search_brane(
+        &self,
+        expression: &str,
+        starting_index: usize,
+        ending_index: usize,
+    ) -> Option<(usize, FirRef, Nyes)> {
         let children = self.core.foolish_children();
         if starting_index >= children.len() || ending_index >= children.len() {
-            panic!("_search_brane: index out of bounds (start={}, end={}, len={})",
-                starting_index, ending_index, children.len());
+            panic!(
+                "_search_brane: index out of bounds (start={}, end={}, len={})",
+                starting_index,
+                ending_index,
+                children.len()
+            );
         }
         let range = if starting_index >= ending_index {
             Box::new((ending_index..=starting_index).rev()) as Box<dyn Iterator<Item = usize>>
@@ -632,7 +724,6 @@ pub struct SearchFir {
     pub(crate) forward: bool,
     pub(crate) sf_inner_pattern: RefCell<Option<String>>,
 }
-
 
 fn extract_simple_name(pattern: &str) -> &str {
     let s = pattern.strip_prefix('^').unwrap_or(pattern);
@@ -682,33 +773,6 @@ fn unwrap_sf_sff(fir_ref: &FirRef) -> FirRef {
     }
 }
 
-fn search_brane_children(brane: &FirRef, name: &str, before: Option<usize>, forward: bool) -> Option<(FirRef, Nyes, Option<String>)> {
-    let (children_vec, end) = {
-        let brane_borrowed = brane.borrow();
-        let c: Vec<FirRef> = brane_borrowed.core().foolish_children().to_vec();
-        let e = before.unwrap_or(c.len());
-        (c, e)
-    };
-    let range = &children_vec[..end];
-    let iter: Box<dyn Iterator<Item = &FirRef>> = if forward {
-        Box::new(range.iter())
-    } else {
-        Box::new(range.iter().rev())
-    };
-    for child in iter {
-        let child_borrowed = child.borrow();
-        if let Some(sn) = child_borrowed.as_stmt_name() {
-            if matches_pattern(sn, name)
-                && let Some(body) = child_borrowed.core().foolish_children().first()
-            {
-                let body_nyes = body.borrow().core().get_nyes();
-                return Some((Rc::clone(body), body_nyes, None));
-            }
-        }
-    }
-    None
-}
-
 fn search_nyes_from_found(found: Nyes) -> Nyes {
     match found {
         Nyes::Econstanic | Nyes::Woconstanic | Nyes::Nk => Nyes::Woconstanic,
@@ -717,81 +781,15 @@ fn search_nyes_from_found(found: Nyes) -> Nyes {
     }
 }
 
-fn ib_search(start: &ProtoBrane, name: &str, forward: bool) -> Option<(FirRef, Nyes, Option<String>)> {
-    let mut current = start.parent();
-    while let Some(node) = current {
-        if node.borrow().kind() == FirKind::Statement {
-            let brane = {
-                let borrowed = node.borrow();
-                find_parent_brane(borrowed.core())
-            };
-            if let Some(ref brane_ref) = brane {
-                let before_idx = find_stmt_index_in_brane(&node, brane_ref);
-                if let Some((body, nyes, sf_pat)) = search_brane_children(brane_ref, name, before_idx, forward) {
-                    if nyes.is_constanic() {
-                        return Some((body, nyes, sf_pat));
-                    }
-                    eprintln!("ib_search: found '{name}' but nyes={nyes:?} is not constanic — skipping");
-                }
-                return None;
-            }
-        }
-        let next = node.borrow().core().parent();
-        match next {
-            Some(ref n) if Rc::ptr_eq(n, &node) => break,
-            None => break,
-            _ => current = next,
-        }
-    }
-    None
-}
-
-fn ab_search(start: &ProtoBrane, name: &str, forward: bool) -> Option<(FirRef, Nyes, Option<String>)> {
-    let mut current = start.parent();
-    let mut seen_immediate = false;
-    while let Some(node) = current {
-        if node.borrow().kind() == FirKind::Statement {
-            let brane = {
-                let borrowed = node.borrow();
-                find_parent_brane(borrowed.core())
-            };
-            if let Some(ref brane_ref) = brane {
-                if !seen_immediate {
-                    seen_immediate = true;
-                } else {
-                    let before_idx = find_stmt_index_in_brane(&node, brane_ref);
-                    if let Some((body, nyes, sf_pat)) = search_brane_children(brane_ref, name, before_idx, forward) {
-                        if nyes.is_constanic() {
-                            return Some((body, nyes, sf_pat));
-                        }
-                    }
-                }
-            }
-        }
-        let next = node.borrow().core().parent();
-        match next {
-            Some(ref n) if Rc::ptr_eq(n, &node) => break,
-            None => break,
-            _ => current = next,
-        }
-    }
-    None
-}
-
 impl SearchFir {
-    fn handle_found(
-        &self,
-        body: FirRef,
-        _nyes: Nyes,
-        sf_pat: Option<String>,
-        scope: &Scope,
-    ) {
-        if let Some(p) = sf_pat {
-            *self.sf_inner_pattern.borrow_mut() = Some(p);
-        }
+    fn handle_found(&self, body: FirRef, _nyes: Nyes, scope: &Scope) {
         let self_weak = self.core.parent_weak();
-        self.core
-            .push_search_result(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
+        self.core.push_search_result(constanic_clone_at(
+            &body,
+            &self_weak,
+            0,
+            scope.has_ancestral_sfm,
+        ));
         self.core.set_nyes(Nyes::Braning);
     }
 
@@ -825,13 +823,11 @@ impl Fir for SearchFir {
                 if !self.core.ubc_children().is_empty() {
                     self.settle_from_ubc_result();
                 } else {
-                    match ib_search(&self.core, &self.pattern, self.forward) {
-                        Some((body, nyes, sf_pat)) => {
-                            eprintln!("ib_search: found '{}' nyes={:?} — handle_found", self.pattern, nyes);
-                            self.handle_found(body, nyes, sf_pat, scope);
+                    match self.ib_search(scope, &self.pattern) {
+                        Some((body, nyes)) => {
+                            self.handle_found(body, nyes, scope);
                         }
                         None => {
-                            eprintln!("ib_search: '{}' not found — escalating", self.pattern);
                             self.core.set_nyes(Nyes::Braning);
                         }
                     }
@@ -844,14 +840,24 @@ impl Fir for SearchFir {
                     let anchor = Rc::clone(&self.core.foolish_children()[0]);
                     let resolved = resolve_anchor(&anchor);
                     let name = &self.pattern;
-                    if let Some((body, nyes, sf_pat)) = search_brane_children(&resolved, name, None, self.forward) {
-                        self.handle_found(body, nyes, sf_pat, scope);
+                    let resolved_borrowed = resolved.borrow();
+                    if let Some((_idx, body, nyes)) = resolved_borrowed._search_brane(
+                        name,
+                        resolved
+                            .borrow()
+                            .core()
+                            .foolish_children()
+                            .len()
+                            .saturating_sub(1),
+                        0,
+                    ) {
+                        self.handle_found(body, nyes, scope);
                     } else {
                         self.core.set_nyes(Nyes::Nk);
                     }
                 } else {
-                    match ab_search(&self.core, &self.pattern, self.forward) {
-                        Some((body, nyes, sf_pat)) => self.handle_found(body, nyes, sf_pat, scope),
+                    match self.ab_search(scope, &self.pattern) {
+                        Some((body, nyes)) => self.handle_found(body, nyes, scope),
                         None => self.core.set_nyes(Nyes::Econstanic),
                     }
                 }
@@ -873,7 +879,6 @@ impl Fir for SearchFir {
         self.sf_inner_pattern.borrow().clone()
     }
 }
-
 
 #[derive(Debug)]
 pub struct IndexFir {
@@ -902,7 +907,11 @@ fn index_into_brane(brane: &FirRef, offset: i32) -> Option<(FirRef, Nyes)> {
     Some((body, body_nyes))
 }
 
-fn index_into_brane_relative(brane: &FirRef, stmt_idx: usize, offset: i32) -> Option<(FirRef, Nyes)> {
+fn index_into_brane_relative(
+    brane: &FirRef,
+    stmt_idx: usize,
+    offset: i32,
+) -> Option<(FirRef, Nyes)> {
     let (body, body_nyes) = {
         let body: FirRef = {
             let borrowed = brane.borrow();
@@ -991,9 +1000,16 @@ impl Fir for IndexFir {
                     match find_enclosing_stmt_and_brane(&self.core) {
                         Some((stmt_ref, brane_ref)) => {
                             if let Some(idx) = find_stmt_index_in_brane(&stmt_ref, &brane_ref) {
-                                if let Some((body, _body_nyes)) = index_into_brane_relative(&brane_ref, idx, self.offset) {
+                                if let Some((body, _body_nyes)) =
+                                    index_into_brane_relative(&brane_ref, idx, self.offset)
+                                {
                                     let self_weak = self.core.parent_weak();
-                                    self.core.push_search_result(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
+                                    self.core.push_search_result(constanic_clone_at(
+                                        &body,
+                                        &self_weak,
+                                        0,
+                                        scope.has_ancestral_sfm,
+                                    ));
                                     self.core.set_nyes(Nyes::Braning);
                                 } else {
                                     self.core.set_nyes(Nyes::Nk);
@@ -1016,7 +1032,12 @@ impl Fir for IndexFir {
                     let resolved = resolve_anchor(&anchor);
                     if let Some((body, _body_nyes)) = index_into_brane(&resolved, self.offset) {
                         let self_weak = self.core.parent_weak();
-                        self.core.push_search_result(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
+                        self.core.push_search_result(constanic_clone_at(
+                            &body,
+                            &self_weak,
+                            0,
+                            scope.has_ancestral_sfm,
+                        ));
                     } else {
                         self.core.set_nyes(Nyes::Nk);
                     }
@@ -1038,7 +1059,6 @@ impl Fir for IndexFir {
         self.anchored
     }
 }
-
 
 #[derive(Debug)]
 pub struct HeadTailFir {
@@ -1068,10 +1088,17 @@ impl Fir for HeadTailFir {
                     match find_enclosing_stmt_and_brane(&self.core) {
                         Some((stmt_ref, brane_ref)) => {
                             if let Some(idx) = find_stmt_index_in_brane(&stmt_ref, &brane_ref) {
-                                if let Some((body, nyes)) = index_into_brane_relative(&brane_ref, idx, offset) {
+                                if let Some((body, nyes)) =
+                                    index_into_brane_relative(&brane_ref, idx, offset)
+                                {
                                     if nyes.is_constanic() {
                                         let self_weak = self.core.parent_weak();
-                                        self.core.push_search_result(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
+                                        self.core.push_search_result(constanic_clone_at(
+                                            &body,
+                                            &self_weak,
+                                            0,
+                                            scope.has_ancestral_sfm,
+                                        ));
                                         self.core.set_nyes(nyes);
                                     } else {
                                         self.core.push_task(Rc::clone(&body));
@@ -1097,7 +1124,12 @@ impl Fir for HeadTailFir {
                     if let Some((body, body_nyes)) = index_into_brane(&resolved, offset) {
                         if body_nyes.is_constanic() {
                             let self_weak = self.core.parent_weak();
-                            self.core.push_search_result(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
+                            self.core.push_search_result(constanic_clone_at(
+                                &body,
+                                &self_weak,
+                                0,
+                                scope.has_ancestral_sfm,
+                            ));
                             self.core.set_nyes(body_nyes);
                         } else {
                             self.core.set_nyes(Nyes::Nk);
@@ -1109,10 +1141,17 @@ impl Fir for HeadTailFir {
                     match find_enclosing_stmt_and_brane(&self.core) {
                         Some((stmt_ref, brane_ref)) => {
                             if let Some(idx) = find_stmt_index_in_brane(&stmt_ref, &brane_ref) {
-                                if let Some((body, body_nyes)) = index_into_brane_relative(&brane_ref, idx, offset) {
+                                if let Some((body, body_nyes)) =
+                                    index_into_brane_relative(&brane_ref, idx, offset)
+                                {
                                     if body_nyes.is_constanic() {
                                         let self_weak = self.core.parent_weak();
-                                        self.core.push_search_result(constanic_clone_at(&body, &self_weak, 0, scope.has_ancestral_sfm));
+                                        self.core.push_search_result(constanic_clone_at(
+                                            &body,
+                                            &self_weak,
+                                            0,
+                                            scope.has_ancestral_sfm,
+                                        ));
                                         self.core.set_nyes(body_nyes);
                                     } else {
                                         self.core.set_nyes(Nyes::Nk);
@@ -1144,7 +1183,6 @@ impl Fir for HeadTailFir {
         self.anchored
     }
 }
-
 
 #[derive(Debug)]
 pub struct StayFoolishFir {
@@ -1198,7 +1236,6 @@ impl Fir for StayFoolishFir {
     }
 }
 
-
 #[derive(Debug)]
 pub struct StayFullyFoolishFir {
     pub(crate) core: ProtoBrane,
@@ -1232,7 +1269,6 @@ impl Fir for StayFullyFoolishFir {
     }
 }
 
-
 #[derive(Debug)]
 pub struct ConcatenationFir {
     pub(crate) core: ProtoBrane,
@@ -1247,14 +1283,13 @@ impl Fir for ConcatenationFir {
             Nyes::Prembrionic | Nyes::Embryonic => {
                 let children: Vec<FirRef> = self.core.foolish_children().to_vec();
                 if children.is_empty() {
-                    let result_ref: FirRef =
-                        Rc::new_cyclic(|me: &Weak<RefCell<BraneFir>>| {
-                            let parent: Weak<RefCell<dyn Fir>> = me.clone();
-                            RefCell::new(BraneFir {
-                                core: ProtoBrane::new(vec![], parent, Nyes::Constant),
-                                characterizations: Vec::new(),
-                            })
-                        });
+                    let result_ref: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<BraneFir>>| {
+                        let parent: Weak<RefCell<dyn Fir>> = me.clone();
+                        RefCell::new(BraneFir {
+                            core: ProtoBrane::new(vec![], parent, Nyes::Constant),
+                            characterizations: Vec::new(),
+                        })
+                    });
                     self.core.push_ubc_child(result_ref);
                     self.core.set_nyes(Nyes::Constant);
                 } else {
@@ -1316,7 +1351,6 @@ impl Fir for ConcatenationFir {
         FirKind::Concatenation
     }
 }
-
 
 pub fn constant_int(value: i64, parent: Weak<RefCell<dyn Fir>>) -> FirRef {
     Rc::new(RefCell::new(IndepIntFir {
@@ -1402,7 +1436,6 @@ pub fn stay_fully_foolish(expr: FirRef, parent: Weak<RefCell<dyn Fir>>) -> FirRe
         core: ProtoBrane::new(vec![expr], parent, Nyes::Prembrionic),
     }))
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -1762,7 +1795,10 @@ mod tests {
 
         assert_eq!(op.borrow().core().get_nyes(), Nyes::Nk);
         assert_eq!(op.borrow().core().ubc_children().len(), 1);
-        assert_eq!(op.borrow().core().ubc_children()[0].borrow().kind(), FirKind::Nk);
+        assert_eq!(
+            op.borrow().core().ubc_children()[0].borrow().kind(),
+            FirKind::Nk
+        );
     }
 
     #[test]
@@ -1799,7 +1835,6 @@ mod tests {
         assert_eq!(node.borrow().core().get_nyes(), Nyes::Prembrionic);
         assert_eq!(node.borrow().kind(), FirKind::Operator);
     }
-
 
     #[test]
     fn statement_wrapping_constant_copies_body_nyes() {
@@ -1856,7 +1891,6 @@ mod tests {
         assert_eq!(node.borrow().core().get_nyes(), Nyes::Prembrionic);
         assert_eq!(node.borrow().kind(), FirKind::Statement);
     }
-
 
     #[test]
     fn brane_two_constant_children_classifies_constant() {
@@ -1973,7 +2007,6 @@ mod tests {
         assert_eq!(op.borrow().core().get_nyes(), Nyes::Constant);
     }
 
-
     #[test]
     fn search_finds_name_in_anchored_brane() {
         let val = make_constant_int(42);
@@ -2019,7 +2052,6 @@ mod tests {
 
         assert_eq!(search.borrow().core().get_nyes(), Nyes::Woconstanic);
     }
-
 
     #[test]
     fn index_finds_element_at_offset_in_anchor_brane() {
@@ -2122,7 +2154,6 @@ mod tests {
         assert_eq!(idx.borrow().core().get_nyes(), Nyes::Nk);
     }
 
-
     fn make_headtail(is_head: bool, anchored: bool, foolish_children: Vec<FirRef>) -> FirRef {
         Rc::new_cyclic(|me: &Weak<RefCell<HeadTailFir>>| {
             let parent: Weak<RefCell<dyn Fir>> = me.clone();
@@ -2213,9 +2244,15 @@ mod tests {
         step_to_settled(&tail, &scope);
 
         assert_eq!(head.borrow().core().get_nyes(), Nyes::Constant);
-        assert_eq!(head.borrow().core().ubc_children()[0].borrow().as_i64(), Some(42));
+        assert_eq!(
+            head.borrow().core().ubc_children()[0].borrow().as_i64(),
+            Some(42)
+        );
         assert_eq!(tail.borrow().core().get_nyes(), Nyes::Constant);
-        assert_eq!(tail.borrow().core().ubc_children()[0].borrow().as_i64(), Some(42));
+        assert_eq!(
+            tail.borrow().core().ubc_children()[0].borrow().as_i64(),
+            Some(42)
+        );
     }
 
     #[test]
@@ -2232,7 +2269,6 @@ mod tests {
 
         assert_eq!(ht.borrow().core().get_nyes(), Nyes::Nk);
     }
-
 
     fn make_concatenation(elements: Vec<FirRef>) -> FirRef {
         Rc::new_cyclic(|me: &Weak<RefCell<ConcatenationFir>>| {
@@ -2318,7 +2354,6 @@ mod tests {
         assert_eq!(ubc[0].borrow().core().foolish_children().len(), 1);
     }
 
-
     fn make_stay_foolish(expr: FirRef) -> FirRef {
         Rc::new_cyclic(|me: &Weak<RefCell<StayFoolishFir>>| {
             let parent: Weak<RefCell<dyn Fir>> = me.clone();
@@ -2399,7 +2434,11 @@ mod tests {
 
         assert_eq!(sf.borrow().core().get_nyes(), Nyes::Constant);
         let ubc = sf.borrow().core().ubc_children();
-        assert_eq!(ubc.len(), 1, "SF should constanic-clone result into ubc_children");
+        assert_eq!(
+            ubc.len(),
+            1,
+            "SF should constanic-clone result into ubc_children"
+        );
         assert_eq!(ubc[0].borrow().kind(), FirKind::IndepInt);
         assert_eq!(ubc[0].borrow().as_i64(), Some(42));
     }
@@ -2414,7 +2453,11 @@ mod tests {
 
         assert_eq!(sf.borrow().core().get_nyes(), Nyes::Nk);
         let ubc = sf.borrow().core().ubc_children();
-        assert_eq!(ubc.len(), 1, "SF should constanic-clone nk result into ubc_children");
+        assert_eq!(
+            ubc.len(),
+            1,
+            "SF should constanic-clone nk result into ubc_children"
+        );
         assert_eq!(ubc[0].borrow().kind(), FirKind::Nk);
     }
 
@@ -2450,7 +2493,6 @@ mod tests {
         assert_eq!(ubc.len(), 1, "SF should constanic-clone search result");
         assert_eq!(ubc[0].borrow().as_i64(), Some(10));
     }
-
 
     fn make_stay_fully_foolish(expr: FirRef) -> FirRef {
         Rc::new_cyclic(|me: &Weak<RefCell<StayFullyFoolishFir>>| {
@@ -2518,7 +2560,6 @@ mod tests {
         assert_eq!(node.borrow().core().get_nyes(), Nyes::Prembrionic);
         assert_eq!(node.borrow().kind(), FirKind::StayFullyFoolish);
     }
-
 
     fn dangling_parent() -> Weak<RefCell<dyn Fir>> {
         Weak::<RefCell<IndepIntFir>>::new()
@@ -2652,7 +2693,6 @@ mod tests {
         assert!(foolish_scope.has_ancestral_sfm);
     }
 
-
     fn step_watching(root: &FirRef, watched: &FirRef, scope: &Scope) -> Vec<(Nyes, Nyes)> {
         let mut trace = vec![(
             root.borrow().core().get_nyes(),
@@ -2742,7 +2782,6 @@ mod tests {
         assert!(s1.borrow().core().get_nyes().is_constanic());
     }
 
-
     fn assert_progression(trace: &[Nyes], expected_terminal: Nyes, label: &str) {
         eprintln!("{label} nyes transitions: {trace:?}");
         assert!(!trace.is_empty(), "{label}: empty trace");
@@ -2752,7 +2791,10 @@ mod tests {
             "{label}: must start PREMBRIONIC"
         );
         let last = *trace.last().unwrap();
-        assert!(last.is_constanic(), "{label}: must end constanic (got {last:?})");
+        assert!(
+            last.is_constanic(),
+            "{label}: must end constanic (got {last:?})"
+        );
         assert_eq!(last, expected_terminal, "{label}: wrong terminal state");
         let mut seen_constanic = false;
         for n in trace {
@@ -2900,7 +2942,6 @@ mod tests {
         assert_progression(&trace, Nyes::Constant, "StayFullyFoolish");
     }
 
-
     use crate::compiler::Compiler;
 
     fn find_search(node: &FirRef, pattern: &str) -> Option<FirRef> {
@@ -2922,10 +2963,13 @@ mod tests {
     fn ib_context_resolves_in_immediate_brane() {
         let root = Compiler::compile("{a = 1; b = a;}").unwrap().pop().unwrap();
         let search = find_search(&root, "^a$").expect("search for a");
-
-        let ib = ib_search(&search.borrow().core(), "^a$", false);
-        assert!(ib.is_some(), "ib_search must find a name in the immediate brane");
-
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let b_stmt = &stmts[1]; // b = a
+        let ib = b_stmt.borrow()._ib_search(b_stmt, "^a$");
+        assert!(
+            ib.is_some(),
+            "ib_search must find a name in the immediate brane"
+        );
         let scope = Scope::empty();
         let _ = step_to_settled(&root, &scope);
         assert!(search.borrow().core().get_nyes().is_constanic());
@@ -2933,24 +2977,38 @@ mod tests {
 
     #[test]
     fn ab_context_name_not_in_immediate_brane() {
-        let root = Compiler::compile("{a = 1; b = {c = a;};}").unwrap().pop().unwrap();
+        let root = Compiler::compile("{a = 1; b = {c = a;};}")
+            .unwrap()
+            .pop()
+            .unwrap();
         let search = find_search(&root, "^a$").expect("search for a");
-
-        {
-            let b = search.borrow();
-            assert!(
-                ib_search(b.core(), "^a$", false).is_none(),
-                "ib_search must NOT find an ancestral-only name in the immediate brane"
-            );
-            assert!(
-                ab_search(b.core(), "^a$", false).is_some(),
-                "ab_search must find the ancestral name"
-            );
-        }
-
-        let scope = Scope::empty();
-        let _ = step_to_settled(&root, &scope);
-        assert!(search.borrow().core().get_nyes().is_constanic());
+        let inner_brane = root
+            .borrow()
+            .core()
+            .foolish_children()
+            .get(1)
+            .map(|s| {
+                s.borrow()
+                    .core()
+                    .foolish_children()
+                    .first()
+                    .unwrap()
+                    .clone()
+            })
+            .unwrap();
+        let inner_stmts = inner_brane.borrow().core().foolish_children().to_vec();
+        let c_stmt = &inner_stmts[0]; // c = a
+        assert!(
+            c_stmt.borrow()._ib_search(c_stmt, "^a$").is_none(),
+            "ib_search must NOT find an ancestral-only name in the immediate brane"
+        );
+        assert!(
+            inner_brane
+                .borrow()
+                ._ab_search(&inner_brane, "^a$")
+                .is_some(),
+            "ab_search must find the ancestral name"
+        );
     }
 
     #[test]
@@ -2960,11 +3018,28 @@ mod tests {
             .pop()
             .unwrap();
         let search = find_search(&root, "^a$").expect("search for a");
-        {
-            let b = search.borrow();
-            let ib = ib_search(b.core(), "^a$", false);
-            assert!(ib.is_some(), "ib_search must find the immediate (shadowing) a");
-        }
+        // The search for 'a' in 'c = a' should find the inner 'a = 2' (shadowing)
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let inner_brane = stmts[1]
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .unwrap()
+            .clone();
+        let inner_stmts = inner_brane.borrow().core().foolish_children().to_vec();
+        let c_stmt = &inner_stmts[1]; // c = a
+        let ib = c_stmt.borrow()._ib_search(c_stmt, "^a$");
+        assert!(
+            ib.is_some(),
+            "ib_search must find the immediate (shadowing) a"
+        );
+        let (body, _nyes) = ib.unwrap();
+        assert_eq!(
+            body.borrow().as_i64(),
+            Some(2),
+            "must find inner a=2, not outer a=1"
+        );
 
         let scope = Scope::empty();
         let _ = step_to_settled(&root, &scope);
@@ -2979,7 +3054,10 @@ mod tests {
 
     #[test]
     fn ancestral_search_passes_through_embryonic_then_braning() {
-        let root = Compiler::compile("{a = 1; b = {c = a;};}").unwrap().pop().unwrap();
+        let root = Compiler::compile("{a = 1; b = {c = a;};}")
+            .unwrap()
+            .pop()
+            .unwrap();
         let search = find_search(&root, "^a$").expect("search for a");
         let scope = Scope::empty();
 
@@ -2995,7 +3073,6 @@ mod tests {
         );
     }
 
-
     #[test]
     fn sff_descendant_searches_are_econstanic_at_build() {
         let root = Compiler::compile("{a = 1; b = 2; sff = <<a + b>>;}")
@@ -3004,16 +3081,34 @@ mod tests {
             .unwrap();
         let sa = find_search(&root, "^a$").expect("search a");
         let sb = find_search(&root, "^b$").expect("search b");
-        assert_eq!(sa.borrow().core().get_nyes(), Nyes::Econstanic, "SFF search a built ECONSTANIC");
-        assert_eq!(sb.borrow().core().get_nyes(), Nyes::Econstanic, "SFF search b built ECONSTANIC");
+        assert_eq!(
+            sa.borrow().core().get_nyes(),
+            Nyes::Econstanic,
+            "SFF search a built ECONSTANIC"
+        );
+        assert_eq!(
+            sb.borrow().core().get_nyes(),
+            Nyes::Econstanic,
+            "SFF search b built ECONSTANIC"
+        );
 
         let scope = Scope::empty();
         for _ in 0..200 {
-            if root.borrow().core().get_nyes().is_constanic() { break; }
+            if root.borrow().core().get_nyes().is_constanic() {
+                break;
+            }
             let _ = step_fir_ref(&root, &scope).unwrap();
         }
-        assert_eq!(sa.borrow().core().get_nyes(), Nyes::Econstanic, "SFF search a stays ECONSTANIC after stepping");
-        assert_eq!(sb.borrow().core().get_nyes(), Nyes::Econstanic, "SFF search b stays ECONSTANIC after stepping");
+        assert_eq!(
+            sa.borrow().core().get_nyes(),
+            Nyes::Econstanic,
+            "SFF search a stays ECONSTANIC after stepping"
+        );
+        assert_eq!(
+            sb.borrow().core().get_nyes(),
+            Nyes::Econstanic,
+            "SFF search b stays ECONSTANIC after stepping"
+        );
     }
 
     #[test]
@@ -3024,7 +3119,9 @@ mod tests {
             .unwrap();
         let scope = Scope::empty();
         for _ in 0..200 {
-            if root.borrow().core().get_nyes().is_constanic() { break; }
+            if root.borrow().core().get_nyes().is_constanic() {
+                break;
+            }
             let _ = step_fir_ref(&root, &scope).unwrap();
         }
         let sff_search = find_search(&root, "^sff$").expect("search sff");
@@ -3042,7 +3139,11 @@ mod tests {
         let root = Compiler::compile("{a = 1; a;}").unwrap().pop().unwrap();
         let stmts: Vec<FirRef> = root.borrow().core().foolish_children().to_vec();
         assert_eq!(stmts.len(), 2);
-        assert_eq!(stmts[0].borrow().as_stmt_name(), Some("a"), "named assignment keeps its LHS");
+        assert_eq!(
+            stmts[0].borrow().as_stmt_name(),
+            Some("a"),
+            "named assignment keeps its LHS"
+        );
         assert_eq!(
             stmts[1].borrow().as_stmt_name(),
             Some(crate::compiler::ANON_STMT_NAME),
@@ -3074,12 +3175,32 @@ mod concat_sf_f_more_debug {
 
         for step in 0..100 {
             let stmts = root.borrow().core().foolish_children().to_vec();
-            let f1_stmt = stmts.iter().find(|s| s.borrow().as_stmt_name() == Some("f1")).unwrap();
-            let f1_body = f1_stmt.borrow().core().foolish_children().first().unwrap().clone();
+            let f1_stmt = stmts
+                .iter()
+                .find(|s| s.borrow().as_stmt_name() == Some("f1"))
+                .unwrap();
+            let f1_body = f1_stmt
+                .borrow()
+                .core()
+                .foolish_children()
+                .first()
+                .unwrap()
+                .clone();
             let f1 = f1_body.borrow();
 
-            let a_stmt = f1.core().foolish_children().iter().find(|s| s.borrow().as_stmt_name() == Some("a")).unwrap();
-            let a_body = a_stmt.borrow().core().foolish_children().first().unwrap().clone();
+            let a_stmt = f1
+                .core()
+                .foolish_children()
+                .iter()
+                .find(|s| s.borrow().as_stmt_name() == Some("a"))
+                .unwrap();
+            let a_body = a_stmt
+                .borrow()
+                .core()
+                .foolish_children()
+                .first()
+                .unwrap()
+                .clone();
             let a = a_body.borrow();
             let a_nyes = a.core().get_nyes();
 
@@ -3088,11 +3209,19 @@ mod concat_sf_f_more_debug {
                 if !ubc.is_empty() {
                     let b_clone = &ubc[0];
                     let bb = b_clone.borrow();
-                    eprintln!("step {step}: f1.a=Braning, ubc[0] kind={:?} nyes={:?} children={}",
-                        bb.kind(), bb.core().get_nyes(), bb.core().foolish_children().len());
+                    eprintln!(
+                        "step {step}: f1.a=Braning, ubc[0] kind={:?} nyes={:?} children={}",
+                        bb.kind(),
+                        bb.core().get_nyes(),
+                        bb.core().foolish_children().len()
+                    );
                     for (i, c) in bb.core().foolish_children().iter().enumerate() {
                         let cb = c.borrow();
-                        eprintln!("  child[{i}]: kind={:?} nyes={:?}", cb.kind(), cb.core().get_nyes());
+                        eprintln!(
+                            "  child[{i}]: kind={:?} nyes={:?}",
+                            cb.kind(),
+                            cb.core().get_nyes()
+                        );
                     }
                 } else {
                     eprintln!("step {step}: f1.a=Braning, NO ubc_children");
@@ -3113,4 +3242,3 @@ mod concat_sf_f_more_debug {
         panic!("f1.a did not settle");
     }
 }
-

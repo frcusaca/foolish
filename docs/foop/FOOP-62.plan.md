@@ -556,6 +556,14 @@ through.
   - [ ] Remove `/home/hcbusy/tmp/foolish-worktrees/foop-62-ubca-mimo`
   - [ ] This is the last checkbox to be checked in FOOP-62.plan.md
 
+- [ ] **Refactor Fir constructors into `fn create()` on each Fir type.** Move standalone
+      allocator functions (e.g. `pub fn statement(name, line_number, body, parent) -> FirRef`)
+      into `impl StatementFir { pub fn create(name, line_number, body, parent) -> FirRef }`.
+      Do this for ALL Fir types (IndepIntFir, NkFir, OperatorFir, SearchFir, IndexFir,
+      HeadTailFir, ConcatenationFir, StatementFir, BraneFir, StayFoolishFir,
+      StayFullyFoolishFir). Then investigate if other similar reference constructors
+      (in compiler.rs, evaluator.rs, tests) should also use the new `create()` methods.
+
 - [ ] **Centralize ProtoBrane constanic cloning.** Every FirKind match arm in `constanic_clone_at`
       duplicates the same pattern: clone `foolish_children` recursively, create `ProtoBrane::new`
       with `clone_nyes`, clone `ubc_children` recursively. Extract this into a single

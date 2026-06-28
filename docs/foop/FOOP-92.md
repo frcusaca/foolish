@@ -29,23 +29,29 @@ analysis, and enhancement suggestions).
 
 ## Abstract
 
-Extract the signed-snapshot lifecycle — currently spread across
-`foolish-core/src/snapshot_suite.rs`, `foolish-core/src/signature.rs`,
-`foolish-core/src/bin/verify_signatures.rs`, and the `foolish_review.sh` /
-`accept_approved.sh` shell scripts — into a single reusable library with an
-explicit four-state lifecycle: **Generated → Reviewed → Promoted** (plus
-**Flagged** as a side state). The generator always appends a `test` signer
-entry (computer/AI key, empty passphrase) at generation time; this entry is
-permanent and never removed. Human review produces a *reviewed-but-not-yet-
-promoted* artifact (`.snap.new.approved`) carrying no human signature yet.
-Promotion appends a `util` signer entry (human passphrase key) with an
-"Entire file" integrity signature, then renames to `.snap`. This three-state
-separation, the always-signed generation, and the append-on-promotion
-signature model are the library's defensible novelty: no mainstream
-snapshot/approval/golden-master framework (insta, Jest, Vitest, Syrupy,
-ApprovalTests, Verify, cupaloy, go-snaps, Swift SnapshotTesting, expect-test,
-trycmd, pytest-regtest, jlevy/tbd Golden Sessions) separates review from
-promotion or signs test artifacts at all.
+Extract the Foolish project's signed-snapshot approval-testing machinery —
+currently spread across `foolish-core/src/snapshot_suite.rs`,
+`foolish-core/src/signature.rs`, `foolish-core/src/bin/verify_signatures.rs`,
+and the `foolish_review.sh` / `accept_approved.sh` shell scripts — into a
+reusable workspace crate (`foolish-snap`) with an explicit four-state
+lifecycle: **Generated → Reviewed → Promoted** (plus **Flagged** as a side
+state). The generator always appends a `test` signer entry (computer/AI key)
+at generation time; this entry is permanent and never removed. Human review
+produces a *reviewed-but-not-yet-promoted* artifact (`.snap.new.approved`)
+carrying no human signature yet. Promotion appends a `util` signer entry
+(human passphrase key) with an "Entire file" integrity signature, then renames
+to `.snap`. The passphrase for automated (non-interactive) signing is resolved
+via a fixed cascade (CLI > env var > config file > default empty), making the
+computer key configurable per-environment for reuse by other projects. A
+two-layer CI gate is specified: always-on signature+content verification
+(catches tampering/regressions), and an opt-in `require_human_promotion`
+config that rejects any `.snap` lacking a human `util` entry — the opt-in
+gate is the tier-1/P0 feature, the primary improvement to insta, default off
+so the legacy corpus and opt-out projects are not blocked. This three-state
+lifecycle separation, the always-signed generation, the append-on-promotion
+signature model, and the configurable CI gate are the library's defensible
+novelty: no mainstream snapshot/approval/golden-master framework separates
+review from promotion or signs test artifacts at all.
 
 ## Motivation
 
@@ -313,20 +319,110 @@ Moved to `foolish-snap/src/bin/verify_signatures.rs`. The CLI gains a
 (`--stdin-passphrase`, `--add-comment`, directory scanning of `.snap` and
 `.snap.new`) are preserved.
 
-### 8. Trust model (unchanged, restated for clarity)
+### 8. Trust model (restated for clarity)
 
-- **Computer/AI key** = `derive_keypair("")`. Ungated; anyone (human or
-  agent) may produce it. Carries no human attestation. Used only for `test`
-  entries at generation.
-- **Human key** = `derive_keypair("<passphrase>")`. Produced only via
-  `--stdin-passphrase`. A `util` entry under a human key is the
-  human-attestation that this FOOP makes first-class.
+- **Computer/AI key** = `derive_keypair(<passphrase>)` where the passphrase
+  is resolved via the cascade in §9 (default `""` — the canonical computer
+  key). Ungated; anyone (human or agent) may produce it. Carries no human
+  attestation. Used for `test` entries at generation and for any automated
+  (non-interactive) re-sign. Configurable so other projects can set a
+  non-empty automated key.
+- **Human key** = `derive_keypair("<human_passphrase>")` where the passphrase
+  is supplied interactively via `--stdin-passphrase` (the human types it, or
+  it is piped). A `util` entry under a human key is the human-attestation
+  that this FOOP makes first-class. The human passphrase is NOT drawn from
+  the config-file/env tier of the cascade by default — promotion is an
+  explicit interactive human act (see §9).
 - AI agents are policy-barred from `promote`, from `--stdin-passphrase`
   signing, from `cargo insta accept`/`INSTA_UPDATE=always`, and from
   moving/deleting `.snap` or `.snap.new.approved`. The library does not
   enforce actor identity (it cannot); the gate is policy + the human-only
   interactivity of the passphrase prompt, with the signature providing
   post-hoc attribution.
+
+### 9. Passphrase resolution cascade
+
+Automated (non-interactive) signing — the `test` entry at generation, and any
+`verify_signatures --write-verified` run that is NOT an explicit human
+promotion — resolves the passphrase from a **fixed precedence, highest to
+lowest**:
+
+1. **Command-line parameters** — `--passphrase <value>` (non-interactive,
+   for CI/scripted use) or `--stdin-passphrase` (reads one line from stdin;
+   may be a terminal prompt or a pipe).
+2. **Environment variables** — `FOOLISH_SNAP_PASSPHRASE`.
+3. **Configuration files** — `.config/foolish-snap.toml` (or
+   `foolish-snap.toml` in the workspace root), section `[signing]`, key
+   `passphrase = "..."`.
+4. **Default** — `""` (empty string) = the canonical computer/AI key
+   (public key `dc5f586c…b683`). This preserves the current FOOP-12
+   behaviour when nothing is configured.
+
+The first tier that yields a non-`None` value wins; lower tiers are not
+consulted. An explicit empty string (`--passphrase ""` or
+`FOOLISH_SNAP_PASSPHRASE=""`) is treated as "set to empty" (the computer
+key), NOT as "unset" — to unset, omit the flag/var entirely.
+
+**Human promotion (`promote()`) is a distinct path:** it requires
+`--stdin-passphrase` and reads the passphrase interactively. It is not
+satisfied by the env-var or config-file tiers alone — promotion is an
+explicit human act, not an automated one. (If a CI pipeline needs to perform
+promotions non-interactively, it may pipe the passphrase into
+`--stdin-passphrase`; the library does not judge whether the stdin source is
+a human or a pipe. The signature still attributes the promotion to whatever
+passphrase was used.)
+
+**Why a cascade:** the Foolish project's computer key is the empty
+passphrase, but the library must be reusable by other projects (another
+project will need this imminently) that may want a non-empty automated key,
+or may need to inject a CI-specific key via environment without touching
+code. The cascade makes the key configurable without hardcoding.
+
+### 10. CI integration — two-layer gate
+
+The library's `verify_signatures` binary supports a two-layer CI gate with
+distinct scope:
+
+**Layer 1 (always on, non-negotiable) — integrity verification:**
+`verify_signatures <dir>` (no special flags) verifies every `.snap` and
+`.snap.new` in the directory: all `test`/`util` signer entries must validate,
+and the snapshot content must match the canonicalised signed content. Any
+failure (tampered signature, broken chain, mismatched content) exits
+non-zero. This runs on **every branch** in CI — it catches corruption and
+regressions regardless of promotion state. A failing Layer-1 check blocks
+everything: no merge, no tag.
+
+**Layer 2 (opt-in `require_human_promotion`, P0/tier-1 feature, default
+OFF) — promotion enforcement:** `verify_signatures --require-human-promotion
+<dir>` additionally fails if any `.snap` (committed golden) lacks a `util`
+(human) signer entry — i.e. a snapshot that was generated (computer-signed)
+but never promoted by a human. Enabled per-repository via config
+(`[ci] require_human_promotion = true` in `foolish-snap.toml`) or the
+`FOOLISH_SNAP_REQUIRE_HUMAN_PROMOTION=1` env var.
+
+**Granularity (critical):** Layer 2 is a **merge-to-main and tag gate**,
+NOT a commit/push gate. A computer-only `.snap` (no `util` entry) is:
+- ✅ **Allowed** to be committed to a working/feature branch.
+- ✅ **Allowed** to be pushed.
+- ✅ **Allowed** in CI runs on the feature branch (Layer 1 still applies —
+  it must verify).
+- ❌ **Blocked** from merging into `main` via PR (when Layer 2 is enabled on
+  the target repo).
+- ❌ **Blocked** from being included in a release tag.
+
+This lets developers and AI agents commit work-in-progress (computer-signed)
+snapshots to their branches and push them for collaboration and CI, while the
+human promotion (appending a `util` entry via `promote()` during PR review)
+happens before merge. The gate is enforced at branch-protection (required
+status check on `main`) and at the tagging step, not at `git commit` or
+`git push`.
+
+**Implementation surface:** the library exposes `SignedSnapshot::is_promoted()`
+(returns true iff a `util` entry is present). CI wires this into a GitHub
+Actions required-status-check on `main` and a pre-tag verification step. The
+library does not itself enforce branch protection — that is the platform's
+role (GitHub branch protection rules / `gh` tag protection); the library
+provides the exit code that the platform check consumes.
 
 ## FIR Impact
 
@@ -369,8 +465,21 @@ panicking evaluation still produces a signed, reviewable `.snap.new`.
   entries ok).
 - **Flag → AI fix → regenerate**: `.snap.new.check` → code fix → new
   `.snap.new` supersedes; `.check` log persists.
-- **CI gate simulation**: `verify_signatures` exits non-zero on any `.snap`
-  lacking a `util` entry when run with `--require-human-promotion`.
+- **CI gate simulation (Layer 1):** `verify_signatures` exits non-zero on
+  any `.snap` with a tampered signature, broken chain, or content mismatch
+  — on any branch.
+- **CI gate simulation (Layer 2):** `verify_signatures
+  --require-human-promotion` exits non-zero on any committed `.snap` lacking
+  a `util` (human) entry; exits zero when all committed `.snap` files carry
+  a `util` entry. Default (no flag) does NOT enforce human promotion.
+- **Passphrase cascade:** `test` entry signs with empty passphrase when no
+  cascade tier is set; signs with `FOOLISH_SNAP_PASSPHRASE` when env is set;
+  signs with config-file passphrase when only config is set; CLI
+  `--passphrase` overrides env; `--stdin-passphrase` overrides env+config.
+- **Promote refuses without `test` entry** (the always-signed invariant).
+- **Promote refuses if any existing signature fails** (chain integrity).
+- **Promote via cascade-disallowed:** `promote()` with only env/config
+  passphrase (no `--stdin-passphrase`) is refused — promotion is interactive.
 
 ### Regression
 
@@ -424,30 +533,74 @@ worktree-local (the scripts are not on the main branch). A typed library
 makes the invariant ("generator always signs", "review ≠ promote")
 enforceable in code and CI, not dependent on bash discipline.
 
+## Resolved Decisions
+
+- **OQ-1 (crate vs module): RESOLVED — crate.** The library is a new
+  workspace member crate `foolish-snap` (path `foolish/foolish-snap/`).
+  Rationale: another project will need this imminently, so the signed-
+  snapshot library must be a reusable, publishable artifact, not a module
+  buried in `foolish-core`.
+- **OQ-2 (CI gate — two-layer model): RESOLVED.** The gate has two layers
+  with distinct scope and granularity:
+  - **Layer 1 (always on, non-negotiable):** every `.snap` must pass
+    signature verification (all `test`/`util` entries valid) AND content
+    match. A tampered, broken, or failing snapshot halts CI on **any**
+    branch — no merging known regressions or bugs. Catches corruption and
+    regressions.
+  - **Layer 2 (opt-in `require_human_promotion`, P0/tier-1 feature,
+    default OFF):** when a repository enables this config, a PR carrying a
+    NEW or CHANGED `.snap` with only the `test` (computer) entry — no `util`
+    (human) signature — is **blocked from merging into `main`** and
+    **blocked from being tagged** (release tags). It does NOT block commits
+    or pushes to working/feature branches — developers and AI agents must be
+    free to commit work-in-progress (computer-signed) snaps to their branches
+    and push them for collaboration and CI. The human promotion (appending a
+    `util` entry) happens during PR review, before merge.
+  - The **promotion transition** (`promote()`) always requires a human
+    passphrase (§2/§4) — invariant, not config-gated. What Layer 2
+    config-gates is whether CI *blocks merge/tag* of un-promoted snaps.
+  - Layer 2 is **the primary improvement to insta** this FOOP makes — it
+    must be implemented and available (tier-1/P0) — but its default is OFF
+    so the existing legacy corpus and opt-out projects are not blocked.
+- **OQ-3 (reviewed-state staleness): RESOLVED — warn-only, 14-day default,
+  mtime-based, configurable.** The library emits a warning (not a CI
+  failure) for `.snap.new.approved` files whose mtime is older than a
+  configurable threshold (default 14 days). Threshold configurable via the
+  same config file as the passphrase cascade. Deferred to a follow-up if it
+  proves noisy.
+- **OQ-4 (timestamps in `util` entries): RESOLVED — yes, as an unsigned
+  comment line.** Each `util` (human) entry gains an advisory `# promoted:
+  <ISO8601>` comment line above the entry. The timestamp is **outside** the
+  signed content, so signature determinism is preserved for reproducible
+  re-signing (a re-sign produces the same signature bytes). The timestamp is
+  advisory — editable without invalidating the signature — and provides the
+  audit hint that OQ-3's staleness check can also consult. (If signed
+  timestamps are later required for stronger audit, that becomes a FOOP-22
+  amendment.)
+- **OQ-7 (plan file): RESOLVED — yes.** A `FOOP-92.plan.md` will be written
+  once OQ-6 is confirmed, so the plan reflects the frozen design.
+
 ## Open Questions
 
-- **Crate vs module?** Proposed: new workspace crate `foolish-snap`.
-  Alternative: a `snap` module inside `foolish-core`. The crate form enables
-  future publication/reuse; the module form is less disruption. Decide
-  before plan finalisation.
-- **`--require-human-promotion` CI gate?** Should `verify_signatures` gain a
-  mode that fails CI on any `.snap` with no `util` (human) entry, enforcing
-  "no computer-only snapshot is ever an approved baseline"? (Proposed: yes.)
-- **Reviewed-state staleness?** Should the library/CI flag `.snap.new.approved`
-  files older than N days as stale (reviewed but never promoted)?
-  (Proposed: warn, not fail.)
-- **Timestamp in `util` entries?** FOOP-22 leaves this open. Timestamps add
-  audit richness but break signature determinism for reproducible re-signing.
-  (Proposed: no timestamp in the signed content; optionally in an unsigned
-  comment line.)
-- **Should `flag()` write structured JSON instead of free-text `.check` log?**
-  Currently `foolish_review.sh` appends `$(date) cat $x` + content to a
-  `.check` log. A structured format would make AI-agent ingestion easier.
-- **Inline snapshots?** Out of scope — the Foolish project uses file snapshots
-  only. The library does not handle inline `@"..."` snapshots (insta's
-  `.pending-snap` path). Confirm this remains acceptable.
-- **Plan file?** A `FOOP-92.plan.md` with checkboxed execution tasks will
-  follow once the Open Questions above are resolved and the design is frozen.
+- **Structured `.check` log (OQ-5, to be flushed out).** Whether `flag()`
+  writes JSON-lines instead of the current free-text `$(date) cat $x` +
+  content append. Affects AI-agent ingestion of flagged snapshots. Design
+  options: JSON-lines `{timestamp, snapshot_path, agent_comment,
+  flagged_content_digest}` vs free-text human-readable log. Deferred for
+  further discussion — not blocking the initial implementation.
+- **Inline snapshot support (OQ-6, awaiting confirmation of scope).** "Make
+  this possible" is interpreted as: the library SHOULD support signing
+  inline snapshots (`assert_snapshot!(v, @"...")` stored in `.rs` source),
+  not merely detect-and-refuse them. This is a distinct hard problem —
+  inline snapshots cannot carry an in-file `SIGNATURES:` footer (they are
+  string literals inside Rust code), so signing requires either a sidecar
+  mechanism or integration with insta's `.pending-snap` / `FilePatcher`
+  flow. If confirmed in-scope, this becomes a dedicated sub-spec within the
+  plan with its own design. **Confirmation requested:** in-scope (support
+  inline signing) vs out-of-scope (detection lint only)?
+- **Plan file (OQ-7, resolved).** Yes — a `FOOP-92.plan.md` with checkboxed
+  execution tasks will follow. To be written once OQ-2 (CI gate) and OQ-6
+  (inline scope) are confirmed, so the plan reflects frozen decisions.
 
 ## References
 
@@ -974,12 +1127,17 @@ codebase gaps identified during analysis.)*
 
 ## Last Updated
 
-**Date**: 2026-06-26
+**Date**: 2026-06-27
 **Updated By**: Sisyphus / z-ai/glm-5.2
-**Changes**: Created FOOP-92. Specifies the `foolish-snap` library with a
-four-state lifecycle (Generated → Reviewed → Flagged → Promoted), adopts the
-FOOP-22 append-multi-signer model so the generator's `test` signature is
-permanent, and formalises the review/promotion shell scripts into a typed
-state machine. Appendices A–E carry the supporting research (insta best
-practices & pitfalls, cross-language survey, approval-testing theory,
-novelty/prior-art analysis, enhancement suggestions).
+**Changes**: Resolved OQ-1 (crate — another project will need this
+imminently), OQ-2 (two-layer CI gate: Layer 1 always-on integrity verify on
+all branches; Layer 2 opt-in `require_human_promotion` as the P0/tier-1
+feature, default OFF, enforced at merge-to-main and tag — NOT at commit/push,
+so computer-signed WIP snaps can be committed and pushed to feature
+branches), OQ-3 (warn-only 14-day staleness), OQ-4 (unsigned comment-line
+timestamp in `util` entries, determinism preserved), OQ-7 (plan file to
+follow once OQ-6 confirmed). Added §9 Passphrase resolution cascade (CLI >
+env > config > default empty) for automated signing, and §10 CI integration
+(two-layer gate with merge/tag granularity). OQ-6 (inline snapshot support
+scope) awaits confirmation. OQ-5 (structured `.check` log) deferred for
+further discussion.

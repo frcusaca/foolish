@@ -1008,12 +1008,7 @@ mod get_value_tests {
         let root = Compiler::compile("{x = 1; y = x;}").unwrap().pop().unwrap();
         let stmts = root.borrow().core().foolish_children().to_vec();
         let y_stmt = &stmts[1]; // y = x
-        let scope = Scope {
-            current_brane: Some(Rc::clone(&root)),
-            current_stmt_idx: Some(1),
-            has_ancestral_sfm: false,
-        };
-        let result = y_stmt.borrow().ib_search(&scope, "x");
+        let result = y_stmt.borrow()._ib_search(y_stmt, "x");
         assert!(result.is_some());
         let (body, nyes) = result.unwrap();
         assert_eq!(body.borrow().kind(), FirKind::IndepInt);
@@ -1026,12 +1021,7 @@ mod get_value_tests {
         let root = Compiler::compile("{x = 1;}").unwrap().pop().unwrap();
         let stmts = root.borrow().core().foolish_children().to_vec();
         let x_stmt = &stmts[0];
-        let scope = Scope {
-            current_brane: Some(Rc::clone(&root)),
-            current_stmt_idx: Some(0),
-            has_ancestral_sfm: false,
-        };
-        let result = x_stmt.borrow().ib_search(&scope, "missing");
+        let result = x_stmt.borrow()._ib_search(x_stmt, "missing");
         assert!(result.is_none());
     }
 
@@ -1044,14 +1034,9 @@ mod get_value_tests {
         let inner_brane = inner_stmt.borrow().core().foolish_children().first().unwrap().clone();
         let inner_stmts = inner_brane.borrow().core().foolish_children().to_vec();
         let y_stmt = &inner_stmts[0]; // y = x
-        let scope = Scope {
-            current_brane: Some(Rc::clone(&inner_brane)),
-            current_stmt_idx: Some(0),
-            has_ancestral_sfm: false,
-        };
-        let result = y_stmt.borrow().ib_search(&scope, "x");
+        let result = y_stmt.borrow()._ib_search(y_stmt, "x");
         assert!(result.is_none(), "x should not be found in inner brane");
-        let result = inner_brane.borrow().ab_search(&scope, "x");
+        let result = inner_brane.borrow()._ab_search(&inner_brane, "x");
         assert!(result.is_some(), "x should be found via ab_search");
         let (body, nyes) = result.unwrap();
         assert_eq!(body.borrow().kind(), FirKind::IndepInt);
@@ -1064,12 +1049,7 @@ mod get_value_tests {
         let stmts = root.borrow().core().foolish_children().to_vec();
         let inner_stmt = &stmts[1]; // inner = {y = x;}
         let inner_brane = inner_stmt.borrow().core().foolish_children().first().unwrap().clone();
-        let scope = Scope {
-            current_brane: Some(Rc::clone(&inner_brane)),
-            current_stmt_idx: Some(0),
-            has_ancestral_sfm: false,
-        };
-        let result = inner_brane.borrow().ab_search(&scope, "nonexistent");
+        let result = inner_brane.borrow()._ab_search(&inner_brane, "nonexistent");
         assert!(result.is_none(), "nonexistent should not be found anywhere");
     }
 }
