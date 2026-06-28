@@ -243,7 +243,7 @@ pub trait Fir: std::fmt::Debug {
     }
 
     fn _search_brane(&self, _expression: &str, _starting_index: usize, _ending_index: usize) -> Option<(usize, FirRef, Nyes)> {
-        panic!("_search_brane called on non-BraneFir")
+        None
     }
 }
 
