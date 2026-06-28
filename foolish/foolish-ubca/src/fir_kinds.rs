@@ -615,7 +615,7 @@ impl Fir for StatementFir {
         let brane_borrowed = brane.borrow();
         brane_borrowed
             ._search_brane(name, self.line_number.saturating_sub(1), 0)
-            .map(|(_idx, body, nyes)| (body, nyes))
+            .map(|(_idx, stmt, nyes)| (stmt, nyes))
     }
 }
 
@@ -705,10 +705,7 @@ impl Fir for BraneFir {
             let child_borrowed = child.borrow();
             if let Some(sn) = child_borrowed.as_stmt_name() {
                 if matches_pattern(sn, expression) {
-                    if let Some(body) = child_borrowed.core().foolish_children().first() {
-                        let body_nyes = body.borrow().core().get_nyes();
-                        return Some((i, Rc::clone(body), body_nyes));
-                    }
+                    return Some((i, Rc::clone(child), child_borrowed.core().get_nyes()));
                 }
             }
         }
@@ -781,13 +778,33 @@ fn search_nyes_from_found(found: Nyes) -> Nyes {
     }
 }
 
+fn constanic_clone_stmt(
+    stmt: &FirRef,
+    new_parent: &Weak<RefCell<dyn Fir>>,
+    descendent_of_sfm_and_foolishly_ignorant: bool,
+) -> FirRef {
+    let stmt_borrowed = stmt.borrow();
+    let body = stmt_borrowed
+        .core()
+        .foolish_children()
+        .first()
+        .cloned()
+        .expect("statement must have a body");
+    let index = stmt_borrowed.as_stmt_line_number().unwrap_or(0);
+    constanic_clone_at(
+        &body,
+        new_parent,
+        index,
+        descendent_of_sfm_and_foolishly_ignorant,
+    )
+}
+
 impl SearchFir {
-    fn handle_found(&self, body: FirRef, _nyes: Nyes, scope: &Scope) {
+    fn handle_found(&self, stmt: FirRef, _nyes: Nyes, scope: &Scope) {
         let self_weak = self.core.parent_weak();
-        self.core.push_search_result(constanic_clone_at(
-            &body,
+        self.core.push_search_result(constanic_clone_stmt(
+            &stmt,
             &self_weak,
-            0,
             scope.has_ancestral_sfm,
         ));
         self.core.set_nyes(Nyes::Braning);
@@ -824,45 +841,37 @@ impl Fir for SearchFir {
                     self.settle_from_ubc_result();
                 } else {
                     match self.ib_search(scope, &self.pattern) {
-                        Some((body, nyes)) => {
-                            self.handle_found(body, nyes, scope);
-                        }
-                        None => {
-                            self.core.set_nyes(Nyes::Braning);
-                        }
+                        Some((stmt, nyes)) => self.handle_found(stmt, nyes, scope),
+                        None => self.core.set_nyes(Nyes::Braning),
                     }
                 }
             }
             Nyes::Braning => {
                 if !self.core.ubc_children().is_empty() {
                     self.settle_from_ubc_result();
-                } else if self.anchored {
-                    let anchor = Rc::clone(&self.core.foolish_children()[0]);
-                    let resolved = resolve_anchor(&anchor);
-                    let name = &self.pattern;
-					     let resolved_borrowed = resolved.borrow();
-                    if resolved_borrowed.kind() != FirKind::Brane {
-                        self.core.set_nyes(Nyes::Nk);
-                    } else {
-                        if let Some((_idx, body, nyes)) = resolved_borrowed._search_brane(
-                            name,
-                            resolved
-                                .borrow()
-                                .core()
-                                .foolish_children()
-                                .len()
-                                .saturating_sub(1),
-                            0,
-                        ) {
-                            self.handle_found(body, nyes, scope);
-                        } else {
-                            self.core.set_nyes(Nyes::Nk);
-                        }
-                    }
                 } else {
-                    match self.ab_search(scope, &self.pattern) {
-                        Some((body, nyes)) => self.handle_found(body, nyes, scope),
-                        None => self.core.set_nyes(Nyes::Econstanic),
+                    let result = if self.anchored {
+                        let anchor = Rc::clone(&self.core.foolish_children()[0]);
+                        let resolved = resolve_anchor(&anchor);
+                        if resolved.borrow().kind() != FirKind::Brane {
+                            None
+                        } else {
+                            let resolved_borrowed = resolved.borrow();
+                            let len = resolved.borrow().core().foolish_children().len();
+                            resolved_borrowed
+                                ._search_brane(&self.pattern, len.saturating_sub(1), 0)
+                                .map(|(_idx, stmt, nyes)| (stmt, nyes))
+                        }
+                    } else {
+                        self.ab_search(scope, &self.pattern)
+                    };
+                    match result {
+                        Some((stmt, nyes)) => self.handle_found(stmt, nyes, scope),
+                        None => self.core.set_nyes(if self.anchored {
+                            Nyes::Nk
+                        } else {
+                            Nyes::Econstanic
+                        }),
                     }
                 }
             }
