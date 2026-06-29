@@ -1,0 +1,315 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{
+a=1;
+bb=2;
+ccc=3;
+dddd=4;
+short_sum=a+bb+ccc+dddd;
+long_named_result_shows_alignment=short_sum+short_sum;
+very_long_identifier_name_for_testing_indent=100;
+even_longer_name_that_may_wrap_or_push_columns_1234567890=200+300;
+unicode_identifiers_πΔΣ=π+Δ+Σ;
+π=3;
+Δ=7;
+Σ=10;
+one_zero=1/0;
+div_by_zero_in_brane_method=one_zero;
+three_zero=3/0;
+bad_in_arithmetic=one_zero+5;
+chained_bad=10+one_zero+20;
+alias_of_bad=one_zero;
+fwd_x=x;
+x=42;
+x_again=x;
+fwd_deep=y;
+y=z;
+z=99;
+flat_empty={};
+flat_single={just_one=1};
+flat_three={val=42;name=7;final=0};
+head_of_flat=flat_three^;
+tail_of_flat=flat_three$;
+head_of_empty=flat_empty^;
+tail_of_empty=flat_empty$;
+index_brane={first=10;second=20;third=30;fourth=40};
+index_first=index_brane#0;
+index_last=index_brane#-1;
+index_out_of_bounds=index_brane#99;
+seek_unanchored=#-2;
+sf_target={a=1;b=2};
+sf_value=<sf_target>;
+sf_to_constant=<π>;
+sf_chain=<sf_value>;
+sff_target={x=10;y=20};
+sff_value=<<sff_target>>;
+concat_left={left_a=1;left_b=2};
+concat_right={right_a=3;right_b=4};
+concat_result=concat_left concat_right;
+three_way_concat={a=1;b=2}{c=3;d=4}{e=5;f=6};
+named_characterized'char_val=42;
+two_deep={inner_1=10+20;inner_nk=1/0};
+three_deep={L2={deepest=42+58}};
+four_deep={L1={L2={L3={deepest_constant=999}}}};
+five_deep_nk={l1={l2={l3={l4={bad_div=1/0;good=42}}}}};
+five_deep_constant={a={ab={abc={abcd={abcde=1024}}}}};
+shadow_1={val=1};
+shadow_2={val=2};
+root_shadow=shadow_1.val+shadow_2.val;
+empty_brane_shadow={inner={}};
+anchored_lookup_fail=brane_with_stuff?no_such_field;
+brane_with_stuff={field_a=10;field_b=20};
+anchored_lookup_ok=brane_with_stuff?field_a;
+dot_lookup=brane_with_stuff.field_b;
+chained_dot=brane_with_stuff.field_a+brane_with_stuff.field_b;
+regex_target={alice=1;bob=2;charlie=3};
+regex_res=regex_target?(^b);
+regex_no_match=regex_target?(^z.*);
+unary_neg=-5;
+unary_double=-(-3);
+unary_in_expr=10+(-5)*2;
+op_transparent=#-2*#-1;
+chained_ops=1+2*3-4/2;
+zero_div_in_op=10/0+42;
+nested_op_transparent=(a+bb)*(ccc-dddd)/3;
+inspect_sff=<sff_target>;
+inspect_sff_again=<<sff_target>>;
+win={w_in={in_in={in_in_in=101010}}};
+}
+```
+[0] RESULT:
+```hfssnap
+{NK(ITERATION-EXCEEDED, Iteration exceeded 9999)
+  a=1;
+  bb=2;
+  ccc=3;
+  dddd=4;
+  shortˍsum=10;
+  longˍnamedˍresultˍshowsˍalignment=20;
+  veryˍlongˍidentifierˍnameˍforˍtestingˍindent=100;
+  evenˍlongerˍnameˍthatˍmayˍwrapˍorˍpushˍcolumnsˍ1234567890=500;
+  unicodeˍidentifiersˍπΔΣ=Op+(
+      Op+(?(pattern='^π$', UNANCHORED, ECONSTANIC), ?(pattern='^Δ$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
+      ?(pattern='^Σ$', UNANCHORED, ECONSTANIC),
+      WOCONSTANIC
+  );
+  π=3;
+  Δ=7;
+  Σ=10;
+  oneˍzero=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK;
+  divˍbyˍzeroˍinˍbraneˍmethod=?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED, WOCONSTANIC);
+  threeˍzero=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK;
+  badˍinˍarithmetic=Op+(
+      ?(
+        result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK,
+        pattern='^oneˍzero$',
+        UNANCHORED,
+        WOCONSTANIC
+      ),
+      5,
+      WOCONSTANIC
+  );
+  chainedˍbad=Op+(
+      Op+(
+        10,
+        ?(
+          result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK,
+          pattern='^oneˍzero$',
+          UNANCHORED,
+          WOCONSTANIC
+        ),
+        WOCONSTANIC
+      ),
+      20,
+      WOCONSTANIC
+  );
+  aliasˍofˍbad=?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED, WOCONSTANIC);
+  fwdˍx=?(pattern='^x$', UNANCHORED, ECONSTANIC);
+  x=42;
+  xˍagain=42;
+  fwdˍdeep=?(pattern='^y$', UNANCHORED, ECONSTANIC);
+  y=?(pattern='^z$', UNANCHORED, ECONSTANIC);
+  z=99;
+  flatˍempty={};
+  flatˍsingle={
+      justˍone=1
+  };
+  flatˍthree={
+      val=42;
+      name=7;
+      final=0
+  };
+  headˍofˍflat=42;
+  tailˍofˍflat=0;
+  headˍofˍempty=^(NK);
+  tailˍofˍempty=$(NK);
+  indexˍbrane={
+      first=10;
+      second=20;
+      third=30;
+      fourth=40
+  };
+  indexˍfirst=10;
+  indexˍlast=40;
+  indexˍoutˍofˍbounds=#(offset=99, ANCHORED, NK);
+  seekˍunanchored=40;
+  sfˍtarget={
+      a=1;
+      b=2
+  };
+  sfˍvalue=?(
+      result={
+          a=1;
+          b=2
+      },
+      pattern='^sfˍtarget$',
+      UNANCHORED
+  );
+  sfˍtoˍconstant=?(result=3, pattern='^π$', UNANCHORED);
+  sfˍchain=?(
+      result={
+          a=1;
+          b=2
+      },
+      pattern='^sfˍvalue$',
+      UNANCHORED
+  );
+  sffˍtarget={
+      x=10;
+      y=20
+  };
+  sffˍvalue=<<WOCONSTANIC
+      ?(pattern='^sffˍtarget$', UNANCHORED)
+  >>;
+  concatˍleft={
+      leftˍa=1;
+      leftˍb=2
+  };
+  concatˍright={
+      rightˍa=3;
+      rightˍb=4
+  };
+  concatˍresult={
+      leftˍa=1;
+      leftˍb=2;
+      rightˍa=3;
+      rightˍb=4
+  };
+  threeˍwayˍconcat={
+      a=1;
+      b=2;
+      c=3;
+      d=4;
+      e=5;
+      f=6
+  };
+  charˍval=42;
+  twoˍdeep={NK
+      innerˍ1=30;
+      innerˍnk=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK
+  };
+  threeˍdeep={
+      L2={
+          deepest=100
+      }
+  };
+  fourˍdeep={
+      L1={
+          L2={
+              L3={
+                  deepestˍconstant=999
+              }
+          }
+      }
+  };
+  fiveˍdeepˍnk={NK
+      l1={NK
+          l2={NK
+              l3={NK
+                  l4={NK
+                      badˍdiv=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK;
+                      good=42
+                  }
+              }
+          }
+      }
+  };
+  fiveˍdeepˍconstant={
+      a={
+          ab={
+              abc={
+                  abcd={
+                      abcde=1024
+                  }
+              }
+          }
+      }
+  };
+  shadowˍ1={
+      val=1
+  };
+  shadowˍ2={
+      val=2
+  };
+  rootˍshadow=3;
+  emptyˍbraneˍshadow={
+      inner={}
+  };
+  anchoredˍlookupˍfail=?(pattern='noˍsuchˍfield', ANCHORED, BRANING);
+  braneˍwithˍstuff={PREMBRIONIC
+      fieldˍa=10;
+      fieldˍb=20
+  };
+  anchoredˍlookupˍok=?(pattern='fieldˍa', ANCHORED, PREMBRIONIC);
+  dotˍlookup=?(pattern='^fieldˍb$', ANCHORED, PREMBRIONIC);
+  chainedˍdot=Op+(?(pattern='^fieldˍa$', ANCHORED, PREMBRIONIC), ?(pattern='^fieldˍb$', ANCHORED, PREMBRIONIC), PREMBRIONIC);
+  regexˍtarget={PREMBRIONIC
+      alice=1;
+      bob=2;
+      charlie=3
+  };
+  regexˍres=?(pattern='(^b)', ANCHORED, PREMBRIONIC);
+  regexˍnoˍmatch=?(pattern='(^z.*)', ANCHORED, PREMBRIONIC);
+  unaryˍneg=Op-(5, PREMBRIONIC);
+  unaryˍdouble=Op-(Op-(3, PREMBRIONIC), PREMBRIONIC);
+  unaryˍinˍexpr=Op+(10, Op*(Op-(5, PREMBRIONIC), 2, PREMBRIONIC), PREMBRIONIC);
+  opˍtransparent=Op*(#(offset=-2, UNANCHORED, PREMBRIONIC), #(offset=-1, UNANCHORED, PREMBRIONIC), PREMBRIONIC);
+  chainedˍops=Op-(Op+(1, Op*(2, 3, PREMBRIONIC), PREMBRIONIC), Op/(4, 2, PREMBRIONIC), PREMBRIONIC);
+  zeroˍdivˍinˍop=Op+(Op/(10, 0, PREMBRIONIC), 42, PREMBRIONIC);
+  nestedˍopˍtransparent=Op/(
+      Op*(
+        Op+(?(pattern='^a$', UNANCHORED, PREMBRIONIC), ?(pattern='^bb$', UNANCHORED, PREMBRIONIC), PREMBRIONIC),
+        Op-(?(pattern='^ccc$', UNANCHORED, PREMBRIONIC), ?(pattern='^dddd$', UNANCHORED, PREMBRIONIC), PREMBRIONIC),
+        PREMBRIONIC
+      ),
+      3,
+      PREMBRIONIC
+  );
+  inspectˍsff=<PREMBRIONIC
+      ?(pattern='^sffˍtarget$', UNANCHORED, PREMBRIONIC)
+  >;
+  inspectˍsffˍagain=<<PREMBRIONIC
+      ?(pattern='^sffˍtarget$', UNANCHORED)
+  >>;
+  win={PREMBRIONIC
+      wˍin={PREMBRIONIC
+          inˍin={PREMBRIONIC
+              inˍinˍin=101010
+          }
+      }
+  }
+}
+```
+COMMENTS:
+```markdown
+foop42_humanizing_sequencer_formatting_exhaustive_aka_hfs
+```
+SIGNATURES:
+Public key: eb9604b1e50d6df60ea71cded2d51b4031b14e9d8911866fcfff4afb00075e65
+Foolish signature: RlM6KF+m6slUeQj+vuYmuwgo3MOnVagTEAkkScY+I8D+DX7LuwkMvhdW4WTeNnWfkj8Gqmu9/IEcap50tRxUCA==
+HFS signature: N/11Xr2iMrBHNBT+lofmU9cjkSildqzsHrgzkQZ+sTVIQy9HeU4ksZ0vrCy4LyYmml8mqMd3j6tuTVMkjCllDA==
+Comments signature: 23jUx0WQ1iF04E5v3TDpmHzgG6v3eyRnHNBlQTFXhiWQnWL9Rb6yDySaFK7F/xBFe2WXqK7WAGEaU2vkTymMCQ==

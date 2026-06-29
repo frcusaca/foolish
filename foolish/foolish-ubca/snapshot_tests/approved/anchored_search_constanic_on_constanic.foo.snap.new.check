@@ -1,0 +1,33 @@
+Mon Jun 29 02:28:14 PM PDT 2026 cat anchored_search_constanic_on_constanic.foo.snap.new---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{
+  not_found = b?γ;
+  !! head/tail are always anchored, so it does not display ANCHORED
+  also_not_found = b.z^;
+  still_not_found = b.z$;
+  yet_not_found = b.w
+}
+```
+[0] RESULT:
+```hfssnap
+{NK(ITERATION-EXCEEDED, Iteration exceeded 9999)
+@Agents, wrong results. these should just be NK search not found. 
+  notˍfound=?(pattern='γ', ANCHORED, BRANING);
+  alsoˍnotˍfound=^(PREMBRIONIC);
+  stillˍnotˍfound=$(PREMBRIONIC);
+  yetˍnotˍfound=?(pattern='^w$', ANCHORED, PREMBRIONIC)
+}
+```
+COMMENTS:
+```markdown
+anchored_search_constanic_on_constanic
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: JSl1tjBZP2AMppMji4bnKrnOwsmJVZ/w1zec5FJBVxV/YxgJOafValukPKhU03zvKMg+yxTyJq6P3iddVcXRAQ==
+HFS signature: to/kShvv5QChUDACQ5flrTFt9ksR6SN/wNR0Y8nChuNrr9bl7MOnVvOobQxhDTwYCrUO4sPcrHKMO73KJP44Aw==
+Comments signature: 0O7TmXQgBxHX5Qkojw+ZUByjTCYYfbCKuGOOlK8N7NzVK+owqU8++GsgIXikgrhjeQviKGmyEn1tDg+pCORsAw==

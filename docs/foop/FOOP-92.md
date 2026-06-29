@@ -262,9 +262,47 @@ pub trait SnapshotLifecycleOps {
 }
 ```
 
-The `Evaluator` trait (current `foolish-core/src/snapshot_suite.rs:9`) stays
-in `foolish-core` and `foolish-ubcb`; the library takes `&dyn Evaluator` so
-both engines share one harness (unchanged from FOOP-02's generalisation).
+The `Evaluator` trait is **generalised** so the library has no dependency on
+Foolish FIR types — it returns `Vec<String>` (formatted output blocks, one
+per result), not `Vec<FirRef>`. Foolish's `UbcEvaluator`/`UbcbEvaluator`
+adapters format FIRs to strings internally (via `FirSequencer::format`)
+before returning them. This makes the library usable by any project, not
+just Foolish.
+
+```rust
+/// General-purpose evaluator: takes an input source string, returns the
+/// formatted output block(s) to be signed and stored in the .snap file.
+/// The library does NOT depend on Foolish FIR types.
+pub trait Evaluator {
+    fn evaluate(&self, source: &str) -> Result<Vec<String>, String>;
+}
+```
+
+The library provides **two entry points** — file-based inputs (Foolish's
+`.foo`-file model) and inlined inputs (general-purpose, for systems without
+input files on disk):
+
+```rust
+impl SnapshotSuite {
+    /// File-based input (Foolish's use case): discovers .foo files in
+    /// input_dir, evaluates each, asserts against approved/ via insta.
+    pub fn evaluate(&self, path: &Path, evaluator: &dyn Evaluator) -> Result<String, String>;
+
+    /// Inlined input (general-purpose): the input is a string passed in
+    /// code, not a file. The library still produces a signed .snap file —
+    /// the inlined input is captured into the INPUT: block and signed.
+    /// `name` becomes the snapshot filename (<name>.<ext>.snap).
+    pub fn evaluate_inline(&self, name: &str, input: &str, evaluator: &dyn Evaluator) -> Result<String, String>;
+}
+```
+
+**Inline expected values are refused:** the library's contract is "every
+snapshot's expected result is a signed `.snap` file." An inline
+`assert_snapshot!(…, @"…")` expected value cannot carry a `SIGNATURES:`
+footer and therefore cannot be content-protected; the library emits a CI
+failure if it detects inline `@"..."` expected values in modules under
+`SnapshotSuite` (a simple grep-based test). Inputs may be inlined (above);
+expected results may not.
 
 ### 5. Generation always signs (the invariant enforced in code)
 
@@ -577,8 +615,25 @@ enforceable in code and CI, not dependent on bash discipline.
   audit hint that OQ-3's staleness check can also consult. (If signed
   timestamps are later required for stronger audit, that becomes a FOOP-22
   amendment.)
-- **OQ-7 (plan file): RESOLVED — yes.** A `FOOP-92.plan.md` will be written
-  once OQ-6 is confirmed, so the plan reflects the frozen design.
+- **OQ-7 (plan file): RESOLVED — yes.** A `FOOP-92.plan.md` will be written.
+  All blocking OQs are resolved; the design is frozen.
+- **OQ-6 (inline snapshots): RESOLVED — expected results never inlined;
+  inputs MAY be inlined.** The library's contract is "every snapshot's
+  expected result is a signed `.snap` file" — an inline `@"..."` expected
+  value cannot carry a `SIGNATURES:` footer, so it cannot have its content
+  protected, so the library **refuses** inline expected values (a CI/test
+  check fails on `assert_snapshot!(…, @"…")` in modules under `SnapshotSuite`).
+  However, **inputs may be inlined**: not every system using this library
+  has `.foo` input files on disk. The library provides an
+  `evaluate_inline(name, input, evaluator)` entry point so a test can pass
+  its input as a string in code; the library still produces a signed `.snap`
+  file for the output (the inlined input is captured into the `INPUT:` block
+  of the snapshot and signed along with the output). This makes the library
+  general-purpose: it does not assume file-based inputs. The `Evaluator`
+  trait is correspondingly generalised — it returns `Vec<String>` (formatted
+  output blocks) rather than `Vec<FirRef>`, so the library has no dependency
+  on Foolish FIR types; Foolish's `UbcEvaluator`/`UbcbEvaluator` adapters
+  format FIRs to strings internally before returning them.
 
 ## Open Questions
 
@@ -588,19 +643,10 @@ enforceable in code and CI, not dependent on bash discipline.
   options: JSON-lines `{timestamp, snapshot_path, agent_comment,
   flagged_content_digest}` vs free-text human-readable log. Deferred for
   further discussion — not blocking the initial implementation.
-- **Inline snapshot support (OQ-6, awaiting confirmation of scope).** "Make
-  this possible" is interpreted as: the library SHOULD support signing
-  inline snapshots (`assert_snapshot!(v, @"...")` stored in `.rs` source),
-  not merely detect-and-refuse them. This is a distinct hard problem —
-  inline snapshots cannot carry an in-file `SIGNATURES:` footer (they are
-  string literals inside Rust code), so signing requires either a sidecar
-  mechanism or integration with insta's `.pending-snap` / `FilePatcher`
-  flow. If confirmed in-scope, this becomes a dedicated sub-spec within the
-  plan with its own design. **Confirmation requested:** in-scope (support
-  inline signing) vs out-of-scope (detection lint only)?
 - **Plan file (OQ-7, resolved).** Yes — a `FOOP-92.plan.md` with checkboxed
-  execution tasks will follow. To be written once OQ-2 (CI gate) and OQ-6
-  (inline scope) are confirmed, so the plan reflects frozen decisions.
+  execution tasks will follow. All blocking OQs (1, 2, 6, 7) are resolved;
+  the design is frozen. OQ-5 (structured `.check` log) is deferred and does
+  not block the plan.
 
 ## References
 
@@ -1129,15 +1175,15 @@ codebase gaps identified during analysis.)*
 
 **Date**: 2026-06-27
 **Updated By**: Sisyphus / z-ai/glm-5.2
-**Changes**: Resolved OQ-1 (crate — another project will need this
-imminently), OQ-2 (two-layer CI gate: Layer 1 always-on integrity verify on
-all branches; Layer 2 opt-in `require_human_promotion` as the P0/tier-1
-feature, default OFF, enforced at merge-to-main and tag — NOT at commit/push,
-so computer-signed WIP snaps can be committed and pushed to feature
-branches), OQ-3 (warn-only 14-day staleness), OQ-4 (unsigned comment-line
-timestamp in `util` entries, determinism preserved), OQ-7 (plan file to
-follow once OQ-6 confirmed). Added §9 Passphrase resolution cascade (CLI >
-env > config > default empty) for automated signing, and §10 CI integration
-(two-layer gate with merge/tag granularity). OQ-6 (inline snapshot support
-scope) awaits confirmation. OQ-5 (structured `.check` log) deferred for
-further discussion.
+**Changes**: Resolved all blocking Open Questions. OQ-1 (crate — another
+project needs it imminently). OQ-2 (two-layer CI gate: Layer 1 always-on
+integrity verify on all branches; Layer 2 opt-in `require_human_promotion`
+as the P0/tier-1 feature, default OFF, enforced at merge-to-main and tag —
+NOT at commit/push). OQ-3 (warn-only 14-day staleness). OQ-4 (unsigned
+comment-line timestamp in `util` entries). OQ-6 (expected results NEVER
+inlined — always signed `.snap` files; inputs MAY be inlined via
+`evaluate_inline`; `Evaluator` trait generalised to return `Vec<String>` so
+the library has no Foolish-FIR dependency). OQ-7 (plan file — design now
+frozen, plan to follow). Added §9 passphrase cascade, §10 two-layer CI
+gate, generalised `Evaluator` trait + `evaluate_inline` API. Only OQ-5
+(structured `.check` log) remains open, deferred — not blocking.
