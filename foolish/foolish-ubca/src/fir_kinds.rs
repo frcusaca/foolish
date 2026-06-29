@@ -856,10 +856,16 @@ impl Fir for SearchFir {
                         let resolved_borrowed = resolved.borrow();
                         match resolved_borrowed.kind() {
                             FirKind::Brane => {
-                                let len = resolved.borrow().core().foolish_children().len();
-                                resolved_borrowed
-                                    ._search_brane(&self.pattern, len.saturating_sub(1), 0)
-                                    .map(|(_idx, stmt, nyes)| (stmt, nyes))
+                                let len = resolved_borrowed.core().foolish_children().len();
+                                if self.forward {
+                                    resolved_borrowed
+                                        ._search_brane(&self.pattern, 0, len.saturating_sub(1))
+                                        .map(|(_idx, stmt, nyes)| (stmt, nyes))
+                                } else {
+                                    resolved_borrowed
+                                        ._search_brane(&self.pattern, len.saturating_sub(1), 0)
+                                        .map(|(_idx, stmt, nyes)| (stmt, nyes))
+                                }
                             }
                             _ => None,
                         }
