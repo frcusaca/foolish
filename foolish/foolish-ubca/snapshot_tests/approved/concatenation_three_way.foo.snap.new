@@ -1,0 +1,42 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{b1={a=1, b=2}; b2={c=3, d=4}; b3={e=5, f=6}; c = b1 b2 b3;}
+```
+[0] RESULT:
+```hfssnap
+{
+  b1={
+      a=1;
+      b=2
+  };
+  b2={
+      c=3;
+      d=4
+  };
+  b3={
+      e=5;
+      f=6
+  };
+  c={
+      a=1;
+      b=2;
+      c=3;
+      d=4;
+      e=5;
+      f=6
+  }
+}
+```
+COMMENTS:
+```markdown
+concatenation_three_way
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: zgDGPaRZ67OS5/FDL7cVVyzomAU33mI0l9F74iTjCX58eRVgUPm75hnZr3+UojuQTXvSOxln1xzDVp+nXbDPBg==
+HFS signature: v/Fe27OXr4yjPUqcjrLx7ReSwW9vIZGhtvGbPHm5Z00rIJvwbOZcWSquKooqE7sVlp620RDGfgapVADsTYBIAw==
+Comments signature: xMqcvZnYvfRblfL6UuMmJHe5zQSiyV/5XxyMLN/Bc+VJiycaVViAi7I3a8QdaDNloycKZwlcquzIU/CkXZCkAA==

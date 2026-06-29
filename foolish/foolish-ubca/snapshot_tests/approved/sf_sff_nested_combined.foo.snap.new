@@ -1,0 +1,65 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{
+   x=1;
+   y=2;
+   sff = <<x+y>>;
+   sf  = <x+y>;
+   sfsff = <sff>;
+   sffsf = <<sf>>;
+   sfsf  = <sf>;
+   sffsff = <<sff>>;
+
+   x=-2;
+   rsff   = sff;
+   rsf    = sf;
+   rsfsff = sfsff;
+   rsffsf = sffsf;
+   rsfsf  = sfsf;
+   rsffsff= sffsff;
+}
+```
+[0] RESULT:
+```hfssnap
+{WOCONSTANIC
+  x=1;
+  y=2;
+  sff=<<WOCONSTANIC
+      Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
+  >>;
+  sf=3;
+  sfsff=?(
+      result=Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
+      pattern='^sff$',
+      UNANCHORED,
+      WOCONSTANIC
+  );
+  sffsf=<<WOCONSTANIC
+      ?(pattern='^sf$', UNANCHORED)
+  >>;
+  sfsf=?(result=3, pattern='^sf$', UNANCHORED);
+  sffsff=<<WOCONSTANIC
+      ?(pattern='^sff$', UNANCHORED)
+  >>;
+  x=-2;
+  rsff=0;
+  rsf=3;
+  rsfsff=0;
+  rsffsf=?(result=3, pattern='^sf$', UNANCHORED);
+  rsfsf=3;
+  rsffsff=0
+}
+```
+COMMENTS:
+```markdown
+sf_sff_nested_combined
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: tT8UqgoaX2cQknxaTSOxGoatqdbkUElQJTZXD4wK3f2mTtwOZwiBraFW1mIiflGHyg6zn6JuaExvI+DIT6sOBg==
+HFS signature: 383ihgDs/KqSr1ta6hZzSUbwIpBK0xbxzXs6a51InL6pT5FLHimRkUdZUciT8YVjS2NqLJ2t+OpHHicP/HgjDg==
+Comments signature: 2oRfZP6sbJ/1OatHtiMr84flkSXsDkzh11JdgWmkG5xMYTfWob6vKzu5PFAt/z6jR8xLzKxnNPCd5L8Ld272CQ==

@@ -800,8 +800,9 @@ fn unwrap_sf_sff(fir_ref: &FirRef) -> FirRef {
 
 fn search_nyes_from_found(found: Nyes) -> Nyes {
     match found {
-        Nyes::Econstanic | Nyes::Woconstanic | Nyes::Nk => Nyes::Woconstanic,
+        Nyes::Econstanic | Nyes::Woconstanic | Nyes::Woconstanic => Nyes::Woconstanic,
         Nyes::Constant | Nyes::Independent => Nyes::Constant,
+        Nyes::Nk => Nyes::Nk,
         other => other,
     }
 }

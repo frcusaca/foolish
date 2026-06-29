@@ -1,0 +1,24 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{x = ???; y = 42;}
+```
+[0] RESULT:
+```hfssnap
+{NK
+  x=??? (??? literal);
+  y=42
+}
+```
+COMMENTS:
+```markdown
+alarm_unknown_literal_no_alarm
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: 6zk70qVxfd8FcX1zclhQ0Wd7dQbtCArSO63cu1AjnWk+ps00vt6z3P/tZA7SlAOn8jtsAI6m99n+OrpsWlQQAw==
+HFS signature: tW+jvzeZNnG9QoogQ4J+gPfYPTfEPvL/zG/YqOvRTZ9gVzYGWhSC0IGBiau7iG/aAVhqwvcrLH0Aq9aszLXyAg==
+Comments signature: fGlTxg3sfdtkvn47lcz3bLYKioUq42UYqob/I1dQ2CgMZ9+VCI9jlXU5FWcDDmmO++Ut9A5B2FdwUSz2tcOjBg==

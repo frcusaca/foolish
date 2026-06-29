@@ -1,4 +1,4 @@
-Mon Jun 29 02:28:14 PM PDT 2026 cat anchored_search_constanic_on_constanic.foo.snap.new---
+Mon Jun 29 04:35:33 PM PDT 2026 cat anchored_search_constanic_on_constanic.foo.snap.new---
 source: foolish-ubca/src/ubca_snapshot_tester.rs
 assertion_line: 34
 ---
@@ -15,7 +15,7 @@ INPUT:
 [0] RESULT:
 ```hfssnap
 {NK(ITERATION-EXCEEDED, Iteration exceeded 9999)
-@Agents, wrong results. these should just be NK search not found. 
+@agents, wrong
   notˍfound=?(pattern='γ', ANCHORED, BRANING);
   alsoˍnotˍfound=^(PREMBRIONIC);
   stillˍnotˍfound=$(PREMBRIONIC);
