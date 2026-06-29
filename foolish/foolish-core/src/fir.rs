@@ -348,6 +348,7 @@ pub struct NormalBraneFir {
     pub(crate) statements: Vec<StatementFir>,
     pub(crate) state: Nyes,
     pub(crate) parent: Option<FirRef>,
+    pub(crate) alarm: Option<Alarm>,
 }
 
 impl NormalBraneFir {
@@ -573,6 +574,9 @@ pub trait FirQueryable: std::fmt::Debug {
         &self,
     ) -> Option<(Vec<Box<dyn FirQueryable>>, Option<Box<dyn FirQueryable>>)>;
     fn hs_brane(&self) -> Option<(Vec<String>, Vec<StatementSimple>)>;
+    fn hs_alarm(&self) -> Option<&Alarm> {
+        None
+    }
 }
 
 /// Wrapper for FirRef (Rc<RefCell<dyn Steppable>>) that implements FirQueryable.
@@ -841,6 +845,13 @@ impl FirQueryable for Fir {
                     })
                     .collect(),
             ))
+        } else {
+            None
+        }
+    }
+    fn hs_alarm(&self) -> Option<&Alarm> {
+        if let Fir::NormalBrane(i) = self {
+            i.alarm.as_ref()
         } else {
             None
         }
@@ -1687,6 +1698,7 @@ impl Steppable for ConcatenationFir {
             statements: merged_statements,
             state: brane_state,
             parent: None,
+            alarm: None,
         }));
         self.merged = Some(fir_to_ref(merged));
         self.state = Nyes::Braning;
@@ -2228,6 +2240,7 @@ impl<'de> Deserialize<'de> for Fir {
                     statements,
                     state,
                     parent: None,
+            alarm: None,
                 })))
             }
             _ => Err(serde::de::Error::custom(format!(
@@ -2591,6 +2604,7 @@ pub struct NormalBraneFirBuilder {
     statements: Vec<StatementFir>,
     state: Nyes,
     parent: Option<FirRef>,
+    alarm: Option<Alarm>,
 }
 
 impl NormalBraneFirBuilder {
@@ -2600,6 +2614,7 @@ impl NormalBraneFirBuilder {
             statements: Vec::new(),
             state: Nyes::Embryonic,
             parent: None,
+            alarm: None,
         }
     }
     pub fn characterization(mut self, c: impl Into<String>) -> Self {
@@ -2635,12 +2650,17 @@ impl NormalBraneFirBuilder {
         self.parent = Some(fir_to_ref(parent));
         self
     }
+    pub fn alarm(mut self, alarm: Alarm) -> Self {
+        self.alarm = Some(alarm);
+        self
+    }
     pub fn build(self) -> Fir {
         Fir::NormalBrane(Box::new(NormalBraneFir {
             characterizations: self.characterizations,
             statements: self.statements,
             state: self.state,
             parent: self.parent,
+            alarm: self.alarm,
         }))
     }
 }

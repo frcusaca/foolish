@@ -1,14 +1,17 @@
+use crate::fir::{
+    Alarm, AlarmLevel, AlarmSource, ConcatenationFir, ConstantIntFir, Fir, FirRef, HeadTailFir,
+    IndexFir, NkFir, NormalBraneFir, Nyes, OperatorFir, SearchDirection, SearchFir, StatementFir,
+    StayFoolishFir, StayFullyFoolishFir, Steppable,
+};
 use anyhow::anyhow;
+use foolish_parser::Astn;
 use std::cell::RefCell;
 use std::rc::Rc;
-use foolish_parser::Astn;
-use crate::fir::{Fir, FirRef, Nyes, SearchDirection, StatementFir, Steppable,
-    ConstantIntFir, NkFir, SearchFir, NormalBraneFir,
-    OperatorFir, IndexFir, HeadTailFir,
-    StayFoolishFir, StayFullyFoolishFir, ConcatenationFir, Alarm, AlarmLevel, AlarmSource};
 
 /// Helper: wrap a Fir in a FirRef (Rc<RefCell<dyn Steppable>>)
-fn to_ref(fir: Fir) -> FirRef { Rc::new(RefCell::new(fir)) }
+fn to_ref(fir: Fir) -> FirRef {
+    Rc::new(RefCell::new(fir))
+}
 
 pub struct Compiler;
 
@@ -35,23 +38,29 @@ impl Compiler {
                 alarm: None,
             }))),
 
-            Astn::Identifier { id, .. } => {
-                Ok(Fir::Search(Box::new(SearchFir {
-                    pattern: format!("^{}$", id),
-                    direction: SearchDirection::Backward,
-                    anchored: false,
-                    anchor: None,
-                    result: None,
-                    parent: None,
-                    state: Nyes::Embryonic,
-                })))
-            }
+            Astn::Identifier { id, .. } => Ok(Fir::Search(Box::new(SearchFir {
+                pattern: format!("^{}$", id),
+                direction: SearchDirection::Backward,
+                anchored: false,
+                anchor: None,
+                result: None,
+                parent: None,
+                state: Nyes::Embryonic,
+            }))),
 
-            Astn::Brane { characterizations, statements } => {
+            Astn::Brane {
+                characterizations,
+                statements,
+            } => {
                 let mut stmt_firs = Vec::new();
                 for stmt in statements {
                     match stmt {
-                        Astn::Assignment { identifier, operator, expr, .. } => {
+                        Astn::Assignment {
+                            identifier,
+                            operator,
+                            expr,
+                            ..
+                        } => {
                             let body_fir = Self::compile_astn(*expr)?;
                             let (name, body, state) = match operator {
                                 foolish_parser::AssignmentOperator::Assign => {
@@ -62,26 +71,22 @@ impl Compiler {
                                     };
                                     (Some(identifier), to_ref(body_fir), state)
                                 }
-                                foolish_parser::AssignmentOperator::SF => {
-                                    (
-                                        Some(identifier),
-                                        to_ref(Fir::StayFoolish(Box::new(StayFoolishFir {
-                                            expr: to_ref(body_fir),
-                                            state: Nyes::Embryonic,
-                                        }))),
-                                        Nyes::Embryonic,
-                                    )
-                                }
-                                foolish_parser::AssignmentOperator::SFF => {
-                                    (
-                                        Some(identifier),
-                                        to_ref(Fir::StayFullyFoolish(Box::new(StayFullyFoolishFir {
-                                            expr: to_ref(body_fir),
-                                            state: Nyes::Independent,
-                                        }))),
-                                        Nyes::Independent,
-                                    )
-                                }
+                                foolish_parser::AssignmentOperator::SF => (
+                                    Some(identifier),
+                                    to_ref(Fir::StayFoolish(Box::new(StayFoolishFir {
+                                        expr: to_ref(body_fir),
+                                        state: Nyes::Embryonic,
+                                    }))),
+                                    Nyes::Embryonic,
+                                ),
+                                foolish_parser::AssignmentOperator::SFF => (
+                                    Some(identifier),
+                                    to_ref(Fir::StayFullyFoolish(Box::new(StayFullyFoolishFir {
+                                        expr: to_ref(body_fir),
+                                        state: Nyes::Independent,
+                                    }))),
+                                    Nyes::Independent,
+                                ),
                             };
                             stmt_firs.push(StatementFir { name, body, state });
                         }
@@ -96,10 +101,16 @@ impl Compiler {
                     statements: stmt_firs,
                     state: Nyes::Embryonic,
                     parent: None,
+                    alarm: None,
                 })))
             }
 
-            Astn::Assignment { identifier, operator, expr, .. } => {
+            Astn::Assignment {
+                identifier,
+                operator,
+                expr,
+                ..
+            } => {
                 let body_fir = Self::compile_astn(*expr)?;
                 let (name, body, state) = match operator {
                     foolish_parser::AssignmentOperator::Assign => {
@@ -110,36 +121,29 @@ impl Compiler {
                         };
                         (Some(identifier), to_ref(body_fir), state)
                     }
-                    foolish_parser::AssignmentOperator::SF => {
-                        (
-                            Some(identifier),
-                            to_ref(Fir::StayFoolish(Box::new(StayFoolishFir {
-                                expr: to_ref(body_fir),
-                                state: Nyes::Embryonic,
-                            }))),
-                            Nyes::Embryonic,
-                        )
-                    }
-                    foolish_parser::AssignmentOperator::SFF => {
-                        (
-                            Some(identifier),
-                            to_ref(Fir::StayFullyFoolish(Box::new(StayFullyFoolishFir {
-                                expr: to_ref(body_fir),
-                                state: Nyes::Independent,
-                            }))),
-                            Nyes::Independent,
-                        )
-                    }
+                    foolish_parser::AssignmentOperator::SF => (
+                        Some(identifier),
+                        to_ref(Fir::StayFoolish(Box::new(StayFoolishFir {
+                            expr: to_ref(body_fir),
+                            state: Nyes::Embryonic,
+                        }))),
+                        Nyes::Embryonic,
+                    ),
+                    foolish_parser::AssignmentOperator::SFF => (
+                        Some(identifier),
+                        to_ref(Fir::StayFullyFoolish(Box::new(StayFullyFoolishFir {
+                            expr: to_ref(body_fir),
+                            state: Nyes::Independent,
+                        }))),
+                        Nyes::Independent,
+                    ),
                 };
                 Ok(Fir::NormalBrane(Box::new(NormalBraneFir {
                     characterizations: vec![],
-                    statements: vec![StatementFir {
-                        name,
-                        body,
-                        state,
-                    }],
+                    statements: vec![StatementFir { name, body, state }],
                     state: Nyes::Embryonic,
                     parent: None,
+                    alarm: None,
                 })))
             }
 
@@ -175,7 +179,11 @@ impl Compiler {
                 })))
             }
 
-            Astn::RegexpSearch { anchor, operator, pattern } => {
+            Astn::RegexpSearch {
+                anchor,
+                operator,
+                pattern,
+            } => {
                 let anchor_fir = Self::compile_astn(*anchor)?;
                 Ok(Fir::Search(Box::new(SearchFir {
                     pattern,
@@ -214,18 +222,17 @@ impl Compiler {
                 })))
             }
 
-            Astn::UnanchoredSeek { offset } => {
-                Ok(Fir::Index(Box::new(IndexFir {
-                    offset,
-                    anchored: false,
-                    anchor: None,
-                    result: None,
-                    state: Nyes::Embryonic,
-                })))
-            }
+            Astn::UnanchoredSeek { offset } => Ok(Fir::Index(Box::new(IndexFir {
+                offset,
+                anchored: false,
+                anchor: None,
+                result: None,
+                state: Nyes::Embryonic,
+            }))),
 
             Astn::Concatenation { elements } => {
-                let refs: Vec<FirRef> = elements.into_iter()
+                let refs: Vec<FirRef> = elements
+                    .into_iter()
                     .map(|e| {
                         let f = Self::compile_astn(e)?;
                         anyhow::Ok(to_ref(f))
@@ -238,13 +245,9 @@ impl Compiler {
                 })))
             }
 
-            Astn::IfExpr { .. } => {
-                Err(anyhow!("if-then-else: not supported (FOOP=2)"))
-            }
+            Astn::IfExpr { .. } => Err(anyhow!("if-then-else: not supported (FOOP=2)")),
 
-            Astn::UpwardSearch => {
-                Err(anyhow!("Upward search (↑): deferred to Phase 7"))
-            }
+            Astn::UpwardSearch => Err(anyhow!("Upward search (↑): deferred to Phase 7")),
 
             Astn::StayFoolish { expr } => {
                 let inner = Self::compile_astn(*expr)?;
@@ -262,13 +265,9 @@ impl Compiler {
                 })))
             }
 
-            Astn::DetachmentBrane { .. } => {
-                Err(anyhow!("Detachment brane: deferred to Phase 7"))
-            }
+            Astn::DetachmentBrane { .. } => Err(anyhow!("Detachment brane: deferred to Phase 7")),
 
-            Astn::NotImplemented(reason) => {
-                Err(anyhow!("Not yet implemented: {}", reason))
-            }
+            Astn::NotImplemented(reason) => Err(anyhow!("Not yet implemented: {}", reason)),
         }
     }
 }

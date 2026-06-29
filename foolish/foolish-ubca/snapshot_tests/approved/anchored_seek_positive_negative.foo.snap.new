@@ -8,14 +8,14 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{NK
+{
   a={
       1;
       2;
       3
   };
-  #(offset=1, ANCHORED, NK);
-  $(NK)
+  2;
+  3
 }
 ```
 COMMENTS:
@@ -25,5 +25,5 @@ anchored_seek_positive_negative
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: BKWu/+nqbIOBuwM+3c1LykkZos0sjI0tNOXKBnetgwOiqEAp50mz8FDztfNVy37v3uU6mgOmEfP2GNtPXKS6AA==
-HFS signature: RXaQlL3WhMBiLnQmfXpE7Q0k5RVtk/6xN1+eyLL0uo5zZeH51tSjjbqLkTCKZRZOL5UkKL0FAszn71mhHbvoDA==
-Comments signature: waDR01W+Yoe3T3G7LfNEdygdcG2dvQECbYEGh7ylMcrNNOb1dWLtO+SF+zKFgNSyMGRnjqyB2oOIllNU1d+HBg==
+HFS signature: zFhh7q6My0dj4SeKgqdbaMDXFJMj/4ZH71U01XiNA+uaGVeD2b1vq5iXg7Go39w0R9erscAn7IEMS5iO1cxSBQ==
+Comments signature: u7IiNExzoNFUFeOa8tsXiHoQ6hqurTkRggdi9+KsIr3gbTowjmQlSXfiR3bURgdaRTaNlbxQDiSHR6e+w5OgBw==

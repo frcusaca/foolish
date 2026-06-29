@@ -8,10 +8,10 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{WOCONSTANIC
+{
   myˍvar=10;
   anotherˍvar=20;
-  result=Op+(?(pattern='^myˍvar$', UNANCHORED, ECONSTANIC), ?(pattern='^anotherˍvar$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
+  result=30
 }
 ```
 COMMENTS:
@@ -21,5 +21,5 @@ brane_with_operations_and_underscores
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: YL60MVPYRdNx2UuAR4BhiYrezotRIEzx0SZmsdhFsp8e5vISvZ55YHcEdhuEOgFMIqpxGK/Mrm1cFuCpi6RAAQ==
-HFS signature: zPMZ42Z0z7prez+j+GSsLpdExIEdUqIGQZ7cQbhsyslAwkAG8Ql4uCJMaXJ8ygOmbhYnvix/6hoinrbj/nIxBQ==
-Comments signature: KfGAQlxhYSxFw6JxNr5ZsmzHKjn+6OuSg/lBCz3dj8uVj9ovyiQ1y8qU9OV6QrN1bCbqc4mWKtKAdJkYEwSrCg==
+HFS signature: rtjJZs2tJuQbJhnLmyId0CSe78TiS4AJVdwAnXPp0Knk9myauyVU+KdiXfikhgSdZnk+Zrij0qu6HYKRsRq1BQ==
+Comments signature: HIFEXhkGMJM1wGO2SkuUimS8DBXxuQDo4aSmrYgNgOKUE6eMA/R2l8sGIELjiAMDm2kvsmin3KRsJDPyjvpfBw==

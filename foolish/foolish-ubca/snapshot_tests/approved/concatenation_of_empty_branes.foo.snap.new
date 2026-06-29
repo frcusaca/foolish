@@ -8,7 +8,7 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{WOCONSTANIC
+{
   a={};
   b={};
   c={}
@@ -21,5 +21,5 @@ concatenation_of_empty_branes
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 7gJt+oMWH4+YgPm9Uw8lVZlF8NlFLq4pxJ1pyyADx7RgCY4Am1hwqecYiBiRwl7wEyLcpd5lOt9SpRdooqtOAg==
-HFS signature: pF+4RDWSFNLhE09noKeh5F3mzDQiSs5aHDosCDE53HWVGfQuLoAtjwf3VGjidv0dkTNY7dVQWmV3Kj6SuX1IDA==
-Comments signature: WrtqDO4sh+sFijWf9pzovdAw9ajQsIGrt99vWEMIYaus+RArcqjJYElYkoe+ku3Vp//1EYyIRcu1+10vcqN6Aw==
+HFS signature: jEe356nCV1NIK8g8tsxzhIwQaXmGbU2Gf8UaUC4mgxaNSvJgMgjUfRVEyGgZAjNhLDF/Rhp0FNk5lnTONlCSCw==
+Comments signature: lJriTBoA9RWAOefFM/3bJtHG/C8C6ENbZF9LkdvvLHJKM8+AfE7d0SW80gXfpAlvfwdi+AOy39Dr/iLzKXmhCA==

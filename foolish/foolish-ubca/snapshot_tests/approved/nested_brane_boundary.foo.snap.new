@@ -8,7 +8,7 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{NK
+{WOCONSTANIC
   a=1;
   b={NK
       c=#(offset=-1, UNANCHORED, NK);
@@ -29,5 +29,5 @@ nested_brane_boundary
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: DaGfc59AvcqkrMo/U46I/VuEskxj1E1HlplxglYD6o/VwALnr9puDJQXy+Di9FY5i8235oxneyNKyJsoEbnjDw==
-HFS signature: FGOehIYAopyQLFJ8+A6lW6kNhkLD6KPsm3jCG68OunhIfGXjYKCBs8Eu2BujsZ5JAtcOsnahy95BaVn1/wOLCw==
-Comments signature: 6FmRWl4n2wKMAKZpXeXlA8TrvmVccV6SOnt+3ypMfWyvHpIf8j47ZDm1mz3rLC/c1mvBsRn81LrstwnxXWxiCA==
+HFS signature: bC8U0X2sqjkzm9ZW3ypQhUBHNT0uBhjHXfQO3KxFDD138T507yALvkadLFWdrNDjN8/ZJrsdEVkS7pjKkn+mBA==
+Comments signature: zcKmnYyxFjSytzS6PsGhyTLyqDPKcm2J6z+BE621XfpdGIZ9xChz4MdTCHG2U16NqaAJGRwN4cFp+Jh76XIABg==

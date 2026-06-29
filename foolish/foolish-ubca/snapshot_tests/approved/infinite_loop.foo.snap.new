@@ -11,11 +11,11 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{WOCONSTANIC
-  f1={WOCONSTANIC
-      ?(pattern='^f1$', UNANCHORED, ECONSTANIC)
+{NK(ITERATION-EXCEEDED, Iteration exceeded 9999)
+  f1={BRANING
+      ?(pattern='^f1$', UNANCHORED, BRANING)
   };
-  stuck=?(pattern='^f1$', UNANCHORED, ECONSTANIC)
+  stuck=?(pattern='^f1$', UNANCHORED, PREMBRIONIC)
 }
 ```
 COMMENTS:
@@ -25,5 +25,5 @@ infinite_loop
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: uazkcNxMevDuepZiYLgZkCeRG1FG5Zvf37CbfiRgnS6jjpIl+y/bWiCFQFuJ8RK2uVobG6TYypSKisDqmlX2Dg==
-HFS signature: YWBat9e/kGXJrHP26x2PsOhX0ZKz7Vq29QLB17Xhf5Xv7IvhARi6K0zSQdH77uTuyOKphrSMc72+q3D3q/vIDw==
-Comments signature: 9eLBRO0pmsCJU8Xf7uixkRal5Z0DsJVuezunEThmk5Idh4umuRaYvsg/HdUdltM8jyeWhwqXlkWU2Jc+4U3pDQ==
+HFS signature: WkyWpMM4sdHUIhO8sOQD+beafZ+DwmXf6/qp+4PH08Sb4rMxwA5tVUdcfURP8UbQQ4tYAOyrYHUemVsD35otBg==
+Comments signature: cm3TFs0JrBVkBXbd9lPiiGJWHO/rt003RMRkSaOFF82elXfDGyrl4WjTSAdAOrMCsMm93ZDYwLibxj/NneppAA==

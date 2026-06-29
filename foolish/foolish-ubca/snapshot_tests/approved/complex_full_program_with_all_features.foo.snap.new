@@ -8,14 +8,14 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{WOCONSTANIC
+{
   a=10;
   b=20;
-  sum=Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC);
-  nested={WOCONSTANIC
-      inner=Op/(?(pattern='^sum$', UNANCHORED, ECONSTANIC), 2, WOCONSTANIC)
+  sum=30;
+  nested={
+      inner=15
   };
-  result=?(pattern='^inner$', ANCHORED, NK)
+  result=15
 }
 ```
 COMMENTS:
@@ -25,5 +25,5 @@ complex_full_program_with_all_features
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 1SXA6C7yxC6ZpiMvulmMy1eFI1Es1+sQ6hUtwarY1vKYOMtGrpNqx+rd59gPsyK1pqAjtcEAE57YwFIWqdU2CA==
-HFS signature: NgARNO76INhCsLw4cJ8XqpGqFJ7L0oUtatuSCMT/3zqBW7lTM7qCov8viXzqTyAEriX/ZGvRB8/T3PCnvAn3Ag==
-Comments signature: cZia22G5wdldFwa0cfzdnVBxC8PAEbB+1lELWBcBLt2czvW31XaMeFduvdjjcVznF6dnXQMoCIiEnQmKHwYyDQ==
+HFS signature: 4pdHUTtG2ESa5dmTj6onER+DvM/cvYZXvBTfgDBHBOv1K4jrvrNd7+Bd5QgGjdisX1uMYr6VBB4hEbvp1lanAA==
+Comments signature: hXR4J7O2DqDyXMahIYnbzIYvfZER+DNPmY2lz+QTQ8CjEZGXhC66RJg4fNGUTJVtoDIX/SyH8UQ7O9LQmqgPAQ==

@@ -10,15 +10,13 @@ INPUT:
 ```hfssnap
 {WOCONSTANIC
   x=1;
-  sf=<ECONSTANIC
-      ?(pattern='^x$', UNANCHORED, ECONSTANIC)
-  >;
+  sf=?(result=1, pattern='^x$', UNANCHORED);
   sff=<<WOCONSTANIC
       ?(pattern='^x$', UNANCHORED)
   >>;
   x=10;
-  ?(pattern='^sf$', UNANCHORED, ECONSTANIC);
-  ?(pattern='^sff$', UNANCHORED, ECONSTANIC)
+  1;
+  ?(result=10, pattern='^x$', UNANCHORED)
 }
 ```
 COMMENTS:
@@ -28,5 +26,5 @@ sff_vs_sf_timing_difference
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 1T4n3g/X8HUF4ks72E7lyvCYn9OelhLPSBr7ockhII5PkT0EVw7Amz08EWaUU87H3l3wpZOYiwTv12S1ZPHVBA==
-HFS signature: r6S65VYR0cSIRE54iWJSi4IfzG5Son2hxDc0l5/N8pR/U02lHpGFOMpSWmOTVg4SssHmasJac3M+gNDODsTTCg==
-Comments signature: sRShrhUoo/NbAvwzoVnbYAgj4o3gvSVNDil/BhHOL5mY2hWAcZKUlwcFtPEVuHaEQlZ1hdjZRQv6rrfEUWs8Bw==
+HFS signature: /SQ/9NSbKRnpNWJj7IMnqoTm6IwfJqjKR9LXfST8hD4Flt/75UxgM4Jv2MAkOrpxN8YuLjyb0/iKyki5II95AQ==
+Comments signature: z+kCd5caIwqMsBimS/RqMV3za871eZn1/QmU+51O/d0KcIt7UeYa10wLS1iMbsAEi3815KvpWs8dxVCdSQNXAQ==

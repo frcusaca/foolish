@@ -8,12 +8,12 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{WOCONSTANIC
-  {WOCONSTANIC
-    {WOCONSTANIC
-      {WOCONSTANIC
+{
+  {
+    {
+      {
         x=42;
-        ?(pattern='^x$', UNANCHORED, ECONSTANIC)
+        42
       }
     }
   }
@@ -26,5 +26,5 @@ regression_deep_nesting_does_not_lose_values
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: Y6n20+pmIHuScYeHgxuPG8M5BO/gc0rTQZSyzS4Bta3dbhJ39IuX+kvl1OMGnijziXfIwsJqptTNa2wQjVeOAQ==
-HFS signature: nPqKKVZwWmbpQ5PWm3PA1HV65bwuSt6DpUQGXmbikPbzZ9rzz8rBaOTRKyV1Mqaf9ytMX+C201jksDPuTlR1Bg==
-Comments signature: /NUGQdIqzwGtQWml5H4ExNuB2YLPR4kOFF/8vd66wqaxKoAtRtIusLdnp5NrTDT8CXFSuQeB44qtEL/B18XwCA==
+HFS signature: fzeCVQwGOjz7Se+fZLjUy6CLcCD0nxjMEELsnucoOy6T8AGXw8xw612LF0Yrlm09+EZSWHK/PmH36//SEpf/Aw==
+Comments signature: Dm+NPWgkWSmVqVum+elOQ5/s2TMBBfdMHRMrG61LqOjvwk36ErUmw3gCEyyZ2uy6UwIirn5l0/W1Phz6LpelBA==

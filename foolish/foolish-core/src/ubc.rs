@@ -241,6 +241,7 @@ pub fn re_step_brane_bodies(brane: &mut NormalBraneFir, scope: &Scope) -> Result
                 statements: brane.statements.clone(),
                 state: brane.state,
                 parent: None,
+            alarm: None,
             }))), idx);
         let body = step_boxed(&stmt.body, &scoped)?;
         stepped.push(StatementFir {

@@ -300,8 +300,7 @@ fn render_fir(
 
     // ── 3. Operator ──
     if let Some((op, operands)) = fir.hs_operator() {
-        let show_state =
-            state.should_show_nyes();
+        let show_state = state.should_show_nyes();
         // Transparent when CONSTANT/INDEPENDENT
         if !show_state {
             if let Some(first) = operands.first() {
@@ -577,13 +576,21 @@ fn render_fir(
         // Opener: chars + { + optional bare state token
         let opener_text = if chars.is_empty() {
             if show_state {
-                format!("{}{}", "{", state)
+                if let Some(alarm) = fir.hs_alarm() {
+                    format!("{{{}({}, {})", state, alarm.code, alarm.message)
+                } else {
+                    format!("{}{}", "{", state)
+                }
             } else {
                 "{".to_string()
             }
         } else {
             if show_state {
-                format!("{}{}{}", chars, "{", state)
+                if let Some(alarm) = fir.hs_alarm() {
+                    format!("{}{{{}({}, {})", chars, state, alarm.code, alarm.message)
+                } else {
+                    format!("{}{}{}", chars, "{", state)
+                }
             } else {
                 format!("{}{{", chars)
             }
@@ -629,17 +636,57 @@ fn render_statements(
             0
         };
 
-        let child_lines = render_fir(
-            &*stmt.body,
-            child_open,
-            close_indent,
-            line_hint.saturating_sub(body_indent),
-        );
+        let dollar_info: Option<(Box<dyn FirQueryable>, Nyes)> =
+            stmt.name.as_ref().and_then(|_| {
+                stmt.body.hs_operator().and_then(|(op, mut ops)| {
+                    if op == "$"
+                        && ops.len() == 2
+                        && ops[0]
+                            .hs_index()
+                            .is_some_and(|(offset, anchored, _, _)| offset == -1 && !anchored)
+                    {
+                        let state = stmt.body.hs_state();
+                        let rhs = ops.into_iter().nth(1).unwrap();
+                        Some((rhs, state))
+                    } else {
+                        None
+                    }
+                })
+            });
+
+        let is_dollar_assign = dollar_info.is_some();
+
+        let child_lines = if let Some((ref rhs, _)) = dollar_info {
+            render_fir(
+                &**rhs,
+                child_open,
+                close_indent,
+                line_hint.saturating_sub(body_indent),
+            )
+        } else {
+            render_fir(
+                &*stmt.body,
+                child_open,
+                close_indent,
+                line_hint.saturating_sub(body_indent),
+            )
+        };
 
         let mut merged = child_lines;
         if let Some(ref name) = stmt.name {
             if let Some((_, first_text)) = merged.iter_mut().next() {
-                *first_text = format!("{}={}", name, first_text);
+                if is_dollar_assign {
+                    let state = dollar_info.as_ref().unwrap().1;
+                    if state == Nyes::Nk {
+                        *first_text = format!("{} =$ ??? ({} is not a brane)", name, first_text);
+                    } else if state.should_show_nyes() {
+                        *first_text = format!("{} =$ {} ({})", name, first_text, state);
+                    } else {
+                        *first_text = format!("{} =$ {}", name, first_text);
+                    }
+                } else {
+                    *first_text = format!("{}={}", name, first_text);
+                }
             }
         }
 

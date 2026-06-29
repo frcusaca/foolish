@@ -8,17 +8,17 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{WOCONSTANIC
+{
   x=1;
-  b={WOCONSTANIC
+  b={
       x=2;
-      c={WOCONSTANIC
+      c={
           x=3;
-          val=?(pattern='^x$', UNANCHORED, ECONSTANIC)
+          val=3
       };
-      val2=?(pattern='^x$', UNANCHORED, ECONSTANIC)
+      val2=2
   };
-  val3=?(pattern='^x$', UNANCHORED, ECONSTANIC)
+  val3=1
 }
 ```
 COMMENTS:
@@ -28,5 +28,5 @@ scope_shadowing_multiple_levels
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: gUXLCgqgJEuIu1kG42MxdyL2sEV/P9Ga8pd2Fomplk27LG/psjqZQ0V3JHaPDLWaP1SDuwm7spDWd87kZ94hDw==
-HFS signature: i0mJDwe6gdsw5ARFMEw1JBjXrq39sy1MTwps4Z5fnrLEm80A41ZOE9/gAek/d1PpJAjC/f6Ex5qP0EVFWGnXAA==
-Comments signature: KEelK6lm0S1i58OgdqY3yUL3y8SeedpdDzmv7Xrb/yYsH16Q1kuQWarosoMdP/gCjhJn5Pb6Ya1/F59hOrPxDQ==
+HFS signature: uZgEtel3wPmWV0MaGZMe0UyddWbNS79bszrf4Sin70q9/2eX3BCqH+A2sOEL6hjKLsidy+HJfZugw9rEG9bOAw==
+Comments signature: NNMuegFeXantSZdx5B/d2y2beprLscJtCOLasSz2S/+fnhzIAerVuH5L7icTSvHd+zGD61AT8FkuXWgVfVhCCg==

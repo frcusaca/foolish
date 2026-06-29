@@ -83,21 +83,13 @@ win={w_in={in_in={in_in_in=101010}}};
 ```
 [0] RESULT:
 ```hfssnap
-{WOCONSTANIC
+{NK(ITERATION-EXCEEDED, Iteration exceeded 9999)
   a=1;
   bb=2;
   ccc=3;
   dddd=4;
-  shortˍsum=Op+(
-      Op+(
-        Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^bb$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
-        ?(pattern='^ccc$', UNANCHORED, ECONSTANIC),
-        WOCONSTANIC
-      ),
-      ?(pattern='^dddd$', UNANCHORED, ECONSTANIC),
-      WOCONSTANIC
-  );
-  longˍnamedˍresultˍshowsˍalignment=Op+(?(pattern='^shortˍsum$', UNANCHORED, ECONSTANIC), ?(pattern='^shortˍsum$', UNANCHORED, ECONSTANIC), WOCONSTANIC);
+  shortˍsum=10;
+  longˍnamedˍresultˍshowsˍalignment=20;
   veryˍlongˍidentifierˍnameˍforˍtestingˍindent=100;
   evenˍlongerˍnameˍthatˍmayˍwrapˍorˍpushˍcolumnsˍ1234567890=500;
   unicodeˍidentifiersˍπΔΣ=Op+(
@@ -109,14 +101,36 @@ win={w_in={in_in={in_in_in=101010}}};
   Δ=7;
   Σ=10;
   oneˍzero=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK;
-  divˍbyˍzeroˍinˍbraneˍmethod=?(pattern='^oneˍzero$', UNANCHORED, ECONSTANIC);
+  divˍbyˍzeroˍinˍbraneˍmethod=?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED, WOCONSTANIC);
   threeˍzero=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK;
-  badˍinˍarithmetic=Op+(?(pattern='^oneˍzero$', UNANCHORED, ECONSTANIC), 5, WOCONSTANIC);
-  chainedˍbad=Op+(Op+(10, ?(pattern='^oneˍzero$', UNANCHORED, ECONSTANIC), WOCONSTANIC), 20, WOCONSTANIC);
-  aliasˍofˍbad=?(pattern='^oneˍzero$', UNANCHORED, ECONSTANIC);
+  badˍinˍarithmetic=Op+(
+      ?(
+        result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK,
+        pattern='^oneˍzero$',
+        UNANCHORED,
+        WOCONSTANIC
+      ),
+      5,
+      WOCONSTANIC
+  );
+  chainedˍbad=Op+(
+      Op+(
+        10,
+        ?(
+          result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK,
+          pattern='^oneˍzero$',
+          UNANCHORED,
+          WOCONSTANIC
+        ),
+        WOCONSTANIC
+      ),
+      20,
+      WOCONSTANIC
+  );
+  aliasˍofˍbad=?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^oneˍzero$', UNANCHORED, WOCONSTANIC);
   fwdˍx=?(pattern='^x$', UNANCHORED, ECONSTANIC);
   x=42;
-  xˍagain=?(pattern='^x$', UNANCHORED, ECONSTANIC);
+  xˍagain=42;
   fwdˍdeep=?(pattern='^y$', UNANCHORED, ECONSTANIC);
   y=?(pattern='^z$', UNANCHORED, ECONSTANIC);
   z=99;
@@ -129,8 +143,8 @@ win={w_in={in_in={in_in_in=101010}}};
       name=7;
       final=0
   };
-  headˍofˍflat=^(NK);
-  tailˍofˍflat=$(NK);
+  headˍofˍflat=42;
+  tailˍofˍflat=0;
   headˍofˍempty=^(NK);
   tailˍofˍempty=$(NK);
   indexˍbrane={
@@ -139,23 +153,31 @@ win={w_in={in_in={in_in_in=101010}}};
       third=30;
       fourth=40
   };
-  indexˍfirst=^(NK);
-  indexˍlast=$(NK);
+  indexˍfirst=10;
+  indexˍlast=40;
   indexˍoutˍofˍbounds=#(offset=99, ANCHORED, NK);
-  seekˍunanchored=#(result=$(NK), offset=-2, UNANCHORED, NK);
+  seekˍunanchored=40;
   sfˍtarget={
       a=1;
       b=2
   };
-  sfˍvalue=<ECONSTANIC
-      ?(pattern='^sfˍtarget$', UNANCHORED, ECONSTANIC)
-  >;
-  sfˍtoˍconstant=<ECONSTANIC
-      ?(pattern='^π$', UNANCHORED, ECONSTANIC)
-  >;
-  sfˍchain=<ECONSTANIC
-      ?(pattern='^sfˍvalue$', UNANCHORED, ECONSTANIC)
-  >;
+  sfˍvalue=?(
+      result={
+          a=1;
+          b=2
+      },
+      pattern='^sfˍtarget$',
+      UNANCHORED
+  );
+  sfˍtoˍconstant=?(result=3, pattern='^π$', UNANCHORED);
+  sfˍchain=?(
+      result={
+          a=1;
+          b=2
+      },
+      pattern='^sfˍvalue$',
+      UNANCHORED
+  );
   sffˍtarget={
       x=10;
       y=20
@@ -171,7 +193,12 @@ win={w_in={in_in={in_in_in=101010}}};
       rightˍa=3;
       rightˍb=4
   };
-  concatˍresult={};
+  concatˍresult={
+      leftˍa=1;
+      leftˍb=2;
+      rightˍa=3;
+      rightˍb=4
+  };
   threeˍwayˍconcat={
       a=1;
       b=2;
@@ -228,49 +255,49 @@ win={w_in={in_in={in_in_in=101010}}};
   shadowˍ2={
       val=2
   };
-  rootˍshadow=Op+(?(pattern='^val$', ANCHORED, NK), ?(pattern='^val$', ANCHORED, NK), NK);
+  rootˍshadow=3;
   emptyˍbraneˍshadow={
       inner={}
   };
-  anchoredˍlookupˍfail=?(pattern='noˍsuchˍfield', ANCHORED, NK);
-  braneˍwithˍstuff={
+  anchoredˍlookupˍfail=?(pattern='noˍsuchˍfield', ANCHORED, BRANING);
+  braneˍwithˍstuff={PREMBRIONIC
       fieldˍa=10;
       fieldˍb=20
   };
-  anchoredˍlookupˍok=?(pattern='fieldˍa', ANCHORED, NK);
-  dotˍlookup=?(pattern='^fieldˍb$', ANCHORED, NK);
-  chainedˍdot=Op+(?(pattern='^fieldˍa$', ANCHORED, NK), ?(pattern='^fieldˍb$', ANCHORED, NK), NK);
-  regexˍtarget={
+  anchoredˍlookupˍok=?(pattern='fieldˍa', ANCHORED, PREMBRIONIC);
+  dotˍlookup=?(pattern='^fieldˍb$', ANCHORED, PREMBRIONIC);
+  chainedˍdot=Op+(?(pattern='^fieldˍa$', ANCHORED, PREMBRIONIC), ?(pattern='^fieldˍb$', ANCHORED, PREMBRIONIC), PREMBRIONIC);
+  regexˍtarget={PREMBRIONIC
       alice=1;
       bob=2;
       charlie=3
   };
-  regexˍres=?(pattern='(^b)', ANCHORED, NK);
-  regexˍnoˍmatch=?(pattern='(^z.*)', ANCHORED, NK);
-  unaryˍneg=-5;
-  unaryˍdouble=3;
-  unaryˍinˍexpr=0;
-  opˍtransparent=0;
-  chainedˍops=5;
-  zeroˍdivˍinˍop=Op+(??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, 42, NK);
+  regexˍres=?(pattern='(^b)', ANCHORED, PREMBRIONIC);
+  regexˍnoˍmatch=?(pattern='(^z.*)', ANCHORED, PREMBRIONIC);
+  unaryˍneg=Op-(5, PREMBRIONIC);
+  unaryˍdouble=Op-(Op-(3, PREMBRIONIC), PREMBRIONIC);
+  unaryˍinˍexpr=Op+(10, Op*(Op-(5, PREMBRIONIC), 2, PREMBRIONIC), PREMBRIONIC);
+  opˍtransparent=Op*(#(offset=-2, UNANCHORED, PREMBRIONIC), #(offset=-1, UNANCHORED, PREMBRIONIC), PREMBRIONIC);
+  chainedˍops=Op-(Op+(1, Op*(2, 3, PREMBRIONIC), PREMBRIONIC), Op/(4, 2, PREMBRIONIC), PREMBRIONIC);
+  zeroˍdivˍinˍop=Op+(Op/(10, 0, PREMBRIONIC), 42, PREMBRIONIC);
   nestedˍopˍtransparent=Op/(
       Op*(
-        Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^bb$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
-        Op-(?(pattern='^ccc$', UNANCHORED, ECONSTANIC), ?(pattern='^dddd$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
-        WOCONSTANIC
+        Op+(?(pattern='^a$', UNANCHORED, PREMBRIONIC), ?(pattern='^bb$', UNANCHORED, PREMBRIONIC), PREMBRIONIC),
+        Op-(?(pattern='^ccc$', UNANCHORED, PREMBRIONIC), ?(pattern='^dddd$', UNANCHORED, PREMBRIONIC), PREMBRIONIC),
+        PREMBRIONIC
       ),
       3,
-      WOCONSTANIC
+      PREMBRIONIC
   );
-  inspectˍsff=<ECONSTANIC
-      ?(pattern='^sffˍtarget$', UNANCHORED, ECONSTANIC)
+  inspectˍsff=<PREMBRIONIC
+      ?(pattern='^sffˍtarget$', UNANCHORED, PREMBRIONIC)
   >;
-  inspectˍsffˍagain=<<WOCONSTANIC
+  inspectˍsffˍagain=<<PREMBRIONIC
       ?(pattern='^sffˍtarget$', UNANCHORED)
   >>;
-  win={
-      wˍin={
-          inˍin={
+  win={PREMBRIONIC
+      wˍin={PREMBRIONIC
+          inˍin={PREMBRIONIC
               inˍinˍin=101010
           }
       }
@@ -284,5 +311,5 @@ foop42_humanizing_sequencer_formatting_exhaustive_aka_hfs
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 5CYQ9TTMJwxdSRqdDbNvIcEuEjzF0rs9DSJO0IFb7JZX52hw7oNCOG0pcpoYozWuyHWmpPLVgx2jGmPxDfKBDA==
-HFS signature: /EqTjycKD8GGfaG9GNfZX8eIfvokSc0CKPYr6FNviKSfX12pJkhsV7wfY78FFxRA+FW0cMpU3pohseBUELrVCg==
-Comments signature: SGKzEWqbNGQ+ujP9jhH3Y58L52gbgiTL/yrJR8fXFqe0fddXfPM0fz16eoDLvL4ZUoqHzi5BNu0mujB2J2X/DQ==
+HFS signature: 2Ai24KkteXGKuhMIl0tIGGi8b2nXrC33IET6NVTaU/FnZGmCUQ8ZHyyKkDXS1eNAksCUge4dyQ3paFYlSyi5AQ==
+Comments signature: jvh63ca7fdoxNAXuCeutrGQNf6CEMW8fev/fsKvAUqpAqEk6GbBRQ4QnYxyDbIH3HDJ5AsG0Or+zG/bF7u3QBA==

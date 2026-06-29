@@ -14,9 +14,9 @@ INPUT:
       20;
       30
   };
-  last=$(NK);
-  second=#(offset=1, ANCHORED, NK);
-  first=#(offset=-3, ANCHORED, NK);
+  last=30;
+  second=20;
+  first=10;
   oob=#(offset=-4, ANCHORED, NK)
 }
 ```
@@ -27,5 +27,5 @@ anchored_seek_negative_boundary
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: Hz+E00U3C3CsBvmDBDvsvrUBkxqorumzrBINQuB6usuo3Tc+B3G3S66sRaCAd8nWs36mDjbYF6rjX7Ps0UoJBw==
-HFS signature: dX96ypRJ7iByvpJ/JvhrMZ4ZTwOg2wiqWXkY468Bn3prsUDT7B/J90lPYzCtr93ufXuoFpHbJ4VhP+FABlHZCA==
-Comments signature: cShRUW8vYKY/dSn16a97KXiHfWh+mqZ27kYsU/nhbI7vyKVP1mBschMDjIcJOVy1bT9qv3ojowhklhHoK7yQAA==
+HFS signature: 7ijz1tCXCpH0QAKO5gjtW4SPq8CFrLhqh5nTAu0Sr7HFm3sYTzW3tyVrvWFG4t/ws7YUBcsf2zKviWGnNFgPBQ==
+Comments signature: itWJiUEXCHFmEcx0nMMGDY5EZ690UpIiqoabV6BbwRCfK9FoqnocbFNqee9pZJlarstqaiz+k3Od/YgtmU8PAw==

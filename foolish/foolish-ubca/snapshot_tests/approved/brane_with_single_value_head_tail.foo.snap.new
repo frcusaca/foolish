@@ -8,12 +8,12 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{NK
+{
   b={
       42
   };
-  h=^(NK);
-  t=$(NK)
+  h=42;
+  t=42
 }
 ```
 COMMENTS:
@@ -23,5 +23,5 @@ brane_with_single_value_head_tail
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: Tq1w19+A470fPIptb2wFZnTxYSpskC6MdJ7ASRFV9QUfO5wS0xySTGF67G1N0cabm0/WjR0iUvteZl9gXvolBg==
-HFS signature: INkDASum32BvFz9UG/d9mg4HljuksYtt5G4RImnV+mqLrf9JFZbodeKj3wC+/mTIWCVYVPvRDM94hodpnYBHAw==
-Comments signature: GjKKSWAh/gbM3O1KaE8eVBydbyIFjREb6ONHg23FAZMtObzRHNzINTeYUe/SQfXArjcOcRDBG0iL3lWWQhD6Cw==
+HFS signature: 29r6TtbrmhlbylNeXV16OpmhCtYIv9tt3B2J9tpaXu8naajB4A8vCVUeFyPpHzUCHTEqaf2xTIAQPocnCow7DA==
+Comments signature: rlyZH0YpXeZxIfiIuU5iMvyJZreKkQHNQiLCPDPqErnp2zWvxmgmX84onbkm2H8i2LMACH7mQNncgOQo2QmlBA==

@@ -8,14 +8,17 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{WOCONSTANIC
+{
   a={
       x=1
   };
   b={
       y=2
   };
-  c={}
+  c={
+      x=1;
+      y=2
+  }
 }
 ```
 COMMENTS:
@@ -25,5 +28,5 @@ concatenation_with_single_element
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: sWh7CjmRGkXIPkFIg/LTUsxw2hvbgrrY4wS/FmlI3H7prmqidIJxiMcwLdAT6WPD5rvbb8VR4wNF8EtuJH7UBg==
-HFS signature: t74hZRrA2Kx68dv5JLXIVX0WrQywHhZp/hYt4PROCKre69/y2tPw7TzG89YjEHnGQo1EGRxvkwnq8W5pFCKXCg==
-Comments signature: AbV6XiccSRHMpXBpbu7dnSifkTpIfMkYSdKib7C4tgn3h5lvAyHq0uAcoMBJAcoL+1GC5ZTp1hdU73BdCDLBDA==
+HFS signature: dvUbSJr3IYKAUOBtOirkATd+3ZRJLhlvMB1DaPr8xcamozwO7PtjOBIsUSsYEufeCOQljjWwclbkklb4ewRdDw==
+Comments signature: wGi13SbhKAGrSo5/1fUf5Bp5gV1flS2TWVd121swvoQFBNvBsU9zlQjLw4/kwBhSeArV/nwLhm7827ef+9wDDA==

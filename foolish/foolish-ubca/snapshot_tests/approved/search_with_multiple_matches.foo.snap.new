@@ -8,13 +8,13 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{NK
+{
   b={
       a1=1;
       a2=2;
       a3=3
   };
-  r=?(pattern='a.*', ANCHORED, NK)
+  r=3
 }
 ```
 COMMENTS:
@@ -24,5 +24,5 @@ search_with_multiple_matches
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: ftH8dTA78ga8T03BJZTg7u6rt1xShIINY/hS8wcvR5RnCtlueKZalhtVnTkvsLJxlkQmOJivBQ7Gbm0k+slkCQ==
-HFS signature: ZQqS7EJZqj+g1s1+PDWd/3+5E2DacpJ6qtz3qZhmjeFC2fGKCJpCDvKfVKUju7Ia7CX4sNISeJRbJnAqaTUcBw==
-Comments signature: IsZ8BUVazt0S/1oECr09N2nAIlRmUo26X2lD8Vg/nfYCEHJ3HTXeMTa0eOgmZzzUwdN0UT965gZRfVJpigIyBg==
+HFS signature: P2KNiH4ixiTarNKOra6DCc2esrIB89n5Q2U4PGkgCzrVALpNk138aasDmYHP8HpycW2elHdstNDuilrsWegsBw==
+Comments signature: 6I33EsZ778zuacitrbaYEOg0i5Ai06814EbpiBvb3LoJBDFKv1s84VLE5UInL34MQxZORs/rHNite6fWoyLjDA==

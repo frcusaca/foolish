@@ -27,28 +27,12 @@ use crate::fir_trait::{Fir, FirRef};
 /// permitted, so walking the parent chain and borrowing siblings (which may be
 /// the node being stepped) does not panic.
 pub struct ProtoBrane {
-    /// Parse-time children. FIXED: the vector never grows or shrinks and no Rc
-    /// slot is ever re-seated once built. The referenced FIR structs DO step
-    /// and compute in place (interior evolution), but the topology is constanic.
     foolish_children: Vec<FirRef>,
-
-    /// Compute-time children. FIR created during evaluation — search results,
-    /// operator results, concatenation result branes. May expand and shrink.
-    /// Order is significant (snapshot-visible).
     ubc_children: RefCell<Vec<FirRef>>,
-
-    /// Evaluation state (NYES) of THIS node. Single source of truth.
-    /// Uses `Cell` for interior mutability — `fir_op_step` takes `&self`.
     nyes: Cell<Nyes>,
-
-    /// Task list for NYES-driven stepping. Children to drain to constanic;
-    /// the node's own `fir_op_step` runs when it empties.
     tasks: RefCell<VecDeque<FirRef>>,
-
-    /// Weak back-link to the parent FIR node. NON-optional: the root node's
-    /// parent is a Weak pointing at itself (detected via `is_root()`).
-    /// IMMUTABLE after construction.
     parent: Weak<RefCell<dyn Fir>>,
+    alarm_reason: RefCell<Option<String>>,
 }
 
 impl ProtoBrane {
@@ -63,7 +47,16 @@ impl ProtoBrane {
             nyes: Cell::new(nyes),
             tasks: RefCell::new(VecDeque::new()),
             parent,
+            alarm_reason: RefCell::new(None),
         }
+    }
+
+    pub fn set_alarm_reason(&self, reason: String) {
+        *self.alarm_reason.borrow_mut() = Some(reason);
+    }
+
+    pub fn alarm_reason(&self) -> Option<String> {
+        self.alarm_reason.borrow().clone()
     }
 
     // --- read-only child access (no RefMut guards returned) ---

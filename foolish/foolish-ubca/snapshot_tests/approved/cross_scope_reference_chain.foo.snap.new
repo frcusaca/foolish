@@ -8,11 +8,11 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{WOCONSTANIC
+{
   a=1;
-  b={WOCONSTANIC
-      c=Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), 1, WOCONSTANIC);
-      d=Op+(?(pattern='^c$', UNANCHORED, ECONSTANIC), 1, WOCONSTANIC)
+  b={
+      c=2;
+      d=3
   }
 }
 ```
@@ -23,5 +23,5 @@ cross_scope_reference_chain
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: tNHk0722tO1WsAYqGXU6E4LyluowMjg1/r7fpl7OaiRQ6cyKBRGbEhFie/i1WiZLeArBNQ7RkQ9aHdYqQ37sDg==
-HFS signature: dDUC0STddDsLczSBFPXtNQ8XH6WDTox638G5dxgnCmxonvZnImxNy/ottS1/4vGbwVRKhga4ZWzKc6wGBDVjAA==
-Comments signature: Jz4pPthtKR+rq8IW50DcPwMJ2890FCLi9TIaXLto8sVPkuvTE9YZHcvsjvx/+N4EMcvb9zHgrIhi0DqtPB1KDg==
+HFS signature: hUdoqpWELzTEy7nAoSu72MeBjCsELPQ8guXhM/8nrVkbLQSn9JHdr9Dnk+ppyc0Gi3Sw1/yBhjmbrteKo1ofCQ==
+Comments signature: 07+qKOi0DipQnl751qvvfsmkwCOR8554BnZKGRRf9b5iDdhdprPBE4Bgri8sDW4Mgpn52VqV5giidta71fOhDA==

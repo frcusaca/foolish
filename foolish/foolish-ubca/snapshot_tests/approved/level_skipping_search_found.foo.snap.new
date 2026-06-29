@@ -8,11 +8,11 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{WOCONSTANIC
+{
   x=42;
-  y=?(pattern='^x$', UNANCHORED, ECONSTANIC);
-  nested={WOCONSTANIC
-      z=?(pattern='^x$', UNANCHORED, ECONSTANIC)
+  y=42;
+  nested={
+      z=42
   }
 }
 ```
@@ -23,5 +23,5 @@ level_skipping_search_found
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: vlBlJKYHK8ONE5n4q4OyvT2jmTTcBgHl9fQW6hJwWU2p+6ZGvrZoX2t3mRDSr9t3uAMnb4w0t2LBjUQivuKrDQ==
-HFS signature: v8E2s+6K7Knicy2u8LuM/yR3jwD+HWdALsUMvYoFsiyIMxM5HTPuVtxaJj8DRfLWoLq+1gKHfqY4nSJL7CCHAg==
-Comments signature: k8/bZnw+iOU9bsvV0DFq4YdiztVk3k1oSFkfcq/dswomYzC2p5NAdZjzNH+MQc7ZjSRCXSANPPI3Om1Amr2ACQ==
+HFS signature: SjEqqRb9ppuSP+3It/w/ofuWv/VQqPRSXhuIPmnnbkBuIvIBNRxa95z/LiTQXOEdKG0gf+HlrBu8HtfrTmbQCA==
+Comments signature: ove+R2IC6JszZu2buEnzWHrtegPv7+DJDv8i7HvlUfMbBqds2ksEug2mHZivmIwQJo0InbblVvr7pWzaQ4fBCQ==

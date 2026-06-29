@@ -8,12 +8,10 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{WOCONSTANIC
+{
   x=42;
-  b=<ECONSTANIC
-      ?(pattern='^x$', UNANCHORED, ECONSTANIC)
-  >;
-  ?(pattern='^b$', UNANCHORED, ECONSTANIC)
+  b=?(result=42, pattern='^x$', UNANCHORED);
+  42
 }
 ```
 COMMENTS:
@@ -23,5 +21,5 @@ sf_non_brane_resolves
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: wpG5PzL0aT/dCITFTxzEgJxHJgS7NQxU2cb06vvG0yZq0vT6FtVFq2FGtLL7fbxIv37INbW2WXBeK/4/bDZ3Cg==
-HFS signature: K4nF6zysRENlzRjGWSlI2z7uu1ipyup7cjt+M4lEmDMchMt3OeMsO+xFvbZJlMUKgtNZ0YNxT/QdFLeZbZ/8Ag==
-Comments signature: lZ3zOuuP9w2gLRYgmkITD1i+EThyRH/IU20M0dg6pBPoPX4EvAYB6MG3OrMrFirh/YGDbNxv3fThg3ViQNf0Bg==
+HFS signature: /e1f57s71s1JFTQuoFbo8Qj7t7z5nM661AnfoM1wPs/CuKsQeaTOUMYsIPPRG5gWkrHBJpU+tnIomKm/7ZLNAw==
+Comments signature: bZENC9re7WTrlzHO6HWmfXe1uNQLlHTP2xbZIXN39UFgMqZpOhmsA1vq860a1EiB7jsT18249U2ycjw+iDHJDQ==

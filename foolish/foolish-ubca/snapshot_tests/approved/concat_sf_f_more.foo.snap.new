@@ -32,14 +32,14 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{WOCONSTANIC
+{NK(ITERATION-EXCEEDED, Iteration exceeded 9999)
   a=1;
   b=2;
   c=3;
   x=-10;
   y=-20;
   z=-30;
-  f1={WOCONSTANIC
+  f1={BRANING
       b=Op+(
           Op+(
             <<WOCONSTANIC
@@ -55,76 +55,66 @@ INPUT:
           >>,
           WOCONSTANIC
       );
-      a=Op+(
-          Op+(
-            <WOCONSTANIC
-              Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
-            >,
-            ?(pattern='^a$', UNANCHORED, ECONSTANIC),
-            WOCONSTANIC
-          ),
-          ?(pattern='^b$', UNANCHORED, ECONSTANIC),
-          WOCONSTANIC
-      )
+      a=Op+(-29, ?(pattern='^b$', UNANCHORED, BRANING), BRANING)
   };
-  f2={WOCONSTANIC
+  f2={PREMBRIONIC
       b=Op+(
-          <<WOCONSTANIC
+          <<PREMBRIONIC
             Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^z$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
           >>,
-          <WOCONSTANIC
+          <PREMBRIONIC
             Op+(
               Op+(
-                ?(pattern='^a$', UNANCHORED, ECONSTANIC),
-                <<WOCONSTANIC
+                ?(pattern='^a$', UNANCHORED, PREMBRIONIC),
+                <<PREMBRIONIC
                   ?(pattern='^b$', UNANCHORED)
                 >>,
-                WOCONSTANIC
+                PREMBRIONIC
               ),
-              <ECONSTANIC
-                ?(pattern='^c$', UNANCHORED, ECONSTANIC)
+              <PREMBRIONIC
+                ?(pattern='^c$', UNANCHORED, PREMBRIONIC)
               >,
-              WOCONSTANIC
+              PREMBRIONIC
             )
           >,
-          WOCONSTANIC
+          PREMBRIONIC
       )
   };
-  f3={WOCONSTANIC
-      c=<WOCONSTANIC
+  f3={PREMBRIONIC
+      c=<PREMBRIONIC
           Op+(
             Op+(
-              ?(pattern='^a$', UNANCHORED, ECONSTANIC),
-              <<WOCONSTANIC
+              ?(pattern='^a$', UNANCHORED, PREMBRIONIC),
+              <<PREMBRIONIC
                 Op+(
                   ?(pattern='^b$', UNANCHORED, ECONSTANIC),
-                  <WOCONSTANIC
+                  <PREMBRIONIC
                     Op+(
-                      Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
+                      Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), PREMBRIONIC),
                       ?(pattern='^z$', UNANCHORED, ECONSTANIC),
-                      WOCONSTANIC
+                      PREMBRIONIC
                     )
                   >,
                   WOCONSTANIC
                 )
               >>,
-              WOCONSTANIC
+              PREMBRIONIC
             ),
-            <ECONSTANIC
-              ?(pattern='^c$', UNANCHORED, ECONSTANIC)
+            <PREMBRIONIC
+              ?(pattern='^c$', UNANCHORED, PREMBRIONIC)
             >,
-            WOCONSTANIC
+            PREMBRIONIC
           )
       >
   };
-  b=?(pattern='^f1$', UNANCHORED, ECONSTANIC);
-  <ECONSTANIC
-    ?(pattern='^f2$', UNANCHORED, ECONSTANIC)
+  b=?(pattern='^f1$', UNANCHORED, PREMBRIONIC);
+  <PREMBRIONIC
+    ?(pattern='^f2$', UNANCHORED, PREMBRIONIC)
   >;
-  <<WOCONSTANIC
+  <<PREMBRIONIC
     ?(pattern='^f3$', UNANCHORED)
   >>;
-  d=$(NK)
+  d=$(PREMBRIONIC)
 }
 ```
 COMMENTS:
@@ -134,5 +124,5 @@ concat_sf_f_more
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 6AzGNJXm5wdZXyTwBHCaOcttoyncBzE4/K7NCfCD8jdXPNYArg7otv7CUSNuPLngLFQu7qOC522o+6GlZlm+Dg==
-HFS signature: lAJ1pWIWwFJeXKH/eZOPkcDwV3le+LpS93WITJ6aur8WtmgpoTK2GxYYUQ/ACVM6ilpPzajffq2TpZAhiWpvBw==
-Comments signature: eguyecOc/rRuDza8aEWH9OqUt961uz/y+1XiIqj7LMPIe8qXt0h7u3B3P4QpXnF6htCPY68o5DO9ELHcsnXuAg==
+HFS signature: SDI5Se06n4e2ejSfAh/QAUiHpyxenAhsDGSKPXTx5B4z+SHGgHlg9fMMe8urg2PbcsBONTSUMp++UUGYGLVaCg==
+Comments signature: 9aqNlsGAuod9K88qBL+RxxcTRbHuemJWp/yp9+AeIGQUhsPu4xtkab3Wv8s3fQv+ilcn3J4CzWKJ/c1KvG+1DA==

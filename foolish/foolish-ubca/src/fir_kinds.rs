@@ -531,11 +531,12 @@ impl OperatorFir {
                             .as_i64()
                             .map(|v| v.to_string())
                             .unwrap_or_else(|| format!("{:?}", rhs.borrow().kind()));
+                        let reason = format!("{} is not a brane", rhs_val);
                         let nk_ref: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<NkFir>>| {
                             let parent: Weak<RefCell<dyn Fir>> = me.clone();
                             RefCell::new(NkFir {
                                 core: ProtoBrane::new(vec![], parent, Nyes::Nk),
-                                reason: format!("{} is not a brane", rhs_val),
+                                reason: reason.clone(),
                             })
                         });
                         self.core.push_ubc_child(constanic_clone_at(
@@ -544,6 +545,7 @@ impl OperatorFir {
                             0,
                             scope.has_ancestral_sfm,
                         ));
+                        self.core.set_alarm_reason(reason);
                         self.core.set_nyes(Nyes::Nk);
                         return Ok(());
                     }

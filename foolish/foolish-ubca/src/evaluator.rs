@@ -35,9 +35,8 @@ impl foolish_core::Evaluator for UbcaEvaluator {
 
         for fir_ref in &ubca_firs {
             if let Err(alarm) = step_to_settled(fir_ref, &scope) {
-                // Non-constanic after stepping — set the brane's NYES to NK with the alarm
-                // message so the sequencer renders the full state with the alarm reason.
                 let alarm_msg = alarm.to_string();
+                fir_ref.borrow().core().set_alarm_reason(alarm_msg.clone());
                 fir_ref.borrow().core().set_nyes(Nyes::Nk);
                 eprintln!("ALARM: {alarm_msg}");
             }
@@ -63,15 +62,9 @@ fn step_to_settled(
             _ => {}
         }
     }
-    // Not constanic after stepping — generate a unique alarm token so the
-    // snapshot can never be accidentally approved (random number changes each run).
     if !fir_ref.borrow().core().get_nyes().is_constanic() {
-        let random_id = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .subsec_nanos();
         return Err(crate::fir_trait::UbcError::Eval(format!(
-            "ALARM: not constanic after {} steps. {random_id}}}",
+            "Iteration exceeded {}",
             last_step
         )));
     }
@@ -196,12 +189,13 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
             // If any operand is NK, keep the operator wrapper so the
             // humanizer can display all operands and state.
             if state == Nyes::Nk {
+                let op_name = borrowed.as_op_name().unwrap_or("");
                 let any_operand_nk = borrowed
                     .core()
                     .foolish_children()
                     .iter()
                     .any(|c| c.borrow().core().get_nyes() == Nyes::Nk);
-                if !any_operand_nk {
+                if !any_operand_nk && op_name != "$" {
                     let ubc = borrowed.core().ubc_children();
                     if let Some(result) = ubc.first() {
                         return proto_to_core_fir_inner(result, preserve_search);
@@ -209,12 +203,31 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                 }
             }
             let op = borrowed.as_op_name().unwrap_or("?").to_string();
-            let operand_firs: Vec<core_fir::Fir> = borrowed
-                .core()
-                .foolish_children()
-                .iter()
-                .map(|c| proto_to_core_fir_inner(c, preserve_search))
-                .collect();
+            let operand_firs: Vec<core_fir::Fir> = if op == "$" {
+                borrowed
+                    .core()
+                    .foolish_children()
+                    .iter()
+                    .enumerate()
+                    .map(|(i, c)| {
+                        if i == 0 {
+                            IndexFirBuilder::new(-1)
+                                .anchored(false)
+                                .state(Nyes::Econstanic)
+                                .build()
+                        } else {
+                            proto_to_core_fir_inner(c, preserve_search)
+                        }
+                    })
+                    .collect()
+            } else {
+                borrowed
+                    .core()
+                    .foolish_children()
+                    .iter()
+                    .map(|c| proto_to_core_fir_inner(c, preserve_search))
+                    .collect()
+            };
             OperatorFirBuilder::new(op)
                 .operands(operand_firs)
                 .state(state)
@@ -267,11 +280,19 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                     }
                 }
             }
-            NormalBraneFirBuilder::new()
+            let mut builder = NormalBraneFirBuilder::new()
                 .characterizations(borrowed.as_brane_characterizations().to_vec())
                 .statements(stmt_tuples)
-                .state(effective_state)
-                .build()
+                .state(effective_state);
+            if let Some(alarm_reason) = borrowed.core().alarm_reason() {
+                builder = builder.alarm(Alarm {
+                    level: AlarmLevel::Mild,
+                    code: "ITERATION-EXCEEDED".to_string(),
+                    message: alarm_reason.replace("ubca evaluation error: ", ""),
+                    source: AlarmSource::Evaluator,
+                });
+            }
+            builder.build()
         }
         FirKind::Search => {
             if state.is_constanic() {

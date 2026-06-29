@@ -8,15 +8,11 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{WOCONSTANIC
+{
   x=5;
   y=3;
   z=2;
-  Op+(
-    Op*(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
-    ?(pattern='^z$', UNANCHORED, ECONSTANIC),
-    WOCONSTANIC
-  )
+  17
 }
 ```
 COMMENTS:
@@ -26,5 +22,5 @@ multiple_identifiers
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: g5XLxAtNDPB0o4w3UI2WQL/742yZ4CL1ZAcbzufFwj+I4B2+aEa5hlx1zAHrERbRwefF6xuhvWX/3oIgLYvOAg==
-HFS signature: zgVUunjDRutXDniONzGkBPIbklRGlDqjnh50a2aKHQyugcaKdlKGjWRmB/dH410bFHAm+N2PI7/19TjpVGJrBQ==
-Comments signature: zVXV1hGQ18CPS0g4UZYedryqbspOkfg0lMDwgEaQ2h6QtfkD+IU9ve6qEgcFGF0i43GkRTRe3PzpUuy8xKvSBg==
+HFS signature: OzD2ikSThGEB1hIIh5k1GHgQT5oj7VKy0OFTDFCWK7Z687cCcfZA2+o1suDaAffs3kzgeREYiYJVcD+7vggRBg==
+Comments signature: r+9CM+7caeOLkDFUDHKxRNU1qT8ic9f3nYIvTdsJ7080Oelj1/vvN+BOxT3QzT4YkZFksSDRjSm9RlC2BOZPDw==

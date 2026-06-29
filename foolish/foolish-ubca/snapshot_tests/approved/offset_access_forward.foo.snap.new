@@ -8,7 +8,7 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{NK
+{
   data={
       a=10;
       b=20;
@@ -16,8 +16,8 @@ INPUT:
       d=40;
       e=50
   };
-  first=^(NK);
-  second=#(offset=1, ANCHORED, NK)
+  first=10;
+  second=20
 }
 ```
 COMMENTS:
@@ -27,5 +27,5 @@ offset_access_forward
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: TGyNq/mH+/1v6+wxkax/FbZjchuBO1Qf/pAfiAi9C8124vN3Es8uQNOJ/UeOjxFQ9DWcZV4WoW3Gi0nhDbFlCA==
-HFS signature: vXFZQR71gLP89X/vBl0sldqf2UOCrnh6YXIMGBl+L4nYelx3x+oBLGmMJ9yuwbwuRXrVv8qtol04IQBgi5cSBA==
-Comments signature: HkXrRh+Dn7p9h+fKSn7Q5cRphwNt9cc9D1kH8VDWC5+qbibliA/PJfc5ZnN/Now/4KOYvMbfe+mwZxvcgE8OCQ==
+HFS signature: SXr105YSVWD/SI25Uyu72IdmfeoaTRnQw9m64cVCWaM1j59FkjhGkG8LmecboVG1maULeiXtKB9k5bM8lw7FCQ==
+Comments signature: 9UdfeqOw1wSSqKbLP8AVG25zQzWuemDDAoF8Fs723UTqYt+v1eCBYfjTmpPRTKKkPu1QhG3KHOxuwFoB5/QDBg==

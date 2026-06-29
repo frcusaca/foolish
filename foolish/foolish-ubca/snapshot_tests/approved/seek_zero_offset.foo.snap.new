@@ -8,13 +8,13 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{NK
+{
   b={
       10;
       20;
       30
   };
-  first=^(NK)
+  first=10
 }
 ```
 COMMENTS:
@@ -24,5 +24,5 @@ seek_zero_offset
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: S48Uo+2tKexUvhtRGj3pJkt5qkd+zFAzgsc5fglpMeea4d5nYpf6CS4J54uwDBiv4peq4bkgjhJ+WHoAUQxcBw==
-HFS signature: YZ3odTTwZ5TfJDJP/3noZacjfXEghqv7+egU4/Jvk3FBFWSeOS7BEpGI9tWYxEJo0O+8w35YGLaXZbnLTHfyCQ==
-Comments signature: PiY6HTDGQiDu7Qww3KMWjXW3XeZcK2Wh6wI37r5GHDE8jvdenZorHs2K1OCWiaMZyi9Cox2szt6nqBVFxYvkDw==
+HFS signature: /UGHqt98EEy26m689Q639TdUXYZKtzJu122I4mLNoUeTthV+x92KxkkJ4lTDWeEZAJ6bTw5+eE+0SmLX15r2CA==
+Comments signature: Ja4n5VrPlcpgB2CqeDSvRmqJ1q0AIyFjKPs5C2fXIRBvoZhFOOSnD0oSS7tQbe3c6tHj3vg6+9LMxVjBAQNJAQ==

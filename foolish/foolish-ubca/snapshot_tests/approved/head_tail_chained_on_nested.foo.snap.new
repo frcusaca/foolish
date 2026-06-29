@@ -8,7 +8,7 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{NK
+{
   b={
       {
         {
@@ -19,8 +19,17 @@ INPUT:
       };
       4
   };
-  h=^(NK);
-  hh=^(NK)
+  h={
+      {
+        1;
+        2
+      };
+      3
+  };
+  hh={
+      1;
+      2
+  }
 }
 ```
 COMMENTS:
@@ -30,5 +39,5 @@ head_tail_chained_on_nested
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: efN9fyZ/xDjuTG5BJQg2f5XufugV0r1dZZ++KC3sibHT5oeesOpkvoq5A+rgVVoI9acFm+rO66Zbh4OyTr23Dg==
-HFS signature: M30wg176ewcyZwfFdg8LDqDXU3x0HH48vKK4GNOA0GTo7ipC1Hf70vqh+EQplmMIbseYsl535nE0CinwFGy0Dw==
-Comments signature: dPgoE8oNiTcrIPMTo0Yswm/Div/K7OOhSawLuj4QWTr1UaEhdzksItq4mAxoSlg3ld7mjiZ5zURzM+yRC/dGAA==
+HFS signature: 13CVrAK3dAnbnY5yzr9TolmXDWC+fQ36kzYKkADm7EdEAw5K373Np0epDJ5ZSbRtsOCiy5KwI8PPRfd1N+KDAg==
+Comments signature: 84784+aUkms5QY4khR0oAq1iYSDx9A9YTZrxG6FF/zlavzhtiOuLMN8XIYMsumLP79cx7Xmqa8HzPyWs1WngDw==

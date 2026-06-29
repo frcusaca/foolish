@@ -8,14 +8,14 @@ INPUT:
 ```
 [0] RESULT:
 ```hfssnap
-{NK
+{
   brane={
       1;
       2;
       3
   };
-  val=^(NK);
-  last=$(NK)
+  val=1;
+  last=3
 }
 ```
 COMMENTS:
@@ -25,5 +25,5 @@ head_tail_on_named_brane
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: Ii+46C/OR69N2BxyZd79ujKdb9mxlfW4eba4JmqDLeJcqey2PvhHmnj6wIGcV+1BH/cWmNpNxwcRNl4HxaksCw==
-HFS signature: MLH2cFy2YRpw/+uT3Gq4Vx4frMqCuDDl8dYRRjPVEsP1yVniHEwz3u/P0bOgQ8LiuZpVnUZNNy8HvPis55PMBg==
-Comments signature: 5ZDwtO5Nc8Q0c0BGwm1HEyH7XOfE4+Nw/iAOymFFDfCVgRbskostaWpRHMhaSdrmT4B/vrSIhXdd95USrvSRAQ==
+HFS signature: pwXHsRJvnYHrZy9ovKdL/L4LoSjDiD72oaWmFZKelVrXx8n06CLoyggzaIOoTog0mx7ObCTBffgCeoTR/h0QBw==
+Comments signature: 8yrWhAGwzgSHSwgTxEqaN0rwaf4YWHkngah2zHi3mTAiJ0h28LBOWftKbKfa0gMrHJvhptN45CXXr/7B6RBgAw==
