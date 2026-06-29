@@ -523,6 +523,32 @@ impl OperatorFir {
                     values[0] % values[1]
                 }
                 "-" if values.len() == 1 => -values[0], // unary negation
+                "$" if children.len() == 2 => {
+                    let rhs = get_value(&children[1]);
+                    if rhs.borrow().kind() != FirKind::Brane {
+                        let rhs_val = rhs
+                            .borrow()
+                            .as_i64()
+                            .map(|v| v.to_string())
+                            .unwrap_or_else(|| format!("{:?}", rhs.borrow().kind()));
+                        let nk_ref: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<NkFir>>| {
+                            let parent: Weak<RefCell<dyn Fir>> = me.clone();
+                            RefCell::new(NkFir {
+                                core: ProtoBrane::new(vec![], parent, Nyes::Nk),
+                                reason: format!("{} is not a brane", rhs_val),
+                            })
+                        });
+                        self.core.push_ubc_child(constanic_clone_at(
+                            &nk_ref,
+                            &self_weak,
+                            0,
+                            scope.has_ancestral_sfm,
+                        ));
+                        self.core.set_nyes(Nyes::Nk);
+                        return Ok(());
+                    }
+                    return Ok(());
+                }
                 op => {
                     return Err(UbcError::Eval(format!(
                         "unknown operator: {op} ({} operands)",
@@ -817,7 +843,15 @@ impl SearchFir {
             .first()
             .map(|r| r.borrow().core().get_nyes())
             .unwrap_or(Nyes::Nk);
-        self.core.set_nyes(search_nyes_from_found(result_nyes));
+        eprintln!(
+            "DEBUG settle_from_ubc_result: pattern={} child_nyes={:?} is_constanic={}",
+            self.pattern,
+            result_nyes,
+            result_nyes.is_constanic()
+        );
+        if result_nyes.is_constanic() {
+            self.core.set_nyes(search_nyes_from_found(result_nyes));
+        }
     }
 }
 
@@ -841,7 +875,10 @@ impl Fir for SearchFir {
                     self.settle_from_ubc_result();
                 } else {
                     match self.ib_search(scope, &self.pattern) {
-                        Some((stmt, nyes)) => self.handle_found(stmt, nyes, scope),
+                        Some((stmt, nyes)) => {
+                            self.handle_found(stmt, nyes, scope);
+                            self.core.set_nyes(Nyes::Braning);
+                        }
                         None => self.core.set_nyes(Nyes::Braning),
                     }
                 }
@@ -867,6 +904,7 @@ impl Fir for SearchFir {
                                         .map(|(_idx, stmt, nyes)| (stmt, nyes))
                                 }
                             }
+                            FirKind::Search => return Ok(()),
                             _ => None,
                         }
                     } else {
@@ -990,13 +1028,15 @@ fn find_parent_brane(start: &ProtoBrane) -> Option<FirRef> {
 
 impl IndexFir {
     fn settle_from_ubc_result(&self) {
-        let nyes = self
+        let result_nyes = self
             .core
             .ubc_children()
             .first()
             .map(|r| r.borrow().core().get_nyes())
             .unwrap_or(Nyes::Nk);
-        self.core.set_nyes(nyes);
+        if result_nyes.is_constanic() {
+            self.core.set_nyes(search_nyes_from_found(result_nyes));
+        }
     }
 }
 

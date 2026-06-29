@@ -803,6 +803,11 @@ settling. Likely a task-drain ordering issue or a missing re-step after SF/SFF r
       appropriate level) following the alarm patterns established in `foolish-core` (e.g.
       `Alarm`/`AlarmLevel`/`AlarmSource` in the evaluator). Copy the existing alarm design —
       structured fields, consistent codes, same severity conventions.
+- [ ] **Encapsulate `step_fir_ref` / `step_fir_ref_inner` on Fir or FirRef.** Currently these
+      are free functions taking `this: &FirRef` as a parameter. Move them to be methods on the
+      object they operate on — either as a default method on the `Fir` trait or as an extension
+      trait on `FirRef`. This eliminates the redundant `this` parameter and follows the
+      convention that methods belong to the object they change or report from.
 
 ## Last Updated
 

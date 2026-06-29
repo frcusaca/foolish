@@ -48,15 +48,8 @@ pub enum FirKind {
 /// (FOOP-62 §10).
 #[derive(Debug, Clone)]
 pub struct Scope {
-    /// Placeholder: current brane (will be replaced by capability surface)
     pub current_brane: Option<FirRef>,
-    /// Placeholder: current statement index
-    pub current_stmt_idx: Option<usize>,
-    /// True when the current evaluation is inside an SF-mark's RHS (FOOP-62 §10.1,
-    /// "Terminology: ignorance"). `step()` carries this down the step recursion; it
-    /// seeds each `constanic_clone`'s `descendent_of_sfm_and_foolishly_ignorant`.
-    /// When true, clones copy ALL NYES unchanged (foolishly ignorant); when false,
-    /// the normal NYES-transfer rule applies.
+    pub current_statement: Option<FirRef>,
     pub has_ancestral_sfm: bool,
 }
 
@@ -64,7 +57,7 @@ impl Scope {
     pub fn empty() -> Self {
         Self {
             current_brane: None,
-            current_stmt_idx: None,
+            current_statement: None,
             has_ancestral_sfm: false,
         }
     }
@@ -77,9 +70,7 @@ impl Scope {
     }
 
     pub fn get_my_statement(&self) -> Option<FirRef> {
-        let brane = self.current_brane.as_ref()?;
-        let idx = self.current_stmt_idx?;
-        brane.borrow().core().foolish_children().get(idx).cloned()
+        self.current_statement.clone()
     }
 
     pub fn get_my_brane(&self) -> Option<FirRef> {
@@ -301,22 +292,23 @@ fn step_fir_ref_inner(this: &FirRef, scope: &Scope, depth: usize) -> Result<Step
             if front_rc.borrow().core().get_nyes().is_constanic() {
                 this.borrow().core().pop_front_task();
             } else {
-                // Descending into an SF-mark's RHS turns on foolish ignorance for the
-                // whole subtree (FOOP-62 §10.1): the child and its descendants clone
-                // foolishly ignorant. Once set, the flag stays set for deeper levels.
-                let child_scope = if this.borrow().kind() == FirKind::StayFoolish {
+                let this_kind = this.borrow().kind();
+                let mut child_scope = if this_kind == FirKind::StayFoolish {
                     scope.with_ancestral_sfm(true)
                 } else {
                     scope.clone()
                 };
+                if this_kind == FirKind::Statement {
+                    child_scope.current_statement = Some(Rc::clone(this));
+                }
+                if this_kind == FirKind::Brane {
+                    child_scope.current_brane = Some(Rc::clone(this));
+                }
                 step_fir_ref_inner(&front_rc, &child_scope, depth + 1)?;
             }
             Ok(StepReport::Progress(this.borrow().core().get_nyes()))
         }
         None => {
-            // Shared borrow — fir_op_step takes &self. Multiple shared borrows
-            // are permitted, so walking the parent chain and borrowing siblings
-            // (which may be `this`) does not panic.
             this.borrow().fir_op_step(scope)?;
             let nyes = this.borrow().core().get_nyes();
             Ok(StepReport::Progress(nyes))
@@ -1010,8 +1002,8 @@ mod get_value_tests {
         let y_stmt = &stmts[1]; // y = x
         let result = y_stmt.borrow()._ib_search(y_stmt, "x");
         assert!(result.is_some());
-        let (body, nyes) = result.unwrap();
-        assert_eq!(body.borrow().kind(), FirKind::IndepInt);
+        let (stmt, nyes) = result.unwrap();
+        assert_eq!(stmt.borrow().kind(), FirKind::Statement);
         assert!(nyes.is_constanic());
     }
 
