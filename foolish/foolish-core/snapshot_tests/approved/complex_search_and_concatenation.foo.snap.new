@@ -24,7 +24,6 @@ INPUT:
   resultˍ1={
       x=10
   };
-  2;
   resultˍ2={
       x=10
   }
@@ -37,5 +36,5 @@ complex_search_and_concatenation
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: QwS6koSaXIc2SJUrPaaPbWpmXRelzotPS7Lvx0Ag11296Ubk6q7XHE6O87YdsEIpEojATxfkVO90iG96nWEgBQ==
-HFS signature: qnBJfC3f3C80jRhxyRuRDeVvRmgbkvMogZekvjfG/LwUsoWTf7a6JUQxQ/3fjqxalwlsLHw0dxNm8xwbzvuYDw==
-Comments signature: xsGYkzGSHvvO6ihgYBdy6xWuwdxDkjJMK58V7IqVWRnXX0EdxBNvqv/a9dPCc4KNEc6sGzwph/lzY3F8DsHVAQ==
+HFS signature: cTxeALjT25Ows7KrVLI9A+cDBIm/hgrakOO0bu9aTCkbL/O2t+Hvx8pHmwytwAULcONnkkx3EHi1QYIcZWGEAw==
+Comments signature: HCgQUZXm4L9QLtAyD6aVxLMP9ygztWFphUCEpKTEt7yTWtSWOH1TGG9S4fmY4qf5U2UdDOh4gutUc7rScpAlAg==
