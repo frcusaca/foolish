@@ -83,7 +83,7 @@ win={w_in={in_in={in_in_in=101010}}};
 ```
 [0] RESULT:
 ```hfssnap
-{NK(ITERATION-EXCEEDED, Iteration exceeded 9999)
+{WOCONSTANIC
   a=1;
   bb=2;
   ccc=3;
@@ -249,45 +249,42 @@ win={w_in={in_in={in_in_in=101010}}};
   emptyˍbraneˍshadow={
       inner={}
   };
-  anchoredˍlookupˍfail=?(pattern='noˍsuchˍfield', ANCHORED, BRANING);
-  braneˍwithˍstuff={PREMBRIONIC
+  anchoredˍlookupˍfail=?(pattern='noˍsuchˍfield', ANCHORED, NK);
+  braneˍwithˍstuff={
       fieldˍa=10;
       fieldˍb=20
   };
-  anchoredˍlookupˍok=?(pattern='fieldˍa', ANCHORED, PREMBRIONIC);
-  dotˍlookup=?(pattern='^fieldˍb$', ANCHORED, PREMBRIONIC);
-  chainedˍdot=Op+(?(pattern='^fieldˍa$', ANCHORED, PREMBRIONIC), ?(pattern='^fieldˍb$', ANCHORED, PREMBRIONIC), PREMBRIONIC);
-  regexˍtarget={PREMBRIONIC
+  anchoredˍlookupˍok=10;
+  dotˍlookup=20;
+  chainedˍdot=30;
+  regexˍtarget={
       alice=1;
       bob=2;
       charlie=3
   };
-  regexˍres=?(pattern='(^b)', ANCHORED, PREMBRIONIC);
-  regexˍnoˍmatch=?(pattern='(^z.*)', ANCHORED, PREMBRIONIC);
-  unaryˍneg=Op-(5, PREMBRIONIC);
-  unaryˍdouble=Op-(Op-(3, PREMBRIONIC), PREMBRIONIC);
-  unaryˍinˍexpr=Op+(10, Op*(Op-(5, PREMBRIONIC), 2, PREMBRIONIC), PREMBRIONIC);
-  opˍtransparent=Op*(#(offset=-2, UNANCHORED, PREMBRIONIC), #(offset=-1, UNANCHORED, PREMBRIONIC), PREMBRIONIC);
-  chainedˍops=Op-(Op+(1, Op*(2, 3, PREMBRIONIC), PREMBRIONIC), Op/(4, 2, PREMBRIONIC), PREMBRIONIC);
-  zeroˍdivˍinˍop=Op+(Op/(10, 0, PREMBRIONIC), 42, PREMBRIONIC);
-  nestedˍopˍtransparent=Op/(
-      Op*(
-        Op+(?(pattern='^a$', UNANCHORED, PREMBRIONIC), ?(pattern='^bb$', UNANCHORED, PREMBRIONIC), PREMBRIONIC),
-        Op-(?(pattern='^ccc$', UNANCHORED, PREMBRIONIC), ?(pattern='^dddd$', UNANCHORED, PREMBRIONIC), PREMBRIONIC),
-        PREMBRIONIC
-      ),
-      3,
-      PREMBRIONIC
+  regexˍres=2;
+  regexˍnoˍmatch=?(pattern='(^z.*)', ANCHORED, NK);
+  unaryˍneg=-5;
+  unaryˍdouble=3;
+  unaryˍinˍexpr=0;
+  opˍtransparent=0;
+  chainedˍops=5;
+  zeroˍdivˍinˍop=Op+(??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, 42, NK);
+  nestedˍopˍtransparent=-1;
+  inspectˍsff=?(
+      result={
+          x=10;
+          y=20
+      },
+      pattern='^sffˍtarget$',
+      UNANCHORED
   );
-  inspectˍsff=<PREMBRIONIC
-      ?(pattern='^sffˍtarget$', UNANCHORED, PREMBRIONIC)
-  >;
-  inspectˍsffˍagain=<<PREMBRIONIC
+  inspectˍsffˍagain=<<WOCONSTANIC
       ?(pattern='^sffˍtarget$', UNANCHORED)
   >>;
-  win={PREMBRIONIC
-      wˍin={PREMBRIONIC
-          inˍin={PREMBRIONIC
+  win={
+      wˍin={
+          inˍin={
               inˍinˍin=101010
           }
       }
@@ -301,5 +298,5 @@ foop42_humanizing_sequencer_formatting_exhaustive_aka_hfs
 SIGNATURES:
 Public key: eb9604b1e50d6df60ea71cded2d51b4031b14e9d8911866fcfff4afb00075e65
 Foolish signature: RlM6KF+m6slUeQj+vuYmuwgo3MOnVagTEAkkScY+I8D+DX7LuwkMvhdW4WTeNnWfkj8Gqmu9/IEcap50tRxUCA==
-HFS signature: h0YCdoA6qOTBRBWjS05jL+vHc9xbWsfWVPaGia2AER0y0wLbx1b7nDYsfDijL6kO4DKcfqz5pTS4tRs2ntbUCA==
-Comments signature: sipwrQPUohvPm28JRHinmXkcxJtsDRGdIfKh9/odXl32nFge+dmJAMyWcxDBMGebp2V4yjSgQddcLdhuHywABA==
+HFS signature: B9DK9sc1ijd467vxPbyfldVSLNUzZucmLIJfCWx5AE2MLfdPKHqfRGiIvnD+Oa2rDr5izZ1zwyCE0IOBPRjzDA==
+Comments signature: bTpAypbr49TCaZ/Fes9F5CHnIZ8gscHlFbDxm27pabfT24wJlnMYiYldf0VWP8GXV2TAGpi9HLqxajXq2J6ODg==

@@ -2,9 +2,16 @@
 set -euo pipefail
 
 if [[ $# -lt 1 ]]; then
-    echo "Usage: $0 <crate-path>"
+    echo "Usage: $0 [-f] <crate-path>"
     echo "Example: $0 foolish-ubca"
     exit 1
+fi
+
+full_review=0
+if [[ "$1" == "-f" ]]; then
+   echo "performing full review"
+   full_review=1
+	shift
 fi
 
 CRATE_DIR="$1"
@@ -27,28 +34,31 @@ echo "There are ${#files[@]} new snaps to review and ${#snapfiles[@]} approved s
 if [[ ${#files[@]} -eq 0 ]]; then
     exit 0
 else
-  reread=$((${#files[@]}/10))
-  reread=$(( reread > 0 ? reread : 1))
-  echo "Plan to reread $reread from $( ls *.snap | shuf)"
-  for rereadfn in $( ls *.snap | shuf|head -n $reread); do
-  	 echo "Debuginspecting $rereadfn"
-	 if [ $reread -gt 0 ]; then
-  	   echo "Debug inspecting will reread $rereadfn"
-      if [ ! -e ${rereadfn}.new ]; then
-        # This branch does not trigger using inst and signage
-        echo Requesting Review of $rereadfn for rereading.
-        mv $rereadfn ${rereadfn}.new
-        files+=(${rereadfn}.new)
-        ((reread--))
-      else
-        echo Requesting De Novo review of ${rereadfn} by removing approved snap.
-        rm $rereadfn
-        # Already part of files files+=(${rereadfn}.new)
-      fi
-    else
-       break
+  if (( full_review )); then
+    echo "Full review requetsed."
+    reread=$((${#files[@]}/10))
+      reread=$(( reread > 0 ? reread : 1))
+      echo "Plan to reread $reread from $( ls *.snap | shuf)"
+      for rereadfn in $( ls *.snap | shuf|head -n $reread); do
+    	 echo "Debuginspecting $rereadfn"
+    	 if [ $reread -gt 0 ]; then
+    		echo "Debug inspecting will reread $rereadfn"
+    		if [ ! -e ${rereadfn}.new ]; then
+    		  # This branch does not trigger using inst and signage
+    		  echo Requesting Review of $rereadfn for rereading.
+    		  mv $rereadfn ${rereadfn}.new
+    		  files+=(${rereadfn}.new)
+    		  ((reread--))
+    		else
+    		  echo Requesting De Novo review of ${rereadfn} by removing approved snap.
+    		  rm $rereadfn
+    		  # Already part of files files+=(${rereadfn}.new)
+    		fi
+    	 else
+    		 break
+    	 fi
+      done
     fi
-  done
 fi
 
 CNT=0

@@ -319,6 +319,7 @@ impl IndepIntFir {
 }
 
 impl Fir for IndepIntFir {
+	#[inline(always)]
     fn core(&self) -> &ProtoBrane {
         &self.core
     }
@@ -352,6 +353,7 @@ impl NkFir {
 }
 
 impl Fir for NkFir {
+	#[inline(always)]
     fn core(&self) -> &ProtoBrane {
         &self.core
     }
@@ -396,6 +398,7 @@ impl OperatorFir {
 }
 
 impl Fir for OperatorFir {
+	 #[inline(always)]
     fn core(&self) -> &ProtoBrane {
         &self.core
     }
@@ -594,6 +597,7 @@ impl StatementFir {
 }
 
 impl Fir for StatementFir {
+	 #[inline(always)]
     fn core(&self) -> &ProtoBrane {
         &self.core
     }
@@ -652,6 +656,7 @@ pub struct BraneFir {
 }
 
 impl Fir for BraneFir {
+	 #[inline(always)]
     fn core(&self) -> &ProtoBrane {
         &self.core
     }
@@ -748,11 +753,13 @@ pub struct SearchFir {
     pub(crate) sf_inner_pattern: RefCell<Option<String>>,
 }
 
+#[inline(always)]
 fn extract_simple_name(pattern: &str) -> &str {
     let s = pattern.strip_prefix('^').unwrap_or(pattern);
     s.strip_suffix('$').unwrap_or(s)
 }
 
+#[inline(always)]
 fn resolve_anchor(anchor: &FirRef) -> FirRef {
     get_value(anchor)
 }
@@ -851,6 +858,7 @@ impl SearchFir {
 }
 
 impl Fir for SearchFir {
+    #[inline(always)]
     fn core(&self) -> &ProtoBrane {
         &self.core
     }
@@ -886,9 +894,14 @@ impl Fir for SearchFir {
                         let anchor = Rc::clone(&self.core.foolish_children()[0]);
                         let resolved = resolve_anchor(&anchor);
                         let resolved_borrowed = resolved.borrow();
+                        let resolved_borrowed_core=resolved_borrowed.core();
+                        if resolved_borrowed_core.get_nyes() == Nyes::Nk {
+                            self.core.set_nyes(Nyes::Nk);
+                            return Ok(());
+                        }
                         match resolved_borrowed.kind() {
                             FirKind::Brane => {
-                                let len = resolved_borrowed.core().foolish_children().len();
+                                let len = resolved_borrowed_core.foolish_children().len();
                                 if self.forward {
                                     resolved_borrowed
                                         ._search_brane(&self.pattern, 0, len.saturating_sub(1))
@@ -899,7 +912,6 @@ impl Fir for SearchFir {
                                         .map(|(_idx, stmt, nyes)| (stmt, nyes))
                                 }
                             }
-                            FirKind::Search => return Ok(()),
                             _ => None,
                         }
                     } else {
@@ -1036,6 +1048,7 @@ impl IndexFir {
 }
 
 impl Fir for IndexFir {
+    #[inline(always)]
     fn core(&self) -> &ProtoBrane {
         &self.core
     }
@@ -1123,6 +1136,7 @@ pub struct HeadTailFir {
 }
 
 impl Fir for HeadTailFir {
+	 #[inline(always)]
     fn core(&self) -> &ProtoBrane {
         &self.core
     }
@@ -1249,6 +1263,7 @@ pub struct StayFoolishFir {
 }
 
 impl Fir for StayFoolishFir {
+	#[inline(always)]
     fn core(&self) -> &ProtoBrane {
         &self.core
     }
@@ -1301,6 +1316,7 @@ pub struct StayFullyFoolishFir {
 }
 
 impl Fir for StayFullyFoolishFir {
+	#[inline(always)]
     fn core(&self) -> &ProtoBrane {
         &self.core
     }
@@ -1334,6 +1350,7 @@ pub struct ConcatenationFir {
 }
 
 impl Fir for ConcatenationFir {
+    #[inline(always)]
     fn core(&self) -> &ProtoBrane {
         &self.core
     }
@@ -2109,7 +2126,7 @@ mod tests {
         let transitions = step_to_settled(&search, &scope);
         eprintln!("Search(nk body) NYES transitions: {transitions:?}");
 
-        assert_eq!(search.borrow().core().get_nyes(), Nyes::Woconstanic);
+        assert_eq!(search.borrow().core().get_nyes(), Nyes::Nk);
     }
 
     #[test]
