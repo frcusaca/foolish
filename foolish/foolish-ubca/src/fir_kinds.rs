@@ -53,17 +53,6 @@ pub(crate) fn _decide_nyes_due_to_children(children: &[FirRef]) -> Option<Nyes> 
     None
 }
 
-fn clone_nyes(source: Nyes, descendent_of_sfm_and_foolishly_ignorant: bool) -> Nyes {
-    if descendent_of_sfm_and_foolishly_ignorant {
-        return source;
-    }
-    match source {
-        Nyes::Constant | Nyes::Independent | Nyes::Nk => source,
-        Nyes::Econstanic | Nyes::Woconstanic => Nyes::Embryonic,
-        Nyes::Prembrionic | Nyes::Embryonic | Nyes::Braning => Nyes::Embryonic,
-    }
-}
-
 fn deepest_econstanic_in_chain(search: &FirRef) -> Option<FirRef> {
     let mut current = Rc::clone(search);
     loop {
@@ -86,225 +75,234 @@ fn deepest_econstanic_in_chain(search: &FirRef) -> Option<FirRef> {
     }
 }
 
-macro_rules! clone_proto_brane {
-    ($source:expr, $self_weak:expr, $new_parent:expr, $nyes:expr, $foolish:expr) => {{
-        let cloned_children: Vec<FirRef> = $source
+impl ProtoBrane {
+    fn clone_children_for_constanic_clone(
+        source: &ProtoBrane,
+        self_weak: &Weak<RefCell<dyn Fir>>,
+        new_parent: &Weak<RefCell<dyn Fir>>,
+        nyes: Nyes,
+        sfm: bool,
+    ) -> ProtoBrane {
+        let cloned_children: Vec<FirRef> = source
             .foolish_children()
             .iter()
             .enumerate()
-            .map(|(i, c)| constanic_clone_at(c, &$self_weak, i, $foolish))
+            .map(|(i, c)| ProtoBrane::constanic_clone_at(c, self_weak, i, sfm))
             .collect();
         let core = ProtoBrane::new(
             cloned_children,
-            $new_parent.clone(),
-            clone_nyes($nyes, $foolish),
+            new_parent.clone(),
+            nyes.transform_for_clone(sfm),
         );
-        for ubc in $source.ubc_children() {
-            core.push_ubc_child(constanic_clone_at(&ubc, &$self_weak, 0, $foolish));
+        for ubc in source.ubc_children() {
+            core.push_ubc_child(ProtoBrane::constanic_clone_at(&ubc, self_weak, 0, sfm));
         }
         core
-    }};
-}
+    }
 
-fn constanic_clone_at(
-    fir_ref: &FirRef,
-    new_parent: &Weak<RefCell<dyn Fir>>,
-    index: usize,
-    descendent_of_sfm_and_foolishly_ignorant: bool,
-) -> FirRef {
-    if matches!(
-        fir_ref.borrow().kind(),
-        FirKind::StayFoolish | FirKind::StayFullyFoolish
-    ) {
-        let source = fir_ref.borrow();
-        if source.kind() == FirKind::StayFoolish {
-            if let Some(constanic_result) = source.core().ubc_children().into_iter().next() {
-                return constanic_clone_at(
-                    &constanic_result,
+    pub(crate) fn constanic_clone_at(
+        fir_ref: &FirRef,
+        new_parent: &Weak<RefCell<dyn Fir>>,
+        index: usize,
+        descendent_of_sfm_and_foolishly_ignorant: bool,
+    ) -> FirRef {
+        if matches!(
+            fir_ref.borrow().kind(),
+            FirKind::StayFoolish | FirKind::StayFullyFoolish
+        ) {
+            let source = fir_ref.borrow();
+            if source.kind() == FirKind::StayFoolish {
+                if let Some(constanic_result) = source.core().ubc_children().into_iter().next() {
+                    return Self::constanic_clone_at(
+                        &constanic_result,
+                        new_parent,
+                        index,
+                        descendent_of_sfm_and_foolishly_ignorant,
+                    );
+                }
+            }
+            if let Some(inner) = source.core().foolish_children().first().cloned() {
+                return Self::constanic_clone_at(
+                    &inner,
                     new_parent,
                     index,
                     descendent_of_sfm_and_foolishly_ignorant,
                 );
             }
+            eprintln!("ALARM: SF/SFF node has no children — cloning wrapper as-is");
         }
-        if let Some(inner) = source.core().foolish_children().first().cloned() {
-            return constanic_clone_at(
-                &inner,
-                new_parent,
-                index,
-                descendent_of_sfm_and_foolishly_ignorant,
-            );
+        let nyes = fir_ref.borrow().core().get_nyes();
+        if nyes == Nyes::Constant || nyes == Nyes::Independent {
+            if fir_ref.borrow().kind() != FirKind::Brane {
+                return Rc::clone(fir_ref);
+            }
         }
-        eprintln!("ALARM: SF/SFF node has no children — cloning wrapper as-is");
-    }
-    let nyes = fir_ref.borrow().core().get_nyes();
-    if nyes == Nyes::Constant || nyes == Nyes::Independent {
-        if fir_ref.borrow().kind() != FirKind::Brane {
-            return Rc::clone(fir_ref);
-        }
-    }
-    let borrowed = fir_ref.borrow();
-    let kind = borrowed.kind();
-    match kind {
-        FirKind::IndepInt => Rc::new(RefCell::new(IndepIntFir {
-            core: ProtoBrane::new(vec![], new_parent.clone(), borrowed.core().get_nyes()),
-            value: borrowed.as_i64().unwrap_or(0),
-        })),
-        FirKind::Nk => Rc::new(RefCell::new(NkFir {
-            core: ProtoBrane::new(vec![], new_parent.clone(), borrowed.core().get_nyes()),
-            reason: borrowed.as_nk_reason().unwrap_or("unknown").to_owned(),
-        })),
-        FirKind::Operator => {
-            let op_name = borrowed.as_op_name().unwrap_or("?").to_owned();
-            Rc::new_cyclic(|me: &Weak<RefCell<OperatorFir>>| {
-                let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-                let core = clone_proto_brane!(
-                    borrowed.core(),
-                    self_weak,
-                    new_parent,
-                    nyes,
-                    descendent_of_sfm_and_foolishly_ignorant
-                );
-                RefCell::new(OperatorFir { core, op: op_name })
-            })
-        }
-        FirKind::Search => {
-            let clone_nyes_val = clone_nyes(nyes, descendent_of_sfm_and_foolishly_ignorant);
-            let pattern = borrowed.as_search_pattern().unwrap_or("").to_owned();
-            let anchored = borrowed.as_search_anchored();
-            let chain_econstanic =
-                if !descendent_of_sfm_and_foolishly_ignorant && nyes == Nyes::Woconstanic {
-                    deepest_econstanic_in_chain(fir_ref)
-                } else {
-                    None
-                };
-            Rc::new_cyclic(|me: &Weak<RefCell<SearchFir>>| {
-                let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-                let children: Vec<FirRef> = borrowed
-                    .core()
-                    .foolish_children()
-                    .iter()
-                    .enumerate()
-                    .map(|(i, c)| {
-                        constanic_clone_at(
-                            c,
-                            &self_weak,
-                            i,
-                            descendent_of_sfm_and_foolishly_ignorant,
-                        )
-                    })
-                    .collect();
-                let core = ProtoBrane::new(children, new_parent.clone(), clone_nyes_val);
-                if let Some(ref econ) = chain_econstanic {
-                    core.push_ubc_child(constanic_clone_at(econ, &self_weak, 0, false));
-                } else {
-                    for ubc in borrowed.core().ubc_children() {
-                        core.push_ubc_child(constanic_clone_at(
-                            &ubc,
-                            &self_weak,
-                            0,
-                            descendent_of_sfm_and_foolishly_ignorant,
+        let borrowed = fir_ref.borrow();
+        let kind = borrowed.kind();
+        match kind {
+            FirKind::IndepInt => Rc::new(RefCell::new(IndepIntFir {
+                core: ProtoBrane::new(vec![], new_parent.clone(), borrowed.core().get_nyes()),
+                value: borrowed.as_i64().unwrap_or(0),
+            })),
+            FirKind::Nk => Rc::new(RefCell::new(NkFir {
+                core: ProtoBrane::new(vec![], new_parent.clone(), borrowed.core().get_nyes()),
+                reason: borrowed.as_nk_reason().unwrap_or("unknown").to_owned(),
+            })),
+            FirKind::Operator => {
+                let op_name = borrowed.as_op_name().unwrap_or("?").to_owned();
+                Rc::new_cyclic(|me: &Weak<RefCell<OperatorFir>>| {
+                    let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
+                    let core = ProtoBrane::clone_children_for_constanic_clone(
+                        borrowed.core(),
+                        &self_weak,
+                        new_parent,
+                        nyes,
+                        descendent_of_sfm_and_foolishly_ignorant,
+                    );
+                    RefCell::new(OperatorFir { core, op: op_name })
+                })
+            }
+            FirKind::Search => {
+                let clone_nyes_val =
+                    nyes.transform_for_clone(descendent_of_sfm_and_foolishly_ignorant);
+                let pattern = borrowed.as_search_pattern().unwrap_or("").to_owned();
+                let anchored = borrowed.as_search_anchored();
+                let chain_econstanic =
+                    if !descendent_of_sfm_and_foolishly_ignorant && nyes == Nyes::Woconstanic {
+                        deepest_econstanic_in_chain(fir_ref)
+                    } else {
+                        None
+                    };
+                Rc::new_cyclic(|me: &Weak<RefCell<SearchFir>>| {
+                    let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
+                    let children: Vec<FirRef> = borrowed
+                        .core()
+                        .foolish_children()
+                        .iter()
+                        .enumerate()
+                        .map(|(i, c)| {
+                            ProtoBrane::constanic_clone_at(
+                                c,
+                                &self_weak,
+                                i,
+                                descendent_of_sfm_and_foolishly_ignorant,
+                            )
+                        })
+                        .collect();
+                    let core = ProtoBrane::new(children, new_parent.clone(), clone_nyes_val);
+                    if let Some(ref econ) = chain_econstanic {
+                        core.push_ubc_child(ProtoBrane::constanic_clone_at(
+                            econ, &self_weak, 0, false,
                         ));
+                    } else {
+                        for ubc in borrowed.core().ubc_children() {
+                            core.push_ubc_child(ProtoBrane::constanic_clone_at(
+                                &ubc,
+                                &self_weak,
+                                0,
+                                descendent_of_sfm_and_foolishly_ignorant,
+                            ));
+                        }
                     }
-                }
-                RefCell::new(SearchFir {
-                    core,
-                    pattern,
-                    anchored,
-                    forward: false,
-                    sf_inner_pattern: RefCell::new(None),
+                    RefCell::new(SearchFir {
+                        core,
+                        pattern,
+                        anchored,
+                        forward: false,
+                        sf_inner_pattern: RefCell::new(None),
+                    })
                 })
-            })
-        }
-        FirKind::Index => {
-            let offset = borrowed.as_index_offset();
-            let anchored = borrowed.as_index_anchored();
-            Rc::new_cyclic(|me: &Weak<RefCell<IndexFir>>| {
+            }
+            FirKind::Index => {
+                let offset = borrowed.as_index_offset();
+                let anchored = borrowed.as_index_anchored();
+                Rc::new_cyclic(|me: &Weak<RefCell<IndexFir>>| {
+                    let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
+                    let core = ProtoBrane::clone_children_for_constanic_clone(
+                        borrowed.core(),
+                        &self_weak,
+                        new_parent,
+                        nyes,
+                        descendent_of_sfm_and_foolishly_ignorant,
+                    );
+                    RefCell::new(IndexFir {
+                        core,
+                        offset,
+                        anchored,
+                    })
+                })
+            }
+            FirKind::HeadTail => {
+                let is_head = borrowed.as_headtail_is_head();
+                let anchored = borrowed.as_headtail_anchored();
+                Rc::new_cyclic(|me: &Weak<RefCell<HeadTailFir>>| {
+                    let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
+                    let core = ProtoBrane::clone_children_for_constanic_clone(
+                        borrowed.core(),
+                        &self_weak,
+                        new_parent,
+                        nyes,
+                        descendent_of_sfm_and_foolishly_ignorant,
+                    );
+                    RefCell::new(HeadTailFir {
+                        core,
+                        is_head,
+                        anchored,
+                    })
+                })
+            }
+            FirKind::StayFoolish | FirKind::StayFullyFoolish => {
+                unreachable!("SF/SFF stripped at fn top")
+            }
+            FirKind::Concatenation => Rc::new_cyclic(|me: &Weak<RefCell<ConcatenationFir>>| {
                 let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-                let core = clone_proto_brane!(
+                let core = ProtoBrane::clone_children_for_constanic_clone(
                     borrowed.core(),
-                    self_weak,
+                    &self_weak,
                     new_parent,
                     nyes,
-                    descendent_of_sfm_and_foolishly_ignorant
+                    descendent_of_sfm_and_foolishly_ignorant,
                 );
-                RefCell::new(IndexFir {
-                    core,
-                    offset,
-                    anchored,
+                RefCell::new(ConcatenationFir { core })
+            }),
+            FirKind::Statement => {
+                let name = borrowed.as_stmt_name().unwrap_or("").to_owned();
+                let line = index;
+                Rc::new_cyclic(|me: &Weak<RefCell<StatementFir>>| {
+                    let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
+                    let core = ProtoBrane::clone_children_for_constanic_clone(
+                        borrowed.core(),
+                        &self_weak,
+                        new_parent,
+                        nyes,
+                        descendent_of_sfm_and_foolishly_ignorant,
+                    );
+                    RefCell::new(StatementFir {
+                        core,
+                        name,
+                        line_number: line,
+                    })
                 })
-            })
-        }
-        FirKind::HeadTail => {
-            let is_head = borrowed.as_headtail_is_head();
-            let anchored = borrowed.as_headtail_anchored();
-            Rc::new_cyclic(|me: &Weak<RefCell<HeadTailFir>>| {
+            }
+            FirKind::Brane => Rc::new_cyclic(|me: &Weak<RefCell<BraneFir>>| {
                 let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-                let core = clone_proto_brane!(
+                let core = ProtoBrane::clone_children_for_constanic_clone(
                     borrowed.core(),
-                    self_weak,
+                    &self_weak,
                     new_parent,
                     nyes,
-                    descendent_of_sfm_and_foolishly_ignorant
+                    descendent_of_sfm_and_foolishly_ignorant,
                 );
-                RefCell::new(HeadTailFir {
+                RefCell::new(BraneFir {
                     core,
-                    is_head,
-                    anchored,
+                    characterizations: borrowed.as_brane_characterizations().to_vec(),
                 })
-            })
+            }),
+            FirKind::Unknown => Rc::new(RefCell::new(NkFir {
+                core: ProtoBrane::new(vec![], new_parent.clone(), Nyes::Nk),
+                reason: "unknown fir kind".to_owned(),
+            })),
         }
-        FirKind::StayFoolish | FirKind::StayFullyFoolish => {
-            unreachable!("SF/SFF stripped at fn top")
-        }
-        FirKind::Concatenation => Rc::new_cyclic(|me: &Weak<RefCell<ConcatenationFir>>| {
-            let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-            let core = clone_proto_brane!(
-                borrowed.core(),
-                self_weak,
-                new_parent,
-                nyes,
-                descendent_of_sfm_and_foolishly_ignorant
-            );
-            RefCell::new(ConcatenationFir { core })
-        }),
-        FirKind::Statement => {
-            let name = borrowed.as_stmt_name().unwrap_or("").to_owned();
-            let line = index;
-            Rc::new_cyclic(|me: &Weak<RefCell<StatementFir>>| {
-                let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-                let core = clone_proto_brane!(
-                    borrowed.core(),
-                    self_weak,
-                    new_parent,
-                    nyes,
-                    descendent_of_sfm_and_foolishly_ignorant
-                );
-                RefCell::new(StatementFir {
-                    core,
-                    name,
-                    line_number: line,
-                })
-            })
-        }
-        FirKind::Brane => Rc::new_cyclic(|me: &Weak<RefCell<BraneFir>>| {
-            let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-            let core = clone_proto_brane!(
-                borrowed.core(),
-                self_weak,
-                new_parent,
-                nyes,
-                descendent_of_sfm_and_foolishly_ignorant
-            );
-            RefCell::new(BraneFir {
-                core,
-                characterizations: borrowed.as_brane_characterizations().to_vec(),
-            })
-        }),
-        FirKind::Unknown => Rc::new(RefCell::new(NkFir {
-            core: ProtoBrane::new(vec![], new_parent.clone(), Nyes::Nk),
-            reason: "unknown fir kind".to_owned(),
-        })),
     }
 }
 
@@ -457,7 +455,7 @@ impl OperatorFir {
                         reason,
                     })
                 });
-                self.core.push_ubc_child(constanic_clone_at(
+                self.core.push_ubc_child(ProtoBrane::constanic_clone_at(
                     &nk_ref,
                     &self_weak,
                     0,
@@ -491,7 +489,7 @@ impl OperatorFir {
                                 reason: "division by zero".to_string(),
                             })
                         });
-                        self.core.push_ubc_child(constanic_clone_at(
+                        self.core.push_ubc_child(ProtoBrane::constanic_clone_at(
                             &nk_ref,
                             &self_weak,
                             0,
@@ -511,7 +509,7 @@ impl OperatorFir {
                                 reason: "division by zero".to_string(),
                             })
                         });
-                        self.core.push_ubc_child(constanic_clone_at(
+                        self.core.push_ubc_child(ProtoBrane::constanic_clone_at(
                             &nk_ref,
                             &self_weak,
                             0,
@@ -539,7 +537,7 @@ impl OperatorFir {
                                 reason: reason.clone(),
                             })
                         });
-                        self.core.push_ubc_child(constanic_clone_at(
+                        self.core.push_ubc_child(ProtoBrane::constanic_clone_at(
                             &nk_ref,
                             &self_weak,
                             0,
@@ -566,7 +564,7 @@ impl OperatorFir {
                     value: result,
                 })
             });
-            self.core.push_ubc_child(constanic_clone_at(
+            self.core.push_ubc_child(ProtoBrane::constanic_clone_at(
                 &result_ref,
                 &self_weak,
                 0,
@@ -732,7 +730,7 @@ impl Fir for BraneFir {
             let child = &children[i];
             let child_borrowed = child.borrow();
             if let Some(sn) = child_borrowed.as_stmt_name() {
-                if matches_pattern(sn, expression) {
+                if SearchFir::matches_pattern(sn, expression) {
                     return Some((i, Rc::clone(child), child_borrowed.core().get_nyes()));
                 }
             }
@@ -769,21 +767,6 @@ fn find_stmt_index_in_brane(stmt: &FirRef, brane: &FirRef) -> Option<usize> {
     None
 }
 
-fn matches_pattern(stmt_name: &str, pattern: &str) -> bool {
-    if stmt_name == pattern {
-        return true;
-    }
-    let re = if pattern.contains('^') || pattern.contains('$') {
-        Regex::new(pattern)
-    } else {
-        Regex::new(&format!("^{}$", pattern))
-    };
-    if let Ok(re) = re {
-        return re.is_match(stmt_name);
-    }
-    false
-}
-
 fn unwrap_sf_sff(fir_ref: &FirRef) -> FirRef {
     let kind = fir_ref.borrow().kind();
     match kind {
@@ -798,40 +781,55 @@ fn unwrap_sf_sff(fir_ref: &FirRef) -> FirRef {
     }
 }
 
-fn search_nyes_from_found(found: Nyes) -> Nyes {
-    match found {
-        Nyes::Econstanic | Nyes::Woconstanic | Nyes::Woconstanic => Nyes::Woconstanic,
-        Nyes::Constant | Nyes::Independent => Nyes::Constant,
-        Nyes::Nk => Nyes::Nk,
-        other => other,
-    }
-}
-
-fn constanic_clone_stmt(
-    stmt: &FirRef,
-    new_parent: &Weak<RefCell<dyn Fir>>,
-    descendent_of_sfm_and_foolishly_ignorant: bool,
-) -> FirRef {
-    let stmt_borrowed = stmt.borrow();
-    let body = stmt_borrowed
-        .core()
-        .foolish_children()
-        .first()
-        .cloned()
-        .expect("statement must have a body");
-    let index = stmt_borrowed.as_stmt_line_number().unwrap_or(0);
-    constanic_clone_at(
-        &body,
-        new_parent,
-        index,
-        descendent_of_sfm_and_foolishly_ignorant,
-    )
-}
-
 impl SearchFir {
+    pub(crate) fn matches_pattern(stmt_name: &str, pattern: &str) -> bool {
+        if stmt_name == pattern {
+            return true;
+        }
+        let re = if pattern.contains('^') || pattern.contains('$') {
+            Regex::new(pattern)
+        } else {
+            Regex::new(&format!("^{}$", pattern))
+        };
+        if let Ok(re) = re {
+            return re.is_match(stmt_name);
+        }
+        false
+    }
+
+    pub(crate) fn nyes_from_found(found: Nyes) -> Nyes {
+        match found {
+            Nyes::Econstanic | Nyes::Woconstanic => Nyes::Woconstanic,
+            Nyes::Constant | Nyes::Independent => Nyes::Constant,
+            Nyes::Nk => Nyes::Nk,
+            other => other,
+        }
+    }
+
+    fn clone_stmt_result(
+        stmt: &FirRef,
+        new_parent: &Weak<RefCell<dyn Fir>>,
+        descendent_of_sfm_and_foolishly_ignorant: bool,
+    ) -> FirRef {
+        let stmt_borrowed = stmt.borrow();
+        let body = stmt_borrowed
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .expect("statement must have a body");
+        let index = stmt_borrowed.as_stmt_line_number().unwrap_or(0);
+        ProtoBrane::constanic_clone_at(
+            &body,
+            new_parent,
+            index,
+            descendent_of_sfm_and_foolishly_ignorant,
+        )
+    }
+
     fn handle_found(&self, stmt: FirRef, _nyes: Nyes, scope: &Scope) {
         let self_weak = self.core.parent_weak();
-        self.core.push_search_result(constanic_clone_stmt(
+        self.core.push_search_result(Self::clone_stmt_result(
             &stmt,
             &self_weak,
             scope.has_ancestral_sfm,
@@ -846,14 +844,8 @@ impl SearchFir {
             .first()
             .map(|r| r.borrow().core().get_nyes())
             .unwrap_or(Nyes::Nk);
-        eprintln!(
-            "DEBUG settle_from_ubc_result: pattern={} child_nyes={:?} is_constanic={}",
-            self.pattern,
-            result_nyes,
-            result_nyes.is_constanic()
-        );
         if result_nyes.is_constanic() {
-            self.core.set_nyes(search_nyes_from_found(result_nyes));
+            self.core.set_nyes(Self::nyes_from_found(result_nyes));
         }
     }
 }
@@ -1038,7 +1030,7 @@ impl IndexFir {
             .map(|r| r.borrow().core().get_nyes())
             .unwrap_or(Nyes::Nk);
         if result_nyes.is_constanic() {
-            self.core.set_nyes(search_nyes_from_found(result_nyes));
+            self.core.set_nyes(SearchFir::nyes_from_found(result_nyes));
         }
     }
 }
@@ -1067,7 +1059,7 @@ impl Fir for IndexFir {
                                     index_into_brane_relative(&brane_ref, idx, self.offset)
                                 {
                                     let self_weak = self.core.parent_weak();
-                                    self.core.push_search_result(constanic_clone_at(
+                                    self.core.push_search_result(ProtoBrane::constanic_clone_at(
                                         &body,
                                         &self_weak,
                                         0,
@@ -1095,7 +1087,7 @@ impl Fir for IndexFir {
                     let resolved = resolve_anchor(&anchor);
                     if let Some((body, _body_nyes)) = index_into_brane(&resolved, self.offset) {
                         let self_weak = self.core.parent_weak();
-                        self.core.push_search_result(constanic_clone_at(
+                        self.core.push_search_result(ProtoBrane::constanic_clone_at(
                             &body,
                             &self_weak,
                             0,
@@ -1156,12 +1148,14 @@ impl Fir for HeadTailFir {
                                 {
                                     if nyes.is_constanic() {
                                         let self_weak = self.core.parent_weak();
-                                        self.core.push_search_result(constanic_clone_at(
-                                            &body,
-                                            &self_weak,
-                                            0,
-                                            scope.has_ancestral_sfm,
-                                        ));
+                                        self.core.push_search_result(
+                                            ProtoBrane::constanic_clone_at(
+                                                &body,
+                                                &self_weak,
+                                                0,
+                                                scope.has_ancestral_sfm,
+                                            ),
+                                        );
                                         self.core.set_nyes(nyes);
                                     } else {
                                         self.core.push_task(Rc::clone(&body));
@@ -1187,7 +1181,7 @@ impl Fir for HeadTailFir {
                     if let Some((body, body_nyes)) = index_into_brane(&resolved, offset) {
                         if body_nyes.is_constanic() {
                             let self_weak = self.core.parent_weak();
-                            self.core.push_search_result(constanic_clone_at(
+                            self.core.push_search_result(ProtoBrane::constanic_clone_at(
                                 &body,
                                 &self_weak,
                                 0,
@@ -1209,12 +1203,14 @@ impl Fir for HeadTailFir {
                                 {
                                     if body_nyes.is_constanic() {
                                         let self_weak = self.core.parent_weak();
-                                        self.core.push_search_result(constanic_clone_at(
-                                            &body,
-                                            &self_weak,
-                                            0,
-                                            scope.has_ancestral_sfm,
-                                        ));
+                                        self.core.push_search_result(
+                                            ProtoBrane::constanic_clone_at(
+                                                &body,
+                                                &self_weak,
+                                                0,
+                                                scope.has_ancestral_sfm,
+                                            ),
+                                        );
                                         self.core.set_nyes(body_nyes);
                                     } else {
                                         self.core.set_nyes(Nyes::Nk);
@@ -2630,16 +2626,19 @@ mod tests {
 
     #[test]
     fn clone_nyes_rule_by_mode() {
-        assert_eq!(clone_nyes(Nyes::Constant, false), Nyes::Constant);
-        assert_eq!(clone_nyes(Nyes::Independent, false), Nyes::Independent);
-        assert_eq!(clone_nyes(Nyes::Nk, false), Nyes::Nk);
+        assert_eq!(Nyes::Constant.transform_for_clone(false), Nyes::Constant);
         assert_eq!(
-            clone_nyes(Nyes::Econstanic, false),
+            Nyes::Independent.transform_for_clone(false),
+            Nyes::Independent
+        );
+        assert_eq!(Nyes::Nk.transform_for_clone(false), Nyes::Nk);
+        assert_eq!(
+            Nyes::Econstanic.transform_for_clone(false),
             Nyes::Embryonic,
             "NICC resets ECONSTANIC to EMBRYONIC so it re-steps (IB then AB)"
         );
         assert_eq!(
-            clone_nyes(Nyes::Woconstanic, false),
+            Nyes::Woconstanic.transform_for_clone(false),
             Nyes::Embryonic,
             "NICC resets WOCONSTANIC to EMBRYONIC too (nyes part; collapse is task #21)"
         );
@@ -2651,7 +2650,11 @@ mod tests {
             Nyes::Woconstanic,
             Nyes::Nk,
         ] {
-            assert_eq!(clone_nyes(n, true), n, "FICC must copy {n:?} verbatim");
+            assert_eq!(
+                n.transform_for_clone(true),
+                n,
+                "FICC must copy {n:?} verbatim"
+            );
         }
     }
 
@@ -2660,7 +2663,7 @@ mod tests {
         let op = make_operator("+", vec![make_constant_int(1), make_constant_int(2)]);
         op.borrow().core().set_nyes(Nyes::Econstanic);
 
-        let cloned = constanic_clone_at(&op, &dangling_parent(), 0, false);
+        let cloned = ProtoBrane::constanic_clone_at(&op, &dangling_parent(), 0, false);
 
         assert_eq!(cloned.borrow().kind(), FirKind::Operator);
         assert_eq!(
@@ -2675,7 +2678,7 @@ mod tests {
         let op = make_operator("+", vec![make_constant_int(1), make_constant_int(2)]);
         op.borrow().core().set_nyes(Nyes::Woconstanic);
 
-        let cloned = constanic_clone_at(&op, &dangling_parent(), 0, false);
+        let cloned = ProtoBrane::constanic_clone_at(&op, &dangling_parent(), 0, false);
 
         assert_eq!(
             cloned.borrow().core().get_nyes(),
@@ -2688,7 +2691,7 @@ mod tests {
     fn foolish_clone_copies_constanic_nyes_verbatim() {
         let woc = make_operator("+", vec![make_constant_int(1), make_constant_int(2)]);
         woc.borrow().core().set_nyes(Nyes::Woconstanic);
-        let cloned = constanic_clone_at(&woc, &dangling_parent(), 0, true);
+        let cloned = ProtoBrane::constanic_clone_at(&woc, &dangling_parent(), 0, true);
         assert_eq!(
             cloned.borrow().core().get_nyes(),
             Nyes::Woconstanic,
@@ -2697,7 +2700,7 @@ mod tests {
 
         let econ = make_operator("+", vec![make_constant_int(1), make_constant_int(2)]);
         econ.borrow().core().set_nyes(Nyes::Econstanic);
-        let cloned = constanic_clone_at(&econ, &dangling_parent(), 0, true);
+        let cloned = ProtoBrane::constanic_clone_at(&econ, &dangling_parent(), 0, true);
         assert_eq!(cloned.borrow().core().get_nyes(), Nyes::Econstanic);
     }
 
@@ -2705,16 +2708,16 @@ mod tests {
     fn leaf_clone_unchanged_both_modes() {
         let ci = make_constant_int(9);
         ci.borrow().core().set_nyes(Nyes::Constant);
-        let n = constanic_clone_at(&ci, &dangling_parent(), 0, false);
+        let n = ProtoBrane::constanic_clone_at(&ci, &dangling_parent(), 0, false);
         assert_eq!(n.borrow().core().get_nyes(), Nyes::Constant);
-        let n = constanic_clone_at(&ci, &dangling_parent(), 0, true);
+        let n = ProtoBrane::constanic_clone_at(&ci, &dangling_parent(), 0, true);
         assert_eq!(n.borrow().core().get_nyes(), Nyes::Constant);
 
         let nk = make_nk("gone");
         nk.borrow().core().set_nyes(Nyes::Nk);
-        let n = constanic_clone_at(&nk, &dangling_parent(), 0, false);
+        let n = ProtoBrane::constanic_clone_at(&nk, &dangling_parent(), 0, false);
         assert_eq!(n.borrow().core().get_nyes(), Nyes::Nk);
-        let n = constanic_clone_at(&nk, &dangling_parent(), 0, true);
+        let n = ProtoBrane::constanic_clone_at(&nk, &dangling_parent(), 0, true);
         assert_eq!(n.borrow().core().get_nyes(), Nyes::Nk);
     }
 
@@ -2725,7 +2728,7 @@ mod tests {
         let sf = make_stay_foolish(Rc::clone(&inner));
         sf.borrow().core().set_nyes(Nyes::Econstanic);
 
-        let normal = constanic_clone_at(&sf, &dangling_parent(), 0, false);
+        let normal = ProtoBrane::constanic_clone_at(&sf, &dangling_parent(), 0, false);
         assert_ne!(
             normal.borrow().kind(),
             FirKind::StayFoolish,
@@ -2733,7 +2736,7 @@ mod tests {
         );
         assert_eq!(normal.borrow().kind(), FirKind::IndepInt);
 
-        let foolish = constanic_clone_at(&sf, &dangling_parent(), 0, true);
+        let foolish = ProtoBrane::constanic_clone_at(&sf, &dangling_parent(), 0, true);
         assert_ne!(
             foolish.borrow().kind(),
             FirKind::StayFoolish,

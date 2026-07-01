@@ -162,7 +162,7 @@ impl ProtoBrane {
     /// from outside the FIR. The ONLY sanctioned writers are:
     ///   1. a FIR on ITSELF, inside its own `fir_op_step` (`self.core.set_nyes(...)`); and
     ///   2. construction — `ProtoBrane::new(.., nyes)` (builders, and the constanic-clone path,
-    ///      which legitimately sets the clone's nyes at construction via `clone_nyes`).
+    ///      which legitimately sets the clone's nyes at construction via `Nyes::transform_for_clone`).
     /// No code may call `set_nyes` on a node it does not own. (`pub(crate)` is the tightest the
     /// type system allows here since each FIR kind is a sibling type reaching its own `core`.)
     pub(crate) fn set_nyes(&self, n: Nyes) {

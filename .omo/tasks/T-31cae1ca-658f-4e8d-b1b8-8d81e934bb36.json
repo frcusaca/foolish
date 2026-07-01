@@ -1,0 +1,10 @@
+{
+  "id": "T-31cae1ca-658f-4e8d-b1b8-8d81e934bb36",
+  "subject": "Move matches_pattern → SearchFir::matches_pattern",
+  "description": "Move matches_pattern to SearchFir::matches_pattern. Update caller in BraneFir::_search_brane.",
+  "status": "completed",
+  "activeForm": "Moving matches_pattern to SearchFir",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0eab997dcffe6E7f0ID2Q12cbb"
+}

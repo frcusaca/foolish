@@ -1,4 +1,4 @@
----
+Wed Jul  1 10:07:29 AM PDT 2026 cat complex_search_and_concatenation.foo.snap.new---
 source: foolish-ubca/src/ubca_snapshot_tester.rs
 assertion_line: 34
 ---
@@ -21,7 +21,7 @@ INPUT:
   b1={
       x=10
   };
-  resultˍ1={
+  resultˍ1={!! @Agents, this result_1 is wrong, result_1 as written should be the concatenation of `b1` and `(target.c)`
       x=10
   };
   {

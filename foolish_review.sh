@@ -20,21 +20,30 @@ cd "$APPROVED_DIR"
 shopt -s nullglob
 #files=(*.snap.new)
 readarray -d '' files < <(shuf -z -e *.snap.new)
+readarray -d '' snapfiles < <(shuf -z -e *.snap)
 shopt -u nullglob
 
+echo "There are ${#files[@]} new snaps to review and ${#snapfiles[@]} approved snaps."
 if [[ ${#files[@]} -eq 0 ]]; then
-    echo "No .snap.new files to review."
     exit 0
 else
   reread=$((${#files[@]}/10))
   reread=$(( reread > 0 ? reread : 1))
+  echo "Plan to reread $reread from $( ls *.snap | shuf)"
   for rereadfn in $( ls *.snap | shuf|head -n $reread); do
+  	 echo "Debuginspecting $rereadfn"
 	 if [ $reread -gt 0 ]; then
+  	   echo "Debug inspecting will reread $rereadfn"
       if [ ! -e ${rereadfn}.new ]; then
-        echo marking $rereadfn for rereading
-        cp $rereadfn ${rereadfn}.new
+        # This branch does not trigger using inst and signage
+        echo Requesting Review of $rereadfn for rereading.
+        mv $rereadfn ${rereadfn}.new
         files+=(${rereadfn}.new)
         ((reread--))
+      else
+        echo Requesting De Novo review of ${rereadfn} by removing approved snap.
+        rm $rereadfn
+        # Already part of files files+=(${rereadfn}.new)
       fi
     else
        break
@@ -71,7 +80,7 @@ done
 
 echo ""
 echo "Done. Reviewed ${TTL} files."
-echo "Approved here: $afiles"
+echo "Approved here: ${afiles[@]}"
 echo "Approved all : $(ls *.snap.new.approved 2>/dev/null | wc -l)"
 echo "Flagged:  $(ls *.snap.new 2>/dev/null | wc -l)"
 egrep -Hi '[@]agent' *.new

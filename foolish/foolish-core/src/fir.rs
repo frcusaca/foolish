@@ -176,6 +176,27 @@ impl Nyes {
         }
         true
     }
+
+    /// Transform NYES for constanic-clone: the clone's initial state.
+    ///
+    /// When a FIR is cloned during evaluation (constanic-clone), the clone
+    /// needs a fresh NYES that reflects its role as a "re-evaluation seed":
+    /// - SFM-descendant: preserve the source NYES verbatim (foolishly ignorant).
+    /// - CONSTANT / INDEPENDENT / NK: keep as-is (terminal, no re-evaluation).
+    /// - Everything else → EMBRYONIC (clone must re-evaluate in new context).
+    pub fn transform_for_clone(self, descendent_of_sfm_and_foolishly_ignorant: bool) -> Nyes {
+        if descendent_of_sfm_and_foolishly_ignorant {
+            return self;
+        }
+        match self {
+            Nyes::Constant | Nyes::Independent | Nyes::Nk => self,
+            Nyes::Econstanic
+            | Nyes::Woconstanic
+            | Nyes::Prembrionic
+            | Nyes::Embryonic
+            | Nyes::Braning => Nyes::Embryonic,
+        }
+    }
 }
 
 impl std::fmt::Display for Nyes {
@@ -2240,7 +2261,7 @@ impl<'de> Deserialize<'de> for Fir {
                     statements,
                     state,
                     parent: None,
-            alarm: None,
+                    alarm: None,
                 })))
             }
             _ => Err(serde::de::Error::custom(format!(
