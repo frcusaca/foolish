@@ -19,7 +19,7 @@ Foolish is a revolutionary programming language implemented in Rust. This guide 
 
 ## Build Requirements
 
-- **Rust**: current stable toolchain (see `foolish/` workspace)
+- **Rust**: current stable toolchain
 
 ## Project Segmentation
 Software projects May be large or small. Their complexity and diffiulty may also vary. Generally speaking we use these terms for disjoint components of softare:
@@ -194,12 +194,12 @@ It is the record of what happened, not just what is planned.
 
 ## Build Commands
 
-All commands below run from the workspace root `/home/hcbusy/foolish-rust/foolish`.
+All commands below run from the repository root `/home/hcbusy/foolish-rust`.
 
 ### Rust Implementation
 
 ```bash
-cd /home/hcbusy/foolish-rust/foolish
+cd /home/hcbusy/foolish-rust
 
 cargo check --workspace                          # Quick check (fastest validation)
 cargo build --workspace                          # Build everything
@@ -221,8 +221,8 @@ cargo test -p foolish-core -- brane_search       # Specific test (substring matc
 **foolish-core** snapshot tests use `SnapshotSuite` and `insta`. Snapshots live in
 `foolish-core/snapshot_tests/approved/`.
 
-**foolish-ubcb** snapshot tests also use `SnapshotSuite`. Snapshots live in
-`foolish-ubcb/snapshot_tests/approved/`.
+**foolish-ubca** snapshot tests also use `SnapshotSuite`. Snapshots live in
+`foolish-ubca/snapshot_tests/approved/`.
 
 Each snapshot file has the format:
 ```
@@ -247,7 +247,7 @@ passphrase using the `verify_signatures --write-verified` tool.
 ```bash
 cargo test -p foolish-core --lib                           # all core snapshot tests
 cargo test -p foolish-core --lib -- approval_all           # just the approval suite
-cargo test -p foolish-ubcb --lib                           # all UBCb snapshot tests
+cargo test -p foolish-ubca --lib                           # all UBCa snapshot tests
 ```
 
 #### ⚠️ CRITICAL: NEVER AUTO-ACCEPT SNAPSHOTS ⚠️
@@ -282,9 +282,9 @@ Always verify the semantic correctness of output before accepting.
 
 ```bash
 # Set this to the module being reviewed:
-module_path=foolish-ubca   # e.g. foolish-core, foolish-ubcb, foolish-ubca
+module_path=foolish-ubca   # e.g. foolish-core, foolish-ubca
 
-cd /home/hcbusy/foolish-rust/foolish
+cd /home/hcbusy/foolish-rust
 cargo clean -p $module_path
 cargo insta test -p $module_path --lib
 ./accept_approved.sh $module_path
@@ -299,7 +299,7 @@ Human reviews with:
 #### Signature verification
 
 ```bash
-# Build the tool (once, from the foolish/ workspace root)
+# Build the tool (once, from the repository root)
 cargo build -p foolish-core --bin verify_signatures
 
 # Verify all snapshots with the default computer key
@@ -335,7 +335,7 @@ the test itself easier to read to human reviewers of the test.
 
 #### NYES transition tests (`*_nyes_transitions`)
 Every FIR kind has a unit test named `<kind>_nyes_transitions` in
-`foolish/foolish-ubca/src/fir_kinds.rs` (tests module). Each steps the FIR to settled, records
+`foolish-ubca/src/fir_kinds.rs` (tests module). Each steps the FIR to settled, records
 the per-step NYES sequence, and asserts the progression via the shared `assert_progression`
 helper: it must start `PREMBRIONIC`, end constanic, be monotone (no constanic → pre-constanic
 regression), and reach the kind's expected terminal state. There are also context tests that

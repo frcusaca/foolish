@@ -56,10 +56,9 @@ that have achieved CONSTANT.
 
 ## Running the Rust Implementation
 
-The Rust implementation lives in the `foolish/` directory and requires Rust (cargo) installed.
+Requires Rust (cargo) installed.
 
 ```bash
-cd foolish
 cargo build --package foolish-cli --release
 ```
 
@@ -86,17 +85,16 @@ Type `{` to start a brane — the REPL accumulates lines until braces balance, t
 **Run all tests:**
 
 ```bash
-cargo test --package foolish-core
+cargo test --workspace
 ```
 
 **Snapshot tests (insta):**
 
 ```bash
-cargo test -p foolish-ubcb-cli --lib                          # run all suites
-cargo test -p foolish-ubcb-cli --lib -- approval_all         # run one suite
-cargo test -p foolish-ubcb-cli --lib -- ubcb_test_literals   # run one file
-cargo insta review                                           # interactive review (HUMAN ONLY)
-cargo insta accept                                           # accept all .snap.new (HUMAN ONLY)
+cargo test -p foolish-ubca --lib                              # run all suites
+cargo test -p foolish-ubca --lib -- approval_all              # run one suite
+cargo insta review                                            # interactive review (HUMAN ONLY)
+cargo insta accept                                            # accept all .snap.new (HUMAN ONLY)
 ```
 
 ⚠️ **AI AGENTS MUST NEVER ACCEPT SNAPSHOTS.** Snapshots are cryptographically signed to distinguish AI-generated output from human-reviewed output. AI agents must NEVER run `cargo insta accept`, `INSTA_UPDATE=always`, or any command that auto-accepts snapshots. Present `.snap.new` files to a human for review. Only humans may accept snapshots.
