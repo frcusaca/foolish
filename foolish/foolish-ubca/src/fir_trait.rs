@@ -1002,9 +1002,9 @@ mod get_value_tests {
         let y_stmt = &stmts[1]; // y = x
         let result = y_stmt.borrow()._ib_search(y_stmt, "x");
         assert!(result.is_some());
-        let (stmt, nyes) = result.unwrap();
+        let (stmt, _nyes) = result.unwrap();
         assert_eq!(stmt.borrow().kind(), FirKind::Statement);
-        assert!(nyes.is_constanic());
+        assert_eq!(stmt.borrow().as_stmt_name(), Some("x"));
     }
 
     #[test]
@@ -1030,8 +1030,9 @@ mod get_value_tests {
         assert!(result.is_none(), "x should not be found in inner brane");
         let result = inner_brane.borrow()._ab_search(&inner_brane, "x");
         assert!(result.is_some(), "x should be found via ab_search");
-        let (body, nyes) = result.unwrap();
-        assert_eq!(body.borrow().kind(), FirKind::IndepInt);
+        let (stmt, _nyes) = result.unwrap();
+        assert_eq!(stmt.borrow().kind(), FirKind::Statement);
+        assert_eq!(stmt.borrow().as_stmt_name(), Some("x"));
     }
 
     #[test]

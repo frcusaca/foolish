@@ -519,6 +519,17 @@ and failure, interpreter semantics, compiler lowering, regression cases, and
 invalid programs that must produce diagnostics rather than panics. Use property
 or fuzz tests for parsers, decoders, serialization, and protocol messages.
 
+### Debugging via unit tests
+The easiest way to diagnose parser or FVM logic errors is to write the
+offending code into a temporary unit test named
+`temporary_reproduce_to_debug_description`. Inside this test you can inspect
+the parse tree, take a controlled number of FVM steps while monitoring NYES
+state and FIR tree structure, and inspect computed values. This is the
+preferred method for debugging logic that is not obvious from snapshot diffs.
+The intent is to repair the bug and then remove the temporary test. If a
+legitimate regression test can be made to detect the same problem, rename it
+appropriately and check it in with documentation.
+
 > **Snapshot/approval tests are never auto-accepted.** AI agents must never run
 > `cargo insta accept` or `INSTA_UPDATE=always`. Generate `.snap.new`, present to
 > the human, and wait for explicit approval. See `AGENTS.md` for the full

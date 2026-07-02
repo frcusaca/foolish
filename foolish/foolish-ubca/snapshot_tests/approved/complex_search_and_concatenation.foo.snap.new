@@ -1,0 +1,46 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{target = {a=1; c=2; c={a=1, b=2, c=3}}; b1 = {x=10}; result_1= b1(target.c); result_2 = b1 target.c;}
+```
+[0] RESULT:
+```hfssnap
+{
+  target={
+      a=1;
+      c=2;
+      c={
+          a=1;
+          b=2;
+          c=3
+      }
+  };
+  b1={
+      x=10
+  };
+  resultˍ1={
+      x=10;
+      a=1;
+      b=2;
+      c=3
+  };
+  resultˍ2={
+      x=10;
+      a=1;
+      b=2;
+      c=3
+  }
+}
+```
+COMMENTS:
+```markdown
+complex_search_and_concatenation
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: QwS6koSaXIc2SJUrPaaPbWpmXRelzotPS7Lvx0Ag11296Ubk6q7XHE6O87YdsEIpEojATxfkVO90iG96nWEgBQ==
+HFS signature: PTfA/VJoCcrGceYF0dv9q8ci5IDRJxAMtdPU4hNBzmmoujOPbW99ZMLyMvc9bjUnie3/FY0wchO97a0DODh2Bg==
+Comments signature: mhFMGa36tjUjz5xjnVfZ3AzzOOoDNNDpbQVnrEm79ZVbPc5ohFRUo3LFC8lnIOOZyBriF+qewA7evrG5AjZ0Bg==

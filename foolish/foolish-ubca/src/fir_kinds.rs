@@ -319,7 +319,7 @@ impl IndepIntFir {
 }
 
 impl Fir for IndepIntFir {
-	#[inline(always)]
+    #[inline(always)]
     fn core(&self) -> &ProtoBrane {
         &self.core
     }
@@ -353,7 +353,7 @@ impl NkFir {
 }
 
 impl Fir for NkFir {
-	#[inline(always)]
+    #[inline(always)]
     fn core(&self) -> &ProtoBrane {
         &self.core
     }
@@ -398,7 +398,7 @@ impl OperatorFir {
 }
 
 impl Fir for OperatorFir {
-	 #[inline(always)]
+    #[inline(always)]
     fn core(&self) -> &ProtoBrane {
         &self.core
     }
@@ -597,7 +597,7 @@ impl StatementFir {
 }
 
 impl Fir for StatementFir {
-	 #[inline(always)]
+    #[inline(always)]
     fn core(&self) -> &ProtoBrane {
         &self.core
     }
@@ -656,7 +656,7 @@ pub struct BraneFir {
 }
 
 impl Fir for BraneFir {
-	 #[inline(always)]
+    #[inline(always)]
     fn core(&self) -> &ProtoBrane {
         &self.core
     }
@@ -894,7 +894,7 @@ impl Fir for SearchFir {
                         let anchor = Rc::clone(&self.core.foolish_children()[0]);
                         let resolved = resolve_anchor(&anchor);
                         let resolved_borrowed = resolved.borrow();
-                        let resolved_borrowed_core=resolved_borrowed.core();
+                        let resolved_borrowed_core = resolved_borrowed.core();
                         if resolved_borrowed_core.get_nyes() == Nyes::Nk {
                             self.core.set_nyes(Nyes::Nk);
                             return Ok(());
@@ -1136,7 +1136,7 @@ pub struct HeadTailFir {
 }
 
 impl Fir for HeadTailFir {
-	 #[inline(always)]
+    #[inline(always)]
     fn core(&self) -> &ProtoBrane {
         &self.core
     }
@@ -1263,7 +1263,7 @@ pub struct StayFoolishFir {
 }
 
 impl Fir for StayFoolishFir {
-	#[inline(always)]
+    #[inline(always)]
     fn core(&self) -> &ProtoBrane {
         &self.core
     }
@@ -1316,7 +1316,7 @@ pub struct StayFullyFoolishFir {
 }
 
 impl Fir for StayFullyFoolishFir {
-	#[inline(always)]
+    #[inline(always)]
     fn core(&self) -> &ProtoBrane {
         &self.core
     }
@@ -3117,7 +3117,14 @@ mod tests {
             ib.is_some(),
             "ib_search must find the immediate (shadowing) a"
         );
-        let (body, _nyes) = ib.unwrap();
+        let (stmt, _nyes) = ib.unwrap();
+        let body = stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .unwrap()
+            .clone();
         assert_eq!(
             body.borrow().as_i64(),
             Some(2),
@@ -3232,96 +3239,5 @@ mod tests {
             Some(crate::compiler::ANON_STMT_NAME),
             "anonymous bare expression is named ???"
         );
-    }
-}
-
-#[cfg(test)]
-mod concat_sf_f_more_debug {
-    use super::*;
-    use crate::compiler::Compiler;
-    use crate::fir_trait::{step_fir_ref, Scope, StepReport};
-
-    #[test]
-    fn trace_concat_sf_f_more() {
-        let root = Compiler::compile(
-            "{a=1; b=2; c=3; x=-10; y=-20; z=-30; \
-             f1 = {b= <<x+y>> + <<a>> + <<b + c>>; a= <x+y> + a + b;}; \
-             f2 = {b= <<x+z>> + <a + <<b>> + <c> >;}; \
-             f3 = {c= <a + <<b + <x + y + z> >> + <c> >;}; \
-             b = f1 <f2> <<f3>>; \
-             d= b$;}",
-        )
-        .unwrap()
-        .pop()
-        .unwrap();
-        let scope = Scope::empty();
-
-        for step in 0..100 {
-            let stmts = root.borrow().core().foolish_children().to_vec();
-            let f1_stmt = stmts
-                .iter()
-                .find(|s| s.borrow().as_stmt_name() == Some("f1"))
-                .unwrap();
-            let f1_body = f1_stmt
-                .borrow()
-                .core()
-                .foolish_children()
-                .first()
-                .unwrap()
-                .clone();
-            let f1 = f1_body.borrow();
-
-            let a_stmt = f1
-                .core()
-                .foolish_children()
-                .iter()
-                .find(|s| s.borrow().as_stmt_name() == Some("a"))
-                .unwrap();
-            let a_body = a_stmt
-                .borrow()
-                .core()
-                .foolish_children()
-                .first()
-                .unwrap()
-                .clone();
-            let a = a_body.borrow();
-            let a_nyes = a.core().get_nyes();
-
-            if a_nyes == Nyes::Braning {
-                let ubc = a.core().ubc_children();
-                if !ubc.is_empty() {
-                    let b_clone = &ubc[0];
-                    let bb = b_clone.borrow();
-                    eprintln!(
-                        "step {step}: f1.a=Braning, ubc[0] kind={:?} nyes={:?} children={}",
-                        bb.kind(),
-                        bb.core().get_nyes(),
-                        bb.core().foolish_children().len()
-                    );
-                    for (i, c) in bb.core().foolish_children().iter().enumerate() {
-                        let cb = c.borrow();
-                        eprintln!(
-                            "  child[{i}]: kind={:?} nyes={:?}",
-                            cb.kind(),
-                            cb.core().get_nyes()
-                        );
-                    }
-                } else {
-                    eprintln!("step {step}: f1.a=Braning, NO ubc_children");
-                }
-            }
-
-            if a_nyes.is_constanic() {
-                eprintln!("f1.a SETTLED at step {step}: {a_nyes:?}");
-                return;
-            }
-
-            let report = step_fir_ref(&root, &scope).unwrap();
-            if let StepReport::NoProgress = report {
-                eprintln!("NoProgress at step {step}");
-                break;
-            }
-        }
-        panic!("f1.a did not settle");
     }
 }
