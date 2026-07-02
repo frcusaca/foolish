@@ -1,0 +1,25 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{a = -(-5); b = -(-(-3));}
+```
+[0] RESULT:
+```hfssnap
+{
+  a=5;
+  b=-3
+}
+```
+COMMENTS:
+```markdown
+chained_unary_operators
+generated: 2026-07-02T02:21:23.877000411Z
+```
+SIGNATURES:
+Public key: eb9604b1e50d6df60ea71cded2d51b4031b14e9d8911866fcfff4afb00075e65
+Foolish signature: ClGTFLhcLg5walO17yPxy0z9UZl/X2a1IJL0VWK6ceI/0Xx1mLNEjTfWrSgb1EhvFsEgNQ6wFwIkkLD6H/B2Dw==
+HFS signature: FLJepo9e8+APBYvHDwFd6AvP9b5Is/Z5u2P0ALBKOUvv5/RXXQNOmPZPh02qtyIxjzTIL1NA3XLWzwSTeXJxAg==
+Comments signature: UOwAQCJ84p9XfgvzxQcG4FpUlg1jq2FNWBIqWz/wOFXdGK2Rd9+hAPhrym+PC1GpJWdFDvITjqGLhWfYUpCYCg==

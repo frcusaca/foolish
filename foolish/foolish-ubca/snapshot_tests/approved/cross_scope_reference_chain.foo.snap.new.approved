@@ -1,0 +1,28 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{a = 1; b = {c = a + 1; d = c + 1};}
+```
+[0] RESULT:
+```hfssnap
+{
+  a=1;
+  b={
+      c=2;
+      d=3
+  }
+}
+```
+COMMENTS:
+```markdown
+cross_scope_reference_chain
+generated: 2026-07-02T02:21:26.858390677Z
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: tNHk0722tO1WsAYqGXU6E4LyluowMjg1/r7fpl7OaiRQ6cyKBRGbEhFie/i1WiZLeArBNQ7RkQ9aHdYqQ37sDg==
+HFS signature: hUdoqpWELzTEy7nAoSu72MeBjCsELPQ8guXhM/8nrVkbLQSn9JHdr9Dnk+ppyc0Gi3Sw1/yBhjmbrteKo1ofCQ==
+Comments signature: Qv8zcdmRPUn7TqRCBFa2jKXrURtdD5ZBdiSW8DurkC1IgEjypTYzr8oNzBTswl6PzU1fA1buZsptE6hdlD3XCw==

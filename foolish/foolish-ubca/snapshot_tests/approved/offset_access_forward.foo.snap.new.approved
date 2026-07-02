@@ -1,0 +1,32 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{data = {a=10; b=20; c=30; d=40; e=50}; first = data#0; second = data#1;}
+```
+[0] RESULT:
+```hfssnap
+{
+  data={
+      a=10;
+      b=20;
+      c=30;
+      d=40;
+      e=50
+  };
+  first=10;
+  second=20
+}
+```
+COMMENTS:
+```markdown
+offset_access_forward
+generated: 2026-07-02T02:21:31.350978614Z
+```
+SIGNATURES:
+Public key: eb9604b1e50d6df60ea71cded2d51b4031b14e9d8911866fcfff4afb00075e65
+Foolish signature: XFQzHPBI/vtyNSHFYsM26DU7r5kbrJH17fD6Rx8XrkQEwKBUcEoMwLYxltQ7GZ+I04DFOa6B25NqwWApxQO8Ag==
+HFS signature: S5ywEdz4c9ryMW70CEgZt/aMkhDq1bE7mh9R68VyyjjrlZDcqtsrnjOSh8NTnwMfUJMx6NrNEWGjN2ZrjaZaCg==
+Comments signature: ag5ndtRhEoUjZS50NmzyFqU0r5AbKxQnD4prJaMc2s2ysbd4l9kSLizHOS23KDM1MMQ9wNCE9vZ5M6hKz5tpDg==

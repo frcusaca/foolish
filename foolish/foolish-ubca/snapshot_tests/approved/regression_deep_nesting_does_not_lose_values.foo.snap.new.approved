@@ -1,0 +1,31 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{{{{x = 42; x};};};}
+```
+[0] RESULT:
+```hfssnap
+{
+  {
+    {
+      {
+        x=42;
+        42
+      }
+    }
+  }
+}
+```
+COMMENTS:
+```markdown
+regression_deep_nesting_does_not_lose_values
+generated: 2026-07-02T02:21:32.763348422Z
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: Y6n20+pmIHuScYeHgxuPG8M5BO/gc0rTQZSyzS4Bta3dbhJ39IuX+kvl1OMGnijziXfIwsJqptTNa2wQjVeOAQ==
+HFS signature: fzeCVQwGOjz7Se+fZLjUy6CLcCD0nxjMEELsnucoOy6T8AGXw8xw612LF0Yrlm09+EZSWHK/PmH36//SEpf/Aw==
+Comments signature: ft6v/NlYdeEwNzfDhpN120UMp8E7JUMxEr+aU0PTan7XzkvRt1P6IFImvz8wHOOWf2AIVlQjo7A71pFEKdZrBA==

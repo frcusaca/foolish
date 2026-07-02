@@ -1,0 +1,24 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{a = 10 / 0 * 5;}
+```
+[0] RESULT:
+```hfssnap
+{NK
+  a=Op*(??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, 5, NK)
+}
+```
+COMMENTS:
+```markdown
+operator_chain_with_division_by_zero
+generated: 2026-07-02T02:21:31.549151258Z
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: 6xXzDmW2bk9uVdNo1pzmVAA2klNUYqIJzyzRRur13WEKdH01Vv7fQ6m36WCD7FUBwOglGTO0GBrc4OjNE2iRCw==
+HFS signature: 9OSVDYG1mpTFWcGWuWXNcSlNJnO8B1tkRqP+dJ2mw43nZltY+fHb167aO22TuFRT95lObtzB7c10lWOckMjbAA==
+Comments signature: QPrDbJ8WqirBDA34JGhh7/JSZjWe6pSGrU/xyk9YWT+Ol5BUWLkBURNo7UKA9I1kcFOO1L+EA/cH0nsbQMg3CQ==

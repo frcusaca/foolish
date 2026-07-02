@@ -1,0 +1,30 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{brane = {1; 2; 3}; val = brane^; last = brane$;}
+```
+[0] RESULT:
+```hfssnap
+{
+  brane={
+      1;
+      2;
+      3
+  };
+  val=1;
+  last=3
+}
+```
+COMMENTS:
+```markdown
+head_tail_on_named_brane
+generated: 2026-07-02T02:21:28.320579305Z
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: Ii+46C/OR69N2BxyZd79ujKdb9mxlfW4eba4JmqDLeJcqey2PvhHmnj6wIGcV+1BH/cWmNpNxwcRNl4HxaksCw==
+HFS signature: pwXHsRJvnYHrZy9ovKdL/L4LoSjDiD72oaWmFZKelVrXx8n06CLoyggzaIOoTog0mx7ObCTBffgCeoTR/h0QBw==
+Comments signature: tuRU3sDSm9OVwQMtO+Q86o+UW34ODIVMnmdUdL7f2BnX/QnKU1q2b+2dRN6lIeOW3yDLeWtB632Plti2Gu4TCA==

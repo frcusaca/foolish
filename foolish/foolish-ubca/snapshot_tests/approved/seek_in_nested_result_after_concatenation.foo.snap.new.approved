@@ -1,0 +1,37 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{OB1={a=1; message=2; only=1}; OB2={which_1 = #-1 + 1}; OB = OB1 OB2;}
+```
+[0] RESULT:
+```hfssnap
+{NK
+  OB1={
+      a=1;
+      message=2;
+      only=1
+  };
+  OB2={NK
+      whichˍ1=Op+(#(offset=-1, UNANCHORED, NK), 1, NK)
+  };
+  OB={NK
+      a=1;
+      message=2;
+      only=1;
+      whichˍ1=Op+(#(offset=-1, UNANCHORED, NK), 1, NK)
+  }
+}
+```
+COMMENTS:
+```markdown
+seek_in_nested_result_after_concatenation
+generated: 2026-07-02T02:21:34.188579898Z
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: cfGCMZeXg+6MU8S60P/lQKJXQwIqnmSUM7cERCO9n5/1ZhE2hBqSo3GjNILf1x3L9vm63msdnpdaCuA/vEhcBw==
+HFS signature: VazLcFoAuWa9NzeqmxO82JVI1i8tajkHQGr7rx1UDv0pnfZsDvF0LZ9o33ibWFDIkjjGUpERmyWfvVJay5GcBA==
+Comments signature: YeN8ebEatu+fUHWnilM1ZFvhzRCLlkXUdNYfgvkjN49Hk+yaGO32hOzfj40eekRw+E7pJrjfVLEbNFIla8UUAw==

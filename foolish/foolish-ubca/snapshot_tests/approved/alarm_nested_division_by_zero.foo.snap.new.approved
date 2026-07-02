@@ -1,0 +1,26 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{outer = {inner = 5 / 0};}
+```
+[0] RESULT:
+```hfssnap
+{NK
+  outer={NK
+      inner=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK
+  }
+}
+```
+COMMENTS:
+```markdown
+alarm_nested_division_by_zero
+generated: 2026-07-02T02:21:22.716510736Z
+```
+SIGNATURES:
+Public key: eb9604b1e50d6df60ea71cded2d51b4031b14e9d8911866fcfff4afb00075e65
+Foolish signature: RcFWytW5HUVjOxVxY76AtAzAjh16EsnpcaGXMa410QQFYRDhAAvqsRUWXL6Gcm1c3ze+yNSYv8xyx6i8Ov5WBQ==
+HFS signature: azzJdH7Azbi2mlPkHduvNKrLHy++qt0tmqGiA3IJufGVP6joPtAP/0A1yaHjuUw39gjyL+1lgkreVTWvtdNXDQ==
+Comments signature: UH5DPS4EKVbUBFpyqF4zqeCUJkp/lHcJcC1EvlLSCl57uHfMz39+iqWWptBP77jpnf++c5CmlIeVHitrEyDjAA==
