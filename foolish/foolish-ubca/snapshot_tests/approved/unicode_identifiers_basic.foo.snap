@@ -1,0 +1,27 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{x = 1; π = 3; Б = 7; sum = x + π + Б;}
+```
+[0] RESULT:
+```hfssnap
+{
+  x=1;
+  π=3;
+  Б=7;
+  sum=11
+}
+```
+COMMENTS:
+```markdown
+unicode_identifiers_basic
+generated: 2026-07-02T02:21:37.285971475Z
+```
+SIGNATURES:
+Public key: eb9604b1e50d6df60ea71cded2d51b4031b14e9d8911866fcfff4afb00075e65
+Foolish signature: QNXt8JBZaEi7Ty0gpGIR/pGoork6KojUp2rKO6gP1naNa/bPe7btdgc1k0njS2nPHu351EPHI+64PlfKZ+LTCw==
+HFS signature: HZD8QpIuj2pbZwZQqFFD7FHEKjGOXhtRKxt0Sn+c0Cb5U3r5D1RjPAPs0ZasTeZE60f97t+aKGTbzVTr0xx0BQ==
+Comments signature: +NrZMjtIeFg7ykD5oontcU7D80dMLkMaJd2wL9V6EcMln8hbaSCvVOOY8jirKHDyuCaPRXBE6HxytGV722PZBg==

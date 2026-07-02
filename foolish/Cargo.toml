@@ -6,6 +6,7 @@ members = [
     "foolish-web",
     "foolish-ubcb",
     "foolish-ubcb-cli",
+    "foolish-ubca",
 ]
 resolver = "2"
 
@@ -14,9 +15,11 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1"
 regex = "1"
 anyhow = "1"
+bon = "3"
 thiserror = "2"
 clap = { version = "4", features = ["derive", "env"] }
 insta = { version = "1", features = ["yaml"] }
+time = { version = "0.3", features = ["macros", "formatting"] }
 
 [workspace.lints.rust]
 unsafe_code = "warn"
@@ -36,6 +39,7 @@ opt-level = 0
 opt-level = 1           # Slightly optimize tests for faster execution
 debug = 1
 debug-assertions = true # Keep safety checks enabled
+panic = "unwind"        # Catch panics per-test, not process-wide (FOOP-62 §3.4)
 
 [build]
 jobs = 16

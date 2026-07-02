@@ -1,0 +1,26 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{a = 10 / 2; b = 10 / 0; c = 20 / 4;}
+```
+[0] RESULT:
+```hfssnap
+{NK
+  a=5;
+  b=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK;
+  c=5
+}
+```
+COMMENTS:
+```markdown
+alarm_division_by_zero_in_brane
+generated: 2026-07-02T02:21:22.386015123Z
+```
+SIGNATURES:
+Public key: eb9604b1e50d6df60ea71cded2d51b4031b14e9d8911866fcfff4afb00075e65
+Foolish signature: fa7moZq28HfvQ3xq6t/Ntg/BbPxN/BQDVAyDYhhsOgk9sf10dGt2sccBjWx+jv+8Kw/Hc1FlX/AyjEymJPM5Bw==
+HFS signature: 7TBIT1Kg2+qER9QwMwpHsL+bDtmwQWfDSCoGAz0GCT9X2TQXBsPAkGeAufDmDSnPWi+hqyWAGYXxhdgeGrYACg==
+Comments signature: XNICt0DfKVyzDyllN9FiSc8tBajgGM93QnZoqOofJ1N36jVNPieqgNYHGsT0DSUBvWzxllojBuRSnh0mSkBlDQ==

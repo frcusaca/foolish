@@ -1,0 +1,26 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{5 + 3; 10 - 4; 2 * 6;}
+```
+[0] RESULT:
+```hfssnap
+{
+  8;
+  6;
+  12
+}
+```
+COMMENTS:
+```markdown
+multiple_arithmetic_expressions
+generated: 2026-07-02T02:21:29.822019116Z
+```
+SIGNATURES:
+Public key: eb9604b1e50d6df60ea71cded2d51b4031b14e9d8911866fcfff4afb00075e65
+Foolish signature: dREaRIBhvTbVfSzNMPKmHCJOaac1SgebQF95AZb5mo/2oZiAIHUx4fxvUK98BhKQEb0KYR2vkP5jWgymAPpLAQ==
+HFS signature: iq8jjJEMFFB4ZJTcrICDV2F+P6ncTcLuPfCL8dm0PmenF4nzuFYPyyws2uK1AyJA0YiyH6nZ3W6ZF++7bcIzBw==
+Comments signature: zJgxxpkOSNCVuR+/PSCnUwME2+Rg/+4ynT23EmgRSQcuQAntyeTEJdDerAC+Fr3G175+HhSsPjiHzq7MO5nuAQ==

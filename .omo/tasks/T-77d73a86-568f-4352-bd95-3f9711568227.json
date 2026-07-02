@@ -1,0 +1,10 @@
+{
+  "id": "T-77d73a86-568f-4352-bd95-3f9711568227",
+  "subject": "Move constanic_clone_stmt → SearchFir helper",
+  "description": "Move constanic_clone_stmt to SearchFir as clone_stmt_result. Single caller: SearchFir::handle_found.",
+  "status": "completed",
+  "activeForm": "Moving constanic_clone_stmt to SearchFir",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0eab997dcffe6E7f0ID2Q12cbb"
+}

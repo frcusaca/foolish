@@ -1,0 +1,29 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{x = undeclared; outer = {inner = {y = missing};};}
+```
+[0] RESULT:
+```hfssnap
+{WOCONSTANIC
+  x=?(pattern='^undeclared$', UNANCHORED, ECONSTANIC);
+  outer={WOCONSTANIC
+      inner={WOCONSTANIC
+          y=?(pattern='^missing$', UNANCHORED, ECONSTANIC)
+      }
+  }
+}
+```
+COMMENTS:
+```markdown
+level_skipping_search_not_found
+generated: 2026-07-02T02:21:29.499469231Z
+```
+SIGNATURES:
+Public key: eb9604b1e50d6df60ea71cded2d51b4031b14e9d8911866fcfff4afb00075e65
+Foolish signature: fQHAJjtiKObvQRB+Pkp8M2rsGevRn1adGwiPCs710q5ahQHwoHpAZqFpbs9KfbKdm3q6DjF3msR8V67/2XxUAQ==
+HFS signature: DVT9hQRScjBzgjOTtTgW95yiuZRXr21qqmFzaA23jnW4vtIw1mFVN4RiY0j2lPJph31+5ha1PQgAjJ1cF2elAg==
+Comments signature: hegMP99OZRfa96i/Ll+7ZcAuMM0vM3qnHpFZf7ftkbItrYr5e+Avtw1WNCGYApLHcNuj1jNg6UUNdT/n0Wt+DA==

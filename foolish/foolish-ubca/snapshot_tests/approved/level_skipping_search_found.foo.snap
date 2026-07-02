@@ -1,0 +1,28 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{x = 42; y = x; nested = {z = x};}
+```
+[0] RESULT:
+```hfssnap
+{
+  x=42;
+  y=42;
+  nested={
+      z=42
+  }
+}
+```
+COMMENTS:
+```markdown
+level_skipping_search_found
+generated: 2026-07-02T02:21:29.391222249Z
+```
+SIGNATURES:
+Public key: eb9604b1e50d6df60ea71cded2d51b4031b14e9d8911866fcfff4afb00075e65
+Foolish signature: LlUPa/IGng9koWVr1SyTIwcp5Ph363Xn9qVO84cQ+I4jSyyZAvkgfWXeuMD9TZ6UWvm/n4IL4e9QmuBANbfyAg==
+HFS signature: aiiFSPnw8tFTg0AGLEnN9SYxlVyrFjHLut4qg03cuP3lLe0CALo4h50mr22kVaCVtwkk8MiNQKQSWzmKN9puDw==
+Comments signature: 00Y4rSNOXbmLMqHrNOCb8tO3wCnZ3NjMC4DkDTYdo/5II5ra7PD3MNew38ggAnw12aYCsNF6McGXzfbWtR/qBw==

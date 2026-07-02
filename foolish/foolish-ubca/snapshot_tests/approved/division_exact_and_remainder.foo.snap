@@ -1,0 +1,25 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{a = 10 / 3; b = 9 / 3;}
+```
+[0] RESULT:
+```hfssnap
+{
+  a=3;
+  b=3
+}
+```
+COMMENTS:
+```markdown
+division_exact_and_remainder
+generated: 2026-07-02T02:21:27.153955039Z
+```
+SIGNATURES:
+Public key: eb9604b1e50d6df60ea71cded2d51b4031b14e9d8911866fcfff4afb00075e65
+Foolish signature: ub3aIlZq1nYXNcG6H02MBJKtVlJ9AHKiPSG2npqdMEDS8FEgxBhDSynC7hp4PVUBvCAxqIfwHA7zX2EflYT3AQ==
+HFS signature: QLwEyLXb53SkBD3Sy9rKa6uAPsGZdMnfHK0Cbw9FhsMb2WmBXPnmvhFrHZpvsKSwnvw7GCkSZHBYDYlMItizBQ==
+Comments signature: xtjroZlSKqWHC9SIeGmSvNo7Kdzu+e9QkwH8M0yOulnQqqivYPGa7rf88d8gf/KgfyGpz2kPN4McTwGdEprtBg==

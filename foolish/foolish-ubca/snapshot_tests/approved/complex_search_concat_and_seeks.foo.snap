@@ -1,0 +1,36 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{data = {x=1, y=2, z=3}; copy = data {w=4}; last = copy#-1; first = copy#0;}
+```
+[0] RESULT:
+```hfssnap
+{
+  data={
+      x=1;
+      y=2;
+      z=3
+  };
+  copy={
+      x=1;
+      y=2;
+      z=3;
+      w=4
+  };
+  last=4;
+  first=1
+}
+```
+COMMENTS:
+```markdown
+complex_search_concat_and_seeks
+generated: 2026-07-02T02:21:25.007439432Z
+```
+SIGNATURES:
+Public key: eb9604b1e50d6df60ea71cded2d51b4031b14e9d8911866fcfff4afb00075e65
+Foolish signature: pJSTSsP9cwvM0XYCAZ11EykU99hMyG602sIDyycNPROvvKGGOHj1HS3TNvqG/ZmZOKB0Im2UxK5gyjFfwg4LBA==
+HFS signature: anVGJNccV/3KaBxLyh93tmmcYiuoLgic9DPRdNg1nPawG8cG3sOCAv6DhjoqmGX0VG5jO/iwzxYi/hHtqxajDA==
+Comments signature: Ak7p12r3wccc1XNgFdNeCRgDl9ESCuPlXpmNDQWILE6IeX3ORxzzEeBiEw8rUX73HNnLfXRjJ0AyjV648FXsBQ==

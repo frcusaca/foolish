@@ -154,16 +154,19 @@ fn test_format_concatenation_merged() {
         .merged(ConstantIntFirBuilder::new(99).build())
         .build();
     let s = format_fir_simple(&conc);
-    assert!(s.contains("merged="), "Expected merged= in: {}", s);
+    // Embryonic + no result → no nyes → transparent: renders merged with ⨃ prefix
+    assert!(s.starts_with("⨃"), "Expected ⨃ prefix in: {}", s);
+    assert!(s.contains("99"), "Expected '99' in: {}", s);
 }
 
 #[test]
 fn test_format_index() {
     let idx = IndexFirBuilder::new(1).build();
     let s = format_fir_simple(&idx);
+    // EMBRYONIC state is now always shown (only CONSTANT/INDEPENDENT are hidden)
     assert!(
-        s.contains("#(offset=1, UNANCHORED,"),
-        "Expected '#(offset=1, UNANCHORED,' in: {}",
+        s.contains("#(offset=1, UNANCHORED, EMBRYONIC)"),
+        "Expected '#(offset=1, UNANCHORED, EMBRYONIC)' in: {}",
         s
     );
 }
@@ -172,11 +175,7 @@ fn test_format_index() {
 fn test_format_index_anchored() {
     let idx = IndexFirBuilder::new(0).anchored(true).build();
     let s = format_fir_simple(&idx);
-    assert!(
-        s.contains("#(offset=0, ANCHORED,"),
-        "Expected '#(offset=0, ANCHORED,' in: {}",
-        s
-    );
+    assert!(s.starts_with("^("), "Expected '^(' in: {}", s);
 }
 
 #[test]
@@ -197,7 +196,7 @@ fn test_format_headtail_tail_anchored() {
 fn test_format_stay_foolish() {
     let sf = StayFoolishFirBuilder::new(ConstantIntFirBuilder::new(1).build()).build();
     let s = format_fir_simple(&sf);
-    assert!(s.starts_with("<"), "Expected '<' in: {}", s);
+    // Embryonic + no result → no nyes → transparent: renders inner expression
     assert!(s.contains("1"), "Expected '1' in: {}", s);
 }
 
@@ -205,7 +204,7 @@ fn test_format_stay_foolish() {
 fn test_format_stay_fully_foolish() {
     let sff = StayFullyFoolishFirBuilder::new(ConstantIntFirBuilder::new(2).build()).build();
     let s = format_fir_simple(&sff);
-    assert!(s.starts_with("<<"), "Expected '<<' in: {}", s);
+    // Embryonic + no result → no nyes → transparent: renders inner expression
     assert!(s.contains("2"), "Expected '2' in: {}", s);
 }
 
@@ -215,9 +214,10 @@ fn test_integration_compile_format() {
     let formatted = format_fir_simple(&firs[0]);
 
     assert!(formatted.contains("x="), "Expected 'x=' in: {}", formatted);
+    // Operator is Embryonic → shows full operator with operands
     assert!(
-        formatted.contains("+(1, 2,"),
-        "Expected operator in: {}",
+        formatted.contains("Op+("),
+        "Expected 'Op+(' in: {}",
         formatted
     );
 }

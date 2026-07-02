@@ -1,0 +1,25 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{a = 1; b = #-1;}
+```
+[0] RESULT:
+```hfssnap
+{
+  a=1;
+  b=1
+}
+```
+COMMENTS:
+```markdown
+seek_from_first_statement
+generated: 2026-07-02T02:21:34.086684400Z
+```
+SIGNATURES:
+Public key: eb9604b1e50d6df60ea71cded2d51b4031b14e9d8911866fcfff4afb00075e65
+Foolish signature: NJ/IKkc3AJ9Cu5nRltK09saYZX5HoC7MZIaRz8V3ayYCHtV6Cm96mdUOdfSjoa6c2LDLD1usvCOppCa3d01WBQ==
+HFS signature: MIcSODZdMY3vRzhMXt7AdDoSgI8ZL9BCIBs0ow+WgXkc6I8rJa5JyoemExOBNxJEU9TbEcYv17OSxgpwWLgzDA==
+Comments signature: +SevNAIpaZcBRunfPTAm1A2/J0yfpX4vMX6bBNxuQcT4lbjdobngZ3R4LEEkcxvVXMxEk5HUPmg3gqoW49A5BA==

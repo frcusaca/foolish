@@ -58,7 +58,10 @@ impl Parser {
     fn expect(&mut self, expected: &Token) -> Result<TokenAndLocation> {
         let cur = self.current().cloned();
         match cur {
-            Some(t) if t.token == *expected => self.advance().ok_or_else(|| ParseError::Eof { line: t.line, col: t.column }),
+            Some(t) if t.token == *expected => self.advance().ok_or_else(|| ParseError::Eof {
+                line: t.line,
+                col: t.column,
+            }),
             Some(t) => Err(ParseError::UnexpectedToken {
                 expected: "<token>",
                 found: format!("{:?}", t.token),
@@ -83,7 +86,10 @@ impl Parser {
     }
 
     fn skip_comments(&mut self) {
-        while matches!(self.peek_token(), Some(Token::LineComment | Token::BlockComment(_))) {
+        while matches!(
+            self.peek_token(),
+            Some(Token::LineComment | Token::BlockComment(_))
+        ) {
             self.advance();
         }
     }
@@ -97,7 +103,9 @@ impl Parser {
         let mut branes = Vec::new();
         while !self.at_eof() {
             self.skip_comments();
-            if self.at_eof() { break; }
+            if self.at_eof() {
+                break;
+            }
             branes.push(self.parse_brane()?);
         }
         Ok(branes)
@@ -138,7 +146,9 @@ impl Parser {
         let mut stmts = Vec::new();
         while !self.at_eof() && self.peek_token() != Some(&Token::RBracket) {
             self.skip_comments();
-            if self.peek_token() == Some(&Token::RBracket) { break; }
+            if self.peek_token() == Some(&Token::RBracket) {
+                break;
+            }
             stmts.push(self.parse_detach_stmt()?);
             self.skip_comments();
             if self.eat(&Token::Semicolon) || self.eat(&Token::Comma) {
@@ -206,11 +216,19 @@ impl Parser {
             stmts.push(self.parse_stmt_body()?);
             // Consume separators after stmt_body
             self.skip_comments();
-            if self.peek_token().map(|t| matches!(t, Token::Semicolon | Token::Comma)).unwrap_or(false) {
+            if self
+                .peek_token()
+                .map(|t| matches!(t, Token::Semicolon | Token::Comma))
+                .unwrap_or(false)
+            {
                 loop {
                     self.advance(); // semicolon/comma
                     self.skip_comments();
-                    if self.peek_token().map(|t| matches!(t, Token::Semicolon | Token::Comma)).unwrap_or(false) {
+                    if self
+                        .peek_token()
+                        .map(|t| matches!(t, Token::Semicolon | Token::Comma))
+                        .unwrap_or(false)
+                    {
                         continue;
                     }
                     break;
@@ -258,19 +276,30 @@ impl Parser {
         let chars = self.parse_characterizations();
         let ident_tok = self.advance();
         let ident = match ident_tok {
-            Some(TokenAndLocation { token: Token::Ident(s), .. }) => s,
-            Some(t) => return Err(ParseError::UnexpectedToken {
-                expected: "identifier",
-                found: format!("{:?}", t.token),
-                line: t.line,
-                col: t.column,
-            }),
+            Some(TokenAndLocation {
+                token: Token::Ident(s),
+                ..
+            }) => s,
+            Some(t) => {
+                return Err(ParseError::UnexpectedToken {
+                    expected: "identifier",
+                    found: format!("{:?}", t.token),
+                    line: t.line,
+                    col: t.column,
+                })
+            }
             None => return Err(ParseError::Eof { line: 0, col: 0 }),
         };
 
         let op = match self.peek_token() {
-            Some(Token::LtLtEqGtGt) => { self.advance(); AssignmentOperator::SFF },
-            Some(Token::LtEqGt) => { self.advance(); AssignmentOperator::SF },
+            Some(Token::LtLtEqGtGt) => {
+                self.advance();
+                AssignmentOperator::SFF
+            }
+            Some(Token::LtEqGt) => {
+                self.advance();
+                AssignmentOperator::SF
+            }
             Some(Token::Assign) => {
                 self.advance();
                 match self.peek_token() {
@@ -343,11 +372,12 @@ impl Parser {
             None => return false,
         };
         match current_token.token {
-            Token::LBrace | Token::Ident(_) | Token::Up => {
+            Token::LBrace | Token::LParen | Token::Ident(_) | Token::Up => {
                 let Some(prev_idx) = self.pos.checked_sub(1) else {
                     return false;
                 };
-                self.tokens.get(prev_idx)
+                self.tokens
+                    .get(prev_idx)
                     .map(|t| t.line == current_token.line)
                     .unwrap_or(false)
             }
@@ -432,17 +462,26 @@ impl Parser {
             Some(Token::Plus) => {
                 self.advance();
                 let expr = self.parse_postfix_expr()?;
-                Ok(Astn::UnaryOp { op: "+".into(), expr: Box::new(expr) })
+                Ok(Astn::UnaryOp {
+                    op: "+".into(),
+                    expr: Box::new(expr),
+                })
             }
             Some(Token::Minus) => {
                 self.advance();
                 let expr = self.parse_postfix_expr()?;
-                Ok(Astn::UnaryOp { op: "-".into(), expr: Box::new(expr) })
+                Ok(Astn::UnaryOp {
+                    op: "-".into(),
+                    expr: Box::new(expr),
+                })
             }
             Some(Token::Mul) => {
                 self.advance();
                 let expr = self.parse_postfix_expr()?;
-                Ok(Astn::UnaryOp { op: "*".into(), expr: Box::new(expr) })
+                Ok(Astn::UnaryOp {
+                    op: "*".into(),
+                    expr: Box::new(expr),
+                })
             }
             _ => self.parse_postfix_expr(),
         }
@@ -513,8 +552,12 @@ impl Parser {
         while !self.at_eof() {
             match self.peek_token() {
                 Some(
-                    Token::Semicolon | Token::Comma | Token::RBrace
-                    | Token::RParen | Token::RBracket | Token::Eof
+                    Token::Semicolon
+                    | Token::Comma
+                    | Token::RBrace
+                    | Token::RParen
+                    | Token::RBracket
+                    | Token::Eof
                     | Token::LineComment,
                 ) => break,
                 Some(Token::Ident(s)) => {
@@ -534,7 +577,9 @@ impl Parser {
                             self.advance();
                             break;
                         }
-                        if self.at_eof() { break; }
+                        if self.at_eof() {
+                            break;
+                        }
                         if let Some(Token::Ident(s)) = self.peek_token() {
                             pattern.push_str(s);
                         } else if let Some(Token::Integer(n)) = self.peek_token() {
@@ -554,7 +599,9 @@ impl Parser {
                             self.advance();
                             break;
                         }
-                        if self.at_eof() { break; }
+                        if self.at_eof() {
+                            break;
+                        }
                         if let Some(t) = self.peek_token() {
                             pattern.push_str(&t.to_string());
                         }
@@ -570,7 +617,9 @@ impl Parser {
                             self.advance();
                             break;
                         }
-                        if self.at_eof() { break; }
+                        if self.at_eof() {
+                            break;
+                        }
                         if let Some(t) = self.peek_token() {
                             pattern.push_str(&t.to_string());
                         }
@@ -602,7 +651,10 @@ impl Parser {
 
     fn parse_identifier(&mut self) -> Result<String> {
         match self.advance() {
-            Some(TokenAndLocation { token: Token::Ident(s), .. }) => Ok(s),
+            Some(TokenAndLocation {
+                token: Token::Ident(s),
+                ..
+            }) => Ok(s),
             Some(t) => Err(ParseError::UnexpectedToken {
                 expected: "identifier",
                 found: format!("{:?}", t.token),
@@ -619,7 +671,10 @@ impl Parser {
             neg = -1;
         }
         match self.advance() {
-            Some(TokenAndLocation { token: Token::Integer(n), .. }) => Ok(neg * n as i32),
+            Some(TokenAndLocation {
+                token: Token::Integer(n),
+                ..
+            }) => Ok(neg * n as i32),
             Some(t) => Err(ParseError::UnexpectedToken {
                 expected: "integer",
                 found: format!("{:?}", t.token),
@@ -636,7 +691,10 @@ impl Parser {
         match token_clone {
             Some(Token::LBrace) => self.parse_brane(),
             Some(Token::LBracket) => self.parse_detach_brane(),
-            Some(Token::Up) => { self.advance(); Ok(Astn::UpwardSearch) },
+            Some(Token::Up) => {
+                self.advance();
+                Ok(Astn::UpwardSearch)
+            }
             Some(Token::LParen) => {
                 self.advance();
                 let expr = self.parse_expr()?;
@@ -647,13 +705,17 @@ impl Parser {
                 self.advance();
                 let expr = self.parse_expr()?;
                 self.expect(&Token::GtGt)?;
-                Ok(Astn::StayFullyFoolish { expr: Box::new(expr) })
+                Ok(Astn::StayFullyFoolish {
+                    expr: Box::new(expr),
+                })
             }
             Some(Token::Lt) => {
                 self.advance();
                 let expr = self.parse_expr()?;
                 self.expect(&Token::Gt)?;
-                Ok(Astn::StayFoolish { expr: Box::new(expr) })
+                Ok(Astn::StayFoolish {
+                    expr: Box::new(expr),
+                })
             }
             Some(Token::Integer(n)) => {
                 self.advance();
@@ -885,7 +947,10 @@ mod tests {
         let ast = parse_single("{x^;}").unwrap();
         match ast {
             Astn::Brane { statements, .. } => {
-                assert!(matches!(&statements[0], Astn::HeadTail { is_head: true, .. }));
+                assert!(matches!(
+                    &statements[0],
+                    Astn::HeadTail { is_head: true, .. }
+                ));
             }
             _ => panic!("expected brane"),
         }
@@ -923,14 +988,14 @@ mod tests {
     fn parses_characterizations() {
         let ast = parse_single("{outer'{ x = 1; };}").unwrap();
         match ast {
-            Astn::Brane { statements, .. } => {
-                match &statements[0] {
-                    Astn::Brane { characterizations, .. } => {
-                        assert_eq!(characterizations, &["outer".to_string()]);
-                    }
-                    _ => panic!("expected characterized brane"),
+            Astn::Brane { statements, .. } => match &statements[0] {
+                Astn::Brane {
+                    characterizations, ..
+                } => {
+                    assert_eq!(characterizations, &["outer".to_string()]);
                 }
-            }
+                _ => panic!("expected characterized brane"),
+            },
             _ => panic!("expected brane"),
         }
     }
@@ -939,14 +1004,26 @@ mod tests {
     fn parses_concatenation() {
         let ast = parse_single("{c = {a=1} {b=2};}").unwrap();
         match ast {
-            Astn::Brane { statements, .. } => {
-                match &statements[0] {
-                    Astn::Assignment { expr, .. } => {
-                        assert!(matches!(&**expr, Astn::Concatenation { .. }));
-                    }
-                    _ => panic!("expected assignment with concatenation"),
+            Astn::Brane { statements, .. } => match &statements[0] {
+                Astn::Assignment { expr, .. } => {
+                    assert!(matches!(&**expr, Astn::Concatenation { .. }));
                 }
-            }
+                _ => panic!("expected assignment with concatenation"),
+            },
+            _ => panic!("expected brane"),
+        }
+    }
+
+    #[test]
+    fn parses_parenthesized_concatenation() {
+        let ast = parse_single("{r = b1(target.c);}").unwrap();
+        match ast {
+            Astn::Brane { statements, .. } => match &statements[0] {
+                Astn::Assignment { expr, .. } => {
+                    assert!(matches!(&**expr, Astn::Concatenation { .. }));
+                }
+                _ => panic!("expected assignment with concatenation"),
+            },
             _ => panic!("expected brane"),
         }
     }

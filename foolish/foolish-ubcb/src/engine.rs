@@ -197,13 +197,13 @@ impl UbcbEngine {
         let name = strip_anchors(&pattern);
 
         if let Some(&target_luid) = local_scope.get(name) {
-            let target = firs[&target_luid].clone();
-            let target_state = target.borrow().state();
+            let result = firs[&target_luid].clone();
+            let target_state = result.borrow().state();
             if target_state == Nyes::Constant || target_state == Nyes::Independent {
-                fir.borrow_mut().set_search_target(target);
+                fir.borrow_mut().set_search_result(result);
                 fir.borrow_mut().set_state(target_state);
             } else if target_state.is_constanic() {
-                fir.borrow_mut().set_search_target(target);
+                fir.borrow_mut().set_search_result(result);
                 fir.borrow_mut().set_state(Nyes::Woconstanic);
             }
         } else {
@@ -236,13 +236,13 @@ impl UbcbEngine {
 
         // Local resolution
         if let Some(&target_luid) = local_scope.get(name) {
-            let target = firs[&target_luid].clone();
-            let target_state = target.borrow().state();
+            let result = firs[&target_luid].clone();
+            let target_state = result.borrow().state();
             if target_state == Nyes::Constant || target_state == Nyes::Independent {
-                fir.borrow_mut().set_search_target(target);
+                fir.borrow_mut().set_search_result(result);
                 fir.borrow_mut().set_state(target_state);
             } else if target_state.is_constanic() {
-                fir.borrow_mut().set_search_target(target);
+                fir.borrow_mut().set_search_result(result);
                 fir.borrow_mut().set_state(Nyes::Woconstanic);
             }
         }
@@ -259,13 +259,13 @@ impl UbcbEngine {
                     }
                 }
             }
-            if let Some(target) = found {
-                let target_state = target.borrow().state();
+            if let Some(result) = found {
+                let target_state = result.borrow().state();
                 if target_state == Nyes::Constant || target_state == Nyes::Independent {
-                    fir.borrow_mut().set_search_target(target);
+                    fir.borrow_mut().set_search_result(result);
                     fir.borrow_mut().set_state(target_state);
                 } else if target_state.is_constanic() {
-                    fir.borrow_mut().set_search_target(target);
+                    fir.borrow_mut().set_search_result(result);
                     fir.borrow_mut().set_state(Nyes::Woconstanic);
                 }
             }
@@ -328,10 +328,10 @@ fn get_value(operand: &FirRef) -> Option<i64> {
         let variant = current.borrow().fir_variant();
         match variant {
             "Search" => {
-                let target = current.borrow().search_target_ref()?;
+                let result = current.borrow().search_result_ref()?;
                 let st = current.borrow().state();
                 if st == Nyes::Constant || st == Nyes::Independent {
-                    current = target;
+                    current = result;
                     continue;
                 }
                 return None;

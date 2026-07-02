@@ -1,4 +1,4 @@
-use crate::fir::{Fir, FirQueryable, SearchDirection, StatementSimple};
+use crate::fir::{Fir, FirQueryable, Nyes, SearchDirection, StatementSimple};
 
 /// A formatted line with its prefix (indent level in characters).
 /// Only the outermost level materializes spaces.
@@ -189,12 +189,12 @@ fn proto_brane_formatter_with_result(
     let body_indent = body_indent_compute(open_indent, close_indent);
 
     // Compute result lines first (if any) — no trailing comma yet
-    let mut result_lines: FormattedLines = if let Some(target) = result {
+    let mut result_lines: FormattedLines = if let Some(result) = result {
         let result_label = "result=";
         let inner_open = result_label.len();
         let inner_close = 0;
         let mut rl = render_fir(
-            target,
+            result,
             inner_open,
             inner_close,
             line_hint.saturating_sub(body_indent),
@@ -283,7 +283,6 @@ fn render_fir(
     line_hint: usize,
 ) -> FormattedLines {
     let state = fir.hs_state();
-    let show_state = state.should_show_nyes();
 
     // ── 1. ConstantInt ──
     if let Some(value) = fir.hs_constant_int() {
@@ -301,6 +300,7 @@ fn render_fir(
 
     // ── 3. Operator ──
     if let Some((op, operands)) = fir.hs_operator() {
+        let show_state = state.should_show_nyes();
         // Transparent when CONSTANT/INDEPENDENT
         if !show_state {
             if let Some(first) = operands.first() {
@@ -356,7 +356,9 @@ fn render_fir(
     }
 
     // ── 4. Search ──
-    if let Some((pattern, direction, anchored, _anchor, target)) = fir.hs_search() {
+    if let Some((pattern, direction, anchored, _anchor, result)) = fir.hs_search() {
+        // HFS §9.x: result present + nnk_constanic ⇒ hide nyes; no result + EMBRYONIC ⇒ hide.
+        let show_state = state.should_show_search_nyes(result.is_some());
         let pbid = if direction == SearchDirection::Backward {
             "?"
         } else {
@@ -376,13 +378,15 @@ fn render_fir(
             open_indent,
             close_indent,
             &non_result_items,
-            target.as_deref(),
+            result.as_deref(),
             line_hint,
         );
     }
 
     // ── 5. HeadTail ──
-    if let Some((is_head, _anchored, anchor)) = fir.hs_head_tail() {
+    // `result` (the FIR head/tail found) is the result= slot; the anchor is a non-result item.
+    if let Some((is_head, _anchored, _anchor, result)) = fir.hs_head_tail() {
+        let show_state = state.should_show_search_nyes(result.is_some());
         let pbid = if is_head { "^" } else { "$" };
         let mut non_result_items = Vec::new();
 
@@ -397,34 +401,67 @@ fn render_fir(
             open_indent,
             close_indent,
             &non_result_items,
-            anchor.as_deref(),
+            result.as_deref(),
             line_hint,
         );
     }
 
     // ── 6. Index ──
-    if let Some((offset, anchored, anchor)) = fir.hs_index() {
-        let anchor_str = if anchored { "ANCHORED" } else { "UNANCHORED" };
-        let mut non_result_items = vec![format!("offset={}", offset), anchor_str.to_string()];
-
-        if show_state {
-            non_result_items.push(state.to_string());
+    // `result` (the FIR found at the offset) is the result= slot; the anchor is NOT the result.
+    if let Some((offset, anchored, _anchor, result)) = fir.hs_index() {
+        let show_state = state.should_show_search_nyes(result.is_some());
+        if anchored && offset == 0 {
+            let mut non_result_items = Vec::new();
+            if show_state {
+                non_result_items.push(state.to_string());
+            }
+            let opener = "^(".to_string();
+            return proto_brane_formatter_with_result(
+                &opener,
+                ")",
+                open_indent,
+                close_indent,
+                &non_result_items,
+                result.as_deref(),
+                line_hint,
+            );
+        } else if anchored && offset == -1 {
+            let mut non_result_items = Vec::new();
+            if show_state {
+                non_result_items.push(state.to_string());
+            }
+            let opener = "$(".to_string();
+            return proto_brane_formatter_with_result(
+                &opener,
+                ")",
+                open_indent,
+                close_indent,
+                &non_result_items,
+                result.as_deref(),
+                line_hint,
+            );
+        } else {
+            let anchor_str = if anchored { "ANCHORED" } else { "UNANCHORED" };
+            let mut non_result_items = vec![format!("offset={}", offset), anchor_str.to_string()];
+            if show_state {
+                non_result_items.push(state.to_string());
+            }
+            let opener = "#(".to_string();
+            return proto_brane_formatter_with_result(
+                &opener,
+                ")",
+                open_indent,
+                close_indent,
+                &non_result_items,
+                result.as_deref(),
+                line_hint,
+            );
         }
-
-        let opener = "#(".to_string();
-        return proto_brane_formatter_with_result(
-            &opener,
-            ")",
-            open_indent,
-            close_indent,
-            &non_result_items,
-            anchor.as_deref(),
-            line_hint,
-        );
     }
 
     // ── 7. StayFoolish ──
     if let Some(expr) = fir.hs_stay_foolish() {
+        let show_state = state.should_show_nyes();
         if !show_state {
             return render_fir(&*expr, open_indent, close_indent, line_hint);
         }
@@ -441,6 +478,7 @@ fn render_fir(
 
     // ── 8. StayFullyFoolish ──
     if let Some(expr) = fir.hs_stay_fully_foolish() {
+        let show_state = state.should_show_nyes();
         if !show_state {
             return render_fir(&*expr, open_indent, close_indent, line_hint);
         }
@@ -457,6 +495,7 @@ fn render_fir(
 
     // ── 9. Concatenation ──
     if let Some((elements, merged)) = fir.hs_concatenation() {
+        let show_state = state.should_show_nyes();
         if !show_state {
             if let Some(m) = &merged {
                 let mut brane_lines = render_fir(&**m, 0, 0, line_hint);
@@ -512,6 +551,7 @@ fn render_fir(
 
     // ── 10. NormalBrane ──
     if let Some((characterizations, statements)) = fir.hs_brane() {
+        let show_state = state.should_show_nyes();
         let chars = if characterizations.is_empty() {
             String::new()
         } else {
@@ -536,13 +576,21 @@ fn render_fir(
         // Opener: chars + { + optional bare state token
         let opener_text = if chars.is_empty() {
             if show_state {
-                format!("{}{}", "{", state)
+                if let Some(alarm) = fir.hs_alarm() {
+                    format!("{{{}({}, {})", state, alarm.code, alarm.message)
+                } else {
+                    format!("{}{}", "{", state)
+                }
             } else {
                 "{".to_string()
             }
         } else {
             if show_state {
-                format!("{}{}{}", chars, "{", state)
+                if let Some(alarm) = fir.hs_alarm() {
+                    format!("{}{{{}({}, {})", chars, state, alarm.code, alarm.message)
+                } else {
+                    format!("{}{}{}", chars, "{", state)
+                }
             } else {
                 format!("{}{{", chars)
             }
@@ -588,17 +636,57 @@ fn render_statements(
             0
         };
 
-        let child_lines = render_fir(
-            &*stmt.body,
-            child_open,
-            close_indent,
-            line_hint.saturating_sub(body_indent),
-        );
+        let dollar_info: Option<(Box<dyn FirQueryable>, Nyes)> =
+            stmt.name.as_ref().and_then(|_| {
+                stmt.body.hs_operator().and_then(|(op, mut ops)| {
+                    if op == "$"
+                        && ops.len() == 2
+                        && ops[0]
+                            .hs_index()
+                            .is_some_and(|(offset, anchored, _, _)| offset == -1 && !anchored)
+                    {
+                        let state = stmt.body.hs_state();
+                        let rhs = ops.into_iter().nth(1).unwrap();
+                        Some((rhs, state))
+                    } else {
+                        None
+                    }
+                })
+            });
+
+        let is_dollar_assign = dollar_info.is_some();
+
+        let child_lines = if let Some((ref rhs, _)) = dollar_info {
+            render_fir(
+                &**rhs,
+                child_open,
+                close_indent,
+                line_hint.saturating_sub(body_indent),
+            )
+        } else {
+            render_fir(
+                &*stmt.body,
+                child_open,
+                close_indent,
+                line_hint.saturating_sub(body_indent),
+            )
+        };
 
         let mut merged = child_lines;
         if let Some(ref name) = stmt.name {
             if let Some((_, first_text)) = merged.iter_mut().next() {
-                *first_text = format!("{}={}", name, first_text);
+                if is_dollar_assign {
+                    let state = dollar_info.as_ref().unwrap().1;
+                    if state == Nyes::Nk {
+                        *first_text = format!("{} =$ ??? ({} is not a brane)", name, first_text);
+                    } else if state.should_show_nyes() {
+                        *first_text = format!("{} =$ {} ({})", name, first_text, state);
+                    } else {
+                        *first_text = format!("{} =$ {}", name, first_text);
+                    }
+                } else {
+                    *first_text = format!("{}={}", name, first_text);
+                }
             }
         }
 

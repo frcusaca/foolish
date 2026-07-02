@@ -1,0 +1,26 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{a = 1; b = 2; c = 3;}
+```
+[0] RESULT:
+```hfssnap
+{
+  a=1;
+  b=2;
+  c=3
+}
+```
+COMMENTS:
+```markdown
+regression_regression_disappearing_brane
+generated: 2026-07-02T02:21:33.063996620Z
+```
+SIGNATURES:
+Public key: eb9604b1e50d6df60ea71cded2d51b4031b14e9d8911866fcfff4afb00075e65
+Foolish signature: Gzzo61fYiG7wULNEjwJD0bApRYjhuvVn3S6S9FV2qH2ik6/MSH9gGunq1yioVMT5H+KAgwzoQ6TZvnFz1THuDQ==
+HFS signature: pjmAFzb6buZL5Oz5VeJS69VGw8J0m+xGTrfLYw0DAG3go8I8KSNM7qr4QcWeT6oNlfrDtfXipKz6jYGNk4vYAQ==
+Comments signature: 9sjE7AQMsAWfZ/jO5NFOEQ3fJHjhOTz9EB0tHLbRDPtSHDPWg3mkv0Hp+TNLLreZFhjgW7j/a07qAlHHbJH1CQ==

@@ -1,0 +1,27 @@
+//! # foolish-ubca
+//!
+//! UBCa — Two-Store ProtoBrane Tree and Uniform Two-Phase Stepping.
+//!
+//! This crate implements the new FIR evaluation model described in FOOP-62:
+//! - **ProtoBrane**: a shared field-holder with two provenance-separated child
+//!   stores (`foolish_children` for parse-derived, `ubc_children` for
+//!   compute-derived).
+//! - **Fir trait**: the narrow dyn-dispatch surface (`core()`,
+//!   `fir_op_step()`, `kind()`).
+//! - **step_fir_ref**: the shared stepping free function using transient
+//!   borrows (not a trait method — critical for RefCell borrow discipline).
+//! - **NyesExt**: adds `is_settled()` to `Nyes` (`is_constanic() || == Nk`).
+
+pub mod compiler;
+pub mod evaluator;
+pub mod fir_kinds;
+pub mod fir_trait;
+pub mod nyes_ext;
+pub mod proto_brane;
+
+pub use fir_trait::{step_fir_ref, Fir, FirKind, FirRef, Scope, StepReport, UbcError};
+pub use nyes_ext::NyesExt;
+pub use proto_brane::ProtoBrane;
+
+#[cfg(test)]
+mod ubca_snapshot_tester;

@@ -1,0 +1,32 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{b = {10; 20; 30}; first = b#0; second = b#1; third = b#2; oob = b#3;}
+```
+[0] RESULT:
+```hfssnap
+{NK
+  b={
+      10;
+      20;
+      30
+  };
+  first=10;
+  second=20;
+  third=30;
+  oob=#(offset=3, ANCHORED, NK)
+}
+```
+COMMENTS:
+```markdown
+anchored_seek_positive_boundary
+generated: 2026-07-02T02:21:23.460338115Z
+```
+SIGNATURES:
+Public key: eb9604b1e50d6df60ea71cded2d51b4031b14e9d8911866fcfff4afb00075e65
+Foolish signature: mWPov8MOn5wT3Zy3rLJ5Puk1gWosfqwB56RHu1a/TmX9dLFSJnE+mv6RJ5iZY1sr7W6zRLK05Z0sz1U3ojlHAg==
+HFS signature: JcVy3mp8Cxbk63sEtNugeawWJOsY8178Jp4206q8tg5GHDVdJWNnuc4aHKrvi8x6MTS8nLqSZ+XYwVQrTpYCDw==
+Comments signature: JbG5ISZOTzQg7ZmSWS4jn8XKvukvrjihVDs8EiTKcHJQ1F3VE3SD/55VKlj6ZUUjYPxslNh1rnZG9EWkWKLTBg==

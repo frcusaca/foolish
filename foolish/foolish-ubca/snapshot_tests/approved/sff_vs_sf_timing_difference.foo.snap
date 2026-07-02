@@ -1,0 +1,31 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{x = 1; sf = <x>; sff = <<x>>; x = 10; sf; sff;}
+```
+[0] RESULT:
+```hfssnap
+{WOCONSTANIC
+  x=1;
+  sf=?(result=1, pattern='^x$', UNANCHORED);
+  sff=<<WOCONSTANIC
+      ?(pattern='^x$', UNANCHORED)
+  >>;
+  x=10;
+  1;
+  ?(result=10, pattern='^x$', UNANCHORED)
+}
+```
+COMMENTS:
+```markdown
+sff_vs_sf_timing_difference
+generated: 2026-07-02T02:21:35.641943873Z
+```
+SIGNATURES:
+Public key: eb9604b1e50d6df60ea71cded2d51b4031b14e9d8911866fcfff4afb00075e65
+Foolish signature: BYmMKtvDcKygCe3Z8wiDKOfagdnJQk8mSVmGI0C3fXlZ4e4ar9fSuJpBd8nGlOSdLLeR23jNrdpiPfuFwTWFBg==
+HFS signature: kftog5bdbtwVn/wYlAe4mM3CiK823jC4E/b3TJqWa6D0aOJvmGmARDrCo84DilOkJJMlA5fD7OaWOc8LgYQmAQ==
+Comments signature: Yce9GS0RxSMOnNdQEMsP2MvoF4FaUV5ZYHqhTe5lDeqJoHAQ/6LQBrK0UMVoanfpX6O7i8cc8QGBkOBIQ6ESDA==
