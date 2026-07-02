@@ -1,0 +1,10 @@
+{
+  "id": "T-213b4abd-fa5e-490c-bb09-27e872c3317a",
+  "subject": "Fix SF/SFF proto_to_core_fir to preserve expression state",
+  "description": "Fix StayFoolish and StayFullyFoolish in proto_to_core_fir to preserve the expression body with its original state rather than the fully-evaluated result. This affects 6+ tests.",
+  "status": "completed",
+  "activeForm": "Fixing SF/SFF proto_to_core_fir",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_12dd4c3ecffegt9xrTk3BH8BFj"
+}

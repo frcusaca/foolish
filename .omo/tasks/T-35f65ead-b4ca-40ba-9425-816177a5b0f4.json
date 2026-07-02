@@ -1,0 +1,9 @@
+{
+  "id": "T-35f65ead-b4ca-40ba-9425-816177a5b0f4",
+  "subject": "Constanic-clone SearchFir push_ubc_child calls",
+  "description": "Wrap all 3 push_ubc_child calls in SearchFir::fir_op_step with constanic_clone_normal_at",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_12350cb53ffehCCzbcp4sbh04q"
+}

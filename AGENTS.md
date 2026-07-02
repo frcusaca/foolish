@@ -115,6 +115,11 @@ opencode 1.14.39, Qwen3.6-27B-AWQ-BF16-INT4
 **NEVER** start file changes for project Phase or larger WHEN any tests are broken.
 **NEVER** start large project segment work WHEN ANY tests are broken even if there're notes indicating those breakage are known. The test has to be manually disabled by human OR repaired and committed.
 
+**Exception:** Snapshots that have been reviewed by the human and contain `@agent` comments
+(i.e. `.snap.new.check` files) are permitted to remain non-conformant. These represent known
+issues that the human has inspected and accepted as work-in-progress. They will be fixed as
+part of the impending work tracked in the plan.
+
 ## How To Write Rust Code
 
 > ## ⛔ STOP — READ `rust_instructions.md` BEFORE TOUCHING ANY RUST ⛔
@@ -152,6 +157,9 @@ Restricted actions are:
  * Altering maven, git and other softare configuration files, these include, not exclusively, ".gitigore", ".git", '.claude', ...
  * Never alter any approved approval files matching pattern "*.approved.foo"
  * Never alter any approved approval Foolish files matching pattern "*.approved.foo" Even if it is to change the number of steps taken.
+ * Never move, rename, or alter `.snap` files (approved snapshots).
+ * Never move, rename, or alter `.snap.new.approved` files (human-approved, awaiting signing).
+ * Never run `cargo insta accept` or `INSTA_UPDATE=always`.
 
 For requesting restricted file changes, agents may suggest diff patch or full text of replacement content.
 
@@ -250,20 +258,43 @@ Snapshots are the authoritative record of correct Foolish VM behavior. They are 
 signed to distinguish AI-generated output from human-reviewed output. Auto-accepting snapshots
 bypasses this verification and corrupts the approval chain.
 
-**The correct workflow is:**
+**The snapshot review workflow (human-driven):**
 
-1. Run `cargo insta test -p foolish-core --lib` to generate `.snap.new` files.
-2. Present the `.snap.new` files to the human for review.
-3. **WAIT for explicit human approval** before accepting any snapshots. The approval can come as embedded '(@Agent LGTM)' or similar very brief and direct approvals, agent may move .snap.new files to .snap in these cases ONLY.
-4. Only after human confirmation: run `cargo insta accept` or `cargo insta review`.
+1. AI runs `cargo insta test -p <crate> --lib` to generate `.snap.new` files.
+2. Human runs `foolish_review.sh <crate>` — opens each `.snap.new` in `vimdiff` against the
+   approved `.snap`. The human either:
+   - **Approves** (no edits): file is moved to `.snap.new.approved`.
+   - **Flags** (adds `@agent <comment>`): file is moved to `.snap.new.check` for AI to address.
+3. Human runs `accept_approved.sh <crate>` — signs all `.snap.new.approved` files with their
+   passphrase, then moves each to `.snap` (replacing the old approved snapshot).
+4. AI addresses any `.snap.new.check` files flagged with `@agent` comments.
 
-**Forbidden actions (will be rejected):**
-- `cargo insta accept` — NEVER run this without explicit human approval.
-- `INSTA_UPDATE=always cargo test ...` — NEVER auto-update snapshots.
-- Silently accepting snapshots that change evaluation semantics.
+**AI is NEVER allowed to:**
+- Move, rename, or alter `.snap` files.
+- Move, rename, or alter `.snap.new.approved` files.
+- Run `cargo insta accept` or `INSTA_UPDATE=always`.
+- Silently accept snapshots that change evaluation semantics.
 
 **Remember:** A snapshot change may indicate a VM bug, not a formatting improvement.
 Always verify the semantic correctness of output before accepting.
+
+#### When bug fixes are complete — present this review to the human
+
+```bash
+# Set this to the module being reviewed:
+module_path=foolish-ubca   # e.g. foolish-core, foolish-ubcb, foolish-ubca
+
+cd /home/hcbusy/foolish-rust/foolish
+cargo clean -p $module_path
+cargo insta test -p $module_path --lib
+./accept_approved.sh $module_path
+```
+
+Human reviews with:
+```bash
+./foolish_review.sh $module_path
+./accept_approved.sh $module_path
+```
 
 #### Signature verification
 

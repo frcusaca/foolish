@@ -1,0 +1,10 @@
+{
+  "id": "T-25713e3d-83e9-4692-9fe5-742ed9fc3926",
+  "subject": "Fix remaining 67 snapshot test mismatches in UBCa",
+  "description": "Fix snapshot test failures in foolish-ubca. Current: 76 pass, 67 fail. Target: 106+ pass. Main patterns: WOCONSTANIC (25), NK (13), other (29).",
+  "status": "completed",
+  "activeForm": "Fixing UBCa snapshot test mismatches",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_13db24b35ffefGDFND1pCxvUbk"
+}

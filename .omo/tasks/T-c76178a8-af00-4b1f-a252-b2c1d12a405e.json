@@ -1,0 +1,10 @@
+{
+  "id": "T-c76178a8-af00-4b1f-a252-b2c1d12a405e",
+  "subject": "Fix SF/SFF snapshot test failures in foolish-ubca",
+  "description": "Fix remaining SF/SFF snapshot test failures. Current: 125/143 pass. Target: 135+ pass. Focus on proto_to_core_fir function in evaluator.rs.",
+  "status": "completed",
+  "activeForm": "Fixing SF/SFF snapshot test failures",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_129033650ffeBqXaSTHBX2zD1L"
+}

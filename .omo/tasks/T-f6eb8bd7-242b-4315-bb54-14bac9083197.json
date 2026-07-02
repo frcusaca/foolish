@@ -1,0 +1,9 @@
+{
+  "id": "T-f6eb8bd7-242b-4315-bb54-14bac9083197",
+  "subject": "Constanic-clone OperatorFir push_ubc_child calls",
+  "description": "Wrap all 4 push_ubc_child calls in OperatorFir::fir_op_step with constanic_clone_normal_at",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_12350cb53ffehCCzbcp4sbh04q"
+}

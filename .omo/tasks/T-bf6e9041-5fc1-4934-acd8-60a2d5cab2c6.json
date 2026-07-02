@@ -1,0 +1,10 @@
+{
+  "id": "T-bf6e9041-5fc1-4934-acd8-60a2d5cab2c6",
+  "subject": "Fix SFF inner expression state from PREMBRYONIC to EMBRYONIC",
+  "description": "Fix StayFullyFoolishFir::fir_op_step to advance inner expression (foolish_children[0]) from Prembrionic to Embryonic after setting self to Independent.",
+  "status": "completed",
+  "activeForm": "Fixing SFF inner expression state",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_137b61e63ffeMsAohoTlouacUm"
+}

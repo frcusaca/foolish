@@ -1,0 +1,10 @@
+{
+  "id": "T-5d3a4dd1-55d4-47a8-b7b8-07fde0c256d2",
+  "subject": "Translate HeadTail to IndexFir in UBCa compiler and update sequencer",
+  "description": "1. compiler.rs: HeadTail → IndexFir (offset=0 for head, -1 for tail)\n2. sequencer.rs: Index offset=0,anchored → ^(...) and offset=-1,anchored → $(...)\n3. Verify tests pass",
+  "status": "completed",
+  "activeForm": "Implementing HeadTail→IndexFir translation",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_138e0738cffe3ftxyW9C7Cz9nE"
+}

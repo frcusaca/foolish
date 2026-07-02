@@ -1,0 +1,10 @@
+{
+  "id": "T-f56010ff-3936-4b86-ae2f-1d14f0432ffe",
+  "subject": "Fix search resolution in proto_to_core_fir",
+  "description": "Add ubc_children unwrapping for SearchFir, IndexFir, and HeadTailFir in proto_to_core_fir, matching the OperatorFir pattern. When state is settled and ubc_children has a result, return the resolved value instead of the raw search/index/headtail pattern.",
+  "status": "completed",
+  "activeForm": "Fixing search resolution in proto_to_core_fir",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_13dcbba94ffeO0wvHC13FvQL7a"
+}

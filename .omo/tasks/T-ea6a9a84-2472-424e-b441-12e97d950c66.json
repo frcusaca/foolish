@@ -1,0 +1,9 @@
+{
+  "id": "T-ea6a9a84-2472-424e-b441-12e97d950c66",
+  "subject": "Add parent_weak() method to ProtoBrane",
+  "description": "Add a method to expose the parent Weak reference from ProtoBrane, needed for constanic cloning in fir_op_step.",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_12350cb53ffehCCzbcp4sbh04q"
+}

@@ -1,0 +1,10 @@
+{
+  "id": "T-f5685c46-105a-4051-adc5-c6e1a5009979",
+  "subject": "Implement SF constanic-clone behavior",
+  "description": "Modify StayFoolishFir::fir_op_step to constanic-clone the expr result into ubc_children when settled. Add unit tests. Update existing get_value test that asserts ubc_children is empty.",
+  "status": "completed",
+  "activeForm": "Implementing SF constanic-clone",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_1338506ddffesLaaeQMLSpAfvz"
+}

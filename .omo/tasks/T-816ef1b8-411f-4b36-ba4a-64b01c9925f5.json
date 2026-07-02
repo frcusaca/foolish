@@ -1,0 +1,10 @@
+{
+  "id": "T-816ef1b8-411f-4b36-ba4a-64b01c9925f5",
+  "subject": "Fix search scoping leak in UBCa",
+  "description": "Inner brane definitions (a=40) are leaking into outer scope when searching for `ab = a + b`. Need to fix search to only look at: 1) statements before current position in current brane, 2) ancestor branes walking up parent chain, 3) NEVER look inside child branes.",
+  "status": "completed",
+  "activeForm": "Fixing search scoping leak in UBCa",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_138d00f08ffe5NvJMhAddHt2NR"
+}
