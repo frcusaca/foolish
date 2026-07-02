@@ -19,6 +19,7 @@ bon = "3"
 thiserror = "2"
 clap = { version = "4", features = ["derive", "env"] }
 insta = { version = "1", features = ["yaml"] }
+time = { version = "0.3", features = ["macros", "formatting"] }
 
 [workspace.lints.rust]
 unsafe_code = "warn"

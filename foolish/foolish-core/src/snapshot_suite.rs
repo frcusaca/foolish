@@ -147,7 +147,10 @@ impl SnapshotSuite {
         let test_name = path.file_stem()
             .and_then(|s| s.to_str())
             .unwrap_or("unknown");
-        let comments = test_name.to_string();
+        let now = time::OffsetDateTime::now_utc();
+        let timestamp = now.format(&time::format_description::well_known::Iso8601::DEFAULT)
+            .unwrap_or_else(|_| "timestamp-error".to_string());
+        let comments = format!("{}\ngenerated: {}", test_name, timestamp);
 
         let sig = crate::signature::sign_snapshot("", &source, &hs_outputs, &comments);
 

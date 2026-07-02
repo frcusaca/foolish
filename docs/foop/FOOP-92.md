@@ -1,6 +1,6 @@
 ---
 foop: 29
-title: Signed-snapshot testing library with separated review and promotion lifecycle
+title: Einmo — directory-based signed-snapshot testing with staged promotion
 author: Sisyphus <agent>
 status: Draft
 type: Standards
@@ -9,49 +9,37 @@ phase: meta
 supersedes: []
 ---
 
-# FOOP-92: Signed-snapshot testing library with separated review and promotion lifecycle
+# FOOP-92: Einmo — directory-based signed-snapshot testing with staged promotion
 FOOP numbering is little-endian; the full rules live in `foop.md` at the
 repository root — **read it before creating or editing a FOOP.**
 
-This FOOP extracts the Foolish project's signed-snapshot approval-testing
-machinery into a coherent, reusable **library** with an explicit lifecycle
-state machine. Its defining requirement — the feature that no surveyed
-snapshot/approval-testing framework provides — is that **human review is a
-distinct state from promotion to approved status**, and the **generator of a
-snapshot always signs its content** with a computer/AI key that is never
-removed. Promotion is a separate, cryptographically attributable human act.
+This FOOP specifies **Einmo**, a directory-based signed-snapshot testing
+library that replaces insta for the Foolish project. Einmo's defining
+requirement — the feature no surveyed snapshot/approval-testing framework
+provides — is that **promotion is a staged pipeline** (output → checked →
+verified), each stage is a directory, and **every generated output is
+timestamped and signed by the test runner**. Promotion between stages is a
+separate, cryptographically attributable act performed via CLI (by human or
+AI agent). The library supports **comparing any two stages** so that
+different processes can enforce different correspondences (e.g. "code output
+matches checked" or "checked matches verified").
 
-The body is organised as: Abstract → Motivation (what we want) →
-Specification (how to implement the library) → standard FOOP sections →
-Appendices A–E carrying the supporting research (insta best practices &
-pitfalls, cross-language survey, approval-testing theory, novelty/prior-art
-analysis, and enhancement suggestions).
+The body is organised as: Abstract → Motivation → Specification → standard
+FOOP sections → Appendices A–E carrying the supporting research.
 
 ## Abstract
 
-Extract the Foolish project's signed-snapshot approval-testing machinery —
-currently spread across `foolish-core/src/snapshot_suite.rs`,
-`foolish-core/src/signature.rs`, `foolish-core/src/bin/verify_signatures.rs`,
-and the `foolish_review.sh` / `accept_approved.sh` shell scripts — into a
-reusable workspace crate (`foolish-snap`) with an explicit four-state
-lifecycle: **Generated → Reviewed → Promoted** (plus **Flagged** as a side
-state). The generator always appends a `test` signer entry (computer/AI key)
-at generation time; this entry is permanent and never removed. Human review
-produces a *reviewed-but-not-yet-promoted* artifact (`.snap.new.approved`)
-carrying no human signature yet. Promotion appends a `util` signer entry
-(human passphrase key) with an "Entire file" integrity signature, then renames
-to `.snap`. The passphrase for automated (non-interactive) signing is resolved
-via a fixed cascade (CLI > env var > config file > default empty), making the
-computer key configurable per-environment for reuse by other projects. A
-two-layer CI gate is specified: always-on signature+content verification
-(catches tampering/regressions), and an opt-in `require_human_promotion`
-config that rejects any `.snap` lacking a human `util` entry — the opt-in
-gate is the tier-1/P0 feature, the primary improvement to insta, default off
-so the legacy corpus and opt-out projects are not blocked. This three-state
-lifecycle separation, the always-signed generation, the append-on-promotion
-signature model, and the configurable CI gate are the library's defensible
-novelty: no mainstream snapshot/approval/golden-master framework separates
-review from promotion or signs test artifacts at all.
+**Einmo** is a workspace crate (`einmo`) providing directory-based
+signed-snapshot testing with a three-stage promotion pipeline: **output** →
+**checked** → **verified**. Each test is configured with a work directory
+containing `input/` (test triggers) and stage directories (`output/`,
+`checked/`, `verified/`) holding `.einmo` files. Generated outputs are
+timestamped and signed by the test runner. Promotion from output → checked
+is a CLI operation available to AI agents or humans. Promotion from checked
+→ verified requires a human-specified signing phrase. The library supports
+comparing any two stages, enabling processes like "output matches checked"
+or "checked matches verified." The crate replaces insta for Foolish
+snapshot testing and is designed for reuse by other projects.
 
 ## Motivation
 
@@ -59,59 +47,250 @@ review from promotion or signs test artifacts at all.
 
 The Foolish language implementation uses snapshot/approval tests as the
 **hard acceptance gate** for VM behaviour (FOOP-62): a `.foo` input is
-evaluated, the humanizing-sequencer output is captured, and a `.snap` file is
-the approved behavioural contract. Because the project is developed
-collaboratively by humans **and AI agents**, we need a testing artefact whose
-**provenance is cryptographically attributable**: at any moment we must be
-able to answer *"was this snapshot's output merely generated by a computer,
-or was it actually reviewed and promoted by a specific human?"*
+evaluated, the humanizing-sequencer output is captured, and an `.einmo` file
+is the approved behavioural contract. Because the project is developed
+collaboratively by humans **and AI agents**, we need:
 
-The existing machinery (FOOP-12 signatures + FOOP-02 SnapshotSuite +
-FOOP-42 HFS format + FOOP-71 insta integration + the worktree-local review
-scripts) delivers the cryptographic primitives but has three deficits this
-FOOP resolves:
+1. **Staged promotion, not a single accept step.** Insta collapses "human
+   looked at the diff" and "human promoted the baseline" into one `accept`
+   step. We want three stages: output (generated), checked (reviewed),
+   verified (human-signed). Each stage is a directory, making the pipeline
+   inspectable by CI and by other tools.
 
-1. **Review and promotion are conflated in every tool we surveyed.** Insta,
-   Verify, ApprovalTests, Jest, and jlevy/tbd all collapse "human looked at
-   the diff" and "human promoted the baseline" into a single `accept` step.
-   We want them **separated**: a human can mark a generated snapshot
-   "reviewed" (it is acceptable) without immediately committing the human
-   signature that promotes it — leaving a window for a second human, a
-   batching operation, or a CI gate to act before the final promotion.
+2. **Every output is timestamped and signed.** The test runner always signs
+   its output with a computer/AI key, embedding the generation timestamp.
+   This attestation ("a machine produced this output at this time") is
+   permanent and survives promotion.
 
-2. **The generator does not reliably sign in a way that persists.** Today
-   `SnapshotSuite::evaluate` pre-signs with the computer key, but
-   `accept_approved.sh`'s `verify_signatures --write-verified` **replaces**
-   the footer with the human key, destroying the computer attestation. We want
-   the computer signature to be **permanent** — the generator always signs,
-   and that attestation ("a machine produced this output on this date")
-   must survive promotion. This aligns with FOOP-22's append-multi-signer
-   direction and with the supply-chain attestation model (in-toto
-   Statement/Envelope: signatures accumulate, they do not overwrite).
+3. **Compare any two stages.** Different processes can enforce different
+   correspondences: "output matches checked" (CI gate), "checked matches
+   verified" (release gate), or "output matches verified" (direct promotion
+   path). The comparison API is stage-agnostic.
 
-3. **The lifecycle is encoded in shell scripts and prose, not in a library
-   type.** The `.snap.new` → `.snap.new.approved` / `.snap.new.check` →
-   `.snap` transitions live in `foolish_review.sh` and `accept_approved.sh`
-   (currently only on the `foop-62-ubca-mimo` worktree), plus AGENTS.md
-   prose. There is no Rust type that says "this artifact is in the Reviewed
-   state." We want a **library with a typed state machine** so the lifecycle
-   is enforceable in code, testable in unit tests, and not dependent on bash.
+4. **CLI-driven promotion.** Promotion is a command-line operation that can
+   be invoked by AI agents (output → checked) or humans (checked → verified,
+   requiring a signing phrase). The CLI determines where to get the signing
+   key — from keyboard console, from an external API, or from test code.
 
 ### The world after this FOOP
 
-- A reusable library (crate or module) exposing `SignedSnapshot`,
-  `SnapshotLifecycle`, `SignerEntry`, and a `promote`/`review`/`flag` API.
-- Every generated snapshot carries a permanent `test` signer entry
-  (computer key) the instant it is written.
-- A human review produces a `.snap.new.approved` file that is **reviewed
-  but unsigned-by-a-human** — a genuine intermediate state, inspectable by
-  CI and by other humans.
-- Promotion appends a `util` signer entry (human passphrase + "Entire file"
-  integrity signature) and renames to `.snap`. The computer entry remains.
-- The shell scripts become thin wrappers over library calls; the state
-  machine is owned by the library, not by bash.
-- CI can gate on the lifecycle: reject any `.snap` lacking a `util` (human)
-  entry; reject any `.snap.new.approved` older than N days (stale review).
+- A reusable crate `einmo` with directory-based test configuration.
+- Each test's work directory: `input/` → `output/*.einmo` → `checked/*.einmo`
+  → `verified/*.einmo`.
+- Generated outputs carry a `test` signer entry with timestamp.
+- `einmo promote output→checked` (AI/human, no passphrase required).
+- `einmo promote checked→verified` (human, passphrase required).
+- `einmo compare <stage-a> <stage-b>` — stage-agnostic comparison.
+- CI gates on stage correspondence, not just existence.
+
+## Specification
+
+### 1. Crate structure
+
+The library is a workspace member **`einmo`** (path `foolish/einmo/`),
+depended on by `foolish-core` and `foolish-ubca` as a dev-dependency.
+
+```
+foolish/einmo/
+├── Cargo.toml
+└── src/
+    ├── lib.rs              # re-exports
+    ├── config.rs           # TestConfig (work dir, stage dirs)
+    ├── stage.rs            # Stage enum + directory operations
+    ├── compare.rs          # stage-to-stage comparison
+    ├── signature.rs        # moved from foolish-core/src/signature.rs
+    ├── format.rs           # .einmo file parse/serialize
+    └── bin/
+        ├── einmo.rs        # CLI: promote, compare, verify
+        └── verify_signatures.rs  # moved from foolish-core/src/bin/
+```
+
+### 2. Directory-based test configuration
+
+Each test is configured with a **work directory** containing:
+
+```
+test_name/
+├── input/                  # test trigger files (*.foo or inline)
+│   └── program.foo
+├── output/                 # generated outputs (test-runner signed)
+│   └── program.foo.einmo
+├── checked/                # reviewed outputs (AI or human promoted)
+│   └── program.foo.einmo
+└── verified/               # human-signed outputs (passphrase required)
+    └── program.foo.einmo
+```
+
+**Configuration:**
+
+```rust
+pub struct TestConfig {
+    /// Root work directory for this test suite.
+    pub work_dir: PathBuf,
+    /// Input directory name (default: "input").
+    pub input_dir: String,
+    /// Stage directory names.
+    pub stages: StageDirs,
+}
+
+pub struct StageDirs {
+    pub output: String,    // default: "output"
+    pub checked: String,   // default: "checked"
+    pub verified: String,  // default: "verified"
+}
+```
+
+### 3. The three-stage lifecycle
+
+```rust
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Stage {
+    /// Generated by test runner. Timestamped + computer-signed.
+    Output,
+    /// Reviewed — promoted from output by AI agent or human.
+    /// No passphrase required; the CLI actor is recorded.
+    Checked,
+    /// Verified — promoted from checked by human with signing phrase.
+    /// Passphrase required; human key appended.
+    Verified,
+}
+```
+
+**Stage → directory mapping:**
+
+| Stage | Directory | Signer entries | Who can produce | Passphrase |
+|---|---|---|---|---|
+| Output | `output/` | `test` (computer key + timestamp) | test runner | none (empty) |
+| Checked | `checked/` | `test` (preserved) | AI agent or human via CLI | none |
+| Verified | `verified/` | `test` (preserved) + `util` (human key) | human via CLI | required |
+
+**Critical invariant:** the `test` entry (with timestamp) is created once at
+generation and **never modified or removed** by any promotion. Only
+verification appends a `util` entry.
+
+### 4. Every output is timestamped and signed
+
+The test runner always embeds a generation timestamp in the `.einmo` file's
+COMMENTS block and signs the entire output:
+
+```
+COMMENTS:
+```markdown
+test_name
+generated: 2026-07-01T15:30:45.123456789Z
+```
+SIGNATURES:
+  * Signed by test: <hex_pk_computer>
+    * Foolish: <sig over canon_input>
+    * HFS: <sig over canon_input + canon_hs>
+    * Comments: <sig over canon_input + canon_hs + canon_comments>
+```
+
+The timestamp is **inside the signed content** — it is tamper-evident. The
+`test` signer entry uses the empty-passphrase computer key (configurable via
+cascade, see §7).
+
+### 5. Promotion CLI
+
+```bash
+# Promote output → checked (AI agent or human, no passphrase)
+einmo promote output→checked <work_dir> [--filter <pattern>]
+
+# Promote checked → verified (human, passphrase required)
+einmo promote checked→verified <work_dir> [--stdin-passphrase]
+
+# Promote output → verified directly (skipping checked, human only)
+einmo promote output→verified <work_dir> [--stdin-passphrase]
+```
+
+The CLI determines the signing key source:
+- **Keyboard console** (default for `--stdin-passphrase`): reads passphrase
+  from terminal.
+- **External API** (configurable): calls a key-service endpoint.
+- **Test code** (for automated re-signing): uses the cascade in §7.
+
+### 6. Stage comparison
+
+The library supports comparing any two stages, enabling different processes
+to enforce different correspondences:
+
+```rust
+pub struct ComparisonResult {
+    /// Files present in stage_a but missing in stage_b.
+    pub only_in_a: Vec<PathBuf>,
+    /// Files present in stage_b but missing in stage_a.
+    pub only_in_b: Vec<PathBuf>,
+    /// Files present in both but with different content.
+    pub differing: Vec<DiffEntry>,
+    /// Files present in both with identical content.
+    pub matching: Vec<PathBuf>,
+}
+
+pub struct DiffEntry {
+    pub path: PathBuf,
+    pub stage_a_content: String,
+    pub stage_b_content: String,
+}
+```
+
+```bash
+# Compare output with checked (CI gate: "did we review everything?")
+einmo compare output checked <work_dir>
+
+# Compare checked with verified (release gate: "did we verify everything?")
+einmo compare checked verified <work_dir>
+
+# Compare output with verified (direct path)
+einmo compare output verified <work_dir>
+```
+
+**Use cases:**
+- **CI gate:** `einmo compare output checked` must show 0 differing files
+  (all reviewed outputs match generated outputs).
+- **Release gate:** `einmo compare checked verified` must show 0 differing
+  files (all checked outputs have been verified).
+- **Staleness check:** `einmo compare output checked` with `--stale-days 14`
+  warns about checked files older than 14 days relative to output.
+
+### 7. Passphrase resolution cascade
+
+Same as the original FOOP-92 §9, applied to `einmo`:
+
+1. `--passphrase <value>` or `--stdin-passphrase`
+2. `EINMO_PASSPHRASE` env var
+3. `einmo.toml` config file, `[signing]` section
+4. Default `""` (computer key)
+
+Promotion to `verified` always requires `--stdin-passphrase` (interactive
+human act). Promotion to `checked` does not require a passphrase.
+
+### 8. Library API
+
+```rust
+/// Run all tests in a work directory, generating outputs.
+pub fn run_tests(config: &TestConfig, evaluator: &dyn Evaluator) -> TestResults;
+
+/// Promote files from one stage to the next.
+pub fn promote(config: &TestConfig, from: Stage, to: Stage, key_source: &KeySource) -> Result<PromotionReport>;
+
+/// Compare two stages.
+pub fn compare(config: &TestConfig, stage_a: Stage, stage_b: Stage) -> ComparisonResult;
+
+/// Verify all signatures in a stage.
+pub fn verify(config: &TestConfig, stage: Stage) -> VerificationReport;
+```
+
+### 9. CI integration
+
+**Layer 1 (always on):** `einmo verify <work_dir>` — all `.einmo` files
+must pass signature verification.
+
+**Layer 2 (opt-in):** `einmo compare output checked <work_dir>` must show
+0 differing files — all generated outputs must have been reviewed.
+
+**Layer 3 (opt-in):** `einmo compare checked verified <work_dir>` must show
+0 differing files — all checked outputs must have been verified (release
+gate).
 
 ## Specification
 
@@ -466,66 +645,45 @@ provides the exit code that the platform check consumes.
 
 None. This FOOP changes test infrastructure only. The `SequenceableFir` /
 `HumanizingSequencer` / `FirQueryable` machinery (FOOP-02, FOOP-42) is
-unchanged; the library consumes its `String` output opaquely.
+unchanged; Einmo consumes its `String` output opaquely.
 
 ## UBC Step Impact
 
 None. FOOP-62's `catch_unwind` panic-capture contract in the snapshot
-harness is preserved — the library's `SnapshotSuite::evaluate` continues to
-catch panics and write `PANIC: <msg>` into the output before signing, so a
-panicking evaluation still produces a signed, reviewable `.snap.new`.
+harness is preserved — Einmo's test runner continues to catch panics and
+write `PANIC: <msg>` into the output before signing, so a panicking
+evaluation still produces a signed, reviewable `.einmo` in `output/`.
 
 ## Test Plan
 
-### Unit tests (`foolish-snap/src/lifecycle.rs`)
+### Unit tests (`einmo/src/stage.rs`)
 
-- **Lifecycle derivation**: `.snap.new` → Generated; `.snap.new.approved` →
-  Reviewed; `.snap.new.check` → Flagged; `.snap` → Promoted.
-- **Review transition**: Generated → Reviewed; `test` entry byte-identical
-  before/after; only the extension changed.
-- **Flag transition**: Generated → Flagged; `@agent` comment appended to
-  `.check` log; `.snap.new` removed; `test` entry unchanged.
-- **Promote transition**: Reviewed → Promoted; `util` entry appended with
-  `Entire file` + progressive triple; `test` entry unchanged; file renamed.
+- **Stage derivation**: `output/` → Output; `checked/` → Checked;
+  `verified/` → Verified.
+- **Promote output→checked**: file copied, `test` entry preserved, actor
+  recorded in metadata.
+- **Promote checked→verified**: `util` entry appended with human key;
+  `test` entry unchanged.
 - **Promote refuses without `test` entry** (the always-signed invariant).
 - **Promote refuses if any existing signature fails** (chain integrity).
-- **Second promote** (re-approval): second `util` appended; its `Entire file`
-  covers the first `util`.
-- **Tamper body after promotion**: `util` `Entire file` fails; `test`
-  progressive triple fails appropriately.
-- **Legacy flat-footer parse**: single `test` entry, re-emitted indented.
-- **`is_promoted()`**: false for Generated/Reviewed/Flagged; true for Promoted.
 
-### Integration tests (`verify_signatures` binary)
+### Unit tests (`einmo/src/compare.rs`)
 
-- **End-to-end**: generate (`.snap.new`, computer-signed) → review
-  (`.snap.new.approved`) → promote (`.snap`, human-signed) → verify (both
-  entries ok).
-- **Flag → AI fix → regenerate**: `.snap.new.check` → code fix → new
-  `.snap.new` supersedes; `.check` log persists.
-- **CI gate simulation (Layer 1):** `verify_signatures` exits non-zero on
-  any `.snap` with a tampered signature, broken chain, or content mismatch
-  — on any branch.
-- **CI gate simulation (Layer 2):** `verify_signatures
-  --require-human-promotion` exits non-zero on any committed `.snap` lacking
-  a `util` (human) entry; exits zero when all committed `.snap` files carry
-  a `util` entry. Default (no flag) does NOT enforce human promotion.
+- **Compare identical stages**: all files matching, 0 differing.
+- **Compare with missing files**: correct `only_in_a` / `only_in_b`.
+- **Compare with content differences**: correct `differing` entries.
+- **Compare with signature-ignored**: differences in signature lines are
+  ignored when comparing content.
+
+### Integration tests (`einmo` CLI)
+
+- **End-to-end**: generate → promote output→checked → promote
+  checked→verified → verify all stages.
+- **CI gate simulation:** `einmo compare output checked` exits non-zero
+  when differing files exist.
 - **Passphrase cascade:** `test` entry signs with empty passphrase when no
-  cascade tier is set; signs with `FOOLISH_SNAP_PASSPHRASE` when env is set;
-  signs with config-file passphrase when only config is set; CLI
-  `--passphrase` overrides env; `--stdin-passphrase` overrides env+config.
-- **Promote refuses without `test` entry** (the always-signed invariant).
-- **Promote refuses if any existing signature fails** (chain integrity).
-- **Promote via cascade-disallowed:** `promote()` with only env/config
-  passphrase (no `--stdin-passphrase`) is refused — promotion is interactive.
-
-### Regression
-
-- `cargo test -p foolish-core --lib` passes (re-exports intact).
-- `cargo test -p foolish-ubcb --lib` passes.
-- All existing `.snap` files verify under the legacy parser.
-- `foolish_review.sh` / `accept_approved.sh` produce identical observable
-  behaviour (diff-ignoring signatures, single passphrase prompt).
+  cascade tier is set; `EINMO_PASSPHRASE` env var works; config file works.
+- **Promote to verified refuses without `--stdin-passphrase`.
 
 ## Rejected Alternatives
 
@@ -1172,6 +1330,18 @@ codebase gaps identified during analysis.)*
     snapshots are low on "Inspiring"; real assertions force dual-verification.
 
 ## Last Updated
+
+**Date**: 2026-07-01
+**Updated By**: Sisyphus / mimo-v2.5-pro
+**Changes**: Renamed from `foolish-snap` to **Einmo**. Changed from
+file-extension-based lifecycle to **directory-based** design (`output/`,
+`checked/`, `verified/`). Added **stage comparison** API (`einmo compare
+<stage-a> <stage-b>`) for enforcing different correspondences. Added
+**generation timestamp** in COMMENTS block (inside signed content).
+Promotion is now CLI-driven (`einmo promote output→checked`,
+`einmo promote checked→verified`). Checked→verified requires human signing
+phrase; output→checked does not. Simplified to three stages (removed Flagged
+state — flagging is an annotation concern, not a lifecycle state).
 
 **Date**: 2026-06-27
 **Updated By**: Sisyphus / z-ai/glm-5.2
