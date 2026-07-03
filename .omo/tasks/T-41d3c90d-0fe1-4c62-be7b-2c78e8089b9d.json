@@ -1,0 +1,9 @@
+{
+  "id": "T-41d3c90d-0fe1-4c62-be7b-2c78e8089b9d",
+  "subject": "Refresh FOOP-92.md: fix stale paths, drop ubcb, fix verify_signatures premise, fix counts/statuses",
+  "description": "Apply the agreed refresh: flatten paths (foolish/foolish-core/ → foolish-core/), drop all foolish-ubcb references (crate doesn't exist), fix the verify_signatures.rs premise (file EXISTS and is tracked, not missing — but .gitignore bin/ fix still needed for new einmo/src/bin/), fix line counts (644→680, 258→289), fix .snap counts (276 .snap + 285 .snap.new; 131 core + 145 ubca + 0 ubcb), fix FOOP-62 status (Brewing→Final).",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0d934243bffe887MSMtWZ3s53N"
+}

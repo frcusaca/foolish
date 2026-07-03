@@ -1,0 +1,9 @@
+{
+  "id": "T-4d85b087-bc8f-44a0-a0c9-521b13a13d2c",
+  "subject": "Update FOOP-92.md Abstract/Motivation/Product-Description for standalone-einmo scope",
+  "description": "Reframe einmo as a standalone crate that reimplements signed-snapshot machinery from scratch — NO edits to foolish-core/foolish-ubca/any existing crate. Drop \"migrate signature.rs/snapshot_suite.rs into einmo\" language. The existing foolish-core/src/signature.rs and snapshot_suite.rs stay untouched (design reference only). Existing .snap corpus stays as-is; migration is a future separate effort. einmo promotable to its own repo.",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0d934243bffe887MSMtWZ3s53N"
+}

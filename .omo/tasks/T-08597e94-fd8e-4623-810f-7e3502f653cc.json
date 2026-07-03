@@ -1,0 +1,9 @@
+{
+  "id": "T-08597e94-fd8e-4623-810f-7e3502f653cc",
+  "subject": "Add plan phase: exhaustive algorithm coverage from TheAlgorithms to stress-test einmo",
+  "description": "Add a later-phase plan task to FOOP-92.plan.md: exhaustively port algorithms from https://github.com/TheAlgorithms (and similar collections) into the zweimomo parallel-input corpus across Foolish/Python/JS. Goal: maximally stress-test the einmo framework with real, diverse implementations (sorting, searching, math, DP, graph, crypto primitives, etc.). Note TheAlgorithms is multi-language so parallel Python/JS implementations exist directly; Foolish equivalents written where the language allows (arithmetic/data-structure-heavy; loops/recursion/conditionals not yet supported so many algorithms are Python/JS-only with Foolish-unsupported markers).",
+  "status": "pending",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0d934243bffe887MSMtWZ3s53N"
+}

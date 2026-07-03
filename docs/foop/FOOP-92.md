@@ -35,20 +35,38 @@ additional searches needed to implement).
 
 ## Abstract
 
-**Einmo** is a workspace crate (`einmo`) providing directory-based signed-
-snapshot testing with a four-stage promotion pipeline: **output** → **checked**
-→ **flagged** / **verified**. Each test suite is configured with a work
-directory containing `input/` (test triggers) and four stage directories, each
-holding `.einmo` files. The stage directory tree **mirrors** the `input/` tree
-at any depth. Generated outputs are timestamped and signed by the test runner.
-Promotion from `output→checked` is a CLI operation available to AI agents or
-humans (no passphrase). Promotion from `*→verified` appends a human-keyed
-signature (passphrase-resolved; defaults to interactive prompt). Any state may
-transition to `flagged/` (a terminal sink). The library supports comparing any
-two stages; the comparison is per-section (INPUT + RESULT required, COMMENTS
-optionally required), with both files independently verified before content is
-compared. The crate replaces `insta` for Foolish snapshot testing and is
-designed for reuse by other projects.
+**Einmo** is a **standalone** workspace crate (`einmo`) providing directory-
+based signed-snapshot testing with a four-stage promotion pipeline: **output**
+→ **checked** → **flagged** / **verified**. Each test suite is configured with a
+work directory containing `input/` (test triggers) and four stage directories,
+each holding `.einmo` files. The stage directory tree **mirrors** the `input/`
+tree at any depth. Generated outputs are timestamped and signed by the test
+runner. Promotion from `output→checked` is a CLI operation available to AI
+agents or humans (no passphrase). Promotion from `*→verified` appends a human-
+keyed signature (passphrase-resolved; defaults to interactive prompt). Any
+state may transition to `flagged/` (a terminal sink). The library supports
+comparing any two stages; the comparison is per-section (INPUT + RESULT
+required, COMMENTS optionally required), with both files independently verified
+before content is compared.
+
+**Standalone scope (critical).** Einmo reimplements the full signed-snapshot
+machinery from scratch — it does **not** depend on, modify, or migrate any
+existing crate (`foolish-core`, `foolish-ubca`, etc.). The existing
+`foolish-core/src/signature.rs` and `foolish-core/src/snapshot_suite.rs` stay
+untouched; they are a *design reference*, not a dependency. The existing `.snap`
+corpus stays as-is; migrating it to `.einmo` is a future, separate effort.
+Einmo is structured so it can be **promoted to its own repository** later
+without dragging Foolish-specific dependencies along.
+
+**Companion test crate — zweimomo.** Einmo is exercised by a second new
+workspace crate, **`zweimomo`**, which embeds three **pure-Rust** interpreters
+as `Evaluator` implementations (Foolish via `foolish-ubca`, Python via
+`rustpython-vm`, JavaScript via `boa_engine`) and writes parallel test inputs
+in all three languages. Zweimomo is both einmo's first real test suite and the
+proof that einmo's `Evaluator` trait is language-agnostic. The three
+interpreters were chosen because they are **pure-Rust implementations** — no
+C/FFI toolchain required, keeping the whole test harness portable and
+einmo-repo-promotable.
 
 ## Motivation
 
@@ -79,7 +97,13 @@ by humans **and AI agents**, we need:
 
 ### The world after this FOOP
 
-- A reusable crate `einmo` with directory-based, hierarchical test configuration.
+- A **standalone** reusable crate `einmo` with directory-based, hierarchical
+  test configuration. Einmo reimplements the signed-snapshot machinery from
+  scratch (no dependency on `foolish-core`/`foolish-ubca`); it is promotable to
+  its own repository.
+- A **companion test crate `zweimomo`** embedding three pure-Rust interpreters
+  (foolish-ubca, rustpython-vm, boa_engine) as `Evaluator` impls, with parallel
+  test inputs in Foolish, Python, and JavaScript.
 - Each test's work directory: `input/` → `output/*.einmo` → `checked/*.einmo` →
   `flagged/*.einmo` / `verified/*.einmo`, all mirroring the `input/` tree.
 - Generated outputs carry a `test` signer entry with a signed generation timestamp.
@@ -88,12 +112,16 @@ by humans **and AI agents**, we need:
 - `cargo einmo flag <stage>` (any state → flagged, terminal sink).
 - `cargo einmo compare <stage-a> <stage-b>` — stage-agnostic, per-section comparison.
 - CI gates on stage correspondence, not just existence.
+- The existing `insta`-based `.snap` corpus in `foolish-core`/`foolish-ubca` is
+  **untouched**; migration to `.einmo` is a future, separate effort once einmo
+  is stable.
 
 ## Product Description
 
-**Einmo** is a workspace crate (`einmo`) providing directory-based,
-cryptographically signed snapshot testing with a staged promotion pipeline. It
-is built on two capabilities that, together, no surveyed framework provides:
+**Einmo** is a **standalone** workspace crate (`einmo`) providing directory-
+based, cryptographically signed snapshot testing with a staged promotion
+pipeline. It is built on two capabilities that, together, no surveyed framework
+provides:
 
 1. **A programmatic test-construction API** that gives test code first-class
    access to every stage of verification — so a test can assert "output matches
@@ -105,6 +133,12 @@ is built on two capabilities that, together, no surveyed framework provides:
    attributable act, not an automated `accept`. Every generated output is
    timestamped and signed by the test runner; every promotion to `verified`
    appends a human-keyed signature.
+
+**Standalone scope.** Einmo owns its own copy of the signing/format machinery
+(`ed25519-dalek`, `argon2`, etc.); it does not depend on `foolish-core`. It is
+exercised by **`zweimomo`**, a companion crate that embeds three pure-Rust
+interpreters (Foolish via `foolish-ubca`, Python via `rustpython-vm`, JavaScript
+via `boa_engine`) as `Evaluator` impls, proving the trait is language-agnostic.
 
 And four structural commitments that distinguish it from `insta` and all
 surveyed frameworks:
@@ -159,9 +193,10 @@ as a signed, reviewable artifact. Now imagine extending that:
   (property-based style) and writes one `.einmo` per generated case — pinning
   the VM's behaviour across a fuzz space.
 - **Cross-implementation comparison.** The same `input/` tree evaluated by two
-  `Evaluator`s (e.g. ubca vs ubcb) into `output-ubca/` and `output-ubcb/`, with
-  a `compare output-ubca output-ubcb` gate. (Deferred per FOOP-03 for JVM, but
-  the Rust-vs-Rust path is structurally available.)
+  `Evaluator`s into `output-a/` and `output-b/`, with a
+  `compare output-a output-b` gate. (The Rust-vs-Rust path is structurally
+  available; `foolish-ubcb` was removed by FOOP-03, but the per-language
+  stage-dir model is exactly what `zweimomo` exercises — see §Use Case D.)
 - **Tolerance-based matching.** `compare` with a numeric tolerance for
   floating-point RESULT sections (pytest-regtest style), not just byte-identity.
 - **A redaction library.** Built-in redactors for common volatile values
@@ -259,11 +294,11 @@ pub enum Stage { Output, Checked, Flagged, Verified }
 
 ```rust
 #[test]
-fn ubca_approval_all() {
-    let config = TestConfig::default("foolish-ubca/snapshot_tests")
+fn foolish_suite_approval_all() {
+    let config = TestConfig::default("zweimomo/suites/foolish")
         .require_correspondence(Stage::Output, Stage::Checked);   // CI gate
     let suite = EinmoSuite::new(config);
-    let evaluator = UbcaEvaluator::new();   // adapts FIR → Vec<String>
+    let evaluator = UbcaEvaluatorAdapter;   // adapts FIR → Vec<String> (§D.3)
     let results = suite.evaluate_all(num_cpus::get(), &evaluator);
     assert!(results.all_output_written_and_verified());
     // The correspondence assertion (output == checked) is enforced inside
@@ -623,36 +658,264 @@ This invariant is what makes rich, interactive, searchable output compatible
 with cryptographic signing: the signed payload is byte-steady; the
 interactivity is a non-mutating view layer over it.
 
+## Use Case D — Zweimomo: cross-language validation harness
+
+Zweimomo is einmo's **companion test crate**. It proves einmo's `Evaluator`
+trait is language-agnostic by embedding three interpreters, producing parallel
+test inputs in three languages, and running each through einmo's signed-snapshot
+pipeline. Zweimomo is both einmo's first real test suite (einmo eats its own dog
+food) and the design pressure that keeps the `Evaluator` trait honest.
+
+### D.1 Why three interpreters, and why these three
+
+Zweimomo embeds exactly three interpreters, all **pure-Rust implementations**:
+
+| Language | Interpreter crate | Version | Notes |
+|---|---|---|---|
+| **Foolish** | `foolish-ubca` (workspace) | — | the project's own VM; the reference interpreter |
+| **Python** | `rustpython-vm` | 0.5.0 | pure-Rust CPython reimplementation; no CPython linkage |
+| **JavaScript** | `boa_engine` | 0.21.1 | pure-Rust ECMAScript; no V8/QuickJS/SpiderMonkey |
+
+**Rationale (note in the FOOP):** these three were chosen because they are
+**pure-Rust implementations of interpreters** — no C/FFI toolchain, no system
+library linkage, no `*-sys` build dependency. This keeps the entire test
+harness (`einmo` + `zweimomo`) compilable with `rustc` alone, which is the
+load-bearing property for **promoting einmo to its own repository** later
+without dragging a C toolchain requirement into the consumer's build. A
+non-pure-Rust interpreter (e.g. one binding CPython or V8) would couple the
+test harness to a system C library and break repo portability. Lua (`mlua`)
+and Rune were considered and rejected for this reason — `mlua`'s default
+backend links LuaJIT (C), and while Rune is pure-Rust, RustPython + Boa cover
+two of the most widely-known languages (Python, JavaScript), making the
+parallel-input matrix more legible to reviewers.
+
+### D.2 The `Evaluator` contract each interpreter satisfies
+
+Einmo's trait (no `FirRef` dependency):
+
+```rust
+pub trait Evaluator {
+    fn evaluate(&self, source: &str) -> Result<Vec<String>, String>;
+}
+```
+
+Each interpreter is wrapped by an `Evaluator` impl in zweimomo that:
+1. Takes a source string in that interpreter's language.
+2. Evaluates it (catching panics/errors → `Err(String)`).
+3. Stringifies the result(s) → `Vec<String>` (one string per top-level result;
+   einmo writes one RESULT block per string).
+
+### D.3 The three `Evaluator` impls (embedding sketches)
+
+**`UbcaEvaluatorAdapter`** (wraps the existing `foolish-ubca::UbcaEvaluator`):
+
+```rust
+use foolish_ubca::UbcaEvaluator;   // existing; NOT modified
+use foolish_core::FirSequencer;     // for FIR→String formatting
+use einmo::Evaluator;
+
+pub struct UbcaEvaluatorAdapter;
+impl Evaluator for UbcaEvaluatorAdapter {
+    fn evaluate(&self, source: &str) -> Result<Vec<String>, String> {
+        let inner = UbcaEvaluator;
+        let firs = inner.evaluate(source)?;          // Vec<FirRef> (foolish-core type)
+        Ok(firs.iter()
+            .map(|fir| FirSequencer::format(fir))    // FIR → hfssnap String
+            .collect())
+    }
+}
+```
+*(zweimomo depends on `foolish-ubca` + `foolish-core` for this adapter; einmo
+itself does not. The existing `UbcaEvaluator` and `FirSequencer` are used
+as-is, never modified.)*
+
+**`RustPythonEvaluator`** (`rustpython-vm` 0.5.0):
+
+```rust
+use rustpython_vm::{Interpreter, eval};
+use einmo::Evaluator;
+
+pub struct RustPythonEvaluator { /* settings */ }
+impl Evaluator for RustPythonEvaluator {
+    fn evaluate(&self, source: &str) -> Result<Vec<String>, String> {
+        let interp = Interpreter::without_stdlib(Default::default());
+        interp.enter(|vm| {
+            let scope = vm.new_scope_with_builtins();
+            let result = eval::eval(vm, source, scope, "<zweimomo>")
+                .map_err(|e| e.to_string())?;        // PyResult<PyObjectRef>
+            Ok(vec![result.str(vm)?.as_str().to_string()])
+        }).map_err(|e| e.to_string())
+    }
+}
+```
+*(Pure-Rust: `rustpython-vm` has no `cc`/`cmake`/`*-sys` deps under default
+features; `ssl-rustls` is the default SSL backend, not `ssl-openssl`.
+`Interpreter` is not `Send` — keep it thread-local or on a dedicated thread.
+`without_stdlib` gives a sandbox: no `os`/`sys`/file I/O unless `init_stdlib()`
+is called — a sandboxing plus for a test harness.)*
+
+**`BoaEvaluator`** (`boa_engine` 0.21.1):
+
+```rust
+use boa_engine::{Context, Source};
+use einmo::Evaluator;
+
+pub struct BoaEvaluator { /* settings */ }
+impl Evaluator for BoaEvaluator {
+    fn evaluate(&self, source: &str) -> Result<Vec<String>, String> {
+        let mut context = Context::default();
+        let result = context.eval(Source::from_bytes(source))
+            .map_err(|e| e.to_string())?;            // JsResult<JsValue>
+        let s = result.to_string(&mut context)
+            .map_err(|e| e.to_string())?
+            .to_std_string_escaped();
+        Ok(vec![s])
+    }
+}
+```
+*(Pure-Rust: `boa_engine` has no `cc`/`cmake`/`*-sys` deps. No `fs`/`network`/
+`child_process`/Node APIs by default — a sandboxed ECMAScript core. `Context`
+is not `Send` — same thread-local/dedicated-thread advice as RustPython.)*
+
+### D.4 Parallel test-input matrix
+
+For each **concept** row, zweimomo writes the equivalent input in all three
+languages, evaluates each via its `Evaluator`, and captures a signed `.einmo`
+per language. The matrix is **bounded by what foolish-ubca can do today**
+(Foolish is the least capable interpreter; Python and JS are far more capable,
+so Foolish sets the ceiling). See Appendix G for the full Foolish capability
+envelope.
+
+| Concept | Foolish input | Python input | JS input | Foolish-capable? |
+|---|---|---|---|---|
+| **Integer arithmetic** | `{2 + 3 * 4 - 5;}` | `2 + 3 * 4 - 5` | `2 + 3 * 4 - 5` | ✅ (int-only; `/` is integer division) |
+| **Nested expressions / parsing** | `{((2 + 3) * (4 - 1)) / 5;}` | `((2 + 3) * (4 - 1)) // 5` | `Math.floor(((2+3)*(4-1))/5)` | ✅ |
+| **Name binding + scope** | `{x = 42; y = x + 8; y;}` | `x = 42; y = x + 8; y` | `let x = 42; let y = x + 8; y` | ✅ (Foolish's strength; forward refs work) |
+| **Data structures / nesting** | `{a = 10; b = 20; n = {inner = a + b;}; n.inner;}` | `{"a":10,"b":20,"n":{"inner":30}}["n"]["inner"]` | `({a:10,b:20,n:{inner:30}}).n.inner` | ✅ (brane = object/dict) |
+| **Function application** | `{fn = {result = a+b;}; r =$ {a=10,b=-3} fn}` | `def fn(a,b): return a+b\nfn(10,-3)` | `function fn(a,b){return a+b} fn(10,-3)` | ✅ (see D.5) |
+| **Division-by-zero / error** | `{10 / 0;}` | `10 / 0` (→ ZeroDivisionError) | `10 / 0` (→ `Infinity`) | ✅ (Foolish → NK + alarm) |
+| **Search/query (Foolish-specific)** | `{d = {x=10;y=20}; d?y;}` | `d["y"]` | `d.y` | ✅ Foolish; asymmetric (search vs dict-access) |
+| **SF/SFF laziness (Foolish-specific)** | `{a=1,b=2; c=<<a+b>>; c;}` | *(no equivalent; skip)* | *(no equivalent; skip)* | ✅ Foolish-only |
+
+**Concepts deliberately excluded** (no Foolish representation today; see
+Appendix G): string operations (no string type), floats (int-only), booleans,
+recursion, loops/iteration, `if/then/else` (parsed but rejected at compile
+time), closures/higher-order functions. These may appear in the Python/JS
+columns as **Foolish-unsupported** markers (the test documents the asymmetry
+rather than forcing a fake parallel).
+
+### D.5 Function application in Foolish (the emergent calling semantics)
+
+Foolish has no `fn(args)` syntax and no `FnDef`/`CallExpr` AST node. Function
+application is **emergent from concatenation + tail extraction**:
+
+- **Concatenation**: juxtaposing two branes merges them — `{args} fn` makes
+  `args`'s ordinates visible inside `fn`.
+- **Tail (`$`)**: `x$` yields the last value of `x`.
+- **Bind-tail (`=$`)**: `a =$ b` ≡ `a = b$` — "bind the value of the last
+  statement of `b` to the name `a`."
+
+So a "function call" is:
+
+```foolish
+{
+    fn = {part1 = a+b; part2 = a-b; result = part1+part2;};
+    call_result =$ {a=10, b=-3} fn
+}
+```
+
+`{a=10, b=-3} fn` concatenates the argument brane with `fn` (so `a` and `b`
+resolve inside `fn`), and `=$` binds `fn`'s tail (`result`) to `call_result`.
+The output is correct when `call_result` is correct. This is confirmed by
+existing snap inputs (e.g. `regression_disappearing_brane_statements.foo` uses
+`d =$ 4`).
+
+The Python/JS equivalents use ordinary call syntax (`fn(10, -3)`), so the
+**function application** concept row is parallel across all three languages —
+the *mechanism* differs (structural vs syntactic) but the *contract* (bind
+arguments, evaluate, yield a result) is identical.
+
+### D.6 Use existing snaps for inspiration
+
+When designing the parallel-input corpus, **use the existing `.foo` snap inputs
+under `foolish-ubca/snapshot_tests/input/` for inspiration and syntax guidance**
+(~145 inputs demonstrating arithmetic, branes, search, SF/SFF, alarms, unicode
+identifiers, etc.). The Foolish column of the matrix should mirror idioms
+already proven in that corpus; the Python/JS columns are then written to match.
+This keeps the Foolish inputs realistic (within the interpreter's demonstrated
+capability) rather than speculative.
+
+### D.7 Zweimomo's scope (v1) and what's out
+
+**In scope (v1):**
+- Three `Evaluator` impls (`UbcaEvaluatorAdapter`, `RustPythonEvaluator`,
+  `BoaEvaluator`).
+- Parallel test-input corpus for the concept rows in §D.4.
+- One `EinmoSuite` per language, each with its own `input/` → `output/` →
+  `checked/` tree, gated by `compare output checked`.
+- Tests written using einmo asserting per-language correspondence.
+
+**In scope (later in development — planned as a dedicated plan phase):**
+- **Exhaustive algorithm coverage.** Port algorithm implementations
+  exhaustively from [TheAlgorithms](https://github.com/TheAlgorithms) (and
+  other well-known collections) into the zweimomo corpus — sorting, searching,
+  math, dynamic programming, string and graph algorithms. TheAlgorithms carries
+  parallel Python and JavaScript implementations directly; Foolish equivalents
+  are written where the language allows (Appendix G bounds this). The goal is
+  to **test the test framework as thoroughly as possible**: einmo must be
+  exercised at realistic corpus scale (hundreds of inputs, deep hierarchical
+  trees, batch promotion, `--filter` and `--root-cause` under load), not just
+  by a handful of hand-picked examples. See the plan's algorithm-coverage
+  phase.
+
+**Out of scope (v1):**
+- Cross-language correspondence (e.g. "Foolish output == Python output for the
+  same concept") — the three languages produce *different* output formats
+  (hfssnap vs Python `repr` vs JS `toString`), so byte-identity across languages
+  is not meaningful. Each language is gated independently.
+- Per-agent cryptographic identity in `test` entries (agents share the computer
+  key — that is Use Case B's v1 scope).
+- Fuzzing / property-based input generation (Use Case A §A.1 future).
+
 ## Specification
 
 ### 1. Crate structure
 
-The library is a workspace member **`einmo`** (path `foolish/einmo/`), depended
-on by `foolish-core`, `foolish-ubca`, and `foolish-ubcb` as a dev-dependency.
+The library is a **standalone** workspace member **`einmo`** (path `einmo/` at
+the workspace root). It does **not** depend on `foolish-core` or any other
+existing crate; it reimplements the signing/format machinery from scratch. It is
+structured so it can be promoted to its own repository later.
 
 ```
-foolish/einmo/
-├── Cargo.toml
+einmo/
+├── Cargo.toml             # standalone: ed25519-dalek, argon2, base64, hex, clap, serde, toml, time, thiserror
 └── src/
-    ├── lib.rs              # re-exports
-    ├── config.rs           # TestConfig, StageDirs, MatchSections
-    ├── stage.rs            # Stage enum + directory operations
-    ├── compare.rs          # per-section stage-to-stage comparison
-    ├── format.rs           # .einmo file parse/serialize (per-section canonical)
-    ├── signature.rs        # moved from foolish-core/src/signature.rs; FOOP-22 append
-    ├── snapshot_suite.rs   # moved from foolish-core/src/snapshot_suite.rs; generalised Evaluator
-    ├── migrate.rs          # .snap → .einmo converter
-    ├── verify.rs           # verify-on-inspect + verify-all (clean submodule; no fs/tty/argon2)
+    ├── lib.rs             # re-exports
+    ├── config.rs          # TestConfig, StageDirs, MatchSections, passphrase cascade
+    ├── stage.rs           # Stage enum + directory operations + transitions
+    ├── compare.rs         # per-section stage-to-stage comparison
+    ├── format.rs          # .einmo file parse/serialize (per-section canonical)
+    ├── signature.rs       # FOOP-22 append-chain signing (implemented from scratch; not migrated)
+    ├── snapshot_suite.rs  # EinmoSuite + generalised Evaluator trait (implemented from scratch)
+    ├── verify.rs          # verify-on-inspect + verify-all (clean submodule; no fs/tty/argon2)
     └── bin/
         ├── cargo_einmo.rs          # CLI: promote, flag, compare, verify, confirm-signatures, show, console-review, serve
-        └── verify_signatures.rs    # moved from foolish-core/src/bin/ (restore; fix .gitignore bin/ bug)
+        └── verify_signatures.rs    # standalone signature-verification utility (einmo's own)
 ```
 
-**`.gitignore` fix (blocking):** the root `.gitignore` currently has a `bin/`
-pattern that ignores *any* `bin/` directory including `src/bin/`, which is why
-`foolish-core/src/bin/verify_signatures.rs` is missing (dangling `[[bin]]`
-declaration in `foolish-core/Cargo.toml`). Narrow to `/bin/` or
-`target/**/bin/` before creating `einmo/src/bin/`.
+**`.gitignore` fix (blocking, still required):** the root `.gitignore` has a
+`bin/` pattern that ignores *any* `bin/` directory including `src/bin/`. This
+must be narrowed to `/bin/` (repo-root `bin/` only) or `target/**/bin/` *before*
+creating `einmo/src/bin/`, or `cargo_einmo.rs` / `verify_signatures.rs` will be
+silently gitignored. (Note: `foolish-core/src/bin/verify_signatures.rs` *does*
+exist and is git-tracked despite the pattern — it was added before the pattern
+took effect — but new `src/bin/` files under a fresh `einmo/` crate *would* be
+ignored. The fix is still needed.)
+
+**No `migrate.rs` (scope change).** This FOOP does **not** migrate the existing
+`.snap` corpus. Einmo writes its own `.einmo` files from day one via its
+`Evaluator`-driven test runner. Migrating the legacy `insta` `.snap` corpus is a
+future, separate effort (see §Deferred).
 
 ### 2. Directory-based, hierarchical test configuration
 
@@ -1225,22 +1488,33 @@ client calling the same library":
 
 **Proposal B (PyO3 orchestration) has essentially no precedent in this space.**
 
-### 5. Migration order (do not start UI until the core passes its own gates)
+### 5. Build order (do not start UI until the core passes its own gates)
 
-1. Migrate `signature.rs`: REPLACE → FOOP-22 append-chain. **Write tamper/
-   forgery tests first** — this is the single highest-risk step.
-2. Generalise `snapshot_suite.rs`: `Vec<FirRef>` → `Vec<String>`; move FIR→String
-   formatting into the `UbcEvaluator`/`UbcaEvaluator`/`UbcbEvaluator` adapters.
-3. Restore `verify_signatures.rs` (fix the `.gitignore` `bin/` bug — narrow to
-   `/bin/` or `target/**/bin/`).
-4. Write the `.snap` → `.einmo` converter (`einmo::migrate`); run over the
-   ~289-file corpus; human re-sign pass (wall-clock time).
-5. Implement `compare` with the formal per-section matching semantics (§5);
-   implement the gates (§10).
-6. **Einmo's own CI uses its own gates** (commit: `compare output checked`;
-   merge: `compare checked verified`) — the library eats its own dog food before
-   any UI lands.
-7. Only then: `cargo einmo serve` + SPA (Proposal A's UI layer).
+**Scope change:** einmo is built from scratch; no existing code is migrated.
+The existing `foolish-core/src/signature.rs` and `snapshot_suite.rs` are design
+references, not files to move.
+
+1. Fix the `.gitignore` `bin/` pattern (narrow to `/bin/` or `target/**/bin/`)
+   so a fresh `einmo/src/bin/` is not gitignored.
+2. **Implement `einmo::signature` from scratch** per FOOP-22 append-chain. **Write
+   tamper/forgery tests first** — highest-risk step.
+3. **Implement `einmo::snapshot_suite` from scratch** with `Evaluator` returning
+   `Vec<String>` (no `FirRef` dependency).
+4. Implement `einmo::format` (`.einmo` parse/serialize, per-section canonical).
+5. Implement stage directories + hierarchical mirroring.
+6. Implement verify-on-inspect + `verify`.
+7. Implement promotion + flagging (move/copy semantics).
+8. Implement `compare` (per-section matching, verify-both-then-identical).
+9. Implement passphrase cascade.
+10. Implement CLI (`cargo-einmo` binary).
+11. Implement gates (shell glue).
+12. **Build `zweimomo`** — the companion test crate (three pure-Rust `Evaluator`
+    impls + parallel test-input corpus). See §Use Case D.
+13. **Einmo's own CI uses its own gates** (commit: `compare output checked`;
+    merge: `compare checked verified`) — the library eats its own dog food via
+    zweimomo before any UI lands.
+14. Only then: `cargo einmo serve` + SPA (Proposal A's UI layer).
+15. (Future, separate effort) migrate the legacy `.snap` corpus to `.einmo`.
 
 ## FIR Impact
 
@@ -1262,20 +1536,11 @@ Each tier maps to an `EinmoSuite` `TestConfig` with a specific
 `require_correspondence` set and gate. Grounded in Foolish's actual test
 structure: unit tests incl. `*_nyes_transitions` in `foolish-ubca/src/fir_kinds.rs`
 (88 inline tests, 16 nyes-transitions), approval/snapshot suites via
-`SnapshotSuite` in `foolish-core`/`foolish-ubca`/`foolish-ubcb`
-`*_snapshot_tester.rs`, parser unit tests in `foolish-parser`. **No Rust CI
-exists today** (only Java/Scala Maven cross-validation); **no CLI/trycmd tier**;
-**no bench tier**.
-
-| Tier | Inputs | Evaluator | Stages | `require_correspondence` | Gate |
-|---|---|---|---|---|---|
-| **1. Unit (inlined)** | inlined strings (`evaluate_inline`) | function under test | `output`, `checked` | `[(Output, Checked)]` | commit: `output==checked` |
-| **2. Approval / snapshot (VM gate)** | `.foo` in `input/` (hierarchical) | UBC/UBCb VM + humanizing sequencer | full pipeline | CI: `[(Output, Checked)]`; release: `+[(Checked, Verified)]` | commit: `output==checked`; merge: `checked==verified` |
-| **3. Integration** | `.foo` exercising parser+VM+sequencer | end-to-end | full pipeline | same as approval | same; `--stale-days 30` |
-| **4. CI (automated)** | re-runs tier 2/3 | same | `output`, `checked` | `[(Output, Checked)]` + `verify --all` | push/PR: verify + compare |
-| **5. Release / deployment** | re-runs 2/3 | same | `verified` | `[(Checked, Verified)]` + `confirm-signatures verified <release-key> --require-all` | tag gate |
-| **6. Regression / re-inspection** | existing `input/` | same | demotes `verified→checked` sample | ad-hoc | scheduled: `console-review checked→verified --reexamine-rate 10 --reexamine-seed $WEEK` |
-| **7. Performance (optional)** | `.foo` + timing | timing→formatted string | `output`, `checked` | `[(Output, Checked)]` | commit; redact volatile values before signing |
+`SnapshotSuite` in `foolish-core`/`foolish-ubca` `*_snapshot_tester.rs`, parser
+unit tests in `foolish-parser`. **No Rust CI exists today**; **no CLI/trycmd
+tier**; **no bench tier**. The existing `foolish-ubcb` crate referenced in
+earlier drafts has been removed from the workspace (FOOP-03 cleanup); einmo
+targets `foolish-core` + `foolish-ubca` only.
 
 **Note on JVM removal (FOOP-03):** Per **FOOP-03** (deprecating JVM
 implementations), the cross-validation tier (Java/Scala/Rust output comparison)
@@ -1286,13 +1551,30 @@ only. If JVM implementations are un-deprecated later, the per-impl stage-dir
 model (`output-rust/`, `output-java/`, etc. with cross-`compare`) is the
 structure that would host cross-validation — out of scope today.
 
+### Tier table
+
+| Tier | Inputs | Evaluator | Stages | `require_correspondence` | Gate |
+|---|---|---|---|---|---|
+| **1. Unit (inlined)** | inlined strings (`evaluate_inline`) | function under test | `output`, `checked` | `[(Output, Checked)]` | commit: `output==checked` |
+| **2. Approval / snapshot (VM gate)** | `.foo` in `input/` (hierarchical) | foolish-ubca VM + humanizing sequencer | full pipeline | CI: `[(Output, Checked)]`; release: `+[(Checked, Verified)]` | commit: `output==checked`; merge: `checked==verified` |
+| **3. Cross-language (zweimomo)** | parallel inputs in Foolish/Python/JS (`input/` per language) | three `Evaluator` impls (ubca, rustpython-vm, boa_engine) | `output`, `checked` per language | `[(Output, Checked)]` per language | commit: `output==checked` per language |
+| **4. Integration** | `.foo` exercising parser+VM+sequencer | end-to-end | full pipeline | same as approval | same; `--stale-days 30` |
+| **5. CI (automated)** | re-runs tier 2/3 | same | `output`, `checked` | `[(Output, Checked)]` + `verify --all` | push/PR: verify + compare |
+| **6. Release / deployment** | re-runs 2/3 | same | `verified` | `[(Checked, Verified)]` + `confirm-signatures verified <release-key> --require-all` | tag gate |
+| **7. Regression / re-inspection** | existing `input/` | same | demotes `verified→checked` sample | ad-hoc | scheduled: `console-review checked→verified --reexamine-rate 10 --reexamine-seed $WEEK` |
+| **8. Performance (optional)** | `.foo` + timing | timing→formatted string | `output`, `checked` | `[(Output, Checked)]` | commit; redact volatile values before signing |
+
+**Tier 3 (cross-language, new)** is what `zweimomo` exercises. It is the tier
+that proves the `Evaluator` trait is language-agnostic: three interpreters
+produce signed outputs for parallel inputs, and each is gated independently.
+
 ### Per-tier `TestConfig` example (approval, CI profile)
 
 ```rust
-let config = TestConfig::default("foolish-ubca/snapshot_tests")
+let config = TestConfig::default("zweimomo/suites/foolish")
     .require_correspondence(Stage::Output, Stage::Checked);   // CI gate
 let suite = EinmoSuite::new(config);
-let results = suite.evaluate_all(num_cpus::get(), &UbcaEvaluator::new());
+let results = suite.evaluate_all(num_cpus::get(), &UbcaEvaluatorAdapter);
 assert!(results.all_written_and_correspondence_holds());
 ```
 
@@ -1421,18 +1703,23 @@ typed library makes the invariants enforceable in code and CI.
 
 - Prior FOOPs:
   - **FOOP-12** — Signature scheme (Ed25519/Argon2id, canonicalization,
-    dual-signing, `verify_signatures`). The cryptographic foundation. Status: Final.
+    dual-signing, `verify_signatures`). The cryptographic foundation. Einmo
+    reimplements this from scratch (does not depend on the existing
+    `foolish-core/src/signature.rs`). Status: Final.
   - **FOOP-22** — Multi-signer append format (`test`/`util` roles, "Entire
     file" integrity). Adopted as canonical. Status: Draft.
   - **FOOP-02** — `SnapshotSuite` current home in `foolish-core`, generalised
-    over `Evaluator`. This FOOP moves it into `einmo`. Status: Draft.
+    over `Evaluator`. Einmo defines its own `EinmoSuite` from scratch (does not
+    move the existing file). Status: Draft.
   - **FOOP-42** — Humanizing FIR Sequencer (HFS) output byte format
-    (`hfssnap`). The signed body must conform. Status: Draft.
+    (`hfssnap`). The signed body must conform when foolish-ubca is the
+    evaluator; einmo itself is format-agnostic (`Vec<String>`). Status: Draft.
   - **FOOP-62** — UBCa; snapshots are the hard acceptance gate; `catch_unwind`
-    panic-capture contract. Status: Brewing.
+    panic-capture contract. Status: Final.
   - **FOOP-21** — Alarms emitted into snapshot output. Status: Brewing.
-  - **FOOP-03** — Deprecating JVM implementations. Cross-validation tier
-    dropped from Einmo scope. Status: (see FOOP-03).
+  - **FOOP-03** — Repository cleanup / workspace flattening. Cross-validation
+    tier dropped from Einmo scope; `foolish-ubcb` removed from workspace.
+    Status: Implementing (workspace already flattened).
 - External docs (verified mid-2026; full citation in Appendix D):
   - insta (v1.48.0, commit `7f23d2e`) — https://insta.rs/docs/, https://docs.rs/insta
   - in-toto Attestation Framework — https://github.com/in-toto/attestation
@@ -1442,23 +1729,30 @@ typed library makes the invariants enforceable in code and CI.
   - jlevy/tbd Golden Sessions — https://github.com/jlevy/tbd/blob/main/packages/tbd/docs/guidelines/golden-testing-guidelines.md
   - insta issue #792 (TOFU/immutable snapshots, OPEN) — https://github.com/mitsuhiko/insta/issues/792
   - insta PR #815 (non-interactive review for LLMs/CI, shipped 1.44) — https://github.com/mitsuhiko/insta/pull/815
-- Code locations (pre-extraction, verified mid-2026):
-  - `foolish/foolish-core/src/signature.rs` (644 lines, FOOP-12; currently
-    REPLACE-based single-signer — migrate to FOOP-22 append)
-  - `foolish/foolish-core/src/snapshot_suite.rs` (258 lines, FOOP-02;
-    `Evaluator` returns `Vec<FirRef>` — generalise to `Vec<String>`)
-  - `foolish/foolish-core/src/bin/verify_signatures.rs` — **MISSING** (dangling
-    `[[bin]]` in `Cargo.toml`; gitignored by root `bin/` pattern — fix before
-    creating `einmo/src/bin/`)
-  - `foolish/foolish-core/src/ubc_snapshot_tester.rs`,
-    `foolish/foolish-ubca/src/ubca_snapshot_tester.rs`,
-    `foolish/foolish-ubcb/src/ubcb_snapshot_tester.rs` — `Evaluator` adapters
+  - **rustpython-vm** v0.5.0 — https://github.com/RustPython/RustPython (pure-Rust Python)
+  - **boa_engine** v0.21.1 — https://github.com/boa-dev/boa (pure-Rust ECMAScript)
+- Code locations (design references, verified mid-2026; paths reflect the
+  post-FOOP-03 flattened workspace — `foolish-core/`, `foolish-ubca/` at the
+  workspace root, no `foolish/` wrapper):
+  - `foolish-core/src/signature.rs` (680 lines, FOOP-12; currently
+    REPLACE-based single-signer). **Design reference only** — einmo reimplements
+    per FOOP-22; this file is **not modified**.
+  - `foolish-core/src/snapshot_suite.rs` (289 lines, FOOP-02; `Evaluator`
+    returns `Vec<FirRef>`). **Design reference only** — einmo defines its own
+    `EinmoSuite` with `Evaluator → Vec<String>`; this file is **not modified**.
+  - `foolish-core/src/bin/verify_signatures.rs` — **exists and is git-tracked**
+    (the `.gitignore` `bin/` pattern does not affect already-tracked files). It
+    is a working clap binary. Einmo ships its own `verify_signatures.rs` in
+    `einmo/src/bin/`; the `.gitignore` must be narrowed so the new file is not
+    ignored.
+  - `foolish-ubca/src/ubca_snapshot_tester.rs` — the one existing `Evaluator`
+    adapter (`UbcaEvaluator`). Zweimomo wraps it (does not modify it).
   - `foolish_review.sh` (98 lines), `accept_approved.sh` (53 lines) —
-    worktree-local; replaced by `cargo einmo` subcommands
-  - `foolish/.claude/settings.json` — contains `INSTA_UPDATE=always` in allow
-    list (contradicts AGENTS.md; moot under Einmo which has no automated update)
-  - ~289 committed `.snap`/`.snap.new` files (140 core + 145 ubca + 4 ubcb) to
-    migrate to `.einmo`
+    worktree-local; replaced by `cargo einmo` subcommands (zweimomo builds its
+    own corpus; existing scripts untouched).
+  - 276 committed `.snap` files (131 core + 145 ubca + 0 ubcb) + 285 `.snap.new`
+    files across `foolish-core`/`foolish-ubca` snapshot_tests dirs. **Not
+    migrated** by this FOOP; migration is a future, separate effort.
 
 ---
 
@@ -1675,59 +1969,319 @@ not depend on insta for output). The following survive:
 
 ---
 
-# Appendix F — Codebase state (supplemental, verified mid-2026)
+# Appendix F — Codebase state (supplemental, verified mid-2026, post-FOOP-03 flattening)
 
 ## F.1 Test-bearing files (the real tiers)
 
 - `foolish-core/src/`: `fir.rs` (22 tests), `signature.rs` (27 tests),
-  `sequencer_tests.rs` (21), `unit_tests.rs` (14), `ubc_snapshot_tester.rs` (1:
-  `approval_all`).
+  `sequencer_tests.rs` (21), `unit_tests.rs` (14).
 - `foolish-ubca/src/`: `fir_kinds.rs` (88 tests, incl. all 16
   `*_nyes_transitions`), `fir_trait.rs` (30, incl.
   `step_leaf_through_nyes_transitions`), `proto_brane.rs` (5), `nyes_ext.rs` (5),
   `ubca_snapshot_tester.rs` (1).
-- `foolish-ubcb/src/`: `unit_tests.rs` (19), `fir.rs` (10), `channel.rs` (6),
-  `luid.rs` (3), `ubcb_snapshot_tester.rs` (2: `approval_all`,
-  `approval_all_states`).
 - `foolish-parser/src/`: `parser.rs` (14), `lexer.rs` (8).
+- `foolish-cli/src/`: CLI binary; no snapshot tests.
 
 No `tests/` integration dirs. No CLI/trycmd tests. No benchmarks (`#[bench]`/
 criterion). The `*_nyes_transitions` tests live in `foolish-ubca/src/fir_kinds.rs`
 (inline `#[cfg(test)] mod tests`); AGENTS.md mandates extending them when FIR
 kinds/NYES states change.
 
+**Note:** `foolish-ubcb` was removed from the workspace by FOOP-03. Any earlier
+draft referencing `foolish-ubcb` test files, `UbcbEvaluator`, or
+`ubcb_snapshot_tester.rs` is stale.
+
 ## F.2 Snapshot directories
 
-Three crates have `snapshot_tests/{input,approved}/`:
-- `foolish-core/snapshot_tests/approved/` — `.snap` (100+), `.foo` inputs; no `.snap.new`.
-- `foolish-ubca/snapshot_tests/approved/` — `.snap` (100+); stray `.snap.approved`, editor `.swp/.swo`.
-- `foolish-ubcb/snapshot_tests/approved/` — 4 `.snap` + 4 `.snap.new` (pending human review).
+Two crates have `snapshot_tests/{input,approved}/`:
+- `foolish-core/snapshot_tests/approved/` — 131 `.snap` + `.foo` inputs; some `.snap.new`.
+- `foolish-ubca/snapshot_tests/approved/` — 145 `.snap`; stray `.snap.approved`, editor `.swp/.swo`.
 
-~289 committed `.snap`/`.snap.new` files total to migrate to `.einmo`.
+276 committed `.snap` + 285 `.snap.new` files total. **Not migrated by this
+FOOP** — einmo builds its own corpus via zweimomo; legacy `.snap` migration is a
+future, separate effort.
 
 ## F.3 CI (no Rust)
 
 `.github/workflows/tests.yml` ("Cross Validation") runs Java/Scala/Maven only.
-**No `cargo test` in any workflow.** `foolish-crossvalidation` is a Maven/Java
-module, not a Rust crate. Einmo's CI gates are greenfield (Rust).
+**No `cargo test` in any workflow.** Einmo's CI gates are greenfield (Rust).
 
-## F.4 Test-harness helpers (to migrate into `einmo`)
+## F.4 Test-harness helpers (design references; NOT migrated)
 
 - `foolish-core/src/snapshot_suite.rs` — the shared `SnapshotSuite` +
-  `Evaluator` trait (currently `Vec<FirRef>`).
-- `foolish-core/src/ubc_snapshot_tester.rs`,
-  `foolish-ubca/src/ubca_snapshot_tester.rs`,
-  `foolish-ubcb/src/ubcb_snapshot_tester.rs` — `Evaluator` adapters
-  (`UbcEvaluator`/`UbcaEvaluator`/`UbcbEvaluator`).
+  `Evaluator` trait (returns `Vec<FirRef>`). **Design reference**; einmo defines
+  its own `EinmoSuite` returning `Vec<String>`.
+- `foolish-ubca/src/ubca_snapshot_tester.rs` — the one existing `Evaluator`
+  adapter (`UbcaEvaluator`). Zweimomo wraps it (does not modify it).
 - `foolish-core/src/signature.rs` — Ed25519/Argon2id (currently REPLACE-based).
-- `foolish-core/Cargo.toml` — dangling `[[bin]] verify_signatures` (file missing).
-- `foolish_review.sh` (98 lines), `accept_approved.sh` (53 lines) — worktree-local.
+  **Design reference**; einmo reimplements per FOOP-22.
+- `foolish-core/src/bin/verify_signatures.rs` — exists and is git-tracked
+  (dangling-`[[bin]]` premise was wrong; the file is present). Einmo ships its
+  own `verify_signatures.rs` in `einmo/src/bin/`.
+- `foolish_review.sh` (98 lines), `accept_approved.sh` (53 lines) —
+  worktree-local; left untouched.
 
 Insta workspace dep: `insta = { version = "1", features = ["yaml"] }`; dev-dep in
-foolish-core, foolish-ubca, foolish-ubcb, foolish-parser. (Einmo drops the insta
-dependency for output generation.)
+foolish-core, foolish-ubca, foolish-parser. Einmo does **not** depend on insta;
+zweimomo does not either (both write `.einmo` directly).
+
+---
+
+# Appendix G — Foolish-ubca capability envelope & syntax reference
+
+*(Verified mid-2026 against `foolish-ubca` source + the ~145 `.foo` snap inputs
+under `foolish-ubca/snapshot_tests/input/`. This appendix bounds what the
+parallel-input matrix (§D.4) can express in the Foolish column.)*
+
+## G.1 Language features that work today
+
+| Feature | Syntax / example | Notes |
+|---|---|---|
+| Integer literals | `{5;}` `{42;}` | `u64`; no floats, no strings |
+| Unary minus | `{-42;}` | |
+| Arithmetic | `{2 + 3 * 4 - 5;}` | `+ - * /`; `/` is **integer** division |
+| Precedence + parens | `{((2 + 3) * (4 - 1)) / 5;}` | |
+| Name binding (SSA) | `{x = 42; y = x + 8;}` | static single assignment; reuse allowed (`a=1; a=2`) |
+| Forward references | `{fwd = later; later = 99;}` | use-before-define works |
+| Branes (nested) | `{a = 10; b = 20; n = {inner = a+b;};}` | arbitrarily deep |
+| Ordinate access | `n.inner` | DotSearch |
+| Seek (indexed) | `data#0`, `data#-1` | positional; unanchored `#-N` works |
+| Head / Tail | `data^`, `data$` | first / last element |
+| Regex search | `anchor?pattern`, `anchor~pattern` | returns match or NK |
+| Upward search | `↑` | parent-context search |
+| Concatenation | `{p=1;q=2} ⨃ {r=3;s=4}` | brane merge |
+| Bind-tail | `a =$ b` ≡ `a = b$` | bind last value of `b` to `a` |
+| Function application | `r =$ {a=10,b=-3} fn` | emergent (see §D.5); no `fn()` syntax |
+| Detachment brane | `[...]{...}` | scope control |
+| StayFoolish | `<expr>` | lazy/captured evaluation |
+| StayFullyFoolish | `<<expr>>` | fully lazy |
+| Named brane tag | `name'{...}` | characterization |
+| NK literal | `???` | "not knowable" |
+| Comments | `!! line` / `!!! block !!!` | |
+| Unicode identifiers | `π`, `привет`, `名前` | diverse scripts supported |
+
+## G.2 What does NOT work (sets the matrix ceiling)
+
+- **No string type** — `"hello"` parses in the README example but `Astn` has no
+  `StringLit`; there is no string literal in the AST. → string-ops concept row
+  dropped from the matrix.
+- **No floats** — only `IntLit(u64)`. → Python/JS arithmetic columns use integer
+  arithmetic to match outputs.
+- **No booleans** — no `true`/`false`.
+- **No function definitions** (as an AST node) — no `fn`, `=>`, `\`, no `FnDef`/
+  `Lambda`/`CallExpr`. Function application is *emergent* via concatenation +
+  `$`/`=$` (§D.5), not syntactic.
+- **No recursion / loops / iteration** — pure SSA, no control flow.
+- **`if/then/elif/else/fi`** — parsed by the lexer but **rejected at compile
+  time** (`compiler.rs`: `"if-then-else: not supported (FOOP=2)"`).
+- **No closures / higher-order functions.**
+
+## G.3 Alarms and NK (error-as-value)
+
+- Division by zero: `10 / 0` → the FIR becomes NK and an **alarm** is emitted
+  into the output (FOOP-21). The signed `.einmo` captures the alarm — a
+  panicking evaluation still produces a signed, reviewable artifact.
+- `???` is the explicit NK literal.
+
+## G.4 The `hfssnap` output format
+
+`UbcaEvaluator::evaluate` returns `Vec<FirRef>` (one per top-level statement).
+Each FIR is rendered by `FirSequencer::format(fir) → String` into an
+indented, line-budgeted tree — the `hfssnap` body. The assembled `.snap` is
+INPUT + one RESULT block per FIR + COMMENTS + signature footer. Einmo's
+`UbcaEvaluatorAdapter` (§D.3) calls the same `FirSequencer::format` and collects
+the strings into `Vec<String>`.
+
+## G.5 Representative `.foo` inputs (from the existing corpus)
+
+```
+{5;}                                                    # simple integer
+{-42;}                                                  # unary minus
+{2 + 3 * 4 - 5;}                                        # precedence
+{x = 42; y = x + 8; y;}                                 # name binding + scope
+{fwd = later; later = 99;}                             # forward reference
+{5; {10; 15}; 20;}                                      # nested branes
+{a = 10; b = 20; nested = {inner = a + b}; nested.inner;}   # ordinate access
+{data = {a=10; b=20; c=30}; first = data#0;}            # seek
+{a = 10 / 0; b = 20 / 4;}                              # division-by-zero alarm
+{answer = ???;}                                         # NK literal
+{a=1,b=2; c=<<a+b>>; c; c;}                             # StayFullyFoolish
+{d =$ 4; e = 5;}                                        # bind-tail (calling form)
+```
+
+*(Use these for inspiration when writing the Foolish column of the parallel-input
+matrix — see plan task "use existing snaps for inspiration".)*
+
+---
+
+# Appendix H — RustPython embedding reference
+
+*(Verified mid-2026 against `rustpython-vm` 0.5.0, commit
+`f196dc401c98a1c1e8fc2f308ed038d17f859076` on
+`github.com/RustPython/RustPython`.)*
+
+## H.1 Crate identity
+
+- **crates.io name**: `rustpython-vm` — v0.5.0 (published 2026-03-31).
+- The top-level `rustpython` crate is the *binary*; its lib docs say "If you're
+  looking to embed RustPython into your application, you're likely looking for
+  the [`rustpython_vm`] crate."
+- Embedding entry point: `rustpython_vm::Interpreter`.
+
+## H.2 Pure-Rust confirmation ✅
+
+- `crates/vm/Cargo.toml`: no `links =`, no `cc`, no `cmake`, no `*-sys`.
+- Only "system-ish" dep is `libc` (pure-Rust FFI binding, not a C compiler dep).
+- `openssl-sys` is gated behind the **off-by-default** `ssl-openssl` feature;
+  the default SSL backend is `ssl-rustls` (pure-Rust). Default features:
+  `["threading","stdlib","stdio","importlib","ssl-rustls","host_env"]` — **no C
+  toolchain required with defaults.**
+- No CPython linkage; RustPython is a from-scratch bytecompiler + VM in pure
+  Rust, sharing no code with CPython.
+
+## H.3 Embedding API surface
+
+| What | API | Path |
+|---|---|---|
+| Bare interpreter (no stdlib) | `Interpreter::without_stdlib(Default::default())` | `crates/vm/src/vm/interpreter.rs` |
+| Builder (preferred) | `Interpreter::builder(settings)` | same |
+| Run code in VM context | `interp.enter(\|vm\| { ... })` | same |
+| Fresh scope | `vm.new_scope_with_builtins()` → `Scope` | vm_new.rs |
+| Compile | `vm.compile(source, Mode::Exec, "<path>")` → `PyResult<CodeObject>` | |
+| Run compiled | `vm.run_code_obj(code, scope)` → `PyResult<PyObjectRef>` | |
+| Eval single expr | `rustpython_vm::eval::eval(vm, source, scope, path)` → `PyResult<PyObjectRef>` | `crates/vm/src/eval.rs` |
+| Stringify result | `obj.str(vm)?.as_str().to_string()` | `protocol/object.rs`, `builtins/str.rs` |
+| Repr | `obj.repr(vm)?.as_str().to_string()` | `protocol/object.rs` |
+
+**Compile modes** (`rustpython_vm::compiler::Mode`): `Exec` (script), `Eval`
+(single expression → value), `Single` (REPL), `BlockExpr`.
+
+## H.4 Minimal snippet
+
+```rust
+use rustpython_vm::{Interpreter, eval};
+
+let interp = Interpreter::without_stdlib(Default::default());
+let out: String = interp.enter(|vm| {
+    let scope = vm.new_scope_with_builtins();
+    let result = eval::eval(vm, "1 + 2", scope, "<zweimomo>")?;
+    Ok(result.str(vm)?.as_str().to_string())
+}).unwrap();
+assert_eq!(out, "3");
+```
+
+## H.5 Caveats for a test-harness evaluator
+
+- **`without_stdlib` is genuinely bare**: arithmetic, function defs, classes,
+  comprehensions, f-strings all work without stdlib; but `import` of stdlib
+  modules (`os`, `sys`, `json`, `re`) fails until `init_stdlib()` is called.
+  → *Sandboxing plus:* no `os`, no file I/O, no `subprocess` unless explicitly
+  wired. Recommended for zweimomo: `without_stdlib` (keep it sandboxed).
+- **`Interpreter` is not `Send`** (thread-local VM context). A
+  `RustPythonEvaluator` impl must hold the `Interpreter` on one thread or use a
+  `thread_local!` / dedicated-thread-with-channel pattern.
+- Recursion limit is CPython-like; tunable via `Settings`.
+- stdlib is large but incomplete vs CPython — irrelevant for an expression
+  evaluator.
+
+---
+
+# Appendix I — Boa embedding reference
+
+*(Verified mid-2026 against `boa_engine` 0.21.1, commit
+`8a1e8fe07f626f7a067afc2c9885d5d87de4bb5d` on
+`github.com/boa-dev/boa`.)*
+
+## I.1 Crate identity
+
+- **crates.io name**: `boa_engine` — v0.21.1 (published 2026-03-29). 3.55M
+  downloads — widely used.
+- Embedding entry point: `boa_engine::{Context, Source}`.
+
+## I.2 Pure-Rust confirmation ✅
+
+- `core/engine/Cargo.toml`: no `links =`, no `cc`, no `cmake`, no `*-sys` in the
+  entire Boa workspace.
+- All deps pure-Rust: `regress` (regex), `icu_*` (i18n, compiled-data),
+  `num-bigint`, `ryu-js`, `fast-float2`, `hashbrown`, etc.
+- The `ffi/` directory is an *outbound* C-API Boa exposes (optional, separate
+  crate), **not** a system dependency Boa consumes.
+- No V8, no QuickJS, no SpiderMonkey — Boa is a from-scratch ECMAScript
+  lexer+parser+bytecompiler+VM in pure Rust.
+
+## I.3 Embedding API surface
+
+| What | API | Path |
+|---|---|---|
+| Create interpreter | `Context::default()` (also `Context::new(...)`, `Context::builder()`) | `core/engine/src/lib.rs` |
+| Wrap source bytes | `Source::from_bytes(&str)` (`Source` re-exported from `boa_engine`) | |
+| Eval | `context.eval(source)` → `JsResult<JsValue>` | `Context::eval` |
+| Stringify value | `value.to_string(&mut context)?.to_std_string_escaped()` | `value/mod.rs:974`, `core/string/src/lib.rs:183` |
+| Error type | `boa_engine::JsError` (`.to_string(&mut context)` for message) | |
+
+## I.4 Minimal snippet
+
+```rust
+use boa_engine::{Context, Source};
+
+let mut context = Context::default();
+let result = context.eval(Source::from_bytes("1 + 2")).unwrap(); // JsValue
+let out = result.to_string(&mut context).unwrap().to_std_string_escaped();
+assert_eq!(out, "3");
+```
+
+*(Verbatim pattern from the crate-level doc example.)*
+
+## I.5 Caveats for a test-harness evaluator
+
+- Boa targets ECMAScript spec (test262); passes a large majority. Core language
+  (ES2020+ incl. classes, generators, async, destructuring, template literals,
+  `Map`/`Set`/`Promise`) is reliable.
+- **No file I/O, no `fs`, no `child_process`, no `require`/Node APIs by default**
+  — pure language core. → *Sandboxing plus:* a Boa `Context` cannot touch the
+  filesystem or network unless host functions are explicitly injected. Ideal
+  for a snapshot test evaluator.
+- **`Intl`** is behind the off-by-default `intl` feature (pulls ICU, still
+  pure-Rust). Skip if locale formatting isn't needed.
+- **`Context` is not `Send`** (GC + realm are thread-affine). Same
+  thread-local / dedicated-thread advice as RustPython.
+- Boa is slower than V8 but that is irrelevant for a correctness test harness.
+
 
 ## Last Updated
+
+**Date**: 2026-07-03
+**Updated By**: Claude Code 2.1.199 (Claude Code); Fable 5
+**Changes**: Added the **exhaustive algorithm coverage** later-phase scope to
+§D.7 (port implementations from TheAlgorithms and similar collections into the
+zweimomo corpus, to stress-test einmo at realistic scale — "test the test
+framework as thoroughly as possible"), matching the new algorithm-coverage
+phase in FOOP-92.plan.md. The plan file was rewritten in the same session to
+match this spec's standalone scope (see its Last Updated entry).
+
+**Date**: 2026-07-03
+**Updated By**: Sisyphus / z-ai/glm-5.2
+**Changes**: Major refresh. (1) **Standalone-einmo scope**: einmo reimplements
+signed-snapshot machinery from scratch — NO edits to `foolish-core`/`foolish-ubca`/
+any existing crate; promotable to its own repo. Dropped all "migrate
+signature.rs/snapshot_suite.rs/.snap corpus" language. (2) **New companion crate
+`zweimomo`** (Use Case D): three **pure-Rust** interpreters as `Evaluator` impls —
+foolish-ubca (Foolish), rustpython-vm v0.5.0 (Python), boa_engine v0.21.1
+(JavaScript). Parallel test-input matrix (arithmetic, parsing, name-binding,
+data-structures, function-application, errors, search, SF/SFF) bounded by
+foolish-ubca's capability ceiling. Pure-Rust rationale noted (no C/FFI toolchain
+→ portable + repo-promotable). Function-application in Foolish documented as
+emergent via concatenation + `$`/`=$` tail-binding (§D.5). (3) **Refresh pass**:
+flattened paths (foolish/foolish-core/ → foolish-core/, post-FOOP-03), dropped
+all `foolish-ubcb` references (removed by FOOP-03), fixed the verify_signatures.rs
+premise (file EXISTS + tracked, not missing — but `.gitignore bin/` fix still
+needed for new `einmo/src/bin/`), fixed line counts (680/289), fixed `.snap`
+counts (276+285; 131 core + 145 ubca + 0 ubcb), fixed FOOP-62 status (Final).
+(4) **New appendices G/H/I**: per-language research (Foolish capability envelope
++ syntax reference; RustPython embedding API; Boa embedding API) with verified
+crate SHAs and minimal snippets. (5) Added Tier 3 (cross-language) to the
+test-tier table. (6) Rewrote §1 (crate structure) and §5 (build order) for
+standalone scope.
 
 **Date**: 2026-07-02
 **Updated By**: Sisyphus / z-ai/glm-5.2

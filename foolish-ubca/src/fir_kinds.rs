@@ -389,6 +389,13 @@ impl IndepIntFir {
     pub fn value(&self) -> i64 {
         self.value
     }
+
+    pub fn constant_int(value: i64, parent: Weak<RefCell<dyn Fir>>) -> FirRef {
+        Rc::new(RefCell::new(IndepIntFir {
+            core: ProtoBrane::new(vec![], parent, Nyes::Prembrionic),
+            value,
+        }))
+    }
 }
 
 impl Fir for IndepIntFir {
@@ -423,6 +430,13 @@ impl NkFir {
     pub fn reason(&self) -> &str {
         &self.reason
     }
+
+    pub fn nk(reason: &str, parent: Weak<RefCell<dyn Fir>>) -> FirRef {
+        Rc::new(RefCell::new(NkFir {
+            core: ProtoBrane::new(vec![], parent, Nyes::Prembrionic),
+            reason: reason.to_owned(),
+        }))
+    }
 }
 
 impl Fir for NkFir {
@@ -454,6 +468,13 @@ pub struct OperatorFir {
 }
 
 impl OperatorFir {
+    pub fn operator(op: &str, operands: Vec<FirRef>, parent: Weak<RefCell<dyn Fir>>) -> FirRef {
+        Rc::new(RefCell::new(OperatorFir {
+            core: ProtoBrane::new(operands, parent, Nyes::Prembrionic),
+            op: op.to_owned(),
+        }))
+    }
+
     fn operands_all_settled(&self) -> bool {
         self.core().foolish_children().iter().all(|c| {
             matches!(
@@ -661,6 +682,19 @@ impl StatementFir {
     pub fn line_number(&self) -> usize {
         self.line_number
     }
+
+    pub fn statement(
+        name: &str,
+        line_number: usize,
+        body: FirRef,
+        parent: Weak<RefCell<dyn Fir>>,
+    ) -> FirRef {
+        Rc::new(RefCell::new(StatementFir {
+            core: ProtoBrane::new(vec![body], parent, Nyes::Prembrionic),
+            name: name.to_owned(),
+            line_number,
+        }))
+    }
 }
 
 impl Fir for StatementFir {
@@ -720,6 +754,15 @@ impl Fir for StatementFir {
 pub struct BraneFir {
     pub(crate) core: ProtoBrane,
     pub(crate) characterizations: Vec<String>,
+}
+
+impl BraneFir {
+    pub fn brane(children: Vec<FirRef>, parent: Weak<RefCell<dyn Fir>>) -> FirRef {
+        Rc::new(RefCell::new(BraneFir {
+            core: ProtoBrane::new(children, parent, Nyes::Prembrionic),
+            characterizations: Vec::new(),
+        }))
+    }
 }
 
 impl Fir for BraneFir {
@@ -1046,6 +1089,19 @@ fn find_parent_brane(start: &ProtoBrane) -> Option<FirRef> {
 }
 
 impl IndexFir {
+    pub fn index(
+        offset: i32,
+        anchored: bool,
+        children: Vec<FirRef>,
+        parent: Weak<RefCell<dyn Fir>>,
+    ) -> FirRef {
+        Rc::new(RefCell::new(IndexFir {
+            core: ProtoBrane::new(children, parent, Nyes::Prembrionic),
+            offset,
+            anchored,
+        }))
+    }
+
     fn settle_from_ubc_result(&self) {
         let result_nyes = self
             .core
@@ -1145,6 +1201,21 @@ pub struct HeadTailFir {
     pub(crate) core: ProtoBrane,
     pub(crate) is_head: bool,
     pub(crate) anchored: bool,
+}
+
+impl HeadTailFir {
+    pub fn headtail(
+        is_head: bool,
+        anchored: bool,
+        children: Vec<FirRef>,
+        parent: Weak<RefCell<dyn Fir>>,
+    ) -> FirRef {
+        Rc::new(RefCell::new(HeadTailFir {
+            core: ProtoBrane::new(children, parent, Nyes::Prembrionic),
+            is_head,
+            anchored,
+        }))
+    }
 }
 
 impl Fir for HeadTailFir {
@@ -1274,6 +1345,14 @@ pub struct StayFoolishFir {
     pub(crate) core: ProtoBrane,
 }
 
+impl StayFoolishFir {
+    pub fn stay_foolish(expr: FirRef, parent: Weak<RefCell<dyn Fir>>) -> FirRef {
+        Rc::new(RefCell::new(StayFoolishFir {
+            core: ProtoBrane::new(vec![expr], parent, Nyes::Prembrionic),
+        }))
+    }
+}
+
 impl Fir for StayFoolishFir {
     #[inline(always)]
     fn core(&self) -> &ProtoBrane {
@@ -1327,6 +1406,14 @@ pub struct StayFullyFoolishFir {
     pub(crate) core: ProtoBrane,
 }
 
+impl StayFullyFoolishFir {
+    pub fn stay_fully_foolish(expr: FirRef, parent: Weak<RefCell<dyn Fir>>) -> FirRef {
+        Rc::new(RefCell::new(StayFullyFoolishFir {
+            core: ProtoBrane::new(vec![expr], parent, Nyes::Prembrionic),
+        }))
+    }
+}
+
 impl Fir for StayFullyFoolishFir {
     #[inline(always)]
     fn core(&self) -> &ProtoBrane {
@@ -1359,6 +1446,14 @@ impl Fir for StayFullyFoolishFir {
 #[derive(Debug)]
 pub struct ConcatenationFir {
     pub(crate) core: ProtoBrane,
+}
+
+impl ConcatenationFir {
+    pub fn concatenation(elements: Vec<FirRef>, parent: Weak<RefCell<dyn Fir>>) -> FirRef {
+        Rc::new(RefCell::new(ConcatenationFir {
+            core: ProtoBrane::new(elements, parent, Nyes::Prembrionic),
+        }))
+    }
 }
 
 impl Fir for ConcatenationFir {
@@ -1438,13 +1533,6 @@ impl Fir for ConcatenationFir {
     fn kind(&self) -> FirKind {
         FirKind::Concatenation
     }
-}
-
-pub fn constant_int(value: i64, parent: Weak<RefCell<dyn Fir>>) -> FirRef {
-    Rc::new(RefCell::new(IndepIntFir {
-        core: ProtoBrane::new(vec![], parent, Nyes::Prembrionic),
-        value,
-    }))
 }
 
 pub fn nk(reason: &str, parent: Weak<RefCell<dyn Fir>>) -> FirRef {
@@ -1668,7 +1756,7 @@ mod tests {
             })
         });
         let parent_weak = Rc::downgrade(&dummy);
-        let node = constant_int(99, parent_weak);
+        let node = IndepIntFir::constant_int(99, parent_weak);
 
         assert_eq!(node.borrow().core().get_nyes(), Nyes::Prembrionic);
         assert_eq!(node.borrow().kind(), FirKind::IndepInt);
