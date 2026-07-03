@@ -1,9 +1,10 @@
 //! Fir trait — the dyn-dispatch surface for UBCa FIR nodes.
 //!
 //! Each FIR kind implements this trait with its own `fir_op_step` (combining
-//! work) and `kind()`. Shared stepping logic lives in the free function
-//! `step_fir_ref`, NOT as a trait method — this is critical for borrow
-//! discipline (transient borrows dropped before recursion).
+//! work) and `kind()`. Shared stepping logic lives in [`FirRefExt::step`], an
+//! extension method on the `FirRef` handle rather than a method on the inner
+//! `dyn Fir` — this is critical for borrow discipline (transient borrows of the
+//! pointee dropped before recursion).
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -89,7 +90,7 @@ pub enum UbcError {
 ///
 /// Every FIR kind contains a `ProtoBrane` (accessed via `core()`)
 /// and implements `fir_op_step` with its own combining work. Stepping itself
-/// is the shared `step_fir_ref` free function — kinds differ through
+/// is the shared [`FirRefExt::step`] extension method — kinds differ through
 /// construction-time state and `fir_op_step`, not by overriding the step.
 pub trait Fir: std::fmt::Debug {
     /// Read-only access to the shared field-holder.
@@ -242,50 +243,78 @@ pub trait Fir: std::fmt::Debug {
     }
 }
 
-/// Returns the deepest resolved value this FIR represents.
+/// Guard against runaway recursion on pathologically deep trees.
+const MAX_DEPTH: usize = 100;
+
+/// Behaviors a [`FirRef`] performs on itself: resolving to a value and stepping.
 ///
-/// When a FIR settles, it may store its result in `ubc_children[0]`
-/// (e.g. SearchFir, OperatorFir, IndexFir). That result may itself be a
-/// wrapper with its own `ubc_children`. This function recursively unwraps
-/// the chain until it reaches a terminal value (one that has no
-/// `ubc_children`, like IndepInt, Nk, or BraneFir).
+/// # Why an extension trait
 ///
-/// For pre-constanic FIRs or FIRs without `ubc_children`, returns `self`.
-pub fn get_value(fir_ref: &FirRef) -> FirRef {
-    // Extract first ubc_child under a short borrow, then drop it before recursing.
-    let child: Option<FirRef> = {
-        let borrowed = fir_ref.borrow();
-        if borrowed.core().get_nyes().is_constanic() {
-            borrowed.core().ubc_children().into_iter().next()
-        } else {
-            None
+/// [`FirRef`] is a type *alias* for the foreign type `Rc<RefCell<dyn Fir>>`, so
+/// the orphan rule forbids an inherent `impl FirRef { … }`. To give these
+/// operations `self`-method call syntax (`node.value()`, `root.step(&scope)`)
+/// we attach them to the `Rc` handle through an extension trait — the same
+/// pattern this crate already uses for [`crate::nyes_ext::NyesExt`], which bolts
+/// predicates onto the foreign `Nyes` enum.
+///
+/// # Borrow discipline
+///
+/// These methods take `&self` (the `Rc` handle), *not* `&self` of the inner
+/// `dyn Fir`. Each `RefCell` borrow of the pointee is opened and dropped within
+/// a single statement before any recursion or `fir_op_step` call. This is the
+/// invariant that keeps stepping panic-free: a borrow of the inner FIR must
+/// never be held across a recursive step, or the nested `borrow`/`borrow_mut`
+/// would alias and panic. Because the receiver is the pointer, not a borrow of
+/// the pointee, that discipline is preserved exactly as it was when these were
+/// free functions over `&FirRef`.
+pub trait FirRefExt {
+    /// Returns the deepest resolved value this FIR represents.
+    ///
+    /// When a FIR settles, it may store its result in `ubc_children[0]`
+    /// (e.g. SearchFir, OperatorFir, IndexFir). That result may itself be a
+    /// wrapper with its own `ubc_children`. This walks the chain until it
+    /// reaches a terminal value (one with no `ubc_children`, like IndepInt, Nk,
+    /// or BraneFir).
+    ///
+    /// For pre-constanic FIRs or FIRs without `ubc_children`, returns a clone of
+    /// `self`.
+    #[must_use]
+    fn value(&self) -> FirRef;
+
+    /// Performs ONE stepping action (check-then-act) and reports progress.
+    ///
+    /// The outer driver loops `root.step(&scope)` until the node is constanic.
+    /// See the trait-level note on borrow discipline.
+    fn step(&self, scope: &Scope) -> Result<StepReport, UbcError>;
+}
+
+impl FirRefExt for FirRef {
+    fn value(&self) -> FirRef {
+        // Extract first ubc_child under a short borrow, then drop it before recursing.
+        let child: Option<FirRef> = {
+            let borrowed = self.borrow();
+            if borrowed.core().get_nyes().is_constanic() {
+                borrowed.core().ubc_children().into_iter().next()
+            } else {
+                None
+            }
+        };
+        match child {
+            Some(c) => c.value(),
+            None => Rc::clone(self),
         }
-    };
-    match child {
-        Some(c) => get_value(&c),
-        None => Rc::clone(fir_ref),
+    }
+
+    fn step(&self, scope: &Scope) -> Result<StepReport, UbcError> {
+        step_inner(self, scope, 0)
     }
 }
 
-/// The shared step function — written ONCE, called as a free function over a
-/// `&FirRef`.
+/// Recursion companion for [`FirRefExt::step`], carrying the depth counter.
 ///
-/// This is NOT a trait method: it takes `this: &FirRef` so the borrow is
-/// transient and dropped before any recursive call or `fir_op_step`
-/// invocation, preventing the RefCell aliasing panic that a nested
-/// `borrow_mut`-across-recursion shape would cause.
-///
-/// ONE action per call (check-then-act). The outer driver loops
-/// `step_fir_ref(root, scope)`.
-///
-/// Uses an explicit stack to avoid stack overflow on deeply nested trees.
-const MAX_DEPTH: usize = 100;
-
-pub fn step_fir_ref(this: &FirRef, scope: &Scope) -> Result<StepReport, UbcError> {
-    step_fir_ref_inner(this, scope, 0)
-}
-
-fn step_fir_ref_inner(this: &FirRef, scope: &Scope, depth: usize) -> Result<StepReport, UbcError> {
+/// Kept as a private free function rather than a trait method so the internal
+/// `depth` parameter never leaks into the public `step` signature.
+fn step_inner(this: &FirRef, scope: &Scope, depth: usize) -> Result<StepReport, UbcError> {
     if depth > MAX_DEPTH {
         return Ok(StepReport::NoProgress);
     }
@@ -308,7 +337,7 @@ fn step_fir_ref_inner(this: &FirRef, scope: &Scope, depth: usize) -> Result<Step
                 if this_kind == FirKind::Brane {
                     child_scope.current_brane = Some(Rc::clone(this));
                 }
-                step_fir_ref_inner(&front_rc, &child_scope, depth + 1)?;
+                step_inner(&front_rc, &child_scope, depth + 1)?;
             }
             Ok(StepReport::Progress(this.borrow().core().get_nyes()))
         }
@@ -466,7 +495,7 @@ pub(crate) mod tests {
 
         // Step until settled
         for _ in 0..10 {
-            let report = step_fir_ref(&leaf, &scope).unwrap();
+            let report = leaf.step(&scope).unwrap();
             match report {
                 StepReport::Progress(nyes) => {
                     transitions.push(nyes);
@@ -496,7 +525,7 @@ pub(crate) mod tests {
 
         // Step the root — this should recurse into the child via the task queue
         for _ in 0..20 {
-            let report = step_fir_ref(&root, &scope).unwrap();
+            let report = root.step(&scope).unwrap();
             match report {
                 StepReport::Progress(nyes) => {
                     root_transitions.push(nyes);
@@ -539,7 +568,7 @@ pub(crate) mod tests {
         let mut root_nyes_log = vec![];
 
         for i in 0..30 {
-            let report = step_fir_ref(&root, &scope).unwrap();
+            let report = root.step(&scope).unwrap();
             match report {
                 StepReport::Progress(nyes) => {
                     root_nyes_log.push((i, nyes));
@@ -565,7 +594,7 @@ pub(crate) mod tests {
         let leaf = make_leaf(Nyes::Constant);
         let scope = Scope::empty();
 
-        let report = step_fir_ref(&leaf, &scope).unwrap();
+        let report = leaf.step(&scope).unwrap();
         // A settled leaf with empty task queue: fir_op_step runs (no-op for Constant)
         // and returns Progress(Constant)
         assert_eq!(report, StepReport::Progress(Nyes::Constant));
@@ -581,7 +610,7 @@ pub(crate) mod tests {
 
         // Step outer — it will recurse into inner through the task queue
         // If borrow discipline were wrong (nested borrow_mut), this would panic
-        let result = step_fir_ref(&outer, &scope);
+        let result = outer.step(&scope);
         assert!(result.is_ok());
     }
 }
@@ -701,7 +730,7 @@ mod get_value_tests {
     fn settle(node: &FirRef) {
         let scope = Scope::empty();
         for _ in 0..50 {
-            let report = step_fir_ref(node, &scope).unwrap();
+            let report = node.step(&scope).unwrap();
             if let StepReport::Progress(nyes) = report
                 && nyes.is_constanic()
             {
@@ -720,7 +749,7 @@ mod get_value_tests {
         assert_eq!(ci.borrow().core().get_nyes(), Nyes::Constant);
         assert!(ci.borrow().core().ubc_children().is_empty());
 
-        let result = get_value(&ci);
+        let result = ci.value();
         assert!(Rc::ptr_eq(&result, &ci));
         assert_eq!(result.borrow().kind(), FirKind::IndepInt);
         assert_eq!(result.borrow().as_i64(), Some(42));
@@ -735,7 +764,7 @@ mod get_value_tests {
         assert_eq!(nk.borrow().core().get_nyes(), Nyes::Nk);
         assert!(nk.borrow().core().ubc_children().is_empty());
 
-        let result = get_value(&nk);
+        let result = nk.value();
         assert!(Rc::ptr_eq(&result, &nk));
         assert_eq!(result.borrow().kind(), FirKind::Nk);
     }
@@ -751,7 +780,7 @@ mod get_value_tests {
         assert_eq!(op.borrow().core().get_nyes(), Nyes::Constant);
         assert_eq!(op.borrow().core().ubc_children().len(), 1);
 
-        let result = get_value(&op);
+        let result = op.value();
         assert!(!Rc::ptr_eq(&result, &op));
         assert_eq!(result.borrow().kind(), FirKind::IndepInt);
         assert_eq!(result.borrow().as_i64(), Some(8));
@@ -766,7 +795,7 @@ mod get_value_tests {
         let op = make_op("+", vec![Rc::clone(&a), Rc::clone(&b)]);
         assert!(!op.borrow().core().get_nyes().is_constanic());
 
-        let result = get_value(&op);
+        let result = op.value();
         assert!(Rc::ptr_eq(&result, &op));
     }
 
@@ -782,7 +811,7 @@ mod get_value_tests {
         assert_eq!(search.borrow().core().get_nyes(), Nyes::Constant);
         assert_eq!(search.borrow().core().ubc_children().len(), 1);
 
-        let result = get_value(&search);
+        let result = search.value();
         assert_eq!(result.borrow().kind(), FirKind::IndepInt);
         assert_eq!(result.borrow().as_i64(), Some(42));
     }
@@ -798,7 +827,7 @@ mod get_value_tests {
         assert_eq!(search.borrow().core().get_nyes(), Nyes::Econstanic);
         assert!(search.borrow().core().ubc_children().is_empty());
 
-        let result = get_value(&search);
+        let result = search.value();
         assert!(Rc::ptr_eq(&result, &search));
     }
 
@@ -809,7 +838,7 @@ mod get_value_tests {
         let search = make_search("^x$", false, vec![]);
         assert!(!search.borrow().core().get_nyes().is_constanic());
 
-        let result = get_value(&search);
+        let result = search.value();
         assert!(Rc::ptr_eq(&result, &search));
     }
 
@@ -833,7 +862,7 @@ mod get_value_tests {
         assert_eq!(idx.borrow().core().get_nyes(), Nyes::Constant);
         assert_eq!(idx.borrow().core().ubc_children().len(), 1);
 
-        let result = get_value(&idx);
+        let result = idx.value();
         assert_eq!(result.borrow().kind(), FirKind::IndepInt);
         assert_eq!(result.borrow().as_i64(), Some(20));
     }
@@ -846,7 +875,7 @@ mod get_value_tests {
         let idx = make_index(0, true, vec![Rc::clone(&brane)]);
         assert!(!idx.borrow().core().get_nyes().is_constanic());
 
-        let result = get_value(&idx);
+        let result = idx.value();
         assert!(Rc::ptr_eq(&result, &idx));
     }
 
@@ -861,7 +890,7 @@ mod get_value_tests {
         assert!(brane.borrow().core().get_nyes().is_constanic());
         assert!(brane.borrow().core().ubc_children().is_empty());
 
-        let result = get_value(&brane);
+        let result = brane.value();
         assert!(Rc::ptr_eq(&result, &brane));
         assert_eq!(result.borrow().kind(), FirKind::Brane);
     }
@@ -876,7 +905,7 @@ mod get_value_tests {
         assert!(stmt.borrow().core().get_nyes().is_constanic());
         assert!(stmt.borrow().core().ubc_children().is_empty());
 
-        let result = get_value(&stmt);
+        let result = stmt.value();
         assert!(Rc::ptr_eq(&result, &stmt));
         assert_eq!(result.borrow().kind(), FirKind::Statement);
     }
@@ -896,7 +925,7 @@ mod get_value_tests {
         assert_eq!(cat.borrow().core().get_nyes(), Nyes::Constant);
         assert_eq!(cat.borrow().core().ubc_children().len(), 1);
 
-        let result = get_value(&cat);
+        let result = cat.value();
         assert!(!Rc::ptr_eq(&result, &cat));
         assert_eq!(result.borrow().kind(), FirKind::Brane);
         assert_eq!(result.borrow().core().foolish_children().len(), 2);
@@ -910,7 +939,7 @@ mod get_value_tests {
         let cat = make_cat(vec![Rc::clone(&brane)]);
         assert!(!cat.borrow().core().get_nyes().is_constanic());
 
-        let result = get_value(&cat);
+        let result = cat.value();
         assert!(Rc::ptr_eq(&result, &cat));
     }
 
@@ -925,7 +954,7 @@ mod get_value_tests {
         // SF constanic-clones the expr result into ubc_children
         assert_eq!(sf.borrow().core().ubc_children().len(), 1);
 
-        let result = get_value(&sf);
+        let result = sf.value();
         assert!(!Rc::ptr_eq(&result, &sf));
         assert_eq!(result.borrow().kind(), FirKind::IndepInt);
         assert_eq!(result.borrow().as_i64(), Some(42));
@@ -941,7 +970,7 @@ mod get_value_tests {
         assert!(sff.borrow().core().get_nyes().is_constanic());
         assert!(sff.borrow().core().ubc_children().is_empty());
 
-        let result = get_value(&sff);
+        let result = sff.value();
         assert!(Rc::ptr_eq(&result, &sff));
         assert_eq!(result.borrow().kind(), FirKind::StayFullyFoolish);
     }

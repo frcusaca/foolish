@@ -17,7 +17,9 @@ pub struct Compiler;
 impl Compiler {
     pub fn compile(source: &str) -> anyhow::Result<Vec<FirRef>> {
         let asts = foolish_parser::parse(source)?;
-        asts.into_iter().map(AstnCompilerExt::compile_standalone).collect()
+        asts.into_iter()
+            .map(AstnCompilerExt::compile_standalone)
+            .collect()
     }
 }
 
@@ -370,7 +372,10 @@ mod tests {
         let err = Astn::IntLit(1)
             .compile_standalone()
             .expect_err("non-Brane root must be rejected");
-        assert_eq!(err.to_string(), "only a Brane can be a top-level (root) node");
+        assert_eq!(
+            err.to_string(),
+            "only a Brane can be a top-level (root) node"
+        );
     }
 
     #[test]
@@ -381,8 +386,7 @@ mod tests {
         assert_eq!(sf.borrow().kind(), FirKind::StayFoolish);
         assert_eq!(sf.borrow().core().get_nyes(), Nyes::Prembrionic);
 
-        let sff =
-            Astn::IntLit(2).build_expr_with_operator(AssignmentOperator::SFF, &parent, false);
+        let sff = Astn::IntLit(2).build_expr_with_operator(AssignmentOperator::SFF, &parent, false);
         assert_eq!(sff.borrow().kind(), FirKind::StayFullyFoolish);
         assert_eq!(sff.borrow().core().get_nyes(), Nyes::Independent);
     }

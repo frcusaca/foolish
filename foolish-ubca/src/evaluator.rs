@@ -6,7 +6,7 @@ use foolish_core::fir::{
 };
 
 use crate::compiler::Compiler;
-use crate::fir_trait::{FirKind, FirRef, StepReport};
+use crate::fir_trait::{FirKind, FirRef, FirRefExt, StepReport};
 
 const MAX_STEPS: usize = 10_000;
 
@@ -53,7 +53,7 @@ fn step_to_settled(
 ) -> Result<(), crate::fir_trait::UbcError> {
     let mut last_step = 0;
     for step in 0..MAX_STEPS {
-        let report = crate::step_fir_ref(fir_ref, scope)?;
+        let report = fir_ref.step(scope)?;
         last_step = step;
         match report {
             StepReport::Progress(nyes) if nyes.is_constanic() => return Ok(()),

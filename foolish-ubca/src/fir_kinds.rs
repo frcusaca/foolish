@@ -4,7 +4,7 @@ use std::rc::{Rc, Weak};
 use foolish_core::fir::Nyes;
 use regex::Regex;
 
-use crate::fir_trait::{Fir, FirKind, FirRef, Scope, UbcError, get_value};
+use crate::fir_trait::{Fir, FirKind, FirRef, FirRefExt, Scope, UbcError};
 use crate::proto_brane::ProtoBrane;
 
 pub(crate) fn _decide_nyes_due_to_children(children: &[FirRef]) -> Option<Nyes> {
@@ -51,25 +51,100 @@ pub(crate) fn _decide_nyes_due_to_children(children: &[FirRef]) -> Option<Nyes> 
     unreachable!("ALARM: _decide_nyes_due_to_children: no decision made.");
 }
 
-fn deepest_econstanic_in_chain(search: &FirRef) -> Option<FirRef> {
-    let mut current = Rc::clone(search);
-    loop {
-        let (kind, nyes, result) = {
-            let b = current.borrow();
-            let result = b.core().ubc_children().into_iter().next();
-            (b.kind(), b.core().get_nyes(), result)
+/// Brane/anchor navigation methods on a [`FirRef`].
+///
+/// # Why an extension trait
+///
+/// [`FirRef`] aliases the foreign `Rc<RefCell<dyn Fir>>`, so the orphan rule
+/// rules out an inherent `impl`. These navigation helpers are attached to the
+/// handle through an extension trait — the same pattern as
+/// [`crate::fir_trait::FirRefExt`] and [`crate::nyes_ext::NyesExt`]. This trait
+/// is kept separate from `FirRefExt` so the stepping/value core and the
+/// brane-navigation helpers read as distinct concerns.
+///
+/// Each method borrows the pointee transiently and drops the borrow before any
+/// recursion or re-borrow, preserving the crate's RefCell borrow discipline.
+pub(crate) trait FirRefNavExt {
+    /// Walks a chain of `Search` results to the deepest ECONSTANIC search.
+    ///
+    /// Follows `ubc_children[0]` while each link is a WOCONSTANIC search;
+    /// returns the first ECONSTANIC search, or `None` if the chain leaves
+    /// `Search` or dead-ends.
+    fn deepest_econstanic_in_chain(&self) -> Option<FirRef>;
+
+    /// Resolves an anchor to its underlying value (alias of
+    /// [`crate::fir_trait::FirRefExt::value`], named for the anchor use site).
+    fn resolve_anchor(&self) -> FirRef;
+
+    /// Returns the index of `stmt` among `self`'s foolish children, by identity.
+    ///
+    /// `self` is the brane being searched; `stmt` is the statement to locate.
+    fn find_stmt_index(&self, stmt: &FirRef) -> Option<usize>;
+
+    /// Indexes into `self` (a brane) at `offset`, returning the addressed
+    /// statement's body and its NYES.
+    ///
+    /// A non-negative `offset` counts from the front; a negative one counts from
+    /// the back. Out-of-range offsets yield `None`.
+    fn index_into(&self, offset: i32) -> Option<(FirRef, Nyes)>;
+}
+
+impl FirRefNavExt for FirRef {
+    fn deepest_econstanic_in_chain(&self) -> Option<FirRef> {
+        let mut current = Rc::clone(self);
+        loop {
+            let (kind, nyes, result) = {
+                let b = current.borrow();
+                let result = b.core().ubc_children().into_iter().next();
+                (b.kind(), b.core().get_nyes(), result)
+            };
+            if kind != FirKind::Search {
+                return None;
+            }
+            match nyes {
+                Nyes::Econstanic => return Some(current),
+                Nyes::Woconstanic => match result {
+                    Some(next) => current = next,
+                    None => return None,
+                },
+                _ => return None,
+            }
+        }
+    }
+
+    #[inline(always)]
+    fn resolve_anchor(&self) -> FirRef {
+        self.value()
+    }
+
+    fn find_stmt_index(&self, stmt: &FirRef) -> Option<usize> {
+        let brane_borrowed = self.borrow();
+        for (i, child) in brane_borrowed.core().foolish_children().iter().enumerate() {
+            if Rc::ptr_eq(child, stmt) {
+                return Some(i);
+            }
+        }
+        None
+    }
+
+    fn index_into(&self, offset: i32) -> Option<(FirRef, Nyes)> {
+        let (body, body_nyes) = {
+            let body: FirRef = {
+                let borrowed = self.borrow();
+                let children = borrowed.core().foolish_children();
+                let len = children.len() as i32;
+                let idx = if offset >= 0 { offset } else { len + offset };
+                if idx < 0 || idx >= len {
+                    return None;
+                }
+                let stmt = Rc::clone(&children[idx as usize]);
+
+                (Rc::clone(stmt.borrow().core().foolish_children().first()?)) as _
+            };
+            let body_nyes = body.borrow().core().get_nyes();
+            (body, body_nyes)
         };
-        if kind != FirKind::Search {
-            return None;
-        }
-        match nyes {
-            Nyes::Econstanic => return Some(current),
-            Nyes::Woconstanic => match result {
-                Some(next) => current = next,
-                None => return None,
-            },
-            _ => return None,
-        }
+        Some((body, body_nyes))
     }
 }
 
@@ -167,7 +242,7 @@ impl ProtoBrane {
                 let anchored = borrowed.as_search_anchored();
                 let chain_econstanic =
                     if !descendent_of_sfm_and_foolishly_ignorant && nyes == Nyes::Woconstanic {
-                        deepest_econstanic_in_chain(fir_ref)
+                        fir_ref.deepest_econstanic_in_chain()
                     } else {
                         None
                     };
@@ -462,7 +537,7 @@ impl OperatorFir {
 
             let values: Vec<i64> = children
                 .iter()
-                .map(|c| get_value(c))
+                .map(|c| c.value())
                 .filter_map(|v| v.borrow().as_i64())
                 .collect();
 
@@ -517,7 +592,7 @@ impl OperatorFir {
                 }
                 "-" if values.len() == 1 => -values[0], // unary negation
                 "$" if children.len() == 2 => {
-                    let rhs = get_value(&children[1]);
+                    let rhs = children[1].value();
                     if rhs.borrow().kind() != FirKind::Brane {
                         let rhs_val = rhs
                             .borrow()
@@ -745,21 +820,6 @@ pub struct SearchFir {
     pub(crate) sf_inner_pattern: RefCell<Option<String>>,
 }
 
-#[inline(always)]
-fn resolve_anchor(anchor: &FirRef) -> FirRef {
-    get_value(anchor)
-}
-
-fn find_stmt_index_in_brane(stmt: &FirRef, brane: &FirRef) -> Option<usize> {
-    let brane_borrowed = brane.borrow();
-    for (i, child) in brane_borrowed.core().foolish_children().iter().enumerate() {
-        if Rc::ptr_eq(child, stmt) {
-            return Some(i);
-        }
-    }
-    None
-}
-
 impl SearchFir {
     pub(crate) fn matches_pattern(stmt_name: &str, pattern: &str) -> bool {
         if stmt_name == pattern {
@@ -864,7 +924,7 @@ impl Fir for SearchFir {
                 } else {
                     let result = if self.anchored {
                         let anchor = Rc::clone(&self.core.foolish_children()[0]);
-                        let resolved = resolve_anchor(&anchor);
+                        let resolved = anchor.resolve_anchor();
                         let resolved_borrowed = resolved.borrow();
                         let resolved_borrowed_core = resolved_borrowed.core();
                         if resolved_borrowed_core.get_nyes() == Nyes::Nk {
@@ -922,26 +982,6 @@ pub struct IndexFir {
     pub(crate) core: ProtoBrane,
     pub(crate) offset: i32,
     pub(crate) anchored: bool,
-}
-
-fn index_into_brane(brane: &FirRef, offset: i32) -> Option<(FirRef, Nyes)> {
-    let (body, body_nyes) = {
-        let body: FirRef = {
-            let borrowed = brane.borrow();
-            let children = borrowed.core().foolish_children();
-            let len = children.len() as i32;
-            let idx = if offset >= 0 { offset } else { len + offset };
-            if idx < 0 || idx >= len {
-                return None;
-            }
-            let stmt = Rc::clone(&children[idx as usize]);
-
-            (Rc::clone(stmt.borrow().core().foolish_children().first()?)) as _
-        };
-        let body_nyes = body.borrow().core().get_nyes();
-        (body, body_nyes)
-    };
-    Some((body, body_nyes))
 }
 
 fn index_into_brane_relative(
@@ -1039,7 +1079,7 @@ impl Fir for IndexFir {
                     }
                     match find_enclosing_stmt_and_brane(&self.core) {
                         Some((stmt_ref, brane_ref)) => {
-                            if let Some(idx) = find_stmt_index_in_brane(&stmt_ref, &brane_ref) {
+                            if let Some(idx) = brane_ref.find_stmt_index(&stmt_ref) {
                                 if let Some((body, _body_nyes)) =
                                     index_into_brane_relative(&brane_ref, idx, self.offset)
                                 {
@@ -1069,8 +1109,8 @@ impl Fir for IndexFir {
                     self.settle_from_ubc_result();
                 } else if self.anchored {
                     let anchor = Rc::clone(&self.core.foolish_children()[0]);
-                    let resolved = resolve_anchor(&anchor);
-                    if let Some((body, _body_nyes)) = index_into_brane(&resolved, self.offset) {
+                    let resolved = anchor.resolve_anchor();
+                    if let Some((body, _body_nyes)) = resolved.index_into(self.offset) {
                         let self_weak = self.core.parent_weak();
                         self.core.push_search_result(ProtoBrane::constanic_clone_at(
                             &body,
@@ -1128,7 +1168,7 @@ impl Fir for HeadTailFir {
                     }
                     match find_enclosing_stmt_and_brane(&self.core) {
                         Some((stmt_ref, brane_ref)) => {
-                            if let Some(idx) = find_stmt_index_in_brane(&stmt_ref, &brane_ref) {
+                            if let Some(idx) = brane_ref.find_stmt_index(&stmt_ref) {
                                 if let Some((body, nyes)) =
                                     index_into_brane_relative(&brane_ref, idx, offset)
                                 {
@@ -1163,8 +1203,8 @@ impl Fir for HeadTailFir {
             Nyes::Braning => {
                 if self.anchored {
                     let anchor = Rc::clone(&self.core.foolish_children()[0]);
-                    let resolved = resolve_anchor(&anchor);
-                    if let Some((body, body_nyes)) = index_into_brane(&resolved, offset) {
+                    let resolved = anchor.resolve_anchor();
+                    if let Some((body, body_nyes)) = resolved.index_into(offset) {
                         if body_nyes.is_constanic() {
                             let self_weak = self.core.parent_weak();
                             self.core.push_search_result(ProtoBrane::constanic_clone_at(
@@ -1183,7 +1223,7 @@ impl Fir for HeadTailFir {
                 } else {
                     match find_enclosing_stmt_and_brane(&self.core) {
                         Some((stmt_ref, brane_ref)) => {
-                            if let Some(idx) = find_stmt_index_in_brane(&stmt_ref, &brane_ref) {
+                            if let Some(idx) = brane_ref.find_stmt_index(&stmt_ref) {
                                 if let Some((body, body_nyes)) =
                                     index_into_brane_relative(&brane_ref, idx, offset)
                                 {
@@ -1350,11 +1390,11 @@ impl Fir for ConcatenationFir {
             Nyes::Braning => {
                 let children = self.core.foolish_children().to_vec();
                 let any_nk = children.iter().any(|c| {
-                    let resolved = get_value(c);
+                    let resolved = c.value();
                     resolved.borrow().core().get_nyes() == Nyes::Nk
                 });
                 let any_woconstanic = children.iter().any(|c| {
-                    let resolved = get_value(c);
+                    let resolved = c.value();
                     let n = resolved.borrow().core().get_nyes();
                     n == Nyes::Econstanic || n == Nyes::Woconstanic
                 });
@@ -1489,7 +1529,6 @@ pub fn stay_fully_foolish(expr: FirRef, parent: Weak<RefCell<dyn Fir>>) -> FirRe
 mod tests {
     use super::*;
     use crate::fir_trait::StepReport;
-    use crate::fir_trait::step_fir_ref;
 
     fn make_constant_int(value: i64) -> FirRef {
         Rc::new_cyclic(|me: &Weak<RefCell<IndepIntFir>>| {
@@ -1519,7 +1558,7 @@ mod tests {
         assert_eq!(node.borrow().core().get_nyes(), Nyes::Prembrionic);
         let mut transitions = vec![Nyes::Prembrionic];
 
-        let report = step_fir_ref(&node, &scope).unwrap();
+        let report = node.step(&scope).unwrap();
         match report {
             StepReport::Progress(nyes) => {
                 transitions.push(nyes);
@@ -1544,7 +1583,7 @@ mod tests {
         let node = make_constant_int(-7);
         let scope = Scope::empty();
 
-        let _ = step_fir_ref(&node, &scope).unwrap();
+        let _ = node.step(&scope).unwrap();
 
         assert_eq!(node.borrow().kind(), FirKind::IndepInt);
     }
@@ -1557,7 +1596,7 @@ mod tests {
         assert_eq!(node.borrow().core().get_nyes(), Nyes::Prembrionic);
         let mut transitions = vec![Nyes::Prembrionic];
 
-        let report = step_fir_ref(&node, &scope).unwrap();
+        let report = node.step(&scope).unwrap();
         match report {
             StepReport::Progress(nyes) => {
                 transitions.push(nyes);
@@ -1579,7 +1618,7 @@ mod tests {
         let node = make_nk("division by zero");
         let scope = Scope::empty();
 
-        let _ = step_fir_ref(&node, &scope).unwrap();
+        let _ = node.step(&scope).unwrap();
 
         assert_eq!(node.borrow().kind(), FirKind::Nk);
     }
@@ -1593,8 +1632,8 @@ mod tests {
         assert!(!ci.borrow().core().get_nyes().is_constanic());
         assert!(!nk.borrow().core().get_nyes().is_constanic());
 
-        let r1 = step_fir_ref(&ci, &scope).unwrap();
-        let r2 = step_fir_ref(&nk, &scope).unwrap();
+        let r1 = ci.step(&scope).unwrap();
+        let r2 = nk.step(&scope).unwrap();
 
         assert!(matches!(r1, StepReport::Progress(Nyes::Constant)));
         assert!(matches!(r2, StepReport::Progress(Nyes::Nk)));
@@ -1609,11 +1648,11 @@ mod tests {
         let nk = make_nk("done");
         let scope = Scope::empty();
 
-        let _ = step_fir_ref(&ci, &scope).unwrap();
-        let _ = step_fir_ref(&nk, &scope).unwrap();
+        let _ = ci.step(&scope).unwrap();
+        let _ = nk.step(&scope).unwrap();
 
-        let r1 = step_fir_ref(&ci, &scope).unwrap();
-        let r2 = step_fir_ref(&nk, &scope).unwrap();
+        let r1 = ci.step(&scope).unwrap();
+        let r2 = nk.step(&scope).unwrap();
 
         assert_eq!(r1, StepReport::Progress(Nyes::Constant));
         assert_eq!(r2, StepReport::Progress(Nyes::Nk));
@@ -1709,7 +1748,7 @@ mod tests {
     fn step_to_settled(node: &FirRef, scope: &Scope) -> Vec<Nyes> {
         let mut transitions = vec![node.borrow().core().get_nyes()];
         for _ in 0..50 {
-            let report = step_fir_ref(node, scope).unwrap();
+            let report = node.step(scope).unwrap();
             match report {
                 StepReport::Progress(nyes) => {
                     transitions.push(nyes);
@@ -1734,7 +1773,7 @@ mod tests {
         let mut transitions = vec![Nyes::Prembrionic];
 
         for _ in 0..20 {
-            let report = step_fir_ref(&op, &scope).unwrap();
+            let report = op.step(&scope).unwrap();
             match report {
                 StepReport::Progress(nyes) => {
                     transitions.push(nyes);
@@ -1767,7 +1806,7 @@ mod tests {
         let scope = Scope::empty();
 
         for _ in 0..20 {
-            let report = step_fir_ref(&op, &scope).unwrap();
+            let report = op.step(&scope).unwrap();
             if let StepReport::Progress(nyes) = report
                 && nyes.is_constanic()
             {
@@ -1789,7 +1828,7 @@ mod tests {
         let scope = Scope::empty();
 
         for _ in 0..20 {
-            let report = step_fir_ref(&op, &scope).unwrap();
+            let report = op.step(&scope).unwrap();
             if let StepReport::Progress(nyes) = report
                 && nyes.is_constanic()
             {
@@ -1811,7 +1850,7 @@ mod tests {
         let scope = Scope::empty();
 
         for _ in 0..20 {
-            let report = step_fir_ref(&op, &scope).unwrap();
+            let report = op.step(&scope).unwrap();
             if let StepReport::Progress(nyes) = report
                 && nyes.is_constanic()
             {
@@ -1833,7 +1872,7 @@ mod tests {
         let scope = Scope::empty();
 
         for _ in 0..20 {
-            let report = step_fir_ref(&op, &scope).unwrap();
+            let report = op.step(&scope).unwrap();
             if let StepReport::Progress(nyes) = report
                 && nyes.is_constanic()
             {
@@ -1857,7 +1896,7 @@ mod tests {
         let scope = Scope::empty();
 
         for _ in 0..20 {
-            let report = step_fir_ref(&op, &scope).unwrap();
+            let report = op.step(&scope).unwrap();
             if let StepReport::Progress(nyes) = report
                 && nyes.is_constanic()
             {
@@ -1974,12 +2013,12 @@ mod tests {
         let brane = make_brane(vec![Rc::clone(&a), Rc::clone(&b)]);
         let scope = Scope::empty();
 
-        let r1 = step_fir_ref(&brane, &scope).unwrap();
+        let r1 = brane.step(&scope).unwrap();
         assert!(matches!(r1, StepReport::Progress(Nyes::Braning)));
 
         let mut child_a_settled_first = false;
         for _ in 0..20 {
-            let _ = step_fir_ref(&brane, &scope).unwrap();
+            let _ = brane.step(&scope).unwrap();
             let a_settled = a.borrow().core().get_nyes().is_constanic();
             let b_settled = b.borrow().core().get_nyes().is_constanic();
             if a_settled && !b_settled {
@@ -2560,7 +2599,7 @@ mod tests {
         assert_eq!(sff.borrow().core().get_nyes(), Nyes::Prembrionic);
         let mut transitions = vec![Nyes::Prembrionic];
         for _ in 0..10 {
-            let report = step_fir_ref(&sff, &scope).unwrap();
+            let report = sff.step(&scope).unwrap();
             match report {
                 StepReport::Progress(nyes) => {
                     transitions.push(nyes);
@@ -2582,10 +2621,10 @@ mod tests {
         let sff = make_stay_fully_foolish(Rc::clone(&body));
         let scope = Scope::empty();
 
-        step_fir_ref(&sff, &scope).unwrap(); // Prembrionic → Braning (child pushed)
-        step_fir_ref(&sff, &scope).unwrap(); // child stepped to CONSTANT
-        step_fir_ref(&sff, &scope).unwrap(); // child popped (constanic)
-        let report = step_fir_ref(&sff, &scope).unwrap(); // Braning → CONSTANT
+        sff.step(&scope).unwrap(); // Prembrionic → Braning (child pushed)
+        sff.step(&scope).unwrap(); // child stepped to CONSTANT
+        sff.step(&scope).unwrap(); // child popped (constanic)
+        let report = sff.step(&scope).unwrap(); // Braning → CONSTANT
         assert!(matches!(report, StepReport::Progress(Nyes::Constant)));
         assert!(sff.borrow().core().get_nyes().is_constanic());
 
@@ -2757,7 +2796,7 @@ mod tests {
             if root.borrow().core().get_nyes().is_constanic() {
                 break;
             }
-            let _ = step_fir_ref(root, scope).unwrap();
+            let _ = root.step(scope).unwrap();
             trace.push((
                 root.borrow().core().get_nyes(),
                 watched.borrow().core().get_nyes(),
@@ -2827,7 +2866,7 @@ mod tests {
             if brane.borrow().core().get_nyes().is_constanic() {
                 break;
             }
-            let _ = step_fir_ref(&brane, &scope).unwrap();
+            let _ = brane.step(&scope).unwrap();
             let s1_now = s1.borrow().core().get_nyes().is_constanic();
             if s1_was_constanic {
                 assert!(s1_now, "a constanic node must not regress to pre-constanic");
@@ -3106,7 +3145,7 @@ mod tests {
         let scope = Scope::empty();
         let _ = step_to_settled(&root, &scope);
         assert!(search.borrow().core().get_nyes().is_constanic());
-        let result = get_value(&search);
+        let result = search.value();
         assert_eq!(
             result.borrow().as_i64(),
             Some(2),
@@ -3159,7 +3198,7 @@ mod tests {
             if root.borrow().core().get_nyes().is_constanic() {
                 break;
             }
-            let _ = step_fir_ref(&root, &scope).unwrap();
+            let _ = root.step(&scope).unwrap();
         }
         assert_eq!(
             sa.borrow().core().get_nyes(),
@@ -3184,11 +3223,11 @@ mod tests {
             if root.borrow().core().get_nyes().is_constanic() {
                 break;
             }
-            let _ = step_fir_ref(&root, &scope).unwrap();
+            let _ = root.step(&scope).unwrap();
         }
         let sff_search = find_search(&root, "^sff$").expect("search sff");
         assert!(sff_search.borrow().core().get_nyes().is_constanic());
-        let result = get_value(&sff_search);
+        let result = sff_search.value();
         assert_eq!(
             result.borrow().kind(),
             FirKind::Operator,
