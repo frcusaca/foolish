@@ -2,9 +2,6 @@
 
 *Where proximity meets computation, and containment creates clarity*
 
-[![Java Tests](https://github.com/frcusaca/foolish/actions/workflows/java-tests.yml/badge.svg)](https://github.com/frcusaca/foolish/actions/workflows/java-tests.yml)
-[![Scala Tests](https://github.com/frcusaca/foolish/actions/workflows/scala-tests.yml/badge.svg)](https://github.com/frcusaca/foolish/actions/workflows/scala-tests.yml)
-[![Cross Validation](https://github.com/frcusaca/foolish/actions/workflows/tests.yml/badge.svg)](https://github.com/frcusaca/foolish/actions/workflows/tests.yml)
 [![License](https://img.shields.io/badge/license-Open%20Source-blue.svg)](#)
 [![Status](https://img.shields.io/badge/status-Active%20Development-green.svg)](#)
 
@@ -101,34 +98,16 @@ cargo insta accept                                            # accept all .snap
 
 When viewing a `.snap` file with `less`, use `less -- path/to/test_name.snap` — the `--` disables the `LESSOPEN` environment variable from trying to decompress the file. `more`, `cat`, and `view` work unmodified.
 
-## Quick Start (Java/Scala)
-
-```bash
-mvn clean generate-sources compile test
-```
-
 Foolish programs use the `.foo` extension and embrace a philosophy where **proximity creates
 combination** and **containment enables organization**. The language provides rigorous abstraction
 capabilities while maintaining interfaces that ground your computations to the physical and
 biological realities you want to model.
 
-## Versioned Documentation
+## Documentation Layout
 
-Foolish documentation is organized by version using semantic versioning:
-
-| Version | Location | Description |
-|---------|----------|-------------|
-| **ubc1** | `docs/ubc1/` | Current development version based on message-passing infrastructure |
-| **ubc0_1** | `docs/ubc0_1/` | Reimplementation of ubc0 semantics using clarified microstates from ubc1 design |
-| **ubc0 (legacy)** | `docs/vintage_legacy/` | Original UBC implementation - legacy reference |
-
-### Version Overview
-
-- **ubc1** - The current development track implementing the Unicellular Brane Computer using a message-passing infrastructure. This is where active development and design refinement occurs.
-
-- **ubc0_1** - A reimplementation of the original ubc0 semantics, but using the clarified microstate definitions from ubc1. This serves as a bridge, demonstrating how the original design goals can be achieved with the more rigorous state machine definitions developed for ubc1.
-
-- **ubc0 (legacy)** - The original UBC implementation documented in `vintage_legacy/`. Maintained for historical reference and understanding the evolution of the design.
+- **ubc1** — `docs/ubc1/` — current development version based on message-passing infrastructure
+- **ubc0_1** — `docs/ubc0_1/` — reimplementation of ubc0 semantics using clarified microstates from ubc1 design
+- **ubc0 (legacy)** — `docs/vintage_legacy/` — original UBC implementation, legacy reference
 
 ### Shared Documentation
 
@@ -145,11 +124,11 @@ The following documentation applies across all versions and remains at `docs/`:
 **[AGENTS.md](AGENTS.md)** for comprehensive development guidance including:
 
 - Environment detection
-- Build requirements (Java 25, Scala 3.3.7, ANTLR 4.13.2, Maven)
-- Build commands with parallel execution strategies
-- Project structure and multi-module Maven architecture
+- Build requirements (Rust)
+- Build commands
+- Project structure (the Rust workspace)
 - The Unicellular Brane Computer (UBC) implementation details
-- Testing workflows (unit tests, approval tests, cross-validation)
+- Testing workflows (unit tests, approval tests)
 - Git workflow and branch naming conventions for AI agents
 - Common development tasks with complete examples
 
@@ -442,9 +421,7 @@ For details on scope resolution and name reuse, see [Names, Searches, and Bounds
 
 ## Documentation
 
-### Versioned Documentation
-
-See the [Versioned Documentation](#versioned-documentation) section above for an overview of ubc0, ubc0_1, and ubc1.
+See [Documentation Layout](#documentation-layout) above for an overview of ubc0, ubc0_1, and ubc1.
 
 ### Documentation Organization
 
@@ -471,6 +448,14 @@ The following documents in `docs/vintage_legacy/` document the original ubc0 imp
 ---
 
 ## Last Updated
+
+**Date**: 2026-07-02
+**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
+**Changes**: FOOP-03 cleanup — removed Java/Scala/Cross-Validation CI badges, the
+Java/Scala Quick Start (`mvn` command), and the "Version Overview" prose section
+(folded into a shorter "Documentation Layout" table); updated the "For AI Agents"
+build-requirements/testing bullets to Rust-only; fixed the resulting broken
+`#versioned-documentation` anchor link.
 
 **Date**: 2026-06-11
 **Updated By**: Sisyphus / mimo-v2.5-pro
