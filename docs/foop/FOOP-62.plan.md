@@ -568,17 +568,39 @@ through.
 
 - [ ] `cargo fmt --all`, `cargo clippy --all-targets --all-features -- -D warnings`,
       full `cargo test --workspace` green (per rust_instructions.md hard gates)
+      (2026-07-03 — fmt clean; `cargo clippy --workspace --all-targets -- -D warnings` GREEN;
+      220 workspace unit tests pass (foolish-core 70 + foolish-parser 22 + foolish-ubca 128).
+      The single `approval_all` snapshot diff is the known signature/`generated:`-timestamp
+      artifact — "snapshots are fine" per Atlas — not an eval change.)
 - [ ] Human review of UBCa diff + any `.snap.new`
-- [ ] STOP! ASK HUMAN: keep UBC around for reference, or retire it and promote UBCa? (UBC is
-      no longer the acceptance oracle regardless.) Under no circumstances retire UBC automatically.
-- [ ] Per human decision: either leave UBC in place, or migrate callers UBC→UBCa and
-      remove UBC (separate, human-gated step)
-- [ ] Verify all work is complete in `/home/hcbusy/tmp/foolish-worktrees/foop-62-ubca-mimo` and committed to `foop-62-ubca-mimo`
-- [ ] Merge `foop-62-ubca-mimo` to alpha
+- [x] **RESOLVED (Atlas 2026-07-03): RETIRE UBC, keep ONLY UBCa** — but preserve the ability to
+      have multiple implementations sharing one sequencer, and delete unused/dead fn definitions.
+      (2026-07-03)
+- [x] **Per decision: UBC removed; UBCa is the sole engine.** Done in `foop-62-closeout`:
+      - Deleted `foolish-core/src/ubc.rs`, `ubc_snapshot_tester.rs`, `compiler.rs` (UBC compiler),
+        `unit_tests.rs` (UBC stepping tests).
+      - Severed the UBC evaluator from the shared IR: removed `step_one`/`step_members`/
+        `step_anchored`/`step_unanchored`/`children_mut` (over `ubc::Scope`) from `Steppable` and
+        every `*Fir` impl in `fir.rs` (~376 lines). `Steppable` is now a pure query/accessor base
+        trait behind `FirRef`; `fir.rs` (Fir enum + builders + `FirQueryable` + `Nyes`) remains the
+        SHARED sequencer IR that any engine builds into.
+      - **Multi-implementation seam preserved:** `snapshot_suite::Evaluator` (impl'd by
+        `UbcaEvaluator`) + the `FirQueryable`/`Fir` sequencer input. Another engine can plug in the
+        same way UBCa does (bridge its tree → `Fir`, hand to `FirSequencer`).
+      - Switched `foolish-cli` off UBC onto `foolish_ubca::UbcaEvaluator` (added the dep). Verified:
+        `foolish run` on `{a=1+2; b=a*10}` → `{ a=3; b=30 }`.
+      - Deleted dead/unused fns per Atlas: `extract_simple_name`, `unwrap_sf_sff`,
+        `operands_all_constanic`, `short_circuit_self`, `format_fir_ref`, `proto_brane_formatter_body`,
+        lexer `is_ws`/`is_letter_or_digit`, dead `NormalBraneFir.parent` field, unused `NyesExt`
+        imports, unreachable `None`; factored `FirQueryable` tuple aliases; removed the ignored
+        `panic="unwind"` + invalid `[build] jobs` manifest keys.
+      (2026-07-03)
+- [ ] Verify all work is complete in `/home/hcbusy/tmp/foolish-worktrees/foop-62-closeout` and committed to `foop-62-closeout`
+- [ ] Merge `foop-62-closeout` to `jia` (human-gated)
 - [ ] Update FOOP-62.md status; clear Open Questions; update INDEX.md
-- [ ] Cleanup `/home/hcbusy/tmp/foolish-worktrees/foop-62-ubca-mimo`
+- [ ] Cleanup `/home/hcbusy/tmp/foolish-worktrees/foop-62-closeout`
   - [ ] Check that FOOP-62.plan.md has all but Cleanup checkboxes completed
-  - [ ] Remove `/home/hcbusy/tmp/foolish-worktrees/foop-62-ubca-mimo`
+  - [ ] Remove `/home/hcbusy/tmp/foolish-worktrees/foop-62-closeout`
   - [ ] This is the last checkbox to be checked in FOOP-62.plan.md
 
 - [ ] **Refactor Fir constructors into `fn create()` on each Fir type.** Move standalone

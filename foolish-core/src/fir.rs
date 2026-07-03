@@ -2,7 +2,6 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 // Re-export for external use
-pub use crate::ubc::UbcError;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// Diagnostic severity levels for compiler and evaluator alarms
@@ -368,7 +367,6 @@ pub struct NormalBraneFir {
     pub(crate) characterizations: Vec<String>,
     pub(crate) statements: Vec<StatementFir>,
     pub(crate) state: Nyes,
-    pub(crate) parent: Option<FirRef>,
     pub(crate) alarm: Option<Alarm>,
 }
 
@@ -383,24 +381,19 @@ impl NormalBraneFir {
 /// Trait for all FIRs — the OOP interface.
 /// step_one() returns None if self was mutated in-place,
 /// or Some(replacement_fir) if self should be replaced entirely.
+/// The shared FIR query/accessor surface.
+///
+/// This is the object-safe base trait behind `FirRef = Rc<RefCell<dyn Steppable>>`.
+/// It carries the FIR's NYES state, its cloned-enum form, and the narrow leaf-data
+/// accessors the humanizing sequencer reads through `FirQueryable`. It deliberately
+/// carries NO evaluation/stepping surface: the UBC evaluator that once lived here
+/// (`step_one`/`step_members` over a `ubc::Scope`) has been retired. Evaluation now
+/// lives entirely in `foolish-ubca`, which builds these nodes and hands them to the
+/// shared sequencer. Multiple engines can share this IR + sequencer through the
+/// `snapshot_suite::Evaluator` seam.
 pub trait Steppable: std::fmt::Debug {
-    fn step_one(&mut self, scope: &crate::ubc::Scope) -> Result<Option<Fir>, UbcError>;
-
     fn state(&self) -> Nyes;
     fn set_state(&mut self, state: Nyes);
-
-    fn children_mut(&mut self) -> Vec<&mut FirRef>;
-
-    /// Step all children in-place. If a child returns Some(replacement), replace it.
-    fn step_members(&mut self, scope: &crate::ubc::Scope) -> Result<(), UbcError> {
-        for child in self.children_mut() {
-            let repl = child.borrow_mut().step_one(scope)?;
-            if let Some(repl_fir) = repl {
-                *child = fir_to_ref(repl_fir);
-            }
-        }
-        Ok(())
-    }
 
     /// Return owned clones of all child FirRefs (for formatting / query purposes).
     fn fir_children(&self) -> Vec<FirRef> {
@@ -552,6 +545,17 @@ impl Fir {
 
 // ==================== FirQueryable Trait ====================
 
+/// An optional boxed child in the query surface (an anchor or a result).
+pub type QueryChild = Option<Box<dyn FirQueryable>>;
+/// `hs_search` payload: (pattern, direction, anchored, anchor, result).
+pub type SearchQuery = (String, SearchDirection, bool, QueryChild, QueryChild);
+/// `hs_index` payload: (offset, anchored, anchor, result).
+pub type IndexQuery = (i32, bool, QueryChild, QueryChild);
+/// `hs_head_tail` payload: (is_head, anchored, anchor, result).
+pub type HeadTailQuery = (bool, bool, QueryChild, QueryChild);
+/// `hs_concatenation` payload: (input elements, merged result brane).
+pub type ConcatenationQuery = (Vec<Box<dyn FirQueryable>>, QueryChild);
+
 /// Trait for querying FIR properties without mutation.
 /// Used by HumanizingSequencer for format dispatch.
 pub trait FirQueryable: std::fmt::Debug {
@@ -564,36 +568,12 @@ pub trait FirQueryable: std::fmt::Debug {
     fn hs_constant_int(&self) -> Option<i64>;
     fn hs_nk(&self) -> Option<(String, Option<Alarm>)>;
     fn hs_operator(&self) -> Option<(String, Vec<Box<dyn FirQueryable>>)>;
-    fn hs_search(
-        &self,
-    ) -> Option<(
-        String,
-        SearchDirection,
-        bool,
-        Option<Box<dyn FirQueryable>>,
-        Option<Box<dyn FirQueryable>>,
-    )>;
-    fn hs_index(
-        &self,
-    ) -> Option<(
-        i32,
-        bool,
-        Option<Box<dyn FirQueryable>>,
-        Option<Box<dyn FirQueryable>>,
-    )>;
-    fn hs_head_tail(
-        &self,
-    ) -> Option<(
-        bool,
-        bool,
-        Option<Box<dyn FirQueryable>>,
-        Option<Box<dyn FirQueryable>>,
-    )>;
+    fn hs_search(&self) -> Option<SearchQuery>;
+    fn hs_index(&self) -> Option<IndexQuery>;
+    fn hs_head_tail(&self) -> Option<HeadTailQuery>;
     fn hs_stay_foolish(&self) -> Option<Box<dyn FirQueryable>>;
     fn hs_stay_fully_foolish(&self) -> Option<Box<dyn FirQueryable>>;
-    fn hs_concatenation(
-        &self,
-    ) -> Option<(Vec<Box<dyn FirQueryable>>, Option<Box<dyn FirQueryable>>)>;
+    fn hs_concatenation(&self) -> Option<ConcatenationQuery>;
     fn hs_brane(&self) -> Option<(Vec<String>, Vec<StatementSimple>)>;
     fn hs_alarm(&self) -> Option<&Alarm> {
         None
@@ -882,21 +862,6 @@ impl FirQueryable for Fir {
 // ==================== Fir: Steppable (dispatches to inner struct) ====================
 
 impl Steppable for Fir {
-    fn step_one(&mut self, scope: &crate::ubc::Scope) -> Result<Option<Fir>, UbcError> {
-        match self {
-            Fir::ConstantInt(inner) => inner.step_one(scope),
-            Fir::Nk(inner) => inner.step_one(scope),
-            Fir::Operator(inner) => inner.step_one(scope),
-            Fir::Search(inner) => inner.step_one(scope),
-            Fir::Index(inner) => inner.step_one(scope),
-            Fir::HeadTail(inner) => inner.step_one(scope),
-            Fir::StayFoolish(inner) => inner.step_one(scope),
-            Fir::StayFullyFoolish(inner) => inner.step_one(scope),
-            Fir::Concatenation(inner) => inner.step_one(scope),
-            Fir::NormalBrane(inner) => inner.step_one(scope),
-        }
-    }
-
     fn state(&self) -> Nyes {
         match self {
             Fir::ConstantInt(i) => i.state(),
@@ -924,21 +889,6 @@ impl Steppable for Fir {
             Fir::StayFullyFoolish(i) => i.set_state(s),
             Fir::Concatenation(i) => i.set_state(s),
             Fir::NormalBrane(i) => i.set_state(s),
-        }
-    }
-
-    fn children_mut(&mut self) -> Vec<&mut FirRef> {
-        match self {
-            Fir::ConstantInt(i) => i.children_mut(),
-            Fir::Nk(i) => i.children_mut(),
-            Fir::Operator(i) => i.children_mut(),
-            Fir::Search(i) => i.children_mut(),
-            Fir::Index(i) => i.children_mut(),
-            Fir::HeadTail(i) => i.children_mut(),
-            Fir::StayFoolish(i) => i.children_mut(),
-            Fir::StayFullyFoolish(i) => i.children_mut(),
-            Fir::Concatenation(i) => i.children_mut(),
-            Fir::NormalBrane(i) => i.children_mut(),
         }
     }
 
@@ -1220,17 +1170,11 @@ impl Fir {
 // ==================== Struct Steppable Implementations ====================
 
 impl Steppable for ConstantIntFir {
-    fn step_one(&mut self, _: &crate::ubc::Scope) -> Result<Option<Fir>, UbcError> {
-        Ok(None)
-    }
     fn state(&self) -> Nyes {
         self.state
     }
     fn set_state(&mut self, s: Nyes) {
         self.state = s;
-    }
-    fn children_mut(&mut self) -> Vec<&mut FirRef> {
-        vec![]
     }
     fn clone_into_fir(&self) -> Fir {
         Fir::ConstantInt(Box::new(self.clone()))
@@ -1241,17 +1185,11 @@ impl Steppable for ConstantIntFir {
 }
 
 impl Steppable for NkFir {
-    fn step_one(&mut self, _: &crate::ubc::Scope) -> Result<Option<Fir>, UbcError> {
-        Ok(None)
-    }
     fn state(&self) -> Nyes {
         self.state
     }
     fn set_state(&mut self, s: Nyes) {
         self.state = s;
-    }
-    fn children_mut(&mut self) -> Vec<&mut FirRef> {
-        vec![]
     }
     fn clone_into_fir(&self) -> Fir {
         Fir::Nk(Box::new(self.clone()))
@@ -1262,43 +1200,11 @@ impl Steppable for NkFir {
 }
 
 impl Steppable for OperatorFir {
-    fn step_one(&mut self, scope: &crate::ubc::Scope) -> Result<Option<Fir>, UbcError> {
-        self.step_members(scope)?;
-
-        let operand_states: Vec<Nyes> = self.operands.iter().map(|o| o.borrow().state()).collect();
-
-        if operand_states.iter().any(|s| *s == Nyes::Nk) {
-            self.state = Nyes::Nk;
-            return Ok(None);
-        }
-
-        let all_constant = operand_states
-            .iter()
-            .all(|s| *s == Nyes::Constant || *s == Nyes::Independent);
-        if all_constant {
-            let vals: Vec<i64> = self
-                .operands
-                .iter()
-                .filter_map(|o| o.borrow().as_int())
-                .collect();
-            if vals.len() == operand_states.len() {
-                return Ok(Some(crate::ubc::compute_operator(&self.op, &vals)?));
-            }
-        }
-
-        if operand_states.iter().all(|s| s.is_constanic()) {
-            self.state = Nyes::Woconstanic;
-        }
-        Ok(None)
-    }
     fn state(&self) -> Nyes {
         self.state
     }
     fn set_state(&mut self, s: Nyes) {
         self.state = s;
-    }
-    fn children_mut(&mut self) -> Vec<&mut FirRef> {
-        self.operands.iter_mut().collect()
     }
     fn clone_into_fir(&self) -> Fir {
         Fir::Operator(Box::new(self.clone()))
@@ -1309,24 +1215,11 @@ impl Steppable for OperatorFir {
 }
 
 impl Steppable for SearchFir {
-    fn step_one(&mut self, scope: &crate::ubc::Scope) -> Result<Option<Fir>, UbcError> {
-        if self.state.is_constanic() {
-            return Ok(None);
-        }
-        if self.anchored {
-            self.step_anchored(scope)
-        } else {
-            self.step_unanchored(scope)
-        }
-    }
     fn state(&self) -> Nyes {
         self.state
     }
     fn set_state(&mut self, s: Nyes) {
         self.state = s;
-    }
-    fn children_mut(&mut self) -> Vec<&mut FirRef> {
-        vec![]
     }
     fn search_pattern(&self) -> Option<String> {
         Some(self.pattern.clone())
@@ -1351,134 +1244,12 @@ impl Steppable for SearchFir {
     }
 }
 
-impl SearchFir {
-    fn step_unanchored(&mut self, scope: &crate::ubc::Scope) -> Result<Option<Fir>, UbcError> {
-        match scope.search(&self.pattern) {
-            Some(found) => {
-                let stripped_fir = match found.borrow().fir_variant() {
-                    "StayFullyFoolish" | "StayFoolish" => {
-                        let found_fir = clone_steppable(&found);
-                        match found_fir {
-                            Fir::StayFullyFoolish(inner) => clone_steppable(&inner.expr),
-                            Fir::StayFoolish(inner) => clone_steppable(&inner.expr),
-                            _ => found_fir,
-                        }
-                    }
-                    _ => clone_steppable(&found),
-                };
-                if scope.block_brane_searches() && matches!(stripped_fir, Fir::NormalBrane(_)) {
-                    self.state = Nyes::Econstanic;
-                } else {
-                    let mut found_rc: FirRef = fir_to_ref(stripped_fir);
-                    crate::ubc::run_to_completion_with_scope(&mut found_rc, scope)?;
-                    self.result = Some(Rc::clone(&found_rc));
-                    let cs = found_rc.borrow().state();
-                    if cs == Nyes::Constant || cs == Nyes::Independent {
-                        self.state = Nyes::Constant;
-                        return Ok(self.result.take().map(|t| clone_steppable(&t)));
-                    } else if cs.is_constanic() {
-                        self.short_circuit_self();
-                        self.state = Nyes::Woconstanic;
-                    } else {
-                        self.state = Nyes::Woconstanic;
-                    }
-                }
-            }
-            None => {
-                self.state = Nyes::Econstanic;
-                scope.emit(Alarm {
-                    level: AlarmLevel::Info,
-                    code: "UNBOUND-NAME".to_string(),
-                    message: format!("Search '{}' became ECONSTANIC (unbound name)", self.pattern),
-                    source: AlarmSource::Evaluator,
-                });
-            }
-        }
-        Ok(None)
-    }
-
-    fn step_anchored(&mut self, scope: &crate::ubc::Scope) -> Result<Option<Fir>, UbcError> {
-        if let Some(anchor_rc) = self.anchor.clone() {
-            let mut anchor = Rc::clone(&anchor_rc);
-            crate::ubc::run_to_completion_with_scope(&mut anchor, scope)?;
-            let resolved = crate::ubc::resolve_to_value(&anchor);
-            let anchor_state = resolved.borrow().state();
-            match anchor_state {
-                Nyes::Nk => {
-                    self.state = Nyes::Nk;
-                }
-                Nyes::Constant | Nyes::Independent => {
-                    match crate::search::search_in_brane(&resolved, &self.pattern) {
-                        None => {
-                            self.state = Nyes::Nk;
-                        }
-                        Some(found) => {
-                            let cloned = crate::ubc::constanic_clone(&found, false);
-                            self.result = Some(cloned);
-                            let cs = self.result.as_ref().unwrap().borrow().state();
-                            if cs == Nyes::Constant || cs == Nyes::Independent {
-                                self.state = Nyes::Constant;
-                                return Ok(self.result.take().map(|t| clone_steppable(&t)));
-                            } else if cs.is_constanic() {
-                                self.short_circuit_self();
-                                self.state = Nyes::Woconstanic;
-                            }
-                        }
-                    }
-                }
-                _ => {
-                    self.state = Nyes::Nk;
-                }
-            }
-        } else {
-            self.state = Nyes::Econstanic;
-        }
-        Ok(None)
-    }
-
-    /// Follow WOCONSTANIC chain in-place.
-    fn short_circuit_self(&mut self) {
-        let mut current = self.result.clone();
-        loop {
-            let local_rc = match current {
-                Some(rc) => rc,
-                None => break,
-            };
-            let state = local_rc.borrow().state();
-            if state != Nyes::Woconstanic {
-                self.result = Some(local_rc);
-                break;
-            }
-            // Follow chain
-            let next = if local_rc.borrow().fir_variant() == "Search" {
-                local_rc.borrow().search_result_ref()
-            } else {
-                None
-            };
-            current = next;
-        }
-    }
-}
-
 impl Steppable for IndexFir {
-    fn step_one(&mut self, scope: &crate::ubc::Scope) -> Result<Option<Fir>, UbcError> {
-        if self.state.is_constanic() {
-            return Ok(None);
-        }
-        if self.anchored {
-            self.step_anchored(scope)
-        } else {
-            self.step_unanchored(scope)
-        }
-    }
     fn state(&self) -> Nyes {
         self.state
     }
     fn set_state(&mut self, s: Nyes) {
         self.state = s;
-    }
-    fn children_mut(&mut self) -> Vec<&mut FirRef> {
-        vec![]
     }
     fn index_offset(&self) -> i32 {
         self.offset
@@ -1497,98 +1268,14 @@ impl Steppable for IndexFir {
     }
 }
 
-impl IndexFir {
-    fn step_anchored(&mut self, scope: &crate::ubc::Scope) -> Result<Option<Fir>, UbcError> {
-        if let Some(anchor_rc) = self.anchor.clone() {
-            let mut anchor = Rc::clone(&anchor_rc);
-            crate::ubc::run_to_completion_with_scope(&mut anchor, scope)?;
-            let resolved = crate::ubc::resolve_to_value(&anchor);
-            match resolved.borrow().state() {
-                Nyes::Nk => {
-                    self.state = Nyes::Nk;
-                }
-                Nyes::Constant | Nyes::Independent => {
-                    match crate::search::index_in_brane(&resolved, self.offset) {
-                        None => {
-                            self.state = Nyes::Nk;
-                        }
-                        Some(found) => {
-                            let cloned = crate::ubc::constanic_clone(&found, false);
-                            return Ok(Some(clone_steppable(&cloned)));
-                        }
-                    }
-                }
-                _ => {
-                    self.state = Nyes::Nk;
-                }
-            }
-        }
-        Ok(None)
-    }
-
-    fn step_unanchored(&mut self, scope: &crate::ubc::Scope) -> Result<Option<Fir>, UbcError> {
-        if let (Some(brane), Some(stmt_idx)) = (scope.current_brane(), scope.current_stmt_idx()) {
-            let index_pos = stmt_idx as i32 + self.offset;
-            match crate::search::index_in_brane(&brane, index_pos) {
-                None => {
-                    self.state = Nyes::Nk;
-                }
-                Some(found) => {
-                    let cloned = crate::ubc::constanic_clone(&found, false);
-                    return Ok(Some(clone_steppable(&cloned)));
-                }
-            }
-        } else {
-            self.state = Nyes::Econstanic;
-        }
-        Ok(None)
-    }
-}
+impl IndexFir {}
 
 impl Steppable for HeadTailFir {
-    fn step_one(&mut self, scope: &crate::ubc::Scope) -> Result<Option<Fir>, UbcError> {
-        if self.state.is_constanic() {
-            return Ok(None);
-        }
-        if let Some(anchor_rc) = self.anchor.clone() {
-            let mut anchor = Rc::clone(&anchor_rc);
-            crate::ubc::run_to_completion_with_scope(&mut anchor, scope)?;
-            let resolved = crate::ubc::resolve_to_value(&anchor);
-            match resolved.borrow().state() {
-                Nyes::Nk => {
-                    self.state = Nyes::Nk;
-                }
-                Nyes::Constant | Nyes::Independent => {
-                    let found = if self.is_head {
-                        crate::search::head_of_brane(&resolved)
-                    } else {
-                        crate::search::tail_of_brane(&resolved)
-                    };
-                    match found {
-                        None => {
-                            self.state = Nyes::Nk;
-                        }
-                        Some(f) => {
-                            let cloned = crate::ubc::constanic_clone(&f, false);
-                            return Ok(Some(clone_steppable(&cloned)));
-                        }
-                    }
-                }
-                _ => {
-                    self.state = Nyes::Nk;
-                }
-            }
-        }
-        Ok(None)
-    }
     fn state(&self) -> Nyes {
         self.state
     }
     fn set_state(&mut self, s: Nyes) {
         self.state = s;
-    }
-    fn children_mut(&mut self) -> Vec<&mut FirRef> {
-        vec![]
     }
     fn headtail_is_head(&self) -> bool {
         self.is_head
@@ -1605,28 +1292,11 @@ impl Steppable for HeadTailFir {
 }
 
 impl Steppable for StayFoolishFir {
-    fn step_one(&mut self, scope: &crate::ubc::Scope) -> Result<Option<Fir>, UbcError> {
-        if self.state.is_constanic() {
-            return Ok(None);
-        }
-        let stepped = crate::ubc::step_except_brane_searches(&self.expr, scope)?;
-        self.expr = fir_to_ref(stepped);
-        let es = self.expr.borrow().state();
-        if es == Nyes::Constant || es == Nyes::Independent {
-            self.state = Nyes::Constant;
-        } else {
-            self.state = Nyes::Woconstanic;
-        }
-        Ok(None)
-    }
     fn state(&self) -> Nyes {
         self.state
     }
     fn set_state(&mut self, s: Nyes) {
         self.state = s;
-    }
-    fn children_mut(&mut self) -> Vec<&mut FirRef> {
-        vec![&mut self.expr]
     }
     fn clone_into_fir(&self) -> Fir {
         Fir::StayFoolish(Box::new(self.clone()))
@@ -1637,17 +1307,11 @@ impl Steppable for StayFoolishFir {
 }
 
 impl Steppable for StayFullyFoolishFir {
-    fn step_one(&mut self, _: &crate::ubc::Scope) -> Result<Option<Fir>, UbcError> {
-        Ok(None)
-    }
     fn state(&self) -> Nyes {
         self.state
     }
     fn set_state(&mut self, s: Nyes) {
         self.state = s;
-    }
-    fn children_mut(&mut self) -> Vec<&mut FirRef> {
-        vec![&mut self.expr]
     }
     fn clone_into_fir(&self) -> Fir {
         Fir::StayFullyFoolish(Box::new(self.clone()))
@@ -1658,81 +1322,11 @@ impl Steppable for StayFullyFoolishFir {
 }
 
 impl Steppable for ConcatenationFir {
-    fn step_one(&mut self, scope: &crate::ubc::Scope) -> Result<Option<Fir>, UbcError> {
-        // If we already have a merged brane, step it
-        if let Some(merged_rc) = self.merged.clone() {
-            let mut merged = Rc::clone(&merged_rc);
-            crate::ubc::run_to_completion_with_scope(&mut merged, scope)?;
-            if merged.borrow().state().is_constanic() {
-                return Ok(Some(clone_steppable(&merged)));
-            }
-            self.merged = Some(Rc::clone(&merged));
-            self.state = Nyes::Braning;
-            return Ok(None);
-        }
-
-        // Step each element and build merged brane
-        let stepped: Vec<Fir> = self
-            .elements
-            .iter()
-            .map(|e| crate::ubc::step_boxed(e, scope))
-            .collect::<Result<_, _>>()?;
-
-        if stepped.iter().any(|e| e.state() == Nyes::Nk) {
-            self.state = Nyes::Nk;
-            return Ok(None);
-        }
-
-        let merged_statements: Vec<StatementFir> = stepped
-            .iter()
-            .flat_map(|elem| {
-                let elem_ref: FirRef = fir_to_ref(elem.clone());
-                let resolved = crate::ubc::resolve_to_value(&elem_ref);
-                if resolved.borrow().fir_variant() == "NormalBrane" {
-                    let resolved_fir = clone_steppable(&resolved);
-                    if let Fir::NormalBrane(inner) = resolved_fir {
-                        inner
-                            .statements
-                            .iter()
-                            .map(|stmt| StatementFir {
-                                name: stmt.name.clone(),
-                                body: fir_to_ref(clone_steppable(&stmt.body)),
-                                state: if stmt.body.borrow().state().is_constanic() {
-                                    stmt.body.borrow().state()
-                                } else {
-                                    Nyes::Embryonic
-                                },
-                            })
-                            .collect::<Vec<_>>()
-                    } else {
-                        vec![]
-                    }
-                } else {
-                    vec![]
-                }
-            })
-            .collect();
-
-        let brane_state = crate::ubc::compute_brane_state(&merged_statements);
-        let merged = Fir::NormalBrane(Box::new(NormalBraneFir {
-            characterizations: vec![],
-            statements: merged_statements,
-            state: brane_state,
-            parent: None,
-            alarm: None,
-        }));
-        self.merged = Some(fir_to_ref(merged));
-        self.state = Nyes::Braning;
-        Ok(None)
-    }
     fn state(&self) -> Nyes {
         self.state
     }
     fn set_state(&mut self, s: Nyes) {
         self.state = s;
-    }
-    fn children_mut(&mut self) -> Vec<&mut FirRef> {
-        self.elements.iter_mut().collect()
     }
     fn concat_merged_ref(&self) -> Option<FirRef> {
         self.merged.clone()
@@ -1749,31 +1343,11 @@ impl Steppable for ConcatenationFir {
 }
 
 impl Steppable for NormalBraneFir {
-    fn step_one(&mut self, scope: &crate::ubc::Scope) -> Result<Option<Fir>, UbcError> {
-        match self.state {
-            Nyes::Prembrionic => {
-                self.state = Nyes::Embryonic;
-                Ok(None)
-            }
-            Nyes::Embryonic => {
-                self.state = Nyes::Braning;
-                Ok(None)
-            }
-            Nyes::Braning | Nyes::Woconstanic => {
-                crate::ubc::re_step_brane_bodies(self, scope)?;
-                Ok(None)
-            }
-            _ => Ok(None),
-        }
-    }
     fn state(&self) -> Nyes {
         self.state
     }
     fn set_state(&mut self, s: Nyes) {
         self.state = s;
-    }
-    fn children_mut(&mut self) -> Vec<&mut FirRef> {
-        self.statements.iter_mut().map(|s| &mut s.body).collect()
     }
     fn normal_brane_statements(&self) -> Vec<StatementFir> {
         self.statements.clone()
@@ -2260,7 +1834,6 @@ impl<'de> Deserialize<'de> for Fir {
                     characterizations,
                     statements,
                     state,
-                    parent: None,
                     alarm: None,
                 })))
             }
@@ -2586,6 +2159,12 @@ pub struct ConcatenationFirBuilder {
     state: Nyes,
 }
 
+impl Default for ConcatenationFirBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ConcatenationFirBuilder {
     pub fn new() -> Self {
         Self {
@@ -2624,8 +2203,13 @@ pub struct NormalBraneFirBuilder {
     characterizations: Vec<String>,
     statements: Vec<StatementFir>,
     state: Nyes,
-    parent: Option<FirRef>,
     alarm: Option<Alarm>,
+}
+
+impl Default for NormalBraneFirBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl NormalBraneFirBuilder {
@@ -2634,7 +2218,6 @@ impl NormalBraneFirBuilder {
             characterizations: Vec::new(),
             statements: Vec::new(),
             state: Nyes::Embryonic,
-            parent: None,
             alarm: None,
         }
     }
@@ -2667,10 +2250,6 @@ impl NormalBraneFirBuilder {
         self.state = state;
         self
     }
-    pub fn parent(mut self, parent: Fir) -> Self {
-        self.parent = Some(fir_to_ref(parent));
-        self
-    }
     pub fn alarm(mut self, alarm: Alarm) -> Self {
         self.alarm = Some(alarm);
         self
@@ -2680,7 +2259,6 @@ impl NormalBraneFirBuilder {
             characterizations: self.characterizations,
             statements: self.statements,
             state: self.state,
-            parent: self.parent,
             alarm: self.alarm,
         }))
     }

@@ -10,7 +10,6 @@ use std::rc::Rc;
 
 use foolish_core::fir::Nyes;
 
-use crate::nyes_ext::NyesExt;
 use crate::proto_brane::ProtoBrane;
 
 /// A FIR reference: `Rc<RefCell<dyn Fir>>`.
@@ -324,7 +323,6 @@ fn step_fir_ref_inner(this: &FirRef, scope: &Scope, depth: usize) -> Result<Step
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
-    use crate::nyes_ext::NyesExt;
     use crate::proto_brane::ProtoBrane;
     use std::rc::Weak;
 
@@ -595,7 +593,6 @@ mod get_value_tests {
         BraneFir, ConcatenationFir, IndepIntFir, IndexFir, NkFir, OperatorFir, SearchFir,
         StatementFir, StayFoolishFir, StayFullyFoolishFir,
     };
-    use crate::nyes_ext::NyesExt;
     use foolish_core::fir::Nyes;
     use std::rc::Weak;
 

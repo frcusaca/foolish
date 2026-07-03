@@ -58,7 +58,7 @@ impl Parser {
     fn expect(&mut self, expected: &Token) -> Result<TokenAndLocation> {
         let cur = self.current().cloned();
         match cur {
-            Some(t) if t.token == *expected => self.advance().ok_or_else(|| ParseError::Eof {
+            Some(t) if t.token == *expected => self.advance().ok_or(ParseError::Eof {
                 line: t.line,
                 col: t.column,
             }),

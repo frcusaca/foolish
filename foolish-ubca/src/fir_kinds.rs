@@ -5,7 +5,6 @@ use foolish_core::fir::Nyes;
 use regex::Regex;
 
 use crate::fir_trait::{Fir, FirKind, FirRef, Scope, UbcError, get_value};
-use crate::nyes_ext::NyesExt;
 use crate::proto_brane::ProtoBrane;
 
 pub(crate) fn _decide_nyes_due_to_children(children: &[FirRef]) -> Option<Nyes> {
@@ -50,7 +49,6 @@ pub(crate) fn _decide_nyes_due_to_children(children: &[FirRef]) -> Option<Nyes> 
         return Some(Nyes::Nk);
     }
     unreachable!("ALARM: _decide_nyes_due_to_children: no decision made.");
-    None
 }
 
 fn deepest_econstanic_in_chain(search: &FirRef) -> Option<FirRef> {
@@ -111,15 +109,15 @@ impl ProtoBrane {
             FirKind::StayFoolish | FirKind::StayFullyFoolish
         ) {
             let source = fir_ref.borrow();
-            if source.kind() == FirKind::StayFoolish {
-                if let Some(constanic_result) = source.core().ubc_children().into_iter().next() {
-                    return Self::constanic_clone_at(
-                        &constanic_result,
-                        new_parent,
-                        index,
-                        descendent_of_sfm_and_foolishly_ignorant,
-                    );
-                }
+            if source.kind() == FirKind::StayFoolish
+                && let Some(constanic_result) = source.core().ubc_children().into_iter().next()
+            {
+                return Self::constanic_clone_at(
+                    &constanic_result,
+                    new_parent,
+                    index,
+                    descendent_of_sfm_and_foolishly_ignorant,
+                );
             }
             if let Some(inner) = source.core().foolish_children().first().cloned() {
                 return Self::constanic_clone_at(
@@ -132,10 +130,10 @@ impl ProtoBrane {
             eprintln!("ALARM: SF/SFF node has no children — cloning wrapper as-is");
         }
         let nyes = fir_ref.borrow().core().get_nyes();
-        if nyes == Nyes::Constant || nyes == Nyes::Independent {
-            if fir_ref.borrow().kind() != FirKind::Brane {
-                return Rc::clone(fir_ref);
-            }
+        if (nyes == Nyes::Constant || nyes == Nyes::Independent)
+            && fir_ref.borrow().kind() != FirKind::Brane
+        {
+            return Rc::clone(fir_ref);
         }
         let borrowed = fir_ref.borrow();
         let kind = borrowed.kind();
@@ -381,12 +379,6 @@ pub struct OperatorFir {
 }
 
 impl OperatorFir {
-    fn operands_all_constanic(&self) -> bool {
-        self.core()
-            .foolish_children()
-            .iter()
-            .all(|c| c.borrow().core().get_nyes().is_constanic())
-    }
     fn operands_all_settled(&self) -> bool {
         self.core().foolish_children().iter().all(|c| {
             matches!(
@@ -729,15 +721,15 @@ impl Fir for BraneFir {
         let range = if starting_index >= ending_index {
             Box::new((ending_index..=starting_index).rev()) as Box<dyn Iterator<Item = usize>>
         } else {
-            Box::new((starting_index..=ending_index)) as Box<dyn Iterator<Item = usize>>
+            Box::new(starting_index..=ending_index) as Box<dyn Iterator<Item = usize>>
         };
         for i in range {
             let child = &children[i];
             let child_borrowed = child.borrow();
-            if let Some(sn) = child_borrowed.as_stmt_name() {
-                if SearchFir::matches_pattern(sn, expression) {
-                    return Some((i, Rc::clone(child), child_borrowed.core().get_nyes()));
-                }
+            if let Some(sn) = child_borrowed.as_stmt_name()
+                && SearchFir::matches_pattern(sn, expression)
+            {
+                return Some((i, Rc::clone(child), child_borrowed.core().get_nyes()));
             }
         }
         None
@@ -754,12 +746,6 @@ pub struct SearchFir {
 }
 
 #[inline(always)]
-fn extract_simple_name(pattern: &str) -> &str {
-    let s = pattern.strip_prefix('^').unwrap_or(pattern);
-    s.strip_suffix('$').unwrap_or(s)
-}
-
-#[inline(always)]
 fn resolve_anchor(anchor: &FirRef) -> FirRef {
     get_value(anchor)
 }
@@ -772,20 +758,6 @@ fn find_stmt_index_in_brane(stmt: &FirRef, brane: &FirRef) -> Option<usize> {
         }
     }
     None
-}
-
-fn unwrap_sf_sff(fir_ref: &FirRef) -> FirRef {
-    let kind = fir_ref.borrow().kind();
-    match kind {
-        FirKind::StayFoolish | FirKind::StayFullyFoolish => {
-            if let Some(inner) = fir_ref.borrow().core().foolish_children().first() {
-                Rc::clone(inner)
-            } else {
-                Rc::clone(fir_ref)
-            }
-        }
-        _ => Rc::clone(fir_ref),
-    }
 }
 
 impl SearchFir {
@@ -963,8 +935,8 @@ fn index_into_brane(brane: &FirRef, offset: i32) -> Option<(FirRef, Nyes)> {
                 return None;
             }
             let stmt = Rc::clone(&children[idx as usize]);
-            let body = Rc::clone(stmt.borrow().core().foolish_children().first()?);
-            body
+
+            (Rc::clone(stmt.borrow().core().foolish_children().first()?)) as _
         };
         let body_nyes = body.borrow().core().get_nyes();
         (body, body_nyes)
@@ -1796,10 +1768,10 @@ mod tests {
 
         for _ in 0..20 {
             let report = step_fir_ref(&op, &scope).unwrap();
-            if let StepReport::Progress(nyes) = report {
-                if nyes.is_constanic() {
-                    break;
-                }
+            if let StepReport::Progress(nyes) = report
+                && nyes.is_constanic()
+            {
+                break;
             }
         }
 
@@ -1818,10 +1790,10 @@ mod tests {
 
         for _ in 0..20 {
             let report = step_fir_ref(&op, &scope).unwrap();
-            if let StepReport::Progress(nyes) = report {
-                if nyes.is_constanic() {
-                    break;
-                }
+            if let StepReport::Progress(nyes) = report
+                && nyes.is_constanic()
+            {
+                break;
             }
         }
 
@@ -1840,10 +1812,10 @@ mod tests {
 
         for _ in 0..20 {
             let report = step_fir_ref(&op, &scope).unwrap();
-            if let StepReport::Progress(nyes) = report {
-                if nyes.is_constanic() {
-                    break;
-                }
+            if let StepReport::Progress(nyes) = report
+                && nyes.is_constanic()
+            {
+                break;
             }
         }
 
@@ -1862,10 +1834,10 @@ mod tests {
 
         for _ in 0..20 {
             let report = step_fir_ref(&op, &scope).unwrap();
-            if let StepReport::Progress(nyes) = report {
-                if nyes.is_constanic() {
-                    break;
-                }
+            if let StepReport::Progress(nyes) = report
+                && nyes.is_constanic()
+            {
+                break;
             }
         }
 
@@ -1886,10 +1858,10 @@ mod tests {
 
         for _ in 0..20 {
             let report = step_fir_ref(&op, &scope).unwrap();
-            if let StepReport::Progress(nyes) = report {
-                if nyes.is_constanic() {
-                    break;
-                }
+            if let StepReport::Progress(nyes) = report
+                && nyes.is_constanic()
+            {
+                break;
             }
         }
 
@@ -3064,7 +3036,7 @@ mod tests {
             .unwrap()
             .pop()
             .unwrap();
-        let search = find_search(&root, "^a$").expect("search for a");
+        let _search = find_search(&root, "^a$").expect("search for a");
         let inner_brane = root
             .borrow()
             .core()

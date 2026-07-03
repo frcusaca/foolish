@@ -7,10 +7,10 @@ pub fn search_in_brane(brane: &FirRef, pattern: &str) -> Option<FirRef> {
     let statements = brane.borrow().as_brane_statements()?;
     let re = regex::Regex::new(pattern).ok()?;
     for stmt in &statements {
-        if let Some(ref name) = stmt.name {
-            if re.is_match(name) {
-                return Some(Rc::clone(&stmt.body));
-            }
+        if let Some(ref name) = stmt.name
+            && re.is_match(name)
+        {
+            return Some(Rc::clone(&stmt.body));
         }
     }
     None

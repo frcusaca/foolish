@@ -3,7 +3,8 @@ use std::path::PathBuf;
 
 use anyhow::Context;
 use clap::{Parser, Subcommand};
-use foolish_core::{Compiler, FirSequencer, clone_steppable, fir_to_json, fir_to_ref, ubc};
+use foolish_core::{Evaluator, FirSequencer, clone_steppable, fir_to_json};
+use foolish_ubca::UbcaEvaluator;
 
 #[derive(Parser)]
 #[command(name = "foolish")]
@@ -19,7 +20,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Compile .foo source to FIR JSON
+    /// Compile and evaluate .foo source, printing the settled FIR as JSON
     Compile {
         /// Path to .foo source file
         file: PathBuf,
@@ -29,7 +30,7 @@ enum Commands {
         /// Path to .foo source file
         file: PathBuf,
     },
-    /// Step-evaluate .foo source (debug output)
+    /// Evaluate .foo source, printing the settled FIR (debug output)
     Step {
         /// Path to .foo source file
         file: PathBuf,
@@ -48,12 +49,22 @@ fn main() -> anyhow::Result<()> {
     }
 }
 
+/// Evaluate source through the UBCa engine, returning settled core-FIR refs
+/// (bridged into the shared sequencer IR). UBCa is the sole reference engine;
+/// the `Evaluator` trait keeps the door open for additional implementations
+/// that render through the same sequencer.
+fn evaluate(source: &str) -> anyhow::Result<Vec<foolish_core::FirRef>> {
+    UbcaEvaluator
+        .evaluate(source)
+        .map_err(|e| anyhow::anyhow!("{}", e))
+}
+
 fn cmd_compile(file: &PathBuf) -> anyhow::Result<()> {
     let source = std::fs::read_to_string(file)
         .with_context(|| format!("Failed to read {}", file.display()))?;
-    let firs = Compiler::compile(&source)?;
-    for fir in &firs {
-        let json = fir_to_json(fir).map_err(|e| anyhow::anyhow!("{}", e))?;
+    for fir_ref in evaluate(&source)? {
+        let fir = clone_steppable(&fir_ref);
+        let json = fir_to_json(&fir).map_err(|e| anyhow::anyhow!("{}", e))?;
         println!("{}", json);
     }
     Ok(())
@@ -62,13 +73,9 @@ fn cmd_compile(file: &PathBuf) -> anyhow::Result<()> {
 fn cmd_run(file: &PathBuf) -> anyhow::Result<()> {
     let source = std::fs::read_to_string(file)
         .with_context(|| format!("Failed to read {}", file.display()))?;
-    let firs = Compiler::compile(&source)?;
-    for fir in &firs {
-        let mut fir_ref = fir_to_ref(fir.clone());
-        ubc::run_to_completion(&mut fir_ref).with_context(|| "Evaluation failed")?;
+    for fir_ref in evaluate(&source)? {
         let final_fir = clone_steppable(&fir_ref);
-        let output = FirSequencer::format(&final_fir);
-        println!("{}", output);
+        println!("{}", FirSequencer::format(&final_fir));
     }
     Ok(())
 }
@@ -76,20 +83,10 @@ fn cmd_run(file: &PathBuf) -> anyhow::Result<()> {
 fn cmd_step(file: &PathBuf) -> anyhow::Result<()> {
     let source = std::fs::read_to_string(file)
         .with_context(|| format!("Failed to read {}", file.display()))?;
-    let firs = Compiler::compile(&source)?;
-    for (i, fir) in firs.iter().enumerate() {
-        println!("[{}] PARSED:", i);
-        println!("{}", FirSequencer::format(fir));
-
-        let mut fir_ref = fir_to_ref(fir.clone());
-        match ubc::run_to_completion(&mut fir_ref) {
-            Ok(()) => {
-                let final_fir = clone_steppable(&fir_ref);
-                println!("RESULT:");
-                println!("{}", FirSequencer::format(&final_fir));
-            }
-            Err(e) => eprintln!("ERROR: {}", e),
-        }
+    for (i, fir_ref) in evaluate(&source)?.iter().enumerate() {
+        let final_fir = clone_steppable(fir_ref);
+        println!("[{}] RESULT:", i);
+        println!("{}", FirSequencer::format(&final_fir));
     }
     Ok(())
 }
@@ -127,17 +124,11 @@ fn cmd_repl() -> anyhow::Result<()> {
         buf.push_str(&line);
 
         if depth <= 0 && !buf.trim().is_empty() {
-            match Compiler::compile(&buf) {
+            match evaluate(&buf) {
                 Ok(firs) => {
-                    for fir in &firs {
-                        let mut fir_ref = fir_to_ref(fir.clone());
-                        match ubc::run_to_completion(&mut fir_ref) {
-                            Ok(()) => {
-                                let final_fir = clone_steppable(&fir_ref);
-                                println!("=> {}", FirSequencer::format(&final_fir));
-                            }
-                            Err(e) => eprintln!("Error: {}", e),
-                        }
+                    for fir_ref in &firs {
+                        let final_fir = clone_steppable(fir_ref);
+                        println!("=> {}", FirSequencer::format(&final_fir));
                     }
                 }
                 Err(e) => eprintln!("Error: {}", e),

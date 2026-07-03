@@ -175,11 +175,12 @@ impl SnapshotSuite {
 
         let sig = crate::signature::sign_snapshot("", &source, &hs_outputs, &comments);
 
-        let mut lines = Vec::new();
-        lines.push("INPUT:".to_string());
-        lines.push("```foolish".to_string());
-        lines.push(source.trim_end().to_string());
-        lines.push("```".to_string());
+        let mut lines = vec![
+            "INPUT:".to_string(),
+            "```foolish".to_string(),
+            source.trim_end().to_string(),
+            "```".to_string(),
+        ];
         for (i, hs_output) in hs_outputs.iter().enumerate() {
             lines.push(format!("[{}] RESULT:", i));
             lines.push("```hfssnap".to_string());

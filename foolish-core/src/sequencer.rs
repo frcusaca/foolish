@@ -150,23 +150,6 @@ fn proto_brane_formatter(
 // Proto-brane formatter (body-based, with state)
 // ──────────────────────────────────────────────
 
-/// Proto-brane formatter for multi-line body content (branes, SF, SFF).
-/// Returns opener at prefix 0, body lines at their own prefixes, closer at 0.
-/// Caller adds body_indent to all returned prefixes.
-fn proto_brane_formatter_body(
-    closer: &str,
-    opener_text: &str,
-    body: &FormattedLines,
-) -> FormattedLines {
-    let mut lines: FormattedLines = Vec::new();
-    lines.push((0, opener_text.to_string()));
-    for (prefix, text) in body {
-        lines.push((*prefix, text.clone()));
-    }
-    lines.push((0, closer.to_string()));
-    lines
-}
-
 // ──────────────────────────────────────────────
 // Proto-brane formatter with deferred result
 // ──────────────────────────────────────────────
@@ -245,12 +228,12 @@ fn proto_brane_formatter_with_result(
         lines.push((0, opener.to_string()));
 
         // Result first — add trailing comma if there are non-result items
-        if !result_lines.is_empty() && !non_result_items.is_empty() {
-            if let Some((_, last_text)) = result_lines.last_mut() {
-                if !last_text.ends_with(',') {
-                    *last_text = format!("{},", last_text);
-                }
-            }
+        if !result_lines.is_empty()
+            && !non_result_items.is_empty()
+            && let Some((_, last_text)) = result_lines.last_mut()
+            && !last_text.ends_with(',')
+        {
+            *last_text = format!("{},", last_text);
         }
         lines.extend(result_lines);
 
@@ -319,7 +302,7 @@ fn render_fir(
 
         if !any_multi {
             // All single-line: use proto_brane_formatter
-            let body_items: Vec<String> = operand_lines.iter().map(|l| materialize(l)).collect();
+            let body_items: Vec<String> = operand_lines.iter().map(materialize).collect();
             let mut items = body_items;
             items.push(state.to_string());
             let opener = format!("Op{}(", op);
@@ -338,7 +321,7 @@ fn render_fir(
         lines.push((0, format!("Op{}(", op)));
         let last_op = operands.len().saturating_sub(1);
         for (oi, oplines) in operand_lines.into_iter().enumerate() {
-            let is_last_op = oi == last_op;
+            let _is_last_op = oi == last_op;
             let last_li = oplines.len().saturating_sub(1);
             for (pi, (prefix, text)) in oplines.into_iter().enumerate() {
                 let is_last_line = pi == last_li;
@@ -512,17 +495,14 @@ fn render_fir(
                 for (prefix, text) in elem_lines {
                     body_lines.push((bi + prefix, text));
                 }
-                if !is_last {
-                    if let Some((_, last_text)) =
+                if !is_last
+                    && let Some((_, last_text)) =
                         body_lines.iter_mut().rev().find(|(p, _t)| *p == bi)
-                    {
-                        if !last_text.ends_with(';')
-                            && !last_text.ends_with('}')
-                            && !last_text.ends_with(')')
-                        {
-                            last_text.push(';');
-                        }
-                    }
+                    && !last_text.ends_with(';')
+                    && !last_text.ends_with('}')
+                    && !last_text.ends_with(')')
+                {
+                    last_text.push(';');
                 }
             }
             let mut lines = vec![(0, "{".to_string())];
@@ -584,16 +564,14 @@ fn render_fir(
             } else {
                 "{".to_string()
             }
-        } else {
-            if show_state {
-                if let Some(alarm) = fir.hs_alarm() {
-                    format!("{}{{{}({}, {})", chars, state, alarm.code, alarm.message)
-                } else {
-                    format!("{}{}{}", chars, "{", state)
-                }
+        } else if show_state {
+            if let Some(alarm) = fir.hs_alarm() {
+                format!("{}{{{}({}, {})", chars, state, alarm.code, alarm.message)
             } else {
-                format!("{}{{", chars)
+                format!("{}{}{}", chars, "{", state)
             }
+        } else {
+            format!("{}{{", chars)
         };
         lines.push((0, opener_text));
 
@@ -638,7 +616,7 @@ fn render_statements(
 
         let dollar_info: Option<(Box<dyn FirQueryable>, Nyes)> =
             stmt.name.as_ref().and_then(|_| {
-                stmt.body.hs_operator().and_then(|(op, mut ops)| {
+                stmt.body.hs_operator().and_then(|(op, ops)| {
                     if op == "$"
                         && ops.len() == 2
                         && ops[0]
@@ -673,20 +651,20 @@ fn render_statements(
         };
 
         let mut merged = child_lines;
-        if let Some(ref name) = stmt.name {
-            if let Some((_, first_text)) = merged.iter_mut().next() {
-                if is_dollar_assign {
-                    let state = dollar_info.as_ref().unwrap().1;
-                    if state == Nyes::Nk {
-                        *first_text = format!("{} =$ ??? ({} is not a brane)", name, first_text);
-                    } else if state.should_show_nyes() {
-                        *first_text = format!("{} =$ {} ({})", name, first_text, state);
-                    } else {
-                        *first_text = format!("{} =$ {}", name, first_text);
-                    }
+        if let Some(ref name) = stmt.name
+            && let Some((_, first_text)) = merged.iter_mut().next()
+        {
+            if is_dollar_assign {
+                let state = dollar_info.as_ref().unwrap().1;
+                if state == Nyes::Nk {
+                    *first_text = format!("{} =$ ??? ({} is not a brane)", name, first_text);
+                } else if state.should_show_nyes() {
+                    *first_text = format!("{} =$ {} ({})", name, first_text, state);
                 } else {
-                    *first_text = format!("{}={}", name, first_text);
+                    *first_text = format!("{} =$ {}", name, first_text);
                 }
+            } else {
+                *first_text = format!("{}={}", name, first_text);
             }
         }
 

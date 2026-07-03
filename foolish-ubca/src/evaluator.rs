@@ -7,7 +7,6 @@ use foolish_core::fir::{
 
 use crate::compiler::Compiler;
 use crate::fir_trait::{FirKind, FirRef, StepReport};
-use crate::nyes_ext::NyesExt;
 
 const MAX_STEPS: usize = 10_000;
 
@@ -92,7 +91,7 @@ fn proto_to_core_fir_sff_body(ubca_ref: &FirRef) -> core_fir::Fir {
                 .core()
                 .foolish_children()
                 .iter()
-                .map(|c| proto_to_core_fir_sff_operand(c))
+                .map(proto_to_core_fir_sff_operand)
                 .collect();
             use foolish_core::fir::FirQueryable;
             let op_state = if operand_firs.iter().any(|f| {
@@ -307,7 +306,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                         && result_borrowed.core().get_nyes().is_constanic()
                     {
                         let inner_ubc = result_borrowed.core().ubc_children();
-                        let has_complex = inner_ubc.first().map_or(false, |r| {
+                        let has_complex = inner_ubc.first().is_some_and(|r| {
                             let rb = r.borrow();
                             let is_complex_type = matches!(
                                 rb.kind(),
@@ -316,7 +315,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                                     | FirKind::StayFoolish
                                     | FirKind::StayFullyFoolish
                             );
-                            let has_resolved_value = rb.core().ubc_children().first().is_some();
+                            let has_resolved_value = !rb.core().ubc_children().is_empty();
                             is_complex_type && !has_resolved_value
                         });
                         if has_complex {
@@ -340,7 +339,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                         // which correctly wraps in the outer search.
                         let first_inner_kind = inner_ubc.first().map(|r| r.borrow().kind());
                         let has_simple = first_inner_kind
-                            .map_or(false, |k| matches!(k, FirKind::IndepInt | FirKind::Nk));
+                            .is_some_and(|k| matches!(k, FirKind::IndepInt | FirKind::Nk));
                         if has_simple {
                             let inner_result_fir =
                                 proto_to_core_fir_inner(inner_ubc.first().unwrap(), false);
@@ -403,10 +402,10 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                         .anchored(borrowed.as_index_anchored())
                         .result(resolved)
                         .state(state);
-                    if borrowed.as_index_anchored() {
-                        if let Some(anchor_ref) = borrowed.core().foolish_children().first() {
-                            builder = builder.anchor(anchor_to_core_fir(anchor_ref));
-                        }
+                    if borrowed.as_index_anchored()
+                        && let Some(anchor_ref) = borrowed.core().foolish_children().first()
+                    {
+                        builder = builder.anchor(anchor_to_core_fir(anchor_ref));
                     }
                     return builder.build();
                 }
@@ -414,10 +413,10 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
             let mut builder = IndexFirBuilder::new(borrowed.as_index_offset())
                 .anchored(borrowed.as_index_anchored())
                 .state(state);
-            if borrowed.as_index_anchored() {
-                if let Some(anchor_ref) = borrowed.core().foolish_children().first() {
-                    builder = builder.anchor(anchor_to_core_fir(anchor_ref));
-                }
+            if borrowed.as_index_anchored()
+                && let Some(anchor_ref) = borrowed.core().foolish_children().first()
+            {
+                builder = builder.anchor(anchor_to_core_fir(anchor_ref));
             }
             builder.build()
         }
@@ -440,10 +439,10 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                         .anchored(borrowed.as_headtail_anchored())
                         .result(resolved)
                         .state(state);
-                    if borrowed.as_headtail_anchored() {
-                        if let Some(anchor_ref) = borrowed.core().foolish_children().first() {
-                            builder = builder.anchor(anchor_to_core_fir(anchor_ref));
-                        }
+                    if borrowed.as_headtail_anchored()
+                        && let Some(anchor_ref) = borrowed.core().foolish_children().first()
+                    {
+                        builder = builder.anchor(anchor_to_core_fir(anchor_ref));
                     }
                     return builder.build();
                 }
@@ -452,10 +451,10 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
             let mut builder = HeadTailFirBuilder::new(borrowed.as_headtail_is_head())
                 .anchored(borrowed.as_headtail_anchored())
                 .state(state);
-            if borrowed.as_headtail_anchored() {
-                if let Some(anchor_ref) = borrowed.core().foolish_children().first() {
-                    builder = builder.anchor(anchor_to_core_fir(anchor_ref));
-                }
+            if borrowed.as_headtail_anchored()
+                && let Some(anchor_ref) = borrowed.core().foolish_children().first()
+            {
+                builder = builder.anchor(anchor_to_core_fir(anchor_ref));
             }
             builder.build()
         }
@@ -475,7 +474,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                             || result_kind == FirKind::StayFoolish
                             || result_kind == FirKind::StayFullyFoolish
                         {
-                            if result.borrow().core().ubc_children().first().is_some() {
+                            if !result.borrow().core().ubc_children().is_empty() {
                                 let inner_result_fir = proto_to_core_fir_inner(result, false);
                                 return SearchFirBuilder::new(
                                     expr_borrowed.as_search_pattern().unwrap_or(""),
@@ -552,7 +551,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                 .core()
                 .foolish_children()
                 .first()
-                .map(|c| proto_to_core_fir_sff_body(c))
+                .map(proto_to_core_fir_sff_body)
                 .unwrap_or_else(|| NkFirBuilder::new("empty sff").build());
             StayFullyFoolishFirBuilder::new(expr_fir)
                 .state(state)

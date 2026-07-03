@@ -1,4 +1,3 @@
-use crate::HumanizingFirSequencerRef;
 use crate::fir::{
     Alarm, AlarmLevel, AlarmSource, ConcatenationFirBuilder, ConstantIntFirBuilder,
     HeadTailFirBuilder, IndexFirBuilder, NkFirBuilder, NormalBraneFirBuilder, Nyes,
@@ -7,10 +6,6 @@ use crate::fir::{
 };
 use crate::sequencer::format_fir_simple;
 use crate::*;
-
-fn format_fir_ref(fir: &Fir) -> String {
-    HumanizingFirSequencerRef::new(fir).format_for_snap_test()
-}
 
 #[test]
 fn test_hs_variant_all_types() {
@@ -215,10 +210,22 @@ fn test_format_stay_fully_foolish() {
     assert!(s.contains("2"), "Expected '2' in: {}", s);
 }
 
+// These tests exercise the shared sequencer over builder-constructed `Fir`
+// trees. (They formerly compiled `.foo` source through the retired UBC
+// compiler; UBCa is now the sole engine and lives in a downstream crate, so
+// foolish-core builds the FIR directly via the shared builders instead.)
 #[test]
-fn test_integration_compile_format() {
-    let firs = Compiler::compile("{x = 1 + 2}").unwrap();
-    let formatted = format_fir_simple(&firs[0]);
+fn test_integration_statement_with_operator_format() {
+    // Equivalent of `{x = 1 + 2}` before evaluation: statement `x` whose body
+    // is an Embryonic `+` operator over 1 and 2.
+    let op = OperatorFirBuilder::new("+")
+        .operand(ConstantIntFirBuilder::new(1).build())
+        .operand(ConstantIntFirBuilder::new(2).build())
+        .build();
+    let brane = NormalBraneFirBuilder::new()
+        .statement(Some("x".into()), op)
+        .build();
+    let formatted = format_fir_simple(&brane);
 
     assert!(formatted.contains("x="), "Expected 'x=' in: {}", formatted);
     // Operator is Embryonic → shows full operator with operands
@@ -231,8 +238,15 @@ fn test_integration_compile_format() {
 
 #[test]
 fn test_integration_multi_statement_roundtrip() {
-    let firs = Compiler::compile("{a = 1; b = 2; c = 3}").unwrap();
-    let formatted = format_fir_simple(&firs[0]);
+    // Equivalent of `{a = 1; b = 2; c = 3}`.
+    let brane = NormalBraneFirBuilder::new()
+        .statements(vec![
+            (Some("a".into()), ConstantIntFirBuilder::new(1).build()),
+            (Some("b".into()), ConstantIntFirBuilder::new(2).build()),
+            (Some("c".into()), ConstantIntFirBuilder::new(3).build()),
+        ])
+        .build();
+    let formatted = format_fir_simple(&brane);
 
     assert!(
         formatted.contains("a=1"),

@@ -68,7 +68,7 @@ pub fn derive_keypair(passphrase: &str) -> (SigningKey, VerifyingKey) {
         .hash_password_into(passphrase.as_bytes(), SALT, &mut hash_output)
         .expect("Argon2id hash should not fail with valid inputs");
 
-    let signing_key = SigningKey::from(&hash_output.into());
+    let signing_key = SigningKey::from(&hash_output);
     let verifying_key = signing_key.verifying_key();
     (signing_key, verifying_key)
 }
@@ -361,7 +361,7 @@ pub fn sign_input_line(input: &str) -> String {
     let (sk, vk) = derive_keypair("");
     let (_, sig) = sign_content(&sk, input);
     let b64 = B64.encode(&sig);
-    format!("SIG: {} {}", hex::encode(&vk.to_bytes()), b64)
+    format!("SIG: {} {}", hex::encode(vk.to_bytes()), b64)
 }
 
 /// Verify a `SIG:` line against the original input.

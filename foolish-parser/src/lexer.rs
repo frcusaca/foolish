@@ -73,14 +73,6 @@ impl Lexer {
         c
     }
 
-    fn is_ws(&self, c: char) -> bool {
-        matches!(c, ' ' | '\t' | '\n' | '\r')
-    }
-
-    fn is_letter_or_digit(&self, c: char) -> bool {
-        Self::is_letter(c) || c.is_ascii_digit()
-    }
-
     fn is_letter(c: char) -> bool {
         c.is_alphabetic()
     }
@@ -105,15 +97,13 @@ impl Lexer {
         let c = self.peek().unwrap(); // skip_whitespace guarantees not EOF
 
         // Comments
-        if c == '!' {
-            if self.peek_at(1) == Some('!') {
-                if self.peek_at(2) == Some('!') {
-                    // Block comment !!! ... !!!
-                    return self.block_comment();
-                } else {
-                    // Line comment !!
-                    return self.line_comment();
-                }
+        if c == '!' && self.peek_at(1) == Some('!') {
+            if self.peek_at(2) == Some('!') {
+                // Block comment !!! ... !!!
+                return self.block_comment();
+            } else {
+                // Line comment !!
+                return self.line_comment();
             }
         }
 
