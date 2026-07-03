@@ -2,12 +2,12 @@
 foop: 30
 title: Repository Cleanup — Remove Dead Code, Flatten Workspace, Establish UBCa as Reference Implementation, Rename Main to jia
 author: Sisyphus / mimo-v2.5-pro
-status: Draft
+status: Implementing
 type: Standards
 created: 2026-07-01
 phase: meta
 supersedes: []
-begun: [ ]
+begun: [x]
 ---
 
 # FOOP-03: Repository Cleanup — Remove Dead Code, Flatten Workspace, Establish UBCa as Reference Implementation, Rename Main to jia
@@ -408,6 +408,19 @@ time. `jia` is short, meaningful, distinctive.
 - GitHub branch rename: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-branches-in-your-repository/renaming-a-branch
 
 ## Last Updated
+
+**Date**: 2026-07-02
+**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
+**Changes**: Executed Phases 1-5 and Phase 6a (merge to `alpha`, commit
+e55ddab0) per `FOOP-03.plan.md`. `foolish-ubca` was kept as a fourth
+surviving crate throughout (this spec's original crate table only named
+three because it predated awareness of `foolish-ubca`'s in-progress
+FOOP-62 work — establishing it as the sole reference implementation and
+retiring `foolish-core` remains blocked on FOOP-62's unresolved
+human-gated retirement question). Status moved Draft → Implementing.
+Phase 6b (branch rename to `jia`) is deliberately deferred as a separate,
+explicitly-authorized action — not done as part of this update. See
+`FOOP-03.plan.md` for the full phase-by-phase execution record.
 
 **Date**: 2026-07-01
 **Updated By**: Sisyphus / mimo-v2.5-pro
