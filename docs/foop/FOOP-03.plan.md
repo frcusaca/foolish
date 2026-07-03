@@ -68,11 +68,12 @@ WORKTREE_FULL_FS_PATH=/home/hcbusy/tmp/foolish-worktrees/foop-03-repo-cleanup
   - [x] Delete `foolish/target/` (build cache)
         (2026-07-02 14:34)
   - [ ] Delete `foolish/mcp.log.*` files — none present in this worktree; not applicable
-  - [-] Delete `foolish/.claude/` — NOT deleted. Verified NOT redundant: differs materially from root's `.claude/settings.json` (narrower, Rust-only permission set vs. root's broader Java/Maven-era + plugin config). Left in place at `foolish/.claude/`. Disposition open — ask human before deleting or merging.
-        (2026-07-02 14:32)
-  - [-] Delete `foolish/.omo/` — NOT deleted. Verified NOT redundant: `foolish/.omo/tasks/` holds 5 task JSON records with IDs absent from root's `.omo/tasks/`, and `foolish/.omo/notepads/` has FOOP-62-specific session notes. Left in place at `foolish/.omo/`. Disposition open — ask human before deleting or merging.
-        (2026-07-02 14:32)
-  - [ ] Delete empty `foolish/` directory — BLOCKED: `foolish/` is not empty (`.claude/` and `.omo/` remain per above). Revisit once their disposition is decided.
+  - [x] Merge `foolish/.claude/` into root `.claude/` — NOT a plain overwrite (verified materially different content): `settings.json` moved to `.claude/settings.foolish-legacy.json` (kept alongside root's own `settings.json`, not clobbered).
+        (2026-07-02 20:05, commit d9dac7f0)
+  - [x] Merge `foolish/.omo/` into root `.omo/` — moved `.omo/tasks/*` (5 files, no ID collisions), `.omo/run-continuation/*` (2 files, no collisions), `.omo/notepads/foop-62-ubca-mimo/` (no collision). One real collision found and resolved: `.omo/notepads/foop-62-ubca/learnings.md` existed in both with genuinely different content (two different FOOP-62 debugging sessions) — concatenated both bodies into the root file rather than picking a winner.
+        (2026-07-02 20:05, commit d9dac7f0)
+  - [x] Delete empty `foolish/` directory — now empty after the merge above; removed.
+        (2026-07-02 20:05, commit d9dac7f0)
   - [x] Verify: `cargo build --workspace` succeeds from repo root
         (2026-07-02 14:34)
   - [ ] Verify: `cargo test --workspace` passes — NOT run as a gate this session (tests use non-standard insta/signature machinery; human asked to check script output directly instead — see `verify_signatures` runs in session log). 2 pre-existing snapshot/test issues carried over from baseline `alpha`, unrelated to this Phase.
