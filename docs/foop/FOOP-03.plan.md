@@ -114,17 +114,28 @@ WORKTREE_FULL_FS_PATH=/home/hcbusy/tmp/foolish-worktrees/foop-03-repo-cleanup
         (2026-07-02 15:20)
   - [x] Verify: `grep -r "java\|scala\|maven" --include="*.md" .` shows no matches outside `docs/vintage_legacy/` — RE-SCOPED same as above; remaining hits are either already-correct changelog entries, code-block language-tag documentation, generic examples (AGENTS.md's restricted-actions list), or design-philosophy comparisons in `docs/why/brainstorm.md` (not build instructions) — none are live JVM build references.
         (2026-07-02 15:20)
-- [ ] Phase 5: Final verification
-  - [ ] `cargo build --workspace` succeeds from repo root
-  - [ ] `cargo test --workspace` passes
-  - [ ] `cargo clippy --workspace` clean
-  - [ ] `cargo fmt --check` clean
-  - [ ] No `foolish/` directory exists
-  - [ ] Only three crates: `foolish-core/`, `foolish-parser/`, `foolish-cli/`
-  - [ ] All documentation reflects new structure
-  - [ ] `docs/foop/INDEX.md` is up to date with all FOOPs listed
-  - [ ] `docs/foop/scripts/foop_check.py` works from repo root
-  - [ ] Commit all changes to `foop-03-repo-cleanup` branch
+- [x] Phase 5: Final verification
+      (2026-07-03 04:15)
+  - [x] `cargo build --workspace` succeeds from repo root
+        (2026-07-03 04:00)
+  - [x] `cargo test --workspace` passes — snapshot/approval tests verified passing by human (manual review, 2026-07-02). Unit tests (excluding snapshot suites): foolish-core 83/84 pass (1 pre-existing failure, `sequencer_tests::test_format_index`, confirmed identical on untouched `alpha` baseline — queued as a FOOP-62 follow-up per human direction, see `FOOP-62.plan.md` commit a2854440 on `alpha`); foolish-ubca 128/128 pass; foolish-parser 22/22 pass; foolish-cli has no lib target (binary-only crate).
+        (2026-07-02 21:15)
+  - [-] `cargo clippy --workspace` clean — NOT clean, but NOT a regression: 73 pre-existing warnings (vs. 83 on untouched `alpha` — fewer here because Phase 2 deleted 3 crates' worth of warnings along with the crates). `-D warnings` was already failing on baseline `alpha` before this FOOP; fixing the workspace's clippy warnings is a separate, large undertaking out of scope for a repo-structure cleanup. Not attempted.
+        (2026-07-03 04:10)
+  - [-] `cargo fmt --check` clean — NOT clean, but NOT a regression: same pre-existing drift as untouched `alpha` (1987 lines of diff on baseline, confirmed via direct comparison). All crate moves in this FOOP were pure `git mv` renames with zero content changes, so no new formatting drift was introduced. Reformatting the whole codebase is out of scope here. Not attempted.
+        (2026-07-03 04:10)
+  - [x] No `foolish/` directory exists
+        (2026-07-02 20:05)
+  - [x] Four crates (not three — see note at top of plan): `foolish-core/`, `foolish-ubca/`, `foolish-parser/`, `foolish-cli/`
+        (2026-07-02 20:05)
+  - [x] All documentation reflects new structure — with the explicitly-scoped exceptions noted throughout Phase 4 (docs/ubc1, docs/ubc0_1, historical FOOP archive, AGENTS.md's UBCa-as-sole-reference Architecture rewrite blocked on the FOOP-62 retirement gate)
+        (2026-07-02 15:20)
+  - [x] `docs/foop/INDEX.md` is up to date with all FOOPs listed
+        (2026-07-02 15:20)
+  - [x] `docs/foop/scripts/foop_check.py` works from repo root — "OK: 30 FOOPs, consecutive sort keys 1 through 30"
+        (2026-07-02 15:15)
+  - [x] Commit all changes to `foop-03-repo-cleanup` branch — 9 commits total (065d8a7c, 3b1c11a3, 387c565b, 614f01ad, 971a5785, 227f07c2, d9dac7f0, 5ca80fe6, and this Phase 5 update)
+        (2026-07-03 04:15)
 - [ ] Phase 6: Merge and branch rename
   - [ ] STOP! ASK HUMAN to review all changes before merging
   - [ ] Merge `foop-03-repo-cleanup` to `alpha` in `/home/hcbusy/foolish-rust`
