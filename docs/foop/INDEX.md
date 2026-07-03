@@ -30,9 +30,17 @@ ls | rev | sort -V | rev
 | [FOOP-51](FOOP-51.md) | AB list, name resolution, search_result, and short-circuit accumulation | Brewing | phase-2 | 2026-05-08 | hc |
 | [FOOP-61](FOOP-61.md) | UBCb State Machine — Per-Variant NYES Table | Draft | phase-2 | 2026-05-09 | hc |
 | [FOOP-71](FOOP-71.md) | Snapshot testing with cargo-insta for UBCb — approval testing infrastructure | Draft | meta | 2026-05-15 | Sisyphus |
+| [FOOP-81](FOOP-81.md) | Enhanced SnapshotSuite with HumanizingSequencer and SequenceableFir | Superseded | meta | 2026-05-15 | Sisyphus |
+| [FOOP-91](FOOP-91.md) | Rename all_terminal to all_constanic in UBCb | Draft | phase-3 | 2026-05-17 | opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4 |
 | [FOOP-22](FOOP-22.md) | Multi-signer snapshot signatures with appended utility signing and entire-file integrity | Draft | meta | 2026-06-01 | Sisyphus |
 | [FOOP-32](FOOP-32.md) | Repair rudimentary FVM evaluation and Sequencer formatting bugs found in snapshot review | Final | phase-2 | 2026-06-01 | Sisyphus |
+| [FOOP-42](FOOP-42.md) | Humanizing FIR Sequencer formatting specification | Draft | phase-2 | 2026-06-03 | opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4 |
 | [FOOP-52](FOOP-52.md) | Repair FVM evaluation bugs found in snapshot review round 2 | Draft | phase-2 | 2026-06-06 | opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4 |
+| [FOOP-62](FOOP-62.md) | UBCa — Two-Store ProtoBrane Tree and Uniform Two-Phase Stepping | Brewing (backburnered) | phase-2 | 2026-06-09 | Atlas |
+| [FOOP-72](FOOP-72.md) | Foolish Numbering System (FNS) and Snapshot Test Organization | Draft | phase-0 | 2026-06-17 | Sisyphus |
+| [FOOP-82](FOOP-82.md) | UBCa Code Review — Findings and Recommended Changes | Draft | phase-2 | 2026-06-23 | Sisyphus |
+| [FOOP-92](FOOP-92.md) | Einmo — directory-based signed-snapshot testing with staged promotion | Draft | meta | 2026-06-26 | Sisyphus |
+| [FOOP-03](FOOP-03.md) | Repository Cleanup — Remove Dead Code, Flatten Workspace, Establish UBCa as Reference Implementation, Rename Main to jia | Draft (blocked on FOOP-62) | meta | 2026-07-01 | Sisyphus / mimo-v2.5-pro |
 
 ---
 
@@ -53,7 +61,13 @@ ls | rev | sort -V | rev
 - [FOOP-52](FOOP-52.md) — Repair FVM evaluation bugs found in snapshot review round 2
 - [FOOP-61](FOOP-61.md) — UBCb State Machine — Per-Variant NYES Table
 - [FOOP-71](FOOP-71.md) — Snapshot testing with cargo-insta for UBCb (approval testing infrastructure)
+- [FOOP-91](FOOP-91.md) — Rename all_terminal to all_constanic in UBCb
 - [FOOP-22](FOOP-22.md) — Multi-signer snapshot signatures with appended utility signing
+- [FOOP-42](FOOP-42.md) — Humanizing FIR Sequencer formatting specification
+- [FOOP-72](FOOP-72.md) — Foolish Numbering System (FNS) and Snapshot Test Organization
+- [FOOP-82](FOOP-82.md) — UBCa Code Review — Findings and Recommended Changes
+- [FOOP-92](FOOP-92.md) — Einmo — directory-based signed-snapshot testing with staged promotion
+- [FOOP-03](FOOP-03.md) — Repository Cleanup — dead code removal, workspace flatten, `jia` rename (blocked, see FOOP-62)
 
 ### Brewing
 
@@ -64,6 +78,7 @@ ls | rev | sort -V | rev
 - [FOOP-01](FOOP-01.md) — Anchored search through constanic anchors
 - [FOOP-11](FOOP-11.md) — Search stops at NK
 - [FOOP-51](FOOP-51.md) — AB list, name resolution, search_result, short-circuit accumulation
+- [FOOP-62](FOOP-62.md) — UBCa Two-Store ProtoBrane Tree and Uniform Two-Phase Stepping (**backburnered** 2026-07-02; human-gated UBC-retirement question still open)
 
 ### Implementing
 
@@ -72,7 +87,7 @@ ls | rev | sort -V | rev
 
 ### Withdrawn / Rejected / Superseded
 
-(none yet)
+- [FOOP-81](FOOP-81.md) — Enhanced SnapshotSuite with HumanizingSequencer and SequenceableFir (Superseded)
 
 ---
 
@@ -80,7 +95,11 @@ ls | rev | sort -V | rev
 
 ### meta
 
-- [FOOP-1](FOOP-1.md), [FOOP-31](FOOP-31.md), [FOOP-41](FOOP-41.md), [FOOP-22](FOOP-22.md)
+- [FOOP-1](FOOP-1.md), [FOOP-31](FOOP-31.md), [FOOP-41](FOOP-41.md), [FOOP-71](FOOP-71.md), [FOOP-81](FOOP-81.md), [FOOP-22](FOOP-22.md), [FOOP-92](FOOP-92.md), [FOOP-03](FOOP-03.md)
+
+### phase-0
+
+- [FOOP-72](FOOP-72.md)
 
 ### phase-1
 
@@ -88,11 +107,11 @@ ls | rev | sort -V | rev
 
 ### phase-2
 
-- [FOOP-6](FOOP-6.md), [FOOP-7](FOOP-7.md), [FOOP-8](FOOP-8.md), [FOOP-01](FOOP-01.md), [FOOP-11](FOOP-11.md), [FOOP-51](FOOP-51.md), [FOOP-61](FOOP-61.md), [FOOP-32](FOOP-32.md), [FOOP-52](FOOP-52.md)
+- [FOOP-6](FOOP-6.md), [FOOP-7](FOOP-7.md), [FOOP-8](FOOP-8.md), [FOOP-01](FOOP-01.md), [FOOP-11](FOOP-11.md), [FOOP-51](FOOP-51.md), [FOOP-61](FOOP-61.md), [FOOP-32](FOOP-32.md), [FOOP-42](FOOP-42.md), [FOOP-52](FOOP-52.md), [FOOP-62](FOOP-62.md), [FOOP-82](FOOP-82.md)
 
 ### phase-3
 
-- [FOOP-3](FOOP-3.md)
+- [FOOP-3](FOOP-3.md), [FOOP-91](FOOP-91.md)
 
 ---
 
@@ -112,6 +131,14 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 ---
 
 ## Last Updated
+
+**Date**: 2026-07-02
+**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
+**Changes**: FOOP-03 cleanup — added the 8 FOOPs missing from this index
+(FOOP-81, FOOP-91, FOOP-42, FOOP-62, FOOP-72, FOOP-82, FOOP-92, FOOP-03) to
+the main table, By Status, and By Phase sections (added a new `phase-0`
+subsection for FOOP-72; added a `Withdrawn / Rejected / Superseded` entry
+for FOOP-81). Noted FOOP-62 as backburnered and FOOP-03 as blocked on it.
 
 **Date**: 2026-06-06
 **Updated By**: opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4

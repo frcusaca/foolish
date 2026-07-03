@@ -1,0 +1,29 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{x = 5; y = 10; inner = {calc = <<x + y>>; doubled = calc * 2};}
+```
+[0] RESULT:
+```hfssnap
+{
+  x=5;
+  y=10;
+  inner={
+      calc=Op+(?(pattern='^x$', UNANCHORED, CONSTANT), ?(pattern='^y$', UNANCHORED, CONSTANT), EMBRYONIC);
+      doubled=30
+  }
+}
+```
+COMMENTS:
+```markdown
+complex_sff_with_nested_scope
+generated: 2026-07-03T02:54:10.196842921Z
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: 8qfr0jpSsMP6MZAsD56aGbduYNh+nJ3slMhr8S+O04N/0gGhEQnVaYe41x8MuuHjYIaXc8UxZ9Qo9GNdgbECCw==
+HFS signature: r1xAf1z9W6mKC0DWVerQMFFP6OTg+qzGDEPwflmBLcsi6kKH1Ip1OHo1LJRcMs29c0KqphwBVyBrleD11im0Ag==
+Comments signature: m/qHzeEMW1dO0/BQzRmkHEwIApNIQwILJvnK6vpUV9EGwOacU6+6zzXqjQBd2LHIWVtqmlhHHnHF0J+O+VwcDA==

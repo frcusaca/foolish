@@ -1,0 +1,35 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{ a={p=1;q=2}; b={r=3}; c = a b; }
+```
+[0] RESULT:
+```hfssnap
+{
+  a={
+      p=1;
+      q=2
+  };
+  b={
+      r=3
+  };
+  c={
+      p=1;
+      q=2;
+      r=3
+  }
+}
+```
+COMMENTS:
+```markdown
+concatenation_basic
+generated: 2026-07-03T02:54:10.388299396Z
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: FG6PlQG327u13c4LARrKoRGZ9A08IMiN15Yo0FO4sGLjzx4Dkschb3e2cXqr0oCFpdHVjgGzDUAHmKblbLjxCw==
+HFS signature: UcpmL9mHFesFnp64lx+S4uLNu9o2/nL20/c1I4mCjzb2LfocdQIQMn3WquKCSjTEcIPIBGaAaiTYXDEjAs6+Bw==
+Comments signature: dBKyOMjPHwbn6IwFXT82U/qZ1rYrJKb8AHGUPiUo7PASsCHnqQJbJZKoCCB99HyeRaANn4jIBs37+XRu6JQABg==

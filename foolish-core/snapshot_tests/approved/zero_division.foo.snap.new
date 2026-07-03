@@ -1,0 +1,24 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{10 / 0;}
+```
+[0] RESULT:
+```hfssnap
+{NK
+  ??? (division by zero), DIV-BY-ZERO: Division by zero produces NK
+}
+```
+COMMENTS:
+```markdown
+zero_division
+generated: 2026-07-03T02:54:20.657845109Z
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: MqfcZ+B4+sfvfkqh+l3YEXn1XcyDhPWyCqpUdeyaz9oeWtbJwhLg+KgVIQGkOFXTI97+o2ocezXlr3okML49Dw==
+HFS signature: b8W/C2/HIhBm0Q5ABKwvTsPt62frncpyBdP3cSZKaw7+A9CKsbH61RmtgtHW36LcOM2BOxvLy+RebTDv+jLKDw==
+Comments signature: 3mlURIH66jgHYy6B4tu596OaGPtBqthQVk2U3urhHT44tySDw3XtmhmzR7rpUCJyVjgzygh/rLjfTghpwNaxBg==

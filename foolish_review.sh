@@ -68,7 +68,7 @@ afiles=()
 for x in "${files[@]}"; do
     CNT=$((CNT + 1))
     echo "Reviewing ${CNT}/${TTL}: $x"
-    DC="$(diff -I '^\(Public key\|Foolish signature\|HFS signature\|Comments signature\)' ${x%%.new} $x| wc -l || true)"
+    DC="$(diff -I '^\(Public key\|Foolish signature\|HFS signature\|Comments signature\|generated: 2\)' ${x%%.new} $x| wc -l || true)"
     echo "Reviewing ${CNT}/${TTL}: $DC differences for $x"
 	 if [ ! -e ${x%%.new} -o $DC -gt 0 ]; then 
 				sleep 2s

@@ -1,0 +1,25 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{y = x; x = 42;}
+```
+[0] RESULT:
+```hfssnap
+{
+  y=42;
+  x=42
+}
+```
+COMMENTS:
+```markdown
+forward_reference_basic
+generated: 2026-07-03T02:54:12.125521255Z
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: HTTRgMabwliS9L5HdnJgH76bNg+VgP5cFCCmfEJGWwMX4ci2arPG1x7acmsFpyqLAWBux5GYq5irG+YVu5OqDw==
+HFS signature: hqS9QBCuWRS30aQwL179P+d5phrmKzTewiLvRTcBLWQ8m2PE6FhOK1paWx412iu33v4+Px5CidKDN5p8x3reAw==
+Comments signature: k+pxO6MikMQlEO5cYZh/6r1ZhhJZD3OZ3c3JXBQeLPMIz9xr0RaoUJamkyqZAunjwJ6IBcn4vcbYOBq04baJAw==

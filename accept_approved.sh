@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SIGNER="/home/hcbusy/tmp/foolish-worktrees/foop-62-ubca-mimo/foolish/target/debug/verify_signatures"
+# Resolve the signer relative to this script's own repository. verify_signatures
+# is a bin in foolish-core; build it if missing.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SIGNER="$SCRIPT_DIR/target/debug/verify_signatures"
+if [[ ! -x "$SIGNER" ]]; then
+    echo "verify_signatures not found; building it in $SCRIPT_DIR ..."
+    ( cd "$SCRIPT_DIR" && cargo build -p foolish-core --bin verify_signatures )
+fi
 
 if [[ $# -lt 1 ]]; then
     echo "Usage: $0 <crate-path>"

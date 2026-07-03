@@ -1,0 +1,107 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{
+   x=1;
+   y=2;
+   sff = <<x+y>>;
+   sf  = <x+y>;
+   sfsff = <sff>;
+   sffsf = <<sf>>;
+   sfsf  = <sf>;
+   sffsff = <<sff>>;
+
+   x=-2;
+   rsff   = sff;
+   rsf    = sf;
+   rsfsff = sfsff;
+   rsffsf = sffsf;
+   rsfsf  = sfsf;
+   rsffsff= sffsff;
+}
+```
+[0] RESULT:
+```hfssnap
+{WOCONSTANIC
+  x=1;
+  y=2;
+  sff=Op+(?(pattern='^x$', UNANCHORED, CONSTANT), ?(pattern='^y$', UNANCHORED, CONSTANT), EMBRYONIC);
+  sf=<WOCONSTANIC
+      Op+(?(result=-2, pattern='^x$', UNANCHORED), ?(result=2, pattern='^y$', UNANCHORED), WOCONSTANIC)
+  >;
+  sfsff=?(result=0, pattern='^sff$', UNANCHORED);
+  sffsf=?(pattern='^sf$', UNANCHORED);
+  sfsf=?(result=0, pattern='^sf$', UNANCHORED);
+  sffsff=?(pattern='^sff$', UNANCHORED);
+  x=-2;
+  rsff=?(
+      result=Op+(?(pattern='^x$', UNANCHORED, CONSTANT), ?(pattern='^y$', UNANCHORED, CONSTANT), WOCONSTANIC),
+      pattern='^sff$',
+      UNANCHORED,
+      WOCONSTANIC
+  );
+  rsf=?(
+      result=Op+(?(pattern='^x$', UNANCHORED, CONSTANT), ?(pattern='^y$', UNANCHORED, CONSTANT), WOCONSTANIC),
+      pattern='^sf$',
+      UNANCHORED,
+      WOCONSTANIC
+  );
+  rsfsff=?(
+      result=?(
+          result=Op+(?(pattern='^x$', UNANCHORED, CONSTANT), ?(pattern='^y$', UNANCHORED, CONSTANT), WOCONSTANIC),
+          pattern='^sff$',
+          UNANCHORED,
+          WOCONSTANIC
+      ),
+      pattern='^sfsff$',
+      UNANCHORED,
+      WOCONSTANIC
+  );
+  rsffsf=?(
+      result=?(
+          result=Op+(?(pattern='^x$', UNANCHORED, CONSTANT), ?(pattern='^y$', UNANCHORED, CONSTANT), WOCONSTANIC),
+          pattern='^sf$',
+          UNANCHORED,
+          WOCONSTANIC
+      ),
+      pattern='^sffsf$',
+      UNANCHORED,
+      WOCONSTANIC
+  );
+  rsfsf=?(
+      result=?(
+          result=Op+(?(pattern='^x$', UNANCHORED, CONSTANT), ?(pattern='^y$', UNANCHORED, CONSTANT), WOCONSTANIC),
+          pattern='^sf$',
+          UNANCHORED,
+          WOCONSTANIC
+      ),
+      pattern='^sfsf$',
+      UNANCHORED,
+      WOCONSTANIC
+  );
+  rsffsff=?(
+      result=?(
+          result=Op+(?(pattern='^x$', UNANCHORED, CONSTANT), ?(pattern='^y$', UNANCHORED, CONSTANT), WOCONSTANIC),
+          pattern='^sff$',
+          UNANCHORED,
+          WOCONSTANIC
+      ),
+      pattern='^sffsff$',
+      UNANCHORED,
+      WOCONSTANIC
+  )
+}
+```
+COMMENTS:
+```markdown
+sf_sff_nested_combined
+generated: 2026-07-03T02:54:18.454529811Z
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: tT8UqgoaX2cQknxaTSOxGoatqdbkUElQJTZXD4wK3f2mTtwOZwiBraFW1mIiflGHyg6zn6JuaExvI+DIT6sOBg==
+HFS signature: Qt3JL8gAI1JulEiUmydZnoVmZ2DRaPO2y3trkCLC27iFSxcbtTvf1DqMjtTuArgYXjTOzWrZcGUDN3VC1rj3Dg==
+Comments signature: oJWO2hf21NyNZMd9JjrWIjwQo2nmub8p6bLGVELVirtGIp2RQ6XfAThXmybLdQR1nvQAXxtNsXDAedo4QaZsCA==

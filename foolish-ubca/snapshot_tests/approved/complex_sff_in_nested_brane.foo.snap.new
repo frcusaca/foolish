@@ -1,0 +1,35 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{a=1, b=2; inner = {c = <<a+b>>; c}; inner;}
+```
+[0] RESULT:
+```hfssnap
+{WOCONSTANIC
+  a=1;
+  b=2;
+  inner={WOCONSTANIC
+      c=<<WOCONSTANIC
+          Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
+      >>;
+      3
+  };
+  {
+    c=3;
+    3
+  }
+}
+```
+COMMENTS:
+```markdown
+complex_sff_in_nested_brane
+generated: 2026-07-03T02:54:23.738368769Z
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: ZIgjfGeL3aOiCFGthil+qpoFORBgbUiJ34yeWevLnvPP3orwUnFqJRnzpA9oKsQVY98pCPWMFeTGN4RdIqe4DA==
+HFS signature: DKbcC6vKQb4iSXqnjr0kWskNO+D+nEg8SPaM9N5Srash+dxHEBtp0ze5ILqQ3scdGFQNZn0zprUtUp4L2XB7Ag==
+Comments signature: imVhgHqUEMB348CS2R78eY2rV1H/AitOPQa0h+jqmbVPeoI7ZOPqSYRjjNYpZXMccgS5KXW0CnLlwmElYW9+AQ==

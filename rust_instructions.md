@@ -32,7 +32,7 @@ and "never `.unwrap()` in production" is a Don't).
 ## Project baseline
 
 - **Edition:** `2024` (Rust 1.85+) — unlocks let-chains, async closures, and the
-  2024 drop/temporary-scope semantics. All crates in the `foolish/` workspace are
+  2024 drop/temporary-scope semantics. All crates in the workspace are
   already on edition 2024. *(c1)*
 - **MSRV:** state it in `Cargo.toml`; do not use features newer than it. Where a
   rule below is version-gated and the MSRV predates it, that rule does not apply.

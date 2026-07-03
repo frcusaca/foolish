@@ -1,0 +1,24 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{result = {alice = 1; adam = 2; bob = 3;}?^a;}
+```
+[0] RESULT:
+```hfssnap
+{
+  result=1
+}
+```
+COMMENTS:
+```markdown
+regex_search_anchor_start
+generated: 2026-07-03T02:54:16.247834652Z
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: yUt6vNmPOGPjpFTULvstFbxTFwsci1QDylJYjfhhy6mhDzXY1Qs0NknsrHVDcYYyAEgzbVg6Vj67jcvnAUEkBg==
+HFS signature: /RARoQIgzspvTRCoIHm2rxBCX/05iC2R4JdnkO0pSXRDpHUNzfbU/KADCMEYQrhgAWlEbAyzN9FYqFV//Se/Dw==
+Comments signature: UeHUXm3VHU2uU5pbw5FqtdnUzd6k+JQCz7/I0AcwBluuLcrh3uFCyijW0pD92ZoOU/AX+NKNugRRTanj4agqBg==
