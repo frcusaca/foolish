@@ -17,18 +17,8 @@ pub struct Compiler;
 impl Compiler {
     pub fn compile(source: &str) -> anyhow::Result<Vec<FirRef>> {
         let asts = foolish_parser::parse(source)?;
-        asts.into_iter().map(compile_standalone).collect()
+        asts.into_iter().map(AstnCompilerExt::compile_standalone).collect()
     }
-}
-
-fn compile_standalone(ast: Astn) -> anyhow::Result<FirRef> {
-    validate_astn(&ast)?;
-    // Only a Brane can be a ROOT node (FOOP-62 root convention: the root is its own parent).
-    // A top-level non-Brane has no valid root to attach to.
-    if !matches!(ast, Astn::Brane { .. }) {
-        return Err(anyhow!("only a Brane can be a top-level (root) node"));
-    }
-    Ok(build_fir(ast, None, false))
 }
 
 fn validate_astn(ast: &Astn) -> anyhow::Result<()> {
@@ -239,7 +229,7 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
 fn build_stmts(asts: Vec<Astn>, parent: &Weak<RefCell<dyn Fir>>, under_sff: bool) -> Vec<FirRef> {
     asts.into_iter()
         .enumerate()
-        .map(|(i, ast)| build_as_statement(ast, parent, i, under_sff))
+        .map(|(i, ast)| ast.build_as_statement(parent, i, under_sff))
         .collect()
 }
 
@@ -247,55 +237,153 @@ fn build_stmts(asts: Vec<Astn>, parent: &Weak<RefCell<dyn Fir>>, under_sff: bool
 /// The sequencer renders a statement named `???` WITHOUT a `name=` prefix (FOOP-62 #19).
 pub(crate) const ANON_STMT_NAME: &str = "???";
 
-fn build_as_statement(
-    ast: Astn,
-    parent: &Weak<RefCell<dyn Fir>>,
-    line: usize,
-    under_sff: bool,
-) -> FirRef {
-    // Decide the statement's name once: the LHS identifier for an assignment, else `???`
-    // (anonymous bare expression). The body is built the same way regardless, via
-    // build_expr_with_operator (Assign is the no-op operator), so there is ONE Rc::new_cyclic.
-    let (name, expr, operator) = match ast {
-        Astn::Assignment {
-            identifier,
-            operator,
-            expr,
-            ..
-        } => (identifier, *expr, operator),
-        other => (
-            ANON_STMT_NAME.to_string(),
-            other,
-            AssignmentOperator::Assign,
-        ),
-    };
-    Rc::new_cyclic(move |me: &Weak<RefCell<StatementFir>>| {
-        let stmt_weak: Weak<RefCell<dyn Fir>> = me.clone();
-        let body = build_expr_with_operator(expr, operator, &stmt_weak, under_sff);
-        RefCell::new(StatementFir {
-            core: ProtoBrane::new(vec![body], parent.clone(), Nyes::Prembrionic),
-            name,
-            line_number: line,
-        })
-    })
+trait AstnCompilerExt {
+    fn compile_standalone(self) -> anyhow::Result<FirRef>;
+
+    fn build_as_statement(
+        self,
+        parent: &Weak<RefCell<dyn Fir>>,
+        line: usize,
+        under_sff: bool,
+    ) -> FirRef;
+
+    fn build_expr_with_operator(
+        self,
+        operator: AssignmentOperator,
+        parent: &Weak<RefCell<dyn Fir>>,
+        under_sff: bool,
+    ) -> FirRef;
 }
 
-fn build_expr_with_operator(
-    expr: Astn,
-    operator: AssignmentOperator,
-    parent: &Weak<RefCell<dyn Fir>>,
-    under_sff: bool,
-) -> FirRef {
-    // An SFF assignment operator makes its body's descendant searches econstanic.
-    let body_under_sff = under_sff || operator == AssignmentOperator::SFF;
-    let body = build_fir(expr, Some(parent), body_under_sff);
-    match operator {
-        AssignmentOperator::Assign => body,
-        AssignmentOperator::SF => Rc::new(RefCell::new(StayFoolishFir {
-            core: ProtoBrane::new(vec![body], parent.clone(), Nyes::Prembrionic),
-        })),
-        AssignmentOperator::SFF => Rc::new(RefCell::new(StayFullyFoolishFir {
-            core: ProtoBrane::new(vec![body], parent.clone(), Nyes::Independent),
-        })),
+impl AstnCompilerExt for Astn {
+    fn compile_standalone(self) -> anyhow::Result<FirRef> {
+        validate_astn(&self)?;
+        // Only a Brane can be a ROOT node (FOOP-62 root convention: the root is its own parent).
+        // A top-level non-Brane has no valid root to attach to.
+        if !matches!(self, Astn::Brane { .. }) {
+            return Err(anyhow!("only a Brane can be a top-level (root) node"));
+        }
+        Ok(build_fir(self, None, false))
+    }
+
+    fn build_as_statement(
+        self,
+        parent: &Weak<RefCell<dyn Fir>>,
+        line: usize,
+        under_sff: bool,
+    ) -> FirRef {
+        // Decide the statement's name once: the LHS identifier for an assignment, else `???`
+        // (anonymous bare expression). The body is built the same way regardless, via
+        // build_expr_with_operator (Assign is the no-op operator), so there is ONE Rc::new_cyclic.
+        let (name, expr, operator) = match self {
+            Astn::Assignment {
+                identifier,
+                operator,
+                expr,
+                ..
+            } => (identifier, *expr, operator),
+            other => (
+                ANON_STMT_NAME.to_string(),
+                other,
+                AssignmentOperator::Assign,
+            ),
+        };
+        Rc::new_cyclic(move |me: &Weak<RefCell<StatementFir>>| {
+            let stmt_weak: Weak<RefCell<dyn Fir>> = me.clone();
+            let body = expr.build_expr_with_operator(operator, &stmt_weak, under_sff);
+            RefCell::new(StatementFir {
+                core: ProtoBrane::new(vec![body], parent.clone(), Nyes::Prembrionic),
+                name,
+                line_number: line,
+            })
+        })
+    }
+
+    fn build_expr_with_operator(
+        self,
+        operator: AssignmentOperator,
+        parent: &Weak<RefCell<dyn Fir>>,
+        under_sff: bool,
+    ) -> FirRef {
+        // An SFF assignment operator makes its body's descendant searches econstanic.
+        let body_under_sff = under_sff || operator == AssignmentOperator::SFF;
+        let body = build_fir(self, Some(parent), body_under_sff);
+        match operator {
+            AssignmentOperator::Assign => body,
+            AssignmentOperator::SF => Rc::new(RefCell::new(StayFoolishFir {
+                core: ProtoBrane::new(vec![body], parent.clone(), Nyes::Prembrionic),
+            })),
+            AssignmentOperator::SFF => Rc::new(RefCell::new(StayFullyFoolishFir {
+                core: ProtoBrane::new(vec![body], parent.clone(), Nyes::Independent),
+            })),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ANON_STMT_NAME, AstnCompilerExt};
+    use std::cell::RefCell;
+    use std::rc::{Rc, Weak};
+
+    use foolish_core::fir::Nyes;
+    use foolish_parser::{AssignmentOperator, Astn};
+
+    use crate::fir_kinds::BraneFir;
+    use crate::fir_trait::{Fir, FirKind};
+    use crate::proto_brane::ProtoBrane;
+
+    fn root_parent() -> Weak<RefCell<dyn Fir>> {
+        let root = Rc::new_cyclic(|me: &Weak<RefCell<BraneFir>>| {
+            let me_dyn: Weak<RefCell<dyn Fir>> = me.clone();
+            RefCell::new(BraneFir {
+                core: ProtoBrane::new(vec![], me_dyn, Nyes::Prembrionic),
+                characterizations: vec![],
+            })
+        });
+        Rc::downgrade(&(root as Rc<RefCell<dyn Fir>>))
+    }
+
+    #[test]
+    fn build_as_statement_keeps_assignment_name_and_anonymous_fallback() {
+        let parent = root_parent();
+
+        let named = Astn::Assignment {
+            characterizations: vec![],
+            identifier: "x".to_string(),
+            operator: AssignmentOperator::Assign,
+            expr: Box::new(Astn::IntLit(1)),
+        }
+        .build_as_statement(&parent, 7, false);
+        assert_eq!(named.borrow().kind(), FirKind::Statement);
+        assert_eq!(named.borrow().as_stmt_name(), Some("x"));
+        assert_eq!(named.borrow().as_stmt_line_number(), Some(7));
+
+        let anonymous = Astn::IntLit(2).build_as_statement(&parent, 8, false);
+        assert_eq!(anonymous.borrow().kind(), FirKind::Statement);
+        assert_eq!(anonymous.borrow().as_stmt_name(), Some(ANON_STMT_NAME));
+        assert_eq!(anonymous.borrow().as_stmt_line_number(), Some(8));
+    }
+
+    #[test]
+    fn compile_standalone_rejects_non_brane_root() {
+        let err = Astn::IntLit(1)
+            .compile_standalone()
+            .expect_err("non-Brane root must be rejected");
+        assert_eq!(err.to_string(), "only a Brane can be a top-level (root) node");
+    }
+
+    #[test]
+    fn build_expr_with_operator_wraps_sf_and_sff() {
+        let parent = root_parent();
+
+        let sf = Astn::IntLit(1).build_expr_with_operator(AssignmentOperator::SF, &parent, false);
+        assert_eq!(sf.borrow().kind(), FirKind::StayFoolish);
+        assert_eq!(sf.borrow().core().get_nyes(), Nyes::Prembrionic);
+
+        let sff =
+            Astn::IntLit(2).build_expr_with_operator(AssignmentOperator::SFF, &parent, false);
+        assert_eq!(sff.borrow().kind(), FirKind::StayFullyFoolish);
+        assert_eq!(sff.borrow().core().get_nyes(), Nyes::Independent);
     }
 }
