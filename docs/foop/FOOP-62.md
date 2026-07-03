@@ -2,7 +2,7 @@
 foop: 26
 title: UBCa — Two-Store ProtoBrane Tree and Uniform Two-Phase Stepping
 author: Atlas <hc.busy@gmail.com>
-status: Brewing
+status: Final
 type: Standards
 created: 2026-06-09
 phase: phase-2
@@ -1651,6 +1651,15 @@ already-accepted FOOPs, which is corroborating evidence the model is right:
   rules.
 
 ## Last Updated
+
+**Date**: 2026-07-03 (CLOSED — status → Final)
+**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
+**Changes**: Status `Brewing` → `Final`. FOOP-62 closed out: UBC retired from `foolish-core`
+(evaluator, compiler, `ubc_snapshot_tester`, and the `Steppable` stepping surface all removed);
+UBCa is the sole reference engine. The multiple-implementations-share-one-sequencer architecture
+is preserved via `snapshot_suite::Evaluator` + the `FirQueryable`/`Fir` shared sequencer IR. CLI
+rewired onto `UbcaEvaluator`. Merged to `jia` (`e691b472`). Remaining Fix C/D/G snapshot work is
+deferred backlog, not part of this close-out. See FOOP-62.plan.md close-out section.
 
 **Date**: 2026-06-22 (revision 16 — anchor/result terminology + ???-LHS + impl docs)
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8

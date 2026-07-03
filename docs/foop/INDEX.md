@@ -36,7 +36,7 @@ ls | rev | sort -V | rev
 | [FOOP-32](FOOP-32.md) | Repair rudimentary FVM evaluation and Sequencer formatting bugs found in snapshot review | Final | phase-2 | 2026-06-01 | Sisyphus |
 | [FOOP-42](FOOP-42.md) | Humanizing FIR Sequencer formatting specification | Draft | phase-2 | 2026-06-03 | opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4 |
 | [FOOP-52](FOOP-52.md) | Repair FVM evaluation bugs found in snapshot review round 2 | Draft | phase-2 | 2026-06-06 | opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4 |
-| [FOOP-62](FOOP-62.md) | UBCa — Two-Store ProtoBrane Tree and Uniform Two-Phase Stepping | Brewing (backburnered) | phase-2 | 2026-06-09 | Atlas |
+| [FOOP-62](FOOP-62.md) | UBCa — Two-Store ProtoBrane Tree and Uniform Two-Phase Stepping | Final | phase-2 | 2026-06-09 | Atlas |
 | [FOOP-72](FOOP-72.md) | Foolish Numbering System (FNS) and Snapshot Test Organization | Draft | phase-0 | 2026-06-17 | Sisyphus |
 | [FOOP-82](FOOP-82.md) | UBCa Code Review — Findings and Recommended Changes | Draft | phase-2 | 2026-06-23 | Sisyphus |
 | [FOOP-92](FOOP-92.md) | Einmo — directory-based signed-snapshot testing with staged promotion | Draft | meta | 2026-06-26 | Sisyphus |
@@ -78,7 +78,7 @@ ls | rev | sort -V | rev
 - [FOOP-01](FOOP-01.md) — Anchored search through constanic anchors
 - [FOOP-11](FOOP-11.md) — Search stops at NK
 - [FOOP-51](FOOP-51.md) — AB list, name resolution, search_result, short-circuit accumulation
-- [FOOP-62](FOOP-62.md) — UBCa Two-Store ProtoBrane Tree and Uniform Two-Phase Stepping (**backburnered** 2026-07-02; human-gated UBC-retirement question still open)
+- [FOOP-62](FOOP-62.md) — UBCa Two-Store ProtoBrane Tree and Uniform Two-Phase Stepping (**Final** 2026-07-03; UBC retired, UBCa is the sole engine, merged to `jia`)
 
 ### Implementing
 
@@ -131,6 +131,12 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 ---
 
 ## Last Updated
+
+**Date**: 2026-07-03
+**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
+**Changes**: FOOP-62 CLOSED — status Brewing (backburnered) → **Final** in both the main table
+and the By Status list. UBC retired; UBCa is the sole reference engine; merged to `jia`
+(`e691b472`).
 
 **Date**: 2026-07-02
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
