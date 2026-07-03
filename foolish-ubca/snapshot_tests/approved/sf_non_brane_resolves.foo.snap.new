@@ -1,0 +1,26 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{x=42; b=<x>; b;}
+```
+[0] RESULT:
+```hfssnap
+{
+  x=42;
+  b=?(result=42, pattern='^x$', UNANCHORED);
+  42
+}
+```
+COMMENTS:
+```markdown
+sf_non_brane_resolves
+generated: 2026-07-03T02:54:32.751682562Z
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: wpG5PzL0aT/dCITFTxzEgJxHJgS7NQxU2cb06vvG0yZq0vT6FtVFq2FGtLL7fbxIv37INbW2WXBeK/4/bDZ3Cg==
+HFS signature: /e1f57s71s1JFTQuoFbo8Qj7t7z5nM661AnfoM1wPs/CuKsQeaTOUMYsIPPRG5gWkrHBJpU+tnIomKm/7ZLNAw==
+Comments signature: jVzt5Njz3JSs6UX85MV1dzEpaJB7W7m/B3OnuyaUDngF8CwWxaj/llPbv6Vz8rV0Ok+Z7te7zAjs7EkW/kM9DQ==

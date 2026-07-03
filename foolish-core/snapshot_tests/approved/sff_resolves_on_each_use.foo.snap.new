@@ -1,0 +1,28 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{a=1; b=2; s=<<a+b>>; a=10; s;}
+```
+[0] RESULT:
+```hfssnap
+{
+  a=1;
+  b=2;
+  s=Op+(?(pattern='^a$', UNANCHORED, CONSTANT), ?(pattern='^b$', UNANCHORED, CONSTANT), EMBRYONIC);
+  a=10;
+  12
+}
+```
+COMMENTS:
+```markdown
+sff_resolves_on_each_use
+generated: 2026-07-03T02:54:18.934001951Z
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: dvgS2SgQxTH17MqJ0GvfsJzYlhZVovt+9HhyksPNiUsLfJeYshVu9Gse0wzatDFWaIIIRlYQ4UG+eFcEHxFuBw==
+HFS signature: z66Fr5iC14c5wzcQV+sAUXh/tx4oZFVvA+jDpMBo9JU+Phq3mxFjCyZ44MgMSVMaaAKFRYHr3mkFx0qqPBPmDA==
+Comments signature: 9e7oRzmCwSJZPV3UMgMslEYG+rqzEljnmf5snp+j7bUmMVwXTKpyEW6GxDlnv8ImKheuJc0LkCd6yRPdo6izAg==

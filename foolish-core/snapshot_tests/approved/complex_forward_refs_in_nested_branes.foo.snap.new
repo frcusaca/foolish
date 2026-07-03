@@ -1,0 +1,29 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{nested = {inner = {val = x}}; x = 42;}
+```
+[0] RESULT:
+```hfssnap
+{
+  nested={
+      inner={
+          val=42
+      }
+  };
+  x=42
+}
+```
+COMMENTS:
+```markdown
+complex_forward_refs_in_nested_branes
+generated: 2026-07-03T02:54:09.306453930Z
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: dct7S1xt4BQlrVSe20zSejRWopMd5WAIV2n3zrW7K1tYqgXNp3fSPSQKHKK5cqT+oEDbEo1Ytg5ww9j+8ME3Aw==
+HFS signature: oT0t4TWRFV8JaWvL3fHB9Im3cQvPnoXR0ODJQRAK5O10MwsFwX6QAYc4yBx+dLYlvSakabaiP8YzycwwaOtaDg==
+Comments signature: a1uGIDYO19gSJDeOntlBUOWB3Bj1XYb80HfZxqQIoSGqKOpHzun8sDqYRN4Nv9lnLwipyCzpu8um5v7lUxCFCw==

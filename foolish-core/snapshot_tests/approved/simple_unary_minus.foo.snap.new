@@ -1,0 +1,24 @@
+---
+source: foolish-core/src/ubc_snapshot_tester.rs
+assertion_line: 52
+---
+INPUT:
+```foolish
+{-42;}
+```
+[0] RESULT:
+```hfssnap
+{
+  -42
+}
+```
+COMMENTS:
+```markdown
+simple_unary_minus
+generated: 2026-07-03T02:54:19.794542422Z
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: 7+5889F+EnYLh3Tlv0YEqRmBq1D84nlRGgfwVWQk8ocK3Z9MsLaC9Tm9eEcpv0fVbtQfbpZ1/eRuPCJRH37kCw==
+HFS signature: DlbT+70lNlqnKU5ZRVEUukP1//zFbSmlyfHOJHe1J0ZYam4qTNeeFXsoIF+NMWZ99Mpv0git3+NX5d8OcrcTAQ==
+Comments signature: AcdWniIkn6DXuB0zn8ZNX1b6IsTkkU9xnyZ5EYA4PU/I5KFSkPjwqyPX2EsjtWOqtylRbURFfBrE7jwGhs6VAw==

@@ -1,0 +1,33 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{a=1; b=2; c=???; s=<a>; bad=<c>; sf_bad=<c>; d=a+b; e=c+1; f=a; g=c;}
+```
+[0] RESULT:
+```hfssnap
+{NK
+  a=1;
+  b=2;
+  c=??? (??? literal);
+  s=?(result=1, pattern='^a$', UNANCHORED);
+  bad=?(result=??? (??? literal), pattern='^c$', UNANCHORED, NK);
+  sfˍbad=?(result=??? (??? literal), pattern='^c$', UNANCHORED, NK);
+  d=3;
+  e=Op+(?(result=??? (??? literal), pattern='^c$', UNANCHORED, NK), 1, NK);
+  f=1;
+  g=?(result=??? (??? literal), pattern='^c$', UNANCHORED, NK)
+}
+```
+COMMENTS:
+```markdown
+hfs_nyes_display_rules
+generated: 2026-07-03T02:54:26.967468214Z
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: lOzIlpYscAmbG4Y9d9v65sk1C6nC6J2xeGlM47hbCGP82TowRKPNI/5YakMa9E6OfuFm6HJyXoD6U12jHj3gBg==
+HFS signature: KNUrFbdFjAgb7uPPQCqzxad4+L0xozx41glc6Paudxz/aPvzT+avaCmPf6uX/+GZWhDgoamwnWWiuDEQot8iBw==
+Comments signature: aRaUF0V/eEWvmlWibOOjPL3YO0ceWdgMRrT4UnBNwl6kpDRX4dZ8u1AvjTfXoG9Clt5jWKf6yJvRIjRL6Q8vBg==

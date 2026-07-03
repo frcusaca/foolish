@@ -1,0 +1,24 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{x = non_existent;}
+```
+[0] RESULT:
+```hfssnap
+{WOCONSTANIC
+  x=?(pattern='^nonˍexistent$', UNANCHORED, ECONSTANIC)
+}
+```
+COMMENTS:
+```markdown
+undeclared_identifier
+generated: 2026-07-03T02:54:34.963903099Z
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: OUDClvBDQDI4jMLtSBkX4ByLqXugKbw59gsG9cg9ypiX3np+sdMdg4y0aiyNnJTQgpPswkylfDc5eQqlCU9dBg==
+HFS signature: 3+pzzmDcbvgi3M/YAVMpzMP3zWBCeKqMTB7Vg5ZNg/GINYXm31biOVUO25+QYd/BqlUth7sXXAwz39YA3hubCw==
+Comments signature: 6cSU7RVb3Ab/80Kmhcu8KL2XJDUHrFJqv1tOvQRgJ2nnRuIPfzw5szGpSUB3DjdUy7xeb6PfxAiEu6aJpP48CA==
