@@ -21,6 +21,26 @@
 >
 > Spec: `docs/foop/FOOP-62.md`. Memory: [[foop62-ubca-two-store-protobrane]].
 
+- [x] backburnered
+      (2026-07-02 00:00)
+
+> **Backburnered 2026-07-02.** Atlas has paused active work on FOOP-62. Remaining checkboxes
+> below are left **open/unchecked as-is** (per `foop.md` backburnering rules: revive by
+> removing the `[x] backburnered` marker). In particular the human-gated retirement question
+> ("keep UBC around for reference, or retire it and promote UBCa?", further down this file)
+> remains unanswered. Until that gate is resolved, `foolish-core` (old UBC/UBCb lineage) and
+> `foolish-ubca` both remain on disk as separate crates.
+> Noted by Claude Code 2.1.119 (Claude Code); Sonnet 5.
+
+> **Follow-up queued for FOOP-62 revival (2026-07-02):** `foolish-core`'s
+> `sequencer_tests::test_format_index` unit test fails on `alpha` (confirmed pre-existing,
+> unrelated to the FOOP-03 repo-cleanup merge): `Expected '#(offset=1, UNANCHORED, EMBRYONIC)'
+> in: #(offset=1, UNANCHORED)` (`foolish-core/src/sequencer_tests.rs:167`). The expected string
+> asserts a NYES state (`EMBRYONIC`) that the actual sequencer output doesn't currently produce
+> for an unanchored index. Fix this as part of the next FOOP-62 work session, once backburnering
+> is lifted — Atlas: "we will revisit FOOP-62 as soon as we merge this refactoring [FOOP-03]."
+> Noted by Claude Code 2.1.119 (Claude Code); Sonnet 5.
+
 ## Phase −1 — HIGH PRIORITY: implement & verify foolish-ignorance clone model (BLOCKING)
 
 > Raised 2026-06-19 (Atlas + previous coding agent's open concern). Spec rev 14 defines the
