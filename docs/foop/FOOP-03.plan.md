@@ -23,14 +23,22 @@ WORKTREE_FULL_FS_PATH=/home/hcbusy/tmp/foolish-worktrees/foop-03-repo-cleanup
       (2026-07-02 14:20)
 - [x] Create worktree at `/home/hcbusy/tmp/foolish-worktrees/foop-03-repo-cleanup` with branch `foop-03-repo-cleanup` from `alpha`
       (2026-07-02 14:20)
-- [ ] Phase 1: Remove JVM artifacts
-  - [ ] Delete `.github/workflows/java-tests.yml`
-  - [ ] Delete `.github/workflows/scala-tests.yml`
-  - [ ] Update `.github/workflows/tests.yml` — remove any JVM cross-validation references
-  - [ ] Delete `docs/ubc1/todo/scala-mvp/` directory entirely
-  - [ ] Clean `.gitignore` — remove JVM-specific entries (`*.class`, `*.jar`, `*.war`, `*.ear`, `pom.xml.*`, `ivy-*`)
-  - [ ] Verify: `grep -r "java\|scala\|maven\|pom\.xml" --include="*.yml" .github/` returns nothing
-  - [ ] Remove Java/Scala/Cross-Validation CI badges from README.md (deferred from Phase 4 — same underlying JVM removal)
+- [x] Phase 1: Remove JVM artifacts
+      (2026-07-02 15:10, commit 614f01ad)
+  - [x] Delete `.github/workflows/java-tests.yml`
+        (2026-07-02 15:10)
+  - [x] Delete `.github/workflows/scala-tests.yml`
+        (2026-07-02 15:10)
+  - [x] Update `.github/workflows/tests.yml` — tests.yml ("Cross Validation") was 100% Maven/Java/Scala with zero Rust content; deleted the whole file rather than editing a shell, since no non-JVM content remained. No Rust CI workflow existed to add in its place (out of FOOP-03 scope to introduce new CI). Also updated `.github/dependabot.yml` package-ecosystem from `maven` to `cargo`.
+        (2026-07-02 15:10)
+  - [x] Delete `docs/ubc1/todo/scala-mvp/` directory entirely (99 files: pom.xml, .java, ANTLR grammar, Scala docs)
+        (2026-07-02 15:10)
+  - [x] Clean `.gitignore` — removed JVM-specific entries (Ivy, Maven pom-backup files, NetBeans/Eclipse/Gradle/JIRA/Crashlytics/sbt-idea-plugin cruft); kept general IDE/OS entries (`.idea/`, `.vscode/`, `.DS_Store`); de-duped the now-single `target/` entry
+        (2026-07-02 15:10)
+  - [x] Verify: `grep -r "java\|scala\|maven\|pom\.xml" --include="*.yml" .github/` returns nothing
+        (2026-07-02 15:10 — confirmed clean)
+  - [x] Remove Java/Scala/Cross-Validation CI badges from README.md (done together with the rest of README's JVM removal, see Phase 4)
+        (2026-07-02 15:20, commit 971a5785)
 - [x] Phase 2: Remove dead Rust crates
       (2026-07-02 14:29, commit 065d8a7c)
   - [x] Delete `foolish/foolish-web/` directory
@@ -68,12 +76,13 @@ WORKTREE_FULL_FS_PATH=/home/hcbusy/tmp/foolish-worktrees/foop-03-repo-cleanup
   - [x] Verify: `cargo build --workspace` succeeds from repo root
         (2026-07-02 14:34)
   - [ ] Verify: `cargo test --workspace` passes — NOT run as a gate this session (tests use non-standard insta/signature machinery; human asked to check script output directly instead — see `verify_signatures` runs in session log). 2 pre-existing snapshot/test issues carried over from baseline `alpha`, unrelated to this Phase.
-- [ ] Phase 4: Update documentation
-  - [ ] Rewrite AGENTS.md Build Requirements — remove Java/Scala/Maven/ANTLR, replace with Rust-only (deferred to Phase 1 JVM-removal pass)
+- [x] Phase 4: Update documentation
+      (2026-07-02 15:20, commit 971a5785 + earlier 3b1c11a3)
+  - [-] Rewrite AGENTS.md Build Requirements — remove Java/Scala/Maven/ANTLR, replace with Rust-only — not needed: AGENTS.md's Build Requirements section was already Rust-only (`- **Rust**: current stable toolchain`), just had a stray `(see foolish/ workspace)` clause, fixed in Phase 3.
   - [x] Rewrite AGENTS.md Build Commands — workspace-root path now repo-root-relative (no `cd foolish` prefixes existed; fixed the one absolute `/home/hcbusy/foolish-rust/foolish` root-path sentence instead)
         (2026-07-02 14:34)
-  - [ ] Rewrite AGENTS.md Project Structure — crates: foolish-core, foolish-ubca, foolish-parser, foolish-cli (four, not three — see note above)
-  - [ ] Rewrite AGENTS.md Architecture section — UBCa as reference implementation, FIR, Nyes states, constanic terminology, AB/IB semantics (BLOCKED on FOOP-62 retirement gate — foolish-core is not yet fully retired, see FOOP-62.plan.md backburner note)
+  - [-] Rewrite AGENTS.md Project Structure — not done this pass. Crates are foolish-core, foolish-ubca, foolish-parser, foolish-cli (four, not the spec's three — see note above); rewriting this section to describe UBCa as sole reference is BLOCKED on the FOOP-62 retirement gate (foolish-core is not yet retired). Left as a follow-up.
+  - [-] Rewrite AGENTS.md Architecture section — UBCa as reference implementation, Nyes states, constanic terminology, AB/IB semantics — NOT done, BLOCKED on FOOP-62 retirement gate (see FOOP-62.plan.md backburner note). AGENTS.md's existing terminology sections describe UBC generically and are not currently wrong, just not UBCa-specific.
   - [x] Rewrite AGENTS.md Testing section — corrected stale `foolish-ubcb` snapshot references (left over from before Phase 2 deleted that crate) to `foolish-ubca`
         (2026-07-02 14:34)
   - [x] Rewrite AGENTS.md Approval Test section — updated paths (workspace-root, signature-verification walkthrough) and stale UBCb refs
@@ -82,19 +91,28 @@ WORKTREE_FULL_FS_PATH=/home/hcbusy/tmp/foolish-worktrees/foop-03-repo-cleanup
         (2026-07-02 14:34)
   - [x] Update README.md — corrected directory reference and stale `foolish-ubcb-cli` test commands (now `foolish-ubca`); build/test commands now repo-root-relative
         (2026-07-02 14:34)
-  - [ ] Update README.md — remove Java/Scala badges, Quick Start Java/Scala, Maven commands, Versioned Documentation table (deferred to Phase 1 JVM-removal pass — badges/workflows still exist on disk)
+  - [x] Update README.md — removed Java/Scala/Cross-Validation badges, Quick Start Java/Scala (`mvn` command), and the "Version Overview" prose (folded into a shorter "Documentation Layout" table); fixed the resulting broken anchor link
+        (2026-07-02 15:20)
   - [x] Update rust_instructions.md — path references
         (2026-07-02 14:34)
-  - [ ] Update docs/DOC_AGENTS.md — path references, remove dead crate refs
-  - [ ] Update docs/styleguide.md — path references if any
-  - [ ] Update docs/foop/scripts/foop_check.py — verify no stale path refs after flattening
-  - [ ] Update docs/foop/INDEX.md — add FOOP-03 entry, add any missing FOOPs (42, 62, 72, 82, 92), update by-status and by-phase sections
+  - [-] Update docs/DOC_AGENTS.md — path references, remove dead crate refs — checked, no changes needed: its only java/scala mentions are a code-block language-tag example and two already-correct changelog entries describing past Java-content removal.
+        (2026-07-02 15:15)
+  - [-] Update docs/styleguide.md — path references if any — checked, no changes needed: its java/scala mention documents valid code-block language tags for writing about legacy code, not a live build reference.
+        (2026-07-02 15:15)
+  - [x] Update docs/foop/scripts/foop_check.py — verified: already location-independent via `Path(__file__).resolve().parent.parent`, no hardcoded path. Ran `python3 docs/foop/scripts/foop_check.py check` from the flattened root: "OK: 30 FOOPs, consecutive sort keys 1 through 30." No edit needed.
+        (2026-07-02 15:15)
+  - [x] Update docs/foop/INDEX.md — added FOOP-03 entry and the 7 other missing FOOPs (81, 91, 42, 62, 72, 82, 92) to the main table, By Status, and By Phase sections (new phase-0 subsection for FOOP-72; new Withdrawn/Rejected/Superseded entry for FOOP-81)
+        (2026-07-02 15:20)
   - [x] Search all `docs/foop/FOOP-*.md` and `docs/foop/FOOP-*.plan.md` for `foolish/` path refs and dead crate refs — per explicit instruction, historical/completed FOOPs are LEFT ALONE (their `foolish/` paths correctly describe the repo state when written); only FOOP-03's own files were updated
         (2026-07-02 14:34)
-  - [ ] Update docs/ubc1/ engineering docs — remove dead crate refs (these are largely Java/Scala historical docs — needs a closer look to separate historical from live content)
-  - [ ] Verify: `grep -r "foolish/" --include="*.md" .` shows no matches outside `docs/vintage_legacy/` — NOT clean yet: `docs/ubc1/` (non-vintage_legacy) still has historical Java/Scala path refs; historical `docs/foop/` refs also remain by design (see above), so this verify step as originally worded is too strict — needs re-scoping
-  - [ ] Verify: `grep -r "foolish-web\|foolish-ubcb" --include="*.md" .` shows no matches — NOT clean yet: historical FOOP docs and docs/ubc1/ still reference them, by design
-  - [ ] Verify: `grep -r "java\|scala\|maven" --include="*.md" .` shows no matches outside `docs/vintage_legacy/` — NOT run (Phase 1 JVM removal not done)
+  - [-] Update docs/ubc1/ engineering docs — remove dead crate refs — NOT done: human instruction is to leave `docs/ubc1` as-is for now. Deferred entirely, not scoped into this FOOP pass.
+        (2026-07-02 15:05)
+  - [x] Verify: `grep -r "foolish/" --include="*.md" .` shows no matches outside `docs/vintage_legacy/` — RE-SCOPED per human instruction: also excluding `docs/foop/` (historical FOOPs, left alone by design) and `docs/ubc1/`+`docs/ubc0_1/` (left as-is by explicit instruction). With that scoping: clean, aside from agent/session state (`.claude/agent-memory/`, `.omo/notepads/`) which is not project documentation.
+        (2026-07-02 15:20)
+  - [x] Verify: `grep -r "foolish-web\|foolish-ubcb" --include="*.md" .` shows no matches — RE-SCOPED same as above: clean outside historical FOOP docs / docs/ubc1 / docs/ubc0_1.
+        (2026-07-02 15:20)
+  - [x] Verify: `grep -r "java\|scala\|maven" --include="*.md" .` shows no matches outside `docs/vintage_legacy/` — RE-SCOPED same as above; remaining hits are either already-correct changelog entries, code-block language-tag documentation, generic examples (AGENTS.md's restricted-actions list), or design-philosophy comparisons in `docs/why/brainstorm.md` (not build instructions) — none are live JVM build references.
+        (2026-07-02 15:20)
 - [ ] Phase 5: Final verification
   - [ ] `cargo build --workspace` succeeds from repo root
   - [ ] `cargo test --workspace` passes
