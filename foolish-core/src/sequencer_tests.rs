@@ -1,3 +1,4 @@
+use crate::HumanizingFirSequencerRef;
 use crate::fir::{
     Alarm, AlarmLevel, AlarmSource, ConcatenationFirBuilder, ConstantIntFirBuilder,
     HeadTailFirBuilder, IndexFirBuilder, NkFirBuilder, NormalBraneFirBuilder, Nyes,
@@ -5,7 +6,6 @@ use crate::fir::{
     StayFullyFoolishFirBuilder,
 };
 use crate::sequencer::format_fir_simple;
-use crate::HumanizingFirSequencerRef;
 use crate::*;
 
 fn format_fir_ref(fir: &Fir) -> String {
@@ -163,10 +163,17 @@ fn test_format_concatenation_merged() {
 fn test_format_index() {
     let idx = IndexFirBuilder::new(1).build();
     let s = format_fir_simple(&idx);
-    // EMBRYONIC state is now always shown (only CONSTANT/INDEPENDENT are hidden)
+    // Per should_show_search_nyes (FOOP-62 §9.x sequencer HFS rule): a search-like FIR
+    // with NO result in EMBRYONIC hides its NYES. A freshly-built unanchored IndexFir
+    // is EMBRYONIC with no result, so the state is NOT rendered.
     assert!(
-        s.contains("#(offset=1, UNANCHORED, EMBRYONIC)"),
-        "Expected '#(offset=1, UNANCHORED, EMBRYONIC)' in: {}",
+        s.contains("#(offset=1, UNANCHORED)"),
+        "Expected '#(offset=1, UNANCHORED)' in: {}",
+        s
+    );
+    assert!(
+        !s.contains("EMBRYONIC"),
+        "EMBRYONIC must be hidden for a no-result EMBRYONIC index, got: {}",
         s
     );
 }

@@ -1,3 +1,6 @@
+use argon2::Argon2;
+use base64::Engine;
+use base64::engine::general_purpose::STANDARD as B64;
 /// Ed25519 snapshot signing infrastructure.
 ///
 /// Derives deterministic Ed25519 keypairs from passphrases via Argon2id,
@@ -33,11 +36,7 @@
 ///
 /// Canonical blocks already end with `\n`, so concatenation is unambiguous.
 /// This means tampering with any earlier block invalidates all later signatures.
-
-use ed25519_dalek::{Signer, SigningKey, VerifyingKey, Signature};
-use argon2::Argon2;
-use base64::engine::general_purpose::STANDARD as B64;
-use base64::Engine;
+use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
 
 /// Fixed salt for deterministic key derivation.
 const SALT: &[u8] = b"foolish-rust:snapshot-sig:v1";
@@ -85,10 +84,7 @@ pub fn derive_keypair(passphrase: &str) -> (SigningKey, VerifyingKey) {
 ///
 /// A tuple of `(VerifyingKey, Vec<u8>)` where the second element is the
 /// 64-byte Ed25519 signature.
-pub fn sign_content(
-    signing_key: &SigningKey,
-    content: &str,
-) -> (VerifyingKey, Vec<u8>) {
+pub fn sign_content(signing_key: &SigningKey, content: &str) -> (VerifyingKey, Vec<u8>) {
     let signature: Signature = signing_key.sign(content.as_bytes());
     (signing_key.verifying_key(), signature.to_bytes().to_vec())
 }
@@ -105,16 +101,14 @@ pub fn sign_content(
 ///
 /// `true` if the signature is valid; `false` otherwise.
 /// Returns `false` for malformed signatures rather than panicking.
-pub fn verify_signature(
-    verifying_key: &VerifyingKey,
-    content: &str,
-    signature: &[u8],
-) -> bool {
+pub fn verify_signature(verifying_key: &VerifyingKey, content: &str, signature: &[u8]) -> bool {
     let sig = match Signature::from_slice(signature) {
         Ok(s) => s,
         Err(_) => return false,
     };
-    verifying_key.verify_strict(content.as_bytes(), &sig).is_ok()
+    verifying_key
+        .verify_strict(content.as_bytes(), &sig)
+        .is_ok()
 }
 
 // ============================================================================
@@ -158,7 +152,8 @@ pub fn canonicalize_all_outputs(outputs: &[String]) -> String {
     if outputs.is_empty() {
         return "\n".to_string();
     }
-    outputs.iter()
+    outputs
+        .iter()
         .map(|o| canonicalize_output_block(o))
         .collect::<Vec<_>>()
         .join("\n")
@@ -189,10 +184,7 @@ impl SnapshotSignature {
     pub fn format_footer(&self) -> String {
         format!(
             "SIGNATURES:\nPublic key: {}\nFoolish signature: {}\nHFS signature: {}\nComments signature: {}",
-            self.public_key_hex,
-            self.foolish_sig_b64,
-            self.hs_sig_b64,
-            self.comments_sig_b64,
+            self.public_key_hex, self.foolish_sig_b64, self.hs_sig_b64, self.comments_sig_b64,
         )
     }
 }
@@ -218,10 +210,10 @@ impl SnapshotVerification {
 
     /// Short status string for CLI output.
     pub fn status_line(&self) -> String {
-        let key      = if self.key_match    { "match" } else { "no_match" };
-        let foolish  = if self.foolish_ok   { "ok" } else { "fail" };
-        let hs       = if self.hs_ok        { "ok" } else { "fail" };
-        let comments = if self.comments_ok  { "ok" } else { "fail" };
+        let key = if self.key_match { "match" } else { "no_match" };
+        let foolish = if self.foolish_ok { "ok" } else { "fail" };
+        let hs = if self.hs_ok { "ok" } else { "fail" };
+        let comments = if self.comments_ok { "ok" } else { "fail" };
         format!("key={key} foolish={foolish} hs={hs} comments={comments}")
     }
 }
@@ -240,19 +232,19 @@ pub fn sign_snapshot(
     hs_outputs: &[String],
     comments: &str,
 ) -> SnapshotSignature {
-    let canon_input    = canonicalize_input(input);
-    let canon_hs       = canonicalize_all_outputs(hs_outputs);
+    let canon_input = canonicalize_input(input);
+    let canon_hs = canonicalize_all_outputs(hs_outputs);
     let canon_comments = canonicalize_comment_block(comments);
     let (sk, vk) = derive_keypair(passphrase);
-    let hs_content       = format!("{canon_input}{canon_hs}");
+    let hs_content = format!("{canon_input}{canon_hs}");
     let comments_content = format!("{canon_input}{canon_hs}{canon_comments}");
-    let (_, foolish_sig_bytes)  = sign_content(&sk, &canon_input);
-    let (_, hs_sig_bytes)       = sign_content(&sk, &hs_content);
+    let (_, foolish_sig_bytes) = sign_content(&sk, &canon_input);
+    let (_, hs_sig_bytes) = sign_content(&sk, &hs_content);
     let (_, comments_sig_bytes) = sign_content(&sk, &comments_content);
     SnapshotSignature {
-        public_key_hex:   hex::encode(vk.to_bytes()),
-        foolish_sig_b64:  B64.encode(&foolish_sig_bytes),
-        hs_sig_b64:       B64.encode(&hs_sig_bytes),
+        public_key_hex: hex::encode(vk.to_bytes()),
+        foolish_sig_b64: B64.encode(&foolish_sig_bytes),
+        hs_sig_b64: B64.encode(&hs_sig_bytes),
         comments_sig_b64: B64.encode(&comments_sig_bytes),
     }
 }
@@ -269,7 +261,10 @@ pub fn verify_snapshot(
     sig: &SnapshotSignature,
 ) -> SnapshotVerification {
     let fail = |key_match| SnapshotVerification {
-        key_match, foolish_ok: false, hs_ok: false, comments_ok: false
+        key_match,
+        foolish_ok: false,
+        hs_ok: false,
+        comments_ok: false,
     };
     let vk_bytes: [u8; 32] = match hex::decode(&sig.public_key_hex)
         .ok()
@@ -285,21 +280,35 @@ pub fn verify_snapshot(
     let (_, derived_vk) = derive_keypair(passphrase);
     let key_match = derived_vk.to_bytes() == vk.to_bytes();
 
-    let canon_input    = canonicalize_input(input);
-    let canon_hs       = canonicalize_all_outputs(hs_outputs);
+    let canon_input = canonicalize_input(input);
+    let canon_hs = canonicalize_all_outputs(hs_outputs);
     let canon_comments = canonicalize_comment_block(comments);
-    let hs_content       = format!("{canon_input}{canon_hs}");
+    let hs_content = format!("{canon_input}{canon_hs}");
     let comments_content = format!("{canon_input}{canon_hs}{canon_comments}");
 
     let decode = |b64: &str| B64.decode(b64).ok();
-    let foolish_sig_bytes  = match decode(&sig.foolish_sig_b64)  { Some(b) => b, None => return fail(key_match) };
-    let hs_sig_bytes       = match decode(&sig.hs_sig_b64)       { Some(b) => b, None => return fail(key_match) };
-    let comments_sig_bytes = match decode(&sig.comments_sig_b64) { Some(b) => b, None => return fail(key_match) };
+    let foolish_sig_bytes = match decode(&sig.foolish_sig_b64) {
+        Some(b) => b,
+        None => return fail(key_match),
+    };
+    let hs_sig_bytes = match decode(&sig.hs_sig_b64) {
+        Some(b) => b,
+        None => return fail(key_match),
+    };
+    let comments_sig_bytes = match decode(&sig.comments_sig_b64) {
+        Some(b) => b,
+        None => return fail(key_match),
+    };
 
-    let foolish_ok  = verify_signature(&vk, &canon_input,       &foolish_sig_bytes);
-    let hs_ok       = verify_signature(&vk, &hs_content,        &hs_sig_bytes);
-    let comments_ok = verify_signature(&vk, &comments_content,  &comments_sig_bytes);
-    SnapshotVerification { key_match, foolish_ok, hs_ok, comments_ok }
+    let foolish_ok = verify_signature(&vk, &canon_input, &foolish_sig_bytes);
+    let hs_ok = verify_signature(&vk, &hs_content, &hs_sig_bytes);
+    let comments_ok = verify_signature(&vk, &comments_content, &comments_sig_bytes);
+    SnapshotVerification {
+        key_match,
+        foolish_ok,
+        hs_ok,
+        comments_ok,
+    }
 }
 
 /// Extract a [`SnapshotSignature`] from the SIGNATURES section of a snapshot file.
@@ -317,16 +326,29 @@ pub fn parse_snapshot_footer(snapshot_text: &str) -> Option<SnapshotSignature> {
     if after.len() < 4 {
         return None;
     }
-    let public_key_hex   = after[0].strip_prefix("Public key: ")?.trim().to_string();
-    let foolish_sig_b64  = after[1].strip_prefix("Foolish signature: ")?.trim().to_string();
-    let hs_sig_b64       = after[2].strip_prefix("HFS signature: ")?.trim().to_string();
-    let comments_sig_b64 = after[3].strip_prefix("Comments signature: ")?.trim().to_string();
-    if public_key_hex.is_empty() || foolish_sig_b64.is_empty()
-        || hs_sig_b64.is_empty() || comments_sig_b64.is_empty()
+    let public_key_hex = after[0].strip_prefix("Public key: ")?.trim().to_string();
+    let foolish_sig_b64 = after[1]
+        .strip_prefix("Foolish signature: ")?
+        .trim()
+        .to_string();
+    let hs_sig_b64 = after[2].strip_prefix("HFS signature: ")?.trim().to_string();
+    let comments_sig_b64 = after[3]
+        .strip_prefix("Comments signature: ")?
+        .trim()
+        .to_string();
+    if public_key_hex.is_empty()
+        || foolish_sig_b64.is_empty()
+        || hs_sig_b64.is_empty()
+        || comments_sig_b64.is_empty()
     {
         return None;
     }
-    Some(SnapshotSignature { public_key_hex, foolish_sig_b64, hs_sig_b64, comments_sig_b64 })
+    Some(SnapshotSignature {
+        public_key_hex,
+        foolish_sig_b64,
+        hs_sig_b64,
+        comments_sig_b64,
+    })
 }
 
 // ============================================================================
@@ -352,10 +374,7 @@ pub fn verify_input_line(line: &str, input: &str) -> bool {
     if parts.len() != 2 {
         return false;
     }
-    let vk_bytes: [u8; 32] = match hex::decode(parts[0])
-        .ok()
-        .and_then(|v| v.try_into().ok())
-    {
+    let vk_bytes: [u8; 32] = match hex::decode(parts[0]).ok().and_then(|v| v.try_into().ok()) {
         Some(b) => b,
         None => return false,
     };
@@ -413,7 +432,11 @@ mod tests {
         let content = "snapshot content to sign";
 
         let (returned_vk, sig_bytes) = sign_content(&sk, content);
-        assert_eq!(vk.to_bytes(), returned_vk.to_bytes(), "Returned verifying key must match");
+        assert_eq!(
+            vk.to_bytes(),
+            returned_vk.to_bytes(),
+            "Returned verifying key must match"
+        );
         assert_eq!(sig_bytes.len(), 64, "Ed25519 signature must be 64 bytes");
 
         assert!(
@@ -536,7 +559,10 @@ mod tests {
 
     #[test]
     fn canonicalize_comment_block_strips_outer_whitespace_only() {
-        assert_eq!(canonicalize_comment_block("  line1\n  line2  \n"), "line1\n  line2\n");
+        assert_eq!(
+            canonicalize_comment_block("  line1\n  line2  \n"),
+            "line1\n  line2\n"
+        );
     }
 
     #[test]
@@ -567,9 +593,15 @@ mod tests {
         // Tampered input fails foolish_sig; hs_sig and comments_sig also fail
         // because they are progressive (include input in their content)
         let v = verify_snapshot("", "{ x = 2 }", &hs_outputs, comments, &sig);
-        assert!(!v.foolish_ok,  "Tampered input must fail foolish_ok");
-        assert!(!v.hs_ok,       "Tampered input must also fail hs_ok (progressive)");
-        assert!(!v.comments_ok, "Tampered input must also fail comments_ok (progressive)");
+        assert!(!v.foolish_ok, "Tampered input must fail foolish_ok");
+        assert!(
+            !v.hs_ok,
+            "Tampered input must also fail hs_ok (progressive)"
+        );
+        assert!(
+            !v.comments_ok,
+            "Tampered input must also fail comments_ok (progressive)"
+        );
     }
 
     #[test]
@@ -581,9 +613,12 @@ mod tests {
         let tampered = vec!["x = Int(99)".to_string()];
         // Tampered HS fails hs_sig and comments_sig but not foolish_sig
         let v = verify_snapshot("", input, &tampered, comments, &sig);
-        assert!( v.foolish_ok,  "Untouched input must still pass foolish_ok");
-        assert!(!v.hs_ok,       "Tampered HS must fail hs_ok");
-        assert!(!v.comments_ok, "Tampered HS must also fail comments_ok (progressive)");
+        assert!(v.foolish_ok, "Untouched input must still pass foolish_ok");
+        assert!(!v.hs_ok, "Tampered HS must fail hs_ok");
+        assert!(
+            !v.comments_ok,
+            "Tampered HS must also fail comments_ok (progressive)"
+        );
     }
 
     #[test]
@@ -593,8 +628,8 @@ mod tests {
         let sig = sign_snapshot("", input, &hs_outputs, "test_name");
         // Tampered comments fails only comments_sig
         let v = verify_snapshot("", input, &hs_outputs, "test_name\ntampered", &sig);
-        assert!( v.foolish_ok,  "Untouched input must still pass foolish_ok");
-        assert!( v.hs_ok,       "Untouched HS must still pass hs_ok");
+        assert!(v.foolish_ok, "Untouched input must still pass foolish_ok");
+        assert!(v.hs_ok, "Untouched HS must still pass hs_ok");
         assert!(!v.comments_ok, "Tampered comments must fail comments_ok");
     }
 
@@ -632,7 +667,8 @@ mod tests {
     #[test]
     fn parse_snapshot_footer_no_signatures_label_returns_none() {
         // Lines with the right prefixes but no SIGNATURES: marker → None
-        let old = "Public key: abc\nFoolish signature: def\nHFS signature: ghi\nComments signature: jkl";
+        let old =
+            "Public key: abc\nFoolish signature: def\nHFS signature: ghi\nComments signature: jkl";
         assert!(parse_snapshot_footer(old).is_none());
     }
 

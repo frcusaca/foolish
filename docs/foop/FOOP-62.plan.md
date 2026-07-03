@@ -1,45 +1,50 @@
 # FOOP-62 Implementation Plan — UBCa Two-Store ProtoBrane
 
 > **WORKTREE.**
-> All FOOP-62 work happens in a dedicated worktree:
+> All FOOP-62 close-out work happens in a dedicated worktree:
 >
 > ```
-> WORKTREE_ORIGIN_BRANCH=alpha
-> WORKTREE_ORIGIN_PATH=$(pwd)
-> WORKTREE_BRANCH_NAME=foop-62-ubca-mimo
-> WORKTREE_FULL_FS_PATH=/home/hcbusy/tmp/foolish-worktrees/foop-62-ubca-mimo
+> WORKTREE_ORIGIN_BRANCH=jia
+> WORKTREE_ORIGIN_PATH=/home/hcbusy/foolish-rust
+> WORKTREE_BRANCH_NAME=foop-62-closeout
+> WORKTREE_FULL_FS_PATH=/home/hcbusy/tmp/foolish-worktrees/foop-62-closeout
 > ```
 >
 > Created from the starting branch/path:
 > ```
-> cd $WORKTREE_ORIGIN_PATH
-> git checkout $WORKTREE_ORIGIN_BRANCH
-> git worktree add -b "$WORKTREE_BRANCH_NAME" "$WORKTREE_FULL_FS_PATH"
+> cd /home/hcbusy/foolish-rust
+> git worktree add -b foop-62-closeout /home/hcbusy/tmp/foolish-worktrees/foop-62-closeout jia
 > ```
 >
 > Per AGENTS.md the worktree lifecycle is tracked as explicit checkbox tasks below.
 >
 > Spec: `docs/foop/FOOP-62.md`. Memory: [[foop62-ubca-two-store-protobrane]].
+>
+> **History note.** Earlier FOOP-62 implementation happened in the now-superseded
+> `foop-62-ubca-mimo` worktree (nested `foolish/` layout, pre-FOOP-03). That work has already
+> landed on `jia` (the flattened, post-FOOP-03 workspace: `foolish-ubca` is a top-level crate;
+> `foolish-ubcb` has been retired here). Close-out proceeds from `jia` in the new
+> `foop-62-closeout` worktree above.
 
-- [x] backburnered
-      (2026-07-02 00:00)
+- [x] Revived from backburner
+      (2026-07-03 03:40)
 
-> **Backburnered 2026-07-02.** Atlas has paused active work on FOOP-62. Remaining checkboxes
-> below are left **open/unchecked as-is** (per `foop.md` backburnering rules: revive by
-> removing the `[x] backburnered` marker). In particular the human-gated retirement question
-> ("keep UBC around for reference, or retire it and promote UBCa?", further down this file)
-> remains unanswered. Until that gate is resolved, `foolish-core` (old UBC/UBCb lineage) and
-> `foolish-ubca` both remain on disk as separate crates.
-> Noted by Claude Code 2.1.119 (Claude Code); Sonnet 5.
+> **Revived 2026-07-03.** Atlas: "bring FOOP 62 out of the attic, unafterburn it, close it
+> out." The `[x] backburnered` marker is removed per `foop.md` revival rules. Close-out work now
+> runs in the `foop-62-closeout` worktree branched from `jia` (see WORKTREE block above).
+> Noted by Claude Code 2.1.119 (Claude Code); Opus 4.8.
 
-> **Follow-up queued for FOOP-62 revival (2026-07-02):** `foolish-core`'s
-> `sequencer_tests::test_format_index` unit test fails on `alpha` (confirmed pre-existing,
-> unrelated to the FOOP-03 repo-cleanup merge): `Expected '#(offset=1, UNANCHORED, EMBRYONIC)'
-> in: #(offset=1, UNANCHORED)` (`foolish-core/src/sequencer_tests.rs:167`). The expected string
-> asserts a NYES state (`EMBRYONIC`) that the actual sequencer output doesn't currently produce
-> for an unanchored index. Fix this as part of the next FOOP-62 work session, once backburnering
-> is lifted — Atlas: "we will revisit FOOP-62 as soon as we merge this refactoring [FOOP-03]."
-> Noted by Claude Code 2.1.119 (Claude Code); Sonnet 5.
+- [x] **RESOLVED: `sequencer_tests::test_format_index` unit test fixed.** The stale test
+      asserted `#(offset=1, UNANCHORED, EMBRYONIC)`, but the shipped sequencer rule
+      `should_show_search_nyes` (FOOP-62 §9.x) intentionally HIDES the NYES for a search-like FIR
+      that is EMBRYONIC with no result — a freshly-built unanchored `IndexFir` renders as
+      `#(offset=1, UNANCHORED)` with no state. The CODE is correct; the test expectation had never
+      been updated when the display rule changed. Updated the test to assert the actual, intended
+      output (`#(offset=1, UNANCHORED)` and NO `EMBRYONIC`). Full workspace unit suite now green
+      (234 unit tests: foolish-core 84 + foolish-parser 22 + foolish-ubca 128; the lone
+      `approval_all` snapshot test is the human-reviewed gate, excluded from the unit run).
+      (2026-07-03 03:40 — foolish-core/src/sequencer_tests.rs)
+      Noted by Claude Code 2.1.119 (Claude Code); Opus 4.8.
 
 ## Phase −1 — HIGH PRIORITY: implement & verify foolish-ignorance clone model (BLOCKING)
 

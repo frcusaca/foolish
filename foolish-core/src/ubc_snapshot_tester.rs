@@ -6,8 +6,7 @@ pub struct UbcEvaluator;
 
 impl Evaluator for UbcEvaluator {
     fn evaluate(&self, source: &str) -> Result<Vec<FirRef>, String> {
-        let firs = Compiler::compile(source)
-            .map_err(|e| format!("Compilation failed: {}", e))?;
+        let firs = Compiler::compile(source).map_err(|e| format!("Compilation failed: {}", e))?;
         let mut result = Vec::new();
         for fir in firs {
             let mut fir_ref = fir_to_ref(fir);

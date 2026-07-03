@@ -4,7 +4,7 @@ use std::rc::{Rc, Weak};
 use foolish_core::fir::Nyes;
 use regex::Regex;
 
-use crate::fir_trait::{get_value, Fir, FirKind, FirRef, Scope, UbcError};
+use crate::fir_trait::{Fir, FirKind, FirRef, Scope, UbcError, get_value};
 use crate::nyes_ext::NyesExt;
 use crate::proto_brane::ProtoBrane;
 
@@ -1516,8 +1516,8 @@ pub fn stay_fully_foolish(expr: FirRef, parent: Weak<RefCell<dyn Fir>>) -> FirRe
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fir_trait::step_fir_ref;
     use crate::fir_trait::StepReport;
+    use crate::fir_trait::step_fir_ref;
 
     fn make_constant_int(value: i64) -> FirRef {
         Rc::new_cyclic(|me: &Weak<RefCell<IndepIntFir>>| {

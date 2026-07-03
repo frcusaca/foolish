@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use anyhow::Context;
 use clap::{Parser, Subcommand};
-use foolish_core::{Compiler, clone_steppable, fir_to_json, fir_to_ref, FirSequencer, ubc};
+use foolish_core::{Compiler, FirSequencer, clone_steppable, fir_to_json, fir_to_ref, ubc};
 
 #[derive(Parser)]
 #[command(name = "foolish")]
@@ -65,8 +65,7 @@ fn cmd_run(file: &PathBuf) -> anyhow::Result<()> {
     let firs = Compiler::compile(&source)?;
     for fir in &firs {
         let mut fir_ref = fir_to_ref(fir.clone());
-        ubc::run_to_completion(&mut fir_ref)
-            .with_context(|| "Evaluation failed")?;
+        ubc::run_to_completion(&mut fir_ref).with_context(|| "Evaluation failed")?;
         let final_fir = clone_steppable(&fir_ref);
         let output = FirSequencer::format(&final_fir);
         println!("{}", output);
@@ -106,8 +105,14 @@ fn cmd_repl() -> anyhow::Result<()> {
 
         let mut line = String::new();
         match std::io::stdin().read_line(&mut line) {
-            Ok(0) => { println!(); return Ok(()); }
-            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => { println!(); return Ok(()); }
+            Ok(0) => {
+                println!();
+                return Ok(());
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
+                println!();
+                return Ok(());
+            }
             Ok(_) => {}
             Err(e) => return Err(e.into()),
         }

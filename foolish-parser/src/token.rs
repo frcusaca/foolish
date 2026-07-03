@@ -9,20 +9,20 @@ pub enum Token {
     Semicolon,
     Comma,
 
-    Assign,     // =
-    Plus,       // +
-    Minus,      // -
-    Mul,        // *
-    Div,        // /
-    Dot,        // .
-    DotDot,     // ..
-    Caret,      // ^
-    Dollar,     // $
-    Question,   // ?
+    Assign,           // =
+    Plus,             // +
+    Minus,            // -
+    Mul,              // *
+    Div,              // /
+    Dot,              // .
+    DotDot,           // ..
+    Caret,            // ^
+    Dollar,           // $
+    Question,         // ?
     QuestionQuestion, // ??
-    Tilde,      // ~
-    TildeTilde, // ~~
-    Hash,       // #
+    Tilde,            // ~
+    TildeTilde,       // ~~
+    Hash,             // #
 
     Lt,         // <
     Gt,         // >
@@ -38,8 +38,8 @@ pub enum Token {
     Shebang(String),
     LineComment,
     BlockComment(String),
-    Unknown,    // ???
-    Up,         // ↑
+    Unknown, // ???
+    Up,      // ↑
 
     If,
     Then,
@@ -59,6 +59,10 @@ pub struct TokenAndLocation {
 
 impl TokenAndLocation {
     pub fn new(token: Token, line: u32, column: u32) -> Self {
-        Self { token, line, column }
+        Self {
+            token,
+            line,
+            column,
+        }
     }
 }

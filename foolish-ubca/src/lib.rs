@@ -19,7 +19,7 @@ pub mod fir_trait;
 pub mod nyes_ext;
 pub mod proto_brane;
 
-pub use fir_trait::{step_fir_ref, Fir, FirKind, FirRef, Scope, StepReport, UbcError};
+pub use fir_trait::{Fir, FirKind, FirRef, Scope, StepReport, UbcError, step_fir_ref};
 pub use nyes_ext::NyesExt;
 pub use proto_brane::ProtoBrane;
 

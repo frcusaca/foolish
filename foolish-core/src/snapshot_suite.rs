@@ -22,7 +22,10 @@ impl std::fmt::Display for SnapshotSuiteError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             SnapshotSuiteError::ExtraneousOutputs { files } => {
-                writeln!(f, "Extraneous approved output files (no matching .foo input):")?;
+                writeln!(
+                    f,
+                    "Extraneous approved output files (no matching .foo input):"
+                )?;
                 for file in files {
                     writeln!(f, "  - {}", file)?;
                 }
@@ -59,7 +62,11 @@ impl std::fmt::Display for TestFailure {
                 }
                 Ok(())
             }
-            TestFailure::Mismatch { name, expected, actual } => {
+            TestFailure::Mismatch {
+                name,
+                expected,
+                actual,
+            } => {
                 write!(
                     f,
                     "MISMATCH: {} \u{2014} output differs from approved snapshot\n  expected: {}\n  actual:   {}",
@@ -90,7 +97,10 @@ impl SnapshotSuite {
     pub fn new(input_dir: impl Into<PathBuf>, approved_dir: impl Into<PathBuf>) -> Self {
         let input_dir = input_dir.into();
         let approved_dir = approved_dir.into();
-        Self { input_dir, approved_dir }
+        Self {
+            input_dir,
+            approved_dir,
+        }
     }
 
     /// Extract test names from `.foo` files in input directory.
@@ -119,7 +129,13 @@ impl SnapshotSuite {
             for entry in entries.flatten() {
                 let path = entry.path();
                 if let Some(ext) = path.extension().and_then(|e| e.to_str())
-                    && ext == "foo" && !path.file_name().unwrap_or_default().to_str().unwrap_or("").ends_with(".foo.disabled")
+                    && ext == "foo"
+                    && !path
+                        .file_name()
+                        .unwrap_or_default()
+                        .to_str()
+                        .unwrap_or("")
+                        .ends_with(".foo.disabled")
                 {
                     files.push(path);
                 }
@@ -139,16 +155,21 @@ impl SnapshotSuite {
 
         let firs = evaluator.evaluate(&source)?;
 
-        let hs_outputs: Vec<String> = firs.iter().map(|fir_ref| {
-            let fir = crate::clone_steppable(fir_ref);
-            crate::FirSequencer::format(&fir)
-        }).collect();
+        let hs_outputs: Vec<String> = firs
+            .iter()
+            .map(|fir_ref| {
+                let fir = crate::clone_steppable(fir_ref);
+                crate::FirSequencer::format(&fir)
+            })
+            .collect();
 
-        let test_name = path.file_stem()
+        let test_name = path
+            .file_stem()
             .and_then(|s| s.to_str())
             .unwrap_or("unknown");
         let now = time::OffsetDateTime::now_utc();
-        let timestamp = now.format(&time::format_description::well_known::Iso8601::DEFAULT)
+        let timestamp = now
+            .format(&time::format_description::well_known::Iso8601::DEFAULT)
             .unwrap_or_else(|_| "timestamp-error".to_string());
         let comments = format!("{}\ngenerated: {}", test_name, timestamp);
 
@@ -177,7 +198,11 @@ impl SnapshotSuite {
     ///
     /// Phase 1 (parallel): Evaluate all `.foo` files using Rayon threads.
     /// Returns a vector of (test_name, result) for sequential insta assertion.
-    pub fn evaluate_all(&self, threads: usize, evaluator: &dyn Evaluator) -> Vec<(String, Result<String, String>)> {
+    pub fn evaluate_all(
+        &self,
+        threads: usize,
+        evaluator: &dyn Evaluator,
+    ) -> Vec<(String, Result<String, String>)> {
         let files = self.discover();
 
         if files.is_empty() {
@@ -192,9 +217,11 @@ impl SnapshotSuite {
                 .expect("Failed to create Rayon thread pool");
 
             pool.install(|| {
-                files.par_iter()
+                files
+                    .par_iter()
                     .map(move |path: &PathBuf| {
-                        let name = path.file_stem()
+                        let name = path
+                            .file_stem()
                             .and_then(|s| s.to_str())
                             .unwrap_or("")
                             .to_string();
@@ -207,9 +234,11 @@ impl SnapshotSuite {
         #[cfg(not(feature = "parallel-snapshot"))]
         {
             let _ = threads;
-            files.iter()
+            files
+                .iter()
                 .map(|path| {
-                    let name = path.file_stem()
+                    let name = path
+                        .file_stem()
                         .and_then(|s| s.to_str())
                         .unwrap_or("")
                         .to_string();
@@ -242,7 +271,8 @@ impl SnapshotSuite {
         if let Ok(entries) = fs::read_dir(&self.approved_dir) {
             for entry in entries.flatten() {
                 let fname = entry.file_name().to_string_lossy().to_string();
-                if let Some(rest) = fname.strip_suffix(".snap")
+                if let Some(rest) = fname
+                    .strip_suffix(".snap")
                     .and_then(|s| s.strip_suffix(".foo"))
                 {
                     let normal_name = rest.strip_suffix("_states").unwrap_or(rest);

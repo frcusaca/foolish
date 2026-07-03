@@ -1,5 +1,5 @@
-use std::rc::Rc;
 use crate::fir::FirRef;
+use std::rc::Rc;
 
 /// Search within a brane's statements for a name matching the pattern.
 /// Returns the first match (writing-order: earliest in brane).

@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use clap::Parser;
 use foolish_core::signature::{
-    parse_snapshot_footer, sign_snapshot, verify_snapshot, SnapshotVerification,
+    SnapshotVerification, parse_snapshot_footer, sign_snapshot, verify_snapshot,
 };
 
 #[derive(Parser)]
@@ -40,7 +40,10 @@ fn main() {
     let passphrase = if args.stdin_passphrase {
         eprint!("Passphrase: ");
         let stdin = io::stdin();
-        stdin.lock().lines().next()
+        stdin
+            .lock()
+            .lines()
+            .next()
             .and_then(|l| l.ok())
             .unwrap_or_default()
     } else {
@@ -96,7 +99,11 @@ fn main() {
             }
         };
 
-        let annotation_sep = if annotation.is_empty() { String::new() } else { format!("  {annotation}") };
+        let annotation_sep = if annotation.is_empty() {
+            String::new()
+        } else {
+            format!("  {annotation}")
+        };
         println!("{}  {}{}", cols, file.display(), annotation_sep);
 
         if cols.contains(" no") || cols.contains("ERR") {
@@ -112,10 +119,10 @@ fn main() {
 // ─── status column formatting ─────────────────────────────────────────────────
 
 fn columns_from_verification(v: &SnapshotVerification) -> String {
-    let k = if v.key_match    { "yes" } else { " no" };
-    let f = if v.foolish_ok   { "yes" } else { " no" };
-    let h = if v.hs_ok        { "yes" } else { " no" };
-    let c = if v.comments_ok  { "yes" } else { " no" };
+    let k = if v.key_match { "yes" } else { " no" };
+    let f = if v.foolish_ok { "yes" } else { " no" };
+    let h = if v.hs_ok { "yes" } else { " no" };
+    let c = if v.comments_ok { "yes" } else { " no" };
     format!("key match: {k}, foolish: {f}, hs: {h}, comments: {c}")
 }
 
@@ -150,7 +157,13 @@ fn check_file(path: &Path, passphrase: &str) -> Check {
         return Check::ParseError("could not parse INPUT/RESULT/COMMENTS blocks".to_string());
     };
 
-    Check::Verified(verify_snapshot(passphrase, &input, &hs_outputs, &comments, &sig))
+    Check::Verified(verify_snapshot(
+        passphrase,
+        &input,
+        &hs_outputs,
+        &comments,
+        &sig,
+    ))
 }
 
 /// Re-sign (and optionally append comments to) a snapshot file, writing it back in place.
@@ -161,8 +174,7 @@ fn write_verified_file(
     passphrase: &str,
     extra_comments: &[String],
 ) -> Result<SnapshotVerification, String> {
-    let text = fs::read_to_string(path)
-        .map_err(|e| format!("read error: {e}"))?;
+    let text = fs::read_to_string(path).map_err(|e| format!("read error: {e}"))?;
 
     let (input, hs_outputs, mut comments) = extract_snapshot_content(&text)
         .ok_or_else(|| "could not parse INPUT/RESULT/COMMENTS blocks".to_string())?;
@@ -178,10 +190,15 @@ fn write_verified_file(
     let comments_block = format!("COMMENTS:\n```markdown\n{}\n```", comments.trim_end());
     let updated = replace_comments_and_footer(&text, &comments_block, &new_sig.format_footer());
 
-    fs::write(path, &updated)
-        .map_err(|e| format!("write error: {e}"))?;
+    fs::write(path, &updated).map_err(|e| format!("write error: {e}"))?;
 
-    Ok(verify_snapshot(passphrase, &input, &hs_outputs, &comments, &new_sig))
+    Ok(verify_snapshot(
+        passphrase,
+        &input,
+        &hs_outputs,
+        &comments,
+        &new_sig,
+    ))
 }
 
 /// Replace the COMMENTS block and SIGNATURES section in a snapshot file.
@@ -190,14 +207,21 @@ fn write_verified_file(
 /// for files that predate the COMMENTS block.
 fn replace_comments_and_footer(text: &str, new_comments_block: &str, new_footer: &str) -> String {
     let lines: Vec<&str> = text.lines().collect();
-    let cut = lines.iter().rposition(|l| *l == "COMMENTS:")
+    let cut = lines
+        .iter()
+        .rposition(|l| *l == "COMMENTS:")
         .or_else(|| lines.iter().rposition(|l| *l == "SIGNATURES:"))
         .or_else(|| lines.iter().rposition(|l| l.starts_with("Public key: ")));
     let body = match cut {
         Some(pos) => lines[..pos].join("\n"),
         None => text.trim_end_matches('\n').to_string(),
     };
-    format!("{}\n{}\n{}\n", body.trim_end_matches('\n'), new_comments_block, new_footer)
+    format!(
+        "{}\n{}\n{}\n",
+        body.trim_end_matches('\n'),
+        new_comments_block,
+        new_footer
+    )
 }
 
 fn is_snap_file(p: &Path) -> bool {
@@ -210,16 +234,25 @@ fn extract_snapshot_content(text: &str) -> Option<(String, Vec<String>, String)>
     let mut input: Option<String> = None;
     let mut hs_outputs: Vec<String> = Vec::new();
     let mut comments: Option<String> = None;
-    let mut in_foolish  = false;
-    let mut in_hfssnap   = false;
+    let mut in_foolish = false;
+    let mut in_hfssnap = false;
     let mut in_markdown = false;
     let mut block: Vec<&str> = Vec::new();
 
     for line in text.lines() {
         match line {
-            "```foolish"  => { in_foolish  = true; block.clear(); }
-            "```hfssnap"   => { in_hfssnap   = true; block.clear(); }
-            "```markdown" => { in_markdown = true; block.clear(); }
+            "```foolish" => {
+                in_foolish = true;
+                block.clear();
+            }
+            "```hfssnap" => {
+                in_hfssnap = true;
+                block.clear();
+            }
+            "```markdown" => {
+                in_markdown = true;
+                block.clear();
+            }
             "```" if in_foolish => {
                 input = Some(block.join("\n"));
                 in_foolish = false;
@@ -235,7 +268,9 @@ fn extract_snapshot_content(text: &str) -> Option<(String, Vec<String>, String)>
                 in_markdown = false;
                 block.clear();
             }
-            _ if in_foolish || in_hfssnap || in_markdown => { block.push(line); }
+            _ if in_foolish || in_hfssnap || in_markdown => {
+                block.push(line);
+            }
             _ => {}
         }
     }

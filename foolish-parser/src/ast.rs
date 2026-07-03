@@ -2,17 +2,17 @@ use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SearchOperator {
-    Head,           // ^
-    Tail,           // $
-    RegexpLocal,    // ?
-    RegexpForward,  // ~
+    Head,          // ^
+    Tail,          // $
+    RegexpLocal,   // ?
+    RegexpForward, // ~
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AssignmentOperator {
-    Assign,   // =
-    SF,       // <=>
-    SFF,      // <<=>>>
+    Assign, // =
+    SF,     // <=>
+    SFF,    // <<=>>>
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -128,7 +128,9 @@ impl fmt::Display for Astn {
             Astn::Brane { statements, .. } => {
                 write!(f, "{{")?;
                 for (i, s) in statements.iter().enumerate() {
-                    if i > 0 { write!(f, "; ")?; }
+                    if i > 0 {
+                        write!(f, "; ")?;
+                    }
                     write!(f, "{:?}", s)?;
                 }
                 write!(f, "}}")

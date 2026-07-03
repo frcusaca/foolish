@@ -286,7 +286,7 @@ impl Parser {
                     found: format!("{:?}", t.token),
                     line: t.line,
                     col: t.column,
-                })
+                });
             }
             None => return Err(ParseError::Eof { line: 0, col: 0 }),
         };

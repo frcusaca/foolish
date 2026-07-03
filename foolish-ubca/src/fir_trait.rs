@@ -233,7 +233,12 @@ pub trait Fir: std::fmt::Debug {
         borrowed._ab_search(&brane, name)
     }
 
-    fn _search_brane(&self, _expression: &str, _starting_index: usize, _ending_index: usize) -> Option<(usize, FirRef, Nyes)> {
+    fn _search_brane(
+        &self,
+        _expression: &str,
+        _starting_index: usize,
+        _ending_index: usize,
+    ) -> Option<(usize, FirRef, Nyes)> {
         None
     }
 }
@@ -958,7 +963,13 @@ mod get_value_tests {
         let root = Compiler::compile("{x = 1 + 2;}").unwrap().pop().unwrap();
         let stmts = root.borrow().core().foolish_children().to_vec();
         let stmt = &stmts[0];
-        let body = stmt.borrow().core().foolish_children().first().unwrap().clone();
+        let body = stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .unwrap()
+            .clone();
         let result = body.borrow().get_my_statement(&body);
         assert!(Rc::ptr_eq(&result, stmt));
     }
@@ -980,7 +991,13 @@ mod get_value_tests {
         let root = Compiler::compile("{x = 1 + 2;}").unwrap().pop().unwrap();
         let stmts = root.borrow().core().foolish_children().to_vec();
         let stmt = &stmts[0];
-        let body = stmt.borrow().core().foolish_children().first().unwrap().clone();
+        let body = stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .unwrap()
+            .clone();
         let result = body.borrow().get_my_brane(&body);
         assert!(result.is_some());
         assert!(Rc::ptr_eq(&result.unwrap(), &root));
@@ -1020,10 +1037,19 @@ mod get_value_tests {
     #[test]
     fn ab_search_finds_in_ancestor_brane() {
         use crate::compiler::Compiler;
-        let root = Compiler::compile("{x = 1; inner = {y = x;};}").unwrap().pop().unwrap();
+        let root = Compiler::compile("{x = 1; inner = {y = x;};}")
+            .unwrap()
+            .pop()
+            .unwrap();
         let stmts = root.borrow().core().foolish_children().to_vec();
         let inner_stmt = &stmts[1]; // inner = {y = x;}
-        let inner_brane = inner_stmt.borrow().core().foolish_children().first().unwrap().clone();
+        let inner_brane = inner_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .unwrap()
+            .clone();
         let inner_stmts = inner_brane.borrow().core().foolish_children().to_vec();
         let y_stmt = &inner_stmts[0]; // y = x
         let result = y_stmt.borrow()._ib_search(y_stmt, "x");
@@ -1038,10 +1064,19 @@ mod get_value_tests {
     #[test]
     fn ab_search_returns_none_when_not_found() {
         use crate::compiler::Compiler;
-        let root = Compiler::compile("{x = 1; inner = {y = x;};}").unwrap().pop().unwrap();
+        let root = Compiler::compile("{x = 1; inner = {y = x;};}")
+            .unwrap()
+            .pop()
+            .unwrap();
         let stmts = root.borrow().core().foolish_children().to_vec();
         let inner_stmt = &stmts[1]; // inner = {y = x;}
-        let inner_brane = inner_stmt.borrow().core().foolish_children().first().unwrap().clone();
+        let inner_brane = inner_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .unwrap()
+            .clone();
         let result = inner_brane.borrow()._ab_search(&inner_brane, "nonexistent");
         assert!(result.is_none(), "nonexistent should not be found anywhere");
     }

@@ -169,27 +169,90 @@ impl Lexer {
 
         // Single char tokens
         match c {
-            '{' => { self.advance(); return (self.make_token(Token::LBrace), false); }
-            '}' => { self.advance(); return (self.make_token(Token::RBrace), false); }
-            '(' => { self.advance(); return (self.make_token(Token::LParen), false); }
-            ')' => { self.advance(); return (self.make_token(Token::RParen), false); }
-            '[' => { self.advance(); return (self.make_token(Token::LBracket), false); }
-            ']' => { self.advance(); return (self.make_token(Token::RBracket), false); }
-            ';' => { self.advance(); return (self.make_token(Token::Semicolon), false); }
-            ',' => { self.advance(); return (self.make_token(Token::Comma), false); }
-            '=' => { self.advance(); return (self.make_token(Token::Assign), false); }
-            '+' => { self.advance(); return (self.make_token(Token::Plus), false); }
-            '-' => { self.advance(); return (self.make_token(Token::Minus), false); }
-            '*' => { self.advance(); return (self.make_token(Token::Mul), false); }
-            '/' => { self.advance(); return (self.make_token(Token::Div), false); }
-            '.' => { self.advance(); return (self.make_token(Token::Dot), false); }
-            '^' => { self.advance(); return (self.make_token(Token::Caret), false); }
-            '$' => { self.advance(); return (self.make_token(Token::Dollar), false); }
-            '?' => { self.advance(); return (self.make_token(Token::Question), false); }
-            '~' => { self.advance(); return (self.make_token(Token::Tilde), false); }
-            '#' => { self.advance(); return (self.make_token(Token::Hash), false); }
-            '>' => { self.advance(); return (self.make_token(Token::Gt), false); }
-            '\'' => { self.advance(); return (self.make_token(Token::Apostrophe), false); }
+            '{' => {
+                self.advance();
+                return (self.make_token(Token::LBrace), false);
+            }
+            '}' => {
+                self.advance();
+                return (self.make_token(Token::RBrace), false);
+            }
+            '(' => {
+                self.advance();
+                return (self.make_token(Token::LParen), false);
+            }
+            ')' => {
+                self.advance();
+                return (self.make_token(Token::RParen), false);
+            }
+            '[' => {
+                self.advance();
+                return (self.make_token(Token::LBracket), false);
+            }
+            ']' => {
+                self.advance();
+                return (self.make_token(Token::RBracket), false);
+            }
+            ';' => {
+                self.advance();
+                return (self.make_token(Token::Semicolon), false);
+            }
+            ',' => {
+                self.advance();
+                return (self.make_token(Token::Comma), false);
+            }
+            '=' => {
+                self.advance();
+                return (self.make_token(Token::Assign), false);
+            }
+            '+' => {
+                self.advance();
+                return (self.make_token(Token::Plus), false);
+            }
+            '-' => {
+                self.advance();
+                return (self.make_token(Token::Minus), false);
+            }
+            '*' => {
+                self.advance();
+                return (self.make_token(Token::Mul), false);
+            }
+            '/' => {
+                self.advance();
+                return (self.make_token(Token::Div), false);
+            }
+            '.' => {
+                self.advance();
+                return (self.make_token(Token::Dot), false);
+            }
+            '^' => {
+                self.advance();
+                return (self.make_token(Token::Caret), false);
+            }
+            '$' => {
+                self.advance();
+                return (self.make_token(Token::Dollar), false);
+            }
+            '?' => {
+                self.advance();
+                return (self.make_token(Token::Question), false);
+            }
+            '~' => {
+                self.advance();
+                return (self.make_token(Token::Tilde), false);
+            }
+            '#' => {
+                self.advance();
+                return (self.make_token(Token::Hash), false);
+            }
+            '>' => {
+                self.advance();
+                return (self.make_token(Token::Gt), false);
+            }
+            '\'' => {
+                self.advance();
+                return (self.make_token(Token::Apostrophe), false);
+            }
 
             // Upward arrow ↑
             '\u{2191}' => {
@@ -238,7 +301,10 @@ impl Lexer {
             let c = self.advance();
             body.push(c);
         }
-        (TokenAndLocation::new(Token::BlockComment(body.trim().to_string()), line, column), false)
+        (
+            TokenAndLocation::new(Token::BlockComment(body.trim().to_string()), line, column),
+            false,
+        )
     }
 
     fn line_comment(&mut self) -> (TokenAndLocation, bool) {
@@ -247,10 +313,14 @@ impl Lexer {
         self.advance();
         self.advance();
         // Read until newline
-        while self.pos < self.chars.len() && self.peek() != Some('\n') && self.peek() != Some('\r') {
+        while self.pos < self.chars.len() && self.peek() != Some('\n') && self.peek() != Some('\r')
+        {
             self.advance();
         }
-        (TokenAndLocation::new(Token::LineComment, line, column), false)
+        (
+            TokenAndLocation::new(Token::LineComment, line, column),
+            false,
+        )
     }
 
     fn shebang(&mut self) -> (TokenAndLocation, bool) {
@@ -258,10 +328,14 @@ impl Lexer {
         self.advance(); // #
         self.advance(); // !
         let mut body = String::new();
-        while self.pos < self.chars.len() && self.peek() != Some('\n') && self.peek() != Some('\r') {
+        while self.pos < self.chars.len() && self.peek() != Some('\n') && self.peek() != Some('\r')
+        {
             body.push(self.advance());
         }
-        (TokenAndLocation::new(Token::Shebang(body.trim().to_string()), line, column), false)
+        (
+            TokenAndLocation::new(Token::Shebang(body.trim().to_string()), line, column),
+            false,
+        )
     }
 
     fn lt_token(&mut self) -> (TokenAndLocation, bool) {
@@ -275,8 +349,13 @@ impl Lexer {
             && self.peek_at(3) == Some('>')
             && self.peek_at(4) == Some('>')
         {
-            for _ in 0..5 { self.advance(); }
-            return (TokenAndLocation::new(Token::LtLtEqGtGt, line, column), false);
+            for _ in 0..5 {
+                self.advance();
+            }
+            return (
+                TokenAndLocation::new(Token::LtLtEqGtGt, line, column),
+                false,
+            );
         }
 
         // <=>
@@ -298,11 +377,16 @@ impl Lexer {
     fn integer(&mut self) -> (TokenAndLocation, bool) {
         let (line, column) = self.record_pos();
         let mut num = String::new();
-        while self.pos < self.chars.len() && self.peek().map(|c| c.is_ascii_digit()).unwrap_or(false) {
+        while self.pos < self.chars.len()
+            && self.peek().map(|c| c.is_ascii_digit()).unwrap_or(false)
+        {
             num.push(self.advance());
         }
         let value = num.parse().unwrap_or(u64::MAX);
-        (TokenAndLocation::new(Token::Integer(value), line, column), false)
+        (
+            TokenAndLocation::new(Token::Integer(value), line, column),
+            false,
+        )
     }
 
     fn identifier(&mut self) -> (TokenAndLocation, bool) {
@@ -340,7 +424,11 @@ mod tests {
     use Token::*;
 
     fn tokens(input: &str) -> Vec<Token> {
-        Lexer::new(input).tokenize().into_iter().map(|t| t.token).collect()
+        Lexer::new(input)
+            .tokenize()
+            .into_iter()
+            .map(|t| t.token)
+            .collect()
     }
 
     #[test]
