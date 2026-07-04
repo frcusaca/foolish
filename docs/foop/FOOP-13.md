@@ -39,9 +39,9 @@ ConcatBrane elements natively.
 
 ## Motivation
 
-Branes are the unit of containment, cloning, and recoordination. A single very large brane is a
-single very large granule: it clones as one block and (in future phases) ships across evaluator
-boundaries as one block. `MAX_BRANE_SIZE` bounds the granule: no `BraneFir` statement store ever
+Branes are the unit of containment, cloning, and recoordination. Foolish branes are by design
+finite in size. This foop implements that fact by setting a uniform finite size limit for branes
+in the UBCa fvm implementation.`MAX_BRANE_SIZE` bounds the granule: no `BraneFir` statement store ever
 exceeds `k` statements; a ConcatBrane is an unbounded *view* over bounded units.
 
 The current `ConcatenationFir` defeats that bound by construction: its `Braning` arm concatenates

@@ -41,11 +41,11 @@ based signed-snapshot testing with a four-stage promotion pipeline: **output**
 work directory containing `input/` (test triggers) and four stage directories,
 each holding `.einmo` files. The stage directory tree **mirrors** the `input/`
 tree at any depth. Generated outputs are timestamped and signed by the test
-runner. Promotion from `output→checked` is a CLI operation available to AI
-agents or humans (no passphrase). Promotion from `*→verified` appends a human-
+runner. Promotion from `output->checked` is a CLI operation available to AI
+agents or humans (no passphrase). Promotion from `*->verified` appends a human-
 keyed signature (passphrase-resolved; defaults to interactive prompt). Any
 state may transition to `flagged/` (a terminal sink). The library supports
-comparing any two stages; the comparison is per-section (INPUT + RESULT
+comparing any two stages; the comparison is per-section (INPUT + OUTPUT
 required, COMMENTS optionally required), with both files independently verified
 before content is compared.
 
@@ -91,7 +91,7 @@ by humans **and AI agents**, we need:
    correspondences: "output matches checked" (CI gate), "checked matches
    verified" (release gate). The comparison API is stage-agnostic and per-section.
 4. **CLI-driven promotion.** Promotion is a command-line operation that can be
-   invoked by AI agents (`output→checked`) or humans (`*→verified`, passphrase).
+   invoked by AI agents (`output->checked`) or humans (`*->verified`, passphrase).
    The CLI determines where to get the signing key — from keyboard console, an
    external API, or test code.
 
@@ -107,10 +107,10 @@ by humans **and AI agents**, we need:
 - Each test's work directory: `input/` → `output/*.einmo` → `checked/*.einmo` →
   `flagged/*.einmo` / `verified/*.einmo`, all mirroring the `input/` tree.
 - Generated outputs carry a `test` signer entry with a signed generation timestamp.
-- `cargo einmo promote output→checked` (AI/human, no passphrase).
-- `cargo einmo promote checked→verified` (human, passphrase; defaults to interactive).
-- `cargo einmo flag <stage>` (any state → flagged, terminal sink).
-- `cargo einmo compare <stage-a> <stage-b>` — stage-agnostic, per-section comparison.
+- `einmo promote output->checked` (AI/human, no passphrase).
+- `einmo promote checked->verified` (human, passphrase; defaults to interactive).
+- `einmo flag <stage>` (any state → flagged, terminal sink).
+- `einmo compare <stage-a> <stage-b>` — stage-agnostic, per-section comparison.
 - CI gates on stage correspondence, not just existence.
 - The existing `insta`-based `.snap` corpus in `foolish-core`/`foolish-ubca` is
   **untouched**; migration to `.einmo` is a future, separate effort once einmo
@@ -128,7 +128,7 @@ provides:
    checked" (CI gate), "checked matches verified" (release gate), or "every
    verified file is signed by key `eb108…`" (release attestation), all against
    signed, tamper-evident artifacts.
-2. **A CLI (`cargo einmo …`) that manages stage-wise promotion with
+2. **A CLI (`einmo …`) that manages stage-wise promotion with
    cryptographic signing at each transition** — promotion is a separate,
    attributable act, not an automated `accept`. Every generated output is
    timestamped and signed by the test runner; every promotion to `verified`
@@ -163,23 +163,30 @@ surveyed frameworks:
 
 ### The four stages and their signing
 
-| Stage | Directory | Signer entries | Who can produce | Passphrase |
+Signing uses the three-role key model of §4.4: a **Compiled Key** (embedded at
+compile time), a **Configured Key** (set at configuration time), and per-stage
+**Stage Keys**. Generation writes the Compiled + Configured certification
+stamps plus the `stage:output` stamp; every promotion **appends** the
+destination stage's stamp.
+
+| Stage | Directory | Stamps present | Who can produce | Stage-key source |
 |---|---|---|---|---|
-| **Output** | `output/` | `test` (computer key + signed generation timestamp) | test runner (always) | default `""` (computer key) |
-| **Checked** | `checked/` | `test` (preserved) | AI agent or human via CLI (`promote output→checked`) | none |
-| **Flagged** | `flagged/` | `test` (preserved) + advisory `# flagged:` line | any state → flagged via CLI | none |
-| **Verified** | `verified/` | `test` (preserved) + `util` (promotion key + signed promotion timestamp) | human via CLI (`promote *→verified`) | resolved via cascade; default falls through to interactive prompt |
+| **Output** | `output/` | `compiled`, `configured`, `stage:output` (signed generation timestamp) | test runner (always) | configured; default empty-passphrase key |
+| **Checked** | `checked/` | + `stage:checked` (signed promotion timestamp) | AI agent or human via CLI (`promote output->checked`) | configured; default empty-passphrase key |
+| **Flagged** | `flagged/` | unchanged + advisory `# flagged:` line | any state → flagged via CLI | none (no stamp) |
+| **Verified** | `verified/` | + `stage:verified` (signed promotion timestamp) | human via CLI (`promote *->verified`) | resolved via cascade; deliberately unconfigured → interactive prompt |
 
 **Critical invariants (typed, enforced in code):**
 
-1. A file cannot enter `output/` without a `test` entry — generation always signs.
-2. The `test` entry is never modified or removed by any transition.
-3. Only `*→verified` appends a signature (`util`); all other transitions are
-   move/copy.
-4. Flagging = **move** (origin vacated, `flagged/` populated); collisions get a
-   timestamp suffix.
-5. **Verify-on-inspect**: any operation that reads a `.einmo` file verifies *all*
-   signer entries first; tampered files are refused, never operated on.
+1. A file cannot enter `output/` without the full generation chain — `compiled`
+   + `configured` + `stage:output` stamps. Generation always signs.
+2. Existing stamps are never modified or removed by any transition; every
+   promotion appends exactly one destination-stage stamp.
+3. Flagging = **move** (origin vacated, `flagged/` populated) + advisory line;
+   no stamp; collisions get a timestamp suffix.
+4. **Verify-on-inspect**: any operation that reads a `.einmo` file verifies *all*
+   stamps first (certifications + every stage stamp's prior-bytes signature);
+   tampered files are refused, never operated on.
 
 ## Use Case A — Constructing tests: human-readable input → human-readable output
 
@@ -198,9 +205,9 @@ as a signed, reviewable artifact. Now imagine extending that:
   available; `foolish-ubcb` was removed by FOOP-03, but the per-language
   stage-dir model is exactly what `zweimomo` exercises — see §Use Case D.)
 - **Tolerance-based matching.** `compare` with a numeric tolerance for
-  floating-point RESULT sections (pytest-regtest style), not just byte-identity.
+  floating-point OUTPUT sections (pytest-regtest style), not just byte-identity.
 - **A redaction library.** Built-in redactors for common volatile values
-  (timestamps, UUIDs, memory addresses, run-ids) that normalise the RESULT
+  (timestamps, UUIDs, memory addresses, run-ids) that normalise the OUTPUT
   before canonicalisation, so signatures are stable across runs.
 - **Dependency-aware test selection.** Given a code change, infer which
   `input/` leaves are affected (via the granularity DAG) and run only those,
@@ -225,7 +232,7 @@ From that vision, the first version chooses to support:
 - `EinmoSuite::evaluate` (file input), `evaluate_inline` (in-code input),
   `evaluate_all` / `evaluate_all_inline` (parallel).
 - `TestConfig` with `require_correspondence` and `match_sections` (per-section
-  matching: INPUT+RESULT required, COMMENTS optional).
+  matching: INPUT+OUTPUT required, COMMENTS optional).
 - Tests write signed `.einmo` to `output/<mirror-path>`; the test asserts
   correspondence via `compare`.
 - Inline expected values (`@"…"`) are refused.
@@ -285,7 +292,11 @@ pub struct TestConfig {
     pub input_dir: String,            // default "input"
     pub stages: StageDirs,            // defaults: output/checked/flagged/verified
     pub require_correspondence: Vec<(Stage, Stage)>,  // e.g. [(Output, Checked)] for CI
-    pub match_sections: MatchSections, // default InputResult
+    pub match_sections: MatchSections, // default InputOutput
+    pub encoding: String,             // default "utf-8" (§4.1)
+    pub separator: String,            // default "①\n"; Foolish suites "!!\n" (§4.1)
+    pub perspectives: Vec<Perspective>, // statically configured views (§4.5)
+    pub parallel: Option<usize>,      // None = serial; Some(n) = n threads
 }
 pub enum Stage { Output, Checked, Flagged, Verified }
 ```
@@ -344,19 +355,20 @@ provenance graph over the behavioural contract.
 ### B.2 So, then — what the first version of einmo supports
 
 From that vision, the first version chooses to support:
-- Ed25519 via Argon2id key derivation (FOOP-12); `test` (computer) + `util`
-  (promotion) signer roles in FOOP-22 append format with `Entire file`
-  progressive-chain integrity.
-- Passphrase cascade (5 tiers: `--passphrase` > `--stdin-passphrase` >
-  `EINMO_PASSPHRASE` env > `einmo.toml` > interactive `/dev/tty` prompt);
-  `--interactive` forces the prompt.
+- Ed25519 via Argon2id key derivation (FOOP-12-style); the **three-role key
+  model** (§4.4): Compiled Key + Configured Key certify public keys, per-stage
+  Stage Keys sign all prior bytes in an append chain (generalising FOOP-22's
+  append format).
+- Stage-key cascade (5 tiers: `--passphrase` > `--stdin-passphrase` >
+  `EINMO_PASSPHRASE` env > `einmo.toml` `[signing.<stage>]` > interactive
+  `/dev/tty` prompt); `--interactive` forces the prompt.
 - `confirm-signatures <path> <pubkey-prefix> [--require-all]` for release-key
   attestation.
 - **Emergent human-attestation**: the repo deliberately omits a verified-stage
-  passphrase, so `*→verified` falls through to the interactive prompt. An AI
-  piping `--passphrase ""` produces a `util` under the computer key — post-hoc
-  detectable (`util` pubkey == `test` pubkey).
-- Signed generation + promotion timestamps (inside signed content).
+  key, so `*->verified` falls through to the interactive prompt. An AI piping
+  `--passphrase ""` produces a `stage:verified` stamp under the well-known
+  empty-passphrase key — post-hoc detectable by pubkey.
+- Signed generation + promotion timestamps (inside each stage stamp).
 
 Explicitly **out of scope** for v1: threshold multi-sig, key rotation /
 delegation, HSM / hardware-token integration, air-gapped offline signing,
@@ -369,91 +381,105 @@ time-locked signatures. Documented as future enhancements.
 
 | Event | Where it lives | Signed? |
 |---|---|---|
-| Generation (output written) | per-file metadata `generated: <ISO8601>` | **Yes** — covered by `test`'s `Metadata` signature |
-| Promotion to verified | inside `util` entry's signed content (`promoted: <ISO8601>`) | **Yes** — covered by `util`'s signatures |
-| Flag reason + time | advisory `# flagged: <reason> <ISO8601>` line outside signed content | No (advisory; original sigs stay valid without re-signing) |
+| Generation (output written) | metadata `generated:` **and** inside the `stage:output` stamp | **Yes** — the stamp's own field, covered by later stamps' prior-bytes signatures |
+| Each promotion | inside the destination stage's stamp (`timestamp` field) | **Yes** — covered by any subsequent stamp |
+| Flag reason + time | advisory `# flagged: <reason> <ISO8601>` line outside signed content | No (advisory; original stamps stay valid without re-signing) |
 
-Signing both timestamps means re-signing produces different signature bytes —
-acceptable: the *content* a signature covers is verifiable regardless.
-Tamper-evidence is the load-bearing property; byte-reproducible re-signing is not.
+Signing timestamps means every run/promotion produces different signature
+bytes. **Accepted tradeoff (BDFL decision 2026-07-03):** the resulting
+git-diff churn in `output/` is tolerated for now; redesign only if it becomes
+a real problem in practice. Tamper-evidence is the load-bearing property;
+byte-reproducible re-signing is not.
 
 ### B.4 Signing — keys and algorithms
 
-- **Algorithm**: Ed25519, key derived from passphrase via Argon2id (FOOP-12).
-- **`test` entry** (computer/AI key): the test runner signs with the empty-
-  passphrase key by default (canonical computer key, pubkey `dc5f586c…b683`).
-  Created once at generation, never removed.
-- **`util` entry** (promotion key): resolved via the passphrase cascade (B.3).
-  Carries `Entire file` + progressive triple. Multiple `util` entries accumulate
-  (re-review, re-promotion); each subsequent `util`'s `Entire file` covers all
-  prior entries, forming a tamper-evident chain.
-- **Emergent human-attestation** (not enforced): the system is configured
-  *without* a passphrase for `verified`-stage promotion, so `*→verified` falls
-  through the cascade to the interactive prompt. A human types it; an AI agent
-  running non-interactively with no tty cannot complete the promotion. If an
-  agent pipes `--passphrase ""`, it produces a `util` entry under the
-  **computer key** — **post-hoc detectable**: the `util` pubkey equals the
-  `test` pubkey. The signature provides attribution; the policy provides the gate.
+- **Algorithm**: Ed25519; passphrase-derived keys use Argon2id (FOOP-12-style
+  derivation with parameters pinned by einmo).
+- **Key roles** (full definition in §4.4): **Compiled Key** (embedded at
+  compile time — secret in custom builds, public knowledge in the stock
+  open-source build), **Configured Key** (configuration time), **Stage Keys**
+  (one per stage; each stage may have a different configured key). Compiled
+  and Configured stamps certify public keys; Stage stamps sign all prior file
+  bytes and **append**, stage after stage.
+- **Emergent human-attestation** (not enforced): the deployment deliberately
+  does **not** configure a `verified`-stage key, so `*->verified` falls
+  through the cascade to the interactive prompt. A human types the
+  passphrase; an AI agent running non-interactively with no tty cannot
+  complete the promotion. If an agent pipes `--passphrase ""`, the
+  `stage:verified` stamp's pubkey equals the well-known empty-passphrase key —
+  **post-hoc detectable**. The signature provides attribution; the policy
+  provides the gate.
 
-### B.5 Key sources — passphrase resolution cascade
+### B.5 Key sources — stage-key resolution cascade
 
-Uniform cascade for all signing operations:
+Uniform cascade for resolving the **stage key** in any signing operation:
 
 | Tier | Source | Notes |
 |---|---|---|
 | 1 | `--passphrase <value>` | explicit, non-interactive (CI/scripted) |
 | 2 | `--stdin-passphrase` | read one line from stdin (pipe or tty) |
 | 3 | `EINMO_PASSPHRASE` env var | per-process override |
-| 4 | `einmo.toml` `[signing] passphrase = "…"` | per-repo default (typically the computer key `""`) |
+| 4 | `einmo.toml` `[signing.<stage>] passphrase = "…"` | per-repo, per-stage default (output/checked typically `""`) |
 | 5 | **interactive prompt** on `/dev/tty` | only if no tier above yielded a value |
 
 - An explicit empty string (`--passphrase ""` or `EINMO_PASSPHRASE=""`) is **set
-  to empty** (computer key), not "unset" — to unset, omit the flag/var entirely.
+  to empty** (the well-known empty-passphrase key), not "unset" — to unset,
+  omit the flag/var entirely.
 - `--interactive` flag: **forces the prompt**, skipping tiers 1–4.
-- Per-stage deployment convention: a repo's `einmo.toml` sets
-  `[signing] passphrase = ""` for the computer key. It deliberately does **not**
-  set a verified-stage passphrase, so `*→verified` falls through to the
-  interactive prompt — the human-attestation gate is emergent from
-  configuration, not a code-enforced rule.
+- The **Configured Key** comes from `einmo.toml` `[signing] configured-key`
+  (or programmatic `TestConfig`); the **Compiled Key** is baked into the
+  binary at build time (stock builds embed the published default).
+- Per-stage deployment convention: `einmo.toml` sets output/checked stage
+  passphrases to `""` and deliberately does **not** set a verified-stage
+  passphrase, so `*->verified` falls through to the interactive prompt — the
+  human-attestation gate is emergent from configuration, not a code-enforced
+  rule.
 
-### B.6 The CLI (`cargo einmo …`)
+### B.6 The CLI (`einmo …`)
 
-Binary is `cargo-einmo` (cargo subcommand convention). **Every subcommand
-verifies all signatures on any file it touches before proceeding**
-(verify-on-inspect); tampered files are refused.
+**Einmo is a single CLI app** — one CLI surface named `einmo`; everything is a
+subcommand (`einmo verify-signatures …`, not a separate binary). Installed via
+`cargo install einmo`; the `cargo-einmo` alias binary makes `cargo einmo …`
+work identically (§1). **Every
+subcommand verifies all stamps on any file it touches before proceeding**
+(verify-on-inspect); tampered files are refused. Stage-pair arguments use the
+ASCII arrow `->`; stage names match `[A-Za-z0-9_-]+` (no `>`, no other
+punctuation). Operations that walk many files run parallel or serial per the
+`--parallel <n>`/config setting.
 
 ```bash
 # Promotion & flagging
-cargo einmo promote <from>→<to> <work_dir> [--filter <glob>] [--passphrase <v> | --stdin-passphrase | --interactive] [--batch]
-  # legal: output→checked, output→verified, checked→verified,
-  #        output→flagged, checked→flagged, verified→flagged
-  # output→checked : copy (test preserved, no new sig)
-  # *→verified     : copy + append util; warns if util key == test key
-  # *→flagged      : move (same as `flag`)
-  # --batch        : one passphrase prompt for all matching files
+einmo promote <from>-><to> <work_dir> [--filter <glob>] [--passphrase <v> | --stdin-passphrase | --interactive] [--batch]
+  # legal: output->checked, output->verified, checked->verified,
+  #        output->flagged, checked->flagged, verified->flagged
+  # every promotion appends the destination stage's stamp
+  # *->verified : warns if the stamp key equals a well-known computer key
+  # *->flagged  : move (same as `flag`)
+  # --batch     : one passphrase prompt for all matching files
 
-cargo einmo flag <work_dir> <stage> [--filter <glob>] [--reason <text>]
+einmo flag <work_dir> <stage> [--filter <glob>] [--reason <text>]
   # moves <stage>/<rel> → flagged/<rel>; collision → timestamp suffix
   # appends advisory "# flagged: <reason> <ISO8601>"
 
 # Comparison & verification (CI)
-cargo einmo compare <stage-a> <stage-b> <work_dir> [--match-sections input,result] [--require-comments-match] [--stale-days N] [--filter <glob>] [--require-match] [--json]
-cargo einmo verify <work_dir> [--stage <s> | --all]
+einmo compare <stage-a> <stage-b> <work_dir> [--match-sections input,output] [--require-comments-match] [--stale-days N] [--filter <glob>] [--require-match] [--json]
+einmo verify <work_dir> [--stage <s> | --all]
 
 # Signature inspection
-cargo einmo confirm-signatures <path> <pubkey-prefix> [--require-all]
+einmo confirm-signatures <path> <pubkey-prefix> [--require-all]
+einmo verify-signatures <path> [--write-verified] [--stdin-passphrase]
 
 # Inspection
-cargo einmo show <file>
+einmo show <file>
 
 # Review (replaces foolish_review.sh)
-cargo einmo console-review <work_dir> <from>→<to> [--filter <glob>] [--full] [--reexamine-rate <pct>] [--reexamine-seed <seed>] [--vim | --list] [--root-cause]
+einmo console-review <work_dir> <from>-><to> [--filter <glob>] [--full] [--reexamine-rate <pct>] [--reexamine-seed <seed>] [--vim | --list] [--root-cause]
 
-# UI server (Proposal A)
-cargo einmo serve <work_dir> [--bind <addr>]
+# UI server (Proposal A; post-MVP)
+einmo serve <work_dir> [--bind <addr>]
 
 # Self-attestation (integrity check on the CLI's own binary)
-cargo einmo self-check [--expected <sha256>] [--quiet]
+einmo self-check [--expected <sha256>] [--quiet]
   # computes SHA-256 of env::current_exe()?; prints path + hash
   # --expected <sha256>: exit non-zero if the computed hash does not match
   # --quiet: print only the hash (for scripting)
@@ -475,7 +501,7 @@ library so the invariants always hold:
 - **Agent inspection via MCP.** A Model Context Protocol server exposes every
   einmo operation as a structured tool: navigate the directory tree, list by
   stage, fetch a diff, promote, flag, verify, confirm-signatures, run
-  root-cause bisection. An agent reviews `output→checked` by calling tools,
+  root-cause bisection. An agent reviews `output->checked` by calling tools,
   not by shelling out and parsing text.
 - **AGENTS.md skills as encoded review flows.** The standard review protocols
   (reconcile output vs checked; decide repair/promote/escalate; the
@@ -483,13 +509,13 @@ library so the invariants always hold:
   skills — step-by-step instructions an agent loads and follows, so review
   discipline is not reinvented per agent.
 - **Agent self-attribution.** Each agent signs with its own derived key, so
-  `test`/`util` entries are attributable not just to "a machine" but to "agent
+  stamps are attributable not just to "a machine" but to "agent
   X" — post-hoc attribution becomes per-actor.
 - **Agent-driven auto-bisection.** On a mismatch, the agent descends the
   granularity tree (`--root-cause`) automatically, finding the deepest
   differing leaf without human steering.
 - **Rich human inspection.** For outputs that are themselves rich — an HTML
-  report, an SVG diagram, a structured data dump — the `.einmo` RESULT block
+  report, an SVG diagram, a structured data dump — the `.einmo` OUTPUT block
   *contains* that rich content. The browser renders it with built-in
   search/analysis: syntax highlighting, folding, a data-structure explorer,
   in-content grep. Approve/disapprove buttons sit inline on the rendered
@@ -507,11 +533,11 @@ through fit-for-purpose frontends.
 ### C.2 So, then — what the first version of einmo supports
 
 From that vision, the first version chooses to support:
-- An **MCP server** (`cargo einmo serve --mcp`, or a dedicated `cargo-einmo-mcp`
+- An **MCP server** (`einmo serve --mcp`, or a dedicated `einmo-mcp`
   binary) exposing: `list`, `diff`, `promote`, `flag`, `verify`,
   `confirm_signatures`, `root_cause`, `show` as structured tools. The MCP
   server calls the einmo library — it is a frontend, never touches `.einmo`
-  files directly. (Agents that prefer shells use the `cargo einmo … --json`
+  files directly. (Agents that prefer shells use the `einmo … --json`
   CLI; both call the same library.)
 - An **AGENTS.md documentation template + skills** encoding the standard review
   flows (reconcile output vs checked; burden-of-correction; flag-vs-escalate).
@@ -521,15 +547,15 @@ From that vision, the first version chooses to support:
   diff view, promote/flag/verify/confirm-signatures/show endpoints, and a
   WebSocket alert feed (output≠checked, checked≠verified, flagged, staleness,
   signature failures).
-- **Rich-output rendering.** The RESULT block may contain HTML (or other
+- **Rich-output rendering.** The OUTPUT block may contain HTML (or other
   browser-renderable content). The SPA fetches the `.einmo` via `/api/show`
-  (the backend verifies-on-inspect server-side), extracts the RESULT, and
+  (the backend verifies-on-inspect server-side), extracts the OUTPUT, and
   renders it. An **einmo-in-HTML metadata convention** carries the einmo
   metadata inside the HTML (a `<script type="application/json"
   id="einmo-meta">{…}</script>` block) so the SPA renders stage/signature chrome
   + approve/disapprove buttons around the content. The buttons POST to
   `/api/promote` or `/api/flag`.
-- **Byte-steadiness invariant** (critical, see C.4): the signed RESULT content
+- **Byte-steadiness invariant** (critical, see C.4): the signed OUTPUT content
   is canonicalised to a deterministic byte string before signing; the rich
   HTML's interactive features are client-side transforms of those signed bytes,
   never part of what is mutated post-signing.
@@ -554,14 +580,14 @@ outside the library. Tool surface:
 |---|---|---|
 | `einmo_list(work_dir, stage)` | `walk_stage` | list files in a stage (mirror-relative paths) |
 | `einmo_diff(work_dir, a, b, rel_path)` | `compare` (single file) | per-section diff between two stages for one file |
-| `einmo_promote(work_dir, from, to, filter, passphrase?)` | `promote` | promote (passphrase only for `*→verified`) |
+| `einmo_promote(work_dir, from, to, filter, passphrase?)` | `promote` | promote (passphrase only for `*->verified`) |
 | `einmo_flag(work_dir, stage, filter, reason)` | `flag` | move to flagged/ |
 | `einmo_verify(work_dir, stage?)` | `verify` | signature integrity |
 | `einmo_confirm_signatures(path, prefix, require_all)` | `confirm_signatures` | release-key attestation |
 | `einmo_root_cause(work_dir, a, b, rel_path)` | `compare --root-cause` | descend subtree; deepest differing descendants |
-| `einmo_show(file)` | `EinmoFile::from_file` + `signers` | verified content + signer summary |
+| `einmo_show(file)` | `EinmoFile::from_file` + `stamps` | verified content + stamp-chain summary |
 
-Agents that prefer shells use `cargo einmo … --json`; both paths call the same
+Agents that prefer shells use `einmo … --json`; both paths call the same
 library, so invariants are identical.
 
 **AGENTS.md skills (documentation template).** Einmo ships a documented set of
@@ -571,7 +597,7 @@ skill is a step-by-step protocol:
 - **Reconcile output vs checked** (the agent's pre-commit flow): run
   `compare output checked`; for each `differing`/`only_in_a` file, decide
   repair (fix code so output matches checked), promote (review the diff and
-  `promote output→checked`), or escalate (`flag` with a reason and surface to
+  `promote output->checked`), or escalate (`flag` with a reason and surface to
   a human). Re-run until `compare` is clean, then commit.
 - **Burden of correction** (on gate failure): if `output≠checked`, the producer
   of the divergent output repairs or escalates; if `checked≠verified`, the
@@ -599,10 +625,10 @@ overview), `/api/diff` (per-section diff, signature lines hidden), `/api/promote
 arrive via POST body, are derived to a key, used to sign, and dropped — the UI
 never holds a private key.
 
-**Rich output rendering.** The `.einmo` RESULT block may contain HTML (or SVG,
+**Rich output rendering.** The `.einmo` OUTPUT block may contain HTML (or SVG,
 or other browser-renderable content), not just plain text. The SPA fetches the
 `.einmo` via `/api/show`; the backend verifies all signatures server-side
-(verify-on-inspect) and returns the parsed content; the SPA renders the RESULT
+(verify-on-inspect) and returns the parsed content; the SPA renders the OUTPUT
 HTML in a sandboxed container with the einmo chrome around it.
 
 **Einmo-in-HTML metadata convention.** When the output IS HTML, it carries an
@@ -613,7 +639,7 @@ approve/disapprove buttons without a separate API round-trip per render:
 <!-- the signed HTML output, byte-steady -->
 <script type="application/json" id="einmo-meta">
 {"input_path":"stage1/section3/specific.test","stage":"output",
- "signers":[{"role":"test","pubkey":"dc5f586c…"}]}
+ "stamps":[{"key":"stage:output","pubkey":"dc5f586c…"}]}
 </script>
 <!-- ...the renderable, searchable, analysable output content... -->
 ```
@@ -629,16 +655,16 @@ content.
 **Byte-steadiness invariant (critical).** *In all cases, the output has to be
 byte-steady output that is signable using cryptographic signature.* Concretely:
 
-1. **Canonicalise before signing.** The RESULT content (HTML or otherwise) is
+1. **Canonicalise before signing.** The OUTPUT content (HTML or otherwise) is
    canonicalised to a deterministic byte string before the `Result`/`Metadata`
    signatures are computed. No volatile values (timestamps, random IDs,
    run-order-dependent serialisation) in the signed bytes — redact/mask them
    before canonicalisation (the test author's responsibility in v1; a redaction
    library is a future enhancement, Use Case A §A.1).
-2. **The signature covers the canonical bytes.** The `test`/`util` `Result`
-   signature covers `canon_input + canon_result`; the `Entire file` signature
-   covers all prior bytes. Any change to the canonical HTML invalidates the
-   signature — tamper-evident.
+2. **The signature covers the canonical bytes.** Each stage stamp's signature
+   covers all file bytes before it — metadata, INPUT, every OUTPUT and
+   perspective section, COMMENTS, and all earlier stamps. Any change to the
+   canonical HTML invalidates the stamp — tamper-evident.
 3. **Interactive features are a view layer.** The HTML's client-side JS
    (search, fold, highlight, data-structure exploration) renders/transforms the
    signed bytes for display. It never writes back to the `.einmo` file; it
@@ -646,10 +672,10 @@ byte-steady output that is signable using cryptographic signature.* Concretely:
    the UI is a projector over them.
 4. **External resources are not signed.** If the HTML embeds external resources
    (images, scripts fetched at view time), those are NOT part of the signed
-   RESULT bytes — only the HTML text in the RESULT block is signed. For full
+   OUTPUT bytes — only the HTML text in the OUTPUT block is signed. For full
    attestation of external resources, they would need their own signing (out
    of scope v1; documented as a future enhancement).
-5. **Verify-on-inspect applies.** Before the SPA renders the RESULT, the
+5. **Verify-on-inspect applies.** Before the SPA renders the OUTPUT, the
    backend loads the `.einmo` via `EinmoFile::from_file` (which verifies all
    signatures); a tampered file is refused and surfaced as an alert, never
    rendered as if valid.
@@ -701,9 +727,19 @@ pub trait Evaluator {
 
 Each interpreter is wrapped by an `Evaluator` impl in zweimomo that:
 1. Takes a source string in that interpreter's language.
-2. Evaluates it (catching panics/errors → `Err(String)`).
+2. Evaluates it (catching panics/errors → `Err(String)`; einmo records errors
+   in the envelope's `status`/`status-detail` metadata, §4.2).
 3. Stringifies the result(s) → `Vec<String>` (one string per top-level result;
-   einmo writes one RESULT block per string).
+   einmo writes one OUTPUT section per string).
+
+**Serialization is zweimomo's responsibility.** Einmo is language-agnostic —
+it takes chunks of input/output text and never interprets them. How each
+interpreter's values are rendered into those text chunks (which mode to
+evaluate in, how to stringify results, what an "output" even is per language)
+is designed and owned by the test crate. The rule: **use what is most
+colloquial in each language** — idiomatic evaluation and idiomatic
+stringification per interpreter, specified per adapter in zweimomo, not
+homogenised by einmo.
 
 ### D.3 The three `Evaluator` impls (embedding sketches)
 
@@ -888,29 +924,37 @@ structured so it can be promoted to its own repository later.
 
 ```
 einmo/
-├── Cargo.toml             # standalone: ed25519-dalek, argon2, base64, hex, clap, serde, toml, time, thiserror
+├── Cargo.toml             # standalone: ed25519-dalek, argon2, base64, hex, clap, serde, serde_json, toml, time, thiserror
 └── src/
     ├── lib.rs             # re-exports
-    ├── config.rs          # TestConfig, StageDirs, MatchSections, passphrase cascade
+    ├── main.rs            # the `einmo` CLI binary: promote, flag, compare, verify, verify-signatures, confirm-signatures, show, console-review, serve, self-check
+    ├── bin/
+    │   └── cargo_einmo.rs # one-line alias binary `cargo-einmo` → same CLI (enables `cargo einmo …`)
+    ├── config.rs          # TestConfig, StageDirs, MatchSections, Perspective, key/cascade resolution
     ├── stage.rs           # Stage enum + directory operations + transitions
     ├── compare.rs         # per-section stage-to-stage comparison
-    ├── format.rs          # .einmo file parse/serialize (per-section canonical)
-    ├── signature.rs       # FOOP-22 append-chain signing (implemented from scratch; not migrated)
+    ├── format.rs          # .einmo envelope parse/serialize (§4: header line, separator, sections, STAMPS)
+    ├── signature.rs       # Compiled/Configured/Stage key model; Ed25519 + Argon2id; stamp create/verify
     ├── snapshot_suite.rs  # EinmoSuite + generalised Evaluator trait (implemented from scratch)
-    ├── verify.rs          # verify-on-inspect + verify-all (clean submodule; no fs/tty/argon2)
-    └── bin/
-        ├── cargo_einmo.rs          # CLI: promote, flag, compare, verify, confirm-signatures, show, console-review, serve
-        └── verify_signatures.rs    # standalone signature-verification utility (einmo's own)
+    └── verify.rs          # verify-on-inspect + verify-all (clean submodule; no fs/tty/argon2)
 ```
 
+**Single CLI app, cargo-installable.** Einmo is one CLI surface; every
+operation — including signature verification (`einmo verify-signatures …`) —
+is a subcommand of the one app. The crate is published as `einmo` so users run
+**`cargo install einmo`**, which installs two binary targets sharing the same
+clap parser: `einmo` (canonical) and `cargo-einmo` (a one-line alias whose
+name follows the cargo-subcommand convention, so **`cargo einmo …`** also
+works). This FOOP writes all examples in the canonical `einmo …` form.
+
 **`.gitignore` fix (blocking, still required):** the root `.gitignore` has a
-`bin/` pattern that ignores *any* `bin/` directory including `src/bin/`. This
-must be narrowed to `/bin/` (repo-root `bin/` only) or `target/**/bin/` *before*
-creating `einmo/src/bin/`, or `cargo_einmo.rs` / `verify_signatures.rs` will be
-silently gitignored. (Note: `foolish-core/src/bin/verify_signatures.rs` *does*
-exist and is git-tracked despite the pattern — it was added before the pattern
-took effect — but new `src/bin/` files under a fresh `einmo/` crate *would* be
-ignored. The fix is still needed.)
+`bin/` pattern that ignores *any* `bin/` directory including `src/bin/` — the
+new `einmo/src/bin/cargo_einmo.rs` alias would be silently ignored. Narrow it
+to `/bin/` (repo-root `bin/` only) in Phase 0, *before* creating the crate.
+(Note: `foolish-core/src/bin/verify_signatures.rs` *does* exist and is
+git-tracked despite the pattern — already-tracked files are unaffected.) A
+`.gitattributes` entry `*.einmo -text` is added at the same time so git
+eol-normalization can never corrupt signed bytes.
 
 **No `migrate.rs` (scope change).** This FOOP does **not** migrate the existing
 `.snap` corpus. Einmo writes its own `.einmo` files from day one via its
@@ -946,82 +990,195 @@ drift is visible in `git diff`, forcing review.
 ```rust
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Stage {
-    Output,    // Generated by test runner. Signed generation timestamp + computer key.
-    Checked,   // Reviewed — promoted from output by AI agent or human. No passphrase. `test` preserved.
-    Flagged,   // Set aside — any state → flagged via CLI. Move (origin vacated). Advisory `# flagged:` line. Terminal sink.
-    Verified,  // Promoted from checked (or output) by human with passphrase. `util` entry appended.
+    Output,    // Generated by test runner. compiled + configured + stage:output stamps.
+    Checked,   // Reviewed — promoted from output by AI agent or human. stage:checked stamp appended.
+    Flagged,   // Set aside — any state → flagged via CLI. Move (origin vacated). Advisory `# flagged:` line. No stamp. Terminal sink.
+    Verified,  // Promoted from checked (or output) by human with passphrase. stage:verified stamp appended.
 }
 ```
 
-**Transitions:**
-- `output→checked`: copy (test entry preserved, no new sig).
-- `output→verified`, `checked→verified`: copy + append `util` entry.
-- `output→flagged`, `checked→flagged`, `verified→flagged`: move (remove from
-  origin, create in `flagged/`).
-- `console-review` demotion: `verified→checked` (move; `util` entry preserved
-  as history; re-promotion appends a second `util`).
+**Transitions** (every promotion appends the destination stage's stamp over
+all prior bytes; existing stamps are never touched):
+- `output->checked`: copy + append `stage:checked` stamp (checked stage key —
+  configured, no prompt).
+- `output->verified`, `checked->verified`: copy + append `stage:verified`
+  stamp (verified stage key — typically the interactive human passphrase).
+- `output->flagged`, `checked->flagged`, `verified->flagged`: move (remove
+  from origin, create in `flagged/`); advisory line only, no stamp.
+- `console-review` demotion: `verified->checked` (move; all stamps preserved
+  as history; re-promotion appends another `stage:verified` stamp).
 
 **Flagged collision handling:** if `flagged/<rel>` already exists when a new
 file is flagged to the same path, the new file gets a timestamp suffix. The
 common case (one flag per path) keeps the clean mirror; collisions disambiguate.
 The flag reason + origin stage are captured in the advisory `# flagged:` line.
 
-### 4. Per-file metadata and the `.einmo` format
+### 4. The `.einmo` containment envelope
+
+*(Rewritten 2026-07-03 after the envelope design discussion; supersedes the
+earlier `--- SECTION ---` / per-section-progressive-signature draft.)*
+
+Einmo is **language- and format-agnostic**: it takes chunks of input/output
+**text** and that is all it is specified to do in this version. How evaluator
+results are serialized into those text chunks is the **test crate's job**
+(zweimomo's, for this repo — see §D.2); einmo never interprets body content.
+
+#### 4.1 Envelope structure
+
+A `.einmo` file is: a **header line**, then **sections** separated by a
+configurable **separator string**, in the order declared by the metadata
+section:
 
 ```
---- metadata ---
-generated: 2026-07-01T15:30:45Z          # per-file generation timestamp (ISO8601 UTC)
-suite: foolish-ubca/snapshot_tests       # suite identity
-input_path: stage1/section3/specific.test # mirror-relative input path
-
---- INPUT ---
-```foolish
-<source>
-```
---- RESULT ---
-```hfssnap
-<formatted output>
-```
---- COMMENTS ---
-```markdown
-<test name; promotion history; etc.>
-```
---- SIGNATURES ---
-  * Signed by test: <hex_pubkey>
-    * Input:     <sig over canon_input>
-    * Result:    <sig over canon_input + canon_result>
-    * Comments:  <sig over canon_input + canon_result + canon_comments>
-    * Metadata:  <sig over canon_input + canon_result + canon_comments + canon_metadata>
-  * Signed by util: <hex_pubkey>          # present only in verified/
-    * Entire file: <sig over all file bytes before this entry>
-    * Input:       <sig over canon_input>
-    * Result:      <sig over canon_input + canon_result>
-    * Comments:    <sig over canon_input + canon_result + canon_comments>
-    * Metadata:    <sig over canon_input + canon_result + canon_comments + canon_metadata + promoted_timestamp>
+#einmo 1 encoding=utf-8 separator=①\n
+<metadata section>
+①
+<INPUT body>
+①
+<OUTPUT body>            (one OUTPUT section per evaluator result chunk)
+①
+<perspective bodies…>    (zero or more, named in metadata)
+①
+<COMMENTS body>
+①
+<STAMPS section — one JSON object per line>
 ```
 
-**Per-section signatures.** Each canonical block (Input, Result, Comments,
-Metadata) is progressively signed — each signature covers its own block plus all
-prior blocks, forming a tamper-evident content chain. The `Metadata` signature
-covers the generation timestamp (so the timestamp is signed). The `util` entry
-repeats the progressive triple plus an `Entire file` signature over every byte
-before it (the inter-signer chain).
+- **Header line** (line 1): `#einmo <format-version> encoding=<enc>
+  separator=<escaped-string>`. Self-describing: the parser reads line 1, then
+  splits the rest on the separator. Format version starts at `1`.
+- **Encoding** is configurable per suite; default `utf-8`.
+- **Separator** is configurable per suite; default is the character `①`
+  (U+2460) followed by LF. **For Foolish suites the separator is configured as
+  the string `"!!" + LF`** — `!!` is a Foolish line comment, so the separator
+  reads as comment noise to Foolish tooling.
+- **Collision rule:** einmo **refuses to serialize** (hard error at write time)
+  any section whose content contains the configured separator sequence — the
+  suite must then configure a different separator. No escaping mechanism in v1;
+  refusal keeps parsing trivially byte-exact.
+- Line endings are **LF only**; a `.gitattributes` entry `*.einmo -text`
+  protects the signed bytes from git eol normalization.
 
-**Per-file metadata** (the `--- metadata ---` block): generation timestamp,
-suite identity, mirror-relative input path. Signed content. Promotion timestamps
-live inside the `util` entry's signed content, not in the per-file metadata.
+#### 4.2 Metadata section
 
-**Advisory lines (unsigned, outside signed content).** Two advisory lines may
-appear in a `.einmo`, excluded from all canonical signed content (like the
-`# flagged:` line) so they do not affect signatures:
-- `# flagged: <reason> <ISO8601>` — present in `flagged/` files (§3).
-- `# produced-by: cargo-einmo <version> sha256:<binary-hash>` — appended by the
-  tool on write (§12); attributable producer provenance, non-binding on the
-  signature.
+Key–value lines, fixed order (canonical — re-serialization is byte-stable):
 
-Both are informational; the parser distinguishes them from the signed blocks
-(INPUT/RESULT/COMMENTS/metadata/SIGNATURES) and excludes them from
-canonicalisation.
+```
+test: stage1/section3/specific.test      # test name = mirror-relative input path
+suite: zweimomo/suites/foolish           # suite identity
+producer: 4d54ab99                       # commit SHA of the producing tree…
+producer-diff: sha256:9f2c…              # …plus SHA of `git diff` when dirty (omitted when clean)
+generated: 2026-07-03T15:30:45Z          # time of production (ISO8601 UTC)
+status: normal                           # normal | input-error | output-error
+status-detail:                           # specifics when status ≠ normal (free text, may be multi-line)
+sections: INPUT, OUTPUT, OUTPUT[1], names-perspective, COMMENTS, STAMPS
+```
+
+**`status` / `status-detail` (evaluator error semantics).** When the evaluator
+cannot parse/accept the input, `status: input-error`; when evaluation fails
+abnormally (panic, crash, harness fault), `status: output-error`. In both cases
+`status-detail` carries **maximal specifics** — this file is a debugging/repair
+artifact, so detail is the point. Distinguish carefully: an *expected* error
+result (e.g. an OUTPUT body of `infinite loop detected`, a division-by-zero NK
+alarm) is **normal** — tests are allowed, even expected, to pin error
+behaviour, and such files are promotable all the way to `verified/`. `status`
+marks *the harness's* abnormality, not the program-under-test's.
+
+#### 4.3 Bodies: INPUT, OUTPUT, perspectives, COMMENTS
+
+- **INPUT** — the test trigger text, byte-exact.
+- **OUTPUT** — one section per text chunk the evaluator returned
+  (`OUTPUT`, `OUTPUT[1]`, `OUTPUT[2]`, … as declared in `sections:`).
+  (Called RESULT in earlier drafts of this FOOP.)
+- **Perspective bodies** — optional, statically configured views of the input
+  or output (see §4.5), one section each, named in `sections:`.
+- **COMMENTS** — free text (promotion history, reviewer notes). Always present,
+  possibly empty.
+
+#### 4.4 STAMPS — the signature chain (Compiled / Configured / Stage keys)
+
+Einmo is open source, but an organisation incorporating it (or building a
+custom einmo) may want secret keys. There are **three named key roles**:
+
+| Key | Origin | Secret? | What its stamp signs |
+|---|---|---|---|
+| **Compiled Key** | embedded in the `einmo` binary at **compile time** | in a custom build, yes; in the stock open-source build the default key is public knowledge | the **Configured Key's public key** (certification) |
+| **Configured Key** | set at **configuration time** (suite/deployment config) | optionally | the **Stage keys' public keys** (certification) |
+| **Stage Keys** | one per stage, resolved per §B.5 (config or passphrase prompt) | verified-stage key is typically a human passphrase | **all file bytes before its own stamp** (content + all prior stamps) |
+
+The two secret keys (Compiled, Configured) sign only **public keys** — small,
+constant-size certification stamps. Content integrity comes from the Stage-key
+stamps, each covering every byte before it, forming the append chain:
+
+> first the Compiled key signs, then the Configured key signs, then the stage
+> key signs; each subsequent stage **appends** its stamp after the previous
+> stage's stamp.
+
+The STAMPS section is **JSON, one object per line**, appended in order:
+
+```json
+{"key":"compiled","pubkey":"<hex>","signs":"pubkey:configured","signature":"<b64>","produced_by":"einmo 0.1.0 sha256:<binhash>","timestamp":"2026-07-03T15:30:45Z"}
+{"key":"configured","pubkey":"<hex>","signs":"pubkey:stage:output","signature":"<b64>","produced_by":"einmo 0.1.0 sha256:<binhash>","timestamp":"2026-07-03T15:30:45Z"}
+{"key":"stage:output","pubkey":"<hex>","signs":"prior-bytes","signature":"<b64 over all bytes before this line>","produced_by":"einmo 0.1.0 sha256:<binhash>","timestamp":"2026-07-03T15:30:45Z"}
+{"key":"stage:checked","pubkey":"<hex>","signs":"prior-bytes","signature":"<b64 over all bytes before this line>","produced_by":"einmo 0.1.0 sha256:<binhash>","timestamp":"2026-07-04T09:12:00Z"}
+{"key":"stage:verified","pubkey":"<hex>","signs":"prior-bytes","signature":"<b64 over all bytes before this line>","produced_by":"einmo 0.1.0 sha256:<binhash>","timestamp":"2026-07-05T11:00:00Z"}
+```
+
+- **`produced_by`** names the program that generated the signature (name,
+  version, binary SHA-256) — signature metadata is just another JSON field, so
+  the separate `# produced-by:` advisory line from earlier drafts is
+  **dropped**; provenance rides inside each stamp.
+- **Timestamps** (generation, each promotion) live inside the corresponding
+  stage stamp — signed, attributable per stamp.
+- A promotion **appends** the destination stage's stamp; existing stamps are
+  never modified or removed. Re-promotion after demotion appends again (the
+  history is the chain).
+- Later-stage pubkeys are deliberately **not** certified by the Configured key
+  when they come from a human passphrase — that is the emergent
+  human-attestation property (§B.4): a stamp whose pubkey equals a well-known
+  computer key is post-hoc detectable as non-human.
+- **Verify-on-inspect** verifies every stamp: certifications check out, each
+  stage stamp's signature matches the bytes before it.
+
+*(Interpretation note, to be confirmed by BDFL: "sign the public keys using
+these two secret keys" is implemented here as Compiled certifies Configured's
+pubkey and Configured certifies the Stage pubkeys, with content integrity
+carried solely by the Stage stamps' prior-bytes signatures. If instead the
+Compiled/Configured stamps should also cover content, add
+`"signs":"prior-bytes"` variants — the envelope shape is unchanged.)*
+
+#### 4.5 Perspectives (statically configured views)
+
+Einmo can be **programmatically configured with static perspectives** of the
+input and/or output. A perspective is a pure text→text transform supplied by
+the test crate (einmo stays language-agnostic — it never parses body content):
+
+```rust
+pub struct Perspective {
+    pub name: &'static str,                       // section name in the envelope
+    pub of: PerspectiveOf,                        // Input | Output(i)
+    pub extract: fn(&str) -> String,              // pure transform
+}
+```
+
+Example (supplied by zweimomo for Foolish suites): a **brane-name
+perspective** — from `{a=1,b=2,c=3}` it extracts `{a=???,b=???,c=???}`, the
+name-skeleton of the brane. The perspective body is a first-class signed
+section of the envelope.
+
+**Stated goal:** make it easy for human and AI inspectors to look at the key
+characteristics of a test at a glance, and to aid debugging/repair when code
+breaks (a reviewer can diff the perspective without wading through the full
+output).
+
+#### 4.6 Advisory lines
+
+One advisory line kind remains, excluded from all signed bytes:
+`# flagged: <reason> <ISO8601>` — appended when a file moves to `flagged/`
+(§3). It appears **after the STAMPS section** (never inside a body, so it
+cannot collide with content), and the parser strips it before any signature
+verification. The old `# produced-by:` advisory is subsumed by the
+`produced_by` stamp field (§4.4).
 
 ### 5. Formal comparison semantics (stage matching)
 
@@ -1030,29 +1187,30 @@ and, for each mirror-relative path present in both, applies the **matching
 test**, which is **per-section**:
 
 > Two `.einmo` files **match** iff:
-> 1. File A **verifies correctly against its own signatures** — every signer
->    entry validates, and each section's signature matches the section's
->    canonical content.
-> 2. File B **verifies correctly against its own signatures** — same.
+> 1. File A **verifies correctly against its own stamps** — every stamp
+>    validates (certifications + each stage stamp over its prior bytes).
+> 2. File B **verifies correctly against its own stamps** — same.
 > 3. The **configured sections** of A and B are **byte-identical**, section by
 >    section:
 >    - **INPUT** — required (always compared)
->    - **RESULT** — required (always compared)
+>    - **OUTPUT** (all `OUTPUT[i]`) — required (always compared)
+>    - **perspective sections** — *optionally required* (configurable; derived
+>      from INPUT/OUTPUT, so usually redundant to compare)
 >    - **COMMENTS** — *optionally required* (configurable)
 
 Sections not listed are **excluded from content comparison**:
-- **SIGNATURES** — legitimately differs between stages; never compared.
+- **STAMPS** — legitimately differs between stages; never compared.
 - **metadata** — identical across stages by construction (promotion preserves
   it). If it drifted, verify-on-inspect (steps 1–2) would catch the corruption.
 
-**Why COMMENTS is optionally required:** COMMENTS holds the test name (stable)
-but may also carry review annotations that legitimately differ between `output`
-and `checked`. Some suites want COMMENTS locked; others treat it as advisory.
+**Why COMMENTS is optionally required:** COMMENTS holds review annotations that
+legitimately differ between `output` and `checked`. Some suites want COMMENTS
+locked; others treat it as advisory.
 
 ```rust
 pub fn compare(config: &TestConfig, a: Stage, b: Stage, sections: MatchSections) -> ComparisonResult;
 
-pub enum MatchSections { InputResult, InputResultComments }
+pub enum MatchSections { InputOutput, InputOutputComments }
 
 pub struct ComparisonResult {
     pub matching: Vec<PathBuf>,
@@ -1066,28 +1224,29 @@ pub struct ComparisonResult {
 ### 6. Promotion CLI
 
 ```bash
-# Promote output → checked (AI agent or human, no passphrase)
-cargo einmo promote output→checked <work_dir> [--filter <glob>]
+# Promote output -> checked (AI agent or human; appends stage:checked stamp, no prompt)
+einmo promote output->checked <work_dir> [--filter <glob>]
 
-# Promote checked → verified (human, passphrase; defaults to interactive)
-cargo einmo promote checked→verified <work_dir> [--passphrase <v> | --stdin-passphrase | --interactive] [--batch]
+# Promote checked -> verified (human, passphrase; defaults to interactive)
+einmo promote checked->verified <work_dir> [--passphrase <v> | --stdin-passphrase | --interactive] [--batch]
 
-# Promote output → verified directly (skipping checked, human only)
-cargo einmo promote output→verified <work_dir> [--stdin-passphrase | --interactive]
+# Promote output -> verified directly (skipping checked, human only)
+einmo promote output->verified <work_dir> [--stdin-passphrase | --interactive]
 ```
 
-The CLI resolves the signing key via the cascade (B.3). Promotion to `verified`
-warns if the resolved key equals the computer key (the `util` pubkey would equal
-the `test` pubkey — post-hoc detectable as a non-human attestation).
+The CLI resolves the destination stage's key via the cascade (§B.5). Promotion
+to `verified` warns if the resolved key equals a well-known computer key (the
+`stage:verified` stamp's pubkey would match — post-hoc detectable as a
+non-human attestation).
 
 ### 7. Stage comparison CLI
 
 ```bash
-cargo einmo compare <stage-a> <stage-b> <work_dir> [--match-sections input,result] [--require-comments-match] [--stale-days N] [--filter <glob>] [--require-match] [--json] [--root-cause]
+einmo compare <stage-a> <stage-b> <work_dir> [--match-sections input,output] [--require-comments-match] [--stale-days N] [--filter <glob>] [--require-match] [--json] [--root-cause]
 ```
 
 - `--match-sections <list>` — which sections must be byte-identical. Default
-  `input,result`. Use `input,result,comments` to require COMMENTS too.
+  `input,output`. Use `input,output,comments` to require COMMENTS too.
 - `--require-match` — exit non-zero if any file is `differing`, `only_in_a`, or
   `only_in_b` (used by the gates).
 - `--root-cause` — on a `differing` file, descend its subtree; report the
@@ -1096,13 +1255,16 @@ cargo einmo compare <stage-a> <stage-b> <work_dir> [--match-sections input,resul
 - `--stale-days N` — warn about files in stage-b whose mtime is older than N
   days relative to stage-a.
 
-### 8. Passphrase resolution cascade
+### 8. Key resolution cascade and configuration
 
-See B.3. Implemented in `einmo::config::resolve_passphrase()` with precedence:
-`--passphrase` > `--stdin-passphrase` > `EINMO_PASSPHRASE` env > `einmo.toml`
-`[signing] passphrase` > interactive `/dev/tty` prompt. `--interactive` forces
-the prompt. Config-file parsing: `einmo.toml` with `[signing] passphrase` and
-`[ci]` / `[review]` sections.
+See §B.5. Implemented in `einmo::config::resolve_stage_key(stage, …)` with
+precedence: `--passphrase` > `--stdin-passphrase` > `EINMO_PASSPHRASE` env >
+`einmo.toml` `[signing.<stage>] passphrase` > interactive `/dev/tty` prompt.
+`--interactive` forces the prompt. `einmo.toml` also carries `[signing]
+configured-key` (the Configured Key, §4.4), envelope settings (`encoding`,
+`separator`), `parallel` (run parallel or serial), and `[ci]` / `[review]`
+sections. The Compiled Key is embedded at build time (stock builds embed the
+published default; custom builds may embed a secret).
 
 ### 9. Library API
 
@@ -1118,10 +1280,10 @@ pub struct EinmoFile { /* parsed + verified */ }
 impl EinmoFile {
     pub fn from_file(path: &Path) -> Result<Self, EinmoError>;  // verify-on-load
     pub fn stage(&self, path: &Path) -> Stage;
-    pub fn signers(&self) -> &[SignerEntry];
-    pub fn is_promoted(&self) -> bool;                          // has util entry
-    pub fn signed_by(&self, pubkey_prefix: &str) -> bool;
-    pub fn verify_all(&self) -> Vec<SignerVerification>;
+    pub fn stamps(&self) -> &[Stamp];                           // compiled/configured/stage:* in order
+    pub fn highest_stage_stamp(&self) -> Option<&Stamp>;        // most recent stage:* stamp
+    pub fn stamped_by(&self, pubkey_prefix: &str) -> bool;
+    pub fn verify_all(&self) -> Vec<StampVerification>;
 }
 ```
 
@@ -1134,7 +1296,7 @@ not separate code.
 **Commit gate (pre-commit hook):**
 ```bash
 #!/bin/sh
-cargo einmo compare output checked --work-dir . --require-match || {
+einmo compare output checked --work-dir . --require-match || {
   echo "einmo: output does not match checked. Promote (review) or repair."
   echo "  burden: the producer of the divergent output must repair or escalate."
   exit 1
@@ -1155,26 +1317,26 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo build -p einmo --release
-      - run: ./target/release/cargo-einmo verify --work-dir . --all
-      - run: ./target/release/cargo-einmo compare checked verified --work-dir . --require-match
+      - run: ./target/release/einmo verify --work-dir . --all
+      - run: ./target/release/einmo compare checked verified --work-dir . --require-match
 ```
 `compare checked verified --require-match` = 0 differing, no `only_in_checked`
 (new checks that need promotion). Enforces "merging requires all checked einmos
 to be verified." A new check appears as `only_in_checked` and blocks merge until
-a human runs `cargo einmo promote checked→verified --interactive` on the PR.
+a human runs `einmo promote checked->verified --interactive` on the PR.
 
 **Tag / release gate (pre-tag):**
 ```bash
 #!/bin/sh
 set -e
-cargo einmo compare checked verified --work-dir . --require-match
-cargo einmo confirm-signatures verified --pubkey-prefix "$RELEASE_KEY_PREFIX" --require-all
+einmo compare checked verified --work-dir . --require-match
+einmo confirm-signatures verified --pubkey-prefix "$RELEASE_KEY_PREFIX" --require-all
 # both pass → git tag -s "$VERSION"
 ```
 `confirm-signatures verified <prefix> --require-all` = every `verified/*.einmo`
-carries a `util` entry whose pubkey starts with the release officer's key. An
-AI-generated `util` (computer key, `util` pubkey == `test` pubkey) does not
-match → tag blocked.
+carries a `stage:verified` stamp whose pubkey starts with the release officer's
+key. An AI-generated stamp (its pubkey equals a well-known computer key) does
+not match → tag blocked.
 
 **Burden-of-correction rules (encoded in gate failure messages):**
 - `compare output checked` fails → the producer of the divergent `output`
@@ -1182,7 +1344,7 @@ match → tag blocked.
   file, promote new output to checked after review).
 - `compare checked verified` fails → the producer of the `checked` version
   corrects (re-promote to match verified) or escalates. Attributable via the
-  `util` signature chain.
+  stamp chain.
 
 ### 11. Randomized re-inspection
 
@@ -1192,20 +1354,20 @@ time. Kent Beck scores snapshots low on "Inspiring" (reviewers don't think
 twice). Statistical re-inspection forces a random sample of already-promoted
 files back through review. No surveyed framework does this.
 
-**Specification:** `cargo einmo console-review <work_dir> <from>→<to>
+**Specification:** `einmo console-review <work_dir> <from>-><to>
 --reexamine-rate <pct> [--reexamine-seed <seed>]` — in addition to demoting
 files that genuinely differ, randomly sample `pct`% (default 10) of files
-already in `<to>`, demote them back to `<from>` (move; `util` entry preserved),
+already in `<to>`, demote them back to `<from>` (move; all stamps preserved),
 and re-present them for review. `--reexamine-seed <seed>` pins the RNG for
 reproducibility (CI can fix a seed per cycle). `--full` is shorthand for
-`--reexamine-rate 10`. The re-examined file's re-promotion appends a **second
-`util` entry** (the re-inspection is itself attributable). A re-examination that
+`--reexamine-rate 10`. The re-examined file's re-promotion appends **another
+stage stamp** (the re-inspection is itself attributable). A re-examination that
 *rejects* a file (flagging it) surfaces baseline rot — the burden of correction
 falls on the process that originally produced the checked version.
 
 ### 12. CLI self-attestation (binary integrity check)
 
-The `cargo-einmo` binary can perform an integrity check on **its own program
+The `einmo` binary can perform an integrity check on **its own program
 file**, adding provenance evidence to the attestation chain: alongside the
 cryptographic signatures on `.einmo` content, the *tool that produced/verified*
 the artifacts is itself identifiable.
@@ -1215,46 +1377,38 @@ let exe_path = env::current_exe()?;
 let hash = sha256_of_file(&exe_path)?;
 ```
 
-**`cargo einmo self-check [--expected <sha256>] [--quiet]`** computes the
+**`einmo self-check [--expected <sha256>] [--quiet]`** computes the
 SHA-256 of `env::current_exe()?`, prints the path and hash, and — if
-`--expected <sha256>` is given (or a sidecar `cargo-einmo.sha256` ships next to
+`--expected <sha256>` is given (or a sidecar `einmo.sha256` ships next to
 the binary, or a release-attestation file records it) — exits non-zero on
 mismatch. Use cases:
 
-- A release officer runs `cargo einmo self-check --expected <release-hash>`
-  before `promote checked→verified`, confirming the signing binary is the
+- A release officer runs `einmo self-check --expected <release-hash>`
+  before `promote checked->verified`, confirming the signing binary is the
   audited build.
-- CI runs `cargo einmo self-check --expected <pinned-hash>` as a gate before
-  any `verify`/`compare`, so a tampered or substituted `cargo-einmo` cannot
+- CI runs `einmo self-check --expected <pinned-hash>` as a gate before
+  any `verify`/`compare`, so a tampered or substituted `einmo` cannot
   rubber-stamp a corrupted corpus.
 - An auditor records the binary hash alongside a release attestation.
 
-**Advisory `# produced-by:` line in `.einmo`.** When the test runner or a
-promotion/flag operation writes a `.einmo`, it appends an **unsigned advisory
-line** outside the signed content:
+**Producer provenance rides inside each stamp (§4.4).** Every stamp's
+`produced_by` JSON field records the program that generated that signature —
+`"einmo <version> sha256:<binary-hash>"`. This replaces the earlier drafts'
+separate `# produced-by:` advisory line: provenance is just another field of
+the signature metadata. Each stamp attributes its own producer, so a corpus
+records *which binary generated the output* and *which binary performed each
+promotion* — queryable by `einmo show <file>` and surfaced in the UI's
+stamp-summary panel.
 
-```
-# produced-by: cargo-einmo <version> sha256:<binary-hash>
-```
-
-This line is **not** part of the canonical signed content (it is excluded from
-`canon_input`/`canon_result`/`canon_comments`/`canon_metadata`, exactly like
-the `# flagged:` advisory line) — so byte-steadiness is preserved: rebuilding
-the binary changes the hash, but the existing `.einmo` signatures remain valid
-(the advisory line is informational, not signed). The line provides
-*attributable provenance* — "this artifact was produced by einmo binary X" —
-queryable by `cargo einmo show <file>` and surfaced in the UI's signer-summary
-panel, without entangling the binary's identity with the content's signature.
-
-**Why advisory (unsigned), not signed:** signing the binary hash into the
-content would make every `.einmo` signature binary-version-coupled — rebuilding
-the tool would invalidate every existing signature, breaking byte-steadiness
-and the verify-both-then-content-identical matching test across tool versions.
-The binary's integrity is instead attested *out-of-band* via `self-check`
-against a pinned/recorded hash, and its identity is recorded *advisory* in each
-`.einmo`. The two together — signed content + advisory producer provenance +
+**Version coupling note:** a stamp's `produced_by` is covered by *subsequent*
+stamps' prior-bytes signatures (it is part of the file), but content matching
+(`compare`, §5) never compares the STAMPS section — so rebuilding the tool
+changes future stamps' `produced_by` without invalidating any existing stamp
+or breaking stage correspondence across tool versions. The binary's integrity
+is additionally attested *out-of-band* via `self-check` against a
+pinned/recorded hash. The two together — per-stamp producer provenance +
 out-of-band binary self-attestation — constitute "more evidence to the
-attestation" without sacrificing reproducibility.
+attestation" without sacrificing comparability.
 
 ## Design preference — hierarchical granularity as a software-composition model
 
@@ -1320,7 +1474,7 @@ through the library, which enforces verify-on-inspect.
 
 ### The service layer: `einmo serve`
 
-A Rust HTTP/WebSocket server (`cargo einmo serve`) wraps the library and
+A Rust HTTP/WebSocket server (`einmo serve`) wraps the library and
 exposes its operations to any frontend. This is the single integration point for
 all UIs — the CLI, a web SPA, a desktop app, and a TUI all talk to the same
 server (or embed the library directly). The server:
@@ -1343,27 +1497,27 @@ server (or embed the library directly). The server:
 |---|---|---|
 | **Suite overview** — tree view of `input/` with per-file stage badges + signature status | `list_files` + per-file `stage()` + `verify_all()` | all actors |
 | **Diff view** — side-by-side (e.g. output vs checked), signature lines hidden | `compare` + `DiffEntry` | reviewers |
-| **Approve / promote** — promote output→checked (no passphrase) or checked→verified (prompts in-UI) | `promote(from, to, key)` | agents; humans |
+| **Approve / promote** — promote output->checked (no passphrase) or checked->verified (prompts in-UI) | `promote(from, to, key)` | agents; humans |
 | **Flag** — move file to flagged/ with reason | `flag(stage, filter, reason)` | any actor |
 | **Verify all** | `verify(all)` | CI, reviewers |
 | **Confirm-signatures** — filter by pubkey prefix | `confirm_signatures(path, prefix)` | release officer |
 | **Console-review** — guided review with vimdiff/in-UI diff, @agent handling, randomized re-inspection | `console_review(from, to, opts)` | reviewers |
-| **Signer inspection** — per-file signer chain | `signers()` | auditors |
+| **Stamp inspection** — per-file stamp chain (keys, produced_by, timestamps) | `stamps()` | auditors |
 
 ### Alert process
 
 | Alert | Trigger | Severity | Burden |
 |---|---|---|---|
 | **Output drift** | `compare output checked` ≠ 0 | error (blocks commit) | the agent that produced the divergent output repairs or escalates |
-| **Unverified checked** | `checked` file with no corresponding `verified` | error (blocks merge) | a human must promote checked→verified, or the checked producer corrects/escalates |
+| **Unverified checked** | `checked` file with no corresponding `verified` | error (blocks merge) | a human must promote checked->verified, or the checked producer corrects/escalates |
 | **Flagged file** | any file in `flagged/` | warning | the flagger resolves or regenerates |
 | **Stale baseline** | `compare --stale-days N` flags an old file | warning | scheduled re-inspection picks it up |
-| **Signature failure** | verify-on-inspect refuses a tampered file | critical | investigate via the signer chain |
-| **Non-human util** | `confirm-signatures verified <release-key>` finds a `util` whose pubkey == `test` pubkey | critical | an AI agent bypassed the human gate; attributable to the computer key |
+| **Signature failure** | verify-on-inspect refuses a tampered file | critical | investigate via the stamp chain |
+| **Non-human verified stamp** | `confirm-signatures verified <release-key>` finds a `stage:verified` stamp whose pubkey is a well-known computer key | critical | an AI agent bypassed the human gate; attributable to the computer key |
 
 ### Frontend forms (all talk to `einmo serve` or embed the library)
 
-1. **CLI** (`cargo einmo …`) — primary frontend for agents and terminal-native humans.
+1. **CLI** (`einmo …`) — primary frontend for agents and terminal-native humans.
 2. **TUI** (optional, ratatui) — console dashboard; embeds the library directly.
 3. **Web SPA** (static, served by `einmo serve`) — for distributed teams, PR-review dashboards.
 4. **Desktop app** (optional, egui or Tauri) — offline review with native vimdiff; embeds the library.
@@ -1385,10 +1539,10 @@ server (or embed the library directly). The server:
 | Layer | Language | What it owns | Rationale |
 |---|---|---|---|
 | **Core** (`einmo` crate) | Rust | `.einmo` parse/serialize; Ed25519/Argon2id; FOOP-22 append-chain; verify-on-inspect; promote/flag/compare; passphrase cascade; `Evaluator`; `EinmoSuite`; randomized re-inspection sampler | Security + invariants must have one owner. The Rust core is the **sole code path** that touches `.einmo` files or derives keys. |
-| **CLI** (`cargo-einmo`) | Rust | all verbs: promote/flag/compare/verify/confirm-signatures/show/console-review/serve | Thin wrapper over the core; the stable scriptable surface (`--json` on every verb). |
-| **Git hooks / CI glue** | Shell | pre-commit, pre-tag scripts; GH Actions `run:` steps | 3–5 lines each, pure `cargo einmo …` invocation. |
-| **Presentation (optional)** | Python (or Rust) | rich CI reports; optional `textual` TUI | Reads `cargo einmo compare --json`. Pure presentation — never touches files. |
-| **UI frontends** | varies | web SPA / TUI / desktop app | Talk to `cargo einmo serve` (REST/WS) or embed the core. Never hold keys. |
+| **CLI** (`einmo`) | Rust | all verbs: promote/flag/compare/verify/confirm-signatures/show/console-review/serve | Thin wrapper over the core; the stable scriptable surface (`--json` on every verb). |
+| **Git hooks / CI glue** | Shell | pre-commit, pre-tag scripts; GH Actions `run:` steps | 3–5 lines each, pure `einmo …` invocation. |
+| **Presentation (optional)** | Python (or Rust) | rich CI reports; optional `textual` TUI | Reads `einmo compare --json`. Pure presentation — never touches files. |
+| **UI frontends** | varies | web SPA / TUI / desktop app | Talk to `einmo serve` (REST/WS) or embed the core. Never hold keys. |
 
 **The discipline (invariant):** Shell, Python, and UI are **frontends** that
 call the Rust core (subprocess CLI, HTTP to `serve`, or PyO3 in Proposal B).
@@ -1401,10 +1555,10 @@ Rust core and is *invoked, not re-implemented*.
 #### Proposal A — Rust monolith + embedded `serve` (recommended)
 
 Everything that touches `.einmo` or keys is Rust; shell is git-hook/CI glue
-only; the web UI is `cargo einmo serve` (axum) inside the same binary.
+only; the web UI is `einmo serve` (axum) inside the same binary.
 `console-review` (vimdiff + diff -I + randomized re-inspection) is Rust — the
-demote-random-sample is an invariant (`→flagged` move) and must not live outside
-the core. UI: static SPA (SvelteKit/Vite+React) served by `cargo einmo serve`
+demote-random-sample is an invariant (`->flagged` move) and must not live outside
+the core. UI: static SPA (SvelteKit/Vite+React) served by `einmo serve`
 via `rust-embed`; browser calls REST; passphrase sent over loopback POST.
 **Binding:** subprocess CLI (`--json`) is the only non-Rust binding; UI is
 in-process HTTP. **Pros:** single invariant owner; single release artifact; no
@@ -1427,7 +1581,7 @@ to silently break the emergent human-attestation property. **Migration:** Medium
 #### Proposal C — Rust core + WASM-verify-in-browser + signing server
 
 Ship the *verify* path to the browser as WASM (no keys, read-only); a thin Rust
-signing server (`cargo einmo serve`) holds keys and is the only mutation path.
+signing server (`einmo serve`) holds keys and is the only mutation path.
 `einmo` crate factored: `einmo::verify` (no-key, WASM-targetable) + `einmo::sign`
 (full). **Binding:** subprocess CLI for shell/CI; HTTP for UI mutations; WASM
 for UI verification (same Rust code recompiled). **Pros:** verify-on-inspect
@@ -1506,14 +1660,14 @@ references, not files to move.
 7. Implement promotion + flagging (move/copy semantics).
 8. Implement `compare` (per-section matching, verify-both-then-identical).
 9. Implement passphrase cascade.
-10. Implement CLI (`cargo-einmo` binary).
+10. Implement CLI (`einmo` binary).
 11. Implement gates (shell glue).
 12. **Build `zweimomo`** — the companion test crate (three pure-Rust `Evaluator`
     impls + parallel test-input corpus). See §Use Case D.
 13. **Einmo's own CI uses its own gates** (commit: `compare output checked`;
     merge: `compare checked verified`) — the library eats its own dog food via
     zweimomo before any UI lands.
-14. Only then: `cargo einmo serve` + SPA (Proposal A's UI layer).
+14. Only then: `einmo serve` + SPA (Proposal A's UI layer).
 15. (Future, separate effort) migrate the legacy `.snap` corpus to `.einmo`.
 
 ## FIR Impact
@@ -1561,7 +1715,7 @@ structure that would host cross-validation — out of scope today.
 | **4. Integration** | `.foo` exercising parser+VM+sequencer | end-to-end | full pipeline | same as approval | same; `--stale-days 30` |
 | **5. CI (automated)** | re-runs tier 2/3 | same | `output`, `checked` | `[(Output, Checked)]` + `verify --all` | push/PR: verify + compare |
 | **6. Release / deployment** | re-runs 2/3 | same | `verified` | `[(Checked, Verified)]` + `confirm-signatures verified <release-key> --require-all` | tag gate |
-| **7. Regression / re-inspection** | existing `input/` | same | demotes `verified→checked` sample | ad-hoc | scheduled: `console-review checked→verified --reexamine-rate 10 --reexamine-seed $WEEK` |
+| **7. Regression / re-inspection** | existing `input/` | same | demotes `verified->checked` sample | ad-hoc | scheduled: `console-review checked->verified --reexamine-rate 10 --reexamine-seed $WEEK` |
 | **8. Performance (optional)** | `.foo` + timing | timing→formatted string | `output`, `checked` | `[(Output, Checked)]` | commit; redact volatile values before signing |
 
 **Tier 3 (cross-language, new)** is what `zweimomo` exercises. It is the tier
@@ -1583,9 +1737,9 @@ assert!(results.all_written_and_correspondence_holds());
 ### The actors
 
 - **Coding agents** (many, parallel) — write code on feature branches, run
-  tests, generate `output/`, promote `output→checked`, commit.
+  tests, generate `output/`, promote `output->checked`, commit.
 - **Human reviewers** — review diffs, run `console-review`, promote
-  `checked→verified` (interactive passphrase), merge.
+  `checked->verified` (interactive passphrase), merge.
 - **Release officer** (human) — holds the release passphrase; promotes/tags.
 - **CI** — automated `verify` + `compare`; never holds a passphrase.
 
@@ -1598,32 +1752,34 @@ assert!(results.all_written_and_correspondence_holds());
    - 0 differing → proceed to commit.
    - differing > 0 → the agent has the **burden to repair or escalate**: repair
      (fix code so output matches checked), promote (review and
-     `output→checked`), or escalate (flag and surface to human).
+     `output->checked`), or escalate (flag and surface to human).
 3. The agent commits. Pre-commit hook runs `einmo compare output checked
    --require-match`; blocked unless `output==checked`.
 4. The agent pushes and opens a PR. CI runs `einmo verify --all` (Layer 1) and
    `einmo compare output checked --require-match` (Layer 2).
-5. A human reviews: `einmo console-review checked→verified --interactive`
-   (passphrase not in repo config → prompt appears; human types it). Promotes
-   accepted baselines (appends `util`). Rejected → `einmo flag checked --reason …`.
+5. A human reviews: `einmo console-review checked->verified --interactive`
+   (verified-stage key not in repo config → prompt appears; human types it).
+   Promotes accepted baselines (appends the `stage:verified` stamp).
+   Rejected → `einmo flag checked --reason …`.
 6. Merge gate: `einmo compare checked verified --require-match` = 0 differing.
-   New checks (promoted `output→checked` but not `checked→verified`) block merge
-   until a human verifies them.
+   New checks (promoted `output->checked` but not `checked->verified`) block
+   merge until a human verifies them.
 7. `checked ≠ verified` at merge → the producer of the `checked` version has the
-   burden: re-promote or flag-and-escalate. Attributable via the `util` chain.
+   burden: re-promote or flag-and-escalate. Attributable via the stamp chain.
 8. Release: `einmo compare checked verified` + `einmo confirm-signatures
    verified <release-key> --require-all`. Both pass → tag.
-9. Continuous re-inspection: weekly cron `einmo console-review checked→verified
+9. Continuous re-inspection: weekly cron `einmo console-review checked->verified
    --reexamine-rate 10 --reexamine-seed $WEEK`. A rejection surfaces baseline
-   rot; re-promotion appends a second `util` entry.
+   rot; re-promotion appends another `stage:verified` stamp.
 
 ### The invariant this flow enforces
 
 No code change reaches `main` without: (a) its outputs matching a reviewed
-`checked` baseline, AND (b) that baseline carrying a human `util` signature in
-`verified/`. The signature chain attributes every state to an actor. An AI agent
-that bypasses the human gate (`--passphrase ""`) produces a `util` under the
-computer key — `confirm-signatures verified <release-key>` catches it.
+`checked` baseline, AND (b) that baseline carrying a human `stage:verified`
+stamp in `verified/`. The stamp chain attributes every state to an actor. An AI
+agent that bypasses the human gate (`--passphrase ""`) produces a verified
+stamp under the well-known computer key — `confirm-signatures verified
+<release-key>` catches it.
 
 ## Rejected Alternatives
 
@@ -1683,21 +1839,104 @@ typed library makes the invariants enforceable in code and CI.
   stages: output/checked/flagged/verified).
 - **No automated update:** Einmo writes `output/` directly; no `INSTA_UPDATE`
   equivalent; no `insta` dependency for output.
-- **Per-section matching:** `compare` matches INPUT+RESULT (required) +
-  COMMENTS (optional); both files independently verify first.
+- **Per-section matching:** `compare` matches INPUT+OUTPUT (required) +
+  perspectives/COMMENTS (optional); both files independently verify first.
 - **Randomized re-inspection:** first-class feature (`--reexamine-rate`,
   `--reexamine-seed`).
 
+### Resolutions from the 2026-07-03 pre-MVP design review (BDFL)
+
+- **Output churn accepted.** Signed timestamps mean every run rewrites
+  `output/` bytes; tolerated for now, redesign only when it becomes a real
+  problem (§B.3).
+- **Three-role key model.** Compiled Key (compile time, secret in custom
+  builds) + Configured Key (configuration time) + per-stage Stage Keys; the
+  two secret keys sign public keys (certification), stage stamps sign all
+  prior bytes and append stage after stage (§4.4). Supersedes the `test`/`util`
+  signer roles of earlier drafts.
+- **Envelope**: header line + configurable encoding (default `utf-8`) +
+  configurable section separator (default `①`+LF; Foolish suites use
+  `"!!"`+LF — a Foolish line comment); separator collision = hard error at
+  write time; STAMPS section is JSON, one object per line, with `produced_by`
+  metadata per stamp (§4). Serialization of evaluator results into text
+  chunks is the test crate's (zweimomo's) job — einmo is language-agnostic.
+- **Perspectives**: statically configured text→text views of input/output as
+  first-class signed sections; goal is at-a-glance inspection for human/AI
+  reviewers and debugging aid (§4.5).
+- **Error semantics**: `status: normal | input-error | output-error` +
+  detailed `status-detail` in metadata; expected error *outputs* (e.g.
+  "infinite loop detected") are `normal` and promotable to `verified/` (§4.2).
+- **Single CLI app, cargo-installable**: one CLI surface; crate `einmo`
+  installs via `cargo install einmo` providing `einmo` + the `cargo-einmo`
+  alias so `cargo einmo …` works; `verify-signatures` is a subcommand, not a
+  separate tool (§1, §B.6). Parallelism is configurable (parallel or serial).
+- **CLI arrows are ASCII** `->`; stage names match `[A-Za-z0-9_-]+` (§B.6).
+- **Per-stage keys in config**: `[signing.<stage>]` is part of v1 (no longer
+  deferred) — it is how "each stage has different configured keys" is
+  expressed; the verified stage is deliberately left unset (§B.5).
+- **First-run bootstrap**: no special-case messaging; the correspondence test
+  simply fails until someone promotes — humans/AI learn the flow from project
+  documentation.
+- **Interpreter pins**: zweimomo pins `rustpython-vm = "=0.5.0"` and
+  `boa_engine = "=0.21.1"` exactly; zweimomo itself is semantically versioned,
+  and bumping an interpreter pin is at least a minor version bump with an
+  expected re-review of the corpus.
+- **Algorithm-corpus licensing**: TheAlgorithms/Python and /Rust are MIT
+  (usable, with attribution); TheAlgorithms/JavaScript is **GPL-3.0** — its
+  code is **not** copied into this repo. JavaScript inputs are written
+  ourselves (translated from the MIT Python implementations); Foolish inputs
+  are written ourselves by definition.
+- **crates.io names**: `einmo` and `zweimomo` verified unclaimed (2026-07-03);
+  reservation/publishing is handled by the BDFL personally.
+
 ## Open Questions
 
-- **Desktop app framework (Tauri vs egui).** Deferred — both reuse `cargo einmo
+- **Stamp-certification semantics (confirm §4.4 interpretation).** Written as:
+  Compiled certifies the Configured pubkey, Configured certifies Stage
+  pubkeys, content integrity carried solely by Stage stamps' prior-bytes
+  signatures. If Compiled/Configured stamps should *also* cover content, add
+  `"signs":"prior-bytes"` variants — envelope shape unchanged. Awaiting BDFL
+  confirmation.
+- **Desktop app framework (Tauri vs egui).** Deferred — both reuse `einmo
   serve`'s REST API unchanged; nothing to decide now.
 - **WASM verify in browser (Proposal C).** Deferred — `einmo::verify` clean
   submodule keeps this available as a future enhancement.
-- **Per-stage passphrase config.** Whether `einmo.toml` should support
-  `[signing.<stage>]` per-stage overrides (beyond the deployment convention of
-  omitting the verified passphrase). Deferred — the cascade + convention
-  suffices for the initial implementation.
+
+## MVP — what the first shippable version supports
+
+We therefore support, as the MVP, the use cases described in **Use Case A**
+(constructing tests: text in → signed `.einmo` out, `EinmoSuite` +
+`Evaluator`), **Use Case B** (the three-role stamp chain and the core CLI),
+and **Use Case D** (zweimomo's three pure-Rust evaluators). Concretely:
+
+**MVP includes:**
+- The `.einmo` envelope (§4): header line, configurable encoding + separator,
+  metadata with `status`/`status-detail`, INPUT/OUTPUT/perspective/COMMENTS
+  sections, JSON STAMPS chain (Compiled / Configured / Stage keys).
+- Stage directories with hierarchical mirroring; promote / flag / demote
+  transitions (§2, §3).
+- `compare` with per-section matching (§5), `verify` with verify-on-inspect,
+  `confirm-signatures`.
+- The single `einmo` CLI (installable via `cargo install einmo`; `cargo einmo`
+  alias) with: `promote`, `flag`, `compare`, `verify`, `verify-signatures`,
+  `confirm-signatures`, `show`, `self-check`. Configurable parallel/serial.
+- The `Perspective` API (§4.5) with at least one working example (the Foolish
+  brane-name perspective, supplied by zweimomo).
+- **zweimomo** with its three `Evaluator` impls (foolish-ubca, RustPython,
+  Boa) implementing tests over a subset of: **integer arithmetic, grouping,
+  precedence, name binding, and function calling with integer inputs and
+  outputs** — parallel inputs per §D.4, each language's suite gated by
+  `compare output checked`.
+
+**MVP excludes** (specified in this FOOP, built after MVP): the `serve` web
+service and SPA (Use Case C), the MCP server, `console-review` (vimdiff
+driving, `@agent` handling, randomized re-inspection), the CI gate scripts/
+workflow, the exhaustive TheAlgorithms corpus (§D.7 later-phase), and the
+legacy `.snap` migration (Deferred).
+
+The plan file marks the MVP boundary: plan phases 0–10 plus the zweimomo
+phases (evaluators + §D.4 concept corpus) are MVP; gates, console-review,
+serve, and algorithm-corpus phases follow.
 
 ## References
 
@@ -1707,7 +1946,9 @@ typed library makes the invariants enforceable in code and CI.
     reimplements this from scratch (does not depend on the existing
     `foolish-core/src/signature.rs`). Status: Final.
   - **FOOP-22** — Multi-signer append format (`test`/`util` roles, "Entire
-    file" integrity). Adopted as canonical. Status: Draft.
+    file" integrity). Einmo **generalises** it into the three-role
+    Compiled/Configured/Stage stamp chain (§4.4); the append principle is
+    inherited, the role names are not. Status: Draft.
   - **FOOP-02** — `SnapshotSuite` current home in `foolish-core`, generalised
     over `Evaluator`. Einmo defines its own `EinmoSuite` from scratch (does not
     move the existing file). Status: Draft.
@@ -1748,7 +1989,7 @@ typed library makes the invariants enforceable in code and CI.
   - `foolish-ubca/src/ubca_snapshot_tester.rs` — the one existing `Evaluator`
     adapter (`UbcaEvaluator`). Zweimomo wraps it (does not modify it).
   - `foolish_review.sh` (98 lines), `accept_approved.sh` (53 lines) —
-    worktree-local; replaced by `cargo einmo` subcommands (zweimomo builds its
+    worktree-local; replaced by `einmo` subcommands (zweimomo builds its
     own corpus; existing scripts untouched).
   - 276 committed `.snap` files (131 core + 145 ubca + 0 ubcb) + 285 `.snap.new`
     files across `foolish-core`/`foolish-ubca` snapshot_tests dirs. **Not
@@ -2249,6 +2490,30 @@ assert_eq!(out, "3");
 
 
 ## Last Updated
+
+**Date**: 2026-07-03
+**Updated By**: Claude Code 2.1.199 (Claude Code); Fable 5
+**Changes**: Folded in the pre-MVP design review resolutions (BDFL). (1)
+**Envelope rewritten (§4)**: header line + configurable encoding/separator
+(default `①`+LF; Foolish suites `"!!"`+LF), metadata with producer commit SHA
+and `status`/`status-detail` error semantics, INPUT/OUTPUT(+perspectives)/
+COMMENTS sections, **STAMPS as JSON** (one object per line, `produced_by`
+provenance per stamp — the `# produced-by:` advisory is subsumed). RESULT
+renamed OUTPUT. (2) **Three-role key model (§4.4)**: Compiled Key + Configured
+Key certify public keys; per-stage Stage Keys sign all prior bytes and append
+per promotion — supersedes `test`/`util`; every promotion now appends a stamp.
+Interpretation note added to Open Questions for BDFL confirmation. (3)
+**Perspectives (§4.5)**: statically configured text→text views as signed
+sections (e.g. Foolish brane-name perspective). (4) **Single CLI app**: crate
+`einmo`, `cargo install einmo`, binaries `einmo` + `cargo-einmo` alias; ASCII
+`->` stage arrows; stage names `[A-Za-z0-9_-]+`; `verify-signatures` a
+subcommand; configurable parallelism. (5) **New MVP section** (final normative
+section) defining MVP in/out. (6) Output-churn tradeoff accepted (§B.3);
+per-stage `[signing.<stage>]` keys now v1; `.gitattributes *.einmo -text`;
+zweimomo owns result serialization ("most colloquial in each language");
+interpreter pins `=0.5.0`/`=0.21.1` + zweimomo semver; TheAlgorithms licensing
+resolved (JS repo GPL-3.0 → write JS inputs ourselves from MIT Python).
+Resolved Decisions extended accordingly.
 
 **Date**: 2026-07-03
 **Updated By**: Claude Code 2.1.199 (Claude Code); Fable 5

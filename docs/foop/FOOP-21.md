@@ -2,7 +2,7 @@
 foop: 12
 title: Alarms — diagnostic levels emitted by compiler and evaluator
 author: hc <hc.busy@gmail.com>
-status: Brewing
+status: Deprecated
 type: Standards
 created: 2026-05-04
 phase: phase-1
@@ -10,6 +10,10 @@ supersedes: []
 ---
 
 # FOOP-21: Alarms — diagnostic levels emitted by compiler and evaluator
+
+> **Status: Deprecated** (2026-07-03 18:23)
+>
+> Canceled as it stands. This feature should be later respecified and reimplemented.
 
 ## Abstract
 

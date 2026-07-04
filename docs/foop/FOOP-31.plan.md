@@ -14,6 +14,8 @@
 
 ## Phase 1: Compiler (FOOP-9, FOOP-21)
 
+- [x] Canceled. This feature should be later respecified and reimplemented.
+      (2026-07-03 18:23)
 - [x] Complete FOOP-9: OperatorFir — replace BinaryOpFir/UnaryOpFir with unified OperatorFir
   - [x](2026-05-08 22:31) Add `OperatorFir(op, operands: Vec<FirRef>)` to `fir.rs`
   - [x](2026-05-08 22:31) Remove `BinaryOpFir`, `UnaryOpFir` from `fir.rs`
@@ -31,7 +33,7 @@
   - [x](2026-05-08 23:00) Thread `AlarmSink` through `Scope` (Rc<dyn AlarmSink>)
   - [x](2026-05-08 23:00) Implement evaluator alarm sources (DIV-BY-ZERO, UNBOUND-NAME, INVARIANT-VIOLATED)
   - [x](2026-05-08 23:00) Add 10 unit tests (level display, serialization, display, VecAlarmSink, NKFir roundtrip, div-by-zero, unknown literal, scope emit, scope without sink)
-- [ ] Verify all Phase 1 tests pass
+- [-] Verify all Phase 1 tests pass
 
 ## Phase 2: UBC (FOOP-6, FOOP-7, FOOP-8, FOOP-01, FOOP-11)
 
@@ -40,14 +42,14 @@
 - [x] Complete FOOP-01: Anchored search through constanic anchors (implemented in `SearchFir::step_anchored`)
 - [x] Complete FOOP-11: Search stops at NK (NK propagation implemented in SearchFir step rules)
 - [x] Complete FOOP-6: Depth-first evaluator (implemented in `run_to_completion_with_scope`)
-- [ ] Run 60+ Phase 2 approval tests (currently 16 tests exist — need more test input files)
+- [-] Run 60+ Phase 2 approval tests (currently 16 tests exist — need more test input files)
 
 ## Phase 3: Concatenation (FOOP-3)
 
 - [x] Add ConcatenationFir variant (implemented in `fir.rs`)
 - [x] Implement step_concatenation (merge brane, constanicClone, delegate)
 - [x] Compiler accepts concatenation (implemented in parser)
-- [ ] Add more concatenation-specific approval tests
+- [-] Add more concatenation-specific approval tests
 
 ## Phase 4: CLI
 
@@ -55,7 +57,7 @@
 - [x] Implement `foolish run` — evaluates and prints result
 - [x] Implement `foolish step` — debug output showing parsed + result
 - [x] Implement `foolish repl` — multiline input with brace-depth tracking
-- [ ] Add CLI functional tests
+- [-] Add CLI functional tests
 
 ## Semantic Questions (from test analysis)
 
@@ -93,12 +95,12 @@ Is this the intended behavior, or should these cases produce `???` without an al
 
 ## Final Verification
 
-- [ ] Run complete test suite: all modules
-- [ ] Verify SPA1 exit criteria: all governing FOOPs Final/Implementing, all tests pass
-- [ ] Tag SPA1 milestone
+- [-] Run complete test suite: all modules
+- [-] Verify SPA1 exit criteria: all governing FOOPs Final/Implementing, all tests pass
+- [-] Tag SPA1 milestone
 
 ## Worktree
 
-- [ ] Create worktree at `${HOME}/tmp/foolish-worktrees/8172-foop-31` with branch `foop/31-ubc-spa1`
-- [ ] Verify all work is complete in `${HOME}/tmp/foolish-worktrees/8172-foop-31` and committed to `foop/31-ubc-spa1`
-- [ ] Merge `foop/31-ubc-spa1` to alpha
+- [-] Create worktree at `${HOME}/tmp/foolish-worktrees/8172-foop-31` with branch `foop/31-ubc-spa1`
+- [-] Verify all work is complete in `${HOME}/tmp/foolish-worktrees/8172-foop-31` and committed to `foop/31-ubc-spa1`
+- [-] Merge `foop/31-ubc-spa1` to alpha

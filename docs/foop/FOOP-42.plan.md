@@ -27,6 +27,8 @@ the human reviews the final output.
 
 ## Worktree
 
+- [x] Canceled. This feature should be later respecified and reimplemented.
+      (2026-07-03 18:23)
 - [x] Create worktree at `${HOME}/tmp/foolish-worktrees/hfs-formatting-foop-42` with branch `foop/foop-42-humanizing-fir-sequencer`
       (2026-06-04 14:00)
 
@@ -160,8 +162,8 @@ the human reviews the final output.
   - Approval test failures are EXPECTED — snapshots are pending human review
 - [x] Oracle verified all 12 FOOP-42 acceptance criteria PASS
       (2026-06-04 18:30)
-- [ ] After human approval: accept snapshots (human runs `cargo insta review`)
-- [ ] Verify signatures with `./target/debug/verify_signatures`
+- [-] After human approval: accept snapshots (human runs `cargo insta review`)
+- [-] Verify signatures with `./target/debug/verify_signatures`
       (2026-06-04 17:50)
 
 ### Phase 6: Cleanup
@@ -171,11 +173,11 @@ the human reviews the final output.
   - No uncommitted source changes remaining
   - 137 `.snap.new` (core) + 4 `.snap.new` (ubcb) pending human review
       (2026-06-04 18:35)
-- [ ] Merge `foop/foop-42-humanizing-fir-sequencer` to alpha
-- [ ] Cleanup `${HOME}/tmp/foolish-worktrees/hfs-formatting-foop-42`
-  - [ ] Check that plan has all but Cleanup checkboxes completed
-  - [ ] Remove the worktree directory
-  - [ ] This is the last checkbox to be checked in this plan
+- [-] Merge `foop/foop-42-humanizing-fir-sequencer` to alpha
+- [-] Cleanup `${HOME}/tmp/foolish-worktrees/hfs-formatting-foop-42`
+  - [-] Check that plan has all but Cleanup checkboxes completed
+  - [-] Remove the worktree directory
+  - [-] This is the last checkbox to be checked in this plan
 
 ## Acceptance Criteria (foop42 test file)
 

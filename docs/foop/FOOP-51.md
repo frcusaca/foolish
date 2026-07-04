@@ -2,7 +2,7 @@
 foop: 15
 title: AB list, name resolution, search_result, and short-circuit accumulation
 author: hc <hc.busy@gmail.com>
-status: Brewing
+status: Deprecated
 type: Standards
 created: 2026-05-08
 phase: phase-2
@@ -10,6 +10,10 @@ supersedes: []
 ---
 
 # FOOP-51: AB list, name resolution, search_result, and short-circuit accumulation
+
+> **Status: Deprecated** (2026-07-03 18:23)
+>
+> Canceled as it stands. This feature should be later respecified and reimplemented.
 
 ## Abstract
 

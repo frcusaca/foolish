@@ -3,7 +3,7 @@ foop: d24
 title: Humanizing FIR Sequencer formatting specification
 author: opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4
 credits: Harold Cooper (hcbusy) — indentation model, proto-brane abstraction, line_hint design
-status: Draft
+status: Deprecated
 type: Specification
 created: 2026-06-03
 phase: phase-2
@@ -11,6 +11,10 @@ supersedes: []
 ---
 
 # FOOP-42: Humanizing FIR Sequencer formatting specification
+
+> **Status: Deprecated** (2026-07-03 18:23)
+>
+> Canceled as it stands. This feature should be later respecified and reimplemented.
 
 ## Nomenclature
 

@@ -414,48 +414,50 @@ Over-engineering for two consumers. A module in `foolish-core` suffices.
 
 ### Step 1: Trait-based sequencing
 
-- [ ] Define `FirQueryable` trait in `fir.rs`
-- [ ] Define `FirChildRef` wrapper for `Rc<RefCell<Fir>>` children
-- [ ] Implement `FirQueryable` for `Fir`
-- [ ] Rewrite `HumanizingSequencer` / `hs_format_fir` to use trait
-- [ ] Update `Sequencer::format` to delegate to `HumanizingSequencer`
-- [ ] Remove `format()` from `Steppable` trait and all impls
-- [ ] Update callers (`foolish-cli`, inline tests)
-- [ ] Verify: `cargo test --workspace` passes
+- [x] Canceled. This feature should be later respecified and reimplemented.
+      (2026-07-03 18:23)
+- [-] Define `FirQueryable` trait in `fir.rs`
+- [-] Define `FirChildRef` wrapper for `Rc<RefCell<Fir>>` children
+- [-] Implement `FirQueryable` for `Fir`
+- [-] Rewrite `HumanizingSequencer` / `hs_format_fir` to use trait
+- [-] Update `Sequencer::format` to delegate to `HumanizingSequencer`
+- [-] Remove `format()` from `Steppable` trait and all impls
+- [-] Update callers (`foolish-cli`, inline tests)
+- [-] Verify: `cargo test --workspace` passes
 
 ### Step 1.5: FIR Builders (UBC and UBCb)
 
-- [ ] Define `*FirBuilder` structs in `foolish-core/src/fir.rs` (one per FIR variant: `ConstantIntFirBuilder`, `NkFirBuilder`, `OperatorFirBuilder`, `SearchFirBuilder`, `IndexFirBuilder`, `HeadTailFirBuilder`, `StayFoolishFirBuilder`, `StayFullyFoolishFirBuilder`, `ConcatenationFirBuilder`, `NormalBraneFirBuilder`)
-- [ ] Each builder: fluent API with `.field(value).state(Nyes).build() -> Fir`
-- [ ] Unit tests for each builder (construct, verify fields, wrap in `FirRef`, format via `FirQueryable`)
-- [ ] Define `UbcbFirBuilder` structs in `foolish-ubcb/src/fir.rs` (analogous, returns `UbcbFir`)
-- [ ] Unit tests for UBCb builders
-- [ ] Remove `SequenceableFir`, `SequenceableStatement`, `SequenceableError` from `fir.rs`
-- [ ] Remove `SequenceableFir` usage from `foolish-ubcb/src/fir.rs`
-- [ ] Update `HumanizingSequencer` — remove owned `SequenceableFir` variant, keep only `HumanizingSequencerRef` for `&dyn FirQueryable`
-- [ ] Migrate hand-constructed sequencer tests in `lib.rs` to use builders + parse-based tests
-- [ ] Verify: `cargo test --workspace` passes
+- [-] Define `*FirBuilder` structs in `foolish-core/src/fir.rs` (one per FIR variant: `ConstantIntFirBuilder`, `NkFirBuilder`, `OperatorFirBuilder`, `SearchFirBuilder`, `IndexFirBuilder`, `HeadTailFirBuilder`, `StayFoolishFirBuilder`, `StayFullyFoolishFirBuilder`, `ConcatenationFirBuilder`, `NormalBraneFirBuilder`)
+- [-] Each builder: fluent API with `.field(value).state(Nyes).build() -> Fir`
+- [-] Unit tests for each builder (construct, verify fields, wrap in `FirRef`, format via `FirQueryable`)
+- [-] Define `UbcbFirBuilder` structs in `foolish-ubcb/src/fir.rs` (analogous, returns `UbcbFir`)
+- [-] Unit tests for UBCb builders
+- [-] Remove `SequenceableFir`, `SequenceableStatement`, `SequenceableError` from `fir.rs`
+- [-] Remove `SequenceableFir` usage from `foolish-ubcb/src/fir.rs`
+- [-] Update `HumanizingSequencer` — remove owned `SequenceableFir` variant, keep only `HumanizingSequencerRef` for `&dyn FirQueryable`
+- [-] Migrate hand-constructed sequencer tests in `lib.rs` to use builders + parse-based tests
+- [-] Verify: `cargo test --workspace` passes
 
 ### Step 2: Move SnapshotSuite to core
 
-- [ ] Create `foolish-core/src/snapshot_suite.rs` (moved + generalized)
-- [ ] Define `StatementOutput` struct in `foolish-core`
-- [ ] Move formatting helpers (`format_statements`, `fmt_fir_inline`)
-- [ ] Add dev-dependencies to `foolish-core/Cargo.toml`
-- [ ] Provide `ubcb_evaluator` adapter in `foolish-ubcb-cli`
-- [ ] Remove `snapshot_suite.rs` from `foolish-ubcb-cli`
-- [ ] Verify: `cargo test -p foolish-ubcb-cli --lib` passes
-- [ ] Verify: `cargo test --workspace` passes
+- [-] Create `foolish-core/src/snapshot_suite.rs` (moved + generalized)
+- [-] Define `StatementOutput` struct in `foolish-core`
+- [-] Move formatting helpers (`format_statements`, `fmt_fir_inline`)
+- [-] Add dev-dependencies to `foolish-core/Cargo.toml`
+- [-] Provide `ubcb_evaluator` adapter in `foolish-ubcb-cli`
+- [-] Remove `snapshot_suite.rs` from `foolish-ubcb-cli`
+- [-] Verify: `cargo test -p foolish-ubcb-cli --lib` passes
+- [-] Verify: `cargo test --workspace` passes
 
 ### Step 3: Sequence UBC FIRs
 
-- [ ] Implement `ubc_evaluator` adapter
-- [ ] Create `foolish-core/snapshot_tests/input/` directory
-- [ ] Create ~20 representative `.foo` input files
-- [ ] Add UBC approval tests module
-- [ ] Generate initial snapshots (`INSTA_UPDATE=always`)
-- [ ] Verify: `cargo test -p foolish-core -- approval` passes
-- [ ] (Later) Remove inline approval tests from `lib.rs`
+- [-] Implement `ubc_evaluator` adapter
+- [-] Create `foolish-core/snapshot_tests/input/` directory
+- [-] Create ~20 representative `.foo` input files
+- [-] Add UBC approval tests module
+- [-] Generate initial snapshots (`INSTA_UPDATE=always`)
+- [-] Verify: `cargo test -p foolish-core -- approval` passes
+- [-] (Later) Remove inline approval tests from `lib.rs`
 
 ## References
 

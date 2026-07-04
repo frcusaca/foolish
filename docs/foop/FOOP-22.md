@@ -2,7 +2,7 @@
 foop: 22
 title: Multi-signer snapshot signatures with appended utility signing and entire-file integrity
 author: opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4
-status: Draft
+status: Deprecated
 type: Standards
 created: 2026-06-01
 phase: meta
@@ -10,6 +10,10 @@ supersedes: []
 ---
 
 # FOOP-22: Multi-signer snapshot signatures with appended utility signing and entire-file integrity
+
+> **Status: Deprecated** (2026-07-03 18:23)
+>
+> Superseded by FOOP-92 (Einmo — directory-based signed-snapshot testing with staged promotion). This feature should be later respecified and reimplemented if still needed, informed by FOOP-92's design.
 
 ## Abstract
 

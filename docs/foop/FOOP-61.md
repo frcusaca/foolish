@@ -2,7 +2,7 @@
 foop: 16
 title: UBCb State Machine — Per-Variant NYES Table
 author: hc <hc.busy@gmail.com>
-status: Draft
+status: Deprecated
 type: Standards
 created: 2026-05-09
 phase: phase-2
@@ -10,6 +10,10 @@ supersedes: []
 ---
 
 # FOOP-61: UBCb State Machine — Per-Variant NYES Table
+
+> **Status: Deprecated** (2026-07-03 18:23)
+>
+> Canceled as it stands. This feature should be later respecified and reimplemented.
 
 ## Abstract
 

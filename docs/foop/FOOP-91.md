@@ -2,7 +2,7 @@
 foop: 19
 title: Rename all_terminal to all_constanic in UBCb
 author: opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4
-status: Draft
+status: Deprecated
 type: Nitpick
 created: 2026-05-17
 phase: phase-3
@@ -10,6 +10,10 @@ supersedes: []
 ---
 
 # FOOP-91: Rename all_terminal to all_constanic in UBCb
+
+> **Status: Deprecated** (2026-07-03 18:23)
+>
+> Canceled as it stands. This feature should be later respecified and reimplemented.
 
 ## Abstract
 

@@ -2,7 +2,7 @@
 foop: 13
 title: SPA1 — Semi-Privately Available milestone: UBC reference implementation (depth-first)
 author: hc <hc.busy@gmail.com>
-status: Draft
+status: Deprecated
 type: Milestone
 created: 2026-05-07
 phase: meta
@@ -10,6 +10,10 @@ supersedes: []
 ---
 
 # FOOP-31: SPA1 — Semi-Privately Available milestone (UBC reference)
+
+> **Status: Deprecated** (2026-07-03 18:23)
+>
+> Canceled as it stands. This feature should be later respecified and reimplemented.
 
 ## Abstract
 

@@ -2,7 +2,7 @@
 foop: 9
 title: Operators are brane-like FIRs with positional unnamed operands and no search boundary
 author: hc <hc.busy@gmail.com>
-status: Brewing
+status: Deprecated
 type: Standards
 created: 2026-05-04
 phase: phase-1
@@ -10,6 +10,10 @@ supersedes: []
 ---
 
 # FOOP-9: Operators are brane-like FIRs with positional unnamed operands and no search boundary
+
+> **Status: Deprecated** (2026-07-03 18:23)
+>
+> Canceled as it stands. This feature should be later respecified and reimplemented.
 
 ## Abstract
 

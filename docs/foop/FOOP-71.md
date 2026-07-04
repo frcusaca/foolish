@@ -2,7 +2,7 @@
 foop: 17
 title: Snapshot testing with cargo-insta for UBCb — approval testing infrastructure
 author: Sisyphus <agent>
-status: Draft
+status: Deprecated
 type: Standards
 created: 2026-05-15
 phase: meta
@@ -10,6 +10,10 @@ supersedes: []
 ---
 
 # FOOP-71: Snapshot testing with cargo-insta for UBCb
+
+> **Status: Deprecated** (2026-07-03 18:23)
+>
+> Canceled as it stands. This feature should be later respecified and reimplemented.
 
 ## Abstract
 
