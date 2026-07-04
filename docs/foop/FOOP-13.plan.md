@@ -66,7 +66,8 @@ worktree, until merge time.
 - [ ] Structure, value, and clone tests:
   - [ ] `concat_statement_parents_point_at_top_concat` — parents bypass the whole storage tree
         at every depth; bags never surface via `get_my_brane`.
-  - [ ] `concat_is_own_value` — `value()` of a settled ConcatBrane is itself; `as_i64` is None.
+  - [ ] `concat_value_is_itself` — `settled_result()` is None so `value()` of a settled
+        ConcatBrane is itself; `as_i64` is None via the unmodified default (no override).
   - [ ] `concat_constanic_clone_rewires_and_recoordinates` — clone-of-concat as a search result:
         storage tree deep-cloned, parents rewired to the clone, numbering and shape preserved.
   - [ ] `nested_concat_elements_are_adopted_not_spliced` — nested ConcatBrane element becomes an
@@ -81,7 +82,8 @@ worktree, until merge time.
 ### A2 — Capability plumbing (behavior-neutral refactor; gates stay green)
 
 - [ ] Add `Fir` trait methods with behavior-preserving defaults: `stmt_count()` (Brane:
-      `foolish_children.len()`; default None), `stmt_at(idx)`, `is_own_value()` (default false).
+      `foolish_children.len()`; default None), `stmt_at(idx)`, and `settled_result()` (default:
+      first ubc child — today's behavior for the result-style kinds).
 - [ ] Convert kind-match sites from `FirKind::Brane` to the capability
       (`stmt_count().is_some()` / `is_brane_like()`): `get_my_brane` and `step_inner`
       `current_brane` in `foolish-ubca/src/fir_trait.rs`; `find_parent_brane` and the SearchFir
@@ -89,7 +91,15 @@ worktree, until merge time.
       `foolish-ubca/src/evaluator.rs`. Leave construction-site matches alone.
 - [ ] Re-express `FirRefNavExt::index_into`, `find_stmt_index`, and
       `index_into_brane_relative` over `stmt_count`/`stmt_at`.
-- [ ] Add the `is_own_value()` check to `FirRefExt::value`.
+- [ ] Re-express `FirRefExt::value` over `settled_result()` (Some → recurse into the result;
+      None → the FIR is its value; the constanic gate lives INSIDE `settled_result()`, which
+      never returns self — the caller holding the handle substitutes self).
+- [ ] Doctrine correction (spec §"Doctrine correction"): rewrite the `FirRefExt::value` and
+      `Fir::as_i64` doc comments in `foolish-ubca/src/fir_trait.rs` and scope the `(result=)`
+      aside on `ProtoBrane::all_children` in `foolish-ubca/src/proto_brane.rs`; sweep
+      `foolish-ubca` code comments and `docs/` for any other "ubc_children = result" phrasing
+      and correct it (leave `push_search_result`'s search-scoped invariant and FOOP-62 §8
+      untouched — they are already correctly scoped).
 - [ ] Gates: `cargo fmt --all`; `cargo clippy --workspace -- -D warnings`;
       `cargo test --workspace`; `cargo insta test -p foolish-ubca --lib` produces ZERO
       `.snap.new` (this step must be observably inert).
@@ -98,9 +108,11 @@ worktree, until merge time.
 ### A3 — The non-merging ConcatBrane
 
 - [ ] Rewrite `ConcatenationFir::fir_op_step` per the spec's populate step: constanic-clone
-      element values into bags (brane → segment; ConcatBrane → adopted inner bag, shape
-      preserved), assign global line numbers across the tree, rewire statement parents to the
-      top ConcatBrane, push non-constanic clones as tasks, settle by the existing terminal rule.
+      element values into bags via a CAPABILITY-BASED adoption rule (any brane-like value
+      concats; this FOOP's two instances: plain statement-list brane → segment; ConcatBrane →
+      adopted inner bag, shape preserved — leave the seam open for future brane kinds), assign
+      global line numbers across the tree, rewire statement parents to the top ConcatBrane,
+      push non-constanic clones as tasks, settle by the existing terminal rule.
 - [ ] Implement `ConcatenationFir` overrides: `stmt_count`, `stmt_at` (tree descent via prefix
       sums), `_search_brane` (direction-aware global range over the tree), `_ab_search` (shared
       logic with `BraneFir`, not duplicated), `is_own_value` → true, `as_i64` → None.
@@ -185,6 +197,13 @@ worktree, until merge time.
   - [ ] This is the last sub-task checkbox to be checked in this block of subtasks.
 
 ## Last Updated
+
+**Date**: 2026-07-03
+**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)
+**Changes**: A2 updated per Atlas's correction: `settled_result()` replaces the `is_own_value()`
+hook, `value()` re-expressed over it, and a doctrine-correction task added (fix doc comments
+that overstate "ubc_children = result"; no `as_i64` override). A1 test renamed to
+`concat_value_is_itself`.
 
 **Date**: 2026-07-03
 **Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)

@@ -2,7 +2,7 @@
 foop: 31
 title: MAX_BRANE_SIZE — auto-sizing via a non-merging ConcatBrane equivalent to the merged brane
 author: Atlas <hc.busy@gmail.com>
-status: Draft
+status: Brewing
 type: Standards
 created: 2026-07-03
 phase: phase-2
@@ -168,13 +168,15 @@ ordinary children:
   brane); otherwise push every element as a task and go `BRANING` (unchanged shape).
 - `BRANING`, all elements constanic, storage not yet built: for each element in order, take its
   value and **constanic-clone** it into a bag (NYES transformed per the constanic-clone rules of
-  FOOP-7/FOOP-62): a brane value becomes a segment; a ConcatBrane value is **adopted as an inner
-  bag** — its own storage tree is deep-cloned beneath, preserving its shape. (It is NOT spliced
-  flat: flattening would rebuild an unbounded array at the top node, exactly what the bound
-  forbids.) Assign global line numbers across the finished tree and rewire every cloned
-  statement's parent to the top ConcatBrane. Push every non-constanic cloned statement as a
-  task — recoordination against the new context is what resolves cross-element references — and
-  remain `BRANING`.
+  FOOP-7/FOOP-62). The adoption rule is **capability-based, not kind-matched** — any brane-like
+  value concats (see §"The Integer brane": a future third brane kind must slot in here without
+  touching this step). The two kinds this FOOP ships instantiate it as: a plain statement-list
+  brane clones into a segment; a ConcatBrane is **adopted as an inner bag** — its storage tree
+  deep-cloned beneath, preserving its shape. (It is NOT spliced flat: flattening would rebuild
+  an unbounded array at the top node, exactly what the bound forbids.) Assign global line
+  numbers across the finished tree and rewire every cloned statement's parent to the top
+  ConcatBrane. Push every non-constanic cloned statement as a task — recoordination against the
+  new context is what resolves cross-element references — and remain `BRANING`.
 - `BRANING`, storage built, tasks drained: settle by the existing rule — any NK → `NK`, any
   ECONSTANIC/WOCONSTANIC → `WOCONSTANIC`, else `CONSTANT`.
 
@@ -189,8 +191,19 @@ New/changed `Fir` methods:
 fn stmt_count(&self) -> Option<usize>;          // Brane: foolish_children.len(); ConcatBrane: Σ over tree
 /// The statement at a global index, per the Equivalence Law.
 fn stmt_at(&self, idx: usize) -> Option<FirRef>; // Brane: foolish_children[idx]; ConcatBrane: tree descent
-/// True when this constanic FIR IS its own value (ubc_children are not a result chain).
-fn is_own_value(&self) -> bool;                  // default false; ConcatBrane: true
+/// The settled result this FIR resolves to, if any. Each kind interprets its own
+/// ubc_children; the default preserves today's behavior for the result-style kinds.
+/// CONTRACT: applies the constanic gate ITSELF — pre-constanic always answers None
+/// (a mid-flight search may hold a pending entry in its store; that is not yet a
+/// result). None therefore means "nothing to resolve into": either not settled yet,
+/// or settled and I AM my own value. It can never return "self" — a pointee method
+/// cannot mint its own FirRef; the CALLER holding the handle substitutes self.
+fn settled_result(&self) -> Option<FirRef> {
+    if !self.core().get_nyes().is_constanic() {
+        return None;
+    }
+    self.core().ubc_children().into_iter().next()
+}                                                // ConcatBrane: None — it IS its value
 ```
 
 - `ConcatenationFir::_search_brane(expr, start, end)`: map the global, direction-aware range
@@ -200,12 +213,42 @@ fn is_own_value(&self) -> bool;                  // default false; ConcatBrane: 
 - `ConcatenationFir::_ab_search`: identical logic to `BraneFir::_ab_search` (enclosing
   statement's IB, then parent brane) — shared via a free function or default method, not
   duplicated.
-- `Fir::as_i64`'s default reads `ubc_children[0]` — ConcatBrane overrides to `None` (its
-  ubc_children are segments, not a result chain).
+- `Fir::as_i64` needs NO override: a brane never yields an integer, so the default chain
+  (first ubc child's `as_i64`) reaches a bag — a brane — and returns `None` naturally.
 
-**`FirRefExt::value`** gains one check: if the FIR `is_own_value()`, stop — a settled ConcatBrane
-resolves to itself (like a BraneFir, which today only works because it happens to have no
-ubc_children). Without this, `value()` would "resolve" a ConcatBrane to its first segment.
+**`FirRefExt::value`** is re-expressed over `settled_result()` and becomes trivial: `Some(r)` →
+recurse into `r`; `None` → return the handle itself (the FIR is its value — settled or not; the
+constanic gate already lives inside `settled_result()`). Today `value()` hard-codes
+"constanic + non-empty `ubc_children` ⇒ resolve to `ubc_children[0]`" — a fact about the
+result-style kinds (Search, Index, Operator) written as if it were a law of ProtoBrane. It is
+not: `ubc_children` is the general compute-time store, stepped by the shared machinery, and each
+kind interprets its own contents (see Doctrine correction below). The default `settled_result()`
+preserves current behavior for every existing kind; ConcatBrane answers `None` because its
+ubc_children are storage, not a result chain.
+
+#### Doctrine correction: `ubc_children` is kind-interpreted
+
+`ubc_children` is the compute-time child store. The stepping machinery steps what is pushed
+there (`push_ubc_child` enqueues non-constanic entries as tasks); **what the settled contents
+MEAN is decided by each FIR kind**. Search/Index/HeadTail hold at most one entry that is the
+result (the SINGULAR-RESULT INVARIANT — correctly scoped to search FIRs on
+`ProtoBrane::push_search_result`, and likewise in FOOP-62 §8); ConcatBrane holds its storage
+tree; future kinds may hold something else. Documentation that states or hints a universal
+"ubc_children[0] is the value" rule is wrong and is corrected by this FOOP:
+
+- `FirRefExt::value` doc comment (`fir_trait.rs`): "walks the chain until it reaches a terminal
+  value (one with no ubc_children, like IndepInt, Nk, or BraneFir)" — equates having
+  ubc_children with being a result wrapper. Rewrite around `settled_result()`: a FIR is terminal
+  when its kind reports no settled result, not when the store happens to be empty.
+- `Fir::as_i64` doc comment (`fir_trait.rs`): "Default: look through ubc_children for resolved
+  results" — rephrase to "delegates to `settled_result()`-style resolution; kinds that are not
+  integer-valued yield None."
+- `ProtoBrane::all_children` doc comment (`proto_brane.rs`): "ubc first (result=), then foolish"
+  — the `result=` aside describes the sequencer's rendering of result-style kinds, not a
+  property of the store; scope the comment accordingly.
+- Sweep `foolish-ubca` (code comments and `docs/`) for further "ubc = result" phrasing during
+  Phase A and correct in place. `proto_brane.rs`'s store description ("search results, etc.")
+  and FOOP-62's singular-result scoping are already correct and need no change.
 
 **Kind-match conversion.** Every site that hard-matches `FirKind::Brane` to mean "a brane-like
 thing" switches to the capability (`stmt_count().is_some()`, or an `is_brane_like()` helper on
@@ -253,11 +296,68 @@ taught about the storage tree explicitly.
 storage tree in global order — per the Equivalence Law. Where evaluation semantics are
 unchanged, sequenced output is byte-identical to today's merged-brane rendering.
 
+#### The Integer brane (informative — a consumer of this design)
+
+The ConcatBrane upgrade is the enabling mechanism for the **Integer brane**, documented here as
+a design driver; its implementation is a follow-on FOOP.
+
+The idea: numbers like `10` stop being lexical literals and become **identifiers**. The Integer
+brane is a **custom-built brane** — not compiled from Foolish source — that, when asked, returns
+what the identifier `10` means. It also carries the arithmetic operators, so that
+
+```foolish
+{r = {1,2} plus}
+```
+
+resolves `plus` the same way any name resolves, supplying Foolish with the very *idea* of
+"integer" and "integer arithmetic" through name resolution rather than through built-in syntax.
+
+Programs then run as:
+
+```text
+Concat( IntegerBrane, program_brane )
+```
+
+Prepending via concatenation is the whole delivery mechanism: the program's statements sit
+AFTER the Integer brane's in global order, so ordinary backward IB search — with zero new
+resolution machinery — falls through the program's own statements into the Integer brane. What
+today would be a miss (ECONSTANIC on `10` or `plus`) becomes a hit in the prepended context.
+
+The Integer brane cannot pre-store every integer; it invokes the **Creation Postulate**
+(`docs/why/creation_postulate.md` — you can always create something new) to create the idea of
+each integer on demand, at the moment it is first asked. This slots into the FOOP's
+architecture at exactly the seams it defines:
+
+- **The Integer brane is a THIRD KIND of brane** — distinct from the normal Brane and the
+  ConcatBrane — **but concat-able exactly like them.** After this FOOP, "being a brane" means
+  implementing the trait surface (`_search_brane`, `stmt_count`, `stmt_at`, `_ab_search`,
+  `settled_result`) — not being the `BraneFir` struct. The Integer brane is a third implementor
+  whose answers are COMPUTED (create-on-ask) instead of stored. Nothing in the resolution
+  machinery can tell the difference; that is the point.
+- **Concat-ability of a third kind constrains the populate step.** `Concat(IntegerBrane,
+  program_brane)` only works if ConcatBrane accepts ANY brane-like element, not just the two
+  kinds this FOOP ships. The populate step's adoption rule must therefore be capability-based,
+  not kind-matched: a plain statement-list brane clones into a segment; anything else
+  brane-like is adopted as a bag THROUGH ITS TRAIT SURFACE (queries delegate to it; a
+  generative brane is never flattened into cloned statements — it may not be finitely
+  enumerable). Phase A must leave this seam open even though only two kinds exist yet.
+- **The kind-interpreted `ubc_children` doctrine gives created ideas a home.** Ideas
+  materialized by the Creation Postulate are memoized into the Integer brane's own compute-time
+  store, interpreted its own way — a third interpretation alongside "singular result" and
+  "storage tree."
+- **One known tension to resolve in the follow-on FOOP: positional addressing.** The Integer
+  brane's conceptual statement list is unbounded, which breaks prefix-sum arithmetic if it
+  participates naively in `stmt_count`/`stmt_at`. Candidate answers: report only materialized
+  statements, or exempt the Integer brane from positional addressing (find it by name, never by
+  `#n`). Deliberately not decided here — but the ConcatBrane implementation must not bake in an
+  assumption that every element's statement count is cheap, finite, and stable.
+
 ## FIR Impact
 
 No new FIR variant and no new NYES state. `FirKind` is unchanged. The `Fir` trait gains
-`stmt_count`, `stmt_at`, and `is_own_value` (defaults preserve current behavior for every
-existing kind); `ConcatenationFir` gains segment storage semantics for its `ubc_children`.
+`stmt_count`, `stmt_at`, and `settled_result` (defaults preserve current behavior for every
+existing kind); `ConcatenationFir` interprets its `ubc_children` as the storage tree, per the
+kind-interpreted doctrine.
 `concatenation_nyes_transitions` must be extended for the populate-then-drain progression; no
 other `*_nyes_transitions` change (the terminal-state rule is unchanged).
 
@@ -304,8 +404,9 @@ Indexing:
 Structure, value, clone:
 - `concat_statement_parents_point_at_top_concat` — parents bypass the whole storage tree; bags
   never surface via `get_my_brane`.
-- `concat_is_own_value` — `value()` of a settled ConcatBrane is itself, not its first bag;
-  `as_i64` is `None`.
+- `concat_value_is_itself` — `settled_result()` of a ConcatBrane is `None`, so `value()` of a
+  settled ConcatBrane is itself, not its first bag; `as_i64` is `None` via the unmodified
+  default (branes are not integers — no override exists).
 - `concat_constanic_clone_rewires_and_recoordinates` — cloning a settled ConcatBrane as a search
   result deep-clones the storage tree, rewires parents to the clone, preserves numbering and
   shape.
@@ -348,9 +449,11 @@ and no new kind. (Considered and discarded during design discussion, 2026-07-03.
 
 ### D. Segments in a dedicated struct field instead of `ubc_children`
 
-Keeps `value()` untouched but breaks FOOP-62's two-store uniformity: generic traversal, Debug,
-and clone code that walks `ubc_children` would silently miss the segments. The `is_own_value`
-hook is a smaller, explicit deviation.
+Breaks FOOP-62's two-store uniformity: generic traversal, Debug, and clone code that walks
+`ubc_children` would silently miss the segments — and it concedes the false premise that
+`ubc_children` must mean "result chain." The store is kind-interpreted by design (see Doctrine
+correction); the ConcatBrane using it for storage is intended usage, and `settled_result()`
+makes each kind's interpretation explicit in the trait.
 
 ### E. Split evaluated branes at step time (rebalancing merged results)
 
@@ -374,6 +477,29 @@ fan-out ≤ `k` and is what the Phase B iterative grouping emits anyway.
   configuration differs from construction time? Current answer: no — segments are preserved
   as-is; revisit with distribution work.
 
+## Future Work (TODO)
+
+- [ ] TODO: think hard about implementing **multi-search** on top of this brane concatenation.
+      Multi-search is like the current search except that instead of returning the FIRST match
+      it returns ALL possible matches, and the result is represented by a brane. The
+      materialized version of multi-search will most likely resort to brane concatenation —
+      there may be many matches, so the result brane is naturally assembled as a ConcatBrane of
+      bounded units rather than one unbounded brane. Machinery this FOOP provides toward it:
+      the Equivalence Law gives the flat all-matches view over chunked storage; MAX_BRANE_SIZE
+      is respected by construction during accumulation; and per the kind-interpreted
+      `ubc_children` doctrine, a multi-search FIR is simply a new kind whose settled store means
+      "a brane of matches" (the SINGULAR-RESULT INVARIANT stays scoped to the existing search
+      FIRs and is not violated — multi-search's `settled_result()` reports its result brane).
+      Deliberately NOT designed here; needs its own FOOP (search-order semantics, IB/AB scope of
+      "all", NYES progression, sequencer rendering).
+- [ ] TODO: the **Integer brane** (see §"The Integer brane" under the ConcatBrane redesign):
+      a THIRD kind of brane — different from normal Brane and ConcatBrane, yet concat-able
+      exactly like them — supplying integers-as-identifiers and arithmetic operators, delivered
+      to programs as `Concat(IntegerBrane, program_brane)`, creating ideas on demand via the
+      Creation Postulate. Needs its own FOOP; this FOOP must keep the populate step's adoption
+      rule capability-based (any brane-like element concats) and avoid baking in the assumption
+      that every element's statement count is cheap, finite, and stable.
+
 ## References
 
 - Prior FOOPs: FOOP-3 (partially superseded — see UBC Step Impact), FOOP-7 (constanic clone
@@ -389,6 +515,49 @@ fan-out ≤ `k` and is what the Phase B iterative grouping emits anyway.
   `concatenation_with_unresolved_search` under `foolish-ubca/snapshot_tests/approved/`.
 
 ## Last Updated
+
+**Date**: 2026-07-03
+**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)
+**Changes**: Status Draft → Brewing — design converged after the full discussion; submitted for
+BDFL review.
+
+**Date**: 2026-07-03
+**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)
+**Changes**: Pinned the `settled_result()` contract after Atlas's question: the constanic gate
+lives INSIDE the method (pre-constanic always answers None); None means "nothing to resolve
+into" (not settled yet, or settled and I AM my value); it can never return self — the caller
+holding the handle substitutes self. `value()` becomes trivial over it.
+
+**Date**: 2026-07-03
+**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)
+**Changes**: Noted the Integer brane is a THIRD kind of brane, concat-able exactly like normal
+Brane and ConcatBrane; made the populate step's adoption rule normatively capability-based (any
+brane-like value concats; segment/inner-bag are this FOOP's two instances), so a future brane
+kind slots in without touching the step. Plan A3 updated to match.
+
+**Date**: 2026-07-03
+**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)
+**Changes**: Added informative subsection "The Integer brane" under the ConcatBrane redesign:
+integers as identifiers answered by a custom-built brane (create-on-ask via the Creation
+Postulate, `docs/why/creation_postulate.md`), arithmetic operators resolved by name
+(`{r = {1,2} plus}`), delivered as `Concat(IntegerBrane, program_brane)`; noted the design
+constraint it imposes on this FOOP (no assumption that element statement counts are cheap,
+finite, stable) and added a matching Future Work TODO.
+
+**Date**: 2026-07-03
+**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)
+**Changes**: Added "Future Work (TODO)" section: think hard about multi-search (all matches
+instead of first, result represented as a brane, materialized via brane concatenation) as a
+follow-on FOOP building on the ConcatBrane machinery.
+
+**Date**: 2026-07-03
+**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)
+**Changes**: Third revision (Atlas's correction): removed the spurious `as_i64` override (branes
+are never integers; the default chain yields None untouched); replaced the `is_own_value()` bool
+hook with `settled_result() -> Option<FirRef>` so `value()` asks each kind for its result; added
+the "Doctrine correction: ubc_children is kind-interpreted" subsection enumerating the doc
+comments in fir_trait.rs/proto_brane.rs that overstate a universal "ubc_children[0] is the
+value" rule, to be corrected in Phase A. Rejected Alternative D updated accordingly.
 
 **Date**: 2026-07-03
 **Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)
