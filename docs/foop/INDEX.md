@@ -41,7 +41,7 @@ ls | rev | sort -V | rev
 | [FOOP-82](FOOP-82.md) | UBCa Code Review — Findings and Recommended Changes | Draft | phase-2 | 2026-06-23 | Sisyphus |
 | [FOOP-92](FOOP-92.md) | Einmo — directory-based signed-snapshot testing with staged promotion | Draft | meta | 2026-06-26 | Sisyphus |
 | [FOOP-03](FOOP-03.md) | Repository Cleanup — Remove Dead Code, Flatten Workspace, Establish UBCa as Reference Implementation, Rename Main to jia | Draft (blocked on FOOP-62) | meta | 2026-07-01 | Sisyphus / mimo-v2.5-pro |
-| [FOOP-13](FOOP-13.md) | MAX_BRANE_SIZE — auto-size oversized branes into concatenations of bounded branes | Draft | phase-2 | 2026-07-03 | Atlas |
+| [FOOP-13](FOOP-13.md) | MAX_BRANE_SIZE — auto-sizing via a non-merging ConcatBrane equivalent to the merged brane | Draft | phase-2 | 2026-07-03 | Atlas |
 
 ---
 
@@ -69,7 +69,7 @@ ls | rev | sort -V | rev
 - [FOOP-82](FOOP-82.md) — UBCa Code Review — Findings and Recommended Changes
 - [FOOP-92](FOOP-92.md) — Einmo — directory-based signed-snapshot testing with staged promotion
 - [FOOP-03](FOOP-03.md) — Repository Cleanup — dead code removal, workspace flatten, `jia` rename (blocked, see FOOP-62)
-- [FOOP-13](FOOP-13.md) — MAX_BRANE_SIZE — auto-size oversized branes into concatenations of bounded branes
+- [FOOP-13](FOOP-13.md) — MAX_BRANE_SIZE — auto-sizing via a non-merging ConcatBrane (two phases: ConcatBrane upgrade, then the limit)
 
 ### Brewing
 
@@ -136,8 +136,10 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 
 **Date**: 2026-07-03
 **Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)
-**Changes**: Added FOOP-13 (MAX_BRANE_SIZE — auto-size oversized branes into concatenations of
-bounded branes), Draft, phase-2. Updated By Status (Draft) and By Phase (phase-2) sections.
+**Changes**: Added FOOP-13 (MAX_BRANE_SIZE — auto-sizing via a non-merging ConcatBrane), Draft,
+phase-2. Updated By Status (Draft) and By Phase (phase-2) sections. Later same day: retitled
+after design revision (two phases: ConcatBrane upgrade with hidden k-ary storage tree, then the
+MAX_BRANE_SIZE limit with iterative chunk grouping).
 
 **Date**: 2026-07-03
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8

@@ -383,12 +383,15 @@ pub(crate) mod tests {
 
     /// A brane FIR that steps Prembrionic → Embryonic → Braning, then
     /// drains its child tasks, then classifies.
+    ///
+    /// Test-only stand-in for `fir_kinds::BraneFir`, named distinctly to avoid
+    /// colliding with the production type.
     #[derive(Debug)]
-    pub(crate) struct BraneFir {
+    pub(crate) struct TestBraneFir {
         pub(crate) core: ProtoBrane,
     }
 
-    impl Fir for BraneFir {
+    impl Fir for TestBraneFir {
         fn core(&self) -> &ProtoBrane {
             &self.core
         }
@@ -443,19 +446,19 @@ pub(crate) mod tests {
 
     /// Create a self-rooting brane (for use as a standalone test node).
     pub(crate) fn make_brane(children: Vec<FirRef>) -> FirRef {
-        Rc::new_cyclic(|me: &Weak<RefCell<BraneFir>>| {
+        Rc::new_cyclic(|me: &Weak<RefCell<TestBraneFir>>| {
             let parent: Weak<RefCell<dyn Fir>> = me.clone();
-            RefCell::new(BraneFir {
+            RefCell::new(TestBraneFir {
                 core: ProtoBrane::new(children, parent, Nyes::Prembrionic),
             })
         })
     }
 
     /// Build a root brane with children. Children are re-parented to the root.
-    /// Uses `Rc::new_cyclic` on concrete `BraneFir`; the `FirRef` type
+    /// Uses `Rc::new_cyclic` on concrete `TestBraneFir`; the `FirRef` type
     /// annotation triggers unsized coercion.
     pub(crate) fn make_root_brane(children: Vec<FirRef>) -> FirRef {
-        Rc::new_cyclic(|me: &Weak<RefCell<BraneFir>>| {
+        Rc::new_cyclic(|me: &Weak<RefCell<TestBraneFir>>| {
             let parent: Weak<RefCell<dyn Fir>> = me.clone();
             // Re-parent all children to this root
             // (children were created self-rooting; re-wire them)
@@ -465,7 +468,7 @@ pub(crate) mod tests {
                 // incorrect parent on children is harmless for these tests.
                 let _ = child;
             }
-            RefCell::new(BraneFir {
+            RefCell::new(TestBraneFir {
                 core: ProtoBrane::new(children, parent, Nyes::Prembrionic),
             })
         })
