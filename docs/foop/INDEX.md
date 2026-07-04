@@ -43,6 +43,7 @@ ls | rev | sort -V | rev
 | [FOOP-92](FOOP-92.md) | Einmo — directory-based signed-snapshot testing with staged promotion | Draft | meta | 2026-06-26 | Sisyphus |
 | [FOOP-03](FOOP-03.md) | Repository Cleanup — Remove Dead Code, Flatten Workspace, Establish UBCa as Reference Implementation, Rename Main to jia | Draft (blocked on FOOP-62) | meta | 2026-07-01 | Sisyphus / mimo-v2.5-pro |
 | [FOOP-13](FOOP-13.md) | MAX_BRANE_SIZE — auto-sizing via a non-merging ConcatBrane equivalent to the merged brane | Brewing | phase-2 | 2026-07-03 | Atlas |
+| [FOOP-23](FOOP-23.md) | Value search — the ~=/?= operator family, expression patterns, and anchoring searches on searches | Draft | phase-2 | 2026-07-04 | Atlas |
 
 ---
 
@@ -64,6 +65,7 @@ ls | rev | sort -V | rev
 - [FOOP-82](FOOP-82.md) — UBCa Code Review — Findings and Recommended Changes
 - [FOOP-92](FOOP-92.md) — Einmo — directory-based signed-snapshot testing with staged promotion
 - [FOOP-03](FOOP-03.md) — Repository Cleanup — dead code removal, workspace flatten, `jia` rename (blocked, see FOOP-62)
+- [FOOP-23](FOOP-23.md) — Value search — `~=`/`?=` family, expression patterns, search-anchored search (`FoolRefFir`)
 
 ### Brewing
 
@@ -119,7 +121,7 @@ Canceled as they stand; each may be respecified and reimplemented later. See
 
 ### phase-2
 
-- [FOOP-6](FOOP-6.md), [FOOP-7](FOOP-7.md), [FOOP-8](FOOP-8.md), [FOOP-01](FOOP-01.md), [FOOP-11](FOOP-11.md), [FOOP-51](FOOP-51.md), [FOOP-61](FOOP-61.md), [FOOP-32](FOOP-32.md), [FOOP-42](FOOP-42.md), [FOOP-52](FOOP-52.md), [FOOP-62](FOOP-62.md), [FOOP-82](FOOP-82.md), [FOOP-13](FOOP-13.md)
+- [FOOP-6](FOOP-6.md), [FOOP-7](FOOP-7.md), [FOOP-8](FOOP-8.md), [FOOP-01](FOOP-01.md), [FOOP-11](FOOP-11.md), [FOOP-51](FOOP-51.md), [FOOP-61](FOOP-61.md), [FOOP-32](FOOP-32.md), [FOOP-42](FOOP-42.md), [FOOP-52](FOOP-52.md), [FOOP-62](FOOP-62.md), [FOOP-82](FOOP-82.md), [FOOP-13](FOOP-13.md), [FOOP-23](FOOP-23.md)
 
 ### phase-3
 
@@ -143,6 +145,13 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 ---
 
 ## Last Updated
+
+**Date**: 2026-07-04
+**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)
+**Changes**: Added FOOP-23 (Value search — `~=`/`?=` operator family with six forms, expression
+patterns, chained-search sequencing, and search-anchored `#`/`?`/`~` via the new `FoolRefFir`
+strong original-statement reference), Draft, phase-2, with implementation plan
+(FOOP-23.plan.md). Added to main table, By Status (Draft), and By Phase (phase-2).
 
 **Date**: 2026-07-03
 **Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)

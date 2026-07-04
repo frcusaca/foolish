@@ -297,6 +297,8 @@ pub struct TestConfig {
     pub separator: String,            // default "①\n"; Foolish suites "!!\n" (§4.1)
     pub perspectives: Vec<Perspective>, // statically configured views (§4.5)
     pub parallel: Option<usize>,      // None = serial; Some(n) = n threads
+    pub dependent_separator: String,  // default "++" (§4.7)
+    pub diff_limit: usize,            // default 2000 = 25*80 (§4.7)
 }
 pub enum Stage { Output, Checked, Flagged, Verified }
 ```
@@ -985,6 +987,11 @@ branches coexists without collision. `compare` walks both trees in parallel and
 reports per-path correspondence. **All directories are git-tracked** — output
 drift is visible in `git diff`, forcing review.
 
+Names containing the suite's `dependent-separator` (default `++`, e.g.
+`arithmetic_precedence++divisionByZero.foo`) declare **dependent einmos** —
+variants whose envelope carries a signed DIFF against their reference test.
+See §4.7 for naming, generation, and the diff-limit.
+
 ### 3. The four-stage lifecycle
 
 ```rust
@@ -1228,6 +1235,19 @@ the same process required for all einmos** — the DIFF becomes a baseline only
 via `promote`, is compared by `compare`, is demoted and re-reviewed by
 `console-review`, and is refused on tamper by verify-on-inspect. There is no
 side channel by which a diff enters `checked/` or `verified/`.
+
+**Size limit — a diff must fit on one 1950s screen.** The DIFF has a
+configurable size limit (`diff-limit` in `einmo.toml` / `TestConfig`),
+**default 2000 characters, defined as 25 × 80** — the character capacity of a
+terminal screen that computers and humans from the 1950s could easily read.
+The limit is the design pressure that keeps a dependent an actual *special
+case*: its delta from the reference must be small enough to review at a
+glance. **When the DIFF exceeds the limit, the test fails.** The envelope is
+still written to `output/` for debugging — `status: output-error`,
+`status-detail: DIFF exceeds diff-limit (<actual> > <limit>)`, DIFF section
+truncated at the limit — but the run reports the test as failed. The remedy
+is to split the variant into smaller special cases (or, deliberately, raise
+the suite's `diff-limit`).
 
 **Comparison.** For dependent einmos, DIFF joins the **required** compared
 sections (with INPUT and OUTPUT, §5). Consequence: when the *reference's*
@@ -1947,6 +1967,23 @@ typed library makes the invariants enforceable in code and CI.
 - **crates.io names**: `einmo` and `zweimomo` verified unclaimed (2026-07-03);
   reservation/publishing is handled by the BDFL personally.
 
+### Resolutions from 2026-07-04 (BDFL)
+
+- **Dependent einmos (§4.7)**: variant tests named
+  `<reference>++<caseDescription>` (separator configurable, default `++`;
+  convention snake_case base + camelCase description). The dependent's
+  envelope carries a **DIFF section** — a deterministic unified diff of the
+  reference's OUTPUT vs the dependent's OUTPUT, computed by einmo at
+  generation from the same run. All normal signatures apply: the DIFF is
+  signed body content and is approved/promoted through the same process as
+  every einmo. DIFF is a required compared section on dependents, so
+  reference-behavior drift invalidates the dependent's baseline.
+- **diff-limit**: the DIFF has a configurable size limit, default **2000
+  characters = 25 × 80** — a limit that computers and humans from the 1950s
+  can easily read (one terminal screen). When the DIFF exceeds the limit,
+  **the test fails** (artifact still written with `status: output-error` for
+  debugging). Keeps variants genuinely "special cases".
+
 ## Open Questions
 
 - **Stamp-certification semantics (confirm §4.4 interpretation).** Written as:
@@ -1959,6 +1996,11 @@ typed library makes the invariants enforceable in code and CI.
   serve`'s REST API unchanged; nothing to decide now.
 - **WASM verify in browser (Proposal C).** Deferred — `einmo::verify` clean
   submodule keeps this available as a future enhancement.
+- **Dependent promotion coupling (§4.7).** May a dependent be promoted past
+  its reference (e.g. dependent in `verified/` while the reference sits in
+  `checked/`)? v1 keeps promotion independent (the DIFF already binds their
+  content); a "dependent may not outrank its reference" invariant is a
+  possible future tightening.
 
 ## MVP — what the first shippable version supports
 
@@ -1980,6 +2022,10 @@ and **Use Case D** (zweimomo's three pure-Rust evaluators). Concretely:
   `confirm-signatures`, `show`, `self-check`. Configurable parallel/serial.
 - The `Perspective` API (§4.5) with at least one working example (the Foolish
   brane-name perspective, supplied by zweimomo).
+- **Dependent einmos (§4.7)** — `++` variant naming, reference resolution,
+  the signed DIFF section, the 25×80 diff-limit with fail-on-exceed, and at
+  least one dependent example per zweimomo language suite. (A thin layer over
+  the MVP machinery: naming + deterministic diff + two config knobs.)
 - **zweimomo** with its three `Evaluator` impls (foolish-ubca, RustPython,
   Boa) implementing tests over a subset of: **integer arithmetic, grouping,
   precedence, name binding, and function calling with integer inputs and
@@ -2548,6 +2594,23 @@ assert_eq!(out, "3");
 
 
 ## Last Updated
+
+**Date**: 2026-07-04
+**Updated By**: Claude Code 2.1.199 (Claude Code); Fable 5
+**Changes**: Added **Dependent einmos (§4.7)** per BDFL design: `++` variant
+naming (configurable `dependent-separator`; snake_case base + camelCase case
+description; chains resolve by stripping the last `++segment`), reference
+evaluated before dependent in the same run, einmo-computed deterministic
+unified DIFF section (reference OUTPUT vs dependent OUTPUT), metadata
+`reference:` field, `reference unavailable` handling. All normal signatures
+apply — DIFF is signed body content promoted through the same process as
+every einmo. DIFF is a required compared section on dependents (§5), so
+reference drift invalidates the dependent's baseline. **diff-limit** added:
+default 2000 chars = 25×80 (readable by 1950s computers and humans); DIFF
+over the limit fails the test (artifact still written, `status:
+output-error`, truncated DIFF). TestConfig gains `dependent_separator` +
+`diff_limit`; §2 naming note; MVP includes dependent einmos; Open Question
+added on dependent-vs-reference promotion coupling.
 
 **Date**: 2026-07-03
 **Updated By**: Claude Code 2.1.199 (Claude Code); Fable 5

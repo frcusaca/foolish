@@ -13,11 +13,11 @@ reimplements the signing/format machinery from scratch (the existing
 only) so it can be promoted to its own repository later.
 
 **MVP boundary (spec §MVP):** Phases 0–10 (envelope, stamps, stages, compare,
-verify, cascade, CLI) plus Phases 14–15 (zweimomo evaluators + the §D.4 concept
-corpus: integer arithmetic, grouping, precedence, name binding, function
-calling with integer inputs/outputs) constitute the **MVP**. Phases 11–13
-(gates, console-review, serve), 16 (algorithm corpus), and 17 (use-case
-validation) are post-MVP.
+verify, cascade, CLI) plus Phases 14–15b (zweimomo evaluators, the §D.4 concept
+corpus — integer arithmetic, grouping, precedence, name binding, function
+calling with integer inputs/outputs — and dependent einmos) constitute the
+**MVP**. Phases 11–13 (gates, console-review, serve), 16 (algorithm corpus),
+and 17 (use-case validation) are post-MVP.
 
 This plan is written for a smaller implementing LLM. Each task is atomic: one
 concrete action, exact file paths, exact commands, and an acceptance check. Do
@@ -302,6 +302,25 @@ embedding references gathered during research.
 - [ ] Generate the first `output/` corpus; review the diffs; promote via `einmo promote output->checked zweimomo/suites/<lang>` (this is the dog-food moment: einmo's own CLI promotes einmo's own test corpus).
 - [ ] Acceptance: `cargo test -p zweimomo` passes with all three suites green (`output==checked` per language). `einmo verify zweimomo/suites/<each> --all` green.
 
+## Phase 15b — Dependent einmos (`++` variants with signed DIFF) — MVP
+
+Implements spec §4.7. A dependent test `<reference>++<caseDescription>` gains
+a signed DIFF section (reference OUTPUT vs its own OUTPUT) with a 25×80
+size limit; the DIFF is promoted/compared/verified exactly like every other
+section — no special cases in the pipeline.
+
+- [ ] Add `dependent_separator` (default `"++"`) and `diff_limit` (default `2000` = 25*80) to `TestConfig` + `einmo.toml` parsing (`einmo/src/config.rs`).
+- [ ] Reference resolution in `einmo/src/stage.rs`: a name containing the dependent separator references the same-directory input named by stripping the **last** `++segment`; chains (`base++a++b` → `base++a` → `base`) resolve recursively. Cycle-impossible by construction (names strictly shorten).
+- [ ] Suite runner (`einmo/src/snapshot_suite.rs`): evaluate references before dependents (topological order per directory); after evaluating a dependent, compute the DIFF section from the reference's and dependent's canonical OUTPUT sections **of the same run**.
+- [ ] Deterministic unified diff in einmo: add the pure-Rust `similar` crate (no C deps — preserves repo-promotability); fixed 3-line context; labels `reference`/`dependent`; no paths or timestamps in headers; byte-stable output.
+- [ ] Dependent envelope: metadata gains `reference: <mirror-relative name>`; `sections:` lists `DIFF`; DIFF is signed body content covered by the stamp chain (spec §4.7 — same promotion process as all einmos).
+- [ ] Missing/failed reference: DIFF records `reference unavailable: <reason>`; the dependent's own `status` reflects only its own evaluation.
+- [ ] **diff-limit enforcement**: DIFF longer than `diff_limit` → the test FAILS in `TestResults`; envelope still written with `status: output-error`, `status-detail: DIFF exceeds diff-limit (<actual> > <limit>)`, DIFF truncated at the limit.
+- [ ] `compare` (`einmo/src/compare.rs`): DIFF joins the required compared sections for dependents — reference-behavior drift surfaces as `differing (DIFF)` even when the dependent's own OUTPUT is unchanged.
+- [ ] Unit tests: reference resolution incl. chains; topo evaluation order; deterministic diff (same inputs → same bytes); DIFF signed + verifies; reference-unavailable path; diff-limit pass at 2000, fail at 2001 (truncated artifact written, test failed); compare flags DIFF drift when only the reference changed; custom dependent separator.
+- [ ] Zweimomo: at least one dependent per language suite (e.g. `arithmetic_precedence.foo` + `arithmetic_precedence++divisionByZero.foo`, and Python/JS counterparts); generate, review the DIFF sections, promote through the normal `einmo promote output->checked` flow.
+- [ ] Acceptance: `cargo test -p einmo --lib dependent` and `cargo test -p zweimomo` pass; `einmo show` on a dependent displays the DIFF section and `reference:` metadata; `einmo verify` green over suites containing dependents.
+
 ## Phase 16 — Exhaustive algorithm coverage (later in development; stress-test the framework)
 
 The important goal: **test the test framework as thoroughly as possible.** Port
@@ -393,6 +412,17 @@ validate the design (awkward use cases reveal design gaps before code freezes).
 - If a task is ambiguous, read FOOP-92.md (the specification) for the authoritative answer. This plan assumes the spec's context.
 
 ## Last Updated
+
+**Date**: 2026-07-04
+**Updated By**: Claude Code 2.1.199 (Claude Code); Fable 5
+**Changes**: Added **Phase 15b — Dependent einmos** (spec §4.7, in MVP):
+`dependent_separator`/`diff_limit` config, reference resolution with chains,
+topological evaluation order, deterministic unified DIFF via the pure-Rust
+`similar` crate, `reference:` metadata, reference-unavailable handling,
+diff-limit fail-on-exceed (2000 = 25×80; truncated artifact with
+`status: output-error`), DIFF as required compared section, unit tests, and
+one dependent example per zweimomo language suite. MVP boundary updated to
+Phases 0–10 + 14–15b.
 
 **Date**: 2026-07-03
 **Updated By**: Claude Code 2.1.199 (Claude Code); Fable 5
