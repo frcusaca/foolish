@@ -751,6 +751,10 @@ state semantics — is more useful for cross-variant reasoning (e.g.,
 
 ## Last Updated
 
+**Date**: 2026-07-04
+**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)
+**Changes**: Status -> Deprecated. Canceled as it stands per user request; feature should be later respecified and reimplemented. Added Deprecation Notice section.
+
 **Date**: 2026-05-09 (latest revision)
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.7 xHigh effort
 **Changes**: Major restructuring of EMBRYONIC/BRANING semantics and

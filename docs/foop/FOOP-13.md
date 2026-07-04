@@ -128,57 +128,130 @@ carries no characterizations; conservative until characterizations gain merge se
 #### Two public brane kinds — no SubBrane FIR kind
 
 There are exactly two brane-like FIR kinds visible to the resolution machinery: `BraneFir` and
-`ConcatenationFir` (the ConcatBrane). The chunks inside a ConcatBrane — **segments** — are
-hidden storage, NOT a new FIR kind, and are **never exposed through the parent chain**. This is
-what keeps the change local: name resolution walks parents to "the brane" and asks it questions;
-if the answers obey the Equivalence Law, nothing upstream needs a forwarding protocol.
+`ConcatenationFir` (the ConcatBrane). The chunks inside a ConcatBrane — **SubBranes** — are a
+ROLE, not a new FIR kind: plain `BraneFir`s used as hidden storage, **never exposed through the
+parent chain**. This is what keeps the change local: name resolution walks parents to "the
+brane" and asks it questions; if the answers obey the Equivalence Law, nothing upstream needs a
+forwarding protocol.
 
 #### Hidden storage tree (two-store placement)
 
-The hidden storage is a **k-ary tree of bags** held in the ConcatBrane's `ubc_children`
-(storage is a compute-time result — exactly what `ubc_children` is for, per FOOP-62's two-store
-design). `foolish_children` remain the original, parse-time element FIRs, untouched. A bag is
+The hidden storage is a **k-ary tree** held in the ConcatBrane's `ubc_children` (storage is a
+compute-time result — exactly what `ubc_children` is for, per FOOP-62's two-store design).
+`foolish_children` remain the original, parse-time element FIRs, untouched. A storage node is
 either:
 
-- a **segment** — a plain settled `BraneFir` holding ≤ `k` cloned statements (leaf), or
-- an **inner bag** — a settled `ConcatenationFir` used as storage, holding ≤ `k` child bags
-  (internal node; this is how a nested-ConcatBrane element is adopted, preserving its shape).
+- a **SubBrane** — a plain `BraneFir` holding ≤ `k` constanic-copied lines (leaf), or
+- a **stack ConcatBrane** — a `ConcatenationFir` used as storage, holding ≤ `k` child storage
+  nodes (internal node: "stacks of ConcatBranes of ConcatBranes until SubBranes").
 
-Bags never step, never resolve names, and never appear in the parent chain. No new FIR kind:
-both bag shapes reuse the two existing kinds as inert containers. Deliberate deviations from
-ordinary children:
+**The tree shape is a pure function of the total line count `n` and `k`** — computed at
+populate time, independent of element boundaries (a nested-ConcatBrane element contributes its
+lines like any other brane; no element shape is inherited). Unlimited `k` degenerates to a
+single SubBrane holding all `n` lines. Storage nodes never resolve names and never appear in
+the parent chain. No new FIR kind: both node roles reuse the two existing kinds as inert
+containers. Deliberate deviations from ordinary children:
 
-- **Statement parents bypass the whole tree**: every statement cloned into any bag has
-  `.parent = the top (public) ConcatBrane`, no matter how deep its bag sits. Bags' own parents
-  also point at the top ConcatBrane. Since no statement's parent points at a bag, bags never
-  appear in `get_my_brane` / `get_my_statement` walks — only the top ConcatBrane is visible.
-- **Global line numbers**: each cloned statement's `line_number` is rewritten to its global
-  index across the entire tree, in order. This single rule makes `StatementFir::_ib_search`
-  (`brane._search_brane(name, line_number − 1, 0)`) work UNCHANGED for cross-segment IB —
-  `{a=10}{b=a}` resolves with zero changes to StatementFir.
-- Offsets are not stored; they are prefix sums over bag statement-counts, computed on access
-  (tree fan-out is ≤ `k` and depth is logarithmic). Zero-length bags are skipped in the
-  arithmetic (`concatenation_of_empty_branes` case).
+- **Statement parents bypass the whole tree**: every line copied into any SubBrane has
+  `.parent = the top (public) ConcatBrane`, no matter how deep its SubBrane sits. Storage
+  nodes' own parents also point at the top ConcatBrane. Since no line's parent points at a
+  storage node, the storage is invisible to `get_my_brane` / `get_my_statement` walks — only
+  the top ConcatBrane exists as far as resolution is concerned.
+- **Global line numbers**: each copied line's `line_number` is rewritten to its global index
+  across the entire tree, in order. This single rule makes `StatementFir::_ib_search`
+  (`brane._search_brane(name, line_number − 1, 0)`) work UNCHANGED for cross-SubBrane IB —
+  the joined lines chain their IB searches exactly as if written in one brane.
+- Offsets are not stored; they are prefix sums over SubBrane line-counts, computed on access
+  (fan-out ≤ `k`, depth logarithmic). Empty constituents contribute zero lines
+  (`concatenation_of_empty_branes` case).
 
-#### Populate step (replaces the merge)
+#### The ConcatBrane protocol (replaces the merge)
 
-`ConcatenationFir::fir_op_step` becomes:
+**Fundamental contract: a ConcatBrane takes a list of BRANES and concatenates them.** The
+contract is enforced at every phase; a violation raises an alarm and labels the ConcatBrane
+`NK` — it no longer steps.
 
-- `PREMBRIONIC`/`EMBRYONIC`: empty element list → settle exactly as today (empty constant
-  brane); otherwise push every element as a task and go `BRANING` (unchanged shape).
-- `BRANING`, all elements constanic, storage not yet built: for each element in order, take its
-  value and **constanic-clone** it into a bag (NYES transformed per the constanic-clone rules of
-  FOOP-7/FOOP-62). The adoption rule is **capability-based, not kind-matched** — any brane-like
-  value concats (see §"The Integer brane": a future third brane kind must slot in here without
-  touching this step). The two kinds this FOOP ships instantiate it as: a plain statement-list
-  brane clones into a segment; a ConcatBrane is **adopted as an inner bag** — its storage tree
-  deep-cloned beneath, preserving its shape. (It is NOT spliced flat: flattening would rebuild
-  an unbounded array at the top node, exactly what the bound forbids.) Assign global line
-  numbers across the finished tree and rewire every cloned statement's parent to the top
-  ConcatBrane. Push every non-constanic cloned statement as a task — recoordination against the
-  new context is what resolves cross-element references — and remain `BRANING`.
-- `BRANING`, storage built, tasks drained: settle by the existing rule — any NK → `NK`, any
-  ECONSTANIC/WOCONSTANIC → `WOCONSTANIC`, else `CONSTANT`.
+1. **Element typing — construction-time first pass.** Every direct element of
+   `foolish_children` must be one of:
+   1. a Foolish brane that was typed out (a literal), e.g. `{asdf=1}`;
+   2. a search expression that could resolve to a brane — plain (`b`), anchored (`b.x`),
+      regexp (`c~something`), or positional; or
+   3. an **explicitly SF-marked expression** `<…>` whose inner expression is itself form
+      (1) or (2).
+
+   Any other FIR kind — and any **explicitly SFF-marked (`<<…>>`) element**, which is an
+   error — raises an alarm and the ConcatBrane is constructed `NK`. (The parser may reject
+   earlier where the grammar already knows.)
+2. **Auto-wrapping at construction.** ConcatBrane construction normalizes every element to a
+   wrapped form:
+   - a bare **literal brane** is wrapped in **SFF**: reusing the existing `under_sff` build
+     rule (FOOP-62 #17), every search inside it is BORN ECONSTANIC and never resolves
+     standalone — the literal's innards are deferred to the join (resolve AFTER);
+   - a bare **search** is wrapped in **SF**: it resolves BEFORE (it identifies the
+     constituent), and the found brane's lines detach-and-recoordinate at copy time;
+   - an **explicit SF around a search** is **idempotent** — a NOOP, identical to the auto-SF;
+   - an **explicit SF around a literal brane** is an **override of the automated SFF wrapping**
+     that would otherwise apply to that constituent — same protocol, different default. The
+     override selects **local preparation**: the literal's internal searches resolve BEFORE the
+     copy, from the
+     ConcatBrane's own statement position — IB against the lines preceding the concat's
+     statement in the enclosing brane, AB through the concat's ancestors — exactly as if the
+     brane were written standalone at the concat's source location. Its settled lines then
+     copy with standard recoordination. Needs special care in implementation: the element must
+     NOT be built `under_sff`, and its pre-copy stepping must run against the concat's own
+     context (the ordinary parent chain element → ConcatBrane → statement → enclosing brane
+     already provides it).
+
+   The full timing menu is therefore expressible per element, with no new syntax:
+
+   | element as written | wrapping | timing of its searches |
+   |---|---|---|
+   | `{…}` bare literal | auto-SFF (default) | innards resolve AFTER, in position in the join |
+   | bare search (`b`, `b.x`, `c~…`) | auto-SF | resolves BEFORE (identifies the constituent); lines recoordinate on copy |
+   | `<search>` | idempotent NOOP | same as bare search |
+   | `<{…}>` | SF overrides the auto-SFF | innards resolve BEFORE, locally, from the concat's own statement position, then copy |
+   | **all other FIRs** (incl. explicit `<<…>>`) | — | error: alarm + `NK`; the ConcatBrane never steps |
+3. **Step to constanic.** `PREMBRIONIC`/`EMBRYONIC`: empty element list settles as today (empty
+   constant brane); otherwise every element is pushed as a task and stepped until constanic.
+   SFF-wrapped literals settle without any internal resolution; SF-marked literals settle WITH
+   full internal resolution in the concat's own context.
+4. **Settle-time typing — second pass.** Each element's value must be a brane; anything else
+   (a search that resolved to an integer, an NK element): alarm + `NK`.
+5. **Count and arrange.** Count the total lines `n` across all constituent values, in order.
+   Compute the storage arrangement as the pure function of `(n, k)`: lines chunk into SubBranes
+   of ≤ `k`; while the node array exceeds `k`, stack ConcatBranes over runs of ≤ `k` nodes,
+   until the top fits.
+6. **Constanic-copy and coordinate.** Each line is constanic-copied to its SubBrane position
+   and coordinated THERE: parent rewired (bypass to the top ConcatBrane), global line number
+   assigned, NYES transformed per the clone rules — in particular the SFF-born ECONSTANIC
+   searches revive **ECONSTANIC → EMBRYONIC** with correct parents, ready to search. Lines from
+   SF'd elements — searched branes AND locally-prepared SF-marked literals alike — recoordinate
+   per FOOP-7: constants keep their values, ECONSTANIC revives, NK stays NK. Non-constanic
+   copies enter the task queue; remain `BRANING` until drained.
+7. **Terminal rule** (unchanged): any NK → `NK`; any ECONSTANIC/WOCONSTANIC → `WOCONSTANIC`;
+   else `CONSTANT`.
+
+**Worked example.** `{cb = {a=1, b=2} {c = a + b};}` — both literals are auto-SFF'd, so
+`c = a + b`'s searches are born ECONSTANIC and skip standalone resolution; the elements settle
+immediately; `n = 3`; the lines copy into position; `c`'s searches revive EMBRYONIC and IB-find
+`a` and `b` in the joined brane: `c = 3`. (Verified 2026-07-04 against the current evaluator:
+today this program leaves `c` UNRESOLVED — the constituents settle standalone, `a`/`b` are not
+findable from inside `{c=a+b}`, and nothing revives after the merge. This protocol is the
+repair.) Likewise `{cb = {1,2,3} a {r=1,s=2,t=3} d e f g {asdf = #-1 + t + r};}`: `a d e f g`
+resolve BEFORE (auto-SF'd element searches); `#-1`, `t`, `r` resolve AFTER, in position —
+`#-1` addresses `g`'s contribution, `t`/`r` IB-find the earlier element — with no manual
+wrappers and no wrong-context NK. Third example, exercising the full element menu:
+
+```foolish
+{a=1} b~child_brane ancestrally_defined_brane <sf_mark_around_search> <{locally_prepared_brane = field_searched_from_parent_of_concat}>
+```
+
+The first three elements take the defaults (literal auto-SFF'd; two searches auto-SF'd). The
+fourth, an explicit SF around a search, is the idempotent NOOP. The fifth, an SF-marked literal,
+is local preparation: `field_searched_from_parent_of_concat` resolves BEFORE the copy, from the
+ConcatBrane's own statement position (here, ancestrally through the concat's parent) — the
+opposite timing from the auto-SFF default, chosen per element by the Foolisher. An explicitly
+SFF-marked element (`<<{…}>>`) is an error: alarm + `NK`.
 
 #### Capability dispatch instead of kind matching
 
@@ -208,8 +281,8 @@ fn settled_result(&self) -> Option<FirRef> {
 
 - `ConcatenationFir::_search_brane(expr, start, end)`: map the global, direction-aware range
   (the same reversed-range convention `BraneFir::_search_brane` uses) onto per-bag local ranges
-  via prefix sums, recursing down inner bags; delegate the leaf scan; translate the hit index
-  back to global.
+  via prefix sums, recursing down stack ConcatBranes; delegate the leaf scan; translate the hit
+  index back to global.
 - `ConcatenationFir::_ab_search`: identical logic to `BraneFir::_ab_search` (enclosing
   statement's IB, then parent brane) — shared via a free function or default method, not
   duplicated.
@@ -280,21 +353,52 @@ brane kinds by construction:
 | statements inside any bag         | **the top ConcatBrane** (bypassing the whole tree) |
 | bodies cloned OUT by search/index | the addressing FIR's context, via `constanic_clone_at` (as today) |
 
-#### Constanic-cloning a ConcatBrane
+#### Constanic-cloning a ConcatBrane — `skip_foolish_children`
 
 When a settled ConcatBrane is itself the found result (e.g. `x = c` where `c` names a
-concatenation), `constanic_clone_at` must: deep-clone the storage tree (statements included),
-rewire the cloned statements' parents to the NEW ConcatBrane clone, preserve global line
-numbers and tree shape, and transform NYES per the standard clone rules — so
-previously-ECONSTANIC searches inside may recoordinate against the destination context. The
-existing clone machinery walks `foolish_children` generically; the ConcatBrane arm must be
-taught about the storage tree explicitly.
+concatenation), the clone copies **just the `ubc_children`** — the settled storage tree — via a
+new general clone option:
 
-#### Sequencing
+```rust
+constanic_clone(…, skip_foolish_children = true)
+```
 
-`proto_to_core_fir` renders a settled ConcatBrane as ONE flat brane — every statement of the
-storage tree in global order — per the Equivalence Law. Where evaluation semantics are
-unchanged, sequenced output is byte-identical to today's merged-brane rendering.
+The element FIRs in `foolish_children` are NOT cloned and the element searches NEVER re-run:
+a settled ConcatBrane clones as a **value**, exactly like any other settled brane, not as a
+formula re-executed in the destination context. (This resolves the auto-SF reuse question —
+destination-context shadowing cannot change the constituents of an already-settled
+concatenation. Re-execution semantics, if ever wanted, would be a Foolisher-visible SF on the
+concat's own assignment, a separate concern.) The clone must still: deep-clone the storage tree
+(lines included), rewire the cloned lines' parents to the NEW ConcatBrane clone, preserve
+global line numbers and arrangement, and transform NYES per the standard clone rules — so
+previously-ECONSTANIC lines may recoordinate against the destination context.
+
+**The option is general, not ConcatBrane-private.** Every singular-result kind is in the same
+position once constanic: a settled `SearchFir` (and `IndexFir`/`HeadTailFir`) holds its result
+in `ubc_children` and no longer needs its original `foolish_children` (the anchor expression
+it was built from). Cloning such a settled FIR with `skip_foolish_children = true` copies the
+result without dragging the dead anchor subtree along — smaller clones, less work, same
+observable behavior. Implemented in this FOOP: the option itself plus the ConcatBrane use are
+Phase A scope; adopting it in the settled-search clone path is included as a Phase A cleanup
+once the option exists.
+
+#### Sequencing (REQUISITE): a ConcatBrane displays as a single brane
+
+Sequencing is not cosmetic here — it is the observable half of the Equivalence Law, and the
+snapshot strategy below depends on it. Normative rules:
+
+- **A settled ConcatBrane sequences as ONE brane.** `proto_to_core_fir` walks the storage tree
+  in global order and emits a single brane: one pair of enclosing braces, every line in
+  sequence. No SubBrane boundaries, no stack-node structure, no element boundaries, and none of
+  the auto-SF/SFF construction wrappers appear in the output. The rendering is byte-identical
+  to the equivalent big brane's rendering.
+- **Consequence — k-invariance.** Because the display flattens, the same program sequences
+  byte-identically under ANY `MAX_BRANE_SIZE`, split or unsplit. This is what lets a snapshot
+  approved in Phase A (unsplit) stand unchanged through Phase B (split): the snapshot IS the
+  Equivalence Law's observable test, and any k-dependent output difference is a bug.
+- **Pre-constanic and NK rendering.** A concat that has not settled renders its elements as
+  written (as today); an NK ConcatBrane renders as NK with its alarm reason. Lines that settled
+  ECONSTANIC/WOCONSTANIC display their states exactly as the same lines would in a plain brane.
 
 #### The Integer brane (informative — a consumer of this design)
 
@@ -345,12 +449,30 @@ architecture at exactly the seams it defines:
   materialized by the Creation Postulate are memoized into the Integer brane's own compute-time
   store, interpreted its own way — a third interpretation alongside "singular result" and
   "storage tree."
-- **One known tension to resolve in the follow-on FOOP: positional addressing.** The Integer
-  brane's conceptual statement list is unbounded, which breaks prefix-sum arithmetic if it
-  participates naively in `stmt_count`/`stmt_at`. Candidate answers: report only materialized
-  statements, or exempt the Integer brane from positional addressing (find it by name, never by
-  `#n`). Deliberately not decided here — but the ConcatBrane implementation must not bake in an
-  assumption that every element's statement count is cheap, finite, and stable.
+- **One known tension to resolve in the follow-on FOOP: the protocol counts and copies, a
+  generative brane cannot be counted or copied.** Protocol stages 5 (count the total lines)
+  and 6 (constanic-copy each line into its SubBrane position) both require finite enumeration
+  of every constituent's statements. The Integer brane's conceptual statement list is
+  unbounded — the Creation Postulate mints statements on demand — so
+  `Concat(IntegerBrane, program_brane)` cannot pass stage 5 as specified. Three candidate
+  resolutions, each with a distinct cost:
+  1. *Materialized-only participation*: the Integer brane reports (and copies) only the ideas
+     it has already memoized. Cheap and finite, but the copy FREEZES the set — an integer
+     first asked for AFTER the join would not exist in the copied lines, defeating
+     create-on-ask delivery. Probably wrong for the delivery use case.
+  2. *Adoption by reference*: the generative element is never copied; it becomes a delegated
+     storage node that the ConcatBrane's `_search_brane`/`stmt_at` consult LIVE through the
+     trait surface. Create-on-ask keeps working inside the join. Positional addressing over it
+     is then either excluded or materialized-only (an unbounded element makes global `#n`
+     ill-defined past it).
+  3. *Context, not content*: the generative brane does not occupy line positions at all; it
+     participates only as a fall-through layer for otherwise-failed IB searches from the
+     joined lines. Cleanest arithmetic (it contributes zero lines), but it bends the
+     Equivalence Law — the element is "in scope" without being "in the brane."
+  Deliberately not decided here. The Phase A obligation is narrower and concrete: stages 5
+  and 6 must reach constituents ONLY through the trait surface (`stmt_count`, `stmt_at`, and
+  the copy hook), never by direct `foolish_children` enumeration — so a future kind can
+  override how (or whether) it is counted and copied without touching the protocol.
 
 ## FIR Impact
 
@@ -382,8 +504,147 @@ clause — there is no merged brane; further steps run against the segment state
 
 ## Test Plan
 
-Unit tests in `foolish-ubca`. No new `.foo` approval inputs are required, but existing
-concatenation snapshots will regenerate (see UBC Step Impact) and require human review.
+**Snapshot tests are developed FIRST, then unit tests.** The UBCa snapshot suite runs with
+`max_brane_size = 13` once the configuration exists (13 is small enough that modest inputs
+force real splitting — 200 statements > 13² = 169 forces a three-level tree — and large enough
+that existing small-brane snapshots are untouched). By the Sequencing requirement, snapshot
+output is k-invariant, so the concat snapshots double as the Equivalence Law's observable
+tests AND as Phase B's no-churn sentinels.
+
+**The new `concat_brane_*` snapshot family REPLACES the existing `concatenation_*` snapshots.**
+Retiring the old approved snaps is a HUMAN action (AI never moves or deletes `.snap` files);
+the plan gates it accordingly.
+
+### Snapshot tests (`foolish-ubca/snapshot_tests/input/`)
+
+**The fenced `foolish` blocks below ARE the snapshot inputs** — complete, valid programs to be
+copied VERBATIM into `foolish-ubca/snapshot_tests/input/` at plan step A1 (byte-for-byte; the
+spec is the source of truth for these files). The "expected" notes state the intended
+resolutions for BDFL review — the actual `.snap` bytes are generated by the harness and signed
+by the human, never hand-written.
+
+#### `concat_brane_test_basic.foo`
+
+```foolish
+{
+	b1 = {a=1, b=2};
+	named_lit = b1 {c = a + b};
+	lit_lit   = {x=1, y=2} {z = x + y};
+	with_empty = {} {p=1} {};
+	twice = b1 b1;
+	twice_twice = twice twice;
+   mixed_resolve = {source = b1} {
+     field1=source.a,     !! 1
+     field2=source.b,     !! 2
+     field3=huh,          !! not found
+     field4=named_lit.e;  !! not found
+     field4=with_empty.p; !! 1
+   }
+}
+```
+
+Expected: `named_lit = {a=1; b=2; c=3}` (the cross-element repair — `c`'s searches revive in
+the join); `lit_lit = {x=1; y=2; z=3}` (both literals auto-SFF'd, all resolution in the join);
+`with_empty = {p=1}` (empty constituents contribute zero lines); `twice = {a=1; b=2; a=1; b=2}`
+(a named brane may appear more than once; each appearance copies independently).
+
+#### `concat_brane_foolish_concatenations.foo`
+
+Nested WRITTEN concatenations — braces-of-concatenations as elements, per the sketch
+`{ { { {..}{...}{..} }{..}{ {..}{ {..}{..} } } } ...}`:
+
+```foolish
+{
+	flat = {a=1} {b=2} {c=3} {d=4} {e=5};
+	deep = { {f=6} {g=7} } { {h=8} { {i=9} {j=10} } } {k=11}
+   front = {x=1,y=2} flat;
+   back = flat {x=-1,y=-2};
+   back = front {middle=0} back
+   search=back.x;                    !! -1
+   bk_search=back~x;                 !!  1
+   fail_search=back?nada;            !! NK
+}
+```
+
+Expected: `flat` is one brane of five lines in source order. In `deep`, each braced element is
+a BRANE whose single anonymous line settles to a joined brane — so `deep`'s lines are: the
+anonymous `{f=6; g=7}`, the anonymous join of `{h=8}` with the anonymous `{i=9; j=10}`, and
+`k=11`. The snapshot documents precisely this containment (nested concatenation does NOT
+flatten across brace levels — braces are branes; only sibling juxtaposition joins).
+
+#### `concat_brane_split_long_brane.foo`
+
+```foolish
+{a1=1, a2=2, a3=3, a4=4, a5=5, a6=6, a7=7, a8=8, a9=9, a10=10,
+ a11=11, a12=12, a13=13, a14=14, a15=15, a16=16, a17=17, a18=18, a19=19, a20=20,
+ a21=21, a22=22, a23=23, a24=24, a25=25, a26=26, a27=27, a28=28, a29=29, a30=30,
+ a31=31, a32=32, a33=33, a34=34, a35=35, a36=36, a37=37, a38=38, a39=39, a40=40,
+ a41=41, a42=42, a43=43, a44=44, a45=45, a46=46, a47=47, a48=48, a49=49, a50=50,
+ a51=51, a52=52, a53=53, a54=54, a55=55, a56=56, a57=57, a58=58, a59=59, a60=60,
+ a61=61, a62=62, a63=63, a64=64, a65=65, a66=66, a67=67, a68=68, a69=69, a70=70,
+ a71=71, a72=72, a73=73, a74=74, a75=75, a76=76, a77=77, a78=78, a79=79, a80=80,
+ a81=81, a82=82, a83=83, a84=84, a85=85, a86=86, a87=87, a88=88, a89=89, a90=90,
+ a91=91, a92=92, a93=93, a94=94, a95=95, a96=96, a97=97, a98=98, a99=99, a100=100,
+ a101=101, a102=102, a103=103, a104=104, a105=105, a106=106, a107=107, a108=108, a109=109, a110=110,
+ a111=111, a112=112, a113=113, a114=114, a115=115, a116=116, a117=117, a118=118, a119=119, a120=120,
+ a121=121, a122=122, a123=123, a124=124, a125=125, a126=126, a127=127, a128=128, a129=129, a130=130,
+ a131=131, a132=132, a133=133, a134=134, a135=135, a136=136, a137=137, a138=138, a139=139, a140=140,
+ a141=141, a142=142, a143=143, a144=144, a145=145, a146=146, a147=147, a148=148, a149=149, a150=150,
+ a151=151, a152=152, a153=153, a154=154, a155=155, a156=156, a157=157, a158=158, a159=159, a160=160,
+ a161=161, a162=162, a163=163, a164=164, a165=165, a166=166, a167=167, a168=168, a169=169, a170=170,
+ a171=171, a172=172, a173=173, a174=174, a175=175, a176=176, a177=177, a178=178, a179=179, a180=180,
+ a181=181, a182=182, a183=183, a184=184, a185=185, a186=186, a187=187, a188=188, a189=189, a190=190,
+ a191=191, a192=192, a193=193, a194=194, a195=195, a196=196, a197=197, a198=198, a199=199, a200=200,
+ total = a1 + a100 + a200}
+```
+
+The final line `total = a1 + a100 + a200` is a deliberate cross-chunk probe: under k=13 its
+three operands live in the 1st, 8th, and 16th SubBrane. Expected: 201 lines, `total = 301`,
+rendered as ONE flat brane — byte-identical unsplit (Phase A) and split (Phase B, 16 SubBranes
+under stacked ConcatBranes). Approved once in Phase A, this snap is the Phase B no-churn
+sentinel. (@human: strike the `total` line if you want the pure `{a1…a200}` form originally
+specified.)
+
+#### `concat_brane_nested_shadowed_resolution.foo`
+
+The exhaustive shadowing matrix — every resolution layer represented, with the SAME name
+(`shadow`) bound differently in each, so each result pins WHERE its search resolved:
+
+```foolish
+{
+	p = 100;
+	shadow = 111;
+	orig = {shadow=1, keep=shadow, late=zz};
+	cb = {shadow=2, zz=9} orig {from_join=shadow, from_parent=p} <{prepared=shadow, prepared_p=p}>
+	
+   extended = <{grab_p = p, grab_shadow=shadow}>  {x=cb.shadow} {y=<grab_shadow>} {z=<<grab_shadow>>} <{grab_p_ao = p+1, grab_shadow_ao=shadow+1}> {g1=grab_p_ao, g2=<grab_p_ao>, g3=<<grab_p_ao>>}
+}
+```
+
+Expected resolutions inside `cb` (join line order: `shadow=2; zz=9; shadow=1; keep=1; late=9;
+from_join=1; from_parent=100; prepared=111; prepared_p=100`):
+
+| line | layer pinned | resolves to | why |
+|---|---|---|---|
+| `keep` | (iii) ORIGINAL context | `1` | resolved to `orig`'s own `shadow=1` BEFORE the copy; the copied constant keeps its value — join-time `shadow=2` cannot rebind it |
+| `late` | (i) PREFIX constituent | `9` | ECONSTANIC in `orig` (no `zz` there); revives on copy and IB-finds `zz=9` from the earlier constituent |
+| `from_join` | (i) PREFIX, nearest match | `1` | auto-SFF'd literal resolves in the join; nearest preceding `shadow` is `orig`'s copied `shadow=1`, NOT the farther `shadow=2` |
+| `from_parent` | (ii) PARENT context | `100` | no `p` anywhere in the join; AB search exits the ConcatBrane to the enclosing brane |
+| `prepared` | (iv) `<{…}>` local preparation | `111` | SF override: resolves BEFORE the copy from `cb`'s own statement position — sees the OUTER `shadow=111`, never the constituents' |
+| `prepared_p` | (iv) `<{…}>` local preparation | `100` | same timing; `p` from the enclosing brane |
+
+The `prepared = 111` vs `from_join = 1` contrast is the heart of the test: the SAME search
+pattern (`shadow`) with different per-element timing yields different, individually correct
+answers.
+
+### Unit tests
+
+Unit tests in `foolish-ubca` follow the snapshots; existing concatenation-related unit
+expectations regenerate (see UBC Step Impact) and semantic changes require human review.
+- `concat_brane_split_long_brane_hierarchy` — companion to the snap: under k=13 the a1…a200
+  storage tree is the pure function of (200, 13) — 16 SubBranes of ≤ 13 lines under stacked
+  ConcatBranes, every node's fan-out ≤ 13, balanced per the arrangement rule, global indices
+  0..199 in order.
 
 Equivalence Law and search:
 - `concat_equals_big_brane` — the same statements evaluated as `{s₁…sₙ}` and as
@@ -401,19 +662,44 @@ Indexing:
   head/tail across the boundary; out-of-range → NK.
 - `concat_find_stmt_index_is_global` — identity scan returns global indices.
 
+Protocol (element typing, auto-wrapping, copy-and-coordinate):
+- `concat_element_typing_rejects_non_brane` — a non-brane, non-search direct element
+  (e.g. `1 {a=2}`) raises an alarm and constructs the ConcatBrane `NK`; it never steps. Same
+  for the settle-time pass: an element search resolving to a non-brane → alarm + `NK`.
+- `concat_construction_auto_wraps` — literal brane elements are SFF-wrapped (internal searches
+  BORN ECONSTANIC; no standalone resolution); search elements are SF-wrapped.
+- `concat_cross_element_reference_resolves` — `{cb = {a=1, b=2} {c = a + b};}` settles with
+  `c = 3` (the worked example; pins the semantic repair — today `c` stays unresolved).
+- `concat_sff_born_searches_revive_embryonic` — the copy transforms a literal's SFF-born
+  ECONSTANIC searches to EMBRYONIC in position, with correct parents.
+- `concat_sf_on_search_is_noop` — `<search>` behaves identically to the bare search element
+  (idempotent with the auto-SF).
+- `concat_sf_marked_literal_prepares_locally` — `<{x = name_from_concat_context}>` resolves its
+  innards BEFORE the copy, from the ConcatBrane's own statement position (IB against preceding
+  lines, AB through the concat's ancestors); the settled lines then copy with standard
+  recoordination.
+- `concat_explicit_sff_element_is_error` — `<<{…}>>` as a direct element: alarm + `NK`; the
+  ConcatBrane never steps.
+
 Structure, value, clone:
-- `concat_statement_parents_point_at_top_concat` — parents bypass the whole storage tree; bags
-  never surface via `get_my_brane`.
+- `concat_statement_parents_point_at_top_concat` — parents bypass the whole storage tree;
+  storage nodes never surface via `get_my_brane`.
 - `concat_value_is_itself` — `settled_result()` of a ConcatBrane is `None`, so `value()` of a
-  settled ConcatBrane is itself, not its first bag; `as_i64` is `None` via the unmodified
+  settled ConcatBrane is itself, not its first SubBrane; `as_i64` is `None` via the unmodified
   default (branes are not integers — no override exists).
 - `concat_constanic_clone_rewires_and_recoordinates` — cloning a settled ConcatBrane as a search
-  result deep-clones the storage tree, rewires parents to the clone, preserves numbering and
-  shape.
-- `nested_concat_elements_are_adopted_not_spliced` — an element value that is a ConcatBrane
-  becomes an inner bag preserving its subtree; the top node's direct bag count does not grow
-  beyond its element count; search/indexing/IB still see the flat global order.
-- `concatenation_nyes_transitions` — extended for the populate-then-drain progression.
+  result deep-clones the storage tree with `skip_foolish_children = true`, rewires parents to
+  the clone, preserves numbering and arrangement; the clone carries NO element FIRs and the
+  element searches do NOT re-run (value semantics: destination-context shadowing cannot change
+  the constituents).
+- `settled_search_clone_skips_foolish_children` — cloning a settled `SearchFir` with the new
+  option copies the result from `ubc_children` without the anchor subtree; observable behavior
+  identical to today's clone.
+- `concat_arrangement_is_function_of_n_and_k` — the storage tree shape depends only on total
+  line count and `k`: a nested-ConcatBrane element contributes its lines like any brane
+  (no inherited shape); unlimited `k` yields a single SubBrane; boundary cases n=k² and n=k²+1.
+- `concatenation_nyes_transitions` — extended for the typed, auto-wrapped,
+  settle-count-arrange-copy-drain progression.
 
 Auto-sizing (compiler, Phase B):
 - `unlimited_config_is_identity`, `brane_at_or_under_max_is_not_split`,
@@ -455,17 +741,26 @@ Breaks FOOP-62's two-store uniformity: generic traversal, Debug, and clone code 
 correction); the ConcatBrane using it for storage is intended usage, and `settled_result()`
 makes each kind's interpretation explicit in the trait.
 
-### E. Split evaluated branes at step time (rebalancing merged results)
+### E. Split evaluated BraneFirs at step time (spontaneous re-splitting of settled branes)
 
-Touches every step rule and can oscillate against concatenation. Out of scope: this FOOP bounds
-construction-from-AST and makes concatenation bound-preserving; it never rebalances.
+Touches every step rule and can oscillate against concatenation. Out of scope: the only
+arrangement computation happens inside the ConcatBrane protocol's count-and-arrange step; a
+settled `BraneFir` is never spontaneously re-split.
 
-### F. Splice nested-ConcatBrane elements flat into the parent's storage
+### F. Splice constituent lines into one flat unbounded array
 
-Flattening an adopted ConcatBrane's segments into the parent's bag list rebuilds an unbounded
-array at the top node — with `n` statements and chunk size `k`, the top ConcatBrane would hold
-`⌈n/k⌉` bags, which exceeds `k` for `n > k²`. Adoption as an inner bag keeps every node's
-fan-out ≤ `k` and is what the Phase B iterative grouping emits anyway.
+Copying all `n` lines into a single flat store rebuilds exactly the oversized brane the bound
+forbids (`n > k`). The count-and-arrange step re-chunks instead: SubBranes of ≤ `k` under
+stacked ConcatBranes of fan-out ≤ `k`.
+
+### G. Shape-preserving adoption of nested-ConcatBrane elements (this FOOP's second revision)
+
+Adopting a nested ConcatBrane's storage tree as-is (an "inner bag" preserving its shape) keeps
+the bound but makes the storage shape depend on element history. Superseded by count-and-arrange
+(Atlas, 2026-07-04): after the constituents settle, element boundaries carry no semantics — the
+lines are being constanic-copied anyway, so the arrangement might as well be the pure function
+of `(n, k)`, which is simpler to verify and gives every equal-sized ConcatBrane an identical
+storage shape.
 
 ## Open Questions
 
@@ -473,9 +768,17 @@ fan-out ≤ `k` and is what the Phase B iterative grouping emits anyway.
   ConcatBrane? Deferred until characterizations have merge semantics.
 - Should the root brane's statement list be bounded too (implicit wrapper)? Deferred; changes
   the root convention.
-- Should a cloned ConcatBrane rebalance its segments to the CURRENT `MAX_BRANE_SIZE` if the
-  configuration differs from construction time? Current answer: no — segments are preserved
-  as-is; revisit with distribution work.
+- Should a cloned ConcatBrane recompute its arrangement for the CURRENT `MAX_BRANE_SIZE` if the
+  configuration differs from construction time? Current answer: no — the clone preserves the
+  arrangement; revisit with distribution work. (Less pressing now that the arrangement is a
+  pure function of `(n, k)` — clones under the same config are identical anyway.)
+- **Auto-SF/SFF wrappers must not leak mechanism.** Two hygiene sub-questions to answer with
+  tests: (a) the step driver sets `with_ancestral_sfm(true)` when stepping under a StayFoolish
+  — the auto-SF wrappers will raise that flag for everything the concat steps, and
+  `constanic_clone_at` takes the flag as a parameter, so the auto-wrapper must not accidentally
+  change the NYES transform of copied lines; (b) the sequencer must render elements as the
+  Foolisher wrote them — the auto-wrappers are construction bookkeeping and must be invisible
+  in `hfssnap` output.
 
 ## Future Work (TODO)
 
@@ -515,6 +818,70 @@ fan-out ≤ `k` and is what the Phase B iterative grouping emits anyway.
   `concatenation_with_unresolved_search` under `foolish-ubca/snapshot_tests/approved/`.
 
 ## Last Updated
+
+**Date**: 2026-07-04
+**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)
+**Changes**: Ninth revision — the fenced foolish blocks in §Test Plan are now declared to BE
+the snapshot input files (copied verbatim at A1; the spec is the source of truth), and
+`concat_brane_split_long_brane` is written out literally in full (all 200 assignments plus the
+`total` probe) instead of abbreviated with an ellipsis.
+
+**Date**: 2026-07-04
+**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)
+**Changes**: Eighth revision — the four `concat_brane_*` snapshot inputs are now written IN
+FULL in the Test Plan (Foolish source plus expected-resolution notes) for BDFL reading:
+test_basic (incl. empty constituents and a twice-used named brane), foolish_concatenations
+(flat vs braced nesting — braces are branes, only juxtaposition joins),
+split_long_brane (with a `total = a1 + a100 + a200` cross-chunk probe, flagged @human for
+possible strike), and nested_shadowed_resolution (full expected-resolution table; the
+`prepared=111` vs `from_join=1` contrast pins per-element timing).
+
+**Date**: 2026-07-04
+**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)
+**Changes**: Seventh revision per Atlas: (1) Sequencing promoted to a REQUISITE section — a
+settled ConcatBrane displays as ONE brane (flat, wrapper-free, boundary-free), with the
+k-invariance consequence stated: snapshots approved unsplit must survive splitting unchanged.
+(2) Test Plan restructured snapshot-first: suite runs at max_brane_size=13; new `concat_brane_*`
+snap family (test_basic, foolish_concatenations, split_long_brane — the a1…a200 Phase B
+sentinel, 200 > 13² forcing the third tree level — and nested_shadowed_resolution, the
+exhaustive shadowing matrix) REPLACES the `concatenation_*` family, retirement human-gated;
+unit tests follow, incl. `concat_brane_split_long_brane_hierarchy` for the hidden tree.
+
+**Date**: 2026-07-04
+**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)
+**Changes**: Sixth revision per Atlas: (1) resolved the auto-SF reuse Open Question — a settled
+ConcatBrane clones as a VALUE via the new general `constanic_clone(…, skip_foolish_children =
+true)` option: only `ubc_children` (the storage tree) is cloned, element FIRs are not, element
+searches never re-run; question removed from Open Questions per template. (2) The option is
+general: settled singular-result kinds (SearchFir/IndexFir/HeadTailFir) can clone without their
+dead anchor subtree — adopting it there is Phase A cleanup scope. (3) The element timing menu is
+now a table in the protocol, with the error row generalized to "all other FIRs" (including
+explicit `<<…>>`). Tests and plan updated accordingly.
+
+**Date**: 2026-07-04
+**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)
+**Changes**: Fifth revision per Atlas: (1) element typing extended with the third accepted form
+— an explicitly SF-marked expression; SF on a search is idempotent (NOOP), SF on a literal brane
+is an OVERRIDE of the automated SFF wrapping selecting local preparation (innards resolve BEFORE
+copy, from the concat's own statement context); explicitly SFF-marked elements are an error
+(alarm + NK). Third worked example added exercising the full element menu. (2) Expanded the two
+terse notes: the auto-SF reuse question (formula vs. value readings of a cloned ConcatBrane) and
+wrapper hygiene (has_ancestral_sfm leak, sequencer invisibility) in Open Questions; the Integer
+brane count-and-copy conflict with three candidate resolutions and the narrowed Phase A
+obligation (stages 5/6 through the trait surface only). Four protocol tests added.
+
+**Date**: 2026-07-04
+**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)
+**Changes**: Fourth revision — the ConcatBrane protocol per Atlas: (1) fundamental contract
+(list of BRANES; violations alarm + NK) enforced at construction and settle time; (2)
+construction auto-wraps SFF around literal elements (searches born ECONSTANIC, deferred to the
+join — resolves the resolve-BEFORE/AFTER timing question structurally) and SF around search
+elements; (3) count-and-arrange replaces shape-preserving adoption: storage tree is a pure
+function of (n, k) — SubBranes ≤ k under stacked ConcatBranes (new Rejected Alternative G);
+(4) copy-and-coordinate transforms SFF-born ECONSTANIC → EMBRYONIC in position. Terminology:
+segments/bags → SubBranes/stack ConcatBranes. Worked example `{cb={a=1,b=2}{c=a+b}}` added with
+verified current behavior (c unresolved today). Protocol tests added; Open Question on exact
+auto-SF semantics added.
 
 **Date**: 2026-07-03
 **Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)

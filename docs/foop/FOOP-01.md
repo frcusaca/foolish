@@ -289,3 +289,11 @@ requirement.
 - FOOP-8: FIR mutability — anchor's `.state` is read directly.
 - FOOP-11: search-stops-at-NK rule is consistent with this FOOP's NK
   propagation.
+
+---
+
+## Last Updated
+
+**Date**: 2026-07-04
+**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)
+**Changes**: Status -> Deprecated. Canceled as it stands per user request; feature should be later respecified and reimplemented. Added Deprecation Notice section.

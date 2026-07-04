@@ -316,3 +316,11 @@ independently verifiable against the file state at signing time.
 - Snapshot suite: `foolish/foolish-core/src/snapshot_suite.rs`
 - Example snapshot: `foolish/foolish-core/snapshot_tests/approved/simple_addition.foo.snap.new`
 - AGENTS.md approval test protocol section
+
+---
+
+## Last Updated
+
+**Date**: 2026-07-04
+**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)
+**Changes**: Status Draft -> Deprecated. Superseded by FOOP-92 (Einmo). Added Deprecation Notice section per user request.

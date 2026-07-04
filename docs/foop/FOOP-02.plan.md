@@ -470,6 +470,10 @@ Over-engineering for two consumers. A module in `foolish-core` suffices.
 
 ## Last Updated
 
+**Date**: 2026-07-04
+**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)
+**Changes**: Plan canceled: added [x] Canceled marker and marked all outstanding checkboxes [-]; already-completed checkboxes left as historical record.
+
 **Date**: 2026-05-17
 **Updated By**: opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4
 **Changes**: Initial plan created. Three-step refactor: trait-based sequencing, move SnapshotSuite to core, adapt UBC FIRs for snapshot testing.

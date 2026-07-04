@@ -332,3 +332,11 @@ FOOP if the language gets a serious user base.
 - FOOP-8: parent chain invariant — PANIC if cycle detected.
 - FOOP-11: `NKFir` is the carrier for MILD alarm context.
 - `Fir.scala`: `NKFir` gets `alarm: Option[Alarm]` field.
+
+---
+
+## Last Updated
+
+**Date**: 2026-07-04
+**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)
+**Changes**: Status -> Deprecated. Canceled as it stands per user request; feature should be later respecified and reimplemented. Added Deprecation Notice section.

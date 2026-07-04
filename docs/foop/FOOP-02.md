@@ -501,3 +501,11 @@ Over-engineering for two consumers. A module in `foolish-core` suffices.
 - `*Fir` structs (builder basis): `foolish-core/src/fir.rs` lines 209-310
 - `UbcbFir`: `foolish-ubcb/src/fir.rs`
 - `EvaluationResult`, `StatementResult`: `foolish-ubcb/src/engine.rs` lines 13-25
+
+---
+
+## Last Updated
+
+**Date**: 2026-07-04
+**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)
+**Changes**: Status -> Deprecated. Canceled as it stands per user request; feature should be later respecified and reimplemented. Added Deprecation Notice section.

@@ -1180,6 +1180,62 @@ cannot collide with content), and the parser strips it before any signature
 verification. The old `# produced-by:` advisory is subsumed by the
 `produced_by` stamp field (§4.4).
 
+#### 4.7 Dependent einmos (`++` variants)
+
+A test may have **dependent** tests — variants of a reference test that alter
+one aspect ("special cases"). A dependent's artifact carries, in addition to
+its own output, a **DIFF section**: the diff of the reference's OUTPUT against
+the dependent's OUTPUT. A reviewer of a variant reads the *delta*, not the
+whole output; and because the DIFF depends on the reference's behavior, a
+change in the reference automatically invalidates the dependent's approved
+baseline — dependency-aware drift detection at the leaf level.
+
+**Naming.** The dependent-name separator is configurable per suite
+(`dependent-separator` in `einmo.toml` / `TestConfig`), default **`++`**:
+
+```
+input/arithmetic_precedence.foo                      # the reference test
+input/arithmetic_precedence++divisionByZero.foo      # a dependent (special case)
+output/arithmetic_precedence++divisionByZero.foo.einmo
+```
+
+Convention (documented, not enforced — einmo treats names as opaque): the base
+test name is `snake_case`, the special-case description is `camelCase`, so the
+two parts read distinctly around the `++`. The **reference** of a dependent is
+the input whose name is the dependent's name minus its **last** `++segment`,
+in the same directory — so chains (`base++a++b`) are well-defined: `base++a++b`
+references `base++a`, which references `base`.
+
+**Generation.** The suite runner evaluates references before their dependents
+(topological order within a directory). After evaluating a dependent, einmo
+computes the DIFF section itself — a **deterministic unified diff** (fixed
+3-line context; labels `reference` and `dependent`; no paths, no timestamps in
+the headers) of the reference's canonical OUTPUT section(s) against the
+dependent's, both from the **same run** (both freshly written to `output/`).
+Diffing is text→text, so einmo stays language-agnostic; the evaluator knows
+nothing about dependents. The dependent's metadata gains a `reference:` field
+(the reference's mirror-relative name), and `sections:` lists `DIFF`.
+
+**Missing or failed reference.** The dependent still evaluates and its own
+OUTPUT is captured; the DIFF section then records
+`reference unavailable: <reason>` (missing input, reference `status ≠ normal`,
+…). The dependent's own `status` reflects only its own evaluation.
+
+**Signing and promotion — no special cases.** All the normal signatures
+apply: the DIFF is ordinary signed body content, covered by the stage-stamp
+chain exactly like INPUT/OUTPUT (§4.4), and it is **approved/promoted through
+the same process required for all einmos** — the DIFF becomes a baseline only
+via `promote`, is compared by `compare`, is demoted and re-reviewed by
+`console-review`, and is refused on tamper by verify-on-inspect. There is no
+side channel by which a diff enters `checked/` or `verified/`.
+
+**Comparison.** For dependent einmos, DIFF joins the **required** compared
+sections (with INPUT and OUTPUT, §5). Consequence: when the *reference's*
+behavior changes, the dependent's freshly generated DIFF no longer matches its
+`checked/` baseline even if the dependent's own OUTPUT is unchanged — the
+dependent surfaces in `compare` as `differing (DIFF)`, forcing a review of the
+relationship, not just the endpoints.
+
 ### 5. Formal comparison semantics (stage matching)
 
 The `compare <stage-a> <stage-b>` operation walks both stage trees in parallel
@@ -1194,6 +1250,8 @@ test**, which is **per-section**:
 >    section:
 >    - **INPUT** — required (always compared)
 >    - **OUTPUT** (all `OUTPUT[i]`) — required (always compared)
+>    - **DIFF** — required on dependent einmos (§4.7); a reference-behavior
+>      change surfaces here even when the dependent's own OUTPUT is unchanged
 >    - **perspective sections** — *optionally required* (configurable; derived
 >      from INPUT/OUTPUT, so usually redundant to compare)
 >    - **COMMENTS** — *optionally required* (configurable)

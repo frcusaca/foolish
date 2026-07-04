@@ -49,8 +49,23 @@ worktree, until merge time.
 
 ## PHASE A — ConcatBrane upgrade
 
-### A1 — Tests first (will fail / not compile until A3)
+### A1 — Tests first: SNAPSHOTS before unit tests (will fail / not settle until A3)
 
+- [ ] Create the `concat_brane_*` snapshot inputs FIRST by copying the fenced `foolish` blocks
+      from spec §Test Plan VERBATIM (byte-for-byte — the spec is the source of truth) into
+      `foolish-ubca/snapshot_tests/input/`. These replace the existing `concatenation_*`
+      family (retirement of the old approved `.snap` files is HUMAN-gated in A4):
+  - [ ] `concat_brane_test_basic.foo` — small literal/named concatenations; output shows the
+        cross-element repair (`c=3`).
+  - [ ] `concat_brane_foolish_concatenations.foo` — deeply nested written concatenations
+        (`{ { { {..}{...}{..} }{..}{ {..}{ {..}{..} } } } ...}`); output is one flat brane in
+        source order.
+  - [ ] `concat_brane_split_long_brane.foo` — `{a1=1, …, a200=200}`. Settles UNSPLIT in
+        Phase A; by Sequencing k-invariance the SAME approved snap must survive Phase B's
+        k=13 splitting unchanged (the Phase B sentinel).
+  - [ ] `concat_brane_nested_shadowed_resolution.foo` — the exhaustive shadowed-resolution
+        matrix: prefix-constituent vs parent-context vs original-context (copied-in constants)
+        vs `<{…}>` (resolves from the concat's own statement position).
 - [ ] Equivalence Law and search tests (tests module of `foolish-ubca/src/fir_kinds.rs`):
   - [ ] `concat_equals_big_brane` — same statements as `{s₁…sₙ}` vs `{s₁…s₅}{s₆…sₙ}` settle to
         identical sequenced output.
@@ -69,11 +84,32 @@ worktree, until merge time.
   - [ ] `concat_value_is_itself` — `settled_result()` is None so `value()` of a settled
         ConcatBrane is itself; `as_i64` is None via the unmodified default (no override).
   - [ ] `concat_constanic_clone_rewires_and_recoordinates` — clone-of-concat as a search result:
-        storage tree deep-cloned, parents rewired to the clone, numbering and shape preserved.
-  - [ ] `nested_concat_elements_are_adopted_not_spliced` — nested ConcatBrane element becomes an
-        inner bag; top fan-out does not grow; flat global order still observed.
-  - [ ] Empty-brane elements: prefix-sum arithmetic skips zero-length bags
+        storage tree deep-cloned via `skip_foolish_children = true`, parents rewired to the
+        clone, numbering and arrangement preserved; NO element FIRs cloned, element searches
+        never re-run (value semantics).
+  - [ ] `settled_search_clone_skips_foolish_children` — settled SearchFir clone with the option
+        drops the anchor subtree; behavior otherwise identical.
+  - [ ] `concat_arrangement_is_function_of_n_and_k` — nested ConcatBrane element contributes
+        its lines like any brane (no inherited shape); unlimited k → single SubBrane; n=k² and
+        n=k²+1 boundaries.
+  - [ ] Empty-brane elements contribute zero lines
         (`concatenation_of_empty_branes` semantics preserved).
+- [ ] Protocol tests (element typing, auto-wrapping, copy-and-coordinate):
+  - [ ] `concat_element_typing_rejects_non_brane` — non-brane/non-search direct element →
+        alarm + NK at construction; element resolving to a non-brane at settle time →
+        alarm + NK.
+  - [ ] `concat_construction_auto_wraps` — literal elements SFF-wrapped (searches BORN
+        ECONSTANIC), search elements SF-wrapped.
+  - [ ] `concat_cross_element_reference_resolves` — `{cb = {a=1, b=2} {c = a + b};}` → `c = 3`
+        (pins the semantic repair; current evaluator leaves `c` unresolved, verified
+        2026-07-04).
+  - [ ] `concat_sff_born_searches_revive_embryonic` — copy transforms ECONSTANIC → EMBRYONIC in
+        position with correct parents.
+  - [ ] `concat_sf_on_search_is_noop` — explicit `<search>` element ≡ bare search element.
+  - [ ] `concat_sf_marked_literal_prepares_locally` — explicit SF on a literal OVERRIDES the
+        auto-SFF: innards resolve BEFORE copy, from the concat's own statement context; settled
+        lines copy with standard recoordination.
+  - [ ] `concat_explicit_sff_element_is_error` — `<<{…}>>` element → alarm + NK, never steps.
 - [ ] Extend `concatenation_nyes_transitions` in `foolish-ubca/src/fir_kinds.rs` for the
       populate-then-drain progression (assert_progression: PREMBRIONIC start, monotone,
       constanic terminal).
@@ -107,12 +143,27 @@ worktree, until merge time.
 
 ### A3 — The non-merging ConcatBrane
 
-- [ ] Rewrite `ConcatenationFir::fir_op_step` per the spec's populate step: constanic-clone
-      element values into bags via a CAPABILITY-BASED adoption rule (any brane-like value
-      concats; this FOOP's two instances: plain statement-list brane → segment; ConcatBrane →
-      adopted inner bag, shape preserved — leave the seam open for future brane kinds), assign
-      global line numbers across the tree, rewire statement parents to the top ConcatBrane,
-      push non-constanic clones as tasks, settle by the existing terminal rule.
+- [ ] Implement the ConcatBrane protocol (spec §"The ConcatBrane protocol") in
+      `ConcatenationFir` construction + `fir_op_step`:
+  - [ ] Construction: element typing check (literal brane | search | SF-marked form of either;
+        explicit SFF element or any other kind → alarm + NK); auto-wrap SFF around bare literal
+        branes (reuse the `under_sff` build rule) and SF around bare searches; explicit SF on a
+        literal overrides the auto-SFF (local preparation — element built WITHOUT `under_sff`,
+        steps in the concat's own context before copy).
+  - [ ] Step: elements to constanic; settle-time typing check (every value a brane, else
+        alarm + NK).
+  - [ ] Count lines; compute the arrangement as the pure function of (n, k): SubBranes ≤ k
+        under stacked ConcatBranes of fan-out ≤ k (unlimited k → single SubBrane). Any
+        brane-like value contributes lines through the trait surface (seam stays open for
+        future brane kinds).
+  - [ ] Constanic-copy each line to its SubBrane position and coordinate there: parent bypass
+        to the top ConcatBrane, global line numbers, SFF-born ECONSTANIC → EMBRYONIC revival;
+        push non-constanic copies as tasks; settle by the existing terminal rule.
+- [ ] Add the general `skip_foolish_children` option to the constanic-clone path
+      (`foolish-ubca/src/proto_brane.rs`): clone `ubc_children` only. Use it for the settled
+      ConcatBrane clone (value semantics — element FIRs not cloned, element searches never
+      re-run), then adopt it in the settled-SearchFir/IndexFir clone path (result lives in
+      ubc_children; the anchor subtree is dead weight).
 - [ ] Implement `ConcatenationFir` overrides: `stmt_count`, `stmt_at` (tree descent via prefix
       sums), `_search_brane` (direction-aware global range over the tree), `_ab_search` (shared
       logic with `BraneFir`, not duplicated), `is_own_value` → true, `as_i64` → None.
@@ -131,6 +182,10 @@ worktree, until merge time.
       drift, plus cross-element references newly resolving (the `{a=10}{b=a}` class). Any OTHER
       churn is a regression: stop and fix.
 - [ ] Write a churn summary (which snaps, step-count-only vs semantic) for the reviewer.
+- [ ] Propose retirement of the superseded `concatenation_*` snapshot inputs and approved
+      `.snap` files (list them explicitly for the reviewer). AI may remove the superseded
+      `.foo` INPUT files once the human agrees; the approved `.snap` files themselves are
+      removed by the HUMAN only.
 - [ ] STOP! STOP!! STOP!!! ASK HUMAN to review Phase A snapshots with ./foolish_review.sh
       foolish-ubca and ./accept_approved.sh foolish-ubca, and to check this box before Phase B.
       UNDER NO CIRCUMSTANCES will Agent continue past this point automatically!!
@@ -145,6 +200,10 @@ worktree, until merge time.
 - [ ] `brane_at_or_under_max_is_not_split` — exactly `k` statements stays a single BraneFir.
 - [ ] `oversized_brane_splits_into_chunked_concatenation` — 5 statements, k=2 → ConcatenationFir
       of 3 BraneFir chunks sized 2, 2, 1; statement names/order preserved.
+- [ ] `concat_brane_split_long_brane_hierarchy` — companion to the Phase A snap: under k=13
+      the a1…a200 storage tree is the pure function of (200, 13) — 16 SubBranes of ≤ 13 lines
+      under stacked ConcatBranes, every node fan-out ≤ 13, balanced per the arrangement rule,
+      global indices 0..199 in order.
 - [ ] `iterative_grouping_bounds_every_node` — n=30, k=3 (10 chunks > k → grouping iterates):
       NO node holds more than 3 children (statements or elements); order preserved; settles
       identically to the unlimited compile. Boundary cases n=k² and n=k²+1.
@@ -174,6 +233,12 @@ worktree, until merge time.
 ### B4 — Phase B gates
 
 - [ ] `cargo fmt --all`; `cargo clippy --workspace -- -D warnings`; `cargo test --workspace`.
+- [ ] Set the UBCa snapshot suite to `max_brane_size = 13` (`ubca_snapshot_tester.rs`
+      constructs its `UbcaEvaluator` with `UbcaConfig { max_brane_size: NonZeroUsize::new(13) }`).
+      13 forces real splitting in the targeted inputs (200 > 13² = 169 → three-level tree)
+      while leaving small-brane snapshots untouched. Verify no approved snapshot contains a
+      brane exceeding 13 statements other than the concat_brane family; list any that do for
+      the human before proceeding.
 - [ ] `cargo insta test -p foolish-ubca --lib` — ZERO `.snap.new` relative to the Phase A
       approved state (default config is unlimited; Phase B must be invisible to snapshots).
 - [ ] Update FOOP-13.md status `Draft` → `Implementing` and refresh both files' Last Updated
@@ -197,6 +262,34 @@ worktree, until merge time.
   - [ ] This is the last sub-task checkbox to be checked in this block of subtasks.
 
 ## Last Updated
+
+**Date**: 2026-07-04
+**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)
+**Changes**: Spec seventh revision synced: A1 restructured snapshot-first (author the four
+`concat_brane_*` inputs before unit tests; old `concatenation_*` family superseded); A4 gains
+the human-gated retirement task; B1 gains `concat_brane_split_long_brane_hierarchy`; B4 gains
+the suite max_brane_size=13 task with the pre-flight check for oversized branes in existing
+snaps.
+
+**Date**: 2026-07-04
+**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)
+**Changes**: Spec sixth revision synced: A3 gains the `skip_foolish_children` clone-option task
+(ConcatBrane value-semantics clone + settled-search adoption); clone tests updated (no element
+FIRs in the clone, element searches never re-run; `settled_search_clone_skips_foolish_children`
+added).
+
+**Date**: 2026-07-04
+**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)
+**Changes**: Spec fifth revision synced: A1 gains the SF-element tests (SF-on-search NOOP,
+SF-on-literal override/local preparation, explicit-SFF error); A3 construction sub-task now
+covers the three accepted element forms and the SF override built without `under_sff`.
+
+**Date**: 2026-07-04
+**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)
+**Changes**: A1/A3 updated for the ConcatBrane protocol (spec fourth revision): protocol test
+block added (element typing NK, auto-wrapping, cross-element resolution `c=3`, ECONSTANIC →
+EMBRYONIC revival); A3 rewritten as construction typing + auto-SFF/SF + settle + count-and-
+arrange (pure function of (n, k)) + copy-and-coordinate sub-tasks.
 
 **Date**: 2026-07-03
 **Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)

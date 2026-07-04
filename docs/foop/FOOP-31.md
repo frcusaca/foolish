@@ -172,3 +172,11 @@ Phase 5 is a UBC-specific enhancement, not a language requirement.
 - [01_phases_overview.md](todo/rust-mvp/01_phases_overview.md) — Phase roster and FOOP mapping
 - [ubc2_design.md](ubc1/how/ubc2_design.md) — UBC2 design specification (UBCb reference)
 - [ubc2_message_protocol.md](ubc1/how/ubc2_message_protocol.md) — UBCb message protocol
+
+---
+
+## Last Updated
+
+**Date**: 2026-07-04
+**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)
+**Changes**: Status -> Deprecated. Canceled as it stands per user request; feature should be later respecified and reimplemented. Added Deprecation Notice section.

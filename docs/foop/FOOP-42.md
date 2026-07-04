@@ -954,6 +954,10 @@ After implementation:
 
 ## Last Updated
 
+**Date**: 2026-07-04
+**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)
+**Changes**: Status -> Deprecated. Canceled as it stands per user request; feature should be later respecified and reimplemented. Added Deprecation Notice section.
+
 **Date**: 2026-06-04
 **Updated By**: opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4
 **Changes**: Rewrote Indentation Model with hints-based approach: `open_indent` and
