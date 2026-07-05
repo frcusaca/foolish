@@ -43,7 +43,7 @@ ls | rev | sort -V | rev
 | [FOOP-92](FOOP-92.md) | Einmo — directory-based signed-snapshot testing with staged promotion | Draft | meta | 2026-06-26 | Sisyphus |
 | [FOOP-03](FOOP-03.md) | Repository Cleanup — Remove Dead Code, Flatten Workspace, Establish UBCa as Reference Implementation, Rename Main to jia | Draft (blocked on FOOP-62) | meta | 2026-07-01 | Sisyphus / mimo-v2.5-pro |
 | [FOOP-13](FOOP-13.md) | MAX_BRANE_SIZE — auto-sizing via a non-merging ConcatBrane equivalent to the merged brane | Brewing | phase-2 | 2026-07-03 | Atlas |
-| [FOOP-23](FOOP-23.md) | Value search — the ~=/?= operator family, expression patterns, and anchoring searches on searches | Draft | phase-2 | 2026-07-04 | Atlas |
+| [FOOP-23](FOOP-23.md) | Value search and contexted (&-prefixed) search — value equality, expression patterns, and searching from a statement's position | Draft | phase-2 | 2026-07-04 | Atlas |
 
 ---
 
@@ -65,7 +65,7 @@ ls | rev | sort -V | rev
 - [FOOP-82](FOOP-82.md) — UBCa Code Review — Findings and Recommended Changes
 - [FOOP-92](FOOP-92.md) — Einmo — directory-based signed-snapshot testing with staged promotion
 - [FOOP-03](FOOP-03.md) — Repository Cleanup — dead code removal, workspace flatten, `jia` rename (blocked, see FOOP-62)
-- [FOOP-23](FOOP-23.md) — Value search — `~=`/`?=` family, expression patterns, search-anchored search (`FoolRefFir`)
+- [FOOP-23](FOOP-23.md) — Value search + contexted `&`-searches — `~=`/`?=`, expression patterns, `&`-prefix navigation from a statement (`FoolRefFir`)
 
 ### Brewing
 
@@ -145,6 +145,13 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 ---
 
 ## Last Updated
+
+**Date**: 2026-07-05
+**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)
+**Changes**: Retitled FOOP-23 to "Value search and contexted (`&`-prefixed) search" after design
+revision: search now splits into a contextless family (existing `.` `?` `~` `#` `^` `$` + value
+`~=`/`?=` — deepen, demand a brane) and a contexted family (`&`-prefixed twins — navigate from a
+statement's position within its home brane). Updated the main-table title and By-Status entry.
 
 **Date**: 2026-07-04
 **Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)
