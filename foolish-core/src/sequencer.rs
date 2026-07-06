@@ -351,7 +351,11 @@ fn render_fir(
 
         let mut non_result_items = vec![format!("pattern='{}'", pattern), anchor_str.to_string()];
         if show_state {
-            non_result_items.push(state.to_string());
+            if let Some(alarm) = fir.hs_alarm() {
+                non_result_items.push(format!("{}({}, {})", state, alarm.code, alarm.message));
+            } else {
+                non_result_items.push(state.to_string());
+            }
         }
 
         let opener = format!("{}{}", pbid, "(");

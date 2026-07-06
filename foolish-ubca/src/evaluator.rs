@@ -376,10 +376,18 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                         .build();
                 }
             }
-            SearchFirBuilder::new(borrowed.as_search_pattern().unwrap_or(""))
+            let mut builder = SearchFirBuilder::new(borrowed.as_search_pattern().unwrap_or(""))
                 .anchored(borrowed.as_search_anchored())
-                .state(state)
-                .build()
+                .state(state);
+            if let Some(alarm_reason) = borrowed.core().alarm_reason() {
+                builder = builder.alarm(Alarm {
+                    level: AlarmLevel::Mild,
+                    code: "VALUE-SEARCH-UNSUPPORTED-PATTERN".to_string(),
+                    message: alarm_reason,
+                    source: AlarmSource::Evaluator,
+                });
+            }
+            builder.build()
         }
         FirKind::Index => {
             if state.is_constanic() {

@@ -398,6 +398,88 @@ impl Parser {
         self.parse_postfix_expr()
     }
 
+    // --- arithExpr: arithmetic only, NO search suffixes ---
+    // Used for value patterns (spec: "value_pattern := arith_expr", no trailing
+    // search suffixes).  Calls parse_primary() directly instead of
+    // parse_postfix_expr(), so `~=`/`?=`/`&`/`.`/`?`/`~`/`#`/`^`/`$` are NOT consumed.
+    fn parse_arith_expr(&mut self) -> Result<Astn> {
+        let mut left = self.parse_arith_mul_expr()?;
+        loop {
+            match self.peek_token() {
+                Some(Token::Plus) => {
+                    self.advance();
+                    let right = self.parse_arith_mul_expr()?;
+                    left = Astn::BinaryOp {
+                        op: "+".into(),
+                        left: Box::new(left),
+                        right: Box::new(right),
+                    };
+                }
+                Some(Token::Minus) => {
+                    self.advance();
+                    let right = self.parse_arith_mul_expr()?;
+                    left = Astn::BinaryOp {
+                        op: "-".into(),
+                        left: Box::new(left),
+                        right: Box::new(right),
+                    };
+                }
+                _ => break,
+            }
+        }
+        Ok(left)
+    }
+
+    fn parse_arith_mul_expr(&mut self) -> Result<Astn> {
+        let mut left = self.parse_arith_unary_expr()?;
+        loop {
+            match self.peek_token() {
+                Some(Token::Mul) => {
+                    self.advance();
+                    let right = self.parse_arith_unary_expr()?;
+                    left = Astn::BinaryOp {
+                        op: "*".into(),
+                        left: Box::new(left),
+                        right: Box::new(right),
+                    };
+                }
+                Some(Token::Div) => {
+                    self.advance();
+                    let right = self.parse_arith_unary_expr()?;
+                    left = Astn::BinaryOp {
+                        op: "/".into(),
+                        left: Box::new(left),
+                        right: Box::new(right),
+                    };
+                }
+                _ => break,
+            }
+        }
+        Ok(left)
+    }
+
+    fn parse_arith_unary_expr(&mut self) -> Result<Astn> {
+        match self.peek_token() {
+            Some(Token::Plus) => {
+                self.advance();
+                let expr = self.parse_primary()?;
+                Ok(Astn::UnaryOp {
+                    op: "+".into(),
+                    expr: Box::new(expr),
+                })
+            }
+            Some(Token::Minus) => {
+                self.advance();
+                let expr = self.parse_primary()?;
+                Ok(Astn::UnaryOp {
+                    op: "-".into(),
+                    expr: Box::new(expr),
+                })
+            }
+            _ => self.parse_primary(),
+        }
+    }
+
     // --- addExpr ---
     fn parse_add_expr(&mut self) -> Result<Astn> {
         let mut left = self.parse_mul_expr()?;
@@ -504,7 +586,7 @@ impl Parser {
                     self.advance();
                     let pattern = self.parse_regexp_pattern()?;
                     if self.eat(&Token::Assign) {
-                        let value_pattern = self.parse_add_expr()?;
+                        let value_pattern = self.parse_arith_expr()?;
                         expr = Astn::ValueSearch {
                             anchor: Some(Box::new(expr)),
                             forward: false,
@@ -521,7 +603,7 @@ impl Parser {
                 }
                 Some(Token::QuestionEquals) => {
                     self.advance();
-                    let value_pattern = self.parse_add_expr()?;
+                    let value_pattern = self.parse_arith_expr()?;
                     expr = Astn::ValueSearch {
                         anchor: Some(Box::new(expr)),
                         forward: false,
@@ -533,7 +615,7 @@ impl Parser {
                     self.advance();
                     let pattern = self.parse_regexp_pattern()?;
                     if self.eat(&Token::Assign) {
-                        let value_pattern = self.parse_add_expr()?;
+                        let value_pattern = self.parse_arith_expr()?;
                         expr = Astn::ValueSearch {
                             anchor: Some(Box::new(expr)),
                             forward: true,
@@ -550,7 +632,7 @@ impl Parser {
                 }
                 Some(Token::TildeEquals) => {
                     self.advance();
-                    let value_pattern = self.parse_add_expr()?;
+                    let value_pattern = self.parse_arith_expr()?;
                     expr = Astn::ValueSearch {
                         anchor: Some(Box::new(expr)),
                         forward: true,
@@ -587,7 +669,7 @@ impl Parser {
                             self.advance();
                             let pattern = self.parse_regexp_pattern()?;
                             if self.eat(&Token::Assign) {
-                                let value_pattern = self.parse_add_expr()?;
+                                let value_pattern = self.parse_arith_expr()?;
                                 Astn::ValueSearch {
                                     anchor: Some(Box::new(expr)),
                                     forward: false,
@@ -606,7 +688,7 @@ impl Parser {
                             self.advance();
                             let pattern = self.parse_regexp_pattern()?;
                             if self.eat(&Token::Assign) {
-                                let value_pattern = self.parse_add_expr()?;
+                                let value_pattern = self.parse_arith_expr()?;
                                 Astn::ValueSearch {
                                     anchor: Some(Box::new(expr)),
                                     forward: true,
@@ -645,7 +727,7 @@ impl Parser {
                         }
                         Some(Token::TildeEquals) => {
                             self.advance();
-                            let value_pattern = self.parse_add_expr()?;
+                            let value_pattern = self.parse_arith_expr()?;
                             Astn::ValueSearch {
                                 anchor: Some(Box::new(expr)),
                                 forward: true,
@@ -655,7 +737,7 @@ impl Parser {
                         }
                         Some(Token::QuestionEquals) => {
                             self.advance();
-                            let value_pattern = self.parse_add_expr()?;
+                            let value_pattern = self.parse_arith_expr()?;
                             Astn::ValueSearch {
                                 anchor: Some(Box::new(expr)),
                                 forward: false,
@@ -883,7 +965,7 @@ impl Parser {
             }
             Some(Token::QuestionEquals) => {
                 self.advance();
-                let value_pattern = self.parse_add_expr()?;
+                let value_pattern = self.parse_arith_expr()?;
                 Ok(Astn::ValueSearch {
                     anchor: None,
                     forward: false,
@@ -895,7 +977,7 @@ impl Parser {
                 self.advance();
                 let pattern = self.parse_regexp_pattern()?;
                 if self.eat(&Token::Assign) {
-                    let value_pattern = self.parse_add_expr()?;
+                    let value_pattern = self.parse_arith_expr()?;
                     Ok(Astn::ValueSearch {
                         anchor: None,
                         forward: false,

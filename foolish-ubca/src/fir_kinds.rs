@@ -1122,8 +1122,17 @@ impl SearchFir {
                             self.core.set_nyes(Nyes::Nk);
                             return Ok(());
                         }
-                        _ => {}
+                        ScanOutcome::Miss => {
+                            if !self.anchored {
+                                self.core.set_nyes(Nyes::Econstanic);
+                                return Ok(());
+                            }
+                        }
                     }
+                } else if !self.anchored {
+                    // No backward candidates (idx == 0 or no enclosing brane).
+                    self.core.set_nyes(Nyes::Econstanic);
+                    return Ok(());
                 }
                 self.core.set_nyes(Nyes::Braning);
             }
@@ -1137,12 +1146,19 @@ impl SearchFir {
                 }
                 let predicate = self.build_value_predicate().expect("checked ready");
                 let scan_outcome = if self.contexted && self.anchored {
+                    let anchor = Rc::clone(&self.core.foolish_children()[0]);
+                    let anchor_settled = anchor.borrow().core().get_nyes().is_constanic();
                     match self.contexted_search_from_anchor(scope) {
                         Some((stmt, nyes)) => {
                             self.handle_found(stmt, nyes, scope);
                             return Ok(());
                         }
-                        None => ScanOutcome::Miss,
+                        None => {
+                            if !anchor_settled {
+                                return Ok(());
+                            }
+                            ScanOutcome::Miss
+                        }
                     }
                 } else if self.anchored {
                     let anchor = Rc::clone(&self.core.foolish_children()[0]);
@@ -1193,9 +1209,6 @@ impl SearchFir {
                     }
                     ScanOutcome::NkStop => {
                         self.core.set_nyes(Nyes::Nk);
-                    }
-                    ScanOutcome::Wait => {
-                        self.core.set_nyes(Nyes::Braning);
                     }
                     ScanOutcome::Miss => {
                         self.core.set_nyes(if self.anchored {
@@ -1439,7 +1452,9 @@ impl Fir for IndexFir {
                                                         0,
                                                         scope.has_ancestral_sfm,
                                                     );
-                                                    push_search_result_pair(&self.core, clone, stmt);
+                                                    push_search_result_pair(
+                                                        &self.core, clone, stmt,
+                                                    );
                                                     self.core.set_nyes(Nyes::Braning);
                                                 }
                                                 None => self.core.set_nyes(Nyes::Nk),
@@ -1483,7 +1498,8 @@ impl Fir for IndexFir {
                         let predicate = SearchPredicate::Index(target);
                         match contextful_search_scan_no_body_check(&mut nav, &predicate) {
                             ScanOutcome::Found(stmt) => {
-                                let body = stmt.borrow().core().foolish_children().first().cloned()?;
+                                let body =
+                                    stmt.borrow().core().foolish_children().first().cloned()?;
                                 Some((stmt, body))
                             }
                             _ => None,
@@ -1498,6 +1514,8 @@ impl Fir for IndexFir {
                             scope.has_ancestral_sfm,
                         );
                         push_search_result_pair(&self.core, clone, stmt);
+                    } else if !anchor.borrow().core().get_nyes().is_constanic() {
+                        return Ok(());
                     } else {
                         self.core.set_nyes(Nyes::Nk);
                     }
@@ -1515,8 +1533,7 @@ impl Fir for IndexFir {
                     let predicate = SearchPredicate::Index(self.offset);
                     match contextful_search_scan_no_body_check(&mut nav, &predicate) {
                         ScanOutcome::Found(stmt) => {
-                            let body =
-                                stmt.borrow().core().foolish_children().first().cloned();
+                            let body = stmt.borrow().core().foolish_children().first().cloned();
                             match body {
                                 Some(body) => {
                                     let self_weak = self.core.parent_weak();
@@ -1631,7 +1648,9 @@ impl Fir for HeadTailFir {
                                                         0,
                                                         scope.has_ancestral_sfm,
                                                     );
-                                                    push_search_result_pair(&self.core, clone, stmt);
+                                                    push_search_result_pair(
+                                                        &self.core, clone, stmt,
+                                                    );
                                                     self.core.set_nyes(body_nyes);
                                                 } else {
                                                     self.core.push_task(body);
@@ -1669,12 +1688,7 @@ impl Fir for HeadTailFir {
                     let predicate = SearchPredicate::Index(offset);
                     match contextful_search_scan_no_body_check(&mut nav, &predicate) {
                         ScanOutcome::Found(stmt) => {
-                            let body = stmt
-                                .borrow()
-                                .core()
-                                .foolish_children()
-                                .first()
-                                .cloned();
+                            let body = stmt.borrow().core().foolish_children().first().cloned();
                             if let Some(body) = body {
                                 let body_nyes = body.borrow().core().get_nyes();
                                 if body_nyes.is_constanic() {
@@ -1726,7 +1740,9 @@ impl Fir for HeadTailFir {
                                                         0,
                                                         scope.has_ancestral_sfm,
                                                     );
-                                                    push_search_result_pair(&self.core, clone, stmt);
+                                                    push_search_result_pair(
+                                                        &self.core, clone, stmt,
+                                                    );
                                                     self.core.set_nyes(body_nyes);
                                                 } else {
                                                     self.core.set_nyes(Nyes::Nk);
@@ -1851,28 +1867,16 @@ mod contextful_search {
     /// The result of applying a predicate to a single candidate statement.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub(crate) enum MatchOutcome {
-        /// Candidate satisfies the predicate.
         Approve,
-        /// Candidate does not satisfy; continue scanning.
         Reject,
-        /// Candidate passes the name gate but its body is pre-constanic (nigh).
-        /// The search suspends and re-scans later.
-        Wait,
-        /// Candidate passes the name gate but its body settled NK.
-        /// The search itself becomes NK.
         NkStop,
     }
 
     /// Result of the core scan loop.
     #[derive(Debug, Clone)]
     pub(crate) enum ScanOutcome {
-        /// A matching candidate was found.
         Found(FirRef),
-        /// A candidate was pre-constanic; search suspends (BRANING).
-        Wait,
-        /// A candidate was NK; search becomes NK.
         NkStop,
-        /// All candidates examined, no match, no suspensions.
         Miss,
     }
 
@@ -1880,7 +1884,6 @@ mod contextful_search {
         fn eq(&self, other: &Self) -> bool {
             match (self, other) {
                 (Self::Found(a), Self::Found(b)) => Rc::ptr_eq(a, b),
-                (Self::Wait, Self::Wait) => true,
                 (Self::NkStop, Self::NkStop) => true,
                 (Self::Miss, Self::Miss) => true,
                 _ => false,
@@ -1950,7 +1953,7 @@ mod contextful_search {
                     };
                     let nyes = body.borrow().core().get_nyes();
                     if !nyes.is_constanic() {
-                        return MatchOutcome::Wait;
+                        unreachable!("pre-constanic body in search candidate")
                     }
                     if nyes == Nyes::Nk {
                         return MatchOutcome::NkStop;
@@ -1979,7 +1982,7 @@ mod contextful_search {
                     };
                     let nyes = body.borrow().core().get_nyes();
                     if !nyes.is_constanic() {
-                        return MatchOutcome::Wait;
+                        unreachable!("pre-constanic body in search candidate")
                     }
                     if nyes == Nyes::Nk {
                         return MatchOutcome::NkStop;
@@ -2090,7 +2093,7 @@ mod contextful_search {
             .first()
             .map(|b| b.borrow().core().get_nyes());
         match nyes {
-            Some(n) if !n.is_constanic() => MatchOutcome::Wait,
+            Some(n) if !n.is_constanic() => unreachable!("pre-constanic body in search candidate"),
             Some(Nyes::Nk) => MatchOutcome::NkStop,
             _ => MatchOutcome::Approve,
         }
@@ -2200,7 +2203,6 @@ mod contextful_search {
             match predicate.matches(&candidate, &ctx) {
                 MatchOutcome::Approve => return ScanOutcome::Found(candidate),
                 MatchOutcome::Reject => {}
-                MatchOutcome::Wait => return ScanOutcome::Wait,
                 MatchOutcome::NkStop => return ScanOutcome::NkStop,
             }
         }
@@ -2221,7 +2223,6 @@ mod contextful_search {
             match predicate.matches_no_body_check(&candidate, &ctx) {
                 MatchOutcome::Approve => return ScanOutcome::Found(candidate),
                 MatchOutcome::Reject => {}
-                MatchOutcome::Wait => return ScanOutcome::Wait,
                 MatchOutcome::NkStop => return ScanOutcome::NkStop,
             }
         }
@@ -4640,7 +4641,8 @@ mod tests {
     }
 
     #[test]
-    fn matcher_name_wait_on_nye_body() {
+    #[should_panic(expected = "pre-constanic body")]
+    fn matcher_name_panics_on_nye_body() {
         let body: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<IndepIntFir>>| {
             let parent: Weak<RefCell<dyn Fir>> = me.clone();
             RefCell::new(IndepIntFir {
@@ -4656,7 +4658,7 @@ mod tests {
         let pred = SearchPredicate::Name {
             pattern: "φ".into(),
         };
-        assert_eq!(pred.matches(&stmt, &ctx), MatchOutcome::Wait);
+        pred.matches(&stmt, &ctx);
     }
 
     #[test]
@@ -4723,7 +4725,8 @@ mod tests {
     }
 
     #[test]
-    fn matcher_value_wait_on_nye_body() {
+    #[should_panic(expected = "pre-constanic body")]
+    fn matcher_value_panics_on_nye_body() {
         let body: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<IndepIntFir>>| {
             let parent: Weak<RefCell<dyn Fir>> = me.clone();
             RefCell::new(IndepIntFir {
@@ -4740,7 +4743,7 @@ mod tests {
         let pred = SearchPredicate::Value {
             pattern: Rc::clone(&pattern_val),
         };
-        assert_eq!(pred.matches(&stmt, &ctx), MatchOutcome::Wait);
+        pred.matches(&stmt, &ctx);
     }
 
     #[test]
@@ -4788,7 +4791,8 @@ mod tests {
     }
 
     #[test]
-    fn matcher_namevalue_nye_waits_after_name_gate() {
+    #[should_panic(expected = "pre-constanic body")]
+    fn matcher_namevalue_panics_on_nye_body() {
         let body: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<IndepIntFir>>| {
             let parent: Weak<RefCell<dyn Fir>> = me.clone();
             RefCell::new(IndepIntFir {
@@ -4806,11 +4810,7 @@ mod tests {
             name: "λ".into(),
             value: Rc::clone(&pat_val),
         };
-        assert_eq!(
-            pred.matches(&stmt, &ctx),
-            MatchOutcome::Wait,
-            "name matches but body is nigh → Wait"
-        );
+        pred.matches(&stmt, &ctx);
     }
 
     #[test]
@@ -4939,7 +4939,8 @@ mod tests {
     }
 
     #[test]
-    fn scan_wait_on_nye_suspends_immediately() {
+    #[should_panic(expected = "pre-constanic body")]
+    fn scan_panic_on_pre_constanic_candidate() {
         let s0 = make_statement("a", 0, settled_int(1));
         let body_nye: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<IndepIntFir>>| {
             let parent: Weak<RefCell<dyn Fir>> = me.clone();
@@ -4957,12 +4958,7 @@ mod tests {
             pattern: Rc::clone(&pattern_val),
         };
 
-        let outcome = super::contextful_search_scan(&mut nav, &pred);
-        assert_eq!(
-            outcome,
-            ScanOutcome::Wait,
-            "must suspend on pre-constanic candidate, not skip to s2"
-        );
+        super::contextful_search_scan(&mut nav, &pred);
     }
 
     #[test]
@@ -5689,6 +5685,167 @@ mod tests {
             body.borrow().as_i64(),
             Some(10),
             "atomic name=value must find second setting"
+        );
+    }
+
+    #[test]
+    fn contexted_index_on_value_search_finds_result() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile(
+            "{doc = {tmp_a = 4; c = 30; tmp_b = 4;}; \
+             after_first_4 = doc~=4&#1;}",
+        )
+        .unwrap()
+        .pop()
+        .unwrap();
+        settle_root(&root);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let after_stmt = &stmts[1];
+        eprintln!("after_stmt kind: {:?}", after_stmt.borrow().kind());
+        eprintln!(
+            "after_stmt nyes: {:?}",
+            after_stmt.borrow().core().get_nyes()
+        );
+        let stmt_children = after_stmt.borrow().core().foolish_children().to_vec();
+        eprintln!("stmt children count: {}", stmt_children.len());
+        for (i, child) in stmt_children.iter().enumerate() {
+            eprintln!(
+                "  child[{}] kind: {:?}, nyes: {:?}",
+                i,
+                child.borrow().kind(),
+                child.borrow().core().get_nyes()
+            );
+        }
+        let body = after_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        let body_borrowed = body.borrow();
+        eprintln!("body kind: {:?}", body_borrowed.kind());
+        eprintln!("body nyes: {:?}", body_borrowed.core().get_nyes());
+        eprintln!("body as_i64: {:?}", body_borrowed.as_i64());
+        let ubc = body_borrowed.core().ubc_children();
+        eprintln!("body ubc_children len: {}", ubc.len());
+        if let Some(first) = ubc.first() {
+            eprintln!("ubc[0] kind: {:?}", first.borrow().kind());
+            eprintln!("ubc[0] nyes: {:?}", first.borrow().core().get_nyes());
+            eprintln!("ubc[0] as_i64: {:?}", first.borrow().as_i64());
+        }
+        let fc = body_borrowed.core().foolish_children();
+        eprintln!("body foolish_children len: {}", fc.len());
+        for (i, child) in fc.iter().enumerate() {
+            eprintln!(
+                "  fc[{}] kind: {:?}, nyes: {:?}",
+                i,
+                child.borrow().kind(),
+                child.borrow().core().get_nyes()
+            );
+        }
+        drop(body_borrowed);
+        assert_eq!(
+            body.borrow().as_i64(),
+            Some(30),
+            "contexted index &#1 after value search ~=4 must find c=30"
+        );
+    }
+
+    #[test]
+    fn contexted_name_value_index_finds_preceding() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile(
+            "{b = {setting = 11; mid = 0; setting = 10;}; \
+             before = b~setting=10&#-1;}",
+        )
+        .unwrap()
+        .pop()
+        .unwrap();
+        settle_root(&root);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let before_stmt = &stmts[1];
+        let body = before_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        assert_eq!(
+            body.borrow().as_i64(),
+            Some(0),
+            "b~setting=10&#-1 must find mid=0"
+        );
+    }
+
+    #[test]
+    fn value_search_unanchored_miss_with_forward_candidates() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile("{pi = 3; e2 = 2; found = ?=3; nope = ?=9; named = ?e.*=2;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        settle_root(&root);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+
+        let nope_stmt = &stmts[3];
+        let nope_body = nope_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        assert_eq!(
+            nope_body.borrow().core().get_nyes(),
+            Nyes::Econstanic,
+            "nope = ?=9 must settle ECONSTANIC, not stay BRANING"
+        );
+
+        let named_stmt = &stmts[4];
+        let named_body = named_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        assert_eq!(
+            named_body.borrow().as_i64(),
+            Some(2),
+            "named = ?e.*=2 must find e2 = 2"
+        );
+    }
+
+    #[test]
+    fn value_search_pattern_error_has_alarm_in_evaluator_output() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile("{a = {inner = {x = 1;}; n = 5;}; bad = a~={q = 1;};}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        settle_root(&root);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let bad_stmt = &stmts[1];
+        let body = bad_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        assert_eq!(
+            body.borrow().core().get_nyes(),
+            Nyes::Nk,
+            "bad search must be NK"
+        );
+        assert!(
+            body.borrow()
+                .core()
+                .alarm_reason()
+                .is_some_and(|r| r.contains("VALUE-SEARCH-UNSUPPORTED-PATTERN")),
+            "bad search must have alarm for non-integer pattern"
         );
     }
 }

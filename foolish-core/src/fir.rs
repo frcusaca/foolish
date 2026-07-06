@@ -320,6 +320,7 @@ pub struct SearchFir {
     pub(crate) result: Option<FirRef>,
     pub(crate) parent: Option<FirRef>,
     pub(crate) state: Nyes,
+    pub(crate) alarm: Option<Alarm>,
 }
 
 #[derive(Debug, Clone)]
@@ -851,10 +852,10 @@ impl FirQueryable for Fir {
         }
     }
     fn hs_alarm(&self) -> Option<&Alarm> {
-        if let Fir::NormalBrane(i) = self {
-            i.alarm.as_ref()
-        } else {
-            None
+        match self {
+            Fir::NormalBrane(i) => i.alarm.as_ref(),
+            Fir::Search(i) => i.alarm.as_ref(),
+            _ => None,
         }
     }
 }
@@ -1689,6 +1690,7 @@ impl<'de> Deserialize<'de> for Fir {
                     result,
                     parent: None,
                     state,
+                    alarm: None,
                 })))
             }
             "Index" => {
@@ -1959,6 +1961,7 @@ pub struct SearchFirBuilder {
     result: Option<FirRef>,
     parent: Option<FirRef>,
     state: Nyes,
+    alarm: Option<Alarm>,
 }
 
 impl SearchFirBuilder {
@@ -1971,6 +1974,7 @@ impl SearchFirBuilder {
             result: None,
             parent: None,
             state: Nyes::Embryonic,
+            alarm: None,
         }
     }
     pub fn direction(mut self, direction: SearchDirection) -> Self {
@@ -1997,6 +2001,10 @@ impl SearchFirBuilder {
         self.state = state;
         self
     }
+    pub fn alarm(mut self, alarm: Alarm) -> Self {
+        self.alarm = Some(alarm);
+        self
+    }
     pub fn build(self) -> Fir {
         Fir::Search(Box::new(SearchFir {
             pattern: self.pattern,
@@ -2006,6 +2014,7 @@ impl SearchFirBuilder {
             result: self.result,
             parent: self.parent,
             state: self.state,
+            alarm: self.alarm,
         }))
     }
 }
