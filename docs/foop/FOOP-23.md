@@ -8,7 +8,8 @@ type: Standards
 created: 2026-07-04
 phase: phase-2
 supersedes: []
-begun: [ ]
+begun: [x]
+      (2026-07-05 17:06)
 ---
 
 # FOOP-23: Value search and contexted (`&`-prefixed) search
