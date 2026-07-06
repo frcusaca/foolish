@@ -240,6 +240,7 @@ impl ProtoBrane {
                     nyes.transform_for_clone(descendent_of_sfm_and_foolishly_ignorant);
                 let pattern = borrowed.as_search_pattern().unwrap_or("").to_owned();
                 let anchored = borrowed.as_search_anchored();
+                let is_value = borrowed.as_search_is_value();
                 let chain_econstanic =
                     if !descendent_of_sfm_and_foolishly_ignorant && nyes == Nyes::Woconstanic {
                         fir_ref.deepest_econstanic_in_chain()
@@ -283,6 +284,7 @@ impl ProtoBrane {
                         anchored,
                         forward: false,
                         sf_inner_pattern: RefCell::new(None),
+                        is_value_search: is_value,
                     })
                 })
             }
@@ -861,6 +863,7 @@ pub struct SearchFir {
     pub(crate) anchored: bool,
     pub(crate) forward: bool,
     pub(crate) sf_inner_pattern: RefCell<Option<String>>,
+    pub(crate) is_value_search: bool,
 }
 
 impl SearchFir {
@@ -930,6 +933,168 @@ impl SearchFir {
             self.core.set_nyes(Self::nyes_from_found(result_nyes));
         }
     }
+
+    fn value_child(&self) -> FirRef {
+        let idx = if self.anchored { 1 } else { 0 };
+        Rc::clone(&self.core.foolish_children()[idx])
+    }
+
+    fn build_value_predicate(&self) -> Option<SearchPredicate> {
+        let value_fir = self.value_child();
+        let nyes = value_fir.borrow().core().get_nyes();
+        if !nyes.is_constanic() {
+            return None;
+        }
+        if self.pattern.is_empty() {
+            Some(SearchPredicate::Value { pattern: value_fir })
+        } else {
+            Some(SearchPredicate::NameValue {
+                name: self.pattern.clone(),
+                value: value_fir,
+            })
+        }
+    }
+
+    fn check_value_pattern_ready(&self) -> bool {
+        let value_fir = self.value_child();
+        let nyes = value_fir.borrow().core().get_nyes();
+        if !nyes.is_constanic() {
+            self.core.push_task(value_fir);
+            return false;
+        }
+        if value_fir.borrow().as_i64().is_none() {
+            self.core.set_alarm_reason(
+                "VALUE-SEARCH-UNSUPPORTED-PATTERN: non-integer value pattern".to_string(),
+            );
+            self.core.set_nyes(Nyes::Nk);
+            return false;
+        }
+        true
+    }
+
+    fn value_search_step(&self, scope: &Scope) -> Result<(), UbcError> {
+        use contextful_search::{BraneNavigator, contextful_search_scan};
+        match self.core.get_nyes() {
+            Nyes::Prembrionic => {
+                if self.anchored {
+                    let anchor = Rc::clone(&self.core.foolish_children()[0]);
+                    self.core.push_task(anchor);
+                    self.core.set_nyes(Nyes::Braning);
+                } else {
+                    self.core.set_nyes(Nyes::Embryonic);
+                }
+            }
+            Nyes::Embryonic => {
+                if !self.core.ubc_children().is_empty() {
+                    self.settle_from_ubc_result();
+                    return Ok(());
+                }
+                if !self.check_value_pattern_ready() {
+                    return Ok(());
+                }
+                let predicate = self.build_value_predicate().expect("checked ready");
+                if let Some((stmt_ref, brane_ref)) = find_enclosing_stmt_and_brane(&self.core)
+                    && let Some(idx) = brane_ref.find_stmt_index(&stmt_ref)
+                    && idx > 0
+                {
+                    let range_end = idx - 1;
+                    let mut nav = BraneNavigator::new(&brane_ref, false);
+                    nav.set_range(0, range_end);
+                    match contextful_search_scan(&mut nav, &predicate) {
+                        ScanOutcome::Found(stmt) => {
+                            let nyes = stmt
+                                .borrow()
+                                .core()
+                                .foolish_children()
+                                .first()
+                                .map(|b| b.borrow().core().get_nyes())
+                                .unwrap_or(Nyes::Nk);
+                            self.handle_found(stmt, nyes, scope);
+                        }
+                        ScanOutcome::NkStop => {
+                            self.core.set_nyes(Nyes::Nk);
+                            return Ok(());
+                        }
+                        _ => {}
+                    }
+                }
+                self.core.set_nyes(Nyes::Braning);
+            }
+            Nyes::Braning => {
+                if !self.core.ubc_children().is_empty() {
+                    self.settle_from_ubc_result();
+                    return Ok(());
+                }
+                if !self.check_value_pattern_ready() {
+                    return Ok(());
+                }
+                let predicate = self.build_value_predicate().expect("checked ready");
+                let scan_outcome = if self.anchored {
+                    let anchor = Rc::clone(&self.core.foolish_children()[0]);
+                    let resolved = anchor.resolve_anchor();
+                    if resolved.borrow().core().get_nyes() == Nyes::Nk {
+                        self.core.set_nyes(Nyes::Nk);
+                        return Ok(());
+                    }
+                    if resolved.borrow().kind() != FirKind::Brane {
+                        ScanOutcome::Miss
+                    } else {
+                        let mut nav = BraneNavigator::new(&resolved, self.forward);
+                        contextful_search_scan(&mut nav, &predicate)
+                    }
+                } else {
+                    match find_enclosing_stmt_and_brane(&self.core) {
+                        Some((stmt_ref, brane_ref)) => {
+                            if let Some(idx) = brane_ref.find_stmt_index(&stmt_ref) {
+                                let brane_borrowed = brane_ref.borrow();
+                                let children = brane_borrowed.core().foolish_children();
+                                let len = children.len();
+                                if idx + 1 < len {
+                                    let mut nav = BraneNavigator::new(&brane_ref, true);
+                                    nav.set_range(idx + 1, len - 1);
+                                    let outcome = contextful_search_scan(&mut nav, &predicate);
+                                    drop(brane_borrowed);
+                                    outcome
+                                } else {
+                                    ScanOutcome::Miss
+                                }
+                            } else {
+                                ScanOutcome::Miss
+                            }
+                        }
+                        None => ScanOutcome::Miss,
+                    }
+                };
+                match scan_outcome {
+                    ScanOutcome::Found(stmt) => {
+                        let nyes = stmt
+                            .borrow()
+                            .core()
+                            .foolish_children()
+                            .first()
+                            .map(|b| b.borrow().core().get_nyes())
+                            .unwrap_or(Nyes::Nk);
+                        self.handle_found(stmt, nyes, scope);
+                    }
+                    ScanOutcome::NkStop => {
+                        self.core.set_nyes(Nyes::Nk);
+                    }
+                    ScanOutcome::Wait => {
+                        self.core.set_nyes(Nyes::Braning);
+                    }
+                    ScanOutcome::Miss => {
+                        self.core.set_nyes(if self.anchored {
+                            Nyes::Nk
+                        } else {
+                            Nyes::Econstanic
+                        });
+                    }
+                }
+            }
+            _ => {}
+        }
+        Ok(())
+    }
 }
 
 impl Fir for SearchFir {
@@ -938,6 +1103,9 @@ impl Fir for SearchFir {
         &self.core
     }
     fn fir_op_step(&self, scope: &Scope) -> Result<(), UbcError> {
+        if self.is_value_search {
+            return self.value_search_step(scope);
+        }
         match self.core.get_nyes() {
             Nyes::Prembrionic => {
                 if self.anchored {
@@ -1017,6 +1185,9 @@ impl Fir for SearchFir {
     }
     fn as_sf_inner_pattern(&self) -> Option<String> {
         self.sf_inner_pattern.borrow().clone()
+    }
+    fn as_search_is_value(&self) -> bool {
+        self.is_value_search
     }
 }
 
@@ -1580,9 +1751,6 @@ mod contextful_search {
     }
 
     impl BraneNavigator {
-        /// Create a new navigator over a brane's statements.
-        ///
-        /// `forward`: true → front-to-rear, false → rear-to-front.
         pub(crate) fn new(brane: &FirRef, forward: bool) -> Self {
             let children = brane.borrow().core().foolish_children().to_vec();
             let len = children.len();
@@ -1592,6 +1760,21 @@ mod contextful_search {
                 pos: start,
                 forward,
                 done: len == 0,
+            }
+        }
+
+        pub(crate) fn set_range(&mut self, start: usize, end: usize) {
+            if start > end || start >= self.children.len() {
+                self.done = true;
+                return;
+            }
+            let end = end.min(self.children.len() - 1);
+            if self.forward {
+                self.pos = start;
+                self.done = false;
+            } else {
+                self.pos = end;
+                self.done = false;
             }
         }
     }
@@ -2139,6 +2322,7 @@ mod tests {
                 anchored,
                 forward: false,
                 sf_inner_pattern: RefCell::new(None),
+                is_value_search: false,
             })
         })
     }
@@ -3659,6 +3843,192 @@ mod tests {
             Some(crate::compiler::ANON_STMT_NAME),
             "anonymous bare expression is named ???"
         );
+    }
+
+    // ── Value search tests (FOOP-23 Phase A) ────────────────────────
+
+    #[test]
+    fn value_search_forward_finds_first_match() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile("{a = {id = 4; size = 10; depth = 10;}; fwd = a~=10;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        settle_root(&root);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let fwd_stmt = &stmts[1];
+        let body = fwd_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        assert_eq!(body.borrow().as_i64(), Some(10));
+    }
+
+    #[test]
+    fn value_search_backward_finds_last_match() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile("{a = {id = 4; size = 10; depth = 10;}; bwd = a?=10;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        settle_root(&root);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let bwd_stmt = &stmts[1];
+        let body = bwd_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        assert_eq!(body.borrow().as_i64(), Some(10));
+    }
+
+    #[test]
+    fn value_search_anchored_miss_is_nk() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile("{a = {x = 1;}; bad = a~=99;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        settle_root(&root);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let bad_stmt = &stmts[1];
+        let body = bad_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        assert_eq!(body.borrow().core().get_nyes(), Nyes::Nk);
+    }
+
+    #[test]
+    fn value_search_non_integer_pattern_is_nk() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile("{a = {inner = {x = 1;}; n = 5;}; bad = a~={q = 1;};}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        settle_root(&root);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let bad_stmt = &stmts[1];
+        let body = bad_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        assert_eq!(body.borrow().core().get_nyes(), Nyes::Nk);
+        assert!(
+            body.borrow()
+                .core()
+                .alarm_reason()
+                .is_some_and(|r| r.contains("VALUE-SEARCH-UNSUPPORTED-PATTERN"))
+        );
+    }
+
+    #[test]
+    fn value_search_combined_name_and_value() {
+        use crate::compiler::Compiler;
+        let root =
+            Compiler::compile("{a = {tmp_a = 4; size = 10; tmp_b = 7;}; four = a~tmp_.*=4;}")
+                .unwrap()
+                .pop()
+                .unwrap();
+        settle_root(&root);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let four_stmt = &stmts[1];
+        let body = four_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        assert_eq!(body.borrow().as_i64(), Some(4));
+    }
+
+    #[test]
+    fn value_search_unanchored_miss_is_econstanic() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile("{pi = 3; e2 = 2; nope = ?=9;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        settle_root(&root);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let nope_stmt = &stmts[2];
+        let body = nope_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        assert_eq!(body.borrow().core().get_nyes(), Nyes::Econstanic);
+    }
+
+    #[test]
+    fn value_search_unanchored_finds_match() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile("{pi = 3; e2 = 2; found = ?=3;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        settle_root(&root);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let found_stmt = &stmts[2];
+        let body = found_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        assert_eq!(body.borrow().as_i64(), Some(3));
+    }
+
+    #[test]
+    fn value_search_nyes_transitions() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile("{a = {id = 4; size = 10; depth = 10;}; fwd = a~=10;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        settle_root(&root);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let fwd_stmt = &stmts[1];
+        let search = fwd_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        assert!(
+            search.borrow().core().get_nyes().is_constanic(),
+            "search must be constanic after root settles"
+        );
+        assert_eq!(search.borrow().as_i64(), Some(10));
+    }
+
+    fn settle_root(root: &FirRef) {
+        let scope = Scope::empty();
+        for _ in 0..200 {
+            let report = root.step(&scope).unwrap();
+            if let StepReport::Progress(nyes) = report
+                && nyes.is_constanic()
+            {
+                return;
+            }
+        }
+        panic!("root did not settle within 200 steps");
     }
 
     // ── ContextfulSearch engine tests (FOOP-23 Phase A0) ────────────

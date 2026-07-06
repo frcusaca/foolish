@@ -503,19 +503,59 @@ impl Parser {
                 Some(Token::Question) => {
                     self.advance();
                     let pattern = self.parse_regexp_pattern()?;
-                    expr = Astn::RegexpSearch {
-                        anchor: Box::new(expr),
-                        operator: SearchOperator::RegexpLocal,
-                        pattern,
+                    if self.eat(&Token::Assign) {
+                        let value_pattern = self.parse_add_expr()?;
+                        expr = Astn::ValueSearch {
+                            anchor: Some(Box::new(expr)),
+                            forward: false,
+                            name_pattern: Some(pattern),
+                            value_pattern: Box::new(value_pattern),
+                        };
+                    } else {
+                        expr = Astn::RegexpSearch {
+                            anchor: Box::new(expr),
+                            operator: SearchOperator::RegexpLocal,
+                            pattern,
+                        };
+                    }
+                }
+                Some(Token::QuestionEquals) => {
+                    self.advance();
+                    let value_pattern = self.parse_add_expr()?;
+                    expr = Astn::ValueSearch {
+                        anchor: Some(Box::new(expr)),
+                        forward: false,
+                        name_pattern: None,
+                        value_pattern: Box::new(value_pattern),
                     };
                 }
                 Some(Token::Tilde) => {
                     self.advance();
                     let pattern = self.parse_regexp_pattern()?;
-                    expr = Astn::RegexpSearch {
-                        anchor: Box::new(expr),
-                        operator: SearchOperator::RegexpForward,
-                        pattern,
+                    if self.eat(&Token::Assign) {
+                        let value_pattern = self.parse_add_expr()?;
+                        expr = Astn::ValueSearch {
+                            anchor: Some(Box::new(expr)),
+                            forward: true,
+                            name_pattern: Some(pattern),
+                            value_pattern: Box::new(value_pattern),
+                        };
+                    } else {
+                        expr = Astn::RegexpSearch {
+                            anchor: Box::new(expr),
+                            operator: SearchOperator::RegexpForward,
+                            pattern,
+                        };
+                    }
+                }
+                Some(Token::TildeEquals) => {
+                    self.advance();
+                    let value_pattern = self.parse_add_expr()?;
+                    expr = Astn::ValueSearch {
+                        anchor: Some(Box::new(expr)),
+                        forward: true,
+                        name_pattern: None,
+                        value_pattern: Box::new(value_pattern),
                     };
                 }
                 Some(Token::Hash) => {
@@ -558,7 +598,8 @@ impl Parser {
                     | Token::RParen
                     | Token::RBracket
                     | Token::Eof
-                    | Token::LineComment,
+                    | Token::LineComment
+                    | Token::Assign,
                 ) => break,
                 Some(Token::Ident(s)) => {
                     pattern.push_str(s);
@@ -737,6 +778,35 @@ impl Parser {
                 }
                 Ok(Astn::UnanchoredSeek { offset })
             }
+            Some(Token::QuestionEquals) => {
+                self.advance();
+                let value_pattern = self.parse_add_expr()?;
+                Ok(Astn::ValueSearch {
+                    anchor: None,
+                    forward: false,
+                    name_pattern: None,
+                    value_pattern: Box::new(value_pattern),
+                })
+            }
+            Some(Token::Question) => {
+                self.advance();
+                let pattern = self.parse_regexp_pattern()?;
+                if self.eat(&Token::Assign) {
+                    let value_pattern = self.parse_add_expr()?;
+                    Ok(Astn::ValueSearch {
+                        anchor: None,
+                        forward: false,
+                        name_pattern: Some(pattern),
+                        value_pattern: Box::new(value_pattern),
+                    })
+                } else {
+                    Err(ParseError::Syntax {
+                        message: "Unanchored ? without = not supported".into(),
+                        line: self.loc().0,
+                        col: self.loc().1,
+                    })
+                }
+            }
             Some(Token::Ident(_)) => {
                 let chars = self.parse_characterizations();
                 if !chars.is_empty() && self.peek_token() == Some(&Token::LBrace) {
@@ -817,8 +887,10 @@ impl std::fmt::Display for Token {
             Token::Dollar => write!(f, "$"),
             Token::Question => write!(f, "?"),
             Token::QuestionQuestion => write!(f, "??"),
+            Token::QuestionEquals => write!(f, "?="),
             Token::Tilde => write!(f, "~"),
             Token::TildeTilde => write!(f, "~~"),
+            Token::TildeEquals => write!(f, "~="),
             Token::Hash => write!(f, "#"),
             Token::Lt => write!(f, "<"),
             Token::Gt => write!(f, ">"),
@@ -1023,6 +1095,87 @@ mod tests {
                     assert!(matches!(&**expr, Astn::Concatenation { .. }));
                 }
                 _ => panic!("expected assignment with concatenation"),
+            },
+            _ => panic!("expected brane"),
+        }
+    }
+
+    #[test]
+    fn parses_value_search_forward() {
+        let ast = parse_single("{a~=10;}").unwrap();
+        match ast {
+            Astn::Brane { statements, .. } => match &statements[0] {
+                Astn::ValueSearch {
+                    forward,
+                    name_pattern,
+                    ..
+                } => {
+                    assert!(*forward);
+                    assert!(name_pattern.is_none());
+                }
+                other => panic!("expected ValueSearch, got {:?}", other),
+            },
+            _ => panic!("expected brane"),
+        }
+    }
+
+    #[test]
+    fn parses_value_search_backward() {
+        let ast = parse_single("{a?=10;}").unwrap();
+        match ast {
+            Astn::Brane { statements, .. } => match &statements[0] {
+                Astn::ValueSearch {
+                    forward,
+                    name_pattern,
+                    ..
+                } => {
+                    assert!(!*forward);
+                    assert!(name_pattern.is_none());
+                }
+                other => panic!("expected ValueSearch, got {:?}", other),
+            },
+            _ => panic!("expected brane"),
+        }
+    }
+
+    #[test]
+    fn parses_value_search_unanchored() {
+        let ast = parse_single("{found = ?=3;}").unwrap();
+        match ast {
+            Astn::Brane { statements, .. } => match &statements[0] {
+                Astn::Assignment { expr, .. } => match &**expr {
+                    Astn::ValueSearch {
+                        anchor,
+                        forward,
+                        name_pattern,
+                        ..
+                    } => {
+                        assert!(anchor.is_none());
+                        assert!(!forward);
+                        assert!(name_pattern.is_none());
+                    }
+                    other => panic!("expected ValueSearch, got {:?}", other),
+                },
+                _ => panic!("expected assignment"),
+            },
+            _ => panic!("expected brane"),
+        }
+    }
+
+    #[test]
+    fn parses_value_search_combined_name_value() {
+        let ast = parse_single("{a~name=10;}").unwrap();
+        match ast {
+            Astn::Brane { statements, .. } => match &statements[0] {
+                Astn::ValueSearch {
+                    forward,
+                    name_pattern,
+                    ..
+                } => {
+                    assert!(*forward);
+                    assert_eq!(name_pattern.as_deref(), Some("name"));
+                }
+                other => panic!("expected ValueSearch, got {:?}", other),
             },
             _ => panic!("expected brane"),
         }

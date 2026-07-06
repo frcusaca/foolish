@@ -177,6 +177,11 @@ pub trait Fir: std::fmt::Debug {
         None
     }
 
+    /// SearchFir is_value_search flag. Default: false.
+    fn as_search_is_value(&self) -> bool {
+        false
+    }
+
     fn get_my_statement(&self, self_ref: &FirRef) -> FirRef {
         match self.kind() {
             FirKind::Statement => Rc::clone(self_ref),
@@ -688,6 +693,7 @@ mod get_value_tests {
                 anchored,
                 forward: false,
                 sf_inner_pattern: RefCell::new(None),
+                is_value_search: false,
             })
         })
     }

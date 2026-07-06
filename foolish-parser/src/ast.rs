@@ -6,6 +6,8 @@ pub enum SearchOperator {
     Tail,          // $
     RegexpLocal,   // ?
     RegexpForward, // ~
+    ValueLocal,    // ?=  (backward value search)
+    ValueForward,  // ~=  (forward value search)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -63,6 +65,15 @@ pub enum Astn {
         anchor: Box<Astn>,
         operator: SearchOperator,
         pattern: String,
+    },
+
+    /// Value search: anchor~=value, anchor?=value, ?=value
+    /// Combined: anchor~name=value, anchor?name=value, ?name=value
+    ValueSearch {
+        anchor: Option<Box<Astn>>,
+        forward: bool,
+        name_pattern: Option<String>,
+        value_pattern: Box<Astn>,
     },
 
     /// Indexed access: anchor#N or anchor#-N
