@@ -120,6 +120,11 @@ pub enum Astn {
         else_body: Option<Box<Astn>>,
     },
 
+    /// Contexted search: &?name, &~name, &#N, &^, &$, &~=v, &?=v
+    ContextedSearch {
+        inner: Box<Astn>,
+    },
+
     /// Deferred/not yet implemented
     NotImplemented(String),
 }

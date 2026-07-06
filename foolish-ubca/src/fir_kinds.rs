@@ -238,6 +238,7 @@ impl ProtoBrane {
                 let pattern = borrowed.as_search_pattern().unwrap_or("").to_owned();
                 let anchored = borrowed.as_search_anchored();
                 let is_value = borrowed.as_search_is_value();
+                let is_contexted = borrowed.as_search_contexted();
                 let chain_econstanic =
                     if !descendent_of_sfm_and_foolishly_ignorant && nyes == Nyes::Woconstanic {
                         fir_ref.deepest_econstanic_in_chain()
@@ -282,12 +283,14 @@ impl ProtoBrane {
                         forward: false,
                         sf_inner_pattern: RefCell::new(None),
                         is_value_search: is_value,
+                        contexted: is_contexted,
                     })
                 })
             }
             FirKind::Index => {
                 let offset = borrowed.as_index_offset();
                 let anchored = borrowed.as_index_anchored();
+                let is_contexted = borrowed.as_search_contexted();
                 Rc::new_cyclic(|me: &Weak<RefCell<IndexFir>>| {
                     let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
                     let core = ProtoBrane::clone_children_for_constanic_clone(
@@ -301,6 +304,7 @@ impl ProtoBrane {
                         core,
                         offset,
                         anchored,
+                        contexted: is_contexted,
                     })
                 })
             }
@@ -862,6 +866,7 @@ pub struct SearchFir {
     pub(crate) forward: bool,
     pub(crate) sf_inner_pattern: RefCell<Option<String>>,
     pub(crate) is_value_search: bool,
+    pub(crate) contexted: bool,
 }
 
 impl SearchFir {
@@ -926,6 +931,63 @@ impl SearchFir {
             .unwrap_or(Nyes::Nk);
         if result_nyes.is_constanic() {
             self.core.set_nyes(Self::nyes_from_found(result_nyes));
+        }
+    }
+
+    fn contexted_search_from_anchor(&self, _scope: &Scope) -> Option<(FirRef, Nyes)> {
+        use contextful_search::{BraneNavigator, SearchPredicate, contextful_search_scan};
+        let anchor = Rc::clone(&self.core.foolish_children()[0]);
+        // Try to get FoolRefFir from anchor's ubc_children[1]
+        let fool_ref_fir = {
+            let borrowed = anchor.borrow();
+            borrowed.core().ubc_children().get(1).cloned()
+        };
+        let fool_ref_fir = fool_ref_fir?;
+        let referent = {
+            let borrowed = fool_ref_fir.borrow();
+            borrowed.as_fool_ref_referent().cloned()
+        }?;
+        let h_brane = referent.borrow().get_my_brane(&referent)?;
+        let p = h_brane.find_stmt_index(&referent)?;
+        let brane_len = h_brane.borrow().core().foolish_children().len();
+        if brane_len == 0 {
+            return None;
+        }
+        let (scan_start, scan_end) = if self.forward {
+            if p + 1 >= brane_len {
+                return None;
+            }
+            (p + 1, brane_len - 1)
+        } else {
+            if p == 0 {
+                return None;
+            }
+            (0, p - 1)
+        };
+        let mut nav = BraneNavigator::new(&h_brane, self.forward);
+        nav.set_range(scan_start, scan_end);
+        let predicate = if self.is_value_search {
+            let value_fir = self.value_child();
+            SearchPredicate::Value { pattern: value_fir }
+        } else if self.pattern.is_empty() {
+            return None;
+        } else {
+            SearchPredicate::Name {
+                pattern: self.pattern.clone(),
+            }
+        };
+        match contextful_search_scan(&mut nav, &predicate) {
+            ScanOutcome::Found(stmt) => {
+                let nyes = stmt
+                    .borrow()
+                    .core()
+                    .foolish_children()
+                    .first()
+                    .map(|b| b.borrow().core().get_nyes())
+                    .unwrap_or(Nyes::Nk);
+                Some((stmt, nyes))
+            }
+            _ => None,
         }
     }
 
@@ -1040,7 +1102,15 @@ impl SearchFir {
                     return Ok(());
                 }
                 let predicate = self.build_value_predicate().expect("checked ready");
-                let scan_outcome = if self.anchored {
+                let scan_outcome = if self.contexted && self.anchored {
+                    match self.contexted_search_from_anchor(scope) {
+                        Some((stmt, nyes)) => {
+                            self.handle_found(stmt, nyes, scope);
+                            return Ok(());
+                        }
+                        None => ScanOutcome::Miss,
+                    }
+                } else if self.anchored {
                     let anchor = Rc::clone(&self.core.foolish_children()[0]);
                     let resolved = anchor.resolve_anchor();
                     if resolved.borrow().core().get_nyes() == Nyes::Nk {
@@ -1144,7 +1214,9 @@ impl Fir for SearchFir {
                 if !self.core.ubc_children().is_empty() {
                     self.settle_from_ubc_result();
                 } else {
-                    let result = if self.anchored {
+                    let result = if self.contexted && self.anchored {
+                        self.contexted_search_from_anchor(scope)
+                    } else if self.anchored {
                         let anchor = Rc::clone(&self.core.foolish_children()[0]);
                         let resolved = anchor.resolve_anchor();
                         let resolved_borrowed = resolved.borrow();
@@ -1200,6 +1272,12 @@ impl Fir for SearchFir {
     fn as_search_is_value(&self) -> bool {
         self.is_value_search
     }
+    fn as_search_contexted(&self) -> bool {
+        self.contexted
+    }
+    fn set_contexted(&mut self, contexted: bool) {
+        self.contexted = contexted;
+    }
 }
 
 #[derive(Debug)]
@@ -1207,6 +1285,7 @@ pub struct IndexFir {
     pub(crate) core: ProtoBrane,
     pub(crate) offset: i32,
     pub(crate) anchored: bool,
+    pub(crate) contexted: bool,
 }
 
 fn index_into_brane_relative(
@@ -1279,6 +1358,7 @@ impl IndexFir {
             core: ProtoBrane::new(children, parent, Nyes::Prembrionic),
             offset,
             anchored,
+            contexted: false,
         }))
     }
 
@@ -1344,6 +1424,30 @@ impl Fir for IndexFir {
             Nyes::Braning => {
                 if !self.core.ubc_children().is_empty() {
                     self.settle_from_ubc_result();
+                } else if self.contexted && self.anchored {
+                    let anchor = Rc::clone(&self.core.foolish_children()[0]);
+                    let fool_ref_fir = {
+                        let borrowed = anchor.borrow();
+                        borrowed.core().ubc_children().get(1).cloned()
+                    };
+                    let contexted_result = fool_ref_fir.and_then(|frf| {
+                        let referent = frf.borrow().as_fool_ref_referent().cloned()?;
+                        let h_brane = referent.borrow().get_my_brane(&referent)?;
+                        let p = h_brane.find_stmt_index(&referent)?;
+                        index_into_brane_relative(&h_brane, p, self.offset)
+                    });
+                    if let Some((stmt, body, _body_nyes)) = contexted_result {
+                        let self_weak = self.core.parent_weak();
+                        let clone = ProtoBrane::constanic_clone_at(
+                            &body,
+                            &self_weak,
+                            0,
+                            scope.has_ancestral_sfm,
+                        );
+                        push_search_result_pair(&self.core, clone, stmt);
+                    } else {
+                        self.core.set_nyes(Nyes::Nk);
+                    }
                 } else if self.anchored {
                     let anchor = Rc::clone(&self.core.foolish_children()[0]);
                     let resolved = anchor.resolve_anchor();
@@ -1375,6 +1479,12 @@ impl Fir for IndexFir {
     }
     fn as_index_anchored(&self) -> bool {
         self.anchored
+    }
+    fn as_search_contexted(&self) -> bool {
+        self.contexted
+    }
+    fn set_contexted(&mut self, contexted: bool) {
+        self.contexted = contexted;
     }
 }
 
@@ -2139,6 +2249,7 @@ pub fn index(
         core: ProtoBrane::new(children, parent, Nyes::Prembrionic),
         offset,
         anchored,
+        contexted: false,
     }))
 }
 
@@ -2379,6 +2490,7 @@ mod tests {
                 forward: false,
                 sf_inner_pattern: RefCell::new(None),
                 is_value_search: false,
+                contexted: false,
             })
         })
     }
@@ -2390,6 +2502,7 @@ mod tests {
                 core: ProtoBrane::new(foolish_children, parent, Nyes::Prembrionic),
                 offset,
                 anchored,
+                contexted: false,
             })
         })
     }
@@ -5158,5 +5271,196 @@ mod tests {
         let scope = Scope::empty();
         let report = fool_ref.step(&scope).unwrap();
         assert_eq!(report, StepReport::Progress(Nyes::Constant));
+    }
+
+    // ── C2: Contexted search tests (FOOP-23) ────────────────────────
+
+    #[test]
+    fn contexted_index_self_finds_anchor_statement() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile(
+            "{recipe = {steps = {prep = 7; step_1 = 40; bake = 9;};}; \
+             selfx = recipe.steps~step_1&#0;}",
+        )
+        .unwrap()
+        .pop()
+        .unwrap();
+        settle_root(&root);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let self_stmt = &stmts[1];
+        let body = self_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        assert_eq!(
+            body.borrow().as_i64(),
+            Some(40),
+            "&#0 must find the anchor statement itself"
+        );
+    }
+
+    #[test]
+    fn contexted_index_offset_finds_next_statement() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile(
+            "{recipe = {steps = {prep = 7; step_1 = 40; bake = 9;};}; \
+             after = recipe.steps~step_1&#1;}",
+        )
+        .unwrap()
+        .pop()
+        .unwrap();
+        settle_root(&root);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let after_stmt = &stmts[1];
+        let body = after_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        assert_eq!(
+            body.borrow().as_i64(),
+            Some(9),
+            "&#1 must find the next statement"
+        );
+    }
+
+    #[test]
+    fn contexted_index_out_of_range_is_nk() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile(
+            "{recipe = {steps = {prep = 7; step_1 = 40; bake = 9;};}; \
+             oob = recipe.steps~step_1&#5;}",
+        )
+        .unwrap()
+        .pop()
+        .unwrap();
+        settle_root(&root);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let oob_stmt = &stmts[1];
+        let body = oob_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        assert_eq!(
+            body.borrow().core().get_nyes(),
+            Nyes::Nk,
+            "out-of-range &# must be NK"
+        );
+    }
+
+    #[test]
+    fn contexted_backward_search_finds_preceding() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile(
+            "{recipe = {steps = {prep_var = 7; step_1 = 40; bake = 9;};}; \
+             before = recipe.steps~step_1&?prep_var;}",
+        )
+        .unwrap()
+        .pop()
+        .unwrap();
+        settle_root(&root);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let before_stmt = &stmts[1];
+        let body = before_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        assert_eq!(
+            body.borrow().as_i64(),
+            Some(7),
+            "&? must find preceding statement"
+        );
+    }
+
+    #[test]
+    fn contexted_forward_search_finds_following() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile(
+            "{recipe = {steps = {prep_var = 7; step_1 = 40; bake = 9;};}; \
+             afterv = recipe.steps~step_1&~bake;}",
+        )
+        .unwrap()
+        .pop()
+        .unwrap();
+        settle_root(&root);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let afterv_stmt = &stmts[1];
+        let body = afterv_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        assert_eq!(
+            body.borrow().as_i64(),
+            Some(9),
+            "&~ must find following statement"
+        );
+    }
+
+    #[test]
+    fn contexted_search_escape_is_nk() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile(
+            "{outside = 99; recipe = {steps = {prep = 7; step_1 = 40; bake = 9;};}; \
+             escape = recipe.steps~step_1&?outside;}",
+        )
+        .unwrap()
+        .pop()
+        .unwrap();
+        settle_root(&root);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let escape_stmt = &stmts[2];
+        let body = escape_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        assert_eq!(
+            body.borrow().core().get_nyes(),
+            Nyes::Nk,
+            "contexted search escaping home brane must be NK"
+        );
+    }
+
+    #[test]
+    fn atomic_name_value_search() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile(
+            "{b = {setting = 11; mid = 0; setting = 10;}; \
+             atomic = b~setting=10;}",
+        )
+        .unwrap()
+        .pop()
+        .unwrap();
+        settle_root(&root);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let atomic_stmt = &stmts[1];
+        let body = atomic_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        assert_eq!(
+            body.borrow().as_i64(),
+            Some(10),
+            "atomic name=value must find second setting"
+        );
     }
 }

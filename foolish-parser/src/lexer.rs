@@ -255,6 +255,10 @@ impl Lexer {
                 self.advance();
                 return (self.make_token(Token::Apostrophe), false);
             }
+            '&' => {
+                self.advance();
+                return (self.make_token(Token::Ampersand), false);
+            }
 
             // Upward arrow ↑
             '\u{2191}' => {
@@ -497,5 +501,10 @@ mod tests {
     #[test]
     fn lex_question_standalone() {
         assert_eq!(tokens("?"), vec![Question, Eof]);
+    }
+
+    #[test]
+    fn lex_ampersand() {
+        assert_eq!(tokens("&"), vec![Ampersand, Eof]);
     }
 }

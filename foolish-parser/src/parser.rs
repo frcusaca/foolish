@@ -580,6 +580,108 @@ impl Parser {
                         anchor: Box::new(expr),
                     };
                 }
+                Some(Token::Ampersand) => {
+                    self.advance();
+                    let inner = match self.peek_token() {
+                        Some(Token::Question) => {
+                            self.advance();
+                            let pattern = self.parse_regexp_pattern()?;
+                            if self.eat(&Token::Assign) {
+                                let value_pattern = self.parse_add_expr()?;
+                                Astn::ValueSearch {
+                                    anchor: Some(Box::new(expr)),
+                                    forward: false,
+                                    name_pattern: Some(pattern),
+                                    value_pattern: Box::new(value_pattern),
+                                }
+                            } else {
+                                Astn::RegexpSearch {
+                                    anchor: Box::new(expr),
+                                    operator: SearchOperator::RegexpLocal,
+                                    pattern,
+                                }
+                            }
+                        }
+                        Some(Token::Tilde) => {
+                            self.advance();
+                            let pattern = self.parse_regexp_pattern()?;
+                            if self.eat(&Token::Assign) {
+                                let value_pattern = self.parse_add_expr()?;
+                                Astn::ValueSearch {
+                                    anchor: Some(Box::new(expr)),
+                                    forward: true,
+                                    name_pattern: Some(pattern),
+                                    value_pattern: Box::new(value_pattern),
+                                }
+                            } else {
+                                Astn::RegexpSearch {
+                                    anchor: Box::new(expr),
+                                    operator: SearchOperator::RegexpForward,
+                                    pattern,
+                                }
+                            }
+                        }
+                        Some(Token::Hash) => {
+                            self.advance();
+                            let offset = self.parse_seek_index()?;
+                            Astn::Seek {
+                                anchor: Box::new(expr),
+                                offset,
+                            }
+                        }
+                        Some(Token::Caret) => {
+                            self.advance();
+                            Astn::HeadTail {
+                                is_head: true,
+                                anchor: Box::new(expr),
+                            }
+                        }
+                        Some(Token::Dollar) => {
+                            self.advance();
+                            Astn::HeadTail {
+                                is_head: false,
+                                anchor: Box::new(expr),
+                            }
+                        }
+                        Some(Token::TildeEquals) => {
+                            self.advance();
+                            let value_pattern = self.parse_add_expr()?;
+                            Astn::ValueSearch {
+                                anchor: Some(Box::new(expr)),
+                                forward: true,
+                                name_pattern: None,
+                                value_pattern: Box::new(value_pattern),
+                            }
+                        }
+                        Some(Token::QuestionEquals) => {
+                            self.advance();
+                            let value_pattern = self.parse_add_expr()?;
+                            Astn::ValueSearch {
+                                anchor: Some(Box::new(expr)),
+                                forward: false,
+                                name_pattern: None,
+                                value_pattern: Box::new(value_pattern),
+                            }
+                        }
+                        Some(Token::Dot) => {
+                            return Err(ParseError::Syntax {
+                                message: "&. is not a valid operator".into(),
+                                line: self.loc().0,
+                                col: self.loc().1,
+                            });
+                        }
+                        _ => {
+                            return Err(ParseError::Syntax {
+                                message: "expected search operator after &".into(),
+                                line: self.loc().0,
+                                col: self.loc().1,
+                            });
+                        }
+                    };
+                    expr = Astn::ContextedSearch {
+                        inner: Box::new(inner),
+                    };
+                }
                 _ => break,
             }
         }
@@ -599,7 +701,8 @@ impl Parser {
                     | Token::RBracket
                     | Token::Eof
                     | Token::LineComment
-                    | Token::Assign,
+                    | Token::Assign
+                    | Token::Ampersand,
                 ) => break,
                 Some(Token::Ident(s)) => {
                     pattern.push_str(s);
@@ -819,6 +922,11 @@ impl Parser {
                     id,
                 })
             }
+            Some(Token::Ampersand) => Err(ParseError::Syntax {
+                message: "& requires a preceding expression".into(),
+                line: self.loc().0,
+                col: self.loc().1,
+            }),
             Some(tok) => Err(ParseError::UnexpectedToken {
                 expected: "primary expression",
                 found: format!("{:?}", tok),
@@ -892,6 +1000,7 @@ impl std::fmt::Display for Token {
             Token::TildeTilde => write!(f, "~~"),
             Token::TildeEquals => write!(f, "~="),
             Token::Hash => write!(f, "#"),
+            Token::Ampersand => write!(f, "&"),
             Token::Lt => write!(f, "<"),
             Token::Gt => write!(f, ">"),
             Token::LtEqGt => write!(f, "<=>"),

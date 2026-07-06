@@ -25,6 +25,7 @@ pub enum Token {
     TildeTilde,       // ~~
     TildeEquals,      // ~=
     Hash,             // #
+    Ampersand,        // &
 
     Lt,         // <
     Gt,         // >

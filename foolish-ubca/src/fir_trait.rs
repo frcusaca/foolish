@@ -190,6 +190,11 @@ pub trait Fir: std::fmt::Debug {
         None
     }
 
+    /// Whether this search/index is contexted (&-prefixed). Default: false.
+    fn as_search_contexted(&self) -> bool {
+        false
+    }
+
     fn get_my_statement(&self, self_ref: &FirRef) -> FirRef {
         match self.kind() {
             FirKind::Statement => Rc::clone(self_ref),
@@ -221,6 +226,8 @@ pub trait Fir: std::fmt::Debug {
             None => None,
         }
     }
+
+    fn set_contexted(&mut self, _contexted: bool) {}
 
     fn _ib_search(&self, self_ref: &FirRef, name: &str) -> Option<(FirRef, Nyes)> {
         let stmt = self.get_my_statement(self_ref);
@@ -702,6 +709,7 @@ mod get_value_tests {
                 forward: false,
                 sf_inner_pattern: RefCell::new(None),
                 is_value_search: false,
+                contexted: false,
             })
         })
     }
@@ -713,6 +721,7 @@ mod get_value_tests {
                 core: ProtoBrane::new(children, parent, Nyes::Prembrionic),
                 offset,
                 anchored,
+                contexted: false,
             })
         })
     }
