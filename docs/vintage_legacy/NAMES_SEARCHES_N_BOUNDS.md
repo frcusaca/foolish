@@ -404,6 +404,12 @@ semantics (implementation-dependent).
 
 ### Value Search
 
+> **Superseded by FOOP-23.** The value search notation below (`?=`, `?=*`, `doc:4`) has been
+> replaced by the `~=`/`?=` family and contexted `&`-searches defined in FOOP-23. The vintage
+> `?=` below is forward; FOOP-23's `?=` is *backward* (mirroring `?` for names), and `~=` is
+> forward. Bulk value search (`?=*`) and colon notation (`:`) are dropped entirely. See
+> `docs/foop/FOOP-23.md` for the current specification.
+
 Forward value search is triggered by the `?=` operator. It is a forward search operator on a brane
 that searches for a value that can be considered equivalent to the search parameter. `?=*` is the
 bulk forward value search operator.
@@ -1439,3 +1445,11 @@ programmers to write code that is simultaneously flexible and controlled. The se
 transforms programming from precise recall to intelligent exploration, while liberation ensures
 that scope boundaries remain clear and intentional, enabling the creation of abstract, reusable
 functions with proper parameter handling.
+
+## Last Updated
+
+**Date**: 2026-07-05
+**Updated By**: Sisyphus-Junior / xiaomi/mimo-v2.5-pro
+**Changes**: FOOP-23 Phase D.4 — Added superseded-by-FOOP-23 banner to §Value Search section.
+The vintage `?=`, `?=*`, `doc:4` notation is replaced by FOOP-23's `~=`/`?=` family and
+contexted `&`-searches.

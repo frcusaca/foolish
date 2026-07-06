@@ -1765,6 +1765,24 @@ impl Fir for HeadTailFir {
 
 // ── FoolRefFir (FOOP-23 Phase C1) ──────────────────────────────────
 
+/// An immutable strong reference to another FIR — the "fool's reference".
+///
+/// Wraps a strong (non-weak) [`FirRef`] to the original statement a search
+/// found. Created alongside every search result as `ubc_children[1]` (the
+/// found statement's body clone lives at `[0]`). Read-only: no method on
+/// `FoolRefFir` mutates the referent, and it exposes no `&mut` path to it.
+///
+/// `FoolRefFir` is born [`Nyes::Constant`] (terminal) — the reference itself
+/// is a settled value even while the referent may still be evolving. It takes
+/// no steps (`fir_op_step` is a no-op) and holds no children.
+///
+/// Invisible to values: [`FirRefExt::value`], result-chain walking, and the
+/// Humanizing Sequencer all read `ubc_children[0]` only.
+///
+/// This is what makes providing-context universal (FOOP-23 §C.3.2): every
+/// search result carries a `FoolRefFir` position that a following contexted
+/// (`&`-prefixed) search can read to anchor within the found statement's home
+/// brane.
 #[derive(Debug)]
 pub struct FoolRefFir {
     pub(crate) core: ProtoBrane,

@@ -242,7 +242,7 @@ markdown protocol).
 
 ### D.1 AGENTS.md — the authoritative search documentation
 
-- [ ] Add a dedicated **Searches** section to `AGENTS.md` documenting the whole family
+- [x] Add a dedicated **Searches** section to `AGENTS.md` documenting the whole family
       thoroughly (this is the todo Atlas requested): the three groups with canonical + shorthand
       names and where each shorthand is allowed; the full operator table (contextless
       `.` `?` `~` `#` `^` `$`, value `~=` `?=`, contexted `&`-prefixed twins); the
@@ -251,19 +251,24 @@ markdown protocol).
       home-brane bounds; the `FoolRefFir` two-child `ubc_children` invariant and how it enables
       contexted search; NK vs ECONSTANIC miss outcomes; and pointers to the `ContextfulSearch`
       engine (`SearchFir` / `CursorSource` / `SearchPredicate`) and `FoolRefFir` in `fir_kinds.rs`
-- [ ] Define **"home brane of a FIR" ≡ "brane of a FIR"** in AGENTS.md terminology, noting the
+      (2026-07-05 Sisyphus-Junior / xiaomi/mimo-v2.5-pro)
+- [x] Define **"home brane of a FIR" ≡ "brane of a FIR"** in AGENTS.md terminology, noting the
       accessor `get_my_brane` and that both phrasings mean the first brane up the `.parent` chain
-- [ ] Cross-check AGENTS.md's existing FIR-kind list / NYES notes and add `FoolRefFir` and the
+      (2026-07-05 Sisyphus-Junior / xiaomi/mimo-v2.5-pro)
+- [x] Cross-check AGENTS.md's existing FIR-kind list / NYES notes and add `FoolRefFir` and the
       generalized `SearchFir` so the doc stays complete (sanctioned adjacent maintenance)
+      (2026-07-05 Sisyphus-Junior / xiaomi/mimo-v2.5-pro)
 
 ### D.2 Code doc-comments
 
-- [ ] Document on `get_my_brane` (in `foolish-ubca/src/fir_trait.rs`) that "home brane of" and
+- [x] Document on `get_my_brane` (in `foolish-ubca/src/fir_trait.rs`) that "home brane of" and
       "brane of" are synonyms for what it returns — so a reader of either phrase finds this method
-- [ ] `///` docs on the `ContextfulSearch` engine, `CandidateNavigator`, `SearchPredicate`
+      (2026-07-05 Sisyphus-Junior / xiaomi/mimo-v2.5-pro)
+- [x] `///` docs on the `ContextfulSearch` engine, `CandidateNavigator`, `SearchPredicate`
       (Statement Matcher), `CursorSource`, `FoolRefFir` (public items): one-line summary + the
       contextless/contexted distinction where relevant; on `CandidateNavigator`, state the
       ordering + completeness contract explicitly
+      (2026-07-05 Sisyphus-Junior / xiaomi/mimo-v2.5-pro)
 
 ### D.2b Engineering documentation — the search architecture (docs/ubc1/how)
 
@@ -287,21 +292,26 @@ search" Atlas requested).
 
 ### D.3 Official Foolish documentation (howto / README) — full search rewrite
 
-- [ ] Rewrite the search coverage in `docs/howto/01_howto_foolish.foo` and
+- [x] Rewrite the search coverage in `docs/howto/01_howto_foolish.foo` and
       `02_howto_foolish_more.foo` to the shipped model: contextless operators, value search,
       contexted `&`-searches, with runnable `.foo` examples (these are literate tutorials — the
       examples should be real, evaluatable Foolish)
-- [ ] Update `README.md` search/operator summary: remove the stale `:` / `::` value-search
+      (2026-07-05 Sisyphus-Junior / xiaomi/mimo-v2.5-pro)
+- [x] Update `README.md` search/operator summary: remove the stale `:` / `::` value-search
       notation; list the contextless family, value search, and the `&` contexted family
-- [ ] Reconcile the two conflicting vintage notations while here (sanctioned creep): the README
+      (2026-07-05 Sisyphus-Junior / xiaomi/mimo-v2.5-pro)
+- [x] Reconcile the two conflicting vintage notations while here (sanctioned creep): the README
       operator list and any howto references should agree with each other and with AGENTS.md
+      (2026-07-05 Sisyphus-Junior / xiaomi/mimo-v2.5-pro)
 
 ### D.4 Vintage/legacy pointers (mark superseded; do not delete)
 
-- [ ] `docs/vintage_legacy/NAMES_SEARCHES_N_BOUNDS.md` §Value Search: add a superseded-by-FOOP-23
+- [x] `docs/vintage_legacy/NAMES_SEARCHES_N_BOUNDS.md` §Value Search: add a superseded-by-FOOP-23
       banner (its `?=`/`?=*`/`doc:4` notation is replaced)
-- [ ] `docs/vintage_legacy/ADVANCED_FEATURES.md` §Search System: add a superseded-by-FOOP-23
+      (2026-07-05 Sisyphus-Junior / xiaomi/mimo-v2.5-pro)
+- [x] `docs/vintage_legacy/ADVANCED_FEATURES.md` §Search System: add a superseded-by-FOOP-23
       banner (its `:`/`::` value-search notation is replaced)
+      (2026-07-05 Sisyphus-Junior / xiaomi/mimo-v2.5-pro)
 - [ ] Note in `EQUIVALENCE.md` (or leave a pointer) that value-search equality currently means
       integer equality only, pending an equivalence FOOP (FOOP-23 Open Questions)
 
@@ -327,6 +337,16 @@ search" Atlas requested).
   - [ ] This is the last checkbox to be checked in this plan
 
 ## Last Updated
+
+**Date**: 2026-07-05
+**Updated By**: Sisyphus-Junior / xiaomi/mimo-v2.5-pro
+**Changes**: Phase D (documentation) execution — completed D.1 (AGENTS.md Searches section with
+operator tables, contextless-vs-contexted rule, one-engine model, FoolRefFir invariant, NK vs
+ECONSTANIC outcomes, home-brane terminology), D.2 (code doc-comments on FoolRefFir,
+get_my_brane), D.3 (howto .foo files with value search + &-search examples; README operator list
+updated, stale :/:: removed), D.4 (superseded-by-FOOP-23 banners on NAMES_SEARCHES_N_BOUNDS.md
+and ADVANCED_FEATURES.md). D.2b (engineering docs) and EQUIVALENCE.md pointer left for future
+sessions. Updated Last Updated sections on all touched files.
 
 **Date**: 2026-07-05
 **Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)

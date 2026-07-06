@@ -211,6 +211,15 @@ pub trait Fir: std::fmt::Debug {
         }
     }
 
+    /// Returns the "home brane" of this FIR — the first brane ancestor.
+    ///
+    /// Walks the `.parent` chain until it finds a [`FirKind::Brane`], returning
+    /// `None` if `self` is already the root brane (self-parenting).
+    ///
+    /// **"Home brane of a FIR" ≡ "brane of a FIR"** — these two phrases mean
+    /// exactly the same thing (per FOOP-23 §Terminology). Use "home brane"
+    /// when a second brane is also under discussion and the specific one must
+    /// be named; use "brane of" otherwise.
     fn get_my_brane(&self, self_ref: &FirRef) -> Option<FirRef> {
         match self.core().parent() {
             Some(p) => {
