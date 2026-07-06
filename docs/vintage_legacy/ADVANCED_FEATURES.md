@@ -101,6 +101,12 @@ programming time:
 
 ## Search System
 
+> **Superseded by FOOP-23.** The value search notation below (`:`, `::`) has been replaced by
+> the `~=`/`?=` family and contexted `&`-searches defined in FOOP-23. The colon notation is
+> dropped entirely; `&` replaces `:` as the context-retrieval trigger. See `docs/foop/FOOP-23.md`
+> for the current specification. The contextless name/search operators (`.`, `?`, `~`, `#`, `^`,
+> `$`) remain current.
+
 Foolish provides a revolutionary search system that treats code as a searchable, queryable
 structure. Instead of forcing you to remember exact variable names or scroll through long files,
 Foolish lets you search for things by pattern, by value, by computational relationship, or by
@@ -124,13 +130,14 @@ position.
 	!! Multi-search
 	temps = data?*tmp_.*;  !! All matching names → {tmp_a=1; tmp_b=2;}
 
-	!! Value search
-	found = data:20;       !! Find value 20 → y=20
+	!! Value search (FOOP-23: ~= forward, ?= backward)
+	found = data~=20;      !! Find value 20 forward → y=20
 }
 ```
 
 **Search operators**: `.` `$` `^` `#N` `/pattern` for name search; `?` (localized) and `??`
-(globalized) for cursor-based search; `?*` for multi-search; `:` `::` for value search; `↑` `↓` `←`
+(globalized) for cursor-based search; `?*` for multi-search; `~=` `?=` for value search
+(FOOP-23); `&?` `&~` `&#` `&^` `&$` `&~=` `&?=` for contexted search (FOOP-23); `↑` `↓` `←`
 `→` for cursor movements.
 
 For comprehensive documentation on the search system, including detailed semantics of all search
@@ -275,3 +282,11 @@ line. The only way to create corecursion is to use an unbound name and pass it i
 	is_five_even = [n=5] even{odd=odd} !! is_five_even = false;
 }
 ```
+
+## Last Updated
+
+**Date**: 2026-07-05
+**Updated By**: Sisyphus-Junior / xiaomi/mimo-v2.5-pro
+**Changes**: FOOP-23 Phase D.4 — Added superseded-by-FOOP-23 banner to §Search System section.
+Replaced stale `:` / `::` value search notation with FOOP-23's `~=`/`?=` family and
+contexted `&`-searches in the Quick Reference and code example.

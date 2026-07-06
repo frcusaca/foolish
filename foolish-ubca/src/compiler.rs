@@ -43,8 +43,19 @@ fn validate_astn(ast: &Astn) -> anyhow::Result<()> {
         Astn::UnaryOp { expr, .. } => validate_astn(expr),
         Astn::DotSearch { anchor, .. } => validate_astn(anchor),
         Astn::RegexpSearch { anchor, .. } => validate_astn(anchor),
+        Astn::ValueSearch {
+            anchor,
+            value_pattern,
+            ..
+        } => {
+            if let Some(a) = anchor {
+                validate_astn(a)?;
+            }
+            validate_astn(value_pattern)
+        }
         Astn::Seek { anchor, .. } => validate_astn(anchor),
         Astn::HeadTail { anchor, .. } => validate_astn(anchor),
+        Astn::ContextedSearch { inner } => validate_astn(inner),
         Astn::Concatenation { elements } => {
             for e in elements {
                 validate_astn(e)?;
@@ -109,6 +120,8 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
             anchored: false,
             forward: false,
             sf_inner_pattern: RefCell::new(None),
+            is_value_search: false,
+            contexted: false,
         })),
         Astn::Brane {
             characterizations,
@@ -148,6 +161,8 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
                     anchored: true,
                     forward: false,
                     sf_inner_pattern: RefCell::new(None),
+                    is_value_search: false,
+                    contexted: false,
                 })
             })
         }
@@ -165,6 +180,34 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
                 anchored: true,
                 forward: operator == SearchOperator::RegexpForward,
                 sf_inner_pattern: RefCell::new(None),
+                is_value_search: false,
+                contexted: false,
+            })
+        }),
+        Astn::ValueSearch {
+            anchor,
+            forward,
+            name_pattern,
+            value_pattern,
+        } => Rc::new_cyclic(|me: &Weak<RefCell<SearchFir>>| {
+            let me_dyn: Weak<RefCell<dyn Fir>> = me.clone();
+            let has_anchor = anchor.is_some();
+            let mut children: Vec<FirRef> = if let Some(a) = anchor {
+                vec![build_fir(*a, Some(&me_dyn), under_sff)]
+            } else {
+                vec![]
+            };
+            let value_fir = build_fir(*value_pattern, Some(&me_dyn), under_sff);
+            children.push(value_fir);
+            let pattern = name_pattern.unwrap_or_default();
+            RefCell::new(SearchFir {
+                core: ProtoBrane::new(children, child_parent!(), search_nyes),
+                pattern,
+                anchored: has_anchor,
+                forward,
+                sf_inner_pattern: RefCell::new(None),
+                is_value_search: true,
+                contexted: false,
             })
         }),
         Astn::Seek { anchor, offset } => Rc::new_cyclic(|me: &Weak<RefCell<IndexFir>>| {
@@ -174,6 +217,7 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
                 core: ProtoBrane::new(vec![a], child_parent!(), search_nyes),
                 offset,
                 anchored: true,
+                contexted: false,
             })
         }),
         Astn::HeadTail { is_head, anchor } => Rc::new_cyclic(|me: &Weak<RefCell<IndexFir>>| {
@@ -184,12 +228,14 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
                 core: ProtoBrane::new(vec![a], child_parent!(), search_nyes),
                 offset,
                 anchored: true,
+                contexted: false,
             })
         }),
         Astn::UnanchoredSeek { offset } => Rc::new(RefCell::new(IndexFir {
             core: ProtoBrane::new(vec![], child_parent!(), search_nyes),
             offset,
             anchored: false,
+            contexted: false,
         })),
         Astn::Concatenation { elements } => {
             Rc::new_cyclic(|me: &Weak<RefCell<ConcatenationFir>>| {
@@ -220,6 +266,11 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
                     core: ProtoBrane::new(vec![e], child_parent!(), Nyes::Prembrionic),
                 })
             })
+        }
+        Astn::ContextedSearch { inner } => {
+            let fir = build_fir(*inner, parent, under_sff);
+            fir.borrow_mut().set_contexted(true);
+            fir
         }
         Astn::Assignment { .. } => {
             unreachable!("standalone Assignment should be wrapped in Brane by parser")

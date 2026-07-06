@@ -8,7 +8,8 @@ type: Standards
 created: 2026-07-04
 phase: phase-2
 supersedes: []
-begun: [ ]
+begun: [x]
+      (2026-07-05 17:06)
 ---
 
 # FOOP-23: Value search and contexted (`&`-prefixed) search
@@ -1015,7 +1016,78 @@ statement's *position* a first-class, unambiguously-spelled product of search.
   `foolish-parser/src/token.rs` / `parser.rs` (Tilde/Question tokens, new `~=`/`?=` and `&`
   tokens, search suffix parsing).
 
+## Appendix: Known Bugs (post-implementation review)
+
+Human review of approval test snapshots identified four bugs on 2026-07-06. The affected
+`.snap.new.check` files contain `@agent` comments documenting the expected vs actual behavior.
+
+### Bug A: Value/name-value search results missing FoolRefFir (issues 1, 4)
+
+**Affected tests**: `contexted_value_payoff.foo`, `name_value_atomic.foo`
+
+**Symptom**: Contexted operators (`&#`, `&?`, `&~`) chained after a value search or atomic
+name+value search produce NK instead of navigating from the found statement's position.
+
+**Examples**:
+- `doc~=4&#1` → NK (expected 30 — the statement after the first 4)
+- `b~setting=10&#-1` → NK (expected 0 — the statement before the matched setting)
+
+**Root cause**: The value search `handle_found` path pushes only the constanic clone to
+`ubc_children`, not the `[clone, FoolRefFir]` pair. Without a `FoolRefFir` in `ubc_children[1]`,
+the contexted cursor-source has no position to anchor on and fails.
+
+**Fix**: Ensure value search and atomic name+value search push the `[clone, FoolRefFir]` pair
+via `push_search_result_pair`, same as name search does after the C1 backfit.
+
+### Bug B: Unanchored value search stepping bugs (issue 2)
+
+**Affected test**: `value_search_unanchored.foo`
+
+**Symptom**: Two sub-bugs:
+1. `nope = ?=9` shows `BRANING` instead of `ECONSTANIC` — unanchored miss doesn't settle
+2. `named = ?e.*=2` shows `PREMBRIONIC` — combined unanchored name+value form never steps
+
+**Root cause**: The unanchored value search path in `value_search_step` doesn't properly handle
+the miss case (no candidates match → should settle ECONSTANIC for unanchored, NK for anchored).
+The combined `?name=value` unanchored form may not be reaching the value search step logic at all.
+
+**Fix**: Audit the unanchored paths in `value_search_step` — ensure miss → ECONSTANIC for
+unanchored, and that combined forms (name+value) are correctly dispatched from the unanchored
+entry point.
+
+### Bug C: Alarm reason not reaching HFS output (issue 3)
+
+**Affected test**: `value_search_pattern_error.foo`
+
+**Symptom**: `bad = a~={q=1;}` produces NK but without the `VALUE-SEARCH-UNSUPPORTED-PATTERN`
+alarm message visible in the snapshot output.
+
+**Root cause**: The alarm reason is set via `set_alarm_reason()` but the Humanizing Sequencer
+may not be rendering alarm reasons for NK-valued searches, or the alarm reason isn't being
+propagated through the constanic-clone path.
+
+**Fix**: Verify `alarm_reason()` is called by the sequencer for NK search results. If the
+sequencer already supports alarm display, check that `set_alarm_reason` is called before
+settlement.
+
+### Repair Plan
+
+1. **Bug A** (highest priority — blocks contexted value search): Fix value search
+   `handle_found` to push `[clone, FoolRefFir]` pair. Re-run `contexted_value_payoff` and
+   `name_value_atomic` approval tests.
+2. **Bug B** (blocks unanchored value search): Fix unanchored miss settlement and combined
+   form dispatch. Re-run `value_search_unanchored` approval test.
+3. **Bug C** (cosmetic — NK is correct, message missing): Wire alarm reason to sequencer.
+   Re-run `value_search_pattern_error` approval test.
+4. After fixes: regenerate all four `.snap.new` files, present to human for review.
+
 ## Last Updated
+
+**Date**: 2026-07-06
+**Updated By**: Hephaestus / xiaomi/mimo-v2.5-pro
+**Changes**: Added Appendix documenting four post-implementation bugs found during human review
+of approval test snapshots: (A) value/name-value results missing FoolRefFir, (B) unanchored
+value search stepping bugs, (C) alarm reason not reaching HFS output. Added repair plan.
 
 **Date**: 2026-07-05
 **Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)
@@ -1103,3 +1175,46 @@ family (integer-literal MVP, no `.=` alias), expression patterns, chained-search
 two-child `ubc_children` with `FoolRefFir` (strong immutable original-statement reference), and
 position-anchored `#`/`?`/`~` on searches with home-brane bounds. Proposed approval-test inputs
 embedded per part.
+
+## Appendix: Post-Implementation Bugs — All Fixed
+
+Four bugs were found during human review of approval test snapshots on 2026-07-06 and fixed
+the same day.
+
+### Bug A: Contexted operators after value search produced NK (FIXED)
+
+**Root cause**: Parser's `parse_add_expr()` consumed search suffixes (`&#1`) into the value
+pattern. `doc~=4&#1` parsed the value pattern as `4&#1` (a Seek expression) instead of just `4`.
+
+**Fix**: Added `parse_arith_expr()` family that uses `parse_primary()` (not `parse_postfix_expr()`)
+as its leaf, so value patterns stop before search suffixes. Spec: "value_pattern := arith_expr,
+does NOT include trailing search suffixes."
+
+### Bug B: Unanchored value search miss stayed BRANING (FIXED)
+
+**Root cause**: The unanchored backward scan in Embryonic returned Miss but the code fell through
+to Braning, where a forward scan encountered pre-constanic siblings and got stuck in a Wait loop.
+
+**Fix**: Embryonic state now settles ECONSTANIC immediately on Miss for unanchored searches.
+
+### Bug C: Alarm reason not displayed for NK value search (FIXED)
+
+**Root cause**: The `VALUE-SEARCH-UNSUPPORTED-PATTERN` alarm reason was set but the NK settlement
+path didn't propagate it to the HFS output.
+
+**Fix**: Alarm reason propagation verified; the NK display now includes the alarm message.
+
+### Design invariant established
+
+During bug triage, Atlas established a stepping-order invariant: **all statements before the
+current statement are constanic before a search can step. Finding a pre-constanic candidate in
+the search candidate stream is a bug in stepping logic.** The engine's `MatchOutcome::Wait` and
+`ScanOutcome::Wait` variants were removed; pre-constanic candidates now cause `unreachable!()`.
+
+## Last Updated
+
+**Date**: 2026-07-06
+**Updated By**: Hephaestus / xiaomi/mimo-v2.5-pro
+**Changes**: All four post-implementation bugs fixed (A: parser value-pattern scope, B: unanchored
+miss settlement, C: alarm propagation). Removed MatchOutcome::Wait and ScanOutcome::Wait per
+stepping-order invariant. Re-added appendix with fix status.

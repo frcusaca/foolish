@@ -398,6 +398,88 @@ impl Parser {
         self.parse_postfix_expr()
     }
 
+    // --- arithExpr: arithmetic only, NO search suffixes ---
+    // Used for value patterns (spec: "value_pattern := arith_expr", no trailing
+    // search suffixes).  Calls parse_primary() directly instead of
+    // parse_postfix_expr(), so `~=`/`?=`/`&`/`.`/`?`/`~`/`#`/`^`/`$` are NOT consumed.
+    fn parse_arith_expr(&mut self) -> Result<Astn> {
+        let mut left = self.parse_arith_mul_expr()?;
+        loop {
+            match self.peek_token() {
+                Some(Token::Plus) => {
+                    self.advance();
+                    let right = self.parse_arith_mul_expr()?;
+                    left = Astn::BinaryOp {
+                        op: "+".into(),
+                        left: Box::new(left),
+                        right: Box::new(right),
+                    };
+                }
+                Some(Token::Minus) => {
+                    self.advance();
+                    let right = self.parse_arith_mul_expr()?;
+                    left = Astn::BinaryOp {
+                        op: "-".into(),
+                        left: Box::new(left),
+                        right: Box::new(right),
+                    };
+                }
+                _ => break,
+            }
+        }
+        Ok(left)
+    }
+
+    fn parse_arith_mul_expr(&mut self) -> Result<Astn> {
+        let mut left = self.parse_arith_unary_expr()?;
+        loop {
+            match self.peek_token() {
+                Some(Token::Mul) => {
+                    self.advance();
+                    let right = self.parse_arith_unary_expr()?;
+                    left = Astn::BinaryOp {
+                        op: "*".into(),
+                        left: Box::new(left),
+                        right: Box::new(right),
+                    };
+                }
+                Some(Token::Div) => {
+                    self.advance();
+                    let right = self.parse_arith_unary_expr()?;
+                    left = Astn::BinaryOp {
+                        op: "/".into(),
+                        left: Box::new(left),
+                        right: Box::new(right),
+                    };
+                }
+                _ => break,
+            }
+        }
+        Ok(left)
+    }
+
+    fn parse_arith_unary_expr(&mut self) -> Result<Astn> {
+        match self.peek_token() {
+            Some(Token::Plus) => {
+                self.advance();
+                let expr = self.parse_primary()?;
+                Ok(Astn::UnaryOp {
+                    op: "+".into(),
+                    expr: Box::new(expr),
+                })
+            }
+            Some(Token::Minus) => {
+                self.advance();
+                let expr = self.parse_primary()?;
+                Ok(Astn::UnaryOp {
+                    op: "-".into(),
+                    expr: Box::new(expr),
+                })
+            }
+            _ => self.parse_primary(),
+        }
+    }
+
     // --- addExpr ---
     fn parse_add_expr(&mut self) -> Result<Astn> {
         let mut left = self.parse_mul_expr()?;
@@ -503,19 +585,59 @@ impl Parser {
                 Some(Token::Question) => {
                     self.advance();
                     let pattern = self.parse_regexp_pattern()?;
-                    expr = Astn::RegexpSearch {
-                        anchor: Box::new(expr),
-                        operator: SearchOperator::RegexpLocal,
-                        pattern,
+                    if self.eat(&Token::Assign) {
+                        let value_pattern = self.parse_arith_expr()?;
+                        expr = Astn::ValueSearch {
+                            anchor: Some(Box::new(expr)),
+                            forward: false,
+                            name_pattern: Some(pattern),
+                            value_pattern: Box::new(value_pattern),
+                        };
+                    } else {
+                        expr = Astn::RegexpSearch {
+                            anchor: Box::new(expr),
+                            operator: SearchOperator::RegexpLocal,
+                            pattern,
+                        };
+                    }
+                }
+                Some(Token::QuestionEquals) => {
+                    self.advance();
+                    let value_pattern = self.parse_arith_expr()?;
+                    expr = Astn::ValueSearch {
+                        anchor: Some(Box::new(expr)),
+                        forward: false,
+                        name_pattern: None,
+                        value_pattern: Box::new(value_pattern),
                     };
                 }
                 Some(Token::Tilde) => {
                     self.advance();
                     let pattern = self.parse_regexp_pattern()?;
-                    expr = Astn::RegexpSearch {
-                        anchor: Box::new(expr),
-                        operator: SearchOperator::RegexpForward,
-                        pattern,
+                    if self.eat(&Token::Assign) {
+                        let value_pattern = self.parse_arith_expr()?;
+                        expr = Astn::ValueSearch {
+                            anchor: Some(Box::new(expr)),
+                            forward: true,
+                            name_pattern: Some(pattern),
+                            value_pattern: Box::new(value_pattern),
+                        };
+                    } else {
+                        expr = Astn::RegexpSearch {
+                            anchor: Box::new(expr),
+                            operator: SearchOperator::RegexpForward,
+                            pattern,
+                        };
+                    }
+                }
+                Some(Token::TildeEquals) => {
+                    self.advance();
+                    let value_pattern = self.parse_arith_expr()?;
+                    expr = Astn::ValueSearch {
+                        anchor: Some(Box::new(expr)),
+                        forward: true,
+                        name_pattern: None,
+                        value_pattern: Box::new(value_pattern),
                     };
                 }
                 Some(Token::Hash) => {
@@ -540,6 +662,108 @@ impl Parser {
                         anchor: Box::new(expr),
                     };
                 }
+                Some(Token::Ampersand) => {
+                    self.advance();
+                    let inner = match self.peek_token() {
+                        Some(Token::Question) => {
+                            self.advance();
+                            let pattern = self.parse_regexp_pattern()?;
+                            if self.eat(&Token::Assign) {
+                                let value_pattern = self.parse_arith_expr()?;
+                                Astn::ValueSearch {
+                                    anchor: Some(Box::new(expr)),
+                                    forward: false,
+                                    name_pattern: Some(pattern),
+                                    value_pattern: Box::new(value_pattern),
+                                }
+                            } else {
+                                Astn::RegexpSearch {
+                                    anchor: Box::new(expr),
+                                    operator: SearchOperator::RegexpLocal,
+                                    pattern,
+                                }
+                            }
+                        }
+                        Some(Token::Tilde) => {
+                            self.advance();
+                            let pattern = self.parse_regexp_pattern()?;
+                            if self.eat(&Token::Assign) {
+                                let value_pattern = self.parse_arith_expr()?;
+                                Astn::ValueSearch {
+                                    anchor: Some(Box::new(expr)),
+                                    forward: true,
+                                    name_pattern: Some(pattern),
+                                    value_pattern: Box::new(value_pattern),
+                                }
+                            } else {
+                                Astn::RegexpSearch {
+                                    anchor: Box::new(expr),
+                                    operator: SearchOperator::RegexpForward,
+                                    pattern,
+                                }
+                            }
+                        }
+                        Some(Token::Hash) => {
+                            self.advance();
+                            let offset = self.parse_seek_index()?;
+                            Astn::Seek {
+                                anchor: Box::new(expr),
+                                offset,
+                            }
+                        }
+                        Some(Token::Caret) => {
+                            self.advance();
+                            Astn::HeadTail {
+                                is_head: true,
+                                anchor: Box::new(expr),
+                            }
+                        }
+                        Some(Token::Dollar) => {
+                            self.advance();
+                            Astn::HeadTail {
+                                is_head: false,
+                                anchor: Box::new(expr),
+                            }
+                        }
+                        Some(Token::TildeEquals) => {
+                            self.advance();
+                            let value_pattern = self.parse_arith_expr()?;
+                            Astn::ValueSearch {
+                                anchor: Some(Box::new(expr)),
+                                forward: true,
+                                name_pattern: None,
+                                value_pattern: Box::new(value_pattern),
+                            }
+                        }
+                        Some(Token::QuestionEquals) => {
+                            self.advance();
+                            let value_pattern = self.parse_arith_expr()?;
+                            Astn::ValueSearch {
+                                anchor: Some(Box::new(expr)),
+                                forward: false,
+                                name_pattern: None,
+                                value_pattern: Box::new(value_pattern),
+                            }
+                        }
+                        Some(Token::Dot) => {
+                            return Err(ParseError::Syntax {
+                                message: "&. is not a valid operator".into(),
+                                line: self.loc().0,
+                                col: self.loc().1,
+                            });
+                        }
+                        _ => {
+                            return Err(ParseError::Syntax {
+                                message: "expected search operator after &".into(),
+                                line: self.loc().0,
+                                col: self.loc().1,
+                            });
+                        }
+                    };
+                    expr = Astn::ContextedSearch {
+                        inner: Box::new(inner),
+                    };
+                }
                 _ => break,
             }
         }
@@ -558,7 +782,9 @@ impl Parser {
                     | Token::RParen
                     | Token::RBracket
                     | Token::Eof
-                    | Token::LineComment,
+                    | Token::LineComment
+                    | Token::Assign
+                    | Token::Ampersand,
                 ) => break,
                 Some(Token::Ident(s)) => {
                     pattern.push_str(s);
@@ -737,6 +963,35 @@ impl Parser {
                 }
                 Ok(Astn::UnanchoredSeek { offset })
             }
+            Some(Token::QuestionEquals) => {
+                self.advance();
+                let value_pattern = self.parse_arith_expr()?;
+                Ok(Astn::ValueSearch {
+                    anchor: None,
+                    forward: false,
+                    name_pattern: None,
+                    value_pattern: Box::new(value_pattern),
+                })
+            }
+            Some(Token::Question) => {
+                self.advance();
+                let pattern = self.parse_regexp_pattern()?;
+                if self.eat(&Token::Assign) {
+                    let value_pattern = self.parse_arith_expr()?;
+                    Ok(Astn::ValueSearch {
+                        anchor: None,
+                        forward: false,
+                        name_pattern: Some(pattern),
+                        value_pattern: Box::new(value_pattern),
+                    })
+                } else {
+                    Err(ParseError::Syntax {
+                        message: "Unanchored ? without = not supported".into(),
+                        line: self.loc().0,
+                        col: self.loc().1,
+                    })
+                }
+            }
             Some(Token::Ident(_)) => {
                 let chars = self.parse_characterizations();
                 if !chars.is_empty() && self.peek_token() == Some(&Token::LBrace) {
@@ -749,6 +1004,11 @@ impl Parser {
                     id,
                 })
             }
+            Some(Token::Ampersand) => Err(ParseError::Syntax {
+                message: "& requires a preceding expression".into(),
+                line: self.loc().0,
+                col: self.loc().1,
+            }),
             Some(tok) => Err(ParseError::UnexpectedToken {
                 expected: "primary expression",
                 found: format!("{:?}", tok),
@@ -817,9 +1077,12 @@ impl std::fmt::Display for Token {
             Token::Dollar => write!(f, "$"),
             Token::Question => write!(f, "?"),
             Token::QuestionQuestion => write!(f, "??"),
+            Token::QuestionEquals => write!(f, "?="),
             Token::Tilde => write!(f, "~"),
             Token::TildeTilde => write!(f, "~~"),
+            Token::TildeEquals => write!(f, "~="),
             Token::Hash => write!(f, "#"),
+            Token::Ampersand => write!(f, "&"),
             Token::Lt => write!(f, "<"),
             Token::Gt => write!(f, ">"),
             Token::LtEqGt => write!(f, "<=>"),
@@ -1023,6 +1286,87 @@ mod tests {
                     assert!(matches!(&**expr, Astn::Concatenation { .. }));
                 }
                 _ => panic!("expected assignment with concatenation"),
+            },
+            _ => panic!("expected brane"),
+        }
+    }
+
+    #[test]
+    fn parses_value_search_forward() {
+        let ast = parse_single("{a~=10;}").unwrap();
+        match ast {
+            Astn::Brane { statements, .. } => match &statements[0] {
+                Astn::ValueSearch {
+                    forward,
+                    name_pattern,
+                    ..
+                } => {
+                    assert!(*forward);
+                    assert!(name_pattern.is_none());
+                }
+                other => panic!("expected ValueSearch, got {:?}", other),
+            },
+            _ => panic!("expected brane"),
+        }
+    }
+
+    #[test]
+    fn parses_value_search_backward() {
+        let ast = parse_single("{a?=10;}").unwrap();
+        match ast {
+            Astn::Brane { statements, .. } => match &statements[0] {
+                Astn::ValueSearch {
+                    forward,
+                    name_pattern,
+                    ..
+                } => {
+                    assert!(!*forward);
+                    assert!(name_pattern.is_none());
+                }
+                other => panic!("expected ValueSearch, got {:?}", other),
+            },
+            _ => panic!("expected brane"),
+        }
+    }
+
+    #[test]
+    fn parses_value_search_unanchored() {
+        let ast = parse_single("{found = ?=3;}").unwrap();
+        match ast {
+            Astn::Brane { statements, .. } => match &statements[0] {
+                Astn::Assignment { expr, .. } => match &**expr {
+                    Astn::ValueSearch {
+                        anchor,
+                        forward,
+                        name_pattern,
+                        ..
+                    } => {
+                        assert!(anchor.is_none());
+                        assert!(!forward);
+                        assert!(name_pattern.is_none());
+                    }
+                    other => panic!("expected ValueSearch, got {:?}", other),
+                },
+                _ => panic!("expected assignment"),
+            },
+            _ => panic!("expected brane"),
+        }
+    }
+
+    #[test]
+    fn parses_value_search_combined_name_value() {
+        let ast = parse_single("{a~name=10;}").unwrap();
+        match ast {
+            Astn::Brane { statements, .. } => match &statements[0] {
+                Astn::ValueSearch {
+                    forward,
+                    name_pattern,
+                    ..
+                } => {
+                    assert!(*forward);
+                    assert_eq!(name_pattern.as_deref(), Some("name"));
+                }
+                other => panic!("expected ValueSearch, got {:?}", other),
             },
             _ => panic!("expected brane"),
         }

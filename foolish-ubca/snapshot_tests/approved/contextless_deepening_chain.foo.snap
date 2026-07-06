@@ -1,0 +1,40 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{
+	some_brane = {
+		some_aspect = {
+			some_thing_else = {
+				some_value = 42;
+			};
+		};
+	};
+	final = some_brane.some_aspect.some_thing_else.some_value;
+}
+```
+[0] RESULT:
+```hfssnap
+{
+  someˍbrane={
+      someˍaspect={
+          someˍthingˍelse={
+              someˍvalue=42
+          }
+      }
+  };
+  final=42
+}
+```
+COMMENTS:
+```markdown
+contextless_deepening_chain
+generated: 2026-07-06T17:03:50.273443975Z
+```
+SIGNATURES:
+Public key: eb9604b1e50d6df60ea71cded2d51b4031b14e9d8911866fcfff4afb00075e65
+Foolish signature: WvZDxjL4/y7sCu1lZmP2T+LKDQSpeFmU41Ls4l7MzbCvxueHXSf7tqWvLaYEwDhF+hvZH6WYc9l7kp/HtwrDAg==
+HFS signature: wc8h1AC55m56VBqGlIOdFhukjsJxaqgv+eSNkoF+MH5TAQCcea9dLJbJ5ceSPRlrhC37FkguH4cO6RiV9dEZCQ==
+Comments signature: y5fgt+NTJI7+uViYwsKN95YfvtHX7QOd2Sr18poDrN1a4Xo5vs+8BBQYxX9augm2KJ6ObAooQGzN2VmgTj0RDg==

@@ -42,6 +42,9 @@ pub enum FirKind {
     Nk,
     /// Placeholder for test stubs before real kinds are implemented.
     Unknown,
+    /// Strong reference to an original statement, created alongside search results.
+    /// Born CONSTANT, immutable, no stepping. Bookkeeping for contexted search (FOOP-23 C2).
+    FoolRef,
 }
 
 /// Minimal Scope stub — enough for compilation. The real Scope comes later
@@ -177,6 +180,21 @@ pub trait Fir: std::fmt::Debug {
         None
     }
 
+    /// SearchFir is_value_search flag. Default: false.
+    fn as_search_is_value(&self) -> bool {
+        false
+    }
+
+    /// FoolRefFir referent. Default: None.
+    fn as_fool_ref_referent(&self) -> Option<&FirRef> {
+        None
+    }
+
+    /// Whether this search/index is contexted (&-prefixed). Default: false.
+    fn as_search_contexted(&self) -> bool {
+        false
+    }
+
     fn get_my_statement(&self, self_ref: &FirRef) -> FirRef {
         match self.kind() {
             FirKind::Statement => Rc::clone(self_ref),
@@ -193,6 +211,15 @@ pub trait Fir: std::fmt::Debug {
         }
     }
 
+    /// Returns the "home brane" of this FIR — the first brane ancestor.
+    ///
+    /// Walks the `.parent` chain until it finds a [`FirKind::Brane`], returning
+    /// `None` if `self` is already the root brane (self-parenting).
+    ///
+    /// **"Home brane of a FIR" ≡ "brane of a FIR"** — these two phrases mean
+    /// exactly the same thing (per FOOP-23 §Terminology). Use "home brane"
+    /// when a second brane is also under discussion and the specific one must
+    /// be named; use "brane of" otherwise.
     fn get_my_brane(&self, self_ref: &FirRef) -> Option<FirRef> {
         match self.core().parent() {
             Some(p) => {
@@ -208,6 +235,8 @@ pub trait Fir: std::fmt::Debug {
             None => None,
         }
     }
+
+    fn set_contexted(&mut self, _contexted: bool) {}
 
     fn _ib_search(&self, self_ref: &FirRef, name: &str) -> Option<(FirRef, Nyes)> {
         let stmt = self.get_my_statement(self_ref);
@@ -688,6 +717,8 @@ mod get_value_tests {
                 anchored,
                 forward: false,
                 sf_inner_pattern: RefCell::new(None),
+                is_value_search: false,
+                contexted: false,
             })
         })
     }
@@ -699,6 +730,7 @@ mod get_value_tests {
                 core: ProtoBrane::new(children, parent, Nyes::Prembrionic),
                 offset,
                 anchored,
+                contexted: false,
             })
         })
     }
@@ -812,7 +844,7 @@ mod get_value_tests {
         let search = make_search("^x$", true, vec![Rc::clone(&brane)]);
         settle(&search);
         assert_eq!(search.borrow().core().get_nyes(), Nyes::Constant);
-        assert_eq!(search.borrow().core().ubc_children().len(), 1);
+        assert_eq!(search.borrow().core().ubc_children().len(), 2);
 
         let result = search.value();
         assert_eq!(result.borrow().kind(), FirKind::IndepInt);
@@ -863,7 +895,7 @@ mod get_value_tests {
         let idx = make_index(1, true, vec![Rc::clone(&brane)]);
         settle(&idx);
         assert_eq!(idx.borrow().core().get_nyes(), Nyes::Constant);
-        assert_eq!(idx.borrow().core().ubc_children().len(), 1);
+        assert_eq!(idx.borrow().core().ubc_children().len(), 2);
 
         let result = idx.value();
         assert_eq!(result.borrow().kind(), FirKind::IndepInt);

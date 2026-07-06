@@ -20,9 +20,12 @@ pub enum Token {
     Dollar,           // $
     Question,         // ?
     QuestionQuestion, // ??
+    QuestionEquals,   // ?=
     Tilde,            // ~
     TildeTilde,       // ~~
+    TildeEquals,      // ~=
     Hash,             // #
+    Ampersand,        // &
 
     Lt,         // <
     Gt,         // >

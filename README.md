@@ -374,9 +374,11 @@ dereferencing: `brane.name` retrieves the value. Names are scoped to "before the
 expression"—references look backwards in the current brane, then search upward through parent branes
 if needed.
 
-For comprehensive documentation on names, the search system (including `?`, `??`, `?*`, value
-search, cursor movements), and how detachment branes `[...]` control scope boundaries, see
-[Names, Searches, and Bounds](docs/vintage_legacy/NAMES_SEARCHES_N_BOUNDS.md).
+For comprehensive documentation on names, the search system (including contextless
+`.` `?` `~` `#` `^` `$`, value search `~=` `?=`, contexted `&`-searches `&?` `&~` `&#` `&^` `&$`
+`&~=` `&?=`, and cursor movements), and how detachment branes `[...]` control scope boundaries, see
+[Names, Searches, and Bounds](docs/vintage_legacy/NAMES_SEARCHES_N_BOUNDS.md) and
+[FOOP-23](docs/foop/FOOP-23.md) for the authoritative operator specification.
 
 ## The Unknown
 
@@ -438,8 +440,10 @@ See [Documentation Layout](#documentation-layout) above for an overview of ubc0,
 The following documents in `docs/vintage_legacy/` document the original ubc0 implementation:
 
 - **[Names, Searches, and Bounds](docs/vintage_legacy/NAMES_SEARCHES_N_BOUNDS.md)** - Comprehensive guide to naming
-  systems, the search operators (`.`, `?`, `??`, `?*`, `:`, cursor movements), and how detachment
+  systems, the search operators (`.`, `?`, `??`, `?*`, cursor movements), and how detachment
   branes `[...]` control scope boundaries for globalized searches
+  *(Note: value search notation `?=`, `?=*`, `doc:4` in this vintage doc is superseded by
+  FOOP-23's `~=`/`?=` family and contexted `&`-searches.)*
 - **[Advanced Features](docs/vintage_legacy/ADVANCED_FEATURES.md)** - Brane operations (concatenation, proximity
   is combination), control flow, and recursion
 - **[Ecosystem](docs/vintage_legacy/ECOSYSTEM.md)** - Implementation details including the original UBC, typing systems, and relational coordinates
@@ -448,6 +452,12 @@ The following documents in `docs/vintage_legacy/` document the original ubc0 imp
 ---
 
 ## Last Updated
+
+**Date**: 2026-07-05
+**Updated By**: Sisyphus-Junior / xiaomi/mimo-v2.5-pro
+**Changes**: FOOP-23 Phase D.3 — Updated search operator reference to include contextless family,
+value search `~=`/`?=`, and contexted `&`-searches. Removed stale `:` notation from legacy
+references, added FOOP-23 cross-reference. Noted vintage value search notation is superseded.
 
 **Date**: 2026-07-02
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8

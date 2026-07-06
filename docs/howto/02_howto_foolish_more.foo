@@ -19,6 +19,9 @@
 !!   S2.6  Anchored vs Unanchored
 !!   S2.7  Shadowing and Resolution Order
 !!   S2.8  The Constanic State
+!!   S2.9  Value Search: ~= and ?=
+!!   S2.10 Contexted Search: The & Prefix
+!!   S2.11 Contexted Value Search: The Payoff
 !!
 !! ────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -340,6 +343,120 @@
 !! We'll explore case 2 in Chapter 3 when we cover liberation branes.
 
 !! ============================================================================================================
+!! S2.9 ── VALUE SEARCH: ~= and ?=
+!! ============================================================================================================
+!!
+!! Value search finds a statement by its *value*, complementing name search.
+!! Use ~= for forward (first match) and ?= for backward (last match).
+
+{
+	doc = {
+		tmp_a = 4;
+		c = 30;
+		tmp_b = 4;
+	};
+
+	!! Forward value search: finds the FIRST statement valued 4
+	first_four = doc~=4;           !! 4 (tmp_a — first match forward)
+
+	!! Backward value search: finds the LAST statement valued 4
+	last_four = doc?=4;            !! 4 (tmp_b — last match backward)
+
+	!! Value search with expression patterns (the pattern evaluates first):
+	r1 = {a = 3; b = 5;}~=1+2;   !! 3 (pattern 1+2 evaluates to 3, finds a)
+
+	!! Combined name+value: both conditions on the SAME statement
+	b = {
+		setting = 11;
+		mid = 0;
+		setting = 10;
+	};
+	atomic = b~setting=10;         !! 10 (the SECOND setting — name AND value match)
+
+	!! Miss: no statement with that value → ??? (NK for anchored)
+	nope = doc~=99;                !! ???
+}
+
+!! ============================================================================================================
+!! S2.10 ── CONTEXTED SEARCH: The & Prefix
+!! ============================================================================================================
+!!
+!! All the searches so far are "contextless" — they demand their anchor resolve
+!! to a brane and search inside it. The & prefix creates "contexted" twins that
+!! start from a statement's POSITION and search within its home brane.
+!!
+!! Think of & as: "…and then, from where that landed, search this."
+
+{
+	recipe = {
+		steps = {
+			prep_var = 7;
+			step_1 = 40;
+			bake = 9;
+		};
+	};
+
+	!! Find step_1, then look at its neighbors using &# (contexted index):
+	self = recipe.steps~step_1&#0;     !! 40 (&#0 = the found statement itself)
+	after = recipe.steps~step_1&#1;    !! 9  (&#1 = one forward in steps)
+	before = recipe.steps~step_1&#-1;  !! 7  (&#-1 = one backward in steps)
+
+	!! Contexted name search: &? (backward) and &~ (forward) from a position
+	bwd = recipe.steps~step_1&?prep_var;  !! 7  (scans back from step_1)
+	fwd = recipe.steps~step_1&~bake;      !! 9  (scans forward from step_1)
+
+	!! Home brane bounds: contexted search stays within the home brane
+	outside = 99;
+	escape = recipe.steps~step_1&?outside;  !! ??? (outside is beyond 'steps')
+}
+
+!! The key rule: . (dot) DEEPENS into a brane; & NAVIGATES from a position.
+!!
+!!   a.brane_field.x      → finds x INSIDE brane_field (deepens)
+!!   a.brane_field &?x    → finds x NEAR brane_field in a (navigates)
+
+{
+	doc = {
+		body = {
+			p1 = 10;
+			p2 = 20;
+			p3 = 10;
+		};
+	};
+
+	!! Dot deepens: searches INSIDE body
+	first_ten = doc.body~=10;           !! 10 (p1 — forward inside body)
+
+	!! Contexted index: navigates from p1's position
+	after_first = doc.body~=10&#1;      !! 20 (&#1 from p1 → p2)
+
+	!! Contexted backward: navigates from p3's position
+	last_ten = doc.body?=10;            !! 10 (p3 — backward inside body)
+	neighbor = doc.body?=10&#-1;        !! 20 (&#-1 from p3 → p2)
+}
+
+!! ============================================================================================================
+!! S2.11 ── CONTEXTED VALUE SEARCH: The Payoff
+!! ============================================================================================================
+!!
+!! Value search finds a place; contexted search exploits it. Together:
+!! "find the value, then reach its neighbors."
+
+{
+	doc = {
+		tmp_a = 4;
+		c = 30;
+		tmp_b = 4;
+	};
+
+	!! Find the first 4, then step to the NEXT statement
+	after_first_4 = doc~=4&#1;      !! 30 (tmp_a found, &#1 → c)
+
+	!! Find the last 4, then step to the PREVIOUS statement
+	before_last_4 = doc?=4&#-1;     !! 30 (tmp_b found, &#-1 → c)
+}
+
+!! ============================================================================================================
 !! RECAP
 !! ============================================================================================================
 !!
@@ -355,6 +472,20 @@
 !!   brane#N          Index access (0-based forward, negative backward)
 !!   #-N              Unanchored backward seek (by position)
 !!   name             Unanchored backward name search (through scope chain)
+!!
+!!   VALUE SEARCH (FOOP-23):
+!!   brane~=value     Forward value search (first match)
+!!   brane?=value     Backward value search (last match)
+!!   brane~name=value Atomic name+value (both on same statement)
+!!
+!!   CONTEXTED SEARCH (FOOP-23, the & prefix):
+!!   &?name           Contexted backward name search
+!!   &~name           Contexted forward name search
+!!   &#N              Contexted positional index
+!!   &^ / &$          Contexted head/tail of home brane
+!!   &~=v / &?=v      Contexted value search
+!!
+!!   . deepens into a brane; & navigates from a statement's position.
 !!
 !!   Anchored:    searches inside a specific brane only
 !!   Unanchored:  searches backward, then up through parent branes

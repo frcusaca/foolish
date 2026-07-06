@@ -142,12 +142,24 @@ impl Lexer {
             self.advance();
             return (self.make_token(Token::TildeTilde), false);
         }
+        // ~=
+        if c == '~' && self.peek_at(1) == Some('=') {
+            self.advance();
+            self.advance();
+            return (self.make_token(Token::TildeEquals), false);
+        }
 
         // ??
         if c == '?' && self.peek_at(1) == Some('?') {
             self.advance();
             self.advance();
             return (self.make_token(Token::QuestionQuestion), false);
+        }
+        // ?=
+        if c == '?' && self.peek_at(1) == Some('=') {
+            self.advance();
+            self.advance();
+            return (self.make_token(Token::QuestionEquals), false);
         }
 
         // ..
@@ -242,6 +254,10 @@ impl Lexer {
             '\'' => {
                 self.advance();
                 return (self.make_token(Token::Apostrophe), false);
+            }
+            '&' => {
+                self.advance();
+                return (self.make_token(Token::Ampersand), false);
             }
 
             // Upward arrow ↑
@@ -465,5 +481,30 @@ mod tests {
         let t = tokens("{x = 42;}");
         assert!(t.contains(&LBrace));
         assert!(t.contains(&RBrace));
+    }
+
+    #[test]
+    fn lex_tilde_equals() {
+        assert_eq!(tokens("~="), vec![TildeEquals, Eof]);
+    }
+
+    #[test]
+    fn lex_question_equals() {
+        assert_eq!(tokens("?="), vec![QuestionEquals, Eof]);
+    }
+
+    #[test]
+    fn lex_tilde_standalone() {
+        assert_eq!(tokens("~"), vec![Tilde, Eof]);
+    }
+
+    #[test]
+    fn lex_question_standalone() {
+        assert_eq!(tokens("?"), vec![Question, Eof]);
+    }
+
+    #[test]
+    fn lex_ampersand() {
+        assert_eq!(tokens("&"), vec![Ampersand, Eof]);
     }
 }

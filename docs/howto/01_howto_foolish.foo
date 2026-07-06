@@ -27,6 +27,7 @@
 !!   S1.11  Index Access: The # Operator
 !!   S1.12  Unanchored Seek: Reaching Back by Position
 !!   S1.13  Putting It All Together
+!!   S1.14  Value Search: Finding by Value
 !!
 !! ────────────────────────────────────────────────────────────────────────────────────────────────
 !!
@@ -576,6 +577,35 @@
 }
 
 !! ============================================================================================================
+!! S1.14 ── VALUE SEARCH: Finding by Value
+!! ============================================================================================================
+!!
+!! Sometimes you want to find a statement by its *value*, not its name.
+!! The ~= (forward) and ?= (backward) operators search for a statement
+!! whose value equals the pattern.
+
+{
+	doc = {
+		tmp_a = 4;
+		size = 10;
+		depth = 10;
+	};
+
+	!! Forward value search: finds the FIRST statement with value 10
+	first_ten = doc~=10;           !! 10 (size — the first 10 forward)
+
+	!! Backward value search: finds the LAST statement with value 10
+	last_ten = doc?=10;            !! 10 (depth — the last 10 backward)
+
+	!! If no statement has that value, the result is ??? (NK):
+	nope = doc~=99;                !! ???
+
+	!! Value search is useful for finding context — the position of a
+	!! value lets you reach neighboring statements (see Chapter 2 for
+	!! contexted &-searches).
+}
+
+!! ============================================================================================================
 !! RECAP
 !! ============================================================================================================
 !!
@@ -593,5 +623,6 @@
 !!   Head/Tail       brane^ brane$   First and last element
 !!   Index access    brane#N         By position
 !!   Unanchored seek #-N             Previous statement by position
+!!   Value search    brane~=v  brane?=v  Find by value (forward/backward)
 !!
 !! Next: 02_howto_foolish_more.foo — Searches, patterns, and more

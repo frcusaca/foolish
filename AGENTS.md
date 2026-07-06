@@ -402,6 +402,136 @@ is appropriate. See FOOP-62 §Terminology for the authoritative UBCa definition.
 
 In UBC implementation, this means creating a modified clone with new context. See `docs/vintage_legacy/ECOSYSTEM.md` for detailed semantics.
 
+#### Searches (FOOP-23)
+
+Foolish has three groups of search operators. These terms are authoritative (per
+FOOP-23 §Terminology); use them consistently.
+
+##### Home brane
+
+**"Home brane of a FIR"** ≡ **"brane of a FIR"** — the first brane reached by
+walking the FIR's `.parent` chain; equivalently, the brane in which the FIR's
+statement has a correct line number. The UBCa accessor is `get_my_brane`. Use
+"home brane" when a second brane is also under discussion and the specific one
+must be named; use "brane of" otherwise.
+
+##### Three groups of search operators
+
+1. **Contextless Anchored Searches** (shorthand: **contextless searches**, or
+   plainly **searches** when no contrast with contexted search is needed).
+
+   | Operator | Direction | Anchoring | Matches |
+   |----------|-----------|-----------|---------|
+   | `.`      | backward  | anchored  | name (alias for `?`) |
+   | `?`      | backward  | anchored  | name pattern |
+   | `~`      | forward   | anchored  | name pattern |
+   | `#`      | both      | anchored  | positional index (`#N`) |
+   | `^`      | —         | anchored  | head (first statement) |
+   | `$`      | —         | anchored  | tail (last statement) |
+   | `~=`     | forward   | anchored  | value equals pattern |
+   | `?=`     | backward  | anchored  | value equals pattern |
+
+   There is **no `.=  `** alias. There is no unanchored forward form (Foolish
+   cannot look forward in its own brane). Each demands its anchor resolve
+   *through* to a whole brane and searches that brane; it does **not read
+   context** (it does not start from a statement position). Contextless
+   searches still *provide* context — every result carries its found
+   statement's position.
+
+2. **Contexted Anchored Searches** (shorthand: **`&`-searches**, or
+   **contexted searches**).
+
+   | Operator | Direction | Anchoring | Matches |
+   |----------|-----------|-----------|---------|
+   | `&?`     | backward  | from position | name pattern |
+   | `&~`     | forward   | from position | name pattern |
+   | `&#`     | both      | from position | positional index |
+   | `&^`     | —         | from position | head of home brane |
+   | `&$`     | —         | from position | tail of home brane |
+   | `&~=`    | forward   | from position | value equals pattern |
+   | `&?=`    | backward  | from position | value equals pattern |
+
+   There is **no `&.`** operator (`.` already deepens; a "contexted deepen
+   from a statement position" has no distinct meaning). A contexted search
+   anchors on a **statement's position** — the original statement a preceding
+   search found — and searches forward/backward from there within that
+   statement's **home brane**. It reads *"…and then, from where that landed,
+   search this."* Contexted searches stack: `a~step_1 &#1` addresses the
+   statement one past `step_1` in its home brane. Scans are clipped to the
+   home brane — a contexted search never leaves it.
+
+3. **Value searches** — searches triggered by `=` that match on a statement's
+   *value* rather than its name. A contexted value search may be written
+   **`&=`-search** in shorthand.
+
+   Combined name-and-value forms (`~name=value`, `?name=value`, `?name=value`
+   unanchored) are **atomic conjunctive operators** — the name gate and value
+   gate are tested *together on each candidate in a single scan*. This is not
+   reducible to a name-then-value chain (see FOOP-23 §C.3.1).
+
+##### Contextless deepens vs contexted navigates
+
+The key rule for chaining searches:
+
+- **`.` always deepens.** In `a.brane_field.x`, `.x` finds `x` *inside*
+  `brane_field`'s brane (the dot demands its anchor resolve to a brane and
+  searches inside it).
+- **`&` navigates from a position.** `a.brane_field &?x` finds `x` *near*
+  `brane_field` in `a` — it reads `brane_field`'s found statement position
+  and scans backward through `a`'s statements from there.
+
+This resolves the `a.brane_field.x` ambiguity: contextless always deepens;
+contexted navigates neighbors.
+
+##### The one-engine model (cursor-source × predicate)
+
+All search operators share one `ContextfulSearch` engine (in
+`foolish-ubca/src/fir_kinds.rs`), parameterized by two independent properties:
+
+- **Cursor-source** (`CursorSource::Contextless` | `CursorSource::Contexted`) —
+  where the Navigator starts. Contextless: anchor resolved to a brane, cursor
+  at front/rear. Contexted: incoming result's statement position in its home
+  brane.
+- **Predicate** (`SearchPredicate` — `Name` | `Value` | `NameValue` | `Index`
+  | `Head` | `Tail`) — what qualifies as a match.
+
+The engine's core loop uses two collaborators:
+- **Candidate Navigator** (`CandidateNavigator` trait) — traverses the FIR tree,
+  yields candidates in the mandated deterministic order. Correctness contract:
+  correctly ordered and complete (every reachable candidate, exactly once, then
+  stops).
+- **Statement Matcher** (`SearchPredicate`) — narrow approve/reject on one
+  candidate. Receives the *full* statement FIR (name, body/value, line number,
+  parent, NYES). Knows nothing about traversal order.
+
+Two degeneracies fall out:
+- **Contexted on a bare brane ≡ contextless.** `{…}&?c` has no incoming
+  position; cursor degenerates to the brane's rear — identical to `{…}?c`.
+- **Contextless on a contexted result reads the value, not the position.**
+  `X.y` where `X` is a contexted search: `.y` ignores the carried position,
+  takes `X`'s value (a brane), and deepens.
+
+##### FoolRefFir two-child invariant
+
+A resolved search has exactly **two** `ubc_children`:
+- `[0]` — the constanic clone of the found statement's body (the search's
+  value, read by `.value()`, result chains, and the sequencer).
+- `[1]` — a `FoolRefFir` wrapping a strong reference to the **original found
+  statement**, with its parent chain, line number, and home brane intact.
+
+`FoolRefFir` is immutable (no mutation path to the referent), born CONSTANT,
+and invisible to values (`FirRefExt::value` reads `[0]` only). This is what
+makes providing-context universal — every search result carries a position that
+a following `&`-search can read.
+
+##### NK vs ECONSTANIC miss outcomes
+
+- **Anchored miss → NK.** A contextless anchored search (`a?name`) that finds
+  nothing settles NK (the name is provably not in that brane).
+- **Unanchored miss → ECONSTANIC.** An unanchored search (`?name`) that finds
+  nothing settles ECONSTANIC — it may gain a value via recoordination when the
+  brane is used in a new context.
+
 ### Test Infrastructure
 
 **Two-Tier Testing:**
@@ -418,6 +548,8 @@ In UBC implementation, this means creating a modified clone with new context. Se
   ECONSTANIC, WOCONSTANIC, CONSTANT, INDEPENDENT, or NK. Pre-constanic (nigh) = needs more stepping.
 - **Ordinate** - a name associated with a brane
 - **Coordinate** - brane member names used for relational access
+- **Home brane of a FIR** (synonym: **brane of a FIR**) - the first brane reached by
+  walking the FIR's `.parent` chain. Accessor: `get_my_brane`. See the Searches section above.
 - **Lexed** - feature parses to AST
 - **Interpreted** - feature fully implemented in VM
 
@@ -520,6 +652,14 @@ This ensures all AI agents can track who modified documentation and when, mainta
 When proposing updates, explain what has changed and why the documentation needs adjustment. After user review, update the "Last Updated" date below whether changes are accepted or the user confirms current state is acceptable.
 
 ## Last Updated
+
+**Date**: 2026-07-05
+**Updated By**: Sisyphus-Junior / xiaomi/mimo-v2.5-pro
+**Changes**: FOOP-23 Phase D.1 — Added dedicated "Searches" section documenting the three groups
+of search operators (Contextless Anchored, Contexted Anchored/`&`-searches, Value searches),
+operator tables, contextless-deepens-vs-contexted-navigates rule, the one-engine model
+(cursor-source × predicate), FoolRefFir two-child invariant, NK vs ECONSTANIC miss outcomes,
+and home-brane terminology. Added "Home brane" to Foolish Terminology.
 
 **Date**: 2026-06-22
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8

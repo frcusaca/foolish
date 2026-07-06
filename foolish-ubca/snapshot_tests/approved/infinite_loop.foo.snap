@@ -12,19 +12,19 @@ INPUT:
 [0] RESULT:
 ```hfssnap
 {NK(ITERATION-EXCEEDED, Iteration exceeded 9999)
-  f1={BRANING
-      ?(pattern='^f1$', UNANCHORED, BRANING)
+  f1={WOCONSTANIC
+      ?(pattern='^f1$', UNANCHORED, ECONSTANIC)
   };
-  stuck=?(pattern='^f1$', UNANCHORED, PREMBRIONIC)
+  stuck=?(pattern='^f1$', UNANCHORED, BRANING)
 }
 ```
 COMMENTS:
 ```markdown
 infinite_loop
-generated: 2026-07-02T02:21:29.158498321Z
+generated: 2026-07-06T17:03:51.096253405Z
 ```
 SIGNATURES:
 Public key: eb9604b1e50d6df60ea71cded2d51b4031b14e9d8911866fcfff4afb00075e65
 Foolish signature: 4HiCD/00Uaa9+CvoVKI2/++TxZlNkRPrtzpaFDzH0GdH7LaZ7yf5Ar8EO8WGtvhtycqtzaPsOcLsZEZ0Thg3CQ==
-HFS signature: GA5+P0xhcfqgeKjFDU1U+5YgY1g7kaG4XkwpyPpQO+bNtJim62GwGAwxefk0dK21ushRuMo5/vY7hcAFjRuBCg==
-Comments signature: 3w3M3Dv4nWdQ6I1M1W49ItL35A4X40CcgW0f03aTWBk4nIM8DRZZFX51a8U9mS9Pc72ANrwHDGxSF4N9WvfEDw==
+HFS signature: Om9wmf1Qv7JhIsh9xsMlCOygTx1sGIhbN2ycxxhH1hG7PVWEitzr4I4xy6yrSbu5PVvvskDC4Okh2o6Z8Ud4Dg==
+Comments signature: wMyJjA5PFMln1DR3cCsiu9f6by3sWIroiL2r/CQIha0X1+pvPGJhgBcaeyw93/Y/v9eBQ0X4HBtYhgvvTlQfCw==
