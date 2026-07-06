@@ -1,0 +1,24 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{result = {x = 100; y = 200;}?notfound;}
+```
+[0] RESULT:
+```hfssnap
+{NK
+  result=?(pattern='notfound', ANCHORED, NK)
+}
+```
+COMMENTS:
+```markdown
+regex_search_not_found
+generated: 2026-07-06T17:03:52.335110462Z
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: DCCa1KU2iJkvywVWNJJreMY4bbb7kUGS86ZCjJxMT4Dw84x8CU9JGaVm0hvY8QGoAEdCrTmuIwF94eFMIJL/Aw==
+HFS signature: 5N40oxyRTKIL5nvqYeooOZ+Ab+MGDy/JBvZf4tbcaOpgMyXGFSPeX+UKL50f/Tdid5KOl8FUWHJzbtoaBEUcBw==
+Comments signature: 8N1MCRPDMNqx6xxHPfCEg8aN/x/muyWWnUZNw4dLj8KyTE3D5DPSxMjUadXCDKIbx6JOk8Q5r/+0StOrmFqGDQ==

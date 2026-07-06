@@ -1,0 +1,46 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{
+	outside = 99;
+	recipe = {
+		steps = {
+			prep_var = 7;
+			step_1 = 40;
+			bake = 9;
+		};
+	};
+	before = recipe.steps~step_1&?prep_var;
+	afterv = recipe.steps~step_1&~bake;
+	escape = recipe.steps~step_1&?outside;
+}
+```
+[0] RESULT:
+```hfssnap
+{NK
+  outside=99;
+  recipe={
+      steps={
+          prepˍvar=7;
+          stepˍ1=40;
+          bake=9
+      }
+  };
+  before=7;
+  afterv=9;
+  escape=?(pattern='outside', ANCHORED, NK)
+}
+```
+COMMENTS:
+```markdown
+contexted_search
+generated: 2026-07-06T17:03:50.202538955Z
+```
+SIGNATURES:
+Public key: eb9604b1e50d6df60ea71cded2d51b4031b14e9d8911866fcfff4afb00075e65
+Foolish signature: Oy9GOgXY7dVf90nbHUzhvhomzjr92S4vJiJRGpxnsHS86JXR54jgjy117ZvmFA57IOd9fSBz3ZkLYmGN4KWWCQ==
+HFS signature: Srz6FPlE94hkN4UGaauZHW5V5Gp4zZvhr0xB/5WiHrTXkzDu8Mvt3k7SFUajeIPSdftIb4pBS0IRR694m8anDw==
+Comments signature: Wtqi0I66I/VTylTB9UgrYB2UP0JpOVd/GPxb5KsLUDtf72Glr5a9aPDjlC1Gr+g4k8jE5qrfd6vuKFaQkXJlAg==

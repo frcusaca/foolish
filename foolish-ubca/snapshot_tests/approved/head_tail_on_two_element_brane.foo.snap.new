@@ -1,0 +1,29 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{b = {10; 20}; h = b^; t = b$;}
+```
+[0] RESULT:
+```hfssnap
+{
+  b={
+      10;
+      20
+  };
+  h=10;
+  t=20
+}
+```
+COMMENTS:
+```markdown
+head_tail_on_two_element_brane
+generated: 2026-07-06T17:03:50.883984487Z
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: hXuWNVPIS9jC7Vg4gjE5WO61S8BSIYnPdQu5Kga/ypS8XauCes46MwxnSqQ1mFUmZhOptDgewq2nC53EqQrGCw==
+HFS signature: y9y9GwnaN3o3pAoiZzsIHrHAkZSUbVYyHIsvXBwslRvPKfGtx0pWegsmU4xoDXyMvmY2qFzWfRgz+yDQW7yMAw==
+Comments signature: 5748b4Qm4tEPTZXptXS9I0nBKjdPdnmYXx8m8+EyYAxyp8qyqynYOle8/b8KVfCS9mhuP+c0rvJ/ilQM28f9Bw==

@@ -1,0 +1,27 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{x = 10; myname'{val = x};}
+```
+[0] RESULT:
+```hfssnap
+{
+  x=10;
+  myname'{
+    val=10
+  }
+}
+```
+COMMENTS:
+```markdown
+named_brane_basic
+generated: 2026-07-06T17:03:51.478601102Z
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: iqtjWzJGJYCUCiXY8U5l6RGjdcGU8kbk8Lt7KzvMxAoj27tth4Hvs0gyc5LF3byE4FCFG8j2cLLV1zhUyERrCQ==
+HFS signature: fKg7n6U/lzaahZkp3ooNYLwcBlOSyVlB8/NT8/c/l2LvX3ofF2t+xNobhrZLB8HTRzKoVJng6todls0EU/M8Bw==
+Comments signature: PfoODMFFVwtC2muJQaMQnVgiiuIsxTL+xK8J7ZD/2YK/l7CBfCKtVknzcRnlAUmCfvsgj3hufE6Lo/1YNEpBBg==

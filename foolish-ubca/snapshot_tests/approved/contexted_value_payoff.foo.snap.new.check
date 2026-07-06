@@ -1,0 +1,39 @@
+Mon Jul  6 11:02:45 AM PDT 2026 cat contexted_value_payoff.foo.snap.new---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{
+	doc = {
+		tmp_a = 4;
+		c = 30;
+		tmp_b = 4;
+	};
+	after_first_4 = doc~=4&#1;
+	before_last_4 = doc?=4&#-1;
+}
+```
+[0] RESULT:
+```hfssnap
+{NK
+  doc={
+      tmpˍa=4;
+      c=30;
+      tmpˍb=4
+  };
+!!@agent the two answers below are not right, they should be both the number 30 from the statemetn c=30
+  afterˍfirstˍ4=?(pattern='', ANCHORED, NK);
+  beforeˍlastˍ4=?(pattern='', ANCHORED, NK)
+}
+```
+COMMENTS:
+```markdown
+contexted_value_payoff
+generated: 2026-07-06T17:03:50.236884738Z
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: UdWC0rN/RA12JnT3hVJsgr26CgXF5hf1hPmGK2Ax7DDIEqmE/eVag7uNjDUQ2Y0guBibFrpD6BlqldKf8kcnDw==
+HFS signature: DCWlQZ0s5pG6kSIRTM4mYxIUv9dmNDDrul0C32n9wlQOuIwnDk83MrM1Ln7XgZwxqp0d1M593NWpXZkCr6nVDA==
+Comments signature: E446VXqE/2mLKRx1Fv+0mgkfs0m6d9qPrwfNOXenTW5bFXd1GOC9a2vXjaVV3HTVMHBc9EMQiVC8BAIvdo3jCg==

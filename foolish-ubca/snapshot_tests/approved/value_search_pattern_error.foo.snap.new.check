@@ -1,0 +1,39 @@
+Mon Jul  6 11:06:14 AM PDT 2026 cat value_search_pattern_error.foo.snap.new---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{
+	a = {
+		inner = {x = 1;};
+		n = 5;
+	};
+	bad = a~={q = 1;};
+	ok = a~=5;
+}
+```
+[0] RESULT:
+```hfssnap
+{NK
+  a={
+      inner={
+          x=1
+      };
+      n=5
+  };
+(@Agents, this NK needs to have a message that says not supported search)
+  bad=?(pattern='', ANCHORED, NK);
+  ok=5
+}
+```
+COMMENTS:
+```markdown
+value_search_pattern_error
+generated: 2026-07-06T17:03:54.170542877Z
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: YiBShmUuju8mQ5mw5DVHGh1cZM09HwOpexgx1yqFB4qm3p86vhuOj77J49Qo0HSYm5/4TVljVz5klvJXCQL9Dg==
+HFS signature: 2RXsqDpvy9Zp7000TDRjlbSenthY1ypf9TCrvf3pHRImGlm6sSdacCvD4EPwiRD9wCMcW21yfphJhwyPnlryAQ==
+Comments signature: xqI0dzkN86dOTtmbegJPVFkHsO3CsbJ8KAK2kmkCcgL8CtCg/X5Nmxo3ZwX2vUomNvuO/f+dvlye9NoZJZWmCA==

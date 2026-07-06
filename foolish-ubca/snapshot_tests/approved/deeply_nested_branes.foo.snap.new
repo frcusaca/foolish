@@ -1,0 +1,30 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{{{1;}; 2}; 3;}
+```
+[0] RESULT:
+```hfssnap
+{
+  {
+    {
+      1
+    };
+    2
+  };
+  3
+}
+```
+COMMENTS:
+```markdown
+deeply_nested_branes
+generated: 2026-07-06T17:03:50.351573297Z
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: ts+is4fU9t4OKbPpTLF2vuDeokiDmOhmSuEDQxR7v4b4DyejSg2w73lBXK3fIZWaQ3w6YAc8t0p6L4m2vEgLAQ==
+HFS signature: AY1Gonyro9R1laNwHBInaw+jzE7w5DRhCiwVsliT+EquGoT1dd0xQChoGR0alwEKhIXkw88a23F+I90chilPBg==
+Comments signature: RrpZYWobx9oyHPOyl2gtJMxM5lD8p8+Ksagbgzf9W+eX4gjS6tnngmimB/DqtrdaO7tFyGWjoikrZkvBvY+0Dw==

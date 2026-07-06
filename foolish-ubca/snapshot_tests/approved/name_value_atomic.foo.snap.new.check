@@ -1,0 +1,39 @@
+Mon Jul  6 11:07:47 AM PDT 2026 cat name_value_atomic.foo.snap.new---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{
+	b = {
+		setting = 11;
+		mid = 0;
+		setting = 10;
+	};
+	atomic = b~setting=10;
+	before = b~setting=10&#-1;
+}
+```
+[0] RESULT:
+```hfssnap
+{NK
+  b={
+      setting=11;
+      mid=0;
+      setting=10
+  };
+  atomic=10;
+!! @Agent, this result for before is incorrect, one line back from 'setting=10' should have found 'mid = 10'
+  before=?(pattern='setting', ANCHORED, NK)
+}
+```
+COMMENTS:
+```markdown
+name_value_atomic
+generated: 2026-07-06T17:03:51.444629759Z
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: 51j94/BEW1JS8nC9VTwP4r8yH3gB1JjHBDrrGx1+rQqHcuXkrOHnTyd8fGyWMJQ3jS1hWLbIzE6ecoxZagJuDA==
+HFS signature: DLQKBHrMtLYeErzAigqt15Kjw9tOnNIteJxUM1htJDZqciZ2SEArVuoQjxN/rCrjoznfo1qtucF1Cv1AUKzgAg==
+Comments signature: BCyL/I1Ud1QeLnZQI/nx3oFYnMMfJOFUFr4lMvWk9jC0da3yl33U7oRRhT6uHBruil96YIstYkJQzw2lkY+pBw==
