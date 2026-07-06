@@ -42,6 +42,9 @@ pub enum FirKind {
     Nk,
     /// Placeholder for test stubs before real kinds are implemented.
     Unknown,
+    /// Strong reference to an original statement, created alongside search results.
+    /// Born CONSTANT, immutable, no stepping. Bookkeeping for contexted search (FOOP-23 C2).
+    FoolRef,
 }
 
 /// Minimal Scope stub — enough for compilation. The real Scope comes later
@@ -180,6 +183,11 @@ pub trait Fir: std::fmt::Debug {
     /// SearchFir is_value_search flag. Default: false.
     fn as_search_is_value(&self) -> bool {
         false
+    }
+
+    /// FoolRefFir referent. Default: None.
+    fn as_fool_ref_referent(&self) -> Option<&FirRef> {
+        None
     }
 
     fn get_my_statement(&self, self_ref: &FirRef) -> FirRef {
@@ -818,7 +826,7 @@ mod get_value_tests {
         let search = make_search("^x$", true, vec![Rc::clone(&brane)]);
         settle(&search);
         assert_eq!(search.borrow().core().get_nyes(), Nyes::Constant);
-        assert_eq!(search.borrow().core().ubc_children().len(), 1);
+        assert_eq!(search.borrow().core().ubc_children().len(), 2);
 
         let result = search.value();
         assert_eq!(result.borrow().kind(), FirKind::IndepInt);
@@ -869,7 +877,7 @@ mod get_value_tests {
         let idx = make_index(1, true, vec![Rc::clone(&brane)]);
         settle(&idx);
         assert_eq!(idx.borrow().core().get_nyes(), Nyes::Constant);
-        assert_eq!(idx.borrow().core().ubc_children().len(), 1);
+        assert_eq!(idx.borrow().core().ubc_children().len(), 2);
 
         let result = idx.value();
         assert_eq!(result.borrow().kind(), FirKind::IndepInt);

@@ -86,7 +86,7 @@ pub(crate) trait FirRefNavExt {
     ///
     /// A non-negative `offset` counts from the front; a negative one counts from
     /// the back. Out-of-range offsets yield `None`.
-    fn index_into(&self, offset: i32) -> Option<(FirRef, Nyes)>;
+    fn index_into(&self, offset: i32) -> Option<(FirRef, FirRef, Nyes)>;
 }
 
 impl FirRefNavExt for FirRef {
@@ -127,24 +127,21 @@ impl FirRefNavExt for FirRef {
         None
     }
 
-    fn index_into(&self, offset: i32) -> Option<(FirRef, Nyes)> {
-        let (body, body_nyes) = {
-            let body: FirRef = {
-                let borrowed = self.borrow();
-                let children = borrowed.core().foolish_children();
-                let len = children.len() as i32;
-                let idx = if offset >= 0 { offset } else { len + offset };
-                if idx < 0 || idx >= len {
-                    return None;
-                }
-                let stmt = Rc::clone(&children[idx as usize]);
-
-                (Rc::clone(stmt.borrow().core().foolish_children().first()?)) as _
-            };
+    fn index_into(&self, offset: i32) -> Option<(FirRef, FirRef, Nyes)> {
+        let (stmt, body, body_nyes) = {
+            let borrowed = self.borrow();
+            let children = borrowed.core().foolish_children();
+            let len = children.len() as i32;
+            let idx = if offset >= 0 { offset } else { len + offset };
+            if idx < 0 || idx >= len {
+                return None;
+            }
+            let stmt = Rc::clone(&children[idx as usize]);
+            let body: FirRef = Rc::clone(stmt.borrow().core().foolish_children().first()?);
             let body_nyes = body.borrow().core().get_nyes();
-            (body, body_nyes)
+            (stmt, body, body_nyes)
         };
-        Some((body, body_nyes))
+        Some((stmt, body, body_nyes))
     }
 }
 
@@ -377,6 +374,7 @@ impl ProtoBrane {
                 core: ProtoBrane::new(vec![], new_parent.clone(), Nyes::Nk),
                 reason: "unknown fir kind".to_owned(),
             })),
+            FirKind::FoolRef => Rc::clone(fir_ref),
         }
     }
 }
@@ -914,11 +912,8 @@ impl SearchFir {
 
     fn handle_found(&self, stmt: FirRef, _nyes: Nyes, scope: &Scope) {
         let self_weak = self.core.parent_weak();
-        self.core.push_search_result(Self::clone_stmt_result(
-            &stmt,
-            &self_weak,
-            scope.has_ancestral_sfm,
-        ));
+        let clone = Self::clone_stmt_result(&stmt, &self_weak, scope.has_ancestral_sfm);
+        push_search_result_pair(&self.core, clone, stmt);
         self.core.set_nyes(Nyes::Braning);
     }
 
@@ -1218,22 +1213,20 @@ fn index_into_brane_relative(
     brane: &FirRef,
     stmt_idx: usize,
     offset: i32,
-) -> Option<(FirRef, Nyes)> {
-    let (body, body_nyes) = {
-        let body: FirRef = {
-            let borrowed = brane.borrow();
-            let children = borrowed.core().foolish_children();
-            let idx = stmt_idx as i32 + offset;
-            if idx < 0 || idx >= children.len() as i32 {
-                return None;
-            }
-            let stmt = Rc::clone(&children[idx as usize]);
-            Rc::clone(stmt.borrow().core().foolish_children().first()?)
-        };
+) -> Option<(FirRef, FirRef, Nyes)> {
+    let (stmt, body, body_nyes) = {
+        let borrowed = brane.borrow();
+        let children = borrowed.core().foolish_children();
+        let idx = stmt_idx as i32 + offset;
+        if idx < 0 || idx >= children.len() as i32 {
+            return None;
+        }
+        let stmt = Rc::clone(&children[idx as usize]);
+        let body: FirRef = Rc::clone(stmt.borrow().core().foolish_children().first()?);
         let body_nyes = body.borrow().core().get_nyes();
-        (body, body_nyes)
+        (stmt, body, body_nyes)
     };
-    Some((body, body_nyes))
+    Some((stmt, body, body_nyes))
 }
 
 fn find_enclosing_stmt_and_brane(start: &ProtoBrane) -> Option<(FirRef, FirRef)> {
@@ -1323,16 +1316,17 @@ impl Fir for IndexFir {
                     match find_enclosing_stmt_and_brane(&self.core) {
                         Some((stmt_ref, brane_ref)) => {
                             if let Some(idx) = brane_ref.find_stmt_index(&stmt_ref) {
-                                if let Some((body, _body_nyes)) =
+                                if let Some((stmt, body, _body_nyes)) =
                                     index_into_brane_relative(&brane_ref, idx, self.offset)
                                 {
                                     let self_weak = self.core.parent_weak();
-                                    self.core.push_search_result(ProtoBrane::constanic_clone_at(
+                                    let clone = ProtoBrane::constanic_clone_at(
                                         &body,
                                         &self_weak,
                                         0,
                                         scope.has_ancestral_sfm,
-                                    ));
+                                    );
+                                    push_search_result_pair(&self.core, clone, stmt);
                                     self.core.set_nyes(Nyes::Braning);
                                 } else {
                                     self.core.set_nyes(Nyes::Nk);
@@ -1353,14 +1347,15 @@ impl Fir for IndexFir {
                 } else if self.anchored {
                     let anchor = Rc::clone(&self.core.foolish_children()[0]);
                     let resolved = anchor.resolve_anchor();
-                    if let Some((body, _body_nyes)) = resolved.index_into(self.offset) {
+                    if let Some((stmt, body, _body_nyes)) = resolved.index_into(self.offset) {
                         let self_weak = self.core.parent_weak();
-                        self.core.push_search_result(ProtoBrane::constanic_clone_at(
+                        let clone = ProtoBrane::constanic_clone_at(
                             &body,
                             &self_weak,
                             0,
                             scope.has_ancestral_sfm,
-                        ));
+                        );
+                        push_search_result_pair(&self.core, clone, stmt);
                     } else {
                         self.core.set_nyes(Nyes::Nk);
                     }
@@ -1427,19 +1422,18 @@ impl Fir for HeadTailFir {
                     match find_enclosing_stmt_and_brane(&self.core) {
                         Some((stmt_ref, brane_ref)) => {
                             if let Some(idx) = brane_ref.find_stmt_index(&stmt_ref) {
-                                if let Some((body, nyes)) =
+                                if let Some((stmt, body, nyes)) =
                                     index_into_brane_relative(&brane_ref, idx, offset)
                                 {
                                     if nyes.is_constanic() {
                                         let self_weak = self.core.parent_weak();
-                                        self.core.push_search_result(
-                                            ProtoBrane::constanic_clone_at(
-                                                &body,
-                                                &self_weak,
-                                                0,
-                                                scope.has_ancestral_sfm,
-                                            ),
+                                        let clone = ProtoBrane::constanic_clone_at(
+                                            &body,
+                                            &self_weak,
+                                            0,
+                                            scope.has_ancestral_sfm,
                                         );
+                                        push_search_result_pair(&self.core, clone, stmt);
                                         self.core.set_nyes(nyes);
                                     } else {
                                         self.core.push_task(Rc::clone(&body));
@@ -1462,15 +1456,16 @@ impl Fir for HeadTailFir {
                 if self.anchored {
                     let anchor = Rc::clone(&self.core.foolish_children()[0]);
                     let resolved = anchor.resolve_anchor();
-                    if let Some((body, body_nyes)) = resolved.index_into(offset) {
+                    if let Some((stmt, body, body_nyes)) = resolved.index_into(offset) {
                         if body_nyes.is_constanic() {
                             let self_weak = self.core.parent_weak();
-                            self.core.push_search_result(ProtoBrane::constanic_clone_at(
+                            let clone = ProtoBrane::constanic_clone_at(
                                 &body,
                                 &self_weak,
                                 0,
                                 scope.has_ancestral_sfm,
-                            ));
+                            );
+                            push_search_result_pair(&self.core, clone, stmt);
                             self.core.set_nyes(body_nyes);
                         } else {
                             self.core.set_nyes(Nyes::Nk);
@@ -1482,19 +1477,18 @@ impl Fir for HeadTailFir {
                     match find_enclosing_stmt_and_brane(&self.core) {
                         Some((stmt_ref, brane_ref)) => {
                             if let Some(idx) = brane_ref.find_stmt_index(&stmt_ref) {
-                                if let Some((body, body_nyes)) =
+                                if let Some((stmt, body, body_nyes)) =
                                     index_into_brane_relative(&brane_ref, idx, offset)
                                 {
                                     if body_nyes.is_constanic() {
                                         let self_weak = self.core.parent_weak();
-                                        self.core.push_search_result(
-                                            ProtoBrane::constanic_clone_at(
-                                                &body,
-                                                &self_weak,
-                                                0,
-                                                scope.has_ancestral_sfm,
-                                            ),
+                                        let clone = ProtoBrane::constanic_clone_at(
+                                            &body,
+                                            &self_weak,
+                                            0,
+                                            scope.has_ancestral_sfm,
                                         );
+                                        push_search_result_pair(&self.core, clone, stmt);
                                         self.core.set_nyes(body_nyes);
                                     } else {
                                         self.core.set_nyes(Nyes::Nk);
@@ -1525,6 +1519,52 @@ impl Fir for HeadTailFir {
     fn as_headtail_anchored(&self) -> bool {
         self.anchored
     }
+}
+
+// ── FoolRefFir (FOOP-23 Phase C1) ──────────────────────────────────
+
+#[derive(Debug)]
+pub struct FoolRefFir {
+    pub(crate) core: ProtoBrane,
+    #[allow(dead_code)]
+    referent: FirRef,
+}
+
+impl Fir for FoolRefFir {
+    #[inline(always)]
+    fn core(&self) -> &ProtoBrane {
+        &self.core
+    }
+    fn fir_op_step(&self, _scope: &Scope) -> Result<(), UbcError> {
+        Ok(())
+    }
+    fn kind(&self) -> FirKind {
+        FirKind::FoolRef
+    }
+    fn as_fool_ref_referent(&self) -> Option<&FirRef> {
+        Some(&self.referent)
+    }
+}
+
+impl FoolRefFir {
+    #[allow(dead_code)]
+    pub(crate) fn referent(&self) -> &FirRef {
+        &self.referent
+    }
+}
+
+/// Push a search result AND its FoolRefFir bookkeeping entry to `ubc_children`.
+///
+/// After this call, `ubc_children` holds `[clone, FoolRefFir]`.
+/// All existing readers access `[0]` only (via `.first()`), so the
+/// FoolRefFir at `[1]` is invisible to them.
+pub(crate) fn push_search_result_pair(core: &ProtoBrane, result: FirRef, referent: FirRef) {
+    let fool_ref = Rc::new(RefCell::new(FoolRefFir {
+        core: ProtoBrane::new(vec![], core.parent_weak(), Nyes::Constant),
+        referent,
+    }));
+    core.push_search_result(result);
+    core.push_ubc_child(fool_ref);
 }
 
 // ── ContextfulSearch engine skeleton (FOOP-23 Phase A0) ──────────────
@@ -2716,7 +2756,7 @@ mod tests {
 
         assert_eq!(search.borrow().core().get_nyes(), Nyes::Constant);
         let ubc = search.borrow().core().ubc_children().to_vec();
-        assert_eq!(ubc.len(), 1);
+        assert_eq!(ubc.len(), 2);
         assert_eq!(ubc[0].borrow().as_i64(), Some(42));
     }
 
@@ -2771,7 +2811,7 @@ mod tests {
 
         assert_eq!(idx.borrow().core().get_nyes(), Nyes::Constant);
         let ubc = idx.borrow().core().ubc_children().to_vec();
-        assert_eq!(ubc.len(), 1);
+        assert_eq!(ubc.len(), 2);
         assert_eq!(ubc[0].borrow().as_i64(), Some(20));
     }
 
@@ -2813,7 +2853,7 @@ mod tests {
 
         assert_eq!(idx.borrow().core().get_nyes(), Nyes::Constant);
         let ubc = idx.borrow().core().ubc_children().to_vec();
-        assert_eq!(ubc.len(), 1);
+        assert_eq!(ubc.len(), 2);
         assert_eq!(ubc[0].borrow().as_i64(), Some(30));
     }
 
@@ -2831,7 +2871,7 @@ mod tests {
 
         assert_eq!(idx.borrow().core().get_nyes(), Nyes::Constant);
         let ubc = idx.borrow().core().ubc_children().to_vec();
-        assert_eq!(ubc.len(), 1);
+        assert_eq!(ubc.len(), 2);
         assert_eq!(ubc[0].borrow().as_i64(), Some(99));
     }
 
@@ -2883,7 +2923,7 @@ mod tests {
 
         assert_eq!(ht.borrow().core().get_nyes(), Nyes::Constant);
         let ubc = ht.borrow().core().ubc_children().to_vec();
-        assert_eq!(ubc.len(), 1);
+        assert_eq!(ubc.len(), 2);
         assert_eq!(ubc[0].borrow().as_i64(), Some(10));
     }
 
@@ -2909,7 +2949,7 @@ mod tests {
 
         assert_eq!(ht.borrow().core().get_nyes(), Nyes::Constant);
         let ubc = ht.borrow().core().ubc_children().to_vec();
-        assert_eq!(ubc.len(), 1);
+        assert_eq!(ubc.len(), 2);
         assert_eq!(ubc[0].borrow().as_i64(), Some(30));
     }
 
@@ -4772,5 +4812,351 @@ mod tests {
             ScanOutcome::Miss,
             "empty brane → Miss"
         );
+    }
+
+    // ── C0: Contextless deepening tests (FOOP-23) ────────────────────
+
+    #[test]
+    fn contextless_deepening_chain_resolves() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile(
+            "{some_brane = {some_aspect = {some_thing_else = {some_value = 42;};};}; \
+             final = some_brane.some_aspect.some_thing_else.some_value;}",
+        )
+        .unwrap()
+        .pop()
+        .unwrap();
+        settle_root(&root);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let final_stmt = &stmts[1];
+        let body = final_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        assert_eq!(
+            body.borrow().as_i64(),
+            Some(42),
+            "dot-chain must deepen through nested branes"
+        );
+    }
+
+    #[test]
+    fn contextless_search_on_non_brane_anchor_is_nk() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile("{a = 42; x = a.b;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        settle_root(&root);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let x_stmt = &stmts[1];
+        let body = x_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        assert_eq!(
+            body.borrow().core().get_nyes(),
+            Nyes::Nk,
+            "anchored search on non-brane must be NK"
+        );
+    }
+
+    #[test]
+    fn contextless_search_anchor_nk_is_nk() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile("{a = ???; x = a.b;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        settle_root(&root);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let x_stmt = &stmts[1];
+        let body = x_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        assert_eq!(
+            body.borrow().core().get_nyes(),
+            Nyes::Nk,
+            "anchored search on NK anchor must be NK"
+        );
+    }
+
+    #[test]
+    fn contextless_search_anchor_nigh_waits_then_resolves() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile("{a = {x = 1;}; b = a.x;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        let search = find_search(&root, "^x$").expect("search for x");
+        let scope = Scope::empty();
+
+        let mut saw_braning = false;
+        for _ in 0..200 {
+            if root.borrow().core().get_nyes().is_constanic() {
+                break;
+            }
+            let _ = root.step(&scope).unwrap();
+            if search.borrow().core().get_nyes() == Nyes::Braning {
+                saw_braning = true;
+            }
+        }
+        assert!(
+            saw_braning,
+            "search must pass through BRANING while anchor settles"
+        );
+        assert_eq!(
+            search.borrow().as_i64(),
+            Some(1),
+            "search must resolve to 1 after anchor settles"
+        );
+    }
+
+    // ── C1: FoolRefFir tests (FOOP-23) ──────────────────────────────
+
+    #[test]
+    fn fool_ref_fir_nyes_transitions() {
+        use crate::fir_trait::FirRefExt;
+        use std::cell::RefCell;
+        use std::rc::{Rc, Weak};
+
+        let referent = make_constant_int(42);
+        let fool_ref: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<FoolRefFir>>| {
+            let parent: Weak<RefCell<dyn Fir>> = me.clone();
+            RefCell::new(FoolRefFir {
+                core: ProtoBrane::new(vec![], parent, Nyes::Constant),
+                referent: Rc::clone(&referent),
+            })
+        });
+
+        assert_eq!(
+            fool_ref.borrow().core().get_nyes(),
+            Nyes::Constant,
+            "FoolRefFir must be born CONSTANT"
+        );
+        assert_eq!(fool_ref.borrow().kind(), FirKind::FoolRef);
+
+        let scope = Scope::empty();
+        let report = fool_ref.step(&scope).unwrap();
+        assert!(
+            matches!(report, StepReport::Progress(Nyes::Constant)),
+            "stepping a FoolRefFir must be a no-op returning Constant"
+        );
+        assert_eq!(fool_ref.borrow().core().get_nyes(), Nyes::Constant);
+    }
+
+    #[test]
+    fn fool_ref_referent_survives_original_drop() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile("{a = {x = 99;}; b = a.x;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        settle_root(&root);
+
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let b_stmt = &stmts[1];
+        let search_body = b_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+
+        let ubc = search_body.borrow().core().ubc_children();
+        assert_eq!(ubc.len(), 2, "search must have [clone, FoolRefFir]");
+        assert_eq!(
+            ubc[0].borrow().as_i64(),
+            Some(99),
+            "ubc_children[0] is the resolved clone"
+        );
+        assert_eq!(
+            ubc[1].borrow().kind(),
+            FirKind::FoolRef,
+            "ubc_children[1] is the FoolRefFir"
+        );
+        assert_eq!(
+            ubc[1].borrow().core().get_nyes(),
+            Nyes::Constant,
+            "FoolRefFir is born CONSTANT"
+        );
+
+        drop(root);
+
+        assert_eq!(
+            ubc[1].borrow().core().get_nyes(),
+            Nyes::Constant,
+            "FoolRefFir must survive root drop (strong Rc)"
+        );
+        assert_eq!(
+            ubc[0].borrow().as_i64(),
+            Some(99),
+            "clone must survive root drop"
+        );
+    }
+
+    #[test]
+    fn search_result_pair_has_fool_ref_at_index_1() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile("{a = {x = 7;}; b = a.x;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        settle_root(&root);
+
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let b_stmt = &stmts[1];
+        let search_body = b_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+
+        let ubc = search_body.borrow().core().ubc_children();
+        assert_eq!(ubc.len(), 2);
+        assert_eq!(ubc[0].borrow().as_i64(), Some(7));
+        assert_eq!(ubc[1].borrow().kind(), FirKind::FoolRef);
+        assert_eq!(ubc[1].borrow().core().get_nyes(), Nyes::Constant);
+    }
+
+    #[test]
+    fn index_result_pair_has_fool_ref_at_index_1() {
+        let val = make_constant_int(42);
+        let stmt = make_statement("x", 0, Rc::clone(&val));
+        let brane = make_brane(vec![Rc::clone(&stmt)]);
+        let idx = make_index(0, true, vec![Rc::clone(&brane)]);
+        let scope = Scope::empty();
+
+        step_to_settled(&idx, &scope);
+        assert_eq!(idx.borrow().core().get_nyes(), Nyes::Constant);
+
+        let ubc = idx.borrow().core().ubc_children();
+        assert_eq!(ubc.len(), 2, "index must have [clone, FoolRefFir]");
+        assert_eq!(ubc[0].borrow().as_i64(), Some(42));
+        assert_eq!(ubc[1].borrow().kind(), FirKind::FoolRef);
+    }
+
+    #[test]
+    fn headtail_result_pair_has_fool_ref_at_index_1() {
+        let val = make_constant_int(10);
+        let stmt = make_statement("x", 0, Rc::clone(&val));
+        let brane = make_brane(vec![Rc::clone(&stmt)]);
+        let ht = make_headtail(true, true, vec![Rc::clone(&brane)]);
+        let scope = Scope::empty();
+
+        step_to_settled(&ht, &scope);
+        assert_eq!(ht.borrow().core().get_nyes(), Nyes::Constant);
+
+        let ubc = ht.borrow().core().ubc_children();
+        assert_eq!(ubc.len(), 2, "headtail must have [clone, FoolRefFir]");
+        assert_eq!(ubc[0].borrow().as_i64(), Some(10));
+        assert_eq!(ubc[1].borrow().kind(), FirKind::FoolRef);
+    }
+
+    #[test]
+    fn fool_ref_fir_no_ubc_children() {
+        use std::cell::RefCell;
+        use std::rc::{Rc, Weak};
+
+        let referent = make_constant_int(1);
+        let fool_ref: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<FoolRefFir>>| {
+            let parent: Weak<RefCell<dyn Fir>> = me.clone();
+            RefCell::new(FoolRefFir {
+                core: ProtoBrane::new(vec![], parent, Nyes::Constant),
+                referent: Rc::clone(&referent),
+            })
+        });
+
+        assert!(
+            fool_ref.borrow().core().ubc_children().is_empty(),
+            "FoolRefFir must have no ubc_children"
+        );
+        assert!(
+            fool_ref.borrow().core().foolish_children().is_empty(),
+            "FoolRefFir must have no foolish_children"
+        );
+    }
+
+    #[test]
+    fn fool_ref_referent_is_original_statement_by_identity() {
+        use crate::compiler::Compiler;
+        use crate::fir_trait::FirRefExt;
+
+        let root = Compiler::compile("{a = {x = 99;}; b = a.x;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        settle_root(&root);
+
+        let stmts_a = root.borrow().core().foolish_children().to_vec();
+        let a_stmt = &stmts_a[0];
+        let inner_brane = a_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        let inner_stmts = inner_brane.borrow().core().foolish_children().to_vec();
+        let original_x = &inner_stmts[0];
+        assert_eq!(original_x.borrow().as_stmt_name(), Some("x"));
+
+        let b_stmt = &stmts_a[1];
+        let search_body = b_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        let ubc = search_body.borrow().core().ubc_children();
+        assert_eq!(ubc.len(), 2);
+        let fool_ref = &ubc[1];
+        assert_eq!(fool_ref.borrow().kind(), FirKind::FoolRef);
+
+        let borrowed = fool_ref.borrow();
+        let referent = borrowed
+            .as_fool_ref_referent()
+            .expect("FoolRefFir must expose referent");
+        assert!(
+            Rc::ptr_eq(referent, original_x),
+            "FoolRefFir referent must be the SAME Rc as the original found statement"
+        );
+    }
+
+    #[test]
+    fn fool_ref_no_mutation_path_to_referent() {
+        let referent = make_constant_int(7);
+        let fool_ref: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<FoolRefFir>>| {
+            let parent: Weak<RefCell<dyn Fir>> = me.clone();
+            RefCell::new(FoolRefFir {
+                core: ProtoBrane::new(vec![], parent, Nyes::Constant),
+                referent: Rc::clone(&referent),
+            })
+        });
+
+        let borrowed = fool_ref.borrow();
+        let ref_from_trait = borrowed
+            .as_fool_ref_referent()
+            .expect("must expose referent");
+        assert_eq!(ref_from_trait.borrow().as_i64(), Some(7));
+        assert!(borrowed.core().ubc_children().is_empty());
+        drop(borrowed);
+        let scope = Scope::empty();
+        let report = fool_ref.step(&scope).unwrap();
+        assert_eq!(report, StepReport::Progress(Nyes::Constant));
     }
 }
