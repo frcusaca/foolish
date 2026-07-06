@@ -225,6 +225,7 @@ split occurred:
 
 ```markdown
 - [ ] Merge ${WORKTREE_BRANCH_NAME} to ${WORKTREE_ORIGIN_BRANCH} # <-- this checkbox is the last to be checked after all the work is done.
+  - [ ] Check and make sure current foop has, and passes, a "comprehensive" snaptest that thoroughly tests interaction of current feature with older features. it would have the unique input name 'foop_<NUMBER>_comprehensive.foo', which is a name reserved for this foop. This test may be slightly repetitative of previous tests preferring coverage of high value features and checking odd edge cases. Note, generating and running the test and verifying is agent's job, but final approval for new tests requires human operator review and formal signed approval.
   - [x] Detected complex merge situation requiring additional work
         (2026-05-06 14:00)
   - [ ] Update ${WORKTREE_BRANCH_NAME} to follow new coding style
@@ -257,7 +258,35 @@ to the stated plan.
 
 ---
 
+## Comprehensive FOOP Tests
+
+Every FOOP has the right — and the obligation — to generate a **comprehensive snapshot test**
+that thoroughly exercises the new feature interacting with existing features. This test:
+
+- **Input file**: `foolish-ubca/snapshot_tests/input/foop_<NUMBER>_comprehensive.foo`
+  (e.g. `foop_23_comprehensive.foo`). The name is reserved for this FOOP alone.
+- **Purpose**: coverage of high-value feature combinations and edge cases that the
+  per-phase approval tests may not reach. Slight repetition of earlier tests is acceptable
+  if it serves coverage.
+- **Scope**: mix new features with old — value search inside nested branes, contexted
+  operators chained with dot access, expression patterns referencing ancestral names,
+  combined name+value with head/tail, etc. The test should be large enough to exercise
+  at least one path through every new operator or predicate variant.
+- **Process**: the agent generates the `.foo` input, runs it through the approval test
+  suite, and verifies the `.snap.new` output. Final approval requires human review and
+  formal signed acceptance.
+- **Placement in plan**: a checkbox task "Write and verify `foop_<NUMBER>_comprehensive.foo`"
+  should appear in the plan, after all implementation phases and before the merge STOP.
+
+---
+
 ## Last Updated
+
+**Date**: 2026-07-06
+**Updated By**: Hephaestus / xiaomi/mimo-v2.5-pro
+**Changes**: Added "Comprehensive FOOP Tests" section — every FOOP has the right and obligation
+to generate a `foop_<NUMBER>_comprehensive.foo` snapshot test exercising new features
+interacting with existing ones.
 
 **Date**: 2026-06-10
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8

@@ -1,0 +1,105 @@
+{
+	!! === FOOP-23 Comprehensive Test ===
+	!! Exercises value search, expression patterns, and contexted (&) search
+	!! interacting with existing features: dot access, name search, nested
+	!! branes, head/tail, index, and arithmetic.
+
+	!! --- Data: integer-valued branes for value search ---
+	nums = {
+		alpha = 42;
+		beta = 15;
+		gamma = 42;
+		delta = 99;
+	};
+
+	records = {
+		alice = 100;
+		bob = 200;
+		carol = 150;
+		dave = 100;
+	};
+
+	!! --- Data: nested branes for dot access / contexted search ---
+	recipe = {
+		steps = {
+			prep = 7;
+			bake = 40;
+			cool = 9;
+		};
+		yield = 12;
+	};
+
+	!! --- Part A: Value search ---
+
+	!! Forward value search: finds FIRST 42 (alpha)
+	fwd = nums~=42;
+
+	!! Backward value search: finds LAST 42 (gamma)
+	bwd = nums?=42;
+
+	!! Value search with expression pattern: 40+2=42, finds alpha
+	expr = nums~=40+2;
+
+	!! Value search referencing outer scope name
+	base = 100;
+	outer = records~=base;
+
+	!! Combined name+value forward: .*e.* with value 100 → alice
+	nv_fwd = records~.*e.*=100;
+
+	!! Combined name+value backward: .*e.* with value 100 → dave
+	nv_bwd = records?.*e.*=100;
+
+	!! --- Part C: Contexted (&) search ---
+
+	!! Contexted index: ~=42 finds alpha, &#1 → beta
+	after = nums~=42&#1;
+
+	!! Contexted index backward: ?=42 finds gamma, &#-1 → beta
+	before = nums?=42&#-1;
+
+	!! Contexted name search from bake's position
+	back_step = recipe.steps~bake&?prep;
+
+	!! Contexted forward from bake
+	fwd_step = recipe.steps~bake&~cool;
+
+	!! Contexted value search: from alpha, find next 42 (gamma)
+	ctx_val = nums~=42&#1;
+
+	!! Dot access deepens
+	deep = recipe.steps.bake;
+
+	!! Mixed: dot then contexted
+	mix = recipe.steps~bake&#1;
+
+	!! Arithmetic using search result
+	inc = (nums~=42) + 1;
+
+	!! --- Edge cases ---
+
+	!! Non-integer candidate skipped, integer found
+	mixed = {
+		inner = {x = 1;};
+		n = 7;
+	};
+	skip = mixed~=7;
+
+	!! Name+value atomic with duplicates
+	settings = {
+		setting = 11;
+		mid = 0;
+		setting = 10;
+	};
+	atomic = settings~setting=10;
+	rel = settings~setting=10&#-1;
+
+	!! Expression pattern: c-d resolves in search context
+	c = 12;
+	d = 9;
+	store = {
+		u = 3;
+		v = 5;
+	};
+	ep = store~=c-d;
+}

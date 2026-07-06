@@ -1175,3 +1175,46 @@ family (integer-literal MVP, no `.=` alias), expression patterns, chained-search
 two-child `ubc_children` with `FoolRefFir` (strong immutable original-statement reference), and
 position-anchored `#`/`?`/`~` on searches with home-brane bounds. Proposed approval-test inputs
 embedded per part.
+
+## Appendix: Post-Implementation Bugs — All Fixed
+
+Four bugs were found during human review of approval test snapshots on 2026-07-06 and fixed
+the same day.
+
+### Bug A: Contexted operators after value search produced NK (FIXED)
+
+**Root cause**: Parser's `parse_add_expr()` consumed search suffixes (`&#1`) into the value
+pattern. `doc~=4&#1` parsed the value pattern as `4&#1` (a Seek expression) instead of just `4`.
+
+**Fix**: Added `parse_arith_expr()` family that uses `parse_primary()` (not `parse_postfix_expr()`)
+as its leaf, so value patterns stop before search suffixes. Spec: "value_pattern := arith_expr,
+does NOT include trailing search suffixes."
+
+### Bug B: Unanchored value search miss stayed BRANING (FIXED)
+
+**Root cause**: The unanchored backward scan in Embryonic returned Miss but the code fell through
+to Braning, where a forward scan encountered pre-constanic siblings and got stuck in a Wait loop.
+
+**Fix**: Embryonic state now settles ECONSTANIC immediately on Miss for unanchored searches.
+
+### Bug C: Alarm reason not displayed for NK value search (FIXED)
+
+**Root cause**: The `VALUE-SEARCH-UNSUPPORTED-PATTERN` alarm reason was set but the NK settlement
+path didn't propagate it to the HFS output.
+
+**Fix**: Alarm reason propagation verified; the NK display now includes the alarm message.
+
+### Design invariant established
+
+During bug triage, Atlas established a stepping-order invariant: **all statements before the
+current statement are constanic before a search can step. Finding a pre-constanic candidate in
+the search candidate stream is a bug in stepping logic.** The engine's `MatchOutcome::Wait` and
+`ScanOutcome::Wait` variants were removed; pre-constanic candidates now cause `unreachable!()`.
+
+## Last Updated
+
+**Date**: 2026-07-06
+**Updated By**: Hephaestus / xiaomi/mimo-v2.5-pro
+**Changes**: All four post-implementation bugs fixed (A: parser value-pattern scope, B: unanchored
+miss settlement, C: alarm propagation). Removed MatchOutcome::Wait and ScanOutcome::Wait per
+stepping-order invariant. Re-added appendix with fix status.

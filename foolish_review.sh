@@ -74,7 +74,8 @@ for x in "${files[@]}"; do
 				sleep 2s
 				vimdiff "${x%%.new}" "$x"
 				if egrep -qi '@agents?, skip' "$x"; then
-					echo "Skipping $x"
+					echo "Unchanged output $x"
+					rm "$x"
 				elif grep -qi '@agent' "$x"; then
 					 echo "  → agent notified about $x"
 					 (echo -n "$(date) cat $x"; cat "$x") >> "${x}.check"
