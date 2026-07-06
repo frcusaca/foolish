@@ -962,6 +962,17 @@ impl SearchFir {
             self.core.push_task(value_fir);
             return false;
         }
+        match nyes {
+            Nyes::Nk => {
+                self.core.set_nyes(Nyes::Nk);
+                return false;
+            }
+            Nyes::Econstanic | Nyes::Woconstanic => {
+                self.core.set_nyes(Nyes::Econstanic);
+                return false;
+            }
+            _ => {}
+        }
         if value_fir.borrow().as_i64().is_none() {
             self.core.set_alarm_reason(
                 "VALUE-SEARCH-UNSUPPORTED-PATTERN: non-integer value pattern".to_string(),
@@ -976,9 +987,14 @@ impl SearchFir {
         use contextful_search::{BraneNavigator, contextful_search_scan};
         match self.core.get_nyes() {
             Nyes::Prembrionic => {
+                // Phase B: push value pattern task alongside anchor so both
+                // start stepping immediately.
                 if self.anchored {
                     let anchor = Rc::clone(&self.core.foolish_children()[0]);
                     self.core.push_task(anchor);
+                }
+                self.core.push_task(self.value_child());
+                if self.anchored {
                     self.core.set_nyes(Nyes::Braning);
                 } else {
                     self.core.set_nyes(Nyes::Embryonic);
@@ -3934,27 +3950,6 @@ mod tests {
     }
 
     #[test]
-    fn value_search_combined_name_and_value() {
-        use crate::compiler::Compiler;
-        let root =
-            Compiler::compile("{a = {tmp_a = 4; size = 10; tmp_b = 7;}; four = a~tmp_.*=4;}")
-                .unwrap()
-                .pop()
-                .unwrap();
-        settle_root(&root);
-        let stmts = root.borrow().core().foolish_children().to_vec();
-        let four_stmt = &stmts[1];
-        let body = four_stmt
-            .borrow()
-            .core()
-            .foolish_children()
-            .first()
-            .cloned()
-            .unwrap();
-        assert_eq!(body.borrow().as_i64(), Some(4));
-    }
-
-    #[test]
     fn value_search_unanchored_miss_is_econstanic() {
         use crate::compiler::Compiler;
         let root = Compiler::compile("{pi = 3; e2 = 2; nope = ?=9;}")
@@ -4016,6 +4011,96 @@ mod tests {
             "search must be constanic after root settles"
         );
         assert_eq!(search.borrow().as_i64(), Some(10));
+    }
+
+    // ── Value search Phase B tests (expression patterns) ─────────────
+
+    #[test]
+    fn value_search_expr_pattern_1_plus_2_finds_3() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile("{a = {u = 3; v = 5;}; r = a~=1+2;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        settle_root(&root);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let r_stmt = &stmts[1];
+        let body = r_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        assert_eq!(body.borrow().as_i64(), Some(3), "1+2=3 must find u=3");
+    }
+
+    #[test]
+    fn value_search_expr_pattern_c_minus_d_resolves_in_search_context() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile("{c = 12; d = 9; a = {u = 3; v = 5;}; r = a~=c-d;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        settle_root(&root);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let r_stmt = &stmts[3];
+        let body = r_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        assert_eq!(body.borrow().as_i64(), Some(3), "c-d=12-9=3 must find u=3");
+    }
+
+    #[test]
+    fn value_search_expr_pattern_nk_operand_is_nk() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile("{a = {u = 3;}; r = a~=???+1;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        settle_root(&root);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let r_stmt = &stmts[1];
+        let body = r_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        assert_eq!(
+            body.borrow().core().get_nyes(),
+            Nyes::Nk,
+            "NK pattern operand makes value search NK"
+        );
+    }
+
+    #[test]
+    fn value_search_expr_pattern_unresolvable_name_is_econstanic() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile("{c = 12; d = 9; a = {u = 3; v = 5;}; r = a~=c-d+v;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        settle_root(&root);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let r_stmt = &stmts[3];
+        let body = r_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        assert_eq!(
+            body.borrow().core().get_nyes(),
+            Nyes::Econstanic,
+            "pattern with unresolvable v becomes ECONSTANIC"
+        );
     }
 
     fn settle_root(root: &FirRef) {

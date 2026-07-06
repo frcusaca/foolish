@@ -1,0 +1,42 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{
+	c = 12;
+	d = 9;
+	a = {
+		u = 3;
+		v = 5;
+	};
+	r1 = a~=1+2;
+	r2 = a~=c-d;
+	r3 = a~=c-d+v;
+}
+```
+[0] RESULT:
+```hfssnap
+{WOCONSTANIC
+  c=12;
+  d=9;
+  a={
+      u=3;
+      v=5
+  };
+  r1=3;
+  r2=3;
+  r3=?(pattern='', ANCHORED, ECONSTANIC)
+}
+```
+COMMENTS:
+```markdown
+value_search_expr_pattern
+generated: 2026-07-06T01:06:34.617594184Z
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: Azya/n8cMyzy2Pa4DoLUnheoMU/JGMK+GcXgDMfrxWt1RiqQlPI6U/k9UPG/ODryMPKiABtWurLr5PRO5wLaBg==
+HFS signature: kOmKhc8CIdXIv2JQHL3r8tHnEQT0kJ521FN3HcMxHxWZHk+dGq2UTuCpWvtTvTcRessEj0Kk6TqSCinvr02QCQ==
+Comments signature: 2YeOIYfDdG+WqkdeTbm7q4pY1O+k0ofta0DcdVBrEBp9QvpO/h2Qi8bLba155/4DNOytHanbBE4G68159rSsAQ==
