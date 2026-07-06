@@ -233,6 +233,7 @@ split occurred:
         (2026-05-06 14:31)
   - [ ] Repair ALL tests in ${WORKTREE_ORIGIN_BRANCH} in ${WORKTREE_ORIGIN_PATH}
   - [ ] STOP! STOP!! STOP!!! ASK HUMAN to check this box before continuing. UNDER NO CIRCUMSTANCES will Agent continue past this point automatically!!
+    - [ ] Present human with the the "cd ${WORKTREE_FULL_FS_PATH}" command and ask them to review snapshots BEFORE checking the parent checkbox.
   - [ ] Cleanup ${WORKTREE_FULL_FS_PATH}
     - [ ] Check that _PLAN.md has all but Cleanup checkboxes completed
     - [ ] Remove "${WORKTREE_FULL_FS_PATH}"
