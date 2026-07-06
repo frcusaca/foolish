@@ -77,6 +77,9 @@ fn proto_to_core_fir(ubca_ref: &FirRef) -> core_fir::Fir {
 /// Convert an SFF body expression. Top-level searches get EMBRYONIC state
 /// (shown by sequencer). Operator operands get CONSTANT state (hidden).
 /// Operators get WOCONSTANIC or CONSTANT state based on operand states.
+/// (@Agents, I suppose this can't be declared as implementation on something 
+///   associated with SFF marker like SFFMark? ditto, similar questions for the
+///   other '^fn' declarations in this file.) 
 fn proto_to_core_fir_sff_body(ubca_ref: &FirRef) -> core_fir::Fir {
     let borrowed = ubca_ref.borrow();
     let kind = borrowed.kind();
