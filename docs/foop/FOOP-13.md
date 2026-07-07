@@ -7,7 +7,8 @@ type: Standards
 created: 2026-07-03
 phase: phase-2
 supersedes: []
-begun: [ ]
+begun: [x]
+      (2026-07-07 11:05)
 ---
 
 # FOOP-13: MAX_BRANE_SIZE — auto-sizing via a non-merging ConcatBrane
