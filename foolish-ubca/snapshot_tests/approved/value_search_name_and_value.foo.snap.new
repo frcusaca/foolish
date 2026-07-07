@@ -1,0 +1,40 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{
+	a = {
+		tmp_a = 4;
+		size = 10;
+		tmp_b = 7;
+	};
+	four  = a~tmp_.*=4;
+	seven = a?tmp_.*=7;
+	none  = a~tmp_.*=10;
+}
+```
+[0] RESULT:
+```hfssnap
+{NK
+  a={
+      tmpˍa=4;
+      size=10;
+      tmpˍb=7
+  };
+  four=4;
+  seven=7;
+  none=?(pattern='tmpˍ.*', ANCHORED, NK)
+}
+```
+COMMENTS:
+```markdown
+value_search_name_and_value
+generated: 2026-07-07T20:00:41.604192224Z
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: fgk4K1OTBPTonwM0nw9ALvbYPgiQnRTU1pkCx8zelOKj6xXkHizQ/1K9X2UsWMbOvmsyUM7fKCufBCFABetVDQ==
+HFS signature: L/FEQ90O+TBHsBzhH48eHy7sHDTJrSHtDz7KO2MKDnDsYfhSuO3Ys24mUkXWgB0+IaGBVMJ9d2cNYcJZ0/XaAA==
+Comments signature: RrZPmXCD8oi6Wef07+BKhS3o1n9OZff5L1GEQsH0SBrzRqonexi4cNmNgKoMHJyChrskTy4si4X4n1dsS45xBg==

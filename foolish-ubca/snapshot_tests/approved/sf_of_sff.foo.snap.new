@@ -1,0 +1,37 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{a = 1; b = 2; sff = <<a + b>>; sf = <sff>; a = 10; sf; sff;}
+```
+[0] RESULT:
+```hfssnap
+{WOCONSTANIC
+  a=1;
+  b=2;
+  sff=<<WOCONSTANIC
+      Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
+  >>;
+  sf=?(
+      result=Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
+      pattern='^sff$',
+      UNANCHORED,
+      WOCONSTANIC
+  );
+  a=10;
+  12;
+  12
+}
+```
+COMMENTS:
+```markdown
+sf_of_sff
+generated: 2026-07-07T20:00:40.494486995Z
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: h1VqZ8FgnPZ2bLsAmCfvaSczq/hrg2qLt+NCDHxlJTO58pkS3WuR3DKlCs5mxYNflR4ATJy8+l662ISwvkxvDA==
+HFS signature: 2+3SBxivohRuEPHZIQCkiLwqMGe5k2241x2go7Aiw2lA6tJlg/9+d87vhZ3vNN4OUtHKkaAEYRRO9IFVcbjtDw==
+Comments signature: R1yMBToy3YxWdcdyk9j4O14AjUEWDzRHSAEwSeo6uNQixplKFFVguq0CM4bJZMIKhlIPUIlAyIvGrfE17YWNCg==

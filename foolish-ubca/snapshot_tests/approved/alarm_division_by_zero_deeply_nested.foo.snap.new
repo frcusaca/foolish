@@ -1,0 +1,40 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{
+	l1={
+       l2={
+          l3={
+              bad=1/0;
+              good=42
+             }
+          }
+      }
+}
+```
+[0] RESULT:
+```hfssnap
+{NK
+  l1={NK
+      l2={NK
+          l3={NK
+              bad=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK;
+              good=42
+          }
+      }
+  }
+}
+```
+COMMENTS:
+```markdown
+alarm_division_by_zero_deeply_nested
+generated: 2026-07-07T20:00:34.622319488Z
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: 9+hN9xh2AnvpsWWuGKsfidEhKUxSf4S277v595KftDtGXxhmA+l67pau06eTwSEhoUa+db/KrL8m5f7YXhr0CA==
+HFS signature: 2drTbOQUEYqW5pFkMwltTAdne9O2nCQ+PMBeBdzgl3d1PibMeXSrfw+uYl0QxAPPjaCe6KL7AHVgiiVuToe3Dw==
+Comments signature: gJ3Qk54MQ3XYyU776nBu4urqqBmjMTmP22sbPA+ue+8RY131i9S6WTJFTbNn6kU9mPtfhMiDmx1E1JzH+tF7BQ==

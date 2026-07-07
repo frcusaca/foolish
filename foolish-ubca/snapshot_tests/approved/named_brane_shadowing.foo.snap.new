@@ -1,0 +1,29 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{x = 100; inner'{x = 200; x}; x;}
+```
+[0] RESULT:
+```hfssnap
+{
+  x=100;
+  inner'{
+    x=200;
+    200
+  };
+  100
+}
+```
+COMMENTS:
+```markdown
+named_brane_shadowing
+generated: 2026-07-07T20:00:38.549501631Z
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: mx8JvvVUtoqj+DYr8lPDPGXQwSzgE1GLzEfRrSJfv8hJr+tOlL6305JGTZPbod8PdVrEwMMaY6/deyosAiOVAQ==
+HFS signature: dUaorQcVl1Ps1GtvgKwoV/rDLaYTbRDTxnlc1d1d41gEZB0g+8h60+VIFaU/wgnonO0sJlWUNvFZsCD9Rb6PAA==
+Comments signature: IxYQPqnN/GP++B0lkMQPjGBVN2BWYunAGDm9kyeI8XYyL24tIDR4orrpStc0vB5/yCETLsVoxq6B7/hemx1UBw==

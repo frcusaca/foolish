@@ -1,0 +1,38 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{
+	doc = {
+		tmp_a = 4;
+		c = 30;
+		tmp_b = 4;
+	};
+	after_first_4 = doc~=4&#1;
+	before_last_4 = doc?=4&#-1;
+}
+```
+[0] RESULT:
+```hfssnap
+{
+  doc={
+      tmpˍa=4;
+      c=30;
+      tmpˍb=4
+  };
+  afterˍfirstˍ4=30;
+  beforeˍlastˍ4=30
+}
+```
+COMMENTS:
+```markdown
+contexted_value_payoff
+generated: 2026-07-07T20:00:36.933400865Z
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: UdWC0rN/RA12JnT3hVJsgr26CgXF5hf1hPmGK2Ax7DDIEqmE/eVag7uNjDUQ2Y0guBibFrpD6BlqldKf8kcnDw==
+HFS signature: 8+3N7mtjhPgtMYIvjVDbLYpwLFWmfRWQ7ol7xh49obsgW3hWzBiXunKFQHowYq6k3GTaqgQYSpPJvqFWPm3YDg==
+Comments signature: M6InVBQGbeiO1FDYFCEi26AN0mtkDrCuL/sHozRCxUQV6wrrKQpfXPCwIFDYnp0xp+NDktg9KG7djQsPFGu1CA==

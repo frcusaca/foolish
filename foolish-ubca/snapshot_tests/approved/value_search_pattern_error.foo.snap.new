@@ -1,0 +1,38 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{
+	a = {
+		inner = {x = 1;};
+		n = 5;
+	};
+	bad = a~={q = 1;};
+	ok = a~=5;
+}
+```
+[0] RESULT:
+```hfssnap
+{NK
+  a={
+      inner={
+          x=1
+      };
+      n=5
+  };
+  bad=?(pattern='', ANCHORED, NK);
+  ok=5
+}
+```
+COMMENTS:
+```markdown
+value_search_pattern_error
+generated: 2026-07-07T20:00:41.647464272Z
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: YiBShmUuju8mQ5mw5DVHGh1cZM09HwOpexgx1yqFB4qm3p86vhuOj77J49Qo0HSYm5/4TVljVz5klvJXCQL9Dg==
+HFS signature: 2RXsqDpvy9Zp7000TDRjlbSenthY1ypf9TCrvf3pHRImGlm6sSdacCvD4EPwiRD9wCMcW21yfphJhwyPnlryAQ==
+Comments signature: C7y0jRhVbNB8XsxHXDQjaGHdEmXUv3bXwjiGTQDyAMDxIKx1o6TZ8LaoSsS4YF8amhgOg42e7hXnLmsYfawuAg==

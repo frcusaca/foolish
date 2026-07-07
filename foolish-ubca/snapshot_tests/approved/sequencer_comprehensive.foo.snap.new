@@ -1,0 +1,126 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{
+  !! Constants
+  a = 1;
+  b = 2;
+  c = 3;
+  
+  !! Operators
+  sum = a + b;
+  product = a * b;
+  divide = a / b;
+  subtract = a - b;
+  
+  !! NK from division by zero
+  bad = 1 / 0;
+  
+  !! Nested brane
+  inner = {
+    x = 10;
+    y = 20;
+    z = x + y;
+  };
+  
+  !! Search
+  found = a;
+  
+  !! SF (StayFoolish)
+  sf_val = <a>;
+  
+  !! SFF (StayFullyFoolish)
+  sff_val = <<b>>;
+  
+  !! Concatenation
+  concat = {p = 1; q = 2} ⨃ {r = 3; s = 4};
+  
+  !! Index
+  idx = inner#0;
+  
+  !! Head/Tail
+  hd = inner^;
+  tl = inner$;
+  
+  !! Forward reference
+  fwd = later;
+  later = 99;
+  
+  !! Deeply nested
+  deep = {
+    level1 = {
+      level2 = {
+        level3 = {
+          val = 42;
+        };
+      };
+    };
+  };
+  
+  !! Search through nesting
+  deep_search = deep.level1.level2.level3.val;
+  
+  !! Result
+  result = sum + product;
+}
+```
+[0] RESULT:
+```hfssnap
+{WOCONSTANIC
+  a=1;
+  b=2;
+  c=3;
+  sum=3;
+  product=2;
+  divide=0;
+  subtract=-1;
+  bad=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK;
+  inner={
+      x=10;
+      y=20;
+      z=30
+  };
+  found=1;
+  sfˍval=?(result=1, pattern='^a$', UNANCHORED);
+  sffˍval=<<WOCONSTANIC
+      ?(pattern='^b$', UNANCHORED)
+  >>;
+  concat={
+      p=1;
+      q=2
+  };
+  {
+    r=3;
+    s=4
+  };
+  idx=10;
+  hd=10;
+  tl=30;
+  fwd=?(pattern='^later$', UNANCHORED, ECONSTANIC);
+  later=99;
+  deep={
+      level1={
+          level2={
+              level3={
+                  val=42
+              }
+          }
+      }
+  };
+  deepˍsearch=42;
+  result=5
+}
+```
+COMMENTS:
+```markdown
+sequencer_comprehensive
+generated: 2026-07-07T20:00:40.321994953Z
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: yRrAujGcUxFVRv3py0aRxROx0nS23e0Skv55N03B6p11gjR6/Lz2aGyCo9RdJNwwhIVH8bas/we3pbzhiHt8Bg==
+HFS signature: axilXBH00PhoAfxvivhk/nxVEyQi/lP5pLW5CwUMe0rmjVQ0ISAzewRJsOMqmvKEna2v1Orh7yuHULWkrll9Cw==
+Comments signature: stP47/DXVJX5rqTP3Qqh4fSQ/x2akJcXleoiAjq9QsTVZx8cj9DpNE9LKeVjyrNADSdxj46t6/uLRkaBgiyECQ==

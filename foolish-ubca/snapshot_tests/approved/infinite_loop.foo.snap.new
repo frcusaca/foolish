@@ -1,0 +1,30 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{
+  f1 = { f1 }
+  stuck = f1;
+}
+```
+[0] RESULT:
+```hfssnap
+{NK(ITERATION-EXCEEDED, Iteration exceeded 9999)
+  f1={WOCONSTANIC
+      ?(pattern='^f1$', UNANCHORED, ECONSTANIC)
+  };
+  stuck=?(pattern='^f1$', UNANCHORED, BRANING)
+}
+```
+COMMENTS:
+```markdown
+infinite_loop
+generated: 2026-07-07T20:00:38.042511261Z
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: uazkcNxMevDuepZiYLgZkCeRG1FG5Zvf37CbfiRgnS6jjpIl+y/bWiCFQFuJ8RK2uVobG6TYypSKisDqmlX2Dg==
+HFS signature: Xdil2Y09dhjFfZ/P7sM+vLab6Z5lLy3trOO3rks5HpblKdM658i9bLf2vATcDOX+nELlNIHZiEMlhmkn8T5BCQ==
+Comments signature: aNTkRCUHZOf7PvotnfpDJ1RVK/Z11LpI7cSvBBkmICToFV2hC+Ei45cCCSF0pvBITg83ccp4z65so62VmOlTAQ==

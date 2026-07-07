@@ -1,0 +1,81 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{
+	b1 = {a=1, b=2};
+	named_lit = b1 {c = a + b};
+	lit_lit   = {x=1, y=2} {z = x + y};
+	with_empty = {} {p=1} {};
+	twice = b1 b1;
+	twice_twice = twice twice;
+   mixed_resolve = {source = b1} {
+     field1=source.a,
+     field2=source.b,
+     field3=huh,
+     field4=named_lit.e;
+     field4=with_empty.p;
+   }
+}
+```
+[0] RESULT:
+```hfssnap
+{WOCONSTANIC
+  b1={
+      a=1;
+      b=2
+  };
+  namedˍlit={WOCONSTANIC
+      a=1;
+      b=2;
+      c=Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
+  };
+  litˍlit={WOCONSTANIC
+      x=1;
+      y=2;
+      z=Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
+  };
+  withˍempty={
+      p=1
+  };
+  twice={
+      a=1;
+      b=2;
+      a=1;
+      b=2
+  };
+  twiceˍtwice={
+      a=1;
+      b=2;
+      a=1;
+      b=2;
+      a=1;
+      b=2;
+      a=1;
+      b=2
+  };
+  mixedˍresolve={WOCONSTANIC
+      source={
+          a=1;
+          b=2
+      };
+      field1=?(pattern='^a$', ANCHORED, NK);
+      field2=?(pattern='^b$', ANCHORED, NK);
+      field3=?(pattern='^huh$', UNANCHORED, ECONSTANIC);
+      field4=?(pattern='^e$', ANCHORED, NK);
+      field4=?(pattern='^p$', ANCHORED, NK)
+  }
+}
+```
+COMMENTS:
+```markdown
+concat_brane_test_basic
+generated: 2026-07-07T20:00:36.213578752Z
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: c6CYPJUeAgohIGU9M05jOTlPSproHXOvpTg7bInn37zp9E2qKq/KhJviU4ISp3+CrX/pCTk/yfXRiAwleXFcBQ==
+HFS signature: b9wo7eFomj8QWdRzLTQ0dBMPIX1UXLzvm9RyOIOuicPxKCZ9ZxMypzlDQRu7W4CY55ajZnUH8FzlUkefaf36Ag==
+Comments signature: YAQFSAH1LIlAts7vux0xAiRoPE5mDD1cqVjElQ1gB4yxcr4W19DZsOcrnn16Ta7PusM65bTB3JOTTjvgv6m1Dg==
