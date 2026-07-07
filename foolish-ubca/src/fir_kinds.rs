@@ -2187,6 +2187,80 @@ impl ConcatenationFir {
             core: ProtoBrane::new(elements, parent, Nyes::Prembrionic),
         }))
     }
+
+    /// Populate _ConcatHelpers from settled element values.
+    ///
+    /// Phase A: single _ConcatHelper with all lines (no MAX_BRANE_SIZE limit yet).
+    /// Performs settle-time typing check (each element value must be brane-like).
+    /// If any element resolves to a non-brane, the ConcatBrane settles NK.
+    fn populate_concat_helpers(&self) {
+        let self_weak = self.core.parent_weak();
+        let elements = self.core.foolish_children().to_vec();
+
+        // Settle-time typing check: each element's value must be brane-like.
+        for elem in &elements {
+            let resolved = elem.value();
+            if !resolved.borrow().is_brane_like() {
+                let nk: FirRef = Rc::new(RefCell::new(NkFir {
+                    core: ProtoBrane::new(
+                        vec![],
+                        self_weak.clone(),
+                        Nyes::Nk,
+                    ),
+                    reason: "concatenation element is not a brane".to_string(),
+                }));
+                self.core.push_ubc_child(nk);
+                self.core.set_nyes(Nyes::Nk);
+                return;
+            }
+        }
+
+        // Count total lines across all element values.
+        let total_lines: usize = elements
+            .iter()
+            .map(|e| {
+                let resolved = e.value();
+                resolved.borrow().stmt_count().unwrap_or(0)
+            })
+            .sum();
+
+        // If no statements, settle as Constant immediately.
+        if total_lines == 0 {
+            self.core.set_nyes(Nyes::Constant);
+            return;
+        }
+
+        // Build a single _ConcatHelper with all lines (Phase A: unlimited k).
+        let mut cloned_stmts: Vec<FirRef> = Vec::with_capacity(total_lines);
+        let mut global_idx: usize = 0;
+
+        for elem in &elements {
+            let resolved = elem.value();
+            let count = resolved.borrow().stmt_count().unwrap_or(0);
+            for i in 0..count {
+                if let Some(stmt) = resolved.borrow().stmt_at(i) {
+                    let clone = ProtoBrane::constanic_clone_at(
+                        &stmt,
+                        &self_weak,
+                        global_idx,
+                        false, // sfm=false: revives SFF-born ECONSTANIC -> EMBRYONIC
+                    );
+                    cloned_stmts.push(clone);
+                    global_idx += 1;
+                }
+            }
+        }
+
+        if cloned_stmts.is_empty() {
+            self.core.set_nyes(Nyes::Constant);
+            return;
+        }
+
+        // Create _ConcatHelper with cloned statements.
+        let helper = ConcatHelper::new(cloned_stmts, self_weak.clone());
+        self.core.push_ubc_child(helper);
+        // Stays Braning — push_ubc_child auto-enqueues non-constanic helper as task.
+    }
 }
 
 impl Fir for ConcatenationFir {
@@ -2199,16 +2273,10 @@ impl Fir for ConcatenationFir {
             Nyes::Prembrionic | Nyes::Embryonic => {
                 let children: Vec<FirRef> = self.core.foolish_children().to_vec();
                 if children.is_empty() {
-                    let result_ref: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<BraneFir>>| {
-                        let parent: Weak<RefCell<dyn Fir>> = me.clone();
-                        RefCell::new(BraneFir {
-                            core: ProtoBrane::new(vec![], parent, Nyes::Constant),
-                            characterizations: Vec::new(),
-                        })
-                    });
-                    self.core.push_ubc_child(result_ref);
+                    // Empty ConcatBrane settles as empty constant brane immediately.
                     self.core.set_nyes(Nyes::Constant);
                 } else {
+                    // Call 1: push elements as tasks, transition to Braning.
                     self.core.set_nyes(Nyes::Braning);
                     for child in children {
                         self.core.push_task(child);
@@ -2216,48 +2284,15 @@ impl Fir for ConcatenationFir {
                 }
             }
             Nyes::Braning => {
-                let children = self.core.foolish_children().to_vec();
-                let any_nk = children.iter().any(|c| {
-                    let resolved = c.value();
-                    resolved.borrow().core().get_nyes() == Nyes::Nk
-                });
-                let any_woconstanic = children.iter().any(|c| {
-                    let resolved = c.value();
-                    let n = resolved.borrow().core().get_nyes();
-                    n == Nyes::Econstanic || n == Nyes::Woconstanic
-                });
-                let mut merged_stmts: Vec<FirRef> = Vec::new();
-                for child in &children {
-                    let resolved = {
-                        let borrowed = child.borrow();
-                        if borrowed.core().get_nyes().is_constanic() {
-                            borrowed.core().ubc_children().into_iter().next()
-                        } else {
-                            None
-                        }
-                    };
-                    let source = resolved.as_ref().unwrap_or(child);
-                    let borrowed = source.borrow();
-                    for stmt in borrowed.core().foolish_children() {
-                        merged_stmts.push(Rc::clone(stmt));
-                    }
-                }
-                let merged_state = if any_nk {
-                    Nyes::Nk
-                } else if any_woconstanic {
-                    Nyes::Woconstanic
+                if self.core.ubc_children().is_empty() {
+                    // Call 2: all elements drained (constanic) -> populate _ConcatHelpers.
+                    self.populate_concat_helpers();
                 } else {
-                    Nyes::Constant
-                };
-                let result_ref: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<BraneFir>>| {
-                    let parent: Weak<RefCell<dyn Fir>> = me.clone();
-                    RefCell::new(BraneFir {
-                        core: ProtoBrane::new(merged_stmts, parent, merged_state),
-                        characterizations: Vec::new(),
-                    })
-                });
-                self.core.push_ubc_child(result_ref);
-                self.core.set_nyes(merged_state);
+                    // Call 3: _ConcatHelpers drained -> settle.
+                    let children = self.core.ubc_children();
+                    let settled = _decide_nyes_due_to_children(&children);
+                    self.core.set_nyes(settled.unwrap_or(Nyes::Constant));
+                }
             }
             _ => {}
         }
