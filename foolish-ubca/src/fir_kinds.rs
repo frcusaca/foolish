@@ -703,7 +703,7 @@ impl Fir for StatementFir {
     }
 
     fn _ib_search(&self, self_ref: &FirRef, name: &str) -> Option<(FirRef, Nyes)> {
-        let brane = self.get_my_brane(self_ref)?;
+        let brane = self._get_my_brane(self_ref)?;
         let brane_borrowed = brane.borrow();
         brane_borrowed
             ._search_brane(name, self.line_number.saturating_sub(1), 0)
@@ -765,7 +765,7 @@ impl Fir for BraneFir {
     }
 
     fn _ab_search(&self, self_ref: &FirRef, name: &str) -> Option<(FirRef, Nyes)> {
-        let stmt = self.get_my_statement(self_ref);
+        let stmt = self._get_my_statement(self_ref);
         if Rc::ptr_eq(&stmt, self_ref) {
             return None;
         }
@@ -774,7 +774,7 @@ impl Fir for BraneFir {
             return Some((body, nyes));
         }
         drop(stmt_borrowed);
-        let parent_brane = self.get_my_brane(self_ref)?;
+        let parent_brane = self._get_my_brane(self_ref)?;
         if Rc::ptr_eq(&parent_brane, self_ref) {
             return None;
         }
@@ -904,7 +904,7 @@ impl SearchFir {
             let borrowed = fool_ref_fir.borrow();
             borrowed.as_fool_ref_referent().cloned()
         }?;
-        let h_brane = referent.borrow().get_my_brane(&referent)?;
+        let h_brane = referent.borrow()._get_my_brane(&referent)?;
         let p = h_brane.find_stmt_index(&referent)?;
         let brane_len = h_brane.borrow().core().foolish_children().len();
         if brane_len == 0 {
@@ -1002,7 +1002,7 @@ impl SearchFir {
             BraneNavigator, SearchPredicate, contextful_search_scan_no_body_check,
         };
         let stmt = scope.get_my_statement()?;
-        let brane = stmt.borrow().get_my_brane(&stmt)?;
+        let brane = stmt.borrow()._get_my_brane(&stmt)?;
         let idx = brane.find_stmt_index(&stmt)?;
         let search_end = idx.saturating_sub(1);
         let mut nav = BraneNavigator::new(&brane, false);
@@ -1027,12 +1027,12 @@ impl SearchFir {
         loop {
             let stmt = {
                 let borrowed = current_brane.borrow();
-                borrowed.get_my_statement(&current_brane)
+                borrowed._get_my_statement(&current_brane)
             };
             if Rc::ptr_eq(&stmt, &current_brane) {
                 return None;
             }
-            let parent_brane = stmt.borrow().get_my_brane(&stmt)?;
+            let parent_brane = stmt.borrow()._get_my_brane(&stmt)?;
             if let Some(idx) = parent_brane.find_stmt_index(&stmt)
                 && idx > 0
             {
@@ -1468,7 +1468,7 @@ impl Fir for IndexFir {
                     };
                     let contexted_result = fool_ref_fir.and_then(|frf| {
                         let referent = frf.borrow().as_fool_ref_referent().cloned()?;
-                        let h_brane = referent.borrow().get_my_brane(&referent)?;
+let h_brane = referent.borrow()._get_my_brane(&referent)?;
                         let p = h_brane.find_stmt_index(&referent)?;
                         let target = p as i32 + self.offset;
                         let len = h_brane.borrow().core().foolish_children().len() as i32;

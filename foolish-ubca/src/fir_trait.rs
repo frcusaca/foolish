@@ -184,7 +184,7 @@ pub trait Fir: std::fmt::Debug {
         false
     }
 
-    fn get_my_statement(&self, self_ref: &FirRef) -> FirRef {
+    fn _get_my_statement(&self, self_ref: &FirRef) -> FirRef {
         match self.kind() {
             FirKind::Statement => Rc::clone(self_ref),
             _ => match self.core().parent() {
@@ -192,7 +192,7 @@ pub trait Fir: std::fmt::Debug {
                     if Rc::ptr_eq(&p, self_ref) {
                         Rc::clone(self_ref)
                     } else {
-                        p.borrow().get_my_statement(&p)
+                        p.borrow()._get_my_statement(&p)
                     }
                 }
                 None => Rc::clone(self_ref),
@@ -209,7 +209,7 @@ pub trait Fir: std::fmt::Debug {
     /// exactly the same thing (per FOOP-23 §Terminology). Use "home brane"
     /// when a second brane is also under discussion and the specific one must
     /// be named; use "brane of" otherwise.
-    fn get_my_brane(&self, self_ref: &FirRef) -> Option<FirRef> {
+    fn _get_my_brane(&self, self_ref: &FirRef) -> Option<FirRef> {
         match self.core().parent() {
             Some(p) => {
                 if Rc::ptr_eq(&p, self_ref) {
@@ -218,7 +218,7 @@ pub trait Fir: std::fmt::Debug {
                 let kind = p.borrow().kind();
                 match kind {
                     FirKind::Brane => Some(p),
-                    _ => p.borrow().get_my_brane(&p),
+                    _ => p.borrow()._get_my_brane(&p),
                 }
             }
             None => None,
@@ -228,7 +228,7 @@ pub trait Fir: std::fmt::Debug {
     fn set_contexted(&mut self, _contexted: bool) {}
 
     fn _ib_search(&self, self_ref: &FirRef, name: &str) -> Option<(FirRef, Nyes)> {
-        let stmt = self.get_my_statement(self_ref);
+        let stmt = self._get_my_statement(self_ref);
         let borrowed = stmt.borrow();
         borrowed._ib_search(&stmt, name)
     }
@@ -240,7 +240,7 @@ pub trait Fir: std::fmt::Debug {
     }
 
     fn _ab_search(&self, self_ref: &FirRef, name: &str) -> Option<(FirRef, Nyes)> {
-        let brane = self.get_my_brane(self_ref)?;
+        let brane = self._get_my_brane(self_ref)?;
         let borrowed = brane.borrow();
         borrowed._ab_search(&brane, name)
     }
@@ -1003,7 +1003,7 @@ mod get_value_tests {
     fn get_my_statement_returns_self_if_statement() {
         let ci = make_ci(42);
         let stmt = make_stmt("x", 10, ci);
-        let result = stmt.borrow().get_my_statement(&stmt);
+        let result = stmt.borrow()._get_my_statement(&stmt);
         assert!(Rc::ptr_eq(&result, &stmt));
     }
 
@@ -1020,7 +1020,7 @@ mod get_value_tests {
             .first()
             .unwrap()
             .clone();
-        let result = body.borrow().get_my_statement(&body);
+        let result = body.borrow()._get_my_statement(&body);
         assert!(Rc::ptr_eq(&result, stmt));
     }
 
@@ -1030,7 +1030,7 @@ mod get_value_tests {
         let root = Compiler::compile("{x = 1;}").unwrap().pop().unwrap();
         let stmts = root.borrow().core().foolish_children().to_vec();
         let stmt = &stmts[0];
-        let result = stmt.borrow().get_my_brane(stmt);
+        let result = stmt.borrow()._get_my_brane(stmt);
         assert!(result.is_some());
         assert!(Rc::ptr_eq(&result.unwrap(), &root));
     }
@@ -1048,7 +1048,7 @@ mod get_value_tests {
             .first()
             .unwrap()
             .clone();
-        let result = body.borrow().get_my_brane(&body);
+        let result = body.borrow()._get_my_brane(&body);
         assert!(result.is_some());
         assert!(Rc::ptr_eq(&result.unwrap(), &root));
     }
@@ -1057,7 +1057,7 @@ mod get_value_tests {
     fn get_my_brane_returns_self_for_root_brane() {
         use crate::compiler::Compiler;
         let root = Compiler::compile("{x = 1;}").unwrap().pop().unwrap();
-        let result = root.borrow().get_my_brane(&root);
+        let result = root.borrow()._get_my_brane(&root);
         assert!(result.is_none());
     }
 
