@@ -2210,17 +2210,42 @@ impl Fir for ConcatHelper {
     }
 
     fn stmt_count(&self) -> Option<usize> {
-        if !self.core.get_nyes().is_constanic() {
-            return None;
-        }
         Some(self.core.foolish_children().len())
     }
 
     fn stmt_at(&self, idx: usize) -> Option<FirRef> {
-        if !self.core.get_nyes().is_constanic() {
+        self.core.foolish_children().get(idx).cloned()
+    }
+
+    fn is_brane_like(&self) -> bool {
+        true
+    }
+
+    fn _search_brane(
+        &self,
+        expression: &str,
+        starting_index: usize,
+        ending_index: usize,
+    ) -> Option<(usize, FirRef, Nyes)> {
+        let children = self.core.foolish_children();
+        if starting_index >= children.len() || ending_index >= children.len() {
             return None;
         }
-        self.core.foolish_children().get(idx).cloned()
+        let range = if starting_index >= ending_index {
+            Box::new((ending_index..=starting_index).rev()) as Box<dyn Iterator<Item = usize>>
+        } else {
+            Box::new(starting_index..=ending_index) as Box<dyn Iterator<Item = usize>>
+        };
+        for i in range {
+            let child = &children[i];
+            let child_borrowed = child.borrow();
+            if let Some(sn) = child_borrowed.as_stmt_name()
+                && SearchFir::matches_pattern(sn, expression)
+            {
+                return Some((i, Rc::clone(child), child_borrowed.core().get_nyes()));
+            }
+        }
+        None
     }
 }
 
@@ -2344,7 +2369,11 @@ impl Fir for ConcatenationFir {
     }
 
     fn stmt_count(&self) -> Option<usize> {
-        if !self.core.get_nyes().is_constanic() {
+        if !self._helpers_populated.get() {
+            // Empty concatenation settles immediately without helpers
+            if self.core.foolish_children().is_empty() {
+                return Some(0);
+            }
             return None;
         }
         let total: usize = self
@@ -2357,7 +2386,7 @@ impl Fir for ConcatenationFir {
     }
 
     fn stmt_at(&self, idx: usize) -> Option<FirRef> {
-        if !self.core.get_nyes().is_constanic() {
+        if !self._helpers_populated.get() {
             return None;
         }
         let mut remaining = idx;
@@ -2382,7 +2411,7 @@ impl Fir for ConcatenationFir {
         starting_index: usize,
         ending_index: usize,
     ) -> Option<(usize, FirRef, Nyes)> {
-        if !self.core.get_nyes().is_constanic() {
+        if !self._helpers_populated.get() {
             return None;
         }
         let total = self.stmt_count().unwrap_or(0);
