@@ -348,15 +348,7 @@ pub trait FirRefExt {
 
 impl FirRefExt for FirRef {
     fn value(&self) -> FirRef {
-        // Extract first ubc_child under a short borrow, then drop it before recursing.
-        let child: Option<FirRef> = {
-            let borrowed = self.borrow();
-            if borrowed.core().get_nyes().is_constanic() {
-                borrowed.core().ubc_children().into_iter().next()
-            } else {
-                None
-            }
-        };
+        let child = self.borrow().settled_result();
         match child {
             Some(c) => c.value(),
             None => Rc::clone(self),
