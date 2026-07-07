@@ -273,6 +273,9 @@ plan itself, these changes are to occur ONLY in the worktree. Good progress shou
 commited regularly. Upon completion or at request of user, the branc is merged according
 to the stated plan.
 
+When asking human questions, always remind them: "Above message comes from FOOP-<NUMBER>
+working to...briefe description...; the worktree is at ${WORKTREE_FULL_FS_PATH}. PTAL"
+
 ---
 
 ## Comprehensive FOOP Tests
