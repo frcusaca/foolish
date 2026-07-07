@@ -109,11 +109,10 @@ pub trait Fir: std::fmt::Debug {
     /// Identify the kind of FIR node.
     fn kind(&self) -> FirKind;
 
-    /// Read the integer value. Default: look through ubc_children for resolved
+    /// Read the integer value. Default: look through `settled_result` for resolved
     /// results. IndepIntFir overrides to return `Some(value)`.
     fn as_i64(&self) -> Option<i64> {
-        let ubc = self.core().ubc_children();
-        ubc.first().and_then(|c| c.borrow().as_i64())
+        self.settled_result().and_then(|c| c.borrow().as_i64())
     }
 
     // ── Accessors for proto_to_core_fir bridge ──
@@ -328,14 +327,10 @@ const MAX_DEPTH: usize = 100;
 pub trait FirRefExt {
     /// Returns the deepest resolved value this FIR represents.
     ///
-    /// When a FIR settles, it may store its result in `ubc_children[0]`
-    /// (e.g. SearchFir, OperatorFir, IndexFir). That result may itself be a
-    /// wrapper with its own `ubc_children`. This walks the chain until it
-    /// reaches a terminal value (one with no `ubc_children`, like IndepInt, Nk,
-    /// or BraneFir).
-    ///
-    /// For pre-constanic FIRs or FIRs without `ubc_children`, returns a clone of
-    /// `self`.
+    /// Delegates to [`Fir::settled_result`] to obtain the constanic-gated
+    /// result child. If a result exists, recurses to unwrap nested wrappers.
+    /// For pre-constanic FIRs or FIRs with no settled result, returns a clone
+    /// of `self`.
     #[must_use]
     fn value(&self) -> FirRef;
 
