@@ -1320,15 +1320,9 @@ pub struct IndexFir {
 fn find_enclosing_stmt_and_brane(start: &ProtoBrane) -> Option<(FirRef, FirRef)> {
     let mut current = start.parent();
     while let Some(node) = current {
-        let kind = node.borrow().kind();
-        if kind == FirKind::Statement {
-            let brane = {
-                let borrowed = node.borrow();
-                find_parent_brane(borrowed.core())
-            };
-            if let Some(brane) = brane {
-                return Some((node, brane));
-            }
+        if node.borrow().kind() == FirKind::Statement {
+            let brane = node.borrow()._get_my_brane(&node)?;
+            return Some((node, brane));
         }
         let next = node.borrow().core().parent();
         match next {
@@ -1340,20 +1334,9 @@ fn find_enclosing_stmt_and_brane(start: &ProtoBrane) -> Option<(FirRef, FirRef)>
     None
 }
 
+#[allow(dead_code)]
 fn find_parent_brane(start: &ProtoBrane) -> Option<FirRef> {
-    let mut current = start.parent();
-    while let Some(node) = current {
-        if node.borrow().kind() == FirKind::Brane {
-            return Some(node);
-        }
-        let next = node.borrow().core().parent();
-        match next {
-            Some(ref n) if Rc::ptr_eq(n, &node) => break,
-            None => break,
-            _ => current = next,
-        }
-    }
-    None
+    start.parent().and_then(|p| p.borrow()._get_my_brane(&p))
 }
 
 impl IndexFir {

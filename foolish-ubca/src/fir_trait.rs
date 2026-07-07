@@ -200,15 +200,17 @@ pub trait Fir: std::fmt::Debug {
         }
     }
 
-    /// Returns the "home brane" of this FIR — the first brane ancestor.
-    ///
-    /// Walks the `.parent` chain until it finds a [`FirKind::Brane`], returning
-    /// `None` if `self` is already the root brane (self-parenting).
+    /// Iterative parent-walk. Climbs `.parent()` until a brane-like kind is found
+    /// (capability: `stmt_count().is_some()`). Returns the brane that owns `self`,
+    /// or `None` at the root.
     ///
     /// **"Home brane of a FIR" ≡ "brane of a FIR"** — these two phrases mean
     /// exactly the same thing (per FOOP-23 §Terminology). Use "home brane"
     /// when a second brane is also under discussion and the specific one must
     /// be named; use "brane of" otherwise.
+    ///
+    /// Two-mechanism asymmetry: `_get_my_brane` (underscore) climbs the parent
+    /// chain; `get_my_brane` on [`Scope`] reads the scope cache.
     fn _get_my_brane(&self, self_ref: &FirRef) -> Option<FirRef> {
         match self.core().parent() {
             Some(p) => {
@@ -227,6 +229,12 @@ pub trait Fir: std::fmt::Debug {
 
     fn set_contexted(&mut self, _contexted: bool) {}
 
+    /// Immediate brane search — find a named statement before `self` in the home brane.
+    ///
+    /// Call chain: `StatementFir::_ib_search` → `_get_my_brane(self_ref)` →
+    /// `brane._search_brane(name, line_number-1, 0)`.
+    /// Scope-cached twin: `ib_search(scope, name)` reads [`Scope::current_statement`]
+    /// instead of walking parents.
     fn _ib_search(&self, self_ref: &FirRef, name: &str) -> Option<(FirRef, Nyes)> {
         let stmt = self._get_my_statement(self_ref);
         let borrowed = stmt.borrow();
@@ -239,6 +247,12 @@ pub trait Fir: std::fmt::Debug {
         borrowed._ib_search(&stmt, name)
     }
 
+    /// Ancestral brane search — find a named statement in ancestor branes.
+    ///
+    /// Call chain: `_get_my_brane(self_ref)` → `brane._ab_search(brane, name)` →
+    /// recurses up the parent chain.
+    /// Scope-cached twin: `ab_search(scope, name)` reads [`Scope::current_brane`]
+    /// instead of walking parents.
     fn _ab_search(&self, self_ref: &FirRef, name: &str) -> Option<(FirRef, Nyes)> {
         let brane = self._get_my_brane(self_ref)?;
         let borrowed = brane.borrow();
