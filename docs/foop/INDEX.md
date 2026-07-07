@@ -44,6 +44,7 @@ ls | rev | sort -V | rev
 | [FOOP-03](FOOP-03.md) | Repository Cleanup — Remove Dead Code, Flatten Workspace, Establish UBCa as Reference Implementation, Rename Main to jia | Draft (blocked on FOOP-62) | meta | 2026-07-01 | Sisyphus / mimo-v2.5-pro |
 | [FOOP-13](FOOP-13.md) | MAX_BRANE_SIZE — auto-sizing via a non-merging ConcatBrane equivalent to the merged brane | Brewing | phase-2 | 2026-07-03 | Atlas |
 | [FOOP-23](FOOP-23.md) | Value search and contexted (&-prefixed) search — value equality, expression patterns, and searching from a statement's position | Draft | phase-2 | 2026-07-04 | Atlas |
+| [FOOP-33](FOOP-33.md) | The Creation Postulate — ⬤, universal characterizations, and Booleans | Draft | phase-4 | 2026-07-07 | Atlas |
 
 ---
 
@@ -66,6 +67,7 @@ ls | rev | sort -V | rev
 - [FOOP-92](FOOP-92.md) — Einmo — directory-based signed-snapshot testing with staged promotion
 - [FOOP-03](FOOP-03.md) — Repository Cleanup — dead code removal, workspace flatten, `jia` rename (blocked, see FOOP-62)
 - [FOOP-23](FOOP-23.md) — Value search + contexted `&`-searches — `~=`/`?=`, expression patterns, `&`-prefix navigation from a statement (`FoolRefFir`)
+- [FOOP-33](FOOP-33.md) — Creation Postulate → Booleans — `⬤` creation with a global identity map, referential equality via value search, universal characterizations (`Characterizations` struct), null-characterized name constants, `system.foo` ancestral prelude defining `'True`/`'False`
 
 ### Brewing
 
@@ -127,6 +129,10 @@ Canceled as they stand; each may be respecified and reimplemented later. See
 
 - [FOOP-3](FOOP-3.md), [FOOP-91](FOOP-91.md)
 
+### phase-4
+
+- [FOOP-33](FOOP-33.md)
+
 ---
 
 ## Process
@@ -145,6 +151,15 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 ---
 
 ## Last Updated
+
+**Date**: 2026-07-07
+**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
+**Changes**: Added FOOP-33 (The Creation Postulate — `⬤`, universal characterizations, and
+Booleans), Draft, phase-4, with plan (FOOP-33.plan.md). Adds `⬤` creation with a global identity
+map, referential equality via value search, a first-class `Characterizations` struct with
+null-characterized name constants (enforced at brane step and concatenation), and `system.foo` as
+the ancestral prelude defining `'True`/`'False`. Added to main table, By-Status (Draft), and a new
+By-Phase phase-4 section.
 
 **Date**: 2026-07-05
 **Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5 (claude-fable-5)
