@@ -113,10 +113,10 @@ impl FirRefNavExt for FirRef {
     fn find_stmt_index(&self, stmt: &FirRef) -> Option<usize> {
         let count = self.borrow().stmt_count()?;
         for i in 0..count {
-            if let Some(c) = self.borrow().stmt_at(i) {
-                if Rc::ptr_eq(&c, stmt) {
-                    return Some(i);
-                }
+            if let Some(c) = self.borrow().stmt_at(i)
+                && Rc::ptr_eq(&c, stmt)
+            {
+                return Some(i);
             }
         }
         None
@@ -1461,7 +1461,7 @@ impl Fir for IndexFir {
                     };
                     let contexted_result = fool_ref_fir.and_then(|frf| {
                         let referent = frf.borrow().as_fool_ref_referent().cloned()?;
-let h_brane = referent.borrow()._get_my_brane(&referent)?;
+                        let h_brane = referent.borrow()._get_my_brane(&referent)?;
                         let p = h_brane.find_stmt_index(&referent)?;
                         let target = p as i32 + self.offset;
                         let len = h_brane.borrow().stmt_count().unwrap_or(0) as i32;
@@ -1898,9 +1898,8 @@ mod contextful_search {
     impl BraneNavigator {
         pub(crate) fn new(brane: &FirRef, forward: bool) -> Self {
             let len = brane.borrow().stmt_count().unwrap_or(0);
-            let children: Vec<FirRef> = (0..len)
-                .filter_map(|i| brane.borrow().stmt_at(i))
-                .collect();
+            let children: Vec<FirRef> =
+                (0..len).filter_map(|i| brane.borrow().stmt_at(i)).collect();
             let start = if forward || len == 0 { 0 } else { len - 1 };
             Self {
                 children,
