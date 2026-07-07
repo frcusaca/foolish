@@ -532,10 +532,41 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
         }
         FirKind::Concatenation => {
             if state.is_constanic() {
-                let ubc = borrowed.core().ubc_children();
-                if let Some(result) = ubc.first() {
-                    return proto_to_core_fir_inner(result, preserve_search);
+                let count = borrowed.stmt_count().unwrap_or(0);
+                let stmt_tuples: Vec<(Option<String>, core_fir::Fir)> = (0..count)
+                    .filter_map(|i| {
+                        let stmt = borrowed.stmt_at(i)?;
+                        let sb = stmt.borrow();
+                        let name = display_stmt_name(sb.as_stmt_name());
+                        let body_fir = sb
+                            .core()
+                            .foolish_children()
+                            .first()
+                            .map(|c| proto_to_core_fir_inner(c, preserve_search))
+                            .unwrap_or_else(|| NkFirBuilder::new("empty body").build());
+                        drop(sb);
+                        Some((name, body_fir))
+                    })
+                    .collect();
+                let mut effective_state = state;
+                if state == Nyes::Constant || state == Nyes::Independent {
+                    use foolish_core::fir::FirQueryable;
+                    for (_, body) in &stmt_tuples {
+                        let body_state = body.hs_state();
+                        if body_state == Nyes::Econstanic || body_state == Nyes::Woconstanic {
+                            effective_state = Nyes::Woconstanic;
+                            break;
+                        }
+                        if body_state == Nyes::Nk {
+                            effective_state = Nyes::Nk;
+                            break;
+                        }
+                    }
                 }
+                return NormalBraneFirBuilder::new()
+                    .statements(stmt_tuples)
+                    .state(effective_state)
+                    .build();
             }
             let elem_firs: Vec<core_fir::Fir> = borrowed
                 .core()
