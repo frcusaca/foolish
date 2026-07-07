@@ -2301,7 +2301,15 @@ impl ConcatenationFir {
             return;
         }
 
-        // Build a single _ConcatHelper with all lines (Phase A: unlimited k).
+        // Create the _ConcatHelper before cloning statements so its Weak reference
+// becomes the parent of every cloned statement. This ensures
+// `find_enclosing_stmt_and_brane` walks to the _ConcatHelper, not the
+// ConcatBrane—critical for cross-element search resolution.
+        let helper: Rc<RefCell<ConcatHelper>> = Rc::new(RefCell::new(ConcatHelper {
+            core: ProtoBrane::new(vec![], self_weak.clone(), Nyes::Prembrionic),
+        }));
+        let helper_fir: FirRef = helper.clone();
+        let helper_weak = Rc::downgrade(&helper_fir);
         let mut cloned_stmts: Vec<FirRef> = Vec::with_capacity(total_lines);
         let mut global_idx: usize = 0;
 
@@ -2310,8 +2318,13 @@ impl ConcatenationFir {
             let count = resolved.borrow().stmt_count().unwrap_or(0);
             for i in 0..count {
                 if let Some(stmt) = resolved.borrow().stmt_at(i) {
-                    let clone =
-                        ProtoBrane::constanic_clone_at(&stmt, &self_weak, global_idx, false, false);
+                    let clone = ProtoBrane::constanic_clone_at(
+                        &stmt,
+                        &helper_weak,
+                        global_idx,
+                        false,
+                        false,
+                    );
                     cloned_stmts.push(clone);
                     global_idx += 1;
                 }
@@ -2323,10 +2336,11 @@ impl ConcatenationFir {
             return;
         }
 
-        // Create _ConcatHelper with cloned statements.
-        let helper = ConcatHelper::concat_helper(cloned_stmts, self_weak.clone());
-        self.core.push_ubc_child(helper);
-        // Stays Braning — push_ubc_child auto-enqueues non-constanic helper as task.
+        *helper.borrow_mut() = ConcatHelper {
+            core: ProtoBrane::new(cloned_stmts, helper_weak.clone(), Nyes::Prembrionic),
+        };
+
+        self.core.push_ubc_child(helper_fir);
     }
 }
 
