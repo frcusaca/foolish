@@ -813,6 +813,14 @@ impl Fir for BraneFir {
         }
         None
     }
+
+    fn stmt_count(&self) -> Option<usize> {
+        Some(self.core.foolish_children().len())
+    }
+
+    fn stmt_at(&self, idx: usize) -> Option<FirRef> {
+        self.core.foolish_children().get(idx).cloned()
+    }
 }
 
 #[derive(Debug)]
@@ -906,7 +914,7 @@ impl SearchFir {
         }?;
         let h_brane = referent.borrow()._get_my_brane(&referent)?;
         let p = h_brane.find_stmt_index(&referent)?;
-        let brane_len = h_brane.borrow().core().foolish_children().len();
+        let brane_len = h_brane.borrow().stmt_count().unwrap_or(0);
         if brane_len == 0 {
             return None;
         }
@@ -1148,7 +1156,7 @@ impl SearchFir {
                         self.core.set_nyes(Nyes::Nk);
                         return Ok(());
                     }
-                    if resolved.borrow().kind() != FirKind::Brane {
+                    if !resolved.borrow().is_brane_like() {
                         ScanOutcome::Miss
                     } else {
                         let mut nav = BraneNavigator::new(&resolved, self.forward);
@@ -1254,7 +1262,7 @@ impl Fir for SearchFir {
                             self.core.set_nyes(Nyes::Nk);
                             return Ok(());
                         }
-                        if resolved.borrow().kind() != FirKind::Brane {
+                        if !resolved.borrow().is_brane_like() {
                             None
                         } else {
                             let mut nav = BraneNavigator::new(&resolved, self.forward);
@@ -1392,7 +1400,7 @@ impl Fir for IndexFir {
                         Some((stmt_ref, brane_ref)) => {
                             if let Some(idx) = brane_ref.find_stmt_index(&stmt_ref) {
                                 let target = idx as i32 + self.offset;
-                                let len = brane_ref.borrow().core().foolish_children().len() as i32;
+                                let len = brane_ref.borrow().stmt_count().unwrap_or(0) as i32;
                                 if target < 0 || target >= len {
                                     self.core.set_nyes(Nyes::Nk);
                                 } else {
@@ -1454,7 +1462,7 @@ impl Fir for IndexFir {
 let h_brane = referent.borrow()._get_my_brane(&referent)?;
                         let p = h_brane.find_stmt_index(&referent)?;
                         let target = p as i32 + self.offset;
-                        let len = h_brane.borrow().core().foolish_children().len() as i32;
+                        let len = h_brane.borrow().stmt_count().unwrap_or(0) as i32;
                         if target < 0 || target >= len {
                             return None;
                         }
@@ -1489,7 +1497,7 @@ let h_brane = referent.borrow()._get_my_brane(&referent)?;
                     };
                     let anchor = Rc::clone(&self.core.foolish_children()[0]);
                     let resolved = anchor.resolve_anchor();
-                    if resolved.borrow().kind() != FirKind::Brane {
+                    if !resolved.borrow().is_brane_like() {
                         self.core.set_nyes(Nyes::Nk);
                         return Ok(());
                     }

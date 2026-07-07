@@ -217,10 +217,10 @@ pub trait Fir: std::fmt::Debug {
                 if Rc::ptr_eq(&p, self_ref) {
                     return None;
                 }
-                let kind = p.borrow().kind();
-                match kind {
-                    FirKind::Brane => Some(p),
-                    _ => p.borrow()._get_my_brane(&p),
+                if p.borrow().is_brane_like() {
+                    Some(p)
+                } else {
+                    p.borrow()._get_my_brane(&p)
                 }
             }
             None => None,
@@ -272,6 +272,32 @@ pub trait Fir: std::fmt::Debug {
         _ending_index: usize,
     ) -> Option<(usize, FirRef, Nyes)> {
         None
+    }
+
+    // ── Capability methods (FOOP-13 A2) ──
+
+    /// Number of statements this FIR presents as a brane. `None` = not brane-like.
+    fn stmt_count(&self) -> Option<usize> {
+        None
+    }
+
+    /// The statement at a global index, per the Equivalence Law.
+    fn stmt_at(&self, _idx: usize) -> Option<FirRef> {
+        None
+    }
+
+    /// The settled result this FIR resolves to, if any.
+    /// CONTRACT: applies the constanic gate ITSELF — pre-constanic always answers None.
+    fn settled_result(&self) -> Option<FirRef> {
+        if !self.core().get_nyes().is_constanic() {
+            return None;
+        }
+        self.core().ubc_children().into_iter().next()
+    }
+
+    /// Whether this FIR is brane-like (has statements to iterate).
+    fn is_brane_like(&self) -> bool {
+        self.stmt_count().is_some()
     }
 }
 
@@ -366,7 +392,7 @@ fn step_inner(this: &FirRef, scope: &Scope, depth: usize) -> Result<StepReport, 
                 if this_kind == FirKind::Statement {
                     child_scope.current_statement = Some(Rc::clone(this));
                 }
-                if this_kind == FirKind::Brane {
+                if this.borrow().is_brane_like() {
                     child_scope.current_brane = Some(Rc::clone(this));
                 }
                 step_inner(&front_rc, &child_scope, depth + 1)?;
