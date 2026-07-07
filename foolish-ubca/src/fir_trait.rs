@@ -777,6 +777,7 @@ mod get_value_tests {
             let parent: Weak<RefCell<dyn Fir>> = me.clone();
             RefCell::new(ConcatenationFir {
                 core: ProtoBrane::new(elements, parent, Nyes::Prembrionic),
+                _helpers_populated: std::cell::Cell::new(false),
             })
         })
     }
@@ -967,7 +968,7 @@ mod get_value_tests {
     // ── 12. ConcatenationFir settled ────────────────────────────────────────
 
     #[test]
-    fn get_value_concatenation_settled_returns_result_brane() {
+    fn get_value_concatenation_settled_returns_self() {
         let a = make_ci(1);
         let b = make_ci(2);
         let stmt_a = make_stmt("a", 1, Rc::clone(&a));
@@ -979,10 +980,11 @@ mod get_value_tests {
         assert_eq!(cat.borrow().core().get_nyes(), Nyes::Constant);
         assert_eq!(cat.borrow().core().ubc_children().len(), 1);
 
+        // ConcatBrane IS its own value — settled_result() returns None
         let result = cat.value();
-        assert!(!Rc::ptr_eq(&result, &cat));
-        assert_eq!(result.borrow().kind(), FirKind::Brane);
-        assert_eq!(result.borrow().core().foolish_children().len(), 2);
+        assert!(Rc::ptr_eq(&result, &cat));
+        assert_eq!(result.borrow().kind(), FirKind::Concatenation);
+        assert_eq!(result.borrow().stmt_count(), Some(2));
     }
 
     // ── 13. ConcatenationFir not settled ────────────────────────────────────

@@ -148,7 +148,9 @@ impl ProtoBrane {
             nyes.transform_for_clone(sfm),
         );
         for ubc in source.ubc_children() {
-            core.push_ubc_child(ProtoBrane::constanic_clone_at(&ubc, self_weak, 0, sfm, false));
+            core.push_ubc_child(ProtoBrane::constanic_clone_at(
+                &ubc, self_weak, 0, sfm, false,
+            ));
         }
         core
     }
@@ -315,7 +317,10 @@ impl ProtoBrane {
                     descendent_of_sfm_and_foolishly_ignorant,
                     skip_foolish_children,
                 );
-                RefCell::new(ConcatenationFir { core })
+                RefCell::new(ConcatenationFir {
+                    core,
+                    _helpers_populated: std::cell::Cell::new(false),
+                })
             }),
             FirKind::ConcatHelper => Rc::new_cyclic(|me: &Weak<RefCell<ConcatHelper>>| {
                 let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
@@ -545,7 +550,8 @@ impl OperatorFir {
                     &self_weak,
                     0,
                     scope.has_ancestral_sfm,
-                false));
+                    false,
+                ));
                 self.core.set_nyes(Nyes::Nk);
                 return Ok(());
             }
@@ -579,7 +585,8 @@ impl OperatorFir {
                             &self_weak,
                             0,
                             scope.has_ancestral_sfm,
-                        false));
+                            false,
+                        ));
                         self.core.set_nyes(Nyes::Nk);
                         return Ok(());
                     }
@@ -599,7 +606,8 @@ impl OperatorFir {
                             &self_weak,
                             0,
                             scope.has_ancestral_sfm,
-                        false));
+                            false,
+                        ));
                         self.core.set_nyes(Nyes::Nk);
                         return Ok(());
                     }
@@ -627,7 +635,8 @@ impl OperatorFir {
                             &self_weak,
                             0,
                             scope.has_ancestral_sfm,
-                        false));
+                            false,
+                        ));
                         self.core.set_alarm_reason(reason);
                         self.core.set_nyes(Nyes::Nk);
                         return Ok(());
@@ -654,7 +663,8 @@ impl OperatorFir {
                 &self_weak,
                 0,
                 scope.has_ancestral_sfm,
-            false));
+                false,
+            ));
             self.core.set_nyes(Nyes::Constant);
         }
         Ok(())
@@ -793,6 +803,14 @@ impl Fir for BraneFir {
         FirKind::Brane
     }
 
+    fn stmt_count(&self) -> Option<usize> {
+        Some(self.core.foolish_children().len())
+    }
+
+    fn stmt_at(&self, idx: usize) -> Option<FirRef> {
+        self.core.foolish_children().get(idx).cloned()
+    }
+
     fn as_brane_characterizations(&self) -> &[String] {
         &self.characterizations
     }
@@ -845,14 +863,6 @@ impl Fir for BraneFir {
             }
         }
         None
-    }
-
-    fn stmt_count(&self) -> Option<usize> {
-        Some(self.core.foolish_children().len())
-    }
-
-    fn stmt_at(&self, idx: usize) -> Option<FirRef> {
-        self.core.foolish_children().get(idx).cloned()
     }
 }
 
@@ -2158,7 +2168,7 @@ pub struct ConcatHelper {
 }
 
 impl ConcatHelper {
-    pub fn new(children: Vec<FirRef>, parent: Weak<RefCell<dyn Fir>>) -> FirRef {
+    pub fn concat_helper(children: Vec<FirRef>, parent: Weak<RefCell<dyn Fir>>) -> FirRef {
         Rc::new(RefCell::new(ConcatHelper {
             core: ProtoBrane::new(children, parent, Nyes::Prembrionic),
         }))
@@ -2198,17 +2208,33 @@ impl Fir for ConcatHelper {
     fn kind(&self) -> FirKind {
         FirKind::ConcatHelper
     }
+
+    fn stmt_count(&self) -> Option<usize> {
+        if !self.core.get_nyes().is_constanic() {
+            return None;
+        }
+        Some(self.core.foolish_children().len())
+    }
+
+    fn stmt_at(&self, idx: usize) -> Option<FirRef> {
+        if !self.core.get_nyes().is_constanic() {
+            return None;
+        }
+        self.core.foolish_children().get(idx).cloned()
+    }
 }
 
 #[derive(Debug)]
 pub struct ConcatenationFir {
     pub(crate) core: ProtoBrane,
+    pub(crate) _helpers_populated: std::cell::Cell<bool>,
 }
 
 impl ConcatenationFir {
     pub fn concatenation(elements: Vec<FirRef>, parent: Weak<RefCell<dyn Fir>>) -> FirRef {
         Rc::new(RefCell::new(ConcatenationFir {
             core: ProtoBrane::new(elements, parent, Nyes::Prembrionic),
+            _helpers_populated: std::cell::Cell::new(false),
         }))
     }
 
@@ -2226,11 +2252,7 @@ impl ConcatenationFir {
             let resolved = elem.value();
             if !resolved.borrow().is_brane_like() {
                 let nk: FirRef = Rc::new(RefCell::new(NkFir {
-                    core: ProtoBrane::new(
-                        vec![],
-                        self_weak.clone(),
-                        Nyes::Nk,
-                    ),
+                    core: ProtoBrane::new(vec![], self_weak.clone(), Nyes::Nk),
                     reason: "concatenation element is not a brane".to_string(),
                 }));
                 self.core.push_ubc_child(nk);
@@ -2263,13 +2285,8 @@ impl ConcatenationFir {
             let count = resolved.borrow().stmt_count().unwrap_or(0);
             for i in 0..count {
                 if let Some(stmt) = resolved.borrow().stmt_at(i) {
-                    let clone = ProtoBrane::constanic_clone_at(
-                        &stmt,
-                        &self_weak,
-                        global_idx,
-                        false,
-                        false,
-                    );
+                    let clone =
+                        ProtoBrane::constanic_clone_at(&stmt, &self_weak, global_idx, false, false);
                     cloned_stmts.push(clone);
                     global_idx += 1;
                 }
@@ -2282,7 +2299,7 @@ impl ConcatenationFir {
         }
 
         // Create _ConcatHelper with cloned statements.
-        let helper = ConcatHelper::new(cloned_stmts, self_weak.clone());
+        let helper = ConcatHelper::concat_helper(cloned_stmts, self_weak.clone());
         self.core.push_ubc_child(helper);
         // Stays Braning — push_ubc_child auto-enqueues non-constanic helper as task.
     }
@@ -2309,11 +2326,10 @@ impl Fir for ConcatenationFir {
                 }
             }
             Nyes::Braning => {
-                if self.core.ubc_children().is_empty() {
-                    // Call 2: all elements drained (constanic) -> populate _ConcatHelpers.
+                if !self._helpers_populated.get() {
+                    self._helpers_populated.set(true);
                     self.populate_concat_helpers();
                 } else {
-                    // Call 3: _ConcatHelpers drained -> settle.
                     let children = self.core.ubc_children();
                     let settled = _decide_nyes_due_to_children(&children);
                     self.core.set_nyes(settled.unwrap_or(Nyes::Constant));
@@ -2383,16 +2399,16 @@ impl Fir for ConcatenationFir {
             let count = helper.borrow().stmt_count().unwrap_or(0);
             let helper_end = offset + count;
             if from < helper_end {
-                let local_start = if from > offset { from - offset } else { 0 };
+                let local_start = from.saturating_sub(offset);
                 let local_end = if to < helper_end {
                     to - offset
-                } else if to >= helper_end {
-                    count - 1
                 } else {
                     count - 1
                 };
                 if let Some((local_idx, stmt, nyes)) =
-                    helper.borrow()._search_brane(expression, local_start, local_end)
+                    helper
+                        .borrow()
+                        ._search_brane(expression, local_start, local_end)
                 {
                     return Some((offset + local_idx, stmt, nyes));
                 }
@@ -2457,6 +2473,7 @@ pub fn index(
 pub fn concatenation(elements: Vec<FirRef>, parent: Weak<RefCell<dyn Fir>>) -> FirRef {
     Rc::new(RefCell::new(ConcatenationFir {
         core: ProtoBrane::new(elements, parent, Nyes::Prembrionic),
+        _helpers_populated: std::cell::Cell::new(false),
     }))
 }
 
@@ -3314,6 +3331,7 @@ mod tests {
             let parent: Weak<RefCell<dyn Fir>> = me.clone();
             RefCell::new(ConcatenationFir {
                 core: ProtoBrane::new(elements, parent, Nyes::Prembrionic),
+                _helpers_populated: std::cell::Cell::new(false),
             })
         })
     }
@@ -3336,9 +3354,9 @@ mod tests {
         assert_eq!(cat.borrow().core().get_nyes(), Nyes::Constant);
         let ubc = cat.borrow().core().ubc_children().to_vec();
         assert_eq!(ubc.len(), 1);
-        assert_eq!(ubc[0].borrow().kind(), FirKind::Brane);
-        let result_brane = &ubc[0];
-        assert_eq!(result_brane.borrow().core().foolish_children().len(), 2);
+        assert_eq!(ubc[0].borrow().kind(), FirKind::ConcatHelper);
+        let helper = &ubc[0];
+        assert_eq!(helper.borrow().core().foolish_children().len(), 2);
     }
 
     #[test]
@@ -3351,9 +3369,8 @@ mod tests {
 
         assert_eq!(cat.borrow().core().get_nyes(), Nyes::Constant);
         let ubc = cat.borrow().core().ubc_children().to_vec();
-        assert_eq!(ubc.len(), 1);
-        assert_eq!(ubc[0].borrow().kind(), FirKind::Brane);
-        assert_eq!(ubc[0].borrow().core().foolish_children().len(), 0);
+        assert_eq!(ubc.len(), 0);
+        assert_eq!(cat.borrow().stmt_count(), Some(0));
     }
 
     #[test]
@@ -3389,7 +3406,7 @@ mod tests {
         assert_eq!(cat.borrow().core().get_nyes(), Nyes::Constant);
         let ubc = cat.borrow().core().ubc_children().to_vec();
         assert_eq!(ubc.len(), 1);
-        assert_eq!(ubc[0].borrow().kind(), FirKind::Brane);
+        assert_eq!(ubc[0].borrow().kind(), FirKind::ConcatHelper);
         assert_eq!(ubc[0].borrow().core().foolish_children().len(), 1);
     }
 

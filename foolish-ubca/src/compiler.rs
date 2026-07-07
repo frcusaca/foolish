@@ -338,6 +338,7 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
                     .collect();
                 RefCell::new(ConcatenationFir {
                     core: ProtoBrane::new(children, child_parent!(), Nyes::Prembrionic),
+                    _helpers_populated: std::cell::Cell::new(false),
                 })
             })
         }
@@ -467,7 +468,7 @@ impl AstnCompilerExt for Astn {
 
 #[cfg(test)]
 mod tests {
-    use super::{AstnCompilerExt, ANON_STMT_NAME};
+    use super::{ANON_STMT_NAME, AstnCompilerExt};
     use std::cell::RefCell;
     use std::rc::{Rc, Weak};
 
