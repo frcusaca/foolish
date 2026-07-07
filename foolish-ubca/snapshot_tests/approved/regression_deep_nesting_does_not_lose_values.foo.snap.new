@@ -22,10 +22,10 @@ INPUT:
 COMMENTS:
 ```markdown
 regression_deep_nesting_does_not_lose_values
-generated: 2026-07-07T20:00:39.582977816Z
+generated: 2026-07-07T20:25:48.433213094Z
 ```
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: Y6n20+pmIHuScYeHgxuPG8M5BO/gc0rTQZSyzS4Bta3dbhJ39IuX+kvl1OMGnijziXfIwsJqptTNa2wQjVeOAQ==
 HFS signature: fzeCVQwGOjz7Se+fZLjUy6CLcCD0nxjMEELsnucoOy6T8AGXw8xw612LF0Yrlm09+EZSWHK/PmH36//SEpf/Aw==
-Comments signature: 5LGKBBkCktCKPsygwfbR4NI77tqtRwB3wBz4LV0fZNyGMd6O4i7lU1m1+iwNGhJPnw5a+RKbE/546rGXFguNAQ==
+Comments signature: cFv2TralMXuy0rgBFpGDVEgbMdcufpJxLkQku46n0ZKqjO9Sizir97LeYVOxXHRRItSNNrVXAZJNMGCMyGNhDA==

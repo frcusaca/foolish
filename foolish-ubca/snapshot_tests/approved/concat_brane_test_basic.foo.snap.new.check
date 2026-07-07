@@ -1,4 +1,4 @@
----
+Tue Jul  7 04:24:05 PM PDT 2026 cat concat_brane_test_basic.foo.snap.new---
 source: foolish-ubca/src/ubca_snapshot_tester.rs
 assertion_line: 34
 ---
@@ -27,15 +27,15 @@ INPUT:
       a=1;
       b=2
   };
-  namedˍlit={WOCONSTANIC
+  namedˍlit={
       a=1;
       b=2;
-      c=Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
+      c=3
   };
-  litˍlit={WOCONSTANIC
+  litˍlit={
       x=1;
       y=2;
-      z=Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
+      z=3
   };
   withˍempty={
       p=1
@@ -56,11 +56,9 @@ INPUT:
       a=1;
       b=2
   };
+@agents, that's wrong
   mixedˍresolve={WOCONSTANIC
-      source={
-          a=1;
-          b=2
-      };
+      source=?(pattern='^b1$', UNANCHORED, ECONSTANIC);
       field1=?(pattern='^a$', ANCHORED, NK);
       field2=?(pattern='^b$', ANCHORED, NK);
       field3=?(pattern='^huh$', UNANCHORED, ECONSTANIC);
@@ -72,10 +70,10 @@ INPUT:
 COMMENTS:
 ```markdown
 concat_brane_test_basic
-generated: 2026-07-07T20:00:36.213578752Z
+generated: 2026-07-07T20:25:45.414703215Z
 ```
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: c6CYPJUeAgohIGU9M05jOTlPSproHXOvpTg7bInn37zp9E2qKq/KhJviU4ISp3+CrX/pCTk/yfXRiAwleXFcBQ==
-HFS signature: b9wo7eFomj8QWdRzLTQ0dBMPIX1UXLzvm9RyOIOuicPxKCZ9ZxMypzlDQRu7W4CY55ajZnUH8FzlUkefaf36Ag==
-Comments signature: YAQFSAH1LIlAts7vux0xAiRoPE5mDD1cqVjElQ1gB4yxcr4W19DZsOcrnn16Ta7PusM65bTB3JOTTjvgv6m1Dg==
+HFS signature: x1o+X4xIfBVarC+GttbioOzSX6ck/bZdJPSnSltKH18m4nqV06mTlYStFF8APs97e9Rw1Ybt/uPha0N6rARSCg==
+Comments signature: ttKLyeSqRDnPZ5u6k7ybYbkDGpuNLBoEF2axp7xS5KIFo+RJppyEC8O04JKHM5ExzrSSUL2pImR5eEUJKjEDBQ==

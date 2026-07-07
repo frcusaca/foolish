@@ -28,37 +28,37 @@ INPUT:
       zz=9;
       shadow=1;
       keep=1;
-      late=?(pattern='^zz$', UNANCHORED, ECONSTANIC);
-      fromˍjoin=111;
-      fromˍparent=100
+      late=9;
+      fromˍjoin=1;
+      fromˍparent=?(pattern='^p$', UNANCHORED, ECONSTANIC)
   };
   {
     prepared=?(result=111, pattern='^shadow$', UNANCHORED);
     preparedˍp=?(result=100, pattern='^p$', UNANCHORED)
   };
-  extended={WOCONSTANIC
+  extended={NK
       grabˍp=100;
       grabˍshadow=111;
       x=?(pattern='^shadow$', ANCHORED, NK);
-      y=?(pattern='^grabˍshadow$', UNANCHORED, ECONSTANIC);
-      z=?(pattern='^grabˍshadow$', UNANCHORED, ECONSTANIC)
+      y=?(result=111, pattern='^shadow$', UNANCHORED);
+      z=?(result=111, pattern='^shadow$', UNANCHORED)
   };
-  {WOCONSTANIC
+  {
     grabˍpˍao=101;
     grabˍshadowˍao=112;
-    g1=?(pattern='^grabˍpˍao$', UNANCHORED, ECONSTANIC);
-    g2=?(pattern='^grabˍpˍao$', UNANCHORED, ECONSTANIC);
-    g3=?(pattern='^grabˍpˍao$', UNANCHORED, ECONSTANIC)
+    g1=101;
+    g2=101;
+    g3=101
   }
 }
 ```
 COMMENTS:
 ```markdown
 concat_brane_nested_shadowed_resolution
-generated: 2026-07-07T20:00:36.118253783Z
+generated: 2026-07-07T20:25:45.328330452Z
 ```
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: C+xwyMkDlLn503clPYYr5Ir8cfe2YolU2Nx2W+GgpRAR4R73SGc3zOcrxFmnWT/5PoCez+gmBcRpyOMDFhp9Bw==
-HFS signature: bYiod6/uiFpGA+xU8igynB0/+Fle8T6uFQFc9SpYseBxPfa+mAWdhE9jjYl2QtC/JRZJPEio9BWjtarX861zBA==
-Comments signature: psmDTCr+KdUJzFkbwo/kl2me0DbZw4PGCBzFmQMOUXxc7AYP9FkhMZLx/BwAkI20sfccLkbxa5Ok7HFSKi6yCw==
+HFS signature: 4heZrNLZ1zoeF9e8qtlMAYoz3A8QSvAhyfBdRI9xYsIE61JhgTqddYVSg3WJh8mUW2JUgqDCY9zIsIdX2shZCQ==
+Comments signature: 800vo9sgI3dVgvalreAasmB09OL3OJexDsluU8Kfsc8Tn8WYDKEdLTD4vL4QGzFCk31sMNe9ZpJPpskLDG4GBQ==
