@@ -548,6 +548,28 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                 .state(state)
                 .build()
         }
+        FirKind::ConcatHelper => {
+            let stmt_tuples: Vec<(Option<String>, core_fir::Fir)> = borrowed
+                .core()
+                .foolish_children()
+                .iter()
+                .map(|c| {
+                    let cb = c.borrow();
+                    let name = display_stmt_name(cb.as_stmt_name());
+                    let body_fir = cb
+                        .core()
+                        .foolish_children()
+                        .first()
+                        .map(|c| proto_to_core_fir_inner(c, preserve_search))
+                        .unwrap_or_else(|| NkFirBuilder::new("empty body").build());
+                    (name, body_fir)
+                })
+                .collect();
+            NormalBraneFirBuilder::new()
+                .statements(stmt_tuples)
+                .state(state)
+                .build()
+        }
         FirKind::Unknown | FirKind::FoolRef => NkFirBuilder::new("unknown fir kind").build(),
     }
 }

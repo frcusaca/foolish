@@ -300,6 +300,17 @@ impl ProtoBrane {
                 );
                 RefCell::new(ConcatenationFir { core })
             }),
+            FirKind::ConcatHelper => Rc::new_cyclic(|me: &Weak<RefCell<ConcatHelper>>| {
+                let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
+                let core = ProtoBrane::clone_children_for_constanic_clone(
+                    borrowed.core(),
+                    &self_weak,
+                    new_parent,
+                    nyes,
+                    descendent_of_sfm_and_foolishly_ignorant,
+                );
+                RefCell::new(ConcatHelper { core })
+            }),
             FirKind::Statement => {
                 let name = borrowed.as_stmt_name().unwrap_or("").to_owned();
                 let line = index;
@@ -2111,6 +2122,57 @@ impl Fir for StayFullyFoolishFir {
     }
     fn kind(&self) -> FirKind {
         FirKind::StayFullyFoolish
+    }
+}
+
+/// Internal storage brane for ConcatBrane.
+/// Holds constanic-cloned statements from concatenated elements.
+/// Transparent: inherits all defaults, BraneFir-shaped stepping.
+#[derive(Debug)]
+pub struct ConcatHelper {
+    pub(crate) core: ProtoBrane,
+}
+
+impl ConcatHelper {
+    pub fn new(children: Vec<FirRef>, parent: Weak<RefCell<dyn Fir>>) -> FirRef {
+        Rc::new(RefCell::new(ConcatHelper {
+            core: ProtoBrane::new(children, parent, Nyes::Prembrionic),
+        }))
+    }
+}
+
+impl Fir for ConcatHelper {
+    #[inline(always)]
+    fn core(&self) -> &ProtoBrane {
+        &self.core
+    }
+
+    fn fir_op_step(&self, _scope: &Scope) -> Result<(), UbcError> {
+        match self.core.get_nyes() {
+            Nyes::Prembrionic | Nyes::Embryonic => {
+                let children: Vec<FirRef> = self.core.foolish_children().to_vec();
+                if children.is_empty() {
+                    self.core.set_nyes(Nyes::Constant);
+                } else {
+                    self.core.set_nyes(Nyes::Braning);
+                    for child in children {
+                        self.core.push_task(child);
+                    }
+                }
+            }
+            Nyes::Braning => {
+                let children = self.core.foolish_children().to_vec();
+                if let Some(nyes) = _decide_nyes_due_to_children(&children) {
+                    self.core.set_nyes(nyes);
+                }
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    fn kind(&self) -> FirKind {
+        FirKind::ConcatHelper
     }
 }
 

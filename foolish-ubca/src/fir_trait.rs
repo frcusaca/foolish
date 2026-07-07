@@ -37,6 +37,9 @@ pub enum FirKind {
     StayFoolish,
     StayFullyFoolish,
     Concatenation,
+    /// Internal storage brane for ConcatBrane — holds constanic-cloned statements.
+    /// Transparent: inherits all defaults, BraneFir-shaped stepping.
+    ConcatHelper,
     IndepInt,
     Nk,
     /// Placeholder for test stubs before real kinds are implemented.
