@@ -1,0 +1,10 @@
+{
+  "id": "T-84bda8aa-e365-444b-8b92-0bdb9741690d",
+  "subject": "Step 1: Migrate IndexFir to engine's Index predicate",
+  "description": "Replace IndexFir's BRANING state scan logic with engine's SearchPredicate::Index + BraneNavigator. Verify zero snapshot diffs.",
+  "status": "completed",
+  "activeForm": "Migrating IndexFir to engine",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0caba28eeffeMYBooxvfTKCPaB"
+}

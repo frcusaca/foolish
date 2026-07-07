@@ -1,8 +1,8 @@
 use foolish_core::fir as core_fir;
 use foolish_core::fir::{
     Alarm, AlarmLevel, AlarmSource, ConcatenationFirBuilder, ConstantIntFirBuilder,
-    FirRef as CoreFirRef, HeadTailFirBuilder, IndexFirBuilder, NkFirBuilder, NormalBraneFirBuilder,
-    Nyes, OperatorFirBuilder, SearchFirBuilder, StayFoolishFirBuilder, StayFullyFoolishFirBuilder,
+    FirRef as CoreFirRef, IndexFirBuilder, NkFirBuilder, NormalBraneFirBuilder, Nyes,
+    OperatorFirBuilder, SearchFirBuilder, StayFoolishFirBuilder, StayFullyFoolishFirBuilder,
 };
 
 use crate::compiler::Compiler;
@@ -77,9 +77,9 @@ fn proto_to_core_fir(ubca_ref: &FirRef) -> core_fir::Fir {
 /// Convert an SFF body expression. Top-level searches get EMBRYONIC state
 /// (shown by sequencer). Operator operands get CONSTANT state (hidden).
 /// Operators get WOCONSTANIC or CONSTANT state based on operand states.
-/// (@Agents, I suppose this can't be declared as implementation on something 
+/// (@Agents, I suppose this can't be declared as implementation on something
 ///   associated with SFF marker like SFFMark? ditto, similar questions for the
-///   other '^fn' declarations in this file.) 
+///   other '^fn' declarations in this file.)
 fn proto_to_core_fir_sff_body(ubca_ref: &FirRef) -> core_fir::Fir {
     let borrowed = ubca_ref.borrow();
     let kind = borrowed.kind();
@@ -425,44 +425,6 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                 .anchored(borrowed.as_index_anchored())
                 .state(state);
             if borrowed.as_index_anchored()
-                && let Some(anchor_ref) = borrowed.core().foolish_children().first()
-            {
-                builder = builder.anchor(anchor_to_core_fir(anchor_ref));
-            }
-            builder.build()
-        }
-        FirKind::HeadTail => {
-            if state.is_constanic() {
-                let ubc = borrowed.core().ubc_children();
-                if let Some(result) = ubc.first() {
-                    let resolved = proto_to_core_fir_inner(result, preserve_search);
-                    let resolved_state = result.borrow().core().get_nyes();
-                    let result_kind = result.borrow().kind();
-                    if !preserve_search
-                        && (resolved_state == Nyes::Constant
-                            || resolved_state == Nyes::Independent
-                            || result_kind == FirKind::Brane)
-                    {
-                        return resolved;
-                    }
-                    // `resolved` is the head/tail RESULT — it goes in the result= slot.
-                    let mut builder = HeadTailFirBuilder::new(borrowed.as_headtail_is_head())
-                        .anchored(borrowed.as_headtail_anchored())
-                        .result(resolved)
-                        .state(state);
-                    if borrowed.as_headtail_anchored()
-                        && let Some(anchor_ref) = borrowed.core().foolish_children().first()
-                    {
-                        builder = builder.anchor(anchor_to_core_fir(anchor_ref));
-                    }
-                    return builder.build();
-                }
-            }
-            // No ubc_child (NK from empty brane): preserve wrapper with anchor
-            let mut builder = HeadTailFirBuilder::new(borrowed.as_headtail_is_head())
-                .anchored(borrowed.as_headtail_anchored())
-                .state(state);
-            if borrowed.as_headtail_anchored()
                 && let Some(anchor_ref) = borrowed.core().foolish_children().first()
             {
                 builder = builder.anchor(anchor_to_core_fir(anchor_ref));

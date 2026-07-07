@@ -1,0 +1,10 @@
+{
+  "id": "T-9b55419d-225a-4b35-b046-4cae1056c31d",
+  "subject": "Implement FOOP-23 Phase A: value search (~=, ?=) across lexer/parser/AST/compiler/FIR",
+  "description": "Full implementation of value search operators ~= and ?= through the stack: lexer tokens, parser grammar, AST nodes, compiler lowering, FIR integration with pattern gate, alarm plumbing, approval test inputs, and unit tests.",
+  "status": "completed",
+  "activeForm": "Implementing FOOP-23 Phase A value search",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0cb289967ffesaTsLqpKxG8NrF"
+}

@@ -1,0 +1,10 @@
+{
+  "id": "T-f5550795-6f59-4202-89e2-b6aab53a9312",
+  "subject": "Implement Phase A0 of FOOP-23: ContextfulSearch engine skeleton",
+  "description": "New types in fir_kinds.rs: CandidateNavigator trait, SearchPredicate enum, CursorSource enum, BraneNavigator, core scan loop, and unit tests.",
+  "status": "completed",
+  "activeForm": "Implementing ContextfulSearch engine skeleton",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0cb3b5321ffe931Pgh3dyY8Tgw"
+}

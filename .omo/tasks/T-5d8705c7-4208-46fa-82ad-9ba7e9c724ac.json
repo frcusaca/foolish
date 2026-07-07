@@ -1,0 +1,10 @@
+{
+  "id": "T-5d8705c7-4208-46fa-82ad-9ba7e9c724ac",
+  "subject": "Clean up dead code from search operator migration",
+  "description": "Remove index_into_brane_relative and check for other dead code after all search operators migrated to ContextfulSearch",
+  "status": "completed",
+  "activeForm": "Cleaning up dead code",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0ca8180aaffeMBTjRGZGoOEFZg"
+}

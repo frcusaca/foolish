@@ -1,0 +1,10 @@
+{
+  "id": "T-73c47e5c-ed52-4c23-b760-9c1cd2db3985",
+  "subject": "Step 3: Migrate SearchFir name search to engine's Name predicate",
+  "description": "Replace SearchFir name search BRANING scan logic with engine's SearchPredicate::Name + BraneNavigator. Verify zero snapshot diffs.",
+  "status": "completed",
+  "activeForm": "Migrating SearchFir name search to engine",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0caba28eeffeMYBooxvfTKCPaB"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "T-5008ad45-f083-46b1-bb65-8398a6b3b85c",
+  "subject": "Add as_search_contexted accessor and compiler lowering",
+  "description": "Add accessor to Fir trait, lower ContextedSearch in compiler",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0cad06453ffeHa5PjCfSkl6nRs"
+}

@@ -1,0 +1,10 @@
+{
+  "id": "T-f513b47d-1a81-4c33-a336-9559b5df6d7c",
+  "subject": "FOOP-23 Phase C0+C1 Implementation",
+  "description": "Continue FOOP-23 Phase C0+C1 in worktree. Check existing state and complete remaining work:\n- C0: contextless deepening tests + approval input\n- C1: FoolRefFir struct, two-child ubc_children invariant, audit readers, NYES transitions test\nFinal: cargo test, cargo fmt, cargo clippy",
+  "status": "completed",
+  "activeForm": "Implementing FOOP-23 Phase C0+C1",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0cad72ed2ffehaA3s0NgYaXqUq"
+}

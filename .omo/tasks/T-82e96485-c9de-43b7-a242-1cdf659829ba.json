@@ -1,0 +1,10 @@
+{
+  "id": "T-82e96485-c9de-43b7-a242-1cdf659829ba",
+  "subject": "Phase 0: Setup worktree and mark FOOP-23 begun",
+  "description": "Verify tests pass on jia, create worktree at /home/hcbusy/tmp/foolish-worktrees/foop-23-value-search with branch foop-23-value-search, check begun box in FOOP-23.md",
+  "status": "completed",
+  "activeForm": "Setting up FOOP-23 worktree",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0cb49583effePiqFjo8k3FHINI"
+}

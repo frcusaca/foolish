@@ -1,0 +1,10 @@
+{
+  "id": "T-0dadcc4c-5c1e-489c-96d0-4d49e5c60d65",
+  "subject": "Phase B: Expression patterns",
+  "description": "Step pattern child to constanicity before scan. Expression pattern: 1+2→3, c-d resolves in search context. NK pattern→NK. ECONSTANIC pattern→waits. Brane pattern→alarm+NK. Approval input from spec §B.1.",
+  "status": "completed",
+  "activeForm": "Implementing expression patterns",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0cb49583effePiqFjo8k3FHINI"
+}

@@ -1,0 +1,10 @@
+{
+  "id": "T-07a8ab80-b6a0-41b1-8ed0-7291cd610e8d",
+  "subject": "Bug C: Alarm reason not displayed for NK value search",
+  "description": "Add alarm support to core SearchFir/SearchFirBuilder, update sequencer search rendering to show alarm messages, update evaluator to propagate alarm_reason.",
+  "status": "completed",
+  "activeForm": "Fixing Bug C: Alarm reason display",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0c75b5271ffey4iD1AUNoMzvLN"
+}

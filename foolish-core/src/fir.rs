@@ -159,7 +159,7 @@ impl Nyes {
         !matches!(self, Nyes::Constant | Nyes::Independent)
     }
 
-    /// HFS NYES display rule for search / Index / HeadTail renders (FOOP-62 §9.x).
+    /// HFS NYES display rule for search / Index renders (FOOP-62 §9.x).
     /// These nodes carry a result (the resolved result/anchor), so the display
     /// rule depends on whether a result is present:
     /// - a) result present AND nnk_constanic → do NOT show nyes (the reader infers
@@ -335,16 +335,6 @@ pub struct IndexFir {
 }
 
 #[derive(Debug, Clone)]
-pub struct HeadTailFir {
-    pub(crate) is_head: bool,
-    pub(crate) anchored: bool,
-    pub(crate) anchor: Option<FirRef>,
-    /// The FIR head/tail PRODUCED (the element found). Rendered as `result=`.
-    pub(crate) result: Option<FirRef>,
-    pub(crate) state: Nyes,
-}
-
-#[derive(Debug, Clone)]
 pub struct StayFoolishFir {
     pub(crate) expr: FirRef,
     pub(crate) state: Nyes,
@@ -411,7 +401,6 @@ pub trait Steppable: std::fmt::Debug {
                 c
             }
             Fir::Index(v) => v.anchor.into_iter().collect(),
-            Fir::HeadTail(v) => v.anchor.into_iter().collect(),
             Fir::StayFoolish(v) => vec![v.expr],
             Fir::StayFullyFoolish(v) => vec![v.expr],
             Fir::Concatenation(v) => {
@@ -463,12 +452,6 @@ pub trait Steppable: std::fmt::Debug {
         false
     }
     fn index_anchor_ref(&self) -> Option<FirRef> {
-        None
-    }
-    fn headtail_is_head(&self) -> bool {
-        false
-    }
-    fn headtail_anchor_ref(&self) -> Option<FirRef> {
         None
     }
     fn left_state(&self) -> Nyes {
@@ -531,7 +514,6 @@ pub enum Fir {
     Operator(Box<OperatorFir>),
     Search(Box<SearchFir>),
     Index(Box<IndexFir>),
-    HeadTail(Box<HeadTailFir>),
     StayFoolish(Box<StayFoolishFir>),
     StayFullyFoolish(Box<StayFullyFoolishFir>),
     Concatenation(Box<ConcatenationFir>),
@@ -552,8 +534,6 @@ pub type QueryChild = Option<Box<dyn FirQueryable>>;
 pub type SearchQuery = (String, SearchDirection, bool, QueryChild, QueryChild);
 /// `hs_index` payload: (offset, anchored, anchor, result).
 pub type IndexQuery = (i32, bool, QueryChild, QueryChild);
-/// `hs_head_tail` payload: (is_head, anchored, anchor, result).
-pub type HeadTailQuery = (bool, bool, QueryChild, QueryChild);
 /// `hs_concatenation` payload: (input elements, merged result brane).
 pub type ConcatenationQuery = (Vec<Box<dyn FirQueryable>>, QueryChild);
 
@@ -571,7 +551,6 @@ pub trait FirQueryable: std::fmt::Debug {
     fn hs_operator(&self) -> Option<(String, Vec<Box<dyn FirQueryable>>)>;
     fn hs_search(&self) -> Option<SearchQuery>;
     fn hs_index(&self) -> Option<IndexQuery>;
-    fn hs_head_tail(&self) -> Option<HeadTailQuery>;
     fn hs_stay_foolish(&self) -> Option<Box<dyn FirQueryable>>;
     fn hs_stay_fully_foolish(&self) -> Option<Box<dyn FirQueryable>>;
     fn hs_concatenation(&self) -> Option<ConcatenationQuery>;
@@ -644,17 +623,6 @@ impl FirQueryable for FirChildRef {
         let fir = clone_steppable(&self.inner);
         fir.hs_index()
     }
-    fn hs_head_tail(
-        &self,
-    ) -> Option<(
-        bool,
-        bool,
-        Option<Box<dyn FirQueryable>>,
-        Option<Box<dyn FirQueryable>>,
-    )> {
-        let fir = clone_steppable(&self.inner);
-        fir.hs_head_tail()
-    }
     fn hs_stay_foolish(&self) -> Option<Box<dyn FirQueryable>> {
         let fir = clone_steppable(&self.inner);
         fir.hs_stay_foolish()
@@ -684,7 +652,6 @@ impl FirQueryable for Fir {
             Fir::Operator(_) => "Operator",
             Fir::Search(_) => "Search",
             Fir::Index(_) => "Index",
-            Fir::HeadTail(_) => "HeadTail",
             Fir::StayFoolish(_) => "StayFoolish",
             Fir::StayFullyFoolish(_) => "StayFullyFoolish",
             Fir::Concatenation(_) => "Concatenation",
@@ -698,7 +665,6 @@ impl FirQueryable for Fir {
             Fir::Operator(i) => i.state,
             Fir::Search(i) => i.state,
             Fir::Index(i) => i.state,
-            Fir::HeadTail(i) => i.state,
             Fir::StayFoolish(i) => i.state,
             Fir::StayFullyFoolish(i) => i.state,
             Fir::Concatenation(i) => i.state,
@@ -780,29 +746,6 @@ impl FirQueryable for Fir {
             None
         }
     }
-    fn hs_head_tail(
-        &self,
-    ) -> Option<(
-        bool,
-        bool,
-        Option<Box<dyn FirQueryable>>,
-        Option<Box<dyn FirQueryable>>,
-    )> {
-        if let Fir::HeadTail(i) = self {
-            Some((
-                i.is_head,
-                i.anchored,
-                i.anchor
-                    .as_ref()
-                    .map(|a| Box::new(FirChildRef::new(Rc::clone(a))) as Box<dyn FirQueryable>),
-                i.result
-                    .as_ref()
-                    .map(|t| Box::new(FirChildRef::new(Rc::clone(t))) as Box<dyn FirQueryable>),
-            ))
-        } else {
-            None
-        }
-    }
     fn hs_stay_foolish(&self) -> Option<Box<dyn FirQueryable>> {
         if let Fir::StayFoolish(i) = self {
             Some(Box::new(FirChildRef::new(Rc::clone(&i.expr))) as Box<dyn FirQueryable>)
@@ -870,7 +813,6 @@ impl Steppable for Fir {
             Fir::Operator(i) => i.state(),
             Fir::Search(i) => i.state(),
             Fir::Index(i) => i.state(),
-            Fir::HeadTail(i) => i.state(),
             Fir::StayFoolish(i) => i.state(),
             Fir::StayFullyFoolish(i) => i.state(),
             Fir::Concatenation(i) => i.state(),
@@ -885,7 +827,6 @@ impl Steppable for Fir {
             Fir::Operator(i) => i.set_state(s),
             Fir::Search(i) => i.set_state(s),
             Fir::Index(i) => i.set_state(s),
-            Fir::HeadTail(i) => i.set_state(s),
             Fir::StayFoolish(i) => i.set_state(s),
             Fir::StayFullyFoolish(i) => i.set_state(s),
             Fir::Concatenation(i) => i.set_state(s),
@@ -904,7 +845,6 @@ impl Steppable for Fir {
             Fir::Operator(_) => "Operator",
             Fir::Search(_) => "Search",
             Fir::Index(_) => "Index",
-            Fir::HeadTail(_) => "HeadTail",
             Fir::StayFoolish(_) => "StayFoolish",
             Fir::StayFullyFoolish(_) => "StayFullyFoolish",
             Fir::Concatenation(_) => "Concatenation",
@@ -992,22 +932,6 @@ impl Steppable for Fir {
 
     fn index_anchor_ref(&self) -> Option<FirRef> {
         if let Fir::Index(inner) = self {
-            inner.anchor.clone()
-        } else {
-            None
-        }
-    }
-
-    fn headtail_is_head(&self) -> bool {
-        if let Fir::HeadTail(inner) = self {
-            inner.is_head
-        } else {
-            false
-        }
-    }
-
-    fn headtail_anchor_ref(&self) -> Option<FirRef> {
-        if let Fir::HeadTail(inner) = self {
             inner.anchor.clone()
         } else {
             None
@@ -1271,27 +1195,6 @@ impl Steppable for IndexFir {
 
 impl IndexFir {}
 
-impl Steppable for HeadTailFir {
-    fn state(&self) -> Nyes {
-        self.state
-    }
-    fn set_state(&mut self, s: Nyes) {
-        self.state = s;
-    }
-    fn headtail_is_head(&self) -> bool {
-        self.is_head
-    }
-    fn headtail_anchor_ref(&self) -> Option<FirRef> {
-        self.anchor.clone()
-    }
-    fn clone_into_fir(&self) -> Fir {
-        Fir::HeadTail(Box::new(self.clone()))
-    }
-    fn fir_variant(&self) -> &'static str {
-        "HeadTail"
-    }
-}
-
 impl Steppable for StayFoolishFir {
     fn state(&self) -> Nyes {
         self.state
@@ -1405,13 +1308,6 @@ impl Fir {
             None
         }
     }
-    pub fn as_head_tail(&self) -> Option<&HeadTailFir> {
-        if let Fir::HeadTail(inner) = self {
-            Some(inner)
-        } else {
-            None
-        }
-    }
     pub fn as_stay_foolish(&self) -> Option<&StayFoolishFir> {
         if let Fir::StayFoolish(inner) = self {
             Some(inner)
@@ -1504,20 +1400,6 @@ fn fir_to_json(fir: &Fir) -> serde_json::Value {
             let mut m = Map::new();
             m.insert("type".into(), Value::String("Index".into()));
             m.insert("offset".into(), Value::Number(inner.offset.into()));
-            m.insert("anchored".into(), Value::Bool(inner.anchored));
-            m.insert("state".into(), to_json_val(&inner.state));
-            if let Some(ref a) = inner.anchor {
-                m.insert("anchor".into(), fir_to_json(&clone_steppable(a)));
-            }
-            if let Some(ref t) = inner.result {
-                m.insert("result".into(), fir_to_json(&clone_steppable(t)));
-            }
-            Value::Object(m)
-        }
-        Fir::HeadTail(inner) => {
-            let mut m = Map::new();
-            m.insert("type".into(), Value::String("HeadTail".into()));
-            m.insert("is_head".into(), Value::Bool(inner.is_head));
             m.insert("anchored".into(), Value::Bool(inner.anchored));
             m.insert("state".into(), to_json_val(&inner.state));
             if let Some(ref a) = inner.anchor {
@@ -1720,10 +1602,9 @@ impl<'de> Deserialize<'de> for Fir {
                 })))
             }
             "HeadTail" => {
-                let is_head = obj
-                    .get("is_head")
-                    .and_then(|v| v.as_bool())
-                    .ok_or_else(|| serde::de::Error::custom("missing is_head field"))?;
+                // Legacy: deserialize HeadTail as Index (offset=0 for head, -1 for tail)
+                let is_head = obj.get("is_head").and_then(|v| v.as_bool()).unwrap_or(true);
+                let offset: i32 = if is_head { 0 } else { -1 };
                 let anchored = obj
                     .get("anchored")
                     .and_then(|v| v.as_bool())
@@ -1736,8 +1617,8 @@ impl<'de> Deserialize<'de> for Fir {
                     .get("result")
                     .and_then(|v| serde_json::from_value::<Fir>(v.clone()).ok())
                     .map(fir_to_ref);
-                Ok(Fir::HeadTail(Box::new(HeadTailFir {
-                    is_head,
+                Ok(Fir::Index(Box::new(IndexFir {
+                    offset,
                     anchored,
                     anchor,
                     result,
@@ -2057,52 +1938,6 @@ impl IndexFirBuilder {
     pub fn build(self) -> Fir {
         Fir::Index(Box::new(IndexFir {
             offset: self.offset,
-            anchored: self.anchored,
-            anchor: self.anchor,
-            result: self.result,
-            state: self.state,
-        }))
-    }
-}
-
-/// Builder for HeadTailFir.
-pub struct HeadTailFirBuilder {
-    is_head: bool,
-    anchored: bool,
-    anchor: Option<FirRef>,
-    result: Option<FirRef>,
-    state: Nyes,
-}
-
-impl HeadTailFirBuilder {
-    pub fn new(is_head: bool) -> Self {
-        Self {
-            is_head,
-            anchored: false,
-            anchor: None,
-            result: None,
-            state: Nyes::Embryonic,
-        }
-    }
-    pub fn anchored(mut self, anchored: bool) -> Self {
-        self.anchored = anchored;
-        self
-    }
-    pub fn anchor(mut self, anchor: Fir) -> Self {
-        self.anchor = Some(fir_to_ref(anchor));
-        self
-    }
-    pub fn result(mut self, result: Fir) -> Self {
-        self.result = Some(fir_to_ref(result));
-        self
-    }
-    pub fn state(mut self, state: Nyes) -> Self {
-        self.state = state;
-        self
-    }
-    pub fn build(self) -> Fir {
-        Fir::HeadTail(Box::new(HeadTailFir {
-            is_head: self.is_head,
             anchored: self.anchored,
             anchor: self.anchor,
             result: self.result,
@@ -2439,33 +2274,6 @@ mod builder_tests {
             assert_eq!(i.state, Nyes::Constant);
         } else {
             panic!("Expected Index");
-        }
-    }
-
-    #[test]
-    fn test_headtail_builder_head() {
-        let fir = HeadTailFirBuilder::new(true).state(Nyes::Constant).build();
-        if let Fir::HeadTail(i) = fir {
-            assert!(i.is_head);
-            assert!(!i.anchored);
-        } else {
-            panic!("Expected HeadTail");
-        }
-    }
-
-    #[test]
-    fn test_headtail_builder_tail_anchored() {
-        let anchor = ConstantIntFirBuilder::new(0).build();
-        let fir = HeadTailFirBuilder::new(false)
-            .anchored(true)
-            .anchor(anchor)
-            .build();
-        if let Fir::HeadTail(i) = fir {
-            assert!(!i.is_head);
-            assert!(i.anchored);
-            assert!(i.anchor.is_some());
-        } else {
-            panic!("Expected HeadTail");
         }
     }
 

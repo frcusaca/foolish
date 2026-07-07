@@ -90,7 +90,7 @@ impl ProtoBrane {
         }
     }
 
-    /// Push the SINGULAR result of a search FIR (search / Index / HeadTail).
+    /// Push the SINGULAR result of a search FIR (search / Index).
     ///
     /// SINGULAR-RESULT INVARIANT (FOOP-62): every search FIR we currently implement produces
     /// at most ONE result, so its `ubc_children` holds at most one entry and that entry IS the

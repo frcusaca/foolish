@@ -1,0 +1,10 @@
+{
+  "id": "T-12859d46-f774-42c9-aec3-04d82171bf39",
+  "subject": "Fix Bug A: Value search results missing FoolRefFir",
+  "description": "Value search and atomic name+value search handle_found paths must push [clone, FoolRefFir] pair via push_search_result_pair. Affects contexted_value_payoff.foo and name_value_atomic.foo.",
+  "status": "completed",
+  "activeForm": "Fixing value search FoolRefFir",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0cb49583effePiqFjo8k3FHINI"
+}

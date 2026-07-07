@@ -1,0 +1,10 @@
+{
+  "id": "T-5109108a-7e9d-4e23-b950-109f575d2f37",
+  "subject": "Remove HeadTailFir — Phase 5: sequencer + tests",
+  "description": "Update sequencer.rs HeadTail rendering for Index sugar, update sequencer_tests.rs, update headtail_nyes_transitions tests, add headtail_sugar_nyes_transitions test",
+  "status": "completed",
+  "activeForm": "Updating sequencer and tests",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0c26df73cffedTOZUepAezxza4"
+}

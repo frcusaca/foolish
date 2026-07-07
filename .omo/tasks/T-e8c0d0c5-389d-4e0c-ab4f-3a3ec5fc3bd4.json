@@ -1,0 +1,10 @@
+{
+  "id": "T-e8c0d0c5-389d-4e0c-ab4f-3a3ec5fc3bd4",
+  "subject": "Fix IndexFir anchored Braning panic: .expect(\"statement must have a body\")",
+  "description": "Replace .expect() at line 1520 with graceful NK handling to match old index_into behavior",
+  "status": "completed",
+  "activeForm": "Fixing IndexFir panic",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0ca8180aaffeMBTjRGZGoOEFZg"
+}

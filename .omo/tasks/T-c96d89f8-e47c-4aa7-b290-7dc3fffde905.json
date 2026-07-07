@@ -1,0 +1,9 @@
+{
+  "id": "T-c96d89f8-e47c-4aa7-b290-7dc3fffde905",
+  "subject": "Write unit tests for Phase B value search",
+  "description": "Unit tests for expr pattern: 1+2, c-d, NK, ECONSTANIC, brane",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0cb18f4b5ffeRQ00M3Pb6ffgMi"
+}

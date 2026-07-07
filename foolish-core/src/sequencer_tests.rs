@@ -1,8 +1,7 @@
 use crate::fir::{
     Alarm, AlarmLevel, AlarmSource, ConcatenationFirBuilder, ConstantIntFirBuilder,
-    HeadTailFirBuilder, IndexFirBuilder, NkFirBuilder, NormalBraneFirBuilder, Nyes,
-    OperatorFirBuilder, SearchDirection, SearchFirBuilder, StayFoolishFirBuilder,
-    StayFullyFoolishFirBuilder,
+    IndexFirBuilder, NkFirBuilder, NormalBraneFirBuilder, Nyes, OperatorFirBuilder,
+    SearchDirection, SearchFirBuilder, StayFoolishFirBuilder, StayFullyFoolishFirBuilder,
 };
 use crate::sequencer::format_fir_simple;
 use crate::*;
@@ -20,10 +19,6 @@ fn test_hs_variant_all_types() {
     );
     assert_eq!(SearchFirBuilder::new("x").build().hs_variant(), "Search");
     assert_eq!(IndexFirBuilder::new(1).build().hs_variant(), "Index");
-    assert_eq!(
-        HeadTailFirBuilder::new(true).build().hs_variant(),
-        "HeadTail"
-    );
     assert_eq!(
         StayFoolishFirBuilder::new(ConstantIntFirBuilder::new(1).build())
             .build()
@@ -182,15 +177,15 @@ fn test_format_index_anchored() {
 
 #[test]
 fn test_format_headtail_head() {
-    let ht = HeadTailFirBuilder::new(true).build();
-    let s = format_fir_simple(&ht);
+    let idx = IndexFirBuilder::new(0).anchored(true).build();
+    let s = format_fir_simple(&idx);
     assert!(s.starts_with("^("), "Expected '^(' in: {}", s);
 }
 
 #[test]
 fn test_format_headtail_tail_anchored() {
-    let ht = HeadTailFirBuilder::new(false).anchored(true).build();
-    let s = format_fir_simple(&ht);
+    let idx = IndexFirBuilder::new(-1).anchored(true).build();
+    let s = format_fir_simple(&idx);
     assert!(s.starts_with("$("), "Expected '$(' in: {}", s);
 }
 

@@ -1,0 +1,10 @@
+{
+  "id": "T-36d014c4-7394-438f-9903-45741c4a7d9b",
+  "subject": "Implement FOOP-23 Phase C0 & C1",
+  "description": "C0: contextless deepening normative tests + approval input. C1: FoolRefFir new FIR kind + two-child ubc_children invariant.",
+  "status": "completed",
+  "activeForm": "Implementing FOOP-23 C0 & C1",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0cb06b87effeExf3I5FLikhaqQ"
+}

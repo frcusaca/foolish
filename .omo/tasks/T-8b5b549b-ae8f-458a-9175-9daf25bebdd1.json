@@ -1,0 +1,10 @@
+{
+  "id": "T-8b5b549b-ae8f-458a-9175-9daf25bebdd1",
+  "subject": "Step 4: Migrate unanchored seek to engine",
+  "description": "Replace unanchored seek (#-N) logic with engine. Verify zero snapshot diffs.",
+  "status": "completed",
+  "activeForm": "Migrating unanchored seek to engine",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0caba28eeffeMYBooxvfTKCPaB"
+}

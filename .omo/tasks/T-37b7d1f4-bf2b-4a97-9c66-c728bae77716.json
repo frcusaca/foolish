@@ -1,0 +1,9 @@
+{
+  "id": "T-37b7d1f4-bf2b-4a97-9c66-c728bae77716",
+  "subject": "FOOP-23 Phase D: Documentation updates for search features",
+  "description": "Implement Phase D of FOOP-23: documentation updates for the new search features (value search, expression patterns, contexted `&` search). Includes AGENTS.md searches section, code doc-comments, howto/README updates, vintage doc banners, and FOOP plan hygiene.",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0ca752b09ffeMLVxDar65o5sWB"
+}

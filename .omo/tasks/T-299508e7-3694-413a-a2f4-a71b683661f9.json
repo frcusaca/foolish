@@ -1,0 +1,9 @@
+{
+  "id": "T-299508e7-3694-413a-a2f4-a71b683661f9",
+  "subject": "Run fmt, clippy, tests - fix all issues",
+  "description": "Ensure all tests pass, fmt clean, clippy clean",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0cad06453ffeHa5PjCfSkl6nRs"
+}

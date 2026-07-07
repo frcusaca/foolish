@@ -1,0 +1,10 @@
+{
+  "id": "T-19991da1-7ae8-4369-af04-26fb411d4760",
+  "subject": "Rewrite FOOP-13 spec with _ConcatHelper design",
+  "description": "Restructure the spec: tighten exposition flow, add definitions section, update ConcatBrane redesign for _ConcatHelper (flat storage, uniform parent chain, three-phase protocol), add A2 labeling section, add appendix with research findings, update rejected alternatives and FIR impact.",
+  "status": "completed",
+  "activeForm": "Rewriting FOOP-13 spec",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0d157f2b3ffeQIldM3NENzoxZq"
+}

@@ -34,7 +34,6 @@ pub enum FirKind {
     Operator,
     Search,
     Index,
-    HeadTail,
     StayFoolish,
     StayFullyFoolish,
     Concatenation,
@@ -156,16 +155,6 @@ pub trait Fir: std::fmt::Debug {
 
     /// IndexFir anchored flag. Default: false.
     fn as_index_anchored(&self) -> bool {
-        false
-    }
-
-    /// HeadTailFir is_head flag. Default: false.
-    fn as_headtail_is_head(&self) -> bool {
-        false
-    }
-
-    /// HeadTailFir anchored flag. Default: false.
-    fn as_headtail_anchored(&self) -> bool {
         false
     }
 

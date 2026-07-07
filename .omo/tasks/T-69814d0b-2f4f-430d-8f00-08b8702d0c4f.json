@@ -1,0 +1,10 @@
+{
+  "id": "T-69814d0b-2f4f-430d-8f00-08b8702d0c4f",
+  "subject": "Verify: fmt, clippy, test all pass",
+  "description": "Run cargo fmt, cargo clippy, cargo test --workspace. All must pass clean.",
+  "status": "completed",
+  "activeForm": "Running verification checks",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0cb06b87effeExf3I5FLikhaqQ"
+}

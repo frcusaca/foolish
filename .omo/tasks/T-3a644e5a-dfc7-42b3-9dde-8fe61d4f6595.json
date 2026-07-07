@@ -1,0 +1,10 @@
+{
+  "id": "T-3a644e5a-dfc7-42b3-9dde-8fe61d4f6595",
+  "subject": "Step 5: Cleanup dead code",
+  "description": "Remove dead duplicate scan code after all migrations. Run full workspace tests + clippy.",
+  "status": "completed",
+  "activeForm": "Removing dead code",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0caba28eeffeMYBooxvfTKCPaB"
+}

@@ -1,0 +1,10 @@
+{
+  "id": "T-4eba940f-944a-4d6a-a4ff-bbbd3ca76af0",
+  "subject": "C1: Add FoolRef to FirKind + define FoolRefFir",
+  "description": "Add FoolRef variant to FirKind enum in fir_trait.rs. Define FoolRefFir struct and impl Fir for it in fir_kinds.rs.",
+  "status": "completed",
+  "activeForm": "Adding FoolRefFir FIR kind",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0cb06b87effeExf3I5FLikhaqQ"
+}

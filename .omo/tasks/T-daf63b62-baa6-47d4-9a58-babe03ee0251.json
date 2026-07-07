@@ -1,0 +1,9 @@
+{
+  "id": "T-daf63b62-baa6-47d4-9a58-babe03ee0251",
+  "subject": "D.2: Add code doc-comments to search engine components",
+  "description": "Add /// doc-comments to ContextfulSearch, CandidateNavigator, SearchPredicate, CursorSource, FoolRefFir, get_my_brane.",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0ca752b09ffeMLVxDar65o5sWB"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "T-0c5fbf0c-6f0e-41ef-84c0-05961c36340e",
+  "subject": "Modify value_search_step PREMBRIONIC to push value pattern task",
+  "description": "In PREMBRIONIC state, push value pattern child as task alongside anchor (if any)",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0cb18f4b5ffeRQ00M3Pb6ffgMi"
+}

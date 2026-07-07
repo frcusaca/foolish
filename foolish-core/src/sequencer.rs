@@ -154,7 +154,7 @@ fn proto_brane_formatter(
 // Proto-brane formatter with deferred result
 // ──────────────────────────────────────────────
 
-/// Proto-brane formatter for Search/HeadTail/Index with deferred result generation.
+/// Proto-brane formatter for Search/Index with deferred result generation.
 /// Result first, then non-result items, then closer.
 ///
 /// Returns opener at prefix 0, body items at body_indent, closer at prefix 0.
@@ -356,29 +356,6 @@ fn render_fir(
             } else {
                 non_result_items.push(state.to_string());
             }
-        }
-
-        let opener = format!("{}{}", pbid, "(");
-        return proto_brane_formatter_with_result(
-            &opener,
-            ")",
-            open_indent,
-            close_indent,
-            &non_result_items,
-            result.as_deref(),
-            line_hint,
-        );
-    }
-
-    // ── 5. HeadTail ──
-    // `result` (the FIR head/tail found) is the result= slot; the anchor is a non-result item.
-    if let Some((is_head, _anchored, _anchor, result)) = fir.hs_head_tail() {
-        let show_state = state.should_show_search_nyes(result.is_some());
-        let pbid = if is_head { "^" } else { "$" };
-        let mut non_result_items = Vec::new();
-
-        if show_state {
-            non_result_items.push(state.to_string());
         }
 
         let opener = format!("{}{}", pbid, "(");

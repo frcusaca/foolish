@@ -1,0 +1,9 @@
+{
+  "id": "T-788b15ae-3e22-45f2-9856-763e90453040",
+  "subject": "Implement FOOP-23 Phase C-backfit: migrate contextless searches to ContextfulSearch engine",
+  "description": "Behavior-preserving refactor of IndexFir, HeadTailFir, SearchFir name search, and unanchored seek onto the ContextfulSearch engine. Each migration gated on zero snapshot diffs.",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0caba28eeffeMYBooxvfTKCPaB"
+}
