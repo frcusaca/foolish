@@ -105,7 +105,23 @@ you.
 
 When implementing a FOOP, write a detailed plan to
 `docs/foop/FOOP-###.plan.md` (lowercase extension). The plan breaks the FOOP
-into concrete, trackable tasks using checkboxes.
+into concrete, trackable tasks using checkboxes. The plan file should have a
+level of detail so as for coding to be immediately commenceable. If research
+was done on the web, through historic foolish doc's, or experimentation performed
+to establish a correct usage pattern, those should be clearly documented in
+the foop file, the plan steps shall, where needed, contain section or sub-section
+header pointer into the foop file, a large todo with sub-tasks may have several
+read such-and-such section of the foop as first few checkboxes.
+
+The plan sub-tasks can also be sanity check markers for implementing agent. For
+example, if it is clear that the foop and plan left some ambiguity (perhaps at
+demand of human saying "we can figure that out when we get there.") In particular
+if a major coding decision needs to be made, or if research and experimentation
+is expected. The sanity check instruction subtask could say "[ ] sub-agent please
+consult with primary agent or human regarding the current approach to..." During
+review of foop/plan, the plannign agent may install these or remove these as
+it progresses with specification, clarification, design and planning for the
+project.
 
 ### Constructing the Plan
 
