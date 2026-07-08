@@ -2,7 +2,7 @@
 foop: 33
 title: The Creation Postulate — ⬤, universal characterizations, and Booleans
 author: Atlas hc.busy@gmail.com
-status: Draft
+status: Final
 type: Standards
 created: 2026-07-07
 phase: phase-4
@@ -22,10 +22,12 @@ UBCa. It adds four dependent features and stops, deliberately, short of boolean 
    object* (`Rc::ptr_eq`) — no id, no registry; a creation is only ever shared (constanic
    clone returns the same object), never duplicated. Creations are reached only by search.
 2. **Default equality, used by search.** There is no `==` operator. This FOOP defines the
-   **default equality** of the assignment `=` as an implementation primitive — a function
-   over two FIRs returning a Rust `bool` — and has the value-search matcher (`?=`/`~=`,
-   FOOP-23) *call* that primitive. Same integer ⇒ equal; same creation ⇒ equal; NK ⇒ never
-   equal, even to itself.
+   **default equality** of the assignment `=` as an implementation primitive — a three-valued
+   `default_equal(a,b) -> Equality::{Equal, NotEqual, Unknowable}` — and has the value-search
+   matcher (`?=`/`~=`, FOOP-23) *call* it as a **greedy "known-to-be-equal" matcher**. Only two
+   integers or two creations are comparable (same integer / same rust object ⇒ `Equal`);
+   **everything else is `Unknowable` → NK**, not a silent miss. The matcher approves on `Equal`,
+   rejects on `NotEqual`, and stops-NK on `Unknowable`.
 3. **Universal characterizations.** Characterizations (`a'b'c'name`) — already parsed but
    discarded — become first-class, carried on every statement via an **`Identifier`** struct
    that owns the one whitespace-stripped LHS string and exposes `name()` (the bare coordinate
@@ -152,37 +154,56 @@ fresh `⬤`/`{*}` literal is a new object and hence a new creation.
 
 There is **no equality operator**. Instead this FOOP names the equality that the assignment
 `=` already implies as a reusable **default-equality primitive**, and routes the value-search
-matcher through it. The primitive is an implementation-level function over two settled FIRs:
+matcher through it. Equality has **three** outcomes — comparison of anything other than two
+integers or two creations is **not knowable**, not merely "not equal" — so the primitive
+returns a three-valued result, not a `bool`:
 
 ```rust
-// foolish-ubca — the default equality of `=`, as a Rust boolean
-pub(crate) fn default_equal(a: &FirRef, b: &FirRef) -> bool;
+// foolish-ubca — the default equality of `=`
+pub(crate) enum Equality { Equal, NotEqual, Unknowable }
+pub(crate) fn default_equal(a: &FirRef, b: &FirRef) -> Equality;
 ```
 
 Its rules, for two constanic FIRs `a` and `b`:
 
-1. **NK guard.** If either is `NK`, `default_equal` is `false` — even if they are the same
-   rust object. (FOOP-23 stipulation; restated because it now interacts with identity.)
-2. **Integer equality.** If both expose `as_i64()`, `true` iff the integers are equal.
-3. **Referential (creation) equality.** Otherwise, if both are creations, `true` iff they are
-   the **same rust object** — `Rc::ptr_eq` on the settled creation. (No id is involved; §1
-   guarantees a creation is only ever shared, never duplicated, so `Rc::ptr_eq` is sound.)
-   This is the FOOP-23 stipulation — *"if the rhs `get_value()` is a fir that is the same fir
-   in the ubca fvm as a candidate, then it is equal"* — now implemented for creations.
-4. **Otherwise.** `false` (e.g. two distinct branes — brane equivalence remains unspecified
-   per FOOP-23). A `false` here means "not known equal," not an assertion of deep inequality.
+1. **NK guard.** If either is `NK`, the result is **`Unknowable`** — even if they are the same
+   rust object. (FOOP-23: NKs are never equal to each other.)
+2. **Integer equality.** If both expose `as_i64()`, `Equal` iff the integers are equal, else
+   `NotEqual`.
+3. **Referential (creation) equality.** If both are creations, `Equal` iff they are the **same
+   rust object** (`Rc::ptr_eq` on the settled creation), else `NotEqual`. (No id is involved;
+   §1 guarantees a creation is only ever shared, never duplicated, so `Rc::ptr_eq` is sound.)
+   This implements the FOOP-23 stipulation — *"if the rhs `get_value()` is a fir that is the
+   same fir in the ubca fvm as a candidate, then it is equal"* — for creations.
+4. **Everything else is `Unknowable`.** Any other combination (brane vs anything, integer vs
+   creation, …) is **not knowable**, not `NotEqual`. Brane equivalence remains unspecified
+   (FOOP-23); until it is, comparing such values yields NK, not a silent miss.
 
 Equality is observed only through a **value search** (`?=` / `~=`, and their
 contexted/combined forms — FOOP-23). The value-search matcher
 (`SearchPredicate::Value` / `NameValue` in `foolish-ubca/src/fir_kinds.rs`) today compares
 candidate and pattern **inline**, only through `as_i64()`. This FOOP **refactors** that inline
-comparison out into `default_equal` and has the matcher *call* it: `Value`/`NameValue` approve
-a candidate iff `default_equal(candidate_value, pattern_value)`. The matcher no longer knows
-the equality rules — it delegates. This keeps equality defined in exactly one place, reusable
-by the null-constant rule (§4) as well.
+comparison out into `default_equal` and has the matcher *call* it, mapping the three outcomes
+onto the matcher's existing `MatchOutcome`:
+
+| `default_equal` | `MatchOutcome` |
+|-----------------|----------------|
+| `Equal`         | `Approve`      |
+| `NotEqual`      | `Reject`       |
+| `Unknowable`    | `NkStop`       |
+
+The matcher no longer knows the equality rules — it delegates. This keeps equality defined in
+exactly one place, reusable by the null-constant rule (§4) as well.
+
+**The value-search matcher is a greedy "known-to-be-equal" matcher.** It approves only on
+`Equal` — a *positive proof* that the two values are the same — never on "can't tell." `Equal`
+matches; `NotEqual` rejects and the scan continues; `Unknowable` halts the scan with NK (the
+search cannot honestly claim equality nor safely keep scanning past an incomparable value).
+Equality must be *known*, not assumed.
 
 This is the mechanism the null-constant rule (§4) uses to distinguish a harmless re-statement
-(`'True='True`, same creation) from a conflicting redefinition (`'True=3`, different value).
+(`'True='True`, same creation → `Equal`) from a conflicting redefinition (`'True=3`, integer
+vs creation → `Unknowable` → NK).
 
 ### 3. Universal characterizations
 
@@ -199,35 +220,39 @@ characterization applied to `b'name` (the concept `b'name`), **not** to `name` �
 contract; it resolves what would otherwise be ambiguous.
 
 **The `Identifier` struct (owns the LHS), containing a `Characterizations`.** Each statement
-owns exactly one `Identifier`. The `Identifier` holds the **one authoritative owned string** —
-the entire LHS with all internal/surrounding whitespace stripped — and describes its parts as
-**spans** into that one string (single allocation per statement). It contains a
-`Characterizations` (the front portion) and a `name` span (the coordinate name at the tail).
+owns exactly one `Identifier`. It must be able to answer three projections of the LHS:
+the **canonicalized fully-characterized name** (whole LHS, whitespace-stripped), the **name**
+(coordinate name), and the **canonicalized characterization string** (front portion). Two
+implementations satisfy this; **prefer the span form when the original input file is available**:
 
-For LHS `a' b'c'd'e''x` (note the source space after the first `'`), the `Identifier` string
-is `"a'b'c'd'e''x"` (whitespace stripped), `name` is the `"x"` span, and `Characterizations`
-covers the `"a'b'c'd'e''"` front span.
+- **Preferred — text spans into the original input.** If the compiler still holds the original
+  source, `Identifier` stores byte-range **spans** into it (no per-statement string
+  allocation): a span for the whole characterized name, one for the name, one for the
+  characterization portion. Cheapest, and canonical because the source is canonical.
+- **Fallback — three owned canonical strings.** If no source buffer is available, preserve the
+  three canonical strings directly: (1) canonicalized fully-characterized name, (2) name,
+  (3) canonicalized characterization string. "Canonicalized" = all internal/surrounding
+  whitespace stripped.
+
+Either way the *accessors* are identical. For LHS `a' b'c'd'e''x` (note the source space after
+the first `'`): fully-characterized name `"a'b'c'd'e''x"`, name `"x"`, characterization string
+`"a'b'c'd'e''"`.
 
 ```rust
-// Each StatementFir owns one Identifier. `text` is the sole allocation; everything else spans it.
-pub struct Identifier {
-    text: String,                 // whole LHS, whitespace-stripped, e.g. "a'b'c'd'e''x"
-    name: Range<usize>,           // the coordinate-name span, e.g. the "x" at the tail
-    characterizations: Characterizations, // reports on the front span (spans into `text`)
-}
+// One Identifier per StatementFir. Store either spans-into-source OR the three canonical
+// strings; the accessors below are the stable contract regardless of representation.
+pub struct Identifier { /* spans into source, or (fully_characterized, name, chars) strings */ }
 
 impl Identifier {
     /// The bare coordinate name — e.g. "x". The matcher demands this for a plain pattern.
-    pub fn name(&self) -> &str { &self.text[self.name.clone()] }
+    pub fn name(&self) -> &str { /* … */ }
 
-    /// The full characterized name — the whole `text`, e.g. "a'b'c'd'e''x". The matcher
-    /// demands this for a `'`-bearing pattern.
-    pub fn characterized_name(&self) -> &str { &self.text }
+    /// The canonicalized fully-characterized name — e.g. "a'b'c'd'e''x". The matcher demands
+    /// this for a `'`-bearing pattern.
+    pub fn characterized_name(&self) -> &str { /* … */ }
 
     /// Delegates to the contained Characterizations (below).
-    pub fn is_nully_characterizing_coordinate_name(&self) -> bool {
-        self.characterizations.is_nully_characterizing_coordinate_name()
-    }
+    pub fn is_nully_characterizing_coordinate_name(&self) -> bool { /* … */ }
 }
 ```
 
@@ -301,10 +326,20 @@ package it. So `foolish-ubca` gains a **`build.rs`** that, at build time, copies
 > `system.foo` ships inside the compiled crate, no runtime file dependency, authored at the
 > repo root.
 
-Before the FVM steps a program, `system.foo` is compiled to a brane and installed as the
-**parent (ancestral) brane** of the program's root brane. Name resolution therefore falls
-through to `system.foo` via the existing `_ab_search` machinery: `True`, `False` (and any
-future prelude names) resolve ancestrally without any concatenation into the user's root.
+**`system.foo` IS the root brane, and is its own parent.** `system.foo` is **implicitly
+inserted** by the FVM — it is not opt-in. It is compiled once and becomes **the root brane**,
+its own parent (the same self-rooting pattern the program root uses today, just one level up);
+the user's program brane hangs beneath it as a child. Name resolution therefore falls through
+to `system.foo` via the existing `_ab_search` machinery — `True`, `False` (and any future
+prelude names) resolve ancestrally — with **no concatenation** into the user's brane and **no
+re-parenting hazard** (system.foo self-roots; nothing points back into the program to form a
+cycle). What was not found in the old program brane is still not found *unless `system.foo`
+defines it.*
+
+**Program line numbers are preserved.** Making `system.foo` the ancestor must **not** shift the
+user program's line numbering. The program brane keeps the line numbers it had as a standalone
+root (`system.foo` is a separate brane, above it, with its own lines) so diagnostics, snapshots,
+and `step_until_line_number` continue to address user source by its original lines.
 
 `system.foo` for this FOOP defines the booleans as null-characterized constants:
 
@@ -317,22 +352,30 @@ future prelude names) resolve ancestrally without any concatenation into the use
 
 **Null-characterized name constant rule.** A **null-characterized coordinate name** (a
 statement whose `Characterizations::is_nully_characterizing_coordinate_name()` is true) is a
-**constant name**: it may be re-defined only to an **equal value** (by `default_equal`, §2);
-any other re-definition **refuses and becomes NK**, and that NK poisons further use of the
-name.
+**constant name**: it may be re-defined only to a value that is `Equal` (by `default_equal`,
+§2) to the established constant; any other re-definition makes that statement's
+**`get_value()` return `NK("'<name> redefined")`** instead of its written RHS.
 
 Formally, when a brane is in `PREMBRYONIC`/`EMBRYONIC` and is settling a statement whose
 coordinate name is null-characterized:
 
-1. Ask the ancestors (walk the AB chain, into `system.foo`) whether a null-characterized
-   statement of the **same name** was previously defined.
+1. Ask the ancestors (walk the AB chain) whether a null-characterized statement of the **same
+   name** was previously defined.
 2. If none: proceed normally; this brane now *owns* that null-characterized name and will
    answer descendants' queries about it (below).
 3. If one exists: compare values with `default_equal` (§2).
-   - **Equal** (e.g. `'True='True`, the same creation): permitted, no-op-consistent.
-   - **Unequal** (e.g. `'True=3`): **refuse** — the offending statement's body becomes
-     **NK**. The name is thereby poisoned; subsequent searches that resolve to it inherit
-     the NK.
+   - **`Equal`** (e.g. `'True='True`, the same creation): permitted; the statement keeps its
+     value.
+   - **Anything else** (`NotEqual` *or* `Unknowable`, e.g. `'True=3`): the statement's body
+     settles to **`NK("'<name> redefined")`**, so `get_value()` yields that NK rather than the
+     written RHS. No special "refusal" state is needed — the NK *is* the refusal.
+
+**Poisoning is scoped to searches that discover this definition.** The NK lives on **this
+statement's body**, not on the name globally. Therefore it poisons exactly the searches that
+resolve *to this definition* (they read `get_value()` → NK). Code elsewhere that never reaches
+this statement — for instance a **sibling in a different brane** that resolves the name to a
+*different* definition, or does not use the name at all — is **not** poisoned. The poison
+travels with the offending statement, not with the identifier string.
 
 **Descendant query.** A brane that owns a null-characterized name responds to descendant
 branes' question *"is this name a null-characterized coordinate name (a constant) here?"* This
@@ -346,13 +389,14 @@ merged sequence. Concretely, for `{A={'a=1}, B = A A A}` the concatenation `A A 
 three `'a` statements; the first `'a` establishes the constant, and each later `'a` is
 checked against it:
 
-- `'a=1` following `'a=1` (equal value): permitted.
-- `'a=<anything else>` (unequal): the later `'a` becomes **NK**.
+- `'a=1` following `'a=1` (`default_equal` → `Equal`): permitted.
+- `'a=<not-Equal-to-the-first>` (`NotEqual` or `Unknowable`): the later `'a` body becomes
+  `NK("'a redefined")`.
 
 So most of the `'a`'s in `B` become NK (all but the first, since they would each be a
-conflicting redefinition of the established constant — unless their values are equal by
-`default_equal`). The check reuses `default_equal` and mirrors the brane-step rule exactly:
-**one rule, two trigger sites** (brane step, concatenation merge).
+conflicting redefinition of the established constant — unless `default_equal` returns `Equal`).
+The check reuses `default_equal` and the same `NK("'<name> redefined")` result as the brane
+step: **one rule, one NK mechanism, two trigger sites** (brane step, concatenation merge).
 
 ## FIR Impact
 
@@ -362,49 +406,54 @@ conflicting redefinition of the established constant — unless their values are
   forbidden**. A corresponding core-fir representation (in `foolish-core/src/fir.rs`) is added
   so the sequencer can render a creation. YAML/JSON shape: `{ kind: Creation }` (an `id` is
   added by a future FOOP only when a creation must be shipped across a boundary).
-- **`StatementFir` replaces `name: String` with an `Identifier`.** The `Identifier` owns the
-  whitespace-stripped LHS string; `StatementFir::name()` delegates to `Identifier::name()`.
-  Serialization carries the LHS text; a plain name (no `'`) round-trips as before.
-- **New type `Identifier`** — each statement owns one; the sole per-statement allocation for
-  the LHS. Fields: owned `text`, `name` span, a contained `Characterizations`. Methods:
-  `name()` (bare coordinate name), `characterized_name()` (whole LHS),
-  `is_nully_characterizing_coordinate_name()` (delegates).
-- **New type `Characterizations`** — spans the characterization front portion of an
-  `Identifier`'s string. **Minimal for this FOOP**: only
-  `is_nully_characterizing_coordinate_name()` is implemented; per-`'` component extraction is
-  deferred to a future FOOP.
+- **`StatementFir` replaces `name: String` with an `Identifier`.** `StatementFir::name()`
+  delegates to `Identifier::name()`. Serialization carries the LHS; a plain name (no `'`)
+  round-trips as before.
+- **New type `Identifier`** — each statement owns one. Stores **either** byte-range spans into
+  the original source (preferred, when available) **or** three canonical strings
+  (fully-characterized name, name, characterization string). Accessors: `name()`,
+  `characterized_name()`, `is_nully_characterizing_coordinate_name()` (delegates).
+- **New type `Characterizations`** — the characterization front portion of an `Identifier`.
+  **Minimal for this FOOP**: only `is_nully_characterizing_coordinate_name()`; per-`'`
+  component extraction is deferred.
 - **`BraneFir.characterizations`** migrates from `Vec<String>` to `Characterizations`
   (the sequencer's brane-characterization rendering in `foolish-core/src/sequencer.rs`
   continues to emit the trailing-`'` form).
-- **New equality primitive `default_equal(&FirRef, &FirRef) -> bool`** — the meaning of the
-  default `=` (§2), the single home for the NK/integer/creation-identity rules.
-- **NYES.** No new NYES states. `CreationFir` is terminal `Independent` from birth. The
-  null-constant refusal produces `NK` on the offending statement body via the ordinary NK
-  path (no new state). A new `*_nyes_transitions` unit test (`creation_nyes_transitions`) is
-  REQUIRED (a single-state progression: `Independent` from the start), per AGENTS.md.
+- **New equality primitive `default_equal(&FirRef, &FirRef) -> Equality`** where
+  `enum Equality { Equal, NotEqual, Unknowable }` (§2). Only two integers or two creations are
+  comparable; **everything else is `Unknowable`**. Single home for the equality rules.
+- **NK for a redefined constant is the ordinary `NkFir`** carrying reason `"'<name> redefined"`
+  — no new FIR kind or NYES state. `get_value()` on the offending statement returns it.
+- **NYES.** No new NYES states. `CreationFir` is terminal `Independent` from birth. A new
+  `*_nyes_transitions` unit test (`creation_nyes_transitions`) is REQUIRED (single-state
+  `Independent`), per AGENTS.md.
 
 ## UBC Step Impact
 
 - **`CreationFir::fir_op_step`**: trivial — already `Independent`; no transitions.
 - **Equality refactor**: extract the inline value comparison currently living in
   `SearchPredicate::Value` / `NameValue` into `default_equal` (§2), then have those predicates
-  *call* it. Before: the matcher compared `as_i64()` inline and `Reject`ed everything else.
-  After: the matcher approves iff `default_equal` returns true, and `default_equal` owns the
-  NK/integer/creation-identity rules.
+  *call* it and map `Equal→Approve`, `NotEqual→Reject`, `Unknowable→NkStop`. Before: the
+  matcher compared `as_i64()` inline and `Reject`ed everything else; after, it is a greedy
+  known-to-be-equal matcher delegating all rules to `default_equal`.
 - **Name-search matcher** (`SearchFir::matches_pattern` and the `Name` predicate): the matcher
-  chooses the projection — when the pattern contains `'`, match against the candidate's
-  `Identifier::characterized_name()`; otherwise against `Identifier::name()` (§3). Patterns
-  without `'` are unchanged.
+  chooses the projection — pattern containing `'` → `Identifier::characterized_name()`, else
+  `Identifier::name()` (§3). **Compiler must reconstruct the `'`-bearing pattern**: today
+  `Astn::Identifier` keeps `characterizations` and `id` separate and the pattern is built from
+  `id` only (`compiler.rs:119`), so a `'True` reference would lose its `'`; the compiler must
+  fold characterizations back into the search pattern (see Gotcha #3).
 - **`BraneFir` step (PREMBRYONIC/EMBRYONIC)**: add the ancestral null-characterized-name
-  check (§4) — for each null-characterized statement, query ancestors; refuse→NK on unequal
-  redefinition; register ownership; answer descendant queries.
-- **`ConcatenationFir` step (Braning merge)**: replace the blind statement-clone loop with a
-  collision-aware merge that applies the null-constant rule against already-merged statements
-  (§4), NK-ing conflicting later duplicates.
-- **Evaluator setup** (`foolish-ubca/src/evaluator.rs::evaluate`): compile the embedded
-  `system.foo` once, and wire it as the AB parent of each compiled program root brane before
-  `step_to_settled`. (Today each root brane self-roots via `new_cyclic`; this changes the
-  parent wiring.)
+  check (§4) — for each null-characterized statement, query ancestors; on a non-`Equal`
+  redefinition set the statement body to `NK("'<name> redefined")`; register ownership; answer
+  descendant queries.
+- **`ConcatenationFir` step (Braning merge)**: replace the blind statement-clone loop
+  (`fir_kinds.rs:2162`) with a collision-aware merge applying the null-constant rule against
+  already-merged statements (§4), NK-ing conflicting later duplicates.
+- **Evaluator setup** (`foolish-ubca/src/evaluator.rs::evaluate`): compile the built-in
+  `system.foo` once and make it **the root brane** (its own parent) with the user program as a
+  child, **before** `step_to_settled`. Preserve the user program's line numbers (system.foo is
+  a separate brane with its own lines). This *replaces* the program's current self-root via
+  `new_cyclic` with a system-root-owns-program-child arrangement.
 
 ## Gotchas & Exceptions (read before implementing)
 
@@ -436,37 +485,45 @@ current code.
    `FirKind::Creation` in `constanic_clone_at` that constructs a new `CreationFir` — that would
    *break* identity.
 
-3. **Name matching is regex, and `'` flows through it.** `SearchFir::matches_pattern`
-   (`fir_kinds.rs:830`) compiles the pattern as a regex (`^pat$` unless it already contains
-   `^`/`$`). The apostrophe is regex-neutral, so feeding `characterized_name()` (e.g. `a'b'x`)
-   through the regex is fine — but any regex-special character appearing in a characterization
-   would be interpreted as regex. For this FOOP the prelude names (`True`/`False`) and test
-   names are regex-safe; note the general hazard and add a test with a plain characterization.
-   Also: the bare-identifier compile path wraps patterns as `^{id}$` (`compiler.rs:119`), so the
-   `'` must survive from parse into the pattern string for `'True` to match — confirm the
-   parser carries the apostrophe into the search pattern, not just into the `Identifier`.
+3. **The compiler must fold `'` back into the search pattern (verified: it currently does
+   not).** `Astn::Identifier` keeps `characterizations` and `id` **separate** (`parser.rs:183`),
+   and the compiler builds the search pattern from `id` only, wrapped `^{id}$`
+   (`compiler.rs:119`). So a `'True` reference parses to `Identifier{characterizations:[""],
+   id:"True"}` and the `'` is **lost** from the pattern — `?'True` would search for `True`, not
+   `'True`. This FOOP must reconstruct the characterized pattern (characterizations + id) at
+   compile time whenever the reference carries characterizations. This is a real Phase-1 task,
+   not a "confirm." Separately: matching is **regex** (`SearchFir::matches_pattern`,
+   `fir_kinds.rs:830`, wraps `^pat$`); `'` is regex-neutral, but a regex-special char in a
+   characterization would be interpreted as regex — prelude/test names are regex-safe; note the
+   general hazard and add a plain-characterization test.
 
 4. **The value-search matcher currently `unreachable!()`s on a pre-constanic body** (the
    `Value`/`NameValue` arms in `fir_kinds.rs`). `default_equal` operates on **settled** FIRs;
    keep the "body must be constanic before comparison" contract intact when refactoring — don't
    call `default_equal` on an un-settled candidate.
 
-5. **NK poisoning must not loop.** When a null-constant conflict turns a statement `NK`, later
-   references resolving to it inherit `NK` (good). Ensure the ancestral check itself does not
-   re-trigger on the now-NK statement in a way that re-alarms every step — the refusal is a
-   one-time settle to `NK`, then terminal.
+5. **NK poisoning is scoped and must not loop.** The `NK("'<name> redefined")` lives on the
+   offending **statement's body**, so only searches that resolve *to that statement* read the
+   NK; a sibling in another brane that resolves the name elsewhere (or not at all) is untouched
+   (§4). Two care points: (a) the check runs while settling in `PREMBRYONIC`/`EMBRYONIC` and
+   must set the NK **once**, then be terminal — don't re-alarm every step; (b) reading the value
+   is via `get_value()`, so the NK substitutes naturally with no separate "poison" flag to
+   propagate.
 
-6. **`system.foo` is itself subject to its own rules.** Because `system.foo` becomes an
-   ancestor, defining `'True` there means a user brane defining `'True` again must compare
-   equal or go `NK`. Confirm `system.foo`'s *own* internal consistency first (it must not
-   self-conflict) and that installing it as parent does not accidentally make the user's first
-   legitimate reference look like a redefinition.
+6. **`system.foo` is itself subject to its own rules.** Because `system.foo` is the root
+   ancestor, defining `'True` there means a user brane *re*-defining `'True` must compare `Equal`
+   (to the same creation) or go `NK`. Confirm `system.foo`'s own internal consistency (it must
+   not self-conflict), and that a user's plain *reference* to `True` (not a `'True=` redefinition)
+   never trips the rule — the rule fires only on defining a null-characterized coordinate name,
+   not on reading one.
 
-7. **Parent-wiring change touches a `new_cyclic` invariant.** Root branes self-root today via
-   `Rc::new_cyclic` (`evaluator.rs`). Installing `system.foo` as the AB parent means the root's
-   parent `Weak` must point at the system brane instead of itself. Verify `_ab_search`
-   terminates (the system brane's own parent should be a clean sentinel, not a cycle back into
-   the program).
+7. **`system.foo` IS the root and is its own parent — no re-parenting hazard.** system.foo is
+   compiled to the root brane and self-roots (same `new_cyclic` self-parent pattern used today,
+   one level up); the user program is its child. So `_ab_search` terminates at system.foo (its
+   parent is itself, the existing sentinel condition), with no cycle back into the program.
+   **Key invariant: preserve the user program's line numbers** — system.foo is a distinct brane
+   above the program, so the program keeps the line numbers it had as a standalone root
+   (diagnostics/snapshots/`step_until_line_number` still address user source correctly).
 
 ## Test Plan
 
@@ -483,42 +540,60 @@ approval tests pin observable behavior byte-for-byte; the comprehensive weaves i
   test; the positive case is easy. Recognition is collision-free because `*` is never a valid
   name at the brane-statement position.
 - Characterization stack survives to the AST for both LHS (`a'b'c'name`) and the null form
-  (`a'b'c''name`, bare `'name`), and the `'` reaches the *search pattern* for `?'True`.
+  (`a'b'c''name`, bare `'name`).
+
+**Compiler** (`foolish-ubca`):
+- A `'`-bearing *reference* (e.g. `?'True`) compiles to a search pattern that **includes** the
+  characterizations (`'True`, not `True`) — pins Gotcha #3, the fold-`'`-back-into-pattern fix.
+- Characterizations are threaded into the statement's `Identifier` (not discarded) — update the
+  existing compiler test that asserts they are discarded.
 
 **`Identifier` / `Characterizations`** (pure, no FVM):
-- Whitespace stripping: LHS `a' b'c'd'e''x` builds an `Identifier` whose `text` is
-  `"a'b'c'd'e''x"`, `name()` is `"x"`, `characterized_name()` is `"a'b'c'd'e''x"`.
-- `name()` and `characterized_name()` return **subspans** of the one owned `text` — assert
-  `characterized_name()` for a plain name (no `'`) equals `name()` and that both borrow `text`
-  (a `&str`-into-buffer / no-fresh-allocation check).
+- Whitespace stripping / canonicalization: LHS `a' b'c'd'e''x` builds an `Identifier` with
+  `name()` `"x"`, `characterized_name()` `"a'b'c'd'e''x"` (space removed), characterization
+  string `"a'b'c'd'e''"`.
+- For a plain name (no `'`): `characterized_name() == name()`.
+- Efficiency: if the span representation is used, assert the accessors return `&str` **into the
+  source buffer** (no fresh per-statement allocation). (If the three-canonical-string fallback
+  is used instead, this assertion is skipped — note which representation the impl chose.)
 - `is_nully_characterizing_coordinate_name()`: **true** for `a'b'c''name` and bare `'name`;
   **false** for plain `name`, for `a'b'c'name`, and — the key case — for interior-null
   `a''b'name` (proximity rule).
-- Plain name (no `'`) → `is_nully_characterizing_coordinate_name()` is false and
-  `characterized_name() == name()`.
 
 **`CreationFir` / NYES**:
 - `creation_nyes_transitions` — `Independent` at every step (single-state progression via
   `assert_progression`), per the AGENTS.md `*_nyes_transitions` requirement.
-- **Identity is preserved through constanic clone**: build a `CreationFir`, run it through
-  `ProtoBrane::constanic_clone_at`, assert `Rc::ptr_eq(original, clone)` (this pins Gotcha #2 —
-  the existing `fir_kinds.rs:180` branch). A regression here would silently break equality.
+- **`creation_constanic_clone_preserves_identity`** — build a `CreationFir`, run it through
+  `ProtoBrane::constanic_clone_at(&creation, &parent, 0, false)`, assert
+  `Rc::ptr_eq(&creation, &clone)` (pins Gotcha #2 — the `fir_kinds.rs:180` branch the whole
+  equality story rests on). Companion: two independently-built creations are **not** `ptr_eq`.
 
-**`default_equal`** (the equality truth table, in isolation):
-- same `IndepInt` value ⇒ true; different ⇒ false.
-- same creation `Rc` ⇒ true; two *distinct* `⬤` creations ⇒ false.
-- NK vs NK (even the same `Rc`) ⇒ **false** (explicit — this is the subtle one).
-- creation vs integer ⇒ false; two distinct branes ⇒ false.
-- Then: `SearchPredicate::Value`/`NameValue` **delegates** — same creation ⇒ `Approve`,
-  distinct ⇒ `Reject`, integer paths unchanged (guards against the refactor changing behavior).
+**`default_equal`** (three-valued truth table, in isolation):
+- same `IndepInt` value ⇒ `Equal`; different integers ⇒ `NotEqual`.
+- same creation `Rc` ⇒ `Equal`; two *distinct* `⬤` creations ⇒ `NotEqual`.
+- either operand `NK` (even the same `Rc`) ⇒ **`Unknowable`** (NKs are never equal).
+- creation vs integer ⇒ **`Unknowable`**; two branes ⇒ **`Unknowable`** (not `NotEqual`).
+- Then the matcher mapping: `SearchPredicate::Value`/`NameValue` maps `Equal→Approve`,
+  `NotEqual→Reject`, `Unknowable→NkStop` (guards the greedy known-to-be-equal semantics and the
+  refactor).
 
 **Null-constant rule** (build FIR via the parser + `.search()` per the unit-test infra):
-- Ancestor defines `'k=⬤`; descendant `'k=<the same creation via reference>` ⇒ permitted.
-- Ancestor `'k=1`; descendant `'k=2` ⇒ descendant body settles **NK**; a following reference to
-  `k` inherits NK.
+- Ancestor defines `'k=⬤`; descendant `'k=<the same creation via reference>` ⇒ permitted
+  (statement keeps its value).
+- Ancestor `'k=1`; descendant `'k=2` ⇒ descendant `get_value()` returns `NK("'k redefined")`;
+  a search that resolves to that descendant statement reads the NK.
+- **Poison scope**: a sibling brane that resolves `k` to a *different* (non-conflicting)
+  definition, or does not reference `k`, is **unaffected** (its value is not NK).
 - Descendant query returns true for a name an ancestor null-characterized, false otherwise.
 - **Non-null names are unaffected**: `k=1` then `k=2` (no leading `'`) is *not* refused —
-  regression guard that the rule only fires on null-characterized names.
+  regression guard that the rule only fires on null-characterized coordinate names.
+
+**`system.foo` install** (evaluator-level):
+- `system.foo` resolves `True`/`False` as an ancestor of a program that does not define them.
+- **Line-number preservation**: a one-line user program's statement still reports its original
+  source line (system.foo above it does not shift it) — assert via `as_stmt_line_number` /
+  `step_until_line_number`.
+- `_ab_search` terminates at the system root (its own parent) — no infinite walk.
 
 **Concatenation collision** (`ConcatenationFir`):
 - `{A={'a=1}, B = A A A}` → in `B`, first `'a` intact, later `'a`s **NK**.
@@ -625,14 +700,19 @@ Foolisher-written concatenations — a separate, general concern.)
 
 ## Open Questions
 
-- Whether the REPL and `step`/`run` CLI paths all install `system.foo` uniformly (the path is
-  decided: repo-root `system/system.foo`, embedded via `build.rs` → `OUT_DIR`; see §4).
-- Snapshot/sequencer surface for a creation: how `⬤` and a creation value render in
-  `hssnap` output (a stable, human-legible form is needed before approval). The input `{*}`
-  alias is decided (always renders back as `⬤`); the value form is not.
-- Whether `Characterizations` should store `original` as an owned `String` per statement, or
-  borrow from a shared parse buffer. This FOOP specifies owned-per-statement for simplicity;
-  revisit only if profiling shows the copies matter.
+- **Creation *value* render form in `hssnap`.** The input `{*}` alias is decided (always
+  renders back as `⬤`), and the FIR shape is decided — but the exact human-legible form a
+  *settled creation value* takes in snapshot output is not yet fixed. It must be stable before
+  any approval snapshot is signed. (Resolvable during Phase 2, when the sequencer arm is added.)
+- **Comprehensive sketch semantics — tabled.** The `same = ?=a` line's expected result (does an
+  unanchored backward value search land on `b` or on `a` itself?) is deferred; the reviewer
+  captures and blesses the actual settled output when `foop_33_comprehensive.foo` is generated.
+
+Resolved (were open in earlier drafts): `system.foo` install (implicit/built-in, IS the root,
+its own parent, line numbers preserved — §4); equality outcome type (three-valued `Equality`,
+non-int/non-creation ⇒ `Unknowable`/NK — §2); `Identifier` representation (spans-into-source
+preferred, three-canonical-strings fallback — §3); null-const mechanism (`get_value()` →
+`NK("'<name> redefined")`, scoped to searches that discover the definition — §4).
 
 ## References
 
@@ -649,8 +729,22 @@ Foolisher-written concatenations — a separate, general concern.)
 
 ## Last Updated
 
-**Date**: 2026-07-07
+**Date**: 2026-07-08
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
+**Changes (round 7, per Atlas — resolves all Open Questions toward freeze)**: (1) Equality is
+**three-valued** `Equality::{Equal, NotEqual, Unknowable}` — only two integers or two creations
+are comparable; everything else is `Unknowable`→NK (not a silent miss); the value-search matcher
+is a **greedy known-to-be-equal matcher** (Equal→Approve, NotEqual→Reject, Unknowable→NkStop).
+(2) `CreationFir` has **no id** — deferred until a creation must be *shipped*; identity is the
+rust object. (3) Null-const refusal is `get_value() → NK("'<name> redefined")` (no new state);
+poisoning is **scoped to searches that discover the definition** (siblings elsewhere unaffected).
+(4) `system.foo` is **implicit/built-in and IS the root brane** (its own parent, program is its
+child); **program line numbers preserved**; no re-parenting hazard. (5) `Identifier` stores
+**spans-into-source (preferred) or three canonical strings** (fully-characterized name, name,
+characterization string). (6) Gotcha #3 upgraded to a confirmed task — the compiler must fold
+`'` back into the search pattern (`?'True` currently loses the `'`). Emptied resolved Open
+Questions; only the creation *value* render form and the tabled comprehensive-sketch semantics
+remain.
 **Changes (round 6, per Atlas)**: `{*}` alias now recognized at the **parser**, not the lexer:
 `{`/`*`/`}` keep their ordinary tokens, and the parser emits `Astn::Creation` from the
 `LBrace Mul RBrace` sequence (same node as `⬤`); the compiler's single `Astn::Creation` arm

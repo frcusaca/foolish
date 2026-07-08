@@ -58,13 +58,15 @@ Phase-4 rule reach into `system.foo` specifically — it must work for any ances
 ## Phase 1 — The `Identifier` (LHS) becomes first-class (tests first)
 
 - [ ] Write unit tests for the new `Identifier` / `Characterizations` types (pure, no FVM):
-      whitespace stripping (`a' b'c'd'e''x` → `text` `"a'b'c'd'e''x"`, `name()` `"x"`,
-      `characterized_name()` `"a'b'c'd'e''x"`); `name()`/`characterized_name()` are subspans of
-      the one owned `text` (no fresh alloc; for a plain name `characterized_name()==name()`);
+      canonicalization (`a' b'c'd'e''x` → `name()` `"x"`, `characterized_name()`
+      `"a'b'c'd'e''x"` with the space removed, characterization string `"a'b'c'd'e''"`); plain
+      name → `characterized_name()==name()`; if the span representation is used, accessors return
+      `&str` into the source (no fresh per-statement alloc);
       `is_nully_characterizing_coordinate_name()` **true** for `a'b'c''name` and bare `'name`,
       **false** for plain `name`, `a'b'c'name`, and interior-null `a''b'name` (proximity rule).
-- [ ] Add the `Identifier` struct (owns `text: String`; `name: Range<usize>`; contains a
-      `Characterizations`) with `name()`, `characterized_name()`,
+- [ ] Add the `Identifier` struct — store **either** byte-range spans into the original source
+      (preferred, when available) **or** three canonical strings (fully-characterized name,
+      name, characterization string). Accessors `name()`, `characterized_name()`,
       `is_nully_characterizing_coordinate_name()`. Add `Characterizations` **minimal for this
       FOOP** — only `is_nully_characterizing_coordinate_name()`; per-`'` component extraction is
       deferred. Place both in the shared location.
@@ -73,10 +75,16 @@ Phase-4 rule reach into `system.foo` specifically — it must work for any ances
       trailing-`'` rendering (`foolish-core/src/sequencer.rs:514`).
 - [ ] Replace `StatementFir.name: String` with `identifier: Identifier`
       (`foolish-ubca/src/fir_kinds.rs:632`); `name()` delegates to `identifier.name()`; update
-      constructor/`statement()` helper and all `StatementFir` construction sites.
-- [ ] Build the `Identifier` in the compiler from `Astn::Assignment`'s name +
-      characterizations (whitespace-stripped) in `foolish-ubca/src/compiler.rs` (stop
-      discarding characterizations); update the compiler test that currently asserts discard.
+      constructor/`statement()` helper and all `StatementFir` construction sites. (Migration is
+      free — the ubca FVM does not read characterizations today; refactor away.)
+- [ ] Build the `Identifier` in the compiler from `Astn::Assignment`'s name + characterizations
+      (canonicalized) in `foolish-ubca/src/compiler.rs` (stop discarding characterizations);
+      update the compiler test that currently asserts discard.
+- [ ] **Fold `'` back into the search pattern** (Gotcha #3): a `'`-bearing *reference* (e.g.
+      `?'True`) currently compiles from `id` only (`compiler.rs:119`) and **loses** the `'`
+      (parser keeps `characterizations` and `id` separate, `parser.rs:183`). Reconstruct the
+      characterized pattern (characterizations + id) when the reference carries characterizations.
+      Compiler test: `?'True` → pattern `'True`, not `True`.
 - [ ] Extend name-search matching so the **matcher chooses the projection**: a pattern
       containing `'` matches on the candidate's `Identifier::characterized_name()`; a pattern
       without `'` on `Identifier::name()` (`SearchFir::matches_pattern` / `SearchPredicate::Name`).
@@ -116,30 +124,37 @@ Phase-4 rule reach into `system.foo` specifically — it must work for any ances
       decide the stable `hssnap` value form (resolves an Open Question).
 - [ ] `creation_nyes_transitions` unit test (single-state `Independent` progression).
 
-## Phase 3 — Default equality primitive, used by search
+## Phase 3 — Default equality primitive (three-valued), used by search
 
-- [ ] Unit tests for `default_equal`: same integer ⇒ true; same creation ⇒ true; distinct
-      creations ⇒ false; NK vs NK ⇒ false; distinct branes ⇒ false. And the matcher delegates
-      (same creation ⇒ Approve; distinct ⇒ Reject; integer paths unchanged).
-- [ ] Add `default_equal(&FirRef, &FirRef) -> bool` (NK guard, integer, creation-identity).
+- [ ] Unit tests for `default_equal -> Equality`: same integer ⇒ `Equal`; different ⇒
+      `NotEqual`; same creation `Rc` ⇒ `Equal`; distinct creations ⇒ `NotEqual`; either NK
+      (even same `Rc`) ⇒ `Unknowable`; creation-vs-integer ⇒ `Unknowable`; two branes ⇒
+      `Unknowable`. And the matcher mapping: `Equal→Approve`, `NotEqual→Reject`,
+      `Unknowable→NkStop`.
+- [ ] Add `enum Equality { Equal, NotEqual, Unknowable }` and
+      `default_equal(&FirRef, &FirRef) -> Equality`. Only two integers or two creations are
+      comparable; **everything else is `Unknowable`** (not `NotEqual`).
 - [ ] Refactor `SearchPredicate::Value` and `NameValue`
-      (`foolish-ubca/src/fir_kinds.rs:1723`+) to *call* `default_equal` instead of comparing
-      `as_i64()` inline.
+      (`foolish-ubca/src/fir_kinds.rs:1723`+) into a **greedy known-to-be-equal matcher**: call
+      `default_equal` and map its three outcomes onto `MatchOutcome` (Approve/Reject/NkStop).
+      Keep the "body must be constanic before comparison" contract (Gotcha #4).
 
 ## Phase 4 — Null-characterized name constants
 
-- [ ] Unit tests: ancestral null-constant refusal (same name, unequal value ⇒ statement NK
-      via `default_equal`; equal value ⇒ permitted); descendant "is this a null-characterized
-      coordinate name?" query.
+- [ ] Unit tests: ancestral null-constant conflict — ancestor `'k=1`, descendant `'k=2` ⇒
+      descendant `get_value()` returns `NK("'k redefined")`; `Equal` redefinition (same
+      creation) ⇒ permitted; **poison scope** — a sibling brane resolving `k` elsewhere (or not
+      at all) is unaffected; descendant "is this a null-characterized coordinate name?" query.
 - [ ] `BraneFir` step (PREMBRYONIC/EMBRYONIC): for each statement with
-      `is_nully_characterizing_coordinate_name()`, ancestral check via the AB chain; refuse→NK on
-      unequal redefinition (by `default_equal`); ownership registration; answer descendant
-      queries.
+      `is_nully_characterizing_coordinate_name()`, walk the AB chain for a same-named ancestral
+      null-const; on a **non-`Equal`** value (by `default_equal`) set the statement body to
+      `NK("'<name> redefined")` **once** (terminal, no re-alarm); register ownership; answer
+      descendant queries. No new FIR kind/NYES state — reuse `NkFir`.
 - [ ] Concatenation collision handling: replace the blind clone loop in
       `ConcatenationFir` (`foolish-ubca/src/fir_kinds.rs:2162`) with a collision-aware merge
-      applying the null-constant rule against already-merged statements.
-- [ ] Unit test the concatenation case `{A={'a=1}, B = A A A}` (later `'a`'s NK, first
-      intact; equal-value duplicates permitted).
+      applying the same rule (same `NK("'<name> redefined")`) against already-merged statements.
+- [ ] Unit test the concatenation case `{A={'a=1}, B = A A A}` (later `'a`'s → `NK`, first
+      intact) and `{A={'a=⬤}, B=A A}` (same creation ⇒ both permitted — value-sensitive).
 
 ## Phase 5 — `system.foo` ancestral prelude
 
@@ -179,13 +194,17 @@ module).
       const SYSTEM_FOO_SRC: &str = include_str!(concat!(env!("OUT_DIR"), "/system.foo"));
       ```
 
-- [ ] Compile `SYSTEM_FOO_SRC` once to a brane and install it as the AB parent of each program
-      root brane in `foolish-ubca/src/evaluator.rs::evaluate` (and REPL/CLI `run`/`step`
-      paths). Note: today each root brane self-roots via `new_cyclic` — this changes the parent
-      wiring so `_ab_search` falls through to the system brane.
+- [ ] **Implicitly** compile `SYSTEM_FOO_SRC` once and make it **THE root brane** (its own
+      parent, self-rooting via `new_cyclic` — the same pattern used one level down today), with
+      the user program as its child, before `step_to_settled`, on every entry path
+      (`foolish-ubca/src/evaluator.rs::evaluate`, REPL, CLI `run`/`step`). `_ab_search`
+      terminates at system.foo (parent == self). Not opt-in.
+- [ ] **Preserve the user program's line numbers**: making system.foo the ancestor must not
+      shift program line numbering (system.foo is a distinct brane above, with its own lines).
+      Unit test via `as_stmt_line_number` / `step_until_line_number` on a one-line program.
 - [ ] Approval `.foo` tests: creation + identity; quote-bearing search; `True`/`False`
-      resolve ancestrally; `'True=3` ⇒ NK while `'True='True` permitted. Generate `.snap.new`;
-      **present to human** — never auto-accept.
+      resolve ancestrally; `'True=3` ⇒ `NK("'True redefined")` while `'True='True` permitted.
+      Generate `.snap.new`; **present to human** — never auto-accept.
 
 ## Phase 6 — Documentation
 
@@ -217,8 +236,15 @@ module).
 
 ## Last Updated
 
-**Date**: 2026-07-07
+**Date**: 2026-07-08
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
+**Changes (round 7)**: Phase 1 — `Identifier` stores spans-into-source or three canonical
+strings; added explicit fold-`'`-into-pattern compiler task+test (Gotcha #3). Phase 3 — equality
+is three-valued `Equality`; matcher is greedy known-to-be-equal (Equal/NotEqual/Unknowable →
+Approve/Reject/NkStop). Phase 4 — null-const refusal is `get_value()→NK("'<name> redefined")`
+(reuse `NkFir`, set once, terminal); poison-scope test (siblings unaffected). Phase 5 —
+system.foo is implicit/built-in and IS the root (its own parent, program is child); added
+line-number-preservation task+test.
 **Changes (round 6)**: Phase 2 — `{*}` now recognized at the parser (emit `Astn::Creation` from
 `LBrace Mul RBrace`); lexer adds only the `⬤` token. Collision-free (`*` isn't a valid name at
 brane-statement position). Added explicit parser test `parses_star_brane_as_creation` with the
