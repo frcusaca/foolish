@@ -301,6 +301,16 @@ pub trait Fir: std::fmt::Debug {
     fn is_brane_like(&self) -> bool {
         self.stmt_count().is_some()
     }
+
+    // ── UBCA debugging facilities ──
+
+    /// Peek at the front of the task queue without removing it.
+    ///
+    /// Used by `step_until` utilities to check which FIR is next in line
+    /// for stepping — equivalent to a debugger breakpoint on the job queue.
+    fn debug_front_task(&self) -> Option<FirRef> {
+        self.core().front_task()
+    }
 }
 
 /// Guard against runaway recursion on pathologically deep trees.

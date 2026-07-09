@@ -1,4 +1,4 @@
-Tue Jul  7 04:24:05 PM PDT 2026 cat concat_brane_test_basic.foo.snap.new---
+Thu Jul  9 03:19:03 PM PDT 2026 cat concat_brane_test_basic.foo.snap.new---
 source: foolish-ubca/src/ubca_snapshot_tester.rs
 assertion_line: 34
 ---
@@ -56,7 +56,7 @@ INPUT:
       a=1;
       b=2
   };
-@agents, that's wrong
+  (@agent, these results in the mixed_resolve should all be constant except for huh. Why are they econstanic?? Please repair)
   mixedˍresolve={WOCONSTANIC
       source=?(pattern='^b1$', UNANCHORED, ECONSTANIC);
       field1=?(pattern='^a$', ANCHORED, NK);
@@ -70,10 +70,10 @@ INPUT:
 COMMENTS:
 ```markdown
 concat_brane_test_basic
-generated: 2026-07-07T20:25:45.414703215Z
+generated: 2026-07-09T15:58:35.897487749Z
 ```
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: c6CYPJUeAgohIGU9M05jOTlPSproHXOvpTg7bInn37zp9E2qKq/KhJviU4ISp3+CrX/pCTk/yfXRiAwleXFcBQ==
 HFS signature: x1o+X4xIfBVarC+GttbioOzSX6ck/bZdJPSnSltKH18m4nqV06mTlYStFF8APs97e9Rw1Ybt/uPha0N6rARSCg==
-Comments signature: ttKLyeSqRDnPZ5u6k7ybYbkDGpuNLBoEF2axp7xS5KIFo+RJppyEC8O04JKHM5ExzrSSUL2pImR5eEUJKjEDBQ==
+Comments signature: RHDuTOr0SyEceC73N7mezB+X2VyR47KPOEGoB6bOH2TBZqYgKBoTcx0ifCuaMC8JOpyQCSvJbM118HfpU0G6CA==

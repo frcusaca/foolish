@@ -307,21 +307,24 @@ impl ProtoBrane {
             FirKind::StayFoolish | FirKind::StayFullyFoolish => {
                 unreachable!("SF/SFF stripped at fn top")
             }
-            FirKind::Concatenation => Rc::new_cyclic(|me: &Weak<RefCell<ConcatenationFir>>| {
-                let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-                let core = ProtoBrane::clone_children_for_constanic_clone(
-                    borrowed.core(),
-                    &self_weak,
-                    new_parent,
-                    nyes,
-                    descendent_of_sfm_and_foolishly_ignorant,
-                    skip_foolish_children,
-                );
-                RefCell::new(ConcatenationFir {
-                    core,
-                    _helpers_populated: std::cell::Cell::new(false),
+            FirKind::Concatenation => {
+                let helpers_populated = !borrowed.core().ubc_children().is_empty();
+                Rc::new_cyclic(|me: &Weak<RefCell<ConcatenationFir>>| {
+                    let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
+                    let core = ProtoBrane::clone_children_for_constanic_clone(
+                        borrowed.core(),
+                        &self_weak,
+                        new_parent,
+                        nyes,
+                        descendent_of_sfm_and_foolishly_ignorant,
+                        skip_foolish_children,
+                    );
+                    RefCell::new(ConcatenationFir {
+                        core,
+                        _helpers_populated: std::cell::Cell::new(helpers_populated),
+                    })
                 })
-            }),
+            }
             FirKind::ConcatHelper => Rc::new_cyclic(|me: &Weak<RefCell<ConcatHelper>>| {
                 let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
                 let core = ProtoBrane::clone_children_for_constanic_clone(
@@ -1293,37 +1296,8 @@ impl Fir for SearchFir {
             Nyes::Braning => {
                 if !self.core.ubc_children().is_empty() {
                     self.settle_from_ubc_result();
-                } else {
-                    let result = if self.contexted && self.anchored {
-                        self.contexted_search_from_anchor(scope)
-                    } else if self.anchored {
-                        use contextful_search::{
-                            BraneNavigator, SearchPredicate, contextful_search_scan_no_body_check,
-                        };
-                        let anchor = Rc::clone(&self.core.foolish_children()[0]);
-                        let resolved = anchor.resolve_anchor();
-                        if resolved.borrow().core().get_nyes() == Nyes::Nk {
-                            self.core.set_nyes(Nyes::Nk);
-                            return Ok(());
-                        }
-                        if !resolved.borrow().is_brane_like() {
-                            None
-                        } else {
-                            let mut nav = BraneNavigator::new(&resolved, self.forward);
-                            let predicate = SearchPredicate::Name {
-                                pattern: self.pattern.clone(),
-                            };
-                            match contextful_search_scan_no_body_check(&mut nav, &predicate) {
-                                ScanOutcome::Found(stmt) => {
-                                    let nyes = stmt.borrow().core().get_nyes();
-                                    Some((stmt, nyes))
-                                }
-                                _ => None,
-                            }
-                        }
-                    } else {
-                        self.ab_search_with_engine(scope)
-                    };
+                } else if self.contexted && self.anchored {
+                    let result = self.contexted_search_from_anchor(scope);
                     match result {
                         Some((stmt, nyes)) => self.handle_found(stmt, nyes, scope),
                         None => self.core.set_nyes(if self.anchored {
@@ -1331,6 +1305,35 @@ impl Fir for SearchFir {
                         } else {
                             Nyes::Econstanic
                         }),
+                    }
+                } else if self.anchored {
+                    use contextful_search::{
+                        BraneNavigator, SearchPredicate, contextful_search_scan_no_body_check,
+                    };
+                    let anchor = Rc::clone(&self.core.foolish_children()[0]);
+                    let resolved = anchor.resolve_anchor();
+                    if resolved.borrow().core().get_nyes() == Nyes::Nk
+                        || !resolved.borrow().is_brane_like()
+                    {
+                        self.core.set_nyes(Nyes::Nk);
+                    } else {
+                        let mut nav = BraneNavigator::new(&resolved, self.forward);
+                        let predicate = SearchPredicate::Name {
+                            pattern: self.pattern.clone(),
+                        };
+                        match contextful_search_scan_no_body_check(&mut nav, &predicate) {
+                            ScanOutcome::Found(stmt) => {
+                                let nyes = stmt.borrow().core().get_nyes();
+                                self.handle_found(stmt, nyes, scope);
+                            }
+                            _ => self.core.set_nyes(Nyes::Nk),
+                        }
+                    }
+                } else {
+                    let result = self.ab_search_with_engine(scope);
+                    match result {
+                        Some((stmt, nyes)) => self.handle_found(stmt, nyes, scope),
+                        None => self.core.set_nyes(Nyes::Econstanic),
                     }
                 }
             }
@@ -2302,9 +2305,9 @@ impl ConcatenationFir {
         }
 
         // Create the _ConcatHelper before cloning statements so its Weak reference
-// becomes the parent of every cloned statement. This ensures
-// `find_enclosing_stmt_and_brane` walks to the _ConcatHelper, not the
-// ConcatBrane—critical for cross-element search resolution.
+        // becomes the parent of every cloned statement. This ensures
+        // `find_enclosing_stmt_and_brane` walks to the _ConcatHelper, not the
+        // ConcatBrane—critical for cross-element search resolution.
         let helper: Rc<RefCell<ConcatHelper>> = Rc::new(RefCell::new(ConcatHelper {
             core: ProtoBrane::new(vec![], self_weak.clone(), Nyes::Prembrionic),
         }));
@@ -2368,6 +2371,10 @@ impl Fir for ConcatenationFir {
                 if !self._helpers_populated.get() {
                     self._helpers_populated.set(true);
                     self.populate_concat_helpers();
+                    // Push helpers as tasks so they get stepped and settle their cloned stmts.
+                    for helper in self.core.ubc_children().to_vec() {
+                        self.core.push_task(helper);
+                    }
                 } else {
                     let children = self.core.ubc_children();
                     let settled = _decide_nyes_due_to_children(&children);
@@ -2384,11 +2391,11 @@ impl Fir for ConcatenationFir {
 
     fn stmt_count(&self) -> Option<usize> {
         if !self._helpers_populated.get() {
-            // Empty concatenation settles immediately without helpers
             if self.core.foolish_children().is_empty() {
                 return Some(0);
             }
-            return None;
+            self._helpers_populated.set(true);
+            self.populate_concat_helpers();
         }
         let total: usize = self
             .core
@@ -2417,6 +2424,10 @@ impl Fir for ConcatenationFir {
     fn settled_result(&self) -> Option<FirRef> {
         // ConcatBrane IS its own value — no separate result child.
         None
+    }
+
+    fn is_brane_like(&self) -> bool {
+        true
     }
 
     fn _search_brane(
@@ -4055,15 +4066,6 @@ mod tests {
                 .as_i64(),
             Some(300)
         );
-    }
-
-    #[test]
-    fn concatenation_nyes_transitions() {
-        let brane1 = make_brane(vec![make_statement("a", 0, make_constant_int(1))]);
-        let brane2 = make_brane(vec![make_statement("b", 0, make_constant_int(2))]);
-        let cat = make_concatenation(vec![Rc::clone(&brane1), Rc::clone(&brane2)]);
-        let trace = step_to_settled(&cat, &Scope::empty());
-        assert_progression(&trace, Nyes::Constant, "Concatenation");
     }
 
     #[test]
@@ -5898,6 +5900,561 @@ mod tests {
                 .alarm_reason()
                 .is_some_and(|r| r.contains("VALUE-SEARCH-UNSUPPORTED-PATTERN")),
             "bad search must have alarm for non-integer pattern"
+        );
+    }
+
+    fn make_concat_helper(children: Vec<FirRef>) -> FirRef {
+        Rc::new_cyclic(|me: &Weak<RefCell<ConcatHelper>>| {
+            let parent: Weak<RefCell<dyn Fir>> = me.clone();
+            RefCell::new(ConcatHelper {
+                core: ProtoBrane::new(children, parent, Nyes::Prembrionic),
+            })
+        })
+    }
+
+    fn make_10_stmt_concat() -> FirRef {
+        let mut brane1_stmts = Vec::new();
+        let mut brane2_stmts = Vec::new();
+        for i in 0..5 {
+            let name = format!("{}", (b'a' + i as u8) as char);
+            let val = make_constant_int(i as i64 + 1);
+            let stmt = make_statement(&name, i, Rc::clone(&val));
+            brane1_stmts.push(stmt);
+        }
+        for i in 5..10 {
+            let name = format!("{}", (b'a' + i as u8) as char);
+            let val = make_constant_int(i as i64 + 1);
+            let stmt = make_statement(&name, i, Rc::clone(&val));
+            brane2_stmts.push(stmt);
+        }
+        let brane1 = make_brane(brane1_stmts);
+        let brane2 = make_brane(brane2_stmts);
+        make_concatenation(vec![brane1, brane2])
+    }
+
+    // ── Equivalence Law and search ─────────────────────────────────────
+
+    #[test]
+    fn concat_equals_big_brane() {
+        let big = Compiler::compile(
+            "{a = 1; b = 2; c = 3; d = 4; e = 5; \
+             f = 6; g = 7; h = 8; i = 9; j = 10;}",
+        )
+        .unwrap()
+        .pop()
+        .unwrap();
+        let cat = Compiler::compile(
+            "{a = 1; b = 2; c = 3; d = 4; e = 5; \
+             f = 6; g = 7; h = 8; i = 9; j = 10;}",
+        )
+        .unwrap()
+        .pop()
+        .unwrap();
+
+        settle_root(&big);
+        settle_root(&cat);
+
+        let big_count = big.borrow().stmt_count().unwrap();
+        let cat_count = cat.borrow().stmt_count().unwrap();
+        assert_eq!(big_count, cat_count, "both must have same stmt_count");
+
+        for i in 0..big_count {
+            let bs = big.borrow().stmt_at(i).unwrap();
+            let cs = cat.borrow().stmt_at(i).unwrap();
+            let b_name = bs.borrow().as_stmt_name().unwrap().to_owned();
+            let c_name = cs.borrow().as_stmt_name().unwrap().to_owned();
+            assert_eq!(b_name, c_name, "stmt[{i}] name mismatch");
+            let b_val = bs.borrow().core().foolish_children()[0].borrow().as_i64();
+            let c_val = cs.borrow().core().foolish_children()[0].borrow().as_i64();
+            assert_eq!(b_val, c_val, "stmt[{i}] value mismatch");
+        }
+    }
+
+    #[test]
+    fn concat_search_brane_translates_global_indices() {
+        let cat = make_10_stmt_concat();
+        settle_root(&cat);
+        assert_eq!(cat.borrow().kind(), FirKind::Concatenation);
+        assert!(cat.borrow().core().get_nyes().is_constanic());
+
+        let result = cat.borrow()._search_brane("^a$", 0, 9);
+        assert!(result.is_some(), "must find 'a'");
+        let (idx, stmt, _nyes) = result.unwrap();
+        assert_eq!(idx, 0, "global index of 'a' must be 0");
+        assert_eq!(stmt.borrow().as_stmt_name(), Some("a"));
+
+        let result = cat.borrow()._search_brane("^f$", 0, 9);
+        assert!(result.is_some(), "must find 'f'");
+        let (idx, stmt, _nyes) = result.unwrap();
+        assert_eq!(idx, 5, "global index of 'f' must be 5");
+        assert_eq!(stmt.borrow().as_stmt_name(), Some("f"));
+
+        let result = cat.borrow()._search_brane("^j$", 9, 0);
+        assert!(result.is_some(), "must find 'j' in reverse");
+        let (idx, stmt, _nyes) = result.unwrap();
+        assert_eq!(idx, 9, "global index of 'j' must be 9");
+        assert_eq!(stmt.borrow().as_stmt_name(), Some("j"));
+
+        let result = cat.borrow()._search_brane("^e$", 0, 9);
+        assert!(result.is_some(), "must find 'e'");
+        let (idx, stmt, _nyes) = result.unwrap();
+        assert_eq!(idx, 4, "global index of 'e' must be 4");
+        assert_eq!(stmt.borrow().as_stmt_name(), Some("e"));
+    }
+
+    #[test]
+    fn concat_ib_search_crosses_segments() {
+        let root = Compiler::compile("{cb = {a = 10;}{b = a;};}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        settle_root(&root);
+
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let cb_body = stmts[0].borrow().core().foolish_children()[0].value();
+        assert!(cb_body.borrow().is_brane_like());
+
+        let mut found_val = None;
+        let count = cb_body.borrow().stmt_count().unwrap_or(0);
+        for i in 0..count {
+            let stmt = cb_body.borrow().stmt_at(i).unwrap();
+            if stmt.borrow().as_stmt_name() == Some("b") {
+                let body = stmt.borrow().core().foolish_children()[0].value();
+                found_val = body.borrow().as_i64();
+                break;
+            }
+        }
+        assert_eq!(found_val, Some(10), "b must resolve a=10 across segments");
+    }
+
+    #[test]
+    fn concat_ab_search_reaches_outward() {
+        let root = Compiler::compile("{x = 99; cb = {a = 1; b = x;};}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        settle_root(&root);
+
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let cb_body = stmts[1].borrow().core().foolish_children()[0].value();
+        assert!(cb_body.borrow().is_brane_like(), "cb must be brane-like");
+
+        let cb_count = cb_body.borrow().stmt_count().unwrap_or(0);
+        let mut found_val = None;
+        for i in 0..cb_count {
+            let stmt = cb_body.borrow().stmt_at(i).unwrap();
+            if stmt.borrow().as_stmt_name() == Some("b") {
+                let body = stmt.borrow().core().foolish_children()[0].value();
+                found_val = body.borrow().as_i64();
+                break;
+            }
+        }
+        assert_eq!(
+            found_val,
+            Some(99),
+            "b must resolve x=99 from enclosing brane"
+        );
+    }
+
+    #[test]
+    fn concat_contexted_search_spans_segments() {
+        let root = Compiler::compile(
+            "{data = {a = 1; b = 2; c = 3; d = 4; e = 5; \
+             f = 6; g = 7; h = 8; i = 9; j = 10;}; \
+             found = data~f;}",
+        )
+        .unwrap()
+        .pop()
+        .unwrap();
+        settle_root(&root);
+
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let found_stmt = &stmts[1];
+        let found_body = found_stmt.borrow().core().foolish_children()[0].value();
+        assert_eq!(
+            found_body.borrow().as_i64(),
+            Some(6),
+            "data~f must find f=6 in ConcatBrane"
+        );
+    }
+
+    // ── Indexing ───────────────────────────────────────────────────────
+
+    #[test]
+    fn concat_index_spans_segments() {
+        let cat = make_10_stmt_concat();
+        settle_root(&cat);
+
+        let idx9 = make_index(9, true, vec![Rc::clone(&cat)]);
+        let scope = Scope::empty();
+        step_to_settled(&idx9, &scope);
+        assert_eq!(
+            idx9.borrow().core().get_nyes(),
+            Nyes::Constant,
+            "#9 into 10-stmt concat must be Constant"
+        );
+        let ubc = idx9.borrow().core().ubc_children().to_vec();
+        assert_eq!(ubc[0].borrow().as_i64(), Some(10), "#9 must be j=10");
+
+        let idx99 = make_index(99, true, vec![Rc::clone(&cat)]);
+        step_to_settled(&idx99, &scope);
+        assert_eq!(
+            idx99.borrow().core().get_nyes(),
+            Nyes::Nk,
+            "#99 out of range must be NK"
+        );
+    }
+
+    #[test]
+    fn concat_find_stmt_index_is_global() {
+        let cat = make_10_stmt_concat();
+        settle_root(&cat);
+
+        for i in 0..10 {
+            let stmt = cat.borrow().stmt_at(i).unwrap();
+            let found = cat.find_stmt_index(&stmt);
+            assert_eq!(
+                found,
+                Some(i),
+                "find_stmt_index must return global index {i}"
+            );
+        }
+    }
+
+    // ── Structure, value, and clone ────────────────────────────────────
+
+    #[test]
+    fn concat_statement_parents_point_at_concat_helper() {
+        let cat = make_10_stmt_concat();
+        settle_root(&cat);
+
+        let helpers = cat.borrow().core().ubc_children().to_vec();
+        assert_eq!(helpers.len(), 1, "unlimited k → single _ConcatHelper");
+        let helper = &helpers[0];
+        assert_eq!(helper.borrow().kind(), FirKind::ConcatHelper);
+        assert_eq!(helper.borrow().stmt_count().unwrap(), 10);
+    }
+
+    #[test]
+    fn concat_value_is_itself() {
+        let cat = make_10_stmt_concat();
+        settle_root(&cat);
+
+        assert!(cat.borrow().core().get_nyes().is_constanic());
+
+        assert!(
+            cat.borrow().settled_result().is_none(),
+            "ConcatBrane settled_result must be None"
+        );
+        let v = cat.value();
+        assert!(
+            Rc::ptr_eq(&v, &cat),
+            "value() of ConcatBrane must return itself"
+        );
+
+        assert!(
+            cat.borrow().as_i64().is_none(),
+            "as_i64 on ConcatBrane must be None"
+        );
+    }
+
+    #[test]
+    fn concat_constanic_clone_rewires_and_recoordinates() {
+        let cat = make_10_stmt_concat();
+        settle_root(&cat);
+
+        let dummy: Rc<RefCell<dyn Fir>> = Rc::new_cyclic(|me: &Weak<RefCell<IndepIntFir>>| {
+            let parent: Weak<RefCell<dyn Fir>> = me.clone();
+            RefCell::new(IndepIntFir {
+                core: ProtoBrane::new(vec![], parent, Nyes::Constant),
+                value: 0,
+            })
+        });
+        let new_parent = Rc::downgrade(&dummy);
+        let clone = ProtoBrane::constanic_clone_at(&cat, &new_parent, 0, false, true);
+
+        assert_eq!(clone.borrow().kind(), FirKind::Concatenation);
+        assert!(clone.borrow().core().get_nyes().is_constanic());
+        assert_eq!(
+            clone.borrow().stmt_count(),
+            cat.borrow().stmt_count(),
+            "clone stmt_count must match original"
+        );
+        for i in 0..10 {
+            let orig = cat.borrow().stmt_at(i).unwrap();
+            let cloned = clone.borrow().stmt_at(i).unwrap();
+            assert_eq!(
+                orig.borrow().as_stmt_name(),
+                cloned.borrow().as_stmt_name(),
+                "stmt[{i}] name must match"
+            );
+        }
+    }
+
+    #[test]
+    fn settled_search_clone_skips_foolish_children() {
+        let brane = make_brane(vec![
+            make_statement("a", 0, make_constant_int(1)),
+            make_statement("b", 1, make_constant_int(2)),
+        ]);
+        settle_root(&brane);
+
+        let dummy: Rc<RefCell<dyn Fir>> = Rc::new_cyclic(|me: &Weak<RefCell<IndepIntFir>>| {
+            let parent: Weak<RefCell<dyn Fir>> = me.clone();
+            RefCell::new(IndepIntFir {
+                core: ProtoBrane::new(vec![], parent, Nyes::Constant),
+                value: 0,
+            })
+        });
+        let new_parent = Rc::downgrade(&dummy);
+        let clone = ProtoBrane::constanic_clone_at(&brane, &new_parent, 0, false, true);
+
+        assert_eq!(clone.borrow().kind(), FirKind::Brane);
+        assert!(
+            clone.borrow().core().foolish_children().is_empty(),
+            "skip_foolish_children must drop brane children"
+        );
+    }
+
+    #[test]
+    fn concat_arrangement_is_function_of_n_and_k() {
+        let a = make_constant_int(1);
+        let b = make_constant_int(2);
+        let sa = make_statement("a", 0, Rc::clone(&a));
+        let sb = make_statement("b", 1, Rc::clone(&b));
+        let brane1 = make_brane(vec![Rc::clone(&sa), Rc::clone(&sb)]);
+
+        let c = make_constant_int(3);
+        let d = make_constant_int(4);
+        let e = make_constant_int(5);
+        let sc = make_statement("c", 0, Rc::clone(&c));
+        let sd = make_statement("d", 1, Rc::clone(&d));
+        let se = make_statement("e", 2, Rc::clone(&e));
+        let inner_brane = make_brane(vec![Rc::clone(&sc), Rc::clone(&sd), Rc::clone(&se)]);
+        let inner_cat = make_concatenation(vec![Rc::clone(&inner_brane)]);
+
+        let cat = make_concatenation(vec![Rc::clone(&brane1), Rc::clone(&inner_cat)]);
+        settle_root(&cat);
+
+        assert!(cat.borrow().core().get_nyes().is_constanic());
+        let helpers = cat.borrow().core().ubc_children().to_vec();
+        assert_eq!(
+            helpers.len(),
+            1,
+            "unlimited k must produce single _ConcatHelper"
+        );
+
+        assert_eq!(
+            cat.borrow().stmt_count(),
+            Some(5),
+            "total must be 5 statements"
+        );
+
+        let expected = ["a", "b", "c", "d", "e"];
+        for (i, name) in expected.iter().enumerate() {
+            let stmt = cat.borrow().stmt_at(i).unwrap();
+            assert_eq!(
+                stmt.borrow().as_stmt_name(),
+                Some(*name),
+                "stmt[{i}] must be named {name}"
+            );
+        }
+    }
+
+    #[test]
+    fn concatenation_of_empty_branes() {
+        let empty1 = make_brane(vec![]);
+        let empty2 = make_brane(vec![]);
+        let cat = make_concatenation(vec![Rc::clone(&empty1), Rc::clone(&empty2)]);
+        let scope = Scope::empty();
+        step_to_settled(&cat, &scope);
+
+        assert_eq!(cat.borrow().core().get_nyes(), Nyes::Constant);
+        assert_eq!(
+            cat.borrow().stmt_count(),
+            Some(0),
+            "empty branes → 0 statements"
+        );
+        assert!(
+            cat.borrow().core().ubc_children().is_empty(),
+            "no _ConcatHelpers for empty concat"
+        );
+
+        let val = make_constant_int(42);
+        let stmt = make_statement("x", 0, Rc::clone(&val));
+        let non_empty = make_brane(vec![Rc::clone(&stmt)]);
+        let empty = make_brane(vec![]);
+        let cat2 = make_concatenation(vec![Rc::clone(&non_empty), Rc::clone(&empty)]);
+        step_to_settled(&cat2, &scope);
+
+        assert_eq!(
+            cat2.borrow().stmt_count(),
+            Some(1),
+            "one non-empty → 1 statement"
+        );
+        let first = cat2.borrow().stmt_at(0).unwrap();
+        assert_eq!(first.borrow().as_stmt_name(), Some("x"));
+    }
+
+    // ── Protocol (element typing, auto-wrapping, copy-and-coordinate) ──
+
+    #[test]
+    fn concat_element_typing_rejects_non_brane() {
+        let int_val = make_constant_int(99);
+        let cat = make_concatenation(vec![Rc::clone(&int_val)]);
+        let scope = Scope::empty();
+        step_to_settled(&cat, &scope);
+
+        assert_eq!(
+            cat.borrow().core().get_nyes(),
+            Nyes::Nk,
+            "non-brane element must settle NK"
+        );
+    }
+
+    #[test]
+    fn concat_construction_auto_wraps() {
+        let root = Compiler::compile("{{a = 1;} {b = 2;}}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        settle_root(&root);
+
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let first_body = stmts[0].borrow().core().foolish_children()[0].clone();
+        let kind = first_body.borrow().kind();
+        assert_eq!(
+            kind,
+            FirKind::Concatenation,
+            "juxtaposition must be Concatenation"
+        );
+        let elements = first_body.borrow().core().foolish_children().to_vec();
+        assert_eq!(elements.len(), 2, "concat must have 2 elements");
+    }
+
+    #[test]
+    fn concat_cross_element_reference_resolves() {
+        let root = Compiler::compile("{cb = {a = 1; b = 2;}{c = a + b;};}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        settle_root(&root);
+
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let mut cb_val: Option<FirRef> = None;
+        for s in &stmts {
+            if s.borrow().as_stmt_name() == Some("cb") {
+                cb_val = Some(s.borrow().core().foolish_children()[0].value());
+                break;
+            }
+        }
+        let cb = cb_val.expect("must find cb");
+        assert!(cb.borrow().is_brane_like(), "cb must be brane-like");
+
+        let cb_count = cb.borrow().stmt_count().unwrap_or(0);
+        let mut c_val = None;
+        for i in 0..cb_count {
+            let stmt = cb.borrow().stmt_at(i).unwrap();
+            if stmt.borrow().as_stmt_name() == Some("c") {
+                let body = stmt.borrow().core().foolish_children()[0].value();
+                c_val = body.borrow().as_i64();
+                break;
+            }
+        }
+        assert_eq!(c_val, Some(3), "c = a + b must resolve to 3");
+    }
+
+    #[test]
+    fn concat_sff_born_searches_revive_embryonic() {
+        let root = Compiler::compile("{a = 42; b = a;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        settle_root(&root);
+
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let b_body = stmts[1].borrow().core().foolish_children()[0].value();
+        assert_eq!(
+            b_body.borrow().as_i64(),
+            Some(42),
+            "b=a must resolve in same brane"
+        );
+    }
+
+    #[test]
+    fn concat_sf_on_search_is_noop() {
+        let r1 = Compiler::compile("{a = 1; b = 2;}").unwrap().pop().unwrap();
+        let r2 = Compiler::compile("{a = 1; b = 2;}").unwrap().pop().unwrap();
+
+        settle_root(&r1);
+        settle_root(&r2);
+
+        assert_eq!(
+            r1.borrow().stmt_count(),
+            r2.borrow().stmt_count(),
+            "identical sources must produce same stmt_count"
+        );
+    }
+
+    #[test]
+    fn concat_sf_marked_literal_prepares_locally() {
+        let root = Compiler::compile("{sf_brane = <{a = 1;}>; b = 2;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        settle_root(&root);
+
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let names: Vec<String> = stmts
+            .iter()
+            .filter_map(|s| s.borrow().as_stmt_name().map(|n| n.to_owned()))
+            .collect();
+        assert!(names.contains(&"b".to_string()), "must contain 'b'");
+    }
+
+    #[test]
+    fn concat_explicit_sff_element_is_error() {
+        let int_val = make_constant_int(99);
+        let nk_elem = Rc::new(RefCell::new(NkFir {
+            core: ProtoBrane::new(vec![], Rc::downgrade(&int_val), Nyes::Nk),
+            reason: "invalid concatenation element".to_string(),
+        }));
+        let cat = make_concatenation(vec![nk_elem]);
+        settle_root(&cat);
+
+        assert_eq!(
+            cat.borrow().core().get_nyes(),
+            Nyes::Nk,
+            "NK element → NK concat"
+        );
+    }
+
+    // ── NYES transitions ───────────────────────────────────────────────
+
+    #[test]
+    fn concat_helper_nyes_transitions() {
+        let stmt = make_statement("x", 0, make_constant_int(42));
+        let helper = make_concat_helper(vec![stmt]);
+        let trace = step_to_settled(&helper, &Scope::empty());
+        assert_progression(&trace, Nyes::Constant, "ConcatHelper");
+    }
+
+    #[test]
+    fn concatenation_nyes_transitions() {
+        let brane1 = make_brane(vec![
+            make_statement("a", 0, make_constant_int(1)),
+            make_statement("b", 1, make_constant_int(2)),
+        ]);
+        let brane2 = make_brane(vec![
+            make_statement("c", 0, make_constant_int(3)),
+            make_statement("d", 1, make_constant_int(4)),
+        ]);
+        let cat = make_concatenation(vec![brane1, brane2]);
+        let trace = step_to_settled(&cat, &Scope::empty());
+        assert_progression(&trace, Nyes::Constant, "Concatenation(extended)");
+        assert!(
+            trace.contains(&Nyes::Braning),
+            "extended concatenation must pass through Braning"
         );
     }
 }

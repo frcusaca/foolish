@@ -8,6 +8,93 @@ use foolish_core::fir::{
 use crate::compiler::Compiler;
 use crate::fir_trait::{FirKind, FirRef, FirRefExt, StepReport};
 
+// ── UBCA debugging facilities ──
+
+/// Step the FVM until a condition on the front task is met.
+///
+/// This is the UBCA equivalent of a debugger breakpoint: it lets you stop
+/// execution precisely when a certain statement reaches the job queue front,
+/// then inspect the NYES state of any FIR in the graph.
+///
+/// Returns the number of steps taken, or an error if the FVM settled before
+/// the condition was met, or the step limit was exceeded.
+///
+/// # Example
+///
+/// ```ignore
+/// // Step until a statement named "extended" reaches the job queue front:
+/// let steps = step_until(&root, &scope, |front| {
+///     front.as_ref().map(|f| f.borrow().as_stmt_name() == Some("extended")).unwrap_or(false)
+/// })?;
+/// eprintln!("Stopped after {steps} steps, front task: {front:?}");
+/// ```
+pub fn step_until<F>(
+    root: &FirRef,
+    scope: &crate::fir_trait::Scope,
+    mut matcher: F,
+) -> Result<usize, crate::fir_trait::UbcError>
+where
+    F: FnMut(Option<&FirRef>) -> bool,
+{
+    for step in 0..MAX_STEPS {
+        // Check if the front task matches before stepping.
+        let front = root.borrow().debug_front_task();
+        if let Some(ref front_ref) = front {
+            if matcher(Some(front_ref)) {
+                return Ok(step);
+            }
+        } else if matcher(None) {
+            return Ok(step);
+        }
+
+        // Check if already settled.
+        if root.borrow().core().get_nyes().is_constanic() {
+            return Err(crate::fir_trait::UbcError::Eval(format!(
+                "FVM settled (nyes={:?}) before condition was met at step {step}",
+                root.borrow().core().get_nyes()
+            )));
+        }
+
+        // Step once.
+        let _ = root.step(scope)?;
+    }
+    Err(crate::fir_trait::UbcError::Eval(format!(
+        "Step limit ({MAX_STEPS}) reached before condition was met"
+    )))
+}
+
+/// Step until a statement at the given source line number reaches the job queue front.
+///
+/// Convenience wrapper around `step_until` for the common case of breakpointing
+/// on a specific source line.
+pub fn step_until_line_number(
+    root: &FirRef,
+    scope: &crate::fir_trait::Scope,
+    line: usize,
+) -> Result<usize, crate::fir_trait::UbcError> {
+    step_until(root, scope, |front| {
+        front
+            .map(|f| f.borrow().as_stmt_line_number() == Some(line))
+            .unwrap_or(false)
+    })
+}
+
+/// Step until a statement with the given name reaches the job queue front.
+///
+/// Convenience wrapper around `step_until` for the common case of breakpointing
+/// on a named statement.
+pub fn step_until_statement_name(
+    root: &FirRef,
+    scope: &crate::fir_trait::Scope,
+    name: &str,
+) -> Result<usize, crate::fir_trait::UbcError> {
+    step_until(root, scope, |front| {
+        front
+            .map(|f| f.borrow().as_stmt_name() == Some(name))
+            .unwrap_or(false)
+    })
+}
+
 const MAX_STEPS: usize = 10_000;
 
 /// The display name for a statement (FOOP-62 #19): an anonymous statement is named `???`
@@ -602,5 +689,321 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                 .build()
         }
         FirKind::Unknown | FirKind::FoolRef => NkFirBuilder::new("unknown fir kind").build(),
+    }
+}
+
+#[cfg(test)]
+mod step_until_tests {
+    use super::*;
+    use crate::fir_trait::Scope;
+    use std::rc::Rc;
+
+    #[test]
+    fn step_until_statement_name_finds_second_statement() {
+        let firs = Compiler::compile("{a = 1; b = 2;}").unwrap();
+        let root = firs[0].clone();
+        let scope = Scope::empty();
+
+        let steps = step_until_statement_name(&root, &scope, "b").unwrap();
+        eprintln!(
+            "step_until_statement_name('b') stopped after {} steps",
+            steps
+        );
+        let front = root.borrow().debug_front_task();
+        assert!(front.is_some(), "front task should exist");
+        let f = front.unwrap();
+        assert_eq!(
+            f.borrow().as_stmt_name(),
+            Some("b"),
+            "front task should be 'b'"
+        );
+    }
+
+    #[test]
+    fn step_until_statement_name_finds_first_statement() {
+        let firs = Compiler::compile("{x = 42; y = 10;}").unwrap();
+        let root = firs[0].clone();
+        let scope = Scope::empty();
+
+        let steps = step_until_statement_name(&root, &scope, "x").unwrap();
+        eprintln!(
+            "step_until_statement_name('x') stopped after {} steps",
+            steps
+        );
+        let front = root.borrow().debug_front_task();
+        assert!(front.is_some());
+        let f = front.unwrap();
+        assert_eq!(f.borrow().as_stmt_name(), Some("x"));
+    }
+
+    #[test]
+    fn step_until_line_number_finds_line() {
+        let firs = Compiler::compile("{a = 1; b = 2; c = 3;}").unwrap();
+        let root = firs[0].clone();
+        let scope = Scope::empty();
+
+        let steps = step_until_line_number(&root, &scope, 2).unwrap();
+        eprintln!("step_until_line_number(2) stopped after {} steps", steps);
+        let front = root.borrow().debug_front_task();
+        assert!(front.is_some());
+        let f = front.unwrap();
+        assert_eq!(
+            f.borrow().as_stmt_line_number(),
+            Some(2),
+            "front should be statement at line 2"
+        );
+    }
+
+    #[test]
+    fn step_until_generic_matcher_by_nyes() {
+        let firs = Compiler::compile("{a = 1; b = 2;}").unwrap();
+        let root = firs[0].clone();
+        let scope = Scope::empty();
+
+        let steps = step_until(&root, &scope, |front| {
+            front
+                .map(|f| f.borrow().core().get_nyes().is_constanic())
+                .unwrap_or(false)
+        })
+        .unwrap();
+        eprintln!(
+            "step_until(by nyes constanic) stopped after {} steps",
+            steps
+        );
+        let front = root.borrow().debug_front_task();
+        assert!(
+            front
+                .map(|f| f.borrow().core().get_nyes().is_constanic())
+                .unwrap_or(false),
+            "front should be constanic"
+        );
+    }
+
+    #[test]
+    fn step_until_settles_before_condition_returns_error() {
+        let firs = Compiler::compile("{a = 1;}").unwrap();
+        let root = firs[0].clone();
+        let scope = Scope::empty();
+
+        let _ = step_to_settled(&root, &scope).unwrap();
+        let result = step_until_statement_name(&root, &scope, "nonexistent");
+        assert!(
+            result.is_err(),
+            "should error when root is settled before condition is met"
+        );
+        let err_msg = result.unwrap_err().to_string();
+        assert!(
+            err_msg.contains("settled") || err_msg.contains("condition"),
+            "error message: {err_msg}"
+        );
+    }
+
+    /// Diagnostic test: use step_until to debug x=cb.shadow returning NK
+    /// in concat_brane_nested_shadowed_resolution.
+    /// Steps until `extended` reaches the job queue front, then inspects
+    /// the NYES of `cb` and the floating brane element.
+    #[test]
+    fn diag_concat_cb_shadow_uses_step_until() {
+        use std::path::PathBuf;
+
+        let input = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("snapshot_tests")
+            .join("input")
+            .join("concat_brane_nested_shadowed_resolution.foo");
+        let source = std::fs::read_to_string(&input)
+            .unwrap_or_else(|_| panic!("{} not found", input.display()));
+
+        let firs = Compiler::compile(&source).unwrap();
+        let root = firs[0].clone();
+        let scope = Scope::empty();
+
+        // Step until "extended" reaches the job queue front.
+        let steps = step_until_statement_name(&root, &scope, "extended")
+            .unwrap_or_else(|e| panic!("step_until('extended') failed: {e}"));
+        eprintln!("step_until('extended') stopped after {} steps", steps);
+
+        // At this point, "extended" is at the front of the queue but not yet stepped.
+        // Inspect the root brane children.
+        let root_children: Vec<FirRef> = root.borrow().core().foolish_children().to_vec();
+        eprintln!("root has {} children", root_children.len());
+        for (i, child) in root_children.iter().enumerate() {
+            let cb = child.borrow();
+            let name = cb.as_stmt_name().unwrap_or("(anon)");
+            let nyes = cb.core().get_nyes();
+            let kind = cb.kind();
+            eprintln!("  [{}] {} (kind={:?}, nyes={:?})", i, name, kind, nyes);
+        }
+
+        // Find the "cb" statement and inspect its NYES and value.
+        let cb_stmt = root_children
+            .iter()
+            .find(|c| c.borrow().as_stmt_name() == Some("cb"))
+            .cloned()
+            .expect("cb statement not found in root");
+        let cb_nyes = cb_stmt.borrow().core().get_nyes();
+        eprintln!("cb NYES before extended steps: {:?}", cb_nyes);
+        assert!(
+            cb_nyes.is_constanic(),
+            "cb should be constanic before 'extended' is stepped (cb is earlier in brane)"
+        );
+
+        // Now step to settled and check the x=cb.shadow search result.
+        let _ = step_to_settled(&root, &scope).unwrap();
+
+        // Find the search for "^shadow$" in the entire root.
+        let shadow_searches = {
+            let pattern = "^shadow$";
+            let mut all = Vec::new();
+            for c in root_children.iter() {
+                fn recurse(node: &FirRef, pattern: &str, out: &mut Vec<FirRef>) {
+                    if node.borrow().kind() == FirKind::Search
+                        && node.borrow().as_search_pattern() == Some(pattern)
+                    {
+                        out.push(Rc::clone(node));
+                    }
+                    for ch in node.borrow().core().foolish_children().iter() {
+                        recurse(ch, pattern, out);
+                    }
+                }
+                recurse(c, pattern, &mut all);
+            }
+            all
+        };
+
+        eprintln!(
+            "found {} searches for '^shadow$' in root children",
+            shadow_searches.len()
+        );
+        for (i, s) in shadow_searches.iter().enumerate() {
+            let sb = s.borrow();
+            let nyes = sb.core().get_nyes();
+            eprintln!("  shadow search [{}] NYES={:?}", i, nyes);
+        }
+
+        // The key diagnostic: is there a shadow search that settled NK?
+        let nk_shadow = shadow_searches
+            .iter()
+            .any(|s| s.borrow().core().get_nyes() == foolish_core::fir::Nyes::Nk);
+        eprintln!("any shadow search settled NK: {}", nk_shadow);
+
+        // Also check: does cb.stmt_count() work?
+        let cb_body = cb_stmt.borrow().core().foolish_children().first().cloned();
+        if let Some(body) = cb_body {
+            let bb = body.borrow();
+            eprintln!(
+                "cb body kind={:?}, nyes={:?}",
+                bb.kind(),
+                bb.core().get_nyes()
+            );
+            eprintln!("cb body stmt_count() = {:?}", bb.stmt_count());
+            eprintln!("cb body is_brane_like() = {:?}", bb.is_brane_like());
+            eprintln!(
+                "cb body ubc_children count = {:?}",
+                bb.core().ubc_children().len()
+            );
+            eprintln!(
+                "cb body foolish_children count = {:?}",
+                bb.core().foolish_children().len()
+            );
+
+            // Call stmt_count again to force lazy population:
+            let sc_after = bb.stmt_count();
+            eprintln!("cb body stmt_count() after first call = {:?}", sc_after);
+            eprintln!(
+                "cb body ubc_children after = {:?}",
+                bb.core().ubc_children().len()
+            );
+
+            if let Some(sc) = sc_after {
+                eprintln!("cb body has {} statements", sc);
+                if let Some(s0) = bb.stmt_at(0) {
+                    let s0_b = s0.borrow();
+                    eprintln!("  stmt_at(0) name = {:?}", s0_b.as_stmt_name());
+                }
+            } else {
+                eprintln!("cb body stmt_count() = None — BraneNavigator will get 0 candidates!");
+            }
+
+            // Now trace: what does the cb.search resolve to?
+            // The "cb" Search inside {x=cb.shadow} — find it.
+        }
+
+        // Find the {x=cb.shadow} brane inside "extended" statement body.
+        let extended_stmt = root_children
+            .iter()
+            .find(|c| c.borrow().as_stmt_name() == Some("extended"))
+            .cloned()
+            .expect("extended statement not found");
+        let extended_body = extended_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned();
+        if let Some(ext_brane) = extended_body {
+            let ext_kind = ext_brane.borrow().kind();
+            eprintln!("extended body kind = {:?}", ext_kind);
+
+            // The extended brane is itself a concatenation (multiple elements on one line).
+            // Find the {x=cb.shadow} element inside it.
+            if ext_kind == FirKind::Concatenation {
+                let ext_children: Vec<FirRef> =
+                    ext_brane.borrow().core().foolish_children().to_vec();
+                eprintln!("extended ConcatBrane has {} elements", ext_children.len());
+                for (i, elem) in ext_children.iter().enumerate() {
+                    let eb = elem.borrow();
+                    eprintln!("  elem[{}] kind={:?}", i, eb.kind());
+                    // If it's a Brane, look for x=cb.shadow inside.
+                    if eb.kind() == FirKind::Brane {
+                        let stmts: Vec<FirRef> = eb.core().foolish_children().to_vec();
+                        for s in &stmts {
+                            let sb = s.borrow();
+                            if sb.as_stmt_name() == Some("x") {
+                                let x_body = sb
+                                    .core()
+                                    .foolish_children()
+                                    .first()
+                                    .cloned()
+                                    .expect("x has no body");
+                                let xb = x_body.borrow();
+                                eprintln!(
+                                    "  x body kind={:?}, pattern={:?}, anchored={}",
+                                    xb.kind(),
+                                    xb.as_search_pattern(),
+                                    xb.as_search_anchored()
+                                );
+                                // The anchor of the dot-search:
+                                if xb.kind() == FirKind::Search {
+                                    let anchor = xb.core().foolish_children().first().cloned();
+                                    if let Some(a) = anchor {
+                                        let ab = a.borrow();
+                                        eprintln!(
+                                            "    anchor kind={:?}, nyes={:?}, pattern={:?}",
+                                            ab.kind(),
+                                            ab.core().get_nyes(),
+                                            ab.as_search_pattern()
+                                        );
+                                        // What does value() return?
+                                        let resolved = a.value();
+                                        let rb = resolved.borrow();
+                                        eprintln!(
+                                            "    anchor.value() kind={:?}, nyes={:?}",
+                                            rb.kind(),
+                                            rb.core().get_nyes()
+                                        );
+                                        if rb.kind() == FirKind::Concatenation {
+                                            eprintln!(
+                                                "    resolved stmt_count={:?}",
+                                                rb.stmt_count()
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }

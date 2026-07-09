@@ -1,4 +1,4 @@
----
+Thu Jul  9 03:28:58 PM PDT 2026 cat concat_sf_f_more.foo.snap.new---
 source: foolish-ubca/src/ubca_snapshot_tester.rs
 assertion_line: 34
 ---
@@ -107,10 +107,16 @@ INPUT:
           )
       >
   };
-  b=?(pattern='^f1$', UNANCHORED, PREMBRIONIC);
-  <PREMBRIONIC
-    ?(pattern='^f2$', UNANCHORED, PREMBRIONIC)
-  >;
+  b=⨃(
+      elements=2,
+      <PREMBRIONIC
+  ?(pattern='^f1$', UNANCHORED, PREMBRIONIC)
+>,
+      <PREMBRIONIC
+  ?(pattern='^f2$', UNANCHORED, PREMBRIONIC)
+>,
+      PREMBRIONIC
+  ); !!@Agents, this entire b= should have been resolved to constant. PTAL.
   <<PREMBRIONIC
     ?(pattern='^f3$', UNANCHORED)
   >>;
@@ -120,10 +126,10 @@ INPUT:
 COMMENTS:
 ```markdown
 concat_sf_f_more
-generated: 2026-07-07T20:25:45.503163400Z
+generated: 2026-07-09T15:58:35.992592056Z
 ```
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 6AzGNJXm5wdZXyTwBHCaOcttoyncBzE4/K7NCfCD8jdXPNYArg7otv7CUSNuPLngLFQu7qOC522o+6GlZlm+Dg==
-HFS signature: SDI5Se06n4e2ejSfAh/QAUiHpyxenAhsDGSKPXTx5B4z+SHGgHlg9fMMe8urg2PbcsBONTSUMp++UUGYGLVaCg==
-Comments signature: IocXNq4kRtelExTgomxfCqq/siigKOBLNMasjNYlykkOPtcIL/7mGbAb6Z/u88Wwn9Yfg+LyquRxT11ACy1CBA==
+HFS signature: vpy85Z6jiOs8rv0i5SOximOlG3BAU4VE9u1BqZ8H07kuBkwBeIN25CD52LrGBqAHp26OissEQmSYhKD5LJkTCg==
+Comments signature: es/aTxZy+fQa9+MUKxXrY2tPfp3vfKwQUKi0Ic3eHFMjLgVVGITpqn/sCvHNKBwjMGr0KOSCx+tkl41a3j59Ag==
