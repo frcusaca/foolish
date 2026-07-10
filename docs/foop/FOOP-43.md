@@ -164,12 +164,13 @@ NK (per the discriminator). Only *misses* become ECONSTANIC.
   against the snapshot review. Does `&`-off-no-position settle NK, or ECONSTANIC (could a position
   reappear on recoordination)? (Lean: NK — a coordinated value is positionless by construction.)
 - **(Cross-FOOP, coherence review) Should ECONSTANIC record *why*?** After this batch, a search
-  settles ECONSTANIC for three distinct reasons — a genuine **miss** (this FOOP), being
-  **detached-away** (FOOP-24 reject/`[*]`), or a **wrong-characterization** demand (FOOP-63). They
-  land on the same state but mean different things (and FOOP-24 *strict* must tell "detached-away"
-  from "unaccounted miss"). Consider a **reason tag on the ECONSTANIC settlement** (parallel to the
-  "why NK" helper below). Decide before the search-group is implemented — it affects the shape of
-  every FOOP that reads ECONSTANIC.
+  settles ECONSTANIC for distinct reasons — a genuine **miss** (this FOOP), being **detached-away**
+  (FOOP-24 reject/`[*]`), or a **wrong-characterization** demand (FOOP-63). They land on the same
+  state but mean different things. Consider a **reason tag on the ECONSTANIC settlement** (parallel
+  to the "why NK" helper below). (This distinction was also the crux of FOOP-24's backburnered
+  *strict* detachment — telling "detached-away" from "genuinely-absent" is exactly what a reason tag
+  would give, though the *future-coordination* case there remains undecidable regardless.) Decide
+  before the search-group is implemented — it affects every FOOP that reads ECONSTANIC.
 - Snapshot-churn scope for both components — how many approved snapshots flip.
 
 ## Plan (lean)

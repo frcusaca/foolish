@@ -148,7 +148,7 @@ each owe one. Approval `.foo` snapshots pin observable behavior; never auto-acce
 ### Miss-semantics is the shared substrate (FOOP-43)
 
 Several FOOPs depend on FOOP-43's "search miss → ECONSTANIC (may recoordinate), found-`???` → NK
-(propagates)" rule: FOOP-24 (detachment reject-all/`[*]`/naked-`<<>>`, and strict `[[]]`), FOOP-04
+(propagates)" rule: FOOP-24 (detachment reject-all/`[*]`/naked-`<<>>`), FOOP-04
 (cascade "fail" signal), FOOP-63 (characterization-demand miss → WOCONSTANIC-wait). Implement
 FOOP-43 (the keystone) before them.
 
@@ -192,10 +192,10 @@ extended by **three** FOOPs. They must be designed together:
 ### The Scope struct — extended by two FOOPs
 
 `Scope` (`fir_trait.rs:55`, today `has_ancestral_sfm: bool` + current_statement/current_brane) gains:
-- **FOOP-24:** `active_detachments: Vec<String>` + `strict_detachment: bool`.
+- **FOOP-24:** `active_detachments: Vec<String>`.
 - **FOOP-33 (Final):** already reshaped Scope work.
-No conflict — additive fields. Note both push in `step_inner` (`fir_trait.rs:347`), so coordinate
-the handoff logic (SFM flag, detachments, strict all set at the same site).
+No conflict — additive fields. Both push in `step_inner` (`fir_trait.rs:347`), so coordinate the
+handoff logic (SFM flag + detachments set at the same site).
 
 ### Stepping changes — where each FOOP touches the step loop
 
@@ -203,25 +203,24 @@ the handoff logic (SFM flag, detachments, strict all set at the same site).
   FOOP-63 (float ops). One function, several new arms — keep the match arms tidy; consider a
   sub-dispatch by operand characterization once FOOP-63 lands.
 - **The scan loop / `SearchPredicate::matches`** (`:1709`/`:1978`): FOOP-93 (negate/And/Or),
-  FOOP-24 (prefilter + strict accounting), FOOP-14 (collect mode), FOOP-63 (`Char` gate). This is
-  the busiest shared site — the "one engine" holds, but these four must be sequenced so each builds
-  on the last (93 → 24 → 14, with 63's `Char` slotting into 93's tree).
+  FOOP-24 (prefilter), FOOP-14 (collect mode), FOOP-63 (`Char` gate). This is the busiest shared
+  site — the "one engine" holds, but these must be sequenced so each builds on the last (93 → 24 →
+  14, with 63's `Char` slotting into 93's tree).
 - **Constanic clone** (`:155-253`): FOOP-43 Component 2 (drop `Search` `[1]`), FOOP-24 (SF/SFF
   strip already exists), FOOP-63 (new value kinds get the Independent-same-`Rc` path free).
   FOOP-43's `[1]`-drop is the only *behavioral* clone change — everything else is additive.
 - **ECONSTANIC settle sites** (`:1273` + value/contexted equivalents): FOOP-43 Component 1
-  (miss→ECONSTANIC) and FOOP-24 strict (`[[]]` accounting → NK) both gate here. Sequence FOOP-43
-  first (it *defines* when ECONSTANIC happens); FOOP-24 strict then *overrides* to NK when
-  unaccounted.
+  (miss→ECONSTANIC) gates here. (Strict detachment would also have gated here but is backburnered —
+  see FOOP-24's backburnered appendix; that hard case is *why* it's deferred.)
 
 ### Cross-cutting coherence flags
 
 1. **`SearchPredicate` must be co-designed** across FOOP-93 + FOOP-63 (one tree, `Char`/`negate`
    as leaves) — the biggest "make it fit together" risk.
-2. **ECONSTANIC is now semantically loaded** — FOOP-43 (miss), FOOP-24 (detach reject-all;
-   strict-accounting), FOOP-63 (char-demand) all read/write it. A missed search, a detached-away
-   search, and a wrong-characterization search all land on ECONSTANIC but *mean* different things.
-   Consider whether the FIR should record *why* it's ECONSTANIC (a reason tag) — parallels the
+2. **ECONSTANIC is now semantically loaded** — FOOP-43 (miss), FOOP-24 (detach reject-all),
+   FOOP-63 (char-demand) all read/write it. A missed search, a detached-away search, and a
+   wrong-characterization search all land on ECONSTANIC but *mean* different things. Consider
+   whether the FIR should record *why* it's ECONSTANIC (a reason tag) — parallels the
    FOOP-43 "why NK" helper. Open design question worth deciding before implementing the group.
 3. **"Coordination sheds scaffolding"** is one principle with two faces: FOOP-24 (marker stripped
    on clone) and FOOP-43 Component 2 (search position stripped on clone). State them together in
