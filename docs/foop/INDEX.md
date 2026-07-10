@@ -45,6 +45,17 @@ ls | rev | sort -V | rev
 | [FOOP-13](FOOP-13.md) | MAX_BRANE_SIZE — auto-sizing via a non-merging ConcatBrane equivalent to the merged brane | Brewing | phase-2 | 2026-07-03 | Atlas |
 | [FOOP-23](FOOP-23.md) | Value search and contexted (&-prefixed) search — value equality, expression patterns, and searching from a statement's position | Draft | phase-2 | 2026-07-04 | Atlas |
 | [FOOP-33](FOOP-33.md) | The Creation Postulate — ⬤, universal characterizations, and Booleans | Final | phase-4 | 2026-07-07 | Atlas |
+| [FOOP-43](FOOP-43.md) | Search miss settles ECONSTANIC, not NK (foundational keystone) | Draft | phase-2 | 2026-07-09 | Atlas |
+| [FOOP-53](FOOP-53.md) | Computed index — `#${...}` | Draft | phase-2 | 2026-07-09 | Atlas |
+| [FOOP-63](FOOP-63.md) | Primitive Characterization — the `i'`/`s'`/`f'` type system | Draft | phase-4 | 2026-07-09 | Atlas |
+| [FOOP-73](FOOP-73.md) | Boolean operators — and, or, not, nor, xor (Foolish truth-table searches) | Draft | phase-4 | 2026-07-09 | Atlas |
+| [FOOP-83](FOOP-83.md) | Strengthen integer math — exponent `**` and comparisons | Draft | phase-2 | 2026-07-09 | Atlas |
+| [FOOP-93](FOOP-93.md) | Search predicates — inverse matcher `!` and matcher boolean operators `&&`/`\|\|` | Draft | phase-2 | 2026-07-09 | Atlas |
+| [FOOP-04](FOOP-04.md) | Cascading connector for search — the `\|` fallback operator | Draft | phase-2 | 2026-07-09 | Atlas |
+| [FOOP-14](FOOP-14.md) | All-results (find-all) search — doubled operators `~~`/`??` | Draft | phase-2 | 2026-07-09 | Atlas |
+| [FOOP-24](FOOP-24.md) | Detachment — parameterized stay-foolish markers | Draft | phase-2 | 2026-07-09 | Atlas |
+| [FOOP-34](FOOP-34.md) | Recursion Upgrades (standalone research; write algorithms first) | Draft | phase-5 | 2026-07-09 | Atlas |
+| [FOOP-44](FOOP-44.md) | Macros — research and design (standalone research) | Draft | phase-6 | 2026-07-09 | Atlas |
 
 ---
 
@@ -68,6 +79,18 @@ ls | rev | sort -V | rev
 - [FOOP-92](FOOP-92.md) — Einmo — directory-based signed-snapshot testing with staged promotion
 - [FOOP-03](FOOP-03.md) — Repository Cleanup — dead code removal, workspace flatten, `jia` rename (blocked, see FOOP-62)
 - [FOOP-23](FOOP-23.md) — Value search + contexted `&`-searches — `~=`/`?=`, expression patterns, `&`-prefix navigation from a statement (`FoolRefFir`)
+*(Implementation-ordered batch built on FOOP-33; renumbered 2026-07-09 so number ≈ impl order.)*
+- [FOOP-43](FOOP-43.md) — Search miss → ECONSTANIC not NK + **coordination removes search context** (foundational keystone; found-`???`→NK vs not-found→WOCONSTANIC; prereq for FOOP-63/73/24/34)
+- [FOOP-53](FOOP-53.md) — Computed index `#${...}` (evaluate brane, tail as number, run `#`; self-contained early win)
+- [FOOP-63](FOOP-63.md) — Primitive Characterization: `i'`/`s'`/`f'` type system; characterization = type-tag + search-demand (brane WOCONSTANIC-waits); needs FOOP-33 + FOOP-43
+- [FOOP-73](FOOP-73.md) — Boolean operators and/or/not/nor/xor as **Foolish truth-table searches** (no privileged layer; FVM-compute fallback); needs FOOP-33
+- [FOOP-83](FOOP-83.md) — Integer math: exponent `**` + comparisons `< > <= >=` returning True/False (needs FOOP-33/73; `*`/`%` already done)
+- [FOOP-93](FOOP-93.md) — Search predicates: inverse matcher `!` + matcher boolean operators `&&`/`||` (compiler-hard-coded matcher-outcome ops; SearchPredicate `And`/`Or`/negate)
+- [FOOP-04](FOOP-04.md) — Cascading connector `|` (fallback between whole searches; `CascadingSearchFir` + anchor-propagation; needs FOOP-43)
+- [FOOP-14](FOOP-14.md) — All-results `~~`/`??` (doubled operators collect into a brane; tokens already lexed)
+- [FOOP-24](FOOP-24.md) — Detachment = parameterized SF/SFF marker (exclusion-list prefilter; SF≡`[]` / SFF≡`[*]`; before recursion — helps it; needs FOOP-43)
+- [FOOP-34](FOOP-34.md) — Recursion Upgrades (**standalone research**; write ~1–2 dozen algorithms first; after the full search suite; `↑`; no cycle detection)
+- [FOOP-44](FOOP-44.md) — Macros (**standalone research**; brane-transforms-brane vs expansion phase; leans on FOOP-14 + characterizations)
 
 ### Brewing
 
@@ -123,7 +146,7 @@ Canceled as they stand; each may be respecified and reimplemented later. See
 
 ### phase-2
 
-- [FOOP-6](FOOP-6.md), [FOOP-7](FOOP-7.md), [FOOP-8](FOOP-8.md), [FOOP-01](FOOP-01.md), [FOOP-11](FOOP-11.md), [FOOP-51](FOOP-51.md), [FOOP-61](FOOP-61.md), [FOOP-32](FOOP-32.md), [FOOP-42](FOOP-42.md), [FOOP-52](FOOP-52.md), [FOOP-62](FOOP-62.md), [FOOP-82](FOOP-82.md), [FOOP-13](FOOP-13.md), [FOOP-23](FOOP-23.md)
+- [FOOP-6](FOOP-6.md), [FOOP-7](FOOP-7.md), [FOOP-8](FOOP-8.md), [FOOP-01](FOOP-01.md), [FOOP-11](FOOP-11.md), [FOOP-51](FOOP-51.md), [FOOP-61](FOOP-61.md), [FOOP-32](FOOP-32.md), [FOOP-42](FOOP-42.md), [FOOP-52](FOOP-52.md), [FOOP-62](FOOP-62.md), [FOOP-82](FOOP-82.md), [FOOP-13](FOOP-13.md), [FOOP-23](FOOP-23.md), [FOOP-43](FOOP-43.md), [FOOP-53](FOOP-53.md), [FOOP-83](FOOP-83.md), [FOOP-93](FOOP-93.md), [FOOP-04](FOOP-04.md), [FOOP-14](FOOP-14.md), [FOOP-24](FOOP-24.md)
 
 ### phase-3
 
@@ -131,7 +154,15 @@ Canceled as they stand; each may be respecified and reimplemented later. See
 
 ### phase-4
 
-- [FOOP-33](FOOP-33.md)
+- [FOOP-33](FOOP-33.md), [FOOP-63](FOOP-63.md), [FOOP-73](FOOP-73.md)
+
+### phase-5
+
+- [FOOP-34](FOOP-34.md)
+
+### phase-6
+
+- [FOOP-44](FOOP-44.md)
 
 ---
 
@@ -151,6 +182,17 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 ---
 
 ## Last Updated
+
+**Date**: 2026-07-09
+**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
+**Changes**: Added **11 new Draft FOOPs** (a coherent language-feature batch built on FOOP-33),
+flushed from `docs/foop/NOTES-creation-lineage-and-search-family.md`: FOOP-43 (search miss →
+ECONSTANIC — the keystone), 53 (inverse `!`), 63 (detachment = parameterized SF/SFF marker),
+73 (all-results `~~`/`??`), 83 (boolean operators), 93 (Recursion Upgrades), 04 (macros research),
+14 (computed index `#${...}`), 24 (beefy search `&&`/`||`/`|`), 34 (integer math `**`/comparisons),
+44 (Primitive Characterization `i'`/`s'`/`f'`). Dependency graph verified acyclic (FOOP-43 is the
+keystone; 63/24/44/93 depend on it; 83/34/44 need FOOP-33). Added to main table, By-Status (Draft),
+and By-Phase (phase-2/4/5/6). Numbering consecutive 1–44.
 
 **Date**: 2026-07-08
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
