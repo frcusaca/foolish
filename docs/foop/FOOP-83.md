@@ -38,6 +38,11 @@ strengthening of the integer library.
   FOOP-33 + FOOP-73** and order after them.
 - **Already done (out of scope):** `+ - * / %` and unary `-` compute in `OperatorFir::combine`
   (`fir_kinds.rs:531-576`), with `/`/`%` div-by-zero → NK.
+- **Note (FOOP-63 arithmetic model):** under FOOP-63, arithmetic operators are conceptually Foolish
+  **operation-table branes** the FVM detects and shortcuts to native math (no coercion lattice).
+  The existing integer `combine` arms *are* the integer table's shortcut; `**` here adds to that
+  same integer path. Float arithmetic and the int/float typing live in FOOP-63. This FOOP only
+  extends the integer shortcut (`**`) and adds comparisons — it does not build the table machinery.
 
 ## FIR Impact
 

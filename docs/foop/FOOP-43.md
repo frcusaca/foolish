@@ -15,11 +15,13 @@ begun: [ ]
 > Lean draft. Fuller-spec notes are in the Appendix and in
 > `docs/foop/NOTES-creation-lineage-and-search-family.md` §7.
 
-**Two components** (both about how a search's *context* settles and propagates):
+**Three components** (all about how a search's *context* settles and propagates):
 1. **Miss → ECONSTANIC** (not NK) — a not-found search may recoordinate; only found-`???` and
    provable-impossibility stay NK.
 2. **Coordination removes search context** — a coordinated (referenced) search is just its value;
    its positional context (the `FoolRefFir`) is stripped, so a continued `&`-search off it NKs.
+3. **ECONSTANIC records *why*** — a reason tag (Miss | Detached | CharDemand | …) on the ECONSTANIC
+   settlement, so downstream FOOPs read intent instead of re-deriving it. (Atlas: yes, add now.)
 
 ## Abstract
 
@@ -98,12 +100,33 @@ flip snapshots. **Review the existing snapshots** to (a) find where coordinated-
 "carrying a live position") against the real corpus **before finalizing.** This is part of the
 FOOP.
 
+### Component 3 — ECONSTANIC records *why* it settled (reason tag)
+
+After this batch, a search settles ECONSTANIC for **distinct reasons** that mean different things:
+- **Miss** — genuinely found no matching candidate (Component 1).
+- **Detached** — a candidate was hidden by a detachment pattern (FOOP-24 `[…]`/`[*]`).
+- **CharDemand** — the candidate existed but had the wrong characterization (FOOP-63).
+- (extensible — future reasons slot in.)
+
+**Add a reason tag to the ECONSTANIC settlement** — a small enum recorded when a FIR settles
+ECONSTANIC (parallel to the existing NK reason string, e.g. `NkFir.reason`). Downstream FOOPs read
+the reason instead of re-deriving intent from context. This is cheap to thread through now and a
+wide retrofit later, so it lands with this FOOP even though its *consumers* are FOOP-24/63.
+
+- **Design the enum here** (`EconstanicReason { Miss, Detached, CharDemand, … }` or similar) so the
+  producers (miss branch; detachment prefilter; char gate) and consumers agree on one vocabulary.
+- **WOCONSTANIC** dependents may want to carry/propagate the underlying reason too (a WOCONSTANIC is
+  waiting on an ECONSTANIC) — decide whether the reason bubbles up the chain.
+- This does **not** change *which* searches settle ECONSTANIC (Components 1–2 do that); it only
+  annotates *why*.
+
 ## FIR Impact
 
-None structurally (no new FIR kind). Two behavioral changes: (1) the **settlement value** of a
-missed `SearchFir` and the chain-propagation read of an NK anchor; (2) the **constanic-clone of a
-`Search`** drops `ubc_children[1]` (the `FoolRefFir` position), so a coordinated search keeps only
-its value.
+No new FIR kind. Three behavioral changes: (1) the **settlement value** of a missed `SearchFir`
+and the chain-propagation read of an NK anchor; (2) the **constanic-clone of a `Search`** drops
+`ubc_children[1]` (the `FoolRefFir` position); (3) an **`EconstanicReason` tag** recorded on the
+ECONSTANIC settlement (a small enum; where it is stored — on the ProtoBrane alongside NYES, or a
+per-kind field — is an impl choice).
 
 ## UBC Step Impact
 
@@ -123,6 +146,12 @@ its value.
 - **Contexted `&`-search step** (`fir_kinds.rs:895-902`, reads anchor `ubc_children[1]`): when the
   anchor has no `[1]` (a coordinated value, or a non-positional anchor), settle **NK** instead of
   returning `None`/looping. (Decide NK vs the current `None` outcome against the snapshot review.)
+
+**Component 3:**
+- **Define `EconstanicReason`** and set it wherever a search settles ECONSTANIC — the miss branch
+  (`Miss`); later, the detachment prefilter (`Detached`, FOOP-24) and the char gate (`CharDemand`,
+  FOOP-63) set their reasons. For *this* FOOP, only `Miss` is produced; the enum + plumbing land
+  now so FOOP-24/63 can add their variants without a retrofit.
 
 ## Test Plan
 
@@ -149,7 +178,7 @@ its value.
 ### A. Keep anchored-miss → NK (do nothing)
 
 The status quo. **Rejected**: it prematurely commits to NK on an absent name while context is
-incomplete, breaking `{a=b.c.d}` and blocking FOOP-63/24/44 (which need "miss = wait").
+incomplete, breaking `{a=b.c.d}` and blocking FOOP-24/63/04 (which need "miss = wait").
 
 ### B. Everything (even found-`???`) becomes ECONSTANIC
 
@@ -163,15 +192,12 @@ NK (per the discriminator). Only *misses* become ECONSTANIC.
 - **(Component 2)** The exact rule for which anchors carry a "live position" for `&` — settled
   against the snapshot review. Does `&`-off-no-position settle NK, or ECONSTANIC (could a position
   reappear on recoordination)? (Lean: NK — a coordinated value is positionless by construction.)
-- **(Cross-FOOP, coherence review) Should ECONSTANIC record *why*?** After this batch, a search
-  settles ECONSTANIC for distinct reasons — a genuine **miss** (this FOOP), being **detached-away**
-  (FOOP-24 reject/`[*]`), or a **wrong-characterization** demand (FOOP-63). They land on the same
-  state but mean different things. Consider a **reason tag on the ECONSTANIC settlement** (parallel
-  to the "why NK" helper below). (This distinction was also the crux of FOOP-24's backburnered
-  *strict* detachment — telling "detached-away" from "genuinely-absent" is exactly what a reason tag
-  would give, though the *future-coordination* case there remains undecidable regardless.) Decide
-  before the search-group is implemented — it affects every FOOP that reads ECONSTANIC.
-- Snapshot-churn scope for both components — how many approved snapshots flip.
+- **(Component 3)** The `EconstanicReason` enum's exact variants and where it is stored; whether a
+  WOCONSTANIC bubbles up its dependency's reason. (Promoted from an open question to Component 3 —
+  Atlas: add the reason tag now. Note: this reason tag is *also* what FOOP-24's backburnered strict
+  detachment would have needed to tell "detached-away" from "genuinely-absent" — though the
+  *future-coordination* case there stays undecidable regardless.)
+- Snapshot-churn scope for all three components — how many approved snapshots flip.
 
 ## Plan (lean)
 
@@ -187,7 +213,13 @@ NK (per the discriminator). Only *misses* become ECONSTANIC.
 - [ ] Contexted `&`-search step (`fir_kinds.rs:895`): no anchor position → NK.
 - [ ] **Snapshot review** to find coordinated-then-`&` cases and finalize the exact rule.
 
-**Both:**
+**Component 3 — ECONSTANIC reason tag:**
+- [ ] Define `EconstanicReason` (variants: `Miss`, plus room for `Detached`/`CharDemand`); decide
+      storage (ProtoBrane alongside NYES vs per-kind field).
+- [ ] Set `Miss` at the miss branch(es). (FOOP-24/63 add `Detached`/`CharDemand` in their FOOPs.)
+- [ ] Decide whether WOCONSTANIC propagates its dependency's reason.
+
+**All:**
 - [ ] Update FOOP-23 (§Miss and the coordination/context rule) and AGENTS.md.
 - [ ] Regenerate snapshots; present to human for semantic review (never auto-accept).
 - [ ] Worktree lifecycle per `foop.md` (create / verify / merge / cleanup).

@@ -67,6 +67,9 @@ and `StayFullyFoolishFir` (`:2082`) — a parameterized marker is just SF/SFF wi
 - **Prefilter.** In the scan loop (`contextful_search_scan`, `fir_kinds.rs:1978`), before
   `predicate.matches`, skip a candidate if any active detachment pattern matches it (reuse
   `SearchFir::matches_pattern`). **Same locus as FOOP-93's `!`.**
+- **Reason tag (FOOP-43 Component 3).** When a search under a detachment settles ECONSTANIC because
+  a candidate was skipped by a detachment, set its `EconstanicReason::Detached`. (Adds the
+  `Detached` variant to the enum FOOP-43 introduces.)
 - **Keep existing SFF unchanged.** Naked `<<>>` keeps its current implementation; `[*]<<>>`
   forwards to it. The **new code path is only for specific (non-`*`) detachments** — an exclusion
   list over otherwise-normal search. Engage the prefilter iff `detachments` is non-empty and ≠
