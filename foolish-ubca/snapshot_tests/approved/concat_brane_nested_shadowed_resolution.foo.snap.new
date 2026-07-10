@@ -1,4 +1,4 @@
-Thu Jul  9 03:27:09 PM PDT 2026 cat concat_brane_nested_shadowed_resolution.foo.snap.new---
+---
 source: foolish-ubca/src/ubca_snapshot_tester.rs
 assertion_line: 34
 ---
@@ -23,14 +23,14 @@ INPUT:
       keep=1;
       late=?(pattern='^zz$', UNANCHORED, ECONSTANIC)
   };
-  cb={WOCONSTANIC
+  cb={
       shadow=2;
       zz=9;
       shadow=1;
       keep=1;
       late=9;
       fromˍjoin=1;
-      fromˍparent=?(pattern='^p$', UNANCHORED, ECONSTANIC); !! @Agent, this one should have bresolved the above p=100
+      fromˍparent=100;
       prepared=111;
       preparedˍp=100
   };
@@ -51,10 +51,10 @@ INPUT:
 COMMENTS:
 ```markdown
 concat_brane_nested_shadowed_resolution
-generated: 2026-07-09T15:58:35.802034262Z
+generated: 2026-07-10T01:43:26.010059313Z
 ```
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: C+xwyMkDlLn503clPYYr5Ir8cfe2YolU2Nx2W+GgpRAR4R73SGc3zOcrxFmnWT/5PoCez+gmBcRpyOMDFhp9Bw==
-HFS signature: 88un7dDfqc8MkBlIn/XhmdcG2Ov64UY34zCx/TfyD85eS6yYGHsnnECQb2mFeMK6F/j+zd9JODjvvIQaPD5HBQ==
-Comments signature: sbbOlOLRC/D+n6GRv6W3BZaNvgaTTjUaIBg1R2dReYL3sLZEzpzP506vDqPgXNMTdtcRu+jR9TsTwKnAwRGsAw==
+HFS signature: E2rosth5xBTyM08UnMhN2hDm3crhaHp/KDd/R6h8LYf8ESArrttMcH4xHJpK8Yi/o73TXl+0ZjVua0uxu4pzAQ==
+Comments signature: 8/GG0OcJae1fzPMz6qrrVC31s8QGtdgsZSqaPZ1XGnGwJlgM4N2VqTDSBAnvT2y/Cdg4eSh+JtSm2JYVUJiVAQ==

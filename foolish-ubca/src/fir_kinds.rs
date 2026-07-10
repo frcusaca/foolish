@@ -2340,7 +2340,7 @@ impl ConcatenationFir {
         }
 
         *helper.borrow_mut() = ConcatHelper {
-            core: ProtoBrane::new(cloned_stmts, helper_weak.clone(), Nyes::Prembrionic),
+            core: ProtoBrane::new(cloned_stmts, self_weak.clone(), Nyes::Prembrionic),
         };
 
         self.core.push_ubc_child(helper_fir);

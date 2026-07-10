@@ -1,4 +1,4 @@
-Thu Jul  9 03:22:46 PM PDT 2026 cat concat_brane_foolish_concatenations.foo.snap.new---
+---
 source: foolish-ubca/src/ubca_snapshot_tester.rs
 assertion_line: 34
 ---
@@ -76,17 +76,16 @@ INPUT:
   };
   search=-1;
   bkˍsearch=1;
-  (@agent, search failure results in ECONSTANIC always. the only case when enchored search can be NK is if the pattern was broken some how or the anchor is NK, Please repair this.)
   failˍsearch=?(pattern='nada', ANCHORED, NK)
 }
 ```
 COMMENTS:
 ```markdown
 concat_brane_foolish_concatenations
-generated: 2026-07-09T15:58:35.757097058Z
+generated: 2026-07-10T01:43:25.905828683Z
 ```
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: qJlQw/XzZa8EM3h/2aAkuCMbF1qpIWiIr4j2fOCrTDXk9Tn+dFOoATDY8qP33UrUFIXzaPQdnf439GuClm19Cg==
 HFS signature: c5z3FkwJypE8qv8u0TcGbMlOM4JH5++U37F08xIAPyw6GqxAY7Oy+lzj/MNtV/w02NhFegQd0Mm+/u/AwjE8DA==
-Comments signature: fIidd6xGgkYYmgQ9Rty6izsVySeXNRm865KtSrjTiFhAr1pubqr6bgYxHztjj1AVURE+/7MZ/SYESz3GhSLuCQ==
+Comments signature: h1VGpHHp87m6xhGoTqEq455VoQ85wx7MpNqnQ4OTf8L5UMcoW4MRmOSpXkP+doulSd4ICsSJufvmY6sTYiHYAA==

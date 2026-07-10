@@ -667,6 +667,15 @@ protocol (Embryonic drains elements → populate → Braning drains _ConcatHelpe
 settle, discriminated by `ubc_children` emptiness). A4 lists all 14 existing
 snapshots explicitly. B4 status reference corrected to `Brewing` → `Implementing`.
 
+**Date**: 2026-07-09
+**Updated By**: Sisyphus-Junior / xiaomi/mimo-v2.5-pro
+**Changes**: Fixed SearchFir search resolution bugs: anchored search miss now
+settles ECONSTANIC instead of NK; non-brane-like anchor separated from NK anchor
+case; value_search_step and contexted_search_from_anchor miss also ECONSTANIC.
+Added regression tests `anchored_search_miss_is_econstanic_not_nk` and
+`concat_brane_ab_search_finds_parent_scope`. Updated 4 existing tests from NK to
+ECONSTANIC expectations.
+
 **Date**: 2026-07-06
 **Updated By**: Sisyphus / z-ai/glm-5.2
 **Changes**: Updated in view of FOOP-23 merge to `jia`. A2 step 5 gains FOOP-23
