@@ -148,8 +148,87 @@ each owe one. Approval `.foo` snapshots pin observable behavior; never auto-acce
 ### Miss-semantics is the shared substrate (FOOP-43)
 
 Several FOOPs depend on FOOP-43's "search miss → ECONSTANIC (may recoordinate), found-`???` → NK
-(propagates)" rule: FOOP-63 (reject-all/`[*]`/naked-`<<>>`), FOOP-24 (cascade "fail" signal),
-FOOP-44 (characterization-demand miss → WOCONSTANIC-wait). Implement FOOP-43 before them.
+(propagates)" rule: FOOP-24 (detachment reject-all/`[*]`/naked-`<<>>`, and strict `[[]]`), FOOP-04
+(cascade "fail" signal), FOOP-63 (characterization-demand miss → WOCONSTANIC-wait). Implement
+FOOP-43 (the keystone) before them.
+
+> **NB (2026-07-09):** the numbers below refer to the *renumbered* batch (see the number table at
+> the top). Older number references elsewhere in this doc may predate the reorg — trust the table.
+
+---
+
+## Coherence review — FIRs, data structures, and stepping (2026-07-09)
+
+A cross-FOOP audit: do the proposed structures hang together? Existing `FirKind` set: Brane,
+Statement, Operator, Search, Index, StayFoolish, StayFullyFoolish, Concatenation, IndepInt, Nk,
+Unknown, FoolRef.
+
+### New FIR kinds proposed (and the verdict)
+
+| Proposed | FOOP | New kind? | Verdict |
+|----------|------|-----------|---------|
+| `StringFir`, `FloatFir` | FOOP-63 | **Yes** | Correct — new primitive *values* with their own settled identity; born `Independent`; clone-for-free via `constanic_clone_at:180`. Each owes a `*_nyes_transitions` test. |
+| `CascadingSearchFir` | FOOP-04 | **Yes** | Correct — genuinely new *stepping* (run branches in order, thread the fallback `FoolRefFir`). Not expressible as a predicate. |
+| `↑` upward search | FOOP-34 | Maybe | Could be a new FIR or resolved to the home brane via the parent chain. Decide in the recursion exercise. |
+| Computed index | FOOP-53 | Maybe | Prefer **extending `IndexFir`** with a computed-offset child (+ a Braning-wait phase) over a new `DynamicIndexFir`, unless the wait phase is cleaner as its own kind. |
+
+**No new FIR** (correctly): inverse `!` + `&&`/`||` (FOOP-93 — `SearchPredicate` variants), find-all
+(FOOP-14 — scan mode on `SearchFir`), detachment (FOOP-24 — fields on SF/SFF), boolean operators
+(FOOP-73 — Foolish table search, *zero* new FVM machinery in the preferred design), integer math
+(FOOP-83 — `OperatorFir::combine` arms).
+
+### The `SearchPredicate` enum — the most-extended structure (watch for collision)
+
+`SearchPredicate` (`fir_kinds.rs:1679`, today: Name, Value, NameValue, Index, Head, Tail) is
+extended by **three** FOOPs. They must be designed together:
+- **FOOP-93:** `negate` flag(s) on variants **and** `And(Box<_>, Box<_>)` / `Or(Box<_>, Box<_>)`.
+- **FOOP-63:** a characterization gate — `Char { … }` (or a char-field on existing variants).
+- **Consolidation:** these compose (a negated `And` of a `Char` and a `Value`), so the recursive
+  `And`/`Or` tree should be the *outer* structure, with `negate` on leaves, and `Char` as another
+  leaf. Recommendation: land FOOP-93's `And`/`Or`/`negate` first (it defines the tree shape),
+  then FOOP-63 adds `Char` as a leaf — **do not** let FOOP-63 invent a parallel combination
+  mechanism. Flag in both FOOPs.
+
+### The Scope struct — extended by two FOOPs
+
+`Scope` (`fir_trait.rs:55`, today `has_ancestral_sfm: bool` + current_statement/current_brane) gains:
+- **FOOP-24:** `active_detachments: Vec<String>` + `strict_detachment: bool`.
+- **FOOP-33 (Final):** already reshaped Scope work.
+No conflict — additive fields. Note both push in `step_inner` (`fir_trait.rs:347`), so coordinate
+the handoff logic (SFM flag, detachments, strict all set at the same site).
+
+### Stepping changes — where each FOOP touches the step loop
+
+- **`OperatorFir::combine`** (`:483`): FOOP-83 (`**`, comparisons), FOOP-73 *fallback only*,
+  FOOP-63 (float ops). One function, several new arms — keep the match arms tidy; consider a
+  sub-dispatch by operand characterization once FOOP-63 lands.
+- **The scan loop / `SearchPredicate::matches`** (`:1709`/`:1978`): FOOP-93 (negate/And/Or),
+  FOOP-24 (prefilter + strict accounting), FOOP-14 (collect mode), FOOP-63 (`Char` gate). This is
+  the busiest shared site — the "one engine" holds, but these four must be sequenced so each builds
+  on the last (93 → 24 → 14, with 63's `Char` slotting into 93's tree).
+- **Constanic clone** (`:155-253`): FOOP-43 Component 2 (drop `Search` `[1]`), FOOP-24 (SF/SFF
+  strip already exists), FOOP-63 (new value kinds get the Independent-same-`Rc` path free).
+  FOOP-43's `[1]`-drop is the only *behavioral* clone change — everything else is additive.
+- **ECONSTANIC settle sites** (`:1273` + value/contexted equivalents): FOOP-43 Component 1
+  (miss→ECONSTANIC) and FOOP-24 strict (`[[]]` accounting → NK) both gate here. Sequence FOOP-43
+  first (it *defines* when ECONSTANIC happens); FOOP-24 strict then *overrides* to NK when
+  unaccounted.
+
+### Cross-cutting coherence flags
+
+1. **`SearchPredicate` must be co-designed** across FOOP-93 + FOOP-63 (one tree, `Char`/`negate`
+   as leaves) — the biggest "make it fit together" risk.
+2. **ECONSTANIC is now semantically loaded** — FOOP-43 (miss), FOOP-24 (detach reject-all;
+   strict-accounting), FOOP-63 (char-demand) all read/write it. A missed search, a detached-away
+   search, and a wrong-characterization search all land on ECONSTANIC but *mean* different things.
+   Consider whether the FIR should record *why* it's ECONSTANIC (a reason tag) — parallels the
+   FOOP-43 "why NK" helper. Open design question worth deciding before implementing the group.
+3. **"Coordination sheds scaffolding"** is one principle with two faces: FOOP-24 (marker stripped
+   on clone) and FOOP-43 Component 2 (search position stripped on clone). State them together in
+   docs; they're the same idea.
+4. **Boolean operators as table search (FOOP-73)** is the strongest coherence win — it needs *no*
+   new FVM machinery, only the search features. But it inverts a dependency (booleans now need
+   value+contexted search). Resolve the ordering (booleans after searches, or FVM-fallback first).
 
 ---
 

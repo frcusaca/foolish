@@ -58,10 +58,15 @@ queries want "not matching X," "value 10 or 4," and "name A and value B." `!` ad
 ## FIR Impact
 
 No new FIR kind. Extend `SearchPredicate` (`fir_kinds.rs:1679`):
-- **Negation:** a `negate: bool` on the relevant variants, or (for `NameValue`) `negate_name` /
+- **Combination:** `And(Box<_>, Box<_>)` / `Or(Box<_>, Box<_>)` — the **recursive tree** shape.
+- **Negation:** a `negate: bool` on the leaf variants, or (for `NameValue`) `negate_name` /
   `negate_value` for per-gate control.
-- **Combination:** `And(Box<_>, Box<_>)` / `Or(Box<_>, Box<_>)`.
 `Astn`'s search variants gain the negated flag; the combine-block is a new leading-`(...)` parse.
+
+> **Co-design note (coherence review):** this FOOP **defines the `SearchPredicate` tree shape**
+> (`And`/`Or` outer, `negate` on leaves). FOOP-63 (Primitive Characterization) later adds a `Char`
+> predicate — it must slot in as **another leaf** of *this* tree, **not** a parallel combination
+> mechanism. Land this FOOP's tree first. See the coherence review in the NOTES doc.
 
 ## UBC Step Impact
 

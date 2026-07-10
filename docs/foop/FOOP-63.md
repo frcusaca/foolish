@@ -81,8 +81,11 @@ characterization verification/demand on every operator.
   `constanic_clone_at`'s `Independent` branch returns the same `Rc` for free; do not add deep-copy
   arms. Each owes a `*_nyes_transitions` test.
 - **`get_value_primitive()`** on the FIR trait (dispatched by characterization).
-- **A characterization gate in the matcher** — likely `SearchPredicate::Char` (or a char-field on
-  existing predicates), composing with Name/Value.
+- **A characterization gate in the matcher** — a `SearchPredicate::Char { … }` leaf.
+  > **Co-design note (coherence review):** FOOP-93 defines the `SearchPredicate` **tree**
+  > (`And`/`Or` + `negate`). Add `Char` as **another leaf of that tree** — do **not** invent a
+  > parallel combination mechanism. A char-demand then composes for free: `(i' && =10)` etc. Land
+  > FOOP-93 first. See the coherence review in the NOTES doc.
 
 ## UBC Step Impact
 

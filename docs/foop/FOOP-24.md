@@ -48,25 +48,70 @@ recursion cleanly.
   bare SF/SFF (`constanic_clone_at`, `fir_kinds.rs:155-179`) — "coordination frees everything."
   Detachments do not survive coordination unless re-detached by another parameterized mark.
 
+### Strict detachment — `[[p1,p2,…]]<E>` / `[[…]]<<E>>` (proposed extension, Atlas)
+
+**The thought:** a (single-bracket) detachment writes down what must *not* resolve. But an
+ECONSTANIC search that was **not** caused by a detachment is also unresolved — silently. If we are
+already declaring non-resolution, should we declare *all* of it? Strict detachment says yes: it is
+a **completeness assertion** — "these are *all* the names this expression may leave unresolved;
+anything else unresolved is a bug."
+
+**Semantics.** Under `[[p1,…]]`, **every ECONSTANIC search inside `E` must be *accounted for* by
+some detachment pattern.** An ECONSTANIC search that matches **no** pattern → that search settles
+**NK**, which propagates the brane to NK. (Single `[]` stays permissive: unaccounted ECONSTANIC is
+fine — it waits for coordination.)
+
+**Why it is implementable.** A `SearchFir` keeps its `pattern` (`fir_kinds.rs:821`,
+`as_search_pattern`), so at the ECONSTANIC settle sites (the miss branches, `fir_kinds.rs:1273`
+and the value-/contexted-search equivalents) the engine can ask "is this search accounted for?"
+before allowing ECONSTANIC. `[[` lexes as two `LBracket`s (no new token).
+
+**The semantic subtlety (must be resolved — this is exactly the "does it make sense thought
+through" check).** A search goes ECONSTANIC in strict mode for two different reasons:
+(a) its targets were **detached** (hidden by a `p`) — expected; (b) its target genuinely **doesn't
+exist** and isn't in any `p` — the error. Distinguishing them requires deciding what
+"accounted for" means:
+
+- **Option A (target-name membership):** the search is accounted for iff at least one detachment
+  pattern would match **the name the search was looking for**. Clean for literal-name searches
+  (`?foo` accounted iff `foo` matches a `p`). For a **regex** search pattern, "the name it was
+  looking for" is a *set* of names — so this needs a rule (e.g. accounted iff the search's own
+  pattern is a subset of the detach patterns — but regex subset is undecidable in general).
+- **Option B (pattern-equality / syntactic):** accounted iff the search's pattern string appears
+  in the detach set (or a designated containment). Decidable, but coarse — `?tmp_1` would need
+  `tmp_1` listed exactly, not `tmp.*`.
+- **Recommended starting point:** Option A restricted to **literal-name searches**; a regex-pattern
+  ECONSTANIC search under `[[…]]` is itself an error (or falls back to permissive) until a
+  principled regex-containment rule is chosen. Decide in the FOOP.
+
+**Interaction with the spectrum.** `[[*]]` would mean "*every* search must be a detached one" —
+i.e. no search may resolve normally AND none may be an unaccounted miss; effectively "all searches
+detached, none genuinely missing." Whether `[[*]]` differs usefully from `[*]` (permissive
+detach-all) is an open question. `[[]]` (empty strict) means "**no** search may go ECONSTANIC" — a
+strong "everything must resolve" contract (a useful assertion in its own right).
+
 ## FIR Impact
 
-No new FIR kind. Add `detachments: Vec<String>` to **both** `StayFoolishFir` (`fir_kinds.rs:2021`)
-and `StayFullyFoolishFir` (`:2082`) — a parameterized marker is just SF/SFF with a non-empty
-`detachments`.
+No new FIR kind. Add to **both** `StayFoolishFir` (`fir_kinds.rs:2021`) and `StayFullyFoolishFir`
+(`:2082`): `detachments: Vec<String>` and a `strict: bool` (the `[[…]]` flag). A parameterized
+marker is just SF/SFF with a non-empty `detachments`; strict is the double-bracket variant.
 
 ## UBC Step Impact
 
 - **Scope handoff.** Extend `Scope` (`fir_trait.rs:55`, today just `has_ancestral_sfm: bool`) to
-  also carry the **active detachment patterns** accumulated from enclosing parameterized marks
-  (`active_detachments: Vec<String>`), pushed in `step_inner` (`fir_trait.rs:347`) when stepping
-  under a parameterized marker.
-- **Prefilter.** In the scan loop (`contextful_search_scan`, `fir_kinds.rs:1978`), before
-  `predicate.matches`, skip a candidate if any active detachment pattern matches it (reuse
+  carry the **active detachment patterns** (and the strict flag) accumulated from enclosing
+  parameterized marks (`active_detachments: Vec<String>`, `strict_detachment: bool`), pushed in
+  `step_inner` (`fir_trait.rs:347`) when stepping under a parameterized marker.
+- **Prefilter (permissive `[]`).** In the scan loop (`contextful_search_scan`, `fir_kinds.rs:1978`),
+  before `predicate.matches`, skip a candidate if any active detachment pattern matches it (reuse
   `SearchFir::matches_pattern`). **Same locus as FOOP-93's `!`.**
+- **Accounting (strict `[[]]`).** At the ECONSTANIC settle sites (`fir_kinds.rs:1273` and the
+  value-/contexted-search equivalents), when under a strict marker: if the search is **not
+  accounted for** by any active pattern (see the "accounted for" rule), settle **NK** instead of
+  ECONSTANIC.
 - **Keep existing SFF unchanged.** Naked `<<>>` keeps its current implementation; `[*]<<>>`
-  forwards to it. The **new code path is only for specific (non-`*`) detachments** — an exclusion
-  list over otherwise-normal search. Engage the prefilter iff `detachments` is non-empty and ≠
-  `[*]`.
+  forwards to it. The **new permissive code path is only for specific (non-`*`) detachments**;
+  strict is an additional gate on ECONSTANIC settlement.
 
 ## Test Plan
 
@@ -96,17 +141,25 @@ prefilter — no new stepping behavior.
 - **How detachment helps recursion** — the specific recursion patterns detachment should enable
   (hiding a recursion variable's outer binding so the inner call rebinds cleanly?) — explore with
   the recursion FOOP (FOOP-34).
+- **Strict detachment `[[]]` — the "accounted for" rule** (Option A literal-name vs B syntactic;
+  regex-pattern searches; see §Strict detachment). Does `[[*]]` differ usefully from `[*]`? Is
+  `[[]]` ("no search may go ECONSTANIC") worth shipping as its own assertion? Whether strict is in
+  scope for the first cut or a follow-on.
 
 ## Plan (lean)
 
 - [ ] Unit tests (spectrum extremes; skip behavior; clone-strip).
-- [ ] Add `detachments` to `StayFoolishFir`/`StayFullyFoolishFir`.
-- [ ] Parser: recognize `[patterns]` before an SF/SFF mark; attach to the marker node.
-- [ ] Extend `Scope` with `active_detachments`; push in `step_inner`.
-- [ ] Add the exclusion prefilter to the scan loop (new path only for specific detachments).
-- [ ] **Doc TODO (mandated, three surfaces): write the SF≡`[]` / SFF≡`[*]` spectrum into
-      README.md, code comments (SF/SFF FIRs + prefilter), and the snapshot tests themselves.**
-- [ ] Approval cases; comprehensive `foop_24_comprehensive.foo`.
+- [ ] Add `detachments` + `strict` to `StayFoolishFir`/`StayFullyFoolishFir`.
+- [ ] Parser: recognize `[patterns]` (and `[[patterns]]` strict) before an SF/SFF mark; attach to
+      the marker node.
+- [ ] Extend `Scope` with `active_detachments` + `strict_detachment`; push in `step_inner`.
+- [ ] Add the exclusion prefilter to the scan loop (permissive path, specific detachments).
+- [ ] **Strict:** gate ECONSTANIC settlement on the "accounted for" check (decide the rule first).
+- [ ] **Doc TODO (mandated, three surfaces): write the SF≡`[]` / SFF≡`[*]` spectrum (and the
+      permissive-vs-strict `[]`/`[[]]` distinction) into README.md, code comments, and the
+      snapshot tests themselves.**
+- [ ] Approval cases (incl. a `[[…]]` strict accounted/unaccounted pair); comprehensive
+      `foop_24_comprehensive.foo`.
 - [ ] Worktree lifecycle per `foop.md`.
 
 ## Appendix — notes toward the full spec
@@ -137,3 +190,9 @@ prefilter — no new stepping behavior.
 just before recursion, since tightening it should help recursion definitions). Parameterized SF/SFF
 marker (exclusion-list prefilter); SF≡`[]` / SFF≡`[*]` spectrum; triple-documentation mandate;
 depends on FOOP-43.
+**Added §Strict detachment `[[]]`** (Atlas coherence pass): a completeness assertion — under
+`[[…]]`, every ECONSTANIC search must be *accounted for* by a detachment pattern, else that search
+→ NK (brane NK). Implementable (SearchFir keeps its `pattern`; `[[` = two LBrackets). Flagged the
+"accounted for" semantic subtlety (literal-name Option A vs syntactic Option B; regex-pattern
+searches undecidable in general). Corollary: `[[]]` = "no search may go ECONSTANIC" (a strong
+everything-must-resolve assertion). Added `strict` flag to the FIR/Scope/plan.
