@@ -56,6 +56,7 @@ ls | rev | sort -V | rev
 | [FOOP-24](FOOP-24.md) | Detachment — parameterized stay-foolish markers | Draft | phase-2 | 2026-07-09 | Atlas |
 | [FOOP-34](FOOP-34.md) | Recursion Upgrades (standalone research; write algorithms first) | Draft | phase-5 | 2026-07-09 | Atlas |
 | [FOOP-44](FOOP-44.md) | Macros — research and design (standalone research) | Draft | phase-6 | 2026-07-09 | Atlas |
+| [FOOP-74](FOOP-74.md) | FIRID — atomic per-Fir identity for constanic-clone cycle detection | Draft | phase-2 | 2026-07-11 | Atlas |
 
 ---
 
@@ -91,6 +92,7 @@ ls | rev | sort -V | rev
 - [FOOP-24](FOOP-24.md) — Detachment = parameterized SF/SFF marker (exclusion-list prefilter; SF≡`[]` / SFF≡`[*]`; before recursion — helps it; needs FOOP-43)
 - [FOOP-34](FOOP-34.md) — Recursion Upgrades (**standalone research**; write ~1–2 dozen algorithms first; after the full search suite; `↑`; no cycle detection)
 - [FOOP-44](FOOP-44.md) — Macros (**standalone research**; brane-transforms-brane vs expansion phase; leans on FOOP-14 + characterizations)
+- [FOOP-74](FOOP-74.md) — FIRID (atomic per-Fir instance counter) + thread-local in-flight clone stack; `eprintln!` alarm when `constanic_clone_at` re-enters an already-in-progress FIRID (detection/visibility only, not a language semantic — distinct from FOOP-34's "no recursion-cycle detection" language-design stance)
 
 ### Brewing
 
@@ -146,7 +148,7 @@ Canceled as they stand; each may be respecified and reimplemented later. See
 
 ### phase-2
 
-- [FOOP-6](FOOP-6.md), [FOOP-7](FOOP-7.md), [FOOP-8](FOOP-8.md), [FOOP-01](FOOP-01.md), [FOOP-11](FOOP-11.md), [FOOP-51](FOOP-51.md), [FOOP-61](FOOP-61.md), [FOOP-32](FOOP-32.md), [FOOP-42](FOOP-42.md), [FOOP-52](FOOP-52.md), [FOOP-62](FOOP-62.md), [FOOP-82](FOOP-82.md), [FOOP-13](FOOP-13.md), [FOOP-23](FOOP-23.md), [FOOP-43](FOOP-43.md), [FOOP-53](FOOP-53.md), [FOOP-83](FOOP-83.md), [FOOP-93](FOOP-93.md), [FOOP-04](FOOP-04.md), [FOOP-14](FOOP-14.md), [FOOP-24](FOOP-24.md)
+- [FOOP-6](FOOP-6.md), [FOOP-7](FOOP-7.md), [FOOP-8](FOOP-8.md), [FOOP-01](FOOP-01.md), [FOOP-11](FOOP-11.md), [FOOP-51](FOOP-51.md), [FOOP-61](FOOP-61.md), [FOOP-32](FOOP-32.md), [FOOP-42](FOOP-42.md), [FOOP-52](FOOP-52.md), [FOOP-62](FOOP-62.md), [FOOP-82](FOOP-82.md), [FOOP-13](FOOP-13.md), [FOOP-23](FOOP-23.md), [FOOP-43](FOOP-43.md), [FOOP-53](FOOP-53.md), [FOOP-83](FOOP-83.md), [FOOP-93](FOOP-93.md), [FOOP-04](FOOP-04.md), [FOOP-14](FOOP-14.md), [FOOP-24](FOOP-24.md), [FOOP-74](FOOP-74.md)
 
 ### phase-3
 
@@ -182,6 +184,18 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 ---
 
 ## Last Updated
+
+**Date**: 2026-07-11
+**Updated By**: Claude Code 2.1.119 (Claude Code); Sonnet 5
+**Changes**: Added **FOOP-74** — FIRID (atomic per-Fir instance counter on `ProtoBrane`) +
+thread-local in-flight clone stack + `eprintln!` alarm when `constanic_clone_at` re-enters an
+already-in-progress FIRID. Diagnostic tooling only (no semantic/evaluation change), written
+directly from a FOOP-13 triage session that found a genuine constanic-clone cycle by hand
+(`concat_sf_f_more.foo`'s `f1`: `a`'s search for `"b"` clones `f1.b`; the clone's revived
+`<<b + c>>` search finds the same original `f1.b` again, nesting without bound). Numbered 74
+(sort key 47) at Atlas's explicit request, deliberately leaving a gap at sort key 46 — noted in
+the FOOP itself as accepted, not an error. Added to main table, By-Status (Draft), and By-Phase
+(phase-2).
 
 **Date**: 2026-07-09
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
