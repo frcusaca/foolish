@@ -57,48 +57,43 @@ When request is small, you may combine Major/Phase/Stage into a single unit.
 
 FOOP documents are the Foolish equivalent of Python's PEP or Rust's RFC. They
 propose, discuss, and track changes to the Foolish language and its reference
-implementations.
+implementations. Each FOOP is two files sharing the same `FOOP-<NUMBER>` stem:
+`FOOP-#.md` (the **specification** — the what and why) and `FOOP-#.plan.md`
+(the **plan** — a checkboxed, sequentially-executed roadmap for the how).
+FOOP numbering is **little-endian**: the filename digits ARE the identifier
+(FOOP-1 → FOOP-9 → FOOP-01 → FOOP-11 → FOOP-21…), while the `foop:`
+frontmatter is a separate sort key (the digits reversed). Manage numbering with
+the `docs/foop/scripts/foop_check.py` helper script (`gen_next` before creating
+any new FOOP). FOOPs progress through statuses: `Draft` → `Brewing` → `Final`
+→ `Implementing` → complete, and each is assigned a `phase` (phase-1 through
+phase-7, or `meta`).
 
-> ## ⛔ STOP — READ `foop.md` BEFORE TOUCHING ANY FOOP's ⛔
-> **WHEN you need to read or write foop, you MUST first read `foop.md` (in the
-> repository root, next to this file) in full — every line. That document is the
-> authoritative reference for the FOOP process, its philosophy, the numbering
-> system, the file layout, plan construction, project/branch management, and the
-> full checkbox lifecycle. The summary below covers only the few common,
-> every-day uses; for anything beyond them, `foop.md` governs.
+The full FOOP process — numbering rules, spec/plan construction, checkbox
+lifecycle (complete/backburner/cancel), worktree branch tracking, merge and
+cleanup procedures, comprehensive test generation, and all command-line
+invocations — is provided in two dedicated skills (see the Skills section
+below). **Load the relevant skill before creating, planning, executing, or
+maintaining any FOOP.** `foop.md` at the repository root remains the
+authoritative reference; if a skill and `foop.md` appear to disagree,
+`foop.md` wins.
 
-A few common every-day uses (full detail lives in `foop.md`):
+- **Creating or planning a FOOP** → load the `foop-write-plan` skill.
+- **Finding, executing, backburnering, cancelling, merging, or cleaning up a
+  FOOP** → load the `foop-use-maintain` skill.
 
-- **Numbering & the helper utility.** FOOP numbering is *little-endian*: the
-  filename digits ARE the identifier, while the `foop:` frontmatter is a
-  separate sort key (the digits reversed). Manage numbering with the helper
-  script — always run `gen_next` before creating a new FOOP:
+## Skills
 
-  ```bash
-  python3 docs/foop/scripts/foop_check.py check     # verify consecutive numbering
-  python3 docs/foop/scripts/foop_check.py get_last  # most recent FOOP
-  python3 docs/foop/scripts/foop_check.py gen_next  # filename for next FOOP
-  python3 docs/foop/scripts/foop_check.py list      # all FOOPs in chronological order
-  ```
+The following opencode skills are installed for this project. **Be aware of
+them and use them when the task matches their domain** — they provide
+specialized, copy-pasteable procedures that are more direct and complete than
+inferring from general knowledge. Load a skill before starting work in its
+domain; do not improvise around it.
 
-- **The two files of a FOOP.** `FOOP-#.md` is the **specification** (the what, why,
-  and how). `FOOP-#.plan.md` is a **checkboxed plan** meant to be executed
-  sequentially from top to bottom(this is the how to get there roadmap). **Executing
-  a FOOP plan requires reading BOTH `FOOP-#.md` and `FOOP-#.plan.md`** — the plan
-  assumes the specification's context.
-
-- **Constructing the plan.** How to decompose a specification into an ordered
-  `FOOP-#.plan.md` (concrete sequential tasks, worktree lifecycle checkboxes,
-  sub-task splits) is described in `foop.md`.
-
-- **Checkbox lifecycle.** How to use checkboxes — completing them with a
-  timestamp on the indented next line, delaying them with `[x]
-  backburnered`, and cancelling them with `[x] Canceled` plus per-item `[-]`
-  markers — is described in `foop.md`.
-
-Whenever the task involves reading or writing FOOPs (creating, planning,
-implementing, checking boxes, or merging), **read `foop.md` first** and follow
-it exactly.
+| Skill | Scope | Load when… |
+|-------|-------|------------|
+| `foolish-debugging` | Debugging Foolish FVM/FIR behavior via unit-test-driven inspection. Covers the minimal test setup, NYES state tracing, FIR inspection (`ib_search`/`ab_search`, parent chain, values/children), and cleanup discipline (promote-to-regression-or-delete). | Debugging wrong brane evaluation, unexpected NK/ECONSTANIC, search resolution failures, NYES state machine bugs, or name-lookup errors in `foolish-ubca`. |
+| `foop-write-plan` | Creating and planning FOOPs. Covers little-endian numbering, `foop_check.py`, the spec template (frontmatter + all body sections), plan construction rules, checkbox format, sub-tasks, worktree setup, and comprehensive snapshot test generation. | Creating a new FOOP, writing a specification, or constructing a plan (`FOOP-#.plan.md`). |
+| `foop-use-maintain` | Using and maintaining existing FOOPs. Covers listing/finding FOOPs, the status lifecycle, plan execution flow, checkbox lifecycle (complete with timestamp, backburner, cancel/deprecate), worktree execution, merge-to-alpha, cleanup, and the human communication protocol. | Finding, executing, resuming, backburnering, cancelling, merging, or cleaning up an existing FOOP. |
 
 
 
