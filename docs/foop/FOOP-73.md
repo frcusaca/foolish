@@ -98,6 +98,16 @@ creation and computing the lookup natively (it never enumerates the table). **De
 implication:** this uses positional seek (`#-N`, exists), value search (`~A=`, FOOP-23), the
 contexted continuation connector (`&~B=`), and contexted index (`#1`) — see the ordering note.
 
+**Two operational preconditions this skeleton relies on (Atlas-confirmed):**
+1. **Concatenation flattens into one brane.** `{True,False} AND` merges into a *single* brane whose
+   statement sequence is `[True, False, <AND's body>]` — so `#-2` from `b'A` (which seeks within its
+   home brane) reaches back across the concatenation boundary into the args. This matches how
+   `ConcatenationFir` already merges operand statements into one result brane; the operator body is
+   spliced in after the args in the flat sequence.
+2. **The value-pattern may be a search** (FOOP-93 enhancement). In `_TABLE~A=A`, the RHS `A` is an
+   identifier → a `SearchFir` resolving to the bound arg; the value search compares against its
+   settled value. FOOP-93 implements/tests this; FOOP-73 consumes it.
+
 ### Application surface
 
 - **Declaration.** `system.foo` (a `system.b.foo` section) defines `AND`/`OR`/`NOT`/`NOR`/`XOR`

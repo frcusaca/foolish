@@ -220,10 +220,16 @@ handoff logic (SFM flag + detachments set at the same site).
 - **`OperatorFir::combine`** (`:483`): FOOP-83 (`**`, comparisons), FOOP-73 *fallback only*,
   FOOP-63 (float ops). One function, several new arms — keep the match arms tidy; consider a
   sub-dispatch by operand characterization once FOOP-63 lands.
-- **The scan loop / `SearchPredicate::matches`** (`:1709`/`:1978`): FOOP-93 (negate/And/Or),
-  FOOP-24 (prefilter), FOOP-14 (collect mode), FOOP-63 (`Char` gate). This is the busiest shared
-  site — the "one engine" holds, but these must be sequenced so each builds on the last (93 → 24 →
-  14, with 63's `Char` slotting into 93's tree).
+- **The scan loop / `SearchPredicate::matches`** (`:1709`/`:1978`). Per-candidate pipeline is just
+  **two stages, not a 4-gate stack** (Atlas): (1) the **detachment prefilter** (FOOP-24) — a
+  *filter*, applied **before** the matcher; a skipped candidate is invisible. As a filter it is
+  order-idempotent, so "before" is a free choice. (2) the **matcher** (`SearchPredicate::matches`)
+  — which *internally* subsumes negation (FOOP-93 `!` is the predicate's own flag), the
+  characterization demand (FOOP-63 `Char` is part of the search pattern), and `And`/`Or` (FOOP-93,
+  `NkStop` halts). Find-all (FOOP-14) is a scan-*mode* wrapping this, not a gate. So the sequencing
+  is: predicate tree (FOOP-93) is the matcher's shape, `Char` (FOOP-63) slots in as a leaf, `!` is a
+  leaf flag; detachment (FOOP-24) is the one pre-matcher filter; find-all (FOOP-14) is the collect
+  wrapper. `_TABLE~A=A` (value-pattern-as-search, FOOP-93) settles the value-child before compare.
 - **Constanic clone** (`:155-253`): FOOP-43 Component 2 (drop `Search` `[1]`), FOOP-24 (SF/SFF
   strip already exists), FOOP-63 (new value kinds get the Independent-same-`Rc` path free).
   FOOP-43's `[1]`-drop is the only *behavioral* clone change — everything else is additive.
