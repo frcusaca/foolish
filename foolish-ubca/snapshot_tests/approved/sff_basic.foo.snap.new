@@ -14,17 +14,27 @@ INPUT:
   c=<<WOCONSTANIC
       Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
   >>;
-  3;
-  3
+  ?(
+    result=Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
+    pattern='^c$',
+    UNANCHORED,
+    WOCONSTANIC
+  );
+  ?(
+    result=Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
+    pattern='^c$',
+    UNANCHORED,
+    WOCONSTANIC
+  )
 }
 ```
 COMMENTS:
 ```markdown
 sff_basic
-generated: 2026-07-11T00:58:26.351941880Z
+generated: 2026-07-11T01:13:27.868433804Z
 ```
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: M+ozF2oYm4cROdzChLuxt5BpEqob22mvstBM9GOfw2F2UXnwZmokwfQrB8XQTBKx4VH4eIRMpmKFp8pMSK/mCg==
-HFS signature: w8qFc6csEJe8aPuTCjx9g+ldLit1rfle77kXSWfmfOH16txSAqKA9oiwxm2UI1jO/2dKUjppvIqQbGAlQje+Ag==
-Comments signature: 4p0QelYEZs+iWqprN6skQrYNc1OwTyjgd2ruzgXkf2m1QMx7FzBn0cy+6rcMbbLwRyKV0PChcvZePaVFT09vDw==
+HFS signature: iO7mAP9Hknl56b7RoiB9jH4artlun8prgnsAToRP6D81kH9c9AEKKXS/foTJ+b9vwncEknPkBFjwq59RXxVLDA==
+Comments signature: N9CIvczr9w9PTuoNo2EL6bSX9emxGG9NOnnUJG1jIhswdiPF/56/4TF4ZC3sRGG05NNehSxEngT8739O70BuCw==

@@ -46,21 +46,26 @@ INPUT:
       ?(pattern='^sff$', UNANCHORED)
   >>;
   x=-2;
-  rsff=0;
+  rsff=?(
+      result=Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
+      pattern='^sff$',
+      UNANCHORED,
+      WOCONSTANIC
+  );
   rsf=3;
   rsfsff=0;
-  rsffsf=?(result=3, pattern='^sf$', UNANCHORED);
+  rsffsf=?(result=?(pattern='^sf$', UNANCHORED, ECONSTANIC), pattern='^sffsf$', UNANCHORED, WOCONSTANIC);
   rsfsf=3;
-  rsffsff=0
+  rsffsff=?(result=?(pattern='^sff$', UNANCHORED, ECONSTANIC), pattern='^sffsff$', UNANCHORED, WOCONSTANIC)
 }
 ```
 COMMENTS:
 ```markdown
 sf_sff_nested_combined
-generated: 2026-07-11T00:58:26.249491743Z
+generated: 2026-07-11T01:13:27.767493350Z
 ```
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: tT8UqgoaX2cQknxaTSOxGoatqdbkUElQJTZXD4wK3f2mTtwOZwiBraFW1mIiflGHyg6zn6JuaExvI+DIT6sOBg==
-HFS signature: 383ihgDs/KqSr1ta6hZzSUbwIpBK0xbxzXs6a51InL6pT5FLHimRkUdZUciT8YVjS2NqLJ2t+OpHHicP/HgjDg==
-Comments signature: v1ErsU+ZWEZgQHDoy21vQIbBnx+41Pmt+V91gJ9XaJUWwoX4Lx0ETkz/SZ7NfJ9sL66+1ZW8+AhwBzEsmtOMCg==
+HFS signature: lxHWzpMXOc5RI/FYyXdfjlWWD39DlrqSWwPIHkJSvTXbUHn9SUZyTvOCbaFrwlLnlWIZKYh+sYn1SQxczuDrDA==
+Comments signature: IHXWs7Cq1td7VT5BfP9Z+oW9bGnOfQ/xaSTSm51Y53iLGHhQvAnNEuQGQw4htb2n8ynOcamL/jACO4Qv9Ia2Ag==

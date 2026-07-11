@@ -22,16 +22,21 @@ INPUT:
   );
   a=10;
   12;
-  12
+  ?(
+    result=Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
+    pattern='^sff$',
+    UNANCHORED,
+    WOCONSTANIC
+  )
 }
 ```
 COMMENTS:
 ```markdown
 sf_of_sff
-generated: 2026-07-11T00:58:26.143936466Z
+generated: 2026-07-11T01:13:27.656085345Z
 ```
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: h1VqZ8FgnPZ2bLsAmCfvaSczq/hrg2qLt+NCDHxlJTO58pkS3WuR3DKlCs5mxYNflR4ATJy8+l662ISwvkxvDA==
-HFS signature: 2+3SBxivohRuEPHZIQCkiLwqMGe5k2241x2go7Aiw2lA6tJlg/9+d87vhZ3vNN4OUtHKkaAEYRRO9IFVcbjtDw==
-Comments signature: Sqod2XJcb3NL2W3ZN014ZsJCZMnFMtEQe9LZ4xEaDFzwF6J7AlzV61yxJigbQRgdRljw8A/mDD5zGdN/GXFxDQ==
+HFS signature: ME/gaZJlCgqg9mQqywXpx6JA8I6GGKVlCEYkaWoseD4hYXRyim9qAtsHtlLvkMFl+QeOLPcdNBorf5pjBZYsDw==
+Comments signature: MhfA2NIq4UEIMWmV1BCds7jYjxgK3P0v/5MCWwvz2O5KYaKLjBbIdv1xul57EayJqSTzM/PWzRbiU9LVntgPBg==
