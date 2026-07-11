@@ -1,0 +1,136 @@
+Fri Jul 10 06:03:50 PM PDT 2026 cat concat_sf_f_more.foo.snap.new---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{
+  a=1;
+  b=2;
+  c=3;
+  x=-10;
+  y=-20;
+  z=-30;
+
+  f1 = {
+     b= <<x+y>> + <<a>> + <<b + c>>;
+     a= <x+y> + a + b;
+  }
+
+  f2 = {
+     b= <<x+z>> + <a + <<b>> + <c> >;
+  }
+
+  f3 = {
+     c= <a + <<b + <x + y + z> >> + <c> >;
+  }
+
+  b = f1 <f2> <<f3>>;
+
+  d= b$;
+}
+```
+[0] RESULT:
+```hfssnap
+{NK(ITERATION-EXCEEDED, Iteration exceeded 9999)
+  a=1;
+  b=2;
+  c=3;
+  x=-10;
+  y=-20;
+  z=-30;
+  f1={BRANING
+      b=Op+(
+          Op+(
+            <<WOCONSTANIC
+              Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
+            >>,
+            <<WOCONSTANIC
+              ?(pattern='^a$', UNANCHORED)
+            >>,
+            WOCONSTANIC
+          ),
+          <<WOCONSTANIC
+            Op+(?(pattern='^b$', UNANCHORED, ECONSTANIC), ?(pattern='^c$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
+          >>,
+          WOCONSTANIC
+      );
+      a=Op+(-29, ?(pattern='^b$', UNANCHORED, BRANING), BRANING)
+  };
+  f2={PREMBRIONIC
+      b=Op+(
+          <<PREMBRIONIC
+            Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^z$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
+          >>,
+          <PREMBRIONIC
+            Op+(
+              Op+(
+                ?(pattern='^a$', UNANCHORED, PREMBRIONIC),
+                <<PREMBRIONIC
+                  ?(pattern='^b$', UNANCHORED)
+                >>,
+                PREMBRIONIC
+              ),
+              <PREMBRIONIC
+                ?(pattern='^c$', UNANCHORED, PREMBRIONIC)
+              >,
+              PREMBRIONIC
+            )
+          >,
+          PREMBRIONIC
+      )
+  };
+  f3={PREMBRIONIC
+      c=<PREMBRIONIC
+          Op+(
+            Op+(
+              ?(pattern='^a$', UNANCHORED, PREMBRIONIC),
+              <<PREMBRIONIC
+                Op+(
+                  ?(pattern='^b$', UNANCHORED, ECONSTANIC),
+                  <PREMBRIONIC
+                    Op+(
+                      Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), PREMBRIONIC),
+                      ?(pattern='^z$', UNANCHORED, ECONSTANIC),
+                      PREMBRIONIC
+                    )
+                  >,
+                  WOCONSTANIC
+                )
+              >>,
+              PREMBRIONIC
+            ),
+            <PREMBRIONIC
+              ?(pattern='^c$', UNANCHORED, PREMBRIONIC)
+            >,
+            PREMBRIONIC
+          )
+      >
+  };
+(@agents, still broken below.)
+  b=⨃(
+      elements=2,
+      <PREMBRIONIC
+  ?(pattern='^f1$', UNANCHORED, PREMBRIONIC)
+>,
+      <PREMBRIONIC
+  ?(pattern='^f2$', UNANCHORED, PREMBRIONIC)
+>,
+      PREMBRIONIC
+  );
+  <<PREMBRIONIC
+    ?(pattern='^f3$', UNANCHORED)
+  >>;
+  d=$(PREMBRIONIC)
+}
+```
+COMMENTS:
+```markdown
+concat_sf_f_more
+generated: 2026-07-11T00:58:16.306877881Z
+```
+SIGNATURES:
+Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
+Foolish signature: 6AzGNJXm5wdZXyTwBHCaOcttoyncBzE4/K7NCfCD8jdXPNYArg7otv7CUSNuPLngLFQu7qOC522o+6GlZlm+Dg==
+HFS signature: vpy85Z6jiOs8rv0i5SOximOlG3BAU4VE9u1BqZ8H07kuBkwBeIN25CD52LrGBqAHp26OissEQmSYhKD5LJkTCg==
+Comments signature: 5w+MVel8yLElBiKUPx21jHCi4XT0cDar4MLR0039C8sNlz87hqI0DQwZKUFtwPl1jkzJSfJoppk/SEl5+NRFBA==

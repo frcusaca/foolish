@@ -15,26 +15,17 @@ INPUT:
       calc=<<WOCONSTANIC
           Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
       >>;
-      doubled=Op*(
-          ?(
-            result=Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
-            pattern='^calc$',
-            UNANCHORED,
-            WOCONSTANIC
-          ),
-          2,
-          WOCONSTANIC
-      )
+      doubled=30
   }
 }
 ```
 COMMENTS:
 ```markdown
 complex_sff_with_nested_scope
-generated: 2026-07-11T01:13:15.932544556Z
+generated: 2026-07-11T00:58:15.556837721Z
 ```
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: 8qfr0jpSsMP6MZAsD56aGbduYNh+nJ3slMhr8S+O04N/0gGhEQnVaYe41x8MuuHjYIaXc8UxZ9Qo9GNdgbECCw==
-HFS signature: x6BgaigMATtHPewHCkth5rcIWZqllPTl00jFNu1ZddhAIR4FWzjW/Vdyq2t+VObJRS1NBgKEZmaIK6/7KlyVDg==
-Comments signature: w1+xMkSfMpGnzwesKpUS2lw/HujP2a+O4hNrWn/DWWS1u+cGWOdoeAfw8Qkx7dEBsGhXr0Ugc/q1rXNkzCQzBA==
+HFS signature: Z8oOGIf1+XhnZ3+ugufK2SuxFOLR6V5r/QFrZOpHnkIRyeRfpZ054Y7jRW68ileynB+g9mZMiffE3An7WjxoDg==
+Comments signature: PKTktU8Wo1F2wr6X/pypLXek+oGs2o4SoOk35+ch1v7+lMgaaWaGKAuDDJmibPQctnYhbBPYt+AgDRMd0R/6AA==

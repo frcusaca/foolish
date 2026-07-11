@@ -15,21 +15,16 @@ INPUT:
       Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
   >>;
   a=100;
-  ?(
-    result=Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
-    pattern='^c$',
-    UNANCHORED,
-    WOCONSTANIC
-  )
+  102
 }
 ```
 COMMENTS:
 ```markdown
 sff_in_assignment_chain
-generated: 2026-07-11T01:13:27.972654166Z
+generated: 2026-07-11T00:58:26.453883017Z
 ```
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: W39zs+UId/DzfxHfL4QgQfryXimg6He4zOPcvtPzRzzWL/XwvRD91ZNi0vO2yL2wEXrlywGGMoz/vf+tEpgQDQ==
-HFS signature: ybqthhP+jY1qRhhRIkImeIUclLaYj/l1VfxgtKcfCmJcI+4PkG+ViQLt66dBSI/1dv/CZo6bby6KGJsOZbdDAQ==
-Comments signature: TaBM4RQhqSfZagkRm4Q2UDhdjCDLWgSLfRRpR20CyCfE3rwELGDIDD093GAaXWw0kyNNsbJUzUlU6VqagP9nCw==
+HFS signature: C55yf8iMjVKh2fo9U0DVIIRaVa7VdFicH7V6SwsoldwnNpUs+sl8MUCxDrTu2aQ6QpuJkZh/qNiXmNG1L72ACg==
+Comments signature: KwK2it1W1MBil0MpR9N3Pfz5mXvfLB334dRK4TiJOP7EKk0oFU3SxIWZ/+YBMZmSWdZDCjnnx997OfOnoZUMBg==
