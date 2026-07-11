@@ -1,0 +1,16 @@
+#einmo 1 encoding=utf-8 separator=①\n
+test: nested_expressions.py
+suite: einmo
+producer: 2ba9df56
+generated: 2026-07-11T18:07:00.227818378Z
+status: normal
+status-detail: 
+sections: OUTPUT, COMMENTS, INPUT, STAMPS
+①
+3①
+①
+((2 + 3) * (4 - 1)) // 5
+①
+{"key":"compiled","pubkey":"067a5f13387724f8d9a2e17406c3a996cf9ec6e3b3bb52b14c317f9df89e5b0b","signs":"pubkey:configured","signature":"7N3tlER3u/37Cas+iEeUHr8wOhxY9cYZETnktFpxjj/CMYjR4uGKYIDZD6QNbZ3TzP3QkUCKcFgt5ntBdTjJCg==","produced_by":"einmo 0.1.0 sha256:placeholder","timestamp":"2026-07-11T18:07:01.141517939Z"}
+{"key":"configured","pubkey":"067a5f13387724f8d9a2e17406c3a996cf9ec6e3b3bb52b14c317f9df89e5b0b","signs":"pubkey:stage:output","signature":"7N3tlER3u/37Cas+iEeUHr8wOhxY9cYZETnktFpxjj/CMYjR4uGKYIDZD6QNbZ3TzP3QkUCKcFgt5ntBdTjJCg==","produced_by":"einmo 0.1.0 sha256:placeholder","timestamp":"2026-07-11T18:07:01.141550380Z"}
+{"key":"stage:output","pubkey":"067a5f13387724f8d9a2e17406c3a996cf9ec6e3b3bb52b14c317f9df89e5b0b","signs":"prior-bytes","signature":"m991kSHc4pgp3v959k2obCNq+NVCbVGYWvEvZd6wmdnWZ4c5Kj8yKVizbGFOB45npuxtNYX7orBjW7vPSGziDA==","produced_by":"einmo 0.1.0 sha256:placeholder","timestamp":"2026-07-11T18:07:01.141597658Z"}

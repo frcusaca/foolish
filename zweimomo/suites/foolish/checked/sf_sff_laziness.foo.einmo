@@ -1,0 +1,24 @@
+#einmo 1 encoding=utf-8 separator=!!\n
+test: sf_sff_laziness.foo
+suite: einmo
+producer: 2ba9df56
+generated: 2026-07-11T18:06:49.583418537Z
+status: normal
+status-detail: 
+sections: OUTPUT, COMMENTS, brane_names, INPUT, STAMPS
+!!
+{WOCONSTANIC
+  a=1;
+  b=2;
+  c=<<WOCONSTANIC
+      Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
+  >>;
+  3;
+  3
+}!!
+!!
+{a = ???; b = ???; c = ???; c; c;}!!
+{a = 1; b = 2; c = <<a + b>>; c; c;}!!
+{"key":"compiled","pubkey":"067a5f13387724f8d9a2e17406c3a996cf9ec6e3b3bb52b14c317f9df89e5b0b","signs":"pubkey:configured","signature":"7N3tlER3u/37Cas+iEeUHr8wOhxY9cYZETnktFpxjj/CMYjR4uGKYIDZD6QNbZ3TzP3QkUCKcFgt5ntBdTjJCg==","produced_by":"einmo 0.1.0 sha256:placeholder","timestamp":"2026-07-11T18:06:50.502501955Z"}
+{"key":"configured","pubkey":"067a5f13387724f8d9a2e17406c3a996cf9ec6e3b3bb52b14c317f9df89e5b0b","signs":"pubkey:stage:output","signature":"7N3tlER3u/37Cas+iEeUHr8wOhxY9cYZETnktFpxjj/CMYjR4uGKYIDZD6QNbZ3TzP3QkUCKcFgt5ntBdTjJCg==","produced_by":"einmo 0.1.0 sha256:placeholder","timestamp":"2026-07-11T18:06:50.502533999Z"}
+{"key":"stage:output","pubkey":"067a5f13387724f8d9a2e17406c3a996cf9ec6e3b3bb52b14c317f9df89e5b0b","signs":"prior-bytes","signature":"uQwmfdrfdSA44cpCrkzWaStmBKSM5ARoptO8adZIAYxreq5C7E0FgMTGuRP4B+Szmh9JLhDEEJoRxLrIoQ3wDg==","produced_by":"einmo 0.1.0 sha256:placeholder","timestamp":"2026-07-11T18:06:50.502582221Z"}

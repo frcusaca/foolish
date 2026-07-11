@@ -1,0 +1,17 @@
+#einmo 1 encoding=utf-8 separator=①\n
+test: integer_arithmetic++divisionByZero.py
+suite: einmo
+producer: 2ba9df56
+generated: 2026-07-11T18:06:46.008318641Z
+status: input-error
+status-detail: PyBaseException
+reference: integer_arithmetic.py
+sections: COMMENTS, INPUT, DIFF, STAMPS
+①
+①
+2 + 3 * 4 - 5 // 0
+①
+reference unavailable: dependent has no output①
+{"key":"compiled","pubkey":"067a5f13387724f8d9a2e17406c3a996cf9ec6e3b3bb52b14c317f9df89e5b0b","signs":"pubkey:configured","signature":"7N3tlER3u/37Cas+iEeUHr8wOhxY9cYZETnktFpxjj/CMYjR4uGKYIDZD6QNbZ3TzP3QkUCKcFgt5ntBdTjJCg==","produced_by":"einmo 0.1.0 sha256:placeholder","timestamp":"2026-07-11T18:06:46.903660459Z"}
+{"key":"configured","pubkey":"067a5f13387724f8d9a2e17406c3a996cf9ec6e3b3bb52b14c317f9df89e5b0b","signs":"pubkey:stage:output","signature":"7N3tlER3u/37Cas+iEeUHr8wOhxY9cYZETnktFpxjj/CMYjR4uGKYIDZD6QNbZ3TzP3QkUCKcFgt5ntBdTjJCg==","produced_by":"einmo 0.1.0 sha256:placeholder","timestamp":"2026-07-11T18:06:46.903692235Z"}
+{"key":"stage:output","pubkey":"067a5f13387724f8d9a2e17406c3a996cf9ec6e3b3bb52b14c317f9df89e5b0b","signs":"prior-bytes","signature":"kOhKVonJxJsAVCoKEruUE2FpAZ4mYlH/CPExL1tmlGSF7hquUX3RPb/G2jR85toyUI+3PEsHHfBlRGTtvuEtBA==","produced_by":"einmo 0.1.0 sha256:placeholder","timestamp":"2026-07-11T18:06:46.903740809Z"}

@@ -1,0 +1,25 @@
+#einmo 1 encoding=utf-8 separator=!!\n
+test: integer_arithmetic++divisionByZero.foo
+suite: einmo
+producer: 2ba9df56
+generated: 2026-07-11T18:06:59.596091930Z
+status: normal
+status-detail: 
+reference: integer_arithmetic.foo
+sections: INPUT, DIFF, COMMENTS, OUTPUT, STAMPS
+!!
+{2 + 3 * 4 - 5 / 0;}
+!!
+-{
+-  9
++{NK
++  Op-(14, ??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, NK)
+ }
+!!
+!!
+{NK
+  Op-(14, ??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, NK)
+}!!
+{"key":"compiled","pubkey":"067a5f13387724f8d9a2e17406c3a996cf9ec6e3b3bb52b14c317f9df89e5b0b","signs":"pubkey:configured","signature":"7N3tlER3u/37Cas+iEeUHr8wOhxY9cYZETnktFpxjj/CMYjR4uGKYIDZD6QNbZ3TzP3QkUCKcFgt5ntBdTjJCg==","produced_by":"einmo 0.1.0 sha256:placeholder","timestamp":"2026-07-11T18:07:00.511508146Z"}
+{"key":"configured","pubkey":"067a5f13387724f8d9a2e17406c3a996cf9ec6e3b3bb52b14c317f9df89e5b0b","signs":"pubkey:stage:output","signature":"7N3tlER3u/37Cas+iEeUHr8wOhxY9cYZETnktFpxjj/CMYjR4uGKYIDZD6QNbZ3TzP3QkUCKcFgt5ntBdTjJCg==","produced_by":"einmo 0.1.0 sha256:placeholder","timestamp":"2026-07-11T18:07:00.511575358Z"}
+{"key":"stage:output","pubkey":"067a5f13387724f8d9a2e17406c3a996cf9ec6e3b3bb52b14c317f9df89e5b0b","signs":"prior-bytes","signature":"LS6Tu4uVMB0FhS7oS+svftn1ErjetDzPRzb4PtBsE/qnNotYGJkOjhVKWjUZEOH+yHdZUPrmKAZRbxooCWd5CQ==","produced_by":"einmo 0.1.0 sha256:placeholder","timestamp":"2026-07-11T18:07:00.511667184Z"}

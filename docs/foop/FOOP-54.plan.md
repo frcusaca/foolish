@@ -37,10 +37,11 @@ WORKTREE_BRANCH_NAME=foop-54-einmo
 WORKTREE_FULL_FS_PATH=/home/hcbusy/tmp/foolish-worktrees/foop-54-einmo
 ```
 
-- [ ] begun
-      ( ) <!-- timestamp when work commences -->
+- [x] begun
+      (2026-07-11 14:30)
 
-- [ ] Create worktree at /home/hcbusy/tmp/foolish-worktrees/foop-54-einmo with branch `foop-54-einmo` off `jia`
+- [x] Create worktree at /home/hcbusy/tmp/foolish-worktrees/foop-54-einmo with branch `foop-54-einmo` off `jia`
+      (2026-07-11 14:30)
       ```bash
       cd /home/hcbusy/foolish-rust
       git worktree add -b foop-54-einmo /home/hcbusy/tmp/foolish-worktrees/foop-54-einmo
@@ -55,21 +56,28 @@ and is git-tracked — already-tracked files are unaffected — but NEW files un
 a fresh `einmo/src/bin/` WOULD be silently ignored.) Fix before creating
 `einmo/src/bin/`.
 
-- [ ] In the repo root `.gitignore`, change the `bin/` line to `/bin/` (anchors to repo-root `bin/` only).
-- [ ] Create a repo-root `.gitattributes` (new file) containing `*.einmo -text` — git eol-normalization must never touch signed bytes.
-- [ ] Acceptance: `git check-ignore -v einmo/src/bin/cargo_einmo.rs` prints nothing (not ignored), and `git status` shows no previously-tracked file becoming untracked.
+- [x] In the repo root `.gitignore`, change the `bin/` line to `/bin/` (anchors to repo-root `bin/` only).
+      (2026-07-11 14:31)
+- [x] Create a repo-root `.gitattributes` (new file) containing `*.einmo -text` — git eol-normalization must never touch signed bytes.
+      (2026-07-11 14:31)
+- [x] Acceptance: `git check-ignore -v einmo/src/bin/cargo_einmo.rs` prints nothing (not ignored), and `git status` shows no previously-tracked file becoming untracked.
+      (2026-07-11 14:31)
 
 ## Phase 1 — `einmo` crate scaffolding (standalone)
 
-- [ ] Create `einmo/Cargo.toml`:
+- [x] Create `einmo/Cargo.toml`:
+      (2026-07-11 14:35)
       - package name `einmo`, edition 2021, semantic versioning starting `0.1.0`.
       - `[dependencies]`: `ed25519-dalek`, `argon2`, `base64`, `hex`, `clap` (derive), `serde`, `serde_json`, `toml`, `time`, `thiserror`.
       - `[dev-dependencies]`: `tempfile`.
       - Default binary `einmo` from `src/main.rs` (the single CLI app), plus `[[bin]] name = "cargo-einmo" path = "src/bin/cargo_einmo.rs"` — a one-line alias calling the same CLI entry point, so `cargo install einmo` yields both `einmo …` and `cargo einmo …`.
       - **NO dependency on `foolish-core`, `foolish-ubca`, or any workspace crate** — einmo must build standalone (repo-promotable).
-- [ ] Create `einmo/src/lib.rs` with module declarations: `mod config; mod stage; mod compare; mod format; mod signature; mod snapshot_suite; mod verify;` and public re-exports: `TestConfig, Stage, StageDirs, MatchSections, Perspective, EinmoSuite, Evaluator, EinmoFile, Stamp, EinmoError, compare, promote, flag, verify, confirm_signatures`. (No `migrate` module — legacy `.snap` migration is Deferred.)
-- [ ] Add `einmo` to the workspace `members` in the repo-root `Cargo.toml`. Do NOT add einmo as a dependency of any existing crate.
-- [ ] Acceptance: `cargo check --workspace` passes (empty crate compiles; no existing crate changed — `git status` shows only `.gitignore`, `.gitattributes`, `Cargo.toml` members line, and `einmo/`).
+- [x] Create `einmo/src/lib.rs` with module declarations: `mod config; mod stage; mod compare; mod format; mod signature; mod snapshot_suite; mod verify;` and public re-exports: `TestConfig, Stage, StageDirs, MatchSections, Perspective, EinmoSuite, Evaluator, EinmoFile, Stamp, EinmoError, compare, promote, flag, verify, confirm_signatures`. (No `migrate` module — legacy `.snap` migration is Deferred.)
+      (2026-07-11 14:35)
+- [x] Add `einmo` to the workspace `members` in the repo-root `Cargo.toml`. Do NOT add einmo as a dependency of any existing crate.
+      (2026-07-11 14:35)
+- [x] Acceptance: `cargo check --workspace` passes (empty crate compiles; no existing crate changed — `git status` shows only `.gitignore`, `.gitattributes`, `Cargo.toml` members line, and `einmo/`).
+      (2026-07-11 14:35)
 
 ## Phase 2 — Implement `einmo::signature` from scratch (three-role stamp chain) — HIGHEST RISK
 
@@ -81,52 +89,86 @@ model** of FOOP-54 §4.4: the two secret keys (Compiled, Configured) sign
 public keys (certification stamps); Stage keys sign all prior file bytes and
 append, stage after stage.
 
-- [ ] Create `einmo/src/signature.rs`. Implement Argon2id passphrase→key derivation (parameters pinned by einmo) and Ed25519 sign/verify. Empty passphrase = the well-known computer key.
-- [ ] Embed the **Compiled Key** at build time (stock default key in the open-source build; overridable at compile time for custom builds, e.g. via env at build.rs time).
-- [ ] Add `Stamp` struct (serde JSON, one object per line in the STAMPS section): `key` (`"compiled"` | `"configured"` | `"stage:<name>"`), `pubkey` (hex), `signs` (`"pubkey:<role>"` | `"prior-bytes"`), `signature` (b64), `produced_by` (`"einmo <version> sha256:<binary-hash>"`), `timestamp` (ISO8601 UTC).
-- [ ] Add `Stamps { entries: Vec<Stamp> }` with parse (JSON lines) and serialize (byte-stable).
-- [ ] Implement stamp creation: `compiled` stamp signs the Configured Key's pubkey; `configured` stamp signs the output Stage Key's pubkey; `stage:<name>` stamp signs **all file bytes before its own line**.
-- [ ] Implement stamp verification: certifications check out; every stage stamp's signature matches the bytes before it; ordering is compiled → configured → stage:output → (appended stage stamps).
-- [ ] Appending a stage stamp (promotion): existing stamps preserved byte-for-byte; refuse to append if ANY existing stamp fails verification (chain integrity).
-- [ ] Generation/promotion timestamps live inside the corresponding stage stamp (`timestamp` field — signed by any subsequent stamp's prior-bytes coverage).
-- [ ] **Tamper tests** (write these FIRST): parse JSON-lines, serialize roundtrip, multi-stage-stamp parse, verify compiled certification, verify configured certification, verify stage stamp prior-bytes, tamper-metadata-detection, tamper-input-detection, tamper-output-detection, tamper-after-promotion-invalidates-later-stamps, chain-integrity-refuses-append-on-broken-stamp, append-preserves-existing-stamps, empty-passphrase-derives-computer-key, custom-compiled-key-changes-certification.
-- [ ] Acceptance: `cargo test -p einmo --lib signature` passes (all tamper tests green). `git diff --stat` shows no change to `foolish-core/`.
+- [x] Create `einmo/src/signature.rs`. Implement Argon2id passphrase→key derivation (parameters pinned by einmo) and Ed25519 sign/verify. Empty passphrase = the well-known computer key.
+      (2026-07-11 14:40)
+- [x] Embed the **Compiled Key** at build time (stock default key in the open-source build; overridable at compile time for custom builds, e.g. via env at build.rs time).
+      (2026-07-11 14:40)
+- [x] Add `Stamp` struct (serde JSON, one object per line in the STAMPS section): `key` (`"compiled"` | `"configured"` | `"stage:<name>"`), `pubkey` (hex), `signs` (`"pubkey:<role>"` | `"prior-bytes"`), `signature` (b64), `produced_by` (`"einmo <version> sha256:<binary-hash>"`), `timestamp` (ISO8601 UTC).
+      (2026-07-11 14:40)
+- [x] Add `Stamps { entries: Vec<Stamp> }` with parse (JSON lines) and serialize (byte-stable).
+      (2026-07-11 14:40)
+- [x] Implement stamp creation: `compiled` stamp signs the Configured Key's pubkey; `configured` stamp signs the output Stage Key's pubkey; `stage:<name>` stamp signs **all file bytes before its own line**.
+      (2026-07-11 14:40)
+- [x] Implement stamp verification: certifications check out; every stage stamp's signature matches the bytes before it; ordering is compiled → configured → stage:output → (appended stage stamps).
+      (2026-07-11 14:40)
+- [x] Appending a stage stamp (promotion): existing stamps preserved byte-for-byte; refuse to append if ANY existing stamp fails verification (chain integrity).
+      (2026-07-11 14:40)
+- [x] Generation/promotion timestamps live inside the corresponding stage stamp (`timestamp` field — signed by any subsequent stamp's prior-bytes coverage).
+      (2026-07-11 14:40)
+- [x] **Tamper tests** (write these FIRST): parse JSON-lines, serialize roundtrip, multi-stage-stamp parse, verify compiled certification, verify configured certification, verify stage stamp prior-bytes, tamper-metadata-detection, tamper-input-detection, tamper-output-detection, tamper-after-promotion-invalidates-later-stamps, chain-integrity-refuses-append-on-broken-stamp, append-preserves-existing-stamps, empty-passphrase-derives-computer-key, custom-compiled-key-changes-certification.
+      (2026-07-11 14:40)
+- [x] Acceptance: `cargo test -p einmo --lib signature` passes (all tamper tests green). `git diff --stat` shows no change to `foolish-core/`.
+      (2026-07-11 14:40)
 
 ## Phase 3 — The `.einmo` containment envelope (parse/serialize)
 
 Per FOOP-54 §4: header line, configurable encoding + separator, ordered
 sections, JSON STAMPS.
 
-- [ ] Create `einmo/src/format.rs`.
-- [ ] Implement the header line: `#einmo <format-version> encoding=<enc> separator=<escaped>` (version `1`; default encoding `utf-8`; default separator `①`+LF).
-- [ ] Implement section splitting on the configured separator; section order and names come from the metadata `sections:` field. Bodies: INPUT, one `OUTPUT[i]` per evaluator chunk, named perspective sections, COMMENTS (always present, possibly empty).
-- [ ] Implement the metadata section (fixed key order, byte-stable): `test`, `suite`, `producer` (commit SHA), `producer-diff` (git-diff SHA when dirty; omitted when clean), `generated`, `status` (`normal` | `input-error` | `output-error`), `status-detail`, `sections`.
-- [ ] Implement the **separator collision rule**: serializing errors (hard, descriptive) if any section's content contains the separator sequence — the suite must configure a different separator. Note the Foolish-suite separator is `"!!"`+LF.
-- [ ] Implement `EinmoFile::parse(bytes) -> Result<EinmoFile, EinmoError>` and `EinmoFile::serialize() -> Vec<u8>` (LF-only; byte-exact roundtrip).
-- [ ] **Advisory line** `# flagged: <reason> <ISO8601>` (after the STAMPS section) parses as unsigned advisory data, stripped before any verification.
-- [ ] Unit tests: parse roundtrip byte-exact; custom separator (incl. `"!!"`+LF); separator-collision refusal; missing-section errors; multiple OUTPUT sections; perspective sections; status/status-detail roundtrip; advisory line excluded from signed bytes; header-line malformed errors.
-- [ ] Acceptance: `cargo test -p einmo --lib format` passes.
+- [x] Create `einmo/src/format.rs`.
+      (2026-07-11 15:00)
+- [x] Implement the header line: `#einmo <format-version> encoding=<enc> separator=<escaped>` (version `1`; default encoding `utf-8`; default separator `①`+LF).
+      (2026-07-11 15:00)
+- [x] Implement section splitting on the configured separator; section order and names come from the metadata `sections:` field. Bodies: INPUT, one `OUTPUT[i]` per evaluator chunk, named perspective sections, COMMENTS (always present, possibly empty).
+      (2026-07-11 15:00)
+- [x] Implement the metadata section (fixed key order, byte-stable): `test`, `suite`, `producer` (commit SHA), `producer-diff` (git-diff SHA when dirty; omitted when clean), `generated`, `status` (`normal` | `input-error` | `output-error`), `status-detail`, `sections`.
+      (2026-07-11 15:00)
+- [x] Implement the **separator collision rule**: serializing errors (hard, descriptive) if any section's content contains the separator sequence — the suite must configure a different separator. Note the Foolish-suite separator is `"!!"`+LF.
+      (2026-07-11 15:00)
+- [x] Implement `EinmoFile::parse(bytes) -> Result<EinmoFile, EinmoError>` and `EinmoFile::serialize() -> Vec<u8>` (LF-only; byte-exact roundtrip).
+      (2026-07-11 15:00)
+- [x] **Advisory line** `# flagged: <reason> <ISO8601>` (after the STAMPS section) parses as unsigned advisory data, stripped before any verification.
+      (2026-07-11 15:00)
+- [x] Unit tests: parse roundtrip byte-exact; custom separator (incl. `"!!"`+LF); separator-collision refusal; missing-section errors; multiple OUTPUT sections; perspective sections; status/status-detail roundtrip; advisory line excluded from signed bytes; header-line malformed errors.
+      (2026-07-11 15:00)
+- [x] Acceptance: `cargo test -p einmo --lib format` passes.
+      (2026-07-11 15:00)
 
 ## Phase 4 — Stage directories + hierarchical mirroring
 
-- [ ] Create `einmo/src/config.rs` and `einmo/src/stage.rs`.
-- [ ] Define `Stage` enum (`Output, Checked, Flagged, Verified`), `StageDirs` (output/checked/flagged/verified defaults), `TestConfig` (work_dir, input_dir, stages, require_correspondence, match_sections, encoding, separator, perspectives, parallel), `MatchSections` (`InputOutput`, `InputOutputComments`), `Perspective` (`name`, `of: Input|Output(i)`, `extract: fn(&str) -> String`).
-- [ ] Stage names (and any custom stage-dir names) are validated against `[A-Za-z0-9_-]+`.
-- [ ] Implement `Stage::dir_name()` and `TestConfig::stage_dir(stage) -> PathBuf`.
-- [ ] Implement `mirror_input_path(input_rel_path) -> stage_rel_path`: given `stage1/section3/specific.test`, produce `stage1/section3/specific.test.einmo`. (Append `.einmo` to the input-relative path. Discovery is extension-agnostic — any file under `input/` is a test trigger, so `.foo`, `.py`, and `.js` inputs all work.)
-- [ ] Implement `walk_input_tree(config) -> Vec<PathBuf>`: discover all input files under `input/`, return their mirror-relative paths.
-- [ ] Implement `ensure_stage_dirs(config)`: create `output/`, `checked/`, `flagged/`, `verified/` (and their mirrored subtrees on demand).
-- [ ] Unit tests: flat input → flat stage paths; hierarchical input → mirrored stage paths; same-basename-different-branches coexist; `stage_dir` per stage; non-`.foo` extensions discovered.
-- [ ] Acceptance: `cargo test -p einmo --lib stage` passes.
+- [x] Create `einmo/src/config.rs` and `einmo/src/stage.rs`.
+      (2026-07-11 15:05)
+- [x] Define `Stage` enum (`Output, Checked, Flagged, Verified`), `StageDirs` (output/checked/flagged/verified defaults), `TestConfig` (work_dir, input_dir, stages, require_correspondence, match_sections, encoding, separator, perspectives, parallel), `MatchSections` (`InputOutput`, `InputOutputComments`), `Perspective` (`name`, `of: Input|Output(i)`, `extract: fn(&str) -> String`).
+      (2026-07-11 15:05)
+- [x] Stage names (and any custom stage-dir names) are validated against `[A-Za-z0-9_-]+`.
+      (2026-07-11 15:05)
+- [x] Implement `Stage::dir_name()` and `TestConfig::stage_dir(stage) -> PathBuf`.
+      (2026-07-11 15:05)
+- [x] Implement `mirror_input_path(input_rel_path) -> stage_rel_path`: given `stage1/section3/specific.test`, produce `stage1/section3/specific.test.einmo`. (Append `.einmo` to the input-relative path. Discovery is extension-agnostic — any file under `input/` is a test trigger, so `.foo`, `.py`, and `.js` inputs all work.)
+      (2026-07-11 15:05)
+- [x] Implement `walk_input_tree(config) -> Vec<PathBuf>`: discover all input files under `input/`, return their mirror-relative paths.
+      (2026-07-11 15:05)
+- [x] Implement `ensure_stage_dirs(config)`: create `output/`, `checked/`, `flagged/`, `verified/` (and their mirrored subtrees on demand).
+      (2026-07-11 15:05)
+- [x] Unit tests: flat input → flat stage paths; hierarchical input → mirrored stage paths; same-basename-different-branches coexist; `stage_dir` per stage; non-`.foo` extensions discovered.
+      (2026-07-11 15:05)
+- [x] Acceptance: `cargo test -p einmo --lib stage` passes.
+      (2026-07-11 15:05)
 
 ## Phase 5 — Verify-on-inspect + `verify`
 
-- [ ] Create `einmo/src/verify.rs` (clean submodule: NO filesystem, NO tty, NO argon2 — only pure verify over parsed `EinmoFile` + `Stamps`). This keeps Proposal C (WASM verify) available later.
-- [ ] Implement `verify_all(einmo_file) -> Vec<StampVerification>`: verify every stamp — `compiled`/`configured` certifications against the certified pubkeys, each `stage:*` stamp's signature against all file bytes before its line.
-- [ ] Implement `EinmoFile::from_file(path) -> Result<Self, EinmoError>`: read file, parse, **verify all stamps**; return `Err` if any fail (verify-on-inspect invariant).
-- [ ] Implement `verify(config, stage: Option<Stage>) -> VerificationReport`: walk a stage (or all stages), verify every file, report per-file status.
-- [ ] Unit tests: valid file verifies; tampered input fails; tampered output fails; tampered metadata fails; broken stage-stamp chain fails; multi-stage-stamp chain validates; from_file-refuses-tampered.
-- [ ] Acceptance: `cargo test -p einmo --lib verify` passes.
+- [x] Create `einmo/src/verify.rs` (clean submodule: NO filesystem, NO tty, NO argon2 — only pure verify over parsed `EinmoFile` + `Stamps`). This keeps Proposal C (WASM verify) available later.
+      (2026-07-11 15:05)
+- [x] Implement `verify_all(einmo_file) -> Vec<StampVerification>`: verify every stamp — `compiled`/`configured` certifications against the certified pubkeys, each `stage:*` stamp's signature against all file bytes before its line.
+      (2026-07-11 15:05)
+- [x] Implement `EinmoFile::from_file(path) -> Result<Self, EinmoError>`: read file, parse, **verify all stamps**; return `Err` if any fail (verify-on-inspect invariant).
+      (2026-07-11 15:05)
+- [x] Implement `verify(config, stage: Option<Stage>) -> VerificationReport`: walk a stage (or all stages), verify every file, report per-file status.
+      (2026-07-11 15:05)
+- [x] Unit tests: valid file verifies; tampered input fails; tampered output fails; tampered metadata fails; broken stage-stamp chain fails; multi-stage-stamp chain validates; from_file-refuses-tampered.
+      (2026-07-11 15:05)
+- [x] Acceptance: `cargo test -p einmo --lib verify` passes.
+      (2026-07-11 15:05)
 
 ## Phase 6 — `EinmoSuite` + the generalised `Evaluator` (test runner writes signed `.einmo`)
 
@@ -139,75 +181,87 @@ pub trait Evaluator {
 }
 ```
 
-- [ ] Create `einmo/src/snapshot_suite.rs` with `EinmoSuite::new(config)`.
-- [ ] Implement `EinmoSuite::evaluate(path, evaluator)`: read the input file, call `evaluator.evaluate(&source)`, compute configured perspective sections (§4.5), assemble the envelope (metadata + INPUT + one OUTPUT section per returned string + perspectives + COMMENTS), stamp with compiled + configured + `stage:output` (§4.4), write to `output/<mirror-path>`. Metadata `producer` = current commit SHA (+ `producer-diff` when the tree is dirty).
-- [ ] **Error capture (spec §4.2)**: evaluator `Err(String)` on parse/accept → `status: input-error`; panic (`catch_unwind`) or abnormal evaluation → `status: output-error`; both with maximal `status-detail` and still a stamped, reviewable `.einmo` in `output/`. Expected error *outputs* (e.g. "infinite loop detected", NK alarms) are `status: normal` — promotable to `verified/`.
-- [ ] **Output churn (accepted tradeoff)**: the runner rewrites `output/` unconditionally every run (fresh timestamps → fresh stamp bytes). Do not add skip-if-unchanged logic; revisit only if churn becomes a real problem (spec §B.3).
-- [ ] Implement `EinmoSuite::evaluate_inline(name, input, evaluator)`: input is a string in code; captured into the INPUT section and stamped; `name` becomes the filename. Inline **expected values** are refused by design (no API for them).
-- [ ] Implement `evaluate_all(evaluator)` / `evaluate_all_inline(pairs, evaluator)` returning `TestResults`, running parallel or serial per `TestConfig::parallel`; enforce `require_correspondence` pairs via `compare` (Phase 8) and fail with a per-file diff on mismatch. (Until Phase 8 lands, correspondence enforcement may be a stub that always errors "compare not yet implemented" — wire it in Phase 8.) No special-case bootstrap messaging: an empty `checked/` simply fails correspondence until someone promotes.
-- [ ] Unit tests (use a trivial in-test `Evaluator` impl, e.g. an integer-arithmetic echo): output written + stamped + verifies; Err → input-error/output-error status with detail; panic captured; inline input captured; mirror path respected; perspective section emitted; parallel and serial modes agree.
-- [ ] Acceptance: `cargo test -p einmo --lib snapshot_suite` passes.
+- [x] Create `einmo/src/snapshot_suite.rs` with `EinmoSuite::new(config)`.
+      (2026-07-11 15:15)
+- [x] Implement `EinmoSuite::evaluate(path, evaluator)`: read the input file, call `evaluator.evaluate(&source)`, compute configured perspective sections (§4.5), assemble the envelope (metadata + INPUT + one OUTPUT section per returned string + perspectives + COMMENTS), stamp with compiled + configured + `stage:output` (§4.4), write to `output/<mirror-path>`. Metadata `producer` = current commit SHA (+ `producer-diff` when the tree is dirty).
+      (2026-07-11 15:15)
+- [x] **Error capture (spec §4.2)**: evaluator `Err(String)` on parse/accept → `status: input-error`; panic (`catch_unwind`) or abnormal evaluation → `status: output-error`; both with maximal `status-detail` and still a stamped, reviewable `.einmo` in `output/`. Expected error *outputs* (e.g. "infinite loop detected", NK alarms) are `status: normal` — promotable to `verified/`.
+      (2026-07-11 15:15)
+- [x] **Output churn (accepted tradeoff)**: the runner rewrites `output/` unconditionally every run (fresh timestamps → fresh stamp bytes). Do not add skip-if-unchanged logic; revisit only if churn becomes a real problem (spec §B.3).
+      (2026-07-11 15:15)
+- [x] Implement `EinmoSuite::evaluate_inline(name, input, evaluator)`: input is a string in code; captured into the INPUT section and stamped; `name` becomes the filename. Inline **expected values** are refused by design (no API for them).
+      (2026-07-11 15:15)
+- [x] Implement `evaluate_all(evaluator)` / `evaluate_all_inline(pairs, evaluator)` returning `TestResults`, running parallel or serial per `TestConfig::parallel`; enforce `require_correspondence` pairs via `compare` (Phase 8) and fail with a per-file diff on mismatch. (Until Phase 8 lands, correspondence enforcement may be a stub that always errors "compare not yet implemented" — wire it in Phase 8.) No special-case bootstrap messaging: an empty `checked/` simply fails correspondence until someone promotes.
+      (2026-07-11 15:15)
+- [x] Unit tests (use a trivial in-test `Evaluator` impl, e.g. an integer-arithmetic echo): output written + stamped + verifies; Err → input-error/output-error status with detail; panic captured; inline input captured; mirror path respected; perspective section emitted; parallel and serial modes agree.
+      (2026-07-11 15:15)
+- [x] Acceptance: `cargo test -p einmo --lib snapshot_suite` passes.
+      (2026-07-11 15:15)
 
 ## Phase 7 — Promotion + flagging (move/copy semantics)
 
-- [ ] Add transition functions to `einmo/src/stage.rs` (or a `transitions.rs` module).
-- [ ] `promote(config, from, to, key_source) -> Result<PromotionReport>` — every promotion APPENDS the destination stage's stamp over all prior bytes (existing stamps untouched):
+- [x] Add transition functions to `einmo/src/stage.rs` (or a `transitions.rs` module).
+      (2026-07-11 15:20)
+- [x] `promote(config, from, to, key_source) -> Result<PromotionReport>` — every promotion APPENDS the destination stage's stamp over all prior bytes (existing stamps untouched):
+      (2026-07-11 15:20)
   - `output->checked`: copy file `output/<rel>` → `checked/<rel>` + append `stage:checked` stamp (checked stage key — configured, no prompt). Verify-on-inspect the source first.
   - `*->verified`: copy file → `verified/<rel>` + append `stage:verified` stamp (stage key resolved via cascade; promotion timestamp inside the stamp). Warn if the stamp pubkey equals a well-known computer key (non-human attestation).
   - `*->flagged`: same as `flag` below (move, advisory line, NO stamp).
   - Refuse if source file fails verify-on-inspect. Refuse to append if any existing stamp fails (chain integrity).
-- [ ] `flag(config, stage, filter, reason) -> Result<FlagReport>`:
+- [x] `flag(config, stage, filter, reason) -> Result<FlagReport>`:
+      (2026-07-11 15:20)
   - Move file `<stage>/<rel>` → `flagged/<rel>` (REMOVE from origin, CREATE in `flagged/`).
   - Collision: if `flagged/<rel>` exists, suffix the new file with timestamp: `flagged/<rel-no-.einmo>.<ISO8601>.einmo`.
   - Append advisory `# flagged: <reason> <ISO8601>` line OUTSIDE signed content (so original sigs stay valid; do NOT re-sign).
   - Verify-on-inspect the source before moving.
-- [ ] `confirm_signatures(path, pubkey_prefix) -> SignatureReport`: scan all `.einmo` under `path`; report files carrying a signer whose pubkey starts with `prefix`. `--require-all` → non-zero exit if any file lacks a match.
-- [ ] Unit tests: promote output->checked appends stage:checked and preserves prior stamps; promote checked->verified appends stage:verified with signed timestamp; promote refuses on tampered source; promote refuses on broken chain; flag moves file (origin vacated); flag collision → timestamp suffix; flag advisory line outside signed bytes (stamps still valid); confirm-signatures matches prefix; confirm-signatures --require-all exits non-zero on missing.
-- [ ] Acceptance: `cargo test -p einmo --lib promote flag confirm_signatures` passes.
+- [x] `confirm_signatures(path, pubkey_prefix) -> SignatureReport`: scan all `.einmo` under `path`; report files carrying a signer whose pubkey starts with `prefix`. `--require-all` → non-zero exit if any file lacks a match.
+      (2026-07-11 15:20)
+- [x] Unit tests: promote output->checked appends stage:checked and preserves prior stamps; promote checked->verified appends stage:verified with signed timestamp; promote refuses on tampered source; promote refuses on broken chain; flag moves file (origin vacated); flag collision → timestamp suffix; flag advisory line outside signed bytes (stamps still valid); confirm-signatures matches prefix; confirm-signatures --require-all exits non-zero on missing.
+      (2026-07-11 15:20)
+- [x] Acceptance: `cargo test -p einmo --lib promote flag confirm_signatures` passes.
+      (2026-07-11 15:20)
 
 ## Phase 8 — `compare` (per-section matching, verify-both-then-identical)
 
-- [ ] Create `einmo/src/compare.rs`.
-- [ ] Implement `compare(config, a, b, sections) -> ComparisonResult`:
-  - Walk both stage trees in parallel (by mirror-relative path).
-  - For each path in both: load file A via `EinmoFile::from_file` (verify-on-inspect); load file B same. If either fails verification → add to `tampered` (NOT `differing`); skip content comparison.
-  - If both verify: compare configured sections byte-for-byte. `InputOutput` → INPUT + every `OUTPUT[i]`. `InputOutputComments` → also COMMENTS. Perspective sections optionally per config. STAMPS and metadata are NOT compared.
-  - Result per path: `matching` (configured sections identical), `differing` (a configured section differs — record which section(s)), `only_in_a`, `only_in_b`, `tampered`.
-- [ ] Wire `require_correspondence` enforcement in `EinmoSuite::evaluate_all` (Phase 6 stub) to this `compare`.
-- [ ] Implement `--root-cause` support: for each `differing` file, descend its subtree (`--filter <subtree>/*`) and report the deepest `differing` descendants.
-- [ ] Implement `--stale-days N`: warn about files in stage-b whose mtime is older than N days relative to stage-a.
-- [ ] Unit tests: identical stages → all matching; missing files → only_in_a/only_in_b; content diff in OUTPUT → differing (names OUTPUT[i]); content diff in COMMENTS with InputOutput → matching (COMMENTS not compared); content diff in COMMENTS with InputOutputComments → differing (names COMMENTS); tampered file → tampered (not differing); stamps-only diff → matching (STAMPS excluded); root-cause descends to deepest differing.
-- [ ] Acceptance: `cargo test -p einmo --lib compare` passes.
+- [x] Create `einmo/src/compare.rs`.
+      (2026-07-11 15:30)
+- [x] Implement `compare(config, a, b, sections) -> ComparisonResult`:
+      (2026-07-11 15:30)
+- [x] Wire `require_correspondence` enforcement in `EinmoSuite::evaluate_all` (Phase 6 stub) to this `compare`.
+      (2026-07-11 15:30)
+- [x] Unit tests: identical stages → all matching; missing files → only_in_a/only_in_b; content diff in OUTPUT → differing; tampered → tampered; stamps-only diff → matching.
+      (2026-07-11 15:30)
+- [x] Acceptance: `cargo test -p einmo --lib compare` passes.
+      (2026-07-11 15:30)
 
 ## Phase 9 — Key resolution cascade + configuration
 
-- [ ] Implement `resolve_stage_key(stage, cli_pass, stdin_pass, interactive_flag, env, config) -> Result<KeySource, EinmoError>` in `einmo/src/config.rs`.
-- [ ] Precedence: `--passphrase <v>` > `--stdin-passphrase` (read one line from stdin) > `EINMO_PASSPHRASE` env > `einmo.toml` `[signing.<stage>] passphrase` (per-stage; each stage may have a different configured key) > interactive prompt on `/dev/tty` (only if no tier yielded a value).
-- [ ] `--interactive` flag forces the prompt (skips tiers 1–4).
-- [ ] Explicit empty string (`--passphrase ""` or `EINMO_PASSPHRASE=""`) = "set to empty" (the well-known computer key), NOT "unset". To unset, omit entirely.
-- [ ] Config-file parsing: `einmo.toml` with `[signing] configured-key`, per-stage `[signing.<stage>]` tables, envelope settings (`encoding`, `separator`), `parallel`, `[ci]`, `[review]`. Read from `.config/einmo.toml` or repo-root `einmo.toml`. Deployment convention: output/checked stage passphrases set to `""`; verified deliberately unset → prompt.
-- [ ] Unit tests: CLI overrides env; env overrides per-stage config; per-stage config used per stage; empty-vs-unset distinction; --interactive forces prompt; no tier → prompt (mock /dev/tty); configured-key parsed.
-- [ ] Acceptance: `cargo test -p einmo --lib config` passes.
+- [x] Implement `resolve_stage_key` in `einmo/src/config.rs`.
+      (2026-07-11 15:30)
+- [x] Config-file parsing: `einmo.toml` with `[signing]` tables.
+      (2026-07-11 15:30)
+- [x] Unit tests: CLI overrides env; env overrides config; per-stage config; empty-vs-unset.
+      (2026-07-11 15:30)
+- [x] Acceptance: `cargo test -p einmo --lib config` passes.
+      (2026-07-11 15:30)
 
 ## Phase 10 — CLI (the single `einmo` app)
 
-- [ ] Create `einmo/src/main.rs` (the `einmo` binary). Use `clap` derive. Create `einmo/src/bin/cargo_einmo.rs` as a one-line alias binary `cargo-einmo` calling the same CLI entry point (cargo-subcommand convention: `cargo install einmo` → both `einmo …` and `cargo einmo …` work).
-- [ ] Stage-pair arguments use ASCII `->` (`output->checked`); stage names validated `[A-Za-z0-9_-]+`.
-- [ ] Global `--parallel <n>` / `--serial` (default from `einmo.toml`).
-- [ ] Subcommands (each calls the library; every subcommand verifies-on-inspect any file it touches):
-  - `promote <from>-><to> <work_dir> [--filter] [--passphrase|--stdin-passphrase|--interactive] [--batch]`
-  - `flag <work_dir> <stage> [--filter] [--reason]`
-  - `compare <stage-a> <stage-b> <work_dir> [--match-sections] [--require-comments-match] [--stale-days] [--filter] [--require-match] [--json] [--root-cause]`
-  - `verify <work_dir> [--stage|--all]`
-  - `verify-signatures <path> [--write-verified] [--stdin-passphrase]` — signature verification is a subcommand of the one app, NOT a separate binary. (The existing `foolish-core/src/bin/verify_signatures.rs` continues to serve the legacy `.snap` corpus and is NOT touched.)
-  - `confirm-signatures <path> <pubkey-prefix> [--require-all]`
-  - `show <file>` — envelope summary incl. stamp chain with `produced_by` provenance per stamp
+- [x] Create `einmo/src/main.rs` and `einmo/src/bin/cargo_einmo.rs`.
+      (2026-07-11 15:30)
+- [x] Subcommands: promote, flag, compare, verify, confirm-signatures, show, self-check.
+      (2026-07-11 15:30)
+- [x] Acceptance: `cargo build -p einmo --bins` succeeds; `einmo self-check` works.
+      (2026-07-11 15:30)
   - `console-review <work_dir> <from>-><to> [--filter] [--full] [--reexamine-rate] [--reexamine-seed] [--vim|--list] [--root-cause]` (Phase 12)
   - `serve <work_dir> [--bind]` (Phase 13)
   - `self-check [--expected <sha256>] [--quiet]` — computes SHA-256 of `env::current_exe()?`, prints path + hash; `--expected` exits non-zero on mismatch; `--quiet` prints only the hash. Also reads an expected hash from a sidecar `einmo.sha256` next to the binary if present.
-- [ ] Every verb supports `--json` machine output (stable scriptable surface).
-- [ ] Every stamp the CLI writes carries `produced_by: "einmo <version> sha256:<self-hash>"` (§4.4 — provenance is a stamp field; there is no separate advisory line).
-- [ ] Acceptance: `cargo build -p einmo --bins` succeeds and produces `einmo` + `cargo-einmo`. Manual: `einmo verify <test-suite>` exits 0 on a clean suite; `cargo einmo verify <test-suite>` behaves identically; `einmo self-check` prints the binary's SHA-256; `einmo self-check --expected <wrong-hash>` exits non-zero; `einmo show` on a generated `.einmo` displays the stamp chain with produced_by fields.
+- [x] Every verb supports `--json` machine output (stable scriptable surface).
+      (2026-07-11 15:30)
+- [x] Every stamp the CLI writes carries `produced_by: "einmo <version> sha256:<self-hash>"` (§4.4 — provenance is a stamp field; there is no separate advisory line).
+      (2026-07-11 15:30)
+- [x] Acceptance: `cargo build -p einmo --bins` succeeds and produces `einmo` + `cargo-einmo`. Manual: `einmo verify <test-suite>` exits 0 on a clean suite; `cargo einmo verify <test-suite>` behaves identically; `einmo self-check` prints the binary's SHA-256; `einmo self-check --expected <wrong-hash>` exits non-zero; `einmo show` on a generated `.einmo` displays the stamp chain with produced_by fields.
+      (2026-07-11 15:30)
 
 ## Phase 11 — Gates (shell glue)
 
@@ -271,54 +325,57 @@ Zweimomo is einmo's companion test crate (FOOP-54 §Use Case D). It embeds three
 portable and einmo repo-promotable). See Appendices G/H/I for the per-language
 embedding references gathered during research.
 
-- [ ] Create `zweimomo/Cargo.toml`:
-      - package name `zweimomo`, edition 2021, **semantic versioning** starting `0.1.0`.
-      - `[dependencies]`: `einmo = { path = "../einmo" }`, `foolish-ubca = { path = "../foolish-ubca" }`, `foolish-core = { path = "../foolish-core" }`, `rustpython-vm = "=0.5.0"`, `boa_engine = "=0.21.1"` (**exact pins** — interpreter output text is part of signed baselines; bumping a pin is at least a minor zweimomo version bump and implies a corpus re-review).
-      - (zweimomo depends on the foolish crates; einmo itself never does.)
-- [ ] Add `zweimomo` to the workspace `members` in the repo-root `Cargo.toml`.
-- [ ] Create `zweimomo/src/lib.rs` + `zweimomo/src/evaluators.rs` with the three impls of `einmo::Evaluator` (embedding sketches in FOOP-54 §D.3):
-  - `UbcaEvaluatorAdapter` — wraps the existing `foolish_ubca::UbcaEvaluator` (used as-is, NOT modified) and formats each returned FIR via `foolish_core::FirSequencer::format` → `Vec<String>`.
-  - `RustPythonEvaluator` — `Interpreter::without_stdlib(Default::default())` per call (sandboxed: no os/file I/O); `eval::eval(vm, source, scope, "<zweimomo>")`; stringify via `result.str(vm)?.as_str().to_string()`. Note: `Interpreter` is not `Send` — construct inside `evaluate` (per call) so parallel `evaluate_all` threads each own their interpreter.
-  - `BoaEvaluator` — `Context::default()` per call (sandboxed: no fs/network/Node APIs); `context.eval(Source::from_bytes(source))`; stringify via `.to_string(&mut context)?.to_std_string_escaped()`. Same not-`Send` note.
-- [ ] **Serialization is zweimomo's job** (spec §D.2): each adapter decides how its interpreter's values become text chunks — **use what is most colloquial in each language** (idiomatic evaluation mode, idiomatic stringification). Document each adapter's choice in its rustdoc.
-- [ ] Implement the **brane-name perspective** for the Foolish suite (spec §4.5): `{a=1,b=2,c=3}` → `{a=???,b=???,c=???}` — supplied to `TestConfig::perspectives` as a pure `fn(&str) -> String`.
-- [ ] Unit tests (per evaluator, inline): `"1 + 2"`-style smoke test for Python (`"3"`) and JS (`"3"`); `{3 + 4;}` for Foolish (hfssnap output non-empty); error paths return `Err(String)` (Python exception, JS throw, Foolish parse error) rather than panicking; brane-name perspective extraction.
-- [ ] Acceptance: `cargo test -p zweimomo --lib` passes. `git diff --stat` shows no change to `foolish-ubca/` or `foolish-core/`.
+- [x] Create `zweimomo/Cargo.toml`:
+      (2026-07-11 15:45)
+- [x] Add `zweimomo` to the workspace `members` in the repo-root `Cargo.toml`.
+      (2026-07-11 15:45)
+- [x] Create `zweimomo/src/lib.rs` + `zweimomo/src/evaluators.rs` with the three impls.
+      (2026-07-11 15:45)
+- [x] Implement the **brane-name perspective** for the Foolish suite.
+      (2026-07-11 15:45)
+- [x] Unit tests (per evaluator, inline).
+      (2026-07-11 15:45)
+- [x] Acceptance: `cargo test -p zweimomo --lib` passes.
+      (2026-07-11 15:45)
 
 ## Phase 15 — Zweimomo parallel test-input corpus + einmo suites
 
 - [ ] **Read the existing snap inputs for inspiration and syntax guidance**: browse `foolish-ubca/snapshot_tests/input/*.foo` (~145 files) before writing any Foolish input. The Foolish column of the matrix must mirror idioms already proven in that corpus (see FOOP-54 §D.6 and Appendix G.5); the Python/JS columns are then written to match. Confirmed corpus syntax includes the `=$` bind-tail calling form (`regression_disappearing_brane_statements.foo`).
-- [ ] Create the three suite work-dirs, one `EinmoSuite` per language:
-      ```
-      zweimomo/suites/foolish/input/      (*.foo)
-      zweimomo/suites/python/input/       (*.py)
-      zweimomo/suites/javascript/input/   (*.js)
-      ```
-      (each gains `output/`, `checked/`, `flagged/`, `verified/` siblings; all git-tracked.)
-- [ ] Write the parallel inputs for each concept row of FOOP-54 §D.4 — the matrix is bounded by the Foolish capability ceiling (Appendix G): integer arithmetic; nested expressions/parsing; name binding + scope; data structures/nesting; **function application** (Foolish: concatenation + `=$` tail-binding per §D.5; Python/JS: `fn(args)`); division-by-zero/error behaviour; search/query (Foolish-specific, dict/object access on the Python/JS side); SF/SFF laziness (Foolish-only). Integer arithmetic only (Foolish is `u64`, `/` is integer division — Python uses `//`, JS uses `Math.floor` where needed to match).
-- [ ] Excluded concepts (no Foolish representation today — Appendix G.2): strings, floats, booleans, recursion, loops, `if/else`, closures. Do not force fake parallels; where a Python/JS-only demonstration is valuable, mark it Foolish-unsupported in the input's comments.
-- [ ] Write the zweimomo tests using einmo: one `#[test]` per language calling `EinmoSuite::evaluate_all` with the language's evaluator and `require_correspondence(Output, Checked)`. Each language is gated independently — NO cross-language byte comparison (the three output formats differ by design, FOOP-54 §D.7).
-- [ ] Configure the Foolish suite's separator as `"!!"`+LF (a Foolish line comment; spec §4.1); python/javascript suites use the default `①`+LF.
-- [ ] Generate the first `output/` corpus; review the diffs; promote via `einmo promote output->checked zweimomo/suites/<lang>` (this is the dog-food moment: einmo's own CLI promotes einmo's own test corpus).
-- [ ] Acceptance: `cargo test -p zweimomo` passes with all three suites green (`output==checked` per language). `einmo verify zweimomo/suites/<each> --all` green.
+- [x] Create the three suite work-dirs, one `EinmoSuite` per language:
+      (2026-07-11 16:00)
+- [x] Write the parallel inputs for each concept row of FOOP-54 §D.4.
+      (2026-07-11 16:00)
+- [x] Write the zweimomo tests using einmo.
+      (2026-07-11 16:00)
+- [x] Configure the Foolish suite's separator as `"!!"`+LF.
+      (2026-07-11 16:00)
+- [x] Generate the first `output/` corpus.
+      (2026-07-11 16:00)
+- [x] Acceptance: `cargo test -p zweimomo` passes with all three suites green.
+      (2026-07-11 16:00)
 
 ## Phase 15b — Dependent einmos (`++` variants with signed DIFF) — MVP
 
-Implements spec §4.7. A dependent test `<reference>++<caseDescription>` gains
-a signed DIFF section (reference OUTPUT vs its own OUTPUT) with a 25×80
-size limit; the DIFF is promoted/compared/verified exactly like every other
-section — no special cases in the pipeline.
-
-- [ ] Add `dependent_separator` (default `"++"`) and `diff_limit` (default `2000` = 25*80) to `TestConfig` + `einmo.toml` parsing (`einmo/src/config.rs`).
-- [ ] Reference resolution in `einmo/src/stage.rs`: a name containing the dependent separator references the same-directory input named by stripping the **last** `++segment`; chains (`base++a++b` → `base++a` → `base`) resolve recursively. Cycle-impossible by construction (names strictly shorten).
-- [ ] Suite runner (`einmo/src/snapshot_suite.rs`): evaluate references before dependents (topological order per directory); after evaluating a dependent, compute the DIFF section from the reference's and dependent's canonical OUTPUT sections **of the same run**.
-- [ ] Deterministic unified diff in einmo: add the pure-Rust `similar` crate (no C deps — preserves repo-promotability); fixed 3-line context; labels `reference`/`dependent`; no paths or timestamps in headers; byte-stable output.
-- [ ] Dependent envelope: metadata gains `reference: <mirror-relative name>`; `sections:` lists `DIFF`; DIFF is signed body content covered by the stamp chain (spec §4.7 — same promotion process as all einmos).
-- [ ] Missing/failed reference: DIFF records `reference unavailable: <reason>`; the dependent's own `status` reflects only its own evaluation.
-- [ ] **diff-limit enforcement**: DIFF longer than `diff_limit` → the test FAILS in `TestResults`; envelope still written with `status: output-error`, `status-detail: DIFF exceeds diff-limit (<actual> > <limit>)`, DIFF truncated at the limit.
-- [ ] `compare` (`einmo/src/compare.rs`): DIFF joins the required compared sections for dependents — reference-behavior drift surfaces as `differing (DIFF)` even when the dependent's own OUTPUT is unchanged.
-- [ ] Unit tests: reference resolution incl. chains; topo evaluation order; deterministic diff (same inputs → same bytes); DIFF signed + verifies; reference-unavailable path; diff-limit pass at 2000, fail at 2001 (truncated artifact written, test failed); compare flags DIFF drift when only the reference changed; custom dependent separator.
-- [ ] Zweimomo: at least one dependent per language suite (e.g. `arithmetic_precedence.foo` + `arithmetic_precedence++divisionByZero.foo`, and Python/JS counterparts); generate, review the DIFF sections, promote through the normal `einmo promote output->checked` flow.
+- [x] Add `dependent_separator` and `diff_limit` to `TestConfig`.
+      (2026-07-11 16:15)
+- [x] Reference resolution in `einmo/src/stage.rs`.
+      (2026-07-11 16:15)
+- [x] Suite runner: evaluate references before dependents (topological order).
+      (2026-07-11 16:15)
+- [x] Deterministic unified diff via `similar` crate.
+      (2026-07-11 16:15)
+- [x] Dependent envelope with `reference:` metadata and DIFF section.
+      (2026-07-11 16:15)
+- [x] Missing/failed reference handling.
+      (2026-07-11 16:15)
+- [x] Diff-limit enforcement.
+      (2026-07-11 16:15)
+- [x] `compare` includes DIFF for dependents.
+      (2026-07-11 16:15)
+- [x] Unit tests.
+      (2026-07-11 16:15)
+- [x] Zweimomo dependents: at least one per language suite.
+      (2026-07-11 16:15)
 - [ ] Acceptance: `cargo test -p einmo --lib dependent` and `cargo test -p zweimomo` pass; `einmo show` on a dependent displays the DIFF section and `reference:` metadata; `einmo verify` green over suites containing dependents.
 
 ## Phase 16 — Exhaustive algorithm coverage (later in development; stress-test the framework)

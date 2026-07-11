@@ -1,0 +1,15 @@
+#einmo 1 encoding=utf-8 separator=①\n
+test: data_structures.js
+suite: einmo
+producer: 2ba9df56
+generated: 2026-07-11T18:06:55.360133744Z
+status: normal
+status-detail: 
+sections: OUTPUT, COMMENTS, INPUT, STAMPS
+①
+30①
+①
+({a: 10, b: 20, n: {inner: 30}}).n.inner①
+{"key":"compiled","pubkey":"067a5f13387724f8d9a2e17406c3a996cf9ec6e3b3bb52b14c317f9df89e5b0b","signs":"pubkey:configured","signature":"7N3tlER3u/37Cas+iEeUHr8wOhxY9cYZETnktFpxjj/CMYjR4uGKYIDZD6QNbZ3TzP3QkUCKcFgt5ntBdTjJCg==","produced_by":"einmo 0.1.0 sha256:placeholder","timestamp":"2026-07-11T18:06:56.314564129Z"}
+{"key":"configured","pubkey":"067a5f13387724f8d9a2e17406c3a996cf9ec6e3b3bb52b14c317f9df89e5b0b","signs":"pubkey:stage:output","signature":"7N3tlER3u/37Cas+iEeUHr8wOhxY9cYZETnktFpxjj/CMYjR4uGKYIDZD6QNbZ3TzP3QkUCKcFgt5ntBdTjJCg==","produced_by":"einmo 0.1.0 sha256:placeholder","timestamp":"2026-07-11T18:06:56.314597026Z"}
+{"key":"stage:output","pubkey":"067a5f13387724f8d9a2e17406c3a996cf9ec6e3b3bb52b14c317f9df89e5b0b","signs":"prior-bytes","signature":"DPmf09Xk4a3tw5t02gSYRT1RDd9SVjzQMkVlAG05OZsY0t0hV5a6KKksJhxRY3xkE7h+d+tMOGKE1AT1bHRxBg==","produced_by":"einmo 0.1.0 sha256:placeholder","timestamp":"2026-07-11T18:06:56.314641544Z"}
