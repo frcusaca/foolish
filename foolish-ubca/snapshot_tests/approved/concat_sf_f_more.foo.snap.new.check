@@ -1,4 +1,4 @@
----
+Fri Jul 10 06:03:50 PM PDT 2026 cat concat_sf_f_more.foo.snap.new---
 source: foolish-ubca/src/ubca_snapshot_tester.rs
 assertion_line: 34
 ---
@@ -107,6 +107,7 @@ INPUT:
           )
       >
   };
+(@agents, still broken below.)
   b=⨃(
       elements=2,
       <PREMBRIONIC

@@ -72,7 +72,7 @@ for x in "${files[@]}"; do
     echo "Reviewing ${CNT}/${TTL}: $DC differences for $x"
 	 if [ ! -e ${x%%.new} -o $DC -gt 0 ]; then 
 				sleep 2s
-				vimdiff "${x%%.new}" "$x"
+				vimdiff "${x%%.new}" "$x" "${x}.check"
 				if egrep -qi '@agents?, skip' "$x"; then
 					echo "Unchanged output $x"
 					rm "$x"
