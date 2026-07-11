@@ -676,6 +676,63 @@ Added regression tests `anchored_search_miss_is_econstanic_not_nk` and
 `concat_brane_ab_search_finds_parent_scope`. Updated 4 existing tests from NK to
 ECONSTANIC expectations.
 
+**Date**: 2026-07-10
+**Updated By**: Sisyphus / xiaomi/mimo-v2.5-pro
+**Changes**: Fixed ConcatHelper parent self-reference bug — helper_weak.clone()
+was incorrectly used instead of self_weak.clone() in populate_concat_helpers().
+Bug 3 (parent scope search in ConcatBrane) now fixed. from_parent=p resolves
+correctly to 100. Added new bugs below.
+
+## Bug Fix TODOs (from @agent comments in snapshot check files)
+
+### Bug 5: Anchored search on ConcatBrane-resolved brane fails (concat_brane_test_basic)
+- **Symptom**: `source` resolves to `{a=1; b=2}` but `field1=source.a` shows NK
+  instead of 1. The anchored search `.a` on the ConcatBrane-resolved brane fails.
+- **Location**: `SearchFir::fir_op_step` anchored arm — when the anchor resolves
+  to a brane inside a ConcatBrane, the search can't find the coordinate.
+- **Hypothesis**: The resolved brane's `_search_brane` or `stmt_count`/`stmt_at`
+  may not work correctly for branes that were constanic-cloned into a ConcatHelper.
+- **Test**: Add `concat_brane_anchored_search_on_resolved_brane` unit test.
+
+### Bug 6: Underscore normalization in search patterns (concat_brane_test_basic)
+- **Symptom**: `field4=with_empty.p` shows NK but should be 1. The agent suspects
+  the search pattern `p` doesn't match because the name was normalized with a
+  different underscore character.
+- **Location**: `SearchFir::matches_pattern` or the Humanizing Sequencer name
+  normalization.
+- **Hypothesis**: The statement name `p` in `with_empty` may have been stored with
+  a full-width underscore (＿) instead of the canonical short underscore (_), and
+  the search pattern doesn't normalize.
+- **Test**: Add `concat_brane_underscore_normalization_in_search` unit test.
+
+### Bug 7: f1 stuck in BRANING (concat_sf_f_more)
+- **Symptom**: `f1` shows BRANING instead of settling. The search for 'b' in the
+  last line `a= <x+y> + a + b` fails to exit BRANING.
+- **Location**: The `?b` search inside f1's statement `a` — it should find `b`
+  defined earlier in f1 (line 1: `b= <<x+y>> + <<a>> + <<b + c>>`).
+- **Hypothesis**: The search `?b` is looking for `b` but the IB search may be
+  failing because the statement `b` is an SFF-wrapped expression that hasn't
+  settled yet, causing a wait-on-nye loop.
+- **Test**: Add `concat_sf_f_more_f1_settles` unit test.
+
+### Bug 8: ConcatBrane b shows only 2 elements instead of 3 (concat_sf_f_more)
+- **Symptom**: `b = f1 <f2> <<f3>>` shows `elements=2` instead of 3. f3 is
+  missing from the ConcatBrane structure.
+- **Location**: `ConcatenationFir::fir_op_step` or `populate_concat_helpers` —
+  the SFF-wrapped `<<f3>>` element may not be counted or populated correctly.
+- **Hypothesis**: The explicit SFF element `<<f3>>` may be causing an error that
+  prevents it from being included in the ConcatBrane.
+- **Test**: Add `concat_brane_three_elements_with_sff` unit test.
+
+### Bug 9: x=cb.shadow shows NK (concat_brane_nested_shadowed_resolution)
+- **Symptom**: `x=cb.shadow` shows NK instead of resolving to 1. The anchored
+  search `.shadow` on `cb` (a ConcatBrane) fails.
+- **Location**: Same as Bug 5 — anchored search on ConcatBrane.
+- **Hypothesis**: When `cb` resolves to the ConcatBrane, the `.shadow` search
+  tries to search inside it but fails because the ConcatBrane's `_search_brane`
+  or `stmt_count`/`stmt_at` doesn't work correctly for the resolved value.
+- **Test**: Add `concat_brane_dot_search_on_resolved_brane` unit test.
+
 **Date**: 2026-07-06
 **Updated By**: Sisyphus / z-ai/glm-5.2
 **Changes**: Updated in view of FOOP-23 merge to `jia`. A2 step 5 gains FOOP-23

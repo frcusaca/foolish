@@ -61,21 +61,21 @@ INPUT:
           a=1;
           b=2
       };
-      field1=?(pattern='^a$', ANCHORED, NK);
-      field2=?(pattern='^b$', ANCHORED, NK);
+      field1=1;
+      field2=2;
       field3=?(pattern='^huh$', UNANCHORED, ECONSTANIC);
       field4=?(pattern='^e$', ANCHORED, NK);
-      field4=?(pattern='^p$', ANCHORED, NK)
+      field4=1
   }
 }
 ```
 COMMENTS:
 ```markdown
 concat_brane_test_basic
-generated: 2026-07-10T01:43:26.226755456Z
+generated: 2026-07-11T00:58:16.086166257Z
 ```
 SIGNATURES:
 Public key: dc5f586cda43023e707697692c78032300a24b1b813cbf1ccb770080d1a7b683
 Foolish signature: c6CYPJUeAgohIGU9M05jOTlPSproHXOvpTg7bInn37zp9E2qKq/KhJviU4ISp3+CrX/pCTk/yfXRiAwleXFcBQ==
-HFS signature: IFGQh0dFQZHRYKG1RIF54oJIWmc21AXo24dsnRrPUbtLaDO56WrHVppJhcWiVOgDZMn2jf2g9qI65oMxc7WDBA==
-Comments signature: oCWmYPeoA5UnH/9sSDACg/1ox3NTXPm7WPNUv5FuwPmW0/pXlJCOH9WziuqqMf14aTe1OzBI4YaAi9eez683CQ==
+HFS signature: wXxu1Ra+8xaGN82AGMKNlhQ/9LawlQRkyEyE1uf2HGyf/OZt5bZoRP0KSrO/nky3VaIHwqd30czpJTFrQg4SAQ==
+Comments signature: m7sy/vOf6STSy59ad1qR3x6k26b9ALlq2Uof4sosp5XdcA4mVpYxkwUeCeovrMKj15Nt192YxGc5GAQ6MmIhAA==

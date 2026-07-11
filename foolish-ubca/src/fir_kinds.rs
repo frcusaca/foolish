@@ -1281,7 +1281,11 @@ impl Fir for SearchFir {
                 }
             }
             Nyes::Embryonic => {
-                if !self.core.ubc_children().is_empty() {
+                if self.anchored {
+                    let anchor = Rc::clone(&self.core.foolish_children()[0]);
+                    self.core.push_task(anchor);
+                    self.core.set_nyes(Nyes::Braning);
+                } else if !self.core.ubc_children().is_empty() {
                     self.settle_from_ubc_result();
                 } else {
                     match self.ib_search_with_engine(scope) {
