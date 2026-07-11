@@ -59,12 +59,24 @@ search matcher gates on**. the typed accessors (`get_value_int`/`_float`/`_strin
 representation, but *which values are eligible for a typed operation* is decided by
 characterized search, not by inspecting the value.
 
-> **@human — coordination interaction (to think through).** Because coordination strips search
-> context (FOOP-43 Component 2) and the marker on constanic clone (FOOP-24), we must decide what a
-> *coordinated* characterized value looks like: does the characterization travel with the
-> coordinated value, or is it (like position) shed? Since the tag is LHS metadata read by search
-> — not value-carried — a coordinated *value* is plausibly characterization-free, and re-demanding
-> `b'` at the new site re-checks the new LHS. Confirm during implementation.
+### The LHS-characterization convention, and the LHS→RHS demand (Atlas)
+
+**Characterization letters (convention):** `B'` (capital) = **brane** characterization; `b'`
+(lowercase) = **boolean**; `i'` = **integer**; `f'` = **float**. (Case matters: `b'` boolean vs
+`B'` brane.)
+
+**A declared LHS characterization demands the same characterization of its RHS.** When a statement
+writes `B'decision =$ calculating_brane`, the brane system **demands the RHS be `B'`-characterized**
+— declaring `B'decision` means "the value assigned here must be `B'`-typed." So the LHS
+characterization is both an outward declaration (others searching for `B'decision` find a `B'`
+thing) *and* an inward demand (the RHS must satisfy `B'`). This resolves the earlier "does the RHS
+need the characterization" question: **yes — the LHS characterization propagates as a demand onto
+its own RHS.**
+
+**Coordination interaction.** Because coordination strips search context (FOOP-43 Component 2) and
+the marker on constanic clone (FOOP-24), a *coordinated* value is plausibly characterization-free
+(the tag was LHS metadata, not value-carried) — the characterization is re-checked by re-demanding
+it at the new LHS. Confirm during implementation.
 
 ### Typed value accessors — `get_value_int()` / `get_value_float()` / `get_value_string()`
 

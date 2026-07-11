@@ -145,6 +145,24 @@ extend a `<kind>_nyes_transitions` unit test.** These are unit tests (internal s
 cases. FOOP-24 (`CascadingSearchFir`), FOOP-44 (`StringFir`/`FloatFir`), FOOP-14 (if a new kind)
 each owe one. Approval `.foo` snapshots pin observable behavior; never auto-accept them.
 
+### The unified "created lookup-table brane, FVM-shortcut" pattern (FOOP-73/63/83)
+
+Booleans (FOOP-73), arithmetic (FOOP-63), and comparisons (FOOP-83) all share **one** design:
+each operator is **declared via the Creation Postulate as a Foolish lookup-table brane** — e.g.
+`i'lessthan = {A=1,B=2,result=True; A=2,B=3,result=True; …}` (countably infinite, never
+enumerated), applied by a **search** (`i'lessthan~A=1~B=2#1`) — but the **FVM detects that specific
+table-brane creation (by `Rc::ptr_eq` identity) inside `OperatorFir` and shortcuts to native Rust**
+(IEEE float / integer / boolean logic). This keeps "no privileged layer" at the *declaration* level
+while the FVM does the real work. When implementing any of the three, reuse this shape — do not
+invent a separate operator mechanism per FOOP.
+
+### Characterization-letter convention (FOOP-63)
+
+`B'` (capital) = **brane** characterization; `b'` (lowercase) = **boolean**; `i'` = **integer**;
+`f'` = **float**; `s'` = **string**. Case matters (`b'` boolean vs `B'` brane). A declared LHS
+characterization also **demands** its RHS carry the same characterization (`B'decision =$ …` requires
+a `B'` value).
+
 ### Miss-semantics is the shared substrate (FOOP-43)
 
 Several FOOPs depend on FOOP-43's "search miss → ECONSTANIC (may recoordinate), found-`???` → NK

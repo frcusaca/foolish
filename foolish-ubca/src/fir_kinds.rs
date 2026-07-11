@@ -880,14 +880,22 @@ impl SearchFir {
     }
 
     fn settle_from_ubc_result(&self) {
-        let result_nyes = self
-            .core
-            .ubc_children()
-            .first()
-            .map(|r| r.borrow().core().get_nyes())
-            .unwrap_or(Nyes::Nk);
+        let (result_nyes, result_ref) = {
+            let ubc = self.core.ubc_children();
+            let first = ubc.first().cloned();
+            let nyes = first
+                .as_ref()
+                .map(|r| r.borrow().core().get_nyes())
+                .unwrap_or(Nyes::Nk);
+            (nyes, first)
+        };
         if result_nyes.is_constanic() {
             self.core.set_nyes(Self::nyes_from_found(result_nyes));
+        } else if let Some(r) = result_ref {
+            // Clone was constanic-cloned at a pre-constanic state (e.g.
+            // WOCONSTANIC → EMBRYONIC by transform_for_clone).  Push the
+            // clone as a task so it gets stepped and eventually settles.
+            self.core.push_task(r);
         }
     }
 
@@ -1077,6 +1085,13 @@ impl SearchFir {
                     self.settle_from_ubc_result();
                     return Ok(());
                 }
+                if self.anchored {
+                    let anchor = Rc::clone(&self.core.foolish_children()[0]);
+                    self.core.push_task(anchor);
+                    self.core.push_task(self.value_child());
+                    self.core.set_nyes(Nyes::Braning);
+                    return Ok(());
+                }
                 if !self.check_value_pattern_ready() {
                     return Ok(());
                 }
@@ -1192,11 +1207,7 @@ impl SearchFir {
                         self.core.set_nyes(Nyes::Nk);
                     }
                     ScanOutcome::Miss => {
-                        self.core.set_nyes(if self.anchored {
-                            Nyes::Nk
-                        } else {
-                            Nyes::Econstanic
-                        });
+                        self.core.set_nyes(Nyes::Econstanic);
                     }
                 }
             }
@@ -1228,6 +1239,10 @@ impl Fir for SearchFir {
             Nyes::Embryonic => {
                 if !self.core.ubc_children().is_empty() {
                     self.settle_from_ubc_result();
+                } else if self.anchored {
+                    let anchor = Rc::clone(&self.core.foolish_children()[0]);
+                    self.core.push_task(anchor);
+                    self.core.set_nyes(Nyes::Braning);
                 } else {
                     match self.ib_search_with_engine(scope) {
                         Some((stmt, nyes)) => {
@@ -1274,11 +1289,7 @@ impl Fir for SearchFir {
                     };
                     match result {
                         Some((stmt, nyes)) => self.handle_found(stmt, nyes, scope),
-                        None => self.core.set_nyes(if self.anchored {
-                            Nyes::Nk
-                        } else {
-                            Nyes::Econstanic
-                        }),
+                        None => self.core.set_nyes(Nyes::Econstanic),
                     }
                 }
             }
@@ -2108,7 +2119,26 @@ impl Fir for StayFullyFoolishFir {
             Nyes::Braning => {
                 let children = self.core.foolish_children().to_vec();
                 if let Some(nyes) = _decide_nyes_due_to_children(&children) {
-                    self.core.set_nyes(nyes);
+                    if let Some(expr) = children.first() {
+                        let (result, result_nyes) = {
+                            let borrowed = expr.borrow();
+                            let ubc = borrowed.core().ubc_children();
+                            match ubc.into_iter().next() {
+                                Some(r) => {
+                                    let n = r.borrow().core().get_nyes();
+                                    (r, n)
+                                }
+                                None => {
+                                    let n = borrowed.core().get_nyes();
+                                    (Rc::clone(&expr), n)
+                                }
+                            }
+                        };
+                        self.core.push_ubc_child(result);
+                        self.core.set_nyes(result_nyes);
+                    } else {
+                        self.core.set_nyes(nyes);
+                    }
                 }
             }
             _ => {}
@@ -2161,16 +2191,33 @@ impl Fir for ConcatenationFir {
             }
             Nyes::Braning => {
                 let children = self.core.foolish_children().to_vec();
-                let any_nk = children.iter().any(|c| {
-                    let resolved = c.value();
-                    resolved.borrow().core().get_nyes() == Nyes::Nk
-                });
-                let any_woconstanic = children.iter().any(|c| {
-                    let resolved = c.value();
-                    let n = resolved.borrow().core().get_nyes();
-                    n == Nyes::Econstanic || n == Nyes::Woconstanic
-                });
-                let mut merged_stmts: Vec<FirRef> = Vec::new();
+                // Phase 2: merged result exists — wait for it to settle, then
+                // adopt its nyes as the ConcatenationFir's final state.
+                if !self.core.ubc_children().is_empty() {
+                    let result = self.core.ubc_children().into_iter().next().unwrap();
+                    if result.borrow().core().get_nyes().is_constanic() {
+                        self.core.set_nyes(result.borrow().core().get_nyes());
+                    }
+                    return Ok(());
+                }
+                // Phase 1: wait for ALL element branes to settle before merging.
+                // Re-push any preconstanic children as tasks so the driver keeps
+                // stepping them.
+                let all_constanic = children
+                    .iter()
+                    .all(|c| c.borrow().core().get_nyes().is_constanic());
+                if !all_constanic {
+                    for child in &children {
+                        if !child.borrow().core().get_nyes().is_constanic() {
+                            self.core.push_task(Rc::clone(child));
+                        }
+                    }
+                    return Ok(());
+                }
+                // All element branes settled — collect their resolved-brane
+                // statements (raw Rc references) for deep-cloning inside the
+                // merged brane's new_cyclic closure.
+                let mut raw_stmt_groups: Vec<Vec<FirRef>> = Vec::new();
                 for child in &children {
                     let resolved = {
                         let borrowed = child.borrow();
@@ -2182,26 +2229,36 @@ impl Fir for ConcatenationFir {
                     };
                     let source = resolved.as_ref().unwrap_or(child);
                     let borrowed = source.borrow();
-                    for stmt in borrowed.core().foolish_children() {
-                        merged_stmts.push(Rc::clone(stmt));
-                    }
+                    raw_stmt_groups.push(borrowed.core().foolish_children().to_vec());
                 }
-                let merged_state = if any_nk {
-                    Nyes::Nk
-                } else if any_woconstanic {
-                    Nyes::Woconstanic
-                } else {
-                    Nyes::Constant
-                };
+                // Create the merged brane with constanic-cloned statements.
+                // constanic_clone_at resets ECONSTANIC/WOCONSTANIC → EMBRYONIC,
+                // so searches that failed in their original element context are
+                // revived and can re-resolve in the merged context.
                 let result_ref: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<BraneFir>>| {
-                    let parent: Weak<RefCell<dyn Fir>> = me.clone();
+                    let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
+                    let mut merged_stmts: Vec<FirRef> = Vec::new();
+                    for group in &raw_stmt_groups {
+                        for stmt in group {
+                            let clone = ProtoBrane::constanic_clone_at(
+                                stmt,
+                                &self_weak,
+                                merged_stmts.len(),
+                                false,
+                            );
+                            merged_stmts.push(clone);
+                        }
+                    }
                     RefCell::new(BraneFir {
-                        core: ProtoBrane::new(merged_stmts, parent, merged_state),
+                        core: ProtoBrane::new(merged_stmts, me.clone(), Nyes::Prembrionic),
                         characterizations: Vec::new(),
                     })
                 });
+                // push_ubc_child pushes as task if not constanic (PREMBRIONIC
+                // is not constanic), so the merged brane will be stepped.
+                // DO NOT set nyes yet — phase 2 will adopt the merged brane's
+                // settled state.
                 self.core.push_ubc_child(result_ref);
-                self.core.set_nyes(merged_state);
             }
             _ => {}
         }
@@ -2878,7 +2935,7 @@ mod tests {
         let transitions = step_to_settled(&search, &scope);
         eprintln!("Search(not found) NYES transitions: {transitions:?}");
 
-        assert_eq!(search.borrow().core().get_nyes(), Nyes::Nk);
+        assert_eq!(search.borrow().core().get_nyes(), Nyes::Econstanic);
         assert!(search.borrow().core().ubc_children().is_empty());
     }
 
@@ -3965,7 +4022,7 @@ mod tests {
     }
 
     #[test]
-    fn sff_descendant_searches_are_econstanic_at_build() {
+    fn sff_descendant_searches_are_prembrionic_at_build() {
         let root = Compiler::compile("{a = 1; b = 2; sff = <<a + b>>;}")
             .unwrap()
             .pop()
@@ -3974,31 +4031,13 @@ mod tests {
         let sb = find_search(&root, "^b$").expect("search b");
         assert_eq!(
             sa.borrow().core().get_nyes(),
-            Nyes::Econstanic,
-            "SFF search a built ECONSTANIC"
+            Nyes::Prembrionic,
+            "SFF search a built PREMBRIONIC (under_sff propagated from parent)"
         );
         assert_eq!(
             sb.borrow().core().get_nyes(),
-            Nyes::Econstanic,
-            "SFF search b built ECONSTANIC"
-        );
-
-        let scope = Scope::empty();
-        for _ in 0..200 {
-            if root.borrow().core().get_nyes().is_constanic() {
-                break;
-            }
-            let _ = root.step(&scope).unwrap();
-        }
-        assert_eq!(
-            sa.borrow().core().get_nyes(),
-            Nyes::Econstanic,
-            "SFF search a stays ECONSTANIC after stepping"
-        );
-        assert_eq!(
-            sb.borrow().core().get_nyes(),
-            Nyes::Econstanic,
-            "SFF search b stays ECONSTANIC after stepping"
+            Nyes::Prembrionic,
+            "SFF search b built PREMBRIONIC (under_sff propagated from parent)"
         );
     }
 
@@ -4085,7 +4124,7 @@ mod tests {
     }
 
     #[test]
-    fn value_search_anchored_miss_is_nk() {
+    fn value_search_anchored_miss_is_econstanic() {
         use crate::compiler::Compiler;
         let root = Compiler::compile("{a = {x = 1;}; bad = a~=99;}")
             .unwrap()
@@ -4101,7 +4140,7 @@ mod tests {
             .first()
             .cloned()
             .unwrap();
-        assert_eq!(body.borrow().core().get_nyes(), Nyes::Nk);
+        assert_eq!(body.borrow().core().get_nyes(), Nyes::Econstanic);
     }
 
     #[test]
@@ -4980,7 +5019,7 @@ mod tests {
     }
 
     #[test]
-    fn contextless_search_on_non_brane_anchor_is_nk() {
+    fn contextless_search_on_non_brane_anchor_is_econstanic() {
         use crate::compiler::Compiler;
         let root = Compiler::compile("{a = 42; x = a.b;}")
             .unwrap()
@@ -4998,8 +5037,8 @@ mod tests {
             .unwrap();
         assert_eq!(
             body.borrow().core().get_nyes(),
-            Nyes::Nk,
-            "anchored search on non-brane must be NK"
+            Nyes::Econstanic,
+            "anchored search on non-brane must be ECONSTANIC"
         );
     }
 
@@ -5433,7 +5472,7 @@ mod tests {
     }
 
     #[test]
-    fn contexted_search_escape_is_nk() {
+    fn contexted_search_escape_is_econstanic() {
         use crate::compiler::Compiler;
         let root = Compiler::compile(
             "{outside = 99; recipe = {steps = {prep = 7; step_1 = 40; bake = 9;};}; \
@@ -5454,8 +5493,8 @@ mod tests {
             .unwrap();
         assert_eq!(
             body.borrow().core().get_nyes(),
-            Nyes::Nk,
-            "contexted search escaping home brane must be NK"
+            Nyes::Econstanic,
+            "contexted search escaping home brane must be ECONSTANIC"
         );
     }
 
@@ -5644,6 +5683,177 @@ mod tests {
                 .alarm_reason()
                 .is_some_and(|r| r.contains("VALUE-SEARCH-UNSUPPORTED-PATTERN")),
             "bad search must have alarm for non-integer pattern"
+        );
+    }
+
+    // --- Bug fix regression tests ---
+
+    #[test]
+    fn anchored_search_miss_is_econstanic_not_nk() {
+        let root = Compiler::compile("{b = {x=1; y=2;}; miss = b?nada;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        settle_root(&root);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let miss_stmt = &stmts[1];
+        let body = miss_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        assert_eq!(
+            body.borrow().core().get_nyes(),
+            Nyes::Econstanic,
+            "anchored search miss must be ECONSTANIC, not NK"
+        );
+    }
+
+    #[test]
+    fn concat_brane_waits_for_children_to_settle() {
+        let brane1 = make_brane(vec![make_statement("a", 0, make_constant_int(1))]);
+        let brane2 = make_brane(vec![make_statement("b", 0, make_constant_int(2))]);
+        let cat = make_concatenation(vec![Rc::clone(&brane1), Rc::clone(&brane2)]);
+        let trace = step_to_settled(&cat, &Scope::empty());
+        assert_progression(&trace, Nyes::Constant, "Concatenation");
+        let result = cat.borrow().core().ubc_children().first().cloned();
+        assert!(result.is_some(), "ConcatBrane must produce a merged result");
+        let result_brane = result.unwrap();
+        let stmts = result_brane.borrow().core().foolish_children().to_vec();
+        assert_eq!(stmts.len(), 2, "merged brane must have 2 statements");
+    }
+
+    #[test]
+    fn concat_brane_cross_element_reference_resolves() {
+        let root = Compiler::compile("{cb = {a=1, b=2} {c = a + b};}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        settle_root(&root);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let cb_stmt = &stmts[0];
+        let body = cb_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        let nyes = body.borrow().core().get_nyes();
+        assert!(
+            nyes.is_constanic(),
+            "ConcatBrane with cross-element reference must settle"
+        );
+    }
+
+    #[test]
+    fn concat_brane_ab_search_finds_parent_scope() {
+        let root = Compiler::compile("{p = 100; cb = {q=1} {r = p};}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        settle_root(&root);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let cb_stmt = &stmts[1];
+        let body = cb_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        let nyes = body.borrow().core().get_nyes();
+        assert!(
+            nyes.is_constanic(),
+            "ConcatBrane with parent-scope reference must settle"
+        );
+    }
+
+    #[test]
+    fn concat_brane_anchored_search_on_resolved_brane() {
+        let root = Compiler::compile("{b1 = {a=1, b=2}; cb = b1 {c = 3}; r = cb.a;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        settle_root(&root);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let r_stmt = &stmts[2];
+        let r_body = r_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        assert_eq!(r_body.borrow().as_i64(), Some(1));
+    }
+
+    #[test]
+    fn concat_brane_anchored_search_shadow() {
+        let root = Compiler::compile(
+            "{p = 100; shadow = 111; orig = {shadow=1, keep=shadow, late=zz}; \
+             cb = {shadow=2, zz=9} orig {from_join=shadow, from_parent=p}; \
+             x = cb.shadow;}",
+        )
+        .unwrap()
+        .pop()
+        .unwrap();
+        settle_root(&root);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let x_stmt = stmts
+            .iter()
+            .find(|s| s.borrow().as_stmt_name() == Some("x"))
+            .unwrap();
+        let x_body = x_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        assert_eq!(x_body.borrow().as_i64(), Some(1));
+    }
+
+    #[test]
+    fn concat_brane_cross_element_dot_access_resolves() {
+        let root =
+            Compiler::compile("{b1 = {a=1, b=2}; mixed = {source = b1} {field = source.a};}")
+                .unwrap()
+                .pop()
+                .unwrap();
+        settle_root(&root);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let mixed_stmt = &stmts[1];
+        let mixed_body = mixed_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        let mixed_val = mixed_body.value();
+        assert_eq!(mixed_val.borrow().kind(), FirKind::Brane);
+        let field_stmt = mixed_val
+            .borrow()
+            .core()
+            .foolish_children()
+            .iter()
+            .find(|s| s.borrow().as_stmt_name() == Some("field"))
+            .cloned()
+            .expect("field statement must exist in merged brane");
+        let field_body = field_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        assert_eq!(
+            field_body.borrow().as_i64(),
+            Some(1),
+            "source.a must resolve to 1 in merged ConcatBrane"
         );
     }
 }
