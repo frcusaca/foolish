@@ -1,0 +1,9 @@
+{
+  "id": "T-bb31fc66-7cb2-45ce-9ecd-adcc90bcb826",
+  "subject": "Reference resolution + topo eval + deterministic diff in snapshot_suite.rs",
+  "description": "Implement `resolve_reference` (strip last ++segment), topo-sort in evaluate_all, compute DIFF using `similar`, enforce diff_limit, add `reference:` metadata.",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0adba957dffecI8kjw52LYhYff"
+}

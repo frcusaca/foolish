@@ -1,0 +1,10 @@
+{
+  "id": "T-eb5258c2-f9df-4a86-9356-3c7d28aa1124",
+  "subject": "Fix ConcatBrane search bugs on FOOP-13 branch",
+  "description": "Fix 4 bugs in the foop-13-concat-brane-max-size worktree: (1) value_search_step anchored miss NK→ECONSTANIC, (2) contexted_search miss NK→ECONSTANIC, (3) anchor not-brane-like NK→ECONSTANIC, (4) anchored search scan miss NK→ECONSTANIC",
+  "status": "completed",
+  "activeForm": "Fixing ConcatBrane search bugs on FOOP-13 branch",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0b6e02d8bffe3hGo3Cn2433F41"
+}

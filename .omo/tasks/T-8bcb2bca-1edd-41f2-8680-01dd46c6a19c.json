@@ -1,0 +1,9 @@
+{
+  "id": "T-8bcb2bca-1edd-41f2-8680-01dd46c6a19c",
+  "subject": "Phase 2: signature module with tamper tests",
+  "description": "Implement Ed25519+Argon2id, three-role key model, Stamp/Stamps, create/verify, tamper tests FIRST",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0ae4bb81effegRmLdkkL6nVrQG"
+}

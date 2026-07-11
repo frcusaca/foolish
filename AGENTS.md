@@ -361,7 +361,7 @@ AI agents MUST NEVER accept snapshots. See the ⚠️ CRITICAL section above.
 
 ### The Unicellular Brane Computer (UBC)
 
-The **UBC is the reference implementation of Foolish**. It implements a unique evaluation model based on branes (containment structures).
+The **UBC is the reference implementation of Foolish**. It implements a unique evaluation model based on branes (containment structures). The VM has no interactive debugger; inspection of FVM/FIR state (NYES transitions, search resolution, parent chains, values) is unit-test-driven. When you need to figure out *why* a brane evaluates the way it does — wrong values, unexpected NK/ECONSTANIC, search failures, or NYES state machine bugs — load the `foolish-debugging` skill (see the Skills section below) and follow its test-template → NYES-tracing → FIR-inspection → cleanup workflow.
 
 #### FIR (Foolish Internal Representation)
 

@@ -1,0 +1,10 @@
+{
+  "id": "T-f65ddc9b-8e18-45d3-8b08-8e15a6e24dc6",
+  "subject": "Fix Bug 2: Mixed resolve searches not resolving in ConcatBrane",
+  "description": "Bug 2 (mixed resolve) and Bug 3 (parent scope) are fixed by Bug 4 fix (premature merge was the root cause)",
+  "status": "completed",
+  "activeForm": "Fixing Bug 2: Mixed resolve searches",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0b6feeb13ffeVvLKv5H4rRt6Pi"
+}

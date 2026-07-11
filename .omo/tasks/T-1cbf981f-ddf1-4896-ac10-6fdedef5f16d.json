@@ -1,0 +1,10 @@
+{
+  "id": "T-1cbf981f-ddf1-4896-ac10-6fdedef5f16d",
+  "subject": "Fix ConcatBrane search resolution bugs - take 2",
+  "description": "The previous fix attempt did not actually resolve the bugs. The anchored search miss is still returning NK instead of ECONSTANIC. Need to fix the SearchFir::fir_op_step logic correctly.",
+  "status": "pending",
+  "activeForm": "Fixing ConcatBrane search bugs",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0c6848c0cffe1Eee9HK4IDWRuW"
+}

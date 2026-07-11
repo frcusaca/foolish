@@ -1,0 +1,10 @@
+{
+  "id": "T-d36a4b35-b33b-48ea-8c02-e0f0cb6b978f",
+  "subject": "Write parallel input files for all concept rows (§D.4)",
+  "description": "Write .foo, .py, .js files for: integer_arithmetic, nested_expressions, name_binding, data_structures, function_application, division_by_zero, search_query (Foolish+JS), sf_sff_laziness (Foolish-only)",
+  "status": "completed",
+  "activeForm": "Writing parallel input files",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0add6cb99ffe9ohTIQnx65YrKY"
+}

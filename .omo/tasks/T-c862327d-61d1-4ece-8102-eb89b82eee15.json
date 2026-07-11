@@ -1,0 +1,10 @@
+{
+  "id": "T-c862327d-61d1-4ece-8102-eb89b82eee15",
+  "subject": "Phase 8: Implement compare.rs (per-section matching)",
+  "description": "Create einmo/src/compare.rs with compare(), ComparisonResult, DiffEntry types. Walk stage trees, verify-on-inspect, compare configured sections byte-for-byte.",
+  "status": "completed",
+  "activeForm": "Implementing compare module",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0ae12cd0effeVjKhiL5oDw8rZp"
+}

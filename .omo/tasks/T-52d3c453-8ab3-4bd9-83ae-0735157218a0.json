@@ -1,0 +1,10 @@
+{
+  "id": "T-52d3c453-8ab3-4bd9-83ae-0735157218a0",
+  "subject": "Implement einmo/src/format.rs",
+  "description": "Implement the .einmo containment envelope parse/serialize per FOOP-54 §4.1-4.6. Include EinmoFile struct, EinmoError enum, header parsing, metadata, section splitting, STAMPS, advisory lines, separator collision check, and unit tests.",
+  "status": "completed",
+  "activeForm": "Implementing einmo/src/format.rs",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0ae41c7d8ffepLoEdWrSO4zRbJ"
+}

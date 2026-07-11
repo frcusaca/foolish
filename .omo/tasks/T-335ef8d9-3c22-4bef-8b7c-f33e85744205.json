@@ -1,0 +1,9 @@
+{
+  "id": "T-335ef8d9-3c22-4bef-8b7c-f33e85744205",
+  "subject": "Implement FOOP-54 Phase 15b — dependent einmos",
+  "description": "Implement the `++` dependent einmo feature per spec §4.7. Sub-tasks:\n1. Add `similar` crate to einmo/Cargo.toml\n2. Add `reference` metadata field to format.rs\n3. Reference resolution in stage.rs\n4. Deterministic unified diff computation\n5. Topological evaluation + DIFF in snapshot_suite.rs\n6. DIFF in compare.rs for dependents\n7. Unit tests\n8. Zweimomo dependents + tests",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0adba957dffecI8kjw52LYhYff"
+}

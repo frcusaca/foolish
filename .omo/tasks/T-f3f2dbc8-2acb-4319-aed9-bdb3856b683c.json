@@ -1,0 +1,10 @@
+{
+  "id": "T-f3f2dbc8-2acb-4319-aed9-bdb3856b683c",
+  "subject": "Run fmt, clippy, and tests",
+  "description": "Run cargo fmt, cargo clippy -D warnings, and cargo test -p zweimomo to verify everything passes",
+  "status": "completed",
+  "activeForm": "Running cargo fmt, clippy, test",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0add6cb99ffe9ohTIQnx65YrKY"
+}

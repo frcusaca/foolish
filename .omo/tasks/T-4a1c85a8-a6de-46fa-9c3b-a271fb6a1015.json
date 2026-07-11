@@ -1,0 +1,10 @@
+{
+  "id": "T-4a1c85a8-a6de-46fa-9c3b-a271fb6a1015",
+  "subject": "Run verification: fmt, clippy, tests, snapshots",
+  "description": "Run cargo fmt, clippy, tests, regenerate snapshots, verify everything passes",
+  "status": "completed",
+  "activeForm": "Running verification checks",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0b6feeb13ffeVvLKv5H4rRt6Pi"
+}

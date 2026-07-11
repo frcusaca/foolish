@@ -1,0 +1,9 @@
+{
+  "id": "T-f520c62e-4a32-4afe-8273-b022e7a0a3e0",
+  "subject": "Unit tests for dependent einmos",
+  "description": "Tests: reference resolution (chains), topo order, deterministic diff, DIFF signed + verifies, reference-unavailable, diff-limit pass/fail, compare flags DIFF drift.",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0adba957dffecI8kjw52LYhYff"
+}

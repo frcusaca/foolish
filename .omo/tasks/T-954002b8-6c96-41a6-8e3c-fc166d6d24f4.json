@@ -1,0 +1,10 @@
+{
+  "id": "T-954002b8-6c96-41a6-8e3c-fc166d6d24f4",
+  "subject": "FOOP-54 Phase 3: .einmo format parse/serialize",
+  "description": "Implement einmo::format: header line, section splitting, metadata, separator collision rule, EinmoFile::parse/serialize, advisory lines.",
+  "status": "completed",
+  "activeForm": "Implementing .einmo format",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0ae4eb28fffe913hTzHIEKqZN9"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "T-f85db553-28bd-493a-a1d6-4a0e391ee4b9",
+  "subject": "DIFF section in compare.rs for dependents",
+  "description": "Update `required_section_names` to include DIFF for files that have it.",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0adba957dffecI8kjw52LYhYff"
+}

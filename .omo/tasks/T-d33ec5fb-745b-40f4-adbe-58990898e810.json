@@ -1,0 +1,10 @@
+{
+  "id": "T-d33ec5fb-745b-40f4-adbe-58990898e810",
+  "subject": "Write foop-write-plan skill",
+  "description": "Create the \"Writing and Planning\" skill covering: what a FOOP is, two-file system, little-endian numbering, naming convention, file locations, foop_check.py helper, creating spec (template/frontmatter/body sections), creating plan (construction rules, checkbox format, sub-tasks, worktree checkboxes, comprehensive test). All details and corner cases from foop.md.",
+  "status": "completed",
+  "activeForm": "Writing foop-write-plan skill",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0ada88467ffed1EkmRkTcHUPtL"
+}

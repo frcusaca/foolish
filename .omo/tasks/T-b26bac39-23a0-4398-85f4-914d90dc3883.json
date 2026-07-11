@@ -1,0 +1,10 @@
+{
+  "id": "T-b26bac39-23a0-4398-85f4-914d90dc3883",
+  "subject": "FOOP-54 Phase 4-5: stage dirs + verify",
+  "description": "Implement stage directories, hierarchical mirroring, verify-on-inspect, and verify command.",
+  "status": "completed",
+  "activeForm": "Implementing stages and verify",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0ae4eb28fffe913hTzHIEKqZN9"
+}

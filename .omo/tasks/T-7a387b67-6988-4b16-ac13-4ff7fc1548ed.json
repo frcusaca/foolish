@@ -1,0 +1,10 @@
+{
+  "id": "T-7a387b67-6988-4b16-ac13-4ff7fc1548ed",
+  "subject": "Write zweimomo integration tests with evaluate_all",
+  "description": "Write #[test] per language calling EinmoSuite::evaluate_all with require_correspondence(Output, Checked). Foolish separator \"!!\"+LF.",
+  "status": "completed",
+  "activeForm": "Writing zweimomo tests",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0add6cb99ffe9ohTIQnx65YrKY"
+}
