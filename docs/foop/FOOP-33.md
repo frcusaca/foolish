@@ -324,7 +324,7 @@ package it. So `foolish-ubca` gains a **`build.rs`** that, at build time, copies
 > available** — at runtime; the program never touches the filesystem for `system.foo`. (Only
 > `std::env::var("OUT_DIR")` *at runtime* would fail, and we do not do that.) Net effect:
 > `system.foo` ships inside the compiled crate, no runtime file dependency, authored at the
-> repo root.
+> repo root. @Agents, ack! Let's keep this documentaiton tho.
 
 **`system.foo` IS the root brane, and is its own parent.** `system.foo` is **implicitly
 inserted** by the FVM — it is not opt-in. It is compiled once and becomes **the root brane**,
