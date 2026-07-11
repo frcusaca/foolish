@@ -61,10 +61,10 @@ The operator brane is **itself written in Foolish** — it binds its positional 
     'True  = ⬤ ;
     'False = ⬤ ;
     AND = {
-        !! Bind the two positional args that precede this brane (concatenation), characterized b':
-        !!   <<#-2>> = the 2nd-from-last preceding element, <<#-1>> = the last (SFF-deferred).
-        b'A = <<#-2>> ;
-        b'B = <<#-1>> ;
+        !! Bind the two positional args that precede this brane (concatenation), characterized b'.
+        !! `#-N` counts back from the SEEKING statement's OWN position, so it is CONSTANT `#-2`:
+        b'A = <<#-2>> ;   !! from b'A: #-2 skips the two args back to arg-1 (True)
+        b'B = <<#-2>> ;   !! from b'B: b'A now sits between, so #-2 lands on arg-2 (False)
         b'_TABLE = {
             A=True,  B=True,  True ;
             A=True,  B=False, False ;
@@ -77,15 +77,20 @@ The operator brane is **itself written in Foolish** — it binds its positional 
 }
 ```
 
+**Why both are `#-2` (not `#-2` then `#-1`).** `#-N` seeks backward from the *seeking statement's
+own line number* (`target = idx + offset`, `fir_kinds.rs:1422`). Each binding statement occupies a
+position, so the offset to reach the *next original argument* stays constant. Concretely, in the
+concatenated sequence `[True(0), False(1), b'A(2), b'B(3), …]`: `b'A` at idx 2 → `2 + (-2) = 0` →
+`True`; `b'B` at idx 3 → `3 + (-2) = 1` → `False`. Using `#-1` for `b'B` would compute `3-1 = 2` →
+**`b'A`** (a bug). The accumulating bindings shift the count, so the constant `#-2` is what walks
+successive args.
+
 The `b'` characterizations make the operator **typed**: `b'A = <<#-2>>` *demands* the first arg be
 `b'`-characterized (a wrong-typed arg → the FOOP-63 characterization-demand miss), and `b'result`
-declares the answer's type. So `{True,False} AND` concatenates `True`, `False`, `AND`; inside
-`AND`, `b'A`/`b'B` bind to the two preceding `b'` values via `#-2`/`#-1`, `_TABLE~A=A&~B=B#1` finds
-the result row, and that `b'result` final line is the brane's answer. `OR`/`NOR`/`XOR` are
-analogous 4-row tables; `NOT` binds one arg (`b'A = <<#-1>>`) over a 2-row table. (Integer
-operators in FOOP-83 use the same skeleton with `i'` instead of `b'`.) Equality (`~A=A`) is
-**referential** (FOOP-33 `default_equal` — `True`/`False`
-by identity).
+declares the answer's type. `OR`/`NOR`/`XOR` are analogous 4-row tables; `NOT` binds one arg
+(`b'A = <<#-1>>` — a single-arg operator, so `#-1` reaches the one preceding value) over a 2-row
+table. (Integer operators in FOOP-83 use the same skeleton with `i'` instead of `b'`.) Equality
+(`~A=A`) is **referential** (FOOP-33 `default_equal` — `True`/`False` by identity).
 
 **Nothing here is privileged.** The arg-binding (`#-2`/`#-1`), the table, and the lookup
 (`~A=A&~B=B#1`) are all ordinary Foolish. The FVM's only shortcut is detecting the `_TABLE`
