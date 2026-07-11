@@ -987,16 +987,16 @@ mod get_value_tests {
     // ── 15. StayFullyFoolishFir ─────────────────────────────────────────────
 
     #[test]
-    fn get_value_stay_fully_foolish_returns_self() {
+    fn get_value_stay_fully_foolish_returns_inner_value() {
         let body = make_ci(42);
         let sff = make_sff(Rc::clone(&body));
         settle(&sff);
         assert!(sff.borrow().core().get_nyes().is_constanic());
-        assert!(sff.borrow().core().ubc_children().is_empty());
+        assert_eq!(sff.borrow().core().ubc_children().len(), 1);
 
         let result = sff.value();
-        assert!(Rc::ptr_eq(&result, &sff));
-        assert_eq!(result.borrow().kind(), FirKind::StayFullyFoolish);
+        assert!(!Rc::ptr_eq(&result, &sff));
+        assert_eq!(result.borrow().as_i64(), Some(42));
     }
 
     #[test]

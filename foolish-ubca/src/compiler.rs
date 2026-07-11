@@ -260,8 +260,9 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
         Astn::StayFullyFoolish { expr } => {
             Rc::new_cyclic(|me: &Weak<RefCell<StayFullyFoolishFir>>| {
                 let me_dyn: Weak<RefCell<dyn Fir>> = me.clone();
-                // SFF marker: from here down, searches are built ECONSTANIC.
-                let e = build_fir(*expr, Some(&me_dyn), true);
+                // SFF propagates the parent's under_sff flag so inner searches
+                // can resolve when used as ConcatBrane elements.
+                let e = build_fir(*expr, Some(&me_dyn), under_sff);
                 RefCell::new(StayFullyFoolishFir {
                     core: ProtoBrane::new(vec![e], child_parent!(), Nyes::Prembrionic),
                 })

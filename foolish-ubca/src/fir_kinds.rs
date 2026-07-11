@@ -2130,7 +2130,7 @@ impl Fir for StayFullyFoolishFir {
                                 }
                                 None => {
                                     let n = borrowed.core().get_nyes();
-                                    (Rc::clone(&expr), n)
+                                    (Rc::clone(expr), n)
                                 }
                             }
                         };
@@ -4042,25 +4042,20 @@ mod tests {
     }
 
     #[test]
-    fn sf_of_sff_sets_econstanic_body_constanic() {
+    fn sf_of_sff_resolves_to_value() {
         let root = Compiler::compile("{a = 1; b = 2; sff = <<a + b>>; sf = <sff>;}")
             .unwrap()
             .pop()
             .unwrap();
         let scope = Scope::empty();
-        for _ in 0..200 {
-            if root.borrow().core().get_nyes().is_constanic() {
-                break;
-            }
-            let _ = root.step(&scope).unwrap();
-        }
+        let _ = step_to_settled(&root, &scope);
         let sff_search = find_search(&root, "^sff$").expect("search sff");
         assert!(sff_search.borrow().core().get_nyes().is_constanic());
         let result = sff_search.value();
         assert_eq!(
-            result.borrow().kind(),
-            FirKind::Operator,
-            "sf=<sff> must make the SFF's Op+ body constanic, not resolve it to a value"
+            result.borrow().as_i64(),
+            Some(3),
+            "sf=<sff> resolves to the evaluated value since SFF now evaluates internally"
         );
     }
 
@@ -5854,6 +5849,86 @@ mod tests {
             field_body.borrow().as_i64(),
             Some(1),
             "source.a must resolve to 1 in merged ConcatBrane"
+        );
+    }
+
+    #[test]
+    fn sf_wrapped_search_resolves_from_sibling() {
+        let root = Compiler::compile("{b = 1; a = <b>;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        settle_root(&root);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let a_stmt = &stmts[1];
+        let a_body = a_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        assert!(
+            a_body.borrow().core().get_nyes().is_constanic(),
+            "SF-wrapped search for sibling must settle"
+        );
+        let result = a_body.value();
+        assert_eq!(
+            result.borrow().as_i64(),
+            Some(1),
+            "<b> must resolve to b=1 from same brane"
+        );
+    }
+
+    #[test]
+    fn concat_brane_three_elements_with_sff() {
+        let root = Compiler::compile("{f1 = {x = 10;}; f2 = {y = 20;}; b = f1 <f2> <<f1>>;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        settle_root(&root);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let b_stmt = stmts
+            .iter()
+            .find(|s| s.borrow().as_stmt_name() == Some("b"))
+            .expect("b statement must exist");
+        let b_body = b_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        eprintln!(
+            "b_body kind: {:?}, nyes: {:?}",
+            b_body.borrow().kind(),
+            b_body.borrow().core().get_nyes()
+        );
+        assert!(
+            b_body.borrow().core().get_nyes().is_constanic(),
+            "three-element concat with SFF must settle"
+        );
+        let merged = b_body.value();
+        eprintln!(
+            "merged kind: {:?}, nyes: {:?}",
+            merged.borrow().kind(),
+            merged.borrow().core().get_nyes()
+        );
+        assert_eq!(merged.borrow().kind(), FirKind::Brane);
+        let merged_stmts = merged.borrow().core().foolish_children().len();
+        eprintln!("merged_stmts: {}", merged_stmts);
+        for (i, s) in merged.borrow().core().foolish_children().iter().enumerate() {
+            eprintln!(
+                "  [{}] name={:?}, nyes={:?}",
+                i,
+                s.borrow().as_stmt_name(),
+                s.borrow().core().get_nyes()
+            );
+        }
+        assert!(
+            merged_stmts >= 2,
+            "merged brane must have statements from at least 2 elements, got {}",
+            merged_stmts
         );
     }
 }
