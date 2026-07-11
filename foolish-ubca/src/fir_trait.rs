@@ -1172,4 +1172,66 @@ mod get_value_tests {
         let result = inner_brane.borrow()._ab_search(&inner_brane, "nonexistent");
         assert!(result.is_none(), "nonexistent should not be found anywhere");
     }
+
+    /// Regression for the index-0 self-hit bug (FOOP-13): a statement that is
+    /// the FIRST statement in its brane (`line_number == 0`) must not find
+    /// itself via its own backward IB search. `_ib_search` computes the
+    /// backward-scan end as `self.line_number.saturating_sub(1)`; for
+    /// `line_number == 0` this SATURATES to `0` rather than representing "no
+    /// preceding statements", so the scan range `[0, 0]` wrongly includes the
+    /// statement's own slot. Left unfixed, a bare self-referential search at
+    /// index 0 (e.g. `{a = a + 1;}`) recurses forever: `handle_found` clones
+    /// the found statement's body — which still contains the same unresolved
+    /// self-search — pushes the clone as a fresh task, the clone re-searches,
+    /// finds the SAME original statement again, and clones again without
+    /// bound (proved via `debug_front_task` depth tracing during triage:
+    /// nesting depth climbs unboundedly, e.g. 1,2,4,5,7,9,11,13... with no
+    /// terminal state).
+    #[test]
+    fn ib_search_at_index_zero_does_not_find_self() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile("{a = a + 1;}").unwrap().pop().unwrap();
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let a_stmt = &stmts[0]; // a = a + 1, line_number == 0
+        assert_eq!(a_stmt.borrow().as_stmt_line_number(), Some(0));
+
+        let result = a_stmt.borrow()._ib_search(a_stmt, "a");
+        assert!(
+            result.is_none(),
+            "BUG: a statement at index 0 of its brane must not find itself \
+             via backward IB search — got a hit instead of None"
+        );
+    }
+
+    /// End-to-end companion to `ib_search_at_index_zero_does_not_find_self`:
+    /// exercises the SAME off-by-one through the actual runtime path
+    /// (`SearchFir::ib_search_with_engine`, which computes its scan end as
+    /// `idx.saturating_sub(1)` and feeds `BraneNavigator::set_range` — the
+    /// scope-cached twin of `_ib_search`, used by real stepping). Before the
+    /// fix this program never settles (steps forever in BRANING); after the
+    /// fix `a`'s self-search is correctly absent from its own brane, falls
+    /// through, and the statement settles.
+    #[test]
+    fn statement_at_index_zero_settles_without_self_reference_hang() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile("{a = a + 1;}").unwrap().pop().unwrap();
+        let scope = Scope::empty();
+
+        let mut settled = false;
+        for _ in 0..500 {
+            if root.borrow().core().get_nyes().is_constanic() {
+                settled = true;
+                break;
+            }
+            let _ = root.step(&scope).unwrap();
+        }
+
+        assert!(
+            settled,
+            "BUG: {{a = a + 1;}} must settle (a's self-search absent, falls \
+             through to unanchored-miss ECONSTANIC per FOOP-43 / or NK if no \
+             fallback exists) — it must NOT hang forever due to a's own \
+             statement finding itself at index 0"
+        );
+    }
 }

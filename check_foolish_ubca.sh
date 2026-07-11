@@ -5,7 +5,7 @@ if [ "$1" == '-f' ]; then
 		  cargo clean
 fi
 cargo build
-cargo insta test foolish-ubca
+cargo insta test
 ./foolish_review.sh foolish-ubca
 echo "Press enter to approve."
 read -x asdf

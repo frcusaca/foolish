@@ -64,7 +64,18 @@ fn classify_concat_element(ast: &Astn) -> ConcatElemKind {
             | Astn::ContextedSearch { .. } => ConcatElemKind::SfSearch,
             _ => ConcatElemKind::Error,
         },
-        Astn::StayFullyFoolish { .. } => ConcatElemKind::Error,
+        Astn::StayFullyFoolish { expr } => match expr.as_ref() {
+            Astn::Brane { .. } => ConcatElemKind::SfBrane,
+            Astn::Identifier { .. }
+            | Astn::DotSearch { .. }
+            | Astn::RegexpSearch { .. }
+            | Astn::Seek { .. }
+            | Astn::HeadTail { .. }
+            | Astn::UnanchoredSeek { .. }
+            | Astn::ValueSearch { .. }
+            | Astn::ContextedSearch { .. } => ConcatElemKind::SfSearch,
+            _ => ConcatElemKind::Error,
+        },
         _ => ConcatElemKind::Error,
     }
 }

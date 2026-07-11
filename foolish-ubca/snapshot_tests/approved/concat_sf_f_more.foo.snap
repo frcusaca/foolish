@@ -13,8 +13,8 @@ INPUT:
   z=-30;
 
   f1 = {
-     b= <<x+y>> + <<a>> + <<b + c>>;
-     a= <x+y> + a + b;
+     b = <<x+y>> + <<a>> + <b + c>;
+     a = <x+y> + a + b;
   }
 
   f2 = {
@@ -25,21 +25,21 @@ INPUT:
      c= <a + <<b + <x + y + z> >> + <c> >;
   }
 
-  b = f1 <f2> <<f3>>;
+  o = f1 <f2> <<f3>>;
 
-  d= b$;
+  oo = o$;
 }
 ```
 [0] RESULT:
 ```hfssnap
-{NK(ITERATION-EXCEEDED, Iteration exceeded 9999)
+{WOCONSTANIC
   a=1;
   b=2;
   c=3;
   x=-10;
   y=-20;
   z=-30;
-  f1={BRANING
+  f1={WOCONSTANIC
       b=Op+(
           Op+(
             <<WOCONSTANIC
@@ -50,80 +50,68 @@ INPUT:
             >>,
             WOCONSTANIC
           ),
-          <<WOCONSTANIC
-            Op+(?(pattern='^b$', UNANCHORED, ECONSTANIC), ?(pattern='^c$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
-          >>,
+          5,
           WOCONSTANIC
       );
-      a=Op+(-29, ?(pattern='^b$', UNANCHORED, BRANING), BRANING)
+      a=-53
   };
-  f2={PREMBRIONIC
+  f2={WOCONSTANIC
       b=Op+(
-          <<PREMBRIONIC
+          <<WOCONSTANIC
             Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^z$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
           >>,
-          <PREMBRIONIC
+          <WOCONSTANIC
             Op+(
               Op+(
-                ?(pattern='^a$', UNANCHORED, PREMBRIONIC),
-                <<PREMBRIONIC
+                ?(result=1, pattern='^a$', UNANCHORED),
+                <<WOCONSTANIC
                   ?(pattern='^b$', UNANCHORED)
                 >>,
-                PREMBRIONIC
+                WOCONSTANIC
               ),
-              <PREMBRIONIC
-                ?(pattern='^c$', UNANCHORED, PREMBRIONIC)
-              >,
-              PREMBRIONIC
+              ?(result=3, pattern='^c$', UNANCHORED),
+              WOCONSTANIC
             )
           >,
-          PREMBRIONIC
+          WOCONSTANIC
       )
   };
-  f3={PREMBRIONIC
-      c=<PREMBRIONIC
+  f3={WOCONSTANIC
+      c=<WOCONSTANIC
           Op+(
             Op+(
-              ?(pattern='^a$', UNANCHORED, PREMBRIONIC),
-              <<PREMBRIONIC
+              ?(result=1, pattern='^a$', UNANCHORED),
+              <<WOCONSTANIC
                 Op+(
                   ?(pattern='^b$', UNANCHORED, ECONSTANIC),
-                  <PREMBRIONIC
+                  <WOCONSTANIC
                     Op+(
-                      Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), PREMBRIONIC),
+                      Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
                       ?(pattern='^z$', UNANCHORED, ECONSTANIC),
-                      PREMBRIONIC
+                      WOCONSTANIC
                     )
                   >,
                   WOCONSTANIC
                 )
               >>,
-              PREMBRIONIC
+              WOCONSTANIC
             ),
-            <PREMBRIONIC
-              ?(pattern='^c$', UNANCHORED, PREMBRIONIC)
-            >,
-            PREMBRIONIC
+            ?(result=3, pattern='^c$', UNANCHORED),
+            WOCONSTANIC
           )
       >
   };
-  b=?(pattern='^f1$', UNANCHORED, PREMBRIONIC);
-  <PREMBRIONIC
-    ?(pattern='^f2$', UNANCHORED, PREMBRIONIC)
-  >;
-  <<PREMBRIONIC
-    ?(pattern='^f3$', UNANCHORED)
-  >>;
-  d=$(PREMBRIONIC)
+  o={}; !!(@agetns, that's still not hte right answer brane is toos hort)
+  oo=-54
 }
 ```
 COMMENTS:
 ```markdown
 concat_sf_f_more
-generated: 2026-07-02T02:21:25.666494266Z
+generated: 2026-07-11T22:07:35.342632148Z
 ```
 SIGNATURES:
 Public key: eb9604b1e50d6df60ea71cded2d51b4031b14e9d8911866fcfff4afb00075e65
-Foolish signature: sJe8Ji47DtyXrnaqm9ze6BcLqcvdAG4YyospqEU/K9q02UH4gNgKiFFj2P/O6jaYpb4ki5ZPLqj4Qnd/tp1NCw==
-HFS signature: 9Jk/6vXCzO4uNr2frieIKs7Dm64Z3fAN+W05HkyZ2AqT0bF/lN/8hD9bJwr6XP9ERjaO4qJtkbVUGRuNW7YwCw==
-Comments signature: 3BH5yIrluly0qMg92+PQF/BRpT2IHaC94zP2/UwATt8JEQuBOY1VWfaeKdBeQ9gB7kZkJTDl63HwJ0tHst5GCA==
+Foolish signature: V3Vm6Zg0EgiU+vzNM2mVAVChaH751VnATKW95QMdLmQ6oUw1s/R8QZpPJlAPrYSNYhQFy8m5RqC8BHLz/DBBDw==
+HFS signature: CImV+IFKtixeuvjUPKMqTo8ke7gs1DLud5tCVSIy6kN6QXpI4T1e7RIHMSKs/OL1sqWGUYcgBUSEIa6ZvMZYCw==
+Comments signature: Bx5l1Cshnj9+zpv83bEB+GYZ/a9bS02kbMzEFkJ4qvCaW0BWQDQpH1ePC1+X20c2lJg5qJrwHB3fetPcx9JMCg==

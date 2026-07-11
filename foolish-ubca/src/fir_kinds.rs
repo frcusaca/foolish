@@ -749,10 +749,19 @@ impl Fir for StatementFir {
     }
 
     fn _ib_search(&self, self_ref: &FirRef, name: &str) -> Option<(FirRef, Nyes)> {
+        // `checked_sub`, not `saturating_sub`: a statement at line_number 0
+        // is the first in its brane, so "the index one before me" does not
+        // exist. saturating_sub(1) would silently clamp that to 0, turning
+        // "no preceding statements" into the (wrong) range [0, 0], which
+        // includes the statement's own slot and lets it find itself. With
+        // checked_sub, "no range" is represented as None and propagates via
+        // `?`, exactly like every other not-found case here. See FOOP-13
+        // regression `ib_search_at_index_zero_does_not_find_self`.
+        let backward_end = self.line_number.checked_sub(1)?;
         let brane = self._get_my_brane(self_ref)?;
         let brane_borrowed = brane.borrow();
         brane_borrowed
-            ._search_brane(name, self.line_number.saturating_sub(1), 0)
+            ._search_brane(name, backward_end, 0)
             .map(|(_idx, stmt, nyes)| (stmt, nyes))
     }
 }
@@ -1059,7 +1068,14 @@ impl SearchFir {
         let stmt = scope.get_my_statement()?;
         let brane = stmt.borrow()._get_my_brane(&stmt)?;
         let idx = brane.find_stmt_index(&stmt)?;
-        let search_end = idx.saturating_sub(1);
+        // `checked_sub`, not `saturating_sub`: a statement at index 0 is the
+        // first in its brane, so "the index one before me" does not exist.
+        // saturating_sub(1) would silently clamp that to 0, turning "no
+        // preceding statements" into the (wrong) range [0, 0] via set_range —
+        // which includes the statement's own slot and lets it find itself.
+        // Same tool as the sibling `_ib_search` above; see FOOP-13 regression
+        // `statement_at_index_zero_settles_without_self_reference_hang`.
+        let search_end = idx.checked_sub(1)?;
         let mut nav = BraneNavigator::new(&brane, false);
         nav.set_range(0, search_end);
         let predicate = SearchPredicate::Name {
@@ -2279,16 +2295,23 @@ impl ConcatenationFir {
         let self_weak = self.core.parent_weak();
         let elements = self.core.foolish_children().to_vec();
 
-        // Settle-time typing check: each element's value must be brane-like.
         for elem in &elements {
             let resolved = elem.value();
             if !resolved.borrow().is_brane_like() {
-                let nk: FirRef = Rc::new(RefCell::new(NkFir {
-                    core: ProtoBrane::new(vec![], self_weak.clone(), Nyes::Nk),
-                    reason: "concatenation element is not a brane".to_string(),
-                }));
-                self.core.push_ubc_child(nk);
-                self.core.set_nyes(Nyes::Nk);
+                let elem_nyes = elem.borrow().core().get_nyes();
+                if elem_nyes.is_constanic()
+                    && elem_nyes != Nyes::Econstanic
+                    && elem_nyes != Nyes::Woconstanic
+                {
+                    let nk: FirRef = Rc::new(RefCell::new(NkFir {
+                        core: ProtoBrane::new(vec![], self_weak.clone(), Nyes::Nk),
+                        reason: "concatenation element is not a brane".to_string(),
+                    }));
+                    self.core.push_ubc_child(nk);
+                    self.core.set_nyes(Nyes::Nk);
+                } else {
+                    self.core.set_nyes(Nyes::Woconstanic);
+                }
                 return;
             }
         }
@@ -5663,6 +5686,179 @@ mod tests {
             Some(7),
             "&? must find preceding statement"
         );
+    }
+
+    /// FOOP-13 regression: every candidate-generator that computes a
+    /// backward-exclusive-of-self (or forward-exclusive-of-self) scan range
+    /// from a statement's own index must treat "I am the first/last
+    /// statement in my brane" as an EMPTY range, not fall through to
+    /// `saturating_sub`/`- 1` arithmetic that can wrap back onto the
+    /// statement's own slot. Triage (temporary debug tests, since removed)
+    /// found `_ib_search` and `SearchFir::ib_search_with_engine` both did
+    /// this wrong: a bare self-referential search at brane-index 0 (e.g.
+    /// `{a = a + 1;}`) recursed forever — `handle_found` clones the found
+    /// statement's body (still containing the same unresolved self-search),
+    /// pushes the clone as a fresh task, the clone re-searches, finds the
+    /// SAME original statement again, and clones again without bound.
+    ///
+    /// Five call sites compute a scan range from a statement's own index.
+    /// Four are reachable from compiled Foolish source and are exercised at
+    /// their index-0 (or equivalent) boundary here:
+    /// 1. `_ib_search` (fir_kinds.rs, the `self_ref`-parent-walk path)
+    /// 2. `SearchFir::ib_search_with_engine` (scope-cached runtime path — the
+    ///    one `{a=a+1;}` actually steps through)
+    /// 3. `SearchFir::ab_search_with_engine` (backward, ancestor climb)
+    /// 4. `SearchFir::contexted_search_from_anchor` (both directions)
+    /// 5. `SearchFir::value_search_step`'s backward value-search range
+    ///    (its forward+unanchored counterpart is UNREACHABLE from any valid
+    ///    Foolish program — see the note at the end of this test — so it is
+    ///    not exercised)
+    #[test]
+    fn index_zero_boundary_does_not_self_reference_across_all_candidate_generators() {
+        use crate::compiler::Compiler;
+
+        // (1) + (2): _ib_search AND the live ib_search_with_engine runtime
+        // path, exercised together via full stepping — the ORIGINAL bug.
+        // `a` is index 0 of its own (only) brane; its self-search for "a"
+        // must find nothing there, fall through (unanchored miss ->
+        // ECONSTANIC/NK per the current miss-settlement rule), and the
+        // program must settle rather than hang.
+        {
+            let root = Compiler::compile("{a = a + 1;}").unwrap().pop().unwrap();
+            let scope = Scope::empty();
+            let mut settled = false;
+            for _ in 0..500 {
+                if root.borrow().core().get_nyes().is_constanic() {
+                    settled = true;
+                    break;
+                }
+                let _ = root.step(&scope).unwrap();
+            }
+            assert!(
+                settled,
+                "(1)+(2) {{a = a + 1;}} must settle -- a's own self-search at \
+                 index 0 must not find itself and loop forever"
+            );
+
+            // Direct _ib_search evidence too (not just the end-to-end settle).
+            let stmts = root.borrow().core().foolish_children().to_vec();
+            let a_stmt = &stmts[0];
+            assert_eq!(a_stmt.borrow().as_stmt_line_number(), Some(0));
+            let found = a_stmt.borrow()._ib_search(a_stmt, "a");
+            assert!(
+                found.is_none(),
+                "(1) _ib_search at index 0 must not find self"
+            );
+        }
+
+        // (3): ab_search_with_engine already guarded with `idx > 0` --
+        // confirm a statement at index 0 of the ANCESTOR brane (the one
+        // ab_search climbs into) does not find itself when the inner
+        // statement's own name matches the outer one.
+        {
+            // outer `x` is index 0 of the root brane; inner `y = x;` is
+            // index 0 of `inner`'s brane, so ab_search climbs to the root
+            // and must find outer `x` (index 0 there) WITHOUT the inner
+            // statement (also effectively "at index 0" in its own brane)
+            // ever mistaking itself for the ancestor's index-0 statement.
+            let root = Compiler::compile("{x = 1; inner = {y = x;};}")
+                .unwrap()
+                .pop()
+                .unwrap();
+            settle_root(&root);
+            let stmts = root.borrow().core().foolish_children().to_vec();
+            let inner_stmt = &stmts[1];
+            let inner_body = inner_stmt
+                .borrow()
+                .core()
+                .foolish_children()
+                .first()
+                .cloned()
+                .unwrap();
+            let inner_stmts = inner_body.borrow().core().foolish_children().to_vec();
+            let y_body = inner_stmts[0]
+                .borrow()
+                .core()
+                .foolish_children()
+                .first()
+                .cloned()
+                .unwrap();
+            assert_eq!(
+                y_body.borrow().as_i64(),
+                Some(1),
+                "(3) ab_search_with_engine: y = x must resolve to outer x = 1 \
+                 (outer x is index 0 of the root brane)"
+            );
+        }
+
+        // (4): contexted_search_from_anchor, backward direction, anchor at
+        // index 0 of its brane (`p == 0` guard) -- `&?` from the FIRST
+        // statement must find nothing backward, not wrap onto itself.
+        {
+            let root = Compiler::compile("{blk = {first = 1; second = 2;}; r = blk.first&?first;}")
+                .unwrap()
+                .pop()
+                .unwrap();
+            settle_root(&root);
+            let stmts = root.borrow().core().foolish_children().to_vec();
+            let r_stmt = &stmts[1];
+            let r_body = r_stmt
+                .borrow()
+                .core()
+                .foolish_children()
+                .first()
+                .cloned()
+                .unwrap();
+            assert_eq!(
+                r_body.borrow().core().get_nyes(),
+                Nyes::Nk,
+                "(4) contexted_search_from_anchor backward from index-0 anchor \
+                 must NOT find itself (should be NK: anchored miss, nothing \
+                 precedes the first statement)"
+            );
+        }
+
+        // (5a): value_search_step backward range, statement at index 0 --
+        // `idx > 0` guard. A value-search AT index 0 must not find itself
+        // even when its own (still-unsettled) value could coincidentally
+        // match its own pattern.
+        {
+            let root = Compiler::compile("{found9 = ?=9; other = 9;}")
+                .unwrap()
+                .pop()
+                .unwrap();
+            settle_root(&root);
+            let stmts = root.borrow().core().foolish_children().to_vec();
+            let found9_stmt = &stmts[0];
+            assert_eq!(found9_stmt.borrow().as_stmt_line_number(), Some(0));
+            let found9_body = found9_stmt
+                .borrow()
+                .core()
+                .foolish_children()
+                .first()
+                .cloned()
+                .unwrap();
+            assert_eq!(
+                found9_body.borrow().core().get_nyes(),
+                Nyes::Econstanic,
+                "(5a) value_search_step backward from index 0: found9 = ?=9 \
+                 must NOT find itself -- no preceding statement has value 9, \
+                 so it settles ECONSTANIC (unanchored value-search miss)"
+            );
+        }
+
+        // NOTE: the sibling forward+unanchored value-search range at
+        // fir_kinds.rs (`idx + 1 < len` guard, inside the `!self.anchored`
+        // branch of `value_search_step`) is NOT exercised here. It is
+        // unreachable from any valid Foolish source: every `forward: true`
+        // SearchFir the parser produces has `anchor: Some(...)` (postfix
+        // continuations `a~pattern`, `a~=value`) -- there is no primary-
+        // position unanchored-forward token. This matches the documented
+        // language rule "no unanchored forward form" (AGENTS.md / FOOP-23
+        // §Searches: "Foolish cannot look forward in its own brane").
+        // Confirmed by inspection (Atlas, FOOP-13 triage) rather than tested,
+        // since testing it requires hand-building a SearchFir via struct
+        // literal for a shape no compiled program can ever produce.
     }
 
     #[test]
