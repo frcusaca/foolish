@@ -52,35 +52,78 @@ recursion cleanly.
 > (§Backburnered: strict detachment). This FOOP specifies only the permissive single-bracket
 > `[…]` form.
 
+### Detachment entries carry name AND/OR value conditions (Atlas)
+
+A detachment list mixes name-patterns and value-conditions, using the **same syntax as searches**
+(FOOP-23 name / value / name+value forms). Example `[A, B, C=10, =5]`:
+- `A`, `B` — name-only detachments (skip candidates named `A`/`B`).
+- `C=10` — name+value: skip a candidate named `C` **whose value is 10**.
+- `=5` — value-only: skip **any** candidate whose value is 5 (no name constraint).
+
+So each entry is `(name_pattern: Option<regex>, value_condition: Option<value>)` — at least one
+present.
+
 ## FIR Impact
 
-No new FIR kind. Add `detachments: Vec<String>` to **both** `StayFoolishFir` (`fir_kinds.rs:2021`)
-and `StayFullyFoolishFir` (`:2082`) — a parameterized marker is just SF/SFF with a non-empty
-`detachments`.
+No new FIR kind. The matching logic is **fully encapsulated in a `Detachment` struct** (a plain
+struct, *not* a FIR — a detachment never steps). **All detachment data and functions live on it**
+— no free-floating functions or bare data structures.
+
+- **`Detachment` owns:** the parsed entry list (each entry: name pattern + optional value), and a
+  **lazily-populated compiled cache** (the `regex::RegexSet` over the entries' name patterns +
+  the per-index value conditions). `regex` is already a dependency (`fir_kinds.rs:5`).
+- **`StayFoolishFir`/`StayFullyFoolishFir`** (`fir_kinds.rs:2021`/`:2082`) each **hold an
+  `Option<Detachment>`** (or an empty one for the bare marker). The marker **initiates and caches**
+  the `Detachment` when a search first passes through it.
+- **The `Detachment` exposes essentially one method:** `decide_to_detach(statement)`, run on each
+  search candidate. Everything else (RegexSet build, value checks) is internal.
 
 ## UBC Step Impact
 
+- **`Detachment::decide_to_detach(statement)` — the single entry point.** On its **first call** the
+  `Detachment` lazily builds its `RegexSet` from the entries' name patterns (index *i* ↔ entry *i*;
+  **value-only entries contribute a `.*` pattern**) and caches it; later calls reuse it. Per call:
+  1. Require the candidate `statement` be **constanic** — `decide_to_detach` (on a non-FIR struct)
+     **cannot step**, so it **raises/panics if the statement is non-constanic** (the "candidates
+     are all constanic" invariant, in force here as in the matcher).
+  2. `RegexSet::matches(candidate_name)` → triggered entry indices, **in one scan**.
+  3. For each triggered index, apply that entry's optional value condition to the candidate's value.
+  4. Return a **three-way result** (via the FIR-or-NK sealed search-result type — see below):
+     **Detach** (some triggered entry's full name∧value condition holds), **Keep** (none holds), or
+     **NK** (a required value comparison was **undecidable because the candidate value is NK** —
+     detachments are *forceful* filters, so an NK comparison forces the search result to NK, not a
+     silent keep).
+
+  Return type: the **optional/sealed search-result trait (a resolved FIR or an NK)** — the same one
+  searches use — so "NK due to an undecidable equality" surfaces as a genuine search NK.
+  Example `[A, B, C=10, =5]` → RegexSet `["A", "B", "C", ".*"]`; a candidate `C=10` triggers index 2
+  and index 3 → Detach; `x=5` triggers index 3 → Detach; `y=???` under `=5` → **NK** (can't compare
+  `??? == 5`).
 - **Scope handoff.** Extend `Scope` (`fir_trait.rs:55`, today just `has_ancestral_sfm: bool`) to
-  carry the **active detachment patterns** accumulated from enclosing parameterized marks
-  (`active_detachments: Vec<String>`), pushed in `step_inner` (`fir_trait.rs:347`) when stepping
-  under a parameterized marker.
-- **Prefilter.** In the scan loop (`contextful_search_scan`, `fir_kinds.rs:1978`), before
-  `predicate.matches`, skip a candidate if any active detachment pattern matches it (reuse
-  `SearchFir::matches_pattern`). **Same locus as FOOP-93's `!`.**
-- **Reason tag (FOOP-43 Component 3).** When a search under a detachment settles ECONSTANIC because
-  a candidate was skipped by a detachment, set its `EconstanicReason::Detached`. (Adds the
-  `Detached` variant to the enum FOOP-43 introduces.)
+  carry the **active `Detachment`(s)** accumulated from enclosing parameterized marks, pushed in
+  `step_inner` (`fir_trait.rs:347`) when stepping under a parameterized marker.
+- **Prefilter locus.** In the scan loop (`contextful_search_scan`, `fir_kinds.rs:1978`), **before**
+  `predicate.matches`, call `decide_to_detach` on the candidate; skip on **Detach**, NK-the-search
+  on **NK**, proceed to the matcher on **Keep**. **Same locus as FOOP-93's `!`**, applied first
+  (a filter — order-idempotent for Detach/Keep; the NK outcome is likewise position-independent).
+- **Reason tag (FOOP-43 Component 3).** When a search settles ECONSTANIC because a candidate was
+  **Detached**, set `EconstanicReason::Detached`.
 - **Keep existing SFF unchanged.** Naked `<<>>` keeps its current implementation; `[*]<<>>`
-  forwards to it. The **new code path is only for specific (non-`*`) detachments** — an exclusion
-  list over otherwise-normal search. Engage the prefilter iff `detachments` is non-empty and ≠
-  `[*]`.
+  forwards to it. The **new `Detachment` path is only for specific (non-`*`) detachments**. Engage
+  it iff the marker has a non-empty, non-`[*]` `Detachment`.
 
 ## Test Plan
 
-- Unit: a `[a]<<…>>` marker sets active detachments; a search under it skips a candidate whose
-  name matches `a`; `<E>` ≡ `[]<E>` (nothing skipped) and `<<E>>` ≡ `[*]<<E>>` (all skipped);
-  detachment applies identically on SF and SFF for a given `[…]`; constanic-clone strips it.
-- Approval: `[tmp.*]<<a?x>>` hides `tmp_k`; the two spectrum-extreme demonstrations.
+- Unit — `Detachment` in isolation: `decide_to_detach` returns **Detach** for a name-match
+  (`A`), for a name+value match (`C=10` on a `C`-valued-10 candidate) and not otherwise, for a
+  value-only match (`=5`); **Keep** when nothing triggers; **NK** when a triggered value condition
+  can't be decided (candidate value is `???`); **panics** on a non-constanic candidate. Lazy
+  `RegexSet` built once (value-only entry → `.*`).
+- Unit — integration: a `[a]<<…>>` marker skips a candidate named `a`; `<E>` ≡ `[]<E>` (nothing
+  skipped) and `<<E>>` ≡ `[*]<<E>>` (all skipped); detachment applies identically on SF and SFF;
+  constanic-clone strips it.
+- Approval: `[tmp.*]<<a?x>>` hides `tmp_k`; a `[=5]` value-only detachment; the two spectrum-extreme
+  demonstrations.
 - **Triple documentation** (see Plan).
 
 ## Rejected Alternatives
@@ -90,14 +133,18 @@ and `StayFullyFoolishFir` (`:2082`) — a parameterized marker is just SF/SFF wi
 Detachment as explicit AB/IB brane recoordination. **Rejected**: it is really a search prefilter
 riding on the stay-foolish markers, which also cleanly explains the SF/SFF default asymmetry.
 
-### B. Make it a new FIR
+### B. Make detachment a FIR (`FirKind::Detachment`)
 
-A dedicated `DetachmentFir`. **Rejected**: it is a field on the existing SF/SFF FIRs + a matcher
-prefilter — no new stepping behavior.
+A first-class stepping FIR. **Rejected**: a detachment never steps or settles on its own — it is a
+per-candidate *filter*. It is encapsulated as a plain **`Detachment` struct** (owning the entries +
+lazy `RegexSet` + `decide_to_detach`), held by the SF/SFF markers. No `FirKind` variant, no NYES
+story, but still fully encapsulated (all data + fns on the struct — no free-floating helpers).
 
 ## Open Questions
 
-- Whether detachment patterns match on name only, or also value/characterization.
+- **RESOLVED:** detachment entries match **name and/or value** (same forms as searches:
+  `A`, `C=10`, `=5`). (Characterization: since chars are part of the name/pattern per FOOP-63, a
+  `b'x` detachment naturally gates on characterization too.)
 - Disposition of the old `[..]{..}` `DetachmentBrane` parse form (repurpose or deprecate).
 - Must `[..]` be followed by a stay-foolish mark (error otherwise)?
 - **How detachment helps recursion** — the specific recursion patterns detachment should enable
@@ -107,15 +154,26 @@ prefilter — no new stepping behavior.
 
 ## Plan (lean)
 
-- [ ] Unit tests (spectrum extremes; skip behavior; clone-strip).
-- [ ] Add `detachments` to `StayFoolishFir`/`StayFullyFoolishFir`.
-- [ ] Parser: recognize `[patterns]` before an SF/SFF mark; attach to the marker node.
-- [ ] Extend `Scope` with `active_detachments`; push in `step_inner`.
-- [ ] Add the exclusion prefilter to the scan loop (new path only for specific detachments).
+- [ ] Unit tests: `Detachment::decide_to_detach` (Detach / Keep / NK-on-undecidable-value;
+      panics on non-constanic candidate); spectrum extremes; clone-strip.
+- [ ] Add the **`Detachment` struct** (entries + lazy `RegexSet` cache + `decide_to_detach`); hold
+      an `Option<Detachment>` on `StayFoolishFir`/`StayFullyFoolishFir`. All fns on the struct.
+- [ ] Parser: recognize `[patterns]` (name/value entries) before an SF/SFF mark; build the entries.
+- [ ] Extend `Scope` to carry the active `Detachment`(s); push in `step_inner`.
+- [ ] Call `decide_to_detach` in the scan loop **before** the matcher; map Detach→skip, NK→NK the
+      search (set `EconstanicReason::Detached` on the Detach→ECONSTANIC path).
 - [ ] **Doc TODO (mandated, three surfaces): write the SF≡`[]` / SFF≡`[*]` spectrum into
       README.md, code comments (SF/SFF FIRs + prefilter), and the snapshot tests themselves.**
 - [ ] Approval cases; comprehensive `foop_24_comprehensive.foo`.
 - [ ] Worktree lifecycle per `foop.md`.
+
+## Project note — memoize `decide_to_detach` (later)
+
+`Detachment::decide_to_detach(statement)` is called once per candidate per search. Beyond the lazy
+`RegexSet` compilation (already specified), **memoize the decision itself** — e.g. cache the
+Detach/Keep/NK result keyed by candidate identity — so repeated searches under the same marker over
+the same brane don't re-run the RegexSet + value checks. Deferred; note it so a future pass picks
+it up. (Requires care around the constanic invariant and candidate identity.)
 
 ## Appendix — notes toward the full spec
 
@@ -189,6 +247,22 @@ is straightforward; the *semantics* (which searches to NK) is the unresolved par
   `foop-detachment-as-parameterized-sfmarker`.
 
 ## Last Updated
+
+**Date**: 2026-07-11
+**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
+**Changes (Atlas — encapsulation + RegexSet design)**: Detachment matching is encapsulated in a
+plain **`Detachment` struct** (NOT a FIR — it never steps), held as `Option<Detachment>` on the
+SF/SFF markers; **all data + fns on the struct, no free-floating helpers**. It exposes essentially
+one method **`decide_to_detach(statement)`** returning **Detach / Keep / NK** (via the FIR-or-NK
+sealed search-result type). Implementation: a **lazily-built, cached `regex::RegexSet`** over the
+entries' name patterns (built on first search through the marker, not at parse time), value-only
+entries contribute `.*`; `RegexSet::matches` does all names in one scan, only triggered entries pay
+a value check. **Detachments are FORCEFUL filters:** an undecidable value comparison (candidate
+value NK) → the search result is **NK**. Candidates must be **constanic** — `decide_to_detach`
+can't step, so it **panics on a non-constanic candidate**. Entries carry **name and/or value**
+(`A`, `C=10`, `=5`) — resolved the name-only-vs-value open question. Added a **project note to
+memoize `decide_to_detach`** later. Rejected-Alt B updated (FIR rejected; `Detachment` struct is
+the encapsulation).
 
 **Date**: 2026-07-10
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8

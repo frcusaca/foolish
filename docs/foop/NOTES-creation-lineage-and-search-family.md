@@ -191,9 +191,10 @@ Unknown, FoolRef.
 | Computed index | FOOP-53 | Maybe | Prefer **extending `IndexFir`** with a computed-offset child (+ a Braning-wait phase) over a new `DynamicIndexFir`, unless the wait phase is cleaner as its own kind. |
 
 **No new FIR** (correctly): inverse `!` + `&&`/`||` (FOOP-93 — `SearchPredicate` variants), find-all
-(FOOP-14 — scan mode on `SearchFir`), detachment (FOOP-24 — fields on SF/SFF), boolean operators
-(FOOP-73 — Foolish table search, *zero* new FVM machinery in the preferred design), integer math
-(FOOP-83 — `OperatorFir::combine` arms).
+(FOOP-14 — scan mode on `SearchFir`), detachment (FOOP-24 — a `Detachment` **struct** held by the
+SF/SFF markers, not a FIR; encapsulates entries + lazy `RegexSet` + `decide_to_detach`), boolean
+operators (FOOP-73 — Foolish table search, *zero* new FVM machinery in the preferred design),
+integer math (FOOP-83 — `OperatorFir::combine` arms).
 
 ### The `SearchPredicate` enum — the most-extended structure (watch for collision)
 
@@ -221,9 +222,11 @@ handoff logic (SFM flag + detachments set at the same site).
   FOOP-63 (float ops). One function, several new arms — keep the match arms tidy; consider a
   sub-dispatch by operand characterization once FOOP-63 lands.
 - **The scan loop / `SearchPredicate::matches`** (`:1709`/`:1978`). Per-candidate pipeline is just
-  **two stages, not a 4-gate stack** (Atlas): (1) the **detachment prefilter** (FOOP-24) — a
-  *filter*, applied **before** the matcher; a skipped candidate is invisible. As a filter it is
-  order-idempotent, so "before" is a free choice. (2) the **matcher** (`SearchPredicate::matches`)
+  **two stages, not a 4-gate stack** (Atlas): (1) the **detachment prefilter** (FOOP-24) —
+  `Detachment::decide_to_detach(candidate)` → **Detach** (skip, invisible), **Keep** (proceed), or
+  **NK** (forceful filter: an undecidable value comparison NKs the search). Applied **before** the
+  matcher; order-idempotent. (Candidate must be constanic — `decide_to_detach` panics otherwise.)
+  (2) the **matcher** (`SearchPredicate::matches`)
   — which *internally* subsumes negation (FOOP-93 `!` is the predicate's own flag), the
   characterization demand (FOOP-63 `Char` is part of the search pattern), and `And`/`Or` (FOOP-93,
   `NkStop` halts). Find-all (FOOP-14) is a scan-*mode* wrapping this, not a gate. So the sequencing
