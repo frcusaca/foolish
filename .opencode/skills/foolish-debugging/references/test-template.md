@@ -12,7 +12,7 @@ Add your test inside the `#[cfg(test)] mod tests` block at the bottom of:
 foolish-ubca/src/fir_kinds.rs
 ```
 
-This is where all the helpers live (`step_to_settled`, `find_search`, `assert_progression`, `step_watching`, `make_*`). The test module starts around line 2339. Scroll to the end of the existing tests and add yours.
+This is where all the helpers live (`step_to_settled`, `find_search`, `assert_progression`, `step_watching`, `make_*`). Find the module with `grep -n '^mod tests' fir_kinds.rs`, then scroll to the end of the existing tests and add yours.
 
 **Why not a `tests/` integration file?** The helpers and the `pub(crate)` engine types (`SearchPredicate`, `BraneNavigator`, `contextful_search_scan`) are only reachable from inside the crate. A `tests/debug_foo.rs` file would force you to copy helpers and would lose access to the engine internals.
 
@@ -20,7 +20,7 @@ This is where all the helpers live (`step_to_settled`, `find_search`, `assert_pr
 
 ## Imports already in scope
 
-The test module header (`fir_kinds.rs:2338-2341`) brings everything in:
+The test module header brings everything in:
 
 ```rust
 #[cfg(test)]
@@ -76,7 +76,7 @@ fn temporary_reproduce_to_debug_search_returns_nk() {
 
 ### Variant B — Build FIRs by hand (when you need precise structural control)
 
-Use this when the bug is in a specific FIR kind's internal logic and you want to control the exact tree shape without parser noise. The `make_*` builders are at `fir_kinds.rs:2343+`.
+Use this when the bug is in a specific FIR kind's internal logic and you want to control the exact tree shape without parser noise. The `make_*` builders are near the top of the `mod tests` block.
 
 ```rust
 #[test]
@@ -161,7 +161,7 @@ Always `.clone()` the `FirRef` out of the borrow before you use it, to avoid hol
 
 ## Finding a Search FIR anywhere in the tree
 
-The `find_search` walker (`fir_kinds.rs:3888`) recursively searches `foolish_children()` for a `SearchFir` whose pattern matches:
+The `find_search` walker recursively searches `foolish_children()` for a `SearchFir` whose pattern matches:
 
 ```rust
 fn find_search(node: &FirRef, pattern: &str) -> Option<FirRef>

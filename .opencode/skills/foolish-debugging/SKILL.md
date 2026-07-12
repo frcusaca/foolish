@@ -28,11 +28,19 @@ The Foolish VM has **no interactive debugger**. The `step` and `run` CLI command
 | # | Step | Reference |
 |---|------|-----------|
 | 1 | **Write a temporary test** that compiles the offending Foolish code and grabs the FIR at the line you suspect. | [references/test-template.md](references/test-template.md) |
-| 2 | **Step the FVM** to the offending line (or to settlement) while recording the NYES sequence. | [references/nyes-tracing.md](references/nyes-tracing.md) |
+| 2 | **Step the FVM** — set a **breakpoint** with `step_until*` to stop right at the suspect spot, then step one-at-a-time while watching NYES and the `_children` stores. | [references/nyes-tracing.md](references/nyes-tracing.md) |
 | 3 | **Inspect FIR state** — read NYES, walk the parent chain, query `ib_search` / `ab_search`, read values and children. | [references/fir-inspection.md](references/fir-inspection.md) |
 | 4 | **Clean up** — promote the debug test to a named regression test, or delete it. Never leave it to rot. | [references/cleanup.md](references/cleanup.md) |
 
 **Read the reference for the step you are entering.** Each is self-contained and short.
+
+> 🔬 **Your sharpest tool is the breakpoint.** `step_until_statement_name(&root,
+> &scope, "foo")` runs the FVM until the statement `foo` is about to be worked
+> on, then freezes so you can inspect *exactly* the moment things go wrong —
+> then step-and-watch the `foolish_children` / `ubc_children` NYES from there.
+> This turns "the program hangs / gives a wrong value, go hunt for why" into a
+> precise, few-minute investigation. See **step 2's reference** for the full
+> pattern. Use it early and often.
 
 ---
 
@@ -40,17 +48,21 @@ The Foolish VM has **no interactive debugger**. The `step` and `run` CLI command
 
 ### Target crate
 
-The active FIR implementation is **`foolish-ubca`**. `FirRef` there is `Rc<RefCell<dyn Fir>>` (defined at `foolish-ubca/src/fir_trait.rs:17`). The `ib_search` / `ab_search` API lives on the `Fir` trait in that crate.
+The active FIR implementation is **`foolish-ubca`**. `FirRef` there is `Rc<RefCell<dyn Fir>>` (in `foolish-ubca/src/fir_trait.rs`). The `ib_search` / `ab_search` API lives on the `Fir` trait in that crate.
 
 `foolish-core` has a *different* `FirRef` (`Rc<RefCell<dyn Steppable>>`) and a simpler `search_in_brane` free function. **Do not mix the two crates' APIs.** If you are debugging brane evaluation, you are in `foolish-ubca`.
 
 ### Where to put the debug test
 
-The test scaffolding helpers (`make_*`, `step_to_settled`, `find_search`, `assert_progression`, `step_watching`) live inside the `#[cfg(test)] mod tests` block at the bottom of **`foolish-ubca/src/fir_kinds.rs`** (starts ~line 2339). They are **not** accessible from `tests/` integration test files.
+The test scaffolding helpers (`make_*`, `step_to_settled`, `find_search`, `assert_progression`, `step_watching`, `settle_root`) live inside the `#[cfg(test)] mod tests` block at the bottom of **`foolish-ubca/src/fir_kinds.rs`** (search for `^mod tests`). The `step_until*` breakpoint functions are `pub` in **`foolish-ubca/src/evaluator.rs`** (`use crate::evaluator::*;`). These are **not** accessible from `tests/` integration test files.
 
 **Two options:**
 1. **Add your test to the `mod tests` block in `fir_kinds.rs`** — recommended; all helpers are in scope, `pub(crate)` engine types are reachable.
-2. **Write a separate `tests/` file** — you must copy the helpers you need (`step_to_settled`, `find_search`) into your file, and you cannot use `pub(crate)` engine types (`SearchPredicate`, `BraneNavigator`, etc.). Only the public `Fir` trait methods (`_ib_search`, `_ab_search`, `core()`, `kind()`, `value()`) and `Compiler::compile` are available.
+2. **Write a separate `tests/` file** — you must copy the helpers you need (`step_to_settled`, `find_search`) into your file, and you cannot use `pub(crate)` engine types (`SearchPredicate`, `BraneNavigator`, etc.). Only the public `Fir` trait methods (`_ib_search`, `_ab_search`, `core()`, `kind()`, `value()`), the `pub` `step_until*` functions, and `Compiler::compile` are available.
+
+> **Line numbers rot fast** — this file grows. This skill references code by
+> **name** (functions, methods, `mod tests`); locate them with `grep -n`, not a
+> remembered line number.
 
 Option 1 is almost always correct. See [references/test-template.md](references/test-template.md) for the exact placement.
 
@@ -68,13 +80,19 @@ PREMBRIONIC → EMBRYONIC → BRANING → (ECONSTANIC | WOCONSTANIC) → (CONSTA
 
 Authoritative definitions: `foolish-core/src/fir.rs:116` (the enum), `docs/foop/FOOP-62.md` (semantics). See [references/nyes-tracing.md](references/nyes-tracing.md) for what each terminal state means and how to read the progression.
 
-### There is no `get_my_parents`
+### Finding a node's home brane
 
-The user-facing concept of "walking the parent chain" is served by two APIs:
-- `node.borrow().core().parent() -> Option<FirRef>` — one step up the `Weak` parent link.
-- `node.borrow().get_my_brane(&node) -> Option<FirRef>` — walks the parent chain to the first `FirKind::Brane` (the "home brane").
+There is no `get_my_parents`. To walk the full chain, loop on `core().parent()`
+(`-> Option<FirRef>`, one step up the `Weak` link). To jump to the enclosing
+**home brane**, there are two variants — use the one matching your context:
+- `node.borrow()._get_my_brane(&node)` — **iterative parent-walk**; climbs
+  `.parent()` to the first brane-like kind. Works any time; needs the node's own
+  `FirRef`. This is the one to reach for while inspecting.
+- `node.borrow().get_my_brane(&scope)` — **scope-cached**; reads
+  `scope.current_brane`. Only valid mid-step with a live `Scope`.
 
-There is no plural `get_my_parents`. To walk the full chain, loop on `core().parent()`. See [references/fir-inspection.md](references/fir-inspection.md).
+(The `_`-prefixed form is the parent-walk convention, matching `_ib_search` /
+`_ab_search`.) See [references/fir-inspection.md](references/fir-inspection.md).
 
 ---
 

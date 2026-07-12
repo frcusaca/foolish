@@ -91,7 +91,7 @@ domain; do not improvise around it.
 
 | Skill | Scope | Load when… |
 |-------|-------|------------|
-| `foolish-debugging` | Debugging Foolish FVM/FIR behavior via unit-test-driven inspection. Covers the minimal test setup, NYES state tracing, FIR inspection (`ib_search`/`ab_search`, parent chain, values/children), and cleanup discipline (promote-to-regression-or-delete). | Debugging wrong brane evaluation, unexpected NK/ECONSTANIC, search resolution failures, NYES state machine bugs, or name-lookup errors in `foolish-ubca`. |
+| `foolish-debugging` | Debugging Foolish FVM/FIR behavior via unit-test-driven inspection: `step_until*` breakpoints, step-and-monitor of the `_children` stores + NYES, `ib_search`/`ab_search`, and the promote-to-regression-or-delete discipline. | Debugging wrong brane evaluation, unexpected NK/ECONSTANIC, search resolution failures, NYES state machine bugs, or name-lookup errors in `foolish-ubca`. |
 | `foop-write-plan` | Creating and planning FOOPs. Covers little-endian numbering, `foop_check.py`, the spec template (frontmatter + all body sections), plan construction rules, checkbox format, sub-tasks, worktree setup, and comprehensive snapshot test generation. | Creating a new FOOP, writing a specification, or constructing a plan (`FOOP-#.plan.md`). |
 | `foop-use-maintain` | Using and maintaining existing FOOPs. Covers listing/finding FOOPs, the status lifecycle, plan execution flow, checkbox lifecycle (complete with timestamp, backburner, cancel/deprecate), worktree execution, merge-to-alpha, cleanup, and the human communication protocol. | Finding, executing, resuming, backburnering, cancelling, merging, or cleaning up an existing FOOP. |
 
@@ -361,7 +361,7 @@ AI agents MUST NEVER accept snapshots. See the ⚠️ CRITICAL section above.
 
 ### The Unicellular Brane Computer (UBC)
 
-The **UBC is the reference implementation of Foolish**. It implements a unique evaluation model based on branes (containment structures). The VM has no interactive debugger; inspection of FVM/FIR state (NYES transitions, search resolution, parent chains, values) is unit-test-driven. When you need to figure out *why* a brane evaluates the way it does — wrong values, unexpected NK/ECONSTANIC, search failures, or NYES state machine bugs — load the `foolish-debugging` skill (see the Skills section below) and follow its test-template → NYES-tracing → FIR-inspection → cleanup workflow.
+The **UBC is the reference implementation of Foolish**. It implements a unique evaluation model based on branes (containment structures). The VM has no interactive debugger. When you need to figure out *why* a brane evaluates the way it does — wrong values, unexpected NK/ECONSTANIC, search failures, or NYES state machine bugs — **load the `foolish-debugging` skill** (Skills section below); it is the authoritative guide.
 
 #### FIR (Foolish Internal Representation)
 
@@ -647,6 +647,15 @@ This ensures all AI agents can track who modified documentation and when, mainta
 When proposing updates, explain what has changed and why the documentation needs adjustment. After user review, update the "Last Updated" date below whether changes are accepted or the user confirms current state is acceptable.
 
 ## Last Updated
+
+**Date**: 2026-07-12
+**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
+**Changes**: De-duplicated the `foolish-debugging` skill content from AGENTS.md — the UBC section
+now just points to the skill as authoritative (removed the inline test-template→NYES-tracing→
+FIR-inspection→cleanup workflow enumeration); tightened the skills-table entry to name the key
+facilities (`step_until*` breakpoints, step-and-monitor of `_children`/NYES, `ib_search`/
+`ab_search`). The skill itself gained the `step_until*` breakpoint facility and the
+step-and-monitor technique (FOOP-13).
 
 **Date**: 2026-07-05
 **Updated By**: Sisyphus-Junior / xiaomi/mimo-v2.5-pro
