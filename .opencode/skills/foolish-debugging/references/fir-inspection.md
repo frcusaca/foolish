@@ -8,23 +8,26 @@ How to inspect FIR state at the offending point: read values and kinds, walk the
 
 All of these are available from inside the `#[cfg(test)] mod tests` block in `foolish-ubca/src/fir_kinds.rs`:
 
-| What | Call | Returns | Source |
-|------|------|---------|--------|
-| NYES state | `node.borrow().core().get_nyes()` | `Nyes` | `proto_brane.rs:155` |
-| FIR kind | `node.borrow().kind()` | `FirKind` | `fir_trait.rs:110` |
-| Integer value | `node.borrow().as_i64()` | `Option<i64>` | `fir_trait.rs:114` |
-| Search pattern | `node.borrow().as_search_pattern()` | `Option<&str>` | `fir_trait.rs:141` |
-| Statement name | `node.borrow().as_stmt_name()` | `Option<&str>` | `fir_trait.rs:132` |
-| Statement line | `node.borrow().as_stmt_line_number()` | `Option<usize>` | `fir_trait.rs:137` |
-| NK reason | `node.borrow().as_nk_reason()` | `Option<&str>` | `fir_trait.rs:122` |
-| Operator name | `node.borrow().as_op_name()` | `Option<&str>` | `fir_trait.rs:127` |
-| Deepest value | `node.value()` | `FirRef` | `fir_trait.rs:300` |
-| Parent (one up) | `node.borrow().core().parent()` | `Option<FirRef>` | `proto_brane.rs:134` |
-| Home brane | `node.borrow().get_my_brane(&node)` | `Option<FirRef>` | `fir_trait.rs:212` |
-| Foolish children | `node.borrow().core().foolish_children()` | `&[FirRef]` | `proto_brane.rs:65` |
-| UBC children | `node.borrow().core().ubc_children()` | `&[FirRef]` | `proto_brane.rs:71` |
-| IB search | `node.borrow()._ib_search(&node, "^pat$")` | `Option<(FirRef, Nyes)>` | `fir_trait.rs:230` |
-| AB search | `node.borrow()._ab_search(&node, "^pat$")` | `Option<(FirRef, Nyes)>` | `fir_trait.rs:242` |
+| What | Call | Returns |
+|------|------|---------|
+| NYES state | `node.borrow().core().get_nyes()` | `Nyes` |
+| FIR kind | `node.borrow().kind()` | `FirKind` |
+| Integer value | `node.borrow().as_i64()` | `Option<i64>` |
+| Search pattern | `node.borrow().as_search_pattern()` | `Option<&str>` |
+| Statement name | `node.borrow().as_stmt_name()` | `Option<&str>` |
+| Statement line | `node.borrow().as_stmt_line_number()` | `Option<usize>` |
+| NK reason | `node.borrow().as_nk_reason()` | `Option<&str>` |
+| Operator name | `node.borrow().as_op_name()` | `Option<&str>` |
+| Deepest value | `node.value()` | `FirRef` |
+| Parent (one up) | `node.borrow().core().parent()` | `Option<FirRef>` |
+| Home brane (parent-walk) | `node.borrow()._get_my_brane(&node)` | `Option<FirRef>` |
+| Foolish children | `node.borrow().core().foolish_children()` | `&[FirRef]` |
+| UBC children | `node.borrow().core().ubc_children()` | `Vec<FirRef>` (owned clone) |
+| IB search | `node.borrow()._ib_search(&node, "^pat$")` | `Option<(FirRef, Nyes)>` |
+| AB search | `node.borrow()._ab_search(&node, "^pat$")` | `Option<(FirRef, Nyes)>` |
+
+*(These are `Fir`-trait methods on `foolish-ubca`; the child stores are on
+`ProtoBrane` via `core()`. Locate any by name with `grep -n`.)*
 
 ---
 
@@ -40,9 +43,9 @@ let int_val = value.borrow().as_i64();
 eprintln!("nyes={:?} kind={:?} value_int={:?}", nyes, kind, int_val);
 ```
 
-**`value()`** (`fir_trait.rs:310`) walks `ubc_children[0]` recursively until it reaches a terminal value (one with no `ubc_children`, like `IndepInt`, `Nk`, or `BraneFir`). For pre-constanic FIRs, returns a clone of `self`.
+**`value()`** walks `ubc_children[0]` recursively until it reaches a terminal value (one with no `ubc_children`, like `IndepInt`, `Nk`, or `BraneFir`). For pre-constanic FIRs, returns a clone of `self`.
 
-**`as_i64()`** (`fir_trait.rs:114`) defaults to reading `ubc_children().first()` and recursing. `IndepIntFir` overrides it to return `Some(value)` directly.
+**`as_i64()`** defaults to reading `ubc_children().first()` and recursing. `IndepIntFir` overrides it to return `Some(value)` directly.
 
 ### The two child stores
 
@@ -87,18 +90,18 @@ fn dump_parent_chain(node: &FirRef) {
 }
 ```
 
-The chain terminates when `parent()` returns `None` (the root, which is self-parenting — `proto_brane.rs:146` detects this via `Rc::ptr_eq`).
+The chain terminates when `parent()` returns `None` (the root, which is self-parenting — detected via `Rc::ptr_eq`).
 
 ### Getting the home brane directly
 
-If you only need the containing brane (not the full chain), use `get_my_brane`:
+If you only need the containing brane (not the full chain), use `_get_my_brane`:
 
 ```rust
-let brane = node.borrow().get_my_brane(&node);
-// brane: Option<FirRef> — the first FirKind::Brane reached by walking .parent()
+let brane = node.borrow()._get_my_brane(&node);
+// brane: Option<FirRef> — the first brane-like kind reached by walking .parent()
 ```
 
-Defined at `fir_trait.rs:212`. Returns `None` if `node` is itself the root brane.
+Returns `None` if `node` is itself the root brane.
 
 ---
 
@@ -106,7 +109,7 @@ Defined at `fir_trait.rs:212`. Returns `None` if `node` is itself the root brane
 
 `_ib_search` searches **backward** from the current statement's position within its home brane. It finds names declared *before* the current line in the same brane.
 
-**Signature** (`fir_trait.rs:230`):
+**Signature:**
 ```rust
 fn _ib_search(&self, self_ref: &FirRef, name: &str) -> Option<(FirRef, Nyes)>
 ```
@@ -131,7 +134,7 @@ match result {
 }
 ```
 
-**Semantics:** `_ib_search` calls `_search_brane(name, line_number - 1, 0)` — scanning backward from the line before the current statement down to index 0. See `StatementFir::_ib_search` (`fir_kinds.rs:705`).
+**Semantics:** `_ib_search` scans backward from the line before the current statement down to index 0. A statement at **line 0** (the first in its brane) has no preceding range, so it returns `None` — it never finds itself. (See `StatementFir::_ib_search`.)
 
 ---
 
@@ -139,7 +142,7 @@ match result {
 
 `_ab_search` tries `_ib_search` on the current brane; on miss, it **recurses into the parent brane**. This finds names declared in ancestor branes that are not in the immediate brane.
 
-**Signature** (`fir_trait.rs:242`):
+**Signature:**
 ```rust
 fn _ab_search(&self, self_ref: &FirRef, name: &str) -> Option<(FirRef, Nyes)>
 ```
@@ -165,7 +168,7 @@ eprintln!("ab_search found 'a': nyes={:?} value={:?}",
     found.borrow().core().foolish_children()[0].borrow().as_i64());
 ```
 
-**Semantics:** `BraneFir::_ab_search` (`fir_kinds.rs:767`) first tries `_ib_search` on the brane's own statement; on miss, it gets the parent brane and recurses. The chain terminates at the root.
+**Semantics:** `BraneFir::_ab_search` first tries `_ib_search` on the brane's own statement; on miss, it gets the parent brane and recurses. The chain terminates at the root.
 
 ---
 
@@ -189,7 +192,7 @@ assert_eq!(body.borrow().as_i64(), Some(2), "must find inner a=2, not outer a=1"
 
 ## The `_search_brane` primitive
 
-Both `_ib_search` and `_ab_search` delegate to `_search_brane` on `BraneFir` (`fir_kinds.rs:785`):
+Both `_ib_search` and `_ab_search` delegate to `_search_brane` on `BraneFir`:
 
 ```rust
 fn _search_brane(&self, expression: &str, starting_index: usize, ending_index: usize)
@@ -289,7 +292,7 @@ When in doubt, wrap each access in a block and clone the `FirRef` out before the
 
 ## Programmatic search engine (advanced — `pub(crate)` only)
 
-For debugging the search engine itself, the `contextful_search` module (`fir_kinds.rs:1638`) exposes the one-engine model. **These types are `pub(crate)`** — only reachable from inside `foolish-ubca` (i.e. from the `mod tests` block in `fir_kinds.rs`).
+For debugging the search engine itself, the `contextful_search` module exposes the one-engine model. **These types are `pub(crate)`** — only reachable from inside `foolish-ubca` (i.e. from the `mod tests` block in `fir_kinds.rs`).
 
 ```rust
 use contextful_search::{
@@ -298,7 +301,7 @@ use contextful_search::{
 };
 ```
 
-**`SearchPredicate`** (`fir_kinds.rs:1690`):
+**`SearchPredicate`**:
 ```rust
 pub(crate) enum SearchPredicate {
     Name { pattern: String },              // ?name / ~name / .name
@@ -310,12 +313,12 @@ pub(crate) enum SearchPredicate {
 }
 ```
 
-**Running a search programmatically** (mirrors `SearchFir::ib_search_with_engine`, `fir_kinds.rs:1008`):
+**Running a search programmatically** (mirrors `SearchFir::ib_search_with_engine`):
 ```rust
 use contextful_search::{BraneNavigator, SearchPredicate, contextful_search_scan_no_body_check, ScanOutcome};
 
 let stmt = /* the statement to search from */;
-let brane = stmt.borrow().get_my_brane(&stmt).unwrap();
+let brane = stmt.borrow()._get_my_brane(&stmt).unwrap();
 let idx = brane.borrow().find_stmt_index(&stmt).unwrap();
 let search_end = idx.saturating_sub(1);
 
