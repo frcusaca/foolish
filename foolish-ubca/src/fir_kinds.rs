@@ -2181,7 +2181,11 @@ impl Fir for StayFullyFoolishFir {
                         }
                     };
                     self.core.push_ubc_child(result);
-                    self.core.set_nyes(result_nyes);
+                    // The SFF wrapper is not a search — it can't be ECONSTANIC.
+                    // An ECONSTANIC result means it's WAITING on that search
+                    // (WOCONSTANIC), while the pushed result keeps its own
+                    // ECONSTANIC. Same rule as SearchFir::nyes_from_found.
+                    self.core.set_nyes(SearchFir::nyes_from_found(result_nyes));
                 }
             }
             _ => {}
@@ -6740,6 +6744,49 @@ mod tests {
         assert!(
             trace.contains(&Nyes::Braning),
             "extended concatenation must pass through Braning"
+        );
+    }
+
+    /// An SFF wrapping an unfindable search: the inner search is ECONSTANIC,
+    /// but the SFF wrapper itself must be WOCONSTANIC (it is not a search, so
+    /// it can't be ECONSTANIC — it is waiting on one).
+    #[test]
+    fn sff_wrapper_is_woconstanic_when_inner_search_is_econstanic() {
+        let root = Compiler::compile("{sff = <<nope>>;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        let scope = Scope::empty();
+        for _ in 0..50 {
+            if root.borrow().core().get_nyes().is_constanic() {
+                break;
+            }
+            let _ = root.step(&scope).unwrap();
+        }
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let sff = stmts[0]
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        let inner = sff
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        assert_eq!(
+            sff.borrow().core().get_nyes(),
+            Nyes::Woconstanic,
+            "SFF wrapper must be WOCONSTANIC (it is not a search)"
+        );
+        assert_eq!(
+            inner.borrow().core().get_nyes(),
+            Nyes::Econstanic,
+            "inner search stays ECONSTANIC"
         );
     }
 }
