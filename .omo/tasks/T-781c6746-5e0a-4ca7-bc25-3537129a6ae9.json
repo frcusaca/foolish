@@ -1,0 +1,10 @@
+{
+  "id": "T-781c6746-5e0a-4ca7-bc25-3537129a6ae9",
+  "subject": "Final validation (fmt + clippy + tests)",
+  "description": "cargo fmt, cargo clippy -D warnings, cargo test -p einmo --lib stage, cargo test -p einmo --lib verify",
+  "status": "completed",
+  "activeForm": "Running fmt, clippy, tests",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0ae418c54ffeN7k4CnZeyG7a6E"
+}

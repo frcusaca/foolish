@@ -1,0 +1,10 @@
+{
+  "id": "T-337e7b2f-6026-4414-b015-6ea82b5eab4a",
+  "subject": "Write FOOP-13 A1 unit tests for ConcatBrane",
+  "description": "Write all unit tests listed in FOOP-13.plan.md lines 97-162 in the #[cfg(test)] module of fir_kinds.rs",
+  "status": "completed",
+  "activeForm": "Writing ConcatBrane unit tests",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0b8240133ffeHQAU2IHk0vLB8Y"
+}

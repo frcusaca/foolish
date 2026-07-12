@@ -1,0 +1,10 @@
+{
+  "id": "T-7316b090-290e-4d2d-a397-9624285e9cd1",
+  "subject": "Write Foolish Debugging skill (project skill at .opencode/skills/foolish-debugging/)",
+  "description": "Create SKILL.md + references/ tree teaching agents to debug Foolish programs via unit-test-driven FVM inspection. Covers: minimal setup template (compile + step to a line), NYES tracing, FIR inspection (ib_search/ab_search/parent chain/value/children), agent-readable output formatting, and cleanup discipline (promote-or-delete).",
+  "status": "completed",
+  "activeForm": "Writing Foolish Debugging skill files",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0ada88467ffed1EkmRkTcHUPtL"
+}

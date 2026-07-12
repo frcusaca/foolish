@@ -1,0 +1,10 @@
+{
+  "id": "T-ba2a26f5-cc3e-4fec-989b-180dd934e821",
+  "subject": "FOOP-54 Phase 2: signature module (HIGHEST RISK)",
+  "description": "Implement einmo::signature from scratch: Argon2id key derivation, Ed25519 sign/verify, Compiled/Configured/Stage key model, Stamp struct, tamper/forgery tests.",
+  "status": "completed",
+  "activeForm": "Implementing signature module",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0ae4eb28fffe913hTzHIEKqZN9"
+}

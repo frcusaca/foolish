@@ -1,0 +1,10 @@
+{
+  "id": "T-77767092-6696-4859-8cc8-bbdba991d5a8",
+  "subject": "Fix Bug 7: f1 stuck in BRANING — search for 'b' fails to exit",
+  "description": "The search for 'b' in `a= <x+y> + a + b` fails to exit BRANING. The `?b` search should find `b` defined earlier in f1. Create minimal test, debug, fix.",
+  "status": "completed",
+  "activeForm": "Fixing Bug 7 — f1 BRANING stuck",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0b1f26c00ffeZ1EHVhUhbbGvXh"
+}

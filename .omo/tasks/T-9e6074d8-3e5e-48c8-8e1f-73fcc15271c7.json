@@ -1,0 +1,10 @@
+{
+  "id": "T-9e6074d8-3e5e-48c8-8e1f-73fcc15271c7",
+  "subject": "Fix Bug 1: Anchored search miss returns NK instead of ECONSTANIC",
+  "description": "Fix anchored search miss to return ECONSTANIC instead of NK when search stream exhausted in ConcatBrane",
+  "status": "completed",
+  "activeForm": "Fixing Bug 1: Anchored search miss NK→ECONSTANIC",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0b6feeb13ffeVvLKv5H4rRt6Pi"
+}

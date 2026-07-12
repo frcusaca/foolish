@@ -1,0 +1,10 @@
+{
+  "id": "T-51e8575c-59fc-4f75-97fc-71f1213c010f",
+  "subject": "FOOP-54 Phase 8-10: compare, cascade, CLI",
+  "description": "Implement compare (per-section matching), key resolution cascade, and the full CLI with all subcommands.",
+  "status": "completed",
+  "activeForm": "Implementing compare, cascade, and CLI",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0ae4eb28fffe913hTzHIEKqZN9"
+}

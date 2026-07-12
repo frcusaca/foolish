@@ -372,7 +372,12 @@ impl Parser {
             None => return false,
         };
         match current_token.token {
-            Token::LBrace | Token::LParen | Token::Ident(_) | Token::Up => {
+            Token::LBrace
+            | Token::LParen
+            | Token::Ident(_)
+            | Token::Up
+            | Token::LtLt
+            | Token::Lt => {
                 let Some(prev_idx) = self.pos.checked_sub(1) else {
                     return false;
                 };

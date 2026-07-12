@@ -1,0 +1,10 @@
+{
+  "id": "T-d540447c-81b5-4c1d-aaa6-934ba2e614c8",
+  "subject": "Phase 6: Implement EinmoSuite + Evaluator in snapshot_suite.rs",
+  "description": "Implement snapshot_suite.rs with Evaluator trait, EinmoSuite with evaluate/evaluate_inline, error capture (catch_unwind), assembly, stamping, and unit tests.",
+  "status": "completed",
+  "activeForm": "Implementing EinmoSuite + Evaluator",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0ae1d9f6cffep6T6085DP6C7eK"
+}

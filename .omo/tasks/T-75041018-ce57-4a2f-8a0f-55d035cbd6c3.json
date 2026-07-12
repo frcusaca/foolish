@@ -1,0 +1,10 @@
+{
+  "id": "T-75041018-ce57-4a2f-8a0f-55d035cbd6c3",
+  "subject": "FOOP-54 Phase 1: einmo crate scaffolding",
+  "description": "Create the einmo workspace crate with Cargo.toml, lib.rs module declarations, main.rs stub, and add to workspace members.",
+  "status": "completed",
+  "activeForm": "Creating einmo crate scaffolding",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0ae4eb28fffe913hTzHIEKqZN9"
+}

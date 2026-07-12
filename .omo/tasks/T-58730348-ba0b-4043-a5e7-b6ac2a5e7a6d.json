@@ -1,0 +1,10 @@
+{
+  "id": "T-58730348-ba0b-4043-a5e7-b6ac2a5e7a6d",
+  "subject": "Explore ConcatBrane implementation and identify root causes",
+  "description": "Read ConcatenationFir, SearchFir, and related search resolution code to identify root causes for all 4 bugs",
+  "status": "completed",
+  "activeForm": "Exploring ConcatBrane implementation",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0b6feeb13ffeVvLKv5H4rRt6Pi"
+}

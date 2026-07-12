@@ -1,0 +1,10 @@
+{
+  "id": "T-d0a3f66b-972d-4381-a5f4-af8f4eed4e94",
+  "subject": "Create suite work-dirs for all three languages",
+  "description": "Create zweimomo/suites/{foolish,python,javascript}/{input,output,checked,flagged,verified} directories",
+  "status": "completed",
+  "activeForm": "Creating suite directories",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0add6cb99ffe9ohTIQnx65YrKY"
+}

@@ -1,0 +1,10 @@
+{
+  "id": "T-7ee6165f-0366-4d76-878b-f21623f45f45",
+  "subject": "Write foop-use-maintain skill",
+  "description": "Create the \"Using and Maintenance\" skill covering: listing/finding FOOPs, status lifecycle, plan execution flow, checkbox lifecycle (complete/backburner/cancel), worktree execution (create/work/merge/cleanup), sub-task execution patterns, human communication, safety invariants. All details and corner cases from foop.md.",
+  "status": "completed",
+  "activeForm": "Writing foop-use-maintain skill",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0ada88467ffed1EkmRkTcHUPtL"
+}

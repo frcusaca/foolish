@@ -1,0 +1,10 @@
+{
+  "id": "T-938ae142-7cc4-4b6b-8f64-dfe27c0f88f6",
+  "subject": "Phase 5 tests (verify)",
+  "description": "Valid file verifies, tampered input/output/metadata fails, broken chain fails, multi-stage validates",
+  "status": "completed",
+  "activeForm": "Writing Phase 5 tests",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0ae418c54ffeN7k4CnZeyG7a6E"
+}

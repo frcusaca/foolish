@@ -1,0 +1,10 @@
+{
+  "id": "T-9f72687a-6841-43f2-a96c-f95140356774",
+  "subject": "Implement einmo/src/config.rs (Phase 4)",
+  "description": "Stage enum, StageDirs, MatchSections, Perspective, TestConfig, ConfigError",
+  "status": "completed",
+  "activeForm": "Implementing config.rs",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0ae418c54ffeN7k4CnZeyG7a6E"
+}

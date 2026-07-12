@@ -1,0 +1,10 @@
+{
+  "id": "T-de355fd4-d25d-40df-a6b3-db938b23d737",
+  "subject": "Fix Bug 8: SFF-wrapped element missing from ConcatBrane",
+  "description": "`b = f1 <f2> <<f3>>` shows elements=2 instead of 3. SFF-wrapped <<f3>> element is missing from ConcatBrane.",
+  "status": "completed",
+  "activeForm": "Fixing Bug 8 — SFF element missing from ConcatBrane",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0b1f26c00ffeZ1EHVhUhbbGvXh"
+}

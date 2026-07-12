@@ -72,7 +72,8 @@ impl ProtoBrane {
         self.ubc_children.borrow().clone()
     }
 
-    /// All children in render order: ubc first (result=), then foolish.
+    /// All children in render order: ubc first (evaluator renders as `result=`),
+    /// then foolish.
     pub fn all_children(&self) -> Vec<FirRef> {
         let mut all = self.ubc_children.borrow().clone();
         all.extend(self.foolish_children.iter().cloned());
@@ -93,8 +94,9 @@ impl ProtoBrane {
     /// Push the SINGULAR result of a search FIR (search / Index).
     ///
     /// SINGULAR-RESULT INVARIANT (FOOP-62): every search FIR we currently implement produces
-    /// at most ONE result, so its `ubc_children` holds at most one entry and that entry IS the
-    /// result. (Multi-result searches are a future extension that will hold more children.)
+    /// at most ONE result, so its `ubc_children` holds at most one entry.
+    /// [`Fir::settled_result`] reads this single entry as the resolved value.
+    /// (Multi-result searches are a future extension that will hold more children.)
     /// This is the result-pushing path for search kinds; it runtime-verifies the invariant.
     pub fn push_search_result(&self, result: FirRef) {
         debug_assert!(

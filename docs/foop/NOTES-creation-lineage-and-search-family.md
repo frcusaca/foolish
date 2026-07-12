@@ -109,8 +109,8 @@ settled-value identity**. Extend an **existing** FIR (a field / an enum variant 
 the behavior is the same shape with a parameter.
 
 - **New FIR is warranted:** `CreationFir` (FOOP-33 — a new born-`Independent` value with identity);
-  `StringFir`/`FloatFir` (FOOP-44 — new primitive value kinds); `CascadingSearchFir` (FOOP-24 —
-  new stepping: run branches in order with anchor-propagation).
+  `StringFir`/`FloatFir` (FOOP-44 — new primitive value kinds); `CascadingSearchFir` (FOOP-04 —
+  new stepping: run branches in order against one fixed shared anchor).
 - **Extend, don't add:** the inverse matcher (FOOP-53 — a `negate` flag on `SearchPredicate`, not
   a new FIR); find-all (FOOP-73 — a scan-*mode*, reusing `SearchFir`/the engine); detachment
   patterns (FOOP-63 — a `detachments` field on the existing `StayFoolishFir`/`StayFullyFoolishFir`);
@@ -639,7 +639,7 @@ mandatory (`#${...}`) or is `#$expr` also allowed? Does the "last element" mean 
 
 **Idea (Atlas, 2026-07-09).** Two kinds: the **matcher boolean operators** `&&`/`||` (easy — pure
 boolean logic on matcher Approve/Reject results, no control flow), and the **cascading connector**
-`|` (harder — a stateful wrapper FIR with anchor-propagation).
+`|` (harder — a stateful wrapper FIR sequencing whole searches against one shared anchor).
 
 **`&&` / `||` — matcher boolean operators (the EASY part).** They combine matcher *results* into
 a composite matcher, tested **per candidate**: `And` = Approve iff both branches Approve, `Or` =
@@ -655,19 +655,30 @@ per-candidate matcher. Needs a **special wrapper FIR** (`CascadingSearchFir` hol
 branches) — parser-changed but inline; not a new precedence layer. This is the **hard part** of
 FOOP-24 (contrast the easy matcher boolean operators `&&`/`||`).
 
-**Cascade anchor-propagation (the subtle part, Atlas 2026-07-09).** `A | B | C` is **not** a flat
-or-else: each fallback branch **resumes from the nearest earlier branch that established a
-position.** The wrapper threads a running "current fallback anchor/position" down the branches:
-- A runs from the original anchor.
-- A fails → B runs from **A's** anchor/position.
-- If B *establishes a position*, it becomes the current position → on fallback, C resumes from
-  **B's**. If B *also fails to establish one*, current stays A's → C falls further back to **A's**.
+**SUPERSEDED (Atlas, 2026-07-11) — see FOOP-04 directly for the corrected model.** The
+anchor-propagation idea below (each fallback branch resuming from the nearest earlier branch that
+established a position) was **wrong** and has been replaced. The actual model: **every branch
+shares one fixed anchor** — whatever position preceded the whole `(...)` cascade — with **no**
+threading between branches. Confirmed by Atlas's example `a&=b&=c|=d` parsing as
+`a&=b(&=c|&=d)`: `c` and `d` are both contexted off `a&=b`'s position as siblings, not a chain of
+resumptions off each other. This also gives the missing precedence rule: `&` (continuation) binds
+tighter than `|` (cascade) — the cascade re-inserts a fresh `&` in front of every branch after the
+first. The paragraph below is kept for history only; do not implement it.
 
-So: `C` searches A's anchor if A and B both fail; C searches B's anchor if only B fails (i.e. B
-got far enough to set a position). This is why it needs a stateful wrapper, not a predicate.
-**Reuses FOOP-23 `FoolRefFir`:** "the position a branch established" *is* the `FoolRefFir` (`[1]`
-child) — the same position-carrier `&`-searches read — so "resume from B's position" is exactly a
-contexted-search resume off B's `FoolRefFir`.
+~~`A | B | C` is **not** a flat or-else: each fallback branch **resumes from the nearest earlier
+branch that established a position.** The wrapper threads a running "current fallback
+anchor/position" down the branches:~~
+- ~~A runs from the original anchor.~~
+- ~~A fails → B runs from **A's** anchor/position.~~
+- ~~If B *establishes a position*, it becomes the current position → on fallback, C resumes from
+  **B's**. If B *also fails to establish one*, current stays A's → C falls further back to
+  **A's**.~~
+
+~~So: `C` searches A's anchor if A and B both fail; C searches B's anchor if only B fails (i.e. B
+got far enough to set a position). This is why it needs a stateful wrapper, not a predicate.~~
+**Reuses FOOP-23 `FoolRefFir`** still holds: the shared anchor every branch is contexted against
+*is* a `FoolRefFir` (`[1]` child) — the same position-carrier `&`-searches read — so each branch's
+run is exactly a contexted-search resume off that one `FoolRefFir`.
 
 **Also needs a bare leading value predicate `=N`** — today value search is only `~=`/`?=`;
 `(=10||=4)` uses a bare `=10`. New little form.
@@ -679,13 +690,12 @@ contexted-search resume off B's `FoolRefFir`.
   either. **NkStop composition is the design question** — e.g. does `Or` swallow an NkStop from
   one branch if the other Approves? (Lean: `Or` prefers a concrete match over a branch's NkStop;
   `And` propagates NkStop. Decide in the FOOP.)
-- **Cascade FIR (`|`):** a new `CascadingSearchFir` with ordered branch children, **carrying a
-  running fallback anchor/position**. Step: run branch[0] from the original anchor; if found →
-  result (and its position becomes the current fallback position for later branches); if it
-  settles a **miss** (ECONSTANIC, FOOP-43) → run next branch **from the current fallback
-  position** (the nearest earlier branch that established one — see anchor-propagation above).
-  Reuse the `FoolRefFir` position-carrier and the contexted-search resume path. Depends on
-  FOOP-43 making "fail" a clean ECONSTANIC signal.
+- **Cascade FIR (`|`):** *(superseded — see FOOP-04 directly, not the anchor-propagation
+  description below.)* A new `CascadingSearchFir` with ordered branch children, all contexted off
+  **one fixed incoming anchor/position** (no threading). Step: run branch[0] from that anchor; if
+  found → result; if it settles a **miss** (ECONSTANIC, FOOP-43) → run next branch **from the same
+  fixed anchor**. Reuse the `FoolRefFir` position-carrier and the contexted-search resume path.
+  Depends on FOOP-43 making "fail" a clean ECONSTANIC signal.
 - **Parser:** `&&`/`||`/`|` are all **net-new tokens** (none exist; no `Pipe` token today). The
   combine-block `(...)` **leads** (anchor/expression position) — `(=10||=4)~a.*`. This is the
   crucial parseability point: a **leading** `(...)` is in expression position, so it does **not**
@@ -703,11 +713,10 @@ a combined predicate.
 **FOOP-43** (miss→ECONSTANIC as the "fail" signal). Composes with FOOP-53 (`!`) and FOOP-73
 (`~~`). Best done after FOOP-43/53 so the predicate-negation and miss-signal are settled.
 
-**Open questions.** NkStop composition for `And`/`Or`. **What exactly counts as a branch having
-"established a position"** vs "failed to establish one" — the cascade's anchor-propagation hinges
-on this (a partial-anchor / partial-resolve concept the wrapper must define; likely "the branch
-resolved its anchor far enough to produce a `FoolRefFir`, even if the final predicate missed").
-Does `|` cascade compose with `&&`/`||` inside one `(...)` (mixed precedence: `(=10 && ~a |
+**Open questions.** *(NkStop composition for `And`/`Or` — RESOLVED, see FOOP-93: NkStop wins over
+everything, both And and Or. "Established a position" — RESOLVED/moot, see FOOP-04: no threading,
+one fixed shared anchor. See FOOP-04 directly for current open questions.)* Does `|` cascade
+compose with `&&`/`||` inside one `(...)` (mixed precedence: `(=10 && ~a |
 =4)`)? Is the combine-block allowed *only* leading, or also mid-chain? Bare `=N` — anchored or
 unanchored by default? Does `||` differ observably from cascade `|` when both branches could
 match (`||` is per-candidate → first candidate matching either; `|` runs whole search-1 first) —
@@ -910,6 +919,20 @@ Ordered by dependency and by "easy to implement / easy to test / max coverage". 
 Then **FOOP-93** (recursion — after both tracks) and **FOOP-04** (macros) last.
 
 ## Last Updated
+
+**Date**: 2026-07-11 (rev 10 — cascade `|` anchor model corrected)
+**Updated By**: Claude Code 2.1.119 (Claude Code); Sonnet 5
+**Changes (rev 10, Atlas)**: The cascade connector's anchor-propagation model (§9, "each fallback
+branch resumes from the nearest earlier branch that established a position") was **wrong** and is
+now marked superseded in place (struck through, not deleted, for history). Correct model: **every
+branch of `A|B|C` is contexted off one fixed shared anchor** — whatever position preceded the
+whole `(...)` block — with no threading between branches. Confirmed by Atlas's worked example
+`a&=b&=c|=d` parsing as `a&=b(&=c|&=d)`: `c` and `d` are siblings off `a&=b`'s position, not a
+chain of resumptions. This also supplies the missing precedence rule — **`&` (continuation) binds
+tighter than `|` (cascade)**; the cascade re-inserts `&` at the start of every branch after the
+first. Dissolves the former top open question ("what counts as an established position") outright
+— nothing needs to be established. Full fix lives in `FOOP-04.md` (new Rejected-Alt C documents
+the discarded model); this file's stale mentions were patched or struck through in place.
 
 **Date**: 2026-07-09 (rev 9 — FOOP-93 "Recursion Upgrades" resequenced + algorithm list)
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
