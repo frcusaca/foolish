@@ -2360,33 +2360,35 @@ impl Fir for ConcatenationFir {
                 }
             }
             Nyes::Braning => {
-                // One pass over the elements, accumulating three verdicts:
+                // One pass over the elements, accumulating two verdicts:
                 //  - all_brane_like: every value is a brane (can be iterated
                 //    and copied — true for any NYES, incl. WOCONSTANIC/NK).
-                //  - any_type_error: some value is a permanent non-brane
-                //    (constantew but not brane-like) → an error.
-                //  - first_non_brane: index for the error message.
+                //  - type_errors: indices of permanent non-branes (constantew
+                //    but not brane-like) — genuine errors, all reported.
                 let mut all_brane_like = true;
-                let mut any_type_error = false;
-                let mut first_non_brane: Option<usize> = None;
+                let mut type_errors: Vec<usize> = Vec::new();
                 for (idx, elem) in self.core.foolish_children().iter().enumerate() {
                     let brane_like = elem.value().borrow().is_brane_like();
                     all_brane_like &= brane_like;
-                    any_type_error |=
-                        !brane_like && elem.borrow().core().get_nyes().is_constantew();
-                    if !brane_like {
-                        first_non_brane.get_or_insert(idx);
+                    if !brane_like && elem.borrow().core().get_nyes().is_constantew() {
+                        type_errors.push(idx);
                     }
                 }
 
                 // A type error wins over "not ready yet" (a real bad element
                 // is not masked by another still resolving).
-                if any_type_error {
+                if !type_errors.is_empty() {
                     let self_weak = self.core.parent_weak();
-                    let idx = first_non_brane.unwrap_or(0);
+                    let list = type_errors
+                        .iter()
+                        .map(usize::to_string)
+                        .collect::<Vec<_>>()
+                        .join(",");
                     let nk: FirRef = Rc::new(RefCell::new(NkFir {
                         core: ProtoBrane::new(vec![], self_weak, Nyes::Nk),
-                        reason: format!("concatenation element {idx} is not a brane"),
+                        reason: format!(
+                            "concatenation constituent indexes where it's not a brane: {list}"
+                        ),
                     }));
                     self.core.push_ubc_child(nk);
                     self.core.set_nyes(Nyes::Nk);
@@ -6518,6 +6520,30 @@ mod tests {
             cat.borrow().core().get_nyes(),
             Nyes::Nk,
             "non-brane element must settle NK"
+        );
+    }
+
+    /// All non-brane constituent indices are reported, not just the first.
+    #[test]
+    fn concat_reports_all_non_brane_indices() {
+        let cat = make_concatenation(vec![
+            make_constant_int(1), // 0: non-brane
+            make_brane(vec![]),   // 1: brane
+            make_constant_int(2), // 2: non-brane
+        ]);
+        step_to_settled(&cat, &Scope::empty());
+        assert_eq!(cat.borrow().core().get_nyes(), Nyes::Nk);
+        let nk_child = cat
+            .borrow()
+            .core()
+            .ubc_children()
+            .into_iter()
+            .next()
+            .unwrap();
+        let reason = nk_child.borrow().as_nk_reason().unwrap_or("").to_string();
+        assert!(
+            reason.contains("0,2"),
+            "reason must list both non-brane indices, got: {reason}"
         );
     }
 
