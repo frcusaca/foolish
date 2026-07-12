@@ -19,6 +19,9 @@ pub trait NyesExt {
     /// Constanic but NOT NK — for code that needs "constanic but not NK".
     /// E.g., search results that should propagate NK separately.
     fn is_nnk_constanic(&self) -> bool;
+
+    /// Exactly NK — provably unfindable, terminal.
+    fn is_nk(&self) -> bool;
 }
 
 impl NyesExt for Nyes {
@@ -32,6 +35,10 @@ impl NyesExt for Nyes {
 
     fn is_nnk_constanic(&self) -> bool {
         self.is_constanic() && *self != Nyes::Nk
+    }
+
+    fn is_nk(&self) -> bool {
+        matches!(self, Nyes::Nk)
     }
 }
 
@@ -91,6 +98,23 @@ mod tests {
     fn pre_constanic_are_not_constanic() {
         for &nyes in &[Nyes::Prembrionic, Nyes::Embryonic, Nyes::Braning] {
             assert!(!nyes.is_constanic(), "{nyes:?} should not be constanic");
+        }
+    }
+
+    #[test]
+    fn nk_states() {
+        for &nyes in ALL_NYES {
+            let expected = matches!(nyes, Nyes::Nk);
+            assert_eq!(nyes.is_nk(), expected, "{nyes:?}");
+        }
+    }
+
+    #[test]
+    fn nk_is_subset_of_constantew() {
+        for &nyes in ALL_NYES {
+            if nyes.is_nk() {
+                assert!(nyes.is_constantew(), "{nyes:?} is NK but not constantew");
+            }
         }
     }
 }

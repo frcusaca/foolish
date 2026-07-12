@@ -5,9 +5,22 @@ use foolish_core::fir::Nyes;
 use regex::Regex;
 
 use crate::fir_trait::{Fir, FirKind, FirRef, FirRefExt, Scope, UbcError};
+use crate::nyes_ext::NyesExt;
 use crate::proto_brane::ProtoBrane;
 
 pub(crate) fn _decide_nyes_due_to_children(children: &[FirRef]) -> Option<Nyes> {
+    _decide_nyes_due_to_children_iterator(children.iter().cloned())
+}
+
+/// Iterator-generic core of [`_decide_nyes_due_to_children`]. Callers that
+/// already have (or want to build) an iterator over the children — rather
+/// than materializing a `Vec`/slice first — can call this directly. E.g.
+/// `ConcatenationFir::populate_concat_helpers` decides its own settlement
+/// from its ELEMENTS (`foolish_children().iter()`), not a pre-collected
+/// slice, via this same aggregation rule.
+pub(crate) fn _decide_nyes_due_to_children_iterator(
+    children: impl Iterator<Item = FirRef>,
+) -> Option<Nyes> {
     let mut all_constantew = true;
     let mut all_independent = true;
     let mut preconstanic_count = 0usize;
@@ -48,7 +61,7 @@ pub(crate) fn _decide_nyes_due_to_children(children: &[FirRef]) -> Option<Nyes> 
     } else if nk_count > 0 {
         return Some(Nyes::Nk);
     }
-    unreachable!("ALARM: _decide_nyes_due_to_children: no decision made.");
+    unreachable!("ALARM: _decide_nyes_due_to_children_iterator: no decision made.");
 }
 
 /// Brane/anchor navigation methods on a [`FirRef`].
@@ -2291,32 +2304,30 @@ impl ConcatenationFir {
     /// Phase A: single _ConcatHelper with all lines (no MAX_BRANE_SIZE limit yet).
     /// Performs settle-time typing check (each element value must be brane-like).
     /// If any element resolves to a non-brane, the ConcatBrane settles NK.
+    /// Builds `_ConcatHelper`(s) from whichever elements currently resolve
+    /// to something brane-like (`stmt_count`/`stmt_at` capable). Purely
+    /// structural — does NOT decide this ConcatBrane's own NYES; that is a
+    /// separate pass the caller (`fir_op_step`'s `Braning` arm) runs over
+    /// the elements afterward via `_decide_nyes_due_to_children_iterator`,
+    /// the same aggregation rule every other brane-like kind uses to settle
+    /// from its children. Splitting the two means a not-yet-brane-like
+    /// element (still WOCONSTANIC/ECONSTANIC, e.g. `<<f3>>` mid-resolution)
+    /// never discards the OTHER elements' already-resolved content — it
+    /// simply contributes zero lines here, and the settle pass decides the
+    /// overall wait/constant/NK verdict from the elements' raw NYES, exactly
+    /// as a normal brane would from its own children.
     fn populate_concat_helpers(&self) {
         let self_weak = self.core.parent_weak();
-        let elements = self.core.foolish_children().to_vec();
+        // Borrow, don't collect: foolish_children() is already a &[FirRef];
+        // .iter().cloned() only bumps each element's Rc refcount (FirRef =
+        // Rc<RefCell<dyn Fir>>), no Vec allocation. Called on every
+        // stmt_count()/fir_op_step re-entry until helpers are populated, so
+        // this stays a tight loop over the existing store.
+        let elements = self.core.foolish_children();
 
-        for elem in &elements {
-            let resolved = elem.value();
-            if !resolved.borrow().is_brane_like() {
-                let elem_nyes = elem.borrow().core().get_nyes();
-                if elem_nyes.is_constanic()
-                    && elem_nyes != Nyes::Econstanic
-                    && elem_nyes != Nyes::Woconstanic
-                {
-                    let nk: FirRef = Rc::new(RefCell::new(NkFir {
-                        core: ProtoBrane::new(vec![], self_weak.clone(), Nyes::Nk),
-                        reason: "concatenation element is not a brane".to_string(),
-                    }));
-                    self.core.push_ubc_child(nk);
-                    self.core.set_nyes(Nyes::Nk);
-                } else {
-                    self.core.set_nyes(Nyes::Woconstanic);
-                }
-                return;
-            }
-        }
-
-        // Count total lines across all element values.
+        // Count total lines across all element values that ARE brane-like
+        // right now (a non-brane-like element's stmt_count() default is
+        // None -> 0 lines, contributing nothing rather than erroring).
         let total_lines: usize = elements
             .iter()
             .map(|e| {
@@ -2325,9 +2336,7 @@ impl ConcatenationFir {
             })
             .sum();
 
-        // If no statements, settle as Constant immediately.
         if total_lines == 0 {
-            self.core.set_nyes(Nyes::Constant);
             return;
         }
 
@@ -2343,7 +2352,7 @@ impl ConcatenationFir {
         let mut cloned_stmts: Vec<FirRef> = Vec::with_capacity(total_lines);
         let mut global_idx: usize = 0;
 
-        for elem in &elements {
+        for elem in elements {
             let resolved = elem.value();
             let count = resolved.borrow().stmt_count().unwrap_or(0);
             for i in 0..count {
@@ -2362,7 +2371,6 @@ impl ConcatenationFir {
         }
 
         if cloned_stmts.is_empty() {
-            self.core.set_nyes(Nyes::Constant);
             return;
         }
 
@@ -2395,17 +2403,165 @@ impl Fir for ConcatenationFir {
                 }
             }
             Nyes::Braning => {
+                // Element-typing check, run on EVERY entry to this arm (not
+                // just the first): any element that is CONSTANTEW
+                // (CONSTANT/INDEPENDENT/NK — settled everywhere, never
+                // going to change further) but is NOT brane-like is a
+                // genuine typing error — short-circuit to NK immediately,
+                // naming the offending element's 0-based index. This is a
+                // check the shared `_decide_nyes_due_to_children_iterator`
+                // aggregation cannot express (it only sees NYES states, not
+                // brane-likeness) — e.g. a single INDEPENDENT element that's
+                // a plain integer must NOT read as "the group is done", it
+                // must read as "not a brane".
+                //
+                // Scoped to CONSTANTEW only, NOT all-constanic: an
+                // ECONSTANIC/WOCONSTANIC element's brane-ness is not
+                // reliably judgeable right now — it may still become
+                // brane-like via further recoordination (e.g. `<<f3>>`, an
+                // SFF wrapper that is WOCONSTANIC from the outside by
+                // design, not brane-like itself, but genuinely still
+                // waiting on f3's own deeper resolution). We deliberately
+                // do not attempt to judge brane-ness for those two NYES
+                // states yet.
+                //
+                // NK is included (constantew), NOT auto-rejected: an NK
+                // element can still be a joinable brane (e.g. a BraneFir
+                // whose CONTENT is NK but is still structurally a brane —
+                // is_brane_like() checks stmt_count().is_some(), not
+                // whether the content resolved) — so NK elements still get
+                // the same is_brane_like() test as CONSTANT/INDEPENDENT,
+                // not a blanket short-circuit.
+                for (idx, elem) in self.core.foolish_children().iter().enumerate() {
+                    let elem_nyes = elem.borrow().core().get_nyes();
+                    if !elem_nyes.is_constantew() {
+                        continue;
+                    }
+                    let resolved = elem.value();
+                    if !resolved.borrow().is_brane_like() {
+                        let self_weak = self.core.parent_weak();
+                        let nk: FirRef = Rc::new(RefCell::new(NkFir {
+                            core: ProtoBrane::new(vec![], self_weak, Nyes::Nk),
+                            reason: format!("concatenation element {idx} is not a brane"),
+                        }));
+                        self.core.push_ubc_child(nk);
+                        self.core.set_nyes(Nyes::Nk);
+                        return Ok(());
+                    }
+                }
+
+                // Every ELEMENT has reached constanic by this point (the
+                // driver's own FIFO task queue guarantees it: fir_op_step is
+                // only called once front_task() is None, which only happens
+                // after all three elements pushed at Prembrionic/Embryonic
+                // have each individually been popped as constanic). But an
+                // element being constanic does not mean its RESOLVED VALUE
+                // (`.value()`) is brane-like — an SFF-wrapped element like
+                // `<<f3>>` can be genuinely WOCONSTANIC/ECONSTANIC from the
+                // outside (its wrapping search settled) while its value is
+                // NOT a brane at all (it never pushes a ubc_child; see
+                // StayFullyFoolishFir::fir_op_step) — its OWN inner content
+                // hasn't finished resolving into a joinable shape.
+                //
+                // The precise "ready to join" condition (Atlas): every
+                // element's resolved value is BOTH brane-like AND itself in
+                // any constanic NYES state. Both conjuncts matter and
+                // neither alone suffices:
+                //   - brane-like alone is not enough — `<<f3>>`'s resolved
+                //     value can be non-brane while still being constanic
+                //     (WOCONSTANIC/ECONSTANIC), which is exactly the case
+                //     that must NOT join yet.
+                //   - constanic alone is not enough — a resolved value can
+                //     be constanic (e.g. NK, or a plain integer) without
+                //     being a brane at all; the earlier typing-error check
+                //     above already handles the CONSTANTEW-non-brane subset
+                //     of that, but this join gate must not assume it.
+                // Note `.value()`'s own contract (`settled_result`,
+                // fir_trait.rs) gates on `is_constanic()` before recursing,
+                // so a brane-like resolved value is ALREADY guaranteed
+                // constanic by construction — checking both explicitly here
+                // documents the actual condition rather than relying on
+                // that invariant silently.
+                //
+                // A WOCONSTANIC (or ECONSTANIC/NK) BRANE constituent DOES
+                // satisfy this and MUST join: its content can itself contain
+                // NK or unresolved lines — that's fine, those lines are
+                // still iterable and constanic-copyable (stmt_count/stmt_at
+                // work regardless of the brane's own settlement state) —
+                // exactly what f1/f2 are in concat_sf_f_more (both WOCONSTANIC
+                // branes with 2 and 1 real lines respectively).
+                //
+                // NOT a greedy join: do not build any helper — do not even
+                // call populate_concat_helpers — until EVERY element passes
+                // this. If even one element's resolved value fails it
+                // (constanic-but-not-brane, like `<<f3>>`), settle `o`
+                // directly as WOCONSTANIC with NO helper content at all, and
+                // stop. The sequencer (evaluator.rs, FirKind::Concatenation)
+                // renders the raw, un-joined foolish_children directly,
+                // exactly as it would for a pre-constanic ConcatBrane.
+                let all_elements_ready_to_join = self.core.foolish_children().iter().all(|e| {
+                    let resolved = e.value();
+                    let resolved_borrowed = resolved.borrow();
+                    resolved_borrowed.is_brane_like()
+                        && resolved_borrowed.core().get_nyes().is_constanic()
+                });
+                if !all_elements_ready_to_join {
+                    self.core.set_nyes(Nyes::Woconstanic);
+                    return Ok(());
+                }
+
                 if !self._helpers_populated.get() {
                     self._helpers_populated.set(true);
+                    // Every element is brane-like now — build the
+                    // _ConcatHelper(s) from all of them (purely structural
+                    // — see populate_concat_helpers' doc comment). Do NOT
+                    // decide this ConcatBrane's own NYES here: this call
+                    // pushes the helper(s) as tasks (below), and step_inner
+                    // only re-enters fir_op_step once the front task's OWN
+                    // nyes is constanic — if we settled `self` to constanic
+                    // in this same call, the parent would see `self` as
+                    // done and pop it without ever draining the just-pushed
+                    // helper tasks. The verdict is decided in the `else`
+                    // branch below, once the helper(s) have actually drained.
                     self.populate_concat_helpers();
                     // Push helpers as tasks so they get stepped and settle their cloned stmts.
-                    for helper in self.core.ubc_children().to_vec() {
+                    for helper in self.core.ubc_children() {
                         self.core.push_task(helper);
                     }
                 } else {
-                    let children = self.core.ubc_children();
-                    let settled = _decide_nyes_due_to_children(&children);
-                    self.core.set_nyes(settled.unwrap_or(Nyes::Constant));
+                    // Helper(s) have drained. Decide THIS ConcatBrane's own
+                    // NYES from the HELPER(S) — i.e. the actual JOINED lines
+                    // — NOT from the elements' own top-level NYES.
+                    //
+                    // This distinction is load-bearing: the join produces
+                    // constanic-CLONED, recoordinated copies of each
+                    // element's lines, which can settle to genuine CONSTANTS
+                    // even when the ORIGINAL element brane was itself only
+                    // WOCONSTANIC (e.g. `{c = a + b}` — the literal brane is
+                    // WOCONSTANIC because its `c` line searched a/b to
+                    // compute, but the joined copy `c=3` is a settled
+                    // Constant). Deciding from the elements would wrongly
+                    // propagate that WOCONSTANIC onto the ConcatBrane even
+                    // though every joined line is done. The elements' states
+                    // are already accounted for by the join-readiness gate
+                    // above (all must be brane-like + constanic before we
+                    // ever build a helper); once joined, only the joined
+                    // content's settlement matters.
+                    let helpers = self.core.ubc_children();
+                    if helpers.is_empty() {
+                        // No lines joined at all: a genuinely empty
+                        // concatenation (all elements were brane-like +
+                        // constanic per the gate above, but every one was
+                        // empty). Settle CONSTANT — the empty-brane
+                        // convention (matches `concatenation_of_empty_branes`
+                        // and `populate_concat_helpers`' own `total_lines==0`
+                        // early return). NOT via `_decide_nyes_due_to_children`
+                        // on the empty slice, which would return INDEPENDENT.
+                        self.core.set_nyes(Nyes::Constant);
+                    } else {
+                        let settled = _decide_nyes_due_to_children(&helpers);
+                        self.core.set_nyes(settled.unwrap_or(Nyes::Constant));
+                    }
                 }
             }
             _ => {}

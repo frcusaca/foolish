@@ -101,17 +101,52 @@ INPUT:
           )
       >
   };
-  o={}; !!(@agetns, that's still not hte right answer brane is toos hort)
+  o=⨃(
+      elements=3,
+      ?(
+  result={WOCONSTANIC
+      b=Op+(
+          Op+(
+            Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^y$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
+            ?(pattern='^a$', UNANCHORED, ECONSTANIC),
+            WOCONSTANIC
+          ),
+          5,
+          WOCONSTANIC
+      );
+      a=-53
+  },
+  pattern='^f1$',
+  UNANCHORED,
+  WOCONSTANIC
+),
+      ?(
+  result={WOCONSTANIC
+      b=Op+(
+          Op+(?(pattern='^x$', UNANCHORED, ECONSTANIC), ?(pattern='^z$', UNANCHORED, ECONSTANIC), WOCONSTANIC),
+          Op+(Op+(1, ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC), 3, WOCONSTANIC),
+          WOCONSTANIC
+      )
+  },
+  pattern='^f2$',
+  UNANCHORED,
+  WOCONSTANIC
+),
+      <<WOCONSTANIC
+  ?(pattern='^f3$', UNANCHORED)
+>>,
+      WOCONSTANIC
+  );
   oo=-54
 }
 ```
 COMMENTS:
 ```markdown
 concat_sf_f_more
-generated: 2026-07-11T22:07:35.342632148Z
+generated: 2026-07-12T03:06:42.513776351Z
 ```
 SIGNATURES:
 Public key: eb9604b1e50d6df60ea71cded2d51b4031b14e9d8911866fcfff4afb00075e65
 Foolish signature: V3Vm6Zg0EgiU+vzNM2mVAVChaH751VnATKW95QMdLmQ6oUw1s/R8QZpPJlAPrYSNYhQFy8m5RqC8BHLz/DBBDw==
-HFS signature: CImV+IFKtixeuvjUPKMqTo8ke7gs1DLud5tCVSIy6kN6QXpI4T1e7RIHMSKs/OL1sqWGUYcgBUSEIa6ZvMZYCw==
-Comments signature: Bx5l1Cshnj9+zpv83bEB+GYZ/a9bS02kbMzEFkJ4qvCaW0BWQDQpH1ePC1+X20c2lJg5qJrwHB3fetPcx9JMCg==
+HFS signature: SILKEk/u+eScshtnClv+V7wJnuNSQBCdSc2SiapY9Us32Qw92uM1+e4hP5bGJDwemO7vGEiSjs1WJvXLnGQQBg==
+Comments signature: iVpKAnpjmZWjIrpDWvgxs/OXd41o+mbHSeu1/qFjBvBfoNnWbjciyDQ+jQQ3WnJyNraYEM/HERZ9F0jCVtt4Aw==
