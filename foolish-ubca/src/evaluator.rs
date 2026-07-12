@@ -618,26 +618,15 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                 .build()
         }
         FirKind::Concatenation => {
-            // Non-greedy: `fir_op_step` (fir_kinds.rs, ConcatenationFir's
-            // Braning arm) never builds ANY _ConcatHelper unless EVERY
-            // element is brane-like — one un-joinable element (e.g. `<<f3>>`,
-            // WOCONSTANIC but not brane-like) blocks the whole join
-            // entirely: `_ConcatHelper`s are never even attempted, so
-            // ubc_children() stays empty and `o` settles WOCONSTANIC/NK
-            // directly. A genuinely EMPTY concatenation (`{} {}`, no
-            // elements have any lines) ALSO has empty ubc_children — but
-            // settles Constant/Independent, never Woconstanic/Nk, since an
-            // all-empty join can't hit a typing error or a not-yet-brane-like
-            // holdout. So: "helper(s) were actually built" (ubc_children
-            // non-empty) OR "genuinely, fully done" (Constant/Independent)
-            // is the real "render the joined brane" signal (an empty one,
-            // `{}`, in the latter sub-case). Anything else constanic
-            // (Woconstanic/Nk with EMPTY ubc_children) means the join was
-            // blocked before it started — render the raw, un-joined
-            // elements, same as the pre-constanic branch below always did.
-            let has_joined_content = !borrowed.core().ubc_children().is_empty();
-            let genuinely_empty = matches!(state, Nyes::Constant | Nyes::Independent);
-            if state.is_constanic() && (has_joined_content || genuinely_empty) {
+            // Render the joined brane once the join actually ran (helper
+            // present), or for a genuinely-empty concatenation (settled
+            // Constant/Independent with no lines). Otherwise the join was
+            // blocked by an un-joinable element (`fir_op_step` left
+            // ubc_children empty and settled WOCONSTANIC/NK) → render the
+            // raw un-joined elements, same as the pre-constanic branch below.
+            let joined = !borrowed.core().ubc_children().is_empty();
+            let empty_done = matches!(state, Nyes::Constant | Nyes::Independent);
+            if state.is_constanic() && (joined || empty_done) {
                 let count = borrowed.stmt_count().unwrap_or(0);
                 let stmt_tuples: Vec<(Option<String>, core_fir::Fir)> = (0..count)
                     .filter_map(|i| {
