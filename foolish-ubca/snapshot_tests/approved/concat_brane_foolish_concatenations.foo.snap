@@ -1,0 +1,91 @@
+---
+source: foolish-ubca/src/ubca_snapshot_tester.rs
+assertion_line: 34
+---
+INPUT:
+```foolish
+{
+	flat = {a=1} {b=2} {c=3} {d=4} {e=5};
+	deep = { {f=6} {g=7} } { {h=8} { {i=9} {j=10} } } {k=11}
+   front = {x=1,y=2} flat;
+   back = flat {x=-1,y=-2};
+   back = front {middle=0} back
+   search=back.x;
+   bk_search=back~x;
+   fail_search=back?nada;
+}
+```
+[0] RESULT:
+```hfssnap
+{NK
+  flat={
+      a=1;
+      b=2;
+      c=3;
+      d=4;
+      e=5
+  };
+  deep={
+      {
+        f=6;
+        g=7
+      };
+      {
+        h=8;
+        {
+          i=9;
+          j=10
+        }
+      };
+      k=11
+  };
+  front={
+      x=1;
+      y=2;
+      a=1;
+      b=2;
+      c=3;
+      d=4;
+      e=5
+  };
+  back={
+      a=1;
+      b=2;
+      c=3;
+      d=4;
+      e=5;
+      x=-1;
+      y=-2
+  };
+  back={
+      x=1;
+      y=2;
+      a=1;
+      b=2;
+      c=3;
+      d=4;
+      e=5;
+      middle=0;
+      a=1;
+      b=2;
+      c=3;
+      d=4;
+      e=5;
+      x=-1;
+      y=-2
+  };
+  search=-1;
+  bkˍsearch=1;
+  failˍsearch=?(pattern='nada', ANCHORED, NK)
+}
+```
+COMMENTS:
+```markdown
+concat_brane_foolish_concatenations
+generated: 2026-07-11T22:07:34.924649373Z
+```
+SIGNATURES:
+Public key: eb9604b1e50d6df60ea71cded2d51b4031b14e9d8911866fcfff4afb00075e65
+Foolish signature: WJvaMfbJ7IN1+OHTMrPfKfZrdCbp37hAZSljs/UYTe1paFhAEH2sxbsoKoV0KH/P32MDQ0jfl5TxHU6Sz65pDg==
+HFS signature: 4o4hbnzkWGDMyH+qZZ7tTHDyrUdzW1b/qO+D4nUEl1m54O6/O/ldR2bXc/VgXyypJFPxzJLyVTVXhPyZ4ZYUBQ==
+Comments signature: 9YctP6fg7ruhcid2BZ5ONrRdBgFUZ1L3Wix/uHoP9N1ar248xuKmuR0qMX/VMmU4/cmGrYGRkK6DiCcOGJkcAA==

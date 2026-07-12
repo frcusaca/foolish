@@ -37,6 +37,9 @@ pub enum FirKind {
     StayFoolish,
     StayFullyFoolish,
     Concatenation,
+    /// Internal storage brane for ConcatBrane — holds constanic-cloned statements.
+    /// Transparent: inherits all defaults, BraneFir-shaped stepping.
+    ConcatHelper,
     IndepInt,
     Nk,
     /// Placeholder for test stubs before real kinds are implemented.
@@ -109,11 +112,10 @@ pub trait Fir: std::fmt::Debug {
     /// Identify the kind of FIR node.
     fn kind(&self) -> FirKind;
 
-    /// Read the integer value. Default: look through ubc_children for resolved
+    /// Read the integer value. Default: look through `settled_result` for resolved
     /// results. IndepIntFir overrides to return `Some(value)`.
     fn as_i64(&self) -> Option<i64> {
-        let ubc = self.core().ubc_children();
-        ubc.first().and_then(|c| c.borrow().as_i64())
+        self.settled_result().and_then(|c| c.borrow().as_i64())
     }
 
     // ── Accessors for proto_to_core_fir bridge ──
@@ -184,7 +186,7 @@ pub trait Fir: std::fmt::Debug {
         false
     }
 
-    fn get_my_statement(&self, self_ref: &FirRef) -> FirRef {
+    fn _get_my_statement(&self, self_ref: &FirRef) -> FirRef {
         match self.kind() {
             FirKind::Statement => Rc::clone(self_ref),
             _ => match self.core().parent() {
@@ -192,7 +194,7 @@ pub trait Fir: std::fmt::Debug {
                     if Rc::ptr_eq(&p, self_ref) {
                         Rc::clone(self_ref)
                     } else {
-                        p.borrow().get_my_statement(&p)
+                        p.borrow()._get_my_statement(&p)
                     }
                 }
                 None => Rc::clone(self_ref),
@@ -200,25 +202,27 @@ pub trait Fir: std::fmt::Debug {
         }
     }
 
-    /// Returns the "home brane" of this FIR — the first brane ancestor.
-    ///
-    /// Walks the `.parent` chain until it finds a [`FirKind::Brane`], returning
-    /// `None` if `self` is already the root brane (self-parenting).
+    /// Iterative parent-walk. Climbs `.parent()` until a brane-like kind is found
+    /// (capability: `stmt_count().is_some()`). Returns the brane that owns `self`,
+    /// or `None` at the root.
     ///
     /// **"Home brane of a FIR" ≡ "brane of a FIR"** — these two phrases mean
     /// exactly the same thing (per FOOP-23 §Terminology). Use "home brane"
     /// when a second brane is also under discussion and the specific one must
     /// be named; use "brane of" otherwise.
-    fn get_my_brane(&self, self_ref: &FirRef) -> Option<FirRef> {
+    ///
+    /// Two-mechanism asymmetry: `_get_my_brane` (underscore) climbs the parent
+    /// chain; `get_my_brane` on [`Scope`] reads the scope cache.
+    fn _get_my_brane(&self, self_ref: &FirRef) -> Option<FirRef> {
         match self.core().parent() {
             Some(p) => {
                 if Rc::ptr_eq(&p, self_ref) {
                     return None;
                 }
-                let kind = p.borrow().kind();
-                match kind {
-                    FirKind::Brane => Some(p),
-                    _ => p.borrow().get_my_brane(&p),
+                if p.borrow().is_brane_like() {
+                    Some(p)
+                } else {
+                    p.borrow()._get_my_brane(&p)
                 }
             }
             None => None,
@@ -227,8 +231,14 @@ pub trait Fir: std::fmt::Debug {
 
     fn set_contexted(&mut self, _contexted: bool) {}
 
+    /// Immediate brane search — find a named statement before `self` in the home brane.
+    ///
+    /// Call chain: `StatementFir::_ib_search` → `_get_my_brane(self_ref)` →
+    /// `brane._search_brane(name, line_number-1, 0)`.
+    /// Scope-cached twin: `ib_search(scope, name)` reads [`Scope::current_statement`]
+    /// instead of walking parents.
     fn _ib_search(&self, self_ref: &FirRef, name: &str) -> Option<(FirRef, Nyes)> {
-        let stmt = self.get_my_statement(self_ref);
+        let stmt = self._get_my_statement(self_ref);
         let borrowed = stmt.borrow();
         borrowed._ib_search(&stmt, name)
     }
@@ -239,8 +249,14 @@ pub trait Fir: std::fmt::Debug {
         borrowed._ib_search(&stmt, name)
     }
 
+    /// Ancestral brane search — find a named statement in ancestor branes.
+    ///
+    /// Call chain: `_get_my_brane(self_ref)` → `brane._ab_search(brane, name)` →
+    /// recurses up the parent chain.
+    /// Scope-cached twin: `ab_search(scope, name)` reads [`Scope::current_brane`]
+    /// instead of walking parents.
     fn _ab_search(&self, self_ref: &FirRef, name: &str) -> Option<(FirRef, Nyes)> {
-        let brane = self.get_my_brane(self_ref)?;
+        let brane = self._get_my_brane(self_ref)?;
         let borrowed = brane.borrow();
         borrowed._ab_search(&brane, name)
     }
@@ -258,6 +274,42 @@ pub trait Fir: std::fmt::Debug {
         _ending_index: usize,
     ) -> Option<(usize, FirRef, Nyes)> {
         None
+    }
+
+    // ── Capability methods (FOOP-13 A2) ──
+
+    /// Number of statements this FIR presents as a brane. `None` = not brane-like.
+    fn stmt_count(&self) -> Option<usize> {
+        None
+    }
+
+    /// The statement at a global index, per the Equivalence Law.
+    fn stmt_at(&self, _idx: usize) -> Option<FirRef> {
+        None
+    }
+
+    /// The settled result this FIR resolves to, if any.
+    /// CONTRACT: applies the constanic gate ITSELF — pre-constanic always answers None.
+    fn settled_result(&self) -> Option<FirRef> {
+        if !self.core().get_nyes().is_constanic() {
+            return None;
+        }
+        self.core().ubc_children().into_iter().next()
+    }
+
+    /// Whether this FIR is brane-like (has statements to iterate).
+    fn is_brane_like(&self) -> bool {
+        self.stmt_count().is_some()
+    }
+
+    // ── UBCA debugging facilities ──
+
+    /// Peek at the front of the task queue without removing it.
+    ///
+    /// Used by `step_until` utilities to check which FIR is next in line
+    /// for stepping — equivalent to a debugger breakpoint on the job queue.
+    fn debug_front_task(&self) -> Option<FirRef> {
+        self.core().front_task()
     }
 }
 
@@ -288,14 +340,10 @@ const MAX_DEPTH: usize = 100;
 pub trait FirRefExt {
     /// Returns the deepest resolved value this FIR represents.
     ///
-    /// When a FIR settles, it may store its result in `ubc_children[0]`
-    /// (e.g. SearchFir, OperatorFir, IndexFir). That result may itself be a
-    /// wrapper with its own `ubc_children`. This walks the chain until it
-    /// reaches a terminal value (one with no `ubc_children`, like IndepInt, Nk,
-    /// or BraneFir).
-    ///
-    /// For pre-constanic FIRs or FIRs without `ubc_children`, returns a clone of
-    /// `self`.
+    /// Delegates to [`Fir::settled_result`] to obtain the constanic-gated
+    /// result child. If a result exists, recurses to unwrap nested wrappers.
+    /// For pre-constanic FIRs or FIRs with no settled result, returns a clone
+    /// of `self`.
     #[must_use]
     fn value(&self) -> FirRef;
 
@@ -308,15 +356,7 @@ pub trait FirRefExt {
 
 impl FirRefExt for FirRef {
     fn value(&self) -> FirRef {
-        // Extract first ubc_child under a short borrow, then drop it before recursing.
-        let child: Option<FirRef> = {
-            let borrowed = self.borrow();
-            if borrowed.core().get_nyes().is_constanic() {
-                borrowed.core().ubc_children().into_iter().next()
-            } else {
-                None
-            }
-        };
+        let child = self.borrow().settled_result();
         match child {
             Some(c) => c.value(),
             None => Rc::clone(self),
@@ -352,7 +392,7 @@ fn step_inner(this: &FirRef, scope: &Scope, depth: usize) -> Result<StepReport, 
                 if this_kind == FirKind::Statement {
                     child_scope.current_statement = Some(Rc::clone(this));
                 }
-                if this_kind == FirKind::Brane {
+                if this.borrow().is_brane_like() {
                     child_scope.current_brane = Some(Rc::clone(this));
                 }
                 step_inner(&front_rc, &child_scope, depth + 1)?;
@@ -747,6 +787,7 @@ mod get_value_tests {
             let parent: Weak<RefCell<dyn Fir>> = me.clone();
             RefCell::new(ConcatenationFir {
                 core: ProtoBrane::new(elements, parent, Nyes::Prembrionic),
+                _helpers_populated: std::cell::Cell::new(false),
             })
         })
     }
@@ -937,7 +978,7 @@ mod get_value_tests {
     // ── 12. ConcatenationFir settled ────────────────────────────────────────
 
     #[test]
-    fn get_value_concatenation_settled_returns_result_brane() {
+    fn get_value_concatenation_settled_returns_self() {
         let a = make_ci(1);
         let b = make_ci(2);
         let stmt_a = make_stmt("a", 1, Rc::clone(&a));
@@ -949,10 +990,11 @@ mod get_value_tests {
         assert_eq!(cat.borrow().core().get_nyes(), Nyes::Constant);
         assert_eq!(cat.borrow().core().ubc_children().len(), 1);
 
+        // ConcatBrane IS its own value — settled_result() returns None
         let result = cat.value();
-        assert!(!Rc::ptr_eq(&result, &cat));
-        assert_eq!(result.borrow().kind(), FirKind::Brane);
-        assert_eq!(result.borrow().core().foolish_children().len(), 2);
+        assert!(Rc::ptr_eq(&result, &cat));
+        assert_eq!(result.borrow().kind(), FirKind::Concatenation);
+        assert_eq!(result.borrow().stmt_count(), Some(2));
     }
 
     // ── 13. ConcatenationFir not settled ────────────────────────────────────
@@ -1003,7 +1045,7 @@ mod get_value_tests {
     fn get_my_statement_returns_self_if_statement() {
         let ci = make_ci(42);
         let stmt = make_stmt("x", 10, ci);
-        let result = stmt.borrow().get_my_statement(&stmt);
+        let result = stmt.borrow()._get_my_statement(&stmt);
         assert!(Rc::ptr_eq(&result, &stmt));
     }
 
@@ -1020,7 +1062,7 @@ mod get_value_tests {
             .first()
             .unwrap()
             .clone();
-        let result = body.borrow().get_my_statement(&body);
+        let result = body.borrow()._get_my_statement(&body);
         assert!(Rc::ptr_eq(&result, stmt));
     }
 
@@ -1030,7 +1072,7 @@ mod get_value_tests {
         let root = Compiler::compile("{x = 1;}").unwrap().pop().unwrap();
         let stmts = root.borrow().core().foolish_children().to_vec();
         let stmt = &stmts[0];
-        let result = stmt.borrow().get_my_brane(stmt);
+        let result = stmt.borrow()._get_my_brane(stmt);
         assert!(result.is_some());
         assert!(Rc::ptr_eq(&result.unwrap(), &root));
     }
@@ -1048,7 +1090,7 @@ mod get_value_tests {
             .first()
             .unwrap()
             .clone();
-        let result = body.borrow().get_my_brane(&body);
+        let result = body.borrow()._get_my_brane(&body);
         assert!(result.is_some());
         assert!(Rc::ptr_eq(&result.unwrap(), &root));
     }
@@ -1057,7 +1099,7 @@ mod get_value_tests {
     fn get_my_brane_returns_self_for_root_brane() {
         use crate::compiler::Compiler;
         let root = Compiler::compile("{x = 1;}").unwrap().pop().unwrap();
-        let result = root.borrow().get_my_brane(&root);
+        let result = root.borrow()._get_my_brane(&root);
         assert!(result.is_none());
     }
 
@@ -1129,5 +1171,67 @@ mod get_value_tests {
             .clone();
         let result = inner_brane.borrow()._ab_search(&inner_brane, "nonexistent");
         assert!(result.is_none(), "nonexistent should not be found anywhere");
+    }
+
+    /// Regression for the index-0 self-hit bug (FOOP-13): a statement that is
+    /// the FIRST statement in its brane (`line_number == 0`) must not find
+    /// itself via its own backward IB search. `_ib_search` computes the
+    /// backward-scan end as `self.line_number.saturating_sub(1)`; for
+    /// `line_number == 0` this SATURATES to `0` rather than representing "no
+    /// preceding statements", so the scan range `[0, 0]` wrongly includes the
+    /// statement's own slot. Left unfixed, a bare self-referential search at
+    /// index 0 (e.g. `{a = a + 1;}`) recurses forever: `handle_found` clones
+    /// the found statement's body — which still contains the same unresolved
+    /// self-search — pushes the clone as a fresh task, the clone re-searches,
+    /// finds the SAME original statement again, and clones again without
+    /// bound (proved via `debug_front_task` depth tracing during triage:
+    /// nesting depth climbs unboundedly, e.g. 1,2,4,5,7,9,11,13... with no
+    /// terminal state).
+    #[test]
+    fn ib_search_at_index_zero_does_not_find_self() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile("{a = a + 1;}").unwrap().pop().unwrap();
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let a_stmt = &stmts[0]; // a = a + 1, line_number == 0
+        assert_eq!(a_stmt.borrow().as_stmt_line_number(), Some(0));
+
+        let result = a_stmt.borrow()._ib_search(a_stmt, "a");
+        assert!(
+            result.is_none(),
+            "BUG: a statement at index 0 of its brane must not find itself \
+             via backward IB search — got a hit instead of None"
+        );
+    }
+
+    /// End-to-end companion to `ib_search_at_index_zero_does_not_find_self`:
+    /// exercises the SAME off-by-one through the actual runtime path
+    /// (`SearchFir::ib_search_with_engine`, which computes its scan end as
+    /// `idx.saturating_sub(1)` and feeds `BraneNavigator::set_range` — the
+    /// scope-cached twin of `_ib_search`, used by real stepping). Before the
+    /// fix this program never settles (steps forever in BRANING); after the
+    /// fix `a`'s self-search is correctly absent from its own brane, falls
+    /// through, and the statement settles.
+    #[test]
+    fn statement_at_index_zero_settles_without_self_reference_hang() {
+        use crate::compiler::Compiler;
+        let root = Compiler::compile("{a = a + 1;}").unwrap().pop().unwrap();
+        let scope = Scope::empty();
+
+        let mut settled = false;
+        for _ in 0..500 {
+            if root.borrow().core().get_nyes().is_constanic() {
+                settled = true;
+                break;
+            }
+            let _ = root.step(&scope).unwrap();
+        }
+
+        assert!(
+            settled,
+            "BUG: {{a = a + 1;}} must settle (a's self-search absent, falls \
+             through to unanchored-miss ECONSTANIC per FOOP-43 / or NK if no \
+             fallback exists) — it must NOT hang forever due to a's own \
+             statement finding itself at index 0"
+        );
     }
 }

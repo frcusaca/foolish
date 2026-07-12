@@ -376,8 +376,8 @@ impl Parser {
             | Token::LParen
             | Token::Ident(_)
             | Token::Up
-            | Token::Lt
-            | Token::LtLt => {
+            | Token::LtLt
+            | Token::Lt => {
                 let Some(prev_idx) = self.pos.checked_sub(1) else {
                     return false;
                 };

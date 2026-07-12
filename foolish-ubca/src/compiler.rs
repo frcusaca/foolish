@@ -12,6 +12,109 @@ use crate::fir_trait::{Fir, FirRef};
 use crate::proto_brane::ProtoBrane;
 use foolish_core::fir::Nyes;
 
+/// Element types allowed inside a ConcatBrane.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ConcatElemKind {
+    /// Bare brane literal — auto-wrap in SFF (under_sff = true).
+    BareBrane,
+    /// Bare search — auto-wrap in SF.
+    BareSearch,
+    /// <search> — idempotent NOOP, build as-is.
+    SfSearch,
+    /// <{…}> — override auto-SFF: build without under_sff, wrap in SF.
+    SfBrane,
+    /// <<…>> or other — error, NK at construction.
+    Error,
+}
+
+fn classify_concat_element(ast: &Astn) -> ConcatElemKind {
+    match ast {
+        Astn::Brane { .. } => ConcatElemKind::BareBrane,
+        Astn::Identifier { .. }
+        | Astn::DotSearch { .. }
+        | Astn::RegexpSearch { .. }
+        | Astn::Seek { .. }
+        | Astn::HeadTail { .. }
+        | Astn::UnanchoredSeek { .. }
+        | Astn::ValueSearch { .. } => ConcatElemKind::BareSearch,
+        Astn::ContextedSearch { inner } => {
+            // Contexted search wraps a bare search.
+            matches!(
+                inner.as_ref(),
+                Astn::Identifier { .. }
+                    | Astn::DotSearch { .. }
+                    | Astn::RegexpSearch { .. }
+                    | Astn::Seek { .. }
+                    | Astn::HeadTail { .. }
+                    | Astn::UnanchoredSeek { .. }
+                    | Astn::ValueSearch { .. }
+            )
+            .then(|| ConcatElemKind::BareSearch)
+            .unwrap_or(ConcatElemKind::Error)
+        }
+        Astn::StayFoolish { expr } => match expr.as_ref() {
+            Astn::Brane { .. } => ConcatElemKind::SfBrane,
+            Astn::Identifier { .. }
+            | Astn::DotSearch { .. }
+            | Astn::RegexpSearch { .. }
+            | Astn::Seek { .. }
+            | Astn::HeadTail { .. }
+            | Astn::UnanchoredSeek { .. }
+            | Astn::ValueSearch { .. }
+            | Astn::ContextedSearch { .. } => ConcatElemKind::SfSearch,
+            _ => ConcatElemKind::Error,
+        },
+        Astn::StayFullyFoolish { expr } => match expr.as_ref() {
+            Astn::Brane { .. } => ConcatElemKind::SfBrane,
+            Astn::Identifier { .. }
+            | Astn::DotSearch { .. }
+            | Astn::RegexpSearch { .. }
+            | Astn::Seek { .. }
+            | Astn::HeadTail { .. }
+            | Astn::UnanchoredSeek { .. }
+            | Astn::ValueSearch { .. }
+            | Astn::ContextedSearch { .. } => ConcatElemKind::SfSearch,
+            _ => ConcatElemKind::Error,
+        },
+        _ => ConcatElemKind::Error,
+    }
+}
+
+fn build_concat_element(ast: Astn, parent: &Weak<RefCell<dyn Fir>>, under_sff: bool) -> FirRef {
+    let kind = classify_concat_element(&ast);
+    match kind {
+        ConcatElemKind::BareBrane => {
+            // Bare brane literal → wrap in SFF: build with under_sff = true.
+            build_fir(ast, Some(parent), true)
+        }
+        ConcatElemKind::BareSearch => {
+            // Bare search → wrap in SF: build, then wrap in StayFoolishFir.
+            let search_fir = build_fir(ast, Some(parent), under_sff);
+            Rc::new(RefCell::new(StayFoolishFir {
+                core: ProtoBrane::new(vec![search_fir], parent.clone(), Nyes::Prembrionic),
+            }))
+        }
+        ConcatElemKind::SfSearch => {
+            // <search> — idempotent NOOP, build as-is.
+            build_fir(ast, Some(parent), under_sff)
+        }
+        ConcatElemKind::SfBrane => {
+            // <{…}> — override auto-SFF: build WITHOUT under_sff, wrap in SF.
+            let brane_fir = build_fir(ast, Some(parent), false);
+            Rc::new(RefCell::new(StayFoolishFir {
+                core: ProtoBrane::new(vec![brane_fir], parent.clone(), Nyes::Prembrionic),
+            }))
+        }
+        ConcatElemKind::Error => {
+            // <<…>> or other — error: NK at construction.
+            Rc::new(RefCell::new(NkFir {
+                core: ProtoBrane::new(vec![], parent.clone(), Nyes::Nk),
+                reason: "invalid concatenation element".to_string(),
+            }))
+        }
+    }
+}
+
 pub struct Compiler;
 
 impl Compiler {
@@ -242,10 +345,11 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
                 let me_dyn: Weak<RefCell<dyn Fir>> = me.clone();
                 let children: Vec<FirRef> = elements
                     .into_iter()
-                    .map(|e| build_fir(e, Some(&me_dyn), under_sff))
+                    .map(|e| build_concat_element(e, &me_dyn, under_sff))
                     .collect();
                 RefCell::new(ConcatenationFir {
                     core: ProtoBrane::new(children, child_parent!(), Nyes::Prembrionic),
+                    _helpers_populated: std::cell::Cell::new(false),
                 })
             })
         }
@@ -260,9 +364,8 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
         Astn::StayFullyFoolish { expr } => {
             Rc::new_cyclic(|me: &Weak<RefCell<StayFullyFoolishFir>>| {
                 let me_dyn: Weak<RefCell<dyn Fir>> = me.clone();
-                // SFF propagates the parent's under_sff flag so inner searches
-                // can resolve when used as ConcatBrane elements.
-                let e = build_fir(*expr, Some(&me_dyn), under_sff);
+                // SFF marker: from here down, searches are built ECONSTANIC.
+                let e = build_fir(*expr, Some(&me_dyn), true);
                 RefCell::new(StayFullyFoolishFir {
                     core: ProtoBrane::new(vec![e], child_parent!(), Nyes::Prembrionic),
                 })
