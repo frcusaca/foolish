@@ -1,0 +1,1 @@
+{fn = {result = a + b;}; call_result =$ {a = 10, b = -3} fn;}

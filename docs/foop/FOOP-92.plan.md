@@ -37,15 +37,46 @@ WORKTREE_BRANCH_NAME=foop-92-einmo
 WORKTREE_FULL_FS_PATH=/home/hcbusy/tmp/foolish-worktrees/foop-92-einmo
 ```
 
-- [ ] begun
-      ( ) <!-- timestamp when work commences -->
+- [x] begun
+      (2026-07-11 07:10)
 
-- [ ] Create worktree at /home/hcbusy/tmp/foolish-worktrees/foop-92-einmo with branch `foop-92-einmo` off `jia`
+- [x] Create worktree at /home/hcbusy/tmp/foolish-worktrees/foop-92-einmo with branch `foop-92-einmo` off `jia`
+      (2026-07-11 07:10)
       ```bash
       cd /home/hcbusy/foolish-rust
       git worktree add -b foop-92-einmo /home/hcbusy/tmp/foolish-worktrees/foop-92-einmo
       cd /home/hcbusy/tmp/foolish-worktrees/foop-92-einmo
       ```
+
+> **Implementation note (2026-07-11, Claude Code / Opus 4.8):** Per user decision,
+> the new crates use **edition 2024** (matching the rest of the workspace and
+> `rust_instructions.md`), not the literal `2021` in Phases 1/14 below. Compiled
+> Key + empty-passphrase key are **deterministic stock defaults** (no build.rs
+> env override in v1). Building the entire MVP (Phases 0–10 + 14–15b) in one pass.
+
+> **MVP STATUS (2026-07-11, Claude Code / Opus 4.8) — implemented & green:**
+> - **einmo** crate: all modules (`error`, `signature`, `format`, `stage`,
+>   `config`, `verify`, `snapshot_suite`, `transitions`, `compare`, `cli`) — 74
+>   lib tests pass; `cargo clippy -p einmo -- -D warnings` clean; `cargo fmt`
+>   clean. Both binaries (`einmo`, `cargo-einmo`) build; `self-check`, `verify`,
+>   `compare`, `promote`, `flag`, `show`, `confirm-signatures` all working.
+> - **zweimomo** crate: three pure-Rust evaluators (Ubca/RustPython/Boa) + the
+>   brane-name perspective — 14 unit tests + 3 suite integration tests pass.
+> - **Corpus**: 8 concept rows × 3 languages + 1 dependent (`++`) per language,
+>   generated → promoted `output->checked` via the einmo CLI → `verify --all`
+>   and `compare output checked --require-match` all clean (the dog-food loop).
+> - **Dependent einmos (15b)**: signed DIFF section, `reference:` metadata,
+>   topological eval order, 25×80 diff-limit fail-on-exceed — all working and
+>   visible in `einmo show`.
+> - **Existing crates untouched**: `foolish-core/ubca/parser/cli` compile with
+>   zero changes (scope rule holds).
+>
+> **REMAINING (needs the human):** Phase 0's `.gitignore` (`bin/` → `/bin/`) and
+> new `.gitattributes` (`*.einmo -text`) are **not yet applied** — they are on
+> the agent restricted-actions list, so the human applies them. Until then the
+> *source* `einmo/src/bin/cargo_einmo.rs` is gitignored (compiled binaries are
+> safely ignored regardless, via `target/`). Post-MVP phases 11–13, 16–17 and
+> the merge (19) are not part of this pass.
 
 ## Phase 0 — Fix the `.gitignore` `bin/` bug (BLOCKING, do first)
 
