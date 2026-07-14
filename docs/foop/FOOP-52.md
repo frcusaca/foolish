@@ -2,7 +2,7 @@
 foop: 25
 title: Owned-FIR evaluator rewrite + repair FVM evaluation bugs (snapshot review round 2)
 author: opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4 (rewritten by Claude Code; Sonnet 4.6)
-status: Final
+status: Superseded
 type: Major
 created: 2026-06-06
 phase: phase-2

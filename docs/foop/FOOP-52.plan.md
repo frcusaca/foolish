@@ -1,5 +1,17 @@
 # FOOP-52 Plan: FVM scope/search rework + repair WIP snapshot bugs
 
+- [x] Superseded by FOOP-62 (UBCa). This plan targets the retired UBC engine in `foolish-core`
+      (`ubc.rs`, `NormalBraneFir`, the flat `Scope`) — code removed when FOOP-62 established
+      UBCa as the sole engine. The plan's architecture (Rc children + Weak parents, the three
+      brane search methods, `is_search()`, positional statements) and the FOOP-52.bugs.md
+      repairs (forward refs → ECONSTANIC, shadowing, cross-brane search, concat search-result
+      preservation, seek boundaries) are all realized in UBCa and pinned by the approved
+      snapshot corpus (`forward_reference_*`, `identifier_shadowing`, `scope_resolution`,
+      `cross_scope_reference_chain`, `concatenation_with_*`, `anchored_seek_negative_boundary`).
+      Every item below is marked `[-]`: not to be done as written. Residual state-machine
+      issues noted at the time carry forward into the backlog reorganization, not this plan.
+      (2026-07-14 12:57)
+
 **Created**: 2026-06-06
 **Rewritten**: 2026-06-07
 **Status**: Complete (2026-06-08)
@@ -74,7 +86,7 @@ NEW breakage (any of the 64, or any unit test) still halts work as usual.
 
 ## The Plan (top-level spine)
 
-- [ ] **Task 0: Organize AGENTS.md** — consolidate the existing Rust best-practice
+- [-] **Task 0: Organize AGENTS.md** — consolidate the existing Rust best-practice
       guidance and add a terse encapsulation rule (behavior-on-data / self-mutate,
       owner swaps on type change / no leaked mutable aliases) + the Foolish-semantic-
       immutability-vs-FIR-state principle. Done before Phase 1 because the rework must
@@ -115,7 +127,7 @@ NEW breakage (any of the 64, or any unit test) still halts work as usual.
       `strip_sf_wrapper`) move onto the types, and WHY string dispatch becomes
       enum/method dispatch (and `wo_short_circuit` becomes a query on the Search FIR).
       (2026-06-07)
-- [ ] (Optional, low priority) Consolidate any remaining scattered Rust best-practice
+- [-] (Optional, low priority) Consolidate any remaining scattered Rust best-practice
       duplication under "How To Write Rust Code" — the section is already good
       (General Rust Style, Enum Dispatch, Traits and Generics, Error Handling); only
       tidy if duplication is found. Not blocking Phase 1.
@@ -134,14 +146,14 @@ never copied); parents `Weak<RefCell<Fir>>` (readable non-owning up-edge, no cyc
 access up and down, mutate only self. NOT `Box<Fir>` (rejected — shared CONSTANT
 nodes + readable parent pointers don't fit unique ownership).
 
-- [ ] Change brane statement storage: `NormalBraneFir.statements` from
+- [-] Change brane statement storage: `NormalBraneFir.statements` from
       `Vec<StatementFir>` (`fir.rs:309`) to a FIXED-SIZE `Vec<Rc<RefCell<StatementFir>>>`.
       Allocated once when the brane is built from the AST; length never changes during
       eval (statements stepped/replaced in place, never appended/removed). `StatementFir`
       already exists (`fir.rs:195`: `name: Option<String>` LHS, `body: FirRef` RHS,
       `state`) — no new type. Update the compiler (`compiler.rs` builds `StatementFir`)
       and the builder (`StatementFirBuilder`, `fir.rs:1921`) to wrap in `Rc<RefCell>`.
-- [ ] Add TWO fields to `StatementFir`, both set at construction (and re-set on
+- [-] Add TWO fields to `StatementFir`, both set at construction (and re-set on
       recoordination/clone): `parent: Weak<RefCell<Fir>>` (the OWNING brane) and
       `line_number: usize` (its own 0-based index into the parent's `statements` vec —
       so `parent.statements[line_number]` is itself). Construction signature becomes
@@ -150,7 +162,7 @@ nodes + readable parent pointers don't fit unique ownership).
       brane's enclosing statement knows its `line_number` and its brane directly.
       `line_of_child` collapses to `child.line_number()`; keep `Rc::ptr_eq` only as a
       debug-assert that `parent.statements[line_number]` is the child.
-- [ ] Make parents real and used. `SearchFir.parent` (`fir.rs:267`) and
+- [-] Make parents real and used. `SearchFir.parent` (`fir.rs:267`) and
       `NormalBraneFir.parent` (`fir.rs:311`) become `Weak<RefCell<Fir>>`, SET during
       construction / brane recoordination, and READ by search (they are vestigial
       today — set in a couple places, never read). Every FIR has a parent: `x`,`y` →
@@ -159,7 +171,7 @@ nodes + readable parent pointers don't fit unique ownership).
       - NOTE: parent pointers must be on EVERY FIR, not just Search/Brane. Either add
         `parent: Weak<RefCell<Fir>>` to all FIR structs, or store it once in a shared
         FIR header. The two trait methods below depend on every node answering.
-- [ ] Add `get_parent` / `get_brane` trait methods (every FIR answers — encapsulation
+- [-] Add `get_parent` / `get_brane` trait methods (every FIR answers — encapsulation
       rule). `get_parent(&self) -> Option<FirRef>` = `upgrade()` of the `Weak`.
       `get_brane(&self) -> Option<FirRef>` = recursive: "return `get_parent()` if it
       is a brane (`kind() == FirKind::NormalBrane`), else `get_parent().get_brane()`".
@@ -167,7 +179,7 @@ nodes + readable parent pointers don't fit unique ownership).
       containing brane — the brane whose earlier statements `c` searches. This is how a
       Search FIR STARTS resolution: `self.get_brane()` → take the enclosing statement's
       stored `line_number` → `home.search_ancestral_branes(pattern, line_number)`.
-- [ ] Implement the three brane search methods on `NormalBraneFir` (normative code in
+- [-] Implement the three brane search methods on `NormalBraneFir` (normative code in
       FOOP-52.md "The three brane search methods"). Each touches only local members.
       Statements are `Rc<RefCell<StatementFir>>` handles — the iterator yields handles
       (can't return borrows out of `RefCell`); callers `borrow()` to read name/body:
@@ -188,7 +200,7 @@ nodes + readable parent pointers don't fit unique ownership).
         `Rc::ptr_eq(&parent.statements[line_number], &child)` only as a debug-assert.
       - Rust subtlety: borrow up the chain via `upgrade()` then `borrow()`; do NOT hold
         a `borrow_mut` on a node while recursing upward.
-- [ ] Write UNIT TESTS for the three methods (in `unit_tests.rs`), flat AND nested
+- [-] Write UNIT TESTS for the three methods (in `unit_tests.rs`), flat AND nested
       branes — these are load-bearing primitives, test them directly not only via
       snapshots:
       - `iterate_ib_statements`: backward/forward yields handles, skips anonymous
@@ -207,18 +219,18 @@ nodes + readable parent pointers don't fit unique ownership).
         root brane = None; nested case returns the immediate enclosing brane.
       - Build test branes via parser + root `.search(...)` per AGENTS.md "Unit Test
         Readability".
-- [ ] Retire the flat `Scope`: remove `entries: Vec<(String, FirRef)>` (`ubc.rs:38`)
+- [-] Retire the flat `Scope`: remove `entries: Vec<(String, FirRef)>` (`ubc.rs:38`)
       and its `search()` over `entries.iter().rev()` (`ubc.rs:95-103`); remove the
       pre-push of ALL names (`ubc.rs:230-234`, the ROOT CAUSE of forward refs
       resolving — Bugs 1.x/2.3); remove the `current_brane`/`current_stmt_idx` stale
       snapshot (`ubc.rs:39-40,239-244`). Keep the alarm sink surface — `unit_tests.rs:193`
       uses `Scope::new().with_alarms().emit()`; preserve an equivalent (alarms can ride
       on a slim eval context or move onto the brane-step entry point).
-- [ ] Rewrite `braning_step` (currently `re_step_brane_bodies`, `ubc.rs:216`) to kill
+- [-] Rewrite `braning_step` (currently `re_step_brane_bodies`, `ubc.rs:216`) to kill
       the O(n²): the per-statement loop (`ubc.rs:237`) clones `brane.statements` AND
       `local_scope` EVERY iteration. New version steps statement N reading its own
       earlier statements + ancestors via the search methods — no per-statement clones.
-- [ ] Add `is_search()` predicate on the FIR trait. Default `false`; override `true`
+- [-] Add `is_search()` predicate on the FIR trait. Default `false`; override `true`
       for `SearchFir`, `IndexFir`, `HeadTailFir`.
       - Atlas decision: FIRST-CLASS concept, on the trait so EVERY FIR answers for
         itself (not FirKind-only, not a string compare).
@@ -229,22 +241,22 @@ nodes + readable parent pointers don't fit unique ownership).
         these ECONSTANIC at the start."
       - NOTE: in Phase 1 `is_search()` exists and is ROUTED THROUGH (below); its SFF
         *effect* (mark ECONSTANIC) is Phase 6. Phase 1 use stays behavior-preserving.
-- [ ] Route `has_unresolved_forward_refs` (`ubc.rs:160-195`) and the WOCONSTANIC-chain
+- [-] Route `has_unresolved_forward_refs` (`ubc.rs:160-195`) and the WOCONSTANIC-chain
       follow (`ubc.rs:1060`, `short_circuit_self` `fir.rs:1046`) through `is_search()`
       instead of `fir_variant() == "Search"`.
       - LATENT BUG fixed for free: `has_unresolved_forward_refs` has arms for
         Search/Operator/Concatenation/StayFoolish but NOT Index/HeadTail → they fall to
         `_ => false`, so an unresolved seek is invisible. (Verify it doesn't move any of
         the 64 — if it does, that's a real pre-existing bug surfacing; flag it.)
-- [ ] Replace `fir_variant() -> &'static str` (`fir.rs:370` + all 10 overrides) with
+- [-] Replace `fir_variant() -> &'static str` (`fir.rs:370` + all 10 overrides) with
       `kind() -> FirKind` enum for DISPATCH. A local `Variant` enum exists
       (`ubc.rs:359`) — promote it to a shared `FirKind`.
       - Kills stringly-typed `== "Search"` / `== "NormalBrane"` / `== "StayFullyFoolish"`.
       - Keep `kind()` (dispatch) SEPARATE from `is_search()` (predicate) — different homes.
-- [ ] Remove `reset_searches` (`ubc.rs:260-323`) entirely — with positional `from_line`
+- [-] Remove `reset_searches` (`ubc.rs:260-323`) entirely — with positional `from_line`
       search, forward refs are out of range and never resolve, so nothing to reset.
       (`constanic_clone` still does per-reuse resets, `ubc.rs:466-477`.)
-- [ ] Rename `short_circuit` (`ubc.rs:498`) / `short_circuit_self` (`fir.rs:1046`)
+- [-] Rename `short_circuit` (`ubc.rs:498`) / `short_circuit_self` (`fir.rs:1046`)
       → `wo_short_circuit`, reframe as a QUERY on the Search FIR (encapsulation rule,
       Task 0). Follows the **WOCONSTANIC** target chain (verified: loop walks
       `target→target` while each link is WOCONSTANIC, `ubc.rs:506-512`) — `wo_` names
@@ -256,14 +268,14 @@ nodes + readable parent pointers don't fit unique ownership).
         preserving current behavior (NOT "ECONSTANIC-only"). Byte-identical on the 64.
       - Call site: `self.target = search_result_target.wo_short_circuit();` — called on
         the TARGET (found result), asking for its passthrough terminus.
-- [ ] Update sequencer (`sequencer.rs`) / serialization (`serialization.rs`) read
+- [-] Update sequencer (`sequencer.rs`) / serialization (`serialization.rs`) read
       paths only as needed by the parent-pointer/field changes (e.g. don't serialize
       the `Weak` parent — it would cycle; serialize children only). Lower-volume than
       the rejected Box plan since `Rc<RefCell>` stays.
-- [ ] **GATE: `cargo test -p foolish-core --lib` — all 64 approved `.snap` pass
+- [-] **GATE: `cargo test -p foolish-core --lib` — all 64 approved `.snap` pass
       byte-identical. The 15 WIP files still fail (expected, no `.snap`).** Plain
       `cargo test` (not `cargo insta test`) so WIP absence shows as failure honestly.
-- [ ] Verify all unit tests pass (existing `fir::builder_tests`, `sequencer_tests`,
+- [-] Verify all unit tests pass (existing `fir::builder_tests`, `sequencer_tests`,
       `unit_tests`, `signature::tests`) PLUS the new search-method unit tests.
 
 ### Phase 2: Backward search / source-order (Bugs 1.1–1.3, 2.3, 6.1–6.2, 15)
@@ -276,25 +288,25 @@ so `#-1` retrieved a NYE body and `constanic_clone` (`ubc.rs:459`) hit the
 INVARIANT-VIOLATED path (`ubc.rs:478-492`). Phase 1's scope references stepped bodies →
 seek never sees NYE → violation is genuinely unreachable (no `permit_nye` hack needed).
 
-- [ ] Confirm positional backward search prevents forward-reference resolution
-- [ ] Test Bug 1.1: `{y = x; x = 42;}` — `y` is Search/ECONSTANIC, not `Int(42)`
-- [ ] Test Bug 1.2: `{outer = {val = x}; x = 100;}` — `val` is Search/ECONSTANIC
-- [ ] Test Bug 1.3: `{nested = {inner = {val = x}}; x = 42;}` — `val` is Search/ECONSTANIC
-- [ ] Test Bug 2.3 (shadowing/SSA): `{x = 10; x; x = 20; x;}` — second `x`=10, fourth=20.
+- [-] Confirm positional backward search prevents forward-reference resolution
+- [-] Test Bug 1.1: `{y = x; x = 42;}` — `y` is Search/ECONSTANIC, not `Int(42)`
+- [-] Test Bug 1.2: `{outer = {val = x}; x = 100;}` — `val` is Search/ECONSTANIC
+- [-] Test Bug 1.3: `{nested = {inner = {val = x}}; x = 42;}` — `val` is Search/ECONSTANIC
+- [-] Test Bug 2.3 (shadowing/SSA): `{x = 10; x; x = 20; x;}` — second `x`=10, fourth=20.
       This is exactly "nearest-earlier wins" — good direct test of the backward scan.
-- [ ] Test Bug 6.1: `{a=10, b=20, c=30, result=#-1+#-2, result2=#-1*#-2, result3=#-1-#-2;}`
+- [-] Test Bug 6.1: `{a=10, b=20, c=30, result=#-1+#-2, result2=#-1*#-2, result3=#-1-#-2;}`
       — all CONSTANT (result=50, result2=600, result3=10), NO invariant violations
-- [ ] Test Bug 6.2: `{a=1; b={c=#-1; d=2; e=#-1}; f=#-1;}` — no violations; `c` seeks to
+- [-] Test Bug 6.2: `{a=1; b={c=#-1; d=2; e=#-1}; f=#-1;}` — no violations; `c` seeks to
       `a`, `e` seeks to `d`(=2), `f` seeks to `b`'s brane value
-- [ ] Bug 15 (folded here — it's a seek/boundary bug): fix `index_in_brane`
+- [-] Bug 15 (folded here — it's a seek/boundary bug): fix `index_in_brane`
       (`search.rs:20-29`). Negative offset clamps with `.max(0)` (`search.rs:23`) →
       `b#-4` on a 3-element brane wrongly returns `Int(first)`. Should be NK when
       `|offset| > len`. Asymmetric clamp is the bug.
       - Test Bug 15: `{b={10;20;30}; last=b#-1; second=b#1; first=b#-3; oob=b#-4;}` —
         `oob` is NK, not `Int(10)`.
-- [ ] Promote the 7 WIP files (6 above + `anchored_seek_negative_boundary`); the 64
+- [-] Promote the 7 WIP files (6 above + `anchored_seek_negative_boundary`); the 64
       still pass byte-identical
-- [ ] (@human note Bug 15 / `anchored_seek_negative_boundary` completion in FOOP-32 too)
+- [-] (@human note Bug 15 / `anchored_seek_negative_boundary` completion in FOOP-32 too)
 
 ### Phase 3: Boundary crossing (Bug 2.1)
 
@@ -303,10 +315,10 @@ but the SAME mechanism — parent delegation. The parent's `stmt_idx` bounds its
 scan, so a name defined BEFORE the nested brane is in range; one defined AFTER is not.
 One mechanism fixes both. Tackle after Phase 2 since they share the search path.
 
-- [ ] Confirm search crosses to parent brane for names defined BEFORE the nested brane
-- [ ] Test Bug 2.1: `{a=10; b=20; sum=a+b; nested={inner=sum/2}; result=nested.inner;}`
+- [-] Confirm search crosses to parent brane for names defined BEFORE the nested brane
+- [-] Test Bug 2.1: `{a=10; b=20; sum=a+b; nested={inner=sum/2}; result=nested.inner;}`
       — `sum`→30 inside `nested`, `inner`→15, whole `nested` CONSTANIC, `result`→15
-- [ ] Promote the WIP file; the 64 still pass
+- [-] Promote the WIP file; the 64 still pass
 
 ### Phase 4: Search-tree resolution (Bugs 2.2, 3.2, 4.1)
 
@@ -314,17 +326,17 @@ One mechanism fixes both. Tackle after Phase 2 since they share the search path.
 resolved, PRESERVE what's not. Bug 4.1 may already improve once searches return inlined
 owned values (Phase 1) rather than Rc-wrapped trees — check before writing new logic.
 
-- [ ] When a search resolves to CONSTANT, collapse the search tree to the value (don't
+- [-] When a search resolves to CONSTANT, collapse the search tree to the value (don't
       leak the inner search into the outer AST). Bug 2.2: the `a` reference resolved in
       `c` must not reappear in `d`'s AST.
-- [ ] When a search is unresolved (ECONSTANIC/WOCONSTANIC), preserve it through
+- [-] When a search is unresolved (ECONSTANIC/WOCONSTANIC), preserve it through
       concatenation (don't drop it). Bug 3.2: concatenation currently drops constanic
       entries — see ConcatenationFir merge (`fir.rs:1227-1248`), the `flat_map` that
       only keeps NormalBrane entries.
-- [ ] Test Bug 2.2: `{a=1; b={c=a+1; d=c+1};}` — `d`'s AST has only a search for `c`, not `a`
-- [ ] Test Bug 3.2: `{a={x=ref}; b={y=2}; c=a b;}` — `c` keeps `x=Search(ref, ECONSTANIC)`
-- [ ] Test Bug 4.1: `{x=10; y=20; z=30; sum=x+y+z; avg=sum/3;}` — `avg`→20, not WOCONSTANIC
-- [ ] Promote the 3 WIP files; the 64 still pass
+- [-] Test Bug 2.2: `{a=1; b={c=a+1; d=c+1};}` — `d`'s AST has only a search for `c`, not `a`
+- [-] Test Bug 3.2: `{a={x=ref}; b={y=2}; c=a b;}` — `c` keeps `x=Search(ref, ECONSTANIC)`
+- [-] Test Bug 4.1: `{x=10; y=20; z=30; sum=x+y+z; avg=sum/3;}` — `avg`→20, not WOCONSTANIC
+- [-] Promote the 3 WIP files; the 64 still pass
 
 ### Phase 5: Concatenation precedence (Bug 3.1)
 
@@ -332,18 +344,18 @@ owned values (Phase 1) rather than Rc-wrapped trees — check before writing new
 searched by `b` rather than two operands concatenated. Check `compiler.rs` precedence
 first. This is the most likely phase to touch the parser.
 
-- [ ] Determine where `a b` becomes a search vs a concatenation (compiler/precedence)
-- [ ] Fix so `a b` is concatenation of two operands
-- [ ] Test Bug 3.1: `{target={...c={a=1,b=2,c=3}}; b1={x=10}; result=b1 target.c;}`
+- [-] Determine where `a b` becomes a search vs a concatenation (compiler/precedence)
+- [-] Fix so `a b` is concatenation of two operands
+- [-] Test Bug 3.1: `{target={...c={a=1,b=2,c=3}}; b1={x=10}; result=b1 target.c;}`
       — `result` = `{x=10; a=1; b=2; c=3}` (and `result_1 = b1(target.c)` still works)
-- [ ] Promote the WIP file; the 64 still pass
+- [-] Promote the WIP file; the 64 still pass
 
 ### Phase 6: SF/SFF markers (Bugs 5.1–5.3)
 
 **Spec is in FOOP-52.md §"SF/SFF Marker Specification" — read it; it was corrected
 during review (Findings A–E resolved).** Key decisions:
 
-- [ ] SFF (`<<...>>`): mark ALL `is_search()` FIRs ECONSTANIC at the START — Search,
+- [-] SFF (`<<...>>`): mark ALL `is_search()` FIRs ECONSTANIC at the START — Search,
       Index/`#-1`, HeadTail/`{}^`. This is the Finding A resolution: SFF is a
       Foolish-code copier; the only thing indeterminate after text composition is
       searches, and Index/HeadTail ARE searches (`is_search()` from Phase 1).
@@ -352,10 +364,10 @@ during review (Findings A–E resolved).** Key decisions:
         for the SFF context to force ECONSTANIC at search creation — likely a flag on
         the scope/parent, analogous to the existing `block_brane_searches`
         (`ubc.rs:105-107`, read at `fir.rs:982`). Reuse that mechanism's shape.
-- [ ] SFFMark / SFMark transparent to constanic_clone: strip wrapper, clone inner
+- [-] SFFMark / SFMark transparent to constanic_clone: strip wrapper, clone inner
       (current `strip_sf_wrapper` `ubc.rs:326` and constanic_clone SFF strip
       `ubc.rs:460-465` already do this — preserve under owned bodies).
-- [ ] SF (`<...>`) constanic_clone asymmetry (Finding D resolution — state it clearly):
+- [-] SF (`<...>`) constanic_clone asymmetry (Finding D resolution — state it clearly):
       - **Concern 2 (ASSEMBLE, RHS is `<b>`):** the search for `b` runs, its result is
         constanic_cloned with **sfcc=True** into the SFMark result field → preserve
         ECONSTANIC/WOCONSTANIC.
@@ -365,18 +377,18 @@ during review (Findings A–E resolved).** Key decisions:
         `permit_nye`). sfcc=True: ECONSTANIC→ECONSTANIC, WOCONSTANIC→WOCONSTANIC,
         CONSTANT→CONSTANT (instead of the reset table at `ubc.rs:466-477`). Pass sfcc
         recursively.
-- [ ] Test Bug 5.1: `{a=1, b=2; inner={c=<<a+b>>; c}; inner;}` — searches ECONSTANIC,
+- [-] Test Bug 5.1: `{a=1, b=2; inner={c=<<a+b>>; c}; inner;}` — searches ECONSTANIC,
       operator WOCONSTANIC (not EMBRYONIC)
-- [ ] Test Bug 5.2: `{x=5; y=10; inner={calc=<<x+y>>; doubled=calc*2};}` — same; note
+- [-] Test Bug 5.2: `{x=5; y=10; inner={calc=<<x+y>>; doubled=calc*2};}` — same; note
       `doubled`→30 still works (calc's searches resolve when doubled clones it)
-- [ ] Test Bug 5.3: `{x=10; y=<x>; z=y+5;}` — verify SF (this is formalization; current
+- [-] Test Bug 5.3: `{x=10; y=<x>; z=y+5;}` — verify SF (this is formalization; current
       output is already correct per review — lock it in, don't "fix" it)
-- [ ] Test the corrected SFF example (Atlas's, replaces the old vacuous one):
+- [-] Test the corrected SFF example (Atlas's, replaces the old vacuous one):
       `{a=1; f=<<a+b>>; g1=f; a=2; g2=f;}` — g1=`1+b`, g2=`2+b`, b stays ECONSTANIC in
       both. Demonstrates re-resolution at each reference site.
-- [ ] Test Index-is-a-search inside SFF: `{...; b=<<#-1>>; ...}` — `b` stays ECONSTANIC
+- [-] Test Index-is-a-search inside SFF: `{...; b=<<#-1>>; ...}` — `b` stays ECONSTANIC
       until referenced/coordinated elsewhere (Finding A consequence)
-- [ ] Promote the 3 WIP files; the 64 still pass
+- [-] Promote the 3 WIP files; the 64 still pass
 
 ---
 
@@ -444,18 +456,18 @@ WORKTREE_BRANCH_NAME=scope-search-rework-foop-52
 WORKTREE_FULL_FS_PATH=${HOME}/tmp/foolish-worktrees/scope-search-rework-foop-52
 ```
 
-- [ ] Create worktree at ${HOME}/tmp/foolish-worktrees/scope-search-rework-foop-52 with
+- [-] Create worktree at ${HOME}/tmp/foolish-worktrees/scope-search-rework-foop-52 with
       branch `scope-search-rework-foop-52` (from `alpha`)
-- [ ] (Task 0 + all phases happen in the worktree)
-- [ ] Verify all work complete in the worktree and committed
-- [ ] Merge `scope-search-rework-foop-52` to alpha
-  - [ ] (Foolish uses git merge, not rebase — handle any alpha conflicts here)
-- [ ] STOP! ASK HUMAN to check this box before continuing. Agent will NOT continue
+- [-] (Task 0 + all phases happen in the worktree)
+- [-] Verify all work complete in the worktree and committed
+- [-] Merge `scope-search-rework-foop-52` to alpha
+  - [-] (Foolish uses git merge, not rebase — handle any alpha conflicts here)
+- [-] STOP! ASK HUMAN to check this box before continuing. Agent will NOT continue
       past this point automatically.
-- [ ] Cleanup ${HOME}/tmp/foolish-worktrees/scope-search-rework-foop-52
-  - [ ] Confirm all but cleanup checkboxes are complete
-  - [ ] Remove the worktree
-  - [ ] This is the last checkbox
+- [-] Cleanup ${HOME}/tmp/foolish-worktrees/scope-search-rework-foop-52
+  - [-] Confirm all but cleanup checkboxes are complete
+  - [-] Remove the worktree
+  - [-] This is the last checkbox
 
 ---
 

@@ -3,7 +3,7 @@ foop: 32
 title: Value search and contexted (&-prefixed) search — value equality, expression patterns, and searching from a statement's position
 author: Atlas <hc.busy@gmail.com>
 credits: drafted by Claude Code from Atlas's dictated design (sessions 2026-07-04 / 07-05)
-status: Draft
+status: Complete
 type: Standards
 created: 2026-07-04
 phase: phase-2

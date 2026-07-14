@@ -7,6 +7,17 @@ created: 2026-07-04
 
 # FOOP-23 Implementation Plan
 
+- [x] Complete. Verified against code and tests 2026-07-14: the one-engine model
+      (`ContextfulSearch` with all six `SearchPredicate` variants — Name/Value/NameValue/Index/
+      Head/Tail — `fir_kinds.rs:1732`), `FoolRefFir` two-child invariant, contexted `&` parsing
+      (`token.rs:28`, `parser.rs:670`), and the D-phase backfits are all merged on `jia`; the
+      approved corpus carries `value_search_*`, `contexted_*`, `name_value_atomic`,
+      `contextless_deepening_chain`, and `foop_23_comprehensive` snapshots; AGENTS.md §Searches
+      documents the shipped semantics. The per-item checkboxes below were executed but never
+      ticked during implementation — completion is attested by code and signed snapshots, not by
+      this ledger.
+      (2026-07-14 12:57)
+
 **Read `FOOP-23.md` first — this plan assumes the specification's context.**
 
 ## Worktree

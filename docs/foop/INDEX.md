@@ -36,14 +36,14 @@ ls | rev | sort -V | rev
 | [FOOP-22](FOOP-22.md) | Multi-signer snapshot signatures with appended utility signing and entire-file integrity | Deprecated | meta | 2026-06-01 | Sisyphus |
 | [FOOP-32](FOOP-32.md) | Repair rudimentary FVM evaluation and Sequencer formatting bugs found in snapshot review | Final | phase-2 | 2026-06-01 | Sisyphus |
 | [FOOP-42](FOOP-42.md) | Humanizing FIR Sequencer formatting specification | Deprecated | phase-2 | 2026-06-03 | opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4 |
-| [FOOP-52](FOOP-52.md) | Repair FVM evaluation bugs found in snapshot review round 2 | Draft | phase-2 | 2026-06-06 | opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4 |
+| [FOOP-52](FOOP-52.md) | Repair FVM evaluation bugs found in snapshot review round 2 | Superseded (by FOOP-62) | phase-2 | 2026-06-06 | opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4 |
 | [FOOP-62](FOOP-62.md) | UBCa — Two-Store ProtoBrane Tree and Uniform Two-Phase Stepping | Final | phase-2 | 2026-06-09 | Atlas |
 | [FOOP-72](FOOP-72.md) | Foolish Numbering System (FNS) and Snapshot Test Organization | Draft | phase-0 | 2026-06-17 | Sisyphus |
 | [FOOP-82](FOOP-82.md) | UBCa Code Review — Findings and Recommended Changes | Draft | phase-2 | 2026-06-23 | Sisyphus |
 | [FOOP-92](FOOP-92.md) | Einmo — directory-based signed-snapshot testing with staged promotion | Draft | meta | 2026-06-26 | Sisyphus |
 | [FOOP-03](FOOP-03.md) | Repository Cleanup — Remove Dead Code, Flatten Workspace, Establish UBCa as Reference Implementation, Rename Main to jia | Draft (blocked on FOOP-62) | meta | 2026-07-01 | Sisyphus / mimo-v2.5-pro |
 | [FOOP-13](FOOP-13.md) | MAX_BRANE_SIZE — auto-sizing via a non-merging ConcatBrane equivalent to the merged brane | Brewing | phase-2 | 2026-07-03 | Atlas |
-| [FOOP-23](FOOP-23.md) | Value search and contexted (&-prefixed) search — value equality, expression patterns, and searching from a statement's position | Draft | phase-2 | 2026-07-04 | Atlas |
+| [FOOP-23](FOOP-23.md) | Value search and contexted (&-prefixed) search — value equality, expression patterns, and searching from a statement's position | Complete | phase-2 | 2026-07-04 | Atlas |
 | [FOOP-33](FOOP-33.md) | The Creation Postulate — ⬤, universal characterizations, and Booleans | Final | phase-4 | 2026-07-07 | Atlas |
 | [FOOP-43](FOOP-43.md) | Search miss settles ECONSTANIC, not NK (foundational keystone) | Draft | phase-2 | 2026-07-09 | Atlas |
 | [FOOP-53](FOOP-53.md) | Computed index — `#${...}` | Draft | phase-2 | 2026-07-09 | Atlas |
@@ -56,11 +56,29 @@ ls | rev | sort -V | rev
 | [FOOP-24](FOOP-24.md) | Detachment — parameterized stay-foolish markers | Draft | phase-2 | 2026-07-09 | Atlas |
 | [FOOP-34](FOOP-34.md) | Recursion Upgrades (standalone research; write algorithms first) | Draft | phase-5 | 2026-07-09 | Atlas |
 | [FOOP-44](FOOP-44.md) | Macros — research and design (standalone research) | Draft | phase-6 | 2026-07-09 | Atlas |
+| [FOOP-54](FOOP-54.md) | Einmo — comparison arm of FOOP-92 (mimo-opencode vs claude-code implementation comparison) | Complete | meta | 2026-06-26 | Sisyphus |
+| [FOOP-64](FOOP-64.md) | Migrate UBCa snapshot tests to a hierarchical einmo suite | Draft | meta | 2026-07-14 | Atlas |
 | [FOOP-74](FOOP-74.md) | FIRID — atomic per-Fir identity for constanic-clone cycle detection | Draft | phase-2 | 2026-07-11 | Atlas |
+| [FOOP-84](FOOP-84.md) | Deadbrane — useless-element detection and FirID cloning semantics | Draft | phase-2 | 2026-07-14 | Hephaestus |
+| [FOOP-94](FOOP-94.md) | Brane NK only when all constituents are NK — remove any-NK contamination | Draft | phase-2 | 2026-07-14 | Atlas |
 
 ---
 
 ## By Status
+
+### Complete
+
+- [FOOP-23](FOOP-23.md) — Value search + contexted `&`-searches. Verified against code 2026-07-14:
+  one-engine `ContextfulSearch` (all six predicates), `FoolRefFir` two-child invariant, `&`
+  parsing, D-phase backfits — all merged on `jia` with approved `value_search_*`/`contexted_*`/
+  `foop_23_comprehensive` snapshots. Plan checkboxes were never maintained; completion attested
+  by code + signed corpus.
+- [FOOP-54](FOOP-54.md) — Einmo comparison arm: identical spec to FOOP-92, implemented by
+  mimo-opencode while claude-code (Claude Opus 4.8) implemented FOOP-92 (both under two hours);
+  neutral-agent analysis in FOOP-54.md §"Post implementation comparison" chose FOOP-92, which was
+  hardened and merged (9bbdaf43). Follow-up completed 2026-07-14: the §9 Best Practices Review is
+  folded into `rust_instructions.md` (all 15 recommendations + task-indexed §2 Task guides). No
+  open items.
 
 ### Final
 
@@ -74,12 +92,10 @@ ls | rev | sort -V | rev
 ### Draft
 
 - [FOOP-41](FOOP-41.md) — UBCb message-passing variant; SPA1 parity plan
-- [FOOP-52](FOOP-52.md) — Repair FVM evaluation bugs found in snapshot review round 2
 - [FOOP-72](FOOP-72.md) — Foolish Numbering System (FNS) and Snapshot Test Organization
 - [FOOP-82](FOOP-82.md) — UBCa Code Review — Findings and Recommended Changes
 - [FOOP-92](FOOP-92.md) — Einmo — directory-based signed-snapshot testing with staged promotion
 - [FOOP-03](FOOP-03.md) — Repository Cleanup — dead code removal, workspace flatten, `jia` rename (blocked, see FOOP-62)
-- [FOOP-23](FOOP-23.md) — Value search + contexted `&`-searches — `~=`/`?=`, expression patterns, `&`-prefix navigation from a statement (`FoolRefFir`)
 *(Implementation-ordered batch built on FOOP-33; renumbered 2026-07-09 so number ≈ impl order.)*
 - [FOOP-43](FOOP-43.md) — Search miss → ECONSTANIC not NK + **coordination removes search context** (foundational keystone; found-`???`→NK vs not-found→WOCONSTANIC; prereq for FOOP-63/73/24/34)
 - [FOOP-53](FOOP-53.md) — Computed index `#${...}` (evaluate brane, tail as number, run `#`; self-contained early win)
@@ -92,7 +108,10 @@ ls | rev | sort -V | rev
 - [FOOP-24](FOOP-24.md) — Detachment = parameterized SF/SFF marker (exclusion-list prefilter; SF≡`[]` / SFF≡`[*]`; before recursion — helps it; needs FOOP-43)
 - [FOOP-34](FOOP-34.md) — Recursion Upgrades (**standalone research**; write ~1–2 dozen algorithms first; after the full search suite; `↑`; no cycle detection)
 - [FOOP-44](FOOP-44.md) — Macros (**standalone research**; brane-transforms-brane vs expansion phase; leans on FOOP-14 + characterizations)
+- [FOOP-64](FOOP-64.md) — Migrate UBCa snapshot tests to `foolish-ubca/einmo_suite/` (hierarchy `foop/<N>/`, `lang/…`, `regression/`; signed `.einmo` per FOOP-92; dual-home rule; 9 new combination tests; fills the sort-key-46 gap left by FOOP-74)
 - [FOOP-74](FOOP-74.md) — FIRID (atomic per-Fir instance counter) + thread-local in-flight clone stack; `eprintln!` alarm when `constanic_clone_at` re-enters an already-in-progress FIRID (detection/visibility only, not a language semantic — distinct from FOOP-34's "no recursion-cycle detection" language-design stance)
+- [FOOP-84](FOOP-84.md) — Deadbrane (useless-element detection: directly useless, transitively useless, fixed-point algorithm) + FirID cloning semantics (pins Constant/Independent → Rc::clone identity-sharing, non-constanic → new FIRID)
+- [FOOP-94](FOOP-94.md) — Brane NK only when ALL constituents are NK (flip `_decide_nyes_due_to_children` cascade: any-NK+rest-constant → CONSTANT, not NK; operator NK propagation and search semantics untouched; ~34 brane-NK snapshots to re-review)
 
 ### Brewing
 
@@ -129,6 +148,9 @@ Canceled as they stand; each may be respecified and reimplemented later. See
 ### Withdrawn / Rejected / Superseded
 
 - [FOOP-81](FOOP-81.md) — Enhanced SnapshotSuite with HumanizingSequencer and SequenceableFir (Superseded)
+- [FOOP-52](FOOP-52.md) — FVM scope/search rework + snapshot bug repairs (Superseded by FOOP-62:
+  plan targets the retired UBC engine; its architecture and bug fixes are realized in UBCa and
+  pinned by the approved corpus)
 
 ---
 
@@ -136,7 +158,7 @@ Canceled as they stand; each may be respecified and reimplemented later. See
 
 ### meta
 
-- [FOOP-1](FOOP-1.md), [FOOP-31](FOOP-31.md), [FOOP-41](FOOP-41.md), [FOOP-71](FOOP-71.md), [FOOP-81](FOOP-81.md), [FOOP-22](FOOP-22.md), [FOOP-92](FOOP-92.md), [FOOP-03](FOOP-03.md)
+- [FOOP-1](FOOP-1.md), [FOOP-31](FOOP-31.md), [FOOP-41](FOOP-41.md), [FOOP-71](FOOP-71.md), [FOOP-81](FOOP-81.md), [FOOP-22](FOOP-22.md), [FOOP-92](FOOP-92.md), [FOOP-03](FOOP-03.md), [FOOP-54](FOOP-54.md), [FOOP-64](FOOP-64.md)
 
 ### phase-0
 
@@ -148,7 +170,7 @@ Canceled as they stand; each may be respecified and reimplemented later. See
 
 ### phase-2
 
-- [FOOP-6](FOOP-6.md), [FOOP-7](FOOP-7.md), [FOOP-8](FOOP-8.md), [FOOP-01](FOOP-01.md), [FOOP-11](FOOP-11.md), [FOOP-51](FOOP-51.md), [FOOP-61](FOOP-61.md), [FOOP-32](FOOP-32.md), [FOOP-42](FOOP-42.md), [FOOP-52](FOOP-52.md), [FOOP-62](FOOP-62.md), [FOOP-82](FOOP-82.md), [FOOP-13](FOOP-13.md), [FOOP-23](FOOP-23.md), [FOOP-43](FOOP-43.md), [FOOP-53](FOOP-53.md), [FOOP-83](FOOP-83.md), [FOOP-93](FOOP-93.md), [FOOP-04](FOOP-04.md), [FOOP-14](FOOP-14.md), [FOOP-24](FOOP-24.md), [FOOP-74](FOOP-74.md)
+- [FOOP-6](FOOP-6.md), [FOOP-7](FOOP-7.md), [FOOP-8](FOOP-8.md), [FOOP-01](FOOP-01.md), [FOOP-11](FOOP-11.md), [FOOP-51](FOOP-51.md), [FOOP-61](FOOP-61.md), [FOOP-32](FOOP-32.md), [FOOP-42](FOOP-42.md), [FOOP-52](FOOP-52.md), [FOOP-62](FOOP-62.md), [FOOP-82](FOOP-82.md), [FOOP-13](FOOP-13.md), [FOOP-23](FOOP-23.md), [FOOP-43](FOOP-43.md), [FOOP-53](FOOP-53.md), [FOOP-83](FOOP-83.md), [FOOP-93](FOOP-93.md), [FOOP-04](FOOP-04.md), [FOOP-14](FOOP-14.md), [FOOP-24](FOOP-24.md), [FOOP-74](FOOP-74.md), [FOOP-84](FOOP-84.md), [FOOP-94](FOOP-94.md)
 
 ### phase-3
 
@@ -184,6 +206,50 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 ---
 
 ## Last Updated
+
+**Date**: 2026-07-14
+**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5
+**Changes**: Completion audit of FOOPs 23/13/52/92 against code and tests. **FOOP-23 → Complete**
+(one-engine search fully merged; plan checkboxes were never maintained — completion attested by
+code + approved corpus). **FOOP-52 → Superseded** by FOOP-62 (plan targets the retired UBC
+engine; substance realized in UBCa). FOOP-13 remains Brewing (Phase A ConcatBrane merged; the
+title feature — Phase B MAX_BRANE_SIZE auto-sizing/`UbcaConfig` — is unimplemented). FOOP-92
+remains open pending re-homing of post-MVP remnants (gates/console-review/serve/MCP/algorithm
+corpus). Audit also found `approval_all` structurally red: all 161 UBCa snaps diverge
+signature-only (embedded `generated:` wall-clock + key drift `eb9604b1…`→`dc5f586c…`); content
+byte-identical — motivates prioritizing FOOP-64 (einmo migration).
+
+**Date**: 2026-07-14
+**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5
+**Changes**: Added **FOOP-94** — brane NK only when ALL constituents are NK: flip the shared
+`_decide_nyes_due_to_children` cascade so a settled brane with mixed NK/value members classifies
+CONSTANT instead of NK (all-NK still → NK; empty brane still → CONSTANT; operator NK propagation
+`5 + NK → NK` and all search semantics untouched and pinned by new tests). Quick
+investigate-and-flip FOOP; ~34 approved snapshots carry brane-level NK and the mixed-content
+subset will need human re-review. Fills sort key 49. Added to main table, By-Status (Draft),
+By-Phase (phase-2).
+
+**Date**: 2026-07-14
+**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5
+**Changes**: Registered **FOOP-54** (previously unindexed) as **Complete** — the mimo-opencode
+comparison arm of FOOP-92 (identical spec, two agents, both under two hours; neutral-agent
+analysis in FOOP-54.md chose FOOP-92 for hardening + merge). Added to main table, new By-Status
+(Complete) section, and By-Phase (meta). Its plan is closed with `[-]` cancellations; sole open
+item is folding the §9 Best Practices Review into `rust_instructions.md`.
+
+**Date**: 2026-07-14
+**Updated By**: Hephaestus / xiaomi/mimo-v2.5-pro
+**Changes**: Added **FOOP-84** — Deadbrane (useless-element detection: directly useless, transitively useless, fixed-point algorithm) + FirID cloning semantics refinement (pins Constant/Independent → Rc::clone identity-sharing, non-constanic → new FIRID). Added to main table, By-Status (Draft), and By-Phase (phase-2).
+
+**Date**: 2026-07-14
+**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5
+**Changes**: Added **FOOP-64** — migrate the 162 flat UBCa insta snapshots to a new hierarchical
+einmo suite at `foolish-ubca/einmo_suite/` (`foop/<NUMBER>/…` incl. `comprehensive.foo`,
+`lang/<category>/…`, `lang/usecases/…`, `regression/…`), signed `.einmo` format per FOOP-92,
+dual-home rule for near-identical tests, cross-validation against approved `.snap` RESULTs,
+comprehensive-test path re-homed to `einmo_suite/input/foop/<N>/comprehensive.foo`, and nine
+proposed feature-combination tests. Fills the deliberate sort-key-46 gap left by FOOP-74, so
+`foop_check.py check` passes again. Added to main table, By-Status (Draft), and By-Phase (meta).
 
 **Date**: 2026-07-11
 **Updated By**: Claude Code 2.1.119 (Claude Code); Sonnet 5
