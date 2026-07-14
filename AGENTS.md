@@ -5,7 +5,7 @@ This document provides instructions for AI agents (including Claude Code, GitHub
 ## Use Common Sense
 Apply industry standard best practices liberally. Use colloquial rust to most correctly, efficiently and readably implement the system. Colloquial rust tend to be most supported and most optimized.
 Documentation is organized under docs/ in subdirectories: howto/ (tutorials), why/ (philosophy), how/ (engineering), todo/ (project tracking), and vintage_legacy/ (legacy documents being reorganized).
-
+At end of every response, please attach the output of `date "+%Y-%m-%d %H:%M:%S.%s"`.
 
 ## Development process
 Due to the nature of human-driven development, AI should always write the tests first. Approval tests and unit tests, write the tests with most important features, and unclear corner cases written as tests to not only check behavior, but also to document what it looks like.
