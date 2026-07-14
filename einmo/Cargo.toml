@@ -1,0 +1,38 @@
+[package]
+name = "einmo"
+version = "0.1.0"
+edition = "2024"
+description = "Directory-based, cryptographically signed snapshot testing with a staged promotion pipeline."
+license = "MIT OR Apache-2.0"
+
+# Standalone crate: NO dependency on any workspace crate (foolish-core,
+# foolish-ubca, …). Einmo reimplements the signing/format machinery from
+# scratch so it can be promoted to its own repository later (FOOP-92 §1).
+[dependencies]
+ed25519-dalek = "2"
+argon2 = "0.5"
+base64 = "0.22"
+hex = "0.4"
+rpassword = "7"
+clap = { version = "4", features = ["derive", "env"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+time = { version = "0.3", features = ["macros", "formatting", "parsing"] }
+thiserror = "2"
+similar = "2"
+sha2 = "0.10"
+
+[dev-dependencies]
+tempfile = "3"
+
+# The single CLI app. `cargo install einmo` yields two binary targets sharing
+# the same clap parser: `einmo` (canonical) and `cargo-einmo` (the
+# cargo-subcommand alias so `cargo einmo …` also works). FOOP-92 §1.
+[[bin]]
+name = "einmo"
+path = "src/main.rs"
+
+[[bin]]
+name = "cargo-einmo"
+path = "src/bin/cargo_einmo.rs"
