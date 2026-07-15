@@ -209,6 +209,39 @@ order an integration.
         - `simple_identifier.foo` → `misc/simple_identifier.foo`
           `{x = 42; x;}`
 
+  - [ ] **Small arithmetic / literal / identifier tests** (25 one-liners, all in `misc/`)
+        @human: flagged as a group per your request — each is a one-line probe of one
+        primitive. Agent's read: they are cheap, fast, and each names exactly what it
+        pins, so a failure localizes instantly; consolidating them into one `basics.foo`
+        would trade that for a single opaque diff. Recommend keep — your determination.
+        Candidate sub-groupings if you do want consolidation: (a) pure literals,
+        (b) binary ops, (c) unary/precedence/parens, (d) identifiers/undeclared.
+        - `simple_integer.foo` → `misc/simple_integer.foo`  ·  `{5;}`
+        - `constant_int_literal.foo` → `misc/constant_int_literal.foo`  ·  `{42}`
+        - `simple_addition.foo` → `misc/simple_addition.foo`  ·  `{3 + 4;}`
+        - `simple_subtraction.foo` → `misc/simple_subtraction.foo`  ·  `{10 - 3;}`
+        - `simple_multiplication.foo` → `misc/simple_multiplication.foo`  ·  `{6 * 7;}`
+        - `simple_division.foo` → `misc/simple_division.foo`  ·  `{15 / 3;}`
+        - `zero_division.foo` → `misc/zero_division.foo`  ·  `{10 / 0;}`
+        - `division_exact_and_remainder.foo` → `misc/division_exact_and_remainder.foo`  ·  `{a = 10 / 3; b = 9 / 3;}`
+        - `simple_unary_minus.foo` → `misc/simple_unary_minus.foo`  ·  `{-42;}`
+        - `negative_result.foo` → `misc/negative_result.foo`  ·  `{5 - 10;}`
+        - `chained_unary_operators.foo` → `misc/chained_unary_operators.foo`  ·  `{a = -(-5); b = -(-(-3));}`
+        - `operator_with_unary_and_binary.foo` → `misc/operator_with_unary_and_binary.foo`  ·  `{a = -3 * 4; b = -3 + 4;}`
+        - `operator_precedence.foo` → `misc/operator_precedence.foo`  ·  `{2 + 3 * 4 - 5;}`
+        - `mixed_operators.foo` → `misc/mixed_operators.foo`  ·  `{10 + 5 - 3 * 2;}`
+        - `nested_arithmetic.foo` → `misc/nested_arithmetic.foo`  ·  `{((2 + 3) * (4 - 1)) / 5;}`
+        - `single_parenthesized_expression.foo` → `misc/single_parenthesized_expression.foo`  ·  `{((((5))));}`
+        - `large_numbers.foo` → `misc/large_numbers.foo`  ·  `{a = 1000000; b = 999999; c = a - b;}`
+        - `multiple_expressions.foo` → `misc/multiple_expressions.foo`  ·  `{1; 2; 3;}`
+        - `multiple_arithmetic_expressions.foo` → `misc/multiple_arithmetic_expressions.foo`  ·  `{5 + 3; 10 - 4; 2 * 6;}`
+        - `mixed_expressions.foo` → `misc/mixed_expressions.foo`  ·  `{42; (3 + 4) * 2; -15; 100 / 5;}`
+        - `simple_identifier.foo` → `misc/simple_identifier.foo`  ·  `{x = 42; x;}`
+        - `identifier_in_expression.foo` → `misc/identifier_in_expression.foo`  ·  `{x = 10; y = 20; x + y;}`
+        - `multiple_identifiers.foo` → `misc/multiple_identifiers.foo`  ·  `{x = 5; y = 3; z = 2; x * y + z;}`
+        - `undeclared_identifier.foo` → `misc/undeclared_identifier.foo`  ·  `{x = non_existent;}`
+        - `chained_undeclared.foo` → `misc/chained_undeclared.foo`  ·  `{bad = undeclared; y = bad; z = y;}`
+
 - [ ] Author the eight new combination `.foo` inputs under `input/foop/64/` (+ dual-home
       `lang/usecases/` copies where they read as demonstrations)
 - [ ] Write and verify `foolish-ubca/einmo_suite/input/foop/64/comprehensive.foo` (first
