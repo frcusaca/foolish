@@ -183,6 +183,56 @@ send_to_agent_list=()  # tests where you left instructions
 skip_list=()           # tests you deliberately passed on (skip/pass/idk)
 noop_list=()           # tests you did not touch at all
 
+# The placeholder shown when a stage holds no artifact. It doubles as the
+# cheat-sheet: the whole vocabulary sits in front of you exactly when you need
+# it. Every line starts with MARKER_SIGIL so the script can tell "left the
+# instructions alone" from "wrote a verb".
+MARKER_SIGIL="!! poor_einmo:"
+marker_text() {
+    local stage="$1"
+    cat <<MARKER
+$MARKER_SIGIL no $stage artifact yet.
+$MARKER_SIGIL
+$MARKER_SIGIL Replace EVERYTHING here with ONE word, then :qa
+$MARKER_SIGIL
+$MARKER_SIGIL   promote promoted approve approved lgtm sgtm
+$MARKER_SIGIL        accept the previous stage into this one
+$MARKER_SIGIL   skip pass idk      no action; move on
+$MARKER_SIGIL   stop               end the review, keep what you decided
+$MARKER_SIGIL   abort              leave now, discard everything
+$MARKER_SIGIL
+$MARKER_SIGIL Anything else becomes a note for an agent.
+$MARKER_SIGIL Leave this text as-is and the file counts as untouched.
+MARKER
+}
+
+# True when these instructions survived in the pane.
+marker_left_intact() {
+    grep -qF "$MARKER_SIGIL" "$1"
+}
+
+# Drop `$1` from array `$2` (by name). Used to retract a decision on re-edit.
+drop_from() {
+    local needle="$1" name="$2"
+    local -n arr="$name"
+    local kept=() item
+    for item in "${arr[@]+"${arr[@]}"}"; do
+        [[ "$item" == "$needle" ]] || kept+=("$item")
+    done
+    arr=("${kept[@]+"${kept[@]}"}")
+}
+
+# Retract everything the last pass recorded for the file being re-edited, so a
+# corrected answer replaces the mistake instead of stacking on top of it.
+undo_last_decision() {
+    drop_from "$rel"       promote_checked
+    drop_from "$rel"       promote_verified
+    drop_from "$test_path" send_to_agent_list
+    drop_from "$test_path" skip_list
+    drop_from "$test_path" noop_list
+    rm -f "$REVIEW_DIR/${test_path//\//__}.note"
+}
+
 # The vocabulary. A pane must contain ONE of these words and nothing else —
 # whitespace is stripped and case ignored, but any extra text means you were
 # talking to an agent, not issuing a verb.
@@ -210,6 +260,9 @@ pane_says() {
 idx=0
 for row in "${rows[@]}"; do
     idx=$((idx + 1))
+    # A file may be re-opened: the reviewer left the instructions in place, or
+    # asked to re-edit an answer. `continue` re-opens; `break` moves on.
+    while :; do
     # `einmo list` prints: <mirror-path>\t<differ|same>\t<stage marks>
     rel="${row%%$'\t'*}"                       # e.g. misc/simple_addition.foo.einmo
     marks="${row##*$'\t'}"
@@ -241,7 +294,7 @@ for row in "${rows[@]}"; do
                   echo; cat "$TMP/err"; } > "$p"
             fi
         else
-            echo "(( no $stage artifact — type promote to accept the previous stage ))" > "$p"
+            marker_text "$stage" > "$p"
         fi
         pane[$stage]="$p"
         cp "$p" "$p.orig"          # pristine copy: the reviewer's diff baseline
@@ -254,7 +307,7 @@ for row in "${rows[@]}"; do
         # Debugging aid: show the call instead of locking the terminal.
         echo "   + vimdiff ${VIM_OPTS[*]} '$in_f' '${pane[output]}' '${pane[checked]}' '${pane[verified]}'"
         noop_list+=("$test_path")
-        continue
+        break
     fi
 
     # 4-way: the source under test, then the three stages.
@@ -263,7 +316,7 @@ for row in "${rows[@]}"; do
             </dev/tty >/dev/tty; then
         echo
         echo "poor_einmo: aborted at $test_path."
-        break
+        break 2
     fi
 
     # --- read the reviewer's intent out of the panes -----------------------
@@ -293,12 +346,42 @@ for row in "${rows[@]}"; do
     done
     if (( stopped )); then
         echo "   ■ stop — leaving $test_path untouched and ending the review"
-        break
+        break 2
     fi
 
     chk_changed=0; ver_changed=0
     cmp -s "${pane[checked]}"  "${pane[checked]}.orig"  || chk_changed=1
     cmp -s "${pane[verified]}" "${pane[verified]}.orig" || ver_changed=1
+
+    # A changed pane that STILL holds the instructions means the reviewer wrote
+    # *around* them — almost always "typed the verb under the cheat-sheet".
+    # Read literally that is a note; read charitably it is the promotion they
+    # believe they just made. Neither guess is ours, so ask.
+    marker_choice=""
+    for stage in checked verified; do
+        case "$stage" in
+            checked)  (( chk_changed )) || continue ;;
+            verified) (( ver_changed )) || continue ;;
+        esac
+        marker_left_intact "${pane[$stage]}" || continue
+
+        echo "   ⚠ the $stage pane still holds the instructions, plus your text."
+        echo "     A verb must stand ALONE — as written this becomes a note."
+        read -r -p "     [r]e-view now (to promote), [f]lag as a note, [s]kip? " ans </dev/tty || ans=s
+        case "${ans,,}" in
+            r*) echo "     ↻ re-opening — replace ALL the text with one word"
+                marker_choice=redo ;;
+            f*) echo "     ✎ recorded as a note"
+                marker_choice=flag ;;
+            *)  echo "     · skipped"
+                marker_choice=skip ;;
+        esac
+        break
+    done
+    case "$marker_choice" in
+        redo) continue ;;                                  # re-open this file
+        skip) skip_list+=("$test_path"); break ;;          # settled: skipped
+    esac
 
     if (( chk_changed == 0 && ver_changed == 0 )); then
         noop_list+=("$test_path")
@@ -361,9 +444,18 @@ for row in "${rows[@]}"; do
     fi
 
     if ! (( full_review )); then
-        read -r -p "   next? [Enter=continue, q=quit] " ans </dev/tty || true
-        [[ "$ans" == "q" ]] && { echo "poor_einmo: stopped."; break; }
+        # `e` re-opens this file so a mistaken answer can be fixed before it is
+        # carried into the results — the decision is not final until you leave.
+        read -r -p "   next? [Enter=continue, e=re-edit this one, q=quit] " ans </dev/tty || true
+        case "${ans,,}" in
+            e*) echo "   ↻ re-editing $test_path"
+                undo_last_decision
+                continue ;;
+            q*) echo "poor_einmo: stopped."; break 2 ;;
+        esac
     fi
+    break   # this file is settled; on to the next
+    done
 done
 
 # --- the accumulated results ---------------------------------------------
