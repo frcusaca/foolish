@@ -463,11 +463,32 @@ fn cmd_verify(args: VerifyArgs) -> Result<ExitCode> {
     };
     let files = resolve_files(args.files)?;
     let report = crate::verify(&config, stage, files_ref(&files))?;
+    // Signature integrity is only half of "is this suite sound?" — the tree's
+    // shape is the other half. Checked only for a whole-suite verify: a
+    // file-scoped or single-stage run is not making a claim about the tree.
+    let integrity = if files.is_empty() && stage.is_none() {
+        crate::check_suite_integrity(&config)?
+    } else {
+        crate::SuiteIntegrity::default()
+    };
     if args.json {
+        let violations: Vec<String> = integrity
+            .violations
+            .iter()
+            .map(|v| {
+                format!(
+                    "{{\"path\":\"{}\",\"reason\":\"{}\",\"remedy\":\"{}\"}}",
+                    v.path.display(),
+                    v.reason(),
+                    v.remedy()
+                )
+            })
+            .collect();
         println!(
-            "{{\"files\":{},\"failures\":{}}}",
+            "{{\"files\":{},\"failures\":{},\"integrity_violations\":[{}]}}",
             report.files.len(),
-            report.failures()
+            report.failures(),
+            violations.join(",")
         );
     } else {
         println!(
@@ -482,8 +503,12 @@ fn cmd_verify(args: VerifyArgs) -> Result<ExitCode> {
                 f.detail.as_deref().unwrap_or("")
             );
         }
+        if !integrity.is_clean() {
+            eprintln!("einmo: suite shape is unsound:");
+            eprint!("{}", integrity.report());
+        }
     }
-    Ok(if report.all_ok() {
+    Ok(if report.all_ok() && integrity.is_clean() {
         ExitCode::SUCCESS
     } else {
         ExitCode::FAILURE

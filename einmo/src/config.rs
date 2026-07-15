@@ -312,6 +312,12 @@ impl TestConfig {
         self.work_dir.join(&self.input_dir)
     }
 
+    /// The input directory's name (relative to the work dir; default `input`).
+    #[must_use]
+    pub fn input_dir(&self) -> &str {
+        &self.input_dir
+    }
+
     /// The absolute path to a stage's directory.
     #[must_use]
     pub fn stage_dir(&self, stage: Stage) -> PathBuf {

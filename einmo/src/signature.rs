@@ -395,12 +395,12 @@ pub struct Stamps {
 /// cost of a batch promotion: 161 files spent ~3.5 minutes re-hashing the same
 /// binary 161 times.
 #[must_use]
-pub(crate) fn produced_by() -> String {
+pub(crate) fn produced_by() -> &'static str {
     static PRODUCED_BY: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
         let hash = self_binary_hash().unwrap_or_else(|| "unknown".to_string());
         format!("einmo {} sha256:{hash}", env!("CARGO_PKG_VERSION"))
     });
-    PRODUCED_BY.clone()
+    PRODUCED_BY.as_str()
 }
 
 /// SHA-256 of the running binary, if it can be read (`None` in unit tests /
@@ -505,7 +505,7 @@ impl Stamps {
             &compiled_vk,
             "configured",
             &configured_vk,
-            &pb,
+            pb,
             &ts,
         );
         let configured_stamp = certification_stamp(
@@ -514,7 +514,7 @@ impl Stamps {
             &configured_vk,
             "stage:output",
             &stage_vk,
-            &pb,
+            pb,
             &ts,
         );
 
@@ -527,7 +527,7 @@ impl Stamps {
         before_stage.extend_from_slice(configured_stamp.to_json_line().as_bytes());
         before_stage.push(b'\n');
 
-        let stage = stage_stamp("stage:output", stage_output, &before_stage, &pb, &ts);
+        let stage = stage_stamp("stage:output", stage_output, &before_stage, pb, &ts);
 
         Stamps {
             entries: vec![compiled, configured_stamp, stage],
@@ -549,7 +549,7 @@ impl Stamps {
     ) {
         let pb = produced_by();
         let ts = now_iso8601();
-        let stamp = stage_stamp(stage_key, signing, file_before_new_stamp, &pb, &ts);
+        let stamp = stage_stamp(stage_key, signing, file_before_new_stamp, pb, &ts);
         self.entries.push(stamp);
     }
 

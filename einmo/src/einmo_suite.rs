@@ -12,7 +12,7 @@ use crate::config::{PerspectiveOf, TestConfig};
 use crate::error::{EinmoError, Result};
 use crate::format::{EinmoFile, Metadata, Section, Status};
 use crate::signature::{Stamps, derive_keypair};
-use crate::stage::{Stage, ensure_parent_dir, mirror_input_path, walk_input_tree};
+use crate::stage::{Stage, ensure_parent_dir, mirror_input_path};
 
 /// A language-agnostic evaluator: source text in, formatted output chunks out.
 ///
@@ -56,18 +56,142 @@ pub struct TestResults {
     pub files: Vec<FileResult>,
     /// Correspondence failures (from `require_correspondence`), if enforced.
     pub correspondence_failures: Vec<String>,
+    /// Suite-shape violations: extraneous inputs and orphaned artifacts.
+    pub integrity: SuiteIntegrity,
+}
+
+/// What a suite's *shape* must satisfy, independent of any test's result.
+///
+/// Einmo is deliberately unforgiving about its own tree: silently skipping
+/// files is how a corpus rots. (The insta corpus this replaced hid a test that
+/// had never compiled for months, because the harness `eprintln!`d the error
+/// and moved on.) Two rules:
+///
+/// 1. **No extraneous files in `input/`.** A test input is a file someone
+///    deliberately named. Editor swap files, `.DS_Store`, and other cruft are
+///    reported and fail the suite — they are skipped for *discovery* (so they
+///    never become phantom tests) but never ignored.
+/// 2. **No orphaned artifacts.** A `.einmo` in `output/`, `checked/`, or
+///    `verified/` whose `input/` file no longer exists is a signed baseline for
+///    a test that does not exist — the record cannot be re-derived or reviewed.
+///    Deleting a test means deleting (or `einmo flag`ging) its artifacts.
+///
+/// `flagged/` is exempt from rule 2: flagging *is* retirement, so a flagged
+/// artifact with no input is a completed retirement, not an orphan.
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct SuiteIntegrity {
+    /// One record per violation, in deterministic order.
+    pub violations: Vec<IntegrityViolation>,
+}
+
+/// Why a single path violates the suite's shape.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum IntegrityFault {
+    /// A file under `input/` that is not a legitimate test input (an editor
+    /// swap/backup file, `.DS_Store`, …). Skipped for discovery so it cannot
+    /// become a phantom test — but never ignored.
+    ExtraneousInput,
+    /// A `.einmo` in this stage whose `input/` file no longer exists: a signed
+    /// baseline for a test that cannot be re-run or reviewed.
+    OrphanedArtifact(Stage),
+}
+
+/// One suite-shape violation: the offending path, why, and how to fix it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IntegrityViolation {
+    /// The offending path, relative to the suite's work directory.
+    pub path: PathBuf,
+    /// What is wrong with it.
+    pub fault: IntegrityFault,
+}
+
+impl IntegrityViolation {
+    /// What is wrong, in one line.
+    #[must_use]
+    pub fn reason(&self) -> String {
+        match &self.fault {
+            IntegrityFault::ExtraneousInput => {
+                "not a test input (a test input is a file someone deliberately named)".to_string()
+            }
+            IntegrityFault::OrphanedArtifact(stage) => format!(
+                "orphaned {} artifact: no corresponding file in input/",
+                stage.dir_name()
+            ),
+        }
+    }
+
+    /// What to do about it.
+    #[must_use]
+    pub fn remedy(&self) -> &'static str {
+        match &self.fault {
+            IntegrityFault::ExtraneousInput => {
+                "remove it (editor swap/backup files belong outside the suite)"
+            }
+            IntegrityFault::OrphanedArtifact(_) => {
+                "delete it, or `einmo flag <suite> <stage> <file>` to retire it"
+            }
+        }
+    }
+}
+
+impl std::fmt::Display for IntegrityViolation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}: {} — {}",
+            self.path.display(),
+            self.reason(),
+            self.remedy()
+        )
+    }
+}
+
+impl SuiteIntegrity {
+    /// `true` when the suite's shape is sound.
+    #[must_use]
+    pub fn is_clean(&self) -> bool {
+        self.violations.is_empty()
+    }
+
+    /// A reviewer-facing report naming every violation and its remedy.
+    #[must_use]
+    pub fn report(&self) -> String {
+        self.violations
+            .iter()
+            .map(|v| format!("  {v}\n"))
+            .collect::<String>()
+    }
 }
 
 impl TestResults {
-    /// `true` if every file was written and re-verified (or acknowledged as an
-    /// ignored catastrophe crumb), and every required correspondence held.
+    /// `true` if the suite's shape is sound, every file was written and
+    /// re-verified (or acknowledged as an ignored catastrophe crumb), and every
+    /// required correspondence held.
     #[must_use]
     pub fn all_output_written_and_verified(&self) -> bool {
-        self.files
-            .iter()
-            .all(|f| f.written_and_verified || f.ignored)
+        self.integrity.is_clean()
+            && self
+                .files
+                .iter()
+                .all(|f| f.written_and_verified || f.ignored)
             && self.correspondence_failures.is_empty()
     }
+}
+
+/// Judge a suite's *shape* without evaluating anything: extraneous inputs and
+/// orphaned artifacts (see [`SuiteIntegrity`]).
+///
+/// This is what `einmo verify` reports alongside signature integrity, and what
+/// [`EinmoSuite::evaluate_all`] folds into its results — one implementation, so
+/// the CLI and the library can never disagree about what a sound suite is.
+///
+/// # Errors
+///
+/// Returns [`EinmoError::Io`] if a tree cannot be walked.
+pub fn check_suite_integrity(config: &TestConfig) -> Result<SuiteIntegrity> {
+    let (inputs, extraneous) =
+        crate::stage::walk_input_tree_reporting(&config.input_path(), config.walk_depth_limit())?;
+    EinmoSuite::new(config.clone()).check_integrity(&inputs, extraneous)
 }
 
 /// A test suite bound to one work directory and configuration.
@@ -87,6 +211,45 @@ impl EinmoSuite {
     #[must_use]
     pub fn config(&self) -> &TestConfig {
         &self.config
+    }
+
+    /// Judge the suite's *shape*: extraneous inputs (R1) and orphaned
+    /// artifacts (R2). See [`SuiteIntegrity`] for the rules and rationale.
+    ///
+    /// `flagged/` is exempt from R2 — flagging is retirement, so a flagged
+    /// artifact without an input is a finished job, not an orphan.
+    fn check_integrity(
+        &self,
+        inputs: &[PathBuf],
+        extraneous: Vec<PathBuf>,
+    ) -> Result<SuiteIntegrity> {
+        let mut violations: Vec<IntegrityViolation> = extraneous
+            .into_iter()
+            .map(|rel| IntegrityViolation {
+                path: Path::new(self.config.input_dir()).join(rel),
+                fault: IntegrityFault::ExtraneousInput,
+            })
+            .collect();
+
+        let expected: std::collections::HashSet<PathBuf> =
+            inputs.iter().map(|p| mirror_input_path(p)).collect();
+
+        for stage in [Stage::Output, Stage::Checked, Stage::Verified] {
+            let dir = self.config.stage_dir(stage);
+            // A stage tree may legitimately not exist yet (nothing promoted).
+            let (present, _) =
+                crate::stage::walk_input_tree_reporting(&dir, self.config.walk_depth_limit())?;
+            for rel in present {
+                if !expected.contains(&rel) {
+                    violations.push(IntegrityViolation {
+                        path: Path::new(stage.dir_name()).join(&rel),
+                        fault: IntegrityFault::OrphanedArtifact(stage),
+                    });
+                }
+            }
+        }
+        violations.sort_by(|a, b| a.path.cmp(&b.path));
+        Ok(SuiteIntegrity { violations })
     }
 
     fn is_catastrophe_crumb(&self, out_path: &Path) -> bool {
@@ -195,7 +358,11 @@ impl EinmoSuite {
     ///
     /// Returns [`EinmoError::Io`] if the input tree cannot be walked.
     pub fn evaluate_all(&self, evaluator: &dyn Evaluator) -> Result<TestResults> {
-        let inputs = walk_input_tree(&self.config.input_path(), self.config.walk_depth_limit())?;
+        let (inputs, extraneous) = crate::stage::walk_input_tree_reporting(
+            &self.config.input_path(),
+            self.config.walk_depth_limit(),
+        )?;
+        let integrity = self.check_integrity(&inputs, extraneous)?;
         // First pass: evaluate every input, capturing raw outputs so dependents
         // can diff against their reference's output from the same run.
         let ordered = topological_order(&inputs, self.config.dependent_separator());
@@ -261,7 +428,10 @@ impl EinmoSuite {
         // Second pass: write each output, computing dependent DIFFs. Per-file
         // write/serialize failures (e.g. separator collision) are recorded as
         // a failed `FileResult` rather than aborting the whole run.
-        let mut results = TestResults::default();
+        let mut results = TestResults {
+            integrity,
+            ..TestResults::default()
+        };
         for gated in crumb_gated {
             results.files.push(gated);
         }
@@ -1103,6 +1273,91 @@ mod tests {
             .find(|f| f.rel_path.as_path() == Path::new("real.foo.einmo"))
             .expect("real input produced a FileResult");
         assert!(ok.written_and_verified);
+    }
+
+    // ---- suite integrity: einmo is critical of its own file paths ----
+
+    /// An editor swap file in `input/` is reported and fails the suite. It is
+    /// still skipped for discovery (no phantom test), but never ignored.
+    #[test]
+    fn extraneous_input_is_a_violation() {
+        let (_tmp, suite0) = suite();
+        let config = suite0.config().clone();
+        std::fs::write(config.input_path().join("a.foo"), "{5;}").unwrap();
+        std::fs::write(config.input_path().join(".a.foo.swp"), "vim").unwrap();
+
+        let results = EinmoSuite::new(config).evaluate_all(&Echo).unwrap();
+
+        assert_eq!(results.files.len(), 1, "the swap file is not a test");
+        assert_eq!(
+            results.integrity.violations,
+            vec![IntegrityViolation {
+                path: PathBuf::from("input/.a.foo.swp"),
+                fault: IntegrityFault::ExtraneousInput,
+            }]
+        );
+        assert!(
+            !results.all_output_written_and_verified(),
+            "an unsound suite shape must fail the gate"
+        );
+        assert!(results.integrity.report().contains(".a.foo.swp"));
+    }
+
+    /// A checked artifact whose input was deleted is a signed baseline for a
+    /// test that cannot be re-run — a deal breaker.
+    #[test]
+    fn orphaned_artifact_is_a_violation() {
+        let (_tmp, suite0) = suite();
+        let config = suite0.config().clone();
+        std::fs::write(config.input_path().join("a.foo"), "{5;}").unwrap();
+        // A checked artifact with no corresponding input.
+        let orphan = config.stage_dir(Stage::Checked).join("ghost.foo.einmo");
+        ensure_parent_dir(&orphan).unwrap();
+        std::fs::write(&orphan, "not even a real envelope").unwrap();
+
+        let results = EinmoSuite::new(config).evaluate_all(&Echo).unwrap();
+
+        assert_eq!(
+            results.integrity.violations,
+            vec![IntegrityViolation {
+                path: PathBuf::from("checked/ghost.foo.einmo"),
+                fault: IntegrityFault::OrphanedArtifact(Stage::Checked),
+            }]
+        );
+        assert!(!results.all_output_written_and_verified());
+    }
+
+    /// `flagged/` is exempt: flagging IS retirement, so a flagged artifact with
+    /// no input is a completed job, not an orphan.
+    #[test]
+    fn flagged_orphan_is_not_a_violation() {
+        let (_tmp, suite0) = suite();
+        let config = suite0.config().clone();
+        std::fs::write(config.input_path().join("a.foo"), "{5;}").unwrap();
+        let retired = config.stage_dir(Stage::Flagged).join("retired.foo.einmo");
+        ensure_parent_dir(&retired).unwrap();
+        std::fs::write(&retired, "retired").unwrap();
+
+        let results = EinmoSuite::new(config).evaluate_all(&Echo).unwrap();
+
+        assert!(
+            results.integrity.is_clean(),
+            "flagged/ is the terminal sink: {:?}",
+            results.integrity.violations
+        );
+    }
+
+    /// A well-formed suite reports no violations.
+    #[test]
+    fn clean_suite_has_no_integrity_violations() {
+        let (_tmp, suite0) = suite();
+        let config = suite0.config().clone();
+        std::fs::write(config.input_path().join("a.foo"), "{5;}").unwrap();
+
+        let results = EinmoSuite::new(config).evaluate_all(&Echo).unwrap();
+
+        assert!(results.integrity.is_clean());
+        assert!(results.integrity.report().is_empty());
     }
 
     #[test]
