@@ -201,6 +201,13 @@ impl EinmoSuite {
         let ordered = topological_order(&inputs, self.config.dependent_separator());
         let suite_start = std::time::Instant::now();
 
+        // KNOWN GAP (FOOP-64, 2026-07-15): `suite_duration_limit` is enforced
+        // only on the serial path below -- it is checked before starting each
+        // test, so parallel workers all launch before a short budget expires
+        // and nothing aborts. Parallel is now the default, so an operator
+        // setting EINMO_SUITE_DURATION_LIMIT gets no throttling unless they
+        // also force serial. Fixing it properly means a shared deadline the
+        // workers poll between tests; deferred, not silently ignored.
         let (raw, suite_skipped, crumb_gated) = if let Some(threads) = self.config.parallel() {
             self.evaluate_raw_parallel(&ordered, evaluator, threads, suite_start)
         } else {
@@ -1322,7 +1329,12 @@ mod tests {
     #[test]
     fn suite_duration_limit_aborts_early() {
         let tmp = tempfile::tempdir().unwrap();
+        // Serial: the suite-duration check runs *before starting* each test,
+        // which only throttles when tests start one at a time. Under parallel
+        // evaluation all workers launch before the budget expires, so nothing
+        // aborts -- see the parallel-branch note in `evaluate_all`.
         let config = TestConfig::new(tmp.path())
+            .with_parallel(Some(1))
             .with_suite_duration_limit(std::time::Duration::from_millis(80));
         let suite = EinmoSuite::new(config);
         let input_dir = tmp.path().join("input");

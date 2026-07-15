@@ -129,6 +129,23 @@ fi
 REVIEW_DIR="${POOR_EINMO_DIR:-$(mktemp -d -t poor_einmo.XXXXXX)}"
 mkdir -p "$REVIEW_DIR"
 TMP=$(mktemp -d)
+
+# Vim writes swap/backup/undo files next to the file being edited by default.
+# Reviewing an input under `input/` therefore drops `.name.foo.swp` INTO the
+# suite — einmo skips dot-files when walking, but the droppings still litter
+# the tree, land in `git status`, and (if a stale one is ever opened) breed
+# `.name.foo.swp.swp`. Give vim its own scratch directories for this run and
+# clean them up on exit. Trailing `//` makes vim encode the full path into the
+# swap file's name, so two same-named tests in different FOOP dirs cannot
+# collide.
+VIMTMP="$TMP/vim"
+mkdir -p "$VIMTMP/swap" "$VIMTMP/backup" "$VIMTMP/undo"
+VIM_OPTS=(
+    -c "set directory=$VIMTMP/swap//"
+    -c "set backupdir=$VIMTMP/backup//"
+    -c "set undodir=$VIMTMP/undo//"
+)
+
 trap 'rm -rf "$TMP"' EXIT
 
 echo "poor_einmo: ${#rows[@]} test(s) in $SUITE${FILTER:+ (filter: $FILTER)}"
@@ -157,6 +174,16 @@ for row in "${rows[@]}"; do
     marks="${row##*$'\t'}"
     test_path="${rel%.einmo}"                  # e.g. misc/simple_addition.foo
 
+    # Never open an editor swap/backup file: `einmo list` already skips
+    # dot-prefixed entries, but a stale artifact in a stage would still route
+    # here — and vim on a .swp makes a .swp.swp.
+    case "$(basename "$test_path")" in
+        .*) echo "── [$idx/${#rows[@]}] $test_path"
+            echo "   · hidden file — skipped (editor droppings are not tests)"
+            noop_list+=("$test_path")
+            continue ;;
+    esac
+
     in_f="$SUITE/input/$test_path"
     base=$(basename "$test_path")
 
@@ -184,13 +211,14 @@ for row in "${rows[@]}"; do
 
     if (( dry_run )); then
         # Debugging aid: show the call instead of locking the terminal.
-        echo "   + vimdiff '$in_f' '${pane[output]}' '${pane[checked]}' '${pane[verified]}'"
+        echo "   + vimdiff ${VIM_OPTS[*]} '$in_f' '${pane[output]}' '${pane[checked]}' '${pane[verified]}'"
         noop_list+=("$test_path")
         continue
     fi
 
     # 4-way: the source under test, then the three stages.
-    if ! vimdiff "$in_f" "${pane[output]}" "${pane[checked]}" "${pane[verified]}" \
+    if ! vimdiff "${VIM_OPTS[@]}" \
+            "$in_f" "${pane[output]}" "${pane[checked]}" "${pane[verified]}" \
             </dev/tty >/dev/tty; then
         echo
         echo "poor_einmo: aborted at $test_path."

@@ -176,7 +176,6 @@ impl TestConfig {
             encoding: "utf-8".into(),
             separator: DEFAULT_SEPARATOR.into(),
             perspectives: Vec::new(),
-            parallel: None,
             dependent_separator: "++".into(),
             diff_limit: 2000,
             suite_name,
@@ -195,6 +194,7 @@ impl TestConfig {
             duration_limit: toml.suite.duration_limit.map(Duration::from_secs),
             suite_duration_limit: toml.suite.suite_duration_limit.map(Duration::from_secs),
             rerun_catastrophes: toml.suite.rerun_catastrophes.unwrap_or(false),
+            parallel: toml.suite.parallel,
             ignore_catastrophe_crumbs: toml
                 .suite
                 .ignore_catastrophe_crumbs
@@ -354,10 +354,31 @@ impl TestConfig {
         &self.perspectives
     }
 
-    /// The parallel thread count, if any.
+    /// The thread count for `evaluate_all`; `None` means run serially.
+    ///
+    /// Precedence: `EINMO_PARALLEL` env > builder (`with_parallel`) > `einmo.toml`
+    /// `[suite] parallel` > **default: the machine's available parallelism**.
+    ///
+    /// Evaluation is embarrassingly parallel (one independent test per input),
+    /// so using every core is the sane default — a suite of 161 inputs should
+    /// not idle 15 of 16 cores. Set `EINMO_PARALLEL=0` (or `1`) to force serial;
+    /// CI can pin a lower cap that test code cannot override, matching how
+    /// every other einmo limit resolves.
+    ///
+    /// `available_parallelism` respects cgroup/affinity limits, so a container
+    /// gets its quota rather than the host's core count. If it cannot be
+    /// determined, fall back to serial rather than guessing.
     #[must_use]
     pub fn parallel(&self) -> Option<usize> {
-        self.parallel
+        let threads = std::env::var("EINMO_PARALLEL")
+            .ok()
+            .and_then(|s| s.parse::<usize>().ok())
+            .or(self.parallel)
+            .unwrap_or_else(|| {
+                std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get)
+            });
+        // 0 and 1 both mean "no worker threads": run in the calling thread.
+        (threads > 1).then_some(threads)
     }
 
     /// The dependent-name separator (default `++`).
@@ -556,6 +577,8 @@ pub struct SuiteConfig {
     pub suite_duration_limit: Option<u64>,
     pub rerun_catastrophes: Option<bool>,
     pub ignore_catastrophe_crumbs: Option<Vec<String>>,
+    /// Thread count for `evaluate_all`. `0` means serial.
+    pub parallel: Option<usize>,
 }
 
 pub fn parse_einmo_toml(work_dir: &Path) -> EinmoTomlConfig {
@@ -610,6 +633,7 @@ fn merge_toml(crate_wide: EinmoTomlConfig, per_suite: EinmoTomlConfig) -> EinmoT
                 .suite
                 .rerun_catastrophes
                 .or(crate_wide.suite.rerun_catastrophes),
+            parallel: per_suite.suite.parallel.or(crate_wide.suite.parallel),
             ignore_catastrophe_crumbs: per_suite
                 .suite
                 .ignore_catastrophe_crumbs
@@ -637,6 +661,9 @@ fn parse_toml_content(content: &str) -> Result<EinmoTomlConfig> {
     }
 
     if let Some(suite) = value.get("suite").and_then(|v| v.as_table()) {
+        if let Some(v) = suite.get("parallel").and_then(|v| v.as_integer()) {
+            config.suite.parallel = Some(v.max(0) as usize);
+        }
         if let Some(v) = suite.get("walk_depth_limit").and_then(|v| v.as_integer()) {
             config.suite.walk_depth_limit = Some(v as usize);
         }
