@@ -1,0 +1,35 @@
+#einmo 1 encoding=utf-8 separator=!!\n
+test: foop/23/value_search_name_and_value.foo
+suite: /home/hcbusy/tmp/foolish-worktrees/foop-64-einmo-suite/foolish-ubca/einmo_suite
+producer: 50e288b0
+producer-diff: sha256:5939ca296bb061e8b1bfa1f2f2285e821c117d500770db25c99ca567271ede1d
+generated: 2026-07-15T17:32:15.000000000Z
+status: normal
+status-detail: 
+sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
+{
+	a = {
+		tmp_a = 4;
+		size = 10;
+		tmp_b = 7;
+	};
+	four  = a~tmp_.*=4;
+	seven = a?tmp_.*=7;
+	none  = a~tmp_.*=10;
+}
+!!
+{NK
+  a={
+      tmpˍa=4;
+      size=10;
+      tmpˍb=7
+  };
+  four=4;
+  seven=7;
+  none=?(pattern='tmpˍ.*', ANCHORED, NK)
+}!!
+!!
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:8127f2c5dc70bf1ead6a342f07dcdf5e9f681c5be8ad5d59ef14bca54a92ff79","timestamp":"2026-07-15T17:32:15.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:8127f2c5dc70bf1ead6a342f07dcdf5e9f681c5be8ad5d59ef14bca54a92ff79","timestamp":"2026-07-15T17:32:15.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"SW43EWLDSbF7sNbDVTNDHtU+9AiD1DNL8wXoWZpWDz78fQUDFKOS9K03WSvVCMhzuqv6pnh+xJGdxKjXBKksBw==","produced_by":"einmo 0.1.0 sha256:8127f2c5dc70bf1ead6a342f07dcdf5e9f681c5be8ad5d59ef14bca54a92ff79","timestamp":"2026-07-15T17:32:15.000000000Z"}
+{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"tn/6aa6+LRtoD1/ZhKkTNZuQggizb85EUqQOH7e3aDaeuFSNFPu70iJM6xZOCOWGIj8OdKHaBYtA32ZdUCF4AQ==","produced_by":"einmo 0.1.0 sha256:1b2e352b4b477375f8e67cde637a72daabca9f9afaf2281ada1878204114c2d2","timestamp":"2026-07-15T17:33:14.000000000Z"}

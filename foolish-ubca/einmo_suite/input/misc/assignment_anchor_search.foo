@@ -3,5 +3,5 @@
  result1 = brn?a.*;
  result2 = brn?b.*;
  result3=brn?.*e,
- result4= result3=brn~.*e
+ result4=brn~.*e
 }

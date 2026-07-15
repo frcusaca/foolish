@@ -580,12 +580,13 @@ fn cmd_body(args: BodyArgs) -> Result<ExitCode> {
     let file = EinmoFile::from_file(&args.file)?;
     let sections = body_sections(&file, args.section.as_deref());
     if sections.is_empty()
-        && let Some(want) = &args.section {
-            return Err(EinmoError::Parse(format!(
-                "no section {want:?} in {}",
-                args.file.display()
-            )));
-        }
+        && let Some(want) = &args.section
+    {
+        return Err(EinmoError::Parse(format!(
+            "no section {want:?} in {}",
+            args.file.display()
+        )));
+    }
     for (name, body) in sections {
         if !args.bare {
             println!("=== {name} ===");

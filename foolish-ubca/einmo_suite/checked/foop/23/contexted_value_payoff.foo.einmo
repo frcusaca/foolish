@@ -1,0 +1,33 @@
+#einmo 1 encoding=utf-8 separator=!!\n
+test: foop/23/contexted_value_payoff.foo
+suite: /home/hcbusy/tmp/foolish-worktrees/foop-64-einmo-suite/foolish-ubca/einmo_suite
+producer: 50e288b0
+producer-diff: sha256:1cbf6939fb2d1f6c223a823b553c27f9e3f7a9dbd893feeaf99118b4bbdbad01
+generated: 2026-07-15T17:32:13.000000000Z
+status: normal
+status-detail: 
+sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
+{
+	doc = {
+		tmp_a = 4;
+		c = 30;
+		tmp_b = 4;
+	};
+	after_first_4 = doc~=4&#1;
+	before_last_4 = doc?=4&#-1;
+}
+!!
+{
+  doc={
+      tmpˍa=4;
+      c=30;
+      tmpˍb=4
+  };
+  afterˍfirstˍ4=30;
+  beforeˍlastˍ4=30
+}!!
+!!
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:8127f2c5dc70bf1ead6a342f07dcdf5e9f681c5be8ad5d59ef14bca54a92ff79","timestamp":"2026-07-15T17:32:14.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:8127f2c5dc70bf1ead6a342f07dcdf5e9f681c5be8ad5d59ef14bca54a92ff79","timestamp":"2026-07-15T17:32:14.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"xNdjV+crKiSejy5Rw83AITHXoJdUPIAdvUvB20eyULN9pqqENWcQ/6atTG7GiK5lkZWWdB+TXqIzLtYwHKfJAA==","produced_by":"einmo 0.1.0 sha256:8127f2c5dc70bf1ead6a342f07dcdf5e9f681c5be8ad5d59ef14bca54a92ff79","timestamp":"2026-07-15T17:32:14.000000000Z"}
+{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"0847yL6nGOR+2B2WdjOHTJdL6M62uErSGJ6yZ2bcSDVsO//1N33UeZNwLfFXlLB3oJ9wzqtNfQMRa6x9+x+IDA==","produced_by":"einmo 0.1.0 sha256:1b2e352b4b477375f8e67cde637a72daabca9f9afaf2281ada1878204114c2d2","timestamp":"2026-07-15T17:33:14.000000000Z"}

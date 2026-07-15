@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 use crate::config::{KeySource, TestConfig};
 use crate::error::{EinmoError, Result};
 use crate::format::EinmoFile;
-use crate::signature::{is_computer_key, now_iso8601};
+use crate::signature::{StageKeypair, is_computer_key, now_iso8601};
 use crate::stage::{Stage, ensure_parent_dir, mirror_input_path, walk_input_tree};
 
 /// One promoted file's outcome.
@@ -116,12 +116,18 @@ pub fn promote(
     let to_dir = config.stage_dir(to);
     let mut report = PromotionReport::default();
 
+    // Derive the stage key ONCE: every file in this promotion is signed with
+    // the same key, and Argon2id derivation is ~1.8s by design. Deriving per
+    // file made a 161-file promotion take ~5 minutes of pure CPU for ~0.2ms of
+    // Ed25519 signing.
+    let keypair = StageKeypair::derive(key.passphrase());
+
     for rel in matching_mirror_paths(config, from, filter, files)? {
         let src = from_dir.join(&rel);
         let dst = to_dir.join(&rel);
         // Verify-on-inspect the source; refuse a tampered file.
         let mut file = EinmoFile::from_file(&src)?;
-        let pubkey = file.append_stage_stamp(to.stamp_key(), key.passphrase());
+        let pubkey = file.append_stage_stamp_with(to.stamp_key(), &keypair);
         let non_human = to == Stage::Verified && is_computer_key(&pubkey);
         ensure_parent_dir(&dst)?;
         let bytes = file.serialize()?;

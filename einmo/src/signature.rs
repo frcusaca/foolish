@@ -20,6 +20,8 @@
 use argon2::{Algorithm, Argon2, Params, Version};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD as B64;
+use zeroize::Zeroizing;
+
 use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
 use serde::{Deserialize, Serialize};
 
@@ -75,16 +77,151 @@ pub(crate) fn derive_keypair(passphrase: &str) -> (SigningKey, VerifyingKey) {
     (signing, verifying)
 }
 
+/// A stage key: derived once, cached **KEK-wrapped**, unwrapped only inside a
+/// single signing call.
+///
+/// # Why cache at all
+///
+/// Argon2id derivation is *deliberately* expensive (~1.8s at the pinned
+/// parameters — that cost is the whole point of a KDF). Ed25519 signing takes
+/// microseconds. A batch promotion signs every file with the **same** stage
+/// key, so deriving per file makes the KDF the entire runtime: a 161-file
+/// promotion spent ~5 minutes of pure CPU on 161 identical derivations for
+/// ~0.2ms of real signing. Derive once, sign many.
+///
+/// # Why wrap the cache (the KEK)
+///
+/// A cached secret otherwise sits in plaintext in process memory for the whole
+/// batch. Instead the seed is sealed with XChaCha20-Poly1305 under a random
+/// per-process **key-encryption key**, and [`Self::with_signing_key`] unwraps
+/// it, signs, and zeroizes the plaintext before returning — so the seed exists
+/// in the clear only for the microseconds of one signature, not for minutes.
+///
+/// **Honest scope:** the KEK lives in this process's memory too, so this does
+/// **not** stop an attacker who can already read our address space — it is
+/// defense-in-depth that shrinks the plaintext window (heap dumps, core files,
+/// swap, a long-lived batch). Real isolation would need an OS keyring, HSM, or
+/// a separate privileged process; those are out of scope here.
+///
+/// `Send + Sync`: `with_signing_key` unwraps into call-local state, so parallel
+/// signers never share plaintext key material.
+pub(crate) struct StageKeypair {
+    /// The seed, sealed under `kek`. Never plaintext at rest.
+    sealed_seed: Vec<u8>,
+    nonce: [u8; 24],
+    /// The key-encryption key, random per process, zeroized on drop.
+    kek: Zeroizing<[u8; 32]>,
+    /// The public half — not secret; safe to hold in the clear.
+    verifying: VerifyingKey,
+}
+
+impl StageKeypair {
+    /// Derive the keypair for `passphrase` (the expensive step — do it once),
+    /// then immediately seal the seed under a fresh random KEK.
+    #[must_use]
+    pub(crate) fn derive(passphrase: &str) -> Self {
+        use chacha20poly1305::aead::{Aead, KeyInit};
+        use chacha20poly1305::{XChaCha20Poly1305, XNonce};
+        use rand_core::{OsRng, RngCore};
+
+        // Derive the seed exactly as `derive_keypair` does, but keep the seed
+        // itself so it can be sealed; wipe it as soon as it is wrapped.
+        let mut seed = Zeroizing::new([0u8; 32]);
+        argon2_instance()
+            .hash_password_into(passphrase.as_bytes(), SALT, seed.as_mut())
+            .expect("Argon2id derivation cannot fail for valid pinned parameters");
+        let verifying = SigningKey::from(&*seed).verifying_key();
+
+        let mut kek = Zeroizing::new([0u8; 32]);
+        OsRng.fill_bytes(kek.as_mut());
+        let mut nonce = [0u8; 24];
+        OsRng.fill_bytes(&mut nonce);
+
+        let cipher = XChaCha20Poly1305::new_from_slice(kek.as_ref())
+            .expect("XChaCha20-Poly1305 accepts a 32-byte key");
+        let sealed_seed = cipher
+            .encrypt(XNonce::from_slice(&nonce), seed.as_ref() as &[u8])
+            .expect("sealing a 32-byte seed cannot fail");
+        // `seed` is zeroized here by Zeroizing's Drop.
+
+        Self {
+            sealed_seed,
+            nonce,
+            kek,
+            verifying,
+        }
+    }
+
+    /// Unwrap the key, hand it to `f`, and zeroize the plaintext before
+    /// returning — the seed is in the clear only for the body of `f`.
+    ///
+    /// Keep `f` short: sign and get out. Do not clone the key out of it.
+    pub(crate) fn with_signing_key<R>(&self, f: impl FnOnce(&SigningKey) -> R) -> R {
+        use chacha20poly1305::aead::{Aead, KeyInit};
+        use chacha20poly1305::{XChaCha20Poly1305, XNonce};
+
+        let cipher = XChaCha20Poly1305::new_from_slice(self.kek.as_ref())
+            .expect("XChaCha20-Poly1305 accepts a 32-byte key");
+        let plain = Zeroizing::new(
+            cipher
+                .decrypt(XNonce::from_slice(&self.nonce), self.sealed_seed.as_slice())
+                .expect("the sealed seed was written by this process and cannot fail to open"),
+        );
+        let mut seed = Zeroizing::new([0u8; 32]);
+        seed.copy_from_slice(&plain);
+        // SigningKey zeroizes its own material on drop (ed25519-dalek).
+        let signing = SigningKey::from(&*seed);
+        f(&signing)
+        // `signing`, `seed`, and `plain` are all wiped here.
+    }
+
+    /// The hex public key — what a stamp records and `confirm-signatures`
+    /// matches. Public material: never sealed.
+    #[must_use]
+    pub(crate) fn pubkey_hex(&self) -> String {
+        hex::encode(self.verifying.to_bytes())
+    }
+}
+
+impl std::fmt::Debug for StageKeypair {
+    /// Never renders key material — only the public half.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StageKeypair")
+            .field("pubkey", &self.pubkey_hex())
+            .field("seed", &"<sealed>")
+            .finish_non_exhaustive()
+    }
+}
+
+/// The two fixed keys, derived once per process.
+///
+/// Both are pure functions of compile-time constants (the stock compiled-key
+/// seed, and the empty passphrase), and **both are public knowledge in a stock
+/// build** — so they are cached in the clear; there is no secret to protect.
+/// Caching is a correctness-neutral speed fix: each was re-deriving Argon2id
+/// (~1.8s) on *every* stamp generation and every `is_computer_key` check, which
+/// is what made a 161-file promotion take minutes.
+///
+/// A custom build embedding a genuinely secret compiled key should revisit
+/// this: wrap it like [`StageKeypair`] rather than caching plaintext.
+static COMPILED_KEYPAIR: std::sync::LazyLock<(SigningKey, VerifyingKey)> =
+    std::sync::LazyLock::new(|| derive_keypair(COMPILED_KEY_SEED_PASSPHRASE));
+
+static COMPUTER_KEYPAIR: std::sync::LazyLock<(SigningKey, VerifyingKey)> =
+    std::sync::LazyLock::new(|| derive_keypair(""));
+
 /// The stock Compiled Key (deterministic, publicly known in stock builds).
 #[must_use]
 pub(crate) fn compiled_keypair() -> (SigningKey, VerifyingKey) {
-    derive_keypair(COMPILED_KEY_SEED_PASSPHRASE)
+    let (sk, vk) = &*COMPILED_KEYPAIR;
+    (sk.clone(), *vk)
 }
 
 /// The well-known computer/AI-agent key derived from the empty passphrase.
 #[must_use]
 pub(crate) fn computer_keypair() -> (SigningKey, VerifyingKey) {
-    derive_keypair("")
+    let (sk, vk) = &*COMPUTER_KEYPAIR;
+    (sk.clone(), *vk)
 }
 
 /// Returns `true` if `pubkey_hex` is the well-known empty-passphrase key.
@@ -250,10 +387,20 @@ pub struct Stamps {
 /// Provenance string identifying the producing binary (§4.4 `produced_by`).
 ///
 /// Format: `"einmo <version> sha256:<binary-hash-or-'unknown'>"`.
+///
+/// Computed **once per process**: the string is a constant for a given running
+/// binary (its own bytes cannot change while it executes), but deriving it
+/// means reading and SHA-256ing the whole executable — ~24 MB, ~1.3s. Every
+/// stamp carries this field, so recomputing per stamp made it the dominant
+/// cost of a batch promotion: 161 files spent ~3.5 minutes re-hashing the same
+/// binary 161 times.
 #[must_use]
 pub(crate) fn produced_by() -> String {
-    let hash = self_binary_hash().unwrap_or_else(|| "unknown".to_string());
-    format!("einmo {} sha256:{hash}", env!("CARGO_PKG_VERSION"))
+    static PRODUCED_BY: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        let hash = self_binary_hash().unwrap_or_else(|| "unknown".to_string());
+        format!("einmo {} sha256:{hash}", env!("CARGO_PKG_VERSION"))
+    });
+    PRODUCED_BY.clone()
 }
 
 /// SHA-256 of the running binary, if it can be read (`None` in unit tests /

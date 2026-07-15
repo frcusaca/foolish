@@ -18,7 +18,7 @@
 passphrase = ""
 
 [signing.checked]
-passphrase = ""
+passphrase = "foolish-ubca"
 
 [suite]
 # Foolish sources may contain the default separator glyph; the suite uses the

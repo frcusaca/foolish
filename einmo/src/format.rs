@@ -26,7 +26,7 @@
 //! configured separator — parsing then stays trivially byte-exact.
 
 use crate::error::{EinmoError, Result};
-use crate::signature::{StampCheck, Stamps, derive_keypair};
+use crate::signature::{StageKeypair, StampCheck, Stamps};
 
 /// The envelope format version emitted by this build.
 const FORMAT_VERSION: u32 = 1;
@@ -372,11 +372,24 @@ impl EinmoFile {
     /// this method assumes the existing stamps are valid and appends over all
     /// current file bytes. Returns the hex pubkey of the appended stamp so the
     /// caller can warn on a non-human (computer-key) verified attestation.
-    pub(crate) fn append_stage_stamp(&mut self, stage_key: &str, passphrase: &str) -> String {
-        let (signing, verifying) = derive_keypair(passphrase);
+    /// Append this stage's stamp, signing with a keypair the caller derived.
+    ///
+    /// Argon2id derivation is deliberately expensive (~1.8s at the pinned
+    /// parameters), and every file in a batch is signed with the *same* stage
+    /// key — so the key is derived once by the caller and passed in. Deriving
+    /// per file made a 161-file promotion cost ~5 minutes of pure CPU for
+    /// ~0.2ms of actual Ed25519 signing.
+    ///
+    /// The plaintext key exists only inside [`StageKeypair::with_signing_key`].
+    pub(crate) fn append_stage_stamp_with(
+        &mut self,
+        stage_key: &str,
+        keypair: &StageKeypair,
+    ) -> String {
         let prefix = self.stamps.prefix_for_next_stamp(&self.signed_prefix());
-        self.stamps.append_stage(stage_key, &signing, &prefix);
-        hex::encode(verifying.to_bytes())
+        // The plaintext key exists only inside this closure.
+        keypair.with_signing_key(|signing| self.stamps.append_stage(stage_key, signing, &prefix));
+        keypair.pubkey_hex()
     }
 
     /// `true` iff the whole stamp chain verifies.

@@ -152,6 +152,18 @@ fn walk_dir_depth(
     for entry in entries {
         let entry = entry.map_err(|e| EinmoError::io(dir, e))?;
         let path = entry.path();
+        // Skip hidden entries: editor swap files (`.foo.swp`), `.git`, and
+        // other dot-prefixed cruft are not test inputs. Without this, an open
+        // editor session injects phantom tests into the suite — and worse, the
+        // gate then fails on an artifact whose input vanishes when the editor
+        // closes. A test input is a file someone deliberately named.
+        if entry
+            .file_name()
+            .to_str()
+            .is_some_and(|n| n.starts_with('.'))
+        {
+            continue;
+        }
         let file_type = entry.file_type().map_err(|e| EinmoError::io(&path, e))?;
         if file_type.is_symlink() {
             // Follow the symlink to determine the target type. A broken
@@ -312,6 +324,26 @@ mod tests {
     }
 
     #[cfg(unix)]
+    /// An editor swap file (or any dot-prefixed entry) is not a test input:
+    /// an open vim session must not inject phantom tests into the suite.
+    #[test]
+    fn walk_skips_hidden_entries() {
+        let tmp = tempfile::tempdir().unwrap();
+        let input = tmp.path().join("input");
+        std::fs::create_dir_all(input.join("foop/13")).unwrap();
+        std::fs::write(input.join("foop/13/comprehensive.foo"), "{1;}").unwrap();
+        std::fs::write(input.join("foop/13/.comprehensive.foo.swp"), "vim").unwrap();
+        std::fs::create_dir_all(input.join(".git")).unwrap();
+        std::fs::write(input.join(".git/config"), "x").unwrap();
+
+        let found = walk_input_tree(&input, MAX_WALK_DEPTH).unwrap();
+        assert_eq!(
+            found,
+            vec![PathBuf::from("foop/13/comprehensive.foo")],
+            "hidden files and dot-directories must not be discovered as inputs"
+        );
+    }
+
     #[test]
     fn walk_depth_limit_prevents_infinite_symlink_cycle() {
         use std::os::unix::fs::symlink;

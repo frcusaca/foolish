@@ -1,0 +1,121 @@
+#einmo 1 encoding=utf-8 separator=!!\n
+test: foop/62/sequencer_comprehensive.foo
+suite: /home/hcbusy/tmp/foolish-worktrees/foop-64-einmo-suite/foolish-ubca/einmo_suite
+producer: 50e288b0
+producer-diff: sha256:16051350f65d3694e00be78ce8012b41c3f50e349c3beded71d88d32338adfa1
+generated: 2026-07-15T17:32:16.000000000Z
+status: normal
+status-detail: 
+sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
+{
+  !! Constants
+  a = 1;
+  b = 2;
+  c = 3;
+  
+  !! Operators
+  sum = a + b;
+  product = a * b;
+  divide = a / b;
+  subtract = a - b;
+  
+  !! NK from division by zero
+  bad = 1 / 0;
+  
+  !! Nested brane
+  inner = {
+    x = 10;
+    y = 20;
+    z = x + y;
+  };
+  
+  !! Search
+  found = a;
+  
+  !! SF (StayFoolish)
+  sf_val = <a>;
+  
+  !! SFF (StayFullyFoolish)
+  sff_val = <<b>>;
+  
+  !! Concatenation
+  concat = {p = 1; q = 2} ⨃ {r = 3; s = 4};
+  
+  !! Index
+  idx = inner#0;
+  
+  !! Head/Tail
+  hd = inner^;
+  tl = inner$;
+  
+  !! Forward reference
+  fwd = later;
+  later = 99;
+  
+  !! Deeply nested
+  deep = {
+    level1 = {
+      level2 = {
+        level3 = {
+          val = 42;
+        };
+      };
+    };
+  };
+  
+  !! Search through nesting
+  deep_search = deep.level1.level2.level3.val;
+  
+  !! Result
+  result = sum + product;
+}
+!!
+{WOCONSTANIC
+  a=1;
+  b=2;
+  c=3;
+  sum=3;
+  product=2;
+  divide=0;
+  subtract=-1;
+  bad=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK;
+  inner={
+      x=10;
+      y=20;
+      z=30
+  };
+  found=1;
+  sfˍval=?(result=1, pattern='^a$', UNANCHORED);
+  sffˍval=<<WOCONSTANIC
+      ?(pattern='^b$', UNANCHORED)
+  >>;
+  concat={
+      p=1;
+      q=2
+  };
+  {
+    r=3;
+    s=4
+  };
+  idx=10;
+  hd=10;
+  tl=30;
+  fwd=?(pattern='^later$', UNANCHORED, ECONSTANIC);
+  later=99;
+  deep={
+      level1={
+          level2={
+              level3={
+                  val=42
+              }
+          }
+      }
+  };
+  deepˍsearch=42;
+  result=5
+}!!
+!!
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:8127f2c5dc70bf1ead6a342f07dcdf5e9f681c5be8ad5d59ef14bca54a92ff79","timestamp":"2026-07-15T17:32:16.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:8127f2c5dc70bf1ead6a342f07dcdf5e9f681c5be8ad5d59ef14bca54a92ff79","timestamp":"2026-07-15T17:32:16.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"M/E9lzaPyk9logT0+4uLZFb1YHd7Ln8EvBH1aQRasRhwgLkdw3K2JiiLY/x+prs2e541OTAdRFlTKAGUSoiIBQ==","produced_by":"einmo 0.1.0 sha256:8127f2c5dc70bf1ead6a342f07dcdf5e9f681c5be8ad5d59ef14bca54a92ff79","timestamp":"2026-07-15T17:32:16.000000000Z"}
+{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"vMU2qgmqZ+gd/Y9tbu9fOLJkxmvtPGDrSy6IcdINFR8d0VEyjAq7/PV84VlSftYBv2JU02HD5I+PLluRnXeNBQ==","produced_by":"einmo 0.1.0 sha256:1b2e352b4b477375f8e67cde637a72daabca9f9afaf2281ada1878204114c2d2","timestamp":"2026-07-15T17:33:14.000000000Z"}
