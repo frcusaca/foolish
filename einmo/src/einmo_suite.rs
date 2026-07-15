@@ -151,6 +151,24 @@ impl std::fmt::Display for ValidationLevel {
     }
 }
 
+/// How much to look for before giving up.
+///
+/// The default is [`FailurePolicy::FailAtEnd`]: run every check the level
+/// demands, gather everything, and report it all at once — a reviewer fixing a
+/// suite wants the whole list, not one problem per run.
+///
+/// [`FailurePolicy::FailFast`] stops at the **first** failure. Cheap checks are
+/// still performed greedily in escalation order (base level first), so
+/// fail-fast surfaces the most foundational problem there is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum FailurePolicy {
+    /// Stop at the first failure found.
+    FailFast,
+    /// Run everything; report every problem together. The default.
+    #[default]
+    FailAtEnd,
+}
+
 /// Everything that can be wrong with a suite, grouped by the level that finds
 /// it (FOOP-64 §"The escalating validation levels").
 ///
@@ -167,18 +185,26 @@ impl std::fmt::Display for ValidationLevel {
 #[non_exhaustive]
 pub enum Problem {
     // ── Output level ────────────────────────────────────────────────────
-    /// O1 — a file under `input/` that is not a test input (editor swap/backup,
-    /// `.DS_Store`, …). Skipped for discovery so it cannot become a phantom
-    /// test, but never ignored.
-    ExtraneousFile { path: PathBuf },
+    /// O1 — a file **in `input/`** that is not a test input (editor swap/backup,
+    /// `.DS_Store`, …). Nothing generated it; it is cruft that wandered in.
+    /// Skipped for discovery so it cannot become a phantom test, but never
+    /// ignored.
+    ///
+    /// Contrast [`Problem::OrphanedStageArtifact`]: that is a file einmo *did*
+    /// generate, in a *stage* directory, whose input has since disappeared.
+    ExtraneousInputFile { path: PathBuf },
     /// O2 — the suite discovered no inputs at all. A vacuous pass is not a pass.
     EmptySuite,
     /// O3/O4 — an artifact could not be written, or failed to verify against
     /// its own bytes immediately after writing.
     ArtifactUnsound { path: PathBuf, detail: String },
-    /// O5/C3/V3 — a `.einmo` whose `input/` file no longer exists: a signed
-    /// record that can never be re-derived or reviewed.
-    OrphanedArtifact { stage: Stage, path: PathBuf },
+    /// O5/C3/V3 — a `.einmo` **in a stage directory** whose `input/` file no
+    /// longer exists: einmo generated it, but the test it records is gone, so
+    /// the signed record can never be re-derived or reviewed.
+    ///
+    /// Contrast [`Problem::ExtraneousInputFile`]: that is cruft in `input/`
+    /// that nothing generated.
+    OrphanedStageArtifact { stage: Stage, path: PathBuf },
 
     // ── Checked / Verified levels: a pairwise (left, right) comparison ──
     //
@@ -210,24 +236,47 @@ pub enum Problem {
         path: PathBuf,
         section: String,
     },
-    /// C4/V4 — an artifact's stamp chain does not verify: tampered, corrupt,
-    /// or a broken chain. Refused, never compared.
-    SignatureInvalid {
+    /// C4/V4 — the stamp's **signature does not verify against the bytes it
+    /// covers**: the artifact is tampered, corrupt, or its chain is broken.
+    /// Refused, never compared.
+    ///
+    /// This is a statement about the *signature*, not about *who* signed: a
+    /// forged byte fails here no matter whose key is on it.
+    SignatureDoesNotVerify {
         stage: Stage,
         path: PathBuf,
         detail: String,
     },
 
-    // ── Verified level only ─────────────────────────────────────────────
-    /// V6 — a `stage:verified` stamp is not the configured reviewer's key.
-    WrongSigner {
+    // ── Verified level only: three distinct facts about the signer ──────
+    //
+    // These are deliberately separate. A signature can verify perfectly and
+    // still be wrong, in two different ways — and the reader needs to know
+    // which:
+    //
+    //   SignatureDoesNotVerify  the bytes do not match the signature (above)
+    //   SignedByUnexpectedKey   verifies, but not the key we require
+    //   KeyDerivedFromEmptyPassphrase
+    //                           verifies, well-formed, and is the well-known
+    //                           computer key — an AI attested where a human
+    //                           was required
+    //
+    /// V6 — the `stage:verified` stamp **verifies**, but its public key is not
+    /// the configured reviewer's: the right bytes signed by the wrong person.
+    SignedByUnexpectedKey {
         path: PathBuf,
         expected_prefix: String,
         found: String,
     },
-    /// V7 — a `stage:verified` stamp carries the well-known computer key: an
-    /// AI attested where a human was required.
-    ComputerKeyAttestation { path: PathBuf },
+    /// V7 — the `stage:verified` stamp's public key **was generated from the
+    /// empty passphrase**: the well-known computer/AI key.
+    ///
+    /// Distinct from [`Problem::SignedByUnexpectedKey`] because it names *why*
+    /// the key is wrong and is detectable without any configured reviewer key:
+    /// einmo derives the empty-passphrase key itself and compares. This is the
+    /// AI-bypass detector — an agent piping `--passphrase ""` produces exactly
+    /// this key.
+    KeyDerivedFromEmptyPassphrase { path: PathBuf },
 }
 
 impl Problem {
@@ -235,25 +284,23 @@ impl Problem {
     #[must_use]
     pub fn level(&self) -> ValidationLevel {
         match self {
-            Problem::ExtraneousFile { .. }
+            Problem::ExtraneousInputFile { .. }
             | Problem::EmptySuite
             | Problem::ArtifactUnsound { .. } => ValidationLevel::Output,
-            Problem::OrphanedArtifact { stage, .. } | Problem::SignatureInvalid { stage, .. } => {
-                match stage {
-                    Stage::Verified => ValidationLevel::Verified,
-                    Stage::Checked => ValidationLevel::Checked,
-                    _ => ValidationLevel::Output,
-                }
-            }
+            Problem::OrphanedStageArtifact { stage, .. }
+            | Problem::SignatureDoesNotVerify { stage, .. } => match stage {
+                Stage::Verified => ValidationLevel::Verified,
+                Stage::Checked => ValidationLevel::Checked,
+                _ => ValidationLevel::Output,
+            },
             Problem::LeftMissingEntirely { right, .. }
             | Problem::RightMissingEntirely { right, .. }
             | Problem::SectionDifference { right, .. } => match right {
                 Stage::Verified => ValidationLevel::Verified,
                 _ => ValidationLevel::Checked,
             },
-            Problem::WrongSigner { .. } | Problem::ComputerKeyAttestation { .. } => {
-                ValidationLevel::Verified
-            }
+            Problem::SignedByUnexpectedKey { .. }
+            | Problem::KeyDerivedFromEmptyPassphrase { .. } => ValidationLevel::Verified,
         }
     }
 
@@ -262,15 +309,15 @@ impl Problem {
     pub fn path(&self) -> Option<&Path> {
         match self {
             Problem::EmptySuite => None,
-            Problem::ExtraneousFile { path }
+            Problem::ExtraneousInputFile { path }
             | Problem::ArtifactUnsound { path, .. }
-            | Problem::OrphanedArtifact { path, .. }
+            | Problem::OrphanedStageArtifact { path, .. }
             | Problem::LeftMissingEntirely { path, .. }
             | Problem::RightMissingEntirely { path, .. }
             | Problem::SectionDifference { path, .. }
-            | Problem::SignatureInvalid { path, .. }
-            | Problem::WrongSigner { path, .. }
-            | Problem::ComputerKeyAttestation { path } => Some(path),
+            | Problem::SignatureDoesNotVerify { path, .. }
+            | Problem::SignedByUnexpectedKey { path, .. }
+            | Problem::KeyDerivedFromEmptyPassphrase { path } => Some(path),
         }
     }
 
@@ -278,15 +325,15 @@ impl Problem {
     #[must_use]
     pub fn remedy(&self) -> &'static str {
         match self {
-            Problem::ExtraneousFile { .. } => {
-                "remove it (editor swap/backup files belong outside the suite)"
+            Problem::ExtraneousInputFile { .. } => {
+                "remove it from input/ (editor swap/backup files belong outside the suite)"
             }
             Problem::EmptySuite => "check the suite's input/ directory and its configured path",
             Problem::ArtifactUnsound { .. } => {
                 "investigate: the harness could not produce a sound artifact"
             }
-            Problem::OrphanedArtifact { .. } => {
-                "delete it, or `einmo flag <suite> <stage> <file>` to retire it"
+            Problem::OrphanedStageArtifact { .. } => {
+                "its input is gone: delete the artifact, or `einmo flag <suite> <stage> <file>` to retire it"
             }
             Problem::LeftMissingEntirely { .. } => {
                 "the right side holds a record the left does not: delete the stray, or restore the left"
@@ -297,11 +344,11 @@ impl Problem {
             Problem::SectionDifference { .. } => {
                 "review the diff: repair the code, or promote after review"
             }
-            Problem::SignatureInvalid { .. } => {
+            Problem::SignatureDoesNotVerify { .. } => {
                 "the artifact is tampered or corrupt: regenerate and re-promote"
             }
-            Problem::WrongSigner { .. } => "re-sign with the reviewer's key",
-            Problem::ComputerKeyAttestation { .. } => {
+            Problem::SignedByUnexpectedKey { .. } => "re-sign with the reviewer's key",
+            Problem::KeyDerivedFromEmptyPassphrase { .. } => {
                 "a human must sign: `einmo promote checked->verified <suite> --interactive`"
             }
         }
@@ -311,7 +358,7 @@ impl Problem {
 impl std::fmt::Display for Problem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Problem::ExtraneousFile { path } => write!(
+            Problem::ExtraneousInputFile { path } => write!(
                 f,
                 "{}: not a test input (a test input is a file someone deliberately named)",
                 path.display()
@@ -320,7 +367,7 @@ impl std::fmt::Display for Problem {
             Problem::ArtifactUnsound { path, detail } => {
                 write!(f, "{}: not written+verified: {detail}", path.display())
             }
-            Problem::OrphanedArtifact { stage, path } => write!(
+            Problem::OrphanedStageArtifact { stage, path } => write!(
                 f,
                 "{}/{}: orphaned — no corresponding file in input/",
                 stage.dir_name(),
@@ -352,7 +399,7 @@ impl std::fmt::Display for Problem {
                 left.dir_name(),
                 right.dir_name()
             ),
-            Problem::SignatureInvalid {
+            Problem::SignatureDoesNotVerify {
                 stage,
                 path,
                 detail,
@@ -362,18 +409,18 @@ impl std::fmt::Display for Problem {
                 stage.dir_name(),
                 path.display()
             ),
-            Problem::WrongSigner {
+            Problem::SignedByUnexpectedKey {
                 path,
                 expected_prefix,
                 found,
             } => write!(
                 f,
-                "{}: stage:verified signed by {found}, expected key starting {expected_prefix}",
+                "{}: stage:verified verifies, but is signed by key {found} — expected a key starting {expected_prefix}",
                 path.display()
             ),
-            Problem::ComputerKeyAttestation { path } => write!(
+            Problem::KeyDerivedFromEmptyPassphrase { path } => write!(
                 f,
-                "{}: stage:verified carries the computer key — an AI attested where a human was required",
+                "{}: stage:verified is signed by the well-known key generated from the empty passphrase — an AI attested where a human was required",
                 path.display()
             ),
         }
@@ -429,11 +476,11 @@ impl TestResults {
 /// # Errors
 ///
 /// Returns [`EinmoError::Io`] if a tree cannot be walked.
-pub fn check_suite_integrity(config: &TestConfig) -> Result<SuiteIntegrity> {
+pub fn check_suite_integrity(config: &TestConfig, policy: FailurePolicy) -> Result<SuiteIntegrity> {
     let (inputs, extraneous) =
         crate::stage::walk_input_tree_reporting(&config.input_path(), config.walk_depth_limit())?;
     let level = config.validation_level();
-    EinmoSuite::new(config.clone()).check_integrity(&inputs, extraneous, level)
+    EinmoSuite::new(config.clone()).check_integrity(&inputs, extraneous, level, policy)
 }
 
 /// A test suite bound to one work directory and configuration.
@@ -471,11 +518,28 @@ impl EinmoSuite {
         inputs: &[PathBuf],
         extraneous: Vec<PathBuf>,
         level: ValidationLevel,
+        policy: FailurePolicy,
     ) -> Result<SuiteIntegrity> {
         let mut problems: Vec<Problem> = Vec::new();
         let expected: std::collections::HashSet<PathBuf> =
             inputs.iter().map(|p| mirror_input_path(p)).collect();
 
+        // Under FailFast, stop the instant a problem is known — do not run the
+        // remaining checks. Checks run in escalation order, so the first
+        // failure found is the most foundational one there is.
+        //
+        // `add!` takes problems one at a time precisely so fail-fast means
+        // "stopped early", not "did all the work then truncated the report".
+        macro_rules! add {
+            ($found:expr) => {
+                for problem in $found {
+                    problems.push(problem);
+                    if policy == FailurePolicy::FailFast {
+                        return Ok(SuiteIntegrity { problems });
+                    }
+                }
+            };
+        }
         for step in level.escalation() {
             match step {
                 // ── Output level ───────────────────────────────────────
@@ -486,30 +550,28 @@ impl EinmoSuite {
                         .map(|rel| Path::new(self.config.input_dir()).join(rel))
                         .collect();
                     extras.sort();
-                    problems.extend(
+                    add!(
                         extras
                             .into_iter()
-                            .map(|path| Problem::ExtraneousFile { path }),
+                            .map(|path| Problem::ExtraneousInputFile { path })
                     );
                     // O2 — a suite that discovered nothing is not a pass.
                     if inputs.is_empty() {
-                        problems.push(Problem::EmptySuite);
+                        add!([Problem::EmptySuite]);
                     }
                     // O5 — orphans in output/. (O3/O4 come from the run itself.)
-                    problems.extend(self.orphans_of(Stage::Output, &expected)?);
+                    add!(self.orphans_of(Stage::Output, &expected)?);
                 }
                 // ── Checked level: escalates from Output ───────────────
                 ValidationLevel::Checked => {
-                    problems.extend(self.orphans_of(Stage::Checked, &expected)?); // C3
-                    problems.extend(self.stage_pair_problems(Stage::Output, Stage::Checked)?);
-                    // C2/C4/C5
+                    add!(self.orphans_of(Stage::Checked, &expected)?); // C3
+                    add!(self.stage_pair_problems(Stage::Output, Stage::Checked)?); // C2/C4/C5
                 }
                 // ── Verified level: escalates from Checked ─────────────
                 ValidationLevel::Verified => {
-                    problems.extend(self.orphans_of(Stage::Verified, &expected)?); // V3
-                    problems.extend(self.stage_pair_problems(Stage::Checked, Stage::Verified)?);
-                    // V2/V4/V5
-                    problems.extend(self.attestation_problems()?); // V6/V7
+                    add!(self.orphans_of(Stage::Verified, &expected)?); // V3
+                    add!(self.stage_pair_problems(Stage::Checked, Stage::Verified)?); // V2/V4/V5
+                    add!(self.attestation_problems()?); // V6/V7
                 }
             }
         }
@@ -531,7 +593,7 @@ impl EinmoSuite {
         let mut out: Vec<Problem> = present
             .into_iter()
             .filter(|rel| !expected.contains(rel))
-            .map(|path| Problem::OrphanedArtifact { stage, path })
+            .map(|path| Problem::OrphanedStageArtifact { stage, path })
             .collect();
         out.sort_by(|a, b| a.path().cmp(&b.path()));
         Ok(out)
@@ -577,7 +639,7 @@ impl EinmoSuite {
             }
         }
         for rel in cmp.tampered {
-            out.push(Problem::SignatureInvalid {
+            out.push(Problem::SignatureDoesNotVerify {
                 stage: b,
                 path: rel,
                 detail: "verify-on-inspect refused this artifact".to_string(),
@@ -613,11 +675,11 @@ impl EinmoSuite {
             };
             let pubkey = stamp.pubkey_hex().to_string();
             if crate::signature::is_computer_key(&pubkey) {
-                out.push(Problem::ComputerKeyAttestation { path: rel.clone() });
+                out.push(Problem::KeyDerivedFromEmptyPassphrase { path: rel.clone() });
             } else if let Some(prefix) = &expected_prefix
                 && !pubkey.starts_with(prefix.as_str())
             {
-                out.push(Problem::WrongSigner {
+                out.push(Problem::SignedByUnexpectedKey {
                     path: rel.clone(),
                     expected_prefix: prefix.clone(),
                     found: pubkey,
@@ -862,8 +924,12 @@ impl EinmoSuite {
         // Validate the suite's shape LAST: the escalating levels judge output/
         // (and, above the base level, checked/ and verified/), none of which
         // exist until this run has written them.
-        results.integrity =
-            self.check_integrity(&inputs, extraneous, self.config.validation_level())?;
+        results.integrity = self.check_integrity(
+            &inputs,
+            extraneous,
+            self.config.validation_level(),
+            FailurePolicy::FailAtEnd,
+        )?;
         Ok(results)
     }
 
@@ -1672,7 +1738,7 @@ mod tests {
         assert_eq!(results.files.len(), 1, "the swap file is not a test");
         assert_eq!(
             results.integrity.problems,
-            vec![Problem::ExtraneousFile {
+            vec![Problem::ExtraneousInputFile {
                 path: PathBuf::from("input/.a.foo.swp"),
             }]
         );
@@ -1681,6 +1747,69 @@ mod tests {
             "an unsound suite shape must fail the gate"
         );
         assert!(results.integrity.report().contains(".a.foo.swp"));
+    }
+
+    /// Fail-at-end (the default) gathers every problem; fail-fast stops at the
+    /// first. A reviewer fixing a suite wants the whole list, not one problem
+    /// per run — but a gate that only needs a verdict can stop early.
+    #[test]
+    fn fail_fast_stops_at_the_first_problem_fae_gathers_all() {
+        let (_tmp, suite0) = suite();
+        let config = suite0.config().clone();
+        std::fs::write(config.input_path().join("a.foo"), "{5;}").unwrap();
+        std::fs::write(config.input_path().join(".a.foo.swp"), "vim").unwrap();
+        std::fs::write(config.input_path().join(".b.foo.swp"), "vim").unwrap();
+
+        let all = check_suite_integrity(&config, FailurePolicy::FailAtEnd).unwrap();
+        assert_eq!(all.problems.len(), 2, "fail-at-end gathers every problem");
+
+        let first = check_suite_integrity(&config, FailurePolicy::FailFast).unwrap();
+        assert_eq!(first.problems.len(), 1, "fail-fast stops at the first");
+        assert_eq!(
+            first.problems[0], all.problems[0],
+            "and it is the same first problem"
+        );
+    }
+
+    /// The default policy is fail-at-end: gather everything.
+    #[test]
+    fn default_failure_policy_is_fail_at_end() {
+        assert_eq!(FailurePolicy::default(), FailurePolicy::FailAtEnd);
+    }
+
+    /// The two "where does it live" faults are distinct: cruft in `input/`
+    /// that nothing generated, versus a generated artifact in a *stage* whose
+    /// input has since disappeared.
+    #[test]
+    fn extraneous_input_and_orphaned_artifact_are_distinct() {
+        let (_tmp, suite0) = suite();
+        let config = suite0
+            .config()
+            .clone()
+            .with_validation_level(ValidationLevel::Checked);
+        std::fs::write(config.input_path().join("a.foo"), "{5;}").unwrap();
+        std::fs::write(config.input_path().join(".cruft.swp"), "vim").unwrap();
+        let orphan = config.stage_dir(Stage::Checked).join("ghost.foo.einmo");
+        ensure_parent_dir(&orphan).unwrap();
+        std::fs::write(&orphan, "generated once; its input is gone").unwrap();
+
+        let found = check_suite_integrity(&config, FailurePolicy::FailAtEnd).unwrap();
+
+        assert!(
+            found.problems.contains(&Problem::ExtraneousInputFile {
+                path: PathBuf::from("input/.cruft.swp"),
+            }),
+            "cruft in input/ is an ExtraneousInputFile: {:?}",
+            found.problems
+        );
+        assert!(
+            found.problems.contains(&Problem::OrphanedStageArtifact {
+                stage: Stage::Checked,
+                path: PathBuf::from("ghost.foo.einmo"),
+            }),
+            "a stage artifact with no input is an OrphanedStageArtifact: {:?}",
+            found.problems
+        );
     }
 
     /// The levels escalate: each carries every requirement of the level below.
@@ -1769,7 +1898,7 @@ mod tests {
     #[test]
     fn problems_report_their_level() {
         assert_eq!(
-            Problem::ExtraneousFile {
+            Problem::ExtraneousInputFile {
                 path: PathBuf::from("input/.x.swp")
             }
             .level(),
@@ -1777,7 +1906,7 @@ mod tests {
         );
         assert_eq!(Problem::EmptySuite.level(), ValidationLevel::Output);
         assert_eq!(
-            Problem::ComputerKeyAttestation {
+            Problem::KeyDerivedFromEmptyPassphrase {
                 path: PathBuf::from("a.foo.einmo")
             }
             .level(),
@@ -1816,7 +1945,7 @@ mod tests {
             results
                 .integrity
                 .problems
-                .contains(&Problem::OrphanedArtifact {
+                .contains(&Problem::OrphanedStageArtifact {
                     stage: Stage::Checked,
                     path: PathBuf::from("ghost.foo.einmo"),
                 }),

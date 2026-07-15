@@ -215,19 +215,45 @@ reproduce their content, and a reviewer reads them through `einmo body` / `poor_
 /// The escalating validation levels. No default: a suite states its level.
 pub enum ValidationLevel { Output, Checked, Verified }
 
+/// How much to look for before giving up. Default: FailAtEnd.
+pub enum FailurePolicy {
+    FailFast,   // stop at the first failure
+    FailAtEnd,  // run everything, report every problem together (default)
+}
+
 pub enum Problem {
-    ExtraneousFile { path, .. },        // O1
-    EmptySuite,                         // O2
-    EvaluationFailed { path, .. },      // O3
-    SelfVerifyFailed { path, .. },      // O4
-    OrphanedArtifact { stage, path },   // O5 / C3 / V3
-    MissingCounterpart { from, to, path },  // C2 / V2
-    SignatureInvalid { stage, path, .. },   // C4 / V4
-    ContentDiffers { a, b, path, sections },// C5 / V5  (names sections, not content)
-    WrongSigner { path, expected, found },  // V6
-    ComputerKeyAttestation { path },        // V7
+    // ── Output level ────────────────────────────────────────────────────
+    ExtraneousInputFile { path },                 // O1 — cruft IN input/;
+                                                  //      nothing generated it
+    EmptySuite,                                   // O2
+    ArtifactUnsound { path, detail },             // O3 / O4
+    OrphanedStageArtifact { stage, path },        // O5/C3/V3 — a generated
+                                                  //   artifact in a STAGE dir
+                                                  //   whose input is gone
+
+    // ── pairwise: `left` is the side escalated FROM, `right` the side TO ──
+    LeftMissingEntirely  { left, right, path },   // C2 / V2
+    RightMissingEntirely { left, right, path },   // C2 / V2
+    SectionDifference { left, right, path, section },  // C5/V5 — names the
+                                                  //   section, never content
+    SignatureDoesNotVerify { stage, path, detail },    // C4/V4 — the bytes do
+                                                  //   not match the signature
+
+    // ── Verified level: three DISTINCT facts about the signer ───────────
+    SignedByUnexpectedKey { path, expected_prefix, found },  // V6 — verifies,
+                                                  //   but the wrong person
+    KeyDerivedFromEmptyPassphrase { path },       // V7 — verifies, well-formed,
+                                                  //   and IS the well-known
+                                                  //   empty-passphrase key
 }
 ```
+
+**Two distinctions the enum makes deliberately:**
+
+| Pair | The difference |
+|---|---|
+| `ExtraneousInputFile` vs `OrphanedStageArtifact` | **Which tree.** The first is cruft *in `input/`* that nothing generated (an editor swap file wandered in). The second is a file einmo *did* generate, *in a stage directory*, whose input has since disappeared — a signed record that can never be re-derived. Different faults, different remedies. |
+| `SignatureDoesNotVerify` vs `SignedByUnexpectedKey` vs `KeyDerivedFromEmptyPassphrase` | **What is actually wrong.** (1) the signature does not match the bytes it covers — tampering, regardless of whose key it is. (2) the signature verifies perfectly, but the public key is not the reviewer's — the right bytes, the wrong person. (3) the signature verifies, the key is well-formed, and it **is the key generated from the empty passphrase** — the well-known computer key. That last one is *why* the AI bypass is detectable: einmo derives that key itself and compares. |
 
 Each variant carries the offending path and a one-line description of what is wrong and what to
 do about it. The **CLI is complementary**: it prints the same problems (`--json` emits one

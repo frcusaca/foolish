@@ -12,7 +12,7 @@ use std::process::ExitCode;
 use clap::{Args, Parser, Subcommand};
 
 use crate::config::{KeyCascadeInputs, KeySource, MatchSections, TestConfig, resolve_stage_key};
-use crate::einmo_suite::ValidationLevel;
+use crate::einmo_suite::{FailurePolicy, ValidationLevel};
 use crate::error::{EinmoError, Result};
 use crate::format::EinmoFile;
 use crate::stage::Stage;
@@ -143,6 +143,13 @@ struct VerifyArgs {
     /// library API has no default.
     #[arg(long, default_value = "checked")]
     level: String,
+    /// Stop at the first failure instead of gathering every problem.
+    /// The default is fail-at-end: run everything, report it all.
+    #[arg(long, conflicts_with = "fail_at_end")]
+    fail_fast: bool,
+    /// Run every check and report all problems together (the default).
+    #[arg(long)]
+    fail_at_end: bool,
     /// Restrict to one stage.
     #[arg(long)]
     stage: Option<String>,
@@ -473,8 +480,13 @@ fn cmd_verify(args: VerifyArgs) -> Result<ExitCode> {
     // Signature integrity is only half of "is this suite sound?" — the tree's
     // shape is the other half. Checked only for a whole-suite verify: a
     // file-scoped or single-stage run is not making a claim about the tree.
+    let policy = if args.fail_fast {
+        FailurePolicy::FailFast
+    } else {
+        FailurePolicy::FailAtEnd
+    };
     let integrity = if files.is_empty() && stage.is_none() {
-        crate::check_suite_integrity(&config)?
+        crate::check_suite_integrity(&config, policy)?
     } else {
         crate::SuiteIntegrity::default()
     };
