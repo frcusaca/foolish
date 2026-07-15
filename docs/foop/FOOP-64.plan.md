@@ -36,6 +36,32 @@ branch used by the FOOP-62 and FOOP-92 merges):
       remains fully intact and green)
 - [ ] (read §Proposed new combination tests of FOOP-64.md)
 
+
+## HUMAN DECISION — `assignment_anchor_search.foo` does not compile (found 2026-07-15)
+
+@human: einmo's first run surfaced a test the insta harness was silently swallowing.
+
+- `foolish-ubca/snapshot_tests/input/assignment_anchor_search.foo` **has no approved `.snap`** —
+  it is the *only* input of 162 without one. Reason: it fails to compile
+  (`expected primary expression, found Assign at line 6, column 17`), and the legacy
+  `approval_all` handled evaluator errors with `eprintln!("  ERROR: …")` and moved on — never
+  asserting, never snapshotting. The failure has been invisible in CI for its whole life.
+- Line 6 is `result4= result3=brn~.*e` — a double assignment in one statement. Lines 3–5 look
+  like deliberate probes of anchored/unanchored regex search (`brn?a.*`, `brn?.*e`), so the file
+  reads like an in-progress test that was committed before it parsed.
+- **einmo's behavior is correct and is the point**: it records a signed artifact with
+  `status: input-error` + `status-detail: <compiler message>` rather than losing the fact.
+  The migrated corpus therefore contains 160 `status: normal` + 1 `status: input-error`.
+
+Choose one (annotate below):
+  - [ ] **Fix the input** — repair line 6 to what it meant to test (`@agent fix: <intended source>`),
+        then it evaluates normally and gets a real baseline.
+  - [ ] **Flag it out** — `einmo flag foolish-ubca/einmo_suite output assignment_anchor_search.foo.einmo
+        --reason "never compiled; superseded by FOOP-23 search tests"` (moves it to `flagged/`,
+        the terminal sink).
+  - [ ] **Promote as-is** — accept `status: input-error` as the pinned, signed truth: this input
+        does not compile, and the corpus says so under signature.
+
 ## HUMAN INSPECTION — near-identical test clusters (FOOP-64, flagged 2026-07-15)
 
 @human: these are the near-identical groups found by a similarity survey of the 161 migrated

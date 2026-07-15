@@ -12,6 +12,11 @@ serde = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
+# einmo: the signed-snapshot harness (FOOP-64). einmo has zero dependency on any
+# workspace crate, so this dev-dep introduces no cycle.
+einmo = { path = "../einmo" }
+# insta: retained only until the FOOP-64 migration completes; its removal from
+# every crate is FOOP-64's completion criterion.
 insta = { workspace = true }
 num_cpus = "1"
 

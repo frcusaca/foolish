@@ -943,6 +943,7 @@ name = "foolish-ubca"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "einmo",
  "foolish-core",
  "foolish-parser",
  "insta",
