@@ -12,12 +12,14 @@ branch used by the FOOP-62 and FOOP-92 merges):
 
 ---
 
-- [ ] Begin work: verify `cargo test --workspace` is green on `jia`; commit FOOP-64.md and
-      FOOP-64.plan.md; check `begun: [x]` in FOOP-64.md frontmatter
-- [ ] Create worktree at /home/hcbusy/tmp/foolish-worktrees/foop-64-einmo-suite with branch
-      `foop-64-einmo-suite` (`git worktree add -b foop-64-einmo-suite
-      /home/hcbusy/tmp/foolish-worktrees/foop-64-einmo-suite`), from `jia` at
-      /home/hcbusy/foolish-rust
+- [x] Begin work: verified `cargo test --workspace` on `jia` — all suites green except
+      `approval_all`, red signature-only (161/161; the P1 disease this FOOP cures — documented
+      exception, not a blocker). Committed FOOP-64.md + FOOP-64.plan.md (6764f6ed) and the
+      `begun: [x]` marker (3414805a).
+      (2026-07-14 22:52)
+- [x] Create worktree at /home/hcbusy/tmp/foolish-worktrees/foop-64-einmo-suite with branch
+      `foop-64-einmo-suite`, from `jia` at /home/hcbusy/foolish-rust
+      (2026-07-14 22:53)
 - [ ] (read §Suite layout and §Harness of FOOP-64.md)
 - [ ] Scaffold `foolish-ubca/einmo_suite/` — `input/` hierarchy dirs, `einmo.toml`
       (`[signing.output]` / `[signing.checked]` passphrase `""`; `verified` unset)

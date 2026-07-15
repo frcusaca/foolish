@@ -1,0 +1,27 @@
+# einmo suite configuration — foolish-ubca (FOOP-64)
+#
+# The UBCa FVM's approval corpus, tested by einmo. (Inverse of zweimomo, where
+# the FVM is an evaluator used to test einmo.)
+#
+# Two tiers run against this one directory (FOOP-64 §Two-tier signing gate):
+#   * feature-complete test suite — output <-> checked; the computer key is
+#     acceptable here (AI promotion `output->checked` is the einmo design).
+#   * merge-ready test suite — output <-> verified; every stage:verified stamp
+#     must carry the human reviewer's key, and zero may carry the computer key.
+#
+# `verified` is deliberately NOT configured: with no passphrase tier set, the
+# cascade falls through to an interactive prompt, so a human must type their
+# passphrase to produce a verified stamp. An AI piping --passphrase "" gets the
+# well-known computer key, which the merge gate detects post-hoc.
+
+[signing.output]
+passphrase = ""
+
+[signing.checked]
+passphrase = ""
+
+[suite]
+# Foolish sources may contain the default separator glyph; the suite uses the
+# Foolish line-comment separator instead (FOOP-92 §4.1).
+# (separator is set in code via TestConfig::foolish_separator())
+walk_depth_limit = 32
