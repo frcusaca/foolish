@@ -12,6 +12,12 @@ begun: [ ]
 
 # FOOP-04: Cascading connector for search — the `|` fallback operator
 
+> **Roadmap note (2026-07-14, Track 2 #2):** depends on FOOP-93's settlement batch — the
+> cascade's whole premise is that a miss is detectable and non-fatal (43-C1 miss→ECONSTANIC
+> now lives in FOOP-93). Define cascade-over-ECONSTANIC precisely: `a?x | b?x` falls through
+> on Miss-reason ECONSTANIC (read the 43-C3 `EconstanicReason`), and does NOT fall through
+> on found-NK. Execute after FOOP-93, before FOOP-14.
+
 > Lean draft. Fuller notes in the Appendix and `NOTES-creation-lineage-and-search-family.md` §9.
 > (Implementation order: #7 — Search FOOP B of three. Renumbered 2026-07-09.)
 

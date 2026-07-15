@@ -1,5 +1,17 @@
 # FOOP-92 Plan — Einmo: directory-based signed-snapshot testing with staged promotion
 
+- [x] Complete (as it stands). The einmo + zweimomo MVP (Phases 0–10, 14–15b) is implemented,
+      hardened, and merged to `jia` (9bbdaf43); Phase 0's restricted-file fixes (`/bin/` in
+      `.gitignore`, `.gitattributes *.einmo -text`) were performed by the human. The per-item
+      checkboxes below were executed but never ticked — completion of the MVP phases is attested
+      by the merged crates and their test suites, not by this ledger. Disposition of the
+      NOT-performed remainder: **Phase 11 (gates) and Phase 12 (console-review) are re-homed
+      into FOOP-64** (the UBCa-snapshot einmo migration, which needs them operationally);
+      **Phase 13 (serve/SPA), the MCP server, Phase 16 (algorithm corpus), and Phase 17
+      (use-case validation) are deferred** — future work to be re-proposed as their own FOOP(s)
+      when wanted, not silently pending here.
+      (2026-07-14 12:26)
+
 This plan executes [FOOP-92](FOOP-92.md). **Read the specification first** —
 the plan assumes its context. The design is frozen (all OQs resolved).
 

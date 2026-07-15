@@ -12,6 +12,12 @@ begun: [ ]
 
 # FOOP-84: Deadbrane — useless-element detection and FirID cloning semantics
 
+> **Scope reduction (Atlas, 2026-07-14):** the **FirID cloning semantics component is removed
+> from this FOOP** — deferred to a later implementation pass. FOOP-74 (FIRID) is scheduled by
+> itself on the roadmap; Deadbrane's useless-element detection proceeds **without any FIRID
+> dependency**. Sections below that pin FirID assignment rules are not to be executed under
+> this FOOP.
+
 FOOP numbering is little-endian; the full rules live in `foop.md` at the
 repository root — **read it before creating or editing a FOOP.**
 

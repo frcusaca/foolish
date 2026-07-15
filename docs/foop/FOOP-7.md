@@ -2,7 +2,7 @@
 foop: 7
 title: Constanic Clone — recoordination contract (revised to consume AB)
 author: hc <hc.busy@gmail.com>
-status: Brewing
+status: Superseded
 type: Standards
 created: 2026-05-01
 phase: phase-2
@@ -10,6 +10,11 @@ supersedes: []
 ---
 
 # FOOP-7: Constanic Clone — recoordination contract (revised to consume AB)
+
+> **Superseded 2026-07-14.** The constanic-clone/recoordination contract is realized in UBCa
+> (`ProtoBrane::constanic_clone_at`), revised by FOOP-62-era work and under further refinement
+> by FOOP-74 (FIRID) / FOOP-84 (cloning semantics) and FOOP-93's 43-C2 position-stripping rule.
+> Early UBC-era text; cite the UBCa code and the modern FOOPs instead.
 
 ## Abstract
 

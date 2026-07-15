@@ -2,7 +2,7 @@
 foop: 8
 title: FIRs are mutable; parent pointers are post-clone; Circe excludes parent
 author: hc <hc.busy@gmail.com>
-status: Brewing
+status: Superseded
 type: Standards
 created: 2026-05-02
 phase: phase-2
@@ -10,6 +10,11 @@ supersedes: []
 ---
 
 # FOOP-8: FIRs are mutable; parent pointers are post-clone; Circe excludes parent
+
+> **Superseded 2026-07-14.** The semantics (FIRs mutable, parents set post-clone, parent
+> excluded from serialization) hold, but the mechanism was replaced by UBCa's interior
+> mutability (`Cell`/`RefCell` in `ProtoBrane`) + `Weak` parent links (FOOP-62/FOOP-52
+> architecture). Early UBC-era text; do not cite for current mechanics.
 
 ## Abstract
 
