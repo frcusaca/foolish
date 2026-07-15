@@ -123,7 +123,7 @@ mod einmo_tests {
 
         // Anti-vacuity: a suite that discovered no inputs is a failure, not a
         // pass. (`compare --require-match` exits 0 on an empty tree — verified
-        // 2026-07-14; FOOP-64 §Two-tier signing gate.)
+        // 2026-07-14; FOOP-64 §"The escalating validation levels".)
         assert!(
             !results.files.is_empty(),
             "einmo suite discovered no inputs — check einmo_suite/input/"

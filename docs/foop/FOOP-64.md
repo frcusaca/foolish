@@ -39,7 +39,7 @@ signed `.einmo` envelope format (FOOP-92). This is the inverse direction from zw
 Foolish FVM was an evaluator used to test einmo; here einmo is the harness used to test the
 Foolish UBCa FVM. The FOOP also proposes nine new feature-combination tests (§Proposed new
 combination tests), re-homes the reserved comprehensive-test path for all future FOOPs,
-installs the **two-tier signing gate** (§Two-tier signing gate: development requires the
+installs the **escalating validation levels** (§The escalating validation levels: development requires the
 **checked** stage; PR merge requires the **verified** stage — same suite directory, different
 requirements, different public keys), and updates AGENTS.md / foop.md / the skills to mandate
 the checked-stage gate. **This FOOP is not complete until the repository has securely migrated
@@ -80,9 +80,9 @@ foolish-ubca/einmo_suite/
 │   └── misc/                   # CATCHALL beside foop/ — not easily categorized;
 │                               #   the pool to re-home as FOOPs claim their tests
 ├── output/                     # generated, signed (computer key)
-├── checked/                    # reviewed baseline (committed) — feature-complete tier
+├── checked/                    # reviewed baseline (committed) — the Checked level
 ├── flagged/                    # set-aside sink
-└── verified/                   # human-signed — merge-ready tier
+└── verified/                   # human-signed — the Verified level
 ```
 
 Directory names under `foop/` use the **filename digits** (the little-endian identifier):
@@ -195,7 +195,7 @@ level), with `--level verified` to escalate.
 | # | Requirement |
 |---|---|
 | V1 | **Everything the Checked level requires (C1–C5), and therefore the Output level too (O1–O5).** |
-| V2 | **Files match up exactly** — every `checked/` artifact has a `verified/` counterpart and vice versa. A partially-signed corpus is an *incomplete* tier, not a passing one. |
+| V2 | **Files match up exactly** — every `checked/` artifact has a `verified/` counterpart and vice versa. A partially-signed corpus is an *incomplete* level, not a passing one. |
 | V3 | **No orphaned `verified/` artifacts** — every `verified/` artifact has an `input/` file. |
 | V4 | **Every `verified/` artifact's signatures verify** — the chain now includes `stage:verified`. |
 | V5 | **Content compares identical** — `checked` vs `verified`, same section rule as C5. |
@@ -260,7 +260,7 @@ do about it. The **CLI is complementary**: it prints the same problems (`--json`
 object per problem) and exits non-zero — one implementation, so the library and CLI can never
 disagree about what a valid suite is.
 
-**Mechanics of the merge tier:**
+**Mechanics of the merge gate (the Verified level):**
 
 - A second test (`einmo_verified_gate`), `#[ignore]`d locally, run by
   `.github/workflows/einmo-gates.yml` on pull requests. Making that workflow a **required status
@@ -272,11 +272,11 @@ disagree about what a valid suite is.
 ### foolish-core migration (as part of this FOOP)
 
 `foolish-core/snapshot_tests/` migrates to a corresponding **`foolish-core/einmo_suite/`** with
-the **same organizational requirements** as the UBCa suite: the `foop/<NUMBER>/…`,
-`lang/<category>/…`, `lang/usecases/…`, `regression/…` hierarchy, the same placement rules
-R1–R12, the same dual-home rule, and its own `MAPPING.md`. Both tiers include it: the
-feature-complete suite requires its output↔checked correspondence; the merge-ready suite its
-output↔verified correspondence under the human key. One inventory question is resolved during
+the **same organizational requirements** as the UBCa suite: organized by FOOP provenance
+(`foop/<NUMBER>/…`, `regression/…`, `misc/…` catchall), the same placement rules R1–R5, **one
+home per test** (no dual-homing; identical tests keep the older), and its own `MAPPING.md`. Both
+gates cover it: the feature-complete test suite validates it at the Checked level; the
+merge-ready test suite escalates it to the Verified level under the reviewer's key. One inventory question is resolved during
 execution: which evaluator drives foolish-core's inputs post-FOOP-62 (UBC was retired; the
 corpus may be partially stale) — stale inputs are flagged to the human via `einmo flag` with
 reasons rather than silently dropped. `foolish-parser`'s insta usage (inline snapshot
@@ -301,7 +301,7 @@ process law:
 - **`foop.md`**: comprehensive-test path re-homing (below) plus the requirement that a FOOP's
   merge criteria include the einmo checked-stage gate.
 - **Skills**: every insta/`.snap` reference becomes the einmo equivalent (generate → review →
-  promote flow, `console-review`, the two-tier gate).
+  promote flow, `console-review`, the escalating validation levels).
 
 ### Comprehensive-test path re-homing
 
@@ -313,9 +313,8 @@ comprehensive is the first test born at the new path.
 
 ## Proposed new combination tests
 
-New tests authored by this FOOP live in `foop/64/`; those that read as demonstrations get a
-dual-home copy in `lang/usecases/`. Each targets a feature *pair/triple* the current corpus
-misses:
+New tests authored by this FOOP live in `foop/64/` — one home each, per §"One home per test".
+Each targets a feature *pair/triple* the current corpus misses:
 
 | Test | Combination | What it pins |
 |------|-------------|--------------|
@@ -341,10 +340,10 @@ evaluator output (enforced by §Cross-validation).
 ## Test Plan
 
 - `einmo_approval_all` (new): every input under `einmo_suite/input/` written+verified to
-  `output/` and matching `checked/` — the development tier.
+  `output/` and matching `checked/` — the **feature-complete test suite**, at the Checked level.
 - `einmo_verified_gate` (new, `#[ignore]` locally, CI on PRs): output ↔ `verified/`
   correspondence + human-key `confirm-signatures --require-all` + zero-computer-key scan on
-  `stage:verified` stamps — the merge tier.
+  `stage:verified` stamps — the **merge-ready test suite**, at the Verified level.
 - `cross_validate_einmo_vs_insta` (new, `#[ignore]`, temporary): migrated outputs byte-match the
   approved `.snap` RESULTs.
 - Existing insta `approval_all` keeps passing untouched until human retirement.
@@ -378,11 +377,11 @@ unsigned-stage insta pipeline FOOP-92 was built to replace stays load-bearing.
 - Exact home for a handful of ambiguous stems (e.g. `search_through_concatenation`,
   `seek_in_nested_result_after_concatenation`) — first-match rule places them; the attribution
   pass may add dual copies. Resolve during MAPPING.md review.
-- Merge-tier key: a single human reviewer key, or a small set of accepted reviewer keys
+- Reviewer key (V6): a single human reviewer key, or a small set of accepted reviewer keys
   (workflow constant becomes a list)?
 - ~~`foolish-parser` / `foolish-core` insta inventories: separate suites or shared?~~ Resolved
   (Atlas 2026-07-14): **per-crate corresponding suites** — `foolish-core/einmo_suite/` with the
-  same organizational requirements, included in both tiers; parser handled in the retirement
+  same organizational requirements, covered by both gates; parser handled in the retirement
   sweep per its actual insta shape.
 - Whether `foolish_review.sh` / `accept_approved.sh` retire outright or become thin wrappers
   over `einmo console-review` / `einmo promote` (human preference).

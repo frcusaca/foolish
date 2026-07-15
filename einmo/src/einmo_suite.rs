@@ -607,22 +607,27 @@ impl EinmoSuite {
     /// by design (they carry per-run timestamps; comparing them is the insta
     /// defect this FOOP exists to fix).
     fn stage_pair_problems(&self, left: Stage, right: Stage) -> Result<Vec<Problem>> {
-        let (a, b) = (left, right);
-        let cmp = crate::compare::compare(&self.config, a, b, self.config.match_sections(), None)?;
+        let cmp = crate::compare::compare(
+            &self.config,
+            left,
+            right,
+            self.config.match_sections(),
+            None,
+        )?;
         let mut out = Vec::new();
         // `only_in_a` = present left, absent right → the right side is missing.
         for rel in cmp.only_in_a {
             out.push(Problem::RightMissingEntirely {
-                left: a,
-                right: b,
+                left,
+                right,
                 path: rel,
             });
         }
         // `only_in_b` = present right, absent left → the left side is missing.
         for rel in cmp.only_in_b {
             out.push(Problem::LeftMissingEntirely {
-                left: a,
-                right: b,
+                left,
+                right,
                 path: rel,
             });
         }
@@ -631,8 +636,8 @@ impl EinmoSuite {
         for d in cmp.differing {
             for section in d.sections {
                 out.push(Problem::SectionDifference {
-                    left: a,
-                    right: b,
+                    left,
+                    right,
                     path: d.rel_path.clone(),
                     section,
                 });
@@ -640,7 +645,7 @@ impl EinmoSuite {
         }
         for rel in cmp.tampered {
             out.push(Problem::SignatureDoesNotVerify {
-                stage: b,
+                stage: right,
                 path: rel,
                 detail: "verify-on-inspect refused this artifact".to_string(),
             });
