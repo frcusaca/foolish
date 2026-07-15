@@ -38,7 +38,17 @@ tests. **Deferred — needs its own decision.**
 
 ---
 
-## Feature 2 — Einmo is extra critical of its own file paths ⬅ TO BUILD
+## Feature 2 — Einmo is extra critical of its own file paths ✅ DONE (0e71339d), ⬅ NOW SUPERSEDED IN SHAPE
+
+**Superseded 2026-07-15 by Atlas's escalating-scope directive** — see FOOP-64.md
+§"Validation levels: Output, Checked, Verified". The rules below were right but
+applied *unconditionally* across all three stages, so an unpopulated `verified/`
+made a dev suite red. They are now tiered: each level performs everything the
+level below requires, plus its own; the API has **no default** (the configuring
+test states its level); the CLI defaults to Checked with `--scope verified`.
+`SuiteIntegrity`/`IntegrityViolation` become the `Problem` enum of the spec.
+
+### (original, for the record)
 
 **Directive:** *"the Einmo library should be extra critical of it's file paths.
 If it ever finds extraneous file, it should be a test error. If it ever finds a

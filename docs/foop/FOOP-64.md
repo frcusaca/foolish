@@ -157,50 +157,89 @@ section from `einmo_suite/checked/` and byte-compares it against the RESULT sect
 corresponding approved `.snap` (read-only). This proves the migration transported behavior, not
 just files. The test is deleted when the human retires `snapshot_tests/`.
 
-### Two-tier signing gate: checked for development, verified for merge
+### Validation levels: Output, Checked, Verified (escalating, cumulative)
 
-Both tiers run against the **same suite directories** — they differ in the required
-correspondence stage and in **which public keys they accept**:
+Validation happens at **one of three levels**. Each level performs **everything the level below
+it requires**, plus its own — `Verified ⊃ Checked ⊃ Output`. This is the spine of the two gates:
+the **feature-complete test suite** validates at `Checked`; the **merge-ready test suite**
+validates at `Verified`. Both run against the same suite directories; only the bar rises.
 
-| Tier | Name | When | Requirement | Key check |
-|------|------|------|-------------|-----------|
-| **Development** | the **feature-complete test suite** | every `cargo test`, every commit | output ↔ **checked** correspondence (`einmo_approval_all`: `require_correspondence(Output, Checked)`) | `checked/` stamps may be the well-known computer key — AI promotion `output->checked` is the einmo design |
-| **Merge (PR)** | the **merge-ready test suite** | GitHub PR gate | output ↔ **verified** correspondence (`einmo compare output verified --require-match`) | every `verified/` file carries a `stage:verified` stamp under the **human reviewer's public key** (`confirm-signatures verified <human-key-prefix> --require-all`), and **zero** files carry the computer key on that stamp (AI-bypass scan per the einmo draconian-gate pattern) |
+**The API has no default.** The configuring test states the level it produces and validates
+(`ValidationScope::{Output, Checked, Verified}`); a config that has not chosen cannot be
+constructed. The **CLI** is built on top and may default (to `Checked`), with `--scope verified`
+to escalate.
 
-Both tiers cover **all migrated suites** — `foolish-ubca/einmo_suite/` and
-`foolish-core/einmo_suite/` (below) — so "feature-complete" and "merge-ready" are properties of
-the whole repository, not of one crate.
+#### Level 1 — `Output`: the suite is well-formed and evaluates
 
-**Gate failure semantics — verified empirically 2026-07-14 (sanity check, do not assume):**
+| # | Requirement |
+|---|---|
+| O1 | **No extraneous files** anywhere under `input/` — a test input is a file someone deliberately named. Dot-prefixed entries (editor swap/backup, `.DS_Store`) are skipped for *discovery* so they cannot become phantom tests, and **reported as violations**. |
+| O2 | **The suite is non-empty** — a run that discovered no inputs is a failure, not a vacuous pass. |
+| O3 | **Every input evaluates** and its `.einmo` is written to `output/`. |
+| O4 | **Every written artifact self-verifies** — its full stamp chain (compiled → configured → `stage:output`) validates against the bytes on disk immediately after writing. |
+| O5 | **No orphaned `output/` artifacts** — every `.einmo` in `output/` has a corresponding `input/` file. An artifact whose input is gone is a record that can never be re-derived. |
 
-| Condition | Behavior | Verdict |
-|---|---|---|
-| `output/` has files, `checked/` missing them | `compare --require-match` → `1 only-in-output`, burden message, **exit 1** | correct — a demanded checked file that does not exist **fails** |
-| `output/` has files, `verified/` missing them | same, **exit 1** | correct |
-| library `require_correspondence(Output, Checked)` with empty `checked/` | `only_in_a` → `is_clean()` false → `correspondence_failures` non-empty → `all_output_written_and_verified()` false (pinned by einmo's own `correspondence_failure_reported_until_promoted` test) | correct |
-| **empty suite** (no inputs / no stage files at all) | `compare --require-match` → **exit 0** | ⚠️ **vacuous pass** |
-| **`confirm-signatures --require-all` on an empty `verified/`** | "0 file(s) match, 0 do not" → **exit 0** | ⚠️ **vacuous pass** |
+#### Level 2 — `Checked`: …everything Output requires, plus a reviewed baseline
 
-The two vacuous passes are edge holes einmo's CLI leaves open (they are technically correct —
-"all zero files comply" — but useless as gates). **Both gate tests MUST therefore assert
-non-emptiness explicitly**, per the einmo draconian-gate pattern:
+| # | Requirement |
+|---|---|
+| C1 | **All of O1–O5.** |
+| C2 | **Files match up exactly** — every `output/` artifact has a `checked/` counterpart and vice versa. No one-sided files in either direction. |
+| C3 | **No orphaned `checked/` artifacts** — every `checked/` artifact has an `input/` file. |
+| C4 | **Every `checked/` artifact's signatures verify** — the chain now includes `stage:checked`. |
+| C5 | **Content compares identical** — `output` vs `checked` INPUT + every OUTPUT section, byte for byte. STAMPS and metadata are excluded by design: they carry per-run timestamps and would make the gate structurally red (the insta defect this FOOP exists to fix). |
 
-- `einmo_approval_all`: `assert!(!results.files.is_empty())` — a suite that discovered no inputs
-  is a failure, not a pass.
-- `einmo_verified_gate`: assert the `verified/` walk is non-empty **and** that its file count
-  equals the `output/` count, *before* asserting key coverage — otherwise a never-populated
-  `verified/` sails through `--require-all`.
+#### Level 3 — `Verified`: …everything Checked requires, plus human attestation
 
-Mechanics:
+| # | Requirement |
+|---|---|
+| V1 | **All of C1–C5** (and therefore all of O1–O5). |
+| V2 | **Files match up exactly** — every `checked/` artifact has a `verified/` counterpart and vice versa. A partially-signed corpus is an *incomplete* tier, not a passing one. |
+| V3 | **No orphaned `verified/` artifacts** — every `verified/` artifact has an `input/` file. |
+| V4 | **Every `verified/` artifact's signatures verify** — the chain now includes `stage:verified`. |
+| V5 | **Content compares identical** — `checked` vs `verified`, same section rule as C5. |
+| V6 | **Signed by the human reviewer's key** — every `stage:verified` stamp's pubkey matches the configured reviewer key. |
+| V7 | **No computer-key attestation** — *zero* `stage:verified` stamps carry the well-known empty-passphrase key. An AI piping `--passphrase ""` is detected post-hoc and fails the gate. |
 
-- The merge tier is a second test (`einmo_verified_gate`), `#[ignore]`d in local runs and
-  executed by `.github/workflows/einmo-gates.yml` on pull requests. Making that workflow a
-  **required status check** is a GitHub branch-protection setting — a human act (agents do not
-  change repository settings); the plan carries it as a human checkbox.
-- The human reviewer's public key (hex prefix) is embedded as a constant in the gate test /
-  workflow; the human derives and supplies it once (their passphrase never appears anywhere).
-- Keeping the tiers on one suite directory means the *content* under test is identical — only
-  the attestation bar rises from "a reviewer promoted this" to "a human signed this."
+`flagged/` is **outside the escalation entirely**: it is the terminal sink, so a flagged
+artifact with no input is a completed retirement, not an orphan, at every level.
+
+#### What the API returns
+
+Success, or failure **with a list of problems**. Each problem is an **enum variant plus a
+description** — never an excerpt from a file (the artifacts are signed; a report must not
+reproduce their content, and a reviewer reads them through `einmo body` / `poor_einmo.sh`):
+
+```rust
+pub enum ValidationScope { Output, Checked, Verified }
+
+pub enum Problem {
+    ExtraneousFile { path, .. },        // O1
+    EmptySuite,                         // O2
+    EvaluationFailed { path, .. },      // O3
+    SelfVerifyFailed { path, .. },      // O4
+    OrphanedArtifact { stage, path },   // O5 / C3 / V3
+    MissingCounterpart { from, to, path },  // C2 / V2
+    SignatureInvalid { stage, path, .. },   // C4 / V4
+    ContentDiffers { a, b, path, sections },// C5 / V5  (names sections, not content)
+    WrongSigner { path, expected, found },  // V6
+    ComputerKeyAttestation { path },        // V7
+}
+```
+
+Each variant carries the offending path and a one-line description of what is wrong and what to
+do about it. The **CLI is complementary**: it prints the same problems (`--json` emits one
+object per problem) and exits non-zero — one implementation, so the library and CLI can never
+disagree about what a valid suite is.
+
+**Mechanics of the merge tier:**
+
+- A second test (`einmo_verified_gate`), `#[ignore]`d locally, run by
+  `.github/workflows/einmo-gates.yml` on pull requests. Making that workflow a **required status
+  check** is a GitHub branch-protection setting — a human act (agents do not change repository
+  settings); the plan carries it as a human checkbox.
+- The reviewer's public key (hex prefix) is a constant in the gate; the human derives and
+  supplies it once (their passphrase never appears anywhere).
 
 ### foolish-core migration (as part of this FOOP)
 
