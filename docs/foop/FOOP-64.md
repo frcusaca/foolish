@@ -7,7 +7,7 @@ type: Standards
 created: 2026-07-14
 phase: meta
 supersedes: []
-begun: [ ]
+begun: [x]
 ---
 
 # FOOP-64: Migrate UBCa snapshot tests to a hierarchical einmo suite
