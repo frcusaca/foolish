@@ -395,13 +395,14 @@ fn glob_match(text: &str, pattern: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::einmo_suite::ValidationLevel;
     use crate::format::{DEFAULT_SEPARATOR, Metadata, Section, Status};
     use crate::signature::{Stamps, derive_keypair};
     use std::fs;
 
     fn suite() -> (tempfile::TempDir, TestConfig) {
         let tmp = tempfile::tempdir().unwrap();
-        let config = TestConfig::new(tmp.path());
+        let config = TestConfig::new(tmp.path(), ValidationLevel::Output);
         config.ensure_stage_dirs().unwrap();
         fs::create_dir_all(config.input_path()).unwrap();
         (tmp, config)

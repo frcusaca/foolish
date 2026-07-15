@@ -793,7 +793,7 @@ mod step_until_tests {
         let root = firs[0].clone();
         let scope = Scope::empty();
 
-        let _ = step_to_settled(&root, &scope).unwrap();
+        step_to_settled(&root, &scope).unwrap();
         let result = step_until_statement_name(&root, &scope, "nonexistent");
         assert!(
             result.is_err(),
@@ -856,7 +856,7 @@ mod step_until_tests {
         );
 
         // Now step to settled and check the x=cb.shadow search result.
-        let _ = step_to_settled(&root, &scope).unwrap();
+        step_to_settled(&root, &scope).unwrap();
 
         // Find the search for "^shadow$" in the entire root.
         let shadow_searches = {

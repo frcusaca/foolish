@@ -12,6 +12,7 @@ use std::process::ExitCode;
 use clap::{Args, Parser, Subcommand};
 
 use crate::config::{KeyCascadeInputs, KeySource, MatchSections, TestConfig, resolve_stage_key};
+use crate::einmo_suite::ValidationLevel;
 use crate::error::{EinmoError, Result};
 use crate::format::EinmoFile;
 use crate::stage::Stage;
@@ -137,6 +138,11 @@ struct CompareArgs {
 struct VerifyArgs {
     /// The suite work directory.
     work_dir: PathBuf,
+    /// The escalating validation level to judge the suite at
+    /// (`output` | `checked` | `verified`). The CLI defaults to `checked`; the
+    /// library API has no default.
+    #[arg(long, default_value = "checked")]
+    level: String,
     /// Restrict to one stage.
     #[arg(long)]
     stage: Option<String>,
@@ -322,7 +328,7 @@ fn files_ref(files: &[PathBuf]) -> Option<&[PathBuf]> {
 
 fn cmd_promote(args: PromoteArgs) -> Result<ExitCode> {
     let (from, to) = parse_transition(&args.transition)?;
-    let mut config = TestConfig::new(&args.work_dir);
+    let mut config = TestConfig::new(&args.work_dir, ValidationLevel::Output);
     if let Some(limit) = args.walk_depth_limit {
         config = config.with_walk_depth_limit(limit);
     }
@@ -378,7 +384,7 @@ fn resolve_promotion_key(to: Stage, args: &PromoteArgs, config: &TestConfig) -> 
 
 fn cmd_flag(args: FlagArgs) -> Result<ExitCode> {
     let stage = Stage::parse(&args.stage)?;
-    let mut config = TestConfig::new(&args.work_dir);
+    let mut config = TestConfig::new(&args.work_dir, ValidationLevel::Output);
     if let Some(limit) = args.walk_depth_limit {
         config = config.with_walk_depth_limit(limit);
     }
@@ -401,7 +407,7 @@ fn cmd_flag(args: FlagArgs) -> Result<ExitCode> {
 fn cmd_compare(args: CompareArgs) -> Result<ExitCode> {
     let a = Stage::parse(&args.stage_a)?;
     let b = Stage::parse(&args.stage_b)?;
-    let mut config = TestConfig::new(&args.work_dir);
+    let mut config = TestConfig::new(&args.work_dir, ValidationLevel::Output);
     if let Some(limit) = args.walk_depth_limit {
         config = config.with_walk_depth_limit(limit);
     }
@@ -453,7 +459,8 @@ fn cmd_compare(args: CompareArgs) -> Result<ExitCode> {
 }
 
 fn cmd_verify(args: VerifyArgs) -> Result<ExitCode> {
-    let mut config = TestConfig::new(&args.work_dir);
+    let level = ValidationLevel::parse(&args.level)?;
+    let mut config = TestConfig::new(&args.work_dir, level);
     if let Some(limit) = args.walk_depth_limit {
         config = config.with_walk_depth_limit(limit);
     }
@@ -473,14 +480,16 @@ fn cmd_verify(args: VerifyArgs) -> Result<ExitCode> {
     };
     if args.json {
         let violations: Vec<String> = integrity
-            .violations
+            .problems
             .iter()
-            .map(|v| {
+            .map(|p| {
                 format!(
-                    "{{\"path\":\"{}\",\"reason\":\"{}\",\"remedy\":\"{}\"}}",
-                    v.path.display(),
-                    v.reason(),
-                    v.remedy()
+                    "{{\"level\":\"{}\",\"path\":\"{}\",\"problem\":\"{}\",\"remedy\":\"{}\"}}",
+                    p.level(),
+                    p.path()
+                        .map_or_else(String::new, |x| x.display().to_string()),
+                    p,
+                    p.remedy()
                 )
             })
             .collect();
@@ -694,7 +703,7 @@ fn scan_tests(config: &TestConfig, filter: Option<&str>) -> Result<Vec<TestRow>>
 }
 
 fn cmd_list(args: ListArgs) -> Result<ExitCode> {
-    let config = TestConfig::new(&args.work_dir);
+    let config = TestConfig::new(&args.work_dir, ValidationLevel::Output);
     let rows = scan_tests(&config, args.filter.as_deref())?;
     let rows: Vec<&TestRow> = rows
         .iter()

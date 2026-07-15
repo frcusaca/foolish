@@ -60,19 +60,21 @@ mod approval_tests {
 ///
 /// (Inverse of zweimomo, where the FVM is an evaluator used to test einmo.)
 ///
-/// Two tiers run against the one `einmo_suite/` directory (FOOP-64
-/// §Two-tier signing gate):
+/// Two gates run against the one `einmo_suite/` directory, at escalating
+/// validation levels (FOOP-64 §"The escalating validation levels"):
 ///
-/// * [`einmo_approval_all`] — the **feature-complete test suite**: output must
-///   match the signed `checked/` baseline. The computer key is acceptable here;
-///   AI promotion `output->checked` after review is the einmo design.
-/// * [`einmo_verified_gate`] — the **merge-ready test suite**: output must match
-///   the human-signed `verified/` baseline, every `stage:verified` stamp must
-///   carry the human reviewer's key, and none may carry the computer key.
+/// * [`einmo_approval_all`] — the **feature-complete test suite**, at the
+///   **Checked** level: the suite is well-formed and evaluates (Output level),
+///   *plus* output matches the signed `checked/` baseline. The computer key is
+///   acceptable here; AI promotion `output->checked` after review is the einmo
+///   design. It says nothing about `verified/`.
+/// * `einmo_verified_gate` — the **merge-ready test suite**, escalating to the
+///   **Verified** level: everything Checked requires, *plus* `verified/` matches
+///   under the human reviewer's key with no computer-key attestation. (To come.)
 #[cfg(test)]
 mod einmo_tests {
     use super::*;
-    use einmo::{EinmoSuite, Evaluator, Stage, TestConfig};
+    use einmo::{EinmoSuite, Evaluator, Stage, TestConfig, ValidationLevel};
 
     /// Adapts the UBCa evaluator to einmo's language-agnostic `Evaluator`:
     /// one OUTPUT chunk per top-level statement, formatted by the humanizing
@@ -97,17 +99,23 @@ mod einmo_tests {
         }
     }
 
-    fn config() -> TestConfig {
+    /// The suite config at a stated escalating level (FOOP-64 §"The escalating
+    /// validation levels"). The level is required — einmo has no default.
+    fn config(level: ValidationLevel) -> TestConfig {
         // The Foolish separator (`!!` + LF, a Foolish line comment) — Foolish
         // sources may contain einmo's default `①` glyph.
-        TestConfig::new(einmo_suite_dir()).foolish_separator()
+        TestConfig::new(einmo_suite_dir(), level).foolish_separator()
     }
 
     /// **Feature-complete test suite**: every input evaluates, is written and
     /// self-verifies in `output/`, and matches the signed `checked/` baseline.
     #[test]
     fn einmo_approval_all() {
-        let config = config().require_correspondence(Stage::Output, Stage::Checked);
+        // The feature-complete test suite validates at the Checked level: a
+        // reviewed, signed baseline that output must match. It says nothing
+        // about verified/ — signing is the merge gate's business.
+        let config =
+            config(ValidationLevel::Checked).require_correspondence(Stage::Output, Stage::Checked);
         let suite = EinmoSuite::new(config);
         let results = suite
             .evaluate_all(&UbcaEinmoAdapter)
@@ -129,6 +137,16 @@ mod einmo_tests {
                 file.detail
             );
         }
+
+        // The suite's shape is judged at the level it declared: no extraneous
+        // files, no orphaned artifacts, output <-> checked matching up exactly.
+        // An editor swap file left in input/ reds the gate on purpose — a dirty
+        // tree is not a clean baseline.
+        assert!(
+            results.integrity.is_clean(),
+            "einmo_suite is not sound at the Checked level:\n{}",
+            results.integrity.report()
+        );
 
         assert!(
             results.correspondence_failures.is_empty(),

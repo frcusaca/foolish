@@ -118,6 +118,11 @@ pub struct TestConfig {
     suite_name: String,
     stage_passphrases: StagePassphrases,
     configured_passphrase: String,
+    /// The escalating level this suite produces and validates (FOOP-64).
+    /// Required at construction: the library has no default level.
+    validation_level: crate::einmo_suite::ValidationLevel,
+    /// Hex prefix of the human reviewer's key, for the Verified level (V6).
+    reviewer_key_prefix: Option<String>,
     /// Configurable recursion depth limit for the directory walk (Feature A).
     walk_depth_limit: usize,
     /// Per-test duration limit (`EINMO_DURATION_LIMIT`, Feature B).
@@ -156,14 +161,20 @@ impl StagePassphrases {
 }
 
 impl TestConfig {
-    /// A configuration for `work_dir` with all defaults.
+    /// A configuration for `work_dir`, validating at `level`.
     ///
-    /// Defaults: `input/` input dir, standard stage dirs, `①`+LF separator,
-    /// `InputOutput` matching, `output/checked` deployment passphrases empty,
-    /// `verified` unset (→ prompt), `++` dependent separator, 2000-char diff
-    /// limit.
+    /// **`level` is required — the library has no default** (FOOP-64 §"The
+    /// escalating validation levels"). Only the suite's author knows whether an
+    /// unpopulated `verified/` means "not signed yet" (fine at the `Checked`
+    /// level) or "the merge gate is incomplete" (fatal at `Verified`). The CLI,
+    /// built on this API, may default; the library may not.
+    ///
+    /// Other defaults: `input/` input dir, standard stage dirs, `①`+LF
+    /// separator, `InputOutput` matching, `output/checked` deployment
+    /// passphrases empty, `verified` unset (→ prompt), `++` dependent
+    /// separator, 2000-char diff limit.
     #[must_use]
-    pub fn new(work_dir: impl Into<PathBuf>) -> Self {
+    pub fn new(work_dir: impl Into<PathBuf>, level: crate::einmo_suite::ValidationLevel) -> Self {
         let work_dir = work_dir.into();
         let suite_name = work_dir.to_string_lossy().into_owned();
         let toml = parse_einmo_toml(&work_dir);
@@ -187,6 +198,8 @@ impl TestConfig {
                 verified: toml.signing.verified.clone(),
             },
             configured_passphrase: String::new(),
+            validation_level: level,
+            reviewer_key_prefix: toml.signing.reviewer_key_prefix.clone(),
             walk_depth_limit: toml
                 .suite
                 .walk_depth_limit
@@ -207,8 +220,11 @@ impl TestConfig {
 
     /// Alias kept close to the spec's `TestConfig::default("…")` examples.
     #[must_use]
-    pub fn default_for(work_dir: impl Into<PathBuf>) -> Self {
-        Self::new(work_dir)
+    pub fn default_for(
+        work_dir: impl Into<PathBuf>,
+        level: crate::einmo_suite::ValidationLevel,
+    ) -> Self {
+        Self::new(work_dir, level)
     }
 
     /// Use the Foolish-suite separator (`"!!"`+LF, a Foolish line comment).
@@ -316,6 +332,38 @@ impl TestConfig {
     #[must_use]
     pub fn input_dir(&self) -> &str {
         &self.input_dir
+    }
+
+    /// The escalating level this suite validates at.
+    #[must_use]
+    pub fn validation_level(&self) -> crate::einmo_suite::ValidationLevel {
+        self.validation_level
+    }
+
+    /// The reviewer's key prefix for the Verified level (V6), if configured.
+    ///
+    /// Unset ⇒ V6 cannot be judged; V7 (no computer-key attestation) still is.
+    #[must_use]
+    pub fn reviewer_key_prefix(&self) -> Option<&str> {
+        self.reviewer_key_prefix.as_deref()
+    }
+
+    /// Escalate (or lower) the level this suite validates at.
+    ///
+    /// The *initial* level is required at construction — this only refines an
+    /// already-stated choice, e.g. a merge gate escalating a suite config to
+    /// the Verified level.
+    #[must_use]
+    pub fn with_validation_level(mut self, level: crate::einmo_suite::ValidationLevel) -> Self {
+        self.validation_level = level;
+        self
+    }
+
+    /// Set the reviewer's public-key hex prefix (V6).
+    #[must_use]
+    pub fn with_reviewer_key_prefix(mut self, prefix: impl Into<String>) -> Self {
+        self.reviewer_key_prefix = Some(prefix.into());
+        self
     }
 
     /// The absolute path to a stage's directory.
@@ -574,6 +622,8 @@ pub struct SigningConfig {
     pub output: Option<String>,
     pub checked: Option<String>,
     pub verified: Option<String>,
+    /// Hex prefix of the human reviewer's key (Verified level, V6).
+    pub reviewer_key_prefix: Option<String>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -621,7 +671,14 @@ fn find_crate_wise_toml(work_dir: &Path) -> Option<PathBuf> {
 
 fn merge_toml(crate_wide: EinmoTomlConfig, per_suite: EinmoTomlConfig) -> EinmoTomlConfig {
     EinmoTomlConfig {
-        signing: per_suite.signing,
+        signing: SigningConfig {
+            reviewer_key_prefix: per_suite
+                .signing
+                .reviewer_key_prefix
+                .clone()
+                .or(crate_wide.signing.reviewer_key_prefix),
+            ..per_suite.signing
+        },
         suite: SuiteConfig {
             walk_depth_limit: per_suite
                 .suite
@@ -655,6 +712,9 @@ fn parse_toml_content(content: &str) -> Result<EinmoTomlConfig> {
     let mut config = EinmoTomlConfig::default();
 
     if let Some(signing) = value.get("signing").and_then(|v| v.as_table()) {
+        if let Some(v) = signing.get("reviewer_key_prefix").and_then(|v| v.as_str()) {
+            config.signing.reviewer_key_prefix = Some(v.to_string());
+        }
         if let Some(v) = signing.get("output").and_then(|v| v.as_str()) {
             config.signing.output = Some(v.to_string());
         }
@@ -704,7 +764,7 @@ mod tests {
     use super::*;
 
     fn cfg() -> TestConfig {
-        TestConfig::new("/tmp/suite")
+        TestConfig::new("/tmp/suite", crate::einmo_suite::ValidationLevel::Output)
     }
 
     #[test]

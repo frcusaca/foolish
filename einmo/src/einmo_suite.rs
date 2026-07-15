@@ -60,106 +60,347 @@ pub struct TestResults {
     pub integrity: SuiteIntegrity,
 }
 
-/// What a suite's *shape* must satisfy, independent of any test's result.
+/// The escalating validation levels (FOOP-64 §"The escalating validation
+/// levels").
+///
+/// The levels **escalate — they do not replace**: each performs everything the
+/// level below it requires, plus its own. `Verified ⊃ Checked ⊃ Output`.
+///
+/// There is **no default**: a suite states which level it produces and
+/// validates, because only the suite's author knows whether an unpopulated
+/// `verified/` means "not signed yet" (fine at the `Checked` level) or "the
+/// merge gate is incomplete" (fatal at the `Verified` level). The CLI, built on
+/// this API, may default — the library may not.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum ValidationLevel {
+    /// The suite is well-formed and evaluates: no extraneous files, non-empty,
+    /// every input evaluates to a self-verifying `output/` artifact, no
+    /// orphans there.
+    Output,
+    /// …plus a reviewed baseline: `output` ↔ `checked` match up exactly, their
+    /// content is identical, and `checked/`'s signatures verify.
+    Checked,
+    /// …plus human attestation: `checked` ↔ `verified` match up exactly, their
+    /// content is identical, `verified/`'s signatures verify under the
+    /// reviewer's key, and no stamp carries the computer key.
+    Verified,
+}
+
+impl ValidationLevel {
+    /// This level and every level it escalates from, in ascending order.
+    ///
+    /// The engine walks these in order, so a lower level's problems are always
+    /// reported before the higher level's.
+    #[must_use]
+    pub fn escalation(self) -> &'static [ValidationLevel] {
+        match self {
+            ValidationLevel::Output => &[ValidationLevel::Output],
+            ValidationLevel::Checked => &[ValidationLevel::Output, ValidationLevel::Checked],
+            ValidationLevel::Verified => &[
+                ValidationLevel::Output,
+                ValidationLevel::Checked,
+                ValidationLevel::Verified,
+            ],
+        }
+    }
+
+    /// The stage this level judges (`Output` → `output/`, …).
+    #[must_use]
+    pub fn stage(self) -> Stage {
+        match self {
+            ValidationLevel::Output => Stage::Output,
+            ValidationLevel::Checked => Stage::Checked,
+            ValidationLevel::Verified => Stage::Verified,
+        }
+    }
+
+    /// The level this one escalates from, if any.
+    #[must_use]
+    pub fn escalates_from(self) -> Option<ValidationLevel> {
+        match self {
+            ValidationLevel::Output => None,
+            ValidationLevel::Checked => Some(ValidationLevel::Output),
+            ValidationLevel::Verified => Some(ValidationLevel::Checked),
+        }
+    }
+
+    /// Parse a level from its lowercase name (for CLI/env).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`EinmoError::Config`] for an unrecognized name.
+    pub fn parse(name: &str) -> Result<Self> {
+        match name {
+            "output" => Ok(ValidationLevel::Output),
+            "checked" => Ok(ValidationLevel::Checked),
+            "verified" => Ok(ValidationLevel::Verified),
+            other => Err(EinmoError::Config(format!(
+                "unknown validation level {other:?} (output | checked | verified)"
+            ))),
+        }
+    }
+}
+
+impl std::fmt::Display for ValidationLevel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            ValidationLevel::Output => "output",
+            ValidationLevel::Checked => "checked",
+            ValidationLevel::Verified => "verified",
+        })
+    }
+}
+
+/// Everything that can be wrong with a suite, grouped by the level that finds
+/// it (FOOP-64 §"The escalating validation levels").
 ///
 /// Einmo is deliberately unforgiving about its own tree: silently skipping
-/// files is how a corpus rots. (The insta corpus this replaced hid a test that
-/// had never compiled for months, because the harness `eprintln!`d the error
-/// and moved on.) Two rules:
+/// files is how a corpus rots — the insta corpus this replaced hid a test that
+/// had **never compiled** for months, because the harness `eprintln!`d the
+/// error and moved on.
 ///
-/// 1. **No extraneous files in `input/`.** A test input is a file someone
-///    deliberately named. Editor swap files, `.DS_Store`, and other cruft are
-///    reported and fail the suite — they are skipped for *discovery* (so they
-///    never become phantom tests) but never ignored.
-/// 2. **No orphaned artifacts.** A `.einmo` in `output/`, `checked/`, or
-///    `verified/` whose `input/` file no longer exists is a signed baseline for
-///    a test that does not exist — the record cannot be re-derived or reviewed.
-///    Deleting a test means deleting (or `einmo flag`ging) its artifacts.
-///
-/// `flagged/` is exempt from rule 2: flagging *is* retirement, so a flagged
-/// artifact with no input is a completed retirement, not an orphan.
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub struct SuiteIntegrity {
-    /// One record per violation, in deterministic order.
-    pub violations: Vec<IntegrityViolation>,
-}
-
-/// Why a single path violates the suite's shape.
+/// Every variant names the offending path and describes the fault; **none
+/// carries an excerpt of file content**. The artifacts are signed; a problem
+/// report must not reproduce their bodies. A reviewer reads them through
+/// `einmo body` or `poor_einmo.sh`.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum IntegrityFault {
-    /// A file under `input/` that is not a legitimate test input (an editor
-    /// swap/backup file, `.DS_Store`, …). Skipped for discovery so it cannot
-    /// become a phantom test — but never ignored.
-    ExtraneousInput,
-    /// A `.einmo` in this stage whose `input/` file no longer exists: a signed
-    /// baseline for a test that cannot be re-run or reviewed.
-    OrphanedArtifact(Stage),
+#[non_exhaustive]
+pub enum Problem {
+    // ── Output level ────────────────────────────────────────────────────
+    /// O1 — a file under `input/` that is not a test input (editor swap/backup,
+    /// `.DS_Store`, …). Skipped for discovery so it cannot become a phantom
+    /// test, but never ignored.
+    ExtraneousFile { path: PathBuf },
+    /// O2 — the suite discovered no inputs at all. A vacuous pass is not a pass.
+    EmptySuite,
+    /// O3/O4 — an artifact could not be written, or failed to verify against
+    /// its own bytes immediately after writing.
+    ArtifactUnsound { path: PathBuf, detail: String },
+    /// O5/C3/V3 — a `.einmo` whose `input/` file no longer exists: a signed
+    /// record that can never be re-derived or reviewed.
+    OrphanedArtifact { stage: Stage, path: PathBuf },
+
+    // ── Checked / Verified levels: a pairwise (left, right) comparison ──
+    //
+    // A level escalates by comparing two stages: `left` is the established
+    // side it escalates *from* (output at the Checked level, checked at the
+    // Verified level) and `right` is the side it escalates *to*. The variants
+    // below name which side is at fault, so a report never leaves the reader
+    // guessing which direction the fault runs.
+    //
+    /// C2/V2 — the artifact is absent from the **left** stage entirely: the
+    /// right side holds a record the left does not.
+    LeftMissingEntirely {
+        left: Stage,
+        right: Stage,
+        path: PathBuf,
+    },
+    /// C2/V2 — the artifact is absent from the **right** stage entirely: the
+    /// left side has not been promoted through.
+    RightMissingEntirely {
+        left: Stage,
+        right: Stage,
+        path: PathBuf,
+    },
+    /// C5/V5 — the two sides hold this section with different content. One
+    /// problem per differing section; names the section, never its content.
+    SectionDifference {
+        left: Stage,
+        right: Stage,
+        path: PathBuf,
+        section: String,
+    },
+    /// C4/V4 — an artifact's stamp chain does not verify: tampered, corrupt,
+    /// or a broken chain. Refused, never compared.
+    SignatureInvalid {
+        stage: Stage,
+        path: PathBuf,
+        detail: String,
+    },
+
+    // ── Verified level only ─────────────────────────────────────────────
+    /// V6 — a `stage:verified` stamp is not the configured reviewer's key.
+    WrongSigner {
+        path: PathBuf,
+        expected_prefix: String,
+        found: String,
+    },
+    /// V7 — a `stage:verified` stamp carries the well-known computer key: an
+    /// AI attested where a human was required.
+    ComputerKeyAttestation { path: PathBuf },
 }
 
-/// One suite-shape violation: the offending path, why, and how to fix it.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct IntegrityViolation {
-    /// The offending path, relative to the suite's work directory.
-    pub path: PathBuf,
-    /// What is wrong with it.
-    pub fault: IntegrityFault,
-}
-
-impl IntegrityViolation {
-    /// What is wrong, in one line.
+impl Problem {
+    /// The level whose requirements this problem violates.
     #[must_use]
-    pub fn reason(&self) -> String {
-        match &self.fault {
-            IntegrityFault::ExtraneousInput => {
-                "not a test input (a test input is a file someone deliberately named)".to_string()
+    pub fn level(&self) -> ValidationLevel {
+        match self {
+            Problem::ExtraneousFile { .. }
+            | Problem::EmptySuite
+            | Problem::ArtifactUnsound { .. } => ValidationLevel::Output,
+            Problem::OrphanedArtifact { stage, .. } | Problem::SignatureInvalid { stage, .. } => {
+                match stage {
+                    Stage::Verified => ValidationLevel::Verified,
+                    Stage::Checked => ValidationLevel::Checked,
+                    _ => ValidationLevel::Output,
+                }
             }
-            IntegrityFault::OrphanedArtifact(stage) => format!(
-                "orphaned {} artifact: no corresponding file in input/",
-                stage.dir_name()
-            ),
+            Problem::LeftMissingEntirely { right, .. }
+            | Problem::RightMissingEntirely { right, .. }
+            | Problem::SectionDifference { right, .. } => match right {
+                Stage::Verified => ValidationLevel::Verified,
+                _ => ValidationLevel::Checked,
+            },
+            Problem::WrongSigner { .. } | Problem::ComputerKeyAttestation { .. } => {
+                ValidationLevel::Verified
+            }
+        }
+    }
+
+    /// The offending path, if the problem has one.
+    #[must_use]
+    pub fn path(&self) -> Option<&Path> {
+        match self {
+            Problem::EmptySuite => None,
+            Problem::ExtraneousFile { path }
+            | Problem::ArtifactUnsound { path, .. }
+            | Problem::OrphanedArtifact { path, .. }
+            | Problem::LeftMissingEntirely { path, .. }
+            | Problem::RightMissingEntirely { path, .. }
+            | Problem::SectionDifference { path, .. }
+            | Problem::SignatureInvalid { path, .. }
+            | Problem::WrongSigner { path, .. }
+            | Problem::ComputerKeyAttestation { path } => Some(path),
         }
     }
 
     /// What to do about it.
     #[must_use]
     pub fn remedy(&self) -> &'static str {
-        match &self.fault {
-            IntegrityFault::ExtraneousInput => {
+        match self {
+            Problem::ExtraneousFile { .. } => {
                 "remove it (editor swap/backup files belong outside the suite)"
             }
-            IntegrityFault::OrphanedArtifact(_) => {
+            Problem::EmptySuite => "check the suite's input/ directory and its configured path",
+            Problem::ArtifactUnsound { .. } => {
+                "investigate: the harness could not produce a sound artifact"
+            }
+            Problem::OrphanedArtifact { .. } => {
                 "delete it, or `einmo flag <suite> <stage> <file>` to retire it"
+            }
+            Problem::LeftMissingEntirely { .. } => {
+                "the right side holds a record the left does not: delete the stray, or restore the left"
+            }
+            Problem::RightMissingEntirely { .. } => {
+                "review the diff, then promote the left side through"
+            }
+            Problem::SectionDifference { .. } => {
+                "review the diff: repair the code, or promote after review"
+            }
+            Problem::SignatureInvalid { .. } => {
+                "the artifact is tampered or corrupt: regenerate and re-promote"
+            }
+            Problem::WrongSigner { .. } => "re-sign with the reviewer's key",
+            Problem::ComputerKeyAttestation { .. } => {
+                "a human must sign: `einmo promote checked->verified <suite> --interactive`"
             }
         }
     }
 }
 
-impl std::fmt::Display for IntegrityViolation {
+impl std::fmt::Display for Problem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}: {} — {}",
-            self.path.display(),
-            self.reason(),
-            self.remedy()
-        )
+        match self {
+            Problem::ExtraneousFile { path } => write!(
+                f,
+                "{}: not a test input (a test input is a file someone deliberately named)",
+                path.display()
+            ),
+            Problem::EmptySuite => write!(f, "the suite discovered no inputs"),
+            Problem::ArtifactUnsound { path, detail } => {
+                write!(f, "{}: not written+verified: {detail}", path.display())
+            }
+            Problem::OrphanedArtifact { stage, path } => write!(
+                f,
+                "{}/{}: orphaned — no corresponding file in input/",
+                stage.dir_name(),
+                path.display()
+            ),
+            Problem::LeftMissingEntirely { left, right, path } => write!(
+                f,
+                "{}: missing entirely from {}/ (present in {}/)",
+                path.display(),
+                left.dir_name(),
+                right.dir_name()
+            ),
+            Problem::RightMissingEntirely { left, right, path } => write!(
+                f,
+                "{}: missing entirely from {}/ (present in {}/)",
+                path.display(),
+                right.dir_name(),
+                left.dir_name()
+            ),
+            Problem::SectionDifference {
+                left,
+                right,
+                path,
+                section,
+            } => write!(
+                f,
+                "{}: section {section} differs between {}/ and {}/",
+                path.display(),
+                left.dir_name(),
+                right.dir_name()
+            ),
+            Problem::SignatureInvalid {
+                stage,
+                path,
+                detail,
+            } => write!(
+                f,
+                "{}/{}: signature invalid: {detail}",
+                stage.dir_name(),
+                path.display()
+            ),
+            Problem::WrongSigner {
+                path,
+                expected_prefix,
+                found,
+            } => write!(
+                f,
+                "{}: stage:verified signed by {found}, expected key starting {expected_prefix}",
+                path.display()
+            ),
+            Problem::ComputerKeyAttestation { path } => write!(
+                f,
+                "{}: stage:verified carries the computer key — an AI attested where a human was required",
+                path.display()
+            ),
+        }
     }
 }
 
+/// The outcome of validating a suite at a level: sound, or a list of problems.
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct SuiteIntegrity {
+    /// Every problem found, ordered by escalating level then path.
+    pub problems: Vec<Problem>,
+}
+
 impl SuiteIntegrity {
-    /// `true` when the suite's shape is sound.
+    /// `true` when the suite satisfies the level it was validated at.
     #[must_use]
     pub fn is_clean(&self) -> bool {
-        self.violations.is_empty()
+        self.problems.is_empty()
     }
 
-    /// A reviewer-facing report naming every violation and its remedy.
+    /// A reviewer-facing report: one problem per line, with its remedy.
     #[must_use]
     pub fn report(&self) -> String {
-        self.violations
+        self.problems
             .iter()
-            .map(|v| format!("  {v}\n"))
-            .collect::<String>()
+            .map(|p| format!("  [{}] {p}\n      → {}\n", p.level(), p.remedy()))
+            .collect()
     }
 }
 
@@ -191,7 +432,8 @@ impl TestResults {
 pub fn check_suite_integrity(config: &TestConfig) -> Result<SuiteIntegrity> {
     let (inputs, extraneous) =
         crate::stage::walk_input_tree_reporting(&config.input_path(), config.walk_depth_limit())?;
-    EinmoSuite::new(config.clone()).check_integrity(&inputs, extraneous)
+    let level = config.validation_level();
+    EinmoSuite::new(config.clone()).check_integrity(&inputs, extraneous, level)
 }
 
 /// A test suite bound to one work directory and configuration.
@@ -218,38 +460,172 @@ impl EinmoSuite {
     ///
     /// `flagged/` is exempt from R2 — flagging is retirement, so a flagged
     /// artifact without an input is a finished job, not an orphan.
+    /// Validate the suite at `level`, walking the escalation from the base up
+    /// (FOOP-64 §"The escalating validation levels").
+    ///
+    /// Lower levels' problems are reported before higher ones, so a reviewer
+    /// fixes the foundation first: an extraneous file is not hidden behind a
+    /// signing complaint.
     fn check_integrity(
         &self,
         inputs: &[PathBuf],
         extraneous: Vec<PathBuf>,
+        level: ValidationLevel,
     ) -> Result<SuiteIntegrity> {
-        let mut violations: Vec<IntegrityViolation> = extraneous
-            .into_iter()
-            .map(|rel| IntegrityViolation {
-                path: Path::new(self.config.input_dir()).join(rel),
-                fault: IntegrityFault::ExtraneousInput,
-            })
-            .collect();
-
+        let mut problems: Vec<Problem> = Vec::new();
         let expected: std::collections::HashSet<PathBuf> =
             inputs.iter().map(|p| mirror_input_path(p)).collect();
 
-        for stage in [Stage::Output, Stage::Checked, Stage::Verified] {
-            let dir = self.config.stage_dir(stage);
-            // A stage tree may legitimately not exist yet (nothing promoted).
-            let (present, _) =
-                crate::stage::walk_input_tree_reporting(&dir, self.config.walk_depth_limit())?;
-            for rel in present {
-                if !expected.contains(&rel) {
-                    violations.push(IntegrityViolation {
-                        path: Path::new(stage.dir_name()).join(&rel),
-                        fault: IntegrityFault::OrphanedArtifact(stage),
-                    });
+        for step in level.escalation() {
+            match step {
+                // ── Output level ───────────────────────────────────────
+                ValidationLevel::Output => {
+                    // O1 — extraneous files under input/.
+                    let mut extras: Vec<PathBuf> = extraneous
+                        .iter()
+                        .map(|rel| Path::new(self.config.input_dir()).join(rel))
+                        .collect();
+                    extras.sort();
+                    problems.extend(
+                        extras
+                            .into_iter()
+                            .map(|path| Problem::ExtraneousFile { path }),
+                    );
+                    // O2 — a suite that discovered nothing is not a pass.
+                    if inputs.is_empty() {
+                        problems.push(Problem::EmptySuite);
+                    }
+                    // O5 — orphans in output/. (O3/O4 come from the run itself.)
+                    problems.extend(self.orphans_of(Stage::Output, &expected)?);
+                }
+                // ── Checked level: escalates from Output ───────────────
+                ValidationLevel::Checked => {
+                    problems.extend(self.orphans_of(Stage::Checked, &expected)?); // C3
+                    problems.extend(self.stage_pair_problems(Stage::Output, Stage::Checked)?);
+                    // C2/C4/C5
+                }
+                // ── Verified level: escalates from Checked ─────────────
+                ValidationLevel::Verified => {
+                    problems.extend(self.orphans_of(Stage::Verified, &expected)?); // V3
+                    problems.extend(self.stage_pair_problems(Stage::Checked, Stage::Verified)?);
+                    // V2/V4/V5
+                    problems.extend(self.attestation_problems()?); // V6/V7
                 }
             }
         }
-        violations.sort_by(|a, b| a.path.cmp(&b.path));
-        Ok(SuiteIntegrity { violations })
+        Ok(SuiteIntegrity { problems })
+    }
+
+    /// Artifacts in `stage` with no corresponding `input/` file (O5/C3/V3).
+    ///
+    /// `flagged/` is never asked: it sits outside the escalation — flagging is
+    /// retirement, so an input-less flagged artifact is a finished job.
+    fn orphans_of(
+        &self,
+        stage: Stage,
+        expected: &std::collections::HashSet<PathBuf>,
+    ) -> Result<Vec<Problem>> {
+        let dir = self.config.stage_dir(stage);
+        let (present, _) =
+            crate::stage::walk_input_tree_reporting(&dir, self.config.walk_depth_limit())?;
+        let mut out: Vec<Problem> = present
+            .into_iter()
+            .filter(|rel| !expected.contains(rel))
+            .map(|path| Problem::OrphanedArtifact { stage, path })
+            .collect();
+        out.sort_by(|a, b| a.path().cmp(&b.path()));
+        Ok(out)
+    }
+
+    /// Do two stages match up exactly, verify, and hold identical content?
+    /// (C2/C4/C5 for output↔checked; V2/V4/V5 for checked↔verified.)
+    ///
+    /// Delegates to `compare`, which already verifies-on-inspect both sides and
+    /// compares only the configured sections — STAMPS and metadata are excluded
+    /// by design (they carry per-run timestamps; comparing them is the insta
+    /// defect this FOOP exists to fix).
+    fn stage_pair_problems(&self, left: Stage, right: Stage) -> Result<Vec<Problem>> {
+        let (a, b) = (left, right);
+        let cmp = crate::compare::compare(&self.config, a, b, self.config.match_sections(), None)?;
+        let mut out = Vec::new();
+        // `only_in_a` = present left, absent right → the right side is missing.
+        for rel in cmp.only_in_a {
+            out.push(Problem::RightMissingEntirely {
+                left: a,
+                right: b,
+                path: rel,
+            });
+        }
+        // `only_in_b` = present right, absent left → the left side is missing.
+        for rel in cmp.only_in_b {
+            out.push(Problem::LeftMissingEntirely {
+                left: a,
+                right: b,
+                path: rel,
+            });
+        }
+        // One problem per differing section: a reviewer fixes sections, not
+        // files, and a bare "content differs" hides how much differs.
+        for d in cmp.differing {
+            for section in d.sections {
+                out.push(Problem::SectionDifference {
+                    left: a,
+                    right: b,
+                    path: d.rel_path.clone(),
+                    section,
+                });
+            }
+        }
+        for rel in cmp.tampered {
+            out.push(Problem::SignatureInvalid {
+                stage: b,
+                path: rel,
+                detail: "verify-on-inspect refused this artifact".to_string(),
+            });
+        }
+        out.sort_by(|x, y| x.path().cmp(&y.path()));
+        Ok(out)
+    }
+
+    /// Is every `verified/` artifact attested by the reviewer, and none by the
+    /// computer key? (V6/V7.)
+    ///
+    /// With no reviewer key configured, V6 cannot be judged — but V7 still can,
+    /// and must: an AI-signed `verified/` is detectable regardless.
+    fn attestation_problems(&self) -> Result<Vec<Problem>> {
+        let dir = self.config.stage_dir(Stage::Verified);
+        let (present, _) =
+            crate::stage::walk_input_tree_reporting(&dir, self.config.walk_depth_limit())?;
+        let expected_prefix = self.config.reviewer_key_prefix().map(str::to_string);
+        let mut out = Vec::new();
+        for rel in present {
+            let path = dir.join(&rel);
+            let Ok(file) = EinmoFile::from_file(&path) else {
+                continue; // SignatureInvalid is reported by the stage-pair check
+            };
+            let Some(stamp) = file
+                .stamps()
+                .entries()
+                .iter()
+                .find(|s| s.key() == Stage::Verified.stamp_key())
+            else {
+                continue; // no verified stamp: MissingCounterpart/compare covers it
+            };
+            let pubkey = stamp.pubkey_hex().to_string();
+            if crate::signature::is_computer_key(&pubkey) {
+                out.push(Problem::ComputerKeyAttestation { path: rel.clone() });
+            } else if let Some(prefix) = &expected_prefix
+                && !pubkey.starts_with(prefix.as_str())
+            {
+                out.push(Problem::WrongSigner {
+                    path: rel.clone(),
+                    expected_prefix: prefix.clone(),
+                    found: pubkey,
+                });
+            }
+        }
+        out.sort_by(|x, y| x.path().cmp(&y.path()));
+        Ok(out)
     }
 
     fn is_catastrophe_crumb(&self, out_path: &Path) -> bool {
@@ -362,7 +738,6 @@ impl EinmoSuite {
             &self.config.input_path(),
             self.config.walk_depth_limit(),
         )?;
-        let integrity = self.check_integrity(&inputs, extraneous)?;
         // First pass: evaluate every input, capturing raw outputs so dependents
         // can diff against their reference's output from the same run.
         let ordered = topological_order(&inputs, self.config.dependent_separator());
@@ -428,10 +803,7 @@ impl EinmoSuite {
         // Second pass: write each output, computing dependent DIFFs. Per-file
         // write/serialize failures (e.g. separator collision) are recorded as
         // a failed `FileResult` rather than aborting the whole run.
-        let mut results = TestResults {
-            integrity,
-            ..TestResults::default()
-        };
+        let mut results = TestResults::default();
         for gated in crumb_gated {
             results.files.push(gated);
         }
@@ -486,6 +858,12 @@ impl EinmoSuite {
                 ));
             }
         }
+
+        // Validate the suite's shape LAST: the escalating levels judge output/
+        // (and, above the base level, checked/ and verified/), none of which
+        // exist until this run has written them.
+        results.integrity =
+            self.check_integrity(&inputs, extraneous, self.config.validation_level())?;
         Ok(results)
     }
 
@@ -1036,7 +1414,7 @@ mod tests {
 
     fn suite() -> (tempfile::TempDir, EinmoSuite) {
         let tmp = tempfile::tempdir().unwrap();
-        let config = TestConfig::new(tmp.path());
+        let config = TestConfig::new(tmp.path(), ValidationLevel::Output);
         config.ensure_stage_dirs().unwrap();
         std::fs::create_dir_all(config.input_path()).unwrap();
         (tmp, EinmoSuite::new(config))
@@ -1098,11 +1476,13 @@ mod tests {
     fn perspective_section_emitted() {
         let (_tmp, _suite) = suite();
         let tmp = tempfile::tempdir().unwrap();
-        let config = TestConfig::new(tmp.path()).with_perspectives(vec![Perspective {
-            name: "shout",
-            of: PerspectiveOf::Input,
-            extract: |s| s.to_uppercase(),
-        }]);
+        let config = TestConfig::new(tmp.path(), ValidationLevel::Output).with_perspectives(vec![
+            Perspective {
+                name: "shout",
+                of: PerspectiveOf::Input,
+                extract: |s| s.to_uppercase(),
+            },
+        ]);
         config.ensure_stage_dirs().unwrap();
         let suite = EinmoSuite::new(config);
         suite.evaluate_inline("p.foo", "hello", &Echo).unwrap();
@@ -1116,7 +1496,8 @@ mod tests {
         let tmp1 = tempfile::tempdir().unwrap();
         let tmp2 = tempfile::tempdir().unwrap();
         for (tmp, threads) in [(&tmp1, None), (&tmp2, Some(4))] {
-            let config = TestConfig::new(tmp.path()).with_parallel(threads);
+            let config =
+                TestConfig::new(tmp.path(), ValidationLevel::Output).with_parallel(threads);
             config.ensure_stage_dirs().unwrap();
             std::fs::create_dir_all(config.input_path()).unwrap();
             for i in 0..6 {
@@ -1199,7 +1580,7 @@ mod tests {
     fn diff_limit_exceed_fails_and_marks_output_error() {
         let tmp = tempfile::tempdir().unwrap();
         // A tiny diff limit forces the exceed path.
-        let mut config = TestConfig::new(tmp.path());
+        let mut config = TestConfig::new(tmp.path(), ValidationLevel::Output);
         config = config.with_suite_name("s");
         // Shrink the diff limit via a fresh config path is not exposed; instead
         // craft a large divergence and rely on default 2000 — build a >2000 diff.
@@ -1290,10 +1671,9 @@ mod tests {
 
         assert_eq!(results.files.len(), 1, "the swap file is not a test");
         assert_eq!(
-            results.integrity.violations,
-            vec![IntegrityViolation {
+            results.integrity.problems,
+            vec![Problem::ExtraneousFile {
                 path: PathBuf::from("input/.a.foo.swp"),
-                fault: IntegrityFault::ExtraneousInput,
             }]
         );
         assert!(
@@ -1303,12 +1683,127 @@ mod tests {
         assert!(results.integrity.report().contains(".a.foo.swp"));
     }
 
+    /// The levels escalate: each carries every requirement of the level below.
+    #[test]
+    fn levels_escalate_cumulatively() {
+        assert_eq!(
+            ValidationLevel::Output.escalation(),
+            &[ValidationLevel::Output]
+        );
+        assert_eq!(
+            ValidationLevel::Checked.escalation(),
+            &[ValidationLevel::Output, ValidationLevel::Checked]
+        );
+        assert_eq!(
+            ValidationLevel::Verified.escalation(),
+            &[
+                ValidationLevel::Output,
+                ValidationLevel::Checked,
+                ValidationLevel::Verified
+            ]
+        );
+        assert_eq!(ValidationLevel::Output.escalates_from(), None);
+        assert_eq!(
+            ValidationLevel::Verified.escalates_from(),
+            Some(ValidationLevel::Checked)
+        );
+        // Ord follows the escalation, so `level >= Checked` is meaningful.
+        assert!(ValidationLevel::Verified > ValidationLevel::Checked);
+        assert!(ValidationLevel::Checked > ValidationLevel::Output);
+    }
+
+    /// The Output level makes no claim about checked/ or verified/: an
+    /// unpopulated higher stage is "not promoted yet", not a failure. This is
+    /// the bug the escalating levels fix — a dev suite must not go red because
+    /// nobody has signed a verified/ corpus.
+    #[test]
+    fn output_level_ignores_unpopulated_higher_stages() {
+        let (_tmp, suite0) = suite();
+        let config = suite0
+            .config()
+            .clone()
+            .with_validation_level(ValidationLevel::Output);
+        std::fs::write(config.input_path().join("a.foo"), "{5;}").unwrap();
+
+        let results = EinmoSuite::new(config).evaluate_all(&Echo).unwrap();
+
+        assert!(
+            results.integrity.is_clean(),
+            "empty checked/ and verified/ are not Output-level problems: {:?}",
+            results.integrity.problems
+        );
+        assert!(results.all_output_written_and_verified());
+    }
+
+    /// The Checked level demands a reviewed baseline: an unpromoted output is
+    /// a missing right-hand side. It still says nothing about verified/.
+    #[test]
+    fn checked_level_demands_a_baseline_but_not_signatures() {
+        let (_tmp, suite0) = suite();
+        let config = suite0
+            .config()
+            .clone()
+            .with_validation_level(ValidationLevel::Checked);
+        std::fs::write(config.input_path().join("a.foo"), "{5;}").unwrap();
+
+        let results = EinmoSuite::new(config).evaluate_all(&Echo).unwrap();
+
+        assert_eq!(
+            results.integrity.problems,
+            vec![Problem::RightMissingEntirely {
+                left: Stage::Output,
+                right: Stage::Checked,
+                path: PathBuf::from("a.foo.einmo"),
+            }],
+            "checked/ is empty, so the output has no counterpart — and verified/ \
+             must not be mentioned at this level"
+        );
+        assert_eq!(
+            results.integrity.problems[0].level(),
+            ValidationLevel::Checked
+        );
+    }
+
+    /// Every problem knows which level owns it, so a report can be read
+    /// foundation-first.
+    #[test]
+    fn problems_report_their_level() {
+        assert_eq!(
+            Problem::ExtraneousFile {
+                path: PathBuf::from("input/.x.swp")
+            }
+            .level(),
+            ValidationLevel::Output
+        );
+        assert_eq!(Problem::EmptySuite.level(), ValidationLevel::Output);
+        assert_eq!(
+            Problem::ComputerKeyAttestation {
+                path: PathBuf::from("a.foo.einmo")
+            }
+            .level(),
+            ValidationLevel::Verified
+        );
+        assert_eq!(
+            Problem::SectionDifference {
+                left: Stage::Output,
+                right: Stage::Checked,
+                path: PathBuf::from("a.foo.einmo"),
+                section: "OUTPUT".into(),
+            }
+            .level(),
+            ValidationLevel::Checked
+        );
+    }
+
     /// A checked artifact whose input was deleted is a signed baseline for a
     /// test that cannot be re-run — a deal breaker.
     #[test]
     fn orphaned_artifact_is_a_violation() {
         let (_tmp, suite0) = suite();
-        let config = suite0.config().clone();
+        let config = suite0
+            .config()
+            .clone()
+            .with_validation_level(ValidationLevel::Checked);
         std::fs::write(config.input_path().join("a.foo"), "{5;}").unwrap();
         // A checked artifact with no corresponding input.
         let orphan = config.stage_dir(Stage::Checked).join("ghost.foo.einmo");
@@ -1317,12 +1812,16 @@ mod tests {
 
         let results = EinmoSuite::new(config).evaluate_all(&Echo).unwrap();
 
-        assert_eq!(
-            results.integrity.violations,
-            vec![IntegrityViolation {
-                path: PathBuf::from("checked/ghost.foo.einmo"),
-                fault: IntegrityFault::OrphanedArtifact(Stage::Checked),
-            }]
+        assert!(
+            results
+                .integrity
+                .problems
+                .contains(&Problem::OrphanedArtifact {
+                    stage: Stage::Checked,
+                    path: PathBuf::from("ghost.foo.einmo"),
+                }),
+            "got {:?}",
+            results.integrity.problems
         );
         assert!(!results.all_output_written_and_verified());
     }
@@ -1343,7 +1842,7 @@ mod tests {
         assert!(
             results.integrity.is_clean(),
             "flagged/ is the terminal sink: {:?}",
-            results.integrity.violations
+            results.integrity.problems
         );
     }
 
@@ -1406,7 +1905,7 @@ mod tests {
     fn crash_crumb_survives_process_abort() {
         if std::env::var("EINMO_CRASH_TEST_CHILD_ABORT").is_ok() {
             let dir = std::env::var("EINMO_CRASH_TEST_DIR").unwrap();
-            let config = TestConfig::new(dir.as_str());
+            let config = TestConfig::new(dir.as_str(), ValidationLevel::Output);
             let suite = EinmoSuite::new(config);
             let input_dir = std::path::Path::new(&dir).join("input");
             std::fs::create_dir_all(&input_dir).unwrap();
@@ -1449,7 +1948,7 @@ mod tests {
             "crash-crumb stamp chain must be valid"
         );
 
-        let config = TestConfig::new(tmp.path());
+        let config = TestConfig::new(tmp.path(), ValidationLevel::Output);
         let key = crate::config::KeySource::from_passphrase("");
         let report = crate::promote(&config, Stage::Output, Stage::Checked, &key, None, None)
             .expect("promote should succeed on the signed crash-crumb");
@@ -1472,7 +1971,7 @@ mod tests {
     fn crash_crumb_survives_stack_overflow() {
         if std::env::var("EINMO_CRASH_TEST_CHILD_STACK").is_ok() {
             let dir = std::env::var("EINMO_CRASH_TEST_DIR").unwrap();
-            let config = TestConfig::new(dir.as_str());
+            let config = TestConfig::new(dir.as_str(), ValidationLevel::Output);
             let suite = EinmoSuite::new(config);
             let input_dir = std::path::Path::new(&dir).join("input");
             std::fs::create_dir_all(&input_dir).unwrap();
@@ -1524,7 +2023,7 @@ mod tests {
             }
         }
         let tmp = tempfile::tempdir().unwrap();
-        let config = TestConfig::new(tmp.path());
+        let config = TestConfig::new(tmp.path(), ValidationLevel::Output);
         let suite = EinmoSuite::new(config);
         let input_dir = tmp.path().join("input");
         std::fs::create_dir_all(&input_dir).unwrap();
@@ -1559,8 +2058,8 @@ mod tests {
     #[test]
     fn duration_limit_exceeded_fails_test() {
         let tmp = tempfile::tempdir().unwrap();
-        let config =
-            TestConfig::new(tmp.path()).with_duration_limit(std::time::Duration::from_millis(10));
+        let config = TestConfig::new(tmp.path(), ValidationLevel::Output)
+            .with_duration_limit(std::time::Duration::from_millis(10));
         let suite = EinmoSuite::new(config);
         let input_dir = tmp.path().join("input");
         std::fs::create_dir_all(&input_dir).unwrap();
@@ -1588,7 +2087,7 @@ mod tests {
         // which only throttles when tests start one at a time. Under parallel
         // evaluation all workers launch before the budget expires, so nothing
         // aborts -- see the parallel-branch note in `evaluate_all`.
-        let config = TestConfig::new(tmp.path())
+        let config = TestConfig::new(tmp.path(), ValidationLevel::Output)
             .with_parallel(Some(1))
             .with_suite_duration_limit(std::time::Duration::from_millis(80));
         let suite = EinmoSuite::new(config);
@@ -1660,7 +2159,7 @@ mod tests {
     #[test]
     fn catastrophe_crumb_ignored_suite_passes() {
         let tmp = tempfile::tempdir().unwrap();
-        let config = TestConfig::new(tmp.path())
+        let config = TestConfig::new(tmp.path(), ValidationLevel::Output)
             .with_ignore_catastrophe_crumbs(vec![PathBuf::from("a.foo.einmo")]);
         config.ensure_stage_dirs().unwrap();
         std::fs::create_dir_all(config.input_path()).unwrap();
@@ -1688,7 +2187,8 @@ mod tests {
     #[test]
     fn catastrophe_crumb_rerun_overwrites() {
         let tmp = tempfile::tempdir().unwrap();
-        let config = TestConfig::new(tmp.path()).with_rerun_catastrophes(true);
+        let config =
+            TestConfig::new(tmp.path(), ValidationLevel::Output).with_rerun_catastrophes(true);
         config.ensure_stage_dirs().unwrap();
         std::fs::create_dir_all(config.input_path()).unwrap();
         let suite = EinmoSuite::new(config);
@@ -1733,7 +2233,7 @@ mod tests {
             "[suite]\nwalk_depth_limit = 10\nduration_limit = 5\nsuite_duration_limit = 100\nrerun_catastrophes = true\nignore_catastrophe_crumbs = [\"a.foo.einmo\", \"b.foo.einmo\"]\n",
         )
         .unwrap();
-        let config = TestConfig::new(tmp.path());
+        let config = TestConfig::new(tmp.path(), ValidationLevel::Output);
         assert_eq!(config.walk_depth_limit(), 10);
         assert_eq!(
             config.duration_limit(),
@@ -1768,7 +2268,7 @@ mod tests {
             "[suite]\nwalk_depth_limit = 16\n",
         )
         .unwrap();
-        let config = TestConfig::new(&work_dir);
+        let config = TestConfig::new(&work_dir, ValidationLevel::Output);
         assert_eq!(config.walk_depth_limit(), 16);
     }
 
@@ -1779,7 +2279,7 @@ mod tests {
             std::env::set_var("EINMO_WALK_DEPTH_LIMIT", "10");
         }
         let tmp = tempfile::tempdir().unwrap();
-        let config = TestConfig::new(tmp.path()).with_walk_depth_limit(20);
+        let config = TestConfig::new(tmp.path(), ValidationLevel::Output).with_walk_depth_limit(20);
         assert_eq!(config.walk_depth_limit(), 10);
         unsafe {
             std::env::remove_var("EINMO_WALK_DEPTH_LIMIT");
