@@ -16,20 +16,22 @@ set -euo pipefail
 # You review by EDITING the checked/verified panes. On :qa the script diffs each
 # pane against what it wrote, and accumulates one of three outcomes per test:
 #
-#   1. You typed exactly `promote` into the checked or verified pane
-#      → PROMOTE. `promote` in the checked pane means "promote the previous
-#        stage into checked" (output->checked); in the verified pane it means
-#        checked->verified. Accumulated into the promote lists.
+#   1. You typed a PROMOTE word into the checked or verified pane
+#        promote · promoted · approve · approved · lgtm · sgtm
+#      → PROMOTE. In the checked pane it means "promote the previous stage into
+#        checked" (output->checked); in the verified pane, checked->verified.
+#        Accumulated into the promote lists.
 #
 #   2. You changed a pane any other way (a note, a question, an @agent comment)
 #      → INSTRUCTIONS FOR THE AGENT. The test is accumulated into
 #        `send_to_agent_list`, printed at the end with your text preserved in
 #        $REVIEW_DIR so an agent can act on it.
 #
-#   3. You changed nothing
-#      → NO ACTION. Accumulated into `noop_list`, reported on one line.
+#   3. You changed nothing, or typed a SKIP word (skip · pass · idk)
+#      → NO ACTION. Accumulated into `noop_list`, reported on one line. A skip
+#        word is a deliberate non-decision: you looked and chose not to rule.
 #
-#   4. You typed exactly `stop` into ANY pane
+#   4. You typed `stop` into ANY pane
 #      → END THE REVIEW. The current file is left completely untouched — not
 #        promoted, not recorded, not counted — and the loop ends immediately,
 #        printing the promotions and notes the EARLIER files already earned.
@@ -65,8 +67,13 @@ set -euo pipefail
 #     ./poor_einmo.sh -s foolish-ubca/einmo_suite foop/23    # shuffle, one FOOP
 #     ./poor_einmo.sh -n foolish-ubca/einmo_suite            # trace, no editor
 #
+# Every verb is ONE word alone in a pane (whitespace stripped, case ignored);
+# anything else is a message for an agent:
+#     promote · promoted · approve · approved · lgtm · sgtm   → promote
+#     skip · pass · idk                                       → no action
+#     stop                                                    → end the review
+#
 # In vimdiff: ]c / [c next/prev change · :qa finish this test · :cq abort.
-# Type `stop` in any pane to end the review early, keeping what you decided so far.
 
 differing_only=0
 full_review=0
@@ -166,12 +173,27 @@ promote_verified=()    # ... in the verified pane
 send_to_agent_list=()  # tests where you left instructions
 noop_list=()           # tests you did not touch
 
-# A pane "says" a word when its entire content, ignoring whitespace and case,
-# is exactly that word. Anything more is a message for an agent, not a verb.
+# The vocabulary. A pane must contain ONE of these words and nothing else —
+# whitespace is stripped and case ignored, but any extra text means you were
+# talking to an agent, not issuing a verb.
+#
+# Synonyms exist because a reviewer should not have to remember which word this
+# particular tool chose. They are exact single words, not prefixes: "lgtm apart
+# from line 3" is a note, as it should be.
+PROMOTE_WORDS=(promote promoted approve approved lgtm sgtm)
+SKIP_WORDS=(skip pass idk)
+STOP_WORDS=(stop)
+
+# `pane_says <file> <word>...` — true when the pane's whole content is exactly
+# one of `word...`, ignoring surrounding whitespace and case.
 pane_says() {
-    local file="$1" word="$2" content
+    local file="$1"; shift
+    local content word
     content="$(tr -d '[:space:]' < "$file" | tr '[:upper:]' '[:lower:]')"
-    [[ "$content" == "$word" ]]
+    for word in "$@"; do
+        [[ "$content" == "$word" ]] && return 0
+    done
+    return 1
 }
 
 idx=0
@@ -242,7 +264,7 @@ for row in "${rows[@]}"; do
     # ends, reporting what the earlier files already decided.
     stopped=0
     for stage in output checked verified; do
-        if pane_says "${pane[$stage]}" "stop"; then
+        if pane_says "${pane[$stage]}" "${STOP_WORDS[@]}"; then
             stopped=1
             break
         fi
@@ -262,13 +284,30 @@ for row in "${rows[@]}"; do
         continue
     fi
 
+    # An explicit skip ("skip"/"pass"/"idk") is a deliberate non-decision: you
+    # looked and chose not to rule. It lands in noop_list exactly like leaving
+    # the pane alone — the difference is that you meant it, and it must not be
+    # mistaken for a note to an agent.
+    skipped_word=0
+    for stage in checked verified; do
+        if pane_says "${pane[$stage]}" "${SKIP_WORDS[@]}"; then
+            skipped_word=1
+            break
+        fi
+    done
+    if (( skipped_word )); then
+        noop_list+=("$test_path")
+        echo "   · skipped — no action"
+        continue
+    fi
+
     acted=0
-    if (( chk_changed )) && pane_says "${pane[checked]}" "promote"; then
+    if (( chk_changed )) && pane_says "${pane[checked]}" "${PROMOTE_WORDS[@]}"; then
         promote_checked+=("$rel")
         echo "   → promote output->checked"
         acted=1
     fi
-    if (( ver_changed )) && pane_says "${pane[verified]}" "promote"; then
+    if (( ver_changed )) && pane_says "${pane[verified]}" "${PROMOTE_WORDS[@]}"; then
         promote_verified+=("$rel")
         echo "   → promote checked->verified"
         acted=1
