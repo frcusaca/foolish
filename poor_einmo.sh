@@ -29,6 +29,12 @@ set -euo pipefail
 #   3. You changed nothing
 #      → NO ACTION. Accumulated into `noop_list`, reported on one line.
 #
+#   4. You typed exactly `stop` into ANY pane
+#      → END THE REVIEW. The current file is left completely untouched — not
+#        promoted, not recorded, not counted — and the loop ends immediately,
+#        printing the promotions and notes the EARLIER files already earned.
+#        Checked before everything else, so it always wins.
+#
 # The script itself NEVER promotes, flags, or signs — it prints the exact
 # commands for the promotions you asked for, and you (or an agent) run them.
 # Promotion stays a deliberate, attributable act.
@@ -60,6 +66,7 @@ set -euo pipefail
 #     ./poor_einmo.sh -n foolish-ubca/einmo_suite            # trace, no editor
 #
 # In vimdiff: ]c / [c next/prev change · :qa finish this test · :cq abort.
+# Type `stop` in any pane to end the review early, keeping what you decided so far.
 
 differing_only=0
 full_review=0
@@ -159,11 +166,12 @@ promote_verified=()    # ... in the verified pane
 send_to_agent_list=()  # tests where you left instructions
 noop_list=()           # tests you did not touch
 
-# A pane says "promote" if its entire content (trimmed) is that one word.
-is_promote_word() {
-    local content
-    content="$(tr -d '[:space:]' < "$1" | tr '[:upper:]' '[:lower:]')"
-    [[ "$content" == "promote" ]]
+# A pane "says" a word when its entire content, ignoring whitespace and case,
+# is exactly that word. Anything more is a message for an agent, not a verb.
+pane_says() {
+    local file="$1" word="$2" content
+    content="$(tr -d '[:space:]' < "$file" | tr '[:upper:]' '[:lower:]')"
+    [[ "$content" == "$word" ]]
 }
 
 idx=0
@@ -226,6 +234,24 @@ for row in "${rows[@]}"; do
     fi
 
     # --- read the reviewer's intent out of the panes -----------------------
+    #
+    # `stop` is checked FIRST and in EVERY pane: it is an escape hatch, so it
+    # must not depend on which pane you happened to be in, and it must beat
+    # every other reading. The current file is left completely alone — not
+    # promoted, not recorded as a note, not counted as reviewed — and the loop
+    # ends, reporting what the earlier files already decided.
+    stopped=0
+    for stage in output checked verified; do
+        if pane_says "${pane[$stage]}" "stop"; then
+            stopped=1
+            break
+        fi
+    done
+    if (( stopped )); then
+        echo "   ■ stop — leaving $test_path untouched and ending the review"
+        break
+    fi
+
     chk_changed=0; ver_changed=0
     cmp -s "${pane[checked]}"  "${pane[checked]}.orig"  || chk_changed=1
     cmp -s "${pane[verified]}" "${pane[verified]}.orig" || ver_changed=1
@@ -237,12 +263,12 @@ for row in "${rows[@]}"; do
     fi
 
     acted=0
-    if (( chk_changed )) && is_promote_word "${pane[checked]}"; then
+    if (( chk_changed )) && pane_says "${pane[checked]}" "promote"; then
         promote_checked+=("$rel")
         echo "   → promote output->checked"
         acted=1
     fi
-    if (( ver_changed )) && is_promote_word "${pane[verified]}"; then
+    if (( ver_changed )) && pane_says "${pane[verified]}" "promote"; then
         promote_verified+=("$rel")
         echo "   → promote checked->verified"
         acted=1
