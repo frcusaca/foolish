@@ -40,13 +40,14 @@ tests. **Deferred — needs its own decision.**
 
 ## Feature 2 — Einmo is extra critical of its own file paths ✅ DONE (0e71339d), ⬅ NOW SUPERSEDED IN SHAPE
 
-**Superseded 2026-07-15 by Atlas's escalating-scope directive** — see FOOP-64.md
-§"Validation levels: Output, Checked, Verified". The rules below were right but
-applied *unconditionally* across all three stages, so an unpopulated `verified/`
-made a dev suite red. They are now tiered: each level performs everything the
-level below requires, plus its own; the API has **no default** (the configuring
-test states its level); the CLI defaults to Checked with `--scope verified`.
-`SuiteIntegrity`/`IntegrityViolation` become the `Problem` enum of the spec.
+**Superseded 2026-07-15 by Atlas's escalating-levels directive** — see FOOP-64.md
+§"The escalating validation levels: Output → Checked → Verified". The rules
+below were right but applied *unconditionally* across all three stages, so an
+unpopulated `verified/` made a dev suite red. They now sit at escalating levels:
+each level performs everything the level below it requires, plus its own. The
+API has **no default level** (the configuring test states which level it
+produces); the CLI defaults to the Checked level with `--level verified` to
+escalate. `SuiteIntegrity`/`IntegrityViolation` become the `Problem` enum.
 
 ### (original, for the record)
 

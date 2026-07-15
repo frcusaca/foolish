@@ -157,19 +157,20 @@ section from `einmo_suite/checked/` and byte-compares it against the RESULT sect
 corresponding approved `.snap` (read-only). This proves the migration transported behavior, not
 just files. The test is deleted when the human retires `snapshot_tests/`.
 
-### Validation levels: Output, Checked, Verified (escalating, cumulative)
+### The escalating validation levels: Output → Checked → Verified
 
-Validation happens at **one of three levels**. Each level performs **everything the level below
-it requires**, plus its own — `Verified ⊃ Checked ⊃ Output`. This is the spine of the two gates:
-the **feature-complete test suite** validates at `Checked`; the **merge-ready test suite**
-validates at `Verified`. Both run against the same suite directories; only the bar rises.
+Validation happens at **one of three escalating levels**. Each level performs **everything the
+level below it requires**, plus its own — the levels escalate, they do not replace:
+`Verified ⊃ Checked ⊃ Output`. This is the spine of the two gates: the **feature-complete test
+suite** validates at the `Checked` level; the **merge-ready test suite** escalates to the
+`Verified` level. Both run against the same suite directories; only the level rises.
 
-**The API has no default.** The configuring test states the level it produces and validates
-(`ValidationScope::{Output, Checked, Verified}`); a config that has not chosen cannot be
-constructed. The **CLI** is built on top and may default (to `Checked`), with `--scope verified`
-to escalate.
+**The API has no default level.** The configuring test states which level it produces and
+validates (`ValidationLevel::{Output, Checked, Verified}`); a config that has not chosen a level
+cannot be constructed. The **CLI** is built on top of that API and may default (to the `Checked`
+level), with `--level verified` to escalate.
 
-#### Level 1 — `Output`: the suite is well-formed and evaluates
+#### Level 1 (base) — `Output`: the suite is well-formed and evaluates
 
 | # | Requirement |
 |---|---|
@@ -179,21 +180,21 @@ to escalate.
 | O4 | **Every written artifact self-verifies** — its full stamp chain (compiled → configured → `stage:output`) validates against the bytes on disk immediately after writing. |
 | O5 | **No orphaned `output/` artifacts** — every `.einmo` in `output/` has a corresponding `input/` file. An artifact whose input is gone is a record that can never be re-derived. |
 
-#### Level 2 — `Checked`: …everything Output requires, plus a reviewed baseline
+#### Level 2 (escalates from Output) — `Checked`: …everything the Output level requires, plus a reviewed baseline
 
 | # | Requirement |
 |---|---|
-| C1 | **All of O1–O5.** |
+| C1 | **Everything the Output level requires (O1–O5).** |
 | C2 | **Files match up exactly** — every `output/` artifact has a `checked/` counterpart and vice versa. No one-sided files in either direction. |
 | C3 | **No orphaned `checked/` artifacts** — every `checked/` artifact has an `input/` file. |
 | C4 | **Every `checked/` artifact's signatures verify** — the chain now includes `stage:checked`. |
 | C5 | **Content compares identical** — `output` vs `checked` INPUT + every OUTPUT section, byte for byte. STAMPS and metadata are excluded by design: they carry per-run timestamps and would make the gate structurally red (the insta defect this FOOP exists to fix). |
 
-#### Level 3 — `Verified`: …everything Checked requires, plus human attestation
+#### Level 3 (escalates from Checked) — `Verified`: …everything the Checked level requires, plus human attestation
 
 | # | Requirement |
 |---|---|
-| V1 | **All of C1–C5** (and therefore all of O1–O5). |
+| V1 | **Everything the Checked level requires (C1–C5), and therefore the Output level too (O1–O5).** |
 | V2 | **Files match up exactly** — every `checked/` artifact has a `verified/` counterpart and vice versa. A partially-signed corpus is an *incomplete* tier, not a passing one. |
 | V3 | **No orphaned `verified/` artifacts** — every `verified/` artifact has an `input/` file. |
 | V4 | **Every `verified/` artifact's signatures verify** — the chain now includes `stage:verified`. |
@@ -201,8 +202,8 @@ to escalate.
 | V6 | **Signed by the human reviewer's key** — every `stage:verified` stamp's pubkey matches the configured reviewer key. |
 | V7 | **No computer-key attestation** — *zero* `stage:verified` stamps carry the well-known empty-passphrase key. An AI piping `--passphrase ""` is detected post-hoc and fails the gate. |
 
-`flagged/` is **outside the escalation entirely**: it is the terminal sink, so a flagged
-artifact with no input is a completed retirement, not an orphan, at every level.
+`flagged/` sits **outside the escalation entirely**: it is the terminal sink, so a flagged
+artifact with no input is a completed retirement, not an orphan — at every level.
 
 #### What the API returns
 
@@ -211,7 +212,8 @@ description** — never an excerpt from a file (the artifacts are signed; a repo
 reproduce their content, and a reviewer reads them through `einmo body` / `poor_einmo.sh`):
 
 ```rust
-pub enum ValidationScope { Output, Checked, Verified }
+/// The escalating validation levels. No default: a suite states its level.
+pub enum ValidationLevel { Output, Checked, Verified }
 
 pub enum Problem {
     ExtraneousFile { path, .. },        // O1
