@@ -53,6 +53,14 @@ pub enum Status {
     OutputError,
 }
 
+impl std::fmt::Display for Status {
+    /// The wire spelling — the same token that appears in the `status:`
+    /// metadata line, so callers never re-derive it.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
 impl Status {
     fn as_str(self) -> &'static str {
         match self {

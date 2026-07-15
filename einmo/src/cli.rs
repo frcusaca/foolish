@@ -44,6 +44,10 @@ enum Command {
     ConfirmSignatures(ConfirmArgs),
     /// Show an envelope's summary and stamp chain.
     Show(ShowArgs),
+    /// List the suite's tests and which stages hold each one.
+    List(ListArgs),
+    /// Print an envelope's signed body sections (verify-on-inspect first).
+    Body(BodyArgs),
     /// Compute the SHA-256 of this binary (self-attestation).
     SelfCheck(SelfCheckArgs),
 }
@@ -177,6 +181,34 @@ struct ShowArgs {
 }
 
 #[derive(Args, Debug)]
+struct ListArgs {
+    /// The suite work directory.
+    work_dir: PathBuf,
+    /// Only tests whose mirror-relative path contains this substring.
+    #[arg(long)]
+    filter: Option<String>,
+    /// Only tests whose stage bodies are not all identical (ignores stamps and
+    /// metadata, exactly as `compare` does). Absent artifacts count as differing.
+    #[arg(long)]
+    differing: bool,
+    /// Emit machine-readable JSON (one object per line).
+    #[arg(long)]
+    json: bool,
+}
+
+#[derive(Args, Debug)]
+struct BodyArgs {
+    /// The `.einmo` file whose body to print.
+    file: PathBuf,
+    /// Print only this section (e.g. `INPUT`, `OUTPUT`, `COMMENTS`).
+    #[arg(long)]
+    section: Option<String>,
+    /// Do not print `=== NAME ===` headers between sections.
+    #[arg(long)]
+    bare: bool,
+}
+
+#[derive(Args, Debug)]
 struct SelfCheckArgs {
     /// Exit non-zero if the computed hash does not match this value.
     #[arg(long)]
@@ -220,6 +252,8 @@ fn dispatch(command: Command) -> Result<ExitCode> {
         Command::Verify(a) | Command::VerifySignatures(a) => cmd_verify(a),
         Command::ConfirmSignatures(a) => cmd_confirm(a),
         Command::Show(a) => cmd_show(a),
+        Command::List(a) => cmd_list(a),
+        Command::Body(a) => cmd_body(a),
         Command::SelfCheck(a) => cmd_self_check(a),
     }
 }
@@ -498,14 +532,14 @@ fn cmd_show(args: ShowArgs) -> Result<ExitCode> {
         println!(
             "{{\"test\":\"{}\",\"status\":\"{}\",\"stamps\":[{}]}}",
             meta.test,
-            status_str(file.metadata().status),
+            file.metadata().status,
             stamps.join(",")
         );
     } else {
         println!("test:     {}", meta.test);
         println!("suite:    {}", meta.suite);
         println!("producer: {}", meta.producer);
-        println!("status:   {}", status_str(meta.status));
+        println!("status:   {}", meta.status);
         if !meta.reference.is_empty() {
             println!("reference: {}", meta.reference);
         }
@@ -523,6 +557,167 @@ fn cmd_show(args: ShowArgs) -> Result<ExitCode> {
         if let Some(adv) = file.advisory() {
             println!("advisory: {adv}");
         }
+    }
+    Ok(ExitCode::SUCCESS)
+}
+
+/// The signed body of an envelope: every section except STAMPS.
+///
+/// This is what `compare` matches on, so it is what a reviewer should read —
+/// stamps and metadata (timestamps, keys) are deliberately excluded.
+/// Verify-on-inspect applies: a tampered file is refused, never rendered.
+fn body_sections(file: &EinmoFile, only: Option<&str>) -> Vec<(String, String)> {
+    file.sections()
+        .iter()
+        .filter(|s| !s.name().eq_ignore_ascii_case("STAMPS"))
+        .filter(|s| only.is_none_or(|w| s.name().eq_ignore_ascii_case(w)))
+        .map(|s| (s.name().to_string(), s.body().to_string()))
+        .collect()
+}
+
+fn cmd_body(args: BodyArgs) -> Result<ExitCode> {
+    // from_file verifies every stamp before returning (verify-on-inspect).
+    let file = EinmoFile::from_file(&args.file)?;
+    let sections = body_sections(&file, args.section.as_deref());
+    if sections.is_empty()
+        && let Some(want) = &args.section {
+            return Err(EinmoError::Parse(format!(
+                "no section {want:?} in {}",
+                args.file.display()
+            )));
+        }
+    for (name, body) in sections {
+        if !args.bare {
+            println!("=== {name} ===");
+        }
+        println!("{body}");
+    }
+    Ok(ExitCode::SUCCESS)
+}
+
+/// Where a test's artifacts exist, and whether their bodies agree.
+struct TestRow {
+    rel: PathBuf,
+    stages: Vec<(Stage, Option<String>)>, // (stage, status if present)
+    differing: bool,
+}
+
+/// Enumerate the suite's tests across output/checked/verified.
+///
+/// The union of the input tree and every stage tree, so a test that exists only
+/// in a stage (input deleted) or only in `output/` (never promoted) is still
+/// listed — the file scan `poor_einmo.sh` needs.
+fn scan_tests(config: &TestConfig, filter: Option<&str>) -> Result<Vec<TestRow>> {
+    use crate::stage::{mirror_input_path, walk_input_tree};
+
+    const STAGES: [Stage; 3] = [Stage::Output, Stage::Checked, Stage::Verified];
+
+    let mut rels: Vec<PathBuf> = walk_input_tree(&config.input_path(), config.walk_depth_limit())
+        .unwrap_or_default()
+        .iter()
+        .map(|p| mirror_input_path(p))
+        .collect();
+    // Union in anything present in a stage but absent from input/.
+    for stage in STAGES {
+        let dir = config.stage_dir(stage);
+        if let Ok(found) = walk_input_tree(&dir, config.walk_depth_limit()) {
+            rels.extend(found);
+        }
+    }
+    rels.sort();
+    rels.dedup();
+
+    let mut rows = Vec::new();
+    for rel in rels {
+        let shown = rel.to_string_lossy().to_string();
+        if filter.is_some_and(|f| !shown.contains(f)) {
+            continue;
+        }
+        let mut stages = Vec::new();
+        let mut bodies: Vec<Option<Vec<(String, String)>>> = Vec::new();
+        for stage in STAGES {
+            let path = config.stage_dir(stage).join(&rel);
+            if path.exists() {
+                match EinmoFile::from_file(&path) {
+                    Ok(f) => {
+                        let status = f.metadata().status.to_string();
+                        stages.push((stage, Some(status)));
+                        bodies.push(Some(body_sections(&f, None)));
+                    }
+                    Err(_) => {
+                        // Tampered/unreadable: report it, never render it.
+                        stages.push((stage, Some("TAMPERED".to_string())));
+                        bodies.push(None);
+                    }
+                }
+            } else {
+                stages.push((stage, None));
+                bodies.push(None);
+            }
+        }
+        // Differing unless every stage is present and their bodies agree.
+        let differing =
+            bodies.iter().any(Option::is_none) || bodies.windows(2).any(|w| w[0] != w[1]);
+        rows.push(TestRow {
+            rel,
+            stages,
+            differing,
+        });
+    }
+    Ok(rows)
+}
+
+fn cmd_list(args: ListArgs) -> Result<ExitCode> {
+    let config = TestConfig::new(&args.work_dir);
+    let rows = scan_tests(&config, args.filter.as_deref())?;
+    let rows: Vec<&TestRow> = rows
+        .iter()
+        .filter(|r| !args.differing || r.differing)
+        .collect();
+
+    for row in &rows {
+        let rel = row.rel.to_string_lossy();
+        if args.json {
+            let stages: Vec<String> = row
+                .stages
+                .iter()
+                .map(|(s, st)| {
+                    format!(
+                        "\"{}\":{}",
+                        s.dir_name(),
+                        st.as_ref()
+                            .map_or_else(|| "null".to_string(), |v| format!("\"{v}\""))
+                    )
+                })
+                .collect();
+            println!(
+                "{{\"test\":\"{}\",\"differing\":{},{}}}",
+                rel,
+                row.differing,
+                stages.join(",")
+            );
+        } else {
+            let marks: Vec<String> = row
+                .stages
+                .iter()
+                .map(|(s, st)| {
+                    let mark = st.as_ref().map_or("—", |v| match v.as_str() {
+                        "normal" => "ok",
+                        other => other,
+                    });
+                    format!("{}:{}", s.dir_name(), mark)
+                })
+                .collect();
+            println!(
+                "{}\t{}\t{}",
+                rel,
+                if row.differing { "differ" } else { "same" },
+                marks.join(" ")
+            );
+        }
+    }
+    if !args.json {
+        eprintln!("{} test(s)", rows.len());
     }
     Ok(ExitCode::SUCCESS)
 }
@@ -560,14 +755,6 @@ fn sha256_file(path: &Path) -> Result<String> {
     let mut hasher = Sha256::new();
     hasher.update(&bytes);
     Ok(hex::encode(hasher.finalize()))
-}
-
-fn status_str(status: crate::format::Status) -> &'static str {
-    match status {
-        crate::format::Status::Normal => "normal",
-        crate::format::Status::InputError => "input-error",
-        crate::format::Status::OutputError => "output-error",
-    }
 }
 
 /// Read one line from stdin (for `--stdin-passphrase`).
@@ -608,6 +795,68 @@ mod tests {
         assert!(Cli::try_parse_from(["einmo", "compare", "output", "checked", "/tmp/s"]).is_ok());
         assert!(Cli::try_parse_from(["einmo", "promote", "output->checked", "/tmp/s"]).is_ok());
         assert!(Cli::try_parse_from(["einmo", "self-check", "--quiet"]).is_ok());
+    }
+
+    #[test]
+    fn cli_parses_list_and_body() {
+        assert!(Cli::try_parse_from(["einmo", "list", "/tmp/s"]).is_ok());
+        assert!(Cli::try_parse_from(["einmo", "list", "/tmp/s", "--differing", "--json"]).is_ok());
+        assert!(Cli::try_parse_from(["einmo", "list", "/tmp/s", "--filter", "foop/23"]).is_ok());
+        assert!(Cli::try_parse_from(["einmo", "body", "/tmp/a.einmo"]).is_ok());
+        assert!(
+            Cli::try_parse_from([
+                "einmo",
+                "body",
+                "/tmp/a.einmo",
+                "--section",
+                "OUTPUT",
+                "--bare"
+            ])
+            .is_ok()
+        );
+    }
+
+    /// The body view is what a reviewer reads, so it must exclude the stamp
+    /// chain (and therefore the timestamp/key churn that made the legacy insta
+    /// corpus structurally red).
+    #[test]
+    fn body_sections_excludes_stamps() {
+        use crate::format::{DEFAULT_SEPARATOR, EinmoFile, Metadata, Section, Status};
+        use crate::signature::Stamps;
+
+        let meta = Metadata {
+            test: "t.foo".into(),
+            suite: "s".into(),
+            producer: "abc".into(),
+            producer_diff: String::new(),
+            generated: "2026-07-15T00:00:00Z".into(),
+            status: Status::Normal,
+            status_detail: String::new(),
+            reference: String::new(),
+            sections: vec!["INPUT".into(), "OUTPUT".into(), "STAMPS".into()],
+        };
+        let file = EinmoFile::new(
+            "utf-8",
+            DEFAULT_SEPARATOR,
+            meta,
+            vec![
+                Section::new("INPUT", "{3 + 4;}"),
+                Section::new("OUTPUT", "{ 7 }"),
+                Section::new("STAMPS", "{\"key\":\"stage:output\"}"),
+            ],
+            Stamps::new(),
+        );
+
+        let all = body_sections(&file, None);
+        assert_eq!(
+            all.iter().map(|(n, _)| n.as_str()).collect::<Vec<_>>(),
+            vec!["INPUT", "OUTPUT"],
+            "STAMPS must never reach a reviewer's pane"
+        );
+
+        let only = body_sections(&file, Some("output"));
+        assert_eq!(only.len(), 1, "--section is case-insensitive");
+        assert_eq!(only[0].1, "{ 7 }");
     }
 
     #[test]

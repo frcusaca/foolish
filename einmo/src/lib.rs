@@ -22,10 +22,10 @@
 mod cli;
 mod compare;
 mod config;
+mod einmo_suite;
 mod error;
 mod format;
 mod signature;
-mod einmo_suite;
 mod stage;
 mod transitions;
 mod verify;
@@ -33,10 +33,10 @@ mod verify;
 pub use cli::cli_main;
 pub use compare::{ComparisonResult, DiffEntry, MatchSections, compare};
 pub use config::{KeySource, Perspective, PerspectiveOf, StageDirs, TestConfig, resolve_stage_key};
+pub use einmo_suite::{EinmoSuite, Evaluator, FileResult, TestResults};
 pub use error::EinmoError;
 pub use format::{EinmoFile, Metadata, Section, Status};
 pub use signature::{Stamp, StampRole, Stamps};
-pub use einmo_suite::{EinmoSuite, Evaluator, FileResult, TestResults};
 pub use stage::Stage;
 pub use transitions::{
     FlagReport, PromotionReport, SignatureReport, confirm_signatures, flag, promote,
