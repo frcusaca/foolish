@@ -27,11 +27,14 @@ set -euo pipefail
 #        `send_to_agent_list`, printed at the end with your text preserved in
 #        $REVIEW_DIR so an agent can act on it.
 #
-#   3. You changed nothing, or typed a SKIP word (skip · pass · idk)
-#      → NO ACTION. Accumulated into `noop_list`, reported on one line. A skip
-#        word is a deliberate non-decision: you looked and chose not to rule.
+#   3. You typed a SKIP word (skip · pass · idk)
+#      → NO ACTION, deliberately: you looked and chose not to rule. Accumulated
+#        into `skip_list`, listed separately from files you never touched.
 #
-#   4. You typed `stop` into ANY pane
+#   4. You changed nothing
+#      → NO ACTION. Accumulated into `noop_list`, reported on one line.
+#
+#   5. You typed `stop` into ANY pane
 #      → END THE REVIEW. The current file is left completely untouched — not
 #        promoted, not recorded, not counted — and the loop ends immediately,
 #        printing the promotions and notes the EARLIER files already earned.
@@ -168,10 +171,11 @@ echo "poor_einmo: ${#rows[@]} test(s) in $SUITE${FILTER:+ (filter: $FILTER)}"
 echo "            notes kept in $REVIEW_DIR"
 echo
 
-promote_checked=()     # tests where you typed `promote` in the checked pane
+promote_checked=()     # tests where you typed a promote word in the checked pane
 promote_verified=()    # ... in the verified pane
 send_to_agent_list=()  # tests where you left instructions
-noop_list=()           # tests you did not touch
+skip_list=()           # tests you deliberately passed on (skip/pass/idk)
+noop_list=()           # tests you did not touch at all
 
 # The vocabulary. A pane must contain ONE of these words and nothing else —
 # whitespace is stripped and case ignored, but any extra text means you were
@@ -296,7 +300,7 @@ for row in "${rows[@]}"; do
         fi
     done
     if (( skipped_word )); then
-        noop_list+=("$test_path")
+        skip_list+=("$test_path")
         echo "   · skipped — no action"
         continue
     fi
@@ -353,6 +357,12 @@ if (( ${#noop_list[@]} )); then
     echo "noop_list (${#noop_list[@]}): ${noop_list[*]}"
 fi
 
+if (( ${#skip_list[@]} )); then
+    echo
+    echo "skip_list (${#skip_list[@]}) — you looked and chose not to rule:"
+    printf '  %s\n' "${skip_list[@]}"
+fi
+
 if (( ${#send_to_agent_list[@]} )); then
     echo
     echo "send_to_agent_list (${#send_to_agent_list[@]}) — you left instructions on these:"
@@ -380,7 +390,11 @@ fi
 
 if (( ${#promote_checked[@]} == 0 && ${#promote_verified[@]} == 0 && ${#send_to_agent_list[@]} == 0 )); then
     echo
-    echo "Nothing to do — every test reviewed was unchanged."
+    if (( ${#skip_list[@]} )); then
+        echo "Nothing to do — every test reviewed was skipped or unchanged."
+    else
+        echo "Nothing to do — every test reviewed was unchanged."
+    fi
 fi
 
 echo
