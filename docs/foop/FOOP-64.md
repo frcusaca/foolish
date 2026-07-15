@@ -34,7 +34,7 @@ repository root — **read it before creating or editing a FOOP.**
 
 Migrate the 162 flat insta snapshot tests under `foolish-ubca/snapshot_tests/` into a new
 **einmo suite** at `foolish-ubca/einmo_suite/`, organized as a meaningful directory hierarchy
-(`foop/<NUMBER>/…`, `lang/<category>/…`, `lang/usecases/…`, `regression/…`) and stored in the
+(`foop/<NUMBER>/…`, `regression/…`, `misc/…` — organized by FOOP provenance) and stored in the
 signed `.einmo` envelope format (FOOP-92). This is the inverse direction from zweimomo: there the
 Foolish FVM was an evaluator used to test einmo; here einmo is the harness used to test the
 Foolish UBCa FVM. The FOOP also proposes nine new feature-combination tests (§Proposed new
@@ -70,25 +70,19 @@ FVM's own approval corpus.
 
 ```
 foolish-ubca/einmo_suite/
-├── einmo.toml                  # suite config: signing (computer key for output/checked)
-├── MAPPING.md                  # generated: full old-path → new-path table, incl. dual homes
+├── einmo.toml                  # signing: computer key for output/checked; verified unset
+├── MAPPING.md                  # generated: old-path → new-path, rules, dedup + dup survey
 ├── input/
-│   ├── foop/
-│   │   ├── 9/                  # foop9_* probes (FOOP-9)
-│   │   ├── 13/comprehensive.foo
-│   │   ├── 23/comprehensive.foo
-│   │   ├── 42/comprehensive.foo
-│   │   └── 64/                 # this FOOP's new tests + comprehensive.foo
-│   ├── lang/
-│   │   ├── basics/  operators/  alarms/  branes/  concat/  sf_sff/  sequencer/
-│   │   ├── searches/
-│   │   │   └── anchored/  contexted/  value/  regex/  seeks/  head_tail/
-│   │   └── usecases/
-│   └── regression/
+│   ├── foop/                   # organized by FOOP provenance (the primary axis)
+│   │   ├── 9/    13/    23/    41/    42/    62/    64/
+│   │   └──   (comprehensives + each FOOP's development tests)
+│   ├── regression/             # pinned bug reproductions
+│   └── misc/                   # CATCHALL beside foop/ — not easily categorized;
+│                               #   the pool to re-home as FOOPs claim their tests
 ├── output/                     # generated, signed (computer key)
-├── checked/                    # reviewed baseline (committed)
+├── checked/                    # reviewed baseline (committed) — feature-complete tier
 ├── flagged/                    # set-aside sink
-└── verified/                   # human-signed (passphrase; never the computer key)
+└── verified/                   # human-signed — merge-ready tier
 ```
 
 Directory names under `foop/` use the **filename digits** (the little-endian identifier):
@@ -97,39 +91,47 @@ Directory names under `foop/` use the **filename digits** (the little-endian ide
 ### Placement rules
 
 Inputs remain `.foo` files; einmo writes `<relative-path>.foo.einmo` into each stage directory.
+Rules are **first-match-wins**; the executed outcome for every input is recorded in
+`einmo_suite/MAPPING.md`.
 
-| Rule | Old name (pattern) | New home |
-|------|--------------------|----------|
-| R1 | `foop_<N>_comprehensive.foo` | `foop/<N>/comprehensive.foo` |
-| R2 | `foop<N>_<rest>.foo` (non-regression) | `foop/<N>/<rest>.foo` |
-| R3 | `regression_<rest>.foo`, `foop<N>_*_regression.foo` | `regression/…` (keep `foop<N>` in the stem for provenance) |
-| R4 | `complex_*.foo`, `infinite_loop.foo` | `lang/usecases/` |
-| R5 | `alarm_*`, `zero_division`, `division_by_zero_in_nested_brane`, `operator_chain_with_division_by_zero` | `lang/alarms/` |
-| R6 | `concatenation_*`, `concat_*`, `multiple_concatenation_in_sequence` | `lang/concat/` |
-| R7 | `sf_*`, `sff_*`, `sf_sff_*` | `lang/sf_sff/` |
-| R8 | `sequencer_*`, `hfs_*`, `hs_*` | `lang/sequencer/` |
-| R9 | search family by operator: `anchored_search_*`/`search_*`/`level_skipping_*`/`nested_search_in_brane`/`assignment_anchor_search`/`contextless_deepening_chain` → `searches/anchored/`; `contexted_*` → `searches/contexted/`; `value_search_*`/`name_value_atomic` → `searches/value/`; `regex_search_*`/`simple_regex_search` → `searches/regex/`; `*seek*`/`offset_access_*` → `searches/seeks/`; `head_tail_*`/`brane_with_single_value_head_tail` → `searches/head_tail/` |
-| R10 | `operator_*` (remaining) | `lang/operators/` |
-| R11 | brane/scope/shadowing/forward-ref stems | `lang/branes/` |
-| R12 | everything remaining (simple arithmetic, literals, identifiers, unicode) | `lang/basics/` |
+| Rule | Condition | Home | Count (executed) |
+|------|-----------|------|------------------|
+| R1 | name declares FOOP + comprehensive (`foop_<N>_comprehensive`) | `foop/<N>/comprehensive.foo` | 2 |
+| R2 | name declares its FOOP (`foop<N>_<rest>`, non-regression) | `foop/<N>/<rest>.foo` | 3 |
+| R3 | regression (`regression_*`, `*_regression`) | `regression/<stem>.foo` | 4 |
+| R4 | git birth-commit names a FOOP (attribution pass) | `foop/<N>/<stem>.foo` | 20 |
+| R5 | everything else — catchall | `misc/<stem>.foo` | 132 |
+| DEDUP | byte-identical (source + output) to another input | not migrated — keep one | 1 |
 
-Rules apply top to bottom; the first match wins. When the directory now carries the category, the
-redundant stem prefix is stripped (`alarm_division_by_zero_in_brane.foo` →
-`lang/alarms/division_by_zero_in_brane.foo`); the stem is kept whole when stripping would damage
-meaning. The executed outcome for all 162 files is recorded in `einmo_suite/MAPPING.md`.
+Directory names under `foop/` use the **filename digits** (the little-endian identifier):
+`foop/13/` is FOOP-13, *not* the FOOP whose sort key is 13 (that would be FOOP-31). Prefix
+stripping applies only where the directory already carries the FOOP (`foop9_unary_operator.foo`
+→ `foop/9/unary_operator.foo`); `misc/` and `regression/` keep whole stems.
 
-### Dual-home rule
+**162 old → 161 migrated**, every copy byte-identical to its source.
 
-When two tests are largely identical, that is often because they belong to two places — once as a
-FOOP's feature probe (`foop/<N>/feature_testing.foo`) and once as living language documentation
-(`lang/usecases/demonstrate_concat_in_recursive_call.foo`). Such inputs are **fully copied into
-each home, not deduplicated**; each copy is signed and promoted independently. `MAPPING.md` records
-dual-home pairs. Within a *single* directory, near-identical variants instead use einmo's
-dependent naming (`base++variant.foo`, diffed via the DIFF section).
+### One home per test (no dual-homing)
 
-An attribution pass (git history of each input) may add `foop/<N>/` dual copies for tests that
-were clearly born inside a FOOP but carry no `foop` prefix (e.g. the `operator_transparency_*`
-trio from FOOP-9 or `concat_brane_*` from FOOP-13).
+**Superseded the earlier dual-home proposal (Atlas 2026-07-15).** Every input has exactly ONE
+home. The organizing axis is **FOOP provenance**: a test whose name declares its FOOP (R1/R2) or
+whose git birth-commit names one (R4) lives under `foop/<N>/`; regressions live under
+`regression/`; everything not easily categorized lands in **`misc/`**, a catchall beside `foop/`
+that is the pool to re-home later as FOOPs claim their tests.
+
+**Identical tests: keep one — the older.** When two inputs are byte-identical in source *and*
+evaluated output, only one is migrated (age decides; where both were born in the same commit,
+the base name wins over a derived `_regression`-style copy). MAPPING.md records the drop.
+
+**Near-identical tests are NOT merged automatically.** Integration ("keep only the differing
+elements of two nearly identical tests") rewrites Foolish source and can silently delete
+coverage, so it is a **human authoring decision**, tracked as a plan task. The corpus survey
+(recorded in `einmo_suite/MAPPING.md`) found 54 pairs ≥0.75 similar that are deliberate
+axis-variations — `offset_access_backward` vs `_forward`, concat empty/single/unresolved,
+`sff_basic` vs `sff_nested` — where merging would destroy failure localization. They stay
+separate.
+
+Within a single directory, genuine variants may still use einmo's dependent naming
+(`base++variant.foo`, diffed via the DIFF section).
 
 ### Harness
 

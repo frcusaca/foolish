@@ -10,12 +10,12 @@ Every input has exactly ONE home (no dual-homing):
 | R3 | regression test | `regression/<stem>.foo` |
 | R4-attrib | git birth-commit names a FOOP | `foop/<N>/<stem>.foo` |
 | R5-misc | not easily categorized (catchall beside `foop/`) | `misc/<stem>.foo` |
-| DUP-dropped | byte-identical to another input (whitespace-normalized) | not migrated |
+| DEDUP-dropped | byte-identical to another input (source + output) — keep one, no dual-homing | not migrated |
 
 Copies, never moves: `snapshot_tests/input/` stays intact until human-gated retirement.
 `misc/` is the pool to re-home later as FOOPs claim their tests.
 
-**Inputs: 162 old -> 162 migrated (0 exact duplicates removed)** — R1: 2, R2: 3, R3: 5, R4-attrib: 20, R5-misc: 132  |  FOOP dirs: foop/9 (2), foop/13 (5), foop/23 (11), foop/41 (1), foop/42 (1), foop/62 (5)
+**Inputs: 162 old -> 161 migrated (1 exact duplicate removed)** — R1: 2, R2: 3, R3: 5, R4-attrib: 20, R5-misc: 132  |  FOOP dirs: foop/9 (2), foop/13 (5), foop/23 (11), foop/41 (1), foop/42 (1), foop/62 (5)
 
 ## Duplicate / near-duplicate investigation (2026-07-15)
 
@@ -30,9 +30,12 @@ nearly identical tests." Findings:
   localizes a failure — a coverage loss disguised as cleanup. **Not integrated.**
 - **1 pair is byte-identical in source AND approved output**:
   `foop9_operator_search_transparency.foo` and `foop9_operator_search_transparency_regression.foo`
-  (both `{x=5, y=7, z=#-2 + #-1;}`). This is a **legitimate two-home case** — one is FOOP-9's
-  development probe, the other the pinned regression — so the rules route them to `foop/9/` and
-  `regression/` respectively. Both kept, by design.
+  (both `{x=5, y=7, z=#-2 + #-1;}`, identical evaluated output). **Deduplicated** (Atlas
+  2026-07-15: "if they're identical only keep older test"; no dual-homing). Both were born in
+  the same commit, so age does not separate them — the tiebreak is that
+  `foop9_operator_search_transparency.foo` is the base name and `..._regression.foo` the derived
+  copy. **Kept:** `foop/9/operator_search_transparency.foo`. **Dropped:** the `_regression` twin
+  (it pinned nothing the base does not).
 
 **Rule adopted:** integration of near-identical tests is a *human authoring decision* (it rewrites
 Foolish source and can silently delete coverage), never an automated merge. Candidates are listed
@@ -98,7 +101,7 @@ above for a future pass.
 | `division_exact_and_remainder.foo` | R5-misc | `misc/division_exact_and_remainder.foo` | uncategorized; re-home when a FOOP claims it |
 | `foop42_humanizing_sequencer_formatting_exhaustive_aka_hfs.foo` | R2 | `foop/42/humanizing_sequencer_formatting_exhaustive_aka_hfs.foo` | name declares FOOP |
 | `foop9_operator_search_transparency.foo` | R2 | `foop/9/operator_search_transparency.foo` | name declares FOOP |
-| `foop9_operator_search_transparency_regression.foo` | R3 | `regression/foop9_operator_search_transparency_regression.foo` | regression |
+| `foop9_operator_search_transparency_regression.foo` | DEDUP-dropped | — | identical to `foop9_operator_search_transparency.foo` (source + output); kept the base name, dropped this derived copy |
 | `foop9_unary_operator.foo` | R2 | `foop/9/unary_operator.foo` | name declares FOOP |
 | `foop_13_comprehensive.foo` | R1 | `foop/13/comprehensive.foo` | name declares FOOP + comprehensive |
 | `foop_23_comprehensive.foo` | R1 | `foop/23/comprehensive.foo` | name declares FOOP + comprehensive |
