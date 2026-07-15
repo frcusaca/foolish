@@ -35,10 +35,15 @@ set -euo pipefail
 #      → NO ACTION. Accumulated into `noop_list`, reported on one line.
 #
 #   5. You typed `stop` into ANY pane
-#      → END THE REVIEW. The current file is left completely untouched — not
-#        promoted, not recorded, not counted — and the loop ends immediately,
+#      → END THE REVIEW GRACEFULLY. The current file is left completely
+#        untouched — not promoted, not recorded, not counted — and the loop ends,
 #        printing the promotions and notes the EARLIER files already earned.
-#        Checked before everything else, so it always wins.
+#
+#   6. You typed `abort` into ANY pane
+#      → LEAVE NOW. Nothing is promoted, nothing is reported, no results are
+#        printed at all — not even for files you already reviewed. Exit 130.
+#        Use `stop` to finish up gracefully; `abort` is for "get me out of
+#        here". Read before every other word, so nothing can outrank it.
 #
 # The script itself NEVER promotes, flags, or signs — it prints the exact
 # commands for the promotions you asked for, and you (or an agent) run them.
@@ -74,9 +79,10 @@ set -euo pipefail
 # anything else is a message for an agent:
 #     promote · promoted · approve · approved · lgtm · sgtm   → promote
 #     skip · pass · idk                                       → no action
-#     stop                                                    → end the review
+#     stop                                                    → end, print results
+#     abort                                                   → end NOW, print nothing
 #
-# In vimdiff: ]c / [c next/prev change · :qa finish this test · :cq abort.
+# In vimdiff: ]c / [c next/prev change · :qa finish this test · :cq abort the loop.
 
 differing_only=0
 full_review=0
@@ -187,6 +193,7 @@ noop_list=()           # tests you did not touch at all
 PROMOTE_WORDS=(promote promoted approve approved lgtm sgtm)
 SKIP_WORDS=(skip pass idk)
 STOP_WORDS=(stop)
+ABORT_WORDS=(abort)
 
 # `pane_says <file> <word>...` — true when the pane's whole content is exactly
 # one of `word...`, ignoring surrounding whitespace and case.
@@ -266,6 +273,17 @@ for row in "${rows[@]}"; do
     # every other reading. The current file is left completely alone — not
     # promoted, not recorded as a note, not counted as reviewed — and the loop
     # ends, reporting what the earlier files already decided.
+    # `abort` is read first and in every pane: it is the strongest word in the
+    # vocabulary, so nothing may outrank it. It leaves immediately — no
+    # promotion list, no notes, no results — because "abort" means you want out
+    # NOW, not a tidy summary of a review you are repudiating.
+    for stage in output checked verified; do
+        if pane_says "${pane[$stage]}" "${ABORT_WORDS[@]}"; then
+            echo "   ✖ abort — leaving $test_path untouched; nothing promoted, nothing reported"
+            exit 130
+        fi
+    done
+
     stopped=0
     for stage in output checked verified; do
         if pane_says "${pane[$stage]}" "${STOP_WORDS[@]}"; then
