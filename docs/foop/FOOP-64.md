@@ -374,13 +374,16 @@ swap/backup/undo file. On a shared host, a world- or group-readable temp directo
 The rule — *police your temp's*, in the sense of policing your brass: **you leave no readable
 trace on shared ground.** Concretely, every review tool MUST:
 
-1. **Confine all scratch to mode-700 directories** (`u+rwx`, `og-rwx` — readable and writable
-   only by the invoking user; `+x` on directories for the owner only). This covers the pane
-   renders, the notes directory, and the editor's swap/backup/undo directories.
-2. **Enforce it, not assume it.** `mktemp -d` creates `0700` today, but a stray `umask`, a
-   hostile `TMPDIR`, or a user-supplied scratch path can be looser. The tool `chmod`s each
-   scratch directory to `700` and **refuses to run** if that did not take — its contents are too
-   sensitive to leave to a default.
+1. **Set `umask 077` before creating any scratch**, so every file is born `600` and every
+   directory `700` — private at birth, no per-file chmod chase. This is the process-wide
+   default for how new files are made; setting it once governs all scratch (the pane renders,
+   the `.orig` baselines, the notes, and the editor's swap/backup/undo files).
+2. **Enforce it on existing directories, not assume it.** A user-supplied scratch path may
+   predate our `umask` or arrive with contents already group/world-readable. The tool
+   `chmod -R go-rwx`s the directory and everything under it, verifies **nothing** beneath it
+   keeps a group/other bit, and **refuses to run** if that did not take (e.g. a directory the
+   user cannot chmod). Fix if we can; refuse only if we can't — the material is too sensitive to
+   leave to a default.
 3. **Harden before any early exit,** so a user-supplied private directory is secured the moment
    it is chosen, even on a run that finds no tests.
 4. **Offer a private-location override** (`poor_einmo.sh`'s `POOR_EINMO_DIR`; console-review's

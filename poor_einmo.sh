@@ -154,26 +154,38 @@ mapfile -t rows < <("$EINMO" "${list_args[@]}" 2>/dev/null || true)
 
 # --- private scratch space (SECURITY) -------------------------------------
 #
-# Every pane the reviewer sees, every note they leave, and every vim
-# swap/backup/undo file holds the SIGNED CONTENT under review. On a shared host,
-# a world- or group-readable temp directory leaks it. We therefore keep all of
-# it under directories that are u+rwx and og-rwx (mode 700) — readable and
-# writable ONLY by us.
+# EVERYTHING under our scratch dirs — the panes, the .orig baselines, the notes,
+# the vim swap/backup/undo files — is the SIGNED CONTENT under review. On a
+# shared host, any of it being group- or world-readable leaks it.
 #
-# `mktemp -d` already creates 0700, but we do not rely on the default: a stray
-# umask, a hostile TMPDIR, or a user-supplied $POOR_EINMO_DIR could be looser.
-# We chmod every scratch directory to 700 explicitly, on every run.
+# The clean lever is `umask`: it is the process-wide DEFAULT for how new files
+# and directories are created. `umask 077` makes every file we create 600 and
+# every directory 700 — private at birth, no per-file chmod chase. We set it
+# once here, before any scratch exists, so it governs all of it.
 #
-# To place scratch somewhere private of your own (e.g. an encrypted or
-# tmpfs-backed path rather than shared /tmp), set POOR_EINMO_DIR — it is still
-# forced to 700.
-harden_dir() {  # chmod 700, and refuse to proceed if it did not take
+# `harden_dir` is the belt to umask's braces: it forces an EXISTING directory
+# (and its contents) to owner-only and REFUSES to run if that did not take —
+# for a user-supplied $POOR_EINMO_DIR that may predate our umask or arrive
+# world-writable. mktemp already makes 0700, but we do not trust defaults for
+# material this sensitive.
+#
+# To place scratch somewhere private of your own (encrypted, or tmpfs-backed
+# rather than shared /tmp), set POOR_EINMO_DIR — it is still forced private.
+umask 077
+
+harden_dir() {  # force owner-only on the dir AND its contents; refuse if it fails
+    chmod -R go-rwx "$1" 2>/dev/null || true
     chmod 700 "$1" 2>/dev/null || true
     local mode
     mode="$(stat -c '%a' "$1" 2>/dev/null || echo '?')"
     if [[ "$mode" != "700" ]]; then
         echo "poor_einmo: refusing to use $1 — could not secure it to mode 700 (got $mode)." >&2
         echo "            Its contents would be the signed material under review." >&2
+        exit 1
+    fi
+    # No group/other bit may survive anywhere beneath it.
+    if [[ -n "$(find "$1" \( -perm /0077 \) -print -quit 2>/dev/null)" ]]; then
+        echo "poor_einmo: refusing to use $1 — something under it is group/other-accessible." >&2
         exit 1
     fi
 }
@@ -252,7 +264,7 @@ $MARKER_SIGIL   stop               end the review, keep what you decided
 $MARKER_SIGIL   abort              leave now, discard everything
 $MARKER_SIGIL
 $MARKER_SIGIL Anything else becomes a note for an agent.
-$MARKER_SIGIL Leave this text as-is and the file counts as untouched.
+$MARKER_SIGIL Leave this text as-is and the file counts as unreviewed.
 MARKER
 }
 
