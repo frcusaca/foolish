@@ -96,7 +96,9 @@ set -euo pipefail
 #     stop                                                    → end, print results
 #     abort                                                   → end NOW, print nothing
 #
-# In vimdiff: ]c / [c next/prev change · :qa finish this test · :cq abort the loop.
+# In vimdiff: ]c / [c next/prev change · zz centre the current line ·
+#   :qa finish this test · :qa! finish discarding unsaved pane edits ·
+#   :cq abort the whole loop.
 
 differing_only=0
 full_review=0
@@ -419,15 +421,27 @@ for row in "${rows[@]}"; do
     echo "── [$idx/${#rows[@]}] $test_path"
     echo "   $marks"
 
+    # A persistent status line naming what you are looking at and why it is in
+    # the queue: the test, its differ/same verdict, and the per-stage marks
+    # (output/checked/verified: ok | a status | — for absent). Set with `-c`
+    # (after the user's vimrc loads) so it wins for this review; % is doubled so
+    # our text is not taken as a statusline format item.
+    status_text="poor_einmo │ $test_path │ ${marks//%/%%}"
+    review_opts=(
+        "${VIM_OPTS[@]}"
+        -c "set laststatus=2"
+        -c "set statusline=${status_text// /\\ }"
+    )
+
     if (( dry_run )); then
         # Debugging aid: show the call instead of locking the terminal.
-        echo "   + vimdiff ${VIM_OPTS[*]} '$in_f' '${pane[output]}' '${pane[checked]}' '${pane[verified]}'"
+        echo "   + vimdiff ${review_opts[*]} '$in_f' '${pane[output]}' '${pane[checked]}' '${pane[verified]}'"
         noop_list+=("$test_path")
         break
     fi
 
     # 4-way: the source under test, then the three stages.
-    if ! vimdiff "${VIM_OPTS[@]}" \
+    if ! vimdiff "${review_opts[@]}" \
             "$in_f" "${pane[output]}" "${pane[checked]}" "${pane[verified]}" \
             </dev/tty >/dev/tty; then
         echo
