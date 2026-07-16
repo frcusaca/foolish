@@ -57,14 +57,15 @@ enum Command {
 
 #[derive(Args, Debug)]
 struct PromoteArgs {
-    /// The `<from>-><to>` stage pair, e.g. `output->checked`.
-    transition: String,
-    /// The suite work directory.
-    work_dir: PathBuf,
-    /// Specific `.einmo` files to act on (mirror-relative, stage-relative, or
-    /// absolute). Use `-` to read paths from stdin (one per line).
-    #[arg(num_args = 0.., trailing_var_arg = true)]
-    files: Vec<PathBuf>,
+    /// The stage pair, in any of:
+    ///   `<from> to <to>`  (spaced — preferred; needs no quoting)
+    ///   `<from>-><to>` · `<from>:<to>` · `<from>..<to>`  (glued)
+    /// then the work directory, then any specific `.einmo` files.
+    ///
+    /// An unquoted `->` is a shell redirect, so the spaced form is safest.
+    /// Parsed positionally by [`split_promote_args`].
+    #[arg(required = true, num_args = 1..)]
+    args: Vec<String>,
     /// Restrict to inputs matching this glob (`*` wildcard).
     #[arg(long)]
     filter: Option<String>,
@@ -296,9 +297,18 @@ fn dispatch(command: Command) -> Result<ExitCode> {
 
 /// Parse an `<from>-><to>` transition into a stage pair.
 fn parse_transition(s: &str) -> Result<(Stage, Stage)> {
-    let (from, to) = s
-        .split_once("->")
-        .ok_or_else(|| EinmoError::Config(format!("transition {s:?} must be `<from>-><to>`")))?;
+    // Accept `->` and the redirect-safe `:` / `..`. The canonical `->` collides
+    // with shell redirection: an unquoted `checked->verified` has its `>` eaten
+    // by the shell, so users who forget to quote get a baffling error. `:` and
+    // `..` mean the same and need no quoting. `->` is tried first so a stage
+    // name can never contain the separator.
+    let split = ["->", "..", ":"].iter().find_map(|sep| s.split_once(sep));
+    let (from, to) = split.ok_or_else(|| {
+        EinmoError::Config(format!(
+            "transition {s:?} must be `<from>-><to>` (or `<from>:<to>`). \
+             Tip: quote it — an unquoted `->` is a shell redirect."
+        ))
+    })?;
     Ok((Stage::parse(from.trim())?, Stage::parse(to.trim())?))
 }
 
@@ -356,14 +366,42 @@ fn files_ref(files: &[PathBuf]) -> Option<&[PathBuf]> {
     if files.is_empty() { None } else { Some(files) }
 }
 
+/// Split promote's positional arguments into `(from, to, work_dir, files)`.
+///
+/// Accepts two shapes:
+///   * **spaced** — `<from> to <to> <work_dir> [files…]` (preferred; the `to`
+///     keyword needs no quoting and cannot be mistaken for a shell redirect)
+///   * **glued**  — `<from><sep><to> <work_dir> [files…]` where `<sep>` is
+///     `->`, `:`, or `..`
+fn split_promote_args(raw: &[String]) -> Result<(Stage, Stage, PathBuf, Vec<PathBuf>)> {
+    // Spaced form: `<from> to <to> …` — arg[1] is the literal `to`.
+    if raw.len() >= 3 && raw[1].eq_ignore_ascii_case("to") {
+        let from = Stage::parse(raw[0].trim())?;
+        let to = Stage::parse(raw[2].trim())?;
+        let work_dir = raw.get(3).cloned().ok_or_else(|| {
+            EinmoError::Config("missing work directory after `<from> to <to>`".into())
+        })?;
+        let files = raw[4.min(raw.len())..].iter().map(PathBuf::from).collect();
+        return Ok((from, to, PathBuf::from(work_dir), files));
+    }
+    // Glued form: `<from><sep><to> <work_dir> [files…]`.
+    let (from, to) = parse_transition(&raw[0])?;
+    let work_dir = raw
+        .get(1)
+        .cloned()
+        .ok_or_else(|| EinmoError::Config("missing work directory".into()))?;
+    let files = raw[2.min(raw.len())..].iter().map(PathBuf::from).collect();
+    Ok((from, to, PathBuf::from(work_dir), files))
+}
+
 fn cmd_promote(args: PromoteArgs) -> Result<ExitCode> {
-    let (from, to) = parse_transition(&args.transition)?;
-    let mut config = TestConfig::new(&args.work_dir, ValidationLevel::Output);
+    let (from, to, work_dir, positional_files) = split_promote_args(&args.args)?;
+    let mut config = TestConfig::new(&work_dir, ValidationLevel::Output);
     if let Some(limit) = args.walk_depth_limit {
         config = config.with_walk_depth_limit(limit);
     }
     let key = resolve_promotion_key(to, &args, &config)?;
-    let files = resolve_files(args.files)?;
+    let files = resolve_files(positional_files)?;
     let report = crate::promote(
         &config,
         from,
@@ -877,6 +915,52 @@ mod tests {
         assert!(parse_transition("output->bogus").is_err());
     }
 
+    /// Regression: `->` collides with shell redirection. An UNQUOTED
+    /// `checked->verified` on the command line has its `>` eaten by the shell
+    /// (redirecting stdout to a file named `verified`), so einmo receives only
+    /// `checked-` and fails with a baffling `transition "checked-"` error.
+    ///
+    /// The fix accepts redirect-safe separators too — `:` and `..` — so a user
+    /// need not remember to quote. All three spellings mean the same thing.
+    #[test]
+    fn transition_accepts_redirect_safe_separators() {
+        let want = (Stage::Checked, Stage::Verified);
+        assert_eq!(parse_transition("checked->verified").unwrap(), want);
+        assert_eq!(parse_transition("checked:verified").unwrap(), want);
+        assert_eq!(parse_transition("checked..verified").unwrap(), want);
+        // The mangled leftover of an unquoted `->` still fails clearly.
+        assert!(parse_transition("checked-").is_err());
+    }
+
+    #[test]
+    fn split_promote_spaced_and_glued_agree() {
+        let want = (Stage::Checked, Stage::Verified);
+        let strs = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+
+        // Spaced form: `checked to verified <dir> [files]`.
+        let (f, t, dir, files) =
+            split_promote_args(&strs(&["checked", "to", "verified", "suite", "a.einmo"])).unwrap();
+        assert_eq!((f, t), want);
+        assert_eq!(dir, PathBuf::from("suite"));
+        assert_eq!(files, vec![PathBuf::from("a.einmo")]);
+
+        // `to` is case-insensitive.
+        assert_eq!(
+            split_promote_args(&strs(&["checked", "TO", "verified", "suite"]))
+                .map(|(f, t, _, _)| (f, t))
+                .unwrap(),
+            want
+        );
+
+        // Glued forms all agree with the spaced form.
+        for glued in ["checked->verified", "checked:verified", "checked..verified"] {
+            let (f, t, dir, files) = split_promote_args(&strs(&[glued, "suite"])).unwrap();
+            assert_eq!((f, t), want, "{glued}");
+            assert_eq!(dir, PathBuf::from("suite"));
+            assert!(files.is_empty());
+        }
+    }
+
     #[test]
     fn cli_parses_subcommands() {
         // Smoke: the parser accepts each subcommand shape.
@@ -947,9 +1031,9 @@ mod tests {
         assert_eq!(only.len(), 1, "--section is case-insensitive");
         assert_eq!(only[0].1, "{ 7 }");
     }
-
     #[test]
-    fn cli_promote_accepts_positional_files() {
+    fn cli_promote_collects_positional_args() {
+        // Glued + files.
         let cli = Cli::try_parse_from([
             "einmo",
             "promote",
@@ -962,31 +1046,29 @@ mod tests {
         let Command::Promote(a) = cli.command else {
             panic!("expected Promote");
         };
+        let (f, t, dir, files) = split_promote_args(&a.args).unwrap();
+        assert_eq!((f, t), (Stage::Output, Stage::Checked));
+        assert_eq!(dir, PathBuf::from("/tmp/s"));
         assert_eq!(
-            a.files,
+            files,
             vec![PathBuf::from("a.einmo"), PathBuf::from("b.einmo")]
         );
     }
 
     #[test]
-    fn cli_promote_accepts_dash_separator() {
+    fn cli_promote_spaced_form_parses() {
+        // The shell-safe spoken form, the whole point of `to`.
         let cli = Cli::try_parse_from([
-            "einmo",
-            "promote",
-            "output->checked",
-            "/tmp/s",
-            "--",
-            "a.einmo",
-            "b.einmo",
+            "einmo", "promote", "checked", "to", "verified", "/tmp/s", "x.einmo",
         ])
         .unwrap();
         let Command::Promote(a) = cli.command else {
             panic!("expected Promote");
         };
-        assert_eq!(
-            a.files,
-            vec![PathBuf::from("a.einmo"), PathBuf::from("b.einmo")]
-        );
+        let (f, t, dir, files) = split_promote_args(&a.args).unwrap();
+        assert_eq!((f, t), (Stage::Checked, Stage::Verified));
+        assert_eq!(dir, PathBuf::from("/tmp/s"));
+        assert_eq!(files, vec![PathBuf::from("x.einmo")]);
     }
 
     #[test]
@@ -1003,7 +1085,8 @@ mod tests {
         let Command::Promote(a) = cli.command else {
             panic!("expected Promote");
         };
-        assert!(a.files.is_empty());
+        let (_, _, _, files) = split_promote_args(&a.args).unwrap();
+        assert!(files.is_empty());
         assert_eq!(a.filter.as_deref(), Some("*"));
     }
 
