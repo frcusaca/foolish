@@ -265,6 +265,10 @@ $MARKER_SIGIL   abort              leave now, discard everything
 $MARKER_SIGIL
 $MARKER_SIGIL Anything else becomes a note for an agent.
 $MARKER_SIGIL Leave this text as-is and the file counts as unreviewed.
+$MARKER_SIGIL Vim command reminders: You can turn diff mode off and on using:
+$MARKER_SIGIL 
+$MARKER_SIGIL   :diffoff
+$MARKER_SIGIL   :diffthis
 MARKER
 }
 
@@ -566,35 +570,63 @@ if (( ${#send_to_agent_list[@]} )); then
         echo "      note: $REVIEW_DIR/${t//\//__}.note"
     done
     echo
-    echo "  Hand the notes to an agent:  ls $REVIEW_DIR/*.note"
+    echo
+    echo "  ‼ These need an agent's attention — hand off the notes:  ls $REVIEW_DIR/*.note"
 fi
+
+# Print a command block in a copy/pasteable way (one file per continued line).
+show_cmd() {  # show_cmd "<prose>" <einmo-args...> -- <files...>
+    local prose="$1"; shift
+    local head=() f; while [[ "$1" != "--" ]]; do head+=("$1"); shift; done; shift
+    echo
+    echo "$prose"
+    printf '  %s' "$EINMO"; printf ' %q' "${head[@]}"; printf ' \\\n'
+    for f in "$@"; do printf '      %q \\\n' "$f"; done | sed '$ s/ \\$//'
+}
+
+# The PROMOTE gate. poor_einmo can RUN promotions for you, but only after you
+# type the whole word PROMOTE in capitals — a deliberate, unmistakable act,
+# never a stray keystroke. Retractions and notes are NEVER auto-run: they
+# remove signed baselines or need a human, so they are always printed for you
+# to run yourself, with a stern reminder.
+have_promotions=$(( ${#promote_checked[@]} + ${#promote_verified[@]} ))
 
 if (( ${#promote_checked[@]} )); then
-    echo
-    echo "promote output->checked (${#promote_checked[@]}) — run:"
-    printf '  %s promote output->checked %s \\\n' "$EINMO" "$SUITE"
-    printf '      %s\n' "${promote_checked[@]}"
+    show_cmd "promote output to checked (${#promote_checked[@]}):" \
+        promote output to checked "$SUITE" -- "${promote_checked[@]}"
 fi
-
 if (( ${#promote_verified[@]} )); then
-    echo
-    echo "promote checked->verified (${#promote_verified[@]}) — run (human passphrase):"
-    printf '  %s promote checked->verified %s --interactive \\\n' "$EINMO" "$SUITE"
-    printf '      %s\n' "${promote_verified[@]}"
+    show_cmd "promote checked to verified (${#promote_verified[@]}) — needs your passphrase:" \
+        promote checked to verified "$SUITE" --interactive -- "${promote_verified[@]}"
 fi
 
+if (( have_promotions )); then
+    echo
+    echo "════════════════════════════════════════════════════════════════════"
+    read -r -p "Type PROMOTE (all caps) to RUN the promotions above, or Enter to skip: " ans </dev/tty || ans=""
+    if [[ "$ans" == "PROMOTE" ]]; then
+        if (( ${#promote_checked[@]} )); then
+            echo "→ running: promote output to checked"
+            "$EINMO" promote output to checked "$SUITE" -- "${promote_checked[@]}" </dev/tty
+        fi
+        if (( ${#promote_verified[@]} )); then
+            echo "→ running: promote checked to verified (you will be asked for your passphrase)"
+            "$EINMO" promote checked to verified "$SUITE" --interactive -- "${promote_verified[@]}" </dev/tty
+        fi
+        echo "✓ promotions done."
+    else
+        echo "⚠ NOT promoted. The commands above must be run for anything to take effect."
+    fi
+fi
+
+# Retractions: never auto-run (they remove signed baselines).
 if (( ${#retract_checked[@]} )); then
-    echo
-    echo "retract from checked (${#retract_checked[@]}) — run (removes checked AND any verified):"
-    printf '  %s retract %s checked \\\n' "$EINMO" "$SUITE"
-    printf '      %s\n' "${retract_checked[@]}"
+    show_cmd "‼ YOU MUST RUN THIS to retract from checked — it removes the checked artifact AND any verified (${#retract_checked[@]}):" \
+        retract "$SUITE" checked -- "${retract_checked[@]}"
 fi
-
 if (( ${#retract_verified[@]} )); then
-    echo
-    echo "retract from verified (${#retract_verified[@]}) — run:"
-    printf '  %s retract %s verified \\\n' "$EINMO" "$SUITE"
-    printf '      %s\n' "${retract_verified[@]}"
+    show_cmd "‼ YOU MUST RUN THIS to retract from verified (${#retract_verified[@]}):" \
+        retract "$SUITE" verified -- "${retract_verified[@]}"
 fi
 
 if (( ${#promote_checked[@]} == 0 && ${#promote_verified[@]} == 0 && ${#retract_checked[@]} == 0 && ${#retract_verified[@]} == 0 && ${#send_to_agent_list[@]} == 0 )); then
@@ -606,5 +638,7 @@ if (( ${#promote_checked[@]} == 0 && ${#promote_verified[@]} == 0 && ${#retract_
     fi
 fi
 
-echo
-echo "poor_einmo is read-only: nothing was promoted, flagged, or signed."
+if ! { (( have_promotions )) && [[ "${ans:-}" == "PROMOTE" ]]; }; then
+    echo
+    echo "poor_einmo did not change the corpus: run the commands above to act on your review."
+fi
