@@ -28,9 +28,10 @@ set -euo pipefail
 #        the corpus.
 #
 #   2. You changed a pane any other way (a note, a question, an @agent comment)
-#      → INSTRUCTIONS FOR THE AGENT. The test is accumulated into
-#        `send_to_agent_list`, printed at the end with your text preserved in
-#        $REVIEW_DIR so an agent can act on it.
+#      → FLAG IT. The results print an `einmo flag <suite> <stage> <file>
+#        --reason "<your note>"` command: your note travels INTO the corpus
+#        (flagged/) as the artifact's advisory reason, so nothing depends on a
+#        temp file. Run it (behind the same gate) to act.
 #
 #   3. You typed a SKIP word (skip · pass · idk)
 #      → NO ACTION, deliberately: you looked and chose not to rule. Accumulated
@@ -190,11 +191,34 @@ harden_dir() {  # force owner-only on the dir AND its contents; refuse if it fai
     fi
 }
 
-REVIEW_DIR="${POOR_EINMO_DIR:-$(mktemp -d -t poor_einmo.XXXXXX)}"
-mkdir -p "$REVIEW_DIR"
-harden_dir "$REVIEW_DIR"
-TMP=$(mktemp -d)
+# Scratch: pane renders, .orig baselines, vim swap/backup/undo. All ephemeral;
+# nothing durable lives here (notes now become `flag` commands into the corpus).
+#
+# We always create OUR OWN subdirectory and remove exactly that on exit — never
+# a directory we did not make. If you set POOR_EINMO_DIR, our subdir is created
+# INSIDE it (so you get your private/encrypted/tmpfs location) and only the
+# subdir is removed; your directory is left as you supplied it.
+#
+# The trap is set the instant the subdir exists, BEFORE any early exit, so even
+# a no-tests run leaves nothing behind.
+if [[ -n "${POOR_EINMO_DIR:-}" ]]; then
+    mkdir -p "$POOR_EINMO_DIR"
+    harden_dir "$POOR_EINMO_DIR"
+    TMP="$(mktemp -d "$POOR_EINMO_DIR/poor_einmo.XXXXXX")"
+else
+    TMP="$(mktemp -d -t poor_einmo.XXXXXX)"
+fi
 harden_dir "$TMP"
+
+# Exiting poor_einmo removes OUR scratch subdir — nothing survives the run.
+# The `[[ -d ]]` guard makes a bare `rm -rf "$TMP"` safe even if $TMP were ever
+# empty or unset (which `rm -rf ""` / `rm -rf /` would make catastrophic).
+cleanup() {
+    if [[ -n "${TMP:-}" && -d "$TMP" ]]; then
+        rm -rf "$TMP"
+    fi
+}
+trap cleanup EXIT INT TERM
 
 if (( shuffle )) && (( ${#rows[@]} > 0 )); then
     mapfile -t rows < <(printf '%s\n' "${rows[@]}" | shuf)
@@ -229,18 +253,20 @@ VIM_OPTS=(
     --cmd "set undodir=$VIMTMP/undo//"
 )
 
-trap 'rm -rf "$TMP"' EXIT
 
 echo "poor_einmo: ${#rows[@]} test(s) in $SUITE${FILTER:+ (filter: $FILTER)}"
 (( differing_only )) && echo "            differing only — stages that agree are skipped"
 (( dry_run ))        && echo "            DRY RUN — vimdiff calls are echoed, not executed"
-echo "            notes kept in $REVIEW_DIR"
+echo "            scratch (removed on exit): $TMP"
 echo
 
 promote_checked=()     # tests where you typed a promote word in the checked pane
 promote_verified=()    # ... in the verified pane
 retract_checked=()     # tests to demote from checked/ (cascades to verified)
 retract_verified=()    # tests to demote from verified/
+flag_stage=()          # parallel arrays: flag this artifact ...
+flag_rel=()            # ... at this mirror path ...
+flag_reason=()         # ... with this note as its advisory reason
 send_to_agent_list=()  # tests where you left instructions
 skip_list=()           # tests you deliberately passed on (skip/pass/idk)
 noop_list=()           # tests you did not touch at all
@@ -277,6 +303,11 @@ marker_left_intact() {
     grep -qF "$MARKER_SIGIL" "$1"
 }
 
+# The reviewer's own text in a pane: everything that is NOT a marker line.
+strip_marker() {
+    grep -vF "$MARKER_SIGIL" "$1"
+}
+
 # Drop `$1` from array `$2` (by name). Used to retract a decision on re-edit.
 drop_from() {
     local needle="$1" name="$2"
@@ -295,10 +326,22 @@ undo_last_decision() {
     drop_from "$rel"       promote_verified
     drop_from "$rel"       retract_checked
     drop_from "$rel"       retract_verified
+    drop_flag "$rel"
     drop_from "$test_path" send_to_agent_list
     drop_from "$test_path" skip_list
     drop_from "$test_path" noop_list
-    rm -f "$REVIEW_DIR/${test_path//\//__}.note"
+}
+
+# Remove a queued flag for $1 (parallel arrays kept in step).
+drop_flag() {
+    local needle="$1" i keep_s=() keep_r=() keep_reason=()
+    for i in "${!flag_rel[@]}"; do
+        [[ "${flag_rel[$i]}" == "$needle" ]] && continue
+        keep_s+=("${flag_stage[$i]}"); keep_r+=("${flag_rel[$i]}"); keep_reason+=("${flag_reason[$i]}")
+    done
+    flag_stage=("${keep_s[@]+"${keep_s[@]}"}")
+    flag_rel=("${keep_r[@]+"${keep_r[@]}"}")
+    flag_reason=("${keep_reason[@]+"${keep_reason[@]}"}")
 }
 
 # The vocabulary. A pane must contain ONE of these words and nothing else —
@@ -501,29 +544,27 @@ for row in "${rows[@]}"; do
         acted=1
     fi
 
-    # Any other edit is a message to the agent: keep it verbatim.
+    # Any other edit is a note: flag the artifact with the note as its reason,
+    # so it travels INTO the corpus (flagged/) rather than a throwaway temp
+    # file. The note is what you typed; a multi-line note is folded to one line
+    # for the advisory (the full text is shown in the printed command).
     if (( acted == 0 )); then
-        note="$REVIEW_DIR/${test_path//\//__}.note"
-        {
-            echo "# poor_einmo review note"
-            echo "# test:  $test_path"
-            echo "# suite: $SUITE"
-            echo "# stages: $marks"
-            echo
-            if (( chk_changed )); then
-                echo "## reviewer edits in the CHECKED pane (diff vs what einmo showed):"
-                diff -u "${pane[checked]}.orig" "${pane[checked]}" \
-                     --label "checked (as shown)" --label "checked (as you left it)" || true
-                echo
-            fi
-            if (( ver_changed )); then
-                echo "## reviewer edits in the VERIFIED pane (diff vs what einmo showed):"
-                diff -u "${pane[verified]}.orig" "${pane[verified]}" \
-                     --label "verified (as shown)" --label "verified (as you left it)" || true
-            fi
-        } > "$note"
+        # Which stage did you write on, and what did you write? Prefer verified.
+        local_stage=""; note_text=""
+        if (( ver_changed )); then
+            local_stage=verified
+            note_text="$(strip_marker "${pane[verified]}")"
+        else
+            local_stage=checked
+            note_text="$(strip_marker "${pane[checked]}")"
+        fi
+        # Fold to a single line for the advisory reason.
+        note_text="$(printf '%s' "$note_text" | tr '\n' ' ' | sed 's/  */ /g; s/^ //; s/ $//')"
+        flag_stage+=("$local_stage")
+        flag_rel+=("$rel")
+        flag_reason+=("$note_text")
         send_to_agent_list+=("$test_path")
-        echo "   ✎ instructions recorded → $note"
+        echo "   ✎ note recorded → will flag $local_stage/$test_path"
     fi
 
     if ! (( full_review )); then
@@ -562,16 +603,15 @@ if (( ${#skip_list[@]} )); then
     printf '  %s\n' "${skip_list[@]}"
 fi
 
-if (( ${#send_to_agent_list[@]} )); then
+if (( ${#flag_rel[@]} )); then
     echo
-    echo "send_to_agent_list (${#send_to_agent_list[@]}) — you left instructions on these:"
-    for t in "${send_to_agent_list[@]}"; do
-        echo "  $t"
-        echo "      note: $REVIEW_DIR/${t//\//__}.note"
+    echo "‼ YOU MUST RUN THESE to record your notes — each flags the artifact"
+    echo "  (moves it to flagged/) with your note as its advisory reason:"
+    for i in "${!flag_rel[@]}"; do
+        show_cmd "  # ${flag_rel[$i]%.einmo}" \
+            flag "$SUITE" "${flag_stage[$i]}" --reason "${flag_reason[$i]}" \
+            -- "${flag_rel[$i]}"
     done
-    echo
-    echo
-    echo "  ‼ These need an agent's attention — hand off the notes:  ls $REVIEW_DIR/*.note"
 fi
 
 # Print a command block in a copy/pasteable way (one file per continued line).
