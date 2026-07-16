@@ -501,7 +501,6 @@ mod tests {
         fs::write(&path, file.serialize().unwrap()).unwrap();
     }
 
-    #[test]
     /// Retracting `checked` removes the checked artifact AND cascades to its
     /// `verified/` counterpart — a verified stamp attests to a checked baseline
     /// that would otherwise be dangling.
