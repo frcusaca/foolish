@@ -260,8 +260,9 @@ pane_says() {
 idx=0
 for row in "${rows[@]}"; do
     idx=$((idx + 1))
-    # A file may be re-opened: the reviewer left the instructions in place, or
-    # asked to re-edit an answer. `continue` re-opens; `break` moves on.
+    re_render=1     # rebuild the panes from the stages for a fresh file
+    # A file may be re-opened two ways: `edit` keeps your text and lets you
+    # adjust it; `revert` throws it away and rebuilds from the stages.
     while :; do
     # `einmo list` prints: <mirror-path>\t<differ|same>\t<stage marks>
     rel="${row%%$'\t'*}"                       # e.g. misc/simple_addition.foo.einmo
@@ -283,22 +284,25 @@ for row in "${rows[@]}"; do
 
     # Render each stage's signed body (einmo verifies-on-inspect, then strips
     # STAMPS/metadata). A missing artifact yields a marker pane, so the 4-way
-    # diff still lines up.
-    declare -A pane=()
-    for stage in output checked verified; do
-        f="$SUITE/$stage/$rel"
-        p="$TMP/$stage--$base"
-        if [[ -f "$f" ]]; then
-            if ! "$EINMO" body "$f" > "$p" 2>"$TMP/err"; then
-                { echo "(( $stage: REFUSED — einmo could not verify this artifact ))"
-                  echo; cat "$TMP/err"; } > "$p"
+    # diff still lines up. Skipped on an `edit` re-open so the reviewer's text
+    # survives; rebuilt on a `revert`.
+    if (( re_render )); then
+        declare -A pane=()
+        for stage in output checked verified; do
+            f="$SUITE/$stage/$rel"
+            p="$TMP/$stage--$base"
+            if [[ -f "$f" ]]; then
+                if ! "$EINMO" body "$f" > "$p" 2>"$TMP/err"; then
+                    { echo "(( $stage: REFUSED — einmo could not verify this artifact ))"
+                      echo; cat "$TMP/err"; } > "$p"
+                fi
+            else
+                marker_text "$stage" > "$p"
             fi
-        else
-            marker_text "$stage" > "$p"
-        fi
-        pane[$stage]="$p"
-        cp "$p" "$p.orig"          # pristine copy: the reviewer's diff baseline
-    done
+            pane[$stage]="$p"
+            cp "$p" "$p.orig"      # pristine copy: the reviewer's diff baseline
+        done
+    fi
 
     echo "── [$idx/${#rows[@]}] $test_path"
     echo "   $marks"
@@ -369,7 +373,7 @@ for row in "${rows[@]}"; do
         echo "     A verb must stand ALONE — as written this becomes a note."
         read -r -p "     [r]e-view now (to promote), [f]lag as a note, [s]kip? " ans </dev/tty || ans=s
         case "${ans,,}" in
-            r*) echo "     ↻ re-opening — replace ALL the text with one word"
+            r*) echo "     ↺ re-opening fresh — replace ALL the text with one word"
                 marker_choice=redo ;;
             f*) echo "     ✎ recorded as a note"
                 marker_choice=flag ;;
@@ -379,7 +383,7 @@ for row in "${rows[@]}"; do
         break
     done
     case "$marker_choice" in
-        redo) continue ;;                                  # re-open this file
+        redo) re_render=1; continue ;;                     # re-open fresh
         skip) skip_list+=("$test_path"); break ;;          # settled: skipped
     esac
 
@@ -444,12 +448,18 @@ for row in "${rows[@]}"; do
     fi
 
     if ! (( full_review )); then
-        # `e` re-opens this file so a mistaken answer can be fixed before it is
-        # carried into the results — the decision is not final until you leave.
-        read -r -p "   next? [Enter=continue, e=re-edit this one, q=quit] " ans </dev/tty || true
+        # The decision is not final until you leave the file:
+        #   edit   — reopen with YOUR text intact, to adjust it
+        #   revert — discard this file's answer, reopen from the stages fresh
+        read -r -p "   next? [Enter=continue, e=edit, r=revert, q=quit] " ans </dev/tty || true
         case "${ans,,}" in
-            e*) echo "   ↻ re-editing $test_path"
+            e*) echo "   ✎ edit — reopening with your text kept"
+                undo_last_decision   # retract the recorded outcome; text stays
+                re_render=0
+                continue ;;
+            r*) echo "   ↺ revert — discarding this file's answer, reopening fresh"
                 undo_last_decision
+                re_render=1
                 continue ;;
             q*) echo "poor_einmo: stopped."; break 2 ;;
         esac
