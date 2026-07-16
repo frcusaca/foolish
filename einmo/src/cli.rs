@@ -896,9 +896,25 @@ fn read_stdin_line() -> Result<String> {
 }
 
 /// Prompt for a passphrase on the controlling terminal (cross-platform via
-/// rpassword). Used by the stage-key cascade's interactive tier (§B.5).
+/// rpassword), reading it **twice** and requiring the two to match.
+///
+/// The passphrase derives the signing key for a `verified` stamp — a human
+/// attestation that a typo would silently misdirect: a mistyped passphrase
+/// yields a *different, valid* keypair, so the promotion would succeed under a
+/// key nobody can reproduce, and the merge gate's reviewer-key check would then
+/// reject it with no hint why. Confirming the entry catches the typo at the
+/// keyboard instead. Used by the stage-key cascade's interactive tier (§B.5).
 fn prompt_tty() -> Result<String> {
-    rpassword::prompt_password("einmo passphrase: ").map_err(|e| EinmoError::io("<tty>", e))
+    let first =
+        rpassword::prompt_password("einmo passphrase: ").map_err(|e| EinmoError::io("<tty>", e))?;
+    let second = rpassword::prompt_password("einmo passphrase (again): ")
+        .map_err(|e| EinmoError::io("<tty>", e))?;
+    if first != second {
+        return Err(EinmoError::Config(
+            "passphrases did not match — nothing was signed".into(),
+        ));
+    }
+    Ok(first)
 }
 
 #[cfg(test)]
