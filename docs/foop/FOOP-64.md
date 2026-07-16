@@ -269,6 +269,34 @@ disagree about what a valid suite is.
 - The reviewer's public key (hex prefix) is a constant in the gate; the human derives and
   supplies it once (their passphrase never appears anywhere).
 
+### Retraction (demotion): pulling a promotion back for re-examination
+
+The pipeline could **promote** up (output → checked → verified) and **flag** aside, but it had
+no way to say *"un-promote this — it needs another look."* Flagging is the wrong tool: it means
+"set aside as wrong" and sends the artifact to the terminal `flagged/` sink. Retraction means
+"this baseline is provisional again," which is a different act.
+
+**`retract(config, stage, files)`** removes an artifact from `checked/` or `verified/` so it is
+no longer part of that baseline. The input still produces fresh `output/`, which then shows as
+needing re-review against the now-absent higher stage — exactly the re-examination that was
+wanted. Retraction from `output/` is meaningless (it is regenerated every run) and refused.
+
+**The cascade (the load-bearing rule).** Retracting a `checked/` artifact **also removes its
+`verified/` counterpart** if one exists. A `verified/` stamp attests that a human reviewed *this
+checked baseline*; pull the baseline and the attestation is dangling — it certifies content that
+no longer stands. So retraction cascades **downward through the stages it invalidates**:
+
+| Retract from | Also removes |
+|--------------|--------------|
+| `verified` | (nothing — it is the top) |
+| `checked`  | the matching `verified/` artifact, if present |
+
+Retraction is **not** a stamp operation and appends nothing: the artifacts are *removed*, and
+git history preserves what they were. This keeps the trust chain honest — a stage never contains
+a baseline that a lower stage no longer supports. Both `console-review` and `poor_einmo.sh`
+surface it: a reviewer who realizes a promoted artifact needs re-examination retracts it (and its
+downstream) rather than living with a baseline they no longer trust.
+
 ### foolish-core migration (as part of this FOOP)
 
 `foolish-core/snapshot_tests/` migrates to a corresponding **`foolish-core/einmo_suite/`** with

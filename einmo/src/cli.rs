@@ -35,6 +35,8 @@ enum Command {
     Promote(PromoteArgs),
     /// Move files from a stage into flagged/ (advisory line, no stamp).
     Flag(FlagArgs),
+    /// Retract (demote) artifacts from a stage; cascades checked→verified.
+    Retract(RetractArgs),
     /// Compare two stages over the mirrored tree.
     Compare(CompareArgs),
     /// Verify signatures across a stage (or all stages).
@@ -76,6 +78,26 @@ struct PromoteArgs {
     #[arg(long)]
     interactive: bool,
     /// Override the directory-walk depth limit (tier 1).
+    #[arg(long)]
+    walk_depth_limit: Option<usize>,
+    /// Emit machine-readable JSON.
+    #[arg(long)]
+    json: bool,
+}
+
+#[derive(Args, Debug)]
+struct RetractArgs {
+    /// The suite work directory.
+    work_dir: PathBuf,
+    /// The stage to retract from (`checked` or `verified`).
+    stage: String,
+    /// Specific `.einmo` files to retract. Use `-` to read paths from stdin.
+    #[arg(num_args = 0.., trailing_var_arg = true)]
+    files: Vec<PathBuf>,
+    /// Restrict to inputs matching this glob.
+    #[arg(long)]
+    filter: Option<String>,
+    /// Override the directory-walk depth limit.
     #[arg(long)]
     walk_depth_limit: Option<usize>,
     /// Emit machine-readable JSON.
@@ -261,6 +283,7 @@ fn dispatch(command: Command) -> Result<ExitCode> {
     match command {
         Command::Promote(a) => cmd_promote(a),
         Command::Flag(a) => cmd_flag(a),
+        Command::Retract(a) => cmd_retract(a),
         Command::Compare(a) => cmd_compare(a),
         Command::Verify(a) | Command::VerifySignatures(a) => cmd_verify(a),
         Command::ConfirmSignatures(a) => cmd_confirm(a),
@@ -407,6 +430,25 @@ fn cmd_flag(args: FlagArgs) -> Result<ExitCode> {
         println!("{{\"flagged\":{}}}", report.flagged.len());
     } else {
         println!("flagged {} file(s) from {stage}", report.flagged.len());
+    }
+    Ok(ExitCode::SUCCESS)
+}
+
+fn cmd_retract(args: RetractArgs) -> Result<ExitCode> {
+    let stage = Stage::parse(&args.stage)?;
+    let mut config = TestConfig::new(&args.work_dir, ValidationLevel::Output);
+    if let Some(limit) = args.walk_depth_limit {
+        config = config.with_walk_depth_limit(limit);
+    }
+    let files = resolve_files(args.files)?;
+    let report = crate::retract(&config, stage, args.filter.as_deref(), files_ref(&files))?;
+    if args.json {
+        println!("{{\"retracted\":{}}}", report.retracted.len());
+    } else {
+        println!("retracted {} artifact(s):", report.retracted.len());
+        for (st, path) in &report.retracted {
+            println!("  {st}/{}", path.display());
+        }
     }
     Ok(ExitCode::SUCCESS)
 }

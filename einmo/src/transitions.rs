@@ -39,6 +39,13 @@ pub struct FlagReport {
     pub flagged: Vec<PathBuf>,
 }
 
+/// The result of a retraction (demotion).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct RetractReport {
+    /// `(stage, path)` of each artifact removed — including the cascade.
+    pub retracted: Vec<(Stage, PathBuf)>,
+}
+
 /// A signature-prefix scan result (`confirm-signatures`).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct SignatureReport {
@@ -174,6 +181,60 @@ pub fn flag(
         // Move semantics: remove from origin.
         std::fs::remove_file(&src).map_err(|e| EinmoError::io(&src, e))?;
         report.flagged.push(rel);
+    }
+    Ok(report)
+}
+
+/// Retract (demote) a promotion: remove artifacts from `checked/` or
+/// `verified/` so they are no longer part of that baseline and can be
+/// re-examined (FOOP-64 §"Retraction (demotion)").
+///
+/// **Cascade.** Retracting from `checked` also removes the matching `verified/`
+/// artifact, if one exists: a `verified/` stamp attests to a *specific checked
+/// baseline*, so pulling the baseline leaves the attestation dangling. The
+/// trust chain must never hold a baseline a lower stage no longer supports.
+///
+/// Retraction *removes* artifacts (git history preserves what they were); it
+/// appends no stamp and writes nothing to `flagged/` — flagging is "set aside
+/// as wrong", retraction is "provisional again". Retracting from `output` is
+/// refused: it is regenerated every run, so there is nothing to un-promote.
+///
+/// # Errors
+///
+/// Returns [`EinmoError::Config`] if `stage` is `output` or `flagged`, or
+/// [`EinmoError::Io`] on a filesystem failure.
+pub fn retract(
+    config: &TestConfig,
+    stage: Stage,
+    filter: Option<&str>,
+    files: Option<&[PathBuf]>,
+) -> Result<RetractReport> {
+    // The stages a retraction from `stage` invalidates, highest-first, so a
+    // downstream artifact is always removed before the baseline it depended on.
+    let cascade: &[Stage] = match stage {
+        Stage::Verified => &[Stage::Verified],
+        Stage::Checked => &[Stage::Verified, Stage::Checked],
+        Stage::Output => {
+            return Err(EinmoError::Config(
+                "cannot retract from output/: it is regenerated every run".into(),
+            ));
+        }
+        Stage::Flagged => {
+            return Err(EinmoError::Config(
+                "cannot retract from flagged/: it is the terminal sink, not a baseline".into(),
+            ));
+        }
+    };
+
+    let mut report = RetractReport::default();
+    for rel in matching_mirror_paths(config, stage, filter, files)? {
+        for &target in cascade {
+            let path = config.stage_dir(target).join(&rel);
+            if path.exists() {
+                std::fs::remove_file(&path).map_err(|e| EinmoError::io(&path, e))?;
+                report.retracted.push((target, rel.clone()));
+            }
+        }
     }
     Ok(report)
 }
@@ -438,6 +499,67 @@ mod tests {
         let path = config.stage_dir(Stage::Output).join(format!("{rel}.einmo"));
         ensure_parent_dir(&path).unwrap();
         fs::write(&path, file.serialize().unwrap()).unwrap();
+    }
+
+    #[test]
+    /// Retracting `checked` removes the checked artifact AND cascades to its
+    /// `verified/` counterpart — a verified stamp attests to a checked baseline
+    /// that would otherwise be dangling.
+    #[test]
+    fn retract_checked_cascades_to_verified() {
+        let (_tmp, config) = suite();
+        write_output(&config, "a.foo", "5");
+        let key = KeySource::from_passphrase("");
+        promote(&config, Stage::Output, Stage::Checked, &key, None, None).unwrap();
+        promote(&config, Stage::Checked, Stage::Verified, &key, None, None).unwrap();
+        let checked = config.stage_dir(Stage::Checked).join("a.foo.einmo");
+        let verified = config.stage_dir(Stage::Verified).join("a.foo.einmo");
+        assert!(checked.exists() && verified.exists());
+
+        let report = retract(&config, Stage::Checked, None, None).unwrap();
+
+        assert!(!checked.exists(), "checked artifact removed");
+        assert!(!verified.exists(), "verified counterpart cascaded away");
+        // Removed highest-first: verified before the checked it depended on.
+        assert_eq!(
+            report.retracted,
+            vec![
+                (Stage::Verified, PathBuf::from("a.foo.einmo")),
+                (Stage::Checked, PathBuf::from("a.foo.einmo")),
+            ]
+        );
+        // output/ is untouched: the input still produces it, ready for re-review.
+        assert!(config.stage_dir(Stage::Output).join("a.foo.einmo").exists());
+    }
+
+    /// Retracting `verified` removes only verified — it is the top of the chain.
+    #[test]
+    fn retract_verified_leaves_checked() {
+        let (_tmp, config) = suite();
+        write_output(&config, "a.foo", "5");
+        let key = KeySource::from_passphrase("");
+        promote(&config, Stage::Output, Stage::Checked, &key, None, None).unwrap();
+        promote(&config, Stage::Checked, Stage::Verified, &key, None, None).unwrap();
+
+        let report = retract(&config, Stage::Verified, None, None).unwrap();
+
+        assert_eq!(
+            report.retracted,
+            vec![(Stage::Verified, PathBuf::from("a.foo.einmo"))]
+        );
+        assert!(
+            config.stage_dir(Stage::Checked).join("a.foo.einmo").exists(),
+            "the checked baseline survives"
+        );
+    }
+
+    /// Retraction from `output`/`flagged` is refused — neither is a baseline
+    /// that can be un-promoted.
+    #[test]
+    fn retract_refuses_output_and_flagged() {
+        let (_tmp, config) = suite();
+        assert!(retract(&config, Stage::Output, None, None).is_err());
+        assert!(retract(&config, Stage::Flagged, None, None).is_err());
     }
 
     #[test]

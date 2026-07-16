@@ -69,6 +69,13 @@ set -euo pipefail
 #     <suite-dir>     e.g. foolish-ubca/einmo_suite
 #     [name-filter]   substring of the test's mirror path (e.g. foop/23)
 #
+# SECURITY: the panes, your notes, and vim's swap/backup/undo files all hold the
+# signed content under review. All scratch lives under mode-700 directories
+# (u+rwx, og-rwx — readable/writable only by you), enforced on every run. On a
+# shared host, prefer a private location: set POOR_EINMO_DIR to a directory of
+# your own (an encrypted or tmpfs-backed path rather than shared /tmp); it is
+# still forced to 700.
+#
 # Examples:
 #     ./poor_einmo.sh foolish-ubca/einmo_suite
 #     ./poor_einmo.sh -d foolish-ubca/einmo_suite            # only what changed
@@ -139,6 +146,38 @@ list_args=("list" "$SUITE")
 
 mapfile -t rows < <("$EINMO" "${list_args[@]}" 2>/dev/null || true)
 
+# --- private scratch space (SECURITY) -------------------------------------
+#
+# Every pane the reviewer sees, every note they leave, and every vim
+# swap/backup/undo file holds the SIGNED CONTENT under review. On a shared host,
+# a world- or group-readable temp directory leaks it. We therefore keep all of
+# it under directories that are u+rwx and og-rwx (mode 700) — readable and
+# writable ONLY by us.
+#
+# `mktemp -d` already creates 0700, but we do not rely on the default: a stray
+# umask, a hostile TMPDIR, or a user-supplied $POOR_EINMO_DIR could be looser.
+# We chmod every scratch directory to 700 explicitly, on every run.
+#
+# To place scratch somewhere private of your own (e.g. an encrypted or
+# tmpfs-backed path rather than shared /tmp), set POOR_EINMO_DIR — it is still
+# forced to 700.
+harden_dir() {  # chmod 700, and refuse to proceed if it did not take
+    chmod 700 "$1" 2>/dev/null || true
+    local mode
+    mode="$(stat -c '%a' "$1" 2>/dev/null || echo '?')"
+    if [[ "$mode" != "700" ]]; then
+        echo "poor_einmo: refusing to use $1 — could not secure it to mode 700 (got $mode)." >&2
+        echo "            Its contents would be the signed material under review." >&2
+        exit 1
+    fi
+}
+
+REVIEW_DIR="${POOR_EINMO_DIR:-$(mktemp -d -t poor_einmo.XXXXXX)}"
+mkdir -p "$REVIEW_DIR"
+harden_dir "$REVIEW_DIR"
+TMP=$(mktemp -d)
+harden_dir "$TMP"
+
 if (( shuffle )) && (( ${#rows[@]} > 0 )); then
     mapfile -t rows < <(printf '%s\n' "${rows[@]}" | shuf)
 fi
@@ -148,10 +187,7 @@ if (( ${#rows[@]} == 0 )); then
     exit 0
 fi
 
-# --- where reviewer notes survive the loop --------------------------------
-REVIEW_DIR="${POOR_EINMO_DIR:-$(mktemp -d -t poor_einmo.XXXXXX)}"
-mkdir -p "$REVIEW_DIR"
-TMP=$(mktemp -d)
+
 
 # Vim writes swap/backup/undo files next to the file being edited by default.
 # Reviewing an input under `input/` therefore drops `.name.foo.swp` INTO the
@@ -163,6 +199,7 @@ TMP=$(mktemp -d)
 # collide.
 VIMTMP="$TMP/vim"
 mkdir -p "$VIMTMP/swap" "$VIMTMP/backup" "$VIMTMP/undo"
+harden_dir "$VIMTMP"; harden_dir "$VIMTMP/swap"; harden_dir "$VIMTMP/backup"; harden_dir "$VIMTMP/undo"
 VIM_OPTS=(
     -c "set directory=$VIMTMP/swap//"
     -c "set backupdir=$VIMTMP/backup//"
