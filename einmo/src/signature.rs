@@ -720,6 +720,23 @@ mod tests {
         assert!(is_computer_key(&hex::encode(vk1.to_bytes())));
     }
 
+    /// The pubkey `StageKeypair::pubkey_hex()` reports for a passphrase is
+    /// exactly the pubkey a `stage:verified` stamp made with that passphrase
+    /// carries. This is what `confirm-signatures --from-passphrase` relies on:
+    /// derive-from-my-passphrase and sign-with-my-passphrase must agree, or the
+    /// "was this signed by me?" check would be wrong.
+    #[test]
+    fn pubkey_hex_matches_the_signing_key_for_the_same_passphrase() {
+        let pass = "my-review-pass";
+        let derived = StageKeypair::derive(pass).pubkey_hex();
+        // The key the stamp would actually carry:
+        let (_, vk) = derive_keypair(pass);
+        let signing_pubkey = hex::encode(vk.to_bytes());
+        assert_eq!(derived, signing_pubkey);
+        // A different passphrase yields a different pubkey (no false match).
+        assert_ne!(StageKeypair::derive("other").pubkey_hex(), derived);
+    }
+
     #[test]
     fn different_passphrases_yield_different_keys() {
         let (_, a) = derive_keypair("alice");

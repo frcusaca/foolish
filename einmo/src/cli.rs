@@ -194,8 +194,15 @@ struct VerifyArgs {
 struct ConfirmArgs {
     /// A directory (or file) of `.einmo` files.
     path: PathBuf,
-    /// The pubkey hex prefix to match.
-    pubkey_prefix: String,
+    /// The pubkey hex prefix to match. Supply this OR `--from-passphrase`,
+    /// never both, never neither.
+    pubkey_prefix: Option<String>,
+    /// Derive the pubkey prefix from a passphrase instead of typing the hex:
+    /// prompts for the passphrase (twice, confirmed) and matches its public
+    /// key. Answers "was this signed by MY passphrase?" without exposing the
+    /// key. Mutually exclusive with an explicit `<pubkey-prefix>`.
+    #[arg(long)]
+    from_passphrase: bool,
     /// Exit non-zero if any file lacks a matching signer.
     #[arg(long)]
     require_all: bool,
@@ -617,7 +624,33 @@ fn cmd_verify(args: VerifyArgs) -> Result<ExitCode> {
 }
 
 fn cmd_confirm(args: ConfirmArgs) -> Result<ExitCode> {
-    let report = crate::confirm_signatures(&args.path, &args.pubkey_prefix)?;
+    // Exactly one source for the prefix: an explicit hex, or the passphrase.
+    let prefix = match (&args.pubkey_prefix, args.from_passphrase) {
+        (Some(p), false) => p.clone(),
+        (None, true) => {
+            // Derive the reviewer's key from the passphrase, confirmed twice,
+            // and print it so you can see (and reuse) the key you're checking
+            // against. This is the only place the passphrase→pubkey mapping is
+            // surfaced; the public key is not secret.
+            let passphrase = prompt_tty()?;
+            let hex = crate::signature::StageKeypair::derive(&passphrase).pubkey_hex();
+            if !args.json {
+                println!("your public key: {hex}");
+            }
+            hex
+        }
+        (Some(_), true) => {
+            return Err(EinmoError::Config(
+                "give a <pubkey-prefix> OR --from-passphrase, not both".into(),
+            ));
+        }
+        (None, false) => {
+            return Err(EinmoError::Config(
+                "give a <pubkey-prefix> or --from-passphrase".into(),
+            ));
+        }
+    };
+    let report = crate::confirm_signatures(&args.path, &prefix)?;
     if args.json {
         println!(
             "{{\"matched\":{},\"unmatched\":{}}}",
@@ -628,7 +661,7 @@ fn cmd_confirm(args: ConfirmArgs) -> Result<ExitCode> {
         println!(
             "{} file(s) match prefix {:?}, {} do not",
             report.matched.len(),
-            args.pubkey_prefix,
+            prefix,
             report.unmatched.len()
         );
     }
