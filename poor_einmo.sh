@@ -142,8 +142,13 @@ if [[ -z "$EINMO" ]]; then
     fi
 fi
 
-for d in input output checked verified; do
-    [[ -d "$SUITE/$d" ]] || { echo "Not an einmo suite (no $d/): $SUITE" >&2; exit 1; }
+# input/ must exist (no inputs, no suite). The stage dirs may legitimately be
+# absent — git does not track empty dirs, so a freshly-checked-out suite with an
+# unpopulated verified/ has no verified/ at all. Create the missing ones rather
+# than refuse; an empty stage is a valid "nothing promoted here yet".
+[[ -d "$SUITE/input" ]] || { echo "Not an einmo suite (no input/): $SUITE" >&2; exit 1; }
+for d in output checked verified flagged; do
+    [[ -d "$SUITE/$d" ]] || mkdir -p "$SUITE/$d"
 done
 
 # --- ask einmo for the tests ----------------------------------------------
