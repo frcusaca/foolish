@@ -20,7 +20,12 @@ set -euo pipefail
 #        promote · promoted · approve · approved · lgtm · sgtm
 #      → PROMOTE. In the checked pane it means "promote the previous stage into
 #        checked" (output->checked); in the verified pane, checked->verified.
-#        Accumulated into the promote lists.
+#
+#   1b. You typed a RETRACT word (retract · demote · reexamine · unpromote)
+#      → RETRACT (demote) that stage's artifact for re-examination. Retracting
+#        checked also removes any downstream verified (the cascade). Like
+#        promote, it is a printed command you run -- the script never touches
+#        the corpus.
 #
 #   2. You changed a pane any other way (a note, a question, an @agent comment)
 #      → INSTRUCTIONS FOR THE AGENT. The test is accumulated into
@@ -85,6 +90,7 @@ set -euo pipefail
 # Every verb is ONE word alone in a pane (whitespace stripped, case ignored);
 # anything else is a message for an agent:
 #     promote · promoted · approve · approved · lgtm · sgtm   → promote
+#     retract · demote · reexamine · unpromote                → retract (demote)
 #     skip · pass · idk                                       → no action
 #     stop                                                    → end, print results
 #     abort                                                   → end NOW, print nothing
@@ -200,10 +206,15 @@ fi
 VIMTMP="$TMP/vim"
 mkdir -p "$VIMTMP/swap" "$VIMTMP/backup" "$VIMTMP/undo"
 harden_dir "$VIMTMP"; harden_dir "$VIMTMP/swap"; harden_dir "$VIMTMP/backup"; harden_dir "$VIMTMP/undo"
+# `--cmd` runs these BEFORE any file is loaded. With `-c` they run too late:
+# vim has already opened the command-line files and chosen their swap location
+# next to them, inside the suite. (Verified: `-c` left `.foo.swp` in input/;
+# `--cmd` puts it in $VIMTMP.) The trailing `//` encodes the full path into the
+# swap name, so same-named tests in different FOOP dirs cannot collide.
 VIM_OPTS=(
-    -c "set directory=$VIMTMP/swap//"
-    -c "set backupdir=$VIMTMP/backup//"
-    -c "set undodir=$VIMTMP/undo//"
+    --cmd "set directory=$VIMTMP/swap//"
+    --cmd "set backupdir=$VIMTMP/backup//"
+    --cmd "set undodir=$VIMTMP/undo//"
 )
 
 trap 'rm -rf "$TMP"' EXIT
@@ -216,6 +227,8 @@ echo
 
 promote_checked=()     # tests where you typed a promote word in the checked pane
 promote_verified=()    # ... in the verified pane
+retract_checked=()     # tests to demote from checked/ (cascades to verified)
+retract_verified=()    # tests to demote from verified/
 send_to_agent_list=()  # tests where you left instructions
 skip_list=()           # tests you deliberately passed on (skip/pass/idk)
 noop_list=()           # tests you did not touch at all
@@ -264,6 +277,8 @@ drop_from() {
 undo_last_decision() {
     drop_from "$rel"       promote_checked
     drop_from "$rel"       promote_verified
+    drop_from "$rel"       retract_checked
+    drop_from "$rel"       retract_verified
     drop_from "$test_path" send_to_agent_list
     drop_from "$test_path" skip_list
     drop_from "$test_path" noop_list
@@ -278,6 +293,7 @@ undo_last_decision() {
 # particular tool chose. They are exact single words, not prefixes: "lgtm apart
 # from line 3" is a note, as it should be.
 PROMOTE_WORDS=(promote promoted approve approved lgtm sgtm)
+RETRACT_WORDS=(retract demote reexamine unpromote)
 SKIP_WORDS=(skip pass idk)
 STOP_WORDS=(stop)
 ABORT_WORDS=(abort)
@@ -458,6 +474,16 @@ for row in "${rows[@]}"; do
         echo "   → promote checked->verified"
         acted=1
     fi
+    if (( chk_changed )) && pane_says "${pane[checked]}" "${RETRACT_WORDS[@]}"; then
+        retract_checked+=("$rel")
+        echo "   ↩ retract from checked (cascades to verified)"
+        acted=1
+    fi
+    if (( ver_changed )) && pane_says "${pane[verified]}" "${RETRACT_WORDS[@]}"; then
+        retract_verified+=("$rel")
+        echo "   ↩ retract from verified"
+        acted=1
+    fi
 
     # Any other edit is a message to the agent: keep it verbatim.
     if (( acted == 0 )); then
@@ -545,7 +571,21 @@ if (( ${#promote_verified[@]} )); then
     printf '      %s\n' "${promote_verified[@]}"
 fi
 
-if (( ${#promote_checked[@]} == 0 && ${#promote_verified[@]} == 0 && ${#send_to_agent_list[@]} == 0 )); then
+if (( ${#retract_checked[@]} )); then
+    echo
+    echo "retract from checked (${#retract_checked[@]}) — run (removes checked AND any verified):"
+    printf '  %s retract %s checked \\\n' "$EINMO" "$SUITE"
+    printf '      %s\n' "${retract_checked[@]}"
+fi
+
+if (( ${#retract_verified[@]} )); then
+    echo
+    echo "retract from verified (${#retract_verified[@]}) — run:"
+    printf '  %s retract %s verified \\\n' "$EINMO" "$SUITE"
+    printf '      %s\n' "${retract_verified[@]}"
+fi
+
+if (( ${#promote_checked[@]} == 0 && ${#promote_verified[@]} == 0 && ${#retract_checked[@]} == 0 && ${#retract_verified[@]} == 0 && ${#send_to_agent_list[@]} == 0 )); then
     echo
     if (( ${#skip_list[@]} )); then
         echo "Nothing to do — every test reviewed was skipped or unchanged."

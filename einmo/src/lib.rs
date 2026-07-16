@@ -42,8 +42,8 @@ pub use format::{EinmoFile, Metadata, Section, Status};
 pub use signature::{Stamp, StampRole, Stamps};
 pub use stage::Stage;
 pub use transitions::{
-    FlagReport, PromotionReport, RetractReport, SignatureReport, confirm_signatures, flag,
-    promote, retract,
+    FlagReport, PromotionReport, RetractReport, SignatureReport, confirm_signatures, flag, promote,
+    retract,
 };
 pub use verify::{
     FileVerification, StampVerification, VerificationReport, verify, verify_all, verify_bytes,

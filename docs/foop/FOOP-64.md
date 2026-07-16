@@ -339,6 +339,59 @@ From this FOOP forward, the reserved comprehensive input for FOOP `<N>` lives at
 updated inside this FOOP's worktree, so the rule and the tree change land together. FOOP-64's own
 comprehensive is the first test born at the new path.
 
+## Security Considerations
+
+The whole point of einmo is that a snapshot is a *signed, attributable* artifact. Two places
+handle secrets or signed content and therefore need stating plainly.
+
+### Signing keys at rest — the KEK
+
+Promotion signs, and signing needs a key derived from a passphrase via Argon2id (~1.8s by
+design). A batch signs every file with the **same** key, so the key is derived **once** and
+cached for the batch. A cached secret would otherwise sit in plaintext in process memory for the
+whole run.
+
+Instead the derived seed is **sealed** with XChaCha20-Poly1305 under a random per-process
+**key-encryption key (KEK)**. `StageKeypair::with_signing_key` unwraps it, signs, and zeroizes
+the plaintext before returning — so the seed is in the clear only for the microseconds of one
+signature, not for minutes. `Debug` never renders key material.
+
+**Honest scope (stated so no one over-trusts it):** the KEK lives in the same process's memory,
+so this does **not** stop an attacker who can already read our address space. It is
+defense-in-depth that shrinks the plaintext window — heap dumps, core files, swap, a long-lived
+batch. Real isolation (an OS keyring, an HSM, a separate privileged signer) is out of scope for
+this FOOP. The `verified`-stage passphrase is never cached or stored: `einmo.toml` leaves it
+unset, so the cascade falls through to an interactive `/dev/tty` prompt, and a non-interactive
+`checked->verified` fails rather than signing.
+
+### Review scratch is signed content — "police your temp's"
+
+A text review (`poor_einmo.sh`, and the future `einmo console-review`) renders the artifacts
+under review into temporary files, lets an editor open them, and keeps reviewer notes. **All of
+that is the signed material under review** — the panes, the notes, and every editor
+swap/backup/undo file. On a shared host, a world- or group-readable temp directory leaks it.
+
+The rule — *police your temp's*, in the sense of policing your brass: **you leave no readable
+trace on shared ground.** Concretely, every review tool MUST:
+
+1. **Confine all scratch to mode-700 directories** (`u+rwx`, `og-rwx` — readable and writable
+   only by the invoking user; `+x` on directories for the owner only). This covers the pane
+   renders, the notes directory, and the editor's swap/backup/undo directories.
+2. **Enforce it, not assume it.** `mktemp -d` creates `0700` today, but a stray `umask`, a
+   hostile `TMPDIR`, or a user-supplied scratch path can be looser. The tool `chmod`s each
+   scratch directory to `700` and **refuses to run** if that did not take — its contents are too
+   sensitive to leave to a default.
+3. **Harden before any early exit,** so a user-supplied private directory is secured the moment
+   it is chosen, even on a run that finds no tests.
+4. **Offer a private-location override** (`poor_einmo.sh`'s `POOR_EINMO_DIR`; console-review's
+   equivalent) so a reviewer can point scratch at an encrypted or tmpfs-backed path of their own
+   rather than shared `/tmp` — still forced to `700`.
+5. **Remove all scratch on exit** (the tool traps and cleans up), so nothing outlives the
+   review.
+
+`poor_einmo.sh` implements all five; `einmo console-review`, when built, MUST inherit this
+section verbatim — it is a review tool over the same signed content and has the same exposure.
+
 ## Proposed new combination tests
 
 New tests authored by this FOOP live in `foop/64/` — one home each, per §"One home per test".

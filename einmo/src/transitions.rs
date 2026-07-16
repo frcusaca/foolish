@@ -548,7 +548,10 @@ mod tests {
             vec![(Stage::Verified, PathBuf::from("a.foo.einmo"))]
         );
         assert!(
-            config.stage_dir(Stage::Checked).join("a.foo.einmo").exists(),
+            config
+                .stage_dir(Stage::Checked)
+                .join("a.foo.einmo")
+                .exists(),
             "the checked baseline survives"
         );
     }
