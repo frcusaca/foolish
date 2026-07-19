@@ -1,0 +1,9 @@
+{
+	doc = {
+		tmp_a = 4;
+		c = 30;
+		tmp_b = 4;
+	};
+	after_first_4 = doc~=4&#1;
+	before_last_4 = doc?=4&#-1;
+}
