@@ -3,13 +3,17 @@ set -euo pipefail
 
 # poor_einmo.sh — the poor foolisher's einmo review loop (FOOP-64).
 #
-# For every test in an einmo suite, opens a 4-way vimdiff:
+# For every test in an einmo suite, opens vim with a short instructions window
+# on top and four tall tiles below:
 #
+#     [ status + instructions ]
 #     input | output | checked | verified
 #
 # The source, what the FVM just produced, what was last reviewed, and what a
-# human last signed — side by side, one test at a time. This is the stopgap
-# until `einmo console-review` (FOOP-92 Phase 12, absorbed into FOOP-64) exists.
+# human last signed — side by side, one test at a time. Diff mode starts OFF;
+# press \d to diff the four tiles against each other (or :diffthis by hand).
+# This is the stopgap until `einmo console-review` (FOOP-92 Phase 12, absorbed
+# into FOOP-64) exists.
 #
 # ── HOW THE SCRIPT READS YOUR INTENT ──────────────────────────────────────
 #
@@ -51,6 +55,12 @@ set -euo pipefail
 #        Use `stop` to finish up gracefully; `abort` is for "get me out of
 #        here". Read before every other word, so nothing can outrank it.
 #
+# Between tests (unless -f) a prompt offers: Enter=continue · e=edit (reopen,
+# your text kept) · r=revert (reopen fresh) · u=back (keep this file's answer,
+# re-review the PREVIOUS file — the review springs back here afterwards) ·
+# q=quit. A revisited file left alone KEEPS its earlier answer; a new verb
+# replaces it.
+#
 # The script itself NEVER promotes, flags, or signs — it prints the exact
 # commands for the promotions you asked for, and you (or an agent) run them.
 # Promotion stays a deliberate, attributable act.
@@ -63,9 +73,13 @@ set -euo pipefail
 #
 # ── USAGE ─────────────────────────────────────────────────────────────────
 #
-#     ./poor_einmo.sh [-d] [-f] [-s] [-n] [-e EINMO] <suite-dir> [name-filter]
+#     ./poor_einmo.sh [-D] [-f] [-s] [-n] [-e EINMO] <suite-dir> [name-filter]
 #
-#     -d   differing only — skip tests whose output/checked/verified agree
+#     -d   differing only — skip tests whose output/checked/verified agree;
+#          this is the DEFAULT: a fully-agreeing, fully-verified test needs no
+#          human attention, so it is not visited
+#     -D   visit ALL tests, including fully-agreeing verified ones (fresh-eyes
+#          re-review, retracting something previously signed)
 #     -f   full review — do not prompt between tests
 #     -s   shuffle the order (fresh eyes; mirrors foolish_review.sh)
 #     -n   dry run — echo the vimdiff call instead of running it (debugging;
@@ -83,8 +97,8 @@ set -euo pipefail
 # still forced to 700.
 #
 # Examples:
-#     ./poor_einmo.sh foolish-ubca/einmo_suite
-#     ./poor_einmo.sh -d foolish-ubca/einmo_suite            # only what changed
+#     ./poor_einmo.sh foolish-ubca/einmo_suite               # what needs a look
+#     ./poor_einmo.sh -D foolish-ubca/einmo_suite            # everything
 #     ./poor_einmo.sh -s foolish-ubca/einmo_suite foop/23    # shuffle, one FOOP
 #     ./poor_einmo.sh -n foolish-ubca/einmo_suite            # trace, no editor
 #
@@ -96,31 +110,36 @@ set -euo pipefail
 #     stop                                                    → end, print results
 #     abort                                                   → end NOW, print nothing
 #
-# In vimdiff: ]c / [c next/prev change · zz centre the current line ·
-#   :qa finish this test · :qa! finish discarding unsaved pane edits ·
-#   :cq abort the whole loop.
+# In vim: one-key decisions \C promote->checked · \V promote->verified ·
+#   \K kick (demote) highest stage · \S skip · \Q stop · \A abort — each writes
+#   the verb into the right pane and finishes the test. Also: \d toggle diff in
+#   the current window · \D toggle diff on all four tiles · \i / \I
+#   shrink/expand the top instructions panel · ]c / [c next/prev change ·
+#   zz centre the current line · :qa finish this test · :qa! finish discarding
+#   unsaved pane edits · :cq abort the whole loop.
 
-differing_only=0
+differing_only=1     # the default: only visit tests that need human attention
 full_review=0
 shuffle=0
 dry_run=0
 EINMO=""
 
-while getopts "dfsne:h" opt; do
+while getopts "dDfsne:h" opt; do
     case "$opt" in
-        d) differing_only=1 ;;
+        d) differing_only=1 ;;   # the default, kept for muscle memory
+        D) differing_only=0 ;;   # visit ALL tests, fully-verified ones included
         f) full_review=1 ;;
         s) shuffle=1 ;;
         n) dry_run=1 ;;
         e) EINMO="$OPTARG" ;;
-        h) sed -n '4,62p' "$0"; exit 0 ;;
+        h) sed -n '4,72p' "$0"; exit 0 ;;
         *) echo "Try: $0 -h" >&2; exit 2 ;;
     esac
 done
 shift $((OPTIND - 1))
 
 if [[ $# -lt 1 ]]; then
-    echo "Usage: $0 [-d] [-f] [-s] [-n] [-e EINMO] <suite-dir> [name-filter]" >&2
+    echo "Usage: $0 [-D] [-f] [-s] [-n] [-e EINMO] <suite-dir> [name-filter]" >&2
     echo "Example: $0 foolish-ubca/einmo_suite" >&2
     exit 1
 fi
@@ -260,9 +279,18 @@ VIM_OPTS=(
     --cmd "set undodir=$VIMTMP/undo//"
 )
 
+# Escape a filename for use inside a -c "split <name>" command. Spaces only —
+# suite or scratch paths carrying vim-special characters (| ") are not
+# supported here.
+vimesc() { printf '%s' "${1// /\\ }"; }
+
 
 echo "poor_einmo: ${#rows[@]} test(s) in $SUITE${FILTER:+ (filter: $FILTER)}"
-(( differing_only )) && echo "            differing only — stages that agree are skipped"
+if (( differing_only )); then
+    echo "            differing only — fully-agreeing tests are skipped (-D visits all)"
+else
+    echo "            ALL tests — including fully-agreeing verified ones (-D)"
+fi
 (( dry_run ))        && echo "            DRY RUN — vimdiff calls are echoed, not executed"
 echo "            scratch (removed on exit): $TMP"
 echo
@@ -277,43 +305,6 @@ flag_reason=()         # ... with this note as its advisory reason
 send_to_agent_list=()  # tests where you left instructions
 skip_list=()           # tests you deliberately passed on (skip/pass/idk)
 noop_list=()           # tests you did not touch at all
-
-# The placeholder shown when a stage holds no artifact. It doubles as the
-# cheat-sheet: the whole vocabulary sits in front of you exactly when you need
-# it. Every line starts with MARKER_SIGIL so the script can tell "left the
-# instructions alone" from "wrote a verb".
-MARKER_SIGIL="!! poor_einmo:"
-marker_text() {
-    local stage="$1"
-    cat <<MARKER
-$MARKER_SIGIL no $stage artifact yet.
-$MARKER_SIGIL
-$MARKER_SIGIL Replace EVERYTHING here with ONE word, then :qa
-$MARKER_SIGIL
-$MARKER_SIGIL   promote promoted approve approved lgtm sgtm
-$MARKER_SIGIL        accept the previous stage into this one
-$MARKER_SIGIL   skip pass idk      no action; move on
-$MARKER_SIGIL   stop               end the review, keep what you decided
-$MARKER_SIGIL   abort              leave now, discard everything
-$MARKER_SIGIL
-$MARKER_SIGIL Anything else becomes a note for an agent.
-$MARKER_SIGIL Leave this text as-is and the file counts as unreviewed.
-$MARKER_SIGIL Vim command reminders: You can turn diff mode off and on using:
-$MARKER_SIGIL 
-$MARKER_SIGIL   :diffoff
-$MARKER_SIGIL   :diffthis
-MARKER
-}
-
-# True when these instructions survived in the pane.
-marker_left_intact() {
-    grep -qF "$MARKER_SIGIL" "$1"
-}
-
-# The reviewer's own text in a pane: everything that is NOT a marker line.
-strip_marker() {
-    grep -vF "$MARKER_SIGIL" "$1"
-}
 
 # Drop `$1` from array `$2` (by name). Used to retract a decision on re-edit.
 drop_from() {
@@ -351,6 +342,36 @@ drop_flag() {
     flag_reason=("${keep_reason[@]+"${keep_reason[@]}"}")
 }
 
+# What has this review already recorded for a file? Echoes a short description,
+# or nothing. Read by the `u` (back) prompt to show the answer being revisited,
+# and by the unchanged path so a revisit left alone KEEPS its earlier answer
+# instead of demoting it to "no action".
+answer_of() {  # answer_of <mirror-path> <test-path>
+    local r="$1" t="$2" x j
+    for x in "${promote_checked[@]+"${promote_checked[@]}"}"; do
+        if [[ "$x" == "$r" ]]; then echo "promote output->checked"; return 0; fi
+    done
+    for x in "${promote_verified[@]+"${promote_verified[@]}"}"; do
+        if [[ "$x" == "$r" ]]; then echo "promote checked->verified"; return 0; fi
+    done
+    for x in "${retract_checked[@]+"${retract_checked[@]}"}"; do
+        if [[ "$x" == "$r" ]]; then echo "retract from checked"; return 0; fi
+    done
+    for x in "${retract_verified[@]+"${retract_verified[@]}"}"; do
+        if [[ "$x" == "$r" ]]; then echo "retract from verified"; return 0; fi
+    done
+    for j in "${!flag_rel[@]}"; do
+        if [[ "${flag_rel[$j]}" == "$r" ]]; then echo "flag ${flag_stage[$j]}: ${flag_reason[$j]}"; return 0; fi
+    done
+    for x in "${skip_list[@]+"${skip_list[@]}"}"; do
+        if [[ "$x" == "$t" ]]; then echo "skip"; return 0; fi
+    done
+    for x in "${noop_list[@]+"${noop_list[@]}"}"; do
+        if [[ "$x" == "$t" ]]; then echo "no action"; return 0; fi
+    done
+    return 0
+}
+
 # The vocabulary. A pane must contain ONE of these words and nothing else —
 # whitespace is stripped and case ignored, but any extra text means you were
 # talking to an agent, not issuing a verb.
@@ -376,9 +397,17 @@ pane_says() {
     return 1
 }
 
-idx=0
-for row in "${rows[@]}"; do
-    idx=$((idx + 1))
+# The review cursor. `u` at the between-tests prompt rewinds it to the previous
+# file (a "revisit"): that file's earlier answer is kept unless the revisit
+# writes a new one, and when the excursion settles the cursor springs back to
+# where `u` was first pressed (u_resume).
+i=0             # 0-based cursor into rows
+u_resume=-1     # where to spring back to after a `u` excursion (-1: not in one)
+revisit=0       # this visit re-opens a file that already has an answer (via `u`)
+while (( i < ${#rows[@]} )); do
+    row="${rows[$i]}"
+    idx=$((i + 1))
+    jump=-1         # set by `u`: rewind the cursor here instead of advancing
     re_render=1     # rebuild the panes from the stages for a fresh file
     # A file may be re-opened two ways: `edit` keeps your text and lets you
     # adjust it; `revert` throws it away and rebuilds from the stages.
@@ -386,6 +415,7 @@ for row in "${rows[@]}"; do
     # `einmo list` prints: <mirror-path>\t<differ|same>\t<stage marks>
     rel="${row%%$'\t'*}"                       # e.g. misc/simple_addition.foo.einmo
     marks="${row##*$'\t'}"
+    verdict="${row#*$'\t'}"; verdict="${verdict%%$'\t'*}"   # differ | same
     test_path="${rel%.einmo}"                  # e.g. misc/simple_addition.foo
 
     # Never open an editor swap/backup file: `einmo list` already skips
@@ -394,17 +424,19 @@ for row in "${rows[@]}"; do
     case "$(basename "$test_path")" in
         .*) echo "── [$idx/${#rows[@]}] $test_path"
             echo "   · hidden file — skipped (editor droppings are not tests)"
+            undo_last_decision   # a `u` revisit must not double-count it
             noop_list+=("$test_path")
-            continue ;;
+            break ;;
     esac
 
     in_f="$SUITE/input/$test_path"
     base=$(basename "$test_path")
 
     # Render each stage's signed body (einmo verifies-on-inspect, then strips
-    # STAMPS/metadata). A missing artifact yields a marker pane, so the 4-way
-    # diff still lines up. Skipped on an `edit` re-open so the reviewer's text
-    # survives; rebuilt on a `revert`.
+    # STAMPS/metadata). A missing artifact yields an EMPTY pane — the stage
+    # really is empty; all instructions live in the top panel. Whatever you
+    # type into an empty pane is its whole content, verb or note. Skipped on
+    # an `edit` re-open so the reviewer's text survives; rebuilt on a `revert`.
     if (( re_render )); then
         declare -A pane=()
         for stage in output checked verified; do
@@ -416,7 +448,7 @@ for row in "${rows[@]}"; do
                       echo; cat "$TMP/err"; } > "$p"
                 fi
             else
-                marker_text "$stage" > "$p"
+                : > "$p"
             fi
             pane[$stage]="$p"
             cp "$p" "$p.orig"      # pristine copy: the reviewer's diff baseline
@@ -426,28 +458,179 @@ for row in "${rows[@]}"; do
     echo "── [$idx/${#rows[@]}] $test_path"
     echo "   $marks"
 
-    # A persistent status line naming what you are looking at and why it is in
-    # the queue: the test, its differ/same verdict, and the per-stage marks
-    # (output/checked/verified: ok | a status | — for absent). Set with `-c`
-    # (after the user's vimrc loads) so it wins for this review; % is doubled so
-    # our text is not taken as a statusline format item.
-    status_text="poor_einmo │ $test_path │ ${marks//%/%%}"
+    # Per-test vim session config, sourced with `-c` (AFTER the user's vimrc
+    # loads) so it wins for this review:
+    #   - the status bar carries the vim key reminders (it is full width under
+    #     the top panel, so they stay readable there even when the four tiles
+    #     squash their own copies);
+    #   - \d (backslash is vim's default leader): toggle diff mode in the
+    #     window the cursor is in; \D: toggle it across all four file tiles.
+    #     The instructions window never joins the diff either way;
+    #   - \i / \I: shrink the top info panel to its status line / expand it to
+    #     show every line, without moving the cursor.
+    status_text='poor_einmo · \d diff here · \D diff all · ]c/[c jump · zz centre · :qa done · :qa! discard · :cq abort · \I for bigger info window'
+
+    # One-key decisions write the verb into the right pane and leave (:xa).
+    # \K (kick) demotes the HIGHEST stage present; 0 = nothing to retract.
+    retract_target=0
+    if   [[ -f "$SUITE/verified/$rel" ]]; then retract_target=5
+    elif [[ -f "$SUITE/checked/$rel"  ]]; then retract_target=4
+    fi
+    cat > "$TMP/session.vim" <<SESSION
+set laststatus=2
+let &g:statusline = '$status_text'
+" Windows: 1 instructions · 2 input · 3 output · 4 checked · 5 verified.
+" PoorEinmoVerb replaces the target pane with one verb and exits via :xa
+" (writes every modified pane), so the script reads the decision on return.
+function! PoorEinmoVerb(target, verb)
+  if a:target < 2
+    echo 'poor_einmo: no stage artifact to act on'
+    return
+  endif
+  execute a:target . 'wincmd w'
+  silent %delete _
+  call setline(1, a:verb)
+  xa
+endfunction
+nnoremap <silent> \C :call PoorEinmoVerb(4, 'promote')<CR>
+nnoremap <silent> \V :call PoorEinmoVerb(5, 'promote')<CR>
+nnoremap <silent> \K :call PoorEinmoVerb($retract_target, 'retract')<CR>
+nnoremap <silent> \S :call PoorEinmoVerb(4, 'skip')<CR>
+nnoremap <silent> \Q :call PoorEinmoVerb(4, 'stop')<CR>
+nnoremap <silent> \A :call PoorEinmoVerb(4, 'abort')<CR>
+function! PoorEinmoToggleDiffHere()
+  if winnr() == 1 | return | endif
+  if &diff | diffoff | else | diffthis | endif
+endfunction
+function! PoorEinmoToggleDiffAll()
+  if getwinvar(2, '&diff')
+    diffoff!
+  else
+    let l:cur = winnr()
+    for l:w in range(2, winnr('\$'))
+      execute l:w . 'wincmd w'
+      diffthis
+    endfor
+    execute l:cur . 'wincmd w'
+  endif
+endfunction
+function! PoorEinmoTopHeight(full)
+  let l:cur = winnr()
+  1wincmd w
+  execute 'resize' (a:full ? line('\$') : 1)
+  execute l:cur . 'wincmd w'
+endfunction
+nnoremap <silent> \d :call PoorEinmoToggleDiffHere()<CR>
+nnoremap <silent> \D :call PoorEinmoToggleDiffAll()<CR>
+nnoremap <silent> \i :call PoorEinmoTopHeight(0)<CR>
+nnoremap <silent> \I :call PoorEinmoTopHeight(1)<CR>
+SESSION
+
+    # The top panel, two SEPARATE tables:
+    #   1. "where we started" — the state of this test as the review opens:
+    #      per-stage signature checks (einmo's verify-on-inspect status from
+    #      `einmo list`) and a byte comparison between corresponding parts —
+    #      the pristine rendered bodies (.orig), exactly what `einmo compare`
+    #      matches on. Visible at the default panel height.
+    #   2. the instruction table (verbs and the after-:qa prompt) — \I unfolds
+    #      it; the vim key reminders live in the status bar.
+    # Table cells are ASCII so printf's byte padding aligns the columns.
+    o_stat="${marks#*output:}";   o_stat="${o_stat%% *}";  o_stat="${o_stat/—/-}"
+    c_stat="${marks#*checked:}";  c_stat="${c_stat%% *}";  c_stat="${c_stat/—/-}"
+    v_stat="${marks#*verified:}"; v_stat="${v_stat%% *}";  v_stat="${v_stat/—/-}"
+    cmp_chk="-"; cmp_ver="-"
+    if [[ -f "$SUITE/checked/$rel" ]]; then
+        if [[ ! -f "$SUITE/output/$rel" ]]; then cmp_chk="no output"
+        elif cmp -s "${pane[output]}.orig" "${pane[checked]}.orig"; then cmp_chk="same"
+        else cmp_chk="DIFFERS"
+        fi
+    fi
+    if [[ -f "$SUITE/verified/$rel" ]]; then
+        if [[ ! -f "$SUITE/checked/$rel" ]]; then cmp_ver="no checked"
+        elif cmp -s "${pane[checked]}.orig" "${pane[verified]}.orig"; then cmp_ver="same"
+        else cmp_ver="DIFFERS"
+        fi
+    fi
+    prev_answer="$(answer_of "$rel" "$test_path")"
+    instr="$TMP/instructions"
+    {
+        echo "[$idx/${#rows[@]}] $test_path ($verdict)${prev_answer:+ · answer so far: $prev_answer}"
+        echo '┌─ where we started ┬─ output ───┬─ checked ──┬─ verified ─┐'
+        printf '│ %-17s │ %-10s │ %-10s │ %-10s │\n' 'artifact & stamps' "$o_stat" "$c_stat" "$v_stat"
+        printf '│ %-17s │ %-10s │ %-10s │ %-10s │\n' 'vs previous stage' '.' "$cmp_chk" "$cmp_ver"
+        echo '└───────────────────┴────────────┴────────────┴────────────┘'
+        # Keys and commands are highlighted with `` quotes; cells stay ASCII
+        # (plus the quotes) so printf's byte padding keeps the columns true.
+        # Full 80-column width; the dense vim column gets the widest share.
+        # Rows 1-4: the one-key decisions line up with the verbs they perform.
+        row='│ %-27s │ %-19s │ %-24s │\n'
+        echo   '┌─ vim ───────────────────────┬─ verbs (pane word) ─┬─ after :qa ──────────────┐'
+        printf "$row" '`\C` checked `\V` verified' '`promote` `approve`' '`Enter` next / `q` quit'
+        printf "$row" '`\K` kick highest stage'    '`retract` `demote`'  '`e` edit / `r` revert'
+        printf "$row" '`\S` skip this test'        '`skip` `pass` `idk`' '`u` back to prev file'
+        printf "$row" '`\Q` stop `\A` abort'       '`stop` / `abort`'    'untouched keeps answer'
+        printf "$row" '`:qa` finish `:qa!` discard' 'other text = a note' 'empty tile = no artifact'
+        printf "$row" '`\d`/`\D` diff win / all 4' ''                    ''
+        printf "$row" '`\i`/`\I` panel min/max'    ''                    ''
+        printf "$row" '`]c`/`[c` prev/next diff'   ''                    ''
+        printf "$row" '`:cq` abort whole review'   ''                    ''
+        echo   '└─────────────────────────────┴─────────────────────┴──────────────────────────┘'
+    } > "$instr"
+    # Below the tight tables: the wordy cheat-sheet. Now that \i/\I resize the
+    # panel at will, this part can take the space it needs (\I shows it all).
+    cat >> "$instr" <<'FINEPRINT'
+──────────────────────────────── the fine print ────────────────────────────────
+You review by EDITING the checked/verified panes; decisions are read at `:qa`.
+Replace the ENTIRE pane with ONE word, alone: in the checked pane it means
+"promote output->checked"; in the verified pane, "promote checked->verified".
+  · `promote` `promoted` `approve` `approved` `lgtm` `sgtm`  all mean promote
+  · `retract` `demote` `reexamine` `unpromote`  demote that stage for
+    re-examination; retracting checked also removes any downstream verified
+  · `skip` `pass` `idk`  you looked and chose not to rule — recorded as skipped
+  · `stop`   end the review; earlier files keep their decisions
+  · `abort`  leave NOW; nothing promoted, nothing reported
+Anything else you write becomes a note for an agent: it is printed as an
+`einmo flag` command with your text as the --reason, so the note travels INTO
+the corpus (flagged/), not a temp file. An empty tile means that stage has no
+artifact yet — write your verb into the empty pane to promote into it.
+One-key decisions (each writes the verb into the right pane, saves every
+modified pane via `:xa`, and finishes the test): `\C` promote output->checked ·
+`\V` promote checked->verified · `\K` kick (demote) the highest stage present ·
+`\S` skip · `\Q` stop the review · `\A` abort it.
+Vim: `]c`/`[c` jump between differences · `zz` centre the line · `\d` toggles
+diff in the window under the cursor · `\D` toggles all four tiles · `\i`/`\I`
+shrink/expand this panel · `:qa` finishes this test (edits are read) · `:qa!`
+finishes DISCARDING unsaved pane edits · `:cq` aborts the whole review loop.
+After `:qa` the terminal prompt offers: `Enter`=next · `e`=edit (reopen, your
+text kept) · `r`=revert (reopen fresh from the stages) · `u`=back (keep this
+file's answer, re-review the previous file; review resumes here) · `q`=quit.
+poor_einmo itself never touches the corpus: promotions, retracts and flags are
+printed as commands and only run behind the typed PROMOTE gate.
+FINEPRINT
+
     review_opts=(
         "${VIM_OPTS[@]}"
-        -c "set laststatus=2"
-        -c "set statusline=${status_text// /\\ }"
+        -c "source $TMP/session.vim"
     )
 
     if (( dry_run )); then
         # Debugging aid: show the call instead of locking the terminal.
-        echo "   + vimdiff ${review_opts[*]} '$in_f' '${pane[output]}' '${pane[checked]}' '${pane[verified]}'"
+        echo "   + vim ${review_opts[*]} '$instr' + tiles: '$in_f' '${pane[output]}' '${pane[checked]}' '${pane[verified]}'"
         noop_list+=("$test_path")
         break
     fi
 
-    # 4-way: the source under test, then the three stages.
-    if ! vimdiff "${review_opts[@]}" \
-            "$in_f" "${pane[output]}" "${pane[checked]}" "${pane[verified]}" \
+    # Five windows: the instructions on top (short, read-only), then the source
+    # under test and the three stages tiled vertically below. No diff mode
+    # until you ask (\d, or :diffthis in the windows you choose).
+    if ! vim "${review_opts[@]}" \
+            -c "setlocal readonly nomodifiable" \
+            -c "botright split $(vimesc "$in_f")" \
+            -c "vertical belowright split $(vimesc "${pane[output]}")" \
+            -c "vertical belowright split $(vimesc "${pane[checked]}")" \
+            -c "vertical belowright split $(vimesc "${pane[verified]}")" \
+            -c "1wincmd k" -c "resize 5" -c "wincmd j" \
+            "$instr" \
             </dev/tty >/dev/tty; then
         echo
         echo "poor_einmo: aborted at $test_path."
@@ -488,40 +671,26 @@ for row in "${rows[@]}"; do
     cmp -s "${pane[checked]}"  "${pane[checked]}.orig"  || chk_changed=1
     cmp -s "${pane[verified]}" "${pane[verified]}.orig" || ver_changed=1
 
-    # A changed pane that STILL holds the instructions means the reviewer wrote
-    # *around* them — almost always "typed the verb under the cheat-sheet".
-    # Read literally that is a note; read charitably it is the promotion they
-    # believe they just made. Neither guess is ours, so ask.
-    marker_choice=""
-    for stage in checked verified; do
-        case "$stage" in
-            checked)  (( chk_changed )) || continue ;;
-            verified) (( ver_changed )) || continue ;;
-        esac
-        marker_left_intact "${pane[$stage]}" || continue
-
-        echo "   ⚠ the $stage pane still holds the instructions, plus your text."
-        echo "     A verb must stand ALONE — as written this becomes a note."
-        read -r -p "     [r]e-view now (to promote), [f]lag as a note, [s]kip? " ans </dev/tty || ans=s
-        case "${ans,,}" in
-            r*) echo "     ↺ re-opening fresh — replace ALL the text with one word"
-                marker_choice=redo ;;
-            f*) echo "     ✎ recorded as a note"
-                marker_choice=flag ;;
-            *)  echo "     · skipped"
-                marker_choice=skip ;;
-        esac
-        break
-    done
-    case "$marker_choice" in
-        redo) re_render=1; continue ;;                     # re-open fresh
-        skip) skip_list+=("$test_path"); break ;;          # settled: skipped
-    esac
+    # A fresh answer supersedes whatever an earlier pass or a `u` revisit had
+    # recorded for this file — replace, never stack.
+    if (( chk_changed || ver_changed )); then
+        undo_last_decision
+    fi
 
     if (( chk_changed == 0 && ver_changed == 0 )); then
-        noop_list+=("$test_path")
-        echo "   · unchanged — no action"
-        continue
+        prev_answer="$(answer_of "$rel" "$test_path")"
+        if [[ -n "$prev_answer" ]]; then
+            # A revisited file left alone keeps what the review already decided.
+            echo "   · unchanged — keeping the answer already recorded: $prev_answer"
+        else
+            noop_list+=("$test_path")
+            echo "   · unchanged — no action"
+        fi
+        # A `u` revisit still gets the prompt, so `u` can step further back;
+        # anywhere else, an untouched file is settled.
+        if ! (( revisit )); then
+            break
+        fi
     fi
 
     # An explicit skip ("skip"/"pass"/"idk") is a deliberate non-decision: you
@@ -538,7 +707,7 @@ for row in "${rows[@]}"; do
     if (( skipped_word )); then
         skip_list+=("$test_path")
         echo "   · skipped — no action"
-        continue
+        break
     fi
 
     acted=0
@@ -567,15 +736,15 @@ for row in "${rows[@]}"; do
     # so it travels INTO the corpus (flagged/) rather than a throwaway temp
     # file. The note is what you typed; a multi-line note is folded to one line
     # for the advisory (the full text is shown in the printed command).
-    if (( acted == 0 )); then
+    if (( acted == 0 && (chk_changed || ver_changed) )); then
         # Which stage did you write on, and what did you write? Prefer verified.
         local_stage=""; note_text=""
         if (( ver_changed )); then
             local_stage=verified
-            note_text="$(strip_marker "${pane[verified]}")"
+            note_text="$(cat "${pane[verified]}")"
         else
             local_stage=checked
-            note_text="$(strip_marker "${pane[checked]}")"
+            note_text="$(cat "${pane[checked]}")"
         fi
         # Fold to a single line for the advisory reason.
         note_text="$(printf '%s' "$note_text" | tr '\n' ' ' | sed 's/  */ /g; s/^ //; s/ $//')"
@@ -590,22 +759,61 @@ for row in "${rows[@]}"; do
         # The decision is not final until you leave the file:
         #   edit   — reopen with YOUR text intact, to adjust it
         #   revert — discard this file's answer, reopen from the stages fresh
-        read -r -p "   next? [Enter=continue, e=edit, r=revert, q=quit] " ans </dev/tty || true
-        case "${ans,,}" in
-            e*) echo "   ✎ edit — reopening with your text kept"
-                undo_last_decision   # retract the recorded outcome; text stays
-                re_render=0
-                continue ;;
-            r*) echo "   ↺ revert — discarding this file's answer, reopening fresh"
-                undo_last_decision
-                re_render=1
-                continue ;;
-            q*) echo "poor_einmo: stopped."; break 2 ;;
-        esac
+        #   back   — keep this file's answer, rewind to the PREVIOUS file; when
+        #            that settles, the review springs back to resume here
+        while :; do
+            read -r -p "   next? [Enter=continue, e=edit, r=revert, u=back, q=quit] " ans </dev/tty || true
+            case "${ans,,}" in
+                e*) echo "   ✎ edit — reopening with your text kept"
+                    undo_last_decision   # retract the recorded outcome; text stays
+                    re_render=0
+                    continue 2 ;;
+                r*) echo "   ↺ revert — discarding this file's answer, reopening fresh"
+                    undo_last_decision
+                    re_render=1
+                    continue 2 ;;
+                u*|b*)
+                    if (( i == 0 )); then
+                        echo "   · already at the first file — nothing to go back to"
+                        continue
+                    fi
+                    prev_rel="${rows[$((i - 1))]%%$'\t'*}"
+                    prev_answer="$(answer_of "$prev_rel" "${prev_rel%.einmo}")"
+                    echo "   ← back — this file keeps its answer; re-opening ${prev_rel%.einmo}${prev_answer:+ (answer so far: $prev_answer)}"
+                    if (( u_resume < 0 )); then u_resume=$((i + 1)); fi
+                    jump=$((i - 1))
+                    break ;;
+                q*) echo "poor_einmo: stopped."; break 3 ;;
+                *)  break ;;
+            esac
+        done
     fi
     break   # this file is settled; on to the next
     done
+
+    # Advance the cursor: a `u` rewind, a spring-back after one, or plain next.
+    if (( jump >= 0 )); then
+        i=$jump
+        revisit=1
+    elif (( u_resume >= 0 )); then
+        i=$u_resume
+        u_resume=-1
+        revisit=0
+    else
+        i=$((i + 1))
+        revisit=0
+    fi
 done
+
+# Print a command block in a copy/pasteable way (one file per continued line).
+show_cmd() {  # show_cmd "<prose>" <einmo-args...> -- <files...>
+    local prose="$1"; shift
+    local head=() f; while [[ "$1" != "--" ]]; do head+=("$1"); shift; done; shift
+    echo
+    echo "$prose"
+    printf '  %s' "$EINMO"; printf ' %q' "${head[@]}"; printf ' \\\n'
+    for f in "$@"; do printf '      %q \\\n' "$f"; done | sed '$ s/ \\$//'
+}
 
 # --- the accumulated results ---------------------------------------------
 echo
@@ -632,16 +840,6 @@ if (( ${#flag_rel[@]} )); then
             -- "${flag_rel[$i]}"
     done
 fi
-
-# Print a command block in a copy/pasteable way (one file per continued line).
-show_cmd() {  # show_cmd "<prose>" <einmo-args...> -- <files...>
-    local prose="$1"; shift
-    local head=() f; while [[ "$1" != "--" ]]; do head+=("$1"); shift; done; shift
-    echo
-    echo "$prose"
-    printf '  %s' "$EINMO"; printf ' %q' "${head[@]}"; printf ' \\\n'
-    for f in "$@"; do printf '      %q \\\n' "$f"; done | sed '$ s/ \\$//'
-}
 
 # The PROMOTE gate. poor_einmo can RUN promotions for you, but only after you
 # type the whole word PROMOTE in capitals — a deliberate, unmistakable act,

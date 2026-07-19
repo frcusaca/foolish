@@ -63,6 +63,7 @@ ls | rev | sort -V | rev
 | [FOOP-94](FOOP-94.md) | Brane NK only when all constituents are NK — remove any-NK contamination | Draft | phase-2 | 2026-07-14 | Atlas |
 | [FOOP-05](FOOP-05.md) | fir module decomposition — fir_base, fir_search_base, one file per FIR kind | Draft | phase-2 | 2026-07-14 | Atlas |
 | [FOOP-15](FOOP-15.md) | Secured interactive einmo review — attested inspection of einmos and their perspectives | Draft | meta | 2026-07-14 | Atlas |
+| [FOOP-25](FOOP-25.md) | EinmoReview — a thread-safe review-session object; thin bash, server, and dhtml frontends | Draft | meta | 2026-07-19 | Atlas |
 
 ---
 
@@ -120,6 +121,11 @@ ls | rev | sort -V | rev
 - [FOOP-15](FOOP-15.md) — Secured interactive einmo review (re-homes FOOP-92's deferred
   serve/SPA + MCP + perspective rendering; phased R1 read-only → R2 attested actions → R3
   perspectives → R4 MCP; build-up goal)
+- [FOOP-25](FOOP-25.md) — EinmoReview session object (thread-safe review state: per-reviewer
+  replace-not-stack decisions, single-flight verified cache, journal; signing deliberately a
+  SEPARATE `Signer` object — individual or batch from one passphrase entry; server API over UDS;
+  poor_einmo.sh reduced to a thin client; first dhtml frontend; the session layer FOOP-15 attaches
+  to)
 - [FOOP-94](FOOP-94.md) — Brane NK only when ALL constituents are NK (flip `_decide_nyes_due_to_children` cascade: any-NK+rest-constant → CONSTANT, not NK; operator NK propagation and search semantics untouched; ~34 brane-NK snapshots to re-review)
 
 ### Brewing
@@ -170,7 +176,7 @@ Canceled as they stand; each may be respecified and reimplemented later. See
 
 ### meta
 
-- [FOOP-1](FOOP-1.md), [FOOP-31](FOOP-31.md), [FOOP-41](FOOP-41.md), [FOOP-71](FOOP-71.md), [FOOP-81](FOOP-81.md), [FOOP-22](FOOP-22.md), [FOOP-92](FOOP-92.md), [FOOP-03](FOOP-03.md), [FOOP-54](FOOP-54.md), [FOOP-64](FOOP-64.md), [FOOP-15](FOOP-15.md)
+- [FOOP-1](FOOP-1.md), [FOOP-31](FOOP-31.md), [FOOP-41](FOOP-41.md), [FOOP-71](FOOP-71.md), [FOOP-81](FOOP-81.md), [FOOP-22](FOOP-22.md), [FOOP-92](FOOP-92.md), [FOOP-03](FOOP-03.md), [FOOP-54](FOOP-54.md), [FOOP-64](FOOP-64.md), [FOOP-15](FOOP-15.md), [FOOP-25](FOOP-25.md)
 
 ### phase-0
 
@@ -367,6 +373,12 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 ---
 
 ## Last Updated
+
+**Date**: 2026-07-19
+**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5
+**Changes**: Added FOOP-25 (EinmoReview session object — thread-safe review state with a separate
+`Signer` for individual-or-batch signing, review server, thin poor_einmo.sh client, dhtml frontend;
+the session layer for FOOP-15). Spec + plan created as Draft, `begun: [ ]`.
 
 **Date**: 2026-07-14
 **Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5
