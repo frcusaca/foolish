@@ -42,7 +42,9 @@ Every FOOP is expressed as (up to) two separate files that share the same
   the outcomes, including API's to be implemented, behaviors that can be tested.
   This description should be both qualitative and specific, in prose and then
   in fenced/pseudo code for API/code changes and in some cases the tests
-  themselves are written here. as part of stating the specification or design.
+  themselves are written here as part of stating the specification or design--
+  test development can begin now as embedded fenced code blocks, describe more
+  complex and thorough testing tasks for development during the project.
   The "Last Updated" section should contain the git SHA of the branch from which
   the foop was produced, along with a note regarding whether there were uncomitted
   files. When loading a foop, it is easy to compare current sha with the recorded
