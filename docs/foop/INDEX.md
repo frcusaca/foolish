@@ -64,6 +64,7 @@ ls | rev | sort -V | rev
 | [FOOP-05](FOOP-05.md) | fir module decomposition — fir_base, fir_search_base, one file per FIR kind | Draft | phase-2 | 2026-07-14 | Atlas |
 | [FOOP-15](FOOP-15.md) | Secured interactive einmo review — attested inspection of einmos and their perspectives | Draft | meta | 2026-07-14 | Atlas |
 | [FOOP-25](FOOP-25.md) | EinmoReview — a thread-safe review-session object; thin bash, server, and dhtml frontends | Draft | meta | 2026-07-19 | Atlas |
+| [FOOP-35](FOOP-35.md) | Ship einmo — own repository, crates.io registration, and a working `cargo einmo test` | Draft | meta | 2026-07-19 | Atlas |
 
 ---
 
@@ -125,7 +126,16 @@ ls | rev | sort -V | rev
   replace-not-stack decisions, single-flight verified cache, journal; signing deliberately a
   SEPARATE `Signer` object — individual or batch from one passphrase entry; server API over UDS;
   poor_einmo.sh reduced to a thin client; first dhtml frontend; the session layer FOOP-15 attaches
-  to)
+  to). §S.11 adds a LAYERED post-quantum section attestation in its own `CorpusSigner` object
+  (conservative SPHINCS+/SLH-DSA over a stage's manifest+byte-joined files, same passphrase as the
+  Ed25519 stamps, ON TOP of them not replacing; default massively-parallel one-buffer read + a tested
+  streaming alternative; crypto core + tests only this FOOP)
+- [FOOP-35](FOOP-35.md) — Ship einmo as a dual product: library (`einmo = "0.1"`, audited pub API,
+  missing_docs-clean) + installable cargo command (`cargo install einmo` → `einmo`/`cargo-einmo`,
+  new `einmo test` verb with checked/verified levels and CI exit codes); sequential walkthrough of
+  the decisions/registrations (name check, own repo via filter-repo, crates.io account/publish,
+  docs.rs) plus the Rust testing battery (proptest, cargo-fuzz on untrusted parsers, mutants,
+  deny/audit, MSRV, coverage)
 - [FOOP-94](FOOP-94.md) — Brane NK only when ALL constituents are NK (flip `_decide_nyes_due_to_children` cascade: any-NK+rest-constant → CONSTANT, not NK; operator NK propagation and search semantics untouched; ~34 brane-NK snapshots to re-review)
 
 ### Brewing
@@ -176,7 +186,7 @@ Canceled as they stand; each may be respecified and reimplemented later. See
 
 ### meta
 
-- [FOOP-1](FOOP-1.md), [FOOP-31](FOOP-31.md), [FOOP-41](FOOP-41.md), [FOOP-71](FOOP-71.md), [FOOP-81](FOOP-81.md), [FOOP-22](FOOP-22.md), [FOOP-92](FOOP-92.md), [FOOP-03](FOOP-03.md), [FOOP-54](FOOP-54.md), [FOOP-64](FOOP-64.md), [FOOP-15](FOOP-15.md), [FOOP-25](FOOP-25.md)
+- [FOOP-1](FOOP-1.md), [FOOP-31](FOOP-31.md), [FOOP-41](FOOP-41.md), [FOOP-71](FOOP-71.md), [FOOP-81](FOOP-81.md), [FOOP-22](FOOP-22.md), [FOOP-92](FOOP-92.md), [FOOP-03](FOOP-03.md), [FOOP-54](FOOP-54.md), [FOOP-64](FOOP-64.md), [FOOP-15](FOOP-15.md), [FOOP-25](FOOP-25.md), [FOOP-35](FOOP-35.md)
 
 ### phase-0
 
@@ -376,9 +386,11 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 
 **Date**: 2026-07-19
 **Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5
-**Changes**: Added FOOP-25 (EinmoReview session object — thread-safe review state with a separate
-`Signer` for individual-or-batch signing, review server, thin poor_einmo.sh client, dhtml frontend;
-the session layer for FOOP-15). Spec + plan created as Draft, `begun: [ ]`.
+**Changes**: Added FOOP-35 (ship einmo as library + cargo command: `einmo test` verb, own repo via
+filter-repo, crates.io registration walkthrough, Rust testing battery; plans target `jia`). Also
+FOOP-25 plan origin confirmed as `jia`. Earlier same day: added FOOP-25 (EinmoReview session object —
+thread-safe review state with a separate `Signer` for individual-or-batch signing, review server,
+thin poor_einmo.sh client, dhtml frontend; the session layer for FOOP-15). Both Draft, `begun: [ ]`.
 
 **Date**: 2026-07-14
 **Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5

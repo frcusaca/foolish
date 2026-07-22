@@ -4,8 +4,7 @@ Read `docs/foop/FOOP-25.md` before acting on any task below. Tasks run top to bo
 lands value on its own. Worktree variables, expanded:
 
 ```
-WORKTREE_ORIGIN_BRANCH=main        # SANITY: confirm at begun-time (foop.md default says `alpha`,
-                                   # but no alpha branch exists; FOOP-62 merged to `jia`)
+WORKTREE_ORIGIN_BRANCH=jia         # confirmed by Atlas 2026-07-19 (merges target `jia`)
 WORKTREE_ORIGIN_PATH=/home/hcbusy/foolish-rust
 WORKTREE_BRANCH_NAME=foop-25-einmo-review-session
 WORKTREE_FULL_FS_PATH=/home/hcbusy/tmp/foolish-worktrees/foop-25-einmo-review-session
@@ -13,9 +12,8 @@ WORKTREE_FULL_FS_PATH=/home/hcbusy/tmp/foolish-worktrees/foop-25-einmo-review-se
 
 - [ ] STOP — preconditions: FOOP-64 merged and its suite green; all workspace tests pass. Do not
       begin while any test is broken (Development Rules).
-- [ ] Sanity check: consult human to confirm `WORKTREE_ORIGIN_BRANCH` (main? successor of jia?) and
-      to resolve FOOP-25.md §Open Questions (HTTP stack, journal location, differing default) enough
-      to start Phase A. Remind them: "Above message comes from FOOP-25 working to build the
+- [ ] Sanity check: consult human to resolve FOOP-25.md §Open Questions (HTTP stack, journal
+      location, differing default) enough to start Phase A. Remind them: "Above message comes from FOOP-25 working to build the
       EinmoReview session object; the worktree is at
       /home/hcbusy/tmp/foolish-worktrees/foop-25-einmo-review-session. PTAL"
 - [ ] Begin work: commit FOOP-25.md and FOOP-25.plan.md on the origin branch, check `begun: [x]` in
@@ -44,8 +42,46 @@ WORKTREE_FULL_FS_PATH=/home/hcbusy/tmp/foolish-worktrees/foop-25-einmo-review-se
 - [ ] Implement `EinmoReview` (open/items/body/diff/decide/undecide/decision/refresh) over the above
 - [ ] Implement `ExecutionPlan` + `execute`/`execute_one` (exec mutex, fingerprint re-check,
       skip-and-report drift, retract cascade, confirm token plumbed but enforced by frontends)
+- [ ] Flag = plaintext, concatenating (§S.3): `flagged/` is PLAINTEXT/unsigned/transient; execute writes
+      the annotated note as plaintext and CONCATENATES a dated block on top when re-flagging; concurrent
+      flags serialize under the exec mutex; `flagged/` stays exempt from verification; journal records
+      each. (Supersedes the earlier `einmo flag --merge` in-envelope idea — flags are plaintext now.)
+- [ ] New signed `notes/` stage (§S.3): a durable, attributed sibling to `flagged/`; a note is a valid
+      signed `.einmo` (stamped, verify-on-inspect, participates in signature checks); support promoting a
+      flag's concatenated content into `notes/` as a signed note body. (Coordinate the `notes/` stage
+      addition with FOOP-64's stage set at begun-time.)
+- [ ] Flags break tests by default (§S.3): a flagged artifact fails the run (non-zero / red gate);
+      `--flag-is-not-failure` downgrades to non-fatal but stderr STILL announces the flag count (no
+      silent config); wire into the goal-state check (green = zero flags + signed + matching + valid
+      signatures). Tests per §Test Plan "flag breaks tests".
 - [ ] Implement `Journal` (append-only JSONL, replay, truncated-tail tolerance)
 - [ ] All Phase A tests green; `cargo fmt` and `cargo clippy -D warnings` clean
+
+## Phase A2 — `CorpusSigner` (section PQ attestation), CRYPTO CORE ONLY (FOOP-25.md §S.11)
+
+Self-contained `CorpusSigner` object — NOT mixed into `EinmoReview` (§S.11). NO real-corpus writes and
+NOT wired into the live promotion flow in this FOOP (that integration is a later step). Prove the
+object in isolation; `EinmoReview` will merely hold and call it later.
+
+- [ ] Read §S.11 of FOOP-25.md; add `fips205` dep (feature `slh_dsa_sha2_256s` — conservative set) to
+      einmo/Cargo.toml
+- [ ] Write tests FIRST (§Test Plan "CorpusSigner read strategies" + section attestation): deterministic
+      manifest; digest changes on add/remove/alter/reorder; SLH-DSA sign→verify round-trip; tamper
+      fails; same-passphrase dual-derivation determinism; empty-section manifest; the two read
+      strategies agree bit-for-bit — all exercising `CorpusSigner` standalone (no `EinmoReview`)
+- [ ] Implement `CorpusSigner` skeleton (`new`/`manifest`/`digest`/`sign`/`verify`) + the manifest
+      builder (stage name + param-set id + sorted mirror-path list via the existing deterministic walk)
+- [ ] Implement `ReadStrategy::ParallelBuffer` (DEFAULT): metadata→offsets→one allocation; parallel
+      `read_exact` into disjoint slices, bounded worker pool; short/long-read hard error; hand the whole
+      buffer to the signer (add `rayon` OR a small std thread-pool — decide at begun-time, see Open Q)
+- [ ] Implement `ReadStrategy::Stream` (alternative): sequential manifest-order read feeding the hasher
+      incrementally, bounded memory; assert byte-identical digest to `ParallelBuffer`
+- [ ] Extend `Signer` (§S.4) to derive BOTH the Ed25519 stamp key and the section SLH-DSA key from one
+      passphrase (Argon2id output expanded to the SLH-DSA seed; deterministic keygen)
+- [ ] Implement `sign`/`verify` over the digest; `.section.sig` file shape defined but written only to
+      fixtures/tempdirs in tests, never the real corpus
+- [ ] Phase A2 tests green; `cargo fmt` / `cargo clippy -D warnings` clean; `#![forbid(unsafe_code)]`
+      still holds (fips205 is pure Rust)
 
 ## Phase B — CLI verbs
 
@@ -86,8 +122,8 @@ WORKTREE_FULL_FS_PATH=/home/hcbusy/tmp/foolish-worktrees/foop-25-einmo-review-se
       obligation.)
 - [ ] Verify all work is complete in /home/hcbusy/tmp/foolish-worktrees/foop-25-einmo-review-session
       and committed to `foop-25-einmo-review-session`
-- [ ] Merge `foop-25-einmo-review-session` to the confirmed origin branch
-  - [ ] Repair ALL tests on the origin branch in /home/hcbusy/foolish-rust
+- [ ] Merge `foop-25-einmo-review-session` to `jia`
+  - [ ] Repair ALL tests on `jia` in /home/hcbusy/foolish-rust
   - [ ] STOP! STOP!! STOP!!! ASK HUMAN to check this box before continuing. UNDER NO CIRCUMSTANCES
         will Agent continue past this point automatically!!
     - [ ] Present human with `cd /home/hcbusy/tmp/foolish-worktrees/foop-25-einmo-review-session`

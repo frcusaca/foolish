@@ -16,7 +16,10 @@
 		alice = 100;
 		bob = 200;
 		carol = 150;
-		dave = 100;
+		alice_2= 251;
+		dave_2 = 249;
+		dave = 102;
+		weeee = -2;
 	};
 
 	!! --- Data: nested branes for dot access / contexted search ---

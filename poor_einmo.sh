@@ -110,13 +110,20 @@ set -euo pipefail
 #     stop                                                    → end, print results
 #     abort                                                   → end NOW, print nothing
 #
-# In vim: one-key decisions \C promote->checked · \V promote->verified ·
-#   \K kick (demote) highest stage · \S skip · \Q stop · \A abort — each writes
-#   the verb into the right pane and finishes the test. Also: \d toggle diff in
-#   the current window · \D toggle diff on all four tiles · \i / \I
-#   shrink/expand the top instructions panel · ]c / [c next/prev change ·
-#   zz centre the current line · :qa finish this test · :qa! finish discarding
-#   unsaved pane edits · :cq abort the whole loop.
+# In vim: the three stage tiles open in diff mode (input and the top panel
+#   stay out). One-key decisions: \c promote->checked · \v promote->verified —
+#   these write the verb but STAY in vim, so \c then \v parks BOTH; leave with
+#   :xa to queue them (capital \C / \V write, leave, and skip the "next?"
+#   prompt) · \K kick (demote) highest stage · \S skip · \Q stop · \A abort
+#   write the verb and finish the test. Also: \d toggle diff in
+#   the current window · \D toggle diff on all four tiles · \i / \I cycle the
+#   top panel size forward / backward (status → stats → +instructions →
+#   everything, and the reverse) · ]c / [c next/prev
+#   change · zo unfold "no diff" stretches · zz centre the current line ·
+#   :xa / :xa! finish this test, writing edits · :qa / :qa! finish, DISCARDING
+#   unsaved edits — all four return to poor_einmo's own prompt, never straight
+#   to the next file (only capital \C / \V skip that prompt) · :cq abort the
+#   whole loop.
 
 differing_only=1     # the default: only visit tests that need human attention
 full_review=0
@@ -466,11 +473,12 @@ while (( i < ${#rows[@]} )); do
     #   - \d (backslash is vim's default leader): toggle diff mode in the
     #     window the cursor is in; \D: toggle it across all four file tiles.
     #     The instructions window never joins the diff either way;
-    #   - \i / \I: shrink the top info panel to its status line / expand it to
-    #     show every line, without moving the cursor.
-    status_text='poor_einmo · \d diff here · \D diff all · ]c/[c jump · zz centre · :qa done · :qa! discard · :cq abort · \I for bigger info window'
+    #   - \i / \I: cycle the top info panel size through the same stops in
+    #     opposite directions (\i grows, \I shrinks), without moving the cursor.
+    status_text='poor_einmo · \d diff here · \D diff all · ]c/[c jump · zo unfold · zz centre · :xa/:qa(!) -> prompt · :cq abort · \i/\I grow/shrink info panel'
 
-    # One-key decisions write the verb into the right pane and leave (:xa).
+    # One-key decisions write the verb into the right pane; lowercase \c/\v
+    # stay in vim (park both, then :xa), the rest write and leave.
     # \K (kick) demotes the HIGHEST stage present; 0 = nothing to retract.
     retract_target=0
     if   [[ -f "$SUITE/verified/$rel" ]]; then retract_target=5
@@ -480,9 +488,13 @@ while (( i < ${#rows[@]} )); do
 set laststatus=2
 let &g:statusline = '$status_text'
 " Windows: 1 instructions · 2 input · 3 output · 4 checked · 5 verified.
-" PoorEinmoVerb replaces the target pane with one verb and exits via :xa
-" (writes every modified pane), so the script reads the decision on return.
-function! PoorEinmoVerb(target, verb)
+" PoorEinmoVerb replaces the target pane with one verb, leaving the cursor
+" there. leave=1 also exits via :xa (writes every modified pane) so the script
+" reads the decision immediately; leave=0 STAYS in vim so you can set another
+" pane too (e.g. \c then \v to park BOTH promotions, then :xa once yourself).
+" autonext=1 (\C, \V) additionally asks the script to skip the between-tests
+" prompt; it implies leave=1.
+function! PoorEinmoVerb(target, verb, leave, autonext)
   if a:target < 2
     echo 'poor_einmo: no stage artifact to act on'
     return
@@ -490,20 +502,32 @@ function! PoorEinmoVerb(target, verb)
   execute a:target . 'wincmd w'
   silent %delete _
   call setline(1, a:verb)
-  xa
+  if a:autonext
+    call writefile(['1'], '$TMP/autonext')
+  endif
+  if a:leave
+    xa
+  endif
 endfunction
-nnoremap <silent> \C :call PoorEinmoVerb(4, 'promote')<CR>
-nnoremap <silent> \V :call PoorEinmoVerb(5, 'promote')<CR>
-nnoremap <silent> \K :call PoorEinmoVerb($retract_target, 'retract')<CR>
-nnoremap <silent> \S :call PoorEinmoVerb(4, 'skip')<CR>
-nnoremap <silent> \Q :call PoorEinmoVerb(4, 'stop')<CR>
-nnoremap <silent> \A :call PoorEinmoVerb(4, 'abort')<CR>
+" Lowercase \c / \v: write the verb but STAY, so both can be parked in one
+" edit; you leave with :xa when ready (both queue, promotions run in order).
+nnoremap <silent> \c :call PoorEinmoVerb(4, 'promote', 0, 0)<CR>
+nnoremap <silent> \v :call PoorEinmoVerb(5, 'promote', 0, 0)<CR>
+" Capitals \C / \V: write, exit, and auto-next past the prompt.
+nnoremap <silent> \C :call PoorEinmoVerb(4, 'promote', 1, 1)<CR>
+nnoremap <silent> \V :call PoorEinmoVerb(5, 'promote', 1, 1)<CR>
+" Terminal single decisions: write and exit (staying would be pointless).
+nnoremap <silent> \K :call PoorEinmoVerb($retract_target, 'retract', 1, 0)<CR>
+nnoremap <silent> \S :call PoorEinmoVerb(4, 'skip', 1, 0)<CR>
+nnoremap <silent> \Q :call PoorEinmoVerb(4, 'stop', 1, 0)<CR>
+nnoremap <silent> \A :call PoorEinmoVerb(4, 'abort', 1, 0)<CR>
 function! PoorEinmoToggleDiffHere()
   if winnr() == 1 | return | endif
   if &diff | diffoff | else | diffthis | endif
 endfunction
+" Diff starts ON across windows 3-5, so the all-tiles toggle reads window 3.
 function! PoorEinmoToggleDiffAll()
-  if getwinvar(2, '&diff')
+  if getwinvar(3, '&diff')
     diffoff!
   else
     let l:cur = winnr()
@@ -514,16 +538,42 @@ function! PoorEinmoToggleDiffAll()
     execute l:cur . 'wincmd w'
   endif
 endfunction
-function! PoorEinmoTopHeight(full)
+" \i / \I cycle the top panel through the same stops in OPPOSITE directions:
+"   \i forward:  status(1) → stats(5) → +instructions(17) → all → back to 1
+"   \I backward: all → +instructions(17) → stats(5) → status(1) → back to all
+" Index-based so terminal-height clamping can never wedge the cycle. dir is +1
+" (\i) or -1 (\I); modulo keeps it inside the stop list either way.
+let g:pe_top_stops = [1, 5, 17, 9999]
+let g:pe_top_idx = 1
+function! PoorEinmoTopCycle(dir)
+  let l:n = len(g:pe_top_stops)
+  let g:pe_top_idx = (g:pe_top_idx + a:dir + l:n) % l:n
   let l:cur = winnr()
   1wincmd w
-  execute 'resize' (a:full ? line('\$') : 1)
+  execute 'resize' min([g:pe_top_stops[g:pe_top_idx], line('\$')])
   execute l:cur . 'wincmd w'
 endfunction
 nnoremap <silent> \d :call PoorEinmoToggleDiffHere()<CR>
 nnoremap <silent> \D :call PoorEinmoToggleDiffAll()<CR>
-nnoremap <silent> \i :call PoorEinmoTopHeight(0)<CR>
-nnoremap <silent> \I :call PoorEinmoTopHeight(1)<CR>
+nnoremap <silent> \i :call PoorEinmoTopCycle(1)<CR>
+nnoremap <silent> \I :call PoorEinmoTopCycle(-1)<CR>
+" Layout — sourced with the instructions buffer current: lock it, build the
+" tiles, then start with the THREE STAGES in diff mode (input and this panel
+" stay out of the diff; \d pulls a window in or out, \D toggles all four).
+setlocal readonly nomodifiable
+botright split $(vimesc "$in_f")
+vertical belowright split $(vimesc "${pane[output]}")
+vertical belowright split $(vimesc "${pane[checked]}")
+vertical belowright split $(vimesc "${pane[verified]}")
+3wincmd w
+diffthis
+4wincmd w
+diffthis
+5wincmd w
+diffthis
+1wincmd w
+resize 5
+2wincmd w
 SESSION
 
     # The top panel, two SEPARATE tables:
@@ -554,7 +604,7 @@ SESSION
     prev_answer="$(answer_of "$rel" "$test_path")"
     instr="$TMP/instructions"
     {
-        echo "[$idx/${#rows[@]}] $test_path ($verdict)${prev_answer:+ · answer so far: $prev_answer}"
+        echo "[$idx/${#rows[@]}] $test_path ($verdict)${prev_answer:+ · answer so far: $prev_answer} · press \`\i\` to see more"
         echo '┌─ where we started ┬─ output ───┬─ checked ──┬─ verified ─┐'
         printf '│ %-17s │ %-10s │ %-10s │ %-10s │\n' 'artifact & stamps' "$o_stat" "$c_stat" "$v_stat"
         printf '│ %-17s │ %-10s │ %-10s │ %-10s │\n' 'vs previous stage' '.' "$cmp_chk" "$cmp_ver"
@@ -564,15 +614,17 @@ SESSION
         # Full 80-column width; the dense vim column gets the widest share.
         # Rows 1-4: the one-key decisions line up with the verbs they perform.
         row='│ %-27s │ %-19s │ %-24s │\n'
-        echo   '┌─ vim ───────────────────────┬─ verbs (pane word) ─┬─ after :qa ──────────────┐'
-        printf "$row" '`\C` checked `\V` verified' '`promote` `approve`' '`Enter` next / `q` quit'
+        echo   '┌─ vim ───────────────────────┬─ verbs (pane word) ─┬─ leaving vim ────────────┐'
+        printf "$row" '`\c`/`\v` set chk/ver, stay' '`promote` `approve`' '`Enter` next / `q` quit'
         printf "$row" '`\K` kick highest stage'    '`retract` `demote`'  '`e` edit / `r` revert'
         printf "$row" '`\S` skip this test'        '`skip` `pass` `idk`' '`u` back to prev file'
         printf "$row" '`\Q` stop `\A` abort'       '`stop` / `abort`'    'untouched keeps answer'
-        printf "$row" '`:qa` finish `:qa!` discard' 'other text = a note' 'empty tile = no artifact'
+        printf "$row" '`:xa`/`:xa!` write, return' 'other text = a note' 'empty tile = no artifact'
+        printf "$row" '`:qa`/`:qa!` discard'       ''                   'ALL 4 return to prompt'
+        printf "$row" '`\C`/`\V` promote+auto-next' ''                   ''
         printf "$row" '`\d`/`\D` diff win / all 4' ''                    ''
-        printf "$row" '`\i`/`\I` panel min/max'    ''                    ''
-        printf "$row" '`]c`/`[c` prev/next diff'   ''                    ''
+        printf "$row" '`\i`/`\I` grow/shrink panel' ''                   ''
+        printf "$row" '`]c`/`[c` diffs `zo` unfold' ''                   ''
         printf "$row" '`:cq` abort whole review'   ''                    ''
         echo   '└─────────────────────────────┴─────────────────────┴──────────────────────────┘'
     } > "$instr"
@@ -580,7 +632,14 @@ SESSION
     # panel at will, this part can take the space it needs (\I shows it all).
     cat >> "$instr" <<'FINEPRINT'
 ──────────────────────────────── the fine print ────────────────────────────────
-You review by EDITING the checked/verified panes; decisions are read at `:qa`.
+You review by EDITING the checked/verified panes; decisions are read when you
+leave vim. Four ways to leave, and ALL FOUR return to the SAME "next?" prompt
+below — none of them advances to the next file by itself:
+  · `:xa`   write every modified pane, then quit — your edits are read
+  · `:xa!`  same as `:xa` (force is irrelevant once everything is written)
+  · `:qa`   quit without writing — refuses with E37 if a pane is modified;
+    use `:xa` for a real edit, or `:qa!` to throw the edit away
+  · `:qa!`  quit, DISCARDING any unsaved pane edits — reviewed as unchanged
 Replace the ENTIRE pane with ONE word, alone: in the checked pane it means
 "promote output->checked"; in the verified pane, "promote checked->verified".
   · `promote` `promoted` `approve` `approved` `lgtm` `sgtm`  all mean promote
@@ -593,17 +652,32 @@ Anything else you write becomes a note for an agent: it is printed as an
 `einmo flag` command with your text as the --reason, so the note travels INTO
 the corpus (flagged/), not a temp file. An empty tile means that stage has no
 artifact yet — write your verb into the empty pane to promote into it.
-One-key decisions (each writes the verb into the right pane, saves every
-modified pane via `:xa`, and finishes the test): `\C` promote output->checked ·
-`\V` promote checked->verified · `\K` kick (demote) the highest stage present ·
-`\S` skip · `\Q` stop the review · `\A` abort it.
-Vim: `]c`/`[c` jump between differences · `zz` centre the line · `\d` toggles
-diff in the window under the cursor · `\D` toggles all four tiles · `\i`/`\I`
-shrink/expand this panel · `:qa` finishes this test (edits are read) · `:qa!`
-finishes DISCARDING unsaved pane edits · `:cq` aborts the whole review loop.
-After `:qa` the terminal prompt offers: `Enter`=next · `e`=edit (reopen, your
-text kept) · `r`=revert (reopen fresh from the stages) · `u`=back (keep this
-file's answer, re-review the previous file; review resumes here) · `q`=quit.
+One-key decisions write `promote` into a pane for you. Lowercase `\c`
+(output->checked) and `\v` (checked->verified) write the verb but STAY in vim,
+so you can park BOTH in one edit — press `\c` then `\v`, then leave once with
+`:xa`; both promotions queue and run in order (output->checked first). CAPITAL
+`\C`/`\V` instead write, leave immediately, and roll straight into the next
+file (skipping the "next?" prompt). `\K` kick (demote) the highest stage
+present · `\S` skip · `\Q` stop the review · `\A` abort it — these four write
+and leave at once. (A one-passphrase multi-stage promote is deferred to the
+EinmoReview session, FOOP 25; parking both here still prompts twice at
+execution.)
+Vim: diff starts ON across output/checked/verified; the input tile and this
+panel stay out of it. `]c`/`[c` jump between differences · `zo` unfolds the
+"no diff" stretches vim hides (`zc` refolds) · `zz` centre the line · `\d`
+toggles diff in the window under the cursor · `\D` toggles all four tiles ·
+`\i`/`\I` cycle this panel through the same four sizes in opposite directions:
+`\i` grows (status line → stats table → +instructions → everything → wrap to
+status), `\I` shrinks (the reverse) · `:cq` aborts the whole review loop
+instead of returning to the prompt (the only exit that does not — see `abort`
+above).
+Leaving vim ALWAYS lands you back at poor_einmo's own prompt, never straight
+at the next file: `Enter`=next · `e`=edit (reopen, your text kept) ·
+`r`=revert (reopen fresh from the stages) · `u`=back (keep this file's
+answer, re-review the previous file; review resumes here) · `q`=quit. The
+ONLY shortcut that skips this prompt is the CAPITAL `\C`/`\V` (auto-next);
+every other way of leaving vim — including a hand-typed verb plus `:xa`,
+`:xa!`, `:qa`, or `:qa!` — always stops here so you can decide.
 poor_einmo itself never touches the corpus: promotions, retracts and flags are
 printed as commands and only run behind the typed PROMOTE gate.
 FINEPRINT
@@ -620,18 +694,11 @@ FINEPRINT
         break
     fi
 
-    # Five windows: the instructions on top (short, read-only), then the source
-    # under test and the three stages tiled vertically below. No diff mode
-    # until you ask (\d, or :diffthis in the windows you choose).
-    if ! vim "${review_opts[@]}" \
-            -c "setlocal readonly nomodifiable" \
-            -c "botright split $(vimesc "$in_f")" \
-            -c "vertical belowright split $(vimesc "${pane[output]}")" \
-            -c "vertical belowright split $(vimesc "${pane[checked]}")" \
-            -c "vertical belowright split $(vimesc "${pane[verified]}")" \
-            -c "1wincmd k" -c "resize 5" -c "wincmd j" \
-            "$instr" \
-            </dev/tty >/dev/tty; then
+    # Five windows, all built by session.vim: the instructions on top (short,
+    # read-only), then input│output│checked│verified — the three stage tiles
+    # open already in diff mode with each other.
+    rm -f "$TMP/autonext"    # only THIS vim session may grant an auto-next
+    if ! vim "${review_opts[@]}" "$instr" </dev/tty >/dev/tty; then
         echo
         echo "poor_einmo: aborted at $test_path."
         break 2
@@ -686,11 +753,9 @@ FINEPRINT
             noop_list+=("$test_path")
             echo "   · unchanged — no action"
         fi
-        # A `u` revisit still gets the prompt, so `u` can step further back;
-        # anywhere else, an untouched file is settled.
-        if ! (( revisit )); then
-            break
-        fi
+        # Fall through to the between-tests prompt (unless -f): leaving vim with
+        # no edit still lets you revert/back/quit. Only a capital-shortcut
+        # auto-next (handled below) skips it.
     fi
 
     # An explicit skip ("skip"/"pass"/"idk") is a deliberate non-decision: you
@@ -734,8 +799,12 @@ FINEPRINT
 
     # Any other edit is a note: flag the artifact with the note as its reason,
     # so it travels INTO the corpus (flagged/) rather than a throwaway temp
-    # file. The note is what you typed; a multi-line note is folded to one line
-    # for the advisory (the full text is shown in the printed command).
+    # file. The reason is the ENTIRE edited pane — reviewers place their note
+    # IN CONTEXT, right where the error is (e.g. an @agent comment beside the
+    # failing output line), and that surrounding body is what makes the note
+    # actionable for a human or AI fixing it. So we keep all of it, not just the
+    # added line. A multi-line note is folded to one line for the advisory (the
+    # full text is shown in the printed command).
     if (( acted == 0 && (chk_changed || ver_changed) )); then
         # Which stage did you write on, and what did you write? Prefer verified.
         local_stage=""; note_text=""
@@ -756,6 +825,12 @@ FINEPRINT
     fi
 
     if ! (( full_review )); then
+        # \C / \V asked to roll straight into the next file: skip the prompt.
+        if [[ -f "$TMP/autonext" ]]; then
+            rm -f "$TMP/autonext"
+            echo "   ↷ auto-next"
+            break
+        fi
         # The decision is not final until you leave the file:
         #   edit   — reopen with YOUR text intact, to adjust it
         #   revert — discard this file's answer, reopen from the stages fresh
@@ -830,14 +905,25 @@ if (( ${#skip_list[@]} )); then
     printf '  %s\n' "${skip_list[@]}"
 fi
 
+# Flags run AUTOMATICALLY — no gate, no confirmation. A flag is a plaintext,
+# transient "this is broken" marker (no signing, no passphrase), and the whole
+# point is that your note reliably LANDS in flagged/. So poor_einmo runs each
+# `einmo flag` itself rather than printing it for you to (forget to) run.
+# (Promotions and retractions stay gated below — those sign / remove baselines.)
 if (( ${#flag_rel[@]} )); then
     echo
-    echo "‼ YOU MUST RUN THESE to record your notes — each flags the artifact"
-    echo "  (moves it to flagged/) with your note as its advisory reason:"
+    echo "✎ flagging (auto — moves each artifact to flagged/ with your note):"
     for i in "${!flag_rel[@]}"; do
-        show_cmd "  # ${flag_rel[$i]%.einmo}" \
-            flag "$SUITE" "${flag_stage[$i]}" --reason "${flag_reason[$i]}" \
-            -- "${flag_rel[$i]}"
+        echo "   → flag ${flag_stage[$i]}/${flag_rel[$i]%.einmo}"
+        if "$EINMO" flag "$SUITE" "${flag_stage[$i]}" \
+                --reason "${flag_reason[$i]}" -- "${flag_rel[$i]}"; then
+            echo "     ✓ flagged"
+        else
+            echo "     ✖ flag FAILED — rerun manually:"
+            show_cmd "       # ${flag_rel[$i]%.einmo}" \
+                flag "$SUITE" "${flag_stage[$i]}" --reason "${flag_reason[$i]}" \
+                -- "${flag_rel[$i]}"
+        fi
     done
 fi
 
