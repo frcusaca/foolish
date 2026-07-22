@@ -34,9 +34,19 @@ process documents).
 Every FOOP is expressed as (up to) two separate files that share the same
 `foop-<NUMBER>` stem:
 
-- **`FOOP-#.md`** — the **specification** and related information: the
+- **`FOOP-#.md`** — the **specification and design** and related information: the
   proposal, motivation, design, semantics, and discussion. This is the
-  *what* and the *why*.
+  *what* and the *why*. This document typically begins with the motivation
+  for the FOOP. It describes the ideal outcome: initially broadly (make
+  coding easier by implementing such and such). It then states very explicitly
+  the outcomes, including API's to be implemented, behaviors that can be tested.
+  This description should be both qualitative and specific, in prose and then
+  in fenced/pseudo code for API/code changes and in some cases the tests
+  themselves are written here. as part of stating the specification or design.
+  The "Last Updated" section should contain the git SHA of the branch from which
+  the foop was produced, along with a note regarding whether there were uncomitted
+  files. When loading a foop, it is easy to compare current sha with the recorded
+  SHA to help update FOOP to correspond to the current code SHA.
 - **`FOOP-#.plan.md`** — the **plan**: a checkboxed, sequentially-executed
   breakdown of the work needed to implement the specification. This is the
   *how* and the *in-what-order*. (Note the lowercase `.plan.md` extension.)
@@ -297,6 +307,18 @@ that thoroughly exercises the new feature interacting with existing features. Th
   formal signed acceptance.
 - **Placement in plan**: a checkbox task "Write and verify `foop_<NUMBER>_comprehensive.foo`"
   should appear in the plan, after all implementation phases and before the merge STOP.
+
+---
+
+## Planning in Agentic Agile Development Environment
+
+There are many agents made by different companies and researchers working
+on this project. This is the confluence of an incredible collection of deep
+intelligences. Agents should behave responsibly by being critical. Plans
+are made holding this manner of continuing collaboratioin in mind. Work
+greedily and responsibly.
+
+
 
 ---
 
