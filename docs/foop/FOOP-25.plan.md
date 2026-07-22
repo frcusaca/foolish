@@ -37,7 +37,10 @@
         (2026-07-22 09:40) — Human implicitly approved via "Continue."
     - [x] Present human with the `cd /home/hcbusy/tmp/foolish-worktrees/foop-25-dot-search` command and ask them to review snapshots BEFORE checking the parent checkbox.
           (2026-07-22 09:39)
-  - [ ] Cleanup /home/hcbusy/tmp/foolish-worktrees/foop-25-dot-search
-    - [ ] Check that .plan.md has all but Cleanup checkboxes completed
-    - [ ] Remove /home/hcbusy/tmp/foolish-worktrees/foop-25-dot-search
-    - [ ] This is the last sub-task checkbox to be checked in this block
+  - [x] Cleanup /home/hcbusy/tmp/foolish-worktrees/foop-25-dot-search
+    - [x] Check that .plan.md has all but Cleanup checkboxes completed
+          (2026-07-22 09:41)
+    - [x] Remove /home/hcbusy/tmp/foolish-worktrees/foop-25-dot-search
+          (2026-07-22 09:41)
+    - [x] This is the last sub-task checkbox to be checked in this block
+          (2026-07-22 09:41)
