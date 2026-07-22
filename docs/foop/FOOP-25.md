@@ -100,6 +100,32 @@ A coordinate that contains regex metacharacters (`.`, `*`, `+`, `?`, `[`, `]`,
 practice the coordinate is always a plain identifier. If a Foolisher needs
 regex matching, they use the `?pattern` or `~pattern` operators instead.
 
+### Dot inside regex patterns
+
+The `.` token is consumed by `parse_regexp_pattern()` as part of a regex
+pattern when it appears inside a `?` or `~` search. This means `a?x.member`
+parses as a single regex search with pattern `x.member`, not as a regex search
+for `x` followed by a dot search for `member`. The same applies to
+`a~(blah.).member` — the parentheses are consumed as a regex subpattern, then
+`.member` continues as part of the same pattern string.
+
+Neither whitespace (`a?x .member`) nor parenthesized subpatterns
+(`a~(blah.).member`) isolate the dot from the pattern. The lexer strips
+whitespace between tokens, and `parse_regexp_pattern`'s catch-all consumes all
+remaining tokens (including `.`) until a structural delimiter (`;`, `,`, `}`,
+`)`, `]`, `=`, `&`) is reached.
+
+**The reliable workaround is separate assignment:**
+
+```foolish
+found = a?x;        !! regex search for x
+result = found.y;   !! dot search for y inside the found brane
+```
+
+This is not a dot search limitation — it is a `parse_regexp_pattern` behavior
+that affects all regex searches equally. A future parser change to stop pattern
+scanning at `.` would make `a?x.y` parse as intended.
+
 ### Characterizations in coordinates
 
 The parser's `parse_identifier_or_regexp()` handles optional characterizations
@@ -330,6 +356,13 @@ None. The dot search is fully specified and implemented.
   `contextful_search_scan`, `BraneNavigator`).
 
 ## Last Updated
+
+**Date**: 2026-07-22
+**Updated By**: Hephaestus / xiaomi/mimo-v2.5-pro
+**Changes**: Added "Dot inside regex patterns" section documenting that `.` is consumed by
+`parse_regexp_pattern()` inside `?`/`~` searches. Neither whitespace nor parenthesized
+subpatterns isolate the dot. Reliable workaround: separate assignment. Added two parser tests
+pinning actual behavior.
 
 **Date**: 2026-07-22
 **Updated By**: Hephaestus / xiaomi/mimo-v2.5-pro

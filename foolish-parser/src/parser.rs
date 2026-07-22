@@ -1376,4 +1376,44 @@ mod tests {
             _ => panic!("expected brane"),
         }
     }
+
+    /// FOOP-25: `a~(blah.).member` — parenthesized subpattern does NOT isolate
+    /// the dot. The `(` handler consumes up to `)`, then the catch-all continues
+    /// with `.member`. Pattern is `(blah.).member` as one string.
+    #[test]
+    fn parenthesized_pattern_does_not_isolate_dot() {
+        let ast = parse_single("{r = a~(blah.).member;}").unwrap();
+        match ast {
+            Astn::Brane { statements, .. } => match &statements[0] {
+                Astn::Assignment { expr, .. } => match &**expr {
+                    Astn::RegexpSearch { pattern, .. } => {
+                        assert_eq!(pattern, "(blah.).member");
+                    }
+                    other => panic!("expected RegexpSearch, got {:?}", other),
+                },
+                _ => panic!("expected assignment"),
+            },
+            _ => panic!("expected brane"),
+        }
+    }
+
+    /// FOOP-25: `a?x .member` — space between identifier and dot. The lexer
+    /// strips whitespace, so the token stream is `x`, `.`, `member` — the
+    /// catch-all consumes all three into one pattern `x.member`.
+    #[test]
+    fn space_does_not_stop_pattern_at_dot() {
+        let ast = parse_single("{r = a?x .member;}").unwrap();
+        match ast {
+            Astn::Brane { statements, .. } => match &statements[0] {
+                Astn::Assignment { expr, .. } => match &**expr {
+                    Astn::RegexpSearch { pattern, .. } => {
+                        assert_eq!(pattern, "x.member");
+                    }
+                    other => panic!("expected RegexpSearch, got {:?}", other),
+                },
+                _ => panic!("expected assignment"),
+            },
+            _ => panic!("expected brane"),
+        }
+    }
 }
