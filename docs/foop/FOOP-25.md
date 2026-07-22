@@ -7,7 +7,8 @@ type: Standards
 created: 2026-07-22
 phase: phase-2
 supersedes: []
-begun: [ ]
+begun: [x]
+      (2026-07-22 09:31)
 ---
 
 # FOOP-25: The dot search
