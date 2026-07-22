@@ -63,7 +63,7 @@ ls | rev | sort -V | rev
 | [FOOP-94](FOOP-94.md) | Brane NK only when all constituents are NK — remove any-NK contamination | Draft | phase-2 | 2026-07-14 | Atlas |
 | [FOOP-05](FOOP-05.md) | fir module decomposition — fir_base, fir_search_base, one file per FIR kind | Draft | phase-2 | 2026-07-14 | Atlas |
 | [FOOP-15](FOOP-15.md) | Secured interactive einmo review — attested inspection of einmos and their perspectives | Draft | meta | 2026-07-14 | Atlas |
-| [FOOP-25](FOOP-25.md) | The dot search — authoritative definition of the `.` operator | Draft | phase-2 | 2026-07-22 | Atlas |
+| [FOOP-35](FOOP-35.md) | The dot search — authoritative definition of the `.` operator | Draft | phase-2 | 2026-07-22 | Atlas |
 
 ---
 
@@ -122,7 +122,7 @@ ls | rev | sort -V | rev
   serve/SPA + MCP + perspective rendering; phased R1 read-only → R2 attested actions → R3
   perspectives → R4 MCP; build-up goal)
 - [FOOP-94](FOOP-94.md) — Brane NK only when ALL constituents are NK (flip `_decide_nyes_due_to_children` cascade: any-NK+rest-constant → CONSTANT, not NK; operator NK propagation and search semantics untouched; ~34 brane-NK snapshots to re-review)
-- [FOOP-25](FOOP-25.md) — The dot search — authoritative definition of the `.` operator (contextless anchored backward name search, exact match via `^...$` pattern)
+- [FOOP-35](FOOP-35.md) — The dot search — authoritative definition of the `.` operator (contextless anchored backward name search, exact match via `^...$` pattern)
 
 ### Brewing
 
@@ -184,7 +184,7 @@ Canceled as they stand; each may be respecified and reimplemented later. See
 
 ### phase-2
 
-- [FOOP-6](FOOP-6.md), [FOOP-7](FOOP-7.md), [FOOP-8](FOOP-8.md), [FOOP-01](FOOP-01.md), [FOOP-11](FOOP-11.md), [FOOP-51](FOOP-51.md), [FOOP-61](FOOP-61.md), [FOOP-32](FOOP-32.md), [FOOP-42](FOOP-42.md), [FOOP-52](FOOP-52.md), [FOOP-62](FOOP-62.md), [FOOP-82](FOOP-82.md), [FOOP-13](FOOP-13.md), [FOOP-23](FOOP-23.md), [FOOP-25](FOOP-25.md), [FOOP-43](FOOP-43.md), [FOOP-53](FOOP-53.md), [FOOP-83](FOOP-83.md), [FOOP-93](FOOP-93.md), [FOOP-04](FOOP-04.md), [FOOP-14](FOOP-14.md), [FOOP-24](FOOP-24.md), [FOOP-74](FOOP-74.md), [FOOP-84](FOOP-84.md), [FOOP-94](FOOP-94.md), [FOOP-05](FOOP-05.md)
+- [FOOP-6](FOOP-6.md), [FOOP-7](FOOP-7.md), [FOOP-8](FOOP-8.md), [FOOP-01](FOOP-01.md), [FOOP-11](FOOP-11.md), [FOOP-51](FOOP-51.md), [FOOP-61](FOOP-61.md), [FOOP-32](FOOP-32.md), [FOOP-42](FOOP-42.md), [FOOP-52](FOOP-52.md), [FOOP-62](FOOP-62.md), [FOOP-82](FOOP-82.md), [FOOP-13](FOOP-13.md), [FOOP-23](FOOP-23.md), [FOOP-35](FOOP-35.md), [FOOP-43](FOOP-43.md), [FOOP-53](FOOP-53.md), [FOOP-83](FOOP-83.md), [FOOP-93](FOOP-93.md), [FOOP-04](FOOP-04.md), [FOOP-14](FOOP-14.md), [FOOP-24](FOOP-24.md), [FOOP-74](FOOP-74.md), [FOOP-84](FOOP-84.md), [FOOP-94](FOOP-94.md), [FOOP-05](FOOP-05.md)
 
 ### phase-3
 
@@ -372,7 +372,7 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 
 **Date**: 2026-07-22
 **Updated By**: Hephaestus / xiaomi/mimo-v2.5-pro
-**Changes**: Added **FOOP-25** — The dot search — authoritative definition of the `.` operator
+**Changes**: Added **FOOP-35** — The dot search — authoritative definition of the `.` operator
 (contextless anchored backward name search, exact match via `^...$` pattern). Added to main
 table, By-Status (Draft), and By-Phase (phase-2).
 
