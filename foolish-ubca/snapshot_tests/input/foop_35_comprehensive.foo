@@ -1,5 +1,5 @@
 {
-	!! FOOP-25 comprehensive test — The dot search
+	!! FOOP-35 comprehensive test — The dot search
 	!!
 	!! Exercises: simple coordinate access, chained deepening,
 	!! whitespace tolerance, miss (NK), contexted follow-up,

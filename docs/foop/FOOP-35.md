@@ -300,13 +300,152 @@ No new step rules, no interactions with existing step rules.
 - **Unit test**: `search_finds_name_in_anchored_brane` in
   `foolish-ubca/src/fir_kinds.rs` already verifies the `SearchFir` engine
   finds names in anchored branes.
-- **New approval test**: `dot_search_comprehensive.foo` — exercises:
-  - Simple coordinate access: `a.x`
-  - Chained deepening: `a.b.c.d`
-  - Whitespace tolerance: `a . x`
-  - Miss (NK): `a.nonexistent`
-  - Contexted follow-up: `a.x&#1`
-  - Multiple dots with mixed spacing: `a . b.c . d`
+- **New approval test**: `foop_35_comprehensive.foo` — exercises all dot search
+  behaviors. Approved snapshot output:
+
+```foolish
+{
+	!! FOOP-35 comprehensive test — The dot search
+	!!
+	!! Exercises: simple coordinate access, chained deepening,
+	!! whitespace tolerance, miss (NK), contexted follow-up,
+	!! nested branes, dot search on result of other searches.
+
+	!! ── Simple coordinate access ──
+	coords = {
+		x = 10;
+		y = 20;
+		z = 30;
+	};
+	simple_x = coords.x;              !! 10, backward search finds x
+	simple_z = coords.z;              !! 30, backward search finds z
+
+	!! ── Chained deepening ──
+	deep = {
+		level1 = {
+			level2 = {
+				level3 = {
+					target = 42;
+				};
+			};
+		};
+	};
+	chained = deep.level1.level2.level3.target;    !! 42, each . deepens
+
+	!! ── Whitespace tolerance ──
+	spaced = coords . y;             !! 20, whitespace around . is fine
+
+	!! ── Miss (NK) ──
+	miss = coords.nonexistent;       !! ???, no statement named nonexistent
+
+	!! ── Contexted follow-up via dot search ──
+	recipe = {
+		prep = 7;
+		bake = 40;
+		clean = 9;
+	};
+	after_bake = recipe.bake&#1;     !! 9, &#1 steps one forward from bake → clean
+	before_bake = recipe.bake&#-1;   !! 7, &#-1 steps one back from bake → prep
+
+	!! ── Nested branes with multiple levels ──
+	matrix = {
+		row1 = {
+			col1 = 100;
+			col2 = 200;
+		};
+		row2 = {
+			col1 = 300;
+			col2 = 400;
+		};
+	};
+	r2c2 = matrix.row2.col2;         !! 400, deep into row2 then col2
+	r1c1 = matrix.row1.col1;         !! 100, deep into row1 then col1
+
+	!! ── Dot search on result of regex search ──
+	container = {
+		alpha = {
+			inner = 99;
+		};
+		beta = {
+			inner = 88;
+		};
+	};
+	found_alpha = container?alpha;           !! the alpha brane
+	found_alpha_inner = found_alpha.inner;   !! 99, dot deepens into regex-found brane
+
+	!! ── Dot search with value search result ──
+	nums = {
+		first = 5;
+		second = 10;
+		third = 15;
+	};
+	!! The dot search should work on brane-valued results from other searches
+	dot_after_value = nums?second;     !! 10, regex search finds second
+}
+```
+
+Result (approved):
+
+```hssnap
+{NK
+  coords={
+      x=10;
+      y=20;
+      z=30
+  };
+  simpleˍx=10;
+  simpleˍz=30;
+  deep={
+      level1={
+          level2={
+              level3={
+                  target=42
+              }
+          }
+      }
+  };
+  chained=42;
+  spaced=20;
+  miss=?(pattern='^nonexistent$', ANCHORED, NK);
+  recipe={
+      prep=7;
+      bake=40;
+      clean=9
+  };
+  afterˍbake=9;
+  beforeˍbake=7;
+  matrix={
+      row1={
+          col1=100;
+          col2=200
+      };
+      row2={
+          col1=300;
+          col2=400
+      }
+  };
+  r2c2=400;
+  r1c1=100;
+  container={
+      alpha={
+          inner=99
+      };
+      beta={
+          inner=88
+      }
+  };
+  foundˍalpha={
+      inner=99
+  };
+  foundˍalphaˍinner=99;
+  nums={
+      first=5;
+      second=10;
+      third=15
+  };
+  dotˍafterˍvalue=10
+}
+```
 
 ## Rejected Alternatives
 
