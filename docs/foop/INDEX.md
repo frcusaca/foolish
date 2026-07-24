@@ -64,6 +64,8 @@ ls | rev | sort -V | rev
 | [FOOP-05](FOOP-05.md) | fir module decomposition — fir_base, fir_search_base, one file per FIR kind | Draft | phase-2 | 2026-07-14 | Atlas |
 | [FOOP-15](FOOP-15.md) | Secured interactive einmo review — attested inspection of einmos and their perspectives | Draft | meta | 2026-07-14 | Atlas |
 | [FOOP-35](FOOP-35.md) | The dot search — authoritative definition of the `.` operator | Draft | phase-2 | 2026-07-22 | Atlas |
+| [FOOP-45](FOOP-45.md) | Parenthetical search chaining and contexted search after parenthetical | Draft | phase-2 | 2026-07-24 | Sisyphus |
+| [FOOP-25](FOOP-25.md) | The dot search — authoritative definition of the `.` operator (duplicate of FOOP-35, restored from git) | Draft | phase-2 | 2026-07-22 | Atlas |
 
 ---
 
@@ -123,6 +125,8 @@ ls | rev | sort -V | rev
   perspectives → R4 MCP; build-up goal)
 - [FOOP-94](FOOP-94.md) — Brane NK only when ALL constituents are NK (flip `_decide_nyes_due_to_children` cascade: any-NK+rest-constant → CONSTANT, not NK; operator NK propagation and search semantics untouched; ~34 brane-NK snapshots to re-review)
 - [FOOP-35](FOOP-35.md) — The dot search — authoritative definition of the `.` operator (contextless anchored backward name search, exact match via `^...$` pattern)
+- [FOOP-45](FOOP-45.md) — Parenthetical search chaining and contexted search after parenthetical (fix parser to correctly handle `(expr)~name1~name2` as chained searches, not single pattern)
+- [FOOP-25](FOOP-25.md) — The dot search (duplicate of FOOP-35, restored from git; originally created then renamed to avoid collision)
 
 ### Brewing
 
@@ -184,7 +188,7 @@ Canceled as they stand; each may be respecified and reimplemented later. See
 
 ### phase-2
 
-- [FOOP-6](FOOP-6.md), [FOOP-7](FOOP-7.md), [FOOP-8](FOOP-8.md), [FOOP-01](FOOP-01.md), [FOOP-11](FOOP-11.md), [FOOP-51](FOOP-51.md), [FOOP-61](FOOP-61.md), [FOOP-32](FOOP-32.md), [FOOP-42](FOOP-42.md), [FOOP-52](FOOP-52.md), [FOOP-62](FOOP-62.md), [FOOP-82](FOOP-82.md), [FOOP-13](FOOP-13.md), [FOOP-23](FOOP-23.md), [FOOP-35](FOOP-35.md), [FOOP-43](FOOP-43.md), [FOOP-53](FOOP-53.md), [FOOP-83](FOOP-83.md), [FOOP-93](FOOP-93.md), [FOOP-04](FOOP-04.md), [FOOP-14](FOOP-14.md), [FOOP-24](FOOP-24.md), [FOOP-74](FOOP-74.md), [FOOP-84](FOOP-84.md), [FOOP-94](FOOP-94.md), [FOOP-05](FOOP-05.md)
+- [FOOP-6](FOOP-6.md), [FOOP-7](FOOP-7.md), [FOOP-8](FOOP-8.md), [FOOP-01](FOOP-01.md), [FOOP-11](FOOP-11.md), [FOOP-51](FOOP-51.md), [FOOP-61](FOOP-61.md), [FOOP-32](FOOP-32.md), [FOOP-42](FOOP-42.md), [FOOP-52](FOOP-52.md), [FOOP-62](FOOP-62.md), [FOOP-82](FOOP-82.md), [FOOP-13](FOOP-13.md), [FOOP-23](FOOP-23.md), [FOOP-25](FOOP-25.md), [FOOP-35](FOOP-35.md), [FOOP-43](FOOP-43.md), [FOOP-53](FOOP-53.md), [FOOP-83](FOOP-83.md), [FOOP-93](FOOP-93.md), [FOOP-04](FOOP-04.md), [FOOP-14](FOOP-14.md), [FOOP-24](FOOP-24.md), [FOOP-74](FOOP-74.md), [FOOP-84](FOOP-84.md), [FOOP-94](FOOP-94.md), [FOOP-05](FOOP-05.md), [FOOP-45](FOOP-45.md)
 
 ### phase-3
 
@@ -250,7 +254,7 @@ search engine in `fir_search_base.rs`, `FirRef` + extension traits + stepping dr
 tests green per commit, snapshot-invisible (Track 0's einmo gate is the byte-identity oracle).
 After this, Tracks 2 and 3 edit disjoint files and run genuinely parallel.
 
-### Track 2 — the search family. One track, strictly sequential, four FOOPs.
+### Track 2 — the search family. One track, strictly sequential, five FOOPs.
 
 All five edit the same code: the `contextful_search` module in `fir_kinds.rs` (engine,
 `SearchPredicate`, `BraneNavigator`), `SearchFir` settle paths, lexer/parser tokens, compiler
@@ -274,6 +278,10 @@ lowering. **Internal order and why:**
 4. **FOOP-53** — computed index `#${…}`. Small; reuses the value-pattern child-settling
    machinery FOOP-23 shipped, feeding `SearchPredicate::Index`. Slot anywhere after 93; placed
    here to keep review sessions rhythm.
+5. **FOOP-45** — parenthetical search chaining and contexted search after parenthetical. Fixes
+   parser to correctly handle `(expr)~name1~name2` as chained searches (not single pattern
+   `name1~name2`), and `(expr)~name&#1` as search + contexted search. Small parser/evaluator
+   fix; can slot anywhere after 93; placed here to keep review sessions rhythm.
 *(Removed 2026-07-14: the fruit-picker `$*` FOOP was withdrawn by Atlas before commit — too
 many unsettled semantics. Its companion idea, the **mature step-budget**, is parked with its
 corrected design recorded: two-dimensional control — a flowing per-call step budget AND the
@@ -369,6 +377,21 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 ---
 
 ## Last Updated
+
+**Date**: 2026-07-24
+**Updated By**: Sisyphus / xiaomi/mimo-v2.5-pro
+**Changes**: Restored **FOOP-25** (The dot search) from git history. Originally created as FOOP-25,
+renamed to FOOP-35 to avoid collision with incoming FOOP-25 (sort key 52). The incoming FOOP-25
+was never created, leaving a gap at sort key 52. FOOP-25 is essentially complete (dot search
+implemented and working), comprehensive test renamed to `foop_35_comprehensive.foo`. Added note
+explaining the situation. Added to main table, By-Status (Draft), and By-Phase (phase-2).
+
+**Date**: 2026-07-24
+**Updated By**: Sisyphus / xiaomi/mimo-v2.5-pro
+**Changes**: Added **FOOP-45** — Parenthetical search chaining and contexted search after
+parenthetical. Investigates and fixes issues with `(expr)~name1~name2` failing to chain searches
+correctly, and `(expr)~name&#1` failing to apply contexted search. Added to main table, By-Status
+(Draft), and By-Phase (phase-2).
 
 **Date**: 2026-07-22
 **Updated By**: Hephaestus / xiaomi/mimo-v2.5-pro

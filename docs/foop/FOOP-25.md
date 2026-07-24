@@ -13,6 +13,13 @@ begun: [x]
 
 # FOOP-25: The dot search
 
+**NOTE**: This FOOP was originally created as FOOP-25, then renamed to FOOP-35
+to avoid collision with an incoming FOOP-25 (sort key 52). The rename happened
+in commit 6b182d2d. This file was deleted from the working directory but
+restored from git history. The "incoming FOOP-25" was never created, leaving a
+gap at sort key 52. This FOOP is essentially complete (dot search is implemented
+and working), but the comprehensive test was renamed to `foop_35_comprehensive.foo`.
+
 FOOP numbering is little-endian; the full rules live in `foop.md` at the
 repository root — **read it before creating or editing a FOOP.**
 

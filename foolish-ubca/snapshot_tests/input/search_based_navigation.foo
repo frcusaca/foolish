@@ -1,0 +1,322 @@
+{
+	!! === Tree Taxonomy Navigation Test ===
+	!! Demonstrates search-based navigation through a biological taxonomy.
+	!! Uses tree hierarchy from Class down to individual tree parts.
+	!! Names use English when available, underscores to connect words.
+	!!
+	!! DOT ACCESS NOTE: Dot access (.) performs exact name matching only,
+	!! NOT regular expression matching. This is being/has been updated.
+
+	!! === CLASS: MAGNOLIOPSIDA (Broadleaf Trees) ===
+	Magnoliopsida = {
+		!! === ORDER: FAGALES ===
+		Fagales = {
+			!! === FAMILY: FAGACEAE (Beech and Oak family) ===
+			Fagaceae = {
+				!! Genus: Quercus (Oaks)
+				Quercus = {
+					!! Species: English Oak
+					English_Oak = {
+						Acorns = 0;
+						Cupules = 1;
+						Lobed_leaves = 2;
+						Taproot = 3;
+						Ring_porous_wood = 4;
+					};
+					!! Species: Cork Oak
+					Cork_Oak = {
+						Thick_cork_cambium = 5;
+						Phellem = 6;
+						Evergreen_leaves = 7;
+					};
+				};
+				!! Genus: Fagus (Beeches)
+				Fagus = {
+					!! Species: European Beech
+					European_Beech = {
+						Spiny_involucres = 8;
+						Triangular_nuts = 9;
+						Smooth_grey_bark = 10;
+						Marcescent_leaves = 11;
+					};
+				};
+			};
+			!! === FAMILY: JUGLANDACEAE (Walnut and Hickory family) ===
+			Juglandaceae = {
+				!! Genus: Juglans (Walnuts)
+				Juglans = {
+					!! Species: Black Walnut
+					Black_Walnut = {
+						Pinnately_compound_leaves = 12;
+						Chambered_pith = 13;
+						Drupes = 14;
+						Corrugated_bark = 15;
+					};
+				};
+				!! Genus: Carya (Hickories)
+				Carya = {
+					!! Species: Pecan
+					Pecan = {
+						Dehiscent_husks = 16;
+						Catkins = 17;
+						Alternate_compound_leaves = 18;
+					};
+				};
+			};
+		};
+		!! === ORDER: SAPINDALES ===
+		Sapindales = {
+			!! === FAMILY: SAPINDACEAE (Soapberry and Maple family) ===
+			Sapindaceae = {
+				!! Genus: Acer (Maples)
+				Acer = {
+					!! Species: Red Maple
+					Red_Maple = {
+						Palmate_leaves = 19;
+						Paired_samaras = 20;
+						Opposite_branching = 21;
+					};
+					!! Species: Sugar Maple
+					Sugar_Maple = {
+						High_sugar_sap = 22;
+						Palmate_lobed_leaves = 23;
+						Deep_root_system = 24;
+					};
+				};
+			};
+			!! === FAMILY: RUTACEAE (Citrus family) ===
+			Rutaceae = {
+				!! Genus: Citrus (Citrus trees)
+				Citrus = {
+					!! Species: Sweet Orange
+					Sweet_Orange = {
+						Hesperidium = 25;
+						Flavedo = 26;
+						Albedo = 27;
+						Woody_thorns = 28;
+						Evergreen_foliage = 29;
+					};
+				};
+			};
+		};
+		!! === ORDER: ROSALES ===
+		Rosales = {
+			!! === FAMILY: ROSACEAE (Rose family) ===
+			Rosaceae = {
+				!! Genus: Malus (Apples)
+				Malus = {
+					!! Species: Orchard Apple
+					Orchard_Apple = {
+						Pomes = 30;
+						Corymbs = 31;
+						Fruiting_spurs = 32;
+					};
+				};
+				!! Genus: Prunus (Stone fruits)
+				Prunus = {
+					!! Species: Sweet Cherry
+					Sweet_Cherry = {
+						Stone_fruits = 33;
+						Prominent_lenticels = 34;
+						Extrafloral_nectaries = 35;
+					};
+				};
+			};
+			!! === FAMILY: ULMACEAE (Elm family) ===
+			Ulmaceae = {
+				!! Genus: Ulmus (Elms)
+				Ulmus = {
+					!! Species: American Elm
+					American_Elm = {
+						Asymmetrical_leaf_bases = 36;
+						Doubly_serrate_margins = 37;
+						Wafer_like_samaras = 38;
+					};
+				};
+			};
+		};
+	};
+
+	!! === CLASS: PINOPSIDA (Conifers) ===
+	Pinopsida = {
+		!! === ORDER: PINALES ===
+		Pinales = {
+			!! === FAMILY: PINACEAE (Pine family) ===
+			Pinaceae = {
+				!! Genus: Pinus (Pines)
+				Pinus = {
+					!! Species: Eastern White Pine
+					Eastern_White_Pine = {
+						Fascicles = 39;
+						Elongated_seed_cones = 40;
+						Resin_canals = 41;
+					};
+					!! Species: Ponderosa Pine
+					Ponderosa_Pine = {
+						Plated_bark = 42;
+						Fascicles = 43;
+						Prickled_cone_scales = 44;
+					};
+				};
+				!! Genus: Picea (Spruces)
+				Picea = {
+					!! Species: Norway Spruce
+					Norway_Spruce = {
+						Sterigmata = 45;
+						Pendulous_cones = 46;
+						Four_sided_needles = 47;
+					};
+				};
+				!! Genus: Abies (Firs)
+				Abies = {
+					!! Species: Balsam Fir
+					Balsam_Fir = {
+						Upright_cones = 48;
+						Flat_needles = 49;
+						Suction_cup_leaf_bases = 50;
+						Resin_blisters = 51;
+					};
+				};
+			};
+			!! === FAMILY: CUPRESSACEAE (Cypress and Redwood family) ===
+			Cupressaceae = {
+				!! Genus: Juniperus (Junipers)
+				Juniperus = {
+					!! Species: Eastern Redcedar
+					Eastern_Redcedar = {
+						Awl_like_juvenile_leaves = 52;
+						Scale_like_adult_leaves = 53;
+						Berry_like_seed_cones = 54;
+					};
+				};
+				!! Genus: Sequoia (Redwoods)
+				Sequoia = {
+					!! Species: Coast Redwood
+					Coast_Redwood = {
+						Fibrous_fire_resistant_bark = 55;
+						Lignotubers = 56;
+						Flattened_needles = 57;
+					};
+				};
+			};
+		};
+	};
+
+	!! === CLASS: LILIOPSIDA (Monocots) ===
+	Liliopsida = {
+		!! === ORDER: ARECALES (Palms) ===
+		Arecales = {
+			!! === FAMILY: ARECACEAE (Palm family) ===
+			Arecaceae = {
+				!! Genus: Cocos (Coconuts)
+				Cocos = {
+					!! Species: Coconut Palm
+					Coconut_Palm = {
+						Pinnate_fronds = 58;
+						Fibrous_adventitious_roots = 59;
+						Large_drupes = 60;
+						Coir = 61;
+						Endosperm = 62;
+					};
+				};
+				!! Genus: Phoenix (Date Palms)
+				Phoenix = {
+					!! Species: Date Palm
+					Date_Palm = {
+						Costapalmate_leaves = 63;
+						Basal_suckers = 64;
+						Sweet_drupes = 65;
+						Sharp_petioles = 66;
+					};
+				};
+			};
+		};
+	};
+
+	!! === NAVIGATION PATHS ===
+	!! Demonstrates various ways to navigate to values using search operators.
+	!! Uses dot access, forward/backward search, contexted search, and parenthetical grouping.
+
+	!! --- Simple dot access (exact name matching) ---
+	path_01 = Magnoliopsida.Fagales.Fagaceae.Quercus.English_Oak.Acorns;            !! 0
+	path_02 = Pinopsida.Pinales.Pinaceae.Pinus.Eastern_White_Pine.Fascicles;        !! 39
+	path_03 = Liliopsida.Arecales.Arecaceae.Cocos.Coconut_Palm.Endosperm;           !! 62
+
+	!! --- Forward search (~) through branes ---
+	path_04 = Magnoliopsida~Fagales;                                                !! finds Fagales brane
+	path_05 = Magnoliopsida.Fagales~Fagaceae;                                       !! finds Fagaceae brane
+	path_06 = Magnoliopsida.Fagales.Fagaceae~Quercus;                               !! finds Quercus brane
+	path_07 = Magnoliopsida.Fagales.Fagaceae.Quercus~English_Oak;                   !! finds English_Oak brane
+	path_08 = Magnoliopsida.Fagales.Fagaceae.Quercus.English_Oak~Acorns;            !! 0
+
+	!! --- Backward search (?) through branes ---
+	path_09 = Magnoliopsida?Rosales;                                                !! finds Rosales brane
+	path_10 = Magnoliopsida.Rosales?Ulmaceae;                                       !! finds Ulmaceae brane
+	path_11 = Magnoliopsida.Rosales.Ulmaceae?Ulmus;                                 !! finds Ulmus brane
+	path_12 = Magnoliopsida.Rosales.Ulmaceae.Ulmus?American_Elm;                   !! finds American_Elm brane
+	path_13 = Magnoliopsida.Rosales.Ulmaceae.Ulmus.American_Elm?Wafer_like_samaras; !! 38
+
+	!! --- Mixed dot and search ---
+	path_14 = Magnoliopsida.Fagales.Fagaceae.Quercus.English_Oak~Taproot;           !! 3
+	path_15 = Pinopsida.Pinales.Cupressaceae.Sequoia.Coast_Redwood~Lignotubers;     !! 56
+
+	!! --- Contexted search (&) - navigate from found position ---
+	path_16 = Magnoliopsida.Fagales.Fagaceae.Quercus.English_Oak~Acorns&#1;          !! 1 (Cupules)
+	path_17 = Magnoliopsida.Fagales.Fagaceae.Quercus.English_Oak~Acorns&#-1;         !! would be NK (no previous)
+	path_18 = Magnoliopsida.Fagales.Fagaceae.Quercus.English_Oak?Ring_porous_wood&#-1; !! 3 (Taproot)
+
+	!! --- Parenthetical grouping of searches ---
+	path_19 = (Magnoliopsida~Fagales)~Fagaceae;                                     !! finds Fagaceae brane
+	path_20 = (Magnoliopsida~Fagales)~Fagaceae~Quercus;                             !! finds Quercus brane
+	path_21 = (Magnoliopsida~Fagales)~Fagaceae~Quercus~English_Oak;                 !! finds English_Oak brane
+	path_22 = (Magnoliopsida~Fagales)~Fagaceae~Quercus~English_Oak~Acorns;          !! 0
+
+	!! --- Nested parenthetical grouping ---
+	path_23 = ((Magnoliopsida~Fagales)~Fagaceae)~Quercus;                           !! finds Quercus brane
+	path_24 = ((Magnoliopsida~Fagales)~Fagaceae)~Quercus~English_Oak;               !! finds English_Oak brane
+	path_25 = (((Magnoliopsida~Fagales)~Fagaceae)~Quercus)~English_Oak;             !! finds English_Oak brane
+
+	!! --- Parenthetical with contexted search ---
+	path_26 = (Magnoliopsida~Fagales)~Fagaceae~Quercus~English_Oak~Acorns&#1;       !! 1 (Cupules)
+	path_27 = (Magnoliopsida~Fagales)~Fagaceae~Quercus~English_Oak~Acorns&#2;       !! 2 (Lobed_leaves)
+	path_28 = (Magnoliopsida~Fagales)~Fagaceae~Quercus~English_Oak~Acorns&#-1;      !! NK (no previous)
+
+	!! --- Mixed: dot access then search then contexted ---
+	path_29 = Magnoliopsida.Fagales.Fagaceae.Quercus.English_Oak~Acorns&#1;         !! 1 (Cupules)
+	path_30 = Magnoliopsida.Fagales.Fagaceae.Quercus.English_Oak~Lobed_leaves&#-1;  !! 1 (Cupules)
+
+	!! --- Cross-class navigation using search ---
+	path_31 = Pinopsida~Pinales;                                                   !! finds Pinales brane
+	path_32 = Liliopsida~Arecales;                                                 !! finds Arecales brane
+	path_33 = Pinopsida.Pinales~Pinaceae;                                          !! finds Pinaceae brane
+	path_34 = Liliopsida.Arecales~Arecaceae;                                       !! finds Arecaceae brane
+
+	!! --- Deep navigation with parenthetical grouping ---
+	path_35 = (Pinopsida~Pinales)~Pinaceae~Pinus~Eastern_White_Pine~Fascicles;      !! 39
+	path_36 = (Liliopsida~Arecales)~Arecaceae~Cocos~Coconut_Palm~Endosperm;        !! 62
+
+	!! --- Backward search from end ---
+	path_37 = Magnoliopsida.Fagales.Fagaceae.Quercus.English_Oak?Ring_porous_wood;  !! 4
+	path_38 = Magnoliopsida.Fagales.Fagaceae.Quercus.Cork_Oak?Evergreen_leaves;    !! 7
+
+	!! --- Value search (~= and ?=) within branes ---
+	path_39 = Magnoliopsida.Fagales.Fagaceae.Quercus.English_Oak~=0;                !! 0 (Acorns)
+	path_40 = Magnoliopsida.Fagales.Fagaceae.Quercus.English_Oak?=4;                !! 4 (Ring_porous_wood)
+	path_41 = Magnoliopsida.Fagales.Fagaceae.Quercus.English_Oak~=1;                !! 1 (Cupules)
+	path_42 = Magnoliopsida.Fagales.Fagaceae.Quercus.English_Oak?=3;                !! 3 (Taproot)
+
+	!! --- Parenthetical with value search ---
+	path_43 = (Magnoliopsida~Fagales)~Fagaceae~Quercus~English_Oak~=0;              !! 0 (Acorns)
+	path_44 = (Magnoliopsida~Fagales)~Fagaceae~Quercus~English_Oak?=4;              !! 4 (Ring_porous_wood)
+	path_45 = ((Magnoliopsida~Fagales)~Fagaceae)~Quercus~English_Oak~=2;            !! 2 (Lobed_leaves)
+
+	!! --- Contexted value search (&~= and &?=) ---
+	path_46 = Magnoliopsida.Fagales.Fagaceae.Quercus.English_Oak~=0&#1;             !! 1 (Cupules - after Acorns)
+	path_47 = Magnoliopsida.Fagales.Fagaceae.Quercus.English_Oak?=4&#-1;            !! 3 (Taproot - before Ring_porous_wood)
+	path_48 = (Magnoliopsida~Fagales)~Fagaceae~Quercus~English_Oak~=0&#1;           !! 1 (Cupules)
+
+	!! --- Complex parenthetical with mixed operators ---
+	path_49 = ((Magnoliopsida~Fagales)~Fagaceae~Quercus)~English_Oak~Acorns;        !! 0
+	path_50 = ((Magnoliopsida~Fagales)~Fagaceae~Quercus)~English_Oak~Acorns&#1;     !! 1 (Cupules)
+	path_51 = (((Magnoliopsida~Fagales)~Fagaceae)~Quercus~English_Oak)~Acorns;      !! 0
+}
