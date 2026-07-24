@@ -321,6 +321,12 @@ pub struct SearchFir {
     pub(crate) parent: Option<FirRef>,
     pub(crate) state: Nyes,
     pub(crate) alarm: Option<Alarm>,
+    /// True for a value search (`~=` / `?=`): it matches on a statement's VALUE,
+    /// not its name. Renders as `=(anchor=…, value=…, …)` (FOOP-23 appendix).
+    pub(crate) is_value: bool,
+    /// The value-search's value expression (`c-d+v` in `a~=c-d+v`). Only set
+    /// when `is_value`; carries its own nested state for rendering.
+    pub(crate) value: Option<FirRef>,
 }
 
 #[derive(Debug, Clone)]
@@ -530,8 +536,18 @@ impl Fir {
 
 /// An optional boxed child in the query surface (an anchor or a result).
 pub type QueryChild = Option<Box<dyn FirQueryable>>;
-/// `hs_search` payload: (pattern, direction, anchored, anchor, result).
-pub type SearchQuery = (String, SearchDirection, bool, QueryChild, QueryChild);
+/// `hs_search` payload: (pattern, direction, anchored, anchor, result,
+/// is_value, value). `is_value` marks a value search (`~=` / `?=`); `value` is
+/// its value expression (FOOP-23 rendering appendix).
+pub type SearchQuery = (
+    String,
+    SearchDirection,
+    bool,
+    QueryChild,
+    QueryChild,
+    bool,
+    QueryChild,
+);
 /// `hs_index` payload: (offset, anchored, anchor, result).
 pub type IndexQuery = (i32, bool, QueryChild, QueryChild);
 /// `hs_concatenation` payload: (input elements, merged result brane).
@@ -600,15 +616,7 @@ impl FirQueryable for FirChildRef {
         let fir = clone_steppable(&self.inner);
         fir.hs_operator()
     }
-    fn hs_search(
-        &self,
-    ) -> Option<(
-        String,
-        SearchDirection,
-        bool,
-        Option<Box<dyn FirQueryable>>,
-        Option<Box<dyn FirQueryable>>,
-    )> {
+    fn hs_search(&self) -> Option<SearchQuery> {
         let fir = clone_steppable(&self.inner);
         fir.hs_search()
     }
@@ -698,15 +706,7 @@ impl FirQueryable for Fir {
             None
         }
     }
-    fn hs_search(
-        &self,
-    ) -> Option<(
-        String,
-        SearchDirection,
-        bool,
-        Option<Box<dyn FirQueryable>>,
-        Option<Box<dyn FirQueryable>>,
-    )> {
+    fn hs_search(&self) -> Option<SearchQuery> {
         if let Fir::Search(i) = self {
             Some((
                 i.pattern.clone(),
@@ -718,6 +718,10 @@ impl FirQueryable for Fir {
                 i.result
                     .as_ref()
                     .map(|t| Box::new(FirChildRef::new(Rc::clone(t))) as Box<dyn FirQueryable>),
+                i.is_value,
+                i.value
+                    .as_ref()
+                    .map(|v| Box::new(FirChildRef::new(Rc::clone(v))) as Box<dyn FirQueryable>),
             ))
         } else {
             None
@@ -1564,6 +1568,14 @@ impl<'de> Deserialize<'de> for Fir {
                     .get("result")
                     .and_then(|v| serde_json::from_value::<Fir>(v.clone()).ok())
                     .map(fir_to_ref);
+                let is_value = obj
+                    .get("is_value")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
+                let value = obj
+                    .get("value")
+                    .and_then(|v| serde_json::from_value::<Fir>(v.clone()).ok())
+                    .map(fir_to_ref);
                 Ok(Fir::Search(Box::new(SearchFir {
                     pattern,
                     direction,
@@ -1573,6 +1585,8 @@ impl<'de> Deserialize<'de> for Fir {
                     parent: None,
                     state,
                     alarm: None,
+                    is_value,
+                    value,
                 })))
             }
             "Index" => {
@@ -1843,6 +1857,8 @@ pub struct SearchFirBuilder {
     parent: Option<FirRef>,
     state: Nyes,
     alarm: Option<Alarm>,
+    is_value: bool,
+    value: Option<FirRef>,
 }
 
 impl SearchFirBuilder {
@@ -1856,7 +1872,19 @@ impl SearchFirBuilder {
             parent: None,
             state: Nyes::Embryonic,
             alarm: None,
+            is_value: false,
+            value: None,
         }
+    }
+    /// Mark this as a value search (`~=` / `?=`). Renders `=(anchor=…, value=…)`.
+    pub fn is_value(mut self, is_value: bool) -> Self {
+        self.is_value = is_value;
+        self
+    }
+    /// The value-search's value expression (the RHS of `~=`).
+    pub fn value(mut self, value: Fir) -> Self {
+        self.value = Some(fir_to_ref(value));
+        self
     }
     pub fn direction(mut self, direction: SearchDirection) -> Self {
         self.direction = direction;
@@ -1896,6 +1924,8 @@ impl SearchFirBuilder {
             parent: self.parent,
             state: self.state,
             alarm: self.alarm,
+            is_value: self.is_value,
+            value: self.value,
         }))
     }
 }

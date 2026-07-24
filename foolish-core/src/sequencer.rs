@@ -339,9 +339,45 @@ fn render_fir(
     }
 
     // ── 4. Search ──
-    if let Some((pattern, direction, anchored, _anchor, result)) = fir.hs_search() {
+    if let Some((pattern, direction, anchored, anchor, result, is_value, value)) = fir.hs_search() {
         // HFS §9.x: result present + nnk_constanic ⇒ hide nyes; no result + EMBRYONIC ⇒ hide.
         let show_state = state.should_show_search_nyes(result.is_some());
+
+        // A value search (`~=` / `?=`) matches on VALUE, not name. It renders as
+        // `=(anchor=…, value=…, [pattern='…',] state)` — anchor and value each a
+        // full sub-sequence — so its value expression (and that expression's own
+        // nested state) is visible, instead of a degenerate empty-pattern search
+        // (FOOP-23 rendering appendix).
+        if is_value {
+            let mut items: Vec<String> = Vec::new();
+            if let Some(a) = anchor.as_deref() {
+                items.push(format!("anchor={}", format_fir_simple(a)));
+            }
+            if let Some(v) = value.as_deref() {
+                items.push(format!("value={}", format_fir_simple(v)));
+            }
+            // The name gate, only when a combined name+value search carries one.
+            if !pattern.is_empty() {
+                items.push(format!("pattern='{}'", pattern));
+            }
+            if show_state {
+                if let Some(alarm) = fir.hs_alarm() {
+                    items.push(format!("{}({}, {})", state, alarm.code, alarm.message));
+                } else {
+                    items.push(state.to_string());
+                }
+            }
+            return proto_brane_formatter_with_result(
+                "=(",
+                ")",
+                open_indent,
+                close_indent,
+                &items,
+                result.as_deref(),
+                line_hint,
+            );
+        }
+
         let pbid = if direction == SearchDirection::Backward {
             "?"
         } else {

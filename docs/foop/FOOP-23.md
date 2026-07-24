@@ -1211,7 +1211,92 @@ current statement are constanic before a search can step. Finding a pre-constani
 the search candidate stream is a bug in stepping logic.** The engine's `MatchOutcome::Wait` and
 `ScanOutcome::Wait` variants were removed; pre-constanic candidates now cause `unreachable!()`.
 
+## Appendix: Value-search rendering enhancement (sequencer) — flagged 2026-07-22
+
+Flagged during einmo review of `foop/23/value_search_expr_pattern.foo`
+(`a~=c-d+v` rendered `r3=?(pattern='', ANCHORED, ECONSTANIC)`).
+
+### The gap
+
+The Humanizing Sequencer renders **every** search through one branch that only knows
+`(pattern, direction, anchored, anchor, result)` — it prints `?(pattern='<name>', <ANCHOR>, <state>)`.
+For a **value search** (`~=` / `?=`) this is doubly wrong:
+
+1. A value search has **no name pattern** — it matches on VALUE. So `pattern` is empty
+   (`name_pattern.unwrap_or_default()` in the compiler), and the render shows the meaningless
+   `pattern=''`.
+2. The value search's **value expression** (`c-d+v`, a child FIR, `is_value_search=true`) is **never
+   rendered at all**. The sequencer's `SearchQuery` surface has no field for it and no `is_value` flag,
+   so the value expression — and its own nested state (here a WOCONSTANIC `Op+` because `v` needs a
+   search) — is invisible.
+
+Result: an evaluated value search is indistinguishable from an empty-pattern name-search miss, and the
+reviewer cannot see the value expression that is the whole point of `~=`.
+
+### Root cause
+
+`SearchQuery = (String, SearchDirection, bool, QueryChild, QueryChild)` in
+`foolish-core/src/fir.rs` carries no value-search information. The two `hs_search` implementors
+(foolish-core's own FIR and the delegating wrapper) cannot expose the value child even though the FIR
+has it (`SearchFir.is_value_search` + the value child in UBCa; the compiler builds `value_fir` as a
+child at `foolish-ubca/src/compiler.rs`). The shared render branch in `foolish-core/src/sequencer.rs`
+therefore has nothing to render.
+
+### The enhancement (repair)
+
+Render a value search in a **value-search-aware form** that shows anchor, value, and (only if present)
+name pattern, e.g.
+
+```
+r3 = =(anchor=a, value=Op+(Op-(12, 9), ?(pattern='v', ...WOCONSTANIC)...), WOCONSTANIC)
+```
+
+— the anchor and the resolved value both rendered as their own sub-sequences (each may itself be an
+econstanic/woconstanic search), and the outer state a genuine WOCONSTANIC `Op+`, not a fabricated
+`ECONSTANIC` empty search.
+
+**Both sequencers** must produce this, byte-identically (cross-validation). Because rendering lives
+**once** in `foolish-core/src/sequencer.rs` (UBCa only implements `FirQueryable`, it does not
+re-render), the change is:
+
+1. Extend the query surface: add an `is_value` flag and a value `QueryChild` to `SearchQuery` (or a
+   dedicated `hs_value_search()` accessor). This is a trait-contract change touching **both**
+   `hs_search` implementors — that duplication is the unavoidable trait-impl kind, not duplicated
+   logic.
+2. Populate it from `SearchFir` (`as_search_is_value` already exists; expose the value child).
+3. One new render branch in the shared sequencer for `is_value` → `=(anchor=…, value=…, pattern=…)`.
+
+The FVM evaluation is (believed) correct — this is a **rendering/observability** enhancement, not a
+semantics fix; confirm during implementation that `r3`'s underlying FIR is genuinely WOCONSTANIC and
+only its *display* was wrong. (If the FIR itself is ECONSTANIC, that is a separate stepping bug to
+split out.)
+
+### Follow-on work (this branch, in order)
+
+1. **Sequencer enhancement** (above) — foolish-core render + `FirQueryable` surface + both impls; new
+   approval coverage on `value_search_expr_pattern.foo` (and `~=`/`?=` siblings); the flagged artifact
+   is un-flagged and re-promoted once green.
+2. **`flagged/` becomes a SUBDIRECTORY under `checked/` and `verified/`** — not a top-level sink
+   parallel to them. `checked/flagged/…` and `verified/flagged/…`. Flagging **moves an einmo into the
+   `./flagged/` subdirectory of its current stage**. The move-into-`./flagged/` logic must be
+   **encapsulated once** (a single helper, used by both stages and by both `einmo flag` and
+   `poor_einmo.sh`), never written twice. `poor_einmo.sh` is updated to read from and write to the
+   per-stage `flagged/` subdir. (See FOOP 25 for the design documentation of this directory.)
+
+**FOOP 25's role here is documentation only** — it records the design of the separate/per-stage
+`flagged/` directory; the implementation of both items above happens in this branch.
+
 ## Last Updated
+
+**Date**: 2026-07-22
+**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
+**Changes**: Added "Value-search rendering enhancement (sequencer)" appendix — flagged during einmo
+review of `value_search_expr_pattern.foo` (`a~=c-d+v` rendered a degenerate `?(pattern='', ANCHORED,
+ECONSTANIC)` instead of a value-search form showing anchor/value and its WOCONSTANIC Op+). Documents
+the render gap (SearchQuery surface has no value-search field), the repair (shared foolish-core render
++ FirQueryable surface, both impls), and the two follow-on items in this branch: sequencer fix, then
+`flagged/` as a per-stage subdirectory with encapsulated move-into-`./flagged/`. FOOP-25 role is
+documentation-only for the flagged/ directory design.
 
 **Date**: 2026-07-06
 **Updated By**: Hephaestus / xiaomi/mimo-v2.5-pro
