@@ -32,10 +32,9 @@ set -euo pipefail
 #        the corpus.
 #
 #   2. You changed a pane any other way (a note, a question, an @agent comment)
-#      → FLAG IT. The results print an `einmo flag <suite> <stage> <file>
-#        --reason "<your note>"` command: your note travels INTO the corpus
-#        (flagged/) as the artifact's advisory reason, so nothing depends on a
-#        temp file. Run it (behind the same gate) to act.
+#      → FLAG IT. The file is moved to <stage>/flagged/ immediately on settle
+#        (no signature needed — just a mv). Your note text is recorded in the
+#        results summary.
 #
 #   3. You typed a SKIP word (skip · pass · idk)
 #      → NO ACTION, deliberately: you looked and chose not to rule. Accumulated
@@ -61,9 +60,9 @@ set -euo pipefail
 # q=quit. A revisited file left alone KEEPS its earlier answer; a new verb
 # replaces it.
 #
-# The script itself NEVER promotes, flags, or signs — it prints the exact
-# commands for the promotions you asked for, and you (or an agent) run them.
-# Promotion stays a deliberate, attributable act.
+# The script auto-flags (mv to <stage>/flagged/) but never promotes or signs —
+# it prints the exact commands for the promotions you asked for, and you (or an
+# agent) run them. Promotion stays a deliberate, attributable act.
 #
 # The file scan and body extraction are einmo's own (`einmo list`, `einmo body`),
 # not re-implemented here: einmo verifies every stamp before showing a byte
@@ -332,10 +331,20 @@ undo_last_decision() {
 }
 
 # Remove a queued flag for $1 (parallel arrays kept in step).
+# If the file was already moved to <stage>/flagged/, move it back.
 drop_flag() {
     local needle="$1" i keep_s=() keep_r=() keep_reason=()
     for i in "${!flag_rel[@]}"; do
-        [[ "${flag_rel[$i]}" == "$needle" ]] && continue
+        if [[ "${flag_rel[$i]}" == "$needle" ]]; then
+            local staged="$SUITE/${flag_stage[$i]}/$needle"
+            local flagd="$SUITE/${flag_stage[$i]}/flagged/$needle"
+            if [[ ! -f "$staged" && -f "$flagd" ]]; then
+                mkdir -p "$(dirname "$staged")"
+                mv "$flagd" "$staged"
+                echo "   ↩ unflagged ${flag_stage[$i]}/${needle%.einmo}"
+            fi
+            continue
+        fi
         keep_s+=("${flag_stage[$i]}"); keep_r+=("${flag_rel[$i]}"); keep_reason+=("${flag_reason[$i]}")
     done
     flag_stage=("${keep_s[@]+"${keep_s[@]}"}")
@@ -442,18 +451,57 @@ while (( i < ${#rows[@]} )); do
         declare -A pane=()
         for stage in output checked verified; do
             f="$SUITE/$stage/$rel"
+            f_flagged="$SUITE/$stage/flagged/$rel"
             p="$TMP/$stage--$base"
             if [[ -f "$f" ]]; then
                 if ! "$EINMO" body "$f" > "$p" 2>"$TMP/err"; then
                     { echo "(( $stage: REFUSED — einmo could not verify this artifact ))"
                       echo; cat "$TMP/err"; } > "$p"
                 fi
+            elif [[ -f "$f_flagged" ]]; then
+                if ! "$EINMO" body "$f_flagged" > "$p" 2>"$TMP/err"; then
+                    { echo "(( $stage/flagged: REFUSED — einmo could not verify this artifact ))"
+                      echo; cat "$TMP/err"; } > "$p"
+                fi
             else
                 : > "$p"
             fi
             pane[$stage]="$p"
-            cp "$p" "$p.orig"      # pristine copy: the reviewer's diff baseline
+            cp "$p" "$p.orig"
         done
+
+        flagged_stages=()
+        for stage in output checked verified; do
+            [[ -f "$SUITE/$stage/flagged/$rel" ]] && flagged_stages+=("$stage")
+        done
+        if (( ${#flagged_stages[@]} )); then
+            echo "   ⚑ previously flagged in: ${flagged_stages[*]}"
+            if (( full_review )); then
+                echo "   · full-review mode — keeping flag, skipping"
+                noop_list+=("$test_path")
+                break
+            fi
+            while :; do
+                read -r -p "   [k]eep flag and move on, or [e]dit flag? " ans </dev/tty || ans=""
+                case "${ans,,}" in
+                    k*|"")
+                        echo "   · keeping flag — skipping"
+                        noop_list+=("$test_path")
+                        break 2 ;;
+                    e*)
+                        for stage in "${flagged_stages[@]}"; do
+                            src="$SUITE/$stage/flagged/$rel"
+                            dst="$SUITE/$stage/$rel"
+                            if [[ -f "$src" ]]; then
+                                mkdir -p "$(dirname "$dst")"
+                                mv "$src" "$dst"
+                                echo "   ↩ unflagged $stage/${rel%.einmo}"
+                            fi
+                        done
+                        break ;;
+                esac
+            done
+        fi
     fi
 
     echo "── [$idx/${#rows[@]}] $test_path"
@@ -630,8 +678,8 @@ finishes DISCARDING unsaved pane edits · `:cq` aborts the whole review loop.
 After `:qa` the terminal prompt offers: `Enter`=next · `e`=edit (reopen, your
 text kept) · `r`=revert (reopen fresh from the stages) · `u`=back (keep this
 file's answer, re-review the previous file; review resumes here) · `q`=quit.
-poor_einmo itself never touches the corpus: promotions, retracts and flags are
-printed as commands and only run behind the typed PROMOTE gate.
+poor_einmo auto-flags notes (mv to <stage>/flagged/) on settle. Promotions and
+retracts are printed as commands and only run behind the typed PROMOTE gate.
 FINEPRINT
 
     review_opts=(
@@ -712,11 +760,35 @@ FINEPRINT
             noop_list+=("$test_path")
             echo "   · unchanged — no action"
         fi
-        # A `u` revisit still gets the prompt, so `u` can step further back;
-        # anywhere else, an untouched file is settled.
-        if ! (( revisit )); then
-            break
+        if ! (( full_review )); then
+            while :; do
+                read -r -p "   next? [Enter=continue, e=edit, r=revert, u=back, q=quit] " ans </dev/tty || true
+                case "${ans,,}" in
+                    e*) echo "   ✎ edit — reopening with your text kept"
+                        drop_flag "$rel"
+                        re_render=0
+                        continue 2 ;;
+                    r*) echo "   ↺ revert — discarding this file's answer, reopening fresh"
+                        drop_flag "$rel"
+                        re_render=1
+                        continue 2 ;;
+                    u*|b*)
+                        if (( i == 0 )); then
+                            echo "   · already at the first file — nothing to go back to"
+                            continue
+                        fi
+                        prev_rel="${rows[$((i - 1))]%%$'\t'*}"
+                        prev_answer="$(answer_of "$prev_rel" "${prev_rel%.einmo}")"
+                        echo "   ← back — this file keeps its answer; re-opening ${prev_rel%.einmo}${prev_answer:+ (answer so far: $prev_answer)}"
+                        if (( u_resume < 0 )); then u_resume=$((i + 1)); fi
+                        jump=$((i - 1))
+                        break ;;
+                    q*) echo "poor_einmo: stopped."; break 3 ;;
+                    *)  break ;;
+                esac
+            done
         fi
+        break
     fi
 
     # An explicit skip ("skip"/"pass"/"idk") is a deliberate non-decision: you
@@ -763,7 +835,6 @@ FINEPRINT
     # file. The note is what you typed; a multi-line note is folded to one line
     # for the advisory (the full text is shown in the printed command).
     if (( acted == 0 && (chk_changed || ver_changed) )); then
-        # Which stage did you write on, and what did you write? Prefer verified.
         local_stage=""; note_text=""
         if (( ver_changed )); then
             local_stage=verified
@@ -772,13 +843,13 @@ FINEPRINT
             local_stage=checked
             note_text="$(cat "${pane[checked]}")"
         fi
-        # Fold to a single line for the advisory reason.
         note_text="$(printf '%s' "$note_text" | tr '\n' ' ' | sed 's/  */ /g; s/^ //; s/ $//')"
         flag_stage+=("$local_stage")
         flag_rel+=("$rel")
         flag_reason+=("$note_text")
         send_to_agent_list+=("$test_path")
-        echo "   ✎ note recorded → will flag $local_stage/$test_path"
+        acted=1
+        echo "   ✎ note — will flag $local_stage/$test_path on settle"
     fi
 
     if ! (( full_review )); then
@@ -815,6 +886,17 @@ FINEPRINT
         done
     fi
     break   # this file is settled; on to the next
+    done
+
+    for fi in "${!flag_rel[@]}"; do
+        [[ "${flag_rel[$fi]}" == "$rel" ]] || continue
+        src="$SUITE/${flag_stage[$fi]}/$rel"
+        if [[ -f "$src" ]]; then
+            dest_dir="$SUITE/${flag_stage[$fi]}/flagged"
+            mkdir -p "$(dirname "$dest_dir/$rel")"
+            mv "$src" "$dest_dir/$rel"
+            echo "   ▸ flagged ${flag_stage[$fi]}/$test_path → ${flag_stage[$fi]}/flagged/"
+        fi
     done
 
     # Advance the cursor: a `u` rewind, a spring-back after one, or plain next.
@@ -858,12 +940,9 @@ fi
 
 if (( ${#flag_rel[@]} )); then
     echo
-    echo "‼ YOU MUST RUN THESE to record your notes — each flags the artifact"
-    echo "  (moves it to flagged/) with your note as its advisory reason:"
+    echo "flagged (${#flag_rel[@]}):"
     for i in "${!flag_rel[@]}"; do
-        show_cmd "  # ${flag_rel[$i]%.einmo}" \
-            flag "$SUITE" "${flag_stage[$i]}" --reason "${flag_reason[$i]}" \
-            -- "${flag_rel[$i]}"
+        echo "  ${flag_stage[$i]}/${flag_rel[$i]%.einmo} — ${flag_reason[$i]}"
     done
 fi
 
@@ -888,15 +967,37 @@ if (( have_promotions )); then
     echo "════════════════════════════════════════════════════════════════════"
     read -r -p "Type PROMOTE (all caps) to RUN the promotions above, or Enter to skip: " ans </dev/tty || ans=""
     if [[ "$ans" == "PROMOTE" ]]; then
+        checked_ok=1
         if (( ${#promote_checked[@]} )); then
             echo "→ running: promote output to checked"
-            "$EINMO" promote output to checked "$SUITE" -- "${promote_checked[@]}" </dev/tty
+            if ! "$EINMO" promote output to checked "$SUITE" -- "${promote_checked[@]}" </dev/tty; then
+                checked_ok=0
+                echo "⚠ promote output->checked failed — you can retry with:"
+                show_cmd "" promote output to checked "$SUITE" -- "${promote_checked[@]}"
+            fi
         fi
         if (( ${#promote_verified[@]} )); then
-            echo "→ running: promote checked to verified (you will be asked for your passphrase)"
-            "$EINMO" promote checked to verified "$SUITE" --interactive -- "${promote_verified[@]}" </dev/tty
+            verified_ok=0
+            while :; do
+                echo "→ running: promote checked to verified (you will be asked for your passphrase)"
+                if "$EINMO" promote checked to verified "$SUITE" --interactive -- "${promote_verified[@]}" </dev/tty; then
+                    verified_ok=1
+                    break
+                fi
+                echo
+                read -r -p "   passphrase mismatch — retry? [Y/n] " ans2 </dev/tty || ans2=""
+                case "${ans2,,}" in
+                    n*|q*) break ;;
+                esac
+            done
+            if (( ! verified_ok )); then
+                echo "⚠ promote checked->verified was not completed — you can retry with:"
+                show_cmd "" promote checked to verified "$SUITE" --interactive -- "${promote_verified[@]}"
+            fi
         fi
-        echo "✓ promotions done."
+        if (( checked_ok && ( ${#promote_verified[@]} == 0 || verified_ok ) )); then
+            echo "✓ promotions done."
+        fi
     else
         echo "⚠ NOT promoted. The commands above must be run for anything to take effect."
     fi

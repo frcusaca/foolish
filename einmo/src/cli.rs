@@ -938,16 +938,16 @@ fn read_stdin_line() -> Result<String> {
 /// reject it with no hint why. Confirming the entry catches the typo at the
 /// keyboard instead. Used by the stage-key cascade's interactive tier (§B.5).
 fn prompt_tty() -> Result<String> {
-    let first =
-        rpassword::prompt_password("einmo passphrase: ").map_err(|e| EinmoError::io("<tty>", e))?;
-    let second = rpassword::prompt_password("einmo passphrase (again): ")
-        .map_err(|e| EinmoError::io("<tty>", e))?;
-    if first != second {
-        return Err(EinmoError::Config(
-            "passphrases did not match — nothing was signed".into(),
-        ));
+    loop {
+        let first =
+            rpassword::prompt_password("einmo passphrase: ").map_err(|e| EinmoError::io("<tty>", e))?;
+        let second = rpassword::prompt_password("einmo passphrase (again): ")
+            .map_err(|e| EinmoError::io("<tty>", e))?;
+        if first == second {
+            return Ok(first);
+        }
+        eprintln!("einmo: passphrases did not match — try again (Ctrl-C to abort)");
     }
-    Ok(first)
 }
 
 #[cfg(test)]

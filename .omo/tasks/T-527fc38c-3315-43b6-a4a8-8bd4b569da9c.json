@@ -1,0 +1,10 @@
+{
+  "id": "T-527fc38c-3315-43b6-a4a8-8bd4b569da9c",
+  "subject": "Auto-run flags in poor_einmo with per-stage flagged/ dirs",
+  "description": "1. Move flagged files to <stage>/flagged/ subdirs (output/flagged/, checked/flagged/, verified/flagged/) instead of top-level flagged/. 2. Auto-run the mv at end of session (like PROMOTE gate). 3. Update the between-tests \"will flag\" message.",
+  "status": "completed",
+  "activeForm": "Implementing auto-run flags in poor_einmo",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0554203ddffecwoEwrtf0Q00XB"
+}
