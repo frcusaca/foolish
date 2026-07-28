@@ -13,21 +13,31 @@ begun: [ ]
 # FOOP-84: Search Engine Refactor — the authoritative search specification, and detachment on it
 
 > This FOOP **replaces FOOP-23 and FOOP-24 as the authoritative, precise description of how
-> search works** in the UBCa reference implementation, and is written to be **self-contained
-> enough that FOOP-93, FOOP-04, FOOP-14, and FOOP-85 can cite it instead of re-deriving shared
-> background** — Part 1 carries the full operator reference table, `FoolRefFir` shape, the
+> search works** in the UBCa reference implementation, and is written so that **a reader can
+> finish it with complete working vocabulary and never need to open another document for a
+> search-related question.** **Part 0 is the single definition site** for every term the search
+> family uses — search context, the two search families, anchoring and what a miss proves, the
+> detachment family (coordination vs. privacy vs. required searches vs. strict), marker scope, and
+> engine vocabulary. Part 1 carries the full operator reference table, `FoolRefFir` shape, the
 > name+value atomicity rule, and the cursor-source×predicate/two-collaborator framing, not just
-> pointers to FOOP-23. Where this document and FOOP-23/FOOP-24 disagree, this document wins;
+> pointers to FOOP-23.
+>
+> **Downstream FOOPs cite, they do not restate.** On first use of any Part 0 term, write the term
+> plus a pointer — "search context (FOOP-84 §0.3)" — then use the bare term. Do not redefine these
+> terms elsewhere; change them here and the citations stay valid. This document is **deliberately
+> redundant** with FOOP-23/FOOP-24/FOOP-43/AGENTS.md: consolidating their scattered definitions is
+> the point, and the redundancy is intentional, not an oversight to be tidied away later. Where this document and FOOP-23/FOOP-24 disagree, this document wins;
 > FOOP-23/FOOP-24 are retained for their historical design discussion and implementation-detail
 > material (grammar productions, approval-test-input catalogs, Rejected Alternatives, bug-fix
 > appendices) but should be read as superseded on anything restated here. This FOOP performs the
-> core refactor (Navigator unification, per-candidate boundary-crossing evaluation) while
-> **preserving all existing einmo/snapshot test behavior exactly** — no observable evaluation
-> change ships in this FOOP except where explicitly called out (the `contexted && !anchored`
-> dead-path fix, which is a documentation/pinning change, not a behavior change). Unimplemented
+> core refactor in **two halves with different risk profiles, and they must not be conflated**:
+> Part 1 (restatement) and §2.2 (Navigator unification) are **strictly behavior-preserving** — no
+> snapshot may change. §2.3–§2.5 (per-candidate boundary evaluation) are a **deliberate semantic
+> change** to how SF/SFF markers act, with expected SF/SFF snapshot churn enumerated in the Test
+> Plan. Land them as separate commits. Unimplemented
 > features (`||`/`&&` matcher booleans, `|` cascade, coordination detachment) are specified here
 > **for refactoring purposes only** — as consumers of the facilities this FOOP builds — and are
-> implemented in their own FOOPs (FOOP-93, FOOP-04, FOOP-85 — see "Related FOOPs" below).
+> implemented in their own FOOPs (FOOP-93, FOOP-04, FOOP-24 — see "Related FOOPs" below).
 
 ## Abstract
 
@@ -45,16 +55,21 @@ This FOOP:
    authoritative reference, superseding FOOP-23's description.
 2. **Introduces `AncestralNavigator`**, a `CandidateNavigator` implementation that owns the AB
    walk, replacing `ab_search_with_engine`'s loop and `BraneFir::_ab_search`'s recursion with one
-   traversal. `contextful_search_scan` and `SearchPredicate` are **untouched** by this change.
+   traversal. `SearchPredicate` is **untouched** by this change; whether
+   `contextful_search_scan`/`CandidateNavigator` change signature depends on the §2.3.1 TBD
+   (which collaborator resolves `CopyMode`).
 3. **Introduces the per-candidate boundary-crossing evaluation** that stay-foolish markers use to
    affect a crossing search — the mechanism that (in a later FOOP) coordination detachment,
-   privacy detachment, and required-searches are all built from. This FOOP does **not** implement
-   any marker behavior yet (no `[patterns]` parsing, no `Detachment` struct) — it builds and
-   tests the **evaluation shape** (`CopyMode`, per-candidate marker-stack scan, innermost-first)
-   against the **existing**, unparameterized SF/SFF markers only, replacing today's blanket
-   `Scope.has_ancestral_sfm` boolean with an exact, per-candidate equivalent. This is the
-   behavior-preserving core: today's SF/SFF semantics must be reproduced exactly by the new
-   mechanism before anything new is layered on.
+   privacy detachment, and required-searches are all built from. Its scope is deliberately
+   narrow (§2.2.0): a marker affects **only** a backward/ancestral search **originating inside
+   it**, and **only** where that search's AB climb **crosses the marker's own boundary outward**.
+   Contexted (`&`) searches and searches that resolve without reaching the boundary are never
+   affected. This FOOP does **not** implement any marker behavior yet (no `[patterns]` parsing, no
+   `Detachment` struct) — it builds and tests the **evaluation shape** (`CopyMode`, per-candidate
+   marker-stack scan, innermost-first) against the **existing**, unparameterized SF/SFF markers
+   only, replacing today's `Scope.has_ancestral_sfm` boolean. **This is a semantic change, not a
+   no-op**: the boolean is indexed on the *searcher* while `CopyMode` is indexed on the *boundary
+   crossing*, and they diverge in cases reachable today (§2.5).
 4. **Documents a confirmed dead path**: `contexted && !anchored` search silently degrades to
    plain unanchored search today (`self.contexted` is never consulted unless `self.anchored` is
    also true — `fir_kinds.rs:1192,1311,1511`). This FOOP states this as **intentional and
@@ -102,6 +117,224 @@ that decomposition once, up front.
 
 ## Specification
 
+### Part 0 — Terminology (authoritative; cite this section, do not restate it)
+
+**This Part is the single definition site for every term the search family uses.** It is
+deliberately redundant with FOOP-23, FOOP-24, FOOP-43, and AGENTS.md — those documents' scattered
+definitions are consolidated here so that a reader can finish Part 0 with complete working
+vocabulary and never need to open another document for a search-related question.
+
+**Convention for downstream FOOPs.** On **first use** of any term defined here, a later FOOP
+writes the term followed by a pointer — e.g. "search context (FOOP-84 §0.3)" — and then uses the
+bare term thereafter. Downstream FOOPs **must not redefine** these terms; if a definition needs to
+change, change it here and the citations stay valid.
+
+#### 0.1 Foundational terms
+
+**Brane.** A containment structure holding an ordered sequence of statements. A brane is
+*brane-like* (`is_brane_like`) if searches may descend into it.
+
+**Statement.** A named or unnamed member of a brane, at a definite **statement number** (its
+0-based position among the brane's `foolish_children`). A statement holds a **body** — the
+expression it evaluates to.
+
+**Home brane of a FIR** (synonym: **brane of a FIR**). The first brane reached by walking the
+FIR's `.parent` chain; equivalently, the brane in which the FIR's statement has a correct
+statement number. Accessor: `_get_my_brane` (`fir_trait.rs:216`). Use "home brane" when a second
+brane is also under discussion; "brane of" otherwise.
+
+**Candidate.** A statement that a search *considers* — offered to the predicate for a match
+decision. Being a candidate implies nothing about matching; it means only that the traversal
+reached it and did not filter it out.
+
+**Constanic.** A FIR in any terminal NYES state: ECONSTANIC, WOCONSTANIC, CONSTANT, INDEPENDENT,
+or NK. **Pre-constanic** (*nigh*): PREMBRYONIC, EMBRYONIC, BRANING — more stepping is appropriate.
+
+**Coordination.** Referencing a resolved thing by name, producing a **constanic clone** that is
+recoordinated into the referencing context. "Coordination frees everything": a coordinated value
+is *just its value*, shorn of evaluation scaffolding — its markers are stripped
+(`constanic_clone_at`, `fir_kinds.rs:159-198`) and its search context is stripped (§0.3, FOOP-43
+Component 2).
+
+#### 0.2 Anchoring, and what a miss proves
+
+**Anchored search.** A search that names the brane it searches (`a?name`, `a.name`, `a#N`). It
+resolves its anchor *through* to a whole brane, then searches that brane.
+
+**Unanchored search.** A search with no anchor (`?name`, bare `name`), searching retrospectively
+through IB then AB context.
+
+**Miss.** A search whose candidate stream is **exhausted with no match**. What a miss *proves*
+depends on anchoring, and this is why the two settle differently (FOOP-43 Component 1, restated
+at §1.5):
+
+- **Anchored miss → NK.** The anchor named the brane; exhausting it is a *proof* of absence.
+  Terminal.
+- **Unanchored miss → ECONSTANIC.** No fixed brane, so no proof; may gain a value via
+  recoordination.
+- **SFF-marked search → ECONSTANIC** regardless of anchoring (§0.5), carrying
+  `EconstanicReason::Detached`.
+
+**NK (`???`, "no-no").** Provably unknowable. Terminal. Reserved for genuine proofs: an anchored
+miss, a *found* value that is itself NK, or a provable impossibility (`#N` out of range on a
+settled finite brane). **NK is not "not found yet"** — preserving that distinction is why anchored
+misses stay NK.
+
+**ECONSTANIC** ("Exactly CONSTANt IN Context"). Searched, nothing found, *but the question may be
+answerable later* — a recoordination into a richer context may give it a value.
+
+#### 0.3 Search context — the formal definition
+
+**Search context** (of a search result) is the pair:
+
+> **(home brane, statement number)** — the brane in which the matched statement lives, *in its own
+> context*, together with that statement's 0-based position within it.
+
+Two requirements make this precise, and both are load-bearing:
+
+1. **The brane must be the real, in-context brane** — the live structure with a correct `.parent`
+   chain, reachable by walking the matched statement's ancestry. It is **not** a detached
+   constanic clone, not a copy, and not a reconstruction. A clone has been severed from the
+   ancestry that gives statement numbers and further searches their meaning, so a clone cannot
+   serve as search context.
+2. **The statement number must be that statement's position in that brane** — the index at which
+   the brane actually holds it, such that `brane.stmt_at(n)` returns the matched statement.
+
+**What carries it.** Search context is carried by a **`FoolRefFir`** — an immutable FIR wrapping a
+**strong** `Rc` to the *original matched statement* (not a clone), with its parent chain, line
+number, and home brane intact. Strong, so the statement stays reachable through the result even if
+its home brane is later restructured. Born CONSTANT, takes no steps, holds no children of its own,
+and is **invisible to values** (`FirRefExt::value`, result-chain walking, and the Humanizing
+Sequencer all read `ubc_children[0]` only — a `FoolRefFir` never appears in HFS output). Shape:
+
+```rust
+pub struct FoolRefFir {
+    pub(crate) core: ProtoBrane,   // no foolish_children, no ubc_children
+    referent: FirRef,              // strong Rc — the ORIGINAL statement
+}
+```
+
+**Where it lives — the two-child invariant.** A resolved search has exactly **two**
+`ubc_children`:
+
+| slot | content |
+|------|---------|
+| `[0]` | the constanic clone of the matched statement's **body** — the search's *value* |
+| `[1]` | a **`FoolRefFir`** holding the matched statement — the search's *search context* |
+
+Built by `push_search_result_pair` (`fir_kinds.rs:1667`). This split is what makes "providing
+context" universal: **every** search result carries a position a following contexted search can
+resume from, while values remain unpolluted by it.
+
+**Providing vs. reading context.** A search **provides** context (every search result does, via
+`[1]`). A search **reads** context only if it is contexted (§0.4). Contextless searches provide
+but do not read.
+
+**Coordination removes search context.** Referencing a search result by name coordinates it: the
+clone keeps `[0]` and drops `[1]` (FOOP-43 Component 2). A coordinated value is *positionless*, so
+a contexted search off it has nothing to resume from. This is why `{a = ?x; b = a&=3}` makes `b`
+NK.
+
+#### 0.4 The two search families
+
+**Contextless anchored search** (shorthand: **contextless search**, or plainly **search**):
+`.` `?` `~` `#` `^` `$` `~=` `?=`. Resolves its anchor *through* to a whole brane and searches that
+brane. **Does not read context** — it does not start from a statement position. Full table at
+§1.1a.
+
+**Contexted anchored search** (shorthand: **`&`-search**, or **contexted search**):
+`&?` `&~` `&#` `&^` `&$` `&~=` `&?=`. **Reads the search context** of the preceding result and
+searches forward/backward from that statement number, **within that statement's home brane**.
+Contexted searches stack (`a~step_1 &#1`).
+
+**The chaining rule.** `.` always **deepens** (searches *inside* the resolved brane); `&` always
+**navigates** from a position (searches *near* a matched statement, within its home brane). This
+resolves the `a.brane_field.x` ambiguity: contextless deepens, contexted navigates neighbors.
+
+**Clipping.** A contexted search is **clipped to its home brane** — it scans `[0, p-1]` or
+`[p+1, len-1]` of that one brane and **never** walks to a parent or ancestral brane
+(`contexted_search_from_anchor`, `fir_kinds.rs:954-1009`).
+
+**`contexted ⟹ anchored`.** A contexted search resumes from a `FoolRefFir`, and only an anchored
+search carries one — so contexted-off-unanchored is structurally impossible, not merely
+unimplemented. See §1.2.
+
+#### 0.5 Stay-foolish markers and the detachment family
+
+**Stay-foolish marker.** `<E>` (SF) or `<<E>>` (SFF) — a wrapper that changes how searches
+*inside* `E` interact with the world *outside* `E`.
+
+- **SF `<E>`** — *stay foolish*. Candidates are **found**, but their constanic constituents are
+  copied **as-is, without recoordination** (`CopyMode::SfCopy`). The result keeps its expression
+  form (`10+s`) rather than its fully-evaluated value (`11`).
+- **SFF `<<E>>`** — *stay fully foolish*. Candidates are **withheld from the search entirely**
+  (`Detach`); a search that finds nothing under this settles ECONSTANIC (§0.2), remaining
+  resolvable at each later use site.
+
+**Detachment.** The general mechanism of which SF/SFF are the unparameterized cases: a marker
+*parameterized* with patterns, `[p1,p2,…]<E>` or `[p1,p2,…]<<E>>`, affecting **only** the
+candidates its patterns select. Bare markers are full detachment (`<E>` ≡ `[*]<E>`, `<<E>>` ≡
+`[*]<<E>>`); `[]` detaches nothing.
+
+The family — **use these names exactly**:
+
+| Term | Meaning | Status |
+|------|---------|--------|
+| **Coordination detachment** | Governs how a candidate is **coordinated** — the resolution/copy behavior (`SfCopy` vs `Detach`) of candidates during a boundary-crossing search. The candidate remains **discoverable**; only its resolution changes. | **FOOP-24** — the live spec |
+| **Privacy detachment** | Goes further: prevents **discovery**, not merely resolution. A privacy-detached candidate is invisible to searches *entirely*, including anchored ones — information hiding. Would require the candidate to be invisible to the traversal itself, not merely resolved differently by it. | Deferred, future FOOP |
+| **Required Searches** | A brane's validity may *demand* that certain searches succeed (not stay ECONSTANIC) after coordination — "the entire brane is invalid unless these searches are found." **Exclusive detachment** (FOOP-24's "these are the ONLY names that may become constanic") is one realization mechanism of it, not a separate feature. | Deferred, future FOOP |
+| **Strict detachment `[[…]]`** | A completeness assertion forbidding unexplained non-resolution. Backburnered — the semantics are undecidable in scope (regex-intersection argument, FOOP-24 Appendix). | Backburnered |
+
+**The distinction that matters most:** coordination detachment changes *how a candidate resolves*;
+privacy detachment changes *whether it can be seen at all*. Everything specified in this FOOP and
+in FOOP-24 is **coordination** detachment. Privacy detachment is layered conceptually on top and
+is not specified anywhere yet.
+
+#### 0.6 Marker scope — three conditions (the most commonly mis-stated rule)
+
+A marker affects a search **only** when all three hold. Stated here in Part 0 because nearly every
+mis-reading of the detachment family comes from assuming markers are ambient scope:
+
+1. **Descendant-only** — the search must originate lexically *inside* the marker's `E`.
+2. **Outward-crossing only** — the marker is consulted only where the search's ancestral climb
+   *leaves* the marker, inside → outside.
+3. **Backward/ancestral only** — only the outward AB climb crosses boundaries. **Contexted (`&`)
+   searches are never affected** (clipped to home brane, §0.4); intra-brane scans that never climb
+   are never affected.
+
+**A marker cannot reach sideways or downward, and cannot affect a search that resolves locally.**
+In `[a]<{ x = a; y = local }>` with `local` defined inside the marker's own brane, the search for
+`local` never crosses the boundary and is never tested against `[a]` at all. Engine statement and
+worked examples: §2.2.0.
+
+#### 0.7 Engine vocabulary
+
+**Candidate Navigator** (`CandidateNavigator`) — traverses the FIR tree and yields candidates in
+the mandated order. Correctness contract: **correctly ordered** (the one order the configured
+semantics mandate) and **complete** (every reachable candidate, exactly once, then stops). Knows
+nothing about what is being matched.
+
+**Statement Matcher** (`SearchPredicate::matches`) — given one candidate, approves or rejects it.
+Receives the *full* statement FIR (name, body/value, statement number, parent/home brane, NYES),
+not a projection. Knows nothing about traversal order.
+
+**Cursor-source** — where the Navigator starts: *Contextless* (anchor resolved to a brane, cursor
+at front/rear) or *Contexted* (the incoming result's search context). The **only** step that
+differs between the two families.
+
+**`CopyMode`** — `Normal` (ordinary recoordinating copy) or `SfCopy` (copy constanic constituents
+without recoordination). Resolved **per candidate**, carried by the search result (§2.3.1).
+
+**`BoundaryEffect`** — the internal three-way decision at a boundary crossing: `Pass` (no marker
+decided anything), `SfCopy`, or `Detach` (candidate withheld — filtered *before* yield, never seen
+by the scan loop). Not the same type as `CopyMode`; see §2.3.
+
+**Home brane vs. boundary crossing — do not conflate.** The AB walk *crosses* brane boundaries
+outward through the lexical parent chain; a contexted search *stays inside* one brane and moves
+among siblings. Markers act on the former only.
+
+---
+
 ### Part 1 — Search semantics, restated (supersedes FOOP-23)
 
 This section is the complete, authoritative description of how Foolish search works. It restates
@@ -111,28 +344,19 @@ now part of the model.
 
 #### 1.1 Three groups of search operators
 
-Unchanged from FOOP-23 — restated here for completeness.
+The two families and the `.` vs `&` chaining rule are **defined in §0.4**. Summarized for
+orientation, with the third group added:
 
-1. **Contextless Anchored Searches** ("contextless searches," or plainly "searches"):
-   `.` `?` `~` `#` `^` `$` `~=` `?=`. Each demands its anchor resolve *through* to a whole brane
-   and searches that brane. Does not read context (does not start from a statement position).
-
-2. **Contexted Anchored Searches** ("`&`-searches," or "contexted searches"):
-   `&?` `&~` `&#` `&^` `&$` `&~=` `&?=`. Anchors on a **statement's position** — the original
-   statement a preceding search found — and searches forward/backward from there within that
-   statement's **home brane**. Contexted searches stack (`a~step_1 &#1`).
-
-3. **Value searches** — triggered by `=`, matching a statement's *value*. May be combined with a
-   name pattern (atomic conjunctive form, e.g. `~name=value`) or bare (`&=`-search shorthand for
-   a contexted value search).
-
-**The `.` vs `&` chaining rule (unchanged):** `.` always deepens (searches *inside* the resolved
-brane); `&` navigates from a position (searches *near* a found statement, within its home brane).
+1. **Contextless anchored searches** — `.` `?` `~` `#` `^` `$` `~=` `?=` (§0.4).
+2. **Contexted anchored searches** (`&`-searches) — `&?` `&~` `&#` `&^` `&$` `&~=` `&?=` (§0.4).
+3. **Value searches** — triggered by `=`, matching a statement's *value* rather than its name. May
+   be combined with a name pattern into an **atomic conjunctive operator** (`~name=value`, §1.1c)
+   or written bare (`&=`-search shorthand for a contexted value search).
 
 #### 1.1a Full operator reference table
 
 The complete surface syntax, consolidated from FOOP-23 Parts A/C so downstream FOOPs (FOOP-93,
-FOOP-04, FOOP-14, FOOP-85) can cite one table instead of splitting attention across two
+FOOP-04, FOOP-14, FOOP-24) can cite one table instead of splitting attention across two
 documents. FOOP-23 remains the source of the approval-test-input catalog and grammar productions
 for this table; this is the table itself, kept authoritative here.
 
@@ -169,26 +393,11 @@ original MVP scope the pattern was restricted to independent-integer equality on
 restriction is a property of `default_equal`'s implemented cases (FOOP-33), not of the search
 grammar, and is unchanged by this FOOP.
 
-#### 1.1b `FoolRefFir` and the two-child invariant, restated with its shape
+#### 1.1b `FoolRefFir` and the two-child invariant
 
-Expanding §1.4 (below) forward for reference density: `FoolRefFir` is the FIR kind that carries
-a found statement's *position* forward through a chain. Its defining shape:
-
-```rust
-/// An immutable reference to another FIR — the "fool's reference".
-/// Wraps a STRONG (non-weak) FirRef to the original statement a search
-/// found. Read-only: no method mutates the referent; born CONSTANT; takes
-/// no steps; holds no children of its own.
-pub struct FoolRefFir {
-    pub(crate) core: ProtoBrane,   // no foolish_children, no ubc_children
-    referent: FirRef,              // strong Rc — the ORIGINAL statement
-}
-```
-
-Strong (not weak) so the original statement stays reachable through the search result even if
-its home brane is later restructured. Invisible to values — `FirRefExt::value`, result-chain
-walking, and the Humanizing Sequencer all read `ubc_children[0]` only; `FoolRefFir` never
-appears in HFS output. See §1.4 for the two-child placement this enables.
+**Defined in §0.3** (search context, its `FoolRefFir` carrier, the two-child invariant, and the
+coordination-strips-context rule). Not restated here — §0.3 is the definition site, and §1.4 below
+notes the invariant's role in the chaining rules.
 
 #### 1.1c Name+value is an atomic conjunctive operator, not a chained search (restated, unchanged)
 
@@ -205,29 +414,19 @@ atomic form (`b~setting=10&#-1`).
 #### 1.1d One engine: cursor-source × predicate, and the two collaborators
 
 Every operator in the table above (§1.1a) is one engine, parameterized by two independent
-properties — this is the "one-engine model" §2.1 builds on directly:
+properties — **cursor-source × predicate**, both defined in §0.7 along with the two collaborators
+(Candidate Navigator, Statement Matcher) and their correctness contracts. This is the "one-engine
+model" §2.1 builds on directly.
 
-- **Cursor-source** — where the Navigator starts. *Contextless*: the anchor resolved to a brane,
-  cursor at front/rear. *Contexted*: the incoming result's statement position, in its home
-  brane. This is the *only* step that differs between the two families (§1.1a groups 1–13 vs.
-  14–18); everything downstream is shared.
-- **Predicate** — what counts as a hit on one candidate: `Name`, `Value`, `NameValue`, `Index`,
-  `Head`, `Tail` (today's `SearchPredicate` variants — extended by FOOP-93 with negation and
-  boolean composition, and by FOOP-85 with a detachment-adjacent gate; see §2.1).
+Two points worth emphasizing beyond the §0.7 definitions:
 
-The engine's two collaborators (`fir_kinds.rs`, `mod contextful_search`):
-
-- **Candidate Navigator** (`CandidateNavigator` trait) — traverses the FIR tree and yields
-  candidate statements in the mandated order. Its correctness contract, **load-bearing** and
-  reused verbatim by §2.2's `AncestralNavigator`: **correctly ordered** (the one order the
-  configured search semantics mandate) and **complete** (yields every reachable candidate,
-  exactly once, then stops — nothing skipped, nothing repeated, nothing beyond bound). It knows
-  nothing about what is being matched.
-- **Statement Matcher** (`SearchPredicate::matches`) — given one candidate, approves or rejects
-  it. Receives the *full* statement FIR (name, body/value, line number, parent/home-brane, NYES)
-  — not a projection — because different predicates need different facets, and because handing
-  the full candidate forward is what lets predicates compose (FOOP-93's `And`/`Or`/`negate`
-  trees). It knows nothing about traversal order.
+- **Cursor-source is the *only* step that differs between the two families** (§1.1a groups 1–13
+  vs. 14–18); everything downstream is shared. That is what makes it one engine rather than two.
+- **The Matcher receives the full statement FIR**, not a projection — different predicates need
+  different facets, and handing the whole candidate forward is what lets predicates compose
+  (FOOP-93's `And`/`Or`/`negate` trees). The `SearchPredicate` variants are extended by FOOP-93
+  with negation and boolean composition; FOOP-24's detachment acts in the *Navigator*, not here
+  (§2.3).
 
 Two degeneracies fall out of the single engine and must hold for any Navigator (including
 `AncestralNavigator`, §2.2) implementing it:
@@ -285,33 +484,57 @@ must not be confused with contexted search: they are different traversals — th
 brane boundaries outward through the lexical parent chain; contexted search stays inside one
 brane and only moves among siblings.
 
-#### 1.4 The FoolRefFir two-child invariant (restated, unchanged)
+#### 1.4 The FoolRefFir two-child invariant
 
-A resolved (anchored) search has exactly two `ubc_children`: `[0]` — the constanic clone of the
-found statement's body (the value); `[1]` — a `FoolRefFir` wrapping a strong reference to the
-original found statement (parent chain, line number, home brane intact). This is what makes
-"providing context" universal and is the mechanism §1.2 depends on.
+**Defined in §0.3.** In brief: `[0]` is the value (constanic clone of the matched statement's
+body), `[1]` is the `FoolRefFir` carrying search context. Universal "providing context" and the
+`contexted ⟹ anchored` rule of §1.2 both rest on this.
 
 #### 1.5 NK vs ECONSTANIC miss outcomes (restated, unchanged — see FOOP-43 for the full
 settlement rule)
 
-Anchored miss → ECONSTANIC (may recoordinate) per FOOP-43, superseding the older
-anchored-miss→NK rule. Found-`???` → NK propagates (terminal). This FOOP does not change FOOP-43;
-it is restated here because the boundary-crossing walk (§2) must know which outcome an
-exhausted, fully-Detached candidate stream produces (ECONSTANIC, via ordinary exhaustion — see
-§2.4).
+Settlement depends on **how the search was anchored**, and on whether an SF/SFF marker withheld
+its candidates:
+
+- **Anchored miss → NK.** An anchored search names the brane it searches; exhausting that brane
+  with no match *proves* the name is absent from it. Terminal. This is the long-standing rule in
+  FOOP-23 and AGENTS.md, and it **stands** — NK keeps its precise meaning, "provably unknowable,"
+  rather than blurring into "not found yet."
+- **Unanchored miss → ECONSTANIC.** No fixed brane, so no proof of absence; may recoordinate.
+- **SFF-marked search → ECONSTANIC, regardless of anchoring**, carrying
+  `EconstanicReason::Detached`. A search whose candidates a marker withheld did not fail to find
+  anything — it was prevented from looking, so it must stay deferrable.
+
+Found-`???` → NK propagates (terminal). This FOOP does not change FOOP-43; it is restated here
+because the boundary-crossing walk (§2) must know what an exhausted candidate stream produces —
+and critically, **plain exhaustion is not sufficient** to reach ECONSTANIC for an anchored search.
+See §2.4.1, which depends on this distinction.
+
+> **Dependency note.** FOOP-43 is still `status: Draft`, `begun: [ ]`. This FOOP treats its
+> Component 1 and Component 3 (the `EconstanicReason` tag) as settled background, so **FOOP-43
+> must land before this FOOP**, per the index's implementation order. An earlier revision of this
+> section asserted "anchored miss → ECONSTANIC, superseding the older anchored-miss→NK rule" —
+> that was wrong and is corrected above.
 
 ### Part 2 — The unified Navigator and per-candidate boundary evaluation
 
 #### 2.1 The one-engine model, unchanged at its core
 
 The engine described in §1.1d (cursor-source × predicate; `CandidateNavigator` ×
-`SearchPredicate`) is **not modified by this FOOP**. `SearchPredicate` (Name/Value/NameValue/
-Index/Head/Tail) and `contextful_search_scan` (the scan loop: iterate candidates from a
-`CandidateNavigator`, apply the predicate, return `Found`/`NkStop`/`Miss`) are untouched. This is
-deliberate: FOOP-93's predicate-tree extensions (`!`, `&&`/`||`), FOOP-14's collect-mode scan,
-and FOOP-43's reason tags all land inside these two collaborators exactly as their own specs
-already describe, with zero interaction with anything in this FOOP. What this FOOP adds is a new
+`SearchPredicate`) is **not modified in its shape** by this FOOP. `SearchPredicate`
+(Name/Value/NameValue/Index/Head/Tail) is **untouched**, and the scan loop's *logic* — iterate
+candidates from a `CandidateNavigator`, apply the predicate, return `Found`/`NkStop`/`Miss` — is
+unchanged.
+
+**Caveat (§2.3.1 TBD):** whether `contextful_search_scan` and the `CandidateNavigator` trait keep
+their exact current *signatures* depends on which collaborator ends up resolving `CopyMode`. A
+search result must carry its copy mode (§2.3.1), and if the Navigator supplies it, both the trait
+return type and the scan loop's destructuring change even though neither's logic does. Do not read
+"untouched" as "no signature change" until that TBD is settled in the plan.
+
+This separation is deliberate: FOOP-93's predicate-tree extensions (`!`, `&&`/`||`), FOOP-14's
+collect-mode scan, and FOOP-43's reason tags all land inside these two collaborators exactly as
+their own specs already describe, with zero interaction with anything in this FOOP. What this FOOP adds is a new
 *implementation* of the Navigator side of the cursor-source (§2.2) — it must satisfy §1.1d's
 Navigator correctness contract (correctly ordered, complete) exactly as `BraneNavigator` does
 today.
@@ -329,10 +552,41 @@ with one traversal. It climbs the lexical parent chain (`_get_my_statement` /
 candidates in the same visibility order the current loop produces — **no change in candidate
 order or completeness**; this is the behavior-preserving half of the refactor.
 
-**Boundary crossing is where markers are seen.** As `AncestralNavigator` steps from a child
-brane to its parent, it inspects the FIR whose boundary it just crossed. If that FIR is a
-`StayFoolish` or `StayFullyFoolish` marker, the Navigator becomes aware of it — this is the hook
-point for §2.3. Because the Navigator crosses markers **innermost-first** (it starts at the
+##### 2.2.0 Scope rule — what a marker can and cannot affect (READ THIS FIRST)
+
+**A stay-foolish marker affects exactly one thing: a backward search, originating inside the
+marker, at the moment it crosses the marker's own boundary outward.** Nothing else. Stated as
+three conditions that must *all* hold before a marker is even consulted for a candidate:
+
+1. **Descendant-only.** The searching FIR must be lexically *inside* the marker's expression. A
+   marker never affects a search that originates outside it, and never affects a search in a
+   sibling or unrelated brane. A marker is not ambient context — it is a property of a boundary
+   the search walks through.
+2. **Outward-crossing only.** The marker applies only where the search's AB walk *leaves* the
+   marker's boundary, climbing from inside to outside. A search that finds its answer without
+   ever reaching the marker's boundary is entirely unaffected, even though it is lexically under
+   the marker.
+3. **Backward/ancestral searches only.** Only the outward AB climb crosses boundaries at all.
+   **Contextless intra-brane scans and contexted (`&`) searches are never affected**, because
+   contexted search is clipped to its home brane (§1.3) and never leaves it. There is no forward
+   unanchored form to consider (§1.1a). In engine terms: markers live in `AncestralNavigator`
+   only — `BraneNavigator` and `contexted_search_from_anchor` are untouched by this mechanism.
+
+The practical consequence, worth internalizing because it makes the whole feature much smaller
+than it first appears: **a marker cannot reach sideways or downward, and it cannot affect a
+search that resolves locally.** In `[a]<{ x = a; y = local }>` where `local` is defined inside the
+marker's own brane, the search for `local` never crosses the marker boundary and so is never
+tested against `[a]` at all — regardless of whether the pattern would have matched its name.
+
+This scope rule is what keeps the mechanism orthogonal to FOOP-93 (predicates), FOOP-04 (cascade),
+and FOOP-14 (collect-mode): those act on candidates or scan modes, this acts on one boundary
+crossing in one Navigator.
+
+##### 2.2.1 Boundary crossing is where markers are seen
+
+As `AncestralNavigator` steps from a child brane to its parent, it inspects the FIR whose boundary
+it just crossed. If that FIR is a `StayFoolish` or `StayFullyFoolish` marker, the Navigator becomes
+aware of it — this is the hook point for §2.3, subject to the scope rule in §2.2.0 above. Because the Navigator crosses markers **innermost-first** (it starts at the
 searching FIR's own position and climbs outward), any per-candidate marker-stack evaluation it
 performs is innermost-first *by construction* — no separate bookkeeping, no `Scope` field, no
 "reverse the search" trick. The Navigator sees the actual FIR chain directly by borrowing
@@ -393,6 +647,13 @@ pub(crate) enum CopyMode {
 }
 ```
 
+**Scope reminder (§2.2.0):** the `marker_stack` below contains **only** markers whose boundary
+this particular search actually crosses on its outward AB climb — i.e. markers the searching FIR
+is lexically inside, encountered as the walk leaves them. It is not "every marker in the program,"
+nor "every marker enclosing the candidate," nor "every marker enclosing the search." A search that
+resolves without reaching any marker boundary has an **empty** `marker_stack` and always yields
+`Pass`. Contexted (`&`) searches never reach this code at all (§1.3).
+
 **Resolution algorithm — innermost-first, first-match-wins, per raw candidate, run inside
 `next_candidate()` before deciding whether to return it:**
 
@@ -417,9 +678,49 @@ fn resolve_boundary_effect(candidate, marker_stack /* innermost..outermost */) -
 #   }
 ```
 
-(The exact Rust return shape — whether `CopyMode` rides in the tuple `next_candidate()` returns,
-or a parallel accessor, or a wrapper around `FirRef` — is an implementation decision for the
-plan; the point fixed here is the *channel split*, not the Rust syntax.)
+##### 2.3.1 What a candidate carries, and where `CopyMode` is resolved (one fixed, one TBD)
+
+**Fixed — a search result carries its copy mode.** Whenever a search produces a result, that
+result must carry the `CopyMode` that was resolved for the found candidate. This is a requirement
+on the *result*, not a suggestion about plumbing: `SearchFir::handle_found` needs it to choose the
+clone behavior (§2.5), and it must be the mode resolved for **that specific candidate**, not a
+property re-derived from the searcher's lexical position afterward. A result with no copy mode is
+ill-formed. (Where no marker boundary was crossed, the mode is `Normal` — §2.2.0.)
+
+**Fixed — a candidate is more than a `(FirRef, usize)` pair.** A search result already carries
+*position* so that a following contexted (`&`) search can continue from it: the `FoolRefFir` at
+`ubc_children[1]`, holding the original statement with its home brane and line number intact
+(§1.4), which `contexted_search_from_anchor` reads (`fir_kinds.rs:954-1009`). So the information
+travelling with a candidate is, at minimum:
+
+- the **candidate FIR** itself;
+- its **home brane** — the context a continuation search needs;
+- its **statement number** within that brane;
+- its **`CopyMode`**.
+
+Today's `next_candidate() -> Option<(FirRef, usize)>` (`fir_kinds.rs:1941`) carries the first and
+third; the brane is re-derived downstream via `_get_my_brane`, which is exactly the reconstruction
+an `AncestralNavigator` makes unreliable, since it yields candidates from *several* branes as it
+climbs. Carrying the brane explicitly with the candidate is therefore preferred to re-deriving it.
+
+**TBD — which collaborator resolves `CopyMode`.** Whether the Navigator (`BraneNavigator`/
+`AncestralNavigator`) attaches the mode as it yields, or the contextful-search layer resolves it
+around the scan, is **deliberately left open** by this spec. Both can satisfy the fixed
+requirements above; they trade differently:
+
+- *Navigator-resolved* keeps the boundary walk and the boundary decision in one object (the
+  argument behind Rejected Alternative B), but puts `CopyMode` in a trait every navigator
+  implements — including `BraneNavigator`, which per §2.2.0 can only ever produce `Normal`.
+- *Search-layer-resolved* keeps `CandidateNavigator` narrow and lets the marker concern live
+  beside the settlement logic that consumes it, at the cost of splitting the walk from the
+  decision.
+
+The plan decides this, and the decision determines whether `contextful_search_scan` and
+`CandidateNavigator` change signature — so the "scan loop and predicate are untouched" claim in
+§2.1/UBC Step Impact holds only under some resolutions of this TBD, and must be re-checked once
+it is settled. What **is** fixed here is the *channel split* (`Detach` filtered pre-yield;
+`Pass`/`SfCopy` travelling with the result) and the carried-context requirement above — not the
+Rust syntax or the owning collaborator.
 
 **This is emphatically not "first marker on the stack wins, full stop."** A candidate can pass
 through an inner marker whose rule does not apply to it and still be caught by an outer marker.
@@ -453,14 +754,15 @@ filtered out one level in).
 
 **Note on this FOOP's actual scope:** `marker.rule_applies_to(candidate)` for parameterized
 `[patterns]` markers (i.e. the `Detachment` struct, `decide_to_detach`, `RegexSet` matching) is
-**not implemented in this FOOP** — it is coordination detachment's own concern (FOOP-85, see
+**not implemented in this FOOP** — it is coordination detachment's own concern (FOOP-24, see
 "Related FOOPs"). What **this** FOOP implements and tests is the resolution *algorithm*
 (`resolve_boundary_effect`) and the `CopyMode` plumbing for its `Pass`/`SfCopy` outcomes through
 to the clone call sites (§2.5), exercised against **today's unparameterized SF/SFF markers
 only**, where `rule_applies_to` is trivially "always applies" (an unparameterized marker has no
-pattern to test against — it always fires for every candidate that reaches it, exactly like
-today's `has_ancestral_sfm`). This is what makes the refactor behavior-preserving and
-independently testable before any new syntax exists.
+pattern to test against — it always fires for every candidate **that reaches its boundary
+crossing**, per §2.2.0). Note this is *not* the same set of candidates as today's
+`has_ancestral_sfm` covers (§2.5) — the mechanism is independently testable before any new syntax
+exists, but it is not behavior-preserving.
 
 #### 2.4 Naked/unparameterized SF and SFF stay their own thing
 
@@ -470,32 +772,61 @@ Per the existing FOOP-24 design (kept unchanged in intent, restated in this mech
 variants (`StayFoolish`, `StayFullyFoolish`) as today. In the `resolve_boundary_effect`
 algorithm, an unparameterized `StayFoolish` marker's `rule_applies_to` is unconditionally true
 (it always fires) and its `effect()` is `SfCopy`; an unparameterized `StayFullyFoolish` marker's
-is unconditionally true and `Detach`. For SFF this means: **every raw candidate under a naked
-`<<E>>` is silently skipped by `next_candidate()`, never once yielded to the scan loop** —
-reproducing exactly what today's naked-SFF code path already does (it does not call the engine
-at all for this reason; see §2.4.1). For SF, every candidate under a naked `<E>` is yielded
-tagged `SfCopy`, reproducing what `has_ancestral_sfm` does today for a blanket boolean. This is
-expressed in the same per-candidate machinery that a later, parameterized detachment marker will
-extend. **When coordination detachment (FOOP-85) adds `[patterns]<...>`/`[patterns]<<...>>`,
-that is additional, separate marker configuration — not a rewrite of the naked-marker path.**
-This directly preserves FOOP-24's "keep existing SFF unchanged; new code is only for specific
-detachments" intent, but grounds it in the shared per-candidate algorithm instead of a two-tier
+is unconditionally true and `Detach`.
+
+**"Unconditionally true" is scoped by §2.2.0, and the distinction matters.** It means *"fires for
+every candidate that reaches this marker's boundary crossing"* — **not** *"fires for every search
+lexically under the marker."* A search inside a naked `<<E>>` that resolves entirely within its own
+brane never crosses the marker boundary, so the marker is never consulted and the search resolves
+normally. Only candidates the search must climb *past* the marker to reach are Detached. Reading
+"unconditional" as "blanket" is the single easiest way to mis-implement this section.
+
+For SF, every candidate reached by climbing past a naked `<E>` is yielded tagged `SfCopy`. Note
+this is **narrower than today's `scope.has_ancestral_sfm`**, which is a property of the *searcher*
+(set by `step_inner` for any search lexically under an SF wrapper, `fir_trait.rs:387-388`) rather
+than of the boundary crossing — see §2.5 for what that difference costs.
+
+Both are expressed in the same per-candidate machinery that a later, parameterized detachment
+marker will extend. **When coordination detachment (FOOP-24) adds
+`[patterns]<...>`/`[patterns]<<...>>`, that is additional, separate marker configuration — not a
+rewrite of the naked-marker path.** This preserves FOOP-24's "new code is only for specific
+detachments" intent, grounding it in the shared per-candidate algorithm instead of a two-tier
 implementation split.
 
-##### 2.4.1 A fully-Detached search still settles ECONSTANIC via ordinary exhaustion
+##### 2.4.1 A fully-Detached search settles ECONSTANIC — and needs a reason tag to do so
 
-A search entirely under a naked `<<E>>` (or, once FOOP-85 lands, a `[*]<<E>>`) has every raw
-candidate on its walked path resolve to `Detach`. Mechanically, `next_candidate()` simply never
-returns anything — its internal loop discards every raw candidate it considers and eventually
-runs out, returning `None`. From `contextful_search_scan`'s point of view this is
-indistinguishable from a brane that is genuinely empty of matches: the `while let Some(...)`
-loop never executes its body even once, and the function falls through to `ScanOutcome::Miss`
-(`fir_kinds.rs:2040`) exactly as it would for any other exhausted, no-match search. This
-**miss** then settles ECONSTANIC per FOOP-43 (§1.5), exactly as today. No special-case
-"reject-all" signal, no distinguished "everything was Detached" outcome, is needed anywhere in
-the scan loop — full detachment is not a different *kind* of miss, it is the same miss the
-engine already handles, arrived at by a Navigator that happened to filter every candidate before
-yielding any of them.
+A search entirely under a naked `<<E>>` (or, once FOOP-24 lands, a `[*]<<E>>`) has every raw
+candidate on its walked path resolve to `Detach`. Mechanically, `next_candidate()` never returns
+anything — its internal loop discards every raw candidate it considers and eventually runs out,
+returning `None`. From `contextful_search_scan`'s point of view the `while let Some(...)` loop
+never executes its body, and the function falls through to `ScanOutcome::Miss`
+(`fir_kinds.rs:2040`).
+
+**But `Miss` alone is not enough to settle correctly**, and an earlier revision of this section
+got this wrong. Under FOOP-43's settlement rule (§1.5), a **`Miss` on an anchored search settles
+NK**, not ECONSTANIC. If a fully-Detached anchored search produced a bare `Miss`, it would settle
+NK — terminal, unrecoordinatable — which is precisely the opposite of what a stay-fully-foolish
+marker means. The marker exists to *defer* resolution to the use site; settling NK would make it
+*destroy* the search instead.
+
+**Therefore the Detached case must be distinguishable from a genuine miss at the settlement
+site.** Exhaustion-with-every-candidate-filtered and exhaustion-with-no-candidate-matching are
+different events that happen to produce the same `ScanOutcome` today, and the settlement logic
+needs to tell them apart. Concretely, one of:
+
+- the Navigator records that it filtered at least one candidate (or that a marker was in force at
+  all), and the scan outcome carries that fact — e.g. a `ScanOutcome::DetachedMiss` variant, or a
+  flag alongside `Miss`; or
+- the search's settlement consults the marker context directly, independent of the scan outcome.
+
+Either way, a Detached exhaustion settles **ECONSTANIC with `EconstanicReason::Detached`**
+(FOOP-43 Component 3), while a genuine exhaustion keeps today's anchored→NK / unanchored→ECONSTANIC
+split. The exact mechanism is an implementation decision for the plan; what is fixed here is that
+**a distinguished signal is required** — the prior claim that "no special-case reject-all signal
+is needed anywhere in the scan loop" is withdrawn.
+
+This makes FOOP-43 Component 3 (`EconstanicReason`) a **hard prerequisite** of this FOOP's Part 2,
+not merely an adjacent nicety.
 
 #### 2.5 `CopyMode` replaces `Scope.has_ancestral_sfm` at the clone call sites
 
@@ -509,19 +840,32 @@ single boolean, constant for the whole search regardless of which candidate was 
 `copy_mode == CopyMode::SfCopy` as the `descendent_of_sfm_and_foolishly_ignorant` argument,
 instead of the blanket `scope.has_ancestral_sfm`.
 
-**This is a real, intentional behavior refinement, not a no-op plumbing change**, and must be
-called out precisely: today, *any* candidate found while lexically under *any* SF ancestor is
-unconditionally foolishly-ignorant-copied. Under this FOOP's mechanism, restricted to
-unparameterized markers only (§2.4), the two coincide exactly — an unparameterized marker always
-fires, so every candidate under it still gets `SfCopy`, reproducing `has_ancestral_sfm`'s
-blanket behavior bit-for-bit. **The observable divergence only becomes possible once
-parameterized detachment patterns exist (FOOP-85)** — a candidate that an `[a]<...>` marker's
-pattern does *not* match should NOT be foolishly-ignorant-copied even though it is lexically
-under an SF marker, because with a real pattern the marker is no longer unconditional. This FOOP
-must therefore ship with a test asserting **bit-for-bit equivalence with today's
-`has_ancestral_sfm` behavior for every existing SF/SFF snapshot/unit test**, since no
-parameterized pattern exists yet to produce the divergence — the divergence is future capability
-this FOOP unlocks, not something it exercises.
+**This is a real, intentional behavior change, and it diverges from today even with no
+parameterized patterns in play.** An earlier revision of this section claimed the two "coincide
+exactly" for unparameterized markers, with divergence deferred to FOOP-85. That was wrong. The two
+are **indexed differently**:
+
+- `scope.has_ancestral_sfm` is a property of **the searcher** — `step_inner` sets it for any
+  search lexically under an SF wrapper (`fir_trait.rs:387-388`) and propagates it down the task
+  tree. It answers *"is this search anywhere under an SF marker?"*
+- `CopyMode` is a property of **the boundary crossing that reached the found candidate** — per
+  §2.2.0, it fires only where the search's AB climb actually leaves the marker.
+
+These disagree in a case reachable **today**, with naked markers only: a search inside `<E>` that
+finds a candidate **without crossing the marker boundary** (the candidate is in the marker's own
+brane, or nearer). Today it is foolishly-ignorant-copied because the searcher is under SF. Under
+§2.2.0 it is `Normal`, because no boundary was crossed. The new rule is the more precise one —
+that is the point of the refinement — but it **is** a change.
+
+A second divergence, also reachable today: `has_ancestral_sfm` is set **only** for
+`FirKind::StayFoolish`, never for `StayFullyFoolish`. So SFF's behavior under §2.3–§2.4 is not
+a re-expression of any existing boolean at all.
+
+**Consequences for the Test Plan.** The previously-specified "bit-for-bit equivalence with today's
+`has_ancestral_sfm` for every existing SF/SFF test" assertion **cannot hold and is withdrawn**.
+What ships instead: an enumeration of exactly which SF/SFF cases change and why, with the affected
+approved snapshots regenerated and presented for human semantic review per AGENTS.md — never
+auto-accepted. See the Test Plan for the specific files expected to move.
 
 #### 2.6 Nested-marker resolution is answered by this mechanism (resolves FOOP-24's open question)
 
@@ -530,39 +874,31 @@ requires "reversing the search: match on everything first, then check the stack 
 from innermost outward." **Answer: no reversal is needed.** §2.3's algorithm walks the marker
 stack innermost-to-outward *as part of yielding each candidate* — there is no separate "match
 everything first" phase. The worked example in §2.3 is the resolution FOOP-24 asked for. This
-FOOP formally closes that open question; FOOP-85 (coordination detachment) should cite this
+FOOP formally closes that open question; FOOP-24 (coordination detachment) should cite this
 section rather than re-deriving it.
 
-### Part 3 — Detachment terminology (renames, for FOOP-85 to build on)
+### Part 3 — Detachment terminology (renames, for FOOP-24 to adopt)
 
-This FOOP does not implement detachment, but — at the user's direction — establishes the
-corrected vocabulary now, so FOOP-85 and any interim discussion use consistent names. The
-existing FOOP-24 content is **renamed**, not respecified, as follows:
+This FOOP does not implement detachment — **FOOP-24 is the coordination detachment FOOP** and
+remains the live specification for the feature. What this Part establishes is the corrected
+*vocabulary*, so FOOP-24 and any interim discussion use consistent names. FOOP-24's content is
+**renamed, not respecified**, as follows:
 
-- **"Detachment" (unqualified, FOOP-24's primary `[patterns]<...>`/`[patterns]<<...>>` feature)
-  is renamed to "Coordination detachment."** It governs how the detachment target is
-  **coordinated** — i.e. it is a statement about the *resolution/copy behavior* (`SfCopy` vs.
-  `Detach`) of candidates during a search that crosses the marker's boundary, not about whether
-  they can be *discovered* at all. This is the feature FOOP-85 implements, built directly on
-  Part 2 of this FOOP.
-- **"Privacy detachment"** (FOOP-24's already-named deferred feature: detachment that prevents
-  not just resolution but *discovery* — invisible even to anchored searches) is **unchanged in
-  name and description**. It remains a distinct, deferred future feature, layered conceptually
-  on top of coordination detachment (a privacy-detached candidate would need to be invisible to
-  the Navigator entirely, not merely resolved differently by it) — not respecified here.
-- **"Exclusive detachment"** (FOOP-24's deferred completeness-assertion idea: "these are the ONLY
-  names that may become constanic in this scope") is **removed as a standalone future feature**
-  and **reframed as one realization mechanism of a new, more general future feature: "Required
-  Searches."** Required Searches is the idea that a brane's validity can demand that certain
-  searches succeed (not stay ECONSTANIC) after coordination — "the entire brane is invalid unless
-  these searches are found." Exclusive/coordination-detachment patterns are the most likely
-  *mechanism* for expressing which searches are required (a detached pattern list already names
-  a set of candidates the marker cares about; requiring them to resolve is a natural reading),
-  but Required Searches is stated as the general feature and exclusive detachment as one instance
-  of it, not the other way around. See the worked example immediately below.
-- **"Strict detachment `[[…]]`"** remains backburnered exactly as FOOP-24's Appendix describes
-  (the regex-intersection/undecidability argument is unaffected by this FOOP and is not
-  reopened here).
+**The definitions live in §0.5** (the detachment-family table). This Part records the *renames*
+against FOOP-24's original vocabulary, so a reader of the older document can map its terms
+forward:
+
+| FOOP-24's original term | Now called | Change |
+|---|---|---|
+| "Detachment" (unqualified — the `[patterns]<...>`/`[patterns]<<...>>` feature) | **Coordination detachment** (§0.5) | Renamed only. Same feature, same semantics, still specified in FOOP-24 — now built on Part 2's mechanism rather than FOOP-24's superseded Phase A plan. |
+| "Privacy detachment" | **Privacy detachment** (§0.5) | Unchanged in name and description. Still deferred. |
+| "Exclusive detachment" | one mechanism under **Required Searches** (§0.5) | Reframed. Removed as a standalone future feature; the general feature is Required Searches, and exclusive detachment is one way to express which searches are required — not the other way around. |
+| "Strict detachment `[[…]]`" | **Strict detachment** (§0.5) | Unchanged; remains backburnered on FOOP-24's regex-intersection/undecidability argument, which this FOOP does not reopen. |
+
+The naming rationale for the first row is worth stating once: the feature governs how a candidate
+is **coordinated** (its resolution/copy behavior) and *not* whether it can be **discovered**. That
+is precisely what separates it from privacy detachment, and it is why the qualifier is needed —
+"detachment" unqualified had been doing both jobs.
 
 **Worked example motivating Required Searches** (added at the user's direction): consider
 `[a=10]<...>` where the actual candidate named `a` is currently `???` (NK, unresolved). Per §1.5
@@ -587,7 +923,7 @@ FOOP.
 ## FIR Impact
 
 **No new FIR kind added by this FOOP.** `StayFoolish`/`StayFullyFoolish` are unchanged in shape
-(this FOOP does not add the `detachments` field — that is FOOP-85's work). `AncestralNavigator`
+(this FOOP does not add the `detachments` field — that is FOOP-24's work). `AncestralNavigator`
 is a new Rust type implementing the existing `CandidateNavigator` trait — a traversal helper, not
 a FIR.
 
@@ -609,7 +945,11 @@ the `scope.has_ancestral_sfm` argument at the `clone_stmt_result` call site
   planning) in favor of the same unified `AncestralNavigator` path.
 - `SearchFir::handle_found` (`fir_kinds.rs:935-940`) changes its clone-mode source from
   `scope.has_ancestral_sfm` to the per-candidate `CopyMode` resolved during the scan (§2.5).
-- `contexted_search_from_anchor`, `contextful_search_scan`, `SearchPredicate` — **unchanged**.
+- `contexted_search_from_anchor` and `SearchPredicate` — **unchanged**.
+  `contextful_search_scan` — logic unchanged; **signature depends on the §2.3.1 TBD** (if the
+  Navigator supplies `CopyMode`, both the `CandidateNavigator` trait return type and this
+  function's destructuring change, along with `BraneNavigator` and the navigator unit tests at
+  `fir_kinds.rs:4663-4719`).
 - `Scope` (`fir_trait.rs:55`) — **no new fields added** by this FOOP. `has_ancestral_sfm`'s
   continued necessity (or removal) is an Open Question, not resolved here.
 - The `contexted && !anchored` dead path (§1.2) — **no behavior change**; a test is added to pin
@@ -629,17 +969,36 @@ the `scope.has_ancestral_sfm` argument at the `clone_stmt_result` call site
   scan loop, §2.3); a search with no SF/SFF ancestor on its path yields `CopyMode::Normal`
   throughout. Nested naked markers (naked-in-naked combinations already expressible today)
   resolve consistently with innermost-first (trivial today since unparameterized markers are
-  unconditional, but the test should exist so FOOP-85 has a baseline to extend).
-- **Unit — bit-for-bit equivalence with `has_ancestral_sfm`:** run every existing SF/SFF-touching
-  unit test through both the old code path (before this FOOP's changes) and the new `CopyMode`
-  path, asserting identical `constanic_clone_at` output. This is the core regression guard for
-  the refactor's "behavior-preserving" claim.
+  unconditional, but the test should exist so FOOP-24 has a baseline to extend).
+- **Unit — enumerate the SF/SFF divergences (replaces the withdrawn bit-for-bit test):** per
+  §2.5, `CopyMode` and `has_ancestral_sfm` are indexed differently and disagree today. Write
+  explicit tests for each divergence rather than asserting equivalence: (a) a search under `<E>`
+  finding a candidate **without crossing** the marker boundary → `Normal` under the new rule
+  (was foolishly-ignorant-copied); (b) a search under `<E>` finding a candidate **by crossing**
+  the boundary → `SfCopy` (agrees with today); (c) SFF cases, which `has_ancestral_sfm` never
+  covered at all. Each test states the old and new outcome side by side.
+- **Unit — scope rule (§2.2.0):** a search lexically under a marker that resolves **within its own
+  brane** is unaffected by the marker; a contexted (`&`) search is never affected (§1.3); a search
+  originating **outside** a marker is never affected by it. These pin the three scope conditions
+  and are the guard against the "markers are ambient context" mis-implementation.
 - **Unit — `contexted && !anchored` fallback:** `?name&#1` (unanchored, contexted-suffixed)
   parses without error and evaluates identically to `?name` alone; assert this explicitly rather
   than leaving it as an unremarked gap.
-- **Approval — all existing snapshot/einmo tests pass unchanged.** No `.snap` files should
-  require regeneration; if any diff appears, treat it as a semantic regression to investigate,
-  not a formatting update to accept (per AGENTS.md's snapshot discipline).
+- **Approval — split by part, because the two halves differ.**
+  - **Part 1 + §2.2 (Navigator unification): no snapshot may change.** These are genuinely
+    behavior-preserving. Any diff here is a semantic regression to investigate, not a formatting
+    update to accept.
+  - **§2.3–§2.5 (per-candidate boundary evaluation): SF/SFF snapshots are expected to change.**
+    Per §2.5 the new rule is deliberately more precise than `has_ancestral_sfm`, and per §2.4
+    naked SFF now routes through the marker path. Candidate files to review:
+    `sff_basic`, `sff_nested`, `sff_vs_sf_timing_difference`, `sff_resolves_on_each_use`,
+    `sff_in_binary_op`, `sff_in_assignment_chain`, `sf_of_sff`, `sf_sff_nested_combined`,
+    `complex_sff_with_nested_scope`, `complex_sff_in_nested_brane`. Each diff must be justified
+    against §2.2.0's scope rule before being presented for human review. **Never auto-accept**
+    (AGENTS.md).
+  - Landing the two halves as **separate commits** (unification first, verified snapshot-clean;
+    then the boundary mechanism) makes this split reviewable and is strongly recommended in the
+    plan.
 - **`cargo clippy -D warnings` clean.**
 - Comprehensive snapshot test `foop_84_comprehensive.foo` per `foop.md`'s mandate: exercise
   nested naked SF/SFF combinations, contexted search chained after both anchored and (per §1.2)
@@ -686,9 +1045,18 @@ Navigator type gets for free, and without unblocking the duplication cleanup
   coarse "am I anywhere under any SF" signal, once `CopyMode` is resolved per-candidate at the
   clone call sites? If not, remove the field in this FOOP or a fast-follow; if so, document the
   remaining consumer.
-- Exact Rust shape for threading `CopyMode` out of the scan loop to `SearchFir::handle_found` —
-  a field on `ScanOutcome::Found`, a parallel return value, or a different mechanism. Left to the
-  plan/implementation, not fixed by this spec.
+- **(§2.3.1 TBD — the load-bearing one.)** Which collaborator resolves `CopyMode`: the Navigator
+  (attached as it yields) or the contextful-search layer (resolved around the scan)? Both satisfy
+  the fixed requirement that a search result carries its copy mode; they differ in whether
+  `CandidateNavigator`/`contextful_search_scan` change signature, and therefore in whether §2.1's
+  "untouched" claim survives. Settle this in the plan **before** coding, since it determines the
+  blast radius. Related: the exact Rust shape for carrying the mode through to
+  `SearchFir::handle_found` — a field on `ScanOutcome::Found`, a richer candidate struct, or a
+  parallel return value.
+- Should the candidate/result type carry the **home brane** explicitly (§2.3.1) rather than
+  re-deriving it via `_get_my_brane`? Preferred yes, because `AncestralNavigator` yields
+  candidates from several branes as it climbs, but confirm against the `FoolRefFir` path that
+  already stores the original statement.
 - Whether `BraneFir::_ab_search` can be fully removed or must remain as a thin compatibility
   shim for a caller outside the engine — verify during planning by searching all call sites.
 - Confirm no other code path (beyond the three already-audited call sites) branches on
@@ -709,10 +1077,12 @@ Navigator type gets for free, and without unblocking the duplication cleanup
   post-implementation bug-fix Appendix — none of that historical/implementation-detail material
   is restated here.
 - Depends on: FOOP-43 (miss→ECONSTANIC; this FOOP relies on but does not modify it).
-- Enables / to be built on this FOOP: FOOP-85 (Coordination detachment — reserved next number;
-  not yet created) implements `Detachment`/`decide_to_detach`/`[patterns]` parsing on top of
-  Part 2's `resolve_boundary_effect`/`CopyMode` mechanism, and cites Part 1 (§1.1a–d) for base
-  search vocabulary instead of restating it. FOOP-93 (`!`, `&&`/`||`), FOOP-04 (`|` cascade),
+- Enables / to be built on this FOOP: **FOOP-24 (Coordination detachment — the live spec for the
+  feature)** implements `Detachment`/`decide_to_detach`/`[patterns]` parsing on top of Part 2's
+  `resolve_boundary_effect`/`CopyMode` mechanism, and cites Part 1 (§1.1a–d) for base search
+  vocabulary instead of restating it. (A separate "FOOP-85" was briefly reserved for this in the
+  2026-07-28 draft and is **withdrawn** — it split a live feature from its own specification, and
+  85 is not a valid next number under little-endian numbering; `gen_next` yields FOOP-94.) FOOP-93 (`!`, `&&`/`||`), FOOP-04 (`|` cascade),
   FOOP-14 (find-all) each extend the `SearchPredicate`/`CandidateNavigator` collaborators
   described in §1.1d/§2.1 and should land after this FOOP to build on the de-duplicated
   `AncestralNavigator` — see each FOOP's own text for what it now cites here rather than
@@ -728,6 +1098,88 @@ Navigator type gets for free, and without unblocking the duplication cleanup
   §9 boolean-combinator search, "Engineering guidance" section).
 
 ## Last Updated
+
+**Date**: 2026-07-28 (5)
+**Updated By**: Claude Code (Opus 5)
+**Changes**: **Added Part 0 — Terminology**, the single definition site for the whole search
+family, so a reader can finish this FOOP with complete working vocabulary and never open another
+document for a search question. Sections: §0.1 foundational terms (brane, statement, home brane,
+candidate, constanic, coordination); §0.2 anchoring and **what a miss proves** (anchored→NK,
+unanchored→ECONSTANIC, SFF-marked→ECONSTANIC; why NK must keep meaning "provably unknowable");
+**§0.3 formal definition of search context** — the pair **(home brane *in its own context*,
+statement number)**, with both requirements made explicit (the brane must be the live in-context
+structure with a correct `.parent` chain, **not a detached constanic clone**; the statement number
+must be the position at which that brane actually holds the matched statement), its `FoolRefFir`
+carrier and shape, the two-child invariant table, providing-vs-reading context, and the
+coordination-strips-context rule; §0.4 the two search families, chaining rule, clipping,
+`contexted ⟹ anchored`; **§0.5 the detachment family table** — coordination vs. privacy vs.
+Required Searches vs. strict, with the discoverability-vs-resolution distinction stated as the one
+that matters most; §0.6 marker scope (the three conditions); §0.7 engine vocabulary. Established
+the **citation convention**: downstream FOOPs cite "term (FOOP-84 §0.x)" on first use and never
+redefine. De-duplicated §1.1, §1.1b, §1.1d, §1.4 and Part 3 into pointers at Part 0, keeping only
+what each adds beyond the definition (Part 3 is now a rename-mapping table plus the Required
+Searches worked example). Header note rewritten to say the redundancy with
+FOOP-23/24/43/AGENTS.md is deliberate.
+
+**Date**: 2026-07-28 (4)
+**Updated By**: Claude Code (Opus 5)
+**Changes**: (1) **FOOP-85 withdrawn — coordination detachment is FOOP-24.** Part 3 renamed
+FOOP-24's feature; it did not fork a new one, so reserving a separate number split a live feature
+from its own specification. 85 was also not a valid next number (little-endian `gen_next` yields
+FOOP-94). Every live FOOP-85 reference in this document now points at FOOP-24; Part 3 retitled
+"…for FOOP-24 to adopt" and the References entry rewritten. (2) **New §2.3.1 — what a candidate
+carries, and where `CopyMode` is resolved.** Fixed: a search result **must** carry the `CopyMode`
+resolved for its specific found candidate (ill-formed otherwise), and a candidate carries more
+than `(FirRef, usize)` — the FIR, its **home brane**, its statement number, and the copy mode,
+since results already carry position for `&`-continuation (§1.4) and `AncestralNavigator` yields
+candidates from several branes as it climbs, making downstream `_get_my_brane` re-derivation
+unreliable. **TBD, left deliberately open:** whether the Navigator or the contextful-search layer
+resolves `CopyMode`; both satisfy the fixed requirements and trade differently (one object owning
+walk-and-decide, vs. keeping `CandidateNavigator` narrow when `BraneNavigator` can only ever
+produce `Normal`). Consequently §2.1, Abstract item 2, and UBC Step Impact no longer assert
+`contextful_search_scan`/`CandidateNavigator` are signature-stable — their *logic* is unchanged,
+but signature stability holds only under some resolutions of the TBD, now flagged at each site and
+promoted to the first Open Question as the decision to settle before coding.
+
+**Date**: 2026-07-28 (3)
+**Updated By**: Claude Code (Opus 5)
+**Changes**: Three corrections from Atlas review, all narrowing or correcting claims that would
+have mis-guided implementation.
+
+(1) **§1.5 rewritten — anchored miss stays NK.** The prior text claimed "anchored miss →
+ECONSTANIC, superseding the older anchored-miss→NK rule." That is not the settled rule. Per
+FOOP-43 (revised this session): anchored miss → **NK** (an anchored search names its brane, so
+exhausting it proves absence, and NK must keep meaning "provably unknowable"); unanchored miss →
+ECONSTANIC; **SFF-marked search → ECONSTANIC regardless of anchoring**. Added an explicit
+dependency note that FOOP-43 is still Draft and must land first.
+
+(2) **§2.4.1 rewritten — full detachment needs a reason tag, not bare exhaustion.** The prior text
+argued a fully-Detached search settles ECONSTANIC "via ordinary exhaustion," with "no special-case
+reject-all signal needed anywhere." Under the corrected §1.5 that is wrong: a bare `Miss` on an
+*anchored* search settles NK, so a fully-Detached anchored search would be destroyed rather than
+deferred — the opposite of what SFF means. Detached exhaustion must be **distinguishable** from
+genuine exhaustion at the settlement site and settle ECONSTANIC with `EconstanicReason::Detached`.
+FOOP-43 Component 3 is therefore a **hard prerequisite**, not an adjacent nicety.
+
+(3) **New §2.2.0 "Scope rule" — the marker mechanism is much narrower than the draft implied.**
+At the user's direction, stated up front and repeated at each point of ambiguity: a stay-foolish
+marker affects **only** a backward/ancestral search **originating inside** it, and **only** where
+that search's AB climb **crosses the marker's own boundary outward**. Contexted (`&`) searches are
+never affected (clipped to home brane, §1.3); searches resolving without reaching the boundary are
+never affected. Markers live in `AncestralNavigator` only — `BraneNavigator` and
+`contexted_search_from_anchor` are untouched. Reinforced in §2.3 (the `marker_stack` contains only
+crossed markers; an unreached marker means an empty stack and `Pass`) and §2.4 ("unconditionally
+true" means *per crossing*, not *per search lexically under the marker* — the easiest way to
+mis-implement this).
+
+Consequences of (3): **§2.5's bit-for-bit equivalence claim withdrawn.** `has_ancestral_sfm` is
+indexed on the *searcher* (`fir_trait.rs:387-388`, and set for `StayFoolish` only — never SFF)
+while `CopyMode` is indexed on the *boundary crossing*; they diverge in cases reachable today with
+naked markers, not only once `[patterns]` exist. Test Plan updated accordingly: the equivalence
+test is replaced by an enumeration of each divergence, plus new scope-rule tests; the approval
+section is split so Part 1 + §2.2 must be snapshot-clean while §2.3–§2.5 have expected SF/SFF
+churn (ten candidate files named), with a recommendation to land the two halves as separate
+commits. Header note and Abstract item 3 updated to stop claiming blanket behavior preservation.
 
 **Date**: 2026-07-28 (2)
 **Updated By**: Claude Code (Sonnet 5)

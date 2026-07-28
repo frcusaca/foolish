@@ -27,6 +27,25 @@ begun: [ ]
 > no special handling to skip them; `SfCopy`-tagged candidates are collected normally, each
 > carrying its `CopyMode` for the result brane's eventual clone. No new design work — this falls
 > out of FOOP-84's Navigator/scan-loop split for free.
+>
+> **Scope of marker effects (FOOP-84 §2.2.0) — narrower than it may appear.** An SF/SFF (or later,
+> coordination-detachment) marker affects **only** a backward/ancestral search **originating
+> inside** the marker, and **only** where that search's AB climb **crosses the marker's boundary
+> outward**. It does not affect contexted (`&`) searches, which are clipped to their home brane,
+> and it does not affect searches that resolve without reaching the boundary. For find-all this
+> means: a collect-mode scan over a `BraneNavigator` (an ordinary intra-brane collect) is **never**
+> touched by markers at all; only a collect over an `AncestralNavigator` that climbs past a marker
+> can see `Detach`/`SfCopy`. Results collected before the walk reaches any marker boundary are
+> always `Normal`.
+>
+> **Terminology: cite FOOP-84 Part 0, do not restate.** Every search-family term this FOOP uses —
+> **search context** (§0.3: home brane *in its own context* + statement number of the matched
+> statement, carried by `FoolRefFir` at `ubc_children[1]`), **contextless/contexted search**
+> (§0.4), **anchored/unanchored** and what a miss proves (§0.2), the **detachment family**
+> (§0.5: coordination vs. privacy vs. Required Searches vs. strict), **marker scope** (§0.6), and
+> **engine vocabulary** (§0.7: Candidate Navigator, Statement Matcher, cursor-source, `CopyMode`,
+> `BoundaryEffect`) — is defined there. On first use write the term plus its pointer, e.g.
+> "search context (FOOP-84 §0.3)"; use the bare term thereafter.
 
 ## Abstract
 
@@ -125,6 +144,22 @@ Navigator; a second engine would duplicate traversal.
 - Notes: `NOTES-creation-lineage-and-search-family.md` §5 + Engineering guidance.
 
 ## Last Updated
+
+**Date**: 2026-07-28 (2)
+**Updated By**: Claude Code (Opus 5)
+**Changes**: Added the "cite FOOP-84 Part 0, do not restate" terminology banner — FOOP-84 Part 0
+is now the single definition site for search context (§0.3), the two search families (§0.4),
+anchoring/miss outcomes (§0.2), the detachment family (§0.5), marker scope (§0.6), and engine
+vocabulary (§0.7). First use of any such term in this FOOP carries a §-pointer; no redefinition
+here.
+
+**Date**: 2026-07-28 (2)
+**Updated By**: Claude Code (Opus 5)
+**Changes**: Added the marker **scope rule** (FOOP-84 §2.2.0) to the banner, at the user's
+direction. For find-all specifically: a collect-mode scan over a `BraneNavigator` (ordinary
+intra-brane collect) is **never** touched by markers; only a collect over an `AncestralNavigator`
+climbing past a marker boundary can see `Detach`/`SfCopy`, and results collected before the walk
+reaches a boundary are always `Normal`.
 
 **Date**: 2026-07-28
 **Updated By**: Claude Code (Sonnet 5)

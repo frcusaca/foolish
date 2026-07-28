@@ -1,6 +1,6 @@
 ---
 foop: 42
-title: Detachment — parameterized stay-foolish markers
+title: Coordination detachment — parameterized stay-foolish markers
 author: Atlas hc.busy@gmail.com
 status: Draft
 type: Standards
@@ -10,25 +10,54 @@ supersedes: []
 begun: [ ]
 ---
 
-# FOOP-24: Detachment — parameterized stay-foolish markers
+# FOOP-24: Coordination detachment — parameterized stay-foolish markers
 
-> **PARTIALLY SUPERSEDED by FOOP-84 (2026-07-28).** FOOP-84 is now the authoritative search
-> specification and owns the "Current Search Implementations," "SF/SFF delegation discussion,"
-> "Implementation Plan → Phase A" (the `AncestralNavigator`/`CopyMode` mechanism replaces the
-> `_ab_search`-override design below), and "Nested markers" (now RESOLVED, see FOOP-84 §2.3/§2.6)
-> sections of this document. The feature this FOOP specifies is renamed **"Coordination
-> detachment"** in FOOP-84 §Part 3 (this file's unqualified "Detachment" = FOOP-84's
-> "Coordination detachment"); "Exclusive detachment" below is superseded by FOOP-84's "Required
-> Searches" future-feature framing. "Privacy detachment" is unchanged. Implementation
-> (`Detachment` struct, `[patterns]` parsing) is tracked as **FOOP-85**, building on FOOP-84 Part
-> 2 — not on this file's Phase A/B plan. This file is retained for historical design discussion
-> (the cross-tabulation table, the SF/SFF spectrum framing, the backburnered strict-detachment
-> appendix) but its search-mechanism and Implementation Plan sections should be read as
-> superseded.
+> **THIS IS THE COORDINATION DETACHMENT FOOP — the live specification, not a historical
+> document.** Renamed 2026-07-28: what this file has always called "Detachment" is now called
+> **"Coordination detachment"** (it governs how a detachment target is *coordinated* — the
+> resolution/copy behavior of candidates crossing the marker's boundary — as distinct from
+> "Privacy detachment," which would prevent *discovery*, and from "Required Searches"; see
+> FOOP-84 §Part 3 for the full terminology). The feature, syntax, semantics, cross-tabulation
+> table, pattern types, and test plan below are all current and authoritative.
+>
+> **What FOOP-84 supersedes here is mechanism only, not the feature.** FOOP-84 (Search Engine
+> Refactor) is the authoritative *search-engine* specification and replaces two things in this
+> document:
+> 1. **"Implementation Plan → Phase A"** — the `_ab_search`-override design is superseded by
+>    FOOP-84 Part 2's `AncestralNavigator` / `resolve_boundary_effect` / `CopyMode` mechanism.
+>    Build against that instead.
+> 2. **The "Prefilter locus" bullet** — detachment acts in the **Navigator** (pre-yield), not in
+>    the scan loop before `predicate.matches`. Struck in place below.
+>
+> Also updated: **"Nested markers"** is no longer UNDECIDED — resolved by FOOP-84 §2.3/§2.6
+> (per-candidate, innermost-to-outward, first-*matching*-level wins; no search reversal needed).
+> **"Exclusive detachment"** is reframed as one mechanism under FOOP-84's new "Required Searches"
+> future feature. **"Privacy detachment"** is unchanged. The **Scope** section added below
+> (descendant-only, outward-boundary-crossing-only, backward/ancestral-only) is load-bearing and
+> narrows the feature considerably — read it first.
+>
+> **Prerequisites:** FOOP-84 (the mechanism this builds on — must land first) and FOOP-43
+> (specifically its SFF-marked→ECONSTANIC rule and `EconstanicReason::Detached`, so a
+> fully-detached search defers rather than settling NK).
+>
+> *(An earlier revision of the 2026-07-28 commit reserved a separate "FOOP-85" for the
+> implementation of this feature. That was a mistake on two counts — it split a live feature from
+> its own specification, and 85 is not a valid next number under little-endian numbering
+> (`gen_next` yields FOOP-94). FOOP-85 is withdrawn; coordination detachment is specified and
+> tracked here, in FOOP-24.)*
 >
 > Lean draft. Fuller notes in the Appendix and `NOTES-creation-lineage-and-search-family.md` §2.
 > (Implementation order: #9 — the bridge from the search family to recursion. Renumbered
 > 2026-07-09. Atlas: tightening detachment should help recursion definitions.)
+>
+> **Terminology: cite FOOP-84 Part 0, do not restate.** Every search-family term this FOOP uses —
+> **search context** (§0.3: home brane *in its own context* + statement number of the matched
+> statement, carried by `FoolRefFir` at `ubc_children[1]`), **contextless/contexted search**
+> (§0.4), **anchored/unanchored** and what a miss proves (§0.2), the **detachment family**
+> (§0.5: coordination vs. privacy vs. Required Searches vs. strict — this FOOP specifies
+> **coordination** detachment), **marker scope** (§0.6), and **engine vocabulary** (§0.7) — is
+> defined there. On first use write the term plus its pointer, e.g. "search context (FOOP-84
+> §0.3)"; use the bare term thereafter.
 
 ## Abstract
 
@@ -67,9 +96,40 @@ are name patterns (same syntax as search patterns). Store them on the marker FIR
 
 ### Semantics
 
+#### Scope — what coordination detachment can and cannot affect (read this before the rest)
+
+**Coordination detachment affects only descendant searches of the SF/SFF marker, and only as
+those searches cross the marker's own boundary.** Three conditions must all hold before a
+detachment pattern is even tested against a candidate:
+
+1. **Descendant-only.** The search must originate lexically *inside* the marker's `Expr`. A marker
+   never affects searches outside it, in sibling branes, or in unrelated code. Detachment is not
+   ambient scope — it is a property of a boundary a search walks through.
+2. **Outward boundary crossing only.** The pattern is consulted only where the search's ancestral
+   (AB) climb *leaves* the marker, going from inside to outside. A search that finds its answer
+   **without reaching the marker boundary is entirely unaffected**, even though it sits lexically
+   under the marker.
+3. **Backward/ancestral searches only.** Only the outward AB climb crosses boundaries.
+   **Contexted (`&`) searches are never affected**, because a contexted search is clipped to its
+   home brane and never leaves it (FOOP-84 §1.3). Intra-brane scans that never climb are likewise
+   unaffected.
+
+So in `[a]<{ x = a; y = local }>` where `local` is defined inside the marker's own brane, the
+search for `local` never crosses the marker boundary and is never tested against `[a]` at all.
+Only `a`, which must be reached by climbing *past* the marker, is subject to detachment.
+
+The practical upshot: **a detachment cannot reach sideways or downward, and cannot affect a search
+that resolves locally.** The feature is considerably smaller than "these names are hidden inside
+this expression" suggests. See FOOP-84 §2.2.0 for the engine-level statement of the same rule
+(markers live in `AncestralNavigator` only; `BraneNavigator` and `contexted_search_from_anchor`
+are untouched).
+
+#### Marker behavior
+
 SF and SFF are parameterizable markers. When not parameterized (bare `<E>` or `<<E>>`), they
-affect all searches inside `Expr`. When parameterized (with `[patterns]`), they affect only the
-searches specified in the detachment configuration. For every search that `Expr` or its children
+affect all *boundary-crossing* searches inside `Expr` (per the scope rule above — not literally
+all searches). When parameterized (with `[patterns]`), they affect only the searches specified in
+the detachment configuration. For every boundary-crossing search that `Expr` or its children
 perform, a candidate matching any detachment pattern is handled according to the marker type:
 
 - **SF**: candidate is found but constanic constituents are copied constanic (not recoordinated)
@@ -262,10 +322,17 @@ struct, *not* a FIR — a detachment never steps). **All detachment data and fun
 - **Scope handoff.** Extend `Scope` (`fir_trait.rs:55`, today just `has_ancestral_sfm: bool`) to
   carry the **active `Detachment`(s)** accumulated from enclosing parameterized marks, pushed in
   `step_inner` (`fir_trait.rs:347`) when stepping under a parameterized marker.
-- **Prefilter locus.** In the scan loop (`contextful_search_scan`, `fir_kinds.rs:1978`), **before**
-  `predicate.matches`, call `decide_to_detach` on the candidate; skip on **Detach**, NK-the-search
-  on **NK**, proceed to the matcher on **Keep**. **Same locus as FOOP-93's `!`**, applied first
-  (a filter — order-idempotent for Detach/Keep; the NK outcome is likewise position-independent).
+- ~~**Prefilter locus.** In the scan loop (`contextful_search_scan`, `fir_kinds.rs:1978`),
+  **before** `predicate.matches`, call `decide_to_detach` on the candidate; skip on **Detach**,
+  NK-the-search on **NK**, proceed to the matcher on **Keep**. **Same locus as FOOP-93's `!`**,
+  applied first (a filter — order-idempotent for Detach/Keep; the NK outcome is likewise
+  position-independent).~~
+  **Superseded by FOOP-84 §2.3.** The locus is **not** the scan loop and **not** shared with
+  FOOP-93. Detachment acts inside the **Navigator** (`AncestralNavigator::next_candidate`),
+  filtering candidates *before they are ever yielded* to the scan loop — so the predicate never
+  sees a detached candidate and there is no ordering interaction with FOOP-93's `!`/`&&`/`||`.
+  The two are orthogonal (Navigator vs. Predicate) and need no relative sequencing. Only the
+  ancestral walk is involved, per the Scope section above.
 - **Reason tag (FOOP-43 Component 3).** When a search settles ECONSTANIC because a candidate was
   **Detached**, set `EconstanicReason::Detached`.
 - **Keep existing SFF unchanged.** Naked `<<>>` keeps its current implementation; `[*]<<>>`
@@ -534,9 +601,48 @@ is straightforward; the *semantics* (which searches to NK) is the unresolved par
 
 ## Last Updated
 
+**Date**: 2026-07-28 (5)
+**Updated By**: Claude Code (Opus 5)
+**Changes**: Added the "cite FOOP-84 Part 0, do not restate" terminology banner — FOOP-84 Part 0
+is now the single definition site for search context (§0.3), the two search families (§0.4),
+anchoring/miss outcomes (§0.2), the detachment family (§0.5), marker scope (§0.6), and engine
+vocabulary (§0.7). First use of any such term in this FOOP carries a §-pointer; no redefinition
+here. This FOOP specifies **coordination** detachment specifically (§0.5).
+
+**Date**: 2026-07-28 (3)
+**Updated By**: Claude Code (Opus 5)
+**Changes**: Added a **Scope** section at the head of Semantics stating plainly, at the user's
+direction, that **coordination detachment affects only descendant searches of the SF/SFF marker,
+as they cross the marker's own boundary** — three conditions (descendant-only, outward
+boundary-crossing only, backward/ancestral only), the `[a]<{x=a; y=local}>` worked example showing
+`local` is never tested against the pattern, and the upshot that a detachment cannot reach
+sideways or downward or affect a locally-resolving search. Qualified the following paragraph's
+"affect all searches inside `Expr`" to "all *boundary-crossing* searches." Struck the
+**Prefilter locus** bullet in the Implementation Plan (it placed `decide_to_detach` in the scan
+loop before `predicate.matches`, sharing a locus with FOOP-93) and replaced it with the FOOP-84
+§2.3 position: detachment acts in the Navigator, pre-yield, so FOOP-93 and FOOP-85 are orthogonal
+and need no relative sequencing. Body otherwise unchanged.
+
+**Date**: 2026-07-28 (4)
+**Updated By**: Claude Code (Opus 5)
+**Changes**: **This file is restored as the live coordination detachment FOOP; FOOP-85 is
+withdrawn.** Retitled to "Coordination detachment — parameterized stay-foolish markers"
+(frontmatter and heading). Replaced the PARTIALLY SUPERSEDED banner — which had demoted this file
+to a historical document and pointed implementation at a separate FOOP-85 — with an accurate one:
+FOOP-84 supersedes **mechanism only** (the Phase A `_ab_search`-override design and the scan-loop
+prefilter locus), while this file's feature, syntax, semantics, cross-tabulation table, pattern
+types, and test plan all remain **current and authoritative**. Rationale: FOOP-84 Part 3 *renamed*
+this file's feature, it did not fork a new one, so reserving a second number split a live feature
+from its own specification; and 85 was not a valid next number under little-endian numbering
+(`gen_next` yields FOOP-94). Banner now also records prerequisites (FOOP-84, and FOOP-43's
+SFF-marked→ECONSTANIC rule + `EconstanicReason::Detached`) and points at the Scope section as
+load-bearing. The 2026-07-28 (2) entry below is retained as an accurate record of what that commit
+did, not as current guidance.
+
 **Date**: 2026-07-28 (2)
 **Updated By**: Claude Code (Sonnet 5)
-**Changes**: Added a PARTIALLY SUPERSEDED banner pointing to **FOOP-84** (Search Engine Refactor
+**Changes**: *(Superseded by the 2026-07-28 (4) entry above — the FOOP-85 reservation described
+here was withdrawn.)* Added a PARTIALLY SUPERSEDED banner pointing to **FOOP-84** (Search Engine Refactor
 — the new authoritative search specification) and **FOOP-85** (Coordination detachment, the
 implementation FOOP for this file's feature, built on FOOP-84's `AncestralNavigator`/`CopyMode`
 mechanism instead of this file's `_ab_search`-override Phase A plan). The "Nested markers"

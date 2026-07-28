@@ -45,7 +45,7 @@ ls | rev | sort -V | rev
 | [FOOP-13](FOOP-13.md) | MAX_BRANE_SIZE — auto-sizing via a non-merging ConcatBrane equivalent to the merged brane | Brewing | phase-2 | 2026-07-03 | Atlas |
 | [FOOP-23](FOOP-23.md) | Value search and contexted (&-prefixed) search — value equality, expression patterns, and searching from a statement's position | Draft | phase-2 | 2026-07-04 | Atlas |
 | [FOOP-33](FOOP-33.md) | The Creation Postulate — ⬤, universal characterizations, and Booleans | Final | phase-4 | 2026-07-07 | Atlas |
-| [FOOP-43](FOOP-43.md) | Search miss settles ECONSTANIC, not NK (foundational keystone) | Draft | phase-2 | 2026-07-09 | Atlas |
+| [FOOP-43](FOOP-43.md) | Search settlement — miss settles by anchoring; SFF-marked → ECONSTANIC (foundational keystone) | Draft | phase-2 | 2026-07-09 | Atlas |
 | [FOOP-53](FOOP-53.md) | Computed index — `#${...}` | Draft | phase-2 | 2026-07-09 | Atlas |
 | [FOOP-63](FOOP-63.md) | Primitive Characterization — the `i'`/`s'`/`f'` type system | Draft | phase-4 | 2026-07-09 | Atlas |
 | [FOOP-73](FOOP-73.md) | Boolean operators — and, or, not, nor, xor (Foolish truth-table searches) | Draft | phase-4 | 2026-07-09 | Atlas |
@@ -53,7 +53,7 @@ ls | rev | sort -V | rev
 | [FOOP-93](FOOP-93.md) | Search predicates — inverse matcher `!` and matcher boolean operators `&&`/`\|\|` | Draft | phase-2 | 2026-07-09 | Atlas |
 | [FOOP-04](FOOP-04.md) | Cascading connector for search — the `\|` fallback operator | Draft | phase-2 | 2026-07-09 | Atlas |
 | [FOOP-14](FOOP-14.md) | All-results (find-all) search — doubled operators `~~`/`??` | Draft | phase-2 | 2026-07-09 | Atlas |
-| [FOOP-24](FOOP-24.md) | Detachment — parameterized stay-foolish markers | Draft | phase-2 | 2026-07-09 | Atlas |
+| [FOOP-24](FOOP-24.md) | Coordination detachment — parameterized stay-foolish markers | Draft | phase-2 | 2026-07-09 | Atlas |
 | [FOOP-34](FOOP-34.md) | Recursion Upgrades (standalone research; write algorithms first) | Draft | phase-5 | 2026-07-09 | Atlas |
 | [FOOP-44](FOOP-44.md) | Macros — research and design (standalone research) | Draft | phase-6 | 2026-07-09 | Atlas |
 | [FOOP-74](FOOP-74.md) | FIRID — atomic per-Fir identity for constanic-clone cycle detection | Draft | phase-2 | 2026-07-11 | Atlas |
@@ -83,17 +83,16 @@ ls | rev | sort -V | rev
 - [FOOP-23](FOOP-23.md) — Value search + contexted `&`-searches — `~=`/`?=`, expression patterns, `&`-prefix navigation from a statement (`FoolRefFir`). **Semantics superseded by FOOP-84** (2026-07-28) — FOOP-23 remains authoritative only for grammar productions, the approval-test-input catalog, Rejected Alternatives, and its bug-fix Appendix.
 *(Implementation-ordered batch built on FOOP-33; renumbered 2026-07-09 so number ≈ impl order.
 **Search-engine sub-ordering corrected 2026-07-28 — see the explicit list immediately below.**)*
-- [FOOP-43](FOOP-43.md) — Search miss → ECONSTANIC not NK + **coordination removes search context** (foundational keystone; found-`???`→NK vs not-found→WOCONSTANIC; prereq for FOOP-63/73/85/34)
+- [FOOP-43](FOOP-43.md) — Search settlement: **anchored miss → NK** (unchanged — an anchored search proves absence), **unanchored miss → ECONSTANIC** (unchanged), **SFF-marked search → ECONSTANIC regardless of anchoring** (the actual change — withheld candidates leave a search deferrable, not dead) + the NK-propagation fix (a deepen on an *unresolved* anchor waits instead of forcing NK) + **coordination removes search context** + the `EconstanicReason` tag (foundational keystone; prereq for FOOP-63/73/84/85/34)
 - [FOOP-53](FOOP-53.md) — Computed index `#${...}` (evaluate brane, tail as number, run `#`; self-contained early win)
 - [FOOP-63](FOOP-63.md) — Primitive Characterization: `i'`/`s'`/`f'` type system; characterization = type-tag + search-demand (brane WOCONSTANIC-waits); needs FOOP-33 + FOOP-43
 - [FOOP-73](FOOP-73.md) — Boolean operators and/or/not/nor/xor as **Foolish truth-table searches** (no privileged layer; FVM-compute fallback); needs FOOP-33
 - [FOOP-83](FOOP-83.md) — Integer math: exponent `**` + comparisons `< > <= >=` returning True/False (needs FOOP-33/73; `*`/`%` already done)
-- [FOOP-84](FOOP-84.md) — **Search Engine Refactor — now the required foundation for the rest of this search-family batch, land it before FOOP-93/FOOP-04/FOOP-14/FOOP-85.** Supersedes FOOP-23/FOOP-24 as the authoritative search spec (absorbs the full operator table, `FoolRefFir` shape, name+value atomicity rule, and cursor-source×predicate framing so downstream FOOPs can cite it alone); unifies `ab_search_with_engine`/`BraneFir::_ab_search` into one `AncestralNavigator`; introduces per-candidate, innermost-to-outward boundary evaluation (`CopyMode`/`BoundaryEffect`, replacing blanket `Scope.has_ancestral_sfm`) that FOOP-85 builds on; documents `contexted ⟹ anchored` as permanent policy; behavior-preserving (no snapshot churn expected). Needs FOOP-43 (relies on, does not modify).
-- [FOOP-93](FOOP-93.md) — Search predicates: inverse matcher `!` + matcher boolean operators `&&`/`||` (compiler-hard-coded matcher-outcome ops; SearchPredicate `And`/`Or`/negate). **Needs FOOP-84** (extends its `SearchPredicate`/de-duplicated Navigator; the old "shares a locus with detachment" note is corrected — orthogonal to FOOP-85, no relative ordering needed between the two).
+- [FOOP-84](FOOP-84.md) — **Search Engine Refactor — now the required foundation for the rest of this search-family batch, land it before FOOP-93/FOOP-04/FOOP-14/FOOP-24.** Supersedes FOOP-23/FOOP-24 as the authoritative search spec (absorbs the full operator table, `FoolRefFir` shape, name+value atomicity rule, and cursor-source×predicate framing so downstream FOOPs can cite it alone); unifies `ab_search_with_engine`/`BraneFir::_ab_search` into one `AncestralNavigator`; introduces per-candidate, innermost-to-outward boundary evaluation (`CopyMode`/`BoundaryEffect`, replacing `Scope.has_ancestral_sfm`) that FOOP-24 builds on; **§2.2.0 scope rule** — a marker affects only a backward/ancestral search originating inside it, only at the outward boundary crossing (never contexted `&` searches, never locally-resolving searches); documents `contexted ⟹ anchored` as permanent policy. **Two halves with different risk: Part 1 + §2.2 are behavior-preserving (no snapshot may change); §2.3–§2.5 are a deliberate semantic change with expected SF/SFF snapshot churn** — land as separate commits. **Hard dependency on FOOP-43** (§1.5 settlement rule and Component 3's `EconstanicReason::Detached`, which §2.4.1 now requires).
+- [FOOP-93](FOOP-93.md) — Search predicates: inverse matcher `!` + matcher boolean operators `&&`/`||` (compiler-hard-coded matcher-outcome ops; SearchPredicate `And`/`Or`/negate). **Needs FOOP-84** (extends its `SearchPredicate`/de-duplicated Navigator; the old "shares a locus with detachment" note is corrected — orthogonal to FOOP-24, no relative ordering needed between the two).
 - [FOOP-04](FOOP-04.md) — Cascading connector `|` (fallback between whole searches; `CascadingSearchFir`, shared-fixed-anchor semantics; needs FOOP-43). **Needs FOOP-84** (builds on its `FoolRefFir`/contexted-resume restatement and de-duplicated Navigator).
-- [FOOP-14](FOOP-14.md) — All-results `~~`/`??` (doubled operators collect into a brane; tokens already lexed). **Needs FOOP-84** (collect-mode scan runs over its `AncestralNavigator`; composes for free with FOOP-85's `Detach` filtering — no special handling needed, see FOOP-14's Composition note).
-- **FOOP-85 (Coordination detachment — reserved, not yet created)** — implements the `Detachment` struct, `decide_to_detach`, `[patterns]` parsing, and marks the `[patterns]<...>`/`[patterns]<<...>>` syntax, on top of FOOP-84 Part 2's `resolve_boundary_effect`/`CopyMode` mechanism (replacing FOOP-24's superseded `_ab_search`-override Phase A design). Also carries forward FOOP-84 §Part 3's terminology (this is the FOOP-24 feature renamed "Coordination detachment") and the worked NK-value-gate example motivating a future "Required Searches" feature. **Needs FOOP-84** (hard dependency — Part 2 is the mechanism it implements against) **and FOOP-43** (miss→ECONSTANIC for full-detachment exhaustion). Independent of FOOP-93/FOOP-04/FOOP-14 (orthogonal, per FOOP-84 §2.3 — no relative ordering required among the four FOOP-84 descendants).
-- [FOOP-24](FOOP-24.md) — Detachment = parameterized SF/SFF marker (original design; **PARTIALLY SUPERSEDED by FOOP-84** — retained for historical design discussion, the SF/SFF cross-tabulation table, and the backburnered strict-detachment appendix; implementation now tracked as FOOP-85 above, not this file's Phase A/B plan)
+- [FOOP-14](FOOP-14.md) — All-results `~~`/`??` (doubled operators collect into a brane; tokens already lexed). **Needs FOOP-84** (collect-mode scan runs over its `AncestralNavigator`; composes for free with FOOP-24's `Detach` filtering — no special handling needed, see FOOP-14's Composition note).
+- [FOOP-24](FOOP-24.md) — **Coordination detachment** = parameterized SF/SFF marker (`[patterns]<...>` / `[patterns]<<...>>`; the `Detachment` struct, `decide_to_detach`, `[patterns]` parsing). **The live spec for the feature** — renamed from plain "Detachment" per FOOP-84 §Part 3. FOOP-84 supersedes its *mechanism* only (Implementation Plan → Phase A's `_ab_search`-override, and the scan-loop prefilter locus) — build on FOOP-84 Part 2's `resolve_boundary_effect`/`CopyMode` instead. "Nested markers" resolved (FOOP-84 §2.3/§2.6); "Exclusive detachment" reframed under "Required Searches". Scope is narrow (FOOP-84 §2.2.0): **affects only descendant searches of the marker, as they cross the marker's boundary outward** — never contexted (`&`) searches, never locally-resolving ones. **Needs FOOP-84** (hard dependency) **and FOOP-43** (its SFF-marked→ECONSTANIC rule + `EconstanicReason::Detached`, so full-detachment exhaustion defers rather than settling NK). Independent of FOOP-93/FOOP-04/FOOP-14.
 - [FOOP-34](FOOP-34.md) — Recursion Upgrades (**standalone research**; write ~1–2 dozen algorithms first; after the full search suite — FOOP-84/93/04/14/85; `↑`; no cycle detection)
 - [FOOP-44](FOOP-44.md) — Macros (**standalone research**; brane-transforms-brane vs expansion phase; leans on FOOP-14 + characterizations)
 - [FOOP-74](FOOP-74.md) — FIRID (atomic per-Fir instance counter) + thread-local in-flight clone stack; `eprintln!` alarm when `constanic_clone_at` re-enters an already-in-progress FIRID (detection/visibility only, not a language semantic — distinct from FOOP-34's "no recursion-cycle detection" language-design stance)
@@ -103,16 +102,18 @@ that FOOP-24's detachment design needed a real engine refactor (now FOOP-84) mea
 flat listing above (FOOP-93 → FOOP-04 → FOOP-14 → FOOP-24) no longer reflects buildable order.
 Corrected order:
 
-1. **FOOP-43** (already keystone; unchanged) — miss→ECONSTANIC, prerequisite for everything below.
+1. **FOOP-43** (keystone) — miss settles by anchoring (anchored→NK, unanchored→ECONSTANIC),
+   **SFF-marked→ECONSTANIC**, the NK-propagation fix, and the `EconstanicReason` tag. Prerequisite
+   for everything below; FOOP-84 §1.5/§2.4.1 depend on it directly.
 2. **FOOP-84** (new keystone for the search-engine internals) — `AncestralNavigator`,
    `CopyMode`/`BoundaryEffect`, the absorbed operator-table reference. Nothing below can be
    cleanly built without this landing first — it de-duplicates the two existing search code paths
-   that FOOP-93/FOOP-04/FOOP-14/FOOP-85 would otherwise each have to individually reconcile with.
-3. **FOOP-93, FOOP-04, FOOP-14, FOOP-85** — mutually independent (orthogonal collaborators: two
+   that FOOP-93/FOOP-04/FOOP-14/FOOP-24 would otherwise each have to individually reconcile with.
+3. **FOOP-93, FOOP-04, FOOP-14, FOOP-24** — mutually independent (orthogonal collaborators: two
    extend `SearchPredicate`/scan-mode, one is a standalone wrapper FIR, one extends the Navigator
-   via marker configuration); may land in any order or in parallel once FOOP-84 is done. FOOP-85
-   is the only one with an additional prerequisite (FOOP-43, for full-detachment exhaustion —
-   already satisfied by step 1).
+   via marker configuration); may land in any order or in parallel once FOOP-84 is done. FOOP-24
+   is the only one with an additional prerequisite (FOOP-43's SFF-marked→ECONSTANIC rule, for
+   full-detachment exhaustion — already satisfied by step 1).
 4. **FOOP-34** (recursion) — after the full search suite (all of the above), per its own spec.
 
 ### Brewing
@@ -205,6 +206,36 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 ---
 
 ## Last Updated
+
+**Date**: 2026-07-28 (4)
+**Updated By**: Claude Code (Opus 5)
+**Changes**: **FOOP-85 withdrawn; coordination detachment stays in FOOP-24.** The 2026-07-28 (2)
+revision reserved a separate FOOP-85 for implementing what FOOP-24 already specifies. That was
+wrong on two counts: (a) coordination detachment **is** FOOP-24's feature — FOOP-84 Part 3 renamed
+it, it did not fork a new one — so reserving a second number split a live feature from its own
+specification and demoted FOOP-24 to a "historical" document while its semantics, cross-tabulation
+table, pattern types, and test plan all remained current; (b) 85 is not a valid next number under
+little-endian numbering — `foop_check.py gen_next` yields **FOOP-94** (sort key 49). Removed the
+FOOP-85 bullet, folded its content into a rewritten FOOP-24 entry (retitled "Coordination
+detachment"), and redirected every live FOOP-85 reference across FOOP-84, FOOP-93, FOOP-43, and
+this index to FOOP-24. What FOOP-84 supersedes in FOOP-24 is **mechanism only** (the Phase A
+`_ab_search`-override design and the scan-loop prefilter locus), not the feature. FOOP-94 remains
+free for genuinely new work.
+
+**Date**: 2026-07-28 (3)
+**Updated By**: Claude Code (Opus 5)
+**Changes**: Propagated three FOOP-43/FOOP-84 corrections settled with Atlas this session.
+(1) **FOOP-43's rule changed**: anchored miss stays **NK** (not ECONSTANIC as its prior draft
+proposed); unanchored miss stays ECONSTANIC; the real change is **SFF-marked searches →
+ECONSTANIC regardless of anchoring**, plus the NK-propagation fix for deepens on unresolved
+anchors. Retitled FOOP-43 and rewrote both index entries. (2) **FOOP-84's behavior-preserving
+claim split**: Part 1 + §2.2 preserve behavior (no snapshot may change), §2.3–§2.5 are a
+deliberate semantic change with expected SF/SFF churn; upgraded its FOOP-43 dependency from
+"relies on, does not modify" to a hard dependency (§2.4.1 now needs `EconstanicReason::Detached`).
+(3) **Marker scope rule** (FOOP-84 §2.2.0) recorded on the FOOP-84 and FOOP-85 entries: a marker
+affects only backward/ancestral searches originating inside it, only at the outward boundary
+crossing — never contexted (`&`) searches, never locally-resolving ones. Corrected FOOP-85's
+prerequisite description to name the SFF-marked rule rather than anchored-miss recoordination.
 
 **Date**: 2026-07-28 (2)
 **Updated By**: Claude Code (Sonnet 5)

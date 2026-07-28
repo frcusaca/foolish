@@ -22,11 +22,29 @@ begun: [ ]
 > shape after FOOP-84**, on top of its de-duplicated `AncestralNavigator` (FOOP-84 §2.2), so
 > there is only one Navigator implementation to extend. **Correction to the Appendix note below**
 > ("shares the prefilter locus with detachment"): that is now **wrong** — per FOOP-84 §2.3,
-> coordination detachment (FOOP-85) acts inside the *Navigator*, filtering candidates before
+> coordination detachment (FOOP-24) acts inside the *Navigator*, filtering candidates before
 > `next_candidate()` ever returns them, not inside `SearchPredicate::matches`. This FOOP's `!`/
-> `&&`/`||` and FOOP-85's detachment are therefore **not** sharing a locus — they are cleanly
+> `&&`/`||` and FOOP-24's detachment are therefore **not** sharing a locus — they are cleanly
 > orthogonal (Navigator vs. Predicate), which needs no coordination between the two FOOPs at all.
 > The Appendix bullet is left below, struck through, for the historical record.
+>
+> **Why the orthogonality is airtight (FOOP-84 §2.2.0).** Marker effects are narrowly scoped: a
+> marker acts **only** on a backward/ancestral search **originating inside** it, and **only** at
+> the point that search's AB climb **crosses the marker's boundary outward** — never on contexted
+> (`&`) searches, never on searches that resolve without reaching the boundary. Predicates, by
+> contrast, are evaluated per candidate wherever the scan runs. So a predicate never observes a
+> detached candidate (it was filtered upstream) and a marker never inspects a predicate's
+> structure. `!`, `&&`, and `||` compose over whatever candidates the Navigator chooses to yield,
+> with no case analysis on markers required anywhere in this FOOP.
+>
+> **Terminology: cite FOOP-84 Part 0, do not restate.** Every search-family term this FOOP uses —
+> **search context** (§0.3: home brane *in its own context* + statement number of the matched
+> statement, carried by `FoolRefFir` at `ubc_children[1]`), **contextless/contexted search**
+> (§0.4), **anchored/unanchored** and what a miss proves (§0.2), the **detachment family**
+> (§0.5: coordination vs. privacy vs. Required Searches vs. strict), **marker scope** (§0.6), and
+> **engine vocabulary** (§0.7: Candidate Navigator, Statement Matcher, cursor-source, `CopyMode`,
+> `BoundaryEffect`) — is defined there. On first use write the term plus its pointer, e.g.
+> "search context (FOOP-84 §0.3)"; use the bare term thereafter.
 
 ## Abstract
 
@@ -175,9 +193,9 @@ two-booleans distinction.)
   control-flow cascade vs scan-mode.
 - ~~Shares the prefilter locus with **detachment** (FOOP-24) — both act at
   `SearchPredicate::matches` / the scan loop; do this first, detachment reuses the seam.~~
-  **Superseded by FOOP-84**: coordination detachment (FOOP-85, the implementation FOOP for what
+  **Superseded by FOOP-84**: coordination detachment (FOOP-24, the implementation FOOP for what
   was FOOP-24) acts in the **Navigator** (filtering candidates before they reach the predicate at
-  all — FOOP-84 §2.3), not in `SearchPredicate::matches`. This FOOP and FOOP-85 do not share a
+  all — FOOP-84 §2.3), not in `SearchPredicate::matches`. This FOOP and FOOP-24 do not share a
   locus and do not need to be sequenced relative to each other for that reason; land either
   first, both after FOOP-84.
 - Composes with **FOOP-14** (`a!~~x` = all names not matching) and enables the boolean-table
@@ -196,6 +214,23 @@ two-booleans distinction.)
 - Notes: `NOTES-creation-lineage-and-search-family.md` §4/§9 + Engineering guidance.
 
 ## Last Updated
+
+**Date**: 2026-07-28 (2)
+**Updated By**: Claude Code (Opus 5)
+**Changes**: Added the "cite FOOP-84 Part 0, do not restate" terminology banner — FOOP-84 Part 0
+is now the single definition site for search context (§0.3), the two search families (§0.4),
+anchoring/miss outcomes (§0.2), the detachment family (§0.5), marker scope (§0.6), and engine
+vocabulary (§0.7). First use of any such term in this FOOP carries a §-pointer; no redefinition
+here.
+
+**Date**: 2026-07-28 (2)
+**Updated By**: Claude Code (Opus 5)
+**Changes**: Added the marker **scope rule** (FOOP-84 §2.2.0) to the banner, at the user's
+direction: markers act only on backward/ancestral searches originating inside them, only at the
+outward boundary crossing — never on contexted (`&`) searches or searches resolving before the
+boundary. Spelled out why that makes this FOOP's orthogonality with FOOP-24 airtight: a predicate
+never observes a detached candidate (filtered upstream in the Navigator), a marker never inspects
+predicate structure, so `!`/`&&`/`||` need no marker case analysis anywhere.
 
 **Date**: 2026-07-28
 **Updated By**: Claude Code (Sonnet 5)

@@ -1,6 +1,6 @@
 ---
 foop: 34
-title: Search settlement — miss becomes ECONSTANIC, and coordination removes search context
+title: Search settlement — miss settles by anchoring, SFF-marked searches are ECONSTANIC, and coordination removes search context
 author: Atlas hc.busy@gmail.com
 status: Draft
 type: Standards
@@ -10,14 +10,22 @@ supersedes: []
 begun: [ ]
 ---
 
-# FOOP-43: Search settlement — miss → ECONSTANIC, and coordination removes search context
+# FOOP-43: Search settlement — miss settles by anchoring, and coordination removes search context
 
 > Lean draft. Fuller-spec notes are in the Appendix and in
 > `docs/foop/NOTES-creation-lineage-and-search-family.md` §7.
+>
+> **Terminology: cite FOOP-84 Part 0, do not restate.** This FOOP's vocabulary — **anchored /
+> unanchored** and **what a miss proves** (§0.2), **search context** (§0.3: home brane *in its own
+> context* + statement number, carried by `FoolRefFir` at `ubc_children[1]` — the thing Component
+> 2 strips on coordination), **contextless / contexted search** (§0.4), the **detachment family**
+> (§0.5), and **NK vs ECONSTANIC** (§0.2) — is defined in FOOP-84 Part 0. FOOP-84 §1.5 restates
+> this FOOP's Component 1 settlement rule and must stay in sync with it.
 
 **Three components** (all about how a search's *context* settles and propagates):
-1. **Miss → ECONSTANIC** (not NK) — a not-found search may recoordinate; only found-`???` and
-   provable-impossibility stay NK.
+1. **Miss settles by anchoring** — an **unanchored** miss → ECONSTANIC (may recoordinate); an
+   **anchored** miss stays **NK** (provably not in that brane); an **SFF-marked search** →
+   ECONSTANIC regardless of anchoring. Found-`???` and provable-impossibility stay NK.
 2. **Coordination removes search context** — a coordinated (referenced) search is just its value;
    its positional context (the `FoolRefFir`) is stripped, so a continued `&`-search off it NKs.
 3. **ECONSTANIC records *why*** — a reason tag (Miss | Detached | CharDemand | …) on the ECONSTANIC
@@ -25,21 +33,48 @@ begun: [ ]
 
 ## Abstract
 
-**Component 1.** A search that **exhausts its candidate stream with no match** (a *miss*) currently
-settles **NK**
-when anchored (`fir_kinds.rs:1277`) — the rule FOOP-23 and AGENTS.md document as "anchored miss →
-NK, provably not in that brane." This FOOP revises that: a **miss settles ECONSTANIC** (may gain a
-value via recoordination), regardless of anchoring. **NK survives only for provable
-unknowability** — a *found* value that is `???` (NK), or a provable-impossibility like an index
-out of a settled finite brane. This is foundational: the search family (FOOP-53/63/24) and the
-type system (FOOP-44) all rely on "not-found means *wait*, not *die*."
+**Component 1.** A search that **exhausts its candidate stream with no match** (a *miss*) settles
+according to **how it was anchored**:
+
+- **Anchored miss → NK.** *Unchanged from today* (`fir_kinds.rs:1277`) and from FOOP-23 /
+  AGENTS.md. An anchored search names the brane it searches; exhausting that brane without a
+  match is a *proof* the name is not there. NK is exactly right, and keeping it preserves NK's
+  meaning as "provably unknowable" rather than blurring it into "not found yet."
+- **Unanchored miss → ECONSTANIC.** *Unchanged from today.* An unanchored search has no fixed
+  brane to prove absence against — it may gain a value via recoordination.
+- **SFF-marked search → ECONSTANIC**, regardless of anchoring. A search whose candidates were
+  withheld by a stay-fully-foolish marker did not *fail to find* anything; it was *prevented from
+  looking*. It must stay recoordinatable so the marker's whole purpose — defer resolution to the
+  use site — still works. See Component 3 for the reason tag that distinguishes this from a
+  genuine miss.
+
+**NK otherwise survives for provable unknowability**: a *found* value that is `???` (NK), or a
+provable-impossibility like an index out of a settled finite brane.
+
+**What this FOOP actually changes.** Component 1 is now largely a *codification* of existing
+behavior rather than a revision of it — the real change is the third bullet (SFF-marked searches
+must not be swept into the anchored-miss→NK rule) plus the NK-propagation fix described in
+Motivation. Components 2 and 3 are unchanged and carry the rest of this FOOP's substance.
 
 ## Motivation
 
 The bug is visible in `{ a = b.c.d }` where `b` is undefined. Today the inner search for `b`
 misses → settles NK → the `.c` deepen sees an NK anchor (`fir_kinds.rs:1252`) → forces NK → `a`
-is NK. But `b` is **not provably absent** — the brane is still being coordinated; `b` could
-resolve later. `a` should be **WOCONSTANIC** (waiting on `b`'s ECONSTANIC search), not NK.
+is NK.
+
+Note **`b` is unanchored** — it heads the chain, so there is nothing to anchor it — and an
+unanchored miss is ECONSTANIC under the rule above. So the defect here is *not* miss settlement.
+It is **NK propagation through an anchor**: `.c` and `.d` are anchored searches that never miss;
+they are *waiting* on an anchor that has not resolved. The correct result is
+
+```
+a = wconstanic("d", wconstanic("c", econstanic("b")))
+```
+
+i.e. `a` is **WOCONSTANIC**, waiting outward through the deepen chain on `b`'s ECONSTANIC search.
+`b` is **not provably absent** — the brane is still being coordinated, and `b` could resolve
+later. The fix is that a deepen whose anchor is *unresolved* must wait rather than force NK; it
+does not require changing what an anchored miss settles to.
 
 The discriminator that today's code misses is **found-but-NK vs not-found**:
 
@@ -52,25 +87,39 @@ indistinguishable from a found-`???` `b` at the point `.c` deepens.
 
 ## Specification
 
-### Component 1 — miss → ECONSTANIC
+### Component 1 — miss settles by anchoring; SFF-marked searches are ECONSTANIC
 
 For any search over a candidate stream:
 
-- **Miss (stream exhausted, no candidate matched) → ECONSTANIC.** Unchanged for unanchored
-  searches; **changed for anchored searches** (were NK). The result "may gain a value via
-  recoordination."
+- **Anchored miss → NK.** *Unchanged.* The anchor names the brane; exhausting it without a match
+  proves the name is absent from that brane. Terminal.
+- **Unanchored miss → ECONSTANIC.** *Unchanged.* No fixed brane, so no proof of absence; "may
+  gain a value via recoordination."
+- **SFF-marked search → ECONSTANIC**, regardless of anchoring. **This is the change.** A search
+  that came up empty because a stay-fully-foolish marker withheld its candidates has proved
+  nothing — it never got to look. Settling it NK would make the marker destroy the search instead
+  of deferring it, defeating SFF's purpose. It settles ECONSTANIC and carries
+  `EconstanicReason::Detached` (Component 3) so the distinction is legible downstream.
 - **Found a value that is `NK` → NK propagates.** Deepening/reading a genuinely-unknowable value
   is unknowable. Terminal.
 - **Provable-impossibility → NK.** Cases where the answer is provably determined-absent on a
   *settled* structure — e.g. `#N` out of range on a settled finite brane, head/tail of a settled
-  empty brane. (Enumerate and preserve these; they are the *only* remaining NK-by-structure
-  cases.)
+  empty brane. (Enumerate and preserve these.)
 
-A deepen-chain (`b.c.d`) whose anchor **missed** becomes **WOCONSTANIC** (waiting on the
-anchor's ECONSTANIC search), not NK.
+**Separately — the NK-propagation fix.** A deepen-chain (`b.c.d`) whose anchor is **unresolved**
+(ECONSTANIC/WOCONSTANIC) becomes **WOCONSTANIC**, waiting on that anchor — it must not force NK.
+This is independent of miss settlement and is the actual defect Motivation describes.
 
-This revises FOOP-23 §"Miss" and AGENTS.md §"NK vs ECONSTANIC miss outcomes": "anchored miss →
-NK" becomes "anchored miss → ECONSTANIC." Those documents must be updated.
+**Relationship to FOOP-23 / AGENTS.md.** The "anchored miss → NK" rule those documents state is
+**correct and stands** — no update needed there. What they do not yet cover is the SFF-marked
+case, which this FOOP adds.
+
+**Why not "all misses → ECONSTANIC."** An earlier draft of this FOOP made miss → ECONSTANIC
+unconditional. Rejected: it costs NK its precise meaning. Under the rule above, NK continues to
+mean "provably unknowable," which keeps anchored search a genuine assertion about a named brane
+and lets real errors surface early. Programs that want deferred resolution have an explicit,
+readable opt-out — wrap the search in `<<…>>` — rather than getting it implicitly from every
+anchored miss in the program.
 
 ### Component 2 — coordination removes search context (the `&`-anchor rule)
 
@@ -131,13 +180,21 @@ per-kind field — is an impl choice).
 ## UBC Step Impact
 
 **Component 1:**
-- **`SearchFir` miss branch** (`fir_kinds.rs:1277`): anchored miss `Nyes::Nk` → `Nyes::Econstanic`.
+- **`SearchFir` miss branch** (`fir_kinds.rs:1277`): **unchanged** — anchored miss keeps
+  `Nyes::Nk`, unanchored miss keeps `Nyes::Econstanic`.
+- **SFF-marked searches**: a search whose candidates were withheld by a stay-fully-foolish marker
+  must settle `Nyes::Econstanic` with `EconstanicReason::Detached`, *not* fall through to the
+  anchored-miss NK branch. This requires the withheld-because-of-a-marker case to be
+  **distinguishable** from a genuine exhausted-stream miss at the point of settlement — an empty
+  candidate stream alone is not enough information. See FOOP-84 §2.4.1, which must be revised to
+  match (it currently assumes exhaustion-implies-ECONSTANIC with no reason tag).
 - **Deepen-chain NK check** (`fir_kinds.rs:1252`, `resolve_anchor` → NK): must fire only when the
-  anchor's NK is a *found-`???`*, not a *miss*. Once miss ≠ NK, a not-found anchor is ECONSTANIC →
-  the chain follows `deepest_econstanic_in_chain` (`fir_kinds.rs:86`) to WOCONSTANIC, while a
-  found-`???` anchor stays NK → chain NK. The two cases separate automatically.
-- **Value-search miss paths** (`value_search_step`): audit for the same miss→ECONSTANIC (FOOP-23
-  already flagged this at FOOP-23.md:1051-1054).
+  anchor's NK is a *found-`???`*, not when the anchor is merely **unresolved**
+  (ECONSTANIC/WOCONSTANIC). An unresolved anchor makes the chain follow
+  `deepest_econstanic_in_chain` (`fir_kinds.rs:86`) to WOCONSTANIC; a found-`???` anchor stays NK
+  → chain NK. **This is the real Component-1 code change** (the miss branch itself is untouched).
+- **Value-search miss paths** (`value_search_step`): audit that they follow the same
+  anchored→NK / unanchored→ECONSTANIC split (FOOP-23 flagged this at FOOP-23.md:1051-1054).
 
 **Component 2:**
 - **Constanic-clone `Search` arm** (`fir_kinds.rs:246-253`): currently clones **all**
@@ -156,9 +213,12 @@ per-kind field — is an impl choice).
 ## Test Plan
 
 **Component 1:**
-- Unit: `{a=b.c.d}` (no `b`) → `a` WOCONSTANIC; `{b=???, a=b.c.d}` → `a` NK; bare `a?zzz`
-  (anchored miss) → ECONSTANIC; `#N` out-of-range on a *settled* brane → still NK; head/tail of
-  settled empty brane → still NK.
+- Unit: `{a=b.c.d}` (no `b`) → `a` WOCONSTANIC, structurally
+  `wconstanic("d", wconstanic("c", econstanic("b")))`; `{b=???, a=b.c.d}` → `a` NK; bare `a?zzz`
+  (anchored miss) → **still NK** (regression guard — the rule is unchanged); `?zzz` (unanchored
+  miss) → ECONSTANIC; a search under `<<…>>` that finds nothing → ECONSTANIC with reason
+  `Detached`, **even when anchored**; `#N` out-of-range on a *settled* brane → still NK; head/tail
+  of settled empty brane → still NK.
 
 **Component 2:**
 - Unit: `{a=?x; b=a&=3}` → `b` NK (coordinated `a` has no position); a contexted `&` off an
@@ -167,18 +227,28 @@ per-kind field — is an impl choice).
 - Verify the constanic-clone of a search drops `ubc_children[1]`.
 
 **Both:**
-- Approval: re-review **every** snapshot currently NK-by-absence AND **every** snapshot where a
-  coordinated search is followed by `&` (expect diffs — treat as *semantic* review per AGENTS.md).
-  The snapshot review is where the exact Component-2 rule is finalized.
-- Update FOOP-23 and AGENTS.md prose (both the miss rule and the "coordination removes search
-  context" rule).
+- Approval: re-review **every** snapshot where a deepen-chain sits on an unresolved anchor, AND
+  **every** snapshot where a coordinated search is followed by `&` (expect diffs — treat as
+  *semantic* review per AGENTS.md). Snapshots that are NK purely by *anchored absence* should
+  **not** change; a diff there is a regression, not an improvement. The snapshot review is where
+  the exact Component-2 rule is finalized.
+- Update AGENTS.md prose for the "coordination removes search context" rule only. AGENTS.md's
+  §"NK vs ECONSTANIC miss outcomes" ("anchored miss → NK") is **correct as written** and must be
+  left alone; add the SFF-marked case beside it.
 
 ## Rejected Alternatives
 
-### A. Keep anchored-miss → NK (do nothing)
+### A. Make *all* misses (including anchored) → ECONSTANIC
 
-The status quo. **Rejected**: it prematurely commits to NK on an absent name while context is
-incomplete, breaking `{a=b.c.d}` and blocking FOOP-24/63/04 (which need "miss = wait").
+An earlier draft of this FOOP. **Rejected** (Atlas, 2026-07-28): it costs NK its precise meaning.
+"Provably not in this named brane" is a genuine proof and deserves a terminal state; blurring it
+into "not found yet" makes anchored search stop asserting anything and pushes real errors
+downstream where they surface as confusing WOCONSTANIC chains instead of a clear NK at the point
+of the mistake. Deferred resolution remains available, but **explicitly** — wrap the search in
+`<<…>>` — which reads at the use site instead of being an implicit property of every anchored
+miss in the program. The `{a=b.c.d}` case that motivated the blanket rule turns out not to need
+it: `b` is *unanchored*, so it is already ECONSTANIC; that example was only ever about NK
+propagation through an unresolved anchor.
 
 ### B. Everything (even found-`???`) becomes ECONSTANIC
 
@@ -201,11 +271,16 @@ NK (per the discriminator). Only *misses* become ECONSTANIC.
 
 ## Plan (lean)
 
-**Component 1 — miss → ECONSTANIC:**
+**Component 1 — miss settles by anchoring; SFF-marked → ECONSTANIC:**
 - [ ] Enumerate the NK-survivor cases (found-`???`, provable-impossibility); unit tests first.
-- [ ] Change the anchored-miss settlement (`fir_kinds.rs:1277`) to ECONSTANIC.
-- [ ] Fix the deepen-chain NK check (`fir_kinds.rs:1252`) to distinguish found-`???` from miss.
-- [ ] Audit `value_search_step` miss paths.
+- [ ] Regression-guard the *unchanged* settlements: anchored miss stays NK
+      (`fir_kinds.rs:1277`), unanchored miss stays ECONSTANIC.
+- [ ] Make an SFF-withheld search settle ECONSTANIC (reason `Detached`) rather than reaching the
+      anchored-miss NK branch — requires distinguishing "withheld by a marker" from "stream
+      genuinely exhausted" at the settlement site.
+- [ ] Fix the deepen-chain NK check (`fir_kinds.rs:1252`) to distinguish found-`???` from an
+      *unresolved* anchor. **This is the substantive code change in Component 1.**
+- [ ] Audit `value_search_step` miss paths for the same anchored/unanchored split.
 
 **Component 2 — coordination removes search context:**
 - [ ] Unit test `{a=?x; b=a&=3}` → NK; `&` off an in-place search still resolves.
@@ -220,15 +295,21 @@ NK (per the discriminator). Only *misses* become ECONSTANIC.
 - [ ] Decide whether WOCONSTANIC propagates its dependency's reason.
 
 **All:**
-- [ ] Update FOOP-23 (§Miss and the coordination/context rule) and AGENTS.md.
+- [ ] Update FOOP-23 and AGENTS.md for the coordination/context rule **only** — leave their
+      "anchored miss → NK" prose intact (it is correct); add the SFF-marked case beside it.
+- [ ] Revise **FOOP-84 §1.5 and §2.4.1** to match this Component 1 (§1.5 currently claims
+      anchored miss → ECONSTANIC; §2.4.1 currently derives full-detachment ECONSTANIC from plain
+      stream exhaustion, which under this rule would settle NK for an anchored search).
 - [ ] Regenerate snapshots; present to human for semantic review (never auto-accept).
 - [ ] Worktree lifecycle per `foop.md` (create / verify / merge / cleanup).
 
 ## Appendix — notes toward the full spec
 
-- This is the **keystone** of the search family (renumbered batch): FOOP-24 (detachment
+- This is the **keystone** of the search family (renumbered batch): FOOP-24/FOOP-24 (detachment
   reject-all/`[*]`/naked-`<<>>`), FOOP-04 (cascade "fail" signal), FOOP-63 (characterization-demand
-  → WOCONSTANIC-wait) all depend on Component 1's miss → ECONSTANIC.
+  → WOCONSTANIC-wait) all depend on Component 1. Note the dependency is specifically on the
+  **SFF-marked → ECONSTANIC** bullet, *not* on anchored misses recoordinating — detachment needs
+  "withheld candidates leave the search deferrable," which is exactly that bullet.
 - **Component 2 is conceptually deep:** "coordination frees everything" (the SF/SFF strip rule,
   FOOP-24) and "coordination removes search context" (this) are the same principle — a coordinated
   thing is just its value, shorn of its evaluation scaffolding (marker, position). Consider stating
@@ -252,6 +333,34 @@ NK (per the discriminator). Only *misses* become ECONSTANIC.
 - Notes: `docs/foop/NOTES-creation-lineage-and-search-family.md` §7 + Engineering guidance.
 
 ## Last Updated
+
+**Date**: 2026-07-28 (2)
+**Updated By**: Claude Code (Opus 5)
+**Changes**: Added the "cite FOOP-84 Part 0" terminology banner. FOOP-84 Part 0 is now the single
+definition site for anchoring/miss outcomes (§0.2), search context (§0.3 — the thing Component 2
+strips on coordination, now formally defined as home brane *in its own context* + statement
+number), the search families (§0.4), and the detachment family (§0.5). FOOP-84 §1.5 restates this
+FOOP's Component 1 rule and must stay in sync.
+
+**Date**: 2026-07-28
+**Updated By**: Claude Code (Opus 5)
+**Changes**: **Component 1 rewritten to the settled rule** (Atlas, this session): *anchored miss →
+NK* (unchanged — an anchored search names its brane, so exhausting it genuinely proves absence,
+and NK must keep meaning "provably unknowable"), *unanchored miss → ECONSTANIC* (unchanged), and
+**SFF-marked searches → ECONSTANIC regardless of anchoring** — the actual new rule, because a
+search whose candidates a marker withheld never got to look and must stay deferrable. The prior
+draft's blanket "all misses → ECONSTANIC" is moved to Rejected Alternatives (A) with the reasoning
+recorded; the old A ("keep anchored-miss → NK") is gone, being the position now adopted.
+Corrected the `{a=b.c.d}` motivating example: `b` is **unanchored**, so it was never an
+anchored-miss case at all — the real defect there is NK propagation through an *unresolved*
+anchor, and the correct result is `wconstanic("d", wconstanic("c", econstanic("b")))`. That makes
+the deepen-chain fix (`fir_kinds.rs:1252`) the substantive Component-1 code change, while the miss
+branch (`:1277`) is now untouched. Updated UBC Step Impact, Test Plan (anchored miss → NK is now a
+*regression guard*), and the plan checkboxes to match. Noted that FOOP-23/AGENTS.md "anchored miss
+→ NK" prose is **correct and must be left alone**, reversing this FOOP's prior instruction to
+rewrite it. Flagged that **FOOP-84 §1.5 and §2.4.1 must be revised** to match, and that
+detachment's dependency on this FOOP is specifically the SFF-marked bullet, not anchored-miss
+recoordination.
 
 **Date**: 2026-07-09
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
