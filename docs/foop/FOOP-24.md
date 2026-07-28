@@ -18,12 +18,22 @@ begun: [ ]
 
 ## Abstract
 
-Detachment is a **parameterized stay-foolish marker** — `[p1,p2,…]<<Expr>>` (SFF) or
-`[p1,p2,…]<Expr>` (SF). The patterns (the **detachments**) are a per-candidate **search
-prefilter**: every search inside `Expr` **auto-skips any candidate matching any pattern**, before
-testing its own predicate. **SF and SFF are the two extremes of the spectrum:** `<E>` ≡ `[]<E>`
-(empty — detach nothing, resolve normally), `<<E>>` ≡ `[*]<<E>>` (full — detach everything). The
-general `[patterns]` is the middle: an **exclusion list** over otherwise-normal search.
+Detachment is a **parameterizable stay-foolish marker** — `[p1,p2,…]<<Expr>>` (SFF) or
+`[p1,p2,…]<Expr>` (SF). SF and SFF are parameterizable markers; when not parameterized they
+affect all searches inside `Expr`. When parameterized (with patterns between `[]`), they affect
+only the searches specified in the detachment configuration.
+
+- **SF `<…>`** (equivalent to `[*]<…>`): The expression is evaluated but stays "foolish" —
+  not fully resolved. Detached candidates are found but their constanic constituents are
+  copied constanic (not recoordinated).
+- **SFF `<<…>>`** (equivalent to `[*]<<…>>`): Search candidates are filtered by detachment.
+  When searches find nothing under such filtration, they become ECONSTANIC. The optimized
+  implementation of `[*]<<>>` is to simply initiate all searches as ECONSTANIC (already
+  implemented and should be kept).
+
+The general `[patterns]` form selects *which* candidates are detached. Without patterns
+(`[]<E>` or `[]<<E>>`), no candidates are detached and the markers behave as their
+undetached defaults.
 
 ## Motivation
 
@@ -35,33 +45,169 @@ recursion cleanly.
 
 ## Specification
 
-- **Syntax.** `[p1,p2,…]` immediately preceding an SF (`<…>`) or SFF (`<<…>>`) mark. The patterns
-  are name patterns (same syntax as search patterns). Store them on the marker FIR as
-  `detachments`.
-- **Semantics.** For every search that `Expr` or its children perform, a candidate for which **any
-  pattern matches** is **skipped** (not tested against the search's own predicate) — a
-  per-candidate prefilter, not a boolean on the predicate.
-- **The spectrum.** `<E>` ≡ `[]<E>` (empty detachment); `<<E>>` ≡ `[*]<<E>>` (full detachment).
-  So bare SF detaches nothing (searches resolve normally) and bare SFF detaches everything (every
-  search exhausts → ECONSTANIC per FOOP-43 → resolves on coordination).
-- **Constanic-copy.** A parameterized marker is **stripped on constanic clone**, exactly like a
-  bare SF/SFF (`constanic_clone_at`, `fir_kinds.rs:155-179`) — "coordination frees everything."
-  Detachments do not survive coordination unless re-detached by another parameterized mark.
+### Syntax
 
-> **Strict detachment (`[[…]]`) was considered and BACKBURNERED** — see the Appendix
-> (§Backburnered: strict detachment). This FOOP specifies only the permissive single-bracket
-> `[…]` form.
+`[p1,p2,…]` immediately preceding an SF (`<…>`) or SFF (`<<…>>`) mark. The patterns
+are name patterns (same syntax as search patterns). Store them on the marker FIR as
+`detachments`. Whitespace between `[patterns]` and the marker is permitted.
 
-### Detachment entries carry name AND/OR value conditions (Atlas)
+### Semantics
 
-A detachment list mixes name-patterns and value-conditions, using the **same syntax as searches**
-(FOOP-23 name / value / name+value forms). Example `[A, B, C=10, =5]`:
-- `A`, `B` — name-only detachments (skip candidates named `A`/`B`).
-- `C=10` — name+value: skip a candidate named `C` **whose value is 10**.
-- `=5` — value-only: skip **any** candidate whose value is 5 (no name constraint).
+SF and SFF are parameterizable markers. When not parameterized (bare `<E>` or `<<E>>`), they
+affect all searches inside `Expr`. When parameterized (with `[patterns]`), they affect only the
+searches specified in the detachment configuration. For every search that `Expr` or its children
+perform, a candidate matching any detachment pattern is handled according to the marker type:
 
-So each entry is `(name_pattern: Option<regex>, value_condition: Option<value>)` — at least one
-present.
+- **SF**: candidate is found but constanic constituents are copied constanic (not recoordinated)
+- **SFF**: search candidates are filtered by detachment; when searches find nothing under such
+  filtration, they become ECONSTANIC
+
+**Bare markers are full detachment.** `<E>` ≡ `[*]<E>` (detach everything, SF behavior);
+`<<E>>` ≡ `[*]<<E>>` (detach everything, SFF behavior). The `[]` form detaches nothing.
+
+**Constanic-copy.** A parameterized marker is **stripped on constanic clone**, exactly like a
+bare SF/SFF (`constanic_clone_at`, `fir_kinds.rs:155-179`) — "coordination frees everything."
+Detachments do not survive coordination unless re-detached by another parameterized mark.
+
+### Detachment pattern types
+
+**Regular detachment patterns** support name and/or value conditions (same syntax as search
+patterns, FOOP-23):
+- `A` — name-only: detach candidates named `A`
+- `C=10` — name+value: detach a candidate named `C` **whose value is 10**
+- `=5` — value-only: detach **any** candidate whose value is 5 (no name constraint)
+- `r.*=0` — pattern+value: detach candidates whose name matches `r.*` **and** whose value is 0
+
+**Continuation anchored detachment patterns** (`&~`, `&?`, `&#`) anchor on the detachment
+target (the brane) and search for candidates by name or index. **Value conditions are NOT
+permitted** on continuation anchored patterns because the detachment target's statements have
+not been evaluated yet — their values do not exist at detachment time.
+
+| Pattern type | Syntax | Value conditions | Example |
+|--------------|--------|------------------|---------|
+| Name (exact) | `A` | Allowed | `[a]`, `[a=10]` |
+| Name (pattern) | `2*r.*` | Allowed | `[a*]`, `[r.*=0]` |
+| Value only | `=5` | Allowed | `[=10]`, `[=0]` |
+| Index | `#N` | Not allowed | `[#1]`, `[#-2]` |
+| Contexted forward | `&~pattern` | Not allowed | `[&~r.*]`, `[&~f.*]` |
+| Contexted backward | `&?pattern` | Not allowed | `[&?r.*]`, `[&?f.*]` |
+| Contexted index | `&#N` | Not allowed | `[&#1]`, `[&#-2]` |
+
+### Cross-tabulation: marker × detachment × behavior
+
+Context: `{s=1; a=10+s; …}` where `s=1` (constant), so `a=11`.
+
+| Marker | Detachment | Example | Result |
+|--------|------------|---------|--------|
+| None   | None       | `{s=1;a=10+s; r={x=a}}` | `r = {x = 11}`  |
+| SF | `[]` (none) | `{s=1;a=10+s; r=<{x=a}>}` | `r = {x = 10+s}` equivalent to `[*]<…>` |
+| SFF | `[]` (none) | `{s=1;a=10+s; r=<<{x=a}>>}` | `r = {x = a}` equivalent to `[*]<<…>>` |
+| SF | `[a]` (exact) | `{s=1;a=10+s; r=[a]<{x=a}>}` | `r = {x = 10+s}` (`a` found, but constanic constituents are copied constanic (not recoordinated)) |
+| SFF | `[a]` (exact) | `{s=1;a=10+s; r=[a]<<{x=a}>>}` | `r = {x = a}` (`a` is never searched) |
+| SF | `[b]` (no match) | `{s=1;a=10+s; r=[b]<{x=a}>}` | `r = {x = 11}` |
+| SFF | `[b]` (no match) | `{s=1;a=10+s; r=[b]<<{x=a}>>}` | `r = {x = 11}` |
+| SF | `[a*]` (pattern) | `{s=1;alpha=10+s; r=[a*]<{x=alpha}>}` | `r = {x = 10+s}` |
+| SFF | `[a*]` (pattern) | `{s=1;alpha=10+s; r=[a*]<<{x=alpha}>>}` | `r = {x = a}` |
+| SF | `[a=11]` (name+value) | `{s=1;a=10+s; r=[a=11]<{x=a}>}` | `r = {x = 10+s}` |
+| SFF | `[a=11]` (name+value) | `{s=1;a=10+s; r=[a=11]<<{x=a}>>}` | `r = {x = a}` |
+| SF | `[=11]` (value only) | `{s=1;a=10+s; r=[=11]<{x=a}>}` | `r = {x = 10+s}` |
+| SFF | `[=11]` (value only) | `{s=1;a=10+s; r=[=11]<<{x=a}>>}` | `r = {x = a}` |
+| SF | `[&~f.*]` (ctx fwd pattern) | `{s=1;alpha=10+s; result=[&~f.*]<{fin=alpha}>}` | `result = {fin=10+s}` SF applied to `fin=alpha` |
+| SFF | `[&~f.*]` (ctx fwd pattern) | `{s=1;alpha=10+s; result=[&~f.*]<<{fin=alpha}>>}` | `result = {fin=alpha}` SFF applied to `fin=alpha` |
+| SF | `[&?f.*]` (ctx bwd pattern) | `{s=1;alpha=10+s; result=[&?f.*]<{fin=alpha}>}` | `result = {fin=10+s}` SF applied to `fin=alpha` |
+| SFF | `[&?f.*]` (ctx bwd pattern) | `{s=1;alpha=10+s; result=[&?f.*]<<{fin=alpha}>>}` | `result = {fin=alpha}` SFF applied to `fin=alpha` |
+| SF | `[&#1]` (ctx index) | `{s=1;a=10+s; result=[&#1]<{z=10,result=a,y=10}>}` | `result = {z=10, result=s+1, y=10}` SF affected stmnt 2 of brane |
+| SFF | `[&#1]` (ctx index) | `{s=1;a=10+s; result=[&#1]<<{z=10,result=a,y=10}>>}` | `result = {z=10, result=a, y=10}` SFF affected stmnt 2 of brane |
+
+### Key distinction
+
+The marker type determines what happens to detached candidates:
+- **SF**: Expression is evaluated but stays "foolish" — detached candidates are found but their
+  constanic constituents are copied constanic (not recoordinated). Result is the expression form
+  (e.g., `10+s`), not the fully evaluated value (e.g., `11`).
+- **SFF**: Search candidates are filtered by detachment; when searches find nothing under such
+  filtration, they become ECONSTANIC. The optimized implementation of `[*]<<>>` is to simply
+  initiate all searches as ECONSTANIC. Result is the identifier form (e.g., `a`), not the value.
+
+### Pattern matching
+
+Detachment patterns use the same regex matching as search patterns (FOOP-23).
+`[a*]` matches any candidate whose name starts with `a`. If the pattern matches, the candidate is
+detached (SF → evaluated but foolish, SFF → filtered from searches; ECONSTANIC if nothing found).
+
+### Nested markers
+
+When SF/SFF markers are nested, the closest matching marker to the search determines the
+detachment behavior. For example:
+
+```foolish
+{
+    a = 10;
+    result = [a]<{
+        inner = [b]<<{
+            x = a;    !! Which marker governs the search for 'a'?
+            y = b;    !! Which marker governs the search for 'b'?
+        }>>;
+    }>;
+}
+```
+
+The prevailing thought is that the closest matching marker to the search should win and
+decide the behavior of a matching search. This may require reversing the search: match
+search on everything first, then check the stack of detachments from innermost outward.
+
+**Status: UNDECIDED.** The exact semantics of nested detachment are not yet specified.
+This needs to be flushed out with concrete examples before implementation. The table above
+shows single-level behavior; nested behavior will be added once the semantics are resolved.
+
+### Out of scope
+
+- **Alerting on constanics.** This FOOP does not specify any mechanism for alerting when
+  detachment patterns match candidates that are already constanic. That is a separate concern.
+- **Search result type updates.** The search result type may need to carry SF/SFF marking
+  information, but that is a design/implementation detail deferred to the implementation phase.
+
+## Related and Future Features
+
+The following features are related to detachment but are deferred to future FOOPs. They are
+documented here to capture the design space and motivate the current specification.
+
+### Exclusive detachment
+
+A previous version of detachment brane wanted to make detachments like function declarations
+in other languages — if there's a variable not found, it is a compiler error. We defer that
+feature for a later time.
+
+Exclusive detachment is mainly about specifying, exclusively, what can be constanic, which is
+not the same as preventing some variables from being searched for. The idea: a detachment
+pattern `[a, b, c]` would mean "these are the ONLY variables that can be constanic in this
+scope" — any other variable that becomes constanic would be an error. This is a completeness
+assertion, similar to the backburnered strict detachment `[[…]]`.
+
+**Why deferred:** The semantics are complex (similar to strict detachment) and the use case
+is not yet clear. The current permissive detachment is sufficient for the recursion use case.
+
+### Privacy detachment
+
+A related feature where detachment reverses and anchored searches cannot find some things
+that are blocked from search. This is information hiding — the detachment prevents not just
+resolution but also discovery.
+
+In the current specification, detachment only affects the *resolution* of a candidate (SF
+copies constanic, SFF filters out). But the candidate is still *discoverable* — a search
+can find it, even if it can't resolve it. Privacy detachment would go further: the candidate
+would be invisible to searches entirely, even to anchored searches.
+
+**Why deferred:** This is a significant change to the search model. The current specification
+is already complex enough; privacy detachment can be added later as a modifier on top of the
+existing detachment semantics.
+
+### Strict detachment `[[…]]`
+
+See the Appendix (§Backburnered: strict detachment) for the full discussion. Strict
+detachment would be a completeness assertion: not only do the patterns skip candidates,
+but the mark would additionally forbid any unexplained non-resolution. This was backburnered
+because the semantics are unresolvable in scope (see the Appendix for the detailed argument).
 
 ## FIR Impact
 
@@ -152,20 +298,146 @@ story, but still fully encapsulated (all data + fns on the struct — no free-fl
   the recursion FOOP (FOOP-34).
 - (Strict detachment `[[…]]` is out of scope — backburnered; see the Appendix.)
 
-## Plan (lean)
+## Current Search Implementations
 
-- [ ] Unit tests: `Detachment::decide_to_detach` (Detach / Keep / NK-on-undecidable-value;
-      panics on non-constanic candidate); spectrum extremes; clone-strip.
-- [ ] Add the **`Detachment` struct** (entries + lazy `RegexSet` cache + `decide_to_detach`); hold
-      an `Option<Detachment>` on `StayFoolishFir`/`StayFullyFoolishFir`. All fns on the struct.
-- [ ] Parser: recognize `[patterns]` (name/value entries) before an SF/SFF mark; build the entries.
-- [ ] Extend `Scope` to carry the active `Detachment`(s); push in `step_inner`.
-- [ ] Call `decide_to_detach` in the scan loop **before** the matcher; map Detach→skip, NK→NK the
-      search (set `EconstanicReason::Detached` on the Detach→ECONSTANIC path).
-- [ ] **Doc TODO (mandated, three surfaces): write the SF≡`[]` / SFF≡`[*]` spectrum into
-      README.md, code comments (SF/SFF FIRs + prefilter), and the snapshot tests themselves.**
-- [ ] Approval cases; comprehensive `foop_24_comprehensive.foo`.
-- [ ] Worktree lifecycle per `foop.md`.
+The Foolish UBCa has multiple search implementations scattered across the codebase.
+Understanding these is essential for the refactoring that detachment requires.
+
+### The `contextful_search` module (the engine)
+
+The canonical search engine lives in `fir_kinds.rs` (lines 1680–2062). It provides:
+
+- **`CandidateNavigator` trait** — yields `(FirRef, usize)` candidates from a brane
+- **`BraneNavigator`** — iterates `foolish_children()` forward or backward, optionally bounded by range
+- **`SearchPredicate`** — matches candidates by name (`Name`), value (`Value`), name+value (`NameValue`), index (`Index`), head (`Head`), or tail (`Tail`)
+- **`contextful_search_scan`** — the core scan loop: iterate candidates, apply predicate, return `ScanOutcome::Found`/`NkStop`/`Miss`
+- **`contextful_search_scan_no_body_check`** — variant that skips the body-NYES gate (for name-only searches where body settling is the caller's responsibility)
+
+The engine is clean and well-factored. The problem is that it's not the only search path.
+
+### FIR-attached search methods
+
+Multiple search methods are attached to FIR kinds and the `Fir` trait:
+
+| Location | Method | Signature | Purpose |
+|----------|--------|-----------|---------|
+| `Fir` trait | `_ib_search` | `(&self, self_ref: &FirRef, name: &str) -> Option<(FirRef, Nyes)>` | Immediate brane search (name-only) |
+| `Fir` trait | `ib_search` | `(&self, scope: &Scope, name: &str) -> Option<(FirRef, Nyes)>` | Scope-cached IB search |
+| `Fir` trait | `_ab_search` | `(&self, self_ref: &FirRef, name: &str) -> Option<(FirRef, Nyes)>` | Ancestral brane search (name-only) |
+| `Fir` trait | `ab_search` | `(&self, scope: &Scope, name: &str) -> Option<(FirRef, Nyes)>` | Scope-cached AB search |
+| `Fir` trait | `_search_brane` | `(&self, expr: &str, start: usize, end: usize) -> Option<(usize, FirRef, Nyes)>` | Low-level range scan |
+| `StatementFir` | `_ib_search` | override | Searches backward from statement's line number |
+| `BraneFir` | `_ab_search` | override | Walks parent branes recursively |
+| `BraneFir` | `_search_brane` | override | Linear scan of `foolish_children()` |
+| `SearchFir` | `ib_search_with_engine` | `(&self, scope: &Scope) -> Option<(FirRef, Nyes)>` | Engine-based IB search |
+| `SearchFir` | `ab_search_with_engine` | `(&self, scope: &Scope) -> Option<(FirRef, Nyes)>` | Engine-based AB search (walks parents) |
+| `SearchFir` | `contexted_search_from_anchor` | `(&self, scope: &Scope) -> Option<(FirRef, Nyes)>` | Contexted search from anchor position |
+
+### Limitations of current implementations
+
+**String pattern only.** `_ib_search` and `_ab_search` take `name: &str` — they can only match by name. They cannot match by value, by name+value, or by index. The engine (`SearchPredicate`) supports all these, but the FIR-attached methods don't.
+
+**No matcher abstraction.** The FIR-attached methods hardcode name matching. They don't accept a `SearchPredicate` or any matcher interface. This means:
+- Value search (`?=v`, `~=v`) must go through `SearchFir::value_search_step` (a separate path)
+- Index search (`#N`) must go through `IndexFir::fir_op_step` (another separate path)
+- Contexted search (`&?`, `&~`, `&#`) must go through `SearchFir::contexted_search_from_anchor` (yet another path)
+
+**Duplicated AB walk.** `BraneFir::_ab_search` and `SearchFir::ab_search_with_engine` both implement the "walk up parent branes" logic independently. They should be one function.
+
+**SearchFir's state machine is complex.** `SearchFir::fir_op_step` has multiple code paths depending on `anchored`, `contexted`, `is_value_search`, and NYES state. Each path calls different search methods. The logic is correct but hard to follow.
+
+### The SF/SFF delegation discussion
+
+For detachment to work, SF/SFF marker FIRs need to control how parental search behaves when it reaches their scope boundary. The proposed design:
+
+**Upgrade `_ib_search` and `_ab_search` to accept matchers** (not just name strings). This allows:
+- Regular FIRs: pass through to normal parental search
+- SF/SFF marker FIRs: override `_ab_search` to apply detachment behavior
+
+**SF marker's `_ab_search` override:**
+When a child's search reaches the SF scope, if the candidate matches the detachment pattern, return it with `sf_marked: true` (the caller will copy it constanic, not recoordinated). Otherwise, pass through to normal parental search.
+
+**SFF marker's `_ab_search` override:**
+When a child's search reaches the SFF scope, if the candidate matches the detachment pattern, return `NotFound` (the candidate is filtered out). Otherwise, pass through to normal parental search.
+
+This design encapsulates detachment behavior in the marker itself. The search system doesn't need to know about detachment patterns — it just calls `_ab_search` on the parent chain, and the marker decides how to handle it.
+
+**Search result type update:**
+The search result type needs to carry SF marking information:
+```rust
+enum SearchResult {
+    NotFound,
+    Found {
+        brane: FirRef,
+        line: usize,
+        statement: FirRef,
+        sf_marked: bool,  // true if found through an SF marker's detachment
+    }
+}
+```
+
+When `sf_marked` is true, the caller knows to copy the result constanic (not recoordinated).
+
+## Implementation Plan
+
+The implementation has two phases: refactoring (Phase A) and feature addition (Phase B).
+
+### Phase A — Refactor search to facilitate detachment
+
+**Goal.** Refactor existing search behavior to maintain current behavior (passing all tests) while facilitating Phase B. The key change: upgrade `_ib_search` and `_ab_search` to accept matchers, and implement custom `_ab_search` on SF/SFF marker FIRs.
+
+**What changes:**
+
+1. **Upgrade `_ib_search` and `_ab_search` signatures** to accept `SearchPredicate` (or a trait object matcher) instead of `name: &str`. This allows value search, index search, and name+value search to use the same parental search path.
+
+2. **Implement custom `_ab_search` on `StayFoolishFir` and `StayFullyFoolishFir`** that intercepts parental search at the marker's scope boundary. When the marker has detachment patterns:
+   - SF: if candidate matches detachment pattern, return `Found { sf_marked: true }`
+   - SFF: if candidate matches detachment pattern, return `NotFound`
+   - Otherwise: pass through to normal parental search
+
+3. **Consolidate AB walk logic** — `BraneFir::_ab_search` and `SearchFir::ab_search_with_engine` should become one function (the upgraded `_ab_search` on the Fir trait).
+
+4. **Update search result type** to carry `sf_marked: bool` (or a richer enum).
+
+5. **Remove redundant search methods** — `ib_search_with_engine`, `ab_search_with_engine`, `contexted_search_from_anchor` become thin wrappers or are removed entirely.
+
+**Validation.** All existing snapshot/einmo tests must pass unchanged. The refactoring preserves behavior; it only changes the call structure.
+
+- [ ] Define `SearchResult` enum with `sf_marked` field
+- [ ] Upgrade `_ib_search` and `_ab_search` to accept `SearchPredicate`
+- [ ] Implement `StayFoolishFir::_ab_search` override (detachment-aware)
+- [ ] Implement `StayFullyFoolishFir::_ab_search` override (detachment-aware)
+- [ ] Consolidate AB walk logic into one function
+- [ ] Update `SearchFir::fir_op_step` to use upgraded `_ab_search`
+- [ ] Remove `ib_search_with_engine`, `ab_search_with_engine`, `contexted_search_from_anchor`
+- [ ] All snapshot/einmo tests pass
+- [ ] `cargo clippy -D warnings` clean
+
+### Phase B — Add detachment behavior
+
+**Goal.** Add the detachment feature as specified in this FOOP. The SF/SFF marker FIRs already have custom `_ab_search` from Phase A; Phase B adds the `Detachment` struct and the parser.
+
+**What changes:**
+
+1. **`Detachment` struct** — owns parsed entries + lazy `RegexSet` + `decide_to_detach`
+2. **Parser** — recognize `[patterns]` before SF/SFF mark; build `DetachmentEntry` list
+3. **`StayFoolishFir`/`StayFullyFoolishFir`** hold `Option<Detachment>`
+4. **`_ab_search` override** uses `Detachment::decide_to_detach` to filter candidates
+5. **Constanic-copy** strips detachment (already specified)
+
+**Validation.** New approval tests for detachment behavior. Existing tests still pass.
+
+- [ ] `Detachment` struct + `DetachmentEntry` + `decide_to_detach`
+- [ ] Unit tests for `decide_to_detach`
+- [ ] Parser: recognize `[patterns]` before SF/SFF mark
+- [ ] `StayFoolishFir`/`StayFullyFoolishFir` hold `Option<Detachment>`
+- [ ] `_ab_search` override uses `decide_to_detach`
+- [ ] `EconstanicReason::Detached` for the Detach→ECONSTANIC path
+- [ ] Spectrum validation: `<E>` ≡ `[*]<E>`, `<<E>>` ≡ `[*]<<E>>`, `[a]<E>` skips only `a`
+- [ ] Constanic-clone strips detachment
+- [ ] Approval cases; comprehensive `foop_24_comprehensive.foo`
+- [ ] **Doc TODO: SF≡`[]` / SFF≡`[*]` spectrum in README.md, code comments, snapshots**
+- [ ] Worktree lifecycle per `foop.md`
 
 ## Project note — memoize `decide_to_detach` (later)
 
@@ -247,6 +519,13 @@ is straightforward; the *semantics* (which searches to NK) is the unresolved par
   `foop-detachment-as-parameterized-sfmarker`.
 
 ## Last Updated
+
+**Date**: 2026-07-28
+**Updated By**: Sisyphus / xiaomi/mimo-v2.5-pro
+**Changes**: Added "Nested markers" section (status: UNDECIDED — closest matching marker wins,
+needs flushing out with concrete examples). Expanded "Related and Future Features" to `##`
+header with three subsections: Exclusive detachment (completeness assertion, deferred), Privacy
+detachment (information hiding, deferred), Strict detachment `[[…]]` (backburnered, see Appendix).
 
 **Date**: 2026-07-11
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
