@@ -12,6 +12,20 @@ begun: [ ]
 
 # FOOP-24: Detachment — parameterized stay-foolish markers
 
+> **PARTIALLY SUPERSEDED by FOOP-84 (2026-07-28).** FOOP-84 is now the authoritative search
+> specification and owns the "Current Search Implementations," "SF/SFF delegation discussion,"
+> "Implementation Plan → Phase A" (the `AncestralNavigator`/`CopyMode` mechanism replaces the
+> `_ab_search`-override design below), and "Nested markers" (now RESOLVED, see FOOP-84 §2.3/§2.6)
+> sections of this document. The feature this FOOP specifies is renamed **"Coordination
+> detachment"** in FOOP-84 §Part 3 (this file's unqualified "Detachment" = FOOP-84's
+> "Coordination detachment"); "Exclusive detachment" below is superseded by FOOP-84's "Required
+> Searches" future-feature framing. "Privacy detachment" is unchanged. Implementation
+> (`Detachment` struct, `[patterns]` parsing) is tracked as **FOOP-85**, building on FOOP-84 Part
+> 2 — not on this file's Phase A/B plan. This file is retained for historical design discussion
+> (the cross-tabulation table, the SF/SFF spectrum framing, the backburnered strict-detachment
+> appendix) but its search-mechanism and Implementation Plan sections should be read as
+> superseded.
+>
 > Lean draft. Fuller notes in the Appendix and `NOTES-creation-lineage-and-search-family.md` §2.
 > (Implementation order: #9 — the bridge from the search family to recursion. Renumbered
 > 2026-07-09. Atlas: tightening detachment should help recursion definitions.)
@@ -519,6 +533,18 @@ is straightforward; the *semantics* (which searches to NK) is the unresolved par
   `foop-detachment-as-parameterized-sfmarker`.
 
 ## Last Updated
+
+**Date**: 2026-07-28 (2)
+**Updated By**: Claude Code (Sonnet 5)
+**Changes**: Added a PARTIALLY SUPERSEDED banner pointing to **FOOP-84** (Search Engine Refactor
+— the new authoritative search specification) and **FOOP-85** (Coordination detachment, the
+implementation FOOP for this file's feature, built on FOOP-84's `AncestralNavigator`/`CopyMode`
+mechanism instead of this file's `_ab_search`-override Phase A plan). The "Nested markers"
+UNDECIDED question is resolved in FOOP-84 §2.3/§2.6 (per-candidate, innermost-to-outward,
+first-*matching*-level-wins — not "reverse the search"). Terminology rename recorded in FOOP-84
+§Part 3: this file's unqualified "Detachment" → "Coordination detachment"; "Exclusive detachment"
+→ reframed as one mechanism under a new "Required Searches" future feature; "Privacy detachment"
+unchanged. This file's body is otherwise untouched and retained for historical design discussion.
 
 **Date**: 2026-07-28
 **Updated By**: Sisyphus / xiaomi/mimo-v2.5-pro

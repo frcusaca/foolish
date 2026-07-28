@@ -14,6 +14,19 @@ begun: [ ]
 
 > Lean draft. Fuller notes in the Appendix and `NOTES-creation-lineage-and-search-family.md` §5.
 > (Implementation order: #8 — Search FOOP C of three. Renumbered 2026-07-09.)
+>
+> **Builds on FOOP-84** (Search Engine Refactor, 2026-07-28), now the authoritative reference for
+> the one-engine model, `FoolRefFir`/result-pair shape, and `CandidateNavigator`'s correctness
+> contract this FOOP's collect-mode scan relies on — see FOOP-84 §1.1d/§2.1 instead of
+> re-deriving that background from FOOP-23. Land this FOOP after FOOP-84 so the collect-mode scan
+> runs over the de-duplicated `AncestralNavigator` (FOOP-84 §2.2) rather than the two
+> implementations it replaces. **Composition note:** if find-all's collect-mode scan runs over
+> an `AncestralNavigator` walking through an SF/SFF (or, later, coordination-detachment) marker
+> boundary, `Detach`-filtered candidates are already excluded before the scan loop ever sees them
+> (FOOP-84 §2.3 — `Detach` is a pre-yield filter, not a scan-visible outcome), so find-all needs
+> no special handling to skip them; `SfCopy`-tagged candidates are collected normally, each
+> carrying its `CopyMode` for the result brane's eventual clone. No new design work — this falls
+> out of FOOP-84's Navigator/scan-loop split for free.
 
 ## Abstract
 
@@ -101,13 +114,27 @@ Navigator; a second engine would duplicate traversal.
 
 ## References
 
-- Prior: FOOP-23 (reserved find-all; one-engine model; FOOP-23.md:600 collect-instead-of-stop),
-  FOOP-43 (empty/miss), FOOP-93 (predicate composition).
-- Code: `lexer.rs:140-156` (doubled tokens), `parser.rs:573` (postfix), `fir_kinds.rs:1973`
-  (scan loop), `push_search_result_pair` (result shape).
+- **Builds on: FOOP-84** (Search Engine Refactor — authoritative for the one-engine model,
+  `FoolRefFir`/result-pair shape, and `AncestralNavigator`; supersedes FOOP-23 on all of that).
+- Prior (historical/grammar detail only, see FOOP-84 for the restated semantics): FOOP-23
+  (reserved find-all; one-engine model; FOOP-23.md:600 collect-instead-of-stop), FOOP-43
+  (empty/miss), FOOP-93 (predicate composition).
+- Code: `lexer.rs:140-156` (doubled tokens), `parser.rs:573` (postfix), `fir_kinds.rs`
+  `mod contextful_search` (scan loop — see FOOP-84 for current line numbers post-refactor),
+  `push_search_result_pair` (result shape).
 - Notes: `NOTES-creation-lineage-and-search-family.md` §5 + Engineering guidance.
 
 ## Last Updated
+
+**Date**: 2026-07-28
+**Updated By**: Claude Code (Sonnet 5)
+**Changes**: Added a "Builds on FOOP-84" banner — FOOP-84 (Search Engine Refactor) is now the
+authoritative reference for the one-engine model and `AncestralNavigator` this FOOP's
+collect-mode scan runs over; sequence this FOOP after FOOP-84. Added a composition note: find-all
+over a Detach-filtering marker boundary needs no special handling, since `Detach` is a pre-yield
+Navigator filter (FOOP-84 §2.3) invisible to the scan loop — this falls out for free. Redirected
+line-number references that moved under FOOP-84's refactor to point at FOOP-84 instead of a
+specific (now-stale) line number.
 
 **Date**: 2026-07-09
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8

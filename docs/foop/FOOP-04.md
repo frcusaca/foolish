@@ -14,6 +14,15 @@ begun: [ ]
 
 > Lean draft. Fuller notes in the Appendix and `NOTES-creation-lineage-and-search-family.md` §9.
 > (Implementation order: #7 — Search FOOP B of three. Renumbered 2026-07-09.)
+>
+> **Builds on FOOP-84** (Search Engine Refactor, 2026-07-28), now the authoritative reference for
+> `FoolRefFir` (shape, two-child invariant), the contexted-search resume path, and the
+> cursor-source×predicate engine this FOOP's shared-fixed-anchor mechanism depends on — see
+> FOOP-84 §1.1a–d/§1.2/§1.3 instead of re-deriving that background from FOOP-23. Land this FOOP
+> after FOOP-84 so `CascadingSearchFir` resumes off the same de-duplicated
+> `AncestralNavigator`/contexted-search path FOOP-84 establishes. No design conflict —
+> `CascadingSearchFir` is its own stateful wrapper FIR, orthogonal to FOOP-84's Navigator/
+> `CopyMode` mechanism.
 
 ## Abstract
 
@@ -150,13 +159,23 @@ alternation and lacks clear precedence. The parenthesized combine-block (FOOP-93
 
 ## References
 
-- Prior: FOOP-23 (`FoolRefFir` position carrier; contexted resume), FOOP-43 (miss = fail signal),
-  FOOP-93 (matcher `&&`/`||`, the `(...)` block, vocabulary).
+- **Builds on: FOOP-84** (Search Engine Refactor — authoritative for `FoolRefFir`, the contexted-
+  search resume path, and the one-engine model; supersedes FOOP-23 on all of that).
+- Prior (historical/grammar detail only, see FOOP-84 for the restated semantics): FOOP-23
+  (`FoolRefFir` position carrier; contexted resume), FOOP-43 (miss = fail signal), FOOP-93
+  (matcher `&&`/`||`, the `(...)` block, vocabulary).
 - Code: `FoolRefFir` / `push_search_result_pair`; contexted-search resume path; `parser.rs:573`
   (postfix), `:797` (regex-group).
 - Notes: `NOTES-creation-lineage-and-search-family.md` §9 + Engineering guidance.
 
 ## Last Updated
+
+**Date**: 2026-07-28
+**Updated By**: Claude Code (Sonnet 5)
+**Changes**: Added a "Builds on FOOP-84" banner — FOOP-84 (Search Engine Refactor) is now the
+authoritative reference for `FoolRefFir`, the contexted-search resume path, and the one-engine
+model this FOOP's shared-fixed-anchor mechanism assumes; sequence this FOOP after FOOP-84.
+Redirected the References entry accordingly. No semantic changes to this FOOP's own design.
 
 **Date**: 2026-07-11
 **Updated By**: Claude Code 2.1.119 (Claude Code); Sonnet 5

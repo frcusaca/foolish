@@ -14,6 +14,19 @@ begun: [ ]
 
 > Lean draft. Fuller notes in the Appendix and `NOTES-creation-lineage-and-search-family.md` §4/§9.
 > (Implementation order: #6 — Search FOOP A of three. Renumbered 2026-07-09.)
+>
+> **Builds on FOOP-84** (Search Engine Refactor, 2026-07-28), which is now the authoritative
+> reference for the one-engine model, the full operator table, `FoolRefFir`, and the
+> cursor-source×predicate/two-collaborator framing this FOOP assumes — see FOOP-84 §1.1d/§2.1
+> instead of re-deriving that background from FOOP-23. **Land this FOOP's `SearchPredicate` tree
+> shape after FOOP-84**, on top of its de-duplicated `AncestralNavigator` (FOOP-84 §2.2), so
+> there is only one Navigator implementation to extend. **Correction to the Appendix note below**
+> ("shares the prefilter locus with detachment"): that is now **wrong** — per FOOP-84 §2.3,
+> coordination detachment (FOOP-85) acts inside the *Navigator*, filtering candidates before
+> `next_candidate()` ever returns them, not inside `SearchPredicate::matches`. This FOOP's `!`/
+> `&&`/`||` and FOOP-85's detachment are therefore **not** sharing a locus — they are cleanly
+> orthogonal (Navigator vs. Predicate), which needs no coordination between the two FOOPs at all.
+> The Appendix bullet is left below, struck through, for the historical record.
 
 ## Abstract
 
@@ -160,21 +173,39 @@ two-booleans distinction.)
 - **Search FOOP A of three:** A = predicates (`!` + `&&`/`||`, this FOOP), B = cascading connector
   `|` (FOOP-04), C = all-results `~~`/`??` (FOOP-14). Split by *kind*: predicate combination vs
   control-flow cascade vs scan-mode.
-- Shares the prefilter locus with **detachment** (FOOP-24) — both act at
-  `SearchPredicate::matches` / the scan loop; do this first, detachment reuses the seam.
+- ~~Shares the prefilter locus with **detachment** (FOOP-24) — both act at
+  `SearchPredicate::matches` / the scan loop; do this first, detachment reuses the seam.~~
+  **Superseded by FOOP-84**: coordination detachment (FOOP-85, the implementation FOOP for what
+  was FOOP-24) acts in the **Navigator** (filtering candidates before they reach the predicate at
+  all — FOOP-84 §2.3), not in `SearchPredicate::matches`. This FOOP and FOOP-85 do not share a
+  locus and do not need to be sequenced relative to each other for that reason; land either
+  first, both after FOOP-84.
 - Composes with **FOOP-14** (`a!~~x` = all names not matching) and enables the boolean-table
   lookups of **FOOP-73** (value + contexted search).
 - Engineering guidance: canonical "extend a predicate, don't add a FIR" case.
 
 ## References
 
-- Prior: FOOP-23 (combined `~name=value`; `NameValue`; the one-engine model), FOOP-43 (miss
-  outcome), FOOP-73 (the *other* booleans — Foolish objects).
+- **Builds on: FOOP-84** (Search Engine Refactor — authoritative for the one-engine model, full
+  operator table, `FoolRefFir`, `AncestralNavigator`; supersedes FOOP-23 on all of that).
+- Prior (historical/grammar detail only, see FOOP-84 for the restated semantics): FOOP-23
+  (combined `~name=value`; `NameValue`), FOOP-43 (miss outcome), FOOP-73 (the *other* booleans —
+  Foolish objects).
 - Code: `fir_kinds.rs:1679` (`SearchPredicate`), `:1745` (`NameValue`), `:1709` (`matches`);
   `parser.rs:573` (postfix), `:797` (regex-group in pattern); `lexer.rs:100` (`!!` comment).
 - Notes: `NOTES-creation-lineage-and-search-family.md` §4/§9 + Engineering guidance.
 
 ## Last Updated
+
+**Date**: 2026-07-28
+**Updated By**: Claude Code (Sonnet 5)
+**Changes**: Added a "Builds on FOOP-84" banner — FOOP-84 (Search Engine Refactor) is now the
+authoritative reference for the one-engine model and full operator table this FOOP assumes;
+sequence this FOOP after FOOP-84 so it extends the de-duplicated `AncestralNavigator`. Corrected
+(struck through, not deleted) a stale Appendix claim that this FOOP "shares the prefilter locus
+with detachment" — per FOOP-84 §2.3, coordination detachment (FOOP-85) acts in the Navigator,
+before the predicate is ever reached, so the two FOOPs are orthogonal and do not share a locus or
+require relative sequencing to each other (both land after FOOP-84).
 
 **Date**: 2026-07-09
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
