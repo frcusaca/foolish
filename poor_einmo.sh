@@ -760,7 +760,7 @@ FINEPRINT
             noop_list+=("$test_path")
             echo "   · unchanged — no action"
         fi
-        if ! (( full_review )); then
+    if ! (( full_review )); then
             while :; do
                 read -r -p "   next? [Enter=continue, e=edit, r=revert, u=back, q=quit] " ans </dev/tty || true
                 case "${ans,,}" in
@@ -852,7 +852,11 @@ FINEPRINT
         echo "   ✎ note — will flag $local_stage/$test_path on settle"
     fi
 
-    if ! (( full_review )); then
+    both_promoted=0
+    if pane_says "${pane[checked]}" "${PROMOTE_WORDS[@]}" && pane_says "${pane[verified]}" "${PROMOTE_WORDS[@]}"; then
+        both_promoted=1
+    fi
+    if ! (( full_review )) && ! (( both_promoted )); then
         # The decision is not final until you leave the file:
         #   edit   — reopen with YOUR text intact, to adjust it
         #   revert — discard this file's answer, reopen from the stages fresh
@@ -940,9 +944,9 @@ fi
 
 if (( ${#flag_rel[@]} )); then
     echo
-    echo "flagged (${#flag_rel[@]}):"
+    printf 'flagged (%d):\n' "${#flag_rel[@]}"
     for i in "${!flag_rel[@]}"; do
-        echo "  ${flag_stage[$i]}/${flag_rel[$i]%.einmo} — ${flag_reason[$i]}"
+        printf '  %s/%s — %s\n' "${flag_stage[$i]}" "${flag_rel[$i]%.einmo}" "${flag_reason[$i]}"
     done
 fi
 
