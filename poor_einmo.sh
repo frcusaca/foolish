@@ -111,9 +111,10 @@ set -euo pipefail
 #     abort                                                   → end NOW, print nothing
 #
 # In vim: one-key decisions \C promote->checked · \V promote->verified ·
+#   \c mark checked (stay) · \v mark verified (stay) ·
 #   \K kick (demote) highest stage · \S skip · \Q stop · \A abort — each writes
-#   the verb into the right pane and finishes the test. Also: \d toggle diff in
-#   the current window · \D toggle diff on all four tiles · \i / \I
+#   the verb into the right pane and finishes the test (\c/\v stay for :qa).
+# Also: \d toggle diff in the current window · \D toggle diff on all four tiles · \i / \I
 #   shrink/expand the top instructions panel · ]c / [c next/prev change ·
 #   zz centre the current line · :qa finish this test · :qa! finish discarding
 #   unsaved pane edits · :cq abort the whole loop.
@@ -468,7 +469,7 @@ while (( i < ${#rows[@]} )); do
     #     The instructions window never joins the diff either way;
     #   - \i / \I: shrink the top info panel to its status line / expand it to
     #     show every line, without moving the cursor.
-    status_text='poor_einmo · \d diff here · \D diff all · ]c/[c jump · zz centre · :qa done · :qa! discard · :cq abort · \I for bigger info window'
+    status_text='poor_einmo · \c/\C checked · \v/\V verified · \d diff here · \D diff all · ]c/[c jump · :qa done · :cq abort · \I for bigger info window'
 
     # One-key decisions write the verb into the right pane and leave (:xa).
     # \K (kick) demotes the HIGHEST stage present; 0 = nothing to retract.
@@ -492,8 +493,22 @@ function! PoorEinmoVerb(target, verb)
   call setline(1, a:verb)
   xa
 endfunction
+" Lowercase \c/\v: mark the pane with the verb but stay in vim (no :xa),
+" so you can mark both checked and verified (or do other edits) before :qa.
+function! PoorEinmoMark(target, verb)
+  if a:target < 2
+    echo 'poor_einmo: no stage artifact to act on'
+    return
+  endif
+  execute a:target . 'wincmd w'
+  silent %delete _
+  call setline(1, a:verb)
+  echo 'poor_einmo: marked ' . (a:target == 4 ? 'checked' : 'verified') . ' as ' . a:verb . ' — :qa to finish'
+endfunction
 nnoremap <silent> \C :call PoorEinmoVerb(4, 'promote')<CR>
 nnoremap <silent> \V :call PoorEinmoVerb(5, 'promote')<CR>
+nnoremap <silent> \c :call PoorEinmoMark(4, 'promote')<CR>
+nnoremap <silent> \v :call PoorEinmoMark(5, 'promote')<CR>
 nnoremap <silent> \K :call PoorEinmoVerb($retract_target, 'retract')<CR>
 nnoremap <silent> \S :call PoorEinmoVerb(4, 'skip')<CR>
 nnoremap <silent> \Q :call PoorEinmoVerb(4, 'stop')<CR>
@@ -565,7 +580,7 @@ SESSION
         # Rows 1-4: the one-key decisions line up with the verbs they perform.
         row='│ %-27s │ %-19s │ %-24s │\n'
         echo   '┌─ vim ───────────────────────┬─ verbs (pane word) ─┬─ after :qa ──────────────┐'
-        printf "$row" '`\C` checked `\V` verified' '`promote` `approve`' '`Enter` next / `q` quit'
+        printf "$row" '`\C`/`\c` checked `\V`/`\v` verified' '`promote` `approve`' '`Enter` next / `q` quit'
         printf "$row" '`\K` kick highest stage'    '`retract` `demote`'  '`e` edit / `r` revert'
         printf "$row" '`\S` skip this test'        '`skip` `pass` `idk`' '`u` back to prev file'
         printf "$row" '`\Q` stop `\A` abort'       '`stop` / `abort`'    'untouched keeps answer'
@@ -597,6 +612,8 @@ One-key decisions (each writes the verb into the right pane, saves every
 modified pane via `:xa`, and finishes the test): `\C` promote output->checked ·
 `\V` promote checked->verified · `\K` kick (demote) the highest stage present ·
 `\S` skip · `\Q` stop the review · `\A` abort it.
+Mark-only variants (write the verb but stay in vim — useful for marking both
+panes before `:qa`): `\c` mark checked · `\v` mark verified.
 Vim: `]c`/`[c` jump between differences · `zz` centre the line · `\d` toggles
 diff in the window under the cursor · `\D` toggles all four tiles · `\i`/`\I`
 shrink/expand this panel · `:qa` finishes this test (edits are read) · `:qa!`
