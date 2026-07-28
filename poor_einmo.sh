@@ -503,12 +503,20 @@ function! PoorEinmoMark(target, verb)
   execute a:target . 'wincmd w'
   silent %delete _
   call setline(1, a:verb)
+  write
   echo 'poor_einmo: marked ' . (a:target == 4 ? 'checked' : 'verified') . ' as ' . a:verb . ' — :qa to finish'
 endfunction
+function! PoorEinmoMassEdit(verb)
+  call PoorEinmoMark(4, a:verb)
+  call PoorEinmoMark(5, a:verb)
+  xa
+endfunction
+
 nnoremap <silent> \C :call PoorEinmoVerb(4, 'promote')<CR>
 nnoremap <silent> \V :call PoorEinmoVerb(5, 'promote')<CR>
 nnoremap <silent> \c :call PoorEinmoMark(4, 'promote')<CR>
 nnoremap <silent> \v :call PoorEinmoMark(5, 'promote')<CR>
+nnoremap <silent> \Y :call PoorEinmoMassEdit('promote')<CR>
 nnoremap <silent> \K :call PoorEinmoVerb($retract_target, 'retract')<CR>
 nnoremap <silent> \S :call PoorEinmoVerb(4, 'skip')<CR>
 nnoremap <silent> \Q :call PoorEinmoVerb(4, 'stop')<CR>
@@ -581,6 +589,7 @@ SESSION
         row='│ %-27s │ %-19s │ %-24s │\n'
         echo   '┌─ vim ───────────────────────┬─ verbs (pane word) ─┬─ after :qa ──────────────┐'
         printf "$row" '`\C`/`\c` checked `\V`/`\v` verified' '`promote` `approve`' '`Enter` next / `q` quit'
+        printf "$row" '`\Y` mass approve+cont.' '                   ' '                       '
         printf "$row" '`\K` kick highest stage'    '`retract` `demote`'  '`e` edit / `r` revert'
         printf "$row" '`\S` skip this test'        '`skip` `pass` `idk`' '`u` back to prev file'
         printf "$row" '`\Q` stop `\A` abort'       '`stop` / `abort`'    'untouched keeps answer'
