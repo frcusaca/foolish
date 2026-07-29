@@ -53,6 +53,8 @@ enum Command {
     Body(BodyArgs),
     /// Compute the SHA-256 of this binary (self-attestation).
     SelfCheck(SelfCheckArgs),
+    /// Evaluate inputs and write signed output files.
+    Evaluate(EvaluateArgs),
 }
 
 #[derive(Args, Debug)]
@@ -261,6 +263,25 @@ struct SelfCheckArgs {
     quiet: bool,
 }
 
+#[derive(Args, Debug)]
+struct EvaluateArgs {
+    /// The suite work directory.
+    work_dir: PathBuf,
+    /// The evaluator command. Receives the input file path as $1.
+    /// stdout is captured as the output chunks (one per line).
+    #[arg(long)]
+    command: String,
+    /// Only evaluate inputs matching this substring.
+    #[arg(long)]
+    filter: Option<String>,
+    /// Override the directory-walk depth limit.
+    #[arg(long)]
+    walk_depth_limit: Option<usize>,
+    /// Emit machine-readable JSON.
+    #[arg(long)]
+    json: bool,
+}
+
 /// The shared CLI entry point used by both the `einmo` and `cargo-einmo` bins.
 ///
 /// Returns a process exit code; every error is reported to stderr.
@@ -299,6 +320,7 @@ fn dispatch(command: Command) -> Result<ExitCode> {
         Command::List(a) => cmd_list(a),
         Command::Body(a) => cmd_body(a),
         Command::SelfCheck(a) => cmd_self_check(a),
+        Command::Evaluate(a) => cmd_evaluate(a),
     }
 }
 
@@ -948,6 +970,100 @@ fn prompt_tty() -> Result<String> {
         }
         eprintln!("einmo: passphrases did not match — try again (Ctrl-C to abort)");
     }
+}
+
+struct CommandEvaluator {
+    command: String,
+}
+
+impl crate::einmo_suite::Evaluator for CommandEvaluator {
+    fn evaluate(&self, source: &str) -> std::result::Result<Vec<String>, String> {
+        let tmp = tempfile::NamedTempFile::new().map_err(|e| e.to_string())?;
+        std::fs::write(tmp.path(), source).map_err(|e| e.to_string())?;
+        let abs = tmp
+            .path()
+            .canonicalize()
+            .map_err(|e| e.to_string())?;
+        let output = std::process::Command::new("sh")
+            .arg("-c")
+            .arg(format!("{} {}", self.command, abs.display()))
+            .output()
+            .map_err(|e| format!("evaluator command failed: {e}"))?;
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(format!(
+                "evaluator exited {}: {}",
+                output.status.code().unwrap_or(-1),
+                stderr.trim()
+            ));
+        }
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        Ok(vec![stdout.to_string()])
+    }
+}
+
+fn cmd_evaluate(args: EvaluateArgs) -> Result<ExitCode> {
+    let mut config = TestConfig::new(&args.work_dir, ValidationLevel::Output);
+    if let Some(limit) = args.walk_depth_limit {
+        config = config.with_walk_depth_limit(limit);
+    }
+    let suite = crate::einmo_suite::EinmoSuite::new(config);
+    let evaluator = CommandEvaluator {
+        command: args.command,
+    };
+
+    let inputs = crate::stage::walk_input_tree(
+        &args.work_dir.join("input"),
+        args.walk_depth_limit.unwrap_or(64),
+    )?;
+    let filtered: Vec<_> = inputs
+        .into_iter()
+        .filter(|p| {
+            args.filter
+                .as_ref()
+                .map_or(true, |f| p.to_string_lossy().contains(f.as_str()))
+        })
+        .collect();
+
+    let mut written = 0usize;
+    let mut failed = 0usize;
+    for input_rel in &filtered {
+        match suite.evaluate(input_rel, &evaluator) {
+            Ok(result) => {
+                if result.written_and_verified {
+                    written += 1;
+                    if !args.json {
+                        println!("  ✓ {}", result.rel_path.display());
+                    }
+                } else {
+                    failed += 1;
+                    if !args.json {
+                        println!(
+                            "  ✗ {} ({})",
+                            result.rel_path.display(),
+                            result.detail.as_deref().unwrap_or("")
+                        );
+                    }
+                }
+            }
+            Err(e) => {
+                failed += 1;
+                if !args.json {
+                    println!("  ✗ {} — {e}", input_rel.display());
+                }
+            }
+        }
+    }
+    if args.json {
+        println!("{{\"evaluated\":{written},\"failed\":{failed}}}");
+    } else {
+        println!("evaluated {written} file(s), {failed} failure(s)");
+    }
+    Ok(if failed == 0 {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
+    })
 }
 
 #[cfg(test)]

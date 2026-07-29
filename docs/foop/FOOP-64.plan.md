@@ -27,7 +27,7 @@ branch used by the FOOP-62 and FOOP-92 merges):
       (2026-07-15 10:12)
 - [x] Harness: add `einmo` dev-dependency to `foolish-ubca/Cargo.toml`; copy
       `UbcaEvaluatorAdapter` from `zweimomo/src/evaluators.rs` into
-      `foolish-ubca/src/ubca_snapshot_tester.rs`; add `einmo_approval_all` test
+      `foolish-ubca/src/ubca_snapshot_tester.rs`; add `run_einmo_tests` test
       (`TestConfig::new(dir, ValidationLevel::Checked).foolish_separator()
       .require_correspondence(Stage::Output, Stage::Checked)`) — insta `approval_all` is
       `#[ignore]`d with its structural redness documented, pending human-gated retirement
@@ -281,7 +281,7 @@ order an integration.
       no dual-homing)
 - [ ] Write and verify `foolish-ubca/einmo_suite/input/foop/64/comprehensive.foo` (first
       comprehensive at the new reserved path)
-- [x] Generate + self-review: ran `einmo_approval_all` to fill `output/` (161 artifacts, all
+- [x] Generate + self-review: ran `run_einmo_tests` to fill `output/` (161 artifacts, all
       written+verified); promoted `output->checked` with the computer key; `checked/` committed.
       The gate is GREEN — the UBCa corpus has a passing signed baseline for the first time.
       (2026-07-15 12:40)
@@ -298,7 +298,7 @@ order an integration.
       `foolish-core/snapshot_tests/` — determine the post-FOOP-62 evaluator for its inputs and
       `einmo flag` stale inputs with reasons for the human; attribution pass → its own
       MAPPING.md; copy inputs per rules R1–R5 (one home per test); add its
-      `einmo_approval_all`; generate, self-review, promote `output->checked`; cross-validate
+      `run_einmo_tests`; generate, self-review, promote `output->checked`; cross-validate
       against its approved `.snap` corpus
 - [x] SANITY CHECK (done up-front 2026-07-14, before implementation): does einmo actually fail
       when a demanded checked/verified file is missing? **Yes** — `compare --require-match`
@@ -309,7 +309,7 @@ order an integration.
       `confirm-signatures --require-all` over an empty `verified/` passes (exit 0). Both gate
       tests must assert non-emptiness — recorded in FOOP-64.md §"The escalating validation levels".
       (2026-07-14 22:41)
-- [ ] Gate at the **Checked** level ("feature-complete test suite"): the `einmo_approval_all`
+- [ ] Gate at the **Checked** level ("feature-complete test suite"): the `run_einmo_tests`
       tests (both suites) are the checked-stage gate — confirm each fails on any
       output↔checked divergence; **assert `!results.files.is_empty()`** (anti-vacuity, per the
       sanity check above)

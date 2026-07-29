@@ -833,8 +833,10 @@ mod step_until_tests {
         use std::path::PathBuf;
 
         let input = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("snapshot_tests")
+            .join("einmo_suite")
             .join("input")
+            .join("foop")
+            .join("13")
             .join("concat_brane_nested_shadowed_resolution.foo");
         let source = std::fs::read_to_string(&input)
             .unwrap_or_else(|_| panic!("{} not found", input.display()));

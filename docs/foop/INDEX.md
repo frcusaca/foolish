@@ -242,7 +242,7 @@ track is blocked by definition. Einmo fixes this structurally: its `compare` che
 sections only — STAMPS and metadata (where timestamps and keys live) are excluded — so churn
 cannot redden the gate. FOOP-64 also absorbs FOOP-92's Phase 11 (gate glue) and Phase 12
 (`console-review`), which the migration needs operationally (the initial ~162-file promotion is
-exactly a console-review workload). Deliverables: `einmo_approval_all` green, hierarchical
+exactly a console-review workload). Deliverables: `run_einmo_tests` green, hierarchical
 `einmo_suite/` (`foop/<N>/`, `lang/…`, `regression/`), cross-validation against the old corpus,
 **foolish-core's corresponding `einmo_suite/`** with the same organizational rules (as part of
 this FOOP), the **two-tier signing gate** over both suites — the **feature-complete test

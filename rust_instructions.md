@@ -943,10 +943,11 @@ The intent is to repair the bug and then remove the temporary test. If a
 legitimate regression test can be made to detect the same problem, rename it
 appropriately and check it in with documentation.
 
-> **Snapshot/approval tests are never auto-accepted.** AI agents must never run
-> `cargo insta accept` or `INSTA_UPDATE=always`. Generate `.snap.new`, present to
-> the human, and wait for explicit approval. See `AGENTS.md` for the full
-> approval workflow and signature verification.
+> **Snapshot/approval tests use einmo.** Run `cargo test -p foolish-ubca --lib --
+> run_einmo_tests` to evaluate and check output against the signed `checked/`
+> baseline. Use `einmo evaluate` to regenerate outputs, `einmo compare` to
+> review diffs, and `einmo promote` to update baselines. See `AGENTS.md` for
+> the full workflow.
 
 ### Final rule
 When uncertain, choose the design that is easiest to prove correct, easiest to

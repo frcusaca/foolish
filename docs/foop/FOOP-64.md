@@ -138,7 +138,7 @@ Within a single directory, genuine variants may still use einmo's dependent nami
 - `foolish-ubca` gains a dev-dependency on `einmo` (einmo has zero Foolish dependencies, so no
   cycle) and a copy of zweimomo's small `UbcaEvaluatorAdapter` (`UbcaEvaluator` +
   `clone_steppable` + `FirSequencer::format`, one OUTPUT chunk per top-level statement).
-- New test `einmo_approval_all` in `foolish-ubca/src/ubca_snapshot_tester.rs`, per the
+- New test `run_einmo_tests` in `foolish-ubca/src/ubca_snapshot_tester.rs`, per the
   dev-compliance pattern in `einmo.README.md`: `TestConfig::new(einmo_suite).foolish_separator()
   .require_correspondence(Stage::Output, Stage::Checked)`.
 - Promotion `output->checked` uses the einmo CLI with the computer key (the AI-permitted stage).
@@ -342,7 +342,7 @@ process law:
 - **AGENTS.md**: the Development Rules' "never start work when tests are broken" is restated
   as **the codebase must pass the einmo checked stage** (output matches signed `checked/`
   einmos); the Build Commands section replaces the insta workflow with the einmo flow
-  (`einmo_approval_all`, `einmo compare/promote/verify`); the ⚠️ CRITICAL snapshot section is
+  (`run_einmo_tests`, `einmo compare/promote/verify`); the ⚠️ CRITICAL snapshot section is
   rewritten in einmo terms — AI may promote `output->checked` after review, AI must **never**
   produce a `verified` stamp (the empty-passphrase key on `stage:verified` is the detectable
   bypass), and the insta-specific prohibitions (`cargo insta accept`, `.snap` handling) are
@@ -444,7 +444,7 @@ evaluator output (enforced by §Cross-validation).
 
 ## Test Plan
 
-- `einmo_approval_all` (new): every input under `einmo_suite/input/` written+verified to
+- `run_einmo_tests` (new): every input under `einmo_suite/input/` written+verified to
   `output/` and matching `checked/` — the **feature-complete test suite**, at the Checked level.
 - `einmo_verified_gate` (new, `#[ignore]` locally, CI on PRs): output ↔ `verified/`
   correspondence + human-key `confirm-signatures --require-all` + zero-computer-key scan on

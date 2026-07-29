@@ -85,18 +85,28 @@ Type `{` to start a brane — the REPL accumulates lines until braces balance, t
 cargo test --workspace
 ```
 
-**Snapshot tests (insta):**
+**Approval tests (einmo):**
 
 ```bash
 cargo test -p foolish-ubca --lib                              # run all suites
-cargo test -p foolish-ubca --lib -- approval_all              # run one suite
-cargo insta review                                            # interactive review (HUMAN ONLY)
-cargo insta accept                                            # accept all .snap.new (HUMAN ONLY)
+cargo test -p foolish-ubca --lib -- run_einmo_tests           # run one suite
+
+# Evaluate inputs to produce output files:
+einmo evaluate foolish-ubca/einmo_suite \
+    --command "./target/debug/foolish run"                     # all files
+einmo evaluate foolish-ubca/einmo_suite \
+    --command "./target/debug/foolish run" \
+    --filter "foop/23/name_value_atomic"                      # single file
+
+# Review and promote:
+einmo compare output checked foolish-ubca/einmo_suite         # see what changed
+einmo promote output to checked foolish-ubca/einmo_suite       # promote all
+poor_einmo.sh foolish-ubca/einmo_suite                         # interactive review
 ```
 
-⚠️ **AI AGENTS MUST NEVER ACCEPT SNAPSHOTS.** Snapshots are cryptographically signed to distinguish AI-generated output from human-reviewed output. AI agents must NEVER run `cargo insta accept`, `INSTA_UPDATE=always`, or any command that auto-accepts snapshots. Present `.snap.new` files to a human for review. Only humans may accept snapshots.
-
-When viewing a `.snap` file with `less`, use `less -- path/to/test_name.snap` — the `--` disables the `LESSOPEN` environment variable from trying to decompress the file. `more`, `cat`, and `view` work unmodified.
+**Snapshot workflow**: Run a test → if output differs, einmo reports the divergent sections →
+review with `einmo compare` → promote with `einmo promote output to checked`.
+Use `poor_einmo.sh` for the interactive review loop (vim-based).
 
 Foolish programs use the `.foo` extension and embrace a philosophy where **proximity creates
 combination** and **containment enables organization**. The language provides rigorous abstraction

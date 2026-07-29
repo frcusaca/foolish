@@ -1,1 +1,0 @@
-{target = {a=1, b=2, c={x=10}}; result = {y=5} target.c;}

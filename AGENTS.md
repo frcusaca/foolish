@@ -111,9 +111,9 @@ opencode 1.14.39, Qwen3.6-27B-AWQ-BF16-INT4
 **NEVER** start large project segment work WHEN ANY tests are broken even if there're notes indicating those breakage are known. The test has to be manually disabled by human OR repaired and committed.
 
 **Exception:** Snapshots that have been reviewed by the human and contain `@agent` comments
-(i.e. `.snap.new.check` files) are permitted to remain non-conformant. These represent known
-issues that the human has inspected and accepted as work-in-progress. They will be fixed as
-part of the impending work tracked in the plan.
+are permitted to remain non-conformant. These represent known issues that the human has
+inspected and accepted as work-in-progress. They will be fixed as part of the impending
+work tracked in the plan.
 
 ## How To Write Rust Code
 
@@ -152,9 +152,6 @@ Restricted actions are:
  * Altering maven, git and other softare configuration files, these include, not exclusively, ".gitigore", ".git", '.claude', ...
  * Never alter any approved approval files matching pattern "*.approved.foo"
  * Never alter any approved approval Foolish files matching pattern "*.approved.foo" Even if it is to change the number of steps taken.
- * Never move, rename, or alter `.snap` files (approved snapshots).
- * Never move, rename, or alter `.snap.new.approved` files (human-approved, awaiting signing).
- * Never run `cargo insta accept` or `INSTA_UPDATE=always`.
 
 For requesting restricted file changes, agents may suggest diff patch or full text of replacement content.
 
@@ -211,107 +208,41 @@ cargo test -p foolish-core                       # One crate
 cargo test -p foolish-core -- brane_search       # Specific test (substring match)
 ```
 
-### Approval Tests (insta snapshots)
+### Approval Tests (einmo)
 
-**foolish-core** snapshot tests use `SnapshotSuite` and `insta`. Snapshots live in
-`foolish-core/snapshot_tests/approved/`.
+**foolish-ubca** approval tests use `einmo` for cryptographically signed snapshot testing. Test
+inputs live in `foolish-ubca/einmo_suite/input/`, outputs in `output/`, reviewed baselines in
+`checked/`, and human-signed artifacts in `verified/`.
 
-**foolish-ubca** snapshot tests also use `SnapshotSuite`. Snapshots live in
-`foolish-ubca/snapshot_tests/approved/`.
-
-Each snapshot file has the format:
-```
-INPUT:
-```foolish
-<source>
-```
-[0] RESULT:
-```hssnap
-<humanizing-sequencer output>
-```
-Public key: <hex>
-Foolish signature: <base64>
-HS signature: <base64>
-```
-Signatures are Ed25519, derived from a passphrase via Argon2id. The default (empty)
-passphrase is the computer/AI-agent key. Human reviewers can re-sign with their own
-passphrase using the `verify_signatures --write-verified` tool.
+Each `.einmo` file is a signed envelope containing INPUT, OUTPUT, and STAMPS sections. Signatures
+are Ed25519, derived from a passphrase via Argon2id.
 
 #### Key commands
 
 ```bash
-cargo test -p foolish-core --lib                           # all core snapshot tests
-cargo test -p foolish-core --lib -- approval_all           # just the approval suite
-cargo test -p foolish-ubca --lib                           # all UBCa snapshot tests
+cargo test -p foolish-ubca --lib -- run_einmo_tests    # run the full einmo suite
+cargo test -p foolish-core --lib -- approval_all       # foolish-core approval suite
+
+# Evaluate inputs to produce output files (single file or all):
+einmo evaluate foolish-ubca/einmo_suite \
+    --command "./target/debug/foolish run" \
+    --filter "foop/23/name_value_atomic"                # single file
+einmo evaluate foolish-ubca/einmo_suite \
+    --command "./target/debug/foolish run"               # all files
+
+# Review and promote:
+einmo compare output checked foolish-ubca/einmo_suite   # see what changed
+einmo promote output to checked foolish-ubca/einmo_suite # promote all
 ```
 
-#### ⚠️ CRITICAL: NEVER AUTO-ACCEPT SNAPSHOTS ⚠️
+#### The einmo review workflow
 
-**AI AGENTS MUST NEVER RUN `cargo insta accept` OR `INSTA_UPDATE=always`.**
-
-Snapshots are the authoritative record of correct Foolish VM behavior. They are cryptographically
-signed to distinguish AI-generated output from human-reviewed output. Auto-accepting snapshots
-bypasses this verification and corrupts the approval chain.
-
-**The snapshot review workflow (human-driven):**
-
-1. AI runs `cargo insta test -p <crate> --lib` to generate `.snap.new` files.
-2. Human runs `foolish_review.sh <crate>` — opens each `.snap.new` in `vimdiff` against the
-   approved `.snap`. The human either:
-   - **Approves** (no edits): file is moved to `.snap.new.approved`.
-   - **Flags** (adds `@agent <comment>`): file is moved to `.snap.new.check` for AI to address.
-3. Human runs `accept_approved.sh <crate>` — signs all `.snap.new.approved` files with their
-   passphrase, then moves each to `.snap` (replacing the old approved snapshot).
-4. AI addresses any `.snap.new.check` files flagged with `@agent` comments.
-
-**AI is NEVER allowed to:**
-- Move, rename, or alter `.snap` files.
-- Move, rename, or alter `.snap.new.approved` files.
-- Run `cargo insta accept` or `INSTA_UPDATE=always`.
-- Silently accept snapshots that change evaluation semantics.
-
-**Remember:** A snapshot change may indicate a VM bug, not a formatting improvement.
-Always verify the semantic correctness of output before accepting.
-
-#### When bug fixes are complete — present this review to the human
-
-```bash
-# Set this to the module being reviewed:
-module_path=foolish-ubca   # e.g. foolish-core, foolish-ubca
-
-cd /home/hcbusy/foolish-rust
-cargo clean -p $module_path
-cargo insta test -p $module_path --lib
-./accept_approved.sh $module_path
-```
-
-Human reviews with:
-```bash
-./foolish_review.sh $module_path
-./accept_approved.sh $module_path
-```
-
-#### Signature verification
-
-```bash
-# Build the tool (once, from the repository root)
-cargo build -p foolish-core --bin verify_signatures
-
-# Verify all snapshots with the default computer key
-./target/debug/verify_signatures foolish-core/snapshot_tests/approved/
-
-# Verify a single file
-./target/debug/verify_signatures path/to/file.foo.snap
-
-# Re-sign files with the computer key (e.g. after regenerating snaps manually)
-./target/debug/verify_signatures --write-verified foolish-core/snapshot_tests/approved/
-
-# Re-sign with a human passphrase (reads from stdin)
-./target/debug/verify_signatures --stdin-passphrase --write-verified foolish-core/snapshot_tests/approved/
-```
-
-Output columns: `key match: yes, foolish: yes, hs: yes  <path>`
-Values are `yes`, ` no` (space-padded), or `n/a` (unsigned/old-format file).
+1. Run `cargo test -p foolish-ubca --lib -- run_einmo_tests` — evaluates all inputs, writes
+   signed `.einmo` to `output/`, and checks `output == checked`.
+2. If the test fails (output diverged from checked), review with `einmo compare`.
+3. Use `poor_einmo.sh foolish-ubca/einmo_suite` for the interactive review loop (vim-based).
+4. Promote reviewed outputs: `einmo promote output to checked foolish-ubca/einmo_suite`.
+5. For release attestation: `einmo promote checked to verified foolish-ubca/einmo_suite --interactive`.
 
 ### CLI Usage
 
@@ -351,9 +282,9 @@ the FVM before the input Foolish file became isConstanic.
 Separate languages read from the same test input resources directory to produce their own approval output.
 A crossvalidation process checks that implementations in different languages are behaving identically.
 
-**Snapshot workflow**: Run a test → if output differs, insta writes `.snap.new` →
-**PRESENT TO HUMAN FOR REVIEW** → human runs `cargo insta review` or `cargo insta accept`.
-AI agents MUST NEVER accept snapshots. See the ⚠️ CRITICAL section above.
+**Snapshot workflow**: Run a test → if output differs, einmo reports the divergent sections →
+review with `einmo compare` → promote with `einmo promote output to checked`.
+Use `poor_einmo.sh` for the interactive review loop.
 
 ## Clarifications
 * When user mentions "path/" first interpret it as relative path from the directory where claude code was invoked. This is normal behavior for most unix apps, for example if I "cat path/file" that path is resolved from the current path.
@@ -532,7 +463,7 @@ a following `&`-search can read.
 **Two-Tier Testing:**
 
 1. **Unit Tests** — focused component tests in Rust (`cargo test`)
-2. **Approval Tests** — insta snapshot-based integration tests (see Build Commands above)
+2. **Approval Tests** — einmo signed snapshot-based integration tests (see Build Commands above)
 ### Foolish Terminology (from STYLES.md)
 
 - **Foolisher** - developer/user of Foolish

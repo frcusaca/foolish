@@ -2,75 +2,18 @@ use std::path::PathBuf;
 
 use crate::evaluator::UbcaEvaluator;
 
-fn suite() -> foolish_core::SnapshotSuite {
-    let base = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    foolish_core::SnapshotSuite::new(
-        base.join("snapshot_tests").join("input"),
-        base.join("snapshot_tests").join("approved"),
-    )
-}
-
 /// Work directory of the einmo suite (FOOP-64).
 #[cfg(test)]
 fn einmo_suite_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("einmo_suite")
 }
 
-#[cfg(test)]
-mod approval_tests {
-    use super::*;
-
-    /// LEGACY (insta). Retired by FOOP-64 once the einmo suite is the gate.
-    ///
-    /// Known red: generation stamps a wall-clock `generated:` timestamp *inside*
-    /// the signed, byte-compared content, so a fresh run can never byte-match a
-    /// stored corpus. That structural defect is precisely what the einmo suite
-    /// below fixes (einmo's `compare` reads INPUT/OUTPUT only; stamps and
-    /// metadata are excluded).
-    #[test]
-    #[ignore = "FOOP-64: structurally red (signature/timestamp churn); superseded by einmo_approval_all"]
-    fn approval_all() {
-        let eval = UbcaEvaluator;
-        let suite = suite();
-        let evaluations = suite.evaluate_all(num_cpus::get(), &eval);
-        let approved = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("snapshot_tests")
-            .join("approved");
-        let mut settings = insta::Settings::clone_current();
-        settings.set_snapshot_path(&approved);
-        settings.set_prepend_module_to_snapshot(false);
-        settings.set_omit_expression(true);
-        settings.bind(|| {
-            for (name, result) in evaluations {
-                eprintln!("Evaluating: {}", name);
-                match result {
-                    Ok(output) => {
-                        insta::assert_snapshot!(format!("{}.foo", name), output);
-                    }
-                    Err(msg) => {
-                        eprintln!("  ERROR: {}", msg);
-                    }
-                }
-            }
-        });
-    }
-}
-
-/// The einmo suite: einmo is the harness, the UBCa FVM is the evaluator.
+/// Einmo tests for the UBCa FVM.
 ///
-/// (Inverse of zweimomo, where the FVM is an evaluator used to test einmo.)
+/// Two gates at escalating validation levels (FOOP-64):
 ///
-/// Two gates run against the one `einmo_suite/` directory, at escalating
-/// validation levels (FOOP-64 §"The escalating validation levels"):
-///
-/// * [`einmo_approval_all`] — the **feature-complete test suite**, at the
-///   **Checked** level: the suite is well-formed and evaluates (Output level),
-///   *plus* output matches the signed `checked/` baseline. The computer key is
-///   acceptable here; AI promotion `output->checked` after review is the einmo
-///   design. It says nothing about `verified/`.
-/// * `einmo_verified_gate` — the **merge-ready test suite**, escalating to the
-///   **Verified** level: everything Checked requires, *plus* `verified/` matches
-///   under the human reviewer's key with no computer-key attestation. (To come.)
+/// * [`run_einmo_tests`] — Checked level: output matches signed `checked/` baseline.
+/// * `einmo_verified_gate` — Verified level: plus `verified/` under human key. (To come.)
 #[cfg(test)]
 mod einmo_tests {
     use super::*;
@@ -110,7 +53,7 @@ mod einmo_tests {
     /// **Feature-complete test suite**: every input evaluates, is written and
     /// self-verifies in `output/`, and matches the signed `checked/` baseline.
     #[test]
-    fn einmo_approval_all() {
+    fn run_einmo_tests() {
         // The feature-complete test suite validates at the Checked level: a
         // reviewed, signed baseline that output must match. It says nothing
         // about verified/ — signing is the merge gate's business.
