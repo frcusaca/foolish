@@ -19,11 +19,7 @@ hex = "0.4"
 time = { workspace = true }
 
 [dev-dependencies]
-insta = { workspace = true }
 num_cpus = "1"
-
-[features]
-parallel-snapshot = ["rayon"]
 
 [[bin]]
 name = "verify_signatures"

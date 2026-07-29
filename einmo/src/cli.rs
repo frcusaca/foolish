@@ -12,6 +12,7 @@ use std::process::ExitCode;
 use clap::{Args, Parser, Subcommand};
 
 use crate::config::{KeyCascadeInputs, KeySource, MatchSections, TestConfig, resolve_stage_key};
+use crate::einmo_suite::{FailurePolicy, ValidationLevel};
 use crate::error::{EinmoError, Result};
 use crate::format::EinmoFile;
 use crate::stage::Stage;
@@ -34,6 +35,8 @@ enum Command {
     Promote(PromoteArgs),
     /// Move files from a stage into flagged/ (advisory line, no stamp).
     Flag(FlagArgs),
+    /// Retract (demote) artifacts from a stage; cascades checked→verified.
+    Retract(RetractArgs),
     /// Compare two stages over the mirrored tree.
     Compare(CompareArgs),
     /// Verify signatures across a stage (or all stages).
@@ -44,20 +47,27 @@ enum Command {
     ConfirmSignatures(ConfirmArgs),
     /// Show an envelope's summary and stamp chain.
     Show(ShowArgs),
+    /// List the suite's tests and which stages hold each one.
+    List(ListArgs),
+    /// Print an envelope's signed body sections (verify-on-inspect first).
+    Body(BodyArgs),
     /// Compute the SHA-256 of this binary (self-attestation).
     SelfCheck(SelfCheckArgs),
+    /// Evaluate inputs and write signed output files.
+    Evaluate(EvaluateArgs),
 }
 
 #[derive(Args, Debug)]
 struct PromoteArgs {
-    /// The `<from>-><to>` stage pair, e.g. `output->checked`.
-    transition: String,
-    /// The suite work directory.
-    work_dir: PathBuf,
-    /// Specific `.einmo` files to act on (mirror-relative, stage-relative, or
-    /// absolute). Use `-` to read paths from stdin (one per line).
-    #[arg(num_args = 0.., trailing_var_arg = true)]
-    files: Vec<PathBuf>,
+    /// The stage pair, in any of:
+    ///   `<from> to <to>`  (spaced — preferred; needs no quoting)
+    ///   `<from>-><to>` · `<from>:<to>` · `<from>..<to>`  (glued)
+    /// then the work directory, then any specific `.einmo` files.
+    ///
+    /// An unquoted `->` is a shell redirect, so the spaced form is safest.
+    /// Parsed positionally by [`split_promote_args`].
+    #[arg(required = true, num_args = 1..)]
+    args: Vec<String>,
     /// Restrict to inputs matching this glob (`*` wildcard).
     #[arg(long)]
     filter: Option<String>,
@@ -71,6 +81,26 @@ struct PromoteArgs {
     #[arg(long)]
     interactive: bool,
     /// Override the directory-walk depth limit (tier 1).
+    #[arg(long)]
+    walk_depth_limit: Option<usize>,
+    /// Emit machine-readable JSON.
+    #[arg(long)]
+    json: bool,
+}
+
+#[derive(Args, Debug)]
+struct RetractArgs {
+    /// The suite work directory.
+    work_dir: PathBuf,
+    /// The stage to retract from (`checked` or `verified`).
+    stage: String,
+    /// Specific `.einmo` files to retract. Use `-` to read paths from stdin.
+    #[arg(num_args = 0.., trailing_var_arg = true)]
+    files: Vec<PathBuf>,
+    /// Restrict to inputs matching this glob.
+    #[arg(long)]
+    filter: Option<String>,
+    /// Override the directory-walk depth limit.
     #[arg(long)]
     walk_depth_limit: Option<usize>,
     /// Emit machine-readable JSON.
@@ -133,6 +163,18 @@ struct CompareArgs {
 struct VerifyArgs {
     /// The suite work directory.
     work_dir: PathBuf,
+    /// The escalating validation level to judge the suite at
+    /// (`output` | `checked` | `verified`). The CLI defaults to `checked`; the
+    /// library API has no default.
+    #[arg(long, default_value = "checked")]
+    level: String,
+    /// Stop at the first failure instead of gathering every problem.
+    /// The default is fail-at-end: run everything, report it all.
+    #[arg(long, conflicts_with = "fail_at_end")]
+    fail_fast: bool,
+    /// Run every check and report all problems together (the default).
+    #[arg(long)]
+    fail_at_end: bool,
     /// Restrict to one stage.
     #[arg(long)]
     stage: Option<String>,
@@ -154,8 +196,15 @@ struct VerifyArgs {
 struct ConfirmArgs {
     /// A directory (or file) of `.einmo` files.
     path: PathBuf,
-    /// The pubkey hex prefix to match.
-    pubkey_prefix: String,
+    /// The pubkey hex prefix to match. Supply this OR `--from-passphrase`,
+    /// never both, never neither.
+    pubkey_prefix: Option<String>,
+    /// Derive the pubkey prefix from a passphrase instead of typing the hex:
+    /// prompts for the passphrase (twice, confirmed) and matches its public
+    /// key. Answers "was this signed by MY passphrase?" without exposing the
+    /// key. Mutually exclusive with an explicit `<pubkey-prefix>`.
+    #[arg(long)]
+    from_passphrase: bool,
     /// Exit non-zero if any file lacks a matching signer.
     #[arg(long)]
     require_all: bool,
@@ -177,6 +226,34 @@ struct ShowArgs {
 }
 
 #[derive(Args, Debug)]
+struct ListArgs {
+    /// The suite work directory.
+    work_dir: PathBuf,
+    /// Only tests whose mirror-relative path contains this substring.
+    #[arg(long)]
+    filter: Option<String>,
+    /// Only tests whose stage bodies are not all identical (ignores stamps and
+    /// metadata, exactly as `compare` does). Absent artifacts count as differing.
+    #[arg(long)]
+    differing: bool,
+    /// Emit machine-readable JSON (one object per line).
+    #[arg(long)]
+    json: bool,
+}
+
+#[derive(Args, Debug)]
+struct BodyArgs {
+    /// The `.einmo` file whose body to print.
+    file: PathBuf,
+    /// Print only this section (e.g. `INPUT`, `OUTPUT`, `COMMENTS`).
+    #[arg(long)]
+    section: Option<String>,
+    /// Do not print `=== NAME ===` headers between sections.
+    #[arg(long)]
+    bare: bool,
+}
+
+#[derive(Args, Debug)]
 struct SelfCheckArgs {
     /// Exit non-zero if the computed hash does not match this value.
     #[arg(long)]
@@ -184,6 +261,25 @@ struct SelfCheckArgs {
     /// Print only the hash.
     #[arg(long)]
     quiet: bool,
+}
+
+#[derive(Args, Debug)]
+struct EvaluateArgs {
+    /// The suite work directory.
+    work_dir: PathBuf,
+    /// The evaluator command. Receives the input file path as $1.
+    /// stdout is captured as the output chunks (one per line).
+    #[arg(long)]
+    command: String,
+    /// Only evaluate inputs matching this substring.
+    #[arg(long)]
+    filter: Option<String>,
+    /// Override the directory-walk depth limit.
+    #[arg(long)]
+    walk_depth_limit: Option<usize>,
+    /// Emit machine-readable JSON.
+    #[arg(long)]
+    json: bool,
 }
 
 /// The shared CLI entry point used by both the `einmo` and `cargo-einmo` bins.
@@ -216,19 +312,32 @@ fn dispatch(command: Command) -> Result<ExitCode> {
     match command {
         Command::Promote(a) => cmd_promote(a),
         Command::Flag(a) => cmd_flag(a),
+        Command::Retract(a) => cmd_retract(a),
         Command::Compare(a) => cmd_compare(a),
         Command::Verify(a) | Command::VerifySignatures(a) => cmd_verify(a),
         Command::ConfirmSignatures(a) => cmd_confirm(a),
         Command::Show(a) => cmd_show(a),
+        Command::List(a) => cmd_list(a),
+        Command::Body(a) => cmd_body(a),
         Command::SelfCheck(a) => cmd_self_check(a),
+        Command::Evaluate(a) => cmd_evaluate(a),
     }
 }
 
 /// Parse an `<from>-><to>` transition into a stage pair.
 fn parse_transition(s: &str) -> Result<(Stage, Stage)> {
-    let (from, to) = s
-        .split_once("->")
-        .ok_or_else(|| EinmoError::Config(format!("transition {s:?} must be `<from>-><to>`")))?;
+    // Accept `->` and the redirect-safe `:` / `..`. The canonical `->` collides
+    // with shell redirection: an unquoted `checked->verified` has its `>` eaten
+    // by the shell, so users who forget to quote get a baffling error. `:` and
+    // `..` mean the same and need no quoting. `->` is tried first so a stage
+    // name can never contain the separator.
+    let split = ["->", "..", ":"].iter().find_map(|sep| s.split_once(sep));
+    let (from, to) = split.ok_or_else(|| {
+        EinmoError::Config(format!(
+            "transition {s:?} must be `<from>-><to>` (or `<from>:<to>`). \
+             Tip: quote it — an unquoted `->` is a shell redirect."
+        ))
+    })?;
     Ok((Stage::parse(from.trim())?, Stage::parse(to.trim())?))
 }
 
@@ -286,14 +395,42 @@ fn files_ref(files: &[PathBuf]) -> Option<&[PathBuf]> {
     if files.is_empty() { None } else { Some(files) }
 }
 
+/// Split promote's positional arguments into `(from, to, work_dir, files)`.
+///
+/// Accepts two shapes:
+///   * **spaced** — `<from> to <to> <work_dir> [files…]` (preferred; the `to`
+///     keyword needs no quoting and cannot be mistaken for a shell redirect)
+///   * **glued**  — `<from><sep><to> <work_dir> [files…]` where `<sep>` is
+///     `->`, `:`, or `..`
+fn split_promote_args(raw: &[String]) -> Result<(Stage, Stage, PathBuf, Vec<PathBuf>)> {
+    // Spaced form: `<from> to <to> …` — arg[1] is the literal `to`.
+    if raw.len() >= 3 && raw[1].eq_ignore_ascii_case("to") {
+        let from = Stage::parse(raw[0].trim())?;
+        let to = Stage::parse(raw[2].trim())?;
+        let work_dir = raw.get(3).cloned().ok_or_else(|| {
+            EinmoError::Config("missing work directory after `<from> to <to>`".into())
+        })?;
+        let files = raw[4.min(raw.len())..].iter().map(PathBuf::from).collect();
+        return Ok((from, to, PathBuf::from(work_dir), files));
+    }
+    // Glued form: `<from><sep><to> <work_dir> [files…]`.
+    let (from, to) = parse_transition(&raw[0])?;
+    let work_dir = raw
+        .get(1)
+        .cloned()
+        .ok_or_else(|| EinmoError::Config("missing work directory".into()))?;
+    let files = raw[2.min(raw.len())..].iter().map(PathBuf::from).collect();
+    Ok((from, to, PathBuf::from(work_dir), files))
+}
+
 fn cmd_promote(args: PromoteArgs) -> Result<ExitCode> {
-    let (from, to) = parse_transition(&args.transition)?;
-    let mut config = TestConfig::new(&args.work_dir);
+    let (from, to, work_dir, positional_files) = split_promote_args(&args.args)?;
+    let mut config = TestConfig::new(&work_dir, ValidationLevel::Output);
     if let Some(limit) = args.walk_depth_limit {
         config = config.with_walk_depth_limit(limit);
     }
     let key = resolve_promotion_key(to, &args, &config)?;
-    let files = resolve_files(args.files)?;
+    let files = resolve_files(positional_files)?;
     let report = crate::promote(
         &config,
         from,
@@ -344,7 +481,7 @@ fn resolve_promotion_key(to: Stage, args: &PromoteArgs, config: &TestConfig) -> 
 
 fn cmd_flag(args: FlagArgs) -> Result<ExitCode> {
     let stage = Stage::parse(&args.stage)?;
-    let mut config = TestConfig::new(&args.work_dir);
+    let mut config = TestConfig::new(&args.work_dir, ValidationLevel::Output);
     if let Some(limit) = args.walk_depth_limit {
         config = config.with_walk_depth_limit(limit);
     }
@@ -364,10 +501,29 @@ fn cmd_flag(args: FlagArgs) -> Result<ExitCode> {
     Ok(ExitCode::SUCCESS)
 }
 
+fn cmd_retract(args: RetractArgs) -> Result<ExitCode> {
+    let stage = Stage::parse(&args.stage)?;
+    let mut config = TestConfig::new(&args.work_dir, ValidationLevel::Output);
+    if let Some(limit) = args.walk_depth_limit {
+        config = config.with_walk_depth_limit(limit);
+    }
+    let files = resolve_files(args.files)?;
+    let report = crate::retract(&config, stage, args.filter.as_deref(), files_ref(&files))?;
+    if args.json {
+        println!("{{\"retracted\":{}}}", report.retracted.len());
+    } else {
+        println!("retracted {} artifact(s):", report.retracted.len());
+        for (st, path) in &report.retracted {
+            println!("  {st}/{}", path.display());
+        }
+    }
+    Ok(ExitCode::SUCCESS)
+}
+
 fn cmd_compare(args: CompareArgs) -> Result<ExitCode> {
     let a = Stage::parse(&args.stage_a)?;
     let b = Stage::parse(&args.stage_b)?;
-    let mut config = TestConfig::new(&args.work_dir);
+    let mut config = TestConfig::new(&args.work_dir, ValidationLevel::Output);
     if let Some(limit) = args.walk_depth_limit {
         config = config.with_walk_depth_limit(limit);
     }
@@ -419,7 +575,8 @@ fn cmd_compare(args: CompareArgs) -> Result<ExitCode> {
 }
 
 fn cmd_verify(args: VerifyArgs) -> Result<ExitCode> {
-    let mut config = TestConfig::new(&args.work_dir);
+    let level = ValidationLevel::parse(&args.level)?;
+    let mut config = TestConfig::new(&args.work_dir, level);
     if let Some(limit) = args.walk_depth_limit {
         config = config.with_walk_depth_limit(limit);
     }
@@ -429,11 +586,39 @@ fn cmd_verify(args: VerifyArgs) -> Result<ExitCode> {
     };
     let files = resolve_files(args.files)?;
     let report = crate::verify(&config, stage, files_ref(&files))?;
+    // Signature integrity is only half of "is this suite sound?" — the tree's
+    // shape is the other half. Checked only for a whole-suite verify: a
+    // file-scoped or single-stage run is not making a claim about the tree.
+    let policy = if args.fail_fast {
+        FailurePolicy::FailFast
+    } else {
+        FailurePolicy::FailAtEnd
+    };
+    let integrity = if files.is_empty() && stage.is_none() {
+        crate::check_suite_integrity(&config, policy)?
+    } else {
+        crate::SuiteIntegrity::default()
+    };
     if args.json {
+        let violations: Vec<String> = integrity
+            .problems
+            .iter()
+            .map(|p| {
+                format!(
+                    "{{\"level\":\"{}\",\"path\":\"{}\",\"problem\":\"{}\",\"remedy\":\"{}\"}}",
+                    p.level(),
+                    p.path()
+                        .map_or_else(String::new, |x| x.display().to_string()),
+                    p,
+                    p.remedy()
+                )
+            })
+            .collect();
         println!(
-            "{{\"files\":{},\"failures\":{}}}",
+            "{{\"files\":{},\"failures\":{},\"integrity_violations\":[{}]}}",
             report.files.len(),
-            report.failures()
+            report.failures(),
+            violations.join(",")
         );
     } else {
         println!(
@@ -448,8 +633,12 @@ fn cmd_verify(args: VerifyArgs) -> Result<ExitCode> {
                 f.detail.as_deref().unwrap_or("")
             );
         }
+        if !integrity.is_clean() {
+            eprintln!("einmo: suite shape is unsound:");
+            eprint!("{}", integrity.report());
+        }
     }
-    Ok(if report.all_ok() {
+    Ok(if report.all_ok() && integrity.is_clean() {
         ExitCode::SUCCESS
     } else {
         ExitCode::FAILURE
@@ -457,7 +646,33 @@ fn cmd_verify(args: VerifyArgs) -> Result<ExitCode> {
 }
 
 fn cmd_confirm(args: ConfirmArgs) -> Result<ExitCode> {
-    let report = crate::confirm_signatures(&args.path, &args.pubkey_prefix)?;
+    // Exactly one source for the prefix: an explicit hex, or the passphrase.
+    let prefix = match (&args.pubkey_prefix, args.from_passphrase) {
+        (Some(p), false) => p.clone(),
+        (None, true) => {
+            // Derive the reviewer's key from the passphrase, confirmed twice,
+            // and print it so you can see (and reuse) the key you're checking
+            // against. This is the only place the passphrase→pubkey mapping is
+            // surfaced; the public key is not secret.
+            let passphrase = prompt_tty()?;
+            let hex = crate::signature::StageKeypair::derive(&passphrase).pubkey_hex();
+            if !args.json {
+                println!("your public key: {hex}");
+            }
+            hex
+        }
+        (Some(_), true) => {
+            return Err(EinmoError::Config(
+                "give a <pubkey-prefix> OR --from-passphrase, not both".into(),
+            ));
+        }
+        (None, false) => {
+            return Err(EinmoError::Config(
+                "give a <pubkey-prefix> or --from-passphrase".into(),
+            ));
+        }
+    };
+    let report = crate::confirm_signatures(&args.path, &prefix)?;
     if args.json {
         println!(
             "{{\"matched\":{},\"unmatched\":{}}}",
@@ -468,7 +683,7 @@ fn cmd_confirm(args: ConfirmArgs) -> Result<ExitCode> {
         println!(
             "{} file(s) match prefix {:?}, {} do not",
             report.matched.len(),
-            args.pubkey_prefix,
+            prefix,
             report.unmatched.len()
         );
     }
@@ -498,14 +713,14 @@ fn cmd_show(args: ShowArgs) -> Result<ExitCode> {
         println!(
             "{{\"test\":\"{}\",\"status\":\"{}\",\"stamps\":[{}]}}",
             meta.test,
-            status_str(file.metadata().status),
+            file.metadata().status,
             stamps.join(",")
         );
     } else {
         println!("test:     {}", meta.test);
         println!("suite:    {}", meta.suite);
         println!("producer: {}", meta.producer);
-        println!("status:   {}", status_str(meta.status));
+        println!("status:   {}", meta.status);
         if !meta.reference.is_empty() {
             println!("reference: {}", meta.reference);
         }
@@ -523,6 +738,168 @@ fn cmd_show(args: ShowArgs) -> Result<ExitCode> {
         if let Some(adv) = file.advisory() {
             println!("advisory: {adv}");
         }
+    }
+    Ok(ExitCode::SUCCESS)
+}
+
+/// The signed body of an envelope: every section except STAMPS.
+///
+/// This is what `compare` matches on, so it is what a reviewer should read —
+/// stamps and metadata (timestamps, keys) are deliberately excluded.
+/// Verify-on-inspect applies: a tampered file is refused, never rendered.
+fn body_sections(file: &EinmoFile, only: Option<&str>) -> Vec<(String, String)> {
+    file.sections()
+        .iter()
+        .filter(|s| !s.name().eq_ignore_ascii_case("STAMPS"))
+        .filter(|s| only.is_none_or(|w| s.name().eq_ignore_ascii_case(w)))
+        .map(|s| (s.name().to_string(), s.body().to_string()))
+        .collect()
+}
+
+fn cmd_body(args: BodyArgs) -> Result<ExitCode> {
+    // from_file verifies every stamp before returning (verify-on-inspect).
+    let file = EinmoFile::from_file(&args.file)?;
+    let sections = body_sections(&file, args.section.as_deref());
+    if sections.is_empty()
+        && let Some(want) = &args.section
+    {
+        return Err(EinmoError::Parse(format!(
+            "no section {want:?} in {}",
+            args.file.display()
+        )));
+    }
+    for (name, body) in sections {
+        if !args.bare {
+            println!("=== {name} ===");
+        }
+        println!("{body}");
+    }
+    Ok(ExitCode::SUCCESS)
+}
+
+/// Where a test's artifacts exist, and whether their bodies agree.
+struct TestRow {
+    rel: PathBuf,
+    stages: Vec<(Stage, Option<String>)>, // (stage, status if present)
+    differing: bool,
+}
+
+/// Enumerate the suite's tests across output/checked/verified.
+///
+/// The union of the input tree and every stage tree, so a test that exists only
+/// in a stage (input deleted) or only in `output/` (never promoted) is still
+/// listed — the file scan `poor_einmo.sh` needs.
+fn scan_tests(config: &TestConfig, filter: Option<&str>) -> Result<Vec<TestRow>> {
+    use crate::stage::{mirror_input_path, walk_input_tree};
+
+    const STAGES: [Stage; 3] = [Stage::Output, Stage::Checked, Stage::Verified];
+
+    let mut rels: Vec<PathBuf> = walk_input_tree(&config.input_path(), config.walk_depth_limit())
+        .unwrap_or_default()
+        .iter()
+        .map(|p| mirror_input_path(p))
+        .collect();
+    // Union in anything present in a stage but absent from input/.
+    for stage in STAGES {
+        let dir = config.stage_dir(stage);
+        if let Ok(found) = walk_input_tree(&dir, config.walk_depth_limit()) {
+            rels.extend(found);
+        }
+    }
+    rels.sort();
+    rels.dedup();
+
+    let mut rows = Vec::new();
+    for rel in rels {
+        let shown = rel.to_string_lossy().to_string();
+        if filter.is_some_and(|f| !shown.contains(f)) {
+            continue;
+        }
+        let mut stages = Vec::new();
+        let mut bodies: Vec<Option<Vec<(String, String)>>> = Vec::new();
+        for stage in STAGES {
+            let path = config.stage_dir(stage).join(&rel);
+            if path.exists() {
+                match EinmoFile::from_file(&path) {
+                    Ok(f) => {
+                        let status = f.metadata().status.to_string();
+                        stages.push((stage, Some(status)));
+                        bodies.push(Some(body_sections(&f, None)));
+                    }
+                    Err(_) => {
+                        // Tampered/unreadable: report it, never render it.
+                        stages.push((stage, Some("TAMPERED".to_string())));
+                        bodies.push(None);
+                    }
+                }
+            } else {
+                stages.push((stage, None));
+                bodies.push(None);
+            }
+        }
+        // Differing unless every stage is present and their bodies agree.
+        let differing =
+            bodies.iter().any(Option::is_none) || bodies.windows(2).any(|w| w[0] != w[1]);
+        rows.push(TestRow {
+            rel,
+            stages,
+            differing,
+        });
+    }
+    Ok(rows)
+}
+
+fn cmd_list(args: ListArgs) -> Result<ExitCode> {
+    let config = TestConfig::new(&args.work_dir, ValidationLevel::Output);
+    let rows = scan_tests(&config, args.filter.as_deref())?;
+    let rows: Vec<&TestRow> = rows
+        .iter()
+        .filter(|r| !args.differing || r.differing)
+        .collect();
+
+    for row in &rows {
+        let rel = row.rel.to_string_lossy();
+        if args.json {
+            let stages: Vec<String> = row
+                .stages
+                .iter()
+                .map(|(s, st)| {
+                    format!(
+                        "\"{}\":{}",
+                        s.dir_name(),
+                        st.as_ref()
+                            .map_or_else(|| "null".to_string(), |v| format!("\"{v}\""))
+                    )
+                })
+                .collect();
+            println!(
+                "{{\"test\":\"{}\",\"differing\":{},{}}}",
+                rel,
+                row.differing,
+                stages.join(",")
+            );
+        } else {
+            let marks: Vec<String> = row
+                .stages
+                .iter()
+                .map(|(s, st)| {
+                    let mark = st.as_ref().map_or("—", |v| match v.as_str() {
+                        "normal" => "ok",
+                        other => other,
+                    });
+                    format!("{}:{}", s.dir_name(), mark)
+                })
+                .collect();
+            println!(
+                "{}\t{}\t{}",
+                rel,
+                if row.differing { "differ" } else { "same" },
+                marks.join(" ")
+            );
+        }
+    }
+    if !args.json {
+        eprintln!("{} test(s)", rows.len());
     }
     Ok(ExitCode::SUCCESS)
 }
@@ -562,14 +939,6 @@ fn sha256_file(path: &Path) -> Result<String> {
     Ok(hex::encode(hasher.finalize()))
 }
 
-fn status_str(status: crate::format::Status) -> &'static str {
-    match status {
-        crate::format::Status::Normal => "normal",
-        crate::format::Status::InputError => "input-error",
-        crate::format::Status::OutputError => "output-error",
-    }
-}
-
 /// Read one line from stdin (for `--stdin-passphrase`).
 fn read_stdin_line() -> Result<String> {
     use std::io::BufRead;
@@ -582,9 +951,119 @@ fn read_stdin_line() -> Result<String> {
 }
 
 /// Prompt for a passphrase on the controlling terminal (cross-platform via
-/// rpassword). Used by the stage-key cascade's interactive tier (§B.5).
+/// rpassword), reading it **twice** and requiring the two to match.
+///
+/// The passphrase derives the signing key for a `verified` stamp — a human
+/// attestation that a typo would silently misdirect: a mistyped passphrase
+/// yields a *different, valid* keypair, so the promotion would succeed under a
+/// key nobody can reproduce, and the merge gate's reviewer-key check would then
+/// reject it with no hint why. Confirming the entry catches the typo at the
+/// keyboard instead. Used by the stage-key cascade's interactive tier (§B.5).
 fn prompt_tty() -> Result<String> {
-    rpassword::prompt_password("einmo passphrase: ").map_err(|e| EinmoError::io("<tty>", e))
+    loop {
+        let first =
+            rpassword::prompt_password("einmo passphrase: ").map_err(|e| EinmoError::io("<tty>", e))?;
+        let second = rpassword::prompt_password("einmo passphrase (again): ")
+            .map_err(|e| EinmoError::io("<tty>", e))?;
+        if first == second {
+            return Ok(first);
+        }
+        eprintln!("einmo: passphrases did not match — try again (Ctrl-C to abort)");
+    }
+}
+
+struct CommandEvaluator {
+    command: String,
+}
+
+impl crate::einmo_suite::Evaluator for CommandEvaluator {
+    fn evaluate(&self, source: &str) -> std::result::Result<Vec<String>, String> {
+        let tmp = tempfile::NamedTempFile::new().map_err(|e| e.to_string())?;
+        std::fs::write(tmp.path(), source).map_err(|e| e.to_string())?;
+        let abs = tmp
+            .path()
+            .canonicalize()
+            .map_err(|e| e.to_string())?;
+        let output = std::process::Command::new("sh")
+            .arg("-c")
+            .arg(format!("{} {}", self.command, abs.display()))
+            .output()
+            .map_err(|e| format!("evaluator command failed: {e}"))?;
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(format!(
+                "evaluator exited {}: {}",
+                output.status.code().unwrap_or(-1),
+                stderr.trim()
+            ));
+        }
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        Ok(vec![stdout.to_string()])
+    }
+}
+
+fn cmd_evaluate(args: EvaluateArgs) -> Result<ExitCode> {
+    let mut config = TestConfig::new(&args.work_dir, ValidationLevel::Output);
+    if let Some(limit) = args.walk_depth_limit {
+        config = config.with_walk_depth_limit(limit);
+    }
+    let suite = crate::einmo_suite::EinmoSuite::new(config);
+    let evaluator = CommandEvaluator {
+        command: args.command,
+    };
+
+    let inputs = crate::stage::walk_input_tree(
+        &args.work_dir.join("input"),
+        args.walk_depth_limit.unwrap_or(64),
+    )?;
+    let filtered: Vec<_> = inputs
+        .into_iter()
+        .filter(|p| {
+            args.filter
+                .as_ref()
+                .map_or(true, |f| p.to_string_lossy().contains(f.as_str()))
+        })
+        .collect();
+
+    let mut written = 0usize;
+    let mut failed = 0usize;
+    for input_rel in &filtered {
+        match suite.evaluate(input_rel, &evaluator) {
+            Ok(result) => {
+                if result.written_and_verified {
+                    written += 1;
+                    if !args.json {
+                        println!("  ✓ {}", result.rel_path.display());
+                    }
+                } else {
+                    failed += 1;
+                    if !args.json {
+                        println!(
+                            "  ✗ {} ({})",
+                            result.rel_path.display(),
+                            result.detail.as_deref().unwrap_or("")
+                        );
+                    }
+                }
+            }
+            Err(e) => {
+                failed += 1;
+                if !args.json {
+                    println!("  ✗ {} — {e}", input_rel.display());
+                }
+            }
+        }
+    }
+    if args.json {
+        println!("{{\"evaluated\":{written},\"failed\":{failed}}}");
+    } else {
+        println!("evaluated {written} file(s), {failed} failure(s)");
+    }
+    Ok(if failed == 0 {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
+    })
 }
 
 #[cfg(test)]
@@ -601,6 +1080,52 @@ mod tests {
         assert!(parse_transition("output->bogus").is_err());
     }
 
+    /// Regression: `->` collides with shell redirection. An UNQUOTED
+    /// `checked->verified` on the command line has its `>` eaten by the shell
+    /// (redirecting stdout to a file named `verified`), so einmo receives only
+    /// `checked-` and fails with a baffling `transition "checked-"` error.
+    ///
+    /// The fix accepts redirect-safe separators too — `:` and `..` — so a user
+    /// need not remember to quote. All three spellings mean the same thing.
+    #[test]
+    fn transition_accepts_redirect_safe_separators() {
+        let want = (Stage::Checked, Stage::Verified);
+        assert_eq!(parse_transition("checked->verified").unwrap(), want);
+        assert_eq!(parse_transition("checked:verified").unwrap(), want);
+        assert_eq!(parse_transition("checked..verified").unwrap(), want);
+        // The mangled leftover of an unquoted `->` still fails clearly.
+        assert!(parse_transition("checked-").is_err());
+    }
+
+    #[test]
+    fn split_promote_spaced_and_glued_agree() {
+        let want = (Stage::Checked, Stage::Verified);
+        let strs = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+
+        // Spaced form: `checked to verified <dir> [files]`.
+        let (f, t, dir, files) =
+            split_promote_args(&strs(&["checked", "to", "verified", "suite", "a.einmo"])).unwrap();
+        assert_eq!((f, t), want);
+        assert_eq!(dir, PathBuf::from("suite"));
+        assert_eq!(files, vec![PathBuf::from("a.einmo")]);
+
+        // `to` is case-insensitive.
+        assert_eq!(
+            split_promote_args(&strs(&["checked", "TO", "verified", "suite"]))
+                .map(|(f, t, _, _)| (f, t))
+                .unwrap(),
+            want
+        );
+
+        // Glued forms all agree with the spaced form.
+        for glued in ["checked->verified", "checked:verified", "checked..verified"] {
+            let (f, t, dir, files) = split_promote_args(&strs(&[glued, "suite"])).unwrap();
+            assert_eq!((f, t), want, "{glued}");
+            assert_eq!(dir, PathBuf::from("suite"));
+            assert!(files.is_empty());
+        }
+    }
+
     #[test]
     fn cli_parses_subcommands() {
         // Smoke: the parser accepts each subcommand shape.
@@ -611,7 +1136,69 @@ mod tests {
     }
 
     #[test]
-    fn cli_promote_accepts_positional_files() {
+    fn cli_parses_list_and_body() {
+        assert!(Cli::try_parse_from(["einmo", "list", "/tmp/s"]).is_ok());
+        assert!(Cli::try_parse_from(["einmo", "list", "/tmp/s", "--differing", "--json"]).is_ok());
+        assert!(Cli::try_parse_from(["einmo", "list", "/tmp/s", "--filter", "foop/23"]).is_ok());
+        assert!(Cli::try_parse_from(["einmo", "body", "/tmp/a.einmo"]).is_ok());
+        assert!(
+            Cli::try_parse_from([
+                "einmo",
+                "body",
+                "/tmp/a.einmo",
+                "--section",
+                "OUTPUT",
+                "--bare"
+            ])
+            .is_ok()
+        );
+    }
+
+    /// The body view is what a reviewer reads, so it must exclude the stamp
+    /// chain (and therefore the timestamp/key churn that made the legacy insta
+    /// corpus structurally red).
+    #[test]
+    fn body_sections_excludes_stamps() {
+        use crate::format::{DEFAULT_SEPARATOR, EinmoFile, Metadata, Section, Status};
+        use crate::signature::Stamps;
+
+        let meta = Metadata {
+            test: "t.foo".into(),
+            suite: "s".into(),
+            producer: "abc".into(),
+            producer_diff: String::new(),
+            generated: "2026-07-15T00:00:00Z".into(),
+            status: Status::Normal,
+            status_detail: String::new(),
+            reference: String::new(),
+            sections: vec!["INPUT".into(), "OUTPUT".into(), "STAMPS".into()],
+        };
+        let file = EinmoFile::new(
+            "utf-8",
+            DEFAULT_SEPARATOR,
+            meta,
+            vec![
+                Section::new("INPUT", "{3 + 4;}"),
+                Section::new("OUTPUT", "{ 7 }"),
+                Section::new("STAMPS", "{\"key\":\"stage:output\"}"),
+            ],
+            Stamps::new(),
+        );
+
+        let all = body_sections(&file, None);
+        assert_eq!(
+            all.iter().map(|(n, _)| n.as_str()).collect::<Vec<_>>(),
+            vec!["INPUT", "OUTPUT"],
+            "STAMPS must never reach a reviewer's pane"
+        );
+
+        let only = body_sections(&file, Some("output"));
+        assert_eq!(only.len(), 1, "--section is case-insensitive");
+        assert_eq!(only[0].1, "{ 7 }");
+    }
+    #[test]
+    fn cli_promote_collects_positional_args() {
+        // Glued + files.
         let cli = Cli::try_parse_from([
             "einmo",
             "promote",
@@ -624,31 +1211,29 @@ mod tests {
         let Command::Promote(a) = cli.command else {
             panic!("expected Promote");
         };
+        let (f, t, dir, files) = split_promote_args(&a.args).unwrap();
+        assert_eq!((f, t), (Stage::Output, Stage::Checked));
+        assert_eq!(dir, PathBuf::from("/tmp/s"));
         assert_eq!(
-            a.files,
+            files,
             vec![PathBuf::from("a.einmo"), PathBuf::from("b.einmo")]
         );
     }
 
     #[test]
-    fn cli_promote_accepts_dash_separator() {
+    fn cli_promote_spaced_form_parses() {
+        // The shell-safe spoken form, the whole point of `to`.
         let cli = Cli::try_parse_from([
-            "einmo",
-            "promote",
-            "output->checked",
-            "/tmp/s",
-            "--",
-            "a.einmo",
-            "b.einmo",
+            "einmo", "promote", "checked", "to", "verified", "/tmp/s", "x.einmo",
         ])
         .unwrap();
         let Command::Promote(a) = cli.command else {
             panic!("expected Promote");
         };
-        assert_eq!(
-            a.files,
-            vec![PathBuf::from("a.einmo"), PathBuf::from("b.einmo")]
-        );
+        let (f, t, dir, files) = split_promote_args(&a.args).unwrap();
+        assert_eq!((f, t), (Stage::Checked, Stage::Verified));
+        assert_eq!(dir, PathBuf::from("/tmp/s"));
+        assert_eq!(files, vec![PathBuf::from("x.einmo")]);
     }
 
     #[test]
@@ -665,7 +1250,8 @@ mod tests {
         let Command::Promote(a) = cli.command else {
             panic!("expected Promote");
         };
-        assert!(a.files.is_empty());
+        let (_, _, _, files) = split_promote_args(&a.args).unwrap();
+        assert!(files.is_empty());
         assert_eq!(a.filter.as_deref(), Some("*"));
     }
 

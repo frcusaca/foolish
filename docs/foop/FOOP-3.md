@@ -2,7 +2,7 @@
 foop: 3
 title: Concatenation produces a new brane of constanicCloned elements; further steps delegate to the merged brane
 author: hc <hc.busy@gmail.com>
-status: Brewing
+status: Superseded
 type: Standards
 created: 2026-04-22
 phase: phase-3
@@ -10,6 +10,10 @@ supersedes: []
 ---
 
 # FOOP-3: Concatenation produces a new brane of constanicCloned elements; further steps delegate to the merged brane
+
+> **Superseded 2026-07-14.** Realized in UBCa via the non-merging `ConcatBrane` (FOOP-13
+> Phase A, merged): concatenation holds constanic-cloned elements and delegates further steps.
+> Early UBC-era text; do not cite for current mechanics — read `fir_kinds.rs` ConcatBrane.
 
 ## Abstract
 

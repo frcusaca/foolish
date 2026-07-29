@@ -12,6 +12,31 @@ begun: [ ]
 
 # FOOP-93: Search predicates — inverse matcher `!` and matcher boolean operators `&&`/`||`
 
+> **Scope expansion (2026-07-14, roadmap Track 2 opener):** FOOP-43 is **merged into this FOOP**
+> (FOOP-43 → Superseded; its full discussion text remains readable there). This FOOP now carries
+> the complete *search settlement semantics* batch **plus** the predicate algebra, so one
+> implementation lands and one human snapshot-review/re-sign session covers it:
+>
+> - **43-C1 — miss → ECONSTANIC, universally.** Anchored miss no longer settles NK; NK survives
+>   only for found-`???`, and for provable-impossibility on settled structures (`#N` out of
+>   range, head/tail of settled empty brane — enumerate and preserve). Deepen-chains off a
+>   missed anchor become WOCONSTANIC. Revises FOOP-23 §Miss and AGENTS.md §"NK vs ECONSTANIC"
+>   (both docs update inside this FOOP's worktree).
+> - **43-C2 — coordination strips position.** The constanic-clone `Search` arm clones only
+>   `ubc_children[0]` (the value), dropping `[1]` (the `FoolRefFir` position): a by-name
+>   reference of a search result is *just its value*; a subsequent `&`-search off it settles NK.
+>   Carries Atlas's embedded requirement: **survey the approved corpus first** to settle exactly
+>   which anchors count as "carrying a live position" before finalizing. Packaging decision
+>   (agent, vetoable at BDFL review): C2 rides here rather than its own FOOP or FOOP-24, so the
+>   settlement semantics flip snapshots once, not twice.
+> - **43-C3 — `EconstanicReason` tag.** Small enum recorded at ECONSTANIC settlement
+>   (`Miss | Detached | CharDemand | …`, extensible), parallel to `NkFir.reason`. Producers land
+>   here (the miss branch); consumers are FOOP-24 (Detached) and the characterization FOOPs
+>   (CharDemand). Decide whether WOCONSTANIC dependents propagate the underlying reason.
+>
+> Execution order inside this FOOP: C1+C2+C3 first (settlement), then `!`/`&&`/`||` (predicate
+> algebra) — the predicate tests assume the new settlement rules.
+
 > Lean draft. Fuller notes in the Appendix and `NOTES-creation-lineage-and-search-family.md` §4/§9.
 > (Implementation order: #6 — Search FOOP A of three. Renumbered 2026-07-09.)
 >

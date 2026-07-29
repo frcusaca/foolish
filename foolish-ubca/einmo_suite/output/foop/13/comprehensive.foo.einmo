@@ -1,0 +1,158 @@
+#einmo 1 encoding=utf-8 separator=!!\n
+test: foop/13/comprehensive.foo
+suite: /home/hcbusy/foolish/foolish-ubca/einmo_suite
+producer: 7b6ebaa7
+producer-diff: sha256:845af199d81c05d53ab57f77d5533f0483a5941964f69a46aa25ee448f7bddfb
+generated: 2026-07-29T03:19:04.000000000Z
+status: normal
+status-detail: 
+sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
+{
+	!! === FOOP-13 Comprehensive Test ===
+	!! Exercises the non-merging ConcatBrane (join via _ConcatHelper storage,
+	!! the Equivalence Law) interacting with existing features: dot access,
+	!! name/anchored search, index (#N), head/tail (^ $), unanchored seek,
+	!! arithmetic, nested branes, and SF/SFF markers. Also pins the new
+	!! join-gate behaviors from the ConcatBrane repair: non-greedy join
+	!! (an un-joinable element blocks the whole join), WOCONSTANIC-brane
+	!! elements still join, and cross-element recoordination.
+
+	!! --- Base data: named branes reused as concat elements ---
+	pt   = {x = 1, y = 2};
+	more = {z = 3, w = 4};
+	outer_k = 100;
+
+	!! --- 1. Named-brane + literal join; cross-element reference ---
+	!! `sum = x + y` is a fresh line in the JOIN that resolves x,y from the
+	!! copied `pt` lines (recoordination), not from any outer scope.
+	joined = pt {sum = x + y};
+
+	!! --- 2. Literal + literal join; the joined brane is one flat brane ---
+	flat = {a = 10, b = 20} {c = 30};
+
+	!! --- 3. Empty constituents contribute zero lines ---
+	with_empty = {} {only = 7} {};
+
+	!! --- 4. Repeated named element (a brane may appear more than once) ---
+	twice = pt pt;
+
+	!! --- 5. Dot access INTO a joined brane ---
+	reach = joined.sum + joined.x;
+
+	!! --- 6. Index / head / tail over the JOINED (global) index space ---
+	!! flat is [a, b, c]; #0 = a's value, $ = tail = c, ^ = head = a.
+	idx_first = flat#0;
+	idx_tail  = flat$;
+	idx_head  = flat^;
+
+	!! --- 7. Anchored index / head / tail SPAN element boundaries ---
+	!! spanned is [p, q | r, s]; global #0=p (element 1), #-1=$=s (element 2),
+	!! #2=r (crosses from element 1 into element 2). This pins the
+	!! global<->local index translation over the _ConcatHelper series.
+	seg1    = {p = 1, q = 2};
+	seg2    = {r = 3, s = 4};
+	spanned = seg1 seg2;
+	span_head  = spanned#0;
+	span_tail  = spanned$;
+	span_cross = spanned#2;
+
+	!! --- 8. Anchored name search on a joined brane ---
+	find_c = flat?c;
+	find_w = twice~x;
+
+	!! --- 9. Cross-element ancestral resolution: a joined line reaches OUT
+	!!     to the enclosing brane when the name is not in the join. ---
+	uses_outer = {inside = 1} {grab = inside + outer_k};
+
+	!! --- 10. SF/SFF element markers on a concat ---
+	!! bare search element (auto-SF) joins its target's lines; an SFF-wrapped
+	!! literal defers its inner searches to the join.
+	sf_join = pt <<{doubled = x + x}>>;
+
+	!! --- 11. Non-greedy join: an SFF-wrapped search that never resolves
+	!!     leaves the WHOLE concat un-joined (WOCONSTANIC), rendered as its
+	!!     raw constituents. `nowhere` is undefined. ---
+	blocked = pt <<nowhere>>;
+}
+!!
+{WOCONSTANIC
+  pt={
+      x=1;
+      y=2
+  };
+  more={
+      z=3;
+      w=4
+  };
+  outerˍk=100;
+  joined={
+      x=1;
+      y=2;
+      sum=3
+  };
+  flat={
+      a=10;
+      b=20;
+      c=30
+  };
+  withˍempty={
+      only=7
+  };
+  twice={
+      x=1;
+      y=2;
+      x=1;
+      y=2
+  };
+  reach=4;
+  idxˍfirst=10;
+  idxˍtail=30;
+  idxˍhead=10;
+  seg1={
+      p=1;
+      q=2
+  };
+  seg2={
+      r=3;
+      s=4
+  };
+  spanned={
+      p=1;
+      q=2;
+      r=3;
+      s=4
+  };
+  spanˍhead=1;
+  spanˍtail=4;
+  spanˍcross=3;
+  findˍc=30;
+  findˍw=1;
+  usesˍouter={
+      inside=1;
+      grab=101
+  };
+  sfˍjoin={
+      x=1;
+      y=2;
+      doubled=2
+  };
+  blocked=⨃(
+      elements=2,
+      ?(
+  result={
+      x=1;
+      y=2
+  },
+  pattern='^pt$',
+  UNANCHORED
+),
+      <<WOCONSTANIC
+  ?(pattern='^nowhere$', UNANCHORED)
+>>,
+      WOCONSTANIC
+  )
+}!!
+!!
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:76e3e339100cebcf52fc21699ad2ee363ce862928394353e5de017183b7edc20","timestamp":"2026-07-29T03:19:04.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:76e3e339100cebcf52fc21699ad2ee363ce862928394353e5de017183b7edc20","timestamp":"2026-07-29T03:19:04.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"let8dfpF6kkCbl0pZV5qNE/IC9qRfuacNwUzGrPiIj0vzwRlUJz2q03AwOIWYoXmS54aJtzxnnbrh/6U7KHzBQ==","produced_by":"einmo 0.1.0 sha256:76e3e339100cebcf52fc21699ad2ee363ce862928394353e5de017183b7edc20","timestamp":"2026-07-29T03:19:04.000000000Z"}

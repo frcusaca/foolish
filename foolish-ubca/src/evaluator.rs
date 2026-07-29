@@ -469,6 +469,24 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
             let mut builder = SearchFirBuilder::new(borrowed.as_search_pattern().unwrap_or(""))
                 .anchored(borrowed.as_search_anchored())
                 .state(state);
+            // A value search (`~=` / `?=`) carries a value EXPRESSION as a child
+            // (anchor first if present, value last). Surface both so the
+            // sequencer renders `=(anchor=…, value=…)` instead of a degenerate
+            // empty-pattern search (FOOP-23 rendering appendix).
+            if borrowed.as_search_is_value() {
+                builder = builder.is_value(true);
+                let children = borrowed.core().foolish_children();
+                let has_anchor = borrowed.as_search_anchored();
+                if has_anchor
+                    && let Some(a) = children.first()
+                {
+                    builder = builder.anchor(proto_to_core_fir_inner(a, false));
+                }
+                let value_idx = if has_anchor { 1 } else { 0 };
+                if let Some(v) = children.get(value_idx) {
+                    builder = builder.value(proto_to_core_fir_inner(v, false));
+                }
+            }
             if let Some(alarm_reason) = borrowed.core().alarm_reason() {
                 builder = builder.alarm(Alarm {
                     level: AlarmLevel::Mild,
@@ -793,7 +811,7 @@ mod step_until_tests {
         let root = firs[0].clone();
         let scope = Scope::empty();
 
-        let _ = step_to_settled(&root, &scope).unwrap();
+        step_to_settled(&root, &scope).unwrap();
         let result = step_until_statement_name(&root, &scope, "nonexistent");
         assert!(
             result.is_err(),
@@ -815,8 +833,10 @@ mod step_until_tests {
         use std::path::PathBuf;
 
         let input = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("snapshot_tests")
+            .join("einmo_suite")
             .join("input")
+            .join("foop")
+            .join("13")
             .join("concat_brane_nested_shadowed_resolution.foo");
         let source = std::fs::read_to_string(&input)
             .unwrap_or_else(|_| panic!("{} not found", input.display()));
@@ -856,7 +876,7 @@ mod step_until_tests {
         );
 
         // Now step to settled and check the x=cb.shadow search result.
-        let _ = step_to_settled(&root, &scope).unwrap();
+        step_to_settled(&root, &scope).unwrap();
 
         // Find the search for "^shadow$" in the entire root.
         let shadow_searches = {

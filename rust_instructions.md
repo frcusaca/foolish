@@ -16,6 +16,9 @@ The document is organized by the *strength and shape* of each instruction:
 
 - **Priorities** — the prioritizing statements: what to optimize for and which
   construct wins when two compete.
+- **Task guides** — the same rules re-indexed *by the task you are doing right
+  now* (writing a function, a helper, naming, documenting, structuring a module
+  or a crate), ordered most-frequent first. Start here when coding.
 - **Language patterns** — prescribed instructions stated *with the conditions*
   under which they apply.
 - **Do's** — affirmative mandates, including the hard tooling gates.
@@ -94,7 +97,174 @@ When two constructs compete, the earlier-named or left-hand side wins.
 
 ---
 
-## 2. Language patterns
+## 2. Task guides
+
+The rules of this document, re-indexed by the task at hand. Ordered by how often
+each task occurs: functions first (constant), crate creation last (rare). Each
+guide leads with the advice that matters most and is used most, and ends with
+pointers into the reference sections (§3–§7), where the extensive examples live.
+
+### Rule zero — encapsulation (applies to every task below)
+
+Coding agents fail most often at encapsulation, so it is stated first, insisted
+upon, and repeated inside the guides. The rule has four clauses:
+
+1. **A function that changes an object's state belongs to that object.** Declare
+   it inside the object's `impl` block, taking `&mut self` (or `&self` with the
+   type's own interior mutability). The `impl TheType { … }` block is the
+   *programmatic marking* of association — never a free function mutating
+   another type's fields from outside.
+2. **A function that primarily reports information about an object also belongs
+   to that object** — predicates, projections, summaries (`is_constanic()`,
+   `state()`, `as_i64()`) are methods; callers must never re-derive a fact the
+   type can state about itself.
+3. **Private defensively, public by design.** Every new field is private. Every
+   new method starts private, widens to `pub(super)`/`pub(crate)` only when a
+   real caller appears, and becomes `pub` only when it was *designed* to be
+   public-facing API. The same applies to modules (`mod`, not `pub mod`).
+4. **When the type is foreign** (an alias like `FirRef =
+   Rc<RefCell<dyn Fir>>`), the orphan rule forbids an inherent `impl` — attach
+   the behavior with an **extension trait** (`FirRefExt`, `NyesExt`). The
+   association is still programmatic, and cross-cutting invariants (e.g. borrow
+   discipline) are documented once, at the trait, not at every call site.
+
+Detailed, UBCa-grounded examples: §3 "Encapsulation & types" and §3 "The four
+OOP pillars in Rust".
+
+### 2a. Writing a new function
+
+1. **Whose function is it? (Rule zero.)** If it changes an object's state or
+   reports on an object, it belongs in that object's `impl` block (or extension
+   trait for foreign types). A free function is only for logic that genuinely
+   belongs to no type.
+2. **Signature first**: borrow (`&str`, `&[T]`, `&T`), never `&String`/`&Vec<T>`;
+   take owned values only when the function stores, consumes, or returns them.
+3. **Return the crate's central `Result<T>`** and propagate with `?`. No
+   `.unwrap()`/`.expect()`/`panic!` in library, parser, interpreter, FFI, or
+   production paths.
+4. **No `mut` you don't use** — and re-audit after every edit; downgrades cascade
+   outward to callers.
+5. **Iterator chains over index loops**; `let … else` for the refutable happy
+   path; `matches!` for boolean discriminant checks.
+6. **One responsibility.** If the body mixes validation, transformation, I/O, and
+   mutation, split it.
+7. **Inject ambient side effects** (tty, stdin, env, clock, RNG) as closures or
+   trait params gathered in a small struct — six positional params with `bool`
+   mode flags is untestable. *(c25)*
+   ```rust
+   fn resolve_stage_key(
+       inputs: KeyCascadeInputs,
+       prompt: impl FnOnce() -> io::Result<String>,  // tests: || panic!("no prompt expected")
+   ) -> Result<KeySource>
+   ```
+8. **Mark it `#[must_use]`** when discarding the return value is a bug.
+9. **Implement fully or don't add it.** A function that returns an empty
+   placeholder report is worse than no function — callers build on a no-op.
+   *(c25)*
+
+Reference: §3 Ownership & borrowing; §3 Loops & matching; §3 Errors; §3 The four
+OOP pillars in Rust.
+
+### 2b. Writing a new helper function
+
+1. **Rule zero applies doubly to helpers.** If the helper mutates an object's
+   state or reports on an object's data, it is a *method* in that object's
+   `impl` block (or extension trait), not a free function poking at fields.
+   Most "helpers" are misplaced methods.
+2. **Check it doesn't already exist** — in `std`, in the crate, or in a sibling
+   module. Four copy-pasted recursive directory walkers in one crate is the
+   canonical failure. *(c25)* Reuse or extract the one shared helper.
+3. **Home it with the concern it serves**, not in `utils`. A helper used by one
+   module stays private in that module; promote to `pub(crate)` only when a
+   second module calls it. Never `pub` by reflex.
+4. **DRY the serialization/derivation paths**: one function builds the canonical
+   bytes and everything else (serialize, sign, verify) calls it — never a second
+   hand-rolled copy that must be kept in sync. *(c25)*
+
+Reference: §3 Encapsulation & types; §3 The four OOP pillars in Rust; §5
+Preferences (module organization).
+
+### 2c. Naming
+
+1. **RFC 430 casing**; acronyms as words: `Uuid`, `parse_xml`, never `UUID`.
+2. **Conversion prefixes carry cost semantics** *(c8)*: `as_` = cheap borrow,
+   `to_` = expensive/new allocation, `into_` = consuming. Don't mislabel.
+3. **Distinct meaning → newtype with a domain name**: `UserId(u64)`, not a bare
+   `u64` (and not an alias).
+4. **Finite word-domains → enum** with CamelCase variants (`Status::InputError`),
+   never `"input-error"` strings in the domain type. *(c25)*
+5. **Modules are named by responsibility** (`transitions`, `verify`, `wire`) —
+   a name you can't pick usually means the module does too many things.
+6. **Descriptive locals**; the lowercased type name is a fine default.
+
+Reference: §3 Encapsulation & types (newtypes, enums); §4 Do's (RFC 430 casing).
+
+### 2d. Documentation
+
+1. **`///` on every public item**: first sentence one line (≤ ~15 words); add
+   `# Errors` / `# Panics` / `# Safety` where they apply; `?` (not `.unwrap()`)
+   in examples. *(c11, c22)*
+2. **Crate-level `//!` in `lib.rs`** stating purpose, core model, and
+   load-bearing invariants — a `lib.rs` that is only re-exports is missing its
+   front door. *(c25)*
+3. **Module-level `//!` docs** carry a reference to the governing specification
+   section (e.g. "FOOP-<N> §4.4") so readers can trace the design to its spec.
+4. **Comments explain *why*, not *what*.** If a *what* comment is needed, make
+   the code clearer instead.
+5. **Honest status over checked boxes**: plan files and docs must state what is
+   actually implemented; documentation that overstates completion is a defect.
+   *(c25)*
+
+Reference: §4 Do's (documentation mandates); AGENTS.md Markdown File Update
+Protocol for `.md` files.
+
+### 2e. Structuring a new module
+
+1. **One responsibility per module.** When a module accretes jobs — a `stage.rs`
+   holding the enum, directory ops, promotion, flagging, *and* signature
+   scanning — split it (`stage.rs` + `transitions.rs`) before it grows further.
+   *(c25)*
+2. **Declare it private** (`mod foo;`) and re-export the curated surface from
+   `lib.rs`; internals use `pub(crate)`. *(c25, c26)*
+3. **Errors go to the crate's central `error.rs`** — a new module does not get
+   its own error enum. *(c25)*
+4. **Keep the type and its `impl` blocks together**; path-based modules
+   (`foo.rs` + `foo/`), never `mod.rs`.
+5. **Everything private until designed public (Rule zero).** Fields private;
+   functions private; widen deliberately (`pub(super)` → `pub(crate)` → `pub`),
+   each widening justified by an actual caller or a designed API surface.
+6. **Unit tests inline** in `#[cfg(test)] mod tests`; hermetic (temp dirs, no
+   committed-state mutation). Integration tests go in the crate's `tests/` dir.
+   *(c25)*
+
+Reference: §3 Encapsulation & types; §3 The four OOP pillars in Rust; §5
+Preferences (responsibility-based organization).
+
+### 2f. Structuring a new crate (rare — ask before creating one)
+
+1. **Justify the crate**: a crate boundary is for an independent compilation
+   unit, reuse surface, or (like einmo) a deliberately standalone,
+   repo-promotable artifact. Otherwise it's a module.
+2. **`lib.rs` = crate `//!` doc + private `mod` list + curated `pub use`** —
+   the whole public API auditable in one screen. *(c25, c26)*
+3. **One `#[non_exhaustive]` error enum** in `error.rs` + `pub(crate) type
+   Result<T>` alias, `Io` variants carrying the offending path. *(c25)*
+4. **`Cargo.toml` hygiene**: `license`, workspace lints, `[lints.rust]
+   unsafe_code = "deny"` (crates that need no `unsafe`, and always for
+   crypto-touching crates), every dependency justified, exact `=x.y.z` pins when
+   a dep's output text lands in signed baselines. No unused deps. *(c25)*
+5. **CLI crates**: dispatch returns `ExitCode` (testable, no `process::exit`);
+   `--json` on every subcommand; an alias binary is a one-line wrapper over the
+   same parser. *(c25)*
+6. **No dead scaffolding**: no stub modules, parsed-but-ignored flags, or config
+   fields nothing reads. Implement or omit. *(c25)*
+
+Reference: §3 Errors (central enum); §7 CLI binaries; §7 Dependencies; §7
+Cryptographic code (lint gates, parameter pinning).
+
+---
+
+## 3. Language patterns
 
 Prescribed instructions, each stated with the condition that triggers it.
 
@@ -152,6 +322,157 @@ Prescribed instructions, each stated with the condition that triggers it.
   `#[must_use]`.
 - **When matching on your own enum**, enumerate variants — avoid a catch-all `_`
   so new variants force a compile error.
+- **When structuring a library crate's public surface**, keep modules private and
+  re-export a curated API from `lib.rs`. Internals then cannot leak by accident,
+  and the whole public surface is auditable in one place. *(c25, c26)*
+  ```rust
+  // lib.rs — not this:        // but this:
+  pub mod format;              mod format;
+  pub mod signature;           mod signature;
+                               pub use format::{EinmoFile, Status};
+                               pub use signature::Stamp;
+  ```
+- **When data is inherently ordered** (file sections, statements, a stamp chain),
+  store a `Vec` of proper structs. A `HashMap` plus a side list to remember
+  insertion order is a data-structure mismatch. *(c25)*
+  ```rust
+  struct Section { name: String, body: Vec<u8> }
+  sections: Vec<Section>,
+  // not: sections: HashMap<String, Vec<u8>>, sections_list: Vec<String>
+  ```
+- **When a field ranges over a finite set of words** (`"normal"` /
+  `"input-error"` / `"output-error"`), make it an enum with `as_str()`/`parse()`,
+  never a bare `String` — typos become compile errors and matches become
+  exhaustive. When the wire format is textual, keep a separate serde DTO (a
+  `StampWire` beside the domain `Stamp`) and convert: the domain type keeps its
+  invariants; the wire type absorbs format quirks. *(c25)*
+- **When a function's outcome depends on ambient side effects** (a tty prompt,
+  stdin, env vars), gather the inputs into a small struct and inject the side
+  effect as a closure, so the function is a pure decision over inputs — six
+  positional parameters with `bool` flags that trigger real `/dev/tty` reads are
+  untestable. *(c25)*
+  ```rust
+  fn resolve_stage_key(
+      inputs: KeyCascadeInputs,
+      prompt: impl FnOnce() -> io::Result<String>,  // tests: || panic!("no prompt expected")
+  ) -> Result<KeySource>
+  ```
+
+### The four OOP pillars in Rust — grounded in UBCa
+
+Rust is not a class-based language, but the four pillars of object-oriented design map cleanly
+onto its constructs, and this codebase uses all four. Agents most often fail on the first
+pillar, so it receives the most extensive treatment. Every example below is drawn from the real
+UBCa implementation (`foolish-ubca/src/`).
+
+#### Encapsulation — insist on it
+
+**Association is programmatic marking.** A function that *changes* an object's state, and a
+function that *reports* on an object's state, are both declared inside that object's `impl`
+block. `impl TheType { … }` is the machine-checked statement "this behavior belongs to this
+data." A free function that reaches into another type's fields is a design defect: it forces the
+fields `pub`, scatters the type's behavior across the crate, and lets invariants be violated
+from anywhere.
+
+```rust
+// WRONG — a free function mutating another type's data. It compiles only if
+// `nyes` is made pub, and now ANY code can advance the state machine wrongly:
+pub fn advance(pb: &ProtoBrane, n: Nyes) { pb.nyes.set(n); }
+
+// RIGHT — self-mutation is the type's own method; the field stays private and
+// every NYES transition in the whole crate flows through one audited door:
+impl ProtoBrane {
+    pub fn set_nyes(&self, n: Nyes) { self.nyes.set(n); }
+}
+```
+
+**Reporting belongs to the reporter.** A caller must never re-derive a fact the type can state
+about itself — the predicate lives with the data it judges, and the `match` hides inside:
+
+```rust
+// nyes_ext.rs — callers write `nyes.is_constanic()`; nobody outside this trait
+// enumerates the terminal states, so adding a state cannot silently break a caller.
+pub trait NyesExt {
+    fn is_constanic(&self) -> bool;
+}
+```
+
+**Foreign types still get association — via extension traits.** `FirRef` is an alias for the
+foreign type `Rc<RefCell<dyn Fir>>`, so the orphan rule forbids an inherent `impl FirRef`. The
+codebase attaches behavior with extension traits (`FirRefExt`, `FirRefNavExt`, `NyesExt`):
+callers keep method syntax (`node.value()`, `root.step(&scope)`), and the cross-cutting borrow
+discipline — every `RefCell` borrow opened and dropped within a single statement, never held
+across a recursive step — is documented and enforced at the trait, once, instead of re-argued at
+every call site.
+
+**Private defensively, public by design.** `ProtoBrane` is the exemplar: every field private,
+construction only through `ProtoBrane::new(…)`, mutation only through its own methods. Nothing
+about its layout is API.
+
+```rust
+pub struct ProtoBrane {
+    foolish_children: Vec<FirRef>,       // parse-time, fixed        — private
+    ubc_children: RefCell<Vec<FirRef>>,  // compute-time, mutable    — private
+    nyes: Cell<Nyes>,                    // advanced only via set_nyes() — private
+    tasks: RefCell<VecDeque<FirRef>>,    //                          — private
+    parent: Weak<RefCell<dyn Fir>>,      //                          — private
+    alarm_reason: RefCell<Option<String>>,
+}
+```
+
+The widening ladder is deliberate at every rung: private → `pub(super)` → `pub(crate)` → `pub`,
+and each widening is justified by an actual caller or a designed API surface. Defaulting to
+`pub` because "someone might need it" is how internals become un-fixable contracts.
+
+#### Abstraction
+
+Expose the *what*; hide the *how*, behind a small named capability. UBCa's one-engine search is
+the house example: every search operator is one `ContextfulSearch` engine parameterized by a
+cursor source (`Contextless` | `Contexted`) and a `SearchPredicate` (`Name` | `Value` |
+`NameValue` | `Index` | `Head` | `Tail`); traversal is behind the `CandidateNavigator` trait
+whose entire contract is "yield every reachable candidate, exactly once, in the mandated order."
+Callers of a search never see the walk. Einmo's `Evaluator` trait is the same move at crate
+scale — an entire interpreter behind `fn evaluate(&self, source: &str) -> Result<Vec<String>,
+String>`. Likewise `trait Fir`'s `fn core(&self) -> &ProtoBrane` abstracts "wherever this kind
+keeps its shared field-holder" so the step loop never cares.
+
+#### Inheritance
+
+Rust has no implementation inheritance, and this codebase does not miss it: the substitute is
+**composition plus trait default methods**. Every FIR kind *has* a `ProtoBrane` core — shared
+state by composition, reached through `core()` — not a base class. Shared behavior lives in
+`trait Fir`'s default method bodies and is overridden only where a kind genuinely differs:
+
+```rust
+pub trait Fir: std::fmt::Debug {
+    fn core(&self) -> &ProtoBrane;          // shared state: composition
+    fn as_i64(&self) -> Option<i64> {       // shared behavior: default method body
+        self.settled_result().and_then(|c| c.borrow().as_i64())
+    }
+}
+// IndepIntFir overrides as_i64 to return Some(value) — the one kind that IS an integer.
+```
+
+Do not emulate class hierarchies with `Deref` tricks, giant "base" structs, or macro-generated
+delegation towers. Compose, and let default methods carry the shared logic.
+
+#### Polymorphism
+
+`pub type FirRef = Rc<RefCell<dyn Fir>>` — the evaluator's uniform two-phase step loop invokes
+`fir_op_step` **dynamically** on every node in the tree. The op step is dynamically invoked
+because different `impl Fir` kinds do the *same thing* to *different objects*: one operation,
+many implementations, and the driving loop must not know (and never matches on) the concrete
+kind.
+
+```rust
+// step_inner drives ANY node; each FIR kind supplies its own combining work.
+child.fir_op_step(scope)?;   // dynamic dispatch through dyn Fir
+```
+
+This is precisely when `dyn` is right: a uniform operation over an open, heterogeneous tree.
+Its complement is static polymorphism — enum dispatch (§7): choose the exhaustive enum `match`
+when the variant set is finite and known and exhaustiveness matters; choose `dyn` when the
+operation is uniform and the caller must stay kind-agnostic, as in stepping.
 
 ### Loops & matching
 - **When transforming or filtering a collection**, use an iterator chain
@@ -215,6 +536,23 @@ Prescribed instructions, each stated with the condition that triggers it.
       StorageFailure(StorageError),
   }
   ```
+- **When a library crate spans several modules**, centralize on **one**
+  `#[non_exhaustive]` error enum in `error.rs` with a `pub(crate) type Result<T>`
+  alias. Five per-module enums (`ConfigError`, `FormatError`, `StageError`, …)
+  force consumers to juggle types and lose context through `#[from]` chains.
+  Annotate I/O variants with the offending path. *(c25)*
+  ```rust
+  #[non_exhaustive]
+  #[derive(Debug, thiserror::Error)]
+  pub enum EinmoError {
+      #[error("i/o error at {path}")]
+      Io { path: PathBuf, #[source] source: std::io::Error },
+      #[error("malformed envelope: {0}")]
+      Parse(String),
+      // …
+  }
+  pub(crate) type Result<T> = std::result::Result<T, EinmoError>;
+  ```
 - **When callers only report or propagate**, use an opaque error — `anyhow`/
   `eyre` with `.context(...)` in applications; don't mix application error types.
   *(c18)*
@@ -229,10 +567,13 @@ Prescribed instructions, each stated with the condition that triggers it.
   safe abstraction, document invariants in a `// SAFETY:` comment with plain-text
   reasoning, and ensure it passes Miri. Unsafe code should be rare, isolated, and
   easy to audit. *(c19)*
+- **When a crate needs no `unsafe` at all** (most crates here — and every
+  crypto-touching crate), declare `[lints.rust] unsafe_code = "deny"` in its
+  `Cargo.toml` so none can creep in later. `"warn"` is not a gate. *(c25)*
 
 ---
 
-## 3. Do's
+## 4. Do's
 
 Affirmative mandates. A change is not complete until these hold.
 
@@ -254,6 +595,10 @@ cargo test          # or: cargo nextest run
 - **Do** keep fields private and expose behavior; scope visibility with
   `pub(crate)` / `pub(super)`, and keep public module surfaces small with
   intentional re-exports.
+- **Do** associate behavior with data (Rule zero, §2): state-changing and
+  state-reporting functions go in the owning type's `impl` block — or an
+  extension trait when the type is foreign — never as free functions reaching
+  into another type's fields.
 - **Do** re-audit mutability after changing a function: if a `mut` variable or
   `&mut` parameter is no longer mutated, downgrade it to read-only, and follow
   the resulting cascade outward to callers.
@@ -269,6 +614,13 @@ cargo test          # or: cargo nextest run
 - **Do** write `///` docs on public items: first sentence one line (≤ ~15 words),
   with `# Examples` / `# Errors` / `# Panics` / `# Safety` where they apply, and
   use `?` (not `.unwrap()`) in doc examples. *(c11, c22)*
+- **Do** write a crate-level `//!` doc in `lib.rs` stating the crate's purpose,
+  core model, and load-bearing invariants — a new reader learns the model before
+  the API. A `lib.rs` that is only re-exports is missing its front door. *(c25)*
+- **Do** implement or omit — a capability either works or does not exist. Never
+  ship a no-op stub: a CLI flag that parses and is ignored, a config field
+  nothing reads, a `verify()` that returns an empty report. Stubs in `--help`
+  and in the API mislead users, reviewers, and other agents. *(c25)*
 - **Do** comment to explain *why*, not *what*. If a comment is needed to explain
   what the code does, first make the code clearer.
 - **Do** follow RFC 430 casing: acronyms as words (`Uuid`, `parse_xml`).
@@ -286,12 +638,16 @@ cargo test          # or: cargo nextest run
 8. Are lazy statics on `LazyLock`/`OnceLock`?
 9. Are format args inlined (`{x}`)?
 10. Did I write/run tests first, and a regression test for any bug fix?
-11. Did I touch generated/vendored/do-not-edit code? (Revert if so.)
-12. Does it pass `cargo fmt --check`, `cargo clippy -D warnings`, and tests?
+11. Did I leave any no-op stub — a parsed-but-ignored flag, a dead config field,
+    a function returning an empty placeholder?
+12. Are my tests hermetic (temp dirs, injected side effects, no writes to
+    committed baselines), and does none of them assert a stub's empty result?
+13. Did I touch generated/vendored/do-not-edit code? (Revert if so.)
+14. Does it pass `cargo fmt --check`, `cargo clippy -D warnings`, and tests?
 
 ---
 
-## 4. Preferences
+## 5. Preferences
 
 Weaker directives — defaults to lean toward, not hard gates.
 
@@ -315,7 +671,11 @@ Weaker directives — defaults to lean toward, not hard gates.
 - **Prefer** keeping a type and its `impl` blocks together in one module.
 - **Prefer** organizing code by responsibility (`parser`, `lexer`,
   `diagnostics`, `wire`, `storage`, `clock`, `ffi`) over dumping helpers into a
-  large `utils` module.
+  large `utils` module. When one module accretes several jobs — e.g. a `stage.rs`
+  holding the `Stage` enum, directory ops, promotion, flagging, *and* signature
+  scanning — split it (`stage.rs` + `transitions.rs` + `error.rs`) rather than
+  letting it grow past one responsibility; the split also kills the
+  copy-paste-a-fourth-directory-walker temptation. *(c25)*
 - **Prefer** macros sparingly: a macro is acceptable only when it removes
   unavoidable repetition while preserving clarity. Reach for functions, traits,
   or ordinary modules first.
@@ -325,7 +685,7 @@ Weaker directives — defaults to lean toward, not hard gates.
 
 ---
 
-## 5. Don'ts
+## 6. Don'ts
 
 Prohibitions and anti-patterns. The right-hand side is the replacement.
 
@@ -366,12 +726,26 @@ Prohibitions and anti-patterns. The right-hand side is the replacement.
   mutation. → split by responsibility.
 - **Don't bury protocol/decision logic inside async tasks** where it can't be
   tested. → separate protocol state from I/O.
+- **Don't `pub mod` internal modules from `lib.rs`.** → private `mod` + curated
+  `pub use` re-exports. *(c25, c26)*
+- **Don't scatter one error enum per module in a library.** → one central
+  `#[non_exhaustive]` enum in `error.rs` + `pub(crate) type Result<T>` alias.
+  *(c25)*
+- **Don't store ordered data in a `HashMap` with a side list tracking order.** →
+  `Vec` of structs; order lives in the container. *(c25)*
+- **Don't type a finite word-domain as `String`.** → enum + `as_str()`/`parse()`
+  (+ a serde wire DTO when the format is textual). *(c25)*
+- **Don't ship no-op stubs** — parsed-but-ignored flags, dead config fields,
+  functions returning empty placeholder reports. → implement or omit. *(c25)*
+- **Don't call `process::exit` inside CLI dispatch.** → return
+  `std::process::ExitCode` from `main()` and the dispatch function, so tests can
+  call the dispatcher and assert codes. *(c25)*
 - **Don't edit generated, vendored, or do-not-edit code.** *(c7)*
 - **Don't write unsound code, ever.** *(c3)*
 
 ---
 
-## 6. Project-specific rules
+## 7. Project-specific rules
 
 These are particular to this repository. **On any conflict with the general
 guidance above, these win.**
@@ -437,6 +811,13 @@ Foolish parser code preserves source spans; diagnostics point to source
 locations. Foretias decoded wire messages do not become trusted domain objects
 until validation succeeds.
 
+When parsed content is covered by a signature, verification must check the
+**actual raw bytes** on disk (or an explicitly documented canonical form) — a
+parser that trims or normalizes inside a signed region lets whitespace tampering
+verify successfully. Either keep `parse` byte-exact under signatures, or
+canonicalize first and sign the canonical bytes (RFC 8785-style); never an
+undocumented mix of the two. *(c25, c28)*
+
 ### Cryptographic and security-sensitive code (Foretias)
 - Never invent cryptographic protocols or alter protocol details casually.
 - Use constant-time comparison for secrets, signatures, MACs, and auth tags where
@@ -453,6 +834,22 @@ until validation succeeds.
 - Do not log secrets, private keys, raw credentials, sensitive peer material, or
   unreduced protocol internals. Do not expose test-only shortcuts in production
   APIs.
+- **Pin key-derivation and work-factor parameters as named constants** with a
+  comment citing the rationale — never rely on a dependency's defaults, which a
+  minor version bump can silently change (every previously derived key would
+  stop matching). Domain-separate salts. Changing pinned parameters invalidates
+  all derived keys, so it implies a corpus re-sign. *(c25, c27)*
+  ```rust
+  // OWASP Password Storage Cheat Sheet minimum baseline for Argon2id.
+  const ARGON2_MEMORY_KIB: u32 = 19_456;
+  const ARGON2_TIME_COST: u32 = 2;
+  const ARGON2_PARALLELISM: u32 = 1;
+  const SALT: &[u8] = b"einmo:stamp-key:v1"; // domain-separated
+  ```
+- **Provenance and attestation fields carry real values.** A
+  `sha256:placeholder` in a signed stamp defeats the field's entire purpose;
+  compute the real hash (`env::current_exe()` + SHA-256) or do not emit the
+  field. *(c25)*
 
 ### Time handling
 Do not call system time deep inside protocol logic — inject a `Clock` trait so
@@ -484,6 +881,14 @@ and explicit. Do not leak internal Rust types into binding contracts. Separate
 internal errors from binding-layer errors. Validate all foreign inputs and
 convert them into internal domain types only after checks pass. Binding APIs
 should be boring and hard to misuse.
+
+### CLI binaries
+`main()` and the CLI dispatch function return `std::process::ExitCode`; never
+call `process::exit` inside dispatch (it makes the dispatcher untestable).
+Every subcommand supports `--json` machine output — agents script against the
+CLI, and a verb without `--json` forces them to parse prose. An alias binary
+(e.g. `cargo-einmo` beside `einmo`) is a one-line wrapper over the same parser,
+never a second implementation. *(c25)*
 
 ### Logging & observability
 Log state transitions, protocol failures, peer connection changes, retry
@@ -519,6 +924,14 @@ and failure, interpreter semantics, compiler lowering, regression cases, and
 invalid programs that must produce diagnostics rather than panics. Use property
 or fuzz tests for parsers, decoders, serialization, and protocol messages.
 
+Tests are **hermetic**: run in temp directories (`tempfile`), inject side
+effects, and never modify committed repository state — a test that copies
+generated `output/` over a committed `checked/` baseline pollutes the repo and
+silently rewrites the acceptance gate it is supposed to enforce. Test *count*
+is not the metric; behavioral coverage is — one `parallel_and_serial_agree` or
+`illegal_transition_refused` outweighs a dozen granular roundtrip variants, and
+a test asserting a stub's empty result pins the absence of a feature. *(c25)*
+
 ### Debugging via unit tests
 The easiest way to diagnose parser or FVM logic errors is to write the
 offending code into a temporary unit test named
@@ -530,10 +943,11 @@ The intent is to repair the bug and then remove the temporary test. If a
 legitimate regression test can be made to detect the same problem, rename it
 appropriately and check it in with documentation.
 
-> **Snapshot/approval tests are never auto-accepted.** AI agents must never run
-> `cargo insta accept` or `INSTA_UPDATE=always`. Generate `.snap.new`, present to
-> the human, and wait for explicit approval. See `AGENTS.md` for the full
-> approval workflow and signature verification.
+> **Snapshot/approval tests use einmo.** Run `cargo test -p foolish-ubca --lib --
+> run_einmo_tests` to evaluate and check output against the signed `checked/`
+> baseline. Use `einmo evaluate` to regenerate outputs, `einmo compare` to
+> review diffs, and `einmo promote` to update baselines. See `AGENTS.md` for
+> the full workflow.
 
 ### Final rule
 When uncertain, choose the design that is easiest to prove correct, easiest to
@@ -582,10 +996,49 @@ AI-generated code is human-verified before submission. *(c23, c24)*
 - **c22** — Microsoft Rust documentation guidelines.
 - **c23** — rust-analyzer CLAUDE.md (AI disclosure / human verification).
 - **c24** — pola-rs/polars AI_POLICY.md.
+- **c25** — FOOP-54 §9 "Best Practices Review" (`docs/foop/FOOP-54.md`) — lessons
+  from the two-agent einmo implementation comparison (FOOP-54, mimo-opencode vs
+  FOOP-92, Claude Opus 4.8; both under two hours; neutral-agent analysis).
+- **c26** — Kobzol, "Two ways of interpreting visibility in Rust" (2025); insta's
+  `lib.rs` tiered-visibility layout (private modules, curated re-exports).
+- **c27** — OWASP Password Storage Cheat Sheet (Argon2id baselines); RustCrypto
+  Book "Password Hashing"; age/rage scrypt parameter handling.
+- **c28** — RFC 8785 (JSON Canonicalization Scheme); in-toto metadata model and
+  DSSE migration (canonical bytes under signatures).
 
 ---
 
 ## Last Updated
+
+**Date**: 2026-07-14
+**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5
+**Changes**: Imported ALL fifteen recommendations of the FOOP-54 §9 "Best Practices Review"
+(the mimo-opencode vs Claude Opus 4.8 einmo implementation comparison), each with a short
+example, cited as *(c25)* (+ new c26–c28): private-modules + curated `pub use` (§9.1), one
+central `#[non_exhaustive]` error enum + `Result` alias (§9.2), `Vec`-of-structs for ordered
+data (§9.3), enums + wire DTOs over stringly-typed domains (§9.4), closure-injected side
+effects in a params struct (§9.5), implement-or-omit / no no-op stubs (§9.6), real provenance
+hashes (§9.7), pinned KDF parameters with domain-separated salts (§9.8), byte-exact parsing
+under signatures (§9.9), `ExitCode` over `process::exit` (§9.10), module decomposition by
+responsibility (§9.11), `unsafe_code = "deny"` (§9.12), hermetic behavior-focused tests
+(§9.13), crate-level `//!` docs (§9.14), `--json` on every subcommand (§9.15). Added new
+**§2 Task guides** — the rules re-indexed by task, most-frequent first: writing a function →
+helper functions → naming → documentation → structuring a module → structuring a crate
+(rare, last). Renumbered subsequent sections 3–7; added a "CLI binaries" project rule; added
+self-check items 11–12 (stubs, hermetic tests).
+
+Same day, second pass (Atlas direction): added **Rule zero — encapsulation** at the head of §2
+(the four clauses: state-changing functions belong to the object's `impl`; reporting functions
+likewise; private defensively / public by design; extension traits for foreign types), repeated
+insistently in guides 2a/2b/2e; each §2 guide now ends with pointers into the reference
+sections. Added the extensive **§3 "The four OOP pillars in Rust — grounded in UBCa"** reference
+section: Encapsulation (programmatic marking via `impl`, `ProtoBrane::set_nyes` right/wrong
+pair, `NyesExt::is_constanic`, `FirRefExt` extension-trait association, the private→`pub`
+widening ladder), Abstraction (`ContextfulSearch` one-engine model, `CandidateNavigator`,
+einmo's `Evaluator`, `Fir::core()`), Inheritance (composition + trait default methods;
+`as_i64` override; no `Deref` hierarchies), Polymorphism (`dyn Fir` — `fir_op_step` dynamically
+invoked: different impls do the same thing to different objects; enum dispatch as the static
+complement). Added the matching Do (associate behavior with data).
 
 **Date**: 2026-06-09
 **Updated By**: Claude Code (Claude Code); Opus 4.8

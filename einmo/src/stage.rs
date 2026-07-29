@@ -115,14 +115,37 @@ pub fn mirror_input_path(input_rel: &Path) -> PathBuf {
 ///
 /// Returns [`EinmoError::Io`] if the tree cannot be walked.
 pub fn walk_input_tree(input_dir: &Path, depth_limit: usize) -> Result<Vec<PathBuf>> {
-    let mut found = Vec::new();
-    walk_dir(input_dir, input_dir, &mut found, depth_limit)?;
-    found.sort();
-    Ok(found)
+    Ok(walk_input_tree_reporting(input_dir, depth_limit)?.0)
 }
 
-fn walk_dir(root: &Path, dir: &Path, out: &mut Vec<PathBuf>, depth_limit: usize) -> Result<()> {
-    walk_dir_depth(root, dir, out, 0, depth_limit)
+/// As [`walk_input_tree`], but also returns the **extraneous** entries it
+/// refused to treat as inputs (dot-prefixed files and directories).
+///
+/// Discovery skips them so an open editor cannot inject phantom tests; this
+/// variant hands them back so the caller can *report* them. Einmo never
+/// silently ignores a file in its own tree — a suite whose shape is wrong is a
+/// failure, not a detail.
+///
+/// # Errors
+///
+/// Returns [`EinmoError::Io`] if the tree cannot be walked.
+pub fn walk_input_tree_reporting(
+    input_dir: &Path,
+    depth_limit: usize,
+) -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
+    let mut found = Vec::new();
+    let mut extraneous = Vec::new();
+    walk_dir_depth(
+        input_dir,
+        input_dir,
+        &mut found,
+        &mut extraneous,
+        0,
+        depth_limit,
+    )?;
+    found.sort();
+    extraneous.sort();
+    Ok((found, extraneous))
 }
 
 /// Maximum recursion depth for the directory walk. Catches pathologically deep
@@ -134,6 +157,7 @@ fn walk_dir_depth(
     root: &Path,
     dir: &Path,
     out: &mut Vec<PathBuf>,
+    extraneous: &mut Vec<PathBuf>,
     depth: usize,
     depth_limit: usize,
 ) -> Result<()> {
@@ -152,6 +176,21 @@ fn walk_dir_depth(
     for entry in entries {
         let entry = entry.map_err(|e| EinmoError::io(dir, e))?;
         let path = entry.path();
+        // Dot-prefixed entries (editor swap files, `.git`, `.DS_Store`) are
+        // never test inputs: a test input is a file someone deliberately named.
+        // They are skipped for *discovery* — an open editor must not inject
+        // phantom tests — but recorded as extraneous so the caller can report
+        // them. Einmo never silently ignores a file in its own tree.
+        if entry
+            .file_name()
+            .to_str()
+            .is_some_and(|n| n.starts_with('.'))
+        {
+            if let Ok(rel) = path.strip_prefix(root) {
+                extraneous.push(rel.to_path_buf());
+            }
+            continue;
+        }
         let file_type = entry.file_type().map_err(|e| EinmoError::io(&path, e))?;
         if file_type.is_symlink() {
             // Follow the symlink to determine the target type. A broken
@@ -164,7 +203,7 @@ fn walk_dir_depth(
                 Err(e) => return Err(EinmoError::io(&path, e)),
             };
             if metadata.is_dir() {
-                walk_dir_depth(root, &path, out, depth + 1, depth_limit)?;
+                walk_dir_depth(root, &path, out, extraneous, depth + 1, depth_limit)?;
             } else if metadata.is_file() {
                 let rel = path
                     .strip_prefix(root)
@@ -176,7 +215,7 @@ fn walk_dir_depth(
                 out.push(rel);
             }
         } else if file_type.is_dir() {
-            walk_dir_depth(root, &path, out, depth + 1, depth_limit)?;
+            walk_dir_depth(root, &path, out, extraneous, depth + 1, depth_limit)?;
         } else if file_type.is_file() {
             let rel = path
                 .strip_prefix(root)
@@ -312,6 +351,26 @@ mod tests {
     }
 
     #[cfg(unix)]
+    /// An editor swap file (or any dot-prefixed entry) is not a test input:
+    /// an open vim session must not inject phantom tests into the suite.
+    #[test]
+    fn walk_skips_hidden_entries() {
+        let tmp = tempfile::tempdir().unwrap();
+        let input = tmp.path().join("input");
+        std::fs::create_dir_all(input.join("foop/13")).unwrap();
+        std::fs::write(input.join("foop/13/comprehensive.foo"), "{1;}").unwrap();
+        std::fs::write(input.join("foop/13/.comprehensive.foo.swp"), "vim").unwrap();
+        std::fs::create_dir_all(input.join(".git")).unwrap();
+        std::fs::write(input.join(".git/config"), "x").unwrap();
+
+        let found = walk_input_tree(&input, MAX_WALK_DEPTH).unwrap();
+        assert_eq!(
+            found,
+            vec![PathBuf::from("foop/13/comprehensive.foo")],
+            "hidden files and dot-directories must not be discovered as inputs"
+        );
+    }
+
     #[test]
     fn walk_depth_limit_prevents_infinite_symlink_cycle() {
         use std::os::unix::fs::symlink;

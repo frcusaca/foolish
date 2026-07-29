@@ -1,0 +1,7 @@
+{
+  not_found = b?γ;
+  !! head/tail are always anchored, so it does not display ANCHORED
+  also_not_found = b.z^;
+  still_not_found = b.z$;
+  yet_not_found = b.w
+}

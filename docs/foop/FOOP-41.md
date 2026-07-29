@@ -2,7 +2,7 @@
 foop: 14
 title: UBCb — Message-passing brane computer variant; SPA1 parity plan
 author: hc <hc.busy@gmail.com>
-status: Implementing
+status: Deprecated
 type: Milestone
 created: 2026-05-07
 phase: meta
@@ -11,6 +11,9 @@ completed: 2026-05-15
 ---
 
 # FOOP-41: UBCb — Message-passing brane computer variant; SPA1 parity plan
+
+> **Deprecated 2026-07-14.** UBCb was removed from the workspace by FOOP-03 (repository
+> cleanup). This parity plan has no live target; a message-passing variant would be a new FOOP.
 
 ## Abstract
 

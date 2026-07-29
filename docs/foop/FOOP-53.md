@@ -12,6 +12,11 @@ begun: [ ]
 
 # FOOP-53: Computed index — `#${...}`
 
+> **Roadmap note (2026-07-14, Track 2 #4, small):** after FOOP-93. Reuses the value-pattern
+> machinery FOOP-23 shipped: the `#${…}` computed child steps to constanic exactly like a
+> `?=`/`~=` pattern child, then feeds `SearchPredicate::Index`. Out-of-range on a settled
+> brane stays NK (a preserved provable-impossibility under 43-C1).
+
 > Lean draft. Fuller notes in the Appendix and `NOTES-creation-lineage-and-search-family.md` §8.
 > (Implementation order: #2 — a small self-contained early win. Renumbered 2026-07-09.)
 
