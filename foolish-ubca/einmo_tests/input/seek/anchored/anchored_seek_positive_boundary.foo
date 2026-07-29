@@ -1,1 +1,0 @@
-{b = {10; 20; 30}; first = b#0; second = b#1; third = b#2; oob = b#3;}
