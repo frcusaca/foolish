@@ -12,7 +12,7 @@ pub use fir::{
 pub use sequencer::{FirSequencer, HumanizingFirSequencerRef};
 pub use serialization::{FirSerializer, JsonSerializer, fir_from_json, fir_to_json};
 pub use signature::{derive_keypair, sign_content, verify_signature};
-pub use snapshot_suite::{Evaluator, SnapshotSuite, SnapshotSuiteError, TestFailure};
+pub use snapshot_suite::Evaluator;
 
 #[cfg(test)]
 mod sequencer_tests;

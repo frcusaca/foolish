@@ -11,7 +11,7 @@
 
 use std::path::PathBuf;
 
-use einmo::{EinmoFile, EinmoSuite, Evaluator, Stage, TestConfig};
+use einmo::{EinmoFile, EinmoSuite, Evaluator, Stage, TestConfig, ValidationLevel};
 use zweimomo::{
     BoaEvaluator, RustPythonEvaluator, UbcaEvaluatorAdapter, aspects_perspective,
     brane_name_perspective,
@@ -29,7 +29,10 @@ fn suite_dir(lang: &str) -> PathBuf {
 /// The Foolish suite gets the Charmer (`aspects_perspective`) and the
 /// brane-name perspective. Python/JS get neither.
 fn run_suite(lang: &str, evaluator: &dyn Evaluator, foolish_separator: bool) {
-    let mut config = TestConfig::new(suite_dir(lang))
+    // Checked level: these suites assert a reviewed baseline (output <->
+    // checked), and make no claim about verified/ (FOOP-64 §"The escalating
+    // validation levels"). einmo has no default level; the suite states it.
+    let mut config = TestConfig::new(suite_dir(lang), ValidationLevel::Checked)
         .with_suite_name(format!("zweimomo/suites/{lang}"))
         .require_correspondence(Stage::Output, Stage::Checked);
 
@@ -131,7 +134,7 @@ fn crash_crumb_survives_foolish_stack_overflow() {
 
     if std::env::var("EINMO_ZWEIMOMO_CRASH_CHILD").is_ok() {
         let dir = std::env::var("EINMO_CRASH_TEST_DIR").unwrap();
-        let config = TestConfig::new(&dir);
+        let config = TestConfig::new(&dir, ValidationLevel::Output);
         let suite = EinmoSuite::new(config);
         let input_dir = Path::new(&dir).join("input");
         std::fs::create_dir_all(&input_dir).unwrap();

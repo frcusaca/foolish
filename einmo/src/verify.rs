@@ -208,6 +208,17 @@ pub fn verify(
         };
         for rel in rels {
             let path = stage_dir.join(&rel);
+            // Absence is not a verification failure. A stage that has not been
+            // promoted to yet simply has no artifact — reporting "FAILED: no
+            // such file" for every unpopulated `verified/` entry drowns real
+            // tampering in noise and makes `verify --all` red by default.
+            // Whether an artifact *ought* to exist is a correspondence question
+            // (`compare`); whether a file that exists is sound is this
+            // function's question. Missing inputs for existing artifacts are
+            // caught by `check_suite_integrity`.
+            if !path.exists() {
+                continue;
+            }
             let verdict = match EinmoFile::from_file(&path) {
                 Ok(_) => FileVerification {
                     rel_path: rel,

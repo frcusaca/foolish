@@ -1,0 +1,10 @@
+{
+  "id": "T-72c32bbe-c3e8-4b0b-83b6-8c103074b1c3",
+  "subject": "Update rust_instructions.md for einmo",
+  "description": "Replace insta references in rust_instructions.md with einmo equivalents.",
+  "status": "completed",
+  "activeForm": "Updating rust_instructions.md",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0554203ddffecwoEwrtf0Q00XB"
+}

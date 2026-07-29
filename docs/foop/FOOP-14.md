@@ -12,6 +12,14 @@ begun: [ ]
 
 # FOOP-14: All-results (find-all) search — doubled operators
 
+> **Roadmap note (2026-07-14, Track 2 #3):** depends on FOOP-93 (settlement) and FOOP-04
+> (cascade defined over single-result searches first). **Known design problem to resolve in
+> spec before coding (P2):** the FOOP-23 two-child invariant (`[clone, FoolRefFir]`) is
+> single-result; all-results must define the result *shape* — a result brane where each element
+> carries its own position (per-element FoolRefFir pair?) or a positionless value brane
+> (aligned with 43-C2's value-only coordination). Settle the shape + how `&`-searches read
+> it, and the empty-result case (ECONSTANIC per 43-C1), in the spec first.
+
 > Lean draft. Fuller notes in the Appendix and `NOTES-creation-lineage-and-search-family.md` §5.
 > (Implementation order: #8 — Search FOOP C of three. Renumbered 2026-07-09.)
 >

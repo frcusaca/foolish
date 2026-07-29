@@ -2,7 +2,7 @@
 foop: 45
 title: Einmo — directory-based signed-snapshot testing with staged promotion
 author: Sisyphus <agent>
-status: Draft
+status: Complete
 type: Standards
 created: 2026-06-26
 phase: meta
@@ -10,8 +10,23 @@ supersedes: []
 ---
 
 # FOOP-54: Einmo — directory-based signed-snapshot testing with staged promotion
-FOOP-54 is an identical project as FOOP-92. This file is being implemented by a
-different coding agent. Since worktrees are parallel. There should be zero collision
+
+> **COMPLETE — comparison project.** FOOP-54 and FOOP-92 are the same specification implemented
+> twice, deliberately, as a **comparison of implementation performance between two coding
+> agents**: **mimo-opencode** built this arm (FOOP-54) and **claude-code (Claude Opus 4.8)**
+> built the other (FOOP-92). Each implementation took **under two hours** to complete. The
+> worktrees were parallel, so there was zero collision.
+>
+> **The comparison was completed** by a neutral agent; the **full analysis is in the
+> §"Post implementation comparison" section below** (encapsulation, type layout, algorithms,
+> feature completeness, error handling, documentation, testing, build correctness, and a
+> 15-point Best Practices Review). Determination: FOOP-92 was the better implementation, and
+> **a choice was made to improve the Claude Opus 4.8 implementation (FOOP-92) to the point
+> where it could be merged** — it was hardened and merged to `jia` (9bbdaf43).
+>
+> The final follow-up — integrating the lessons of the §9 Best Practices Review into
+> `rust_instructions.md` — was completed 2026-07-14 (all fifteen recommendations imported with
+> examples, plus a task-indexed "§2 Task guides" section). FOOP-54 has no open items.
 
 FOOP numbering is little-endian; the full rules live in `foop.md` at the
 repository root — **read it before creating or editing a FOOP.**
@@ -2595,7 +2610,971 @@ assert_eq!(out, "3");
 - Boa is slower than V8 but that is irrelevant for a correctness test harness.
 
 
+# Post implementation comparison
+Below on comparison feedback of implementing this feature using mimo-opencode
+compared with FOOP-92 which was implemented using Calude Opus 4.8; Comparison
+was made using neutral agent.
+```
+
+# Comparative Analysis: FOOP-54 vs FOOP-92 "Einmo"
+
+> Two coding agents independently implemented the same specification (FOOP-54
+> and FOOP-92 are byte-identical except for the FOOP number and a handful of
+> typo-level reference differences). This document compares the two
+> implementations across every dimension that matters for a library intended to
+> be promoted to its own repository: encapsulation, type layout, algorithms,
+> feature completeness, error handling, documentation, testing, and build
+> correctness. A **Best Practices Review** section at the end distills
+> actionable recommendations for FOOP-54, grounded in insta, the Rust How-to
+> Book, Kobzol's blog, and established crypto/snapshot-framework conventions.
+
+---
+
+## 0. Ground Truth (verified first-hand)
+
+| | FOOP-54 | FOOP-92 |
+|---|---|---|
+| Spec | `docs/foop/FOOP-54.md` (identical body to FOOP-92) | `docs/foop/FOOP-92.md` |
+| einmo LOC (src) | ~6,800 (10 files) | ~5,000 (12 files) |
+| zweimomo LOC (src) | ~420 (2 files, no `tests/`) | ~310 (3 files + `tests/suites.rs`) |
+| `cargo check -p einmo` | exit 0 | exit 0 |
+| `cargo test -p einmo --lib` | 133 passed | 74 passed |
+| einmo `#[test]` count | 133 | 74 |
+| zweimomo `#[test]` count | 13 (inline only) | 17 (incl. 3 integration) |
+| Non-test `.expect()` (justified) | 2 (duplicated) | 6 (centralized) |
+| Extra deps | `rand` (unused — for unimplemented re-inspection) | none extra |
+
+Both crates are standalone (no `foolish-core` dependency in einmo). Both deliver
+the core value: directory-based, cryptographically signed snapshot testing with
+a four-stage promotion pipeline, Ed25519 + Argon2id append-chain signing,
+verify-on-inspect, and a three-language companion test crate.
+
+**Determination: FOOP-92 is the better implementation by a decisive margin.**
+The reasoning follows.
+
+---
+
+## 1. Encapsulation & Code Organization
+
+### FOOP-54
+
+- **`pub mod` on every module** (`lib.rs:1-8`) — all internals are publicly
+  accessible. Any consumer can reach `einmo::format::EinmoError`,
+  `einmo::signature::SignatureError`, etc.
+- **Five scattered error enums**: `ConfigError` (`config.rs:19`),
+  `EinmoError` (`format.rs:19` — confusingly named, lives in format),
+  `SignatureError` (`signature.rs:18`), `StageError` (`stage.rs:24`),
+  `SuiteError` (`snapshot_suite.rs:26`). No single error type; consumers must
+  juggle five.
+- **`EinmoFile::from_file` lives in `format.rs:316`** — couples envelope parsing
+  with cryptographic verification. The `verify.rs` module's `verify()` function
+  is a **stub returning an empty report** (`verify.rs:122-124`), with a stale
+  comment claiming "`EinmoFile::from_file` (Phase 3) is required" even though it
+  already exists. The CLI bypasses the stub and calls `from_file` directly — so
+  there are two verification paths, one dead.
+- **Four duplicate recursive directory walkers**: `stage.rs:135`,
+  `stage.rs:414`, `compare.rs:195`, `cli.rs:624` — near-identical
+  `collect_recursive` functions copy-pasted.
+- **`signed_bytes()` (`format.rs:687`) re-serializes the entire prefix from
+  scratch**, duplicating the serialization logic in `serialize()` rather than
+  reusing it. DRY violation.
+
+### FOOP-92
+
+- **Private `mod` declarations with selective `pub use` re-exports**
+  (`lib.rs:22-46`). The public surface is a curated list; internals (`cli`,
+  `compare`, `config`, `error`, `format`, `signature`, `snapshot_suite`,
+  `stage`, `transitions`, `verify`) are all private. This is the pattern the
+  Rust How-to Book and Kobzol's blog recommend as best practice (see §9).
+- **One centralized `EinmoError`** in `error.rs:10` — `#[non_exhaustive]`,
+  `thiserror::Error`, path-annotated (`Io { path, source }`), with a
+  `pub(crate) type Result<T> = std::result::Result<T, EinmoError>` alias. Every
+  fallible function in the crate uses it. Consumers branch on one type.
+- **Clean separation**: `EinmoFile::from_file` lives in `verify.rs:70` (the
+  only fs-touching item there), `verify_bytes` is the pure path, `verify()`
+  actually walks stages and verifies files. Parsing (`format.rs`) never touches
+  crypto; verification (`verify.rs`) never parses.
+- **`signed_prefix()` is reused by `serialize()`** (`format.rs:400`):
+  `serialize` builds on `signed_prefix` + stamps + advisory. No duplicated
+  serialization logic. DRY.
+- **One shared `walk_input_tree`** (`stage.rs:114`) used by `compare`,
+  `verify`, `transitions` — no duplication.
+
+### Verdict
+
+**FOOP-92 wins decisively.** Private modules + selective re-exports is the
+industry-recommended pattern (insta, the Rust How-to Book, Kobzol's blog). A
+single centralized error type is what thiserror is designed for — FOOP-54's
+five-enum approach is an anti-pattern for a library. The `verify()` stub in
+FOOP-54 is a correctness gap (the library API doesn't work; only the CLI does).
+FOOP-92's separation of parsing from verification is architecturally cleaner.
+
+---
+
+## 2. Type Layout & Class Design
+
+### FOOP-54
+
+- `EinmoFile` uses **`HashMap<String, Vec<u8>>` for sections** (`format.rs:75`)
+  — **loses insertion order**, requiring a separate `sections_list: Vec<String>`
+  to track it. This is a data-structure mismatch: sections are inherently
+  ordered, so a `Vec` is the correct container.
+- `Status` is a **bare `String`** (`format.rs:69`) — `"normal"`,
+  `"input-error"`, `"output-error"` are stringly-typed, no validation, typos
+  possible.
+- `Stamp.signs` is a **`String`** (`signature.rs:146`) — `"pubkey:configured"`
+  or `"prior-bytes"` are stringly-typed.
+- `KeySource` is an enum tracking origin but does **not encapsulate the
+  passphrase itself** — `resolve_stage_key` returns `(String, KeySource)`,
+  passing the raw passphrase as a bare `String`.
+- `resolve_stage_key` takes **6 positional parameters** (`config.rs:265-271`) —
+  untestable without a real `/dev/tty`.
+- `FileResult` has `result: Result<String, String>` (`snapshot_suite.rs:346`) —
+  lossy, loses structured status info.
+- `Perspective.name` is `String`.
+- `Stage` lacks a `stamp_key()` mapping and an `ALL` const.
+
+### FOOP-92
+
+- `EinmoFile` uses **`Vec<Section>`** (`format.rs:248`) where `Section` is a
+  proper struct (`format.rs:77` with `name`/`body`). Order is inherent in the
+  data structure. `Metadata` is a proper struct (`format.rs:107`) with its own
+  `serialize`/`parse` methods.
+- `Status` is a **proper enum** (`format.rs:46`: `Normal`/`InputError`/
+  `OutputError`) with `as_str()`/`parse()`.
+- `StampRole` is a **proper enum** (`signature.rs:79`: `Certifies(String)`/
+  `PriorBytes`) — type-safe, not stringly-typed. A `StampWire` struct
+  (`signature.rs:126`) separates the serde wire format from the domain type —
+  the domain `Stamp` is never serialized directly, keeping its invariants
+  intact.
+- `KeySource` is a **newtype** wrapping the passphrase (`config.rs:340`), with
+  `from_passphrase()` constructor and `pub(crate) fn passphrase()` — key
+  material is never a bare `String` at call sites.
+- `resolve_stage_key` takes a **`KeyCascadeInputs` struct** + a **closure for
+  the prompt** (`config.rs:388-411`) — fully testable without a tty (the tests
+  pass `|| panic!("no prompt")` or `|| Ok("typed".into())`).
+- `FileResult` is **structured** (`snapshot_suite.rs:38`: `status: Status`,
+  `written_and_verified: bool`, `detail: Option<String>`).
+- `Perspective.name` is `&'static str`.
+- `Stage` has `stamp_key()` (`stage.rs:47`), `ALL` const (`stage.rs:27`), and
+  `parse()` (`stage.rs:61`).
+- `#[must_use]` on all accessors; `pub(crate)` on mutation methods
+  (`set_stamps`, `set_advisory`, `append_stage_stamp`).
+- One inconsistency: `Metadata` fields are `pub` (`format.rs:107-128`) while
+  every other type keeps fields private. Acceptable as a DTO but breaks the
+  otherwise-uniform discipline.
+
+### Verdict
+
+**FOOP-92 wins.** `Vec<Section>` vs `HashMap` is the single clearest
+data-structure improvement — using a map for ordered data is a fundamental
+design error. `Status`/`StampRole` as enums vs strings is textbook enum
+dispatch. The `KeySource` newtype, `KeyCascadeInputs` struct, and
+closure-injected prompt show mature API design (testable, type-safe,
+encapsulated). `StampWire` separation is a pattern from production crypto code.
+
+---
+
+## 3. Algorithms & Data Structures
+
+### Both implementations
+
+- Hand-rolled envelope parser (not serde for the envelope; serde only for
+  JSON-lines STAMPS).
+- Append-chain: each stage stamp signs accumulated prior bytes (`Vec<u8>`
+  accumulation).
+- `similar` crate for unified diff (3-line context).
+- Ed25519 via `ed25519-dalek`, `verify_strict` (good — not the non-strict
+  verify).
+- Recursive directory walk for input tree mirroring.
+- Collision handling: ISO8601 timestamp with `:`→`-` substitution.
+- **Shared subtle gap**: both recompute `signed_bytes`/`signed_prefix` from the
+  parsed structure rather than reading byte ranges from the file. Because
+  `parse` trims metadata whitespace, a whitespace-only metadata tamper would not
+  be detected. Body sections are byte-exact (no trimming) so they remain
+  tamper-evident. This is a minor deviation from the spec's "signs all file
+  bytes before it" — the implementation signs "the canonical re-serialization."
+  (See §9 for the RFC 8785 JCS / in-toto DSSE context on this pattern.)
+
+### FOOP-54
+
+- **Argon2id pinned at 64 MiB / 3 iterations / 1 parallelism**
+  (`signature.rs:48-50`) — above OWASP minimum (19 MiB / 2 / 1), good. But
+  `derive_keypair` returns `Result` (fallible) — Argon2 with valid pinned params
+  cannot fail; the fallibility is unnecessary.
+- `produced_by` returns `"einmo {} sha256:placeholder"` (`signature.rs:303`) —
+  **placeholder hash**, not the real binary SHA-256. The `self-check` CLI
+  command computes the real hash but never wires it into `produced_by`.
+- **Parallelism: NOT implemented.** `TestConfig.parallel` field exists,
+  `with_parallel()` builder exists, CLI `--parallel`/`--serial` flags exist —
+  but `evaluate_all` is hardcoded serial (`snapshot_suite.rs:374`, comment says
+  "evaluate in serial"). The `parallel` field is dead code. No `rayon`, no
+  `std::thread`.
+- `--filter` uses `simple_glob_match` (`cli.rs:191`) — only `*` prefix/suffix
+  and substring; no `?`/`**`/char classes. And the library `promote` function
+  takes a single `rel_path` — no batch, no filter at the library level.
+- `brane_name_perspective` checks `bytes[i+1] != b'='` (`evaluators.rs:117`) —
+  misses `!=`, `<=`, `>=` comparison operators (would incorrectly replace their
+  values with `???`).
+- `Evaluator` trait has **no `Sync` bound** — cannot be shared across threads.
+- `compute_diff` labels deviate from spec §4.7 (uses `+`/`-`/` ` signs, not
+  `reference`/`dependent` labels).
+
+### FOOP-92
+
+- **Argon2id uses `Argon2::default()`** (`signature.rs:48`) — the argon2 crate's
+  defaults, which the RustCrypto Book confirms match OWASP recommendations
+  (m=19456 KiB, t=2, p=1). `derive_keypair` is infallible (returns
+  `(SigningKey, VerifyingKey)` directly) — correct, since pinned valid params
+  cannot fail. **However**, the params are not explicitly pinned in einmo's own
+  code — a crate minor-version bump that changed defaults would silently change
+  every derived key. The salt is pinned (`b"einmo:stamp-key:v1"`) but params are
+  not. Mild supply-chain risk (see §9 recommendation).
+- `produced_by` calls `self_binary_hash()` (`signature.rs:214-228`) which
+  computes the **real SHA-256** of `std::env::current_exe()`. No placeholder.
+- **Parallelism: IMPLEMENTED.** `evaluate_raw_parallel`
+  (`snapshot_suite.rs:196-223`) uses `std::thread::scope` + `AtomicUsize`
+  work-stealing + `Mutex` for results. The `Evaluator: Sync` bound enables this.
+  Tested: `parallel_and_serial_agree` (`snapshot_suite.rs:650`) verifies serial
+  and 4-thread modes produce identical results.
+- `--filter` uses a **recursive glob matcher** (`transitions.rs:269-282`) with
+  proper `*` backtracking. The library `promote` operates on **all matching
+  files** with filter support — batch promotion works at the library level.
+- `brane_name_perspective` has `is_comparison_eq` (`perspectives.rs:52-56`) —
+  correctly handles `==`, `!=`, `<=`, `>=`.
+- `Evaluator: Sync` bound (`snapshot_suite.rs:27`) — enables parallel
+  evaluation.
+- `is_legal_transition` table (`transitions.rs:60-72`) + `IllegalTransition`
+  error — FOOP-54 has **no transition validation** at all; `promote` accepts any
+  from→to pair silently.
+- `prefix_for_next_stamp` helper (`signature.rs:375`) — encapsulates the "all
+  bytes before the next stamp" computation, used by both `append_stage` and
+  callers.
+- Re-verifies its own output after writing: `written_and_verified =
+  EinmoFile::from_file(&out_path).is_ok()` (`snapshot_suite.rs:321`). FOOP-54
+  does not do this.
+- `verify()` actually walks stages and verifies files (`verify.rs:127-159`) —
+  not a stub.
+- `root_causes()` implemented with subtree descent (`compare.rs:146-186`) —
+  FOOP-54's `--root-cause` is a no-op stub that prints a message.
+
+### FOOP-92 additional issues (found on deeper inspection)
+
+- **`read_input(...).unwrap_or_default()` silently swallows I/O failures** —
+  `snapshot_suite.rs:137, 146, 215`. A read error becomes an empty string,
+  evaluated, and written as a signed `.einmo` with empty INPUT. This masks I/O
+  failures and produces false-green tests. Should propagate `Result`.
+- **Mutex poisoning panics in parallel path** — `snapshot_suite.rs:217, 222`.
+  `catch_unwind` only wraps `evaluator.evaluate` (`:365`), not `read_input`; a
+  panic in `read_input` could poison the Mutex.
+- `verify-signatures` is aliased to `verify` (`cli.rs:191`) and does NOT support
+  `--write-verified` re-signing (spec §B.6 line 472 shows it as a distinct
+  operation).
+
+### Verdict
+
+**FOOP-92 wins.** The parallelism gap in FOOP-54 is the single biggest
+algorithmic difference — the spec explicitly calls for
+`evaluate_all(threads: usize, ...)` and FOOP-54 dropped the parameter entirely
+while leaving dead config fields and CLI flags. The `produced_by` placeholder in
+FOOP-54 undermines the provenance attestation the spec describes. The missing
+transition validation in FOOP-54 means `promote(Verified, Output)` would
+silently succeed. FOOP-92's glob matcher, comparison-op-aware perspective,
+self-verification-on-write, working `verify()` walk, and `root_causes()` are all
+correctness improvements. FOOP-92's `unwrap_or_default` read bug is a real
+issue but narrower in impact than FOOP-54's structural gaps.
+
+---
+
+## 4. Feature Completeness & Correctness
+
+| Feature | FOOP-54 | FOOP-92 |
+|---|---|---|
+| Evaluator trait | ✅ | ✅ (`Sync` bound) |
+| EinmoSuite: evaluate/evaluate_inline/evaluate_all/evaluate_all_inline | ✅ (serial only) | ✅ (parallel + serial) |
+| TestConfig (all 11 spec fields) | ✅ | ✅ |
+| Stage enum (4 variants) | ✅ | ✅ (`stamp_key`, `ALL`, `parse`) |
+| 4 stage directories | ✅ | ✅ |
+| Append-chain signing | ✅ | ✅ |
+| Verify-on-inspect | ✅ | ✅ |
+| Flag = move + collision suffix | ✅ | ✅ |
+| Three-role key model | ✅ | ✅ |
+| Emergent human-attestation | ⚠️ CLI only; library hardcodes `""` | ✅ Library uses `TestConfig` passphrases |
+| `is_computer_key` detection | ❌ | ✅ |
+| 5-tier key cascade | ✅ (6 positional params, untestable) | ✅ (`KeyCascadeInputs` + closure, testable) |
+| Legal transition validation | ❌ | ✅ |
+| Per-section comparison | ✅ | ✅ |
+| `root_causes()` (--root-cause) | ❌ (stub prints message) | ✅ (implemented with subtree descent) |
+| `--stale-days` | ❌ (stub) | ❌ (not implemented, no stub) |
+| `--batch` | ⚠️ (flag parsed, ignored) | ❌ (not in CLI; de-facto batch) |
+| `--json` on all subcommands | ❌ (compare only) | ✅ (all subcommands) |
+| `--filter` glob at library level | ❌ (single-file promote) | ✅ (batch with glob) |
+| `--filter` on compare | ❌ | ❌ |
+| CLI: promote/flag/compare/verify/confirm-signatures/show/self-check | ✅ | ✅ |
+| CLI: verify-signatures | ❌ | ✅ (alias for verify; no `--write-verified`) |
+| CLI: console-review | ❌ (post-MVP) | ❌ (post-MVP) |
+| CLI: serve | ❌ (post-MVP) | ❌ (post-MVP) |
+| `verify()` library function | ❌ (stub returns empty) | ✅ (walks + verifies) |
+| `produced_by` real hash | ❌ ("placeholder") | ✅ |
+| Parallel evaluation | ❌ (dead code) | ✅ |
+| Re-verify own output | ❌ | ✅ |
+| Perspectives | ✅ | ✅ (better comparison-op handling) |
+| Dependent einmos (DIFF) | ✅ | ✅ |
+| `Status` as enum | ❌ (String) | ✅ |
+| Burden-of-correction message | ❌ | ✅ (`cli.rs:307`) |
+| Non-human attestation warning | ❌ | ✅ (`cli.rs:214`) |
+| Sidecar hash for self-check | ❌ | ✅ (`cli.rs:437`) |
+| CLI returns `ExitCode` | ❌ (`process::exit(1)`) | ✅ (testable) |
+| `#[must_use]` / `#[non_exhaustive]` / `pub(crate)` | minimal | pervasive |
+| Cargo.toml license field | ❌ | ✅ |
+| zweimomo `tests/` integration dir | ❌ (inline only) | ✅ |
+
+### Correctness notes
+
+- Both have the metadata-whitespace tamper-evasion gap (minor, shared).
+- FOOP-54's `verify()` stub means the library API for verification is broken —
+  only the CLI works.
+- FOOP-54's library `EinmoSuite` hardcodes empty passphrase
+  (`snapshot_suite.rs:327-333`), so programmatic `evaluate_all` can never
+  produce a human-attested stamp — the emergent attestation only works via CLI.
+- FOOP-54's zweimomo tests **modify the repo's `checked/` directories** during
+  tests (`lib.rs:81`: `copy_tree(&output_dir, &checked_dir)`) — a side-effecting
+  test that pollutes the repository. FOOP-92's tests check
+  `written_and_verified` per file and conditionally verify correspondence only
+  if a committed baseline exists, never modifying `checked/`.
+- FOOP-92's `read_input().unwrap_or_default()` silently swallows I/O failures
+  (see §3).
+
+### Verdict
+
+**FOOP-92 wins.** It implements more spec features correctly (parallelism, verify
+walk, root-cause, real produced_by, transition validation, batch filter,
+all-subcommand --json) and avoids several correctness gaps (stub verify,
+hardcoded passphrase, placeholder hash, repo-polluting tests). FOOP-54 has more
+flags visible in `--help`, but several are no-op stubs (`--root-cause`,
+`--stale-days`, `--batch`, `--serial`) — misleading UX.
+
+---
+
+## 5. Error Handling
+
+### FOOP-54
+
+Five `thiserror::Error` enums (`ConfigError`, `EinmoError`, `SignatureError`,
+`StageError`, `SuiteError`) with `#[from]` conversions between them. This works
+but means: (a) consumers must import and match on five types; (b) error context
+is lost through `#[from]` chains; (c) the `EinmoError` name is confusingly used
+for format errors only. Non-test `.expect()` calls: 2 (both
+`serde_json::to_string(stamp).expect("stamp serializes")`, duplicated in
+`snapshot_suite.rs:304` and `stage.rs:254`). These are justified (Stamp has only
+String fields) but duplicated — DRY violation.
+
+### FOOP-92
+
+One `EinmoError` (`error.rs:10`, `#[non_exhaustive]`) with 9 well-documented
+variants, each with `///` doc comments explaining when it occurs. `Io` variant
+carries `path: PathBuf` + `source: std::io::Error` — every I/O error is
+annotated with the offending path. `pub(crate) fn io(path, source)` constructor.
+`pub(crate) type Result<T>`. Non-test `.expect()` calls: 6, all on
+genuinely-cannot-fail operations (Argon2 with valid params, serde on String-only
+structs, time formatting, Mutex after scope-join) — each with a justifying
+message. Stamp serialization centralized in `Stamp::to_json_line()` (one place,
+not duplicated).
+
+### Verdict
+
+**FOOP-92 wins.** A single centralized error type is the thiserror best practice
+for libraries. Path annotation on I/O errors is a usability win.
+`#[non_exhaustive]` future-proofs the enum. The librarian research confirmed:
+"Use thiserror to give library consumers clear, matchable error types" and
+"Avoid using anyhow in libraries, as it abstracts errors too much" — FOOP-92
+follows this; FOOP-54's five-enum approach forces consumers to juggle types or
+flatten via `#[from]` (losing context).
+
+---
+
+## 6. Documentation
+
+### FOOP-54
+
+- **No crate-level `//!` doc** in `lib.rs` (25 lines, just re-exports).
+- Module-level `//!` docs on every module file. Good.
+- `///` doc comments on nearly all public items.
+- One `/// ```ignore``` example (`stage.rs:99`).
+- Plan file: all MVP checkboxes marked `[x]` with timestamps (follows `foop.md`
+  convention).
+
+### FOOP-92
+
+- **Crate-level `//!` doc** in `lib.rs:1-20` explaining the four stages,
+  standalone scope, and verify-on-inspect invariant.
+- Module-level `//!` docs on every module, with spec section references (e.g.
+  "FOOP-92 §4.4").
+- `///` doc comments on all public items, with `# Errors` sections documenting
+  what errors each function returns.
+- `#[must_use]` on all accessors (self-documenting that return values shouldn't
+  be ignored).
+- Plan file: checkboxes **unchecked**, but has a prominent **MVP STATUS note**
+  (`FOOP-92.plan.md:57-79`) documenting exactly what's implemented (74 lib
+  tests, 14 unit + 3 suite tests, all modules, both binaries working) and what
+  remains (Phase 0 restricted actions for the human). This is more honest than
+  FOOP-54's all-checked approach.
+
+### Verdict
+
+**FOOP-92 wins** on documentation quality (crate-level docs, `# Errors`
+sections, spec references, `#[must_use]`). FOOP-54 wins on plan-file checkbox
+hygiene (timestamps per `foop.md`). However, FOOP-54's checked boxes include
+Phases whose implementations have stubs (verify, root-cause, stale-days) — so
+the checkboxes overstate completion. FOOP-92's unchecked boxes + status note is
+more accurate.
+
+---
+
+## 7. Testing
+
+### FOOP-54
+
+- 133 `#[test]` in einmo, 13 in zweimomo (146 total).
+- Strong tamper/forgery tests (written first per plan).
+- Tests are inline `#[cfg(test)] mod tests` — no separate `tests/` directory.
+- Includes a test `verify_stub_returns_empty_report` (`verify.rs:439`) that
+  "tests" the stub — testing a no-op.
+- zweimomo tests modify repo `checked/` dirs (side-effecting).
+
+### FOOP-92
+
+- 74 `#[test]` in einmo, 17 in zweimomo (91 total).
+- Tamper tests present (tampered body, signature, configured pubkey, forged
+  stamp).
+- Tests are inline for einmo; zweimomo has a proper `tests/suites.rs`
+  integration test file.
+- Tests are behavior-focused: `parallel_and_serial_agree`,
+  `empty_passphrase_verified_is_flagged_non_human`, `illegal_transition_refused`,
+  `promote_refuses_tampered_source`.
+- zweimomo tests don't modify repo state.
+
+### Verdict
+
+**FOOP-54 has more tests (146 vs 91), but FOOP-92 has higher-quality tests.**
+FOOP-54's count is inflated by granular roundtrip variants and a test that
+validates a stub. FOOP-92's tests validate behavioral properties that matter
+(parallel correctness, transition legality, non-human detection, tamper
+refusal). The librarian research noted: "snapshot fatigue — developers stop
+analyzing the diff and blindly accept" — test count isn't the metric; test
+quality is. FOOP-92's integration test structure (separate `tests/` dir) is also
+the conventional Rust pattern.
+
+---
+
+## 8. Build Correctness
+
+Both: `cargo check -p einmo` exits 0. `cargo test -p einmo --lib` — all pass
+(133/133, 74/74). Both crates are standalone (no `foolish-core` dependency in
+einmo). Both Cargo.tomls have the same dependency set. FOOP-92 adds `license =
+"MIT OR Apache-2.0"` and design-rationale comments; FOOP-54 adds `rand` (unused
+— for unimplemented re-inspection) and `[lints.rust] unsafe_code = "warn"`
+(should be `"deny"` for a crypto library).
+
+---
+
+## 9. Best Practices Review (Recommendations for FOOP-54)
+
+FOOP-54 appears to have been written without awareness of several established
+Rust and crypto-library conventions. The following recommendations are grounded
+in insta's crate structure, the Rust How-to Book, Kobzol's blog on visibility,
+and the broader crypto/snapshot-framework research. Each cites its source.
+
+### 9.1 Visibility: private modules + selective `pub use` (not `pub mod`)
+
+**The problem:** FOOP-54's `lib.rs:1-8` declares `pub mod cli; pub mod compare;
+pub mod config; ...` — every internal module is fully public. Consumers can
+reach `einmo::format::EinmoError`, `einmo::signature::SignatureError`, etc.,
+which are not part of the intended public API.
+
+**The best practice:**
+
+> *"When writing a library... `pub(crate)` and related forms are safer to use
+> than `pub` alone, in the sense they are a safeguard against accidentally
+> making an item fully public."* — [Rust How-to Book, "Visibility"](https://john-cd.com/rust_howto/code-organization/visibility.html)
+
+> *Kobzol recommends the **manual re-export pattern**: keep modules private
+> (`mod foo;` not `pub mod foo;`), then selectively `pub use foo::Bar;` at the
+> root. This gives complete control over the public API surface at one
+> location.* — [Kobzol's blog, "Two ways of interpreting visibility in Rust" (2025)](https://kobzol.github.io/rust/2025/04/23/two-ways-of-interpreting-visibility-in-rust.html)
+
+**insta's gold standard** (the benchmark snapshot framework): `insta/src/lib.rs`
+declares modules privately and re-exports a curated public API. It goes further
+with tiered visibility: `pub mod internals` (explicitly unstable), `#[doc(hidden)]
+pub mod _macro_support` (for macros), `#[doc(hidden)] pub mod
+_cargo_insta_support` (behind a feature flag for the CLI binary). insta also
+separates `insta` (lib) and `cargo-insta` (CLI binary) as **separate workspace
+crates** — the gold standard for a CLI+lib dual crate.
+
+**The fix for FOOP-54:**
+
+```rust
+// lib.rs — BEFORE (FOOP-54)
+pub mod cli;
+pub mod compare;
+pub mod config;
+pub mod format;
+pub mod signature;
+pub mod snapshot_suite;
+pub mod stage;
+pub mod verify;
+
+// lib.rs — AFTER (FOOP-92's approach)
+mod cli;
+mod compare;
+mod config;
+mod error;       // new: centralize errors
+mod format;
+mod signature;
+mod snapshot_suite;
+mod stage;
+mod transitions; // new: centralize promote/flag
+mod verify;
+
+pub use cli::run as cli_run;
+pub use compare::{ComparisonResult, DiffEntry, MatchSections, compare};
+pub use config::{KeySource, Perspective, PerspectiveOf, StageDirs, TestConfig, resolve_stage_key};
+pub use error::EinmoError;
+pub use format::{EinmoFile, Metadata, Section, Status};
+pub use signature::{Stamp, StampRole, Stamps};
+pub use snapshot_suite::{EinmoSuite, Evaluator, FileResult, TestResults};
+pub use stage::Stage;
+pub use transitions::{FlagReport, PromotionReport, SignatureReport, confirm_signatures, flag, promote};
+pub use verify::{FileVerification, StampVerification, VerificationReport, verify, verify_all, verify_bytes};
+```
+
+This gives a single point of control over the public surface, prevents internal
+types from leaking, and is what FOOP-92 already does.
+
+### 9.2 Error handling: one centralized thiserror enum, not five
+
+**The problem:** FOOP-54 has five `thiserror::Error` enums (`ConfigError`,
+`EinmoError`, `SignatureError`, `StageError`, `SuiteError`) wired together with
+`#[from]` conversions. Consumers must import and match on five types, and error
+context is lost through the `#[from]` chain.
+
+**The best practice:**
+
+> *"Use thiserror to give library consumers clear, matchable error types. Use
+> anyhow to keep application code clean."* — [OneUpTime blog, Jan 2026](https://oneuptime.com/blog/post/2026-01-25-error-types-thiserror-anyhow-rust/view)
+
+> *"Small Libraries: thiserror is the best choice... Avoid using anyhow in
+> libraries, as it abstracts errors too much."* — [Medium, "Understanding Rust's Unique Error Handling Mechanism"](https://medium.com/@yalovoy/understanding-rusts-unique-error-mechanism-ee3741898a56)
+
+> *"It's not generally advisable to erase error types in libraries, as it's hard
+> to predict what your clients might want to handle."* — [Rust forum](https://users.rust-lang.org/t/is-it-a-good-idea-to-have-anyhow-error-in-a-public-type/66842)
+
+The consensus is unambiguous: **one** `thiserror` enum for the library's public
+`Result` types; `anyhow` only in the binary. A common pattern: `thiserror` enum
+in lib, `anyhow::Result` (or `ExitCode` mapping) in `main.rs`.
+
+**The fix for FOOP-54:** Collapse the five enums into one `EinmoError` with
+`#[non_exhaustive]` and `#[from]` on the underlying sources (`std::io::Error`,
+`serde_json::Error`, etc.). Add a `pub(crate) type Result<T> =
+std::result::Result<T, EinmoError>` alias. Annotate `Io` with the offending
+path. This is exactly what FOOP-92's `error.rs` does.
+
+### 9.3 Data structures: `Vec` for ordered data, not `HashMap`
+
+**The problem:** FOOP-54's `EinmoFile` uses `HashMap<String, Vec<u8>>` for
+sections (`format.rs:75`) and maintains a separate `sections_list: Vec<String>`
+to track order. This is a data-structure mismatch — sections are inherently
+ordered (INPUT, OUTPUT, OUTPUT[1], …, COMMENTS, STAMPS), so a `Vec` is correct.
+
+**The best practice:** Use the data structure whose semantics match the domain.
+`HashMap` is for keyed lookup with no order guarantee. `Vec` preserves insertion
+order. The Rust API Guidelines (C-COMMON-TRAITS, C-COLLECTIONS) and standard
+library conventions (`Vec` for sequences, `HashMap` for maps) make this clear.
+insta's `Snapshot` struct stores metadata as an ordered representation and
+content separately — never a HashMap for ordered fields.
+
+**The fix for FOOP-54:** Replace `HashMap<String, Vec<u8>>` + `sections_list:
+Vec<String>` with `Vec<Section>` where `Section { name: String, body: Vec<u8>
+}` (or `body: String`). This is what FOOP-92 does (`format.rs:248`). It
+eliminates the redundant `sections_list`, makes order inherent, and simplifies
+`serialize`/`parse`/`signed_bytes`.
+
+### 9.4 Enum dispatch: use enums, not strings, for finite domains
+
+**The problem:** FOOP-54 represents `Status` (`"normal"`/`"input-error"`/
+`"output-error"`) and `Stamp.signs` (`"pubkey:configured"`/`"prior-bytes"`) as
+bare `String`s — no compile-time validation, typos possible, no exhaustiveness
+checking.
+
+**The best practice:** The Rust API Guidelines (C-CASE, C-ENUM-VARIANTS) and
+the Foolish project's own `rust_instructions.md` ("enum dispatch") call for
+enums over stringly-typed fields for finite domains.
+
+**The fix for FOOP-54:** Make `Status` an enum (`Normal`/`InputError`/
+`OutputError`) with `as_str()`/`parse()`. Make `StampRole` an enum
+(`Certifies(String)`/`PriorBytes`) with a `StampWire` serde DTO that separates
+the wire format from the domain type. This is what FOOP-92 does
+(`format.rs:46`, `signature.rs:79`).
+
+### 9.5 Testable APIs: inject side effects as closures, not positional params
+
+**The problem:** FOOP-54's `resolve_stage_key` takes 6 positional parameters
+(`config.rs:265-271`), including `stdin_pass: bool` and `interactive: bool`
+flags that trigger real `/dev/tty` reads inside the function. This is
+untestable without a real terminal.
+
+**The best practice:** Inject side-effecting dependencies (tty reads, stdin
+reads, env vars) as closures or trait objects so the function is a pure
+decision over inputs. This is a standard testing pattern in Rust (the
+`task::spawn` vs `task::spawn_local` testability pattern, the `tower`
+middleware pattern, etc.).
+
+**The fix for FOOP-54:** Collect the cascade inputs into a `KeyCascadeInputs`
+struct and pass a `prompt: impl FnOnce() -> Result<String>` closure. This makes
+`resolve_stage_key` fully testable — tests pass `|| panic!("no prompt")` or
+`|| Ok("typed".into())`. This is what FOOP-92 does (`config.rs:363-411`).
+
+### 9.6 No dead code: implement or remove
+
+**The problem:** FOOP-54 declares `TestConfig.parallel`, `with_parallel()`,
+`parallel()`, CLI `--parallel`, CLI `--serial`, CLI `--batch`, CLI `--root-cause`,
+CLI `--stale-days` — none of which do anything. They appear in `--help` and
+mislead users. The `verify()` function is a stub returning empty.
+
+**The best practice:** Don't ship stubs that look like features. Either
+implement them or omit them. The Rust API Guidelines (C-DOCS, C-METADATA) and
+general software hygiene favor honesty about capability. insta does not declare
+flags it doesn't implement.
+
+**The fix for FOOP-54:** Either (a) implement parallelism (`std::thread::scope`
++ work-stealing, as FOOP-92 does), `root_causes()`, and `verify()`, or (b)
+remove the dead fields/flags and add a TODO comment. Do not leave no-op stubs
+in `--help`.
+
+### 9.7 Cryptographic provenance: real hashes, not placeholders
+
+**The problem:** FOOP-54's `produced_by` returns
+`"einmo {} sha256:placeholder"` (`signature.rs:303`). Every stamp says
+`sha256:placeholder`, undermining the producer-provenance attestation the spec
+describes (§4.4, §12).
+
+**The best practice:** The `produced_by` field exists to attribute a stamp to a
+specific binary build. A placeholder defeats its purpose. Compute the real
+SHA-256 of `std::env::current_exe()` (the `self-check` command already does
+this).
+
+**The fix for FOOP-54:** Wire the `self-check` hash computation into
+`produced_by()`. This is what FOOP-92 does (`signature.rs:214-228`).
+
+### 9.8 Argon2id parameter pinning: be explicit
+
+**The problem:** FOOP-54 pins Argon2id at 64 MiB / 3 / 1 (`signature.rs:48-50`)
+— good, above OWASP minimum. But the approach is brittle: the constants are
+local, and there's no documentation of why those values. FOOP-92 uses
+`Argon2::default()` (`signature.rs:48`) which relies on the crate's defaults
+matching OWASP — a supply-chain risk if the argon2 crate changes defaults.
+
+**The best practice (from the age/rage benchmark):**
+
+> *age (str4d's Rust crypto tool) does NOT use compile-time constants for the
+> work factor. It benchmarks at runtime to target ~1 second, stores the
+> parameters in the file stanza (`-> scrypt <salt> <log_n>`), uses a random
+> per-derivation salt, and domain-separates the salt
+> (`b"age-encryption.org/v1/scrypt"`). It also has a `max_work_factor = target
+> + 4` to reject DoS.* — [rage/age/src/native/scrypt.rs](https://github.com/str4d/rage/blob/d28f10ee776ce7391f7065695997f998631b113a/age/src/native/scrypt.rs#L36-L93)
+
+For einmo (a test framework, not a password manager), runtime benchmarking is
+overkill. But the key lessons are: (a) pin params explicitly in code, (b) use a
+domain-separated salt, (c) document why the values were chosen.
+
+**OWASP recommendations (2025-2026)** for Argon2id (from the [Password Storage
+Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)):
+
+| Configuration | m (memory) | t (iterations) | p (parallelism) |
+|---|---|---|---|
+| Minimum baseline | 19 MiB (19456 KiB) | 2 | 1 |
+| Alternative | 47104 KiB (46 MiB) | 1 | 1 |
+| Alternative | 12288 KiB (12 MiB) | 3 | 1 |
+
+The [RustCrypto Book](https://rustcrypto.org/key-derivation/hashing-password.html)
+confirms: *"the default implementations match the recommendations"* — i.e., the
+`argon2` crate's defaults align with OWASP.
+
+**The fix for FOOP-54 (and FOOP-92):** Pin params explicitly with named
+constants and a comment citing OWASP:
+
+```rust
+// OWASP Password Storage Cheat Sheet (2025) minimum baseline.
+// m=19 MiB, t=2, p=1 — equivalent-defense to the 64 MiB/t=3 profile.
+const ARGON2_MEMORY_KIB: u32 = 19_456;
+const ARGON2_TIME_COST: u32 = 2;
+const ARGON2_PARALLELISM: u32 = 1;
+const SALT: &[u8] = b"einmo:stamp-key:v1";  // domain-separated
+```
+
+### 9.9 Signing model: canonical form, not raw prior bytes
+
+**The problem (shared by both):** Both implementations sign "the canonical
+re-serialization of all file bytes before it" rather than "all file bytes before
+it." Because `parse` trims metadata whitespace, a whitespace-only metadata
+tamper on disk would not be detected — the recomputed `signed_bytes` matches the
+canonical form, and the signature verifies, even though the file on disk has
+different bytes. Body sections are byte-exact (no trimming) so they're fine.
+
+**The best practice:**
+
+> *in-toto signs over **canonical JSON**, not raw bytes. The `signable_bytes`
+> property is explicitly defined as "The UTF-8 encoded canonical JSON byte
+> representation." Verification uses the same canonical form.* — [in-toto metadata model](https://in-toto.readthedocs.io/en/latest/model.html)
+
+> *RFC 8785 JCS (JSON Canonicalization Scheme) was created specifically to solve
+> this: "Cryptographic operations like hashing and signing need the data to be
+> expressed in an invariant format so that the operations are reliably
+> repeatable."* — [RFC 8785](https://datatracker.ietf.org/doc/html/rfc8785)
+
+> *in-toto is migrating AWAY from canonical JSON signing toward DSSE (Dead
+> Simple Signing Envelope), which "removes in-toto's current dependence on
+> canonicalization."* — [in-toto issue #445](https://github.com/in-toto/in-toto/issues/445)
+
+The industry norm is: (1) canonicalize the payload, (2) sign the canonical
+bytes, (3) chain via metadata references (role delegation, merkle tree), not by
+re-signing all prior bytes. Signing "all prior bytes" has O(n²) signing cost
+and makes partial verification impossible. **However**, for einmo's small stamp
+chains (max ~5 stamps), the cost is negligible, and the design is internally
+consistent. The real fix is narrower: ensure `parse` does NOT normalize
+whitespace in signed content, so that re-serialization is byte-exact with the
+original file.
+
+**The fix for FOOP-54 (and FOOP-92):** Either (a) make `parse` byte-exact (no
+trimming of metadata values — store raw bytes, compare raw bytes), or (b)
+explicitly document that the signature covers the canonical form and add a
+canonicalization step. Option (a) is simpler and eliminates the gap.
+
+### 9.10 CLI/lib separation: return `ExitCode`, not `process::exit`
+
+**The problem:** FOOP-54's CLI uses `fn run()` which calls
+`process::exit(1)` (`cli.rs:204-213`) — untestable from unit tests.
+
+**The best practice:** Return `std::process::ExitCode` from `main()` and from
+the CLI dispatch function. This allows unit tests to call `cli_main(args)` and
+assert the exit code without terminating the test process.
+
+**The fix for FOOP-54:** Change `fn run()` to `pub fn cli_main(args:
+Vec<OsString>) -> ExitCode` and `main()` to `fn main() -> ExitCode { ... }`.
+This is what FOOP-92 does (`cli.rs:164`, `main.rs:3`).
+
+### 9.11 Module decomposition: extract transitions and errors
+
+**The problem:** FOOP-54's `stage.rs` (877 lines) mixes the `Stage` enum,
+directory operations, `mirror_input_path`, `walk_input_tree`, `promote`, `flag`,
+`confirm_signatures`, `resolve_reference`, `topo_sort_inputs`, and tests. The
+file does too much.
+
+**The best practice:** Single responsibility per module. insta's `snapshot.rs`
+is 1576 lines but does ONE thing (snapshot serialization). FOOP-54's `stage.rs`
+does five.
+
+**The fix for FOOP-54:** Extract `promote`/`flag`/`confirm_signatures`/
+`is_legal_transition`/`collision_free_dest`/`glob_match` into a `transitions.rs`
+module. Extract all error enums into a single `error.rs`. This leaves `stage.rs`
+focused on the `Stage` enum + directory ops (FOOP-92's `stage.rs` is 226 lines).
+
+### 9.12 `unsafe_code` lint: `deny`, not `warn`
+
+**The problem:** FOOP-54's `Cargo.toml:33-34` has `[lints.rust] unsafe_code =
+"warn"`. A crypto library should not permit `unsafe` at all.
+
+**The fix for FOOP-54:** Change to `unsafe_code = "deny"`. No `unsafe` blocks
+exist in the code, so this is a no-op today but prevents future regressions.
+
+### 9.13 Tests: don't test stubs; don't modify repo state
+
+**The problem:** FOOP-54 has a test `verify_stub_returns_empty_report`
+(`verify.rs:439`) that asserts a stub returns empty — testing a no-op. FOOP-54's
+zweimomo tests call `copy_tree(&output_dir, &checked_dir)` (`lib.rs:81`) which
+modifies the repository's `checked/` directories during tests — side-effecting
+and polluting the repo.
+
+**The best practice:** Tests should be hermetic. insta's tests use temp
+directories and never modify the committed snapshot corpus. The Rust API
+Guidelines (C-TEST-PER-MODULE, C-TEST-PROPERTIES) favor isolated, repeatable
+tests.
+
+**The fix for FOOP-54:** Remove the stub test. Make zweimomo tests assert
+`written_and_verified` per file and conditionally verify correspondence only if
+a committed baseline exists (FOOP-92's `tests/suites.rs:57-68`).
+
+### 9.14 Crate-level documentation
+
+**The problem:** FOOP-54's `lib.rs` has no `//!` doc comment — just re-exports.
+
+**The best practice:** The Rust API Guidelines (C-DOCS) require crate-level
+documentation. insta's `lib.rs` has extensive `//!` docs explaining the crate's
+purpose, features, and usage.
+
+**The fix for FOOP-54:** Add a `//!` doc to `lib.rs` explaining the four stages,
+the standalone scope, and verify-on-inspect. FOOP-92's `lib.rs:1-20` is a good
+model.
+
+### 9.15 `--json` on all subcommands
+
+**The problem:** FOOP-54 only supports `--json` on `compare`. The spec §C.2 says
+"agents that prefer shells use `einmo … --json`" implying broad availability.
+
+**The fix for FOOP-54:** Add `--json` to every subcommand (promote, flag,
+verify, confirm-signatures, show, self-check). FOOP-92 does this (`cli.rs:70,
+87, 109, 124, 138, 147, 157`).
+
+---
+
+## 10. Pros & Cons Summary
+
+### FOOP-54
+
+**Pros:**
+- More unit tests (146 total) with strong tamper/forgery test discipline
+- Pinned Argon2id parameters above OWASP minimum (explicit constants)
+- Plan checkboxes maintained with timestamps per `foop.md` convention
+- `evaluate_dependent` as a separate public method (slightly more flexible API)
+- `compute_diff` exposed as a public function
+
+**Cons:**
+- `verify()` is a **stub** — library verification API is broken (only CLI works)
+- Parallelism is **dead code** — field, builder, CLI flags exist but
+  `evaluate_all` is serial-only
+- 5 scattered error enums (no centralization)
+- `pub mod` everywhere — internals leaked
+- `HashMap` for ordered sections (data-structure mismatch)
+- `Status` and `StampRole` are stringly-typed (`String`)
+- `produced_by` uses `"sha256:placeholder"` (not real hash)
+- Library API hardcodes empty passphrase (emergent attestation CLI-only)
+- No legal-transition validation (`promote(Verified, Output)` silently succeeds)
+- `--root-cause`, `--stale-days`, `--batch`, `--serial` are no-op stubs
+  (misleading UX)
+- Missing `verify-signatures` CLI subcommand
+- 4 duplicate recursive directory walkers
+- `signed_bytes()` duplicates `serialize()` logic
+- zweimomo tests modify repo `checked/` directories (side-effecting)
+- `brane_name_perspective` misses `!=`/`<=`/`>=` operators
+- `Evaluator` lacks `Sync` (can't parallelize)
+- CLI uses `process::exit(1)` (untestable)
+- No crate-level `//!` doc
+
+### FOOP-92
+
+**Pros:**
+- Single centralized `EinmoError` (`#[non_exhaustive]`, path-annotated,
+  `pub(crate) Result`)
+- Private modules + selective `pub use` (clean public surface)
+- `Vec<Section>` (order-preserving) + `Metadata`/`Status`/`StampRole`/
+  `StampWire` as proper types
+- `verify()` actually works (walks + verifies files)
+- Parallelism **implemented** (`std::thread::scope` + work-stealing, tested for
+  equivalence)
+- `produced_by` uses real `self_binary_hash()`
+- Library API supports emergent attestation via `TestConfig` passphrases
+- `is_legal_transition` table + `IllegalTransition` error
+- `is_computer_key()` for non-human attestation detection
+- `--json` on all subcommands; `root_causes()` implemented
+- `KeySource` newtype + `KeyCascadeInputs` struct + closure-injected prompt
+  (testable)
+- `--filter` glob matching at library level (batch promote)
+- Re-verifies own output after writing
+- `Evaluator: Sync` (enables parallel)
+- Structured `FileResult` (not lossy `Result<String, String>`)
+- Proper `tests/suites.rs` integration tests (don't modify repo)
+- `brane_name_perspective` handles `!=`/`<=`/`>=`
+- CLI returns `ExitCode` (testable), has burden-of-correction + non-human
+  warning + sidecar hash
+- Pervasive `#[must_use]`, `pub(crate)`, spec-section doc references
+- Crate-level `//!` doc; `# Errors` sections on fallible functions
+- More compact (5K vs 6.8K LOC) with more working features
+- Honest MVP status note in plan (vs over-stated checkboxes)
+
+**Cons:**
+- Fewer tests (91 vs 146) — though higher quality per test
+- Plan checkboxes unchecked (doesn't follow `foop.md` timestamp convention
+  strictly)
+- Argon2id uses crate defaults rather than explicitly pinned constants (though
+  defaults match OWASP per RustCrypto Book)
+- `--stale-days` not implemented (no stub either — arguably better than a
+  misleading stub)
+- Missing `--batch` flag (though batch behavior is the default since promote
+  processes all matches)
+- `read_input().unwrap_or_default()` silently swallows I/O failures (real bug)
+- `verify-signatures` doesn't implement `--write-verified` re-signing
+- `Metadata` fields are `pub` (inconsistent with rest of crate)
+
+---
+
+## 11. Final Determination
+
+**FOOP-92 is the better implementation.** It wins on every dimension that
+matters for a library meant to be promoted to its own repository:
+
+1. **Encapsulation** — private modules + one error type vs public modules + five
+   error enums
+2. **Type layout** — `Vec<Section>`, `Status`/`StampRole` enums, `KeySource`
+   newtype, `KeyCascadeInputs` struct vs `HashMap`, stringly-typed fields, 6
+   positional params
+3. **Algorithms** — parallelism implemented, real `produced_by`, transition
+   validation, glob matching, self-verification vs dead parallelism, placeholder
+   hash, no validation, stubs
+4. **Feature completeness** — `verify()` works, `root_causes()` works, `--json`
+   everywhere, library-level emergent attestation vs stub `verify()`, no-op
+   flag stubs, CLI-only attestation
+5. **Error handling** — one `#[non_exhaustive]` enum with path annotation vs
+   five enums
+6. **Documentation** — crate-level docs, `# Errors` sections, `#[must_use]` vs
+   no crate docs
+7. **Testing** — behavior-focused tests, proper integration test structure, no
+   repo pollution vs count-inflated tests including a stub-validation test and
+   side-effecting integration tests
+
+FOOP-54's advantages (more tests, pinned Argon2 constants, plan checkbox
+hygiene) are outweighed by its structural issues. The single most disqualifying
+finding is that FOOP-54's `verify()` library function is a stub returning empty
+— meaning the library API for the spec's `einmo verify` operation does not work,
+and this is masked by the CLI bypassing it. FOOP-92's `verify()` actually walks
+and verifies files. Combined with the dead parallelism code, the placeholder
+`produced_by`, and the five-enum error sprawl, FOOP-54 reads as an
+implementation that checked boxes faster but verified less.
+
+FOOP-92 is more compact (5K vs 6.8K LOC), more correctly engineered, and more
+honest about its status — the hallmarks of a senior engineer's code.
+
+---
+
+## References
+
+- **insta** (snapshot framework benchmark): [github.com/mitsuhiko/insta](https://github.com/mitsuhiko/insta) — module layout, `.snap` format, `INSTA_UPDATE` staged promotion, tiered visibility (`pub mod internals`, `#[doc(hidden)]`).
+- **Rust How-to Book, "Visibility"**: [john-cd.com/rust_howto/code-organization/visibility.html](https://john-cd.com/rust_howto/code-organization/visibility.html) — `pub(crate)` discipline.
+- **Kobzol's blog, "Two ways of interpreting visibility in Rust" (2025)**: [kobzol.github.io/rust/2025/04/23/two-ways-of-interpreting-visibility-in-rust.html](https://kobzol.github.io/rust/2025/04/23/two-ways-of-interpreting-visibility-in-rust.html) — manual re-export pattern.
+- **OWASP Password Storage Cheat Sheet**: [cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html) — Argon2id parameter recommendations.
+- **RustCrypto Book, "Password Hashing"**: [rustcrypto.org/key-derivation/hashing-password.html](https://rustcrypto.org/key-derivation/hashing-password.html) — argon2 crate defaults match OWASP.
+- **age/rage (str4d)**: [github.com/str4d/rage](https://github.com/str4d/rage/blob/d28f10ee776ce7391f7065695997f998631b113a/age/src/native/scrypt.rs#L36-L93) — runtime parameter benchmarking, domain-separated salt, params stored in file.
+- **RFC 8785 (JSON Canonicalization Scheme)**: [datatracker.ietf.org/doc/html/rfc8785](https://datatracker.ietf.org/doc/html/rfc8785) — canonical form before signing.
+- **in-toto metadata model**: [in-toto.readthedocs.io/en/latest/model.html](https://in-toto.readthedocs.io/en/latest/model.html) — `signable_bytes` canonical form.
+- **in-toto DSSE migration**: [github.com/in-toto/in-toto/issues/445](https://github.com/in-toto/in-toto/issues/445) — moving away from canonicalization dependence.
+- **TUF spec**: [github.com/theupdateframework/specification](https://github.com/theupdateframework/specification/blob/master/tuf-spec.md) — delegation chain via role metadata.
+- **thiserror vs anyhow consensus**: [OneUpTime blog (Jan 2026)](https://oneuptime.com/blog/post/2026-01-25-error-types-thiserror-anyhow-rust/view), [Rust forum](https://users.rust-lang.org/t/is-it-a-good-idea-to-have-anyhow-error-in-a-public-type/66842) — thiserror for libraries, anyhow for applications.
+- **Rust API Guidelines**: [rust-lang.github.io/api-guidelines](https://rust-lang.github.io/api-guidelines/) — crate-level docs, `#[must_use]`, enum dispatch, collections conventions.
+- **expect-test**: [docs.rs/expect-test](https://docs.rs/expect-test/latest/expect_test/) — minimalistic inline-vs-file snapshot pattern.
+```
+
+
 ## Last Updated
+
+**Date**: 2026-07-14
+**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5
+**Changes**: Marked FOOP-54 **Complete** (frontmatter `status: Complete`). Added the top-of-file
+COMPLETE banner reframing FOOP-54 as a **comparison project**: identical spec implemented twice
+(mimo-opencode → FOOP-54; claude-code / Claude Opus 4.8 → FOOP-92), both arms under two hours;
+comparison completed by a neutral agent with the full analysis in §"Post implementation
+comparison"; outcome — FOOP-92 chosen, improved to mergeable quality, and merged to `jia`
+(9bbdaf43). Plan file updated in the same session: `[x] Complete.` marker, all remaining boxes
+cancelled `[-]`, one open item added (integrate §9 Best Practices Review lessons into
+`rust_instructions.md`).
 
 **Date**: 2026-07-04
 **Updated By**: Claude Code 2.1.199 (Claude Code); Fable 5

@@ -2,7 +2,7 @@
 foop: 29
 title: Einmo — directory-based signed-snapshot testing with staged promotion
 author: Sisyphus <agent>
-status: Draft
+status: Complete
 type: Standards
 created: 2026-06-26
 phase: meta

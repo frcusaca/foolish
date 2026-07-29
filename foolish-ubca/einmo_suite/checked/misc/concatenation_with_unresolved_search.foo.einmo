@@ -1,0 +1,28 @@
+#einmo 1 encoding=utf-8 separator=!!\n
+test: misc/concatenation_with_unresolved_search.foo
+suite: /home/hcbusy/tmp/foolish-worktrees/foop-64-einmo-suite/foolish-ubca/einmo_suite
+producer: e99ef611
+producer-diff: sha256:5b52922165173995a529751e60d82056c87aa933e28a455bdda5a6ff2b037f0d
+generated: 2026-07-15T19:33:53.000000000Z
+status: normal
+status-detail: 
+sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
+{a = {x=ref}; b = {y=2}; c = a b;}
+!!
+{WOCONSTANIC
+  a={WOCONSTANIC
+      x=?(pattern='^ref$', UNANCHORED, ECONSTANIC)
+  };
+  b={
+      y=2
+  };
+  c={WOCONSTANIC
+      x=?(pattern='^ref$', UNANCHORED, ECONSTANIC);
+      y=2
+  }
+}!!
+!!
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:bfbe2940beae3335be09dfb87e5a3925507c62ba26745b8d5d6a156662604fa7","timestamp":"2026-07-15T19:33:53.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:bfbe2940beae3335be09dfb87e5a3925507c62ba26745b8d5d6a156662604fa7","timestamp":"2026-07-15T19:33:53.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"T+qXsOLgDRY225LwQTtJaeR9zhKh9mRgsDvPcYMnK1vDTquk+1iCZoI6cqp3eX/js3fVR31un9QJ9BNooeDzAQ==","produced_by":"einmo 0.1.0 sha256:bfbe2940beae3335be09dfb87e5a3925507c62ba26745b8d5d6a156662604fa7","timestamp":"2026-07-15T19:33:53.000000000Z"}
+{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"9KpdLQzTB6HmL0ST7sCv+FAF7RsYRJzYLsG46fX9oEGqSupW3f32B9/Jz9m0z33z+f0IsHRqdIyAORGdfFsRDA==","produced_by":"einmo 0.1.0 sha256:5d78432f15d7444be3d8443731944977625c6dbf8e74a60d09a28adf630af90e","timestamp":"2026-07-28T23:31:46.000000000Z"}

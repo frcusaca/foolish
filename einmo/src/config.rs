@@ -118,6 +118,11 @@ pub struct TestConfig {
     suite_name: String,
     stage_passphrases: StagePassphrases,
     configured_passphrase: String,
+    /// The escalating level this suite produces and validates (FOOP-64).
+    /// Required at construction: the library has no default level.
+    validation_level: crate::einmo_suite::ValidationLevel,
+    /// Hex prefix of the human reviewer's key, for the Verified level (V6).
+    reviewer_key_prefix: Option<String>,
     /// Configurable recursion depth limit for the directory walk (Feature A).
     walk_depth_limit: usize,
     /// Per-test duration limit (`EINMO_DURATION_LIMIT`, Feature B).
@@ -156,14 +161,20 @@ impl StagePassphrases {
 }
 
 impl TestConfig {
-    /// A configuration for `work_dir` with all defaults.
+    /// A configuration for `work_dir`, validating at `level`.
     ///
-    /// Defaults: `input/` input dir, standard stage dirs, `①`+LF separator,
-    /// `InputOutput` matching, `output/checked` deployment passphrases empty,
-    /// `verified` unset (→ prompt), `++` dependent separator, 2000-char diff
-    /// limit.
+    /// **`level` is required — the library has no default** (FOOP-64 §"The
+    /// escalating validation levels"). Only the suite's author knows whether an
+    /// unpopulated `verified/` means "not signed yet" (fine at the `Checked`
+    /// level) or "the merge gate is incomplete" (fatal at `Verified`). The CLI,
+    /// built on this API, may default; the library may not.
+    ///
+    /// Other defaults: `input/` input dir, standard stage dirs, `①`+LF
+    /// separator, `InputOutput` matching, `output/checked` deployment
+    /// passphrases empty, `verified` unset (→ prompt), `++` dependent
+    /// separator, 2000-char diff limit.
     #[must_use]
-    pub fn new(work_dir: impl Into<PathBuf>) -> Self {
+    pub fn new(work_dir: impl Into<PathBuf>, level: crate::einmo_suite::ValidationLevel) -> Self {
         let work_dir = work_dir.into();
         let suite_name = work_dir.to_string_lossy().into_owned();
         let toml = parse_einmo_toml(&work_dir);
@@ -176,7 +187,6 @@ impl TestConfig {
             encoding: "utf-8".into(),
             separator: DEFAULT_SEPARATOR.into(),
             perspectives: Vec::new(),
-            parallel: None,
             dependent_separator: "++".into(),
             diff_limit: 2000,
             suite_name,
@@ -188,6 +198,8 @@ impl TestConfig {
                 verified: toml.signing.verified.clone(),
             },
             configured_passphrase: String::new(),
+            validation_level: level,
+            reviewer_key_prefix: toml.signing.reviewer_key_prefix.clone(),
             walk_depth_limit: toml
                 .suite
                 .walk_depth_limit
@@ -195,6 +207,7 @@ impl TestConfig {
             duration_limit: toml.suite.duration_limit.map(Duration::from_secs),
             suite_duration_limit: toml.suite.suite_duration_limit.map(Duration::from_secs),
             rerun_catastrophes: toml.suite.rerun_catastrophes.unwrap_or(false),
+            parallel: toml.suite.parallel,
             ignore_catastrophe_crumbs: toml
                 .suite
                 .ignore_catastrophe_crumbs
@@ -207,8 +220,11 @@ impl TestConfig {
 
     /// Alias kept close to the spec's `TestConfig::default("…")` examples.
     #[must_use]
-    pub fn default_for(work_dir: impl Into<PathBuf>) -> Self {
-        Self::new(work_dir)
+    pub fn default_for(
+        work_dir: impl Into<PathBuf>,
+        level: crate::einmo_suite::ValidationLevel,
+    ) -> Self {
+        Self::new(work_dir, level)
     }
 
     /// Use the Foolish-suite separator (`"!!"`+LF, a Foolish line comment).
@@ -312,6 +328,44 @@ impl TestConfig {
         self.work_dir.join(&self.input_dir)
     }
 
+    /// The input directory's name (relative to the work dir; default `input`).
+    #[must_use]
+    pub fn input_dir(&self) -> &str {
+        &self.input_dir
+    }
+
+    /// The escalating level this suite validates at.
+    #[must_use]
+    pub fn validation_level(&self) -> crate::einmo_suite::ValidationLevel {
+        self.validation_level
+    }
+
+    /// The reviewer's key prefix for the Verified level (V6), if configured.
+    ///
+    /// Unset ⇒ V6 cannot be judged; V7 (no computer-key attestation) still is.
+    #[must_use]
+    pub fn reviewer_key_prefix(&self) -> Option<&str> {
+        self.reviewer_key_prefix.as_deref()
+    }
+
+    /// Escalate (or lower) the level this suite validates at.
+    ///
+    /// The *initial* level is required at construction — this only refines an
+    /// already-stated choice, e.g. a merge gate escalating a suite config to
+    /// the Verified level.
+    #[must_use]
+    pub fn with_validation_level(mut self, level: crate::einmo_suite::ValidationLevel) -> Self {
+        self.validation_level = level;
+        self
+    }
+
+    /// Set the reviewer's public-key hex prefix (V6).
+    #[must_use]
+    pub fn with_reviewer_key_prefix(mut self, prefix: impl Into<String>) -> Self {
+        self.reviewer_key_prefix = Some(prefix.into());
+        self
+    }
+
     /// The absolute path to a stage's directory.
     #[must_use]
     pub fn stage_dir(&self, stage: Stage) -> PathBuf {
@@ -354,10 +408,31 @@ impl TestConfig {
         &self.perspectives
     }
 
-    /// The parallel thread count, if any.
+    /// The thread count for `evaluate_all`; `None` means run serially.
+    ///
+    /// Precedence: `EINMO_PARALLEL` env > builder (`with_parallel`) > `einmo.toml`
+    /// `[suite] parallel` > **default: the machine's available parallelism**.
+    ///
+    /// Evaluation is embarrassingly parallel (one independent test per input),
+    /// so using every core is the sane default — a suite of 161 inputs should
+    /// not idle 15 of 16 cores. Set `EINMO_PARALLEL=0` (or `1`) to force serial;
+    /// CI can pin a lower cap that test code cannot override, matching how
+    /// every other einmo limit resolves.
+    ///
+    /// `available_parallelism` respects cgroup/affinity limits, so a container
+    /// gets its quota rather than the host's core count. If it cannot be
+    /// determined, fall back to serial rather than guessing.
     #[must_use]
     pub fn parallel(&self) -> Option<usize> {
-        self.parallel
+        let threads = std::env::var("EINMO_PARALLEL")
+            .ok()
+            .and_then(|s| s.parse::<usize>().ok())
+            .or(self.parallel)
+            .unwrap_or_else(|| {
+                std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get)
+            });
+        // 0 and 1 both mean "no worker threads": run in the calling thread.
+        (threads > 1).then_some(threads)
     }
 
     /// The dependent-name separator (default `++`).
@@ -547,6 +622,8 @@ pub struct SigningConfig {
     pub output: Option<String>,
     pub checked: Option<String>,
     pub verified: Option<String>,
+    /// Hex prefix of the human reviewer's key (Verified level, V6).
+    pub reviewer_key_prefix: Option<String>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -556,6 +633,8 @@ pub struct SuiteConfig {
     pub suite_duration_limit: Option<u64>,
     pub rerun_catastrophes: Option<bool>,
     pub ignore_catastrophe_crumbs: Option<Vec<String>>,
+    /// Thread count for `evaluate_all`. `0` means serial.
+    pub parallel: Option<usize>,
 }
 
 pub fn parse_einmo_toml(work_dir: &Path) -> EinmoTomlConfig {
@@ -592,7 +671,14 @@ fn find_crate_wise_toml(work_dir: &Path) -> Option<PathBuf> {
 
 fn merge_toml(crate_wide: EinmoTomlConfig, per_suite: EinmoTomlConfig) -> EinmoTomlConfig {
     EinmoTomlConfig {
-        signing: per_suite.signing,
+        signing: SigningConfig {
+            reviewer_key_prefix: per_suite
+                .signing
+                .reviewer_key_prefix
+                .clone()
+                .or(crate_wide.signing.reviewer_key_prefix),
+            ..per_suite.signing
+        },
         suite: SuiteConfig {
             walk_depth_limit: per_suite
                 .suite
@@ -610,6 +696,7 @@ fn merge_toml(crate_wide: EinmoTomlConfig, per_suite: EinmoTomlConfig) -> EinmoT
                 .suite
                 .rerun_catastrophes
                 .or(crate_wide.suite.rerun_catastrophes),
+            parallel: per_suite.suite.parallel.or(crate_wide.suite.parallel),
             ignore_catastrophe_crumbs: per_suite
                 .suite
                 .ignore_catastrophe_crumbs
@@ -625,6 +712,9 @@ fn parse_toml_content(content: &str) -> Result<EinmoTomlConfig> {
     let mut config = EinmoTomlConfig::default();
 
     if let Some(signing) = value.get("signing").and_then(|v| v.as_table()) {
+        if let Some(v) = signing.get("reviewer_key_prefix").and_then(|v| v.as_str()) {
+            config.signing.reviewer_key_prefix = Some(v.to_string());
+        }
         if let Some(v) = signing.get("output").and_then(|v| v.as_str()) {
             config.signing.output = Some(v.to_string());
         }
@@ -637,6 +727,9 @@ fn parse_toml_content(content: &str) -> Result<EinmoTomlConfig> {
     }
 
     if let Some(suite) = value.get("suite").and_then(|v| v.as_table()) {
+        if let Some(v) = suite.get("parallel").and_then(|v| v.as_integer()) {
+            config.suite.parallel = Some(v.max(0) as usize);
+        }
         if let Some(v) = suite.get("walk_depth_limit").and_then(|v| v.as_integer()) {
             config.suite.walk_depth_limit = Some(v as usize);
         }
@@ -671,7 +764,7 @@ mod tests {
     use super::*;
 
     fn cfg() -> TestConfig {
-        TestConfig::new("/tmp/suite")
+        TestConfig::new("/tmp/suite", crate::einmo_suite::ValidationLevel::Output)
     }
 
     #[test]

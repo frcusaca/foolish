@@ -2,7 +2,7 @@
 foop: 6
 title: Phase 2 evaluator is depth-first sequential; breadth-first deferred to Phase 4
 author: hc <hc.busy@gmail.com>
-status: Brewing
+status: Superseded
 type: Standards
 created: 2026-05-01
 phase: phase-2
@@ -10,6 +10,10 @@ supersedes: []
 ---
 
 # FOOP-6: Phase 2 evaluator is depth-first sequential; breadth-first deferred to Phase 4
+
+> **Superseded 2026-07-14.** The depth-first, left-to-right sequential evaluation order is
+> realized in UBCa's uniform two-phase stepping (FOOP-62). Early UBC-era text; terminology
+> and mechanism details predate UBCa — cite FOOP-62 instead.
 
 ## Abstract
 

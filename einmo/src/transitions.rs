@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 use crate::config::{KeySource, TestConfig};
 use crate::error::{EinmoError, Result};
 use crate::format::EinmoFile;
-use crate::signature::{is_computer_key, now_iso8601};
+use crate::signature::{StageKeypair, is_computer_key, now_iso8601};
 use crate::stage::{Stage, ensure_parent_dir, mirror_input_path, walk_input_tree};
 
 /// One promoted file's outcome.
@@ -37,6 +37,13 @@ pub struct PromotionReport {
 pub struct FlagReport {
     /// The mirror-relative paths moved into `flagged/`.
     pub flagged: Vec<PathBuf>,
+}
+
+/// The result of a retraction (demotion).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct RetractReport {
+    /// `(stage, path)` of each artifact removed — including the cascade.
+    pub retracted: Vec<(Stage, PathBuf)>,
 }
 
 /// A signature-prefix scan result (`confirm-signatures`).
@@ -116,12 +123,18 @@ pub fn promote(
     let to_dir = config.stage_dir(to);
     let mut report = PromotionReport::default();
 
+    // Derive the stage key ONCE: every file in this promotion is signed with
+    // the same key, and Argon2id derivation is ~1.8s by design. Deriving per
+    // file made a 161-file promotion take ~5 minutes of pure CPU for ~0.2ms of
+    // Ed25519 signing.
+    let keypair = StageKeypair::derive(key.passphrase());
+
     for rel in matching_mirror_paths(config, from, filter, files)? {
         let src = from_dir.join(&rel);
         let dst = to_dir.join(&rel);
         // Verify-on-inspect the source; refuse a tampered file.
         let mut file = EinmoFile::from_file(&src)?;
-        let pubkey = file.append_stage_stamp(to.stamp_key(), key.passphrase());
+        let pubkey = file.append_stage_stamp_with(to.stamp_key(), &keypair);
         let non_human = to == Stage::Verified && is_computer_key(&pubkey);
         ensure_parent_dir(&dst)?;
         let bytes = file.serialize()?;
@@ -136,7 +149,8 @@ pub fn promote(
 }
 
 /// Move every matching file from `stage` into `flagged/`, appending an unsigned
-/// advisory line. On collision, the new file gets a timestamp suffix.
+/// advisory line. Re-flagging the same test REPLACES its flagged file (flags
+/// are plaintext, transient dev-process markers — FOOP-25 §S.3).
 ///
 /// # Errors
 ///
@@ -161,7 +175,10 @@ pub fn flag(
         let advisory = format!("# flagged: {reason} {timestamp}");
         file.set_advisory(advisory);
 
-        let dst = collision_free_dest(&flagged_dir, &rel, &timestamp);
+        // Flags are plaintext, transient dev-process markers (FOOP-25 §S.3):
+        // re-flagging the same test REPLACES the existing flagged file rather
+        // than accumulating suffixed copies. Plain overwrite at the mirror path.
+        let dst = flagged_dir.join(&rel);
         ensure_parent_dir(&dst)?;
         let bytes = file.serialize()?;
         std::fs::write(&dst, &bytes).map_err(|e| EinmoError::io(&dst, e))?;
@@ -172,22 +189,58 @@ pub fn flag(
     Ok(report)
 }
 
-/// Compute a collision-free destination path in `flagged/`.
+/// Retract (demote) a promotion: remove artifacts from `checked/` or
+/// `verified/` so they are no longer part of that baseline and can be
+/// re-examined (FOOP-64 §"Retraction (demotion)").
 ///
-/// If `flagged/<rel>` already exists, insert `.<timestamp>` before `.einmo`.
-fn collision_free_dest(flagged_dir: &Path, rel: &Path, timestamp: &str) -> PathBuf {
-    let candidate = flagged_dir.join(rel);
-    if !candidate.exists() {
-        return candidate;
+/// **Cascade.** Retracting from `checked` also removes the matching `verified/`
+/// artifact, if one exists: a `verified/` stamp attests to a *specific checked
+/// baseline*, so pulling the baseline leaves the attestation dangling. The
+/// trust chain must never hold a baseline a lower stage no longer supports.
+///
+/// Retraction *removes* artifacts (git history preserves what they were); it
+/// appends no stamp and writes nothing to `flagged/` — flagging is "set aside
+/// as wrong", retraction is "provisional again". Retracting from `output` is
+/// refused: it is regenerated every run, so there is nothing to un-promote.
+///
+/// # Errors
+///
+/// Returns [`EinmoError::Config`] if `stage` is `output` or `flagged`, or
+/// [`EinmoError::Io`] on a filesystem failure.
+pub fn retract(
+    config: &TestConfig,
+    stage: Stage,
+    filter: Option<&str>,
+    files: Option<&[PathBuf]>,
+) -> Result<RetractReport> {
+    // The stages a retraction from `stage` invalidates, highest-first, so a
+    // downstream artifact is always removed before the baseline it depended on.
+    let cascade: &[Stage] = match stage {
+        Stage::Verified => &[Stage::Verified],
+        Stage::Checked => &[Stage::Verified, Stage::Checked],
+        Stage::Output => {
+            return Err(EinmoError::Config(
+                "cannot retract from output/: it is regenerated every run".into(),
+            ));
+        }
+        Stage::Flagged => {
+            return Err(EinmoError::Config(
+                "cannot retract from flagged/: it is the terminal sink, not a baseline".into(),
+            ));
+        }
+    };
+
+    let mut report = RetractReport::default();
+    for rel in matching_mirror_paths(config, stage, filter, files)? {
+        for &target in cascade {
+            let path = config.stage_dir(target).join(&rel);
+            if path.exists() {
+                std::fs::remove_file(&path).map_err(|e| EinmoError::io(&path, e))?;
+                report.retracted.push((target, rel.clone()));
+            }
+        }
     }
-    // `rel` ends with `.einmo`; strip it, add `.<timestamp>.einmo`.
-    let rel_str = rel.to_string_lossy();
-    let base = rel_str
-        .strip_suffix(".einmo")
-        .unwrap_or(&rel_str)
-        .to_string();
-    let safe_ts = timestamp.replace([':', '/'], "-");
-    flagged_dir.join(format!("{base}.{safe_ts}.einmo"))
+    Ok(report)
 }
 
 /// Scan every `.einmo` under `path`, reporting which files carry a stamp whose
@@ -389,13 +442,14 @@ fn glob_match(text: &str, pattern: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::einmo_suite::ValidationLevel;
     use crate::format::{DEFAULT_SEPARATOR, Metadata, Section, Status};
     use crate::signature::{Stamps, derive_keypair};
     use std::fs;
 
     fn suite() -> (tempfile::TempDir, TestConfig) {
         let tmp = tempfile::tempdir().unwrap();
-        let config = TestConfig::new(tmp.path());
+        let config = TestConfig::new(tmp.path(), ValidationLevel::Output);
         config.ensure_stage_dirs().unwrap();
         fs::create_dir_all(config.input_path()).unwrap();
         (tmp, config)
@@ -431,6 +485,69 @@ mod tests {
         let path = config.stage_dir(Stage::Output).join(format!("{rel}.einmo"));
         ensure_parent_dir(&path).unwrap();
         fs::write(&path, file.serialize().unwrap()).unwrap();
+    }
+
+    /// Retracting `checked` removes the checked artifact AND cascades to its
+    /// `verified/` counterpart — a verified stamp attests to a checked baseline
+    /// that would otherwise be dangling.
+    #[test]
+    fn retract_checked_cascades_to_verified() {
+        let (_tmp, config) = suite();
+        write_output(&config, "a.foo", "5");
+        let key = KeySource::from_passphrase("");
+        promote(&config, Stage::Output, Stage::Checked, &key, None, None).unwrap();
+        promote(&config, Stage::Checked, Stage::Verified, &key, None, None).unwrap();
+        let checked = config.stage_dir(Stage::Checked).join("a.foo.einmo");
+        let verified = config.stage_dir(Stage::Verified).join("a.foo.einmo");
+        assert!(checked.exists() && verified.exists());
+
+        let report = retract(&config, Stage::Checked, None, None).unwrap();
+
+        assert!(!checked.exists(), "checked artifact removed");
+        assert!(!verified.exists(), "verified counterpart cascaded away");
+        // Removed highest-first: verified before the checked it depended on.
+        assert_eq!(
+            report.retracted,
+            vec![
+                (Stage::Verified, PathBuf::from("a.foo.einmo")),
+                (Stage::Checked, PathBuf::from("a.foo.einmo")),
+            ]
+        );
+        // output/ is untouched: the input still produces it, ready for re-review.
+        assert!(config.stage_dir(Stage::Output).join("a.foo.einmo").exists());
+    }
+
+    /// Retracting `verified` removes only verified — it is the top of the chain.
+    #[test]
+    fn retract_verified_leaves_checked() {
+        let (_tmp, config) = suite();
+        write_output(&config, "a.foo", "5");
+        let key = KeySource::from_passphrase("");
+        promote(&config, Stage::Output, Stage::Checked, &key, None, None).unwrap();
+        promote(&config, Stage::Checked, Stage::Verified, &key, None, None).unwrap();
+
+        let report = retract(&config, Stage::Verified, None, None).unwrap();
+
+        assert_eq!(
+            report.retracted,
+            vec![(Stage::Verified, PathBuf::from("a.foo.einmo"))]
+        );
+        assert!(
+            config
+                .stage_dir(Stage::Checked)
+                .join("a.foo.einmo")
+                .exists(),
+            "the checked baseline survives"
+        );
+    }
+
+    /// Retraction from `output`/`flagged` is refused — neither is a baseline
+    /// that can be un-promoted.
+    #[test]
+    fn retract_refuses_output_and_flagged() {
+        let (_tmp, config) = suite();
+        assert!(retract(&config, Stage::Output, None, None).is_err());
+        assert!(retract(&config, Stage::Flagged, None, None).is_err());
     }
 
     #[test]
@@ -531,7 +648,10 @@ mod tests {
     }
 
     #[test]
-    fn flag_collision_gets_timestamp_suffix() {
+    fn reflag_replaces_the_existing_flagged_file() {
+        // Flags are plaintext, transient dev-process markers (FOOP-25 §S.3):
+        // re-flagging the same test REPLACES the flagged file, it does not
+        // accumulate suffixed files.
         let (_tmp, config) = suite();
         write_output(&config, "a.foo", "5");
         flag(&config, Stage::Output, None, "first", None).unwrap();
@@ -539,8 +659,16 @@ mod tests {
         write_output(&config, "a.foo", "5");
         flag(&config, Stage::Output, None, "second", None).unwrap();
         let flagged_dir = config.stage_dir(Stage::Flagged);
+        // Exactly one flagged file — the re-flag overwrote, not suffixed.
         let count = fs::read_dir(&flagged_dir).unwrap().count();
-        assert_eq!(count, 2, "collision must produce a second, suffixed file");
+        assert_eq!(count, 1, "re-flag must replace, not add a suffixed file");
+        // And it carries the newest note.
+        let flagged = flagged_dir.join("a.foo.einmo");
+        let file = EinmoFile::from_file(&flagged).unwrap();
+        assert!(
+            file.advisory().unwrap().starts_with("# flagged: second"),
+            "the replacing flag's advisory must win"
+        );
     }
 
     #[test]

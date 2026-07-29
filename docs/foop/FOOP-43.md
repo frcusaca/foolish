@@ -2,7 +2,7 @@
 foop: 34
 title: Search settlement — miss settles by anchoring, SFF-marked searches are ECONSTANIC, and coordination removes search context
 author: Atlas hc.busy@gmail.com
-status: Draft
+status: Superseded
 type: Standards
 created: 2026-07-09
 phase: phase-2
@@ -11,6 +11,9 @@ begun: [ ]
 ---
 
 # FOOP-43: Search settlement — miss settles by anchoring, and coordination removes search context
+
+> **Superseded 2026-07-14 — merged into [FOOP-93](FOOP-93.md)** (roadmap Track 2 opener).
+> Components 1/2/3 are normatively restated there; this file remains as the full discussion.
 
 > Lean draft. Fuller-spec notes are in the Appendix and in
 > `docs/foop/NOTES-creation-lineage-and-search-family.md` §7.

@@ -26,7 +26,7 @@
 //! configured separator — parsing then stays trivially byte-exact.
 
 use crate::error::{EinmoError, Result};
-use crate::signature::{StampCheck, Stamps, derive_keypair};
+use crate::signature::{StageKeypair, StampCheck, Stamps};
 
 /// The envelope format version emitted by this build.
 const FORMAT_VERSION: u32 = 1;
@@ -51,6 +51,14 @@ pub enum Status {
     InputError,
     /// Evaluation failed abnormally (panic, crash, harness fault).
     OutputError,
+}
+
+impl std::fmt::Display for Status {
+    /// The wire spelling — the same token that appears in the `status:`
+    /// metadata line, so callers never re-derive it.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
 }
 
 impl Status {
@@ -315,6 +323,24 @@ impl EinmoFile {
         self.sections.iter().find(|s| s.name() == name)
     }
 
+    /// Whether this file has identical INPUT, OUTPUT, and stamp public keys
+    /// as `other`. Ignores metadata (timestamps, producer, git sha) and
+    /// signatures — only compares content and signing key identity.
+    #[must_use]
+    pub fn content_matches(&self, other: &EinmoFile) -> bool {
+        let sections_same = self.sections().len() == other.sections().len()
+            && self.sections().iter().zip(other.sections().iter()).all(|(s, o)| {
+                s.name() == o.name() && s.body() == o.body()
+            });
+        let self_keys: Vec<_> = self.stamps().entries().iter()
+            .map(|s| (s.key(), s.pubkey_hex()))
+            .collect();
+        let other_keys: Vec<_> = other.stamps().entries().iter()
+            .map(|s| (s.key(), s.pubkey_hex()))
+            .collect();
+        sections_same && self_keys == other_keys
+    }
+
     /// Replace the stamp chain (used by transitions after appending a stamp).
     pub(crate) fn set_stamps(&mut self, stamps: Stamps) {
         self.stamps = stamps;
@@ -364,11 +390,24 @@ impl EinmoFile {
     /// this method assumes the existing stamps are valid and appends over all
     /// current file bytes. Returns the hex pubkey of the appended stamp so the
     /// caller can warn on a non-human (computer-key) verified attestation.
-    pub(crate) fn append_stage_stamp(&mut self, stage_key: &str, passphrase: &str) -> String {
-        let (signing, verifying) = derive_keypair(passphrase);
+    /// Append this stage's stamp, signing with a keypair the caller derived.
+    ///
+    /// Argon2id derivation is deliberately expensive (~1.8s at the pinned
+    /// parameters), and every file in a batch is signed with the *same* stage
+    /// key — so the key is derived once by the caller and passed in. Deriving
+    /// per file made a 161-file promotion cost ~5 minutes of pure CPU for
+    /// ~0.2ms of actual Ed25519 signing.
+    ///
+    /// The plaintext key exists only inside [`StageKeypair::with_signing_key`].
+    pub(crate) fn append_stage_stamp_with(
+        &mut self,
+        stage_key: &str,
+        keypair: &StageKeypair,
+    ) -> String {
         let prefix = self.stamps.prefix_for_next_stamp(&self.signed_prefix());
-        self.stamps.append_stage(stage_key, &signing, &prefix);
-        hex::encode(verifying.to_bytes())
+        // The plaintext key exists only inside this closure.
+        keypair.with_signing_key(|signing| self.stamps.append_stage(stage_key, signing, &prefix));
+        keypair.pubkey_hex()
     }
 
     /// `true` iff the whole stamp chain verifies.

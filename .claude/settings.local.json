@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(mvn clean test:*)",
+      "Bash(git checkout:*)",
+      "Bash(xargs:*)",
+      "Bash(comm -23:*)",
+      "Bash(grep:*)",
+      "Bash(mvn clean:*)",
+      "Bash(mvn compile:*)",
+      "Bash(mvn help:effective-pom:*)",
+      "Bash(mvn help:describe:*)"
+    ]
+  }
+}
