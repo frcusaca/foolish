@@ -93,9 +93,9 @@ cargo test -p foolish-ubca --lib -- run_einmo_tests           # run one suite
 
 # Evaluate inputs to produce output files:
 einmo evaluate foolish-ubca/einmo_suite \
-    --command "./target/debug/foolish run"                     # all files
+    --command "cat"                     # all files (reads source from stdin)
 einmo evaluate foolish-ubca/einmo_suite \
-    --command "./target/debug/foolish run" \
+    --command "cat" \
     --filter "foop/23/name_value_atomic"                      # single file
 
 # Review and promote:
