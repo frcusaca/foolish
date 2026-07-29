@@ -63,7 +63,7 @@ ls | rev | sort -V | rev
 | [FOOP-94](FOOP-94.md) | Brane NK only when all constituents are NK — remove any-NK contamination | Draft | phase-2 | 2026-07-14 | Atlas |
 | [FOOP-05](FOOP-05.md) | fir module decomposition — fir_base, fir_search_base, one file per FIR kind | Draft | phase-2 | 2026-07-14 | Atlas |
 | [FOOP-15](FOOP-15.md) | Secured interactive einmo review — attested inspection of einmos and their perspectives | Draft | meta | 2026-07-14 | Atlas |
-| [FOOP-25](FOOP-25.md) | EinmoReview — a thread-safe review-session object; thin bash, server, and dhtml frontends | Draft | meta | 2026-07-19 | Atlas |
+| [FOOP-25](FOOP-25.md) | EinmoReview — a thread-safe review-session object; thin bash, server, and dhtml frontends | Superseded (by einmo repo EIMP-1) | meta | 2026-07-19 | Atlas |
 | [FOOP-35](FOOP-35.md) | Ship einmo — own repository, crates.io registration, and a working `cargo einmo test` | Draft | meta | 2026-07-19 | Atlas |
 | [FOOP-45](FOOP-45.md) | Deadbrane — useless-element detection and FirID cloning semantics (renumbered from FOOP-84) | Draft | phase-2 | 2026-07-14 | Hephaestus |
 
@@ -130,14 +130,18 @@ ls | rev | sort -V | rev
 - [FOOP-15](FOOP-15.md) — Secured interactive einmo review (re-homes FOOP-92's deferred
   serve/SPA + MCP + perspective rendering; phased R1 read-only → R2 attested actions → R3
   perspectives → R4 MCP; build-up goal)
-- [FOOP-25](FOOP-25.md) — EinmoReview session object (thread-safe review state: per-reviewer
-  replace-not-stack decisions, single-flight verified cache, journal; signing deliberately a
-  SEPARATE `Signer` object — individual or batch from one passphrase entry; server API over UDS;
-  poor_einmo.sh reduced to a thin client; first dhtml frontend; the session layer FOOP-15 attaches
-  to). §S.11 adds a LAYERED post-quantum section attestation in its own `CorpusSigner` object
-  (conservative SPHINCS+/SLH-DSA over a stage's manifest+byte-joined files, same passphrase as the
-  Ed25519 stamps, ON TOP of them not replacing; default massively-parallel one-buffer read + a tested
-  streaming alternative; crypto core + tests only this FOOP)
+- [FOOP-25](FOOP-25.md) — **Superseded, 2026-07-29**: einmo was extracted into its own repository
+  (`~/yolo/einmo`); this unimplemented design was ported there as `EIMP-1` (adapted for einmo's
+  own EIMP process — no worktree/`jia` mechanics). Implement against the einmo repo's `EIMP-1`
+  plan, not this one. Original abstract, kept for the historical record: EinmoReview session
+  object (thread-safe review state: per-reviewer replace-not-stack decisions, single-flight
+  verified cache, journal; signing deliberately a SEPARATE `Signer` object — individual or batch
+  from one passphrase entry; server API over UDS; poor_einmo.sh reduced to a thin client; first
+  dhtml frontend; the session layer FOOP-15 attaches to). §S.11 adds a LAYERED post-quantum
+  section attestation in its own `CorpusSigner` object (conservative SPHINCS+/SLH-DSA over a
+  stage's manifest+byte-joined files, same passphrase as the Ed25519 stamps, ON TOP of them not
+  replacing; default massively-parallel one-buffer read + a tested streaming alternative; crypto
+  core + tests only this FOOP)
 - [FOOP-35](FOOP-35.md) — Ship einmo as a dual product: library (`einmo = "0.1"`, audited pub API,
   missing_docs-clean) + installable cargo command (`cargo install einmo` → `einmo`/`cargo-einmo`,
   new `einmo test` verb with checked/verified levels and CI exit codes); sequential walkthrough of
@@ -410,6 +414,16 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 ---
 
 ## Last Updated
+
+**Date**: 2026-07-29 (2)
+**Updated By**: Claude Code (Sonnet 5)
+**Changes**: **FOOP-25 superseded.** einmo was extracted into its own repository (`~/yolo/einmo`);
+FOOP-25's design (`EinmoReview`, unimplemented) was ported there as `EIMP-1`, adapted for
+einmo's own EIMP process (no worktree/`jia` mechanics). Updated FOOP-25's frontmatter
+(`status: Superseded`, `superseded_by: einmo repo EIMP-1`), added a superseded banner to
+`FOOP-25.md`, and formally cancelled `FOOP-25.plan.md` (`[x] Canceled` + `[-]` on every
+checkbox, per `foop.md`'s cancellation procedure). Updated this index's table row and Draft-list
+prose entry to match.
 
 **Date**: 2026-07-29
 **Updated By**: Claude Code (Opus 5)

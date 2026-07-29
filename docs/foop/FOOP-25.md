@@ -2,15 +2,26 @@
 foop: 52
 title: EinmoReview — a thread-safe review-session object; thin bash, server, and dhtml frontends
 author: Atlas <hc.busy@gmail.com>
-status: Draft
+status: Superseded
 type: Standards
 created: 2026-07-19
 phase: meta
 supersedes: []
+superseded_by: einmo repo EIMP-1
 begun: [ ]
 ---
 
 # FOOP-25: EinmoReview — a thread-safe review-session object; thin bash, server, and dhtml frontends
+
+> **Superseded.** einmo has since been extracted into its own repository
+> (`~/yolo/einmo`, see `FOOP-92`). This specification's content — unimplemented
+> at the time of the move — was ported there as `EIMP-1` (`docs/eimp/EIMP-1.md`
+> + `EIMP-1.plan.md` in the einmo repo), adapted for einmo's own EIMP process
+> (no worktree/`jia` mechanics; `poor_einmo.sh` renamed
+> `scripts/experimental_reviewer.sh`). This file is left in place as the
+> historical record of the original decision; **do not implement against this
+> copy** — implement against the einmo repo's `EIMP-1` instead. See
+> `FOOP-25.plan.md` for the formal cancellation.
 
 FOOP numbering is little-endian; the full rules live in `foop.md` at the
 repository root — **read it before creating or editing a FOOP.**
