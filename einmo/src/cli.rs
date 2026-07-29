@@ -267,8 +267,7 @@ struct SelfCheckArgs {
 struct EvaluateArgs {
     /// The suite work directory.
     work_dir: PathBuf,
-    /// The evaluator command. Receives the input file path as $1.
-    /// stdout is captured as the output chunks (one per line).
+    /// The evaluator command. Receives source on stdin, outputs to stdout.
     #[arg(long)]
     command: String,
     /// Only evaluate inputs matching this substring.
@@ -978,17 +977,19 @@ struct CommandEvaluator {
 
 impl crate::einmo_suite::Evaluator for CommandEvaluator {
     fn evaluate(&self, source: &str) -> std::result::Result<Vec<String>, String> {
-        let tmp = tempfile::NamedTempFile::new().map_err(|e| e.to_string())?;
-        std::fs::write(tmp.path(), source).map_err(|e| e.to_string())?;
-        let abs = tmp
-            .path()
-            .canonicalize()
-            .map_err(|e| e.to_string())?;
-        let output = std::process::Command::new("sh")
+        use std::io::Write;
+        let mut child = std::process::Command::new("sh")
             .arg("-c")
-            .arg(format!("{} {}", self.command, abs.display()))
-            .output()
+            .arg(&self.command)
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
             .map_err(|e| format!("evaluator command failed: {e}"))?;
+        if let Some(mut stdin) = child.stdin.take() {
+            stdin.write_all(source.as_bytes()).map_err(|e| e.to_string())?;
+        }
+        let output = child.wait_with_output().map_err(|e| format!("evaluator command failed: {e}"))?;
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(format!(
