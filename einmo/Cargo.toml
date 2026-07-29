@@ -9,7 +9,7 @@ license = "MIT OR Apache-2.0"
 # foolish-ubca, …). Einmo reimplements the signing/format machinery from
 # scratch so it can be promoted to its own repository later (FOOP-92 §1).
 [dependencies]
-ed25519-dalek = "2"
+ed25519-dalek = "3"
 argon2 = "0.5"
 base64 = "0.22"
 hex = "0.4"
