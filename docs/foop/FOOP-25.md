@@ -25,7 +25,9 @@ supporting both promote-one-at-a-time and accumulate-then-sign-at-the-end from a
 entry. One running review is exposed through a small server API; `poor_einmo.sh` shrinks to a thin,
 fast client (vim stays the editor), and a dhtml page talking to the same server replaces vimdiff as the
 first browser frontend. This FOOP is the session layer that FOOP 15's secured interactive review
-(perspectives, MCP) attaches to.
+(perspectives, MCP) attaches to. It also adds (§S.11) a **layered post-quantum section attestation**:
+a conservative SPHINCS+/SLH-DSA signature over a whole stage section (manifest + byte-joined files),
+recomputed when the section updates, on top of — never replacing — the existing per-file Ed25519 stamps.
 
 ## The Aspirational Goal
 
@@ -44,6 +46,14 @@ key") is written down as it happens.
 When this FOOP is complete, `poor_einmo.sh` is a dumb terminal loop an evening's read long, the browser
 page is a courtesy view over the same API, and the next frontend — FOOP 15's perspective-rich SPA or an
 agent reviewer — costs an afternoon, not a rewrite.
+
+**The goal state, stated plainly (once, in one place):** a healthy suite has **no flags, every artifact
+signed, and every artifact matching** — output matches checked matches verified (at the suite's level),
+and for every stamp the **public signature verifies against the key the passphrase derives** (the
+signer is who they claim to be; no computer key masquerading as a human `verified` stamp). Flags are the
+explicit exception to "healthy": a flag is a red mark that breaks the suite until a human resolves it.
+"Green" therefore means zero flags + all-signed + all-matching + all-signatures-valid; anything less is
+not done.
 
 ## Motivation
 
@@ -149,6 +159,43 @@ untouched. This map-shaped invariant replaces poor_einmo's entire `drop_from`/`u
 `answer_of` machinery. Every item carries a `version` bumped on decision change or byte change;
 frontends send it back (If-Match) so a stale view cannot silently decide about changed content.
 
+**A flag BREAKS THE TEST by default — this is the newly-designed behavior as of FOOP 25.** Previously a
+flag only moved an artifact into the `flagged/` sink and it was a matter of interpretation whether that
+should fail a run. FOOP 25 makes it definite: **the presence of any flagged artifact for a test fails
+that test** (`einmo test` returns non-zero; the gate is red). A suite CAN be configured to not treat
+flags as failures — `--flag-is-not-failure` (per-suite config or CLI flag) downgrades a flag from
+"failure" to "advisory" — **but even then, a flag ALWAYS produces stderr output announcing its
+existence** (`einmo: warning: <N> flagged artifact(s) present: …`). There is no configuration under
+which a flag is silent; the most it can be made is non-fatal-but-loud. This keeps flags impossible to
+lose: the default punishes them, and the opt-out still shouts.
+
+**Flags break the test and do not diff (per FOOP 64 §Flagging).** A `Flag` is not a comparison against a
+baseline; it is a deliberate "this is wrong, stop and look". The reviewer's note is kept **in full and
+in context** (they annotate the rendered body right where the error is; the whole annotated text is the
+note, not just an added line).
+
+**`flagged/` is PLAINTEXT, UNSIGNED, and TRANSIENT — a development-process component, not a durable
+signed record.** This FOOP settles a question the corpus had left open: **flagging writes a plaintext
+message with no signature.** A flag is a short-lived "in progress, broken" marker meant to be resolved
+and removed, not to persist or be cryptographically attributed. So `EinmoReview` executing a `Flag`
+simply writes the note as plaintext into `flagged/<test>` — and re-flagging **concatenates**: the new
+dated, annotated content goes ON TOP, the existing flagged content BELOW, in the same path. Because it
+is plaintext by design, there is no envelope to corrupt and no verification to fail; `flagged/` remains
+**exempt from the escalation** exactly as today. Its only job is to **break the test by default** (S.3,
+above) until a human resolves it. A pending `Flag` still replaces on re-edit (normal rule); on execute
+it concatenates newest-on-top; concurrent multi-verifier flags serialize under the `exec` mutex so both
+dated blocks land, none lost. The journal records who flagged, when, and with what note.
+
+**Durable, attributed observations go in a NEW signed `notes/` stage — not `flagged/`.** For an
+observation meant to LAST — a design note, a reviewed finding, an attributable comment that should
+survive past the bug it describes — `flagged/` is the wrong home (it is transient and unsigned). This
+FOOP adds a `notes/` sibling stage that **is signed** (a proper `.einmo` envelope, verify-on-inspect,
+stamped like any stage). The same concatenated annotated content that a flag holds as plaintext can be
+promoted into `notes/` as the **signed body of a note** — so a throwaway flag can graduate into a
+durable, attributed record. `notes/` participates in signature checks (its stamps must verify against
+their passphrase-derived keys, per the goal state); `flagged/` never does. Rule of thumb: **`flagged/`
+is for the development loop and should trend to empty; `notes/` is for what you want to keep.**
+
 ### S.4 Signing is a separate object — the design answer
 
 **Question posed**: should signing-from-passphrase (individually or in batch) be part of the review
@@ -181,6 +228,19 @@ Rationale for the separation:
 Execution is always deliberate: `plan()` renders exactly what will run (today's results block, kept),
 and the frontend must present it and pass an explicit confirmation (the typed `PROMOTE` word survives as
 the API's `confirm` token). Retractions carry their own confirmation and are never batched silently.
+
+**Multi-stage promotion of one file, one passphrase (subsumes the CLI `::` idea).** Because pending
+promotions live in the session's decision set, a reviewer deciding a file needs BOTH
+`output->checked` and `checked->verified` (poor_einmo's `\Y`) is just two decisions on one file (or a
+`Decision::Promote { to: Verified, through: true }` convenience meaning "carry it up from wherever it
+is"). `execute`/`execute_one` then apply the stages **in lifecycle order** (output->checked before
+checked->verified — the later hop reads the freshly written checked) under a **single derived
+`Signer`**, so the human is prompted at most once for the whole batch, mixed stages included. This is
+the durable home of "promote several stages in one go, one passphrase"; a bare-CLI `einmo promote …
+:: …` chain (considered under FOOP 35 §S.2b and deferred) would, if ever added, be a thin
+argument-parser over this same session primitive — the in-memory decision set is the mechanism, the
+`::` syntax merely a shorthand. Ordered-apply-under-one-key lives in the library so every frontend
+(bash, server, MCP) inherits it.
 
 ### S.5 Concurrency semantics for multiple verifiers
 
@@ -258,6 +318,138 @@ signatures. The plan's first implementation task is a re-survey of `einmo/src` (
 `transitions.rs`, `signature.rs`, `verify.rs`, `format.rs`, `compare.rs`) with spec touch-ups before any
 code. The Rust sketches above are shape, not letter.
 
+### S.11 Section-level post-quantum attestation (SPHINCS+)
+
+**Layered, not a replacement.** The per-artifact Ed25519 stamps stay exactly as they are (fast,
+per-file, the existing approval chain). This adds a SECOND, coarser signature over a whole **section**
+(`output/`, `checked/`, or `verified/` as a unit) using **SPHINCS+ / SLH-DSA** at a **conservative
+parameter set** (the large-signature, slow-signing variant — e.g. `slh_dsa_sha2_256s` via the
+pure-Rust `fips205` crate; this attestation runs rarely, so size and speed do not matter and we buy the
+biggest security margin). Because it is additive, **no existing `.snap`/`.einmo` signature is
+invalidated** — the migration pain of a scheme swap is avoided entirely.
+
+**Encapsulated in a `CorpusSigner` object — NOT mixed into `EinmoReview`.** The whole
+section-attestation pipeline (build the manifest, read the section in parallel into one buffer, hash,
+SLH-DSA sign/verify) is one cohesive responsibility and lives in its own object. `EinmoReview` *uses*
+it; it does not contain the logic. This mirrors the S.4 discipline that keeps key custody (`Signer`)
+out of the review object — `CorpusSigner` is the section-level analogue.
+
+```rust
+/// Owns section-level post-quantum attestation for one suite. Stateless w.r.t.
+/// review; given a stage it (re)builds the manifest, reads the section, and
+/// signs or verifies. Send + Sync so the server's single review can call it.
+pub struct CorpusSigner {
+    suite_root: PathBuf,
+    params: SlhDsaParams,     // the conservative set, e.g. slh_dsa_sha2_256s
+    read_workers: usize,      // bounded read-parallelism (S.11 read pass)
+}
+
+impl CorpusSigner {
+    pub fn new(suite_root: &Path, params: SlhDsaParams, read_workers: usize) -> Self;
+    /// Deterministic manifest for a stage (sorted mirror-paths + sizes/offsets).
+    pub fn manifest(&self, stage: Stage) -> Result<SectionManifest>;
+    /// Manifest + parallel read + hash → the message digest to sign/verify.
+    pub fn digest(&self, stage: Stage) -> Result<SectionDigest>;
+    /// (Re)sign a stage's section with the SLH-DSA key; writes `.section.sig`.
+    pub fn sign(&self, stage: Stage, signer: &Signer) -> Result<SectionSig>;
+    /// Recompute and check a stage's `.section.sig`; Ok(()) or a mismatch error.
+    pub fn verify(&self, stage: Stage) -> Result<()>;
+}
+```
+
+`EinmoReview::execute` holds an `Arc<CorpusSigner>` (or constructs one from the suite) and calls
+`sign(stage, signer)` as the final step of promoting into that stage — the review object orchestrates,
+`CorpusSigner` does the work. Verification (CLI `einmo verify`, the server, poor_einmo) calls
+`verify(stage)` without any review session at all.
+
+**What `CorpusSigner` signs.** For a section, the signed message is built deterministically:
+
+1. A **manifest** header: the stage name, the parameter set id, and the ordered list of included
+   mirror-paths. Order is einmo's existing sorted walk (`walk_input_tree` sorts; deterministic), so the
+   manifest is reproducible.
+2. Then, in manifest order, each file's **bytes byte-joined** onto the running message (the signed
+   envelope bytes as they sit on disk — the whole artifact, not just its body).
+3. The whole thing is **hashed**, and SPHINCS+ signs that digest. The section signature + its manifest
+   live in one file per stage (e.g. `checked/.section.sig` — dot-named, so einmo's walkers skip it).
+
+**Reading the section — parallel, one allocation (bandwidth-maximizing).** The byte-join is a
+"load many files into one contiguous buffer" workload; a naïve sequential `read` per file, growing a
+`Vec`, wastes both disk queue depth and memory bandwidth. Use the two-pass structure that makes the
+read both fast AND deterministic:
+
+1. **Metadata pass** — `fs::metadata(len)` over the manifest-ordered paths to compute each file's size
+   and its **offset** in the final buffer; sum to the total. One `vec![0u8; total]` allocation, no
+   reallocation or per-file heap churn.
+2. **Parallel read pass** — because every file's destination is a **disjoint** `&mut` sub-slice
+   (`buffer[offset..offset+len]`), N worker threads can `read_exact` into their slices with **no
+   locking and no data races** (Rust's borrow checker witnesses the disjointness via
+   `split_at_mut`/chunked slicing). This saturates disk queue depth on many small files and memory
+   bandwidth on large ones. A sketch of the sequential core (the parallel version splits the
+   `(path, slice)` pairs across a small thread pool / `rayon`):
+
+   ```rust
+   // sizes/offsets from the metadata pass; `buffer` is one allocation.
+   let mut cur = 0;
+   for (path, &size) in paths.iter().zip(&sizes) {
+       File::open(path)?.read_exact(&mut buffer[cur..cur + size])?;
+       cur += size;
+   }
+   ```
+
+**Determinism is preserved regardless of read order.** Offsets are fixed by the *manifest* order in
+the metadata pass, so which thread finishes first is irrelevant — the buffer's byte layout, and thus
+the hash, is identical every run. The parallelism is purely an I/O-throughput optimization over a
+layout the manifest already pinned.
+
+**Concurrency caveat (why the metadata pass alone is not the integrity check).** Sizes read in pass 1
+could disagree with bytes in pass 2 if the section changed underneath (a concurrent promotion). Guard
+it: a `read_exact` short read (file shrank) or leftover bytes (file grew) is a hard error that aborts
+the signature; and the section sign runs under `execute`'s write lock (S.2/S.4), which already excludes
+concurrent mutation. Verification re-reads the same way and re-checks — a mid-flight change simply
+fails verify, which is the correct outcome.
+
+**Bounded, not unbounded, parallelism.** Cap the worker pool (e.g. a small multiple of CPU count, or a
+config knob) so a giant section does not spawn thousands of threads; huge individual files can be split
+into ranged reads across workers.
+
+**Two read strategies — DEFAULT is fast parallel-buffer; a streaming alternative is also implemented
+and tested.** `CorpusSigner` provides two `ReadStrategy` implementations behind one seam, so the same
+manifest yields the same digest either way:
+
+- **`ReadStrategy::ParallelBuffer` (default).** The two-pass, massively-parallel read above: one
+  allocation, disjoint-slice parallel `read_exact`, then **hand the whole buffer to the signer at
+  once**. Maximizes disk/memory bandwidth; the signer (or hasher) sees one contiguous message. This is
+  what `sign`/`verify`/`digest` use unless told otherwise.
+- **`ReadStrategy::Stream` (alternative).** Reads files sequentially in manifest order and feeds the
+  hasher **incrementally** (`update(chunk)` per read block), never materializing the whole section in
+  memory. Bounded memory for pathologically large sections, and a cross-check oracle. It is slower but
+  must produce a **byte-identical digest** to `ParallelBuffer`.
+
+Both are implemented and unit-tested; a test asserts the two strategies agree bit-for-bit on the same
+fixtures (this also pins that a single-threaded path equals the parallel one). The default is
+`ParallelBuffer`; `Stream` is selectable (config/flag) for constrained environments or as the
+verification oracle. Semantically they are interchangeable — the manifest fixes the byte order, the
+strategy only chooses how the bytes reach the signer.
+
+**When it runs.** Whenever the section updates — `EinmoReview::execute`/`execute_one`, promoting into a
+stage, calls `CorpusSigner::sign(stage, signer)` as its final step (execution already holds the write
+lock and the `Signer`). Verification calls `CorpusSigner::verify(stage)`, which recomputes the
+manifest+hash and checks the SLH-DSA signature; a mismatch means a file was added, removed, reordered,
+or altered under the section as a whole — integrity above the per-file level.
+
+**Keys.** By default the **same passphrase** derives BOTH the existing Ed25519 stamp key and the
+section SPHINCS+ key (via the S.4 `Signer`, extended to expose both a per-file Ed25519 signer and a
+section SLH-DSA signer from one derivation). SPHINCS+ keygen takes a seed; the Argon2id output is
+expanded to the required seed length and fed to deterministic keygen, preserving einmo's
+"same passphrase ⇒ same key" invariant. A future option may separate the two keys, but same-passphrase
+is the default.
+
+**Scope for THIS FOOP: crypto core + tests only.** Build and unit-test the section-signature primitive
+(manifest builder, deterministic hash, SLH-DSA sign/verify, same-passphrase dual derivation) as a
+self-contained module. Do NOT wire it into the live promotion flow or write `.section.sig` into the
+real corpus yet — that corpus-touching integration is a later step (it interacts with the FOOP 64
+gate and human re-sign discipline). The primitive is proven in isolation first.
+
 ## FIR Impact
 
 None. Einmo crate family and one shell script only.
@@ -277,8 +469,36 @@ Tests are written first, per project rules.
   tampered file → refused object, never content; fingerprint change invalidates.
 - **Unit — signer**: derive-once reuse across N signings; zeroize on drop (best-effort assertion);
   computer vs human key selection per stage; passphrase never reachable after construction.
+- **Unit — section PQ attestation (S.11, crypto core only)**: manifest is deterministic for a fixed
+  file set (reorder inputs on disk → same sorted manifest → same message); adding/removing/altering one
+  file changes the signed digest; SLH-DSA sign→verify round-trips; a tampered signature or a changed
+  file fails verify; **same passphrase derives both** the Ed25519 stamp key and the section SLH-DSA key
+  (dual-derivation determinism: same passphrase ⇒ same section pubkey across runs); empty-section
+  manifest is well-formed. NO real-corpus writes in this FOOP — pure module tests over fixtures.
+- **Unit — CorpusSigner read strategies (S.11)**: `ParallelBuffer` (default) and `Stream` produce a
+  **byte-identical digest** over the same fixture set, independent of worker count and read completion
+  order; the parallel two-pass buffer has exactly `sum(len)` bytes with each file at its manifest
+  offset; a file that shrinks between the metadata and read pass (short read) or grows (leftover bytes)
+  is a hard error, not a silent mis-hash; `Stream` holds bounded memory (never materializes the whole
+  section). Stress with a mix of many tiny files and a few large ones. `CorpusSigner` is exercised as a
+  standalone object (no `EinmoReview`), proving the encapsulation.
 - **Unit — execute**: plan/execute equivalence with CLI `einmo promote` byte-for-byte; skip-and-report
   on mid-plan drift; retract cascade; exclusive exec under concurrent decide traffic (no lost updates).
+- **Unit — flag = plaintext, concatenating (S.3)**: `flagged/<test>` is PLAINTEXT, unsigned; executing a
+  `Flag` on a fresh test writes the annotated note as plaintext; re-flagging CONCATENATES the new dated
+  block ON TOP of the existing content (same path); two reviewers flagging the same test → both dated
+  blocks present, ordered, none lost (serialized by the exec mutex); a pending `Flag` replaces on
+  re-edit; `flagged/` stays exempt from verification (a plaintext/broken file there fails no gate); the
+  journal has both flag events.
+- **Unit — signed `notes/` stage (S.3)**: a note promoted into `notes/` is a valid SIGNED `.einmo`
+  (verify-on-inspect passes; stamp verifies against the passphrase-derived key); the same concatenated
+  content that was a plaintext flag can be signed as a note's body; `notes/` participates in signature
+  checks while `flagged/` does not.
+- **Unit — flag breaks tests (S.3)**: a flagged artifact makes the run FAIL by default (non-zero exit /
+  red gate); `--flag-is-not-failure` downgrades it to non-fatal BUT stderr still announces the flag
+  count; there is no config that makes a flag silent; the goal-state check (zero flags + all signed +
+  all matching + all signatures valid against their passphrase-derived keys) is green only when no flags
+  exist.
 - **Journal**: replay reconstructs the DecisionBook exactly; a truncated tail (crash) replays cleanly.
 - **Server**: endpoint tests against a tempdir suite (list/body/diff/decide/plan/execute/SSE); UDS
   permission inheritance; 409 flows; token required on TCP.
@@ -329,6 +549,9 @@ would re-implement review semantics.
 - Claim lease TTL default and whether claims appear in `plan()` output.
 - Quorum policies (N-of-M human stamps for `verified`) — in scope here or a follow-up FOOP?
 - Whether `ReviewOpts.differing_only` defaults on (matching poor_einmo's new `-d` default).
+- Parallel section-read (§S.11): `rayon` (ergonomic, another dep) vs a small hand-rolled std
+  thread-pool (keeps the crate leaner). Either way the single-threaded fallback must be byte-identical.
+  Also: worker-count default / config knob, and whether to range-split individual very large files.
 
 ## References
 

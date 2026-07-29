@@ -297,6 +297,27 @@ a baseline that a lower stage no longer supports. Both `console-review` and `poo
 surface it: a reviewer who realizes a promoted artifact needs re-examination retracts it (and its
 downstream) rather than living with a baseline they no longer trust.
 
+### Flagging: break-and-demand-attention, and dated accumulation
+
+A **flag breaks the test and demands attention** — it is not a diff. Flagging moves an artifact into
+`flagged/` with an advisory reason (`einmo flag <suite> <stage> --reason "<note>" -- <files>`); the
+flagged test is a red mark that a human must resolve, and it does **not** diff against any baseline
+(there is nothing to compare — the point is "this is wrong, stop and look"). The advisory reason is
+the reviewer's note in full, kept **in context**: reviewers annotate the rendered body right where the
+error is (e.g. an `@agent` comment beside the failing output line), and that surrounding body is what
+makes the note actionable for a human or AI, so the whole edited pane is recorded, not just the added
+line. `poor_einmo.sh` composes this reason and prints the `einmo flag` command; it never flags for you
+(the corpus is mutated only by a command you run).
+
+**`flagged/` is plaintext and transient (settled by FOOP 25 §S.3).** Flagging writes a **plaintext,
+unsigned** message — a development-process marker, not a durable signed record. Re-flagging an existing
+`flagged/<test>` **concatenates**: the new dated block on top, the prior content below, in the same
+path. Because it is plaintext by design there is no envelope to corrupt and `flagged/` stays exempt from
+verification. Durable, attributable observations do NOT go here — FOOP 25 adds a **signed `notes/`
+stage** for those (a proper stamped `.einmo`); a flag's concatenated content can be promoted into
+`notes/` to become a signed note. See FOOP 25 §S.3 for the flag-breaks-tests-by-default rule and the
+`flagged/` vs `notes/` split.
+
 ### foolish-core migration (as part of this FOOP)
 
 `foolish-core/snapshot_tests/` migrates to a corresponding **`foolish-core/einmo_suite/`** with
@@ -434,6 +455,10 @@ evaluator output (enforced by §Cross-validation).
 - The nine new `.foo` inputs of §Proposed new combination tests go through the normal einmo
   review: agent generates `output/`, promotes to `checked/` after self-review; human reviews the
   diff and may sign `verified/`.
+- **Flag = plaintext, concatenating** (§Flagging; details in FOOP 25 §S.3): flagging writes a plaintext,
+  unsigned note; re-flagging concatenates a new dated block on top of the prior content in the same
+  path; `flagged/` stays exempt from verification. Durable signed observations use the new `notes/`
+  stage (FOOP 25), not `flagged/`.
 
 ## Rejected Alternatives
 

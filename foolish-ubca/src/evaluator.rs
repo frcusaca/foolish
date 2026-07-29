@@ -469,6 +469,24 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
             let mut builder = SearchFirBuilder::new(borrowed.as_search_pattern().unwrap_or(""))
                 .anchored(borrowed.as_search_anchored())
                 .state(state);
+            // A value search (`~=` / `?=`) carries a value EXPRESSION as a child
+            // (anchor first if present, value last). Surface both so the
+            // sequencer renders `=(anchor=…, value=…)` instead of a degenerate
+            // empty-pattern search (FOOP-23 rendering appendix).
+            if borrowed.as_search_is_value() {
+                builder = builder.is_value(true);
+                let children = borrowed.core().foolish_children();
+                let has_anchor = borrowed.as_search_anchored();
+                if has_anchor
+                    && let Some(a) = children.first()
+                {
+                    builder = builder.anchor(proto_to_core_fir_inner(a, false));
+                }
+                let value_idx = if has_anchor { 1 } else { 0 };
+                if let Some(v) = children.get(value_idx) {
+                    builder = builder.value(proto_to_core_fir_inner(v, false));
+                }
+            }
             if let Some(alarm_reason) = borrowed.core().alarm_reason() {
                 builder = builder.alarm(Alarm {
                     level: AlarmLevel::Mild,

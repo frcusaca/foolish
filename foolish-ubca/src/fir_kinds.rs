@@ -1041,7 +1041,18 @@ impl SearchFir {
                 self.core.set_nyes(Nyes::Nk);
                 return false;
             }
-            Nyes::Econstanic | Nyes::Woconstanic => {
+            // A WOCONSTANIC value expression is *waiting on its constanics* — it
+            // found its dependencies (e.g. a nested search resolved), they are
+            // just not yet concrete values. The value search inherits that: it
+            // is WOCONSTANIC (may gain a value via recoordination), NOT a miss.
+            // Only a genuinely ECONSTANIC value expression (an unanchored miss
+            // inside the pattern) collapses the search to ECONSTANIC.
+            // (FOOP-23 rendering appendix: r3 = a~=c-d+v must settle WOCONSTANIC.)
+            Nyes::Woconstanic => {
+                self.core.set_nyes(Nyes::Woconstanic);
+                return false;
+            }
+            Nyes::Econstanic => {
                 self.core.set_nyes(Nyes::Econstanic);
                 return false;
             }
@@ -4586,7 +4597,12 @@ mod tests {
     }
 
     #[test]
-    fn value_search_expr_pattern_unresolvable_name_is_econstanic() {
+    fn value_search_expr_pattern_woconstanic_value_is_woconstanic() {
+        // FOOP-23 rendering appendix (2026-07-22): a value search whose value
+        // EXPRESSION is WOCONSTANIC (here `c-d+v`, an Op+ waiting on the
+        // ECONSTANIC search for `v`) must itself settle WOCONSTANIC — it is
+        // "waiting on constanics" and may gain a value via recoordination, NOT a
+        // miss. (Previously this wrongly collapsed to ECONSTANIC.)
         use crate::compiler::Compiler;
         let root = Compiler::compile("{c = 12; d = 9; a = {u = 3; v = 5;}; r = a~=c-d+v;}")
             .unwrap()
@@ -4604,8 +4620,8 @@ mod tests {
             .unwrap();
         assert_eq!(
             body.borrow().core().get_nyes(),
-            Nyes::Econstanic,
-            "pattern with unresolvable v becomes ECONSTANIC"
+            Nyes::Woconstanic,
+            "value search with a WOCONSTANIC value expression settles WOCONSTANIC"
         );
     }
 

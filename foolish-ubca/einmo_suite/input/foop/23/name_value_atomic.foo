@@ -1,4 +1,4 @@
-promote
+{
 	b = {
 		setting = 11;
 		mid = 0;

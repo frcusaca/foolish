@@ -149,7 +149,8 @@ pub fn promote(
 }
 
 /// Move every matching file from `stage` into `flagged/`, appending an unsigned
-/// advisory line. On collision, the new file gets a timestamp suffix.
+/// advisory line. Re-flagging the same test REPLACES its flagged file (flags
+/// are plaintext, transient dev-process markers — FOOP-25 §S.3).
 ///
 /// # Errors
 ///
@@ -174,7 +175,10 @@ pub fn flag(
         let advisory = format!("# flagged: {reason} {timestamp}");
         file.set_advisory(advisory);
 
-        let dst = collision_free_dest(&flagged_dir, &rel, &timestamp);
+        // Flags are plaintext, transient dev-process markers (FOOP-25 §S.3):
+        // re-flagging the same test REPLACES the existing flagged file rather
+        // than accumulating suffixed copies. Plain overwrite at the mirror path.
+        let dst = flagged_dir.join(&rel);
         ensure_parent_dir(&dst)?;
         let bytes = file.serialize()?;
         std::fs::write(&dst, &bytes).map_err(|e| EinmoError::io(&dst, e))?;
@@ -237,24 +241,6 @@ pub fn retract(
         }
     }
     Ok(report)
-}
-
-/// Compute a collision-free destination path in `flagged/`.
-///
-/// If `flagged/<rel>` already exists, insert `.<timestamp>` before `.einmo`.
-fn collision_free_dest(flagged_dir: &Path, rel: &Path, timestamp: &str) -> PathBuf {
-    let candidate = flagged_dir.join(rel);
-    if !candidate.exists() {
-        return candidate;
-    }
-    // `rel` ends with `.einmo`; strip it, add `.<timestamp>.einmo`.
-    let rel_str = rel.to_string_lossy();
-    let base = rel_str
-        .strip_suffix(".einmo")
-        .unwrap_or(&rel_str)
-        .to_string();
-    let safe_ts = timestamp.replace([':', '/'], "-");
-    flagged_dir.join(format!("{base}.{safe_ts}.einmo"))
 }
 
 /// Scan every `.einmo` under `path`, reporting which files carry a stamp whose
@@ -662,7 +648,10 @@ mod tests {
     }
 
     #[test]
-    fn flag_collision_gets_timestamp_suffix() {
+    fn reflag_replaces_the_existing_flagged_file() {
+        // Flags are plaintext, transient dev-process markers (FOOP-25 §S.3):
+        // re-flagging the same test REPLACES the flagged file, it does not
+        // accumulate suffixed files.
         let (_tmp, config) = suite();
         write_output(&config, "a.foo", "5");
         flag(&config, Stage::Output, None, "first", None).unwrap();
@@ -670,8 +659,16 @@ mod tests {
         write_output(&config, "a.foo", "5");
         flag(&config, Stage::Output, None, "second", None).unwrap();
         let flagged_dir = config.stage_dir(Stage::Flagged);
+        // Exactly one flagged file — the re-flag overwrote, not suffixed.
         let count = fs::read_dir(&flagged_dir).unwrap().count();
-        assert_eq!(count, 2, "collision must produce a second, suffixed file");
+        assert_eq!(count, 1, "re-flag must replace, not add a suffixed file");
+        // And it carries the newest note.
+        let flagged = flagged_dir.join("a.foo.einmo");
+        let file = EinmoFile::from_file(&flagged).unwrap();
+        assert!(
+            file.advisory().unwrap().starts_with("# flagged: second"),
+            "the replacing flag's advisory must win"
+        );
     }
 
     #[test]
