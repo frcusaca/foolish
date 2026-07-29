@@ -55,13 +55,14 @@ This FOOP:
    authoritative reference, superseding FOOP-23's description.
 2. **Introduces `AncestralNavigator`**, a `CandidateNavigator` implementation that owns the AB
    walk, replacing `ab_search_with_engine`'s loop and `BraneFir::_ab_search`'s recursion with one
-   traversal. `SearchPredicate` is **untouched** by this change; whether
-   `contextful_search_scan`/`CandidateNavigator` change signature depends on the §2.3.1 TBD
-   (which collaborator resolves `CopyMode`).
+   traversal — walking the raw `.parent` chain **link by link**, because markers are invisible to
+   the accessors the old search uses (§2.2.1). `SearchPredicate` is **untouched**;
+   `CandidateNavigator`'s yielded type changes (it yields a multiplexed stream of candidate and
+   marker items, §2.2.2).
 3. **Introduces the per-candidate boundary-crossing evaluation** that stay-foolish markers use to
    affect a crossing search — the mechanism that (in a later FOOP) coordination detachment,
    privacy detachment, and required-searches are all built from. Its scope is deliberately
-   narrow (§2.2.0): a marker affects **only** a backward/ancestral search **originating inside
+   narrow (§2.2.4): a marker affects **only** a backward/ancestral search **originating inside
    it**, and **only** where that search's AB climb **crosses the marker's own boundary outward**.
    Contexted (`&`) searches and searches that resolve without reaching the boundary are never
    affected. This FOOP does **not** implement any marker behavior yet (no `[patterns]` parsing, no
@@ -305,7 +306,7 @@ mis-reading of the detachment family comes from assuming markers are ambient sco
 **A marker cannot reach sideways or downward, and cannot affect a search that resolves locally.**
 In `[a]<{ x = a; y = local }>` with `local` defined inside the marker's own brane, the search for
 `local` never crosses the boundary and is never tested against `[a]` at all. Engine statement and
-worked examples: §2.2.0.
+worked examples: §2.2.4.
 
 #### 0.7 Engine vocabulary
 
@@ -526,11 +527,11 @@ The engine described in §1.1d (cursor-source × predicate; `CandidateNavigator`
 candidates from a `CandidateNavigator`, apply the predicate, return `Found`/`NkStop`/`Miss` — is
 unchanged.
 
-**Caveat (§2.3.1 TBD):** whether `contextful_search_scan` and the `CandidateNavigator` trait keep
-their exact current *signatures* depends on which collaborator ends up resolving `CopyMode`. A
-search result must carry its copy mode (§2.3.1), and if the Navigator supplies it, both the trait
-return type and the scan loop's destructuring change even though neither's logic does. Do not read
-"untouched" as "no signature change" until that TBD is settled in the plan.
+**Caveat — "untouched" means logic, not signature.** Per §2.2.2/§2.3.1, the Navigator yields a
+**multiplexed stream** (candidate items interleaved with marker items), so `CandidateNavigator`'s
+yielded type changes and the scan loop gains the accumulate-and-apply step over the filter list.
+`SearchPredicate` is genuinely untouched — it still receives only candidates that survived
+filtering, and still knows nothing about markers or traversal.
 
 This separation is deliberate: FOOP-93's predicate-tree extensions (`!`, `&&`/`||`), FOOP-14's
 collect-mode scan, and FOOP-43's reason tags all land inside these two collaborators exactly as
@@ -547,12 +548,114 @@ replaces:
 - `ab_search_with_engine`'s hand-rolled `loop` (`fir_kinds.rs:1085-1119`), and
 - `BraneFir::_ab_search`'s recursive walk (`fir_kinds.rs:826-842`)
 
-with one traversal. It climbs the lexical parent chain (`_get_my_statement` /
-`_get_my_brane`, the same primitives both existing implementations already use) and yields
-candidates in the same visibility order the current loop produces — **no change in candidate
-order or completeness**; this is the behavior-preserving half of the refactor.
+with one traversal, yielding candidates in the same visibility order the current implementations
+produce — **no change in candidate order or completeness**; this is the behavior-preserving half of
+the refactor.
 
-##### 2.2.0 Scope rule — what a marker can and cannot affect (READ THIS FIRST)
+##### 2.2.1 The walk must be link-by-link on `.parent` — markers are invisible to the accessors
+
+**An earlier revision of this section said `AncestralNavigator` climbs "using `_get_my_statement`/
+`_get_my_brane`, the same primitives both existing implementations already use," while also
+observing markers at boundary crossings. Those two requirements are incompatible**, and the reason
+is the central architectural fact this FOOP rests on. Verified against the code:
+
+- **Markers are the real `.parent`.** `StayFoolishFir::stay_foolish(expr, parent)` builds
+  `ProtoBrane::new(vec![expr], parent, …)` (`fir_kinds.rs:2080-2084`), and `ProtoBrane::new`
+  reparents its children — so the wrapped expression's parent chain runs *through* the marker.
+- **But markers are invisible to both accessors the old search uses.** Markers override neither
+  `stmt_count` nor `is_brane_like`, so `is_brane_like()` is **false** for them.
+  `_get_my_brane` (`fir_trait.rs:216-230`) climbs `.parent()` and halts **only** on a brane-like
+  FIR; `_get_my_statement` (`:189-203`) halts **only** on `FirKind::Statement`. Both walk
+  straight past a marker without stopping.
+- **The old search is therefore not dispatched per-FIR.** `BraneFir::_ab_search`
+  (`fir_kinds.rs:826-841`) hops *brane → statement → brane*, recursing on `parent_brane` — a
+  `BraneFir` — so it re-enters `BraneFir::_ab_search` at every level. A marker's own
+  `_ab_search`/`_ib_search` override would be **dead code**: it can never be reached.
+  `ab_search_with_engine` (`:1085-1119`) is a flat loop over the same two skipping accessors,
+  with no per-FIR dispatch at all.
+
+Two consequences follow, and both are load-bearing for the rest of Part 2:
+
+1. **This retroactively justifies `Scope.has_ancestral_sfm`.** Since neither search path can
+   observe a marker during its walk, pushing a boolean down the *task tree* in `step_inner`
+   (`fir_trait.rs:387-388`) is the **only** mechanism available in today's architecture. It is not
+   a shortcut someone took; it is forced. Replacing it therefore genuinely requires a **new
+   traversal** — this is what makes Part 2 a real refactor rather than re-plumbing.
+2. **`AncestralNavigator` must walk the raw `.parent` chain link-by-link**, inspecting each FIR's
+   kind as it goes, and derive brane/statement boundaries from that walk rather than delegating to
+   the skipping accessors.
+
+**Behavior preservation still holds.** A link-by-link walk is a strict *refinement* of both
+existing traversals: it visits every FIR the skipping accessors would land on, plus the ones they
+skip. The brane-level candidate enumeration is unchanged; marker observation is pure addition.
+`ConcatBrane` is the one case needing care — it overrides `_search_brane` (`fir_kinds.rs:2262`,
+`:2502`) and is genuinely brane-like, so the new walk must reproduce its behavior exactly (see the
+Open Question).
+
+##### 2.2.2 The multiplexed candidate stream — the settled design
+
+The Navigator yields a **stream of two kinds of item**, in strict traversal order:
+
+```
+IB phase:  candidates from the home brane (earlier siblings, backward)
+AB phase:  ... then, climbing .parent link by link:
+             - marker items   — [] <> / [] <<>> detachment filters, as they are crossed
+             - candidate items — statements from each brane the walk enters
+```
+
+**The traversal order is the guarantee.** Because the walk climbs outward from the searching FIR,
+it necessarily crosses a marker *before* reaching any candidate that marker governs — the marker
+is nearer than everything beyond it. So the stream is **self-ordering**: a filter always arrives
+before the candidates it can affect. No pre-pass, no lookahead, no separate marker-collection
+phase, and no reversal of the search (this is what closes FOOP-24's nested-marker question, §2.6).
+
+**The contextful-search layer owns accumulation and application.** It:
+
+1. keeps an ordered **filter list**, initially empty;
+2. **appends** each marker item to the list as the Navigator yields it (so the list is ordered
+   innermost → outermost by construction — nearest marker first);
+3. on each **candidate** item, walks the filter list **front to back** (first-in-first-check =
+   innermost-first, per §2.3's resolution algorithm) to resolve the candidate's `BoundaryEffect`:
+   `Detach` → skip this candidate entirely; `Pass`/`SfCopy` → determine `CopyMode`, then apply the
+   ordinary search predicate.
+
+This assigns responsibilities cleanly: the **Navigator** knows *traversal and what it crossed*;
+the **search layer** knows *accumulation and decision*; the **Predicate** is untouched and still
+sees only candidates that survived filtering. It also means the innermost-first ordering §2.3
+requires is a property of the traversal, not bookkeeping anyone has to maintain.
+
+**Note on §2.3.1's TBD, now resolved by this design.** The marker *observation* must happen in the
+Navigator (only the raw-chain walk can see markers, per §2.2.1), while `CopyMode` *resolution*
+happens in the search layer, which holds the accumulated filter list. `CopyMode` still travels
+with the search result, as §2.3.1 requires.
+
+##### 2.2.3 Batching — a direction to explore, not a specification
+
+Sketched here so the plan can evaluate it; **explicitly not specified by this FOOP**, and not a
+prerequisite for it.
+
+Today each search performs its own independent ancestral climb. Since the ancestral portion of the
+walk — the marker crossings and the candidate branes — is **identical for every search in the same
+statement**, and largely shared across every search in the same brane, there is an obvious
+opportunity: **batch the searches of a statement, and then batch the AB-requiring searches of a
+brane**, so the ancestral scan-and-filter is performed **once** and its results distributed to all
+participating searches.
+
+Attractions: one climb instead of N; the filter list built once; naturally aligned with the
+per-brane structure the evaluator already walks.
+
+Complications that make this its own design problem — noted, not solved here: searches in one
+statement can settle at different times and some may not need the AB phase at all; batching
+interacts with the task-queue ordering and with wait-on-nye suspension; a batch's shared filter
+list must not leak between searches whose lexical positions differ (different markers may be
+crossed by searches at different depths within the same statement); and recoordination can
+re-run a search after its batch has dispersed.
+
+**Recommendation:** implement the unbatched per-search walk first (correct, simple, testable), and
+treat batching as a follow-on optimization with its own FOOP once the traversal is proven. The
+`AncestralNavigator` interface should not foreclose it.
+
+##### 2.2.4 Scope rule — what a marker can and cannot affect (READ THIS FIRST)
 
 **A stay-foolish marker affects exactly one thing: a backward search, originating inside the
 marker, at the moment it crosses the marker's own boundary outward.** Nothing else. Stated as
@@ -582,11 +685,11 @@ This scope rule is what keeps the mechanism orthogonal to FOOP-93 (predicates), 
 and FOOP-14 (collect-mode): those act on candidates or scan modes, this acts on one boundary
 crossing in one Navigator.
 
-##### 2.2.1 Boundary crossing is where markers are seen
+##### 2.2.5 Boundary crossing is where markers are seen
 
 As `AncestralNavigator` steps from a child brane to its parent, it inspects the FIR whose boundary
 it just crossed. If that FIR is a `StayFoolish` or `StayFullyFoolish` marker, the Navigator becomes
-aware of it — this is the hook point for §2.3, subject to the scope rule in §2.2.0 above. Because the Navigator crosses markers **innermost-first** (it starts at the
+aware of it — this is the hook point for §2.3, subject to the scope rule in §2.2.4 above. Because the Navigator crosses markers **innermost-first** (it starts at the
 searching FIR's own position and climbs outward), any per-candidate marker-stack evaluation it
 performs is innermost-first *by construction* — no separate bookkeeping, no `Scope` field, no
 "reverse the search" trick. The Navigator sees the actual FIR chain directly by borrowing
@@ -647,7 +750,7 @@ pub(crate) enum CopyMode {
 }
 ```
 
-**Scope reminder (§2.2.0):** the `marker_stack` below contains **only** markers whose boundary
+**Scope reminder (§2.2.4):** the `marker_stack` below contains **only** markers whose boundary
 this particular search actually crosses on its outward AB climb — i.e. markers the searching FIR
 is lexically inside, encountered as the walk leaves them. It is not "every marker in the program,"
 nor "every marker enclosing the candidate," nor "every marker enclosing the search." A search that
@@ -678,14 +781,14 @@ fn resolve_boundary_effect(candidate, marker_stack /* innermost..outermost */) -
 #   }
 ```
 
-##### 2.3.1 What a candidate carries, and where `CopyMode` is resolved (one fixed, one TBD)
+##### 2.3.1 What a candidate carries, and where `CopyMode` is resolved
 
 **Fixed — a search result carries its copy mode.** Whenever a search produces a result, that
 result must carry the `CopyMode` that was resolved for the found candidate. This is a requirement
 on the *result*, not a suggestion about plumbing: `SearchFir::handle_found` needs it to choose the
 clone behavior (§2.5), and it must be the mode resolved for **that specific candidate**, not a
 property re-derived from the searcher's lexical position afterward. A result with no copy mode is
-ill-formed. (Where no marker boundary was crossed, the mode is `Normal` — §2.2.0.)
+ill-formed. (Where no marker boundary was crossed, the mode is `Normal` — §2.2.4.)
 
 **Fixed — a candidate is more than a `(FirRef, usize)` pair.** A search result already carries
 *position* so that a following contexted (`&`) search can continue from it: the `FoolRefFir` at
@@ -703,24 +806,27 @@ third; the brane is re-derived downstream via `_get_my_brane`, which is exactly 
 an `AncestralNavigator` makes unreliable, since it yields candidates from *several* branes as it
 climbs. Carrying the brane explicitly with the candidate is therefore preferred to re-deriving it.
 
-**TBD — which collaborator resolves `CopyMode`.** Whether the Navigator (`BraneNavigator`/
-`AncestralNavigator`) attaches the mode as it yields, or the contextful-search layer resolves it
-around the scan, is **deliberately left open** by this spec. Both can satisfy the fixed
-requirements above; they trade differently:
+**RESOLVED — the split of responsibility** (was a TBD in the 2026-07-28 revision; settled by the
+traversal evidence in §2.2.1 and the stream design in §2.2.2):
 
-- *Navigator-resolved* keeps the boundary walk and the boundary decision in one object (the
-  argument behind Rejected Alternative B), but puts `CopyMode` in a trait every navigator
-  implements — including `BraneNavigator`, which per §2.2.0 can only ever produce `Normal`.
-- *Search-layer-resolved* keeps `CandidateNavigator` narrow and lets the marker concern live
-  beside the settlement logic that consumes it, at the cost of splitting the walk from the
-  decision.
+- **The Navigator *observes*.** Only the raw link-by-link `.parent` walk can see a marker at all —
+  the accessors the old search uses skip markers entirely (§2.2.1). So marker detection is
+  necessarily the Navigator's job; nothing downstream can reconstruct it without redoing the walk.
+  The Navigator therefore yields a **multiplexed stream**: marker items interleaved with candidate
+  items, in traversal order.
+- **The contextful-search layer *accumulates and decides*.** It appends marker items to an ordered
+  filter list and, for each candidate, walks that list front-to-back to resolve `BoundaryEffect` →
+  `Detach` (skip) or `Pass`/`SfCopy` (→ `CopyMode`, then predicate).
+- **The result *carries* the `CopyMode`**, per the fixed requirement above.
 
-The plan decides this, and the decision determines whether `contextful_search_scan` and
-`CandidateNavigator` change signature — so the "scan loop and predicate are untouched" claim in
-§2.1/UBC Step Impact holds only under some resolutions of this TBD, and must be re-checked once
-it is settled. What **is** fixed here is the *channel split* (`Detach` filtered pre-yield;
-`Pass`/`SfCopy` travelling with the result) and the carried-context requirement above — not the
-Rust syntax or the owning collaborator.
+This keeps `SearchPredicate` genuinely untouched — it still receives only surviving candidates —
+while the item-kind multiplexing means `CandidateNavigator`'s yielded type **does** change (it is
+no longer "a candidate," it is "a stream item"). The exact Rust shape (an enum over
+candidate/marker, versus two accessors, versus a richer candidate struct) is an implementation
+decision for the plan; the *division of labor* above is fixed here.
+
+What is also fixed: the **channel split** (`Detach` never reaches the predicate; `Pass`/`SfCopy`
+travel with the result) and the carried-context requirement above.
 
 **This is emphatically not "first marker on the stack wins, full stop."** A candidate can pass
 through an inner marker whose rule does not apply to it and still be caught by an outer marker.
@@ -760,7 +866,7 @@ filtered out one level in).
 to the clone call sites (§2.5), exercised against **today's unparameterized SF/SFF markers
 only**, where `rule_applies_to` is trivially "always applies" (an unparameterized marker has no
 pattern to test against — it always fires for every candidate **that reaches its boundary
-crossing**, per §2.2.0). Note this is *not* the same set of candidates as today's
+crossing**, per §2.2.4). Note this is *not* the same set of candidates as today's
 `has_ancestral_sfm` covers (§2.5) — the mechanism is independently testable before any new syntax
 exists, but it is not behavior-preserving.
 
@@ -774,7 +880,7 @@ algorithm, an unparameterized `StayFoolish` marker's `rule_applies_to` is uncond
 (it always fires) and its `effect()` is `SfCopy`; an unparameterized `StayFullyFoolish` marker's
 is unconditionally true and `Detach`.
 
-**"Unconditionally true" is scoped by §2.2.0, and the distinction matters.** It means *"fires for
+**"Unconditionally true" is scoped by §2.2.4, and the distinction matters.** It means *"fires for
 every candidate that reaches this marker's boundary crossing"* — **not** *"fires for every search
 lexically under the marker."* A search inside a naked `<<E>>` that resolves entirely within its own
 brane never crosses the marker boundary, so the marker is never consulted and the search resolves
@@ -849,12 +955,12 @@ are **indexed differently**:
   search lexically under an SF wrapper (`fir_trait.rs:387-388`) and propagates it down the task
   tree. It answers *"is this search anywhere under an SF marker?"*
 - `CopyMode` is a property of **the boundary crossing that reached the found candidate** — per
-  §2.2.0, it fires only where the search's AB climb actually leaves the marker.
+  §2.2.4, it fires only where the search's AB climb actually leaves the marker.
 
 These disagree in a case reachable **today**, with naked markers only: a search inside `<E>` that
 finds a candidate **without crossing the marker boundary** (the candidate is in the marker's own
 brane, or nearer). Today it is foolishly-ignorant-copied because the searcher is under SF. Under
-§2.2.0 it is `Normal`, because no boundary was crossed. The new rule is the more precise one —
+§2.2.4 it is `Normal`, because no boundary was crossed. The new rule is the more precise one —
 that is the point of the refinement — but it **is** a change.
 
 A second divergence, also reachable today: `has_ancestral_sfm` is set **only** for
@@ -946,10 +1052,11 @@ the `scope.has_ancestral_sfm` argument at the `clone_stmt_result` call site
 - `SearchFir::handle_found` (`fir_kinds.rs:935-940`) changes its clone-mode source from
   `scope.has_ancestral_sfm` to the per-candidate `CopyMode` resolved during the scan (§2.5).
 - `contexted_search_from_anchor` and `SearchPredicate` — **unchanged**.
-  `contextful_search_scan` — logic unchanged; **signature depends on the §2.3.1 TBD** (if the
-  Navigator supplies `CopyMode`, both the `CandidateNavigator` trait return type and this
-  function's destructuring change, along with `BraneNavigator` and the navigator unit tests at
-  `fir_kinds.rs:4663-4719`).
+  `contextful_search_scan` — **changes**: it accumulates the Navigator's marker items into an
+  ordered filter list and applies that list front-to-back per candidate (§2.2.2) before
+  invoking the predicate. `CandidateNavigator`'s yielded type changes with it, along with
+  `BraneNavigator` (which yields candidate items only) and the navigator unit tests at
+  `fir_kinds.rs:4663-4719`.
 - `Scope` (`fir_trait.rs:55`) — **no new fields added** by this FOOP. `has_ancestral_sfm`'s
   continued necessity (or removal) is an Open Question, not resolved here.
 - The `contexted && !anchored` dead path (§1.2) — **no behavior change**; a test is added to pin
@@ -957,6 +1064,18 @@ the `scope.has_ancestral_sfm` argument at the `clone_stmt_result` call site
 
 ## Test Plan
 
+- **Unit — the multiplexed stream (§2.2.2):** the Navigator yields marker items **before** any
+  candidate those markers govern — assert this ordering directly on nested-marker fixtures, since
+  it is the guarantee the whole design rests on (no pre-pass, no lookahead). Also: a walk with no
+  markers yields candidate items only; `BraneNavigator` never yields a marker item.
+- **Unit — filter-list accumulation and application:** the search layer appends markers in
+  traversal order (innermost first) and walks the list front-to-back per candidate; a candidate
+  reaching an inner marker that declines is still tested against outer markers; a `Detach`
+  resolution skips the candidate without the predicate ever seeing it.
+- **Unit — link-by-link walk vs. the skipping accessors (§2.2.1):** the new walk lands on every
+  FIR `_get_my_brane`/`_get_my_statement` would reach, in the same order, plus the marker FIRs they
+  skip — the refinement property that makes §2.2 behavior-preserving. Include a `ConcatBrane`
+  fixture, since it overrides `_search_brane`.
 - **Unit — `AncestralNavigator` order/completeness:** for a range of nested-brane fixtures
   (reuse or extend existing `ib_search`/`ab_search` unit-test fixtures), assert
   `AncestralNavigator` yields the same candidates, in the same order, as the current
@@ -977,7 +1096,7 @@ the `scope.has_ancestral_sfm` argument at the `clone_stmt_result` call site
   (was foolishly-ignorant-copied); (b) a search under `<E>` finding a candidate **by crossing**
   the boundary → `SfCopy` (agrees with today); (c) SFF cases, which `has_ancestral_sfm` never
   covered at all. Each test states the old and new outcome side by side.
-- **Unit — scope rule (§2.2.0):** a search lexically under a marker that resolves **within its own
+- **Unit — scope rule (§2.2.4):** a search lexically under a marker that resolves **within its own
   brane** is unaffected by the marker; a contexted (`&`) search is never affected (§1.3); a search
   originating **outside** a marker is never affected by it. These pin the three scope conditions
   and are the guard against the "markers are ambient context" mis-implementation.
@@ -994,7 +1113,7 @@ the `scope.has_ancestral_sfm` argument at the `clone_stmt_result` call site
     `sff_basic`, `sff_nested`, `sff_vs_sf_timing_difference`, `sff_resolves_on_each_use`,
     `sff_in_binary_op`, `sff_in_assignment_chain`, `sf_of_sff`, `sf_sff_nested_combined`,
     `complex_sff_with_nested_scope`, `complex_sff_in_nested_brane`. Each diff must be justified
-    against §2.2.0's scope rule before being presented for human review. **Never auto-accept**
+    against §2.2.4's scope rule before being presented for human review. **Never auto-accept**
     (AGENTS.md).
   - Landing the two halves as **separate commits** (unification first, verified snapshot-clean;
     then the boundary mechanism) makes this split reviewable and is strongly recommended in the
@@ -1045,14 +1164,13 @@ Navigator type gets for free, and without unblocking the duplication cleanup
   coarse "am I anywhere under any SF" signal, once `CopyMode` is resolved per-candidate at the
   clone call sites? If not, remove the field in this FOOP or a fast-follow; if so, document the
   remaining consumer.
-- **(§2.3.1 TBD — the load-bearing one.)** Which collaborator resolves `CopyMode`: the Navigator
-  (attached as it yields) or the contextful-search layer (resolved around the scan)? Both satisfy
-  the fixed requirement that a search result carries its copy mode; they differ in whether
-  `CandidateNavigator`/`contextful_search_scan` change signature, and therefore in whether §2.1's
-  "untouched" claim survives. Settle this in the plan **before** coding, since it determines the
-  blast radius. Related: the exact Rust shape for carrying the mode through to
-  `SearchFir::handle_found` — a field on `ScanOutcome::Found`, a richer candidate struct, or a
-  parallel return value.
+- *(Resolved 2026-07-29 — see §2.2.2/§2.3.1. Navigator observes markers; search layer
+  accumulates the filter list and resolves `CopyMode`; the result carries it. Remaining: the exact
+  Rust shape of the multiplexed stream item — an enum over candidate/marker, two accessors, or a
+  richer candidate struct — and how `CopyMode` reaches `SearchFir::handle_found`.)*
+- **Does the link-by-link walk reproduce `ConcatBrane`'s search behavior exactly?** `ConcatBrane`
+  is genuinely brane-like and overrides `_search_brane` (`fir_kinds.rs:2262`, `:2502`); the two
+  old traversals reach it differently. Verify before removing `BraneFir::_ab_search`.
 - Should the candidate/result type carry the **home brane** explicitly (§2.3.1) rather than
   re-deriving it via `_get_my_brane`? Preferred yes, because `AncestralNavigator` yields
   candidates from several branes as it climbs, but confirm against the `FoolRefFir` path that
@@ -1098,6 +1216,45 @@ Navigator type gets for free, and without unblocking the duplication cleanup
   §9 boolean-combinator search, "Engineering guidance" section).
 
 ## Last Updated
+
+**Date**: 2026-07-29
+**Updated By**: Claude Code (Opus 5)
+**Changes**: **Settled the Part 2 traversal design, and corrected the premise it had been resting
+on.** Added §2.2.1 recording the verified architectural fact: markers **are** the real `.parent`
+of the expression they wrap (`fir_kinds.rs:2080-2084`), but they override neither `stmt_count` nor
+`is_brane_like`, so `_get_my_brane`/`_get_my_statement` walk **straight past them**, and the old
+search is **not dispatched per-FIR** — `BraneFir::_ab_search` hops brane→statement→brane and
+recurses on `BraneFir`, so a marker's own `_ab_search` override would be dead code. The prior
+revision's claim that `AncestralNavigator` climbs "using the same primitives both existing
+implementations already use" *while* observing markers was therefore incompatible; the walk must be
+**link-by-link on `.parent`**. Two consequences recorded: this retroactively justifies
+`Scope.has_ancestral_sfm` as the only mechanism available in today's architecture (making Part 2 a
+genuine refactor, not re-plumbing), and behavior preservation still holds because a link-by-link
+walk is a strict *refinement* of both existing traversals.
+
+Added §2.2.2, the settled design: the Navigator yields a **multiplexed stream** — candidate
+items interleaved with marker items, in traversal order. Because the walk climbs outward, it
+necessarily crosses a marker **before** any candidate that marker governs, so the stream is
+**self-ordering**: no pre-pass, no lookahead, no search reversal. The **contextful-search layer**
+accumulates marker items into an ordered filter list (innermost-first by construction) and, per
+candidate, walks that list **front-to-back** to resolve `BoundaryEffect` → skip on `Detach`, else
+`CopyMode` then predicate. This **resolves the §2.3.1 TBD**: Navigator observes, search layer
+accumulates and decides, result carries the mode. `SearchPredicate` stays genuinely untouched;
+`CandidateNavigator`'s yielded type does change, and §2.1/Abstract/UBC Step Impact now say so
+plainly rather than deferring.
+
+Added §2.2.3 as a **proposal only**: batching the searches of a statement, then the
+AB-requiring searches of a brane, so the ancestral scan-and-filter runs once. Attractions and
+complications noted (differing settle times, task-queue/wait-on-nye interaction, filter lists not
+leaking between searches at different lexical depths, recoordination after batch dispersal);
+recommendation is unbatched-first with batching as a follow-on FOOP. Deliberately not specified
+here.
+
+Test Plan gained three unit groups: stream ordering (markers before governed candidates), filter
+accumulation/application (including inner-declines-outer-catches and `Detach`-skips-predicate), and
+the link-by-link-vs-skipping-accessor refinement check with a `ConcatBrane` fixture. `ConcatBrane`
+promoted to an explicit Open Question, since it overrides `_search_brane` and the two old
+traversals reach it differently.
 
 **Date**: 2026-07-28 (5)
 **Updated By**: Claude Code (Opus 5)
@@ -1161,7 +1318,7 @@ deferred — the opposite of what SFF means. Detached exhaustion must be **disti
 genuine exhaustion at the settlement site and settle ECONSTANIC with `EconstanicReason::Detached`.
 FOOP-43 Component 3 is therefore a **hard prerequisite**, not an adjacent nicety.
 
-(3) **New §2.2.0 "Scope rule" — the marker mechanism is much narrower than the draft implied.**
+(3) **New §2.2.4 "Scope rule" — the marker mechanism is much narrower than the draft implied.**
 At the user's direction, stated up front and repeated at each point of ambiguity: a stay-foolish
 marker affects **only** a backward/ancestral search **originating inside** it, and **only** where
 that search's AB climb **crosses the marker's own boundary outward**. Contexted (`&`) searches are

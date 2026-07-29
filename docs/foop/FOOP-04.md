@@ -24,7 +24,7 @@ begun: [ ]
 > `CascadingSearchFir` is its own stateful wrapper FIR, orthogonal to FOOP-84's Navigator/
 > `CopyMode` mechanism.
 >
-> **Marker interaction is narrowly scoped (FOOP-84 §2.2.0)** and worth stating because a cascade
+> **Marker interaction is narrowly scoped (FOOP-84 §0.6/§2.2.4)** and worth stating because a cascade
 > spans several searches: an SF/SFF (or later, coordination-detachment) marker affects **only** a
 > backward/ancestral search **originating inside** the marker, and **only** where that search's AB
 > climb **crosses the marker's boundary outward**. It never affects contexted (`&`) searches, nor
@@ -198,7 +198,7 @@ here.
 
 **Date**: 2026-07-28 (2)
 **Updated By**: Claude Code (Opus 5)
-**Changes**: Added the marker **scope rule** (FOOP-84 §2.2.0) to the banner, at the user's
+**Changes**: Added the marker **scope rule** (FOOP-84 §0.6/§2.2.4) to the banner, at the user's
 direction — stated explicitly here because a cascade spans several searches: each branch is
 evaluated on its own merits, so a branch resolving locally is unaffected by an enclosing marker
 while a branch climbing past one is subject to it. No cascade-level marker state to thread, and no

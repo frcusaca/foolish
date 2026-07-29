@@ -28,7 +28,7 @@ begun: [ ]
 > orthogonal (Navigator vs. Predicate), which needs no coordination between the two FOOPs at all.
 > The Appendix bullet is left below, struck through, for the historical record.
 >
-> **Why the orthogonality is airtight (FOOP-84 §2.2.0).** Marker effects are narrowly scoped: a
+> **Why the orthogonality is airtight (FOOP-84 §0.6/§2.2.4).** Marker effects are narrowly scoped: a
 > marker acts **only** on a backward/ancestral search **originating inside** it, and **only** at
 > the point that search's AB climb **crosses the marker's boundary outward** — never on contexted
 > (`&`) searches, never on searches that resolve without reaching the boundary. Predicates, by
@@ -225,7 +225,7 @@ here.
 
 **Date**: 2026-07-28 (2)
 **Updated By**: Claude Code (Opus 5)
-**Changes**: Added the marker **scope rule** (FOOP-84 §2.2.0) to the banner, at the user's
+**Changes**: Added the marker **scope rule** (FOOP-84 §0.6/§2.2.4) to the banner, at the user's
 direction: markers act only on backward/ancestral searches originating inside them, only at the
 outward boundary crossing — never on contexted (`&`) searches or searches resolving before the
 boundary. Spelled out why that makes this FOOP's orthogonality with FOOP-24 airtight: a predicate

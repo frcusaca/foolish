@@ -120,7 +120,7 @@ Only `a`, which must be reached by climbing *past* the marker, is subject to det
 
 The practical upshot: **a detachment cannot reach sideways or downward, and cannot affect a search
 that resolves locally.** The feature is considerably smaller than "these names are hidden inside
-this expression" suggests. See FOOP-84 §2.2.0 for the engine-level statement of the same rule
+this expression" suggests. See FOOP-84 §0.6/§2.2.4 for the engine-level statement of the same rule
 (markers live in `AncestralNavigator` only; `BraneNavigator` and `contexted_search_from_anchor`
 are untouched).
 

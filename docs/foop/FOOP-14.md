@@ -28,7 +28,7 @@ begun: [ ]
 > carrying its `CopyMode` for the result brane's eventual clone. No new design work — this falls
 > out of FOOP-84's Navigator/scan-loop split for free.
 >
-> **Scope of marker effects (FOOP-84 §2.2.0) — narrower than it may appear.** An SF/SFF (or later,
+> **Scope of marker effects (FOOP-84 §0.6/§2.2.4) — narrower than it may appear.** An SF/SFF (or later,
 > coordination-detachment) marker affects **only** a backward/ancestral search **originating
 > inside** the marker, and **only** where that search's AB climb **crosses the marker's boundary
 > outward**. It does not affect contexted (`&`) searches, which are clipped to their home brane,
@@ -155,7 +155,7 @@ here.
 
 **Date**: 2026-07-28 (2)
 **Updated By**: Claude Code (Opus 5)
-**Changes**: Added the marker **scope rule** (FOOP-84 §2.2.0) to the banner, at the user's
+**Changes**: Added the marker **scope rule** (FOOP-84 §0.6/§2.2.4) to the banner, at the user's
 direction. For find-all specifically: a collect-mode scan over a `BraneNavigator` (ordinary
 intra-brane collect) is **never** touched by markers; only a collect over an `AncestralNavigator`
 climbing past a marker boundary can see `Detach`/`SfCopy`, and results collected before the walk
