@@ -163,7 +163,7 @@ Legacy plan items (now obsolete and removed):
 - [ ] Verify all work is complete in
       `${HOME}/tmp/foolish-worktrees/6842-foop-7` and committed to
       `foop/7-constanic-clone-split`
-- [ ] Merge `foop/7-constanic-clone-split` to alpha
+- [ ] Merge `foop/7-constanic-clone-split` to `jia`
 
 ## Notes
 

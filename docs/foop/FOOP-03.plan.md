@@ -5,7 +5,7 @@
 ## Worktree
 
 ```
-WORKTREE_ORIGIN_BRANCH=alpha
+WORKTREE_ORIGIN_BRANCH=jia
 WORKTREE_ORIGIN_PATH=/home/hcbusy/foolish-rust
 WORKTREE_BRANCH_NAME=foop-03-repo-cleanup
 WORKTREE_FULL_FS_PATH=/home/hcbusy/tmp/foolish-worktrees/foop-03-repo-cleanup

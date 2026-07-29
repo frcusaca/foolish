@@ -448,7 +448,7 @@ WORKTREE_FULL_FS_PATH=${HOME}/tmp/foolish-worktrees/scope-search-rework-foop-52
       branch `scope-search-rework-foop-52` (from `alpha`)
 - [ ] (Task 0 + all phases happen in the worktree)
 - [ ] Verify all work complete in the worktree and committed
-- [ ] Merge `scope-search-rework-foop-52` to alpha
+- [ ] Merge `scope-search-rework-foop-52` to `jia`
   - [ ] (Foolish uses git merge, not rebase — handle any alpha conflicts here)
 - [ ] STOP! ASK HUMAN to check this box before continuing. Agent will NOT continue
       past this point automatically.

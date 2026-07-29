@@ -156,7 +156,7 @@ tag when `--states` is active.
 
 - [x](2026-05-15 13:15) Create worktree at `${HOME}/tmp/foolish-worktrees/5394-foop-14` with branch `foop/14-ubcb-spa1`
 - [x](2026-05-15 13:15) Verify all work is complete in `${HOME}/tmp/foolish-worktrees/5394-foop-14` and committed to `foop/14-ubcb-spa1`
-- [ ] Merge `foop/14-ubcb-spa1` to alpha
+- [ ] Merge `foop/14-ubcb-spa1` to `jia`
 
 ## Last Updated
 

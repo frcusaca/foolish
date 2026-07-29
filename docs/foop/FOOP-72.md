@@ -14,7 +14,7 @@ supersedes: []
 > **WORKTREE.** This FOOP is implemented in its own worktree:
 >
 > ```
-> WORKTREE_ORIGIN_BRANCH=alpha
+> WORKTREE_ORIGIN_BRANCH=jia
 > WORKTREE_ORIGIN_PATH=$(pwd)
 > WORKTREE_BRANCH_NAME=foop-72-fns-snapshot
 > WORKTREE_FULL_FS_PATH=${HOME}/tmp/foolish-worktrees/foop-72-fns-snapshot
@@ -212,7 +212,7 @@ evaluating plan checkboxes, and verifying worktree existence:
 | `plan_started` | Plan exists, at least one checkbox is `[x]` |
 | `plan_coded` | Plan exists, ≥50% of non-DECIDED checkboxes are `[x]` |
 | `plan_completed` | Plan exists, all actionable checkboxes are `[x]` or `[-]` (canceled) |
-| `merged` | Spec `status: Complete` or all phases done and merged to alpha |
+| `merged` | Spec `status: Complete` or all phases done and merged to `jia` |
 
 The continuum is linear: `draft` → `brewing` → `final` → `plan_started` →
 `plan_coded` → `plan_completed` → `merged`. A FOOP cannot skip stages —
