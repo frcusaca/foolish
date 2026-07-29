@@ -240,10 +240,10 @@ cargo test -p foolish-core --lib -- approval_all       # foolish-core approval s
 
 # Evaluate inputs to produce output files (single file or all):
 einmo evaluate foolish-ubca/einmo_suite \
-    --command "./target/debug/foolish run" \
+    --command "cat" \
     --filter "foop/23/name_value_atomic"                # single file
 einmo evaluate foolish-ubca/einmo_suite \
-    --command "./target/debug/foolish run"               # all files
+    --command "cat"                                     # all files
 
 # Review and promote:
 einmo compare output checked foolish-ubca/einmo_suite   # see what changed
