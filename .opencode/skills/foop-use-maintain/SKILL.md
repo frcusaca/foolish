@@ -162,6 +162,13 @@ begun: [x]   # work has begun
    # Now commence work here.
    ```
 
+   > **Branch naming (no prefix):** the branch is `foop-<NUMBER>-<SHORT_DESCRIPTION>` — bare, no
+   > `foop/` prefix — and identical to `WORKTREE_BRANCH_NAME` and to the worktree directory's
+   > basename. One name, used everywhere. If a plan you are executing mixes a `foop/`-prefixed
+   > form with a bare form (older plans do), **stop and reconcile it before creating the
+   > worktree**: otherwise the create step makes one branch and the merge step names another that
+   > does not exist.
+
 4. **All subsequent work happens in the worktree** — including updates to the FOOP spec or the plan itself. Changes to `docs/foop/` go **ONLY** to the worktree until merge time. This is non-negotiable.
 
 5. **Commit regularly** as progress is made. Good progress should be committed frequently.

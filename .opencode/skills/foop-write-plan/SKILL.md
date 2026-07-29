@@ -265,12 +265,12 @@ This gives both agents and humans a clear view of how work is progressing over t
 If a task proves larger than expected and splits into multiple sub-tasks, indent them under the parent. Use completed sub-tasks to justify why the split occurred:
 
 ```markdown
-- [ ] Merge `foop/foop-<NUMBER>-<SHORT_DESCRIPTION>` to `jia`
+- [ ] Merge `foop-<NUMBER>-<SHORT_DESCRIPTION>` to `jia`
   - [ ] Check and make sure current foop has, and passes, a "comprehensive" snaptest. Input name: `foop_<NUMBER>_comprehensive.foo` (reserved for this foop). Agent generates and verifies; human gives final signed approval.
   - [x] Detected complex merge situation requiring additional work
         (2026-05-06 14:00)
-  - [ ] Update `foop/foop-<NUMBER>-<SHORT_DESCRIPTION>` to follow new coding style
-  - [ ] Update `foop/foop-<NUMBER>-<SHORT_DESCRIPTION>` to use new API call convention
+  - [ ] Update `foop-<NUMBER>-<SHORT_DESCRIPTION>` to follow new coding style
+  - [ ] Update `foop-<NUMBER>-<SHORT_DESCRIPTION>` to use new API call convention
   - [x] Merged breaking changes from `jia`
         (2026-05-06 14:31)
   - [ ] Repair ALL tests in `jia` in /home/<USER>/foolish-rust
@@ -314,15 +314,21 @@ cd "$WORKTREE_FULL_FS_PATH"
 **Worktree checkboxes in the plan** (all variables expanded to literals):
 
 ```markdown
-- [ ] Create worktree at /home/<USER>/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION> with branch `foop/foop-<NUMBER>-<SHORT_DESCRIPTION>`
+- [ ] Create worktree at /home/<USER>/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION> with branch `foop-<NUMBER>-<SHORT_DESCRIPTION>`
 ...
   (implementation tasks here)
 ...
-- [ ] Verify all work is complete in /home/<USER>/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION> and committed to `foop/foop-<NUMBER>-<SHORT_DESCRIPTION>`
-- [ ] Merge `foop/foop-<NUMBER>-<SHORT_DESCRIPTION>` to `jia`
+- [ ] Verify all work is complete in /home/<USER>/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION> and committed to `foop-<NUMBER>-<SHORT_DESCRIPTION>`
+- [ ] Merge `foop-<NUMBER>-<SHORT_DESCRIPTION>` to `jia`
 ```
 
-> **Branch naming**: The foop.md example shows both `foop-<NUMBER>-<SHORT_DESCRIPTION>` and `foop/foop-<NUMBER>-<SHORT_DESCRIPTION>` (with a `foop/` prefix). Match the convention already established in your plan. The `foop-<NUMBER>` suffix must match the FOOP filename.
+> **Branch naming (no prefix)**: The branch name is `foop-<NUMBER>-<SHORT_DESCRIPTION>` — **bare, with no `foop/` prefix** — and must be **identical** to `WORKTREE_BRANCH_NAME` and to the worktree directory's basename. The `foop-<NUMBER>` stem must match the FOOP filename.
+>
+> Current practice (FOOP-13, FOOP-23, FOOP-33, FOOP-54, FOOP-84): `foop-23-value-search`,
+> `foop-54-einmo`. A `foop/`-prefixed form appears in older pre-2026-06 plans (`foop/12-alarms`)
+> and in some `foop.md` examples — **do not copy it**. Mixing the two within one plan is a real
+> hazard: the create checkbox makes one branch while the merge checkbox names another that does
+> not exist.
 
 > **Variable expansion**: The branch names and paths in the plan should reflect **expanded** `$HOME`, `$WORKTREE_BRANCH_NAME` and `$WORKTREE_ORIGIN_BRANCH`. Fillers such as the literal `$WORKTREE_ORIGIN_BRANCH` should be replaced with real values before starting work on the plan. `${HOME}` should be the full path when the plan is generated.
 
@@ -346,13 +352,13 @@ Every FOOP has the right — and the obligation — to generate a **comprehensiv
 
 - [ ] Begin work: commit FOOP-<NUMBER>.md and FOOP-<NUMBER>.plan.md to origin, check `begun: [x]` in frontmatter
       (YYYY-MM-DD HH:MM)
-- [ ] Create worktree at /home/<USER>/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION> with branch `foop/foop-<NUMBER>-<SHORT_DESCRIPTION>`
+- [ ] Create worktree at /home/<USER>/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION> with branch `foop-<NUMBER>-<SHORT_DESCRIPTION>`
 - [ ] (read §<SECTION> of FOOP-<NUMBER>.md)
 - [ ] <implementation task 1>
 - [ ] <implementation task 2>
 - [ ] Write and verify `foolish-ubca/snapshot_tests/input/foop_<NUMBER>_comprehensive.foo`
-- [ ] Verify all work is complete in /home/<USER>/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION> and committed to `foop/foop-<NUMBER>-<SHORT_DESCRIPTION>`
-- [ ] Merge `foop/foop-<NUMBER>-<SHORT_DESCRIPTION>` to `jia`
+- [ ] Verify all work is complete in /home/<USER>/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION> and committed to `foop-<NUMBER>-<SHORT_DESCRIPTION>`
+- [ ] Merge `foop-<NUMBER>-<SHORT_DESCRIPTION>` to `jia`
 - [ ] Cleanup worktree at /home/<USER>/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>
 ```
 
