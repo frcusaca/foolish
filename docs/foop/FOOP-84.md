@@ -588,9 +588,7 @@ Two consequences follow, and both are load-bearing for the rest of Part 2:
 **Behavior preservation still holds.** A link-by-link walk is a strict *refinement* of both
 existing traversals: it visits every FIR the skipping accessors would land on, plus the ones they
 skip. The brane-level candidate enumeration is unchanged; marker observation is pure addition.
-`ConcatBrane` is the one case needing care — it overrides `_search_brane` (`fir_kinds.rs:2262`,
-`:2502`) and is genuinely brane-like, so the new walk must reproduce its behavior exactly (see the
-Open Question).
+`ConcatBrane` is the one case needing care; §2.2.6 stipulates what it must provide.
 
 ##### 2.2.2 The multiplexed candidate stream — the settled design
 
@@ -699,6 +697,60 @@ performs is innermost-first *by construction* — no separate bookkeeping, no `S
 narrows `Scope`'s role: `has_ancestral_sfm` is superseded by the mechanism below (§2.3–2.5) and
 should be considered for removal once nothing else legitimately depends on the coarse boolean —
 confirming that is an Open Question (below), not asserted here.
+
+##### 2.2.6 `ConcatBrane` must be searchable as an ordinary brane (stipulated)
+
+**Requirement.** Every brane-like FIR the walk can enter — `BraneFir`, `ConcatenationFir`
+(ConcatBrane), `ConcatHelper`, and any future brane-like kind — **must expose a complete,
+standardized brane interface sufficient for search to treat it as an ordinary brane**, with no
+kind-specific special-casing anywhere in the Navigator or the scan layer. Search asks a brane three
+things and nothing else:
+
+| method | contract |
+|---|---|
+| `is_brane_like()` | `true` — the walk may enter and enumerate it |
+| `stmt_count()` | `Some(n)` — the number of statements **in merged/global coordinates** |
+| `stmt_at(i)` | the statement at global index `i`, for every `0 ≤ i < n` |
+
+Given those three, `BraneNavigator::new` (`fir_kinds.rs:1959-1970`) already builds a correct
+candidate stream for *any* brane-like FIR — it calls exactly `stmt_count` + `stmt_at` and nothing
+else. **This is the whole of the requirement**; it is deliberately the minimum that makes a brane
+searchable.
+
+**Current status — mostly satisfied already.** `ConcatenationFir` implements `is_brane_like() ->
+true` (`:2498`), `stmt_count` summing its helpers (`:2461`), and `stmt_at` translating a global
+index across helper boundaries (`:2478`). `ConcatHelper` implements the same trio. So a
+`BraneNavigator` over a ConcatBrane **already works today** and yields the merged statement
+sequence in global order. The Equivalence Law (a ConcatBrane is equivalent to the merged brane) is
+already expressed through these accessors.
+
+**Two things this FOOP must handle.**
+
+1. **`stmt_count()` has a side effect; `stmt_at()` does not.** `ConcatenationFir::stmt_count`
+   *populates the helpers on demand* (`_helpers_populated`, `:2461-2467`), whereas `stmt_at` and
+   `_search_brane` **return `None` when the helpers are unpopulated** (`:2479`, `:2503`). So the
+   trio is only coherent when `stmt_count()` is called first. `BraneNavigator::new` happens to do
+   exactly that, which is why it works — but that is an *accident of call order*, not a stated
+   contract. **This FOOP makes it explicit:** either `stmt_at` must populate on demand like
+   `stmt_count` does, or the population must be guaranteed before enumeration begins. An
+   `AncestralNavigator` entering a ConcatBrane mid-climb must not be able to observe the
+   unpopulated state and conclude the brane is empty — that would be a silent wrong answer, not a
+   crash.
+
+2. **`_search_brane` is a *second*, redundant search path and should not survive.** It duplicates
+   name matching and range handling that `SearchPredicate` + the scan loop already do
+   (`BraneFir::_search_brane` at `:844` iterates `foolish_children` directly; ConcatBrane's at
+   `:2502` re-implements the same over helper offsets). Under this FOOP, search reaches every
+   brane through `stmt_count`/`stmt_at` and the shared engine, so `_search_brane` overrides become
+   dead weight. **Remove them if nothing outside the engine calls them** (verify during
+   planning — same discipline as `BraneFir::_ab_search`). Removing them is what actually delivers
+   "search treats ConcatBrane as just a brane," rather than leaving a parallel implementation that
+   can drift.
+
+**Consequence for the walk.** With the trio guaranteed, `AncestralNavigator` needs **no
+ConcatBrane-specific code**: it enters any FIR whose `is_brane_like()` is true and enumerates via
+the same two accessors. ConcatBrane stops being a special case for search and becomes just another
+brane — which is the point of stipulating this rather than working around it.
 
 #### 2.3 Per-candidate `CopyMode` evaluation — and why `Detach` is not a third value in the same channel
 
@@ -1075,7 +1127,13 @@ the `scope.has_ancestral_sfm` argument at the `clone_stmt_result` call site
 - **Unit — link-by-link walk vs. the skipping accessors (§2.2.1):** the new walk lands on every
   FIR `_get_my_brane`/`_get_my_statement` would reach, in the same order, plus the marker FIRs they
   skip — the refinement property that makes §2.2 behavior-preserving. Include a `ConcatBrane`
-  fixture, since it overrides `_search_brane`.
+  fixture.
+- **Unit — `ConcatBrane` searches as an ordinary brane (§2.2.6):** a `BraneNavigator` over a
+  ConcatBrane yields the merged statement sequence in global order, identical to a `BraneFir`
+  holding the same statements; an `AncestralNavigator` climbing *into* a ConcatBrane enumerates it
+  with no kind-specific code. **Regression guard for the population hazard:** enumerate a
+  ConcatBrane whose helpers have not yet been populated and assert it does not report empty.
+  `concat_ab_search_reaches_outward` (`fir_kinds.rs:6265`) must still pass.
 - **Unit — `AncestralNavigator` order/completeness:** for a range of nested-brane fixtures
   (reuse or extend existing `ib_search`/`ab_search` unit-test fixtures), assert
   `AncestralNavigator` yields the same candidates, in the same order, as the current
@@ -1168,9 +1226,12 @@ Navigator type gets for free, and without unblocking the duplication cleanup
   accumulates the filter list and resolves `CopyMode`; the result carries it. Remaining: the exact
   Rust shape of the multiplexed stream item — an enum over candidate/marker, two accessors, or a
   richer candidate struct — and how `CopyMode` reaches `SearchFir::handle_found`.)*
-- **Does the link-by-link walk reproduce `ConcatBrane`'s search behavior exactly?** `ConcatBrane`
-  is genuinely brane-like and overrides `_search_brane` (`fir_kinds.rs:2262`, `:2502`); the two
-  old traversals reach it differently. Verify before removing `BraneFir::_ab_search`.
+- *(Stipulated in §2.2.6, not open: every brane-like FIR must expose `is_brane_like`/`stmt_count`/
+  `stmt_at` sufficient for search to treat it as an ordinary brane.)* What remains open: (a) whether
+  `stmt_at` should populate ConcatBrane's helpers on demand, or population be guaranteed earlier —
+  today only `stmt_count` populates, so the accessors are coherent only in that call order; (b)
+  whether `_search_brane` can be removed outright once search routes through the shared engine —
+  verify all call sites, same discipline as `BraneFir::_ab_search`.
 - Should the candidate/result type carry the **home brane** explicitly (§2.3.1) rather than
   re-deriving it via `_get_my_brane`? Preferred yes, because `AncestralNavigator` yields
   candidates from several branes as it climbs, but confirm against the `FoolRefFir` path that
@@ -1216,6 +1277,31 @@ Navigator type gets for free, and without unblocking the duplication cleanup
   §9 boolean-combinator search, "Engineering guidance" section).
 
 ## Last Updated
+
+**Date**: 2026-07-29 (2)
+**Updated By**: Claude Code (Opus 5)
+**Changes**: Added **§2.2.6 — `ConcatBrane` must be searchable as an ordinary brane (stipulated)**,
+converting what had been an Open Question into a requirement. Every brane-like FIR must expose the
+complete trio `is_brane_like`/`stmt_count`/`stmt_at` (statement counts and indices in **merged/
+global coordinates**), which is exactly and only what `BraneNavigator::new` consumes
+(`fir_kinds.rs:1959-1970`) — so with the trio guaranteed, `AncestralNavigator` needs **no
+ConcatBrane-specific code**. Verified `ConcatenationFir` and `ConcatHelper` already implement the
+trio, so this is mostly codification. Two real items recorded: (1) **a population hazard** —
+`ConcatenationFir::stmt_count` populates helpers on demand (`:2461-2467`) while `stmt_at` and
+`_search_brane` return `None` when unpopulated (`:2479`, `:2503`), so the trio is coherent only
+when `stmt_count()` is called first; today that holds by accident of `BraneNavigator::new`'s call
+order, not by contract, and a Navigator entering mid-climb could otherwise conclude the brane is
+empty (a silent wrong answer); (2) **`_search_brane` is a second, redundant search path**
+duplicating name matching and range handling the engine already does, and should be removed if no
+caller outside the engine remains — removing it is what actually delivers "search treats
+ConcatBrane as just a brane." Test Plan gained a §2.2.6 group including the unpopulated-enumeration
+regression guard and `concat_ab_search_reaches_outward`. Open Questions narrowed to the two items
+above.
+
+Also added **`FOOP-84.plan.md`** — the implementation plan, structured on the two-half split
+(Half A Navigator unification, snapshot-clean; Half B boundary evaluation, expected SF/SFF churn),
+with ConcatBrane standardization front-loaded as Stage 1, FOOP-43 recorded as a hard blocker, and
+the remaining stream-item-shape Open Question gated behind a consult-before-coding sub-task.
 
 **Date**: 2026-07-29
 **Updated By**: Claude Code (Opus 5)
