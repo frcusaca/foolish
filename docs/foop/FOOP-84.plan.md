@@ -22,6 +22,15 @@ WORKTREE_BRANCH_NAME=foop-84-search-engine-refactor
 WORKTREE_FULL_FS_PATH=/home/agent/tmp/foolish-worktrees/foop-84-search-engine-refactor
 ```
 
+Creation command (run from `/yolo/src`, with `jia` checked out):
+
+```bash
+git worktree add -b foop-84-search-engine-refactor \
+    /home/agent/tmp/foolish-worktrees/foop-84-search-engine-refactor
+cd /home/agent/tmp/foolish-worktrees/foop-84-search-engine-refactor
+# All work — including edits to docs/foop/ — happens here until merge time.
+```
+
 ## Prerequisites — HARD BLOCKERS
 
 **FOOP-43 must land before this FOOP.** FOOP-84 §1.5 depends on its Component 1 settlement rule
@@ -63,7 +72,7 @@ Two halves with **different risk profiles**, landed as **separate commits** (FOO
 - [ ] Begin work: commit `FOOP-84.md` and `FOOP-84.plan.md` to origin, check `begun: [x]` in
       `FOOP-84.md` frontmatter
 - [ ] Create worktree at /home/agent/tmp/foolish-worktrees/foop-84-search-engine-refactor with
-      branch `foop/foop-84-search-engine-refactor`
+      branch `foop-84-search-engine-refactor`
 
 ### Stage 0 — Read and confirm the design
 
@@ -188,8 +197,8 @@ Prerequisite for Half A, because the unified walk must enter ConcatBrane with no
 
 - [ ] Verify all work is complete in
       /home/agent/tmp/foolish-worktrees/foop-84-search-engine-refactor and committed to
-      `foop/foop-84-search-engine-refactor`
-- [ ] Merge `foop/foop-84-search-engine-refactor` to `jia`
+      `foop-84-search-engine-refactor`
+- [ ] Merge `foop-84-search-engine-refactor` to `jia`
   - [ ] Confirm `foop_84_comprehensive.foo` exists, passes, and is human-approved
   - [ ] Repair ALL tests in `jia` at /yolo/src
   - [ ] STOP! STOP!! STOP!!! ASK HUMAN to check this box before continuing. UNDER NO
@@ -217,6 +226,18 @@ Prerequisite for Half A, because the unified walk must enter ConcatBrane with no
   interface from foreclosing it.
 
 ## Last Updated
+
+**Date**: 2026-07-29 (2)
+**Updated By**: Claude Code (Opus 5)
+**Changes**: Fixed the worktree branch name. The initial plan declared
+`WORKTREE_BRANCH_NAME=foop-84-search-engine-refactor` but then wrote
+`foop/foop-84-search-engine-refactor` (with a `foop/` prefix) in the create/verify/merge
+checkboxes — internally contradictory, and an agent following the checkboxes would have created a
+branch that does not match the variable block. Every recent plan (FOOP-23, FOOP-33, FOOP-13,
+FOOP-54) uses the **bare** name with no prefix, matching `WORKTREE_BRANCH_NAME` exactly; the
+`foop/` form appears only in older, pre-2026-06 plans. Aligned to the current convention. Also
+added the literal `git worktree add -b …` creation command to the Worktree section, which recent
+plans include and this one had omitted.
 
 **Date**: 2026-07-29
 **Updated By**: Claude Code (Opus 5)
