@@ -323,6 +323,24 @@ impl EinmoFile {
         self.sections.iter().find(|s| s.name() == name)
     }
 
+    /// Whether this file has identical INPUT, OUTPUT, and stamp public keys
+    /// as `other`. Ignores metadata (timestamps, producer, git sha) and
+    /// signatures — only compares content and signing key identity.
+    #[must_use]
+    pub fn content_matches(&self, other: &EinmoFile) -> bool {
+        let sections_same = self.sections().len() == other.sections().len()
+            && self.sections().iter().zip(other.sections().iter()).all(|(s, o)| {
+                s.name() == o.name() && s.body() == o.body()
+            });
+        let self_keys: Vec<_> = self.stamps().entries().iter()
+            .map(|s| (s.key(), s.pubkey_hex()))
+            .collect();
+        let other_keys: Vec<_> = other.stamps().entries().iter()
+            .map(|s| (s.key(), s.pubkey_hex()))
+            .collect();
+        sections_same && self_keys == other_keys
+    }
+
     /// Replace the stamp chain (used by transitions after appending a stamp).
     pub(crate) fn set_stamps(&mut self, stamps: Stamps) {
         self.stamps = stamps;

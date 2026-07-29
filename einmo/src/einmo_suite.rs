@@ -759,9 +759,13 @@ impl EinmoSuite {
         if let Some(gated) = self.check_catastrophe_crumb(input_rel, &out_path) {
             return Ok(gated);
         }
+        let existing = match EinmoFile::from_file(&out_path) {
+            Ok(f) => Some(f),
+            Err(_) => None,
+        };
         let _ = self.write_crash_crumb(input_rel, &source, &out_path);
         let outcome = evaluate_capturing(evaluator, &source);
-        self.write_output(input_rel, &source, outcome, None)
+        self.write_output(input_rel, &source, outcome, None, existing.as_ref())
     }
 
     /// Evaluate an inlined input (a string in code, not a file on disk).
@@ -788,7 +792,7 @@ impl EinmoSuite {
         }
         let _ = self.write_crash_crumb(input_rel, input, &out_path);
         let outcome = evaluate_capturing(evaluator, input);
-        self.write_output(input_rel, input, outcome, None)
+        self.write_output(input_rel, input, outcome, None, None)
     }
 
     /// Discover all inputs, evaluate them (parallel or serial per config),
@@ -820,7 +824,7 @@ impl EinmoSuite {
         let (raw, suite_skipped, crumb_gated) = if let Some(threads) = self.config.parallel() {
             self.evaluate_raw_parallel(&ordered, evaluator, threads, suite_start)
         } else {
-            let mut raw: Vec<(PathBuf, String, EvalOutcome)> = Vec::new();
+            let mut raw: Vec<(PathBuf, String, EvalOutcome, Option<EinmoFile>)> = Vec::new();
             let mut skipped = 0usize;
             let mut crumb_gated: Vec<FileResult> = Vec::new();
             for rel in &ordered {
@@ -833,7 +837,7 @@ impl EinmoSuite {
                 let source = match self.read_input(rel) {
                     Ok(s) => s,
                     Err(e) => {
-                        raw.push((rel.clone(), String::new(), EvalOutcome::read_error(&e)));
+                        raw.push((rel.clone(), String::new(), EvalOutcome::read_error(&e), None));
                         continue;
                     }
                 };
@@ -845,6 +849,7 @@ impl EinmoSuite {
                     crumb_gated.push(gated);
                     continue;
                 }
+                let existing = EinmoFile::from_file(&out_path).ok();
                 let _ = self.write_crash_crumb(rel, &source, &out_path);
                 let test_start = std::time::Instant::now();
                 let mut outcome = evaluate_capturing(evaluator, &source);
@@ -862,7 +867,7 @@ impl EinmoSuite {
                         };
                     }
                 }
-                raw.push((rel.clone(), source, outcome));
+                raw.push((rel.clone(), source, outcome, existing));
             }
             (raw, skipped, crumb_gated)
         };
@@ -874,9 +879,9 @@ impl EinmoSuite {
         for gated in crumb_gated {
             results.files.push(gated);
         }
-        for (rel, source, outcome) in &raw {
+        for (rel, source, outcome, existing) in &raw {
             let dependent = self.dependent_context(rel, &raw);
-            match self.write_output(rel, source, outcome.clone(), dependent) {
+            match self.write_output(rel, source, outcome.clone(), dependent, existing.as_ref()) {
                 Ok(result) => results.files.push(result),
                 Err(e) => results.files.push(FileResult {
                     rel_path: mirror_input_path(rel),
@@ -953,7 +958,7 @@ impl EinmoSuite {
             let outcome = evaluate_capturing(evaluator, input);
             results
                 .files
-                .push(self.write_output(Path::new(name), input, outcome, None)?);
+                .push(self.write_output(Path::new(name), input, outcome, None, None)?);
         }
         Ok(results)
     }
@@ -1019,13 +1024,13 @@ impl EinmoSuite {
         evaluator: &dyn Evaluator,
         threads: usize,
         suite_start: std::time::Instant,
-    ) -> (Vec<(PathBuf, String, EvalOutcome)>, usize, Vec<FileResult>) {
+    ) -> (Vec<(PathBuf, String, EvalOutcome, Option<EinmoFile>)>, usize, Vec<FileResult>) {
         use std::sync::Mutex;
         use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
         let next = AtomicUsize::new(0);
         let suite_timed_out = AtomicBool::new(false);
-        let results: Mutex<Vec<(PathBuf, String, EvalOutcome)>> = Mutex::new(Vec::new());
+        let results: Mutex<Vec<(PathBuf, String, EvalOutcome, Option<EinmoFile>)>> = Mutex::new(Vec::new());
         let crumb_gated: Mutex<Vec<FileResult>> = Mutex::new(Vec::new());
         let threads = threads.max(1);
 
@@ -1057,7 +1062,7 @@ impl EinmoSuite {
                         // Wrap the worker body so ANY panic (read, evaluate,
                         // lock) becomes a failed `EvalOutcome` instead of
                         // poisoning the shared `Mutex`.
-                        let entry: (PathBuf, String, EvalOutcome) =
+                        let entry: (PathBuf, String, EvalOutcome, Option<EinmoFile>) =
                             match std::panic::catch_unwind(AssertUnwindSafe(|| {
                                 let source = match self.read_input(rel) {
                                     Ok(s) => s,
@@ -1066,9 +1071,11 @@ impl EinmoSuite {
                                             rel.clone(),
                                             String::new(),
                                             EvalOutcome::read_error(&e),
+                                            None,
                                         );
                                     }
                                 };
+                                let existing = EinmoFile::from_file(&out_path).ok();
                                 let _ = self.write_crash_crumb(rel, &source, &out_path);
                                 let test_start = std::time::Instant::now();
                                 let mut outcome = evaluate_capturing(evaluator, &source);
@@ -1086,7 +1093,7 @@ impl EinmoSuite {
                                         };
                                     }
                                 }
-                                (rel.clone(), source, outcome)
+                                (rel.clone(), source, outcome, existing)
                             })) {
                                 Ok(entry) => entry,
                                 Err(panic) => {
@@ -1099,6 +1106,7 @@ impl EinmoSuite {
                                             status: Status::OutputError,
                                             detail: Some(msg),
                                         },
+                                        None,
                                     )
                                 }
                             };
@@ -1126,11 +1134,13 @@ impl EinmoSuite {
         source: &str,
         outcome: EvalOutcome,
         dependent: Option<DependentContext>,
+        existing: Option<&EinmoFile>,
     ) -> Result<FileResult> {
         self.config.ensure_stage_dirs()?;
         let rel = mirror_input_path(input_rel);
         let out_path = self.config.stage_dir(Stage::Output).join(&rel);
 
+        // Build the new file in memory first.
         let mut sections = vec![Section::new("INPUT", source.to_string())];
         let mut section_names = vec!["INPUT".to_string()];
         let mut status = outcome.status;
@@ -1203,7 +1213,47 @@ impl EinmoSuite {
             sections,
             Stamps::new(),
         );
-        // Stamp with compiled + configured + stage:output.
+
+        // Compare against existing output before signing — skip the
+        // expensive Argon2id + Ed25519 work if content and keys match.
+        if let Some(existing) = existing {
+            let (_, compiled_vk) = crate::signature::compiled_keypair();
+            let expected_keys = vec![
+                ("compiled".to_string(), hex::encode(compiled_vk.to_bytes())),
+                ("configured".to_string(), {
+                    let (_, vk) = derive_keypair(self.config.configured_passphrase());
+                    hex::encode(vk.to_bytes())
+                }),
+                ("stage:output".to_string(), {
+                    let pass = self.config.stage_passphrase(Stage::Output).unwrap_or("");
+                    let (_, vk) = derive_keypair(pass);
+                    hex::encode(vk.to_bytes())
+                }),
+            ];
+            let existing_keys: Vec<_> = existing.stamps().entries().iter()
+                .map(|s| (s.key().to_string(), s.pubkey_hex().to_string()))
+                .collect();
+            let keys_same = existing_keys == expected_keys;
+            let sections_same = existing.sections().len() == file.sections().len()
+                && existing.sections().iter().zip(file.sections().iter()).all(|(e, f)| {
+                    e.name() == f.name() && e.body() == f.body()
+                });
+            if sections_same && keys_same {
+                // Restore the original file (crash crumb overwrote it).
+                let bytes = existing.serialize()?;
+                ensure_parent_dir(&out_path)?;
+                std::fs::write(&out_path, &bytes).map_err(|e| EinmoError::io(&out_path, e))?;
+                return Ok(FileResult {
+                    rel_path: rel,
+                    status: existing.metadata().status,
+                    written_and_verified: true,
+                    ignored: false,
+                    detail: None,
+                });
+            }
+        }
+
+        // Content or keys changed — sign and write.
         let (configured, _) = derive_keypair(self.config.configured_passphrase());
         let output_pass = self.config.stage_passphrase(Stage::Output).unwrap_or("");
         let (stage_output, _) = derive_keypair(output_pass);
@@ -1234,21 +1284,21 @@ impl EinmoSuite {
     fn dependent_context(
         &self,
         rel: &Path,
-        raw: &[(PathBuf, String, EvalOutcome)],
+        raw: &[(PathBuf, String, EvalOutcome, Option<EinmoFile>)],
     ) -> Option<DependentContext> {
         let sep = self.config.dependent_separator();
         let reference_rel = reference_of(rel, sep)?;
         // Find the dependent's own outcome and the reference's outcome.
         let own = raw
             .iter()
-            .find(|(p, _, _)| p == rel)
-            .map(|(_, _, o)| o.clone())?;
-        let reference = raw.iter().find(|(p, _, _)| p == &reference_rel);
+            .find(|(p, _, _, _)| p == rel)
+            .map(|(_, _, o, _)| o.clone())?;
+        let reference = raw.iter().find(|(p, _, _, _)| p == &reference_rel);
         Some(DependentContext {
             reference_name: reference_rel.to_string_lossy().into_owned(),
             own_outputs: own.outputs,
-            reference_outputs: reference.map(|(_, _, o)| o.outputs.clone()),
-            reference_status: reference.map(|(_, _, o)| o.status),
+            reference_outputs: reference.map(|(_, _, o, _)| o.outputs.clone()),
+            reference_status: reference.map(|(_, _, o, _)| o.status),
         })
     }
 }
