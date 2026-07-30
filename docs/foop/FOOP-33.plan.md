@@ -102,6 +102,14 @@ Phase-4 rule reach into `system.foo` specifically — it must work for any ances
       containing `'` matches on the candidate's `Identifier::characterized_name()`; a pattern
       without `'` on `Identifier::name()` (`SearchFir::matches_pattern` / `SearchPredicate::Name`).
 - [ ] Unit test the quote-bearing search rule (`a'b'x` found by `?a'b'x`, missed by `?x`).
+- [ ] Introduce **NF (Not Foolish)** — a special sub-condition of NK for violations of Foolish's
+      own rules (as opposed to "not knowable" in the search-miss sense). The first (and for this
+      FOOP, only) case: **overwriting a null-characterized name constant**. When `'T=1` is
+      followed by `'T=2` (non-equal redefinition of a nil-characterized name), the result is NF
+      rather than a plain NK. NF is terminal and behaves identically to NK in all downstream
+      machinery (step, search, concatenation) — it is a *semantic label*, not a new control flow.
+      Unit test: `{a='T=1; 'T=2}` — second `'T` settles NF, verify the NK reason string
+      distinguishes NF from generic NK (e.g. `"'T not-foolish"` vs `"'T redefined"`).
 
 ## Phase 2 — The creation dot `⬤` (and `{*}` alias)
 
@@ -155,18 +163,19 @@ Phase-4 rule reach into `system.foo` specifically — it must work for any ances
 ## Phase 4 — Null-characterized name constants
 
 - [ ] Unit tests: ancestral null-constant conflict — ancestor `'k=1`, descendant `'k=2` ⇒
-      descendant `get_value()` returns `NK("'k redefined")`; `Equal` redefinition (same
-      creation) ⇒ permitted; **poison scope** — a sibling brane resolving `k` elsewhere (or not
-      at all) is unaffected; descendant "is this a null-characterized coordinate name?" query.
+      descendant `get_value()` returns `NF("'k not-foolish")` (NF, not plain NK — see Phase 1
+      NF task); `Equal` redefinition (same creation) ⇒ permitted; **poison scope** — a sibling
+      brane resolving `k` elsewhere (or not at all) is unaffected; descendant "is this a
+      null-characterized coordinate name?" query.
 - [ ] `BraneFir` step (PREMBRYONIC/EMBRYONIC): for each statement with
       `is_nully_characterizing_coordinate_name()`, walk the AB chain for a same-named ancestral
       null-const; on a **non-`Equal`** value (by `default_equal`) set the statement body to
-      `NK("'<name> redefined")` **once** (terminal, no re-alarm); register ownership; answer
-      descendant queries. No new FIR kind/NYES state — reuse `NkFir`.
+      `NF("'<name> not-foolish")` **once** (terminal, no re-alarm); register ownership; answer
+      descendant queries. No new FIR kind/NYES state — reuse `NkFir` with NF reason string.
 - [ ] Concatenation collision handling: replace the blind clone loop in
       `ConcatenationFir` (`foolish-ubca/src/fir_kinds.rs:2162`) with a collision-aware merge
-      applying the same rule (same `NK("'<name> redefined")`) against already-merged statements.
-- [ ] Unit test the concatenation case `{A={'a=1}, B = A A A}` (later `'a`'s → `NK`, first
+      applying the same rule (same `NF("'<name> not-foolish")`) against already-merged statements.
+- [ ] Unit test the concatenation case `{A={'a=1}, B = A A A}` (later `'a`'s → `NF`, first
       intact) and `{A={'a=⬤}, B=A A}` (same creation ⇒ both permitted — value-sensitive).
 
 ## Phase 5 — `system.foo` ancestral prelude
