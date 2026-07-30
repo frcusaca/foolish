@@ -9,17 +9,17 @@
 
 ```
 WORKTREE_ORIGIN_BRANCH=jia
-WORKTREE_ORIGIN_PATH=/home/hcbusy/foolish-rust
+WORKTREE_ORIGIN_PATH=/yolo/src
 WORKTREE_BRANCH_NAME=foop-33-creation-postulate
-WORKTREE_FULL_FS_PATH=/home/hcbusy/tmp/foolish-worktrees/foop-33-creation-postulate
+WORKTREE_FULL_FS_PATH=/yolo/foolish_worktrees/foop-33-creation-postulate
 ```
 
 Created (at `begun`) with:
 
 ```bash
 git worktree add -b "foop-33-creation-postulate" \
-  "/home/hcbusy/tmp/foolish-worktrees/foop-33-creation-postulate"
-cd "/home/hcbusy/tmp/foolish-worktrees/foop-33-creation-postulate"
+  "/yolo/foolish_worktrees/foop-33-creation-postulate"
+cd "/yolo/foolish_worktrees/foop-33-creation-postulate"
 ```
 
 From that point, **all** work — including edits to `FOOP-33.md` and this plan — happens only
@@ -42,17 +42,26 @@ The phases are ordered so each builds only on settled predecessors:
 5. **`system.foo`** — the ancestor that makes `True`/`False` real; its *approval* tests
    (`'True=3`→NK end-to-end) sit here because they need the prelude installed, even though the
    *rule* they exercise was already unit-tested in (4).
+6. **Comparison operators** — need `system.foo` (5) because they return `'True`/`'False` from
+   the system root brane. They also need the integer infrastructure that already exists.
 
 Gotcha: do not move the `system.foo`-dependent approval tests earlier, and do not make the
 Phase-4 rule reach into `system.foo` specifically — it must work for any ancestral brane.
 
 ## Phase 0 — Start
 
+- [ ] Update Foolish documentation (AGENTS.md, `foop.md`, or a new `docs/howto/worktrees.md`)
+      to establish the worktree path convention: worktrees are placed in a directory **relative
+      to the project root** at `../foolish_worktrees/<branch-name>`. For this project (root at
+      `/yolo/src`), that resolves to `/yolo/foolish_worktrees/<branch-name>`. Document this so
+      all future FOOPs and agents use the convention consistently. Include the rationale: keeps
+      worktrees close to the project, avoids polluting `~/tmp/`, and is path-independent of the
+      user's home directory.
 - [ ] Confirm all tests green on `jia` before starting (no Phase-or-larger work on broken
       tests; `.snap.new.check` files with `@agent` comments are the only permitted exception).
 - [ ] Check the `begun` box in `FOOP-33.md` frontmatter, commit on `jia` ("work commenced on
       FOOP-33").
-- [ ] Create worktree `/home/hcbusy/tmp/foolish-worktrees/foop-33-creation-postulate` with
+- [ ] Create worktree `/yolo/foolish_worktrees/foop-33-creation-postulate` with
       branch `foop-33-creation-postulate` from `jia`.
 
 ## Phase 1 — The `Identifier` (LHS) becomes first-class (tests first)
@@ -206,36 +215,74 @@ module).
       resolve ancestrally; `'True=3` ⇒ `NK("'True redefined")` while `'True='True` permitted.
       Generate `.snap.new`; **present to human** — never auto-accept.
 
-## Phase 6 — Documentation
+## Phase 6 — Comparison operators (`<`, `>`, `<=`, `>=`)
+
+**Read §5 of FOOP-33.md before implementing.** Comparison operators produce `'True`/`'False`
+from `system.foo` (Phase 5 must be complete). They extend the existing binary-operator
+infrastructure.
+
+- [ ] Lexer: add four new tokens `Lt` (`<`), `Gt` (`>`), `Le` (`<=`), `Ge` (`>=`) to
+      `foolish-parser/src/token.rs`. Two-character tokens (`<=`, `>=`) must be recognized
+      before single-character fallbacks in the lexer dispatch.
+- [ ] Parser: add `<`, `>`, `<=`, `>=` as infix operators at the same precedence level as
+      `+`/`-` (additive) in `foolish-parser/src/parser.rs`. Left-associative.
+- [ ] Parser unit tests: `a < b` parses to a binary operation; `a + b < c` parses as
+      `(a + b) < c` (precedence); `a < b < c` parses as `(a < b) < c` (left-associativity).
+- [ ] Evaluator: add four new arms to the binary-operator dispatch in
+      `foolish-ubca/src/evaluator.rs` (or equivalent). Each arm:
+      1. Checks both operands are integers (else NK with reason
+         `"comparison: non-integer operand"`).
+      2. Performs the comparison.
+      3. Resolves `'True` or `'False` from the system root brane (the same ancestral lookup
+         any program uses — `_ib_search` or a cached reference to the system root).
+      No new FIR kind — returns `CreationFir` or `NkFir`.
+- [ ] Unit tests: `1 < 2` ⇒ `'True`; `2 < 1` ⇒ `'False`; `1 <= 1` ⇒ `'True`; `3 > 5` ⇒
+      `'False`; `5 >= 5` ⇒ `'True`. Non-integer operand (`⬤ < 3`) ⇒ NK. Verify the returned
+      `'True` is `Rc::ptr_eq` with the `'True` in `system.foo` (referential identity).
+- [ ] Approval tests: `comparison_basic.foo`, `comparison_equal.foo`, `comparison_nk.foo`,
+      `comparison_if_then.foo` (the motivating example — comparison feeding into value search).
+      Generate `.snap.new`; present to human.
+
+## Phase 7 — Documentation
 
 - [ ] Document the null-characterized name-constant rule and universal characterizations
       (update `docs/vintage_legacy/CREATION.md` cross-refs and add engineering notes under
       `docs/ubc1/how`); update AGENTS.md §Foolish Terminology / §Searches as needed
       (with the "## Last Updated" protocol).
 
-## Phase 7 — Merge
+## Phase 8 — Merge
 
 - [ ] Merge `foop-33-creation-postulate` to `jia`
   - [ ] Write and verify `foop_33_comprehensive.foo` (reserved name): creation, characterized
         names, quote-bearing search, referential equality, `system.foo` parent brane,
-        null-constant refusal (incl. `A A A` concatenation), interacting with prior features
-        (nested branes, contexted `&` searches). Generate + verify `.snap.new`; final
-        approval is human-signed.
+        null-constant refusal (incl. `A A A` concatenation), comparison operators (`<`, `>`,
+        `<=`, `>=` producing `'True`/`'False`/NK), interacting with prior features (nested
+        branes, contexted `&` searches). Generate + verify `.snap.new`; final approval is
+        human-signed.
   - [ ] `cargo fmt`, `cargo clippy -D warnings`, `cargo test --workspace` all green.
   - [ ] Verify all work complete in the worktree and committed to
         `foop-33-creation-postulate`.
   - [ ] STOP! STOP!! STOP!!! ASK HUMAN to check this box before continuing. Do NOT continue
         past this point automatically.
-    - [ ] Present the human with `cd /home/hcbusy/tmp/foolish-worktrees/foop-33-creation-postulate`
+    - [ ] Present the human with `cd /yolo/foolish_worktrees/foop-33-creation-postulate`
           and ask them to review snapshots BEFORE checking the parent box.
   - [ ] Merge to `jia`; repair any merge-conflict fallout and re-green all tests.
   - [ ] Cleanup
     - [ ] Confirm every box but Cleanup is checked.
-    - [ ] Remove `/home/hcbusy/tmp/foolish-worktrees/foop-33-creation-postulate`.
+    - [ ] Remove `/yolo/foolish_worktrees/foop-33-creation-postulate`.
     - [ ] Last box checked in this block.
 
 ## Last Updated
 
+**Date**: 2026-07-30
+**Updated By**: Sisyphus / xiaomi/mimo-v2.5-pro
+**Changes (round 8, per Atlas)**: (1) Added Phase 6 — comparison operators (`<`, `>`, `<=`, `>=`):
+lexer tokens, parser precedence (additive level), evaluator arms resolving `'True`/`'False`
+from system root brane, unit tests, approval tests. (2) Renumbered Phase 6→7 (docs), Phase
+7→8 (merge). (3) Updated worktree path convention to `../foolish_worktrees/` relative to
+project root (`/yolo/foolish_worktrees/foop-33-creation-postulate`). (4) Added Phase 0 task to
+document the new worktree path convention in Foolish docs. (5) Updated merge/cleanup paths and
+comprehensive test description to include comparison operators.
 **Date**: 2026-07-08
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
 **Changes (round 7)**: Phase 1 — `Identifier` stores spans-into-source or three canonical

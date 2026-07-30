@@ -153,12 +153,12 @@ begun: [x]   # work has begun
    # WORKTREE_ORIGIN_BRANCH=jia
    # WORKTREE_ORIGIN_PATH=/home/<USER>/foolish-rust
    # WORKTREE_BRANCH_NAME=foop-<NUMBER>-<SHORT_DESCRIPTION>
-   # WORKTREE_FULL_FS_PATH=/home/<USER>/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>
+   # WORKTREE_FULL_FS_PATH=$(pwd)/../foolish_worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>
 
    cd /home/<USER>/foolish-rust
    git worktree add -b "foop-<NUMBER>-<SHORT_DESCRIPTION>" \
-       "/home/<USER>/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>"
-   cd "/home/<USER>/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>"
+       "$(pwd)/../foolish_worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>"
+   cd "$(pwd)/../foolish_worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>"
    # Now commence work here.
    ```
 
@@ -181,7 +181,7 @@ begun: [x]   # work has begun
 
 Always remind them of context:
 
-> Above message comes from FOOP-<NUMBER> working to <brief description>; the worktree is at /home/<USER>/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>. PTAL
+> Above message comes from FOOP-<NUMBER> working to <brief description>; the worktree is at $(pwd)/../foolish_worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>. PTAL
 
 ---
 
@@ -245,7 +245,7 @@ Canceled features are marked as "not to be done." The procedure:
 
 ### Permission scope
 
-An agent with permission to work on the main foolish directory also has permission to work on a worktree added from the foretias directory. If asking for permission, ask once for the **entire worktree path** (`/home/<USER>/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>`), not a subdirectory.
+An agent with permission to work on the main foolish directory also has permission to work on a worktree added from the foretias directory. If asking for permission, ask once for the **entire worktree path** (`$(pwd)/../foolish_worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>`), not a subdirectory.
 
 ### All work goes in the worktree
 
@@ -264,7 +264,7 @@ Good progress should be committed regularly. Do not batch all work into a single
 Before merging, verify (from the worktree):
 
 ```bash
-cd /home/<USER>/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>
+cd $(pwd)/../foolish_worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>
 git status   # must be clean — all work committed
 ```
 
@@ -294,7 +294,7 @@ cargo test --workspace
 
 ```bash
 # After merge is verified and all tests pass:
-git worktree remove /home/<USER>/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>
+git worktree remove $(pwd)/../foolish_worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>
 ```
 
 ### Merge sub-task checklist (from the plan)
@@ -312,10 +312,10 @@ This is the canonical merge sub-task pattern. The parent checkbox is the last to
         (2026-07-11 14:31)
   - [ ] Repair ALL tests in `jia` in /home/<USER>/foolish-rust
   - [ ] STOP! STOP!! STOP!!! ASK HUMAN to check this box before continuing. UNDER NO CIRCUMSTANCES will Agent continue past this point automatically!!
-    - [ ] Present human with the `cd /home/<USER>/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>` command and ask them to review snapshots BEFORE checking the parent checkbox.
-  - [ ] Cleanup /home/<USER>/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>
+    - [ ] Present human with the `cd $(pwd)/../foolish_worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>` command and ask them to review snapshots BEFORE checking the parent checkbox.
+  - [ ] Cleanup $(pwd)/../foolish_worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>
     - [ ] Check that .plan.md has all but Cleanup checkboxes completed
-    - [ ] Remove /home/<USER>/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>
+    - [ ] Remove $(pwd)/../foolish_worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>
     - [ ] This is the last sub-task checkbox to be checked in this block
 ```
 
@@ -365,7 +365,7 @@ If a FOOP was in progress and work was interrupted:
    If it exists: `cd` into it and continue.
    If it was removed but the branch exists: recreate the worktree:
    ```bash
-   git worktree add /home/<USER>/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION> foop-<NUMBER>-<SHORT_DESCRIPTION>
+   git worktree add $(pwd)/../foolish_worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION> foop-<NUMBER>-<SHORT_DESCRIPTION>
    ```
 5. **Continue from the next unchecked checkbox.**
 
@@ -395,8 +395,8 @@ grep -l 'backburnered' docs/foop/FOOP-*.plan.md      # find backburnered
 # ── Worktree ──
 git worktree list                                  # check existing worktrees
 git worktree add -b foop-<NUMBER>-<SHORT_DESCRIPTION> \
-    ${HOME}/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>
-cd ${HOME}/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>
+    $(pwd)/../foolish_worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>
+cd $(pwd)/../foolish_worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>
 
 # ── Comprehensive test ──
 cargo test -p foolish-ubca --lib -- approval_all
@@ -405,7 +405,7 @@ cargo test -p foolish-ubca --lib -- approval_all
 cd ${HOME}/foolish-rust && git checkout jia
 git merge foop-<NUMBER>-<SHORT_DESCRIPTION>
 cargo test --workspace                              # verify after merge
-git worktree remove ${HOME}/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>
+git worktree remove $(pwd)/../foolish_worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>
 ```
 
 ---

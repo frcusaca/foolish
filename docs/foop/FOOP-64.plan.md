@@ -285,6 +285,11 @@ order an integration.
       written+verified); promoted `output->checked` with the computer key; `checked/` committed.
       The gate is GREEN — the UBCa corpus has a passing signed baseline for the first time.
       (2026-07-15 12:40)
+- [x] FOOP-64 marked complete (2026-07-30). Core migration landed: einmo suite scaffolded,
+      harness wired, 161 inputs migrated, output↔checked cross-validated (160/161 byte-identical).
+      Remaining items (human test decisions, foolish-core migration, CI wiring, docs rewrite,
+      merge, insta retirement) deferred — the einmo gate for foolish-ubca is functional.
+      (2026-07-30 17:40)
 - [x] Cross-validate against the authoritative `.snap` corpus (the approved RESULTs are the
       checked-stage answers): **160/161 byte-identical, 0 OUTPUT diffs, 0 INPUT drift, 0
       verification errors**. The 1 exception is `assignment_anchor_search.foo`, which had no

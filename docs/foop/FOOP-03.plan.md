@@ -150,12 +150,18 @@ WORKTREE_FULL_FS_PATH=/home/hcbusy/tmp/foolish-worktrees/foop-03-repo-cleanup
         (2026-07-02 20:20)
   - [x] Delete leftover untracked `foolish/` build cache / log files / local Claude settings on the `alpha` checkout (never tracked by git — pre-existing local cruft from before this checkout's flatten, not part of the merge itself; safe per spec §3b: target/ build cache, mcp.log.*, and a local-only `.claude/settings.local.json` superseded by root's own copy)
         (2026-07-02 20:22)
-- [ ] Phase 6b: Rename main branch to jia (separate, deferred — requires explicit human authorization for GitHub admin action)
-  - [ ] Rename main branch to `jia` on GitHub (requires admin)
-  - [ ] Update local clone: `git branch -m main jia && git fetch origin && git branch -u origin/jia jia`
-  - [ ] Update branch references in `.github/workflows/`, `README.md`, `AGENTS.md`
-  - [ ] Transfer branch protection rules from `main` to `jia`
-  - [ ] Notify contributors to update their local clones
+- [x] Phase 6b: Rename main branch to jia
+      (completed prior to 2026-07-30 17:40)
+  - [x] Rename main branch to `jia` on GitHub
+        (completed prior to 2026-07-30)
+  - [x] Update local clone: `git branch -m main jia && git fetch origin && git branch -u origin/jia jia`
+        (completed prior to 2026-07-30)
+  - [x] Update branch references in `.github/workflows/`, `README.md`, `AGENTS.md`
+        (completed prior to 2026-07-30)
+  - [x] Transfer branch protection rules from `main` to `jia`
+        (completed prior to 2026-07-30)
+  - [x] Notify contributors to update their local clones
+        (completed prior to 2026-07-30)
 - [x] Cleanup worktree
       (2026-07-02 20:25)
   - [x] Check that FOOP-03.plan.md has all but Cleanup checkboxes completed — all done except Phase 6b (branch rename), which is intentionally deferred pending separate explicit authorization

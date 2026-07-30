@@ -2,7 +2,7 @@
 foop: 30
 title: Repository Cleanup — Remove Dead Code, Flatten Workspace, Establish UBCa as Reference Implementation, Rename Main to jia
 author: Sisyphus / mimo-v2.5-pro
-status: Implementing
+status: complete
 type: Standards
 created: 2026-07-01
 phase: meta

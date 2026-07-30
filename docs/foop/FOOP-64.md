@@ -2,7 +2,7 @@
 foop: 46
 title: Migrate UBCa snapshot tests to a hierarchical einmo suite
 author: Atlas <hc.busy@gmail.com>
-status: Draft
+status: complete
 type: Standards
 created: 2026-07-14
 phase: meta

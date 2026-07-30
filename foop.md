@@ -215,7 +215,7 @@ at appropriate points in the plan. The workpath shall always be:
 WORKTREE_ORIGIN_BRANCH=jia
 WORKTREE_ORIGIN_PATH=$(pwd)
 WORKTREE_BRANCH_NAME=foop-<NUMBER>-short_description
-WORKTREE_FULL_FS_PATH=${HOME}/tmp/foolish-worktrees/foop-<NUMBER>-short_description
+WORKTREE_FULL_FS_PATH=$(pwd)/../foolish_worktrees/foop-<NUMBER>-short_description
 
 ## The branch is created this way from the ${WORKTREE_ORIGIN_BRANCH} branch and path
 # cd $WORKTREE_ORIGIN_PATH ## User normally starts in this directory
@@ -224,6 +224,11 @@ git worktree add -b "$WORKTREE_BRANCH_NAME" "$WORKTREE_FULL_FS_PATH"
 cd "$WORKTREE_FULL_FS_PATH"
 # Now commence work here.
 ```
+
+The worktree path is **relative to the project root** (`../foolish_worktrees/`).
+This keeps worktrees close to the project, avoids polluting `$HOME/tmp/`, and
+is path-independent of the user's home directory. For a project at `/yolo/src`,
+this resolves to `/yolo/foolish_worktrees/<branch-name>`.
 
 The short_description in the path should be generated as part of the
 .plan.md generation. It is possible because the specification is already
@@ -249,12 +254,12 @@ create checkbox makes one branch while the merge checkbox names another that
 does not exist.
 
 ```markdown
-- [ ] Create worktree at ${HOME}/tmp/foolish-worktrees/foop-7-constanic-clone with branch `foop-7-constanic-clone`
+- [ ] Create worktree at $(pwd)/../foolish_worktrees/foop-7-constanic-clone with branch `foop-7-constanic-clone`
 ...
   (implementation tasks here)
 ...
-- [ ] Verify all work is complete in ${HOME}/tmp/foolish-worktrees/foop-7-constanic-clone and committed to `foop-7-constanic-clone`
-- [ ] Merge `foop-7-constanic-clone` to `jia` #Btw, These branch names and paths reflect expanded $HOME, $WORKTREE_BRANCH_NAME and $WORKTREE_ORIGIN_BRANCH, which should be known and specified by the time of _PLAN.md's completion. Fillers such as the literal '$WORKTREE_ORIGIN_BRANCH' should be replaced with real values before starting work on the plan. "${HOME}" should be the full path to "${HOME}" when the plan is generated.
+- [ ] Verify all work is complete in $(pwd)/../foolish_worktrees/foop-7-constanic-clone and committed to `foop-7-constanic-clone`
+- [ ] Merge `foop-7-constanic-clone` to `jia` #Btw, These branch names and paths reflect expanded $WORKTREE_BRANCH_NAME and $WORKTREE_ORIGIN_BRANCH, which should be known and specified by the time of _PLAN.md's completion. Fillers such as the literal '$WORKTREE_ORIGIN_BRANCH' should be replaced with real values before starting work on the plan. The worktree directory is relative to the project root.
 ```
 
 ### Sub-Tasks

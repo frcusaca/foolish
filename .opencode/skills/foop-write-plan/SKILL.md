@@ -275,10 +275,10 @@ If a task proves larger than expected and splits into multiple sub-tasks, indent
         (2026-05-06 14:31)
   - [ ] Repair ALL tests in `jia` in /home/<USER>/foolish-rust
   - [ ] STOP! STOP!! STOP!!! ASK HUMAN to check this box before continuing. UNDER NO CIRCUMSTANCES will Agent continue past this point automatically!!
-    - [ ] Present human with the `cd /home/<USER>/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>` command and ask them to review snapshots BEFORE checking the parent checkbox.
-  - [ ] Cleanup /home/<USER>/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>
+    - [ ] Present human with the `cd $(pwd)/../foolish_worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>` command and ask them to review snapshots BEFORE checking the parent checkbox.
+  - [ ] Cleanup $(pwd)/../foolish_worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>
     - [ ] Check that .plan.md has all but Cleanup checkboxes completed
-    - [ ] Remove /home/<USER>/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>
+    - [ ] Remove $(pwd)/../foolish_worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>
     - [ ] This is the last sub-task checkbox to be checked in this block
 ```
 
@@ -294,7 +294,7 @@ If a worktree branch is used for implementation, the plan **must** document the 
 WORKTREE_ORIGIN_BRANCH=jia
 WORKTREE_ORIGIN_PATH=$(pwd)
 WORKTREE_BRANCH_NAME=foop-<NUMBER>-<SHORT_DESCRIPTION>
-WORKTREE_FULL_FS_PATH=${HOME}/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>
+WORKTREE_FULL_FS_PATH=$(pwd)/../foolish_worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>
 ```
 
 **The `short_description`** in the path should be generated as part of the `.plan.md` generation. It is possible because the specification is already made. The `foop-<NUMBER>` suffix should match the name of the foop file as well as the plan file. Once set, this path name is fixed.
@@ -314,11 +314,11 @@ cd "$WORKTREE_FULL_FS_PATH"
 **Worktree checkboxes in the plan** (all variables expanded to literals):
 
 ```markdown
-- [ ] Create worktree at /home/<USER>/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION> with branch `foop-<NUMBER>-<SHORT_DESCRIPTION>`
+- [ ] Create worktree at $(pwd)/../foolish_worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION> with branch `foop-<NUMBER>-<SHORT_DESCRIPTION>`
 ...
   (implementation tasks here)
 ...
-- [ ] Verify all work is complete in /home/<USER>/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION> and committed to `foop-<NUMBER>-<SHORT_DESCRIPTION>`
+- [ ] Verify all work is complete in $(pwd)/../foolish_worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION> and committed to `foop-<NUMBER>-<SHORT_DESCRIPTION>`
 - [ ] Merge `foop-<NUMBER>-<SHORT_DESCRIPTION>` to `jia`
 ```
 
@@ -352,14 +352,14 @@ Every FOOP has the right — and the obligation — to generate a **comprehensiv
 
 - [ ] Begin work: commit FOOP-<NUMBER>.md and FOOP-<NUMBER>.plan.md to origin, check `begun: [x]` in frontmatter
       (YYYY-MM-DD HH:MM)
-- [ ] Create worktree at /home/<USER>/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION> with branch `foop-<NUMBER>-<SHORT_DESCRIPTION>`
+- [ ] Create worktree at $(pwd)/../foolish_worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION> with branch `foop-<NUMBER>-<SHORT_DESCRIPTION>`
 - [ ] (read §<SECTION> of FOOP-<NUMBER>.md)
 - [ ] <implementation task 1>
 - [ ] <implementation task 2>
 - [ ] Write and verify `foolish-ubca/snapshot_tests/input/foop_<NUMBER>_comprehensive.foo`
-- [ ] Verify all work is complete in /home/<USER>/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION> and committed to `foop-<NUMBER>-<SHORT_DESCRIPTION>`
+- [ ] Verify all work is complete in $(pwd)/../foolish_worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION> and committed to `foop-<NUMBER>-<SHORT_DESCRIPTION>`
 - [ ] Merge `foop-<NUMBER>-<SHORT_DESCRIPTION>` to `jia`
-- [ ] Cleanup worktree at /home/<USER>/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>
+- [ ] Cleanup worktree at $(pwd)/../foolish_worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>
 ```
 
 ---
@@ -380,7 +380,7 @@ $EDITOR docs/foop/FOOP-<NUMBER>.plan.md             # write from spec, expand al
 
 # ── Worktree setup (for plan construction reference) ──
 git worktree add -b foop-<NUMBER>-<SHORT_DESCRIPTION> \
-    ${HOME}/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>
+    $(pwd)/../foolish_worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>
 ```
 
 ---

@@ -39,6 +39,10 @@ UBCa. It adds four dependent features and stops, deliberately, short of boolean 
 4. **`system.foo` as ancestral prelude.** A build-embedded `system.foo` becomes the **parent
    (ancestral) brane** of every program's root brane. It defines `'True` and `'False` as
    **null-characterized name constants**.
+5. **Comparison operators (`<`, `>`, `<=`, `>=`).** Four built-in binary operators that
+   compare two integers and return the `'True` or `'False` constant from `system.foo` (or `NK`
+   for non-integer operands). These are NOT boolean logic operators — they are the producers of
+   boolean values, extending the existing arithmetic operator infrastructure.
 
 The crux is the **null-characterized name constant** rule: once a null-characterized name
 is defined, it may only be re-defined to an equal value; any other re-definition refuses and
@@ -398,6 +402,67 @@ conflicting redefinition of the established constant — unless `default_equal` 
 The check reuses `default_equal` and the same `NK("'<name> redefined")` result as the brane
 step: **one rule, one NK mechanism, two trigger sites** (brane step, concatenation merge).
 
+### 5. Comparison operators (`<`, `>`, `<=`, `>=`) as built-in boolean producers
+
+**These are NOT boolean logic operators** (`and`, `or`, `not` — deferred to a follow-on FOOP).
+Comparison operators are **built-in arithmetic-adjacent operators** that produce the
+null-characterized boolean values defined in `system.foo` (§4). They extend the existing
+binary-operator infrastructure (`+`, `-`, `*`, `/`) with four new tokens and evaluation rules.
+
+**Grammar.** Four new infix operators at the same precedence level as `+` and `-` (additive):
+
+```
+additive   ::= multiplicative ( ( "+" | "-" | "<" | ">" | "<=" | ">=" ) multiplicative )*
+```
+
+They are left-associative, same as `+`/`-`. No new precedence level is introduced — comparisons
+sit alongside addition/subtraction. (If a future FOOP needs different precedence, it can split
+the level then.)
+
+**Lexer.** Four new tokens:
+
+| Token | Characters |
+|-------|-----------|
+| `Lt`  | `<`       |
+| `Gt`  | `>`       |
+| `Le`  | `<=`      |
+| `Ge`  | `>=`      |
+
+The two-character tokens (`<=`, `>=`) must be recognized before the single-character fallbacks.
+The lexer already handles multi-character tokens (e.g. `==` is not a token, but `//` comments
+are); add `Lt`, `Gt`, `Le`, `Ge` to the token enum and the lexer's operator dispatch.
+
+**Evaluator semantics.** When both operands settle to integers:
+
+| Operator | Condition | Result |
+|----------|-----------|--------|
+| `<`  | `a < b`  | `'True` (the null-characterized constant from `system.foo`) |
+| `<`  | `a >= b` | `'False` |
+| `>`  | `a > b`  | `'True` |
+| `>`  | `a <= b` | `'False` |
+| `<=` | `a <= b` | `'True` |
+| `<=` | `a > b`  | `'False` |
+| `>=` | `a >= b` | `'True` |
+| `>=` | `a < b`  | `'False` |
+
+When either operand is **not an integer** (NK, brane, creation, etc.): the result is **NK**.
+This follows the same "only integers are comparable" principle as `default_equal` (§2). The
+NK reason is `"comparison: non-integer operand"`.
+
+**The result is the actual `'True`/`'False` FIR object from `system.foo`**, not a synthetic
+boolean. The evaluator resolves `'True` and `'False` from the system root brane (the same
+ancestral lookup any program uses) and returns that object. This means `a > b` in user code
+produces the same `'True` that `system.foo` defines — referentially identical, equality-checkable
+via value search.
+
+**Implementation.** The evaluator's existing binary-operator dispatch (`eval_binary_op` or
+equivalent) gains four new arms. Each arm:
+1. Checks both operands are integers (else NK).
+2. Performs the comparison.
+3. Resolves `'True` or `'False` from the system root brane via `_ib_search` or a cached reference.
+
+No new FIR kind is needed — the result is a `CreationFir` (from `system.foo`) or an `NkFir`.
+
 ## FIR Impact
 
 - **New variant `CreationFir`** (`foolish-ubca/src/fir_kinds.rs`): `{ core }` — **no id**,
@@ -427,6 +492,11 @@ step: **one rule, one NK mechanism, two trigger sites** (brane step, concatenati
 - **NYES.** No new NYES states. `CreationFir` is terminal `Independent` from birth. A new
   `*_nyes_transitions` unit test (`creation_nyes_transitions`) is REQUIRED (single-state
   `Independent`), per AGENTS.md.
+- **New tokens `Lt`, `Gt`, `Le`, `Ge`** (`foolish-parser/src/token.rs`): four new operator
+  tokens for `<`, `>`, `<=`, `>=`. Two-character tokens (`<=`, `>=`) recognized before
+  single-character fallbacks.
+- **No new FIR kind for comparison results** — the evaluator returns a `CreationFir` (the
+  `'True`/`'False` object from `system.foo`) or an `NkFir` for non-integer operands.
 
 ## UBC Step Impact
 
@@ -454,6 +524,10 @@ step: **one rule, one NK mechanism, two trigger sites** (brane step, concatenati
   child, **before** `step_to_settled`. Preserve the user program's line numbers (system.foo is
   a separate brane with its own lines). This *replaces* the program's current self-root via
   `new_cyclic` with a system-root-owns-program-child arrangement.
+- **Comparison operators** (§5): the evaluator's binary-operator dispatch gains four new arms
+  (`<`, `>`, `<=`, `>=`). Each checks both operands are integers (else NK), performs the
+  comparison, and resolves `'True` or `'False` from the system root brane. No new FIR kind —
+  returns `CreationFir` or `NkFir`.
 
 ## Gotchas & Exceptions (read before implementing)
 
@@ -601,6 +675,15 @@ approval tests pin observable behavior byte-for-byte; the comprehensive weaves i
   `default_equal`) — proves the rule is value-sensitive, not "duplicate name = NK".
 - Empty/single-operand concat still merges without spurious collisions.
 
+**Comparison operators** (§5):
+- `1 < 2` ⇒ `'True`; `2 < 1` ⇒ `'False`; `1 <= 1` ⇒ `'True`.
+- `3 > 5` ⇒ `'False`; `5 >= 5` ⇒ `'True`.
+- Non-integer operand (`⬤ < 3`, `{1} > 2`) ⇒ `NK("comparison: non-integer operand")`.
+- Result is the actual `'True`/`'False` FIR from `system.foo` — verify referential identity
+  (the `'True` returned by `1 < 2` is `Rc::ptr_eq` with the `'True` defined in `system.foo`).
+- All four operators on integer pairs (equal, less, greater).
+- Precedence: `a + b < c` parses as `(a + b) < c`, not `a + (b < c)`.
+
 ### Approval tests (`.foo` → insta snapshots; human-signed)
 
 One focused input per behavior (small, legible, full-width-space indentation), plus negatives:
@@ -619,6 +702,12 @@ One focused input per behavior (small, legible, full-width-space indentation), p
 - `null_const_refuse.foo` — `'True=3` settles NK and poisons subsequent `True` use.
 - `concat_null_collision.foo` — the `{A={'a=1}, B=A A A}` case, so the NK-of-later-duplicates
   is visible in a signed snapshot.
+- `comparison_basic.foo` — `a=3; b=5; lt = a < b; gt = a > b; le = a <= b; ge = a >= b;`
+  shows `'True`/`'False` results for all four operators.
+- `comparison_equal.foo` — `a=7; b=7; lt = a < b; le = a <= b; ge = a >= b; gt = a > b;`
+  tests the equal-boundary case (`<=` and `>=` true, `<` and `>` false).
+- `comparison_nk.foo` — `a = ⬤; b = 3; result = a < b;` shows NK for non-integer operand.
+- `comparison_if_then.foo` — the user's motivating example: `{condition=a>0; 100; condition=True;-100}~condition=True&#` — comparison producing `'True` feeding into a value-search pattern match.
 
 **Existing snapshots to re-review (expect diffs):** any snapshot whose brane-characterization
 rendering shifts under the `Characterizations` migration, and any program that now has
@@ -633,10 +722,10 @@ The reserved single input that exercises every new surface interacting with old 
 it to touch, at minimum, one path through each of: creation (`⬤` and `{*}`), referential
 equality via value search (equal and unequal), quote-bearing characterization search, a
 null-characterized constant defined ancestrally (`True`), the `system.foo` parent-brane
-fall-through, a null-constant **refusal→NK**, the concatenation collision (`A A A`), and — for
-old-feature interaction — a **contexted `&`-search** (FOOP-23) landing on a creation-valued
-statement and a **nested brane** whose inner search reaches an ancestral null-characterized
-name. Sketch:
+fall-through, a null-constant **refusal→NK**, the concatenation collision (`A A A`), comparison
+operators (`<`, `>`, `<=`, `>=` producing `'True`/`'False`/NK), and — for old-feature
+interaction — a **contexted `&`-search** (FOOP-23) landing on a creation-valued statement and a
+**nested brane** whose inner search reaches an ancestral null-characterized name. Sketch:
 
 ```foolish
 {!! foop_33_comprehensive.foo
@@ -651,6 +740,10 @@ name. Sketch:
     grp    = {'k=a, 'k=a}    !! concat/dup null-const with EQUAL value → permitted
     bad    = {'k=a, 'k=c}    !! dup null-const with UNEQUAL value → second 'k is NK
     'True  = 3               !! REFUSED → NK (conflicts with ancestral 'True)
+    lt     = 3 < 5           !! comparison → 'True
+    gt     = 3 > 5           !! comparison → 'False
+    le     = 5 <= 5          !! comparison → 'True
+    nk_cmp = ⬤ < 3           !! comparison → NK (non-integer)
     {!! nested
         deep = True          !! ancestral resolution from a nested brane
     }
@@ -698,6 +791,15 @@ constants a program cannot shadow, and reuses `_ab_search` fall-through rather t
 merge. (Concatenation still exists and still enforces the null-constant rule for
 Foolisher-written concatenations — a separate, general concern.)
 
+### E. Comparison operators as a separate FOOP
+
+Define `<`, `>`, `<=`, `>=` in a follow-on FOOP after booleans exist. **Rejected** because
+comparison operators are the *natural producers* of boolean values — without them, `'True` and
+`'False` defined in `system.foo` have no built-in way to be *reached* by computation. The
+creation postulate gives us `'True` and `'False` as ideas; comparison operators give the first
+reason to *use* them. Keeping them in FOOP-33 means the boolean constants are useful from the
+moment they exist. Boolean *logic* operators (`and`, `or`, `not`, `⊦`) remain out of scope.
+
 ## Open Questions
 
 - **Creation *value* render form in `hssnap`.** The input `{*}` alias is decided (always
@@ -707,6 +809,19 @@ Foolisher-written concatenations — a separate, general concern.)
 - **Comprehensive sketch semantics — tabled.** The `same = ?=a` line's expected result (does an
   unanchored backward value search land on `b` or on `a` itself?) is deferred; the reviewer
   captures and blesses the actual settled output when `foop_33_comprehensive.foo` is generated.
+- **TODO: Document the philosophical centrality of equality.** Equality is among the most
+  fundamental concepts in Foolish. The creation postulate itself defines identity through
+  uniqueness — when we create an idea with `⬤`, nothing else is equal to it; that uniqueness
+  *is* its identity. `default_equal` (§2) is not merely a search utility; it is the runtime
+  expression of the creation postulate's claim that each creation is one-of-a-kind. The
+  three-valued equality (`Equal`/`NotEqual`/`Unknowable`) reflects a philosophical stance:
+  equality must be *known*, not assumed. This deserves a dedicated section in `docs/why/` (or an
+  expansion of `docs/why/creation_postulate.md`) explaining why equality is foundational to
+  Foolish's ontology — not just an operator, but the lens through which identity, search, and
+  constancy are defined. The null-characterized constant rule (§4) is a direct consequence: if
+  equality were loose or assumed, constants could not be protected. If equality were two-valued
+  (true/false), incomparable types would silently miss rather than honestly signaling uncertainty.
+  Equality is the spine of the language; document it accordingly.
 
 Resolved (were open in earlier drafts): `system.foo` install (implicit/built-in, IS the root,
 its own parent, line numbers preserved — §4); equality outcome type (three-valued `Equality`,
@@ -729,6 +844,19 @@ preferred, three-canonical-strings fallback — §3); null-const mechanism (`get
 
 ## Last Updated
 
+**Date**: 2026-07-30
+**Updated By**: Sisyphus / xiaomi/mimo-v2.5-pro
+**Changes (round 8, per Atlas)**: (1) Added §5 — comparison operators (`<`, `>`, `<=`, `>=`) as
+built-in boolean producers returning `'True`/`'False` from `system.foo` (or `NK` for
+non-integer operands). Four new lexer tokens (`Lt`, `Gt`, `Le`, `Ge`); same precedence as
+`+`/`-`; evaluator resolves the boolean constant from the system root brane. (2) Updated
+Abstract (new item 5), FIR Impact (new tokens, no new FIR kind), UBC Step Impact (new evaluator
+arms), Test Plan (comparison unit/approval tests, updated comprehensive sketch). (3) Added
+Rejected Alternative E (comparison-as-separate-FOOP rejected — they are the natural producers
+of booleans). (4) Added Open Question on the philosophical centrality of equality — creation
+defines identity through uniqueness; `default_equal` is the runtime expression of the creation
+postulate; three-valued equality reflects "known, not assumed"; deserves a `docs/why/` section.
+(5) Updated worktree path convention to `../foolish_worktrees/` relative to project directory.
 **Date**: 2026-07-08
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
 **Changes (round 7, per Atlas — resolves all Open Questions toward freeze)**: (1) Equality is
