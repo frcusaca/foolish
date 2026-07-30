@@ -50,19 +50,23 @@ Phase-4 rule reach into `system.foo` specifically — it must work for any ances
 
 ## Phase 0 — Start
 
-- [ ] Update Foolish documentation (AGENTS.md, `foop.md`, or a new `docs/howto/worktrees.md`)
+- [x] Update Foolish documentation (AGENTS.md, `foop.md`, or a new `docs/howto/worktrees.md`)
       to establish the worktree path convention: worktrees are placed in a directory **relative
       to the project root** at `../foolish_worktrees/<branch-name>`. For this project (root at
       `/yolo/src`), that resolves to `/yolo/foolish_worktrees/<branch-name>`. Document this so
       all future FOOPs and agents use the convention consistently. Include the rationale: keeps
       worktrees close to the project, avoids polluting `~/tmp/`, and is path-independent of the
       user's home directory.
-- [ ] Confirm all tests green on `jia` before starting (no Phase-or-larger work on broken
+      (2026-07-30 12:00)
+- [x] Confirm all tests green on `jia` before starting (no Phase-or-larger work on broken
       tests; `.snap.new.check` files with `@agent` comments are the only permitted exception).
-- [ ] Check the `begun` box in `FOOP-33.md` frontmatter, commit on `jia` ("work commenced on
+      (2026-07-30 12:00)
+- [x] Check the `begun` box in `FOOP-33.md` frontmatter, commit on `jia` ("work commenced on
       FOOP-33").
-- [ ] Create worktree `/yolo/foolish_worktrees/foop-33-creation-postulate` with
+      (2026-07-30 12:00)
+- [x] Create worktree `/yolo/foolish_worktrees/foop-33-creation-postulate` with
       branch `foop-33-creation-postulate` from `jia`.
+      (2026-07-30 12:00)
 
 ## Phase 1 — The `Identifier` (LHS) becomes first-class (tests first)
 
