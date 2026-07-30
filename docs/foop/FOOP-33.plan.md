@@ -70,39 +70,46 @@ Phase-4 rule reach into `system.foo` specifically — it must work for any ances
 
 ## Phase 1 — The `Identifier` (LHS) becomes first-class (tests first)
 
-- [ ] Write unit tests for the new `Identifier` / `Characterizations` types (pure, no FVM):
+- [x] Write unit tests for the new `Identifier` / `Characterizations` types (pure, no FVM):
       canonicalization (`a' b'c'd'e''x` → `name()` `"x"`, `characterized_name()`
       `"a'b'c'd'e''x"` with the space removed, characterization string `"a'b'c'd'e''"`); plain
       name → `characterized_name()==name()`; if the span representation is used, accessors return
       `&str` into the source (no fresh per-statement alloc);
       `is_nully_characterizing_coordinate_name()` **true** for `a'b'c''name` and bare `'name`,
       **false** for plain `name`, `a'b'c'name`, and interior-null `a''b'name` (proximity rule).
-- [ ] Add the `Identifier` struct — store **either** byte-range spans into the original source
+      (2026-07-30 12:15)
+- [x] Add the `Identifier` struct — store **either** byte-range spans into the original source
       (preferred, when available) **or** three canonical strings (fully-characterized name,
       name, characterization string). Accessors `name()`, `characterized_name()`,
       `is_nully_characterizing_coordinate_name()`. Add `Characterizations` **minimal for this
       FOOP** — only `is_nully_characterizing_coordinate_name()`; per-`'` component extraction is
       deferred. Place both in the shared location.
+      (2026-07-30 12:15)
 - [ ] Migrate `BraneFir.characterizations` (`foolish-ubca/src/fir_kinds.rs:717`) and the
       core-fir `NormalBraneFir.characterizations` to `Characterizations`; keep the sequencer's
       trailing-`'` rendering (`foolish-core/src/sequencer.rs:514`).
-- [ ] Replace `StatementFir.name: String` with `identifier: Identifier`
+- [x] Replace `StatementFir.name: String` with `identifier: Identifier`
       (`foolish-ubca/src/fir_kinds.rs:632`); `name()` delegates to `identifier.name()`; update
       constructor/`statement()` helper and all `StatementFir` construction sites. (Migration is
       free — the ubca FVM does not read characterizations today; refactor away.)
-- [ ] Build the `Identifier` in the compiler from `Astn::Assignment`'s name + characterizations
+      (2026-07-30 12:15)
+- [x] Build the `Identifier` in the compiler from `Astn::Assignment`'s name + characterizations
       (canonicalized) in `foolish-ubca/src/compiler.rs` (stop discarding characterizations);
       update the compiler test that currently asserts discard.
-- [ ] **Fold `'` back into the search pattern** (Gotcha #3): a `'`-bearing *reference* (e.g.
+      (2026-07-30 12:15)
+- [x] **Fold `'` back into the search pattern** (Gotcha #3): a `'`-bearing *reference* (e.g.
       `?'True`) currently compiles from `id` only (`compiler.rs:119`) and **loses** the `'`
       (parser keeps `characterizations` and `id` separate, `parser.rs:183`). Reconstruct the
       characterized pattern (characterizations + id) when the reference carries characterizations.
       Compiler test: `?'True` → pattern `'True`, not `True`.
-- [ ] Extend name-search matching so the **matcher chooses the projection**: a pattern
+      (2026-07-30 12:20)
+- [x] Extend name-search matching so the **matcher chooses the projection**: a pattern
       containing `'` matches on the candidate's `Identifier::characterized_name()`; a pattern
       without `'` on `Identifier::name()` (`SearchFir::matches_pattern` / `SearchPredicate::Name`).
-- [ ] Unit test the quote-bearing search rule (`a'b'x` found by `?a'b'x`, missed by `?x`).
-- [ ] Introduce **NF (Not Foolish)** — a special sub-condition of NK for violations of Foolish's
+      (2026-07-30 12:20)
+- [x] Unit test the quote-bearing search rule (`a'b'x` found by `?a'b'x`, missed by `?x`).
+      (2026-07-30 12:20)
+- [x] Introduce **NF (Not Foolish)** — a special sub-condition of NK for violations of Foolish's
       own rules (as opposed to "not knowable" in the search-miss sense). The first (and for this
       FOOP, only) case: **overwriting a null-characterized name constant**. When `'T=1` is
       followed by `'T=2` (non-equal redefinition of a nil-characterized name), the result is NF
@@ -110,6 +117,7 @@ Phase-4 rule reach into `system.foo` specifically — it must work for any ances
       machinery (step, search, concatenation) — it is a *semantic label*, not a new control flow.
       Unit test: `{a='T=1; 'T=2}` — second `'T` settles NF, verify the NK reason string
       distinguishes NF from generic NK (e.g. `"'T not-foolish"` vs `"'T redefined"`).
+      (2026-07-30 12:20)
 
 ## Phase 2 — The creation dot `⬤` (and `{*}` alias)
 
