@@ -428,6 +428,16 @@ impl Fir for IndepIntFir {
     }
 }
 
+/// NF (Not Foolish) — a sub-condition of NK for violations of Foolish's own rules.
+/// Used as a reason string prefix on NkFir. NF is terminal and behaves identically
+/// to NK in all downstream machinery — it is a semantic label, not a new control flow.
+pub const NF_PREFIX: &str = "not-foolish";
+
+/// Check if an NK reason string indicates an NF (Not Foolish) condition.
+pub fn is_nf_reason(reason: &str) -> bool {
+    reason.contains(NF_PREFIX)
+}
+
 #[derive(Debug)]
 pub struct NkFir {
     pub(crate) core: ProtoBrane,
