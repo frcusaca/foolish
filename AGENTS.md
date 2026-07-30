@@ -21,6 +21,21 @@ Foolish is a revolutionary programming language implemented in Rust. This guide 
 
 - **Rust**: current stable toolchain
 
+## Source Control — the main branch is `jia`
+
+**In the Foolish project, the main branch is named `jia`.** It fills the role other projects give
+to `master`, `main`, or `trunk`: it is the trunk of development, the branch worktrees are created
+from, and the branch completed work is merged back into.
+
+- There is **no** `master`, `main`, or `trunk` branch. Do not create one, and do not assume one
+  exists when writing scripts, plans, or documentation.
+- Pull requests target `jia`.
+- Worktrees are created from `jia` (`WORKTREE_ORIGIN_BRANCH=jia` — see `foop.md`).
+- Older documents and completed plan files may name an **`alpha`** branch as the merge target.
+  That name is historical: **read `alpha` as `jia`** wherever it appears in an in-force
+  instruction. Completed plan files are left as written, as a historical record — do not rewrite
+  them.
+
 ## Project Segmentation
 Software projects May be large or small. Their complexity and diffiulty may also vary. Generally speaking we use these terms for disjoint components of softare:
   - Major
@@ -33,7 +48,7 @@ Software projects May be large or small. Their complexity and diffiulty may also
     - Example: "DHT for discovering peers for different purposes: mutual attestation, calendar replication, capability-matching, etc."
   - Phase
     - a Major feature may be implemented in many phases
-    - Example: Research, Discuss and Q&A with Human, Design and implement tests, Implementation feature, Code Review, Security Review, Fresh-eye review, merge to alpha, etc.
+    - Example: Research, Discuss and Q&A with Human, Design and implement tests, Implementation feature, Code Review, Security Review, Fresh-eye review, merge to `jia`, etc.
   - Stage
     - each phase may contain many stages
     - Example for Research: Analyze code, web search, pose research questions, combination and synthesis, etc.
@@ -93,7 +108,7 @@ domain; do not improvise around it.
 |-------|-------|------------|
 | `foolish-debugging` | Debugging Foolish FVM/FIR behavior via unit-test-driven inspection: `step_until*` breakpoints, step-and-monitor of the `_children` stores + NYES, `ib_search`/`ab_search`, and the promote-to-regression-or-delete discipline. | Debugging wrong brane evaluation, unexpected NK/ECONSTANIC, search resolution failures, NYES state machine bugs, or name-lookup errors in `foolish-ubca`. |
 | `foop-write-plan` | Creating and planning FOOPs. Covers little-endian numbering, `foop_check.py`, the spec template (frontmatter + all body sections), plan construction rules, checkbox format, sub-tasks, worktree setup, and comprehensive snapshot test generation. | Creating a new FOOP, writing a specification, or constructing a plan (`FOOP-#.plan.md`). |
-| `foop-use-maintain` | Using and maintaining existing FOOPs. Covers listing/finding FOOPs, the status lifecycle, plan execution flow, checkbox lifecycle (complete with timestamp, backburner, cancel/deprecate), worktree execution, merge-to-alpha, cleanup, and the human communication protocol. | Finding, executing, resuming, backburnering, cancelling, merging, or cleaning up an existing FOOP. |
+| `foop-use-maintain` | Using and maintaining existing FOOPs. Covers listing/finding FOOPs, the status lifecycle, plan execution flow, checkbox lifecycle (complete with timestamp, backburner, cancel/deprecate), worktree execution, merge-to-`jia`, cleanup, and the human communication protocol. | Finding, executing, resuming, backburnering, cancelling, merging, or cleaning up an existing FOOP. |
 
 
 
@@ -554,6 +569,18 @@ For complete details on:
 Example format:
 ```markdown
 ## Last Updated
+
+**Date**: 2026-07-29
+**Updated By**: Claude Code (Opus 5)
+**Changes**: Added a **Source Control** section stating plainly that the Foolish project's main
+branch is **`jia`** — the role other projects give to `master`/`main`/`trunk`. No such branch
+exists here; PRs target `jia`; worktrees are created from `jia`. Recorded that `alpha`, appearing
+in older documents and completed plans, is historical and should be read as `jia` in any in-force
+instruction, while completed plan files are left as written for the historical record. Updated the
+two in-body mentions ("merge to alpha") to match. `foop.md` and both FOOP skills updated in the
+same pass (`WORKTREE_ORIGIN_BRANCH=jia`, merge/checkout targets), along with the in-force worktree
+directives in FOOP-72/FOOP-62 and the unchecked merge checkboxes in
+FOOP-03/41/52/7/8 plans.
 
 **Date**: 2026-01-15
 **Updated By**: Claude Code v1.0.0 / claude-sonnet-4-5-20250929

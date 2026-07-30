@@ -14,7 +14,7 @@ supersedes: []
 > **WORKTREE.** This FOOP is implemented in its own worktree:
 >
 > ```
-> WORKTREE_ORIGIN_BRANCH=alpha
+> WORKTREE_ORIGIN_BRANCH=jia
 > WORKTREE_ORIGIN_PATH=$(pwd)
 > WORKTREE_BRANCH_NAME=foop-62-ubca-mimo
 > WORKTREE_FULL_FS_PATH=${HOME}/tmp/foolish-worktrees/foop-62-ubca-mimo

@@ -193,6 +193,18 @@ spec:
 - [-] ...
 ```
 
+### The main branch is `jia`
+
+**In the Foolish project, the main branch is named `jia`.** It fills the role
+other projects give to `master`, `main`, or `trunk`: it is the trunk of
+development, the branch worktrees are created from, and the branch completed
+FOOP work is merged back into.
+
+There is no `master`, `main`, or `trunk` branch. Older documents and plans may
+refer to an `alpha` branch as the merge target; that name is historical —
+**read `alpha` as `jia`** wherever it appears in an in-force instruction.
+Completed plan files are left as written, as a historical record.
+
 ### Worktree Branch Tracking
 
 If a worktree branch is used for implementation, the plan **must** document
@@ -200,7 +212,7 @@ the lifecycle of that worktree as explicit, separate checkbox tasks placed
 at appropriate points in the plan. The workpath shall always be:
 
 ```
-WORKTREE_ORIGIN_BRANCH=alpha
+WORKTREE_ORIGIN_BRANCH=jia
 WORKTREE_ORIGIN_PATH=$(pwd)
 WORKTREE_BRANCH_NAME=foop-<NUMBER>-short_description
 WORKTREE_FULL_FS_PATH=${HOME}/tmp/foolish-worktrees/foop-<NUMBER>-short_description
@@ -224,13 +236,25 @@ permission to work on a worktree added from the foretias directory. If asking
 for permission, ask once for the entire worktree branch:
 "${WORKTREE_FULL_FS_PATH}" not a subdirectory.
 
+**Branch naming — one name, no prefix.** The branch is named
+`foop-<NUMBER>-<short_description>`, **bare, with no `foop/` prefix**, and it
+must be **identical** to `WORKTREE_BRANCH_NAME` and to the basename of
+`WORKTREE_FULL_FS_PATH`. One name, used everywhere in the plan.
+
+Current practice (FOOP-13, FOOP-23, FOOP-33, FOOP-54, FOOP-84):
+`foop-23-value-search`, `foop-54-einmo`. A `foop/`-prefixed form and
+number-prefixed directory names (`3841-foop-7`) appear in older pre-2026-06
+plans; **do not copy them.** Mixing forms within one plan is a real hazard — the
+create checkbox makes one branch while the merge checkbox names another that
+does not exist.
+
 ```markdown
-- [ ] Create worktree at ${HOME}/tmp/foolish-worktrees/constanic-clone-foop-7 with branch `foop/foop-7-constanic-clone`
+- [ ] Create worktree at ${HOME}/tmp/foolish-worktrees/foop-7-constanic-clone with branch `foop-7-constanic-clone`
 ...
   (implementation tasks here)
 ...
-- [ ] Verify all work is complete in ${HOME}/tmp/foolish-worktrees/3841-foop-7 and committed to `foop/foop-7-constanic-clone`
-- [ ] Merge `foop/foop-7-constanic-clone` to `alpha` #Btw, These branch names and paths reflect expanded $HOME, $WORKTREE_BRANCH_NAME and $WORKTREE_ORIGIN_BRANCH, which should be known and specified by the time of _PLAN.md's completion. Fillers such as the literal '$WORKTREE_ORIGIN_BRANCH' should be replaced with real values before starting work on the plan. "${HOME}" should be the full path to "${HOME}" when the plan is generated.
+- [ ] Verify all work is complete in ${HOME}/tmp/foolish-worktrees/foop-7-constanic-clone and committed to `foop-7-constanic-clone`
+- [ ] Merge `foop-7-constanic-clone` to `jia` #Btw, These branch names and paths reflect expanded $HOME, $WORKTREE_BRANCH_NAME and $WORKTREE_ORIGIN_BRANCH, which should be known and specified by the time of _PLAN.md's completion. Fillers such as the literal '$WORKTREE_ORIGIN_BRANCH' should be replaced with real values before starting work on the plan. "${HOME}" should be the full path to "${HOME}" when the plan is generated.
 ```
 
 ### Sub-Tasks
@@ -258,7 +282,7 @@ split occurred:
 ```
 
 This pattern is common because Foolish uses `git merge` (not rebase), so
-merge conflicts on `alpha` may trigger follow-up repair work. NB: The environmental
+merge conflicts on `jia` may trigger follow-up repair work. NB: The environmental
 variable exprssions within "${}" should be expanded to actual names and full
 paths by the time each plan file is finalized.
 
@@ -301,6 +325,25 @@ that thoroughly exercises the new feature interacting with existing features. Th
 ---
 
 ## Last Updated
+
+**Date**: 2026-07-29 (2)
+**Updated By**: Claude Code (Opus 5)
+**Changes**: Stated the **branch-naming rule** explicitly: the branch is
+`foop-<NUMBER>-<short_description>`, bare with **no `foop/` prefix**, identical to
+`WORKTREE_BRANCH_NAME` and to the worktree directory's basename — one name, used everywhere in the
+plan. The worked example had been triply inconsistent (directory `constanic-clone-foop-7`, then
+`3841-foop-7`, with branch `foop/foop-7-constanic-clone`), which is what let a real defect through
+in FOOP-84's plan: its create checkbox made one branch while its merge checkbox named another that
+did not exist. Example rewritten to use one consistent name. Both FOOP skills updated to match.
+
+**Date**: 2026-07-29
+**Updated By**: Claude Code (Opus 5)
+**Changes**: Added a "The main branch is `jia`" section stating that `jia` fills the role other
+projects give to `master`/`main`/`trunk`, and that `alpha` — appearing in older documents as the
+merge target — is historical and should be read as `jia` in any in-force instruction. Completed
+plan files are left as written, as a historical record. Updated `WORKTREE_ORIGIN_BRANCH` to `jia`
+and the merge/conflict-repair examples to match. AGENTS.md and both FOOP skills updated in the
+same pass.
 
 **Date**: 2026-07-06
 **Updated By**: Hephaestus / xiaomi/mimo-v2.5-pro

@@ -1,6 +1,6 @@
 ---
 name: foop-use-maintain
-description: "MUST USE when FINDING, EXECUTING, UPDATING, BACKBURNERING, or CANCELLING existing FOOPs (Foolish Optimization Process). Covers: listing/finding FOOPs in chronological order (little-endian ls|rev|sort -V|rev, foop_check.py list/get_last/check), the two-file system (must read both spec and plan before executing), status lifecycle (Draft→Brewing→Final→Implementing→complete), plan execution flow (begin→worktree→all-work-in-worktree→commit-regularly→merge), checkbox lifecycle (completing with timestamp, backburnering with [x] backburnered, cancelling with [x] Canceled + [-] per-item), worktree execution (create from alpha, work only in worktree, merge to alpha, cleanup), sub-task execution patterns (parent not checked until children done, the merge STOP pattern, conflict repair because Foolish uses merge not rebase), comprehensive test verification, human communication protocol (PTAL reminder with FOOP number and worktree path), and safety invariants. Gives exact copy-pasteable commands with <NUMBER> and <SHORT_DESCRIPTION> placeholders. Triggers: 'find foop', 'list foop', 'execute foop', 'foop status', 'foop execution', 'check foop checkbox', 'backburner foop', 'cancel foop', 'deprecate foop', 'foop merge', 'foop cleanup', 'foop worktree', 'foop begun', 'foop progress', 'resume foop', 'foop PTAL'."
+description: "MUST USE when FINDING, EXECUTING, UPDATING, BACKBURNERING, or CANCELLING existing FOOPs (Foolish Optimization Process). Covers: listing/finding FOOPs in chronological order (little-endian ls|rev|sort -V|rev, foop_check.py list/get_last/check), the two-file system (must read both spec and plan before executing), status lifecycle (Draft→Brewing→Final→Implementing→complete), plan execution flow (begin→worktree→all-work-in-worktree→commit-regularly→merge), checkbox lifecycle (completing with timestamp, backburnering with [x] backburnered, cancelling with [x] Canceled + [-] per-item), worktree execution (create from jia, work only in worktree, merge to jia, cleanup), sub-task execution patterns (parent not checked until children done, the merge STOP pattern, conflict repair because Foolish uses merge not rebase), comprehensive test verification, human communication protocol (PTAL reminder with FOOP number and worktree path), and safety invariants. Gives exact copy-pasteable commands with <NUMBER> and <SHORT_DESCRIPTION> placeholders. Triggers: 'find foop', 'list foop', 'execute foop', 'foop status', 'foop execution', 'check foop checkbox', 'backburner foop', 'cancel foop', 'deprecate foop', 'foop merge', 'foop cleanup', 'foop worktree', 'foop begun', 'foop progress', 'resume foop', 'foop PTAL'."
 ---
 
 # FOOP — Using and Maintaining
@@ -150,7 +150,7 @@ begun: [x]   # work has begun
 
    ```bash
    # Variables (should already be expanded to literals in the plan):
-   # WORKTREE_ORIGIN_BRANCH=alpha
+   # WORKTREE_ORIGIN_BRANCH=jia
    # WORKTREE_ORIGIN_PATH=/home/<USER>/foolish-rust
    # WORKTREE_BRANCH_NAME=foop-<NUMBER>-<SHORT_DESCRIPTION>
    # WORKTREE_FULL_FS_PATH=/home/<USER>/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>
@@ -161,6 +161,13 @@ begun: [x]   # work has begun
    cd "/home/<USER>/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>"
    # Now commence work here.
    ```
+
+   > **Branch naming (no prefix):** the branch is `foop-<NUMBER>-<SHORT_DESCRIPTION>` — bare, no
+   > `foop/` prefix — and identical to `WORKTREE_BRANCH_NAME` and to the worktree directory's
+   > basename. One name, used everywhere. If a plan you are executing mixes a `foop/`-prefixed
+   > form with a bare form (older plans do), **stop and reconcile it before creating the
+   > worktree**: otherwise the create step makes one branch and the merge step names another that
+   > does not exist.
 
 4. **All subsequent work happens in the worktree** — including updates to the FOOP spec or the plan itself. Changes to `docs/foop/` go **ONLY** to the worktree until merge time. This is non-negotiable.
 
@@ -266,18 +273,18 @@ git status   # must be clean — all work committed
 ```bash
 # Switch to origin and merge:
 cd /home/<USER>/foolish-rust
-git checkout alpha
+git checkout jia
 git merge foop-<NUMBER>-<SHORT_DESCRIPTION>
 ```
 
-**Foolish uses `git merge`, not rebase.** Expect merge conflicts on `alpha` — they trigger follow-up repair work (see "Sub-task execution" below).
+**Foolish uses `git merge`, not rebase.** Expect merge conflicts on `jia` — they trigger follow-up repair work (see "Sub-task execution" below).
 
 ### Post-merge: repair tests if needed
 
 If the merge brought conflicts or broke tests:
 
 ```bash
-# Repair ALL tests in alpha:
+# Repair ALL tests in jia:
 cd /home/<USER>/foolish-rust
 cargo test --workspace
 # Fix any failures, then complete the merge commit.
@@ -295,15 +302,15 @@ git worktree remove /home/<USER>/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESC
 This is the canonical merge sub-task pattern. The parent checkbox is the last to be checked:
 
 ```markdown
-- [ ] Merge `foop-<NUMBER>-<SHORT_DESCRIPTION>` to `alpha`
+- [ ] Merge `foop-<NUMBER>-<SHORT_DESCRIPTION>` to `jia`
   - [ ] Check and make sure current foop has, and passes, a "comprehensive" snaptest that thoroughly tests interaction of current feature with older features. Input name: `foop_<NUMBER>_comprehensive.foo` (reserved for this foop). Agent generates and verifies; human gives final signed approval.
   - [x] Detected complex merge situation requiring additional work
         (2026-07-11 14:00)
   - [ ] Update `foop-<NUMBER>-<SHORT_DESCRIPTION>` to follow new coding style
   - [ ] Update `foop-<NUMBER>-<SHORT_DESCRIPTION>` to use new API call convention
-  - [x] Merged breaking changes from `alpha`
+  - [x] Merged breaking changes from `jia`
         (2026-07-11 14:31)
-  - [ ] Repair ALL tests in `alpha` in /home/<USER>/foolish-rust
+  - [ ] Repair ALL tests in `jia` in /home/<USER>/foolish-rust
   - [ ] STOP! STOP!! STOP!!! ASK HUMAN to check this box before continuing. UNDER NO CIRCUMSTANCES will Agent continue past this point automatically!!
     - [ ] Present human with the `cd /home/<USER>/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>` command and ask them to review snapshots BEFORE checking the parent checkbox.
   - [ ] Cleanup /home/<USER>/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>
@@ -395,7 +402,7 @@ cd ${HOME}/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>
 cargo test -p foolish-ubca --lib -- approval_all
 
 # ── Merge & cleanup ──
-cd ${HOME}/foolish-rust && git checkout alpha
+cd ${HOME}/foolish-rust && git checkout jia
 git merge foop-<NUMBER>-<SHORT_DESCRIPTION>
 cargo test --workspace                              # verify after merge
 git worktree remove ${HOME}/tmp/foolish-worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>

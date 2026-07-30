@@ -162,6 +162,7 @@ the investigation shows container INDEPENDENT status has no such sensitivity.
   `:2170`/`:2237`/`:2448` (other callers), `:530` (operator NK propagation — out of scope);
   `foolish-ubca/src/fir_trait.rs:476` (test-helper duplicate).
 - Prior FOOPs: FOOP-43 (search miss settles ECONSTANIC, not NK — kindred NK-footprint
-  reduction), FOOP-11 (Deprecated: search stops at NK), FOOP-84 (Deadbrane — useless-element
-  detection, adjacent territory).
+  reduction), FOOP-11 (Deprecated: search stops at NK), FOOP-45 (Deadbrane — useless-element
+  detection, adjacent territory; renumbered from FOOP-84 on 2026-07-29, which is the Search
+  Engine Refactor).
 - AGENTS.md §"NK vs ECONSTANIC miss outcomes", §"NYES transition tests".

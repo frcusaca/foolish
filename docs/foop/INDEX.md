@@ -45,7 +45,7 @@ ls | rev | sort -V | rev
 | [FOOP-13](FOOP-13.md) | MAX_BRANE_SIZE — auto-sizing via a non-merging ConcatBrane equivalent to the merged brane | Brewing | phase-2 | 2026-07-03 | Atlas |
 | [FOOP-23](FOOP-23.md) | Value search and contexted (&-prefixed) search — value equality, expression patterns, and searching from a statement's position | Complete | phase-2 | 2026-07-04 | Atlas |
 | [FOOP-33](FOOP-33.md) | The Creation Postulate — ⬤, universal characterizations, and Booleans | Final | phase-4 | 2026-07-07 | Atlas |
-| [FOOP-43](FOOP-43.md) | Search miss settles ECONSTANIC, not NK (foundational keystone) | Superseded (merged into FOOP-93) | phase-2 | 2026-07-09 | Atlas |
+| [FOOP-43](FOOP-43.md) | Search settlement — miss settles by anchoring; SFF-marked → ECONSTANIC (foundational keystone) | Superseded (merged into FOOP-93) | phase-2 | 2026-07-09 | Atlas |
 | [FOOP-53](FOOP-53.md) | Computed index — `#${...}` | Draft | phase-2 | 2026-07-09 | Atlas |
 | [FOOP-63](FOOP-63.md) | Primitive Characterization — the `i'`/`s'`/`f'` type system | Draft | phase-4 | 2026-07-09 | Atlas |
 | [FOOP-73](FOOP-73.md) | Boolean operators — and, or, not, nor, xor (Foolish truth-table searches) | Draft | phase-4 | 2026-07-09 | Atlas |
@@ -53,18 +53,19 @@ ls | rev | sort -V | rev
 | [FOOP-93](FOOP-93.md) | Search predicates — inverse matcher `!` and matcher boolean operators `&&`/`\|\|` | Draft | phase-2 | 2026-07-09 | Atlas |
 | [FOOP-04](FOOP-04.md) | Cascading connector for search — the `\|` fallback operator | Draft | phase-2 | 2026-07-09 | Atlas |
 | [FOOP-14](FOOP-14.md) | All-results (find-all) search — doubled operators `~~`/`??` | Draft | phase-2 | 2026-07-09 | Atlas |
-| [FOOP-24](FOOP-24.md) | Detachment — parameterized stay-foolish markers | Draft | phase-2 | 2026-07-09 | Atlas |
+| [FOOP-24](FOOP-24.md) | Coordination detachment — parameterized stay-foolish markers | Draft | phase-2 | 2026-07-09 | Atlas |
 | [FOOP-34](FOOP-34.md) | Recursion Upgrades (standalone research; write algorithms first) | Draft | phase-5 | 2026-07-09 | Atlas |
 | [FOOP-44](FOOP-44.md) | Macros — research and design (standalone research) | Draft | phase-6 | 2026-07-09 | Atlas |
 | [FOOP-54](FOOP-54.md) | Einmo — comparison arm of FOOP-92 (mimo-opencode vs claude-code implementation comparison) | Complete | meta | 2026-06-26 | Sisyphus |
 | [FOOP-64](FOOP-64.md) | Migrate UBCa snapshot tests to a hierarchical einmo suite | Draft | meta | 2026-07-14 | Atlas |
 | [FOOP-74](FOOP-74.md) | FIRID — atomic per-Fir identity for constanic-clone cycle detection | Draft | phase-2 | 2026-07-11 | Atlas |
-| [FOOP-84](FOOP-84.md) | Deadbrane — useless-element detection and FirID cloning semantics | Draft | phase-2 | 2026-07-14 | Hephaestus |
+| [FOOP-84](FOOP-84.md) | Search Engine Refactor — the authoritative search specification, and detachment on it | Draft | phase-2 | 2026-07-28 | Atlas |
 | [FOOP-94](FOOP-94.md) | Brane NK only when all constituents are NK — remove any-NK contamination | Draft | phase-2 | 2026-07-14 | Atlas |
 | [FOOP-05](FOOP-05.md) | fir module decomposition — fir_base, fir_search_base, one file per FIR kind | Draft | phase-2 | 2026-07-14 | Atlas |
 | [FOOP-15](FOOP-15.md) | Secured interactive einmo review — attested inspection of einmos and their perspectives | Draft | meta | 2026-07-14 | Atlas |
-| [FOOP-25](FOOP-25.md) | EinmoReview — a thread-safe review-session object; thin bash, server, and dhtml frontends | Draft | meta | 2026-07-19 | Atlas |
+| [FOOP-25](FOOP-25.md) | EinmoReview — a thread-safe review-session object; thin bash, server, and dhtml frontends | Superseded (by einmo repo EIMP-1) | meta | 2026-07-19 | Atlas |
 | [FOOP-35](FOOP-35.md) | Ship einmo — own repository, crates.io registration, and a working `cargo einmo test` | Draft | meta | 2026-07-19 | Atlas |
+| [FOOP-45](FOOP-45.md) | Deadbrane — useless-element detection and FirID cloning semantics (renumbered from FOOP-84) | Draft | phase-2 | 2026-07-14 | Hephaestus |
 
 ---
 
@@ -101,20 +102,27 @@ ls | rev | sort -V | rev
 - [FOOP-72](FOOP-72.md) — Foolish Numbering System (FNS) and Snapshot Test Organization
 - [FOOP-82](FOOP-82.md) — UBCa Code Review — Findings and Recommended Changes
 - [FOOP-03](FOOP-03.md) — Repository Cleanup — dead code removal, workspace flatten, `jia` rename (blocked, see FOOP-62)
-*(Implementation-ordered batch built on FOOP-33; renumbered 2026-07-09 so number ≈ impl order.)*
+- [FOOP-23](FOOP-23.md) — Value search + contexted `&`-searches — `~=`/`?=`, expression patterns, `&`-prefix navigation from a statement (`FoolRefFir`). **Semantics superseded by the Search Engine Refactor FOOP** (2026-07-28) — FOOP-23 remains authoritative only for grammar productions, the approval-test-input catalog, Rejected Alternatives, and its bug-fix Appendix.
+*(Implementation-ordered batch built on FOOP-33; renumbered 2026-07-09 so number ≈ impl order.
+**Search-engine sub-ordering corrected 2026-07-28 — see the explicit list immediately below.**)*
+- [FOOP-43](FOOP-43.md) — Search settlement: **anchored miss → NK** (unchanged — an anchored search proves absence), **unanchored miss → ECONSTANIC** (unchanged), **SFF-marked search → ECONSTANIC regardless of anchoring** (the actual change — withheld candidates leave a search deferrable, not dead) + the NK-propagation fix (a deepen on an *unresolved* anchor waits instead of forcing NK) + **coordination removes search context** + the `EconstanicReason` tag (foundational keystone; prereq for FOOP-63/73/34 and the Search Engine Refactor)
 - [FOOP-53](FOOP-53.md) — Computed index `#${...}` (evaluate brane, tail as number, run `#`; self-contained early win)
 - [FOOP-63](FOOP-63.md) — Primitive Characterization: `i'`/`s'`/`f'` type system; characterization = type-tag + search-demand (brane WOCONSTANIC-waits); needs FOOP-33 + FOOP-43
 - [FOOP-73](FOOP-73.md) — Boolean operators and/or/not/nor/xor as **Foolish truth-table searches** (no privileged layer; FVM-compute fallback); needs FOOP-33
 - [FOOP-83](FOOP-83.md) — Integer math: exponent `**` + comparisons `< > <= >=` returning True/False (needs FOOP-33/73; `*`/`%` already done)
-- [FOOP-93](FOOP-93.md) — Search predicates: inverse matcher `!` + matcher boolean operators `&&`/`||` (compiler-hard-coded matcher-outcome ops; SearchPredicate `And`/`Or`/negate)
-- [FOOP-04](FOOP-04.md) — Cascading connector `|` (fallback between whole searches; `CascadingSearchFir` + anchor-propagation; needs FOOP-43)
-- [FOOP-14](FOOP-14.md) — All-results `~~`/`??` (doubled operators collect into a brane; tokens already lexed)
-- [FOOP-24](FOOP-24.md) — Detachment = parameterized SF/SFF marker (exclusion-list prefilter; SF≡`[]` / SFF≡`[*]`; before recursion — helps it; needs FOOP-43)
-- [FOOP-34](FOOP-34.md) — Recursion Upgrades (**standalone research**; write ~1–2 dozen algorithms first; after the full search suite; `↑`; no cycle detection)
+- [FOOP-84](FOOP-84.md) — **Search Engine Refactor — now the required foundation for the rest of this search-family batch, land it before FOOP-93/FOOP-04/FOOP-14/FOOP-24.** Supersedes FOOP-23/FOOP-24 as the authoritative search spec (absorbs the full operator table, `FoolRefFir` shape, name+value atomicity rule, and cursor-source×predicate framing so downstream FOOPs can cite it alone); unifies `ab_search_with_engine`/`BraneFir::_ab_search` into one `AncestralNavigator`; introduces per-candidate, innermost-to-outward boundary evaluation (`CopyMode`/`BoundaryEffect`, replacing `Scope.has_ancestral_sfm`) that FOOP-24 builds on; **§2.2.0 scope rule** — a marker affects only a backward/ancestral search originating inside it, only at the outward boundary crossing (never contexted `&` searches, never locally-resolving searches); documents `contexted ⟹ anchored` as permanent policy. **Two halves with different risk: Part 1 + §2.2 are behavior-preserving (no snapshot may change); §2.3–§2.5 are a deliberate semantic change with expected SF/SFF snapshot churn** — land as separate commits. **Hard dependency on FOOP-43** (§1.5 settlement rule and Component 3's `EconstanicReason::Detached`, which §2.4.1 now requires).
+- [FOOP-93](FOOP-93.md) — Search predicates: inverse matcher `!` + matcher boolean operators `&&`/`||` (compiler-hard-coded matcher-outcome ops; SearchPredicate `And`/`Or`/negate). **Needs FOOP-84** (extends its `SearchPredicate`/de-duplicated Navigator; the old "shares a locus with detachment" note is corrected — orthogonal to FOOP-24, no relative ordering needed between the two).
+- [FOOP-04](FOOP-04.md) — Cascading connector `|` (fallback between whole searches; `CascadingSearchFir`, shared-fixed-anchor semantics; needs FOOP-43). **Needs FOOP-84** (builds on its `FoolRefFir`/contexted-resume restatement and de-duplicated Navigator).
+- [FOOP-14](FOOP-14.md) — All-results `~~`/`??` (doubled operators collect into a brane; tokens already lexed). **Needs FOOP-84** (collect-mode scan runs over its `AncestralNavigator`; composes for free with FOOP-24's `Detach` filtering — no special handling needed, see FOOP-14's Composition note).
+- [FOOP-24](FOOP-24.md) — **Coordination detachment** = parameterized SF/SFF marker (`[patterns]<...>` / `[patterns]<<...>>`; the `Detachment` struct, `decide_to_detach`, `[patterns]` parsing). **The live spec for the feature** — renamed from plain "Detachment" per FOOP-84 §Part 3. FOOP-84 supersedes its *mechanism* only (Implementation Plan → Phase A's `_ab_search`-override, and the scan-loop prefilter locus) — build on FOOP-84 Part 2's `resolve_boundary_effect`/`CopyMode` instead. "Nested markers" resolved (FOOP-84 §2.3/§2.6); "Exclusive detachment" reframed under "Required Searches". Scope is narrow (FOOP-84 §0.6/§2.2.4): **affects only descendant searches of the marker, as they cross the marker's boundary outward** — never contexted (`&`) searches, never locally-resolving ones. **Needs FOOP-84** (hard dependency) **and FOOP-43** (its SFF-marked→ECONSTANIC rule + `EconstanicReason::Detached`, so full-detachment exhaustion defers rather than settling NK). Independent of FOOP-93/FOOP-04/FOOP-14.
+- [FOOP-34](FOOP-34.md) — Recursion Upgrades (**standalone research**; write ~1–2 dozen algorithms first; after the full search suite — FOOP-84/93/04/14/85; `↑`; no cycle detection)
 - [FOOP-44](FOOP-44.md) — Macros (**standalone research**; brane-transforms-brane vs expansion phase; leans on FOOP-14 + characterizations)
 - [FOOP-64](FOOP-64.md) — Migrate UBCa snapshot tests to `foolish-ubca/einmo_suite/` (hierarchy `foop/<N>/`, `lang/…`, `regression/`; signed `.einmo` per FOOP-92; dual-home rule; 9 new combination tests; fills the sort-key-46 gap left by FOOP-74)
 - [FOOP-74](FOOP-74.md) — FIRID (atomic per-Fir instance counter) + thread-local in-flight clone stack; `eprintln!` alarm when `constanic_clone_at` re-enters an already-in-progress FIRID (detection/visibility only, not a language semantic — distinct from FOOP-34's "no recursion-cycle detection" language-design stance)
-- [FOOP-84](FOOP-84.md) — Deadbrane (useless-element detection: directly useless, transitively useless, fixed-point algorithm) + FirID cloning semantics (pins Constant/Independent → Rc::clone identity-sharing, non-constanic → new FIRID)
+- [FOOP-45](FOOP-45.md) — Deadbrane (useless-element detection: directly useless, transitively
+  useless, fixed-point algorithm) + FirID cloning semantics (pins Constant/Independent →
+  Rc::clone identity-sharing, non-constanic → new FIRID). **Renumbered from FOOP-84 on
+  2026-07-29** — it collided with the Search Engine Refactor, which keeps 84.
 - [FOOP-05](FOOP-05.md) — fir module decomposition (Track 1, right after FOOP-64): mechanical
   zero-behavior-change split of `fir_kinds.rs`/`fir_trait.rs` into `fir_base.rs`,
   `fir_ref.rs`, `fir_search_base.rs`, and one `firs/<kind>_fir.rs` per FIR kind — unblocks
@@ -122,14 +130,18 @@ ls | rev | sort -V | rev
 - [FOOP-15](FOOP-15.md) — Secured interactive einmo review (re-homes FOOP-92's deferred
   serve/SPA + MCP + perspective rendering; phased R1 read-only → R2 attested actions → R3
   perspectives → R4 MCP; build-up goal)
-- [FOOP-25](FOOP-25.md) — EinmoReview session object (thread-safe review state: per-reviewer
-  replace-not-stack decisions, single-flight verified cache, journal; signing deliberately a
-  SEPARATE `Signer` object — individual or batch from one passphrase entry; server API over UDS;
-  poor_einmo.sh reduced to a thin client; first dhtml frontend; the session layer FOOP-15 attaches
-  to). §S.11 adds a LAYERED post-quantum section attestation in its own `CorpusSigner` object
-  (conservative SPHINCS+/SLH-DSA over a stage's manifest+byte-joined files, same passphrase as the
-  Ed25519 stamps, ON TOP of them not replacing; default massively-parallel one-buffer read + a tested
-  streaming alternative; crypto core + tests only this FOOP)
+- [FOOP-25](FOOP-25.md) — **Superseded, 2026-07-29**: einmo was extracted into its own repository
+  (`~/yolo/einmo`); this unimplemented design was ported there as `EIMP-1` (adapted for einmo's
+  own EIMP process — no worktree/`jia` mechanics). Implement against the einmo repo's `EIMP-1`
+  plan, not this one. Original abstract, kept for the historical record: EinmoReview session
+  object (thread-safe review state: per-reviewer replace-not-stack decisions, single-flight
+  verified cache, journal; signing deliberately a SEPARATE `Signer` object — individual or batch
+  from one passphrase entry; server API over UDS; poor_einmo.sh reduced to a thin client; first
+  dhtml frontend; the session layer FOOP-15 attaches to). §S.11 adds a LAYERED post-quantum
+  section attestation in its own `CorpusSigner` object (conservative SPHINCS+/SLH-DSA over a
+  stage's manifest+byte-joined files, same passphrase as the Ed25519 stamps, ON TOP of them not
+  replacing; default massively-parallel one-buffer read + a tested streaming alternative; crypto
+  core + tests only this FOOP)
 - [FOOP-35](FOOP-35.md) — Ship einmo as a dual product: library (`einmo = "0.1"`, audited pub API,
   missing_docs-clean) + installable cargo command (`cargo install einmo` → `einmo`/`cargo-einmo`,
   new `einmo test` verb with checked/verified levels and CI exit codes); sequential walkthrough of
@@ -137,6 +149,25 @@ ls | rev | sort -V | rev
   docs.rs) plus the Rust testing battery (proptest, cargo-fuzz on untrusted parsers, mutants,
   deny/audit, MSRV, coverage)
 - [FOOP-94](FOOP-94.md) — Brane NK only when ALL constituents are NK (flip `_decide_nyes_due_to_children` cascade: any-NK+rest-constant → CONSTANT, not NK; operator NK propagation and search semantics untouched; ~34 brane-NK snapshots to re-review)
+
+**Explicit search-engine sub-batch implementation order (2026-07-28 correction):** the discovery
+that FOOP-24's detachment design needed a real engine refactor (now FOOP-84) means the previous
+flat listing above (FOOP-93 → FOOP-04 → FOOP-14 → FOOP-24) no longer reflects buildable order.
+Corrected order:
+
+1. **FOOP-43** (keystone) — miss settles by anchoring (anchored→NK, unanchored→ECONSTANIC),
+   **SFF-marked→ECONSTANIC**, the NK-propagation fix, and the `EconstanicReason` tag. Prerequisite
+   for everything below; FOOP-84 §1.5/§2.4.1 depend on it directly.
+2. **FOOP-84** (new keystone for the search-engine internals) — `AncestralNavigator`,
+   `CopyMode`/`BoundaryEffect`, the absorbed operator-table reference. Nothing below can be
+   cleanly built without this landing first — it de-duplicates the two existing search code paths
+   that FOOP-93/FOOP-04/FOOP-14/FOOP-24 would otherwise each have to individually reconcile with.
+3. **FOOP-93, FOOP-04, FOOP-14, FOOP-24** — mutually independent (orthogonal collaborators: two
+   extend `SearchPredicate`/scan-mode, one is a standalone wrapper FIR, one extends the Navigator
+   via marker configuration); may land in any order or in parallel once FOOP-84 is done. FOOP-24
+   is the only one with an additional prerequisite (FOOP-43's SFF-marked→ECONSTANIC rule, for
+   full-detachment exhaustion — already satisfied by step 1).
+4. **FOOP-34** (recursion) — after the full search suite (all of the above), per its own spec.
 
 ### Brewing
 
@@ -305,9 +336,9 @@ parallel worktrees will merge with friction (see P4). Order and why:
    classifier; do first to get its ~mixed-NK snapshot review out of the way.
 2. **FOOP-74** — FIRID, **by itself** (Atlas 2026-07-14): standalone diagnostic
    infrastructure, no other FOOP gates on it.
-3. **FOOP-84** — Deadbrane, **without any FIRID dependency** (its FirID-cloning-semantics
-   component is removed/deferred — see the banner in FOOP-84.md). Useless-element detection
-   only.
+3. **FOOP-45** — Deadbrane (renumbered from FOOP-84 on 2026-07-29), **without any FIRID
+   dependency** (its FirID-cloning-semantics component is removed/deferred — see the banner in
+   FOOP-45.md). Useless-element detection only.
 4. **FOOP-24** — detachment (parameterized SF/SFF markers). Last because it straddles both
    tracks: a search *prefilter* (Track 2's engine) plus clone/recoordination machinery
    (Track 3), and it consumes 93's `EconstanicReason::Detached`. Schedule after both tracks'
@@ -383,6 +414,81 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 ---
 
 ## Last Updated
+
+**Date**: 2026-07-29 (2)
+**Updated By**: Claude Code (Sonnet 5)
+**Changes**: **FOOP-25 superseded.** einmo was extracted into its own repository (`~/yolo/einmo`);
+FOOP-25's design (`EinmoReview`, unimplemented) was ported there as `EIMP-1`, adapted for
+einmo's own EIMP process (no worktree/`jia` mechanics). Updated FOOP-25's frontmatter
+(`status: Superseded`, `superseded_by: einmo repo EIMP-1`), added a superseded banner to
+`FOOP-25.md`, and formally cancelled `FOOP-25.plan.md` (`[x] Canceled` + `[-]` on every
+checkbox, per `foop.md`'s cancellation procedure). Updated this index's table row and Draft-list
+prose entry to match.
+
+**Date**: 2026-07-29
+**Updated By**: Claude Code (Opus 5)
+**Changes**: **Resolved a FOOP-84 number collision** discovered while merging `origin/jia` into
+`jia`. Two unrelated specifications had independently claimed FOOP-84: **Search Engine Refactor**
+(Atlas, `foop: 48`, present at the merge-base and cited as FOOP-84 by 44 references across
+FOOP-04/14/24/93 on both sides) and **Deadbrane** (Hephaestus, `foop: D48`), which landed on
+`origin/jia` and overwrote the file — leaving those 44 cross-references dangling on that branch.
+Search Engine Refactor **keeps FOOP-84** as the incumbent; Deadbrane is **renumbered to FOOP-45**
+(`foop: D54`, per `foop_check.py gen_next`) in new `FOOP-45.md` / `FOOP-45.plan.md`. Deadbrane's
+plan had not begun (no checkboxes checked), so its worktree metadata was also brought to current
+convention: branch `foop-45-deadbrane` (bare, no `foop/` prefix) and origin/merge target `jia`
+rather than `alpha`. Updated the referring FOOP-94 reference, the main table, and the Draft list.
+Also merged both sides' additive Draft-section entries (ours: the explicit search-engine
+sub-batch order; theirs: FOOP-05/15/25/35/94) and set FOOP-43's row to **Superseded (merged into
+FOOP-93)** — matching the banner in FOOP-43.md itself — while keeping its newer, more accurate
+title.
+
+**Date**: 2026-07-28 (4)
+**Updated By**: Claude Code (Opus 5)
+**Changes**: **FOOP-85 withdrawn; coordination detachment stays in FOOP-24.** The 2026-07-28 (2)
+revision reserved a separate FOOP-85 for implementing what FOOP-24 already specifies. That was
+wrong on two counts: (a) coordination detachment **is** FOOP-24's feature — FOOP-84 Part 3 renamed
+it, it did not fork a new one — so reserving a second number split a live feature from its own
+specification and demoted FOOP-24 to a "historical" document while its semantics, cross-tabulation
+table, pattern types, and test plan all remained current; (b) 85 is not a valid next number under
+little-endian numbering — `foop_check.py gen_next` yields **FOOP-94** (sort key 49). Removed the
+FOOP-85 bullet, folded its content into a rewritten FOOP-24 entry (retitled "Coordination
+detachment"), and redirected every live FOOP-85 reference across FOOP-84, FOOP-93, FOOP-43, and
+this index to FOOP-24. What FOOP-84 supersedes in FOOP-24 is **mechanism only** (the Phase A
+`_ab_search`-override design and the scan-loop prefilter locus), not the feature. FOOP-94 remains
+free for genuinely new work.
+
+**Date**: 2026-07-28 (3)
+**Updated By**: Claude Code (Opus 5)
+**Changes**: Propagated three FOOP-43/FOOP-84 corrections settled with Atlas this session.
+(1) **FOOP-43's rule changed**: anchored miss stays **NK** (not ECONSTANIC as its prior draft
+proposed); unanchored miss stays ECONSTANIC; the real change is **SFF-marked searches →
+ECONSTANIC regardless of anchoring**, plus the NK-propagation fix for deepens on unresolved
+anchors. Retitled FOOP-43 and rewrote both index entries. (2) **FOOP-84's behavior-preserving
+claim split**: Part 1 + §2.2 preserve behavior (no snapshot may change), §2.3–§2.5 are a
+deliberate semantic change with expected SF/SFF churn; upgraded its FOOP-43 dependency from
+"relies on, does not modify" to a hard dependency (§2.4.1 now needs `EconstanicReason::Detached`).
+(3) **Marker scope rule** (FOOP-84 §0.6/§2.2.4) recorded on the FOOP-84 and FOOP-85 entries: a marker
+affects only backward/ancestral searches originating inside it, only at the outward boundary
+crossing — never contexted (`&`) searches, never locally-resolving ones. Corrected FOOP-85's
+prerequisite description to name the SFF-marked rule rather than anchored-miss recoordination.
+
+**Date**: 2026-07-28 (2)
+**Updated By**: Claude Code (Sonnet 5)
+**Changes**: Documented the correct implementation order for the search-engine sub-batch now that
+FOOP-84 (added earlier the same day) is a load-bearing prerequisite for FOOP-93/FOOP-04/FOOP-14/
+FOOP-85, not a peer alongside them. Rewrote the Draft-status listing for this batch with explicit
+"Needs FOOP-84" annotations on FOOP-93/FOOP-04/FOOP-14, added a **FOOP-85 (reserved, not yet
+created)** entry documenting what it must build (the `Detachment` struct/parser on top of FOOP-84
+Part 2, plus FOOP-84 Part 3's terminology), and added a short explicit numbered order
+(FOOP-43 → FOOP-84 → {FOOP-93, FOOP-04, FOOP-14, FOOP-85 in any order/parallel} → FOOP-34) at the
+end of the Draft section. Corrected the FOOP-84 changelog entry below: `CopyMode` is a two-variant
+type (`Normal`/`SfCopy`) that only ever reaches the scan loop for yielded candidates — `Detach` is
+a pre-yield filter internal to the Navigator's own iteration (`next_candidate()` simply never
+returns a Detached candidate), not a third value riding the same channel as originally described
+here; see FOOP-84 §2.3's own Last-Updated entry for the full correction. Also updated FOOP-93,
+FOOP-04, and FOOP-14 in place with "Builds on FOOP-84" banners and redirected references (FOOP-93
+additionally corrected a stale claim that it "shares a locus" with detachment — it doesn't, per
+FOOP-84 §2.3, since detachment now acts in the Navigator, not the Predicate).
 
 **Date**: 2026-07-19
 **Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5

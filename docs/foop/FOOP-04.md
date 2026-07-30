@@ -29,6 +29,24 @@ begun: [ ]
 > `AncestralNavigator`/contexted-search path FOOP-84 establishes. No design conflict —
 > `CascadingSearchFir` is its own stateful wrapper FIR, orthogonal to FOOP-84's Navigator/
 > `CopyMode` mechanism.
+>
+> **Marker interaction is narrowly scoped (FOOP-84 §0.6/§2.2.4)** and worth stating because a cascade
+> spans several searches: an SF/SFF (or later, coordination-detachment) marker affects **only** a
+> backward/ancestral search **originating inside** the marker, and **only** where that search's AB
+> climb **crosses the marker's boundary outward**. It never affects contexted (`&`) searches, nor
+> searches that resolve without reaching the boundary. For a cascade this means each branch is
+> evaluated on its own merits — a branch that resolves locally is unaffected by an enclosing
+> marker, while a branch that climbs past one is subject to it. There is no cascade-level marker
+> state to thread, and no interaction between the cascade connector and the marker mechanism.
+>
+> **Terminology: cite FOOP-84 Part 0, do not restate.** Every search-family term this FOOP uses —
+> **search context** (§0.3: home brane *in its own context* + statement number of the matched
+> statement, carried by `FoolRefFir` at `ubc_children[1]`), **contextless/contexted search**
+> (§0.4), **anchored/unanchored** and what a miss proves (§0.2), the **detachment family**
+> (§0.5: coordination vs. privacy vs. Required Searches vs. strict), **marker scope** (§0.6), and
+> **engine vocabulary** (§0.7: Candidate Navigator, Statement Matcher, cursor-source, `CopyMode`,
+> `BoundaryEffect`) — is defined there. On first use write the term plus its pointer, e.g.
+> "search context (FOOP-84 §0.3)"; use the bare term thereafter.
 
 ## Abstract
 
@@ -175,6 +193,22 @@ alternation and lacks clear precedence. The parenthesized combine-block (FOOP-93
 - Notes: `NOTES-creation-lineage-and-search-family.md` §9 + Engineering guidance.
 
 ## Last Updated
+
+**Date**: 2026-07-28 (2)
+**Updated By**: Claude Code (Opus 5)
+**Changes**: Added the "cite FOOP-84 Part 0, do not restate" terminology banner — FOOP-84 Part 0
+is now the single definition site for search context (§0.3), the two search families (§0.4),
+anchoring/miss outcomes (§0.2), the detachment family (§0.5), marker scope (§0.6), and engine
+vocabulary (§0.7). First use of any such term in this FOOP carries a §-pointer; no redefinition
+here.
+
+**Date**: 2026-07-28 (2)
+**Updated By**: Claude Code (Opus 5)
+**Changes**: Added the marker **scope rule** (FOOP-84 §0.6/§2.2.4) to the banner, at the user's
+direction — stated explicitly here because a cascade spans several searches: each branch is
+evaluated on its own merits, so a branch resolving locally is unaffected by an enclosing marker
+while a branch climbing past one is subject to it. No cascade-level marker state to thread, and no
+interaction between the cascade connector and the marker mechanism.
 
 **Date**: 2026-07-28
 **Updated By**: Claude Code (Sonnet 5)
