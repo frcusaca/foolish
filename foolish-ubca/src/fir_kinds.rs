@@ -891,7 +891,15 @@ impl Fir for BraneFir {
         for i in range {
             let child = &children[i];
             let child_borrowed = child.borrow();
-            if let Some(sn) = child_borrowed.as_stmt_name()
+            // Choose projection: pattern with ' matches characterized_name(), else name()
+            let candidate = if expression.contains('\'') {
+                child_borrowed
+                    .as_stmt_identifier()
+                    .map(|id| id.characterized_name())
+            } else {
+                child_borrowed.as_stmt_name()
+            };
+            if let Some(sn) = candidate
                 && SearchFir::matches_pattern(sn, expression)
             {
                 return Some((i, Rc::clone(child), child_borrowed.core().get_nyes()));
@@ -2315,7 +2323,14 @@ impl Fir for ConcatHelper {
         for i in range {
             let child = &children[i];
             let child_borrowed = child.borrow();
-            if let Some(sn) = child_borrowed.as_stmt_name()
+            let candidate = if expression.contains('\'') {
+                child_borrowed
+                    .as_stmt_identifier()
+                    .map(|id| id.characterized_name())
+            } else {
+                child_borrowed.as_stmt_name()
+            };
+            if let Some(sn) = candidate
                 && SearchFir::matches_pattern(sn, expression)
             {
                 return Some((i, Rc::clone(child), child_borrowed.core().get_nyes()));

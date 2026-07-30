@@ -217,15 +217,28 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
             core: ProtoBrane::new(vec![], child_parent!(), Nyes::Nk),
             reason: "??? literal".to_string(),
         })),
-        Astn::Identifier { id, .. } => Rc::new(RefCell::new(SearchFir {
-            core: ProtoBrane::new(vec![], child_parent!(), search_nyes),
-            pattern: format!("^{}$", id),
-            anchored: false,
-            forward: false,
-            sf_inner_pattern: RefCell::new(None),
-            is_value_search: false,
-            contexted: false,
-        })),
+        Astn::Identifier {
+            characterizations,
+            id,
+        } => {
+            // Fold characterizations back into the search pattern (Gotcha #3).
+            // A 'True reference must search for 'True, not just True.
+            let full_pattern = if characterizations.is_empty() {
+                id.clone()
+            } else {
+                let char_str: String = characterizations.iter().map(|c| format!("{c}'")).collect();
+                format!("{char_str}{id}")
+            };
+            Rc::new(RefCell::new(SearchFir {
+                core: ProtoBrane::new(vec![], child_parent!(), search_nyes),
+                pattern: format!("^{full_pattern}$"),
+                anchored: false,
+                forward: false,
+                sf_inner_pattern: RefCell::new(None),
+                is_value_search: false,
+                contexted: false,
+            }))
+        }
         Astn::Brane {
             characterizations,
             statements,
