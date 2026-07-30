@@ -4,6 +4,8 @@ use std::rc::{Rc, Weak};
 use foolish_core::fir::Nyes;
 use regex::Regex;
 
+use crate::identifier::Identifier;
+
 use crate::fir_trait::{Fir, FirKind, FirRef, FirRefExt, Scope, UbcError};
 use crate::nyes_ext::NyesExt;
 use crate::proto_brane::ProtoBrane;
@@ -339,7 +341,10 @@ impl ProtoBrane {
                 RefCell::new(ConcatHelper { core })
             }),
             FirKind::Statement => {
-                let name = borrowed.as_stmt_name().unwrap_or("").to_owned();
+                let identifier = borrowed
+                    .as_stmt_identifier()
+                    .cloned()
+                    .unwrap_or_else(|| Identifier::from_parts(vec![], ""));
                 let line = index;
                 Rc::new_cyclic(|me: &Weak<RefCell<StatementFir>>| {
                     let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
@@ -353,7 +358,7 @@ impl ProtoBrane {
                     );
                     RefCell::new(StatementFir {
                         core,
-                        name,
+                        identifier,
                         line_number: line,
                     })
                 })
@@ -678,13 +683,17 @@ impl OperatorFir {
 #[derive(Debug)]
 pub struct StatementFir {
     pub(crate) core: ProtoBrane,
-    pub(crate) name: String,
+    pub(crate) identifier: Identifier,
     pub(crate) line_number: usize,
 }
 
 impl StatementFir {
     pub fn name(&self) -> &str {
-        &self.name
+        self.identifier.name()
+    }
+
+    pub fn identifier(&self) -> &Identifier {
+        &self.identifier
     }
 
     pub fn line_number(&self) -> usize {
@@ -699,7 +708,20 @@ impl StatementFir {
     ) -> FirRef {
         Rc::new(RefCell::new(StatementFir {
             core: ProtoBrane::new(vec![body], parent, Nyes::Prembrionic),
-            name: name.to_owned(),
+            identifier: Identifier::from_parts(vec![], name),
+            line_number,
+        }))
+    }
+
+    pub fn statement_with_identifier(
+        identifier: Identifier,
+        line_number: usize,
+        body: FirRef,
+        parent: Weak<RefCell<dyn Fir>>,
+    ) -> FirRef {
+        Rc::new(RefCell::new(StatementFir {
+            core: ProtoBrane::new(vec![body], parent, Nyes::Prembrionic),
+            identifier,
             line_number,
         }))
     }
@@ -739,11 +761,16 @@ impl Fir for StatementFir {
     }
 
     fn as_stmt_name(&self) -> Option<&str> {
-        if self.name.is_empty() {
+        let name = self.identifier.name();
+        if name.is_empty() {
             None
         } else {
-            Some(&self.name)
+            Some(name)
         }
+    }
+
+    fn as_stmt_identifier(&self) -> Option<&Identifier> {
+        Some(&self.identifier)
     }
     fn as_stmt_line_number(&self) -> Option<usize> {
         Some(self.line_number)
@@ -2578,7 +2605,7 @@ pub fn statement(
 ) -> FirRef {
     Rc::new(RefCell::new(StatementFir {
         core: ProtoBrane::new(vec![body], parent, Nyes::Prembrionic),
-        name: name.to_owned(),
+        identifier: Identifier::from_parts(vec![], name),
         line_number,
     }))
 }
@@ -2803,7 +2830,7 @@ mod tests {
             let parent: Weak<RefCell<dyn Fir>> = me.clone();
             RefCell::new(StatementFir {
                 core: ProtoBrane::new(vec![body], parent, Nyes::Prembrionic),
-                name: name.to_owned(),
+                identifier: Identifier::from_parts(vec![], name),
                 line_number,
             })
         })

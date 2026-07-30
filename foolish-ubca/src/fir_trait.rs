@@ -135,6 +135,11 @@ pub trait Fir: std::fmt::Debug {
         None
     }
 
+    /// StatementFir identifier. Default: None.
+    fn as_stmt_identifier(&self) -> Option<&crate::identifier::Identifier> {
+        None
+    }
+
     /// StatementFir line number. Default: None.
     fn as_stmt_line_number(&self) -> Option<usize> {
         None
@@ -721,7 +726,7 @@ mod get_value_tests {
             let parent: Weak<RefCell<dyn Fir>> = me.clone();
             RefCell::new(StatementFir {
                 core: ProtoBrane::new(vec![body], parent, Nyes::Prembrionic),
-                name: name.to_owned(),
+                identifier: crate::identifier::Identifier::from_parts(vec![], name),
                 line_number: line,
             })
         })

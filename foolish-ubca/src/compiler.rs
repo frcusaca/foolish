@@ -432,25 +432,27 @@ impl AstnCompilerExt for Astn {
         // Decide the statement's name once: the LHS identifier for an assignment, else `???`
         // (anonymous bare expression). The body is built the same way regardless, via
         // build_expr_with_operator (Assign is the no-op operator), so there is ONE Rc::new_cyclic.
-        let (name, expr, operator) = match self {
+        let (characterizations, name, expr, operator) = match self {
             Astn::Assignment {
+                characterizations,
                 identifier,
                 operator,
                 expr,
-                ..
-            } => (identifier, *expr, operator),
+            } => (characterizations, identifier, *expr, operator),
             other => (
+                vec![],
                 ANON_STMT_NAME.to_string(),
                 other,
                 AssignmentOperator::Assign,
             ),
         };
+        let identifier = crate::identifier::Identifier::from_parts(characterizations, &name);
         Rc::new_cyclic(move |me: &Weak<RefCell<StatementFir>>| {
             let stmt_weak: Weak<RefCell<dyn Fir>> = me.clone();
             let body = expr.build_expr_with_operator(operator, &stmt_weak, under_sff);
             RefCell::new(StatementFir {
                 core: ProtoBrane::new(vec![body], parent.clone(), Nyes::Prembrionic),
-                name,
+                identifier,
                 line_number: line,
             })
         })
@@ -479,7 +481,7 @@ impl AstnCompilerExt for Astn {
 
 #[cfg(test)]
 mod tests {
-    use super::{ANON_STMT_NAME, AstnCompilerExt};
+    use super::{AstnCompilerExt, ANON_STMT_NAME};
     use std::cell::RefCell;
     use std::rc::{Rc, Weak};
 
