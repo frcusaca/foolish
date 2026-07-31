@@ -8,12 +8,17 @@ fn einmo_suite_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("einmo_suite")
 }
 
-/// Einmo tests for the UBCa FVM.
+/// Einmo gate tests for the UBCa FVM.
 ///
-/// Two gates at escalating validation levels (FOOP-64):
+/// Three gates at escalating validation levels (FOOP-64), each runnable
+/// independently by CI to produce a per-gate status badge:
 ///
-/// * [`run_einmo_tests`] — Checked level: output matches signed `checked/` baseline.
-/// * `einmo_verified_gate` — Verified level: plus `verified/` under human key. (To come.)
+/// * [`einmo_gate_output`] — Output level: every input evaluates and
+///   self-verifies in `output/`.
+/// * [`einmo_gate_checked`] — Checked level: output matches signed `checked/`
+///   baseline.
+/// * [`einmo_gate_verified`] — Verified level: `checked/` matches `verified/`
+///   under human reviewer key.
 #[cfg(test)]
 mod einmo_tests {
     use super::*;
@@ -50,23 +55,17 @@ mod einmo_tests {
         TestConfig::new(einmo_suite_dir(), level).foolish_separator()
     }
 
-    /// **Feature-complete test suite**: every input evaluates, is written and
-    /// self-verifies in `output/`, and matches the signed `checked/` baseline.
+    /// **Output gate**: every input evaluates, is written and self-verifies
+    /// in `output/`. No correspondence check — just that the FVM can run all
+    /// inputs without crashing and produce valid signed artifacts.
     #[test]
-    fn run_einmo_tests() {
-        // The feature-complete test suite validates at the Checked level: a
-        // reviewed, signed baseline that output must match. It says nothing
-        // about verified/ — signing is the merge gate's business.
-        let config =
-            config(ValidationLevel::Checked).require_correspondence(Stage::Output, Stage::Checked);
+    fn einmo_gate_output() {
+        let config = config(ValidationLevel::Output);
         let suite = EinmoSuite::new(config);
         let results = suite
             .evaluate_all(&UbcaEinmoAdapter)
             .expect("evaluate_all must not fail at the filesystem level");
 
-        // Anti-vacuity: a suite that discovered no inputs is a failure, not a
-        // pass. (`compare --require-match` exits 0 on an empty tree — verified
-        // 2026-07-14; FOOP-64 §"The escalating validation levels".)
         assert!(
             !results.files.is_empty(),
             "einmo suite discovered no inputs — check einmo_suite/input/"
@@ -81,10 +80,39 @@ mod einmo_tests {
             );
         }
 
-        // The suite's shape is judged at the level it declared: no extraneous
-        // files, no orphaned artifacts, output <-> checked matching up exactly.
-        // An editor swap file left in input/ reds the gate on purpose — a dirty
-        // tree is not a clean baseline.
+        assert!(
+            results.integrity.is_clean(),
+            "einmo_suite is not sound at the Output level:\n{}",
+            results.integrity.report()
+        );
+    }
+
+    /// **Checked gate**: output matches the signed `checked/` baseline.
+    /// Escalates from Output level — evaluates all inputs, writes `output/`,
+    /// then asserts byte-identical correspondence against `checked/`.
+    #[test]
+    fn einmo_gate_checked() {
+        let config =
+            config(ValidationLevel::Checked).require_correspondence(Stage::Output, Stage::Checked);
+        let suite = EinmoSuite::new(config);
+        let results = suite
+            .evaluate_all(&UbcaEinmoAdapter)
+            .expect("evaluate_all must not fail at the filesystem level");
+
+        assert!(
+            !results.files.is_empty(),
+            "einmo suite discovered no inputs — check einmo_suite/input/"
+        );
+
+        for file in &results.files {
+            assert!(
+                file.written_and_verified,
+                "{} was not written+verified: {:?}",
+                file.rel_path.display(),
+                file.detail
+            );
+        }
+
         assert!(
             results.integrity.is_clean(),
             "einmo_suite is not sound at the Checked level:\n{}",
@@ -97,6 +125,49 @@ mod einmo_tests {
              Review the diff (`einmo compare output checked foolish-ubca/einmo_suite/`), then \
              either repair the code or promote after review \
              (`einmo promote output->checked foolish-ubca/einmo_suite/`).",
+            results.correspondence_failures.join("\n  ")
+        );
+    }
+
+    /// **Verified gate**: `checked/` matches `verified/` under human reviewer
+    /// key. Escalates from Checked level — evaluates all inputs, asserts
+    /// output↔checked correspondence, then asserts checked↔verified
+    /// correspondence with human attestation.
+    #[test]
+    fn einmo_gate_verified() {
+        let config = config(ValidationLevel::Verified)
+            .require_correspondence(Stage::Output, Stage::Checked)
+            .require_correspondence(Stage::Checked, Stage::Verified);
+        let suite = EinmoSuite::new(config);
+        let results = suite
+            .evaluate_all(&UbcaEinmoAdapter)
+            .expect("evaluate_all must not fail at the filesystem level");
+
+        assert!(
+            !results.files.is_empty(),
+            "einmo suite discovered no inputs — check einmo_suite/input/"
+        );
+
+        for file in &results.files {
+            assert!(
+                file.written_and_verified,
+                "{} was not written+verified: {:?}",
+                file.rel_path.display(),
+                file.detail
+            );
+        }
+
+        assert!(
+            results.integrity.is_clean(),
+            "einmo_suite is not sound at the Verified level:\n{}",
+            results.integrity.report()
+        );
+
+        assert!(
+            results.correspondence_failures.is_empty(),
+            "correspondence failure:\n  {}\n\
+             Review the diff (`einmo compare output checked foolish-ubca/einmo_suite/`), then \
+             either repair the code or promote after review.",
             results.correspondence_failures.join("\n  ")
         );
     }

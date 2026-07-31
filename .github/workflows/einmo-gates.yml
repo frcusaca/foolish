@@ -1,0 +1,35 @@
+name: einmo-gates
+
+on:
+  push:
+    branches: [jia]
+  pull_request:
+    branches: [jia]
+
+jobs:
+  output:
+    name: einmo output
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test -p foolish-ubca --lib -- einmo_gate_output --nocapture
+
+  checked:
+    name: einmo checked
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test -p foolish-ubca --lib -- einmo_gate_checked --nocapture
+
+  verified:
+    name: einmo verified
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test -p foolish-ubca --lib -- einmo_gate_verified --nocapture
