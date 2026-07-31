@@ -236,49 +236,59 @@ module).
       resolve ancestrally; `'True=3` ⇒ `NK("'True redefined")` while `'True='True` permitted.
       Generate `.snap.new`; **present to human** — never auto-accept.
 
-## Phase 6 — Comparison operators (`<`, `>`, `<=`, `>=`)
+## Phase 6 — Comparison operators (`\o<`, `\o>`, `\o<=`, `\o>=`, `\o==`)
 
 **Read §5 of FOOP-33.md before implementing.** Comparison operators produce `'True`/`'False`
 from `system.foo` (Phase 5 must be complete). They extend the existing binary-operator
-infrastructure.
+infrastructure. Operators use `\o` prefix for keyboard input and Unicode U+0332 combining
+low line for display (each operator character gets its own U+0332 suffix).
 
-- [ ] Lexer: add four new tokens `Lt` (`<`), `Gt` (`>`), `Le` (`<=`), `Ge` (`>=`) to
-      `foolish-parser/src/token.rs`. Two-character tokens (`<=`, `>=`) must be recognized
-      before single-character fallbacks in the lexer dispatch.
-- [ ] Parser: add `<`, `>`, `<=`, `>=` as infix operators at the same precedence level as
-      `+`/`-` (additive) in `foolish-parser/src/parser.rs`. Left-associative.
-- [ ] Parser unit tests: `a < b` parses to a binary operation; `a + b < c` parses as
-      `(a + b) < c` (precedence); `a < b < c` parses as `(a < b) < c` (left-associativity).
-- [ ] Evaluator: add four new arms to the binary-operator dispatch in
-      `foolish-ubca/src/evaluator.rs` (or equivalent). Each arm:
+- [ ] Lexer: add five new tokens `LTOp` (`\o<`), `GTOp` (`\o>`), `Le` (`\o<=`), `Ge` (`\o>=`),
+      `EqOp` (`\o==`) to `foolish-parser/src/token.rs`. Recognized via `\o` prefix and Unicode
+      U+0332 forms. Unicode forms must be recognized BEFORE plain `>`, `=` matches in the lexer.
+- [ ] Parser: add `\o<`, `\o>`, `\o<=`, `\o>=`, `\o==` as infix operators at the same
+      precedence level as `+`/`-` (additive) in `foolish-parser/src/parser.rs`. Left-associative.
+- [ ] Parser unit tests: `a \o< b` parses to a binary operation; `a + b \o<= c` parses as
+      `(a + b) \o<= c` (precedence); Unicode forms also parse.
+- [ ] Sequencer: add `op_display()` function that renders operators with U+0332 on each character.
+      Used in `render_fir()` and `proto_brane_formatter()`.
+- [ ] Evaluator: add five new arms to the binary-operator dispatch in
+      `foolish-ubca/src/fir_kinds.rs`. Each arm:
       1. Checks both operands are integers (else NK with reason
          `"comparison: non-integer operand"`).
       2. Performs the comparison.
-      3. Resolves `'True` or `'False` from the system root brane (the same ancestral lookup
-         any program uses — `_ib_search` or a cached reference to the system root).
+      3. Resolves `'True` or `'False` from the system root brane.
       No new FIR kind — returns `CreationFir` or `NkFir`.
-- [ ] Unit tests: `1 < 2` ⇒ `'True`; `2 < 1` ⇒ `'False`; `1 <= 1` ⇒ `'True`; `3 > 5` ⇒
-      `'False`; `5 >= 5` ⇒ `'True`. Non-integer operand (`⬤ < 3`) ⇒ NK. Verify the returned
-      `'True` is `Rc::ptr_eq` with the `'True` in `system.foo` (referential identity).
-- [ ] Approval tests: `comparison_basic.foo`, `comparison_equal.foo`, `comparison_nk.foo`,
-      `comparison_if_then.foo` (the motivating example — comparison feeding into value search).
-      Generate `.snap.new`; present to human.
+- [ ] Unit tests: all five operators on integer pairs, non-integer operand → NK.
+- [ ] Einmo tests: `int_comparators.foo` (Unicode + ASCII side by side),
+      `boolean/comparison_operators.foo`, `boolean/constants.foo`, `boolean/if_then_else.foo`.
 
-## Phase 7 — Documentation
+## Phase 7 — Documentation and Tests
 
 - [ ] Document the null-characterized name-constant rule and universal characterizations
       (update `docs/vintage_legacy/CREATION.md` cross-refs and add engineering notes under
       `docs/ubc1/how`); update AGENTS.md §Foolish Terminology / §Searches as needed
       (with the "## Last Updated" protocol).
+- [ ] Update AGENTS.md Code Style section: agents must use Unicode operator forms when writing
+      Foolish code (`⬤` not `{*}`, `<̲=̲` not `\o<=`, etc.). The `\o` prefix is for keyboard
+      input only.
+- [ ] Create einmo tests under `foop/33/` with subdirectories:
+      - `creation/` — basics, nilpotent, referential_equality
+      - `creation_concat.foo` — null-constant rule in concatenation
+      - `boolean/` — comparison_operators, constants, if_then_else
+      - `characterizations/` — null_char_constant, nf_error, quote_bearing_search, proximity_rule
+      - `int_comparators.foo` — Unicode + ASCII `\o` forms side by side
+      - `comprehensive.foo` — all features interacting
+- [ ] Promote all einmo baselines to `checked/`.
 
 ## Phase 8 — Merge
 
 - [ ] Merge `foop-33-creation-postulate` to `jia`
   - [ ] Write and verify `foop_33_comprehensive.foo` (reserved name): creation, characterized
         names, quote-bearing search, referential equality, `system.foo` parent brane,
-        null-constant refusal (incl. `A A A` concatenation), comparison operators (`<`, `>`,
-        `<=`, `>=` producing `'True`/`'False`/NK), interacting with prior features (nested
-        branes, contexted `&` searches). Generate + verify `.snap.new`; final approval is
+        null-constant refusal (incl. `A A A` concatenation), comparison operators (`\o<`, `\o>`,
+        `\o<=`, `\o>=`, `\o==` producing `'True`/`'False`/NK), interacting with prior features
+        (nested branes, contexted `&` searches). Generate + verify `.snap.new`; final approval is
         human-signed.
   - [ ] `cargo fmt`, `cargo clippy -D warnings`, `cargo test --workspace` all green.
   - [ ] Verify all work complete in the worktree and committed to
@@ -295,6 +305,15 @@ infrastructure.
 
 ## Last Updated
 
+**Date**: 2026-07-31
+**Updated By**: Sisyphus / xiaomi/mimo-v2.5-pro
+**Changes (round 9, recovery)**: Updated comparison operators to use `\o` prefix convention
+(`\o<`, `\o>`, `\o<=`, `\o>=`, `\o==`) with Unicode U+0332 combining low line display form.
+Added `EqOp` token for `\o==`. Updated Phase 6 plan to reflect new token names and sequencer
+`op_display()` rendering. Updated Phase 7 to include einmo test organization (`foop/33/`
+subdirectories) and AGENTS.md Unicode operator convention. Updated Phase 8 comprehensive test
+description. Updated FOOP-33.md §5 with new operator naming and five operators (added `\o==`).
+NF reason string changed from `"'<name> redefined"` to `"'<name> not-foolish"`.
 **Date**: 2026-07-30
 **Updated By**: Sisyphus / xiaomi/mimo-v2.5-pro
 **Changes (round 8, per Atlas)**: (1) Added Phase 6 — comparison operators (`<`, `>`, `<=`, `>=`):

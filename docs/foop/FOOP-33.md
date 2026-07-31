@@ -402,48 +402,50 @@ conflicting redefinition of the established constant — unless `default_equal` 
 The check reuses `default_equal` and the same `NK("'<name> redefined")` result as the brane
 step: **one rule, one NK mechanism, two trigger sites** (brane step, concatenation merge).
 
-### 5. Comparison operators (`<`, `>`, `<=`, `>=`) as built-in boolean producers
+### 5. Comparison operators as built-in boolean producers
 
 **These are NOT boolean logic operators** (`and`, `or`, `not` — deferred to a follow-on FOOP).
 Comparison operators are **built-in arithmetic-adjacent operators** that produce the
 null-characterized boolean values defined in `system.foo` (§4). They extend the existing
-binary-operator infrastructure (`+`, `-`, `*`, `/`) with four new tokens and evaluation rules.
+binary-operator infrastructure (`+`, `-`, `*`, `/`) with new tokens and evaluation rules.
 
-**Grammar.** Four new infix operators at the same precedence level as `+` and `-` (additive):
+**Operator naming.** `<` and `>` are already used as StayFoolish delimiters. Comparison
+operators use a `\o` prefix for keyboard input, with a Unicode underlined form for display:
+
+| Keyboard input | Unicode display | Token | Op string |
+|---------------|-----------------|-------|-----------|
+| `\o<` | `<̲` (`<` + U+0332) | `LTOp` | `\<` |
+| `\o>` | `>̲` (`>` + U+0332) | `GTOp` | `\>` |
+| `\o<=` | `<̲=̲` (`<` + U+0332 + `=` + U+0332) | `Le` | `<=` |
+| `\o>=` | `>̲=̲` (`>` + U+0332 + `=` + U+0332) | `Ge` | `>=` |
+| `\o==` | `=̲=̲` (`=` + U+0332 + `=` + U+0332) | `EqOp` | `\==` |
+
+The sequencer always outputs the Unicode form (each operator character followed by U+0332
+combining low line). Agents writing `.foo` files must use the Unicode form; the `\o` prefix
+is for human keyboard input only.
+
+**Grammar.** Five infix operators at the same precedence level as `+` and `-` (additive):
 
 ```
-additive   ::= multiplicative ( ( "+" | "-" | "<" | ">" | "<=" | ">=" ) multiplicative )*
+additive   ::= multiplicative ( ( "+" | "-" | \o< | \o> | \o<= | \o>= | \o== ) multiplicative )*
 ```
 
-They are left-associative, same as `+`/`-`. No new precedence level is introduced — comparisons
-sit alongside addition/subtraction. (If a future FOOP needs different precedence, it can split
-the level then.)
-
-**Lexer.** Four new tokens:
-
-| Token | Characters |
-|-------|-----------|
-| `Lt`  | `<`       |
-| `Gt`  | `>`       |
-| `Le`  | `<=`      |
-| `Ge`  | `>=`      |
-
-The two-character tokens (`<=`, `>=`) must be recognized before the single-character fallbacks.
-The lexer already handles multi-character tokens (e.g. `==` is not a token, but `//` comments
-are); add `Lt`, `Gt`, `Le`, `Ge` to the token enum and the lexer's operator dispatch.
+They are left-associative, same as `+`/`-`.
 
 **Evaluator semantics.** When both operands settle to integers:
 
 | Operator | Condition | Result |
 |----------|-----------|--------|
-| `<`  | `a < b`  | `'True` (the null-characterized constant from `system.foo`) |
-| `<`  | `a >= b` | `'False` |
-| `>`  | `a > b`  | `'True` |
-| `>`  | `a <= b` | `'False` |
-| `<=` | `a <= b` | `'True` |
-| `<=` | `a > b`  | `'False` |
-| `>=` | `a >= b` | `'True` |
-| `>=` | `a < b`  | `'False` |
+| `\o<`  | `a < b`  | `'True` |
+| `\o<`  | `a >= b` | `'False` |
+| `\o>`  | `a > b`  | `'True` |
+| `\o>`  | `a <= b` | `'False` |
+| `\o<=` | `a <= b` | `'True` |
+| `\o<=` | `a > b`  | `'False` |
+| `\o>=` | `a >= b` | `'True` |
+| `\o>=` | `a < b`  | `'False` |
+| `\o==` | `a == b` | `'True` |
+| `\o==` | `a != b` | `'False` |
 
 When either operand is **not an integer** (NK, brane, creation, etc.): the result is **NK**.
 This follows the same "only integers are comparable" principle as `default_equal` (§2). The
@@ -487,14 +489,14 @@ No new FIR kind is needed — the result is a `CreationFir` (from `system.foo`) 
 - **New equality primitive `default_equal(&FirRef, &FirRef) -> Equality`** where
   `enum Equality { Equal, NotEqual, Unknowable }` (§2). Only two integers or two creations are
   comparable; **everything else is `Unknowable`**. Single home for the equality rules.
-- **NK for a redefined constant is the ordinary `NkFir`** carrying reason `"'<name> redefined"`
-  — no new FIR kind or NYES state. `get_value()` on the offending statement returns it.
+- **NK for a redefined constant is the ordinary `NkFir`** carrying reason `"'<name> not-foolish"`
+  (NF — Not Foolish, a sub-condition of NK for violations of Foolish's own rules). See §4.
 - **NYES.** No new NYES states. `CreationFir` is terminal `Independent` from birth. A new
   `*_nyes_transitions` unit test (`creation_nyes_transitions`) is REQUIRED (single-state
   `Independent`), per AGENTS.md.
-- **New tokens `Lt`, `Gt`, `Le`, `Ge`** (`foolish-parser/src/token.rs`): four new operator
-  tokens for `<`, `>`, `<=`, `>=`. Two-character tokens (`<=`, `>=`) recognized before
-  single-character fallbacks.
+- **New tokens `LTOp`, `GTOp`, `Le`, `Ge`, `EqOp`** (`foolish-parser/src/token.rs`): five
+  operator tokens for `\o<`, `\o>`, `\o<=`, `\o>=`, `\o==`. Recognized via `\o` prefix and
+  Unicode U+0332 combining low line forms. Sequencer renders with U+0332 on each character.
 - **No new FIR kind for comparison results** — the evaluator returns a `CreationFir` (the
   `'True`/`'False` object from `system.foo`) or an `NkFir` for non-integer operands.
 
