@@ -190,17 +190,29 @@ impl Parser {
     // --- characterizations: identifier'?* ---
     fn parse_characterizations(&mut self) -> Vec<String> {
         let mut chars = Vec::new();
+        // Handle leading apostrophe: 'name is a null-characterized name
+        if self.peek_token() == Some(&Token::Apostrophe) {
+            chars.push(String::new());
+            self.advance();
+        }
         loop {
-            if let Some(Token::Ident(name)) = self.peek_token() {
-                let next_pos = self.pos + 1;
-                if self.tokens.get(next_pos).map(|t| &t.token) == Some(&Token::Apostrophe) {
-                    chars.push(name.clone());
-                    self.advance(); // ident
-                    self.advance(); // apostrophe
+            match self.peek_token() {
+                Some(Token::Ident(name)) => {
+                    if self.tokens.get(self.pos + 1).map(|t| &t.token) == Some(&Token::Apostrophe) {
+                        chars.push(name.clone());
+                        self.advance();
+                        self.advance();
+                        continue;
+                    }
+                    break;
+                }
+                Some(Token::Apostrophe) => {
+                    chars.push(String::new());
+                    self.advance();
                     continue;
                 }
+                _ => break,
             }
-            break;
         }
         chars
     }
@@ -248,6 +260,10 @@ impl Parser {
 
     fn is_assignment_start(&self) -> bool {
         let mut pos = self.pos;
+        // Handle leading apostrophe: 'name
+        if self.tokens.get(pos).map(|t| &t.token) == Some(&Token::Apostrophe) {
+            pos += 1;
+        }
         // Skip characterizations
         loop {
             match self.tokens.get(pos) {
@@ -257,6 +273,11 @@ impl Parser {
                         continue;
                     }
                     break;
+                }
+                // '' — consecutive apostrophe (null characterization)
+                Some(t) if t.token == Token::Apostrophe => {
+                    pos += 1;
+                    continue;
                 }
                 _ => return false,
             }
@@ -951,6 +972,14 @@ impl Parser {
                     pattern.push('\'');
                     self.advance();
                 }
+                Some(Token::Apostrophe) => {
+                    pattern.push('\'');
+                    self.advance();
+                }
+                Some(Token::Apostrophe) => {
+                    pattern.push('\'');
+                    self.advance();
+                }
                 Some(t) => {
                     // Operators and other tokens that can be part of regex patterns
                     pattern.push_str(&t.to_string());
@@ -1084,12 +1113,31 @@ impl Parser {
                         value_pattern: Box::new(value_pattern),
                     })
                 } else {
-                    Err(ParseError::Syntax {
-                        message: "Unanchored ? without = not supported".into(),
-                        line: self.loc().0,
-                        col: self.loc().1,
+                    Ok(Astn::RegexpSearch {
+                        anchor: Box::new(Astn::Brane {
+                            characterizations: vec![],
+                            statements: vec![],
+                        }),
+                        operator: SearchOperator::RegexpLocal,
+                        pattern,
                     })
                 }
+            }
+            Some(Token::Apostrophe) => {
+                let chars = self.parse_characterizations();
+                let id = self.parse_identifier()?;
+                Ok(Astn::Identifier {
+                    characterizations: chars,
+                    id,
+                })
+            }
+            Some(Token::Apostrophe) => {
+                let chars = self.parse_characterizations();
+                let id = self.parse_identifier()?;
+                Ok(Astn::Identifier {
+                    characterizations: chars,
+                    id,
+                })
             }
             Some(Token::Ident(_)) => {
                 let chars = self.parse_characterizations();

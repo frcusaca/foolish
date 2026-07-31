@@ -1,0 +1,29 @@
+#einmo 1 encoding=utf-8 separator=!!\n
+test: foop/33/creation/nilpotent.foo
+suite: /yolo/foolish/foolish-ubca/einmo_suite
+producer: 73060a81
+producer-diff: sha256:595d52810d0dfc2685996bba07f7ee2a7527f5377bca58909104b7b78a7875ae
+generated: 2026-07-31T20:14:36.000000000Z
+status: normal
+status-detail: 
+sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
+{
+	!! Nilpotent creation: creations that create inequalities and go away immediately.
+	a = {blah={*}};
+	fails = a~={*};
+	check = {*} \o< 10;
+}
+!!
+{WOCONSTANIC
+  a={
+      blah=⬤
+  };
+  fails==(anchor={
+  blah=⬤
+}, value=⬤, NK);
+  check=Op\̲<̲(⬤, 10, WOCONSTANIC)
+}!!
+!!
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:8a8cd957c579c8b5e1390b10dea02c0ef7f47c92787a8f976bdf97e7bfa2ac08","timestamp":"2026-07-31T20:14:36.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:8a8cd957c579c8b5e1390b10dea02c0ef7f47c92787a8f976bdf97e7bfa2ac08","timestamp":"2026-07-31T20:14:36.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"uZeyau2b5VILLcr3ICKx5e/JgYZNgEqbQLu+OYsAKEiv2tB7xTv3xWPbhNjVBUKf67GVzyhSzWVXSIFZquMCDg==","produced_by":"einmo 0.1.0 sha256:8a8cd957c579c8b5e1390b10dea02c0ef7f47c92787a8f976bdf97e7bfa2ac08","timestamp":"2026-07-31T20:14:36.000000000Z"}
