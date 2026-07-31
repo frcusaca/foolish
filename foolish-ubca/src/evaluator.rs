@@ -715,6 +715,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                 .build()
         }
         FirKind::Unknown | FirKind::FoolRef => NkFirBuilder::new("unknown fir kind").build(),
+        FirKind::Creation => core_fir::Fir::Creation,
     }
 }
 

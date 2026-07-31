@@ -417,7 +417,7 @@ pub trait Steppable: std::fmt::Debug {
                 c
             }
             Fir::NormalBrane(v) => v.statements.iter().map(|s| Rc::clone(&s.body)).collect(),
-            Fir::ConstantInt(_) | Fir::Nk(_) => vec![],
+            Fir::ConstantInt(_) | Fir::Nk(_) | Fir::Creation => vec![],
         }
     }
 
@@ -524,6 +524,7 @@ pub enum Fir {
     StayFullyFoolish(Box<StayFullyFoolishFir>),
     Concatenation(Box<ConcatenationFir>),
     NormalBrane(Box<NormalBraneFir>),
+    Creation,
 }
 
 impl Fir {
@@ -571,6 +572,9 @@ pub trait FirQueryable: std::fmt::Debug {
     fn hs_stay_fully_foolish(&self) -> Option<Box<dyn FirQueryable>>;
     fn hs_concatenation(&self) -> Option<ConcatenationQuery>;
     fn hs_brane(&self) -> Option<(Vec<String>, Vec<StatementSimple>)>;
+    fn hs_creation(&self) -> bool {
+        false
+    }
     fn hs_alarm(&self) -> Option<&Alarm> {
         None
     }
@@ -649,6 +653,9 @@ impl FirQueryable for FirChildRef {
         let fir = clone_steppable(&self.inner);
         fir.hs_brane()
     }
+    fn hs_creation(&self) -> bool {
+        self.inner.borrow().fir_variant() == "Creation"
+    }
 }
 
 /// Fir implements FirQueryable by matching variants and wrapping children in FirChildRef.
@@ -664,6 +671,7 @@ impl FirQueryable for Fir {
             Fir::StayFullyFoolish(_) => "StayFullyFoolish",
             Fir::Concatenation(_) => "Concatenation",
             Fir::NormalBrane(_) => "NormalBrane",
+            Fir::Creation => "Creation",
         }
     }
     fn hs_state(&self) -> Nyes {
@@ -677,6 +685,7 @@ impl FirQueryable for Fir {
             Fir::StayFullyFoolish(i) => i.state,
             Fir::Concatenation(i) => i.state,
             Fir::NormalBrane(i) => i.state,
+            Fir::Creation => Nyes::Independent,
         }
     }
     fn hs_constant_int(&self) -> Option<i64> {
@@ -805,6 +814,9 @@ impl FirQueryable for Fir {
             _ => None,
         }
     }
+    fn hs_creation(&self) -> bool {
+        matches!(self, Fir::Creation)
+    }
 }
 
 // ==================== Fir: Steppable (dispatches to inner struct) ====================
@@ -821,6 +833,7 @@ impl Steppable for Fir {
             Fir::StayFullyFoolish(i) => i.state(),
             Fir::Concatenation(i) => i.state(),
             Fir::NormalBrane(i) => i.state(),
+            Fir::Creation => Nyes::Independent,
         }
     }
 
@@ -835,6 +848,7 @@ impl Steppable for Fir {
             Fir::StayFullyFoolish(i) => i.set_state(s),
             Fir::Concatenation(i) => i.set_state(s),
             Fir::NormalBrane(i) => i.set_state(s),
+            Fir::Creation => {}
         }
     }
 
@@ -853,6 +867,7 @@ impl Steppable for Fir {
             Fir::StayFullyFoolish(_) => "StayFullyFoolish",
             Fir::Concatenation(_) => "Concatenation",
             Fir::NormalBrane(_) => "NormalBrane",
+            Fir::Creation => "Creation",
         }
     }
 
@@ -1477,6 +1492,12 @@ fn fir_to_json(fir: &Fir) -> serde_json::Value {
             m.insert("state".into(), to_json_val(&inner.state));
             Value::Object(m)
         }
+        Fir::Creation => {
+            let mut m = Map::new();
+            m.insert("type".into(), Value::String("Creation".into()));
+            m.insert("state".into(), to_json_val(&Nyes::Independent));
+            Value::Object(m)
+        }
     }
 }
 
@@ -1734,6 +1755,7 @@ impl<'de> Deserialize<'de> for Fir {
                     alarm: None,
                 })))
             }
+            "Creation" => Ok(Fir::Creation),
             _ => Err(serde::de::Error::custom(format!(
                 "unknown Fir type: {}",
                 type_name

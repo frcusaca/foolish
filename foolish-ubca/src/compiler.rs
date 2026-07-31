@@ -5,8 +5,8 @@ use anyhow::anyhow;
 use foolish_parser::{AssignmentOperator, Astn, SearchOperator};
 
 use crate::fir_kinds::{
-    BraneFir, ConcatenationFir, IndepIntFir, IndexFir, NkFir, OperatorFir, SearchFir, StatementFir,
-    StayFoolishFir, StayFullyFoolishFir,
+    BraneFir, ConcatenationFir, CreationFir, IndepIntFir, IndexFir, NkFir, OperatorFir, SearchFir,
+    StatementFir, StayFoolishFir, StayFullyFoolishFir,
 };
 use crate::fir_trait::{Fir, FirRef};
 use crate::proto_brane::ProtoBrane;
@@ -217,6 +217,9 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
         Astn::UnknownLit => Rc::new(RefCell::new(NkFir {
             core: ProtoBrane::new(vec![], child_parent!(), Nyes::Nk),
             reason: "??? literal".to_string(),
+        })),
+        Astn::Creation => Rc::new(RefCell::new(CreationFir {
+            core: ProtoBrane::new(vec![], child_parent!(), Nyes::Independent),
         })),
         Astn::Identifier {
             characterizations,

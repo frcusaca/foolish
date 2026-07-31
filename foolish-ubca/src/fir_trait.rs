@@ -47,6 +47,9 @@ pub enum FirKind {
     /// Strong reference to an original statement, created alongside search results.
     /// Born CONSTANT, immutable, no stepping. Bookkeeping for contexted search (FOOP-23 C2).
     FoolRef,
+    /// Creation dot (⬤ / {*}). Born Independent, identity via Rc::ptr_eq.
+    /// FOOP-33 Phase 2.
+    Creation,
 }
 
 /// Minimal Scope stub — enough for compilation. The real Scope comes later

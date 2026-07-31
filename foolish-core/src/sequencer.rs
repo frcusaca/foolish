@@ -598,6 +598,11 @@ fn render_fir(
         return lines;
     }
 
+    // ── 11. Creation ──
+    if fir.hs_creation() {
+        return vec![(0, "\u{2B24}".to_string())];
+    }
+
     // ── Fallback ──
     vec![(0, format!("Unknown({})", fir.hs_variant()))]
 }

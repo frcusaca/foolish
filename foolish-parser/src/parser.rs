@@ -1106,6 +1106,7 @@ impl std::fmt::Display for Token {
             Token::BlockComment(s) => write!(f, "!!!{}!!!", s),
             Token::Unknown => write!(f, "???"),
             Token::Up => write!(f, "↑"),
+            Token::Creation => write!(f, "\u{2B24}"),
             Token::If => write!(f, "if"),
             Token::Then => write!(f, "then"),
             Token::Elif => write!(f, "elif"),
@@ -1377,6 +1378,40 @@ mod tests {
                 }
                 other => panic!("expected ValueSearch, got {:?}", other),
             },
+            _ => panic!("expected brane"),
+        }
+    }
+
+    #[test]
+    fn parses_star_brane_as_creation() {
+        let ast = parse_single("{x = {*};}").unwrap();
+        match ast {
+            Astn::Brane { statements, .. } => {
+                assert_eq!(statements.len(), 1);
+                match &statements[0] {
+                    Astn::Assignment { expr, .. } => {
+                        assert!(matches!(**expr, Astn::Creation));
+                    }
+                    other => panic!("expected Assignment, got {:?}", other),
+                }
+            }
+            _ => panic!("expected brane"),
+        }
+    }
+
+    #[test]
+    fn parses_unicode_creation() {
+        let ast = parse_single("{x = \u{2B24};}").unwrap();
+        match ast {
+            Astn::Brane { statements, .. } => {
+                assert_eq!(statements.len(), 1);
+                match &statements[0] {
+                    Astn::Assignment { expr, .. } => {
+                        assert!(matches!(**expr, Astn::Creation));
+                    }
+                    other => panic!("expected Assignment, got {:?}", other),
+                }
+            }
             _ => panic!("expected brane"),
         }
     }

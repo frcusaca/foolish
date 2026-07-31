@@ -383,6 +383,7 @@ impl ProtoBrane {
                 reason: "unknown fir kind".to_owned(),
             })),
             FirKind::FoolRef => Rc::clone(fir_ref),
+            FirKind::Creation => Rc::clone(fir_ref),
         }
     }
 }
@@ -2673,6 +2674,29 @@ pub fn stay_fully_foolish(expr: FirRef, parent: Weak<RefCell<dyn Fir>>) -> FirRe
     Rc::new(RefCell::new(StayFullyFoolishFir {
         core: ProtoBrane::new(vec![expr], parent, Nyes::Prembrionic),
     }))
+}
+
+#[derive(Debug)]
+pub struct CreationFir {
+    pub(crate) core: ProtoBrane,
+}
+
+impl CreationFir {
+    pub fn creation(parent: Weak<RefCell<dyn Fir>>) -> FirRef {
+        Rc::new(RefCell::new(CreationFir {
+            core: ProtoBrane::new(vec![], parent, Nyes::Independent),
+        }))
+    }
+}
+
+impl Fir for CreationFir {
+    fn core(&self) -> &ProtoBrane { &self.core }
+    fn fir_op_step(&self, _scope: &Scope) -> Result<(), UbcError> { Ok(()) }
+    fn kind(&self) -> FirKind { FirKind::Creation }
+}
+
+pub fn creation(parent: Weak<RefCell<dyn Fir>>) -> FirRef {
+    CreationFir::creation(parent)
 }
 
 #[cfg(test)]
@@ -6856,5 +6880,24 @@ mod tests {
             Nyes::Econstanic,
             "inner search stays ECONSTANIC"
         );
+    }
+
+    #[test]
+    fn creation_nyes_transitions() {
+        let parent = make_brane(vec![]);
+        let creation = CreationFir::creation(Rc::downgrade(&parent));
+        let trace = step_to_settled(&creation, &Scope::empty());
+        assert!(trace.iter().all(|n| *n == Nyes::Independent));
+        assert!(trace.first().unwrap().is_constanic());
+    }
+
+    #[test]
+    fn creation_constanic_clone_preserves_identity() {
+        let parent = make_brane(vec![]);
+        let creation = CreationFir::creation(Rc::downgrade(&parent));
+        let clone = ProtoBrane::constanic_clone_at(&creation, &Rc::downgrade(&parent), 0, false, false);
+        assert!(Rc::ptr_eq(&creation, &clone), "constanic clone of CreationFir must return same Rc");
+        let creation2 = CreationFir::creation(Rc::downgrade(&parent));
+        assert!(!Rc::ptr_eq(&creation, &creation2), "two distinct creations must not be ptr_eq");
     }
 }
