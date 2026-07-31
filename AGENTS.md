@@ -665,6 +665,26 @@ that follows various capitalizations of `@agent` or `@agents`. Resolution, once 
 
 If this form of embedded communication is discussed while performing another task, determin if it is relevant or interferes with current task. In some cases, this causes an immediately actionable response, other times, the encounterance results in an extra '[ ] TODO:human concern at file FILENAME line LINE_NUMBER' added to current task list to investigate. In some cases, if it is clear that the situation is too complex or require too much context, it may become a "[ ] TODO: write a specification and plan to address human concern at file FILENAME line LINE_NUMBER"
 
+## Crash Stash
+
+The crash stash is a mechansim we use currently to deal with hardware that
+frequently reboot due to memory errors or California powergrid instabilities.
+When the user calls for a crash-stash. It means to write a new file at the root of
+the repo named "CRASH-STASH-UID.md", where UID is generated unique id. Update
+top of the current FOOP AND AGENT.md to ask it to read this section and then the 
+crash stash file. The text in AGENT.md and FOOP should be unignorable in the front
+titled "# A Real Crash Stash, This is NOT a Test" In this section, agent will
+write down the full extent of its knowledge regarding the project. what's been done.
+What it's thinking about. What was tried what wasn't tried. What's next, etc. The
+description can be simple as "finish the rest of EIMP-such-and-such" But in most
+cases what's in the memory is important so write down items such as "make sure
+to read rust instructions, user pointed out some issues that were clearly
+documented in the instructions." Or "the code currently runs infinite loop,
+heres what we've done to isolate it to this region of the code." Or "I've been
+confused about two conflicting features, thoguht about issues A,B,C, but
+probably best to think through D before asking user to clarify." Give clear
+instructions to your self. Dump code snippets in code fences if code or pseudo code
+is more clear.
 
 
 #### Uncertainty and Other Utterances in Conversing with Human
