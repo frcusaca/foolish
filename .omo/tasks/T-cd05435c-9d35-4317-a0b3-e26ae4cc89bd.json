@@ -2,7 +2,7 @@
   "id": "T-cd05435c-9d35-4317-a0b3-e26ae4cc89bd",
   "subject": "FOOP-33 Phase 6: Comparison operators",
   "description": "Add LTOp, GTOp, EqOp tokens, lexer \\o prefix and Unicode, parser, sequencer, evaluator",
-  "status": "pending",
+  "status": "in_progress",
   "blocks": [],
   "blockedBy": [],
   "threadID": "ses_046759088ffeT6mqvEAX3Onjc6"

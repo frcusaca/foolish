@@ -13,6 +13,17 @@ const B_DENT: usize = 2;
 /// Maximum line width for single-lining decisions.
 const LINE_BUDGET: usize = 128;
 
+const COMBINING_LOWLINE: char = '\u{0332}';
+
+fn op_display(op: &str) -> String {
+    let mut result = String::new();
+    for ch in op.chars() {
+        result.push(ch);
+        result.push(COMBINING_LOWLINE);
+    }
+    result
+}
+
 // ──────────────────────────────────────────────
 // Public structs (unchanged API)
 // ──────────────────────────────────────────────
@@ -284,12 +295,14 @@ fn render_fir(
     // ── 3. Operator ──
     if let Some((op, operands)) = fir.hs_operator() {
         let show_state = state.should_show_nyes();
+        let is_comparison = matches!(op.as_str(), "\\<" | "\\>" | "<=" | ">=" | "\\==");
+        let display_op = if is_comparison { op_display(&op) } else { op.clone() };
         // Transparent when CONSTANT/INDEPENDENT
         if !show_state {
             if let Some(first) = operands.first() {
                 return render_fir(&**first, open_indent, close_indent, line_hint);
             }
-            return vec![(0, op.clone())];
+            return vec![(0, display_op)];
         }
 
         let body_indent = body_indent_compute(open_indent, close_indent);
@@ -305,7 +318,7 @@ fn render_fir(
             let body_items: Vec<String> = operand_lines.iter().map(materialize).collect();
             let mut items = body_items;
             items.push(state.to_string());
-            let opener = format!("Op{}(", op);
+            let opener = format!("Op{}(", display_op);
             return proto_brane_formatter(
                 &opener,
                 ")",
@@ -318,7 +331,7 @@ fn render_fir(
 
         // Multi-line: opener on its own line, operands at body_indent
         let mut lines: FormattedLines = Vec::new();
-        lines.push((0, format!("Op{}(", op)));
+        lines.push((0, format!("Op{}(", display_op)));
         let last_op = operands.len().saturating_sub(1);
         for (oi, oplines) in operand_lines.into_iter().enumerate() {
             let _is_last_op = oi == last_op;

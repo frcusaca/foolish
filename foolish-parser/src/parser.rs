@@ -422,9 +422,54 @@ impl Parser {
                 }
                 Some(Token::Minus) => {
                     self.advance();
-                    let right = self.parse_arith_mul_expr()?;
+                    let right = self.parse_mul_expr()?;
                     left = Astn::BinaryOp {
                         op: "-".into(),
+                        left: Box::new(left),
+                        right: Box::new(right),
+                    };
+                }
+                Some(Token::LTOp) => {
+                    self.advance();
+                    let right = self.parse_mul_expr()?;
+                    left = Astn::BinaryOp {
+                        op: "\\<".into(),
+                        left: Box::new(left),
+                        right: Box::new(right),
+                    };
+                }
+                Some(Token::GTOp) => {
+                    self.advance();
+                    let right = self.parse_mul_expr()?;
+                    left = Astn::BinaryOp {
+                        op: "\\>".into(),
+                        left: Box::new(left),
+                        right: Box::new(right),
+                    };
+                }
+                Some(Token::Le) => {
+                    self.advance();
+                    let right = self.parse_mul_expr()?;
+                    left = Astn::BinaryOp {
+                        op: "<=".into(),
+                        left: Box::new(left),
+                        right: Box::new(right),
+                    };
+                }
+                Some(Token::Ge) => {
+                    self.advance();
+                    let right = self.parse_mul_expr()?;
+                    left = Astn::BinaryOp {
+                        op: ">=".into(),
+                        left: Box::new(left),
+                        right: Box::new(right),
+                    };
+                }
+                Some(Token::EqOp) => {
+                    self.advance();
+                    let right = self.parse_mul_expr()?;
+                    left = Astn::BinaryOp {
+                        op: "\\==".into(),
                         left: Box::new(left),
                         right: Box::new(right),
                     };
@@ -504,6 +549,51 @@ impl Parser {
                     let right = self.parse_mul_expr()?;
                     left = Astn::BinaryOp {
                         op: "-".into(),
+                        left: Box::new(left),
+                        right: Box::new(right),
+                    };
+                }
+                Some(Token::LTOp) => {
+                    self.advance();
+                    let right = self.parse_mul_expr()?;
+                    left = Astn::BinaryOp {
+                        op: "\\<".into(),
+                        left: Box::new(left),
+                        right: Box::new(right),
+                    };
+                }
+                Some(Token::GTOp) => {
+                    self.advance();
+                    let right = self.parse_mul_expr()?;
+                    left = Astn::BinaryOp {
+                        op: "\\>".into(),
+                        left: Box::new(left),
+                        right: Box::new(right),
+                    };
+                }
+                Some(Token::Le) => {
+                    self.advance();
+                    let right = self.parse_mul_expr()?;
+                    left = Astn::BinaryOp {
+                        op: "<=".into(),
+                        left: Box::new(left),
+                        right: Box::new(right),
+                    };
+                }
+                Some(Token::Ge) => {
+                    self.advance();
+                    let right = self.parse_mul_expr()?;
+                    left = Astn::BinaryOp {
+                        op: ">=".into(),
+                        left: Box::new(left),
+                        right: Box::new(right),
+                    };
+                }
+                Some(Token::EqOp) => {
+                    self.advance();
+                    let right = self.parse_mul_expr()?;
+                    left = Astn::BinaryOp {
+                        op: "\\==".into(),
                         left: Box::new(left),
                         right: Box::new(right),
                     };
@@ -1094,6 +1184,11 @@ impl std::fmt::Display for Token {
             Token::Ampersand => write!(f, "&"),
             Token::Lt => write!(f, "<"),
             Token::Gt => write!(f, ">"),
+            Token::Le => write!(f, "<="),
+            Token::Ge => write!(f, ">="),
+            Token::LTOp => write!(f, "\\<"),
+            Token::GTOp => write!(f, "\\>"),
+            Token::EqOp => write!(f, "\\=="),
             Token::LtEqGt => write!(f, "<=>"),
             Token::LtLt => write!(f, "<<"),
             Token::GtGt => write!(f, ">>"),

@@ -96,6 +96,41 @@ impl Lexer {
     fn next_token(&mut self) -> (TokenAndLocation, bool) {
         let c = self.peek().unwrap(); // skip_whitespace guarantees not EOF
 
+        // \o prefix for comparison operators (keyboard input form)
+        if c == '\\' && self.peek_at(1) == Some('o') {
+            self.advance();
+            self.advance();
+            match self.peek() {
+                Some('<') => {
+                    self.advance();
+                    if self.peek() == Some('=') {
+                        self.advance();
+                        return (self.make_token(Token::Le), false);
+                    }
+                    return (self.make_token(Token::LTOp), false);
+                }
+                Some('>') => {
+                    self.advance();
+                    if self.peek() == Some('=') {
+                        self.advance();
+                        return (self.make_token(Token::Ge), false);
+                    }
+                    return (self.make_token(Token::GTOp), false);
+                }
+                Some('=') => {
+                    self.advance();
+                    if self.peek() == Some('=') {
+                        self.advance();
+                        return (self.make_token(Token::EqOp), false);
+                    }
+                    return (self.make_token(Token::Ident("\\o=".into())), false);
+                }
+                _ => {
+                    return (self.make_token(Token::Ident("\\o".into())), false);
+                }
+            }
+        }
+
         // Comments
         if c == '!' && self.peek_at(1) == Some('!') {
             if self.peek_at(2) == Some('!') {
@@ -214,6 +249,16 @@ impl Lexer {
             }
             '=' => {
                 self.advance();
+                // =̲=̲ (Unicode combining low line)
+                if self.peek_at(0) == Some('\u{0332}')
+                    && self.peek_at(1) == Some('=')
+                    && self.peek_at(2) == Some('\u{0332}')
+                {
+                    self.advance();
+                    self.advance();
+                    self.advance();
+                    return (self.make_token(Token::EqOp), false);
+                }
                 return (self.make_token(Token::Assign), false);
             }
             '+' => {
@@ -258,6 +303,17 @@ impl Lexer {
             }
             '>' => {
                 self.advance();
+                // >̲ (Unicode combining low line)
+                if self.peek_at(0) == Some('\u{0332}') {
+                    self.advance();
+                    // >̲=̲
+                    if self.peek_at(0) == Some('=') && self.peek_at(1) == Some('\u{0332}') {
+                        self.advance();
+                        self.advance();
+                        return (self.make_token(Token::Ge), false);
+                    }
+                    return (self.make_token(Token::GTOp), false);
+                }
                 return (self.make_token(Token::Gt), false);
             }
             '\'' => {
@@ -377,6 +433,18 @@ impl Lexer {
                 TokenAndLocation::new(Token::LtLtEqGtGt, line, column),
                 false,
             );
+        }
+
+        // <̲ (Unicode combining low line)
+        if self.peek_at(0) == Some('\u{0332}') {
+            self.advance();
+            // <̲=̲
+            if self.peek_at(0) == Some('=') && self.peek_at(1) == Some('\u{0332}') {
+                self.advance();
+                self.advance();
+                return (TokenAndLocation::new(Token::Le, line, column), false);
+            }
+            return (TokenAndLocation::new(Token::LTOp, line, column), false);
         }
 
         // <=>

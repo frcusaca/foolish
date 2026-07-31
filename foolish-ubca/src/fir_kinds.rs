@@ -681,6 +681,36 @@ impl OperatorFir {
                     }
                     return Ok(());
                 }
+                op if matches!(op, "<=" | ">=" | "\\<" | "\\>" | "\\==") => {
+                    if values.len() != 2 {
+                        return Err(UbcError::Eval(format!(
+                            "comparison operator {op} requires 2 operands, got {}",
+                            values.len()
+                        )));
+                    }
+                    let bool_result = match op {
+                        "<=" => values[0] <= values[1],
+                        "\\<" => values[0] < values[1],
+                        ">=" => values[0] >= values[1],
+                        "\\>" => values[0] > values[1],
+                        "\\==" => values[0] == values[1],
+                        _ => unreachable!(),
+                    };
+                    // TODO: resolve True/False from system.foo when embedded
+                    let result_val: i64 = if bool_result { 1 } else { 0 };
+                    let result_ref: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<IndepIntFir>>| {
+                        let parent: Weak<RefCell<dyn Fir>> = me.clone();
+                        RefCell::new(IndepIntFir {
+                            core: ProtoBrane::new(vec![], parent, Nyes::Constant),
+                            value: result_val,
+                        })
+                    });
+                    self.core.push_ubc_child(ProtoBrane::constanic_clone_at(
+                        &result_ref, &self_weak, 0, scope.has_ancestral_sfm, false,
+                    ));
+                    self.core.set_nyes(Nyes::Constant);
+                    return Ok(());
+                }
                 op => {
                     return Err(UbcError::Eval(format!(
                         "unknown operator: {op} ({} operands)",
