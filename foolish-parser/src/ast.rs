@@ -21,6 +21,7 @@ pub enum AssignmentOperator {
 pub enum Astn {
     IntLit(u64),
     UnknownLit, // ???
+    Creation,   // ⬤
 
     Identifier {
         characterizations: Vec<String>,
@@ -140,6 +141,7 @@ impl fmt::Display for Astn {
         match self {
             Astn::IntLit(n) => write!(f, "{}", n),
             Astn::UnknownLit => write!(f, "???"),
+            Astn::Creation => write!(f, "\u{2B24}"),
             Astn::Identifier { id, .. } => write!(f, "{}", id),
             Astn::Brane { statements, .. } => {
                 write!(f, "{{")?;

@@ -172,6 +172,15 @@ impl Lexer {
         // Single char tokens
         match c {
             '{' => {
+                // Check for {*} creation alias: { immediately followed by *}
+                // with no interior whitespace. This is a parser-level recognition,
+                // but we detect it at the character level to distinguish from { * }.
+                if self.peek_at(1) == Some('*') && self.peek_at(2) == Some('}') {
+                    self.advance();
+                    self.advance();
+                    self.advance();
+                    return (self.make_token(Token::Creation), false);
+                }
                 self.advance();
                 return (self.make_token(Token::LBrace), false);
             }
@@ -264,6 +273,12 @@ impl Lexer {
             '\u{2191}' => {
                 self.advance();
                 return (self.make_token(Token::Up), false);
+            }
+
+            // Creation dot ⬤ (U+2B24)
+            '\u{2B24}' => {
+                self.advance();
+                return (self.make_token(Token::Creation), false);
             }
 
             _ => {}

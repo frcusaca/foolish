@@ -169,6 +169,7 @@ fn validate_astn(ast: &Astn) -> anyhow::Result<()> {
         Astn::StayFullyFoolish { expr } => validate_astn(expr),
         Astn::IntLit(_)
         | Astn::UnknownLit
+        | Astn::Creation
         | Astn::Identifier { .. }
         | Astn::UnanchoredSeek { .. } => Ok(()),
     }

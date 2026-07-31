@@ -956,6 +956,10 @@ impl Parser {
                 self.advance();
                 Ok(Astn::UnknownLit)
             }
+            Some(Token::Creation) => {
+                self.advance();
+                Ok(Astn::Creation)
+            }
             Some(Token::Hash) => {
                 self.advance();
                 let offset = self.parse_seek_index()?;
