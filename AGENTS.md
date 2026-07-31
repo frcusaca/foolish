@@ -503,6 +503,22 @@ a following `&`-search can read.
 - Variable names follow power-law distribution (mean 3.5 chars short, 5 chars long)
 - Use diverse Unicode: Latin, Greek, Cyrillic, Hebrew, Arabic, Chinese, Sanskrit
 
+**Agents MUST use Unicode operator forms when writing Foolish code.** The `\o` prefix is for keyboard input only. When an agent writes `.foo` files, it must use the Unicode underlined forms:
+- `⬤` not `{*}` for creation
+- `<̲` not `\o<` for less-than
+- `>̲` not `\o>` for greater-than
+- `<̲=̲` not `\o<=` for less-than-or-equal
+- `>̲=̲` not `\o>=` for greater-than-or-equal
+- `=̲=̲` not `\o==` for equality
+
+**Agents MUST use Unicode operator forms when writing Foolish code.** The `\o` prefix is for keyboard input only. When an agent writes `.foo` files, it must use the Unicode underlined forms:
+- `⬤` not `{*}` for creation
+- `<̲` not `\o<` for less-than
+- `>̲` not `\o>` for greater-than
+- `<̲=̲` not `\o<=` for less-than-or-equal
+- `>̲=̲` not `\o>=` for greater-than-or-equal
+- `=̲=̲` not `\o==` for equality
+
 ### Commit Message Format
 
 Include AI agent and model information in commit messages:
@@ -605,6 +621,12 @@ This ensures all AI agents can track who modified documentation and when, mainta
 When proposing updates, explain what has changed and why the documentation needs adjustment. After user review, update the "Last Updated" date below whether changes are accepted or the user confirms current state is acceptable.
 
 ## Last Updated
+
+**Date**: 2026-07-31
+**Updated By**: Sisyphus-Junior / xiaomi/mimo-v2.5-pro
+**Changes**: FOOP-33 — Added Unicode operator convention to Code Style section: agents MUST use
+Unicode underlined forms (`⬤`, `<̲`, `>̲`, `<̲=̲`, `>̲=̲`, `=̲=̲`) when writing `.foo` files,
+not `\o` prefix keyboard forms.
 
 **Date**: 2026-07-12
 **Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8

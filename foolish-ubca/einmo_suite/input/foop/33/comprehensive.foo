@@ -1,0 +1,19 @@
+{
+	!! FOOP-33 comprehensive: creation, equality, characterizations,
+	!! null-constants, comparisons, nested branes.
+
+	a = ⬤;
+	b = {*};
+	c = a;
+	same = c~=a;
+	diff = a~=b;
+
+	tag'x = 7;
+	plain_x = 9;
+	hit = ?tag'x;
+	miss = ?x;
+
+	inner = {deep = True;};
+
+	nk = ⬤ \o<= 3;
+}
