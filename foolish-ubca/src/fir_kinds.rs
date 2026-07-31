@@ -439,6 +439,24 @@ pub fn is_nf_reason(reason: &str) -> bool {
     reason.contains(NF_PREFIX)
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Equality { Equal, NotEqual, Unknowable }
+
+pub fn default_equal(a: &FirRef, b: &FirRef) -> Equality {
+    let a_borrowed = a.borrow();
+    let b_borrowed = b.borrow();
+    if a_borrowed.core().get_nyes() == Nyes::Nk || b_borrowed.core().get_nyes() == Nyes::Nk {
+        return Equality::Unknowable;
+    }
+    if let (Some(av), Some(bv)) = (a_borrowed.as_i64(), b_borrowed.as_i64()) {
+        return if av == bv { Equality::Equal } else { Equality::NotEqual };
+    }
+    if a_borrowed.kind() == FirKind::Creation && b_borrowed.kind() == FirKind::Creation {
+        return if Rc::ptr_eq(a, b) { Equality::Equal } else { Equality::NotEqual };
+    }
+    Equality::Unknowable
+}
+
 #[derive(Debug)]
 pub struct NkFir {
     pub(crate) core: ProtoBrane,
@@ -1735,7 +1753,7 @@ pub(crate) fn push_search_result_pair(core: &ProtoBrane, result: FirRef, referen
 // Allow dead_code for Phase A0 skeleton types — wired into production in Phase A1+.
 #[allow(dead_code)]
 mod contextful_search {
-    use super::{FirRef, SearchFir};
+    use super::{FirRef, SearchFir, default_equal, Equality};
 
     use std::rc::Rc;
 
@@ -1838,18 +1856,10 @@ mod contextful_search {
                             None => return MatchOutcome::Reject,
                         }
                     };
-                    let nyes = body.borrow().core().get_nyes();
-                    if !nyes.is_constanic() {
-                        unreachable!("pre-constanic body in search candidate")
-                    }
-                    if nyes == Nyes::Nk {
-                        return MatchOutcome::NkStop;
-                    }
-                    let cand_val = body.borrow().as_i64();
-                    let pat_val = pattern.borrow().as_i64();
-                    match (cand_val, pat_val) {
-                        (Some(cv), Some(pv)) if cv == pv => MatchOutcome::Approve,
-                        _ => MatchOutcome::Reject,
+                    match default_equal(&body, pattern) {
+                        Equality::Equal => MatchOutcome::Approve,
+                        Equality::NotEqual => MatchOutcome::Reject,
+                        Equality::Unknowable => MatchOutcome::NkStop,
                     }
                 }
                 Self::NameValue { name, value } => {
@@ -1867,18 +1877,10 @@ mod contextful_search {
                             None => return MatchOutcome::Reject,
                         }
                     };
-                    let nyes = body.borrow().core().get_nyes();
-                    if !nyes.is_constanic() {
-                        unreachable!("pre-constanic body in search candidate")
-                    }
-                    if nyes == Nyes::Nk {
-                        return MatchOutcome::NkStop;
-                    }
-                    let cand_val = body.borrow().as_i64();
-                    let pat_val = value.borrow().as_i64();
-                    match (cand_val, pat_val) {
-                        (Some(cv), Some(pv)) if cv == pv => MatchOutcome::Approve,
-                        _ => MatchOutcome::Reject,
+                    match default_equal(&body, value) {
+                        Equality::Equal => MatchOutcome::Approve,
+                        Equality::NotEqual => MatchOutcome::Reject,
+                        Equality::Unknowable => MatchOutcome::NkStop,
                     }
                 }
                 Self::Index(offset) => {
@@ -4934,14 +4936,13 @@ mod tests {
         };
         assert_eq!(
             pred.matches(&stmt, &ctx),
-            MatchOutcome::Reject,
-            "brane-valued candidate is skipped, not an error"
+            MatchOutcome::NkStop,
+            "brane-vs-integer is Unknowable → NkStop"
         );
     }
 
     #[test]
-    #[should_panic(expected = "pre-constanic body")]
-    fn matcher_value_panics_on_nye_body() {
+    fn matcher_value_with_embryonic_body_with_value() {
         let body: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<IndepIntFir>>| {
             let parent: Weak<RefCell<dyn Fir>> = me.clone();
             RefCell::new(IndepIntFir {
@@ -4958,7 +4959,11 @@ mod tests {
         let pred = SearchPredicate::Value {
             pattern: Rc::clone(&pattern_val),
         };
-        pred.matches(&stmt, &ctx);
+        assert_eq!(
+            pred.matches(&stmt, &ctx),
+            MatchOutcome::Approve,
+            "embryonic body with as_i64() matches via default_equal"
+        );
     }
 
     #[test]
@@ -5006,8 +5011,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "pre-constanic body")]
-    fn matcher_namevalue_panics_on_nye_body() {
+    fn matcher_namevalue_with_nye_body_with_value() {
         let body: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<IndepIntFir>>| {
             let parent: Weak<RefCell<dyn Fir>> = me.clone();
             RefCell::new(IndepIntFir {
@@ -5025,7 +5029,11 @@ mod tests {
             name: "λ".into(),
             value: Rc::clone(&pat_val),
         };
-        pred.matches(&stmt, &ctx);
+        assert_eq!(
+            pred.matches(&stmt, &ctx),
+            MatchOutcome::Approve,
+            "pre-constanic body with value matches via default_equal"
+        );
     }
 
     #[test]
@@ -5154,8 +5162,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "pre-constanic body")]
-    fn scan_panic_on_pre_constanic_candidate() {
+    fn scan_embryonic_candidate_with_value() {
         let s0 = make_statement("a", 0, settled_int(1));
         let body_nye: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<IndepIntFir>>| {
             let parent: Weak<RefCell<dyn Fir>> = me.clone();
@@ -5173,7 +5180,13 @@ mod tests {
             pattern: Rc::clone(&pattern_val),
         };
 
-        super::contextful_search_scan(&mut nav, &pred);
+        let outcome = super::contextful_search_scan(&mut nav, &pred);
+        match outcome {
+            ScanOutcome::Found(stmt) => {
+                assert_eq!(stmt.borrow().as_stmt_name(), Some("b"));
+            }
+            other => panic!("expected Found, got {other:?}"),
+        }
     }
 
     #[test]

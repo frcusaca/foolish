@@ -2,7 +2,7 @@
   "id": "T-9b2937e1-0a83-4f46-9640-6ce79a63be85",
   "subject": "FOOP-33 Phase 2: Creation dot implementation",
   "description": "Add CreationFir, FirKind::Creation, build_fir arm, core-fir, sequencer, evaluator, tests",
-  "status": "in_progress",
+  "status": "completed",
   "blocks": [],
   "blockedBy": [],
   "threadID": "ses_046759088ffeT6mqvEAX3Onjc6"
