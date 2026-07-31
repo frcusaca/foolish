@@ -2,7 +2,7 @@
   "id": "T-af01ffec-f713-4f81-aa7d-9000ba81443b",
   "subject": "FOOP-33 Phase 5: system.foo and root brane",
   "description": "Create system/system.foo, build.rs, embed in evaluator, root brane",
-  "status": "pending",
+  "status": "in_progress",
   "blocks": [],
   "blockedBy": [],
   "threadID": "ses_046759088ffeT6mqvEAX3Onjc6"
