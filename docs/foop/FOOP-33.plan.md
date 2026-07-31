@@ -340,3 +340,63 @@ uses `default_equal` + renamed null method.
 **Initial plan**: ordered phases for characterizations, ⬤ creation, equality via search,
 null-characterized name constants (brane + concatenation), `system.foo` ancestral prelude,
 docs, worktree/merge lifecycle. Design phase; nothing begun.
+
+---
+
+## STASHING NOTES (temporary — remove once read and resumed)
+
+**Date**: 2026-07-30
+**Stashed by**: Sisyphus / xiaomi/mimo-v2.5-pro
+**Reason**: Server reboot. Work in progress on Phase 2.
+
+### Where we are
+
+**Worktree**: `/yolo/foolish_worktrees/foop-33-creation-postulate`
+**Branch**: `foop-33-creation-postulate`
+**Last commit**: `7ac9638d` — Phase 2 WIP (lexer/parser/AST for creation dot)
+
+### Phase 1 — COMPLETE ✅
+All tasks done:
+- `Identifier` / `Characterizations` types in `foolish-ubca/src/identifier.rs` (10 unit tests)
+- `StatementFir.name` → `identifier: Identifier` migration
+- Compiler folds `'` back into search pattern (Gotcha #3)
+- `_search_brane` chooses projection: pattern with `'` → `characterized_name()`, else `name()`
+- NF (Not Foolish) constant `NF_PREFIX` and `is_nf_reason()` in `fir_kinds.rs`
+- All 241 foolish-ubca tests pass, all 68 foolish-core tests pass
+
+### Phase 2 — IN PROGRESS (lexer/parser/AST done, FIR/compiler not yet)
+
+**Done:**
+- `Token::Creation` added to `foolish-parser/src/token.rs`
+- Lexer: `⬤` (U+2B24) token + `{*}` detection at character level (no interior whitespace)
+- `Astn::Creation` added to `foolish-parser/src/ast.rs` with Display (renders as `⬤`)
+- Parser: `Token::Creation` handled in `parse_primary`
+- Compiler: `validate_astn` accepts `Astn::Creation`
+
+**NOT YET DONE (resume here):**
+1. `CreationFir { core }` — new FIR kind in `foolish-ubca/src/fir_kinds.rs`, born `Independent`
+2. `build_fir` arm for `Astn::Creation` in compiler
+3. Core-fir representation + sequencer rendering (always renders `⬤`, never `{*}`)
+4. `creation_nyes_transitions` unit test (single-state `Independent` progression)
+5. `creation_constanic_clone_preserves_identity` unit test
+6. Parser unit test `parses_star_brane_as_creation` with negative set
+7. Mark Phase 2 tasks in plan
+
+### Key design reminders
+- `CreationFir` has NO id field. Identity = `Rc::ptr_eq`. No counter, no registry.
+- Constanic clone of `CreationFir` returns SAME `Rc` (already works via `fir_kinds.rs:180` branch for `Independent` non-branes). Do NOT add a `FirKind::Creation` clone arm.
+- Do NOT derive/implement deep `Clone` on `CreationFir`.
+- `{*}` is lexer-level (character stream), `⬤` is token-level. Both become `Token::Creation`.
+- `{ * }` (with spaces) keeps existing parse (brane containing `*` expression).
+- Sequencer always renders `⬤`, never `{*}`.
+
+### Files changed so far
+- `foolish-parser/src/token.rs` — `Token::Creation`
+- `foolish-parser/src/lexer.rs` — `⬤` + `{*}` handling
+- `foolish-parser/src/ast.rs` — `Astn::Creation` + Display
+- `foolish-parser/src/parser.rs` — `parse_primary` case
+- `foolish-ubca/src/compiler.rs` — `validate_astn` accepts Creation
+- `foolish-ubca/src/identifier.rs` — NEW: Identifier/Characterizations
+- `foolish-ubca/src/lib.rs` — `pub(crate) mod identifier`
+- `foolish-ubca/src/fir_kinds.rs` — StatementFir.identifier, NF_PREFIX, _search_brane projection
+- `foolish-ubca/src/fir_trait.rs` — `as_stmt_identifier()` on Fir trait
