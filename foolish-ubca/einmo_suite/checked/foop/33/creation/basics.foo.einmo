@@ -1,0 +1,36 @@
+#einmo 1 encoding=utf-8 separator=!!\n
+test: foop/33/creation/basics.foo
+suite: /yolo/foolish/foolish-ubca/einmo_suite
+producer: 73060a81
+producer-diff: sha256:813b4cd6ee7d626888e7fab3a9860afa64f64bf12c1c4e03553836b27062b371
+generated: 2026-07-31T20:14:33.000000000Z
+status: normal
+status-detail: 
+sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
+{
+	!! Creation basics: ⬤ and {*} produce unique values.
+	bare = ⬤;
+	ascii = {*};
+	orig = ⬤;
+	ref = orig;
+	same_ref = ref~=orig;
+	x = ⬤;
+	y = ⬤;
+	diff = x~=y;
+}
+!!
+{NK
+  bare=⬤;
+  ascii=⬤;
+  orig=⬤;
+  ref=⬤;
+  sameˍref==(anchor=⬤, value=⬤, NK);
+  x=⬤;
+  y=⬤;
+  diff==(anchor=⬤, value=⬤, NK)
+}!!
+!!
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:8a8cd957c579c8b5e1390b10dea02c0ef7f47c92787a8f976bdf97e7bfa2ac08","timestamp":"2026-07-31T20:14:33.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:8a8cd957c579c8b5e1390b10dea02c0ef7f47c92787a8f976bdf97e7bfa2ac08","timestamp":"2026-07-31T20:14:33.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"vNvQzp6kShH6wYaT7e8TtGP1mbR8/ZsfudqYjhkZX5b/7G7See1Xz5zDx34D8gQ5HrfmzptAmm7+QNh5NM1lCQ==","produced_by":"einmo 0.1.0 sha256:8a8cd957c579c8b5e1390b10dea02c0ef7f47c92787a8f976bdf97e7bfa2ac08","timestamp":"2026-07-31T20:14:33.000000000Z"}
+{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"F5d3nWTKL9wFZpsUQ4bZo7lqtS9prEGVVUo2VdUhy4hZRFGblG1c/nVPKz9NudpyhgAQL9rmECLGegk41vtxDg==","produced_by":"einmo 0.1.0 sha256:2cf7b8f12f67174595c1bd2c299f0015b76a7403233dfc8d7d7a693d1249f2df","timestamp":"2026-07-31T20:18:18.000000000Z"}
