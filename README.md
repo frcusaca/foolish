@@ -4,9 +4,9 @@
 
 [![License](https://img.shields.io/badge/license-Open%20Source-blue.svg)](#)
 [![Status](https://img.shields.io/badge/status-Active%20Development-green.svg)](#)
-[![einmo output](https://img.shields.io/badge/einmo-output-success)](https://github.com/<owner>/foolish/actions/workflows/einmo-gates.yml)
-[![einmo checked](https://img.shields.io/badge/einmo-checked-success)](https://github.com/<owner>/foolish/actions/workflows/einmo-gates.yml)
-[![einmo verified](https://img.shields.io/badge/einmo-verified-blue)](https://github.com/<owner>/foolish/actions/workflows/einmo-gates.yml)
+[![einmo output](https://github.com/<owner>/foolish/actions/workflows/einmo-gates.yml/badge.svg?job=output)](https://github.com/<owner>/foolish/actions/workflows/einmo-gates.yml)
+[![einmo checked](https://github.com/<owner>/foolish/actions/workflows/einmo-gates.yml/badge.svg?job=checked)](https://github.com/<owner>/foolish/actions/workflows/einmo-gates.yml)
+[![einmo verified](https://github.com/<owner>/foolish/actions/workflows/einmo-gates.yml/badge.svg?job=verified)](https://github.com/<owner>/foolish/actions/workflows/einmo-gates.yml)
 
 ## Welcome to the Future of Programming
 
