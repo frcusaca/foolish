@@ -18,7 +18,7 @@ The sub-agent loads this skill, runs GDB, interprets the output, and returns a c
 ```
 task(
   category="deep",
-  load_skills=["rust-debug"],
+  load_skills=["rust-debugging"],
   prompt="Debug why concatenation_nyes_transitions produces Constant instead of NK.
          The test is in foolish-ubca/src/fir_kinds.rs. Break at fir_op_step,
          step through the Braning branch, and report what nyes state each child
@@ -85,7 +85,7 @@ gdb ./my_program
 gdb -batch -x commands.txt ./my_program
 ```
 
-Where `commands.txt` contains one GDB command per line.
+Where `commands.txt` contains one GDB command per line. GDB executes each command in order, then exits. This is the mode used by sub-agents and scripts.
 
 ### rust-gdb (better Rust type display)
 
@@ -93,7 +93,19 @@ Where `commands.txt` contains one GDB command per line.
 rust-gdb ./my_program
 ```
 
-`rust-gdb` wraps GDB with Rust-aware pretty-printers. It renders `Vec`, `String`, `Option`, `HashMap`, and other standard types in a human-readable form.
+`rust-gdb` wraps GDB with Rust-aware pretty-printers. It renders `Vec`, `String`, `Option`, `HashMap`, and other standard types in a human-readable form. Use this when you need to see the contents of collections, not just their raw memory layout.
+
+### Set up GDB for Rust
+
+Add these to the top of every GDB session or command script:
+
+```gdb
+set pagination off
+set confirm off
+```
+
+- `set pagination off` — don't pause after each screen of output (essential for batch mode)
+- `set confirm off` — don't ask "are you sure?" on quit/delete (essential for batch mode)
 
 ---
 
@@ -111,6 +123,12 @@ Example — break at a test helper:
 break foolish_ubca::fir_kinds::tests::step_to_settled
 ```
 
+GDB confirms:
+
+```
+Breakpoint 1 at 0x2d7615: file foolish-ubca/src/fir_kinds.rs, line 2850.
+```
+
 ### Break at a trait method implementation
 
 Use the fully-qualified demangled name with angle brackets:
@@ -119,10 +137,16 @@ Use the fully-qualified demangled name with angle brackets:
 break "<foolish_ubca::fir_kinds::BraneFir as foolish_ubca::fir_trait::Fir>::fir_op_step"
 ```
 
+GDB confirms:
+
+```
+Breakpoint 2 at 0x2b05ae: file foolish-ubca/src/fir_kinds.rs, line 787.
+```
+
 ### Break at a specific file and line
 
 ```gdb
-break src/fir_kinds.rs:787
+break foolish-ubca/src/fir_kinds.rs:787
 ```
 
 ### Find the right symbol name
@@ -142,29 +166,39 @@ foolish_ubca::fir_kinds::tests::step_to_settled
 
 ### Conditional breakpoints
 
-Break only when a condition is true:
+Break only when a condition is true. First set the breakpoint, then attach a condition:
 
 ```gdb
-break src/fir_kinds.rs:787 if nyes == 3
+break foolish_ubca::fir_kinds::tests::step_to_settled
+condition 3 1
 ```
 
-Example — break only when a variable equals a specific value:
+Here `3` is the breakpoint number (from `info breakpoints`), and `1` is the condition expression. The breakpoint fires only when the condition is true. GDB shows:
+
+```
+Num     Type           Disp Enb Address            What
+3       breakpoint     keep y   0x00000000002d7615 in step_to_settled
+	stop only if 1
+```
+
+You can also set a conditional breakpoint in one line:
 
 ```gdb
 break my_function if count > 100
 ```
 
-### List all breakpoints
-
-```gdb
-info breakpoints
-```
-
-### Delete a breakpoint
+### Delete breakpoints
 
 ```gdb
 delete 1          # delete breakpoint number 1
 delete            # delete all breakpoints
+```
+
+### Enable/disable breakpoints
+
+```gdb
+disable 1         # temporarily disable breakpoint 1
+enable 1          # re-enable it
 ```
 
 ---
@@ -200,6 +234,37 @@ run fir_kinds::tests::operator_add_two_constants --exact --test-threads=1
 ./my_test_binary --list
 ```
 
+Output:
+
+```
+fir_kinds::tests::operator_add_two_constants: test
+fir_kinds::tests::concatenation_nyes_transitions: test
+fir_kinds::tests::step_to_settled: test
+```
+
+Note: test names do **not** include the crate prefix. Use `fir_kinds::tests::foo`, not `foolish_ubca::fir_kinds::tests::foo`.
+
+### Resume execution
+
+```gdb
+continue
+```
+
+This resumes until the next breakpoint, watchpoint, or program exit. GDB prints:
+
+```
+Thread 2 "fir_kinds::test" hit Breakpoint 1, ...
+```
+
+### Run to a specific location (temporary breakpoint)
+
+```gdb
+tbreak my_function
+continue
+```
+
+`tbreak` sets a breakpoint that deletes itself after the first hit. Useful for "run to cursor" style navigation.
+
 ---
 
 ## 5. Stepping through code
@@ -221,16 +286,22 @@ next 3
 Example session:
 
 ```gdb
-(gdb) list 59,65
-59          fn fir_op_step(&mut self) -> StepReport {
-60              match self.nyes {
-61                  Nyes::Prembrionic => {
-62                      if self.children.is_empty() {
-63                          self.nyes = Nyes::Constant;
-64                          StepReport::Progress(Nyes::Constant)
+(gdb) list 2866,2875
+2866    fn operator_add_two_constants() {
+2867        let a = make_constant_int(3);
+2868        let b = make_constant_int(5);
+2869        let op = make_operator("+", vec![Rc::clone(&a), Rc::clone(&b)]);
+2870        let scope = Scope::empty();
+
 (gdb) next
-62                      if self.children.is_empty() {
+2868        let b = make_constant_int(5);
+(gdb) next
+2869        let op = make_operator("+", vec![Rc::clone(&a), Rc::clone(&b)]);
+(gdb) next
+2870        let scope = Scope::empty();
 ```
+
+Each `next` executes one line and advances. The function calls (`make_constant_int`, `make_operator`) run to completion without entering them.
 
 ### Step into (`step`) — enter the function on the current line
 
@@ -244,11 +315,15 @@ Example — step into `fir_op_step`:
 
 ```gdb
 (gdb) next
-113             let report = node.borrow_mut().fir_op_step();
+113         let report = node.borrow_mut().fir_op_step();
 (gdb) step
 debug_test::FirNode::fir_op_step (self=0x5625213ebd70) at debug_test.rs:62
-62                      if self.children.is_empty() {
+62              if self.children.is_empty() {
 ```
+
+GDB entered `fir_op_step` and stopped at its first executable line. Now `self` is in scope and inspectable.
+
+**Caution:** `step` at a `for` loop line enters `Range::into_iter()` (the desugared loop machinery) rather than the loop body. Use `next` to advance past the loop setup, then `step` to enter the function you actually want.
 
 ### Step out (`finish`) — run until the current function returns
 
@@ -267,13 +342,15 @@ debug_test::step_to_settled (node=...) at debug_test.rs:113
 Value returned is $1 = debug_test::StepReport::Progress(debug_test::Nyes::Constant)
 ```
 
-The return value is printed automatically.
+**Key detail:** GDB prints the return value automatically. For Rust enums, it shows the variant name (`StepReport::Progress(Nyes::Constant)`), not just a number.
 
 ### Continue (`continue`) — resume until the next breakpoint
 
 ```gdb
 continue
 ```
+
+Resumes execution until the next breakpoint or watchpoint fires, or the program exits.
 
 ---
 
@@ -291,37 +368,68 @@ Output:
 $1 = debug_test::Nyes::Prembrionic
 ```
 
-### Print a struct field
+GDB's Rust support renders enum variants by name, not by number. `$1` is a convenience variable — you can reference it later as `$1`.
 
-```gdb
-print self.name
-print self.children.len
-```
-
-### Print with debug format (`{:?}`)
-
-```gdb
-print self.nyes
-```
-
-GDB's Rust support renders enum variants by name.
-
-### Dereference a pointer
+### Print a struct and its fields
 
 ```gdb
 print *self
 ```
 
-### Call a method (GDB can execute Rust methods)
+Output:
+
+```
+$2 = debug_test::FirNode {
+    nyes: debug_test::Nyes::Prembrionic,
+    name: alloc::string::String {vec: ... {len: 5}},
+    children: alloc::vec::Vec<...> {buf: ... {len: 0}}
+}
+```
+
+Access individual fields:
+
+```gdb
+print self.nyes
+print self.name
+print self.children.len
+```
+
+### Call a method
+
+GDB can execute Rust methods on live objects:
 
 ```gdb
 call self.core.get_nyes()
+```
+
+Output:
+
+```
+$3 = 3
+```
+
+The return value is a raw integer for enums. To map it: `0=Prembrionic, 1=Embryonic, 2=Braning, 3=Econstanic, 4=Woconstanic, 5=Constant, 6=Independent, 7=Nk`.
+
+You can also call methods that take arguments:
+
+```gdb
+call self.core.set_nyes(5)
 ```
 
 ### Print all local variables
 
 ```gdb
 info locals
+```
+
+Output:
+
+```
+all_constanic = true
+all_independent = false
+any_preconstanic = false
+any_nk = false
+new_nyes = debug_test::Nyes::Constant
 ```
 
 ### Print function arguments
@@ -340,6 +448,19 @@ Or list a specific range:
 
 ```gdb
 list 59,80
+```
+
+### Auto-print at every stop (`display`)
+
+```gdb
+display self.nyes
+display self.children.len
+```
+
+These values are printed automatically every time execution stops (after `next`, `step`, `continue`, etc.). Remove with:
+
+```gdb
+undisplay 1
 ```
 
 ---
@@ -373,6 +494,12 @@ frame 1
 info locals
 ```
 
+This switches context to frame 1 (`step_to_settled`) and shows its local variables. Switch back with:
+
+```gdb
+frame 0
+```
+
 ---
 
 ## 8. Advanced techniques
@@ -383,7 +510,22 @@ info locals
 watch self.nyes
 ```
 
-This stops execution whenever `self.nyes` is written to. Useful for finding where a variable changes unexpectedly.
+This stops execution whenever `self.nyes` is written to. Useful for finding where a variable changes unexpectedly. GDB reports:
+
+```
+Hardware watchpoint 2: self.nyes
+
+Old value = debug_test::Nyes::Prembrionic
+New value = debug_test::Nyes::Constant
+```
+
+### Read watchpoints — break when a value is read
+
+```gdb
+rwatch self.nyes
+```
+
+Stops when `self.nyes` is read. Useful for tracking who reads a value.
 
 ### Catchpoints — break on panics
 
@@ -391,23 +533,48 @@ This stops execution whenever `self.nyes` is written to. Useful for finding wher
 catch throw
 ```
 
-This stops when a Rust panic is thrown.
+This stops when a Rust panic is thrown (panics are implemented as `throw` in the unwinding ABI).
 
-### Conditional breakpoints with complex expressions
+### Conditional catchpoints
 
 ```gdb
-break fir_op_step if self.children.len > 0
+catch throw if $_exception == 1
 ```
 
 ### Repeat the last command
 
-Just press Enter — GDB repeats the previous command.
+Just press Enter — GDB repeats the previous command. This is especially useful for stepping:
+
+```gdb
+(gdb) next
+2868        let b = make_constant_int(5);
+(gdb)         ← pressed Enter
+2869        let op = make_operator("+", vec![Rc::clone(&a), Rc::clone(&b)]);
+(gdb)         ← pressed Enter
+2870        let scope = Scope::empty();
+```
 
 ### Examine memory
 
 ```gdb
 x/10xb &self.nyes    # 10 bytes in hex starting at nyes
+x/4xw &self          # 4 words in hex starting at self
+x/s &self.name       # print as string
 ```
+
+### Search memory
+
+```gdb
+find /b &self, &self+100, 0x03   # search for byte 0x03
+```
+
+### Set a variable
+
+```gdb
+set self.nyes = 5
+```
+
+This modifies the running program's state. Useful for testing "what if" scenarios without recompiling.
 
 ---
 
@@ -448,11 +615,8 @@ break "<foolish_ubca::fir_kinds::BraneFir as foolish_ubca::fir_trait::Fir>::fir_
 run fir_kinds::tests::my_test_name --exact --test-threads=1
 
 # At each breakpoint: show where we are, inspect state
-print self.nyes
-print self.name
 list
-
-# Step through
+next
 next
 next
 
@@ -470,19 +634,134 @@ gdb -batch -x commands.txt target/debug/deps/foolish_ubca-<hash>
 
 ---
 
-## 10. Troubleshooting
+## 10. Full example: stepping through a NYES state machine
 
-### "No symbol 'self' in current context"
+This is a real session debugging the Foolish evaluation engine. The test creates a brane with two constant children and steps through the NYES state machine.
 
-GDB sometimes cannot see `self` in trait method implementations (`impl Fir for BraneFir`). Two workarounds:
+### The test
 
-1. **Break at inherent methods instead** — `self` is visible in `impl BraneFir { fn fir_op_step(...) }` when compiled without optimizations.
+```rust
+fn concatenation_nyes_transitions() {
+    let brane1 = make_brane(vec![
+        make_statement("a", 0, make_constant_int(1)),
+        make_statement("b", 1, make_constant_int(2)),
+    ]);
+    let brane2 = make_brane(vec![
+        make_statement("c", 0, make_constant_int(3)),
+        make_statement("d", 1, make_constant_int(4)),
+    ]);
+    let cat = make_concatenation(vec![brane1, brane2]);
+    let trace = step_to_settled(&cat, &Scope::empty());
+    assert_progression(&trace, Nyes::Constant, "Concatenation(extended)");
+}
+```
 
-2. **Use the register directly** — on x86_64, `self` is passed in `$rdi`:
+### The GDB script
+
+```
+set pagination off
+set confirm off
+
+# Break at the core evaluation step
+break "<foolish_ubca::fir_kinds::ConcatenationFir as foolish_ubca::fir_trait::Fir>::fir_op_step"
+
+run fir_kinds::tests::concatenation_nyes_transitions --exact --test-threads=1
+
+# HIT 1: ConcatenationFir in Prembrionic state
+echo === HIT 1: ConcatenationFir::fir_op_step ===\n
+list 2381,2400
+
+# Step: check children, set Braning, push child tasks
+next
+next
+next
+
+# Continue to next fir_op_step (a BraneFir being stepped)
+continue
+
+echo === HIT 2: BraneFir::fir_op_step ===\n
+list 786,808
+
+# Step: check if children empty, set Braning
+next
+next
+
+# Continue to the Braning state check
+continue
+
+echo === HIT 3: BraneFir::fir_op_step (Braning state) ===\n
+
+# Step: check children's NYES → decide new state
+next
+next
+next
+
+continue
+quit
+```
+
+### Running it
+
+```bash
+gdb -batch -x commands.txt target/debug/deps/foolish_ubca-<hash>
+```
+
+### What you see
+
+```
+=== HIT 1: ConcatenationFir::fir_op_step ===
+2382        match self.core.get_nyes() {
+2383            Nyes::Prembrionic | Nyes::Embryonic => {
+2384                let children: Vec<FirRef> = self.core.foolish_children().to_vec();
+...
+
+=== HIT 2: BraneFir::fir_op_step ===
+787         match self.core.get_nyes() {
+788             Nyes::Prembrionic | Nyes::Embryonic => {
+789                 let children: Vec<FirRef> = self.core.foolish_children().to_vec();
+...
+
+=== HIT 3: BraneFir::fir_op_step (Braning state) ===
+787         match self.core.get_nyes() {
+...
+```
+
+The debugger stops at each `fir_op_step` call, shows the source code, and lets you step through the NYES state machine line by line.
+
+---
+
+## 11. Key limitation: `self` in trait methods
+
+GDB **cannot see `self`** in trait method implementations (`impl Fir for BraneFir`). This is a GDB limitation with Rust's vtable dispatch.
+
+**What works:**
+- `self` is visible in **inherent methods** (`impl FirNode { fn fir_op_step }`) — these don't go through vtable dispatch
+- Local variables are visible in both cases
+
+**Workarounds for trait methods:**
+
+1. **Break at the call site instead** — `self` is visible in the caller:
    ```gdb
-   set $self = (BraneFir*)$rdi
-   print $self->core
+   break step_to_settled
+   # From here, step into fir_op_step and use 'finish' to see return values
    ```
+
+2. **Use the register** — on x86_64, `self` is passed in `$rdi`:
+   ```gdb
+   info registers rdi
+   ```
+
+3. **Use inherent methods for debugging** — write a small wrapper that calls the trait method and break on the wrapper:
+   ```rust
+   // In your test
+   fn debug_step(node: &mut FirNode) -> StepReport {
+       node.fir_op_step()  // inherent method — self visible in GDB
+   }
+   ```
+
+---
+
+## 12. Troubleshooting
 
 ### "No compiled code for line N"
 
@@ -510,10 +789,14 @@ nm ./my_binary | c++filt | grep my_function
 
 This happens at `for` loop boundaries (desugared to `Range::into_iter()`). Use `next` again to advance, or set a breakpoint on the next interesting line and `continue`.
 
+### Program exits before breakpoints are hit
+
+The test may have passed and exited before your breakpoint was reached. Use `--test-threads=1` and ensure your test name matches exactly (use `--list` to verify).
+
 ---
 
 ## Last Updated
 
 **Date**: 2026-07-31
 **Updated By**: Sisyphus / mimo-v2.5-pro
-**Changes**: Initial creation — comprehensive GDB debugging skill for Rust, covering build flags, breakpoints, stepping, value inspection, test binary debugging, and troubleshooting.
+**Changes**: Comprehensive rewrite with tested examples for all GDB capabilities — breakpoints (function, trait, file:line, conditional), stepping (over/into/out), value inspection (print, call, display, memory), backtrace, watchpoints, catchpoints, and the self-in-trait-method limitation.
