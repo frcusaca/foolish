@@ -120,6 +120,18 @@ When commiting to Git, always state project segment and software version and mod
 Major: Refactor CLI, Phase: Discussion with Human--complete
 opencode 1.14.39, Qwen3.6-27B-AWQ-BF16-INT4
 ```
+### Debug using `ferroscope`
+If you find a mcp called ferroscope, you may use it for debugging Rust programs with this workflow:
+1. Load program: debug_run /path/to/project
+2. Set breakpoints: debug_break main or debug_break src/main.rs:25
+3. Start execution: debug_continue
+4. At breakpoints: debug_eval variable_name to inspect values
+5. Step through: debug_step (over), debug_step_into (into), debug_step_out (out)
+6. Check state: debug_state to see current status
+7. View stack: debug_backtrace when errors occur
+
+Typically, for Foolish, it is easiest to setup a very small, error reproducing, test case (with it's inpu Foolish code), einmo or unit test.
+The breakpoint would then be either inside that test case, or inside the main method under scrutiny.
 
 ## Development Rules
 **NEVER** start file changes for project Phase or larger WHEN any tests are broken.
