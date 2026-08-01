@@ -1,4 +1,4 @@
-name: einmo-gate-output
+name: Einmo Output
 
 on:
   push:

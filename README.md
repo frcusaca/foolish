@@ -471,7 +471,8 @@ The following documents in `docs/vintage_legacy/` document the original ubc0 imp
 **Changes**: Fixed CI badge URLs — replaced non-existent `einmo-gates.yml?job=` references
 with individual workflow files (`einmo-gate-output.yml`, `einmo-gate-checked.yml`,
 `einmo-gate-verified.yml`). Created missing workflow files for `einmo_gate_checked`
-and `einmo_gate_verified` tests.
+and `einmo_gate_verified` tests. Updated workflow `name:` fields to render
+properly capitalized badge text ("Einmo Output", "Einmo Checked", "Einmo Verified").
 
 **Date**: 2026-07-05
 **Updated By**: Sisyphus-Junior / xiaomi/mimo-v2.5-pro

@@ -1,4 +1,4 @@
-name: einmo-gate-checked
+name: Einmo Checked
 
 on:
   push:
