@@ -4,9 +4,9 @@
 
 [![License](https://img.shields.io/badge/license-Open%20Source-blue.svg)](#)
 [![Status](https://img.shields.io/badge/status-Active%20Development-green.svg)](#)
-[![einmo output](https://github.com/<owner>/foolish/actions/workflows/einmo-gates.yml/badge.svg?job=output)](https://github.com/<owner>/foolish/actions/workflows/einmo-gates.yml)
-[![einmo checked](https://github.com/<owner>/foolish/actions/workflows/einmo-gates.yml/badge.svg?job=checked)](https://github.com/<owner>/foolish/actions/workflows/einmo-gates.yml)
-[![einmo verified](https://github.com/<owner>/foolish/actions/workflows/einmo-gates.yml/badge.svg?job=verified)](https://github.com/<owner>/foolish/actions/workflows/einmo-gates.yml)
+[![einmo output](https://github.com/frcusaca/foolish/actions/workflows/einmo-gate-output.yml/badge.svg)](https://github.com/frcusaca/foolish/actions/workflows/einmo-gate-output.yml)
+[![einmo checked](https://github.com/frcusaca/foolish/actions/workflows/einmo-gate-checked.yml/badge.svg)](https://github.com/frcusaca/foolish/actions/workflows/einmo-gate-checked.yml)
+[![einmo verified](https://github.com/frcusaca/foolish/actions/workflows/einmo-gate-verified.yml/badge.svg)](https://github.com/frcusaca/foolish/actions/workflows/einmo-gate-verified.yml)
 
 ## Welcome to the Future of Programming
 
@@ -465,6 +465,13 @@ The following documents in `docs/vintage_legacy/` document the original ubc0 imp
 ---
 
 ## Last Updated
+
+**Date**: 2026-07-31
+**Updated By**: Sisyphus / mimo-v2.5-pro
+**Changes**: Fixed CI badge URLs — replaced non-existent `einmo-gates.yml?job=` references
+with individual workflow files (`einmo-gate-output.yml`, `einmo-gate-checked.yml`,
+`einmo-gate-verified.yml`). Created missing workflow files for `einmo_gate_checked`
+and `einmo_gate_verified` tests.
 
 **Date**: 2026-07-05
 **Updated By**: Sisyphus-Junior / xiaomi/mimo-v2.5-pro
