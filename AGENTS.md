@@ -5,7 +5,7 @@ This document provides instructions for AI agents (including Claude Code, GitHub
 ## Use Common Sense
 Apply industry standard best practices liberally. Use colloquial rust to most correctly, efficiently and readably implement the system. Colloquial rust tend to be most supported and most optimized.
 Documentation is organized under docs/ in subdirectories: howto/ (tutorials), why/ (philosophy), how/ (engineering), todo/ (project tracking), and vintage_legacy/ (legacy documents being reorganized).
-At end of every response, please attach the output of `date "+%Y-%m-%d %H:%M:%S.%s"`.
+At end of every response, run `date "+%Y-%m-%d %H:%M:%S.%s"` and paste the resulting timestamp (one line).
 
 ## Development process
 Due to the nature of human-driven development, AI should always write the tests first. Approval tests and unit tests, write the tests with most important features, and unclear corner cases written as tests to not only check behavior, but also to document what it looks like.
@@ -109,6 +109,7 @@ domain; do not improvise around it.
 | `foolish-debugging` | Debugging Foolish FVM/FIR behavior via unit-test-driven inspection: `step_until*` breakpoints, step-and-monitor of the `_children` stores + NYES, `ib_search`/`ab_search`, and the promote-to-regression-or-delete discipline. | Debugging wrong brane evaluation, unexpected NK/ECONSTANIC, search resolution failures, NYES state machine bugs, or name-lookup errors in `foolish-ubca`. |
 | `foop-write-plan` | Creating and planning FOOPs. Covers little-endian numbering, `foop_check.py`, the spec template (frontmatter + all body sections), plan construction rules, checkbox format, sub-tasks, worktree setup, and comprehensive snapshot test generation. | Creating a new FOOP, writing a specification, or constructing a plan (`FOOP-#.plan.md`). |
 | `foop-use-maintain` | Using and maintaining existing FOOPs. Covers listing/finding FOOPs, the status lifecycle, plan execution flow, checkbox lifecycle (complete with timestamp, backburner, cancel/deprecate), worktree execution, merge-to-`jia`, cleanup, and the human communication protocol. | Finding, executing, resuming, backburnering, cancelling, merging, or cleaning up an existing FOOP. |
+| `rust-debugging` | Debugging Rust programs with GDB — building with debug symbols, breakpoints (function, file:line, conditional), step-into/over/out, value inspection, running test binaries, Rust-specific GDB techniques. Best used via sub-agent to keep main context clean. | Debugging Rust code, stepping through execution, inspecting state, diagnosing panics or wrong values. |
 
 
 
