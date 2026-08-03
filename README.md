@@ -418,6 +418,21 @@ is shorthand to
 }
 ```
 
+### NK from a search
+
+A **search** settling NK is the narrow, exceptional outcome — not the default. NK from a
+search means "provably not there," and is reserved for specific cases:
+
+- an **anchored** contextless search (`a?name`) that finds nothing settles **NK**
+- an **unanchored** search (`?name`) that finds nothing settles **ECONSTANIC** instead — it
+  may still gain a value later via recoordination
+- a value search (`=`) whose pattern is itself `???`/NK, or whose anchor is NK, settles NK
+
+Most searches are constanic, not NK — treat an unexplained `NK` on a search as something to
+investigate, not the expected shape of a miss. See
+[FOOP-23](docs/foop/FOOP-23.md#specification) for the authoritative, in-force specification
+of search outcomes (the "NK vs ECONSTANIC miss outcomes" rule and the full operator family).
+
 ## Renaming
 
 Foolish permits reusing names with static single assignment semantics. Each reference captures the
@@ -462,6 +477,16 @@ The following documents in `docs/vintage_legacy/` document the original ubc0 imp
 ---
 
 ## Last Updated
+
+**Date**: 2026-08-03
+**Updated By**: Claude Code / claude-opus-5
+**Changes**: Added **"NK from a search"** under §"The Unknown" — states plainly that a search
+settling NK is the narrow, exceptional outcome (anchored miss, or an NK pattern/anchor on a
+value search), not the default; an unanchored miss settles ECONSTANIC instead. Cross-references
+FOOP-23 §Specification as the in-force authority. Prompted by a promoted `checked/` baseline
+(`foop/33/characterizations/quote_bearing_search.foo`) whose `hit = ?...` search settled NK
+without justification — the concept previously lived only inside `AGENTS.md`'s agent-process
+guidance and had no home in the language reference itself.
 
 **Date**: 2026-07-05
 **Updated By**: Sisyphus-Junior / xiaomi/mimo-v2.5-pro

@@ -264,12 +264,12 @@ einmo promote output to checked foolish-ubca/einmo_suite # promote all
    own expectation (its input, or its statement names) needs revision, and that revision needs
    review in its own right, not a silent promotion.
 
-   **Be skeptical of NK specifically.** Under the FOOP-23 search model (see "NK vs ECONSTANIC
-   miss outcomes" above), NK from a search means "provably not there" — it is the **narrow**
-   outcome, reserved for anchored misses, `=NK` value searches, or an NK anchor. A search
-   settling NK is the exception, not the default; if a line reads `foo=NK` and you cannot name
-   *which* of those narrow reasons applies, do not promote it — trace it (see the
-   `foolish-debugging` skill) before assuming the evaluator is right.
+   **Be skeptical of NK specifically.** A search settling NK is the narrow, exceptional
+   outcome, not the default — see the search specification (README.md §"The Unknown" and
+   FOOP-23 §Specification, the in-force authority) for exactly which outcomes are legitimate.
+   If a line reads `foo=NK` and you cannot name which of those legitimate cases applies, do
+   not promote it — trace it (see the `foolish-debugging` skill) before assuming the
+   evaluator is right.
 
    **Meaningful statement names are part of the test's specification, not decoration.** A
    statement named `hit = ?...` asserts that the search is expected to find its target; `miss
@@ -634,6 +634,15 @@ For complete details on:
 Example format:
 ```markdown
 ## Last Updated
+
+**Date**: 2026-08-03 (later same day)
+**Updated By**: Claude Code / claude-opus-5
+**Changes**: Corrected the einmo-promote step 4 added earlier today — per human direction, the
+*semantics* of when a search may legitimately settle NK belong in README.md and the in-force
+FOOP-23 specification, not in AGENTS.md (an agent-process document). Trimmed the "be skeptical
+of NK" sub-rule down to the process instruction (don't promote an unexplained NK; trace it) and
+pointed it at README.md §"NK from a search" / FOOP-23 §Specification instead of restating the
+rule inline. Added the corresponding README.md section.
 
 **Date**: 2026-08-03
 **Updated By**: Claude Code / claude-opus-5
