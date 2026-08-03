@@ -451,8 +451,21 @@ pub fn default_equal(a: &FirRef, b: &FirRef) -> Equality {
     if let (Some(av), Some(bv)) = (a_borrowed.as_i64(), b_borrowed.as_i64()) {
         return if av == bv { Equality::Equal } else { Equality::NotEqual };
     }
+    drop(a_borrowed);
+    drop(b_borrowed);
+    // Resolve through to the settled value (e.g. a search reference to a
+    // creation resolves to the CreationFir it found) before comparing kinds.
+    // `.value()` is a no-op for FIRs that are already their own value.
+    let a_resolved = a.value();
+    let b_resolved = b.value();
+    let a_borrowed = a_resolved.borrow();
+    let b_borrowed = b_resolved.borrow();
     if a_borrowed.kind() == FirKind::Creation && b_borrowed.kind() == FirKind::Creation {
-        return if Rc::ptr_eq(a, b) { Equality::Equal } else { Equality::NotEqual };
+        return if Rc::ptr_eq(&a_resolved, &b_resolved) {
+            Equality::Equal
+        } else {
+            Equality::NotEqual
+        };
     }
     // Two branes: brane-vs-brane equivalence is unspecified (FOOP-23) → genuinely unknowable.
     if a_borrowed.kind() == FirKind::Brane && b_borrowed.kind() == FirKind::Brane {
@@ -1120,9 +1133,11 @@ impl SearchFir {
             }
             _ => {}
         }
-        if value_fir.borrow().as_i64().is_none() {
+        let resolved_kind = value_fir.value().borrow().kind();
+        if value_fir.borrow().as_i64().is_none() && resolved_kind != FirKind::Creation {
             self.core.set_alarm_reason(
-                "VALUE-SEARCH-UNSUPPORTED-PATTERN: non-integer value pattern".to_string(),
+                "VALUE-SEARCH-UNSUPPORTED-PATTERN: pattern is neither integer nor creation"
+                    .to_string(),
             );
             self.core.set_nyes(Nyes::Nk);
             return false;
@@ -4917,6 +4932,92 @@ mod tests {
             pattern: Rc::clone(&pattern_val),
         };
         assert_eq!(pred.matches(&stmt, &ctx), MatchOutcome::Reject);
+    }
+
+    #[test]
+    fn value_search_pattern_referencing_a_creation_finds_matching_creation() {
+        use crate::compiler::Compiler;
+
+        // `diff` value-searches for w's (== y's) creation. `z` (== x's, a
+        // DIFFERENT creation) sits between y/w and diff in scan order and
+        // must be skipped; only w/y's creation may match.
+        let root = Compiler::compile("{x = ⬤; y = {*}; z = x; w = y; diff = ?=w;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        settle_root(&root);
+
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let body_of = |i: usize| -> FirRef {
+            stmts[i]
+                .borrow()
+                .core()
+                .foolish_children()
+                .first()
+                .cloned()
+                .unwrap()
+        };
+        let y_creation = body_of(1).value();
+        let x_creation = body_of(0).value();
+        assert_eq!(y_creation.borrow().kind(), FirKind::Creation);
+        assert_eq!(x_creation.borrow().kind(), FirKind::Creation);
+        assert!(
+            !Rc::ptr_eq(&x_creation, &y_creation),
+            "x and y must be distinct creations"
+        );
+
+        let diff_body = body_of(4);
+        assert_eq!(
+            diff_body.borrow().core().get_nyes(),
+            Nyes::Constant,
+            "diff must settle Constant, found the matching creation"
+        );
+        let diff_value = diff_body.value();
+        assert!(
+            Rc::ptr_eq(&diff_value, &y_creation),
+            "diff must resolve to y's creation, not x's or any other"
+        );
+    }
+
+    #[test]
+    fn value_search_pattern_referencing_a_creation_rejects_distinct_creation() {
+        use crate::compiler::Compiler;
+
+        // `nomatch` is the ONLY statement in its home brane (`inner`), so
+        // its unanchored backward scan has nothing to look at — not even a
+        // self-match. `y`'s creation is a DIFFERENT creation than the
+        // pattern would need, and it lives outside `inner` entirely, so it
+        // is not even a candidate; the search must genuinely miss.
+        let root = Compiler::compile("{y = {*}; inner = {nomatch = ?=y;};}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        settle_root(&root);
+
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let inner_brane = stmts[1]
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        let inner_stmts = inner_brane.borrow().core().foolish_children().to_vec();
+        let nomatch_body = inner_stmts[0]
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        // Unanchored miss -> ECONSTANIC (may still gain a value via
+        // recoordination), not NK — see AGENTS.md "NK vs ECONSTANIC miss
+        // outcomes".
+        assert_eq!(
+            nomatch_body.borrow().core().get_nyes(),
+            Nyes::Econstanic,
+            "nomatch must be an unanchored miss (ECONSTANIC), not a false match or NK"
+        );
     }
 
     #[test]

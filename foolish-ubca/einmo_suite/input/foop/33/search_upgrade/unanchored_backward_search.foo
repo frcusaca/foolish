@@ -1,40 +1,16 @@
 {
-	!! FOOP-33: bare unanchored backward search (?pattern with nothing before the ?).
-	!! Bug 1: parser hardcoded the anchor to a literal empty Brane{} instead of
-	!! "no anchor" -- so a bare ?pattern always scanned zero statements and
-	!! settled NK, never finding anything, regardless of pattern correctness.
-	!! Bug 2 (already fixed on this branch, pinned again here): name-search
-	!! matching must use the full characterized name (searchable_name), not
-	!! just the bare coordinate, so a pattern containing ' can match.
-
-	!! (1) Bread and butter: found in the CURRENT brane (IB) -- x is a
-	!! sibling statement earlier in this same brane.
 	x = 3;
 	local_hit = ?x;
 
-	!! (2) Characterized name, found in the current brane via bare backward
-	!! search -- pins Bug 2 in the same scope Bug 1 is pinned.
 	tag'y = 5;
 	plain_y = 9;
 	quoted_hit = ?tag'y;
 	quoted_miss = ?y;
 
-	!! (3) Miss in the current brane: no candidate named this way exists
-	!! anywhere reachable, so it must settle ECONSTANIC (unanchored miss),
-	!! not NK -- an anchored miss (a?pattern) is what settles NK; the bare
-	!! form may still gain a value later via recoordination.
 	miss = ?nonexistent;
 
-	!! (4) A reference to (3)'s ECONSTANIC result, itself found via another
-	!! backward-pattern search, must become WOCONSTANIC: it found its
-	!! dependency (miss's statement), but that dependency is not yet a
-	!! concrete value -- it should not settle further on its own.
 	miss_ref = ?miss;
 
-	!! (5) Ancestor climb: 'deep' is defined in the outer brane BEFORE the
-	!! inner'{...} statement. Inside the inner brane, ?deep has no local
-	!! candidate, so the bare search must climb via AB to the position of
-	!! inner'{...} in the outer brane and scan backward from there.
 	deep = 11;
 	inner'{
 		found_in_ancestor = ?deep;

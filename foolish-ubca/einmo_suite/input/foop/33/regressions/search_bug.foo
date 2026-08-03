@@ -1,10 +1,4 @@
 {
-	!! Bare unanchored ?pattern must search the current brane, not an
-	!! empty literal (parser.rs Token::Question prefix branch). Two bugs
-	!! pinned here: (1) the anchor for a bare ?pattern was a hardcoded
-	!! empty Brane{} instead of the current brane; (2) name-searches must
-	!! match against the full characterized name (searchable_name), not
-	!! the bare coordinate name, when the pattern carries a '.
 	x = 3;
 	tag'x = 7;
 	plain = ?x;

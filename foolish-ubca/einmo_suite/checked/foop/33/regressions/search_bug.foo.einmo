@@ -1,19 +1,13 @@
 #einmo 1 encoding=utf-8 separator=!!\n
 test: foop/33/regressions/search_bug.foo
 suite: /storage1/human/hcbusy/foolish/foolish-ubca/einmo_suite
-producer: 8ad18dff
-producer-diff: sha256:3e7783a589343ba90b4efc4a551df22a2f6338ab4811290835264864892f2cb4
-generated: 2026-08-03T20:10:12.000000000Z
+producer: ec981e86
+producer-diff: sha256:1df09f6abceb5d54a2b32eb5ffa53ee1bf32ba7bcd9ab0a54831c30928da56de
+generated: 2026-08-03T23:41:08.000000000Z
 status: normal
 status-detail: 
 sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
 {
-	!! Bare unanchored ?pattern must search the current brane, not an
-	!! empty literal (parser.rs Token::Question prefix branch). Two bugs
-	!! pinned here: (1) the anchor for a bare ?pattern was a hardcoded
-	!! empty Brane{} instead of the current brane; (2) name-searches must
-	!! match against the full characterized name (searchable_name), not
-	!! the bare coordinate name, when the pattern carries a '.
 	x = 3;
 	tag'x = 7;
 	plain = ?x;
@@ -29,7 +23,7 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
   nope=?(pattern='nonexistent', UNANCHORED, ECONSTANIC)
 }!!
 !!
-{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:3f2fc1bf4ccd9fb255ebcd7dccec6a7a2234507df95b884536c5b1f548eb9244","timestamp":"2026-08-03T20:10:13.000000000Z"}
-{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:3f2fc1bf4ccd9fb255ebcd7dccec6a7a2234507df95b884536c5b1f548eb9244","timestamp":"2026-08-03T20:10:13.000000000Z"}
-{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"sejAWwnG5V/imfT5woSE/vdU6oXGXyQzSiCZvr3xLsa3cXVP6knNkClP1wYZiszyXi43TL99xuGCraV/hwQ3DQ==","produced_by":"einmo 0.1.0 sha256:3f2fc1bf4ccd9fb255ebcd7dccec6a7a2234507df95b884536c5b1f548eb9244","timestamp":"2026-08-03T20:10:13.000000000Z"}
-{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"9FdqKNABFTKhhKS/ffd6U1TZlcIuKJZ4ZJnr67gZjVyn41GEI7lmORDIw/pnvtMSDaxUqIKJJbyNdzEBjTI7DQ==","produced_by":"einmo 0.1.0 sha256:2381def31d69037bb8a176a65a8ab6092becf423d9e3e0b7c36b008d2d62d8b2","timestamp":"2026-08-03T20:11:59.000000000Z"}
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:98a7683b9926e62314c3e0bcb902e5e6b6e97d7fb85d5eb9c96b413fc8b91fb0","timestamp":"2026-08-03T23:41:08.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:98a7683b9926e62314c3e0bcb902e5e6b6e97d7fb85d5eb9c96b413fc8b91fb0","timestamp":"2026-08-03T23:41:08.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"OFlmVBOPqBE6kCB3jupCJjb/czvMJG0pXZyNTK1R7OiB/Opv2z4c8FUGr3Prk3TGdzAsXyZxI5dxOnYtGNv/BA==","produced_by":"einmo 0.1.0 sha256:98a7683b9926e62314c3e0bcb902e5e6b6e97d7fb85d5eb9c96b413fc8b91fb0","timestamp":"2026-08-03T23:41:08.000000000Z"}
+{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"G/kkq/h5Wm1B1hDFKNhvOHWJgAExg7qzSLep/UeWqCrqdimSigSw27cUXDt3Qx3yrigsR7xleAXal2F00gwCBg==","produced_by":"einmo 0.1.0 sha256:2381def31d69037bb8a176a65a8ab6092becf423d9e3e0b7c36b008d2d62d8b2","timestamp":"2026-08-03T23:47:20.000000000Z"}

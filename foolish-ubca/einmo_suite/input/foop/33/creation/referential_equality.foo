@@ -3,8 +3,10 @@
 	shared = ⬤;
 	ba = {v = shared;};
 	bb = {v = shared;};
-	cross_same = ba.v~=bb.v;
+	cross_same = ba~=(bb.v);
+	cross_same = bb~=(bb.v);
 	bc = {v = ⬤;};
 	bd = {v = ⬤;};
-	cross_diff = bc.v~=bd.v;
+	cross_diff = bc~=(bd.v);
+	cross_diff = bd~=(bd.v);
 }
