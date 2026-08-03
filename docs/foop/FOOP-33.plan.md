@@ -229,6 +229,18 @@ module).
       the user program as its child, before `step_to_settled`, on every entry path
       (`foolish-ubca/src/evaluator.rs::evaluate`, REPL, CLI `run`/`step`). `_ab_search`
       terminates at system.foo (parent == self). Not opt-in.
+
+      **Construction**: parse system.foo to get its AST (a Brane with `'True` and `'False`
+      statements). Add `'program = {user source}` as a statement to that AST. Compile the
+      combined AST as one unit → one BraneFir (self-rooting). The FIR tree is built correctly
+      from the start — no re-parenting, no changes to `parent` or `foolish_children` after
+      construction. The evaluator returns the `'program` statement's result, not the system
+      brane's result.
+
+      **`'program` statement**: the user program brane is wrapped in a null-characterized
+      statement named `'program`. This ensures the AB search parent chain works correctly:
+      user_brane → StatementFir('program) → system.foo → self (terminates).
+
 - [ ] **Preserve the user program's line numbers**: making system.foo the ancestor must not
       shift program line numbering (system.foo is a distinct brane above, with its own lines).
       Unit test via `as_stmt_line_number` / `step_until_line_number` on a one-line program.
@@ -242,20 +254,22 @@ The sequencer currently renders all creations as `⬤`. When a creation originat
 null-characterized statement (like `'True = ⬤` in `system.foo`), the sequencer should render
 the characterized name instead (e.g. `'True`). If no name is known, fall back to `⬤`.
 
-- [ ] `Fir::Creation` → `Fir::Creation(Option<String>)` in `foolish-core/src/fir.rs`.
-      Update all 9 match arms. JSON ser/de carries the optional name.
-- [ ] `FirQueryable::hs_creation()` → change return type from `bool` to
-      `Option<Option<String>>`. `None` = not a creation; `Some(None)` = anonymous creation;
-      `Some(Some(name))` = named creation. Update impls on `Fir`, `FirChildRef`.
-- [ ] Sequencer (`foolish-core/src/sequencer.rs:614`): when `hs_creation()` returns
-      `Some(Some(name))`, render `name` (e.g. `'True`); when `Some(None)`, render `⬤`.
-- [ ] `proto_to_core_fir_inner` in `foolish-ubca/src/evaluator.rs`: add `creation_name:
-      Option<&str>` parameter. All existing callers pass `None`. In the Brane conversion loop
-      (line 338), for each statement: check `cb.as_stmt_identifier().is_some_and(|id|
-      id.is_nully_characterizing_coordinate_name())`. If true and the body is a `CreationFir`,
-      pass `Some(stmt_name)` into `proto_to_core_fir_inner`. The function emits
-      `Fir::Creation(Some(name))` when `creation_name` is `Some`, else `Fir::Creation(None)`.
-- [ ] Unit tests: creation with name renders as `'True`; creation without name renders as `⬤`.
+**Design**: the name is NOT stored on `Fir::Creation`. `Fir::Creation` remains a unit variant.
+When the sequencer encounters a creation, it searches the containing brane for a
+null-characterized statement whose value is that creation, using the pattern
+`?'[a-zA-Z_0-9]+=CREATION_REF` (same identifier pattern as the parser). If found, render the
+characterized name (e.g. `'True`). If not found, render `⬤`. This is consistent with how
+Foolish resolves names — through search, not stored metadata.
+
+- [ ] Sequencer (`foolish-core/src/sequencer.rs:614`): when rendering a creation, search the
+      containing brane using `?'[a-zA-Z_0-9]+=CREATION_REF`. The search looks for a
+      null-characterized statement whose value (`Rc::ptr_eq`) matches the creation. If found,
+      render the characterized name; otherwise render `⬤`.
+- [ ] The sequencer needs access to the containing brane to perform the search. This may require
+      passing the brane context through the rendering pipeline, or having the sequencer walk up
+      the parent chain from the creation FIR.
+- [ ] Unit tests: creation from null-characterized statement renders as `'True`; anonymous
+      creation renders as `⬤`.
 - [ ] Update einmo baselines for any snapshots that now show `'True`/`'False` instead of `⬤`.
 
 ## Phase 6 — Comparison operators via brane search (revised)
@@ -432,6 +446,16 @@ is no longer syntactic sugar; it is brane search into system definitions.
     - [ ] Last box checked in this block.
 
 ## Last Updated
+
+**Date**: 2026-08-02
+**Updated By**: Sisyphus / xiaomi/mimo-v2.5-pro
+**Changes**: **Phase 5 revised** — clarified system.foo construction: parse system.foo AST, add
+`'program = {user source}` statement, compile combined AST as one unit. No re-parenting, no
+changes to `parent` or `foolish_children` after construction. User program wrapped in
+`'program` statement for correct AB search parent chain. **Phase 5.5 revised** — sequencer
+searches for creation name using `?'[a-zA-Z_0-9]+=CREATION_REF` pattern (same as parser
+identifier pattern), does NOT store name on `Fir::Creation` (remains unit variant). Search
+looks for null-characterized statement whose value (`Rc::ptr_eq`) matches the creation.
 
 **Date**: 2026-08-02
 **Updated By**: Sisyphus / xiaomi/mimo-v2.5-pro
