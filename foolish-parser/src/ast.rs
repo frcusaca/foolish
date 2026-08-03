@@ -61,9 +61,15 @@ pub enum Astn {
         coordinate: String,
     },
 
-    /// Regex search: anchor?pattern or anchor~pattern
+    /// Regex search: anchor?pattern or anchor~pattern.
+    /// `anchor: None` is the bare unanchored backward form (`?pattern`) — searches the
+    /// current brane (IB), then climbs ancestors (AB), per FOOP-23 Part B / AGENTS.md
+    /// "Contextless Anchored Searches" — an unanchored miss settles ECONSTANIC, not NK.
+    /// There is no unanchored forward (`~pattern`) form: Foolish cannot look forward in
+    /// its own brane (FOOP-23 §Specification A.1), so `operator: RegexpForward` always
+    /// carries `anchor: Some(_)`.
     RegexpSearch {
-        anchor: Box<Astn>,
+        anchor: Option<Box<Astn>>,
         operator: SearchOperator,
         pattern: String,
     },

@@ -621,7 +621,7 @@ impl Parser {
                         };
                     } else {
                         expr = Astn::RegexpSearch {
-                            anchor: Box::new(expr),
+                            anchor: Some(Box::new(expr)),
                             operator: SearchOperator::RegexpLocal,
                             pattern,
                         };
@@ -650,7 +650,7 @@ impl Parser {
                         };
                     } else {
                         expr = Astn::RegexpSearch {
-                            anchor: Box::new(expr),
+                            anchor: Some(Box::new(expr)),
                             operator: SearchOperator::RegexpForward,
                             pattern,
                         };
@@ -704,7 +704,7 @@ impl Parser {
                                 }
                             } else {
                                 Astn::RegexpSearch {
-                                    anchor: Box::new(expr),
+                                    anchor: Some(Box::new(expr)),
                                     operator: SearchOperator::RegexpLocal,
                                     pattern,
                                 }
@@ -723,7 +723,7 @@ impl Parser {
                                 }
                             } else {
                                 Astn::RegexpSearch {
-                                    anchor: Box::new(expr),
+                                    anchor: Some(Box::new(expr)),
                                     operator: SearchOperator::RegexpForward,
                                     pattern,
                                 }
@@ -1015,11 +1015,11 @@ impl Parser {
                         value_pattern: Box::new(value_pattern),
                     })
                 } else {
+                    // Bare unanchored backward search: searches the current brane (IB),
+                    // then climbs ancestor branes (AB) — mirrors the unanchored
+                    // ValueSearch arm just above, NOT a literal empty-brane anchor.
                     Ok(Astn::RegexpSearch {
-                        anchor: Box::new(Astn::Brane {
-                            characterizations: vec![],
-                            statements: vec![],
-                        }),
+                        anchor: None,
                         operator: SearchOperator::RegexpLocal,
                         pattern,
                     })
@@ -1366,6 +1366,33 @@ mod tests {
                     assert!(name_pattern.is_none());
                 }
                 other => panic!("expected ValueSearch, got {:?}", other),
+            },
+            _ => panic!("expected brane"),
+        }
+    }
+
+    #[test]
+    fn parses_regexp_search_bare_unanchored() {
+        // Bare `?pattern` (nothing before the `?`) must carry `anchor: None` — a
+        // real "no anchor" AST shape, not a hardcoded empty Brane{} literal (the
+        // FOOP-33 regression this test pins). See `parses_regexp_search` above
+        // for the anchored form (`brn?pattern`), which is unaffected.
+        let ast = parse_single("{found = ?pattern;}").unwrap();
+        match ast {
+            Astn::Brane { statements, .. } => match &statements[0] {
+                Astn::Assignment { expr, .. } => match &**expr {
+                    Astn::RegexpSearch {
+                        anchor,
+                        operator,
+                        pattern,
+                    } => {
+                        assert!(anchor.is_none());
+                        assert_eq!(*operator, SearchOperator::RegexpLocal);
+                        assert_eq!(pattern, "pattern");
+                    }
+                    other => panic!("expected RegexpSearch, got {:?}", other),
+                },
+                _ => panic!("expected assignment"),
             },
             _ => panic!("expected brane"),
         }

@@ -725,7 +725,7 @@ pub struct StatementFir {
 
 impl StatementFir {
     pub fn name(&self) -> &str {
-        self.identifier.name()
+        self.identifier.identifier_name()
     }
 
     pub fn identifier(&self) -> &Identifier {
@@ -794,15 +794,6 @@ impl Fir for StatementFir {
 
     fn kind(&self) -> FirKind {
         FirKind::Statement
-    }
-
-    fn as_stmt_name(&self) -> Option<&str> {
-        let name = self.identifier.name();
-        if name.is_empty() {
-            None
-        } else {
-            Some(name)
-        }
     }
 
     fn as_stmt_identifier(&self) -> Option<&Identifier> {
@@ -927,14 +918,14 @@ impl Fir for BraneFir {
         for i in range {
             let child = &children[i];
             let child_borrowed = child.borrow();
-            // Choose projection: pattern with ' matches characterized_name(), else name()
-            let candidate = if expression.contains('\'') {
-                child_borrowed
-                    .as_stmt_identifier()
-                    .map(|id| id.characterized_name())
-            } else {
-                child_borrowed.as_stmt_name()
-            };
+            // Every name-search matches against searchable_name — the full
+            // characterized LHS as one string. A plain pattern (`^x$`) naturally
+            // won't match a characterized searchable_name (`"tag'x"`) under this
+            // full-string anchoring, and a `'`-bearing pattern matches only the
+            // identically-characterized name. One projection, one comparison.
+            let candidate = child_borrowed
+                .as_stmt_identifier()
+                .map(|id| id.searchable_name());
             if let Some(sn) = candidate
                 && SearchFir::matches_pattern(sn, expression)
             {
@@ -1845,7 +1836,11 @@ mod contextful_search {
             match self {
                 Self::Name { pattern } => {
                     let borrowed = candidate.borrow();
-                    let name = match borrowed.as_stmt_name() {
+                    // Matches against searchable_name (the full characterized LHS as
+                    // one string) — a plain pattern naturally won't match a
+                    // characterized name, and a '-bearing pattern matches only the
+                    // identically-characterized name. See Identifier::searchable_name.
+                    let name = match borrowed.as_stmt_searchable_name() {
                         Some(n) => n,
                         None => return MatchOutcome::Reject,
                     };
@@ -1872,7 +1867,7 @@ mod contextful_search {
                 Self::NameValue { name, value } => {
                     let body = {
                         let borrowed = candidate.borrow();
-                        let stmt_name = match borrowed.as_stmt_name() {
+                        let stmt_name = match borrowed.as_stmt_searchable_name() {
                             Some(n) => n,
                             None => return MatchOutcome::Reject,
                         };
@@ -1935,7 +1930,7 @@ mod contextful_search {
             match self {
                 Self::Name { pattern } => {
                     let borrowed = candidate.borrow();
-                    let name = match borrowed.as_stmt_name() {
+                    let name = match borrowed.as_stmt_searchable_name() {
                         Some(n) => n,
                         None => return MatchOutcome::Reject,
                     };
@@ -2343,13 +2338,10 @@ impl Fir for ConcatHelper {
         for i in range {
             let child = &children[i];
             let child_borrowed = child.borrow();
-            let candidate = if expression.contains('\'') {
-                child_borrowed
-                    .as_stmt_identifier()
-                    .map(|id| id.characterized_name())
-            } else {
-                child_borrowed.as_stmt_name()
-            };
+            // See _search_brane above: every name-search matches against searchable_name.
+            let candidate = child_borrowed
+                .as_stmt_identifier()
+                .map(|id| id.searchable_name());
             if let Some(sn) = candidate
                 && SearchFir::matches_pattern(sn, expression)
             {
@@ -4452,12 +4444,12 @@ mod tests {
         let stmts: Vec<FirRef> = root.borrow().core().foolish_children().to_vec();
         assert_eq!(stmts.len(), 2);
         assert_eq!(
-            stmts[0].borrow().as_stmt_name(),
+            stmts[0].borrow().as_stmt_searchable_name(),
             Some("a"),
             "named assignment keeps its LHS"
         );
         assert_eq!(
-            stmts[1].borrow().as_stmt_name(),
+            stmts[1].borrow().as_stmt_searchable_name(),
             Some(crate::compiler::ANON_STMT_NAME),
             "anonymous bare expression is named ???"
         );
@@ -4762,7 +4754,7 @@ mod tests {
         assert_eq!(nav.total(), 3);
 
         let yielded: Vec<(String, usize)> = std::iter::from_fn(|| nav.next_candidate())
-            .map(|(c, pos)| (c.borrow().as_stmt_name().unwrap().to_owned(), pos))
+            .map(|(c, pos)| (c.borrow().as_stmt_searchable_name().unwrap().to_owned(), pos))
             .collect();
         assert_eq!(
             yielded,
@@ -4784,7 +4776,7 @@ mod tests {
         let mut nav = BraneNavigator::new(&brane, false);
 
         let yielded: Vec<(String, usize)> = std::iter::from_fn(|| nav.next_candidate())
-            .map(|(c, pos)| (c.borrow().as_stmt_name().unwrap().to_owned(), pos))
+            .map(|(c, pos)| (c.borrow().as_stmt_searchable_name().unwrap().to_owned(), pos))
             .collect();
         assert_eq!(
             yielded,
@@ -5138,7 +5130,7 @@ mod tests {
         let outcome = super::contextful_search_scan(&mut nav, &pred);
         match outcome {
             ScanOutcome::Found(stmt) => {
-                assert_eq!(stmt.borrow().as_stmt_name(), Some("γ"));
+                assert_eq!(stmt.borrow().as_stmt_searchable_name(), Some("γ"));
             }
             other => panic!("expected Found, got {other:?}"),
         }
@@ -5159,7 +5151,7 @@ mod tests {
         match outcome {
             ScanOutcome::Found(stmt) => {
                 assert_eq!(
-                    stmt.borrow().as_stmt_name(),
+                    stmt.borrow().as_stmt_searchable_name(),
                     Some("ᚠ"),
                     "backward scan must find ᚠ even though it is at brane position 0"
                 );
@@ -5190,7 +5182,7 @@ mod tests {
         let outcome = super::contextful_search_scan(&mut nav, &pred);
         match outcome {
             ScanOutcome::Found(stmt) => {
-                assert_eq!(stmt.borrow().as_stmt_name(), Some("b"));
+                assert_eq!(stmt.borrow().as_stmt_searchable_name(), Some("b"));
             }
             other => panic!("expected Found, got {other:?}"),
         }
@@ -5246,7 +5238,7 @@ mod tests {
         let outcome = super::contextful_search_scan(&mut nav, &pred);
         match outcome {
             ScanOutcome::Found(stmt) => {
-                assert_eq!(stmt.borrow().as_stmt_name(), Some("setting"));
+                assert_eq!(stmt.borrow().as_stmt_searchable_name(), Some("setting"));
                 let body = stmt
                     .borrow()
                     .core()
@@ -5274,7 +5266,7 @@ mod tests {
         let outcome = super::contextful_search_scan(&mut nav, &SearchPredicate::Head);
         match outcome {
             ScanOutcome::Found(stmt) => {
-                assert_eq!(stmt.borrow().as_stmt_name(), Some("ᚺ"));
+                assert_eq!(stmt.borrow().as_stmt_searchable_name(), Some("ᚺ"));
             }
             other => panic!("expected Found, got {other:?}"),
         }
@@ -5291,7 +5283,7 @@ mod tests {
         match outcome {
             ScanOutcome::Found(stmt) => {
                 assert_eq!(
-                    stmt.borrow().as_stmt_name(),
+                    stmt.borrow().as_stmt_searchable_name(),
                     Some("ᛏ"),
                     "Tail matches the last brane position regardless of nav direction"
                 );
@@ -5313,7 +5305,7 @@ mod tests {
         match outcome {
             ScanOutcome::Found(stmt) => {
                 assert_eq!(
-                    stmt.borrow().as_stmt_name(),
+                    stmt.borrow().as_stmt_searchable_name(),
                     Some("ᚪ"),
                     "Index(1) must match brane position 1 even in backward scan"
                 );
@@ -5684,7 +5676,7 @@ mod tests {
             .unwrap();
         let inner_stmts = inner_brane.borrow().core().foolish_children().to_vec();
         let original_x = &inner_stmts[0];
-        assert_eq!(original_x.borrow().as_stmt_name(), Some("x"));
+        assert_eq!(original_x.borrow().as_stmt_searchable_name(), Some("x"));
 
         let b_stmt = &stmts_a[1];
         let search_body = b_stmt
@@ -6307,8 +6299,8 @@ mod tests {
         for i in 0..big_count {
             let bs = big.borrow().stmt_at(i).unwrap();
             let cs = cat.borrow().stmt_at(i).unwrap();
-            let b_name = bs.borrow().as_stmt_name().unwrap().to_owned();
-            let c_name = cs.borrow().as_stmt_name().unwrap().to_owned();
+            let b_name = bs.borrow().as_stmt_searchable_name().unwrap().to_owned();
+            let c_name = cs.borrow().as_stmt_searchable_name().unwrap().to_owned();
             assert_eq!(b_name, c_name, "stmt[{i}] name mismatch");
             let b_val = bs.borrow().core().foolish_children()[0].borrow().as_i64();
             let c_val = cs.borrow().core().foolish_children()[0].borrow().as_i64();
@@ -6327,25 +6319,25 @@ mod tests {
         assert!(result.is_some(), "must find 'a'");
         let (idx, stmt, _nyes) = result.unwrap();
         assert_eq!(idx, 0, "global index of 'a' must be 0");
-        assert_eq!(stmt.borrow().as_stmt_name(), Some("a"));
+        assert_eq!(stmt.borrow().as_stmt_searchable_name(), Some("a"));
 
         let result = cat.borrow()._search_brane("^f$", 0, 9);
         assert!(result.is_some(), "must find 'f'");
         let (idx, stmt, _nyes) = result.unwrap();
         assert_eq!(idx, 5, "global index of 'f' must be 5");
-        assert_eq!(stmt.borrow().as_stmt_name(), Some("f"));
+        assert_eq!(stmt.borrow().as_stmt_searchable_name(), Some("f"));
 
         let result = cat.borrow()._search_brane("^j$", 9, 0);
         assert!(result.is_some(), "must find 'j' in reverse");
         let (idx, stmt, _nyes) = result.unwrap();
         assert_eq!(idx, 9, "global index of 'j' must be 9");
-        assert_eq!(stmt.borrow().as_stmt_name(), Some("j"));
+        assert_eq!(stmt.borrow().as_stmt_searchable_name(), Some("j"));
 
         let result = cat.borrow()._search_brane("^e$", 0, 9);
         assert!(result.is_some(), "must find 'e'");
         let (idx, stmt, _nyes) = result.unwrap();
         assert_eq!(idx, 4, "global index of 'e' must be 4");
-        assert_eq!(stmt.borrow().as_stmt_name(), Some("e"));
+        assert_eq!(stmt.borrow().as_stmt_searchable_name(), Some("e"));
     }
 
     #[test]
@@ -6364,7 +6356,7 @@ mod tests {
         let count = cb_body.borrow().stmt_count().unwrap_or(0);
         for i in 0..count {
             let stmt = cb_body.borrow().stmt_at(i).unwrap();
-            if stmt.borrow().as_stmt_name() == Some("b") {
+            if stmt.borrow().as_stmt_searchable_name() == Some("b") {
                 let body = stmt.borrow().core().foolish_children()[0].value();
                 found_val = body.borrow().as_i64();
                 break;
@@ -6389,7 +6381,7 @@ mod tests {
         let mut found_val = None;
         for i in 0..cb_count {
             let stmt = cb_body.borrow().stmt_at(i).unwrap();
-            if stmt.borrow().as_stmt_name() == Some("b") {
+            if stmt.borrow().as_stmt_searchable_name() == Some("b") {
                 let body = stmt.borrow().core().foolish_children()[0].value();
                 found_val = body.borrow().as_i64();
                 break;
@@ -6530,8 +6522,8 @@ mod tests {
             let orig = cat.borrow().stmt_at(i).unwrap();
             let cloned = clone.borrow().stmt_at(i).unwrap();
             assert_eq!(
-                orig.borrow().as_stmt_name(),
-                cloned.borrow().as_stmt_name(),
+                orig.borrow().as_stmt_searchable_name(),
+                cloned.borrow().as_stmt_searchable_name(),
                 "stmt[{i}] name must match"
             );
         }
@@ -6600,7 +6592,7 @@ mod tests {
         for (i, name) in expected.iter().enumerate() {
             let stmt = cat.borrow().stmt_at(i).unwrap();
             assert_eq!(
-                stmt.borrow().as_stmt_name(),
+                stmt.borrow().as_stmt_searchable_name(),
                 Some(*name),
                 "stmt[{i}] must be named {name}"
             );
@@ -6639,7 +6631,7 @@ mod tests {
             "one non-empty → 1 statement"
         );
         let first = cat2.borrow().stmt_at(0).unwrap();
-        assert_eq!(first.borrow().as_stmt_name(), Some("x"));
+        assert_eq!(first.borrow().as_stmt_searchable_name(), Some("x"));
     }
 
     // ── Protocol (element typing, auto-wrapping, copy-and-coordinate) ──
@@ -6696,7 +6688,7 @@ mod tests {
         let stmts = root.borrow().core().foolish_children().to_vec();
         let nl = stmts
             .iter()
-            .find(|s| s.borrow().as_stmt_name() == Some("nl"))
+            .find(|s| s.borrow().as_stmt_searchable_name() == Some("nl"))
             .unwrap();
         let nl_body = nl
             .borrow()
@@ -6744,7 +6736,7 @@ mod tests {
         let stmts = root.borrow().core().foolish_children().to_vec();
         let mut cb_val: Option<FirRef> = None;
         for s in &stmts {
-            if s.borrow().as_stmt_name() == Some("cb") {
+            if s.borrow().as_stmt_searchable_name() == Some("cb") {
                 cb_val = Some(s.borrow().core().foolish_children()[0].value());
                 break;
             }
@@ -6756,7 +6748,7 @@ mod tests {
         let mut c_val = None;
         for i in 0..cb_count {
             let stmt = cb.borrow().stmt_at(i).unwrap();
-            if stmt.borrow().as_stmt_name() == Some("c") {
+            if stmt.borrow().as_stmt_searchable_name() == Some("c") {
                 let body = stmt.borrow().core().foolish_children()[0].value();
                 c_val = body.borrow().as_i64();
                 break;
@@ -6808,7 +6800,7 @@ mod tests {
         let stmts = root.borrow().core().foolish_children().to_vec();
         let names: Vec<String> = stmts
             .iter()
-            .filter_map(|s| s.borrow().as_stmt_name().map(|n| n.to_owned()))
+            .filter_map(|s| s.borrow().as_stmt_searchable_name().map(|n| n.to_owned()))
             .collect();
         assert!(names.contains(&"b".to_string()), "must contain 'b'");
     }

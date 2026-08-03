@@ -1,8 +1,9 @@
 //! Identifier and Characterizations for FOOP-33.
 //!
 //! Every statement carries an `Identifier` that owns the LHS string and exposes
-//! three projections: `name()` (bare coordinate name), `characterized_name()`
-//! (whole LHS with characterizations), and `is_nully_characterizing_coordinate_name()`
+//! three projections: `identifier_name()` (bare coordinate name), `searchable_name()`
+//! (whole LHS with characterizations, whitespace removed, as a single string — what
+//! name-searches match against), and `is_nully_characterizing_coordinate_name()`
 //! (whether the slot immediately touching the name is null).
 //!
 //! `Characterizations` is minimal for this FOOP — it only answers whether the
@@ -110,15 +111,19 @@ impl Identifier {
         }
     }
 
-    /// The bare coordinate name — e.g. `"x"`. The matcher demands this for a
-    /// plain pattern.
-    pub fn name(&self) -> &str {
+    /// The bare coordinate name — e.g. `"x"`. No characterizations. Not what
+    /// name-searches match against; see [`Identifier::searchable_name`].
+    pub fn identifier_name(&self) -> &str {
         &self.name
     }
 
-    /// The canonicalized fully-characterized name — e.g. `"a'b'c'd'e''x"`.
-    /// The matcher demands this for a `'`-bearing pattern.
-    pub fn characterized_name(&self) -> &str {
+    /// The characterized identifier name as a single, whitespace-stripped string —
+    /// e.g. `"a'b'c'd'e''x"`. This is what every name-search matches against: a plain
+    /// pattern (`?x`) simply won't match a characterized `searchable_name` like
+    /// `"tag'x"` under the matcher's `^pattern$` anchoring, and a `'`-bearing pattern
+    /// (`?tag'x`) matches only the identically-characterized name. One projection,
+    /// one comparison — the pattern's own content does the discriminating.
+    pub fn searchable_name(&self) -> &str {
         &self.fully_characterized_name
     }
 
@@ -142,19 +147,19 @@ mod tests {
     #[test]
     fn plain_name_has_no_characterizations() {
         let id = Identifier::from_parts(vec![], "x");
-        assert_eq!(id.name(), "x");
-        assert_eq!(id.characterized_name(), "x");
+        assert_eq!(id.identifier_name(), "x");
+        assert_eq!(id.searchable_name(), "x");
         assert_eq!(id.characterization_string(), "");
         assert!(!id.is_nully_characterizing_coordinate_name());
         // For a plain name, characterized_name == name.
-        assert_eq!(id.characterized_name(), id.name());
+        assert_eq!(id.searchable_name(), id.identifier_name());
     }
 
     #[test]
     fn single_characterization() {
         let id = Identifier::from_parts(vec!["a".to_string()], "name");
-        assert_eq!(id.name(), "name");
-        assert_eq!(id.characterized_name(), "a'name");
+        assert_eq!(id.identifier_name(), "name");
+        assert_eq!(id.searchable_name(), "a'name");
         assert_eq!(id.characterization_string(), "a'");
         assert!(!id.is_nully_characterizing_coordinate_name());
     }
@@ -163,8 +168,8 @@ mod tests {
     fn null_characterization_touching_name() {
         // 'name — bare ' immediately before name
         let id = Identifier::from_parts(vec!["".to_string()], "name");
-        assert_eq!(id.name(), "name");
-        assert_eq!(id.characterized_name(), "'name");
+        assert_eq!(id.identifier_name(), "name");
+        assert_eq!(id.searchable_name(), "'name");
         assert_eq!(id.characterization_string(), "'");
         assert!(id.is_nully_characterizing_coordinate_name());
     }
@@ -181,8 +186,8 @@ mod tests {
             ],
             "name",
         );
-        assert_eq!(id.name(), "name");
-        assert_eq!(id.characterized_name(), "a'b'c''name");
+        assert_eq!(id.identifier_name(), "name");
+        assert_eq!(id.searchable_name(), "a'b'c''name");
         assert_eq!(id.characterization_string(), "a'b'c''");
         assert!(id.is_nully_characterizing_coordinate_name());
     }
@@ -194,8 +199,8 @@ mod tests {
             vec!["a".to_string(), "b".to_string(), "c".to_string()],
             "name",
         );
-        assert_eq!(id.name(), "name");
-        assert_eq!(id.characterized_name(), "a'b'c'name");
+        assert_eq!(id.identifier_name(), "name");
+        assert_eq!(id.searchable_name(), "a'b'c'name");
         assert!(!id.is_nully_characterizing_coordinate_name());
     }
 
@@ -207,8 +212,8 @@ mod tests {
             vec!["a".to_string(), "".to_string(), "b".to_string()],
             "name",
         );
-        assert_eq!(id.name(), "name");
-        assert_eq!(id.characterized_name(), "a''b'name");
+        assert_eq!(id.identifier_name(), "name");
+        assert_eq!(id.searchable_name(), "a''b'name");
         // The last characterization is "b", not empty → NOT null-characterized.
         assert!(!id.is_nully_characterizing_coordinate_name());
     }
@@ -227,8 +232,8 @@ mod tests {
             ],
             "x",
         );
-        assert_eq!(id.name(), "x");
-        assert_eq!(id.characterized_name(), "a'b'c'd'e''x");
+        assert_eq!(id.identifier_name(), "x");
+        assert_eq!(id.searchable_name(), "a'b'c'd'e''x");
         assert_eq!(id.characterization_string(), "a'b'c'd'e''");
         assert!(id.is_nully_characterizing_coordinate_name());
     }
@@ -237,8 +242,8 @@ mod tests {
     fn null_char_on_true() {
         // 'True — the boolean constant form
         let id = Identifier::from_parts(vec!["".to_string()], "True");
-        assert_eq!(id.name(), "True");
-        assert_eq!(id.characterized_name(), "'True");
+        assert_eq!(id.identifier_name(), "True");
+        assert_eq!(id.searchable_name(), "'True");
         assert!(id.is_nully_characterizing_coordinate_name());
     }
 
@@ -246,8 +251,8 @@ mod tests {
     fn plain_true_is_not_null_characterized() {
         // True — plain name, no characterizations
         let id = Identifier::from_parts(vec![], "True");
-        assert_eq!(id.name(), "True");
-        assert_eq!(id.characterized_name(), "True");
+        assert_eq!(id.identifier_name(), "True");
+        assert_eq!(id.searchable_name(), "True");
         assert!(!id.is_nully_characterizing_coordinate_name());
     }
 
@@ -256,7 +261,7 @@ mod tests {
         // ''name — two null chars, but only the last touches name
         // Actually this would be chars = ["", ""] — last is empty → is_nully
         let id = Identifier::from_parts(vec!["".to_string(), "".to_string()], "name");
-        assert_eq!(id.characterized_name(), "''name");
+        assert_eq!(id.searchable_name(), "''name");
         assert!(id.is_nully_characterizing_coordinate_name());
     }
 }

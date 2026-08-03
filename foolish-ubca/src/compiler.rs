@@ -145,7 +145,12 @@ fn validate_astn(ast: &Astn) -> anyhow::Result<()> {
         }
         Astn::UnaryOp { expr, .. } => validate_astn(expr),
         Astn::DotSearch { anchor, .. } => validate_astn(anchor),
-        Astn::RegexpSearch { anchor, .. } => validate_astn(anchor),
+        Astn::RegexpSearch { anchor, .. } => {
+            if let Some(a) = anchor {
+                validate_astn(a)?;
+            }
+            Ok(())
+        }
         Astn::ValueSearch {
             anchor,
             value_pattern,
@@ -293,11 +298,15 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
             ..
         } => Rc::new_cyclic(|me: &Weak<RefCell<SearchFir>>| {
             let me_dyn: Weak<RefCell<dyn Fir>> = me.clone();
-            let a = build_fir(*anchor, Some(&me_dyn), under_sff);
+            let has_anchor = anchor.is_some();
+            let children: Vec<FirRef> = match anchor {
+                Some(a) => vec![build_fir(*a, Some(&me_dyn), under_sff)],
+                None => vec![],
+            };
             RefCell::new(SearchFir {
-                core: ProtoBrane::new(vec![a], child_parent!(), search_nyes),
+                core: ProtoBrane::new(children, child_parent!(), search_nyes),
                 pattern,
-                anchored: true,
+                anchored: has_anchor,
                 forward: operator == SearchOperator::RegexpForward,
                 sf_inner_pattern: RefCell::new(None),
                 is_value_search: false,
@@ -532,12 +541,12 @@ mod tests {
         }
         .build_as_statement(&parent, 7, false);
         assert_eq!(named.borrow().kind(), FirKind::Statement);
-        assert_eq!(named.borrow().as_stmt_name(), Some("x"));
+        assert_eq!(named.borrow().as_stmt_searchable_name(), Some("x"));
         assert_eq!(named.borrow().as_stmt_line_number(), Some(7));
 
         let anonymous = Astn::IntLit(2).build_as_statement(&parent, 8, false);
         assert_eq!(anonymous.borrow().kind(), FirKind::Statement);
-        assert_eq!(anonymous.borrow().as_stmt_name(), Some(ANON_STMT_NAME));
+        assert_eq!(anonymous.borrow().as_stmt_searchable_name(), Some(ANON_STMT_NAME));
         assert_eq!(anonymous.borrow().as_stmt_line_number(), Some(8));
     }
 

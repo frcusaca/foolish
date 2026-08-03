@@ -133,14 +133,17 @@ pub trait Fir: std::fmt::Debug {
         None
     }
 
-    /// StatementFir name (empty string = anonymous). Default: None.
-    fn as_stmt_name(&self) -> Option<&str> {
-        None
-    }
-
     /// StatementFir identifier. Default: None.
     fn as_stmt_identifier(&self) -> Option<&crate::identifier::Identifier> {
         None
+    }
+
+    /// StatementFir's searchable name — the full characterized LHS as one string
+    /// (e.g. `"tag'x"`), what every name-search matches against. Default method:
+    /// derived from `as_stmt_identifier()`, so it is `None` for any non-Statement FIR
+    /// and for the whole-brane root convention. See `Identifier::searchable_name`.
+    fn as_stmt_searchable_name(&self) -> Option<&str> {
+        self.as_stmt_identifier().map(|id| id.searchable_name())
     }
 
     /// StatementFir line number. Default: None.
@@ -1121,7 +1124,7 @@ mod get_value_tests {
         assert!(result.is_some());
         let (stmt, _nyes) = result.unwrap();
         assert_eq!(stmt.borrow().kind(), FirKind::Statement);
-        assert_eq!(stmt.borrow().as_stmt_name(), Some("x"));
+        assert_eq!(stmt.borrow().as_stmt_searchable_name(), Some("x"));
     }
 
     #[test]
@@ -1158,7 +1161,7 @@ mod get_value_tests {
         assert!(result.is_some(), "x should be found via ab_search");
         let (stmt, _nyes) = result.unwrap();
         assert_eq!(stmt.borrow().kind(), FirKind::Statement);
-        assert_eq!(stmt.borrow().as_stmt_name(), Some("x"));
+        assert_eq!(stmt.borrow().as_stmt_searchable_name(), Some("x"));
     }
 
     #[test]

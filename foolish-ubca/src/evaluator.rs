@@ -24,7 +24,7 @@ use crate::fir_trait::{FirKind, FirRef, FirRefExt, StepReport};
 /// ```ignore
 /// // Step until a statement named "extended" reaches the job queue front:
 /// let steps = step_until(&root, &scope, |front| {
-///     front.as_ref().map(|f| f.borrow().as_stmt_name() == Some("extended")).unwrap_or(false)
+///     front.as_ref().map(|f| f.borrow().as_stmt_searchable_name() == Some("extended")).unwrap_or(false)
 /// })?;
 /// eprintln!("Stopped after {steps} steps, front task: {front:?}");
 /// ```
@@ -90,7 +90,7 @@ pub fn step_until_statement_name(
 ) -> Result<usize, crate::fir_trait::UbcError> {
     step_until(root, scope, |front| {
         front
-            .map(|f| f.borrow().as_stmt_name() == Some(name))
+            .map(|f| f.borrow().as_stmt_searchable_name() == Some(name))
             .unwrap_or(false)
     })
 }
@@ -323,7 +323,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                 .build()
         }
         FirKind::Statement => {
-            let name = display_stmt_name(borrowed.as_stmt_name());
+            let name = display_stmt_name(borrowed.as_stmt_searchable_name());
             let body_fir = borrowed
                 .core()
                 .foolish_children()
@@ -342,7 +342,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                 .iter()
                 .map(|c| {
                     let cb = c.borrow();
-                    let name = display_stmt_name(cb.as_stmt_name());
+                    let name = display_stmt_name(cb.as_stmt_searchable_name());
                     let body_fir = cb
                         .core()
                         .foolish_children()
@@ -650,7 +650,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                     .filter_map(|i| {
                         let stmt = borrowed.stmt_at(i)?;
                         let sb = stmt.borrow();
-                        let name = display_stmt_name(sb.as_stmt_name());
+                        let name = display_stmt_name(sb.as_stmt_searchable_name());
                         let body_fir = sb
                             .core()
                             .foolish_children()
@@ -699,7 +699,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                 .iter()
                 .map(|c| {
                     let cb = c.borrow();
-                    let name = display_stmt_name(cb.as_stmt_name());
+                    let name = display_stmt_name(cb.as_stmt_searchable_name());
                     let body_fir = cb
                         .core()
                         .foolish_children()
@@ -740,7 +740,7 @@ mod step_until_tests {
         assert!(front.is_some(), "front task should exist");
         let f = front.unwrap();
         assert_eq!(
-            f.borrow().as_stmt_name(),
+            f.borrow().as_stmt_searchable_name(),
             Some("b"),
             "front task should be 'b'"
         );
@@ -760,7 +760,7 @@ mod step_until_tests {
         let front = root.borrow().debug_front_task();
         assert!(front.is_some());
         let f = front.unwrap();
-        assert_eq!(f.borrow().as_stmt_name(), Some("x"));
+        assert_eq!(f.borrow().as_stmt_searchable_name(), Some("x"));
     }
 
     #[test]
@@ -857,7 +857,7 @@ mod step_until_tests {
         eprintln!("root has {} children", root_children.len());
         for (i, child) in root_children.iter().enumerate() {
             let cb = child.borrow();
-            let name = cb.as_stmt_name().unwrap_or("(anon)");
+            let name = cb.as_stmt_searchable_name().unwrap_or("(anon)");
             let nyes = cb.core().get_nyes();
             let kind = cb.kind();
             eprintln!("  [{}] {} (kind={:?}, nyes={:?})", i, name, kind, nyes);
@@ -866,7 +866,7 @@ mod step_until_tests {
         // Find the "cb" statement and inspect its NYES and value.
         let cb_stmt = root_children
             .iter()
-            .find(|c| c.borrow().as_stmt_name() == Some("cb"))
+            .find(|c| c.borrow().as_stmt_searchable_name() == Some("cb"))
             .cloned()
             .expect("cb statement not found in root");
         let cb_nyes = cb_stmt.borrow().core().get_nyes();
@@ -947,7 +947,7 @@ mod step_until_tests {
                 eprintln!("cb body has {} statements", sc);
                 if let Some(s0) = bb.stmt_at(0) {
                     let s0_b = s0.borrow();
-                    eprintln!("  stmt_at(0) name = {:?}", s0_b.as_stmt_name());
+                    eprintln!("  stmt_at(0) name = {:?}", s0_b.as_stmt_searchable_name());
                 }
             } else {
                 eprintln!("cb body stmt_count() = None — BraneNavigator will get 0 candidates!");
@@ -960,7 +960,7 @@ mod step_until_tests {
         // Find the {x=cb.shadow} brane inside "extended" statement body.
         let extended_stmt = root_children
             .iter()
-            .find(|c| c.borrow().as_stmt_name() == Some("extended"))
+            .find(|c| c.borrow().as_stmt_searchable_name() == Some("extended"))
             .cloned()
             .expect("extended statement not found");
         let extended_body = extended_stmt
@@ -987,7 +987,7 @@ mod step_until_tests {
                         let stmts: Vec<FirRef> = eb.core().foolish_children().to_vec();
                         for s in &stmts {
                             let sb = s.borrow();
-                            if sb.as_stmt_name() == Some("x") {
+                            if sb.as_stmt_searchable_name() == Some("x") {
                                 let x_body = sb
                                     .core()
                                     .foolish_children()
