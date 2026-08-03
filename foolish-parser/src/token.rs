@@ -29,11 +29,6 @@ pub enum Token {
 
     Lt,         // <
     Gt,         // >
-    Le,         // \o<= (comparison less-or-equal)
-    Ge,         // \o>= (comparison greater-or-equal)
-    LTOp,       // \o< (comparison less-than)
-    GTOp,       // \o> (comparison greater-than)
-    EqOp,       // \o== (comparison equality)
     LtEqGt,     // <=>
     LtLt,       // <<
     GtGt,       // >>

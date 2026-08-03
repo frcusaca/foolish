@@ -274,26 +274,29 @@ Foolish resolves names — through search, not stored metadata.
 
 ## Phase 6 — Comparison operators via brane search (revised)
 
-> ## ⛔ STOP — BLOCKED PENDING NEW SPECIFICATION FROM HUMAN ⛔
+> ## ⛔ STOP — INSPECT THE NEW SPECIFICATION BEFORE IMPLEMENTING ⛔
 >
-> **Do NOT implement any part of Phase 6.** On 2026-08-03 the human directed that the
-> comparison operators be **reverted** and that a **new specification** — which the human
-> will type in personally — governs how they are to be built. The design described in the
-> rest of this phase (brane-search via `'lt`/`'gt`/`'le`/`'ge`/`'eq`) is **itself already
-> superseded**; there are **more changes** coming beyond it.
+> **Do NOT implement any part of Phase 6 from the prose below.** On 2026-08-03 the human
+> dictated a **new specification** for the comparison operators — see **FOOP-33.md §5.0 "New
+> design (2026-08-03, human-dictated)"**. It supersedes both the prose in this phase (the
+> `19fe78ef` brane-search revision) and the originally-reverted token-level design.
 >
-> **Required before any work here:** *discuss the comparison operators with the human and
-> obtain the new specification.* Do not infer it, do not reconstruct it from the text below,
-> and do not resume from the reverted code.
+> **Required before implementing:** read FOOP-33.md §5.0 in full. Placement is **infix**
+> (human-confirmed 2026-08-03): `<<#-1>>`/`<<#+1>>` straddle the operator, e.g. `{1, 'lt, 3}`
+> read left-to-right as `1 lt 3`. This supersedes this phase's prior `<<#-1>>`/`<<#-2>>`
+> postfix placement (`{1, 3,}'lt$`) — do not use the postfix form.
 >
-> **Ordering (human-directed):** (1) all pre-existing tests pass, (2) `'True`/`'False`
-> introduced via the `system.foo` composition (Phase 5), (3) *only then* comparisons.
+> **Ordering (human-directed):** (1) all pre-existing tests pass — **done**, suite green as
+> of 2026-08-03. (2) `'True`/`'False` introduced via the `system.foo` composition (Phase 5).
+> (3) *only then* comparisons, per §5.0.
 >
-> The prose below is retained as a historical record of the superseded design, not as an
-> instruction.
+> The prose below this point is retained as a historical record of the superseded
+> `19fe78ef` design, not as an instruction.
 
-- [ ] **GATE: discuss comparison operators with the human before continuing — the new
-      specification is pending and there are more changes.**
+- [ ] **GATE: re-derive this phase's tasks from FOOP-33.md §5.0 (infix `'lt`/`'gt`/`'le`/
+      `'ge`/`'eq`, dedicated `LTFir`/`GTFir`/`LEFir`/`GEFir`/`EqFir` kinds, SFF `<<#-1>>`/
+      `<<#+1>>` operands, result stored as a `'True`/`'False` creation in `ubs_brane`)
+      before implementing — do not implement the postfix design below.**
 
 **Design change.** Comparison operators are no longer infix `\o<`/`\o>`/`\o<=`/`\o>=`/`\o==`
 parsed at the token level. Instead, `system.foo` defines null-characterized creations `'lt`,

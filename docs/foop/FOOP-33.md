@@ -454,6 +454,56 @@ step: **one rule, one NK mechanism, two trigger sites** (brane step, concatenati
 > Ordering (human-directed): pre-existing tests green → `'True`/`'False` via `system.foo`
 > composition → *then* comparisons.
 
+#### 5.0 New design (2026-08-03, human-dictated) — supersedes §5 below
+
+After the `'True`/`'False` definitions, `system.foo` also defines the comparison operators
+as null-characterized creations, alongside them in the same prelude brane:
+
+```foolish
+{!!system.foo
+    'True  = ⬤
+    'False = ⬤
+    'lt = ⬤
+    'gt = ⬤
+    'le = ⬤
+    'ge = ⬤
+    'eq = ⬤
+}
+```
+
+**Mechanism (half-Foolish, half-Rust).** At creation, the FVM **intercepts** the `'lt`
+creation in the root brane and **replaces** it with an `LTFir` — a dedicated FIR kind —
+representing, informally:
+
+```foolish
+'lt = { <<#-1>> \<̲ <<#+1>> }
+```
+
+`LTFir` is built the same way the existing infix operators (`+`, etc.) are built, except its
+two operands are **brane-relative lookups**, not inline values. At construction time, `LTFir`
+wires exactly two elements into its `foolish_children`, each **SFF-marked** (StayFoolish —
+does not force early evaluation):
+
+- `<<#-1>>` — the element immediately **before** `'lt` in the containing brane
+- `<<#+1>>` — the element immediately **after** `'lt` in the containing brane
+
+**Stepping.** Once both SFF lookups are constanic, `LTFir` performs the Rust `<` comparison
+on their two values, and stores the result as a `'True` or `'False` **creation** in the
+`ubs_brane`. That stored creation consequently **becomes `LTFir`'s own value** the next time
+it is retrieved — the same settle-once, read-many pattern the other operators use.
+
+`'gt`, `'le`, `'ge`, `'eq` follow identically, each with its own dedicated FIR kind
+(`GTFir`, `LEFir`, `GEFir`, `EqFir`) and its own Rust comparison (`>`, `<=`, `>=`, `==`).
+
+**Placement is infix (human-confirmed 2026-08-03).** `<<#-1>>`/`<<#+1>>` straddle `'lt` — one
+operand immediately before it, one immediately after — so usage looks like `{1, 'lt, 3}`,
+read left-to-right as `1 lt 3`. This is a deliberate departure from §5 below and the plan's
+prior brane-search revision (`19fe78ef`), both of which used `<<#-1>>`/`<<#-2>>` — both
+operands before the operator, postfix placement like `{1, 3,}'lt$`. The postfix form is
+superseded; infix placement is the design going forward.
+
+---
+
 **These are NOT boolean logic operators** (`and`, `or`, `not` — deferred to a follow-on FOOP).
 Comparison operators are **built-in arithmetic-adjacent operators** that produce the
 null-characterized boolean values defined in `system.foo` (§4). They extend the existing

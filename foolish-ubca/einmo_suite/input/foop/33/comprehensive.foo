@@ -1,6 +1,7 @@
 {
 	!! FOOP-33 comprehensive: creation, equality, characterizations,
-	!! null-constants, comparisons, nested branes.
+	!! null-constants, nested branes. (Comparisons dropped pending new infix design;
+	!! see FOOP-33.md §5.0.)
 
 	a = ⬤;
 	b = {*};
@@ -14,6 +15,4 @@
 	miss = ?x;
 
 	inner = {deep = True;};
-
-	nk = ⬤ \o<= 3;
 }

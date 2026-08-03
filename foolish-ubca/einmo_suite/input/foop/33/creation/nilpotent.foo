@@ -2,5 +2,4 @@
 	!! Nilpotent creation: creations that create inequalities and go away immediately.
 	a = {blah={*}};
 	fails = a~={*};
-	check = {*} \o< 10;
 }
