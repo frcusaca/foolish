@@ -274,6 +274,27 @@ Foolish resolves names — through search, not stored metadata.
 
 ## Phase 6 — Comparison operators via brane search (revised)
 
+> ## ⛔ STOP — BLOCKED PENDING NEW SPECIFICATION FROM HUMAN ⛔
+>
+> **Do NOT implement any part of Phase 6.** On 2026-08-03 the human directed that the
+> comparison operators be **reverted** and that a **new specification** — which the human
+> will type in personally — governs how they are to be built. The design described in the
+> rest of this phase (brane-search via `'lt`/`'gt`/`'le`/`'ge`/`'eq`) is **itself already
+> superseded**; there are **more changes** coming beyond it.
+>
+> **Required before any work here:** *discuss the comparison operators with the human and
+> obtain the new specification.* Do not infer it, do not reconstruct it from the text below,
+> and do not resume from the reverted code.
+>
+> **Ordering (human-directed):** (1) all pre-existing tests pass, (2) `'True`/`'False`
+> introduced via the `system.foo` composition (Phase 5), (3) *only then* comparisons.
+>
+> The prose below is retained as a historical record of the superseded design, not as an
+> instruction.
+
+- [ ] **GATE: discuss comparison operators with the human before continuing — the new
+      specification is pending and there are more changes.**
+
 **Design change.** Comparison operators are no longer infix `\o<`/`\o>`/`\o<=`/`\o>=`/`\o==`
 parsed at the token level. Instead, `system.foo` defines null-characterized creations `'lt`,
 `'gt`, `'le`, `'ge`, `'eq`. The FVM, when it observes one of these names in a brane context,
@@ -446,6 +467,21 @@ is no longer syntactic sugar; it is brane search into system definitions.
     - [ ] Last box checked in this block.
 
 ## Last Updated
+
+**Date**: 2026-08-03
+**Updated By**: Claude Code / claude-haiku-4-5-20251001
+**Changes**: **Phase 6 BLOCKED** — added a STOP gate at the head of the phase plus the checkbox
+*"GATE: discuss comparison operators with the human before continuing"*. Per human direction
+(2026-08-03) the comparison operators are **reverted** and await a **new specification the human
+will type in**; the brane-search revision (`19fe78ef`) is itself superseded and more changes are
+coming, so the phase's prose is now historical record, not instruction. Human-directed ordering
+recorded: pre-existing tests green → `'True`/`'False` via `system.foo` → *then* comparisons.
+Context established this session: Phase 5 was only ever **half-implemented on purpose** —
+`c650e87e` states "Deep embedding … deferred to a follow-up", leaving `system/system.foo` and
+`foolish-ubca/build.rs` present but the `include_str!` and composition never written, which is
+why comparisons shipped placeholder `1`/`0`. Nothing was lost to the machine crashes. See
+FOOP-33.md for the corresponding spec changes (§4 composition + `stmt_at` return path, §5
+superseded banner, the moot line-number guarantee removed).
 
 **Date**: 2026-08-02
 **Updated By**: Sisyphus / xiaomi/mimo-v2.5-pro

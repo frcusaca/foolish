@@ -36,13 +36,17 @@ UBCa. It adds four dependent features and stops, deliberately, short of boolean 
    contains a `'` is matched by the matcher against `characterized_name()`; a plain pattern
    against `name()`. The empty characterization touching the name (a bare `'` immediately
    before the name) is the **null characterization**.
-4. **`system.foo` as ancestral prelude.** A build-embedded `system.foo` becomes the **parent
-   (ancestral) brane** of every program's root brane. It defines `'True` and `'False` as
-   **null-characterized name constants**.
-5. **Comparison operators (`<`, `>`, `<=`, `>=`).** Four built-in binary operators that
-   compare two integers and return the `'True` or `'False` constant from `system.foo` (or `NK`
-   for non-integer operands). These are NOT boolean logic operators — they are the producers of
-   boolean values, extending the existing arithmetic operator infrastructure.
+4. **`system.foo` as ancestral prelude.** A build-embedded `system.foo` becomes the **root
+   brane**, holding the user's program as a member named `program`; the program's root brane
+   is therefore no longer its own parent, and name resolution falls through ancestrally into
+   `system.foo`. It defines `'True` and `'False` as **null-characterized name constants**.
+   The FVM steps the composite brane and returns the `program` member (see §4).
+5. **Comparison operators (`<`, `>`, `<=`, `>=`).** ⛔ **DEFERRED — pending a new
+   specification from the human.** The implementation committed for this section has been
+   reverted; see the STOP gate at the head of Phase 6 in `FOOP-33.plan.md`. The description
+   retained in §5 is a **historical record of a superseded design** and must not be
+   implemented from. Boolean *values* (`'True`/`'False`, item 4) ship first and independently;
+   the *producers* of those values await the new spec.
 
 The crux is the **null-characterized name constant** rule: once a null-characterized name
 is defined, it may only be re-defined to an equal value; any other re-definition refuses and
@@ -338,7 +342,10 @@ package it. So `foolish-ubca` gains a **`build.rs`** that, at build time, copies
 > available** — at runtime; the program never touches the filesystem for `system.foo`. (Only
 > `std::env::var("OUT_DIR")` *at runtime* would fail, and we do not do that.) Net effect:
 > `system.foo` ships inside the compiled crate, no runtime file dependency, authored at the
-> repo root. @Agents, ack! Let's keep this documentaiton tho.
+> repo root. **Acked (2026-08-03) — retained deliberately.** The distinction is load-bearing:
+> `foolish-ubca/build.rs` already performs the copy, so the remaining work is the compile-time
+> `include_str!` on the consuming side. The failure this note guards against —
+> `std::env::var("OUT_DIR")` at *runtime*, which returns `Err` — is a real and easy mistake.
 
 **`system.foo` IS the root brane, and is its own parent.** `system.foo` is **implicitly
 inserted** by the FVM — it is not opt-in. It is compiled once and becomes **the root brane**,
@@ -350,10 +357,28 @@ re-parenting hazard** (system.foo self-roots; nothing points back into the progr
 cycle). What was not found in the old program brane is still not found *unless `system.foo`
 defines it.*
 
-**Program line numbers are preserved.** Making `system.foo` the ancestor must **not** shift the
-user program's line numbering. The program brane keeps the line numbers it had as a standalone
-root (`system.foo` is a separate brane, above it, with its own lines) so diagnostics, snapshots,
-and `step_until_line_number` continue to address user source by its original lines.
+**Program line numbers are preserved — structurally, at no cost.** Statement "line numbers"
+are **0-based indices within a brane**, assigned by `.enumerate()` over that brane's own
+statement list (`compiler.rs`; see `fir_trait.rs` — "the FIRST statement in its brane
+(`line_number == 0`)"). Because indices are *per-brane*, statements added beside the `program`
+statement in `system.foo` **cannot** renumber statements *inside* `program`'s brane — they
+belong to a different brane's numbering. No offset, no adjustment, and no preservation logic
+is required; diagnostics, snapshots, and `step_until_line_number` continue to address user
+source by its original indices as a consequence of the structure.
+
+**The FVM returns the `program` member.** After stepping the composite `system.foo` brane to
+settled, the FVM returns the brane bound to the name `program` — the user's program, whose own
+universe is exactly as it was before the prelude existed. The FVM extracts it **in Rust, via
+the `stmt_at(idx)` capability accessor** (FOOP-13 A2), *not* by evaluating a Foolish `#-1` or
+`$` search. Those are equivalent in meaning, but the return path must not depend on the search
+engine that this FOOP modifies; a direct structural read cannot be perturbed by a search bug.
+
+> **Suggestion (not required now).** `program` is retrieved **positionally** as the last
+> statement of `system.foo` (`stmt_at(stmt_count() - 1)`). Should `system.foo` ever grow
+> complex enough that "last statement" becomes fragile — e.g. prelude definitions get appended
+> after `program` — switch to resolving it **by the name `program`** instead. With today's
+> four-statement prelude this is unnecessary; positional access is simpler and sufficient.
+> Keeping `program` last is the only invariant it depends on.
 
 `system.foo` for this FOOP defines the booleans as null-characterized constants:
 
@@ -413,6 +438,21 @@ The check reuses `default_equal` and the same `NK("'<name> redefined")` result a
 step: **one rule, one NK mechanism, two trigger sites** (brane step, concatenation merge).
 
 ### 5. Comparison operators as built-in boolean producers
+
+> ## ⛔ SUPERSEDED — DO NOT IMPLEMENT FROM THIS SECTION ⛔
+>
+> On **2026-08-03** the human directed that the comparison operators be **reverted** and
+> rebuilt from a **new specification they will provide personally**. The committed
+> implementation (placeholder `1`/`0` results, token-level infix matching) has been reverted;
+> a first revision toward a brane-search design (`'lt`/`'gt`/`'le`/`'ge`/`'eq`, plan commit
+> `19fe78ef`) is **also superseded**, and further changes are expected beyond it.
+>
+> Everything below is kept as a **historical record**. Do not implement it, do not reconstruct
+> the design from it, and do not resume from the reverted code. **Discuss with the human and
+> obtain the new specification first.** See the STOP gate at Phase 6 in `FOOP-33.plan.md`.
+>
+> Ordering (human-directed): pre-existing tests green → `'True`/`'False` via `system.foo`
+> composition → *then* comparisons.
 
 **These are NOT boolean logic operators** (`and`, `or`, `not` — deferred to a follow-on FOOP).
 Comparison operators are **built-in arithmetic-adjacent operators** that produce the
@@ -1018,6 +1058,25 @@ preferred, three-canonical-strings fallback — §3); null-const mechanism (`get
   (core-fir + rendering).
 
 ## Last Updated
+
+**Date**: 2026-08-03
+**Updated By**: Claude Code / claude-haiku-4-5-20251001
+**Changes**: **Comparison operators (§5) marked SUPERSEDED and DEFERRED** per human direction —
+the committed implementation is reverted and a **new specification, to be supplied by the
+human**, governs the rebuild; the brane-search revision (`19fe78ef`) is superseded too, with
+more changes expected. Added a STOP banner to §5 and rewrote abstract item 5 to match; §5 prose
+retained as historical record only. Abstract item 4 rewritten to state the **composition**
+design plainly: `system.foo` is the root brane holding the user program as a member named
+`program`, so the program's root brane is **no longer its own parent**. Added "**The FVM returns
+the `program` member**" to §4 — extraction happens **in Rust via `stmt_at(idx)`** (FOOP-13 A2),
+not by evaluating a Foolish `#-1`/`$` search, so the return path cannot be perturbed by the
+search engine this FOOP modifies; plus a non-blocking **suggestion** to switch from positional
+to name-based lookup of `program` only if `system.foo` later grows complex. Replaced the
+"Program line numbers are preserved" paragraph: line numbers are **0-based per-brane statement
+indices**, so sibling statements in `system.foo` **cannot** renumber statements inside
+`program`'s brane — the guarantee is structural and needs no preservation logic (the prior text
+implied a hazard that cannot occur). Acked the `@Agents` note on `OUT_DIR` (retained, typo
+fixed) — `build.rs` already copies; the outstanding work is the compile-time `include_str!`.
 
 **Date**: 2026-08-02
 **Updated By**: Sisyphus / z-ai/glm-5.2
