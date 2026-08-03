@@ -236,32 +236,80 @@ module).
       resolve ancestrally; `'True=3` ⇒ `NK("'True redefined")` while `'True='True` permitted.
       Generate `.snap.new`; **present to human** — never auto-accept.
 
-## Phase 6 — Comparison operators (`\o<`, `\o>`, `\o<=`, `\o>=`, `\o==`)
+## Phase 5.5 — Sequencer renders named creations
 
-**Read §5 of FOOP-33.md before implementing.** Comparison operators produce `'True`/`'False`
-from `system.foo` (Phase 5 must be complete). They extend the existing binary-operator
-infrastructure. Operators use `\o` prefix for keyboard input and Unicode U+0332 combining
-low line for display (each operator character gets its own U+0332 suffix).
+The sequencer currently renders all creations as `⬤`. When a creation originates from a
+null-characterized statement (like `'True = ⬤` in `system.foo`), the sequencer should render
+the characterized name instead (e.g. `'True`). If no name is known, fall back to `⬤`.
 
-- [ ] Lexer: add five new tokens `LTOp` (`\o<`), `GTOp` (`\o>`), `Le` (`\o<=`), `Ge` (`\o>=`),
-      `EqOp` (`\o==`) to `foolish-parser/src/token.rs`. Recognized via `\o` prefix and Unicode
-      U+0332 forms. Unicode forms must be recognized BEFORE plain `>`, `=` matches in the lexer.
-- [ ] Parser: add `\o<`, `\o>`, `\o<=`, `\o>=`, `\o==` as infix operators at the same
-      precedence level as `+`/`-` (additive) in `foolish-parser/src/parser.rs`. Left-associative.
-- [ ] Parser unit tests: `a \o< b` parses to a binary operation; `a + b \o<= c` parses as
-      `(a + b) \o<= c` (precedence); Unicode forms also parse.
-- [ ] Sequencer: add `op_display()` function that renders operators with U+0332 on each character.
-      Used in `render_fir()` and `proto_brane_formatter()`.
-- [ ] Evaluator: add five new arms to the binary-operator dispatch in
-      `foolish-ubca/src/fir_kinds.rs`. Each arm:
-      1. Checks both operands are integers (else NK with reason
-         `"comparison: non-integer operand"`).
-      2. Performs the comparison.
-      3. Resolves `'True` or `'False` from the system root brane.
-      No new FIR kind — returns `CreationFir` or `NkFir`.
-- [ ] Unit tests: all five operators on integer pairs, non-integer operand → NK.
-- [ ] Einmo tests: `int_comparators.foo` (Unicode + ASCII side by side),
-      `boolean/comparison_operators.foo`, `boolean/constants.foo`, `boolean/if_then_else.foo`.
+- [ ] `Fir::Creation` → `Fir::Creation(Option<String>)` in `foolish-core/src/fir.rs`.
+      Update all 9 match arms. JSON ser/de carries the optional name.
+- [ ] `FirQueryable::hs_creation()` → change return type from `bool` to
+      `Option<Option<String>>`. `None` = not a creation; `Some(None)` = anonymous creation;
+      `Some(Some(name))` = named creation. Update impls on `Fir`, `FirChildRef`.
+- [ ] Sequencer (`foolish-core/src/sequencer.rs:614`): when `hs_creation()` returns
+      `Some(Some(name))`, render `name` (e.g. `'True`); when `Some(None)`, render `⬤`.
+- [ ] `proto_to_core_fir_inner` in `foolish-ubca/src/evaluator.rs`: add `creation_name:
+      Option<&str>` parameter. All existing callers pass `None`. In the Brane conversion loop
+      (line 338), for each statement: check `cb.as_stmt_identifier().is_some_and(|id|
+      id.is_nully_characterizing_coordinate_name())`. If true and the body is a `CreationFir`,
+      pass `Some(stmt_name)` into `proto_to_core_fir_inner`. The function emits
+      `Fir::Creation(Some(name))` when `creation_name` is `Some`, else `Fir::Creation(None)`.
+- [ ] Unit tests: creation with name renders as `'True`; creation without name renders as `⬤`.
+- [ ] Update einmo baselines for any snapshots that now show `'True`/`'False` instead of `⬤`.
+
+## Phase 6 — Comparison operators via brane search (revised)
+
+**Design change.** Comparison operators are no longer infix `\o<`/`\o>`/`\o<=`/`\o>=`/`\o==`
+parsed at the token level. Instead, `system.foo` defines null-characterized creations `'lt`,
+`'gt`, `'le`, `'ge`, `'eq`. The FVM, when it observes one of these names in a brane context,
+interprets the brane's preceding elements as operands and performs the comparison in Rust,
+producing `'True` or `'False` from `system.foo`.
+
+**Syntax.** `{1, 3,}'lt$` — a brane with two values, followed by a value search for `'lt`
+anchored to the tail (`$`). The search finds the `'lt` system definition. The FVM's stepping
+logic for this system operation extracts `<<#-1>>` and `<<#-2>>` from the brane (using Foolish
+search operators), performs `value(#1) < value(#2)` in Rust, and returns `'True` or `'False`.
+
+**Kept from old Phase 6:** the `OperatorFir` infrastructure stays. The five operator tokens
+(`LTOp`, `GTOp`, `Le`, `Ge`, `EqOp`) and their parser matchers are **deleted** — comparison
+is no longer syntactic sugar; it is brane search into system definitions.
+
+- [ ] **Delete** from `foolish-parser/src/token.rs`: `LTOp`, `GTOp`, `Le`, `Ge`, `EqOp` tokens.
+- [ ] **Delete** from `foolish-parser/src/parser.rs`: the `\o<`/`\o>`/`\o<=`/`\o>=`/`\o==`
+      infix operator matchers and their precedence handling.
+- [ ] **Delete** from `foolish-parser/src/lexer.rs`: the `\o` prefix and Unicode U+0332
+      recognition for these five operators.
+- [ ] **Delete** from `foolish-ubca/src/fir_kinds.rs` (`OperatorFir::combine`): the five
+      comparison arms (`<=`, `>=`, `\\<`, `\\>`, `\\==`) and the `op if matches!` block.
+      Keep the `+`, `-`, `*`, `/`, `%`, unary `-`, `$` arms.
+- [ ] **Delete** comparison-related parser unit tests and sequencer `op_display()` rendering
+      for these operators.
+- [ ] **Update `system.foo`**: add five null-characterized system operations:
+      ```foolish
+      {!!system.foo
+          'True  = ⬤
+          'False = ⬤
+          'lt    = ⬤    !! less-than system operation
+          'gt    = ⬤    !! greater-than system operation
+          'le    = ⬤    !! less-or-equal system operation
+          'ge    = ⬤    !! greater-or-equal system operation
+          'eq    = ⬤    !! equality system operation
+      }
+      ```
+- [ ] **FVM evaluator special-casing**: when the evaluator encounters a search result that
+      resolves to one of `'lt`, `'gt`, `'le`, `'ge`, `'eq` (identified by the creation's
+      `Rc::ptr_eq` against the system root brane's definitions), interpret the containing
+      brane's last two elements as operands:
+      1. Extract `<<#-1>>` (second-to-last) and `<<#-2>>` (third-to-last) via Foolish index
+         search.
+      2. Check both are integers (else NK).
+      3. Perform the Rust comparison (`<`, `>`, `<=`, `>=`, `==`).
+      4. Resolve `'True` or `'False` from the system root brane.
+      5. The result is a `CreationFir` (the `'True`/`'False` object) or `NkFir`.
+- [ ] Unit tests: `{1, 3,}'lt$` → `'True`; `{3, 1,}'lt$` → `'False`; `{⬤, 1,}'lt$` → NK.
+- [ ] Einmo tests: update `int_comparators.foo`, `boolean/comparison_operators.foo`,
+      `comprehensive.foo` to use the new brane-search syntax.
 
 ## Phase 7 — Documentation and Tests
 
@@ -341,10 +389,10 @@ low line for display (each operator character gets its own U+0332 suffix).
 - [ ] Merge `foop-33-creation-postulate` to `jia`
   - [ ] Write and verify `foop_33_comprehensive.foo` (reserved name): creation, characterized
         names, quote-bearing search, referential equality, `system.foo` parent brane,
-        null-constant refusal (incl. `A A A` concatenation), comparison operators (`\o<`, `\o>`,
-        `\o<=`, `\o>=`, `\o==` producing `'True`/`'False`/NK), interacting with prior features
-        (nested branes, contexted `&` searches). Generate + verify `.snap.new`; final approval is
-        human-signed.
+        null-constant refusal (incl. `A A A` concatenation), comparison via brane search
+        (`{1, 3,}'lt$` → `'True`, `{3, 1,}'lt$` → `'False`, `{⬤, 1,}'lt$` → NK),
+        interacting with prior features (nested branes, contexted `&` searches). Generate +
+        verify `.snap.new`; final approval is human-signed.
   - [ ] `cargo fmt`, `cargo clippy -D warnings`, `cargo test --workspace` all green.
   - [ ] Verify all work complete in the worktree and committed to
         `foop-33-creation-postulate`.
@@ -359,6 +407,20 @@ low line for display (each operator character gets its own U+0332 suffix).
     - [ ] Last box checked in this block.
 
 ## Last Updated
+
+**Date**: 2026-08-02
+**Updated By**: Sisyphus / xiaomi/mimo-v2.5-pro
+**Changes**: Added **Phase 5.5 — Sequencer renders named creations**: `Fir::Creation` gains
+`Option<String>` name, `hs_creation()` returns `Option<Option<String>>`, sequencer renders
+`'True` when named or `⬤` when anonymous, `proto_to_core_fir` tags creations from
+null-characterized statements. **Revised Phase 6 — Comparison operators via brane search**:
+deleted the infix `\o<`/`\o>`/`\o<=`/`\o>=`/`\o==` design; comparison is now brane search
+into system definitions (`{1, 3,}'lt$`); `system.foo` defines `'lt`/`'gt`/`'le`/`'ge`/`'eq`
+as null-characterized creations; FVM interprets these as system operations extracting operands
+via `<<#-1>>`/`<<#-2>>` index search and performing Rust comparison; result is `'True`/`'False`
+from system root brane. Deleted Phase 6 tasks for lexer/parser/evaluator infix operators;
+added tasks for token/parser deletion, system.foo definitions, FVM special-casing, and new
+einmo tests. Updated Phase 8 comprehensive test syntax.
 
 **Date**: 2026-08-02
 **Updated By**: Sisyphus / xiaomi/mimo-v2.5-pro
