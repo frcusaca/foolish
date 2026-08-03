@@ -1071,9 +1071,42 @@ unit test asserting `Reject` (matching its name).
   renders back as `⬤`), and the FIR shape is decided — but the exact human-legible form a
   *settled creation value* takes in snapshot output is not yet fixed. It must be stable before
   any approval snapshot is signed. (Resolvable during Phase 2, when the sequencer arm is added.)
-- **Comprehensive sketch semantics — tabled.** The `same = ?=a` line's expected result (does an
-  unanchored backward value search land on `b` or on `a` itself?) is deferred; the reviewer
-  captures and blesses the actual settled output when `foop_33_comprehensive.foo` is generated.
+- **`⛔ NEEDS HUMAN DECISION` — anchored value search miss on creation inequality: NK or
+  ECONSTANIC?** (2026-08-03, blocking `foop/33/creation/referential_equality.foo`.) The human
+  flagged `referential_equality.foo`'s `cross_diff = bc~=(bd.v);` line (an **anchored** forward
+  value search: `bc.v` is one creation, `bd.v` a genuinely different one, so the search
+  correctly finds nothing inside `bc`) as "should be ECONSTANIC, not NK." Traced with FVM
+  stepping: the search is confirmed `anchored=true, contexted=false` (via
+  `as_search_anchored()`), and its miss settles `Nk`. **This currently matches FOOP-23's own
+  documented rule** — `FOOP-23.md` line 211 ("Miss: … anchored: NK; unanchored: …") and line
+  1051 ("should settle ECONSTANIC for unanchored, NK for anchored") both say an *anchored*
+  search miss is NK, full stop, with no carve-out for value searches or for creation-typed
+  patterns specifically. So either (a) the human wants a **new** carve-out — e.g. "a value
+  search whose candidates are provably-searched creations should settle ECONSTANIC even when
+  anchored, because the anchor names a *container* to search inside, not a specific *item* that
+  must exist" — which would be a genuine, deliberate deviation from the current FOOP-23 rule and
+  needs to be written into the spec before implementing, or (b) a different line in the file was
+  meant, or (c) there's a reason `bc~=(bd.v)` shouldn't count as the "anchored" case the FOOP-23
+  rule intends. **Do not silently change NK-vs-ECONSTANIC settlement without resolving this —**
+  it is a core, load-bearing rule (`README.md` "NK from a search", `AGENTS.md` "NK vs ECONSTANIC
+  miss outcomes") that many other passing tests depend on; changing it needs to be a deliberate,
+  reviewed FOOP-23 amendment, not a local patch to `value_search_step`. Repro:
+  `{bc = {v = ⬤;}; bd = {v = ⬤;}; first = bc~=(bd.v);}` → `first` settles `Nk` today.
+- **Comprehensive sketch semantics — RESOLVED 2026-08-03.** The `same = ?=a` line's expected
+  result: it now correctly lands on `c` (the statement whose value equals `a`'s creation via
+  `Rc::ptr_eq`), settling `Constant`, not NK. Root cause was two-fold, both fixed this session:
+  (1) `check_value_pattern_ready` (`fir_kinds.rs`) rejected any non-integer value pattern
+  outright — extended to also accept a pattern that resolves (via `.value()`) to
+  `FirKind::Creation`; (2) `default_equal` compared the raw, unresolved `SearchFir` wrapper
+  nodes on both sides instead of what they resolve to — now calls `.value()` on both sides
+  before the `FirKind::Creation` `Rc::ptr_eq` check. Verified via FVM stepping
+  (`foolish-debugging` skill): before the fix, the search settled `Nk` at `Embryonic` — inside
+  `check_value_pattern_ready` — never even reaching the `Braning` scan; after, it reaches
+  `Braning`, scans, finds the match, settles `Constant`. Two new permanent regression tests pin
+  this: `value_search_pattern_referencing_a_creation_finds_matching_creation` and
+  `..._rejects_distinct_creation` (`fir_kinds.rs`, `mod tests`). Per human direction, the
+  existing "unsupported non-integer/non-creation pattern → NK" guard is otherwise **unchanged**
+  and intentionally still rejects e.g. a brane-valued pattern.
 - **TODO: Document the philosophical centrality of equality.** Equality is among the most
   fundamental concepts in Foolish. The creation postulate itself defines identity through
   uniqueness — when we create an idea with `⬤`, nothing else is equal to it; that uniqueness
