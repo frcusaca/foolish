@@ -290,6 +290,13 @@ elements: `1`, `3`, `'True`. The `$` search finds `'True`.
 (`LTOp`, `GTOp`, `Le`, `Ge`, `EqOp`) and their parser matchers are **deleted** — comparison
 is no longer syntactic sugar; it is brane search into system definitions.
 
+- [ ] **Research: `$` vs concatenation precedence.** Before any comparison-brane work, resolve
+      the associativity of `$` (tail search) versus concatenation. Key question: does `{1,3}'lt$`
+      parse as `({1,3}'lt)$` (brane-then-search-then-tail) or `{1,3}('lt$)` (brane-then-search-
+      with-tail)? The desired reading is the former — `'lt` is applied to the brane, then `$`
+      retrieves the result. If the parser binds `$` tighter than the search-on-brane, explicit
+      parens `({1,3}'lt)$` may be needed. Verify by testing current parser behavior with
+      `{a}'x$` and `({a}'x)$`. Document the resolution here before proceeding.
 - [ ] **Delete** from `foolish-parser/src/token.rs`: `LTOp`, `GTOp`, `Le`, `Ge`, `EqOp` tokens.
 - [ ] **Delete** from `foolish-parser/src/parser.rs`: the `\o<`/`\o>`/`\o<=`/`\o>=`/`\o==`
       infix operator matchers and their precedence handling.
