@@ -1,0 +1,28 @@
+#einmo 1 encoding=utf-8 separator=!!\n
+test: foop/33/characterizations/quote_bearing_search.foo
+suite: /yolo/foolish/foolish-ubca/einmo_suite
+producer: 73060a81
+producer-diff: sha256:abe10030b4a7997bb3923817ed5b8404f6f3ffaefdb94d574013666826394423
+generated: 2026-07-31T20:14:33.000000000Z
+status: normal
+status-detail: 
+sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
+{
+	!! Quote-bearing search: pattern with ' matches characterized_name().
+	tag'x = 7;
+	plain_x = 9;
+	hit = ?tag'x;
+	miss = ?x;
+}
+!!
+{NK
+  x=7;
+  plainˍx=9;
+  hit=?(pattern='tag'x', ANCHORED, NK);
+  miss=?(pattern='x', ANCHORED, NK)
+}!!
+!!
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:8a8cd957c579c8b5e1390b10dea02c0ef7f47c92787a8f976bdf97e7bfa2ac08","timestamp":"2026-07-31T20:14:33.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:8a8cd957c579c8b5e1390b10dea02c0ef7f47c92787a8f976bdf97e7bfa2ac08","timestamp":"2026-07-31T20:14:33.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"TLwTfRW3xbYrXPHyFHkBTCmzThzQ33uNHd+dD7JGhRbjqe195dZkei7kzpuS90VDhjsR/7X/54k8cPRfyTpnDw==","produced_by":"einmo 0.1.0 sha256:8a8cd957c579c8b5e1390b10dea02c0ef7f47c92787a8f976bdf97e7bfa2ac08","timestamp":"2026-07-31T20:14:33.000000000Z"}
+{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"vJW92gKvaSQDV/G+nUF5njBuScT6TgoTZEjIdZRwuFFgSsD7HZrSXo7CQdf2GJF6Fj0qScBT7jlxQaABUYPDAg==","produced_by":"einmo 0.1.0 sha256:031a061fe4e33915e576d70397ceeeff7ca577e57e30688e33a5167b15533ab2","timestamp":"2026-08-03T03:59:50.000000000Z"}

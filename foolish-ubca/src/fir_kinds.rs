@@ -454,7 +454,14 @@ pub fn default_equal(a: &FirRef, b: &FirRef) -> Equality {
     if a_borrowed.kind() == FirKind::Creation && b_borrowed.kind() == FirKind::Creation {
         return if Rc::ptr_eq(a, b) { Equality::Equal } else { Equality::NotEqual };
     }
-    Equality::Unknowable
+    // Two branes: brane-vs-brane equivalence is unspecified (FOOP-23) → genuinely unknowable.
+    if a_borrowed.kind() == FirKind::Brane && b_borrowed.kind() == FirKind::Brane {
+        return Equality::Unknowable;
+    }
+    // Different non-NK constanic kinds (brane-vs-integer, integer-vs-creation, etc.)
+    // are provably not equal — a brane is never an integer (different FIR kinds, decidable).
+    // The matcher should Reject (skip) and continue scanning, not NkStop (abort).
+    Equality::NotEqual
 }
 
 #[derive(Debug)]
@@ -4966,8 +4973,8 @@ mod tests {
         };
         assert_eq!(
             pred.matches(&stmt, &ctx),
-            MatchOutcome::NkStop,
-            "brane-vs-integer is Unknowable → NkStop"
+            MatchOutcome::Reject,
+            "brane-vs-integer is NotEqual → Reject (skip)"
         );
     }
 

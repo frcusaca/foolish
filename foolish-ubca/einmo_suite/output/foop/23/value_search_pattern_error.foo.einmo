@@ -1,9 +1,9 @@
 #einmo 1 encoding=utf-8 separator=!!\n
 test: foop/23/value_search_pattern_error.foo
-suite: /yolo/foolish/foolish-ubca/einmo_suite
-producer: eb9665ff
-producer-diff: sha256:ad9df3716984d528b400efb57428b2ea764d15990c6898c390e49722029b1d5d
-generated: 2026-07-31T19:39:13.000000000Z
+suite: /storage1/human/hcbusy/foolish/foolish-ubca/einmo_suite
+producer: d4e69330
+producer-diff: sha256:cbf355f3fa8c6f7933e4fa581c6f9588fc7e040211c5be76f9211051c3b2481e
+generated: 2026-08-03T03:55:04.000000000Z
 status: normal
 status-detail: 
 sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
@@ -31,14 +31,9 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
 }, value={
   q=1
 }, NK);
-  ok==(anchor={
-  inner={
-      x=1
-  };
-  n=5
-}, value=5, NK)
+  ok=5
 }!!
 !!
-{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:627b8a475ec9586a4c4cfcd71146d718d083765f5baecf83e4cb78f999f1b923","timestamp":"2026-07-31T19:39:13.000000000Z"}
-{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:627b8a475ec9586a4c4cfcd71146d718d083765f5baecf83e4cb78f999f1b923","timestamp":"2026-07-31T19:39:13.000000000Z"}
-{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"01qd/qrGpP0UmjawvELL4h1QVOF2Z6qrOyTwBr6e2NTWzvk4lwDBzMmCicEpmwi07Uh6ItcXo8NqOb2I+0BQDw==","produced_by":"einmo 0.1.0 sha256:627b8a475ec9586a4c4cfcd71146d718d083765f5baecf83e4cb78f999f1b923","timestamp":"2026-07-31T19:39:13.000000000Z"}
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:507884626058227fe0dafb2c47ff39b8b7fb66eff8dd379f9e905c735080dd97","timestamp":"2026-08-03T03:55:04.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:507884626058227fe0dafb2c47ff39b8b7fb66eff8dd379f9e905c735080dd97","timestamp":"2026-08-03T03:55:04.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"IF2If+M1l4k035zS3rA/Pu7DzCCMX91Pw+yaLn2zASp5lrXWoWoUAtApGSmBk3NnuLMCy7ttpEb7O2V8Os4wBw==","produced_by":"einmo 0.1.0 sha256:507884626058227fe0dafb2c47ff39b8b7fb66eff8dd379f9e905c735080dd97","timestamp":"2026-08-03T03:55:04.000000000Z"}
