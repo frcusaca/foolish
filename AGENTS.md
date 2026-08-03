@@ -259,6 +259,29 @@ einmo promote output to checked foolish-ubca/einmo_suite # promote all
 4. Promote reviewed outputs: `einmo promote output to checked foolish-ubca/einmo_suite`.
 5. For release attestation: `einmo promote checked to verified foolish-ubca/einmo_suite --interactive`.
 
+#### Non-regression invariant (hard rule)
+
+A FOOP under development **must not change the OUTPUT** of any einmo test
+belonging to a different, already-shipped FOOP. If `run_einmo_tests` fails
+because a pre-existing `checked/` baseline diverged, that is a **regression you
+introduced** — fix your code so the baseline passes again. **Never** `einmo
+promote` over a divergent pre-existing baseline; `promote` is only for your own
+FOOP's new tests, after the rest of the suite is green. If the divergent
+baseline has a `verified/` twin, it is frozen — do not touch it without a human
+reviewer's key.
+
+The full **phase-by-phase testing discipline** — the three-stage contract
+(`output`/`checked`/`verified`), the "a failing test is broken code, not a
+stale baseline" rule, the per-phase test-gate, and the promote rules — lives in
+**`rust_instructions.md` §"Phase-by-phase testing discipline"**; read it before
+any FOOP implementation work. The `foop-write-plan` skill installs the literal
+per-phase checkbox
+
+> `- [ ] Run all tests — old and new — and make sure they all pass correctly.`
+
+into every FOOP plan it generates; a phase is not done until that box is
+checked.
+
 ### CLI Usage
 
 ```bash
@@ -621,6 +644,20 @@ This ensures all AI agents can track who modified documentation and when, mainta
 When proposing updates, explain what has changed and why the documentation needs adjustment. After user review, update the "Last Updated" date below whether changes are accepted or the user confirms current state is acceptable.
 
 ## Last Updated
+
+**Date**: 2026-08-02
+**Updated By**: Sisyphus / z-ai/glm-5.2
+**Changes**: Added **§"Non-regression invariant (hard rule)"** under Approval Tests (einmo) —
+a FOOP under development must not change the OUTPUT of any other FOOP's einmo tests; a divergent
+pre-existing `checked/` baseline is a regression you introduced, fix the code, never `einmo
+promote` over it; a `verified/` twin means frozen. Added a pointer to the full
+**phase-by-phase testing discipline** now in `rust_instructions.md` §"Phase-by-phase testing
+discipline" (the three-stage contract, the "failing test = broken code" rule, the per-phase
+test-gate, the four hard promote rules), and noted the `foop-write-plan` skill installs the
+literal per-phase checkbox `- [ ] Run all tests — old and new — and make sure they all pass
+correctly.` Motivated by the FOOP-33 Phase-3 regression where `default_equal`'s
+`Unknowable→NkStop` branch broke FOOP-23 value search and the developing agent promoted 11
+divergent FOOP-23 baselines (with `verified/` twins) to convert the failure into a false green.
 
 **Date**: 2026-07-31
 **Updated By**: Sisyphus-Junior / xiaomi/mimo-v2.5-pro

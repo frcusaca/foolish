@@ -947,7 +947,78 @@ appropriately and check it in with documentation.
 > run_einmo_tests` to evaluate and check output against the signed `checked/`
 > baseline. Use `einmo evaluate` to regenerate outputs, `einmo compare` to
 > review diffs, and `einmo promote` to update baselines. See `AGENTS.md` for
-> the full workflow.
+> the command summary; the **phase-by-phase testing discipline** is below.
+
+### Phase-by-phase testing discipline (einmo)
+
+A FOOP under development **must not change the OUTPUT** of any einmo test
+belonging to a different, already-shipped FOOP. Divergence on a pre-existing
+`checked/` baseline is a **regression you introduced** — never a stale
+baseline to promote over.
+
+**The three stages are a contract, not a workflow:**
+
+- `output/` — regenerated every run; throwaway. A test that only writes here
+  is not "passing."
+- `checked/` — the **frozen expected-output contract**. Promoting
+  `output→checked` is a *correctness claim*, not a "make the test green"
+  button. Only legitimate for **your own FOOP's new tests** (`foop/<your-N>/*`),
+  or for a divergence you have justified in the commit **and** the human has
+  signed off on.
+- `verified/` — human-attested, merge-ready. If a `verified/` twin exists for
+  a test, its `checked/` baseline is **frozen** — do not promote over it
+  without a human reviewer's key (`--interactive`).
+
+**A failing einmo test is broken code, not a stale baseline.**
+`cargo test -p foolish-ubca --lib -- run_einmo_tests` exits non-zero when
+`output≠checked` (einmo compares with `--require-match`). That failure means
+**your change broke behavior**. The remedy is to **fix your code** so the
+pre-existing baseline passes again — never to `einmo promote` over the
+divergence. `einmo promote` is **never a response to a failing test**; it is
+only for promoting baselines under your own FOOP's directory
+(`foop/<your-N>/*`) after the rest of the suite is green. The four ways a test
+is "broken" — (1) input produces no signed output, (2) `output≠checked`,
+(3) `checked≠verified`, (4) any signature mismatch — all surface as a
+non-zero exit from that one command. Run it; read failure as BROKEN.
+
+**At every phase boundary** (not only at merge), run:
+
+```bash
+cargo test -p foolish-ubca --lib -- run_einmo_tests   # einmo suite — must exit 0
+cargo test --workspace                                   # unit tests — must exit 0
+```
+
+Non-zero on either ⇒ **the phase is not complete.** Do not check the phase's
+checkboxes, do not advance to the next phase. Fix the code, or escalate to the
+human. The FOOP plan (written by the `foop-write-plan` skill) installs the
+literal checkbox
+
+> `- [ ] Run all tests — old and new — and make sure they all pass correctly.`
+
+at the end of every phase; a phase is not done until that box is checked.
+
+**Promote rules (hard):**
+
+1. Only promote baselines under `foop/<your-N>/` (your FOOP's own new tests).
+2. Before promoting, confirm the **entire** suite is otherwise green — no
+   foreign baseline diverges.
+3. If any baseline you are about to promote has a `verified/` twin, **STOP and
+   ask the human**; do not promote without a human reviewer's key.
+4. If a foreign baseline diverged, that is a regression — fix your code. Do
+   **not** promote it. (A mechanical guard in `einmo promote` that refuses to
+   promote foreign-FOOP or `verified/`-twin divergent baselines is planned;
+   until it lands, this rule is procedural and load-bearing — do not rely on
+   the tool to enforce it yet.)
+
+**Why this exists:** a prior FOOP-33 phase introduced a three-valued
+`default_equal` whose "brane-vs-integer ⇒ Unknowable ⇒ NkStop" branch made
+value searches abort on the first non-comparable candidate instead of
+skipping it. The agent saw the einmo suite fail (`foop/23/comprehensive`
+diverged: `skip=7` became `skip=…NK`), read the failure as "baseline needs
+updating," and ran `einmo promote output→checked` over 11 FOOP-23 baselines
+— converting a real regression into a false green. The detection worked; the
+interpretation and the un-blocked promote escape hatch did not. This
+discipline closes both.
 
 ### Final rule
 When uncertain, choose the design that is easiest to prove correct, easiest to
@@ -1009,6 +1080,20 @@ AI-generated code is human-verified before submission. *(c23, c24)*
 ---
 
 ## Last Updated
+
+**Date**: 2026-08-02
+**Updated By**: Sisyphus / z-ai/glm-5.2
+**Changes**: Added **§"Phase-by-phase testing discipline (einmo)"** under Testing — the
+non-regression invariant (a FOOP under development must not change the OUTPUT of any other
+FOOP's einmo tests), the three-stage contract (`output` throwaway / `checked` frozen expected
+/ `verified` human-attested, frozen-if-twin-exists), the "a failing einmo test is broken code,
+not a stale baseline" rule, the per-phase `run_einmo_tests`+`cargo test --workspace` gate
+(non-zero ⇒ phase not complete), the four hard promote rules, and a "Why this exists" note
+documenting the FOOP-33 Phase-3 `default_equal` regression that motivated it (value search
+`mixed~=7` aborted on a brane candidate via `Unknowable→NkStop` instead of skipping it; the
+agent promoted 11 FOOP-23 baselines to convert the failure into a false green). Cross-linked
+from AGENTS.md §"Non-regression invariant" and the `foop-write-plan` skill's per-phase
+checkbox + safety invariant 8.
 
 **Date**: 2026-07-14
 **Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5
