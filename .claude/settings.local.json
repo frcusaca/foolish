@@ -10,7 +10,13 @@
       "Bash(mvn clean:*)",
       "Bash(mvn compile:*)",
       "Bash(mvn help:effective-pom:*)",
-      "Bash(mvn help:describe:*)"
+      "Bash(mvn help:describe:*)",
+      "Bash(timeout 900 cargo test -p foolish-ubca --lib -- run_einmo_tests)",
+      "Bash(timeout 1200 cargo test -p foolish-ubca --lib -- run_einmo_tests)",
+      "Bash(timeout 1500 cargo test --workspace)",
+      "Bash(timeout 120 cargo run -q -p foolish-cli -- run foolish-ubca/einmo_suite/input/foop/33/boolean/comparison_operators.foo)",
+      "Bash(git revert *)",
+      "Bash(git restore *)"
     ]
   }
 }
