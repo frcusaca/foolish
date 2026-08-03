@@ -972,14 +972,6 @@ impl Parser {
                     pattern.push('\'');
                     self.advance();
                 }
-                Some(Token::Apostrophe) => {
-                    pattern.push('\'');
-                    self.advance();
-                }
-                Some(Token::Apostrophe) => {
-                    pattern.push('\'');
-                    self.advance();
-                }
                 Some(t) => {
                     // Operators and other tokens that can be part of regex patterns
                     pattern.push_str(&t.to_string());
