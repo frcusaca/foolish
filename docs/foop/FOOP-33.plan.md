@@ -279,7 +279,51 @@ low line for display (each operator character gets its own U+0332 suffix).
       - `characterizations/` — null_char_constant, nf_error, quote_bearing_search, proximity_rule
       - `int_comparators.foo` — Unicode + ASCII `\o` forms side by side
       - `comprehensive.foo` — all features interacting
-- [ ] Promote all einmo baselines to `checked/`.
+- [ ] Promote **only** `foop/33/*` einmo baselines to `checked/` — and only after the
+      suite is otherwise green (no foreign divergence). If any baseline to be promoted has a
+      `verified/` twin, STOP and ask the human. (This replaces the earlier bare "promote all"
+      box that was misused to overwrite 11 FOOP-23 `checked/` baselines — see
+      "Problems Discovered During Implementation" in `FOOP-33.md`.)
+
+## Phase 7R — Repair: Phase 3 value-search regression (spec §2 + `default_equal`)
+
+> Discovered after Phases 1–7 committed. The suite is RED on exactly two FOOP-23 tests
+> (`foop/23/comprehensive`, `foop/23/value_search_pattern_error`) — a regression introduced by
+> Phase 3's `default_equal`. The defect is in **spec §2 rule 4** (it conflated "provably
+> different kinds" with "genuinely unknowable"); the implementation followed the spec. Read
+> §"Problems Discovered During Implementation" in `FOOP-33.md` before touching code.
+
+- [ ] (read §"Problems Discovered During Implementation" and revised §2 rule 4 in `FOOP-33.md`)
+- [ ] Revise `default_equal` fallthrough (`foolish-ubca/src/fir_kinds.rs:457`): different
+      non-NK kinds where both are constanic (brane-vs-integer, integer-vs-creation,
+      brane-vs-creation) → `Equality::NotEqual` (not `Unknowable`). Reserve `Unknowable` for:
+      either operand `NK` (already line 448), or two branes (brane-vs-brane equivalence
+      unspecified). Keep the integer-equality and creation-ptr_eq arms unchanged.
+- [ ] Fix the regression-locking unit test `matcher_value_reject_non_integer_candidate`
+      (`fir_kinds.rs:4954`): the test **name** already says "reject"; change the assertion from
+      `MatchOutcome::NkStop` ("brane-vs-integer is Unknowable → NkStop") to
+      `MatchOutcome::Reject` ("brane-vs-integer is NotEqual → skip"). Add the companion case:
+      two branes vs an integer pattern ⇒ `Unknowable` ⇒ `NkStop` (genuinely unknowable,
+      unchanged).
+- [ ] Update the `default_equal` truth-table unit tests (§Test Plan line ~651) to the revised
+      outcomes: creation-vs-integer ⇒ `NotEqual`; brane-vs-integer ⇒ `NotEqual`; two branes ⇒
+      `Unknowable`; NK operand ⇒ `Unknowable`.
+- [ ] Confirm the null-constant rule (§4) is **unaffected**: `'True=3` (creation vs integer)
+      now resolves via `NotEqual` (was `Unknowable`), but §4 treats both as refusal — the
+      observable NK result is unchanged. Re-run the `'True=3` ⇒ NK unit/approval test to prove
+      no behavior change.
+- [ ] Confirm comparison operators (§5) are **unaffected**: they use the evaluator's own
+      integer-check, not `default_equal`. Re-run `comparison_nk` tests.
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      Must include: `cargo test -p foolish-ubca --lib -- run_einmo_tests` exits 0 (the two
+      FOOP-23 divergences resolved: `output` matches `checked` again, no `promote` used), and
+      `cargo test --workspace` exits 0.
+- [ ] If the suite is green and no foreign baseline diverges, promote **only** the new
+      `foop/33/*` baselines (the 8 `only-in-output` tests) to `checked/`. Do not touch any
+      `foop/23/*` or other foreign baseline.
+- [ ] Sanity: re-read revised §2 rule 4 and the "Problems Discovered" section; confirm the
+      code, the unit tests, the spec, and the einmo suite all agree on brane-vs-integer ⇒
+      `NotEqual` ⇒ skip.
 
 ## Phase 8 — Merge
 
@@ -304,6 +348,20 @@ low line for display (each operator character gets its own U+0332 suffix).
     - [ ] Last box checked in this block.
 
 ## Last Updated
+
+**Date**: 2026-08-02
+**Updated By**: Sisyphus / z-ai/glm-5.2
+**Changes**: Added **Phase 7R — Repair: Phase 3 value-search regression** (inserted before
+Phase 8 Merge): revise `default_equal` fallthrough (`fir_kinds.rs:457`) so different non-NK
+constanic kinds (brane-vs-integer, integer-vs-creation, brane-vs-creation) ⇒ `NotEqual` (skip),
+reserving `Unknowable` for NK-operand and two-branes; fix the regression-locking unit test
+`matcher_value_reject_non_integer_candidate` (assert `Reject` not `NkStop`); update the
+`default_equal` truth-table tests; confirm §4 null-constant rule and §5 comparison operators are
+unaffected (isolated repair); run the full suite green (the 2 FOOP-23 divergences resolved,
+no `promote` used); promote **only** `foop/33/*` baselines after green. Replaced the Phase-7
+bare "promote all einmo baselines" checkbox (the one misused to overwrite 11 FOOP-23 `checked/`
+baselines) with the guarded promote box. Cross-references the diagnosis in `FOOP-33.md`
+§"Problems Discovered During Implementation."
 
 **Date**: 2026-07-31
 **Updated By**: Sisyphus / xiaomi/mimo-v2.5-pro
