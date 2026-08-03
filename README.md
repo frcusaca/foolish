@@ -488,41 +488,4 @@ FOOP-23 §Specification as the in-force authority. Prompted by a promoted `check
 without justification — the concept previously lived only inside `AGENTS.md`'s agent-process
 guidance and had no home in the language reference itself.
 
-**Date**: 2026-07-05
-**Updated By**: Sisyphus-Junior / xiaomi/mimo-v2.5-pro
-**Changes**: FOOP-23 Phase D.3 — Updated search operator reference to include contextless family,
-value search `~=`/`?=`, and contexted `&`-searches. Removed stale `:` notation from legacy
-references, added FOOP-23 cross-reference. Noted vintage value search notation is superseded.
-
-**Date**: 2026-07-02
-**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
-**Changes**: FOOP-03 cleanup — removed Java/Scala/Cross-Validation CI badges, the
-Java/Scala Quick Start (`mvn` command), and the "Version Overview" prose section
-(folded into a shorter "Documentation Layout" table); updated the "For AI Agents"
-build-requirements/testing bullets to Rust-only; fixed the resulting broken
-`#versioned-documentation` anchor link.
-
-**Date**: 2026-06-11
-**Updated By**: Sisyphus / mimo-v2.5-pro
-**Changes**: Updated "constanic" terminology to align with FOOP-62's UBCa definition:
-constanic now means any terminal evaluation state (WOCONSTANIC, ECONSTANIC, CONSTANT,
-INDEPENDENT, or NK), not just "may gain value when associated with new context."
-
-**Date**: 2026-05-15
-**Updated By**: opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4
-**Changes**: Added UBCb snapshot test command to Rust test section.
-
-**Date**: 2026-05-08
-**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.7 xHigh effort
-**Changes**: Added "Working with FOOPs" subsection under "For AI Agents
-and Contributors" — documents the little-endian numbering convention and
-points users to the `docs/foop/scripts/foop_check.py` helper script for
-listing, checking, and generating new FOOP filenames.
-
-**Date**: 2026-05-06
-**Updated By**: Claude Code / cyankiwi/Qwen3.6-27B-AWQ-BF16-INT4
-**Changes**: Added "Running the Rust Implementation" section with build, run, step, REPL, and test commands. Renamed Java/Scala Quick Start section for clarity.
-
-**Date**: 2026-03-07
-**Updated By**: Claude Code / cyankiwi/Qwen3.5-27B-AWQ-BF16-INT8
-**Changes**: Introduced semantic versioning for documentation. Moved engineering docs (how/) and project tracking (todo/) to docs/ubc1/. Created docs/ubc0_1/ with parallel how/ and todo/ directories for reimplementation work. Added version overview explaining ubc0 (legacy), ubc0_1 (reimplementation using ubc1 microstates), and ubc1 (message-passing infrastructure).
+This log keeps only the single newest entry — see `git log README.md` for full history.

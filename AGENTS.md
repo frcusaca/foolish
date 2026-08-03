@@ -172,31 +172,22 @@ For requesting restricted file changes, agents may suggest diff patch or full te
 
 
 ## Task Management
-This project uses the todo skill for all task tracking. All todo files live
-in docs/.../todo/ and are exclusively maintained by the skill — do not edit
-them directly.
 
-### Default session file
-Each AI session writes to its own todo file by default:
-docs/todo/AIAGENT-<session-id>.todo.md To switch to a project-specific todo
-file, say "use the sprint-3 todo" or invoke /todo-use sprint-3 at any point
-in the session.
+**While working on a FOOP, the FOOP's own `FOOP-#.plan.md` IS the todo list.** Its
+checkboxes are the authoritative record of what's done, in-progress, blocked, or not yet
+started — there is no separate todo document to maintain in parallel for FOOP work. Read
+the plan before starting, work its checkboxes in order, and check each box (with a
+timestamp, per the `foop-write-plan`/`foop-use-maintain` skills' checkbox format) as work
+completes. If new work is discovered mid-task that belongs to the FOOP, add it to the plan
+as a new checkbox item in the appropriate phase — do not track it anywhere else.
 
-### When starting any multi-step task
-Before executing, read the active todo file and either map the work to
-existing open items or add new ones. Write a session started Log entry
-summarizing the plan and which IDs will be worked.
-
-### While executing
-Log progress on each item before starting it (in progress) and close it
-with a meaningful summary when done (/todo-done, /todo-abandon, or
-/todo-cancel). If new work is discovered mid-task, add it immediately.
-
-### When finishing or pausing
-Write a session ended Log entry listing what was completed, what remains,
-and any context the next session needs.  General rule Keep the todo file
-synchronized with actual work at all times using the commands of the skill.
-It is the record of what happened, not just what is planned.
+For work that is NOT scoped to any FOOP (exploratory tasks, cross-cutting chores, requests
+that don't belong to a Major/Phase/Stage under the Project Segmentation scheme above), use
+whatever lightweight tracking the coding agent's own tooling provides for the session (e.g.
+an in-session task list). There is currently no installed `/todo` skill in this repository
+— references to one in older documentation, or a per-session
+`docs/todo/AIAGENT-<session-id>.todo.md` file, describe tooling that is not present; do not
+invoke `/todo-done` or similar commands expecting them to exist.
 
 
 ## Build Commands
@@ -631,58 +622,26 @@ For complete details on:
 2. **Agent identifier** (as specific as possible, including model name/version)
 3. **Brief summary** of what was changed
 
-Example format:
+**The log keeps only the single newest entry — REPLACE it, do not append.** Overwrite the
+existing entry with a new one describing the latest change (folding in anything from the
+overwritten entry still relevant, if the changes are related). Prior history lives in `git
+log`/`git blame` on the file, not in an accumulating in-file log.
+
+Example format (illustrative only — the real, current log lives in the actual
+**"## Last Updated"** section near the end of this file; entries must go there, never in
+this example block):
 ```markdown
 ## Last Updated
 
-**Date**: 2026-08-03 (later same day)
-**Updated By**: Claude Code / claude-opus-5
-**Changes**: Corrected the einmo-promote step 4 added earlier today — per human direction, the
-*semantics* of when a search may legitimately settle NK belong in README.md and the in-force
-FOOP-23 specification, not in AGENTS.md (an agent-process document). Trimmed the "be skeptical
-of NK" sub-rule down to the process instruction (don't promote an unexplained NK; trace it) and
-pointed it at README.md §"NK from a search" / FOOP-23 §Specification instead of restating the
-rule inline. Added the corresponding README.md section.
-
-**Date**: 2026-08-03
-**Updated By**: Claude Code / claude-opus-5
-**Changes**: Added step 4 **"Before promoting, justify every OUTPUT line"** to §"The einmo
-review workflow" — an agent must be able to state, in its own words, why each line of a
-diverged or new OUTPUT is correct before promoting, not merely that it matches what the
-evaluator produced. Added three sub-rules: **be skeptical of NK** (per the FOOP-23 model,
-NK is the narrow "provably not there" outcome, not the default — an unexplained NK on a
-search should be traced, not promoted); **meaningful statement names are part of the
-spec** (a statement named `hit = ?...` asserts the search should succeed; contradicting
-that with an NK result must be resolved, not promoted past); and **check against the
-in-force FOOP `.md`** for the feature each line exercises. Motivated by discovering that
-`foop/33/characterizations/quote_bearing_search.foo` — an already-`checked` baseline
-predating this session — has `hit = ?tag'x` settling `NK`, which contradicts both its own
-name and FOOP-23's search semantics: `SearchPredicate::Name::matches` in
-`fir_kinds.rs` compares candidates via `as_stmt_name()` (bare name) unconditionally,
-never projecting onto `characterized_name()` for `'`-bearing patterns the way the older
-`_search_brane` (`fir_kinds.rs:930`) correctly does — the fix documented at Gotcha #3
-(FOOP-33.md) landed on the compiler side but was never ported to the FOOP-23 search
-engine that `?`-searches actually run through. That divergent baseline was promoted to
-`checked/` without this justification step existing; fixing it is separate follow-up work.
-
-**Date**: 2026-07-29
-**Updated By**: Claude Code (Opus 5)
+**Date**: 2026-01-20
+**Updated By**: Claude Code v1.0.0 / claude-sonnet-4-5-20250929
 **Changes**: Added a **Source Control** section stating plainly that the Foolish project's main
 branch is **`jia`** — the role other projects give to `master`/`main`/`trunk`. No such branch
-exists here; PRs target `jia`; worktrees are created from `jia`. Recorded that `alpha`, appearing
-in older documents and completed plans, is historical and should be read as `jia` in any in-force
-instruction, while completed plan files are left as written for the historical record. Updated the
-two in-body mentions ("merge to alpha") to match. `foop.md` and both FOOP skills updated in the
-same pass (`WORKTREE_ORIGIN_BRANCH=jia`, merge/checkout targets), along with the in-force worktree
-directives in FOOP-72/FOOP-62 and the unchecked merge checkboxes in
-FOOP-03/41/52/7/8 plans.
-
-**Date**: 2026-01-15
-**Updated By**: Claude Code v1.0.0 / claude-sonnet-4-5-20250929
-**Changes**: Added detailed UBC architecture documentation and test infrastructure workflows
+exists here; PRs target `jia`; worktrees are created from `jia`.
 ```
 
-This ensures all AI agents can track who modified documentation and when, maintaining clear collaboration history.
+This ensures all AI agents can track who most recently modified documentation and why; full
+history is git's job, not this section's.
 
 ## Maintenance Instructions
 
@@ -701,57 +660,20 @@ When proposing updates, explain what has changed and why the documentation needs
 
 ## Last Updated
 
-**Date**: 2026-08-02
-**Updated By**: Sisyphus / z-ai/glm-5.2
-**Changes**: Added **§"Non-regression invariant (hard rule)"** under Approval Tests (einmo) —
-a FOOP under development must not change the OUTPUT of any other FOOP's einmo tests; a divergent
-pre-existing `checked/` baseline is a regression you introduced, fix the code, never `einmo
-promote` over it; a `verified/` twin means frozen. Added a pointer to the full
-**phase-by-phase testing discipline** now in `rust_instructions.md` §"Phase-by-phase testing
-discipline" (the three-stage contract, the "failing test = broken code" rule, the per-phase
-test-gate, the four hard promote rules), and noted the `foop-write-plan` skill installs the
-literal per-phase checkbox `- [ ] Run all tests — old and new — and make sure they all pass
-correctly.` Motivated by the FOOP-33 Phase-3 regression where `default_equal`'s
-`Unknowable→NkStop` branch broke FOOP-23 value search and the developing agent promoted 11
-divergent FOOP-23 baselines (with `verified/` twins) to convert the failure into a false green.
-
-**Date**: 2026-07-31
-**Updated By**: Sisyphus-Junior / xiaomi/mimo-v2.5-pro
-**Changes**: FOOP-33 — Added Unicode operator convention to Code Style section: agents MUST use
-Unicode underlined forms (`⬤`, `<̲`, `>̲`, `<̲=̲`, `>̲=̲`, `=̲=̲`) when writing `.foo` files,
-not `\o` prefix keyboard forms.
-
-**Date**: 2026-07-12
-**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
-**Changes**: De-duplicated the `foolish-debugging` skill content from AGENTS.md — the UBC section
-now just points to the skill as authoritative (removed the inline test-template→NYES-tracing→
-FIR-inspection→cleanup workflow enumeration); tightened the skills-table entry to name the key
-facilities (`step_until*` breakpoints, step-and-monitor of `_children`/NYES, `ib_search`/
-`ab_search`). The skill itself gained the `step_until*` breakpoint facility and the
-step-and-monitor technique (FOOP-13).
-
-**Date**: 2026-07-05
-**Updated By**: Sisyphus-Junior / xiaomi/mimo-v2.5-pro
-**Changes**: FOOP-23 Phase D.1 — Added dedicated "Searches" section documenting the three groups
-of search operators (Contextless Anchored, Contexted Anchored/`&`-searches, Value searches),
-operator tables, contextless-deepens-vs-contexted-navigates rule, the one-engine model
-(cursor-source × predicate), FoolRefFir two-child invariant, NK vs ECONSTANIC miss outcomes,
-and home-brane terminology. Added "Home brane" to Foolish Terminology.
-
-**Date**: 2026-06-22
-**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
-**Changes**: Added "NYES transition tests (`*_nyes_transitions`)" subsection under Unit Test
-Redability: every FIR kind has a `<kind>_nyes_transitions` unit test (assert_progression);
-new FIR kinds / NYES states/transitions MUST extend these tests. (FOOP-62 #16.)
-
-**Date**: 2026-06-11
-**Updated By**: Sisyphus / mimo-v2.5-pro
-**Changes**: Updated NYES state section with complete UBCa states (PREMBRYONIC through NK).
-Added "Constanic" to Foolish Terminology. Corrected pronunciation: "cons-TAN-nic" not
-"CON-STAN-NICK".
-
-**Date**: 2026-06-10
-**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
+**Date**: 2026-08-03
+**Updated By**: Claude Code / claude-opus-5
+**Changes**: Replaced the **Task Management** section's `/todo`-skill blurb — while working on
+a FOOP, the FOOP's own `FOOP-#.plan.md` checkboxes ARE the todo list; no separate document to
+maintain, and there is currently no `/todo` skill installed in this repository. Added
+"**Before promoting, justify every OUTPUT line**" (step 4) to §"The einmo review workflow" —
+an agent must be able to state why each line of a diverged/new OUTPUT is correct, not just
+that the evaluator produced it — with sub-rules on treating statement names (`hit`/`miss`) as
+part of the test's own specification and checking against the in-force FOOP `.md`. The
+semantics of when a search may legitimately settle NK vs ECONSTANIC were kept out of this
+process document and pointed at README.md §"NK from a search" / FOOP-23 §Specification
+instead. Added **§"Non-regression invariant (hard rule)"** under Approval Tests (einmo). Per
+policy (below), this log now keeps only the single newest entry; prior entries' substance
+remains in git history and in the sections they describe.
 
 ### MISC
 

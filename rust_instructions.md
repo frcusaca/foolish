@@ -1095,43 +1095,5 @@ agent promoted 11 FOOP-23 baselines to convert the failure into a false green). 
 from AGENTS.md §"Non-regression invariant" and the `foop-write-plan` skill's per-phase
 checkbox + safety invariant 8.
 
-**Date**: 2026-07-14
-**Updated By**: Claude Code 2.1.119 (Claude Code); Fable 5
-**Changes**: Imported ALL fifteen recommendations of the FOOP-54 §9 "Best Practices Review"
-(the mimo-opencode vs Claude Opus 4.8 einmo implementation comparison), each with a short
-example, cited as *(c25)* (+ new c26–c28): private-modules + curated `pub use` (§9.1), one
-central `#[non_exhaustive]` error enum + `Result` alias (§9.2), `Vec`-of-structs for ordered
-data (§9.3), enums + wire DTOs over stringly-typed domains (§9.4), closure-injected side
-effects in a params struct (§9.5), implement-or-omit / no no-op stubs (§9.6), real provenance
-hashes (§9.7), pinned KDF parameters with domain-separated salts (§9.8), byte-exact parsing
-under signatures (§9.9), `ExitCode` over `process::exit` (§9.10), module decomposition by
-responsibility (§9.11), `unsafe_code = "deny"` (§9.12), hermetic behavior-focused tests
-(§9.13), crate-level `//!` docs (§9.14), `--json` on every subcommand (§9.15). Added new
-**§2 Task guides** — the rules re-indexed by task, most-frequent first: writing a function →
-helper functions → naming → documentation → structuring a module → structuring a crate
-(rare, last). Renumbered subsequent sections 3–7; added a "CLI binaries" project rule; added
-self-check items 11–12 (stubs, hermetic tests).
-
-Same day, second pass (Atlas direction): added **Rule zero — encapsulation** at the head of §2
-(the four clauses: state-changing functions belong to the object's `impl`; reporting functions
-likewise; private defensively / public by design; extension traits for foreign types), repeated
-insistently in guides 2a/2b/2e; each §2 guide now ends with pointers into the reference
-sections. Added the extensive **§3 "The four OOP pillars in Rust — grounded in UBCa"** reference
-section: Encapsulation (programmatic marking via `impl`, `ProtoBrane::set_nyes` right/wrong
-pair, `NyesExt::is_constanic`, `FirRefExt` extension-trait association, the private→`pub`
-widening ladder), Abstraction (`ContextfulSearch` one-engine model, `CandidateNavigator`,
-einmo's `Evaluator`, `Fir::core()`), Inheritance (composition + trait default methods;
-`as_i64` override; no `Deref` hierarchies), Polymorphism (`dyn Fir` — `fir_op_step` dynamically
-invoked: different impls do the same thing to different objects; enum dispatch as the static
-complement). Added the matching Do (associate behavior with data).
-
-**Date**: 2026-06-09
-**Updated By**: Claude Code (Claude Code); Opus 4.8
-**Changes**: Created `rust_instructions.md` by merging all Rust guidance from
-`AGENTS.md` "How To Write Rust Code" into the cited general-Rust draft. Kept both
-priority axes (project optimization order + construct-preference order).
-Renumbered all inline citations to `(c#)` with a maintenance-only Citations
-section. Added a Project-specific rules section (Foolish semantics, enum dispatch,
-phase separation, crypto, time, concurrency, FFI, bindings, logging, deps, panics,
-testing) that overrides general guidance on conflict. Confirmed all workspace
-crates are on edition 2024.
+This log keeps only the single newest entry — see `git log rust_instructions.md` for full
+history.
