@@ -266,10 +266,25 @@ parsed at the token level. Instead, `system.foo` defines null-characterized crea
 interprets the brane's preceding elements as operands and performs the comparison in Rust,
 producing `'True` or `'False` from `system.foo`.
 
+**How `'lt` works (same mechanism as `+`, but brane-scoped).** The `'lt` operation is
+implemented like the existing `OperatorFir` for `+`, except it provides a brane rather than
+inline operands. When the FVM instantiates the `'lt` operation, it automatically creates
+`foolish_children` containing two SFF-marked (StayFoolish) index searches:
+
+- `<<#-1>>` — SFF index search for the last element (second operand)
+- `<<#-2>>` — SFF index search for the second-to-last element (first operand)
+
+These are **unanchored** SFF children — they resolve against the containing brane at step time.
+The operator's stepping logic evaluates both SFF searches to get integer values, performs the
+Rust comparison (`<`, `>`, `<=`, `>=`, `==`), and enqueues the result (`'True` or `'False`)
+into `ubc_children`. All three elements — the two operands and the result — become members of
+the containing brane if accessed. The `$` (tail) search retrieves the result.
+
 **Syntax.** `{1, 3,}'lt$` — a brane with two values, followed by a value search for `'lt`
-anchored to the tail (`$`). The search finds the `'lt` system definition. The FVM's stepping
-logic for this system operation extracts `<<#-1>>` and `<<#-2>>` from the brane (using Foolish
-search operators), performs `value(#1) < value(#2)` in Rust, and returns `'True` or `'False`.
+anchored to the tail (`$`). The search finds the `'lt` system definition. The `'lt` operation
+instantiates `<<#-2>>` and `<<#-1>>` as SFF children, resolves them to `1` and `3`, compares
+`1 < 3` in Rust, enqueues `'True` into `ubc_children`. The brane now has three accessible
+elements: `1`, `3`, `'True`. The `$` search finds `'True`.
 
 **Kept from old Phase 6:** the `OperatorFir` infrastructure stays. The five operator tokens
 (`LTOp`, `GTOp`, `Le`, `Ge`, `EqOp`) and their parser matchers are **deleted** — comparison
@@ -299,15 +314,18 @@ is no longer syntactic sugar; it is brane search into system definitions.
       ```
 - [ ] **FVM evaluator special-casing**: when the evaluator encounters a search result that
       resolves to one of `'lt`, `'gt`, `'le`, `'ge`, `'eq` (identified by the creation's
-      `Rc::ptr_eq` against the system root brane's definitions), interpret the containing
-      brane's last two elements as operands:
-      1. Extract `<<#-1>>` (second-to-last) and `<<#-2>>` (third-to-last) via Foolish index
-         search.
-      2. Check both are integers (else NK).
-      3. Perform the Rust comparison (`<`, `>`, `<=`, `>=`, `==`).
-      4. Resolve `'True` or `'False` from the system root brane.
-      5. The result is a `CreationFir` (the `'True`/`'False` object) or `NkFir`.
+      `Rc::ptr_eq` against the system root brane's definitions), create an `OperatorFir`-like
+      structure that:
+      1. Instantiates two SFF (StayFoolish) unanchored index searches as `foolish_children`:
+         `<<#-2>>` (first operand) and `<<#-1>>` (second operand).
+      2. Steps the SFF searches to resolve against the containing brane.
+      3. Checks both resolved values are integers (else NK).
+      4. Performs the Rust comparison (`<`, `>`, `<=`, `>=`, `==`).
+      5. Resolves `'True` or `'False` from the system root brane.
+      6. Enqueues the result into `ubc_children`.
+      7. The result (plus the two operands) becomes accessible as brane members.
 - [ ] Unit tests: `{1, 3,}'lt$` → `'True`; `{3, 1,}'lt$` → `'False`; `{⬤, 1,}'lt$` → NK.
+      Verify all three elements are accessible as brane members.
 - [ ] Einmo tests: update `int_comparators.foo`, `boolean/comparison_operators.foo`,
       `comprehensive.foo` to use the new brane-search syntax.
 
