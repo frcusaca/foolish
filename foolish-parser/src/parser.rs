@@ -1123,14 +1123,6 @@ impl Parser {
                     id,
                 })
             }
-            Some(Token::Apostrophe) => {
-                let chars = self.parse_characterizations();
-                let id = self.parse_identifier()?;
-                Ok(Astn::Identifier {
-                    characterizations: chars,
-                    id,
-                })
-            }
             Some(Token::Ident(_)) => {
                 let chars = self.parse_characterizations();
                 if !chars.is_empty() && self.peek_token() == Some(&Token::LBrace) {
