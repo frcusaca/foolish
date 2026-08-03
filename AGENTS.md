@@ -256,8 +256,34 @@ einmo promote output to checked foolish-ubca/einmo_suite # promote all
    signed `.einmo` to `output/`, and checks `output == checked`.
 2. If the test fails (output diverged from checked), review with `einmo compare`.
 3. Use `poor_einmo.sh foolish-ubca/einmo_suite` for the interactive review loop (vim-based).
-4. Promote reviewed outputs: `einmo promote output to checked foolish-ubca/einmo_suite`.
-5. For release attestation: `einmo promote checked to verified foolish-ubca/einmo_suite --interactive`.
+4. **Before promoting, justify every OUTPUT line.** For each line of the diverged (or new)
+   OUTPUT, the agent must be able to state, in its own words, *why that specific value is
+   correct* — not merely that it matches what the evaluator produced. "The evaluator emitted
+   this" is not a justification; it is the thing being checked. If a line cannot be justified,
+   it is not ready to promote — it is either a genuine bug (fix the code) or a sign the test's
+   own expectation (its input, or its statement names) needs revision, and that revision needs
+   review in its own right, not a silent promotion.
+
+   **Be skeptical of NK specifically.** Under the FOOP-23 search model (see "NK vs ECONSTANIC
+   miss outcomes" above), NK from a search means "provably not there" — it is the **narrow**
+   outcome, reserved for anchored misses, `=NK` value searches, or an NK anchor. A search
+   settling NK is the exception, not the default; if a line reads `foo=NK` and you cannot name
+   *which* of those narrow reasons applies, do not promote it — trace it (see the
+   `foolish-debugging` skill) before assuming the evaluator is right.
+
+   **Meaningful statement names are part of the test's specification, not decoration.** A
+   statement named `hit = ?...` asserts that the search is expected to find its target; `miss
+   = ?...` asserts the opposite. If `hit`'s result is NK, the name and the result contradict
+   each other — that contradiction must be resolved (by fixing the bug the name predicted, or
+   by renaming the statement to match reality with a comment explaining why) before promoting,
+   never by promoting past it.
+
+   **Check against the in-force specification for the feature under test.** Read the relevant
+   FOOP's current `.md` (not just the plan) for the feature each line exercises, and confirm
+   the OUTPUT matches what that spec currently says — not what an earlier or superseded
+   revision said.
+5. Promote reviewed outputs: `einmo promote output to checked foolish-ubca/einmo_suite`.
+6. For release attestation: `einmo promote checked to verified foolish-ubca/einmo_suite --interactive`.
 
 #### Non-regression invariant (hard rule)
 
@@ -608,6 +634,27 @@ For complete details on:
 Example format:
 ```markdown
 ## Last Updated
+
+**Date**: 2026-08-03
+**Updated By**: Claude Code / claude-opus-5
+**Changes**: Added step 4 **"Before promoting, justify every OUTPUT line"** to §"The einmo
+review workflow" — an agent must be able to state, in its own words, why each line of a
+diverged or new OUTPUT is correct before promoting, not merely that it matches what the
+evaluator produced. Added three sub-rules: **be skeptical of NK** (per the FOOP-23 model,
+NK is the narrow "provably not there" outcome, not the default — an unexplained NK on a
+search should be traced, not promoted); **meaningful statement names are part of the
+spec** (a statement named `hit = ?...` asserts the search should succeed; contradicting
+that with an NK result must be resolved, not promoted past); and **check against the
+in-force FOOP `.md`** for the feature each line exercises. Motivated by discovering that
+`foop/33/characterizations/quote_bearing_search.foo` — an already-`checked` baseline
+predating this session — has `hit = ?tag'x` settling `NK`, which contradicts both its own
+name and FOOP-23's search semantics: `SearchPredicate::Name::matches` in
+`fir_kinds.rs` compares candidates via `as_stmt_name()` (bare name) unconditionally,
+never projecting onto `characterized_name()` for `'`-bearing patterns the way the older
+`_search_brane` (`fir_kinds.rs:930`) correctly does — the fix documented at Gotcha #3
+(FOOP-33.md) landed on the compiler side but was never ported to the FOOP-23 search
+engine that `?`-searches actually run through. That divergent baseline was promoted to
+`checked/` without this justification step existing; fixing it is separate follow-up work.
 
 **Date**: 2026-07-29
 **Updated By**: Claude Code (Opus 5)
