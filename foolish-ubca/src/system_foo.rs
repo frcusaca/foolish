@@ -217,11 +217,21 @@ impl ComparisonFir {
     /// result is referentially identical to the `'True` a user's own `'True`
     /// reference resolves to (FOOP-33 §5: "the actual 'True/'False FIR object
     /// from system.foo, not a synthetic boolean").
+    ///
+    /// `_ab_search` returns the found STATEMENT (`'True = ⬤`), not its body —
+    /// see `Brane::_ib_search`/`_search_brane`. Reading `.value()` on a bare
+    /// statement is a no-op (`StatementFir::settled_result()` answers `None`
+    /// in the common case), so the comparison would settle to the whole
+    /// `{'True=⬤}` statement wrapper instead of the bare creation. Go through
+    /// `statement_value_for_comparison`, the one documented accessor for "what
+    /// does this statement actually resolve to", exactly as `IndexFir`'s `$`
+    /// search does for its own result.
     fn resolve_boolean(&self, verdict: bool) -> Option<FirRef> {
         let name = if verdict { "'True" } else { "'False" };
         let self_ref = self.self_weak.upgrade()?;
         let (found, _) = self._ab_search(&self_ref, name)?;
-        Some(found.value())
+        let body = crate::fir_kinds::statement_value_for_comparison(&found)?;
+        Some(body.value())
     }
 
     /// Settle to `NK` with `reason`, storing the NK as this FIR's result.
