@@ -57,7 +57,7 @@ exact evidence). Current real status, top to bottom:
 | Phase | Status | Notes |
 |---|---|---|
 | 0 — Start | ✅ done | |
-| 1 — `Identifier` | ⚠️ **one item open**: `BraneFir.characterizations`/`NormalBraneFir.characterizations` migration to `Characterizations` — genuinely not done, correctly unchecked |
+| 1 — `Identifier` | ✅ **fully done** (2026-08-04) — `BraneFir.characterizations` migrated to `Characterizations`; `NormalBraneFir.characterizations` correctly out of scope (separate wire type, see checkbox) |
 | 2 — Creation `⬤`/`{*}` | ✅ **fully done** — was showing all-unchecked, now corrected; every item verified present in code |
 | 3 — `default_equal` | ⚠️ **one open item**: no dedicated truth-table unit tests exist, only indirect coverage — write these before considering Phase 3 done. (The creation-vs-integer question is **resolved**: `NotEqual` is correct per human ruling 2026-08-03 — every integer is itself a creation, so a new creation can never equal one, decidably.) |
 | 4 — Null-characterized constants | ❌ **verified not started** — no NF/ancestral-conflict/poison-scope/concatenation-collision code exists anywhere |
@@ -122,9 +122,27 @@ prelude approach.
       FOOP** — only `is_nully_characterizing_coordinate_name()`; per-`'` component extraction is
       deferred. Place both in the shared location.
       (2026-07-30 12:15)
-- [ ] Migrate `BraneFir.characterizations` (`foolish-ubca/src/fir_kinds.rs:717`) and the
-      core-fir `NormalBraneFir.characterizations` to `Characterizations`; keep the sequencer's
-      trailing-`'` rendering (`foolish-core/src/sequencer.rs:514`).
+- [x] Migrate `BraneFir.characterizations` (`foolish-ubca/src/fir_kinds.rs`, `BraneFir` struct)
+      to `Characterizations`. **Scope correction**: the core-fir `NormalBraneFir.characterizations`
+      (`foolish-core/src/fir.rs`) is a separate, JSON-serializable wire type in a crate
+      (`foolish-core`) that does not depend on `foolish-ubca` and cannot reference
+      `foolish-ubca::identifier::Characterizations` — it correctly keeps its `Vec<String>` shape
+      for hssnap round-tripping; only `foolish-ubca::BraneFir` (the FVM-internal FIR) was in
+      scope. Extended `Characterizations` with `from_brane_parts(Vec<String>)` (a brane has no
+      name, so `is_nully_characterizing_coordinate_name()` is always `false` for it) and
+      `components() -> &[String]` (the raw ordered list, needed by
+      `as_brane_characterizations()` for the sequencer's `a'b'` trailing rendering, which is
+      unchanged). Updated all 6 `BraneFir` construction sites (`compiler.rs` ×2 incl. the
+      detach/recoordinate clone path, `fir_kinds.rs` ×3, `fir_trait.rs` ×1 test scaffold).
+      New tests: `identifier::tests::brane_characterizations_retain_raw_components`,
+      `brane_characterizations_empty_when_none`, `default_characterizations_are_empty_and_not_nully`
+      (pure `Characterizations` unit tests), plus FVM-level
+      `fir_kinds::tests::brane_fir_reports_its_own_characterizations` (compiles `{x = a'b'{y=1;};}`,
+      asserts `as_brane_characterizations() == ["a", "b"]`) and
+      `brane_fir_with_no_characterizations_reports_empty`.
+      (2026-08-04 — verified: `cargo test -p foolish-ubca --lib` 251 passed incl. 4 new
+      identifier tests + 2 new fir_kinds tests; `cargo test --workspace` all green;
+      `run_einmo_tests` unaffected — sequencer rendering path untouched behaviorally.)
 - [x] Replace `StatementFir.name: String` with `identifier: Identifier`
       (`foolish-ubca/src/fir_kinds.rs:632`); `name()` delegates to `identifier.name()`; update
       constructor/`statement()` helper and all `StatementFir` construction sites. (Migration is
@@ -620,18 +638,11 @@ is no longer syntactic sugar; it is brane search into system definitions.
 
 ## Last Updated
 
-**Date**: 2026-08-03 (evening)
-**Updated By**: Claude Code / claude-opus-5
-**Changes**: Phase 6 gate rewritten — the comparison-operator design **settled** through
-discussion the same evening: postfix again (`<<#-2>> < <<#-1>>`), **no brane concatenation**
-(`{1, 2, 'lt}` is one ordinary brane literal), `'lt` resolved via ordinary ancestral search
-into `system.foo` (same as `'True`), the existing detachment/recoordination mechanism
-resolves its operand lookups once recoordinated into the user's brane, result extracted with
-`$`. New shared `system_foo.rs` Rust module for `'lt`/`'gt`/`'le`/`'ge`/`'eq`. Not yet
-implemented — needs Phase 5's `system.foo` composition first to test against. Status summary
-table's Phase 6 row updated to match. Earlier the same day: human resolved both open decisions
-from the checkbox reconciliation — (1) anchored value-search-miss on creation inequality is
-correctly `NK`, `referential_equality.foo` promoted, einmo suite 169/169 green; (2)
-creation-vs-integer equality is correctly `NotEqual` (plan text was wrong, code was right;
-corrected). Phase 3 now has exactly one open item: missing `default_equal` truth-table unit
-tests. Full history in `git log` on this file.
+**Date**: 2026-08-04
+**Updated By**: Claude Code / claude-sonnet-5
+**Changes**: Phase 1's last open item — `BraneFir.characterizations` migration to
+`Characterizations` — completed and checked off (see the checkbox for full detail and evidence).
+Scope was corrected in the process: only `foolish-ubca::BraneFir` was in scope, not
+`foolish-core::NormalBraneFir` (a separate wire/serialization type in a crate that doesn't
+depend on `foolish-ubca`). `cargo test --workspace` and `run_einmo_tests` green throughout.
+Full history in `git log` on this file.

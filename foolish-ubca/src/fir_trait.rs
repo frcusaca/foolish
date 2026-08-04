@@ -743,7 +743,7 @@ mod get_value_tests {
             let parent: Weak<RefCell<dyn Fir>> = me.clone();
             RefCell::new(BraneFir {
                 core: ProtoBrane::new(children, parent, Nyes::Prembrionic),
-                characterizations: Vec::new(),
+                characterizations: crate::identifier::Characterizations::default(),
             })
         })
     }

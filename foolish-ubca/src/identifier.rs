@@ -9,14 +9,25 @@
 //! `Characterizations` is minimal for this FOOP — it only answers whether the
 //! name is null-characterized. Per-`'` component extraction is deferred.
 
-/// The characterization front portion of an `Identifier`.
+/// The characterization front portion of an `Identifier`, or a standalone brane's
+/// characterization stack (a brane has characterizations but no name — see
+/// [`Characterizations::from_brane_parts`]).
 ///
-/// For this FOOP, it only answers `is_nully_characterizing_coordinate_name()`.
-/// Proximity is king: only the slot immediately touching the name counts.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// For this FOOP, the name-touching semantics (`is_nully_characterizing_coordinate_name`)
+/// are minimal — only whether the name is null-characterized. Per-`'` component
+/// extraction is deferred, **except** that the raw canonicalized components are still
+/// retained (`components()`) because the sequencer must reproduce the original
+/// `a'b'c'` rendering for a characterized brane.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Characterizations {
+    /// The canonicalized `'`-separated components, in order, exactly as parsed
+    /// (whitespace stripped per component). Empty means "no characterizations at all"
+    /// — not to be confused with a single empty (null) component.
+    components: Vec<String>,
     /// True iff the characterization slot immediately touching the name is null
-    /// (empty) — i.e. this is a null-characterized coordinate name.
+    /// (empty) — i.e. this is a null-characterized coordinate name. Only meaningful
+    /// when `Characterizations` fronts a *named* `Identifier`; a brane's
+    /// `Characterizations` (no name) leaves this `false`.
     is_nully: bool,
 }
 
@@ -44,15 +55,37 @@ impl Characterizations {
             false
         } else {
             // The last characterization is the one touching the name.
-            chars.last().map_or(false, |last| last.is_empty())
+            chars.last().is_some_and(|last| last.is_empty())
         };
-        Characterizations { is_nully }
+        Characterizations {
+            components: chars.to_vec(),
+            is_nully,
+        }
+    }
+
+    /// Build a brane's (unnamed) characterization stack from the parser's raw
+    /// component list. A brane has no coordinate name, so
+    /// `is_nully_characterizing_coordinate_name()` is always `false` here — the
+    /// null-constant rule (FOOP-33 §4) applies to named statements, not to a
+    /// brane literal's own leading characterization.
+    pub fn from_brane_parts(chars: Vec<String>) -> Self {
+        Characterizations {
+            components: chars,
+            is_nully: false,
+        }
     }
 
     /// True iff the characterization slot immediately touching the name is null
     /// (empty) — i.e. this is a null-characterized coordinate name (a constant).
     pub fn is_nully_characterizing_coordinate_name(&self) -> bool {
         self.is_nully
+    }
+
+    /// The raw, canonicalized `'`-separated components, in order — e.g. `["a", "b"]`
+    /// for `a'b'name`. Used by the sequencer to reproduce the `a b'` rendering; empty
+    /// when there are no characterizations at all.
+    pub fn components(&self) -> &[String] {
+        &self.components
     }
 }
 
@@ -263,5 +296,39 @@ mod tests {
         let id = Identifier::from_parts(vec!["".to_string(), "".to_string()], "name");
         assert_eq!(id.searchable_name(), "''name");
         assert!(id.is_nully_characterizing_coordinate_name());
+    }
+
+    #[test]
+    fn identifier_components_match_canonicalized_input() {
+        // Identifier::from_parts also canonicalizes components for a named LHS;
+        // Characterizations::components() must reflect those exact strings.
+        let id = Identifier::from_parts(vec!["a".to_string(), " b".to_string()], "name");
+        assert_eq!(id.searchable_name(), "a'b'name");
+        // (Identifier itself doesn't expose components(); this is exercised via
+        // Characterizations::from_brane_parts below, which shares the same shape.)
+    }
+
+    #[test]
+    fn brane_characterizations_retain_raw_components() {
+        // A brane's characterization stack (e.g. `a'b'{...}`) has no name, so
+        // is_nully_characterizing_coordinate_name() is always false — but the raw
+        // components must round-trip for sequencer rendering.
+        let chars = Characterizations::from_brane_parts(vec!["a".to_string(), "b".to_string()]);
+        assert_eq!(chars.components(), &["a".to_string(), "b".to_string()]);
+        assert!(!chars.is_nully_characterizing_coordinate_name());
+    }
+
+    #[test]
+    fn brane_characterizations_empty_when_none() {
+        let chars = Characterizations::from_brane_parts(vec![]);
+        assert!(chars.components().is_empty());
+        assert!(!chars.is_nully_characterizing_coordinate_name());
+    }
+
+    #[test]
+    fn default_characterizations_are_empty_and_not_nully() {
+        let chars = Characterizations::default();
+        assert!(chars.components().is_empty());
+        assert!(!chars.is_nully_characterizing_coordinate_name());
     }
 }

@@ -4,7 +4,7 @@ use std::rc::{Rc, Weak};
 use foolish_core::fir::Nyes;
 use regex::Regex;
 
-use crate::identifier::Identifier;
+use crate::identifier::{Characterizations, Identifier};
 
 use crate::fir_trait::{Fir, FirKind, FirRef, FirRefExt, Scope, UbcError};
 use crate::nyes_ext::NyesExt;
@@ -375,7 +375,9 @@ impl ProtoBrane {
                 );
                 RefCell::new(BraneFir {
                     core,
-                    characterizations: borrowed.as_brane_characterizations().to_vec(),
+                    characterizations: Characterizations::from_brane_parts(
+                        borrowed.as_brane_characterizations().to_vec(),
+                    ),
                 })
             }),
             FirKind::Unknown => Rc::new(RefCell::new(NkFir {
@@ -832,14 +834,14 @@ impl Fir for StatementFir {
 #[derive(Debug)]
 pub struct BraneFir {
     pub(crate) core: ProtoBrane,
-    pub(crate) characterizations: Vec<String>,
+    pub(crate) characterizations: Characterizations,
 }
 
 impl BraneFir {
     pub fn brane(children: Vec<FirRef>, parent: Weak<RefCell<dyn Fir>>) -> FirRef {
         Rc::new(RefCell::new(BraneFir {
             core: ProtoBrane::new(children, parent, Nyes::Prembrionic),
-            characterizations: Vec::new(),
+            characterizations: Characterizations::default(),
         }))
     }
 }
@@ -887,7 +889,7 @@ impl Fir for BraneFir {
     }
 
     fn as_brane_characterizations(&self) -> &[String] {
-        &self.characterizations
+        self.characterizations.components()
     }
 
     fn _ab_search(&self, self_ref: &FirRef, name: &str) -> Option<(FirRef, Nyes)> {
@@ -2655,7 +2657,7 @@ pub fn statement(
 pub fn brane(children: Vec<FirRef>, parent: Weak<RefCell<dyn Fir>>) -> FirRef {
     Rc::new(RefCell::new(BraneFir {
         core: ProtoBrane::new(children, parent, Nyes::Prembrionic),
-        characterizations: Vec::new(),
+        characterizations: Characterizations::default(),
     }))
 }
 
@@ -2906,7 +2908,7 @@ mod tests {
             let parent: Weak<RefCell<dyn Fir>> = me.clone();
             RefCell::new(BraneFir {
                 core: ProtoBrane::new(children, parent, Nyes::Prembrionic),
-                characterizations: Vec::new(),
+                characterizations: Characterizations::default(),
             })
         })
     }
@@ -4321,6 +4323,29 @@ mod tests {
                 .is_some(),
             "ab_search must find the ancestral name"
         );
+    }
+
+    #[test]
+    fn brane_fir_reports_its_own_characterizations() {
+        // Pins the BraneFir.characterizations: Vec<String> → Characterizations
+        // migration (FOOP-33 Phase 1 leftover item): `as_brane_characterizations()`
+        // must still return the raw, ordered components for a characterized brane
+        // literal, exactly as before the migration.
+        let root = Compiler::compile("{x = a'b'{y = 1;};}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        let x_stmt = &root.borrow().core().foolish_children().to_vec()[0];
+        let brane = x_stmt.borrow().core().foolish_children().to_vec()[0].clone();
+        assert_eq!(brane.borrow().kind(), FirKind::Brane);
+        assert_eq!(brane.borrow().as_brane_characterizations(), &["a", "b"]);
+    }
+
+    #[test]
+    fn brane_fir_with_no_characterizations_reports_empty() {
+        let root = Compiler::compile("{y = 1;}").unwrap().pop().unwrap();
+        assert_eq!(root.borrow().kind(), FirKind::Brane);
+        assert!(root.borrow().as_brane_characterizations().is_empty());
     }
 
     #[test]

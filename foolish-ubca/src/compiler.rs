@@ -256,7 +256,9 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
             let children = build_stmts(statements, &me_dyn, under_sff);
             RefCell::new(BraneFir {
                 core: ProtoBrane::new(children, brane_parent!(me_dyn), Nyes::Prembrionic),
-                characterizations,
+                characterizations: crate::identifier::Characterizations::from_brane_parts(
+                    characterizations,
+                ),
             })
         }),
         Astn::BinaryOp { op, left, right } => Rc::new_cyclic(|me: &Weak<RefCell<OperatorFir>>| {
@@ -523,7 +525,7 @@ mod tests {
             let me_dyn: Weak<RefCell<dyn Fir>> = me.clone();
             RefCell::new(BraneFir {
                 core: ProtoBrane::new(vec![], me_dyn, Nyes::Prembrionic),
-                characterizations: vec![],
+                characterizations: crate::identifier::Characterizations::default(),
             })
         });
         Rc::downgrade(&(root as Rc<RefCell<dyn Fir>>))
