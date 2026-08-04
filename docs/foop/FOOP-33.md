@@ -502,6 +502,50 @@ prior brane-search revision (`19fe78ef`), both of which used `<<#-1>>`/`<<#-2>>`
 operands before the operator, postfix placement like `{1, 3,}'lt$`. The postfix form is
 superseded; infix placement is the design going forward.
 
+> ## ⛔ REVISED AGAIN, SAME DAY (2026-08-03, evening) — placement reverts to postfix
+>
+> Later the same day the human reverted the infix decision above: **`'lt` is postfix again**,
+> `<<#-2>> < <<#-1>>` — both operands before the operator, same shape as the original
+> `19fe78ef` revision. New elements this round, **confirmed** by the human:
+>
+> - **Rust module structure**: `'lt` (and `'gt`/`'ge`/`'le`/`'eq`) stay declared as ordinary
+>   creations in `system.foo` (the `.foo` source is unchanged: `'lt = ⬤` etc.). On the Rust
+>   side, a new `system_foo.rs` module in `foolish-ubca` holds a brane/FIR for each of the five,
+>   sharing "mostly the same code except for the op step" — i.e. one common structure (operand
+>   lookup via `#-2`/`#-1`, settling/constanic-gating logic — likely close to, or reusing,
+>   `OperatorFir`'s existing shape at `fir_kinds.rs:522`) with the Rust comparison (`<`, `>`,
+>   `<=`, `>=`, `==`) as the per-kind difference, run once both operands (`#-2`, `#-1`) have
+>   become constanic — "constanic of course renders the comparison constanic."
+> - **Brane concatenation is involved**, resolving the position-relativity problem the infix
+>   design had (whether `#-1`/`#+1` are relative to `system.foo`'s own brane or the user's
+>   brane where `'lt` is actually used) — the human's words: "since we're using brane
+>   concatenation and postfix, this may not be an issue any more."
+> - **A concrete usage example was given**: `comparison_result =$ {1, 2}'lt`. Traced against
+>   the existing codebase (not the human's confirmation — this part is the agent's own
+>   analysis, flag accordingly): `=$` is **not** a new token. It is the existing binary `$`
+>   operator (`fir_kinds.rs:675`, `"$" if children.len() == 2`), which the sequencer already
+>   detects and round-trips as `A =$ B` display sugar (`foolish-core/src/sequencer.rs:639-655`,
+>   confirmed live in `regression/disappearing_brane_statements.foo`: `d =$ 4` → `d =$ ???
+>   (4 is not a brane)`, i.e. `d = 4$` requires `4` to be a brane and fails because it isn't).
+>   The first operand of this `$` is a self-referential unanchored `#-1` index — i.e. the LHS
+>   name becomes addressable *from inside* the RHS expression by relative position. Under this
+>   reading, `comparison_result =$ {1, 2}'lt` means: `{1, 2}'lt` must evaluate to a **brane**
+>   (required by the existing `$`-operator's "RHS must be a brane" rule) whose **tail** (`$`) is
+>   the comparison result; `'lt`'s mechanism (searching into or concatenating with `{1,2}`,
+>   running `#-2 < #-1`, appending the `'True`/`'False` result) is what produces that brane's
+>   tail; `comparison_result`'s own `#-1` self-reference is how it becomes concatenable/
+>   addressable alongside `{1,2}`'s own elements, which is plausibly the "brane concatenation"
+>   referenced above.
+>
+> **This last paragraph is the agent's own inference, not confirmed by the human** — it was not
+> independently verified against a working example or FVM trace before this note was written
+> (session paused for the night). Before implementing: confirm this reading is correct, and
+> pin down exactly how `'lt` gets brought into the same brane as its operands (does `'lt`
+> resolve via ordinary ancestral search from inside `{1,2}`, the same way `'True` already does,
+> or does writing `{1,2}'lt` trigger an actual `ConcatenationFir`-style merge between `{1,2}`
+> and whatever brane holds `'lt`?). Do not implement Phase 6 from this note alone — resume the
+> discussion with the human first.
+
 ---
 
 **These are NOT boolean logic operators** (`and`, `or`, `not` — deferred to a follow-on FOOP).
@@ -1132,18 +1176,22 @@ preferred, three-canonical-strings fallback — §3); null-const mechanism (`get
 
 ## Last Updated
 
-**Date**: 2026-08-03
+**Date**: 2026-08-03 (evening)
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Resolved the anchored-value-search-miss open question: `NK` is correct, no code
-change — an anchored search can produce ECONSTANIC in general, but an anchored *value* search
-specifically cannot, so the general FOOP-23 "anchored miss → NK" rule already applied.
-`referential_equality.foo`'s baseline promoted (einmo suite 169/169 green). Earlier the same
-day: marked comparison operators (§5) SUPERSEDED/DEFERRED pending a new human-supplied spec;
-stated the `system.foo` **composition** design in abstract item 4 (root brane holding the user
-program as a member named `program`, extracted in Rust via `stmt_at(idx)`, not a Foolish
-search); resolved the `same = ?=a` open question (creation-reference value search now correctly
-finds its referent, two-part fix in `check_value_pattern_ready`/`default_equal`, two new
-regression tests). Full history in `git log` on this file.
+**Changes**: §5.0 comparison-operator design revised again, same day: placement reverts from
+infix back to **postfix** (`<<#-2>> < <<#-1>>`), with a new Rust structure — `'lt`/`'gt`/`'le`/
+`'ge`/`'eq` stay declared as creations in `system.foo`'s `.foo` source, but a new
+`system_foo.rs` module holds shared FIR logic (differing only in the op step) — and **brane
+concatenation** involved in bringing `'lt` and its operands into the same brane. A concrete
+usage example (`comparison_result =$ {1, 2}'lt`) was given and partially traced by the agent
+against the existing `=$` binary-operator mechanism (`fir_kinds.rs:675`,
+`sequencer.rs:639-655`), but the exact mechanism connecting `'lt` to its operands' brane was
+**not confirmed** before the session paused — flagged explicitly as unconfirmed agent
+inference, not to be implemented from without resuming the discussion. Earlier the same day:
+resolved the anchored-value-search-miss open question (`NK` correct, no code change;
+`referential_equality.foo` promoted); marked comparison operators SUPERSEDED/DEFERRED; stated
+the `system.foo` composition design in abstract item 4; resolved the `same = ?=a` open
+question. Full history in `git log` on this file.
 
 **Date**: 2026-08-02
 **Updated By**: Sisyphus / z-ai/glm-5.2

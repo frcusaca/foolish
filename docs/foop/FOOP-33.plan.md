@@ -63,7 +63,7 @@ exact evidence). Current real status, top to bottom:
 | 4 — Null-characterized constants | ❌ **verified not started** — no NF/ancestral-conflict/poison-scope/concatenation-collision code exists anywhere |
 | 5 — `system.foo` composition | ❌ not started. Design **superseded** from the original "ancestral prelude" (system.foo as parent brane) to a **composition** model per 2026-08-03 human direction: `system.foo` is the root brane, the user's program is a **member** named `program`, the FVM returns it via `stmt_at(idx)` in Rust — not a Foolish search. See FOOP-33.md §4 for the corrected design; this phase's task list below still describes the superseded ancestral-prelude approach and needs rewriting to match before implementation starts. |
 | 5.5 — Sequencer renders named creations | ❌ not started, depends on 5 |
-| 6 — Comparison operators | ⛔ **BLOCKED** — reverted (was returning placeholder `1`/`0`); a new, human-dictated infix design exists at FOOP-33.md §5.0 (`'lt`/`'gt`/`'le`/`'ge`/`'eq` as `system.foo` members, dedicated FIR kinds, SFF `<<#-1>>`/`<<#+1>>` infix operands) but implementation has not started. Do not implement from the phase's own prose — it describes the superseded design. See the STOP gate at the head of Phase 6 below. |
+| 6 — Comparison operators | ⛔ **BLOCKED, mid-discussion** — reverted (was returning placeholder `1`/`0`); design has changed twice in one day (infix, then back to postfix that evening) — see FOOP-33.md §5.0's evening revision banner. Current: postfix `<<#-2>> < <<#-1>>`, a new `system_foo.rs` Rust module shared across `'lt`/`'gt`/`'le`/`'ge`/`'eq` differing only in the op step, brane concatenation involved. The exact mechanism bringing `'lt` and its operands into one brane is **not yet confirmed** — session paused before pinning it down. See the STOP gate at the head of Phase 6. |
 | 7 — Docs/Tests | 🟡 partial, done piecemeal, not formally tracked |
 | 7R — Phase 3 value-search regression repair | ✅ done (earlier session) |
 | 8 — Merge | ❌ not started |
@@ -406,25 +406,38 @@ Foolish resolves names — through search, not stored metadata.
 >
 > **Do NOT implement any part of Phase 6 from the prose below.** On 2026-08-03 the human
 > dictated a **new specification** for the comparison operators — see **FOOP-33.md §5.0 "New
-> design (2026-08-03, human-dictated)"**. It supersedes both the prose in this phase (the
-> `19fe78ef` brane-search revision) and the originally-reverted token-level design.
+> design"**, then its **evening revision** further down §5.0 — see **FOOP-33.md §5.0 "New
+> design (2026-08-03, human-dictated)"**. It supersedes the prose in this phase (the `19fe78ef`
+> brane-search revision) and the originally-reverted token-level design.
 >
-> **Required before implementing:** read FOOP-33.md §5.0 in full. Placement is **infix**
-> (human-confirmed 2026-08-03): `<<#-1>>`/`<<#+1>>` straddle the operator, e.g. `{1, 'lt, 3}`
-> read left-to-right as `1 lt 3`. This supersedes this phase's prior `<<#-1>>`/`<<#-2>>`
-> postfix placement (`{1, 3,}'lt$`) — do not use the postfix form.
+> **Required before implementing:** read FOOP-33.md §5.0 in full, **including the evening
+> revision banner** ("REVISED AGAIN, SAME DAY"). **Placement is POSTFIX, not infix** — the
+> infix decision (`<<#-1>>`/`<<#+1>>` straddling the operator, `{1, 'lt, 3}`) was itself
+> reverted the same evening. Current design: `<<#-2>> < <<#-1>>`, both operands before `'lt`
+> (postfix), the same shape as the plan's prior `19fe78ef` revision — **but** with a new Rust
+> module structure (`system_foo.rs`, one shared shape per comparison, differing only in the op
+> step) and brane concatenation involved in how `'lt` reaches the same brane as its operands.
+> A concrete usage example was given (`comparison_result =$ {1, 2}'lt`) and partially traced by
+> the agent against the existing `=$` binary-operator mechanism, but **the exact mechanism by
+> which `'lt` and the user's operands end up in the same brane was not confirmed before the
+> session paused** — this is flagged explicitly in the FOOP-33.md note as unconfirmed agent
+> inference. Resume the discussion with the human before writing any code.
 >
 > **Ordering (human-directed):** (1) all pre-existing tests pass — **done**, suite green as
 > of 2026-08-03. (2) `'True`/`'False` introduced via the `system.foo` composition (Phase 5).
 > (3) *only then* comparisons, per §5.0.
 >
 > The prose below this point is retained as a historical record of the superseded
-> `19fe78ef` design, not as an instruction.
+> `19fe78ef` design, not as an instruction — though note it is now much CLOSER to the current
+> postfix design than the (now also superseded) infix revision was; do not assume it is safe
+> to implement from directly even so — confirm against FOOP-33.md §5.0's evening revision first.
 
-- [ ] **GATE: re-derive this phase's tasks from FOOP-33.md §5.0 (infix `'lt`/`'gt`/`'le`/
-      `'ge`/`'eq`, dedicated `LTFir`/`GTFir`/`LEFir`/`GEFir`/`EqFir` kinds, SFF `<<#-1>>`/
-      `<<#+1>>` operands, result stored as a `'True`/`'False` creation in `ubs_brane`)
-      before implementing — do not implement the postfix design below.**
+- [ ] **GATE: resume discussion with the human on FOOP-33.md §5.0's evening revision
+      (postfix `'lt`/`'gt`/`'le`/`'ge`/`'eq` via `<<#-2>>`/`<<#-1>>`, a new `system_foo.rs`
+      Rust module, brane concatenation) — the exact mechanism bringing `'lt` and its operands
+      into the same brane is not yet confirmed. Do not implement from either superseded
+      placement (the old postfix prose below, or the reverted infix design) without that
+      confirmation.**
 
 **Design change.** Comparison operators are no longer infix `\o<`/`\o>`/`\o<=`/`\o>=`/`\o==`
 parsed at the token level. Instead, `system.foo` defines null-characterized creations `'lt`,
@@ -599,19 +612,17 @@ is no longer syntactic sugar; it is brane search into system definitions.
 
 ## Last Updated
 
-**Date**: 2026-08-03
+**Date**: 2026-08-03 (evening)
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Human resolved both open decisions from the checkbox reconciliation done earlier
-today. (1) Anchored value search miss on creation inequality is correctly `NK`, confirmed — no
-code change; an anchored search *can* produce ECONSTANIC in general, but an anchored *value*
-search specifically cannot, so the general "anchored miss → NK" rule already applied correctly.
-`referential_equality.foo`'s baseline promoted, einmo suite 169/169 green. (2) Creation-vs-
-integer equality is correctly `NotEqual`, confirmed — every integer is itself a creation, so a
-new creation can never equal one, decidably; the plan text (not the code) was wrong and has been
-corrected. Phase 3 now has exactly one open item remaining: no dedicated `default_equal`
-truth-table unit tests exist yet. (Earlier today: reconciled checkboxes against actual code
-state — see the "⛔ STATUS SUMMARY" near the top of this file — Phase 2 was fully implemented
-but showing all-unchecked, corrected; Phase 4 verified genuinely not started; fixed a
-two-part bug in bare unanchored `?pattern`/`?=pattern` search outside any existing checkbox,
-with two new regression tests; removed a stale 2026-07-30 stash-recovery block. Full history in
-`git log` on this file.)
+**Changes**: Phase 6 gate rewritten — the comparison-operator design changed again the same
+evening: **postfix again** (`<<#-2>> < <<#-1>>`, reverting the infix decision from earlier in
+the day), a new shared `system_foo.rs` Rust module for `'lt`/`'gt`/`'le`/`'ge`/`'eq`, and brane
+concatenation involved in reaching the operands. The exact mechanism is **not yet confirmed** —
+flagged in FOOP-33.md §5.0 as unconfirmed agent inference from a usage example
+(`comparison_result =$ {1, 2}'lt`); do not implement without resuming the discussion. Status
+summary table's Phase 6 row updated to match. Earlier the same day: human resolved both open
+decisions from the checkbox reconciliation — (1) anchored value-search-miss on creation
+inequality is correctly `NK`, `referential_equality.foo` promoted, einmo suite 169/169 green;
+(2) creation-vs-integer equality is correctly `NotEqual` (plan text was wrong, code was right;
+corrected). Phase 3 now has exactly one open item: missing `default_equal` truth-table unit
+tests. Full history in `git log` on this file.
