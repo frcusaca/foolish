@@ -1124,75 +1124,67 @@ unit test asserting `Reject` (matching its name).
 
 ## Open Questions
 
-- **Creation *value* render form in `hssnap`** — **still open; Phase 5.5 investigation
-  2026-08-04 sharpened the question and found a real architectural gap the plan's own wording
-  did not anticipate.** The input `{*}` alias is decided (always renders back as `⬤`), and the
-  FIR shape is decided for the UN-NAMED case — but Phase 5.5's design ("when a creation
-  originates from a null-characterized statement like `'True`, render the characterized name
-  instead of `⬤`") cannot be implemented as literally written, for a structural reason:
+- **Creation *value* render form in `hssnap`** — **FVM side IMPLEMENTED and tested 2026-08-04;
+  the sequencer half remains open.** The input `{*}` alias is decided (always renders back as
+  `⬤`). The naming question — "when a creation originates from a null-characterized statement
+  like `'True`, render the characterized name instead of `⬤`" — is now **half resolved**: the
+  hard part (a creation determining its own name, on the live `foolish-ubca` tree where
+  identity and the parent chain still exist) is built; the bridging part (how a
+  `foolish-core::Fir` render path reaches it) is not.
 
-  1. **Where the search must run.** Phase 5.5's design text says "the sequencer searches the
-     containing brane... using `Rc::ptr_eq`" and "the sequencer needs access to... walk up the
-     parent chain from the creation FIR." Traced live (not assumed): this identity-and-parent-
-     chain search can ONLY run against `foolish-ubca`'s own `Fir` trait objects (`FirRef =
-     Rc<RefCell<dyn Fir>>`, which retain real `Rc` identity and a real `.core().parent()`
-     chain) — **not** against `foolish-core::Fir`, the tree `FirSequencer` actually renders,
-     which is produced by a LOSSY conversion (`evaluator.rs::proto_to_core_fir_inner`) that
-     already discards both identity and brane context by the time it becomes `Fir::Creation`
-     (a bare unit variant, no fields). Confirmed via a live trace
-     (`system_foo::tests::referenced_creations_own_parent_chain_reaches_its_defining_brane`)
-     that the NEEDED information — a referenced creation's `_get_my_brane()` correctly reaching
-     back to `system.foo` regardless of where it's referenced from, because constanic clone of
-     an `Independent` creation preserves the `Rc` (Gotcha #2) — genuinely exists and is
-     reachable, but only in `evaluator.rs`, at conversion time, not in
-     `foolish-core/src/sequencer.rs` where the checkbox literally points (a stale reference —
-     the file predates the composition design and the render/convert split it implies).
-  2. **What the search result becomes, once found.** The design insists `Fir::Creation`
-     "remains a unit variant" (no name field). But `foolish-core::Fir` has no OTHER variant
-     that renders as bare, undecorated text — `Fir::Search` renders as `?(pattern='...', ...)`
-     (decorated, not what "render `'True`" means); there is no "literal text" variant to repurpose. A
-     unit variant, by construction, cannot carry a found name string forward from the
-     conversion step (where the search runs) to the sequencer (where the string would need to
-     print) without EITHER (a) a new field/variant on `foolish-core::Fir` (contradicts "remains
-     a unit variant," and is itself a design decision with hssnap/JSON-serialization stability
-     consequences the human should make, not an agent under a "don't guess" instruction), or
-     (b) some other mechanism not yet described.
+  **What is implemented.** `CreationFir::get_display_name(&self, self_ref: &FirRef) ->
+  Option<String>` in `foolish-ubca/src/fir_kinds.rs`, surfaced on the `Fir` trait as
+  `as_creation_display_name` (a default-returns-`None` accessor in the established style of
+  `as_i64` / `as_op_name` / `as_stmt_identifier`; only `CreationFir` overrides it, so no
+  downcast machinery was introduced).
 
-  **Not implemented.** Rather than invent a resolution to either (1) or (2) unilaterally, Phase
-  5.5 is left undone and this entry records exactly where the design needs a decision:
-  confirm whether the search belongs in `evaluator.rs` (where identity survives) rather than
-  `sequencer.rs`, and decide how the found name is threaded from there into rendered output —
-  new `Fir` variant/field (and its JSON shape), or a different mechanism entirely. Phase 6 does
-  **not** block on this (its own stated dependency is Phase 5's composition, not Phase 5.5's
-  rendering), so work continued past this point rather than stalling.
+  **The rule.** A creation reports a name **only when it is the ENTIRE right-hand side of a
+  named statement.** Walk to the creation's parent; if that parent is a statement
+  (`as_stmt_searchable_name()` returns `Some(name)` — it is `None` for every non-statement
+  kind, so it doubles as the discriminator) **and** the creation is that statement's body
+  (compared with `Rc::ptr_eq`, since creation identity is pointer identity per this FOOP),
+  return `Some(name)`; otherwise `None`. The name is the FULL characterized name, leading
+  quote included.
 
-  **UPDATE 2026-08-04 (later) — human-proposed resolution; PUNTED to a future FOOP, not
-  implemented as part of FOOP-33.** The human reviewed the blocker above and proposed a
-  two-step fix, in their own words:
+  The two worked cases that define the rule:
 
-  1. `CreationFir` (in `foolish-ubca/src/fir_kinds.rs`) gains a method `get_recent_name()` that
-     performs a `?=$CREATION`-style value search **from its own statement**, finding the most
-     recently used name that references it. This runs entirely within `foolish-ubca`, where
-     real `Rc` identity and the real parent chain exist — **confirmed to sidestep the blocker in
-     item (1) above**: the search no longer needs to happen in `foolish-core::Fir`'s lossy,
-     already-converted tree, because it runs on the live `FirRef` tree instead, before any
-     conversion discards identity.
-  2. The sequencer then "gets access to it somehow" (the human's exact words) — i.e. some
-     mechanism must let `foolish-core::Fir` rendering (which only sees the lossy, converted
-     tree, per item (1) above) reach `CreationFir::get_recent_name()`, a method that only exists
-     on the live `foolish-ubca` side. **This bridging mechanism is explicitly left unresolved —
-     a "subtlety to flush out later" (human's words) — and is NOT to be guessed at or invented
-     by an agent.** It still needs a genuine design decision, of the same shape as item (2) in
-     the original entry above (new `Fir` variant/field and its JSON/hssnap shape, or some other
-     mechanism), just now scoped specifically to "how does the sequencer call into
-     `get_recent_name()`" rather than "how does the sequencer carry a found name."
+  - `{'a=⬤; b='a;}` — the creation's parent is the statement `'a` and the creation IS that
+    statement's whole body → `Some("'a")`. (Eventually the sequencer renders `b='a`.)
+  - `{'a=1+⬤; b='a;}` — the creation's parent is the **operator** `+`, not the statement; the
+    statement's name belongs to the whole `1+⬤` expression, not to the creation inside it →
+    `None`. (Eventually the sequencer falls back to the `⬤` glyph.)
 
-  **Per human direction, Phase 5.5 in its entirety is PUNTED OUT of FOOP-33** — it is not part
-  of this FOOP's implementation scope and will not be implemented here. It is deferred to a
-  **new, separate, future FOOP** (not yet created or numbered) whose spec should start from the
-  `get_recent_name()` proposal above and resolve the open bridging question in step 2 before any
-  code is written. See `docs/foop/FOOP-33.plan.md`'s Phase 5.5 section and STATUS SUMMARY table
-  for the corresponding plan-side marker.
+  **Why it works, including through a search.** This supersedes the earlier
+  `get_recent_name()` proposal (a `?=$CREATION`-style value search back from the creation's own
+  statement): no search is needed at all. A constanic clone of an `Independent` creation
+  returns the SAME `Rc` (Gotcha #2, `ProtoBrane::constanic_clone_at`), so a creation referenced
+  from anywhere still carries the real parent chain set at its ORIGINAL construction — reaching
+  back to its defining statement — undisturbed by detachment and recoordination at the
+  reference site. A direct parent check is therefore sufficient, and strictly simpler and
+  cheaper than a search. Foundation pinned by
+  `system_foo::tests::referenced_creations_own_parent_chain_reaches_its_defining_brane`.
+
+  **Tests** (all in `fir_kinds.rs`'s `mod tests`): `creation_as_whole_statement_body_reports_
+  its_name`, `creation_inside_operator_expression_reports_no_name`,
+  `creation_under_plainly_named_statement_reports_that_name` (the rule is not specific to
+  `'`-names), `creation_with_no_statement_parent_reports_no_name`,
+  `creation_reached_through_search_still_reports_its_own_name` (the payoff case — proves the
+  parent chain survives detachment/recoordination), and
+  `distinct_creations_report_their_own_statement_names` (two same-named statements in different
+  branes; each creation reports its own, by pointer identity rather than a coincidental name
+  match). No einmo test was added: nothing is user-visible yet, since no rendering changed.
+
+  **What remains open — the bridging question, unchanged in substance.** The original blocker's
+  item (2) still stands, now scoped precisely: `foolish-core::Fir::Creation` is a bare unit
+  variant in a tree produced by a LOSSY conversion (`evaluator.rs::proto_to_core_fir_inner`)
+  that discards identity and brane context, and `foolish-core::Fir` has no variant that renders
+  as bare, undecorated text. So a decision is still needed on **how the name crosses from
+  `foolish-ubca` (where `get_display_name` lives and identity survives) into rendered output**:
+  a new field/variant on `foolish-core::Fir` — with its hssnap/JSON-serialization stability
+  consequences — or some other mechanism. Note the conversion site in `evaluator.rs` is where
+  identity still exists, and is therefore where `as_creation_display_name` would naturally be
+  called; `foolish-core/src/sequencer.rs`, which earlier text pointed at, is downstream of the
+  loss. **This decision is for the human, not an agent**; the FVM side deliberately stops here.
 - **RESOLVED 2026-08-04 (correction) — Phase 6's design is SOUND; the earlier "blocked"
   finding tested the wrong construct.** An earlier investigation the same day concluded Phase 6
   was blocked because an unanchored index (`#-1`/`#-2`) settles terminal `Nk` on an
@@ -1327,13 +1319,23 @@ preferred, three-canonical-strings fallback — §3); null-const mechanism (`get
 
 **Date**: 2026-08-04
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: **Corrected the Phase 6 "blocked" finding — Phase 6 is NOT blocked.** The earlier
-same-day investigation tested a **bare** `#-1` (which correctly settles terminal NK after
-running and missing) but Phase 6 specifies **SFF-marked** `<<#-1>>`, which never runs at all —
-`build_fir`'s `under_sff` rule builds descendant search kinds ECONSTANIC. Verified live:
-`{only = <<#-1>>;}` settles the index to ECONSTANIC, exactly the state detachment/recoordination
-needs. Two tests pin both behaviors. No `IndexFir` fix and no design change needed; what remains
-for Phase 6 is the implementation itself. Also this session: Phase 5.5 punted to a future FOOP
-(CreationFir::get_recent_name() proposal); anchored value-search-miss confirmed NK; creation-vs-
-integer confirmed NotEqual. Full history in `git log` on this file.
-
+**Changes**: **Creations reporting their own name — FVM side implemented and tested.** Rewrote
+the Open Questions entry on creation render form, which previously recorded the work as blocked
+behind a `CreationFir::get_recent_name()` proposal. That proposal is **superseded**: no value
+search is needed. `CreationFir::get_display_name(&self, self_ref: &FirRef) -> Option<String>`
+(in `foolish-ubca/src/fir_kinds.rs`, surfaced on the `Fir` trait as `as_creation_display_name`)
+resolves the name by a direct parent check — a creation names itself only when it is the ENTIRE
+right-hand side of a named statement (parent is a statement AND the creation is its body, by
+`Rc::ptr_eq`), returning the full characterized name. `{'a=⬤; b='a;}` → `Some("'a")`;
+`{'a=1+⬤; b='a;}` → `None` (parent is the `+` operator). This works even through a search
+because a constanic clone of an `Independent` creation returns the same `Rc` (Gotcha #2), so the
+original parent chain survives detachment/recoordination. Six unit tests pin the rule including
+the through-a-search payoff case; no einmo test, as nothing is user-visible yet. **Still open:**
+the bridging half — how a `foolish-core::Fir` render path (a lossy, identity-discarding tree
+with a bare `Fir::Creation` unit variant) reaches this `foolish-ubca` method; that decision, and
+its hssnap/JSON shape, is left to the human. Earlier this session: Phase 6 confirmed NOT blocked
+(the "blocked" finding tested a **bare** `#-1`, which correctly settles terminal NK, but Phase 6
+specifies **SFF-marked** `<<#-1>>`, which never runs — `build_fir`'s `under_sff` rule builds
+descendant search kinds ECONSTANIC; verified live, two tests pin both behaviors); anchored
+value-search-miss confirmed NK; creation-vs-integer confirmed NotEqual. Full history in
+`git log` on this file.
