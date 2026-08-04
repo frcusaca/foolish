@@ -390,6 +390,10 @@ For comprehensive documentation on names, the search system (including contextle
 [Names, Searches, and Bounds](docs/vintage_legacy/NAMES_SEARCHES_N_BOUNDS.md) and
 [FOOP-23](docs/foop/FOOP-23.md) for the authoritative operator specification.
 
+Also checkout the syntactic sugar for accessing computing results: 'A =$ B' means 'A = B$', and
+sequencer verses it. The '=$' call the reader/coder's attention to the fact that we're extracting
+computation result and not recording an entire Foolish subtree.
+
 ## The Unknown
 
 The ***NK*** (*Not Knowable*, pronounced "no-no") is of paramount importance to us, therefore we
