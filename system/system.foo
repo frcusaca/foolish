@@ -1,0 +1,9 @@
+{!!system.foo
+	'True  = ⬤
+	'False = ⬤
+	'lt    = ⬤    !! less-than: <<#-2>> < <<#-1>>
+	'gt    = ⬤    !! greater-than: <<#-2>> > <<#-1>>
+	'le    = ⬤    !! less-or-equal: <<#-2>> <= <<#-1>>
+	'ge    = ⬤    !! greater-or-equal: <<#-2>> >= <<#-1>>
+	'eq    = ⬤    !! equality: <<#-2>> == <<#-1>>
+}

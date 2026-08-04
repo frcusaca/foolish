@@ -5,8 +5,8 @@ use anyhow::anyhow;
 use foolish_parser::{AssignmentOperator, Astn, SearchOperator};
 
 use crate::fir_kinds::{
-    BraneFir, ConcatenationFir, IndepIntFir, IndexFir, NkFir, OperatorFir, SearchFir, StatementFir,
-    StayFoolishFir, StayFullyFoolishFir,
+    BraneFir, ConcatenationFir, CreationFir, IndepIntFir, IndexFir, NkFir, OperatorFir, SearchFir,
+    StatementFir, StayFoolishFir, StayFullyFoolishFir,
 };
 use crate::fir_trait::{Fir, FirRef};
 use crate::proto_brane::ProtoBrane;
@@ -145,7 +145,12 @@ fn validate_astn(ast: &Astn) -> anyhow::Result<()> {
         }
         Astn::UnaryOp { expr, .. } => validate_astn(expr),
         Astn::DotSearch { anchor, .. } => validate_astn(anchor),
-        Astn::RegexpSearch { anchor, .. } => validate_astn(anchor),
+        Astn::RegexpSearch { anchor, .. } => {
+            if let Some(a) = anchor {
+                validate_astn(a)?;
+            }
+            Ok(())
+        }
         Astn::ValueSearch {
             anchor,
             value_pattern,
@@ -169,6 +174,7 @@ fn validate_astn(ast: &Astn) -> anyhow::Result<()> {
         Astn::StayFullyFoolish { expr } => validate_astn(expr),
         Astn::IntLit(_)
         | Astn::UnknownLit
+        | Astn::Creation
         | Astn::Identifier { .. }
         | Astn::UnanchoredSeek { .. } => Ok(()),
     }
@@ -217,15 +223,31 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
             core: ProtoBrane::new(vec![], child_parent!(), Nyes::Nk),
             reason: "??? literal".to_string(),
         })),
-        Astn::Identifier { id, .. } => Rc::new(RefCell::new(SearchFir {
-            core: ProtoBrane::new(vec![], child_parent!(), search_nyes),
-            pattern: format!("^{}$", id),
-            anchored: false,
-            forward: false,
-            sf_inner_pattern: RefCell::new(None),
-            is_value_search: false,
-            contexted: false,
+        Astn::Creation => Rc::new(RefCell::new(CreationFir {
+            core: ProtoBrane::new(vec![], child_parent!(), Nyes::Independent),
         })),
+        Astn::Identifier {
+            characterizations,
+            id,
+        } => {
+            // Fold characterizations back into the search pattern (Gotcha #3).
+            // A 'True reference must search for 'True, not just True.
+            let full_pattern = if characterizations.is_empty() {
+                id.clone()
+            } else {
+                let char_str: String = characterizations.iter().map(|c| format!("{c}'")).collect();
+                format!("{char_str}{id}")
+            };
+            Rc::new(RefCell::new(SearchFir {
+                core: ProtoBrane::new(vec![], child_parent!(), search_nyes),
+                pattern: format!("^{full_pattern}$"),
+                anchored: false,
+                forward: false,
+                sf_inner_pattern: RefCell::new(None),
+                is_value_search: false,
+                contexted: false,
+            }))
+        }
         Astn::Brane {
             characterizations,
             statements,
@@ -234,7 +256,9 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
             let children = build_stmts(statements, &me_dyn, under_sff);
             RefCell::new(BraneFir {
                 core: ProtoBrane::new(children, brane_parent!(me_dyn), Nyes::Prembrionic),
-                characterizations,
+                characterizations: crate::identifier::Characterizations::from_brane_parts(
+                    characterizations,
+                ),
             })
         }),
         Astn::BinaryOp { op, left, right } => Rc::new_cyclic(|me: &Weak<RefCell<OperatorFir>>| {
@@ -276,11 +300,15 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
             ..
         } => Rc::new_cyclic(|me: &Weak<RefCell<SearchFir>>| {
             let me_dyn: Weak<RefCell<dyn Fir>> = me.clone();
-            let a = build_fir(*anchor, Some(&me_dyn), under_sff);
+            let has_anchor = anchor.is_some();
+            let children: Vec<FirRef> = match anchor {
+                Some(a) => vec![build_fir(*a, Some(&me_dyn), under_sff)],
+                None => vec![],
+            };
             RefCell::new(SearchFir {
-                core: ProtoBrane::new(vec![a], child_parent!(), search_nyes),
+                core: ProtoBrane::new(children, child_parent!(), search_nyes),
                 pattern,
-                anchored: true,
+                anchored: has_anchor,
                 forward: operator == SearchOperator::RegexpForward,
                 sf_inner_pattern: RefCell::new(None),
                 is_value_search: false,
@@ -366,9 +394,11 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
                 let me_dyn: Weak<RefCell<dyn Fir>> = me.clone();
                 // SFF marker: from here down, searches are built ECONSTANIC.
                 let e = build_fir(*expr, Some(&me_dyn), true);
-                RefCell::new(StayFullyFoolishFir {
-                    core: ProtoBrane::new(vec![e], child_parent!(), Nyes::Prembrionic),
-                })
+                // Sanity-check that the `under_sff` rule actually reached every
+                // descendant search before storing the body (debug builds only).
+                let mut core = ProtoBrane::new(vec![], child_parent!(), Nyes::Prembrionic);
+                core.push_foolish_child_sff_marked(e);
+                RefCell::new(StayFullyFoolishFir { core })
             })
         }
         Astn::ContextedSearch { inner } => {
@@ -390,11 +420,95 @@ fn build_stmts(asts: Vec<Astn>, parent: &Weak<RefCell<dyn Fir>>, under_sff: bool
         .collect()
 }
 
+/// Compile the body of the sole statement of a one-statement brane `source`,
+/// built directly beneath `parent`.
+///
+/// Unlike [`Compiler::compile`], which roots the brane it is given, this keeps
+/// only the statement BODY and parents it on an existing FIR. Used by
+/// `system_foo.rs` to build the comparison operators' `<<#-2>>`/`<<#-1>>`
+/// operands as real, compiler-built Foolish rather than hand-assembled FIR.
+/// Going through `build_fir` is the point: the `under_sff` rule (which builds
+/// descendant searches ECONSTANIC so they never run) applies exactly as it
+/// does to any other Foolish, so the operands cannot drift from it.
+///
+/// The brane-and-statement wrapper in `source` exists only because an SFF
+/// marker is not valid at top level; it is discarded here.
+pub(crate) fn compile_stmt_body_under(
+    source: &str,
+    parent: &Weak<RefCell<dyn Fir>>,
+) -> anyhow::Result<FirRef> {
+    let asts = foolish_parser::parse(source)?;
+    let [ast] = <[Astn; 1]>::try_from(asts)
+        .map_err(|v| anyhow!("expected exactly one top-level brane, found {}", v.len()))?;
+    validate_astn(&ast)?;
+    let Astn::Brane { mut statements, .. } = ast else {
+        return Err(anyhow!("expected a brane"));
+    };
+    if statements.len() != 1 {
+        return Err(anyhow!(
+            "expected exactly one statement, found {}",
+            statements.len()
+        ));
+    }
+    let Astn::Assignment { expr, operator, .. } = statements.remove(0) else {
+        return Err(anyhow!("expected an assignment"));
+    };
+    Ok(expr.build_expr_with_operator(operator, parent, false))
+}
+
+/// Builds a statement's body in place of the one its AST describes.
+///
+/// Given a statement's [`Identifier`] and its own self-`Weak` (usable as the
+/// body's parent), returns `Some(body)` to supply that body instead of
+/// compiling the AST's, or `None` to compile normally.
+///
+/// This exists for `system.foo`, whose comparison operators are DECLARED in
+/// Foolish as ordinary `'lt = ⬤` creations but whose real bodies are Rust FIR
+/// kinds (FOOP-33 §5.0: "that foolishness is put into the system brane by
+/// fvm + system_foo.rs"). The hook keeps brane and statement construction here
+/// in the compiler — including line numbering and the `Rc::new_cyclic` parent
+/// wiring — rather than duplicating it in `system_foo.rs`.
+pub(crate) type BodyOverride<'a> =
+    &'a dyn Fn(&crate::identifier::Identifier, &Weak<RefCell<dyn Fir>>) -> Option<FirRef>;
+
+/// Compile a top-level brane AST as a self-rooting root, letting `override_body`
+/// replace individual statements' bodies.
+///
+/// Identical to [`AstnCompilerExt::compile_standalone`] except for the hook;
+/// see [`BodyOverride`] for why it exists.
+pub(crate) fn compile_root_with_body_override(
+    ast: Astn,
+    override_body: BodyOverride<'_>,
+) -> anyhow::Result<FirRef> {
+    validate_astn(&ast)?;
+    let Astn::Brane {
+        characterizations,
+        statements,
+    } = ast
+    else {
+        return Err(anyhow!("only a Brane can be a top-level (root) node"));
+    };
+    Ok(Rc::new_cyclic(|me: &Weak<RefCell<BraneFir>>| {
+        let me_dyn: Weak<RefCell<dyn Fir>> = me.clone();
+        let children = statements
+            .into_iter()
+            .enumerate()
+            .map(|(i, stmt_ast)| stmt_ast.build_as_statement_overridden(&me_dyn, i, override_body))
+            .collect();
+        RefCell::new(BraneFir {
+            core: ProtoBrane::new(children, me_dyn.clone(), Nyes::Prembrionic),
+            characterizations: crate::identifier::Characterizations::from_brane_parts(
+                characterizations,
+            ),
+        })
+    }))
+}
+
 /// The name used for an anonymous statement (a bare expression with no LHS identifier).
 /// The sequencer renders a statement named `???` WITHOUT a `name=` prefix (FOOP-62 #19).
 pub(crate) const ANON_STMT_NAME: &str = "???";
 
-trait AstnCompilerExt {
+pub(crate) trait AstnCompilerExt {
     fn compile_standalone(self) -> anyhow::Result<FirRef>;
 
     fn build_as_statement(
@@ -402,6 +516,23 @@ trait AstnCompilerExt {
         parent: &Weak<RefCell<dyn Fir>>,
         line: usize,
         under_sff: bool,
+    ) -> FirRef;
+
+    /// As [`Self::build_as_statement`], but consulting `override_body` first.
+    /// See [`BodyOverride`].
+    fn build_as_statement_overridden(
+        self,
+        parent: &Weak<RefCell<dyn Fir>>,
+        line: usize,
+        override_body: BodyOverride<'_>,
+    ) -> FirRef;
+
+    fn build_as_statement_inner(
+        self,
+        parent: &Weak<RefCell<dyn Fir>>,
+        line: usize,
+        under_sff: bool,
+        override_body: Option<BodyOverride<'_>>,
     ) -> FirRef;
 
     fn build_expr_with_operator(
@@ -429,29 +560,54 @@ impl AstnCompilerExt for Astn {
         line: usize,
         under_sff: bool,
     ) -> FirRef {
+        self.build_as_statement_inner(parent, line, under_sff, None)
+    }
+
+    fn build_as_statement_overridden(
+        self,
+        parent: &Weak<RefCell<dyn Fir>>,
+        line: usize,
+        override_body: BodyOverride<'_>,
+    ) -> FirRef {
+        self.build_as_statement_inner(parent, line, false, Some(override_body))
+    }
+
+    fn build_as_statement_inner(
+        self,
+        parent: &Weak<RefCell<dyn Fir>>,
+        line: usize,
+        under_sff: bool,
+        override_body: Option<BodyOverride<'_>>,
+    ) -> FirRef {
         // Decide the statement's name once: the LHS identifier for an assignment, else `???`
         // (anonymous bare expression). The body is built the same way regardless, via
         // build_expr_with_operator (Assign is the no-op operator), so there is ONE Rc::new_cyclic.
-        let (name, expr, operator) = match self {
+        let (characterizations, name, expr, operator) = match self {
             Astn::Assignment {
+                characterizations,
                 identifier,
                 operator,
                 expr,
-                ..
-            } => (identifier, *expr, operator),
+            } => (characterizations, identifier, *expr, operator),
             other => (
+                vec![],
                 ANON_STMT_NAME.to_string(),
                 other,
                 AssignmentOperator::Assign,
             ),
         };
+        let identifier = crate::identifier::Identifier::from_parts(characterizations, &name);
         Rc::new_cyclic(move |me: &Weak<RefCell<StatementFir>>| {
             let stmt_weak: Weak<RefCell<dyn Fir>> = me.clone();
-            let body = expr.build_expr_with_operator(operator, &stmt_weak, under_sff);
+            let body = override_body
+                .and_then(|f| f(&identifier, &stmt_weak))
+                .unwrap_or_else(|| expr.build_expr_with_operator(operator, &stmt_weak, under_sff));
             RefCell::new(StatementFir {
                 core: ProtoBrane::new(vec![body], parent.clone(), Nyes::Prembrionic),
-                name,
+                identifier,
                 line_number: line,
+                self_weak: stmt_weak,
+                nf_reason: RefCell::new(None),
             })
         })
     }
@@ -495,7 +651,7 @@ mod tests {
             let me_dyn: Weak<RefCell<dyn Fir>> = me.clone();
             RefCell::new(BraneFir {
                 core: ProtoBrane::new(vec![], me_dyn, Nyes::Prembrionic),
-                characterizations: vec![],
+                characterizations: crate::identifier::Characterizations::default(),
             })
         });
         Rc::downgrade(&(root as Rc<RefCell<dyn Fir>>))
@@ -513,12 +669,15 @@ mod tests {
         }
         .build_as_statement(&parent, 7, false);
         assert_eq!(named.borrow().kind(), FirKind::Statement);
-        assert_eq!(named.borrow().as_stmt_name(), Some("x"));
+        assert_eq!(named.borrow().as_stmt_searchable_name(), Some("x"));
         assert_eq!(named.borrow().as_stmt_line_number(), Some(7));
 
         let anonymous = Astn::IntLit(2).build_as_statement(&parent, 8, false);
         assert_eq!(anonymous.borrow().kind(), FirKind::Statement);
-        assert_eq!(anonymous.borrow().as_stmt_name(), Some(ANON_STMT_NAME));
+        assert_eq!(
+            anonymous.borrow().as_stmt_searchable_name(),
+            Some(ANON_STMT_NAME)
+        );
         assert_eq!(anonymous.borrow().as_stmt_line_number(), Some(8));
     }
 

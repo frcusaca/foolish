@@ -1,0 +1,9 @@
+{
+  "id": "T-716e67f6-7828-49e7-a2a1-d833cc27f467",
+  "subject": "FOOP-33 Phase 3: default_equal and three-valued equality",
+  "description": "Add Equality enum, default_equal function, refactor matcher",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_046759088ffeT6mqvEAX3Onjc6"
+}

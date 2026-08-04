@@ -1,0 +1,10 @@
+{
+	!! Creation in concatenation: same creation permitted, different → NF.
+	P = {k = ⬤;};
+	Q = {k = ⬤;};
+	pq = P Q;
+	shared = ⬤;
+	R = {k = shared;};
+	S = {k = shared;};
+	rs = R S;
+}

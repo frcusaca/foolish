@@ -190,17 +190,29 @@ impl Parser {
     // --- characterizations: identifier'?* ---
     fn parse_characterizations(&mut self) -> Vec<String> {
         let mut chars = Vec::new();
+        // Handle leading apostrophe: 'name is a null-characterized name
+        if self.peek_token() == Some(&Token::Apostrophe) {
+            chars.push(String::new());
+            self.advance();
+        }
         loop {
-            if let Some(Token::Ident(name)) = self.peek_token() {
-                let next_pos = self.pos + 1;
-                if self.tokens.get(next_pos).map(|t| &t.token) == Some(&Token::Apostrophe) {
-                    chars.push(name.clone());
-                    self.advance(); // ident
-                    self.advance(); // apostrophe
+            match self.peek_token() {
+                Some(Token::Ident(name)) => {
+                    if self.tokens.get(self.pos + 1).map(|t| &t.token) == Some(&Token::Apostrophe) {
+                        chars.push(name.clone());
+                        self.advance();
+                        self.advance();
+                        continue;
+                    }
+                    break;
+                }
+                Some(Token::Apostrophe) => {
+                    chars.push(String::new());
+                    self.advance();
                     continue;
                 }
+                _ => break,
             }
-            break;
         }
         chars
     }
@@ -248,6 +260,10 @@ impl Parser {
 
     fn is_assignment_start(&self) -> bool {
         let mut pos = self.pos;
+        // Handle leading apostrophe: 'name
+        if self.tokens.get(pos).map(|t| &t.token) == Some(&Token::Apostrophe) {
+            pos += 1;
+        }
         // Skip characterizations
         loop {
             match self.tokens.get(pos) {
@@ -257,6 +273,11 @@ impl Parser {
                         continue;
                     }
                     break;
+                }
+                // '' — consecutive apostrophe (null characterization)
+                Some(t) if t.token == Token::Apostrophe => {
+                    pos += 1;
+                    continue;
                 }
                 _ => return false,
             }
@@ -600,7 +621,7 @@ impl Parser {
                         };
                     } else {
                         expr = Astn::RegexpSearch {
-                            anchor: Box::new(expr),
+                            anchor: Some(Box::new(expr)),
                             operator: SearchOperator::RegexpLocal,
                             pattern,
                         };
@@ -629,7 +650,7 @@ impl Parser {
                         };
                     } else {
                         expr = Astn::RegexpSearch {
-                            anchor: Box::new(expr),
+                            anchor: Some(Box::new(expr)),
                             operator: SearchOperator::RegexpForward,
                             pattern,
                         };
@@ -683,7 +704,7 @@ impl Parser {
                                 }
                             } else {
                                 Astn::RegexpSearch {
-                                    anchor: Box::new(expr),
+                                    anchor: Some(Box::new(expr)),
                                     operator: SearchOperator::RegexpLocal,
                                     pattern,
                                 }
@@ -702,7 +723,7 @@ impl Parser {
                                 }
                             } else {
                                 Astn::RegexpSearch {
-                                    anchor: Box::new(expr),
+                                    anchor: Some(Box::new(expr)),
                                     operator: SearchOperator::RegexpForward,
                                     pattern,
                                 }
@@ -956,6 +977,10 @@ impl Parser {
                 self.advance();
                 Ok(Astn::UnknownLit)
             }
+            Some(Token::Creation) => {
+                self.advance();
+                Ok(Astn::Creation)
+            }
             Some(Token::Hash) => {
                 self.advance();
                 let offset = self.parse_seek_index()?;
@@ -990,12 +1015,23 @@ impl Parser {
                         value_pattern: Box::new(value_pattern),
                     })
                 } else {
-                    Err(ParseError::Syntax {
-                        message: "Unanchored ? without = not supported".into(),
-                        line: self.loc().0,
-                        col: self.loc().1,
+                    // Bare unanchored backward search: searches the current brane (IB),
+                    // then climbs ancestor branes (AB) — mirrors the unanchored
+                    // ValueSearch arm just above, NOT a literal empty-brane anchor.
+                    Ok(Astn::RegexpSearch {
+                        anchor: None,
+                        operator: SearchOperator::RegexpLocal,
+                        pattern,
                     })
                 }
+            }
+            Some(Token::Apostrophe) => {
+                let chars = self.parse_characterizations();
+                let id = self.parse_identifier()?;
+                Ok(Astn::Identifier {
+                    characterizations: chars,
+                    id,
+                })
             }
             Some(Token::Ident(_)) => {
                 let chars = self.parse_characterizations();
@@ -1102,6 +1138,7 @@ impl std::fmt::Display for Token {
             Token::BlockComment(s) => write!(f, "!!!{}!!!", s),
             Token::Unknown => write!(f, "???"),
             Token::Up => write!(f, "↑"),
+            Token::Creation => write!(f, "\u{2B24}"),
             Token::If => write!(f, "if"),
             Token::Then => write!(f, "then"),
             Token::Elif => write!(f, "elif"),
@@ -1118,6 +1155,43 @@ mod tests {
 
     fn parse_single(source: &str) -> Result<Astn> {
         parse(source).map(|branes| branes.into_iter().next().unwrap())
+    }
+
+    #[test]
+    fn brane_literal_dollar_reads_the_whole_literals_tail() {
+        // FOOP-33 Phase 6 research task ("$ vs concatenation precedence"):
+        // the SETTLED syntax (§5.0's evening revision) is a brane LITERAL
+        // with 'lt as a comma-separated member -- NOT postfix-concatenation
+        // (`{1,3}'lt$`, from the superseded historical prose, does NOT even
+        // parse as intended -- see git history for that investigation).
+        // {1, 2, 'lt}$ must parse as ({1, 2, 'lt})$ -- $ (tail) applied to
+        // the WHOLE brane literal -- not to 'lt alone.
+        let ast = parse_single("{r = {1, 2, 'lt}$;}").unwrap();
+        match ast {
+            Astn::Brane { statements, .. } => match &statements[0] {
+                Astn::Assignment { expr, .. } => match &**expr {
+                    Astn::HeadTail {
+                        is_head: false,
+                        anchor,
+                    } => match &**anchor {
+                        Astn::Brane { statements, .. } => {
+                            assert_eq!(statements.len(), 3);
+                            assert!(matches!(statements[0], Astn::IntLit(1)));
+                            assert!(matches!(statements[1], Astn::IntLit(2)));
+                            assert!(
+                                matches!(&statements[2], Astn::Identifier { id, .. } if id == "lt")
+                            );
+                        }
+                        other => panic!(
+                            "expected the $ anchor to be the WHOLE brane literal, got {other:?}"
+                        ),
+                    },
+                    other => panic!("expected HeadTail (tail search), got {other:?}"),
+                },
+                other => panic!("expected assignment, got {other:?}"),
+            },
+            _ => panic!("expected brane"),
+        }
     }
 
     #[test]
@@ -1335,6 +1409,33 @@ mod tests {
     }
 
     #[test]
+    fn parses_regexp_search_bare_unanchored() {
+        // Bare `?pattern` (nothing before the `?`) must carry `anchor: None` — a
+        // real "no anchor" AST shape, not a hardcoded empty Brane{} literal (the
+        // FOOP-33 regression this test pins). See `parses_regexp_search` above
+        // for the anchored form (`brn?pattern`), which is unaffected.
+        let ast = parse_single("{found = ?pattern;}").unwrap();
+        match ast {
+            Astn::Brane { statements, .. } => match &statements[0] {
+                Astn::Assignment { expr, .. } => match &**expr {
+                    Astn::RegexpSearch {
+                        anchor,
+                        operator,
+                        pattern,
+                    } => {
+                        assert!(anchor.is_none());
+                        assert_eq!(*operator, SearchOperator::RegexpLocal);
+                        assert_eq!(pattern, "pattern");
+                    }
+                    other => panic!("expected RegexpSearch, got {:?}", other),
+                },
+                _ => panic!("expected assignment"),
+            },
+            _ => panic!("expected brane"),
+        }
+    }
+
+    #[test]
     fn parses_value_search_unanchored() {
         let ast = parse_single("{found = ?=3;}").unwrap();
         match ast {
@@ -1373,6 +1474,40 @@ mod tests {
                 }
                 other => panic!("expected ValueSearch, got {:?}", other),
             },
+            _ => panic!("expected brane"),
+        }
+    }
+
+    #[test]
+    fn parses_star_brane_as_creation() {
+        let ast = parse_single("{x = {*};}").unwrap();
+        match ast {
+            Astn::Brane { statements, .. } => {
+                assert_eq!(statements.len(), 1);
+                match &statements[0] {
+                    Astn::Assignment { expr, .. } => {
+                        assert!(matches!(**expr, Astn::Creation));
+                    }
+                    other => panic!("expected Assignment, got {:?}", other),
+                }
+            }
+            _ => panic!("expected brane"),
+        }
+    }
+
+    #[test]
+    fn parses_unicode_creation() {
+        let ast = parse_single("{x = \u{2B24};}").unwrap();
+        match ast {
+            Astn::Brane { statements, .. } => {
+                assert_eq!(statements.len(), 1);
+                match &statements[0] {
+                    Astn::Assignment { expr, .. } => {
+                        assert!(matches!(**expr, Astn::Creation));
+                    }
+                    other => panic!("expected Assignment, got {:?}", other),
+                }
+            }
             _ => panic!("expected brane"),
         }
     }

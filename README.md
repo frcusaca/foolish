@@ -393,6 +393,10 @@ For comprehensive documentation on names, the search system (including contextle
 [Names, Searches, and Bounds](docs/vintage_legacy/NAMES_SEARCHES_N_BOUNDS.md) and
 [FOOP-23](docs/foop/FOOP-23.md) for the authoritative operator specification.
 
+Also checkout the syntactic sugar for accessing computing results: 'A =$ B' means 'A = B$', and
+sequencer verses it. The '=$' call the reader/coder's attention to the fact that we're extracting
+computation result and not recording an entire Foolish subtree.
+
 ## The Unknown
 
 The ***NK*** (*Not Knowable*, pronounced "no-no") is of paramount importance to us, therefore we
@@ -420,6 +424,21 @@ is shorthand to
 	???=3;
 }
 ```
+
+### NK from a search
+
+A **search** settling NK is the narrow, exceptional outcome — not the default. NK from a
+search means "provably not there," and is reserved for specific cases:
+
+- an **anchored** contextless search (`a?name`) that finds nothing settles **NK**
+- an **unanchored** search (`?name`) that finds nothing settles **ECONSTANIC** instead — it
+  may still gain a value later via recoordination
+- a value search (`=`) whose pattern is itself `???`/NK, or whose anchor is NK, settles NK
+
+Most searches are constanic, not NK — treat an unexplained `NK` on a search as something to
+investigate, not the expected shape of a miss. See
+[FOOP-23](docs/foop/FOOP-23.md#specification) for the authoritative, in-force specification
+of search outcomes (the "NK vs ECONSTANIC miss outcomes" rule and the full operator family).
 
 ## Renaming
 
@@ -466,49 +485,18 @@ The following documents in `docs/vintage_legacy/` document the original ubc0 imp
 
 ## Last Updated
 
-**Date**: 2026-07-31
-**Updated By**: Sisyphus / mimo-v2.5-pro
-**Changes**: Fixed CI badge URLs — replaced non-existent `einmo-gates.yml?job=` references
-with individual workflow files (`einmo-gate-output.yml`, `einmo-gate-checked.yml`,
-`einmo-gate-verified.yml`). Created missing workflow files for `einmo_gate_checked`
-and `einmo_gate_verified` tests. Updated workflow `name:` fields to render
-properly capitalized badge text ("Einmo Output", "Einmo Checked", "Einmo Verified").
+**Date**: 2026-08-04
+**Updated By**: Claude Code / claude-opus-5
+**Changes**: Merged FOOP-33 (The Creation Postulate — `⬤`, universal characterizations,
+comparison operators, and creation-name rendering) into `jia`. Earlier entries, folded in:
+2026-08-03, Claude Code / claude-opus-5 — added **"NK from a search"** under §"The Unknown",
+stating plainly that a search settling NK is the narrow, exceptional outcome (anchored miss, or
+an NK pattern/anchor on a value search), not the default; an unanchored miss settles ECONSTANIC
+instead; cross-references FOOP-23 §Specification as the in-force authority. 2026-07-31,
+Sisyphus / mimo-v2.5-pro — fixed CI badge URLs (replaced non-existent `einmo-gates.yml?job=`
+references with individual workflow files; created missing `einmo_gate_checked`/
+`einmo_gate_verified` workflow files; corrected badge text capitalization). 2026-07-05,
+Sisyphus-Junior / xiaomi/mimo-v2.5-pro — FOOP-23 Phase D.3, updated search operator reference
+for the contextless family, value search `~=`/`?=`, and contexted `&`-searches.
 
-**Date**: 2026-07-05
-**Updated By**: Sisyphus-Junior / xiaomi/mimo-v2.5-pro
-**Changes**: FOOP-23 Phase D.3 — Updated search operator reference to include contextless family,
-value search `~=`/`?=`, and contexted `&`-searches. Removed stale `:` notation from legacy
-references, added FOOP-23 cross-reference. Noted vintage value search notation is superseded.
-
-**Date**: 2026-07-02
-**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
-**Changes**: FOOP-03 cleanup — removed Java/Scala/Cross-Validation CI badges, the
-Java/Scala Quick Start (`mvn` command), and the "Version Overview" prose section
-(folded into a shorter "Documentation Layout" table); updated the "For AI Agents"
-build-requirements/testing bullets to Rust-only; fixed the resulting broken
-`#versioned-documentation` anchor link.
-
-**Date**: 2026-06-11
-**Updated By**: Sisyphus / mimo-v2.5-pro
-**Changes**: Updated "constanic" terminology to align with FOOP-62's UBCa definition:
-constanic now means any terminal evaluation state (WOCONSTANIC, ECONSTANIC, CONSTANT,
-INDEPENDENT, or NK), not just "may gain value when associated with new context."
-
-**Date**: 2026-05-15
-**Updated By**: opencode 1.14.39; Qwen3.6-27B-AWQ-BF16-INT4
-**Changes**: Added UBCb snapshot test command to Rust test section.
-
-**Date**: 2026-05-08
-**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.7 xHigh effort
-**Changes**: Added "Working with FOOPs" subsection under "For AI Agents
-and Contributors" — documents the little-endian numbering convention and
-points users to the `docs/foop/scripts/foop_check.py` helper script for
-listing, checking, and generating new FOOP filenames.
-
-**Date**: 2026-05-06
-**Updated By**: Claude Code / cyankiwi/Qwen3.6-27B-AWQ-BF16-INT4
-**Changes**: Added "Running the Rust Implementation" section with build, run, step, REPL, and test commands. Renamed Java/Scala Quick Start section for clarity.
-
-**Date**: 2026-03-07
-**Updated By**: Claude Code / cyankiwi/Qwen3.5-27B-AWQ-BF16-INT8
-**Changes**: Introduced semantic versioning for documentation. Moved engineering docs (how/) and project tracking (todo/) to docs/ubc1/. Created docs/ubc0_1/ with parallel how/ and todo/ directories for reimplementation work. Added version overview explaining ubc0 (legacy), ubc0_1 (reimplementation using ubc1 microstates), and ubc1 (message-passing infrastructure).
+This log keeps only the single newest entry — see `git log README.md` for full history.

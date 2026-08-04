@@ -47,6 +47,13 @@ pub enum FirKind {
     /// Strong reference to an original statement, created alongside search results.
     /// Born CONSTANT, immutable, no stepping. Bookkeeping for contexted search (FOOP-23 C2).
     FoolRef,
+    /// Creation dot (⬤ / {*}). Born Independent, identity via Rc::ptr_eq.
+    /// FOOP-33 Phase 2.
+    Creation,
+    /// A `system.foo` comparison operator (`'lt`/`'gt`/`'le`/`'ge`/`'eq`).
+    /// Two SFF-marked operand lookups, one Rust comparison, a `'True`/`'False`
+    /// result. FOOP-33 §5.0; see `system_foo::ComparisonFir`.
+    Comparison,
 }
 
 /// Minimal Scope stub — enough for compilation. The real Scope comes later
@@ -89,6 +96,21 @@ pub enum UbcError {
     /// An evaluation error with a human-readable message.
     #[error("ubca evaluation error: {0}")]
     Eval(String),
+
+    /// The FVM's own state or construction violates an invariant it relies on.
+    ///
+    /// Distinct from [`UbcError::Eval`]: an `Eval` error is a *program* being
+    /// unevaluable (a legitimate outcome — division by zero, an unresolvable
+    /// name). An `InternalConsistency` error means the **interpreter** is
+    /// broken — a FIR was built or mutated into a shape the evaluator's rules
+    /// say cannot exist. Continuing past one silently produces wrong results,
+    /// so callers should halt rather than recover.
+    ///
+    /// Example: an SFF body carrying a search that is not ECONSTANIC, i.e. a
+    /// body that is supposed to be constanic-unevaluated but contains a search
+    /// that can still run.
+    #[error("ubca INTERNAL CONSISTENCY error: {0}")]
+    InternalConsistency(String),
 }
 
 /// The dyn-dispatch trait for UBCa FIR nodes.
@@ -130,9 +152,17 @@ pub trait Fir: std::fmt::Debug {
         None
     }
 
-    /// StatementFir name (empty string = anonymous). Default: None.
-    fn as_stmt_name(&self) -> Option<&str> {
+    /// StatementFir identifier. Default: None.
+    fn as_stmt_identifier(&self) -> Option<&crate::identifier::Identifier> {
         None
+    }
+
+    /// StatementFir's searchable name — the full characterized LHS as one string
+    /// (e.g. `"tag'x"`), what every name-search matches against. Default method:
+    /// derived from `as_stmt_identifier()`, so it is `None` for any non-Statement FIR
+    /// and for the whole-brane root convention. See `Identifier::searchable_name`.
+    fn as_stmt_searchable_name(&self) -> Option<&str> {
+        self.as_stmt_identifier().map(|id| id.searchable_name())
     }
 
     /// StatementFir line number. Default: None.
@@ -165,6 +195,19 @@ pub trait Fir: std::fmt::Debug {
         &[]
     }
 
+    /// The name a creation reports for itself, if any. Default: `None`.
+    ///
+    /// Only [`CreationFir`](crate::fir_kinds::CreationFir) overrides this, by
+    /// delegating to its own `get_display_name`. See that method for the rule
+    /// (FOOP-33): a creation names itself only when it is the ENTIRE
+    /// right-hand side of a named statement.
+    ///
+    /// `self_ref` must be the `FirRef` wrapping `self` — the parent chain is
+    /// reached through it, exactly as [`Fir::_get_my_brane`] does.
+    fn as_creation_display_name(&self, _self_ref: &FirRef) -> Option<String> {
+        None
+    }
+
     /// SF inner search pattern — set when a search resolved through SF
     /// re-evaluation. Used by the humanizer to preserve the search wrapper.
     fn as_sf_inner_pattern(&self) -> Option<String> {
@@ -185,6 +228,17 @@ pub trait Fir: std::fmt::Debug {
     fn as_search_contexted(&self) -> bool {
         false
     }
+
+    /// FOOP-33 §4 — set by `ConcatenationFir`'s merge-collision check
+    /// (`apply_null_const_rule_to_merged_stmt`) on a `StatementFir` it just
+    /// cloned into the merge, when that clone conflicts with an
+    /// already-merged null-characterized statement of the same name.
+    /// Default: no-op (every non-`StatementFir` kind ignores this — only a
+    /// `StatementFir` HAS an `nf_reason` to substitute via `settled_result`).
+    /// `&self` + interior mutability, matching every other post-construction
+    /// mutation in this crate (`RefCell`/`Cell` fields, never `&mut self`
+    /// through a `dyn Fir` trait object).
+    fn set_nf_reason(&self, _reason: String) {}
 
     fn _get_my_statement(&self, self_ref: &FirRef) -> FirRef {
         match self.kind() {
@@ -300,6 +354,20 @@ pub trait Fir: std::fmt::Debug {
     /// Whether this FIR is brane-like (has statements to iterate).
     fn is_brane_like(&self) -> bool {
         self.stmt_count().is_some()
+    }
+
+    /// Whether this FIR is a **search kind** — one that resolves by *looking
+    /// something up* rather than by combining already-present operands.
+    ///
+    /// Today: [`FirKind::Search`] (name/value/regexp/dot searches) and
+    /// [`FirKind::Index`] (`#N`, `^`/`$` head-tail). These are exactly the
+    /// kinds `compiler::build_fir`'s `under_sff` rule targets — under an SFF
+    /// marker they are constructed ECONSTANIC so they never run.
+    ///
+    /// One predicate rather than open-coded `matches!` at each site, so a
+    /// future search kind is added in one place.
+    fn is_search_kind(&self) -> bool {
+        matches!(self.kind(), FirKind::Search | FirKind::Index)
     }
 
     // ── UBCA debugging facilities ──
@@ -719,10 +787,13 @@ mod get_value_tests {
     fn make_stmt(name: &str, line: usize, body: FirRef) -> FirRef {
         Rc::new_cyclic(|me: &Weak<RefCell<StatementFir>>| {
             let parent: Weak<RefCell<dyn Fir>> = me.clone();
+            let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
             RefCell::new(StatementFir {
                 core: ProtoBrane::new(vec![body], parent, Nyes::Prembrionic),
-                name: name.to_owned(),
+                identifier: crate::identifier::Identifier::from_parts(vec![], name),
                 line_number: line,
+                self_weak,
+                nf_reason: RefCell::new(None),
             })
         })
     }
@@ -732,7 +803,7 @@ mod get_value_tests {
             let parent: Weak<RefCell<dyn Fir>> = me.clone();
             RefCell::new(BraneFir {
                 core: ProtoBrane::new(children, parent, Nyes::Prembrionic),
-                characterizations: Vec::new(),
+                characterizations: crate::identifier::Characterizations::default(),
             })
         })
     }
@@ -1113,7 +1184,7 @@ mod get_value_tests {
         assert!(result.is_some());
         let (stmt, _nyes) = result.unwrap();
         assert_eq!(stmt.borrow().kind(), FirKind::Statement);
-        assert_eq!(stmt.borrow().as_stmt_name(), Some("x"));
+        assert_eq!(stmt.borrow().as_stmt_searchable_name(), Some("x"));
     }
 
     #[test]
@@ -1150,7 +1221,7 @@ mod get_value_tests {
         assert!(result.is_some(), "x should be found via ab_search");
         let (stmt, _nyes) = result.unwrap();
         assert_eq!(stmt.borrow().kind(), FirKind::Statement);
-        assert_eq!(stmt.borrow().as_stmt_name(), Some("x"));
+        assert_eq!(stmt.borrow().as_stmt_searchable_name(), Some("x"));
     }
 
     #[test]

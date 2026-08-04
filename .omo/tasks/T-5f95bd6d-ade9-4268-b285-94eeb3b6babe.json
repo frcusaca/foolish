@@ -1,0 +1,10 @@
+{
+  "id": "T-5f95bd6d-ade9-4268-b285-94eeb3b6babe",
+  "subject": "Remove einmo evaluate subcommand, update docs",
+  "description": "1. Remove Evaluate variant, EvaluateArgs, CommandEvaluator, cmd_evaluate from cli.rs\n2. Remove tempfile from dev-deps if no longer needed\n3. Update README.md, AGENTS.md, einmo.README.md to show running tests at Output/Checked/Verified levels\n4. Commit",
+  "status": "pending",
+  "activeForm": "Removing einmo evaluate",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_0554203ddffecwoEwrtf0Q00XB"
+}

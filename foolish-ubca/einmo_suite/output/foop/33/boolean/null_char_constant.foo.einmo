@@ -1,0 +1,33 @@
+#einmo 1 encoding=utf-8 separator=!!\n
+test: foop/33/boolean/null_char_constant.foo
+suite: /storage1/human/hcbusy/foolish/.claude/worktrees/foop-33-phase9/foolish-ubca/einmo_suite
+producer: 8ac047e2
+producer-diff: sha256:c6164bf5431fd0423e24656b7f1f52b2e0cfeb3d63aa9f57860543d39e040a40
+generated: 2026-08-04T20:54:32.000000000Z
+status: normal
+status-detail: 
+sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
+{
+	!! FOOP-33 §4: 'True is a null-characterized name constant in system.foo.
+	!! A user brane may re-state it to an EQUAL value (permitted -- same
+	!! creation, resolved via ordinary ancestral search) but a conflicting
+	!! redefinition (a different value) refuses -- get_value() becomes NF
+	!! ("'True not-foolish") instead of the written RHS.
+	!! FOOP-33 Phase 9: restate/'True/conflict now render as 'True (the
+	!! sequencer renders the creation's own name) instead of the bare ⬤.
+	restate = 'True;
+	'True = 'True;
+	conflict = 'True;
+	'True = 3;
+}
+!!
+{NK
+  restate='True;
+  'True='True;
+  conflict='True;
+  'True=??? ('True not-foolish)
+}!!
+!!
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:fc939bdc2d8bac919faed85ddeeed66f28285e7e91526205d4b8671d382ead22","timestamp":"2026-08-04T20:54:32.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:fc939bdc2d8bac919faed85ddeeed66f28285e7e91526205d4b8671d382ead22","timestamp":"2026-08-04T20:54:32.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"QSGE9fz34+/LXXa9sXbAbxAnQLgFfOgj964z3MuAWuer7LCIlQWNYwxosOg3kYoXLcXNAADPVulogBmASLuzAg==","produced_by":"einmo 0.1.0 sha256:fc939bdc2d8bac919faed85ddeeed66f28285e7e91526205d4b8671d382ead22","timestamp":"2026-08-04T20:54:32.000000000Z"}

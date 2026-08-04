@@ -36,6 +36,8 @@ pub enum Token {
 
     Apostrophe, // '
 
+    Creation, // ⬤ (U+2B24)
+
     Integer(u64),
     Ident(String),
     Shebang(String),

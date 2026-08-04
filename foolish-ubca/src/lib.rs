@@ -16,8 +16,10 @@ pub mod compiler;
 pub mod evaluator;
 pub mod fir_kinds;
 pub mod fir_trait;
+pub(crate) mod identifier;
 pub mod nyes_ext;
 pub mod proto_brane;
+pub mod system_foo;
 
 pub use evaluator::UbcaEvaluator;
 pub use fir_trait::{Fir, FirKind, FirRef, FirRefExt, Scope, StepReport, UbcError};

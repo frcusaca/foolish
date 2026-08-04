@@ -27,7 +27,7 @@
 //!
 //! The [`compute_aspects`] function is pure and standalone:
 //!
-//! ```ignore
+//! ```
 //! use zweimomo::aspects::compute_aspects;
 //! let metrics = compute_aspects("hello\nworld");
 //! assert!(metrics.contains("lines: 2"));
@@ -35,7 +35,7 @@
 //!
 //! The [`aspects_perspective`] function wraps it for einmo consumers:
 //!
-//! ```ignore
+//! ```
 //! use einmo::Perspective;
 //! use zweimomo::aspects::aspects_perspective;
 //! let p: Perspective = aspects_perspective();
@@ -51,7 +51,7 @@ use einmo::{Perspective, PerspectiveOf};
 ///
 /// # Example
 ///
-/// ```ignore
+/// ```
 /// use zweimomo::aspects::compute_aspects;
 /// let m = compute_aspects("abc123");
 /// assert!(m.contains("chars: 6"));

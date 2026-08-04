@@ -185,31 +185,22 @@ For requesting restricted file changes, agents may suggest diff patch or full te
 
 
 ## Task Management
-This project uses the todo skill for all task tracking. All todo files live
-in docs/.../todo/ and are exclusively maintained by the skill — do not edit
-them directly.
 
-### Default session file
-Each AI session writes to its own todo file by default:
-docs/todo/AIAGENT-<session-id>.todo.md To switch to a project-specific todo
-file, say "use the sprint-3 todo" or invoke /todo-use sprint-3 at any point
-in the session.
+**While working on a FOOP, the FOOP's own `FOOP-#.plan.md` IS the todo list.** Its
+checkboxes are the authoritative record of what's done, in-progress, blocked, or not yet
+started — there is no separate todo document to maintain in parallel for FOOP work. Read
+the plan before starting, work its checkboxes in order, and check each box (with a
+timestamp, per the `foop-write-plan`/`foop-use-maintain` skills' checkbox format) as work
+completes. If new work is discovered mid-task that belongs to the FOOP, add it to the plan
+as a new checkbox item in the appropriate phase — do not track it anywhere else.
 
-### When starting any multi-step task
-Before executing, read the active todo file and either map the work to
-existing open items or add new ones. Write a session started Log entry
-summarizing the plan and which IDs will be worked.
-
-### While executing
-Log progress on each item before starting it (in progress) and close it
-with a meaningful summary when done (/todo-done, /todo-abandon, or
-/todo-cancel). If new work is discovered mid-task, add it immediately.
-
-### When finishing or pausing
-Write a session ended Log entry listing what was completed, what remains,
-and any context the next session needs.  General rule Keep the todo file
-synchronized with actual work at all times using the commands of the skill.
-It is the record of what happened, not just what is planned.
+For work that is NOT scoped to any FOOP (exploratory tasks, cross-cutting chores, requests
+that don't belong to a Major/Phase/Stage under the Project Segmentation scheme above), use
+whatever lightweight tracking the coding agent's own tooling provides for the session (e.g.
+an in-session task list). There is currently no installed `/todo` skill in this repository
+— references to one in older documentation, or a per-session
+`docs/todo/AIAGENT-<session-id>.todo.md` file, describe tooling that is not present; do not
+invoke `/todo-done` or similar commands expecting them to exist.
 
 
 ## Build Commands
@@ -269,8 +260,57 @@ einmo promote output to checked foolish-ubca/einmo_suite # promote all
    signed `.einmo` to `output/`, and checks `output == checked`.
 2. If the test fails (output diverged from checked), review with `einmo compare`.
 3. Use `poor_einmo.sh foolish-ubca/einmo_suite` for the interactive review loop (vim-based).
-4. Promote reviewed outputs: `einmo promote output to checked foolish-ubca/einmo_suite`.
-5. For release attestation: `einmo promote checked to verified foolish-ubca/einmo_suite --interactive`.
+4. **Before promoting, justify every OUTPUT line.** For each line of the diverged (or new)
+   OUTPUT, the agent must be able to state, in its own words, *why that specific value is
+   correct* — not merely that it matches what the evaluator produced. "The evaluator emitted
+   this" is not a justification; it is the thing being checked. If a line cannot be justified,
+   it is not ready to promote — it is either a genuine bug (fix the code) or a sign the test's
+   own expectation (its input, or its statement names) needs revision, and that revision needs
+   review in its own right, not a silent promotion.
+
+   **Be skeptical of NK specifically.** A search settling NK is the narrow, exceptional
+   outcome, not the default — see the search specification (README.md §"The Unknown" and
+   FOOP-23 §Specification, the in-force authority) for exactly which outcomes are legitimate.
+   If a line reads `foo=NK` and you cannot name which of those legitimate cases applies, do
+   not promote it — trace it (see the `foolish-debugging` skill) before assuming the
+   evaluator is right.
+
+   **Meaningful statement names are part of the test's specification, not decoration.** A
+   statement named `hit = ?...` asserts that the search is expected to find its target; `miss
+   = ?...` asserts the opposite. If `hit`'s result is NK, the name and the result contradict
+   each other — that contradiction must be resolved (by fixing the bug the name predicted, or
+   by renaming the statement to match reality with a comment explaining why) before promoting,
+   never by promoting past it.
+
+   **Check against the in-force specification for the feature under test.** Read the relevant
+   FOOP's current `.md` (not just the plan) for the feature each line exercises, and confirm
+   the OUTPUT matches what that spec currently says — not what an earlier or superseded
+   revision said.
+5. Promote reviewed outputs: `einmo promote output to checked foolish-ubca/einmo_suite`.
+6. For release attestation: `einmo promote checked to verified foolish-ubca/einmo_suite --interactive`.
+
+#### Non-regression invariant (hard rule)
+
+A FOOP under development **must not change the OUTPUT** of any einmo test
+belonging to a different, already-shipped FOOP. If `run_einmo_tests` fails
+because a pre-existing `checked/` baseline diverged, that is a **regression you
+introduced** — fix your code so the baseline passes again. **Never** `einmo
+promote` over a divergent pre-existing baseline; `promote` is only for your own
+FOOP's new tests, after the rest of the suite is green. If the divergent
+baseline has a `verified/` twin, it is frozen — do not touch it without a human
+reviewer's key.
+
+The full **phase-by-phase testing discipline** — the three-stage contract
+(`output`/`checked`/`verified`), the "a failing test is broken code, not a
+stale baseline" rule, the per-phase test-gate, and the promote rules — lives in
+**`rust_instructions.md` §"Phase-by-phase testing discipline"**; read it before
+any FOOP implementation work. The `foop-write-plan` skill installs the literal
+per-phase checkbox
+
+> `- [ ] Run all tests — old and new — and make sure they all pass correctly.`
+
+into every FOOP plan it generates; a phase is not done until that box is
+checked.
 
 ### CLI Usage
 
@@ -504,6 +544,15 @@ a following `&`-search can read.
 - **Coordinate** - brane member names used for relational access
 - **Home brane of a FIR** (synonym: **brane of a FIR**) - the first brane reached by
   walking the FIR's `.parent` chain. Accessor: `get_my_brane`. See the Searches section above.
+- **Sift** - a lookup performed **outside** of Foolish search functionality: an ordinary
+  Rust-side walk over the FIR tree with no Foolish search semantics — no anchoring, no NYES
+  effects, no ECONSTANIC/NK miss outcome, no `SearchFir`/`ContextfulSearch` involvement.
+  **Naming rule:** name such functions `sift_*`, never `search_*`. "Search" is reserved for
+  the Foolish language feature (`?` `~` `.` `#` `^` `$`, value searches, `&`-searches — see
+  the Searches section above). Keeping the prefixes distinct stops interpreter plumbing from
+  being read as language behavior. Example:
+  `ProtoBrane::sift_for_first_non_econstanic_descendent_search` walks the foolish store to
+  validate an SFF construction invariant — it is not a Foolish search.
 - **Lexed** - feature parses to AST
 - **Interpreted** - feature fully implemented in VM
 
@@ -515,6 +564,22 @@ a following `&`-search can read.
 - Full-width space (＿) in approval tests shows indentation precisely
 - Variable names follow power-law distribution (mean 3.5 chars short, 5 chars long)
 - Use diverse Unicode: Latin, Greek, Cyrillic, Hebrew, Arabic, Chinese, Sanskrit
+
+**Agents MUST use Unicode operator forms when writing Foolish code.** The `\o` prefix is for keyboard input only. When an agent writes `.foo` files, it must use the Unicode underlined forms:
+- `⬤` not `{*}` for creation
+- `<̲` not `\o<` for less-than
+- `>̲` not `\o>` for greater-than
+- `<̲=̲` not `\o<=` for less-than-or-equal
+- `>̲=̲` not `\o>=` for greater-than-or-equal
+- `=̲=̲` not `\o==` for equality
+
+**Agents MUST use Unicode operator forms when writing Foolish code.** The `\o` prefix is for keyboard input only. When an agent writes `.foo` files, it must use the Unicode underlined forms:
+- `⬤` not `{*}` for creation
+- `<̲` not `\o<` for less-than
+- `>̲` not `\o>` for greater-than
+- `<̲=̲` not `\o<=` for less-than-or-equal
+- `>̲=̲` not `\o>=` for greater-than-or-equal
+- `=̲=̲` not `\o==` for equality
 
 ### Commit Message Format
 
@@ -579,28 +644,26 @@ For complete details on:
 2. **Agent identifier** (as specific as possible, including model name/version)
 3. **Brief summary** of what was changed
 
-Example format:
+**The log keeps only the single newest entry — REPLACE it, do not append.** Overwrite the
+existing entry with a new one describing the latest change (folding in anything from the
+overwritten entry still relevant, if the changes are related). Prior history lives in `git
+log`/`git blame` on the file, not in an accumulating in-file log.
+
+Example format (illustrative only — the real, current log lives in the actual
+**"## Last Updated"** section near the end of this file; entries must go there, never in
+this example block):
 ```markdown
 ## Last Updated
 
-**Date**: 2026-07-29
-**Updated By**: Claude Code (Opus 5)
+**Date**: 2026-01-20
+**Updated By**: Claude Code v1.0.0 / claude-sonnet-4-5-20250929
 **Changes**: Added a **Source Control** section stating plainly that the Foolish project's main
 branch is **`jia`** — the role other projects give to `master`/`main`/`trunk`. No such branch
-exists here; PRs target `jia`; worktrees are created from `jia`. Recorded that `alpha`, appearing
-in older documents and completed plans, is historical and should be read as `jia` in any in-force
-instruction, while completed plan files are left as written for the historical record. Updated the
-two in-body mentions ("merge to alpha") to match. `foop.md` and both FOOP skills updated in the
-same pass (`WORKTREE_ORIGIN_BRANCH=jia`, merge/checkout targets), along with the in-force worktree
-directives in FOOP-72/FOOP-62 and the unchecked merge checkboxes in
-FOOP-03/41/52/7/8 plans.
-
-**Date**: 2026-01-15
-**Updated By**: Claude Code v1.0.0 / claude-sonnet-4-5-20250929
-**Changes**: Added detailed UBC architecture documentation and test infrastructure workflows
+exists here; PRs target `jia`; worktrees are created from `jia`.
 ```
 
-This ensures all AI agents can track who modified documentation and when, maintaining clear collaboration history.
+This ensures all AI agents can track who most recently modified documentation and why; full
+history is git's job, not this section's.
 
 ## Maintenance Instructions
 
@@ -619,37 +682,20 @@ When proposing updates, explain what has changed and why the documentation needs
 
 ## Last Updated
 
-**Date**: 2026-07-12
-**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
-**Changes**: De-duplicated the `foolish-debugging` skill content from AGENTS.md — the UBC section
-now just points to the skill as authoritative (removed the inline test-template→NYES-tracing→
-FIR-inspection→cleanup workflow enumeration); tightened the skills-table entry to name the key
-facilities (`step_until*` breakpoints, step-and-monitor of `_children`/NYES, `ib_search`/
-`ab_search`). The skill itself gained the `step_until*` breakpoint facility and the
-step-and-monitor technique (FOOP-13).
-
-**Date**: 2026-07-05
-**Updated By**: Sisyphus-Junior / xiaomi/mimo-v2.5-pro
-**Changes**: FOOP-23 Phase D.1 — Added dedicated "Searches" section documenting the three groups
-of search operators (Contextless Anchored, Contexted Anchored/`&`-searches, Value searches),
-operator tables, contextless-deepens-vs-contexted-navigates rule, the one-engine model
-(cursor-source × predicate), FoolRefFir two-child invariant, NK vs ECONSTANIC miss outcomes,
-and home-brane terminology. Added "Home brane" to Foolish Terminology.
-
-**Date**: 2026-06-22
-**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
-**Changes**: Added "NYES transition tests (`*_nyes_transitions`)" subsection under Unit Test
-Redability: every FIR kind has a `<kind>_nyes_transitions` unit test (assert_progression);
-new FIR kinds / NYES states/transitions MUST extend these tests. (FOOP-62 #16.)
-
-**Date**: 2026-06-11
-**Updated By**: Sisyphus / mimo-v2.5-pro
-**Changes**: Updated NYES state section with complete UBCa states (PREMBRYONIC through NK).
-Added "Constanic" to Foolish Terminology. Corrected pronunciation: "cons-TAN-nic" not
-"CON-STAN-NICK".
-
-**Date**: 2026-06-10
-**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
+**Date**: 2026-08-04
+**Updated By**: Claude Code / claude-opus-5
+**Changes**: Added **"Sift"** to §Foolish Terminology: a lookup performed *outside* Foolish
+search functionality — an ordinary Rust-side walk over the FIR tree with no anchoring, no NYES
+effects, no ECONSTANIC/NK miss outcome. Naming rule: such functions are `sift_*`, never
+`search_*`, since "search" is reserved for the Foolish language feature; keeping the prefixes
+distinct stops interpreter plumbing from being read as language behavior. Earlier: replaced the
+Task Management section's `/todo`-skill blurb (a FOOP's own `FOOP-#.plan.md` checkboxes ARE the
+todo list; no `/todo` skill is installed here); added "Before promoting, justify every OUTPUT
+line" (step 4) to §"The einmo review workflow", with sub-rules on treating statement names
+(`hit`/`miss`) as part of a test's specification and checking against the in-force FOOP `.md`;
+added §"Non-regression invariant (hard rule)" under Approval Tests (einmo). This log keeps only
+the single newest entry per the Markdown File Update Protocol; prior substance remains in git
+history and in the sections it describes.
 
 ### MISC
 
@@ -678,6 +724,26 @@ that follows various capitalizations of `@agent` or `@agents`. Resolution, once 
 
 If this form of embedded communication is discussed while performing another task, determin if it is relevant or interferes with current task. In some cases, this causes an immediately actionable response, other times, the encounterance results in an extra '[ ] TODO:human concern at file FILENAME line LINE_NUMBER' added to current task list to investigate. In some cases, if it is clear that the situation is too complex or require too much context, it may become a "[ ] TODO: write a specification and plan to address human concern at file FILENAME line LINE_NUMBER"
 
+## Crash Stash
+
+The crash stash is a mechansim we use currently to deal with hardware that
+frequently reboot due to memory errors or California powergrid instabilities.
+When the user calls for a crash-stash. It means to write a new file at the root of
+the repo named "CRASH-STASH-UID.md", where UID is generated unique id. Update
+top of the current FOOP AND AGENT.md to ask it to read this section and then the 
+crash stash file. The text in AGENT.md and FOOP should be unignorable in the front
+titled "# A Real Crash Stash, This is NOT a Test" In this section, agent will
+write down the full extent of its knowledge regarding the project. what's been done.
+What it's thinking about. What was tried what wasn't tried. What's next, etc. The
+description can be simple as "finish the rest of EIMP-such-and-such" But in most
+cases what's in the memory is important so write down items such as "make sure
+to read rust instructions, user pointed out some issues that were clearly
+documented in the instructions." Or "the code currently runs infinite loop,
+heres what we've done to isolate it to this region of the code." Or "I've been
+confused about two conflicting features, thoguht about issues A,B,C, but
+probably best to think through D before asking user to clarify." Give clear
+instructions to your self. Dump code snippets in code fences if code or pseudo code
+is more clear.
 
 
 #### Uncertainty and Other Utterances in Conversing with Human

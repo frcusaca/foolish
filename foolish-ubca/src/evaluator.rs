@@ -1,10 +1,13 @@
+use std::rc::Rc;
+
 use foolish_core::fir as core_fir;
 use foolish_core::fir::{
     Alarm, AlarmLevel, AlarmSource, ConcatenationFirBuilder, ConstantIntFirBuilder,
-    FirRef as CoreFirRef, IndexFirBuilder, NkFirBuilder, NormalBraneFirBuilder, Nyes,
-    OperatorFirBuilder, SearchFirBuilder, StayFoolishFirBuilder, StayFullyFoolishFirBuilder,
+    CreationFirBuilder, FirRef as CoreFirRef, IndexFirBuilder, NkFirBuilder, NormalBraneFirBuilder,
+    Nyes, OperatorFirBuilder, SearchFirBuilder, StayFoolishFirBuilder, StayFullyFoolishFirBuilder,
 };
 
+#[cfg(test)]
 use crate::compiler::Compiler;
 use crate::fir_trait::{FirKind, FirRef, FirRefExt, StepReport};
 
@@ -24,7 +27,7 @@ use crate::fir_trait::{FirKind, FirRef, FirRefExt, StepReport};
 /// ```ignore
 /// // Step until a statement named "extended" reaches the job queue front:
 /// let steps = step_until(&root, &scope, |front| {
-///     front.as_ref().map(|f| f.borrow().as_stmt_name() == Some("extended")).unwrap_or(false)
+///     front.as_ref().map(|f| f.borrow().as_stmt_searchable_name() == Some("extended")).unwrap_or(false)
 /// })?;
 /// eprintln!("Stopped after {steps} steps, front task: {front:?}");
 /// ```
@@ -90,7 +93,7 @@ pub fn step_until_statement_name(
 ) -> Result<usize, crate::fir_trait::UbcError> {
     step_until(root, scope, |front| {
         front
-            .map(|f| f.borrow().as_stmt_name() == Some(name))
+            .map(|f| f.borrow().as_stmt_searchable_name() == Some(name))
             .unwrap_or(false)
     })
 }
@@ -113,20 +116,32 @@ pub struct UbcaEvaluator;
 
 impl foolish_core::Evaluator for UbcaEvaluator {
     fn evaluate(&self, source: &str) -> Result<Vec<CoreFirRef>, String> {
-        let ubca_firs =
-            Compiler::compile(source).map_err(|e| format!("Compilation failed: {}", e))?;
+        // FOOP-33 §4: system.foo is implicitly composed as the root ancestor
+        // of every program, not opt-in. The user's program becomes an
+        // ordinary member of the composite root brane, named `program`; the
+        // FVM steps the WHOLE composite to settlement, then extracts the
+        // `program` member's result structurally (never via a Foolish
+        // search) — see `system_foo::compose_program_with_system` and
+        // `system_foo::program_result`.
+        let composed_roots = crate::system_foo::compose_program_with_system(source)
+            .map_err(|e| format!("Compilation failed: {}", e))?;
 
         let scope = crate::fir_trait::Scope::empty();
         let mut results = Vec::new();
 
-        for fir_ref in &ubca_firs {
-            if let Err(alarm) = step_to_settled(fir_ref, &scope) {
+        for composed_root in &composed_roots {
+            if let Err(alarm) = step_to_settled(composed_root, &scope) {
                 let alarm_msg = alarm.to_string();
-                fir_ref.borrow().core().set_alarm_reason(alarm_msg.clone());
-                fir_ref.borrow().core().set_nyes(Nyes::Nk);
+                composed_root
+                    .borrow()
+                    .core()
+                    .set_alarm_reason(alarm_msg.clone());
+                composed_root.borrow().core().set_nyes(Nyes::Nk);
                 eprintln!("ALARM: {alarm_msg}");
             }
-            let core_fir = proto_to_core_fir(fir_ref);
+            let program_fir = crate::system_foo::program_result(composed_root)
+                .unwrap_or_else(|| Rc::clone(composed_root));
+            let core_fir = proto_to_core_fir(&program_fir);
             results.push(core_fir::fir_to_ref(core_fir));
         }
 
@@ -263,6 +278,27 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
             }
             builder.build()
         }
+        // A comparison renders as its RESULT — the 'True/'False creation it
+        // produced, or the NK from a non-integer operand (FOOP-33 §5.0). It
+        // never renders a wrapper of its own: the operands are the referencing
+        // brane's OWN statements, already rendered in their own right, so
+        // showing them again under the operator would duplicate them.
+        FirKind::Comparison => {
+            if let Some(result) = borrowed.core().ubc_children().first() {
+                return proto_to_core_fir_inner(result, preserve_search);
+            }
+            // Not yet settled (or settled without a result): render the state
+            // itself rather than inventing a value.
+            NkFirBuilder::new(
+                borrowed
+                    .core()
+                    .alarm_reason()
+                    .as_deref()
+                    .unwrap_or("comparison"),
+            )
+            .state(state)
+            .build()
+        }
         FirKind::Operator => {
             // Unwrap to the result when the operator successfully computed
             // a constant value.
@@ -323,12 +359,15 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                 .build()
         }
         FirKind::Statement => {
-            let name = display_stmt_name(borrowed.as_stmt_name());
-            let body_fir = borrowed
-                .core()
-                .foolish_children()
-                .first()
-                .map(|c| proto_to_core_fir_inner(c, preserve_search))
+            let name = display_stmt_name(borrowed.as_stmt_searchable_name());
+            drop(borrowed);
+            // Prefer settled_result() over the raw written body — see
+            // crate::fir_kinds::statement_value_for_comparison's doc comment
+            // (FOOP-33 §4). Without this, the null-const rule's refusal is
+            // enforced internally but never actually rendered: `'True = 3`
+            // would still SHOW `3` instead of the NF NK.
+            let body_fir = crate::fir_kinds::statement_value_for_comparison(ubca_ref)
+                .map(|c| proto_to_core_fir_inner(&c, preserve_search))
                 .unwrap_or_else(|| NkFirBuilder::new("empty statement").build());
             NormalBraneFirBuilder::new()
                 .statement(name, body_fir)
@@ -341,13 +380,12 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                 .foolish_children()
                 .iter()
                 .map(|c| {
-                    let cb = c.borrow();
-                    let name = display_stmt_name(cb.as_stmt_name());
-                    let body_fir = cb
-                        .core()
-                        .foolish_children()
-                        .first()
-                        .map(|c| proto_to_core_fir_inner(c, preserve_search))
+                    let name = display_stmt_name(c.borrow().as_stmt_searchable_name());
+                    // Prefer settled_result() over the raw written body — see
+                    // crate::fir_kinds::statement_value_for_comparison's doc
+                    // comment (FOOP-33 §4).
+                    let body_fir = crate::fir_kinds::statement_value_for_comparison(c)
+                        .map(|c| proto_to_core_fir_inner(&c, preserve_search))
                         .unwrap_or_else(|| NkFirBuilder::new("empty body").build());
                     (name, body_fir)
                 })
@@ -477,9 +515,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                 builder = builder.is_value(true);
                 let children = borrowed.core().foolish_children();
                 let has_anchor = borrowed.as_search_anchored();
-                if has_anchor
-                    && let Some(a) = children.first()
-                {
+                if has_anchor && let Some(a) = children.first() {
                     builder = builder.anchor(proto_to_core_fir_inner(a, false));
                 }
                 let value_idx = if has_anchor { 1 } else { 0 };
@@ -650,7 +686,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                     .filter_map(|i| {
                         let stmt = borrowed.stmt_at(i)?;
                         let sb = stmt.borrow();
-                        let name = display_stmt_name(sb.as_stmt_name());
+                        let name = display_stmt_name(sb.as_stmt_searchable_name());
                         let body_fir = sb
                             .core()
                             .foolish_children()
@@ -699,7 +735,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                 .iter()
                 .map(|c| {
                     let cb = c.borrow();
-                    let name = display_stmt_name(cb.as_stmt_name());
+                    let name = display_stmt_name(cb.as_stmt_searchable_name());
                     let body_fir = cb
                         .core()
                         .foolish_children()
@@ -715,6 +751,20 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                 .build()
         }
         FirKind::Unknown | FirKind::FoolRef => NkFirBuilder::new("unknown fir kind").build(),
+        // FOOP-33 Phase 9: resolve the display name HERE, at the conversion
+        // boundary, because this is the one place ubca `Rc` identity and the
+        // parent chain (which `as_creation_display_name` walks) still exist
+        // alongside the `foolish-core` conversion target. `borrowed` is the
+        // creation itself; `ubca_ref` is its own `FirRef`, exactly the
+        // `self_ref` the FVM-side method needs to find its defining
+        // statement (see `CreationFir::get_display_name`).
+        FirKind::Creation => {
+            let mut builder = CreationFirBuilder::new();
+            if let Some(name) = borrowed.as_creation_display_name(ubca_ref) {
+                builder = builder.name(name);
+            }
+            builder.build()
+        }
     }
 }
 
@@ -739,7 +789,7 @@ mod step_until_tests {
         assert!(front.is_some(), "front task should exist");
         let f = front.unwrap();
         assert_eq!(
-            f.borrow().as_stmt_name(),
+            f.borrow().as_stmt_searchable_name(),
             Some("b"),
             "front task should be 'b'"
         );
@@ -759,7 +809,7 @@ mod step_until_tests {
         let front = root.borrow().debug_front_task();
         assert!(front.is_some());
         let f = front.unwrap();
-        assert_eq!(f.borrow().as_stmt_name(), Some("x"));
+        assert_eq!(f.borrow().as_stmt_searchable_name(), Some("x"));
     }
 
     #[test]
@@ -856,7 +906,7 @@ mod step_until_tests {
         eprintln!("root has {} children", root_children.len());
         for (i, child) in root_children.iter().enumerate() {
             let cb = child.borrow();
-            let name = cb.as_stmt_name().unwrap_or("(anon)");
+            let name = cb.as_stmt_searchable_name().unwrap_or("(anon)");
             let nyes = cb.core().get_nyes();
             let kind = cb.kind();
             eprintln!("  [{}] {} (kind={:?}, nyes={:?})", i, name, kind, nyes);
@@ -865,7 +915,7 @@ mod step_until_tests {
         // Find the "cb" statement and inspect its NYES and value.
         let cb_stmt = root_children
             .iter()
-            .find(|c| c.borrow().as_stmt_name() == Some("cb"))
+            .find(|c| c.borrow().as_stmt_searchable_name() == Some("cb"))
             .cloned()
             .expect("cb statement not found in root");
         let cb_nyes = cb_stmt.borrow().core().get_nyes();
@@ -946,7 +996,7 @@ mod step_until_tests {
                 eprintln!("cb body has {} statements", sc);
                 if let Some(s0) = bb.stmt_at(0) {
                     let s0_b = s0.borrow();
-                    eprintln!("  stmt_at(0) name = {:?}", s0_b.as_stmt_name());
+                    eprintln!("  stmt_at(0) name = {:?}", s0_b.as_stmt_searchable_name());
                 }
             } else {
                 eprintln!("cb body stmt_count() = None — BraneNavigator will get 0 candidates!");
@@ -959,7 +1009,7 @@ mod step_until_tests {
         // Find the {x=cb.shadow} brane inside "extended" statement body.
         let extended_stmt = root_children
             .iter()
-            .find(|c| c.borrow().as_stmt_name() == Some("extended"))
+            .find(|c| c.borrow().as_stmt_searchable_name() == Some("extended"))
             .cloned()
             .expect("extended statement not found");
         let extended_body = extended_stmt
@@ -986,7 +1036,7 @@ mod step_until_tests {
                         let stmts: Vec<FirRef> = eb.core().foolish_children().to_vec();
                         for s in &stmts {
                             let sb = s.borrow();
-                            if sb.as_stmt_name() == Some("x") {
+                            if sb.as_stmt_searchable_name() == Some("x") {
                                 let x_body = sb
                                     .core()
                                     .foolish_children()
@@ -1033,5 +1083,93 @@ mod step_until_tests {
                 }
             }
         }
+    }
+}
+
+/// FOOP-33 Phase 9 — the `evaluator.rs` → `foolish-core` conversion boundary
+/// resolves `CreationFir::get_display_name` and carries it through as
+/// `core_fir::Fir::Creation { name }`. These tests exercise
+/// `proto_to_core_fir` directly (rather than the whole `system.foo`-composed
+/// `UbcaEvaluator::evaluate` pipeline) because the display-name rule is a
+/// property of the raw compiled+stepped FIR tree, not of program composition.
+#[cfg(test)]
+mod creation_display_name_conversion_tests {
+    use super::*;
+    use crate::fir_trait::Scope;
+    use foolish_core::FirQueryable;
+
+    #[test]
+    fn defining_site_creation_converts_with_its_name() {
+        // `'a = ⬤` — the creation is the whole RHS of statement `'a`.
+        let firs = Compiler::compile("{'a=⬤; b='a;}").unwrap();
+        let root = firs[0].clone();
+        let scope = Scope::empty();
+        step_to_settled(&root, &scope).unwrap();
+
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let a_body = stmts[0].borrow().core().foolish_children()[0].clone();
+        let converted = proto_to_core_fir(&a_body);
+        assert_eq!(converted.hs_variant(), "Creation");
+        assert_eq!(
+            converted.hs_creation_name().as_deref(),
+            Some("'a"),
+            "the creation defining 'a must convert carrying its own name"
+        );
+    }
+
+    #[test]
+    fn creation_reached_through_search_converts_with_its_own_defining_name() {
+        // `b='a` resolves THROUGH a search to the SAME creation `Rc` that
+        // `'a` defines (FOOP-33 Gotcha #2) — the conversion boundary must
+        // still report `'a`, not `b`, proving identity (not the referencing
+        // statement) drives the name.
+        let firs = Compiler::compile("{'a=⬤; b='a;}").unwrap();
+        let root = firs[0].clone();
+        let scope = Scope::empty();
+        step_to_settled(&root, &scope).unwrap();
+
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let b_body = stmts[1].borrow().core().foolish_children()[0].clone();
+        let resolved = b_body.value();
+        assert_eq!(resolved.borrow().kind(), FirKind::Creation);
+
+        let converted = proto_to_core_fir(&resolved);
+        assert_eq!(converted.hs_variant(), "Creation");
+        assert_eq!(
+            converted.hs_creation_name().as_deref(),
+            Some("'a"),
+            "a creation reached through a search converts with its OWN \
+             defining statement's name, not the referencing statement's"
+        );
+    }
+
+    #[test]
+    fn operator_operand_creation_converts_unnamed() {
+        // `'a = 1 + ⬤` — the creation is only an OPERAND of `+`, not the
+        // whole RHS, so it must convert with no name (glyph fallback).
+        let firs = Compiler::compile("{'a=1+⬤; b='a;}").unwrap();
+        let root = firs[0].clone();
+        let scope = Scope::empty();
+        step_to_settled(&root, &scope).unwrap();
+
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let a_body = stmts[0].borrow().core().foolish_children()[0].clone();
+        // a_body is the `+` operator; its second operand is the creation.
+        let operator_children = a_body.borrow().core().foolish_children().to_vec();
+        let creation = operator_children
+            .iter()
+            .find(|c| c.borrow().kind() == FirKind::Creation)
+            .expect("the + operator must have a creation operand")
+            .clone();
+
+        let converted = proto_to_core_fir(&creation);
+        assert_eq!(converted.hs_variant(), "Creation");
+        assert_eq!(
+            converted.hs_creation_name(),
+            None,
+            "a creation that is only an operand of an operator converts \
+             with NO name — the statement's name belongs to the whole \
+             expression, not to the creation inside it"
+        );
     }
 }

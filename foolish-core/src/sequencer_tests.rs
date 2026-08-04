@@ -1,7 +1,8 @@
 use crate::fir::{
     Alarm, AlarmLevel, AlarmSource, ConcatenationFirBuilder, ConstantIntFirBuilder,
-    IndexFirBuilder, NkFirBuilder, NormalBraneFirBuilder, Nyes, OperatorFirBuilder,
-    SearchDirection, SearchFirBuilder, StayFoolishFirBuilder, StayFullyFoolishFirBuilder,
+    CreationFirBuilder, IndexFirBuilder, NkFirBuilder, NormalBraneFirBuilder, Nyes,
+    OperatorFirBuilder, SearchDirection, SearchFirBuilder, StayFoolishFirBuilder,
+    StayFullyFoolishFirBuilder,
 };
 use crate::sequencer::format_fir_simple;
 use crate::*;
@@ -274,4 +275,45 @@ fn test_sequencer_format_with_header() {
     let out = FirSequencer::format_with_header("{42}", &fir, 0);
     assert!(out.contains("INPUT:"));
     assert!(out.contains("STEPS:"));
+}
+
+// ── FOOP-33 Phase 9: sequencer renders creation names ──
+
+#[test]
+fn test_format_unnamed_creation_renders_glyph() {
+    let fir = CreationFirBuilder::new().build();
+    assert_eq!(format_fir_simple(&fir), "\u{2B24}");
+}
+
+#[test]
+fn test_format_named_creation_renders_its_name_not_the_glyph() {
+    let fir = CreationFirBuilder::new().name("'a").build();
+    assert_eq!(format_fir_simple(&fir), "'a");
+}
+
+#[test]
+fn test_format_named_creation_as_statement_body() {
+    // `{ 'a = <creation named 'a> }` — the realistic shape: a creation that
+    // names itself sitting as the body of the very statement it names.
+    let creation = CreationFirBuilder::new().name("'a").build();
+    let brane = NormalBraneFirBuilder::new()
+        .statement(Some("'a".into()), creation)
+        .build();
+    let formatted = format_fir_simple(&brane);
+    assert!(
+        formatted.contains("'a='a"),
+        "Expected \"'a='a\" in: {}",
+        formatted
+    );
+}
+
+#[test]
+fn test_format_comparison_result_renders_true_false_names() {
+    // The Phase 9 payoff for FOOP-33's own comparison operators (Phase 6):
+    // a comparison settles to the ACTUAL 'True/'False creation, which now
+    // renders by name instead of the bare glyph.
+    let true_creation = CreationFirBuilder::new().name("'True").build();
+    let false_creation = CreationFirBuilder::new().name("'False").build();
+    assert_eq!(format_fir_simple(&true_creation), "'True");
+    assert_eq!(format_fir_simple(&false_creation), "'False");
 }

@@ -341,28 +341,4 @@ plan. The worked example had been triply inconsistent (directory `constanic-clon
 in FOOP-84's plan: its create checkbox made one branch while its merge checkbox named another that
 did not exist. Example rewritten to use one consistent name. Both FOOP skills updated to match.
 
-**Date**: 2026-07-29
-**Updated By**: Claude Code (Opus 5)
-**Changes**: Added a "The main branch is `jia`" section stating that `jia` fills the role other
-projects give to `master`/`main`/`trunk`, and that `alpha` — appearing in older documents as the
-merge target — is historical and should be read as `jia` in any in-force instruction. Completed
-plan files are left as written, as a historical record. Updated `WORKTREE_ORIGIN_BRANCH` to `jia`
-and the merge/conflict-repair examples to match. AGENTS.md and both FOOP skills updated in the
-same pass.
-
-**Date**: 2026-07-06
-**Updated By**: Hephaestus / xiaomi/mimo-v2.5-pro
-**Changes**: Added "Comprehensive FOOP Tests" section — every FOOP has the right and obligation
-to generate a `foop_<NUMBER>_comprehensive.foo` snapshot test exercising new features
-interacting with existing ones.
-
-**Date**: 2026-06-10
-**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
-**Changes**: Created foop.md as the authoritative full FOOP reference.
-Migrated the detailed FOOP content out of AGENTS.md: process philosophy,
-little-endian numbering, naming convention, numbering helper script, the
-two-file (`FOOP-#.md` spec / `FOOP-#.plan.md` plan) layout, plan
-construction, checkbox format, backburnering, cancellation, worktree branch
-tracking, and sub-tasks. AGENTS.md now retains only a short summary of
-common every-day uses plus an instruction to read this file before reading
-or writing any FOOP.
+This log keeps only the single newest entry — see `git log foop.md` for full history.

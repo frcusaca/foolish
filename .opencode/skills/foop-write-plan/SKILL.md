@@ -246,6 +246,11 @@ Build the plan so that:
 6. If the spec has research/experimentation (web search, historic docs, prototyping), those should be **clearly documented in the FOOP file**, and the plan steps shall, where needed, contain **section or sub-section header pointers** into the FOOP file. A large todo with sub-tasks may have several "read section X of FOOP-<NUMBER>.md" as its first few checkboxes.
 7. **Sanity-check sub-tasks** may be installed where ambiguity exists — e.g. "[ ] sub-agent please consult with primary agent or human regarding the current approach to..." These can be installed or removed by the planning agent as specification, clarification, design, and planning progresses.
 8. **Once work begins on a FOOP, all updates — including to the foop folder — MUST be written ONLY to the worktree.** This continues until merge time.
+9. **Every phase ends with a test-gate checkbox.** The last checkbox of every implementation phase (and a final one right before the merge STOP) is, verbatim:
+   ```
+   - [ ] Run all tests — old and new — and make sure they all pass correctly.
+   ```
+   A phase is not complete until this box is checked. The contract behind it (a failing einmo test is broken code, not a stale baseline; never `promote` over a foreign FOOP's divergent baseline; the three `output`/`checked`/`verified` stages are a contract) lives in `rust_instructions.md` §"Phase-by-phase testing discipline" — the plan installs the checkbox; `rust_instructions.md` explains why.
 
 ### Checkbox Format
 
@@ -266,7 +271,9 @@ If a task proves larger than expected and splits into multiple sub-tasks, indent
 
 ```markdown
 - [ ] Merge `foop-<NUMBER>-<SHORT_DESCRIPTION>` to `jia`
+  - [ ] Run all tests — old and new — and make sure they all pass correctly.
   - [ ] Check and make sure current foop has, and passes, a "comprehensive" snaptest. Input name: `foop_<NUMBER>_comprehensive.foo` (reserved for this foop). Agent generates and verifies; human gives final signed approval.
+  - [ ] Run all tests — old and new — and make sure they all pass correctly.
   - [x] Detected complex merge situation requiring additional work
         (2026-05-06 14:00)
   - [ ] Update `foop-<NUMBER>-<SHORT_DESCRIPTION>` to follow new coding style
@@ -356,7 +363,9 @@ Every FOOP has the right — and the obligation — to generate a **comprehensiv
 - [ ] (read §<SECTION> of FOOP-<NUMBER>.md)
 - [ ] <implementation task 1>
 - [ ] <implementation task 2>
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
 - [ ] Write and verify `foolish-ubca/snapshot_tests/input/foop_<NUMBER>_comprehensive.foo`
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
 - [ ] Verify all work is complete in $(pwd)/../foolish_worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION> and committed to `foop-<NUMBER>-<SHORT_DESCRIPTION>`
 - [ ] Merge `foop-<NUMBER>-<SHORT_DESCRIPTION>` to `jia`
 - [ ] Cleanup worktree at $(pwd)/../foolish_worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>
@@ -394,3 +403,21 @@ git worktree add -b foop-<NUMBER>-<SHORT_DESCRIPTION> \
 5. **Never auto-accept snapshots.** Do not run `cargo insta accept` / `INSTA_UPDATE=always`. Human review required for all snapshot tests.
 6. **Never start Phase+ work when tests are broken.** Fix or disable (with human permission) first.
 7. **Never commit from inside this skill** unless the user explicitly asks.
+8. **Never promote over a foreign FOOP's divergent einmo baseline.** A failing einmo test (output≠checked) is broken code, not a stale baseline — fix your code so the pre-existing baseline passes again. `einmo promote output→checked` is only for your own FOOP's new tests, after the rest of the suite is green; never a remedy for a failing test. If the divergent baseline has a `verified/` twin, it is frozen — do not touch it without a human reviewer's key. See `rust_instructions.md` §"Phase-by-phase testing discipline."
+
+---
+
+## Last Updated
+
+**Date**: 2026-08-02
+**Updated By**: Sisyphus / z-ai/glm-5.2
+**Changes**: Added **plan-construction rule 9** (every phase ends with the literal test-gate
+checkbox `- [ ] Run all tests — old and new — and make sure they all pass correctly.`) and
+**safety invariant 8** (never promote over a foreign FOOP's divergent einmo baseline — a
+failing test is broken code, not a stale baseline). Inserted the test-gate checkbox into the
+minimal plan skeleton (after implementation tasks, after the comprehensive test) and into the
+merge sub-task example (before comprehensive-snaptest check, and after it). Motivated by the
+FOOP-33 Phase-3 regression where `default_equal`'s `Unknowable→NkStop` branch broke FOOP-23
+value search and the agent promoted 11 divergent baselines instead of fixing the code. The
+contractual detail lives in `rust_instructions.md` §"Phase-by-phase testing discipline"; this
+skill installs the checkbox, that file explains why.

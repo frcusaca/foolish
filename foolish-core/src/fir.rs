@@ -417,7 +417,7 @@ pub trait Steppable: std::fmt::Debug {
                 c
             }
             Fir::NormalBrane(v) => v.statements.iter().map(|s| Rc::clone(&s.body)).collect(),
-            Fir::ConstantInt(_) | Fir::Nk(_) => vec![],
+            Fir::ConstantInt(_) | Fir::Nk(_) | Fir::Creation { .. } => vec![],
         }
     }
 
@@ -524,6 +524,15 @@ pub enum Fir {
     StayFullyFoolish(Box<StayFullyFoolishFir>),
     Concatenation(Box<ConcatenationFir>),
     NormalBrane(Box<NormalBraneFir>),
+    /// A creation (`⬤` / `{*}`, FOOP-33). `name` is `Some(characterized_name)`
+    /// only when the FVM-side `CreationFir::get_display_name` determined this
+    /// creation is the ENTIRE right-hand side of a named statement; `None`
+    /// renders as the bare glyph. Resolved once, at the `foolish-ubca` →
+    /// `foolish-core` conversion boundary (`evaluator.rs::proto_to_core_fir_inner`),
+    /// the one place ubca `Rc` identity and the parent chain still exist.
+    Creation {
+        name: Option<String>,
+    },
 }
 
 impl Fir {
@@ -571,6 +580,16 @@ pub trait FirQueryable: std::fmt::Debug {
     fn hs_stay_fully_foolish(&self) -> Option<Box<dyn FirQueryable>>;
     fn hs_concatenation(&self) -> Option<ConcatenationQuery>;
     fn hs_brane(&self) -> Option<(Vec<String>, Vec<StatementSimple>)>;
+    fn hs_creation(&self) -> bool {
+        false
+    }
+    /// The name a creation renders as, if the FVM determined it has one
+    /// (FOOP-33 Phase 9). Only meaningful when [`Self::hs_creation`] is
+    /// `true`; callers check that first, so a plain `None` here covers both
+    /// "not a creation" and "an unnamed creation" without ambiguity.
+    fn hs_creation_name(&self) -> Option<String> {
+        None
+    }
     fn hs_alarm(&self) -> Option<&Alarm> {
         None
     }
@@ -649,6 +668,17 @@ impl FirQueryable for FirChildRef {
         let fir = clone_steppable(&self.inner);
         fir.hs_brane()
     }
+    fn hs_creation(&self) -> bool {
+        self.inner.borrow().fir_variant() == "Creation"
+    }
+    fn hs_creation_name(&self) -> Option<String> {
+        let fir = clone_steppable(&self.inner);
+        if let Fir::Creation { name } = fir {
+            name
+        } else {
+            None
+        }
+    }
 }
 
 /// Fir implements FirQueryable by matching variants and wrapping children in FirChildRef.
@@ -664,6 +694,7 @@ impl FirQueryable for Fir {
             Fir::StayFullyFoolish(_) => "StayFullyFoolish",
             Fir::Concatenation(_) => "Concatenation",
             Fir::NormalBrane(_) => "NormalBrane",
+            Fir::Creation { .. } => "Creation",
         }
     }
     fn hs_state(&self) -> Nyes {
@@ -677,6 +708,7 @@ impl FirQueryable for Fir {
             Fir::StayFullyFoolish(i) => i.state,
             Fir::Concatenation(i) => i.state,
             Fir::NormalBrane(i) => i.state,
+            Fir::Creation { .. } => Nyes::Independent,
         }
     }
     fn hs_constant_int(&self) -> Option<i64> {
@@ -805,6 +837,16 @@ impl FirQueryable for Fir {
             _ => None,
         }
     }
+    fn hs_creation(&self) -> bool {
+        matches!(self, Fir::Creation { .. })
+    }
+    fn hs_creation_name(&self) -> Option<String> {
+        if let Fir::Creation { name } = self {
+            name.clone()
+        } else {
+            None
+        }
+    }
 }
 
 // ==================== Fir: Steppable (dispatches to inner struct) ====================
@@ -821,6 +863,7 @@ impl Steppable for Fir {
             Fir::StayFullyFoolish(i) => i.state(),
             Fir::Concatenation(i) => i.state(),
             Fir::NormalBrane(i) => i.state(),
+            Fir::Creation { .. } => Nyes::Independent,
         }
     }
 
@@ -835,6 +878,7 @@ impl Steppable for Fir {
             Fir::StayFullyFoolish(i) => i.set_state(s),
             Fir::Concatenation(i) => i.set_state(s),
             Fir::NormalBrane(i) => i.set_state(s),
+            Fir::Creation { .. } => {}
         }
     }
 
@@ -853,6 +897,7 @@ impl Steppable for Fir {
             Fir::StayFullyFoolish(_) => "StayFullyFoolish",
             Fir::Concatenation(_) => "Concatenation",
             Fir::NormalBrane(_) => "NormalBrane",
+            Fir::Creation { .. } => "Creation",
         }
     }
 
@@ -1477,6 +1522,20 @@ fn fir_to_json(fir: &Fir) -> serde_json::Value {
             m.insert("state".into(), to_json_val(&inner.state));
             Value::Object(m)
         }
+        Fir::Creation { name } => {
+            let mut m = Map::new();
+            m.insert("type".into(), Value::String("Creation".into()));
+            m.insert("state".into(), to_json_val(&Nyes::Independent));
+            // An unnamed creation (the overwhelmingly common case pre-FOOP-33
+            // Phase 9, and still the default whenever `get_display_name`
+            // returns `None`) MUST serialize byte-identically to the old
+            // unit-variant form — no `"name"` key at all — so every existing
+            // signed einmo/hssnap baseline with a bare creation is unaffected.
+            if let Some(n) = name {
+                m.insert("name".into(), Value::String(n.clone()));
+            }
+            Value::Object(m)
+        }
     }
 }
 
@@ -1733,6 +1792,13 @@ impl<'de> Deserialize<'de> for Fir {
                     state,
                     alarm: None,
                 })))
+            }
+            "Creation" => {
+                let name = obj
+                    .get("name")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+                Ok(Fir::Creation { name })
             }
             _ => Err(serde::de::Error::custom(format!(
                 "unknown Fir type: {}",
@@ -2138,6 +2204,26 @@ impl NormalBraneFirBuilder {
     }
 }
 
+/// Builder for `Fir::Creation` (FOOP-33). Defaults to unnamed (renders `⬤`);
+/// call [`Self::name`] for a creation that names itself (FOOP-33 Phase 9).
+#[derive(Default)]
+pub struct CreationFirBuilder {
+    name: Option<String>,
+}
+
+impl CreationFirBuilder {
+    pub fn new() -> Self {
+        Self { name: None }
+    }
+    pub fn name(mut self, name: impl Into<String>) -> Self {
+        self.name = Some(name.into());
+        self
+    }
+    pub fn build(self) -> Fir {
+        Fir::Creation { name: self.name }
+    }
+}
+
 /// Builder for StatementFir.
 pub struct StatementFirBuilder {
     name: Option<String>,
@@ -2451,6 +2537,104 @@ mod builder_tests {
             assert_eq!(stmts[0].body.hs_variant(), "Operator");
         } else {
             panic!("Expected hs_brane to return Some");
+        }
+    }
+
+    // ── FOOP-33 Phase 9: Fir::Creation carries an optional display name ──
+
+    #[test]
+    fn test_creation_builder_unnamed_default() {
+        let fir = CreationFirBuilder::new().build();
+        if let Fir::Creation { name } = fir {
+            assert_eq!(name, None);
+        } else {
+            panic!("Expected Creation");
+        }
+    }
+
+    #[test]
+    fn test_creation_builder_named() {
+        let fir = CreationFirBuilder::new().name("'a").build();
+        if let Fir::Creation { name } = fir {
+            assert_eq!(name.as_deref(), Some("'a"));
+        } else {
+            panic!("Expected Creation");
+        }
+    }
+
+    #[test]
+    fn test_creation_queryable_unnamed() {
+        let fir = CreationFirBuilder::new().build();
+        assert_eq!(fir.hs_variant(), "Creation");
+        assert!(fir.hs_creation());
+        assert_eq!(fir.hs_creation_name(), None);
+        assert_eq!(fir.hs_state(), Nyes::Independent);
+    }
+
+    #[test]
+    fn test_creation_queryable_named() {
+        let fir = CreationFirBuilder::new().name("'True").build();
+        assert!(fir.hs_creation());
+        assert_eq!(fir.hs_creation_name().as_deref(), Some("'True"));
+    }
+
+    #[test]
+    fn test_creation_hs_creation_false_for_non_creation() {
+        let fir = ConstantIntFirBuilder::new(1).build();
+        assert!(!fir.hs_creation());
+        assert_eq!(fir.hs_creation_name(), None);
+    }
+
+    /// **Backward-compatibility pin (FOOP-33 Phase 9).** An UNNAMED creation
+    /// must serialize to BYTE-IDENTICAL JSON as the old bare unit-variant
+    /// form did: `{"type":"Creation","state":"Independent"}`, no `"name"`
+    /// key at all. Every existing signed einmo/hssnap baseline containing an
+    /// unnamed creation depends on this exact shape not changing.
+    #[test]
+    fn test_creation_unnamed_json_shape_is_byte_identical_to_pre_phase9() {
+        let fir = CreationFirBuilder::new().build();
+        let json = to_json_val(&fir);
+        let expected: serde_json::Value =
+            serde_json::from_str(r#"{"type":"Creation","state":"INDEPENDENT"}"#).unwrap();
+        assert_eq!(
+            json, expected,
+            "an unnamed creation must serialize with NO name key at all"
+        );
+    }
+
+    /// A named creation adds exactly one extra key (`"name"`) on top of the
+    /// unnamed shape — nothing else about the envelope changes.
+    #[test]
+    fn test_creation_named_json_shape_adds_only_name_key() {
+        let fir = CreationFirBuilder::new().name("'a").build();
+        let json = to_json_val(&fir);
+        let expected: serde_json::Value =
+            serde_json::from_str(r#"{"type":"Creation","state":"INDEPENDENT","name":"'a"}"#)
+                .unwrap();
+        assert_eq!(json, expected);
+    }
+
+    #[test]
+    fn test_creation_json_round_trip_unnamed() {
+        let fir = CreationFirBuilder::new().build();
+        let json = serde_json::to_string(&fir).unwrap();
+        let back: Fir = serde_json::from_str(&json).unwrap();
+        if let Fir::Creation { name } = back {
+            assert_eq!(name, None);
+        } else {
+            panic!("Expected Creation");
+        }
+    }
+
+    #[test]
+    fn test_creation_json_round_trip_named() {
+        let fir = CreationFirBuilder::new().name("'True").build();
+        let json = serde_json::to_string(&fir).unwrap();
+        let back: Fir = serde_json::from_str(&json).unwrap();
+        if let Fir::Creation { name } = back {
+            assert_eq!(name.as_deref(), Some("'True"));
+        } else {
+            panic!("Expected Creation");
         }
     }
 }

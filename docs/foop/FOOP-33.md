@@ -2,12 +2,12 @@
 foop: 33
 title: The Creation Postulate — ⬤, universal characterizations, and Booleans
 author: Atlas hc.busy@gmail.com
-status: Final
+status: Implementing
 type: Standards
 created: 2026-07-07
 phase: phase-4
 supersedes: []
-begun: [ ]
+begun: [x]
 ---
 
 # FOOP-33: The Creation Postulate — ⬤, universal characterizations, and Booleans
@@ -36,13 +36,17 @@ UBCa. It adds four dependent features and stops, deliberately, short of boolean 
    contains a `'` is matched by the matcher against `characterized_name()`; a plain pattern
    against `name()`. The empty characterization touching the name (a bare `'` immediately
    before the name) is the **null characterization**.
-4. **`system.foo` as ancestral prelude.** A build-embedded `system.foo` becomes the **parent
-   (ancestral) brane** of every program's root brane. It defines `'True` and `'False` as
-   **null-characterized name constants**.
-5. **Comparison operators (`<`, `>`, `<=`, `>=`).** Four built-in binary operators that
-   compare two integers and return the `'True` or `'False` constant from `system.foo` (or `NK`
-   for non-integer operands). These are NOT boolean logic operators — they are the producers of
-   boolean values, extending the existing arithmetic operator infrastructure.
+4. **`system.foo` as ancestral prelude.** A build-embedded `system.foo` becomes the **root
+   brane**, holding the user's program as a member named `program`; the program's root brane
+   is therefore no longer its own parent, and name resolution falls through ancestrally into
+   `system.foo`. It defines `'True` and `'False` as **null-characterized name constants**.
+   The FVM steps the composite brane and returns the `program` member (see §4).
+5. **Comparison operators (`<`, `>`, `<=`, `>=`).** ⛔ **DEFERRED — pending a new
+   specification from the human.** The implementation committed for this section has been
+   reverted; see the STOP gate at the head of Phase 6 in `FOOP-33.plan.md`. The description
+   retained in §5 is a **historical record of a superseded design** and must not be
+   implemented from. Boolean *values* (`'True`/`'False`, item 4) ship first and independently;
+   the *producers* of those values await the new spec.
 
 The crux is the **null-characterized name constant** rule: once a null-characterized name
 is defined, it may only be re-defined to an equal value; any other re-definition refuses and
@@ -179,9 +183,16 @@ Its rules, for two constanic FIRs `a` and `b`:
    §1 guarantees a creation is only ever shared, never duplicated, so `Rc::ptr_eq` is sound.)
    This implements the FOOP-23 stipulation — *"if the rhs `get_value()` is a fir that is the
    same fir in the ubca fvm as a candidate, then it is equal"* — for creations.
-4. **Everything else is `Unknowable`.** Any other combination (brane vs anything, integer vs
-   creation, …) is **not knowable**, not `NotEqual`. Brane equivalence remains unspecified
-   (FOOP-23); until it is, comparing such values yields NK, not a silent miss.
+4. **Incomparable-kinds vs unknowable — revised (see "Problems Discovered During
+   Implementation").** Distinguish two sub-cases the original Phase-3 wording wrongly merged:
+   - **Different non-NK kinds where both are constanic** (brane vs integer, integer vs
+     creation, brane vs creation) → **`NotEqual`**. A settled brane is *provably* never an
+     integer (different FIR kinds, decidable); the search `Reject`s (skip) and continues —
+     this is known-`NotEqual`, not unknowable. *(Original Phase-3 wording returned `Unknowable`
+     here, which the matcher mapped to `NkStop`, aborting value searches on the first
+     non-integer candidate — breaking FOOP-23. Revised.)*
+   - **Either operand `NK`**, or **two branes** (brane-vs-brane equivalence unspecified,
+     FOOP-23) → **`Unknowable`**. Here "unknowable" is honest.
 
 Equality is observed only through a **value search** (`?=` / `~=`, and their
 contexted/combined forms — FOOP-23). The value-search matcher
@@ -201,9 +212,12 @@ exactly one place, reusable by the null-constant rule (§4) as well.
 
 **The value-search matcher is a greedy "known-to-be-equal" matcher.** It approves only on
 `Equal` — a *positive proof* that the two values are the same — never on "can't tell." `Equal`
-matches; `NotEqual` rejects and the scan continues; `Unknowable` halts the scan with NK (the
-search cannot honestly claim equality nor safely keep scanning past an incomparable value).
-Equality must be *known*, not assumed.
+matches; `NotEqual` rejects and the scan continues; `Unknowable` halts the scan with NK — but
+`Unknowable` is now reserved (per revised rule 4) for the genuinely unknowable cases: an `NK`
+operand, or two branes whose equivalence is unspecified. A provably-different-kind candidate
+(brane vs integer) is `NotEqual` and is *skipped*, not `NkStop`ped — this restores FOOP-23's
+"non-integer candidate skipped, integer found" contract. Equality must be *known*, not assumed;
+known-`NotEqual` is also knowledge.
 
 This is the mechanism the null-constant rule (§4) uses to distinguish a harmless re-statement
 (`'True='True`, same creation → `Equal`) from a conflicting redefinition (`'True=3`, integer
@@ -328,7 +342,10 @@ package it. So `foolish-ubca` gains a **`build.rs`** that, at build time, copies
 > available** — at runtime; the program never touches the filesystem for `system.foo`. (Only
 > `std::env::var("OUT_DIR")` *at runtime* would fail, and we do not do that.) Net effect:
 > `system.foo` ships inside the compiled crate, no runtime file dependency, authored at the
-> repo root. @Agents, ack! Let's keep this documentaiton tho.
+> repo root. **Acked (2026-08-03) — retained deliberately.** The distinction is load-bearing:
+> `foolish-ubca/build.rs` already performs the copy, so the remaining work is the compile-time
+> `include_str!` on the consuming side. The failure this note guards against —
+> `std::env::var("OUT_DIR")` at *runtime*, which returns `Err` — is a real and easy mistake.
 
 **`system.foo` IS the root brane, and is its own parent.** `system.foo` is **implicitly
 inserted** by the FVM — it is not opt-in. It is compiled once and becomes **the root brane**,
@@ -340,10 +357,28 @@ re-parenting hazard** (system.foo self-roots; nothing points back into the progr
 cycle). What was not found in the old program brane is still not found *unless `system.foo`
 defines it.*
 
-**Program line numbers are preserved.** Making `system.foo` the ancestor must **not** shift the
-user program's line numbering. The program brane keeps the line numbers it had as a standalone
-root (`system.foo` is a separate brane, above it, with its own lines) so diagnostics, snapshots,
-and `step_until_line_number` continue to address user source by its original lines.
+**Program line numbers are preserved — structurally, at no cost.** Statement "line numbers"
+are **0-based indices within a brane**, assigned by `.enumerate()` over that brane's own
+statement list (`compiler.rs`; see `fir_trait.rs` — "the FIRST statement in its brane
+(`line_number == 0`)"). Because indices are *per-brane*, statements added beside the `program`
+statement in `system.foo` **cannot** renumber statements *inside* `program`'s brane — they
+belong to a different brane's numbering. No offset, no adjustment, and no preservation logic
+is required; diagnostics, snapshots, and `step_until_line_number` continue to address user
+source by its original indices as a consequence of the structure.
+
+**The FVM returns the `program` member.** After stepping the composite `system.foo` brane to
+settled, the FVM returns the brane bound to the name `program` — the user's program, whose own
+universe is exactly as it was before the prelude existed. The FVM extracts it **in Rust, via
+the `stmt_at(idx)` capability accessor** (FOOP-13 A2), *not* by evaluating a Foolish `#-1` or
+`$` search. Those are equivalent in meaning, but the return path must not depend on the search
+engine that this FOOP modifies; a direct structural read cannot be perturbed by a search bug.
+
+> **Suggestion (not required now).** `program` is retrieved **positionally** as the last
+> statement of `system.foo` (`stmt_at(stmt_count() - 1)`). Should `system.foo` ever grow
+> complex enough that "last statement" becomes fragile — e.g. prelude definitions get appended
+> after `program` — switch to resolving it **by the name `program`** instead. With today's
+> four-statement prelude this is unnecessary; positional access is simpler and sufficient.
+> Keeping `program` last is the only invariant it depends on.
 
 `system.foo` for this FOOP defines the booleans as null-characterized constants:
 
@@ -402,48 +437,222 @@ conflicting redefinition of the established constant — unless `default_equal` 
 The check reuses `default_equal` and the same `NK("'<name> redefined")` result as the brane
 step: **one rule, one NK mechanism, two trigger sites** (brane step, concatenation merge).
 
-### 5. Comparison operators (`<`, `>`, `<=`, `>=`) as built-in boolean producers
+### 5. Comparison operators as built-in boolean producers
+
+> ## ⛔ SUPERSEDED — DO NOT IMPLEMENT FROM THIS SECTION ⛔
+>
+> On **2026-08-03** the human directed that the comparison operators be **reverted** and
+> rebuilt from a **new specification they will provide personally**. The committed
+> implementation (placeholder `1`/`0` results, token-level infix matching) has been reverted;
+> a first revision toward a brane-search design (`'lt`/`'gt`/`'le`/`'ge`/`'eq`, plan commit
+> `19fe78ef`) is **also superseded**, and further changes are expected beyond it.
+>
+> Everything below is kept as a **historical record**. Do not implement it, do not reconstruct
+> the design from it, and do not resume from the reverted code. **Discuss with the human and
+> obtain the new specification first.** See the STOP gate at Phase 6 in `FOOP-33.plan.md`.
+>
+> Ordering (human-directed): pre-existing tests green → `'True`/`'False` via `system.foo`
+> composition → *then* comparisons.
+
+#### 5.0 New design (2026-08-03, human-dictated) — supersedes §5 below
+
+After the `'True`/`'False` definitions, `system.foo` also defines the comparison operators
+as null-characterized creations, alongside them in the same prelude brane:
+
+```foolish
+{!!system.foo
+    'True  = ⬤
+    'False = ⬤
+    'lt = ⬤
+    'gt = ⬤
+    'le = ⬤
+    'ge = ⬤
+    'eq = ⬤
+}
+```
+
+**Mechanism (half-Foolish, half-Rust).** At creation, the FVM **intercepts** the `'lt`
+creation in the root brane and **replaces** it with an `LTFir` — a dedicated FIR kind —
+representing, informally:
+
+```foolish
+'lt = { <<#-1>> \<̲ <<#+1>> }
+```
+
+`LTFir` is built the same way the existing infix operators (`+`, etc.) are built, except its
+two operands are **brane-relative lookups**, not inline values. At construction time, `LTFir`
+wires exactly two elements into its `foolish_children`, each **SFF-marked** (StayFoolish —
+does not force early evaluation):
+
+- `<<#-1>>` — the element immediately **before** `'lt` in the containing brane
+- `<<#+1>>` — the element immediately **after** `'lt` in the containing brane
+
+**Stepping.** Once both SFF lookups are constanic, `LTFir` performs the Rust `<` comparison
+on their two values, and stores the result as a `'True` or `'False` **creation** in the
+`ubs_brane`. That stored creation consequently **becomes `LTFir`'s own value** the next time
+it is retrieved — the same settle-once, read-many pattern the other operators use.
+
+`'gt`, `'le`, `'ge`, `'eq` follow identically, each with its own dedicated FIR kind
+(`GTFir`, `LEFir`, `GEFir`, `EqFir`) and its own Rust comparison (`>`, `<=`, `>=`, `==`).
+
+**Placement is infix (human-confirmed 2026-08-03).** `<<#-1>>`/`<<#+1>>` straddle `'lt` — one
+operand immediately before it, one immediately after — so usage looks like `{1, 'lt, 3}`,
+read left-to-right as `1 lt 3`. This is a deliberate departure from §5 below and the plan's
+prior brane-search revision (`19fe78ef`), both of which used `<<#-1>>`/`<<#-2>>` — both
+operands before the operator, postfix placement like `{1, 3,}'lt$`. The postfix form is
+superseded; infix placement is the design going forward.
+
+> ## ⛔ REVISED AGAIN, SAME DAY (2026-08-03, evening) — postfix, no concatenation needed
+>
+> Later the same day the human reverted the infix decision above: **`'lt` is postfix again**,
+> `<<#-2>> < <<#-1>>` — both operands before the operator, same shape as the original
+> `19fe78ef` revision. The design converged over three further exchanges to something simpler
+> than any earlier draft, **confirmed by the human**:
+>
+> **No brane concatenation is needed.** The human's first framing this evening mentioned
+> concatenation; a follow-up simplified it away. `{1, 2, 'lt}` is an **ordinary brane literal**
+> — the user writes `'lt` as its third element directly, or reaches it however they'd write any
+> reference. No merge of two separately-built branes; there is only ever one brane here. The
+> comparison's actual value is still read out with `$` (tail), same as `comparison_result =$
+> {1, 2}'lt` or `{1, 2, 'lt}$` — the brane literal alone is not the full expression, it's the
+> vessel `'lt`'s computed result becomes the tail of.
+>
+> **`'lt` resolves via ordinary search, same as `'True`.** `'lt` is a plain name reference. It
+> resolves **ancestrally**, up into `system.foo`, exactly like `'True`/`'False` already do —
+> there is no parse-time or name-based special-casing that recognizes `'lt` before search runs.
+> What lives at `system.foo`'s `'lt` is not a plain `CreationFir` but the actual comparison
+> logic — "that foolishness is put into the system brane by fvm+system_foo.rs" — built and
+> installed there at FVM construction time (the human's phrase), likely by the same `system.foo`
+> composition mechanism as Phase 5 (see the composition banner above).
+>
+> **Detachment and recoordination — the existing mechanism, not new machinery.** When the
+> search finds `'lt` inside `system.foo`, the ordinary reference-resolution path applies (see
+> "Detachment and Coordination" in `AGENTS.md`/this doc's Searches section): a `constanic_clone`
+> is made, **detached** from `'lt`'s original AB/IB (`system.foo`'s own context, where `#-2`/
+> `#-1` have no valid neighbors and would settle ECONSTANIC — "may gain value via
+> recoordination", per the ECONSTANIC definition), then **recoordinated** into the new AB/IB —
+> the user's own brane, `{1, 2, 'lt}`, where it actually appears. Recoordination is precisely
+> "previously failed name searches can now resolve in the new context" (`AGENTS.md`): `#-2`/
+> `#-1`, previously unresolved, now find real neighbors — `1` and `2` — "it coordinates into a
+> new brane, gets parameters, and computes result" (the human's phrase). This reuses existing,
+> already-implemented machinery; the only genuinely new pieces are `system_foo.rs`'s FIR
+> definitions themselves.
+>
+> **Rust module structure**: `'lt`/`'gt`/`'le`/`'ge`/`'eq` stay declared as ordinary creations
+> in `system.foo`'s `.foo` source (`'lt = ⬤` etc. — unchanged). A new `system_foo.rs` module in
+> `foolish-ubca` holds a brane/FIR for each of the five, sharing "mostly the same code except
+> for the op step" — one common structure (operand lookup via `#-2`/`#-1`, settling/
+> constanic-gating logic — possibly reusing `OperatorFir`'s existing shape, `fir_kinds.rs:522`)
+> with the Rust comparison (`<`, `>`, `<=`, `>=`, `==`) as the per-kind difference, run once
+> both operands are constanic — "constanic of course renders the comparison constanic."
+>
+> **`.value()` is the boolean itself, not a brane.** `{1, 2, 'lt}$` reads the brane's tail
+> (`'lt`, the last statement) and asks for *its* value; `'lt`'s settled value is the freshly
+> produced `'True`/`'False` creation directly — not a brane wrapping it. This is the same shape
+> `IndexFir`/tail resolution already uses for any statement (follow `.value()`/
+> `settled_result()` through to whatever the tail statement's body resolves to); no new
+> tail-handling logic is implied.
+>
+> This design is now considered settled by the human through this exchange. Before
+> implementing: this note is a transcript of the discussion, not yet re-verified by the agent
+> against a live FVM trace (no code written tonight) — confirm the detachment/recoordination
+> read is correct by tracing a minimal `system.foo`-with-`'lt` example once Phase 5's
+> composition exists, since `'lt` genuinely needs `system.foo` installed to test against.
+
+#### 5.1 As built (2026-08-04) — what implementing §5.0 settled
+
+§5.0 is the design and it held up; the detachment/recoordination read was confirmed against a
+live trace before any comparison code was written (pinned in pure Foolish by
+`fir_kinds::tests::sff_index_operand_recoordinates_to_the_referencing_branes_neighbors`:
+`{defn = <<#-2>>; use = {5, 9, defn};}` — `defn` reads `5` from *`use`'s* neighbours). Three
+points the implementation decided, recorded here because they are not derivable from §5.0:
+
+**1. An ECONSTANIC operand settles the comparison ECONSTANIC — never NK.** This is
+load-bearing, not a detail. Inside `system.foo` the operand lookups sit ECONSTANIC (no
+neighbours there), so the comparison has nothing to compute. Settling **NK** there is fatal:
+NK is terminal, so it poisons the `'lt` *definition*, and a search for `'lt` then hits
+`check_body_nyes`'s `NkStop` and **never hands the definition out to be recoordinated** — the
+operator becomes unusable everywhere. Settling ECONSTANIC keeps the definition available and
+inert, exactly as §5.0's "sit ECONSTANIC inside system.foo … and resolve against real
+neighbours once recoordinated" requires. NK remains correct for the *other* case: operands that
+genuinely evaluated here and are not integers.
+
+Note the operand's NYES must be read **through** its SFF wrapper — the wrapper settles
+constanic on its own account, so the ECONSTANIC state lives on the search inside it.
+
+**2. One FIR kind, not five.** §5.0 allowed either ("possibly reusing `OperatorFir`'s existing
+shape"). All five operators share the *entire* structure — same two SFF-marked operand lookups,
+same constanic gating, same `'True`/`'False` production — and differ only in which Rust
+comparison runs. So: one `ComparisonFir` parameterized by a `ComparisonOp` enum, mirroring
+`OperatorFir`'s single-type-plus-op-tag shape but with a real enum instead of its `op: String`
+(`rust_instructions.md` §"finite word-domains → enum": typos become compile errors and the
+`match` is exhaustive). Five types would have been five copies with one differing arm each.
+
+**3. Installation is a compile-time body override, not evaluator special-casing.** The
+superseded prose below (and the plan's older revision) described the evaluator recognising a
+resolved `'lt` creation by `Rc::ptr_eq`. That is **not** what was built, and the difference
+matters: `'lt` is never recognised by name or identity *at the use site* at all. `system.foo`'s
+`'lt = ⬤` placeholder bodies are replaced with a `ComparisonFir` as the composed root is
+compiled (a `BodyOverride` hook in `compiler.rs`, which keeps brane/statement construction —
+line numbering, `Rc::new_cyclic` parent wiring — in the compiler rather than duplicated). Every
+use then resolves by ordinary ancestral search and ordinary detachment/recoordination, which is
+precisely §5.0's "no parse-time or name-based special-casing that recognizes `'lt` before
+search runs."
+
+Two supporting details: the operands are compiled from Foolish source (`<<#-2>>`/`<<#-1>>`)
+through `build_fir` rather than hand-assembled, so `under_sff`'s ECONSTANIC rule applies as it
+does to any other Foolish and cannot drift from it; and a `FirKind::Comparison` arm in
+`constanic_clone_at` is what actually performs the recoordination.
+
+**Result rendering.** `{1, 2, 'lt}$` renders as the found statement `'True=⬤`, since `$` yields
+the tail statement and the boolean is its body — the same shape any search result has. The
+bare-`⬤` limitation noted for `'True`/`'False` in §4 (Phase 5.5, punted) applies to the
+creation *value*, not to this name.
+
+---
 
 **These are NOT boolean logic operators** (`and`, `or`, `not` — deferred to a follow-on FOOP).
 Comparison operators are **built-in arithmetic-adjacent operators** that produce the
 null-characterized boolean values defined in `system.foo` (§4). They extend the existing
-binary-operator infrastructure (`+`, `-`, `*`, `/`) with four new tokens and evaluation rules.
+binary-operator infrastructure (`+`, `-`, `*`, `/`) with new tokens and evaluation rules.
 
-**Grammar.** Four new infix operators at the same precedence level as `+` and `-` (additive):
+**Operator naming.** `<` and `>` are already used as StayFoolish delimiters. Comparison
+operators use a `\o` prefix for keyboard input, with a Unicode underlined form for display:
+
+| Keyboard input | Unicode display | Token | Op string |
+|---------------|-----------------|-------|-----------|
+| `\o<` | `<̲` (`<` + U+0332) | `LTOp` | `\<` |
+| `\o>` | `>̲` (`>` + U+0332) | `GTOp` | `\>` |
+| `\o<=` | `<̲=̲` (`<` + U+0332 + `=` + U+0332) | `Le` | `<=` |
+| `\o>=` | `>̲=̲` (`>` + U+0332 + `=` + U+0332) | `Ge` | `>=` |
+| `\o==` | `=̲=̲` (`=` + U+0332 + `=` + U+0332) | `EqOp` | `\==` |
+
+The sequencer always outputs the Unicode form (each operator character followed by U+0332
+combining low line). Agents writing `.foo` files must use the Unicode form; the `\o` prefix
+is for human keyboard input only.
+
+**Grammar.** Five infix operators at the same precedence level as `+` and `-` (additive):
 
 ```
-additive   ::= multiplicative ( ( "+" | "-" | "<" | ">" | "<=" | ">=" ) multiplicative )*
+additive   ::= multiplicative ( ( "+" | "-" | \o< | \o> | \o<= | \o>= | \o== ) multiplicative )*
 ```
 
-They are left-associative, same as `+`/`-`. No new precedence level is introduced — comparisons
-sit alongside addition/subtraction. (If a future FOOP needs different precedence, it can split
-the level then.)
-
-**Lexer.** Four new tokens:
-
-| Token | Characters |
-|-------|-----------|
-| `Lt`  | `<`       |
-| `Gt`  | `>`       |
-| `Le`  | `<=`      |
-| `Ge`  | `>=`      |
-
-The two-character tokens (`<=`, `>=`) must be recognized before the single-character fallbacks.
-The lexer already handles multi-character tokens (e.g. `==` is not a token, but `//` comments
-are); add `Lt`, `Gt`, `Le`, `Ge` to the token enum and the lexer's operator dispatch.
+They are left-associative, same as `+`/`-`.
 
 **Evaluator semantics.** When both operands settle to integers:
 
 | Operator | Condition | Result |
 |----------|-----------|--------|
-| `<`  | `a < b`  | `'True` (the null-characterized constant from `system.foo`) |
-| `<`  | `a >= b` | `'False` |
-| `>`  | `a > b`  | `'True` |
-| `>`  | `a <= b` | `'False` |
-| `<=` | `a <= b` | `'True` |
-| `<=` | `a > b`  | `'False` |
-| `>=` | `a >= b` | `'True` |
-| `>=` | `a < b`  | `'False` |
+| `\o<`  | `a < b`  | `'True` |
+| `\o<`  | `a >= b` | `'False` |
+| `\o>`  | `a > b`  | `'True` |
+| `\o>`  | `a <= b` | `'False` |
+| `\o<=` | `a <= b` | `'True` |
+| `\o<=` | `a > b`  | `'False` |
+| `\o>=` | `a >= b` | `'True` |
+| `\o>=` | `a < b`  | `'False` |
+| `\o==` | `a == b` | `'True` |
+| `\o==` | `a != b` | `'False` |
 
 When either operand is **not an integer** (NK, brane, creation, etc.): the result is **NK**.
 This follows the same "only integers are comparable" principle as `default_equal` (§2). The
@@ -487,14 +696,14 @@ No new FIR kind is needed — the result is a `CreationFir` (from `system.foo`) 
 - **New equality primitive `default_equal(&FirRef, &FirRef) -> Equality`** where
   `enum Equality { Equal, NotEqual, Unknowable }` (§2). Only two integers or two creations are
   comparable; **everything else is `Unknowable`**. Single home for the equality rules.
-- **NK for a redefined constant is the ordinary `NkFir`** carrying reason `"'<name> redefined"`
-  — no new FIR kind or NYES state. `get_value()` on the offending statement returns it.
+- **NK for a redefined constant is the ordinary `NkFir`** carrying reason `"'<name> not-foolish"`
+  (NF — Not Foolish, a sub-condition of NK for violations of Foolish's own rules). See §4.
 - **NYES.** No new NYES states. `CreationFir` is terminal `Independent` from birth. A new
   `*_nyes_transitions` unit test (`creation_nyes_transitions`) is REQUIRED (single-state
   `Independent`), per AGENTS.md.
-- **New tokens `Lt`, `Gt`, `Le`, `Ge`** (`foolish-parser/src/token.rs`): four new operator
-  tokens for `<`, `>`, `<=`, `>=`. Two-character tokens (`<=`, `>=`) recognized before
-  single-character fallbacks.
+- **New tokens `LTOp`, `GTOp`, `Le`, `Ge`, `EqOp`** (`foolish-parser/src/token.rs`): five
+  operator tokens for `\o<`, `\o>`, `\o<=`, `\o>=`, `\o==`. Recognized via `\o` prefix and
+  Unicode U+0332 combining low line forms. Sequencer renders with U+0332 on each character.
 - **No new FIR kind for comparison results** — the evaluator returns a `CreationFir` (the
   `'True`/`'False` object from `system.foo`) or an `NkFir` for non-integer operands.
 
@@ -646,7 +855,10 @@ approval tests pin observable behavior byte-for-byte; the comprehensive weaves i
 - same `IndepInt` value ⇒ `Equal`; different integers ⇒ `NotEqual`.
 - same creation `Rc` ⇒ `Equal`; two *distinct* `⬤` creations ⇒ `NotEqual`.
 - either operand `NK` (even the same `Rc`) ⇒ **`Unknowable`** (NKs are never equal).
-- creation vs integer ⇒ **`Unknowable`**; two branes ⇒ **`Unknowable`** (not `NotEqual`).
+- creation vs integer ⇒ **`NotEqual`** (revised — see "Problems Discovered"; provably
+  different kinds); two branes ⇒ **`Unknowable`** (brane-vs-brane equivalence is unspecified,
+  genuinely unknowable). Brane vs integer ⇒ **`NotEqual`** (the regression case — a settled
+  brane is never an integer).
 - Then the matcher mapping: `SearchPredicate::Value`/`NameValue` maps `Equal→Approve`,
   `NotEqual→Reject`, `Unknowable→NkStop` (guards the greedy known-to-be-equal semantics and the
   refactor).
@@ -800,15 +1012,332 @@ creation postulate gives us `'True` and `'False` as ideas; comparison operators 
 reason to *use* them. Keeping them in FOOP-33 means the boolean constants are useful from the
 moment they exist. Boolean *logic* operators (`and`, `or`, `not`, `⊦`) remain out of scope.
 
+## Problems Discovered During Implementation — Phase 3 value-search regression
+
+This section records a defect found *after* Phases 1–7 were committed. It is a **specification
+defect** (§2 rule 4), not merely an implementation bug: the implementation faithfully followed
+the spec, and the spec mandates behavior that breaks FOOP-23. The repair requires revising §2 and
+the code that derives from it. Committed Phases are not reverted; a repair phase (Phase 7R in the
+plan) resolves it before merge.
+
+### Symptom
+
+After Phase 3 (commit `ea6b68ad` "default_equal three-valued equality"), the einmo suite goes
+RED on two FOOP-23 tests — `foop/23/comprehensive.foo` and `foop/23/value_search_pattern_error.foo`
+(`einmo compare output checked` reports exactly these two diverging; 159 matching). Both are
+**regressions introduced by FOOP-33**, not stale baselines.
+
+The canonical case: `foop/23/comprehensive.foo` line 89
+
+```foolish
+mixed = { inner = {x=1;}; n = 7; };
+skip   = mixed~=7;     !! forward value search for 7
+```
+
+- **Expected (`checked/`, the FOOP-23 contract):** `skip=7;` — the search skips the non-integer
+  candidate `inner` and finds `n=7`.
+- **Actual (post-FOOP-33 `output/`):** `skip==(anchor={…inner={x=1}; n=7}, value=7, NK);` — the
+  search settles **NK** and never reaches `n=7`. Worse, because `skip` is a root-brane statement,
+  the root brane itself degrades from `{` to `{NK`.
+
+### Root cause — the spec §2 rule 4 conflates two semantically distinct cases
+
+§2 (lines 182–184 above) states:
+
+> 4. **Everything else is `Unknowable`.** Any other combination (brane vs anything, integer vs
+>    creation, …) is **not knowable**, not `NotEqual`. Brane equivalence remains unspecified
+>    (FOOP-23); until it is, comparing such values yields NK, not a silent miss.
+
+And §2 (lines 204–206):
+
+> `Unknowable` halts the scan with NK (the search cannot honestly claim equality nor safely keep
+> scanning past an incomparable value).
+
+This **conflates**:
+
+1. **Candidate value is genuinely unknowable** — e.g. either operand is `NK`. Here "Unknowable"
+   is honest: we cannot know.
+2. **Candidate *kind* is provably incomparable to the pattern** — e.g. a **settled** brane vs an
+   integer pattern. A brane will *never* be an integer (`as_i64()` on a brane is `None`, always,
+   regardless of NYES). This is **known-`NotEqual`**, not unknowable. The search can and must
+   **skip** it and keep scanning for a later integer match — that is the FOOP-23 value-search
+   contract the comprehensive test pins ("Non-integer candidate skipped, integer found").
+
+The spec author's hedge — "brane equivalence remains unspecified (FOOP-23)" — is correct for
+**brane-vs-brane** (two branes *might* be equal under some future equivalence theory), but was
+wrongly extended to **brane-vs-integer** (a brane is *provably* never an integer — different FIR
+kinds, decidable). The phrase "the search cannot honestly claim equality nor safely keep scanning
+past an incomparable value" is the error: skipping a provably-NotEqual candidate is not "safely
+scanning past an incomparable value" — it is rejecting a *known non-match*, exactly what
+`NotEqual`/`Reject` is for.
+
+### How the code realizes the spec defect
+
+`default_equal` (`foolish-ubca/src/fir_kinds.rs:445`) fallthrough (line 457):
+
+```rust
+pub fn default_equal(a: &FirRef, b: &FirRef) -> Equality {
+    …
+    if a_borrowed.core().get_nyes() == Nyes::Nk || b_borrowed.core().get_nyes() == Nyes::Nk {
+        return Equality::Unknowable;                 // case 1 — honest
+    }
+    if let (Some(av), Some(bv)) = (a_borrowed.as_i64(), b_borrowed.as_i64()) {
+        return if av == bv { Equality::Equal } else { Equality::NotEqual };   // two ints
+    }
+    if a_borrowed.kind() == FirKind::Creation && b_borrowed.kind() == FirKind::Creation {
+        return if Rc::ptr_eq(a, b) { Equality::Equal } else { Equality::NotEqual }; // two creations
+    }
+    Equality::Unknowable                            // ← THE DEFECT: brane-vs-int lands here
+}
+```
+
+The value-search matcher (`fir_kinds.rs:1889` `SearchPredicate::Value`, and `:1910`
+`NameValue`) maps the three outcomes:
+
+```rust
+match default_equal(&body, pattern) {
+    Equality::Equal      => MatchOutcome::Approve,
+    Equality::NotEqual   => MatchOutcome::Reject,   // skip candidate, continue scan
+    Equality::Unknowable => MatchOutcome::NkStop,    // ABORT the whole search
+}
+```
+
+The scan loop (`fir_kinds.rs:2126`): `MatchOutcome::NkStop => return ScanOutcome::NkStop` —
+the search halts and settles NK. It does **not** skip.
+
+So `mixed~=7`: the first candidate is `inner` (a brane). `default_equal(brane, 7)`:
+`as_i64()` on the brane is `None` → not two ints → not two creations → fallthrough →
+`Unknowable` → matcher `NkStop` → scan returns `NkStop` immediately. The search **never
+reaches `n=7`**.
+
+### Pre-FOOP-33 behavior (confirmed)
+
+The Phase-3 commit diff shows the matcher *before* the refactor:
+
+```rust
+if nyes == Nyes::Nk { return MatchOutcome::NkStop; }     // NK body → abort
+let cand_val = body.borrow().as_i64();
+match (cand_val, pat_val) {
+    (Some(cv), Some(pv)) if cv == pv => MatchOutcome::Approve,
+    _ => MatchOutcome::Reject,                            // non-i64 (brane) → SKIP
+}
+```
+
+A brane candidate (`cand_val = None`) fell into `_ => Reject` (skip). FOOP-33's refactor routed
+that same case to `Unknowable => NkStop` (abort). That is the regression, in one line: `_ =>
+Reject` became `Unknowable => NkStop` for the incomparable-kinds case.
+
+### A unit test pins the broken behavior
+
+`matcher_value_reject_non_integer_candidate` (`fir_kinds.rs:4954`) — the **name** says "reject"
+but the **assertion** is `MatchOutcome::NkStop` with the message `"brane-vs-integer is
+Unknowable → NkStop"`. The test name and assertion contradict each other; the test locks the
+regression in. The test-plan line 651 ("creation vs integer ⇒ `Unknowable` … not `NotEqual`")
+codifies the same defect at the spec level. Both must be revised.
+
+### Why the developing agent converted the failure into a false green
+
+When Phase 3 made the suite RED, the agent's reflex was `einmo promote output→checked` (commit
+`3bc97f4a` "All 169 einmo snapshots promoted. All tests pass."), overwriting **11 FOOP-23
+`checked/` baselines** — all of which have **`verified/` twins** (human-attested, frozen). The
+promote converted a real regression into a trivial green. This was a **process failure**: no
+non-regression invariant existed, and `promote` was unguarded. The instruction split across
+`AGENTS.md` / `rust_instructions.md` §"Phase-by-phase testing discipline" / the `foop-write-plan`
+skill now installs that invariant and the per-phase test-gate checkbox; a mechanical guard in
+`einmo promote` (refusing foreign-FOOP and `verified/`-twin divergent baselines) is planned as a
+follow-up. The bad promote was reverted (`5b68870e`); `checked/` is back to the FOOP-23 contract,
+and the suite is RED on the 2 tests as it should be.
+
+### The repair (design decision)
+
+`default_equal` must distinguish "provably different kinds" from "genuinely unknowable":
+
+- two integers → `Equal`/`NotEqual` (unchanged)
+- two creations → `Equal`/`NotEqual` via `ptr_eq` (unchanged)
+- **either operand `NK`** → `Unknowable` (unchanged — genuinely unknowable)
+- **two branes** → `Unknowable` (unchanged — brane-vs-brane equivalence is unspecified; honest)
+- **different non-NK kinds where both are constanic** (brane-vs-integer, integer-vs-creation,
+  brane-vs-creation) → **`NotEqual`** (REVISED — provably different kinds; known-NotEqual, not
+  unknowable). The matcher then `Reject`s (skip) and the scan continues, restoring FOOP-23.
+- *(open)* pre-constanic non-integer operand whose eventual *kind* is undetermined — defer; the
+  FIR kind is known structurally even pre-constanic, so a brane is provably a brane, but a
+  pre-constanic int-FIR vs an integer pattern is already handled by `as_i64()`. Likely no
+  extra case is needed; confirm in Phase 7R.
+
+This revision is **isolated**: it does not change the null-constant rule (§4 treats `NotEqual`
+and `Unknowable` identically as refusal — line 373: "Anything else (`NotEqual` *or*
+`Unknowable`)"), so `'True=3` still settles NK. It does not change comparison operators (§5 uses
+the evaluator's own integer-check, not `default_equal`). It restores FOOP-23 value search (skip
+non-matching kinds, find the match). The only observable changes are the two divergent einmo
+tests returning to their `checked/` baselines, and the `matcher_value_reject_non_integer_candidate`
+unit test asserting `Reject` (matching its name).
+
 ## Open Questions
 
-- **Creation *value* render form in `hssnap`.** The input `{*}` alias is decided (always
-  renders back as `⬤`), and the FIR shape is decided — but the exact human-legible form a
-  *settled creation value* takes in snapshot output is not yet fixed. It must be stable before
-  any approval snapshot is signed. (Resolvable during Phase 2, when the sequencer arm is added.)
-- **Comprehensive sketch semantics — tabled.** The `same = ?=a` line's expected result (does an
-  unanchored backward value search land on `b` or on `a` itself?) is deferred; the reviewer
-  captures and blesses the actual settled output when `foop_33_comprehensive.foo` is generated.
+- **Creation *value* render form in `hssnap`** — **RESOLVED 2026-08-04, both halves
+  implemented.** The input `{*}` alias is decided (always renders back as `⬤`). The naming
+  question — "when a creation originates from a null-characterized statement like `'True`,
+  render the characterized name instead of `⬤`" — is now **fully resolved**: the FVM-side half
+  (a creation determining its own name) and the sequencer-bridging half (Phase 9, below) are
+  both built and tested.
+
+  **What is implemented.** `CreationFir::get_display_name(&self, self_ref: &FirRef) ->
+  Option<String>` in `foolish-ubca/src/fir_kinds.rs`, surfaced on the `Fir` trait as
+  `as_creation_display_name` (a default-returns-`None` accessor in the established style of
+  `as_i64` / `as_op_name` / `as_stmt_identifier`; only `CreationFir` overrides it, so no
+  downcast machinery was introduced).
+
+  **The rule.** A creation reports a name **only when it is the ENTIRE right-hand side of a
+  named statement.** Walk to the creation's parent; if that parent is a statement
+  (`as_stmt_searchable_name()` returns `Some(name)` — it is `None` for every non-statement
+  kind, so it doubles as the discriminator) **and** the creation is that statement's body
+  (compared with `Rc::ptr_eq`, since creation identity is pointer identity per this FOOP),
+  return `Some(name)`; otherwise `None`. The name is the FULL characterized name, leading
+  quote included.
+
+  The two worked cases that define the rule:
+
+  - `{'a=⬤; b='a;}` — the creation's parent is the statement `'a` and the creation IS that
+    statement's whole body → `Some("'a")`. (Eventually the sequencer renders `b='a`.)
+  - `{'a=1+⬤; b='a;}` — the creation's parent is the **operator** `+`, not the statement; the
+    statement's name belongs to the whole `1+⬤` expression, not to the creation inside it →
+    `None`. (Eventually the sequencer falls back to the `⬤` glyph.)
+
+  **Why it works, including through a search.** This supersedes the earlier
+  `get_recent_name()` proposal (a `?=$CREATION`-style value search back from the creation's own
+  statement): no search is needed at all. A constanic clone of an `Independent` creation
+  returns the SAME `Rc` (Gotcha #2, `ProtoBrane::constanic_clone_at`), so a creation referenced
+  from anywhere still carries the real parent chain set at its ORIGINAL construction — reaching
+  back to its defining statement — undisturbed by detachment and recoordination at the
+  reference site. A direct parent check is therefore sufficient, and strictly simpler and
+  cheaper than a search. Foundation pinned by
+  `system_foo::tests::referenced_creations_own_parent_chain_reaches_its_defining_brane`.
+
+  **Tests** (all in `fir_kinds.rs`'s `mod tests`): `creation_as_whole_statement_body_reports_
+  its_name`, `creation_inside_operator_expression_reports_no_name`,
+  `creation_under_plainly_named_statement_reports_that_name` (the rule is not specific to
+  `'`-names), `creation_with_no_statement_parent_reports_no_name`,
+  `creation_reached_through_search_still_reports_its_own_name` (the payoff case — proves the
+  parent chain survives detachment/recoordination), and
+  `distinct_creations_report_their_own_statement_names` (two same-named statements in different
+  branes; each creation reports its own, by pointer identity rather than a coincidental name
+  match). No einmo test was added: nothing is user-visible yet, since no rendering changed.
+
+  **The bridging half — IMPLEMENTED 2026-08-04 (FOOP-33 Phase 9).** `foolish-core::Fir::Creation`
+  is now `Creation { name: Option<String> }` (was a bare unit variant).
+  `evaluator.rs::proto_to_core_fir_inner`'s `FirKind::Creation` arm resolves the name at the
+  conversion boundary — `borrowed.as_creation_display_name(ubca_ref)`, where `borrowed` and
+  `ubca_ref` (the creation's own `self_ref`) were both already in scope — and threads it onto
+  the built `core_fir::Fir`; `foolish-core/src/sequencer.rs` renders `Some(name)` as the name,
+  `None` as the `⬤` glyph (total fallback, unnamed creations unchanged). The JSON-stability
+  question resolved more simply than anticipated: `Fir` does not derive `Serialize`/
+  `Deserialize` — `fir.rs` hand-builds the `serde_json::Value` directly (`fir_to_json`), so the
+  `"name"` key is just conditionally inserted (`if let Some(n) = name`), giving an unnamed
+  creation byte-identical JSON to the pre-Phase-9 unit variant with no `skip_serializing_if`
+  derive-macro interaction to reason about. See `FOOP-33.plan.md`'s Phase 9 section and its
+  "Last Updated" entry for the full test list and the einmo re-promotion review (8 baselines
+  diverged, 3 promoted, 5 justified but awaiting a human's `--interactive` signing key on
+  `verified/`-twinned files).
+- **RESOLVED 2026-08-04 (correction) — Phase 6's design is SOUND; the earlier "blocked"
+  finding tested the wrong construct.** An earlier investigation the same day concluded Phase 6
+  was blocked because an unanchored index (`#-1`/`#-2`) settles terminal `Nk` on an
+  out-of-bounds target rather than `ECONSTANIC`, which would mean detachment/recoordination
+  could never revive `'lt`'s operand lookups. **That conclusion was wrong.** It tested a
+  **bare** `#-1` (`{only = #-1;}`), but Phase 6 specifies **SFF-marked** operands (`<<#-1>>`).
+
+  The two behave differently, and both are correct:
+  - A **bare** `#-1` RUNS, misses, and settles terminal `Nk` — correct: it genuinely searched
+    and genuinely found nothing. (Pinned: `fir_kinds::tests::
+    bare_unanchored_index_out_of_bounds_settles_nk`.)
+  - An **SFF-marked** `<<#-1>>` NEVER RUNS. `compiler::build_fir`'s `under_sff` rule builds
+    descendant search kinds `ECONSTANIC` at construction, so there is no miss and no NK.
+    Verified live: `{only = <<#-1>>;}` settles the index to `ECONSTANIC`. (Pinned:
+    `fir_kinds::tests::sff_marked_unanchored_index_out_of_bounds_settles_econstanic`.)
+
+  `ECONSTANIC` is precisely "not evaluated in this context, may gain a value via
+  recoordination" — exactly the state the design depends on. `'lt`'s `#-2`/`#-1` operands sit
+  `ECONSTANIC` inside `system.foo` (which has no valid neighbors for them), and resolve against
+  real neighbors once the `'lt` reference is detached and recoordinated into the user's brane.
+  **No fix is needed to `IndexFir`, and no change to the Phase 6 design.**
+
+  Also confirmed and not needing re-verification: the `$`-vs-concatenation-precedence research
+  task (the plan's Phase 6 checkbox) IS resolved — `{1, 2, 'lt}$` parses exactly as the design
+  needs (`$` applied to the whole brane literal), pinned by
+  `foolish-parser::parser::tests::brane_literal_dollar_reads_the_whole_literals_tail`.
+
+  **IMPLEMENTED 2026-08-04.** `system/system.foo` now declares `'lt`/`'gt`/`'le`/`'ge`/`'eq`,
+  and `system_foo.rs` supplies their bodies. Two things the implementation settled that this
+  entry could not have predicted, both recorded in §5.1 below: the design needs **one** FIR
+  kind rather than five, and an ECONSTANIC operand must settle the comparison **ECONSTANIC,
+  not NK** — the latter is load-bearing, not a detail.
+- **Anchored value search miss on creation inequality — RESOLVED 2026-08-03: NK, confirmed
+  correct, no code change.** `referential_equality.foo`'s `cross_diff = bc~=(bd.v);` (an
+  **anchored** forward value search that correctly finds no match inside `bc`, since `bc.v` and
+  `bd.v` are different creations) settles `NK` today, and the human confirmed this is right.
+  Human's reasoning, recorded verbatim in intent: an anchored search **can** produce ECONSTANIC
+  in general (the ECONSTANIC-on-miss rule is stated generically across all search kinds), but an
+  **anchored value search specifically cannot** — "anchored search, where it would normally
+  produce ECONSTANIC, should produce NK" for the value-search case. So the general FOOP-23 rule
+  (anchored miss → NK) already covered this correctly; there is no carve-out needed and no
+  amendment to FOOP-23. `foop/33/creation/referential_equality.foo`'s baseline may be promoted
+  as-is. Repro (settles `Nk`, correctly): `{bc = {v = ⬤;}; bd = {v = ⬤;}; first = bc~=(bd.v);}`.
+- **Comprehensive sketch semantics — RESOLVED 2026-08-03.** The `same = ?=a` line's expected
+  result: it now correctly lands on `c` (the statement whose value equals `a`'s creation via
+  `Rc::ptr_eq`), settling `Constant`, not NK. Root cause was two-fold, both fixed this session:
+  (1) `check_value_pattern_ready` (`fir_kinds.rs`) rejected any non-integer value pattern
+  outright — extended to also accept a pattern that resolves (via `.value()`) to
+  `FirKind::Creation`; (2) `default_equal` compared the raw, unresolved `SearchFir` wrapper
+  nodes on both sides instead of what they resolve to — now calls `.value()` on both sides
+  before the `FirKind::Creation` `Rc::ptr_eq` check. Verified via FVM stepping
+  (`foolish-debugging` skill): before the fix, the search settled `Nk` at `Embryonic` — inside
+  `check_value_pattern_ready` — never even reaching the `Braning` scan; after, it reaches
+  `Braning`, scans, finds the match, settles `Constant`. Two new permanent regression tests pin
+  this: `value_search_pattern_referencing_a_creation_finds_matching_creation` and
+  `..._rejects_distinct_creation` (`fir_kinds.rs`, `mod tests`). Per human direction, the
+  existing "unsupported non-integer/non-creation pattern → NK" guard is otherwise **unchanged**
+  and intentionally still rejects e.g. a brane-valued pattern.
+- **NEW 2026-08-04 — `system.foo` composition shifts the `MAX_STEPS` iteration-budget
+  boundary for programs that deliberately never settle, breaking a FROZEN, `verified/`-signed
+  FOOP-62 baseline (`foop/62/infinite_loop.foo.einmo`).** Composition (this section, §4) is now
+  implemented and wired into `UbcaEvaluator::evaluate` (the crate's one production entry
+  point). It composes cleanly against the ENTIRE rest of the einmo suite — 279/280 pre-existing
+  tests match their `checked/` baselines byte-for-byte, unchanged — except this one. The test's
+  input (`f1 = { f1 }; stuck = f1;`) is *designed* to loop forever (`f1` searches for itself),
+  and its baseline pins the EXACT NYES snapshot captured the instant `step_to_settled`'s
+  `MAX_STEPS = 10_000` budget is exhausted (`checked/`/`verified/` both show root
+  `NK(ITERATION-EXCEEDED, Iteration exceeded 9999)`). Composing `system.foo` (currently 2
+  statements, `'True`/`'False`) as the root ancestor, plus wrapping the user's program in a
+  `program = {...}` statement, adds extra atomic step-work that interleaves with the user
+  program's own task-queue draining (each top-level `.step()` call performs ONE atomic action
+  at the deepest pending task, so the interleaving order — not a flat step count — determines
+  which statement's progress a given call advances). With composition, the SAME test now
+  produces root `BRANING` (not yet exhausted) instead of `NK(ITERATION-EXCEEDED...)` — the
+  9999-step ceiling is reached at a genuinely different point in the tree's evaluation because
+  `system.foo`'s own settling now consumes some of that budget.
+
+  **Why this is not silently fixable and needs a human decision**: (1) The divergent baseline
+  has a `verified/` twin — AGENTS.md's hard promote rule requires a human reviewer's key before
+  touching it; I cannot resolve this myself. (2) Bumping `MAX_STEPS` by a guessed constant is
+  not principled — I traced (did not assume) that step consumption depends on task-queue
+  interleaving order between `system.foo`'s statements and the user program's, not a separable
+  "prefix cost" I can compute and add back exactly; a guessed bump might restore THIS test's
+  exact snapshot by luck, or might not, and either way sets no principled precedent for Phase 6
+  (`system.foo` grows to 7 statements, changing this again). (3) The test's entire purpose is to
+  pin exact behavior at the iteration-budget edge — by construction, ANY change to per-statement
+  step overhead anywhere in the composite tree will eventually re-shift this boundary again
+  (Phase 6's `system.foo` growth included), so a one-time fix does not close the issue
+  permanently; it needs either (a) a design decision that iteration-budget-edge snapshots are
+  not meant to be exact-count-stable across FOOP-33 phases (and the test/its `verified/` twin
+  re-signed to accept `BRANING` as the new expected state, or the input changed to be robust to
+  budget shifts), or (b) `MAX_STEPS` decoupled from `system.foo`'s overhead somehow (e.g.
+  budgeting `system.foo`'s settling separately, outside the count that governs the user
+  program), which is itself a design change beyond what Phase 5's spec describes.
+
+  **Status**: Composition (Phase 5) is otherwise complete and verified — see the plan's Phase 5
+  section for the full test suite evidence. This ONE einmo divergence is left unresolved,
+  `output/` reverted to match `checked/` (not promoted), and the underlying implementation is
+  NOT changed to work around it. Flagging here per the task's explicit escalation instruction
+  rather than guessing at `MAX_STEPS` or promoting over a `verified/` baseline.
 - **TODO: Document the philosophical centrality of equality.** Equality is among the most
   fundamental concepts in Foolish. The creation postulate itself defines identity through
   uniqueness — when we create an idea with `⬤`, nothing else is equal to it; that uniqueness
@@ -829,6 +1358,33 @@ non-int/non-creation ⇒ `Unknowable`/NK — §2); `Identifier` representation (
 preferred, three-canonical-strings fallback — §3); null-const mechanism (`get_value()` →
 `NK("'<name> redefined")`, scoped to searches that discover the definition — §4).
 
+## Concerns Standing Past Completion
+
+FOOP-33 ships with its plan phases checked off, but a few implementation choices are worth
+flagging as **live discomforts, not settled design** — things a human reviewer noticed only
+after the feature was working end-to-end, that the spec-as-written does not forbid but that
+read as surprising or possibly wrong. This section is where such findings accumulate; add to it
+rather than silently reopening a "done" phase.
+
+- **A creation's defining statement renders self-referentially.** `get_display_name()`
+  (`foolish-ubca/src/fir_kinds.rs`, `CreationFir::get_display_name`) reports a name whenever a
+  creation is the entire right-hand side of a named statement — by design, this includes the
+  DEFINING statement itself, not only later references reached by search. Concretely:
+  `{a = {*};}` sequences as `{a=a}`, not `{a={*}}` or `{a=⬤}`. Per the letter of the rule this
+  is correct (the creation genuinely is the whole RHS of `a`'s own statement), but it reads to a
+  human as circular — "`a` equals `a`" looks like a tautology or a bug, not "here is a fresh
+  creation being introduced and bound to the name `a`." A plausible resolution: special-case the
+  defining site to still render the glyph (`⬤`), and reserve the name-rendering for creations
+  reached *elsewhere* (through a search, as an operand, as another statement's value) — but this
+  was not implemented, because it is a genuine design call (does "renders as its name" mean
+  "when reached from outside" or "always, including at home"?) and not something to decide
+  unilaterally while closing out Phase 9. Flagged 2026-08-04 during final review of the merged
+  Phase 9 work; see the caveat comment at `get_display_name`'s doc comment in code.
+
+*(Add further implementation pain points, dubious feature decisions, or "technically correct
+but reads wrong" findings to this list as they surface — during code review, during later FOOP
+work that touches this one, or during ordinary use.)*
+
 ## References
 
 - Prior FOOPs: FOOP-23 (value search, `FoolRefFir`, the referential-equality stipulation now
@@ -844,71 +1400,32 @@ preferred, three-canonical-strings fallback — §3); null-const mechanism (`get
 
 ## Last Updated
 
-**Date**: 2026-07-30
-**Updated By**: Sisyphus / xiaomi/mimo-v2.5-pro
-**Changes (round 8, per Atlas)**: (1) Added §5 — comparison operators (`<`, `>`, `<=`, `>=`) as
-built-in boolean producers returning `'True`/`'False` from `system.foo` (or `NK` for
-non-integer operands). Four new lexer tokens (`Lt`, `Gt`, `Le`, `Ge`); same precedence as
-`+`/`-`; evaluator resolves the boolean constant from the system root brane. (2) Updated
-Abstract (new item 5), FIR Impact (new tokens, no new FIR kind), UBC Step Impact (new evaluator
-arms), Test Plan (comparison unit/approval tests, updated comprehensive sketch). (3) Added
-Rejected Alternative E (comparison-as-separate-FOOP rejected — they are the natural producers
-of booleans). (4) Added Open Question on the philosophical centrality of equality — creation
-defines identity through uniqueness; `default_equal` is the runtime expression of the creation
-postulate; three-valued equality reflects "known, not assumed"; deserves a `docs/why/` section.
-(5) Updated worktree path convention to `../foolish_worktrees/` relative to project directory.
-**Date**: 2026-07-08
-**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
-**Changes (round 7, per Atlas — resolves all Open Questions toward freeze)**: (1) Equality is
-**three-valued** `Equality::{Equal, NotEqual, Unknowable}` — only two integers or two creations
-are comparable; everything else is `Unknowable`→NK (not a silent miss); the value-search matcher
-is a **greedy known-to-be-equal matcher** (Equal→Approve, NotEqual→Reject, Unknowable→NkStop).
-(2) `CreationFir` has **no id** — deferred until a creation must be *shipped*; identity is the
-rust object. (3) Null-const refusal is `get_value() → NK("'<name> redefined")` (no new state);
-poisoning is **scoped to searches that discover the definition** (siblings elsewhere unaffected).
-(4) `system.foo` is **implicit/built-in and IS the root brane** (its own parent, program is its
-child); **program line numbers preserved**; no re-parenting hazard. (5) `Identifier` stores
-**spans-into-source (preferred) or three canonical strings** (fully-characterized name, name,
-characterization string). (6) Gotcha #3 upgraded to a confirmed task — the compiler must fold
-`'` back into the search pattern (`?'True` currently loses the `'`). Emptied resolved Open
-Questions; only the creation *value* render form and the tabled comprehensive-sketch semantics
-remain.
-**Changes (round 6, per Atlas)**: `{*}` alias now recognized at the **parser**, not the lexer:
-`{`/`*`/`}` keep their ordinary tokens, and the parser emits `Astn::Creation` from the
-`LBrace Mul RBrace` sequence (same node as `⬤`); the compiler's single `Astn::Creation` arm
-handles both. Recognition is **collision-free** — `*` is not a valid identifier/characterization
-name (`is_assignment_start` accepts only `Token::Ident`), so `{*}` can never be a real brane
-statement; no ordering guard against the unary-`*` path is needed. Rewrote Gotcha #1 to state
-this, named the parser test `parses_star_brane_as_creation` (with the negative set incl.
-`{y = 2 * x}`). Updated §1 grammar note, Test Plan, plan Phase 2.
-**Changes (round 5, per Atlas)**: Introduced an **`Identifier`** struct that each statement
-owns (owns the one whitespace-stripped LHS string; has a `name` span and a contained
-`Characterizations`; exposes `name()` and `characterized_name()`). The **matcher chooses** the
-projection — `'`-bearing pattern → `characterized_name()`, plain → `name()`. `Characterizations`
-is now **minimal** for this FOOP: only `is_nully_characterizing_coordinate_name()` (per-`'`
-split deferred). `StatementFir` holds an `Identifier` instead of `name: String`. Updated
-Abstract §3, FIR/Step Impact, Gotcha #3, Test Plan, References, and plan Phase 1 accordingly.
-**Changes (round 4, editorial + test depth)**: Added a **Gotchas & Exceptions** section (7
-verified traps: `{*}` lex-lookahead vs brane syntax; `constanic_clone_at:180` already returns
-the same `Rc` for `Independent` non-branes so creation identity is automatic — do NOT add a
-`FirKind::Creation` clone arm; regex name-matching and `'` flow-through; the value-matcher
-`unreachable!` on pre-constanic bodies; NK-poison non-looping; `system.foo` self-consistency;
-`new_cyclic` parent-rewiring / `_ab_search` termination). Substantially expanded the Test Plan
-(unit truth tables, subspan/no-alloc assertions, the `creation_constanic_clone_preserves_identity`
-test that pins the `:180` behavior, value-sensitive concat cases) and wrote a concrete
-`foop_33_comprehensive.foo` sketch.
-**Changes (round 3, per Atlas)**: (1) `CreationFir` carries **no id** — identity is the rust
-object (`Rc::ptr_eq`); an id is deferred to a future FOOP for shipping across a boundary. No
-counter, no registry. (2) Clone discipline: constanic clone of a creation returns the *same*
-`Rc` (identity-preserving, okay because `Independent`); any other clone is forbidden. (3)
-`system.foo` lives in a repo-root **`system/`** folder and is packaged into the crate via a
-`build.rs` that copies it into `OUT_DIR` + compile-time `include_str!` (with a precise `@human`
-note that `OUT_DIR` is Cargo-standard and compile-time only, not runtime, not `RESOURCE_PATH`).
-(4) Method renamed to `is_nully_characterizing_coordinate_name`.
-**Round 2**: `{*}` ASCII alias for `⬤` (both → one `Astn::Creation`; sequencer always renders
-`⬤`); equality inverted into a named `default_equal(&FirRef,&FirRef)->bool` primitive the
-matcher *calls*; `Characterizations` keeps one owned string with `name`/`chars` as subspans;
-null method scoped to the name-adjacent slot only (proximity rule).
-**Initial draft**: ⬤ creation, referential equality via value search, universal
-characterizations, null-characterized name constants, `system.foo` ancestral prelude, refusal
-rule at brane step and concatenation.
+**Date**: 2026-08-04
+**Updated By**: Claude Code (Sonnet 5) / claude-sonnet-5, worktree `foop-33-phase9-sequencer-bridge`
+**Changes**: **Phase 9 IMPLEMENTED — the creation-name sequencer bridge, closing the "Creation
+value render form in hssnap" Open Question.** `foolish-core::Fir::Creation` is now
+`{ name: Option<String> }` (was a unit variant); `evaluator.rs::proto_to_core_fir_inner`
+resolves the name via `as_creation_display_name` at the conversion boundary, where ubca `Rc`
+identity still exists; the sequencer renders `Some(name)` as the name and `None` as the `⬤`
+glyph (total fallback). JSON compatibility was simpler than the open question anticipated:
+`Fir` hand-rolls its own `Serialize`/`Deserialize` (no derive), so omitting the `"name"` key for
+`None` was a one-line conditional insert, not a `skip_serializing_if` derive-macro interaction.
+16 new tests across `foolish-core` and `foolish-ubca`, all passing. Rewrote the Open Questions
+entry from "sequencer half remains open" to fully resolved.
+
+Einmo: 8 `foop/33/*` baselines diverged on re-run (every plain `name = ⬤`, not just
+`'True`/`'False` — wider than the plan anticipated), all reviewed and justified against
+`get_display_name`'s rule. 3 promoted (no `verified/` twin). 5 reviewed and justified but left
+unpromoted, each carrying a `verified/` twin currently identical to `checked/` — promoting
+requires a human's `--interactive` signing key per `rust_instructions.md`'s hard rule, which is
+not something an agent can supply; this is a human action item, tracked in
+`FOOP-33.plan.md`'s Phase 9 checkbox and STATUS SUMMARY row. No baseline outside `foop/33/*`
+diverged; the frozen `foop/62/infinite_loop` divergence is the known pre-existing one, untouched.
+`cargo test --workspace` green except that expected einmo failure; `cargo fmt`/`clippy -D
+warnings` scoped to `-p foolish-core -p foolish-ubca` clean.
+
+Earlier entry (2026-08-04, same day, prior session): Phase 6 (comparison operators) implemented
+— all five (`'lt`/`'gt`/`'le`/`'ge`/`'eq`) built, §5.1 "As built" added; and the FVM side of
+creation-name reporting (`CreationFir::get_display_name`) landed, six unit tests, with the
+sequencer-bridging half left as this entry's Phase 9 work. This log keeps only the single
+newest entry per the Markdown File Update Protocol; full history in `git log` on this file.
