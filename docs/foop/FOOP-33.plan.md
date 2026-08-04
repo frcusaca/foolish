@@ -62,7 +62,7 @@ exact evidence). Current real status, top to bottom:
 | 3 — `default_equal` | ✅ **fully done** (2026-08-04) — 9 direct truth-table unit tests added; creation-vs-integer confirmed `NotEqual` per human ruling 2026-08-03 (every integer is itself a creation). |
 | 4 — Null-characterized constants | ✅ **complete** (2026-08-04) — ancestral/same-brane conflict detection via `StatementFir` self-check (new `self_weak` field), NF via `settled_result()` override, concatenation collision handling with transitive poisoning. 14 new unit tests. See the phase's design notes for two architectural findings made during implementation (self-reference plumbing, the `NkFir::nk` pre-constanic bug). |
 | 5 — `system.foo` composition | ⚠️ **implemented and verified (2026-08-04), ONE open finding escalated to Open Questions** — `system_foo.rs` composes `system.foo` as root with `program` as its last member, wired into the one production entry point (`UbcaEvaluator::evaluate`). Found and fixed a real bug where Phase 4's NF refusal was enforced but never rendered (4th bypass site, in `evaluator.rs`). 280/280 unit tests pass; einmo suite green except ONE frozen `verified/` FOOP-62 baseline whose exact iteration-budget snapshot composition unavoidably shifts — see the phase's own checkbox and FOOP-33.md's Open Questions for the full writeup; needs a human decision, not guessed around. |
-| 5.5 — Sequencer renders named creations | 🚫 **PUNTED to a future FOOP (2026-08-04)** — human proposed `CreationFir::get_recent_name()` (a `?=$CREATION`-style value search, entirely within `foolish-ubca`), confirmed to sidestep the identity blocker, but how the sequencer reaches it from `foolish-core::Fir` is unresolved and left for later. Not part of FOOP-33's implementation scope. See FOOP-33.md Open Questions ("Creation *value* render form in `hssnap`" entry, 2026-08-04 later update). |
+| 5.5 — Sequencer renders named creations | ⛔ **CROSSED OUT (2026-08-04) — superseded by Phase 9, not implemented under this heading** — the literal design (a `foolish-core::Fir::Creation`-side search) was investigated and found not implementable as written (identity/parent-chain only exists on the `foolish-ubca` side by conversion time). The capability itself ships as Phase 9's `get_display_name()` bridge, resolved at the `foolish-ubca`→`foolish-core` conversion boundary — inside FOOP-33, not the separate future FOOP originally proposed. All four of this phase's checkboxes are struck through with a pointer to their Phase 9 equivalent. |
 | 6 — Comparison operators | ✅ **complete (2026-08-04)** — `ComparisonFir` + `ComparisonOp` enum in `system_foo.rs` (ONE kind, not five; the Rust comparison is the only per-operator difference). `system.foo` declares `'lt`/`'gt`/`'le`/`'ge`/`'eq` as ordinary creations; their real bodies are installed via a new `compiler.rs` `BodyOverride` hook, and every use resolves by ordinary ancestral search + detachment/recoordination — no name-based special-casing anywhere. Key traced finding: an ECONSTANIC operand must settle the comparison ECONSTANIC, **not** NK (NK is terminal and would poison the definition so no search could ever hand it out). 9 new unit tests incl. `comparison_nyes_transitions` (all three terminal states); 2 new einmo baselines. 295 unit tests pass; einmo suite in its starting state. |
 | 7 — Docs/Tests | 🟡 partial, done piecemeal, not formally tracked |
 | 7R — Phase 3 value-search regression repair | ✅ done (earlier session) |
@@ -608,16 +608,28 @@ null-characterized statement whose value is that creation, using the pattern
 characterized name (e.g. `'True`). If not found, render `⬤`. This is consistent with how
 Foolish resolves names — through search, not stored metadata.
 
-- [ ] Sequencer (`foolish-core/src/sequencer.rs:614`): when rendering a creation, search the
+- [~] ~~Sequencer (`foolish-core/src/sequencer.rs:614`): when rendering a creation, search the
       containing brane using `?'[a-zA-Z_0-9]+=CREATION_REF`. The search looks for a
       null-characterized statement whose value (`Rc::ptr_eq`) matches the creation. If found,
-      render the characterized name; otherwise render `⬤`.
-- [ ] The sequencer needs access to the containing brane to perform the search. This may require
-      passing the brane context through the rendering pipeline, or having the sequencer walk up
-      the parent chain from the creation FIR.
-- [ ] Unit tests: creation from null-characterized statement renders as `'True`; anonymous
-      creation renders as `⬤`.
-- [ ] Update einmo baselines for any snapshots that now show `'True`/`'False` instead of `⬤`.
+      render the characterized name; otherwise render `⬤`.~~ SUPERSEDED 2026-08-04 — this
+      literal design (a `foolish-core::Fir::Creation`-side search) was found not implementable
+      as written; see "Original blocker" above. The capability is instead delivered as
+      Phase 9's `get_display_name()` bridge, resolved at the `foolish-ubca`→`foolish-core`
+      conversion boundary where real identity still exists.
+- [~] ~~The sequencer needs access to the containing brane to perform the search. This may
+      require passing the brane context through the rendering pipeline, or having the
+      sequencer walk up the parent chain from the creation FIR.~~ SUPERSEDED 2026-08-04 — moot
+      under Phase 9's conversion-time resolution; the sequencer itself never needs brane access.
+- [~] ~~Unit tests: creation from null-characterized statement renders as `'True`; anonymous
+      creation renders as `⬤`.~~ SUPERSEDED 2026-08-04 — tracked as Phase 9's own test-plan
+      items instead.
+- [~] ~~Update einmo baselines for any snapshots that now show `'True`/`'False` instead of
+      `⬤`.~~ SUPERSEDED 2026-08-04 — tracked as Phase 9's own einmo-repromotion item instead.
+
+**Phase 5.5 status: entirely superseded, not implemented under this heading.** The rendering
+capability it wanted ships as Phase 9 within FOOP-33 (not the separate future FOOP the 🚫
+banner above originally proposed) once Phase 9's own gate is satisfied. This phase is closed;
+no further work is tracked here.
 
 ## Phase 6 — Comparison operators via brane search (revised)
 
@@ -952,35 +964,27 @@ let the sequencer render what it is handed. `get_display_name()` already returns
 
 **Date**: 2026-08-04
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: **Phase 6 COMPLETE** — the five comparison operators are implemented, tested, and
-the suite is green. STATUS SUMMARY row and all Phase 6 checkboxes updated to record what was
-actually built, and the Phase 6 STOP gate marked discharged. The implementation deliberately did
-NOT use the evaluator-special-casing the section's superseded prose describes (`'lt` is never
-recognised by name at the use site — it resolves by ordinary ancestral search plus
-detachment/recoordination), so that prose is re-flagged as historical record. Checked off the
-token-deletion items as already satisfied by the earlier revert (verified `LTOp`/`GTOp`/`Le`/
-`Ge`/`EqOp` are absent), and marked the stale `int_comparators.foo`/`comprehensive.foo` einmo
-items not-applicable since those inputs were removed with that revert. Key traced finding
-recorded: an ECONSTANIC operand must settle the comparison ECONSTANIC, not NK, or the `'lt`
-definition is poisoned and can never be handed out by a search. 9 new unit tests (including
-`comparison_nyes_transitions`, covering all three terminal states) and 2 new einmo baselines;
-295 unit tests pass, einmo suite in exactly its starting state (the lone
-`foop/62/infinite_loop` divergence is the known, `verified/`-frozen one awaiting a human
-decision, untouched). Also reverted stray `cargo fmt` churn in the shared `einmo/` crate that a
-bare `cargo fmt --all` had swept into this phase's first commit. Also added **Phase 9 —
-Sequencer renders creation names**, the `get_display_name()` bridge, with its design written
-out: resolve the name at CONVERSION time (in `evaluator.rs`'s `proto_to_core_fir_inner`, where
-`Rc` identity and the parent chain still exist), carry it as data on
-`foolish-core::Fir::Creation`, and let the sequencer render `Some(name)` as the name / `None`
-as the glyph. Records the two decisions a human must make first (the `Fir::Creation` variant
-shape — it must stop being a unit variant — and the JSON/`hssnap` serialization stability that
-follows), and notes it may be punted past merge since nothing depends on it and today's glyph
-fallback is correct. Placed before Phase 8 (merge stays last). Also this session: Phase 6
-UNBLOCKED (the "blocked" finding tested a bare `#-1` rather than the SFF-marked `<<#-1>>` the
-design specifies; the SFF form is built ECONSTANIC, verified live); Phase 5.5 punted out of
-FOOP-33 entirely into a new, separate, future FOOP (`CreationFir::get_recent_name()` proposal,
-recorded in FOOP-33.md's Open Questions — note the FVM-side capability is now being implemented
-as `get_display_name()`, and Phase 9 above is the sequencer half); `foolish_children`
-encapsulation (`push_foolish_child`/`get_foolish_child`) with an SFF-mark sanity guard; `sift_*`
-naming convention added to AGENTS.md terminology. This log keeps only the single newest entry
-per the Markdown File Update Protocol; full history in `git log` on this file.
+**Changes**: **Phase 5.5 CROSSED OUT** — its four checkboxes struck through with pointers to
+Phase 9 (which now delivers the same capability, inside FOOP-33, at the conversion boundary
+rather than sequencer-side); STATUS SUMMARY row rewritten from "punted to a future FOOP" to
+"superseded by Phase 9, not implemented under this heading" — the separate future FOOP once
+proposed for it is no longer the plan. **Fixed a real rendering bug** found by the human right
+after Phase 6 merged: `ComparisonFir::resolve_boolean` (`system_foo.rs`) called `.value()`
+directly on the STATEMENT `_ab_search` returns (`'True = ⬤`) instead of unwrapping to its body,
+so `{1,2,'lt}$` settled to the whole `{'True=⬤}` statement wrapper instead of the bare creation
+— visibly wrong (`'True={*}`-style output). Fixed by routing through
+`statement_value_for_comparison`, the one documented "what does this statement resolve to"
+accessor, exactly as `IndexFir`'s `$` search already does for its own result; verified via CLI
+(`{r={1,2,'lt}$;}` now renders `r=⬤`, the correct pre-Phase-9 form) and re-promoted the
+`comparison_operators.foo.einmo` baseline (all 10 lines, each individually justified — see
+commit `8ac047e2`). Completed the Phase 6 branch merge into `foop-33-creation-postulate`
+(resolved a Last-Updated-log conflict in this file and in `FOOP-33.md`, both touched
+concurrently by the Phase 6 and `get_display_name` subagent branches; underlying Rust files
+merged with no conflicts). Cleaned up both now-finished worktrees. Dispatched Phase 9
+(`get_display_name()` sequencer bridge) to a subagent; two automatic `isolation: "worktree"`
+spawn attempts landed on a stale pre-Rust commit (`origin/HEAD`/`origin/main` still point at an
+abandoned Java/Maven-era commit, `4e0401ce`, left over from before this repo's trunk moved to
+`jia` — a spawn-mechanism bug, not a task issue) and correctly self-aborted without guessing;
+worked around by manually creating the Phase 9 worktree off the correct local branch tip and
+directing the agent there directly. This log keeps only the single newest entry per the
+Markdown File Update Protocol; full history in `git log` on this file.
