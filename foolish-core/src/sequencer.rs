@@ -599,8 +599,16 @@ fn render_fir(
     }
 
     // ── 11. Creation ──
+    // FOOP-33 Phase 9: a creation that is the ENTIRE right-hand side of a
+    // named statement (`get_display_name` on the ubca side) renders as that
+    // name (e.g. `'True`) instead of the bare glyph. The fallback is total —
+    // an unnamed creation renders exactly as it always has.
     if fir.hs_creation() {
-        return vec![(0, "\u{2B24}".to_string())];
+        return vec![(
+            0,
+            fir.hs_creation_name()
+                .unwrap_or_else(|| "\u{2B24}".to_string()),
+        )];
     }
 
     // ── Fallback ──

@@ -1,9 +1,9 @@
 #einmo 1 encoding=utf-8 separator=!!\n
 test: foop/33/boolean/null_char_constant.foo
-suite: /storage1/human/hcbusy/foolish/foolish-ubca/einmo_suite
-producer: 69ca34d2
-producer-diff: sha256:70867bc51444e99965d667d97f798d8d3bec56f20e6cf47b9cd1396ad7fabbb7
-generated: 2026-08-04T14:53:02.000000000Z
+suite: /storage1/human/hcbusy/foolish/.claude/worktrees/foop-33-phase9/foolish-ubca/einmo_suite
+producer: 8ac047e2
+producer-diff: sha256:c6164bf5431fd0423e24656b7f1f52b2e0cfeb3d63aa9f57860543d39e040a40
+generated: 2026-08-04T20:54:32.000000000Z
 status: normal
 status-detail: 
 sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
@@ -13,11 +13,8 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
 	!! creation, resolved via ordinary ancestral search) but a conflicting
 	!! redefinition (a different value) refuses -- get_value() becomes NF
 	!! ("'True not-foolish") instead of the written RHS.
-	!! Phase 5.5 (sequencer renders named creations) is PUNTED to a future
-	!! FOOP -- see FOOP-33.md Open Questions for the CreationFir::
-	!! get_recent_name() design. Once implemented, restate/'True/conflict
-	!! below are expected to render as 'True instead of the bare ⬤ shown
-	!! today; this baseline will need re-promoting at that time, not before.
+	!! FOOP-33 Phase 9: restate/'True/conflict now render as 'True (the
+	!! sequencer renders the creation's own name) instead of the bare ⬤.
 	restate = 'True;
 	'True = 'True;
 	conflict = 'True;
@@ -25,12 +22,12 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
 }
 !!
 {NK
-  restate=⬤;
-  'True=⬤;
-  conflict=⬤;
+  restate='True;
+  'True='True;
+  conflict='True;
   'True=??? ('True not-foolish)
 }!!
 !!
-{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:1a692f8c93d49b0fd8d0e99b4f1148448866f1af7232abd1c5451e4e1e781ffd","timestamp":"2026-08-04T14:53:02.000000000Z"}
-{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:1a692f8c93d49b0fd8d0e99b4f1148448866f1af7232abd1c5451e4e1e781ffd","timestamp":"2026-08-04T14:53:02.000000000Z"}
-{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"1OnLxBUKIh2yBjElwl0qba+ypsEdxx0guhcOHSH5itjbeng2GKFOYAYtlKtyIc6+xE/+UDtOV6FjR+xHTzkOCw==","produced_by":"einmo 0.1.0 sha256:1a692f8c93d49b0fd8d0e99b4f1148448866f1af7232abd1c5451e4e1e781ffd","timestamp":"2026-08-04T14:53:02.000000000Z"}
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:fc939bdc2d8bac919faed85ddeeed66f28285e7e91526205d4b8671d382ead22","timestamp":"2026-08-04T20:54:32.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:fc939bdc2d8bac919faed85ddeeed66f28285e7e91526205d4b8671d382ead22","timestamp":"2026-08-04T20:54:32.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"QSGE9fz34+/LXXa9sXbAbxAnQLgFfOgj964z3MuAWuer7LCIlQWNYwxosOg3kYoXLcXNAADPVulogBmASLuzAg==","produced_by":"einmo 0.1.0 sha256:fc939bdc2d8bac919faed85ddeeed66f28285e7e91526205d4b8671d382ead22","timestamp":"2026-08-04T20:54:32.000000000Z"}

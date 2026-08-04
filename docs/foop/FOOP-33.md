@@ -1174,13 +1174,12 @@ unit test asserting `Reject` (matching its name).
 
 ## Open Questions
 
-- **Creation *value* render form in `hssnap`** — **FVM side IMPLEMENTED and tested 2026-08-04;
-  the sequencer half remains open.** The input `{*}` alias is decided (always renders back as
-  `⬤`). The naming question — "when a creation originates from a null-characterized statement
-  like `'True`, render the characterized name instead of `⬤`" — is now **half resolved**: the
-  hard part (a creation determining its own name, on the live `foolish-ubca` tree where
-  identity and the parent chain still exist) is built; the bridging part (how a
-  `foolish-core::Fir` render path reaches it) is not.
+- **Creation *value* render form in `hssnap`** — **RESOLVED 2026-08-04, both halves
+  implemented.** The input `{*}` alias is decided (always renders back as `⬤`). The naming
+  question — "when a creation originates from a null-characterized statement like `'True`,
+  render the characterized name instead of `⬤`" — is now **fully resolved**: the FVM-side half
+  (a creation determining its own name) and the sequencer-bridging half (Phase 9, below) are
+  both built and tested.
 
   **What is implemented.** `CreationFir::get_display_name(&self, self_ref: &FirRef) ->
   Option<String>` in `foolish-ubca/src/fir_kinds.rs`, surfaced on the `Fir` trait as
@@ -1224,17 +1223,21 @@ unit test asserting `Reject` (matching its name).
   branes; each creation reports its own, by pointer identity rather than a coincidental name
   match). No einmo test was added: nothing is user-visible yet, since no rendering changed.
 
-  **What remains open — the bridging question, unchanged in substance.** The original blocker's
-  item (2) still stands, now scoped precisely: `foolish-core::Fir::Creation` is a bare unit
-  variant in a tree produced by a LOSSY conversion (`evaluator.rs::proto_to_core_fir_inner`)
-  that discards identity and brane context, and `foolish-core::Fir` has no variant that renders
-  as bare, undecorated text. So a decision is still needed on **how the name crosses from
-  `foolish-ubca` (where `get_display_name` lives and identity survives) into rendered output**:
-  a new field/variant on `foolish-core::Fir` — with its hssnap/JSON-serialization stability
-  consequences — or some other mechanism. Note the conversion site in `evaluator.rs` is where
-  identity still exists, and is therefore where `as_creation_display_name` would naturally be
-  called; `foolish-core/src/sequencer.rs`, which earlier text pointed at, is downstream of the
-  loss. **This decision is for the human, not an agent**; the FVM side deliberately stops here.
+  **The bridging half — IMPLEMENTED 2026-08-04 (FOOP-33 Phase 9).** `foolish-core::Fir::Creation`
+  is now `Creation { name: Option<String> }` (was a bare unit variant).
+  `evaluator.rs::proto_to_core_fir_inner`'s `FirKind::Creation` arm resolves the name at the
+  conversion boundary — `borrowed.as_creation_display_name(ubca_ref)`, where `borrowed` and
+  `ubca_ref` (the creation's own `self_ref`) were both already in scope — and threads it onto
+  the built `core_fir::Fir`; `foolish-core/src/sequencer.rs` renders `Some(name)` as the name,
+  `None` as the `⬤` glyph (total fallback, unnamed creations unchanged). The JSON-stability
+  question resolved more simply than anticipated: `Fir` does not derive `Serialize`/
+  `Deserialize` — `fir.rs` hand-builds the `serde_json::Value` directly (`fir_to_json`), so the
+  `"name"` key is just conditionally inserted (`if let Some(n) = name`), giving an unnamed
+  creation byte-identical JSON to the pre-Phase-9 unit variant with no `skip_serializing_if`
+  derive-macro interaction to reason about. See `FOOP-33.plan.md`'s Phase 9 section and its
+  "Last Updated" entry for the full test list and the einmo re-promotion review (8 baselines
+  diverged, 3 promoted, 5 justified but awaiting a human's `--interactive` signing key on
+  `verified/`-twinned files).
 - **RESOLVED 2026-08-04 (correction) — Phase 6's design is SOUND; the earlier "blocked"
   finding tested the wrong construct.** An earlier investigation the same day concluded Phase 6
   was blocked because an unanchored index (`#-1`/`#-2`) settles terminal `Nk` on an
@@ -1371,41 +1374,31 @@ preferred, three-canonical-strings fallback — §3); null-const mechanism (`get
 ## Last Updated
 
 **Date**: 2026-08-04
-**Updated By**: Claude Code / claude-opus-5
-**Changes**: **Phase 6 IMPLEMENTED, and the FVM side of creation-name reporting landed** — two
-independent workstreams, both green.
+**Updated By**: Claude Code (Sonnet 5) / claude-sonnet-5, worktree `foop-33-phase9-sequencer-bridge`
+**Changes**: **Phase 9 IMPLEMENTED — the creation-name sequencer bridge, closing the "Creation
+value render form in hssnap" Open Question.** `foolish-core::Fir::Creation` is now
+`{ name: Option<String> }` (was a unit variant); `evaluator.rs::proto_to_core_fir_inner`
+resolves the name via `as_creation_display_name` at the conversion boundary, where ubca `Rc`
+identity still exists; the sequencer renders `Some(name)` as the name and `None` as the `⬤`
+glyph (total fallback). JSON compatibility was simpler than the open question anticipated:
+`Fir` hand-rolls its own `Serialize`/`Deserialize` (no derive), so omitting the `"name"` key for
+`None` was a one-line conditional insert, not a `skip_serializing_if` derive-macro interaction.
+16 new tests across `foolish-core` and `foolish-ubca`, all passing. Rewrote the Open Questions
+entry from "sequencer half remains open" to fully resolved.
 
-**Phase 6 (comparison operators).** All five (`'lt`/`'gt`/`'le`/`'ge`/`'eq`) are built. Added
-**§5.1 "As built"** recording the three things implementing §5.0 settled that the design text
-could not have predicted: (1) an ECONSTANIC operand must settle the comparison **ECONSTANIC,
-never NK** — NK is terminal, so it poisons the `'lt` *definition* and `check_body_nyes`'s
-`NkStop` then prevents any search from handing it out to be recoordinated, making the operator
-unusable everywhere (found by FVM stepping, not assumed); (2) **one** `ComparisonFir` +
-`ComparisonOp` enum rather than five near-identical FIR kinds, since the Rust comparison is the
-only per-operator difference; (3) installation is a **compile-time body override** in
-`compiler.rs`, NOT the evaluator `Rc::ptr_eq` special-casing the superseded prose describes —
-`'lt` is never recognised by name or identity at the use site, it resolves by ordinary
-ancestral search. Updated the 2026-08-04 correction entry in Open Questions from "remaining:
-implementation" to implemented, pointing at §5.1.
+Einmo: 8 `foop/33/*` baselines diverged on re-run (every plain `name = ⬤`, not just
+`'True`/`'False` — wider than the plan anticipated), all reviewed and justified against
+`get_display_name`'s rule. 3 promoted (no `verified/` twin). 5 reviewed and justified but left
+unpromoted, each carrying a `verified/` twin currently identical to `checked/` — promoting
+requires a human's `--interactive` signing key per `rust_instructions.md`'s hard rule, which is
+not something an agent can supply; this is a human action item, tracked in
+`FOOP-33.plan.md`'s Phase 9 checkbox and STATUS SUMMARY row. No baseline outside `foop/33/*`
+diverged; the frozen `foop/62/infinite_loop` divergence is the known pre-existing one, untouched.
+`cargo test --workspace` green except that expected einmo failure; `cargo fmt`/`clippy -D
+warnings` scoped to `-p foolish-core -p foolish-ubca` clean.
 
-**Creations reporting their own name (FVM side).** Rewrote the Open Questions entry on creation
-render form, which previously recorded the work as blocked behind a
-`CreationFir::get_recent_name()` proposal. That proposal is **superseded**: no value search is
-needed. `CreationFir::get_display_name(&self, self_ref: &FirRef) -> Option<String>` (in
-`foolish-ubca/src/fir_kinds.rs`, surfaced on the `Fir` trait as `as_creation_display_name`)
-resolves the name by a direct parent check — a creation names itself only when it is the ENTIRE
-right-hand side of a named statement (parent is a statement AND the creation is its body, by
-`Rc::ptr_eq`), returning the full characterized name. `{'a=⬤; b='a;}` → `Some("'a")`;
-`{'a=1+⬤; b='a;}` → `None` (parent is the `+` operator). This works even through a search
-because a constanic clone of an `Independent` creation returns the same `Rc` (Gotcha #2), so the
-original parent chain survives detachment/recoordination. Six unit tests pin the rule including
-the through-a-search payoff case. **Still open:** the bridging half — how a `foolish-core::Fir`
-render path (lossy, identity-discarding, bare `Fir::Creation` unit variant) reaches this
-`foolish-ubca` method; that decision and its hssnap/JSON shape are Phase 9 in the plan.
-
-Earlier this session: Phase 6 unblocked (the prior "blocked" finding tested a **bare** `#-1`,
-which correctly settles terminal NK, but Phase 6 specifies **SFF-marked** `<<#-1>>`, which never
-runs — `build_fir`'s `under_sff` rule builds descendant search kinds ECONSTANIC; verified live,
-two tests pin both behaviors); Phase 5.5 punted to a future FOOP; anchored value-search-miss
-confirmed NK; creation-vs-integer confirmed NotEqual. This log keeps only the single newest
-entry per the Markdown File Update Protocol; full history in `git log` on this file.
+Earlier entry (2026-08-04, same day, prior session): Phase 6 (comparison operators) implemented
+— all five (`'lt`/`'gt`/`'le`/`'ge`/`'eq`) built, §5.1 "As built" added; and the FVM side of
+creation-name reporting (`CreationFir::get_display_name`) landed, six unit tests, with the
+sequencer-bridging half left as this entry's Phase 9 work. This log keeps only the single
+newest entry per the Markdown File Update Protocol; full history in `git log` on this file.
