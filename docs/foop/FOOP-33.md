@@ -1165,6 +1165,34 @@ unit test asserting `Reject` (matching its name).
   new `Fir` variant/field (and its JSON shape), or a different mechanism entirely. Phase 6 does
   **not** block on this (its own stated dependency is Phase 5's composition, not Phase 5.5's
   rendering), so work continued past this point rather than stalling.
+
+  **UPDATE 2026-08-04 (later) — human-proposed resolution; PUNTED to a future FOOP, not
+  implemented as part of FOOP-33.** The human reviewed the blocker above and proposed a
+  two-step fix, in their own words:
+
+  1. `CreationFir` (in `foolish-ubca/src/fir_kinds.rs`) gains a method `get_recent_name()` that
+     performs a `?=$CREATION`-style value search **from its own statement**, finding the most
+     recently used name that references it. This runs entirely within `foolish-ubca`, where
+     real `Rc` identity and the real parent chain exist — **confirmed to sidestep the blocker in
+     item (1) above**: the search no longer needs to happen in `foolish-core::Fir`'s lossy,
+     already-converted tree, because it runs on the live `FirRef` tree instead, before any
+     conversion discards identity.
+  2. The sequencer then "gets access to it somehow" (the human's exact words) — i.e. some
+     mechanism must let `foolish-core::Fir` rendering (which only sees the lossy, converted
+     tree, per item (1) above) reach `CreationFir::get_recent_name()`, a method that only exists
+     on the live `foolish-ubca` side. **This bridging mechanism is explicitly left unresolved —
+     a "subtlety to flush out later" (human's words) — and is NOT to be guessed at or invented
+     by an agent.** It still needs a genuine design decision, of the same shape as item (2) in
+     the original entry above (new `Fir` variant/field and its JSON/hssnap shape, or some other
+     mechanism), just now scoped specifically to "how does the sequencer call into
+     `get_recent_name()`" rather than "how does the sequencer carry a found name."
+
+  **Per human direction, Phase 5.5 in its entirety is PUNTED OUT of FOOP-33** — it is not part
+  of this FOOP's implementation scope and will not be implemented here. It is deferred to a
+  **new, separate, future FOOP** (not yet created or numbered) whose spec should start from the
+  `get_recent_name()` proposal above and resolve the open bridging question in step 2 before any
+  code is written. See `docs/foop/FOOP-33.plan.md`'s Phase 5.5 section and STATUS SUMMARY table
+  for the corresponding plan-side marker.
 - **NEW 2026-08-04 — Phase 6's settled comparison-operator design depends on a
   detachment/recoordination behavior that does NOT hold when traced against the live FVM;
   Phase 6 is BLOCKED pending a human decision, not implemented, and `system.foo` was NOT
@@ -1319,112 +1347,15 @@ preferred, three-canonical-strings fallback — §3); null-const mechanism (`get
 
 ## Last Updated
 
-**Date**: 2026-08-04 (evening)
+**Date**: 2026-08-04 (later)
 **Updated By**: Claude Code / claude-sonnet-5
-**Changes**: Phase 6 (comparison operators) — followed the settled §5.0 design exactly, per
-instruction: confirmed the `$`-vs-concatenation research task resolves cleanly (`{1, 2, 'lt}$`
-parses as needed, no parser change), then traced the detachment/recoordination mechanism
-against a live FVM before trusting it further, as explicitly directed. Found it does NOT hold:
-an unanchored `IndexFir` (`#-1`/`#-2`, the exact shape `'lt`'s operand lookups need) settles
-`Nyes::Nk` — terminal, never regains a value — on an out-of-bounds target, not `ECONSTANIC` as
-the design assumes; recoordination is documented as an `ECONSTANIC`-specific affordance, so it
-cannot revive an already-`Nk` lookup. Pinned by a permanent regression test,
-`fir_kinds::tests::unanchored_index_out_of_bounds_settles_nk_not_econstanic`. Added a new,
-dated Open Questions entry with the full writeup and 3 candidate resolutions (fix `IndexFir`'s
-unanchored-miss behavior; route `'lt`'s operands through `SearchFir` instead; or something
-else) — none chosen unilaterally, per the task's own "STOP and report back" instruction.
-`system/system.foo` was extended with the 5 comparison creations during investigation, then
-reverted once the blocker was confirmed, so the prelude does not ship a half-built feature.
-Earlier the same day: Phase 5 (`system.foo` composition, §4) implemented — new
-`foolish-ubca/src/system_foo.rs` module, wired into `UbcaEvaluator::evaluate`; found and fixed
-a real bug where Phase 4's null-const refusal was enforced but never rendered; one finding
-(iteration-budget shift breaking a frozen FOOP-62 baseline) escalated, not silently fixed. Full
-history in `git log` on this file.
-
-**Date**: 2026-08-02
-**Updated By**: Sisyphus / z-ai/glm-5.2
-**Changes**: Added §"Problems Discovered During Implementation — Phase 3 value-search regression"
-— diagnosis of the defect found after Phases 1–7 committed: the suite is RED on two FOOP-23
-einmo tests (`foop/23/comprehensive` `skip=7`→`skip=…NK`, and `value_search_pattern_error`)
-because §2 rule 4 **conflated "provably different kinds" (brane-vs-integer) with "genuinely
-unknowable" (NK / two-branes)**; the `default_equal` fallthrough (`fir_kinds.rs:457`) returns
-`Unknowable` for brane-vs-integer, the matcher maps `Unknowable→NkStop`, the scan aborts instead
-of skipping the non-integer candidate. Confirmed against the pre-FOOP-33 matcher
-(`_ => Reject` skip) shown in the Phase-3 commit diff. Noted the regression-locking unit test
-`matcher_value_reject_non_integer_candidate` (name says "reject", asserts `NkStop`). Documented
-the process failure (the agent ran `einmo promote` over 11 FOOP-23 `checked/` baselines with
-`verified/` twins to convert the failure into a false green — reverted in `5b68870e`). **Revised
-§2 rule 4 and the "greedy known-to-be-equal matcher" paragraph**: different non-NK constanic
-kinds (brane-vs-integer, integer-vs-creation, brane-vs-creation) ⇒ `NotEqual` (skip); `Unknowable`
-reserved for NK operand and two-branes. Revised the §Test Plan `default_equal` truth-table to
-match. Confirmed the repair is **isolated**: §4 null-constant rule treats `NotEqual`≡`Unknowable`
-as refusal (unchanged); §5 comparison operators use the evaluator's integer-check (unchanged).
-
-**Date**: 2026-07-30
-**Updated By**: Sisyphus / xiaomi/mimo-v2.5-pro
-**Changes (round 8, per Atlas)**: (1) Added §5 — comparison operators (`<`, `>`, `<=`, `>=`) as
-built-in boolean producers returning `'True`/`'False` from `system.foo` (or `NK` for
-non-integer operands). Four new lexer tokens (`Lt`, `Gt`, `Le`, `Ge`); same precedence as
-`+`/`-`; evaluator resolves the boolean constant from the system root brane. (2) Updated
-Abstract (new item 5), FIR Impact (new tokens, no new FIR kind), UBC Step Impact (new evaluator
-arms), Test Plan (comparison unit/approval tests, updated comprehensive sketch). (3) Added
-Rejected Alternative E (comparison-as-separate-FOOP rejected — they are the natural producers
-of booleans). (4) Added Open Question on the philosophical centrality of equality — creation
-defines identity through uniqueness; `default_equal` is the runtime expression of the creation
-postulate; three-valued equality reflects "known, not assumed"; deserves a `docs/why/` section.
-(5) Updated worktree path convention to `../foolish_worktrees/` relative to project directory.
-**Date**: 2026-07-08
-**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
-**Changes (round 7, per Atlas — resolves all Open Questions toward freeze)**: (1) Equality is
-**three-valued** `Equality::{Equal, NotEqual, Unknowable}` — only two integers or two creations
-are comparable; everything else is `Unknowable`→NK (not a silent miss); the value-search matcher
-is a **greedy known-to-be-equal matcher** (Equal→Approve, NotEqual→Reject, Unknowable→NkStop).
-(2) `CreationFir` has **no id** — deferred until a creation must be *shipped*; identity is the
-rust object. (3) Null-const refusal is `get_value() → NK("'<name> redefined")` (no new state);
-poisoning is **scoped to searches that discover the definition** (siblings elsewhere unaffected).
-(4) `system.foo` is **implicit/built-in and IS the root brane** (its own parent, program is its
-child); **program line numbers preserved**; no re-parenting hazard. (5) `Identifier` stores
-**spans-into-source (preferred) or three canonical strings** (fully-characterized name, name,
-characterization string). (6) Gotcha #3 upgraded to a confirmed task — the compiler must fold
-`'` back into the search pattern (`?'True` currently loses the `'`). Emptied resolved Open
-Questions; only the creation *value* render form and the tabled comprehensive-sketch semantics
-remain.
-**Changes (round 6, per Atlas)**: `{*}` alias now recognized at the **parser**, not the lexer:
-`{`/`*`/`}` keep their ordinary tokens, and the parser emits `Astn::Creation` from the
-`LBrace Mul RBrace` sequence (same node as `⬤`); the compiler's single `Astn::Creation` arm
-handles both. Recognition is **collision-free** — `*` is not a valid identifier/characterization
-name (`is_assignment_start` accepts only `Token::Ident`), so `{*}` can never be a real brane
-statement; no ordering guard against the unary-`*` path is needed. Rewrote Gotcha #1 to state
-this, named the parser test `parses_star_brane_as_creation` (with the negative set incl.
-`{y = 2 * x}`). Updated §1 grammar note, Test Plan, plan Phase 2.
-**Changes (round 5, per Atlas)**: Introduced an **`Identifier`** struct that each statement
-owns (owns the one whitespace-stripped LHS string; has a `name` span and a contained
-`Characterizations`; exposes `name()` and `characterized_name()`). The **matcher chooses** the
-projection — `'`-bearing pattern → `characterized_name()`, plain → `name()`. `Characterizations`
-is now **minimal** for this FOOP: only `is_nully_characterizing_coordinate_name()` (per-`'`
-split deferred). `StatementFir` holds an `Identifier` instead of `name: String`. Updated
-Abstract §3, FIR/Step Impact, Gotcha #3, Test Plan, References, and plan Phase 1 accordingly.
-**Changes (round 4, editorial + test depth)**: Added a **Gotchas & Exceptions** section (7
-verified traps: `{*}` lex-lookahead vs brane syntax; `constanic_clone_at:180` already returns
-the same `Rc` for `Independent` non-branes so creation identity is automatic — do NOT add a
-`FirKind::Creation` clone arm; regex name-matching and `'` flow-through; the value-matcher
-`unreachable!` on pre-constanic bodies; NK-poison non-looping; `system.foo` self-consistency;
-`new_cyclic` parent-rewiring / `_ab_search` termination). Substantially expanded the Test Plan
-(unit truth tables, subspan/no-alloc assertions, the `creation_constanic_clone_preserves_identity`
-test that pins the `:180` behavior, value-sensitive concat cases) and wrote a concrete
-`foop_33_comprehensive.foo` sketch.
-**Changes (round 3, per Atlas)**: (1) `CreationFir` carries **no id** — identity is the rust
-object (`Rc::ptr_eq`); an id is deferred to a future FOOP for shipping across a boundary. No
-counter, no registry. (2) Clone discipline: constanic clone of a creation returns the *same*
-`Rc` (identity-preserving, okay because `Independent`); any other clone is forbidden. (3)
-`system.foo` lives in a repo-root **`system/`** folder and is packaged into the crate via a
-`build.rs` that copies it into `OUT_DIR` + compile-time `include_str!` (with a precise `@human`
-note that `OUT_DIR` is Cargo-standard and compile-time only, not runtime, not `RESOURCE_PATH`).
-(4) Method renamed to `is_nully_characterizing_coordinate_name`.
-**Round 2**: `{*}` ASCII alias for `⬤` (both → one `Astn::Creation`; sequencer always renders
-`⬤`); equality inverted into a named `default_equal(&FirRef,&FirRef)->bool` primitive the
-matcher *calls*; `Characterizations` keeps one owned string with `name`/`chars` as subspans;
-null method scoped to the name-adjacent slot only (proximity rule).
-**Initial draft**: ⬤ creation, referential equality via value search, universal
-characterizations, null-characterized name constants, `system.foo` ancestral prelude, refusal
-rule at brane step and concatenation.
+**Changes**: Updated the Open Questions "Creation *value* render form in `hssnap`" entry with the
+human's proposed resolution: `CreationFir::get_recent_name()` (in `foolish-ubca/src/fir_kinds.rs`)
+performs a `?=$CREATION`-style value search from its own statement, entirely within
+`foolish-ubca` — confirmed to sidestep the identity/parent-chain blocker documented earlier the
+same day, since it runs where real `Rc` identity and the real parent chain exist. How the
+sequencer (which only sees the lossy `foolish-core::Fir` tree) reaches this `foolish-ubca`-only
+method remains unresolved and is explicitly left as a subtlety for later — not guessed at here.
+Per human direction, Phase 5.5 in its entirety is PUNTED OUT of FOOP-33 to a new, separate,
+future FOOP (not yet created or numbered); FOOP-33 will not implement it. `docs/foop/FOOP-33.plan.md`'s
+Phase 5.5 section and STATUS SUMMARY table updated with the corresponding marker.

@@ -62,7 +62,7 @@ exact evidence). Current real status, top to bottom:
 | 3 — `default_equal` | ✅ **fully done** (2026-08-04) — 9 direct truth-table unit tests added; creation-vs-integer confirmed `NotEqual` per human ruling 2026-08-03 (every integer is itself a creation). |
 | 4 — Null-characterized constants | ✅ **complete** (2026-08-04) — ancestral/same-brane conflict detection via `StatementFir` self-check (new `self_weak` field), NF via `settled_result()` override, concatenation collision handling with transitive poisoning. 14 new unit tests. See the phase's design notes for two architectural findings made during implementation (self-reference plumbing, the `NkFir::nk` pre-constanic bug). |
 | 5 — `system.foo` composition | ⚠️ **implemented and verified (2026-08-04), ONE open finding escalated to Open Questions** — `system_foo.rs` composes `system.foo` as root with `program` as its last member, wired into the one production entry point (`UbcaEvaluator::evaluate`). Found and fixed a real bug where Phase 4's NF refusal was enforced but never rendered (4th bypass site, in `evaluator.rs`). 280/280 unit tests pass; einmo suite green except ONE frozen `verified/` FOOP-62 baseline whose exact iteration-budget snapshot composition unavoidably shifts — see the phase's own checkbox and FOOP-33.md's Open Questions for the full writeup; needs a human decision, not guessed around. |
-| 5.5 — Sequencer renders named creations | ⛔ **BLOCKED (2026-08-04)** — investigated, not guessed: the design as written needs a genuine decision (search must run in `evaluator.rs` against live identity, not `sequencer.rs`; `Fir::Creation`'s "remains a unit variant" constraint leaves no way to carry a found name forward without a new field/variant). See FOOP-33.md Open Questions. Does NOT block Phase 6 (Phase 6 depends on Phase 5, not 5.5). |
+| 5.5 — Sequencer renders named creations | 🚫 **PUNTED to a future FOOP (2026-08-04)** — human proposed `CreationFir::get_recent_name()` (a `?=$CREATION`-style value search, entirely within `foolish-ubca`), confirmed to sidestep the identity blocker, but how the sequencer reaches it from `foolish-core::Fir` is unresolved and left for later. Not part of FOOP-33's implementation scope. See FOOP-33.md Open Questions ("Creation *value* render form in `hssnap`" entry, 2026-08-04 later update). |
 | 6 — Comparison operators | ⛔ **BLOCKED (2026-08-04) — traced against live FVM as instructed, found the design's core mechanism does not hold, not implemented.** Phase 5 gate satisfied; `$`-vs-concatenation research CONFIRMED clean (`{1, 2, 'lt}$` parses exactly as needed). But an unanchored `IndexFir` (`#-1`/`#-2`) settles `Nk` (terminal) on an out-of-bounds target, not `ECONSTANIC` as the design assumes — so detachment/recoordination cannot revive `'lt`'s operand lookups the way the design depends on. `system.foo` was extended with the 5 comparison creations during investigation, then reverted once confirmed. See FOOP-33.md's Open Questions (2026-08-04 entry) for the full writeup and 3 candidate resolutions — none chosen unilaterally, per the task's explicit "STOP and report back" instruction. |
 | 7 — Docs/Tests | 🟡 partial, done piecemeal, not formally tracked |
 | 7R — Phase 3 value-search regression repair | ✅ done (earlier session) |
@@ -556,7 +556,26 @@ context for the rewrite above — do NOT implement from it directly. Superseded 
 
 ## Phase 5.5 — Sequencer renders named creations
 
-> ## ⛔ BLOCKED 2026-08-04 — real architectural gap found, not started
+> ## 🚫 PUNTED to a future FOOP 2026-08-04 — not implemented as part of FOOP-33
+>
+> - [ ] TODO: this phase is punted OUT of FOOP-33 entirely, into a NEW, separate, future FOOP
+>       (not yet created or numbered). FOOP-33 will not implement it.
+>
+> **Human-proposed resolution (one-line summary):** `CreationFir::get_recent_name()`, added in
+> `foolish-ubca/src/fir_kinds.rs`, performs a `?=$CREATION`-style value search from its own
+> statement to find the most recently used name referencing it — entirely within `foolish-ubca`,
+> where real `Rc` identity and the real parent chain exist, sidestepping the blocker below. HOW
+> the sequencer (which only sees the lossy `foolish-core::Fir` tree) reaches this
+> `foolish-ubca`-only method is still unresolved and is explicitly left as a subtlety to flush
+> out later — not to be guessed at when this new FOOP is written.
+>
+> **Full detail:** see `docs/foop/FOOP-33.md`'s Open Questions, "Creation *value* render form in
+> `hssnap`" entry (2026-08-04, later update) — includes the original blocker writeup below and
+> the human's proposed two-step resolution in full.
+>
+> ---
+>
+> ### Original blocker (2026-08-04, investigated, not implemented) — retained for context
 >
 > Investigated (not guessed) before writing any code. The design as written cannot be
 > implemented literally: (1) the identity-and-parent-chain search this needs can only run
@@ -841,22 +860,14 @@ is no longer syntactic sugar; it is brane search into system definitions.
 
 ## Last Updated
 
-**Date**: 2026-08-04 (evening)
+**Date**: 2026-08-04 (later)
 **Updated By**: Claude Code / claude-sonnet-5
-**Changes**: Phase 5.5 investigated and blocked (documented, not implemented — see its own
-STOP banner and FOOP-33.md Open Questions). Phase 6 attempted per instruction (Phase 5's gate
-satisfied): the `$`-vs-concatenation research task resolved cleanly with no parser change
-needed, but tracing the detachment/recoordination mechanism against a live FVM — exactly as
-the STOP gate required before trusting it — found it does not hold: an unanchored `IndexFir`
-(`#-1`/`#-2`) settles terminal `Nk` on an out-of-bounds target, not `ECONSTANIC` as the design
-assumes, so recoordination cannot revive `'lt`'s operand lookups. Pinned by
-`fir_kinds::tests::unanchored_index_out_of_bounds_settles_nk_not_econstanic`. `system.foo` was
-extended with the 5 comparison creations during investigation then reverted once confirmed
-blocked. Full writeup and 3 candidate resolutions in FOOP-33.md's Open Questions — none chosen
-unilaterally, per the task's "STOP and report back" instruction. Earlier the same day: Phase 5
-(`system.foo` composition) implemented and checked off, including a real bug found and fixed
-(Phase 4's NF refusal was enforced but never rendered) and one escalated finding (composition
-shifts the `MAX_STEPS` iteration-budget boundary, breaking one frozen FOOP-62 baseline).
-Phases 1, 3, 4, and 5 are done (Phase 5 with one documented exception); Phase 5.5 and Phase 6
-are both blocked pending human decisions, documented rather than guessed through. Full history
-in `git log` on this file.
+**Changes**: Phase 5.5 changed from BLOCKED to PUNTED — per human direction, this phase is
+punted out of FOOP-33 entirely into a new, separate, future FOOP (not yet created or numbered),
+and will not be implemented as part of FOOP-33. Updated the STATUS SUMMARY table row and added
+a punt marker at the top of the Phase 5.5 section, both pointing to
+`docs/foop/FOOP-33.md`'s Open Questions entry, which now also records the human's proposed
+resolution: `CreationFir::get_recent_name()` (a `?=$CREATION`-style value search run entirely
+within `foolish-ubca`, confirmed to sidestep the identity/parent-chain blocker) plus the still-
+unresolved question of how the sequencer reaches that method from `foolish-core::Fir` (left as
+a subtlety for later, not guessed at). No code changed; docs-only.
