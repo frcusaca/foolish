@@ -324,6 +324,20 @@ pub trait Fir: std::fmt::Debug {
         self.stmt_count().is_some()
     }
 
+    /// Whether this FIR is a **search kind** — one that resolves by *looking
+    /// something up* rather than by combining already-present operands.
+    ///
+    /// Today: [`FirKind::Search`] (name/value/regexp/dot searches) and
+    /// [`FirKind::Index`] (`#N`, `^`/`$` head-tail). These are exactly the
+    /// kinds `compiler::build_fir`'s `under_sff` rule targets — under an SFF
+    /// marker they are constructed ECONSTANIC so they never run.
+    ///
+    /// One predicate rather than open-coded `matches!` at each site, so a
+    /// future search kind is added in one place.
+    fn is_search_kind(&self) -> bool {
+        matches!(self.kind(), FirKind::Search | FirKind::Index)
+    }
+
     // ── UBCA debugging facilities ──
 
     /// Peek at the front of the task queue without removing it.

@@ -394,9 +394,11 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
                 let me_dyn: Weak<RefCell<dyn Fir>> = me.clone();
                 // SFF marker: from here down, searches are built ECONSTANIC.
                 let e = build_fir(*expr, Some(&me_dyn), true);
-                RefCell::new(StayFullyFoolishFir {
-                    core: ProtoBrane::new(vec![e], child_parent!(), Nyes::Prembrionic),
-                })
+                // Sanity-check that the `under_sff` rule actually reached every
+                // descendant search before storing the body (debug builds only).
+                let mut core = ProtoBrane::new(vec![], child_parent!(), Nyes::Prembrionic);
+                core.push_foolish_child_sff_marked(e);
+                RefCell::new(StayFullyFoolishFir { core })
             })
         }
         Astn::ContextedSearch { inner } => {
