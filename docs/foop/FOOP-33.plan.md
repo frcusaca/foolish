@@ -259,7 +259,49 @@ correctly remain unchecked; no action needed here beyond confirming genuinely no
 - [ ] Unit test the concatenation case `{A={'a=1}, B = A A A}` (later `'a`'s → `NF`, first
       intact) and `{A={'a=⬤}, B=A A}` (same creation ⇒ both permitted — value-sensitive).
 
-## Phase 5 — `system.foo` ancestral prelude
+## Phase 5 — `system.foo` composition
+
+> ## ⛔ REWRITTEN 2026-08-03 — supersedes the "ancestral prelude" design below the line
+>
+> The task list below this banner describes the **superseded** design: `system.foo` as a
+> parent brane with the user program wrapped in a `'program` statement, name-resolution
+> reaching `True`/`False` via `_ab_search` walking up a parent chain. Per human direction
+> earlier this session, the design is now **composition**, not ancestry:
+>
+> ```
+> system.foo = { 'True = ⬤, 'False = ⬤, [comparison members per §5.0], program = PROGRAM_BRANE }
+> ```
+>
+> `system.foo` is the root brane. The user's program is an ordinary **member** of it, bound to
+> the plain name `program` (not null-characterized — an ordinary statement). The FVM steps the
+> whole composite brane to settlement, then **extracts the `program` member in Rust** via the
+> `stmt_at(idx)` capability accessor (FOOP-13 A2) — **not** by evaluating a Foolish `#-1`/`$`
+> search. The return path must not depend on the search engine this FOOP modifies. `program` is
+> retrieved **positionally**, as the last statement of `system.foo` (`stmt_at(stmt_count() -
+> 1)`); switching to name-based lookup is a documented, non-blocking suggestion for if/when
+> `system.foo` grows complex enough that "last statement" becomes fragile (see FOOP-33.md §4).
+>
+> **The only real behavioral delta from the ancestral design**: the user's root brane is no
+> longer its own parent — its parent is `system.foo` (`program`'s home brane), which is its own
+> parent (self-rooting, terminating the walk). This was reviewed and judged not a significant
+> problem: the two self-parent checks in the codebase (`fir_kinds.rs`, `_ab_search`-family
+> loop-termination guards) are loop guards, not semantic assertions — they terminate wherever
+> the fixed point actually is. `is_root()` (`proto_brane.rs`) will start answering `false` for
+> the (former) user root; find its callers before implementing.
+>
+> **Line numbers need no preservation task.** Statement indices are 0-based and assigned
+> per-brane via `.enumerate()` at compile time (`compiler.rs`). Sibling statements in
+> `system.foo` cannot renumber statements *inside* `program`'s own brane — they belong to a
+> different brane's numbering. The "preserve the user program's line numbers" checkbox below is
+> **moot** under this design and should be dropped, not carried forward as a task.
+>
+> **Tasks below still need updating to match** — the `OUT_DIR`/`build.rs`/`include_str!`
+> mechanism is unaffected and correct as written (verified: `build.rs` already exists and
+> performs the copy; only the compile-time `include_str!` consumption side is missing). What
+> needs rewriting: the "Construction" and "`'program` statement" bullets (composition, not a
+> wrapper statement + parent-chain reach), and the line-number-preservation task (drop it).
+> Comparison-related `system.foo` members (`'lt` etc.) are Phase 6's concern, gated separately —
+> do not add them here.
 
 **`OUT_DIR` mechanism (verified; no research needed — implement exactly this).** `OUT_DIR` is
 the standard Cargo build-script variable (Cargo 1.93 in this repo), **not** `RESOURCE_PATH`.
@@ -271,10 +313,12 @@ embedded. Do **not** call `std::env::var("OUT_DIR")` at runtime (it would return
 (sibling of `Cargo.toml`) and the embed lives in the `evaluator` module (or a small `system`
 module).
 
-- [ ] Create the repo-root **`system/`** folder and `system/system.foo` defining `'True=⬤`,
-      `'False=⬤`.
-- [ ] Add `foolish-ubca/build.rs` with exactly this behavior (copy the root file into
-      `OUT_DIR`, and re-run if it changes):
+- [x] Create the repo-root **`system/`** folder and `system/system.foo` defining `'True=⬤`,
+      `'False=⬤`. (verified 2026-08-03: `system/system.foo` exists with exactly this content)
+- [x] Add `foolish-ubca/build.rs` with exactly this behavior (copy the root file into
+      `OUT_DIR`, and re-run if it changes). (verified 2026-08-03: `foolish-ubca/build.rs`
+      exists and performs exactly this copy — but nothing currently reads `OUT_DIR`'s copy;
+      the `include_str!` consumption side below is the missing half)
 
       ```rust
       // foolish-ubca/build.rs
@@ -297,6 +341,27 @@ module).
       const SYSTEM_FOO_SRC: &str = include_str!(concat!(env!("OUT_DIR"), "/system.foo"));
       ```
 
+- [ ] **NEEDS REWRITE (composition, not ancestry).** Implicitly compose `SYSTEM_FOO_SRC` with
+      the user program as a member named `program` (not wrapped in a `'program`
+      null-characterized statement — see the banner above), before `step_to_settled`, on every
+      entry path (`foolish-ubca/src/evaluator.rs::evaluate`, REPL, CLI `run`/`step`). Not
+      opt-in. `system.foo`'s own AST gains one more statement, `program = {user source}`,
+      appended last; compile the combined AST as one unit → one self-rooting BraneFir. The
+      evaluator extracts and returns the `program` member's result via `stmt_at(stmt_count() -
+      1)` in Rust, not the system brane's own result and not via a Foolish search.
+- [ ] ~~Preserve the user program's line numbers~~ — **DROP, moot under composition** (see
+      banner above: statement indices are per-brane, 0-based, unaffected by siblings in a
+      different brane).
+- [ ] Approval `.foo` tests: creation + identity; quote-bearing search; `True`/`False`
+      resolve as ordinary sibling lookups within `system.foo` (not `_ab_search` ancestry);
+      `'True=3` ⇒ `NK("'True redefined")` while `'True='True` permitted.
+      Generate `.snap.new`; **present to human** — never auto-accept.
+
+---
+
+*(Below this line: the original "ancestral prelude" task-list prose, retained as historical
+context for the rewrite above — do NOT implement from it directly. Superseded 2026-08-03.)*
+
 - [ ] **Implicitly** compile `SYSTEM_FOO_SRC` once and make it **THE root brane** (its own
       parent, self-rooting via `new_cyclic` — the same pattern used one level down today), with
       the user program as its child, before `step_to_settled`, on every entry path
@@ -317,9 +382,6 @@ module).
 - [ ] **Preserve the user program's line numbers**: making system.foo the ancestor must not
       shift program line numbering (system.foo is a distinct brane above, with its own lines).
       Unit test via `as_stmt_line_number` / `step_until_line_number` on a one-line program.
-- [ ] Approval `.foo` tests: creation + identity; quote-bearing search; `True`/`False`
-      resolve ancestrally; `'True=3` ⇒ `NK("'True redefined")` while `'True='True` permitted.
-      Generate `.snap.new`; **present to human** — never auto-accept.
 
 ## Phase 5.5 — Sequencer renders named creations
 
