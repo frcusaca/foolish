@@ -1,0 +1,27 @@
+{
+
+  is_it = 'True; !! Null-characterized system creation should be rendered as 'True
+
+  !! Render the creation symbol at the site of the creation.
+  !! The names on the LHS of these statements with a singular creation on RHS are
+  !! called those creations' orignal names.
+  'a    = {*};
+   a    = {*};
+  bs    = {b={*}; 'b={*}; 'bad='b};
+
+  !! Can we see the names now?
+  what_was_tick_a = 'a;
+  what_was_tick_a = #-4;
+
+  what_was_a = a;      !! Rule is characterizations who's name is not null-characterized are not rendered by their original name
+  what_was_a = ?='a&#1; !! defined on the line after 'a
+
+  what_is_tick_b_called_from_another_brane_1 = bs.'b;
+  what_is_tick_b_called_from_another_brane_2 = bs~'b;
+  what_is_tick_b_called_from_another_brane_3 = bs?'b;
+  what_is_tick_b_called_from_another_brane_4 = bs#1;
+  what_is_b_called_from_another_brane_1      = bs.b;
+  what_is_b_called_from_another_brane_2      = bs#0;
+  'how_bad_can_it_b_1                        = bs#1;
+  how_bad_can_it_b_2                         = bs#1;
+}

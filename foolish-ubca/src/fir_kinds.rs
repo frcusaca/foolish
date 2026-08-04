@@ -884,6 +884,70 @@ impl StatementFir {
                 Some(null_const_nf_reason(self.identifier.identifier_name()));
         }
     }
+
+    /// FOOP-33 (post-merge addition) — **"Named creations cannot be
+    /// renamed."** A creation reached ONLY through a null-characterized name
+    /// (e.g. `'True`) is that creation's **original name**; giving it a
+    /// SECOND, DIFFERENT null-characterized name (`'other = 'True`) would let
+    /// the same creation answer to two different protected names,
+    /// undermining the point of null-characterization (a name that uniquely
+    /// and durably identifies one creation — see the "named creation"/
+    /// "original name" terminology in AGENTS.md/README.md). Refused the same
+    /// way the null-const conflict rule is: set `nf_reason`, terminal, read
+    /// by `settled_result`/`.value()` in place of the written body.
+    ///
+    /// Trigger, all three required: (1) this statement's own LHS is
+    /// null-characterized; (2) its (constanic) body resolves (`.value()`) to
+    /// a creation; (3) that creation's original name (its OWN defining
+    /// statement's null-characterized name, found via
+    /// `CreationFir::get_display_name` viewed from HERE) is `Some` AND
+    /// DIFFERS from this statement's own name.
+    ///
+    /// Condition 3's "differs" clause is what distinguishes a genuine rename
+    /// from a same-name REASSERTION, which must stay permitted:
+    /// `{'a=⬤; 'a='a;}` — `'a='a` re-states `'a`'s own existing name, not a
+    /// second name, and is allowed (mirrors the existing, separately-tested
+    /// guarantee that `'True = 'True` is permitted —
+    /// `system_foo::tests::program_redefining_true_to_a_conflicting_value_is_refused`).
+    /// `{'a=⬤; 'b='a;}` — `'b='a` gives `'a`'s creation a SECOND name `'b`,
+    /// and is refused.
+    ///
+    /// Does not cover concatenation, for the same reason
+    /// `check_null_const_conflict` does not — see that method's doc comment.
+    fn check_rename_of_named_creation(&self, body: &FirRef) {
+        if self.nf_reason.borrow().is_some() {
+            return; // already resolved (terminal).
+        }
+        if !self.identifier.is_nully_characterizing_coordinate_name() {
+            return; // only a null-characterized statement can commit this offense.
+        }
+        let Some(self_rc) = self.self_weak.upgrade() else {
+            return; // torn down; nothing to check against.
+        };
+        let resolved = body.value();
+        if resolved.borrow().kind() != FirKind::Creation {
+            return; // not a creation reference at all -- nothing to forbid.
+        }
+        let original_name = resolved
+            .borrow()
+            .as_creation_display_name(&resolved, Some(&self_rc));
+        let Some(original_name) = original_name else {
+            return; // the creation has no original name at all -- nothing to protect.
+        };
+        if original_name != self.identifier.searchable_name() {
+            *self.nf_reason.borrow_mut() =
+                Some(rename_nf_reason(self.identifier.identifier_name()));
+        }
+    }
+}
+
+/// The NF reason string for a refused attempt to give an already-named
+/// creation a second, different null-characterized name. Kept separate from
+/// [`null_const_nf_reason`] (a different offense, same NF mechanism) so the
+/// reason text distinguishes "conflicting redefinition" from "renaming a
+/// named creation" for a human reading an alarm.
+fn rename_nf_reason(name: &str) -> String {
+    format!("'{name} {NF_PREFIX} (Named creations cannot be renamed)")
 }
 
 /// The value a statement PRESENTS — `settled_result()` (the NF refusal NK, if
@@ -936,6 +1000,7 @@ impl Fir for StatementFir {
                     if body_nyes.is_constanic() {
                         if self.identifier.is_nully_characterizing_coordinate_name() {
                             self.check_null_const_conflict(body);
+                            self.check_rename_of_named_creation(body);
                         }
                         self.core.set_nyes(body_nyes);
                     }
@@ -2945,15 +3010,35 @@ impl CreationFir {
 
     /// The name this creation reports for itself, if any (FOOP-33).
     ///
-    /// A creation names itself **only when it is the entire right-hand side of
-    /// a named statement**. Concretely: its parent must be a statement, and
-    /// this creation must be that statement's body. Then the statement's full
-    /// characterized name is returned — `'a` for a null-characterized name,
-    /// leading quote included, exactly as every name-search matches it.
+    /// **Two conditions, both required** (revised 2026-08-04 — see FOOP-33.md
+    /// §"Concerns Standing Past Completion" for the incident that forced this):
     ///
-    /// A creation sitting *inside* a larger expression reports `None`: in
-    /// `'a = 1 + ⬤` the parent is the `+` operator, and the statement's name
-    /// belongs to the whole `1 + ⬤` expression, not to the creation within it.
+    /// 1. **Reached somewhere other than its own defining statement.** A
+    ///    creation's parent statement is where it was born; reporting that
+    ///    same name back AT that statement reads as self-referential
+    ///    (`{a = ⬤;}` must NOT sequence as `{a=a}` — that looks like a
+    ///    tautology or a bug, not "a fresh creation is being introduced").
+    ///    Only a reference reached elsewhere (through search, as another
+    ///    statement's value) reports the name; the defining site itself
+    ///    always shows the glyph. `viewed_from` is the statement CURRENTLY
+    ///    being rendered (the one whose body led the caller to this
+    ///    creation) — compared by `Rc::ptr_eq` against the creation's own
+    ///    recorded parent statement. They are the same `Rc` only when we are
+    ///    looking at the creation from its own defining statement (Gotcha
+    ///    #2 means the creation itself is one shared `Rc` everywhere, so this
+    ///    check must be on the STATEMENT, not the creation).
+    /// 2. **The defining statement's name is null-characterized.** A bare
+    ///    `a = ⬤` does not qualify — only a protected constant like
+    ///    `'True = ⬤` does. Without this gate, two independent plain
+    ///    creations sharing unrelated statement names read as far more
+    ///    confusing once rendered: `{'a=⬤; 'a=⬤;}` (two DIFFERENT creations
+    ///    that both happen to sit under the coordinate name `a`, e.g. inside
+    ///    different branes) would sequence as `{'a='a; 'a='a;}` with no way
+    ///    to tell from the rendering that they are not the same creation.
+    ///    Restricting to null-characterized names limits this rendering to
+    ///    the case it was actually designed for: protected, effectively
+    ///    singleton constants like `'True`/`'False`, where the name really
+    ///    does uniquely pick out one creation.
     ///
     /// This works even for a creation reached through a search from another
     /// brane. A constanic clone of an `Independent` creation returns the *same*
@@ -2964,30 +3049,35 @@ impl CreationFir {
     ///
     /// `self_ref` must be the `FirRef` wrapping `self`; the parent is reached
     /// through it, following the same convention as [`Fir::_get_my_brane`].
-    ///
-    /// **CAVEAT (FOOP-33.md §"Concerns Standing Past Completion"):** this rule
-    /// applies uniformly at the DEFINING site too, which reads oddly to a
-    /// human even though it is the design working as specified. `{a = {*};}`
-    /// sequences as `{a=a}`, not `{a={*}}`/`{a=⬤}` — the statement's own name
-    /// is reported for its own creation, which looks self-referential rather
-    /// than "here is a fresh, still-glyph creation being introduced." Whether
-    /// the defining site should be special-cased to show the glyph (only
-    /// *references reached elsewhere* would then show the name) is an open
-    /// design question, not resolved by this implementation — see the FOOP-33
-    /// doc section for the full writeup and status.
     #[must_use]
-    pub fn get_display_name(&self, self_ref: &FirRef) -> Option<String> {
+    pub fn get_display_name(&self, self_ref: &FirRef, viewed_from: &FirRef) -> Option<String> {
         let parent = self.core.parent()?;
         // A self-parenting node is the root; it has no defining statement.
         if Rc::ptr_eq(&parent, self_ref) {
             return None;
         }
-        let parent = parent.borrow();
-        // `as_stmt_searchable_name` is `None` for every non-statement kind, so
-        // it doubles as the "is this a statement?" discriminator.
-        let name = parent.as_stmt_searchable_name()?;
-        let body = parent.core().foolish_children().first()?;
-        Rc::ptr_eq(body, self_ref).then(|| name.to_owned())
+        let parent_borrowed = parent.borrow();
+        // `as_stmt_identifier` is `None` for every non-statement kind, so it
+        // doubles as the "is this a statement?" discriminator.
+        let identifier = parent_borrowed.as_stmt_identifier()?;
+        let body = parent_borrowed.core().foolish_children().first()?;
+        if !Rc::ptr_eq(body, self_ref) {
+            return None;
+        }
+        // Condition 2: only a null-characterized (protected-constant) name
+        // qualifies at all.
+        if !identifier.is_nully_characterizing_coordinate_name() {
+            return None;
+        }
+        let name = identifier.searchable_name().to_owned();
+        drop(parent_borrowed);
+        // Condition 1: never report the name when viewed from the creation's
+        // own defining statement -- only from a different statement (a
+        // reference reached elsewhere).
+        if Rc::ptr_eq(&parent, viewed_from) {
+            return None;
+        }
+        Some(name)
     }
 }
 
@@ -3001,8 +3091,13 @@ impl Fir for CreationFir {
     fn kind(&self) -> FirKind {
         FirKind::Creation
     }
-    fn as_creation_display_name(&self, self_ref: &FirRef) -> Option<String> {
-        self.get_display_name(self_ref)
+    fn as_creation_display_name(
+        &self,
+        self_ref: &FirRef,
+        viewed_from: Option<&FirRef>,
+    ) -> Option<String> {
+        let viewed_from = viewed_from?;
+        self.get_display_name(self_ref, viewed_from)
     }
 }
 
@@ -4909,6 +5004,87 @@ mod tests {
             stmts[2].borrow().settled_result().is_none(),
             "second 'k=c must be PERMITTED: same creation, default_equal == Equal"
         );
+    }
+
+    // ── "Named creations cannot be renamed" (FOOP-33, post-merge addition) ──
+
+    #[test]
+    fn rename_of_named_creation_settles_nf() {
+        // {'a=⬤; 'b='a;} -- 'a is the creation's original name; 'b='a tries
+        // to give it a SECOND, DIFFERENT null-characterized name -> refused.
+        let root = Compiler::compile("{'a=⬤; 'b='a;}").unwrap().pop().unwrap();
+        let scope = Scope::empty();
+        let _ = step_to_settled(&root, &scope);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+
+        assert!(
+            stmts[0].borrow().settled_result().is_none(),
+            "'a itself is never refused -- it establishes the original name"
+        );
+        let reason = stmts[1]
+            .borrow()
+            .settled_result()
+            .expect("'b='a must be refused")
+            .borrow()
+            .as_nk_reason()
+            .unwrap()
+            .to_owned();
+        assert!(is_nf_reason(&reason), "must be NF, got: {reason}");
+        assert_eq!(reason, "'b not-foolish (Named creations cannot be renamed)");
+    }
+
+    #[test]
+    fn same_name_reassertion_of_named_creation_is_permitted() {
+        // {'a=⬤; 'a='a;} -- 'a='a re-states 'a's OWN existing name, not a
+        // second name. Must stay permitted (mirrors the pre-existing
+        // 'True='True guarantee in system_foo.rs).
+        let root = Compiler::compile("{'a=⬤; 'a='a;}").unwrap().pop().unwrap();
+        let scope = Scope::empty();
+        let _ = step_to_settled(&root, &scope);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        assert!(
+            stmts[1].borrow().settled_result().is_none(),
+            "'a='a (same name, same creation) must be PERMITTED, not a rename"
+        );
+    }
+
+    #[test]
+    fn rename_of_a_plain_unnamed_creation_is_permitted() {
+        // {c=⬤; 'k=c;} -- `c` is plain (not null-characterized), so it has NO
+        // original name to protect. Giving it a null-characterized name for
+        // the first time is not a RE-name, it's the first name -- permitted.
+        let root = Compiler::compile("{c=⬤; 'k=c;}").unwrap().pop().unwrap();
+        let scope = Scope::empty();
+        let _ = step_to_settled(&root, &scope);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        assert!(
+            stmts[1].borrow().settled_result().is_none(),
+            "naming a previously-unnamed (plain) creation is permitted"
+        );
+    }
+
+    #[test]
+    fn rename_via_search_reaching_creation_through_a_third_statement_settles_nf() {
+        // {'a=⬤; mid='a; 'b=mid;} -- 'b reaches 'a's creation THROUGH `mid`
+        // (a plain, non-null-characterized intermediary), but the creation's
+        // identity (and its original name 'a) survives the hop (Gotcha #2) --
+        // still a rename, still refused.
+        let root = Compiler::compile("{'a=⬤; mid='a; 'b=mid;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        let scope = Scope::empty();
+        let _ = step_to_settled(&root, &scope);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let reason = stmts[2]
+            .borrow()
+            .settled_result()
+            .expect("'b=mid must be refused -- it renames 'a's creation")
+            .borrow()
+            .as_nk_reason()
+            .unwrap()
+            .to_owned();
+        assert_eq!(reason, "'b not-foolish (Named creations cannot be renamed)");
     }
 
     #[test]
@@ -7966,15 +8142,17 @@ mod tests {
         );
     }
 
-    // ── CreationFir::get_display_name (FOOP-33 stretch goal) ──
+    // ── CreationFir::get_display_name (FOOP-33 stretch goal, revised) ──
     //
-    // A creation reports a name ONLY when it is the ENTIRE right-hand side of a
-    // named statement. These tests pin both halves of that rule, plus the
-    // payoff case: a creation reached through a search still answers with its
-    // OWN defining statement's name, because a constanic clone of an
-    // `Independent` creation returns the SAME `Rc` (FOOP-33 "Gotcha #2"), so
-    // its `.parent()` chain -- set at original construction -- survives
-    // detachment and recoordination at the reference site.
+    // A creation reports a name ONLY when BOTH hold: (1) it is being viewed
+    // from a statement OTHER than its own defining statement, AND (2) the
+    // defining statement's name is null-characterized. These tests pin all
+    // four corners of that rule, plus the payoff case: a creation reached
+    // through a search still answers with its OWN defining statement's name
+    // when viewed from the referencing statement, because a constanic clone
+    // of an `Independent` creation returns the SAME `Rc` (FOOP-33 "Gotcha
+    // #2"), so its `.parent()` chain -- set at original construction --
+    // survives detachment and recoordination at the reference site.
 
     /// Rust-side tree walk (a *sift*, not a Foolish search -- see AGENTS.md
     /// §Foolish Terminology) finding the first `Creation` in the foolish store.
@@ -7987,17 +8165,44 @@ mod tests {
     }
 
     #[test]
-    fn creation_as_whole_statement_body_reports_its_name() {
+    fn creation_viewed_from_its_own_defining_statement_reports_no_name() {
         // `'a = ⬤` -- the creation's parent IS the statement `'a`, and the
-        // creation IS that statement's whole body. It names itself.
+        // creation IS that statement's whole body -- but viewed FROM that
+        // same statement (condition 1 fails), it must NOT report its name:
+        // `{'a=⬤;}` sequencing as `{'a='a}` reads as circular, not as "a
+        // fresh creation is being introduced" (FOOP-33.md "Concerns Standing
+        // Past Completion").
         let root = Compiler::compile("{'a=⬤; b='a;}").unwrap().pop().unwrap();
         let creation = sift_for_first_creation(&root).expect("creation must exist");
-        let name = creation.borrow().as_creation_display_name(&creation);
+        let defining_stmt = creation.borrow().core().parent().expect("has a parent");
+        let name = creation
+            .borrow()
+            .as_creation_display_name(&creation, Some(&defining_stmt));
+        assert_eq!(
+            name, None,
+            "a creation viewed from its OWN defining statement never reports \
+             a name, even though it is null-characterized and the whole RHS"
+        );
+    }
+
+    #[test]
+    fn creation_viewed_from_elsewhere_reports_its_defining_statements_name() {
+        // Same source as above, but viewed from a DIFFERENT statement (`b`'s)
+        // -- condition 1 now holds, and `'a` is null-characterized (condition
+        // 2 holds), so the name is reported.
+        let root = Compiler::compile("{'a=⬤; b='a;}").unwrap().pop().unwrap();
+        let creation = sift_for_first_creation(&root).expect("creation must exist");
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let b_stmt = &stmts[1];
+        let name = creation
+            .borrow()
+            .as_creation_display_name(&creation, Some(b_stmt));
         assert_eq!(
             name.as_deref(),
             Some("'a"),
-            "a creation that is the whole body of statement `'a` reports the \
-             FULL characterized name, leading quote included"
+            "viewed from a DIFFERENT statement, a null-characterized \
+             creation reports the FULL characterized name, leading quote \
+             included"
         );
     }
 
@@ -8005,10 +8210,14 @@ mod tests {
     fn creation_inside_operator_expression_reports_no_name() {
         // `'a = 1 + ⬤` -- the creation's parent is the OPERATOR, not the
         // statement. The statement's name belongs to the whole `1+⬤`
-        // expression, not to the creation sitting inside it.
+        // expression, not to the creation sitting inside it -- true
+        // regardless of viewpoint.
         let root = Compiler::compile("{'a=1+⬤; b='a;}").unwrap().pop().unwrap();
         let creation = sift_for_first_creation(&root).expect("creation must exist");
-        let name = creation.borrow().as_creation_display_name(&creation);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let name = creation
+            .borrow()
+            .as_creation_display_name(&creation, Some(&stmts[1]));
         assert_eq!(
             name, None,
             "a creation that is only a sub-expression of the RHS reports no \
@@ -8017,24 +8226,53 @@ mod tests {
     }
 
     #[test]
-    fn creation_under_plainly_named_statement_reports_that_name() {
-        // The rule is not specific to null-characterized (`'`-prefixed) names.
-        let root = Compiler::compile("{a=⬤;}").unwrap().pop().unwrap();
+    fn creation_under_a_plain_not_null_characterized_statement_never_reports_a_name() {
+        // `a = ⬤` (no leading `'`) -- the creation IS the whole RHS, and it is
+        // viewed from elsewhere, but the defining statement's name is NOT
+        // null-characterized (condition 2 fails). Two unrelated plain
+        // creations both named `a` in different branes would otherwise be
+        // indistinguishable once rendered by name; restricting to
+        // null-characterized names limits this to protected constants like
+        // `'True`/`'False`, where the name genuinely picks out one creation.
+        let root = Compiler::compile("{a=⬤; b=a;}").unwrap().pop().unwrap();
         let creation = sift_for_first_creation(&root).expect("creation must exist");
-        let name = creation.borrow().as_creation_display_name(&creation);
-        assert_eq!(name.as_deref(), Some("a"));
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let name = creation
+            .borrow()
+            .as_creation_display_name(&creation, Some(&stmts[1]));
+        assert_eq!(
+            name, None,
+            "a plain (non-null-characterized) defining statement never \
+             lends its name to its creation, even viewed from elsewhere"
+        );
     }
 
     #[test]
     fn creation_with_no_statement_parent_reports_no_name() {
         // Constructed directly under a brane -- no statement anywhere in its
-        // parent chain, so there is no name to report.
+        // parent chain, so there is no name to report, regardless of
+        // viewpoint.
         let parent = make_brane(vec![]);
         let creation = CreationFir::creation(Rc::downgrade(&parent));
-        let name = creation.borrow().as_creation_display_name(&creation);
+        let name = creation
+            .borrow()
+            .as_creation_display_name(&creation, Some(&parent));
         assert_eq!(
             name, None,
             "a creation whose parent is not a statement reports no name"
+        );
+    }
+
+    #[test]
+    fn creation_viewed_with_no_statement_in_scope_reports_no_name() {
+        // `viewed_from = None` -- conservatively, never show a name: there is
+        // no way to tell whether this is the defining site or elsewhere.
+        let root = Compiler::compile("{'a=⬤; b='a;}").unwrap().pop().unwrap();
+        let creation = sift_for_first_creation(&root).expect("creation must exist");
+        let name = creation.borrow().as_creation_display_name(&creation, None);
+        assert_eq!(
+            name, None,
+            "with no current statement in scope, the name is never shown"
         );
     }
 
@@ -8044,12 +8282,15 @@ mod tests {
         // defines (Gotcha #2), so walking that resolved value's parent chain
         // still lands on the ORIGINAL `'a` statement -- proving the parent
         // chain survives detachment/recoordination at the reference site.
+        // Viewed from `b`'s own statement (condition 1 holds; `'a` is
+        // null-characterized, condition 2 holds).
         let root = Compiler::compile("{'a=⬤; b='a;}").unwrap().pop().unwrap();
         let scope = Scope::empty();
         let _ = step_to_settled(&root, &scope);
 
         let stmts = root.borrow().core().foolish_children().to_vec();
-        let b_body = stmts[1].borrow().core().foolish_children()[0].clone();
+        let b_stmt = &stmts[1];
+        let b_body = b_stmt.borrow().core().foolish_children()[0].clone();
         let resolved = b_body.value();
         assert_eq!(
             resolved.borrow().kind(),
@@ -8057,7 +8298,9 @@ mod tests {
             "`b='a` must resolve THROUGH the search to the creation itself"
         );
 
-        let name = resolved.borrow().as_creation_display_name(&resolved);
+        let name = resolved
+            .borrow()
+            .as_creation_display_name(&resolved, Some(b_stmt));
         assert_eq!(
             name.as_deref(),
             Some("'a"),
@@ -8069,9 +8312,10 @@ mod tests {
     #[test]
     fn distinct_creations_report_their_own_statement_names() {
         // Two same-named statements (`'k`) in two different branes each define
-        // their own creation. Each must report its own -- pointer identity, not
-        // a coincidental name match, is what decides.
-        let root = Compiler::compile("{A={'k=⬤;}; B={'k=⬤;};}")
+        // their own creation. Each must report its own -- pointer identity,
+        // not a coincidental name match, is what decides. Viewed from a
+        // sibling statement in each brane (not their own defining site).
+        let root = Compiler::compile("{A={'k=⬤; other=1;}; B={'k=⬤; other=2;};}")
             .unwrap()
             .pop()
             .unwrap();
@@ -8082,14 +8326,20 @@ mod tests {
             .map(|outer| {
                 let creation =
                     sift_for_first_creation(outer).expect("each brane defines a creation");
-                creation.borrow().as_creation_display_name(&creation)
+                let inner_brane = outer.borrow().core().foolish_children()[0].clone();
+                let inner_stmts = inner_brane.borrow().core().foolish_children().to_vec();
+                let sibling = &inner_stmts[1]; // `other`, not `'k` itself
+                creation
+                    .borrow()
+                    .as_creation_display_name(&creation, Some(sibling))
             })
             .collect();
 
         assert_eq!(
             names,
             vec![Some("'k".to_owned()), Some("'k".to_owned())],
-            "each creation reports the name of the statement it is the body of"
+            "each creation, viewed from a sibling statement, reports the \
+             name of the statement it is the body of"
         );
 
         let a_creation = sift_for_first_creation(&stmts[0]).unwrap();

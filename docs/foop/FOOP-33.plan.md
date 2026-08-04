@@ -797,6 +797,31 @@ is no longer syntactic sugar; it is brane search into system definitions.
 
 ## Phase 7 — Documentation and Tests
 
+- [x] Document **"named creation"** and **"original name"** terminology (2026-08-05): a creation
+      assigned to a null-characterized name is a "named creation"; the null-characterized name is
+      that creation's "original name." Added to AGENTS.md §Foolish Terminology and to README.md
+      as a new "### Named creations cannot be renamed" subsection under "## Renaming" (the
+      natural home — it's a renaming rule). Documents the forbid-rename code change below.
+- [x] **Forbid renaming a named creation** (2026-08-05, human-directed): a second, DIFFERENT
+      null-characterized name for an already-named creation now settles NF, "Named creations
+      cannot be renamed" (`StatementFir::check_rename_of_named_creation`,
+      `foolish-ubca/src/fir_kinds.rs`, wired alongside `check_null_const_conflict` in
+      `StatementFir::fir_op_step`'s `Braning` arm). Three-condition trigger: (1) this statement's
+      LHS is null-characterized; (2) its body resolves (`.value()`) to a creation; (3) that
+      creation's original name (via `get_display_name`, viewed from here) is `Some` AND DIFFERS
+      from this statement's own name — the "differs" clause is what permits same-name
+      REASSERTION (`'a='a`, mirroring the pre-existing `'True='True` guarantee) while refusing a
+      genuine rename (`'b='a`). 4 new unit tests in `fir_kinds.rs`
+      (`rename_of_named_creation_settles_nf`,
+      `same_name_reassertion_of_named_creation_is_permitted`,
+      `rename_of_a_plain_unnamed_creation_is_permitted`,
+      `rename_via_search_reaching_creation_through_a_third_statement_settles_nf`). Promoted
+      `foop/33/chracterization_sequencing.foo.einmo` to `checked/` for the first time (it had
+      only `input/`/`output/` before) — its `'bad='b` statement now correctly settles NF instead
+      of silently renaming `'b`'s creation, and `how_bad_can_it_b` (which indexes to it) inherits
+      the NK. `cargo test --workspace`: 311 unit tests pass; einmo green except the known frozen
+      `foop/62/infinite_loop`. Directly resolves the "Concerns Standing Past Completion" entry
+      below by strengthening what "original name" durably means.
 - [ ] Document the null-characterized name-constant rule and universal characterizations
       (update `docs/vintage_legacy/CREATION.md` cross-refs and add engineering notes under
       `docs/ubc1/how`); update AGENTS.md §Foolish Terminology / §Searches as needed
@@ -992,61 +1017,23 @@ let the sequencer render what it is handed. `get_display_name()` already returns
 
 ## Last Updated
 
-**Date**: 2026-08-04
-**Updated By**: Claude Code / claude-opus-5 (orchestration) + Claude Code (Sonnet 5) / claude-sonnet-5 (Phase 9, worktree `foop-33-phase9-sequencer-bridge`)
-**Changes**: **Phase 9 IMPLEMENTED and merged.** The `get_display_name()` → sequencer bridge:
-changed `foolish-core::Fir::Creation` from a bare unit variant to `Creation { name:
-Option<String> }`; `foolish-ubca/src/evaluator.rs`'s `proto_to_core_fir_inner`
-(`FirKind::Creation` arm) resolves the name via `borrowed.as_creation_display_name(ubca_ref)`
-at the conversion boundary (both already in scope there — no threading needed);
-`foolish-core/src/sequencer.rs` renders `Some(name)` as the name and `None` as the `⬤` glyph
-(fallback total, unchanged). JSON shape was never a derive-macro concern: `fir.rs` hand-rolls
-`Serialize`/`Deserialize` for `Fir` (builds a `serde_json::Map` directly), so an unnamed
-creation's `"name"` key is simply never inserted — byte-identical to the pre-Phase-9 shape, no
-`skip_serializing_if` gymnastics required. Both human-decision items the prior entry flagged
-(variant shape; JSON stability) are resolved with no concrete blocker found, per the plan's own
-pre-recommendation. 16 new tests across `foolish-core/src/fir.rs`,
-`foolish-core/src/sequencer_tests.rs`, and `foolish-ubca/src/evaluator.rs` (a new
-`creation_display_name_conversion_tests` module) — all passing.
-
-Einmo: 8 `foop/33/*` baselines diverged (wider than the two files the plan anticipated — the
-rule fires on every plain `name = ⬤`, not just `'True`/`'False`); every changed OUTPUT line
-reviewed and justified against `get_display_name`'s documented rule (see Phase 9's own section
-and the plan checkbox for the line-by-line accounting). 3 promoted (no `verified/` twin:
-`foop/33/boolean/{comparison_operators,constants,null_char_constant}.foo.einmo`; their stale
-"Phase 5.5 punted" prediction comments removed). **5 reviewed, justified, and left unpromoted**
-pending a human's `--interactive` signing key (`foop/33/comprehensive.foo`,
-`foop/33/creation/{basics,nilpotent,referential_equality}.foo`, `foop/33/creation_concat.foo`)
-— each has a `verified/` twin currently identical to `checked/`, so `rust_instructions.md`'s
-hard rule (no promoting over a `verified/`-twinned baseline without a human reviewer's key)
-applies; this is a genuine human action item, not a gap in the work. No baseline outside
-`foop/33/*` diverged; the lone `foop/62/infinite_loop` divergence is the known, pre-existing,
-`verified/`-frozen one, untouched. `cargo test --workspace`: every crate green except the
-expected `run_einmo_tests` failure (exactly the 5 human-gated files + `foop/62`).
-`cargo fmt`/`cargo clippy -D warnings` scoped to `-p foolish-core -p foolish-ubca` clean (the
-only clippy hits under `--all-targets` are pre-existing `einmo` dev-dependency lints, confirmed
-identical on the pre-Phase-9 commit via `git stash` — not introduced here). Re-verified
-independently after merge, not taken on the subagent's self-report alone (see the workspace
-test run and CLI spot-check recorded around this merge commit).
-
-Also this round: **Phase 5.5 CROSSED OUT** — its four checkboxes struck through with pointers
-to Phase 9 (which delivers the same capability, inside FOOP-33, at the conversion boundary
-rather than sequencer-side); STATUS SUMMARY row rewritten from "punted to a future FOOP" to
-"superseded by Phase 9, not implemented under this heading." **Fixed a real rendering bug**
-found by the human right after Phase 6 merged: `ComparisonFir::resolve_boolean`
-(`system_foo.rs`) called `.value()` directly on the STATEMENT `_ab_search` returns (`'True =
-⬤`) instead of unwrapping to its body, so `{1,2,'lt}$` settled to the whole `{'True=⬤}`
-statement wrapper instead of the bare creation — fixed by routing through
-`statement_value_for_comparison`, exactly as `IndexFir`'s `$` search already does (commit
-`8ac047e2`). Completed the Phase 6 branch merge into `foop-33-creation-postulate` earlier, and
-now the Phase 9 branch merge (this entry) — both required resolving a Last-Updated-log conflict
-in this file and in `FOOP-33.md`; underlying Rust files merged cleanly both times. Cleaned up
-all finished worktrees. Two automatic `isolation: "worktree"` spawn attempts for Phase 9 landed
-on a stale pre-Rust commit (`origin/HEAD`/`origin/main` still point at an abandoned Java/Maven
-commit, `4e0401ce`, left over from before this repo's trunk moved to `jia`) and correctly
-self-aborted without guessing; worked around by manually creating the Phase 9 worktree off the
-correct local branch tip. **Confirmed Phase 5 has no real outstanding work**: its two
-unchecked bullets are dead prose from the superseded pre-2026-08-03 design, already covered by
-the current, fully `[x]`-checked task list above the `---` divider. This log keeps only the
-single newest entry per the Markdown File Update Protocol; full history in `git log` on this
-file.
+**Date**: 2026-08-05
+**Updated By**: Claude Code / claude-opus-5
+**Changes**: **Forbid renaming a named creation** (human-directed, post-`jia`-merge). Added
+"named creation"/"original name" terminology to AGENTS.md §Foolish Terminology and a new
+"### Named creations cannot be renamed" subsection in README.md's existing "## Renaming"
+section. Implemented the rule itself:
+`StatementFir::check_rename_of_named_creation` (`foolish-ubca/src/fir_kinds.rs`), run alongside
+`check_null_const_conflict` in `fir_op_step`'s `Braning` arm — refuses (NF, "Named creations
+cannot be renamed") a null-characterized statement whose body resolves to a creation that
+ALREADY has a different original name; same-name reassertion (`'a='a`, mirroring the
+pre-existing `'True='True` guarantee) stays permitted, and a creation with no original name
+(reached only through plain names, or a sub-expression operand) may be named for the first time
+freely. 4 new unit tests. Promoted `foop/33/chracterization_sequencing.foo.einmo` to `checked/`
+for the first time (previously only had `input/`/`output/`) — its `'bad='b` statement (and the
+`how_bad_can_it_b = bs#-1` that indexes to it) now correctly settle NF instead of silently
+renaming `'b`'s creation, exactly the scenario the test was written to explore. `cargo test
+--workspace`: 311 unit tests pass; einmo green except the known frozen `foop/62/infinite_loop`.
+This directly resolves the "Concerns Standing Past Completion" entry in FOOP-33.md by making
+"original name" durably mean what it says. This log keeps only the single newest entry per the
+Markdown File Update Protocol; full history in `git log` on this file.

@@ -896,7 +896,13 @@ impl Parser {
     fn parse_identifier_or_regexp(&mut self) -> Result<String> {
         let chars = self.parse_characterizations();
         let id = self.parse_identifier()?;
-        let mut coord = chars.join("'");
+        // Each characterization component gets a trailing `'`, not a `'`
+        // BETWEEN components (`join` loses a leading null characterization:
+        // `'b` parses to chars=[""], and `[""].join("'")` is `""`, silently
+        // dropping the null-characterization marker entirely). Matches
+        // `Identifier::from_parts`'s `characterization_string` construction
+        // (`foolish-ubca/src/identifier.rs`), the authoritative algorithm.
+        let mut coord: String = chars.iter().map(|c| format!("{c}'")).collect();
         coord.push_str(&id);
         Ok(coord)
     }
@@ -1280,6 +1286,48 @@ mod tests {
                 assert_eq!(statements.len(), 1);
                 assert!(matches!(&statements[0], Astn::DotSearch { .. }));
             }
+            _ => panic!("expected brane"),
+        }
+    }
+
+    #[test]
+    fn parses_dot_search_coordinate_preserves_null_characterization() {
+        // `x.'y` must produce coordinate `"'y"`, not `"y"` -- the leading
+        // apostrophe (null characterization) was previously lost because
+        // `parse_identifier_or_regexp` used `chars.join("'")`, which puts `'`
+        // BETWEEN elements. For chars=[""] (what a leading apostrophe parses
+        // to), `[""].join("'")` is `""`, silently dropping the marker. Fixed
+        // to match `Identifier::from_parts`'s per-component-suffix algorithm
+        // (`foolish-ubca/src/identifier.rs`): each component gets a trailing
+        // `'`, so `[""]` becomes `"'"`, giving coordinate `"'y"`.
+        let ast = parse_single("{x.'y;}").unwrap();
+        match ast {
+            Astn::Brane { statements, .. } => {
+                assert_eq!(statements.len(), 1);
+                match &statements[0] {
+                    Astn::DotSearch { coordinate, .. } => {
+                        assert_eq!(coordinate, "'y");
+                    }
+                    other => panic!("expected DotSearch, got {other:?}"),
+                }
+            }
+            _ => panic!("expected brane"),
+        }
+    }
+
+    #[test]
+    fn parses_dot_search_coordinate_with_named_characterization() {
+        // `x.a'y` (a NON-null characterization) must produce `"a'y"` --
+        // exercises the multi-component join path, not just the empty-string
+        // edge case.
+        let ast = parse_single("{x.a'y;}").unwrap();
+        match ast {
+            Astn::Brane { statements, .. } => match &statements[0] {
+                Astn::DotSearch { coordinate, .. } => {
+                    assert_eq!(coordinate, "a'y");
+                }
+                other => panic!("expected DotSearch, got {other:?}"),
+            },
             _ => panic!("expected brane"),
         }
     }

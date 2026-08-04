@@ -451,6 +451,30 @@ value at the time of use:
 
 For details on scope resolution and name reuse, see [Names, Searches, and Bounds](docs/vintage_legacy/NAMES_SEARCHES_N_BOUNDS.md).
 
+### Named creations cannot be renamed
+
+A `⬤`/`{*}` [creation](docs/why/creation_postulate.md) that is the entire right-hand side of a
+**null-characterized** statement (`'name = ⬤`) is a **named creation**; the null-characterized
+name is that creation's **original name** — a name that uniquely and durably identifies the one
+creation it names, e.g. `'True`/`'False` in `system.foo`.
+
+Giving an already-named creation a *second*, *different* null-characterized name is forbidden:
+
+```foolish
+{
+	'a = ⬤;
+	'a = 'a;   !! permitted -- re-states 'a's OWN existing name, not a rename
+	'b = 'a;   !! FORBIDDEN -- 'a already has an original name; 'b='a would rename it
+}
+```
+
+`'b = 'a` settles NF ("Named creations cannot be renamed") — the same not-foolish mechanism as
+the null-characterized name constant rule. This applies transitively: reaching the same creation
+through an intermediate plain (non-null-characterized) reference still counts as a rename attempt,
+because a creation's identity — and its original name — survives being passed around. A creation
+reached only through a plain name, or one that is merely an operand of a larger expression, has no
+original name and may be given a null-characterized name for the first time freely.
+
 ---
 
 ## Documentation

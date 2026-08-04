@@ -173,7 +173,7 @@ fn step_to_settled(
 }
 
 fn proto_to_core_fir(ubca_ref: &FirRef) -> core_fir::Fir {
-    proto_to_core_fir_inner(ubca_ref, false)
+    proto_to_core_fir_inner(ubca_ref, false, None)
 }
 
 /// Convert an SFF body expression. Top-level searches get EMBRYONIC state
@@ -182,7 +182,17 @@ fn proto_to_core_fir(ubca_ref: &FirRef) -> core_fir::Fir {
 /// (@Agents, I suppose this can't be declared as implementation on something
 ///   associated with SFF marker like SFFMark? ditto, similar questions for the
 ///   other '^fn' declarations in this file.)
-fn proto_to_core_fir_sff_body(ubca_ref: &FirRef) -> core_fir::Fir {
+///
+/// `current_stmt` (FOOP-33 §"Concerns Standing Past Completion"): the
+/// statement whose body is currently being converted, threaded through so
+/// `CreationFir::get_display_name` can tell whether a creation is being
+/// rendered from its own defining statement (name suppressed) or from
+/// elsewhere (name shown, when the other conditions hold). It changes ONLY
+/// where a statement's body conversion begins (`FirKind::Statement`, each
+/// brane/concatenation/concat-helper statement loop) — every other call
+/// site threads its caller's `current_stmt` through unchanged, since no new
+/// statement is being entered.
+fn proto_to_core_fir_sff_body(ubca_ref: &FirRef, current_stmt: Option<&FirRef>) -> core_fir::Fir {
     let borrowed = ubca_ref.borrow();
     let kind = borrowed.kind();
     match kind {
@@ -196,7 +206,7 @@ fn proto_to_core_fir_sff_body(ubca_ref: &FirRef) -> core_fir::Fir {
                 .core()
                 .foolish_children()
                 .iter()
-                .map(proto_to_core_fir_sff_operand)
+                .map(|c| proto_to_core_fir_sff_operand(c, current_stmt))
                 .collect();
             use foolish_core::fir::FirQueryable;
             let op_state = if operand_firs.iter().any(|f| {
@@ -218,12 +228,16 @@ fn proto_to_core_fir_sff_body(ubca_ref: &FirRef) -> core_fir::Fir {
         FirKind::Nk => NkFirBuilder::new(borrowed.as_nk_reason().unwrap_or("unknown"))
             .state(Nyes::Nk)
             .build(),
-        _ => proto_to_core_fir_inner(ubca_ref, true),
+        _ => proto_to_core_fir_inner(ubca_ref, true, current_stmt),
     }
 }
 
 /// Convert an SFF operator operand. Searches get CONSTANT state (no state shown).
-fn proto_to_core_fir_sff_operand(ubca_ref: &FirRef) -> core_fir::Fir {
+/// See `proto_to_core_fir_sff_body` for `current_stmt`.
+fn proto_to_core_fir_sff_operand(
+    ubca_ref: &FirRef,
+    current_stmt: Option<&FirRef>,
+) -> core_fir::Fir {
     let borrowed = ubca_ref.borrow();
     let kind = borrowed.kind();
     match kind {
@@ -237,11 +251,12 @@ fn proto_to_core_fir_sff_operand(ubca_ref: &FirRef) -> core_fir::Fir {
         FirKind::Nk => NkFirBuilder::new(borrowed.as_nk_reason().unwrap_or("unknown"))
             .state(Nyes::Nk)
             .build(),
-        _ => proto_to_core_fir_inner(ubca_ref, true),
+        _ => proto_to_core_fir_inner(ubca_ref, true, current_stmt),
     }
 }
 
-fn anchor_to_core_fir(ubca_ref: &FirRef) -> core_fir::Fir {
+/// See `proto_to_core_fir_sff_body` for `current_stmt`.
+fn anchor_to_core_fir(ubca_ref: &FirRef, current_stmt: Option<&FirRef>) -> core_fir::Fir {
     let borrowed = ubca_ref.borrow();
     let kind = borrowed.kind();
     let state = borrowed.core().get_nyes();
@@ -253,10 +268,15 @@ fn anchor_to_core_fir(ubca_ref: &FirRef) -> core_fir::Fir {
             .build();
     }
 
-    proto_to_core_fir_inner(ubca_ref, true)
+    proto_to_core_fir_inner(ubca_ref, true, current_stmt)
 }
 
-fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir::Fir {
+/// See `proto_to_core_fir_sff_body` for `current_stmt`.
+fn proto_to_core_fir_inner(
+    ubca_ref: &FirRef,
+    preserve_search: bool,
+    current_stmt: Option<&FirRef>,
+) -> core_fir::Fir {
     let borrowed = ubca_ref.borrow();
     let kind = borrowed.kind();
     let state = borrowed.core().get_nyes();
@@ -285,7 +305,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
         // showing them again under the operator would duplicate them.
         FirKind::Comparison => {
             if let Some(result) = borrowed.core().ubc_children().first() {
-                return proto_to_core_fir_inner(result, preserve_search);
+                return proto_to_core_fir_inner(result, preserve_search, current_stmt);
             }
             // Not yet settled (or settled without a result): render the state
             // itself rather than inventing a value.
@@ -305,7 +325,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
             if state == Nyes::Constant {
                 let ubc = borrowed.core().ubc_children();
                 if let Some(result) = ubc.first() {
-                    return proto_to_core_fir_inner(result, preserve_search);
+                    return proto_to_core_fir_inner(result, preserve_search, current_stmt);
                 }
             }
             // When the operator itself computed NK (e.g. division by zero)
@@ -323,7 +343,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                 if !any_operand_nk && op_name != "$" {
                     let ubc = borrowed.core().ubc_children();
                     if let Some(result) = ubc.first() {
-                        return proto_to_core_fir_inner(result, preserve_search);
+                        return proto_to_core_fir_inner(result, preserve_search, current_stmt);
                     }
                 }
             }
@@ -341,7 +361,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                                 .state(Nyes::Econstanic)
                                 .build()
                         } else {
-                            proto_to_core_fir_inner(c, preserve_search)
+                            proto_to_core_fir_inner(c, preserve_search, current_stmt)
                         }
                     })
                     .collect()
@@ -350,7 +370,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                     .core()
                     .foolish_children()
                     .iter()
-                    .map(|c| proto_to_core_fir_inner(c, preserve_search))
+                    .map(|c| proto_to_core_fir_inner(c, preserve_search, current_stmt))
                     .collect()
             };
             OperatorFirBuilder::new(op)
@@ -366,8 +386,13 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
             // (FOOP-33 §4). Without this, the null-const rule's refusal is
             // enforced internally but never actually rendered: `'True = 3`
             // would still SHOW `3` instead of the NF NK.
+            //
+            // `current_stmt = Some(ubca_ref)` here: we are now converting
+            // THIS statement's own body, so any creation found directly as
+            // that body is at its own defining site (see
+            // `CreationFir::get_display_name`'s condition 1).
             let body_fir = crate::fir_kinds::statement_value_for_comparison(ubca_ref)
-                .map(|c| proto_to_core_fir_inner(&c, preserve_search))
+                .map(|c| proto_to_core_fir_inner(&c, preserve_search, Some(ubca_ref)))
                 .unwrap_or_else(|| NkFirBuilder::new("empty statement").build());
             NormalBraneFirBuilder::new()
                 .statement(name, body_fir)
@@ -383,9 +408,10 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                     let name = display_stmt_name(c.borrow().as_stmt_searchable_name());
                     // Prefer settled_result() over the raw written body — see
                     // crate::fir_kinds::statement_value_for_comparison's doc
-                    // comment (FOOP-33 §4).
+                    // comment (FOOP-33 §4). `current_stmt = Some(c)`: `c` is
+                    // the statement whose body is being converted here.
                     let body_fir = crate::fir_kinds::statement_value_for_comparison(c)
-                        .map(|c| proto_to_core_fir_inner(&c, preserve_search))
+                        .map(|body| proto_to_core_fir_inner(&body, preserve_search, Some(c)))
                         .unwrap_or_else(|| NkFirBuilder::new("empty body").build());
                     (name, body_fir)
                 })
@@ -469,8 +495,11 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                         let has_simple = first_inner_kind
                             .is_some_and(|k| matches!(k, FirKind::IndepInt | FirKind::Nk));
                         if has_simple {
-                            let inner_result_fir =
-                                proto_to_core_fir_inner(inner_ubc.first().unwrap(), false);
+                            let inner_result_fir = proto_to_core_fir_inner(
+                                inner_ubc.first().unwrap(),
+                                false,
+                                current_stmt,
+                            );
                             let inner_search = SearchFirBuilder::new(
                                 result_borrowed.as_search_pattern().unwrap_or(""),
                             )
@@ -484,7 +513,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                     }
                     drop(result_borrowed);
 
-                    let resolved = proto_to_core_fir_inner(result, preserve_search);
+                    let resolved = proto_to_core_fir_inner(result, preserve_search, current_stmt);
                     if !preserve_search {
                         let resolved_state = result.borrow().core().get_nyes();
                         if resolved_state == Nyes::Constant || resolved_state == Nyes::Independent {
@@ -516,11 +545,11 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                 let children = borrowed.core().foolish_children();
                 let has_anchor = borrowed.as_search_anchored();
                 if has_anchor && let Some(a) = children.first() {
-                    builder = builder.anchor(proto_to_core_fir_inner(a, false));
+                    builder = builder.anchor(proto_to_core_fir_inner(a, false, current_stmt));
                 }
                 let value_idx = if has_anchor { 1 } else { 0 };
                 if let Some(v) = children.get(value_idx) {
-                    builder = builder.value(proto_to_core_fir_inner(v, false));
+                    builder = builder.value(proto_to_core_fir_inner(v, false, current_stmt));
                 }
             }
             if let Some(alarm_reason) = borrowed.core().alarm_reason() {
@@ -537,7 +566,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
             if state.is_constanic() {
                 let ubc = borrowed.core().ubc_children();
                 if let Some(result) = ubc.first() {
-                    let resolved = proto_to_core_fir_inner(result, preserve_search);
+                    let resolved = proto_to_core_fir_inner(result, preserve_search, current_stmt);
                     let resolved_state = result.borrow().core().get_nyes();
                     let result_kind = result.borrow().kind();
                     // Unwrap when: constant/independent, OR the result is a Brane
@@ -557,7 +586,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                     if borrowed.as_index_anchored()
                         && let Some(anchor_ref) = borrowed.core().foolish_children().first()
                     {
-                        builder = builder.anchor(anchor_to_core_fir(anchor_ref));
+                        builder = builder.anchor(anchor_to_core_fir(anchor_ref, current_stmt));
                     }
                     return builder.build();
                 }
@@ -568,7 +597,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
             if borrowed.as_index_anchored()
                 && let Some(anchor_ref) = borrowed.core().foolish_children().first()
             {
-                builder = builder.anchor(anchor_to_core_fir(anchor_ref));
+                builder = builder.anchor(anchor_to_core_fir(anchor_ref, current_stmt));
             }
             builder.build()
         }
@@ -589,7 +618,8 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                             || result_kind == FirKind::StayFullyFoolish
                         {
                             if !result.borrow().core().ubc_children().is_empty() {
-                                let inner_result_fir = proto_to_core_fir_inner(result, false);
+                                let inner_result_fir =
+                                    proto_to_core_fir_inner(result, false, current_stmt);
                                 return SearchFirBuilder::new(
                                     expr_borrowed.as_search_pattern().unwrap_or(""),
                                 )
@@ -601,7 +631,8 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                             // A Brane or other complex type that is itself
                             // constanic IS the value — no ubc_children needed.
                             if result.borrow().core().get_nyes().is_constanic() {
-                                let inner_result_fir = proto_to_core_fir_inner(result, false);
+                                let inner_result_fir =
+                                    proto_to_core_fir_inner(result, false, current_stmt);
                                 return SearchFirBuilder::new(
                                     expr_borrowed.as_search_pattern().unwrap_or(""),
                                 )
@@ -641,7 +672,8 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                                 .build();
                         }
                         if result_kind == FirKind::IndepInt || result_kind == FirKind::Nk {
-                            let inner_result_fir = proto_to_core_fir_inner(result, false);
+                            let inner_result_fir =
+                                proto_to_core_fir_inner(result, false, current_stmt);
                             return SearchFirBuilder::new(
                                 expr_borrowed.as_search_pattern().unwrap_or(""),
                             )
@@ -654,7 +686,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                 }
             }
             let expr_fir = inner_ref
-                .map(|c| proto_to_core_fir_inner(c, true))
+                .map(|c| proto_to_core_fir_inner(c, true, current_stmt))
                 .unwrap_or_else(|| NkFirBuilder::new("empty sf").build());
             StayFoolishFirBuilder::new(expr_fir).state(state).build()
         }
@@ -665,7 +697,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                 .core()
                 .foolish_children()
                 .first()
-                .map(proto_to_core_fir_sff_body)
+                .map(|c| proto_to_core_fir_sff_body(c, current_stmt))
                 .unwrap_or_else(|| NkFirBuilder::new("empty sff").build());
             StayFullyFoolishFirBuilder::new(expr_fir)
                 .state(state)
@@ -687,11 +719,13 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                         let stmt = borrowed.stmt_at(i)?;
                         let sb = stmt.borrow();
                         let name = display_stmt_name(sb.as_stmt_searchable_name());
+                        // `current_stmt = Some(&stmt)`: `stmt` is the statement
+                        // whose body is being converted here.
                         let body_fir = sb
                             .core()
                             .foolish_children()
                             .first()
-                            .map(|c| proto_to_core_fir_inner(c, preserve_search))
+                            .map(|c| proto_to_core_fir_inner(c, preserve_search, Some(&stmt)))
                             .unwrap_or_else(|| NkFirBuilder::new("empty body").build());
                         drop(sb);
                         Some((name, body_fir))
@@ -721,7 +755,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                 .core()
                 .foolish_children()
                 .iter()
-                .map(|c| proto_to_core_fir_inner(c, preserve_search))
+                .map(|c| proto_to_core_fir_inner(c, preserve_search, current_stmt))
                 .collect();
             ConcatenationFirBuilder::new()
                 .elements(elem_firs)
@@ -736,11 +770,13 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                 .map(|c| {
                     let cb = c.borrow();
                     let name = display_stmt_name(cb.as_stmt_searchable_name());
+                    // `current_stmt = Some(c)`: `c` is the statement whose
+                    // body is being converted here.
                     let body_fir = cb
                         .core()
                         .foolish_children()
                         .first()
-                        .map(|c| proto_to_core_fir_inner(c, preserve_search))
+                        .map(|body| proto_to_core_fir_inner(body, preserve_search, Some(c)))
                         .unwrap_or_else(|| NkFirBuilder::new("empty body").build());
                     (name, body_fir)
                 })
@@ -760,7 +796,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
         // statement (see `CreationFir::get_display_name`).
         FirKind::Creation => {
             let mut builder = CreationFirBuilder::new();
-            if let Some(name) = borrowed.as_creation_display_name(ubca_ref) {
+            if let Some(name) = borrowed.as_creation_display_name(ubca_ref, current_stmt) {
                 builder = builder.name(name);
             }
             builder.build()
@@ -1099,47 +1135,67 @@ mod creation_display_name_conversion_tests {
     use foolish_core::FirQueryable;
 
     #[test]
-    fn defining_site_creation_converts_with_its_name() {
-        // `'a = ⬤` — the creation is the whole RHS of statement `'a`.
+    fn defining_site_creation_converts_unnamed() {
+        // `'a = ⬤` — the creation is the whole RHS of statement `'a`. Convert
+        // through the WHOLE composed root (`proto_to_core_fir`, exercising
+        // the real `FirKind::Statement`/`FirKind::Brane` arms that thread
+        // `current_stmt`), not the creation in isolation: at 'a's own
+        // statement, `current_stmt` becomes 'a's own statement, so per the
+        // revised two-condition rule (FOOP-33.md "Concerns Standing Past
+        // Completion") it must NOT report a name: `{'a=⬤;}` sequencing as
+        // `{'a='a}` reads as circular, not as "a fresh creation is being
+        // introduced."
         let firs = Compiler::compile("{'a=⬤; b='a;}").unwrap();
         let root = firs[0].clone();
         let scope = Scope::empty();
         step_to_settled(&root, &scope).unwrap();
 
-        let stmts = root.borrow().core().foolish_children().to_vec();
-        let a_body = stmts[0].borrow().core().foolish_children()[0].clone();
-        let converted = proto_to_core_fir(&a_body);
-        assert_eq!(converted.hs_variant(), "Creation");
+        let converted = proto_to_core_fir(&root);
+        assert_eq!(converted.hs_variant(), "NormalBrane");
+        let core_fir::Fir::NormalBrane(brane) = &converted else {
+            unreachable!("checked hs_variant() above");
+        };
+        let a_stmt = &brane.statements()[0];
+        assert_eq!(a_stmt.name().as_deref(), Some("'a"));
         assert_eq!(
-            converted.hs_creation_name().as_deref(),
-            Some("'a"),
-            "the creation defining 'a must convert carrying its own name"
+            a_stmt.body().borrow().clone_into_fir().hs_creation_name(),
+            None,
+            "the creation defining 'a, rendered at its OWN statement, \
+             converts with NO name — only a reference reached elsewhere \
+             shows the name"
         );
     }
 
     #[test]
     fn creation_reached_through_search_converts_with_its_own_defining_name() {
         // `b='a` resolves THROUGH a search to the SAME creation `Rc` that
-        // `'a` defines (FOOP-33 Gotcha #2) — the conversion boundary must
-        // still report `'a`, not `b`, proving identity (not the referencing
-        // statement) drives the name.
+        // `'a` defines (FOOP-33 Gotcha #2) — viewed from `b`'s statement
+        // (a DIFFERENT statement than 'a's own), the conversion boundary
+        // must report `'a`, not `b`, proving identity (not the referencing
+        // statement's own name) drives the name, and that viewing from
+        // elsewhere is what unlocks it.
         let firs = Compiler::compile("{'a=⬤; b='a;}").unwrap();
         let root = firs[0].clone();
         let scope = Scope::empty();
         step_to_settled(&root, &scope).unwrap();
 
         let stmts = root.borrow().core().foolish_children().to_vec();
-        let b_body = stmts[1].borrow().core().foolish_children()[0].clone();
+        let b_stmt = &stmts[1];
+        let b_body = b_stmt.borrow().core().foolish_children()[0].clone();
         let resolved = b_body.value();
         assert_eq!(resolved.borrow().kind(), FirKind::Creation);
 
-        let converted = proto_to_core_fir(&resolved);
+        // Convert `resolved` the same way the real Statement/Brane arms do:
+        // with `current_stmt` set to the statement whose body is being
+        // rendered (`b`'s statement).
+        let converted = proto_to_core_fir_inner(&resolved, false, Some(b_stmt));
         assert_eq!(converted.hs_variant(), "Creation");
         assert_eq!(
             converted.hs_creation_name().as_deref(),
             Some("'a"),
-            "a creation reached through a search converts with its OWN \
-             defining statement's name, not the referencing statement's"
+            "a creation reached through a search, viewed from the \
+             REFERENCING statement, converts with its OWN defining \
+             statement's name"
         );
     }
 

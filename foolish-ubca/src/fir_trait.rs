@@ -198,13 +198,23 @@ pub trait Fir: std::fmt::Debug {
     /// The name a creation reports for itself, if any. Default: `None`.
     ///
     /// Only [`CreationFir`](crate::fir_kinds::CreationFir) overrides this, by
-    /// delegating to its own `get_display_name`. See that method for the rule
-    /// (FOOP-33): a creation names itself only when it is the ENTIRE
-    /// right-hand side of a named statement.
+    /// delegating to its own `get_display_name`. See that method for the
+    /// two-condition rule (FOOP-33): a creation names itself only when (1) it
+    /// is being viewed from a statement OTHER than its own defining
+    /// statement, AND (2) that defining statement's name is
+    /// null-characterized.
     ///
     /// `self_ref` must be the `FirRef` wrapping `self` — the parent chain is
     /// reached through it, exactly as [`Fir::_get_my_brane`] does.
-    fn as_creation_display_name(&self, _self_ref: &FirRef) -> Option<String> {
+    /// `viewed_from` is the statement currently being rendered (the one
+    /// whose body led the caller here); `None` if there is no such statement
+    /// in scope, which conservatively means "not a reference elsewhere" and
+    /// so the name is never shown.
+    fn as_creation_display_name(
+        &self,
+        _self_ref: &FirRef,
+        _viewed_from: Option<&FirRef>,
+    ) -> Option<String> {
         None
     }
 

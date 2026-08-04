@@ -553,6 +553,16 @@ a following `&`-search can read.
   being read as language behavior. Example:
   `ProtoBrane::sift_for_first_non_econstanic_descendent_search` walks the foolish store to
   validate an SFF construction invariant — it is not a Foolish search.
+- **Named creation** (FOOP-33) - a `⬤`/`{*}` creation that is the ENTIRE right-hand side of a
+  null-characterized statement (e.g. `'True = ⬤`). The statement's null-characterized name is
+  that creation's **original name** — a name that uniquely and durably identifies the one
+  creation it names. A creation reached only through a plain (non-null-characterized) statement,
+  or that is merely an operand/sub-expression of a larger RHS, is not a named creation and has
+  no original name. **Named creations cannot be renamed**: giving an already-named creation a
+  SECOND, DIFFERENT null-characterized name (e.g. `'other = 'True`) is refused (NF) — see
+  `CreationFir::get_display_name` and `StatementFir::check_rename_of_named_creation` in
+  `foolish-ubca/src/fir_kinds.rs`. Re-stating a creation's OWN existing name (`'True = 'True`)
+  is not a rename and remains permitted.
 - **Lexed** - feature parses to AST
 - **Interpreted** - feature fully implemented in VM
 

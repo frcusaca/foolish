@@ -1366,20 +1366,53 @@ after the feature was working end-to-end, that the spec-as-written does not forb
 read as surprising or possibly wrong. This section is where such findings accumulate; add to it
 rather than silently reopening a "done" phase.
 
-- **A creation's defining statement renders self-referentially.** `get_display_name()`
-  (`foolish-ubca/src/fir_kinds.rs`, `CreationFir::get_display_name`) reports a name whenever a
-  creation is the entire right-hand side of a named statement — by design, this includes the
-  DEFINING statement itself, not only later references reached by search. Concretely:
-  `{a = {*};}` sequences as `{a=a}`, not `{a={*}}` or `{a=⬤}`. Per the letter of the rule this
-  is correct (the creation genuinely is the whole RHS of `a`'s own statement), but it reads to a
-  human as circular — "`a` equals `a`" looks like a tautology or a bug, not "here is a fresh
-  creation being introduced and bound to the name `a`." A plausible resolution: special-case the
-  defining site to still render the glyph (`⬤`), and reserve the name-rendering for creations
-  reached *elsewhere* (through a search, as an operand, as another statement's value) — but this
-  was not implemented, because it is a genuine design call (does "renders as its name" mean
-  "when reached from outside" or "always, including at home"?) and not something to decide
-  unilaterally while closing out Phase 9. Flagged 2026-08-04 during final review of the merged
-  Phase 9 work; see the caveat comment at `get_display_name`'s doc comment in code.
+- **RESOLVED 2026-08-04 — a creation's defining statement rendered self-referentially.**
+  `get_display_name()` (`foolish-ubca/src/fir_kinds.rs`, `CreationFir::get_display_name`)
+  originally reported a name whenever a creation was the entire right-hand side of a named
+  statement — including the DEFINING statement itself, not only later references reached by
+  search. Concretely: `{a = {*};}` sequenced as `{a=a}`, not `{a={*}}`/`{a=⬤}` — technically
+  correct per the letter of the original rule, but read as circular to a human, and got
+  dramatically worse for a shared plain name: `{'a=⬤,'a=⬤}` (two DIFFERENT creations that both
+  happen to sit under coordinate name `a`, e.g. in different branes) sequenced as `{'a='a,'a='a}`
+  with no way to tell from the rendering that they were not the same creation. **Fixed with a
+  two-condition rule**, both required for a creation to report its name: (1) it must be viewed
+  from a statement OTHER than its own defining statement — the defining site itself always shows
+  the glyph; (2) the defining statement's name must be **null-characterized** (leading `'`, e.g.
+  `'True`) — a bare `a = ⬤` never lends its name to its creation, regardless of viewpoint. This
+  restricts name-rendering to the case it was actually designed for: protected, effectively
+  singleton constants like `'True`/`'False`, where the name genuinely and uniquely picks out one
+  creation. Implementation: `get_display_name` takes a `viewed_from: &FirRef` parameter (the
+  statement currently being rendered) compared via `Rc::ptr_eq` against the creation's own
+  parent statement, threaded through `evaluator.rs`'s whole `proto_to_core_fir*` family as
+  `current_stmt: Option<&FirRef>` — updated only at the four points where a statement's body
+  conversion begins (`FirKind::Statement`, and the per-statement loops in `FirKind::Brane`,
+  `FirKind::Concatenation`, `FirKind::ConcatHelper`), threaded unchanged through every other
+  recursive call. Re-verified: `{'a=⬤; b='a;}` now sequences as `{'a=⬤; b='a}` (defining site
+  glyph, reference-site name); `{'lt}$`-style comparison results still render `'True`/`'False`
+  correctly (both conditions hold there). 5 einmo baselines re-promoted (`foop/33/comprehensive`,
+  `foop/33/creation/{basics,nilpotent,referential_equality}`, `foop/33/creation_concat` — all
+  used plain, non-null-characterized names and correctly revert to the bare glyph); the
+  `'True`/`'False`-based baselines were unaffected. See the (now historical) caveat comment at
+  `get_display_name`'s doc comment in code for the two-condition rule's full rationale.
+
+- **RESOLVED 2026-08-05 — a named creation's original name could be silently duplicated.**
+  The two-condition rendering fix above established that a null-characterized name is a
+  creation's durable **original name** — but nothing stopped a SECOND null-characterized
+  statement from pointing at the same creation, e.g. `'other = 'True`. Both `'True` and
+  `'other` would then be "the" name `'True`'s creation answers to, undermining the whole point
+  of a null-characterized name being a unique, durable identifier (see the "named
+  creation"/"original name" terminology now in AGENTS.md/README.md). **Fixed: named creations
+  cannot be renamed.** A null-characterized statement whose body resolves to a creation that
+  ALREADY has a DIFFERENT original name settles NF ("Named creations cannot be renamed") —
+  `StatementFir::check_rename_of_named_creation`, run alongside the existing
+  `check_null_const_conflict` in `fir_op_step`'s `Braning` arm. Re-stating a creation's OWN
+  existing name (`'a='a`) is explicitly NOT a rename and stays permitted, mirroring the
+  pre-existing `'True='True` guarantee (`system_foo.rs`); a creation with no original name at
+  all (reached only through plain names, or as a sub-expression operand) may be named for the
+  first time freely. This closes the gap the earlier concern's fix didn't cover: rendering
+  correctness (what a name-search finds) is now backed by an assignment-time guarantee (what a
+  name CAN mean) — `foop/33/chracterization_sequencing.foo`'s `'bad='b` statement is exactly
+  this scenario and now settles NF as the test's own naming ("how bad can it b") anticipated.
 
 *(Add further implementation pain points, dubious feature decisions, or "technically correct
 but reads wrong" findings to this list as they surface — during code review, during later FOOP
@@ -1400,32 +1433,35 @@ work that touches this one, or during ordinary use.)*
 
 ## Last Updated
 
-**Date**: 2026-08-04
-**Updated By**: Claude Code (Sonnet 5) / claude-sonnet-5, worktree `foop-33-phase9-sequencer-bridge`
-**Changes**: **Phase 9 IMPLEMENTED — the creation-name sequencer bridge, closing the "Creation
-value render form in hssnap" Open Question.** `foolish-core::Fir::Creation` is now
-`{ name: Option<String> }` (was a unit variant); `evaluator.rs::proto_to_core_fir_inner`
-resolves the name via `as_creation_display_name` at the conversion boundary, where ubca `Rc`
-identity still exists; the sequencer renders `Some(name)` as the name and `None` as the `⬤`
-glyph (total fallback). JSON compatibility was simpler than the open question anticipated:
-`Fir` hand-rolls its own `Serialize`/`Deserialize` (no derive), so omitting the `"name"` key for
-`None` was a one-line conditional insert, not a `skip_serializing_if` derive-macro interaction.
-16 new tests across `foolish-core` and `foolish-ubca`, all passing. Rewrote the Open Questions
-entry from "sequencer half remains open" to fully resolved.
+**Date**: 2026-08-05
+**Updated By**: Claude Code / claude-opus-5
+**Changes**: **Named creations cannot be renamed** — new rule, human-directed, closing the gap
+the two-condition rendering fix (prior entry) left open: rendering correctly showed a creation's
+original name, but nothing stopped a SECOND null-characterized statement from pointing at the
+same creation (`'other = 'True`), letting one creation answer to two "unique" names.
+`StatementFir::check_rename_of_named_creation` (`foolish-ubca/src/fir_kinds.rs`) now refuses
+(NF, "Named creations cannot be renamed") a null-characterized statement whose body resolves to
+a creation with an ALREADY-DIFFERENT original name; same-name reassertion (`'a='a`) stays
+permitted (mirrors the pre-existing `'True='True` guarantee), and a creation with no original
+name may be named for the first time freely. Documented "named creation"/"original name" as
+formal terminology in AGENTS.md §Foolish Terminology and a new README.md "### Named creations
+cannot be renamed" subsection under "## Renaming". 4 new unit tests; promoted
+`foop/33/chracterization_sequencing.foo.einmo` to `checked/` for the first time — its `'bad='b`
+statement (and `how_bad_can_it_b`, which indexes to it) now correctly settle NF. `cargo test
+--workspace`: 311 unit tests pass; einmo green except the known frozen `foop/62/infinite_loop`.
+Added a second "Concerns Standing Past Completion" resolution entry recording this as closing
+the gap the prior entry's fix left open.
 
-Einmo: 8 `foop/33/*` baselines diverged on re-run (every plain `name = ⬤`, not just
-`'True`/`'False` — wider than the plan anticipated), all reviewed and justified against
-`get_display_name`'s rule. 3 promoted (no `verified/` twin). 5 reviewed and justified but left
-unpromoted, each carrying a `verified/` twin currently identical to `checked/` — promoting
-requires a human's `--interactive` signing key per `rust_instructions.md`'s hard rule, which is
-not something an agent can supply; this is a human action item, tracked in
-`FOOP-33.plan.md`'s Phase 9 checkbox and STATUS SUMMARY row. No baseline outside `foop/33/*`
-diverged; the frozen `foop/62/infinite_loop` divergence is the known pre-existing one, untouched.
-`cargo test --workspace` green except that expected einmo failure; `cargo fmt`/`clippy -D
-warnings` scoped to `-p foolish-core -p foolish-ubca` clean.
+Earlier entry (2026-08-04): **Revised `get_display_name` to a two-condition rule** — a creation
+reports its name only when (1) viewed from a statement OTHER than its own defining statement,
+AND (2) that defining statement's name is null-characterized. Fixed self-referential rendering
+(`{a=⬤;}` → `{a=a}`) and a worse ambiguity (two different plain creations sharing a name
+rendering indistinguishably). `viewed_from`/`current_stmt` threaded through the whole
+`evaluator.rs` conversion family. 5 einmo baselines re-promoted.
 
-Earlier entry (2026-08-04, same day, prior session): Phase 6 (comparison operators) implemented
-— all five (`'lt`/`'gt`/`'le`/`'ge`/`'eq`) built, §5.1 "As built" added; and the FVM side of
-creation-name reporting (`CreationFir::get_display_name`) landed, six unit tests, with the
-sequencer-bridging half left as this entry's Phase 9 work. This log keeps only the single
+Earlier entry (2026-08-04): **Phase 9 IMPLEMENTED — the creation-name sequencer bridge**,
+closing the "Creation value render form in hssnap" Open Question. `foolish-core::Fir::Creation`
+changed from a unit variant to `{ name: Option<String> }`; `evaluator.rs::proto_to_core_fir_inner`
+resolved the name at the conversion boundary; the sequencer rendered `Some(name)` as the name
+and `None` as the `⬤` glyph. 16 new tests. Merged to `jia`. This log keeps only the single
 newest entry per the Markdown File Update Protocol; full history in `git log` on this file.
