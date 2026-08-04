@@ -14,12 +14,9 @@
 	!! and resolve against 1 and 2 once the reference is recoordinated into
 	!! the brane below.
 	!! --
-	!! Phase 5.5 (sequencer renders named creations) is PUNTED to a future
-	!! FOOP -- see FOOP-33.md Open Questions for the get_recent_name()
-	!! design. Every result below is a 'True or 'False creation, and until
-	!! that lands each renders as the bare ⬤ glyph rather than its name. That
-	!! is expected; this baseline will need re-promoting at that time, not
-	!! before. Each line's comment states which boolean it IS.
+	!! FOOP-33 Phase 9: the sequencer now renders each result by the name of
+	!! the 'True/'False creation it settled to, instead of the bare ⬤ glyph.
+	!! Each line's comment states which boolean it IS.
 
 	lt_true  = {1, 2, 'lt}$;    !! 1 < 2  -> 'True
 	lt_false = {2, 1, 'lt}$;    !! 2 < 1  -> 'False

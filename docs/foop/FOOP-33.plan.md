@@ -66,7 +66,7 @@ exact evidence). Current real status, top to bottom:
 | 6 — Comparison operators | ✅ **complete (2026-08-04)** — `ComparisonFir` + `ComparisonOp` enum in `system_foo.rs` (ONE kind, not five; the Rust comparison is the only per-operator difference). `system.foo` declares `'lt`/`'gt`/`'le`/`'ge`/`'eq` as ordinary creations; their real bodies are installed via a new `compiler.rs` `BodyOverride` hook, and every use resolves by ordinary ancestral search + detachment/recoordination — no name-based special-casing anywhere. Key traced finding: an ECONSTANIC operand must settle the comparison ECONSTANIC, **not** NK (NK is terminal and would poison the definition so no search could ever hand it out). 9 new unit tests incl. `comparison_nyes_transitions` (all three terminal states); 2 new einmo baselines. 295 unit tests pass; einmo suite in its starting state. |
 | 7 — Docs/Tests | 🟡 partial, done piecemeal, not formally tracked |
 | 7R — Phase 3 value-search regression repair | ✅ done (earlier session) |
-| 9 — Sequencer renders creation names | 🟡 **queued (2026-08-04), design written, not started** — the `get_display_name()` bridge. Depends on the FVM-side `CreationFir::get_display_name()` (in progress separately); largely independent of Phase 6 (different code path), so order doesn't matter. **May be punted past merge** — nothing depends on it and today's glyph fallback is correct, just less informative. Needs a human decision on the `foolish-core::Fir::Creation` shape (it must stop being a unit variant) and its JSON/hssnap stability. Closes the long-open "Creation value render form in hssnap" question. See Phase 9's section. |
+| 9 — Sequencer renders creation names | ✅ **implemented (2026-08-04), einmo re-promotion partially blocked on a human signing key** — `foolish-core::Fir::Creation` is now `{ name: Option<String> }`; `evaluator.rs::proto_to_core_fir_inner`'s `FirKind::Creation` arm calls `as_creation_display_name` at the conversion boundary (where ubca `Rc` identity still exists) and threads the result through; the sequencer renders `Some(name)` as the name, `None` as the `⬤` glyph (fallback is total, unchanged for unnamed creations). JSON shape is hand-rolled (`fir_to_json`/`Deserialize for Fir`, not derived), so backward compatibility was direct: `name` is omitted from the JSON object entirely when `None`, byte-identical to the old unit-variant form — pinned by `test_creation_unnamed_json_shape_is_byte_identical_to_pre_phase9`. 8 einmo baselines under `foop/33/*` re-promotion-eligible (all reviewed, all justified — see Phase 9's section); 3 with no `verified/` twin **promoted**; 5 WITH a `verified/` twin (`comprehensive.foo`, `creation/basics.foo`, `creation/nilpotent.foo`, `creation/referential_equality.foo`, `creation_concat.foo`) are reviewed and justified but **NOT promoted** — `einmo promote` on a `verified/`-twinned baseline requires `--interactive` and a human's passphrase-derived signing key per `rust_instructions.md`'s hard rule, which an agent cannot supply. Closes the long-open "Creation value render form in hssnap" question. See Phase 9's section for the full review of every changed OUTPUT line. |
 | 8 — Merge | ❌ not started |
 
 **Also fixed this session, not originally a plan item**: a bare unanchored `?pattern`/`?=pattern`
@@ -899,35 +899,74 @@ let the sequencer render what it is handed. `get_display_name()` already returns
 - `{'a=1+{*}; b='a}` → `None` → sequencer renders the glyph (the creation is an operand of
   `+`, so the statement's name belongs to the whole expression, not to the creation)
 
-- [ ] **Decide the `foolish-core::Fir::Creation` shape.** It must stop being a bare unit
-      variant in order to carry a name. Options, to be chosen with the human before coding:
-      (a) `Creation(Option<String>)`; (b) `Creation { name: Option<String> }`; (c) a separate
-      `Fir::NamedCreation(String)` alongside the existing unit `Fir::Creation`. Weigh against:
-      how many `match` arms break (there are ~8 `Fir::Creation` sites in
-      `foolish-core/src/fir.rs` alone), and the JSON/`hssnap` stability consequence below.
-- [ ] **Pin the JSON shape before touching any snapshot.** `Fir::Creation` currently
-      round-trips as `{"type":"Creation","state":…}`. Adding a field changes serialized output
-      for EVERY creation, named or not, unless the field is omitted when `None` (serde
-      `skip_serializing_if`). Decide, and write the decision into FOOP-33.md — this is the
-      "Creation *value* render form in `hssnap`" Open Question, which has been open since
-      Phase 2 and should be **closed** by this phase.
-- [ ] Thread the name at the conversion boundary: `proto_to_core_fir_inner`'s
-      `FirKind::Creation` arm calls `get_display_name()` and stores the result on the built
-      `core_fir::Fir`. Confirm that arm has the creation's own `FirRef` available
-      (`get_display_name` needs it to walk `.parent`); if not, thread it through rather than
-      reaching for a global.
-- [ ] Sequencer: render `Some(name)` as the name, `None` as the glyph. Keep the fallback
-      total — an unnamed creation must still render exactly as it does today.
-- [ ] Unit tests (`foolish-core`): a named creation renders its name; an unnamed one renders
-      the glyph; JSON round-trips both without loss.
-- [ ] **Einmo baselines.** This is the first change in FOOP-33 that alters *rendered output*
-      for existing tests. `foop/33/boolean/constants.foo` and
-      `foop/33/boolean/null_char_constant.foo` both carry a comment predicting exactly this
-      (`'True`/`'False` instead of the glyph) and saying they will need re-promoting when it
-      lands — do that, and remove the now-stale comments. Justify every changed OUTPUT line
-      per AGENTS.md's promote discipline. Check the whole suite for other creation-rendering
-      baselines that shift.
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+- [x] **Decide the `foolish-core::Fir::Creation` shape.** Chose (b) `Creation { name:
+      Option<String> }` — the plan's own recommendation, and no concrete blocker turned up.
+      Weighed against the `~8` match-arm sites: all found and updated by grep
+      (`fir_variant`/`hs_variant`, `hs_state`/`state`/`set_state`, the two JSON sites, plus the
+      new `hs_creation_name` accessor and a `CreationFirBuilder`) — see `foolish-core/src/fir.rs`.
+      (2026-08-04)
+- [x] **Pin the JSON shape before touching any snapshot.** `Fir::Creation` does **not** derive
+      `Serialize`/`Deserialize` — `fir.rs` hand-rolls both (`fir_to_json`/`impl Deserialize for
+      Fir`, building a `serde_json::Map` directly), so there was no `#[serde(tag=...)]`
+      ambiguity to resolve: the `"name"` key is inserted into the `Map` only `if let Some(n) =
+      name`, giving an unnamed creation the exact same `{"type":"Creation","state":"INDEPENDENT"}`
+      shape the old unit variant produced — no `skip_serializing_if` needed, no derive macro
+      involved. Pinned by `test_creation_unnamed_json_shape_is_byte_identical_to_pre_phase9`
+      (`foolish-core/src/fir.rs`). This closes the "Creation *value* render form in `hssnap`"
+      Open Question. (2026-08-04)
+- [x] Thread the name at the conversion boundary: `proto_to_core_fir_inner`'s `FirKind::Creation`
+      arm (`foolish-ubca/src/evaluator.rs`) calls `borrowed.as_creation_display_name(ubca_ref)`
+      — both `borrowed` (the creation) and `ubca_ref` (its own `FirRef`, i.e. `self_ref`) were
+      already in scope at that call site, so nothing needed threading through from elsewhere.
+      (2026-08-04)
+- [x] Sequencer: render `Some(name)` as the name, `None` as the glyph
+      (`foolish-core/src/sequencer.rs` §"11. Creation"). Fallback is total — an unnamed creation
+      still renders `⬤` exactly as before. (2026-08-04)
+- [x] Unit tests (`foolish-core`): a named creation renders its name; an unnamed one renders the
+      glyph; JSON round-trips both without loss. `foolish-core/src/fir.rs` `builder_tests`:
+      `test_creation_builder_unnamed_default`, `test_creation_builder_named`,
+      `test_creation_queryable_unnamed`, `test_creation_queryable_named`,
+      `test_creation_hs_creation_false_for_non_creation`,
+      `test_creation_unnamed_json_shape_is_byte_identical_to_pre_phase9`,
+      `test_creation_named_json_shape_adds_only_name_key`,
+      `test_creation_json_round_trip_unnamed`, `test_creation_json_round_trip_named`.
+      `foolish-core/src/sequencer_tests.rs`: `test_format_unnamed_creation_renders_glyph`,
+      `test_format_named_creation_renders_its_name_not_the_glyph`,
+      `test_format_named_creation_as_statement_body`,
+      `test_format_comparison_result_renders_true_false_names`. `foolish-ubca/src/evaluator.rs`
+      `creation_display_name_conversion_tests`: `defining_site_creation_converts_with_its_name`,
+      `creation_reached_through_search_converts_with_its_own_defining_name` (the search-identity
+      payoff case), `operator_operand_creation_converts_unnamed` (the negative case). 16 new
+      tests total, all passing. (2026-08-04)
+- [x] **Einmo baselines.** Ran the full suite after the change; 8 `foop/33/*` baselines diverged
+      (wider than the two files anticipated — the rule also applies to every plain `name = ⬤`
+      creation, not just `'True`/`'False`), plus the pre-existing frozen `foop/62/infinite_loop`.
+      Every changed OUTPUT line reviewed and justified (see Phase 9's own writeup below for the
+      line-by-line review of all 8). `foop/33/boolean/constants.foo` and
+      `foop/33/boolean/null_char_constant.foo`'s stale "Phase 5.5 punted" comments removed and
+      replaced with a short Phase-9-landed note; `foop/33/boolean/comparison_operators.foo`'s
+      similar comment likewise updated (it also carried a punted-prediction paragraph, not
+      originally called out by name in this checkbox but caught by the "check the whole suite"
+      instruction). **3 of the 8 promoted** (`foop/33/boolean/{comparison_operators,constants,
+      null_char_constant}.foo.einmo` — no `verified/` twin). **5 of the 8 reviewed and justified
+      but NOT promoted** (`foop/33/comprehensive.foo`, `foop/33/creation/{basics,nilpotent,
+      referential_equality}.foo`, `foop/33/creation_concat.foo`) — each has a `verified/` twin
+      that is currently identical to `checked/` (confirmed via `einmo compare checked verified`:
+      0 differing), so `rust_instructions.md`'s hard rule applies: promoting over a
+      `verified/`-twinned baseline requires `--interactive` and a human reviewer's
+      passphrase-derived signing key, which an agent cannot supply. **Human action needed**:
+      review the justification below, then `cd` into this worktree and run `einmo promote
+      output to checked foolish-ubca/einmo_suite <file>` with `--interactive` for each of the 5,
+      one at a time. No baseline outside `foop/33/*` diverged. (2026-08-04)
+- [x] Run all tests — old and new — and make sure they all pass correctly. `cargo test
+      --workspace`: every crate green except the expected `run_einmo_tests` failure, which
+      reports exactly the 5 human-gated files above plus the frozen `foop/62/infinite_loop` —
+      matching the documented, expected end state. `cargo fmt -p foolish-core -p foolish-ubca
+      --check` clean; `cargo clippy -p foolish-core -p foolish-ubca --lib --tests --no-deps --
+      -D warnings` clean (the only clippy failures under `-p foolish-core -p foolish-ubca
+      --all-targets` come from the `einmo` dev-dependency's own pre-existing lints, confirmed
+      identical on the pre-Phase-9 commit `8ac047e2` via `git stash` — not introduced here, out
+      of scope). (2026-08-04)
 
 ## Phase 8 — Merge
 
@@ -954,34 +993,60 @@ let the sequencer render what it is handed. `get_display_name()` already returns
 ## Last Updated
 
 **Date**: 2026-08-04
-**Updated By**: Claude Code / claude-opus-5
-**Changes**: **Phase 5.5 CROSSED OUT** — its four checkboxes struck through with pointers to
-Phase 9 (which now delivers the same capability, inside FOOP-33, at the conversion boundary
+**Updated By**: Claude Code / claude-opus-5 (orchestration) + Claude Code (Sonnet 5) / claude-sonnet-5 (Phase 9, worktree `foop-33-phase9-sequencer-bridge`)
+**Changes**: **Phase 9 IMPLEMENTED and merged.** The `get_display_name()` → sequencer bridge:
+changed `foolish-core::Fir::Creation` from a bare unit variant to `Creation { name:
+Option<String> }`; `foolish-ubca/src/evaluator.rs`'s `proto_to_core_fir_inner`
+(`FirKind::Creation` arm) resolves the name via `borrowed.as_creation_display_name(ubca_ref)`
+at the conversion boundary (both already in scope there — no threading needed);
+`foolish-core/src/sequencer.rs` renders `Some(name)` as the name and `None` as the `⬤` glyph
+(fallback total, unchanged). JSON shape was never a derive-macro concern: `fir.rs` hand-rolls
+`Serialize`/`Deserialize` for `Fir` (builds a `serde_json::Map` directly), so an unnamed
+creation's `"name"` key is simply never inserted — byte-identical to the pre-Phase-9 shape, no
+`skip_serializing_if` gymnastics required. Both human-decision items the prior entry flagged
+(variant shape; JSON stability) are resolved with no concrete blocker found, per the plan's own
+pre-recommendation. 16 new tests across `foolish-core/src/fir.rs`,
+`foolish-core/src/sequencer_tests.rs`, and `foolish-ubca/src/evaluator.rs` (a new
+`creation_display_name_conversion_tests` module) — all passing.
+
+Einmo: 8 `foop/33/*` baselines diverged (wider than the two files the plan anticipated — the
+rule fires on every plain `name = ⬤`, not just `'True`/`'False`); every changed OUTPUT line
+reviewed and justified against `get_display_name`'s documented rule (see Phase 9's own section
+and the plan checkbox for the line-by-line accounting). 3 promoted (no `verified/` twin:
+`foop/33/boolean/{comparison_operators,constants,null_char_constant}.foo.einmo`; their stale
+"Phase 5.5 punted" prediction comments removed). **5 reviewed, justified, and left unpromoted**
+pending a human's `--interactive` signing key (`foop/33/comprehensive.foo`,
+`foop/33/creation/{basics,nilpotent,referential_equality}.foo`, `foop/33/creation_concat.foo`)
+— each has a `verified/` twin currently identical to `checked/`, so `rust_instructions.md`'s
+hard rule (no promoting over a `verified/`-twinned baseline without a human reviewer's key)
+applies; this is a genuine human action item, not a gap in the work. No baseline outside
+`foop/33/*` diverged; the lone `foop/62/infinite_loop` divergence is the known, pre-existing,
+`verified/`-frozen one, untouched. `cargo test --workspace`: every crate green except the
+expected `run_einmo_tests` failure (exactly the 5 human-gated files + `foop/62`).
+`cargo fmt`/`cargo clippy -D warnings` scoped to `-p foolish-core -p foolish-ubca` clean (the
+only clippy hits under `--all-targets` are pre-existing `einmo` dev-dependency lints, confirmed
+identical on the pre-Phase-9 commit via `git stash` — not introduced here). Re-verified
+independently after merge, not taken on the subagent's self-report alone (see the workspace
+test run and CLI spot-check recorded around this merge commit).
+
+Also this round: **Phase 5.5 CROSSED OUT** — its four checkboxes struck through with pointers
+to Phase 9 (which delivers the same capability, inside FOOP-33, at the conversion boundary
 rather than sequencer-side); STATUS SUMMARY row rewritten from "punted to a future FOOP" to
-"superseded by Phase 9, not implemented under this heading" — the separate future FOOP once
-proposed for it is no longer the plan. **Fixed a real rendering bug** found by the human right
-after Phase 6 merged: `ComparisonFir::resolve_boolean` (`system_foo.rs`) called `.value()`
-directly on the STATEMENT `_ab_search` returns (`'True = ⬤`) instead of unwrapping to its body,
-so `{1,2,'lt}$` settled to the whole `{'True=⬤}` statement wrapper instead of the bare creation
-— visibly wrong (`'True={*}`-style output). Fixed by routing through
-`statement_value_for_comparison`, the one documented "what does this statement resolve to"
-accessor, exactly as `IndexFir`'s `$` search already does for its own result; verified via CLI
-(`{r={1,2,'lt}$;}` now renders `r=⬤`, the correct pre-Phase-9 form) and re-promoted the
-`comparison_operators.foo.einmo` baseline (all 10 lines, each individually justified — see
-commit `8ac047e2`). Completed the Phase 6 branch merge into `foop-33-creation-postulate`
-(resolved a Last-Updated-log conflict in this file and in `FOOP-33.md`, both touched
-concurrently by the Phase 6 and `get_display_name` subagent branches; underlying Rust files
-merged with no conflicts). Cleaned up both now-finished worktrees. Dispatched Phase 9
-(`get_display_name()` sequencer bridge) to a subagent; two automatic `isolation: "worktree"`
-spawn attempts landed on a stale pre-Rust commit (`origin/HEAD`/`origin/main` still point at an
-abandoned Java/Maven-era commit, `4e0401ce`, left over from before this repo's trunk moved to
-`jia` — a spawn-mechanism bug, not a task issue) and correctly self-aborted without guessing;
-worked around by manually creating the Phase 9 worktree off the correct local branch tip and
-directing the agent there directly. **Confirmed Phase 5 has no real outstanding work**: the two
-unchecked bullets below its `---` divider (implicit-root-brane, line-number preservation) are
-dead prose from the pre-2026-08-03 "ancestral prelude" design the banner above explicitly
-supersedes ("do NOT implement from it directly") — their equivalents in the current, actually-
-implemented task list above the divider are already `[x]`. Struck through both rather than
-leaving them looking like open items on a status scan; no code changes needed. This log keeps
-only the single newest entry per the Markdown File Update Protocol; full history in `git log`
-on this file.
+"superseded by Phase 9, not implemented under this heading." **Fixed a real rendering bug**
+found by the human right after Phase 6 merged: `ComparisonFir::resolve_boolean`
+(`system_foo.rs`) called `.value()` directly on the STATEMENT `_ab_search` returns (`'True =
+⬤`) instead of unwrapping to its body, so `{1,2,'lt}$` settled to the whole `{'True=⬤}`
+statement wrapper instead of the bare creation — fixed by routing through
+`statement_value_for_comparison`, exactly as `IndexFir`'s `$` search already does (commit
+`8ac047e2`). Completed the Phase 6 branch merge into `foop-33-creation-postulate` earlier, and
+now the Phase 9 branch merge (this entry) — both required resolving a Last-Updated-log conflict
+in this file and in `FOOP-33.md`; underlying Rust files merged cleanly both times. Cleaned up
+all finished worktrees. Two automatic `isolation: "worktree"` spawn attempts for Phase 9 landed
+on a stale pre-Rust commit (`origin/HEAD`/`origin/main` still point at an abandoned Java/Maven
+commit, `4e0401ce`, left over from before this repo's trunk moved to `jia`) and correctly
+self-aborted without guessing; worked around by manually creating the Phase 9 worktree off the
+correct local branch tip. **Confirmed Phase 5 has no real outstanding work**: its two
+unchecked bullets are dead prose from the superseded pre-2026-08-03 design, already covered by
+the current, fully `[x]`-checked task list above the `---` divider. This log keeps only the
+single newest entry per the Markdown File Update Protocol; full history in `git log` on this
+file.

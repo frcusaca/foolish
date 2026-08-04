@@ -1,9 +1,9 @@
 #einmo 1 encoding=utf-8 separator=!!\n
 test: foop/33/boolean/comparison_operators.foo
-suite: /storage1/human/hcbusy/foolish/foolish-ubca/einmo_suite
-producer: 32722cf1
-producer-diff: sha256:96fa3036b01587364f63b80fa185ac8269edd517885611cf7f94804005944ebc
-generated: 2026-08-04T19:49:31.000000000Z
+suite: /storage1/human/hcbusy/foolish/.claude/worktrees/foop-33-phase9/foolish-ubca/einmo_suite
+producer: 8ac047e2
+producer-diff: sha256:e8edc45e1fce06c6efe3f455ef52c5f03595250eaa5f06731f6d46c561c2a7c1
+generated: 2026-08-04T20:54:30.000000000Z
 status: normal
 status-detail: 
 sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
@@ -23,12 +23,9 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
 	!! and resolve against 1 and 2 once the reference is recoordinated into
 	!! the brane below.
 	!! --
-	!! Phase 5.5 (sequencer renders named creations) is PUNTED to a future
-	!! FOOP -- see FOOP-33.md Open Questions for the get_recent_name()
-	!! design. Every result below is a 'True or 'False creation, and until
-	!! that lands each renders as the bare ⬤ glyph rather than its name. That
-	!! is expected; this baseline will need re-promoting at that time, not
-	!! before. Each line's comment states which boolean it IS.
+	!! FOOP-33 Phase 9: the sequencer now renders each result by the name of
+	!! the 'True/'False creation it settled to, instead of the bare ⬤ glyph.
+	!! Each line's comment states which boolean it IS.
 
 	lt_true  = {1, 2, 'lt}$;    !! 1 < 2  -> 'True
 	lt_false = {2, 1, 'lt}$;    !! 2 < 1  -> 'False
@@ -47,19 +44,19 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
 }
 !!
 {
-  ltˍtrue=⬤;
-  ltˍfalse=⬤;
-  gtˍtrue=⬤;
-  gtˍfalse=⬤;
-  leˍtrue=⬤;
-  leˍfalse=⬤;
-  geˍtrue=⬤;
-  geˍfalse=⬤;
-  eqˍtrue=⬤;
-  eqˍfalse=⬤
+  ltˍtrue='True;
+  ltˍfalse='False;
+  gtˍtrue='True;
+  gtˍfalse='False;
+  leˍtrue='True;
+  leˍfalse='False;
+  geˍtrue='True;
+  geˍfalse='False;
+  eqˍtrue='True;
+  eqˍfalse='False
 }!!
 !!
-{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:1210794a8e0f118948b720a7906fb9875efe235360521d111d7924f5ccfb0d29","timestamp":"2026-08-04T19:49:31.000000000Z"}
-{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:1210794a8e0f118948b720a7906fb9875efe235360521d111d7924f5ccfb0d29","timestamp":"2026-08-04T19:49:31.000000000Z"}
-{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"Iq3ky2aZBkpNKeX0vS7jbQIUZH7Dhb3I0CpmrlJNmAZ1Vl9pB9c0pK1RRAB9l/+dDVUuD0P++V6dZGk+OyjsBQ==","produced_by":"einmo 0.1.0 sha256:1210794a8e0f118948b720a7906fb9875efe235360521d111d7924f5ccfb0d29","timestamp":"2026-08-04T19:49:31.000000000Z"}
-{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"UAf+HUztCdjn6btmNdG0bP/v1zHr7b/ranCuJZpfwm+rEQceqrLHU8GtPQ07+5zHcwJ+zJ6Gggj2LZl5wSQuAg==","produced_by":"einmo 0.1.0 sha256:2381def31d69037bb8a176a65a8ab6092becf423d9e3e0b7c36b008d2d62d8b2","timestamp":"2026-08-04T19:51:26.000000000Z"}
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:fc939bdc2d8bac919faed85ddeeed66f28285e7e91526205d4b8671d382ead22","timestamp":"2026-08-04T20:54:30.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:fc939bdc2d8bac919faed85ddeeed66f28285e7e91526205d4b8671d382ead22","timestamp":"2026-08-04T20:54:30.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"KWh3cSdgobjE3xvXsRVMRFxNX2QxYTDin247GJZmkxQI4uUMLpc8CFEg7euEvgNGmhkaONQCiRMI7qe6OaTDDQ==","produced_by":"einmo 0.1.0 sha256:fc939bdc2d8bac919faed85ddeeed66f28285e7e91526205d4b8671d382ead22","timestamp":"2026-08-04T20:54:30.000000000Z"}
+{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"ot+jDdEDspITaicieydFlvjzTp8hr2K3W2UyO8rxR+Br3sZZTdvyA558HtqOcmG/l2JSNNmWMHvSmxYVf0PVBA==","produced_by":"einmo 0.1.0 sha256:a55715a686daa1859111d673e991e42f4a2686b3836dbd4d2c946a289f37d643","timestamp":"2026-08-04T20:55:16.000000000Z"}

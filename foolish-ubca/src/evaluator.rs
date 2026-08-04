@@ -3,8 +3,8 @@ use std::rc::Rc;
 use foolish_core::fir as core_fir;
 use foolish_core::fir::{
     Alarm, AlarmLevel, AlarmSource, ConcatenationFirBuilder, ConstantIntFirBuilder,
-    FirRef as CoreFirRef, IndexFirBuilder, NkFirBuilder, NormalBraneFirBuilder, Nyes,
-    OperatorFirBuilder, SearchFirBuilder, StayFoolishFirBuilder, StayFullyFoolishFirBuilder,
+    CreationFirBuilder, FirRef as CoreFirRef, IndexFirBuilder, NkFirBuilder, NormalBraneFirBuilder,
+    Nyes, OperatorFirBuilder, SearchFirBuilder, StayFoolishFirBuilder, StayFullyFoolishFirBuilder,
 };
 
 #[cfg(test)]
@@ -751,7 +751,20 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                 .build()
         }
         FirKind::Unknown | FirKind::FoolRef => NkFirBuilder::new("unknown fir kind").build(),
-        FirKind::Creation => core_fir::Fir::Creation,
+        // FOOP-33 Phase 9: resolve the display name HERE, at the conversion
+        // boundary, because this is the one place ubca `Rc` identity and the
+        // parent chain (which `as_creation_display_name` walks) still exist
+        // alongside the `foolish-core` conversion target. `borrowed` is the
+        // creation itself; `ubca_ref` is its own `FirRef`, exactly the
+        // `self_ref` the FVM-side method needs to find its defining
+        // statement (see `CreationFir::get_display_name`).
+        FirKind::Creation => {
+            let mut builder = CreationFirBuilder::new();
+            if let Some(name) = borrowed.as_creation_display_name(ubca_ref) {
+                builder = builder.name(name);
+            }
+            builder.build()
+        }
     }
 }
 
@@ -1070,5 +1083,93 @@ mod step_until_tests {
                 }
             }
         }
+    }
+}
+
+/// FOOP-33 Phase 9 — the `evaluator.rs` → `foolish-core` conversion boundary
+/// resolves `CreationFir::get_display_name` and carries it through as
+/// `core_fir::Fir::Creation { name }`. These tests exercise
+/// `proto_to_core_fir` directly (rather than the whole `system.foo`-composed
+/// `UbcaEvaluator::evaluate` pipeline) because the display-name rule is a
+/// property of the raw compiled+stepped FIR tree, not of program composition.
+#[cfg(test)]
+mod creation_display_name_conversion_tests {
+    use super::*;
+    use crate::fir_trait::Scope;
+    use foolish_core::FirQueryable;
+
+    #[test]
+    fn defining_site_creation_converts_with_its_name() {
+        // `'a = ⬤` — the creation is the whole RHS of statement `'a`.
+        let firs = Compiler::compile("{'a=⬤; b='a;}").unwrap();
+        let root = firs[0].clone();
+        let scope = Scope::empty();
+        step_to_settled(&root, &scope).unwrap();
+
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let a_body = stmts[0].borrow().core().foolish_children()[0].clone();
+        let converted = proto_to_core_fir(&a_body);
+        assert_eq!(converted.hs_variant(), "Creation");
+        assert_eq!(
+            converted.hs_creation_name().as_deref(),
+            Some("'a"),
+            "the creation defining 'a must convert carrying its own name"
+        );
+    }
+
+    #[test]
+    fn creation_reached_through_search_converts_with_its_own_defining_name() {
+        // `b='a` resolves THROUGH a search to the SAME creation `Rc` that
+        // `'a` defines (FOOP-33 Gotcha #2) — the conversion boundary must
+        // still report `'a`, not `b`, proving identity (not the referencing
+        // statement) drives the name.
+        let firs = Compiler::compile("{'a=⬤; b='a;}").unwrap();
+        let root = firs[0].clone();
+        let scope = Scope::empty();
+        step_to_settled(&root, &scope).unwrap();
+
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let b_body = stmts[1].borrow().core().foolish_children()[0].clone();
+        let resolved = b_body.value();
+        assert_eq!(resolved.borrow().kind(), FirKind::Creation);
+
+        let converted = proto_to_core_fir(&resolved);
+        assert_eq!(converted.hs_variant(), "Creation");
+        assert_eq!(
+            converted.hs_creation_name().as_deref(),
+            Some("'a"),
+            "a creation reached through a search converts with its OWN \
+             defining statement's name, not the referencing statement's"
+        );
+    }
+
+    #[test]
+    fn operator_operand_creation_converts_unnamed() {
+        // `'a = 1 + ⬤` — the creation is only an OPERAND of `+`, not the
+        // whole RHS, so it must convert with no name (glyph fallback).
+        let firs = Compiler::compile("{'a=1+⬤; b='a;}").unwrap();
+        let root = firs[0].clone();
+        let scope = Scope::empty();
+        step_to_settled(&root, &scope).unwrap();
+
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let a_body = stmts[0].borrow().core().foolish_children()[0].clone();
+        // a_body is the `+` operator; its second operand is the creation.
+        let operator_children = a_body.borrow().core().foolish_children().to_vec();
+        let creation = operator_children
+            .iter()
+            .find(|c| c.borrow().kind() == FirKind::Creation)
+            .expect("the + operator must have a creation operand")
+            .clone();
+
+        let converted = proto_to_core_fir(&creation);
+        assert_eq!(converted.hs_variant(), "Creation");
+        assert_eq!(
+            converted.hs_creation_name(),
+            None,
+            "a creation that is only an operand of an operator converts \
+             with NO name — the statement's name belongs to the whole \
+             expression, not to the creation inside it"
+        );
     }
 }
