@@ -960,8 +960,8 @@ fn read_stdin_line() -> Result<String> {
 /// keyboard instead. Used by the stage-key cascade's interactive tier (§B.5).
 fn prompt_tty() -> Result<String> {
     loop {
-        let first = rpassword::prompt_password("einmo passphrase: ")
-            .map_err(|e| EinmoError::io("<tty>", e))?;
+        let first =
+            rpassword::prompt_password("einmo passphrase: ").map_err(|e| EinmoError::io("<tty>", e))?;
         let second = rpassword::prompt_password("einmo passphrase (again): ")
             .map_err(|e| EinmoError::io("<tty>", e))?;
         if first == second {
@@ -987,13 +987,9 @@ impl crate::einmo_suite::Evaluator for CommandEvaluator {
             .spawn()
             .map_err(|e| format!("evaluator command failed: {e}"))?;
         if let Some(mut stdin) = child.stdin.take() {
-            stdin
-                .write_all(source.as_bytes())
-                .map_err(|e| e.to_string())?;
+            stdin.write_all(source.as_bytes()).map_err(|e| e.to_string())?;
         }
-        let output = child
-            .wait_with_output()
-            .map_err(|e| format!("evaluator command failed: {e}"))?;
+        let output = child.wait_with_output().map_err(|e| format!("evaluator command failed: {e}"))?;
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(format!(

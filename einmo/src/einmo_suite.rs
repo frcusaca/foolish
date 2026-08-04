@@ -837,12 +837,7 @@ impl EinmoSuite {
                 let source = match self.read_input(rel) {
                     Ok(s) => s,
                     Err(e) => {
-                        raw.push((
-                            rel.clone(),
-                            String::new(),
-                            EvalOutcome::read_error(&e),
-                            None,
-                        ));
+                        raw.push((rel.clone(), String::new(), EvalOutcome::read_error(&e), None));
                         continue;
                     }
                 };
@@ -1029,18 +1024,13 @@ impl EinmoSuite {
         evaluator: &dyn Evaluator,
         threads: usize,
         suite_start: std::time::Instant,
-    ) -> (
-        Vec<(PathBuf, String, EvalOutcome, Option<EinmoFile>)>,
-        usize,
-        Vec<FileResult>,
-    ) {
+    ) -> (Vec<(PathBuf, String, EvalOutcome, Option<EinmoFile>)>, usize, Vec<FileResult>) {
         use std::sync::Mutex;
         use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
         let next = AtomicUsize::new(0);
         let suite_timed_out = AtomicBool::new(false);
-        let results: Mutex<Vec<(PathBuf, String, EvalOutcome, Option<EinmoFile>)>> =
-            Mutex::new(Vec::new());
+        let results: Mutex<Vec<(PathBuf, String, EvalOutcome, Option<EinmoFile>)>> = Mutex::new(Vec::new());
         let crumb_gated: Mutex<Vec<FileResult>> = Mutex::new(Vec::new());
         let threads = threads.max(1);
 
@@ -1240,19 +1230,14 @@ impl EinmoSuite {
                     hex::encode(vk.to_bytes())
                 }),
             ];
-            let existing_keys: Vec<_> = existing
-                .stamps()
-                .entries()
-                .iter()
+            let existing_keys: Vec<_> = existing.stamps().entries().iter()
                 .map(|s| (s.key().to_string(), s.pubkey_hex().to_string()))
                 .collect();
             let keys_same = existing_keys == expected_keys;
             let sections_same = existing.sections().len() == file.sections().len()
-                && existing
-                    .sections()
-                    .iter()
-                    .zip(file.sections().iter())
-                    .all(|(e, f)| e.name() == f.name() && e.body() == f.body());
+                && existing.sections().iter().zip(file.sections().iter()).all(|(e, f)| {
+                    e.name() == f.name() && e.body() == f.body()
+                });
             if sections_same && keys_same {
                 // Restore the original file (crash crumb overwrote it).
                 let bytes = existing.serialize()?;
