@@ -1158,6 +1158,43 @@ mod tests {
     }
 
     #[test]
+    fn brane_literal_dollar_reads_the_whole_literals_tail() {
+        // FOOP-33 Phase 6 research task ("$ vs concatenation precedence"):
+        // the SETTLED syntax (§5.0's evening revision) is a brane LITERAL
+        // with 'lt as a comma-separated member -- NOT postfix-concatenation
+        // (`{1,3}'lt$`, from the superseded historical prose, does NOT even
+        // parse as intended -- see git history for that investigation).
+        // {1, 2, 'lt}$ must parse as ({1, 2, 'lt})$ -- $ (tail) applied to
+        // the WHOLE brane literal -- not to 'lt alone.
+        let ast = parse_single("{r = {1, 2, 'lt}$;}").unwrap();
+        match ast {
+            Astn::Brane { statements, .. } => match &statements[0] {
+                Astn::Assignment { expr, .. } => match &**expr {
+                    Astn::HeadTail {
+                        is_head: false,
+                        anchor,
+                    } => match &**anchor {
+                        Astn::Brane { statements, .. } => {
+                            assert_eq!(statements.len(), 3);
+                            assert!(matches!(statements[0], Astn::IntLit(1)));
+                            assert!(matches!(statements[1], Astn::IntLit(2)));
+                            assert!(
+                                matches!(&statements[2], Astn::Identifier { id, .. } if id == "lt")
+                            );
+                        }
+                        other => panic!(
+                            "expected the $ anchor to be the WHOLE brane literal, got {other:?}"
+                        ),
+                    },
+                    other => panic!("expected HeadTail (tail search), got {other:?}"),
+                },
+                other => panic!("expected assignment, got {other:?}"),
+            },
+            _ => panic!("expected brane"),
+        }
+    }
+
+    #[test]
     fn parses_empty_brane() {
         let ast = parse_single("{}").unwrap();
         match ast {

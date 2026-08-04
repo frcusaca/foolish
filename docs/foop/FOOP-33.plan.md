@@ -63,7 +63,7 @@ exact evidence). Current real status, top to bottom:
 | 4 — Null-characterized constants | ✅ **complete** (2026-08-04) — ancestral/same-brane conflict detection via `StatementFir` self-check (new `self_weak` field), NF via `settled_result()` override, concatenation collision handling with transitive poisoning. 14 new unit tests. See the phase's design notes for two architectural findings made during implementation (self-reference plumbing, the `NkFir::nk` pre-constanic bug). |
 | 5 — `system.foo` composition | ⚠️ **implemented and verified (2026-08-04), ONE open finding escalated to Open Questions** — `system_foo.rs` composes `system.foo` as root with `program` as its last member, wired into the one production entry point (`UbcaEvaluator::evaluate`). Found and fixed a real bug where Phase 4's NF refusal was enforced but never rendered (4th bypass site, in `evaluator.rs`). 280/280 unit tests pass; einmo suite green except ONE frozen `verified/` FOOP-62 baseline whose exact iteration-budget snapshot composition unavoidably shifts — see the phase's own checkbox and FOOP-33.md's Open Questions for the full writeup; needs a human decision, not guessed around. |
 | 5.5 — Sequencer renders named creations | ⛔ **BLOCKED (2026-08-04)** — investigated, not guessed: the design as written needs a genuine decision (search must run in `evaluator.rs` against live identity, not `sequencer.rs`; `Fir::Creation`'s "remains a unit variant" constraint leaves no way to carry a found name forward without a new field/variant). See FOOP-33.md Open Questions. Does NOT block Phase 6 (Phase 6 depends on Phase 5, not 5.5). |
-| 6 — Comparison operators | ⛔ **BLOCKED, design settled tonight, no code yet** — reverted (was returning placeholder `1`/`0`); design converged through several exchanges to: postfix `<<#-2>> < <<#-1>>` in an ordinary brane literal (`{1, 2, 'lt}`, **no concatenation**), extracted via `$` (`comparison_result =$ {1, 2}'lt` or `{1, 2, 'lt}$` — the brane literal alone is not the full expression, it's the vessel the tail-read pulls the boolean out of). `'lt` resolved via ordinary ancestral search into `system.foo` (same as `'True`), then the existing **detachment/recoordination** mechanism (`AGENTS.md` "Detachment and Coordination") lets its previously-unresolved `#-2`/`#-1` lookups find real neighbors once recoordinated into the user's brane. A new `system_foo.rs` Rust module holds shared FIR logic across `'lt`/`'gt`/`'le`/`'ge`/`'eq`, differing only in the op step. See FOOP-33.md §5.0's evening revision banner for the full transcript. Not yet re-verified against a live trace — needs Phase 5 (`system.foo` composition) implemented first to test against. See the STOP gate at the head of Phase 6. |
+| 6 — Comparison operators | ⛔ **BLOCKED (2026-08-04) — traced against live FVM as instructed, found the design's core mechanism does not hold, not implemented.** Phase 5 gate satisfied; `$`-vs-concatenation research CONFIRMED clean (`{1, 2, 'lt}$` parses exactly as needed). But an unanchored `IndexFir` (`#-1`/`#-2`) settles `Nk` (terminal) on an out-of-bounds target, not `ECONSTANIC` as the design assumes — so detachment/recoordination cannot revive `'lt`'s operand lookups the way the design depends on. `system.foo` was extended with the 5 comparison creations during investigation, then reverted once confirmed. See FOOP-33.md's Open Questions (2026-08-04 entry) for the full writeup and 3 candidate resolutions — none chosen unilaterally, per the task's explicit "STOP and report back" instruction. |
 | 7 — Docs/Tests | 🟡 partial, done piecemeal, not formally tracked |
 | 7R — Phase 3 value-search regression repair | ✅ done (earlier session) |
 | 8 — Merge | ❌ not started |
@@ -639,12 +639,27 @@ Foolish resolves names — through search, not stored metadata.
 > `19fe78ef` design, not as an instruction — it is close to, but not identical with, the
 > current design; confirm against FOOP-33.md §5.0's evening revision before using it.
 
-- [ ] **GATE: implement Phase 5 (`system.foo` composition) first; then implement Phase 6 per
+- [x] **GATE: implement Phase 5 (`system.foo` composition) first; then implement Phase 6 per
       FOOP-33.md §5.0's evening revision** — postfix `'lt`/`'gt`/`'le`/`'ge`/`'eq` via
       `<<#-2>>`/`<<#-1>>`, ordinary ancestral search into `system.foo` (no concatenation),
       detachment/recoordination to resolve the operand lookups, `$`-extraction of the result,
       new `system_foo.rs` Rust module. Confirm the detachment/recoordination behavior against
       a live trace once `system.foo` exists to test against, before trusting the design further.
+      **⛔ BLOCKED 2026-08-04 — traced, found a genuine, verified break, not implemented
+      further.** Phase 5 is done (gate satisfied). Confirmed the `$`-vs-concatenation-precedence
+      research task resolves cleanly — `{1, 2, 'lt}$` parses exactly as needed, no parser
+      change (`brane_literal_dollar_reads_the_whole_literals_tail`,
+      `foolish-parser/src/parser.rs`). But tracing the detachment/recoordination mechanism the
+      design depends on, as explicitly instructed, found it does NOT work as assumed: an
+      **unanchored** `IndexFir` (`#-1`/`#-2`, no dot — exactly the shape `'lt`'s operand lookups
+      need) settles `Nyes::Nk` on an out-of-bounds target, not `ECONSTANIC` as the design states.
+      `Nk` is TERMINAL — it can never later gain a value via recoordination the way `ECONSTANIC`
+      can. Pinned by `fir_kinds::tests::unanchored_index_out_of_bounds_settles_nk_not_econstanic`.
+      Reverted the `system/system.foo` extension (5 comparison creations) added during
+      investigation — see the Phase 6 STOP note below and FOOP-33.md's Open Questions (dated
+      2026-08-04) for the full writeup and the 3 candidate resolutions, none chosen unilaterally.
+      Per the task's own explicit instruction ("STOP and report back — do not silently invent a
+      workaround"), Phase 6 stops here pending a human decision.
 
 **Design change.** Comparison operators are no longer infix `\o<`/`\o>`/`\o<=`/`\o>=`/`\o==`
 parsed at the token level. Instead, `system.foo` defines null-characterized creations `'lt`,
@@ -676,13 +691,20 @@ elements: `1`, `3`, `'True`. The `$` search finds `'True`.
 (`LTOp`, `GTOp`, `Le`, `Ge`, `EqOp`) and their parser matchers are **deleted** — comparison
 is no longer syntactic sugar; it is brane search into system definitions.
 
-- [ ] **Research: `$` vs concatenation precedence.** Before any comparison-brane work, resolve
-      the associativity of `$` (tail search) versus concatenation. Key question: does `{1,3}'lt$`
-      parse as `({1,3}'lt)$` (brane-then-search-then-tail) or `{1,3}('lt$)` (brane-then-search-
-      with-tail)? The desired reading is the former — `'lt` is applied to the brane, then `$`
-      retrieves the result. If the parser binds `$` tighter than the search-on-brane, explicit
-      parens `({1,3}'lt)$` may be needed. Verify by testing current parser behavior with
-      `{a}'x$` and `({a}'x)$`. Document the resolution here before proceeding.
+- [x] **Research: `$` vs concatenation precedence — RESOLVED 2026-08-04, no parser change
+      needed.** The checkbox's own key question used STALE syntax from the superseded
+      postfix-concatenation prose (`{1,3}'lt$`); confirmed live that this form does NOT even
+      parse as a comparison at all — `'lt` (leading `'`) does not trigger
+      `is_concatenation_continuation` (which only recognizes `Token::Ident`/`LBrace`/`LParen`/
+      `Up`/`LtLt`/`Lt`, not `Token::Apostrophe`), so `{1,3}'lt$` parses as TWO separate
+      statements (`{1,3}` then an anonymous `'lt$`), not one expression. This is moot: the
+      CURRENT, settled syntax (FOOP-33.md §5.0's evening revision) is `{1, 2, 'lt}$` — `'lt` as
+      an ordinary comma-separated MEMBER inside a brane LITERAL, not postfix-concatenated after
+      a closing `}`. Verified this parses exactly as intended, no parser change needed:
+      `foolish-parser/src/parser.rs`'s `brane_literal_dollar_reads_the_whole_literals_tail` test
+      confirms `{1, 2, 'lt}$` parses as `HeadTail{is_head:false, anchor:Brane{statements:[1, 2,
+      'lt]}}` — `$` (tail) applied to the WHOLE brane literal, exactly as needed for `'lt`'s
+      computed result to be read out.
 - [ ] **Delete** from `foolish-parser/src/token.rs`: `LTOp`, `GTOp`, `Le`, `Ge`, `EqOp` tokens.
 - [ ] **Delete** from `foolish-parser/src/parser.rs`: the `\o<`/`\o>`/`\o<=`/`\o>=`/`\o==`
       infix operator matchers and their precedence handling.
@@ -819,21 +841,22 @@ is no longer syntactic sugar; it is brane search into system definitions.
 
 ## Last Updated
 
-**Date**: 2026-08-04
+**Date**: 2026-08-04 (evening)
 **Updated By**: Claude Code / claude-sonnet-5
-**Changes**: Phase 5 (`system.foo` composition) implemented and checked off — see the phase's
-checkboxes for complete detail. New `foolish-ubca/src/system_foo.rs` module composes
-`system.foo` as the root brane with the user's program as its last member (`program`), wired
-into the crate's one production entry point. Found and fixed a real, previously-unexercised
-bug: Phase 4's null-const NF refusal was correctly enforced internally but never actually
-rendered — a 4th bypass-the-refusal call site, in `evaluator.rs`'s core-fir conversion (the
-actual sequencer/einmo rendering path), read the raw body directly instead of going through
-`settled_result()`, same class of bug as the 3 sites Phase 4 already fixed in `fir_kinds.rs`.
-Caught by writing the Phase 5 approval test and observing the wrong OUTPUT before promoting,
-not assumed correct. One finding escalated to FOOP-33.md's Open Questions rather than silently
-worked around: composing `system.foo` shifts exactly when the shared `MAX_STEPS` iteration
-budget is exhausted for programs that deliberately never settle, breaking ONE frozen
-`verified/`-signed FOOP-62 baseline (`foop/62/infinite_loop.foo.einmo`) — every other test in
-the suite (280/281) is unaffected; not promoted, not guessed around, needs a human decision.
-Phases 1, 3, 4, and 5 (with that one documented exception) are now done; Phase 5.5 (sequencer
-renders named creations) is next. Full history in `git log` on this file.
+**Changes**: Phase 5.5 investigated and blocked (documented, not implemented — see its own
+STOP banner and FOOP-33.md Open Questions). Phase 6 attempted per instruction (Phase 5's gate
+satisfied): the `$`-vs-concatenation research task resolved cleanly with no parser change
+needed, but tracing the detachment/recoordination mechanism against a live FVM — exactly as
+the STOP gate required before trusting it — found it does not hold: an unanchored `IndexFir`
+(`#-1`/`#-2`) settles terminal `Nk` on an out-of-bounds target, not `ECONSTANIC` as the design
+assumes, so recoordination cannot revive `'lt`'s operand lookups. Pinned by
+`fir_kinds::tests::unanchored_index_out_of_bounds_settles_nk_not_econstanic`. `system.foo` was
+extended with the 5 comparison creations during investigation then reverted once confirmed
+blocked. Full writeup and 3 candidate resolutions in FOOP-33.md's Open Questions — none chosen
+unilaterally, per the task's "STOP and report back" instruction. Earlier the same day: Phase 5
+(`system.foo` composition) implemented and checked off, including a real bug found and fixed
+(Phase 4's NF refusal was enforced but never rendered) and one escalated finding (composition
+shifts the `MAX_STEPS` iteration-budget boundary, breaking one frozen FOOP-62 baseline).
+Phases 1, 3, 4, and 5 are done (Phase 5 with one documented exception); Phase 5.5 and Phase 6
+are both blocked pending human decisions, documented rather than guessed through. Full history
+in `git log` on this file.

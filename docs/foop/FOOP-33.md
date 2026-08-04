@@ -1165,6 +1165,57 @@ unit test asserting `Reject` (matching its name).
   new `Fir` variant/field (and its JSON shape), or a different mechanism entirely. Phase 6 does
   **not** block on this (its own stated dependency is Phase 5's composition, not Phase 5.5's
   rendering), so work continued past this point rather than stalling.
+- **NEW 2026-08-04 — Phase 6's settled comparison-operator design depends on a
+  detachment/recoordination behavior that does NOT hold when traced against the live FVM;
+  Phase 6 is BLOCKED pending a human decision, not implemented, and `system.foo` was NOT
+  extended with `'lt`/`'gt`/`'le`/`'ge`/`'eq` (reverted after investigation).** §5.0's evening
+  revision states: "`'lt`'s `#-2`/`#-1` lookups settle **ECONSTANIC** inside `system.foo` alone
+  (no valid neighbors there) — 'may gain value via recoordination' — then, once detached and
+  recoordinated into the user's brane... resolve to real neighbors." Traced live (pinned by the
+  permanent regression test `fir_kinds::tests::
+  unanchored_index_out_of_bounds_settles_nk_not_econstanic`): an **unanchored** index (`#-1`
+  with no dot before it — exactly the form `'lt`'s operand lookups need, since they must resolve
+  against whatever brane `'lt` is DETACHED INTO, not a fixed anchor) whose target is
+  out-of-bounds settles **`Nyes::Nk`**, not `ECONSTANIC` — confirmed by reading
+  `IndexFir::fir_op_step`'s unanchored-`Prembrionic` arm (`foolish-ubca/src/fir_kinds.rs`: `if
+  target < 0 || target >= len { self.core.set_nyes(Nyes::Nk); }`) and then proving it live with
+  `Compiler::compile("{only = #-1;}")`, which settles the index body to `Nk`, not `Econstanic`.
+
+  **Why this breaks the design, not just contradicts a detail.** `Nk` is TERMINAL — per the NYES
+  state machine (AGENTS.md, `docs/foop/FOOP-62.md`), a constanic state never regresses to a
+  pre-constanic one, and `Nk` specifically never gains a value afterward under ANY mechanism,
+  including recoordination (which is documented as an `ECONSTANIC`-specific affordance —
+  "ECONSTANIC... may gain value via recoordination"; `Nk` carries no such escape hatch anywhere
+  in the codebase). So if `'lt`'s `#-2`/`#-1` operand lookups settle inside `system.foo` (where,
+  by construction, they have no valid neighbors — `system.foo` currently has only 2, soon 7,
+  statements, none of them integers to compare) BEFORE detachment happens, they settle `Nk`
+  immediately and permanently — detachment/recoordination into the user's brane afterward cannot
+  revive them, because there is nothing left to revive. The whole mechanism the design leans on
+  ("previously failed name searches can now resolve in the new context") is stated for
+  `ECONSTANIC` specifically (per AGENTS.md's own "NK vs ECONSTANIC miss outcomes" section:
+  "**Anchored miss → NK**... **Unanchored miss → ECONSTANIC**" — but this is the rule for
+  *searches*, and `#-1`/`#-2` are `IndexFir`, not `SearchFir`; `IndexFir`'s own unanchored path
+  does not follow that rule as implemented today).
+
+  **What is NOT yet known, and needs the human's input rather than a guess**: (a) whether
+  `IndexFir`'s unanchored-out-of-bounds behavior is itself a bug relative to the codebase's own
+  documented NK-vs-ECONSTANIC convention (in which case the fix is in `fir_kinds.rs`'s
+  `IndexFir`, a genuine bug fix, not a comparison-operator design change) — or (b) whether the
+  Phase 6 design's assumption was simply wrong about which FIR kind/path `'lt`'s operand lookups
+  should use, and needs revision to use something that DOES settle `ECONSTANIC` on a miss (e.g.
+  routing through `SearchFir`'s unanchored path instead of `IndexFir`'s) — or (c) something else
+  entirely. Per the task's explicit instruction ("if the detachment/recoordination mechanism
+  does NOT work the way the design assumes... STOP and report back — do not silently invent a
+  workaround"), none of (a)/(b)/(c) was chosen unilaterally. `system.foo` was extended with the
+  5 comparison creations during investigation, then reverted (`git checkout -- system/system.foo`)
+  once the blocker was confirmed, so the prelude does not ship a half-built feature that would
+  silently behave as plain, uncomparing `⬤` creations.
+
+  **What WAS confirmed and does not need re-verification**: the `$`-vs-concatenation-precedence
+  research task (the plan's Phase 6 checkbox) IS resolved — `{1, 2, 'lt}$` parses exactly as the
+  design needs (`$` applied to the whole brane literal), pinned by
+  `foolish-parser::parser::tests::brane_literal_dollar_reads_the_whole_literals_tail`. The
+  parser is not the blocker; the `IndexFir`-vs-`ECONSTANIC` mismatch is.
 - **Anchored value search miss on creation inequality — RESOLVED 2026-08-03: NK, confirmed
   correct, no code change.** `referential_equality.foo`'s `cross_diff = bc~=(bd.v);` (an
   **anchored** forward value search that correctly finds no match inside `bc`, since `bc.v` and
@@ -1268,21 +1319,27 @@ preferred, three-canonical-strings fallback — §3); null-const mechanism (`get
 
 ## Last Updated
 
-**Date**: 2026-08-04
+**Date**: 2026-08-04 (evening)
 **Updated By**: Claude Code / claude-sonnet-5
-**Changes**: Phase 5 (`system.foo` composition, §4) implemented — new `foolish-ubca/src/
-system_foo.rs` module (`compose_program_with_system`, `program_result`), wired into
-`UbcaEvaluator::evaluate`, the crate's one production entry point. Verified against a live
-trace that a bare `True` (no leading `'`) can never resolve to `system.foo`'s `'True`, by
-design (matcher compares `searchable_name()` unconditionally — confirms the spec's own §3
-wording at line ~324, not a new finding but the first live-trace confirmation). Added a new,
-dated Open Questions entry: composition shifts the `MAX_STEPS` iteration-budget boundary for
-programs that deliberately never settle, breaking ONE frozen `verified/`-signed FOOP-62
-baseline (`foop/62/infinite_loop.foo.einmo`) out of the entire suite — every other test
-(279/280, including all `foop/33/*`) matches byte-for-byte, unchanged. Not promoted, not
-worked around with a guessed `MAX_STEPS` bump (traced, not assumed, that step consumption
-depends on task-queue interleaving order, not a separable prefix cost); left for human
-decision per the entry's full reasoning. Full history in `git log` on this file.
+**Changes**: Phase 6 (comparison operators) — followed the settled §5.0 design exactly, per
+instruction: confirmed the `$`-vs-concatenation research task resolves cleanly (`{1, 2, 'lt}$`
+parses as needed, no parser change), then traced the detachment/recoordination mechanism
+against a live FVM before trusting it further, as explicitly directed. Found it does NOT hold:
+an unanchored `IndexFir` (`#-1`/`#-2`, the exact shape `'lt`'s operand lookups need) settles
+`Nyes::Nk` — terminal, never regains a value — on an out-of-bounds target, not `ECONSTANIC` as
+the design assumes; recoordination is documented as an `ECONSTANIC`-specific affordance, so it
+cannot revive an already-`Nk` lookup. Pinned by a permanent regression test,
+`fir_kinds::tests::unanchored_index_out_of_bounds_settles_nk_not_econstanic`. Added a new,
+dated Open Questions entry with the full writeup and 3 candidate resolutions (fix `IndexFir`'s
+unanchored-miss behavior; route `'lt`'s operands through `SearchFir` instead; or something
+else) — none chosen unilaterally, per the task's own "STOP and report back" instruction.
+`system/system.foo` was extended with the 5 comparison creations during investigation, then
+reverted once the blocker was confirmed, so the prelude does not ship a half-built feature.
+Earlier the same day: Phase 5 (`system.foo` composition, §4) implemented — new
+`foolish-ubca/src/system_foo.rs` module, wired into `UbcaEvaluator::evaluate`; found and fixed
+a real bug where Phase 4's null-const refusal was enforced but never rendered; one finding
+(iteration-budget shift breaking a frozen FOOP-62 baseline) escalated, not silently fixed. Full
+history in `git log` on this file.
 
 **Date**: 2026-08-02
 **Updated By**: Sisyphus / z-ai/glm-5.2

@@ -4559,6 +4559,35 @@ mod tests {
     }
 
     #[test]
+    fn unanchored_index_out_of_bounds_settles_nk_not_econstanic() {
+        // FOOP-33 Phase 6 finding (2026-08-04): the settled comparison-operator
+        // design (FOOP-33.md §5.0's evening revision) assumes an unanchored
+        // index (#-1/#-2, no dot before it) with no valid neighbor settles
+        // ECONSTANIC ("may gain value via recoordination"). It does NOT --
+        // IndexFir::fir_op_step's unanchored-Prembrionic arm sets Nyes::Nk
+        // directly on an out-of-bounds target (see the `if target < 0 ||
+        // target >= len` branch below in this same file). NK is TERMINAL
+        // (never regresses to a pre-constanic state), so an out-of-bounds
+        // unanchored index can never later gain a value via detachment/
+        // recoordination the way ECONSTANIC can -- this breaks the mechanism
+        // Phase 6's design depends on for 'lt's #-2/#-1 operand lookups
+        // (which have no valid neighbors inside system.foo alone). See
+        // FOOP-33.md's Open Questions for the full writeup; Phase 6 is
+        // blocked on this pending a human decision.
+        let root = Compiler::compile("{only = #-1;}").unwrap().pop().unwrap();
+        let scope = Scope::empty();
+        let _ = step_to_settled(&root, &scope);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let only_body = stmts[0].borrow().core().foolish_children()[0].clone();
+        assert_eq!(only_body.borrow().kind(), FirKind::Index);
+        assert_eq!(
+            only_body.borrow().core().get_nyes(),
+            Nyes::Nk,
+            "an out-of-bounds unanchored index settles NK today, not ECONSTANIC"
+        );
+    }
+
+    #[test]
     fn stmt_ib_search_finds_earlier_null_characterized_sibling_by_searchable_name() {
         // FOOP-33 Phase 4 precondition: the null-constant rule's ancestral-conflict
         // check (BraneFir's own step) needs to find a same-name null-characterized
