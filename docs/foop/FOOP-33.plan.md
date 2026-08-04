@@ -885,14 +885,22 @@ SFF-mark sanity guard; `sift_*` naming convention added to AGENTS.md terminology
 
 ## Last Updated
 
-**Date**: 2026-08-04 (later)
-**Updated By**: Claude Code / claude-sonnet-5
-**Changes**: Phase 5.5 changed from BLOCKED to PUNTED — per human direction, this phase is
-punted out of FOOP-33 entirely into a new, separate, future FOOP (not yet created or numbered),
-and will not be implemented as part of FOOP-33. Updated the STATUS SUMMARY table row and added
-a punt marker at the top of the Phase 5.5 section, both pointing to
-`docs/foop/FOOP-33.md`'s Open Questions entry, which now also records the human's proposed
-resolution: `CreationFir::get_recent_name()` (a `?=$CREATION`-style value search run entirely
-within `foolish-ubca`, confirmed to sidestep the identity/parent-chain blocker) plus the still-
-unresolved question of how the sequencer reaches that method from `foolish-core::Fir` (left as
-a subtlety for later, not guessed at). No code changed; docs-only.
+**Date**: 2026-08-04
+**Updated By**: Claude Code / claude-opus-5
+**Changes**: **Phase 6 COMPLETE** — the five comparison operators are implemented, tested, and
+the suite is green. STATUS SUMMARY row and all Phase 6 checkboxes updated to record what was
+actually built, and the Phase 6 STOP gate marked discharged. The implementation deliberately did
+NOT use the evaluator-special-casing the section's superseded prose describes (`'lt` is never
+recognised by name at the use site — it resolves by ordinary ancestral search plus
+detachment/recoordination), so that prose is re-flagged as historical record. Checked off the
+token-deletion items as already satisfied by the earlier revert (verified `LTOp`/`GTOp`/`Le`/
+`Ge`/`EqOp` are absent), and marked the stale `int_comparators.foo`/`comprehensive.foo` einmo
+items not-applicable since those inputs were removed with that revert. Key traced finding
+recorded: an ECONSTANIC operand must settle the comparison ECONSTANIC, not NK, or the `'lt`
+definition is poisoned and can never be handed out by a search. 9 new unit tests (including
+`comparison_nyes_transitions`, covering all three terminal states) and 2 new einmo baselines;
+295 unit tests pass, einmo suite in exactly its starting state (the lone
+`foop/62/infinite_loop` divergence is the known, `verified/`-frozen one awaiting a human
+decision, untouched). Also reverted stray `cargo fmt` churn in the shared `einmo/` crate that a
+bare `cargo fmt --all` had swept into this phase's first commit. This log keeps only the single
+newest entry per the Markdown File Update Protocol; full history in `git log` on this file.
