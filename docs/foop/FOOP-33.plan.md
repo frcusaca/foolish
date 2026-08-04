@@ -63,7 +63,7 @@ exact evidence). Current real status, top to bottom:
 | 4 — Null-characterized constants | ✅ **complete** (2026-08-04) — ancestral/same-brane conflict detection via `StatementFir` self-check (new `self_weak` field), NF via `settled_result()` override, concatenation collision handling with transitive poisoning. 14 new unit tests. See the phase's design notes for two architectural findings made during implementation (self-reference plumbing, the `NkFir::nk` pre-constanic bug). |
 | 5 — `system.foo` composition | ⚠️ **implemented and verified (2026-08-04), ONE open finding escalated to Open Questions** — `system_foo.rs` composes `system.foo` as root with `program` as its last member, wired into the one production entry point (`UbcaEvaluator::evaluate`). Found and fixed a real bug where Phase 4's NF refusal was enforced but never rendered (4th bypass site, in `evaluator.rs`). 280/280 unit tests pass; einmo suite green except ONE frozen `verified/` FOOP-62 baseline whose exact iteration-budget snapshot composition unavoidably shifts — see the phase's own checkbox and FOOP-33.md's Open Questions for the full writeup; needs a human decision, not guessed around. |
 | 5.5 — Sequencer renders named creations | 🚫 **PUNTED to a future FOOP (2026-08-04)** — human proposed `CreationFir::get_recent_name()` (a `?=$CREATION`-style value search, entirely within `foolish-ubca`), confirmed to sidestep the identity blocker, but how the sequencer reaches it from `foolish-core::Fir` is unresolved and left for later. Not part of FOOP-33's implementation scope. See FOOP-33.md Open Questions ("Creation *value* render form in `hssnap`" entry, 2026-08-04 later update). |
-| 6 — Comparison operators | 🟡 **UNBLOCKED (2026-08-04), design sound, implementation not started** — an earlier "blocked" finding tested a BARE `#-1` (settles terminal NK); Phase 6 specifies **SFF-marked** `<<#-1>>`, which never runs and is built ECONSTANIC — verified live and pinned by `sff_marked_unanchored_index_out_of_bounds_settles_econstanic`. Detachment/recoordination works as the design assumes; no `IndexFir` fix needed. `$`-precedence research also resolved. Remaining: write `system_foo.rs`'s five comparison FIRs and extend `system/system.foo`. See FOOP-33.md Open Questions (2026-08-04 correction). |
+| 6 — Comparison operators | ✅ **complete (2026-08-04)** — `ComparisonFir` + `ComparisonOp` enum in `system_foo.rs` (ONE kind, not five; the Rust comparison is the only per-operator difference). `system.foo` declares `'lt`/`'gt`/`'le`/`'ge`/`'eq` as ordinary creations; their real bodies are installed via a new `compiler.rs` `BodyOverride` hook, and every use resolves by ordinary ancestral search + detachment/recoordination — no name-based special-casing anywhere. Key traced finding: an ECONSTANIC operand must settle the comparison ECONSTANIC, **not** NK (NK is terminal and would poison the definition so no search could ever hand it out). 9 new unit tests incl. `comparison_nyes_transitions` (all three terminal states); 2 new einmo baselines. 295 unit tests pass; einmo suite in its starting state. |
 | 7 — Docs/Tests | 🟡 partial, done piecemeal, not formally tracked |
 | 7R — Phase 3 value-search regression repair | ✅ done (earlier session) |
 | 9 — Sequencer renders creation names | 🟡 **queued (2026-08-04), design written, not started** — the `get_display_name()` bridge. Depends on the FVM-side `CreationFir::get_display_name()` (in progress separately); largely independent of Phase 6 (different code path), so order doesn't matter. **May be punted past merge** — nothing depends on it and today's glyph fallback is correct, just less informative. Needs a human decision on the `foolish-core::Fir::Creation` shape (it must stop being a unit variant) and its JSON/hssnap stability. Closes the long-open "Creation value render form in hssnap" question. See Phase 9's section. |
@@ -621,7 +621,13 @@ Foolish resolves names — through search, not stored metadata.
 
 ## Phase 6 — Comparison operators via brane search (revised)
 
-> ## ⛔ STOP — INSPECT THE NEW SPECIFICATION BEFORE IMPLEMENTING ⛔
+> ## ✅ IMPLEMENTED (2026-08-04) — this gate is discharged
+>
+> Phase 6 is **complete**. The design summarised below is what was built; see the checked
+> items after this banner for what each piece became in code, and the STATUS SUMMARY row for
+> the short version. The prose *below the `---` divider* remains superseded historical record
+> — it describes an evaluator-special-casing approach that was **not** used (`'lt` is never
+> recognised by name at the use site).
 >
 > **Do NOT implement any part of Phase 6 from the prose below.** The design is settled — see
 > **FOOP-33.md §5.0's evening revision banner** ("REVISED AGAIN, SAME DAY") for the full,
@@ -645,17 +651,19 @@ Foolish resolves names — through search, not stored metadata.
 >   settling logic, possibly reusing `OperatorFir`'s existing structure) across `'lt`/`'gt`/
 >   `'le`/`'ge`/`'eq`, differing only in the Rust comparison run in the op step.
 >
-> **Mechanism VERIFIED against a live FVM trace (2026-08-04); implementation not yet
-> written.** Phase 5's `system.foo` composition is now in place, and the load-bearing
+> **Mechanism VERIFIED against a live FVM trace (2026-08-04); implementation now WRITTEN
+> (2026-08-04).** Phase 5's `system.foo` composition is now in place, and the load-bearing
 > assumption above — that `'lt`'s `#-2`/`#-1` lookups sit ECONSTANIC rather than settling
 > terminal NK — is confirmed: `{only = <<#-1>>;}` settles the index to ECONSTANIC, pinned by
 > `fir_kinds::tests::sff_marked_unanchored_index_out_of_bounds_settles_econstanic`. (An earlier
 > reading that Phase 6 was blocked tested a **bare** `#-1`, which does settle NK — a different
 > construct; the SFF marker is what makes the difference, since `build_fir`'s `under_sff` rule
 > builds descendant search kinds ECONSTANIC so they never run. See FOOP-33.md's 2026-08-04
-> correction entry.) No `IndexFir` change is needed. What remains is the implementation itself:
-> `system_foo.rs`'s five comparison FIRs, and extending `system/system.foo` with
-> `'lt`/`'gt`/`'le`/`'ge`/`'eq`.
+> correction entry.) No `IndexFir` change is needed. The implementation — `system_foo.rs`'s
+> comparison FIR and the extension of `system/system.foo` — has since been written; the
+> mechanism is additionally pinned end-to-end in pure Foolish by
+> `fir_kinds::tests::sff_index_operand_recoordinates_to_the_referencing_branes_neighbors`
+> (`{defn = <<#-2>>; use = {5, 9, defn};}` → `defn` reads 5 inside `use`).
 >
 > **Ordering (human-directed):** (1) all pre-existing tests pass — **done**, suite green as
 > of 2026-08-03. (2) `'True`/`'False` introduced via the `system.foo` composition (Phase 5).
@@ -731,44 +739,58 @@ is no longer syntactic sugar; it is brane search into system definitions.
       confirms `{1, 2, 'lt}$` parses as `HeadTail{is_head:false, anchor:Brane{statements:[1, 2,
       'lt]}}` — `$` (tail) applied to the WHOLE brane literal, exactly as needed for `'lt`'s
       computed result to be read out.
-- [ ] **Delete** from `foolish-parser/src/token.rs`: `LTOp`, `GTOp`, `Le`, `Ge`, `EqOp` tokens.
-- [ ] **Delete** from `foolish-parser/src/parser.rs`: the `\o<`/`\o>`/`\o<=`/`\o>=`/`\o==`
-      infix operator matchers and their precedence handling.
-- [ ] **Delete** from `foolish-parser/src/lexer.rs`: the `\o` prefix and Unicode U+0332
-      recognition for these five operators.
-- [ ] **Delete** from `foolish-ubca/src/fir_kinds.rs` (`OperatorFir::combine`): the five
-      comparison arms (`<=`, `>=`, `\\<`, `\\>`, `\\==`) and the `op if matches!` block.
-      Keep the `+`, `-`, `*`, `/`, `%`, unary `-`, `$` arms.
-- [ ] **Delete** comparison-related parser unit tests and sequencer `op_display()` rendering
-      for these operators.
-- [ ] **Update `system.foo`**: add five null-characterized system operations:
-      ```foolish
-      {!!system.foo
-          'True  = ⬤
-          'False = ⬤
-          'lt    = ⬤    !! less-than system operation
-          'gt    = ⬤    !! greater-than system operation
-          'le    = ⬤    !! less-or-equal system operation
-          'ge    = ⬤    !! greater-or-equal system operation
-          'eq    = ⬤    !! equality system operation
-      }
-      ```
-- [ ] **FVM evaluator special-casing**: when the evaluator encounters a search result that
-      resolves to one of `'lt`, `'gt`, `'le`, `'ge`, `'eq` (identified by the creation's
-      `Rc::ptr_eq` against the system root brane's definitions), create an `OperatorFir`-like
-      structure that:
-      1. Instantiates two SFF (StayFoolish) unanchored index searches as `foolish_children`:
-         `<<#-2>>` (first operand) and `<<#-1>>` (second operand).
-      2. Steps the SFF searches to resolve against the containing brane.
-      3. Checks both resolved values are integers (else NK).
-      4. Performs the Rust comparison (`<`, `>`, `<=`, `>=`, `==`).
-      5. Resolves `'True` or `'False` from the system root brane.
-      6. Enqueues the result into `ubc_children`.
-      7. The result (plus the two operands) becomes accessible as brane members.
-- [ ] Unit tests: `{1, 3,}'lt$` → `'True`; `{3, 1,}'lt$` → `'False`; `{⬤, 1,}'lt$` → NK.
-      Verify all three elements are accessible as brane members.
-- [ ] Einmo tests: update `int_comparators.foo`, `boolean/comparison_operators.foo`,
-      `comprehensive.foo` to use the new brane-search syntax.
+- [x] **Delete** the token-level infix comparison operators — **already done** by the earlier
+      revert; verified this session that `LTOp`/`GTOp`/`Le`/`Ge`/`EqOp` no longer appear in
+      `foolish-parser/src/token.rs`, nor their parser matchers, lexer `\o` recognition,
+      `OperatorFir::combine` arms, or sequencer `op_display()` rendering. Nothing left to
+      delete. (2026-08-04)
+- [x] **Update `system.foo`**: added `'lt`/`'gt`/`'le`/`'ge`/`'eq` as ordinary
+      null-characterized creations alongside `'True`/`'False`. Confirmed the einmo suite is
+      unchanged by this — system.foo gaining members cannot renumber statements inside
+      `program`'s brane, since line numbers are per-brane indices. (2026-08-04)
+- [x] **Comparison FIRs in `system_foo.rs`** — implemented, but NOT by evaluator
+      special-casing as the superseded prose below describes. `'lt` is never recognised by
+      name at the use site: `system.foo`'s `'lt = ⬤` placeholder bodies are replaced with a
+      `ComparisonFir` as the composed root is compiled (a new `BodyOverride` hook in
+      `compiler.rs`, so brane/statement construction stays in the compiler), and every use
+      resolves by ordinary ancestral search + detachment/recoordination.
+
+      **ONE FIR kind, not five.** `ComparisonFir` + a `ComparisonOp` enum: all five share the
+      entire structure and differ only in which Rust comparison runs. Mirrors `OperatorFir`'s
+      single-type-plus-op-tag shape, but with a real enum instead of its `op: String`, per
+      `rust_instructions.md`'s "finite word-domains → enum".
+
+      The operands are compiled from Foolish source (`<<#-2>>`/`<<#-1>>`) through `build_fir`
+      rather than hand-assembled, so the `under_sff` rule applies exactly as it does to any
+      other Foolish and cannot drift from it; they are pushed with
+      `push_foolish_child_sff_marked`, whose panic-on-violation is the intended guard. A new
+      `FirKind::Comparison` arm in `constanic_clone_at` is what makes recoordination work.
+      (2026-08-04)
+- [x] **Design finding, traced not assumed**: an ECONSTANIC operand must settle the comparison
+      **ECONSTANIC, not NK**. NK is terminal and would poison the `'lt` *definition*, so a
+      search for `'lt` would hit `check_body_nyes`'s `NkStop` and never hand the definition out
+      to be recoordinated — the operator could never be used anywhere. Found by stepping the
+      FVM (a plain `q = 'lt` settled `Nk` while `w = 'True` settled `Constant`). (2026-08-04)
+- [x] Unit tests — 8 new in `system_foo.rs`, plus one in `fir_kinds.rs` pinning the underlying
+      mechanism in pure Foolish (`sff_index_operand_recoordinates_to_the_referencing_branes_neighbors`).
+      Cover: all five operators × both outcomes with `Rc::ptr_eq` against `system.foo`'s OWN
+      `'True`/`'False` (referential identity, FOOP-33 §5); operand ORDER (`{1,2,'lt}` vs
+      `{2,1,'lt}` must differ, so a swap cannot pass); two uses in one program each reading
+      their own brane's neighbours; the non-integer NK case; and that a bare `{1,2,'lt}`
+      without `$` is the brane, not the boolean. (2026-08-04)
+- [x] `comparison_nyes_transitions` — required by AGENTS.md for a new FIR kind. Pins all THREE
+      terminal states: ECONSTANIC inside `system.foo`, CONSTANT when recoordinated onto integer
+      operands, NK on a non-integer operand. (2026-08-04)
+- [x] Einmo tests: added `foop/33/boolean/comparison_operators.foo` (all five operators, both
+      outcomes) and `foop/33/boolean/comparison_non_integer.foo` (the NK case). Every OUTPUT
+      line justified against the arithmetic before promoting, per AGENTS.md; promoted with an
+      explicit filter, exactly 2 files, no pre-existing baseline touched. The stale
+      `int_comparators.foo`/`comprehensive.foo` items from the superseded infix design do not
+      apply — those inputs were removed with the revert. (2026-08-04)
+- [x] Run all tests — old and new — and make sure they all pass correctly. 295 unit tests pass
+      (was 287). The einmo suite is in exactly its starting state: the single
+      `foop/62/infinite_loop` divergence is the known, `verified/`-frozen one awaiting a human
+      decision, deliberately untouched. (2026-08-04)
 
 ## Phase 7 — Documentation and Tests
 
@@ -930,19 +952,35 @@ let the sequencer render what it is handed. `get_display_name()` already returns
 
 **Date**: 2026-08-04
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Added **Phase 9 — Sequencer renders creation names**, the `get_display_name()`
-bridge, with its design written out: resolve the name at CONVERSION time (in `evaluator.rs`'s
-`proto_to_core_fir_inner`, where `Rc` identity and the parent chain still exist), carry it as
-data on `foolish-core::Fir::Creation`, and let the sequencer render `Some(name)` as the name /
-`None` as the glyph. Records the two decisions a human must make first (the `Fir::Creation`
-variant shape — it must stop being a unit variant — and the JSON/`hssnap` serialization
-stability that follows), and notes it may be punted past merge since nothing depends on it and
-today's glyph fallback is correct. Placed before Phase 8 (merge stays last). Earlier the same
-day: Phase 6 UNBLOCKED (the "blocked" finding tested a bare `#-1` rather than the SFF-marked
-`<<#-1>>` the design specifies; the SFF form is built ECONSTANIC, verified live); Phase 5.5
-punted out of FOOP-33 entirely into a new, separate, future FOOP (`CreationFir::
-get_recent_name()` proposal, recorded in FOOP-33.md's Open Questions — note the FVM-side
-capability is now being implemented as `get_display_name()`, and Phase 9 above is the
-sequencer half); `foolish_children` encapsulation (`push_foolish_child`/`get_foolish_child`)
-with an SFF-mark sanity guard; `sift_*` naming convention added to AGENTS.md terminology. Full
-history in `git log` on this file.
+**Changes**: **Phase 6 COMPLETE** — the five comparison operators are implemented, tested, and
+the suite is green. STATUS SUMMARY row and all Phase 6 checkboxes updated to record what was
+actually built, and the Phase 6 STOP gate marked discharged. The implementation deliberately did
+NOT use the evaluator-special-casing the section's superseded prose describes (`'lt` is never
+recognised by name at the use site — it resolves by ordinary ancestral search plus
+detachment/recoordination), so that prose is re-flagged as historical record. Checked off the
+token-deletion items as already satisfied by the earlier revert (verified `LTOp`/`GTOp`/`Le`/
+`Ge`/`EqOp` are absent), and marked the stale `int_comparators.foo`/`comprehensive.foo` einmo
+items not-applicable since those inputs were removed with that revert. Key traced finding
+recorded: an ECONSTANIC operand must settle the comparison ECONSTANIC, not NK, or the `'lt`
+definition is poisoned and can never be handed out by a search. 9 new unit tests (including
+`comparison_nyes_transitions`, covering all three terminal states) and 2 new einmo baselines;
+295 unit tests pass, einmo suite in exactly its starting state (the lone
+`foop/62/infinite_loop` divergence is the known, `verified/`-frozen one awaiting a human
+decision, untouched). Also reverted stray `cargo fmt` churn in the shared `einmo/` crate that a
+bare `cargo fmt --all` had swept into this phase's first commit. Also added **Phase 9 —
+Sequencer renders creation names**, the `get_display_name()` bridge, with its design written
+out: resolve the name at CONVERSION time (in `evaluator.rs`'s `proto_to_core_fir_inner`, where
+`Rc` identity and the parent chain still exist), carry it as data on
+`foolish-core::Fir::Creation`, and let the sequencer render `Some(name)` as the name / `None`
+as the glyph. Records the two decisions a human must make first (the `Fir::Creation` variant
+shape — it must stop being a unit variant — and the JSON/`hssnap` serialization stability that
+follows), and notes it may be punted past merge since nothing depends on it and today's glyph
+fallback is correct. Placed before Phase 8 (merge stays last). Also this session: Phase 6
+UNBLOCKED (the "blocked" finding tested a bare `#-1` rather than the SFF-marked `<<#-1>>` the
+design specifies; the SFF form is built ECONSTANIC, verified live); Phase 5.5 punted out of
+FOOP-33 entirely into a new, separate, future FOOP (`CreationFir::get_recent_name()` proposal,
+recorded in FOOP-33.md's Open Questions — note the FVM-side capability is now being implemented
+as `get_display_name()`, and Phase 9 above is the sequencer half); `foolish_children`
+encapsulation (`push_foolish_child`/`get_foolish_child`) with an SFF-mark sanity guard; `sift_*`
+naming convention added to AGENTS.md terminology. This log keeps only the single newest entry
+per the Markdown File Update Protocol; full history in `git log` on this file.

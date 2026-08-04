@@ -420,6 +420,90 @@ fn build_stmts(asts: Vec<Astn>, parent: &Weak<RefCell<dyn Fir>>, under_sff: bool
         .collect()
 }
 
+/// Compile the body of the sole statement of a one-statement brane `source`,
+/// built directly beneath `parent`.
+///
+/// Unlike [`Compiler::compile`], which roots the brane it is given, this keeps
+/// only the statement BODY and parents it on an existing FIR. Used by
+/// `system_foo.rs` to build the comparison operators' `<<#-2>>`/`<<#-1>>`
+/// operands as real, compiler-built Foolish rather than hand-assembled FIR.
+/// Going through `build_fir` is the point: the `under_sff` rule (which builds
+/// descendant searches ECONSTANIC so they never run) applies exactly as it
+/// does to any other Foolish, so the operands cannot drift from it.
+///
+/// The brane-and-statement wrapper in `source` exists only because an SFF
+/// marker is not valid at top level; it is discarded here.
+pub(crate) fn compile_stmt_body_under(
+    source: &str,
+    parent: &Weak<RefCell<dyn Fir>>,
+) -> anyhow::Result<FirRef> {
+    let asts = foolish_parser::parse(source)?;
+    let [ast] = <[Astn; 1]>::try_from(asts)
+        .map_err(|v| anyhow!("expected exactly one top-level brane, found {}", v.len()))?;
+    validate_astn(&ast)?;
+    let Astn::Brane { mut statements, .. } = ast else {
+        return Err(anyhow!("expected a brane"));
+    };
+    if statements.len() != 1 {
+        return Err(anyhow!(
+            "expected exactly one statement, found {}",
+            statements.len()
+        ));
+    }
+    let Astn::Assignment { expr, operator, .. } = statements.remove(0) else {
+        return Err(anyhow!("expected an assignment"));
+    };
+    Ok(expr.build_expr_with_operator(operator, parent, false))
+}
+
+/// Builds a statement's body in place of the one its AST describes.
+///
+/// Given a statement's [`Identifier`] and its own self-`Weak` (usable as the
+/// body's parent), returns `Some(body)` to supply that body instead of
+/// compiling the AST's, or `None` to compile normally.
+///
+/// This exists for `system.foo`, whose comparison operators are DECLARED in
+/// Foolish as ordinary `'lt = ⬤` creations but whose real bodies are Rust FIR
+/// kinds (FOOP-33 §5.0: "that foolishness is put into the system brane by
+/// fvm + system_foo.rs"). The hook keeps brane and statement construction here
+/// in the compiler — including line numbering and the `Rc::new_cyclic` parent
+/// wiring — rather than duplicating it in `system_foo.rs`.
+pub(crate) type BodyOverride<'a> =
+    &'a dyn Fn(&crate::identifier::Identifier, &Weak<RefCell<dyn Fir>>) -> Option<FirRef>;
+
+/// Compile a top-level brane AST as a self-rooting root, letting `override_body`
+/// replace individual statements' bodies.
+///
+/// Identical to [`AstnCompilerExt::compile_standalone`] except for the hook;
+/// see [`BodyOverride`] for why it exists.
+pub(crate) fn compile_root_with_body_override(
+    ast: Astn,
+    override_body: BodyOverride<'_>,
+) -> anyhow::Result<FirRef> {
+    validate_astn(&ast)?;
+    let Astn::Brane {
+        characterizations,
+        statements,
+    } = ast
+    else {
+        return Err(anyhow!("only a Brane can be a top-level (root) node"));
+    };
+    Ok(Rc::new_cyclic(|me: &Weak<RefCell<BraneFir>>| {
+        let me_dyn: Weak<RefCell<dyn Fir>> = me.clone();
+        let children = statements
+            .into_iter()
+            .enumerate()
+            .map(|(i, stmt_ast)| stmt_ast.build_as_statement_overridden(&me_dyn, i, override_body))
+            .collect();
+        RefCell::new(BraneFir {
+            core: ProtoBrane::new(children, me_dyn.clone(), Nyes::Prembrionic),
+            characterizations: crate::identifier::Characterizations::from_brane_parts(
+                characterizations,
+            ),
+        })
+    }))
+}
+
 /// The name used for an anonymous statement (a bare expression with no LHS identifier).
 /// The sequencer renders a statement named `???` WITHOUT a `name=` prefix (FOOP-62 #19).
 pub(crate) const ANON_STMT_NAME: &str = "???";
@@ -432,6 +516,23 @@ pub(crate) trait AstnCompilerExt {
         parent: &Weak<RefCell<dyn Fir>>,
         line: usize,
         under_sff: bool,
+    ) -> FirRef;
+
+    /// As [`Self::build_as_statement`], but consulting `override_body` first.
+    /// See [`BodyOverride`].
+    fn build_as_statement_overridden(
+        self,
+        parent: &Weak<RefCell<dyn Fir>>,
+        line: usize,
+        override_body: BodyOverride<'_>,
+    ) -> FirRef;
+
+    fn build_as_statement_inner(
+        self,
+        parent: &Weak<RefCell<dyn Fir>>,
+        line: usize,
+        under_sff: bool,
+        override_body: Option<BodyOverride<'_>>,
     ) -> FirRef;
 
     fn build_expr_with_operator(
@@ -459,6 +560,25 @@ impl AstnCompilerExt for Astn {
         line: usize,
         under_sff: bool,
     ) -> FirRef {
+        self.build_as_statement_inner(parent, line, under_sff, None)
+    }
+
+    fn build_as_statement_overridden(
+        self,
+        parent: &Weak<RefCell<dyn Fir>>,
+        line: usize,
+        override_body: BodyOverride<'_>,
+    ) -> FirRef {
+        self.build_as_statement_inner(parent, line, false, Some(override_body))
+    }
+
+    fn build_as_statement_inner(
+        self,
+        parent: &Weak<RefCell<dyn Fir>>,
+        line: usize,
+        under_sff: bool,
+        override_body: Option<BodyOverride<'_>>,
+    ) -> FirRef {
         // Decide the statement's name once: the LHS identifier for an assignment, else `???`
         // (anonymous bare expression). The body is built the same way regardless, via
         // build_expr_with_operator (Assign is the no-op operator), so there is ONE Rc::new_cyclic.
@@ -479,7 +599,9 @@ impl AstnCompilerExt for Astn {
         let identifier = crate::identifier::Identifier::from_parts(characterizations, &name);
         Rc::new_cyclic(move |me: &Weak<RefCell<StatementFir>>| {
             let stmt_weak: Weak<RefCell<dyn Fir>> = me.clone();
-            let body = expr.build_expr_with_operator(operator, &stmt_weak, under_sff);
+            let body = override_body
+                .and_then(|f| f(&identifier, &stmt_weak))
+                .unwrap_or_else(|| expr.build_expr_with_operator(operator, &stmt_weak, under_sff));
             RefCell::new(StatementFir {
                 core: ProtoBrane::new(vec![body], parent.clone(), Nyes::Prembrionic),
                 identifier,

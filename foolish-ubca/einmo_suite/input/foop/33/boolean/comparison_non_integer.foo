@@ -1,0 +1,22 @@
+{
+	!! FOOP-33 §5: "only integers are comparable" -- the same principle
+	!! default_equal follows. When an operand DID evaluate here but is not an
+	!! integer, the comparison settles NK rather than inventing an ordering.
+	!! --
+	!! This is the NK case that is legitimate for a comparison. It is NOT the
+	!! same as the ECONSTANIC state the operator holds inside system.foo,
+	!! where the operands never evaluated at all and may still gain values by
+	!! recoordination.
+
+	brane_operand   = {1, {x = 5;}, 'lt}$;    !! a brane is not comparable -> NK
+	creation_operand = {1, ⬤, 'lt}$;          !! a creation is not comparable -> NK
+	unknown_operand = {1, ???, 'lt}$;         !! ??? is not comparable -> NK
+
+	!! A lone operand: #-2 reaches past the front of the brane, so there is
+	!! no first operand to compare -> NK. (Verified this is genuinely the
+	!! missing-operand case and not an unrelated failure: adding one more
+	!! element, {7, 8, 'lt}$, computes 'True. The reason string reads
+	!! "non-integer operand" because a missing operand is, indeed, not an
+	!! integer -- one reason covers both shapes of incomparable operand.)
+	only_one = {7, 'lt}$;
+}

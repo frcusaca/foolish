@@ -1,0 +1,43 @@
+#einmo 1 encoding=utf-8 separator=!!\n
+test: foop/33/boolean/comparison_non_integer.foo
+suite: /storage1/human/hcbusy/foolish/.claude/worktrees/agent-a2ee79d259d0fdd46/foolish-ubca/einmo_suite
+producer: 2c4d1b28
+producer-diff: sha256:db788000dd2354b8cb6162b88b1684361a3a63b9ee047207a84eee1c37a58e7e
+generated: 2026-08-04T17:54:05.000000000Z
+status: normal
+status-detail: 
+sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
+{
+	!! FOOP-33 §5: "only integers are comparable" -- the same principle
+	!! default_equal follows. When an operand DID evaluate here but is not an
+	!! integer, the comparison settles NK rather than inventing an ordering.
+	!! --
+	!! This is the NK case that is legitimate for a comparison. It is NOT the
+	!! same as the ECONSTANIC state the operator holds inside system.foo,
+	!! where the operands never evaluated at all and may still gain values by
+	!! recoordination.
+
+	brane_operand   = {1, {x = 5;}, 'lt}$;    !! a brane is not comparable -> NK
+	creation_operand = {1, ⬤, 'lt}$;          !! a creation is not comparable -> NK
+	unknown_operand = {1, ???, 'lt}$;         !! ??? is not comparable -> NK
+
+	!! A lone operand: #-2 reaches past the front of the brane, so there is
+	!! no first operand to compare -> NK. (Verified this is genuinely the
+	!! missing-operand case and not an unrelated failure: adding one more
+	!! element, {7, 8, 'lt}$, computes 'True. The reason string reads
+	!! "non-integer operand" because a missing operand is, indeed, not an
+	!! integer -- one reason covers both shapes of incomparable operand.)
+	only_one = {7, 'lt}$;
+}
+!!
+{NK
+  braneˍoperand=$(result=?(result=??? (comparison: non-integer operand), pattern='^'lt$', UNANCHORED, NK), NK);
+  creationˍoperand=$(result=?(result=??? (comparison: non-integer operand), pattern='^'lt$', UNANCHORED, NK), NK);
+  unknownˍoperand=$(result=?(result=??? (comparison: non-integer operand), pattern='^'lt$', UNANCHORED, NK), NK);
+  onlyˍone=$(result=?(result=??? (comparison: non-integer operand), pattern='^'lt$', UNANCHORED, NK), NK)
+}!!
+!!
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:5877d0672bc32aa7bf3297493d56448f4080d68065c4a9cea93e5d7c9f9d875c","timestamp":"2026-08-04T17:54:06.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:5877d0672bc32aa7bf3297493d56448f4080d68065c4a9cea93e5d7c9f9d875c","timestamp":"2026-08-04T17:54:06.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"kT2pYqlZVZ5W5oLagYmAV2iMURYcxsi9b3vIvFBRm9BM5wm6DadqhrxpfhWi3SSPYDOU5mMHHMow72w8+5AtDQ==","produced_by":"einmo 0.1.0 sha256:5877d0672bc32aa7bf3297493d56448f4080d68065c4a9cea93e5d7c9f9d875c","timestamp":"2026-08-04T17:54:06.000000000Z"}
+{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"5tvP+lxdXrBXxyjNWnENMQsndXElaXiX2psLR48Y4EqirrZuup5gaNQkk5vk5DTHvdNs0QhdmiJf7fV1kFxZBQ==","produced_by":"einmo 0.1.0 sha256:a1be399ec713cdb6597548643bb9b50c72f5ec9a4c2bb48ac8adfb2cbdbee433","timestamp":"2026-08-04T17:54:46.000000000Z"}

@@ -17,9 +17,368 @@
 //! rationale, including why `program` is retrieved positionally (last
 //! statement) rather than by name.
 
+use std::cell::RefCell;
+use std::rc::{Rc, Weak};
+
+use foolish_core::fir::Nyes;
 use foolish_parser::{AssignmentOperator, Astn};
 
-use crate::fir_trait::FirRef;
+use crate::fir_trait::{Fir, FirKind, FirRef, FirRefExt, Scope, UbcError};
+use crate::proto_brane::ProtoBrane;
+
+/// The five comparison operators `system.foo` supplies (FOOP-33 §5.0).
+///
+/// One enum rather than five near-identical FIR types: every operator shares
+/// the *entire* structure — the same two SFF-marked operand lookups
+/// (`<<#-2>>`/`<<#-1>>`), the same constanic gating, the same `'True`/`'False`
+/// production — and differs ONLY in which Rust comparison runs once both
+/// operands are integers. A finite, closed set of behaviors distinguished by
+/// one line of code is exactly what an enum is for (`rust_instructions.md`
+/// §"finite word-domains → enum"); five types would be five copies of
+/// [`ComparisonFir`] with one differing arm each, and adding a sixth operator
+/// would mean a sixth type instead of a sixth variant.
+///
+/// This mirrors [`crate::fir_kinds::OperatorFir`]'s single-type-plus-op-tag
+/// shape, but as a real enum rather than its `op: String` — a typo becomes a
+/// compile error and the `match` in [`ComparisonOp::compare`] is exhaustive.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ComparisonOp {
+    /// `'lt` — strictly less than.
+    Lt,
+    /// `'gt` — strictly greater than.
+    Gt,
+    /// `'le` — less than or equal.
+    Le,
+    /// `'ge` — greater than or equal.
+    Ge,
+    /// `'eq` — equal.
+    Eq,
+}
+
+impl ComparisonOp {
+    /// Every comparison operator, paired with the `system.foo` name that
+    /// declares it. The single source of truth for which names are comparison
+    /// operators — both the installer and its tests read this list.
+    const ALL: [(&'static str, ComparisonOp); 5] = [
+        ("'lt", ComparisonOp::Lt),
+        ("'gt", ComparisonOp::Gt),
+        ("'le", ComparisonOp::Le),
+        ("'ge", ComparisonOp::Ge),
+        ("'eq", ComparisonOp::Eq),
+    ];
+
+    /// The operator's `system.foo` declaration name (e.g. `"'lt"`).
+    #[must_use]
+    pub fn searchable_name(self) -> &'static str {
+        match self {
+            ComparisonOp::Lt => "'lt",
+            ComparisonOp::Gt => "'gt",
+            ComparisonOp::Le => "'le",
+            ComparisonOp::Ge => "'ge",
+            ComparisonOp::Eq => "'eq",
+        }
+    }
+
+    /// Recover an operator from the name [`ComparisonOp::searchable_name`]
+    /// produced. Used when constanic-cloning, where only `as_op_name`'s
+    /// string is reachable through `dyn Fir`.
+    #[must_use]
+    pub(crate) fn from_searchable_name(name: &str) -> Option<ComparisonOp> {
+        ComparisonOp::ALL
+            .iter()
+            .find(|(n, _)| *n == name)
+            .map(|(_, op)| *op)
+    }
+
+    /// Run this operator's Rust comparison. The ONLY thing that differs
+    /// between the five operators.
+    #[must_use]
+    fn compare(self, left: i64, right: i64) -> bool {
+        match self {
+            ComparisonOp::Lt => left < right,
+            ComparisonOp::Gt => left > right,
+            ComparisonOp::Le => left <= right,
+            ComparisonOp::Ge => left >= right,
+            ComparisonOp::Eq => left == right,
+        }
+    }
+}
+
+/// The Foolish source of a comparison's operands: the two statements
+/// immediately preceding the operator, both SFF-marked.
+///
+/// Written as source and run through the ordinary compiler (rather than
+/// assembled by hand) so `build_fir`'s `under_sff` rule — the rule that builds
+/// descendant searches ECONSTANIC so they never run where they have no valid
+/// neighbors — applies exactly as it does to any other Foolish. Hand-built
+/// operands would have to re-implement that rule and could drift from it.
+/// The brane-and-statement wrapper is only there because an SFF marker is not
+/// valid at top level; `compile_stmt_body_under` discards it and keeps the
+/// `<<…>>` body.
+const OPERAND_SRC: [&str; 2] = ["{o = <<#-2>>;}", "{o = <<#-1>>;}"];
+
+/// A comparison operator installed into `system.foo` (FOOP-33 §5.0).
+///
+/// **Postfix, two operands, both BEFORE the operator**: `<<#-2>> ⟨op⟩
+/// `<<#-1>>`. Usage is an ordinary brane literal with the operator as a
+/// member, and the result is read out with `$` (tail):
+///
+/// ```foolish
+/// comparison = {1, 2, 'lt}$    !! 'True
+/// ```
+///
+/// **How the operands find their values.** Inside `system.foo` the two
+/// SFF-marked lookups sit ECONSTANIC — `system.foo` has no valid neighbors for
+/// them, and an SFF-marked search never runs. When a user references `'lt`,
+/// the ordinary reference-resolution path detaches a constanic clone and
+/// recoordinates it into the user's brane (AGENTS.md "Detachment and
+/// Coordination"), where `#-2`/`#-1` DO have neighbors and resolve against
+/// them. No name-based or parse-time special-casing of `'lt` is involved: it
+/// resolves by ordinary ancestral search, exactly as `'True` does. The
+/// mechanism is pinned independently of this type by
+/// `fir_kinds::tests::sff_index_operand_recoordinates_to_the_referencing_branes_neighbors`.
+///
+/// **Result.** Once both operands settle to integers, the Rust comparison runs
+/// and the corresponding `'True`/`'False` creation — resolved by ancestral
+/// search from this FIR's own position, so it is the SAME creation
+/// `system.foo` defines — is stored as the settled result, becoming this FIR's
+/// value on later reads (settle-once, read-many, like the other operators).
+/// A non-integer operand yields `NK`.
+#[derive(Debug)]
+pub struct ComparisonFir {
+    core: ProtoBrane,
+    op: ComparisonOp,
+    /// Self-reference, established via `Rc::new_cyclic`. Needed because
+    /// resolving `'True`/`'False` ancestrally requires `_ab_search`, which
+    /// takes `self_ref: &FirRef`, while `fir_op_step` receives only `&self`.
+    /// Same pattern, and same reason, as `StatementFir::self_weak`.
+    self_weak: Weak<RefCell<dyn Fir>>,
+}
+
+impl ComparisonFir {
+    /// Build a comparison FIR with its two SFF-marked operand lookups.
+    fn comparison(op: ComparisonOp, parent: Weak<RefCell<dyn Fir>>) -> FirRef {
+        Rc::new_cyclic(|me: &Weak<RefCell<ComparisonFir>>| {
+            let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
+            let mut core = ProtoBrane::new(vec![], parent, Nyes::Prembrionic);
+            for src in OPERAND_SRC {
+                // `push_foolish_child_sff_marked` PANICS if the SFF rule did
+                // not take effect (a descendant search left runnable). That is
+                // the guard we want: a violation would mean these operands
+                // could run inside system.foo, where they must not.
+                core.push_foolish_child_sff_marked(build_operand(src, &self_weak));
+            }
+            RefCell::new(ComparisonFir {
+                core,
+                op,
+                self_weak,
+            })
+        })
+    }
+
+    /// Constanic-clone a comparison FIR onto `new_parent`.
+    ///
+    /// This is the clone that makes comparisons work: `'lt` is cloned out of
+    /// `system.foo` and recoordinated into the brane that referenced it, and
+    /// the clone's operand lookups then resolve against THAT brane's
+    /// neighbours. Children are cloned by the shared
+    /// `clone_children_for_constanic_clone` helper, exactly as `OperatorFir`'s
+    /// clone does — the operands must come across as ordinary children so the
+    /// recoordination applies to them too.
+    pub(crate) fn constanic_clone(
+        op: ComparisonOp,
+        source: &std::cell::Ref<'_, dyn Fir>,
+        new_parent: &Weak<RefCell<dyn Fir>>,
+        nyes: Nyes,
+        descendent_of_sfm_and_foolishly_ignorant: bool,
+        skip_foolish_children: bool,
+    ) -> FirRef {
+        Rc::new_cyclic(|me: &Weak<RefCell<ComparisonFir>>| {
+            let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
+            let core = ProtoBrane::clone_children_for_constanic_clone(
+                source.core(),
+                &self_weak,
+                new_parent,
+                nyes,
+                descendent_of_sfm_and_foolishly_ignorant,
+                skip_foolish_children,
+            );
+            RefCell::new(ComparisonFir {
+                core,
+                op,
+                self_weak,
+            })
+        })
+    }
+
+    /// Resolve `'True`/`'False` by ordinary ancestral search from this FIR's
+    /// own position. Because this FIR lives inside `system.foo`, the search
+    /// finds the very creations `system.foo` declares — so a comparison's
+    /// result is referentially identical to the `'True` a user's own `'True`
+    /// reference resolves to (FOOP-33 §5: "the actual 'True/'False FIR object
+    /// from system.foo, not a synthetic boolean").
+    fn resolve_boolean(&self, verdict: bool) -> Option<FirRef> {
+        let name = if verdict { "'True" } else { "'False" };
+        let self_ref = self.self_weak.upgrade()?;
+        let (found, _) = self._ab_search(&self_ref, name)?;
+        Some(found.value())
+    }
+
+    /// Settle to `NK` with `reason`, storing the NK as this FIR's result.
+    fn settle_nk(&self, reason: &str, scope: &Scope) {
+        let nk_ref = crate::fir_kinds::NkFir::nk(reason, self.core.parent_weak());
+        nk_ref.borrow().core().set_nyes(Nyes::Nk);
+        self.core.push_ubc_child(ProtoBrane::constanic_clone_at(
+            &nk_ref,
+            &self.core.parent_weak(),
+            0,
+            scope.has_ancestral_sfm,
+            false,
+        ));
+        self.core.set_alarm_reason(reason.to_owned());
+        self.core.set_nyes(Nyes::Nk);
+    }
+
+    /// Run the comparison once both operands are constanic.
+    fn combine(&self, scope: &Scope) -> Result<(), UbcError> {
+        let operands = self.core.foolish_children().to_vec();
+
+        // An ECONSTANIC operand means "not evaluated IN THIS CONTEXT — may
+        // gain a value via recoordination". That is the state the operands sit
+        // in inside system.foo itself, which has no neighbours for them. The
+        // comparison must then settle ECONSTANIC TOO, and emphatically NOT NK:
+        // NK is terminal and would poison the `'lt` DEFINITION, so a search for
+        // `'lt` would hit `check_body_nyes`'s NkStop and never hand the
+        // definition out to be recoordinated — the operator could never be used
+        // anywhere. Settling ECONSTANIC keeps the definition available and
+        // inert exactly as FOOP-33 §5.0 requires ("'lt's #-2/#-1 operands sit
+        // ECONSTANIC inside system.foo ... and resolve against real neighbours
+        // once the reference is detached and recoordinated").
+        if operands.iter().any(operand_is_unevaluated_here) {
+            self.core.set_nyes(Nyes::Econstanic);
+            return Ok(());
+        }
+
+        // Read each operand THROUGH its SFF wrapper: `.value()` follows the
+        // settled chain to whatever the recoordinated index landed on.
+        let values: Vec<Option<i64>> = operands
+            .iter()
+            .map(|o| o.value().borrow().as_i64())
+            .collect();
+
+        let [Some(left), Some(right)] = values[..] else {
+            // The operands DID evaluate here, and at least one is not an
+            // integer (a brane, a creation, NK). FOOP-33 §5: "only integers are
+            // comparable" — the same principle default_equal follows. Unlike
+            // the ECONSTANIC case above, there is nothing more to learn from
+            // recoordination, so NK is right.
+            self.settle_nk("comparison: non-integer operand", scope);
+            return Ok(());
+        };
+
+        let verdict = self.op.compare(left, right);
+        let Some(boolean) = self.resolve_boolean(verdict) else {
+            // system.foo always defines 'True/'False, so failing to find them
+            // means the prelude itself is malformed — an interpreter defect,
+            // not an unevaluable program.
+            return Err(UbcError::InternalConsistency(format!(
+                "system.foo must define 'True and 'False, but {} could not resolve one",
+                self.op.searchable_name()
+            )));
+        };
+
+        self.core.push_ubc_child(ProtoBrane::constanic_clone_at(
+            &boolean,
+            &self.core.parent_weak(),
+            0,
+            scope.has_ancestral_sfm,
+            false,
+        ));
+        self.core.set_nyes(Nyes::Constant);
+        Ok(())
+    }
+}
+
+impl Fir for ComparisonFir {
+    #[inline(always)]
+    fn core(&self) -> &ProtoBrane {
+        &self.core
+    }
+
+    fn kind(&self) -> FirKind {
+        FirKind::Comparison
+    }
+
+    fn as_op_name(&self) -> Option<&str> {
+        Some(self.op.searchable_name())
+    }
+
+    fn fir_op_step(&self, scope: &Scope) -> Result<(), UbcError> {
+        // Same two-phase shape as OperatorFir: enqueue the operands, then
+        // combine once they have settled.
+        match self.core.get_nyes() {
+            Nyes::Prembrionic | Nyes::Embryonic => {
+                self.core.set_nyes(Nyes::Braning);
+                for child in self.core.foolish_children().to_vec() {
+                    self.core.push_task(child);
+                }
+                Ok(())
+            }
+            Nyes::Braning => self.combine(scope),
+            _ => Ok(()),
+        }
+    }
+}
+
+/// Has this operand gone unevaluated in the context it currently sits in?
+///
+/// The operand is an SFF wrapper (`<<#-1>>`) around an index search. The
+/// WRAPPER settles constanic on its own account, so its NYES does not answer
+/// the question; the SEARCH inside it does. ECONSTANIC there means "searched
+/// nothing in this context — may gain a value via recoordination", which is
+/// exactly the state the operands hold inside `system.foo`, where there are no
+/// neighbours for them.
+fn operand_is_unevaluated_here(operand: &FirRef) -> bool {
+    operand
+        .borrow()
+        .core()
+        .foolish_children()
+        .first()
+        .is_some_and(|inner| inner.borrow().core().get_nyes() == Nyes::Econstanic)
+}
+
+/// Compile one operand fragment directly beneath `parent`.
+///
+/// `OPERAND_SRC` is fixed, valid Foolish compiled in by this crate — a parse
+/// or build failure is a defect in this module's own literal, not in any user
+/// input, so `expect` states an invariant here rather than hiding a runtime
+/// failure mode.
+fn build_operand(src: &str, parent: &Weak<RefCell<dyn Fir>>) -> FirRef {
+    crate::compiler::compile_stmt_body_under(src, parent)
+        .expect("OPERAND_SRC is a fixed, valid Foolish expression")
+}
+
+/// Supply a [`ComparisonFir`] body for each comparison operator's statement.
+///
+/// `system.foo` declares `'lt = ⬤` (and the other four) as ordinary
+/// null-characterized creations — the `.foo` source stays plain Foolish, with
+/// no syntax the language does not otherwise have. This supplies the actual
+/// comparison logic in place of those `⬤` placeholders as the composed root is
+/// compiled, which is what FOOP-33 §5.0 means by "that foolishness is put into
+/// the system brane by fvm + system_foo.rs".
+///
+/// Matching is by the statement's null-characterized searchable name, and this
+/// hook runs ONLY over `system.foo`'s own top-level statements — never over
+/// user source. A user's own `'lt` lives inside the `program` brane, a
+/// different brane whose statements this never sees, so it is untouched.
+fn comparison_body(
+    identifier: &crate::identifier::Identifier,
+    stmt_weak: &Weak<RefCell<dyn Fir>>,
+) -> Option<FirRef> {
+    let name = identifier.searchable_name();
+    let (_, op) = ComparisonOp::ALL.iter().find(|(n, _)| *n == name)?;
+    Some(ComparisonFir::comparison(*op, stmt_weak.clone()))
+}
 
 /// The embedded `system.foo` source, baked into the binary at compile time.
 ///
@@ -75,9 +434,9 @@ fn compose_one(system_ast: Astn, program_ast: Astn) -> Result<FirRef, ComposeErr
         characterizations,
         statements,
     };
-    use crate::compiler::AstnCompilerExt as _;
-    composed
-        .compile_standalone()
+    // The comparison operators' bodies are supplied here, as the composed root
+    // is built (FOOP-33 §5.0) — see `comparison_body`.
+    crate::compiler::compile_root_with_body_override(composed, &comparison_body)
         .map_err(|e| ComposeError::Compile(e.to_string()))
 }
 
@@ -149,6 +508,300 @@ mod tests {
                 return;
             }
         }
+    }
+
+    /// Resolve a value through a statement wrapper, if it is one.
+    ///
+    /// `$` yields the tail STATEMENT (every search result is a statement, per
+    /// the FoolRefFir two-child invariant); the value a Foolisher means is the
+    /// statement's body. Unwrapping one level here is the same step every
+    /// other statement-valued result needs, not something specific to
+    /// comparisons.
+    fn through_statement(value: FirRef) -> FirRef {
+        if value.borrow().kind() != FirKind::Statement {
+            return value;
+        }
+        let body = value.borrow().core().foolish_children().first().cloned();
+        match body {
+            Some(b) => b.value(),
+            None => value,
+        }
+    }
+
+    /// Evaluate `source` and return the value of its statement at `idx`.
+    fn statement_value(source: &str, idx: usize) -> FirRef {
+        let composed = compose_program_with_system(source).unwrap();
+        let root = &composed[0];
+        step_to_settled(root, &Scope::empty());
+        let program = program_result(root).expect("program member must exist");
+        let stmt = program.borrow().stmt_at(idx).expect("statement exists");
+        let body = stmt.borrow().core().foolish_children()[0].clone();
+        through_statement(body.value())
+    }
+
+    /// Evaluate `source` and return the value of its FIRST statement.
+    fn first_statement_value(source: &str) -> FirRef {
+        statement_value(source, 0)
+    }
+
+    /// The `'True`/`'False` creations `system.foo` itself declares.
+    fn system_boolean(composed_root: &FirRef, name: &str) -> FirRef {
+        let stmts = composed_root.borrow().core().foolish_children().to_vec();
+        let stmt = stmts
+            .iter()
+            .find(|s| s.borrow().as_stmt_searchable_name() == Some(name))
+            .expect("system.foo declares 'True and 'False");
+        let body = stmt.borrow().core().foolish_children()[0].clone();
+        body.value()
+    }
+
+    /// Step `node` to settled, recording its NYES after every step.
+    fn nyes_trace(node: &FirRef, scope: &Scope) -> Vec<Nyes> {
+        let mut trace = vec![node.borrow().core().get_nyes()];
+        for _ in 0..200 {
+            let report = node.step(scope).unwrap();
+            match report {
+                crate::fir_trait::StepReport::Progress(nyes) => {
+                    trace.push(nyes);
+                    if nyes.is_constanic() {
+                        break;
+                    }
+                }
+                crate::fir_trait::StepReport::NoProgress => break,
+            }
+        }
+        trace
+    }
+
+    /// The shared progression contract (AGENTS.md §"NYES transition tests"):
+    /// start PREMBRIONIC, end constanic at `expected_terminal`, never regress
+    /// from constanic back to pre-constanic.
+    fn assert_progression(trace: &[Nyes], expected_terminal: Nyes, label: &str) {
+        assert_eq!(
+            trace.first().copied(),
+            Some(Nyes::Prembrionic),
+            "{label}: must start PREMBRIONIC (trace {trace:?})"
+        );
+        let last = *trace.last().expect("non-empty trace");
+        assert!(
+            last.is_constanic(),
+            "{label}: must end constanic (got {last:?}, trace {trace:?})"
+        );
+        assert_eq!(
+            last, expected_terminal,
+            "{label}: wrong terminal state (trace {trace:?})"
+        );
+        let mut seen_constanic = false;
+        for n in trace {
+            if seen_constanic {
+                assert!(
+                    n.is_constanic(),
+                    "{label}: regressed from constanic to {n:?} (trace {trace:?})"
+                );
+            }
+            seen_constanic = n.is_constanic();
+        }
+    }
+
+    /// Find `system.foo`'s own `'lt` comparison FIR in a composed root.
+    fn system_comparison(composed_root: &FirRef, name: &str) -> FirRef {
+        let stmts = composed_root.borrow().core().foolish_children().to_vec();
+        let stmt = stmts
+            .iter()
+            .find(|s| s.borrow().as_stmt_searchable_name() == Some(name))
+            .expect("system.foo declares the comparison operators");
+        let body = stmt.borrow().core().foolish_children()[0].clone();
+        body
+    }
+
+    #[test]
+    fn comparison_nyes_transitions() {
+        // Required by AGENTS.md: every FIR kind pins its NYES progression.
+        // ComparisonFir has THREE terminal states, and which one it reaches is
+        // the heart of the design -- so all three are pinned here.
+
+        // 1. ECONSTANIC -- the state inside system.foo itself, where the
+        //    operands have no neighbours. Load-bearing: NK here would poison
+        //    the definition (check_body_nyes -> NkStop) and no search could
+        //    ever hand 'lt out to be recoordinated.
+        let composed = compose_program_with_system("{x = 1;}").unwrap();
+        let root = &composed[0];
+        let lt = system_comparison(root, "'lt");
+        let trace = nyes_trace(&lt, &Scope::empty());
+        assert_progression(
+            &trace,
+            Nyes::Econstanic,
+            "Comparison (in system.foo, no neighbours)",
+        );
+
+        // 2. CONSTANT -- recoordinated into a brane with two integer
+        //    neighbours, the comparison computes a boolean.
+        let composed = compose_program_with_system("{r = {1, 2, 'lt}$;}").unwrap();
+        let root = &composed[0];
+        step_to_settled(root, &Scope::empty());
+        let used = sift_for_comparison_in_program(root).expect("the referenced 'lt clone");
+        assert_eq!(
+            used.borrow().core().get_nyes(),
+            Nyes::Constant,
+            "a recoordinated comparison with integer operands settles CONSTANT"
+        );
+
+        // 3. NK -- recoordinated, operands evaluated, but not comparable.
+        let composed = compose_program_with_system("{r = {1, {x = 5;}, 'lt}$;}").unwrap();
+        let root = &composed[0];
+        step_to_settled(root, &Scope::empty());
+        let used = sift_for_comparison_in_program(root).expect("the referenced 'lt clone");
+        assert_eq!(
+            used.borrow().core().get_nyes(),
+            Nyes::Nk,
+            "a non-integer operand settles NK"
+        );
+    }
+
+    /// Sift the `program` brane for the first `ComparisonFir` in it — the
+    /// recoordinated clone of a `system.foo` operator. A plain Rust tree walk,
+    /// not a Foolish search, hence `sift_` (AGENTS.md §Foolish Terminology).
+    fn sift_for_comparison_in_program(composed_root: &FirRef) -> Option<FirRef> {
+        fn sift(node: &FirRef, depth: usize) -> Option<FirRef> {
+            if depth > 20 {
+                return None;
+            }
+            if node.borrow().kind() == FirKind::Comparison {
+                return Some(Rc::clone(node));
+            }
+            let children = node.borrow().core().all_children();
+            children.iter().find_map(|c| sift(c, depth + 1))
+        }
+        let program = program_result(composed_root)?;
+        sift(&program, 0)
+    }
+
+    #[test]
+    fn each_comparison_operator_produces_the_right_boolean() {
+        // The whole feature, end to end, for all five operators and both
+        // outcomes. `{a, b, 'op}$`: the brane literal's tail is 'op, whose
+        // settled value is the boolean it computed from its two preceding
+        // neighbours (FOOP-33 §5.0).
+        //
+        // Expectations are written as the plain Rust comparison of 1 and 2 so
+        // each row states WHY it is what it is, not merely what was observed:
+        // 1 < 2 is true, 1 > 2 is false, and so on.
+        for (op, expected) in [
+            ("'lt", 1 < 2),
+            ("'gt", 1 > 2),
+            ("'le", 1 <= 2),
+            ("'ge", 1 >= 2),
+            ("'eq", 1 == 2),
+        ] {
+            let source = format!("{{r = {{1, 2, {op}}}$;}}");
+            let composed = compose_program_with_system(&source).unwrap();
+            let root = &composed[0];
+            step_to_settled(root, &Scope::empty());
+            let program = program_result(root).unwrap();
+            let stmt = program.borrow().stmt_at(0).unwrap();
+            let body = stmt.borrow().core().foolish_children()[0].clone();
+            let got = through_statement(body.value());
+
+            assert_eq!(
+                got.borrow().kind(),
+                FirKind::Creation,
+                "{op} must produce a creation ('True/'False), not {:?}",
+                got.borrow().kind()
+            );
+            let want = system_boolean(root, if expected { "'True" } else { "'False" });
+            assert!(
+                Rc::ptr_eq(&got, &want),
+                "{{1, 2, {op}}}$ must be system.foo's own {} creation \
+                 (referential identity, FOOP-33 §5), expected={expected}",
+                if expected { "'True" } else { "'False" }
+            );
+        }
+    }
+
+    #[test]
+    fn comparison_operands_come_from_the_referencing_brane() {
+        // Operand ORDER is postfix `<<#-2>> op <<#-1>>`: the first operand is
+        // the one two back, the second is the one immediately back. If the two
+        // were swapped, {2, 1, 'lt} and {1, 2, 'lt} would both give the same
+        // answer -- so asserting BOTH directions pins the order, not just that
+        // a comparison happened.
+        let true_ = |src: &str| {
+            let v = first_statement_value(src);
+            let kind = v.borrow().kind();
+            assert_eq!(kind, FirKind::Creation, "{src} must produce a boolean");
+            v
+        };
+        let lt_yes = true_("{r = {1, 2, 'lt}$;}");
+        let lt_no = true_("{r = {2, 1, 'lt}$;}");
+        assert!(
+            !Rc::ptr_eq(&lt_yes, &lt_no),
+            "{{1,2,'lt}} and {{2,1,'lt}} must differ -- operands are ordered, \
+             not a commutative pair"
+        );
+    }
+
+    #[test]
+    fn comparison_reads_its_own_branes_neighbours_not_another_branes() {
+        // Two independent uses in one program must each compare THEIR OWN
+        // neighbours. This is the recoordination property that makes the
+        // single system.foo definition reusable: each reference detaches its
+        // own clone, coordinated into its own brane.
+        let source = "{a = {1, 2, 'lt}$; b = {9, 4, 'lt}$;}";
+        let composed = compose_program_with_system(source).unwrap();
+        let root = &composed[0];
+        step_to_settled(root, &Scope::empty());
+        let program = program_result(root).unwrap();
+
+        let value_of = |idx: usize| {
+            let stmt = program.borrow().stmt_at(idx).unwrap();
+            let body = stmt.borrow().core().foolish_children()[0].clone();
+            through_statement(body.value())
+        };
+        let a = value_of(0); // 1 < 2 -> 'True
+        let b = value_of(1); // 9 < 4 -> 'False
+        assert!(
+            Rc::ptr_eq(&a, &system_boolean(root, "'True")),
+            "a: 1 < 2 is true"
+        );
+        assert!(
+            Rc::ptr_eq(&b, &system_boolean(root, "'False")),
+            "b: 9 < 4 is false"
+        );
+    }
+
+    #[test]
+    fn comparison_with_a_non_integer_operand_settles_nk() {
+        // FOOP-33 §5: "only integers are comparable" -- the same principle
+        // default_equal follows. A brane operand is not comparable, so the
+        // comparison settles NK rather than inventing an ordering.
+        let value = first_statement_value("{r = {1, {x = 5;}, 'lt}$;}");
+        assert_eq!(
+            value.borrow().kind(),
+            FirKind::Nk,
+            "a brane operand must make the comparison NK, not a boolean"
+        );
+    }
+
+    #[test]
+    fn comparison_operators_do_not_disturb_true_and_false() {
+        // system.foo gaining five members must not change what 'True/'False
+        // resolve to -- the Phase 4/5 behaviour they already have.
+        let value = first_statement_value("{t = 'True;}");
+        assert_eq!(value.borrow().kind(), FirKind::Creation);
+    }
+
+    #[test]
+    fn a_bare_comparison_brane_without_dollar_is_not_the_result() {
+        // FOOP-33 §5.0: "the brane literal by itself is not the full
+        // expression" -- without `$` the value is the BRANE, and the boolean
+        // is merely its tail. Pins that `$` is doing real work here and the
+        // brane is not silently collapsing to its last member.
+        let value = first_statement_value("{r = {1, 2, 'lt};}");
+        assert_eq!(
+            value.borrow().kind(),
+            FirKind::Brane,
+            "without $, the value is the brane itself"
+        );
     }
 
     #[test]
@@ -226,9 +879,13 @@ mod tests {
         assert_eq!(composed.len(), 1);
         let root = &composed[0];
         assert_eq!(root.borrow().kind(), FirKind::Brane);
-        // system.foo has 2 statements ('True, 'False) + 1 appended (program).
-        assert_eq!(root.borrow().stmt_count(), Some(3));
-        let program_stmt = root.borrow().stmt_at(2).unwrap();
+        // system.foo's own statements + 1 appended (`program`, always LAST --
+        // the invariant `program_result`'s positional access depends on).
+        let count = root
+            .borrow()
+            .stmt_count()
+            .expect("composed root is a brane");
+        let program_stmt = root.borrow().stmt_at(count - 1).unwrap();
         assert_eq!(
             program_stmt.borrow().as_stmt_searchable_name(),
             Some("program")

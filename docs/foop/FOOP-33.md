@@ -559,6 +559,56 @@ superseded; infix placement is the design going forward.
 > read is correct by tracing a minimal `system.foo`-with-`'lt` example once Phase 5's
 > composition exists, since `'lt` genuinely needs `system.foo` installed to test against.
 
+#### 5.1 As built (2026-08-04) — what implementing §5.0 settled
+
+§5.0 is the design and it held up; the detachment/recoordination read was confirmed against a
+live trace before any comparison code was written (pinned in pure Foolish by
+`fir_kinds::tests::sff_index_operand_recoordinates_to_the_referencing_branes_neighbors`:
+`{defn = <<#-2>>; use = {5, 9, defn};}` — `defn` reads `5` from *`use`'s* neighbours). Three
+points the implementation decided, recorded here because they are not derivable from §5.0:
+
+**1. An ECONSTANIC operand settles the comparison ECONSTANIC — never NK.** This is
+load-bearing, not a detail. Inside `system.foo` the operand lookups sit ECONSTANIC (no
+neighbours there), so the comparison has nothing to compute. Settling **NK** there is fatal:
+NK is terminal, so it poisons the `'lt` *definition*, and a search for `'lt` then hits
+`check_body_nyes`'s `NkStop` and **never hands the definition out to be recoordinated** — the
+operator becomes unusable everywhere. Settling ECONSTANIC keeps the definition available and
+inert, exactly as §5.0's "sit ECONSTANIC inside system.foo … and resolve against real
+neighbours once recoordinated" requires. NK remains correct for the *other* case: operands that
+genuinely evaluated here and are not integers.
+
+Note the operand's NYES must be read **through** its SFF wrapper — the wrapper settles
+constanic on its own account, so the ECONSTANIC state lives on the search inside it.
+
+**2. One FIR kind, not five.** §5.0 allowed either ("possibly reusing `OperatorFir`'s existing
+shape"). All five operators share the *entire* structure — same two SFF-marked operand lookups,
+same constanic gating, same `'True`/`'False` production — and differ only in which Rust
+comparison runs. So: one `ComparisonFir` parameterized by a `ComparisonOp` enum, mirroring
+`OperatorFir`'s single-type-plus-op-tag shape but with a real enum instead of its `op: String`
+(`rust_instructions.md` §"finite word-domains → enum": typos become compile errors and the
+`match` is exhaustive). Five types would have been five copies with one differing arm each.
+
+**3. Installation is a compile-time body override, not evaluator special-casing.** The
+superseded prose below (and the plan's older revision) described the evaluator recognising a
+resolved `'lt` creation by `Rc::ptr_eq`. That is **not** what was built, and the difference
+matters: `'lt` is never recognised by name or identity *at the use site* at all. `system.foo`'s
+`'lt = ⬤` placeholder bodies are replaced with a `ComparisonFir` as the composed root is
+compiled (a `BodyOverride` hook in `compiler.rs`, which keeps brane/statement construction —
+line numbering, `Rc::new_cyclic` parent wiring — in the compiler rather than duplicated). Every
+use then resolves by ordinary ancestral search and ordinary detachment/recoordination, which is
+precisely §5.0's "no parse-time or name-based special-casing that recognizes `'lt` before
+search runs."
+
+Two supporting details: the operands are compiled from Foolish source (`<<#-2>>`/`<<#-1>>`)
+through `build_fir` rather than hand-assembled, so `under_sff`'s ECONSTANIC rule applies as it
+does to any other Foolish and cannot drift from it; and a `FirKind::Comparison` arm in
+`constanic_clone_at` is what actually performs the recoordination.
+
+**Result rendering.** `{1, 2, 'lt}$` renders as the found statement `'True=⬤`, since `$` yields
+the tail statement and the boolean is its body — the same shape any search result has. The
+bare-`⬤` limitation noted for `'True`/`'False` in §4 (Phase 5.5, punted) applies to the
+creation *value*, not to this name.
+
 ---
 
 **These are NOT boolean logic operators** (`and`, `or`, `not` — deferred to a follow-on FOOP).
@@ -1212,8 +1262,11 @@ unit test asserting `Reject` (matching its name).
   needs (`$` applied to the whole brane literal), pinned by
   `foolish-parser::parser::tests::brane_literal_dollar_reads_the_whole_literals_tail`.
 
-  Remaining for Phase 6: actual implementation (`system_foo.rs`'s five comparison FIRs, and
-  extending `system/system.foo` with `'lt`/`'gt`/`'le`/`'ge`/`'eq`). Not yet written.
+  **IMPLEMENTED 2026-08-04.** `system/system.foo` now declares `'lt`/`'gt`/`'le`/`'ge`/`'eq`,
+  and `system_foo.rs` supplies their bodies. Two things the implementation settled that this
+  entry could not have predicted, both recorded in §5.1 below: the design needs **one** FIR
+  kind rather than five, and an ECONSTANIC operand must settle the comparison **ECONSTANIC,
+  not NK** — the latter is load-bearing, not a detail.
 - **Anchored value search miss on creation inequality — RESOLVED 2026-08-03: NK, confirmed
   correct, no code change.** `referential_equality.foo`'s `cross_diff = bc~=(bd.v);` (an
   **anchored** forward value search that correctly finds no match inside `bc`, since `bc.v` and
@@ -1319,23 +1372,40 @@ preferred, three-canonical-strings fallback — §3); null-const mechanism (`get
 
 **Date**: 2026-08-04
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: **Creations reporting their own name — FVM side implemented and tested.** Rewrote
-the Open Questions entry on creation render form, which previously recorded the work as blocked
-behind a `CreationFir::get_recent_name()` proposal. That proposal is **superseded**: no value
-search is needed. `CreationFir::get_display_name(&self, self_ref: &FirRef) -> Option<String>`
-(in `foolish-ubca/src/fir_kinds.rs`, surfaced on the `Fir` trait as `as_creation_display_name`)
+**Changes**: **Phase 6 IMPLEMENTED, and the FVM side of creation-name reporting landed** — two
+independent workstreams, both green.
+
+**Phase 6 (comparison operators).** All five (`'lt`/`'gt`/`'le`/`'ge`/`'eq`) are built. Added
+**§5.1 "As built"** recording the three things implementing §5.0 settled that the design text
+could not have predicted: (1) an ECONSTANIC operand must settle the comparison **ECONSTANIC,
+never NK** — NK is terminal, so it poisons the `'lt` *definition* and `check_body_nyes`'s
+`NkStop` then prevents any search from handing it out to be recoordinated, making the operator
+unusable everywhere (found by FVM stepping, not assumed); (2) **one** `ComparisonFir` +
+`ComparisonOp` enum rather than five near-identical FIR kinds, since the Rust comparison is the
+only per-operator difference; (3) installation is a **compile-time body override** in
+`compiler.rs`, NOT the evaluator `Rc::ptr_eq` special-casing the superseded prose describes —
+`'lt` is never recognised by name or identity at the use site, it resolves by ordinary
+ancestral search. Updated the 2026-08-04 correction entry in Open Questions from "remaining:
+implementation" to implemented, pointing at §5.1.
+
+**Creations reporting their own name (FVM side).** Rewrote the Open Questions entry on creation
+render form, which previously recorded the work as blocked behind a
+`CreationFir::get_recent_name()` proposal. That proposal is **superseded**: no value search is
+needed. `CreationFir::get_display_name(&self, self_ref: &FirRef) -> Option<String>` (in
+`foolish-ubca/src/fir_kinds.rs`, surfaced on the `Fir` trait as `as_creation_display_name`)
 resolves the name by a direct parent check — a creation names itself only when it is the ENTIRE
 right-hand side of a named statement (parent is a statement AND the creation is its body, by
 `Rc::ptr_eq`), returning the full characterized name. `{'a=⬤; b='a;}` → `Some("'a")`;
 `{'a=1+⬤; b='a;}` → `None` (parent is the `+` operator). This works even through a search
 because a constanic clone of an `Independent` creation returns the same `Rc` (Gotcha #2), so the
 original parent chain survives detachment/recoordination. Six unit tests pin the rule including
-the through-a-search payoff case; no einmo test, as nothing is user-visible yet. **Still open:**
-the bridging half — how a `foolish-core::Fir` render path (a lossy, identity-discarding tree
-with a bare `Fir::Creation` unit variant) reaches this `foolish-ubca` method; that decision, and
-its hssnap/JSON shape, is left to the human. Earlier this session: Phase 6 confirmed NOT blocked
-(the "blocked" finding tested a **bare** `#-1`, which correctly settles terminal NK, but Phase 6
-specifies **SFF-marked** `<<#-1>>`, which never runs — `build_fir`'s `under_sff` rule builds
-descendant search kinds ECONSTANIC; verified live, two tests pin both behaviors); anchored
-value-search-miss confirmed NK; creation-vs-integer confirmed NotEqual. Full history in
-`git log` on this file.
+the through-a-search payoff case. **Still open:** the bridging half — how a `foolish-core::Fir`
+render path (lossy, identity-discarding, bare `Fir::Creation` unit variant) reaches this
+`foolish-ubca` method; that decision and its hssnap/JSON shape are Phase 9 in the plan.
+
+Earlier this session: Phase 6 unblocked (the prior "blocked" finding tested a **bare** `#-1`,
+which correctly settles terminal NK, but Phase 6 specifies **SFF-marked** `<<#-1>>`, which never
+runs — `build_fir`'s `under_sff` rule builds descendant search kinds ECONSTANIC; verified live,
+two tests pin both behaviors); Phase 5.5 punted to a future FOOP; anchored value-search-miss
+confirmed NK; creation-vs-integer confirmed NotEqual. This log keeps only the single newest
+entry per the Markdown File Update Protocol; full history in `git log` on this file.

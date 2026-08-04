@@ -50,6 +50,10 @@ pub enum FirKind {
     /// Creation dot (⬤ / {*}). Born Independent, identity via Rc::ptr_eq.
     /// FOOP-33 Phase 2.
     Creation,
+    /// A `system.foo` comparison operator (`'lt`/`'gt`/`'le`/`'ge`/`'eq`).
+    /// Two SFF-marked operand lookups, one Rust comparison, a `'True`/`'False`
+    /// result. FOOP-33 §5.0; see `system_foo::ComparisonFir`.
+    Comparison,
 }
 
 /// Minimal Scope stub — enough for compilation. The real Scope comes later
