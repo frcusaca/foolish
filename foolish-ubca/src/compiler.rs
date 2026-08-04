@@ -511,7 +511,7 @@ impl AstnCompilerExt for Astn {
 
 #[cfg(test)]
 mod tests {
-    use super::{AstnCompilerExt, ANON_STMT_NAME};
+    use super::{ANON_STMT_NAME, AstnCompilerExt};
     use std::cell::RefCell;
     use std::rc::{Rc, Weak};
 
@@ -550,7 +550,10 @@ mod tests {
 
         let anonymous = Astn::IntLit(2).build_as_statement(&parent, 8, false);
         assert_eq!(anonymous.borrow().kind(), FirKind::Statement);
-        assert_eq!(anonymous.borrow().as_stmt_searchable_name(), Some(ANON_STMT_NAME));
+        assert_eq!(
+            anonymous.borrow().as_stmt_searchable_name(),
+            Some(ANON_STMT_NAME)
+        );
         assert_eq!(anonymous.borrow().as_stmt_line_number(), Some(8));
     }
 

@@ -494,9 +494,7 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                 builder = builder.is_value(true);
                 let children = borrowed.core().foolish_children();
                 let has_anchor = borrowed.as_search_anchored();
-                if has_anchor
-                    && let Some(a) = children.first()
-                {
+                if has_anchor && let Some(a) = children.first() {
                     builder = builder.anchor(proto_to_core_fir_inner(a, false));
                 }
                 let value_idx = if has_anchor { 1 } else { 0 };

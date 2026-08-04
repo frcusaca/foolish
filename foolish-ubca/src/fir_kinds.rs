@@ -444,7 +444,11 @@ pub fn is_nf_reason(reason: &str) -> bool {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Equality { Equal, NotEqual, Unknowable }
+pub enum Equality {
+    Equal,
+    NotEqual,
+    Unknowable,
+}
 
 pub fn default_equal(a: &FirRef, b: &FirRef) -> Equality {
     let a_borrowed = a.borrow();
@@ -453,7 +457,11 @@ pub fn default_equal(a: &FirRef, b: &FirRef) -> Equality {
         return Equality::Unknowable;
     }
     if let (Some(av), Some(bv)) = (a_borrowed.as_i64(), b_borrowed.as_i64()) {
-        return if av == bv { Equality::Equal } else { Equality::NotEqual };
+        return if av == bv {
+            Equality::Equal
+        } else {
+            Equality::NotEqual
+        };
     }
     drop(a_borrowed);
     drop(b_borrowed);
@@ -1911,7 +1919,7 @@ pub(crate) fn push_search_result_pair(core: &ProtoBrane, result: FirRef, referen
 // Allow dead_code for Phase A0 skeleton types — wired into production in Phase A1+.
 #[allow(dead_code)]
 mod contextful_search {
-    use super::{FirRef, SearchFir, default_equal, Equality};
+    use super::{Equality, FirRef, SearchFir, default_equal};
 
     use std::rc::Rc;
 
@@ -2915,9 +2923,15 @@ impl CreationFir {
 }
 
 impl Fir for CreationFir {
-    fn core(&self) -> &ProtoBrane { &self.core }
-    fn fir_op_step(&self, _scope: &Scope) -> Result<(), UbcError> { Ok(()) }
-    fn kind(&self) -> FirKind { FirKind::Creation }
+    fn core(&self) -> &ProtoBrane {
+        &self.core
+    }
+    fn fir_op_step(&self, _scope: &Scope) -> Result<(), UbcError> {
+        Ok(())
+    }
+    fn kind(&self) -> FirKind {
+        FirKind::Creation
+    }
 }
 
 pub fn creation(parent: Weak<RefCell<dyn Fir>>) -> FirRef {
@@ -5447,7 +5461,12 @@ mod tests {
         assert_eq!(nav.total(), 3);
 
         let yielded: Vec<(String, usize)> = std::iter::from_fn(|| nav.next_candidate())
-            .map(|(c, pos)| (c.borrow().as_stmt_searchable_name().unwrap().to_owned(), pos))
+            .map(|(c, pos)| {
+                (
+                    c.borrow().as_stmt_searchable_name().unwrap().to_owned(),
+                    pos,
+                )
+            })
             .collect();
         assert_eq!(
             yielded,
@@ -5469,7 +5488,12 @@ mod tests {
         let mut nav = BraneNavigator::new(&brane, false);
 
         let yielded: Vec<(String, usize)> = std::iter::from_fn(|| nav.next_candidate())
-            .map(|(c, pos)| (c.borrow().as_stmt_searchable_name().unwrap().to_owned(), pos))
+            .map(|(c, pos)| {
+                (
+                    c.borrow().as_stmt_searchable_name().unwrap().to_owned(),
+                    pos,
+                )
+            })
             .collect();
         assert_eq!(
             yielded,
@@ -7783,9 +7807,16 @@ mod tests {
     fn creation_constanic_clone_preserves_identity() {
         let parent = make_brane(vec![]);
         let creation = CreationFir::creation(Rc::downgrade(&parent));
-        let clone = ProtoBrane::constanic_clone_at(&creation, &Rc::downgrade(&parent), 0, false, false);
-        assert!(Rc::ptr_eq(&creation, &clone), "constanic clone of CreationFir must return same Rc");
+        let clone =
+            ProtoBrane::constanic_clone_at(&creation, &Rc::downgrade(&parent), 0, false, false);
+        assert!(
+            Rc::ptr_eq(&creation, &clone),
+            "constanic clone of CreationFir must return same Rc"
+        );
         let creation2 = CreationFir::creation(Rc::downgrade(&parent));
-        assert!(!Rc::ptr_eq(&creation, &creation2), "two distinct creations must not be ptr_eq");
+        assert!(
+            !Rc::ptr_eq(&creation, &creation2),
+            "two distinct creations must not be ptr_eq"
+        );
     }
 }
