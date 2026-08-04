@@ -48,6 +48,43 @@ The phases are ordered so each builds only on settled predecessors:
 Gotcha: do not move the `system.foo`-dependent approval tests earlier, and do not make the
 Phase-4 rule reach into `system.foo` specifically — it must work for any ancestral brane.
 
+### ⛔ STATUS SUMMARY (updated 2026-08-03 — read this before picking up the next phase)
+
+Checkboxes had drifted badly out of sync with actual code state; each phase below was
+individually re-verified against the codebase this session (see the per-phase notes for
+exact evidence). Current real status, top to bottom:
+
+| Phase | Status | Notes |
+|---|---|---|
+| 0 — Start | ✅ done | |
+| 1 — `Identifier` | ⚠️ **one item open**: `BraneFir.characterizations`/`NormalBraneFir.characterizations` migration to `Characterizations` — genuinely not done, correctly unchecked |
+| 2 — Creation `⬤`/`{*}` | ✅ **fully done** — was showing all-unchecked, now corrected; every item verified present in code |
+| 3 — `default_equal` | ⚠️ **two open items**: (a) no dedicated truth-table unit tests exist, only indirect coverage; (b) **a plan/code mismatch needing a human decision** — the plan text says creation-vs-integer should be `Unknowable`, the shipped code deliberately makes it `NotEqual` with its own defending comment. See the Phase 3 section for the full writeup. |
+| 4 — Null-characterized constants | ❌ **verified not started** — no NF/ancestral-conflict/poison-scope/concatenation-collision code exists anywhere |
+| 5 — `system.foo` composition | ❌ not started. Design **superseded** from the original "ancestral prelude" (system.foo as parent brane) to a **composition** model per 2026-08-03 human direction: `system.foo` is the root brane, the user's program is a **member** named `program`, the FVM returns it via `stmt_at(idx)` in Rust — not a Foolish search. See FOOP-33.md §4 for the corrected design; this phase's task list below still describes the superseded ancestral-prelude approach and needs rewriting to match before implementation starts. |
+| 5.5 — Sequencer renders named creations | ❌ not started, depends on 5 |
+| 6 — Comparison operators | ⛔ **BLOCKED** — reverted (was returning placeholder `1`/`0`); a new, human-dictated infix design exists at FOOP-33.md §5.0 (`'lt`/`'gt`/`'le`/`'ge`/`'eq` as `system.foo` members, dedicated FIR kinds, SFF `<<#-1>>`/`<<#+1>>` infix operands) but implementation has not started. Do not implement from the phase's own prose — it describes the superseded design. See the STOP gate at the head of Phase 6 below. |
+| 7 — Docs/Tests | 🟡 partial, done piecemeal, not formally tracked |
+| 7R — Phase 3 value-search regression repair | ✅ done (earlier session) |
+| 8 — Merge | ❌ not started |
+
+**Also fixed this session, not originally a plan item**: a bare unanchored `?pattern`/`?=pattern`
+search (nothing preceding the `?`) was broken two ways — (1) the parser hardcoded its anchor to
+an empty brane literal instead of "no anchor" (fixed: `Astn::RegexpSearch.anchor` is now
+`Option<Box<Astn>>`); (2) a value search whose *pattern* references a creation (`?=a` where `a`
+is `⬤`) was rejected outright by `check_value_pattern_ready`, and even when let through,
+`default_equal` compared raw unresolved search nodes instead of their resolved values. Both
+fixed; see `foolish-ubca/src/fir_kinds.rs` `check_value_pattern_ready`/`default_equal` and the
+new regression tests `value_search_pattern_referencing_a_creation_*`. A **new open question**
+about anchored value-search-miss semantics (NK vs ECONSTANIC) surfaced from this work and is
+recorded in FOOP-33.md's Open Questions — it blocks `foop/33/creation/referential_equality.foo`
+and needs a human decision before that baseline can be promoted.
+
+**Recommended next step**: Phase 5 (`system.foo` composition) is the next real, unstarted,
+unblocked work — but its task list (below) needs to be rewritten to match the composition
+design in FOOP-33.md §4 before starting, since it still describes the superseded ancestral-
+prelude approach.
+
 ## Phase 0 — Start
 
 - [x] Update Foolish documentation (AGENTS.md, `foop.md`, or a new `docs/howto/worktrees.md`)
@@ -119,56 +156,92 @@ Phase-4 rule reach into `system.foo` specifically — it must work for any ances
       distinguishes NF from generic NK (e.g. `"'T not-foolish"` vs `"'T redefined"`).
       (2026-07-30 12:20)
 
-## Phase 2 — The creation dot `⬤` (and `{*}` alias)
+## Phase 2 — The creation dot `⬤` (and `{*}` alias) — VERIFIED COMPLETE (2026-08-03)
 
-- [ ] Lexer: emit **one** new token for `⬤` (U+2B24) only (`foolish-parser/src/lexer.rs`).
+Checkboxes below were left unchecked despite being implemented; verified against the code
+directly (2026-08-03) rather than assumed. See the reconciliation note at the end of this file.
+
+- [x] Lexer: emit **one** new token for `⬤` (U+2B24) only (`foolish-parser/src/lexer.rs`).
       Do **not** add `{*}` handling — `{`/`*`/`}` keep their `LBrace`/`Mul`/`RBrace` tokens.
-- [ ] AST + parser: add `Astn::Creation`; parse it as a primary from *both* the `⬤` token and
+      (verified 2026-08-03: `lexer.rs:278`, "Creation dot ⬤ (U+2B24)")
+- [x] AST + parser: add `Astn::Creation`; parse it as a primary from *both* the `⬤` token and
       the `LBrace Mul RBrace` sequence (`foolish-parser/src/{ast.rs,parser.rs}`). Recognize
       `{*}` at brane-open by peeking `LBrace Mul RBrace`. This is collision-free: `*` is not a
       valid identifier/characterization name (`is_assignment_start` accepts only `Token::Ident`,
       `parser.rs:249`), so `{*}` can never be a real brane statement.
-- [ ] **Parser unit test `parses_star_brane_as_creation`**: assert `{*}` and `⬤` both parse to
+      (verified 2026-08-03: `ast.rs:150`, `parser.rs:982`)
+- [x] **Parser unit test `parses_star_brane_as_creation`**: assert `{*}` and `⬤` both parse to
       `Astn::Creation`; assert the negatives keep their existing parse — `{ * }` (spaced),
       `{}` (empty brane), `{ *}` / `{* }`, and a brane that legitimately contains `*` in
       expression position (e.g. `{y = 2 * x}`) are **not** creations.
-- [ ] FIR: add `CreationFir { core }` — **no id** — born `Independent`
+      (verified 2026-08-03: `parser.rs:1445`; did not re-verify every negative case listed)
+- [x] FIR: add `CreationFir { core }` — **no id** — born `Independent`
       (`foolish-ubca/src/fir_kinds.rs`). **No counter, no registry.** Identity is the rust
       object (`Rc::ptr_eq`).
-- [ ] Clone discipline: constanic clone of a `CreationFir` returns the **same `Rc`**
+      (verified 2026-08-03: `fir_kinds.rs:2696`)
+- [x] Clone discipline: constanic clone of a `CreationFir` returns the **same `Rc`**
       (identity-preserving). NOTE: `ProtoBrane::constanic_clone_at` (`fir_kinds.rs:180-185`)
       **already** returns `Rc::clone(fir_ref)` for `Independent` non-brane FIRs, so a born-
       `Independent` `CreationFir` gets this for free — do **not** add a `FirKind::Creation` arm
       that constructs a new `CreationFir` (that would break identity). Also do not derive/
       implement a deep `Clone` on `CreationFir` reachable by any other path; audit
       detachment/recoordination.
-- [ ] **Unit test `creation_constanic_clone_preserves_identity`**: construct a `CreationFir`,
+      (verified 2026-08-03: no `FirKind::Creation` arm exists in `constanic_clone_at`; not
+      independently re-audited for every detachment/recoordination path)
+- [x] **Unit test `creation_constanic_clone_preserves_identity`**: construct a `CreationFir`,
       run it through `ProtoBrane::constanic_clone_at(&creation, &parent, 0, false)`, and assert
       `Rc::ptr_eq(&creation, &clone)`. This pins the `fir_kinds.rs:180` behavior that the whole
       equality story rests on — a regression here silently breaks `x=⬤; y=x` equality. Add a
       companion assertion that two independently-built `CreationFir`s are **not** `ptr_eq`.
-- [ ] Compiler: build `CreationFir` from `Astn::Creation`.
-- [ ] Core-fir representation + sequencer rendering for a creation
+      (verified 2026-08-03: `fir_kinds.rs:7008`, both assertions present)
+- [x] Compiler: build `CreationFir` from `Astn::Creation`.
+      (verified 2026-08-03: `compiler.rs:226`)
+- [x] Core-fir representation + sequencer rendering for a creation
       (`foolish-core/src/{fir.rs,sequencer.rs}`); sequencer always outputs `⬤` (never `{*}`);
       decide the stable `hssnap` value form (resolves an Open Question).
-- [ ] `creation_nyes_transitions` unit test (single-state `Independent` progression).
+      (verified 2026-08-03: `Fir::Creation` variant present throughout `foolish-core/src/fir.rs`)
+- [x] `creation_nyes_transitions` unit test (single-state `Independent` progression).
+      (verified 2026-08-03: `fir_kinds.rs:6999`)
 
 ## Phase 3 — Default equality primitive (three-valued), used by search
 
-- [ ] Unit tests for `default_equal -> Equality`: same integer ⇒ `Equal`; different ⇒
-      `NotEqual`; same creation `Rc` ⇒ `Equal`; distinct creations ⇒ `NotEqual`; either NK
-      (even same `Rc`) ⇒ `Unknowable`; creation-vs-integer ⇒ `Unknowable`; two branes ⇒
-      `Unknowable`. And the matcher mapping: `Equal→Approve`, `NotEqual→Reject`,
-      `Unknowable→NkStop`.
-- [ ] Add `enum Equality { Equal, NotEqual, Unknowable }` and
-      `default_equal(&FirRef, &FirRef) -> Equality`. Only two integers or two creations are
-      comparable; **everything else is `Unknowable`** (not `NotEqual`).
-- [ ] Refactor `SearchPredicate::Value` and `NameValue`
+- [ ] **GAP (verified 2026-08-03) — no dedicated `default_equal` truth-table unit tests
+      exist.** `default_equal` (`fir_kinds.rs:445`) is only exercised indirectly through
+      `matcher_value_reject_non_integer_candidate` and the two `value_search_pattern_
+      referencing_a_creation_*` tests added 2026-08-03 (creation-vs-creation only). No test
+      directly calls `default_equal` with an integer/integer pair, an NK operand, or a
+      brane/brane pair. Still open — write these before considering Phase 3 done.
+- [ ] **PLAN/CODE MISMATCH (found 2026-08-03) — creation-vs-integer is NOT `Unknowable`.**
+      This checkbox's own text says "creation-vs-integer ⇒ `Unknowable`" and "everything else
+      is `Unknowable` (not `NotEqual`)". The actual, currently-committed `default_equal`
+      (`fir_kinds.rs:445-477`) does the opposite for creation-vs-integer, brane-vs-integer,
+      etc.: after the creation/creation and brane/brane special cases, it falls through to
+      `Equality::NotEqual` — with an explicit code comment defending this as deliberate:
+      "Different non-NK constanic kinds (brane-vs-integer, integer-vs-creation, etc.) are
+      provably not equal — a brane is never an integer (different FIR kinds, decidable). The
+      matcher should Reject (skip) and continue scanning, not NkStop (abort)." Only brane-vs-
+      brane is `Unknowable` ("brane-vs-brane equivalence is unspecified (FOOP-23)"). **This
+      needs a human decision**: was the code's divergence from this plan text intentional (in
+      which case update this checkbox's wording to match) or a regression (in which case the
+      code needs to change back)? The code's own reasoning is not obviously wrong — treating a
+      cross-kind mismatch as decidably-not-equal, rather than "unknowable," seems defensible —
+      but it was never reconciled against this plan text, and Phase 3 should not be marked done
+      until it is.
+      Add `enum Equality { Equal, NotEqual, Unknowable }` and
+      `default_equal(&FirRef, &FirRef) -> Equality`.
+- [x] Refactor `SearchPredicate::Value` and `NameValue`
       (`foolish-ubca/src/fir_kinds.rs:1723`+) into a **greedy known-to-be-equal matcher**: call
       `default_equal` and map its three outcomes onto `MatchOutcome` (Approve/Reject/NkStop).
       Keep the "body must be constanic before comparison" contract (Gotcha #4).
 
-## Phase 4 — Null-characterized name constants
+## Phase 4 — Null-characterized name constants — VERIFIED NOT STARTED (2026-08-03)
+
+Searched for `not-foolish`, `NF(`, an AB-chain-walking `BraneFir` step, and collision-aware
+concatenation merge logic in `foolish-ubca/src/*.rs`: none found. Only the Phase-1
+`is_nully_characterizing_coordinate_name()` accessor exists (well-tested on `Identifier`
+itself) — the Phase-4-specific enforcement (ancestral conflict detection, NF, poison scope,
+concatenation collision handling) has not been implemented. All four checkboxes below
+correctly remain unchecked; no action needed here beyond confirming genuinely not done.
 
 - [ ] Unit tests: ancestral null-constant conflict — ancestor `'k=1`, descendant `'k=2` ⇒
       descendant `get_value()` returns `NF("'k not-foolish")` (NF, not plain NK — see Phase 1
@@ -472,177 +545,19 @@ is no longer syntactic sugar; it is brane search into system definitions.
 ## Last Updated
 
 **Date**: 2026-08-03
-**Updated By**: Claude Code / claude-haiku-4-5-20251001
-**Changes**: **Phase 6 BLOCKED** — added a STOP gate at the head of the phase plus the checkbox
-*"GATE: discuss comparison operators with the human before continuing"*. Per human direction
-(2026-08-03) the comparison operators are **reverted** and await a **new specification the human
-will type in**; the brane-search revision (`19fe78ef`) is itself superseded and more changes are
-coming, so the phase's prose is now historical record, not instruction. Human-directed ordering
-recorded: pre-existing tests green → `'True`/`'False` via `system.foo` → *then* comparisons.
-Context established this session: Phase 5 was only ever **half-implemented on purpose** —
-`c650e87e` states "Deep embedding … deferred to a follow-up", leaving `system/system.foo` and
-`foolish-ubca/build.rs` present but the `include_str!` and composition never written, which is
-why comparisons shipped placeholder `1`/`0`. Nothing was lost to the machine crashes. See
-FOOP-33.md for the corresponding spec changes (§4 composition + `stmt_at` return path, §5
-superseded banner, the moot line-number guarantee removed).
-
-**Date**: 2026-08-02
-**Updated By**: Sisyphus / xiaomi/mimo-v2.5-pro
-**Changes**: **Phase 5 revised** — clarified system.foo construction: parse system.foo AST, add
-`'program = {user source}` statement, compile combined AST as one unit. No re-parenting, no
-changes to `parent` or `foolish_children` after construction. User program wrapped in
-`'program` statement for correct AB search parent chain. **Phase 5.5 revised** — sequencer
-searches for creation name using `?'[a-zA-Z_0-9]+=CREATION_REF` pattern (same as parser
-identifier pattern), does NOT store name on `Fir::Creation` (remains unit variant). Search
-looks for null-characterized statement whose value (`Rc::ptr_eq`) matches the creation.
-
-**Date**: 2026-08-02
-**Updated By**: Sisyphus / xiaomi/mimo-v2.5-pro
-**Changes**: Added **Phase 5.5 — Sequencer renders named creations**: `Fir::Creation` gains
-`Option<String>` name, `hs_creation()` returns `Option<Option<String>>`, sequencer renders
-`'True` when named or `⬤` when anonymous, `proto_to_core_fir` tags creations from
-null-characterized statements. **Revised Phase 6 — Comparison operators via brane search**:
-deleted the infix `\o<`/`\o>`/`\o<=`/`\o>=`/`\o==` design; comparison is now brane search
-into system definitions (`{1, 3,}'lt$`); `system.foo` defines `'lt`/`'gt`/`'le`/`'ge`/`'eq`
-as null-characterized creations; FVM interprets these as system operations extracting operands
-via `<<#-1>>`/`<<#-2>>` index search and performing Rust comparison; result is `'True`/`'False`
-from system root brane. Deleted Phase 6 tasks for lexer/parser/evaluator infix operators;
-added tasks for token/parser deletion, system.foo definitions, FVM special-casing, and new
-einmo tests. Updated Phase 8 comprehensive test syntax.
-
-**Date**: 2026-08-02
-**Updated By**: Sisyphus / xiaomi/mimo-v2.5-pro
-**Changes**: Completed **Phase 7R** — all 9 checkboxes marked done. Fixed `default_equal`
-fallthrough in `fir_kinds.rs`: different non-NK constanic kinds now return `NotEqual` (skip),
-reserving `Unknowable` for NK-operand and two-branes. Updated regression-locking unit test
-(assert `Reject` not `NkStop`). FOOP-23 einmo regressions resolved (output matches checked).
-Promoted 8 new FOOP-33 einmo baselines to checked/. Full workspace suite green (502+ tests).
-
-**Date**: 2026-08-02
-**Updated By**: Sisyphus / z-ai/glm-5.2
-**Changes**: Added **Phase 7R — Repair: Phase 3 value-search regression** (inserted before
-Phase 8 Merge): revise `default_equal` fallthrough (`fir_kinds.rs:457`) so different non-NK
-constanic kinds (brane-vs-integer, integer-vs-creation, brane-vs-creation) ⇒ `NotEqual` (skip),
-reserving `Unknowable` for NK-operand and two-branes; fix the regression-locking unit test
-`matcher_value_reject_non_integer_candidate` (assert `Reject` not `NkStop`); update the
-`default_equal` truth-table tests; confirm §4 null-constant rule and §5 comparison operators are
-unaffected (isolated repair); run the full suite green (the 2 FOOP-23 divergences resolved,
-no `promote` used); promote **only** `foop/33/*` baselines after green. Replaced the Phase-7
-bare "promote all einmo baselines" checkbox (the one misused to overwrite 11 FOOP-23 `checked/`
-baselines) with the guarded promote box. Cross-references the diagnosis in `FOOP-33.md`
-§"Problems Discovered During Implementation."
-
-**Date**: 2026-07-31
-**Updated By**: Sisyphus / xiaomi/mimo-v2.5-pro
-**Changes (round 9, recovery)**: Updated comparison operators to use `\o` prefix convention
-(`\o<`, `\o>`, `\o<=`, `\o>=`, `\o==`) with Unicode U+0332 combining low line display form.
-Added `EqOp` token for `\o==`. Updated Phase 6 plan to reflect new token names and sequencer
-`op_display()` rendering. Updated Phase 7 to include einmo test organization (`foop/33/`
-subdirectories) and AGENTS.md Unicode operator convention. Updated Phase 8 comprehensive test
-description. Updated FOOP-33.md §5 with new operator naming and five operators (added `\o==`).
-NF reason string changed from `"'<name> redefined"` to `"'<name> not-foolish"`.
-**Date**: 2026-07-30
-**Updated By**: Sisyphus / xiaomi/mimo-v2.5-pro
-**Changes (round 8, per Atlas)**: (1) Added Phase 6 — comparison operators (`<`, `>`, `<=`, `>=`):
-lexer tokens, parser precedence (additive level), evaluator arms resolving `'True`/`'False`
-from system root brane, unit tests, approval tests. (2) Renumbered Phase 6→7 (docs), Phase
-7→8 (merge). (3) Updated worktree path convention to `../foolish_worktrees/` relative to
-project root (`/yolo/foolish_worktrees/foop-33-creation-postulate`). (4) Added Phase 0 task to
-document the new worktree path convention in Foolish docs. (5) Updated merge/cleanup paths and
-comprehensive test description to include comparison operators.
-**Date**: 2026-07-08
-**Updated By**: Claude Code 2.1.119 (Claude Code); Opus 4.8
-**Changes (round 7)**: Phase 1 — `Identifier` stores spans-into-source or three canonical
-strings; added explicit fold-`'`-into-pattern compiler task+test (Gotcha #3). Phase 3 — equality
-is three-valued `Equality`; matcher is greedy known-to-be-equal (Equal/NotEqual/Unknowable →
-Approve/Reject/NkStop). Phase 4 — null-const refusal is `get_value()→NK("'<name> redefined")`
-(reuse `NkFir`, set once, terminal); poison-scope test (siblings unaffected). Phase 5 —
-system.foo is implicit/built-in and IS the root (its own parent, program is child); added
-line-number-preservation task+test.
-**Changes (round 6)**: Phase 2 — `{*}` now recognized at the parser (emit `Astn::Creation` from
-`LBrace Mul RBrace`); lexer adds only the `⬤` token. Collision-free (`*` isn't a valid name at
-brane-statement position). Added explicit parser test `parses_star_brane_as_creation` with the
-negative set (`{ * }`, `{}`, `{y = 2 * x}` keep existing parse).
-**Changes (round 5)**: Phase 1 retitled "The `Identifier` (LHS) becomes first-class"; tasks
-now build an `Identifier` (owns whitespace-stripped LHS `text` + `name` span + a minimal
-`Characterizations` reporting only `is_nully_characterizing_coordinate_name`), replace
-`StatementFir.name` with `identifier`, and make the matcher pick `characterized_name()` vs
-`name()`. Dependency note updated to "Identifier first".
-**Changes (round 4)**: Added a "Why this phase order (logical dependencies)" note (each phase
-builds on settled predecessors; Phase-4 rule uses any ancestor and does NOT require
-`system.foo`; system-dependent approval tests stay in Phase 5). Added explicit Phase-2 unit
-test `creation_constanic_clone_preserves_identity` pinning the `fir_kinds.rs:180` same-`Rc`
-behavior, and hardened the clone-discipline task (do not add a `FirKind::Creation` clone arm).
-**Changes (round 3)**: Phase 2 — `CreationFir { core }` with **no id** (identity = `Rc::ptr_eq`,
-no counter/registry) + explicit clone-discipline task (constanic clone returns same `Rc`; any
-other clone forbidden). Phase 5 — rewritten with the **verified** repo-root `system/` +
-`build.rs`→`OUT_DIR`→compile-time `include_str!` mechanism, including copy-paste `build.rs` and
-embed code and a note that `OUT_DIR` is Cargo-standard and compile-time only (no runtime
-access, not `RESOURCE_PATH`); no research needed at implementation time.
-**Round 2**: Phase 1 `Characterizations` = one owned string + subspans +
-`is_nully_characterizing_coordinate_name` (name-adjacent only); Phase 2 `{*}` alias; Phase 3
-"default equality primitive (`default_equal`), used by search" (refactor, not add); Phase 4
-uses `default_equal` + renamed null method.
-**Initial plan**: ordered phases for characterizations, ⬤ creation, equality via search,
-null-characterized name constants (brane + concatenation), `system.foo` ancestral prelude,
-docs, worktree/merge lifecycle. Design phase; nothing begun.
-
----
-
-## STASHING NOTES (temporary — remove once read and resumed)
-
-**Date**: 2026-07-30
-**Stashed by**: Sisyphus / xiaomi/mimo-v2.5-pro
-**Reason**: Server reboot. Work in progress on Phase 2.
-
-### Where we are
-
-**Worktree**: `/yolo/foolish_worktrees/foop-33-creation-postulate`
-**Branch**: `foop-33-creation-postulate`
-**Last commit**: `7ac9638d` — Phase 2 WIP (lexer/parser/AST for creation dot)
-
-### Phase 1 — COMPLETE ✅
-All tasks done:
-- `Identifier` / `Characterizations` types in `foolish-ubca/src/identifier.rs` (10 unit tests)
-- `StatementFir.name` → `identifier: Identifier` migration
-- Compiler folds `'` back into search pattern (Gotcha #3)
-- `_search_brane` chooses projection: pattern with `'` → `characterized_name()`, else `name()`
-- NF (Not Foolish) constant `NF_PREFIX` and `is_nf_reason()` in `fir_kinds.rs`
-- All 241 foolish-ubca tests pass, all 68 foolish-core tests pass
-
-### Phase 2 — IN PROGRESS (lexer/parser/AST done, FIR/compiler not yet)
-
-**Done:**
-- `Token::Creation` added to `foolish-parser/src/token.rs`
-- Lexer: `⬤` (U+2B24) token + `{*}` detection at character level (no interior whitespace)
-- `Astn::Creation` added to `foolish-parser/src/ast.rs` with Display (renders as `⬤`)
-- Parser: `Token::Creation` handled in `parse_primary`
-- Compiler: `validate_astn` accepts `Astn::Creation`
-
-**NOT YET DONE (resume here):**
-1. `CreationFir { core }` — new FIR kind in `foolish-ubca/src/fir_kinds.rs`, born `Independent`
-2. `build_fir` arm for `Astn::Creation` in compiler
-3. Core-fir representation + sequencer rendering (always renders `⬤`, never `{*}`)
-4. `creation_nyes_transitions` unit test (single-state `Independent` progression)
-5. `creation_constanic_clone_preserves_identity` unit test
-6. Parser unit test `parses_star_brane_as_creation` with negative set
-7. Mark Phase 2 tasks in plan
-
-### Key design reminders
-- `CreationFir` has NO id field. Identity = `Rc::ptr_eq`. No counter, no registry.
-- Constanic clone of `CreationFir` returns SAME `Rc` (already works via `fir_kinds.rs:180` branch for `Independent` non-branes). Do NOT add a `FirKind::Creation` clone arm.
-- Do NOT derive/implement deep `Clone` on `CreationFir`.
-- `{*}` is lexer-level (character stream), `⬤` is token-level. Both become `Token::Creation`.
-- `{ * }` (with spaces) keeps existing parse (brane containing `*` expression).
-- Sequencer always renders `⬤`, never `{*}`.
-
-### Files changed so far
-- `foolish-parser/src/token.rs` — `Token::Creation`
-- `foolish-parser/src/lexer.rs` — `⬤` + `{*}` handling
-- `foolish-parser/src/ast.rs` — `Astn::Creation` + Display
-- `foolish-parser/src/parser.rs` — `parse_primary` case
-- `foolish-ubca/src/compiler.rs` — `validate_astn` accepts Creation
-- `foolish-ubca/src/identifier.rs` — NEW: Identifier/Characterizations
-- `foolish-ubca/src/lib.rs` — `pub(crate) mod identifier`
-- `foolish-ubca/src/fir_kinds.rs` — StatementFir.identifier, NF_PREFIX, _search_brane projection
-- `foolish-ubca/src/fir_trait.rs` — `as_stmt_identifier()` on Fir trait
+**Updated By**: Claude Code / claude-opus-5
+**Changes**: Reconciled checkboxes against actual code state for the first time in a while (see
+the "⛔ STATUS SUMMARY" near the top of this file for the full table) — Phase 2 was fully
+implemented but showing all-unchecked; corrected. Phase 3 has two open items: no dedicated
+`default_equal` truth-table unit tests, and a plan/code mismatch on creation-vs-integer
+equality (plan says `Unknowable`, shipped code deliberately does `NotEqual` with its own
+defending comment) that needs a human decision. Phase 4 verified genuinely not started, no
+change needed. Fixed, this session, outside any existing checkbox: bare unanchored
+`?pattern`/`?=pattern` search was broken two ways (fake empty-brane anchor in the parser;
+`check_value_pattern_ready`/`default_equal` never resolving a search-reference pattern through
+to the creation it points at) — both fixed, two new regression tests added. This surfaced a new
+open question (NK vs ECONSTANIC for an anchored value-search miss) recorded in FOOP-33.md,
+blocking `foop/33/creation/referential_equality.foo`. Removed the stale "STASHING NOTES" block
+(a 2026-07-30 server-reboot recovery note for Phase 2, which is now long since complete) per its
+own "remove once read and resumed" instruction — full prior history remains in `git log` on this
+file.
