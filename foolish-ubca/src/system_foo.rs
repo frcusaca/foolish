@@ -226,9 +226,13 @@ mod tests {
         assert_eq!(composed.len(), 1);
         let root = &composed[0];
         assert_eq!(root.borrow().kind(), FirKind::Brane);
-        // system.foo has 2 statements ('True, 'False) + 1 appended (program).
-        assert_eq!(root.borrow().stmt_count(), Some(3));
-        let program_stmt = root.borrow().stmt_at(2).unwrap();
+        // system.foo's own statements + 1 appended (`program`, always LAST --
+        // the invariant `program_result`'s positional access depends on).
+        let count = root
+            .borrow()
+            .stmt_count()
+            .expect("composed root is a brane");
+        let program_stmt = root.borrow().stmt_at(count - 1).unwrap();
         assert_eq!(
             program_stmt.borrow().as_stmt_searchable_name(),
             Some("program")
