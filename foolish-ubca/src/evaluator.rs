@@ -278,6 +278,27 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
             }
             builder.build()
         }
+        // A comparison renders as its RESULT — the 'True/'False creation it
+        // produced, or the NK from a non-integer operand (FOOP-33 §5.0). It
+        // never renders a wrapper of its own: the operands are the referencing
+        // brane's OWN statements, already rendered in their own right, so
+        // showing them again under the operator would duplicate them.
+        FirKind::Comparison => {
+            if let Some(result) = borrowed.core().ubc_children().first() {
+                return proto_to_core_fir_inner(result, preserve_search);
+            }
+            // Not yet settled (or settled without a result): render the state
+            // itself rather than inventing a value.
+            NkFirBuilder::new(
+                borrowed
+                    .core()
+                    .alarm_reason()
+                    .as_deref()
+                    .unwrap_or("comparison"),
+            )
+            .state(state)
+            .build()
+        }
         FirKind::Operator => {
             // Unwrap to the result when the operator successfully computed
             // a constant value.
