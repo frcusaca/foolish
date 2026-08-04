@@ -59,7 +59,7 @@ exact evidence). Current real status, top to bottom:
 | 0 — Start | ✅ done | |
 | 1 — `Identifier` | ⚠️ **one item open**: `BraneFir.characterizations`/`NormalBraneFir.characterizations` migration to `Characterizations` — genuinely not done, correctly unchecked |
 | 2 — Creation `⬤`/`{*}` | ✅ **fully done** — was showing all-unchecked, now corrected; every item verified present in code |
-| 3 — `default_equal` | ⚠️ **two open items**: (a) no dedicated truth-table unit tests exist, only indirect coverage; (b) **a plan/code mismatch needing a human decision** — the plan text says creation-vs-integer should be `Unknowable`, the shipped code deliberately makes it `NotEqual` with its own defending comment. See the Phase 3 section for the full writeup. |
+| 3 — `default_equal` | ⚠️ **one open item**: no dedicated truth-table unit tests exist, only indirect coverage — write these before considering Phase 3 done. (The creation-vs-integer question is **resolved**: `NotEqual` is correct per human ruling 2026-08-03 — every integer is itself a creation, so a new creation can never equal one, decidably.) |
 | 4 — Null-characterized constants | ❌ **verified not started** — no NF/ancestral-conflict/poison-scope/concatenation-collision code exists anywhere |
 | 5 — `system.foo` composition | ❌ not started. Design **superseded** from the original "ancestral prelude" (system.foo as parent brane) to a **composition** model per 2026-08-03 human direction: `system.foo` is the root brane, the user's program is a **member** named `program`, the FVM returns it via `stmt_at(idx)` in Rust — not a Foolish search. See FOOP-33.md §4 for the corrected design; this phase's task list below still describes the superseded ancestral-prelude approach and needs rewriting to match before implementation starts. |
 | 5.5 — Sequencer renders named creations | ❌ not started, depends on 5 |
@@ -211,24 +211,17 @@ directly (2026-08-03) rather than assumed. See the reconciliation note at the en
       referencing_a_creation_*` tests added 2026-08-03 (creation-vs-creation only). No test
       directly calls `default_equal` with an integer/integer pair, an NK operand, or a
       brane/brane pair. Still open — write these before considering Phase 3 done.
-- [ ] **PLAN/CODE MISMATCH (found 2026-08-03) — creation-vs-integer is NOT `Unknowable`.**
-      This checkbox's own text says "creation-vs-integer ⇒ `Unknowable`" and "everything else
-      is `Unknowable` (not `NotEqual`)". The actual, currently-committed `default_equal`
-      (`fir_kinds.rs:445-477`) does the opposite for creation-vs-integer, brane-vs-integer,
-      etc.: after the creation/creation and brane/brane special cases, it falls through to
-      `Equality::NotEqual` — with an explicit code comment defending this as deliberate:
-      "Different non-NK constanic kinds (brane-vs-integer, integer-vs-creation, etc.) are
-      provably not equal — a brane is never an integer (different FIR kinds, decidable). The
-      matcher should Reject (skip) and continue scanning, not NkStop (abort)." Only brane-vs-
-      brane is `Unknowable` ("brane-vs-brane equivalence is unspecified (FOOP-23)"). **This
-      needs a human decision**: was the code's divergence from this plan text intentional (in
-      which case update this checkbox's wording to match) or a regression (in which case the
-      code needs to change back)? The code's own reasoning is not obviously wrong — treating a
-      cross-kind mismatch as decidably-not-equal, rather than "unknowable," seems defensible —
-      but it was never reconciled against this plan text, and Phase 3 should not be marked done
-      until it is.
-      Add `enum Equality { Equal, NotEqual, Unknowable }` and
-      `default_equal(&FirRef, &FirRef) -> Equality`.
+- [x] **Creation-vs-integer is `NotEqual` — RESOLVED 2026-08-03, plan text was wrong, code is
+      correct.** This checkbox's original text said "creation-vs-integer ⇒ `Unknowable`" and
+      "everything else is `Unknowable` (not `NotEqual`)", contradicting the shipped
+      `default_equal` (`fir_kinds.rs:445-477`), which returns `NotEqual` for creation-vs-integer,
+      brane-vs-integer, etc. Human's ruling: **every integer is itself a creation** — so a
+      *new*, distinct creation can never equal any integer, by the same uniqueness rule that
+      makes two distinct `⬤`s unequal. This is decidably `NotEqual`, not `Unknowable` — there is
+      nothing unknown about it. Only brane-vs-brane stays `Unknowable` (brane-vs-brane
+      equivalence is genuinely unspecified per FOOP-23). No code change; this checkbox's
+      original wording is superseded by this note. `enum Equality { Equal, NotEqual, Unknowable
+      }` and `default_equal(&FirRef, &FirRef) -> Equality` are implemented as described.
 - [x] Refactor `SearchPredicate::Value` and `NameValue`
       (`foolish-ubca/src/fir_kinds.rs:1723`+) into a **greedy known-to-be-equal matcher**: call
       `default_equal` and map its three outcomes onto `MatchOutcome` (Approve/Reject/NkStop).
@@ -608,18 +601,17 @@ is no longer syntactic sugar; it is brane search into system definitions.
 
 **Date**: 2026-08-03
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Reconciled checkboxes against actual code state for the first time in a while (see
-the "⛔ STATUS SUMMARY" near the top of this file for the full table) — Phase 2 was fully
-implemented but showing all-unchecked; corrected. Phase 3 has two open items: no dedicated
-`default_equal` truth-table unit tests, and a plan/code mismatch on creation-vs-integer
-equality (plan says `Unknowable`, shipped code deliberately does `NotEqual` with its own
-defending comment) that needs a human decision. Phase 4 verified genuinely not started, no
-change needed. Fixed, this session, outside any existing checkbox: bare unanchored
-`?pattern`/`?=pattern` search was broken two ways (fake empty-brane anchor in the parser;
-`check_value_pattern_ready`/`default_equal` never resolving a search-reference pattern through
-to the creation it points at) — both fixed, two new regression tests added. This surfaced a new
-open question (NK vs ECONSTANIC for an anchored value-search miss) recorded in FOOP-33.md,
-blocking `foop/33/creation/referential_equality.foo`. Removed the stale "STASHING NOTES" block
-(a 2026-07-30 server-reboot recovery note for Phase 2, which is now long since complete) per its
-own "remove once read and resumed" instruction — full prior history remains in `git log` on this
-file.
+**Changes**: Human resolved both open decisions from the checkbox reconciliation done earlier
+today. (1) Anchored value search miss on creation inequality is correctly `NK`, confirmed — no
+code change; an anchored search *can* produce ECONSTANIC in general, but an anchored *value*
+search specifically cannot, so the general "anchored miss → NK" rule already applied correctly.
+`referential_equality.foo`'s baseline promoted, einmo suite 169/169 green. (2) Creation-vs-
+integer equality is correctly `NotEqual`, confirmed — every integer is itself a creation, so a
+new creation can never equal one, decidably; the plan text (not the code) was wrong and has been
+corrected. Phase 3 now has exactly one open item remaining: no dedicated `default_equal`
+truth-table unit tests exist yet. (Earlier today: reconciled checkboxes against actual code
+state — see the "⛔ STATUS SUMMARY" near the top of this file — Phase 2 was fully implemented
+but showing all-unchecked, corrected; Phase 4 verified genuinely not started; fixed a
+two-part bug in bare unanchored `?pattern`/`?=pattern` search outside any existing checkbox,
+with two new regression tests; removed a stale 2026-07-30 stash-recovery block. Full history in
+`git log` on this file.)

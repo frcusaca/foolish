@@ -1071,27 +1071,17 @@ unit test asserting `Reject` (matching its name).
   renders back as `⬤`), and the FIR shape is decided — but the exact human-legible form a
   *settled creation value* takes in snapshot output is not yet fixed. It must be stable before
   any approval snapshot is signed. (Resolvable during Phase 2, when the sequencer arm is added.)
-- **`⛔ NEEDS HUMAN DECISION` — anchored value search miss on creation inequality: NK or
-  ECONSTANIC?** (2026-08-03, blocking `foop/33/creation/referential_equality.foo`.) The human
-  flagged `referential_equality.foo`'s `cross_diff = bc~=(bd.v);` line (an **anchored** forward
-  value search: `bc.v` is one creation, `bd.v` a genuinely different one, so the search
-  correctly finds nothing inside `bc`) as "should be ECONSTANIC, not NK." Traced with FVM
-  stepping: the search is confirmed `anchored=true, contexted=false` (via
-  `as_search_anchored()`), and its miss settles `Nk`. **This currently matches FOOP-23's own
-  documented rule** — `FOOP-23.md` line 211 ("Miss: … anchored: NK; unanchored: …") and line
-  1051 ("should settle ECONSTANIC for unanchored, NK for anchored") both say an *anchored*
-  search miss is NK, full stop, with no carve-out for value searches or for creation-typed
-  patterns specifically. So either (a) the human wants a **new** carve-out — e.g. "a value
-  search whose candidates are provably-searched creations should settle ECONSTANIC even when
-  anchored, because the anchor names a *container* to search inside, not a specific *item* that
-  must exist" — which would be a genuine, deliberate deviation from the current FOOP-23 rule and
-  needs to be written into the spec before implementing, or (b) a different line in the file was
-  meant, or (c) there's a reason `bc~=(bd.v)` shouldn't count as the "anchored" case the FOOP-23
-  rule intends. **Do not silently change NK-vs-ECONSTANIC settlement without resolving this —**
-  it is a core, load-bearing rule (`README.md` "NK from a search", `AGENTS.md` "NK vs ECONSTANIC
-  miss outcomes") that many other passing tests depend on; changing it needs to be a deliberate,
-  reviewed FOOP-23 amendment, not a local patch to `value_search_step`. Repro:
-  `{bc = {v = ⬤;}; bd = {v = ⬤;}; first = bc~=(bd.v);}` → `first` settles `Nk` today.
+- **Anchored value search miss on creation inequality — RESOLVED 2026-08-03: NK, confirmed
+  correct, no code change.** `referential_equality.foo`'s `cross_diff = bc~=(bd.v);` (an
+  **anchored** forward value search that correctly finds no match inside `bc`, since `bc.v` and
+  `bd.v` are different creations) settles `NK` today, and the human confirmed this is right.
+  Human's reasoning, recorded verbatim in intent: an anchored search **can** produce ECONSTANIC
+  in general (the ECONSTANIC-on-miss rule is stated generically across all search kinds), but an
+  **anchored value search specifically cannot** — "anchored search, where it would normally
+  produce ECONSTANIC, should produce NK" for the value-search case. So the general FOOP-23 rule
+  (anchored miss → NK) already covered this correctly; there is no carve-out needed and no
+  amendment to FOOP-23. `foop/33/creation/referential_equality.foo`'s baseline may be promoted
+  as-is. Repro (settles `Nk`, correctly): `{bc = {v = ⬤;}; bd = {v = ⬤;}; first = bc~=(bd.v);}`.
 - **Comprehensive sketch semantics — RESOLVED 2026-08-03.** The `same = ?=a` line's expected
   result: it now correctly lands on `c` (the statement whose value equals `a`'s creation via
   `Rc::ptr_eq`), settling `Constant`, not NK. Root cause was two-fold, both fixed this session:
@@ -1143,23 +1133,17 @@ preferred, three-canonical-strings fallback — §3); null-const mechanism (`get
 ## Last Updated
 
 **Date**: 2026-08-03
-**Updated By**: Claude Code / claude-haiku-4-5-20251001
-**Changes**: **Comparison operators (§5) marked SUPERSEDED and DEFERRED** per human direction —
-the committed implementation is reverted and a **new specification, to be supplied by the
-human**, governs the rebuild; the brane-search revision (`19fe78ef`) is superseded too, with
-more changes expected. Added a STOP banner to §5 and rewrote abstract item 5 to match; §5 prose
-retained as historical record only. Abstract item 4 rewritten to state the **composition**
-design plainly: `system.foo` is the root brane holding the user program as a member named
-`program`, so the program's root brane is **no longer its own parent**. Added "**The FVM returns
-the `program` member**" to §4 — extraction happens **in Rust via `stmt_at(idx)`** (FOOP-13 A2),
-not by evaluating a Foolish `#-1`/`$` search, so the return path cannot be perturbed by the
-search engine this FOOP modifies; plus a non-blocking **suggestion** to switch from positional
-to name-based lookup of `program` only if `system.foo` later grows complex. Replaced the
-"Program line numbers are preserved" paragraph: line numbers are **0-based per-brane statement
-indices**, so sibling statements in `system.foo` **cannot** renumber statements inside
-`program`'s brane — the guarantee is structural and needs no preservation logic (the prior text
-implied a hazard that cannot occur). Acked the `@Agents` note on `OUT_DIR` (retained, typo
-fixed) — `build.rs` already copies; the outstanding work is the compile-time `include_str!`.
+**Updated By**: Claude Code / claude-opus-5
+**Changes**: Resolved the anchored-value-search-miss open question: `NK` is correct, no code
+change — an anchored search can produce ECONSTANIC in general, but an anchored *value* search
+specifically cannot, so the general FOOP-23 "anchored miss → NK" rule already applied.
+`referential_equality.foo`'s baseline promoted (einmo suite 169/169 green). Earlier the same
+day: marked comparison operators (§5) SUPERSEDED/DEFERRED pending a new human-supplied spec;
+stated the `system.foo` **composition** design in abstract item 4 (root brane holding the user
+program as a member named `program`, extracted in Rust via `stmt_at(idx)`, not a Foolish
+search); resolved the `same = ?=a` open question (creation-reference value search now correctly
+finds its referent, two-part fix in `check_value_pattern_ready`/`default_equal`, two new
+regression tests). Full history in `git log` on this file.
 
 **Date**: 2026-08-02
 **Updated By**: Sisyphus / z-ai/glm-5.2
