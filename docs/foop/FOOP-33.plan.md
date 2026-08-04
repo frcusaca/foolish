@@ -63,7 +63,7 @@ exact evidence). Current real status, top to bottom:
 | 4 — Null-characterized constants | ❌ **verified not started** — no NF/ancestral-conflict/poison-scope/concatenation-collision code exists anywhere |
 | 5 — `system.foo` composition | ❌ not started. Design **superseded** from the original "ancestral prelude" (system.foo as parent brane) to a **composition** model per 2026-08-03 human direction: `system.foo` is the root brane, the user's program is a **member** named `program`, the FVM returns it via `stmt_at(idx)` in Rust — not a Foolish search. See FOOP-33.md §4 for the corrected design; this phase's task list below still describes the superseded ancestral-prelude approach and needs rewriting to match before implementation starts. |
 | 5.5 — Sequencer renders named creations | ❌ not started, depends on 5 |
-| 6 — Comparison operators | ⛔ **BLOCKED, mid-discussion** — reverted (was returning placeholder `1`/`0`); design has changed twice in one day (infix, then back to postfix that evening) — see FOOP-33.md §5.0's evening revision banner. Current: postfix `<<#-2>> < <<#-1>>`, a new `system_foo.rs` Rust module shared across `'lt`/`'gt`/`'le`/`'ge`/`'eq` differing only in the op step, brane concatenation involved. The exact mechanism bringing `'lt` and its operands into one brane is **not yet confirmed** — session paused before pinning it down. See the STOP gate at the head of Phase 6. |
+| 6 — Comparison operators | ⛔ **BLOCKED, design settled tonight, no code yet** — reverted (was returning placeholder `1`/`0`); design converged through several exchanges to: postfix `<<#-2>> < <<#-1>>` in an ordinary brane literal (`{1, 2, 'lt}`, **no concatenation**), extracted via `$` (`comparison_result =$ {1, 2}'lt` or `{1, 2, 'lt}$` — the brane literal alone is not the full expression, it's the vessel the tail-read pulls the boolean out of). `'lt` resolved via ordinary ancestral search into `system.foo` (same as `'True`), then the existing **detachment/recoordination** mechanism (`AGENTS.md` "Detachment and Coordination") lets its previously-unresolved `#-2`/`#-1` lookups find real neighbors once recoordinated into the user's brane. A new `system_foo.rs` Rust module holds shared FIR logic across `'lt`/`'gt`/`'le`/`'ge`/`'eq`, differing only in the op step. See FOOP-33.md §5.0's evening revision banner for the full transcript. Not yet re-verified against a live trace — needs Phase 5 (`system.foo` composition) implemented first to test against. See the STOP gate at the head of Phase 6. |
 | 7 — Docs/Tests | 🟡 partial, done piecemeal, not formally tracked |
 | 7R — Phase 3 value-search regression repair | ✅ done (earlier session) |
 | 8 — Merge | ❌ not started |
@@ -404,40 +404,48 @@ Foolish resolves names — through search, not stored metadata.
 
 > ## ⛔ STOP — INSPECT THE NEW SPECIFICATION BEFORE IMPLEMENTING ⛔
 >
-> **Do NOT implement any part of Phase 6 from the prose below.** On 2026-08-03 the human
-> dictated a **new specification** for the comparison operators — see **FOOP-33.md §5.0 "New
-> design"**, then its **evening revision** further down §5.0 — see **FOOP-33.md §5.0 "New
-> design (2026-08-03, human-dictated)"**. It supersedes the prose in this phase (the `19fe78ef`
-> brane-search revision) and the originally-reverted token-level design.
+> **Do NOT implement any part of Phase 6 from the prose below.** The design is settled — see
+> **FOOP-33.md §5.0's evening revision banner** ("REVISED AGAIN, SAME DAY") for the full,
+> human-confirmed design and its reasoning. Summary:
 >
-> **Required before implementing:** read FOOP-33.md §5.0 in full, **including the evening
-> revision banner** ("REVISED AGAIN, SAME DAY"). **Placement is POSTFIX, not infix** — the
-> infix decision (`<<#-1>>`/`<<#+1>>` straddling the operator, `{1, 'lt, 3}`) was itself
-> reverted the same evening. Current design: `<<#-2>> < <<#-1>>`, both operands before `'lt`
-> (postfix), the same shape as the plan's prior `19fe78ef` revision — **but** with a new Rust
-> module structure (`system_foo.rs`, one shared shape per comparison, differing only in the op
-> step) and brane concatenation involved in how `'lt` reaches the same brane as its operands.
-> A concrete usage example was given (`comparison_result =$ {1, 2}'lt`) and partially traced by
-> the agent against the existing `=$` binary-operator mechanism, but **the exact mechanism by
-> which `'lt` and the user's operands end up in the same brane was not confirmed before the
-> session paused** — this is flagged explicitly in the FOOP-33.md note as unconfirmed agent
-> inference. Resume the discussion with the human before writing any code.
+> - **Placement is postfix**: `<<#-2>> < <<#-1>>`, both operands before `'lt`, same shape as
+>   the plan's prior `19fe78ef` revision (the infix decision from earlier the same day was
+>   itself reverted).
+> - **No brane concatenation.** `{1, 2, 'lt}` is one ordinary brane literal, written directly.
+> - **`'lt` resolves via ordinary ancestral search into `system.foo`**, same as `'True`. The
+>   FVM does not special-case the name `'lt` at parse time.
+> - **Detachment and recoordination — existing machinery, not new.** `'lt`'s `#-2`/`#-1`
+>   lookups settle ECONSTANIC inside `system.foo` alone (no valid neighbors there); once the
+>   reference is detached/recoordinated into the user's brane (the same mechanism documented
+>   under "Detachment and Coordination" in `AGENTS.md`), those lookups find real neighbors —
+>   `1` and `2` — and the comparison computes.
+> - **The result is read out with `$`**: `comparison_result =$ {1, 2}'lt` or `{1, 2, 'lt}$` —
+>   the brane literal by itself is not the full expression; `'lt`'s computed boolean becomes
+>   the brane's tail, which `$` extracts.
+> - **New Rust module**: `system_foo.rs` in `foolish-ubca`, one shared shape (operand lookup +
+>   settling logic, possibly reusing `OperatorFir`'s existing structure) across `'lt`/`'gt`/
+>   `'le`/`'ge`/`'eq`, differing only in the Rust comparison run in the op step.
+>
+> **Not yet implemented or independently re-verified against a live FVM trace** (design
+> reached through discussion, no code written) — `'lt` genuinely needs Phase 5's `system.foo`
+> composition to exist before it can be tested against. Implement Phase 5 first; return here
+> once it's in place and confirm the detachment/recoordination read against a real trace before
+> trusting it further.
 >
 > **Ordering (human-directed):** (1) all pre-existing tests pass — **done**, suite green as
 > of 2026-08-03. (2) `'True`/`'False` introduced via the `system.foo` composition (Phase 5).
 > (3) *only then* comparisons, per §5.0.
 >
 > The prose below this point is retained as a historical record of the superseded
-> `19fe78ef` design, not as an instruction — though note it is now much CLOSER to the current
-> postfix design than the (now also superseded) infix revision was; do not assume it is safe
-> to implement from directly even so — confirm against FOOP-33.md §5.0's evening revision first.
+> `19fe78ef` design, not as an instruction — it is close to, but not identical with, the
+> current design; confirm against FOOP-33.md §5.0's evening revision before using it.
 
-- [ ] **GATE: resume discussion with the human on FOOP-33.md §5.0's evening revision
-      (postfix `'lt`/`'gt`/`'le`/`'ge`/`'eq` via `<<#-2>>`/`<<#-1>>`, a new `system_foo.rs`
-      Rust module, brane concatenation) — the exact mechanism bringing `'lt` and its operands
-      into the same brane is not yet confirmed. Do not implement from either superseded
-      placement (the old postfix prose below, or the reverted infix design) without that
-      confirmation.**
+- [ ] **GATE: implement Phase 5 (`system.foo` composition) first; then implement Phase 6 per
+      FOOP-33.md §5.0's evening revision** — postfix `'lt`/`'gt`/`'le`/`'ge`/`'eq` via
+      `<<#-2>>`/`<<#-1>>`, ordinary ancestral search into `system.foo` (no concatenation),
+      detachment/recoordination to resolve the operand lookups, `$`-extraction of the result,
+      new `system_foo.rs` Rust module. Confirm the detachment/recoordination behavior against
+      a live trace once `system.foo` exists to test against, before trusting the design further.
 
 **Design change.** Comparison operators are no longer infix `\o<`/`\o>`/`\o<=`/`\o>=`/`\o==`
 parsed at the token level. Instead, `system.foo` defines null-characterized creations `'lt`,
@@ -614,15 +622,16 @@ is no longer syntactic sugar; it is brane search into system definitions.
 
 **Date**: 2026-08-03 (evening)
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Phase 6 gate rewritten — the comparison-operator design changed again the same
-evening: **postfix again** (`<<#-2>> < <<#-1>>`, reverting the infix decision from earlier in
-the day), a new shared `system_foo.rs` Rust module for `'lt`/`'gt`/`'le`/`'ge`/`'eq`, and brane
-concatenation involved in reaching the operands. The exact mechanism is **not yet confirmed** —
-flagged in FOOP-33.md §5.0 as unconfirmed agent inference from a usage example
-(`comparison_result =$ {1, 2}'lt`); do not implement without resuming the discussion. Status
-summary table's Phase 6 row updated to match. Earlier the same day: human resolved both open
-decisions from the checkbox reconciliation — (1) anchored value-search-miss on creation
-inequality is correctly `NK`, `referential_equality.foo` promoted, einmo suite 169/169 green;
-(2) creation-vs-integer equality is correctly `NotEqual` (plan text was wrong, code was right;
+**Changes**: Phase 6 gate rewritten — the comparison-operator design **settled** through
+discussion the same evening: postfix again (`<<#-2>> < <<#-1>>`), **no brane concatenation**
+(`{1, 2, 'lt}` is one ordinary brane literal), `'lt` resolved via ordinary ancestral search
+into `system.foo` (same as `'True`), the existing detachment/recoordination mechanism
+resolves its operand lookups once recoordinated into the user's brane, result extracted with
+`$`. New shared `system_foo.rs` Rust module for `'lt`/`'gt`/`'le`/`'ge`/`'eq`. Not yet
+implemented — needs Phase 5's `system.foo` composition first to test against. Status summary
+table's Phase 6 row updated to match. Earlier the same day: human resolved both open decisions
+from the checkbox reconciliation — (1) anchored value-search-miss on creation inequality is
+correctly `NK`, `referential_equality.foo` promoted, einmo suite 169/169 green; (2)
+creation-vs-integer equality is correctly `NotEqual` (plan text was wrong, code was right;
 corrected). Phase 3 now has exactly one open item: missing `default_equal` truth-table unit
 tests. Full history in `git log` on this file.

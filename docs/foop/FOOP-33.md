@@ -502,49 +502,62 @@ prior brane-search revision (`19fe78ef`), both of which used `<<#-1>>`/`<<#-2>>`
 operands before the operator, postfix placement like `{1, 3,}'lt$`. The postfix form is
 superseded; infix placement is the design going forward.
 
-> ## ⛔ REVISED AGAIN, SAME DAY (2026-08-03, evening) — placement reverts to postfix
+> ## ⛔ REVISED AGAIN, SAME DAY (2026-08-03, evening) — postfix, no concatenation needed
 >
 > Later the same day the human reverted the infix decision above: **`'lt` is postfix again**,
 > `<<#-2>> < <<#-1>>` — both operands before the operator, same shape as the original
-> `19fe78ef` revision. New elements this round, **confirmed** by the human:
+> `19fe78ef` revision. The design converged over three further exchanges to something simpler
+> than any earlier draft, **confirmed by the human**:
 >
-> - **Rust module structure**: `'lt` (and `'gt`/`'ge`/`'le`/`'eq`) stay declared as ordinary
->   creations in `system.foo` (the `.foo` source is unchanged: `'lt = ⬤` etc.). On the Rust
->   side, a new `system_foo.rs` module in `foolish-ubca` holds a brane/FIR for each of the five,
->   sharing "mostly the same code except for the op step" — i.e. one common structure (operand
->   lookup via `#-2`/`#-1`, settling/constanic-gating logic — likely close to, or reusing,
->   `OperatorFir`'s existing shape at `fir_kinds.rs:522`) with the Rust comparison (`<`, `>`,
->   `<=`, `>=`, `==`) as the per-kind difference, run once both operands (`#-2`, `#-1`) have
->   become constanic — "constanic of course renders the comparison constanic."
-> - **Brane concatenation is involved**, resolving the position-relativity problem the infix
->   design had (whether `#-1`/`#+1` are relative to `system.foo`'s own brane or the user's
->   brane where `'lt` is actually used) — the human's words: "since we're using brane
->   concatenation and postfix, this may not be an issue any more."
-> - **A concrete usage example was given**: `comparison_result =$ {1, 2}'lt`. Traced against
->   the existing codebase (not the human's confirmation — this part is the agent's own
->   analysis, flag accordingly): `=$` is **not** a new token. It is the existing binary `$`
->   operator (`fir_kinds.rs:675`, `"$" if children.len() == 2`), which the sequencer already
->   detects and round-trips as `A =$ B` display sugar (`foolish-core/src/sequencer.rs:639-655`,
->   confirmed live in `regression/disappearing_brane_statements.foo`: `d =$ 4` → `d =$ ???
->   (4 is not a brane)`, i.e. `d = 4$` requires `4` to be a brane and fails because it isn't).
->   The first operand of this `$` is a self-referential unanchored `#-1` index — i.e. the LHS
->   name becomes addressable *from inside* the RHS expression by relative position. Under this
->   reading, `comparison_result =$ {1, 2}'lt` means: `{1, 2}'lt` must evaluate to a **brane**
->   (required by the existing `$`-operator's "RHS must be a brane" rule) whose **tail** (`$`) is
->   the comparison result; `'lt`'s mechanism (searching into or concatenating with `{1,2}`,
->   running `#-2 < #-1`, appending the `'True`/`'False` result) is what produces that brane's
->   tail; `comparison_result`'s own `#-1` self-reference is how it becomes concatenable/
->   addressable alongside `{1,2}`'s own elements, which is plausibly the "brane concatenation"
->   referenced above.
+> **No brane concatenation is needed.** The human's first framing this evening mentioned
+> concatenation; a follow-up simplified it away. `{1, 2, 'lt}` is an **ordinary brane literal**
+> — the user writes `'lt` as its third element directly, or reaches it however they'd write any
+> reference. No merge of two separately-built branes; there is only ever one brane here. The
+> comparison's actual value is still read out with `$` (tail), same as `comparison_result =$
+> {1, 2}'lt` or `{1, 2, 'lt}$` — the brane literal alone is not the full expression, it's the
+> vessel `'lt`'s computed result becomes the tail of.
 >
-> **This last paragraph is the agent's own inference, not confirmed by the human** — it was not
-> independently verified against a working example or FVM trace before this note was written
-> (session paused for the night). Before implementing: confirm this reading is correct, and
-> pin down exactly how `'lt` gets brought into the same brane as its operands (does `'lt`
-> resolve via ordinary ancestral search from inside `{1,2}`, the same way `'True` already does,
-> or does writing `{1,2}'lt` trigger an actual `ConcatenationFir`-style merge between `{1,2}`
-> and whatever brane holds `'lt`?). Do not implement Phase 6 from this note alone — resume the
-> discussion with the human first.
+> **`'lt` resolves via ordinary search, same as `'True`.** `'lt` is a plain name reference. It
+> resolves **ancestrally**, up into `system.foo`, exactly like `'True`/`'False` already do —
+> there is no parse-time or name-based special-casing that recognizes `'lt` before search runs.
+> What lives at `system.foo`'s `'lt` is not a plain `CreationFir` but the actual comparison
+> logic — "that foolishness is put into the system brane by fvm+system_foo.rs" — built and
+> installed there at FVM construction time (the human's phrase), likely by the same `system.foo`
+> composition mechanism as Phase 5 (see the composition banner above).
+>
+> **Detachment and recoordination — the existing mechanism, not new machinery.** When the
+> search finds `'lt` inside `system.foo`, the ordinary reference-resolution path applies (see
+> "Detachment and Coordination" in `AGENTS.md`/this doc's Searches section): a `constanic_clone`
+> is made, **detached** from `'lt`'s original AB/IB (`system.foo`'s own context, where `#-2`/
+> `#-1` have no valid neighbors and would settle ECONSTANIC — "may gain value via
+> recoordination", per the ECONSTANIC definition), then **recoordinated** into the new AB/IB —
+> the user's own brane, `{1, 2, 'lt}`, where it actually appears. Recoordination is precisely
+> "previously failed name searches can now resolve in the new context" (`AGENTS.md`): `#-2`/
+> `#-1`, previously unresolved, now find real neighbors — `1` and `2` — "it coordinates into a
+> new brane, gets parameters, and computes result" (the human's phrase). This reuses existing,
+> already-implemented machinery; the only genuinely new pieces are `system_foo.rs`'s FIR
+> definitions themselves.
+>
+> **Rust module structure**: `'lt`/`'gt`/`'le`/`'ge`/`'eq` stay declared as ordinary creations
+> in `system.foo`'s `.foo` source (`'lt = ⬤` etc. — unchanged). A new `system_foo.rs` module in
+> `foolish-ubca` holds a brane/FIR for each of the five, sharing "mostly the same code except
+> for the op step" — one common structure (operand lookup via `#-2`/`#-1`, settling/
+> constanic-gating logic — possibly reusing `OperatorFir`'s existing shape, `fir_kinds.rs:522`)
+> with the Rust comparison (`<`, `>`, `<=`, `>=`, `==`) as the per-kind difference, run once
+> both operands are constanic — "constanic of course renders the comparison constanic."
+>
+> **`.value()` is the boolean itself, not a brane.** `{1, 2, 'lt}$` reads the brane's tail
+> (`'lt`, the last statement) and asks for *its* value; `'lt`'s settled value is the freshly
+> produced `'True`/`'False` creation directly — not a brane wrapping it. This is the same shape
+> `IndexFir`/tail resolution already uses for any statement (follow `.value()`/
+> `settled_result()` through to whatever the tail statement's body resolves to); no new
+> tail-handling logic is implied.
+>
+> This design is now considered settled by the human through this exchange. Before
+> implementing: this note is a transcript of the discussion, not yet re-verified by the agent
+> against a live FVM trace (no code written tonight) — confirm the detachment/recoordination
+> read is correct by tracing a minimal `system.foo`-with-`'lt` example once Phase 5's
+> composition exists, since `'lt` genuinely needs `system.foo` installed to test against.
 
 ---
 
@@ -1178,20 +1191,22 @@ preferred, three-canonical-strings fallback — §3); null-const mechanism (`get
 
 **Date**: 2026-08-03 (evening)
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: §5.0 comparison-operator design revised again, same day: placement reverts from
-infix back to **postfix** (`<<#-2>> < <<#-1>>`), with a new Rust structure — `'lt`/`'gt`/`'le`/
-`'ge`/`'eq` stay declared as creations in `system.foo`'s `.foo` source, but a new
-`system_foo.rs` module holds shared FIR logic (differing only in the op step) — and **brane
-concatenation** involved in bringing `'lt` and its operands into the same brane. A concrete
-usage example (`comparison_result =$ {1, 2}'lt`) was given and partially traced by the agent
-against the existing `=$` binary-operator mechanism (`fir_kinds.rs:675`,
-`sequencer.rs:639-655`), but the exact mechanism connecting `'lt` to its operands' brane was
-**not confirmed** before the session paused — flagged explicitly as unconfirmed agent
-inference, not to be implemented from without resuming the discussion. Earlier the same day:
-resolved the anchored-value-search-miss open question (`NK` correct, no code change;
-`referential_equality.foo` promoted); marked comparison operators SUPERSEDED/DEFERRED; stated
-the `system.foo` composition design in abstract item 4; resolved the `same = ?=a` open
-question. Full history in `git log` on this file.
+**Changes**: §5.0 comparison-operator design **settled** through discussion, same evening:
+placement reverts from infix back to **postfix** (`<<#-2>> < <<#-1>>`); **no brane
+concatenation** — `{1, 2, 'lt}` is one ordinary brane literal; `'lt` resolves via **ordinary
+ancestral search** into `system.foo`, same as `'True`, with no parse-time special-casing;
+the existing **detachment/recoordination** mechanism (`AGENTS.md` "Detachment and
+Coordination") is what lets `'lt`'s previously-ECONSTANIC `#-2`/`#-1` lookups resolve once
+recoordinated into the user's brane — confirmed against `AGENTS.md`'s own wording
+("previously failed name searches can now resolve in the new context"); the result is read
+out with `$` (`comparison_result =$ {1, 2}'lt` or `{1, 2, 'lt}$` — the bare brane literal is
+not the full expression). New Rust module `system_foo.rs` holds shared FIR logic across
+`'lt`/`'gt`/`'le`/`'ge`/`'eq`, differing only in the op step. Not yet implemented or
+re-verified against a live trace — `'lt` needs Phase 5's `system.foo` composition to exist
+first. Earlier the same day: resolved the anchored-value-search-miss open question (`NK`
+correct, no code change; `referential_equality.foo` promoted); marked comparison operators
+SUPERSEDED/DEFERRED; stated the `system.foo` composition design in abstract item 4; resolved
+the `same = ?=a` open question. Full history in `git log` on this file.
 
 **Date**: 2026-08-02
 **Updated By**: Sisyphus / z-ai/glm-5.2
