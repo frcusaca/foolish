@@ -1154,6 +1154,48 @@ unit test asserting `Reject` (matching its name).
   `..._rejects_distinct_creation` (`fir_kinds.rs`, `mod tests`). Per human direction, the
   existing "unsupported non-integer/non-creation pattern → NK" guard is otherwise **unchanged**
   and intentionally still rejects e.g. a brane-valued pattern.
+- **NEW 2026-08-04 — `system.foo` composition shifts the `MAX_STEPS` iteration-budget
+  boundary for programs that deliberately never settle, breaking a FROZEN, `verified/`-signed
+  FOOP-62 baseline (`foop/62/infinite_loop.foo.einmo`).** Composition (this section, §4) is now
+  implemented and wired into `UbcaEvaluator::evaluate` (the crate's one production entry
+  point). It composes cleanly against the ENTIRE rest of the einmo suite — 279/280 pre-existing
+  tests match their `checked/` baselines byte-for-byte, unchanged — except this one. The test's
+  input (`f1 = { f1 }; stuck = f1;`) is *designed* to loop forever (`f1` searches for itself),
+  and its baseline pins the EXACT NYES snapshot captured the instant `step_to_settled`'s
+  `MAX_STEPS = 10_000` budget is exhausted (`checked/`/`verified/` both show root
+  `NK(ITERATION-EXCEEDED, Iteration exceeded 9999)`). Composing `system.foo` (currently 2
+  statements, `'True`/`'False`) as the root ancestor, plus wrapping the user's program in a
+  `program = {...}` statement, adds extra atomic step-work that interleaves with the user
+  program's own task-queue draining (each top-level `.step()` call performs ONE atomic action
+  at the deepest pending task, so the interleaving order — not a flat step count — determines
+  which statement's progress a given call advances). With composition, the SAME test now
+  produces root `BRANING` (not yet exhausted) instead of `NK(ITERATION-EXCEEDED...)` — the
+  9999-step ceiling is reached at a genuinely different point in the tree's evaluation because
+  `system.foo`'s own settling now consumes some of that budget.
+
+  **Why this is not silently fixable and needs a human decision**: (1) The divergent baseline
+  has a `verified/` twin — AGENTS.md's hard promote rule requires a human reviewer's key before
+  touching it; I cannot resolve this myself. (2) Bumping `MAX_STEPS` by a guessed constant is
+  not principled — I traced (did not assume) that step consumption depends on task-queue
+  interleaving order between `system.foo`'s statements and the user program's, not a separable
+  "prefix cost" I can compute and add back exactly; a guessed bump might restore THIS test's
+  exact snapshot by luck, or might not, and either way sets no principled precedent for Phase 6
+  (`system.foo` grows to 7 statements, changing this again). (3) The test's entire purpose is to
+  pin exact behavior at the iteration-budget edge — by construction, ANY change to per-statement
+  step overhead anywhere in the composite tree will eventually re-shift this boundary again
+  (Phase 6's `system.foo` growth included), so a one-time fix does not close the issue
+  permanently; it needs either (a) a design decision that iteration-budget-edge snapshots are
+  not meant to be exact-count-stable across FOOP-33 phases (and the test/its `verified/` twin
+  re-signed to accept `BRANING` as the new expected state, or the input changed to be robust to
+  budget shifts), or (b) `MAX_STEPS` decoupled from `system.foo`'s overhead somehow (e.g.
+  budgeting `system.foo`'s settling separately, outside the count that governs the user
+  program), which is itself a design change beyond what Phase 5's spec describes.
+
+  **Status**: Composition (Phase 5) is otherwise complete and verified — see the plan's Phase 5
+  section for the full test suite evidence. This ONE einmo divergence is left unresolved,
+  `output/` reverted to match `checked/` (not promoted), and the underlying implementation is
+  NOT changed to work around it. Flagging here per the task's explicit escalation instruction
+  rather than guessing at `MAX_STEPS` or promoting over a `verified/` baseline.
 - **TODO: Document the philosophical centrality of equality.** Equality is among the most
   fundamental concepts in Foolish. The creation postulate itself defines identity through
   uniqueness — when we create an idea with `⬤`, nothing else is equal to it; that uniqueness
@@ -1189,24 +1231,21 @@ preferred, three-canonical-strings fallback — §3); null-const mechanism (`get
 
 ## Last Updated
 
-**Date**: 2026-08-03 (evening)
-**Updated By**: Claude Code / claude-opus-5
-**Changes**: §5.0 comparison-operator design **settled** through discussion, same evening:
-placement reverts from infix back to **postfix** (`<<#-2>> < <<#-1>>`); **no brane
-concatenation** — `{1, 2, 'lt}` is one ordinary brane literal; `'lt` resolves via **ordinary
-ancestral search** into `system.foo`, same as `'True`, with no parse-time special-casing;
-the existing **detachment/recoordination** mechanism (`AGENTS.md` "Detachment and
-Coordination") is what lets `'lt`'s previously-ECONSTANIC `#-2`/`#-1` lookups resolve once
-recoordinated into the user's brane — confirmed against `AGENTS.md`'s own wording
-("previously failed name searches can now resolve in the new context"); the result is read
-out with `$` (`comparison_result =$ {1, 2}'lt` or `{1, 2, 'lt}$` — the bare brane literal is
-not the full expression). New Rust module `system_foo.rs` holds shared FIR logic across
-`'lt`/`'gt`/`'le`/`'ge`/`'eq`, differing only in the op step. Not yet implemented or
-re-verified against a live trace — `'lt` needs Phase 5's `system.foo` composition to exist
-first. Earlier the same day: resolved the anchored-value-search-miss open question (`NK`
-correct, no code change; `referential_equality.foo` promoted); marked comparison operators
-SUPERSEDED/DEFERRED; stated the `system.foo` composition design in abstract item 4; resolved
-the `same = ?=a` open question. Full history in `git log` on this file.
+**Date**: 2026-08-04
+**Updated By**: Claude Code / claude-sonnet-5
+**Changes**: Phase 5 (`system.foo` composition, §4) implemented — new `foolish-ubca/src/
+system_foo.rs` module (`compose_program_with_system`, `program_result`), wired into
+`UbcaEvaluator::evaluate`, the crate's one production entry point. Verified against a live
+trace that a bare `True` (no leading `'`) can never resolve to `system.foo`'s `'True`, by
+design (matcher compares `searchable_name()` unconditionally — confirms the spec's own §3
+wording at line ~324, not a new finding but the first live-trace confirmation). Added a new,
+dated Open Questions entry: composition shifts the `MAX_STEPS` iteration-budget boundary for
+programs that deliberately never settle, breaking ONE frozen `verified/`-signed FOOP-62
+baseline (`foop/62/infinite_loop.foo.einmo`) out of the entire suite — every other test
+(279/280, including all `foop/33/*`) matches byte-for-byte, unchanged. Not promoted, not
+worked around with a guessed `MAX_STEPS` bump (traced, not assumed, that step consumption
+depends on task-queue interleaving order, not a separable prefix cost); left for human
+decision per the entry's full reasoning. Full history in `git log` on this file.
 
 **Date**: 2026-08-02
 **Updated By**: Sisyphus / z-ai/glm-5.2

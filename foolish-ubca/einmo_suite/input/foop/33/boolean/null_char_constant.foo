@@ -1,0 +1,11 @@
+{
+	!! FOOP-33 §4: 'True is a null-characterized name constant in system.foo.
+	!! A user brane may re-state it to an EQUAL value (permitted -- same
+	!! creation, resolved via ordinary ancestral search) but a conflicting
+	!! redefinition (a different value) refuses -- get_value() becomes NF
+	!! ("'True not-foolish") instead of the written RHS.
+	restate = 'True;
+	'True = 'True;
+	conflict = 'True;
+	'True = 3;
+}

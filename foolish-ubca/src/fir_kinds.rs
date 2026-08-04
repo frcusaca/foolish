@@ -856,14 +856,20 @@ impl StatementFir {
     }
 }
 
-/// The value a statement PRESENTS for null-const comparison: `settled_result()`
-/// (the NF refusal NK, if this statement was itself already refused) if set,
-/// else the raw written body. Shared by `StatementFir::check_null_const_conflict`
-/// (the ancestral/same-brane path) and `ConcatenationFir`'s merge-collision path
-/// (FOOP-33 §4) — poisoning must be transitive: comparing against an ALREADY-
-/// refused prior statement's original RHS would let a later-but-equal-to-the-
-/// invalid-one redefinition wrongly slip through.
-fn statement_value_for_comparison(stmt: &FirRef) -> Option<FirRef> {
+/// The value a statement PRESENTS — `settled_result()` (the NF refusal NK, if
+/// this statement was itself already refused by the null-const rule) if set,
+/// else the raw written body. This is the ONE place "what does this statement
+/// actually resolve to" is decided; every reader of a statement's value must
+/// go through it rather than reaching into `foolish_children().first()`
+/// directly, or it will present the pre-refusal RHS instead of the NF NK.
+/// Used by `StatementFir::check_null_const_conflict` and
+/// `ConcatenationFir::apply_null_const_rule_to_merged_stmt` (FOOP-33 §4 —
+/// poisoning must be transitive: comparing against an ALREADY-refused prior
+/// statement's original RHS would let a later-but-equal-to-the-invalid-one
+/// redefinition wrongly slip through) and by `evaluator.rs`'s
+/// `proto_to_core_fir_inner` (the sequencer/einmo rendering path — without
+/// this, the NF refusal is enforced internally but never actually rendered).
+pub(crate) fn statement_value_for_comparison(stmt: &FirRef) -> Option<FirRef> {
     let borrowed = stmt.borrow();
     borrowed
         .settled_result()

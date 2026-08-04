@@ -61,7 +61,7 @@ exact evidence). Current real status, top to bottom:
 | 2 — Creation `⬤`/`{*}` | ✅ **fully done** — was showing all-unchecked, now corrected; every item verified present in code |
 | 3 — `default_equal` | ✅ **fully done** (2026-08-04) — 9 direct truth-table unit tests added; creation-vs-integer confirmed `NotEqual` per human ruling 2026-08-03 (every integer is itself a creation). |
 | 4 — Null-characterized constants | ✅ **complete** (2026-08-04) — ancestral/same-brane conflict detection via `StatementFir` self-check (new `self_weak` field), NF via `settled_result()` override, concatenation collision handling with transitive poisoning. 14 new unit tests. See the phase's design notes for two architectural findings made during implementation (self-reference plumbing, the `NkFir::nk` pre-constanic bug). |
-| 5 — `system.foo` composition | ❌ not started. Design **superseded** from the original "ancestral prelude" (system.foo as parent brane) to a **composition** model per 2026-08-03 human direction: `system.foo` is the root brane, the user's program is a **member** named `program`, the FVM returns it via `stmt_at(idx)` in Rust — not a Foolish search. See FOOP-33.md §4 for the corrected design; this phase's task list below still describes the superseded ancestral-prelude approach and needs rewriting to match before implementation starts. |
+| 5 — `system.foo` composition | ⚠️ **implemented and verified (2026-08-04), ONE open finding escalated to Open Questions** — `system_foo.rs` composes `system.foo` as root with `program` as its last member, wired into the one production entry point (`UbcaEvaluator::evaluate`). Found and fixed a real bug where Phase 4's NF refusal was enforced but never rendered (4th bypass site, in `evaluator.rs`). 280/280 unit tests pass; einmo suite green except ONE frozen `verified/` FOOP-62 baseline whose exact iteration-budget snapshot composition unavoidably shifts — see the phase's own checkbox and FOOP-33.md's Open Questions for the full writeup; needs a human decision, not guessed around. |
 | 5.5 — Sequencer renders named creations | ❌ not started, depends on 5 |
 | 6 — Comparison operators | ⛔ **BLOCKED, design settled tonight, no code yet** — reverted (was returning placeholder `1`/`0`); design converged through several exchanges to: postfix `<<#-2>> < <<#-1>>` in an ordinary brane literal (`{1, 2, 'lt}`, **no concatenation**), extracted via `$` (`comparison_result =$ {1, 2}'lt` or `{1, 2, 'lt}$` — the brane literal alone is not the full expression, it's the vessel the tail-read pulls the boolean out of). `'lt` resolved via ordinary ancestral search into `system.foo` (same as `'True`), then the existing **detachment/recoordination** mechanism (`AGENTS.md` "Detachment and Coordination") lets its previously-unresolved `#-2`/`#-1` lookups find real neighbors once recoordinated into the user's brane. A new `system_foo.rs` Rust module holds shared FIR logic across `'lt`/`'gt`/`'le`/`'ge`/`'eq`, differing only in the op step. See FOOP-33.md §5.0's evening revision banner for the full transcript. Not yet re-verified against a live trace — needs Phase 5 (`system.foo` composition) implemented first to test against. See the STOP gate at the head of Phase 6. |
 | 7 — Docs/Tests | 🟡 partial, done piecemeal, not formally tracked |
@@ -438,27 +438,95 @@ module).
       }
       ```
 
-- [ ] In the evaluator, embed at compile time and keep the source string:
+- [x] In the evaluator, embed at compile time and keep the source string:
 
       ```rust
       const SYSTEM_FOO_SRC: &str = include_str!(concat!(env!("OUT_DIR"), "/system.foo"));
       ```
+      (2026-08-04 — new module `foolish-ubca/src/system_foo.rs`, `pub const SYSTEM_FOO_SRC`,
+      exactly as specified. Pinned by `system_foo::tests::system_foo_src_embeds_true_and_false`.)
 
-- [ ] **NEEDS REWRITE (composition, not ancestry).** Implicitly compose `SYSTEM_FOO_SRC` with
-      the user program as a member named `program` (not wrapped in a `'program`
-      null-characterized statement — see the banner above), before `step_to_settled`, on every
-      entry path (`foolish-ubca/src/evaluator.rs::evaluate`, REPL, CLI `run`/`step`). Not
+- [x] Implicitly compose `SYSTEM_FOO_SRC` with the user program as a member named `program`
+      (not wrapped in a `'program` null-characterized statement — see the banner above), before
+      `step_to_settled`, on the crate's one production entry path
+      (`foolish-ubca/src/evaluator.rs::UbcaEvaluator::evaluate` — the only entry path that
+      exists; CLI/REPL both go through it, there is no separate path to also update). Not
       opt-in. `system.foo`'s own AST gains one more statement, `program = {user source}`,
-      appended last; compile the combined AST as one unit → one self-rooting BraneFir. The
-      evaluator extracts and returns the `program` member's result via `stmt_at(stmt_count() -
-      1)` in Rust, not the system brane's own result and not via a Foolish search.
-- [ ] ~~Preserve the user program's line numbers~~ — **DROP, moot under composition** (see
+      appended last; compiles the combined AST as one unit → one self-rooting `BraneFir`. The
+      evaluator extracts the `program` member's result via `stmt_at(stmt_count() - 1)` in Rust
+      (`system_foo::program_result`), not the system brane's own result and not via a Foolish
+      search.
+      (2026-08-04 — `system_foo::compose_program_with_system` + `system_foo::program_result`,
+      wired into `evaluator.rs`'s `evaluate`. Pinned by 6 unit tests in `system_foo.rs`:
+      `compose_appends_program_as_last_statement`, `composed_root_is_self_rooting`,
+      `program_line_numbers_are_preserved`, `program_resolves_true_and_false_ancestrally`,
+      `ab_search_terminates_at_system_root_no_infinite_walk`,
+      `program_redefining_true_to_a_conflicting_value_is_refused`.
+
+      **Two findings from live-tracing this against the FVM (not assumed)**:
+      1. A bare `True` (no leading `'`) can NEVER resolve to `system.foo`'s `'True` — confirmed
+         by first writing a test with bare `True` and watching it settle `ECONSTANIC` (search
+         miss), then re-reading FOOP-33.md §3 line ~324 ("`'True` does not match a plainly-named
+         `True`") and fixing the test to use `'True`. This is the spec's own documented rule,
+         not a bug — but it means the plan's own prior wording "True/False resolve as ordinary
+         sibling lookups" (no quote shown) is easy to misread; the user-facing syntax IS `'True`.
+      2. **A real bug found and fixed**: the null-const rule's refusal (Phase 4) was enforced
+         internally (`StatementFir::settled_result()` correctly returned the NF `NkFir`) but was
+         NEVER RENDERED — `evaluator.rs`'s `proto_to_core_fir_inner` (`FirKind::Statement` and
+         `FirKind::Brane` arms) read `foolish_children().first()` directly, the same
+         bypass-the-refusal pattern Phase 4 had already fixed at 3 OTHER call sites in
+         `fir_kinds.rs`, but this 4th site — the actual sequencer/einmo rendering path — was
+         missed because Phase 4's own unit tests never rendered through it. Caught by writing
+         the Phase-5 approval test `foop/33/boolean/null_char_constant.foo` and observing
+         `'True=3` in the OUTPUT (should have been the NF NK) before promoting — never assumed
+         correct from the evaluator/unit-test level alone. Fixed by widening
+         `fir_kinds::statement_value_for_comparison` to `pub(crate)` and routing both
+         `evaluator.rs` sites through it. Re-ran the FULL workspace suite after the fix: no
+         other baseline shifted, confirming this bug was previously entirely unexercised
+         end-to-end (Phase 4 shipped genuinely inert at the rendering layer until now).)
+- [x] ~~Preserve the user program's line numbers~~ — **DROP, moot under composition** (see
       banner above: statement indices are per-brane, 0-based, unaffected by siblings in a
-      different brane).
-- [ ] Approval `.foo` tests: creation + identity; quote-bearing search; `True`/`False`
+      different brane). Confirmed moot, not merely assumed:
+      `system_foo::tests::program_line_numbers_are_preserved` pins that a one-line user program
+      still reports line 0.
+- [x] Approval `.foo` tests: creation + identity; quote-bearing search; `True`/`False`
       resolve as ordinary sibling lookups within `system.foo` (not `_ab_search` ancestry);
-      `'True=3` ⇒ `NK("'True redefined")` while `'True='True` permitted.
-      Generate `.snap.new`; **present to human** — never auto-accept.
+      `'True=3` ⇒ NF (`"'True not-foolish"`) while `'True='True` permitted.
+      (2026-08-04 — `foop/33/boolean/constants.foo` (`'True`/`'False` resolve to distinct
+      creations, referencing `'True` twice gives the same creation), `foop/33/boolean/
+      null_char_constant.foo` (`'True='True` permitted, `'True=3` refused with the NF NK
+      rendered in OUTPUT — the exact case that caught the rendering bug above). Both promoted
+      to `checked/` (no `verified/` twin; reviewed and justified line-by-line before
+      promoting, not auto-accepted).
+
+      **⛔ ONE UNRESOLVED FINDING, escalated to Open Questions, not silently fixed**:
+      composing `system.foo` shifts exactly WHEN the shared `MAX_STEPS = 10_000` iteration
+      budget is exhausted for programs that deliberately never settle, because per-statement
+      step work now interleaves between `system.foo`'s own settling and the user program's.
+      This broke ONE einmo baseline — `foop/62/infinite_loop.foo.einmo` — which has a
+      `verified/` twin (frozen; AGENTS.md forbids promoting over it without a human reviewer's
+      key) and pins an EXACT NYES snapshot at the moment the budget is exhausted (root
+      `NK(ITERATION-EXCEEDED,...)`); with composition the same input now shows root `BRANING`
+      (budget not yet exhausted at that point in the composite tree). Every OTHER test in the
+      suite — 279 (later 280 including the 2 new ones above) — matches byte-for-byte, unchanged.
+      Traced (not guessed) that a `MAX_STEPS` bump is not a principled one-time fix: step
+      consumption depends on task-queue interleaving order between `system.foo`'s and the
+      user's statements, not a separable flat "prefix cost," and Phase 6 will change
+      `system.foo`'s size again (2 statements → 7), re-shifting this same boundary. See
+      FOOP-33.md's Open Questions (dated 2026-08-04) for the full writeup and the two design
+      options that would actually close this (not just patch this one test). Left for human
+      decision. `output/` for this one file reverted to match `checked/`, not promoted, not
+      worked around.
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-08-04 — `cargo test -p foolish-ubca --lib`: 280 tests pass (was 274), 0 fail.
+      `cargo test --workspace`: everything green EXCEPT `run_einmo_tests`, which fails on
+      exactly the one escalated, documented FOOP-62 finding above — no other divergence.
+      `cargo fmt`/`cargo clippy -D warnings` clean on every line touched in this phase
+      (`system_foo.rs`, `evaluator.rs`, `fir_kinds.rs`'s `statement_value_for_comparison`
+      visibility widening, `lib.rs`, `compiler.rs`'s `AstnCompilerExt` visibility widening);
+      same pre-existing unrelated clippy warning as prior phases, left untouched. Phase 5 is
+      NOT declared fully green — the one FOOP-62 divergence is a real, open, human-facing
+      decision, not swept under a passing test run.)
 
 ---
 
@@ -732,17 +800,19 @@ is no longer syntactic sugar; it is brane search into system definitions.
 
 **Date**: 2026-08-04
 **Updated By**: Claude Code / claude-sonnet-5
-**Changes**: Phase 4 (null-characterized name constants) implemented and checked off in full —
-see the phase's checkboxes for complete detail, including two architectural findings made
-during implementation (verified against live FVM traces, not assumed): (1)
-`fir_op_step`/`Scope` gives a FIR no reliable way to obtain its own `FirRef`, so
-`StatementFir` gained a `self_weak` field via the established `Rc::new_cyclic` self-reference
-pattern; (2) a concatenation-merged clone built via `constanic_clone_at` from an
-already-constanic source skips `Braning` entirely, so `ConcatenationFir` needed its own,
-separate application of the null-const rule, plus a fix to `settled_result()`'s `NkFir`
-construction (was pre-constanic `Prembrionic`, silently breaking transitive poisoning across
-3+ same-name merged clones). Earlier the same day: Phase 1's last open item
-(`BraneFir.characterizations` → `Characterizations` migration) and Phase 3's last open item
-(9 direct `default_equal` truth-table unit tests) were also completed. Phases 1, 3, and 4 are
-now all fully done; Phase 5 (`system.foo` composition) is next. `cargo test --workspace` and
-`run_einmo_tests` green throughout. Full history in `git log` on this file.
+**Changes**: Phase 5 (`system.foo` composition) implemented and checked off — see the phase's
+checkboxes for complete detail. New `foolish-ubca/src/system_foo.rs` module composes
+`system.foo` as the root brane with the user's program as its last member (`program`), wired
+into the crate's one production entry point. Found and fixed a real, previously-unexercised
+bug: Phase 4's null-const NF refusal was correctly enforced internally but never actually
+rendered — a 4th bypass-the-refusal call site, in `evaluator.rs`'s core-fir conversion (the
+actual sequencer/einmo rendering path), read the raw body directly instead of going through
+`settled_result()`, same class of bug as the 3 sites Phase 4 already fixed in `fir_kinds.rs`.
+Caught by writing the Phase 5 approval test and observing the wrong OUTPUT before promoting,
+not assumed correct. One finding escalated to FOOP-33.md's Open Questions rather than silently
+worked around: composing `system.foo` shifts exactly when the shared `MAX_STEPS` iteration
+budget is exhausted for programs that deliberately never settle, breaking ONE frozen
+`verified/`-signed FOOP-62 baseline (`foop/62/infinite_loop.foo.einmo`) — every other test in
+the suite (280/281) is unaffected; not promoted, not guessed around, needs a human decision.
+Phases 1, 3, 4, and 5 (with that one documented exception) are now done; Phase 5.5 (sequencer
+renders named creations) is next. Full history in `git log` on this file.

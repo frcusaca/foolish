@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use foolish_core::fir as core_fir;
 use foolish_core::fir::{
     Alarm, AlarmLevel, AlarmSource, ConcatenationFirBuilder, ConstantIntFirBuilder,
@@ -5,6 +7,7 @@ use foolish_core::fir::{
     OperatorFirBuilder, SearchFirBuilder, StayFoolishFirBuilder, StayFullyFoolishFirBuilder,
 };
 
+#[cfg(test)]
 use crate::compiler::Compiler;
 use crate::fir_trait::{FirKind, FirRef, FirRefExt, StepReport};
 
@@ -113,20 +116,32 @@ pub struct UbcaEvaluator;
 
 impl foolish_core::Evaluator for UbcaEvaluator {
     fn evaluate(&self, source: &str) -> Result<Vec<CoreFirRef>, String> {
-        let ubca_firs =
-            Compiler::compile(source).map_err(|e| format!("Compilation failed: {}", e))?;
+        // FOOP-33 §4: system.foo is implicitly composed as the root ancestor
+        // of every program, not opt-in. The user's program becomes an
+        // ordinary member of the composite root brane, named `program`; the
+        // FVM steps the WHOLE composite to settlement, then extracts the
+        // `program` member's result structurally (never via a Foolish
+        // search) — see `system_foo::compose_program_with_system` and
+        // `system_foo::program_result`.
+        let composed_roots = crate::system_foo::compose_program_with_system(source)
+            .map_err(|e| format!("Compilation failed: {}", e))?;
 
         let scope = crate::fir_trait::Scope::empty();
         let mut results = Vec::new();
 
-        for fir_ref in &ubca_firs {
-            if let Err(alarm) = step_to_settled(fir_ref, &scope) {
+        for composed_root in &composed_roots {
+            if let Err(alarm) = step_to_settled(composed_root, &scope) {
                 let alarm_msg = alarm.to_string();
-                fir_ref.borrow().core().set_alarm_reason(alarm_msg.clone());
-                fir_ref.borrow().core().set_nyes(Nyes::Nk);
+                composed_root
+                    .borrow()
+                    .core()
+                    .set_alarm_reason(alarm_msg.clone());
+                composed_root.borrow().core().set_nyes(Nyes::Nk);
                 eprintln!("ALARM: {alarm_msg}");
             }
-            let core_fir = proto_to_core_fir(fir_ref);
+            let program_fir = crate::system_foo::program_result(composed_root)
+                .unwrap_or_else(|| Rc::clone(composed_root));
+            let core_fir = proto_to_core_fir(&program_fir);
             results.push(core_fir::fir_to_ref(core_fir));
         }
 
@@ -324,11 +339,14 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
         }
         FirKind::Statement => {
             let name = display_stmt_name(borrowed.as_stmt_searchable_name());
-            let body_fir = borrowed
-                .core()
-                .foolish_children()
-                .first()
-                .map(|c| proto_to_core_fir_inner(c, preserve_search))
+            drop(borrowed);
+            // Prefer settled_result() over the raw written body — see
+            // crate::fir_kinds::statement_value_for_comparison's doc comment
+            // (FOOP-33 §4). Without this, the null-const rule's refusal is
+            // enforced internally but never actually rendered: `'True = 3`
+            // would still SHOW `3` instead of the NF NK.
+            let body_fir = crate::fir_kinds::statement_value_for_comparison(ubca_ref)
+                .map(|c| proto_to_core_fir_inner(&c, preserve_search))
                 .unwrap_or_else(|| NkFirBuilder::new("empty statement").build());
             NormalBraneFirBuilder::new()
                 .statement(name, body_fir)
@@ -341,13 +359,12 @@ fn proto_to_core_fir_inner(ubca_ref: &FirRef, preserve_search: bool) -> core_fir
                 .foolish_children()
                 .iter()
                 .map(|c| {
-                    let cb = c.borrow();
-                    let name = display_stmt_name(cb.as_stmt_searchable_name());
-                    let body_fir = cb
-                        .core()
-                        .foolish_children()
-                        .first()
-                        .map(|c| proto_to_core_fir_inner(c, preserve_search))
+                    let name = display_stmt_name(c.borrow().as_stmt_searchable_name());
+                    // Prefer settled_result() over the raw written body — see
+                    // crate::fir_kinds::statement_value_for_comparison's doc
+                    // comment (FOOP-33 §4).
+                    let body_fir = crate::fir_kinds::statement_value_for_comparison(c)
+                        .map(|c| proto_to_core_fir_inner(&c, preserve_search))
                         .unwrap_or_else(|| NkFirBuilder::new("empty body").build());
                     (name, body_fir)
                 })

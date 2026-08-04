@@ -422,7 +422,7 @@ fn build_stmts(asts: Vec<Astn>, parent: &Weak<RefCell<dyn Fir>>, under_sff: bool
 /// The sequencer renders a statement named `???` WITHOUT a `name=` prefix (FOOP-62 #19).
 pub(crate) const ANON_STMT_NAME: &str = "???";
 
-trait AstnCompilerExt {
+pub(crate) trait AstnCompilerExt {
     fn compile_standalone(self) -> anyhow::Result<FirRef>;
 
     fn build_as_statement(
