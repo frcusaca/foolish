@@ -2920,6 +2920,42 @@ impl CreationFir {
             core: ProtoBrane::new(vec![], parent, Nyes::Independent),
         }))
     }
+
+    /// The name this creation reports for itself, if any (FOOP-33).
+    ///
+    /// A creation names itself **only when it is the entire right-hand side of
+    /// a named statement**. Concretely: its parent must be a statement, and
+    /// this creation must be that statement's body. Then the statement's full
+    /// characterized name is returned — `'a` for a null-characterized name,
+    /// leading quote included, exactly as every name-search matches it.
+    ///
+    /// A creation sitting *inside* a larger expression reports `None`: in
+    /// `'a = 1 + ⬤` the parent is the `+` operator, and the statement's name
+    /// belongs to the whole `1 + ⬤` expression, not to the creation within it.
+    ///
+    /// This works even for a creation reached through a search from another
+    /// brane. A constanic clone of an `Independent` creation returns the *same*
+    /// `Rc` (FOOP-33 "Gotcha #2"), so the parent chain set at original
+    /// construction survives detachment and recoordination at the reference
+    /// site — the creation still finds its own defining statement. Creation
+    /// identity is pointer identity, so the body check uses `Rc::ptr_eq`.
+    ///
+    /// `self_ref` must be the `FirRef` wrapping `self`; the parent is reached
+    /// through it, following the same convention as [`Fir::_get_my_brane`].
+    #[must_use]
+    pub fn get_display_name(&self, self_ref: &FirRef) -> Option<String> {
+        let parent = self.core.parent()?;
+        // A self-parenting node is the root; it has no defining statement.
+        if Rc::ptr_eq(&parent, self_ref) {
+            return None;
+        }
+        let parent = parent.borrow();
+        // `as_stmt_searchable_name` is `None` for every non-statement kind, so
+        // it doubles as the "is this a statement?" discriminator.
+        let name = parent.as_stmt_searchable_name()?;
+        let body = parent.core().foolish_children().first()?;
+        Rc::ptr_eq(body, self_ref).then(|| name.to_owned())
+    }
 }
 
 impl Fir for CreationFir {
@@ -2931,6 +2967,9 @@ impl Fir for CreationFir {
     }
     fn kind(&self) -> FirKind {
         FirKind::Creation
+    }
+    fn as_creation_display_name(&self, self_ref: &FirRef) -> Option<String> {
+        self.get_display_name(self_ref)
     }
 }
 
@@ -7851,6 +7890,140 @@ mod tests {
         assert!(
             !Rc::ptr_eq(&creation, &creation2),
             "two distinct creations must not be ptr_eq"
+        );
+    }
+
+    // ── CreationFir::get_display_name (FOOP-33 stretch goal) ──
+    //
+    // A creation reports a name ONLY when it is the ENTIRE right-hand side of a
+    // named statement. These tests pin both halves of that rule, plus the
+    // payoff case: a creation reached through a search still answers with its
+    // OWN defining statement's name, because a constanic clone of an
+    // `Independent` creation returns the SAME `Rc` (FOOP-33 "Gotcha #2"), so
+    // its `.parent()` chain -- set at original construction -- survives
+    // detachment and recoordination at the reference site.
+
+    /// Rust-side tree walk (a *sift*, not a Foolish search -- see AGENTS.md
+    /// §Foolish Terminology) finding the first `Creation` in the foolish store.
+    fn sift_for_first_creation(node: &FirRef) -> Option<FirRef> {
+        if node.borrow().kind() == FirKind::Creation {
+            return Some(Rc::clone(node));
+        }
+        let children: Vec<FirRef> = node.borrow().core().foolish_children().to_vec();
+        children.iter().find_map(sift_for_first_creation)
+    }
+
+    #[test]
+    fn creation_as_whole_statement_body_reports_its_name() {
+        // `'a = ⬤` -- the creation's parent IS the statement `'a`, and the
+        // creation IS that statement's whole body. It names itself.
+        let root = Compiler::compile("{'a=⬤; b='a;}").unwrap().pop().unwrap();
+        let creation = sift_for_first_creation(&root).expect("creation must exist");
+        let name = creation.borrow().as_creation_display_name(&creation);
+        assert_eq!(
+            name.as_deref(),
+            Some("'a"),
+            "a creation that is the whole body of statement `'a` reports the \
+             FULL characterized name, leading quote included"
+        );
+    }
+
+    #[test]
+    fn creation_inside_operator_expression_reports_no_name() {
+        // `'a = 1 + ⬤` -- the creation's parent is the OPERATOR, not the
+        // statement. The statement's name belongs to the whole `1+⬤`
+        // expression, not to the creation sitting inside it.
+        let root = Compiler::compile("{'a=1+⬤; b='a;}").unwrap().pop().unwrap();
+        let creation = sift_for_first_creation(&root).expect("creation must exist");
+        let name = creation.borrow().as_creation_display_name(&creation);
+        assert_eq!(
+            name, None,
+            "a creation that is only a sub-expression of the RHS reports no \
+             name -- the statement name does not belong to it"
+        );
+    }
+
+    #[test]
+    fn creation_under_plainly_named_statement_reports_that_name() {
+        // The rule is not specific to null-characterized (`'`-prefixed) names.
+        let root = Compiler::compile("{a=⬤;}").unwrap().pop().unwrap();
+        let creation = sift_for_first_creation(&root).expect("creation must exist");
+        let name = creation.borrow().as_creation_display_name(&creation);
+        assert_eq!(name.as_deref(), Some("a"));
+    }
+
+    #[test]
+    fn creation_with_no_statement_parent_reports_no_name() {
+        // Constructed directly under a brane -- no statement anywhere in its
+        // parent chain, so there is no name to report.
+        let parent = make_brane(vec![]);
+        let creation = CreationFir::creation(Rc::downgrade(&parent));
+        let name = creation.borrow().as_creation_display_name(&creation);
+        assert_eq!(
+            name, None,
+            "a creation whose parent is not a statement reports no name"
+        );
+    }
+
+    #[test]
+    fn creation_reached_through_search_still_reports_its_own_name() {
+        // THE PAYOFF CASE. `b='a` resolves to the SAME creation `Rc` that `'a`
+        // defines (Gotcha #2), so walking that resolved value's parent chain
+        // still lands on the ORIGINAL `'a` statement -- proving the parent
+        // chain survives detachment/recoordination at the reference site.
+        let root = Compiler::compile("{'a=⬤; b='a;}").unwrap().pop().unwrap();
+        let scope = Scope::empty();
+        let _ = step_to_settled(&root, &scope);
+
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let b_body = stmts[1].borrow().core().foolish_children()[0].clone();
+        let resolved = b_body.value();
+        assert_eq!(
+            resolved.borrow().kind(),
+            FirKind::Creation,
+            "`b='a` must resolve THROUGH the search to the creation itself"
+        );
+
+        let name = resolved.borrow().as_creation_display_name(&resolved);
+        assert_eq!(
+            name.as_deref(),
+            Some("'a"),
+            "a creation reached through a search from a DIFFERENT statement \
+             still reports its OWN defining statement's name"
+        );
+    }
+
+    #[test]
+    fn distinct_creations_report_their_own_statement_names() {
+        // Two same-named statements (`'k`) in two different branes each define
+        // their own creation. Each must report its own -- pointer identity, not
+        // a coincidental name match, is what decides.
+        let root = Compiler::compile("{A={'k=⬤;}; B={'k=⬤;};}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        let stmts = root.borrow().core().foolish_children().to_vec();
+
+        let names: Vec<Option<String>> = stmts
+            .iter()
+            .map(|outer| {
+                let creation =
+                    sift_for_first_creation(outer).expect("each brane defines a creation");
+                creation.borrow().as_creation_display_name(&creation)
+            })
+            .collect();
+
+        assert_eq!(
+            names,
+            vec![Some("'k".to_owned()), Some("'k".to_owned())],
+            "each creation reports the name of the statement it is the body of"
+        );
+
+        let a_creation = sift_for_first_creation(&stmts[0]).unwrap();
+        let b_creation = sift_for_first_creation(&stmts[1]).unwrap();
+        assert!(
+            !Rc::ptr_eq(&a_creation, &b_creation),
+            "they are genuinely distinct creations despite the shared name"
         );
     }
 }

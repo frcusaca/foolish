@@ -191,6 +191,19 @@ pub trait Fir: std::fmt::Debug {
         &[]
     }
 
+    /// The name a creation reports for itself, if any. Default: `None`.
+    ///
+    /// Only [`CreationFir`](crate::fir_kinds::CreationFir) overrides this, by
+    /// delegating to its own `get_display_name`. See that method for the rule
+    /// (FOOP-33): a creation names itself only when it is the ENTIRE
+    /// right-hand side of a named statement.
+    ///
+    /// `self_ref` must be the `FirRef` wrapping `self` — the parent chain is
+    /// reached through it, exactly as [`Fir::_get_my_brane`] does.
+    fn as_creation_display_name(&self, _self_ref: &FirRef) -> Option<String> {
+        None
+    }
+
     /// SF inner search pattern — set when a search resolved through SF
     /// re-evaluation. Used by the humanizer to preserve the search wrapper.
     fn as_sf_inner_pattern(&self) -> Option<String> {
