@@ -66,6 +66,7 @@ exact evidence). Current real status, top to bottom:
 | 6 — Comparison operators | 🟡 **UNBLOCKED (2026-08-04), design sound, implementation not started** — an earlier "blocked" finding tested a BARE `#-1` (settles terminal NK); Phase 6 specifies **SFF-marked** `<<#-1>>`, which never runs and is built ECONSTANIC — verified live and pinned by `sff_marked_unanchored_index_out_of_bounds_settles_econstanic`. Detachment/recoordination works as the design assumes; no `IndexFir` fix needed. `$`-precedence research also resolved. Remaining: write `system_foo.rs`'s five comparison FIRs and extend `system/system.foo`. See FOOP-33.md Open Questions (2026-08-04 correction). |
 | 7 — Docs/Tests | 🟡 partial, done piecemeal, not formally tracked |
 | 7R — Phase 3 value-search regression repair | ✅ done (earlier session) |
+| 9 — Sequencer renders creation names | 🟡 **queued (2026-08-04), design written, not started** — the `get_display_name()` bridge. Depends on the FVM-side `CreationFir::get_display_name()` (in progress separately); largely independent of Phase 6 (different code path), so order doesn't matter. **May be punted past merge** — nothing depends on it and today's glyph fallback is correct, just less informative. Needs a human decision on the `foolish-core::Fir::Creation` shape (it must stop being a unit variant) and its JSON/hssnap stability. Closes the long-open "Creation value render form in hssnap" question. See Phase 9's section. |
 | 8 — Merge | ❌ not started |
 
 **Also fixed this session, not originally a plan item**: a bare unanchored `?pattern`/`?=pattern`
@@ -839,6 +840,70 @@ SFF-mark sanity guard; `sift_*` naming convention added to AGENTS.md terminology
       `NotEqual` ⇒ skip.
       (2026-08-02 21:15)
 
+## Phase 9 — Sequencer renders creation names (the `get_display_name` bridge)
+
+**Depends on** the FVM-side `CreationFir::get_display_name()` (in progress separately). Largely
+independent of Phase 6 (comparison operators) — different code path — so it can land in either
+order. **May be punted past FOOP-33's merge** if it is not ready; nothing else depends on it,
+and the fallback (rendering the bare creation glyph) is what ships today and is not wrong, just
+less informative.
+
+### The problem, precisely
+
+The name lives in `foolish-ubca` (real `Rc` identity, real parent chain). The renderer lives in
+`foolish-core` (`FirSequencer`), which only ever sees `foolish-core::Fir` — a **lossy**
+conversion that discards identity and parent context. The whole bridge is one line today:
+
+- `foolish-ubca/src/evaluator.rs` (`proto_to_core_fir_inner`): `FirKind::Creation =>
+  core_fir::Fir::Creation`
+- `foolish-core/src/sequencer.rs` (§"11. Creation"): returns the glyph unconditionally, with
+  no name available
+- `foolish-core/src/fir.rs`: `Fir::Creation` is a **unit variant**, serialized to/from JSON as
+  `{"type": "Creation", "state": …}` (`to_json_val`, and `"Creation" => Ok(Fir::Creation)` on
+  the way back)
+
+### The design
+
+Resolve the name at **conversion time** (where identity still exists), carry it as data, and
+let the sequencer render what it is handed. `get_display_name()` already returns
+`Option<String>` — `Some(name)` only when the creation is the entire RHS of a named statement,
+`None` when it is a sub-expression — so the option maps directly onto "render the name" vs
+"render the glyph". Worked cases:
+
+- `{'a={*}; b='a}` → `Some("'a")` → sequencer renders `b='a`
+- `{'a=1+{*}; b='a}` → `None` → sequencer renders the glyph (the creation is an operand of
+  `+`, so the statement's name belongs to the whole expression, not to the creation)
+
+- [ ] **Decide the `foolish-core::Fir::Creation` shape.** It must stop being a bare unit
+      variant in order to carry a name. Options, to be chosen with the human before coding:
+      (a) `Creation(Option<String>)`; (b) `Creation { name: Option<String> }`; (c) a separate
+      `Fir::NamedCreation(String)` alongside the existing unit `Fir::Creation`. Weigh against:
+      how many `match` arms break (there are ~8 `Fir::Creation` sites in
+      `foolish-core/src/fir.rs` alone), and the JSON/`hssnap` stability consequence below.
+- [ ] **Pin the JSON shape before touching any snapshot.** `Fir::Creation` currently
+      round-trips as `{"type":"Creation","state":…}`. Adding a field changes serialized output
+      for EVERY creation, named or not, unless the field is omitted when `None` (serde
+      `skip_serializing_if`). Decide, and write the decision into FOOP-33.md — this is the
+      "Creation *value* render form in `hssnap`" Open Question, which has been open since
+      Phase 2 and should be **closed** by this phase.
+- [ ] Thread the name at the conversion boundary: `proto_to_core_fir_inner`'s
+      `FirKind::Creation` arm calls `get_display_name()` and stores the result on the built
+      `core_fir::Fir`. Confirm that arm has the creation's own `FirRef` available
+      (`get_display_name` needs it to walk `.parent`); if not, thread it through rather than
+      reaching for a global.
+- [ ] Sequencer: render `Some(name)` as the name, `None` as the glyph. Keep the fallback
+      total — an unnamed creation must still render exactly as it does today.
+- [ ] Unit tests (`foolish-core`): a named creation renders its name; an unnamed one renders
+      the glyph; JSON round-trips both without loss.
+- [ ] **Einmo baselines.** This is the first change in FOOP-33 that alters *rendered output*
+      for existing tests. `foop/33/boolean/constants.foo` and
+      `foop/33/boolean/null_char_constant.foo` both carry a comment predicting exactly this
+      (`'True`/`'False` instead of the glyph) and saying they will need re-promoting when it
+      lands — do that, and remove the now-stale comments. Justify every changed OUTPUT line
+      per AGENTS.md's promote discipline. Check the whole suite for other creation-rendering
+      baselines that shift.
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
 ## Phase 8 — Merge
 
 - [ ] Merge `foop-33-creation-postulate` to `jia`
@@ -863,14 +928,21 @@ SFF-mark sanity guard; `sift_*` naming convention added to AGENTS.md terminology
 
 ## Last Updated
 
-**Date**: 2026-08-04 (later)
-**Updated By**: Claude Code / claude-sonnet-5
-**Changes**: Phase 5.5 changed from BLOCKED to PUNTED — per human direction, this phase is
-punted out of FOOP-33 entirely into a new, separate, future FOOP (not yet created or numbered),
-and will not be implemented as part of FOOP-33. Updated the STATUS SUMMARY table row and added
-a punt marker at the top of the Phase 5.5 section, both pointing to
-`docs/foop/FOOP-33.md`'s Open Questions entry, which now also records the human's proposed
-resolution: `CreationFir::get_recent_name()` (a `?=$CREATION`-style value search run entirely
-within `foolish-ubca`, confirmed to sidestep the identity/parent-chain blocker) plus the still-
-unresolved question of how the sequencer reaches that method from `foolish-core::Fir` (left as
-a subtlety for later, not guessed at). No code changed; docs-only.
+**Date**: 2026-08-04
+**Updated By**: Claude Code / claude-opus-5
+**Changes**: Added **Phase 9 — Sequencer renders creation names**, the `get_display_name()`
+bridge, with its design written out: resolve the name at CONVERSION time (in `evaluator.rs`'s
+`proto_to_core_fir_inner`, where `Rc` identity and the parent chain still exist), carry it as
+data on `foolish-core::Fir::Creation`, and let the sequencer render `Some(name)` as the name /
+`None` as the glyph. Records the two decisions a human must make first (the `Fir::Creation`
+variant shape — it must stop being a unit variant — and the JSON/`hssnap` serialization
+stability that follows), and notes it may be punted past merge since nothing depends on it and
+today's glyph fallback is correct. Placed before Phase 8 (merge stays last). Earlier the same
+day: Phase 6 UNBLOCKED (the "blocked" finding tested a bare `#-1` rather than the SFF-marked
+`<<#-1>>` the design specifies; the SFF form is built ECONSTANIC, verified live); Phase 5.5
+punted out of FOOP-33 entirely into a new, separate, future FOOP (`CreationFir::
+get_recent_name()` proposal, recorded in FOOP-33.md's Open Questions — note the FVM-side
+capability is now being implemented as `get_display_name()`, and Phase 9 above is the
+sequencer half); `foolish_children` encapsulation (`push_foolish_child`/`get_foolish_child`)
+with an SFF-mark sanity guard; `sift_*` naming convention added to AGENTS.md terminology. Full
+history in `git log` on this file.
