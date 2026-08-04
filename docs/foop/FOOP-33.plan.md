@@ -59,7 +59,7 @@ exact evidence). Current real status, top to bottom:
 | 0 — Start | ✅ done | |
 | 1 — `Identifier` | ✅ **fully done** (2026-08-04) — `BraneFir.characterizations` migrated to `Characterizations`; `NormalBraneFir.characterizations` correctly out of scope (separate wire type, see checkbox) |
 | 2 — Creation `⬤`/`{*}` | ✅ **fully done** — was showing all-unchecked, now corrected; every item verified present in code |
-| 3 — `default_equal` | ⚠️ **one open item**: no dedicated truth-table unit tests exist, only indirect coverage — write these before considering Phase 3 done. (The creation-vs-integer question is **resolved**: `NotEqual` is correct per human ruling 2026-08-03 — every integer is itself a creation, so a new creation can never equal one, decidably.) |
+| 3 — `default_equal` | ✅ **fully done** (2026-08-04) — 9 direct truth-table unit tests added; creation-vs-integer confirmed `NotEqual` per human ruling 2026-08-03 (every integer is itself a creation). |
 | 4 — Null-characterized constants | ❌ **verified not started** — no NF/ancestral-conflict/poison-scope/concatenation-collision code exists anywhere |
 | 5 — `system.foo` composition | ❌ not started. Design **superseded** from the original "ancestral prelude" (system.foo as parent brane) to a **composition** model per 2026-08-03 human direction: `system.foo` is the root brane, the user's program is a **member** named `program`, the FVM returns it via `stmt_at(idx)` in Rust — not a Foolish search. See FOOP-33.md §4 for the corrected design; this phase's task list below still describes the superseded ancestral-prelude approach and needs rewriting to match before implementation starts. |
 | 5.5 — Sequencer renders named creations | ❌ not started, depends on 5 |
@@ -223,12 +223,23 @@ directly (2026-08-03) rather than assumed. See the reconciliation note at the en
 
 ## Phase 3 — Default equality primitive (three-valued), used by search
 
-- [ ] **GAP (verified 2026-08-03) — no dedicated `default_equal` truth-table unit tests
+- [x] **GAP (verified 2026-08-03) — no dedicated `default_equal` truth-table unit tests
       exist.** `default_equal` (`fir_kinds.rs:445`) is only exercised indirectly through
       `matcher_value_reject_non_integer_candidate` and the two `value_search_pattern_
       referencing_a_creation_*` tests added 2026-08-03 (creation-vs-creation only). No test
       directly calls `default_equal` with an integer/integer pair, an NK operand, or a
       brane/brane pair. Still open — write these before considering Phase 3 done.
+      **CLOSED 2026-08-04**: added 9 direct `default_equal` unit tests (`fir_kinds.rs`, `mod
+      tests`, grouped under "default_equal truth table (FOOP-33 §2, Phase 3 gap)" right before
+      `matcher_value_reject_non_integer_candidate`): same-integer ⇒ `Equal`, different integers
+      ⇒ `NotEqual`, same creation `Rc` ⇒ `Equal`, distinct creations ⇒ `NotEqual`, either operand
+      `NK` ⇒ `Unknowable` (both argument orders), same `NK` `Rc` compared to itself ⇒ still
+      `Unknowable` (NKs are never equal to each other, even themselves), creation-vs-integer ⇒
+      `NotEqual`, brane-vs-integer ⇒ `NotEqual`, two branes ⇒ `Unknowable`. All 9 pass; no code
+      change to `default_equal` itself was needed — this was purely the missing test coverage.
+      (2026-08-04 — verified: `cargo test -p foolish-ubca --lib -- default_equal_` 9/9 pass;
+      `cargo test --workspace` 260 foolish-ubca tests (was 251) all green; `run_einmo_tests`
+      unaffected.)
 - [x] **Creation-vs-integer is `NotEqual` — RESOLVED 2026-08-03, plan text was wrong, code is
       correct.** This checkbox's original text said "creation-vs-integer ⇒ `Unknowable`" and
       "everything else is `Unknowable` (not `NotEqual`)", contradicting the shipped
@@ -640,9 +651,8 @@ is no longer syntactic sugar; it is brane search into system definitions.
 
 **Date**: 2026-08-04
 **Updated By**: Claude Code / claude-sonnet-5
-**Changes**: Phase 1's last open item — `BraneFir.characterizations` migration to
-`Characterizations` — completed and checked off (see the checkbox for full detail and evidence).
-Scope was corrected in the process: only `foolish-ubca::BraneFir` was in scope, not
-`foolish-core::NormalBraneFir` (a separate wire/serialization type in a crate that doesn't
-depend on `foolish-ubca`). `cargo test --workspace` and `run_einmo_tests` green throughout.
+**Changes**: Phase 1's last open item (`BraneFir.characterizations` → `Characterizations`
+migration) and Phase 3's last open item (9 direct `default_equal` truth-table unit tests)
+both completed and checked off — see each checkbox for full detail and evidence. Phases 1 and
+3 are now both fully done. `cargo test --workspace` and `run_einmo_tests` green throughout.
 Full history in `git log` on this file.

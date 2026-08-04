@@ -5045,6 +5045,103 @@ mod tests {
         );
     }
 
+    // --- default_equal truth table (FOOP-33 §2, Phase 3 gap) ---
+    //
+    // Direct tests of `default_equal` in isolation, one case per rule. These
+    // complement the indirect matcher-level coverage below (which exercises
+    // default_equal through SearchPredicate::Value/NameValue) by pinning the
+    // primitive's own three-valued outcomes without going through search.
+
+    #[test]
+    fn default_equal_same_integer_value_is_equal() {
+        let a = settled_int(7);
+        let b = settled_int(7);
+        assert_eq!(default_equal(&a, &b), Equality::Equal);
+    }
+
+    #[test]
+    fn default_equal_different_integers_is_not_equal() {
+        let a = settled_int(7);
+        let b = settled_int(8);
+        assert_eq!(default_equal(&a, &b), Equality::NotEqual);
+    }
+
+    #[test]
+    fn default_equal_same_creation_rc_is_equal() {
+        let parent = make_brane(vec![]);
+        let creation = CreationFir::creation(Rc::downgrade(&parent));
+        // `x = ⬤; y = x` resolves both to the SAME Rc via constanic clone
+        // (Gotcha #2) — model that directly here without going through the
+        // compiler, since default_equal only cares about the settled Rc.
+        assert_eq!(default_equal(&creation, &creation), Equality::Equal);
+    }
+
+    #[test]
+    fn default_equal_distinct_creations_is_not_equal() {
+        let parent = make_brane(vec![]);
+        let a = CreationFir::creation(Rc::downgrade(&parent));
+        let b = CreationFir::creation(Rc::downgrade(&parent));
+        assert_eq!(default_equal(&a, &b), Equality::NotEqual);
+    }
+
+    #[test]
+    fn default_equal_either_operand_nk_is_unknowable() {
+        let nk = settled_nk("unbound");
+        let int_val = settled_int(1);
+        assert_eq!(
+            default_equal(&nk, &int_val),
+            Equality::Unknowable,
+            "NK vs integer: unknowable, not merely not-equal"
+        );
+        assert_eq!(
+            default_equal(&int_val, &nk),
+            Equality::Unknowable,
+            "argument order must not matter"
+        );
+    }
+
+    #[test]
+    fn default_equal_same_nk_rc_is_still_unknowable() {
+        // NKs are never equal to each other, even the exact same Rc (FOOP-23):
+        // the NK guard fires before any identity check.
+        let nk = settled_nk("unbound");
+        assert_eq!(default_equal(&nk, &nk), Equality::Unknowable);
+    }
+
+    #[test]
+    fn default_equal_creation_vs_integer_is_not_equal() {
+        // Every integer is itself a creation (human ruling 2026-08-03, plan
+        // Phase 3): a NEW, distinct creation can never equal any integer —
+        // decidably NotEqual, not Unknowable.
+        let parent = make_brane(vec![]);
+        let creation = CreationFir::creation(Rc::downgrade(&parent));
+        let int_val = settled_int(1);
+        assert_eq!(default_equal(&creation, &int_val), Equality::NotEqual);
+        assert_eq!(default_equal(&int_val, &creation), Equality::NotEqual);
+    }
+
+    #[test]
+    fn default_equal_brane_vs_integer_is_not_equal() {
+        // A settled brane is provably never an integer (different FIR kinds,
+        // decidable) — NotEqual, matcher Rejects (skips) rather than NkStops.
+        let brane = make_brane(vec![]);
+        let _ = step_to_settled(&brane, &Scope::empty());
+        let int_val = settled_int(1);
+        assert_eq!(default_equal(&brane, &int_val), Equality::NotEqual);
+        assert_eq!(default_equal(&int_val, &brane), Equality::NotEqual);
+    }
+
+    #[test]
+    fn default_equal_two_branes_is_unknowable() {
+        // Brane-vs-brane equivalence is unspecified (FOOP-23) — genuinely
+        // unknowable, unlike the provably-different-kinds cases above.
+        let brane_a = make_brane(vec![]);
+        let brane_b = make_brane(vec![]);
+        let _ = step_to_settled(&brane_a, &Scope::empty());
+        let _ = step_to_settled(&brane_b, &Scope::empty());
+        assert_eq!(default_equal(&brane_a, &brane_b), Equality::Unknowable);
+    }
+
     #[test]
     fn matcher_value_reject_non_integer_candidate() {
         let inner_stmt = make_statement("x", 0, make_constant_int(1));
