@@ -482,6 +482,8 @@ impl AstnCompilerExt for Astn {
                 core: ProtoBrane::new(vec![body], parent.clone(), Nyes::Prembrionic),
                 identifier,
                 line_number: line,
+                self_weak: stmt_weak,
+                nf_reason: RefCell::new(None),
             })
         })
     }

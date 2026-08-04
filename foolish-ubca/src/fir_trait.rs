@@ -197,6 +197,17 @@ pub trait Fir: std::fmt::Debug {
         false
     }
 
+    /// FOOP-33 §4 — set by `ConcatenationFir`'s merge-collision check
+    /// (`apply_null_const_rule_to_merged_stmt`) on a `StatementFir` it just
+    /// cloned into the merge, when that clone conflicts with an
+    /// already-merged null-characterized statement of the same name.
+    /// Default: no-op (every non-`StatementFir` kind ignores this — only a
+    /// `StatementFir` HAS an `nf_reason` to substitute via `settled_result`).
+    /// `&self` + interior mutability, matching every other post-construction
+    /// mutation in this crate (`RefCell`/`Cell` fields, never `&mut self`
+    /// through a `dyn Fir` trait object).
+    fn set_nf_reason(&self, _reason: String) {}
+
     fn _get_my_statement(&self, self_ref: &FirRef) -> FirRef {
         match self.kind() {
             FirKind::Statement => Rc::clone(self_ref),
@@ -730,10 +741,13 @@ mod get_value_tests {
     fn make_stmt(name: &str, line: usize, body: FirRef) -> FirRef {
         Rc::new_cyclic(|me: &Weak<RefCell<StatementFir>>| {
             let parent: Weak<RefCell<dyn Fir>> = me.clone();
+            let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
             RefCell::new(StatementFir {
                 core: ProtoBrane::new(vec![body], parent, Nyes::Prembrionic),
                 identifier: crate::identifier::Identifier::from_parts(vec![], name),
                 line_number: line,
+                self_weak,
+                nf_reason: RefCell::new(None),
             })
         })
     }

@@ -360,6 +360,8 @@ impl ProtoBrane {
                         core,
                         identifier,
                         line_number: line,
+                        self_weak,
+                        nf_reason: RefCell::new(None),
                     })
                 })
             }
@@ -736,6 +738,27 @@ pub struct StatementFir {
     pub(crate) core: ProtoBrane,
     pub(crate) identifier: Identifier,
     pub(crate) line_number: usize,
+    /// Self-reference, established at construction via `Rc::new_cyclic` (same
+    /// pattern as `ProtoBrane.parent`, one level up). Needed ONLY by the
+    /// null-characterized name constant rule (FOOP-33 §4): `fir_op_step(&self,
+    /// scope: &Scope)` has no `self_ref` parameter, but detecting an ancestral
+    /// conflict requires calling `_ib_search`/`_ab_search` (which take
+    /// `self_ref: &FirRef`) FROM this statement's own position. Every other use
+    /// of `StatementFir` needs no self-reference; this field exists solely to
+    /// make that one check possible without threading `self_ref` through the
+    /// whole `Fir` trait.
+    pub(crate) self_weak: Weak<RefCell<dyn Fir>>,
+    /// Set once, by this statement's own `fir_op_step`, when the null-
+    /// characterized name constant rule (FOOP-33 §4) refuses a conflicting
+    /// redefinition. `None` in the overwhelmingly common case (not a
+    /// null-characterized name, or no conflict) — readers must keep reading
+    /// `foolish_children().first()` (the written body) exactly as before.
+    /// `Some(reason)` means `get_value()` (via `settled_result`/`.value()`)
+    /// must present a fresh `NkFir` with this reason INSTEAD of the written
+    /// body — this is what distinguishes "the rule refused this redefinition"
+    /// from "the body itself genuinely settled to NK" (e.g. `k = ???`), which
+    /// must keep presenting the real NK body unchanged.
+    pub(crate) nf_reason: RefCell<Option<String>>,
 }
 
 impl StatementFir {
@@ -757,11 +780,16 @@ impl StatementFir {
         body: FirRef,
         parent: Weak<RefCell<dyn Fir>>,
     ) -> FirRef {
-        Rc::new(RefCell::new(StatementFir {
-            core: ProtoBrane::new(vec![body], parent, Nyes::Prembrionic),
-            identifier: Identifier::from_parts(vec![], name),
-            line_number,
-        }))
+        Rc::new_cyclic(|me: &Weak<RefCell<StatementFir>>| {
+            let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
+            RefCell::new(StatementFir {
+                core: ProtoBrane::new(vec![body], parent, Nyes::Prembrionic),
+                identifier: Identifier::from_parts(vec![], name),
+                line_number,
+                self_weak,
+                nf_reason: RefCell::new(None),
+            })
+        })
     }
 
     pub fn statement_with_identifier(
@@ -770,12 +798,84 @@ impl StatementFir {
         body: FirRef,
         parent: Weak<RefCell<dyn Fir>>,
     ) -> FirRef {
-        Rc::new(RefCell::new(StatementFir {
-            core: ProtoBrane::new(vec![body], parent, Nyes::Prembrionic),
-            identifier,
-            line_number,
-        }))
+        Rc::new_cyclic(|me: &Weak<RefCell<StatementFir>>| {
+            let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
+            RefCell::new(StatementFir {
+                core: ProtoBrane::new(vec![body], parent, Nyes::Prembrionic),
+                identifier,
+                line_number,
+                self_weak,
+                nf_reason: RefCell::new(None),
+            })
+        })
     }
+
+    /// FOOP-33 §4 — the null-characterized name constant rule's own check,
+    /// run by a null-characterized statement ON ITSELF once its body is
+    /// constanic. Sets `self.nf_reason` (once, terminal) iff a prior
+    /// null-characterized statement of the same `searchable_name()` exists
+    /// (via IB — earlier in this same brane — then AB — an ancestor brane)
+    /// AND its value is not `Equal` (by `default_equal`) to this statement's
+    /// own body. Does NOT touch `self.core`'s nyes here — the caller
+    /// (`fir_op_step`) still sets it from `body_nyes` afterward; `nf_reason`
+    /// alone is what `settled_result` consults to substitute the NK.
+    ///
+    /// **Does not cover concatenation.** A concatenation-merged statement is
+    /// constructed via `constanic_clone_at`, which — for an already-constanic
+    /// source (the overwhelmingly common case) — builds the clone DIRECTLY at
+    /// its terminal `Nyes` (`transform_for_clone`), skipping `Prembrionic`/
+    /// `Embryonic`/`Braning` entirely, so THIS check (which lives in the
+    /// `Braning` arm of `fir_op_step`) never runs for it. Concatenation has
+    /// its own, separate application of the same rule:
+    /// [`ConcatenationFir::apply_null_const_rule_to_merged_stmt`].
+    fn check_null_const_conflict(&self, body: &FirRef) {
+        if self.nf_reason.borrow().is_some() {
+            return; // already resolved (terminal, no re-alarm — Gotcha #5a).
+        }
+        let Some(self_rc) = self.self_weak.upgrade() else {
+            return; // torn down; nothing to check against.
+        };
+        let pattern = self.identifier.searchable_name();
+        let prior = self_rc
+            .borrow()
+            ._ib_search(&self_rc, pattern)
+            .or_else(|| self_rc.borrow()._ab_search(&self_rc, pattern));
+        let Some((prior_stmt, _prior_nyes)) = prior else {
+            return; // no earlier definition -- this statement establishes the constant.
+        };
+        let Some(prior_body) = statement_value_for_comparison(&prior_stmt) else {
+            return; // malformed statement with no body -- nothing to compare.
+        };
+        if !prior_body.borrow().core().get_nyes().is_constanic() {
+            return; // prior definition not yet settled -- nothing to compare yet.
+        }
+        if default_equal(body, &prior_body) != Equality::Equal {
+            *self.nf_reason.borrow_mut() =
+                Some(null_const_nf_reason(self.identifier.identifier_name()));
+        }
+    }
+}
+
+/// The value a statement PRESENTS for null-const comparison: `settled_result()`
+/// (the NF refusal NK, if this statement was itself already refused) if set,
+/// else the raw written body. Shared by `StatementFir::check_null_const_conflict`
+/// (the ancestral/same-brane path) and `ConcatenationFir`'s merge-collision path
+/// (FOOP-33 §4) — poisoning must be transitive: comparing against an ALREADY-
+/// refused prior statement's original RHS would let a later-but-equal-to-the-
+/// invalid-one redefinition wrongly slip through.
+fn statement_value_for_comparison(stmt: &FirRef) -> Option<FirRef> {
+    let borrowed = stmt.borrow();
+    borrowed
+        .settled_result()
+        .or_else(|| borrowed.core().foolish_children().first().cloned())
+}
+
+/// The NF (Not Foolish) reason string for a refused null-characterized name
+/// constant redefinition — `"'<name> not-foolish"`. One place constructs this
+/// so the two trigger sites (`StatementFir`'s own step, and `ConcatenationFir`'s
+/// merge) can never drift out of sync with `NF_PREFIX`/`is_nf_reason`.
+fn null_const_nf_reason(name: &str) -> String {
+    format!("'{name} {NF_PREFIX}")
 }
 
 impl Fir for StatementFir {
@@ -798,6 +898,9 @@ impl Fir for StatementFir {
                 if let Some(body) = children.first() {
                     let body_nyes = body.borrow().core().get_nyes();
                     if body_nyes.is_constanic() {
+                        if self.identifier.is_nully_characterizing_coordinate_name() {
+                            self.check_null_const_conflict(body);
+                        }
                         self.core.set_nyes(body_nyes);
                     }
                 }
@@ -809,6 +912,42 @@ impl Fir for StatementFir {
 
     fn kind(&self) -> FirKind {
         FirKind::Statement
+    }
+
+    /// `None` in the overwhelmingly common case — a plain `StatementFir` has no
+    /// separate result child; readers (`clone_stmt_result` and its two `IndexFir`
+    /// counterparts) fall through to the written body (`foolish_children().first()`)
+    /// exactly as before this override existed. `Some(nk)` ONLY when the null-
+    /// characterized name constant rule (FOOP-33 §4) refused a conflicting
+    /// redefinition — this is what makes `get_value()` present the refusal NK
+    /// instead of the written RHS, without ever touching the written body itself
+    /// (the immutable `foolish_children` topology) or another FIR's own nyes.
+    ///
+    /// Built directly at `Nyes::Nk` (NOT via `NkFir::nk`, which starts
+    /// `Prembrionic` and needs a step to reach `Nk`): `settled_result`'s own
+    /// contract is "applies the constanic gate itself," so what it returns
+    /// must already BE constanic — callers (including the concatenation
+    /// merge's own null-const comparison, which reads a freshly-built prior
+    /// statement's `settled_result()` without ever stepping it) rely on that.
+    fn settled_result(&self) -> Option<FirRef> {
+        let reason = self.nf_reason.borrow().clone()?;
+        Some(Rc::new(RefCell::new(NkFir {
+            core: ProtoBrane::new(vec![], self.core.parent_weak(), Nyes::Nk),
+            reason,
+        })))
+    }
+
+    /// FOOP-33 §4 — the ONLY writer of `nf_reason` other than this
+    /// statement's own `check_null_const_conflict`: `ConcatenationFir`'s
+    /// merge-collision check, which cannot call `check_null_const_conflict`
+    /// (the clone was built already-constanic, so its `Braning` step —
+    /// where that check lives — never runs). Terminal like the other path:
+    /// once set, later calls are ignored (first refusal wins).
+    fn set_nf_reason(&self, reason: String) {
+        let mut slot = self.nf_reason.borrow_mut();
+        if slot.is_none() {
+            *slot = Some(reason);
+        }
     }
 
     fn as_stmt_identifier(&self) -> Option<&Identifier> {
@@ -992,14 +1131,13 @@ impl SearchFir {
         new_parent: &Weak<RefCell<dyn Fir>>,
         descendent_of_sfm_and_foolishly_ignorant: bool,
     ) -> FirRef {
-        let stmt_borrowed = stmt.borrow();
-        let body = stmt_borrowed
-            .core()
-            .foolish_children()
-            .first()
-            .cloned()
-            .expect("statement must have a body");
-        let index = stmt_borrowed.as_stmt_line_number().unwrap_or(0);
+        // Prefer settled_result() over the raw written body: for a plain
+        // StatementFir this is None (unchanged behavior — falls through to the
+        // body below); the null-characterized name constant rule (FOOP-33 §4)
+        // is the ONLY thing that ever makes it Some, substituting the refusal
+        // NK for the written RHS without mutating the body's own FIR/nyes.
+        let body = statement_value_for_comparison(stmt).expect("statement must have a body");
+        let index = stmt.borrow().as_stmt_line_number().unwrap_or(0);
         ProtoBrane::constanic_clone_at(
             &body,
             new_parent,
@@ -1620,8 +1758,7 @@ impl Fir for IndexFir {
                         let predicate = SearchPredicate::Index(target);
                         match contextful_search_scan_no_body_check(&mut nav, &predicate) {
                             ScanOutcome::Found(stmt) => {
-                                let body =
-                                    stmt.borrow().core().foolish_children().first().cloned()?;
+                                let body = statement_value_for_comparison(&stmt)?;
                                 Some((stmt, body))
                             }
                             _ => None,
@@ -1656,7 +1793,7 @@ impl Fir for IndexFir {
                     let predicate = SearchPredicate::Index(self.offset);
                     match contextful_search_scan_no_body_check(&mut nav, &predicate) {
                         ScanOutcome::Found(stmt) => {
-                            let body = stmt.borrow().core().foolish_children().first().cloned();
+                            let body = statement_value_for_comparison(&stmt);
                             match body {
                                 Some(body) => {
                                     let self_weak = self.core.parent_weak();
@@ -2426,6 +2563,7 @@ impl ConcatenationFir {
                         false,
                         false,
                     );
+                    Self::apply_null_const_rule_to_merged_stmt(&clone, &cloned_stmts);
                     cloned_stmts.push(clone);
                     global_idx += 1;
                 }
@@ -2441,6 +2579,64 @@ impl ConcatenationFir {
         };
 
         self.core.push_ubc_child(helper_fir);
+    }
+
+    /// FOOP-33 §4 — the null-characterized name constant rule, applied at
+    /// concatenation merge time. `StatementFir::check_null_const_conflict`
+    /// (the ordinary same-brane/ancestral path, run from `fir_op_step`'s
+    /// `Braning` arm) does NOT fire for `new_stmt`: it was built via
+    /// `constanic_clone_at` from an already-constanic source, which
+    /// constructs the clone DIRECTLY at its terminal `Nyes`
+    /// (`Nyes::transform_for_clone`) — `Prembrionic`/`Embryonic`/`Braning`
+    /// (and therefore the check that lives there) never run. Concatenation
+    /// must therefore enforce the SAME rule itself, here, against the
+    /// statements already merged BEFORE `new_stmt` in the growing helper.
+    ///
+    /// `already_merged` is searched in REVERSE (nearest-first) so a chain of
+    /// three-or-more same-name clones compares each new one against the
+    /// NEAREST prior — which, via `statement_value_for_comparison`'s
+    /// settled_result()-first read, transitively carries any earlier refusal
+    /// forward (Gotcha #5a: one rule, one NK mechanism, two trigger sites).
+    fn apply_null_const_rule_to_merged_stmt(new_stmt: &FirRef, already_merged: &[FirRef]) {
+        let is_nully = new_stmt
+            .borrow()
+            .as_stmt_identifier()
+            .is_some_and(Identifier::is_nully_characterizing_coordinate_name);
+        if !is_nully {
+            return;
+        }
+        let pattern = new_stmt
+            .borrow()
+            .as_stmt_searchable_name()
+            .map(str::to_owned);
+        let Some(pattern) = pattern else { return };
+        let Some(prior_stmt) = already_merged
+            .iter()
+            .rev()
+            .find(|s| s.borrow().as_stmt_searchable_name() == Some(pattern.as_str()))
+        else {
+            return; // first occurrence of this null-const name in the merge -- permitted.
+        };
+        let Some(new_body) = statement_value_for_comparison(new_stmt) else {
+            return;
+        };
+        let Some(prior_body) = statement_value_for_comparison(prior_stmt) else {
+            return;
+        };
+        if !new_body.borrow().core().get_nyes().is_constanic()
+            || !prior_body.borrow().core().get_nyes().is_constanic()
+        {
+            return; // one side not yet settled -- nothing to compare yet.
+        }
+        if default_equal(&new_body, &prior_body) != Equality::Equal {
+            let name = new_stmt
+                .borrow()
+                .as_stmt_identifier()
+                .map(|id| id.identifier_name().to_owned());
+            if let Some(name) = name {
+                new_stmt.borrow().set_nf_reason(null_const_nf_reason(&name));
+            }
+        }
     }
 }
 
@@ -2647,11 +2843,16 @@ pub fn statement(
     body: FirRef,
     parent: Weak<RefCell<dyn Fir>>,
 ) -> FirRef {
-    Rc::new(RefCell::new(StatementFir {
-        core: ProtoBrane::new(vec![body], parent, Nyes::Prembrionic),
-        identifier: Identifier::from_parts(vec![], name),
-        line_number,
-    }))
+    Rc::new_cyclic(|me: &Weak<RefCell<StatementFir>>| {
+        let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
+        RefCell::new(StatementFir {
+            core: ProtoBrane::new(vec![body], parent, Nyes::Prembrionic),
+            identifier: Identifier::from_parts(vec![], name),
+            line_number,
+            self_weak,
+            nf_reason: RefCell::new(None),
+        })
+    })
 }
 
 pub fn brane(children: Vec<FirRef>, parent: Weak<RefCell<dyn Fir>>) -> FirRef {
@@ -2895,10 +3096,13 @@ mod tests {
     fn make_statement(name: &str, line_number: usize, body: FirRef) -> FirRef {
         Rc::new_cyclic(|me: &Weak<RefCell<StatementFir>>| {
             let parent: Weak<RefCell<dyn Fir>> = me.clone();
+            let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
             RefCell::new(StatementFir {
                 core: ProtoBrane::new(vec![body], parent, Nyes::Prembrionic),
                 identifier: Identifier::from_parts(vec![], name),
                 line_number,
+                self_weak,
+                nf_reason: RefCell::new(None),
             })
         })
     }
@@ -4346,6 +4550,420 @@ mod tests {
         let root = Compiler::compile("{y = 1;}").unwrap().pop().unwrap();
         assert_eq!(root.borrow().kind(), FirKind::Brane);
         assert!(root.borrow().as_brane_characterizations().is_empty());
+    }
+
+    #[test]
+    fn stmt_ib_search_finds_earlier_null_characterized_sibling_by_searchable_name() {
+        // FOOP-33 Phase 4 precondition: the null-constant rule's ancestral-conflict
+        // check (BraneFir's own step) needs to find a same-name null-characterized
+        // statement either earlier in the SAME brane (IB) or in an ancestor brane
+        // (AB), using each statement's own FirRef (which BraneFir already holds
+        // via foolish_children()) -- no self_ref parameter is needed or available
+        // inside fir_op_step. Pins that `stmt._ib_search(&stmt, "'k")` / `_ab_search`
+        // (the default Fir trait methods, called directly on a statement's own
+        // FirRef) do exactly this, matching only the null-characterized searchable
+        // name (not a plain name).
+        let root = Compiler::compile("{'k=1; 'k=2;}").unwrap().pop().unwrap();
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let first_k = Rc::clone(&stmts[0]);
+        let second_k = Rc::clone(&stmts[1]);
+        let scope = Scope::empty();
+        // Settle the bodies first (constanic gate).
+        let _ = step_to_settled(&root, &scope);
+
+        // second_k should find first_k via its own IB search for the exact
+        // searchable_name pattern "'k" (matches only null-characterized 'k,
+        // not a plain k).
+        let ib_hit = second_k.borrow()._ib_search(&second_k, "'k");
+        eprintln!("second_k IB search for \"'k\": {:?}", ib_hit.is_some());
+        assert!(
+            ib_hit.is_some(),
+            "same-brane IB search must find the earlier 'k statement"
+        );
+        let (found_stmt, _found_nyes) = ib_hit.unwrap();
+        assert!(
+            Rc::ptr_eq(&found_stmt, &first_k),
+            "IB search must find the FIRST 'k statement specifically"
+        );
+
+        // first_k has nothing before it -> IB search finds nothing, AB search
+        // (climbing to the enclosing statement, of which there is none at root)
+        // also finds nothing. This is the "no prior definition" case.
+        let first_ib = first_k.borrow()._ib_search(&first_k, "'k");
+        let first_ab = first_k.borrow()._ab_search(&first_k, "'k");
+        eprintln!(
+            "first_k IB={:?} AB={:?}",
+            first_ib.is_some(),
+            first_ab.is_some()
+        );
+        assert!(
+            first_ib.is_none() && first_ab.is_none(),
+            "the first 'k statement has no prior definition via IB or AB"
+        );
+    }
+
+    #[test]
+    fn stmt_ab_search_finds_ancestral_null_characterized_definition() {
+        // Cross-brane case: {'k=1; b={'k=2;};} -- inner 'k has no earlier
+        // statement in ITS OWN brane (IB), but must find the outer 'k via AB.
+        // Companion to the IB case above.
+        let root = Compiler::compile("{'k=1; b={'k=2;};}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let b_stmt = &stmts[1];
+        let inner_brane = b_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        let inner_stmts = inner_brane.borrow().core().foolish_children().to_vec();
+        let inner_k = Rc::clone(&inner_stmts[0]);
+        let scope = Scope::empty();
+        let _ = step_to_settled(&root, &scope);
+
+        let ib = inner_k.borrow()._ib_search(&inner_k, "'k");
+        eprintln!("inner_k IB for \"'k\": {:?}", ib.is_some());
+        assert!(
+            ib.is_none(),
+            "inner 'k has no earlier statement in its OWN brane"
+        );
+        let ab = inner_k.borrow()._ab_search(&inner_k, "'k");
+        eprintln!("inner_k AB for \"'k\": {:?}", ab.is_some());
+        assert!(
+            ab.is_some(),
+            "inner 'k must find the outer 'k via ancestral (AB) search"
+        );
+        let outer_k = Rc::clone(&stmts[0]);
+        assert!(Rc::ptr_eq(&ab.unwrap().0, &outer_k));
+    }
+
+    // --- FOOP-33 Phase 4: null-characterized name constants ---
+
+    #[test]
+    fn null_const_first_definition_is_permitted() {
+        // A single 'k=1 establishes the constant -- no conflict, ordinary value.
+        let root = Compiler::compile("{'k=1;}").unwrap().pop().unwrap();
+        let scope = Scope::empty();
+        let _ = step_to_settled(&root, &scope);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        assert!(
+            stmts[0].borrow().settled_result().is_none(),
+            "first definition of a null-const is never refused"
+        );
+        assert_eq!(stmts[0].borrow().core().get_nyes(), Nyes::Independent);
+    }
+
+    #[test]
+    fn null_const_same_brane_conflicting_redefinition_settles_nf() {
+        // {'k=1; 'k=2;} -- second 'k conflicts (1 != 2) -> NF.
+        let root = Compiler::compile("{'k=1; 'k=2;}").unwrap().pop().unwrap();
+        let scope = Scope::empty();
+        let _ = step_to_settled(&root, &scope);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+
+        assert!(
+            stmts[0].borrow().settled_result().is_none(),
+            "the FIRST 'k is never refused -- it establishes the constant"
+        );
+
+        let second_result = stmts[1]
+            .borrow()
+            .settled_result()
+            .expect("second 'k must be refused (NF)");
+        assert_eq!(second_result.borrow().kind(), FirKind::Nk);
+        let reason = second_result.borrow().as_nk_reason().unwrap().to_owned();
+        assert!(
+            is_nf_reason(&reason),
+            "reason must be an NF (not-foolish) condition, got: {reason}"
+        );
+        assert_eq!(reason, "'k not-foolish");
+    }
+
+    #[test]
+    fn null_const_get_value_via_value_returns_the_nf_nk() {
+        // The spec's own framing: get_value() (here, .value()) on the offending
+        // statement's BODY yields the NF NK, not the written RHS `2`.
+        let root = Compiler::compile("{'k=1; 'k=2;}").unwrap().pop().unwrap();
+        let scope = Scope::empty();
+        let _ = step_to_settled(&root, &scope);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let second_value = stmts[1].value();
+        assert_eq!(second_value.borrow().kind(), FirKind::Nk);
+    }
+
+    #[test]
+    fn null_const_same_creation_redefinition_is_permitted() {
+        // {c=⬤; 'k=c; 'k=c;} -- both 'k's resolve (via search) to the SAME
+        // creation Rc -> default_equal Equal -> both permitted.
+        let root = Compiler::compile("{c=⬤; 'k=c; 'k=c;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        let scope = Scope::empty();
+        let _ = step_to_settled(&root, &scope);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        assert!(
+            stmts[1].borrow().settled_result().is_none(),
+            "first 'k=c is never refused"
+        );
+        assert!(
+            stmts[2].borrow().settled_result().is_none(),
+            "second 'k=c must be PERMITTED: same creation, default_equal == Equal"
+        );
+    }
+
+    #[test]
+    fn null_const_ancestral_conflict_via_ab_search() {
+        // {'k=1; b={'k=2;};} -- inner 'k conflicts with the outer ancestor.
+        let root = Compiler::compile("{'k=1; b={'k=2;};}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        let scope = Scope::empty();
+        let _ = step_to_settled(&root, &scope);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let b_stmt = &stmts[1];
+        let inner_brane = b_stmt
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        let inner_k = inner_brane.borrow().core().foolish_children().to_vec()[0].clone();
+        let reason = inner_k
+            .borrow()
+            .settled_result()
+            .expect("inner 'k must be refused via ancestral conflict")
+            .borrow()
+            .as_nk_reason()
+            .unwrap()
+            .to_owned();
+        assert_eq!(reason, "'k not-foolish");
+    }
+
+    #[test]
+    fn null_const_poison_scope_sibling_brane_unaffected() {
+        // A sibling brane that resolves the SAME plain name differently (or not
+        // at all) must be completely unaffected by a conflict elsewhere. Two
+        // independent 'k definitions in UNRELATED branches (neither is an
+        // ancestor of the other) must NOT conflict with each other.
+        let root = Compiler::compile("{a={'k=1;}; b={'k=2;};}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        let scope = Scope::empty();
+        let _ = step_to_settled(&root, &scope);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let a_brane = stmts[0]
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        let b_brane = stmts[1]
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .unwrap();
+        let a_k = a_brane.borrow().core().foolish_children().to_vec()[0].clone();
+        let b_k = b_brane.borrow().core().foolish_children().to_vec()[0].clone();
+        assert!(
+            a_k.borrow().settled_result().is_none(),
+            "a's 'k=1 is a fresh definition in an unrelated brane -- not poisoned"
+        );
+        assert!(
+            b_k.borrow().settled_result().is_none(),
+            "b's 'k=2 is a fresh definition in an unrelated (sibling) brane -- not poisoned"
+        );
+    }
+
+    #[test]
+    fn null_const_descendant_query_true_for_ancestor_null_const_false_otherwise() {
+        // "Is this name a null-characterized coordinate name (a constant) here?"
+        // is answered by is_nully_characterizing_coordinate_name() on whatever
+        // statement a search finds -- true for 'k, false for a plain k.
+        let root = Compiler::compile("{'k=1; m=2;}").unwrap().pop().unwrap();
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let k_is_nully = stmts[0]
+            .borrow()
+            .as_stmt_identifier()
+            .unwrap()
+            .is_nully_characterizing_coordinate_name();
+        let m_is_nully = stmts[1]
+            .borrow()
+            .as_stmt_identifier()
+            .unwrap()
+            .is_nully_characterizing_coordinate_name();
+        assert!(k_is_nully, "'k IS a null-characterized coordinate name");
+        assert!(
+            !m_is_nully,
+            "plain m is NOT a null-characterized coordinate name"
+        );
+    }
+
+    #[test]
+    fn null_const_rule_does_not_fire_on_plain_names() {
+        // Regression guard: k=1; k=2 (no leading ') must NOT be refused -- the
+        // rule only fires on null-characterized coordinate names.
+        let root = Compiler::compile("{k=1; k=2;}").unwrap().pop().unwrap();
+        let scope = Scope::empty();
+        let _ = step_to_settled(&root, &scope);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        assert!(
+            stmts[0].borrow().settled_result().is_none(),
+            "plain k=1 must never be refused by the null-const rule"
+        );
+        assert!(
+            stmts[1].borrow().settled_result().is_none(),
+            "plain k=2 must never be refused by the null-const rule"
+        );
+        let k2_body = stmts[1].borrow().core().foolish_children()[0].clone();
+        assert_eq!(k2_body.value().borrow().as_i64(), Some(2));
+    }
+
+    #[test]
+    fn null_const_concatenation_collision_later_duplicates_settle_nf() {
+        // {A={'a=1;}; B = A A A;} -- the merged B is {'a=1, 'a=1(NF), 'a=1(NF)}:
+        // the first 'a establishes the constant, each LATER 'a is a conflicting
+        // redefinition (integer 1 vs the SAME creation... no, here they're both
+        // literally `1`, but each is a FRESH clone from a FRESH A -- and 1 == 1
+        // by default_equal (same integer value) -- so this specific case must
+        // actually be PERMITTED (Equal), not NF. Use distinct values instead.
+        let root = Compiler::compile("{A={'a=1;}; B = A A A;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        let scope = Scope::empty();
+        let _ = step_to_settled(&root, &scope);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let b_body = stmts[1].borrow().core().foolish_children()[0].clone();
+        let b_value = b_body.value();
+        assert_eq!(b_value.borrow().stmt_count(), Some(3));
+        for i in 0..3 {
+            let merged_a = b_value.borrow().stmt_at(i).unwrap();
+            assert!(
+                merged_a.borrow().settled_result().is_none(),
+                "merged 'a[{i}]=1 must be PERMITTED -- every clone is the same \
+                 integer 1, and default_equal(1,1) == Equal"
+            );
+        }
+    }
+
+    #[test]
+    fn null_const_concatenation_collision_with_conflicting_values_settles_nf() {
+        // Concatenating THREE DIFFERENT branes, each defining 'a to a
+        // DIFFERENT value: the first 'a=1 establishes the constant; the
+        // second 'a=2 and third 'a=3 both conflict and settle NF.
+        //
+        // NOTE: step_to_settled's 50-iteration cap is insufficient for this
+        // shape (4 top-level statements, 3-way concatenation, each nested
+        // brane needing its own settle pass) -- confirmed by tracing: with
+        // only 50 steps the third concat element (Z) is still Braning when
+        // the helper gives up, silently merging only 2 of 3 statements. This
+        // is a pre-existing property of the shared step_to_settled test
+        // helper (unrelated to the null-const rule itself), so step directly
+        // with a larger budget here rather than changing the shared helper.
+        let root = Compiler::compile("{X={'a=1;}; Y={'a=2;}; Z={'a=3;}; B = X Y Z;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        let scope = Scope::empty();
+        for _ in 0..300 {
+            let _ = root.step(&scope);
+        }
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let b_body = stmts[3].borrow().core().foolish_children()[0].clone();
+        let b_value = b_body.value();
+        assert_eq!(b_value.borrow().stmt_count(), Some(3));
+
+        let first_a = b_value.borrow().stmt_at(0).unwrap();
+        assert!(
+            first_a.borrow().settled_result().is_none(),
+            "the FIRST merged 'a establishes the constant -- never refused"
+        );
+
+        let second_a = b_value.borrow().stmt_at(1).unwrap();
+        let second_reason = second_a
+            .borrow()
+            .settled_result()
+            .expect("second merged 'a=2 conflicts with 'a=1 -- must be NF")
+            .borrow()
+            .as_nk_reason()
+            .unwrap()
+            .to_owned();
+        assert_eq!(second_reason, "'a not-foolish");
+
+        let third_a = b_value.borrow().stmt_at(2).unwrap();
+        let third_reason = third_a
+            .borrow()
+            .settled_result()
+            .expect("third merged 'a=3 conflicts with the established constant -- must be NF")
+            .borrow()
+            .as_nk_reason()
+            .unwrap()
+            .to_owned();
+        assert_eq!(third_reason, "'a not-foolish");
+    }
+
+    #[test]
+    fn null_const_concatenation_same_creation_is_permitted_value_sensitive() {
+        // {A={c=⬤; 'a=c;}; B = A A;} -- both merged 'a's resolve to the SAME
+        // creation (both clones reference the SAME original c via search, and
+        // constanic clone of an Independent creation preserves identity per
+        // Gotcha #2) -- default_equal Equal -- both permitted. Proves the rule
+        // is VALUE-sensitive, not "duplicate name = NF" by fiat.
+        let root = Compiler::compile("{A={c=⬤; 'a=c;}; B = A A;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        let scope = Scope::empty();
+        let _ = step_to_settled(&root, &scope);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let b_body = stmts[1].borrow().core().foolish_children()[0].clone();
+        let b_value = b_body.value();
+        assert_eq!(b_value.borrow().stmt_count(), Some(4));
+        // Statements: c, 'a, c, 'a (two merged copies of A's two statements).
+        let first_a = b_value.borrow().stmt_at(1).unwrap();
+        let second_a = b_value.borrow().stmt_at(3).unwrap();
+        assert!(
+            first_a.borrow().settled_result().is_none(),
+            "first merged 'a=c is never refused"
+        );
+        assert!(
+            second_a.borrow().settled_result().is_none(),
+            "second merged 'a=c must be PERMITTED: same creation, default_equal == Equal"
+        );
+    }
+
+    #[test]
+    fn null_const_concatenation_empty_and_single_operand_merge_without_spurious_nf() {
+        // Regression guard: an empty concatenation operand, or a single-operand
+        // concatenation, must merge without any spurious NF -- the collision
+        // check must not misfire when there's nothing (or only one thing) to
+        // collide with.
+        let root = Compiler::compile("{A={}; B={'a=1;}; C = A B;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        let scope = Scope::empty();
+        let _ = step_to_settled(&root, &scope);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let c_body = stmts[2].borrow().core().foolish_children()[0].clone();
+        let c_value = c_body.value();
+        assert_eq!(c_value.borrow().stmt_count(), Some(1));
+        let merged_a = c_value.borrow().stmt_at(0).unwrap();
+        assert!(
+            merged_a.borrow().settled_result().is_none(),
+            "single 'a merged from a concatenation with an empty operand must not be NF"
+        );
     }
 
     #[test]

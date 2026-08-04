@@ -60,7 +60,7 @@ exact evidence). Current real status, top to bottom:
 | 1 — `Identifier` | ✅ **fully done** (2026-08-04) — `BraneFir.characterizations` migrated to `Characterizations`; `NormalBraneFir.characterizations` correctly out of scope (separate wire type, see checkbox) |
 | 2 — Creation `⬤`/`{*}` | ✅ **fully done** — was showing all-unchecked, now corrected; every item verified present in code |
 | 3 — `default_equal` | ✅ **fully done** (2026-08-04) — 9 direct truth-table unit tests added; creation-vs-integer confirmed `NotEqual` per human ruling 2026-08-03 (every integer is itself a creation). |
-| 4 — Null-characterized constants | ❌ **verified not started** — no NF/ancestral-conflict/poison-scope/concatenation-collision code exists anywhere |
+| 4 — Null-characterized constants | ✅ **complete** (2026-08-04) — ancestral/same-brane conflict detection via `StatementFir` self-check (new `self_weak` field), NF via `settled_result()` override, concatenation collision handling with transitive poisoning. 14 new unit tests. See the phase's design notes for two architectural findings made during implementation (self-reference plumbing, the `NkFir::nk` pre-constanic bug). |
 | 5 — `system.foo` composition | ❌ not started. Design **superseded** from the original "ancestral prelude" (system.foo as parent brane) to a **composition** model per 2026-08-03 human direction: `system.foo` is the root brane, the user's program is a **member** named `program`, the FVM returns it via `stmt_at(idx)` in Rust — not a Foolish search. See FOOP-33.md §4 for the corrected design; this phase's task list below still describes the superseded ancestral-prelude approach and needs rewriting to match before implementation starts. |
 | 5.5 — Sequencer renders named creations | ❌ not started, depends on 5 |
 | 6 — Comparison operators | ⛔ **BLOCKED, design settled tonight, no code yet** — reverted (was returning placeholder `1`/`0`); design converged through several exchanges to: postfix `<<#-2>> < <<#-1>>` in an ordinary brane literal (`{1, 2, 'lt}`, **no concatenation**), extracted via `$` (`comparison_result =$ {1, 2}'lt` or `{1, 2, 'lt}$` — the brane literal alone is not the full expression, it's the vessel the tail-read pulls the boolean out of). `'lt` resolved via ordinary ancestral search into `system.foo` (same as `'True`), then the existing **detachment/recoordination** mechanism (`AGENTS.md` "Detachment and Coordination") lets its previously-unresolved `#-2`/`#-1` lookups find real neighbors once recoordinated into the user's brane. A new `system_foo.rs` Rust module holds shared FIR logic across `'lt`/`'gt`/`'le`/`'ge`/`'eq`, differing only in the op step. See FOOP-33.md §5.0's evening revision banner for the full transcript. Not yet re-verified against a live trace — needs Phase 5 (`system.foo` composition) implemented first to test against. See the STOP gate at the head of Phase 6. |
@@ -256,30 +256,111 @@ directly (2026-08-03) rather than assumed. See the reconciliation note at the en
       `default_equal` and map its three outcomes onto `MatchOutcome` (Approve/Reject/NkStop).
       Keep the "body must be constanic before comparison" contract (Gotcha #4).
 
-## Phase 4 — Null-characterized name constants — VERIFIED NOT STARTED (2026-08-03)
+## Phase 4 — Null-characterized name constants — COMPLETE (2026-08-04)
 
-Searched for `not-foolish`, `NF(`, an AB-chain-walking `BraneFir` step, and collision-aware
-concatenation merge logic in `foolish-ubca/src/*.rs`: none found. Only the Phase-1
-`is_nully_characterizing_coordinate_name()` accessor exists (well-tested on `Identifier`
-itself) — the Phase-4-specific enforcement (ancestral conflict detection, NF, poison scope,
-concatenation collision handling) has not been implemented. All four checkboxes below
-correctly remain unchecked; no action needed here beyond confirming genuinely not done.
-
-- [ ] Unit tests: ancestral null-constant conflict — ancestor `'k=1`, descendant `'k=2` ⇒
+- [x] Unit tests: ancestral null-constant conflict — ancestor `'k=1`, descendant `'k=2` ⇒
       descendant `get_value()` returns `NF("'k not-foolish")` (NF, not plain NK — see Phase 1
       NF task); `Equal` redefinition (same creation) ⇒ permitted; **poison scope** — a sibling
       brane resolving `k` elsewhere (or not at all) is unaffected; descendant "is this a
       null-characterized coordinate name?" query.
-- [ ] `BraneFir` step (PREMBRYONIC/EMBRYONIC): for each statement with
-      `is_nully_characterizing_coordinate_name()`, walk the AB chain for a same-named ancestral
-      null-const; on a **non-`Equal`** value (by `default_equal`) set the statement body to
-      `NF("'<name> not-foolish")` **once** (terminal, no re-alarm); register ownership; answer
-      descendant queries. No new FIR kind/NYES state — reuse `NkFir` with NF reason string.
-- [ ] Concatenation collision handling: replace the blind clone loop in
-      `ConcatenationFir` (`foolish-ubca/src/fir_kinds.rs:2162`) with a collision-aware merge
-      applying the same rule (same `NF("'<name> not-foolish")`) against already-merged statements.
-- [ ] Unit test the concatenation case `{A={'a=1}, B = A A A}` (later `'a`'s → `NF`, first
+      (2026-08-04 — `fir_kinds.rs` `mod tests`: `null_const_first_definition_is_permitted`,
+      `null_const_same_brane_conflicting_redefinition_settles_nf`,
+      `null_const_get_value_via_value_returns_the_nf_nk`,
+      `null_const_same_creation_redefinition_is_permitted`,
+      `null_const_ancestral_conflict_via_ab_search`,
+      `null_const_poison_scope_sibling_brane_unaffected`,
+      `null_const_descendant_query_true_for_ancestor_null_const_false_otherwise`,
+      `null_const_rule_does_not_fire_on_plain_names` — 8 tests, all pass.)
+- [x] `StatementFir`'s own step (Braning, self-check — see design note below) — for each
+      statement with `is_nully_characterizing_coordinate_name()`, walk IB (same brane, earlier
+      statements) then AB (ancestor branes) for a same-named prior null-const; on a
+      **non-`Equal`** value (by `default_equal`) set `nf_reason` **once** (terminal, no
+      re-alarm), read via a `settled_result()` override that returns a fresh, already-`Nk`
+      `NkFir` with reason `"'<name> not-foolish"`. No new FIR kind/NYES state — reuses `NkFir`.
+      (2026-08-04 — `foolish-ubca/src/fir_kinds.rs`: `StatementFir::check_null_const_conflict`,
+      `StatementFir::settled_result` override, `NF_PREFIX`/`is_nf_reason` from Phase 1 wired up
+      for the first time.)
+
+      **Design note — deviates from the plan's original "BraneFir step" framing, for a
+      concrete reason found during implementation.** `fir_op_step(&self, scope: &Scope)` has
+      no `self_ref: &FirRef` parameter anywhere in the `Fir` trait, and tracing `step_inner`
+      confirmed `scope.current_statement` is NOT reliably a statement's own `FirRef` at the
+      point its OWN `fir_op_step` runs (it's set for the scope used to step a statement's
+      *body*, one level down — not the scope the statement's own step receives). `BraneFir`
+      does hold each child's `FirRef` directly (via `foolish_children()`), but `BraneFir`
+      itself faces the identical self-reference problem one level up. The fix: `StatementFir`
+      gained a `self_weak: Weak<RefCell<dyn Fir>>` field, established via `Rc::new_cyclic` at
+      construction (the same established pattern `ProtoBrane.parent` already uses, one level
+      up) — every `StatementFir` construction site (6 total, across `compiler.rs`,
+      `fir_kinds.rs`, `fir_trait.rs`) was updated. With `self_weak` upgraded to a real `FirRef`,
+      the statement calls the ordinary `_ib_search`/`_ab_search` default trait methods ON
+      ITSELF — verified against a live trace (see the two precondition regression tests below)
+      that this correctly finds an earlier same-brane null-const via IB, or an ancestor-brane
+      one via AB, using EXISTING search machinery, no new engine code.
+      (2026-08-04 — precondition tests pinning the search behavior this depends on:
+      `stmt_ib_search_finds_earlier_null_characterized_sibling_by_searchable_name`,
+      `stmt_ab_search_finds_ancestral_null_characterized_definition`.)
+
+      **A second, related architectural finding**: readers that resolve "a found statement's
+      value" (`clone_stmt_result` in `SearchFir`, and `IndexFir`'s two contexted/anchored
+      paths) all read `foolish_children().first()` directly — the raw parse-time body —
+      bypassing any statement-level indirection entirely. Since `foolish_children` is
+      documented as immutable, fixed-shape topology (no public mutator to swap an element),
+      and the crate's `set_nyes` ownership contract (FOOP-62 #10, documented in
+      `proto_brane.rs`) forbids one FIR mutating another's `nyes` from outside, the NK
+      substitution could not be done by reaching into the body FIR. Instead, `StatementFir`
+      gained a `settled_result()` override (previously always `None` — a plain statement pushes
+      no `ubc_children`) that returns `Some(nk)` ONLY when `nf_reason` is set, `None`
+      otherwise (fully backward compatible). All three direct-body-read call sites were updated
+      to prefer `settled_result()` via a shared helper, `statement_value_for_comparison`, before
+      falling back to the raw body — unifying what was three near-duplicate inline patterns
+      into one.
+- [x] Concatenation collision handling: replaced the blind clone loop in
+      `ConcatenationFir::populate_concat_helpers` with a collision-aware merge
+      (`ConcatenationFir::apply_null_const_rule_to_merged_stmt`) applying the same rule (same
+      `NF("'<name> not-foolish")`) against already-merged statements, searched nearest-first so
+      poisoning is transitive through a chain of 3+ same-name clones.
+      (2026-08-04 — `foolish-ubca/src/fir_kinds.rs`.)
+
+      **Design note — a clone built via `constanic_clone_at` from an already-constanic source
+      is constructed DIRECTLY at its terminal `Nyes`** (`Nyes::transform_for_clone`), skipping
+      `Prembrionic`/`Embryonic`/`Braning` entirely — so `StatementFir::check_null_const_conflict`
+      (which lives in the `Braning` arm) never runs for a concatenation-merged clone. This is
+      exactly why concatenation needs its OWN, separate application of the rule, confirmed by
+      first implementing WITHOUT it and observing (via a live trace, not assumed) that merged
+      duplicates were never refused. A new default trait method, `Fir::set_nf_reason(&self,
+      reason: String)` (no-op default; `StatementFir` overrides it), lets the concatenation
+      merge — which only has a `FirRef`, not a concrete `&StatementFir` — set the refusal on a
+      clone it just built, without downcasting.
+
+      **A subtle bug found and fixed via live tracing**: the first `settled_result()` override
+      built its `NkFir` via `NkFir::nk(reason, parent)`, which constructs at `Nyes::Prembrionic`
+      (needs a step to reach `Nk`). The concatenation merge's own null-const comparison reads a
+      PRIOR statement's `settled_result()` directly, without ever stepping it — so a `Prembrionic`
+      NK failed the `is_constanic()` gate and was silently skipped, meaning a THIRD conflicting
+      redefinition in a 3-way merge was wrongly left unrefused (confirmed via a
+      `temporary_reproduce_to_debug_*` test, then fixed and deleted per the debugging skill's
+      discipline). Fix: `settled_result()` now constructs its `NkFir` directly at `Nyes::Nk`
+      (bypassing `NkFir::nk`'s pre-constanic default) — `settled_result`'s own contract is "the
+      constanic gate is already applied," so what it returns must already BE constanic.
+- [x] Unit test the concatenation case `{A={'a=1}, B = A A A}` (later `'a`'s → `NF`, first
       intact) and `{A={'a=⬤}, B=A A}` (same creation ⇒ both permitted — value-sensitive).
+      (2026-08-04 — `null_const_concatenation_collision_later_duplicates_settle_nf` (same
+      integer value across clones → all permitted, proving `default_equal` not "duplicate
+      name"), `null_const_concatenation_collision_with_conflicting_values_settles_nf` (3-way
+      merge with 3 DIFFERENT values → first permitted, 2nd and 3rd both NF — transitivity),
+      `null_const_concatenation_same_creation_is_permitted_value_sensitive` (same creation Rc
+      across 2 merged clones → both permitted), `null_const_concatenation_empty_and_single_
+      operand_merge_without_spurious_nf` (regression guard against false positives) — 4 tests,
+      all pass.)
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-08-04 — verified: `cargo test -p foolish-ubca --lib` 274 tests (was 260) all pass,
+      including 8 null-const + 4 concatenation + 2 search-precondition new tests (14 total new
+      for Phase 4); `cargo test --workspace` all green; `run_einmo_tests` 169/169 unaffected.
+      `cargo fmt`/`cargo clippy -D warnings` clean on every line touched — one pre-existing
+      clippy warning remains in an unrelated function (`FirRefNavExt::deepest_econstanic_in_
+      chain`, `fir_kinds.rs`) that predates this phase and was left untouched per AGENTS.md's
+      "don't fix unrelated pre-existing debt" guidance.)
 
 ## Phase 5 — `system.foo` composition
 
@@ -651,8 +732,17 @@ is no longer syntactic sugar; it is brane search into system definitions.
 
 **Date**: 2026-08-04
 **Updated By**: Claude Code / claude-sonnet-5
-**Changes**: Phase 1's last open item (`BraneFir.characterizations` → `Characterizations`
-migration) and Phase 3's last open item (9 direct `default_equal` truth-table unit tests)
-both completed and checked off — see each checkbox for full detail and evidence. Phases 1 and
-3 are now both fully done. `cargo test --workspace` and `run_einmo_tests` green throughout.
-Full history in `git log` on this file.
+**Changes**: Phase 4 (null-characterized name constants) implemented and checked off in full —
+see the phase's checkboxes for complete detail, including two architectural findings made
+during implementation (verified against live FVM traces, not assumed): (1)
+`fir_op_step`/`Scope` gives a FIR no reliable way to obtain its own `FirRef`, so
+`StatementFir` gained a `self_weak` field via the established `Rc::new_cyclic` self-reference
+pattern; (2) a concatenation-merged clone built via `constanic_clone_at` from an
+already-constanic source skips `Braning` entirely, so `ConcatenationFir` needed its own,
+separate application of the null-const rule, plus a fix to `settled_result()`'s `NkFir`
+construction (was pre-constanic `Prembrionic`, silently breaking transitive poisoning across
+3+ same-name merged clones). Earlier the same day: Phase 1's last open item
+(`BraneFir.characterizations` → `Characterizations` migration) and Phase 3's last open item
+(9 direct `default_equal` truth-table unit tests) were also completed. Phases 1, 3, and 4 are
+now all fully done; Phase 5 (`system.foo` composition) is next. `cargo test --workspace` and
+`run_einmo_tests` green throughout. Full history in `git log` on this file.
