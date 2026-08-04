@@ -4635,6 +4635,46 @@ mod tests {
         );
     }
 
+    /// The exact mechanism FOOP-33 Phase 6's comparison operators rest on,
+    /// pinned in pure Foolish with no comparison machinery involved.
+    ///
+    /// A statement whose body is an SFF-marked unanchored index sits
+    /// ECONSTANIC where it is defined (no valid neighbor there). When that
+    /// statement is REFERENCED by name from another brane, the ordinary
+    /// reference-resolution path detaches a constanic clone and RECOORDINATES
+    /// it into the referencing brane -- where `#-2`/`#-1` now DO have
+    /// neighbors, and resolve against them (AGENTS.md "Detachment and
+    /// Coordination": "previously failed name searches can now resolve in the
+    /// new context").
+    ///
+    /// This is what lets `'lt`'s operand lookups, defined inertly inside
+    /// `system.foo`, pick up `1` and `2` when `'lt` is referenced from a user's
+    /// `{1, 2, 'lt}`. If this test breaks, the comparison operators lose the
+    /// ground they stand on -- the failure is here, not in `system_foo.rs`.
+    #[test]
+    fn sff_index_operand_recoordinates_to_the_referencing_branes_neighbors() {
+        for (offset, expected) in [("#-2", 5), ("#-1", 9)] {
+            let source = format!("{{defn = <<{offset}>>; use = {{5, 9, defn}};}}");
+            let root = Compiler::compile(&source).unwrap().pop().unwrap();
+            let scope = Scope::empty();
+            let _ = step_to_settled(&root, &scope);
+
+            let stmts = root.borrow().core().foolish_children().to_vec();
+            let use_brane = stmts[1].borrow().core().foolish_children()[0]
+                .clone()
+                .value();
+            let referenced = use_brane.borrow().core().foolish_children()[2].clone();
+            let body = referenced.borrow().core().foolish_children()[0].clone();
+
+            assert_eq!(
+                body.value().borrow().as_i64(),
+                Some(expected),
+                "<<{offset}>> defined elsewhere must resolve to the REFERENCING \
+                 brane's neighbor after recoordination"
+            );
+        }
+    }
+
     #[test]
     fn stmt_ib_search_finds_earlier_null_characterized_sibling_by_searchable_name() {
         // FOOP-33 Phase 4 precondition: the null-constant rule's ancestral-conflict
