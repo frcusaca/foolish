@@ -2964,6 +2964,17 @@ impl CreationFir {
     ///
     /// `self_ref` must be the `FirRef` wrapping `self`; the parent is reached
     /// through it, following the same convention as [`Fir::_get_my_brane`].
+    ///
+    /// **CAVEAT (FOOP-33.md §"Concerns Standing Past Completion"):** this rule
+    /// applies uniformly at the DEFINING site too, which reads oddly to a
+    /// human even though it is the design working as specified. `{a = {*};}`
+    /// sequences as `{a=a}`, not `{a={*}}`/`{a=⬤}` — the statement's own name
+    /// is reported for its own creation, which looks self-referential rather
+    /// than "here is a fresh, still-glyph creation being introduced." Whether
+    /// the defining site should be special-cased to show the glyph (only
+    /// *references reached elsewhere* would then show the name) is an open
+    /// design question, not resolved by this implementation — see the FOOP-33
+    /// doc section for the full writeup and status.
     #[must_use]
     pub fn get_display_name(&self, self_ref: &FirRef) -> Option<String> {
         let parent = self.core.parent()?;

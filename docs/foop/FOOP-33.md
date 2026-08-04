@@ -1358,6 +1358,33 @@ non-int/non-creation ⇒ `Unknowable`/NK — §2); `Identifier` representation (
 preferred, three-canonical-strings fallback — §3); null-const mechanism (`get_value()` →
 `NK("'<name> redefined")`, scoped to searches that discover the definition — §4).
 
+## Concerns Standing Past Completion
+
+FOOP-33 ships with its plan phases checked off, but a few implementation choices are worth
+flagging as **live discomforts, not settled design** — things a human reviewer noticed only
+after the feature was working end-to-end, that the spec-as-written does not forbid but that
+read as surprising or possibly wrong. This section is where such findings accumulate; add to it
+rather than silently reopening a "done" phase.
+
+- **A creation's defining statement renders self-referentially.** `get_display_name()`
+  (`foolish-ubca/src/fir_kinds.rs`, `CreationFir::get_display_name`) reports a name whenever a
+  creation is the entire right-hand side of a named statement — by design, this includes the
+  DEFINING statement itself, not only later references reached by search. Concretely:
+  `{a = {*};}` sequences as `{a=a}`, not `{a={*}}` or `{a=⬤}`. Per the letter of the rule this
+  is correct (the creation genuinely is the whole RHS of `a`'s own statement), but it reads to a
+  human as circular — "`a` equals `a`" looks like a tautology or a bug, not "here is a fresh
+  creation being introduced and bound to the name `a`." A plausible resolution: special-case the
+  defining site to still render the glyph (`⬤`), and reserve the name-rendering for creations
+  reached *elsewhere* (through a search, as an operand, as another statement's value) — but this
+  was not implemented, because it is a genuine design call (does "renders as its name" mean
+  "when reached from outside" or "always, including at home"?) and not something to decide
+  unilaterally while closing out Phase 9. Flagged 2026-08-04 during final review of the merged
+  Phase 9 work; see the caveat comment at `get_display_name`'s doc comment in code.
+
+*(Add further implementation pain points, dubious feature decisions, or "technically correct
+but reads wrong" findings to this list as they surface — during code review, during later FOOP
+work that touches this one, or during ordinary use.)*
+
 ## References
 
 - Prior FOOPs: FOOP-23 (value search, `FoolRefFir`, the referential-equality stipulation now
