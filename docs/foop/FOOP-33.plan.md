@@ -63,7 +63,7 @@ exact evidence). Current real status, top to bottom:
 | 4 — Null-characterized constants | ✅ **complete** (2026-08-04) — ancestral/same-brane conflict detection via `StatementFir` self-check (new `self_weak` field), NF via `settled_result()` override, concatenation collision handling with transitive poisoning. 14 new unit tests. See the phase's design notes for two architectural findings made during implementation (self-reference plumbing, the `NkFir::nk` pre-constanic bug). |
 | 5 — `system.foo` composition | ⚠️ **implemented and verified (2026-08-04), ONE open finding escalated to Open Questions** — `system_foo.rs` composes `system.foo` as root with `program` as its last member, wired into the one production entry point (`UbcaEvaluator::evaluate`). Found and fixed a real bug where Phase 4's NF refusal was enforced but never rendered (4th bypass site, in `evaluator.rs`). 280/280 unit tests pass; einmo suite green except ONE frozen `verified/` FOOP-62 baseline whose exact iteration-budget snapshot composition unavoidably shifts — see the phase's own checkbox and FOOP-33.md's Open Questions for the full writeup; needs a human decision, not guessed around. |
 | 5.5 — Sequencer renders named creations | 🚫 **PUNTED to a future FOOP (2026-08-04)** — human proposed `CreationFir::get_recent_name()` (a `?=$CREATION`-style value search, entirely within `foolish-ubca`), confirmed to sidestep the identity blocker, but how the sequencer reaches it from `foolish-core::Fir` is unresolved and left for later. Not part of FOOP-33's implementation scope. See FOOP-33.md Open Questions ("Creation *value* render form in `hssnap`" entry, 2026-08-04 later update). |
-| 6 — Comparison operators | ⛔ **BLOCKED (2026-08-04) — traced against live FVM as instructed, found the design's core mechanism does not hold, not implemented.** Phase 5 gate satisfied; `$`-vs-concatenation research CONFIRMED clean (`{1, 2, 'lt}$` parses exactly as needed). But an unanchored `IndexFir` (`#-1`/`#-2`) settles `Nk` (terminal) on an out-of-bounds target, not `ECONSTANIC` as the design assumes — so detachment/recoordination cannot revive `'lt`'s operand lookups the way the design depends on. `system.foo` was extended with the 5 comparison creations during investigation, then reverted once confirmed. See FOOP-33.md's Open Questions (2026-08-04 entry) for the full writeup and 3 candidate resolutions — none chosen unilaterally, per the task's explicit "STOP and report back" instruction. |
+| 6 — Comparison operators | 🟡 **UNBLOCKED (2026-08-04), design sound, implementation not started** — an earlier "blocked" finding tested a BARE `#-1` (settles terminal NK); Phase 6 specifies **SFF-marked** `<<#-1>>`, which never runs and is built ECONSTANIC — verified live and pinned by `sff_marked_unanchored_index_out_of_bounds_settles_econstanic`. Detachment/recoordination works as the design assumes; no `IndexFir` fix needed. `$`-precedence research also resolved. Remaining: write `system_foo.rs`'s five comparison FIRs and extend `system/system.foo`. See FOOP-33.md Open Questions (2026-08-04 correction). |
 | 7 — Docs/Tests | 🟡 partial, done piecemeal, not formally tracked |
 | 7R — Phase 3 value-search regression repair | ✅ done (earlier session) |
 | 8 — Merge | ❌ not started |
@@ -644,11 +644,17 @@ Foolish resolves names — through search, not stored metadata.
 >   settling logic, possibly reusing `OperatorFir`'s existing structure) across `'lt`/`'gt`/
 >   `'le`/`'ge`/`'eq`, differing only in the Rust comparison run in the op step.
 >
-> **Not yet implemented or independently re-verified against a live FVM trace** (design
-> reached through discussion, no code written) — `'lt` genuinely needs Phase 5's `system.foo`
-> composition to exist before it can be tested against. Implement Phase 5 first; return here
-> once it's in place and confirm the detachment/recoordination read against a real trace before
-> trusting it further.
+> **Mechanism VERIFIED against a live FVM trace (2026-08-04); implementation not yet
+> written.** Phase 5's `system.foo` composition is now in place, and the load-bearing
+> assumption above — that `'lt`'s `#-2`/`#-1` lookups sit ECONSTANIC rather than settling
+> terminal NK — is confirmed: `{only = <<#-1>>;}` settles the index to ECONSTANIC, pinned by
+> `fir_kinds::tests::sff_marked_unanchored_index_out_of_bounds_settles_econstanic`. (An earlier
+> reading that Phase 6 was blocked tested a **bare** `#-1`, which does settle NK — a different
+> construct; the SFF marker is what makes the difference, since `build_fir`'s `under_sff` rule
+> builds descendant search kinds ECONSTANIC so they never run. See FOOP-33.md's 2026-08-04
+> correction entry.) No `IndexFir` change is needed. What remains is the implementation itself:
+> `system_foo.rs`'s five comparison FIRs, and extending `system/system.foo` with
+> `'lt`/`'gt`/`'le`/`'ge`/`'eq`.
 >
 > **Ordering (human-directed):** (1) all pre-existing tests pass — **done**, suite green as
 > of 2026-08-03. (2) `'True`/`'False` introduced via the `system.foo` composition (Phase 5).
@@ -768,22 +774,19 @@ is no longer syntactic sugar; it is brane search into system definitions.
 - [ ] Document the null-characterized name-constant rule and universal characterizations
       (update `docs/vintage_legacy/CREATION.md` cross-refs and add engineering notes under
       `docs/ubc1/how`); update AGENTS.md §Foolish Terminology / §Searches as needed
-      (with the "## Last Updated" protocol).
-- [ ] Update AGENTS.md Code Style section: agents must use Unicode operator forms when writing
-      Foolish code (`⬤` not `{*}`, `<̲=̲` not `\o<=`, etc.). The `\o` prefix is for keyboard
-      input only.
-- [ ] Create einmo tests under `foop/33/` with subdirectories:
-      - `creation/` — basics, nilpotent, referential_equality
-      - `creation_concat.foo` — null-constant rule in concatenation
-      - `boolean/` — comparison_operators, constants, if_then_else
-      - `characterizations/` — null_char_constant, nf_error, quote_bearing_search, proximity_rule
-      - `int_comparators.foo` — Unicode + ASCII `\o` forms side by side
-      - `comprehensive.foo` — all features interacting
-- [ ] Promote **only** `foop/33/*` einmo baselines to `checked/` — and only after the
-      suite is otherwise green (no foreign divergence). If any baseline to be promoted has a
-      `verified/` twin, STOP and ask the human. (This replaces the earlier bare "promote all"
-      box that was misused to overwrite 11 FOOP-23 `checked/` baselines — see
-      "Problems Discovered During Implementation" in `FOOP-33.md`.)
+      (with the "## Last Updated
+
+**Date**: 2026-08-04
+**Updated By**: Claude Code / claude-opus-5
+**Changes**: **Phase 6 UNBLOCKED** — the earlier "blocked" finding tested a bare `#-1` rather
+than the SFF-marked `<<#-1>>` the design specifies; the SFF form is built ECONSTANIC and never
+runs, which is exactly what detachment/recoordination requires. Verified live and pinned by
+`sff_marked_unanchored_index_out_of_bounds_settles_econstanic`. Status table's Phase 6 row and
+the Phase 6 STOP gate updated accordingly; implementation still to be written (`system_foo.rs`'s
+five comparison FIRs, extending `system/system.foo`). Also this session: Phase 5.5 punted to a
+future FOOP; `foolish_children` encapsulation (`push_foolish_child`/`get_foolish_child`) with an
+SFF-mark sanity guard; `sift_*` naming convention added to AGENTS.md terminology. Full history in
+`git log` on this file.
 
 ## Phase 7R — Repair: Phase 3 value-search regression (spec §2 + `default_equal`)
 

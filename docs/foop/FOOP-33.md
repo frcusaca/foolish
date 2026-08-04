@@ -1193,57 +1193,35 @@ unit test asserting `Reject` (matching its name).
   `get_recent_name()` proposal above and resolve the open bridging question in step 2 before any
   code is written. See `docs/foop/FOOP-33.plan.md`'s Phase 5.5 section and STATUS SUMMARY table
   for the corresponding plan-side marker.
-- **NEW 2026-08-04 — Phase 6's settled comparison-operator design depends on a
-  detachment/recoordination behavior that does NOT hold when traced against the live FVM;
-  Phase 6 is BLOCKED pending a human decision, not implemented, and `system.foo` was NOT
-  extended with `'lt`/`'gt`/`'le`/`'ge`/`'eq` (reverted after investigation).** §5.0's evening
-  revision states: "`'lt`'s `#-2`/`#-1` lookups settle **ECONSTANIC** inside `system.foo` alone
-  (no valid neighbors there) — 'may gain value via recoordination' — then, once detached and
-  recoordinated into the user's brane... resolve to real neighbors." Traced live (pinned by the
-  permanent regression test `fir_kinds::tests::
-  unanchored_index_out_of_bounds_settles_nk_not_econstanic`): an **unanchored** index (`#-1`
-  with no dot before it — exactly the form `'lt`'s operand lookups need, since they must resolve
-  against whatever brane `'lt` is DETACHED INTO, not a fixed anchor) whose target is
-  out-of-bounds settles **`Nyes::Nk`**, not `ECONSTANIC` — confirmed by reading
-  `IndexFir::fir_op_step`'s unanchored-`Prembrionic` arm (`foolish-ubca/src/fir_kinds.rs`: `if
-  target < 0 || target >= len { self.core.set_nyes(Nyes::Nk); }`) and then proving it live with
-  `Compiler::compile("{only = #-1;}")`, which settles the index body to `Nk`, not `Econstanic`.
+- **RESOLVED 2026-08-04 (correction) — Phase 6's design is SOUND; the earlier "blocked"
+  finding tested the wrong construct.** An earlier investigation the same day concluded Phase 6
+  was blocked because an unanchored index (`#-1`/`#-2`) settles terminal `Nk` on an
+  out-of-bounds target rather than `ECONSTANIC`, which would mean detachment/recoordination
+  could never revive `'lt`'s operand lookups. **That conclusion was wrong.** It tested a
+  **bare** `#-1` (`{only = #-1;}`), but Phase 6 specifies **SFF-marked** operands (`<<#-1>>`).
 
-  **Why this breaks the design, not just contradicts a detail.** `Nk` is TERMINAL — per the NYES
-  state machine (AGENTS.md, `docs/foop/FOOP-62.md`), a constanic state never regresses to a
-  pre-constanic one, and `Nk` specifically never gains a value afterward under ANY mechanism,
-  including recoordination (which is documented as an `ECONSTANIC`-specific affordance —
-  "ECONSTANIC... may gain value via recoordination"; `Nk` carries no such escape hatch anywhere
-  in the codebase). So if `'lt`'s `#-2`/`#-1` operand lookups settle inside `system.foo` (where,
-  by construction, they have no valid neighbors — `system.foo` currently has only 2, soon 7,
-  statements, none of them integers to compare) BEFORE detachment happens, they settle `Nk`
-  immediately and permanently — detachment/recoordination into the user's brane afterward cannot
-  revive them, because there is nothing left to revive. The whole mechanism the design leans on
-  ("previously failed name searches can now resolve in the new context") is stated for
-  `ECONSTANIC` specifically (per AGENTS.md's own "NK vs ECONSTANIC miss outcomes" section:
-  "**Anchored miss → NK**... **Unanchored miss → ECONSTANIC**" — but this is the rule for
-  *searches*, and `#-1`/`#-2` are `IndexFir`, not `SearchFir`; `IndexFir`'s own unanchored path
-  does not follow that rule as implemented today).
+  The two behave differently, and both are correct:
+  - A **bare** `#-1` RUNS, misses, and settles terminal `Nk` — correct: it genuinely searched
+    and genuinely found nothing. (Pinned: `fir_kinds::tests::
+    bare_unanchored_index_out_of_bounds_settles_nk`.)
+  - An **SFF-marked** `<<#-1>>` NEVER RUNS. `compiler::build_fir`'s `under_sff` rule builds
+    descendant search kinds `ECONSTANIC` at construction, so there is no miss and no NK.
+    Verified live: `{only = <<#-1>>;}` settles the index to `ECONSTANIC`. (Pinned:
+    `fir_kinds::tests::sff_marked_unanchored_index_out_of_bounds_settles_econstanic`.)
 
-  **What is NOT yet known, and needs the human's input rather than a guess**: (a) whether
-  `IndexFir`'s unanchored-out-of-bounds behavior is itself a bug relative to the codebase's own
-  documented NK-vs-ECONSTANIC convention (in which case the fix is in `fir_kinds.rs`'s
-  `IndexFir`, a genuine bug fix, not a comparison-operator design change) — or (b) whether the
-  Phase 6 design's assumption was simply wrong about which FIR kind/path `'lt`'s operand lookups
-  should use, and needs revision to use something that DOES settle `ECONSTANIC` on a miss (e.g.
-  routing through `SearchFir`'s unanchored path instead of `IndexFir`'s) — or (c) something else
-  entirely. Per the task's explicit instruction ("if the detachment/recoordination mechanism
-  does NOT work the way the design assumes... STOP and report back — do not silently invent a
-  workaround"), none of (a)/(b)/(c) was chosen unilaterally. `system.foo` was extended with the
-  5 comparison creations during investigation, then reverted (`git checkout -- system/system.foo`)
-  once the blocker was confirmed, so the prelude does not ship a half-built feature that would
-  silently behave as plain, uncomparing `⬤` creations.
+  `ECONSTANIC` is precisely "not evaluated in this context, may gain a value via
+  recoordination" — exactly the state the design depends on. `'lt`'s `#-2`/`#-1` operands sit
+  `ECONSTANIC` inside `system.foo` (which has no valid neighbors for them), and resolve against
+  real neighbors once the `'lt` reference is detached and recoordinated into the user's brane.
+  **No fix is needed to `IndexFir`, and no change to the Phase 6 design.**
 
-  **What WAS confirmed and does not need re-verification**: the `$`-vs-concatenation-precedence
-  research task (the plan's Phase 6 checkbox) IS resolved — `{1, 2, 'lt}$` parses exactly as the
-  design needs (`$` applied to the whole brane literal), pinned by
-  `foolish-parser::parser::tests::brane_literal_dollar_reads_the_whole_literals_tail`. The
-  parser is not the blocker; the `IndexFir`-vs-`ECONSTANIC` mismatch is.
+  Also confirmed and not needing re-verification: the `$`-vs-concatenation-precedence research
+  task (the plan's Phase 6 checkbox) IS resolved — `{1, 2, 'lt}$` parses exactly as the design
+  needs (`$` applied to the whole brane literal), pinned by
+  `foolish-parser::parser::tests::brane_literal_dollar_reads_the_whole_literals_tail`.
+
+  Remaining for Phase 6: actual implementation (`system_foo.rs`'s five comparison FIRs, and
+  extending `system/system.foo` with `'lt`/`'gt`/`'le`/`'ge`/`'eq`). Not yet written.
 - **Anchored value search miss on creation inequality — RESOLVED 2026-08-03: NK, confirmed
   correct, no code change.** `referential_equality.foo`'s `cross_diff = bc~=(bd.v);` (an
   **anchored** forward value search that correctly finds no match inside `bc`, since `bc.v` and
@@ -1347,15 +1325,15 @@ preferred, three-canonical-strings fallback — §3); null-const mechanism (`get
 
 ## Last Updated
 
-**Date**: 2026-08-04 (later)
-**Updated By**: Claude Code / claude-sonnet-5
-**Changes**: Updated the Open Questions "Creation *value* render form in `hssnap`" entry with the
-human's proposed resolution: `CreationFir::get_recent_name()` (in `foolish-ubca/src/fir_kinds.rs`)
-performs a `?=$CREATION`-style value search from its own statement, entirely within
-`foolish-ubca` — confirmed to sidestep the identity/parent-chain blocker documented earlier the
-same day, since it runs where real `Rc` identity and the real parent chain exist. How the
-sequencer (which only sees the lossy `foolish-core::Fir` tree) reaches this `foolish-ubca`-only
-method remains unresolved and is explicitly left as a subtlety for later — not guessed at here.
-Per human direction, Phase 5.5 in its entirety is PUNTED OUT of FOOP-33 to a new, separate,
-future FOOP (not yet created or numbered); FOOP-33 will not implement it. `docs/foop/FOOP-33.plan.md`'s
-Phase 5.5 section and STATUS SUMMARY table updated with the corresponding marker.
+**Date**: 2026-08-04
+**Updated By**: Claude Code / claude-opus-5
+**Changes**: **Corrected the Phase 6 "blocked" finding — Phase 6 is NOT blocked.** The earlier
+same-day investigation tested a **bare** `#-1` (which correctly settles terminal NK after
+running and missing) but Phase 6 specifies **SFF-marked** `<<#-1>>`, which never runs at all —
+`build_fir`'s `under_sff` rule builds descendant search kinds ECONSTANIC. Verified live:
+`{only = <<#-1>>;}` settles the index to ECONSTANIC, exactly the state detachment/recoordination
+needs. Two tests pin both behaviors. No `IndexFir` fix and no design change needed; what remains
+for Phase 6 is the implementation itself. Also this session: Phase 5.5 punted to a future FOOP
+(CreationFir::get_recent_name() proposal); anchored value-search-miss confirmed NK; creation-vs-
+integer confirmed NotEqual. Full history in `git log` on this file.
+

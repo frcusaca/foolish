@@ -4573,21 +4573,21 @@ mod tests {
     }
 
     #[test]
-    fn unanchored_index_out_of_bounds_settles_nk_not_econstanic() {
-        // FOOP-33 Phase 6 finding (2026-08-04): the settled comparison-operator
-        // design (FOOP-33.md §5.0's evening revision) assumes an unanchored
-        // index (#-1/#-2, no dot before it) with no valid neighbor settles
-        // ECONSTANIC ("may gain value via recoordination"). It does NOT --
-        // IndexFir::fir_op_step's unanchored-Prembrionic arm sets Nyes::Nk
-        // directly on an out-of-bounds target (see the `if target < 0 ||
-        // target >= len` branch below in this same file). NK is TERMINAL
-        // (never regresses to a pre-constanic state), so an out-of-bounds
-        // unanchored index can never later gain a value via detachment/
-        // recoordination the way ECONSTANIC can -- this breaks the mechanism
-        // Phase 6's design depends on for 'lt's #-2/#-1 operand lookups
-        // (which have no valid neighbors inside system.foo alone). See
-        // FOOP-33.md's Open Questions for the full writeup; Phase 6 is
-        // blocked on this pending a human decision.
+    fn bare_unanchored_index_out_of_bounds_settles_nk() {
+        // A BARE (un-SFF-marked) unanchored index RUNS, misses, and settles
+        // terminal NK -- correct behavior: it genuinely searched and genuinely
+        // found nothing. IndexFir::fir_op_step's unanchored-Prembrionic arm
+        // sets Nyes::Nk on an out-of-bounds target (`if target < 0 || target
+        // >= len`).
+        //
+        // NOTE (2026-08-04): an earlier reading took this to mean FOOP-33
+        // Phase 6's design was blocked, since 'lt's #-2/#-1 operand lookups
+        // have no valid neighbors inside system.foo alone and NK is terminal
+        // (never revived by recoordination). That conclusion was WRONG -- it
+        // tested the wrong construct. Phase 6 specifies SFF-MARKED operands
+        // (`<<#-1>>`), which never run at all and are built ECONSTANIC. See
+        // the companion test `sff_marked_unanchored_index_out_of_bounds_
+        // settles_econstanic` immediately below.
         let root = Compiler::compile("{only = #-1;}").unwrap().pop().unwrap();
         let scope = Scope::empty();
         let _ = step_to_settled(&root, &scope);
@@ -4597,7 +4597,41 @@ mod tests {
         assert_eq!(
             only_body.borrow().core().get_nyes(),
             Nyes::Nk,
-            "an out-of-bounds unanchored index settles NK today, not ECONSTANIC"
+            "a BARE out-of-bounds unanchored index runs, misses, and settles NK"
+        );
+    }
+
+    #[test]
+    fn sff_marked_unanchored_index_out_of_bounds_settles_econstanic() {
+        // The construct FOOP-33 Phase 6 actually specifies: an SFF-marked
+        // unanchored index. `compiler::build_fir`'s `under_sff` rule builds
+        // descendant search kinds ECONSTANIC so they NEVER RUN -- so unlike
+        // the bare form above, there is no miss and no NK. ECONSTANIC is
+        // precisely "not evaluated in this context, may gain a value via
+        // recoordination", which is the state Phase 6's design depends on:
+        // 'lt's #-2/#-1 operands sit ECONSTANIC inside system.foo (no valid
+        // neighbors there), then resolve against real neighbors once the
+        // reference is detached and recoordinated into the user's brane.
+        //
+        // This pins that Phase 6's mechanism is sound as designed.
+        let root = Compiler::compile("{only = <<#-1>>;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        let scope = Scope::empty();
+        let _ = step_to_settled(&root, &scope);
+
+        // Walk to the index inside the SFF wrapper.
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let sff_body = stmts[0].borrow().core().foolish_children()[0].clone();
+        assert_eq!(sff_body.borrow().kind(), FirKind::StayFullyFoolish);
+        let index = sff_body.borrow().core().foolish_children()[0].clone();
+        assert_eq!(index.borrow().kind(), FirKind::Index);
+        assert_eq!(
+            index.borrow().core().get_nyes(),
+            Nyes::Econstanic,
+            "an SFF-marked out-of-bounds unanchored index is built ECONSTANIC \
+             and never runs -- it can still gain a value via recoordination"
         );
     }
 
