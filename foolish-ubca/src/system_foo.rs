@@ -138,6 +138,7 @@ pub fn program_result(composed_root: &FirRef) -> Option<FirRef> {
 mod tests {
     use super::*;
     use crate::fir_trait::{FirKind, FirRefExt, Scope};
+    use std::rc::Rc;
 
     fn step_to_settled(node: &FirRef, scope: &Scope) {
         for _ in 0..200 {
@@ -177,6 +178,40 @@ mod tests {
             .unwrap()
             .to_owned();
         assert_eq!(reason, "'True not-foolish");
+    }
+
+    #[test]
+    fn referenced_creations_own_parent_chain_reaches_its_defining_brane() {
+        // Phase 5.5 precondition: when a user program references 'True (a
+        // creation constructed inside system.foo's own AST), the REFERENCED
+        // creation's OWN parent chain still leads back to system.foo -- NOT
+        // to wherever it's read from. Constanic clone of an Independent
+        // creation returns the SAME Rc (Gotcha #2), so its `core().parent()`
+        // (set at ORIGINAL construction time, inside system.foo's AST) is
+        // unaffected by detachment/recoordination at the reference site. This
+        // is what lets a name-rendering pass, given only the creation FirRef,
+        // walk `_get_my_brane` to find system.foo and search it for the
+        // defining 'True statement -- without needing the reader to already
+        // know which brane it came from.
+        let composed = compose_program_with_system("{t1 = 'True;}").unwrap();
+        let root = &composed[0];
+        let scope = Scope::empty();
+        step_to_settled(root, &scope);
+        let program = program_result(root).expect("program member must exist");
+        let stmts = program.borrow().core().foolish_children().to_vec();
+        let t1_body = stmts[0].borrow().core().foolish_children()[0].clone();
+        let t1_value = t1_body.value();
+        assert_eq!(t1_value.borrow().kind(), FirKind::Creation);
+
+        let home_brane = t1_value
+            .borrow()
+            ._get_my_brane(&t1_value)
+            .expect("creation must have a home brane");
+        assert!(
+            Rc::ptr_eq(&home_brane, root),
+            "the creation's home brane must be system.foo (the composed root), \
+             not `program` (where it's merely referenced from)"
+        );
     }
 
     #[test]

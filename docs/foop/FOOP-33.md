@@ -1124,10 +1124,47 @@ unit test asserting `Reject` (matching its name).
 
 ## Open Questions
 
-- **Creation *value* render form in `hssnap`.** The input `{*}` alias is decided (always
-  renders back as `⬤`), and the FIR shape is decided — but the exact human-legible form a
-  *settled creation value* takes in snapshot output is not yet fixed. It must be stable before
-  any approval snapshot is signed. (Resolvable during Phase 2, when the sequencer arm is added.)
+- **Creation *value* render form in `hssnap`** — **still open; Phase 5.5 investigation
+  2026-08-04 sharpened the question and found a real architectural gap the plan's own wording
+  did not anticipate.** The input `{*}` alias is decided (always renders back as `⬤`), and the
+  FIR shape is decided for the UN-NAMED case — but Phase 5.5's design ("when a creation
+  originates from a null-characterized statement like `'True`, render the characterized name
+  instead of `⬤`") cannot be implemented as literally written, for a structural reason:
+
+  1. **Where the search must run.** Phase 5.5's design text says "the sequencer searches the
+     containing brane... using `Rc::ptr_eq`" and "the sequencer needs access to... walk up the
+     parent chain from the creation FIR." Traced live (not assumed): this identity-and-parent-
+     chain search can ONLY run against `foolish-ubca`'s own `Fir` trait objects (`FirRef =
+     Rc<RefCell<dyn Fir>>`, which retain real `Rc` identity and a real `.core().parent()`
+     chain) — **not** against `foolish-core::Fir`, the tree `FirSequencer` actually renders,
+     which is produced by a LOSSY conversion (`evaluator.rs::proto_to_core_fir_inner`) that
+     already discards both identity and brane context by the time it becomes `Fir::Creation`
+     (a bare unit variant, no fields). Confirmed via a live trace
+     (`system_foo::tests::referenced_creations_own_parent_chain_reaches_its_defining_brane`)
+     that the NEEDED information — a referenced creation's `_get_my_brane()` correctly reaching
+     back to `system.foo` regardless of where it's referenced from, because constanic clone of
+     an `Independent` creation preserves the `Rc` (Gotcha #2) — genuinely exists and is
+     reachable, but only in `evaluator.rs`, at conversion time, not in
+     `foolish-core/src/sequencer.rs` where the checkbox literally points (a stale reference —
+     the file predates the composition design and the render/convert split it implies).
+  2. **What the search result becomes, once found.** The design insists `Fir::Creation`
+     "remains a unit variant" (no name field). But `foolish-core::Fir` has no OTHER variant
+     that renders as bare, undecorated text — `Fir::Search` renders as `?(pattern='...', ...)`
+     (decorated, not what "render `'True`" means); there is no "literal text" variant to repurpose. A
+     unit variant, by construction, cannot carry a found name string forward from the
+     conversion step (where the search runs) to the sequencer (where the string would need to
+     print) without EITHER (a) a new field/variant on `foolish-core::Fir` (contradicts "remains
+     a unit variant," and is itself a design decision with hssnap/JSON-serialization stability
+     consequences the human should make, not an agent under a "don't guess" instruction), or
+     (b) some other mechanism not yet described.
+
+  **Not implemented.** Rather than invent a resolution to either (1) or (2) unilaterally, Phase
+  5.5 is left undone and this entry records exactly where the design needs a decision:
+  confirm whether the search belongs in `evaluator.rs` (where identity survives) rather than
+  `sequencer.rs`, and decide how the found name is threaded from there into rendered output —
+  new `Fir` variant/field (and its JSON shape), or a different mechanism entirely. Phase 6 does
+  **not** block on this (its own stated dependency is Phase 5's composition, not Phase 5.5's
+  rendering), so work continued past this point rather than stalling.
 - **Anchored value search miss on creation inequality — RESOLVED 2026-08-03: NK, confirmed
   correct, no code change.** `referential_equality.foo`'s `cross_diff = bc~=(bd.v);` (an
   **anchored** forward value search that correctly finds no match inside `bc`, since `bc.v` and

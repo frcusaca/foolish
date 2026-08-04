@@ -62,7 +62,7 @@ exact evidence). Current real status, top to bottom:
 | 3 — `default_equal` | ✅ **fully done** (2026-08-04) — 9 direct truth-table unit tests added; creation-vs-integer confirmed `NotEqual` per human ruling 2026-08-03 (every integer is itself a creation). |
 | 4 — Null-characterized constants | ✅ **complete** (2026-08-04) — ancestral/same-brane conflict detection via `StatementFir` self-check (new `self_weak` field), NF via `settled_result()` override, concatenation collision handling with transitive poisoning. 14 new unit tests. See the phase's design notes for two architectural findings made during implementation (self-reference plumbing, the `NkFir::nk` pre-constanic bug). |
 | 5 — `system.foo` composition | ⚠️ **implemented and verified (2026-08-04), ONE open finding escalated to Open Questions** — `system_foo.rs` composes `system.foo` as root with `program` as its last member, wired into the one production entry point (`UbcaEvaluator::evaluate`). Found and fixed a real bug where Phase 4's NF refusal was enforced but never rendered (4th bypass site, in `evaluator.rs`). 280/280 unit tests pass; einmo suite green except ONE frozen `verified/` FOOP-62 baseline whose exact iteration-budget snapshot composition unavoidably shifts — see the phase's own checkbox and FOOP-33.md's Open Questions for the full writeup; needs a human decision, not guessed around. |
-| 5.5 — Sequencer renders named creations | ❌ not started, depends on 5 |
+| 5.5 — Sequencer renders named creations | ⛔ **BLOCKED (2026-08-04)** — investigated, not guessed: the design as written needs a genuine decision (search must run in `evaluator.rs` against live identity, not `sequencer.rs`; `Fir::Creation`'s "remains a unit variant" constraint leaves no way to carry a found name forward without a new field/variant). See FOOP-33.md Open Questions. Does NOT block Phase 6 (Phase 6 depends on Phase 5, not 5.5). |
 | 6 — Comparison operators | ⛔ **BLOCKED, design settled tonight, no code yet** — reverted (was returning placeholder `1`/`0`); design converged through several exchanges to: postfix `<<#-2>> < <<#-1>>` in an ordinary brane literal (`{1, 2, 'lt}`, **no concatenation**), extracted via `$` (`comparison_result =$ {1, 2}'lt` or `{1, 2, 'lt}$` — the brane literal alone is not the full expression, it's the vessel the tail-read pulls the boolean out of). `'lt` resolved via ordinary ancestral search into `system.foo` (same as `'True`), then the existing **detachment/recoordination** mechanism (`AGENTS.md` "Detachment and Coordination") lets its previously-unresolved `#-2`/`#-1` lookups find real neighbors once recoordinated into the user's brane. A new `system_foo.rs` Rust module holds shared FIR logic across `'lt`/`'gt`/`'le`/`'ge`/`'eq`, differing only in the op step. See FOOP-33.md §5.0's evening revision banner for the full transcript. Not yet re-verified against a live trace — needs Phase 5 (`system.foo` composition) implemented first to test against. See the STOP gate at the head of Phase 6. |
 | 7 — Docs/Tests | 🟡 partial, done piecemeal, not formally tracked |
 | 7R — Phase 3 value-search regression repair | ✅ done (earlier session) |
@@ -555,6 +555,27 @@ context for the rewrite above — do NOT implement from it directly. Superseded 
       Unit test via `as_stmt_line_number` / `step_until_line_number` on a one-line program.
 
 ## Phase 5.5 — Sequencer renders named creations
+
+> ## ⛔ BLOCKED 2026-08-04 — real architectural gap found, not started
+>
+> Investigated (not guessed) before writing any code. The design as written cannot be
+> implemented literally: (1) the identity-and-parent-chain search this needs can only run
+> against `foolish-ubca`'s live `FirRef` tree (confirmed via a live trace,
+> `system_foo::tests::referenced_creations_own_parent_chain_reaches_its_defining_brane` — a
+> referenced creation's own parent chain correctly reaches back to `system.foo`), NOT against
+> `foolish-core::Fir`, which is what `FirSequencer` actually renders and which has already lost
+> both identity and brane context by conversion time (`Fir::Creation` is a bare unit variant).
+> So the search belongs in `evaluator.rs`'s conversion step, not literally in
+> `foolish-core/src/sequencer.rs` as the checkbox below states (stale — written before the
+> composition/conversion split existed). (2) Even once found, there is no existing
+> `foolish-core::Fir` variant that renders as bare undecorated text to carry a found name
+> forward into `FirSequencer`'s output, and the design explicitly insists `Fir::Creation`
+> "remains a unit variant" — these two constraints together leave no implementation path
+> without a genuine new decision (new field/variant + its JSON/hssnap shape, or a different
+> mechanism). Full writeup: FOOP-33.md's Open Questions, "Creation *value* render form in
+> `hssnap`" entry (updated 2026-08-04). **Not blocking Phase 6** — Phase 6's own stated
+> dependency is Phase 5 (composition), not Phase 5.5 (rendering) — so work continued past this
+> point rather than stalling on it.
 
 The sequencer currently renders all creations as `⬤`. When a creation originates from a
 null-characterized statement (like `'True = ⬤` in `system.foo`), the sequencer should render
