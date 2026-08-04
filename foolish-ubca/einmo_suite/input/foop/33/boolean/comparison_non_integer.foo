@@ -1,4 +1,4 @@
-
+{
 	!! FOOP-33 §5: "only integers are comparable" -- the same principle
 	!! default_equal follows. When an operand DID evaluate here but is not an
 	!! integer, the comparison settles NK rather than inventing an ordering.
