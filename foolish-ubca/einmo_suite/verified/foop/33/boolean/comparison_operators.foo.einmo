@@ -1,0 +1,63 @@
+#einmo 1 encoding=utf-8 separator=!!\n
+test: foop/33/boolean/comparison_operators.foo
+suite: /storage1/human/hcbusy/foolish/.claude/worktrees/foop-33-phase9/foolish-ubca/einmo_suite
+producer: 8ac047e2
+producer-diff: sha256:e8edc45e1fce06c6efe3f455ef52c5f03595250eaa5f06731f6d46c561c2a7c1
+generated: 2026-08-04T20:54:30.000000000Z
+status: normal
+status-detail: 
+sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
+{
+	!! FOOP-33 §5.0: the five comparison operators, defined in system.foo as
+	!! null-characterized creations ('lt/'gt/'le/'ge/'eq) and reached by the
+	!! SAME ordinary ancestral search that finds 'True/'False. There is no
+	!! parse-time or name-based special-casing of 'lt.
+	!! --
+	!! Placement is POSTFIX: both operands come BEFORE the operator, which
+	!! reads them as <<#-2>> op <<#-1>>. The brane literal alone is not the
+	!! whole expression -- the computed boolean becomes the brane's TAIL, and
+	!! $ reads it out.
+	!! --
+	!! The mechanism is detachment and recoordination, not new machinery: the
+	!! operand lookups sit ECONSTANIC inside system.foo (no neighbours there),
+	!! and resolve against 1 and 2 once the reference is recoordinated into
+	!! the brane below.
+	!! --
+	!! FOOP-33 Phase 9: the sequencer now renders each result by the name of
+	!! the 'True/'False creation it settled to, instead of the bare ⬤ glyph.
+	!! Each line's comment states which boolean it IS.
+
+	lt_true  = {1, 2, 'lt}$;    !! 1 < 2  -> 'True
+	lt_false = {2, 1, 'lt}$;    !! 2 < 1  -> 'False
+
+	gt_true  = {2, 1, 'gt}$;    !! 2 > 1  -> 'True
+	gt_false = {1, 2, 'gt}$;    !! 1 > 2  -> 'False
+
+	le_true  = {2, 2, 'le}$;    !! 2 <= 2 -> 'True
+	le_false = {2, 1, 'le}$;    !! 2 <= 1 -> 'False
+
+	ge_true  = {2, 2, 'ge}$;    !! 2 >= 2 -> 'True
+	ge_false = {1, 2, 'ge}$;    !! 1 >= 2 -> 'False
+
+	eq_true  = {3, 3, 'eq}$;    !! 3 == 3 -> 'True
+	eq_false = {3, 4, 'eq}$;    !! 3 != 4 -> 'False
+}
+!!
+{
+  ltˍtrue='True;
+  ltˍfalse='False;
+  gtˍtrue='True;
+  gtˍfalse='False;
+  leˍtrue='True;
+  leˍfalse='False;
+  geˍtrue='True;
+  geˍfalse='False;
+  eqˍtrue='True;
+  eqˍfalse='False
+}!!
+!!
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:fc939bdc2d8bac919faed85ddeeed66f28285e7e91526205d4b8671d382ead22","timestamp":"2026-08-04T20:54:30.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:fc939bdc2d8bac919faed85ddeeed66f28285e7e91526205d4b8671d382ead22","timestamp":"2026-08-04T20:54:30.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"KWh3cSdgobjE3xvXsRVMRFxNX2QxYTDin247GJZmkxQI4uUMLpc8CFEg7euEvgNGmhkaONQCiRMI7qe6OaTDDQ==","produced_by":"einmo 0.1.0 sha256:fc939bdc2d8bac919faed85ddeeed66f28285e7e91526205d4b8671d382ead22","timestamp":"2026-08-04T20:54:30.000000000Z"}
+{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"ot+jDdEDspITaicieydFlvjzTp8hr2K3W2UyO8rxR+Br3sZZTdvyA558HtqOcmG/l2JSNNmWMHvSmxYVf0PVBA==","produced_by":"einmo 0.1.0 sha256:a55715a686daa1859111d673e991e42f4a2686b3836dbd4d2c946a289f37d643","timestamp":"2026-08-04T20:55:16.000000000Z"}
+{"key":"stage:verified","pubkey":"951297d9ab0707de8261a761072f35775199db7fd7a6203a620aa861fffe824e","signs":"prior-bytes","signature":"MJqc01zVZwi0MAXOPPB9wmeHuo6gcMBv+9Cz0BaZah+bIy3VIV2L7wmEGiVaUY5YLvVILqs4UE9ImyB02HihCA==","produced_by":"einmo 0.1.0 sha256:031a061fe4e33915e576d70397ceeeff7ca577e57e30688e33a5167b15533ab2","timestamp":"2026-08-04T23:33:13.000000000Z"}

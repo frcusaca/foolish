@@ -21,11 +21,12 @@
         test_number = 3;
 	    c = a;
     }
-    find_a = brn~=(brn.a)&#-1; 1
-    find_b = brn~=(brn.b)&#-1; 2
-    find_b = brn?=(brn.b)&#-1; 2
-    find_c = brn~=(brn.c)&#-1; 1
-    find_c = brn?=(brn.c)&#-1; 3
+    find_a = brn~=(brn.a)&#-1; !! 1
+    find_a = brn?=(brn.a)&#-1; !! 3
+    find_b = brn~=(brn.b)&#-1; !! 2
+    find_b = brn?=(brn.b)&#-1; !! 2
+    find_c = brn~=(brn.c)&#-1; !! 1
+    find_c = brn?=(brn.c)&#-1; !! 3
 
 	tag'x = 7;
 	plain_x = 9;
