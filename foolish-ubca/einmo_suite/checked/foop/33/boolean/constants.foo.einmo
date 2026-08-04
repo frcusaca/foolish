@@ -1,9 +1,9 @@
 #einmo 1 encoding=utf-8 separator=!!\n
 test: foop/33/boolean/constants.foo
-suite: /storage1/human/hcbusy/foolish/.claude/worktrees/agent-aa9abfe6e2ce7469a/foolish-ubca/einmo_suite
-producer: c42e1c57
-producer-diff: sha256:26648a65c8214bdfd9aa9fff7c042468854936ca4ced426680e615e691ef3926
-generated: 2026-08-04T07:58:34.000000000Z
+suite: /storage1/human/hcbusy/foolish/foolish-ubca/einmo_suite
+producer: 69ca34d2
+producer-diff: sha256:356313cdedbe86a50196646694d4c6509555780bd72b556eb139c9e810edb609
+generated: 2026-08-04T14:51:05.000000000Z
 status: normal
 status-detail: 
 sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
@@ -14,6 +14,11 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
 	!! quote) can never match the null-characterized 'True (searchable_name
 	!! comparison is unconditional -- see FOOP-33.md §3 "quote-bearing
 	!! search").
+	!! Phase 5.5 (sequencer renders named creations) is PUNTED to a future
+	!! FOOP -- see FOOP-33.md Open Questions for the get_recent_name()
+	!! design. Once implemented, t1/t2/f1 below are expected to render as
+	!! 'True/'True/'False instead of the bare ⬤ shown today; this baseline
+	!! will need re-promoting at that time, not before.
 	t1 = 'True;
 	t2 = 'True;
 	f1 = 'False;
@@ -25,7 +30,7 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
   f1=⬤
 }!!
 !!
-{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:97c3630c371b881088770399742bfcd4cd65e2f50fc58cfcf112271ec4de91fa","timestamp":"2026-08-04T07:58:34.000000000Z"}
-{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:97c3630c371b881088770399742bfcd4cd65e2f50fc58cfcf112271ec4de91fa","timestamp":"2026-08-04T07:58:34.000000000Z"}
-{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"hcWfEUUThq0vlRUSRmR3ZWQlmPFWLSnCQCthUT10wCnpkCXyxjrzpU6a+E+APNjGJ3ie5wGztM/cnol7pE/WBg==","produced_by":"einmo 0.1.0 sha256:97c3630c371b881088770399742bfcd4cd65e2f50fc58cfcf112271ec4de91fa","timestamp":"2026-08-04T07:58:34.000000000Z"}
-{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"KrUFxbawkZOEFNY3FeEI20lVlOZz43TPVHJSXpqSjy2/sSFns7y88hkEx9cHDqSejtyCgz7Yp1HO/6un1/ASCQ==","produced_by":"einmo 0.1.0 sha256:6b1e49538946e24f8565e4195782c67528878b8ba83dae7eebf1e2ae29d71fbd","timestamp":"2026-08-04T08:00:28.000000000Z"}
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:1a692f8c93d49b0fd8d0e99b4f1148448866f1af7232abd1c5451e4e1e781ffd","timestamp":"2026-08-04T14:51:05.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:1a692f8c93d49b0fd8d0e99b4f1148448866f1af7232abd1c5451e4e1e781ffd","timestamp":"2026-08-04T14:51:05.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"eiVUwVtgm33QcGzlEMiRenDMGqix5VnGJHlk/UdGmxG3FRHFGsNZ3nuXYB+0NZb9eCW55r2RuHELNjTd7ebBCA==","produced_by":"einmo 0.1.0 sha256:1a692f8c93d49b0fd8d0e99b4f1148448866f1af7232abd1c5451e4e1e781ffd","timestamp":"2026-08-04T14:51:05.000000000Z"}
+{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"7Il3+pWcfw6oR2TPTsF4gtzV0TZ8LU9IjXjPED/iDjtQJH6mobiV5rgUb0PH+xlFBOgPNzhzy0mvVC3JinyvCQ==","produced_by":"einmo 0.1.0 sha256:2381def31d69037bb8a176a65a8ab6092becf423d9e3e0b7c36b008d2d62d8b2","timestamp":"2026-08-04T14:52:09.000000000Z"}

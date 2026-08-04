@@ -4,6 +4,11 @@
 	!! creation, resolved via ordinary ancestral search) but a conflicting
 	!! redefinition (a different value) refuses -- get_value() becomes NF
 	!! ("'True not-foolish") instead of the written RHS.
+	!! Phase 5.5 (sequencer renders named creations) is PUNTED to a future
+	!! FOOP -- see FOOP-33.md Open Questions for the CreationFir::
+	!! get_recent_name() design. Once implemented, restate/'True/conflict
+	!! below are expected to render as 'True instead of the bare ⬤ shown
+	!! today; this baseline will need re-promoting at that time, not before.
 	restate = 'True;
 	'True = 'True;
 	conflict = 'True;

@@ -1,9 +1,9 @@
 #einmo 1 encoding=utf-8 separator=!!\n
 test: foop/33/boolean/null_char_constant.foo
-suite: /storage1/human/hcbusy/foolish/.claude/worktrees/agent-aa9abfe6e2ce7469a/foolish-ubca/einmo_suite
-producer: c42e1c57
-producer-diff: sha256:b909ab1b71601515e6749de4254b6c919c35c0f37901872665635689451ad1b7
-generated: 2026-08-04T07:58:35.000000000Z
+suite: /storage1/human/hcbusy/foolish/foolish-ubca/einmo_suite
+producer: 69ca34d2
+producer-diff: sha256:17a9529d78a63e8754d17e3a06f47559f842a8da0a6b6270b13f8d9eae8a0d27
+generated: 2026-08-04T14:51:04.000000000Z
 status: normal
 status-detail: 
 sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
@@ -13,6 +13,11 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
 	!! creation, resolved via ordinary ancestral search) but a conflicting
 	!! redefinition (a different value) refuses -- get_value() becomes NF
 	!! ("'True not-foolish") instead of the written RHS.
+	!! Phase 5.5 (sequencer renders named creations) is PUNTED to a future
+	!! FOOP -- see FOOP-33.md Open Questions for the CreationFir::
+	!! get_recent_name() design. Once implemented, restate/'True/conflict
+	!! below are expected to render as 'True instead of the bare ⬤ shown
+	!! today; this baseline will need re-promoting at that time, not before.
 	restate = 'True;
 	'True = 'True;
 	conflict = 'True;
@@ -26,7 +31,7 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
   'True=??? ('True not-foolish)
 }!!
 !!
-{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:97c3630c371b881088770399742bfcd4cd65e2f50fc58cfcf112271ec4de91fa","timestamp":"2026-08-04T07:58:36.000000000Z"}
-{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:97c3630c371b881088770399742bfcd4cd65e2f50fc58cfcf112271ec4de91fa","timestamp":"2026-08-04T07:58:36.000000000Z"}
-{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"Jl2aQ4JHyJg9LLEfDuLxVKlSg8Q2cBWOd7GktMuXPfJvtsf8D0DGW2my1yPx9KYW+PjWG+jM8DduKREYDKc6Ag==","produced_by":"einmo 0.1.0 sha256:97c3630c371b881088770399742bfcd4cd65e2f50fc58cfcf112271ec4de91fa","timestamp":"2026-08-04T07:58:36.000000000Z"}
-{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"bB8INUS+zP6KNwbwBdDTn57pOU6TBb07IrYUTSNr8kGI6PRlm0RvC0wsGHkENO6TfQMvd7T2bv91Ldu3hgsJCA==","produced_by":"einmo 0.1.0 sha256:6b1e49538946e24f8565e4195782c67528878b8ba83dae7eebf1e2ae29d71fbd","timestamp":"2026-08-04T08:00:28.000000000Z"}
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:1a692f8c93d49b0fd8d0e99b4f1148448866f1af7232abd1c5451e4e1e781ffd","timestamp":"2026-08-04T14:51:04.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:1a692f8c93d49b0fd8d0e99b4f1148448866f1af7232abd1c5451e4e1e781ffd","timestamp":"2026-08-04T14:51:04.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"19ee7grtZXe55D1HNL/NrX7R2ATxpVU8D60Slil273AR+ZM1ijd1pFq2x4/ukxNzz0+ddKzw/3+yuTWzA0r+Bg==","produced_by":"einmo 0.1.0 sha256:1a692f8c93d49b0fd8d0e99b4f1148448866f1af7232abd1c5451e4e1e781ffd","timestamp":"2026-08-04T14:51:04.000000000Z"}
+{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"2n88EYCh34mohVYNeQKIfriZde5dhybX58Vh0YPDzN9xWjULdPF2EOx9uo5MOWLtvc6KZd/EbTHTpNmDALPGBg==","produced_by":"einmo 0.1.0 sha256:2381def31d69037bb8a176a65a8ab6092becf423d9e3e0b7c36b008d2d62d8b2","timestamp":"2026-08-04T14:52:12.000000000Z"}
