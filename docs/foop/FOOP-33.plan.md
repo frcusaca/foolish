@@ -534,26 +534,17 @@ module).
 *(Below this line: the original "ancestral prelude" task-list prose, retained as historical
 context for the rewrite above — do NOT implement from it directly. Superseded 2026-08-03.)*
 
-- [ ] **Implicitly** compile `SYSTEM_FOO_SRC` once and make it **THE root brane** (its own
-      parent, self-rooting via `new_cyclic` — the same pattern used one level down today), with
-      the user program as its child, before `step_to_settled`, on every entry path
-      (`foolish-ubca/src/evaluator.rs::evaluate`, REPL, CLI `run`/`step`). `_ab_search`
-      terminates at system.foo (parent == self). Not opt-in.
-
-      **Construction**: parse system.foo to get its AST (a Brane with `'True` and `'False`
-      statements). Add `'program = {user source}` as a statement to that AST. Compile the
-      combined AST as one unit → one BraneFir (self-rooting). The FIR tree is built correctly
-      from the start — no re-parenting, no changes to `parent` or `foolish_children` after
-      construction. The evaluator returns the `'program` statement's result, not the system
-      brane's result.
-
-      **`'program` statement**: the user program brane is wrapped in a null-characterized
-      statement named `'program`. This ensures the AB search parent chain works correctly:
-      user_brane → StatementFir('program) → system.foo → self (terminates).
-
-- [ ] **Preserve the user program's line numbers**: making system.foo the ancestor must not
-      shift program line numbering (system.foo is a distinct brane above, with its own lines).
-      Unit test via `as_stmt_line_number` / `step_until_line_number` on a one-line program.
+- [x] ~~**Implicitly** compile `SYSTEM_FOO_SRC` once and make it **THE root brane**…~~
+      **SUPERSEDED, not real outstanding work.** This bullet describes the `'program`-wrapper-
+      statement + `_ab_search`-ancestry design the 2026-08-03 banner above replaced with plain
+      composition. The equivalent, actually-implemented item is the `[x]` "Implicitly compose
+      `SYSTEM_FOO_SRC`…" bullet in the current task list above the `---` divider (line ~450) —
+      already done and verified. Left struck through, not deleted, so this historical section
+      reads as fully accounted for rather than looking like an open item on a status scan.
+- [x] ~~**Preserve the user program's line numbers**…~~ **SUPERSEDED, not real outstanding
+      work.** The equivalent current-list item (line ~488) found this requirement **moot**
+      under composition (statement indices are per-brane, unaffected by siblings in a different
+      brane) and is itself `[x]`, pinned by `system_foo::tests::program_line_numbers_are_preserved`.
 
 ## Phase 5.5 — Sequencer renders named creations
 
@@ -986,5 +977,11 @@ spawn attempts landed on a stale pre-Rust commit (`origin/HEAD`/`origin/main` st
 abandoned Java/Maven-era commit, `4e0401ce`, left over from before this repo's trunk moved to
 `jia` — a spawn-mechanism bug, not a task issue) and correctly self-aborted without guessing;
 worked around by manually creating the Phase 9 worktree off the correct local branch tip and
-directing the agent there directly. This log keeps only the single newest entry per the
-Markdown File Update Protocol; full history in `git log` on this file.
+directing the agent there directly. **Confirmed Phase 5 has no real outstanding work**: the two
+unchecked bullets below its `---` divider (implicit-root-brane, line-number preservation) are
+dead prose from the pre-2026-08-03 "ancestral prelude" design the banner above explicitly
+supersedes ("do NOT implement from it directly") — their equivalents in the current, actually-
+implemented task list above the divider are already `[x]`. Struck through both rather than
+leaving them looking like open items on a status scan; no code changes needed. This log keeps
+only the single newest entry per the Markdown File Update Protocol; full history in `git log`
+on this file.
