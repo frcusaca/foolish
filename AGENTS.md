@@ -531,6 +531,15 @@ a following `&`-search can read.
 - **Coordinate** - brane member names used for relational access
 - **Home brane of a FIR** (synonym: **brane of a FIR**) - the first brane reached by
   walking the FIR's `.parent` chain. Accessor: `get_my_brane`. See the Searches section above.
+- **Sift** - a lookup performed **outside** of Foolish search functionality: an ordinary
+  Rust-side walk over the FIR tree with no Foolish search semantics — no anchoring, no NYES
+  effects, no ECONSTANIC/NK miss outcome, no `SearchFir`/`ContextfulSearch` involvement.
+  **Naming rule:** name such functions `sift_*`, never `search_*`. "Search" is reserved for
+  the Foolish language feature (`?` `~` `.` `#` `^` `$`, value searches, `&`-searches — see
+  the Searches section above). Keeping the prefixes distinct stops interpreter plumbing from
+  being read as language behavior. Example:
+  `ProtoBrane::sift_for_first_non_econstanic_descendent_search` walks the foolish store to
+  validate an SFF construction invariant — it is not a Foolish search.
 - **Lexed** - feature parses to AST
 - **Interpreted** - feature fully implemented in VM
 
@@ -660,20 +669,20 @@ When proposing updates, explain what has changed and why the documentation needs
 
 ## Last Updated
 
-**Date**: 2026-08-03
+**Date**: 2026-08-04
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Replaced the **Task Management** section's `/todo`-skill blurb — while working on
-a FOOP, the FOOP's own `FOOP-#.plan.md` checkboxes ARE the todo list; no separate document to
-maintain, and there is currently no `/todo` skill installed in this repository. Added
-"**Before promoting, justify every OUTPUT line**" (step 4) to §"The einmo review workflow" —
-an agent must be able to state why each line of a diverged/new OUTPUT is correct, not just
-that the evaluator produced it — with sub-rules on treating statement names (`hit`/`miss`) as
-part of the test's own specification and checking against the in-force FOOP `.md`. The
-semantics of when a search may legitimately settle NK vs ECONSTANIC were kept out of this
-process document and pointed at README.md §"NK from a search" / FOOP-23 §Specification
-instead. Added **§"Non-regression invariant (hard rule)"** under Approval Tests (einmo). Per
-policy (below), this log now keeps only the single newest entry; prior entries' substance
-remains in git history and in the sections they describe.
+**Changes**: Added **"Sift"** to §Foolish Terminology: a lookup performed *outside* Foolish
+search functionality — an ordinary Rust-side walk over the FIR tree with no anchoring, no NYES
+effects, no ECONSTANIC/NK miss outcome. Naming rule: such functions are `sift_*`, never
+`search_*`, since "search" is reserved for the Foolish language feature; keeping the prefixes
+distinct stops interpreter plumbing from being read as language behavior. Earlier: replaced the
+Task Management section's `/todo`-skill blurb (a FOOP's own `FOOP-#.plan.md` checkboxes ARE the
+todo list; no `/todo` skill is installed here); added "Before promoting, justify every OUTPUT
+line" (step 4) to §"The einmo review workflow", with sub-rules on treating statement names
+(`hit`/`miss`) as part of a test's specification and checking against the in-force FOOP `.md`;
+added §"Non-regression invariant (hard rule)" under Approval Tests (einmo). This log keeps only
+the single newest entry per the Markdown File Update Protocol; prior substance remains in git
+history and in the sections it describes.
 
 ### MISC
 

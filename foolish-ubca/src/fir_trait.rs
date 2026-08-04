@@ -92,6 +92,21 @@ pub enum UbcError {
     /// An evaluation error with a human-readable message.
     #[error("ubca evaluation error: {0}")]
     Eval(String),
+
+    /// The FVM's own state or construction violates an invariant it relies on.
+    ///
+    /// Distinct from [`UbcError::Eval`]: an `Eval` error is a *program* being
+    /// unevaluable (a legitimate outcome — division by zero, an unresolvable
+    /// name). An `InternalConsistency` error means the **interpreter** is
+    /// broken — a FIR was built or mutated into a shape the evaluator's rules
+    /// say cannot exist. Continuing past one silently produces wrong results,
+    /// so callers should halt rather than recover.
+    ///
+    /// Example: an SFF body carrying a search that is not ECONSTANIC, i.e. a
+    /// body that is supposed to be constanic-unevaluated but contains a search
+    /// that can still run.
+    #[error("ubca INTERNAL CONSISTENCY error: {0}")]
+    InternalConsistency(String),
 }
 
 /// The dyn-dispatch trait for UBCa FIR nodes.

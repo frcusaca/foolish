@@ -118,23 +118,52 @@ impl ProtoBrane {
     /// reaches this push. This method verifies the outcome on the way *back
     /// up*: every search-like descendant of `child` must already be constanic.
     ///
-    /// `debug_assert!` (not a hard panic): a violation is a construction-path
-    /// bug — some path built an SFF body without honouring `under_sff` — and
-    /// should fail loudly in tests/debug without costing anything in release.
+    /// **Panics** (unconditionally — not a `debug_assert!`, so it fires in
+    /// release too) on violation. A violation means the FVM's own construction
+    /// is internally inconsistent: an SFF body carrying a search that can still
+    /// run. Stepping it would evaluate a body that is supposed to be
+    /// constanic-unevaluated, silently producing wrong results, so halting is
+    /// the correct failure mode. This matches how the codebase already treats
+    /// broken internal invariants (`_decide_nyes_due_to_children`'s
+    /// `unreachable!`, the pre-constanic-search-candidate guard in
+    /// `fir_kinds.rs`).
+    ///
+    /// The panic message names the same condition as
+    /// [`UbcError::InternalConsistency`] — "the interpreter is broken", as
+    /// distinct from "this program is unevaluable".
     pub fn push_foolish_child_sff_marked(&mut self, child: FirRef) {
-        debug_assert!(
-            Self::all_descendant_searches_econstanic(&child),
-            "SFF-marked child has a descendant search that is not ECONSTANIC: \
-             the `under_sff` construction rule (compiler::build_fir) did not \
-             reach it. An SFF body must be constanic-unevaluated — every \
-             descendant Search/Index must be built ECONSTANIC so it never runs."
-        );
+        if let Some(offender) = Self::sift_for_first_non_econstanic_descendent_search(&child) {
+            let (kind, nyes) = {
+                let b = offender.borrow();
+                (b.kind(), b.core().get_nyes())
+            };
+            panic!(
+                "ubca INTERNAL CONSISTENCY error: SFF-marked child has a \
+                 descendant {kind:?} search at {nyes:?}, expected ECONSTANIC. \
+                 The `under_sff` construction rule (compiler::build_fir) did \
+                 not reach it. An SFF body must be constanic-unevaluated — \
+                 every descendant search kind must be built ECONSTANIC so it \
+                 never runs. Refusing to continue: stepping this body would \
+                 evaluate a search that must not run."
+            );
+        }
         self.push_foolish_child(child);
     }
 
-    /// True iff every descendant search kind (see [`Fir::is_search_kind`] — the
-    /// kinds `build_fir`'s `under_sff` rule targets) is exactly
-    /// `Nyes::Econstanic`.
+    /// The first descendant search kind (see [`Fir::is_search_kind`] — the
+    /// kinds `build_fir`'s `under_sff` rule targets) that is **not** exactly
+    /// `Nyes::Econstanic`, or `None` if every one of them is.
+    ///
+    /// Returns the offending node (not just a bool) so the caller's panic can
+    /// name its kind and actual NYES.
+    ///
+    /// **Naming**: `sift_*`, not `search_*`. In this codebase "search" means
+    /// the *Foolish language* feature (`?`/`~`/`.`/`#`, `SearchFir`, the
+    /// `ContextfulSearch` engine and its NYES rules). A `sift_*` function is
+    /// an ordinary Rust-side walk over the FIR tree with no Foolish search
+    /// semantics — no anchoring, no NYES effects, no ECONSTANIC/NK outcome.
+    /// Keeping the prefixes distinct prevents reading interpreter plumbing as
+    /// language behaviour.
     ///
     /// Deliberately checks `== Econstanic`, not `is_constanic()`: the SFF rule
     /// is that these searches are *built* ECONSTANIC and never run. A search
@@ -144,16 +173,16 @@ impl ProtoBrane {
     /// Walks the foolish store only — the parse-time topology, which is all
     /// that exists at construction time (`ubc_children` is empty until
     /// stepping begins).
-    fn all_descendant_searches_econstanic(node: &FirRef) -> bool {
+    fn sift_for_first_non_econstanic_descendent_search(node: &FirRef) -> Option<FirRef> {
         let borrowed = node.borrow();
         if borrowed.is_search_kind() && borrowed.core().get_nyes() != Nyes::Econstanic {
-            return false;
+            return Some(Rc::clone(node));
         }
         let children: Vec<FirRef> = borrowed.core().foolish_children().to_vec();
         drop(borrowed);
         children
             .iter()
-            .all(Self::all_descendant_searches_econstanic)
+            .find_map(Self::sift_for_first_non_econstanic_descendent_search)
     }
 
     /// Read a single parse-time child by index.
@@ -296,7 +325,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "descendant search that is not ECONSTANIC")]
+    #[should_panic(expected = "INTERNAL CONSISTENCY error")]
     fn push_foolish_child_sff_marked_rejects_unmarked_descendant_search() {
         // Proves the guard is not vacuous: an SFF body whose descendant search
         // was NOT built ECONSTANIC (i.e. the `under_sff` rule failed to reach
@@ -306,6 +335,35 @@ mod tests {
         // Build `{x = 1; y = x;}` WITHOUT any SFF marker, so `y`'s search is
         // Prembrionic — exactly the mis-constructed shape the guard catches.
         let root = Compiler::compile("{x = 1; y = x;}").unwrap().pop().unwrap();
+        let parent = root.borrow().core().parent_weak();
+        let mut core = ProtoBrane::new(vec![], parent, Nyes::Prembrionic);
+        core.push_foolish_child_sff_marked(root);
+    }
+
+    #[test]
+    #[should_panic(expected = "INTERNAL CONSISTENCY error")]
+    fn push_foolish_child_sff_marked_rejects_a_constant_descendant_search() {
+        // "All else should fail, INCLUDING constanic searches." A CONSTANT
+        // search is the least obvious violation — it *looks* fine (settled,
+        // constanic) — but under an SFF marker it means the search actually
+        // RAN, which is precisely what SFF forbids. Only ECONSTANIC passes.
+        use crate::compiler::Compiler;
+
+        let root = Compiler::compile("{x = 1; y = x;}").unwrap().pop().unwrap();
+        // Force every descendant search to CONSTANT, simulating "it ran".
+        fn force_searches_constant(node: &FirRef) {
+            let b = node.borrow();
+            if b.is_search_kind() {
+                b.core().set_nyes(Nyes::Constant);
+            }
+            let kids: Vec<FirRef> = b.core().foolish_children().to_vec();
+            drop(b);
+            for k in &kids {
+                force_searches_constant(k);
+            }
+        }
+        force_searches_constant(&root);
+
         let parent = root.borrow().core().parent_weak();
         let mut core = ProtoBrane::new(vec![], parent, Nyes::Prembrionic);
         core.push_foolish_child_sff_marked(root);
