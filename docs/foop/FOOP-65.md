@@ -329,6 +329,15 @@ ergonomic ground FOOP-55's exercise wants to showcase — does not exist.
   operand, per §2 — Atlas's example). Whether a future convenience exists
   (possibly riding the wrapper's future `value()` features) is deferred —
   nothing in this FOOP depends on it.
+  **ANSWERED by [FOOP-75](FOOP-75.md) §9.3** (Assignment Attached
+  Searches): an attached search applies to the *whole* RHS, and since the
+  backtick is the weakest operator (§2), the chain **is** the whole RHS.
+  So `A =$ fn`X` is the parenthesis-free spelling of `A = (fn`X)$` — the
+  same tree. This remains a non-dependency in both directions: FOOP-75
+  §9.4 confirms neither FOOP blocks the other and either may land first.
+  One coordination item: FOOP-75 §5.3 adds a `preceded_by_space` field to
+  `TokenAndLocation`, which this FOOP's new `Token::Backtick` arm must
+  populate if FOOP-75 lands first.
 - **The wrapper's future features.** Deliberately unspecified here; this
   FOOP only guarantees the hook exists and current `value()` is the inner
   concatenation.

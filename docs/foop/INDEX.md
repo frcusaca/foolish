@@ -68,6 +68,7 @@ ls | rev | sort -V | rev
 | [FOOP-45](FOOP-45.md) | Deadbrane — useless-element detection and FirID cloning semantics (renumbered from FOOP-84) | Draft | phase-2 | 2026-07-14 | Hephaestus |
 | [FOOP-55](FOOP-55.md) | Project Euler 1 — 'mod, 'or, and the repairs that run the first exercise | Draft | phase-4 | 2026-08-07 | Sisyphus / qwen3.8-max |
 | [FOOP-65](FOOP-65.md) | The tail concatenator — backtick application that brings the method name to the front | Draft | phase-2 | 2026-08-07 | Sisyphus / qwen3.8-max |
+| [FOOP-75](FOOP-75.md) | Assignment Attached Searches — `LHS =SEARCH_SPEC RHS` as sugar for `LHS = RHS SEARCH_SPEC` | Draft | phase-2 | 2026-08-07 | Sisyphus / claude-opus-5 |
 
 ---
 
@@ -153,6 +154,7 @@ ls | rev | sort -V | rev
 - [FOOP-94](FOOP-94.md) — Brane NK only when ALL constituents are NK (flip `_decide_nyes_due_to_children` cascade: any-NK+rest-constant → CONSTANT, not NK; operator NK propagation and search semantics untouched; ~34 brane-NK snapshots to re-review)
 - [FOOP-55](FOOP-55.md) — Project Euler 1: make the first exercise run — `'mod` integer modulo (FOOP-33 §5.1 BodyOverride mechanism, integer result), `'or` boolean OR (FOOP-73 preferred pure-Foolish truth-table design, `'or` only), plus documented platform defects D1–D6 (incl. the leading-`_` lexer workaround via `INTERN_` prefix and the `$=`/`=$` sugar findings, Atlas-directed) and exercise defects E1–E5 (Atlas fixing the file). **Depends on FOOP-65** (exercise rewrite uses backtick application)
 - [FOOP-65](FOOP-65.md) — The tail concatenator: backtick `` ` `` — `fn`{p1,p2}` ≡ `{p1,p2} fn`; WEAKEST precedence (weaker than brane concatenation; `$`/search suffixes bind inside operands); within a run concatenation is associative so the chain is flat n-ary reversing source order (`f`g`h`a b c` ≡ `a b c h g f`); dedicated `TailConcatenationFir` has-a ConcatenationFir, `value()` returns the inner (hook for future features). Prerequisite of FOOP-55; non-regression verified (corpus backticks only in comments)
+- [FOOP-75](FOOP-75.md) — Assignment Attached Searches: `LHS =SEARCH_SPEC RHS` ≡ `LHS = RHS SEARCH_SPEC` over the trigger set `^ $ ~ ? # .`; an **attached search** must be adjacent to the `=` and **space-terminated** (§5), requiring a new `preceded_by_space` flag on `TokenAndLocation` since `column` does not count skipped whitespace (§5.3). Generalizes and repairs the ad-hoc `=$`/`=^` sugars — three measured defects: `=$` yields the whole brane not the tail, `=^` never settles (leaks `Op^(...)`), and postfix `B$` never re-sugars — all dissolved by routing through the existing `IndexFir` (§7). Sequencer gains an anchor-spine walk (§4). No new FIR kind. Documents the `$`-in-pattern ambiguity and the parenthetical terminator (§6); §9 records shared structure with FOOP-65 (neither blocks the other)
 
 **Explicit search-engine sub-batch implementation order (2026-07-28 correction):** the discovery
 that FOOP-24's detachment design needed a real engine refactor (now FOOP-84) means the previous
@@ -419,9 +421,24 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 
 ## Last Updated
 
-**Date**: 2026-08-07 (2)
-**Updated By**: Sisyphus / qwen3.8-max
-**Changes**: Added **FOOP-65** — the tail concatenator (backtick): `fn`{p}` ≡ `{p} fn`,
+**Date**: 2026-08-07 (3)
+**Updated By**: Claude Code / claude-opus-5
+**Changes**: Added **FOOP-75** — *Assignment Attached Searches*: `LHS =SEARCH_SPEC RHS` ≡
+`LHS = RHS SEARCH_SPEC` over the trigger set `^ $ ~ ? # .`. An **attached search** must be
+adjacent to the `=` and **space-terminated**; that requires a new `preceded_by_space` flag on
+`TokenAndLocation`, because `column` does not count skipped whitespace (measured: `=$`, `= $`
+and `=   $` lex to byte-identical streams). Generalizes and repairs the ad-hoc `=$`/`=^`
+sugars, whose three defects were measured live on `jia@dc6db093`: `=$` yields the whole brane
+rather than the tail (contradicting FOOP-54 §D.5, a `Complete` FOOP), `=^` never settles and
+leaks `Op^(...)` (no `"^"` arm exists in `fir_kinds.rs`), and postfix `B$` never re-sugars
+(it compiles to `IndexFir` while the sequencer's branch is gated on `hs_operator()`). All
+three dissolve by routing through the existing `IndexFir`; no new FIR kind. Also corrects
+**FOOP-23 §942/946**, which claimed `a$=b`/`a^=b` were "already implemented" — a
+transposition; the parser implemented `a=$b`/`a=^b`. Draft, phase-2, `begun: [ ]`, with plan
+and a tests-written-during-design file (FOOP-75.tests.md). §9 records shared structure with
+FOOP-65 (both permute source order into tree order); neither blocks the other.
+
+Earlier same day: added **FOOP-65** — the tail concatenator (backtick): `fn`{p}` ≡ `{p} fn`,
 weakest precedence (brane concatenation first, then tail concatenation — tighter binding
 breaks per Atlas's `a (h g f) b c` breakdown), chain flat n-ary reversing source order
 (concatenation associative within a run — restated deliberately), dedicated
