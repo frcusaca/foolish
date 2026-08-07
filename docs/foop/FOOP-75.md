@@ -76,6 +76,41 @@ Three distinct defects are visible here:
    ..))` at `sequencer.rs:650` — never fires for it. `z = b$` renders as
    `z=3`, with the `$` gone entirely.
 
+### The corpus already assumes this rule
+
+The plan's Phase 1 survey found that §2's rewrite is **already documented in
+the source corpus**, independently of FOOP-54 §D.5. Two files state it
+verbatim in comments:
+
+```foolish
+h =$ #-1 ;   !! Syntactic sugar for h = #-1$ (tail of #-1)
+j =^ #-3 ;   !! Syntactic sugar for j = #-3^ (head of #-3)
+                        !! — test-resources/.../unanchoredSeekBasic.foo:26,28
+e =$ #-2;    !! Syntactic sugar for e = #-2$ - #-2 is b, tail of b is 30
+                        !! — test-resources/.../test_unanchored_oneshot.foo:6
+```
+
+An attached **chain** already appears too — `c =$#-1;`
+(`test-resources/.../test_syntax.foo:4`), i.e. `c = #-1$` under §2/§3.
+
+The same is true of the space and parenthesis rules of §5/§6. In
+`test-resources/.../regexSearchShadowy.foo`, the author annotates each
+chained search with its expected result and calls out the delimiter
+explicitly:
+
+```foolish
+result0 = brn2.hard_to_typo_name_for_a_brane .bobulous;  !! ... NOTE the space
+result3 = brn2?(.*brane)?a.*;                            !! 5 !! advent
+result4 = brn2?(.*brane) .bobulous;                      !! still 7: NOTE the space
+```
+
+**None of these work today.** Measured on `jia@dc6db093`,
+`brn2?(.*brane)?a.*` yields a single search with pattern `"(.*brane)?a.*"`,
+and `brn2?(.*brane) .bobulous` yields pattern `"(.*brane).bobulous"` — the
+space is absorbed, the parens are absorbed, and no chain forms. These files
+are evidence that Foolishers already expect §5 and §6.2, and write code as
+though they hold.
+
 Additionally the spelling is inconsistent across documents: FOOP-23 §942/946
 asserts that `a$=b` / `a^=b` are "already implemented" and elects to keep
 them. **That is a transposition error** — the parser implements `a=$b` /
@@ -438,10 +473,41 @@ citing this section.
   there is no `OperatorFir` `"$"`/`"^"` path left to be wrong. The
   now-unreachable `"$"` arm at `fir_kinds.rs:713` is removed.
 
-### §8. Behavior change to a verified baseline
+### §8. Behavior change to verified baselines
 
-`einmo_suite/verified/regression/disappearing_brane_statements.foo.einmo`
-is human-signed and frozen. Its input contains `d =$ 4` and it pins:
+> **Revised 2026-08-07 after the plan's Phase 1 survey.** This section
+> originally named one frozen baseline; the survey found **six**. The
+> difference matters: §4's normalization affects **postfix** inputs too
+> (that is its purpose), so any baseline rendering a `$`/`^` statement
+> moves, not only those whose *input* uses the `=$` sugar.
+
+Six `verified/` (human-signed, frozen) baselines are affected, each with a
+`checked/` twin that also moves:
+
+| `verified/` baseline | example input | renders today |
+|---|---|---|
+| `misc/head_tail_empty_brane` | `{e = {}^; f = {}$;}` | `e=^(NK); f=$(NK)` |
+| `misc/anchored_search_on_constanic` | — | `chained=^(NK)` |
+| `misc/offset_access_empty_brane` | — | `result=^(NK)` |
+| `foop/33/boolean/comparison_non_integer` | — | `braneˍoperand=$(…, NK)` ×4 |
+| `foop/42/…hfs` | — | (examine during Phase 7) |
+| `regression/disappearing_brane_statements` | `d =$ 4` | `d =$ ??? (…)` |
+
+Note there are **two distinct existing renderings**, and §4 unifies them:
+
+- `e=^(NK)` — `name=` followed by the search FIR's *own* rendering. This is
+  the ordinary path; the `^`/`$` here is the search's self-description, not
+  the sugar.
+- `d =$ ???` — the hand-coded sugar branch at `sequencer.rs:650`.
+
+Under §4, `{e = {}^}` renders `e =^ {}` and the first shape disappears.
+
+The `disappearing_brane_statements` case additionally changes *evaluation
+path*: `d =$ 4` ≡ `d = 4$` — a tail search anchored on the non-brane `4`.
+The anchored-miss rule (AGENTS.md §Searches: "Anchored miss → NK") says
+this settles NK, so it remains an error line, but its exact text may change
+(the alarm reason comes from the `OperatorFir` arm being deleted in §7; the
+`IndexFir` path produces its own). It pins:
 
 ```
   d =$ ??? (4 is not a brane);
@@ -453,12 +519,19 @@ NK") says this settles NK, so the line remains an error line, but its exact
 rendered text may change (the alarm reason is produced by the `OperatorFir`
 arm being deleted in §7; the `IndexFir` path produces its own).
 
-**This baseline is frozen and MUST NOT be promoted over by an agent.** The
-plan gates on presenting the diff to the human reviewer for a signing
-decision. If the human declines the change, this FOOP must preserve the
-exact existing text for the non-brane case — which is achievable by giving
-the `IndexFir` miss path the same alarm reason — and that becomes a
-requirement rather than an option.
+**These baselines are frozen and MUST NOT be promoted over by an agent**
+(AGENTS.md §Non-regression invariant). The plan gates on presenting every
+diff to the human reviewer for a signing decision. If the human declines a
+change, this FOOP must preserve the exact existing text — for the non-brane
+case that is achievable by giving the `IndexFir` miss path the same alarm
+reason — and that becomes a requirement rather than an option.
+
+If the human declines §4's normalization *wholesale*, the fallback is to
+keep §4's spine walk for statements whose **input** used an attached search
+(preserving today's `e=^(NK)` for postfix inputs). That sacrifices the
+round-trip property (§2 tree identity would no longer imply render
+identity) and is not recommended, but it is available and would confine the
+signing surface back to one baseline.
 
 ## FIR Impact
 
@@ -766,9 +839,21 @@ suffix preserves that baseline's shape and keeps the taught idiom visible.
 
 ## Last Updated
 
-**Date**: 2026-08-07
+**Date**: 2026-08-07 (2)
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Initial draft. Generalizes `LHS = RHS` to `LHS =SEARCH_SPEC RHS`
+**Changes**: Revised after the plan's Phase 1 survey. **§8 widened from one
+frozen baseline to six** — §4's normalization affects postfix inputs too, so
+any baseline rendering a `$`/`^` statement moves (`misc/head_tail_empty_brane`,
+`misc/anchored_search_on_constanic`, `misc/offset_access_empty_brane`,
+`foop/33/boolean/comparison_non_integer`, `foop/42/…hfs`, plus the originally
+identified `regression/disappearing_brane_statements`); documented the two
+distinct existing renderings (`e=^(NK)` vs `d =$ ???`) that §4 unifies, and
+added a declinable fallback. **§Motivation gained "The corpus already assumes
+this rule"** — three `test-resources/` files state §2's rewrite verbatim in
+comments, one already contains an attached chain (`c =$#-1;`), and
+`regexSearchShadowy.foo` annotates chained searches with expected results that
+require both §5's space rule and §6.2's parens, none of which work today.
+Earlier: initial draft. Generalizes `LHS = RHS` to `LHS =SEARCH_SPEC RHS`
 ≡ `LHS = RHS SEARCH_SPEC` over the trigger set `^ $ ~ ? # .`, with the
 sequencer obligation to lift a statement body's whole search spine back to
 the suffix position. Documents three verified defects in the existing

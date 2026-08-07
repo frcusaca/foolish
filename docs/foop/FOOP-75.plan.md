@@ -73,15 +73,135 @@ WORKTREE_FULL_FS_PATH  = /storage1/human/hcbusy/foolish/../foolish_worktrees/foo
 
 These determine whether §6.2 stays in this FOOP or splits out. **Do them before writing code.**
 
-- [ ] Survey the repo for existing parenthesized patterns: `grep -rn '[~?](' --include=*.foo` across `foolish-ubca/einmo_suite/`, `test-resources/`, `samples/`, `docs/`.
-  - [ ] Classify each hit: is the paren the WHOLE pattern (semantically inert under §6.2), or a sub-group like `~(a|b)c` (a **meaning change**)?
-  - [ ] Record the classification in this plan as a checked sub-item with counts.
-- [ ] Survey for attached-search forms already in use: `grep -rn '=[$^~?#.]' --include=*.foo`.
-  - [ ] Verify `input/foop/13/comprehensive.foo:40`'s `#-1=$=s` is inside a **comment** and therefore unaffected (FOOP-75 §Test Plan).
-- [ ] Identify every einmo baseline whose OUTPUT contains a `$`/`^` statement rendering, and list them here. These are the baselines Phase 5 must re-justify line by line.
-- [ ] **Decision checkbox**: based on the surveys, does §6.2 (parenthetical pattern terminator) stay in FOOP-75, or split to its own FOOP?
-  - [ ] If it splits: update `FOOP-75.md` §6 to state the split, adjust `FOOP-75.tests.md` §F to the §6.4 variant, and create the new FOOP via `foop_check.py gen_next`.
+- [x] Survey the repo for existing parenthesized patterns: `grep -rn '[~?](' --include=*.foo` across `foolish-ubca/einmo_suite/`, `test-resources/`, `samples/`, `docs/`.
+      (2026-08-07 15:12)
+  - [x] Classify each hit: is the paren the WHOLE pattern (semantically inert under §6.2), or a sub-group like `~(a|b)c` (a **meaning change**)?
+        (2026-08-07 15:12)
+  - [x] Record the classification in this plan as a checked sub-item with counts.
+        (2026-08-07 15:12)
+
+    **18 total hits** of `[~?](` in `.foo`/`.foolish` sources (excluding comments).
+
+    **15 are paren-is-the-whole-pattern** — semantically inert under §6.2
+    (an unanchored group wrapping the entire pattern matches the same names):
+    `misc/regex_search_pattern.foo:1`, `foop/42/…hfs.foo:64,65`,
+    `foop/62/anchored_search_suite.foo:12-21` (10 lines),
+    `test-resources/…/regexSearchWithPatternIsApproved.foo:2`,
+    `…/searchRegexPatternsIsApproved.foo:6,15`,
+    `…/regexSearchShadowy.foo:5,14`.
+
+    **3 are the §6.3 meaning-change shape**, all in
+    `test-resources/org/foolish/fvm/inputs/regexSearchShadowy.foo:27,29,30`:
+    ```foolish
+    result3 = brn2?(.*brane)?a.*;      !! 5 !! advent
+    result5 = brn2?(.*brane)?.*t$;     !! 5 !! advent
+    result6 = brn2?(.*brane)~.*e$;     !! 2 !! alice
+    ```
+
+    **Decisive finding: these three lines' comments record the AUTHOR'S
+    EXPECTED RESULTS (`!! 5 !! advent`), and those expectations require the
+    §6.2 parenthetical terminator.** The author wrote `?(.*brane)` intending
+    the parens to CLOSE the pattern so that `?a.*` chains as a second
+    search. So §6.2 is not a breaking change to these lines — it is the
+    behavior they were written to have and never got.
+
+    Measured today on `jia@dc6db093`:
+    | Source | Actual pattern | Author's intent |
+    |---|---|---|
+    | `brn2?(.*brane)?a.*` | `"(.*brane)?a.*"` (one search) | chain → `advent` |
+    | `brn2?.*brane ?a.*` | `".*brane?a.*"` (one search) | chain → `advent` |
+    | `brn2?(.*brane) .bobulous` | `"(.*brane).bobulous"` (one search) | chain → `7` |
+
+    **Note the middle and last rows: a SPACE does not terminate a pattern
+    today either.** Line 24's comment (`!! NOTE the space`) and line 29's
+    show the author using a space as a search terminator — exactly FOOP-75
+    §5's rule — and the parser silently absorbing it into the pattern.
+    This makes §5's space rule and §6.2's paren rule **the same rule at two
+    nesting levels**, and shows both are needed to satisfy intent that
+    already exists in the corpus.
+
+    **Exposure is low**: `regexSearchShadowy.foo` lives in `test-resources/`,
+    which is the **legacy Java** corpus — it is NOT in `einmo_suite/` and
+    does not run in the current Rust suite (verified: no
+    `*shadowy*` file under `foolish-ubca/einmo_suite/`). So no einmo
+    baseline moves from fixing these three lines.
+- [x] Survey for attached-search forms already in use: `grep -rn '=[$^~?#.]' --include=*.foo`.
+      (2026-08-07 15:15) — **18 hits. The corpus already documents this FOOP's rule.**
+
+      `test-resources/.../unanchoredSeekBasic.foo:26,28` states the rewrite verbatim:
+      ```foolish
+      h =$ #-1 ;   !! Syntactic sugar for h = #-1$ (tail of #-1)
+      j =^ #-3 ;   !! Syntactic sugar for j = #-3^ (head of #-3)
+      ```
+      `test-resources/.../test_unanchored_oneshot.foo:6` likewise
+      (`e =$ #-2; !! Syntactic sugar for e = #-2$`). These are independent
+      corroboration of FOOP-54 §D.5 and of §2's rewrite.
+
+      **`test-resources/.../test_syntax.foo:4` is an attached CHAIN already
+      in the corpus**: `c =$#-1;` — i.e. `c = #-1$` under §2/§3. Add it to
+      the Phase 3 chain tests.
+
+      Live users of `=$`: `samples/hello.foo:9`
+      (`call_myProduct_result =$ {1,2} myProduct` — the FOOP-54 §D.5
+      function-application idiom), and
+      `einmo_suite/input/regression/disappearing_brane_statements.foo:1`.
+  - [x] Verify `input/foop/13/comprehensive.foo:40`'s `#-1=$=s` is inside a **comment** and therefore unaffected (FOOP-75 §Test Plan).
+        (2026-08-07 15:15) — **Confirmed a comment.** Line 40 reads
+        `!! spanned is [p, q | r, s]; global #0=p (element 1), #-1=$=s (element 2),`
+        — an `!!` line comment consumed by the lexer. Unaffected.
+- [x] Identify every einmo baseline whose OUTPUT contains a `$`/`^` statement rendering, and list them here. These are the baselines Phase 5 must re-justify line by line.
+      (2026-08-07 15:18) — **MATERIAL FINDING: §4 normalization moves SIX
+      frozen `verified/` baselines, not the one §8 anticipated.**
+
+      §8 of the spec identified only
+      `verified/regression/disappearing_brane_statements.foo.einmo`. The
+      survey finds five more, because §4's normalization affects **postfix**
+      inputs too (that is the point of §4 — `A = B$` renders as `A =$ B`):
+
+      | verified/ baseline | input | renders today |
+      |---|---|---|
+      | `misc/head_tail_empty_brane` | `{e = {}^; f = {}$;}` | `e=^(NK); f=$(NK)` |
+      | `misc/anchored_search_on_constanic` | — | `chained=^(NK)` |
+      | `misc/offset_access_empty_brane` | — | `result=^(NK)` |
+      | `foop/33/boolean/comparison_non_integer` | — | `braneˍoperand=$(…, NK)` ×4 |
+      | `foop/42/…hfs` | — | (to be examined) |
+      | `regression/disappearing_brane_statements` | `d =$ 4` | `d =$ ??? (…)` |
+
+      Note the two **different** existing renderings: `e=^(NK)` is
+      `name=` + the search's own rendering, whereas `d =$ ???` is the
+      hand-coded sugar branch. §4 unifies them, so **both** shapes change.
+      Under §4, `{e = {}^}` would render `e =^ {}`.
+
+      All six have `checked/` twins that also move. `verified/` files are
+      **frozen — an agent must never promote or re-sign them** (AGENTS.md
+      §Non-regression invariant).
+
+      → **AGGREGATED AS QUESTION 2 FOR THE HUMAN.** This is a larger
+      signing surface than §8 estimated and is a judgement call about how
+      much rendered output should change. Phase 7 is widened from one
+      baseline to six; the STOP remains.
+- [x] **Decision checkbox**: based on the surveys, does §6.2 (parenthetical pattern terminator) stay in FOOP-75, or split to its own FOOP?
+      (2026-08-07 15:20) — **RECOMMENDATION: §6.2 STAYS in FOOP-75.** Reasons:
+
+      1. The three §6.3 "meaning change" lines are **not** a compatibility
+         cost — their own comments (`!! 5 !! advent`) record the author
+         expecting exactly §6.2's behavior. §6.2 *fixes* them.
+      2. None of the 18 paren hits is in `einmo_suite/`'s live path in a
+         way that §6.2 breaks: 15 are semantically inert, and the 3
+         meaning-change lines live in `test-resources/` (the legacy **Java**
+         corpus), which does not run in the Rust suite. **No einmo baseline
+         moves from §6.2.**
+      3. §5's space rule and §6.2's paren rule are the **same rule at two
+         nesting levels** (spec §5.1 closing note). The survey shows the
+         corpus already assumes BOTH (`!! NOTE the space` at
+         `regexSearchShadowy.foo:24`, and `?(…) .bobulous` at :29).
+         Splitting them would ship half a rule.
+
+      Residual risk is low and confined to a non-running legacy corpus.
+  - [x] If it splits: update `FOOP-75.md` §6 to state the split, adjust `FOOP-75.tests.md` §F to the §6.4 variant, and create the new FOOP via `foop_check.py gen_next`.
+        (2026-08-07 15:20) — N/A; §6.2 stays. No split FOOP created.
 - [ ] **STOP — ask the human to confirm the §6.2 decision before implementing.** Present the survey counts and the recommendation.
+      → **AGGREGATED AS QUESTION 3 FOR THE HUMAN** (recommendation above; awaiting confirmation).
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
 ---

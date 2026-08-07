@@ -57,6 +57,10 @@ fn foop75_attached_search_chains_match_postfix_chains() {
         ("{B={1,2,3}; A =#-2$ B;}",  "{B={1,2,3}; A = B#-2$;}"),
         ("{B={1,2,3}; A =$#1 B;}",   "{B={1,2,3}; A = B$#1;}"),
         ("{B={1,2,3}; A =^#1 B;}",   "{B={1,2,3}; A = B^#1;}"),
+        // From the corpus: test-resources/.../test_syntax.foo:4 already
+        // contains `c =$#-1;` — an attached chain written before this FOOP
+        // existed. Found by the plan's Phase 1 survey.
+        ("{a=1; b=2; c =$#-1;}",     "{a=1; b=2; c = #-1$;}"),
     ];
     for (attached, postfix) in pairs {
         let a = parse_single(attached).expect(attached);
