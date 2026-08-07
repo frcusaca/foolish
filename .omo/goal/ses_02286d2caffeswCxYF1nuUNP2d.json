@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "goal": {
+    "id": "2c0450f9-94bb-4fec-a9f6-8765985dc10c",
+    "sessionID": "ses_02286d2caffeswCxYF1nuUNP2d",
+    "objective": "We're still just making FOOP's and plans, no coding yet. Propose fixes, make a plan that's executable.",
+    "status": "active",
+    "tokensUsed": 0,
+    "timeUsedSeconds": 0,
+    "createdAt": 1786130044,
+    "updatedAt": 1786130044,
+    "lastStartedAt": 1786130044
+  }
+}

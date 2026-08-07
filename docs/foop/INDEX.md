@@ -66,6 +66,8 @@ ls | rev | sort -V | rev
 | [FOOP-25](FOOP-25.md) | EinmoReview — a thread-safe review-session object; thin bash, server, and dhtml frontends | Superseded (by einmo repo EIMP-1) | meta | 2026-07-19 | Atlas |
 | [FOOP-35](FOOP-35.md) | Ship einmo — own repository, crates.io registration, and a working `cargo einmo test` | Draft | meta | 2026-07-19 | Atlas |
 | [FOOP-45](FOOP-45.md) | Deadbrane — useless-element detection and FirID cloning semantics (renumbered from FOOP-84) | Draft | phase-2 | 2026-07-14 | Hephaestus |
+| [FOOP-55](FOOP-55.md) | Project Euler 1 — 'mod, 'or, and the repairs that run the first exercise | Draft | phase-4 | 2026-08-07 | Sisyphus / qwen3.8-max |
+| [FOOP-65](FOOP-65.md) | The tail concatenator — backtick application that brings the method name to the front | Draft | phase-2 | 2026-08-07 | Sisyphus / qwen3.8-max |
 
 ---
 
@@ -149,6 +151,8 @@ ls | rev | sort -V | rev
   docs.rs) plus the Rust testing battery (proptest, cargo-fuzz on untrusted parsers, mutants,
   deny/audit, MSRV, coverage)
 - [FOOP-94](FOOP-94.md) — Brane NK only when ALL constituents are NK (flip `_decide_nyes_due_to_children` cascade: any-NK+rest-constant → CONSTANT, not NK; operator NK propagation and search semantics untouched; ~34 brane-NK snapshots to re-review)
+- [FOOP-55](FOOP-55.md) — Project Euler 1: make the first exercise run — `'mod` integer modulo (FOOP-33 §5.1 BodyOverride mechanism, integer result), `'or` boolean OR (FOOP-73 preferred pure-Foolish truth-table design, `'or` only), plus documented platform defects D1–D6 (incl. the leading-`_` lexer workaround via `INTERN_` prefix and the `$=`/`=$` sugar findings, Atlas-directed) and exercise defects E1–E5 (Atlas fixing the file). **Depends on FOOP-65** (exercise rewrite uses backtick application)
+- [FOOP-65](FOOP-65.md) — The tail concatenator: backtick `` ` `` — `fn`{p1,p2}` ≡ `{p1,p2} fn`; WEAKEST precedence (weaker than brane concatenation; `$`/search suffixes bind inside operands); within a run concatenation is associative so the chain is flat n-ary reversing source order (`f`g`h`a b c` ≡ `a b c h g f`); dedicated `TailConcatenationFir` has-a ConcatenationFir, `value()` returns the inner (hook for future features). Prerequisite of FOOP-55; non-regression verified (corpus backticks only in comments)
 
 **Explicit search-engine sub-batch implementation order (2026-07-28 correction):** the discovery
 that FOOP-24's detachment design needed a real engine refactor (now FOOP-84) means the previous
@@ -229,7 +233,7 @@ Canceled as they stand; each may be respecified and reimplemented later. See
 
 ### phase-2
 
-- [FOOP-6](FOOP-6.md), [FOOP-7](FOOP-7.md), [FOOP-8](FOOP-8.md), [FOOP-01](FOOP-01.md), [FOOP-11](FOOP-11.md), [FOOP-51](FOOP-51.md), [FOOP-61](FOOP-61.md), [FOOP-32](FOOP-32.md), [FOOP-42](FOOP-42.md), [FOOP-52](FOOP-52.md), [FOOP-62](FOOP-62.md), [FOOP-82](FOOP-82.md), [FOOP-13](FOOP-13.md), [FOOP-23](FOOP-23.md), [FOOP-43](FOOP-43.md), [FOOP-53](FOOP-53.md), [FOOP-83](FOOP-83.md), [FOOP-93](FOOP-93.md), [FOOP-04](FOOP-04.md), [FOOP-14](FOOP-14.md), [FOOP-24](FOOP-24.md), [FOOP-74](FOOP-74.md), [FOOP-84](FOOP-84.md), [FOOP-94](FOOP-94.md), [FOOP-05](FOOP-05.md)
+- [FOOP-6](FOOP-6.md), [FOOP-7](FOOP-7.md), [FOOP-8](FOOP-8.md), [FOOP-01](FOOP-01.md), [FOOP-11](FOOP-11.md), [FOOP-51](FOOP-51.md), [FOOP-61](FOOP-61.md), [FOOP-32](FOOP-32.md), [FOOP-42](FOOP-42.md), [FOOP-52](FOOP-52.md), [FOOP-62](FOOP-62.md), [FOOP-82](FOOP-82.md), [FOOP-13](FOOP-13.md), [FOOP-23](FOOP-23.md), [FOOP-43](FOOP-43.md), [FOOP-53](FOOP-53.md), [FOOP-83](FOOP-83.md), [FOOP-93](FOOP-93.md), [FOOP-04](FOOP-04.md), [FOOP-14](FOOP-14.md), [FOOP-24](FOOP-24.md), [FOOP-74](FOOP-74.md), [FOOP-84](FOOP-84.md), [FOOP-94](FOOP-94.md), [FOOP-05](FOOP-05.md), [FOOP-65](FOOP-65.md)
 
 ### phase-3
 
@@ -237,7 +241,7 @@ Canceled as they stand; each may be respecified and reimplemented later. See
 
 ### phase-4
 
-- [FOOP-33](FOOP-33.md), [FOOP-63](FOOP-63.md), [FOOP-73](FOOP-73.md)
+- [FOOP-33](FOOP-33.md), [FOOP-63](FOOP-63.md), [FOOP-73](FOOP-73.md), [FOOP-55](FOOP-55.md)
 
 ### phase-5
 
@@ -415,15 +419,21 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 
 ## Last Updated
 
-**Date**: 2026-07-29 (2)
-**Updated By**: Claude Code (Sonnet 5)
-**Changes**: **FOOP-25 superseded.** einmo was extracted into its own repository (`~/yolo/einmo`);
-FOOP-25's design (`EinmoReview`, unimplemented) was ported there as `EIMP-1`, adapted for
-einmo's own EIMP process (no worktree/`jia` mechanics). Updated FOOP-25's frontmatter
-(`status: Superseded`, `superseded_by: einmo repo EIMP-1`), added a superseded banner to
-`FOOP-25.md`, and formally cancelled `FOOP-25.plan.md` (`[x] Canceled` + `[-]` on every
-checkbox, per `foop.md`'s cancellation procedure). Updated this index's table row and Draft-list
-prose entry to match.
+**Date**: 2026-08-07 (2)
+**Updated By**: Sisyphus / qwen3.8-max
+**Changes**: Added **FOOP-65** — the tail concatenator (backtick): `fn`{p}` ≡ `{p} fn`,
+weakest precedence (brane concatenation first, then tail concatenation — tighter binding
+breaks per Atlas's `a (h g f) b c` breakdown), chain flat n-ary reversing source order
+(concatenation associative within a run — restated deliberately), dedicated
+`TailConcatenationFir` executing as a has-a ConcatenationFir (`value()` returns the inner;
+hook for future features). Draft, phase-2, `begun: [ ]`, with plan (FOOP-65.plan.md);
+prerequisite of FOOP-55. Also revised the FOOP-55 entry: now depends on FOOP-65 (exercise
+rewrite in backtick form — E4 mapping table), defects extended to D1–D6 / E1–E5 (new D6/E5:
+`$=` does not parse, `=$` settles non-obviously). Both added to main table, By-Status
+(Draft), By-Phase (phase-2).
+
+Earlier same day: added FOOP-55 (Project Euler 1 — `'mod`, `'or`, bisect findings D1–D5 /
+E1–E3, INTERN_ decision).
 
 **Date**: 2026-07-29
 **Updated By**: Claude Code (Opus 5)
