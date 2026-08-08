@@ -50,6 +50,19 @@ WORKTREE_FULL_FS_PATH  = /storage1/human/hcbusy/foolish/../foolish_worktrees/foo
       `foolish-core`, and non-exercise `foolish-ubca` test. **Every crate
       FOOP-75 touches is green.**
 
+      **UPDATE (2026-08-07 22:45): the separator half is now
+      [FOOP-85](FOOP-85.md).** The serialize error was root-caused to
+      einmo's `"!!\n"` separator colliding with Foolish's `!!!` block
+      comment; the fix (`"\n!!!EINMO!!!\n"`) was written and verified —
+      `einmo_gate_output` passes and the workspace went 3 failures → 2 —
+      then deliberately reverted so this FOOP starts from a clean build.
+      FOOP-85 carries the change and its promote plan.
+
+      The **non-termination** half remains FOOP-55's, and
+      `foop/62/infinite_loop.foo`'s `NK(ITERATION-EXCEEDED) → BRANING`
+      regression remains FOOP-62's. Neither is caused by, nor interacts
+      with, FOOP-75.
+
       → **AGGREGATED AS QUESTION 1 FOR THE HUMAN.** AGENTS.md §Development
       Rules says never to start Phase-or-larger work while tests are broken,
       and that broken tests must be manually disabled by a human OR repaired

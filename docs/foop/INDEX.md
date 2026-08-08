@@ -69,6 +69,7 @@ ls | rev | sort -V | rev
 | [FOOP-55](FOOP-55.md) | Project Euler 1 — 'mod, 'or, and the repairs that run the first exercise | Draft | phase-4 | 2026-08-07 | Sisyphus / qwen3.8-max |
 | [FOOP-65](FOOP-65.md) | The tail concatenator — backtick application that brings the method name to the front | Draft | phase-2 | 2026-08-07 | Sisyphus / qwen3.8-max |
 | [FOOP-75](FOOP-75.md) | Assignment Attached Searches — `LHS =SEARCH_SPEC RHS` as sugar for `LHS = RHS SEARCH_SPEC` | Draft | phase-2 | 2026-08-07 | Sisyphus / claude-opus-5 |
+| [FOOP-85](FOOP-85.md) | The einmo Foolish separator collides with Foolish block comments | Draft | meta | 2026-08-07 | Sisyphus / claude-opus-5 |
 
 ---
 
@@ -154,6 +155,7 @@ ls | rev | sort -V | rev
 - [FOOP-94](FOOP-94.md) — Brane NK only when ALL constituents are NK (flip `_decide_nyes_due_to_children` cascade: any-NK+rest-constant → CONSTANT, not NK; operator NK propagation and search semantics untouched; ~34 brane-NK snapshots to re-review)
 - [FOOP-55](FOOP-55.md) — Project Euler 1: make the first exercise run — `'mod` integer modulo (FOOP-33 §5.1 BodyOverride mechanism, integer result), `'or` boolean OR (FOOP-73 preferred pure-Foolish truth-table design, `'or` only), plus documented platform defects D1–D6 (incl. the leading-`_` lexer workaround via `INTERN_` prefix and the `$=`/`=$` sugar findings, Atlas-directed) and exercise defects E1–E5 (Atlas fixing the file). **Depends on FOOP-65** (exercise rewrite uses backtick application)
 - [FOOP-65](FOOP-65.md) — The tail concatenator: backtick `` ` `` — `fn`{p1,p2}` ≡ `{p1,p2} fn`; WEAKEST precedence (weaker than brane concatenation; `$`/search suffixes bind inside operands); within a run concatenation is associative so the chain is flat n-ary reversing source order (`f`g`h`a b c` ≡ `a b c h g f`); dedicated `TailConcatenationFir` has-a ConcatenationFir, `value()` returns the inner (hook for future features). Prerequisite of FOOP-55; non-regression verified (corpus backticks only in comments)
+- [FOOP-85](FOOP-85.md) — einmo's Foolish-suite separator `"!!\n"` (the Foolish **line** comment) collides with Foolish's **block** comment `!!!`: every `!!!` line ends with the separator, and `serialize`'s collision check is a plain substring test, so **any** `.foo` using a block comment is unserializable — which fails the whole UBCa suite, not the one file. Fix is one constant: `"\n!!!EINMO!!!\n"`, newline-wrapped so it matches only a whole line. **Backward compatible** — each `.einmo` records its own separator in its header and `parse` reads it from there, so existing baselines keep verifying. Found while gating FOOP-75; verified (einmo 133 pass, `einmo_gate_output` fixed, workspace 3 failures → 2). Change was reverted to keep a clean build; Appendix A holds the diff verbatim
 - [FOOP-75](FOOP-75.md) — Assignment Attached Searches: `LHS =SEARCH_SPEC RHS` ≡ `LHS = RHS SEARCH_SPEC` over the trigger set `^ $ ~ ? # .`; an **attached search** must be adjacent to the `=` and **space-terminated** (§5), requiring a new `preceded_by_space` flag on `TokenAndLocation` since `column` does not count skipped whitespace (§5.3). Generalizes and repairs the ad-hoc `=$`/`=^` sugars — three measured defects: `=$` yields the whole brane not the tail, `=^` never settles (leaks `Op^(...)`), and postfix `B$` never re-sugars — all dissolved by routing through the existing `IndexFir` (§7). Sequencer gains an anchor-spine walk (§4). No new FIR kind. Documents the `$`-in-pattern ambiguity and the parenthetical terminator (§6); §9 records shared structure with FOOP-65 (neither blocks the other)
 
 **Explicit search-engine sub-batch implementation order (2026-07-28 correction):** the discovery
@@ -421,9 +423,17 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 
 ## Last Updated
 
-**Date**: 2026-08-07 (3)
+**Date**: 2026-08-07 (4)
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Added **FOOP-75** — *Assignment Attached Searches*: `LHS =SEARCH_SPEC RHS` ≡
+**Changes**: Added **FOOP-85** — einmo's Foolish separator `"!!\n"` collides with Foolish's
+`!!!` block comment (every `!!!` line ends with the separator; the collision check is a
+substring test), making any `.foo` with a block comment unserializable and failing the entire
+UBCa suite. Fix: `"\n!!!EINMO!!!\n"`, newline-wrapped to match only whole lines. Backward
+compatible — `.einmo` files record their own separator and `parse` reads it from the header.
+Found while gating FOOP-75; verified before being deliberately reverted to preserve a clean
+build (Appendix A of the FOOP holds the diff verbatim).
+
+Earlier same day: added **FOOP-75** — *Assignment Attached Searches*: `LHS =SEARCH_SPEC RHS` ≡
 `LHS = RHS SEARCH_SPEC` over the trigger set `^ $ ~ ? # .`. An **attached search** must be
 adjacent to the `=` and **space-terminated**; that requires a new `preceded_by_space` flag on
 `TokenAndLocation`, because `column` does not count skipped whitespace (measured: `=$`, `= $`
