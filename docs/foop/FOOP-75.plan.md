@@ -272,6 +272,63 @@ this lands.
 
 ---
 
+## Phases 2–5 — COMPLETE (2026-08-08)
+
+Worktree `foop-75-assignment-attached-searches`, commits `7110da4c`,
+`46336ebe`, `b73c08af`, `b700c966`.
+
+- [x] **Phase 2 — lexer adjacency.** `preceded_by_space` on
+      `TokenAndLocation`, stamped in `tokenize` (the one place that knows
+      whether `skip_whitespace` consumed anything). 3 tests.
+      (2026-08-08 08:05)
+- [x] **Phase 3 — parser.** Suffix loop extracted to
+      `apply_search_suffixes(anchor)`; the attached path records the run,
+      parses the RHS, rewinds, and replays through that *same* routine — so
+      §2 tree identity is true by construction. Bespoke `=$`/`=^` branches
+      deleted. 40 → 49 parser tests.
+      (2026-08-08 08:20)
+- [x] **Phase 4 — dead-path removal.** `OperatorFir`'s `"$"` arm deleted
+      (unreachable). Both value defects verified fixed: `y =$ b` → **3**
+      (was the whole brane), `y =^ b` → **1** (was `Op^(...)`, never
+      settled). 4 tests in `system_foo.rs`.
+      (2026-08-08 08:29)
+- [x] **Phase 5 — sequencer.** Branch re-gated from `hs_operator()` to
+      `hs_index()`; now covers `^` as well as `$`.
+      (2026-08-08 08:45)
+
+### Two trigger-set corrections the einmo corpus forced
+
+Unit tests on single statements passed while real corpus files broke. Both
+are now permanent regression tests.
+
+1. **The run must stop at a statement terminator**, not only at a space. A
+   `;` is not itself preceded by a space, so a space-only scan walked
+   through it into the next statement — `seek_unanchored=#-2;` took the
+   *following* statement as its RHS, failing all of `foop/42/…hfs.foo`.
+2. **`#` is not a trigger.** Alone in the set it also begins a standalone
+   expression (`UnanchoredSeek`). Every `=#` in the corpus is a seek, none
+   an attached search; claiming it turned `z=#-2 + #-1` into
+   `Seek{anchor:#-1, offset:-2}`, regressing two baselines. `#` still works
+   *inside* a chain (`=$#1`), where a suffix operator opens the run.
+
+### §4 was too broad — corrected in the spec
+
+The sequencer is **transparent when settled**: a resolved search renders as
+its value. So the attached form applies only to unsettled/NK statements;
+normalizing settled ones would un-resolve the output. See FOOP-75.md §4.0.
+
+### Deferred to the doc phase
+
+- [ ] FOOP-75.md §Motivation defect (3) is mis-framed — `z = b$` → `z=3` is
+      transparency-when-settled, not a lost `$`. Defects (1) and (2) stand.
+- [ ] FOOP-75.md §9's comparison table is stale: FOOP-65 no longer adds a
+      `TailConcatenationFir` (it now uses a flag on `ConcatenationFir`).
+- [ ] `?x` / `~x` bare name patterns are **refused** attached (§6
+      limitation, pinned by `foop75_pins_bare_name_pattern_limitation`).
+      `.x` is unaffected and works.
+
+---
+
 ## Phase 6 — einmo tests
 
 - [ ] Create `foolish-ubca/einmo_suite/input/foop/75/` with per-operator attached-form cases, §3 chains, and §5 adjacency/termination/`&` cases.

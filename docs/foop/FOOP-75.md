@@ -230,6 +230,46 @@ innermost (closest to the RHS) in the resulting spine.
 
 ### §4. The reverse direction (sequencer obligation)
 
+> **CORRECTED 2026-08-08 during Phase 5 implementation.** As first written,
+> this section claimed the normalization applies to *every* statement whose
+> body is a search. That is **wrong**, and the implementation found the
+> boundary the spec missed. The corrected rule is in §4.0; the original text
+> below stands for the cases it does cover (unsettled and NK).
+
+#### §4.0 The rule applies only where the search is still visible
+
+The sequencer's governing principle — long predating this FOOP — is
+**transparency when settled**: a search that found its target renders as
+**the value it found**, not as the search that found it. This is enforced by
+`should_show_nyes()` / `should_show_search_nyes()` in `render_fir`.
+
+So `z = b$` renders `z=3`. The `$` is **not "lost"** — the search is
+*resolved*, exactly as `x = 1+2` renders `x=3` rather than `x=Op+(1,2)`.
+§Motivation's original framing of this as defect (3) was mistaken about the
+cause, though the `=$`/`=^` defects (1) and (2) were real and are fixed.
+
+The attached form therefore applies **only to statements that still show
+their search structure** — those that are unsettled, or that settled NK:
+
+```
+e = {}^        renders   e =^ {} (???)          !! NK — structure shown
+d =$ 4         renders   d =$ 4 (???)           !! NK — structure shown
+z = b$         renders   z=3                    !! settled — value shown
+y =$ b         renders   y=3                    !! settled — same value
+```
+
+Normalizing the settled cases would mean **un-resolving** the output —
+contradicting the rendering model and making every snapshot noisier for no
+gain. And the round-trip property survives: for settled statements both
+spellings converge on the same *value*, which is a stronger agreement than
+converging on the same *text*.
+
+**Consequence for §8**: the six frozen baselines still move, but every
+changed line is an NK rendering. No settled value changes. Verified line by
+line in Phase 5.
+
+#### §4.1 The original text (applies to unsettled and NK statements)
+
 Given a settled statement, the sequencer walks the body's **anchor spine**:
 while the node is a search, follow its anchor; stop at the first node that
 is not a search. That entire run of searches is lifted out and rendered
