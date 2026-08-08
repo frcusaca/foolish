@@ -25,29 +25,33 @@ cases, the `FOOP-65.md` file name is ultimately the right numbering.
 This FOOP adds the **tail concatenator** — the backtick `` ` `` — to
 Foolish's surface syntax. `A = fn`{param1, param2...}` is syntactically
 equivalent to `A = {param1, param2...} fn`: the backtick concatenates its
-LEFT operand onto the **tail** of its right operand, so a method/function
-name can be written **first**, resembling ordinary function calls. The tail
-concatenator is the **weakest** operator — weaker than brane concatenation
-(juxtaposition) — and within a consecutive run of tail concatenators (or of
-ordinary brane concatenation) the concatenation itself is **associative**,
-so only the precedence is load-bearing: brane concatenation happens first,
-then tail concatenation. **The tail concatenator has the same combining
-effect as ordinary brane concatenation** — it *is* a concatenation, and it
-reuses the existing `ConcatenationFir` rather than introducing a new FIR
-kind. Provenance is carried by a **flag** on `ConcatenationFir` recording
-whether the node came from a tail concatenation or from ordinary
-juxtaposition; the flag affects **sequencing only** — never evaluation.
-**Precedence is resolved entirely in the FVM's Foolish→FIR translation**
-(`build_fir`), so the FIR layer sees only ordinary concatenations and the
-whole change collapses to a parser/lexer/sequencer update. The special
-backtick rendering applies **only while all of a node's constituents are
-still embryonic** (§5.3.1); consequently the reversal is observable only
-before stepping, and the facility that makes it observable — the AS-PARSED
-pre-step perspective, together with the `stmt_count` purity repair it
-requires — is **[FOOP-95](FOOP-95.md)**, on which this FOOP depends for
-that one rendering (§6). This FOOP adds no evaluation behavior beyond the
-equivalence. The tail concatenator does **not** obviate the `'`
-null-characterization in the name of the method.
+LEFT operand onto the **tail** of its right operand, so a method or
+function name can be written **first**, resembling ordinary function calls.
+
+**Precedence.** The tail concatenator is the **weakest** operator — weaker
+than brane concatenation (juxtaposition). Within a run of tail
+concatenators, as within a run of ordinary concatenation, the concatenation
+is **associative**, so precedence is the only load-bearing decision: brane
+concatenation groups first, then tail concatenation. A run is therefore
+parsed as one **flat** chain that reverses source order.
+
+**Implementation.** A tail concatenation has the same combining effect as
+ordinary brane concatenation — it *is* a concatenation, differently spelled
+— so it reuses the existing `ConcatenationFir` rather than introducing a
+new FIR kind. A **provenance flag** records which spelling it came from.
+Precedence and the reversal are resolved entirely in the FVM's
+Foolish→FIR translation (`build_fir`), so the FIR layer sees only ordinary
+concatenations, and the flag affects **sequencing only — never
+evaluation**. The whole change is thus a parser, lexer, and sequencer
+update.
+
+The backtick rendering applies **only while all of a node's constituents
+are still embryonic** (§5.3.1), which makes the reversal observable only
+before stepping. [FOOP-95](FOOP-95.md) provides that vantage; this FOOP
+depends on it for that one rendering, and for nothing else (§6).
+
+This FOOP adds no evaluation behavior beyond the equivalence, and does
+**not** obviate the `'` null-characterization in the name of the method.
 
 ## Motivation
 
@@ -110,26 +114,20 @@ the result of the whole application. (Extracting the application result
 needs parentheses today: `(fn`{a})$` — see Open Questions.)
 
 **Within a consecutive run of tail concatenators — or of ordinary brane
-concatenation — the concatenation itself is associative.** This is worth
-restating even though brane concatenation's associativity is already
-established (FOOP-3 lineage): it is the reason a backtick **chain** needs
-no nesting semantics at all. The only precedence required is that **brane
-concatenation happens first, then tail concatenation.**
+concatenation — the concatenation itself is associative.** Brane
+concatenation's associativity is already established (FOOP-3 lineage);
+restating it here matters because it is the reason a backtick **chain**
+needs no nesting semantics at all. The chain is parsed **flat**, and the
+only precedence required is that **brane concatenation happens first, then
+tail concatenation.**
 
-Why the backtick must stay weakest — Atlas's breakdown (2026-08-07): in
-`f`g`h`a b c`, if the tail concatenator went FIRST (bound tighter), it
-would grab its operands out of the surrounding juxtaposition: `f`g` → `g f`,
-then `(g f)`h` → `h g f`, and the leftover juxtaposition would interleave
-wrongly — the result would read `a (h g f) b c` instead of the intended
-`a b c (h g f)`. Keeping the tail concatenator weaker than brane
-concatenation makes each backtick operand a fully-grouped juxtaposition and
-the breakdown cannot occur.
-
-*(Decision history, for the record: the chain associativity was first
-stated left, then corrected to right (`f`g`h`a b c` = `(((a b c)h)g)f`),
-then settled here: within a run it does not matter — concatenation is
-associative — so the chain is parsed FLAT and only the precedence is
-pinned.)*
+**Why the backtick must stay weakest.** In `f`g`h`a b c`, a tail
+concatenator that bound *tighter* would grab its operands out of the
+surrounding juxtaposition: `f`g` → `g f`, then `(g f)`h` → `h g f`, leaving
+the juxtaposition to interleave wrongly — the result would read
+`a (h g f) b c` instead of the intended `a b c (h g f)`. At weakest
+precedence every backtick operand is a fully-grouped juxtaposition and the
+breakdown cannot occur.
 
 ### §3. Semantics — a flat chain reverses source order
 
@@ -142,7 +140,7 @@ e1 ` e2 ` ... ` en   ≡   en ... e2 e1
 ```
 
 ```foolish
-f`g`h`a b c     ≡     a b c h g f      !! Atlas's form: (((a b c)h)g)f
+f`g`h`a b c     ≡     a b c h g f      !! equivalently (((a b c)h)g)f
 ```
 
 Binary case: `L`R` ≡ `R L`. Because concatenation is associative (§2), the
@@ -265,24 +263,23 @@ Properties that fall out of this shape:
 
 ### §5. `ConcatenationFir` plus a provenance flag — no new FIR kind
 
-**Revised 2026-08-08 (Atlas).** An earlier revision of this FOOP specified a
-separate `TailConcatenationFir` that has-a `ConcatenationFir` and delegates
-to it. That design is **withdrawn** (it survives as Rejected Alternative C).
-Atlas's direction:
+A tail concatenation **has the same combining effect as ordinary brane
+concatenation** — it *is* a concatenation, differing only in how it was
+spelled. It therefore reuses `ConcatenationFir` rather than introducing a
+FIR kind of its own, and carries its origin in a one-bit **provenance
+flag**.
 
-> "The tail concatenation needs to have similar combining effect as normal
-> brane concatenation. […] Since TailConcatFir is just a ConcatenationFir,
-> we might even just use ConcatenationFir and use a flag that says 'this
-> came in from a tail concatenation, or normal concatenation'. Seems easiest
-> implementation. That flag only causes sequencing differences. The
-> precedence is implemented as part of FVM translation from Foolish to FIR.
-> This reduces the changes to this project to a much smaller
-> parser/lexer/sequencer update."
+Two things follow, and they are what make this design cheap:
 
-The reasoning that survives from the withdrawn design: a tail concatenation
-**is** a concatenation, and it must remain recognizable as having come from
-a backtick. What changes is the *mechanism* for that recognizability — a
-one-bit field instead of a wrapper type.
+- **Precedence and the reversal are resolved in the Foolish→FIR
+  translation** (§5.2), so the FIR layer never reasons about either.
+- **The flag affects sequencing only, never evaluation** (§5.3), so no
+  stepping, cloning, or NYES machinery changes.
+
+The alternative — a separate `TailConcatenationFir` wrapping a
+`ConcatenationFir` and delegating to it — is Rejected Alternative C, which
+records what a distinct type would have bought and why it is not worth its
+cost here.
 
 #### §5.1 The flag
 
@@ -341,9 +338,9 @@ grouping (§4); the FIR layer never reasons about precedence at all.
 - **Sequencing: the one difference, and only while wholly un-stepped.**
   A tail-flagged concatenation renders in backtick form — the elements in
   *reverse storage order*, joined by `` ` `` — **only when every one of its
-  constituents is still EMBRYONIC** (Atlas, 2026-08-08; "embryonic" here
-  covers the pre-stepped states, i.e. every constituent is PREMBRYONIC or
-  EMBRYONIC — none has begun BRANING or settled). The moment any
+  constituents is still EMBRYONIC** ("embryonic" here covers the
+  pre-stepped states: every constituent is PREMBRYONIC or EMBRYONIC — none
+  has begun BRANING or settled). The moment any
   constituent has progressed further, the node renders in the ordinary
   concatenation form (§5.3.1). A **settled** concatenation renders as its
   joined brane and the flag is invisible there, exactly as it is for
@@ -360,12 +357,9 @@ grouping (§4); the FIR layer never reasons about precedence at all.
 
 #### §5.3.1 The all-embryonic gate on backtick rendering
 
-**Atlas, 2026-08-08:** *"The sequencer shall only perform special rendering
-on tail concatenations when all the constituents are embryonic."*
-
-This settles the question this FOOP previously left open (whether backtick
-rendering is round-trip or canonical) with a third, sharper answer: it is
-**round-trip, but only for the un-stepped program.**
+The sequencer performs the special backtick rendering **only when all of a
+tail concatenation's constituents are embryonic**. The rendering is
+therefore round-trip, but only for the un-stepped program.
 
 ```
 render(concatenation C):
@@ -376,7 +370,7 @@ render(concatenation C):
                                                         unchanged
 ```
 
-Rationale — why the gate is the right rule, not a restriction bolted on:
+Why the gate is the right rule, not a restriction bolted on:
 
 - **The backtick is a fact about source, not about values.** Once stepping
   begins, the elements are being replaced by their resolved values and the
@@ -417,36 +411,31 @@ no new NYES state.**
 
 #### §5.5 The tradeoff, stated plainly
 
-The withdrawn design bought a **distinct type** — a place for future
-features to add fields and to change `value()` — at the cost of a new
-`FirKind` variant, a new `constanic_clone_at` arm, a delegating
-`fir_op_step`, a wrapper the recoordination path must be proven to survive,
-and a `value()` indirection every consumer must get right.
+A separate FIR would buy a **distinct type** — a place for future features
+to add fields and to change `value()` — at the cost of a new `FirKind`
+variant, a new `constanic_clone_at` arm, a delegating `fir_op_step`, a
+wrapper the recoordination path must be proven to survive, and a `value()`
+indirection every consumer must get right.
 
-The flag design gives up the distinct type. Future features that want to
-change what a tail concatenation *evaluates to* (rather than how it renders)
-would have to either branch on the flag inside `ConcatenationFir` — which
-would violate §5.3's "sequencing only" invariant and should be treated as a
-signal to revisit this decision — or promote the flag back into a separate
-FIR at that time. **That promotion is a strictly smaller change than the one
-this FOOP avoids**, because by then the syntax, the precedence, the parser,
-and the reversal will all be settled and tested; only the FIR representation
-would move. Atlas judged the near-certain code savings worth the deferred,
-recoverable option. See Rejected Alternative C.
+The flag design gives that up. A future feature wanting to change what a
+tail concatenation *evaluates to* (rather than how it renders) would have
+to either branch on the flag inside `ConcatenationFir` — which would
+violate §5.3's "sequencing only" invariant, and is the signal to revisit
+this decision — or promote the flag back into a separate FIR at that time.
+**That promotion is a strictly smaller change than the one this FOOP
+avoids**, because by then the syntax, the precedence, the parser, and the
+reversal will all be settled and tested; only the FIR representation would
+move. The certain code savings are worth that deferred, recoverable
+option. See Rejected Alternative C.
 
-### §6. Dependency — the AS-PARSED perspective is [FOOP-95](FOOP-95.md)
+### §6. Dependency on [FOOP-95](FOOP-95.md)
 
-**Scope split, Atlas 2026-08-08:** *"So this now seems like a rather large
-project. Perhaps separate 'activate pre-step perspective of Foolish' into
-its own FOOP. I'd imagine there's much work to be done there to straighten
-up the sequencer."* — and: *"Then render FOOP-65 dependent on that FOOP."*
-
-The pre-step ("AS-PARSED") perspective, and the `stmt_count` purity repair
-it requires, are **specified in [FOOP-95](FOOP-95.md)**, not here. They
-outgrew this FOOP: between splitting a mutating accessor across ~20 call
-sites, straightening up the sequencer to render an un-stepped tree
-faithfully, and re-promoting *every* baseline in the einmo corpus, that
-work is larger than the tail concatenator itself.
+The pre-step rendering of an un-stepped FIR tree — FOOP-95's **EMBRYONIC**
+section — and the `stmt_count` purity repair it requires are **specified in
+[FOOP-95](FOOP-95.md)**, not here. That work is larger than the tail
+concatenator itself: it splits a mutating accessor across ~20 call sites,
+straightens up the sequencer to render an un-stepped tree faithfully, and
+re-promotes *every* baseline in the einmo corpus.
 
 **FOOP-65 depends on FOOP-95.** The dependency is real but narrow, and it
 is about *observability*, not about evaluation:
@@ -460,8 +449,7 @@ is about *observability*, not about evaluation:
   form is emitted solely while every constituent is still embryonic, and
   because every existing einmo baseline is rendered *after* stepping to
   settlement, there is **no existing test vantage from which the reversed
-  backtick form is visible**. FOOP-95's pre-step perspective is that
-  vantage.
+  backtick form is visible**. FOOP-95's EMBRYONIC section is that vantage.
 
 **Consequences for sequencing the work:**
 
@@ -480,12 +468,6 @@ The einmo baselines this FOOP promotes are therefore **settled-only**, and
 this FOOP does **not** touch any foreign baseline (see Test Plan).
 
 #### §6.1 Significant step — inspection of embryonic Foolish
-
-**Atlas, 2026-08-08:** *"In both FOOPs please indicate that a significant
-step would be 'inspection of embryonic Foolish for reasonably informative
-rendering of the Foolish for purpose of development', that'd be both by
-agent and by human"* — *"…for purposes of future development writing and
-maintaining Foolish programs."*
 
 This step is shared with [FOOP-95](FOOP-95.md) §4, where it is specified in
 full. It applies here in its own right, scoped to this FOOP's construct:
@@ -549,8 +531,8 @@ vantage §6 describes) rather than einmo output.
 - **Sequencer gains one conditional** in the un-settled concatenation
   branch (`foolish-core/src/sequencer.rs:496-531`) to render backtick form,
   gated on all constituents being embryonic (§5.3, §5.3.1).
-- **NOT in this FOOP:** the `stmt_count` purity split and the AS-PARSED
-  pre-step perspective moved to [FOOP-95](FOOP-95.md) (§6). This FOOP
+- **NOT in this FOOP:** the `stmt_count` purity split and the pre-step
+  EMBRYONIC rendering belong to [FOOP-95](FOOP-95.md) (§6). This FOOP
   touches neither `stmt_count` nor the einmo output format.
 - **Concatenation semantics untouched** — the tail concatenator is
   concatenation, spelled differently, with the same combining effect.
@@ -612,7 +594,7 @@ Tests first, per `rust_instructions.md`.
   byte-identical to the settled juxtaposition equivalent.
 
 **Deferred to [FOOP-95](FOOP-95.md):** the `stmt_count` purity tests and
-the AS-PARSED perspective tests. The einmo-level confirmation that
+the pre-step rendering tests. The einmo-level confirmation that
 `` a`b`c`d e f `` *renders* in reversed backtick form also lands there —
 it needs FOOP-95's pre-step vantage (§6). The `foolish-core` unit test of
 the same rendering (directly-constructed all-embryonic node) stays here.
@@ -635,7 +617,7 @@ the same rendering (directly-constructed all-embryonic node) stays here.
 
 ### A. Tighter precedence — the tail concatenator binds before juxtaposition
 
-Atlas's own breakdown rejects it (§2): in `f`g`h`a b c` a tighter backtick
+Rejected by the §2 breakdown: in `f`g`h`a b c` a tighter backtick
 grabs operands out of the surrounding juxtaposition and the leftover
 interleaves wrongly (`a (h g f) b c` instead of `a b c (h g f)`). Weakest
 is the only precedence at which every operand is a fully-grouped
@@ -643,31 +625,28 @@ juxtaposition.
 
 ### B. Nested binary parse/AST (left- or right-associative folding)
 
-Within a run, concatenation is associative (§2, restated deliberately), so
-a nested tree denotes the same statement sequence as the flat chain while
-carrying a nesting choice that means nothing. Flat n-ary is simpler and
-matches `Astn::Concatenation`'s existing shape. The left-then-right
-associativity history is recorded in §2 for provenance.
+Within a run, concatenation is associative (§2), so a nested tree denotes
+the same statement sequence as the flat chain while carrying a nesting
+choice that means nothing. Flat n-ary is simpler and matches
+`Astn::Concatenation`'s existing shape.
 
 ### C. A separate `TailConcatenationFir` that has-a `ConcatenationFir`
 
-**This was the design of this FOOP's first revision; withdrawn 2026-08-08
-by Atlas in favour of the §5 flag.** It specified a new FIR kind whose
-single foolish child is an inner `ConcatenationFir`, with a delegating
-`fir_op_step`, `value()` returning the inner's value, and a dedicated
-`FirKind::TailConcatenation` arm in `constanic_clone_at` that clones the
-inner and re-wraps it.
+A new FIR kind whose single foolish child is an inner `ConcatenationFir`,
+with a delegating `fir_op_step`, `value()` returning the inner's value, and
+a dedicated `FirKind::TailConcatenation` arm in `constanic_clone_at` that
+clones the inner and re-wraps it.
 
 Rejected because the tail concatenator's **combining effect is identical to
-ordinary brane concatenation** — the wrapper's every method was either
-delegation or a no-op. The cost was real: a new `FirKind` variant, a new
-`constanic_clone_at` arm, a new `fir_op_step`, a `value()` indirection every
-consumer must honour, and a wrapper whose survival through recoordination
-must be separately proven. The flag design achieves the same recognizability
-("this concatenation came from a backtick") with one struct field and one
-sequencer branch (§5.1, §5.3).
+ordinary brane concatenation** — every method of the wrapper would be
+either delegation or a no-op. The cost is real: a new `FirKind` variant, a
+new `constanic_clone_at` arm, a new `fir_op_step`, a `value()` indirection
+every consumer must honour, and a wrapper whose survival through
+recoordination must be separately proven. The flag design achieves the same
+recognizability ("this concatenation came from a backtick") with one struct
+field and one sequencer branch (§5.1, §5.3).
 
-**What is given up, honestly:** a distinct type. The withdrawn design was
+**What is given up, honestly:** a distinct type. The separate FIR would be
 justified as "the hook on which future features — which may change the
 `value()` output — will hang". A flag is a weaker hook: it can carry
 provenance, but a feature that changed *evaluation* based on it would break
@@ -675,9 +654,8 @@ the §5.3 "sequencing only" invariant that makes this design safe. Should
 such a feature actually arrive, the right move is to promote the flag back
 into a separate FIR then — a **strictly smaller** change than doing it now,
 because the syntax, precedence, parser, and reversal will already be
-settled and tested; only the FIR representation would move. Atlas judged
-the certain code savings today worth the deferred, recoverable option
-(§5.5).
+settled and tested; only the FIR representation would move. The certain
+code savings today are worth that deferred, recoverable option (§5.5).
 
 ### C2. Pure parse-time desugar to `Astn::Concatenation` — no provenance at all
 
@@ -698,7 +676,7 @@ ergonomic ground FOOP-55's exercise wants to showcase — does not exist.
 
 - **`$`-after-backtick ergonomics.** Today the application result needs
   parentheses: `(fn`X)$` (a bare `fn`X$` keeps the `$` inside the right
-  operand, per §2 — Atlas's example). Whether a future convenience exists
+  operand, per §2). Whether a future convenience exists
   is deferred — nothing in this FOOP depends on it.
   **ANSWERED by [FOOP-75](FOOP-75.md) §9.3** (Assignment Attached
   Searches): an attached search applies to the *whole* RHS, and since the
@@ -724,7 +702,7 @@ ergonomic ground FOOP-55's exercise wants to showcase — does not exist.
   §5 and promote the flag to a distinct FIR (§5.5, Rejected Alternative C)
   — it must not be smuggled in as an evaluation branch on the flag.
 - **Un-settled backtick rendering — round-trip or canonical?**
-  **ANSWERED by Atlas (2026-08-08), now §5.3.1:** round-trip backtick form,
+  **ANSWERED, now §5.3.1:** round-trip backtick form,
   but **only while every constituent is still embryonic**. Once any
   constituent has progressed, the ordinary rendering resumes. This is
   strictly narrower than either option originally posed, and it is what
@@ -733,15 +711,15 @@ ergonomic ground FOOP-55's exercise wants to showcase — does not exist.
   [FOOP-95](FOOP-95.md) only for the einmo-level *visibility* of §5.3.1
   (§6). FOOP-95 landing first is preferable; if FOOP-65 lands first the
   rendering is still unit-tested at the `foolish-core` level and the einmo
-  confirmation is deferred. Atlas to confirm the intended order.
+  confirmation is deferred. Confirm the intended order before starting.
 - **Style guidance.** Whether `docs/howto` should prefer the backtick idiom
   for application — a documentation decision after this lands.
 
 ## References
 
-- **Dependency: [FOOP-95](FOOP-95.md)** (the AS-PARSED pre-step
-  perspective + the `stmt_count` purity split) — provides the only vantage
-  from which §5.3.1's backtick rendering is observable in einmo (§6).
+- **Dependency: [FOOP-95](FOOP-95.md)** (the pre-step EMBRYONIC section +
+  the `stmt_count` purity split) — provides the only vantage from which
+  §5.3.1's backtick rendering is observable in einmo (§6).
 - Prior FOOPs: FOOP-3 lineage and FOOP-13 (concatenation semantics /
   ConcatBrane — the associativity this FOOP restates and rides); FOOP-55
   (first consumer — the Euler exercise rewritten in backtick form);
@@ -776,36 +754,24 @@ ergonomic ground FOOP-55's exercise wants to showcase — does not exist.
 
 **Date**: 2026-08-08
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: **Architecture revision (Atlas, 2026-08-08): the separate
-`TailConcatenationFir` is withdrawn in favour of a provenance FLAG on the
-existing `ConcatenationFir`.** Tail concatenation has the same combining
-effect as ordinary brane concatenation, so §5 was rewritten as
-`ConcatProvenance { Juxtaposition | TailConcatenation }` — one struct
-field, propagated by the *existing* `FirKind::Concatenation`
-`constanic_clone_at` arm, threaded to the sequencer through
-`ConcatenationQuery`. The flag affects **sequencing only, never
-evaluation** (§5.3); precedence and the reversal are resolved entirely in
-the FVM's Foolish→FIR translation (`build_fir`, §5.2), reducing this FOOP
-to a parser/lexer/sequencer change. Added §3.1, the authoritative worked
-example `` a`b`c`d e f `` → exactly TWO ConcatenationFirs,
-`Concat[tail](Concat[juxt](d,e,f), c, b, a)`, verified consistent with §2
-(backtick weakest ⇒ `d e f` is one operand) and §3 (reverse source order).
-Rewrote FIR Impact and UBC Step Impact (no new FIR kind, no new `FirKind`
-variant, no new `constanic_clone_at` arm, no new `fir_op_step`); extended
-the Test Plan (compiler-shape test for §3.1, flag-survives-recoordination,
-flag-is-evaluation-inert, sequencer round-trip); the separate-FIR design
-became Rejected Alternative C with its tradeoff stated (a distinct type
-given up; re-promotion later is strictly smaller work), and the old
-alternative C became C2. Added **§5.3.1**: backtick rendering happens
-**only while all constituents are embryonic** (Atlas) — which answers the
-old open question and makes the flag unable to move any existing baseline.
-Added **§6 as a DEPENDENCY section**: the AS-PARSED pre-step perspective
-and the `stmt_count` purity split (a real defect — `stmt_count` forces the
-concatenation join, disagreeing with its own `stmt_at`/`_search_brane`
-siblings) were specified here briefly, then **split out to
-[FOOP-95](FOOP-95.md)** at Atlas's direction as too large to ride along;
-FOOP-65 now `depends_on: [FOOP-95]` for that one rendering's einmo
-visibility only. Unchanged by this revision: backtick is the WEAKEST
-operator, the flat n-ary chain, associativity within a run, and `'`
-null-characterization. Non-regression holds strictly — this FOOP promotes
-only its own `foop/65/` baselines and changes no existing one.
+**Changes**: Architecture revision — the separate `TailConcatenationFir` is
+withdrawn in favour of a provenance FLAG on the existing
+`ConcatenationFir` (§5). Tail concatenation has the same combining effect
+as ordinary brane concatenation, so a flag buys what a wrapper type would
+at a fraction of the cost: no new `FirKind` variant, no new
+`constanic_clone_at` arm (the existing Concatenation arm copies it
+alongside `_helpers_populated`), no new `fir_op_step`. Precedence and the
+reversal resolve in `build_fir`; the flag affects **sequencing only, never
+evaluation**, and renders backtick form only while all constituents are
+embryonic (§5.3.1). Added §3.1, the authoritative worked example
+`` a`b`c`d e f `` → exactly TWO ConcatenationFirs,
+`Concat[tail](Concat[juxt](d,e,f), c, b, a)`, consistent with §2 (backtick
+weakest ⇒ `d e f` is one operand) and §3 (reverse source order). The
+separate-FIR design became Rejected Alternative C with its tradeoff stated;
+the former alternative C became C2. §6 records the dependency on
+[FOOP-95](FOOP-95.md), which owns the pre-step EMBRYONIC rendering and the
+`stmt_count` purity repair — the only vantage from which §5.3.1's output is
+visible — and §6.1 the shared agent-and-human inspection step. Unchanged:
+backtick is the WEAKEST operator, the flat n-ary chain, associativity
+within a run, and `'` null-characterization. This FOOP promotes only its
+own `foop/65/` baselines and changes no existing one.

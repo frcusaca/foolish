@@ -382,7 +382,7 @@ FOOP-23), then **FOOP-63** (primitive characterization `i'`/`s'`/`f'`, consumes 
 Surface-syntax and developer-experience work: how Foolish *reads* and how a Foolisher sees
 what their program actually became. These are not evaluation-semantics changes — every one of
 them is sugar, provenance, or visibility, and none alters what a settled program computes.
-Grouped here (2026-08-08, Atlas) because they share a layer — lexer/parser, the compiler's
+Grouped here because they share a layer — lexer/parser, the compiler's
 Foolish→FIR translation, and the sequencer — rather than the FIR/stepping machinery Tracks 2/3
 own.
 
@@ -484,7 +484,7 @@ individually. Section order becomes `METADATA, OUTPUT, EMBRYONIC, RESEQUENCED, I
 COMMENTS, STAMPS`; the new sections MUST join `einmo/src/compare.rs`'s always-compared set or
 they are written but never diffed. Rewrites every baseline behind two human-gated inspections.
 
-Added a new **## Ergonomics** section to the roadmap (Atlas-directed), grouping the
+Added a new **## Ergonomics** section to the roadmap, grouping the
 surface-syntax / developer-experience FOOPs that share the lexer-parser-sequencer layer rather
 than the FIR machinery: **FOOP-65** (tail concatenator), **FOOP-75** (assignment attached
 searches), **FOOP-95**. Records the ordering (95 → 65; 75 independent) and the token-addition

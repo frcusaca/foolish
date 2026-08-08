@@ -17,7 +17,7 @@ FOOP-55 (the Euler exercise rewrite) — it lands first and stands alone.
 ## Phase 0 — Begin, baseline, and orientation
 
 - [ ] **Dependency check — FOOP-65 `depends_on: [FOOP-95]`.** Determine
-      whether [FOOP-95](FOOP-95.md) (the AS-PARSED pre-step perspective +
+      whether [FOOP-95](FOOP-95.md) (the pre-step EMBRYONIC section +
       the `stmt_count` purity split) has merged.
       - If YES: the §5.3.1 backtick rendering can be confirmed at the einmo
         level; add a `foop/65/` input exercising it.
@@ -26,7 +26,7 @@ FOOP-55 (the Euler exercise rewrite) — it lands first and stands alone.
         `foolish-core` level against a directly-constructed all-embryonic
         node, and carry the einmo confirmation as a deferred item to be
         added when FOOP-95 lands.
-      - Confirm the intended ORDER with Atlas if unclear (FOOP-65 Open
+      - Confirm the intended ORDER with the human if unclear (FOOP-65 Open
         Questions — FOOP-95 landing first is preferable).
 - [ ] Begin work: commit FOOP-65.md and FOOP-65.plan.md to origin (`jia`),
       check `begun: [x]` in FOOP-65.md frontmatter
@@ -38,7 +38,7 @@ FOOP-55 (the Euler exercise rewrite) — it lands first and stands alone.
 - [ ] Read `rust_instructions.md` in full (mandatory before any Rust;
       especially §"Phase-by-phase testing discipline")
 - [ ] Read FOOP-65.md in full — especially §2 (precedence/associativity,
-      the authoritative Atlas statements), §3.1 (the worked example
+      the authoritative statements), §3.1 (the worked example
       `` a`b`c`d e f `` → exactly TWO ConcatenationFirs), and §5 (the
       **flag-on-ConcatenationFir** design — NO separate FIR kind; the flag
       affects sequencing ONLY; precedence + reversal happen in `build_fir`)
@@ -159,7 +159,7 @@ variant, a `constanic_clone_at` arm, or a `fir_op_step`.
       (`einmo compare output checked foolish-ubca/einmo_suite/`) — any
       foreign divergence is a regression to fix, never to promote
       (`rust_instructions.md` §"Phase-by-phase testing discipline")
-- [ ] Present the foop/65 baselines + comprehensive OUTPUT to Atlas for
+- [ ] Present the foop/65 baselines + comprehensive OUTPUT to the human for
       human review; checked-stage promotion only after approval; the
       verified stage requires the human key (einmo.toml leaves `verified`
       unconfigured on purpose)
@@ -216,7 +216,7 @@ Later the same day: the sequencer item was tightened to FOOP-65 §5.3.1
 pinned by tests); a **significant inspection step** was added — embryonic
 Foolish reviewed by agent AND human for informativeness "for the purposes
 of future development, writing and maintaining Foolish programs", with
-Atlas sign-off required before freezing the rendering; and Phase 0 gained
+human sign-off required before freezing the rendering; and Phase 0 gained
 a **dependency check on [FOOP-95](FOOP-95.md)**, which now owns the
-AS-PARSED perspective and the `stmt_count` purity split (split out of this
-FOOP as too large to ride along).
+pre-step EMBRYONIC rendering and the `stmt_count` purity split (too large
+to ride along in this FOOP).

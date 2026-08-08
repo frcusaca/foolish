@@ -15,14 +15,14 @@ toolchain configured on this machine).
 
 **[FOOP-65](FOOP-65.md) depends on this FOOP** (for the einmo visibility of
 its §5.3.1 backtick rendering). Nothing here depends on FOOP-65. Landing
-this one first is preferable — confirm the order with Atlas.
+this one first is preferable — confirm the order with the human.
 
 **Scope warning.** This FOOP rewrites EVERY baseline in the einmo suite
 (new EMBRYONIC section + section reorder). Phases 1–3 are ordinary code
 work; Phase 4 is a corpus-wide re-promotion behind two human-gated
 inspections. Do not let Phase 4 begin until Phases 1–3 are green.
 **Phase 5 (the Foolish Resequencer) lands LAST** and is separable — if the
-FOOP feels sprawling by then, ask Atlas whether it should become its own
+FOOP feels sprawling by then, ask the human whether it should become its own
 FOOP rather than pressing on.
 
 ## Phase 0 — Begin, baseline, and orientation
@@ -55,7 +55,7 @@ FOOP rather than pressing on.
       and `cargo test -p foolish-ubca --lib -- run_einmo_tests` — both
       green before any change
 - [ ] **Enumerate every `verified/` baseline** and present the list to
-      Atlas — these are frozen, need the human key, and cannot be
+      the human — these are frozen, need the human key, and cannot be
       re-promoted by the agent (FOOP-95 §5)
 - [ ] **Snapshot the pre-change corpus** (copy `checked/` aside) so Phase 4
       Gate A can compare section bodies old-vs-new mechanically
@@ -98,7 +98,7 @@ FOOP rather than pressing on.
       conversion must be **purely read-only**
 - [ ] Decide and record: do the new sections render the composed root or
       only the `program` member? (FOOP-95 Open Questions — presumed
-      `program` only; confirm with Atlas)
+      `program` only; confirm with the human)
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
 ## Phase 3 — einmo section reorder + EMBRYONIC wiring (tests first)
@@ -132,13 +132,13 @@ FOOP rather than pressing on.
       placeholders, internal names, `items=` debug forms, empty shapes,
       or missing structure? Record every finding as a defect against the
       construct that provoked it.
-- [ ] **Inspection BY HUMAN.** Present samples to Atlas against the
+- [ ] **Inspection BY HUMAN.** Present samples to the human against the
       governing criterion: *is this reasonably informative for the
       purposes of future development, writing and maintaining Foolish
       programs?* The human's judgement governs.
-- [ ] Repair sequencer defects found above; agree with Atlas which are
+- [ ] Repair sequencer defects found above; agree with the human which are
       fixed here vs deferred to their own FOOPs (FOOP-95 Open Questions)
-- [ ] Re-inspect after repair; loop until Atlas is satisfied. **Only then**
+- [ ] Re-inspect after repair; loop until the human is satisfied. **Only then**
       does the rendering format freeze.
 - [ ] Write per-construct `foolish-core` sequencer tests recording what
       "informative" was decided to mean (FOOP-95 Test Plan)
@@ -152,7 +152,7 @@ FOOP rather than pressing on.
       byte-identical"). Any OUTPUT difference = a misclassified Phase-1
       call site; any INPUT/COMMENTS difference = the writer mangling
       content during reorder. **Fix the code — never promote past it.**
-- [ ] **GATE B (human) — the new sections are worth having.** Atlas reviews
+- [ ] **GATE B (human) — the new sections are worth having.** The human reviews
       EMBRYONIC bodies (and RESEQUENCED, once Phase 5 has landed) across a
       representative spread of the corpus.
       Justify every EMBRYONIC line in your own words first (AGENTS.md
@@ -170,13 +170,13 @@ FOOP rather than pressing on.
 
 Per FOOP-95 §6 — this lands LAST.
 **Do not begin until Phases 1-4 are green and promoted.** If this FOOP is
-sprawling by the time you reach here, STOP and ask Atlas whether §6 should
+sprawling by the time you reach here, STOP and ask the human whether §6 should
 become its own FOOP (FOOP-95 Open Questions flags it as the clean cut).
 
-- [ ] Confirm with Atlas: does RESEQUENCED reserve its section slot from
+- [ ] Confirm with the human: does RESEQUENCED reserve its section slot from
       Phase 3, or get inserted now (rewriting every baseline a SECOND
       time)? (FOOP-95 §1.1, Open Questions)
-- [ ] Confirm with Atlas: normalization textual-on-lexer-tokens vs
+- [ ] Confirm with the human: normalization textual-on-lexer-tokens vs
       canonical-resequencing-derived (FOOP-95 §6.2, Open Questions —
       recommendation is textual, built on the REAL lexer's token stream so
       it cannot drift from the lexer)
@@ -214,7 +214,7 @@ become its own FOOP (FOOP-95 Open Questions flags it as the clean cut).
       of their program? are the normalization rules right and complete?
       For each fidelity failure, classify: resequencer bug, normalizer
       bug, or genuine parser/FIR-gen information loss. PRESENT TO ATLAS.
-- [ ] Promote RESEQUENCED baselines only after Atlas sign-off
+- [ ] Promote RESEQUENCED baselines only after human sign-off
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
 ## Merge
