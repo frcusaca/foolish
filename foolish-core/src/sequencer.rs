@@ -644,27 +644,44 @@ fn render_statements(
             0
         };
 
-        let dollar_info: Option<(Box<dyn FirQueryable>, Nyes)> =
+        // FOOP-75 §4: if this statement's body is an ANCHORED head/tail search,
+        // lift the search out of the body and render it as an ATTACHED SEARCH
+        // immediately after the `=`:
+        //
+        //     A = B$      renders as     A =$ B
+        //
+        // The attached spelling is canonical in output (§4 normalization).
+        // Both spellings build the same tree (§2), so they must render alike;
+        // rendering the attached form is what keeps the round-trip closed and
+        // keeps FOOP-54 §D.5's taught idiom visible in snapshots.
+        //
+        // This replaces a branch gated on `hs_operator() == Some(("$", ..))`,
+        // which matched the old bespoke `=$` sugar's `BinaryOp`. Nothing
+        // constructs that any more (FOOP-75 §7), and the branch never fired
+        // for the postfix spelling, because `B$` compiles to an `IndexFir` —
+        // which is exactly why `A = B$` used to render as plain `A=3`, losing
+        // the `$` entirely.
+        let attached_info: Option<(Box<dyn FirQueryable>, Nyes, &'static str)> =
             stmt.name.as_ref().and_then(|_| {
-                stmt.body.hs_operator().and_then(|(op, ops)| {
-                    if op == "$"
-                        && ops.len() == 2
-                        && ops[0]
-                            .hs_index()
-                            .is_some_and(|(offset, anchored, _, _)| offset == -1 && !anchored)
-                    {
-                        let state = stmt.body.hs_state();
-                        let rhs = ops.into_iter().nth(1).unwrap();
-                        Some((rhs, state))
-                    } else {
-                        None
-                    }
-                })
+                stmt.body
+                    .hs_index()
+                    .and_then(|(offset, anchored, anchor, _)| {
+                        let op = match (anchored, offset) {
+                            (true, 0) => "^",
+                            (true, -1) => "$",
+                            // Other offsets are positional indexes (`#N`), whose
+                            // attached form is not reachable — `#` is excluded
+                            // from the trigger set because it also begins an
+                            // unanchored seek (see `Parser::at_attached_search`).
+                            _ => return None,
+                        };
+                        anchor.map(|a| (a, stmt.body.hs_state(), op))
+                    })
             });
 
-        let is_dollar_assign = dollar_info.is_some();
+        let is_dollar_assign = attached_info.is_some();
 
-        let child_lines = if let Some((ref rhs, _)) = dollar_info {
+        let child_lines = if let Some((ref rhs, _, _)) = attached_info {
             render_fir(
                 &**rhs,
                 child_open,
@@ -685,13 +702,15 @@ fn render_statements(
             && let Some((_, first_text)) = merged.iter_mut().next()
         {
             if is_dollar_assign {
-                let state = dollar_info.as_ref().unwrap().1;
-                if state == Nyes::Nk {
-                    *first_text = format!("{} =$ ??? ({} is not a brane)", name, first_text);
+                let (_, state, op) = attached_info.as_ref().unwrap();
+                if *state == Nyes::Nk {
+                    // The anchor could not yield a head/tail — an ANCHORED
+                    // miss, which settles NK (AGENTS.md §Searches).
+                    *first_text = format!("{} ={} {} (???)", name, op, first_text);
                 } else if state.should_show_nyes() {
-                    *first_text = format!("{} =$ {} ({})", name, first_text, state);
+                    *first_text = format!("{} ={} {} ({})", name, op, first_text, state);
                 } else {
-                    *first_text = format!("{} =$ {}", name, first_text);
+                    *first_text = format!("{} ={} {}", name, op, first_text);
                 }
             } else {
                 *first_text = format!("{}={}", name, first_text);
