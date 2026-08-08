@@ -292,6 +292,125 @@ impl Parser {
         )
     }
 
+    /// Is the current token the start of an **attached search** (FOOP-75 §1)?
+    ///
+    /// Two conditions, both required:
+    /// - the token begins a search operator — `^ $ ~ ? .`, including the
+    ///   value forms `~=` and `?=`;
+    /// - it is **adjacent** to the `=` just consumed, i.e. no whitespace
+    ///   intervenes (FOOP-75 §5.1(1)).
+    ///
+    /// Adjacency comes from [`TokenAndLocation::preceded_by_space`], not from
+    /// `column` — see FOOP-75 §5.2/§5.3 for why `column` cannot answer this.
+    ///
+    /// # Two operators are deliberately excluded
+    ///
+    /// **`&`** (§5.4): a cursor-source modifier, not a search operator in its
+    /// own right; what position a contexted search would read when anchored
+    /// on a whole RHS is undecided.
+    ///
+    /// **`#`**: alone among the trigger set, `#` also *begins a complete
+    /// standalone expression* — [`Astn::UnanchoredSeek`]. Every other trigger
+    /// (`$ ^ ~ ? . ~= ?=`) is a suffix operator that cannot start an
+    /// expression, so no ambiguity arises for them. For `#` it does:
+    ///
+    /// ```foolish
+    /// z = #-2 + #-1     !! a SUM of two unanchored seeks  ← the real meaning
+    /// z =#-2 + #-1      !! or an attached `#-2` over RHS `#-1`?
+    /// ```
+    ///
+    /// The einmo corpus settles it: **every** `=#` occurrence is an
+    /// unanchored seek (`foop/9/operator_search_transparency.foo:1`,
+    /// `misc/complex_unanchored_seeks_with_operations.foo:1`,
+    /// `misc/unanchored_seek.foo`, `misc/seek_beyond_start.foo`,
+    /// `misc/seek_negative_clamping.foo`, `misc/unanchored_seek_large_negative.foo`,
+    /// `foop/42/…hfs.foo:37,69`) — none is an attached search. Claiming `#`
+    /// changed `z=#-2 + #-1` from `BinaryOp(+, #-2, #-1)` into
+    /// `Seek { anchor: #-1, offset: -2 }`, regressing two baselines.
+    ///
+    /// The positional index remains reachable attached in a CHAIN, where no
+    /// ambiguity exists because a suffix operator opens the run:
+    /// `A =$#1 B` is fine. Only a run *starting* with `#` is excluded.
+    fn at_attached_search(&self) -> bool {
+        let Some(tok) = self.current() else {
+            return false;
+        };
+        if tok.preceded_by_space {
+            return false;
+        }
+        matches!(
+            tok.token,
+            Token::Caret
+                | Token::Dollar
+                | Token::Tilde
+                | Token::TildeEquals
+                | Token::Question
+                | Token::QuestionEquals
+                | Token::Dot
+        )
+    }
+
+    /// Index of the first token after the attached-search run, or `None` when
+    /// this is not an attached search after all.
+    ///
+    /// FOOP-75 §5.1(2)/(3): the run is the maximal sequence of **adjacent**
+    /// tokens (a search specification may not contain spaces — AGENTS.md
+    /// §Searches), and it **must** end with a space followed by an RHS.
+    ///
+    /// A run that ends at `;`, `,`, `}`, `)`, `]` or EOF is **not** an
+    /// attached search — it is an ordinary RHS that merely begins with a
+    /// search-operator character. This distinction is load-bearing, because
+    /// `#` also begins [`Astn::UnanchoredSeek`], a legitimate standalone
+    /// expression:
+    ///
+    /// ```foolish
+    /// seek_unanchored = #-2;   !! an unanchored seek, NOT an attached search
+    /// tail_of_b       =$ b;    !! an attached search
+    /// ```
+    ///
+    /// Returning `None` here (rather than an error) lets the caller fall
+    /// through to ordinary expression parsing, which is what makes the
+    /// attached-search path a strict addition.
+    fn attached_search_run_end(&self) -> Option<usize> {
+        let mut i = self.pos + 1;
+        while let Some(tok) = self.tokens.get(i) {
+            // A space ends the run (§5.1(2)) — and so does a statement or
+            // grouping terminator, which ends the STATEMENT and therefore
+            // cannot be part of its attached search. Without the second
+            // condition the scan runs through `;` into the next statement,
+            // because a `;` is not itself preceded by a space:
+            //     seek_unanchored=#-2;
+            //     sf_target={a=1;b=2};
+            // would take `#-2;` as the run and `sf_target` as its RHS.
+            if tok.preceded_by_space
+                || matches!(
+                    tok.token,
+                    Token::Eof
+                        | Token::Semicolon
+                        | Token::Comma
+                        | Token::RBrace
+                        | Token::RParen
+                        | Token::RBracket
+                )
+            {
+                break;
+            }
+            i += 1;
+        }
+        match self.tokens.get(i).map(|t| &t.token) {
+            None
+            | Some(
+                Token::Eof
+                | Token::Semicolon
+                | Token::Comma
+                | Token::RBrace
+                | Token::RParen
+                | Token::RBracket,
+            ) => None,
+            _ => Some(i),
+        }
+    }
+
     // --- assignment ---
     fn parse_assignment(&mut self) -> Result<Astn> {
         let chars = self.parse_characterizations();
@@ -323,37 +442,60 @@ impl Parser {
             }
             Some(Token::Assign) => {
                 self.advance();
-                match self.peek_token() {
-                    Some(Token::Dollar) => {
-                        self.advance();
-                        let inner = self.parse_expr()?;
-                        return Ok(Astn::Assignment {
-                            characterizations: chars,
-                            identifier: ident,
-                            operator: AssignmentOperator::Assign,
-                            expr: Box::new(Astn::BinaryOp {
-                                op: "$".into(),
-                                left: Box::new(Astn::UnanchoredSeek { offset: -1 }),
-                                right: Box::new(inner),
-                            }),
+                // FOOP-75 §1/§2: an ATTACHED SEARCH — a search written
+                // immediately after the `=` with no intervening space.
+                // `A =SPEC B` is defined as `A = B SPEC`.
+                //
+                // This replaces the two bespoke `=$` / `=^` branches that used
+                // to live here (which built a synthetic
+                // `UnanchoredSeek { offset: -1 }` left operand). Those were
+                // measurably wrong: `=$` yielded the whole brane rather than
+                // its tail, and `=^` had no evaluator arm at all and leaked
+                // `Op^(...)` into rendered output. Routing every operator
+                // through the ordinary postfix path dissolves both — FOOP-75 §7.
+                if let Some(rhs_start) = self
+                    .at_attached_search()
+                    .then(|| self.attached_search_run_end())
+                    .flatten()
+                {
+                    let suffix_start = self.pos;
+
+                    // Parse the RHS first, then rewind and replay the recorded
+                    // suffix against it using the SAME routine the postfix
+                    // spelling uses — this is what guarantees §2 tree identity.
+                    self.pos = rhs_start;
+                    let rhs = self.parse_expr()?;
+                    let after_rhs = self.pos;
+
+                    self.pos = suffix_start;
+                    let expr = self.apply_search_suffixes(rhs)?;
+                    if self.pos != rhs_start {
+                        // The suffix parser and the run scanner disagree on
+                        // where the specification ends. This happens for the
+                        // greedy scanners (`.`, and `?`/`~` patterns), which
+                        // run past a space into the RHS — the FOOP-75 §6
+                        // limitation. Refuse rather than mis-parse silently.
+                        let (line, col) = self.loc();
+                        return Err(ParseError::Syntax {
+                            message: "attached search specification is ambiguous: \
+                                      its pattern or coordinate runs past the \
+                                      terminating space (FOOP-75 §6) — write the \
+                                      postfix form, or parenthesize the pattern"
+                                .into(),
+                            line,
+                            col,
                         });
                     }
-                    Some(Token::Caret) => {
-                        self.advance();
-                        let inner = self.parse_expr()?;
-                        return Ok(Astn::Assignment {
-                            characterizations: chars,
-                            identifier: ident,
-                            operator: AssignmentOperator::Assign,
-                            expr: Box::new(Astn::BinaryOp {
-                                op: "^".into(),
-                                left: Box::new(Astn::UnanchoredSeek { offset: -1 }),
-                                right: Box::new(inner),
-                            }),
-                        });
-                    }
-                    _ => AssignmentOperator::Assign,
+                    self.pos = after_rhs;
+
+                    return Ok(Astn::Assignment {
+                        characterizations: chars,
+                        identifier: ident,
+                        operator: AssignmentOperator::Assign,
+                        expr: Box::new(expr),
+                    });
                 }
+                AssignmentOperator::Assign
             }
             _ => return self.parse_expr(),
         };
@@ -597,7 +739,22 @@ impl Parser {
 
     // --- postfixExpr: primary (postfix_op)* ---
     fn parse_postfix_expr(&mut self) -> Result<Astn> {
-        let mut expr = self.parse_primary()?;
+        let expr = self.parse_primary()?;
+        self.apply_search_suffixes(expr)
+    }
+
+    /// Apply a run of search suffixes to an already-parsed anchor expression.
+    ///
+    /// This is the suffix half of [`Self::parse_postfix_expr`], factored out so
+    /// FOOP-75's **attached searches** can replay the *same* code path against
+    /// the RHS of an assignment. That reuse is what makes FOOP-75 §2's tree
+    /// identity (`A =SPEC B` builds the same tree as `A = B SPEC`) true by
+    /// construction rather than by two implementations happening to agree.
+    ///
+    /// Chained suffixes build a left-nested spine through each node's `anchor`,
+    /// so the leftmost suffix in the source is the innermost node.
+    fn apply_search_suffixes(&mut self, anchor: Astn) -> Result<Astn> {
+        let mut expr = anchor;
         loop {
             match self.peek_token() {
                 Some(Token::Dot) => {
@@ -1161,6 +1318,280 @@ mod tests {
 
     fn parse_single(source: &str) -> Result<Astn> {
         parse(source).map(|branes| branes.into_iter().next().unwrap())
+    }
+
+    // ── FOOP-75: Assignment Attached Searches ──────────────────────────
+    // An ATTACHED SEARCH is a search written immediately after a statement's
+    // `=`, with no intervening space, terminated by a space:
+    //     A =$ B      is defined as      A = B$
+    // See docs/foop/FOOP-75.md §2 (the rewrite) and §5 (the space rule).
+
+    /// FOOP-75 §2: `LHS =SEARCH_SPEC RHS` builds the SAME tree as
+    /// `LHS = RHS SEARCH_SPEC`. This single property IS the parse-direction
+    /// specification — if it holds for an operator, that operator needs no
+    /// further parse test. `Astn` derives `PartialEq`, so it is assertable
+    /// directly rather than approximated by structural spot-checks.
+    ///
+    /// `?x` / `~x` (bare name patterns) are absent deliberately — their
+    /// pattern scanner runs past the terminating space into the RHS, so they
+    /// are refused rather than mis-parsed. See
+    /// `foop75_pins_bare_name_pattern_limitation` (§6). `.x` IS covered here:
+    /// its coordinate scanner stops at the space, so the identity holds.
+    #[test]
+    fn foop75_attached_search_builds_same_tree_as_postfix() {
+        let pairs = [
+            ("{B={1,2,3}; A =$ B;}", "{B={1,2,3}; A = B$;}"),
+            ("{B={1,2,3}; A =^ B;}", "{B={1,2,3}; A = B^;}"),
+            ("{B={1,2,3}; A =.x B;}", "{B={1,2,3}; A = B.x;}"),
+            ("{B={1,2,3}; A =~=5 B;}", "{B={1,2,3}; A = B~=5;}"),
+            ("{B={1,2,3}; A =?=5 B;}", "{B={1,2,3}; A = B?=5;}"),
+        ];
+        for (attached, postfix) in pairs {
+            let a = parse_single(attached)
+                .unwrap_or_else(|e| panic!("attached form failed to parse: {attached}: {e:?}"));
+            let p = parse_single(postfix)
+                .unwrap_or_else(|e| panic!("postfix form failed to parse: {postfix}: {e:?}"));
+            assert_eq!(
+                a, p,
+                "trees differ:\n  attached: {attached}\n  postfix:  {postfix}"
+            );
+        }
+    }
+
+    /// FOOP-75 §3: a CHAIN of attached searches builds the same left-nested
+    /// spine as the equivalent postfix chain. The leftmost search in the
+    /// attached sequence is the INNERMOST node of the spine.
+    #[test]
+    fn foop75_attached_search_chains_match_postfix_chains() {
+        // Note every chain here OPENS with a suffix operator (`$`/`^`), never
+        // with `#`. A run starting with `#` is not an attached search at all
+        // -- see `at_attached_search` -- but `#` is perfectly usable *inside*
+        // a chain, which is what these pin.
+        let pairs = [
+            ("{B={1,2,3}; A =$#1 B;}", "{B={1,2,3}; A = B$#1;}"),
+            ("{B={1,2,3}; A =^#1 B;}", "{B={1,2,3}; A = B^#1;}"),
+            ("{B={1,2,3}; A =$#-2 B;}", "{B={1,2,3}; A = B$#-2;}"),
+            // From the corpus: test-resources/.../test_syntax.foo:4 already
+            // contains `c =$#-1;` -- an attached chain written before this
+            // FOOP existed. Found by FOOP-75's Phase 1 survey.
+            ("{a=1; b=2; c =$#-1 b;}", "{a=1; b=2; c = b$#-1;}"),
+        ];
+        for (attached, postfix) in pairs {
+            let a = parse_single(attached).expect(attached);
+            let p = parse_single(postfix).expect(postfix);
+            assert_eq!(a, p, "chain trees differ: {attached} vs {postfix}");
+        }
+    }
+
+    /// PINS A KNOWN LIMITATION — not desired behavior. FOOP-75 §6.
+    ///
+    /// `parse_regexp_pattern` breaks on `;`, `,`, `}`, `)`, `]`, EOF, line
+    /// comment, `=` and `&` — but **not on a space**. So in `A =?x B` the
+    /// pattern scanner runs past the terminating space and swallows `B`,
+    /// yielding the pattern `"xB"`.
+    ///
+    /// FOOP-75 §5 says a space terminates a search specification; making the
+    /// pattern scanner honor that is §6.2's job, and it changes the meaning of
+    /// existing programs (the §6.3 survey found 3 such lines), so it is NOT
+    /// done here. Until then the attached form is **refused** — the run
+    /// scanner and the suffix parser disagree on where the specification ends,
+    /// and refusing beats silently mis-parsing.
+    ///
+    /// Note `.` is NOT affected: its coordinate scanner stops at the space, so
+    /// `A =.x B` works and is covered by the tree-identity test above.
+    ///
+    /// If you are reading this because the test failed: you are changing
+    /// pattern-boundary semantics. Confirm the §6.3 survey was done and the
+    /// change is intended — do not "fix" this test.
+    #[test]
+    fn foop75_pins_bare_name_pattern_limitation() {
+        for src in ["{B={1,2,3}; A =?x B;}", "{B={1,2,3}; A =~x B;}"] {
+            let attached = parse_single(src);
+            assert!(
+                attached.is_err(),
+                "§6: a bare name-pattern attached search must be refused, not \
+                 silently mis-parsed; got {attached:?} for {src}"
+            );
+        }
+    }
+
+    /// FOOP-75 §5.1(1): attachment requires ADJACENCY. `= $` (a space after
+    /// the `=`) has NO attached search -- the `$` belongs to the RHS.
+    ///
+    /// This is what the Phase 2 lexer change (`preceded_by_space`) exists to
+    /// make decidable: on jia@dc6db093 these two lexed identically.
+    #[test]
+    fn foop75_space_after_equals_means_no_attached_search() {
+        let attached = parse_single("{B={1,2,3}; A =$ B;}").expect("attached form parses");
+        match parse_single("{B={1,2,3}; A = $ B;}") {
+            Ok(t) => assert_ne!(
+                t, attached,
+                "`= $` must NOT be treated as an attached search (§5.1(1))"
+            ),
+            Err(_) => { /* also acceptable: `= $` may simply be a parse error */ }
+        }
+    }
+
+    /// FOOP-75 §5.1(3): an attached search MUST be terminated by a space
+    /// followed by the RHS it applies to. A run that instead ends at `;`,
+    /// `,`, `}`, `)` or EOF is **not an attached search at all** — it is an
+    /// ordinary RHS that merely starts with a search-operator character.
+    ///
+    /// This distinction is load-bearing rather than pedantic: `#` also
+    /// begins an UNANCHORED SEEK, which is a legitimate standalone RHS.
+    /// `seek_unanchored = #-2;` appears in the einmo corpus
+    /// (`foop/42/…hfs.foo:37`) and must keep parsing as `UnanchoredSeek`.
+    /// An earlier draft of this FOOP raised a parse error here and broke
+    /// that baseline — the suite caught it.
+    #[test]
+    fn foop75_unterminated_run_is_not_an_attached_search() {
+        // `#-2` as an entire RHS is an unanchored seek, not an attached search.
+        let t = parse_single("{a=1; b=2; seek = #-2;}").expect("unanchored seek still parses");
+        match t {
+            Astn::Brane { statements, .. } => match &statements[2] {
+                Astn::Assignment { expr, .. } => assert!(
+                    matches!(**expr, Astn::UnanchoredSeek { offset: -2 }),
+                    "expected UnanchoredSeek, got {expr:?}"
+                ),
+                other => panic!("expected assignment, got {other:?}"),
+            },
+            other => panic!("expected brane, got {other:?}"),
+        }
+
+        // The same shape written adjacent to the `=` is likewise NOT attached
+        // (nothing follows the run but `;`), so it parses as the seek too.
+        let t = parse_single("{a=1; b=2; seek=#-2;}").expect("adjacent unanchored seek parses");
+        match t {
+            Astn::Brane { statements, .. } => match &statements[2] {
+                Astn::Assignment { expr, .. } => assert!(
+                    matches!(**expr, Astn::UnanchoredSeek { offset: -2 }),
+                    "expected UnanchoredSeek, got {expr:?}"
+                ),
+                other => panic!("expected assignment, got {other:?}"),
+            },
+            other => panic!("expected brane, got {other:?}"),
+        }
+
+        // `A =$;` has no RHS for the `$` to apply to; it is not attached, and
+        // the ordinary parser then rejects a bare `$` as a primary expression.
+        assert!(
+            parse_single("{B={1,2,3}; A =$;}").is_err(),
+            "a bare `$` with no RHS is not a valid expression"
+        );
+    }
+
+    /// FOOP-75 §5.1(2): the attached-search run stops at a STATEMENT
+    /// terminator as well as at a space.
+    ///
+    /// Regression guard for a bug the einmo suite caught (and the
+    /// single-statement unit tests did not): a `;` is not itself preceded by
+    /// a space, so a run scan that breaks only on spaces walks straight
+    /// through it into the following statement. In
+    /// `foop/42/…hfs.foo:37-38` that made
+    ///
+    /// ```foolish
+    /// seek_unanchored=#-2;
+    /// sf_target={a=1;b=2};
+    /// ```
+    ///
+    /// read as "attached search `#-2;` applied to RHS `sf_target`", failing
+    /// the whole file. `#-2` here is an UNANCHORED SEEK and the statement
+    /// ends at the `;`.
+    #[test]
+    fn foop75_attached_run_stops_at_statement_terminator() {
+        let src = "{index_brane={1,2};\n\
+                   index_out_of_bounds=index_brane#99;\n\
+                   seek_unanchored=#-2;\n\
+                   sf_target={a=1;b=2};\n\
+                   }";
+        let t = parse_single(src).expect("multi-statement seek must parse");
+        match t {
+            Astn::Brane { statements, .. } => {
+                assert_eq!(statements.len(), 4, "all four statements survive");
+                match &statements[2] {
+                    Astn::Assignment {
+                        expr, identifier, ..
+                    } => {
+                        assert_eq!(identifier, "seekˍunanchored");
+                        assert!(
+                            matches!(**expr, Astn::UnanchoredSeek { offset: -2 }),
+                            "expected UnanchoredSeek, got {expr:?}"
+                        );
+                    }
+                    other => panic!("expected assignment, got {other:?}"),
+                }
+            }
+            other => panic!("expected brane, got {other:?}"),
+        }
+    }
+
+    /// `#` is NOT an attached-search trigger — see `at_attached_search`.
+    ///
+    /// Alone among the trigger set, `#` also begins a complete standalone
+    /// expression (`UnanchoredSeek`), so `z=#-2 + #-1` is ambiguous. The
+    /// einmo corpus settles it: every `=#` occurrence is a seek, none is an
+    /// attached search.
+    ///
+    /// Regression guard: claiming `#` turned `z=#-2 + #-1` into
+    /// `Seek { anchor: #-1, offset: -2 }` (ANCHORED, stuck at BRANING),
+    /// breaking `foop/9/operator_search_transparency` and
+    /// `misc/complex_unanchored_seeks_with_operations`.
+    #[test]
+    fn foop75_hash_is_not_an_attached_search_trigger() {
+        // Adjacent `=#` with a following operator is a SUM of two seeks.
+        let t = parse_single("{x=5, y=7, z=#-2 + #-1;}").expect("seek arithmetic parses");
+        match t {
+            Astn::Brane { statements, .. } => match &statements[2] {
+                Astn::Assignment { expr, .. } => match &**expr {
+                    Astn::BinaryOp { op, left, right } => {
+                        assert_eq!(op, "+");
+                        assert!(matches!(**left, Astn::UnanchoredSeek { offset: -2 }));
+                        assert!(matches!(**right, Astn::UnanchoredSeek { offset: -1 }));
+                    }
+                    other => panic!("expected BinaryOp(+), got {other:?}"),
+                },
+                other => panic!("expected assignment, got {other:?}"),
+            },
+            other => panic!("expected brane, got {other:?}"),
+        }
+
+        // Spaced and adjacent forms agree, because neither is attached.
+        assert_eq!(
+            parse_single("{x=5, y=7, z=#-2 + #-1;}").unwrap(),
+            parse_single("{x=5, y=7, z= #-2 + #-1;}").unwrap(),
+            "`=#` and `= #` must parse identically -- `#` is not a trigger"
+        );
+    }
+
+    /// FOOP-75 §5.4: `&` is NOT in the trigger set. `&` is a cursor-source
+    /// modifier, not a search operator in its own right (AGENTS.md §Searches
+    /// group 2), and what position a contexted search would read from when
+    /// anchored on a whole RHS has no obviously correct answer.
+    #[test]
+    fn foop75_ampersand_is_not_an_attached_search_trigger() {
+        let attached_like = parse_single("{B={1,2,3}; A =&?x B;}");
+        let postfix = parse_single("{B={1,2,3}; A = B&?x;}");
+        if let (Ok(a), Ok(p)) = (attached_like, postfix) {
+            assert_ne!(
+                a, p,
+                "`=&?x` must not be rewritten as an attached search (§5.4)"
+            );
+        }
+    }
+
+    /// FOOP-75 §2: an ordinary assignment is untouched. The attached-search
+    /// path must be a strict addition -- everything that parsed before parses
+    /// identically.
+    #[test]
+    fn foop75_ordinary_assignment_unaffected() {
+        let t = parse_single("{a = 1; b = a + 2;}").expect("ordinary assignment parses");
+        match t {
+            Astn::Brane { statements, .. } => {
+                assert_eq!(statements.len(), 2);
+                assert!(matches!(statements[0], Astn::Assignment { .. }));
+            }
+            other => panic!("expected brane, got {other:?}"),
+        }
     }
 
     #[test]
