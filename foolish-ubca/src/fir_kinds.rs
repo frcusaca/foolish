@@ -710,35 +710,21 @@ impl OperatorFir {
                     values[0] % values[1]
                 }
                 "-" if values.len() == 1 => -values[0], // unary negation
-                "$" if children.len() == 2 => {
-                    let rhs = children[1].value();
-                    if rhs.borrow().kind() != FirKind::Brane {
-                        let rhs_val = rhs
-                            .borrow()
-                            .as_i64()
-                            .map(|v| v.to_string())
-                            .unwrap_or_else(|| format!("{:?}", rhs.borrow().kind()));
-                        let reason = format!("{} is not a brane", rhs_val);
-                        let nk_ref: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<NkFir>>| {
-                            let parent: Weak<RefCell<dyn Fir>> = me.clone();
-                            RefCell::new(NkFir {
-                                core: ProtoBrane::new(vec![], parent, Nyes::Nk),
-                                reason: reason.clone(),
-                            })
-                        });
-                        self.core.push_ubc_child(ProtoBrane::constanic_clone_at(
-                            &nk_ref,
-                            &self_weak,
-                            0,
-                            scope.has_ancestral_sfm,
-                            false,
-                        ));
-                        self.core.set_alarm_reason(reason);
-                        self.core.set_nyes(Nyes::Nk);
-                        return Ok(());
-                    }
-                    return Ok(());
-                }
+                // FOOP-75 §7: the `"$"` arm that used to live here is DELETED.
+                //
+                // It served the old bespoke `=$` sugar, which built
+                // `BinaryOp("$", UnanchoredSeek{-1}, rhs)` in the parser. It
+                // validated that the RHS was a brane and then returned WITHOUT
+                // extracting the tail, so `y =$ b` settled to the whole brane
+                // rather than its last element -- contradicting FOOP-54 §D.5
+                // ("bind the value of the last statement of `b` to `a`").
+                // There was never a matching `"^"` arm at all, so `=^` never
+                // settled and leaked `Op^(...)` into rendered output.
+                //
+                // Both spellings now compile to `IndexFir` via
+                // `Astn::HeadTail`, exactly as the postfix `b$` / `b^` always
+                // did, so this operator path is unreachable and both defects
+                // dissolve rather than needing separate fixes.
                 op => {
                     return Err(UbcError::Eval(format!(
                         "unknown operator: {op} ({} operands)",
