@@ -60,14 +60,30 @@ pub struct TokenAndLocation {
     pub token: Token,
     pub line: u32,
     pub column: u32,
+    /// True when whitespace (space, tab, or newline) immediately preceded
+    /// this token.
+    ///
+    /// FOOP-75 §5: a space terminates a search-specification sequence, so the
+    /// parser needs *adjacency* — and `column` cannot supply it.
+    /// `Lexer::skip_whitespace` advances `pos` past spaces and tabs without
+    /// incrementing `column`, so `column` counts consumed non-whitespace
+    /// characters since the line started, not a character offset. Measured
+    /// consequence on jia@dc6db093: `"{a =$ b}"`, `"{a = $ b}"` and
+    /// `"{a =   $ b}"` lexed to byte-identical token streams.
+    ///
+    /// Fixing `column` to count whitespace was rejected: it would change every
+    /// existing parse-error message's reported column for no gain, and it
+    /// conflates "where is this for a human" with "was this adjacent".
+    pub preceded_by_space: bool,
 }
 
 impl TokenAndLocation {
-    pub fn new(token: Token, line: u32, column: u32) -> Self {
+    pub fn new(token: Token, line: u32, column: u32, preceded_by_space: bool) -> Self {
         Self {
             token,
             line,
             column,
+            preceded_by_space,
         }
     }
 }
