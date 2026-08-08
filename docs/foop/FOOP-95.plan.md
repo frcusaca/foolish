@@ -6,8 +6,8 @@ to bottom. Variables are already expanded to literals (per `foop.md`):
 ```
 WORKTREE_ORIGIN_BRANCH=jia
 WORKTREE_ORIGIN_PATH=/storage1/human/hcbusy/foolish
-WORKTREE_BRANCH_NAME=foop-95-as-parsed-perspective
-WORKTREE_FULL_FS_PATH=/storage1/human/hcbusy/foolish/../foolish_worktrees/foop-95-as-parsed-perspective
+WORKTREE_BRANCH_NAME=foop-95-embryonic-resequencing-sections
+WORKTREE_FULL_FS_PATH=/storage1/human/hcbusy/foolish/../foolish_worktrees/foop-95-embryonic-resequencing-sections
 ```
 
 Note: this shell needs `RUSTUP_TOOLCHAIN=stable` exported (no default
@@ -29,8 +29,8 @@ FOOP rather than pressing on.
 
 - [ ] Begin work: commit FOOP-95.md and FOOP-95.plan.md to origin (`jia`),
       check `begun: [x]` in FOOP-95.md frontmatter
-- [ ] Create worktree at /storage1/human/hcbusy/foolish/../foolish_worktrees/foop-95-as-parsed-perspective with branch `foop-95-as-parsed-perspective`
-      (`git worktree add -b foop-95-as-parsed-perspective /storage1/human/hcbusy/foolish/../foolish_worktrees/foop-95-as-parsed-perspective`
+- [ ] Create worktree at /storage1/human/hcbusy/foolish/../foolish_worktrees/foop-95-embryonic-resequencing-sections with branch `foop-95-embryonic-resequencing-sections`
+      (`git worktree add -b foop-95-embryonic-resequencing-sections /storage1/human/hcbusy/foolish/../foolish_worktrees/foop-95-embryonic-resequencing-sections`
       from `jia` at /storage1/human/hcbusy/foolish; ALL subsequent work —
       including edits to FOOP-95.md and this plan — happens ONLY in the
       worktree until merge)
@@ -88,7 +88,7 @@ FOOP rather than pressing on.
 
 ## Phase 2 — The pre-step rendering path (tests first)
 
-- [ ] Write the failing tests FIRST: producing the AS-PARSED perspective
+- [ ] Write the failing tests FIRST: producing the EMBRYONIC rendering
       leaves the settled OUTPUT byte-identical to the same input evaluated
       without it; after producing it the composed root is still wholly
       un-stepped (no NYES advanced, no helper populated)
@@ -96,7 +96,7 @@ FOOP rather than pressing on.
       (`evaluator.rs:118-149`) gains a pre-step rendering taken after
       `compose_program_with_system` and BEFORE `step_to_settled`; the
       conversion must be **purely read-only**
-- [ ] Decide and record: does the perspective render the composed root or
+- [ ] Decide and record: do the new sections render the composed root or
       only the `program` member? (FOOP-95 Open Questions — presumed
       `program` only; confirm with Atlas)
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
@@ -152,8 +152,9 @@ FOOP rather than pressing on.
       byte-identical"). Any OUTPUT difference = a misclassified Phase-1
       call site; any INPUT/COMMENTS difference = the writer mangling
       content during reorder. **Fix the code — never promote past it.**
-- [ ] **GATE B (human) — the new section is worth having.** Atlas reviews
-      EMBRYONIC bodies across a representative spread of the corpus.
+- [ ] **GATE B (human) — the new sections are worth having.** Atlas reviews
+      EMBRYONIC bodies (and RESEQUENCED, once Phase 5 has landed) across a
+      representative spread of the corpus.
       Justify every EMBRYONIC line in your own words first (AGENTS.md
       §"The einmo review workflow" step 4); "the evaluator emitted this"
       is NOT a justification.
@@ -167,7 +168,7 @@ FOOP rather than pressing on.
 
 ## Phase 5 — The Foolish Resequencer + normalization (LAST; tests first)
 
-Per FOOP-95 §6 — Atlas: *"This can be added after previous features."*
+Per FOOP-95 §6 — this lands LAST.
 **Do not begin until Phases 1-4 are green and promoted.** If this FOOP is
 sprawling by the time you reach here, STOP and ask Atlas whether §6 should
 become its own FOOP (FOOP-95 Open Questions flags it as the clean cut).
@@ -218,8 +219,8 @@ become its own FOOP (FOOP-95 Open Questions flags it as the clean cut).
 
 ## Merge
 
-- [ ] Verify all work is complete in /storage1/human/hcbusy/foolish/../foolish_worktrees/foop-95-as-parsed-perspective and committed to `foop-95-as-parsed-perspective`
-- [ ] Merge `foop-95-as-parsed-perspective` to `jia`
+- [ ] Verify all work is complete in /storage1/human/hcbusy/foolish/../foolish_worktrees/foop-95-embryonic-resequencing-sections and committed to `foop-95-embryonic-resequencing-sections`
+- [ ] Merge `foop-95-embryonic-resequencing-sections` to `jia`
   - [ ] Run all tests — old and new — and make sure they all pass correctly.
   - [ ] Check and make sure current foop has, and passes, its comprehensive
         snaptest (`einmo_suite/input/foop/95/comprehensive.foo`)
@@ -230,12 +231,12 @@ become its own FOOP (FOOP-95 Open Questions flags it as the clean cut).
         UNDER NO CIRCUMSTANCES will Agent continue past this point
         automatically!!
     - [ ] Present human with the
-          `cd /storage1/human/hcbusy/foolish/../foolish_worktrees/foop-95-as-parsed-perspective`
+          `cd /storage1/human/hcbusy/foolish/../foolish_worktrees/foop-95-embryonic-resequencing-sections`
           command and ask them to review snapshots BEFORE checking the
           parent checkbox.
-  - [ ] Cleanup /storage1/human/hcbusy/foolish/../foolish_worktrees/foop-95-as-parsed-perspective
+  - [ ] Cleanup /storage1/human/hcbusy/foolish/../foolish_worktrees/foop-95-embryonic-resequencing-sections
     - [ ] Check that FOOP-95.plan.md has all but Cleanup checkboxes completed
-    - [ ] Remove /storage1/human/hcbusy/foolish/../foolish_worktrees/foop-95-as-parsed-perspective
+    - [ ] Remove /storage1/human/hcbusy/foolish/../foolish_worktrees/foop-95-embryonic-resequencing-sections
           (`git worktree remove` + branch deletion after merge)
     - [ ] This is the last sub-task checkbox to be checked in this block of
           subtasks
@@ -247,8 +248,7 @@ become its own FOOP (FOOP-95 Open Questions flags it as the clean cut).
 
 **Date**: 2026-08-08
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Created alongside FOOP-95.md when the AS-PARSED perspective
-was split out of FOOP-65 at Atlas's direction. Five phases: the
+**Changes**: Created alongside FOOP-95.md. Five phases: the
 `stmt_count` purity split with individual call-site classification (1),
 the read-only pre-step rendering path (2), the einmo section reorder to
 `METADATA, OUTPUT, EMBRYONIC, INPUT, COMMENTS, STAMPS` plus adding

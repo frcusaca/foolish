@@ -21,14 +21,30 @@ cases, the `FOOP-95.md` file name is ultimately the right numbering.
 
 ## Abstract
 
-This FOOP adds a second rendering to every einmo test: the program
-sequenced **as it was parsed, before any step has been taken** — the
-**AS-PARSED perspective** — emitted after the existing settled OUTPUT. It
-shows what the parser and `build_fir` actually produced (precedence
-groupings, operand splits, statement structure) separately from what
-evaluation did with it.
+This FOOP adds **two new sections to every einmo test**. They are:
 
-Delivering it requires repairing a pre-existing defect:
+- **EMBRYONIC** (§1) — the program sequenced **as it was parsed, before any
+  step has been taken**. It shows what the parser and `build_fir` actually
+  produced (precedence groupings, operand splits, statement structure)
+  separately from what evaluation did with it. Its job is to be *readable*:
+  it displays the layout and nesting of FIRs.
+- **RESEQUENCED** (§6) — the same un-stepped FIR tree emitted as **parsable
+  Foolish**, by a new, separate sequencer: the **Foolish Resequencer**. Its
+  job is to be *re-parsable*, which makes the whole corpus a round-trip
+  property test of the parser and FIR-gen phases.
+
+Both render the same un-stepped tree; they differ in what they optimize
+for, which is why they are two sections and two components rather than one
+of each.
+
+RESEQUENCED brings **normalization** with it — a canonical textual form
+this FOOP also introduces — and is checked by two equalities: the
+resequenced Foolish must match the original input after normalization
+(*fidelity*), and resequencing its own output must reproduce it exactly
+(*idempotence*). It can reproduce a creation's syntax but never its
+identity (`⬤`), which is inherent, not a defect.
+
+Delivering EMBRYONIC requires repairing a pre-existing defect:
 `ConcatenationFir::stmt_count` **mutates** — asking an un-stepped
 concatenation how many statements it has silently forces the concatenation
 join. A query that mutates cannot be used to photograph un-stepped state,
@@ -44,12 +60,7 @@ Foolish for reasonably informative rendering — by agent AND by human**
 (§4): looking at real pre-step output across the corpus and deciding what
 "informative" means, before freezing it into baselines.
 
-Finally, and **landing last** (§6), a **Foolish Resequencer** — a separate
-sequencer that emits *parsable Foolish* from the FIR tree — turns the whole
-corpus into a round-trip property test of the parser and FIR-gen phases:
-resequenced Foolish must match the input after **normalization** (a
-canonical form this FOOP also introduces), and resequencing must be
-idempotent. It cannot recreate creation *identity* (`⬤`), only its syntax.
+**§6 lands last**, after §1-§5 are green.
 
 ## Motivation
 
@@ -75,37 +86,52 @@ Consequences:
   stepping?", which today requires writing a throwaway Rust unit test (see
   the `foolish-debugging` skill). A standing pre-step rendering makes the
   first question free.
+- **The parser and FIR-gen phases have no end-to-end test of their own.**
+  Every test exercises them only incidentally, through whatever the
+  program evaluates to. Nothing checks the stronger property: that the FIR
+  tree retained *everything the source meant* — which is exactly what
+  regenerating the Foolish from the tree and comparing it to the input
+  would prove. That is RESEQUENCED (§6), and it is why the corpus becoming
+  a round-trip property test is worth the work.
 
-Atlas's direction (2026-08-08):
+### Why both sections, and why they are one FOOP
 
-> "This is a good FOOP to also introduce a new aspect of the test which is
-> to add a perspective after the output that shows the sequencing of the
-> Foolish as it was parsed in (before any step has been taken). This is the
-> only way to see a tail concatenation brane rendered in reverse order. But
-> generally speaking this output is useful for testing purposes and is
-> worth adding to every test."
+EMBRYONIC answers *"what did the compiler build?"* and RESEQUENCED answers
+the stronger *"did the FIR tree keep everything the source meant?"* They
+share a source — the same un-stepped tree — and a prerequisite: a
+**read-only** traversal of a tree that has not been stepped, which the code
+cannot currently perform (§3). Building that once serves both.
 
-and, on scope (2026-08-08):
+They are nonetheless **two components and two sections**, because their
+obligations conflict. A readable rendering is free to elide, summarize, and
+annotate; a re-parsable one must emit exactly what the parser will read
+back. Merging them would compromise both (Rejected Alternative E).
 
-> "So this now seems like a rather large project. Perhaps separate
-> 'activate pre-step perspective of Foolish' into its own FOOP. I'd imagine
-> there's much work to be done there to straighten up the sequencer."
+This work is scoped as its own FOOP, separate from [FOOP-65](FOOP-65.md),
+because straightening up the sequencer's pre-step paths is substantial in
+its own right — §4 exists precisely because the answer is not knowable in
+advance.
 
 ## Specification
 
-### §1. The AS-PARSED perspective
+### §1. The EMBRYONIC section — the program as parsed
 
-Every einmo test gains a **second rendering of the same program**, emitted
-**after** the existing OUTPUT: the program sequenced **as parsed**, with
-**zero steps taken**.
+The first of this FOOP's two new sections. **EMBRYONIC** renders the
+program sequenced **as parsed**, with **zero steps taken** — the
+un-stepped view of the FIR tree. (The second, **RESEQUENCED**, is §6; both
+render the same un-stepped tree, and §6.1 tabulates how they differ.)
 
 - The existing OUTPUT is unchanged in content and position — it remains the
   settled result, and every existing baseline's settled section must stay
   **byte-identical** (§5).
-- The AS-PARSED perspective is **purely additive** and appears after it.
+- EMBRYONIC is **purely additive**.
 - It is added to **EVERY test**, not only to tests of features that need
-  it. Its value is general (Atlas: *"generally speaking this output is
-  useful for testing purposes and is worth adding to every test"*).
+  it. Its value is general: any test can now show what was built, not only
+  what it evaluated to.
+
+Its job is to be **readable**: it displays the layout and nesting of FIRs,
+and is under no obligation to be valid Foolish. That obligation belongs to
+RESEQUENCED (§6).
 
 The section's exact delimiter must survive einmo's Foolish separator
 convention (`TestConfig::foolish_separator`, `ubca_snapshot_tester.rs:55`);
@@ -113,12 +139,9 @@ its name and ordering are fixed by §1.1.
 
 #### §1.1 Section order — `METADATA, OUTPUT, EMBRYONIC, RESEQUENCED, INPUT, COMMENTS, STAMPS`
 
-**Atlas, 2026-08-08:** *"Finally, let's reorder the einmo sections to be
-'METADATA, OUTPUT, EMBRYONIC, RAW INPUT'."* — clarified moments later to
-the full, authoritative order: ***"right — OUTPUT, EMBRYONIC, INPUT,
-COMMENTS, STAMPS"***. The section keeps its existing wire name **`INPUT`**
-(the "RAW INPUT" phrasing was descriptive, not a rename), so the
-`compare.rs` always-compared hazard below does not arise for it.
+The envelope's sections are reordered so the reader meets them in the order
+they are wanted. `INPUT` keeps its wire name — it moves, it is not renamed
+— so the `compare.rs` always-compared hazard below does not arise for it.
 
 Today an einmo envelope declares (verified on
 `checked/foop/13/concat_brane_test_basic.foo.einmo`) a header block —
@@ -136,7 +159,7 @@ order to:
 |---|---------|------------|--------|
 | 1 | **METADATA** | the existing header block (`test:`, `suite:`, `producer:`, `generated:`, `status:`, …) | unchanged |
 | 2 | **OUTPUT** | the settled result | content unchanged; **moves ahead of INPUT** |
-| 3 | **EMBRYONIC** | the AS-PARSED perspective (§1): the program sequenced before any step | **new** |
+| 3 | **EMBRYONIC** | §1: the program sequenced before any step, showing FIR layout/nesting | **new** |
 | 4 | **RESEQUENCED** | the FIR tree re-emitted as *parsable Foolish* (§6) | **new**, added last (§6) |
 | 5 | **INPUT** | the original Foolish source | content unchanged; **moves after EMBRYONIC** |
 | 6 | **COMMENTS** | as today | unchanged |
@@ -152,8 +175,7 @@ sections: OUTPUT, EMBRYONIC, RESEQUENCED, INPUT, COMMENTS, STAMPS
 machine-read, so a mismatch between it and the emitted bodies is a hard
 error, not cosmetic.
 
-**RESEQUENCED is specified in §6 and lands LAST** (Atlas: *"This can be
-added after previous features"*). Implementers may land §1-§5 with the
+**RESEQUENCED is specified in §6 and lands LAST.** Implementers may land §1-§5 with the
 order `OUTPUT, EMBRYONIC, INPUT, COMMENTS, STAMPS` and insert RESEQUENCED
 afterwards — but doing so rewrites every baseline twice. **Preferred:**
 decide the final order once, and if §6 is going to land at all, reserve
@@ -162,17 +184,16 @@ its slot from the start.
 **Rationale for the order.** The reader's question is almost always "what
 did this produce?", so OUTPUT comes first among the bodies. EMBRYONIC sits
 immediately after it as the explanatory companion — *"and here is the
-structure that produced it"* — which is also the diff-friendly adjacency
-when a change moves both. RAW INPUT moves to the end because it is the one
+structure that produced it"* — with RESEQUENCED next to it, the two
+un-stepped views adjacent. INPUT moves to the end because it is the one
 section the reader already has (it is their own source file); it becomes
-reference material rather than the lead. Atlas's naming is adopted
-verbatim: the new section is **EMBRYONIC**, matching the NYES vocabulary
-for the pre-stepped states it renders (§5.3.1 of FOOP-65 gates on exactly
-this condition).
+reference material rather than the lead. The name **EMBRYONIC** matches the
+NYES vocabulary for the pre-stepped states it renders (FOOP-65 §5.3.1 gates
+on exactly this condition).
 
 **This reorder touches every baseline** — on top of the appended section —
 which is a further reason the corpus-wide re-promotion is its own reviewed
-step (§5). The **content** of OUTPUT and RAW INPUT must be byte-identical
+step (§5). The **content** of OUTPUT and INPUT must be byte-identical
 to today's; only their position and the `sections:` line change.
 
 **Tooling impact — `einmo` is in-workspace and must be updated too.**
@@ -189,7 +210,7 @@ touch-points:
   ```
   **`EMBRYONIC` must be added to this always-compared set.** If it is not,
   the section is written into every baseline but never diffed — the
-  perspective would be snapshot-pinned in name only, and a regression in
+  section would be snapshot-pinned in name only, and a regression in
   pre-step rendering would pass every gate silently. This is the single
   most important tooling change in this FOOP; assert it with a test that
   mutates only the EMBRYONIC body and confirms `einmo compare` reports a
@@ -213,21 +234,18 @@ The pre-step FIR is already reachable — no new construction path is needed.
 2. calls `step_to_settled(...)`;
 3. extracts `program_result(...)` and converts via `proto_to_core_fir`.
 
-The AS-PARSED perspective is the same conversion applied at the end of
+The EMBRYONIC rendering is the same conversion applied at the end of
 step 1 rather than step 3. The evaluator gains a way to return both
 renderings; the einmo adapter (`ubca_snapshot_tester.rs:36-48`, which today
 maps each settled FIR through `FirSequencer::format`) emits the settled
 chunk then the as-parsed chunk.
 
-The conversion used for the AS-PARSED rendering must be **purely
+The conversion used for the pre-step rendering must be **purely
 read-only** — it may not populate helpers, set flags, or step anything.
 That is what §3 makes possible; without it, this FOOP cannot be
 implemented correctly.
 
 ### §3. `stmt_count` must not mutate — split it into two methods
-
-**Atlas, 2026-08-08:** *"There shouldn't be mutation to `stmt_count`. Maybe
-separate that into two methods?"*
 
 **The defect, verified in the code (2026-08-08).**
 `ConcatenationFir::stmt_count` (`fir_kinds.rs:2840-2855`) is **not a pure
@@ -290,7 +308,7 @@ There are ~20 non-test `stmt_count()` call sites (`fir_kinds.rs`,
   the forcing to make a concatenation navigable — move to
   `ensure_joined_stmt_count()`. **These preserve today's behaviour exactly**;
   that is the point of doing it call-site by call-site.
-- Callers that are genuine queries — the new AS-PARSED walk, diagnostics,
+- Callers that are genuine queries — the new pre-step walk, diagnostics,
   `is_brane_like` (`fir_trait.rs:366`) — keep `stmt_count()`.
 
 **This is behaviour-preserving by construction.** Done correctly, no
@@ -302,13 +320,7 @@ baseline to promote (AGENTS.md §"Non-regression invariant").
 ### §4. Inspection of embryonic Foolish for reasonably informative rendering — for purposes of future development, writing and maintaining Foolish programs
 
 **This is a first-class step of this FOOP, by agent AND by human — not a
-review afterthought.** Atlas, 2026-08-08:
-
-> "In both FOOPs please indicate that a significant step would be
-> 'inspection of embryonic Foolish for reasonably informative rendering of
-> the Foolish for purpose of development', that'd be both by agent and by
-> human." — and, sharpening the criterion: *"…for purposes of future
-> development writing and maintaining Foolish programs."*
+review afterthought.**
 
 **Who this rendering is for.** Not primarily the FVM implementor debugging
 Rust internals — it is for the **Foolisher writing and maintaining Foolish
@@ -326,13 +338,13 @@ snapshot-pinned almost entirely against **settled** FIR trees. Its
 pre-constanic paths exist but are comparatively unexercised: they are what
 you get when a value could not settle, not something anyone has designed
 *for*. Turning them into a standing, corpus-wide output makes them
-first-class — and the honest expectation is that a good deal of "straighten
-up the sequencer" work (Atlas) surfaces here. **The rendering is not
-assumed correct or informative until it has actually been looked at.**
+first-class — and the honest expectation is that a good deal of
+sequencer repair surfaces here. **The rendering is not assumed correct or
+informative until it has actually been looked at.**
 
 **What the step consists of:**
 
-1. **Generate** the AS-PARSED rendering across a broad slice of the
+1. **Generate** the EMBRYONIC rendering across a broad slice of the
    existing einmo corpus (not just new tests) — nested branes,
    concatenations, searches, SF/SFF markers, operators, creations,
    comparisons, if-expressions.
@@ -344,7 +356,7 @@ assumed correct or informative until it has actually been looked at.**
    debug `items=` form, or an empty shape where structure exists? Is
    anything *missing* that the FIR plainly contains? Findings are recorded
    as defects with the construct that provoked them.
-3. **Human inspection.** Atlas reviews samples against the governing
+3. **Human inspection.** The human reviews samples against the governing
    criterion: **is this reasonably informative for the purposes of future
    development, writing and maintaining Foolish programs?** The test is not
    "does it match the FIR" but "would a Foolisher looking at this
@@ -362,8 +374,8 @@ with extra force here, where the output is *new* and there is no prior
 baseline to disagree with.
 
 **Expected outputs:** a list of sequencer defects (each fixed or explicitly
-deferred with a reason), a fixed rendering format for the perspective, and
-Atlas's sign-off that the pre-step rendering is fit for development use.
+deferred with a reason), a fixed rendering format for the section, and
+human sign-off that the pre-step rendering is fit for development use.
 
 ### §5. Corpus impact — every baseline changes
 
@@ -374,8 +386,8 @@ corpus-wide change, and it interacts with two standing rules:
 - **AGENTS.md §"Non-regression invariant (hard rule)"** forbids a FOOP from
   changing another FOOP's einmo OUTPUT. This FOOP rewrites every baseline
   twice over: it *appends* the EMBRYONIC section and *reorders* the
-  existing ones (§1.1). It is permissible **only** because Atlas directed
-  both explicitly, and because the change is **content-preserving** — every
+  existing ones (§1.1). It is permissible **only** because the change is
+  **content-preserving** — every
   section's bytes are unchanged; only their order changes, plus one new
   section. **Any baseline whose OUTPUT or INPUT *content* changes is a
   regression, not an expected update** (an OUTPUT change means a §3 call
@@ -385,15 +397,10 @@ corpus-wide change, and it interacts with two standing rules:
 - **`verified/` baselines are frozen** and require the human reviewer's
   key. Re-verifying them is a human action; the agent may not perform it.
   The implementer must **enumerate the `verified/` twins before starting**
-  and present them to Atlas, because those cannot be re-promoted
+  and present them for human review, because those cannot be re-promoted
   automatically.
 
 #### §5.1 The re-promotion inspection gate — agent AND human, again
-
-**Atlas, 2026-08-08:** *"Obviously this is another round of detailed
-examination of output both by agents and by humans to be sure A) that
-OUTPUT/INPUT/COMMENTS stayed the same, and B) embryonic Foolish is
-reasonable and useful."*
 
 This is a **second, separate inspection gate**, distinct from §4's. §4 asks
 *"is the pre-step rendering informative?"* on a sample, while designing it;
@@ -417,28 +424,22 @@ to their pre-FOOP content. Only their *position* may differ (§1.1).
   checked, N with byte-identical OUTPUT/INPUT/COMMENTS"), not as an absence
   of complaints.
 
-**Gate B — the new section is worth having.** The human reviews EMBRYONIC
-bodies across a representative spread of the corpus against §4's governing
+**Gate B — the new sections are worth having.** The human reviews the
+EMBRYONIC bodies — and, once §6 has landed, the RESEQUENCED bodies —
+across a representative spread of the corpus against §4's governing
 criterion: **is this reasonably informative for the purposes of future
-development, writing and maintaining Foolish programs?** §4 validated that
-on the constructs it sampled; Gate B is where the whole corpus gets looked
-at, and where constructs §4 missed will surface.
+development, writing and maintaining Foolish programs?** §4 and §6.5
+validate that on the constructs they sample; Gate B is where the whole
+corpus gets looked at, and where constructs those steps missed will
+surface.
 
 **Both gates are human-gated.** Per AGENTS.md §"The einmo review workflow"
-step 4, the agent must be able to justify every EMBRYONIC line in its own
-words before promotion; "the evaluator emitted this" is not a
-justification. Atlas's sign-off is required on both A and B before any
-`checked/` promotion, and `verified/` twins additionally need the human
-key.
+step 4, the agent must be able to justify every new line in its own words
+before promotion; "the evaluator emitted this" is not a justification.
+Human sign-off is required on both A and B before any `checked/`
+promotion, and `verified/` twins additionally need the human key.
 
 ### §6. The Foolish Resequencer — regenerate parsable Foolish from the FIR tree
-
-**Atlas, 2026-08-08:** *"We'd like to generate the original Foolish from
-embryonic FIR tree. This is a great test of the parser/FIR-gen phases. It
-seems that a separate sequencer, let's call it 'Foolish Resequencer', would
-take a FIR tree, and output it as Foolish (as best as it can, since it
-cannot recreate identical `{*}`)… This can be added after previous
-features."*
 
 **This is the last step of this FOOP.** It builds on §1-§5 and must not
 begin until they are green.
@@ -469,7 +470,8 @@ This FOOP therefore introduces **Foolish normalization**: a canonical
 textual form that both the original source and the resequenced output are
 reduced to before comparison.
 
-Atlas's rough mandate — to be refined during §6.5, not treated as final:
+The rules below are a **starting point, to be finalized in §6.5** — not a
+frozen list:
 
 - remove all comments;
 - runs of whitespace **outside strings** collapse to a single space;
@@ -512,8 +514,6 @@ normalizer — and it should be implemented and passing first.
 
 #### §6.4 Known limit — creations cannot be recreated
 
-Atlas: *"as best as it can, since it cannot recreate identical `{*}`"*.
-
 A creation (`⬤` / `{*}`) has **identity**, not just form: `CreationFir` is
 born Independent and compared by `Rc::ptr_eq` (FOOP-33). Two textually
 identical `⬤` tokens are two *different* creations. So resequencing can
@@ -550,7 +550,7 @@ and maintaining Foolish programs.* Specifically:
 - Where fidelity (check 1) fails, is the fault in the resequencer, the
   normalizer, or **a genuine parser/FIR-gen information loss**? The third
   case is the valuable find — it is a real bug this FOOP exists to surface
-  — and must be reported to Atlas, not normalized away.
+  — and must be reported, not normalized away.
 
 **Discipline:** a fidelity failure must never be "fixed" by weakening the
 normalizer until it passes. That converts a bug detector into a rubber
@@ -575,12 +575,11 @@ words and reviewed.
 
 ## UBC Step Impact
 
-- **No stepping change whatsoever.** The AS-PARSED rendering is taken
-  before `step_to_settled` runs and must not step, populate, or set any
-  flag.
+- **No stepping change whatsoever.** Both new renderings are taken before
+  `step_to_settled` runs and must not step, populate, or set any flag.
 - **`UbcaEvaluator::evaluate` gains a pre-step rendering path**
   (`evaluator.rs:118-149`, §2) and the einmo adapter
-  (`ubca_snapshot_tester.rs:36-48`) emits a second chunk per test.
+  (`ubca_snapshot_tester.rs:36-48`) emits the new chunks per test.
 - **~20 `stmt_count()` call sites are reclassified** (§3), each preserving
   its current behaviour.
 - **The resequencer re-enters the parser** (`foolish-parser::parse`,
@@ -605,11 +604,11 @@ Tests first, per `rust_instructions.md`.
   result byte-identical to the pre-split code.
 
 **Unit — the pre-step walk (§2):**
-- Producing the AS-PARSED perspective leaves the settled OUTPUT
+- Producing the EMBRYONIC rendering leaves the settled OUTPUT
   byte-identical to the same input evaluated without it (the anti-mutation
   guarantee).
-- After producing the perspective, the composed root is still wholly
-  un-stepped — no NYES has advanced, no helper is populated.
+- After producing it, the composed root is still wholly un-stepped — no
+  NYES has advanced, no helper is populated.
 
 **Unit — sequencer pre-constanic rendering (foolish-core, §4):**
 - One test per major construct asserting the pre-step rendering shows its
@@ -651,7 +650,7 @@ Tests first, per `rust_instructions.md`.
 **Einmo approval tests:**
 - `foolish-ubca/einmo_suite/input/foop/95/comprehensive.foo` (reserved
   name) — a program exercising every construct whose pre-step rendering
-  §4 examined, so the perspective's format is pinned in one place.
+  §4 examined, so the format is pinned in one place.
 - **Corpus-wide round-trip (§6):** once RESEQUENCED lands, both equality
   checks run over **every** input in the suite. This is the payoff — the
   entire corpus becomes a parser/FIR-gen property test. Expect genuine
@@ -662,19 +661,19 @@ Tests first, per `rust_instructions.md`.
   and must be run as a script over the whole corpus — extract
   OUTPUT/INPUT/COMMENTS from each old and new envelope and assert
   body-level byte equality — with the result reported quantitatively.
-  Gate B is human judgement on EMBRYONIC. Enumerate `verified/` twins
-  first and hand them to Atlas.
+  Gate B is human judgement on the new sections. Enumerate `verified/`
+  twins first and present them for human review.
 
 ## Rejected Alternatives
 
 ### A. Keep `stmt_count` mutating; take the pre-step snapshot from a deep copy
 
-Render the perspective from a clone of the composed root, so the forcing
+Render the pre-step section from a clone of the composed root, so the forcing
 mutation lands on the throwaway copy. Rejected: it leaves a query-that-
 mutates in the codebase as a trap for the next caller, keeps `stmt_count`
 inconsistent with its own `stmt_at`/`_search_brane` siblings, and pays a
-whole-tree deep copy per test to work around a bug rather than fix it.
-Atlas asked for the split directly.
+whole-tree deep copy per test to work around a bug rather than fix it. The
+split (§3) fixes the defect instead of routing around it.
 
 ### B. Blanket-rename every `stmt_count` call site to the joining version
 
@@ -683,12 +682,13 @@ name and leave the pure `stmt_count` with no callers — including the ones
 that genuinely want a non-forcing read. The call-site classification (§3)
 is the actual work and cannot be skipped.
 
-### C. Emit the perspective only for tests that need it (e.g. foop/65)
+### C. Emit the new sections only for tests that need them (e.g. foop/65)
 
-Cheaper: no corpus-wide re-promotion, no `verified/` problem. Rejected —
-Atlas asked for it on every test, and the general motivation (§Motivation)
-is the larger half of the value: parser/precedence regressions anywhere in
-the corpus become directly visible rather than surfacing as value diffs.
+Cheaper: no corpus-wide re-promotion, no `verified/` problem. Rejected
+because the general motivation (§Motivation) is the larger half of the
+value: parser/precedence regressions anywhere in the corpus become
+directly visible rather than surfacing as value diffs. A facility that
+only one feature can use is not worth a new section.
 
 ### D. Promote the pre-step rendering as-is, skip the inspection step
 
@@ -699,8 +699,8 @@ prevent: the sequencer's pre-constanic paths are unexercised, so
 
 ### E. Make RESEQUENCED a mode of the humanizing sequencer rather than a separate component
 
-Reuses the traversal and avoids a new module. Rejected (Atlas specified "a
-separate sequencer"): the two have conflicting goals — the humanizing
+Reuses the traversal and avoids a new module. Rejected because the two
+have conflicting goals — the humanizing
 sequencer optimizes for *readability* and is free to elide, summarize, and
 annotate with NYES state, while the resequencer must emit **exactly what
 re-parses to the same tree**. Threading a "must be parsable" flag through
@@ -714,7 +714,7 @@ normalization entirely. Tempting — it is simpler and needs no normalizer.
 Rejected as testing less: it verifies the resequencer is self-consistent
 but says nothing about whether the output resembles the Foolish the author
 wrote, and a resequencer emitting valid-but-unrecognizable Foolish would
-pass. Atlas asked for the comparison against the *original input*, which
+pass. The comparison that matters is against the *original input*, which
 requires normalization. (The structural check is a fine **additional**
 test; it is not a substitute.)
 
@@ -724,18 +724,18 @@ test; it is not a substitute.)
   inspection determines what the rendering should look like. (The section's
   *name and position* are already settled by §1.1; only its contents are
   open.) The delimiter must coexist with einmo's Foolish separator.
-- **Does the perspective render the composed root or just the `program`
+- **Do the new sections render the composed root or just the `program`
   member?** The settled OUTPUT renders the `program` member
   (`program_result`, per the FOOP-33 composition). Rendering `system.foo`'s
   pre-step form too would be noise in every test; rendering only `program`
   is the presumed choice, to be confirmed in §4.
 - **Ordering against [FOOP-65](FOOP-65.md).** FOOP-65 depends on this FOOP
   for the einmo visibility of its §5.3.1 backtick rendering. This FOOP has
-  no dependency on FOOP-65. Landing this one first is preferable; Atlas to
-  confirm.
+  no dependency on FOOP-65. Landing this one first is preferable; confirm
+  the intended order before starting.
 - **Scope of sequencer repair.** §4 will surface defects; which are fixed
   here versus deferred to their own FOOPs is a judgement call to be made
-  with Atlas once the inspection has produced the list.
+  with the human reviewer once the inspection has produced the list.
 - **Is normalization textual or canonical-resequencing-derived?** (§6.2)
   A text transformation is simple and independent, but must re-implement
   lexing rules (strings, comments) and can drift from the real lexer.
@@ -746,18 +746,17 @@ test; it is not a substitute.)
 - **Does RESEQUENCED reserve its slot from the start?** (§1.1) Landing
   §6 later means rewriting every baseline a second time. Reserving the
   slot up front avoids that but bakes in a section that is empty or absent
-  until §6 lands. Atlas to choose.
+  until §6 lands. Decide before Phase 3 freezes the order.
 - **Should §6 be its own FOOP?** It is separable — it depends on §1-§5
   only for a place to put its output, and the resequencer/normalizer are
-  independently useful. If this FOOP again feels like it is sprawling, §6
-  is the clean cut point. Flagged deliberately given the scope history
-  here.
+  independently useful. If this FOOP grows further, §6 is the clean cut
+  point.
 
 ## References
 
 - **Dependent FOOP: [FOOP-65](FOOP-65.md)** (the tail concatenator) — its
-  §5.3.1 backtick rendering is observable only through this FOOP's pre-step
-  perspective; FOOP-65 declares `depends_on: [FOOP-95]`.
+  §5.3.1 backtick rendering is observable only through this FOOP's
+  EMBRYONIC section; FOOP-65 declares `depends_on: [FOOP-95]`.
 - Prior FOOPs: FOOP-13 (concatenation semantics / ConcatBrane — the join
   whose forcing §3 repairs); FOOP-33 §4 (`system.foo` composition — why
   the composed root and the `program` member differ); FOOP-64 (the einmo
@@ -787,36 +786,23 @@ test; it is not a substitute.)
 
 **Date**: 2026-08-08
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Created (Draft). Split out of [FOOP-65](FOOP-65.md) at Atlas's
-direction ("this now seems like a rather large project… separate 'activate
-pre-step perspective of Foolish' into its own FOOP"). Specifies the
-AS-PARSED perspective — every einmo test gains a second, additive rendering
-of the program as parsed, before any step (§1-§2) — and the prerequisite
-`stmt_count` purity repair (§3): `ConcatenationFir::stmt_count` currently
-forces the concatenation join, disagreeing with its own `stmt_at` and
+**Changes**: Created (Draft). Adds two einmo sections rendering the
+un-stepped FIR tree: **EMBRYONIC** (§1-§2), the program as parsed, showing
+what the compiler built; and **RESEQUENCED** (§6), the same tree emitted as
+parsable Foolish by a new **Foolish Resequencer**, with **normalization**
+and two equality checks (fidelity to the normalized input; idempotence),
+making the corpus a round-trip property test of the parser/FIR-gen phases —
+creation *identity* (`⬤`) is outside what a round-trip can restore (§6.4).
+§3 repairs a real defect the work exposed: `ConcatenationFir::stmt_count`
+forces the concatenation join, disagreeing with its `stmt_at` and
 `_search_brane` siblings which both guard and decline; it splits into a
-pure `stmt_count` and an explicit `ensure_joined_stmt_count`, with ~20 call
-sites classified individually and behaviour preserved. §4 makes
-**inspection of embryonic Foolish for reasonably informative rendering, by
-agent AND by human**, a first-class step — the sequencer's pre-constanic
-paths are unexercised and expected to need repair before any pre-step
-baseline is frozen; its governing criterion is Atlas's: *reasonably
-informative for the purposes of future development, writing and
-maintaining Foolish programs*. §1.1 reorders the einmo envelope to
-`METADATA, OUTPUT, EMBRYONIC, INPUT, COMMENTS, STAMPS` (Atlas), keeping
-`INPUT`'s wire name and flagging that `EMBRYONIC` MUST be added to
-`compare.rs`'s always-compared set or the section is pinned in name only.
-§5 scopes the corpus-wide re-promotion honestly (content-preserving, but
-every baseline is rewritten by the reorder; `verified/` twins enumerated
-for Atlas), and §5.1 adds the second inspection gate Atlas required:
-Gate A — mechanically confirm OUTPUT/INPUT/COMMENTS are byte-identical
-across the whole corpus; Gate B — human review that the embryonic Foolish
-is reasonable and useful. Finally §6 adds the **Foolish Resequencer** (a
-separate sequencer emitting parsable Foolish from the FIR tree) with a new
-**RESEQUENCED** section and **Foolish normalization**, checked by two
-equalities — fidelity against the normalized input, and idempotence of
-resequence∘parse — making the whole corpus a round-trip property test of
-the parser/FIR-gen phases; creation *identity* (`⬤`) is explicitly
-outside what a round-trip can restore (§6.4). §6 lands last and is flagged
-in Open Questions as the clean cut point should this FOOP need splitting
-again.
+pure `stmt_count` and an explicit `ensure_joined_stmt_count`, ~20 call
+sites classified individually, behaviour preserved. §1.1 reorders the
+envelope to `METADATA, OUTPUT, EMBRYONIC, RESEQUENCED, INPUT, COMMENTS,
+STAMPS`, keeping `INPUT`'s wire name and flagging that the new sections
+MUST join `compare.rs`'s always-compared set or they are pinned in name
+only. Two human-gated inspections: §4 (is the embryonic rendering
+informative for writing and maintaining Foolish programs?) and §5.1
+Gates A/B (mechanically confirm OUTPUT/INPUT/COMMENTS unchanged corpus-wide;
+human review of the new sections). §6 lands last and is flagged in Open
+Questions as the clean cut point should this FOOP need splitting.
