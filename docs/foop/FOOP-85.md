@@ -35,8 +35,7 @@ baselines keep verifying against their original signatures.
 
 ## Motivation
 
-Discovered while gating FOOP-75. `cargo test --workspace` on `jia@dc6db093`
-failed three einmo tests:
+`cargo test --workspace` on `jia@dc6db093` fails three einmo tests:
 
 ```
 test ubca_snapshot_tester::einmo_tests::einmo_gate_output   ... FAILED
@@ -132,7 +131,7 @@ None.
 
 ## Test Plan
 
-### Already verified (during discovery, on the working change)
+### Already verified (Appendix B's change, run before it was reverted)
 
 - `cargo test -p einmo` — **133 passed, 0 failed.** The existing
   `roundtrip_foolish_separator` test (`format.rs:643`) references the
@@ -159,7 +158,41 @@ None.
 - A unit test asserting a body containing a **standalone** `!!!EINMO!!!`
   line is still correctly refused (the collision check must still work).
 
-## Rejected Alternatives
+## Open Questions
+
+- **Should the collision check become line-anchored (Alternative C)?**
+  Recommended as a follow-up, not required by this FOOP. It would make the
+  separator's line-ness explicit in code rather than implicit in the
+  constant's value.
+- **Should non-`.foo` files be excluded from UBCa input discovery?**
+  Raised during this investigation and **decided against** by the human:
+  einmo's discovery stays extension-agnostic (its cross-language design,
+  `stage.rs:99`), and the `einmo_suite/input/` tree is instead kept free of
+  extraneous files. Recorded here because the alternative was prototyped
+  and reverted; it is not part of this FOOP.
+
+## References
+
+- Code anchors: `einmo/src/format.rs:37` (the constant), `:427-440`
+  (`serialize`'s collision check), `:373-379` (`header_line` /
+  `escape_separator`), `:467-473` (`parse` reading the per-file separator),
+  `:517-523` (escape/unescape), `:643` (`roundtrip_foolish_separator`);
+  `einmo/src/config.rs:232` (`TestConfig::foolish_separator`);
+  `foolish-ubca/src/ubca_snapshot_tester.rs:53-56` (the suite opting in);
+  `foolish-parser/src/lexer.rs:100-104` (`!!!` vs `!!` block/line comment).
+- Related FOOPs: FOOP-64 / FOOP-54 / FOOP-92 (einmo itself); FOOP-75
+  (Assignment Attached Searches — blocked by this bug at its Phase 0 gate,
+  which is how it was found); FOOP-55 (owns
+  `exercises/project_euler/1.foolish`); FOOP-62 (owns the unrelated
+  `infinite_loop` regression noted in the Test Plan).
+- Docs: `AGENTS.md` §"Approval Tests (einmo)" and §"Non-regression
+  invariant"; `rust_instructions.md` §"Phase-by-phase testing discipline".
+
+---
+
+## Appendix A — Rejected Alternatives
+
+Kept for the reasoning, not required to implement the FOOP.
 
 ### A. Do nothing
 
@@ -192,37 +225,9 @@ contain `①` (the reason `foolish_separator()` exists at all —
 `ubca_snapshot_tester.rs:53-56`). Reverting reintroduces the collision it
 was created to avoid, in the other direction.
 
-## Open Questions
+---
 
-- **Should the collision check become line-anchored (Alternative C)?**
-  Recommended as a follow-up, not required by this FOOP. It would make the
-  separator's line-ness explicit in code rather than implicit in the
-  constant's value.
-- **Should non-`.foo` files be excluded from UBCa input discovery?**
-  Raised during this investigation and **decided against** by the human:
-  einmo's discovery stays extension-agnostic (its cross-language design,
-  `stage.rs:99`), and the `einmo_suite/input/` tree is instead kept free of
-  extraneous files. Recorded here because the alternative was prototyped
-  and reverted; it is not part of this FOOP.
-
-## References
-
-- Code anchors: `einmo/src/format.rs:37` (the constant), `:427-440`
-  (`serialize`'s collision check), `:373-379` (`header_line` /
-  `escape_separator`), `:467-473` (`parse` reading the per-file separator),
-  `:517-523` (escape/unescape), `:643` (`roundtrip_foolish_separator`);
-  `einmo/src/config.rs:232` (`TestConfig::foolish_separator`);
-  `foolish-ubca/src/ubca_snapshot_tester.rs:53-56` (the suite opting in);
-  `foolish-parser/src/lexer.rs:100-104` (`!!!` vs `!!` block/line comment).
-- Related FOOPs: FOOP-64 / FOOP-54 / FOOP-92 (einmo itself); FOOP-75
-  (Assignment Attached Searches — blocked by this bug at its Phase 0 gate,
-  which is how it was found); FOOP-55 (owns
-  `exercises/project_euler/1.foolish`); FOOP-62 (owns the unrelated
-  `infinite_loop` regression noted in the Test Plan).
-- Docs: `AGENTS.md` §"Approval Tests (einmo)" and §"Non-regression
-  invariant"; `rust_instructions.md` §"Phase-by-phase testing discipline".
-
-## Appendix A — the change, as generated
+## Appendix B — the change, as generated
 
 This is the exact working-tree diff produced during discovery, preserved
 here so the FOOP is self-contained and the change can be reapplied verbatim
@@ -261,14 +266,15 @@ index e6ca7864..c8273af5 100644
  ///
 ```
 
+---
+
 ## Last Updated
 
-**Date**: 2026-08-07
+**Date**: 2026-08-08
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Initial draft. Records the `"!!\n"` separator's collision with
-Foolish's `!!!` block-comment delimiter (any `!!!` line ends with the
-separator, and the collision check is a substring test), and the fix:
-`"\n!!!EINMO!!!\n"`, newline-wrapped so it matches only whole lines.
-Backward-compatible — each `.einmo` records its own separator in its header
-and `parse` reads it from there. Appendix A preserves the generated diff so
-the working tree can be reverted to a clean build before the plan runs.
+**Changes**: Composed as a document. Rejected Alternatives moved to Appendix
+A (the generated diff is now Appendix B); Open Questions and References
+precede both. Removed drafting narration from Motivation and the Test Plan.
+Design unchanged: `FOOLISH_SEPARATOR` becomes `"\n!!!EINMO!!!\n"`,
+newline-wrapped so it matches only a whole line, and backward compatible
+because each `.einmo` records its own separator in its header.

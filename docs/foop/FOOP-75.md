@@ -22,21 +22,25 @@ cases, the `FOOP-75.md` file name is ultimately the right numbering.
 ## Abstract
 
 This FOOP generalizes the statement form `LHS = RHS` to **`LHS =SEARCH_SPEC
-RHS`**, which is defined to mean exactly `LHS = RHS SEARCH_SPEC`. The
-suffix is triggered when the character **immediately after** the `=` of a
-statement is the start of a search operator — one of `^ $ ~ ? # .` — and it
-means: parse that search specification, then anchor it on the **end of the
-RHS**. `=SEARCH_SPEC` admits **no spaces**, matching the existing rule that
-spaces are never allowed inside a search specification. The **reverse
-direction** is a sequencer obligation: given a settled statement whose body
-is a search (and whose anchor is itself a search, transitively, until the
-anchor is not a search), the sequencer lifts that entire run of searches out
-of the body and renders it immediately after the `=`. So `A = B~=5#-2`
-sequences to `A =~=5#-2 B`.
+RHS`**, defined to mean exactly `LHS = RHS SEARCH_SPEC`. The **attached
+search** is triggered when the character **immediately after** the `=` is
+the start of a search operator — one of `^ $ ~ ? .` — and it means: parse
+that search specification, then anchor it on the **end of the RHS**. An
+attached search admits **no spaces** and must be **terminated** by one
+(§5), matching the project-wide rule that a search specification never
+contains spaces.
+
+The **reverse direction** is a sequencer obligation: a named statement
+whose body is an anchored head or tail search renders that search attached
+to the `=` — `e = {}^` renders `e =^ {} (???)`. This applies only where the
+search is still visible; a *settled* search renders as the value it found,
+as it always has (§4.1).
 
 This subsumes and repairs the two existing ad-hoc sugars, `=$` and `=^`,
-which today are separately hand-coded, mutually inconsistent, and — as
-this FOOP documents — **both defective**.
+which are separately hand-coded, mutually inconsistent, and **both
+defective** — `=$` yields the whole brane instead of its tail, and `=^`
+never settles at all. Both dissolve by routing through the existing
+`IndexFir`; no new FIR kind, no new NYES state.
 
 ## Motivation
 
@@ -62,7 +66,7 @@ existing implementation does not deliver it. Verified live on `jia` at
 | `{b = {1,2,3}; z = b^}` | `z=1` | `1` ✅ |
 | `{b = {1,2,3}; y =^ b}` | `y=Op^({1;2;3}, {1;2;3}, WOCONSTANIC)` | `1` ❌ |
 
-Three distinct defects are visible here:
+Two defects, with one shared cause:
 
 1. **`=$` computes the wrong value.** It yields the whole brane, not its
    tail. `fir_kinds.rs:713`'s `"$"` arm validates that the RHS is a brane
@@ -70,11 +74,18 @@ Three distinct defects are visible here:
 2. **`=^` does not evaluate at all.** There is **no `"^"` arm** in
    `fir_kinds.rs` to match `"$"` at line 713, so the `OperatorFir` never
    settles to a value and leaks into rendered output as `Op^(...)`.
-3. **The reverse direction is missing for the postfix forms.** `b$` compiles
-   to an `IndexFir` (`compiler.rs:354`), not an `OperatorFir`, so the
-   sequencer's sugar branch — gated on `hs_operator()` returning `Some(("$",
-   ..))` at `sequencer.rs:650` — never fires for it. `z = b$` renders as
-   `z=3`, with the `$` gone entirely.
+
+Both trace to the same root: the two spellings compile to **different FIR
+kinds**. `b$` builds an `IndexFir` (`compiler.rs:354`) and works; `=$`
+builds a bespoke `BinaryOp("$", UnanchoredSeek{-1}, rhs)` whose operator
+arm was never finished. `=^` has no arm at all. Routing both spellings
+through the same `IndexFir` (§7) dissolves the pair rather than fixing
+them separately.
+
+The sequencer's `=$` branch is likewise gated on `hs_operator()` returning
+`Some(("$", ..))` (`sequencer.rs:650`), so it matches only the bespoke
+spelling and never `IndexFir`. §4 re-gates it on `hs_index()`, which also
+gives `^` the rendering it never had.
 
 ### The corpus already assumes this rule
 
@@ -127,8 +138,8 @@ operator rather than just `$` and `^`:
 call_result =$ {a=10, b=-3} fn      !! bind fn's tail  (FOOP-54 §D.5)
 first       =^ some_brane           !! bind the head
 found       =?name some_brane       !! bind a backward name search
-nth         =#-2 some_brane         !! bind a positional index
 matched     =~=5 some_brane         !! bind a forward value search
+nth         =$#-2 some_brane        !! a chain: tail, then index back two
 ```
 
 Each is defined by a single mechanical rewrite, so there is no per-operator
@@ -170,8 +181,30 @@ statement**. The trigger set is:
 | `$` | tail |
 | `~` | forward name search (and `~=`, forward value search) |
 | `?` | backward name search (and `?=`, backward value search) |
-| `#` | positional index |
 | `.` | deepening name search |
+
+**`#` is not in the trigger set.** Alone among the search operators, `#`
+also *begins a complete standalone expression* — an unanchored seek
+(`Astn::UnanchoredSeek`). Every other trigger is a suffix operator that
+cannot start an expression, so no ambiguity arises for them. For `#` it
+does:
+
+```foolish
+z = #-2 + #-1     !! a SUM of two unanchored seeks
+z =#-2 + #-1      !! or an attached `#-2` over RHS `#-1`?
+```
+
+The corpus settles it: every `=#` occurrence in the einmo suite is an
+unanchored seek, never an attached search
+(`foop/9/operator_search_transparency.foo`,
+`misc/complex_unanchored_seeks_with_operations.foo`,
+`misc/unanchored_seek.foo`, `misc/seek_beyond_start.foo`,
+`misc/seek_negative_clamping.foo`,
+`misc/unanchored_seek_large_negative.foo`, `foop/42/…hfs.foo:37,69`).
+
+The positional index remains reachable **inside a chain**, where a suffix
+operator opens the run and no ambiguity exists: `A =$#1 B` is valid. Only a
+run *starting* with `#` is excluded.
 
 **Immediately** is literal: `=$` triggers, `= $` does **not**. This
 restates the existing project-wide rule that a search specification never
@@ -230,26 +263,44 @@ innermost (closest to the RHS) in the resulting spine.
 
 ### §4. The reverse direction (sequencer obligation)
 
-Given a settled statement, the sequencer walks the body's **anchor spine**:
-while the node is a search, follow its anchor; stop at the first node that
-is not a search. That entire run of searches is lifted out and rendered
-immediately after the `=`, in spine order (innermost first), and the
-non-search node at the bottom of the spine is rendered as the RHS.
+When a named statement's body is an **anchored head or tail search**, the
+sequencer lifts the search out of the body and renders it as an attached
+search immediately after the `=`:
 
 ```
-A = B~=5#-2      sequences to      A =~=5#-2 B
+e = {}^        renders   e =^ {} (???)
+d =$ 4         renders   d =$ 4 (???)
 ```
 
-The FIR kinds that count as "a search" for spine-walking purposes are
-those reachable by the trigger set of §1: `IndexFir` (covering `^`, `$`,
-and `#`), `SearchFir` / the `ContextfulSearch` family (covering `~`, `?`,
-`.`, and the value forms). A statement body that is not a search renders
-exactly as it does today — the fallback is total.
+Both spellings build the same tree (§2), so both render this way.
 
-**This obligation applies to the postfix spelling too.** `A = B$` and
-`A =$ B` produce the same tree (§2), so they necessarily sequence to the
-same text. Per §4 that text is `A =$ B`. This is a deliberate
-**normalizing** choice: the suffixed form is canonical in output.
+#### §4.1 The rule applies only where the search is still visible
+
+The sequencer's governing principle — long predating this FOOP — is
+**transparency when settled**: a search that found its target renders as
+**the value it found**, not as the search that found it
+(`should_show_nyes` / `should_show_search_nyes` in `render_fir`).
+
+So `z = b$` renders `z=3`. The `$` is not *lost*; the search is *resolved*,
+exactly as `x = 1+2` renders `x=3` rather than `x=Op+(1,2)`.
+
+The attached form therefore applies **only to statements that still show
+their search structure** — those unsettled, or settled NK:
+
+```
+e = {}^        →   e =^ {} (???)      !! NK — structure shown
+z = b$         →   z=3                !! settled — value shown
+y =$ b         →   y=3                !! settled — same value
+```
+
+Normalizing the settled cases would mean **un-resolving** the output,
+contradicting the rendering model and making every snapshot noisier for no
+gain. The round-trip property survives in the form that matters: for
+settled statements both spellings converge on the same *value*, which is a
+stronger agreement than converging on the same *text*.
+
+A statement body that is not a search renders exactly as before — the
+fallback is total.
 
 ### §5. Space is the terminator — and the lexer must first be taught to see it
 
@@ -475,14 +526,9 @@ citing this section.
 
 ### §8. Behavior change to verified baselines
 
-> **Revised 2026-08-07 after the plan's Phase 1 survey.** This section
-> originally named one frozen baseline; the survey found **six**. The
-> difference matters: §4's normalization affects **postfix** inputs too
-> (that is its purpose), so any baseline rendering a `$`/`^` statement
-> moves, not only those whose *input* uses the `=$` sugar.
-
 Six `verified/` (human-signed, frozen) baselines are affected, each with a
-`checked/` twin that also moves:
+`checked/` twin that also moves. Any baseline rendering a `$`/`^` statement
+moves, not only those whose *input* uses the `=$` spelling:
 
 | `verified/` baseline | example input | renders today |
 |---|---|---|
@@ -667,13 +713,12 @@ another. Neither introduces new evaluation semantics.
 | Means | `A = {a,b} fn` | `A = B$` |
 | Moved component | the method, to the tail | the search, to the anchor position |
 | Compile-direction op | **reverse** the operand list (§5) | **replay** the suffix onto the RHS (§2) |
-| Sequence-direction op | render through the inner concatenation | **walk the anchor spine** and lift (§4) |
-| New FIR? | yes — `TailConcatenationFir` (a deliberate hook) | **no** — reuses `IndexFir`/`SearchFir` |
+| Sequence-direction op | render the flagged concatenation in backtick form | render the anchored search attached (§4) |
+| New FIR? | **no** — a provenance flag on `ConcatenationFir` | **no** — reuses `IndexFir`/`SearchFir` |
 
 The deep commonality is the **sequencer obligation**: both need to
-recognize a settled sub-tree, decide it came from a permuted surface form,
-and render it back in that surface form. That is FOOP-75 §4's spine walk
-and FOOP-65's "render through the inner concatenation."
+recognize a sub-tree, decide it came from a permuted surface form, and
+render it back in that form. Neither adds a FIR kind to do it.
 
 ### §9.2 Where they genuinely share machinery
 
@@ -757,7 +802,45 @@ here so whichever lands second does not miss it.
 since it is small, purely additive, and both FOOPs' parser work sits on top
 of it. Beyond that, the order is free.
 
-## Rejected Alternatives
+## Open Questions
+
+- **Should `&` ever be admissible in a suffix (§5)?** Deferred. It needs a
+  decision on what statement position a contexted search reads when its
+  anchor is an expression rather than a found statement. Nothing in this
+  FOOP depends on the answer.
+- **Does §8's verified baseline text change?** To be determined
+  empirically during implementation, then put to the human reviewer. The
+  plan gates on this; the FOOP does not presume the outcome.
+- **Should §6 (regexp pattern greediness) get its own FOOP?** Recommended,
+  but out of scope here. This FOOP only pins the current behavior.
+
+## References
+
+- Prior FOOPs: **FOOP-54 §D.5** (`Complete` — defines bind-tail `a =$ b ≡ a
+  = b$` and the emergent function-application idiom; the in-force authority
+  for what `=$` means); FOOP-23 §942/946 (the `a$=b`/`a^=b` transposition
+  corrected by §7) and §Terminology (the three search operator groups);
+  FOOP-55 §D6/§E5 (independent discovery that `$=` does not parse, and the
+  `(X)$` workaround); FOOP-65 (postfix `$` after backtick application —
+  uses only the postfix form, unaffected by this FOOP).
+- Docs: `AGENTS.md` §Searches (operator tables, NK vs ECONSTANIC miss
+  outcomes, the one-engine model); `docs/vintage_legacy/NAMES_SEARCHES_N_BOUNDS.md`;
+  `rust_instructions.md` §"Phase-by-phase testing discipline".
+- Code anchors: `foolish-parser/src/parser.rs` — `parse_assignment` 296-368
+  (the two bespoke branches at 326-354 deleted by §7), postfix suffix loop
+  640-760 (reused by §2), `parse_regexp_pattern` 800-814 (§6);
+  `foolish-parser/src/ast.rs` — `Astn::HeadTail` 93, `Seek`, `RegexpSearch`,
+  `ValueSearch`; `foolish-ubca/src/compiler.rs:354` (`HeadTail` → `IndexFir`);
+  `foolish-ubca/src/fir_kinds.rs:713` (the `"$"` arm deleted by §7),
+  `IndexFir` 1709-1714; `foolish-core/src/sequencer.rs:650-700` (the `=$`
+  sugar branch, generalized by §4); `foolish-core/src/fir.rs:561`
+  (`IndexQuery`), 576-578 (`hs_operator` / `hs_index`).
+
+---
+
+## Appendix A — Rejected Alternatives
+
+Kept for the reasoning, not required to implement the FOOP.
 
 ### A. Do nothing
 
@@ -803,61 +886,21 @@ appear in any snapshot, and the existing verified baseline
 (`d =$ ???`) already renders the suffixed form. Normalizing toward the
 suffix preserves that baseline's shape and keeps the taught idiom visible.
 
-## Open Questions
-
-- **Should `&` ever be admissible in a suffix (§5)?** Deferred. It needs a
-  decision on what statement position a contexted search reads when its
-  anchor is an expression rather than a found statement. Nothing in this
-  FOOP depends on the answer.
-- **Does §8's verified baseline text change?** To be determined
-  empirically during implementation, then put to the human reviewer. The
-  plan gates on this; the FOOP does not presume the outcome.
-- **Should §6 (regexp pattern greediness) get its own FOOP?** Recommended,
-  but out of scope here. This FOOP only pins the current behavior.
-
-## References
-
-- Prior FOOPs: **FOOP-54 §D.5** (`Complete` — defines bind-tail `a =$ b ≡ a
-  = b$` and the emergent function-application idiom; the in-force authority
-  for what `=$` means); FOOP-23 §942/946 (the `a$=b`/`a^=b` transposition
-  corrected by §7) and §Terminology (the three search operator groups);
-  FOOP-55 §D6/§E5 (independent discovery that `$=` does not parse, and the
-  `(X)$` workaround); FOOP-65 (postfix `$` after backtick application —
-  uses only the postfix form, unaffected by this FOOP).
-- Docs: `AGENTS.md` §Searches (operator tables, NK vs ECONSTANIC miss
-  outcomes, the one-engine model); `docs/vintage_legacy/NAMES_SEARCHES_N_BOUNDS.md`;
-  `rust_instructions.md` §"Phase-by-phase testing discipline".
-- Code anchors: `foolish-parser/src/parser.rs` — `parse_assignment` 296-368
-  (the two bespoke branches at 326-354 deleted by §7), postfix suffix loop
-  640-760 (reused by §2), `parse_regexp_pattern` 800-814 (§6);
-  `foolish-parser/src/ast.rs` — `Astn::HeadTail` 93, `Seek`, `RegexpSearch`,
-  `ValueSearch`; `foolish-ubca/src/compiler.rs:354` (`HeadTail` → `IndexFir`);
-  `foolish-ubca/src/fir_kinds.rs:713` (the `"$"` arm deleted by §7),
-  `IndexFir` 1709-1714; `foolish-core/src/sequencer.rs:650-700` (the `=$`
-  sugar branch, generalized by §4); `foolish-core/src/fir.rs:561`
-  (`IndexQuery`), 576-578 (`hs_operator` / `hs_index`).
+---
 
 ## Last Updated
 
-**Date**: 2026-08-07 (2)
+**Date**: 2026-08-08
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Revised after the plan's Phase 1 survey. **§8 widened from one
-frozen baseline to six** — §4's normalization affects postfix inputs too, so
-any baseline rendering a `$`/`^` statement moves (`misc/head_tail_empty_brane`,
-`misc/anchored_search_on_constanic`, `misc/offset_access_empty_brane`,
-`foop/33/boolean/comparison_non_integer`, `foop/42/…hfs`, plus the originally
-identified `regression/disappearing_brane_statements`); documented the two
-distinct existing renderings (`e=^(NK)` vs `d =$ ???`) that §4 unifies, and
-added a declinable fallback. **§Motivation gained "The corpus already assumes
-this rule"** — three `test-resources/` files state §2's rewrite verbatim in
-comments, one already contains an attached chain (`c =$#-1;`), and
-`regexSearchShadowy.foo` annotates chained searches with expected results that
-require both §5's space rule and §6.2's parens, none of which work today.
-Earlier: initial draft. Generalizes `LHS = RHS` to `LHS =SEARCH_SPEC RHS`
-≡ `LHS = RHS SEARCH_SPEC` over the trigger set `^ $ ~ ? # .`, with the
-sequencer obligation to lift a statement body's whole search spine back to
-the suffix position. Documents three verified defects in the existing
-`=$`/`=^` special cases and dissolves them by routing both through the
-existing `IndexFir` path (§7). Records the `parse_regexp_pattern`
-greediness limitation (§6) as pinned-not-fixed, and the frozen verified
-baseline at §8 as requiring a human signing decision.
+**Changes**: Composed as a document rather than a drafting record, and
+aligned with what Phases 2-5 actually built. Rejected Alternatives moved to
+Appendix A. **`#` removed from the §1 trigger set** — alone among the search
+operators it also begins a standalone expression (unanchored seek), and
+every `=#` in the corpus is a seek; it remains usable inside a chain
+(`=$#1`). **§4 narrowed**: the attached rendering applies only where the
+search is still visible (unsettled or NK), because the sequencer is
+transparent when settled — `z = b$` renders `z=3` since the search is
+*resolved*, not because the `$` is lost. §Motivation's third "defect" was
+that same misreading and is now folded into the shared-cause explanation of
+the two real ones. §9's FOOP-65 comparison rows corrected (FOOP-65 now uses
+a provenance flag on `ConcatenationFir`, not a new FIR kind).

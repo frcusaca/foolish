@@ -664,60 +664,6 @@ Tests first, per `rust_instructions.md`.
   Gate B is human judgement on the new sections. Enumerate `verified/`
   twins first and present them for human review.
 
-## Rejected Alternatives
-
-### A. Keep `stmt_count` mutating; take the pre-step snapshot from a deep copy
-
-Render the pre-step section from a clone of the composed root, so the forcing
-mutation lands on the throwaway copy. Rejected: it leaves a query-that-
-mutates in the codebase as a trap for the next caller, keeps `stmt_count`
-inconsistent with its own `stmt_at`/`_search_brane` siblings, and pays a
-whole-tree deep copy per test to work around a bug rather than fix it. The
-split (§3) fixes the defect instead of routing around it.
-
-### B. Blanket-rename every `stmt_count` call site to the joining version
-
-Mechanical and safe-looking, but it would preserve the defect under a new
-name and leave the pure `stmt_count` with no callers — including the ones
-that genuinely want a non-forcing read. The call-site classification (§3)
-is the actual work and cannot be skipped.
-
-### C. Emit the new sections only for tests that need them (e.g. foop/65)
-
-Cheaper: no corpus-wide re-promotion, no `verified/` problem. Rejected
-because the general motivation (§Motivation) is the larger half of the
-value: parser/precedence regressions anywhere in the corpus become
-directly visible rather than surfacing as value diffs. A facility that
-only one feature can use is not worth a new section.
-
-### D. Promote the pre-step rendering as-is, skip the inspection step
-
-Fastest path to green. Rejected as the specific failure mode §4 exists to
-prevent: the sequencer's pre-constanic paths are unexercised, so
-"whatever it currently emits" is precisely what must **not** be frozen into
-~every baseline in the suite sight-unseen.
-
-### E. Make RESEQUENCED a mode of the humanizing sequencer rather than a separate component
-
-Reuses the traversal and avoids a new module. Rejected because the two
-have conflicting goals — the humanizing
-sequencer optimizes for *readability* and is free to elide, summarize, and
-annotate with NYES state, while the resequencer must emit **exactly what
-re-parses to the same tree**. Threading a "must be parsable" flag through
-the humanizing sequencer would constrain every future readability
-improvement and make both jobs harder to reason about.
-
-### F. Round-trip on the AST instead of on text
-
-Compare `parse(resequence(tree))` to `tree` structurally, skipping
-normalization entirely. Tempting — it is simpler and needs no normalizer.
-Rejected as testing less: it verifies the resequencer is self-consistent
-but says nothing about whether the output resembles the Foolish the author
-wrote, and a resequencer emitting valid-but-unrecognizable Foolish would
-pass. The comparison that matters is against the *original input*, which
-requires normalization. (The structural check is a fine **additional**
-test; it is not a substitute.)
-
 ## Open Questions
 
 - **Rendering format inside EMBRYONIC.** Fixed during §4, not before — the
@@ -782,27 +728,71 @@ test; it is not a substitute.)
   `foolish-parser/src/parser.rs` — `parse` 31 (the public entry the
   idempotence check §6.3 re-enters).
 
+---
+
+## Appendix A — Rejected Alternatives
+
+Kept for the reasoning, not required to implement the FOOP.
+
+### A. Keep `stmt_count` mutating; take the pre-step snapshot from a deep copy
+
+Render the pre-step section from a clone of the composed root, so the forcing
+mutation lands on the throwaway copy. Rejected: it leaves a query-that-
+mutates in the codebase as a trap for the next caller, keeps `stmt_count`
+inconsistent with its own `stmt_at`/`_search_brane` siblings, and pays a
+whole-tree deep copy per test to work around a bug rather than fix it. The
+split (§3) fixes the defect instead of routing around it.
+
+### B. Blanket-rename every `stmt_count` call site to the joining version
+
+Mechanical and safe-looking, but it would preserve the defect under a new
+name and leave the pure `stmt_count` with no callers — including the ones
+that genuinely want a non-forcing read. The call-site classification (§3)
+is the actual work and cannot be skipped.
+
+### C. Emit the new sections only for tests that need them (e.g. foop/65)
+
+Cheaper: no corpus-wide re-promotion, no `verified/` problem. Rejected
+because the general motivation (§Motivation) is the larger half of the
+value: parser/precedence regressions anywhere in the corpus become
+directly visible rather than surfacing as value diffs. A facility that
+only one feature can use is not worth a new section.
+
+### D. Promote the pre-step rendering as-is, skip the inspection step
+
+Fastest path to green. Rejected as the specific failure mode §4 exists to
+prevent: the sequencer's pre-constanic paths are unexercised, so
+"whatever it currently emits" is precisely what must **not** be frozen into
+~every baseline in the suite sight-unseen.
+
+### E. Make RESEQUENCED a mode of the humanizing sequencer rather than a separate component
+
+Reuses the traversal and avoids a new module. Rejected because the two
+have conflicting goals — the humanizing
+sequencer optimizes for *readability* and is free to elide, summarize, and
+annotate with NYES state, while the resequencer must emit **exactly what
+re-parses to the same tree**. Threading a "must be parsable" flag through
+the humanizing sequencer would constrain every future readability
+improvement and make both jobs harder to reason about.
+
+### F. Round-trip on the AST instead of on text
+
+Compare `parse(resequence(tree))` to `tree` structurally, skipping
+normalization entirely. Tempting — it is simpler and needs no normalizer.
+Rejected as testing less: it verifies the resequencer is self-consistent
+but says nothing about whether the output resembles the Foolish the author
+wrote, and a resequencer emitting valid-but-unrecognizable Foolish would
+pass. The comparison that matters is against the *original input*, which
+requires normalization. (The structural check is a fine **additional**
+test; it is not a substitute.)
+
+---
+
 ## Last Updated
 
 **Date**: 2026-08-08
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Created (Draft). Adds two einmo sections rendering the
-un-stepped FIR tree: **EMBRYONIC** (§1-§2), the program as parsed, showing
-what the compiler built; and **RESEQUENCED** (§6), the same tree emitted as
-parsable Foolish by a new **Foolish Resequencer**, with **normalization**
-and two equality checks (fidelity to the normalized input; idempotence),
-making the corpus a round-trip property test of the parser/FIR-gen phases —
-creation *identity* (`⬤`) is outside what a round-trip can restore (§6.4).
-§3 repairs a real defect the work exposed: `ConcatenationFir::stmt_count`
-forces the concatenation join, disagreeing with its `stmt_at` and
-`_search_brane` siblings which both guard and decline; it splits into a
-pure `stmt_count` and an explicit `ensure_joined_stmt_count`, ~20 call
-sites classified individually, behaviour preserved. §1.1 reorders the
-envelope to `METADATA, OUTPUT, EMBRYONIC, RESEQUENCED, INPUT, COMMENTS,
-STAMPS`, keeping `INPUT`'s wire name and flagging that the new sections
-MUST join `compare.rs`'s always-compared set or they are pinned in name
-only. Two human-gated inspections: §4 (is the embryonic rendering
-informative for writing and maintaining Foolish programs?) and §5.1
-Gates A/B (mechanically confirm OUTPUT/INPUT/COMMENTS unchanged corpus-wide;
-human review of the new sections). §6 lands last and is flagged in Open
-Questions as the clean cut point should this FOOP need splitting.
+**Changes**: Composed as a document. Rejected Alternatives moved to Appendix
+A so the body reads straight through from Abstract to References. Design
+unchanged: the EMBRYONIC and RESEQUENCED sections, the `stmt_count` purity
+split, and the two human-gated inspection steps.
