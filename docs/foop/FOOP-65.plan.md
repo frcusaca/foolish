@@ -16,6 +16,18 @@ FOOP-55 (the Euler exercise rewrite) — it lands first and stands alone.
 
 ## Phase 0 — Begin, baseline, and orientation
 
+- [ ] **Dependency check — FOOP-65 `depends_on: [FOOP-95]`.** Determine
+      whether [FOOP-95](FOOP-95.md) (the AS-PARSED pre-step perspective +
+      the `stmt_count` purity split) has merged.
+      - If YES: the §5.3.1 backtick rendering can be confirmed at the einmo
+        level; add a `foop/65/` input exercising it.
+      - If NO: FOOP-65 still proceeds — §1-§5 are fully testable without it
+        (FOOP-65 §6). Implement and unit-test the §5.3.1 rendering at the
+        `foolish-core` level against a directly-constructed all-embryonic
+        node, and carry the einmo confirmation as a deferred item to be
+        added when FOOP-95 lands.
+      - Confirm the intended ORDER with Atlas if unclear (FOOP-65 Open
+        Questions — FOOP-95 landing first is preferable).
 - [ ] Begin work: commit FOOP-65.md and FOOP-65.plan.md to origin (`jia`),
       check `begun: [x]` in FOOP-65.md frontmatter
 - [ ] Create worktree at /storage1/human/hcbusy/foolish/../foolish_worktrees/foop-65-tail-concatenator with branch `foop-65-tail-concatenator`
@@ -26,14 +38,21 @@ FOOP-55 (the Euler exercise rewrite) — it lands first and stands alone.
 - [ ] Read `rust_instructions.md` in full (mandatory before any Rust;
       especially §"Phase-by-phase testing discipline")
 - [ ] Read FOOP-65.md in full — especially §2 (precedence/associativity,
-      the authoritative Atlas statements) and §5 (the separate-FIR
-      directive: executes AS a concatenation, `value()` returns the inner)
+      the authoritative Atlas statements), §3.1 (the worked example
+      `` a`b`c`d e f `` → exactly TWO ConcatenationFirs), and §5 (the
+      **flag-on-ConcatenationFir** design — NO separate FIR kind; the flag
+      affects sequencing ONLY; precedence + reversal happen in `build_fir`)
 - [ ] Read the touched sites: `foolish-parser/src/lexer.rs` (single-char
       arms, unknown-char fallback 297-299), `foolish-parser/src/parser.rs`
       (`parse_expr` 371-388, `is_concatenation_continuation` 390-411),
       `foolish-parser/src/ast.rs` + `token.rs`, `foolish-ubca/src/compiler.rs`
-      (`build_fir` Concatenation arm), `foolish-ubca/src/fir_kinds.rs`
-      (ConcatenationFir, `constanic_clone_at`)
+      (`build_fir` Concatenation arm 371-383, `validate_astn` 167-172),
+      `foolish-ubca/src/fir_kinds.rs` (`ConcatenationFir` 2610-2614,
+      `fir_op_step` 2749-2835, `constanic_clone_at` Concatenation arm
+      339-356), `foolish-ubca/src/evaluator.rs` (706-764),
+      `foolish-core/src/fir.rs` (`ConcatenationFir` 356-360,
+      `ConcatenationQuery` 563, builder 2096-2136),
+      `foolish-core/src/sequencer.rs` (§9 concatenation, 496-545)
 - [ ] Baseline in the worktree: `RUSTUP_TOOLCHAIN=stable cargo test --workspace`
       and `cargo test -p foolish-ubca --lib -- run_einmo_tests` — both
       green before any change; re-confirm no backtick sits in CODE position
@@ -47,9 +66,11 @@ FOOP-55 (the Euler exercise rewrite) — it lands first and stands alone.
       backtick token; `f`X` → `TailConcatenation [f, X]`; chain
       `f`g`h`X` → ONE flat node `[f, g, h, X]`; precedence pins
       (`fn`{a}{b}` groups the juxtaposition first; `fn`{a}$` keeps `$`
-      inside the operand; search suffix on `(fn`X)`); backtick inside
-      brane statements / parens / `<...>` / `<<...>>`; trailing backtick
-      errors
+      inside the operand; search suffix on `(fn`X)`); **the §3.1 operand
+      split: `` a`b`c`d e f `` parses to `TailConcatenation [a, b, c,
+      Concatenation[d,e,f]]` — the trailing `d e f` is ONE operand**;
+      backtick inside brane statements / parens / `<...>` / `<<...>>`;
+      trailing backtick errors
 - [ ] Implement: `Token::Backtick` (+ Display "`"), the lexer single-char
       arm, `Astn::TailConcatenation { elements }` (flat, source order,
       ≥ 2), the new weakest parse level per FOOP-65 §4 (current
@@ -60,29 +81,69 @@ FOOP-55 (the Euler exercise rewrite) — it lands first and stands alone.
       `cargo test -p foolish-ubca --lib -- run_einmo_tests` still green
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
-## Phase 2 — `TailConcatenationFir` and the compiler arm (tests first)
+## Phase 2 — The provenance flag and the compiler arm (tests first)
 
-- [ ] Write the failing FVM tests FIRST:
-      `tail_concatenation_nyes_transitions` (REQUIRED by AGENTS.md —
-      wrapper mirrors the inner concatenation's progression); equivalence
-      `fn`X` ≡ `X fn` for several X (brane literal, search, concatenation —
-      settled branes statement-for-statement identical); chain reversal
-      `f`g`h`X` ≡ `X h g f`; system-operator application through the
-      wrapper: `('lt`{1, 2})$` → `system.foo`'s `'True` BY IDENTITY (the
-      FOOP-55 usage shape — proves recoordination through the wrapper)
-- [ ] Implement per FOOP-65 §5: `TailConcatenationFir` (core with the
-      inner ConcatenationFir as foolish_children[0]); `build_fir` arm for
-      `Astn::TailConcatenation` (build operands, REVERSE, reuse the
-      existing Concatenation machinery, wrap); `FirKind::TailConcatenation`;
-      delegating `fir_op_step`; `value()` = inner's value;
-      `constanic_clone_at` arm (clone inner through the existing
-      ConcatenationFir recoordination, re-wrap); sequencer renders through
-      the inner (add a foolish-core arm only if structurally required —
-      verify, don't speculate)
-- [ ] FVM tests pass (`cargo test -p foolish-ubca --lib`)
+NOTE (2026-08-08 revision): there is **NO new FIR kind**. Phase 2 adds one
+field to the existing `ConcatenationFir`, one `build_fir` arm, and threads
+the field to the sequencer. See FOOP-65 §5 — and do NOT add a `FirKind`
+variant, a `constanic_clone_at` arm, or a `fir_op_step`.
+
+- [ ] Write the failing FVM/compiler tests FIRST:
+      **compiler shape (the §3.1 worked example)** — `` a`b`c`d e f ``
+      builds EXACTLY two `ConcatenationFir`s: outer flagged
+      `TailConcatenation` with elements `[Concat[Juxtaposition](d,e,f), c,
+      b, a]`; **equivalence** `fn`X` ≡ `X fn` for several X (brane literal,
+      search, concatenation — settled branes statement-for-statement
+      identical); **chain reversal** `f`g`h`X` ≡ `X h g f`; **flag survives
+      recoordination** (constanic-clone a tail-flagged concatenation, assert
+      the clone's `provenance` is still `TailConcatenation`); **flag is
+      evaluation-inert** (two `ConcatenationFir`s over the same elements
+      differing only in `provenance` → identical settled NYES and identical
+      joined statements); **system-operator application**
+      `('lt`{1, 2})$` → `system.foo`'s `'True` BY IDENTITY (the FOOP-55
+      usage shape — proves recoordination through the flagged node)
+- [ ] **Extend** the existing ConcatenationFir NYES-transition test with a
+      tail-flagged case asserting the flag changes NOTHING about the
+      progression (AGENTS.md's `*_nyes_transitions` mandate applies as an
+      extension, not a new test — no new FIR kind exists)
+- [ ] Implement per FOOP-65 §5.1/§5.2: `ConcatProvenance` enum;
+      `provenance` field on `ConcatenationFir` (`Juxtaposition` at every
+      existing construction site); `build_fir` arm for
+      `Astn::TailConcatenation` (build operands with the existing
+      `build_concat_element`, **REVERSE**, set the flag) plus the
+      `validate_astn` arm; copy `provenance` in the EXISTING
+      `FirKind::Concatenation` arm of `constanic_clone_at` alongside
+      `_helpers_populated`. **Do NOT touch `fir_op_step`,
+      `populate_concat_helpers`, `stmt_count`, or `stmt_at`.**
+- [ ] Thread the flag to the sequencer per §5.4: `ConcatenationQuery`
+      (`foolish-core/src/fir.rs:563`), `ConcatenationFir` (356-360) and
+      `ConcatenationFirBuilder` (2096-2136) gain the provenance with a
+      `Juxtaposition` default; `foolish-ubca/src/evaluator.rs:706-764`
+      passes it through
+- [ ] Implement the sequencer branch (`foolish-core/src/sequencer.rs`
+      §9, un-settled concatenation, 496-531) per FOOP-65 §5.3.1: a
+      tail-flagged node renders in backtick form **ONLY while ALL its
+      constituents are still embryonic**; once any has progressed, the
+      ordinary rendering resumes. Pin BOTH sides with tests (all-embryonic
+      → backtick; step one constituent → rendering flips). The SETTLED path
+      renders the joined brane and must stay byte-identical to the
+      juxtaposition equivalent.
+- [ ] **Significant step — inspection of embryonic Foolish (FOOP-65 §6.1,
+      FOOP-95 §4), by agent AND by human.** Render the all-embryonic
+      `` a`b`c`d e f `` and judge it "reasonably informative for the
+      purposes of future development, writing and maintaining Foolish
+      programs": does it read as Foolish? is the operand grouping legible
+      (`d e f` as ONE operand; `c,b,a` the reversed chain)? is backtick
+      form genuinely more useful here than juxtaposition form? Record
+      findings; PRESENT TO ATLAS and get sign-off before freezing the
+      rendering into any baseline. The agent may NOT settle this alone.
+- [ ] Sequencer tests pass (`cargo test -p foolish-core`) and FVM tests
+      pass (`cargo test -p foolish-ubca --lib`)
 - [ ] Einmo inputs `foolish-ubca/einmo_suite/input/foop/65/tail_concat_basic.foo`
       (equivalence pairs side by side), `tail_concat_chain.foo` (flat
-      chain), `tail_concat_system_ops.foo` (`'lt`/`'eq` via backtick);
+      chain — MUST include the §3.1 example `` a`b`c`d e f `` beside its
+      juxtaposition twin `d e f c b a`, settling identically),
+      `tail_concat_system_ops.foo` (`'lt`/`'eq` via backtick);
       run `run_einmo_tests`, review OUTPUT, justify EVERY line (AGENTS.md
       step 4), promote ONLY these foop/65 baselines
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
@@ -129,3 +190,33 @@ FOOP-55 (the Euler exercise rewrite) — it lands first and stands alone.
 - [ ] After merge: notify the FOOP-55 plan that its Phase-0 FOOP-65 gate
       can now be checked (FOOP-55 Phase 0 verifies FOOP-65 is merged and
       the exercise is rewritten in backtick form)
+- [ ] After merge: correct FOOP-75 §9's comparison table — it records
+      FOOP-65 as "New FIR? yes — `TailConcatenationFir`" and "render
+      through the inner concatenation", both stale under the flag design
+      (FOOP-65 §5, Open Questions). Nothing in FOOP-75's own design changes.
+
+## Last Updated
+
+**Date**: 2026-08-08
+**Updated By**: Claude Code / claude-opus-5
+**Changes**: Realigned the plan with FOOP-65's 2026-08-08 architecture
+revision (separate `TailConcatenationFir` → provenance flag on the existing
+`ConcatenationFir`). Phase 2 retitled and rewritten: no new FIR kind, no
+`FirKind` variant, no `constanic_clone_at` arm, no `fir_op_step` — instead
+one `ConcatProvenance` field, one `build_fir` arm (operands reversed at
+compile time), the flag copied in the existing Concatenation clone arm,
+threaded through `ConcatenationQuery` to a single sequencer branch, plus
+new tests for compiler shape (§3.1), flag-survives-recoordination, and
+flag-is-evaluation-inert; the NYES-transition item became an EXTENSION of
+the existing concatenation test. Phase 0 orientation and Phase 1 parser
+tests gained the §3.1 worked example and the widened code-anchor list; a
+post-merge item was added to correct FOOP-75 §9's now-stale table.
+Later the same day: the sequencer item was tightened to FOOP-65 §5.3.1
+(backtick form ONLY while all constituents are embryonic, with both sides
+pinned by tests); a **significant inspection step** was added — embryonic
+Foolish reviewed by agent AND human for informativeness "for the purposes
+of future development, writing and maintaining Foolish programs", with
+Atlas sign-off required before freezing the rendering; and Phase 0 gained
+a **dependency check on [FOOP-95](FOOP-95.md)**, which now owns the
+AS-PARSED perspective and the `stmt_count` purity split (split out of this
+FOOP as too large to ride along).

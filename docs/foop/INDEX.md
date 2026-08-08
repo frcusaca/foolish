@@ -70,6 +70,7 @@ ls | rev | sort -V | rev
 | [FOOP-65](FOOP-65.md) | The tail concatenator — backtick application that brings the method name to the front | Draft | phase-2 | 2026-08-07 | Sisyphus / qwen3.8-max |
 | [FOOP-75](FOOP-75.md) | Assignment Attached Searches — `LHS =SEARCH_SPEC RHS` as sugar for `LHS = RHS SEARCH_SPEC` | Draft | phase-2 | 2026-08-07 | Sisyphus / claude-opus-5 |
 | [FOOP-85](FOOP-85.md) | The einmo Foolish separator collides with Foolish block comments | Draft | meta | 2026-08-07 | Sisyphus / claude-opus-5 |
+| [FOOP-95](FOOP-95.md) | Add Embryonic and Resequencing EINMO Sections | Draft | phase-2 | 2026-08-08 | Sisyphus / claude-opus-5 |
 
 ---
 
@@ -154,8 +155,9 @@ ls | rev | sort -V | rev
   deny/audit, MSRV, coverage)
 - [FOOP-94](FOOP-94.md) — Brane NK only when ALL constituents are NK (flip `_decide_nyes_due_to_children` cascade: any-NK+rest-constant → CONSTANT, not NK; operator NK propagation and search semantics untouched; ~34 brane-NK snapshots to re-review)
 - [FOOP-55](FOOP-55.md) — Project Euler 1: make the first exercise run — `'mod` integer modulo (FOOP-33 §5.1 BodyOverride mechanism, integer result), `'or` boolean OR (FOOP-73 preferred pure-Foolish truth-table design, `'or` only), plus documented platform defects D1–D6 (incl. the leading-`_` lexer workaround via `INTERN_` prefix and the `$=`/`=$` sugar findings, Atlas-directed) and exercise defects E1–E5 (Atlas fixing the file). **Depends on FOOP-65** (exercise rewrite uses backtick application)
-- [FOOP-65](FOOP-65.md) — The tail concatenator: backtick `` ` `` — `fn`{p1,p2}` ≡ `{p1,p2} fn`; WEAKEST precedence (weaker than brane concatenation; `$`/search suffixes bind inside operands); within a run concatenation is associative so the chain is flat n-ary reversing source order (`f`g`h`a b c` ≡ `a b c h g f`); dedicated `TailConcatenationFir` has-a ConcatenationFir, `value()` returns the inner (hook for future features). Prerequisite of FOOP-55; non-regression verified (corpus backticks only in comments)
+- [FOOP-65](FOOP-65.md) — The tail concatenator: backtick `` ` `` — `fn`{p1,p2}` ≡ `{p1,p2} fn`; WEAKEST precedence (weaker than brane concatenation; `$`/search suffixes bind inside operands); within a run concatenation is associative so the chain is flat n-ary reversing source order (`f`g`h`a b c` ≡ `a b c h g f`, i.e. `` a`b`c`d e f `` → exactly TWO ConcatenationFirs, `Concat[tail](Concat[juxt](d,e,f), c, b, a)`). **Revised 2026-08-08: NO separate `TailConcatenationFir`** — a `ConcatProvenance` flag on the existing `ConcatenationFir` instead (the separate-FIR design is now Rejected Alternative C); precedence and the reversal resolve in `build_fir`; the flag affects **sequencing only, never evaluation**, and renders backtick form only while all constituents are embryonic. Prerequisite of FOOP-55; **depends on FOOP-95**; non-regression verified (corpus backticks only in comments)
 - [FOOP-85](FOOP-85.md) — einmo's Foolish-suite separator `"!!\n"` (the Foolish **line** comment) collides with Foolish's **block** comment `!!!`: every `!!!` line ends with the separator, and `serialize`'s collision check is a plain substring test, so **any** `.foo` using a block comment is unserializable — which fails the whole UBCa suite, not the one file. Fix is one constant: `"\n!!!EINMO!!!\n"`, newline-wrapped so it matches only a whole line. **Backward compatible** — each `.einmo` records its own separator in its header and `parse` reads it from there, so existing baselines keep verifying. Found while gating FOOP-75; verified (einmo 133 pass, `einmo_gate_output` fixed, workspace 3 failures → 2). Change was reverted to keep a clean build; Appendix A holds the diff verbatim
+- [FOOP-95](FOOP-95.md) — Add **EMBRYONIC** and **RESEQUENCED** einmo sections. Every test gains a rendering of the program sequenced **before any step** (EMBRYONIC — the only vantage from which FOOP-65's backtick form is visible, and generally a direct view of parser/precedence structure that today only surfaces as value diffs). Landing last, the **Foolish Resequencer** — a *separate* sequencer emitting **parsable** Foolish from the FIR tree (RESEQUENCED) — plus a new **normalization**, checked by two equalities: fidelity (`normalize(resequence(parse(src))) == normalize(src)`) and idempotence; creation *identity* (`⬤`) is explicitly outside what a round-trip can restore. Repairs a real defect: `ConcatenationFir::stmt_count` **mutates** (forces the concatenation join), disagreeing with its own `stmt_at`/`_search_brane` siblings which both guard and decline → split into pure `stmt_count` + explicit `ensure_joined_stmt_count`, ~20 call sites classified individually. Section order becomes `METADATA, OUTPUT, EMBRYONIC, RESEQUENCED, INPUT, COMMENTS, STAMPS`; `EMBRYONIC`/`RESEQUENCED` MUST join `einmo/src/compare.rs`'s always-compared set or they are pinned in name only. Rewrites EVERY baseline (purely additive + reorder) behind two human-gated inspections
 - [FOOP-75](FOOP-75.md) — Assignment Attached Searches: `LHS =SEARCH_SPEC RHS` ≡ `LHS = RHS SEARCH_SPEC` over the trigger set `^ $ ~ ? # .`; an **attached search** must be adjacent to the `=` and **space-terminated** (§5), requiring a new `preceded_by_space` flag on `TokenAndLocation` since `column` does not count skipped whitespace (§5.3). Generalizes and repairs the ad-hoc `=$`/`=^` sugars — three measured defects: `=$` yields the whole brane not the tail, `=^` never settles (leaks `Op^(...)`), and postfix `B$` never re-sugars — all dissolved by routing through the existing `IndexFir` (§7). Sequencer gains an anchor-spine walk (§4). No new FIR kind. Documents the `$`-in-pattern ambiguity and the parenthetical terminator (§6); §9 records shared structure with FOOP-65 (neither blocks the other)
 
 **Explicit search-engine sub-batch implementation order (2026-07-28 correction):** the discovery
@@ -237,7 +239,7 @@ Canceled as they stand; each may be respecified and reimplemented later. See
 
 ### phase-2
 
-- [FOOP-6](FOOP-6.md), [FOOP-7](FOOP-7.md), [FOOP-8](FOOP-8.md), [FOOP-01](FOOP-01.md), [FOOP-11](FOOP-11.md), [FOOP-51](FOOP-51.md), [FOOP-61](FOOP-61.md), [FOOP-32](FOOP-32.md), [FOOP-42](FOOP-42.md), [FOOP-52](FOOP-52.md), [FOOP-62](FOOP-62.md), [FOOP-82](FOOP-82.md), [FOOP-13](FOOP-13.md), [FOOP-23](FOOP-23.md), [FOOP-43](FOOP-43.md), [FOOP-53](FOOP-53.md), [FOOP-83](FOOP-83.md), [FOOP-93](FOOP-93.md), [FOOP-04](FOOP-04.md), [FOOP-14](FOOP-14.md), [FOOP-24](FOOP-24.md), [FOOP-74](FOOP-74.md), [FOOP-84](FOOP-84.md), [FOOP-94](FOOP-94.md), [FOOP-05](FOOP-05.md), [FOOP-65](FOOP-65.md)
+- [FOOP-6](FOOP-6.md), [FOOP-7](FOOP-7.md), [FOOP-8](FOOP-8.md), [FOOP-01](FOOP-01.md), [FOOP-11](FOOP-11.md), [FOOP-51](FOOP-51.md), [FOOP-61](FOOP-61.md), [FOOP-32](FOOP-32.md), [FOOP-42](FOOP-42.md), [FOOP-52](FOOP-52.md), [FOOP-62](FOOP-62.md), [FOOP-82](FOOP-82.md), [FOOP-13](FOOP-13.md), [FOOP-23](FOOP-23.md), [FOOP-43](FOOP-43.md), [FOOP-53](FOOP-53.md), [FOOP-83](FOOP-83.md), [FOOP-93](FOOP-93.md), [FOOP-04](FOOP-04.md), [FOOP-14](FOOP-14.md), [FOOP-24](FOOP-24.md), [FOOP-74](FOOP-74.md), [FOOP-84](FOOP-84.md), [FOOP-94](FOOP-94.md), [FOOP-05](FOOP-05.md), [FOOP-65](FOOP-65.md), [FOOP-75](FOOP-75.md), [FOOP-95](FOOP-95.md)
 
 ### phase-3
 
@@ -375,6 +377,47 @@ operators as truth-table searches — also leans on Track 2's value-search, alre
 FOOP-23), then **FOOP-63** (primitive characterization `i'`/`s'`/`f'`, consumes 33's
 `Characterizations` and 93's `EconstanicReason::CharDemand`).
 
+## Ergonomics
+
+Surface-syntax and developer-experience work: how Foolish *reads* and how a Foolisher sees
+what their program actually became. These are not evaluation-semantics changes — every one of
+them is sugar, provenance, or visibility, and none alters what a settled program computes.
+Grouped here (2026-08-08, Atlas) because they share a layer — lexer/parser, the compiler's
+Foolish→FIR translation, and the sequencer — rather than the FIR/stepping machinery Tracks 2/3
+own.
+
+- **[FOOP-65](FOOP-65.md)** — **the tail concatenator** (backtick). `fn`{p1,p2}` ≡
+  `{p1,p2} fn` — the method name comes first, reading like an ordinary call. WEAKEST operator
+  (juxtaposition groups inside each operand); a run is a flat n-ary chain reversing source
+  order (`f`g`h`a b c` ≡ `a b c h g f`). **No new FIR kind** — a `ConcatProvenance` flag on
+  the existing `ConcatenationFir`, set in `build_fir` where the reversal also happens; the flag
+  affects **sequencing only, never evaluation**. Backtick form renders only while all
+  constituents are embryonic. Prerequisite of FOOP-55; **depends on FOOP-95** for the vantage
+  from which that rendering is visible.
+- **[FOOP-75](FOOP-75.md)** — **assignment attached searches**. `LHS =SEARCH_SPEC RHS` ≡
+  `LHS = RHS SEARCH_SPEC` over `^ $ ~ ? # .`; generalizes and *repairs* the ad-hoc `=$`/`=^`
+  sugars (three measured defects). No new FIR kind — routes through the existing `IndexFir`;
+  the sequencer gains an anchor-spine walk to re-sugar in the reverse direction.
+- **[FOOP-95](FOOP-95.md)** — **add EMBRYONIC and RESEQUENCED einmo sections**. Every test
+  gains a rendering of the program *before any step* (EMBRYONIC), and — landing last — the
+  **Foolish Resequencer** emitting *parsable* Foolish from the FIR tree (RESEQUENCED), checked
+  by two equalities against a new **normalization**: fidelity to the input, and idempotence.
+  Turns the whole corpus into a round-trip property test of the parser/FIR-gen phases. Also
+  repairs a real defect — `ConcatenationFir::stmt_count` **mutates** (forces the join),
+  disagreeing with its own `stmt_at`/`_search_brane` siblings — by splitting it into a pure
+  `stmt_count` and an explicit `ensure_joined_stmt_count`.
+
+**Ordering.** FOOP-95 before FOOP-65 (65 needs 95's pre-step vantage to test its rendering;
+nothing in 95 depends on 65). FOOP-75 is independent of both — its §9 records the shared
+structure with FOOP-65 and confirms neither blocks the other. All three touch the
+lexer/parser, so coordinate token additions (FOOP-65 adds `Backtick`; FOOP-75 adds
+`preceded_by_space` to `TokenAndLocation`, which FOOP-65's new token arm must populate if 75
+lands first).
+
+**Scope caution.** FOOP-95 rewrites every baseline in the einmo suite (new sections + a
+section reorder) behind two human-gated inspections, and its §6 (the Resequencer) is flagged
+as a clean cut point should it need to become its own FOOP.
+
 ### Parked (research; no track until their prerequisites exist)
 
 **FOOP-34** (recursion — wants Track 2 complete + FOOP-05's budget + FOOP-24), **FOOP-44**
@@ -423,44 +466,36 @@ See [FOOP-1](FOOP-1.md) for the full process specification.
 
 ## Last Updated
 
-**Date**: 2026-08-07 (4)
+**Date**: 2026-08-08
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Added **FOOP-85** — einmo's Foolish separator `"!!\n"` collides with Foolish's
-`!!!` block comment (every `!!!` line ends with the separator; the collision check is a
-substring test), making any `.foo` with a block comment unserializable and failing the entire
-UBCa suite. Fix: `"\n!!!EINMO!!!\n"`, newline-wrapped to match only whole lines. Backward
-compatible — `.einmo` files record their own separator and `parse` reads it from the header.
-Found while gating FOOP-75; verified before being deliberately reverted to preserve a clean
-build (Appendix A of the FOOP holds the diff verbatim).
+**Changes**: Added **FOOP-95** — *Add Embryonic and Resequencing EINMO Sections*: every einmo
+test gains an **EMBRYONIC** rendering of the program sequenced **before any step** (the only
+vantage from which FOOP-65's backtick form is visible, and generally a direct view of
+parser/precedence structure that today surfaces only as value diffs), and — landing last — a
+**Foolish Resequencer** emitting **parsable** Foolish from the FIR tree (**RESEQUENCED**) plus
+a new **normalization**, checked by two equalities (fidelity to the normalized input;
+idempotence of resequence∘parse), which turns the whole corpus into a round-trip property test
+of the parser/FIR-gen phases. Creation *identity* (`⬤`) is explicitly outside what a
+round-trip can restore. It also repairs a real defect found while specifying it:
+`ConcatenationFir::stmt_count` **mutates** (it forces the concatenation join), disagreeing
+with its own `stmt_at`/`_search_brane` siblings which both guard and decline — split into a
+pure `stmt_count` and an explicit `ensure_joined_stmt_count`, ~20 call sites classified
+individually. Section order becomes `METADATA, OUTPUT, EMBRYONIC, RESEQUENCED, INPUT,
+COMMENTS, STAMPS`; the new sections MUST join `einmo/src/compare.rs`'s always-compared set or
+they are written but never diffed. Rewrites every baseline behind two human-gated inspections.
 
-Earlier same day: added **FOOP-75** — *Assignment Attached Searches*: `LHS =SEARCH_SPEC RHS` ≡
-`LHS = RHS SEARCH_SPEC` over the trigger set `^ $ ~ ? # .`. An **attached search** must be
-adjacent to the `=` and **space-terminated**; that requires a new `preceded_by_space` flag on
-`TokenAndLocation`, because `column` does not count skipped whitespace (measured: `=$`, `= $`
-and `=   $` lex to byte-identical streams). Generalizes and repairs the ad-hoc `=$`/`=^`
-sugars, whose three defects were measured live on `jia@dc6db093`: `=$` yields the whole brane
-rather than the tail (contradicting FOOP-54 §D.5, a `Complete` FOOP), `=^` never settles and
-leaks `Op^(...)` (no `"^"` arm exists in `fir_kinds.rs`), and postfix `B$` never re-sugars
-(it compiles to `IndexFir` while the sequencer's branch is gated on `hs_operator()`). All
-three dissolve by routing through the existing `IndexFir`; no new FIR kind. Also corrects
-**FOOP-23 §942/946**, which claimed `a$=b`/`a^=b` were "already implemented" — a
-transposition; the parser implemented `a=$b`/`a=^b`. Draft, phase-2, `begun: [ ]`, with plan
-and a tests-written-during-design file (FOOP-75.tests.md). §9 records shared structure with
-FOOP-65 (both permute source order into tree order); neither blocks the other.
+Added a new **## Ergonomics** section to the roadmap (Atlas-directed), grouping the
+surface-syntax / developer-experience FOOPs that share the lexer-parser-sequencer layer rather
+than the FIR machinery: **FOOP-65** (tail concatenator), **FOOP-75** (assignment attached
+searches), **FOOP-95**. Records the ordering (95 → 65; 75 independent) and the token-addition
+coordination between 65 and 75.
 
-Earlier same day: added **FOOP-65** — the tail concatenator (backtick): `fn`{p}` ≡ `{p} fn`,
-weakest precedence (brane concatenation first, then tail concatenation — tighter binding
-breaks per Atlas's `a (h g f) b c` breakdown), chain flat n-ary reversing source order
-(concatenation associative within a run — restated deliberately), dedicated
-`TailConcatenationFir` executing as a has-a ConcatenationFir (`value()` returns the inner;
-hook for future features). Draft, phase-2, `begun: [ ]`, with plan (FOOP-65.plan.md);
-prerequisite of FOOP-55. Also revised the FOOP-55 entry: now depends on FOOP-65 (exercise
-rewrite in backtick form — E4 mapping table), defects extended to D1–D6 / E1–E5 (new D6/E5:
-`$=` does not parse, `=$` settles non-obviously). Both added to main table, By-Status
-(Draft), By-Phase (phase-2).
-
-Earlier same day: added FOOP-55 (Project Euler 1 — `'mod`, `'or`, bisect findings D1–D5 /
-E1–E3, INTERN_ decision).
+**Revised FOOP-65's entry**: the separate `TailConcatenationFir` is **withdrawn** in favour of
+a `ConcatProvenance` flag on the existing `ConcatenationFir` (the separate-FIR design became
+Rejected Alternative C); precedence and the reversal resolve in `build_fir`; the flag affects
+**sequencing only, never evaluation**, rendering backtick form only while all constituents are
+embryonic. FOOP-65 now depends on FOOP-95. Added FOOP-75 and FOOP-95 to the phase-2 list
+(FOOP-75 had been missing).
 
 **Date**: 2026-07-29
 **Updated By**: Claude Code (Opus 5)
