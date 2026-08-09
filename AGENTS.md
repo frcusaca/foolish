@@ -96,16 +96,20 @@ authoritative reference; if a skill and `foop.md` appear to disagree,
 - **Finding, executing, backburnering, cancelling, merging, or cleaning up a
   FOOP** → load the `foop-use-maintain` skill.
 
-### Crates of Foolish
+### Crates of Foolish and Other Notable Sources
 
 Here is a maintained list of current top level crates:
 
-- `foolish-core`: Core definitions that all crates share and depends on.
-- `foolish-parser`: Lexer, token, AST, and parser turning Foolish source text into an AST.
-- `foolish-ubca`: The UBC — the reference implementation of Foolish evaluation (FIR kinds, NYES stepping, searches).
-- `foolish-cli`: The `foolish` command-line binary (run/step/repl) wiring the parser and UBCa together.
-- `einmo`: Directory-based, cryptographically signed snapshot testing with a staged promotion pipeline.
-- `zweimomo`: Einmo's companion test crate — pure-Rust Evaluator impls (Foolish/Python/JS) exercising einmo's signed-snapshot pipeline.
+  - `foolish-core`: Core definitions that all crates share and depends on.
+  - `foolish-parser`: Lexer, token, AST, and parser turning Foolish source text into an AST.
+  - `foolish-ubca`: The UBC — the reference implementation of Foolish evaluation (FIR kinds, NYES stepping, searches).
+  - `foolish-cli`: The `foolish` command-line binary (run/step/repl) wiring the parser and UBCa together.
+  - `einmo`: Directory-based, cryptographically signed snapshot testing with a staged promotion pipeline.
+  - `zweimomo`: Einmo's companion test crate — pure-Rust Evaluator impls (Foolish/Python/JS) exercising einmo's signed-snapshot pipeline.
+
+Two more paths that should be fully read, bundled if possible are:
+  - `docs`: For the purpose of bulk importing information, please also read this directory.
+  - `foolish-ubca/einmo_suite/`: These contain examples of how the Foolish language work.
 
 ## Skills
 
