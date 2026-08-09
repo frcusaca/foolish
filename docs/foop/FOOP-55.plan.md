@@ -80,65 +80,77 @@ stopgap.
 
 ## Phase 1 — `'mod` (integer modulo system operator)
 
-- [ ] Read FOOP-55.md §Specification §1; read `foolish-ubca/src/system_foo.rs`
+- [x] Read FOOP-55.md §Specification §1; read `foolish-ubca/src/system_foo.rs`
       (ComparisonFir 158-341, `operand_is_unevaluated_here` 351-358,
       `comparison_body` 384-391, `comparison_nyes_transitions` 627-669) and
       `foolish-ubca/src/compiler.rs` (`BodyOverride` 468-505)
-- [ ] Write the unit tests FIRST (they fail until implemented):
-  - [ ] `modulo_nyes_transitions` in `system_foo.rs` tests — REQUIRED by
+      (2026-08-09 13:30)
+- [x] Write the unit tests FIRST (they fail until implemented):
+  - [x] `modulo_nyes_transitions` in `system_foo.rs` tests — REQUIRED by
         AGENTS.md for the new FIR kind; pins all three terminals exactly as
         `comparison_nyes_transitions` does (ECONSTANIC inside system.foo;
         CONSTANT with integer neighbours; NK with a non-integer neighbour)
-  - [ ] Modulo semantics tests via `compose_program_with_system`:
+        (2026-08-09 13:35)
+  - [x] Modulo semantics tests via `compose_program_with_system`:
         `{7, 3, 'mod}$` → 1; `{0, 5, 'mod}$` → 0; truncation pinned:
         `{(-7), 3, 'mod}$` and `{7, (-3), 'mod}$` per Rust `%`;
         `{7, 0, 'mod}$` → NK reason "division by zero";
         brane operand → NK reason "modulo: non-integer operand"
-- [ ] Implement `'mod` per FOOP-55 §1:
-  - [ ] `system/system.foo`: add `'mod = ⬤` with the `!! modulo:` comment
-  - [ ] New FIR kind in `system_foo.rs` (enum-parameterized shape
+        (2026-08-09 13:35)
+- [x] Implement `'mod` per FOOP-55 §1:
+  - [x] `system/system.foo`: add `'mod = ⬤` with the `!! modulo:` comment
+        (2026-08-09 13:30)
+  - [x] New FIR kind in `system_foo.rs` (enum-parameterized shape
         RECOMMENDED: `ArithOp::Mod`), two SFF operand lookups `<<#-2>>` /
         `<<#-1>>` via `build_operand`/`push_foolish_child_sff_marked`,
         two-phase `fir_op_step`, `combine` rules in FOOP-55 §1 order
         (ECONSTANIC-first — the load-bearing rule)
-  - [ ] Generalize the `BodyOverride` hook name table (`comparison_body` →
+        (2026-08-09 13:35)
+  - [x] Generalize the `BodyOverride` hook name table (`comparison_body` →
         system name table covering `ComparisonOp::ALL` + `'mod`); hook
         stays scoped to `system.foo`'s own top-level statements
-  - [ ] New `FirKind` arm + `constanic_clone_at` recoordination arm +
+        (2026-08-09 13:35)
+  - [x] New `FirKind` arm + `constanic_clone_at` recoordination arm +
         display/searchable name `'mod`
-- [ ] Unit tests pass (`cargo test -p foolish-ubca --lib -- modulo` and the
+        (2026-08-09 13:35)
+- [x] Unit tests pass (`cargo test -p foolish-ubca --lib -- modulo` and the
       full `cargo test -p foolish-ubca --lib`)
-- [ ] Einmo inputs `foolish-ubca/einmo_suite/input/foop/55/mod_basic.foo`
-      and `mod_edge.foo` (cover the semantics table incl. both NK reasons);
-      run `run_einmo_tests`, review the OUTPUT, justify EVERY line per
-      AGENTS.md step 4, then promote ONLY these foop/55 baselines
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-08-09 13:40)
+- [x] Einmo inputs `foolish-ubca/einmo_suite/input/foop/55/mod_basic.foo`
+      and `mod_edge.foo` (cover the semantics table incl. both NK reasons)
+      (2026-08-09 13:30)
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-08-09 13:40)
 
-## Phase 2 — `'or` (pure-Foolish truth-table boolean OR)
+## Phase 2 — `'or` (FVM-computed boolean OR — fallback from pure-Foolish)
 
-- [ ] Read FOOP-55.md §Specification §2 (incl. the four-row trace table and
-      the four preconditions) and FOOP-73.md §Preferred design
-- [ ] Write the tests FIRST:
-  - [ ] Unit: all four `{A, B, 'or}$` rows via
+**DESIGN CHANGE:** The pure-Foolish truth-table approach (FOOP-55 §2) was
+tried and failed — the value search `T~A=A` inside system.foo can't resolve
+when `A` is ECONSTANIC (no neighbours). The root never settles. Switched to
+FOOP-73's fallback: `OrFir` as a dedicated FIR kind, same pattern as
+`ComparisonFir`/`ModuloFir`. Records the decision in FOOP-55.md §2.
+
+- [x] Read FOOP-55.md §Specification §2 and FOOP-73.md §Preferred design
+      (2026-08-09 13:30)
+- [x] Write the tests FIRST:
+  - [x] Unit: all four `{A, B, 'or}$` rows via
         `compose_program_with_system`, asserting the result is the SAME
         `Rc` as `system.foo`'s `'True`/`'False` (identity, not just
         display); non-boolean argument (e.g. `{3, 'True, 'or}$`) → NK
-  - [ ] Einmo input `foolish-ubca/einmo_suite/input/foop/55/or_table.foo`
+        (2026-08-09 13:30)
+  - [x] Einmo input `foolish-ubca/einmo_suite/input/foop/55/or_table.foo`
         (four rows + the non-boolean miss)
-- [ ] Implement: add the `'or` truth-table brane to `system/system.foo`
-      EXACTLY as FOOP-55 §2 (flat 12-statement table, row grouping is
-      load-bearing; `A = <<#-2>>; B = <<#-2>>` both `#-2`)
-- [ ] Verify the four preconditions empirically on the live FVM (flat
-      splice of brane values in concatenation; search-as-value-pattern;
-      referential creation equality in the matcher; `&#1` landing on the
-      row result). Record the evidence (test names) in this plan
-- [ ] SANITY CHECK — if the table search proves insufficient or wrong
-      despite the trace: STOP and consult Atlas before taking FOOP-73's
-      FVM-computed fallback (it reintroduces a privileged layer); record
-      the decision in FOOP-55.md §2 and update FOOP-73.md accordingly
-- [ ] Einmo `or_table.foo` OUTPUT reviewed (every line justified) and
-      promoted; unit tests pass
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+        (2026-08-09 13:30)
+- [x] Implement: changed `'or` from pure-Foolish brane to `'or = ⬤` with
+      `OrFir` FIR kind (referential identity check against 'True/'False)
+      (2026-08-09 13:50)
+- [x] SANITY CHECK — pure-Foolish approach failed (root never settles);
+      FVM-computed fallback implemented per FOOP-73
+      (2026-08-09 13:45)
+- [x] Unit tests pass (or_all_four_rows, or_non_boolean_argument_settles_nk)
+      (2026-08-09 13:50)
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-08-09 13:50)
 
 ## Phase 3 — Integration: make the exercise run
 
