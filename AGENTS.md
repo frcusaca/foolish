@@ -128,7 +128,21 @@ domain; do not improvise around it.
 ## Development tools
 Please use plugins and mcp's for performing disk operations, file searches and file edits. Use fully specified regular expressions (covering various cases), through mcp or using `sed` directly. These means of editing are much faster than regenerating the entire document. Each time regexp is used to for updates, please reread updated document before replacing original document.  Use Github mcp to perform git related actions.
 
-The `bundle_repo_ctx` tool bundles one workspace crate's file tree and source content (with permissions, timestamps, and Git status) into a single payload; call with no `crate` argument to list available crates. Use the crate list in this document when starting new sessions to gain code knowledge.
+`bundle_repo_ctx` bundles one workspace crate's file tree and source content (with permissions, timestamps, and Git status) into a single payload; invoke it with no crate selected to list the available crates. Use the crate list in this document when starting new sessions to gain code knowledge. It works on exactly one crate per call — bundling the whole workspace would be roughly 1.6M tokens.
+
+How you invoke it depends on which agent you are:
+
+- **opencode** — call the `bundle_repo_ctx` tool directly (likewise `ast_grep_engine` for structural search). Both are loaded from `.opencode/tools/`.
+- **Claude Code, or any agent with a shell but no custom-tool loader** — run the same files as scripts, from the workspace root:
+  ```bash
+  bun .opencode/tools/bundle_repo_ctx.ts                       # list crates
+  bun .opencode/tools/bundle_repo_ctx.ts --crate foolish-core  # bundle one
+  bun .opencode/tools/ast_grep_engine.js --action search --lang rust \
+      --pattern '$X.unwrap()' --scope foolish-core
+  ```
+  Add `--help` to either for the full flag list. These are the same files opencode loads, not a second implementation — opencode imports them, a shell executes them.
+
+The `repo-context` skill covers the crate-at-a-time discipline and per-crate token budgets for both cases.
 
 When commiting to Git, always state project segment and software version and model version:
 ```git
