@@ -31,16 +31,46 @@ sub-agent overhead is not worth it.
 
 ---
 
-## 1. Tool parameters
+## 1. How to invoke
 
-| Param | Required | Meaning |
-|---|---|---|
-| `action` | yes | `search` (read-only), `rewrite` (mutates files), `scan` (YAML rule) |
-| `lang` | yes | tree-sitter language key — see §5 |
-| `pattern` | for search/rewrite | the structural template |
-| `rewrite` | for rewrite | replacement template, reusing bound metavariables |
-| `yamlRule` | for scan | a complete inline ast-grep rule document |
-| `scope` | no | sub-path to restrict the query to, e.g. `foolish-core` |
+The engine is a single file, `.opencode/tools/ast_grep_engine.js`, reachable two ways.
+Which one applies depends on the agent you are — the parameters are identical either
+way, only the spelling differs.
+
+| Parameter | Required | CLI flag | Meaning |
+|---|---|---|---|
+| `action` | yes | `--action` | `search` (read-only), `rewrite` (mutates files), `scan` (YAML rule) |
+| `lang` | yes | `--lang` | tree-sitter language key — see §5 |
+| `pattern` | for search/rewrite | `--pattern` | the structural template |
+| `rewrite` | for rewrite | `--rewrite` | replacement template, reusing bound metavariables |
+| `yamlRule` | for scan | `--yaml-rule` / `--yaml-rule-file` | a complete ast-grep rule document |
+| `scope` | no | `--scope` | sub-path to restrict the query to, e.g. `foolish-core` |
+
+### opencode
+
+Call the `ast_grep_engine` tool with those parameters directly.
+
+### Claude Code, or any agent with a shell but no custom-tool loader
+
+Run the same file as a script, from the workspace root:
+
+```bash
+bun .opencode/tools/ast_grep_engine.js --action search --lang rust \
+    --pattern '$X.unwrap()' --scope foolish-core
+```
+
+`--help` prints the full flag list. Exit codes: `0` success, `1` bad or missing
+arguments.
+
+> **Single-quote every pattern.** Inside double quotes the shell expands `$X` to
+> nothing, turning `"$X.unwrap()"` into `.unwrap()`. This does **not** error — it
+> reports success with zero matches, so you get a confident wrong answer. Verified
+> on this repo: the same query returns 7 matches single-quoted and 0 double-quoted.
+
+Rule documents are multi-line YAML, which is awkward as a single shell argument.
+Write the rule to a file and pass `--yaml-rule-file PATH` instead of `--yaml-rule`.
+
+### Both cases
 
 **Always pass `scope` when you know which crate you care about.** Without it the query
 runs over the whole project and returns far more than you need. `scope` is confined to
@@ -207,7 +237,11 @@ level. Without it, deeply nested `await`s are missed.
 ## Last Updated
 
 **Date**: 2026-08-09
-**Changes**: Renamed from `ast_grep.md` to `SKILL.md` (the loader only reads `SKILL.md`,
+**Changes**: Split §1 by agent — the skill now lives in `.claude/skills`, which Claude
+Code reads as well as opencode, so it documents both the tool parameters and the
+equivalent CLI flags rather than assuming a custom-tool loader. Added the shell
+single-quoting warning, since double quotes silently yield zero matches.
+Earlier: renamed from `ast_grep.md` to `SKILL.md` (the loader only reads `SKILL.md`,
 so the previous file never loaded) and added the required `name`/`description`
 frontmatter. Corrected the YAML blueprint, which used backslash-escaped `\$A`
 metavariables that fail rule parsing. Documented the `scope` parameter. Replaced the
