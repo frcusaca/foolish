@@ -2,13 +2,13 @@
 foop: D65
 title: The tail concatenator — backtick application that brings the method name to the front
 author: Sisyphus / qwen3.8-max (directed by Atlas)
-status: Draft
+status: Implementing
 type: Standards
 created: 2026-08-07
 phase: phase-2
 supersedes: []
 depends_on: [FOOP-95]
-begun: [ ]
+begun: [x]
 ---
 
 # FOOP-65: The tail concatenator — backtick application that brings the method name to the front
