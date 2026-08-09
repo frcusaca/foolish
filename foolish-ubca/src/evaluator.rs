@@ -99,6 +99,23 @@ pub fn step_until_statement_name(
 }
 
 const MAX_STEPS: usize = 10_000;
+const MAX_STEPS_HARD_LIMIT: usize = 50_000_000;
+
+/// Parse `@einmo set iteration depth to N` from the first 3 lines.
+/// Directive may appear inside a `!!` line comment.
+/// Returns clamped limit or `MAX_STEPS` if no directive found.
+fn parse_iteration_depth(source: &str) -> usize {
+    for line in source.lines().take(3) {
+        let trimmed = line.trim().strip_prefix("!!").unwrap_or(line).trim();
+        if let Some(rest) = trimmed.strip_prefix("@einmo set iteration depth to ") {
+            let num_str: String = rest.chars().take_while(|c| c.is_ascii_digit()).collect();
+            if let Ok(n) = num_str.parse::<usize>() {
+                return n.min(MAX_STEPS_HARD_LIMIT);
+            }
+        }
+    }
+    MAX_STEPS
+}
 
 /// The display name for a statement (FOOP-62 #19): an anonymous statement is named `???`
 /// (`compiler::ANON_STMT_NAME`), which the sequencer must render WITHOUT a `name=` prefix.
@@ -127,10 +144,11 @@ impl foolish_core::Evaluator for UbcaEvaluator {
             .map_err(|e| format!("Compilation failed: {}", e))?;
 
         let scope = crate::fir_trait::Scope::empty();
+        let max_steps = parse_iteration_depth(source);
         let mut results = Vec::new();
 
         for composed_root in &composed_roots {
-            let failure = step_to_settled(composed_root, &scope).err();
+            let failure = step_to_settled(composed_root, &scope, max_steps).err();
             let program_fir = crate::system_foo::program_result(composed_root)
                 .unwrap_or_else(|| Rc::clone(composed_root));
 
@@ -164,9 +182,10 @@ impl foolish_core::Evaluator for UbcaEvaluator {
 fn step_to_settled(
     fir_ref: &FirRef,
     scope: &crate::fir_trait::Scope,
+    max_steps: usize,
 ) -> Result<(), crate::fir_trait::UbcError> {
     let mut last_step = 0;
-    for step in 0..MAX_STEPS {
+    for step in 0..max_steps {
         let report = fir_ref.step(scope)?;
         last_step = step;
         match report {
@@ -929,7 +948,7 @@ mod step_until_tests {
         let root = firs[0].clone();
         let scope = Scope::empty();
 
-        step_to_settled(&root, &scope).unwrap();
+        step_to_settled(&root, &scope, MAX_STEPS).unwrap();
         let result = step_until_statement_name(&root, &scope, "nonexistent");
         assert!(
             result.is_err(),
@@ -994,7 +1013,7 @@ mod step_until_tests {
         );
 
         // Now step to settled and check the x=cb.shadow search result.
-        step_to_settled(&root, &scope).unwrap();
+        step_to_settled(&root, &scope, MAX_STEPS).unwrap();
 
         // Find the search for "^shadow$" in the entire root.
         let shadow_searches = {
@@ -1180,7 +1199,7 @@ mod creation_display_name_conversion_tests {
         let firs = Compiler::compile("{'a=⬤; b='a;}").unwrap();
         let root = firs[0].clone();
         let scope = Scope::empty();
-        step_to_settled(&root, &scope).unwrap();
+        step_to_settled(&root, &scope, MAX_STEPS).unwrap();
 
         let converted = proto_to_core_fir(&root);
         assert_eq!(converted.hs_variant(), "NormalBrane");
@@ -1209,7 +1228,7 @@ mod creation_display_name_conversion_tests {
         let firs = Compiler::compile("{'a=⬤; b='a;}").unwrap();
         let root = firs[0].clone();
         let scope = Scope::empty();
-        step_to_settled(&root, &scope).unwrap();
+        step_to_settled(&root, &scope, MAX_STEPS).unwrap();
 
         let stmts = root.borrow().core().foolish_children().to_vec();
         let b_stmt = &stmts[1];
@@ -1238,7 +1257,7 @@ mod creation_display_name_conversion_tests {
         let firs = Compiler::compile("{'a=1+⬤; b='a;}").unwrap();
         let root = firs[0].clone();
         let scope = Scope::empty();
-        step_to_settled(&root, &scope).unwrap();
+        step_to_settled(&root, &scope, MAX_STEPS).unwrap();
 
         let stmts = root.borrow().core().foolish_children().to_vec();
         let a_body = stmts[0].borrow().core().foolish_children()[0].clone();
@@ -1258,6 +1277,48 @@ mod creation_display_name_conversion_tests {
             "a creation that is only an operand of an operator converts \
              with NO name — the statement's name belongs to the whole \
              expression, not to the creation inside it"
+        );
+    }
+}
+
+#[cfg(test)]
+mod iteration_depth_tests {
+    use super::*;
+
+    #[test]
+    fn returns_default_when_no_directive() {
+        assert_eq!(parse_iteration_depth("{x = 1;}"), MAX_STEPS);
+    }
+
+    #[test]
+    fn parses_directive_in_first_line() {
+        assert_eq!(
+            parse_iteration_depth("!! @einmo set iteration depth to 40000\n{x = 1;}"),
+            40_000
+        );
+    }
+
+    #[test]
+    fn parses_directive_in_second_line() {
+        assert_eq!(
+            parse_iteration_depth("!! comment\n!! @einmo set iteration depth to 50000\n{x = 1;}"),
+            50_000
+        );
+    }
+
+    #[test]
+    fn clamps_to_hard_limit() {
+        assert_eq!(
+            parse_iteration_depth("!! @einmo set iteration depth to 999999999\n{x = 1;}"),
+            MAX_STEPS_HARD_LIMIT
+        );
+    }
+
+    #[test]
+    fn ignores_directive_after_third_line() {
+        assert_eq!(
+            parse_iteration_depth("!! a\n!! b\n!! c\n!! @einmo set iteration depth to 40000\n{x = 1;}"),
+            MAX_STEPS
         );
     }
 }

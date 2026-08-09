@@ -1,0 +1,130 @@
+#einmo 1 encoding=utf-8 separator=!!\n
+test: exercises/project_euler/1.foo
+suite: /storage1/human/hcbusy/foolish_worktrees/foop-55-project-euler-1/foolish-ubca/einmo_suite
+producer: 7bd60e50
+producer-diff: sha256:7fa82e3f28171fa272946bea6da027b0487ed817e2420da3197068a641ec516c
+generated: 2026-08-09T21:26:45.000000000Z
+status: normal
+status-detail: 
+sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
+!! @einmo set iteration depth to 40000
+!! Project Euler 1: Multiples of 3 or 5
+!! Find the sum of all the multiples of 3 or 5 below 1000.
+!! Expected answer: 233168
+
+{
+  !! If-Then-Else
+  INTERNAL_ite = {
+    cond='True, <<#-3>>;
+    cond='False, <<#-2>>;
+  }
+  'ite = ({<<#-2>>, <<#-1>>} INTERNAL_ite)~cond=(<<#-3>>)&#1
+
+  !! Congrulent modulo {a,b,c}'cmod computes boolean a%b==c
+  INTERNAL_cmod = {INTERNAL_eq, {INTERNAL_numerator,INTERNAL_divisor, 'mod}$, 'eq};
+  'cmod = {INTERNAL_numerator=#-3,INTERNAL_divisor=#-3,INTERNAL_eq=#-3, INTERNAL_cmod$}
+  loop = {
+    !! recursion without self-reference
+    self=<<#-1>>
+    !! lv is the loop variable, it comes from parent.
+    !! sum35 is the accumulant.
+
+    lv=lv+1;
+    divides_3 = {lv,3,0,'cmod}$;
+    divides_5 = {lv,5,0,'cmod}$;
+    cond1 = {divides_3, divides_5, 'or}$;
+    sum35 = sum35 + {cond1, sum35+lv, sum35, 'ite}$
+
+    cond2 = {lv, 1000, 'lt}$;
+    continue = <self loop>;
+    exit=sum35
+    answer = {cond2, <continue>, sum35, 'ite}$
+  }
+  lv  = 1; sum35 = 0;
+  answer = {loop, loop}$
+}
+!!
+{NK(ITERATION-EXCEEDED, Iteration exceeded 39999)
+  INTERNALˍite={WOCONSTANIC
+      cond='True;
+      <<WOCONSTANIC
+        #(offset=-3, UNANCHORED, ECONSTANIC)
+      >>;
+      cond='False;
+      <<WOCONSTANIC
+        #(offset=-2, UNANCHORED, ECONSTANIC)
+      >>
+  };
+  'ite=#(offset=1, ANCHORED, NK);
+  INTERNALˍcmod={WOCONSTANIC
+      ?(pattern='^INTERNALˍeq$', UNANCHORED, ECONSTANIC);
+      $(result=?(result=??? (modulo: non-integer operand), pattern='^'mod$', UNANCHORED, NK), NK);
+      ?(result=??? (comparison: non-integer operand), pattern='^'eq$', UNANCHORED, NK)
+  };
+  'cmod={NK
+      INTERNALˍnumerator=#(offset=-3, UNANCHORED, NK);
+      INTERNALˍdivisor=#(offset=-3, UNANCHORED, NK);
+      INTERNALˍeq=#(offset=-3, UNANCHORED, NK);
+      $(result=?(result=??? (comparison: non-integer operand), pattern='^'eq$', UNANCHORED, NK), NK)
+  };
+  loop={BRANING
+      self=<<WOCONSTANIC
+          #(offset=-1, UNANCHORED, ECONSTANIC)
+      >>;
+      lv=Op+(?(pattern='^lv$', UNANCHORED, ECONSTANIC), 1, WOCONSTANIC);
+      dividesˍ3 =$ {BRANING (BRANING)
+          ?(pattern='^lv$', UNANCHORED, BRANING);
+          3;
+          0;
+          ?(pattern='^'cmod$', UNANCHORED, PREMBRIONIC)
+      };
+      dividesˍ5 =$ {PREMBRIONIC (PREMBRIONIC)
+          ?(pattern='^lv$', UNANCHORED, PREMBRIONIC);
+          5;
+          0;
+          ?(pattern='^'cmod$', UNANCHORED, PREMBRIONIC)
+      };
+      cond1 =$ {PREMBRIONIC (PREMBRIONIC)
+          ?(pattern='^dividesˍ3$', UNANCHORED, PREMBRIONIC);
+          ?(pattern='^dividesˍ5$', UNANCHORED, PREMBRIONIC);
+          ?(pattern='^'or$', UNANCHORED, PREMBRIONIC)
+      };
+      sum35=Op+(?(pattern='^sum35$', UNANCHORED, PREMBRIONIC), $(PREMBRIONIC), PREMBRIONIC);
+      cond2 =$ {PREMBRIONIC (PREMBRIONIC)
+          ?(pattern='^lv$', UNANCHORED, PREMBRIONIC);
+          1000;
+          ?(pattern='^'lt$', UNANCHORED, PREMBRIONIC)
+      };
+      continue=<PREMBRIONIC
+          ⨃(
+            elements=2,
+            <PREMBRIONIC
+  ?(pattern='^self$', UNANCHORED, PREMBRIONIC)
+>,
+            <PREMBRIONIC
+  ?(pattern='^loop$', UNANCHORED, PREMBRIONIC)
+>,
+            PREMBRIONIC
+          )
+      >;
+      exit=?(pattern='^sum35$', UNANCHORED, PREMBRIONIC);
+      answer =$ {PREMBRIONIC (PREMBRIONIC)
+          ?(pattern='^cond2$', UNANCHORED, PREMBRIONIC);
+          <PREMBRIONIC
+            ?(pattern='^continue$', UNANCHORED, PREMBRIONIC)
+          >;
+          ?(pattern='^sum35$', UNANCHORED, PREMBRIONIC);
+          ?(pattern='^'ite$', UNANCHORED, PREMBRIONIC)
+      }
+  };
+  lv=1;
+  sum35=0;
+  answer =$ {PREMBRIONIC (PREMBRIONIC)
+      ?(pattern='^loop$', UNANCHORED, PREMBRIONIC);
+      ?(pattern='^loop$', UNANCHORED, PREMBRIONIC)
+  }
+}!!
+!!
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:72ae5abf5d991ebb0baf44024d02784c8f9f2a3780a3b05decbb3ff9c045b7ae","timestamp":"2026-08-09T21:26:45.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:72ae5abf5d991ebb0baf44024d02784c8f9f2a3780a3b05decbb3ff9c045b7ae","timestamp":"2026-08-09T21:26:45.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"5JCjmzC39XjnXE0YzhbRb/S3D6wtrADIVJIPyJKm1zaky641UYJWRduDvVzIjghq1ySYNR2HSwXA+MIIfSrBAQ==","produced_by":"einmo 0.1.0 sha256:72ae5abf5d991ebb0baf44024d02784c8f9f2a3780a3b05decbb3ff9c045b7ae","timestamp":"2026-08-09T21:26:45.000000000Z"}
