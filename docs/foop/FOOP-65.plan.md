@@ -66,7 +66,7 @@ FOOP-55 (the Euler exercise rewrite) — it lands first and stands alone.
 
 ## Phase 1 — Lexer, token, AST, parser (tests first)
 
-- [ ] Write the failing parser/lexer tests FIRST (FOOP-65 Test Plan §unit):
+- [x] Write the failing parser/lexer tests FIRST (FOOP-65 Test Plan §unit):
       backtick token; `f`X` → `TailConcatenation [f, X]`; chain
       `f`g`h`X` → ONE flat node `[f, g, h, X]`; precedence pins
       (`fn`{a}{b}` groups the juxtaposition first; `fn`{a}$` keeps `$`
@@ -75,15 +75,22 @@ FOOP-55 (the Euler exercise rewrite) — it lands first and stands alone.
       Concatenation[d,e,f]]` — the trailing `d e f` is ONE operand**;
       backtick inside brane statements / parens / `<...>` / `<<...>>`;
       trailing backtick errors
-- [ ] Implement: `Token::Backtick` (+ Display "`"), the lexer single-char
+      (2026-08-09 15:42)
+- [x] Implement: `Token::Backtick` (+ Display "`"), the lexer single-char
       arm, `Astn::TailConcatenation { elements }` (flat, source order,
       ≥ 2), the new weakest parse level per FOOP-65 §4 (current
       `parse_expr` body becomes the operand level; `Backtick` is NOT added
       to `is_concatenation_continuation`)
-- [ ] Parser/lexer tests pass (`cargo test -p foolish-parser`)
-- [ ] Confirm snapshot-invisible so far: no einmo input changes meaning —
+      (2026-08-09 15:42)
+- [x] Parser/lexer tests pass (`cargo test -p foolish-parser`)
+      (2026-08-09 15:42)
+      — 62 tests pass (12 new for backtick).
+- [x] Confirm snapshot-invisible so far: no einmo input changes meaning —
       `cargo test -p foolish-ubca --lib -- run_einmo_tests` still green
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-08-09 15:42)
+      — einmo_gate_checked passes; no baseline changed.
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-08-09 15:42)
 
 ## Phase 2 — The provenance flag and the compiler arm (tests first)
 
