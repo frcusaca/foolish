@@ -96,6 +96,17 @@ authoritative reference; if a skill and `foop.md` appear to disagree,
 - **Finding, executing, backburnering, cancelling, merging, or cleaning up a
   FOOP** → load the `foop-use-maintain` skill.
 
+### Crates of Foolish
+
+Here is a maintained list of current top level crates:
+
+- `foolish-core`: Core definitions that all crates share and depends on.
+- `foolish-parser`: Lexer, token, AST, and parser turning Foolish source text into an AST.
+- `foolish-ubca`: The UBC — the reference implementation of Foolish evaluation (FIR kinds, NYES stepping, searches).
+- `foolish-cli`: The `foolish` command-line binary (run/step/repl) wiring the parser and UBCa together.
+- `einmo`: Directory-based, cryptographically signed snapshot testing with a staged promotion pipeline.
+- `zweimomo`: Einmo's companion test crate — pure-Rust Evaluator impls (Foolish/Python/JS) exercising einmo's signed-snapshot pipeline.
+
 ## Skills
 
 The following opencode skills are installed for this project. **Be aware of
@@ -110,11 +121,14 @@ domain; do not improvise around it.
 | `foop-write-plan` | Creating and planning FOOPs. Covers little-endian numbering, `foop_check.py`, the spec template (frontmatter + all body sections), plan construction rules, checkbox format, sub-tasks, worktree setup, and comprehensive snapshot test generation. | Creating a new FOOP, writing a specification, or constructing a plan (`FOOP-#.plan.md`). |
 | `foop-use-maintain` | Using and maintaining existing FOOPs. Covers listing/finding FOOPs, the status lifecycle, plan execution flow, checkbox lifecycle (complete with timestamp, backburner, cancel/deprecate), worktree execution, merge-to-`jia`, cleanup, and the human communication protocol. | Finding, executing, resuming, backburnering, cancelling, merging, or cleaning up an existing FOOP. |
 | `rust-debugging` | Debugging Rust programs with GDB — building with debug symbols, breakpoints (function, file:line, conditional), step-into/over/out, value inspection, running test binaries, Rust-specific GDB techniques. Best used via sub-agent to keep main context clean. | Debugging Rust code, stepping through execution, inspecting state, diagnosing panics or wrong values. |
+| `ast-grep` | Structural, AST-based code search and rewrite (metavariables, spread anchors, YAML relational rules) via the `ast_grep_engine` tool, as an alternative to text/regex sweeps. Highly prefer running this via a sub-agent, since the skill's syntax reference is large and should not be loaded into the main thread. | Structural code queries or codebase-wide refactors where a plain-text/regex search (`grep`/`sed`) would be too imprecise. |
 
 
 
 ## Development tools
 Please use plugins and mcp's for performing disk operations, file searches and file edits. Use fully specified regular expressions (covering various cases), through mcp or using `sed` directly. These means of editing are much faster than regenerating the entire document. Each time regexp is used to for updates, please reread updated document before replacing original document.  Use Github mcp to perform git related actions.
+
+The `bundle_repo_ctx` tool bundles one workspace crate's file tree and source content (with permissions, timestamps, and Git status) into a single payload; call with no `crate` argument to list available crates. Use the crate list in this document when starting new sessions to gain code knowledge.
 
 When commiting to Git, always state project segment and software version and model version:
 ```git
@@ -692,20 +706,16 @@ When proposing updates, explain what has changed and why the documentation needs
 
 ## Last Updated
 
-**Date**: 2026-08-04
-**Updated By**: Claude Code / claude-opus-5
-**Changes**: Added **"Sift"** to §Foolish Terminology: a lookup performed *outside* Foolish
-search functionality — an ordinary Rust-side walk over the FIR tree with no anchoring, no NYES
-effects, no ECONSTANIC/NK miss outcome. Naming rule: such functions are `sift_*`, never
-`search_*`, since "search" is reserved for the Foolish language feature; keeping the prefixes
-distinct stops interpreter plumbing from being read as language behavior. Earlier: replaced the
-Task Management section's `/todo`-skill blurb (a FOOP's own `FOOP-#.plan.md` checkboxes ARE the
-todo list; no `/todo` skill is installed here); added "Before promoting, justify every OUTPUT
-line" (step 4) to §"The einmo review workflow", with sub-rules on treating statement names
-(`hit`/`miss`) as part of a test's specification and checking against the in-force FOOP `.md`;
-added §"Non-regression invariant (hard rule)" under Approval Tests (einmo). This log keeps only
-the single newest entry per the Markdown File Update Protocol; prior substance remains in git
-history and in the sections it describes.
+**Date**: 2026-08-09
+**Updated By**: Claude Code / claude-sonnet-5
+**Changes**: Added an `ast-grep` row to the §Skills table (structural AST search/rewrite via
+the `ast_grep_engine` tool; prefer running it via a sub-agent) and a `bundle_repo_ctx` blurb
+under §Development tools (bundles one workspace crate's file tree + source + Git status; call
+with no `crate` arg to list crates). Earlier: added **"Crates of Foolish"** subsection under
+§Development Organization: a maintained bulleted list of current top-level crates
+(`foolish-core`, `foolish-parser`, `foolish-ubca`, `foolish-cli`, `einmo`, `zweimomo`) with a
+one-sentence blurb each. This log keeps only the single newest entry per the Markdown File
+Update Protocol; prior substance remains in git history and in the sections it describes.
 
 ### MISC
 

@@ -8,3 +8,12 @@ target/
 .git/
 .idea/
 *.iml
+node_modules/
+.codegraph
+.git
+.github
+.idea
+.omo
+.remember
+.opencode
+.claude
