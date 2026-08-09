@@ -1,0 +1,16 @@
+{
+	!! FOOP-65 — tail concatenator basic equivalence pairs.
+	!! Each pair: backtick form next to juxtaposition form, settling identically.
+
+	!! Define some values to use as operands
+	val = 99;
+	inner = {x=1; y=2;};
+
+	!! Pair 1: value + brane literal — backtick vs juxtaposition
+	p1_backtick = val`inner;
+	p1_juxta    = inner val;
+
+	!! Pair 2: two brane literals
+	p2_backtick = {a=10;}`{b=20;};
+	p2_juxta    = {b=20;} {a=10;};
+}

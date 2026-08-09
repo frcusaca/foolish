@@ -5,8 +5,8 @@ use anyhow::anyhow;
 use foolish_parser::{AssignmentOperator, Astn, SearchOperator};
 
 use crate::fir_kinds::{
-    BraneFir, ConcatenationFir, CreationFir, IndepIntFir, IndexFir, NkFir, OperatorFir, SearchFir,
-    StatementFir, StayFoolishFir, StayFullyFoolishFir,
+    BraneFir, ConcatProvenance, ConcatenationFir, CreationFir, IndepIntFir, IndexFir, NkFir,
+    OperatorFir, SearchFir, StatementFir, StayFoolishFir, StayFullyFoolishFir,
 };
 use crate::fir_trait::{Fir, FirRef};
 use crate::proto_brane::ProtoBrane;
@@ -384,6 +384,7 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
                 RefCell::new(ConcatenationFir {
                     core: ProtoBrane::new(children, child_parent!(), Nyes::Prembrionic),
                     _helpers_populated: std::cell::Cell::new(false),
+                    provenance: ConcatProvenance::Juxtaposition,
                 })
             })
         }
@@ -398,6 +399,7 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
                 RefCell::new(ConcatenationFir {
                     core: ProtoBrane::new(children, child_parent!(), Nyes::Prembrionic),
                     _helpers_populated: std::cell::Cell::new(false),
+                    provenance: ConcatProvenance::TailConcatenation,
                 })
             })
         }

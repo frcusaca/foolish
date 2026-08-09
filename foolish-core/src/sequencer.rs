@@ -492,10 +492,11 @@ fn render_fir(
         lines.push((0, ">>".to_string()));
         return lines;
     }
-
     // ── 9. Concatenation ──
     if let Some((elements, merged)) = fir.hs_concatenation() {
         let show_state = state.should_show_nyes();
+        let is_tail = fir.hs_is_tail_concatenation();
+
         if !show_state {
             if let Some(m) = &merged {
                 let mut brane_lines = render_fir(&**m, 0, 0, line_hint);
@@ -530,6 +531,38 @@ fn render_fir(
             }
             return lines;
         }
+
+        // §5.3.1 all-embryonic gate: non-settled, tail-flagged, every
+        // element still embryonic → render in backtick form (elements
+        // reversed to source order, joined by `).
+        if is_tail && !elements.is_empty() {
+            let all_embryonic = elements.iter().all(|e| {
+                let s = e.hs_state();
+                s == Nyes::Prembrionic || s == Nyes::Embryonic
+            });
+            if all_embryonic {
+                let mut body_lines: FormattedLines = Vec::new();
+                let bi = body_indent_compute(0, 0);
+                for (ei, elem) in elements.iter().rev().enumerate() {
+                    let is_last = ei == elements.len() - 1;
+                    let elem_lines = render_fir(&**elem, 0, 0, line_hint);
+                    for (prefix, text) in elem_lines {
+                        body_lines.push((bi + prefix, text));
+                    }
+                    if !is_last
+                        && let Some((_, last_text)) =
+                            body_lines.iter_mut().rev().find(|(p, _t)| *p == bi)
+                    {
+                        last_text.push_str(" `");
+                    }
+                }
+                let mut lines = vec![(0, "⨃{".to_string())];
+                lines.extend(body_lines);
+                lines.push((0, "}".to_string()));
+                return lines;
+            }
+        }
+
         // Non-terminal: items-based proto-brane
         let mut items = vec![format!("elements={}", elements.len())];
         for elem in &elements {

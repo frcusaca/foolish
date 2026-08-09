@@ -338,6 +338,7 @@ impl ProtoBrane {
             }
             FirKind::Concatenation => {
                 let helpers_populated = !borrowed.core().ubc_children().is_empty();
+                let provenance = borrowed.as_concat_provenance();
                 Rc::new_cyclic(|me: &Weak<RefCell<ConcatenationFir>>| {
                     let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
                     let core = ProtoBrane::clone_children_for_constanic_clone(
@@ -351,6 +352,7 @@ impl ProtoBrane {
                     RefCell::new(ConcatenationFir {
                         core,
                         _helpers_populated: std::cell::Cell::new(helpers_populated),
+                        provenance,
                     })
                 })
             }
@@ -2630,10 +2632,24 @@ impl Fir for ConcatHelper {
     }
 }
 
+/// How a concatenation was spelled in source.
+/// Affects SEQUENCING ONLY — never evaluation (FOOP-65 §5.3).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ConcatProvenance {
+    /// Ordinary brane concatenation (juxtaposition): `{a}{b}{c}`.
+    Juxtaposition,
+    /// Tail concatenation (backtick chain): `` c`b`a `` — the elements are
+    /// already stored REVERSED relative to source (FOOP-65 §5.2).
+    TailConcatenation,
+}
+
 #[derive(Debug)]
 pub struct ConcatenationFir {
     pub(crate) core: ProtoBrane,
     pub(crate) _helpers_populated: std::cell::Cell<bool>,
+    /// Provenance: how this concatenation was spelled in source.
+    /// Affects SEQUENCING ONLY — never evaluation (FOOP-65 §5.3).
+    pub(crate) provenance: ConcatProvenance,
 }
 
 impl ConcatenationFir {
@@ -2641,6 +2657,7 @@ impl ConcatenationFir {
         Rc::new(RefCell::new(ConcatenationFir {
             core: ProtoBrane::new(elements, parent, Nyes::Prembrionic),
             _helpers_populated: std::cell::Cell::new(false),
+            provenance: ConcatProvenance::Juxtaposition,
         }))
     }
 
@@ -2859,6 +2876,9 @@ impl Fir for ConcatenationFir {
     fn kind(&self) -> FirKind {
         FirKind::Concatenation
     }
+    fn as_concat_provenance(&self) -> ConcatProvenance {
+        self.provenance
+    }
 
     fn stmt_count(&self) -> Option<usize> {
         if !self._helpers_populated.get() {
@@ -3004,6 +3024,7 @@ pub fn concatenation(elements: Vec<FirRef>, parent: Weak<RefCell<dyn Fir>>) -> F
     Rc::new(RefCell::new(ConcatenationFir {
         core: ProtoBrane::new(elements, parent, Nyes::Prembrionic),
         _helpers_populated: std::cell::Cell::new(false),
+        provenance: ConcatProvenance::Juxtaposition,
     }))
 }
 
@@ -3974,6 +3995,7 @@ mod tests {
             RefCell::new(ConcatenationFir {
                 core: ProtoBrane::new(elements, parent, Nyes::Prembrionic),
                 _helpers_populated: std::cell::Cell::new(false),
+                provenance: ConcatProvenance::Juxtaposition,
             })
         })
     }
@@ -8371,5 +8393,170 @@ mod tests {
             !Rc::ptr_eq(&a_creation, &b_creation),
             "they are genuinely distinct creations despite the shared name"
         );
+    }
+
+    // ── FOOP-65 Phase 2: ConcatProvenance tests ──────────────────────────
+
+    fn make_tail_concatenation(elements: Vec<FirRef>) -> FirRef {
+        Rc::new_cyclic(|me: &Weak<RefCell<ConcatenationFir>>| {
+            let parent: Weak<RefCell<dyn Fir>> = me.clone();
+            RefCell::new(ConcatenationFir {
+                core: ProtoBrane::new(elements, parent, Nyes::Prembrionic),
+                _helpers_populated: std::cell::Cell::new(false),
+                provenance: ConcatProvenance::TailConcatenation,
+            })
+        })
+    }
+
+    #[test]
+    fn tail_concat_nyes_transitions() {
+        let brane1 = make_brane(vec![
+            make_statement("a", 0, make_constant_int(1)),
+            make_statement("b", 1, make_constant_int(2)),
+        ]);
+        let brane2 = make_brane(vec![
+            make_statement("c", 0, make_constant_int(3)),
+            make_statement("d", 1, make_constant_int(4)),
+        ]);
+        let cat = make_tail_concatenation(vec![brane1, brane2]);
+        let trace = step_to_settled(&cat, &Scope::empty());
+        assert_progression(&trace, Nyes::Constant, "Concatenation(tail)");
+        assert!(
+            trace.contains(&Nyes::Braning),
+            "tail-flagged concatenation must pass through Braning"
+        );
+    }
+
+    #[test]
+    fn tail_concat_provenance_on_fir() {
+        let cat = make_tail_concatenation(vec![make_constant_int(1)]);
+        assert_eq!(
+            cat.borrow().as_concat_provenance(),
+            ConcatProvenance::TailConcatenation
+        );
+        let juxta = make_concatenation(vec![make_constant_int(1)]);
+        assert_eq!(
+            juxta.borrow().as_concat_provenance(),
+            ConcatProvenance::Juxtaposition
+        );
+    }
+
+    #[test]
+    fn compiler_shape_tail_concat() {
+        // Using identifiers matching the parser worked example (a`b`c`d e f).
+        // The outer concatenation should have provenance TailConcatenation.
+        let root = Compiler::compile("{r = a`b`c`d e f;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let stmt = &stmts[0];
+        let body = stmt.borrow().core().foolish_children()[0].clone();
+        let b = body.borrow();
+        assert_eq!(b.kind(), FirKind::Concatenation);
+        assert_eq!(b.as_concat_provenance(), ConcatProvenance::TailConcatenation);
+
+        let children = b.core().foolish_children();
+        assert_eq!(children.len(), 4, "outer has 4 elements: [Concat(d,e,f), c, b, a]");
+    }
+
+    #[test]
+    fn tail_concat_equivalence_brane_literal() {
+        let a = Compiler::compile("{result = 99`{x=1; y=2;};}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        let b = Compiler::compile("{result = {x=1; y=2;} 99;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        settle_root(&a);
+        settle_root(&b);
+        let a_stmts = a.borrow().core().foolish_children().to_vec();
+        let b_stmts = b.borrow().core().foolish_children().to_vec();
+        let a_body = a_stmts[0].borrow().core().foolish_children()[0].clone();
+        let b_body = b_stmts[0].borrow().core().foolish_children()[0].clone();
+        let a_lines = a_body.borrow().stmt_count().unwrap_or(0);
+        let b_lines = b_body.borrow().stmt_count().unwrap_or(0);
+        assert_eq!(a_lines, b_lines, "equivalent spellings settle to same stmt count");
+    }
+
+    #[test]
+    fn tail_concat_chain_reversal() {
+        let root = Compiler::compile("{r = f`g`h`{x=1;};}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let body = stmts[0].borrow().core().foolish_children()[0].clone();
+        let b = body.borrow();
+        assert_eq!(b.kind(), FirKind::Concatenation);
+        assert_eq!(b.as_concat_provenance(), ConcatProvenance::TailConcatenation);
+        let children = b.core().foolish_children();
+        assert_eq!(children.len(), 4);
+    }
+
+    #[test]
+    fn tail_concat_flag_survives_recoordination() {
+        let cat = make_tail_concatenation(vec![
+            make_brane(vec![make_statement("a", 0, make_constant_int(1))]),
+            make_brane(vec![make_statement("b", 0, make_constant_int(2))]),
+        ]);
+        settle_root(&cat);
+
+        assert!(cat.borrow().core().get_nyes().is_constanic());
+
+        // Use a real brane as the new parent (Weak::new doesn't work for dyn Fir).
+        let dummy_parent = make_brane(vec![]);
+        let new_parent: std::rc::Weak<RefCell<dyn Fir>> =
+            std::rc::Rc::downgrade(&dummy_parent);
+        let cloned = ProtoBrane::constanic_clone_at(
+            &cat,
+            &new_parent,
+            0,
+            false,
+            false,
+        );
+        assert_eq!(
+            cloned.borrow().as_concat_provenance(),
+            ConcatProvenance::TailConcatenation,
+            "constanic clone must preserve tail provenance"
+        );
+    }
+
+    #[test]
+    fn tail_concat_evaluation_inert() {
+        let brane_a = make_brane(vec![
+            make_statement("x", 0, make_constant_int(10)),
+        ]);
+        let brane_b = make_brane(vec![
+            make_statement("y", 0, make_constant_int(20)),
+        ]);
+
+        let juxta = make_concatenation(vec![brane_a.clone(), brane_b.clone()]);
+        let tail = make_tail_concatenation(vec![brane_a, brane_b]);
+
+        settle_root(&juxta);
+        settle_root(&tail);
+
+        let j_nyes = juxta.borrow().core().get_nyes();
+        let t_nyes = tail.borrow().core().get_nyes();
+        assert_eq!(j_nyes, t_nyes, "same settled NYES");
+
+        let j_stmts = juxta.borrow().stmt_count().unwrap_or(0);
+        let t_stmts = tail.borrow().stmt_count().unwrap_or(0);
+        assert_eq!(j_stmts, t_stmts, "same statement count");
+    }
+
+    #[test]
+    fn tail_concat_system_operator_application() {
+        let root = Compiler::compile("{result = ('lt`{1, 2})$;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        settle_root(&root);
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let body = stmts[0].borrow().core().foolish_children()[0].clone();
+        assert!(body.borrow().core().get_nyes().is_constanic(), "settled");
     }
 }

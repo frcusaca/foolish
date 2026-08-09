@@ -1,0 +1,8 @@
+{
+	!! FOOP-65 — system-operator application via backtick.
+	!! 'lt`{1, 2} applies system.foo's 'lt with args {1, 2}.
+	!! The $ extracts the result.
+
+	lt_result = ('lt`{1, 2})$;
+	eq_result = ('eq`{3, 3})$;
+}

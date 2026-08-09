@@ -769,9 +769,12 @@ fn proto_to_core_fir_inner(
                 .iter()
                 .map(|c| proto_to_core_fir_inner(c, preserve_search, current_stmt))
                 .collect();
+            let is_tail = borrowed.as_concat_provenance()
+                == crate::fir_kinds::ConcatProvenance::TailConcatenation;
             ConcatenationFirBuilder::new()
                 .elements(elem_firs)
                 .state(state)
+                .is_tail_concatenation(is_tail)
                 .build()
         }
         FirKind::ConcatHelper => {
