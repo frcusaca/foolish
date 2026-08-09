@@ -109,7 +109,7 @@ Here is a maintained list of current top level crates:
 
 Two more paths that should be fully read, bundled if possible are:
   - `docs`: For the purpose of bulk importing information, please also read this directory.
-  - `foolish-ubca/einmo_suite/`: These contain examples of how the Foolish language work.
+  - `foolish-ubca/einmo_suite/`: These contain examples of how the Foolish language work. There's no need to read these if foolish-ubca was already ingested.
 
 ## Skills
 
