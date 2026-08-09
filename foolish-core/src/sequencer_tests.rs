@@ -401,3 +401,40 @@ fn tail_concat_settled_renders_identical_to_juxta() {
     let juxta_s = format_fir_simple(&juxta);
     assert_eq!(tail_s, juxta_s, "settled forms must be byte-identical");
 }
+
+/// Temporary: print the all-embryonic rendering for FOOP-65 §6.1 inspection.
+/// Remove after human review.
+#[test]
+fn foop65_embryonic_inspection() {
+    use crate::fir::*;
+    use crate::Nyes;
+
+    // §3.1 worked example: a`b`c`d e f — all elements Embryonic
+    let d = NormalBraneFirBuilder::new().state(Nyes::Embryonic).build();
+    let e = NormalBraneFirBuilder::new().state(Nyes::Embryonic).build();
+    let f = NormalBraneFirBuilder::new().state(Nyes::Embryonic).build();
+    let inner = ConcatenationFirBuilder::new()
+        .element(d)
+        .element(e)
+        .element(f)
+        .state(Nyes::Embryonic)
+        .build();
+    let a = NormalBraneFirBuilder::new().state(Nyes::Embryonic).build();
+    let b = NormalBraneFirBuilder::new().state(Nyes::Embryonic).build();
+    let c = NormalBraneFirBuilder::new().state(Nyes::Embryonic).build();
+    let outer = ConcatenationFirBuilder::new()
+        .element(inner)
+        .element(a)
+        .element(b)
+        .element(c)
+        .state(Nyes::Embryonic)
+        .is_tail_concatenation(true)
+        .build();
+    let rendered = format_fir_simple(&outer);
+    eprintln!("\n=== FOOP-65 §6.1: ALL-EMBRYONIC TAIL CONCATENATION ===");
+    eprintln!("Input: a`b`c`d e f");
+    eprintln!("Storage order: [Concat(d,e,f), c, b, a]");
+    eprintln!("Backtick rendering (reversed to source order):");
+    eprintln!("  {}", rendered);
+    eprintln!("=== END ===\n");
+}
