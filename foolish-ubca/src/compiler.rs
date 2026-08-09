@@ -170,6 +170,12 @@ fn validate_astn(ast: &Astn) -> anyhow::Result<()> {
             }
             Ok(())
         }
+        Astn::TailConcatenation { elements } => {
+            for e in elements {
+                validate_astn(e)?;
+            }
+            Ok(())
+        }
         Astn::StayFoolish { expr } => validate_astn(expr),
         Astn::StayFullyFoolish { expr } => validate_astn(expr),
         Astn::IntLit(_)
@@ -373,6 +379,20 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
                 let me_dyn: Weak<RefCell<dyn Fir>> = me.clone();
                 let children: Vec<FirRef> = elements
                     .into_iter()
+                    .map(|e| build_concat_element(e, &me_dyn, under_sff))
+                    .collect();
+                RefCell::new(ConcatenationFir {
+                    core: ProtoBrane::new(children, child_parent!(), Nyes::Prembrionic),
+                    _helpers_populated: std::cell::Cell::new(false),
+                })
+            })
+        }
+        Astn::TailConcatenation { elements } => {
+            Rc::new_cyclic(|me: &Weak<RefCell<ConcatenationFir>>| {
+                let me_dyn: Weak<RefCell<dyn Fir>> = me.clone();
+                let children: Vec<FirRef> = elements
+                    .into_iter()
+                    .rev()
                     .map(|e| build_concat_element(e, &me_dyn, under_sff))
                     .collect();
                 RefCell::new(ConcatenationFir {
@@ -635,7 +655,7 @@ impl AstnCompilerExt for Astn {
 
 #[cfg(test)]
 mod tests {
-    use super::{ANON_STMT_NAME, AstnCompilerExt};
+    use super::{AstnCompilerExt, ANON_STMT_NAME};
     use std::cell::RefCell;
     use std::rc::{Rc, Weak};
 
