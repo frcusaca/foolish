@@ -391,12 +391,25 @@ outcomes, following `comparison_nyes_transitions`
 (`system_foo.rs:627-669`): ECONSTANIC inside `system.foo` (no neighbours),
 CONSTANT with two integer neighbours, NK with a non-integer neighbour.
 
-### §2. `'or` — boolean OR as a pure-Foolish truth-table search (FOOP-73's preferred design, for `'or` only)
+### §2. `'or` — boolean OR (FVM-computed, per FOOP-73 fallback)
 
-**No new FIR kind. No privileged FVM layer.** `'or` is defined in
+**DESIGN CHANGE (2026-08-09):** The pure-Foolish truth-table approach
+described below was implemented and **failed** — the value search `T~A=A`
+inside system.foo cannot resolve when `A` is ECONSTANIC (no neighbours in
+system.foo), so the root brane never settles. The FVM-computed fallback
+(FOOP-73 §Fallback) was taken instead: `'or = ⬤` with a dedicated `OrFir`
+FIR kind that checks operand identity against system.foo's `'True`/`'False`
+creations via `Rc::ptr_eq`. This reintroduces a privileged FVM layer for
+`'or`, which is the trade-off FOOP-73 anticipated.
+
+The pure-Foolish design is preserved below for reference.
+
+---
+
+**~~No new FIR kind. No privileged FVM layer.~~** ~~`'or` is defined in
 `system.foo` as an ordinary Foolish brane holding a truth table, applied by
 ordinary search — FOOP-73 §"Preferred design". FIR impact: NONE (that is
-the point).
+the point).~~
 
 `system.foo` gains:
 
@@ -516,29 +529,25 @@ Bisect evidence on `jia` @ `62706518`:
 
 ## FIR Impact
 
-- **One new FIR kind** in `foolish-ubca/src/system_foo.rs` — `ModuloFir` or
-  `SystemArithFir { core, op: ArithOp, self_weak }` (§1; enum shape
-  recommended). New `FirKind` arm; new `constanic_clone_at` arm performing
-  recoordination; display name `'mod`. YAML/JSON shape:
-  `{ kind: Modulo }` (or `{ kind: SystemArith, op: Mod }` to match).
-- **`system.foo` grows**: `'mod = ⬤` (placeholder, body overridden) and
-  the `'or` truth-table brane (pure Foolish, no override).
-- **No new NYES states.** `'mod` uses the three existing terminals
-  (ECONSTANIC / CONSTANT / NK); `'or` adds none (pure Foolish).
-- **No serialization impact** beyond sequencer rendering of the new kind.
+- **Two new FIR kinds** in `foolish-ubca/src/system_foo.rs`:
+  - `ModuloFir` with `ArithOp` enum (§1). New `FirKind::Modulo` arm;
+    new `constanic_clone_at` arm; display name `'mod`.
+  - `OrFir` (§2, FVM-computed fallback). New `FirKind::Or` arm;
+    new `constanic_clone_at` arm; display name `'or`.
+- **`system.foo` grows**: `'mod = ⬤` and `'or = ⬤` (both body-overridden).
+- **No new NYES states.** Both use the three existing terminals
+  (ECONSTANIC / CONSTANT / NK).
+- **No serialization impact** beyond sequencer rendering of the new kinds.
 
 ## UBC Step Impact
 
-- **New `fir_op_step`** for the modulo kind — the two-phase
+- **New `fir_op_step`** for both `'mod` and `'or` — the two-phase
   enqueue-then-combine shape of `ComparisonFir` (`system_foo.rs:326-340`),
-  with the §1 `combine` rules.
+  with §1/§2 `combine` rules.
 - **`BodyOverride` hook generalized** from comparisons-only to a system
-  name table covering `ComparisonOp::ALL` + `'mod`
-  (`system_foo.rs:384-391`); still scoped to `system.foo`'s own top-level
+  name table covering `ComparisonOp::ALL` + `ArithOp::ALL` + `'or`
+  (`system_foo.rs`); still scoped to `system.foo`'s own top-level
   statements only.
-- **No other step-rule changes.** `'or` evaluates entirely through
-  existing machinery (concatenation, SFF index search, value search,
-  contexted search, contexted index).
 
 ## Test Plan
 
