@@ -1,0 +1,35 @@
+#einmo 1 encoding=utf-8 separator=!!\n
+test: foop/55/or_table.foo
+suite: /storage1/human/hcbusy/foolish_worktrees/foop-55-project-euler-1/foolish-ubca/einmo_suite
+producer: 46689c2b
+producer-diff: sha256:58e70275ea1e868d5db4b2e87ac1fb6b9766cf3f02810c33e39043506240ee53
+generated: 2026-08-09T20:55:18.000000000Z
+status: normal
+status-detail: 
+sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
+{
+	!! FOOP-55 §2: 'or truth-table — all four rows + non-boolean miss
+	!! Each row uses {A, B, 'or}$ — postfix application
+
+	r1 = {'True, 'True, 'or}$;      !! → 'True
+	r2 = {'True, 'False, 'or}$;     !! → 'True
+	r3 = {'False, 'True, 'or}$;     !! → 'True
+	r4 = {'False, 'False, 'or}$;    !! → 'False
+	r5 = {3, 'True, 'or}$;          !! → NK (non-boolean first arg)
+}
+!!
+{NK
+  r1='True;
+  r2='True;
+  r3='True;
+  r4='False;
+  r5 =$ ?(result=??? (or: non-boolean operand), pattern='^'or$', UNANCHORED, NK)
+      3;
+      ?(result='True, pattern='^'True$', UNANCHORED);
+      ?(result=??? (or: non-boolean operand), pattern='^'or$', UNANCHORED, NK)
+  }
+}!!
+!!
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:fa751d38a84ff1e234deba3a053c86045ee50c49d58577b156bf3c534dce7834","timestamp":"2026-08-09T20:55:18.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:fa751d38a84ff1e234deba3a053c86045ee50c49d58577b156bf3c534dce7834","timestamp":"2026-08-09T20:55:18.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"mBRselHHMxpBmcTQkVA8o6gVXE5P4G7LMTQnYRT1krLc6pf8IGup5uBnFFhtAtrWbKh8V2JYQKckoEsSIkF8DA==","produced_by":"einmo 0.1.0 sha256:fa751d38a84ff1e234deba3a053c86045ee50c49d58577b156bf3c534dce7834","timestamp":"2026-08-09T20:55:18.000000000Z"}
