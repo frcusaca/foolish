@@ -16,49 +16,53 @@ FOOP-55 (the Euler exercise rewrite) — it lands first and stands alone.
 
 ## Phase 0 — Begin, baseline, and orientation
 
-- [ ] **Dependency check — FOOP-65 `depends_on: [FOOP-95]`.** Determine
+- [x] **Dependency check — FOOP-65 `depends_on: [FOOP-95]`.** Determine
       whether [FOOP-95](FOOP-95.md) (the pre-step EMBRYONIC section +
       the `stmt_count` purity split) has merged.
-      - If YES: the §5.3.1 backtick rendering can be confirmed at the einmo
-        level; add a `foop/65/` input exercising it.
-      - If NO: FOOP-65 still proceeds — §1-§5 are fully testable without it
-        (FOOP-65 §6). Implement and unit-test the §5.3.1 rendering at the
-        `foolish-core` level against a directly-constructed all-embryonic
-        node, and carry the einmo confirmation as a deferred item to be
-        added when FOOP-95 lands.
-      - Confirm the intended ORDER with the human if unclear (FOOP-65 Open
-        Questions — FOOP-95 landing first is preferable).
-- [ ] Begin work: commit FOOP-65.md and FOOP-65.plan.md to origin (`jia`),
+      (2026-08-09 12:55)
+      - FOOP-95 is still `Draft`, `begun: [ ]` — has NOT merged.
+      - FOOP-65 proceeds: §1–§5 are fully testable without it (FOOP-65 §6).
+        The §5.3.1 rendering will be unit-tested at the `foolish-core` level
+        against a directly-constructed all-embryonic node. The einmo-level
+        confirmation is deferred to when FOOP-95 lands.
+- [x] Begin work: commit FOOP-65.md and FOOP-65.plan.md to origin (`jia`),
       check `begun: [x]` in FOOP-65.md frontmatter
-- [ ] Create worktree at /storage1/human/hcbusy/foolish/../foolish_worktrees/foop-65-tail-concatenator with branch `foop-65-tail-concatenator`
-      (`git worktree add -b foop-65-tail-concatenator /storage1/human/hcbusy/foolish/../foolish_worktrees/foop-65-tail-concatenator`
-      from `jia` at /storage1/human/hcbusy/foolish; ALL subsequent work —
-      including edits to FOOP-65.md and this plan — happens ONLY in the
-      worktree until merge)
-- [ ] Read `rust_instructions.md` in full (mandatory before any Rust;
+      (2026-08-09 12:55)
+      — `begun: [x]` already set from prior session; files already on `jia`.
+- [x] Create worktree at /storage1/human/hcbusy/foolish/../foolish_worktrees/foop-65-tail-concatenator with branch `foop-65-tail-concatenator`
+      (2026-08-09 12:55)
+      — Rebranched from `jia` (`d95ef48e`): deleted stale branch, created
+        fresh worktree. ALL subsequent work happens ONLY in the worktree.
+- [x] Read `rust_instructions.md` in full (mandatory before any Rust;
       especially §"Phase-by-phase testing discipline")
-- [ ] Read FOOP-65.md in full — especially §2 (precedence/associativity,
+      (2026-08-09 12:55)
+- [x] Read FOOP-65.md in full — especially §2 (precedence/associativity,
       the authoritative statements), §3.1 (the worked example
       `` a`b`c`d e f `` → exactly TWO ConcatenationFirs), and §5 (the
       **flag-on-ConcatenationFir** design — NO separate FIR kind; the flag
       affects sequencing ONLY; precedence + reversal happen in `build_fir`)
-- [ ] Read the touched sites: `foolish-parser/src/lexer.rs` (single-char
+      (2026-08-09 12:55)
+- [x] Read the touched sites: `foolish-parser/src/lexer.rs` (single-char
       arms, unknown-char fallback 297-299), `foolish-parser/src/parser.rs`
-      (`parse_expr` 371-388, `is_concatenation_continuation` 390-411),
+      (`parse_expr` 513-530, `is_concatenation_continuation` 532-554),
       `foolish-parser/src/ast.rs` + `token.rs`, `foolish-ubca/src/compiler.rs`
       (`build_fir` Concatenation arm 371-383, `validate_astn` 167-172),
-      `foolish-ubca/src/fir_kinds.rs` (`ConcatenationFir` 2610-2614,
+      `foolish-ubca/src/fir_kinds.rs` (`ConcatenationFir` 2634-2637,
       `fir_op_step` 2749-2835, `constanic_clone_at` Concatenation arm
-      339-356), `foolish-ubca/src/evaluator.rs` (706-764),
+      339-356), `foolish-ubca/src/evaluator.rs` (718-776),
       `foolish-core/src/fir.rs` (`ConcatenationFir` 356-360,
-      `ConcatenationQuery` 563, builder 2096-2136),
+      `ConcatenationQuery` 563, builder 2096-2139),
       `foolish-core/src/sequencer.rs` (§9 concatenation, 496-545)
-- [ ] Baseline in the worktree: `RUSTUP_TOOLCHAIN=stable cargo test --workspace`
+      (2026-08-09 12:55)
+- [x] Baseline in the worktree: `RUSTUP_TOOLCHAIN=stable cargo test --workspace`
       and `cargo test -p foolish-ubca --lib -- run_einmo_tests` — both
       green before any change; re-confirm no backtick sits in CODE position
       in any einmo input (verified on `jia` @ `62706518`: comments only —
       `foop/13/comprehensive.foo:17-18,65`, `exercises/project_euler/1.foolish:15`)
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-08-09 12:55)
+      — 583 tests pass. einmo gates pass (single-threaded to avoid race).
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-08-09 12:55)
 
 ## Phase 1 — Lexer, token, AST, parser (tests first)
 
