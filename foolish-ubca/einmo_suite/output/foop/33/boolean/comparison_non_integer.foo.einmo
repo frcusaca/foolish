@@ -1,9 +1,9 @@
 #einmo 1 encoding=utf-8 separator=!!\n
 test: foop/33/boolean/comparison_non_integer.foo
 suite: /storage1/human/hcbusy/foolish_worktrees/foop-75-assignment-attached-searches/foolish-ubca/einmo_suite
-producer: b73c08af
-producer-diff: sha256:3b2b8bff5f130c9f260e7f91770f758a7cdc55abfb9e5abbf5f80ba56de15e64
-generated: 2026-08-08T15:39:19.000000000Z
+producer: 3f4e1e95
+producer-diff: sha256:cce528e69c74da8da728c8c56f06170d4606bbbe16b110c62d31293bdd99081d
+generated: 2026-08-09T14:38:03.000000000Z
 status: normal
 status-detail: 
 sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
@@ -31,29 +31,29 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
 }
 !!
 {NK
-  braneˍoperand =$ {NK (???)
+  braneˍoperand =$ ?(result=??? (comparison: non-integer operand), pattern='^'lt$', UNANCHORED, NK)
       1;
       {
         x=5
       };
       ?(result=??? (comparison: non-integer operand), pattern='^'lt$', UNANCHORED, NK)
   };
-  creationˍoperand =$ {NK (???)
+  creationˍoperand =$ ?(result=??? (comparison: non-integer operand), pattern='^'lt$', UNANCHORED, NK)
       1;
       ⬤;
       ?(result=??? (comparison: non-integer operand), pattern='^'lt$', UNANCHORED, NK)
   };
-  unknownˍoperand =$ {NK (???)
+  unknownˍoperand =$ ?(result=??? (comparison: non-integer operand), pattern='^'lt$', UNANCHORED, NK)
       1;
       ??? (??? literal);
       ?(result=??? (comparison: non-integer operand), pattern='^'lt$', UNANCHORED, NK)
   };
-  onlyˍone =$ {NK (???)
+  onlyˍone =$ ?(result=??? (comparison: non-integer operand), pattern='^'lt$', UNANCHORED, NK)
       7;
       ?(result=??? (comparison: non-integer operand), pattern='^'lt$', UNANCHORED, NK)
   }
 }!!
 !!
-{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:076011efb771ac7b4ad4044525c372785ffeba3772d3f3c4b8021c45871dd7f7","timestamp":"2026-08-08T15:39:19.000000000Z"}
-{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:076011efb771ac7b4ad4044525c372785ffeba3772d3f3c4b8021c45871dd7f7","timestamp":"2026-08-08T15:39:19.000000000Z"}
-{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"44nDkq+EMBQaP+33/4/XxwI5BhluqcJv8sIvpbe7LIc11rVHl1fbdlrPZlenSUE80vLY6cv3L+3vqP98KshgDw==","produced_by":"einmo 0.1.0 sha256:076011efb771ac7b4ad4044525c372785ffeba3772d3f3c4b8021c45871dd7f7","timestamp":"2026-08-08T15:39:19.000000000Z"}
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:ef99f187797ceb8f0ba8e366b052a2cee32f9701b2b62274795727c6e333d295","timestamp":"2026-08-09T14:38:04.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:ef99f187797ceb8f0ba8e366b052a2cee32f9701b2b62274795727c6e333d295","timestamp":"2026-08-09T14:38:04.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"LiAI3WJBLT12OHvQMQ06G3t83s6kPvL8/jhAGE4d28RxqJFdDhEh7AV661wxktmAfwBVf+0biSKd6DnpNsYhBQ==","produced_by":"einmo 0.1.0 sha256:ef99f187797ceb8f0ba8e366b052a2cee32f9701b2b62274795727c6e333d295","timestamp":"2026-08-09T14:38:04.000000000Z"}

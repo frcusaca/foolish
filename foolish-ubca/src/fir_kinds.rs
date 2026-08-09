@@ -1873,6 +1873,43 @@ impl Fir for IndexFir {
                     let anchor = Rc::clone(&self.core.foolish_children()[0]);
                     let resolved = anchor.resolve_anchor();
                     if !resolved.borrow().is_brane_like() {
+                        // FOOP-75 §7: settling NK is only half the answer —
+                        // record WHY. An anchored search demands its anchor
+                        // resolve *through* to a brane (AGENTS.md §Searches);
+                        // when it does not, name the offending value so the
+                        // rendered output reads
+                        //     d =$ ??? (4 is not a brane)
+                        // rather than a bare `d =$ 4 (???)`, which says the
+                        // result is unknown without saying what went wrong.
+                        // Diagnose only when the offending anchor can be
+                        // NAMED — an integer literal, as in `d =$ 4`. Then
+                        // the reason travels as the search's RESULT (the
+                        // sequencer renders that; `alarm_reason` alone is
+                        // never read on the rendering path), giving
+                        //     d =$ ??? (4 is not a brane)
+                        //
+                        // When the anchor is some other FIR — commonly another
+                        // search that itself settled NK — there is no value to
+                        // name, and `"<kind> is not a brane"` would report an
+                        // interpreter type rather than anything the Foolisher
+                        // wrote. Leaving the result unset keeps the existing
+                        // rendering, which shows the failed anchor itself:
+                        //     also_not_found =^ ?(pattern='^z$', ANCHORED, NK) (???)
+                        let named = resolved.borrow().as_i64().map(|v| v.to_string());
+                        if let Some(shown) = named {
+                            let reason = format!("{} is not a brane", shown);
+                            let self_weak = self.core.parent_weak();
+                            let nk_ref = NkFir::nk(&reason, self_weak.clone());
+                            nk_ref.borrow().core().set_nyes(Nyes::Nk);
+                            self.core.push_ubc_child(ProtoBrane::constanic_clone_at(
+                                &nk_ref,
+                                &self_weak,
+                                0,
+                                scope.has_ancestral_sfm,
+                                false,
+                            ));
+                            self.core.set_alarm_reason(reason);
+                        }
                         self.core.set_nyes(Nyes::Nk);
                         return Ok(());
                     }

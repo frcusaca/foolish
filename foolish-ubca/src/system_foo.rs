@@ -1030,5 +1030,65 @@ mod tests {
             "a tail search anchored on the non-brane `4` settles NK \
              (AGENTS.md §Searches: anchored miss → NK)"
         );
+
+        // FOOP-75 §7: settling NK is only half the answer — the Foolisher
+        // needs to know WHY. The deleted `OperatorFir` `"$"` arm recorded
+        // `"4 is not a brane"`; the `IndexFir` path must record the same
+        // diagnosis, or the rendered output degrades from
+        //     d =$ ??? (4 is not a brane)
+        // to a bare
+        //     d =$ 4 (???)
+        // which says the result is unknown without saying what went wrong.
+        assert_eq!(
+            body.borrow().core().alarm_reason().as_deref(),
+            Some("4 is not a brane"),
+            "an anchored search on a non-brane must say WHY it settled NK"
+        );
+    }
+
+    /// FOOP-75 §7: the non-brane diagnosis names the offending value, so
+    /// distinct anchors give distinct messages rather than one generic one.
+    #[test]
+    fn foop75_non_brane_anchor_names_the_value() {
+        for (src, expected) in [
+            ("{d =$ 4}", "4 is not a brane"),
+            ("{d =^ 7}", "7 is not a brane"),
+        ] {
+            let composed = compose_program_with_system(src).unwrap();
+            let root = &composed[0];
+            step_to_settled(root, &Scope::empty());
+            let program = program_result(root).expect("program member must exist");
+            let stmt = program.borrow().stmt_at(0).expect("statement exists");
+            let body = stmt.borrow().core().foolish_children()[0].clone();
+            assert_eq!(
+                body.borrow().core().alarm_reason().as_deref(),
+                Some(expected),
+                "{src} must diagnose its own anchor"
+            );
+        }
+    }
+
+    /// FOOP-75 §4: the non-brane diagnosis must reach RENDERED output, not
+    /// just the `alarm_reason` field — `alarm_reason` is never read on the
+    /// sequencing path, so a reason recorded there alone is invisible.
+    ///
+    /// Pins the exact text of the frozen `verified/` baseline
+    /// `regression/disappearing_brane_statements` (input `d =$ 4`). The
+    /// reason travels as the search's RESULT and takes the value slot; an
+    /// earlier attempt rendered `d =$ 4 (??? (4 is not a brane))`, doubling
+    /// the anchor.
+    #[test]
+    fn foop75_non_brane_reason_reaches_rendered_output() {
+        use foolish_core::{Evaluator, FirSequencer};
+        let firs = crate::UbcaEvaluator.evaluate("{a = 1; d =$ 4}").unwrap();
+        let rendered = firs
+            .iter()
+            .map(|f| FirSequencer::format(&foolish_core::clone_steppable(f)))
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(
+            rendered.contains("d =$ ??? (4 is not a brane)"),
+            "the rendered statement must carry the diagnosis; got:\n{rendered}"
+        );
     }
 }

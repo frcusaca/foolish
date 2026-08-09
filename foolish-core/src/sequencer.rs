@@ -661,27 +661,32 @@ fn render_statements(
         // for the postfix spelling, because `B$` compiles to an `IndexFir` —
         // which is exactly why `A = B$` used to render as plain `A=3`, losing
         // the `$` entirely.
-        let attached_info: Option<(Box<dyn FirQueryable>, Nyes, &'static str)> =
-            stmt.name.as_ref().and_then(|_| {
-                stmt.body
-                    .hs_index()
-                    .and_then(|(offset, anchored, anchor, _)| {
-                        let op = match (anchored, offset) {
-                            (true, 0) => "^",
-                            (true, -1) => "$",
-                            // Other offsets are positional indexes (`#N`), whose
-                            // attached form is not reachable — `#` is excluded
-                            // from the trigger set because it also begins an
-                            // unanchored seek (see `Parser::at_attached_search`).
-                            _ => return None,
-                        };
-                        anchor.map(|a| (a, stmt.body.hs_state(), op))
-                    })
-            });
+        #[allow(clippy::type_complexity)]
+        let attached_info: Option<(
+            Box<dyn FirQueryable>,
+            Nyes,
+            &'static str,
+            Option<Box<dyn FirQueryable>>,
+        )> = stmt.name.as_ref().and_then(|_| {
+            stmt.body
+                .hs_index()
+                .and_then(|(offset, anchored, anchor, result)| {
+                    let op = match (anchored, offset) {
+                        (true, 0) => "^",
+                        (true, -1) => "$",
+                        // Other offsets are positional indexes (`#N`), whose
+                        // attached form is not reachable — `#` is excluded
+                        // from the trigger set because it also begins an
+                        // unanchored seek (see `Parser::at_attached_search`).
+                        _ => return None,
+                    };
+                    anchor.map(|a| (a, stmt.body.hs_state(), op, result))
+                })
+        });
 
         let is_dollar_assign = attached_info.is_some();
 
-        let child_lines = if let Some((ref rhs, _, _)) = attached_info {
+        let child_lines = if let Some((ref rhs, _, _, _)) = attached_info {
             render_fir(
                 &**rhs,
                 child_open,
@@ -702,11 +707,28 @@ fn render_statements(
             && let Some((_, first_text)) = merged.iter_mut().next()
         {
             if is_dollar_assign {
-                let (_, state, op) = attached_info.as_ref().unwrap();
+                let (_, state, op, result) = attached_info.as_ref().unwrap();
                 if *state == Nyes::Nk {
                     // The anchor could not yield a head/tail — an ANCHORED
                     // miss, which settles NK (AGENTS.md §Searches).
-                    *first_text = format!("{} ={} {} (???)", name, op, first_text);
+                    //
+                    // When the search stored a RESULT, it carries the
+                    // diagnosis (`??? (4 is not a brane)`) and replaces the
+                    // anchor in the value slot — a bare `???` would say the
+                    // answer is unknown without saying what went wrong.
+                    // A miss with no result to show (the head of an empty
+                    // brane: there is nothing to diagnose beyond "empty")
+                    // keeps the anchor and a plain `???`.
+                    match result {
+                        Some(r) => {
+                            let detail = materialize(&render_fir(&**r, 0, close_indent, line_hint))
+                                .replace('\n', " ");
+                            *first_text = format!("{} ={} {}", name, op, detail);
+                        }
+                        None => {
+                            *first_text = format!("{} ={} {} (???)", name, op, first_text);
+                        }
+                    }
                 } else if state.should_show_nyes() {
                     *first_text = format!("{} ={} {} ({})", name, op, first_text, state);
                 } else {
