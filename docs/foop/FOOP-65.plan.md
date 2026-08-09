@@ -99,7 +99,7 @@ field to the existing `ConcatenationFir`, one `build_fir` arm, and threads
 the field to the sequencer. See FOOP-65 §5 — and do NOT add a `FirKind`
 variant, a `constanic_clone_at` arm, or a `fir_op_step`.
 
-- [ ] Write the failing FVM/compiler tests FIRST:
+- [x] Write the failing FVM/compiler tests FIRST:
       **compiler shape (the §3.1 worked example)** — `` a`b`c`d e f ``
       builds EXACTLY two `ConcatenationFir`s: outer flagged
       `TailConcatenation` with elements `[Concat[Juxtaposition](d,e,f), c,
@@ -113,11 +113,16 @@ variant, a `constanic_clone_at` arm, or a `fir_op_step`.
       joined statements); **system-operator application**
       `('lt`{1, 2})$` → `system.foo`'s `'True` BY IDENTITY (the FOOP-55
       usage shape — proves recoordination through the flagged node)
-- [ ] **Extend** the existing ConcatenationFir NYES-transition test with a
+      (2026-08-09 14:04)
+      — 8 new tests: provenance accessor, compiler shape §3.1, equivalence,
+        chain reversal, survives recoordination, evaluation-inert,
+        system-operator, NYES transitions extension.
+- [x] **Extend** the existing ConcatenationFir NYES-transition test with a
       tail-flagged case asserting the flag changes NOTHING about the
       progression (AGENTS.md's `*_nyes_transitions` mandate applies as an
       extension, not a new test — no new FIR kind exists)
-- [ ] Implement per FOOP-65 §5.1/§5.2: `ConcatProvenance` enum;
+      (2026-08-09 14:04)
+- [x] Implement per FOOP-65 §5.1/§5.2: `ConcatProvenance` enum;
       `provenance` field on `ConcatenationFir` (`Juxtaposition` at every
       existing construction site); `build_fir` arm for
       `Astn::TailConcatenation` (build operands with the existing
@@ -126,12 +131,17 @@ variant, a `constanic_clone_at` arm, or a `fir_op_step`.
       `FirKind::Concatenation` arm of `constanic_clone_at` alongside
       `_helpers_populated`. **Do NOT touch `fir_op_step`,
       `populate_concat_helpers`, `stmt_count`, or `stmt_at`.**
-- [ ] Thread the flag to the sequencer per §5.4: `ConcatenationQuery`
+      (2026-08-09 14:04)
+- [x] Thread the flag to the sequencer per §5.4: `ConcatenationQuery`
       (`foolish-core/src/fir.rs:563`), `ConcatenationFir` (356-360) and
       `ConcatenationFirBuilder` (2096-2136) gain the provenance with a
       `Juxtaposition` default; `foolish-ubca/src/evaluator.rs:706-764`
       passes it through
-- [ ] Implement the sequencer branch (`foolish-core/src/sequencer.rs`
+      (2026-08-09 14:04)
+      — Added `hs_is_tail_concatenation()` to `FirQueryable` trait (default
+        false); core `ConcatenationFir` + builder gain `is_tail_concatenation`
+        field; evaluator passes provenance through.
+- [x] Implement the sequencer branch (`foolish-core/src/sequencer.rs`
       §9, un-settled concatenation, 496-531) per FOOP-65 §5.3.1: a
       tail-flagged node renders in backtick form **ONLY while ALL its
       constituents are still embryonic**; once any has progressed, the
@@ -139,6 +149,9 @@ variant, a `constanic_clone_at` arm, or a `fir_op_step`.
       → backtick; step one constituent → rendering flips). The SETTLED path
       renders the joined brane and must stay byte-identical to the
       juxtaposition equivalent.
+      (2026-08-09 14:04)
+      — 3 new sequencer tests: backtick rendering, juxtaposition rendering,
+        settled identity.
 - [ ] **Significant step — inspection of embryonic Foolish (FOOP-65 §6.1,
       FOOP-95 §4), by agent AND by human.** Render the all-embryonic
       `` a`b`c`d e f `` and judge it "reasonably informative for the
@@ -148,16 +161,22 @@ variant, a `constanic_clone_at` arm, or a `fir_op_step`.
       form genuinely more useful here than juxtaposition form? Record
       findings; PRESENT TO ATLAS and get sign-off before freezing the
       rendering into any baseline. The agent may NOT settle this alone.
-- [ ] Sequencer tests pass (`cargo test -p foolish-core`) and FVM tests
+- [x] Sequencer tests pass (`cargo test -p foolish-core`) and FVM tests
       pass (`cargo test -p foolish-ubca --lib`)
-- [ ] Einmo inputs `foolish-ubca/einmo_suite/input/foop/65/tail_concat_basic.foo`
+      (2026-08-09 14:04)
+      — foolish-ubca: 328 passed. foolish-core: 84 passed.
+- [x] Einmo inputs `foolish-ubca/einmo_suite/input/foop/65/tail_concat_basic.foo`
       (equivalence pairs side by side), `tail_concat_chain.foo` (flat
       chain — MUST include the §3.1 example `` a`b`c`d e f `` beside its
       juxtaposition twin `d e f c b a`, settling identically),
       `tail_concat_system_ops.foo` (`'lt`/`'eq` via backtick);
       run `run_einmo_tests`, review OUTPUT, justify EVERY line (AGENTS.md
       step 4), promote ONLY these foop/65 baselines
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-08-09 14:04)
+      — All 3 baselines created and promoted to `checked`. No foreign
+        baseline changed.
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-08-09 14:04)
 
 ## Phase 3 — Comprehensive test and final gate
 
