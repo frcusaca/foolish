@@ -34,20 +34,46 @@ stopgap.
       plus FOOP-65.md §1–§3 (backtick equivalence, precedence, flat chain)
 - [ ] Read FOOP-33.md §5.0 and §5.1 (the as-built comparison mechanism
       that `'mod` mirrors — including the three implementation decisions)
-- [ ] VERIFY FOOP-65 is merged to `jia` (backtick tail concatenator
-      implemented: `Token::Backtick`, `Astn::TailConcatenation`,
-      `TailConcatenationFir`, einmo `foop/65/` baselines present). If not:
-      STOP and wait — this plan does not proceed without it.
-- [ ] VERIFY Atlas's exercise fixes have landed in
-      `foolish-ubca/einmo_suite/input/exercises/project_euler/1.foolish`:
-      (E3) `INTERN_` prefix replaces every leading `_` name; (E1) the
-      accumulator is consistently `sum35` (or consistently `sum`); (E2)
-      line 13's three `<<-N>>` are `<<#-N>>` index searches; (E4) the
-      application sites use the backtick form per FOOP-55 E4's mapping
-      table (e.g. `('cmod`{lv,3,0})$`, `('ite`{cond1, sum35+lv, sum35})$`,
-      `(loop`{loop})$`); (E5) no `$=` remains — result extraction is
-      explicit parentheses + `$`. If ANY is missing: STOP and ask Atlas —
-      do NOT edit the exercise yourself.
+- [x] ~~VERIFY FOOP-65 is merged to `jia`~~ — **DEPENDENCY DROPPED
+      (2026-08-09).** FOOP-65 (the backtick tail concatenator) is **not
+      required**. Verified live on `jia` after the FOOP-75 merge: the
+      exercise's juxtaposition application form (`{p=1} f`) evaluates
+      correctly as written. FOOP-65 would only let the call sites be
+      *rewritten* more readably (E4's mapping table) — it unblocks nothing.
+      Proceed without it; E4 becomes optional polish, not a precondition.
+- [ ] VERIFY the exercise's own defects are fixed in
+      `future_exercise_inputs/project_euler/1.foo.disabled` (moved out of
+      the einmo input tree; restore it to
+      `foolish-ubca/einmo_suite/input/exercises/project_euler/1.foo` when
+      it runs):
+      (E3) `INTERN_` prefix replaces every leading `_` name — see the D1
+      decision checkbox in Phase 5; (E1) the accumulator is consistently
+      `sum35` (or consistently `sum`); (E2) line 13's three `<<-N>>` are
+      `<<#-N>>` index searches; (E5) **the six `$=` lines become `=$`** —
+      FOOP-75 is merged, so the attached-search form now works and is the
+      spelling to use (lines 25, 26, 27, 28, 33, 36). E4's backtick rewrite
+      is **optional** (see the dropped FOOP-65 gate above).
+- [x] **Requirements survey (2026-08-09, on `jia` post-FOOP-75-merge).**
+      Each feature the exercise needs was probed live through
+      `UbcaEvaluator` — parse *and* value, since several parse cleanly yet
+      settle ECONSTANIC:
+
+      | Need | Status |
+      |---|---|
+      | `=$` attached search | **works** (FOOP-75, merged) |
+      | `'eq`, `'lt` | work → `'True` |
+      | `<<#-N>>` SFF, `<name>` SF | work |
+      | `~cond=(...)` value search | works |
+      | `&#1` contexted index | works |
+      | `{args} fn` juxtaposition | works |
+      | **`'mod`** | **MISSING** — `{7,3,'mod}$` → `?(pattern='^'mod$', UNANCHORED, ECONSTANIC)` |
+      | **`'or`** | **MISSING** — same shape |
+      | `$=` (six lines) | does not parse — rewrite to `=$` (E5) |
+      | `_name` | does not lex — `INTERN_` workaround (E3), decision in Phase 5 |
+
+      `system/system.foo` declares only `'True 'False 'lt 'gt 'le 'ge 'eq`.
+      So **`'mod` and `'or` are the only two features to build**; everything
+      else is a mechanical edit to the exercise.
 - [ ] Baseline run in the worktree:
       `RUSTUP_TOOLCHAIN=stable cargo run -q -p foolish-cli -- run foolish-ubca/einmo_suite/input/exercises/project_euler/1.foolish`
       — record the failure mode in this plan (it should now be an
@@ -162,6 +188,40 @@ stopgap.
       promote over any foreign FOOP's baseline
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
+## Phase 5 — The D1 decision (leading-underscore names)
+
+Deferred to the end deliberately: the exercise runs on the `INTERN_`
+workaround (E3), so this is a question about the *platform*, answered once
+the exercise is green and the real cost is known.
+
+- [ ] Confirm the workaround held: the exercise runs with `INTERN_` names
+      and no leading-underscore identifier remains in it.
+- [ ] Re-measure the defect on the merged tree — it may have shifted:
+      ```
+      {_x = 1; y = _x}
+      ```
+      Measured on `jia` 2026-08-09 (post-FOOP-75 merge):
+      `ERR: expected primary expression, found LineComment at line 1,
+      column 10` — the `_x` is silently swallowed and the error surfaces
+      somewhere unrelated, which is what makes D1 inscrutable rather than
+      merely restrictive.
+- [ ] **DECIDE, and record the decision here**: fix the lexer so a leading
+      `_` starts an identifier, or keep `INTERN_` as the standing
+      convention?
+      - Fixing it removes a papercut and an inscrutable error, but touches
+        the lexer's identifier rule — check first whether `_` is load-
+        bearing elsewhere (`is_id_sep` treats `_` as a *separator*, so a
+        leading `_` may collide with that role; FOOP-55.md §D1's note that
+        `_a` and `a` could become the *same* name is the specific hazard).
+      - Keeping the workaround costs nothing now but leaves the trap armed
+        for the next Foolisher.
+- [ ] If FIX: it needs its own FOOP (it is a language-surface change with a
+      naming-collision hazard, not part of "make the exercise run"). Create
+      it via `foop_check.py gen_next` and record the number here.
+- [ ] If KEEP: record `INTERN_` in AGENTS.md §Code Style as the convention,
+      so it is a documented choice rather than a local hack.
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
 ## Merge
 
 - [ ] Verify all work is complete in /storage1/human/hcbusy/foolish/../foolish_worktrees/foop-55-project-euler-1 and committed to `foop-55-project-euler-1`
@@ -185,3 +245,19 @@ stopgap.
           (`git worktree remove` + branch deletion after merge)
     - [ ] This is the last sub-task checkbox to be checked in this block of
           subtasks
+
+## Last Updated
+
+**Date**: 2026-08-09
+**Updated By**: Claude Code / claude-opus-5
+**Changes**: **Dropped the FOOP-65 dependency** — verified live on `jia`
+after the FOOP-75 merge that the exercise's juxtaposition application form
+evaluates correctly as written, so the backtick unblocks nothing and E4's
+rewrite is optional polish. Recorded a **requirements survey** in Phase 0:
+every feature the exercise needs was probed through `UbcaEvaluator` for
+value as well as parse, leaving **`'mod` and `'or` as the only two features
+to build**. The six `$=` lines become `=$` (FOOP-75 is merged). Added
+**Phase 5 — the D1 decision**, deferred to the end deliberately: the
+exercise runs on the `INTERN_` workaround, so whether to fix the
+leading-underscore lexer defect is answered once the real cost is known,
+and a fix would need its own FOOP.
