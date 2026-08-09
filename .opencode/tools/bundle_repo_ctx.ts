@@ -179,7 +179,7 @@ function discoverCrates(workspaceRoot: string): Crate[] {
   return crates.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export default tool({
+const bundleRepoCtx = tool({
   description:
     'Gathers valid source code files for ONE cargo crate, maps its directory tree, and bundles them into a clean payload with permissions, timestamps and Git status, honoring exclusions from .claudeignore. Call with no crate to list the available crates in the workspace.',
   args: {
@@ -451,3 +451,74 @@ ${out.skipped.length ? `\n## SKIPPED\n${out.skipped.map((s) => `- ${s}`).join('\
     };
   },
 });
+
+export default bundleRepoCtx;
+
+// ---------------------------------------------------------------------------
+// CLI entrypoint.
+//
+// The same file serves two consumers. opencode *imports* it, so import.meta.main
+// is false there and nothing below runs. Any agent with a shell (Claude Code,
+// a plain terminal) can *execute* it instead:
+//
+//   bun bundle_repo_ctx.ts                          # list crates
+//   bun bundle_repo_ctx.ts --crate foolish-core     # bundle one crate
+//   bun bundle_repo_ctx.ts --crate foolish-ubca --do-not-skill-einmo-verified
+//
+// Defaults are restated here because zod's .default() is applied by opencode's
+// arg validation, which a direct execute() call bypasses.
+// ---------------------------------------------------------------------------
+if (import.meta.main) {
+  const argv = process.argv.slice(2);
+  const has = (name: string) => argv.includes(name);
+  const num = (name: string, fallback: number) => {
+    const i = argv.indexOf(name);
+    if (i < 0 || !argv[i + 1]) return fallback;
+    const n = Number(argv[i + 1]);
+    return Number.isFinite(n) ? n : fallback;
+  };
+  const str = (name: string) => {
+    const i = argv.indexOf(name);
+    return i >= 0 ? argv[i + 1] : undefined;
+  };
+
+  if (has('--help') || has('-h')) {
+    console.log(`bundle_repo_ctx — bundle ONE cargo crate into a single context payload
+
+  bun bundle_repo_ctx.ts [options]
+
+  --crate NAME                    crate to bundle; omit to list workspace crates
+  --max-depth N                   traversal depth below the crate root (default 8)
+  --max-file-bytes N              skip bodies larger than this (default 200000)
+  --do-not-skill-einmo-verified   include **/verified/**/*.einmo (skipped by default)
+  -h, --help                      this message
+
+Runs against the current working directory.`);
+    process.exit(0);
+  }
+
+  const result = await bundleRepoCtx.execute(
+    {
+      crate: str('--crate'),
+      maxDepth: num('--max-depth', 8),
+      maxFileBytes: num('--max-file-bytes', 200_000),
+      '--do-not-skill-einmo-verified': has('--do-not-skill-einmo-verified'),
+    },
+    {
+      sessionID: 'cli',
+      messageID: 'cli',
+      agent: 'cli',
+      directory: process.cwd(),
+      worktree: process.cwd(),
+      abort: new AbortController().signal,
+      metadata() {},
+      async ask() {},
+    } as any,
+  );
+
+  const out = typeof result === 'string' ? result : result.output;
+  console.log(out);
+  // An unknown crate is a usage error, not a crash — signal it in the exit code.
+  const meta = typeof result === 'string' ? {} : (result.metadata ?? {});
+  process.exit((meta as any).error === 'unknown_crate' ? 2 : 0);
+}

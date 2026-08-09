@@ -1,0 +1,10 @@
+{
+  "id": "T-e31ab2fd-b12b-40cc-a681-91a246255e1c",
+  "subject": "Execute FOOP-65: Tail Concatenator implementation",
+  "description": "Implement FOOP-65 (backtick application) following the plan. Phase 0: begin + worktree + baseline. Phase 1: lexer/token/AST/parser. Phase 2: provenance flag + compiler + sequencer. Phase 3: comprehensive test + merge.",
+  "status": "in_progress",
+  "activeForm": "Phase 0: Begin, baseline, orientation",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_01813bf91ffedXeG9ETOHpFaQZ"
+}

@@ -12,7 +12,7 @@ function astGrepBin() {
   return fs.existsSync(cargoBin) ? cargoBin : 'ast-grep';
 }
 
-export default tool({
+const astGrepEngine = tool({
   description:
     'High-performance Abstract Syntax Tree query engine. Supports structural pattern discovery, rewrite refactoring, and composite node scanning.',
   args: {
@@ -134,3 +134,72 @@ export default tool({
     }
   },
 });
+
+export default astGrepEngine;
+
+// ---------------------------------------------------------------------------
+// CLI entrypoint. opencode imports this file (import.meta.main false, nothing
+// below runs); a shell can execute it instead:
+//
+//   bun ast_grep_engine.js --action search --lang rust \
+//       --pattern '$X.unwrap()' --scope foolish-core
+//   bun ast_grep_engine.js --action scan --lang rust \
+//       --yaml-rule-file rule.yaml --scope foolish-core
+//
+// --yaml-rule-file is offered alongside --yaml-rule because rule documents are
+// multi-line YAML, which is awkward to pass as a single shell argument.
+// ---------------------------------------------------------------------------
+if (import.meta.main) {
+  const argv = process.argv.slice(2);
+  const has = (name) => argv.includes(name);
+  const str = (name) => {
+    const i = argv.indexOf(name);
+    return i >= 0 ? argv[i + 1] : undefined;
+  };
+
+  if (has('--help') || has('-h') || argv.length === 0) {
+    console.log(`ast_grep_engine — structural code search and rewrite
+
+  bun ast_grep_engine.js --action <search|rewrite|scan> --lang <lang> [options]
+
+  --action ACTION        search (read-only) | rewrite (mutates files) | scan (YAML rule)
+  --lang LANG            rust, typescript, python, go, javascript, tsx, c, cpp, java, ruby, php
+  --pattern PATTERN      structural template; required for search and rewrite
+  --rewrite TEMPLATE     replacement template; required for rewrite
+  --yaml-rule TEXT       inline ast-grep rule document; required for scan
+  --yaml-rule-file PATH  read the rule document from a file instead
+  --scope SUBPATH        restrict to a sub-path, e.g. a single crate directory
+  -h, --help             this message
+
+Metavariables are written $X / $$$ARGS, never backslash-escaped.
+Runs against the current working directory.`);
+    process.exit(0);
+  }
+
+  const ruleFile = str('--yaml-rule-file');
+  const result = await astGrepEngine.execute(
+    {
+      action: str('--action'),
+      lang: str('--lang'),
+      pattern: str('--pattern'),
+      rewrite: str('--rewrite'),
+      yamlRule: ruleFile ? fs.readFileSync(ruleFile, 'utf-8') : str('--yaml-rule'),
+      scope: str('--scope'),
+    },
+    {
+      sessionID: 'cli',
+      messageID: 'cli',
+      agent: 'cli',
+      directory: process.cwd(),
+      worktree: process.cwd(),
+      abort: new AbortController().signal,
+      metadata() {},
+      async ask() {},
+    },
+  );
+
+  const parsed = JSON.parse(result);
+  // Print the human-readable payload, not the JSON envelope the model consumes.
+  console.log(parsed.success ? parsed.results : `error: ${parsed.error}`);
+  process.exit(parsed.success ? 0 : 1);
+}
