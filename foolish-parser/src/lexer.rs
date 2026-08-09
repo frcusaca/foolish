@@ -23,19 +23,37 @@ impl Lexer {
     pub fn tokenize(&mut self) -> Vec<TokenAndLocation> {
         let mut tokens = Vec::new();
         loop {
-            self.skip_whitespace();
+            // FOOP-75 §5.3: whether whitespace was consumed here is the ONLY
+            // record that it existed — `column` does not count it. Stamp the
+            // answer onto the token that follows, since this is the one place
+            // that knows. Every `make_token` construction site defaults the
+            // flag to false; it is corrected here.
+            let had_space = self.skip_whitespace();
             if self.pos >= self.chars.len() {
-                tokens.push(TokenAndLocation::new(Token::Eof, self.line, self.column));
+                tokens.push(TokenAndLocation::new(
+                    Token::Eof,
+                    self.line,
+                    self.column,
+                    had_space,
+                ));
                 break;
             }
 
-            let (token, _skip_leading_space) = self.next_token();
+            let (mut token, _skip_leading_space) = self.next_token();
+            token.preceded_by_space = had_space;
             tokens.push(token);
         }
         tokens
     }
 
-    fn skip_whitespace(&mut self) {
+    /// Consume whitespace, reporting whether any was consumed.
+    ///
+    /// The boolean is FOOP-75 §5.3's adjacency signal — see
+    /// [`TokenAndLocation::preceded_by_space`]. Note this function
+    /// deliberately does NOT increment `column` for spaces and tabs; that
+    /// long-standing behavior is what makes the boolean necessary.
+    fn skip_whitespace(&mut self) -> bool {
+        let start = self.pos;
         while self.pos < self.chars.len() {
             match self.chars[self.pos] {
                 ' ' | '\t' => self.pos += 1,
@@ -56,6 +74,7 @@ impl Lexer {
                 _ => break,
             }
         }
+        self.pos != start
     }
 
     fn peek(&self) -> Option<char> {
@@ -90,7 +109,7 @@ impl Lexer {
     }
 
     fn make_token(&self, token: Token) -> TokenAndLocation {
-        TokenAndLocation::new(token, self.line, self.column)
+        TokenAndLocation::new(token, self.line, self.column, false)
     }
 
     fn next_token(&mut self) -> (TokenAndLocation, bool) {
@@ -323,7 +342,12 @@ impl Lexer {
             body.push(c);
         }
         (
-            TokenAndLocation::new(Token::BlockComment(body.trim().to_string()), line, column),
+            TokenAndLocation::new(
+                Token::BlockComment(body.trim().to_string()),
+                line,
+                column,
+                false,
+            ),
             false,
         )
     }
@@ -339,7 +363,7 @@ impl Lexer {
             self.advance();
         }
         (
-            TokenAndLocation::new(Token::LineComment, line, column),
+            TokenAndLocation::new(Token::LineComment, line, column, false),
             false,
         )
     }
@@ -354,7 +378,7 @@ impl Lexer {
             body.push(self.advance());
         }
         (
-            TokenAndLocation::new(Token::Shebang(body.trim().to_string()), line, column),
+            TokenAndLocation::new(Token::Shebang(body.trim().to_string()), line, column, false),
             false,
         )
     }
@@ -374,7 +398,7 @@ impl Lexer {
                 self.advance();
             }
             return (
-                TokenAndLocation::new(Token::LtLtEqGtGt, line, column),
+                TokenAndLocation::new(Token::LtLtEqGtGt, line, column, false),
                 false,
             );
         }
@@ -383,16 +407,22 @@ impl Lexer {
         if self.peek_at(0) == Some('=') && self.peek_at(1) == Some('>') {
             self.advance();
             self.advance();
-            return (TokenAndLocation::new(Token::LtEqGt, line, column), false);
+            return (
+                TokenAndLocation::new(Token::LtEqGt, line, column, false),
+                false,
+            );
         }
 
         // <<
         if self.peek_at(0) == Some('<') {
             self.advance();
-            return (TokenAndLocation::new(Token::LtLt, line, column), false);
+            return (
+                TokenAndLocation::new(Token::LtLt, line, column, false),
+                false,
+            );
         }
 
-        (TokenAndLocation::new(Token::Lt, line, column), false)
+        (TokenAndLocation::new(Token::Lt, line, column, false), false)
     }
 
     fn integer(&mut self) -> (TokenAndLocation, bool) {
@@ -405,7 +435,7 @@ impl Lexer {
         }
         let value = num.parse().unwrap_or(u64::MAX);
         (
-            TokenAndLocation::new(Token::Integer(value), line, column),
+            TokenAndLocation::new(Token::Integer(value), line, column, false),
             false,
         )
     }
@@ -429,12 +459,24 @@ impl Lexer {
 
         // Check for keywords
         match s.as_str() {
-            "if" => (TokenAndLocation::new(Token::If, line, column), false),
-            "then" => (TokenAndLocation::new(Token::Then, line, column), false),
-            "elif" => (TokenAndLocation::new(Token::Elif, line, column), false),
-            "else" => (TokenAndLocation::new(Token::Else, line, column), false),
-            "fi" => (TokenAndLocation::new(Token::Fi, line, column), false),
-            _ => (TokenAndLocation::new(Token::Ident(s), line, column), false),
+            "if" => (TokenAndLocation::new(Token::If, line, column, false), false),
+            "then" => (
+                TokenAndLocation::new(Token::Then, line, column, false),
+                false,
+            ),
+            "elif" => (
+                TokenAndLocation::new(Token::Elif, line, column, false),
+                false,
+            ),
+            "else" => (
+                TokenAndLocation::new(Token::Else, line, column, false),
+                false,
+            ),
+            "fi" => (TokenAndLocation::new(Token::Fi, line, column, false), false),
+            _ => (
+                TokenAndLocation::new(Token::Ident(s), line, column, false),
+                false,
+            ),
         }
     }
 }
@@ -521,5 +563,67 @@ mod tests {
     #[test]
     fn lex_ampersand() {
         assert_eq!(tokens("&"), vec![Ampersand, Eof]);
+    }
+
+    /// FOOP-75 §5.3: the lexer must record whether whitespace preceded each
+    /// token, because `column` cannot answer the adjacency question — it does
+    /// not count skipped whitespace (`skip_whitespace` advances `pos` without
+    /// bumping `column`).
+    ///
+    /// Regression guard for the exact defect measured on jia@dc6db093:
+    /// `"{a =$ b}"` and `"{a = $ b}"` produced byte-identical token streams,
+    /// which made FOOP-75 §5's space rule unimplementable.
+    #[test]
+    fn foop75_lexer_records_preceding_space() {
+        let toks = Lexer::new("{a =$ b}").tokenize();
+        let dollar = toks.iter().find(|t| t.token == Dollar).expect("has $");
+        assert!(
+            !dollar.preceded_by_space,
+            "`=$`: the $ is adjacent to the ="
+        );
+
+        let toks = Lexer::new("{a = $ b}").tokenize();
+        let dollar = toks.iter().find(|t| t.token == Dollar).expect("has $");
+        assert!(
+            dollar.preceded_by_space,
+            "`= $`: the $ is NOT adjacent to the ="
+        );
+
+        let toks = Lexer::new("{a =   $ b}").tokenize();
+        let dollar = toks.iter().find(|t| t.token == Dollar).expect("has $");
+        assert!(
+            dollar.preceded_by_space,
+            "`=   $`: multiple spaces, still not adjacent"
+        );
+    }
+
+    /// FOOP-75 §5.3: tabs and newlines count as space for adjacency.
+    #[test]
+    fn foop75_lexer_counts_tab_and_newline_as_space() {
+        for src in ["{a =\t$ b}", "{a =\n$ b}"] {
+            let toks = Lexer::new(src).tokenize();
+            let dollar = toks.iter().find(|t| t.token == Dollar).unwrap();
+            assert!(
+                dollar.preceded_by_space,
+                "tab/newline must count as space: {src:?}"
+            );
+        }
+    }
+
+    /// FOOP-75 §5.3: the very first token of a source has nothing before it.
+    /// It is not "preceded by space" — there is no space, there is nothing.
+    #[test]
+    fn foop75_lexer_first_token_is_not_preceded_by_space() {
+        let toks = Lexer::new("{a}").tokenize();
+        assert!(
+            !toks[0].preceded_by_space,
+            "the first token has no preceding whitespace"
+        );
+        // ...but a source that OPENS with whitespace does flag its first token.
+        let toks = Lexer::new("  {a}").tokenize();
+        assert!(
+            toks[0].preceded_by_space,
+            "leading whitespace flags the first token"
+        );
     }
 }

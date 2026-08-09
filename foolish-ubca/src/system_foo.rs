@@ -954,6 +954,144 @@ mod tests {
         assert!(root.borrow().core().get_nyes().is_constanic());
     }
 
+    // ── FOOP-75: Assignment Attached Searches ──────────────────────────
+
+    /// FOOP-54 §D.5 (a `Complete` FOOP, the in-force authority):
+    /// `a =$ b` ≡ `a = b$` — "bind the value of the LAST statement of `b`
+    /// to the name `a`."
+    ///
+    /// Measured on jia@dc6db093, BEFORE FOOP-75: this yielded the whole
+    /// brane `{1;2;3}` (WOCONSTANIC), not the tail. The old `=$` built
+    /// `BinaryOp("$", UnanchoredSeek{-1}, rhs)`, whose `"$"` arm in
+    /// `fir_kinds.rs` validated the RHS was a brane and then returned
+    /// WITHOUT extracting anything. FOOP-75 §7 routes `=$` through
+    /// `IndexFir` instead, exactly as postfix `b$` always did.
+    #[test]
+    fn foop75_attached_tail_binds_the_tail_value() {
+        let v = statement_value("{b = {1,2,3}; y =$ b}", 1);
+        assert_eq!(
+            v.borrow().as_i64(),
+            Some(3),
+            "`y =$ b` must bind b's TAIL (3), per FOOP-54 §D.5"
+        );
+    }
+
+    /// FOOP-75 §7 / §Motivation defect (2): `=^` did not evaluate AT ALL
+    /// before this FOOP — there was no `"^"` arm in `fir_kinds.rs` to match
+    /// the `"$"` one, so the OperatorFir never settled and leaked
+    /// `y=Op^({1;2;3}, {1;2;3}, WOCONSTANIC)` into rendered output.
+    #[test]
+    fn foop75_attached_head_binds_the_head_value() {
+        let v = statement_value("{b = {1,2,3}; y =^ b}", 1);
+        assert_eq!(
+            v.borrow().as_i64(),
+            Some(1),
+            "`y =^ b` must bind b's HEAD (1)"
+        );
+    }
+
+    /// FOOP-75 §2 tree identity implies VALUE identity: the attached and
+    /// postfix spellings are the same program, so they must settle alike.
+    #[test]
+    fn foop75_attached_and_postfix_settle_identically() {
+        for (attached, postfix, expected) in [
+            ("{b = {1,2,3}; y =$ b}", "{b = {1,2,3}; y = b$}", 3),
+            ("{b = {1,2,3}; y =^ b}", "{b = {1,2,3}; y = b^}", 1),
+        ] {
+            let a = statement_value(attached, 1);
+            let p = statement_value(postfix, 1);
+            assert_eq!(a.borrow().as_i64(), Some(expected), "{attached}");
+            assert_eq!(
+                a.borrow().as_i64(),
+                p.borrow().as_i64(),
+                "attached and postfix must agree: {attached} vs {postfix}"
+            );
+        }
+    }
+
+    /// FOOP-75 §8 / AGENTS.md §Searches: an ANCHORED miss settles NK. `4` is
+    /// not a brane, so its tail is provably unfindable.
+    ///
+    /// This is the case pinned by the frozen verified baseline
+    /// `regression/disappearing_brane_statements` (input `d =$ 4`). The
+    /// OUTCOME is unchanged by FOOP-75 — still NK — though the rendered text
+    /// changes, which is why that baseline needs a human signing decision.
+    #[test]
+    fn foop75_attached_tail_on_non_brane_settles_nk() {
+        let composed = compose_program_with_system("{d =$ 4}").unwrap();
+        let root = &composed[0];
+        step_to_settled(root, &Scope::empty());
+        let program = program_result(root).expect("program member must exist");
+        let stmt = program.borrow().stmt_at(0).expect("statement exists");
+        let body = stmt.borrow().core().foolish_children()[0].clone();
+        assert_eq!(
+            body.borrow().core().get_nyes(),
+            Nyes::Nk,
+            "a tail search anchored on the non-brane `4` settles NK \
+             (AGENTS.md §Searches: anchored miss → NK)"
+        );
+
+        // FOOP-75 §7: settling NK is only half the answer — the Foolisher
+        // needs to know WHY. The deleted `OperatorFir` `"$"` arm recorded
+        // `"4 is not a brane"`; the `IndexFir` path must record the same
+        // diagnosis, or the rendered output degrades from
+        //     d =$ ??? (4 is not a brane)
+        // to a bare
+        //     d =$ 4 (???)
+        // which says the result is unknown without saying what went wrong.
+        assert_eq!(
+            body.borrow().core().alarm_reason().as_deref(),
+            Some("4 is not a brane"),
+            "an anchored search on a non-brane must say WHY it settled NK"
+        );
+    }
+
+    /// FOOP-75 §7: the non-brane diagnosis names the offending value, so
+    /// distinct anchors give distinct messages rather than one generic one.
+    #[test]
+    fn foop75_non_brane_anchor_names_the_value() {
+        for (src, expected) in [
+            ("{d =$ 4}", "4 is not a brane"),
+            ("{d =^ 7}", "7 is not a brane"),
+        ] {
+            let composed = compose_program_with_system(src).unwrap();
+            let root = &composed[0];
+            step_to_settled(root, &Scope::empty());
+            let program = program_result(root).expect("program member must exist");
+            let stmt = program.borrow().stmt_at(0).expect("statement exists");
+            let body = stmt.borrow().core().foolish_children()[0].clone();
+            assert_eq!(
+                body.borrow().core().alarm_reason().as_deref(),
+                Some(expected),
+                "{src} must diagnose its own anchor"
+            );
+        }
+    }
+
+    /// FOOP-75 §4: the non-brane diagnosis must reach RENDERED output, not
+    /// just the `alarm_reason` field — `alarm_reason` is never read on the
+    /// sequencing path, so a reason recorded there alone is invisible.
+    ///
+    /// Pins the exact text of the frozen `verified/` baseline
+    /// `regression/disappearing_brane_statements` (input `d =$ 4`). The
+    /// reason travels as the search's RESULT and takes the value slot; an
+    /// earlier attempt rendered `d =$ 4 (??? (4 is not a brane))`, doubling
+    /// the anchor.
+    #[test]
+    fn foop75_non_brane_reason_reaches_rendered_output() {
+        use foolish_core::{Evaluator, FirSequencer};
+        let firs = crate::UbcaEvaluator.evaluate("{a = 1; d =$ 4}").unwrap();
+        let rendered = firs
+            .iter()
+            .map(|f| FirSequencer::format(&foolish_core::clone_steppable(f)))
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(
+            rendered.contains("d =$ ??? (4 is not a brane)"),
+            "the rendered statement must carry the diagnosis; got:\n{rendered}"
+        );
+    }
+
     /// A program that cannot settle must RENDER as NK with the
     /// ITERATION-EXCEEDED alarm, not as a pre-constanic `BRANING` brane.
     ///

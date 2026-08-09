@@ -269,7 +269,7 @@ search immediately after the `=`:
 
 ```
 e = {}^        renders   e =^ {} (???)
-d =$ 4         renders   d =$ 4 (???)
+d =$ 4         renders   d =$ ??? (4 is not a brane)
 ```
 
 Both spellings build the same tree (§2), so both render this way.
