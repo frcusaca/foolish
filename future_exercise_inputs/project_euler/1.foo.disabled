@@ -13,8 +13,8 @@ Find the sum of all the multiples of 3 or 5 below 1000.
   'ite = ({<<#-2>>, <<#-1>>} INTERNAL_ite)~cond=(<<#-3>>)&#1
 
   !! Congrulent modulo ```{a,b,c}'cmod``` computes boolean a%b==c
-  INTERNAL_cmod = {_eq, {_numerator,_divisor, 'mod}$, 'eq};
-  'cmod = {_numerator=<<#-3>>,_divisor=<<#-3>>,_eq=<<#-3>>, INTERNAL_cmod$}
+  INTERNAL_cmod = {INTERNAL_eq, {INTERNAL_numerator,INTERNAL_divisor, 'mod}$, 'eq};
+  'cmod = {INTERNAL_numerator=#-3,INTERNAL_divisor=#-3,INTERNAL_eq=#-3, INTERNAL_cmod$}
   loop = {
     !! recursion without self-reference
     self=<<#-1>>
@@ -22,16 +22,16 @@ Find the sum of all the multiples of 3 or 5 below 1000.
     !! sum35 is the accumulant.
 
     lv=lv+1;
-    divides_3 $= {lv,3,0}'cmod;
-    divides_5 $= {lv,5,0}'cmod;
-    cond1 $=  {divides_3, divides_5, 'or};
-    sum35 $= sum35 + {cond1, lv, 0, 'ite}$
+    divides_3 = ({lv,3,0}'cmod)$;
+    divides_5 = ({lv,5,0}'cmod)$;
+    cond1 = ({divides_3, divides_5, 'or})$;
+    sum35 = sum35 + ({cond1, sum35+lv, sum35, 'ite})$
 
-    cond2 = {lv, 1000, 'lt}$;
+    cond2 = ({lv, 1000, 'lt})$;
     continue = <self loop>;
     exit=sum35
-    answer $= {cond2, <continue>, sum35, 'ite}
+    answer = ({cond2, <continue>, sum35, 'ite})$
   }
-  lv  = 1; sum = 0;
-  answer $= {loop} loop
+  lv  = 1; sum35 = 0;
+  answer = ({loop} loop)$
 }

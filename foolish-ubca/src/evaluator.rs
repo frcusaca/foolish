@@ -319,8 +319,6 @@ fn proto_to_core_fir_inner(
             if let Some(result) = borrowed.core().ubc_children().first() {
                 return proto_to_core_fir_inner(result, preserve_search, current_stmt);
             }
-            // Not yet settled (or settled without a result): render the state
-            // itself rather than inventing a value.
             NkFirBuilder::new(
                 borrowed
                     .core()
@@ -330,6 +328,28 @@ fn proto_to_core_fir_inner(
             )
             .state(state)
             .build()
+        }
+        FirKind::Modulo => {
+            if let Some(result) = borrowed.core().ubc_children().first() {
+                return proto_to_core_fir_inner(result, preserve_search, current_stmt);
+            }
+            NkFirBuilder::new(
+                borrowed
+                    .core()
+                    .alarm_reason()
+                    .as_deref()
+                    .unwrap_or("modulo"),
+            )
+            .state(state)
+            .build()
+        }
+        FirKind::Or => {
+            if let Some(result) = borrowed.core().ubc_children().first() {
+                return proto_to_core_fir_inner(result, preserve_search, current_stmt);
+            }
+            NkFirBuilder::new(borrowed.core().alarm_reason().as_deref().unwrap_or("or"))
+                .state(state)
+                .build()
         }
         FirKind::Operator => {
             // Unwrap to the result when the operator successfully computed

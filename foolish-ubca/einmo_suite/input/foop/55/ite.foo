@@ -1,0 +1,7 @@
+{
+	!! FOOP-55: ite — if-then-else mechanism
+	!! {cond, then, else, 'ite}$ selects then or else based on cond
+
+	r1 = ({'True, 42, 99, 'ite})$;     !! → 42
+	r2 = ({'False, 42, 99, 'ite})$;    !! → 99
+}

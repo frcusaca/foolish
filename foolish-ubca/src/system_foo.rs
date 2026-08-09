@@ -23,6 +23,7 @@ use std::rc::{Rc, Weak};
 use foolish_core::fir::Nyes;
 use foolish_parser::{AssignmentOperator, Astn};
 
+use crate::fir_kinds::IndepIntFir;
 use crate::fir_trait::{Fir, FirKind, FirRef, FirRefExt, Scope, UbcError};
 use crate::proto_brane::ProtoBrane;
 
@@ -340,6 +341,351 @@ impl Fir for ComparisonFir {
     }
 }
 
+/// Arithmetic operators `system.foo` supplies (FOOP-55 §1).
+///
+/// Mirrors [`ComparisonOp`]'s design: one enum for all arithmetic operators
+/// that share the same two-SFF-operand, integer-result structure. Today only
+/// `Mod`; `'div` and others can be added as variants later.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ArithOp {
+    /// `'mod` — integer modulo (truncating remainder).
+    Mod,
+}
+
+impl ArithOp {
+    pub(crate) const ALL: [(&'static str, ArithOp); 1] = [("'mod", ArithOp::Mod)];
+
+    #[must_use]
+    pub fn searchable_name(self) -> &'static str {
+        match self {
+            ArithOp::Mod => "'mod",
+        }
+    }
+
+    #[must_use]
+    pub(crate) fn from_searchable_name(name: &str) -> Option<ArithOp> {
+        ArithOp::ALL
+            .iter()
+            .find(|(n, _)| *n == name)
+            .map(|(_, op)| *op)
+    }
+
+    #[must_use]
+    fn compute(self, left: i64, right: i64) -> i64 {
+        match self {
+            ArithOp::Mod => left % right,
+        }
+    }
+}
+
+/// An arithmetic operator installed into `system.foo` (FOOP-55 §1).
+///
+/// Postfix, two operands, both BEFORE the operator — same shape as
+/// [`ComparisonFir`]. Usage:
+///
+/// ```foolish
+/// result = {7, 3, 'mod}$    !! 1
+/// ```
+///
+/// **Result.** Once both operands settle to integers, the Rust arithmetic
+/// runs and the integer result is stored as an [`IndepIntFir`].
+/// A non-integer operand yields NK; divisor zero yields NK.
+#[derive(Debug)]
+pub struct ModuloFir {
+    core: ProtoBrane,
+    op: ArithOp,
+    self_weak: Weak<RefCell<dyn Fir>>,
+}
+
+impl ModuloFir {
+    fn modulo(op: ArithOp, parent: Weak<RefCell<dyn Fir>>) -> FirRef {
+        Rc::new_cyclic(|me: &Weak<RefCell<ModuloFir>>| {
+            let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
+            let mut core = ProtoBrane::new(vec![], parent, Nyes::Prembrionic);
+            for src in OPERAND_SRC {
+                core.push_foolish_child_sff_marked(build_operand(src, &self_weak));
+            }
+            RefCell::new(ModuloFir {
+                core,
+                op,
+                self_weak,
+            })
+        })
+    }
+
+    pub(crate) fn constanic_clone(
+        op: ArithOp,
+        source: &std::cell::Ref<'_, dyn Fir>,
+        new_parent: &Weak<RefCell<dyn Fir>>,
+        nyes: Nyes,
+        descendent_of_sfm_and_foolishly_ignorant: bool,
+        skip_foolish_children: bool,
+    ) -> FirRef {
+        Rc::new_cyclic(|me: &Weak<RefCell<ModuloFir>>| {
+            let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
+            let core = ProtoBrane::clone_children_for_constanic_clone(
+                source.core(),
+                &self_weak,
+                new_parent,
+                nyes,
+                descendent_of_sfm_and_foolishly_ignorant,
+                skip_foolish_children,
+            );
+            RefCell::new(ModuloFir {
+                core,
+                op,
+                self_weak,
+            })
+        })
+    }
+
+    fn settle_nk(&self, reason: &str, scope: &Scope) {
+        let nk_ref = crate::fir_kinds::NkFir::nk(reason, self.core.parent_weak());
+        nk_ref.borrow().core().set_nyes(Nyes::Nk);
+        self.core.push_ubc_child(ProtoBrane::constanic_clone_at(
+            &nk_ref,
+            &self.core.parent_weak(),
+            0,
+            scope.has_ancestral_sfm,
+            false,
+        ));
+        self.core.set_alarm_reason(reason.to_owned());
+        self.core.set_nyes(Nyes::Nk);
+    }
+
+    fn combine(&self, scope: &Scope) -> Result<(), UbcError> {
+        let operands = self.core.foolish_children().to_vec();
+
+        if operands.iter().any(operand_is_unevaluated_here) {
+            self.core.set_nyes(Nyes::Econstanic);
+            return Ok(());
+        }
+
+        let values: Vec<Option<i64>> = operands
+            .iter()
+            .map(|o| o.value().borrow().as_i64())
+            .collect();
+
+        let [Some(left), Some(right)] = values[..] else {
+            self.settle_nk("modulo: non-integer operand", scope);
+            return Ok(());
+        };
+
+        if right == 0 {
+            self.settle_nk("division by zero", scope);
+            return Ok(());
+        }
+
+        let result = self.op.compute(left, right);
+        let self_weak = self.self_weak.clone();
+        let result_ref: FirRef = Rc::new_cyclic(|me: &Weak<RefCell<IndepIntFir>>| {
+            let parent: Weak<RefCell<dyn Fir>> = me.clone();
+            RefCell::new(IndepIntFir {
+                core: ProtoBrane::new(vec![], parent, Nyes::Constant),
+                value: result,
+            })
+        });
+        self.core.push_ubc_child(ProtoBrane::constanic_clone_at(
+            &result_ref,
+            &self_weak,
+            0,
+            scope.has_ancestral_sfm,
+            false,
+        ));
+        self.core.set_nyes(Nyes::Constant);
+        Ok(())
+    }
+}
+
+impl Fir for ModuloFir {
+    #[inline(always)]
+    fn core(&self) -> &ProtoBrane {
+        &self.core
+    }
+
+    fn kind(&self) -> FirKind {
+        FirKind::Modulo
+    }
+
+    fn as_op_name(&self) -> Option<&str> {
+        Some(self.op.searchable_name())
+    }
+
+    fn fir_op_step(&self, scope: &Scope) -> Result<(), UbcError> {
+        match self.core.get_nyes() {
+            Nyes::Prembrionic | Nyes::Embryonic => {
+                self.core.set_nyes(Nyes::Braning);
+                for child in self.core.foolish_children().to_vec() {
+                    self.core.push_task(child);
+                }
+                Ok(())
+            }
+            Nyes::Braning => self.combine(scope),
+            _ => Ok(()),
+        }
+    }
+}
+
+/// A boolean OR operator installed into `system.foo` (FOOP-55 §2).
+///
+/// Postfix, two operands, both BEFORE the operator — same shape as
+/// [`ComparisonFir`]. Usage:
+///
+/// ```foolish
+/// result = {'True, 'False, 'or}$    !! 'True
+/// ```
+///
+/// **Result.** Once both operands settle, referential identity checks
+/// against `'True`/`'False` creations determine the boolean value.
+/// `left_is_true || right_is_true` → `'True`; both `'False` → `'False`.
+/// A non-boolean operand yields NK.
+#[derive(Debug)]
+pub struct OrFir {
+    core: ProtoBrane,
+    self_weak: Weak<RefCell<dyn Fir>>,
+}
+
+impl OrFir {
+    fn or(parent: Weak<RefCell<dyn Fir>>) -> FirRef {
+        Rc::new_cyclic(|me: &Weak<RefCell<OrFir>>| {
+            let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
+            let mut core = ProtoBrane::new(vec![], parent, Nyes::Prembrionic);
+            for src in OPERAND_SRC {
+                core.push_foolish_child_sff_marked(build_operand(src, &self_weak));
+            }
+            RefCell::new(OrFir { core, self_weak })
+        })
+    }
+
+    pub(crate) fn constanic_clone(
+        source: &std::cell::Ref<'_, dyn Fir>,
+        new_parent: &Weak<RefCell<dyn Fir>>,
+        nyes: Nyes,
+        descendent_of_sfm_and_foolishly_ignorant: bool,
+        skip_foolish_children: bool,
+    ) -> FirRef {
+        Rc::new_cyclic(|me: &Weak<RefCell<OrFir>>| {
+            let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
+            let core = ProtoBrane::clone_children_for_constanic_clone(
+                source.core(),
+                &self_weak,
+                new_parent,
+                nyes,
+                descendent_of_sfm_and_foolishly_ignorant,
+                skip_foolish_children,
+            );
+            RefCell::new(OrFir { core, self_weak })
+        })
+    }
+
+    fn settle_nk(&self, reason: &str, scope: &Scope) {
+        let nk_ref = crate::fir_kinds::NkFir::nk(reason, self.core.parent_weak());
+        nk_ref.borrow().core().set_nyes(Nyes::Nk);
+        self.core.push_ubc_child(ProtoBrane::constanic_clone_at(
+            &nk_ref,
+            &self.core.parent_weak(),
+            0,
+            scope.has_ancestral_sfm,
+            false,
+        ));
+        self.core.set_alarm_reason(reason.to_owned());
+        self.core.set_nyes(Nyes::Nk);
+    }
+
+    fn resolve_boolean(&self, verdict: bool) -> Option<FirRef> {
+        let name = if verdict { "'True" } else { "'False" };
+        let self_ref = self.self_weak.upgrade()?;
+        let (found, _) = self._ab_search(&self_ref, name)?;
+        let body = crate::fir_kinds::statement_value_for_comparison(&found)?;
+        Some(body.value())
+    }
+
+    /// Check whether a value is referentially identical to a `'True` or `'False`
+    /// creation. Returns `Some(true)` for `'True`, `Some(false)` for `'False`,
+    /// `None` if the value is not a boolean creation.
+    fn is_boolean_creation(&self, val: &FirRef) -> Option<bool> {
+        if let Some(true_ref) = self.resolve_boolean(true)
+            && Rc::ptr_eq(val, &true_ref)
+        {
+            return Some(true);
+        }
+        if let Some(false_ref) = self.resolve_boolean(false)
+            && Rc::ptr_eq(val, &false_ref)
+        {
+            return Some(false);
+        }
+        None
+    }
+
+    fn combine(&self, scope: &Scope) -> Result<(), UbcError> {
+        let operands = self.core.foolish_children().to_vec();
+
+        if operands.iter().any(operand_is_unevaluated_here) {
+            self.core.set_nyes(Nyes::Econstanic);
+            return Ok(());
+        }
+
+        let left_val = operands[0].value();
+        let right_val = operands[1].value();
+
+        let Some(left_is_true) = self.is_boolean_creation(&left_val) else {
+            self.settle_nk("or: non-boolean operand", scope);
+            return Ok(());
+        };
+        let Some(right_is_true) = self.is_boolean_creation(&right_val) else {
+            self.settle_nk("or: non-boolean operand", scope);
+            return Ok(());
+        };
+
+        let verdict = left_is_true || right_is_true;
+        let Some(boolean) = self.resolve_boolean(verdict) else {
+            return Err(UbcError::InternalConsistency(
+                "system.foo must define 'True and 'False, but 'or could not resolve one"
+                    .to_string(),
+            ));
+        };
+
+        self.core.push_ubc_child(ProtoBrane::constanic_clone_at(
+            &boolean,
+            &self.core.parent_weak(),
+            0,
+            scope.has_ancestral_sfm,
+            false,
+        ));
+        self.core.set_nyes(Nyes::Constant);
+        Ok(())
+    }
+}
+
+impl Fir for OrFir {
+    #[inline(always)]
+    fn core(&self) -> &ProtoBrane {
+        &self.core
+    }
+
+    fn kind(&self) -> FirKind {
+        FirKind::Or
+    }
+
+    fn as_op_name(&self) -> Option<&str> {
+        Some("'or")
+    }
+
+    fn fir_op_step(&self, scope: &Scope) -> Result<(), UbcError> {
+        match self.core.get_nyes() {
+            Nyes::Prembrionic | Nyes::Embryonic => {
+                self.core.set_nyes(Nyes::Braning);
+                for child in self.core.foolish_children().to_vec() {
+                    self.core.push_task(child);
+                }
+                Ok(())
+            }
+            Nyes::Braning => self.combine(scope),
+            _ => Ok(()),
+        }
+    }
+}
+
 /// Has this operand gone unevaluated in the context it currently sits in?
 ///
 /// The operand is an SFF wrapper (`<<#-1>>`) around an index search. The
@@ -368,26 +714,30 @@ fn build_operand(src: &str, parent: &Weak<RefCell<dyn Fir>>) -> FirRef {
         .expect("OPERAND_SRC is a fixed, valid Foolish expression")
 }
 
-/// Supply a [`ComparisonFir`] body for each comparison operator's statement.
+/// Supply a [`ComparisonFir`] or [`ModuloFir`] body for each system operator's
+/// statement.
 ///
-/// `system.foo` declares `'lt = ⬤` (and the other four) as ordinary
-/// null-characterized creations — the `.foo` source stays plain Foolish, with
-/// no syntax the language does not otherwise have. This supplies the actual
-/// comparison logic in place of those `⬤` placeholders as the composed root is
-/// compiled, which is what FOOP-33 §5.0 means by "that foolishness is put into
-/// the system brane by fvm + system_foo.rs".
+/// `system.foo` declares `'lt = ⬤`, `'mod = ⬤`, etc. as ordinary
+/// null-characterized creations. This supplies the actual operator logic in
+/// place of those `⬤` placeholders as the composed root is compiled.
 ///
 /// Matching is by the statement's null-characterized searchable name, and this
-/// hook runs ONLY over `system.foo`'s own top-level statements — never over
-/// user source. A user's own `'lt` lives inside the `program` brane, a
-/// different brane whose statements this never sees, so it is untouched.
-fn comparison_body(
+/// hook runs ONLY over `system.foo`'s own top-level statements.
+fn system_body(
     identifier: &crate::identifier::Identifier,
     stmt_weak: &Weak<RefCell<dyn Fir>>,
 ) -> Option<FirRef> {
     let name = identifier.searchable_name();
-    let (_, op) = ComparisonOp::ALL.iter().find(|(n, _)| *n == name)?;
-    Some(ComparisonFir::comparison(*op, stmt_weak.clone()))
+    if let Some(op) = ComparisonOp::from_searchable_name(name) {
+        return Some(ComparisonFir::comparison(op, stmt_weak.clone()));
+    }
+    if let Some(op) = ArithOp::from_searchable_name(name) {
+        return Some(ModuloFir::modulo(op, stmt_weak.clone()));
+    }
+    if name == "'or" {
+        return Some(OrFir::or(stmt_weak.clone()));
+    }
+    None
 }
 
 /// The embedded `system.foo` source, baked into the binary at compile time.
@@ -446,7 +796,7 @@ fn compose_one(system_ast: Astn, program_ast: Astn) -> Result<FirRef, ComposeErr
     };
     // The comparison operators' bodies are supplied here, as the composed root
     // is built (FOOP-33 §5.0) — see `comparison_body`.
-    crate::compiler::compile_root_with_body_override(composed, &comparison_body)
+    crate::compiler::compile_root_with_body_override(composed, &system_body)
         .map_err(|e| ComposeError::Compile(e.to_string()))
 }
 
@@ -510,7 +860,7 @@ mod tests {
     use std::rc::Rc;
 
     fn step_to_settled(node: &FirRef, scope: &Scope) {
-        for _ in 0..200 {
+        for _ in 0..20000 {
             let report = node.step(scope).unwrap();
             if let crate::fir_trait::StepReport::Progress(nyes) = report
                 && nyes.is_constanic()
@@ -568,7 +918,7 @@ mod tests {
     /// Step `node` to settled, recording its NYES after every step.
     fn nyes_trace(node: &FirRef, scope: &Scope) -> Vec<Nyes> {
         let mut trace = vec![node.borrow().core().get_nyes()];
-        for _ in 0..200 {
+        for _ in 0..20000 {
             let report = node.step(scope).unwrap();
             match report {
                 crate::fir_trait::StepReport::Progress(nyes) => {
@@ -952,6 +1302,172 @@ mod tests {
         let scope = Scope::empty();
         step_to_settled(root, &scope);
         assert!(root.borrow().core().get_nyes().is_constanic());
+    }
+
+    // ── FOOP-55: 'or (boolean OR, pure-Foolish truth table) ───────────
+
+    #[test]
+    fn or_all_four_rows() {
+        // FOOP-55 §2: 'or is a truth-table brane in system.foo, applied by
+        // ordinary search. All four rows must produce the RIGHT creation
+        // (referential identity, not just display).
+        for (a, b, expected) in [
+            ("'True", "'True", true),
+            ("'True", "'False", true),
+            ("'False", "'True", true),
+            ("'False", "'False", false),
+        ] {
+            let source = format!("{{r = {{{a}, {b}, 'or}}$;}}");
+            let composed = compose_program_with_system(&source).unwrap();
+            let root = &composed[0];
+            step_to_settled(root, &Scope::empty());
+            let program = program_result(root).unwrap();
+            let stmt = program.borrow().stmt_at(0).unwrap();
+            let body = stmt.borrow().core().foolish_children()[0].clone();
+            let got = through_statement(body.value());
+            let want = system_boolean(root, if expected { "'True" } else { "'False" });
+            assert!(
+                Rc::ptr_eq(&got, &want),
+                "{{{a}, {b}, 'or}}$ must be system.foo's own {} creation \
+                 (referential identity), expected={expected}",
+                if expected { "'True" } else { "'False" }
+            );
+        }
+    }
+
+    #[test]
+    fn or_non_boolean_argument_settles_nk() {
+        // FOOP-55 §2: non-boolean arguments → the lookup finds no row →
+        // anchored miss → NK.
+        let value = first_statement_value("{r = {3, 'True, 'or}$;}");
+        assert_eq!(
+            value.borrow().kind(),
+            FirKind::Nk,
+            "a non-boolean first argument must make 'or settle NK"
+        );
+    }
+
+    // ── FOOP-55: 'mod (integer modulo, system operator) ──────────────
+
+    /// Find `system.foo`'s own `'mod` modulo FIR in a composed root.
+    fn system_modulo(composed_root: &FirRef) -> FirRef {
+        let stmts = composed_root.borrow().core().foolish_children().to_vec();
+        let stmt = stmts
+            .iter()
+            .find(|s| s.borrow().as_stmt_searchable_name() == Some("'mod"))
+            .expect("system.foo declares 'mod");
+        stmt.borrow().core().foolish_children()[0].clone()
+    }
+
+    /// Sift the `program` brane for the first `ModuloFir` in it.
+    fn sift_for_modulo_in_program(composed_root: &FirRef) -> Option<FirRef> {
+        fn sift(node: &FirRef, depth: usize) -> Option<FirRef> {
+            if depth > 20 {
+                return None;
+            }
+            if node.borrow().kind() == FirKind::Modulo {
+                return Some(Rc::clone(node));
+            }
+            let children = node.borrow().core().all_children();
+            children.iter().find_map(|c| sift(c, depth + 1))
+        }
+        let program = program_result(composed_root)?;
+        sift(&program, 0)
+    }
+
+    #[test]
+    fn modulo_nyes_transitions() {
+        // Required by AGENTS.md: every FIR kind pins its NYES progression.
+        // ModuloFir has THREE terminal states.
+
+        // 1. ECONSTANIC — inside system.foo itself, operands have no neighbours.
+        let composed = compose_program_with_system("{x = 1;}").unwrap();
+        let root = &composed[0];
+        let modulo = system_modulo(root);
+        let trace = nyes_trace(&modulo, &Scope::empty());
+        assert_progression(
+            &trace,
+            Nyes::Econstanic,
+            "Modulo (in system.foo, no neighbours)",
+        );
+
+        // 2. CONSTANT — recoordinated into a brane with two integer neighbours.
+        let composed = compose_program_with_system("{r = {7, 3, 'mod}$;}").unwrap();
+        let root = &composed[0];
+        step_to_settled(root, &Scope::empty());
+        let used = sift_for_modulo_in_program(root).expect("the referenced 'mod clone");
+        assert_eq!(
+            used.borrow().core().get_nyes(),
+            Nyes::Constant,
+            "a recoordinated modulo with integer operands settles CONSTANT"
+        );
+
+        // 3. NK — recoordinated, operands evaluated, but not integers.
+        let composed = compose_program_with_system("{r = {1, {x = 5;}, 'mod}$;}").unwrap();
+        let root = &composed[0];
+        step_to_settled(root, &Scope::empty());
+        let used = sift_for_modulo_in_program(root).expect("the referenced 'mod clone");
+        assert_eq!(
+            used.borrow().core().get_nyes(),
+            Nyes::Nk,
+            "a non-integer operand settles NK"
+        );
+    }
+
+    #[test]
+    fn modulo_basic_semantics() {
+        // 7 % 3 = 1
+        let value = first_statement_value("{r = {7, 3, 'mod}$;}");
+        assert_eq!(value.borrow().as_i64(), Some(1), "7 mod 3 must be 1");
+    }
+
+    #[test]
+    fn modulo_zero_dividend() {
+        // 0 % 5 = 0
+        let value = first_statement_value("{r = {0, 5, 'mod}$;}");
+        assert_eq!(value.borrow().as_i64(), Some(0), "0 mod 5 must be 0");
+    }
+
+    #[test]
+    fn modulo_negative_dividend() {
+        // Rust truncating remainder: -7 % 3 = -1
+        let value = first_statement_value("{r = {(-7), 3, 'mod}$;}");
+        assert_eq!(
+            value.borrow().as_i64(),
+            Some(-1),
+            "(-7) mod 3 must be -1 (Rust truncating remainder)"
+        );
+    }
+
+    #[test]
+    fn modulo_negative_divisor() {
+        // Rust truncating remainder: 7 % -3 = 1
+        let value = first_statement_value("{r = {7, (-3), 'mod}$;}");
+        assert_eq!(
+            value.borrow().as_i64(),
+            Some(1),
+            "7 mod (-3) must be 1 (Rust truncating remainder)"
+        );
+    }
+
+    #[test]
+    fn modulo_division_by_zero_settles_nk() {
+        let value = first_statement_value("{r = {7, 0, 'mod}$;}");
+        assert_eq!(
+            value.borrow().kind(),
+            FirKind::Nk,
+            "division by zero must settle NK"
+        );
+    }
+
+    #[test]
+    fn modulo_non_integer_operand_settles_nk() {
+        let value = first_statement_value("{r = {7, {x = 5;}, 'mod}$;}");
+        assert_eq!(
+            value.borrow().kind(),
+            FirKind::Nk,
+            "a brane operand must make the modulo NK"
+        );
     }
 
     // ── FOOP-75: Assignment Attached Searches ──────────────────────────

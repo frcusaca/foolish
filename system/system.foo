@@ -6,4 +6,6 @@
 	'le    = ⬤    !! less-or-equal: <<#-2>> <= <<#-1>>
 	'ge    = ⬤    !! greater-or-equal: <<#-2>> >= <<#-1>>
 	'eq    = ⬤    !! equality: <<#-2>> == <<#-1>>
+	'mod   = ⬤    !! modulo: <<#-2>> % <<#-1>>
+	'or    = ⬤    !! boolean OR: <<#-2>> || <<#-1>>
 }

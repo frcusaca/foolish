@@ -1,0 +1,5 @@
+{
+	!! FOOP-55 §1: 'mod edge cases — NK outcomes
+	r1 = {7, 0, 'mod}$;            !! → NK (division by zero)
+	r2 = {7, {x=5;}, 'mod}$;       !! → NK (non-integer operand)
+}

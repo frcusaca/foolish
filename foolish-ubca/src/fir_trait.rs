@@ -54,6 +54,12 @@ pub enum FirKind {
     /// Two SFF-marked operand lookups, one Rust comparison, a `'True`/`'False`
     /// result. FOOP-33 §5.0; see `system_foo::ComparisonFir`.
     Comparison,
+    /// A `system.foo` arithmetic operator (`'mod`). Two SFF-marked operand
+    /// lookups, one Rust arithmetic operation, an integer result. FOOP-55 §1.
+    Modulo,
+    /// A `system.foo` boolean OR operator (`'or`). Two SFF-marked operand
+    /// lookups, boolean logic on `'True`/`'False` creations. FOOP-55 §2.
+    Or,
 }
 
 /// Minimal Scope stub — enough for compilation. The real Scope comes later

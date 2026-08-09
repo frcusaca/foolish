@@ -1,0 +1,10 @@
+{
+	!! FOOP-55 §2: 'or truth-table — all four rows + non-boolean miss
+	!! Each row uses {A, B, 'or}$ — postfix application
+
+	r1 = {'True, 'True, 'or}$;      !! → 'True
+	r2 = {'True, 'False, 'or}$;     !! → 'True
+	r3 = {'False, 'True, 'or}$;     !! → 'True
+	r4 = {'False, 'False, 'or}$;    !! → 'False
+	r5 = {3, 'True, 'or}$;          !! → NK (non-boolean first arg)
+}

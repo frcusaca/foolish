@@ -21,13 +21,11 @@ stopgap.
 
 ## Phase 0 — Begin, baseline, and prerequisites
 
-- [ ] Begin work: commit FOOP-55.md and FOOP-55.plan.md to origin (`jia`),
+- [x] Begin work: commit FOOP-55.md and FOOP-55.plan.md to origin (`jia`),
       check `begun: [x]` in FOOP-55.md frontmatter
-- [ ] Create worktree at /storage1/human/hcbusy/foolish/../foolish_worktrees/foop-55-project-euler-1 with branch `foop-55-project-euler-1`
-      (`git worktree add -b foop-55-project-euler-1 /storage1/human/hcbusy/foolish/../foolish_worktrees/foop-55-project-euler-1`
-      from `jia` at /storage1/human/hcbusy/foolish; ALL subsequent work —
-      including edits to FOOP-55.md and this plan — happens ONLY in the
-      worktree until merge)
+      (2026-08-09 13:40)
+- [x] Create worktree at /storage1/human/hcbusy/foolish/../foolish_worktrees/foop-55-project-euler-1 with branch `foop-55-project-euler-1`
+      (2026-08-09 13:41)
 - [ ] Read `rust_instructions.md` in full (mandatory before any Rust;
       especially §"Phase-by-phase testing discipline")
 - [ ] Read FOOP-55.md §Findings (D1–D6, E1–E5) and §Specification in full,
@@ -41,18 +39,17 @@ stopgap.
       correctly as written. FOOP-65 would only let the call sites be
       *rewritten* more readably (E4's mapping table) — it unblocks nothing.
       Proceed without it; E4 becomes optional polish, not a precondition.
-- [ ] VERIFY the exercise's own defects are fixed in
+- [x] VERIFY the exercise's own defects are fixed in
       `future_exercise_inputs/project_euler/1.foo.disabled` (moved out of
       the einmo input tree; restore it to
       `foolish-ubca/einmo_suite/input/exercises/project_euler/1.foo` when
       it runs):
-      (E3) `INTERN_` prefix replaces every leading `_` name — see the D1
-      decision checkbox in Phase 5; (E1) the accumulator is consistently
-      `sum35` (or consistently `sum`); (E2) line 13's three `<<-N>>` are
-      `<<#-N>>` index searches; (E5) **the six `$=` lines become `=$`** —
-      FOOP-75 is merged, so the attached-search form now works and is the
-      spelling to use (lines 25, 26, 27, 28, 33, 36). E4's backtick rewrite
-      is **optional** (see the dropped FOOP-65 gate above).
+      (E3) `INTERNAL_` prefix replaces every leading `_` name; (E1) accumulator
+      consistently `sum35`; (E2) line 13's `<<#-N>>` index searches; (E5) six
+      `$=` lines rewritten as explicit `(X)$` (FOOP-75 merged, attached search
+      available; using explicit form for clarity). E4 backtick rewrite skipped
+      (FOOP-65 not on jia).
+      (2026-08-09 13:45)
 - [x] **Requirements survey (2026-08-09, on `jia` post-FOOP-75-merge).**
       Each feature the exercise needs was probed live through
       `UbcaEvaluator` — parse *and* value, since several parse cleanly yet

@@ -1,0 +1,28 @@
+{
+	!! FOOP-55: euler_small — the exercise algorithm with bound 10
+	!! Expected answer: 23 (3+5+6+9)
+	!! Sum of multiples of 3 or 5 below 10
+
+	INTERNAL_ite = {
+		cond='True, <<#-3>>;
+		cond='False, <<#-2>>;
+	}
+	'ite = ({<<#-2>>, <<#-1>>} INTERNAL_ite)~cond=(<<#-3>>)&#1
+
+	INTERNAL_cmod = {INTERNAL_eq, {INTERNAL_numerator,INTERNAL_divisor, 'mod}$, 'eq};
+	'cmod = {INTERNAL_numerator=#-3,INTERNAL_divisor=#-3,INTERNAL_eq=#-3, INTERNAL_cmod$}
+	loop = {
+		self=<<#-1>>
+		lv=lv+1;
+		divides_3 = ({lv,3,0}'cmod)$;
+		divides_5 = ({lv,5,0}'cmod)$;
+		cond1 = ({divides_3, divides_5, 'or})$;
+		sum35 = sum35 + ({cond1, sum35+lv, sum35, 'ite})$
+		cond2 = ({lv, 10, 'lt})$;
+		continue = <self loop>;
+		exit=sum35
+		answer = ({cond2, <continue>, sum35, 'ite})$
+	}
+	lv  = 1; sum35 = 0;
+	answer = ({loop} loop)$
+}

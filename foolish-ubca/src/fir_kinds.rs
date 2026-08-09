@@ -241,15 +241,38 @@ impl ProtoBrane {
                         descendent_of_sfm_and_foolishly_ignorant,
                         skip_foolish_children,
                     ),
-                    // Unreachable: a ComparisonFir always reports one of the
-                    // five names. Degrading to NK rather than panicking keeps
-                    // a construction defect from taking down the evaluator.
                     None => Rc::new(RefCell::new(NkFir {
                         core: ProtoBrane::new(vec![], new_parent.clone(), Nyes::Nk),
                         reason: "comparison: unknown operator".to_string(),
                     })),
                 }
             }
+            FirKind::Modulo => {
+                let op = borrowed
+                    .as_op_name()
+                    .and_then(crate::system_foo::ArithOp::from_searchable_name);
+                match op {
+                    Some(op) => crate::system_foo::ModuloFir::constanic_clone(
+                        op,
+                        &borrowed,
+                        new_parent,
+                        nyes,
+                        descendent_of_sfm_and_foolishly_ignorant,
+                        skip_foolish_children,
+                    ),
+                    None => Rc::new(RefCell::new(NkFir {
+                        core: ProtoBrane::new(vec![], new_parent.clone(), Nyes::Nk),
+                        reason: "modulo: unknown operator".to_string(),
+                    })),
+                }
+            }
+            FirKind::Or => crate::system_foo::OrFir::constanic_clone(
+                &borrowed,
+                new_parent,
+                nyes,
+                descendent_of_sfm_and_foolishly_ignorant,
+                skip_foolish_children,
+            ),
             FirKind::Search => {
                 let clone_nyes_val =
                     nyes.transform_for_clone(descendent_of_sfm_and_foolishly_ignorant);

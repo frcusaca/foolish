@@ -1,0 +1,9 @@
+{
+	!! FOOP-55: cmod — congruent modulo composition
+	!! {a,b,c}'cmod computes boolean (a % b == c)
+	!! Using {a,b,c}'cmod in postfix form
+
+	r1 = ({3, 3, 0}'cmod)$;    !! 3%3==0 → 'True
+	r2 = ({7, 3, 1}'cmod)$;    !! 7%3==1 → 'True
+	r3 = ({7, 3, 0}'cmod)$;    !! 7%3!=0 → 'False
+}
