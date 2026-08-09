@@ -953,4 +953,41 @@ mod tests {
         step_to_settled(root, &scope);
         assert!(root.borrow().core().get_nyes().is_constanic());
     }
+
+    /// A program that cannot settle must RENDER as NK with the
+    /// ITERATION-EXCEEDED alarm, not as a pre-constanic `BRANING` brane.
+    ///
+    /// `{f1 = {f1}; stuck = f1;}` is self-referential: `f1`'s body searches
+    /// for `f1`, so stepping never reaches a fixed point and the evaluator's
+    /// step cap fires.
+    ///
+    /// Regression guard. `evaluate` sets the alarm and NK on the COMPOSED
+    /// ROOT, but `program_result` then reaches past that root to the user's
+    /// `program` member and renders it instead — so the error state landed on
+    /// a wrapper that was discarded. Introduced when system.foo composition
+    /// began extracting the program member (FOOP-33); before that the root
+    /// itself was rendered. Output regressed:
+    ///
+    ///     {NK(ITERATION-EXCEEDED, Iteration exceeded 9999)   →   {BRANING
+    #[test]
+    fn non_settling_program_renders_nk_with_iteration_alarm() {
+        use foolish_core::{Evaluator, FirSequencer};
+        let firs = crate::UbcaEvaluator
+            .evaluate("{\n  f1 = { f1 }\n  stuck = f1;\n}")
+            .expect("evaluation returns a rendering even when it cannot settle");
+        let rendered = firs
+            .iter()
+            .map(|f| FirSequencer::format(&foolish_core::clone_steppable(f)))
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(
+            rendered.contains("NK(ITERATION-EXCEEDED"),
+            "a program that exceeds the step cap must render NK with the \
+             alarm, not a pre-constanic state; got:\n{rendered}"
+        );
+        assert!(
+            !rendered.starts_with("{BRANING"),
+            "the rendered brane must not be left pre-constanic; got:\n{rendered}"
+        );
+    }
 }

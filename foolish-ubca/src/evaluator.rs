@@ -130,17 +130,29 @@ impl foolish_core::Evaluator for UbcaEvaluator {
         let mut results = Vec::new();
 
         for composed_root in &composed_roots {
-            if let Err(alarm) = step_to_settled(composed_root, &scope) {
-                let alarm_msg = alarm.to_string();
-                composed_root
-                    .borrow()
-                    .core()
-                    .set_alarm_reason(alarm_msg.clone());
-                composed_root.borrow().core().set_nyes(Nyes::Nk);
-                eprintln!("ALARM: {alarm_msg}");
-            }
+            let failure = step_to_settled(composed_root, &scope).err();
             let program_fir = crate::system_foo::program_result(composed_root)
                 .unwrap_or_else(|| Rc::clone(composed_root));
+
+            if let Some(alarm) = failure {
+                let alarm_msg = alarm.to_string();
+                // Record the failure on BOTH the composed root and the
+                // `program` member.
+                //
+                // The root is what failed to settle, so it carries the state
+                // truthfully. But `program_result` reaches PAST the root to
+                // the user's program member, and that member is what gets
+                // rendered — so marking only the root puts the alarm on a
+                // wrapper that is then discarded, and the output shows a
+                // pre-constanic brane (`{BRANING`) with no explanation of why
+                // evaluation stopped.
+                for target in [composed_root, &program_fir] {
+                    target.borrow().core().set_alarm_reason(alarm_msg.clone());
+                    target.borrow().core().set_nyes(Nyes::Nk);
+                }
+                eprintln!("ALARM: {alarm_msg}");
+            }
+
             let core_fir = proto_to_core_fir(&program_fir);
             results.push(core_fir::fir_to_ref(core_fir));
         }
