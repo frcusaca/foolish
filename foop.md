@@ -270,7 +270,7 @@ split occurred:
 
 ```markdown
 - [ ] Merge ${WORKTREE_BRANCH_NAME} to ${WORKTREE_ORIGIN_BRANCH} # <-- this checkbox is the last to be checked after all the work is done.
-  - [ ] Check and make sure current foop has, and passes, a "comprehensive" snaptest that thoroughly tests interaction of current feature with older features. it would have the unique input name 'foop_<NUMBER>_comprehensive.foo', which is a name reserved for this foop. This test may be slightly repetitative of previous tests preferring coverage of high value features and checking odd edge cases. Note, generating and running the test and verifying is agent's job, but final approval for new tests requires human operator review and formal signed approval.
+  - [ ] Check and make sure current foop has, and passes, a "comprehensive" snaptest that thoroughly tests interaction of current feature with older features. it would have the unique input name 'input/foop/<NUMBER>/comprehensive.foo', which is a name reserved for this foop. This test may be slightly repetitative of previous tests preferring coverage of high value features and checking odd edge cases. Note, generating and running the test and verifying is agent's job, but final approval for new tests requires human operator review and formal signed approval.
   - [x] Detected complex merge situation requiring additional work
         (2026-05-06 14:00)
   - [ ] Update ${WORKTREE_BRANCH_NAME} to follow new coding style
@@ -312,8 +312,9 @@ working to...briefe description...; the worktree is at ${WORKTREE_FULL_FS_PATH}.
 Every FOOP has the right — and the obligation — to generate a **comprehensive snapshot test**
 that thoroughly exercises the new feature interacting with existing features. This test:
 
-- **Input file**: `foolish-ubca/snapshot_tests/input/foop_<NUMBER>_comprehensive.foo`
-  (e.g. `foop_23_comprehensive.foo`). The name is reserved for this FOOP alone.
+- **Input file**: `foolish-ubca/einmo_suite/input/foop/<NUMBER>/comprehensive.foo`
+  (e.g. `input/foop/23/comprehensive.foo`). The path is reserved for this FOOP alone.
+  Its einmo case name is therefore `foop/<NUMBER>/comprehensive`.
 - **Purpose**: coverage of high-value feature combinations and edge cases that the
   per-phase approval tests may not reach. Slight repetition of earlier tests is acceptable
   if it serves coverage.
@@ -322,18 +323,112 @@ that thoroughly exercises the new feature interacting with existing features. Th
   combined name+value with head/tail, etc. The test should be large enough to exercise
   at least one path through every new operator or predicate variant.
 - **Process**: the agent generates the `.foo` input, runs it through the approval test
-  suite, and verifies the `.snap.new` output. Final approval requires human review and
-  formal signed acceptance.
-- **Placement in plan**: a checkbox task "Write and verify `foop_<NUMBER>_comprehensive.foo`"
-  should appear in the plan, after all implementation phases and before the merge STOP.
+  suite, and reviews the output through the **Promotion Review Gate** (below) before
+  promoting. Final approval requires human review and formal signed acceptance.
+- **Placement in plan**: a checkbox task "Write and verify
+  `input/foop/<NUMBER>/comprehensive.foo`" should appear in the plan, after all implementation
+  phases and before the merge STOP, followed by its own Promotion Review Gate.
+
+---
+
+## Promotion Review Gate (`output` → `checked`)
+
+`einmo promote output to checked` writes the **frozen expected-output contract** that every
+future change is measured against. It is a *correctness claim made by the agent*, never a
+bookkeeping step and never a way to make a red suite green.
+
+**Checking a promotion checkbox asserts:** *"I read this case's OUTPUT statement by statement,
+and I can say in my own words why each line is what the specification requires."*
+
+Being your own FOOP's test makes promotion **permissible**, not **justified**. The justification
+is the reading. An agent that promotes without inspecting each case has not done the work the
+checkbox records — it has falsified the record.
+
+### The gate is a checkbox block, never a one-liner
+
+A plan **must not** contain a bare `- [ ] einmo promote output to checked`. Wherever a phase
+produces new or changed einmo output, the plan installs this block, expanded with the **real
+case names, one sub-task each**:
+
+```markdown
+- [ ] Review and promote `output` → `checked` for FOOP-<NUMBER>'s einmo cases
+  - [ ] Confirm the rest of the suite is green — no foreign-FOOP baseline diverges
+  - [ ] Confirm no case below has a `verified/` twin (if one does: STOP, ask the human)
+  - [ ] Re-read the in-force specification for each feature under test
+  - [ ] Review `foop/<NUMBER>/<case_1>` — every OUTPUT statement justified
+  - [ ] Review `foop/<NUMBER>/<case_2>` — every OUTPUT statement justified
+        (…one checkbox per case; name them all, never "…and the rest")
+  - [ ] Write the justification summary into the plan or commit message
+  - [ ] Report ALL accumulated doubts to the human in ONE statement — or record "no doubts"
+  - [ ] Run `einmo promote output to checked foolish-ubca/einmo_suite`
+  - [ ] Re-run `cargo test -p foolish-ubca --lib -- einmo_gate_checked` — must exit 0
+```
+
+Per the plan-execution rule above, a parent checkbox is not checked until its children are — so
+the per-case boxes cannot be collapsed into a single tick.
+
+### What "every OUTPUT statement justified" requires
+
+- **Statement by statement.** Read each OUTPUT line against the INPUT statement that produced
+  it, and state why that value is what the specification mandates. **"The evaluator emitted
+  this" is not a justification** — it is the thing being checked.
+- **Be skeptical of `NK`.** A search settling NK is the narrow, exceptional outcome, not a
+  default. Name which legitimate case applies (anchored miss ⇒ NK; unanchored miss ⇒
+  ECONSTANIC — see `README.md` §"The Unknown" and FOOP-23 §Specification). If you cannot name
+  it, trace it (see the `foolish-debugging` skill); do not promote it.
+- **Statement names are specification, not decoration.** `hit = ?…` asserts the search finds
+  its target; `miss = ?…` asserts it does not. A `hit` yielding NK is the test contradicting
+  itself — resolve it before promoting, never by promoting past it.
+- **Coherence, not just conformance.** Does an analogous existing feature behave the same way?
+  Would a Foolisher reading only the spec predict this output? A result that is locally
+  defensible but inconsistent with a sibling feature is a design bug to raise, not a baseline
+  to freeze.
+- **Step counts and alarms are part of the contract.** An unexplained jump in step count for a
+  feature whose cost should not have changed is a signal to investigate, not noise to accept.
+
+### Reasonable effort, and what to do with a doubt
+
+Justifying a line does not mean proving it from first principles. Where a result plainly follows
+from the spec, note it and move on; concentrate the effort where a result is surprising, where the
+spec is ambiguous, or where a value contradicts its statement's own name. Aim for what a careful
+colleague would check.
+
+**When you doubt something, write it down and keep going.** Do not halt the review to ask about
+one case, and do not send concerns one at a time. Record — case, line, what you expected, what you
+saw, and which specification or sibling behavior makes you doubt it — then continue to the next
+case. **At the end of the pass, present all accumulated concerns to the human in a single
+statement.**
+
+This is the sanctioned exit from an impasse. Uncertainty is never a reason to promote unread; it
+is a reason to finish reviewing and report. If the doubts are non-blocking, promote and report
+them alongside. If any doubt blocks, promote nothing and report the full set.
+
+**If any case fails review, promote none of them.** Fix the code — or revise the test's input or
+statement names, which is a reviewable change in its own right — and re-run the gate.
+
+The full three-stage contract (`output` throwaway / `checked` frozen / `verified` human-attested),
+the "a failing einmo test is broken code, not a stale baseline" rule, and the foreign-baseline
+prohibition live in `rust_instructions.md` §"Phase-by-phase testing discipline."
 
 ---
 
 ## Last Updated
 
-**Date**: 2026-07-29 (2)
+**Date**: 2026-08-09
 **Updated By**: Claude Code (Opus 5)
-**Changes**: Stated the **branch-naming rule** explicitly: the branch is
+**Changes**: Added the **Promotion Review Gate (`output` → `checked`)** section: promotion is a
+correctness claim, not bookkeeping; being your own FOOP's test makes it permissible, not
+justified; a plan must never contain a bare one-line promote task but instead the full checkbox
+block with **one named sub-task per einmo case**; and the criteria for "every OUTPUT statement
+justified" (statement-by-statement reading, "the evaluator emitted this" is not a justification,
+skepticism toward NK, statement names as specification, coherence with sibling features, step
+counts and alarms). If any case fails review, promote none. Added **"Reasonable effort, and what
+to do with a doubt"**: due diligence is not exhaustive proof — concentrate effort where results
+surprise; when in doubt, record the concern and KEEP REVIEWING, then present all accumulated
+concerns in ONE statement at the end of the pass (never halt mid-review, never trickle them out).
+Uncertainty is never grounds to promote unread. Motivated by observed agent behavior
+of promoting to `checked` with zero inspection. Both FOOP skills updated to match. Earlier: the
+**branch-naming rule** — the branch is
 `foop-<NUMBER>-<short_description>`, bare with **no `foop/` prefix**, identical to
 `WORKTREE_BRANCH_NAME` and to the worktree directory's basename — one name, used everywhere in the
 plan. The worked example had been triply inconsistent (directory `constanic-clone-foop-7`, then

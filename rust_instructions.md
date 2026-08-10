@@ -944,7 +944,7 @@ legitimate regression test can be made to detect the same problem, rename it
 appropriately and check it in with documentation.
 
 > **Snapshot/approval tests use einmo.** Run `cargo test -p foolish-ubca --lib --
-> run_einmo_tests` to evaluate and check output against the signed `checked/`
+> einmo_gate_checked` to evaluate and check output against the signed `checked/`
 > baseline. Use `einmo evaluate` to regenerate outputs, `einmo compare` to
 > review diffs, and `einmo promote` to update baselines. See `AGENTS.md` for
 > the command summary; the **phase-by-phase testing discipline** is below.
@@ -970,7 +970,7 @@ baseline to promote over.
   without a human reviewer's key (`--interactive`).
 
 **A failing einmo test is broken code, not a stale baseline.**
-`cargo test -p foolish-ubca --lib -- run_einmo_tests` exits non-zero when
+`cargo test -p foolish-ubca --lib -- einmo_gate_checked` exits non-zero when
 `output≠checked` (einmo compares with `--require-match`). That failure means
 **your change broke behavior**. The remedy is to **fix your code** so the
 pre-existing baseline passes again — never to `einmo promote` over the
@@ -984,7 +984,7 @@ non-zero exit from that one command. Run it; read failure as BROKEN.
 **At every phase boundary** (not only at merge), run:
 
 ```bash
-cargo test -p foolish-ubca --lib -- run_einmo_tests   # einmo suite — must exit 0
+cargo test -p foolish-ubca --lib -- einmo_gate_checked   # einmo suite — must exit 0
 cargo test --workspace                                   # unit tests — must exit 0
 ```
 
@@ -999,6 +999,13 @@ at the end of every phase; a phase is not done until that box is checked.
 
 **Promote rules (hard):**
 
+0. **Only promote a case you have read, statement by statement.** Ownership of
+   the test makes promotion *permissible*; it never makes it *justified*. The
+   justification is a reading of each OUTPUT line against the INPUT statement
+   that produced it and against the in-force specification, stated in your own
+   words. "The evaluator emitted this" is the thing being checked, not a reason
+   to freeze it. Work the **Promotion Review Gate** in `foop.md` — one named
+   review sub-task per case. If any case fails review, promote none of them.
 1. Only promote baselines under `foop/<your-N>/` (your FOOP's own new tests).
 2. Before promoting, confirm the **entire** suite is otherwise green — no
    foreign baseline diverges.
@@ -1081,13 +1088,20 @@ AI-generated code is human-verified before submission. *(c23, c24)*
 
 ## Last Updated
 
-**Date**: 2026-08-02
-**Updated By**: Sisyphus / z-ai/glm-5.2
-**Changes**: Added **§"Phase-by-phase testing discipline (einmo)"** under Testing — the
+**Date**: 2026-08-09
+**Updated By**: Claude Code / claude-opus-5
+**Changes**: Added **promote rule 0** to §"Phase-by-phase testing discipline": only promote a
+case you have read statement by statement — ownership of the test makes promotion permissible,
+never justified; "the evaluator emitted this" is the thing being checked, not a reason to freeze
+it; if any case fails review, promote none. Rule 1 previously licensed blind promotion inside
+your own `foop/<N>/` directory, which is the gap this closes. Points at the new **Promotion
+Review Gate** in `foop.md` (one named review sub-task per case), also installed into both FOOP
+skills and AGENTS.md §"The agent is responsible for correctness". Earlier: added §"Phase-by-phase
+testing discipline (einmo)" under Testing — the
 non-regression invariant (a FOOP under development must not change the OUTPUT of any other
 FOOP's einmo tests), the three-stage contract (`output` throwaway / `checked` frozen expected
 / `verified` human-attested, frozen-if-twin-exists), the "a failing einmo test is broken code,
-not a stale baseline" rule, the per-phase `run_einmo_tests`+`cargo test --workspace` gate
+not a stale baseline" rule, the per-phase `einmo_gate_checked`+`cargo test --workspace` gate
 (non-zero ⇒ phase not complete), the four hard promote rules, and a "Why this exists" note
 documenting the FOOP-33 Phase-3 `default_equal` regression that motivated it (value search
 `mixed~=7` aborted on a brane candidate via `Unknowable→NkStop` instead of skipping it; the

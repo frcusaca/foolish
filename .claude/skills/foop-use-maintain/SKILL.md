@@ -303,7 +303,7 @@ This is the canonical merge sub-task pattern. The parent checkbox is the last to
 
 ```markdown
 - [ ] Merge `foop-<NUMBER>-<SHORT_DESCRIPTION>` to `jia`
-  - [ ] Check and make sure current foop has, and passes, a "comprehensive" snaptest that thoroughly tests interaction of current feature with older features. Input name: `foop_<NUMBER>_comprehensive.foo` (reserved for this foop). Agent generates and verifies; human gives final signed approval.
+  - [ ] Check and make sure current foop has, and passes, a "comprehensive" snaptest that thoroughly tests interaction of current feature with older features. Input name: `input/foop/<NUMBER>/comprehensive.foo` (reserved for this foop). Agent generates and verifies; human gives final signed approval.
   - [x] Detected complex merge situation requiring additional work
         (2026-07-11 14:00)
   - [ ] Update `foop-<NUMBER>-<SHORT_DESCRIPTION>` to follow new coding style
@@ -322,8 +322,55 @@ This is the canonical merge sub-task pattern. The parent checkbox is the last to
 **Key rules from this pattern:**
 - The merge checkbox is the **last** to be checked after all work is done.
 - The comprehensive snaptest must exist and pass before merge.
+- Every `output→checked` promotion runs through the **Promotion Review Gate** (below) — never a bare promote.
 - The `STOP!` checkpoint requires human review of snapshots — the agent must **never** continue past this automatically.
 - Cleanup is the last sub-task block: verify all-but-cleanup checkboxes are done, then remove the worktree directory.
+
+---
+
+## Task: Promote `output` → `checked` (Promotion Review Gate)
+
+**Promotion is a correctness claim you are personally making, not a bookkeeping step.** Writing `checked/` freezes an expected-output contract that every future change is measured against. Checking a promotion box asserts: *"I read this case's OUTPUT statement by statement, and I can say in my own words why each line is what the specification requires."*
+
+**Being your own FOOP's test makes promotion permissible, not justified.** The justification is the reading. Never run `einmo promote` as a step you arrive at — run it as a step you have *earned*.
+
+### Procedure
+
+1. **Confirm the suite is otherwise green.**
+   ```bash
+   cargo test -p foolish-ubca --lib -- einmo_gate_checked
+   einmo compare output checked foolish-ubca/einmo_suite
+   ```
+   Any *foreign*-FOOP baseline divergence is a regression you introduced — **fix your code**, do not promote. Any case with a `verified/` twin is frozen — **STOP and ask the human**.
+
+2. **Enumerate the cases you intend to promote, by name.** If the plan's gate block does not already name them one per sub-task, fix the plan first (see `foop-write-plan` §"Promotion Review Gate"). "Promote the FOOP-*N* outputs" is not a reviewable unit of work; `foop/23/value_search_unanchored` is.
+
+3. **Re-read the in-force specification** for each feature under test — the FOOP's own `.md` §Specification (not the plan, and not a superseded revision), plus `README.md` §"The Unknown" for any NK result.
+
+4. **Review each case, statement by statement.** For every OUTPUT line, read the INPUT statement that produced it and state *why that value is what the spec mandates*:
+   - **"The evaluator emitted this" is never a justification** — it is the thing being checked.
+   - **Be skeptical of `NK`.** NK is the narrow, exceptional outcome. Name which legitimate case applies (anchored miss ⇒ NK; unanchored miss ⇒ ECONSTANIC). If you cannot name it, trace it with the `foolish-debugging` skill before promoting.
+   - **Statement names are specification.** `hit = ?…` claims the search finds its target; `miss = ?…` claims it does not. A `hit` yielding NK is the test contradicting itself — resolve it (fix the predicted bug, or rename with an explanatory comment) rather than promoting past it.
+   - **Check coherence, not only conformance.** Does an analogous existing feature behave the same way? Would a Foolisher reading only the spec predict this output? A locally defensible result that is inconsistent with a sibling feature is a design bug to raise, not a baseline to freeze.
+   - **Step counts and alarms are part of the contract too.** An unexplained jump in steps for a feature whose cost should not have changed is a signal to investigate.
+
+5. **Write the justification down** — in the plan under the gate, or in the commit message. One or two sentences per case: what it demonstrates, why its result is spec-correct. If you cannot write it, you have not reviewed it.
+
+6. **Promote, then re-verify.**
+   ```bash
+   einmo promote output to checked foolish-ubca/einmo_suite
+   cargo test -p foolish-ubca --lib -- einmo_gate_checked   # must exit 0
+   ```
+
+### Reasonable effort, and what to do with a doubt
+
+Justifying a line is not proving it from first principles. Where a result plainly follows from the spec, note it and move on; concentrate effort where a result is surprising, where the spec is ambiguous, or where a value contradicts its statement's own name.
+
+**When you doubt something, write it down and keep going.** Do not halt mid-review to ask about a single case, and do not send concerns one at a time. Record the case, the line, what you expected, what you saw, and which spec or sibling behavior makes you doubt it — then continue. **At the end of the pass, present all accumulated concerns in one statement** (with the PTAL reminder — FOOP number and worktree path).
+
+Uncertainty is never grounds to promote unread; it is grounds to finish reviewing and report. Non-blocking doubts: promote and report alongside. Any blocking doubt: promote nothing, report the full set, wait.
+
+**If any case fails review, promote none of them.** Fix the code — or revise the test's input/statement names, which is a reviewable change in its own right — and re-run the gate.
 
 ---
 
@@ -344,7 +391,7 @@ cargo test -p foolish-ubca --lib -- approval_all
 
 The comprehensive test input file is at:
 ```
-foolish-ubca/snapshot_tests/input/foop_<NUMBER>_comprehensive.foo
+foolish-ubca/einmo_suite/input/foop/<NUMBER>/comprehensive.foo
 ```
 
 This name is reserved for this FOOP alone.
@@ -424,3 +471,22 @@ git worktree remove $(pwd)/../foolish_worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION
 10. **Foolish uses `git merge`, not rebase.** Expect conflict-repair sub-tasks.
 11. **Never continue past a `STOP!` checkpoint automatically.** Human must check that box.
 12. **Never commit from inside this skill** unless the user explicitly asks.
+13. **Never promote `output→checked` without reading every case, statement by statement.** Promotion is a correctness claim, not bookkeeping; "the evaluator emitted this" is the thing being checked, not a justification for it. Run the **Promotion Review Gate** (see the task section above) — green suite, no `verified/` twin, spec re-read, per-case justification written down — before any `einmo promote`. A promotion box checked faster than the case could be read is a false record of work.
+14. **Never promote over a foreign FOOP's divergent baseline.** A failing einmo test is broken code, not a stale baseline — fix your code. If the divergent baseline has a `verified/` twin, it is frozen without a human reviewer's key. See `rust_instructions.md` §"Phase-by-phase testing discipline."
+
+---
+
+## Last Updated
+
+**Date**: 2026-08-09
+**Updated By**: Claude Code / claude-opus-5
+**Changes**: Added the **Task: Promote `output` → `checked` (Promotion Review Gate)** section — the
+six-step execution procedure (green suite / no `verified` twin, enumerate cases by name, re-read
+the in-force spec, statement-by-statement review, write the justification, promote then re-verify)
+with the review criteria spelled out: "the evaluator emitted this" is never a justification,
+skepticism toward NK, statement names as specification, coherence with sibling features, step
+counts and alarms as part of the contract — plus "Reasonable effort, and what to do with a
+doubt": record concerns and keep reviewing, then report them all in ONE statement (with PTAL). Added **safety invariants 13 and 14** (never promote a
+case unread; never promote over a foreign divergent baseline) and a pointer in the merge sub-task
+key-rules list. Motivated by observed agent behavior of promoting to `checked` with zero
+inspection; the plan-side gate block lives in the `foop-write-plan` skill.
