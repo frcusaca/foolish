@@ -19,10 +19,59 @@ fn einmo_suite_dir() -> PathBuf {
 ///   baseline.
 /// * [`einmo_gate_verified`] — Verified level: `checked/` matches `verified/`
 ///   under human reviewer key.
+///
+/// # The gates MUST NOT run concurrently
+///
+/// Every gate evaluates the **whole suite** and writes to the **same**
+/// `einmo_suite/output/` directory. `cargo test` runs tests in parallel
+/// threads by default, so without serialization the three race over the same
+/// files and fail in ways that look like real regressions but are not:
+///
+/// ```text
+/// misc/alarm_multiple_divisions_by_zero.foo.einmo was not written+verified:
+///   catastrophe crumb detected from previous run
+/// ```
+///
+/// The "previous run" in that message is a *sibling gate running right now*.
+/// Einmo drops a **catastrophe crumb** before evaluating a case that might not
+/// terminate and removes it on success; a crumb found on entry means an
+/// earlier run died mid-case. When a non-terminating input (here, one that
+/// trips `Iteration exceeded 9999`) is being evaluated by one gate while
+/// another reads the directory, the second sees a live crumb and reports a
+/// failure that has nothing to do with the code under test.
+///
+/// [`GATE_LOCK`] serializes them. Each gate takes it for its whole body, so
+/// the three run one at a time even under a parallel test runner and the suite
+/// is correct with a plain `cargo test --workspace`. The cost is wall-clock
+/// time (~78s for all three) — they cannot overlap, by construction.
+///
+/// Running a single gate needs no special flags:
+///
+/// ```bash
+/// cargo test -p foolish-ubca --lib -- einmo_gate_checked
+/// ```
 #[cfg(test)]
 mod einmo_tests {
     use super::*;
     use einmo::{EinmoSuite, Evaluator, Stage, TestConfig, ValidationLevel};
+    use std::sync::{Mutex, MutexGuard, PoisonError};
+
+    /// Serializes the three einmo gates against the shared `output/` directory.
+    ///
+    /// See the module docs for why concurrent gates corrupt each other. Guards
+    /// a `()` — the value is irrelevant, the *exclusion* is the point.
+    static GATE_LOCK: Mutex<()> = Mutex::new(());
+
+    /// Takes [`GATE_LOCK`], recovering from poisoning.
+    ///
+    /// A panicking gate (i.e. a failing assertion — the normal way a test
+    /// reports trouble) poisons the mutex. Recovering keeps that first real
+    /// failure visible instead of burying it under `PoisonError` from the two
+    /// siblings; the guarded `()` carries no state that a panic could leave
+    /// inconsistent.
+    fn gate_lock() -> MutexGuard<'static, ()> {
+        GATE_LOCK.lock().unwrap_or_else(PoisonError::into_inner)
+    }
 
     /// Adapts the UBCa evaluator to einmo's language-agnostic `Evaluator`:
     /// one OUTPUT chunk per top-level statement, formatted by the humanizing
@@ -60,6 +109,8 @@ mod einmo_tests {
     /// inputs without crashing and produce valid signed artifacts.
     #[test]
     fn einmo_gate_output() {
+        // Serialized against the sibling gates — see module docs.
+        let _gate = gate_lock();
         let config = config(ValidationLevel::Output);
         let suite = EinmoSuite::new(config);
         let results = suite
@@ -92,6 +143,8 @@ mod einmo_tests {
     /// then asserts byte-identical correspondence against `checked/`.
     #[test]
     fn einmo_gate_checked() {
+        // Serialized against the sibling gates — see module docs.
+        let _gate = gate_lock();
         let config =
             config(ValidationLevel::Checked).require_correspondence(Stage::Output, Stage::Checked);
         let suite = EinmoSuite::new(config);
@@ -135,6 +188,8 @@ mod einmo_tests {
     /// correspondence with human attestation.
     #[test]
     fn einmo_gate_verified() {
+        // Serialized against the sibling gates — see module docs.
+        let _gate = gate_lock();
         let config = config(ValidationLevel::Verified)
             .require_correspondence(Stage::Output, Stage::Checked)
             .require_correspondence(Stage::Checked, Stage::Verified);
