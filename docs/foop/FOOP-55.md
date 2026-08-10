@@ -573,35 +573,84 @@ The base case is correct and simply never gets to stop anything. `'ite` passes
 `input/foop/55/ite.foo` (`r1=42`, `r2=99`) only because both branches there are
 literals — the greediness is invisible until a branch is recursive.
 
-#### The change: ask a per-predicate readiness question
+#### The change: bounded-depth breadth-first stepping, with a per-FIR early exit
 
-Waiting for constanic is stronger than any search's meaning requires. `$` asks
-"which statement is last?" — a question about **shape**, not about values.
-Brane-like FIRs (brane, concatenation, and the other `is_brane_like` kinds) gain
-three predicates, and each search waits on the one its predicate needs:
+Two independent mechanisms. Neither introduces laziness, message passing, or a
+dependency tracker; together they make the exercise terminate.
 
-| Predicate | Searches | Ready when |
-|-----------|----------|------------|
-| `is_indexable()` | `$` `^` `#N` (and `&#`, `&^`, `&$`) | the brane's **shape is settled**: statement count and positions final, and every constituent spliced into place |
-| `is_name_searchable()` | `?` `~` `.` (and `&?`, `&~`) | statement **names** are settled; bodies need not be |
-| `is_value_searchable()` | `?=` `~=` (and `&?=`, `&~=`) | the **values being matched** are settled |
+##### (i) `depth` becomes a real parameter of stepping
 
-Once ready, the search **retargets its own work queue**: it resolves the target,
-pushes the selected statement to `ubc_children` as it does today, and **replaces
-the task queue with just that one item**. Unselected siblings are dropped from
-the queue and never stepped.
+`step` takes a `depth`. The rule is one line:
 
-This is the load-bearing move, and it is not merely "start earlier": it narrows
-the dependency set as soon as the search knows which member it actually needs.
-The queue stops meaning "everything I was born depending on" and starts meaning
-"what I still need". `step_inner`'s two-branch shape is unchanged — `fir_op_step`
-gains the ability to *rewrite* the queue, not only to be gated by it.
+```
+if depth == 0 { return }        // frontier reached; this sweep stops here
+// otherwise do this FIR's work, and recurse into children with depth - 1
+```
 
-`'ite` short-circuiting then falls out at the right layer: `{cond, then, else,
-'ite}` becomes ready once the brane is indexable, selects on `cond`, and
-retargets to the winning branch alone. **No laziness rule is added to the FVM
-and no per-operator evaluation order is introduced** — the same mechanism that
-makes `$` cheap makes `'ite` terminate.
+This makes evaluation genuinely **breadth-first**: one outer invocation sweeps a
+bounded frontier across the whole tree instead of plunging down a single spine.
+
+**The depth is held by the FVM, per invocation** — not a per-FIR constant and
+not a compile-time cap. It **starts small (≈5) and grows by a delta (at least 1,
+possibly more) whenever a sweep ends without reaching constanic.** The FVM
+therefore *discovers* the depth a program needs rather than having it guessed;
+a program requiring deep recursion pays for it in additional sweeps, visibly,
+instead of dying against a silent ceiling.
+
+This supersedes the present use of depth. `step_inner` already threads a `depth`
+(`fir_trait.rs:466-469`) but only as a `MAX_DEPTH` tripwire that returns
+`NoProgress` **silently** — which is precisely how the Euler failure stayed
+invisible. Depth stops being a guard against runaway recursion and becomes the
+control that makes stepping breadth-first.
+
+##### (ii) `i_have_what_i_need()` — the per-FIR early exit
+
+**A FIR steps its `foolish_children` until they are ALL constanic OR
+`i_have_what_i_need()` returns true** — whichever comes first. That disjunction
+is the whole rule. The first arm is today's behavior (and remains the fallback,
+since the predicate defaults `false`); the second is the new early exit.
+
+Note this is the termination of **dependency stepping within one FIR**, and is
+distinct from what ends an FVM *invocation* (mechanism (i)'s sweep, which ends
+at `depth == 0` and is then re-entered at greater depth). The two are separate
+questions and neither implies the other.
+
+| FIR | `i_have_what_i_need()` is true when |
+|-----|--------------------------------------|
+| `$` `^` `#N` | the anchor reports `is_indexable()`, **and** the item at that index is constanic |
+| `'ite` | `cond` is constanic, **and** the branch `cond` selects is constanic |
+| default (every kind that has not opted in) | **`false`** — i.e. today's behavior, drain everything |
+
+**`i_have_what_i_need()` cannot be wrong.** It is a correctness obligation, not
+an optimization hint: returning true prematurely settles a FIR on incomplete
+information, silently — the hardest failure mode to detect. Hence the default is
+`false`, so a kind that has not opted in cannot regress, and every override is a
+deliberate, individually tested claim.
+
+##### The two predicates are owned by different objects
+
+`is_indexable()` remains, and is asked **of the brane-like FIR**. This is
+encapsulation, not indirection: a brane-like reports on its own shape, and a
+search must not re-derive what the brane can state about itself
+(`rust_instructions.md` rule zero — a function reporting on an object belongs to
+that object).
+
+The division of labour:
+
+- **`is_indexable()`** — the *brane-like's* statement about **its own shape**.
+- **`i_have_what_i_need()`** — the *search's* statement about **its own
+  requirement**, typically written in terms of the anchor's answer.
+
+Neither reaches into the other's internals.
+
+##### Why this terminates the exercise
+
+Under depth-first stepping the `<loop>` else-branch is descended before `cond`
+is ever stepped, so the recursion runs away before the condition that would stop
+it exists. Under bounded-depth breadth-first sweeps, `cond` settles in an early
+sweep; `'ite` then reports `i_have_what_i_need()` and stops stepping children —
+so the unselected `<loop>` branch is never driven to completion. **No laziness
+rule is added to the FVM and no per-operator evaluation order is introduced.**
 
 #### Indexability requires a *complete* brane, not a partial one
 
@@ -614,17 +663,20 @@ yields a statement whose own searches would scan an incomplete brane and could
 settle NK against members that do not exist yet.
 
 Therefore `is_indexable()` means **the shape can no longer change** — frozen,
-not merely currently-readable. This also makes retargeting **monotone**: a
-choice made under a frozen shape can never be invalidated by later growth. The
-weaker reading would permit a search to select #3 and then have the brane grow,
-which the einmo suite already demonstrates going wrong (§Open Questions).
+not merely currently-readable. This also makes the early exit **monotone**: a
+requirement satisfied under a frozen shape can never be un-satisfied by later
+growth. The weaker reading would permit a search to select #3 and then have the
+brane grow, which the einmo suite already demonstrates going wrong
+(§Open Questions).
 
-`is_indexable()` is therefore recursive over constituents and admits a **third
-answer** — *not yet decidable* — distinct from a definite `false`; an operand
-that is itself an unresolved search returning a brane leaves indexability
-undecided rather than denied. Conflating "undecided" with "false" would stall
-searches that could proceed; conflating it with "true" reintroduces the
-incomplete-brane bug above.
+**A plain `bool` suffices**, and the three-valued answer of the earlier draft is
+withdrawn. That draft needed to distinguish "not yet decidable" from "no",
+because readiness *gated* whether a search could proceed and conflating the two
+would stall it. Under the early-exit design it gates nothing: `is_indexable()`
+feeding `i_have_what_i_need()`, whose default is `false`, means "not yet" and
+"no" have the **same safe consequence** — keep draining children, exactly as
+today. A premature `true` is the only dangerous answer, which is why
+`is_indexable()` must report frozen shape rather than current readability.
 
 #### Scope within this FOOP — indexability is staged
 
@@ -635,10 +687,11 @@ short-circuiting via indexed selection.
 
 | Stage | Subject | Why this order |
 |-------|---------|----------------|
-| **5a** | **Plain brane** | A brane's shape is settled at parse time — its statement count and positions never change — so `is_indexable()` is trivially `Ready` and the freezing question does not arise. This stage builds and proves the whole retargeting mechanism (readiness question, queue rewrite, dropping unselected siblings) against a case with no ambiguity. |
-| **5b** | **Concatenation** | The hard case: shape is settled only once every operand is spliced in, and an operand may itself be an unresolved search. This is where the three-valued answer and the frozen-shape rule earn their keep. Built on 5a's proven mechanism. |
-| **5c** | **Remaining brane-like kinds** | Whatever else answers `is_brane_like` — swept once the rule is settled, each with its own readiness answer. |
-| **5d** | **`'ite` short-circuit** | Retarget on `cond` instead of enqueueing all three operands. Depends only on 5a for a literal-operand `'ite`; the exercise's recursive branch needs 5b. |
+| **5.0** | **Bounded-depth breadth-first stepping** — `depth` as a `step` parameter, held and grown by the FVM | Mechanism (i) alone, with `i_have_what_i_need()` defaulting `false` everywhere. **Behavior must be unchanged**: the same programs settle to the same values, only the traversal order and step counts move. That makes it independently verifiable against the existing suite before any early exit exists to confuse the picture. |
+| **5a** | **Plain brane** — `is_indexable()` + `i_have_what_i_need()` for `$`/`^`/`#N` | A brane's shape is settled at parse time — its statement count and positions never change — so `is_indexable()` is trivially `true` and the freezing question does not arise. This proves the early-exit mechanism where there is no ambiguity. |
+| **5b** | **Concatenation** | The hard case: shape is settled only once every operand is spliced in, and an operand may itself be an unresolved search. Where the frozen-shape rule earns its keep. Built on 5a's proven mechanism. |
+| **5c** | **Remaining brane-like kinds** | Whatever else answers `is_brane_like` — swept once the rule is settled, each reporting its own shape. |
+| **5d** | **`'ite` short-circuit** | `i_have_what_i_need()` = cond constanic **and** the selected branch constanic. Depends only on 5.0 + 5a for a literal-operand `'ite`; the exercise's recursive branch needs 5b. |
 
 Splitting this way means a regression in 5b cannot be confused with a defect in
 the retargeting mechanism itself — 5a's tests pin that independently.
@@ -666,12 +719,12 @@ as it advances. §Open Questions records this.
 - **No new NYES states.** Both use the three existing terminals
   (ECONSTANIC / CONSTANT / NK).
 - **No serialization impact** beyond sequencer rendering of the new kinds.
-- **§5 readiness predicates**: `is_indexable()` on the `Fir` trait (default
-  implementation returning "not yet decidable" for non-brane-like kinds),
-  overridden by brane and concatenation. Returns a three-valued answer
-  (`Ready` / `NotYet` / `Never`), not a `bool` — see §5. No new FIR kinds and
-  no new NYES states; readiness is a question *about* a FIR's shape, not a
-  state it occupies.
+- **§5 predicates**: `is_indexable()` (plain `bool`, default `false`,
+  overridden by brane-like kinds) and `i_have_what_i_need()` (plain `bool`,
+  default `false`, overridden by `SearchFir` and `IteFir`) on the `Fir` trait.
+  No new FIR kinds and no new NYES states: both are questions *about* a FIR,
+  not states it occupies. `depth` is a `step` parameter and FVM-held value, not
+  FIR state.
 
 ## UBC Step Impact
 
@@ -682,17 +735,23 @@ as it advances. §Open Questions records this.
   name table covering `ComparisonOp::ALL` + `ArithOp::ALL` + `'or`
   (`system_foo.rs`); still scoped to `system.foo`'s own top-level
   statements only.
-- **§5 changes the wait condition of every anchored search.** `SearchFir`'s
-  BRANING arm (`fir_kinds.rs:1673-1694`) stops requiring a constanic anchor and
-  instead consults the predicate's readiness question; on ready, it retargets
-  its task queue to the single selected statement. `step_inner`
-  (`fir_trait.rs:466-499`) is **unchanged** — its two-branch shape already
-  permits this; what changes is that `fir_op_step` may now rewrite the queue
-  rather than only being gated by it.
-- **`IteFir` stops enqueueing all three operands.** It enqueues `cond`, and on
-  `cond` settling, retargets to the selected branch alone. This is the
-  short-circuit; it is expressed in the same retargeting mechanism as `$`, not
-  as a special evaluation rule.
+- **§5.0 makes stepping breadth-first.** `step` gains a `depth` parameter;
+  `step_inner` (`fir_trait.rs:466-499`) returns at `depth == 0` and recurses
+  with `depth - 1`. The FVM (`evaluator.rs`) holds the depth for an invocation,
+  starting ≈5 and growing by a delta (≥1) whenever a sweep ends without
+  reaching constanic. The existing silent `MAX_DEPTH` → `NoProgress` tripwire
+  (`fir_trait.rs:467-469`) is replaced by this; a sweep ending early is now a
+  normal, observable event rather than a silent truncation.
+- **§5a-d add the early exit.** A FIR drains `foolish_children` until they are
+  constanic **or** `i_have_what_i_need()` is true. Default `false` on the `Fir`
+  trait, so any kind that has not opted in keeps today's behavior exactly.
+  `SearchFir` overrides it for index predicates (anchor `is_indexable()` and
+  the item at that index constanic); `IteFir` overrides it (cond constanic and
+  the selected branch constanic). `IteFir` no longer requires all three
+  operands via `operands.iter().any(operand_is_unevaluated_here)`.
+- **`is_indexable()`** on brane-like FIRs — a plain `bool` reporting **frozen**
+  shape. Owned by the brane-like, consulted by the search
+  (`rust_instructions.md` rule zero).
 - **Expected step-count reduction across the suite.** Searches that previously
   waited for a whole anchor now settle earlier, so `steps=` in einmo OUTPUT
   will drop for many pre-existing cases. Per the non-regression invariant this
@@ -788,9 +847,31 @@ the selected branch. Rejected because it introduces per-operator evaluation
 order into the FVM — a genuine semantic addition — to solve one operator's
 instance of a general problem. Every anchored search waits on more than it
 needs; `'ite` is merely where it becomes fatal rather than merely slow. The
-readiness-gated design fixes the class at the layer where the waiting is
-decided, and yields `'ite` short-circuiting as a consequence rather than as a
-rule.
+§5 design fixes the class at the layer where the waiting is decided, and yields
+`'ite` short-circuiting as a consequence rather than as a rule.
+
+### H. (§5) A full message-passing FVM
+
+The general solution: each UBC is a small computer with its own state, and
+searches are dispatched as messages to parents, which reply when they can
+answer. This subsumes the problem completely — a search that has its answer
+simply stops waiting, and nothing over-drains.
+
+Rejected **for this FOOP** as far too large to carry an exercise fix, not as a
+bad idea. It is a rewrite of the evaluator's core, it changes the meaning of a
+"step" (and therefore every `steps=` in every einmo baseline), and it deserves
+its own Major with its own specification. §5's two mechanisms are the
+compromise: they get the exercise running and leave the message-passing design
+open rather than foreclosed.
+
+### I. (§5) Track dependencies explicitly
+
+Give each FIR a dependency set and evaluate only what a result actually needs.
+Rejected as not simple: computing the set requires knowing what a search will
+resolve to *before* resolving it, which is the same regress the greedy wait
+falls into. `i_have_what_i_need()` sidesteps it by asking each FIR about its
+own requirement at the moment it is stepped, rather than deriving a dependency
+graph in advance.
 
 ### G. (§5) Rewrite `'ite` as the spec's search-based selector only
 
@@ -816,16 +897,21 @@ value-search phase lands.
   branes, the answer is *not yet decidable* until those searches settle. The
   precise condition — and where it is computed without walking the whole tree
   on every step — is the first thing plan Phase 4 measures on the live FVM.
-- **(§5) Is the three-valued readiness answer the right shape?**
-  `Ready` / `NotYet` / `Never` is proposed so that "undecided" is never
-  conflated with "false" (which would stall) nor with "true" (which would
-  select out of an incomplete brane). Whether `Never` is reachable at all for
-  indexability — as opposed to only via an NK anchor, which is already handled
-  — is open.
-- **(§5) Retargeting and monotonicity.** The claim is that a frozen shape makes
-  retargeting safe permanently. The einmo suite already demonstrates the
+- **(§5.0) The starting depth and the growth delta.** ≈5 to start, growing by
+  at least 1. Whether the delta should be constant, multiplicative, or adaptive
+  to how far the last sweep got is open, and is a **measurement**, not a
+  preference: plan Phase 3.0 records sweeps-to-settle for the existing suite
+  under each candidate before one is chosen.
+- **(§5.0) What ends an invocation?** A sweep that makes no progress at any
+  depth is genuinely stuck (as distinct from merely needing more depth). The
+  termination condition — and what replaces the current silent `NoProgress` at
+  `MAX_DEPTH` — must be stated so a non-terminating program still fails
+  *loudly* rather than quietly returning a PREMBRIONIC tree, which is exactly
+  how the Euler failure hid.
+- **(§5) Early exit and monotonicity.** The claim is that a frozen shape makes
+  the early exit safe permanently. The einmo suite already demonstrates the
   failure mode when a search settles against a brane that later changes; plan
-  Phase 4 must name those cases and confirm the frozen-shape rule excludes
+  Phase 3B must name those cases and confirm the frozen-shape rule excludes
   them.
 - **(§5, deferred) Is `is_value_searchable()` a whole-brane predicate at all?**
   A backward value search may settle on the first hit without touching earlier
@@ -879,7 +965,24 @@ value-search phase lands.
 
 **Date**: 2026-08-09
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Added **§5 "Readiness-gated searches"** — the actual cause of §4
+**Changes**: **§5 redesigned** (2026-08-10) around two mechanisms per Atlas's
+direction, replacing the readiness-gating design of the first draft: (i) `depth`
+as a real parameter of `step` — `if depth==0 return`, else work and recurse with
+`depth-1` — held by the FVM per invocation, starting ≈5 and growing by a delta
+(≥1) when a sweep does not settle, making stepping genuinely **breadth-first**;
+and (ii) **`i_have_what_i_need()`**, where a FIR steps `foolish_children` until
+they are **ALL constanic OR** the predicate is true, default `false` so no
+un-opted kind can regress. The predicate **cannot be wrong** — a premature
+`true` settles a FIR on incomplete information, silently. `is_indexable()` is
+retained but becomes a plain `bool`: it is asked *of the brane-like*, which
+reports its own shape (encapsulation, `rust_instructions.md` rule zero), and the
+three-valued answer is withdrawn because "not yet" and "no" now share the same
+safe consequence — keep draining. Staged **5.0 depth → 5a plain brane → 5b
+concat → 5c other kinds → 5d `'ite`**, with 5.0 required to leave settled values
+identical. Added Rejected Alternatives H (full message-passing FVM — subsumes
+the problem but is a core rewrite deserving its own Major) and I (explicit
+dependency tracking — the same regress the greedy wait falls into). Earlier
+same day: added **§5 "Readiness-gated searches"** — the actual cause of §4
 risks 1-2. Measured: the exercise computes *nothing* (every statement
 PREMBRIONIC) at a 40000-step budget, so the `@einmo set iteration depth to
 40000` directive enlarges the room in which it fails rather than fixing it.

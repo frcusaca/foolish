@@ -152,32 +152,60 @@ FOOP-73's fallback: `OrFir` as a dedicated FIR kind, same pattern as
 - [x] Run all tests — old and new — and make sure they all pass correctly.
       (2026-08-09 13:50)
 
-## Phase 3A — §5a: readiness-gated indexing for a PLAIN BRANE
+## Phase 3.0 — §5.0: bounded-depth BREADTH-FIRST stepping
 
-Read FOOP-55.md §5 in full before starting. This phase builds the whole
-retargeting mechanism against the case with no ambiguity: a plain brane's shape
-is settled at parse time, so `is_indexable()` is trivially `Ready`. **A
-regression in 3B must never be confusable with a defect in the mechanism
-itself — that is what this phase pins.**
+Mechanism (i) alone. `i_have_what_i_need()` does not exist yet, so **behavior
+must be unchanged**: the same programs settle to the same values, and only
+traversal order and step counts move. Verifying that against the existing suite
+before any early exit exists is the entire point of doing this first.
 
 - [ ] Read `rust_instructions.md` in full (mandatory before any Rust)
-- [ ] Read FOOP-55.md §5, especially "Indexability requires a *complete* brane"
-      and "Scope within this FOOP — indexability is staged"
-- [ ] Read `fir_trait.rs:466-499` (`step_inner`) and `fir_kinds.rs:1629-1707`
-      (`SearchFir::fir_op_step`) — the two-branch driver and the anchor enqueue
-- [ ] **Tests first.** Unit tests in `fir_kinds.rs` pinning: `$`/`^`/`#N` on a
-      plain brane settle correctly when only the *selected* statement is
-      constanic and its siblings are still pre-constanic
-- [ ] Add the three-valued readiness type (`Ready` / `NotYet` / `Never`) and
-      `is_indexable()` on the `Fir` trait, defaulting to `NotYet` for
-      non-brane-like kinds; plain brane returns `Ready`
-- [ ] `SearchFir` BRANING arm: for index predicates, consult `is_indexable()`
-      instead of requiring a constanic anchor
-- [ ] **Retargeting**: on ready, resolve the target, push the selected
-      statement to `ubc_children`, and REPLACE the task queue with just that
-      one item. `step_inner` itself must remain unchanged.
-- [ ] Verify unselected siblings are never stepped (assert on NYES, not on
-      timing)
+- [ ] Read FOOP-55.md §5, especially "(i) `depth` becomes a real parameter"
+- [ ] Read `fir_trait.rs:466-499` (`step_inner`) — note `depth` is already
+      threaded but used only as a silent `MAX_DEPTH` tripwire
+- [ ] **Tests first**: a FIR tree stepped at depth N advances exactly the
+      frontier N levels deep and no further
+- [ ] Add `depth` as a parameter of `step`; `if depth == 0 { return }`,
+      otherwise work and recurse with `depth - 1`
+- [ ] FVM (`evaluator.rs`) holds the depth per invocation: start ≈5, grow by a
+      delta (≥1) when a sweep ends without reaching constanic
+- [ ] **MEASURE (Open Question)**: record sweeps-to-settle across the existing
+      suite for candidate deltas (constant / multiplicative / adaptive). Choose
+      on the evidence and record the choice + numbers in FOOP-55.md §5.
+- [ ] **RESOLVE (Open Question)**: what ends an invocation? A program that
+      cannot settle must fail **loudly** — replacing the silent
+      `NoProgress`-at-`MAX_DEPTH` that let the Euler failure hide. Add a test
+      that a non-terminating program produces a loud failure, not a quiet
+      PREMBRIONIC tree.
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+- [ ] REPORT to the human: **settled values must be identical** to before. Any
+      value change here is a bug, not a baseline update. `steps=` may move in
+      either direction at this stage (traversal order changed); explain the
+      direction before promoting anything.
+
+## Phase 3A — §5a: `i_have_what_i_need()` for a PLAIN BRANE
+
+Mechanism (ii), proven where there is no ambiguity: a plain brane's shape is
+settled at parse time, so `is_indexable()` is trivially `true`. **A regression
+in 3B must never be confusable with a defect in the mechanism itself — that is
+what this phase pins.**
+
+- [ ] Read FOOP-55.md §5 "(ii) `i_have_what_i_need()`" and "Indexability
+      requires a *complete* brane, not a partial one"
+- [ ] Read `fir_kinds.rs:1629-1707` (`SearchFir::fir_op_step`) — the anchor
+      enqueue at PREMBRIONIC
+- [ ] **Tests first.** Unit tests pinning: `$`/`^`/`#N` on a plain brane settle
+      correctly when only the *selected* statement is constanic and its
+      siblings are still pre-constanic
+- [ ] Add `i_have_what_i_need()` to the `Fir` trait, **defaulting to `false`**
+      (so every kind that has not opted in keeps today's behavior exactly)
+- [ ] Add `is_indexable()` (plain `bool`, frozen shape) — owned by the
+      brane-like; plain brane returns `true`
+- [ ] Child-stepping loop: drain `foolish_children` until ALL constanic **OR**
+      `i_have_what_i_need()`
+- [ ] `SearchFir` overrides it for index predicates: anchor `is_indexable()`
+      AND the item at that index constanic
+- [ ] Verify unselected siblings are never stepped (assert on NYES, not timing)
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 - [ ] REPORT to the human: how many pre-existing einmo baselines changed, and
       whether any change is anything other than a `steps=` reduction. A step
@@ -196,10 +224,12 @@ operand may itself be an unresolved search.
       every step? Use `temporary_reproduce_to_debug_*` tests per the
       `foolish-debugging` skill. Record the answer in FOOP-55.md §5.
 - [ ] **Tests first**, including the negative case: a concatenation with an
-      unresolved search operand must answer `NotYet`, NOT `Ready` — selecting
-      out of it would resolve the selected statement's own searches against a
-      brane missing members
+      unresolved search operand must answer `is_indexable() == false` — a
+      premature `true` is the only dangerous answer, since selecting out of it
+      would resolve the selected statement's own searches against a brane
+      missing members
 - [ ] Implement `is_indexable()` for concatenation per the measured rule
+      (plain `bool`, reporting **frozen** shape, not current readability)
 - [ ] **Monotonicity check** (Open Question): identify the einmo cases that
       demonstrate a search settling against a brane that later changes; confirm
       the frozen-shape rule excludes them. Name the cases in the plan.
@@ -216,8 +246,10 @@ operand may itself be an unresolved search.
 
 - [ ] **Tests first**: `{cond, then, else, 'ite}` where the unselected branch
       would not terminate — assert the unselected branch is never stepped
-- [ ] `IteFir` enqueues `cond` only; on `cond` settling, retarget to the
-      selected branch alone (the same mechanism as Phase 3A, not a new rule)
+- [ ] `IteFir` overrides `i_have_what_i_need()`: cond constanic AND the
+      branch cond selects constanic. Remove the
+      `operands.iter().any(operand_is_unevaluated_here)` guard that forces all
+      three. Same mechanism as Phase 3A — not a new rule.
 - [ ] Confirm `foop/55/ite.foo` still gives `r1=42`, `r2=99`
 - [ ] Remove the `@einmo set iteration depth to 40000` directive from
       `input/exercises/project_euler/1.foo` — §5 makes it unnecessary; if the
@@ -335,7 +367,21 @@ the exercise is green and the real cost is known.
 
 **Date**: 2026-08-09
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Split the old Phase 3 to insert FOOP-55.md **§5's staged
+**Changes**: **§5 redesigned** around two mechanisms per Atlas's direction, and
+**Phase 3.0** inserted ahead of 3A: (i) `depth` as a real parameter of `step`
+(`if depth==0 return`, else work and recurse with `depth-1`), held by the FVM
+per invocation, starting ≈5 and growing by a delta ≥1 when a sweep does not
+settle — making stepping genuinely breadth-first and replacing the silent
+`MAX_DEPTH`→`NoProgress` tripwire that let the Euler failure hide; and (ii)
+`i_have_what_i_need()`, where a FIR steps `foolish_children` until they are ALL
+constanic OR the predicate is true. Phase 3.0 implements (i) alone and must
+show **identical settled values**, so it is verifiable before any early exit
+exists. The earlier retargeting design and its three-valued readiness type are
+**withdrawn**: with `i_have_what_i_need()` defaulting `false`, "not yet" and
+"no" have the same safe consequence, so `is_indexable()` is a plain `bool`.
+`is_indexable()` is retained on encapsulation grounds — a brane-like reports its
+own shape and a search must not re-derive it. Earlier: split the old Phase 3 to
+insert FOOP-55.md **§5's staged
 implementation** ahead of integration: **3A** (readiness-gated indexing for a
 plain brane — builds the whole retargeting mechanism where shape is settled at
 parse time, so a later regression cannot be confused with a defect in the
