@@ -39,18 +39,27 @@ repair without which the exercise cannot terminate at any step budget —
    pure Foolish inside `system.foo`** as a truth-table brane applied by
    search — the preferred design of FOOP-73, realized here for the single
    operator `'or`. No new FIR kind, no privileged FVM layer.
-3. **Readiness-gated searches (§5)** — an anchored search currently waits for
-   its *entire* anchor to become constanic before it may look at it, which is
-   far stronger than any search's meaning requires (`$` asks a question about
-   **shape**, not values). Brane-like FIRs gain `is_indexable()` /
-   `is_name_searchable()` / `is_value_searchable()`, and a ready search
-   **retargets its work queue to the one statement it selected**, dropping the
-   siblings it will never read. This is what makes `'ite` short-circuit — and
-   therefore what makes the exercise's recursion terminate — **without adding
-   any laziness rule to the FVM**. Measured 2026-08-09: the exercise currently
-   computes *nothing* (all PREMBRIONIC) at a 40000-step budget, so this is a
-   correctness repair, not an optimization. `is_indexable()` is implemented
-   here, staged 5a–5d; the other two predicates are specified but deferred.
+3. **Breadth-first stepping with a per-FIR early exit (§5)** — a FIR currently
+   drains *every* dependency to constanic before it may act, which is far
+   stronger than most FIRs need (`$` asks a question about **shape**, not
+   values). Two mechanisms: (i) `depth` becomes a real parameter of `step`, held
+   and grown by the FVM, so one invocation sweeps a bounded frontier —
+   evaluation becomes genuinely **breadth-first**; and (ii)
+   **`i_have_what_i_need()`**, so a FIR steps its `foolish_children` until they
+   are **ALL constanic OR** its own requirement is met. Together these make
+   `'ite` short-circuit — and therefore make the exercise's recursion terminate
+   — **without adding any laziness rule to the FVM**. Measured 2026-08-09: the
+   exercise currently computes *nothing* (all PREMBRIONIC) at a 40000-step
+   budget, so this is a correctness repair, not an optimization.
+
+   **Scope note:** §5 is a change of *strategy*, not of semantics — no settled
+   value may differ, only traversal order and step counts. That is why it
+   mutates UBCa rather than forking a UBCb: the ~180 signed einmo baselines
+   remain a valid oracle throughout and are the safety net for the riskiest
+   part. A change that legitimately altered settled values (Rejected
+   Alternative H, the message-passing FVM) would forfeit that oracle and *would*
+   warrant a second implementation. Staged 5.0–5d; `is_name_searchable()` and
+   `is_value_searchable()` are specified but deferred.
 
 — and it **documents, with reproductions**, six platform defects (D1–D6)
 and five exercise-file defects (E1–E5) found while bisecting the failure.
@@ -681,7 +690,7 @@ today. A premature `true` is the only dangerous answer, which is why
 #### Scope within this FOOP — indexability is staged
 
 **`is_indexable()` is implemented first and alone**, and is itself split into
-stages so the retargeting machinery is proven on the easy case before the hard
+stages so the early-exit machinery is proven on the easy case before the hard
 one. It is what Euler 1 needs: `$` on the concatenations, and `'ite`
 short-circuiting via indexed selection.
 
@@ -694,7 +703,7 @@ short-circuiting via indexed selection.
 | **5d** | **`'ite` short-circuit** | `i_have_what_i_need()` = cond constanic **and** the selected branch constanic. Depends only on 5.0 + 5a for a literal-operand `'ite`; the exercise's recursive branch needs 5b. |
 
 Splitting this way means a regression in 5b cannot be confused with a defect in
-the retargeting mechanism itself — 5a's tests pin that independently.
+the early-exit mechanism itself — 5.0's and 5a's tests pin those independently.
 
 `is_name_searchable()` and `is_value_searchable()` are specified here as the
 same shape, so the design is coherent, but are **deferred to their own phases**
