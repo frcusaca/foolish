@@ -152,7 +152,79 @@ FOOP-73's fallback: `OrFir` as a dedicated FIR kind, same pattern as
 - [x] Run all tests — old and new — and make sure they all pass correctly.
       (2026-08-09 13:50)
 
-## Phase 3 — Integration: make the exercise run
+## Phase 3A — §5a: readiness-gated indexing for a PLAIN BRANE
+
+Read FOOP-55.md §5 in full before starting. This phase builds the whole
+retargeting mechanism against the case with no ambiguity: a plain brane's shape
+is settled at parse time, so `is_indexable()` is trivially `Ready`. **A
+regression in 3B must never be confusable with a defect in the mechanism
+itself — that is what this phase pins.**
+
+- [ ] Read `rust_instructions.md` in full (mandatory before any Rust)
+- [ ] Read FOOP-55.md §5, especially "Indexability requires a *complete* brane"
+      and "Scope within this FOOP — indexability is staged"
+- [ ] Read `fir_trait.rs:466-499` (`step_inner`) and `fir_kinds.rs:1629-1707`
+      (`SearchFir::fir_op_step`) — the two-branch driver and the anchor enqueue
+- [ ] **Tests first.** Unit tests in `fir_kinds.rs` pinning: `$`/`^`/`#N` on a
+      plain brane settle correctly when only the *selected* statement is
+      constanic and its siblings are still pre-constanic
+- [ ] Add the three-valued readiness type (`Ready` / `NotYet` / `Never`) and
+      `is_indexable()` on the `Fir` trait, defaulting to `NotYet` for
+      non-brane-like kinds; plain brane returns `Ready`
+- [ ] `SearchFir` BRANING arm: for index predicates, consult `is_indexable()`
+      instead of requiring a constanic anchor
+- [ ] **Retargeting**: on ready, resolve the target, push the selected
+      statement to `ubc_children`, and REPLACE the task queue with just that
+      one item. `step_inner` itself must remain unchanged.
+- [ ] Verify unselected siblings are never stepped (assert on NYES, not on
+      timing)
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+- [ ] REPORT to the human: how many pre-existing einmo baselines changed, and
+      whether any change is anything other than a `steps=` reduction. A step
+      count that RISES, or any change to a settled value, is a bug — stop and
+      fix, do not promote.
+
+## Phase 3B — §5b: indexing for a CONCATENATION
+
+The hard case. Shape is settled only once every operand is spliced in, and an
+operand may itself be an unresolved search.
+
+- [ ] Read FOOP-55.md §5 "Indexability requires a *complete* brane, not a
+      partial one" again before writing any code
+- [ ] **MEASURE first** (Open Question): what exactly freezes a concatenation's
+      shape, and where can that be computed without walking the whole tree on
+      every step? Use `temporary_reproduce_to_debug_*` tests per the
+      `foolish-debugging` skill. Record the answer in FOOP-55.md §5.
+- [ ] **Tests first**, including the negative case: a concatenation with an
+      unresolved search operand must answer `NotYet`, NOT `Ready` — selecting
+      out of it would resolve the selected statement's own searches against a
+      brane missing members
+- [ ] Implement `is_indexable()` for concatenation per the measured rule
+- [ ] **Monotonicity check** (Open Question): identify the einmo cases that
+      demonstrate a search settling against a brane that later changes; confirm
+      the frozen-shape rule excludes them. Name the cases in the plan.
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+- [ ] REPORT baseline changes to the human as in Phase 3A.
+
+## Phase 3C — §5c: remaining brane-like kinds
+
+- [ ] Enumerate every kind answering `is_brane_like()`; give each its readiness
+      answer with a test
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
+## Phase 3D — §5d: `'ite` short-circuit
+
+- [ ] **Tests first**: `{cond, then, else, 'ite}` where the unselected branch
+      would not terminate — assert the unselected branch is never stepped
+- [ ] `IteFir` enqueues `cond` only; on `cond` settling, retarget to the
+      selected branch alone (the same mechanism as Phase 3A, not a new rule)
+- [ ] Confirm `foop/55/ite.foo` still gives `r1=42`, `r2=99`
+- [ ] Remove the `@einmo set iteration depth to 40000` directive from
+      `input/exercises/project_euler/1.foo` — §5 makes it unnecessary; if the
+      exercise still needs it, §5 is not finished
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
+## Phase 3F — Integration: make the exercise run
 
 - [ ] Read FOOP-55.md §4 (integration risks); load the `foolish-debugging`
       skill — all diagnosis below is unit-test-driven
@@ -166,11 +238,15 @@ FOOP-73's fallback: `OrFir` as a dedicated FIR kind, same pattern as
   - [ ] `'ite` mechanism: `{C, T, F, 'ite}` selects T/F correctly — einmo
         input `foop/55/ite.foo` (small, hand-checkable cases)
   - [ ] Recursion: `<self loop>` / `continue` / `{loop} loop` entry shape
-  - [ ] MEASURE the depth/budget question (FOOP-55 §4 risks 1-2): does the
-        ~1000-deep recursion hit `MAX_DEPTH` (fir_trait.rs:395) or the
-        iteration cap (evaluator.rs:168)? If yes: consult Atlas if the
-        remedy is semantic; implement the chosen remedy with tests; record
-        the decision in FOOP-55.md §4
+  - [ ] RE-MEASURE the depth/budget question (FOOP-55 §4 risks 1-2) **after
+        §5 lands** — these were framed as budget questions, but the exercise
+        computes nothing at any budget, so §5 is the cause. Does the
+        ~1000-deep recursion still hit `MAX_DEPTH` (`fir_trait.rs:467`) or the
+        iteration cap (`evaluator.rs:168`) once searches stop over-waiting? If
+        yes: consult Atlas if the remedy is semantic; implement with tests;
+        record in FOOP-55.md §4. Also decide whether `step_inner`'s **silent**
+        `NoProgress` at `MAX_DEPTH` should become a loud error — a silent
+        depth cap is how this failure stayed invisible.
   - [ ] `lv = lv+1` reassignment reads the parent-context value correctly
 - [ ] Einmo input `foop/55/euler_small.foo` — the exercise's algorithm with
       the bound 10 instead of 1000; expected answer 23 (hand-checkable:
@@ -259,7 +335,22 @@ the exercise is green and the real cost is known.
 
 **Date**: 2026-08-09
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: **Dropped the FOOP-65 dependency** — verified live on `jia`
+**Changes**: Split the old Phase 3 to insert FOOP-55.md **§5's staged
+implementation** ahead of integration: **3A** (readiness-gated indexing for a
+plain brane — builds the whole retargeting mechanism where shape is settled at
+parse time, so a later regression cannot be confused with a defect in the
+mechanism), **3B** (concatenation — the hard case, gated on first *measuring*
+what freezes a shape, with the negative test that an unresolved search operand
+answers `NotYet` not `Ready`), **3C** (remaining brane-like kinds), **3D**
+(`'ite` short-circuit, and removal of the `@einmo set iteration depth to 40000`
+directive — if the exercise still needs it, §5 is not finished), and the old
+integration phase renumbered **3F**. Each new phase ends by REPORTING baseline
+changes to the human: a `steps=` reduction is expected and legitimate, while a
+step count that *rises* or any change to a settled value is a bug. Reframed the
+depth/budget checkbox as a **re-measurement after §5**, since the exercise
+computes nothing at any budget, and added the question of whether
+`step_inner`'s silent `NoProgress` at `MAX_DEPTH` should become a loud error.
+Earlier: **dropped the FOOP-65 dependency** — verified live on `jia`
 after the FOOP-75 merge that the exercise's juxtaposition application form
 evaluates correctly as written, so the backtick unblocks nothing and E4's
 rewrite is optional polish. Recorded a **requirements survey** in Phase 0:

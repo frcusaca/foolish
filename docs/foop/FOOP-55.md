@@ -25,7 +25,8 @@ This FOOP makes the first real program written for the UBCa FVM run: the
 Project Euler exercise at
 `foolish-ubca/einmo_suite/input/exercises/project_euler/1.foolish` ("sum of
 all multiples of 3 or 5 below 1000", expected answer **233168**). It adds
-exactly two language features the exercise needs and no more —
+exactly two language features the exercise needs, plus one evaluation-strategy
+repair without which the exercise cannot terminate at any step budget —
 
 1. **`'mod`** — integer modulo as a null-characterized system operator,
    postfix: `{a, b, 'mod}$`. Implemented with the exact mechanism FOOP-33
@@ -38,6 +39,18 @@ exactly two language features the exercise needs and no more —
    pure Foolish inside `system.foo`** as a truth-table brane applied by
    search — the preferred design of FOOP-73, realized here for the single
    operator `'or`. No new FIR kind, no privileged FVM layer.
+3. **Readiness-gated searches (§5)** — an anchored search currently waits for
+   its *entire* anchor to become constanic before it may look at it, which is
+   far stronger than any search's meaning requires (`$` asks a question about
+   **shape**, not values). Brane-like FIRs gain `is_indexable()` /
+   `is_name_searchable()` / `is_value_searchable()`, and a ready search
+   **retargets its work queue to the one statement it selected**, dropping the
+   siblings it will never read. This is what makes `'ite` short-circuit — and
+   therefore what makes the exercise's recursion terminate — **without adding
+   any laziness rule to the FVM**. Measured 2026-08-09: the exercise currently
+   computes *nothing* (all PREMBRIONIC) at a 40000-step budget, so this is a
+   correctness repair, not an optimization. `is_indexable()` is implemented
+   here, staged 5a–5d; the other two predicates are specified but deferred.
 
 — and it **documents, with reproductions**, six platform defects (D1–D6)
 and five exercise-file defects (E1–E5) found while bisecting the failure.
@@ -527,6 +540,121 @@ Bisect evidence on `jia` @ `62706518`:
    the new `lv` reads the parent-context `lv`; verified live in Phase 3.
 4. **`{loop} loop`** — the entry-point shape that seeds the recursion.
 
+### §5. Readiness-gated searches — the actual cause of risks 1 and 2
+
+**Measured 2026-08-09.** Risks 1 and 2 above are not independent hazards to be
+budgeted around; they are symptoms of one defect in how anchored searches wait.
+The exercise does not merely run long — it computes **nothing**. Every statement
+in `output/exercises/project_euler/1.foo.einmo` settles `PREMBRIONIC`: `answer`
+unresolved, the searches for `loop`, `cond2`, `sum35`, `'ite` unresolved. The
+`@einmo set iteration depth to 40000` directive raises the ceiling without
+changing the shape of the problem, and must be removed once §5 lands.
+
+#### The defect
+
+`step_inner` (`fir_trait.rs:466-499`) has exactly two mutually exclusive
+branches: if the task queue is non-empty, drain it; only when it is empty does
+the FIR run its own `fir_op_step`. An anchored search enqueues its anchor at
+PREMBRIONIC (`fir_kinds.rs:1634-1641`) and is therefore **structurally blocked
+from searching until the entire anchor is constanic** — every statement of it,
+including ones the search will never look at.
+
+For `'ite` this is fatal. `IteFir` enqueues all three operands
+(`ITE_OPERAND_SRC` — cond, then, else) and guards on
+`operands.iter().any(operand_is_unevaluated_here)`, so the driver drains *all
+three* before `cond` can be consulted. In the exercise's
+
+```foolish
+answer = {cond2, sum35, <loop>, 'ite}$
+```
+
+the discarded `<loop>` branch is in that queue and is drained unconditionally.
+The base case is correct and simply never gets to stop anything. `'ite` passes
+`input/foop/55/ite.foo` (`r1=42`, `r2=99`) only because both branches there are
+literals — the greediness is invisible until a branch is recursive.
+
+#### The change: ask a per-predicate readiness question
+
+Waiting for constanic is stronger than any search's meaning requires. `$` asks
+"which statement is last?" — a question about **shape**, not about values.
+Brane-like FIRs (brane, concatenation, and the other `is_brane_like` kinds) gain
+three predicates, and each search waits on the one its predicate needs:
+
+| Predicate | Searches | Ready when |
+|-----------|----------|------------|
+| `is_indexable()` | `$` `^` `#N` (and `&#`, `&^`, `&$`) | the brane's **shape is settled**: statement count and positions final, and every constituent spliced into place |
+| `is_name_searchable()` | `?` `~` `.` (and `&?`, `&~`) | statement **names** are settled; bodies need not be |
+| `is_value_searchable()` | `?=` `~=` (and `&?=`, `&~=`) | the **values being matched** are settled |
+
+Once ready, the search **retargets its own work queue**: it resolves the target,
+pushes the selected statement to `ubc_children` as it does today, and **replaces
+the task queue with just that one item**. Unselected siblings are dropped from
+the queue and never stepped.
+
+This is the load-bearing move, and it is not merely "start earlier": it narrows
+the dependency set as soon as the search knows which member it actually needs.
+The queue stops meaning "everything I was born depending on" and starts meaning
+"what I still need". `step_inner`'s two-branch shape is unchanged — `fir_op_step`
+gains the ability to *rewrite* the queue, not only to be gated by it.
+
+`'ite` short-circuiting then falls out at the right layer: `{cond, then, else,
+'ite}` becomes ready once the brane is indexable, selects on `cond`, and
+retargets to the winning branch alone. **No laziness rule is added to the FVM
+and no per-operator evaluation order is introduced** — the same mechanism that
+makes `$` cheap makes `'ite` terminate.
+
+#### Indexability requires a *complete* brane, not a partial one
+
+A tempting weakening — "as soon as constituents at the front or back are known,
+attempt to select" — is **rejected**. A selected statement carries its
+dependencies: its backward searches resolve against its home brane, and its line
+number is meaningful only relative to that brane. Selecting statement #3 out of
+`({a}{b}{c})` before the concatenation has spliced all three operands into place
+yields a statement whose own searches would scan an incomplete brane and could
+settle NK against members that do not exist yet.
+
+Therefore `is_indexable()` means **the shape can no longer change** — frozen,
+not merely currently-readable. This also makes retargeting **monotone**: a
+choice made under a frozen shape can never be invalidated by later growth. The
+weaker reading would permit a search to select #3 and then have the brane grow,
+which the einmo suite already demonstrates going wrong (§Open Questions).
+
+`is_indexable()` is therefore recursive over constituents and admits a **third
+answer** — *not yet decidable* — distinct from a definite `false`; an operand
+that is itself an unresolved search returning a brane leaves indexability
+undecided rather than denied. Conflating "undecided" with "false" would stall
+searches that could proceed; conflating it with "true" reintroduces the
+incomplete-brane bug above.
+
+#### Scope within this FOOP — indexability is staged
+
+**`is_indexable()` is implemented first and alone**, and is itself split into
+stages so the retargeting machinery is proven on the easy case before the hard
+one. It is what Euler 1 needs: `$` on the concatenations, and `'ite`
+short-circuiting via indexed selection.
+
+| Stage | Subject | Why this order |
+|-------|---------|----------------|
+| **5a** | **Plain brane** | A brane's shape is settled at parse time — its statement count and positions never change — so `is_indexable()` is trivially `Ready` and the freezing question does not arise. This stage builds and proves the whole retargeting mechanism (readiness question, queue rewrite, dropping unselected siblings) against a case with no ambiguity. |
+| **5b** | **Concatenation** | The hard case: shape is settled only once every operand is spliced in, and an operand may itself be an unresolved search. This is where the three-valued answer and the frozen-shape rule earn their keep. Built on 5a's proven mechanism. |
+| **5c** | **Remaining brane-like kinds** | Whatever else answers `is_brane_like` — swept once the rule is settled, each with its own readiness answer. |
+| **5d** | **`'ite` short-circuit** | Retarget on `cond` instead of enqueueing all three operands. Depends only on 5a for a literal-operand `'ite`; the exercise's recursive branch needs 5b. |
+
+Splitting this way means a regression in 5b cannot be confused with a defect in
+the retargeting mechanism itself — 5a's tests pin that independently.
+
+`is_name_searchable()` and `is_value_searchable()` are specified here as the
+same shape, so the design is coherent, but are **deferred to their own phases**
+and are not required for this exercise to pass.
+
+Value search is expected to need a different shape and is explicitly not solved
+here: `?=` must compare candidate *values*, so its readiness is close to
+"constanic" for the statements it scans — but only for those it actually
+reaches, and a backward scan may settle on the first hit without ever touching
+earlier candidates. That suggests readiness for value search may not be a
+whole-brane predicate at all, but a per-candidate demand made by the navigator
+as it advances. §Open Questions records this.
+
 ## FIR Impact
 
 - **Two new FIR kinds** in `foolish-ubca/src/system_foo.rs`:
@@ -538,6 +666,12 @@ Bisect evidence on `jia` @ `62706518`:
 - **No new NYES states.** Both use the three existing terminals
   (ECONSTANIC / CONSTANT / NK).
 - **No serialization impact** beyond sequencer rendering of the new kinds.
+- **§5 readiness predicates**: `is_indexable()` on the `Fir` trait (default
+  implementation returning "not yet decidable" for non-brane-like kinds),
+  overridden by brane and concatenation. Returns a three-valued answer
+  (`Ready` / `NotYet` / `Never`), not a `bool` — see §5. No new FIR kinds and
+  no new NYES states; readiness is a question *about* a FIR's shape, not a
+  state it occupies.
 
 ## UBC Step Impact
 
@@ -548,6 +682,24 @@ Bisect evidence on `jia` @ `62706518`:
   name table covering `ComparisonOp::ALL` + `ArithOp::ALL` + `'or`
   (`system_foo.rs`); still scoped to `system.foo`'s own top-level
   statements only.
+- **§5 changes the wait condition of every anchored search.** `SearchFir`'s
+  BRANING arm (`fir_kinds.rs:1673-1694`) stops requiring a constanic anchor and
+  instead consults the predicate's readiness question; on ready, it retargets
+  its task queue to the single selected statement. `step_inner`
+  (`fir_trait.rs:466-499`) is **unchanged** — its two-branch shape already
+  permits this; what changes is that `fir_op_step` may now rewrite the queue
+  rather than only being gated by it.
+- **`IteFir` stops enqueueing all three operands.** It enqueues `cond`, and on
+  `cond` settling, retargets to the selected branch alone. This is the
+  short-circuit; it is expressed in the same retargeting mechanism as `$`, not
+  as a special evaluation rule.
+- **Expected step-count reduction across the suite.** Searches that previously
+  waited for a whole anchor now settle earlier, so `steps=` in einmo OUTPUT
+  will drop for many pre-existing cases. Per the non-regression invariant this
+  is the one category of foreign-baseline change this FOOP may legitimately
+  produce — it must be **reviewed case by case and reported to the human**, not
+  promoted silently (see the plan's Promotion Review Gate). A step count that
+  *rises*, or any change to a settled value, is a bug.
 
 ## Test Plan
 
@@ -621,6 +773,36 @@ The exercise stays dead: the first real program written for the language
 cannot run, and the defects found by bisecting it stay undocumented and
 unpinned.
 
+### E. (§5) Raise the step/iteration budget and ship the `@einmo` directive
+
+The current state: `@einmo set iteration depth to 40000` in the exercise
+header. Rejected as a solution — it does not make the program terminate, it
+enlarges the room in which it fails to. The measured output is entirely
+PREMBRIONIC at 40000 steps; no budget makes a non-terminating demand finish.
+The directive is removed when §5 lands.
+
+### F. (§5) Make `IteFir` lazy directly — evaluate `cond`, then one branch
+
+The narrow fix: special-case `'ite` to step its condition first and only then
+the selected branch. Rejected because it introduces per-operator evaluation
+order into the FVM — a genuine semantic addition — to solve one operator's
+instance of a general problem. Every anchored search waits on more than it
+needs; `'ite` is merely where it becomes fatal rather than merely slow. The
+readiness-gated design fixes the class at the layer where the waiting is
+decided, and yields `'ite` short-circuiting as a consequence rather than as a
+rule.
+
+### G. (§5) Rewrite `'ite` as the spec's search-based selector only
+
+FOOP-55 §Specification's original form —
+`'ite = ({<<-2>>, <<-1>>} _ite)~cond=(<<-3>>)&#1` — gets non-evaluation of the
+losing branch from value-search semantics, with no FVM change at all. It
+remains the more elegant surface form and is not withdrawn. Rejected **as the
+sole fix** because it depends on `is_value_searchable()` (§5, deferred) to know
+when the `~cond=` search may proceed, and because it leaves every *other*
+anchored search over-waiting. Worth revisiting as surface syntax once §5's
+value-search phase lands.
+
 ## Open Questions
 
 - **Modulo with negative operands** — Rust truncating semantics are pinned
@@ -628,8 +810,29 @@ unpinned.
 - **The exercise-file fixes** — Atlas is applying E1/E2/E3; plan Phase 0
   verifies they landed before any implementation and does not edit the
   exercise itself.
-- **MAX_DEPTH / iteration budget** for ~1000-deep recursion — measured in
-  Phase 3 (§4 risk 1); the remedy, if any is needed, is decided there.
+- **(§5) What exactly freezes a concatenation's shape?** `is_indexable()` must
+  mean "the shape can no longer change", not "the shape is currently readable"
+  (§5). For a concatenation whose operands are themselves searches returning
+  branes, the answer is *not yet decidable* until those searches settle. The
+  precise condition — and where it is computed without walking the whole tree
+  on every step — is the first thing plan Phase 4 measures on the live FVM.
+- **(§5) Is the three-valued readiness answer the right shape?**
+  `Ready` / `NotYet` / `Never` is proposed so that "undecided" is never
+  conflated with "false" (which would stall) nor with "true" (which would
+  select out of an incomplete brane). Whether `Never` is reachable at all for
+  indexability — as opposed to only via an NK anchor, which is already handled
+  — is open.
+- **(§5) Retargeting and monotonicity.** The claim is that a frozen shape makes
+  retargeting safe permanently. The einmo suite already demonstrates the
+  failure mode when a search settles against a brane that later changes; plan
+  Phase 4 must name those cases and confirm the frozen-shape rule excludes
+  them.
+- **(§5, deferred) Is `is_value_searchable()` a whole-brane predicate at all?**
+  A backward value search may settle on the first hit without touching earlier
+  candidates, which suggests a per-candidate demand made by the navigator as it
+  advances, rather than a predicate over the brane. Not resolved here; the
+  value-search phase is deferred and this question gates it.
+
 - **The exact final shape of the `'or` lookup** — `T~A=A &~B=B &#1` is
   traced on paper (§2 table); Phase 2 confirms it on the live FVM and
   adjusts only if the trace was wrong.
@@ -638,6 +841,13 @@ unpinned.
 - **The `=$`/`$=` sugars** — `$=` does not parse and `=$` settles
   non-obviously (D6); their intended semantics need their own
   investigation FOOP. FOOP-55 avoids both.
+- **MAX_DEPTH / iteration budget** (§4 risks 1-2) — **largely subsumed by §5.**
+  These were framed as budget questions; the measurement of 2026-08-09 shows
+  the exercise computes nothing at any budget, so the cause is the greedy wait,
+  not the ceiling. Whether a depth guard is *still* needed once §5 lands — and
+  whether `step_inner`'s silent `NoProgress` at `MAX_DEPTH`
+  (`fir_trait.rs:467-469`) should instead be a loud error — is measured in
+  plan Phase 7, after §5's staged implementation.
 
 ## References
 
@@ -667,9 +877,32 @@ unpinned.
 
 ## Last Updated
 
-**Date**: 2026-08-07 (2)
-**Updated By**: Sisyphus / qwen3.8-max
-**Changes**: Post-FOOP-65-creation revision. Added the **FOOP-65
+**Date**: 2026-08-09
+**Updated By**: Claude Code / claude-opus-5
+**Changes**: Added **§5 "Readiness-gated searches"** — the actual cause of §4
+risks 1-2. Measured: the exercise computes *nothing* (every statement
+PREMBRIONIC) at a 40000-step budget, so the `@einmo set iteration depth to
+40000` directive enlarges the room in which it fails rather than fixing it.
+Root cause: `step_inner` (`fir_trait.rs:466-499`) never runs a FIR's own
+`fir_op_step` while its task queue is non-empty, and an anchored search
+enqueues its whole anchor — so `IteFir`, which enqueues all three operands,
+drains the discarded `<loop>` branch unconditionally and never terminates.
+Specifies `is_indexable()` / `is_name_searchable()` / `is_value_searchable()`
+on brane-like FIRs, with a ready search **retargeting its task queue to the one
+selected statement**; `'ite` short-circuiting then falls out with no laziness
+rule added to the FVM. Records that indexability must mean **shape frozen**,
+not merely currently-readable (a selected statement carries its dependencies —
+selecting out of an incomplete concatenation would resolve its searches against
+a brane missing members), hence a three-valued readiness answer where
+"undecided" is distinct from "false". `is_indexable()` staged **5a plain brane
+→ 5b concatenation → 5c other brane-like kinds → 5d `'ite`** so the retargeting
+mechanism is proven on the parse-time-settled case before the freezing question
+arises; the other two predicates are specified but deferred. Added Rejected
+Alternatives E (raise the budget), F (make `IteFir` lazy directly), G (the
+spec's search-based `'ite` alone), five §5 Open Questions, and FIR/UBC-Step
+Impact entries including the expected suite-wide step-count *reduction* that
+must be reviewed case by case. Earlier: post-FOOP-65-creation revision, adding
+the **FOOP-65**
 dependency** — the exercise rewrite uses backtick (tail-concatenator)
 application: new E4 carries the full line-by-line rewrite mapping; §4
 risk 0 and the plan's Phase 0 gate on FOOP-65 merged. Added **D6** (`$=`
