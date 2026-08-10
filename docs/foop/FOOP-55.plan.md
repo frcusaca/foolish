@@ -152,46 +152,17 @@ FOOP-73's fallback: `OrFir` as a dedicated FIR kind, same pattern as
 - [x] Run all tests — old and new — and make sure they all pass correctly.
       (2026-08-09 13:50)
 
-## Phase 3.0 — §5.0: bounded-depth BREADTH-FIRST stepping
-
-Mechanism (i) alone. `i_have_what_i_need()` does not exist yet, so **behavior
-must be unchanged**: the same programs settle to the same values, and only
-traversal order and step counts move. Verifying that against the existing suite
-before any early exit exists is the entire point of doing this first.
-
-- [ ] Read `rust_instructions.md` in full (mandatory before any Rust)
-- [ ] Read FOOP-55.md §5, especially "(i) `depth` becomes a real parameter"
-- [ ] Read `fir_trait.rs:466-499` (`step_inner`) — note `depth` is already
-      threaded but used only as a silent `MAX_DEPTH` tripwire
-- [ ] **Tests first**: a FIR tree stepped at depth N advances exactly the
-      frontier N levels deep and no further
-- [ ] Add `depth` as a parameter of `step`; `if depth == 0 { return }`,
-      otherwise work and recurse with `depth - 1`
-- [ ] FVM (`evaluator.rs`) holds the depth per invocation: start ≈5, grow by a
-      delta (≥1) when a sweep ends without reaching constanic
-- [ ] **MEASURE (Open Question)**: record sweeps-to-settle across the existing
-      suite for candidate deltas (constant / multiplicative / adaptive). Choose
-      on the evidence and record the choice + numbers in FOOP-55.md §5.
-- [ ] **RESOLVE (Open Question)**: what ends an invocation? A program that
-      cannot settle must fail **loudly** — replacing the silent
-      `NoProgress`-at-`MAX_DEPTH` that let the Euler failure hide. Add a test
-      that a non-terminating program produces a loud failure, not a quiet
-      PREMBRIONIC tree.
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
-- [ ] REPORT to the human: **settled values must be identical** to before. Any
-      value change here is a bug, not a baseline update. `steps=` may move in
-      either direction at this stage (traversal order changed); explain the
-      direction before promoting anything.
-
 ## Phase 3A — §5a: `i_have_what_i_need()` for a PLAIN BRANE
 
-Mechanism (ii), proven where there is no ambiguity: a plain brane's shape is
+Proven where there is no ambiguity: a plain brane's shape is
 settled at parse time, so `is_indexable()` is trivially `true`. **A regression
 in 3B must never be confusable with a defect in the mechanism itself — that is
 what this phase pins.**
 
-- [ ] Read FOOP-55.md §5 "(ii) `i_have_what_i_need()`" and "Indexability
-      requires a *complete* brane, not a partial one"
+- [ ] Read `rust_instructions.md` in full (mandatory before any Rust)
+- [ ] Read FOOP-55.md §5 in full — especially "Why this preserves evaluation
+      semantics" and "Why breadth-first stepping is withdrawn". FIFO draining is
+      KEPT; do not reorder anything.
 - [ ] Read `fir_kinds.rs:1629-1707` (`SearchFir::fir_op_step`) — the anchor
       enqueue at PREMBRIONIC
 - [ ] **Tests first.** Unit tests pinning: `$`/`^`/`#N` on a plain brane settle
@@ -367,20 +338,18 @@ the exercise is green and the real cost is known.
 
 **Date**: 2026-08-09
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: **§5 redesigned** around two mechanisms per Atlas's direction, and
-**Phase 3.0** inserted ahead of 3A: (i) `depth` as a real parameter of `step`
-(`if depth==0 return`, else work and recurse with `depth-1`), held by the FVM
-per invocation, starting ≈5 and growing by a delta ≥1 when a sweep does not
-settle — making stepping genuinely breadth-first and replacing the silent
-`MAX_DEPTH`→`NoProgress` tripwire that let the Euler failure hide; and (ii)
-`i_have_what_i_need()`, where a FIR steps `foolish_children` until they are ALL
-constanic OR the predicate is true. Phase 3.0 implements (i) alone and must
-show **identical settled values**, so it is verifiable before any early exit
-exists. The earlier retargeting design and its three-valued readiness type are
-**withdrawn**: with `i_have_what_i_need()` defaulting `false`, "not yet" and
-"no" have the same safe consequence, so `is_indexable()` is a plain `bool`.
-`is_indexable()` is retained on encapsulation grounds — a brane-like reports its
-own shape and a search must not re-derive it. Earlier: split the old Phase 3 to
+**Changes**: **Breadth-first stepping withdrawn; Phase 3.0 removed.** The
+previous revision added a depth-parameter sweep alongside the early exit and
+claimed it was strategy-only. It is not: FIFO draining is part of Foolish's
+evaluation *semantics* — FIRs are entitled to assume preceding statements have
+settled (`ib_search_with_engine` reads a found neighbour's NYES as truth with no
+readiness check, `fir_kinds.rs:1430`; ~185 `get_nyes()` reads and ~83 `.value()`
+calls rest on the same entitlement; FOOP-23 defines IB as "lines before the
+current expression"). Breadth-first stepping would break that for every FIR at
+once. It is also **not needed**: `'ite` pushes cond first
+(`ITE_OPERAND_SRC`, `system_foo.rs:689-693`), so FIFO settles `cond` before
+`then`/`else` and the early exit fires before `<loop>` is ever drained. FIFO is
+kept; the plan now runs 3A→3D on `i_have_what_i_need()` alone. Earlier: split the old Phase 3 to
 insert FOOP-55.md **§5's staged
 implementation** ahead of integration: **3A** (readiness-gated indexing for a
 plain brane — builds the whole retargeting mechanism where shape is settled at

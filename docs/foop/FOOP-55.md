@@ -39,26 +39,27 @@ repair without which the exercise cannot terminate at any step budget —
    pure Foolish inside `system.foo`** as a truth-table brane applied by
    search — the preferred design of FOOP-73, realized here for the single
    operator `'or`. No new FIR kind, no privileged FVM layer.
-3. **Breadth-first stepping with a per-FIR early exit (§5)** — a FIR currently
-   drains *every* dependency to constanic before it may act, which is far
-   stronger than most FIRs need (`$` asks a question about **shape**, not
-   values). Two mechanisms: (i) `depth` becomes a real parameter of `step`, held
-   and grown by the FVM, so one invocation sweeps a bounded frontier —
-   evaluation becomes genuinely **breadth-first**; and (ii)
-   **`i_have_what_i_need()`**, so a FIR steps its `foolish_children` until they
-   are **ALL constanic OR** its own requirement is met. Together these make
-   `'ite` short-circuit — and therefore make the exercise's recursion terminate
-   — **without adding any laziness rule to the FVM**. Measured 2026-08-09: the
-   exercise currently computes *nothing* (all PREMBRIONIC) at a 40000-step
-   budget, so this is a correctness repair, not an optimization.
+3. **A per-FIR early exit (§5)** — a FIR currently drains *every* dependency to
+   constanic before it may act, which is far stronger than most FIRs need (`$`
+   asks a question about **shape**, not values). **`i_have_what_i_need()`** lets
+   a FIR step its `foolish_children` until they are **ALL constanic OR** its own
+   requirement is met. Default `false`, so no kind that has not opted in can
+   change. This makes `'ite` short-circuit — and therefore makes the exercise's
+   recursion terminate — **without adding any laziness rule to the FVM**.
+   Measured 2026-08-09: the exercise currently computes *nothing* (all
+   PREMBRIONIC) at a 40000-step budget, so this is a correctness repair, not an
+   optimization.
 
-   **Scope note:** §5 is a change of *strategy*, not of semantics — no settled
-   value may differ, only traversal order and step counts. That is why it
-   mutates UBCa rather than forking a UBCb: the ~180 signed einmo baselines
-   remain a valid oracle throughout and are the safety net for the riskiest
-   part. A change that legitimately altered settled values (Rejected
-   Alternative H, the message-passing FVM) would forfeit that oracle and *would*
-   warrant a second implementation. Staged 5.0–5d; `is_name_searchable()` and
+   **Scope note:** FIFO draining is **kept**. An earlier draft also proposed
+   bounded-depth breadth-first stepping and claimed it could not alter settled
+   values; that was wrong and is **withdrawn** (§5). Sequential draining is part
+   of Foolish's evaluation *semantics* — FIRs are entitled to assume preceding
+   statements have settled, and ~185 `get_nyes()` reads plus ~83 `.value()`
+   calls rest on it. The early exit never reorders anything, so that entitlement
+   survives and this FOOP mutates UBCa. Breadth-first stepping, if ever wanted,
+   belongs in a **UBCb** beside Rejected Alternative H (message passing): both
+   change what a step means, so the signed einmo baselines would stop being a
+   valid oracle. Staged 5a–5d; `is_name_searchable()` and
    `is_value_searchable()` are specified but deferred.
 
 — and it **documents, with reproductions**, six platform defects (D1–D6)
@@ -582,47 +583,19 @@ The base case is correct and simply never gets to stop anything. `'ite` passes
 `input/foop/55/ite.foo` (`r1=42`, `r2=99`) only because both branches there are
 literals — the greediness is invisible until a branch is recursive.
 
-#### The change: bounded-depth breadth-first stepping, with a per-FIR early exit
+#### The change: keep FIFO draining, add a per-FIR early exit
 
-Two independent mechanisms. Neither introduces laziness, message passing, or a
-dependency tracker; together they make the exercise terminate.
+**One mechanism, not two.** An earlier draft of this section also proposed
+bounded-depth breadth-first stepping; that is **withdrawn** — see "Why
+breadth-first stepping is withdrawn" below. FIFO draining is kept exactly as it
+is. The only change is that a FIR may stop draining early.
 
-##### (i) `depth` becomes a real parameter of stepping
-
-`step` takes a `depth`. The rule is one line:
-
-```
-if depth == 0 { return }        // frontier reached; this sweep stops here
-// otherwise do this FIR's work, and recurse into children with depth - 1
-```
-
-This makes evaluation genuinely **breadth-first**: one outer invocation sweeps a
-bounded frontier across the whole tree instead of plunging down a single spine.
-
-**The depth is held by the FVM, per invocation** — not a per-FIR constant and
-not a compile-time cap. It **starts small (≈5) and grows by a delta (at least 1,
-possibly more) whenever a sweep ends without reaching constanic.** The FVM
-therefore *discovers* the depth a program needs rather than having it guessed;
-a program requiring deep recursion pays for it in additional sweeps, visibly,
-instead of dying against a silent ceiling.
-
-This supersedes the present use of depth. `step_inner` already threads a `depth`
-(`fir_trait.rs:466-469`) but only as a `MAX_DEPTH` tripwire that returns
-`NoProgress` **silently** — which is precisely how the Euler failure stayed
-invisible. Depth stops being a guard against runaway recursion and becomes the
-control that makes stepping breadth-first.
-
-##### (ii) `i_have_what_i_need()` — the per-FIR early exit
+##### `i_have_what_i_need()` — the per-FIR early exit
 
 **A FIR steps its `foolish_children` until they are ALL constanic OR
 `i_have_what_i_need()` returns true** — whichever comes first. That disjunction
 is the whole rule. The first arm is today's behavior (and remains the fallback,
 since the predicate defaults `false`); the second is the new early exit.
-
-Note this is the termination of **dependency stepping within one FIR**, and is
-distinct from what ends an FVM *invocation* (mechanism (i)'s sweep, which ends
-at `depth == 0` and is then re-entered at greater depth). The two are separate
-questions and neither implies the other.
 
 | FIR | `i_have_what_i_need()` is true when |
 |-----|--------------------------------------|
@@ -635,6 +608,49 @@ an optimization hint: returning true prematurely settles a FIR on incomplete
 information, silently — the hardest failure mode to detect. Hence the default is
 `false`, so a kind that has not opted in cannot regress, and every override is a
 deliberate, individually tested claim.
+
+##### Why this preserves evaluation semantics
+
+The task queue is **FIFO** (`proto_brane.rs:200-206`), and `step_inner` pops the
+front task only once it is constanic (`fir_trait.rs:474-475`). Statements
+therefore drain **strictly in order**: when `b` is stepped, `a` has already
+settled. FIRs are *entitled* to that — and they use it. `ib_search_with_engine`
+(`fir_kinds.rs:1412-1434`) scans the preceding range `[0, idx-1]` and takes the
+found statement's NYES **as truth**, with no readiness check
+(`fir_kinds.rs:1430`), because draining guarantees it is settled. There are ~185
+`get_nyes()` reads and ~83 `.value()` calls across the crate resting on the same
+entitlement, and FOOP-23 *defines* IB as "context accumulated so far, lines
+before the current expression."
+
+The early exit **does not disturb any of this**, because it never reorders
+anything. It weakens only "*all* children eventually settle" — and only for the
+FIR that explicitly asked, which by construction does not need the children it
+skipped. Everything that does run still runs after its predecessors settled.
+
+##### Why breadth-first stepping is withdrawn
+
+The earlier draft proposed `depth` as a parameter of `step` (`if depth == 0
+{ return }`, else recurse with `depth - 1`), sweeping a bounded frontier instead
+of descending one spine. It was described as a change of *strategy* that could
+not alter settled values. **That was wrong.**
+
+Sequential FIFO draining is part of Foolish's evaluation **semantics**, not an
+implementation strategy. Breadth-first stepping would break the
+settled-predecessor entitlement for *every* FIR at once: a search could scan
+`[0, idx-1]` and read a still-PREMBRIONIC neighbour's state as its answer, and
+`lv = lv+1` could read an `lv` that has not yet settled. It does not reorder the
+meaning of "so far" — it dissolves it.
+
+Consequences of the withdrawal:
+
+- **It is not needed.** `'ite` builds its operands cond-then-else
+  (`ITE_OPERAND_SRC`, `system_foo.rs:689-693`) and pushes them in that order, so
+  FIFO settles `cond` **first**. The early exit fires before `then`/`else` are
+  ever drained — which is exactly the short-circuit the exercise needs.
+- **If it is ever wanted, it belongs in a UBCb**, alongside Rejected Alternative
+  H (message passing). Both change what a step means, so the signed einmo
+  baselines stop being a valid oracle — the test this FOOP uses for when a
+  second implementation is warranted.
 
 ##### The two predicates are owned by different objects
 
@@ -654,12 +670,13 @@ Neither reaches into the other's internals.
 
 ##### Why this terminates the exercise
 
-Under depth-first stepping the `<loop>` else-branch is descended before `cond`
-is ever stepped, so the recursion runs away before the condition that would stop
-it exists. Under bounded-depth breadth-first sweeps, `cond` settles in an early
-sweep; `'ite` then reports `i_have_what_i_need()` and stops stepping children —
-so the unselected `<loop>` branch is never driven to completion. **No laziness
-rule is added to the FVM and no per-operator evaluation order is introduced.**
+Today `IteFir` enqueues all three operands and guards on
+`operands.iter().any(operand_is_unevaluated_here)`, so FIFO draining takes the
+`<loop>` else-branch to constanic before `cond` is ever consulted — and it never
+gets there. With the early exit, `cond` (pushed **first**, `ITE_OPERAND_SRC`
+`system_foo.rs:689-693`) settles, `i_have_what_i_need()` reports true, and
+`then`/`else` are never drained. **No laziness rule is added to the FVM, no
+per-operator evaluation order is introduced, and the drain order is unchanged.**
 
 #### Indexability requires a *complete* brane, not a partial one
 
@@ -696,14 +713,13 @@ short-circuiting via indexed selection.
 
 | Stage | Subject | Why this order |
 |-------|---------|----------------|
-| **5.0** | **Bounded-depth breadth-first stepping** — `depth` as a `step` parameter, held and grown by the FVM | Mechanism (i) alone, with `i_have_what_i_need()` defaulting `false` everywhere. **Behavior must be unchanged**: the same programs settle to the same values, only the traversal order and step counts move. That makes it independently verifiable against the existing suite before any early exit exists to confuse the picture. |
 | **5a** | **Plain brane** — `is_indexable()` + `i_have_what_i_need()` for `$`/`^`/`#N` | A brane's shape is settled at parse time — its statement count and positions never change — so `is_indexable()` is trivially `true` and the freezing question does not arise. This proves the early-exit mechanism where there is no ambiguity. |
 | **5b** | **Concatenation** | The hard case: shape is settled only once every operand is spliced in, and an operand may itself be an unresolved search. Where the frozen-shape rule earns its keep. Built on 5a's proven mechanism. |
 | **5c** | **Remaining brane-like kinds** | Whatever else answers `is_brane_like` — swept once the rule is settled, each reporting its own shape. |
-| **5d** | **`'ite` short-circuit** | `i_have_what_i_need()` = cond constanic **and** the selected branch constanic. Depends only on 5.0 + 5a for a literal-operand `'ite`; the exercise's recursive branch needs 5b. |
+| **5d** | **`'ite` short-circuit** | `i_have_what_i_need()` = cond constanic **and** the selected branch constanic. Depends only on 5a for a literal-operand `'ite`; the exercise's recursive branch needs 5b. |
 
 Splitting this way means a regression in 5b cannot be confused with a defect in
-the early-exit mechanism itself — 5.0's and 5a's tests pin those independently.
+the early-exit mechanism itself — 5a's tests pin that independently.
 
 `is_name_searchable()` and `is_value_searchable()` are specified here as the
 same shape, so the design is coherent, but are **deferred to their own phases**
@@ -732,8 +748,7 @@ as it advances. §Open Questions records this.
   overridden by brane-like kinds) and `i_have_what_i_need()` (plain `bool`,
   default `false`, overridden by `SearchFir` and `IteFir`) on the `Fir` trait.
   No new FIR kinds and no new NYES states: both are questions *about* a FIR,
-  not states it occupies. `depth` is a `step` parameter and FVM-held value, not
-  FIR state.
+  not states it occupies.
 
 ## UBC Step Impact
 
@@ -744,14 +759,7 @@ as it advances. §Open Questions records this.
   name table covering `ComparisonOp::ALL` + `ArithOp::ALL` + `'or`
   (`system_foo.rs`); still scoped to `system.foo`'s own top-level
   statements only.
-- **§5.0 makes stepping breadth-first.** `step` gains a `depth` parameter;
-  `step_inner` (`fir_trait.rs:466-499`) returns at `depth == 0` and recurses
-  with `depth - 1`. The FVM (`evaluator.rs`) holds the depth for an invocation,
-  starting ≈5 and growing by a delta (≥1) whenever a sweep ends without
-  reaching constanic. The existing silent `MAX_DEPTH` → `NoProgress` tripwire
-  (`fir_trait.rs:467-469`) is replaced by this; a sweep ending early is now a
-  normal, observable event rather than a silent truncation.
-- **§5a-d add the early exit.** A FIR drains `foolish_children` until they are
+- **§5 adds the early exit; FIFO draining is unchanged.** A FIR drains `foolish_children` until they are
   constanic **or** `i_have_what_i_need()` is true. Default `false` on the `Fir`
   trait, so any kind that has not opted in keeps today's behavior exactly.
   `SearchFir` overrides it for index predicates (anchor `is_indexable()` and
@@ -906,17 +914,6 @@ value-search phase lands.
   branes, the answer is *not yet decidable* until those searches settle. The
   precise condition — and where it is computed without walking the whole tree
   on every step — is the first thing plan Phase 4 measures on the live FVM.
-- **(§5.0) The starting depth and the growth delta.** ≈5 to start, growing by
-  at least 1. Whether the delta should be constant, multiplicative, or adaptive
-  to how far the last sweep got is open, and is a **measurement**, not a
-  preference: plan Phase 3.0 records sweeps-to-settle for the existing suite
-  under each candidate before one is chosen.
-- **(§5.0) What ends an invocation?** A sweep that makes no progress at any
-  depth is genuinely stuck (as distinct from merely needing more depth). The
-  termination condition — and what replaces the current silent `NoProgress` at
-  `MAX_DEPTH` — must be stated so a non-terminating program still fails
-  *loudly* rather than quietly returning a PREMBRIONIC tree, which is exactly
-  how the Euler failure hid.
 - **(§5) Early exit and monotonicity.** The claim is that a frozen shape makes
   the early exit safe permanently. The einmo suite already demonstrates the
   failure mode when a search settles against a brane that later changes; plan
@@ -974,7 +971,17 @@ value-search phase lands.
 
 **Date**: 2026-08-09
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: **§5 redesigned** (2026-08-10) around two mechanisms per Atlas's
+**Changes**: **Breadth-first stepping withdrawn (2026-08-10, second revision).**
+FIFO draining is KEPT; §5 is now the early exit alone. The withdrawn proposal and
+the reason are recorded in §5 "Why breadth-first stepping is withdrawn": sequential
+draining is part of Foolish's evaluation *semantics*, not a strategy — FIRs are
+entitled to assume preceding statements have settled, and breadth-first stepping
+would break that entitlement for every FIR simultaneously. It is also unnecessary,
+since `'ite` pushes `cond` first and FIFO therefore settles it before the branches.
+Consequently this FOOP mutates UBCa (the einmo baselines remain a valid oracle,
+because the early exit never reorders anything); breadth-first stepping, if ever
+wanted, belongs in a UBCb beside Rejected Alternative H. Stage 5.0 and its two
+Open Questions removed. Earlier same day: **§5 redesigned** around two mechanisms per Atlas's
 direction, replacing the readiness-gating design of the first draft: (i) `depth`
 as a real parameter of `step` — `if depth==0 return`, else work and recurse with
 `depth-1` — held by the FVM per invocation, starting ≈5 and growing by a delta
