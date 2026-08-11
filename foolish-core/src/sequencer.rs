@@ -511,7 +511,7 @@ fn render_fir(
             if all_embryonic {
                 let mut body_lines: FormattedLines = Vec::new();
                 let bi = body_indent_compute(0, 0);
-                for (ei, elem) in elements.iter().rev().enumerate() {
+                for (ei, elem) in elements.iter().enumerate() {
                     let is_last = ei == elements.len() - 1;
                     let elem_lines = render_fir(&**elem, 0, 0, line_hint);
                     for (prefix, text) in elem_lines {

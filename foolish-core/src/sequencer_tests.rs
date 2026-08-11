@@ -411,6 +411,7 @@ fn foop65_embryonic_inspection() {
 
     // §3.1 worked example: ?A`?B`?C`?D ?E ?F
     // Search elements are naturally embryonic (unresolved) — no forced state.
+    // Storage is reversed per FOOP-65 §5.2: [Concat(?D,?E,?F), ?C, ?B, ?A]
     let s_a = SearchFirBuilder::new("A").build();
     let s_b = SearchFirBuilder::new("B").build();
     let s_c = SearchFirBuilder::new("C").build();
@@ -424,15 +425,15 @@ fn foop65_embryonic_inspection() {
         .build();
     let outer = ConcatenationFirBuilder::new()
         .element(inner)
-        .element(s_a)
-        .element(s_b)
         .element(s_c)
+        .element(s_b)
+        .element(s_a)
         .is_tail_concatenation(true)
         .build();
     let rendered = format_fir_simple(&outer);
     eprintln!("\n=== FOOP-65 §6.1: ALL-EMBRYONIC TAIL CONCATENATION ===");
     eprintln!("Input: ?A`?B`?C`?D ?E ?F");
-    eprintln!("Storage order: [Concat(?D,?E,?F), ?A, ?B, ?C]");
+    eprintln!("Storage order: [Concat(?D,?E,?F), ?C, ?B, ?A]");
     eprintln!("Backtick rendering (reversed to source order):");
     eprintln!("  {}", rendered);
     eprintln!("=== END ===\n");
