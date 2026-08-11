@@ -39,28 +39,31 @@ repair without which the exercise cannot terminate at any step budget —
    pure Foolish inside `system.foo`** as a truth-table brane applied by
    search — the preferred design of FOOP-73, realized here for the single
    operator `'or`. No new FIR kind, no privileged FVM layer.
-3. **A per-FIR early exit (§5)** — a FIR currently drains *every* dependency to
-   constanic before it may act, which is far stronger than most FIRs need (`$`
-   asks a question about **shape**, not values). **`i_have_what_i_need()`** lets
-   a FIR step its `foolish_children` until they are **ALL constanic OR** its own
-   requirement is met. Default `false`, so no kind that has not opted in can
-   change. This makes `'ite` short-circuit — and therefore makes the exercise's
-   recursion terminate — **without adding any laziness rule to the FVM**.
-   Measured 2026-08-09: the exercise currently computes *nothing* (all
-   PREMBRIONIC) at a 40000-step budget, so this is a correctness repair, not an
-   optimization.
+3. **The upgraded SFF mark (§5)** — a constanic clone currently strips **every**
+   SF/SFF mark it meets in one recursive pass, so a mark can protect a term
+   across exactly one coordination and no more. That is enough for a one-level
+   macro and insufficient for anything that builds a lookup table and then
+   selects from it — which is what `'ite` does. §5 makes the mark a **counter**:
+   a clone strips **at most one** mark, the budget belonging to the whole clone
+   operation rather than to any node. `<<X>>` is unchanged; `<< <<X>> >>` sits
+   out one coordination and resolves at the next.
 
-   **Scope note:** FIFO draining is **kept**. An earlier draft also proposed
-   bounded-depth breadth-first stepping and claimed it could not alter settled
-   values; that was wrong and is **withdrawn** (§5). Sequential draining is part
-   of Foolish's evaluation *semantics* — FIRs are entitled to assume preceding
-   statements have settled, and ~185 `get_nyes()` reads plus ~83 `.value()`
-   calls rest on it. The early exit never reorders anything, so that entitlement
-   survives and this FOOP mutates UBCa. Breadth-first stepping, if ever wanted,
-   belongs in a **UBCb** beside Rejected Alternative H (message passing): both
-   change what a step means, so the signed einmo baselines would stop being a
-   valid oracle. Staged 5a–5d; `is_name_searchable()` and
-   `is_value_searchable()` are specified but deferred.
+   This is a **correctness** fix, not an optimization: premature stripping does
+   not merely resolve early, it resolves against the **wrong neighbours**, and
+   an early miss settles NK — a terminal state no later recoordination can
+   repair. It is also what makes the exercise terminate. The branch a value
+   search does not select is never coordinated a second time, so its inner mark
+   never comes off, so it never searches, so `<loop>` never recurses. **No
+   laziness rule is added to the FVM, no evaluation order changes, and no FIR
+   gains a new state** — the deferral is carried by the term. Measured
+   2026-08-09: the exercise currently computes *nothing* (all PREMBRIONIC) at a
+   40000-step budget.
+
+   Three other designs were considered — an `@` operator projecting a search
+   result's index, true breadth-first execution, and a message-passing
+   evaluator. **Appendix A** sets out all four in prose and records why this one
+   was chosen; it also **authoritatively defines the UBCa/UBCb/UBCc/UBCd code
+   names** used from here on.
 
 — and it **documents, with reproductions**, six platform defects (D1–D6)
 and five exercise-file defects (E1–E5) found while bisecting the failure.
@@ -550,188 +553,163 @@ Bisect evidence on `jia` @ `62706518`:
    the new `lv` reads the parent-context `lv`; verified live in Phase 3.
 4. **`{loop} loop`** — the entry-point shape that seeds the recursion.
 
-### §5. Readiness-gated searches — the actual cause of risks 1 and 2
+### §5. The SFF mark defers one coordination per nesting level
 
-**Measured 2026-08-09.** Risks 1 and 2 above are not independent hazards to be
-budgeted around; they are symptoms of one defect in how anchored searches wait.
-The exercise does not merely run long — it computes **nothing**. Every statement
-in `output/exercises/project_euler/1.foo.einmo` settles `PREMBRIONIC`: `answer`
-unresolved, the searches for `loop`, `cond2`, `sum35`, `'ite` unresolved. The
-`@einmo set iteration depth to 40000` directive raises the ceiling without
-changing the shape of the problem, and must be removed once §5 lands.
+**The defect.** The exercise computes *nothing* — every statement settles
+PREMBRIONIC at a 40000-step budget. The proximate cause is that
+`answer = {cond2, sum35, <loop>, 'ite}$` drives its discarded `<loop>` branch to
+constanic before the condition can stop it. The root cause is narrower and
+lives in one function: **a constanic clone strips every SF/SFF mark it meets, in
+one pass.**
 
-#### The defect
+`constanic_clone_at` (`fir_kinds.rs:160-193`) handles an SF/SFF node by taking
+its content and cloning *that*, discarding the wrapper (lines 183-191). The call
+is recursive, so when the content is itself a marked node the inner mark is
+stripped in the same pass. Nesting is therefore a no-op today, which is
+demonstrable: `A = {v = 1 + <<#-1>>}` and `A = {v = 1 + << <<#-1>> >>}` both
+yield `B=42` under `B = ({X=41} A)$`.
 
-`step_inner` (`fir_trait.rs:466-499`) has exactly two mutually exclusive
-branches: if the task queue is non-empty, drain it; only when it is empty does
-the FIR run its own `fir_op_step`. An anchored search enqueues its anchor at
-PREMBRIONIC (`fir_kinds.rs:1634-1641`) and is therefore **structurally blocked
-from searching until the entire anchor is constanic** — every statement of it,
-including ones the search will never look at.
-
-For `'ite` this is fatal. `IteFir` enqueues all three operands
-(`ITE_OPERAND_SRC` — cond, then, else) and guards on
-`operands.iter().any(operand_is_unevaluated_here)`, so the driver drains *all
-three* before `cond` can be consulted. In the exercise's
+Premature stripping is not merely eager — it searches **in the wrong place**,
+and the damage is permanent. Given
 
 ```foolish
-answer = {cond2, sum35, <loop>, 'ite}$
+{
+	blah = 7;
+	A = <{abcd = 1; deep = << <<#-2>> >>}>;
+	B = A;
+	C = B;
+}
 ```
 
-the discarded `<loop>` branch is in that queue and is drained unconditionally.
-The base case is correct and simply never gets to stop anything. `'ite` passes
-`input/foop/55/ite.foo` (`r1=42`, `r2=99`) only because both branches there are
-literals — the greediness is invisible until a branch is recursive.
+`deep` resolves at `B`, where `#-2` finds nothing, and settles **NK** — a
+terminal state. By the time the value reaches `C`, where the search would have
+succeeded, it is irrecoverably dead. A doubly-marked term asserts "not here, not
+yet"; the current code overrules it.
 
-#### The change: keep FIFO draining, add a per-FIR early exit
+**The change.** One layer of deferral is discharged per coordination:
 
-**One mechanism, not two.** An earlier draft of this section also proposed
-bounded-depth breadth-first stepping; that is **withdrawn** — see "Why
-breadth-first stepping is withdrawn" below. FIFO draining is kept exactly as it
-is. The only change is that a FIR may stop draining early.
+> A constanic clone may strip **at most one** SF/SFF mark. The budget belongs to
+> the **clone operation** — the whole recursive tree of `constanic_clone_at`
+> calls — not to any node. The first mark the walk meets is stripped; every
+> other mark in that tree is **retained**.
 
-##### `i_have_what_i_need()` — the per-FIR early exit
+Consequences, in order of importance:
 
-**A FIR steps its `foolish_children` until they are ALL constanic OR
-`i_have_what_i_need()` returns true** — whichever comes first. That disjunction
-is the whole rule. The first arm is today's behavior (and remains the fallback,
-since the predicate defaults `false`); the second is the new early exit.
+1. **`<<X>>` is unchanged.** One mark, one coordination, resolves exactly as
+   today. The 16 einmo inputs using single marks must produce byte-identical
+   OUTPUT; see §Test Plan.
+2. **`<< <<X>> >>` sits out one coordination**, then behaves like `<<X>>` at the
+   next. Deferral is a count, and it is written in the term rather than inferred
+   by the evaluator.
+3. **The budget is per-tree, not per-node.** In
+   `A = <{abcd, << <<blah>> >>}>` a single clone of `A` walks the SF wrapper,
+   the brane, and the inner SFF. Only one of those marks is spent. This is what
+   makes the rule independent of *which kind* of mark is met first, and it is
+   why a per-node rule is insufficient: sibling marks deeper in the same tree
+   would each strip independently.
+4. **Each use site counts separately.** `B = A` and `C = A` produce independent
+   clones, so `C` does not observe `B`'s decrement. Deferral is per-coordination
+   -path, which is what makes macro-style definitions compose.
 
-| FIR | `i_have_what_i_need()` is true when |
-|-----|--------------------------------------|
-| `$` `^` `#N` | the anchor reports `is_indexable()`, **and** the item at that index is constanic |
-| `'ite` | `cond` is constanic, **and** the branch `cond` selects is constanic |
-| default (every kind that has not opted in) | **`false`** — i.e. today's behavior, drain everything |
+**Retained marks are shared, not copied.** When the budget is spent, the clone
+returns `Rc::clone(fir_ref)` — a reference to the original mark — rather than a
+deep copy. This is sound because an unstripped SF/SFF node is **immutable and
+position-independent**: it has not searched, so it holds no resolved reference
+to any brane, and there is no per-site state in it to corrupt. The per-site
+state lives in the clone operation's budget flag, not in the node. (Contrast a
+resolved search, whose `FoolRefFir` carries a position in a specific home brane
+and must never be shared across contexts.) `constanic_clone_at:194-199` already
+shares constanic non-brane nodes this way; this extends the same treatment to a
+retained mark.
 
-**`i_have_what_i_need()` cannot be wrong.** It is a correctness obligation, not
-an optimization hint: returning true prematurely settles a FIR on incomplete
-information, silently — the hardest failure mode to detect. Hence the default is
-`false`, so a kind that has not opted in cannot regress, and every override is a
-deliberate, individually tested claim.
+**Nested marks must be written with a separator** — `<< <<A>> >>` or
+`<<(<<A>>)>>`, never `<<<<A>>>>`. All three forms already lex identically (the
+parenthesized form leaves no grouping node), so this is a **style rule**, not a
+grammar change: four adjacent angle brackets have no visual boundary and must
+not appear in new code.
 
-##### Why this preserves evaluation semantics
+#### Why this is what the exercise needs
 
-The task queue is **FIFO** (`proto_brane.rs:200-206`), and `step_inner` pops the
-front task only once it is constanic (`fir_trait.rs:474-475`). Statements
-therefore drain **strictly in order**: when `b` is stepped, `a` has already
-settled. FIRs are *entitled* to that — and they use it. `ib_search_with_engine`
-(`fir_kinds.rs:1412-1434`) scans the preceding range `[0, idx-1]` and takes the
-found statement's NYES **as truth**, with no readiness check
-(`fir_kinds.rs:1430`), because draining guarantees it is settled. There are ~185
-`get_nyes()` reads and ~83 `.value()` calls across the crate resting on the same
-entitlement, and FOOP-23 *defines* IB as "context accumulated so far, lines
-before the current expression."
+`'ite` is defined as a table lookup whose branches are SFF-marked:
 
-The early exit **does not disturb any of this**, because it never reorders
-anything. It weakens only "*all* children eventually settle" — and only for the
-FIR that explicitly asked, which by construction does not need the children it
-skipped. Everything that does run still runs after its predecessors settled.
+```foolish
+INTERNAL_ite = {
+	cond='True, << <<#-3>> >>;
+	cond='False, << <<#-2>> >>;
+}
+'ite = ({<<#-2>>, <<#-1>>} INTERNAL_ite)~cond=(<<#-3>>)&#1
+```
 
-##### Why breadth-first stepping is withdrawn
+The extra mark makes each branch survive the coordination that builds the
+lookup table. Only the row the value search selects is coordinated again — at
+the use site — and only then does its inner mark come off and the branch
+resolve. **The unselected branch is never coordinated a second time, so it never
+searches, so `<loop>` never recurses.**
 
-The earlier draft proposed `depth` as a parameter of `step` (`if depth == 0
-{ return }`, else recurse with `depth - 1`), sweeping a bounded frontier instead
-of descending one spine. It was described as a change of *strategy* that could
-not alter settled values. **That was wrong.**
+No laziness rule is added to the FVM, no evaluation order changes, no FIR gains
+a new state, and no search learns a new trick. The deferral is carried by the
+term.
 
-Sequential FIFO draining is part of Foolish's evaluation **semantics**, not an
-implementation strategy. Breadth-first stepping would break the
-settled-predecessor entitlement for *every* FIR at once: a search could scan
-`[0, idx-1]` and read a still-PREMBRIONIC neighbour's state as its answer, and
-`lv = lv+1` could read an `lv` that has not yet settled. It does not reorder the
-meaning of "so far" — it dissolves it.
+#### Euler 1 under the upgraded SFF mark
 
-Consequences of the withdrawal:
+This is the program this FOOP is expected to run. The only change from the
+current input is the doubled marks on the two `INTERNAL_ite` branches:
 
-- **It is not needed.** `'ite` builds its operands cond-then-else
-  (`ITE_OPERAND_SRC`, `system_foo.rs:689-693`) and pushes them in that order, so
-  FIFO settles `cond` **first**. The early exit fires before `then`/`else` are
-  ever drained — which is exactly the short-circuit the exercise needs.
-- **If it is ever wanted, it belongs in a UBCb**, alongside Rejected Alternative
-  H (message passing). Both change what a step means, so the signed einmo
-  baselines stop being a valid oracle — the test this FOOP uses for when a
-  second implementation is warranted.
+```foolish
+!! Project Euler 1: Multiples of 3 or 5
+!! Find the sum of all the multiples of 3 or 5 below 1000.
+!! Expected answer: 233168
 
-##### The two predicates are owned by different objects
+{
+	!! If-Then-Else. The branches are DOUBLY marked: they must survive the
+	!! coordination that builds the lookup table, and resolve only at the
+	!! use site — so the unselected branch is never evaluated.
+	INTERNAL_ite = {
+		cond='True, << <<#-3>> >>;
+		cond='False, << <<#-2>> >>;
+	}
+	'ite = ({<<#-2>>, <<#-1>>} INTERNAL_ite)~cond=(<<#-3>>)&#1
 
-`is_indexable()` remains, and is asked **of the brane-like FIR**. This is
-encapsulation, not indirection: a brane-like reports on its own shape, and a
-search must not re-derive what the brane can state about itself
-(`rust_instructions.md` rule zero — a function reporting on an object belongs to
-that object).
+	!! Congruent modulo: {a,b,c}'cmod computes the boolean a%b==c
+	INTERNAL_cmod = {INTERNAL_eq, {INTERNAL_numerator, INTERNAL_divisor, 'mod}$, 'eq};
+	'cmod = {INTERNAL_numerator=#-3, INTERNAL_divisor=#-3, INTERNAL_eq=#-3, INTERNAL_cmod$}
 
-The division of labour:
+	loop = {
+		self=<<#-1>>
+		lv = lv+1;
+		divides_3 = ({lv,3,0}'cmod)$;
+		divides_5 = ({lv,5,0}'cmod)$;
+		cond1 = ({divides_3, divides_5, 'or})$;
+		sum35 = ({cond1, sum35+lv, sum35, 'ite})$
+		cond2 = ({lv, 1000, 'lt})$;
+		continue = <self loop>;
+		exit = sum35
+		answer = ({cond2, <continue>, sum35, 'ite})$
+	}
+	lv = 1; sum35 = 0;
+	answer = ({loop} loop)$
+}
+```
 
-- **`is_indexable()`** — the *brane-like's* statement about **its own shape**.
-- **`i_have_what_i_need()`** — the *search's* statement about **its own
-  requirement**, typically written in terms of the anchor's answer.
+The `@einmo set iteration depth to 40000` directive is **removed**: if the
+exercise still needs it, this section is not finished.
 
-Neither reaches into the other's internals.
+#### Implementation
 
-##### Why this terminates the exercise
+One site, three parts (`foolish-ubca/src/fir_kinds.rs:160-199`):
 
-Today `IteFir` enqueues all three operands and guards on
-`operands.iter().any(operand_is_unevaluated_here)`, so FIFO draining takes the
-`<loop>` else-branch to constanic before `cond` is ever consulted — and it never
-gets there. With the early exit, `cond` (pushed **first**, `ITE_OPERAND_SRC`
-`system_foo.rs:689-693`) settles, `i_have_what_i_need()` reports true, and
-`then`/`else` are never drained. **No laziness rule is added to the FVM, no
-per-operator evaluation order is introduced, and the drain order is unchanged.**
+1. Thread a **strip-budget** flag through `constanic_clone_at`, alongside the
+   existing `descendent_of_sfm_and_foolishly_ignorant` parameter (line 164) —
+   the same threading, already present.
+2. At an SF/SFF node with the budget **available**: strip as today (lines
+   183-191) and mark the budget spent for the remainder of the tree.
+3. At an SF/SFF node with the budget **spent**: `return Rc::clone(fir_ref)`.
+   Note this needs its own arm — the existing share at lines 194-199 keys on
+   `Constant | Independent`, and a marked node is WOCONSTANIC, so it does not
+   fall through to that path.
 
-#### Indexability requires a *complete* brane, not a partial one
-
-A tempting weakening — "as soon as constituents at the front or back are known,
-attempt to select" — is **rejected**. A selected statement carries its
-dependencies: its backward searches resolve against its home brane, and its line
-number is meaningful only relative to that brane. Selecting statement #3 out of
-`({a}{b}{c})` before the concatenation has spliced all three operands into place
-yields a statement whose own searches would scan an incomplete brane and could
-settle NK against members that do not exist yet.
-
-Therefore `is_indexable()` means **the shape can no longer change** — frozen,
-not merely currently-readable. This also makes the early exit **monotone**: a
-requirement satisfied under a frozen shape can never be un-satisfied by later
-growth. The weaker reading would permit a search to select #3 and then have the
-brane grow, which the einmo suite already demonstrates going wrong
-(§Open Questions).
-
-**A plain `bool` suffices**, and the three-valued answer of the earlier draft is
-withdrawn. That draft needed to distinguish "not yet decidable" from "no",
-because readiness *gated* whether a search could proceed and conflating the two
-would stall it. Under the early-exit design it gates nothing: `is_indexable()`
-feeding `i_have_what_i_need()`, whose default is `false`, means "not yet" and
-"no" have the **same safe consequence** — keep draining children, exactly as
-today. A premature `true` is the only dangerous answer, which is why
-`is_indexable()` must report frozen shape rather than current readability.
-
-#### Scope within this FOOP — indexability is staged
-
-**`is_indexable()` is implemented first and alone**, and is itself split into
-stages so the early-exit machinery is proven on the easy case before the hard
-one. It is what Euler 1 needs: `$` on the concatenations, and `'ite`
-short-circuiting via indexed selection.
-
-| Stage | Subject | Why this order |
-|-------|---------|----------------|
-| **5a** | **Plain brane** — `is_indexable()` + `i_have_what_i_need()` for `$`/`^`/`#N` | A brane's shape is settled at parse time — its statement count and positions never change — so `is_indexable()` is trivially `true` and the freezing question does not arise. This proves the early-exit mechanism where there is no ambiguity. |
-| **5b** | **Concatenation** | The hard case: shape is settled only once every operand is spliced in, and an operand may itself be an unresolved search. Where the frozen-shape rule earns its keep. Built on 5a's proven mechanism. |
-| **5c** | **Remaining brane-like kinds** | Whatever else answers `is_brane_like` — swept once the rule is settled, each reporting its own shape. |
-| **5d** | **`'ite` short-circuit** | `i_have_what_i_need()` = cond constanic **and** the selected branch constanic. Depends only on 5a for a literal-operand `'ite`; the exercise's recursive branch needs 5b. |
-
-Splitting this way means a regression in 5b cannot be confused with a defect in
-the early-exit mechanism itself — 5a's tests pin that independently.
-
-`is_name_searchable()` and `is_value_searchable()` are specified here as the
-same shape, so the design is coherent, but are **deferred to their own phases**
-and are not required for this exercise to pass.
-
-Value search is expected to need a different shape and is explicitly not solved
-here: `?=` must compare candidate *values*, so its readiness is close to
-"constanic" for the statements it scans — but only for those it actually
-reaches, and a backward scan may settle on the first hit without ever touching
-earlier candidates. That suggests readiness for value search may not be a
-whole-brane predicate at all, but a per-candidate demand made by the navigator
-as it advances. §Open Questions records this.
+Confirm the new branch cannot reach the
+`eprintln!("ALARM: SF/SFF node has no children")` at line 192.
 
 ## FIR Impact
 
@@ -744,38 +722,23 @@ as it advances. §Open Questions records this.
 - **No new NYES states.** Both use the three existing terminals
   (ECONSTANIC / CONSTANT / NK).
 - **No serialization impact** beyond sequencer rendering of the new kinds.
-- **§5 predicates**: `is_indexable()` (plain `bool`, default `false`,
-  overridden by brane-like kinds) and `i_have_what_i_need()` (plain `bool`,
-  default `false`, overridden by `SearchFir` and `IteFir`) on the `Fir` trait.
-  No new FIR kinds and no new NYES states: both are questions *about* a FIR,
-  not states it occupies.
+- **§5 changes no FIR kind and adds no NYES state.** The SF/SFF kinds, their
+  `fir_op_step`, and every terminal state are untouched. What changes is how
+  `constanic_clone_at` *treats* a mark it meets while cloning.
+- **`system.foo` is unaffected** by §5.
 
 ## UBC Step Impact
 
-- **New `fir_op_step`** for both `'mod` and `'or` — the two-phase
-  enqueue-then-combine shape of `ComparisonFir` (`system_foo.rs:326-340`),
-  with §1/§2 `combine` rules.
-- **`BodyOverride` hook generalized** from comparisons-only to a system
-  name table covering `ComparisonOp::ALL` + `ArithOp::ALL` + `'or`
-  (`system_foo.rs`); still scoped to `system.foo`'s own top-level
-  statements only.
-- **§5 adds the early exit; FIFO draining is unchanged.** A FIR drains `foolish_children` until they are
-  constanic **or** `i_have_what_i_need()` is true. Default `false` on the `Fir`
-  trait, so any kind that has not opted in keeps today's behavior exactly.
-  `SearchFir` overrides it for index predicates (anchor `is_indexable()` and
-  the item at that index constanic); `IteFir` overrides it (cond constanic and
-  the selected branch constanic). `IteFir` no longer requires all three
-  operands via `operands.iter().any(operand_is_unevaluated_here)`.
-- **`is_indexable()`** on brane-like FIRs — a plain `bool` reporting **frozen**
-  shape. Owned by the brane-like, consulted by the search
-  (`rust_instructions.md` rule zero).
-- **Expected step-count reduction across the suite.** Searches that previously
-  waited for a whole anchor now settle earlier, so `steps=` in einmo OUTPUT
-  will drop for many pre-existing cases. Per the non-regression invariant this
-  is the one category of foreign-baseline change this FOOP may legitimately
-  produce — it must be **reviewed case by case and reported to the human**, not
-  promoted silently (see the plan's Promotion Review Gate). A step count that
-  *rises*, or any change to a settled value, is a bug.
+- **Stepping is unchanged.** FIFO draining, `step_inner`, the task queue, the
+  two-branch driver, and every search's wait condition are exactly as they are.
+  §5 touches only `constanic_clone_at` — the recoordination path, not the
+  stepping path.
+- **`constanic_clone_at` gains a strip-budget parameter** and one new arm
+  (retain-and-share a mark when the budget is spent). Single-mark programs take
+  the same path they take today.
+- **No step-count change is expected for single-mark programs.** A `steps=`
+  movement in any of the 16 single-mark einmo baselines is a bug, not a baseline
+  update — see §Test Plan.
 
 ## Test Plan
 
@@ -818,6 +781,46 @@ Every OUTPUT line is justified before promotion (AGENTS.md einmo workflow
 step 4); no promotion over any foreign FOOP's baseline
 (`rust_instructions.md` §"Phase-by-phase testing discipline").
 
+### §5 — the SFF mark upgrade
+
+**Unit tests (`fir_kinds.rs`), written first:**
+
+- One clone strips exactly one mark: `<<X>>` → stripped; `<< <<X>> >>` → one
+  mark retained.
+- The budget is **per-tree**: `<{a; << <<b>> >>}>` spends one strip across the
+  SF wrapper and the inner SFF combined, not one each.
+- The budget is **per-use-site**: `B = A` and `C = A` each get their own.
+- A retained mark is **shared** (`Rc::ptr_eq` against the original), not deep
+  copied.
+- The retained path never reaches the "SF/SFF node has no children" ALARM.
+
+**Existing einmo inputs — 17 use SFF marks; exactly ONE nests:**
+
+- `misc/sff_nested.foo` — `{a=1,b=2; c=<<a+<<b>>>>; c; c;}` — is a **direct
+  semantic conflict**. Its inner `<<b>>` means "resolve on each use" today and
+  "defer one coordination" after §5. **Deprecate it**: the input is replaced by
+  the new `foop/55/SFF/` cases below, which cover the same ground under the new
+  rule. Deprecation requires human review — the agent does not silently rewrite
+  a baseline whose meaning changed.
+- The **other 16** use single marks and **must produce byte-identical OUTPUT**,
+  step counts included. Any divergence there is a regression in the strip
+  budget, not an expected consequence — fix the code.
+
+**New einmo inputs under `foop/55/SFF/`** (reserved for this FOOP):
+
+| Input | Covers |
+|-------|--------|
+| `single_mark_unchanged.foo` | the `<<X>>` cases, pinning no-change |
+| `double_mark_defers.foo` | `<< <<X>> >>` sits out one coordination, resolves at the next |
+| `budget_is_per_tree.foo` | SF wrapper + inner SFF share one strip |
+| `budget_is_per_use_site.foo` | `B=A`, `C=A` decrement independently |
+| `nested_in_expression.foo` | `1 + << <<X>> >>` inside an operator |
+| `deferred_avoids_premature_nk.foo` | the `A=<{...}>; B=A; C=B` case: resolves at `C` instead of dying NK at `B` |
+| `separator_forms_agree.foo` | `<< <<A>> >>` and `<<(<<A>>)>>` produce identical OUTPUT |
+
+Each is reviewed statement by statement through the Promotion Review Gate
+(`foop.md`) before promotion.
+
 ## Rejected Alternatives
 
 ### A. Fix the leading-underscore lexer defect now
@@ -849,57 +852,8 @@ The exercise stays dead: the first real program written for the language
 cannot run, and the defects found by bisecting it stay undocumented and
 unpinned.
 
-### E. (§5) Raise the step/iteration budget and ship the `@einmo` directive
-
-The current state: `@einmo set iteration depth to 40000` in the exercise
-header. Rejected as a solution — it does not make the program terminate, it
-enlarges the room in which it fails to. The measured output is entirely
-PREMBRIONIC at 40000 steps; no budget makes a non-terminating demand finish.
-The directive is removed when §5 lands.
-
-### F. (§5) Make `IteFir` lazy directly — evaluate `cond`, then one branch
-
-The narrow fix: special-case `'ite` to step its condition first and only then
-the selected branch. Rejected because it introduces per-operator evaluation
-order into the FVM — a genuine semantic addition — to solve one operator's
-instance of a general problem. Every anchored search waits on more than it
-needs; `'ite` is merely where it becomes fatal rather than merely slow. The
-§5 design fixes the class at the layer where the waiting is decided, and yields
-`'ite` short-circuiting as a consequence rather than as a rule.
-
-### H. (§5) A full message-passing FVM
-
-The general solution: each UBC is a small computer with its own state, and
-searches are dispatched as messages to parents, which reply when they can
-answer. This subsumes the problem completely — a search that has its answer
-simply stops waiting, and nothing over-drains.
-
-Rejected **for this FOOP** as far too large to carry an exercise fix, not as a
-bad idea. It is a rewrite of the evaluator's core, it changes the meaning of a
-"step" (and therefore every `steps=` in every einmo baseline), and it deserves
-its own Major with its own specification. §5's two mechanisms are the
-compromise: they get the exercise running and leave the message-passing design
-open rather than foreclosed.
-
-### I. (§5) Track dependencies explicitly
-
-Give each FIR a dependency set and evaluate only what a result actually needs.
-Rejected as not simple: computing the set requires knowing what a search will
-resolve to *before* resolving it, which is the same regress the greedy wait
-falls into. `i_have_what_i_need()` sidesteps it by asking each FIR about its
-own requirement at the moment it is stepped, rather than deriving a dependency
-graph in advance.
-
-### G. (§5) Rewrite `'ite` as the spec's search-based selector only
-
-FOOP-55 §Specification's original form —
-`'ite = ({<<-2>>, <<-1>>} _ite)~cond=(<<-3>>)&#1` — gets non-evaluation of the
-losing branch from value-search semantics, with no FVM change at all. It
-remains the more elegant surface form and is not withdrawn. Rejected **as the
-sole fix** because it depends on `is_value_searchable()` (§5, deferred) to know
-when the `~cond=` search may proceed, and because it leaves every *other*
-anchored search over-waiting. Worth revisiting as surface syntax once §5's
-value-search phase lands.
+The §5 design space — the four approaches considered and why the SFF-mark
+upgrade won — is set out in prose in **Appendix A**.
 
 ## Open Questions
 
@@ -967,21 +921,181 @@ value-search phase lands.
 - The exercise: `foolish-ubca/einmo_suite/input/exercises/project_euler/1.foolish`
   (commit `62706518`).
 
+---
+
+# Appendix A — the §5 design space
+
+Four approaches were considered for making the exercise terminate. They are
+recorded here in full because three of them remain live proposals for the
+platform, and because the reasoning that eliminated each is the reasoning that
+justifies the one chosen.
+
+## A. The upgraded SFF mark — **chosen**
+
+This is the design specified in §5, and it began as a question about macro-style
+definitions rather than about termination. A Foolish "macro" — `'ite`, `'cmod`,
+a truth table — is a brane written once and coordinated at many use sites. Its
+body must survive being carried to the use site *without resolving on the way*,
+because resolving early means resolving against the wrong neighbours.
+
+Today a constanic clone strips every mark it meets, in a single recursive pass,
+so a mark can protect a term across exactly one boundary and no more. That is
+enough for a one-level macro and insufficient for anything that builds a table
+and *then* selects from it — which is precisely what `'ite` does.
+
+Making the mark a **counter** — one layer discharged per coordination — gives
+the macro author explicit control over how many boundaries a term rides
+through. Deferral becomes a property of the term, written in the source, rather
+than a behavior the evaluator infers.
+
+Termination then falls out as a consequence rather than as a goal: the branch
+the value search does not select is never coordinated a second time, so its
+inner mark never comes off, so it never searches, so the recursion never fires.
+Nothing in the FVM learns to be lazy; the unselected branch simply is not yet a
+search.
+
+Its cost is honest and bounded: it changes the meaning of nested marks, which
+one existing test relies on, and it demands careful testing that single-mark
+programs are untouched.
+
+## B. `@` — retrieving the index from a search's context
+
+The second proposal added an operator, `@`, projecting a search result's
+**position** where a bare result yields its value: `c~cond='True@` gives the
+0-based index of the matching row in its home brane. Selection could then be
+written as arithmetic — `r#(c~cond='True@)` indexes a parallel table of
+branches, with `-1` naturally addressing the last row as a default case, since
+Foolish already counts negative indices from the end.
+
+The mechanism needed nothing new underneath: FOOP-23's two-child invariant means
+every search result already carries `[0]` its value and `[1]` a `FoolRefFir`
+holding the original statement with its position intact. `@` merely exposes what
+providing-context has been carrying all along. `@` was preferred over a trailing
+`#` because `#` is absorbed into `?`-patterns today (`src?b#` searches for the
+name `b#`), so overloading it would break the pattern language and require a
+delimiter rule; `@` has no such conflict and composes directly with arithmetic.
+
+Two findings stopped it. The first is practical: `#` accepts only a **literal**
+integer — `src#n` and `src#(0-1)` both fail to parse — so the design needed a
+second, larger change giving `#` a computed operand, which in turn gives the
+index search an evaluation phase it does not currently have.
+
+The second finding is the reason this appendix entry matters. Probing what `#`
+does on an anonymous brane showed that the short-circuit **already exists**:
+`pick = {ok=1, bad=?nonexistent}#0` settles `1` with the unselected member never
+stepped, and `{stop=7, go=<lp>}#0` terminates cleanly with the recursive branch
+untouched. Indexing an anonymous brane already avoids what it does not select.
+
+So access was never the problem. The problem was that the branches had already
+resolved — the SFF mark protecting them was stripped too early, at table-
+construction time. Investigating `@` is what located the actual defect, and once
+located, `@` was no longer needed to fix it. It remains a reasonable future
+addition on its own merits.
+
+## C. True breadth-first execution — **UBCc**
+
+The third proposal made `depth` a real parameter of stepping: `if depth == 0
+{ return }`, otherwise do this FIR's work and recurse with `depth - 1`, with the
+FVM holding the depth per invocation, starting small and growing when a sweep
+does not settle. Evaluation would sweep a bounded frontier across the whole tree
+instead of descending one spine, and the condition of an `'ite` would settle in
+an early sweep — long before the recursive branch could run away.
+
+This was initially proposed as a change of *strategy* that could not alter
+settled values. That was wrong, and the error is worth recording. The task queue
+is FIFO and a front task is popped only once constanic, so statements drain
+strictly in order: when `b` is stepped, `a` has already settled. FIRs are
+**entitled** to that. `ib_search_with_engine` scans the preceding range
+`[0, idx-1]` and takes the found statement's NYES *as truth* with no readiness
+check (`fir_kinds.rs:1430`); roughly 185 `get_nyes()` reads and 83 `.value()`
+calls across the crate rest on the same entitlement; and FOOP-23 *defines* the
+immediate brane as "context accumulated so far, lines before the current
+expression". Breadth-first stepping does not reorder the meaning of "so far" —
+it dissolves it.
+
+Sequential draining is therefore part of Foolish's evaluation **semantics**, not
+an implementation strategy. Adopting breadth-first execution means every FIR
+must newly cope with unsettled predecessors, and settled values may legitimately
+differ — which is exactly the condition under which the signed einmo baselines
+stop being a valid oracle, and therefore the condition under which a **separate
+implementation** is warranted rather than a mutation of the existing one.
+
+Breadth-first execution is a genuinely attractive design and is **not
+withdrawn** — it is renamed. It becomes **UBCc**, to be built beside UBCa rather
+than inside it, with its own baselines.
+
+## D. Massively distributed message passing — **UBCd**
+
+The most general proposal: each UBC is a small computer with its own state, and
+searches are dispatched as messages to parents, which reply when they can
+answer. Waiting stops being a drain loop and becomes a correspondence — a FIR
+that has its answer simply stops waiting, and nothing over-drains, because
+nothing was ever draining in the first place.
+
+This subsumes the exercise's problem completely and several others besides. It
+is also a rewrite of the evaluator's core: it changes what a "step" *is*, and
+therefore every `steps=` in every einmo baseline. It cannot be carried by a FOOP
+whose purpose is to run one exercise.
+
+It is recorded here as **UBCd**, a design worth its own Major.
+
+## The UBC lineage — authoritative code names
+
+**This section defines the UBC letter names, and these are the names to use in
+all ongoing discussion.** They have been used loosely before; from here they are
+fixed. A letter names an *implementation of the Foolish evaluator*, not a
+version of the language — all of them implement the same Foolish, and any two
+that disagree about what a program means have a bug in at least one of them.
+
+| Name | Design | Status |
+|------|--------|--------|
+| **UBCa** | The reference implementation. FIFO sequential draining, depth-first descent, greedy dependency resolution. | **In use.** §5 of this FOOP modifies it. |
+| **UBCb** | **Dependency tracking with priority stepping** — the evaluator records which FIRs are being waited on, and steps first those experiencing the most demand from dependents. | **Attempted for several months; not adopted.** Its dependency-tracking machinery is expected to be reusable. |
+| **UBCc** | **True breadth-first execution** (Appendix A.C) — `depth` as a real parameter of stepping, sweeping a bounded frontier that grows until the program settles. | Proposed. |
+| **UBCd** | **Massively distributed message passing** (Appendix A.D) — each UBC a small computer with its own state; searches dispatched as messages to parents, answered when answerable. | Proposed. |
+
+The relationships matter as much as the definitions:
+
+- **UBCb feeds UBCd.** Dependency tracking is not wasted work even though UBCb
+  was not adopted. Knowing *who is waiting on whom* is the same information a
+  message-passing evaluator needs in order to route a reply, so UBCb's machinery
+  is expected to be reusable in UBCd rather than discarded with it.
+- **UBCc stays close to UBCa.** Breadth-first execution is a change of traversal
+  within the same basic architecture — one machine, one tree, a task queue. It
+  is therefore the natural *next reference implementation*: near enough to UBCa
+  to be compared against it case by case, and far enough to answer the question
+  UBCa answers badly.
+- **UBCb and UBCc answer the same question from opposite ends** — *which
+  pending work should the machine do next?* UBCb measures demand; UBCc bounds
+  depth. Which is built next is deliberately left open here.
+
+None of UBCb, UBCc, or UBCd is a prerequisite for this FOOP.
+
 ## Last Updated
 
 **Date**: 2026-08-09
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: **Breadth-first stepping withdrawn (2026-08-10, second revision).**
-FIFO draining is KEPT; §5 is now the early exit alone. The withdrawn proposal and
-the reason are recorded in §5 "Why breadth-first stepping is withdrawn": sequential
-draining is part of Foolish's evaluation *semantics*, not a strategy — FIRs are
-entitled to assume preceding statements have settled, and breadth-first stepping
-would break that entitlement for every FIR simultaneously. It is also unnecessary,
-since `'ite` pushes `cond` first and FIFO therefore settles it before the branches.
-Consequently this FOOP mutates UBCa (the einmo baselines remain a valid oracle,
-because the early exit never reorders anything); breadth-first stepping, if ever
-wanted, belongs in a UBCb beside Rejected Alternative H. Stage 5.0 and its two
-Open Questions removed. Earlier same day: **§5 redesigned** around two mechanisms per Atlas's
+**Changes**: **§5 rewritten around the upgraded SFF mark** — the third and final
+design. A constanic clone currently strips EVERY SF/SFF mark in one recursive
+pass (`constanic_clone_at`, `fir_kinds.rs:183-191`), so nesting is a no-op today
+and a mark protects a term across exactly one coordination. §5 makes it a
+counter: at most one strip per clone TREE (not per node), with retained marks
+SHARED by `Rc::clone` since an unstripped mark is immutable and
+position-independent. Demonstrated to be a correctness fix, not an optimization:
+premature stripping resolves against the wrong neighbours and an early miss
+settles NK, which is terminal. §5 now includes the **full Euler 1 program in
+fenced code** as it is expected to run. Body reorganized for implementation:
+design, program, and implementation steps in §5; all decision-making moved to
+**Appendix A**, which sets out the four candidate designs in prose (A the SFF
+mark — chosen; B the `@` index projection — whose investigation located the real
+defect; C breadth-first execution; D message passing) and **authoritatively
+defines the UBC code names**: UBCa reference, UBCb dependency-tracking
+(attempted for months, machinery expected to feed UBCd), UBCc breadth-first
+(closest to UBCa, the natural next reference implementation), UBCd message
+passing. §Test Plan gains the SFF corpus analysis: of 17 `<<`-bearing einmo
+inputs exactly ONE nests (`misc/sff_nested.foo`) and is a direct semantic
+conflict to be deprecated under human review; the other 16 must be
+byte-identical. New `foop/55/SFF/` suite specified. Earlier same day:  **§5 redesigned** around two mechanisms per Atlas's
 direction, replacing the readiness-gating design of the first draft: (i) `depth`
 as a real parameter of `step` — `if depth==0 return`, else work and recurse with
 `depth-1` — held by the FVM per invocation, starting ≈5 and growing by a delta

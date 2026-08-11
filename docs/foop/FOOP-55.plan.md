@@ -152,79 +152,101 @@ FOOP-73's fallback: `OrFir` as a dedicated FIR kind, same pattern as
 - [x] Run all tests — old and new — and make sure they all pass correctly.
       (2026-08-09 13:50)
 
-## Phase 3A — §5a: `i_have_what_i_need()` for a PLAIN BRANE
+## Phase 3A — §5: the SFF strip budget
 
-Proven where there is no ambiguity: a plain brane's shape is
-settled at parse time, so `is_indexable()` is trivially `true`. **A regression
-in 3B must never be confusable with a defect in the mechanism itself — that is
-what this phase pins.**
+Read FOOP-55.md §5 in full first, and Appendix A.A for why this design was
+chosen over the three alternatives. **Stepping is not touched** — FIFO draining,
+`step_inner`, and every search's wait condition stay exactly as they are. The
+change is confined to `constanic_clone_at` (`fir_kinds.rs:160-199`).
 
 - [ ] Read `rust_instructions.md` in full (mandatory before any Rust)
-- [ ] Read FOOP-55.md §5 in full — especially "Why this preserves evaluation
-      semantics" and "Why breadth-first stepping is withdrawn". FIFO draining is
-      KEPT; do not reorder anything.
-- [ ] Read `fir_kinds.rs:1629-1707` (`SearchFir::fir_op_step`) — the anchor
-      enqueue at PREMBRIONIC
-- [ ] **Tests first.** Unit tests pinning: `$`/`^`/`#N` on a plain brane settle
-      correctly when only the *selected* statement is constanic and its
-      siblings are still pre-constanic
-- [ ] Add `i_have_what_i_need()` to the `Fir` trait, **defaulting to `false`**
-      (so every kind that has not opted in keeps today's behavior exactly)
-- [ ] Add `is_indexable()` (plain `bool`, frozen shape) — owned by the
-      brane-like; plain brane returns `true`
-- [ ] Child-stepping loop: drain `foolish_children` until ALL constanic **OR**
-      `i_have_what_i_need()`
-- [ ] `SearchFir` overrides it for index predicates: anchor `is_indexable()`
-      AND the item at that index constanic
-- [ ] Verify unselected siblings are never stepped (assert on NYES, not timing)
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
-- [ ] REPORT to the human: how many pre-existing einmo baselines changed, and
-      whether any change is anything other than a `steps=` reduction. A step
-      count that RISES, or any change to a settled value, is a bug — stop and
-      fix, do not promote.
-
-## Phase 3B — §5b: indexing for a CONCATENATION
-
-The hard case. Shape is settled only once every operand is spliced in, and an
-operand may itself be an unresolved search.
-
-- [ ] Read FOOP-55.md §5 "Indexability requires a *complete* brane, not a
-      partial one" again before writing any code
-- [ ] **MEASURE first** (Open Question): what exactly freezes a concatenation's
-      shape, and where can that be computed without walking the whole tree on
-      every step? Use `temporary_reproduce_to_debug_*` tests per the
-      `foolish-debugging` skill. Record the answer in FOOP-55.md §5.
-- [ ] **Tests first**, including the negative case: a concatenation with an
-      unresolved search operand must answer `is_indexable() == false` — a
-      premature `true` is the only dangerous answer, since selecting out of it
-      would resolve the selected statement's own searches against a brane
-      missing members
-- [ ] Implement `is_indexable()` for concatenation per the measured rule
-      (plain `bool`, reporting **frozen** shape, not current readability)
-- [ ] **Monotonicity check** (Open Question): identify the einmo cases that
-      demonstrate a search settling against a brane that later changes; confirm
-      the frozen-shape rule excludes them. Name the cases in the plan.
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
-- [ ] REPORT baseline changes to the human as in Phase 3A.
-
-## Phase 3C — §5c: remaining brane-like kinds
-
-- [ ] Enumerate every kind answering `is_brane_like()`; give each its readiness
-      answer with a test
+- [ ] Read FOOP-55.md §5 and Appendix A
+- [ ] Read `fir_kinds.rs:160-199` — the SF/SFF strip (183-191) and the existing
+      constanic share (194-199)
+- [ ] **Tests FIRST** (unit, `fir_kinds.rs`), each failing until implemented:
+  - [ ] one clone strips exactly one mark: `<<X>>` stripped; `<< <<X>> >>`
+        retains one
+  - [ ] budget is **per-tree**: `<{a; << <<b>> >>}>` spends ONE strip across the
+        SF wrapper and the inner SFF combined
+  - [ ] budget is **per-use-site**: `B = A` and `C = A` decrement independently
+  - [ ] a retained mark is **shared** — assert `Rc::ptr_eq` against the original,
+        not a deep copy
+  - [ ] the retained path never reaches the "SF/SFF node has no children" ALARM
+        (`fir_kinds.rs:192`)
+- [ ] Thread the strip-budget flag through `constanic_clone_at`, alongside the
+      existing `descendent_of_sfm_and_foolishly_ignorant` parameter
+- [ ] Budget available → strip as today, and mark spent for the rest of the tree
+- [ ] Budget spent → `return Rc::clone(fir_ref)`. This needs its OWN arm: the
+      share at 194-199 keys on `Constant | Independent` and a marked node is
+      WOCONSTANIC, so it does not fall through.
+- [ ] Add the style rule to `AGENTS.md` §Code Style: nested marks are written
+      `<< <<A>> >>` or `<<(<<A>>)>>`, never `<<<<A>>>>`. (All three already lex
+      identically — this is convention, not grammar.)
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
-## Phase 3D — §5d: `'ite` short-circuit
+## Phase 3B — §5: the existing SFF corpus
 
-- [ ] **Tests first**: `{cond, then, else, 'ite}` where the unselected branch
-      would not terminate — assert the unselected branch is never stepped
-- [ ] `IteFir` overrides `i_have_what_i_need()`: cond constanic AND the
-      branch cond selects constanic. Remove the
-      `operands.iter().any(operand_is_unevaluated_here)` guard that forces all
-      three. Same mechanism as Phase 3A — not a new rule.
-- [ ] Confirm `foop/55/ite.foo` still gives `r1=42`, `r2=99`
-- [ ] Remove the `@einmo set iteration depth to 40000` directive from
-      `input/exercises/project_euler/1.foo` — §5 makes it unnecessary; if the
-      exercise still needs it, §5 is not finished
+17 einmo inputs use SFF marks. Exactly ONE nests. The single-mark cases are the
+regression gate for this whole FOOP.
+
+- [ ] Confirm the **16 single-mark inputs produce byte-identical OUTPUT**, step
+      counts included. Any divergence is a regression in the strip budget — fix
+      the code, do not promote. The 16 are every `<<`-bearing input except
+      `misc/sff_nested.foo`.
+- [ ] `misc/sff_nested.foo` — `{a=1,b=2; c=<<a+<<b>>>>; c; c;}` — is a **direct
+      semantic conflict**: its inner `<<b>>` means "resolve on each use" today
+      and "defer one coordination" after §5.
+  - [ ] Record the old and new OUTPUT side by side in this plan
+  - [ ] STOP! ASK HUMAN to approve deprecating this input in favour of the new
+        `foop/55/SFF/` cases. Do NOT rewrite a baseline whose meaning changed
+        without review.
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
+## Phase 3C — §5: the new `foop/55/SFF/` einmo suite
+
+- [ ] Write the inputs under `foolish-ubca/einmo_suite/input/foop/55/SFF/`:
+  - [ ] `single_mark_unchanged.foo`
+  - [ ] `double_mark_defers.foo`
+  - [ ] `budget_is_per_tree.foo`
+  - [ ] `budget_is_per_use_site.foo`
+  - [ ] `nested_in_expression.foo`
+  - [ ] `deferred_avoids_premature_nk.foo` (the `A=<{...}>; B=A; C=B` case —
+        resolves at `C` instead of dying NK at `B`)
+  - [ ] `separator_forms_agree.foo` (`<< <<A>> >>` vs `<<(<<A>>)>>`)
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+- [ ] Review and promote `output` → `checked` for the `foop/55/SFF/` cases
+  - [ ] Confirm the rest of the suite is green — no foreign-FOOP baseline diverges
+  - [ ] Confirm no case has a `verified/` twin (if one does: STOP, ask the human)
+  - [ ] Re-read FOOP-55.md §5 before judging any OUTPUT
+  - [ ] Review `foop/55/SFF/single_mark_unchanged` — every OUTPUT statement justified
+  - [ ] Review `foop/55/SFF/double_mark_defers` — every OUTPUT statement justified
+  - [ ] Review `foop/55/SFF/budget_is_per_tree` — every OUTPUT statement justified
+  - [ ] Review `foop/55/SFF/budget_is_per_use_site` — every OUTPUT statement justified
+  - [ ] Review `foop/55/SFF/nested_in_expression` — every OUTPUT statement justified
+  - [ ] Review `foop/55/SFF/deferred_avoids_premature_nk` — every OUTPUT statement justified
+  - [ ] Review `foop/55/SFF/separator_forms_agree` — every OUTPUT statement justified
+  - [ ] Write the justification summary into this plan or the commit message
+  - [ ] Report ALL accumulated doubts to the human in ONE statement — or record
+        "no doubts"
+  - [ ] Run `einmo promote output to checked foolish-ubca/einmo_suite`
+  - [ ] Re-run `cargo test -p foolish-ubca --lib -- einmo_gate_checked` — must exit 0
+
+## Phase 3D — §5: rewrite `'ite` and remove the directive
+
+- [ ] Double-mark the two `INTERNAL_ite` branches in
+      `input/foop/55/euler_small.foo` and in the exercise, per the fenced
+      program in FOOP-55.md §5
+- [ ] `euler_small.foo` settles to **23** (hand-checkable: 3+5+6+9)
+- [ ] Remove `@einmo set iteration depth to 40000` from
+      `input/exercises/project_euler/1.foo`. If the exercise still needs it,
+      §5 is not finished.
+- [ ] **RECONSIDER `IteFir` and `OrFir`** (FOOP-55.md §5, Appendix A.A): both
+      Rust kinds exist only because the pure-Foolish definitions could not
+      resolve. If §5 frees them, DELETE the custom kinds — a custom
+      short-circuiting kind obliges every collaborator (searches, sequencer,
+      recoordination) to handle a FIR with un-stepped members, which the generic
+      mechanism does not. Confirm live before deleting; if a kind is still
+      needed, record why in FOOP-55.md §5.
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
 ## Phase 3F — Integration: make the exercise run
@@ -338,18 +360,18 @@ the exercise is green and the real cost is known.
 
 **Date**: 2026-08-09
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: **Breadth-first stepping withdrawn; Phase 3.0 removed.** The
-previous revision added a depth-parameter sweep alongside the early exit and
-claimed it was strategy-only. It is not: FIFO draining is part of Foolish's
-evaluation *semantics* — FIRs are entitled to assume preceding statements have
-settled (`ib_search_with_engine` reads a found neighbour's NYES as truth with no
-readiness check, `fir_kinds.rs:1430`; ~185 `get_nyes()` reads and ~83 `.value()`
-calls rest on the same entitlement; FOOP-23 defines IB as "lines before the
-current expression"). Breadth-first stepping would break that for every FIR at
-once. It is also **not needed**: `'ite` pushes cond first
-(`ITE_OPERAND_SRC`, `system_foo.rs:689-693`), so FIFO settles `cond` before
-`then`/`else` and the early exit fires before `<loop>` is ever drained. FIFO is
-kept; the plan now runs 3A→3D on `i_have_what_i_need()` alone. Earlier: split the old Phase 3 to
+**Changes**: Phases **3A-3D rewritten** for the upgraded SFF mark (FOOP-55.md
+§5), replacing the withdrawn early-exit/readiness work. 3A is the strip budget
+in `constanic_clone_at` — tests first, including that a retained mark is SHARED
+(`Rc::ptr_eq`) and that the new path cannot reach the SF/SFF ALARM. 3B is the
+existing corpus: the 16 single-mark inputs must be byte-identical (any
+divergence is a regression, not a baseline update), and `misc/sff_nested.foo`
+gets a human STOP before deprecation because its meaning changes. 3C builds the
+new `foop/55/SFF/` suite with a per-case Promotion Review Gate. 3D rewrites
+`'ite` with doubled branch marks, removes the `@einmo` depth directive, and
+RECONSIDERS deleting `IteFir`/`OrFir` — both exist only because the pure-Foolish
+definitions could not resolve, and a custom short-circuiting kind would oblige
+every collaborator to handle a FIR with un-stepped members. Earlier: split the old Phase 3 to
 insert FOOP-55.md **§5's staged
 implementation** ahead of integration: **3A** (readiness-gated indexing for a
 plain brane — builds the whole retargeting mechanism where shape is settled at
