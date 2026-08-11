@@ -1317,7 +1317,9 @@ mod iteration_depth_tests {
     #[test]
     fn ignores_directive_after_third_line() {
         assert_eq!(
-            parse_iteration_depth("!! a\n!! b\n!! c\n!! @einmo set iteration depth to 40000\n{x = 1;}"),
+            parse_iteration_depth(
+                "!! a\n!! b\n!! c\n!! @einmo set iteration depth to 40000\n{x = 1;}"
+            ),
             MAX_STEPS
         );
     }

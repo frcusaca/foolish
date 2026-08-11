@@ -123,6 +123,36 @@ impl FirRefNavExt for FirRef {
     }
 }
 
+/// The strip budget carried down one root-to-leaf path of a constanic clone
+/// (FOOP-55 §5).
+///
+/// A clone may remove **at most one** SF/SFF mark **per path**. Nesting is
+/// therefore a deferral count — `<< <<X>> >>` strips its outer mark and keeps
+/// the inner one, because both sit on the same path — while *sibling* marks
+/// are independent: `'mod`'s two operands `<<#-2>>` and `<<#-1>>` are separate
+/// subtrees, each with its own budget, and both resolve as they always have.
+///
+/// `Copy` and passed **by value** on purpose: descending into a child inherits
+/// the parent's remaining budget, but spending it in one child must not affect
+/// that child's siblings.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct StripBudget {
+    unspent: bool,
+}
+
+impl StripBudget {
+    /// A budget with one strip available — one path's worth.
+    fn fresh() -> Self {
+        StripBudget { unspent: true }
+    }
+
+    /// Spend the strip if available. Returns `(may_strip, remaining_budget)`.
+    /// The caller passes `remaining_budget` down the path it descends.
+    fn spend(self) -> (bool, Self) {
+        (self.unspent, StripBudget { unspent: false })
+    }
+}
+
 impl ProtoBrane {
     /// `pub(crate)` for `system_foo::ComparisonFir::constanic_clone`, which
     /// clones its children exactly as the kinds in this module do.
@@ -134,6 +164,31 @@ impl ProtoBrane {
         sfm: bool,
         skip_foolish_children: bool,
     ) -> ProtoBrane {
+        // Children of one clone share that clone's budget (FOOP-55 §5).
+        let budget = StripBudget::fresh();
+        Self::clone_children_budgeted(
+            source,
+            self_weak,
+            new_parent,
+            nyes,
+            sfm,
+            skip_foolish_children,
+            budget,
+        )
+    }
+
+    /// [`Self::clone_children_for_constanic_clone`], carrying an existing
+    /// clone operation's strip budget (FOOP-55 §5).
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn clone_children_budgeted(
+        source: &ProtoBrane,
+        self_weak: &Weak<RefCell<dyn Fir>>,
+        new_parent: &Weak<RefCell<dyn Fir>>,
+        nyes: Nyes,
+        sfm: bool,
+        skip_foolish_children: bool,
+        budget: StripBudget,
+    ) -> ProtoBrane {
         let cloned_children: Vec<FirRef> = if skip_foolish_children {
             Vec::new()
         } else {
@@ -141,7 +196,9 @@ impl ProtoBrane {
                 .foolish_children()
                 .iter()
                 .enumerate()
-                .map(|(i, c)| ProtoBrane::constanic_clone_at(c, self_weak, i, sfm, false))
+                .map(|(i, c)| {
+                    ProtoBrane::constanic_clone_at_budgeted(c, self_weak, i, sfm, false, budget)
+                })
                 .collect()
         };
         let core = ProtoBrane::new(
@@ -150,13 +207,23 @@ impl ProtoBrane {
             nyes.transform_for_clone(sfm),
         );
         for ubc in source.ubc_children() {
-            core.push_ubc_child(ProtoBrane::constanic_clone_at(
-                &ubc, self_weak, 0, sfm, false,
+            core.push_ubc_child(ProtoBrane::constanic_clone_at_budgeted(
+                &ubc, self_weak, 0, sfm, false, budget,
             ));
         }
         core
     }
 
+    /// Entry point for a constanic clone (FOOP-55 §5).
+    ///
+    /// Every clone is one **operation** with one **strip budget**: it may
+    /// remove at most one SF/SFF mark, wherever in the cloned tree that mark
+    /// happens to sit. This function starts a fresh budget; the recursive
+    /// worker [`Self::constanic_clone_at_budgeted`] carries it down.
+    ///
+    /// A search that resolves and coordinates its result starts a *new* clone,
+    /// and therefore a *new* budget — which is what makes a chain of
+    /// singly-marked statements resolve one hop per link (FOOP-55 §5 case 2).
     pub(crate) fn constanic_clone_at(
         fir_ref: &FirRef,
         new_parent: &Weak<RefCell<dyn Fir>>,
@@ -164,29 +231,61 @@ impl ProtoBrane {
         descendent_of_sfm_and_foolishly_ignorant: bool,
         skip_foolish_children: bool,
     ) -> FirRef {
+        let budget = StripBudget::fresh();
+        Self::constanic_clone_at_budgeted(
+            fir_ref,
+            new_parent,
+            index,
+            descendent_of_sfm_and_foolishly_ignorant,
+            skip_foolish_children,
+            budget,
+        )
+    }
+
+    /// The recursive worker behind [`Self::constanic_clone_at`], carrying the
+    /// clone operation's shared strip budget (FOOP-55 §5).
+    pub(crate) fn constanic_clone_at_budgeted(
+        fir_ref: &FirRef,
+        new_parent: &Weak<RefCell<dyn Fir>>,
+        index: usize,
+        descendent_of_sfm_and_foolishly_ignorant: bool,
+        skip_foolish_children: bool,
+        budget: StripBudget,
+    ) -> FirRef {
         if matches!(
             fir_ref.borrow().kind(),
             FirKind::StayFoolish | FirKind::StayFullyFoolish
         ) {
+            // FOOP-55 §5: the budget is spent, so this mark STAYS. An
+            // unstripped mark has not searched, so it holds no resolved
+            // reference to any brane and no per-site state -- sharing it is
+            // sound, and the per-site state lives in this budget, not in the
+            // node.
+            let (may_strip, budget) = budget.spend();
+            if !may_strip {
+                return Rc::clone(fir_ref);
+            }
             let source = fir_ref.borrow();
             if source.kind() == FirKind::StayFoolish
                 && let Some(constanic_result) = source.core().ubc_children().into_iter().next()
             {
-                return Self::constanic_clone_at(
+                return Self::constanic_clone_at_budgeted(
                     &constanic_result,
                     new_parent,
                     index,
                     descendent_of_sfm_and_foolishly_ignorant,
                     skip_foolish_children,
+                    budget,
                 );
             }
             if let Some(inner) = source.core().foolish_children().first().cloned() {
-                return Self::constanic_clone_at(
+                return Self::constanic_clone_at_budgeted(
                     &inner,
                     new_parent,
                     index,
                     descendent_of_sfm_and_foolishly_ignorant,
                     skip_foolish_children,
+                    budget,
                 );
             }
             eprintln!("ALARM: SF/SFF node has no children — cloning wrapper as-is");
@@ -212,13 +311,14 @@ impl ProtoBrane {
                 let op_name = borrowed.as_op_name().unwrap_or("?").to_owned();
                 Rc::new_cyclic(|me: &Weak<RefCell<OperatorFir>>| {
                     let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-                    let core = ProtoBrane::clone_children_for_constanic_clone(
+                    let core = ProtoBrane::clone_children_budgeted(
                         borrowed.core(),
                         &self_weak,
                         new_parent,
                         nyes,
                         descendent_of_sfm_and_foolishly_ignorant,
                         skip_foolish_children,
+                        budget,
                     );
                     RefCell::new(OperatorFir { core, op: op_name })
                 })
@@ -340,13 +440,14 @@ impl ProtoBrane {
                 let is_contexted = borrowed.as_search_contexted();
                 Rc::new_cyclic(|me: &Weak<RefCell<IndexFir>>| {
                     let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-                    let core = ProtoBrane::clone_children_for_constanic_clone(
+                    let core = ProtoBrane::clone_children_budgeted(
                         borrowed.core(),
                         &self_weak,
                         new_parent,
                         nyes,
                         descendent_of_sfm_and_foolishly_ignorant,
                         skip_foolish_children,
+                        budget,
                     );
                     RefCell::new(IndexFir {
                         core,
@@ -363,13 +464,14 @@ impl ProtoBrane {
                 let helpers_populated = !borrowed.core().ubc_children().is_empty();
                 Rc::new_cyclic(|me: &Weak<RefCell<ConcatenationFir>>| {
                     let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-                    let core = ProtoBrane::clone_children_for_constanic_clone(
+                    let core = ProtoBrane::clone_children_budgeted(
                         borrowed.core(),
                         &self_weak,
                         new_parent,
                         nyes,
                         descendent_of_sfm_and_foolishly_ignorant,
                         skip_foolish_children,
+                        budget,
                     );
                     RefCell::new(ConcatenationFir {
                         core,
@@ -379,13 +481,14 @@ impl ProtoBrane {
             }
             FirKind::ConcatHelper => Rc::new_cyclic(|me: &Weak<RefCell<ConcatHelper>>| {
                 let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-                let core = ProtoBrane::clone_children_for_constanic_clone(
+                let core = ProtoBrane::clone_children_budgeted(
                     borrowed.core(),
                     &self_weak,
                     new_parent,
                     nyes,
                     descendent_of_sfm_and_foolishly_ignorant,
                     skip_foolish_children,
+                    budget,
                 );
                 RefCell::new(ConcatHelper { core })
             }),
@@ -397,13 +500,14 @@ impl ProtoBrane {
                 let line = index;
                 Rc::new_cyclic(|me: &Weak<RefCell<StatementFir>>| {
                     let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-                    let core = ProtoBrane::clone_children_for_constanic_clone(
+                    let core = ProtoBrane::clone_children_budgeted(
                         borrowed.core(),
                         &self_weak,
                         new_parent,
                         nyes,
                         descendent_of_sfm_and_foolishly_ignorant,
                         skip_foolish_children,
+                        budget,
                     );
                     RefCell::new(StatementFir {
                         core,
@@ -416,13 +520,14 @@ impl ProtoBrane {
             }
             FirKind::Brane => Rc::new_cyclic(|me: &Weak<RefCell<BraneFir>>| {
                 let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
-                let core = ProtoBrane::clone_children_for_constanic_clone(
+                let core = ProtoBrane::clone_children_budgeted(
                     borrowed.core(),
                     &self_weak,
                     new_parent,
                     nyes,
                     descendent_of_sfm_and_foolishly_ignorant,
                     skip_foolish_children,
+                    budget,
                 );
                 RefCell::new(BraneFir {
                     core,
@@ -4934,23 +5039,31 @@ mod tests {
         let scope = Scope::empty();
         let _ = step_to_settled(&root, &scope);
 
+        // Walk to the SEARCH for `defn` inside `use`, and read the result it
+        // recoordinated. That clone is the coordination event, so its result
+        // is where exactly one mark must have come off.
         let stmts = root.borrow().core().foolish_children().to_vec();
-        let use_brane = stmts[1].borrow().core().foolish_children()[0]
-            .clone()
-            .value();
-        let referenced = use_brane.borrow().core().foolish_children()[2].clone();
-        let body = referenced.borrow().core().foolish_children()[0].clone();
+        let use_brane = stmts[1].borrow().core().foolish_children()[0].clone();
+        let search = use_brane.borrow().core().foolish_children()[2]
+            .borrow()
+            .core()
+            .foolish_children()[0]
+            .clone();
+        let result = search.borrow().core().ubc_children()[0].clone();
 
         assert_eq!(
-            body.borrow().kind(),
+            result.borrow().kind(),
             FirKind::StayFullyFoolish,
             "after ONE coordination a doubly marked term must STILL be \
              SFF-marked -- exactly one mark comes off per constanic clone"
         );
+
+        let inner = result.borrow().core().foolish_children()[0].clone();
         assert_eq!(
-            body.value().borrow().as_i64(),
-            None,
-            "a still-marked term has NOT searched, so it has no integer value"
+            inner.borrow().core().get_nyes(),
+            Nyes::Econstanic,
+            "the still-marked inner search must NOT have run: it is \
+             ECONSTANIC, awaiting the next coordination"
         );
     }
 
