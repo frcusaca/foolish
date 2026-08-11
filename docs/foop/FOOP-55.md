@@ -628,6 +628,126 @@ parenthesized form leaves no grouping node), so this is a **style rule**, not a
 grammar change: four adjacent angle brackets have no visual boundary and must
 not appear in new code.
 
+#### Two ways marks nest — and why one rule covers both
+
+Marks compose in two structurally different ways. They *feel* like they ought to
+need different rules; they do not. Both are covered by "at most one strip per
+clone tree", applied at the granularity each case presents.
+
+##### Case 1 — syntactic nesting: marks on ONE term
+
+```foolish
+{a = << 1 + << 2 + <<x>> + c >> + d >>}
+```
+
+This is a single expression, parsed into a single tree, with marks lexically
+inside one another. **One coordination clones one tree and spends one strip**,
+so depth is a property of the term: the innermost `<<x>>` is three boundaries
+deep and sits out three coordinations before it searches.
+
+Today all three come off at once. Verified:
+
+```foolish
+{
+	M = {v = << 1 + << 2 + <<#-1>> >> >>};
+	r = ({x=10} M)$;          !! → r=13   (1 + 2 + 10)
+}
+```
+
+Under §5 the outer mark is stripped by the coordination that builds `M`'s
+result, and the inner two ride through — resolving one boundary at a time.
+**This is the case the exercise depends on**: `'ite`'s branches are doubly
+marked so they survive table construction and resolve only at the use site.
+
+##### Case 2 — search chaining: marks on SEPARATE terms
+
+```foolish
+{A = <<a>>; B = <<A>>; C = <<B>>; r = C}
+```
+
+Nothing is lexically nested here. `B`'s mark wraps a *search for `A`* — not
+`A`'s mark. These are four statements, each with its own body and its own future
+clone.
+
+The trace, and the load-bearing detail:
+
+1. `r = C` coordinates `C`. That clone spends its budget on `C`'s mark; what it
+   copies is the search for `B`, now searchable.
+2. **That clone operation exits — and the budget dies with it.**
+3. The search for `B` runs and finds `B`'s statement, whose body is `<<A>>`.
+   Coordinating *that* result is a **new** `constanic_clone` call with a
+   **fresh** budget, which strips `B`'s mark.
+4. The same again for `A`'s mark, after which the search for `a` runs and misses.
+
+So the chain resolves **one hop per link**, and `r` settles "couldn't find `a`"
+— ECONSTANIC, since the searches are unanchored.
+
+**This reading is provisional.** What has actually been verified is narrow:
+chains of length 1, 2, and 3 terminate on the current tree, and the 3-link chain
+produces the nested result the trace predicts. Those chains all resolve to a
+*miss*, so the more interesting path — a chain that finds something and carries
+a value back through each hop — is **untested**. Whether "one fresh budget per
+resolution hop" is the actual mechanism, or merely consistent with these
+shapes, is not established; nor is the behavior when a link is a brane rather
+than a bare search, or when marks sit on both sides of a link. Treat the trace
+below as a hypothesis with three supporting observations, not as specified
+semantics.
+
+```
+r = ?(result = ?(result = ?(result = ?(pattern='^a$', ECONSTANIC),
+                            pattern='^A$', WOCONSTANIC),
+                 pattern='^B$', WOCONSTANIC),
+      pattern='^C$', WOCONSTANIC)
+```
+
+##### Why the same rule serves both
+
+The budget belongs to a **clone operation**, and the two cases simply present
+different numbers of them:
+
+| | Clone operations | Budgets | Depth accumulates |
+|---|---|---|---|
+| **Syntactic** | one (walking one tree) | one, contested by the marks in it | *within* a term — nesting is a **count** |
+| **Search-chained** | one per resolution hop | one each, fresh every time | *across* terms — chaining is a **pipeline** |
+
+Neither needs the other's machinery, and no second mechanism is introduced.
+Syntactic nesting lets a macro author say "ride through N boundaries"; search
+chaining lets each stage of an indirection defer exactly one hop.
+
+##### What case 2 WILL do after §5 — the specified behavior
+
+Stating this plainly so there is something to test against, and so a divergence
+is a detectable defect rather than an open question:
+
+1. **Single-marked chains are unchanged.** `{A=<<a>>; B=<<A>>; C=<<B>>; r=C}`
+   behaves after §5 exactly as it does today — one hop per link, settling
+   ECONSTANIC. Every statement carries one mark, so no clone tree ever meets a
+   second mark and the budget is never contested. **Its einmo baseline must be
+   byte-identical, step counts included.** This is the control that proves §5
+   changed only what it claims to.
+
+2. **A doubly-marked link defers one extra hop.** In
+   `{A=<<a>>; B=<< <<A>> >>; C=<<B>>; r=C}`, coordinating `B`'s result spends
+   its budget on the outer mark and hands on a still-marked `<<A>>`; the search
+   for `A` therefore does not fire on that hop, and fires on the next
+   coordination instead. The chain grows one link longer in effect without
+   growing one statement longer in source.
+
+3. **Mixed cases compose by the same rule.** A link whose body is syntactically
+   nested (`B = << 1 + <<A>> >>`) spends one strip on the outer mark of *that
+   term*, exactly as case 1 describes, because it is one term inside one clone.
+
+**Uncertainty, and what to do about it.** Point 1 is verified. Points 2 and 3
+follow from the rule but are **not demonstrated** — the verified chains all
+resolve to a miss, so no value has been carried back through a multi-hop chain,
+and the interaction with recursion in particular is unexplored (see
+§Open Questions). The plan tests all three as einmo cases. **If the
+implementation contradicts points 2 or 3, adjust this section to match the
+implementation and record why** — these are the FOOP's predictions, not
+constraints the code must be bent to satisfy. Point 1 is different: a
+divergence there is a regression in the strip budget and must be fixed in the
+code.
+
 #### Why this is what the exercise needs
 
 `'ite` is defined as a table lookup whose branches are SFF-marked:
@@ -817,6 +937,12 @@ step 4); no promotion over any foreign FOOP's baseline
 | `nested_in_expression.foo` | `1 + << <<X>> >>` inside an operator |
 | `deferred_avoids_premature_nk.foo` | the `A=<{...}>; B=A; C=B` case: resolves at `C` instead of dying NK at `B` |
 | `separator_forms_agree.foo` | `<< <<A>> >>` and `<<(<<A>>)>>` produce identical OUTPUT |
+| `nest_case1_syntactic.foo` | **Case 1** — marks on ONE term: `<< 1 + << 2 + <<x>> >> >>` resolves one boundary per coordination. Pins that depth is a count *within* a term. |
+| `nest_case2_search_chain.foo` | **Case 2** — marks on SEPARATE terms: `{A=<<a>>; B=<<A>>; C=<<B>>; r=C}` resolves one hop per link and settles ECONSTANIC ("couldn't find `a`"). **This must be byte-identical before and after §5** — every statement is single-marked, so no clone tree ever meets a second mark. It is the control proving §5 changed only what it claims to. |
+| `nest_case2_chain_lengths.foo` | Case 2 at chain lengths 1, 2, 3 — all terminate, each adding one `result=` layer. Pins the per-hop-fresh-budget behavior. |
+| `nest_case2_double_link.foo` | §5 point 2 — `{A=<<a>>; B=<< <<A>> >>; C=<<B>>; r=C}` defers one extra hop. **Prediction, not verified**; if the implementation disagrees, amend §5 to match and record why. |
+| `nest_case2_mixed.foo` | §5 point 3 — a link whose body is syntactically nested (`B = << 1 + <<A>> >>`) spends one strip on that term's outer mark. Also a prediction. |
+| `nest_chain_that_hits.foo` | The untested path: a chain that **finds** something and carries a value back through each hop, rather than missing. |
 
 Each is reviewed statement by statement through the Promotion Review Gate
 (`foop.md`) before promotion.
@@ -856,6 +982,17 @@ The §5 design space — the four approaches considered and why the SFF-mark
 upgrade won — is set out in prose in **Appendix A**.
 
 ## Open Questions
+- **(§5) Does the strip budget serve every recursive shape we need?** Euler 1's
+  recursion is one shape: a self-reference in a branch the value search does not
+  select. The rule is expected to generalize — an unselected branch is never
+  coordinated again regardless of *why* it is expensive — but this is **not
+  established**, and no attempt has been made to enumerate the recursive
+  patterns Foolish will need (mutual recursion, a recursive call in the
+  *selected* branch, accumulator-passing where the recursive term is also the
+  value). §5 is specified against the shape the exercise needs. Later exercises
+  will find the others, and this section is expected to grow rather than to have
+  anticipated them. **Adjust §5 when a shape breaks it**, and record what broke.
+
 
 - **Modulo with negative operands** — Rust truncating semantics are pinned
   for now; Euclidean modulo, if ever wanted, is a future FOOP.

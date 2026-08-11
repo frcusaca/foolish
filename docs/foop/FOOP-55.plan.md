@@ -213,6 +213,20 @@ regression gate for this whole FOOP.
   - [ ] `deferred_avoids_premature_nk.foo` (the `A=<{...}>; B=A; C=B` case —
         resolves at `C` instead of dying NK at `B`)
   - [ ] `separator_forms_agree.foo` (`<< <<A>> >>` vs `<<(<<A>>)>>`)
+  - [ ] `nest_case1_syntactic.foo` (marks on ONE term — depth is a count)
+  - [ ] `nest_case2_search_chain.foo` (marks on SEPARATE terms — one hop per
+        link; **must be byte-identical before and after §5**, it is the control)
+  - [ ] `nest_case2_chain_lengths.foo` (lengths 1, 2, 3 all terminate)
+  - [ ] `nest_case2_double_link.foo` (§5 point 2 — PREDICTION; if the
+        implementation disagrees, amend FOOP-55.md §5 to match and record why)
+  - [ ] `nest_case2_mixed.foo` (§5 point 3 — also a prediction)
+  - [ ] `nest_chain_that_hits.foo` (the untested path: a chain that FINDS and
+        carries a value back, rather than missing)
+- [ ] **Capture the case-2 baseline BEFORE touching `constanic_clone_at`** —
+      run `nest_case2_search_chain.foo` and `nest_case2_chain_lengths.foo` on
+      the unmodified tree and record their OUTPUT in this plan. They are the
+      control for the whole change; a pre-change record is what makes
+      "byte-identical" checkable rather than assertable.
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 - [ ] Review and promote `output` → `checked` for the `foop/55/SFF/` cases
   - [ ] Confirm the rest of the suite is green — no foreign-FOOP baseline diverges
