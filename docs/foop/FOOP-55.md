@@ -961,6 +961,39 @@ Three properties make it the right primitive:
    *already* constanic at the moment a search anchors on it, with no waiting on
    statements after me that I am not permitted to see.
 
+#### A view is never stepped, and its NYES is computed live
+
+Two rules, and they are a matched pair — together they are what *makes*
+property 3 true rather than something that must be maintained:
+
+**1. A view is never enqueued.** It has no evaluation of its own. Its
+statements belong to the source brane and are stepped there, through the source
+brane's own task queue. A view must therefore never be pushed as a task —
+implementations must check for this explicitly, because enqueueing one would
+step the same statements twice through two different owners.
+
+**2. `get_nyes()` is an active scan of its direct children, not stored state.**
+A view holds no NYES of its own to cache, and therefore none that can go stale
+as the underlying statements settle. Asked, it computes; the answer is always
+current by construction.
+
+The classification uses the **existing** rule — `_decide_nyes_due_to_children`
+(`fir_kinds.rs`), the same function an ordinary brane uses to classify itself
+from its members. Reusing it matters: a second, view-specific classification
+would be a place for the two to drift, and a view's whole purpose is to report
+faithfully about statements it does not own. (Note `Nyes` is `PartialEq, Eq`
+but **not** `Ord`, so "lowest" is not a `.min()` — the ordering is the rule that
+function encodes, not the enum's declaration order.)
+
+A view consequently has **no `set_nyes`**. Writing a NYES to a view would be
+meaningless — it owns no evaluation to record. That is an invariant worth
+enforcing in the type rather than by convention.
+
+Together these give property 3 for free: a `[0, my_index-1]` view reports
+constanic exactly when its window is constanic, and FIFO draining guarantees
+that window has settled before the searching statement steps. Nobody has to
+arrange it.
+
 Property 3 is why a view beats clipping a navigator's range. A clipped scan
 still asks "has the anchor brane settled?" — and it has not. The view asks "has
 *my window* settled?" — and it always has. That is the same move §5 makes:

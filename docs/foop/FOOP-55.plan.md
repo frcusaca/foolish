@@ -315,6 +315,14 @@ position to survive a coordination — no `&#1`, and no mark-depth puzzle.
 - [ ] Implement the brane view: contiguous `[start, end]` over a source brane,
       **same parent**, read-only. Index `i` in the view IS index `i` in the
       source — no translation.
+  - [ ] **Never enqueue a view** — add an explicit check. It has no evaluation
+        of its own; its statements are stepped by the source brane's queue, and
+        enqueueing would step them twice through two owners.
+  - [ ] **`get_nyes()` is an ACTIVE SCAN** of direct children via the existing
+        `_decide_nyes_due_to_children`, never stored state — so it cannot go
+        stale as the window settles. Do NOT write a second classification rule.
+        (`Nyes` is not `Ord`; "lowest" is that function's rule, not `.min()`.)
+  - [ ] **No `set_nyes`** on a view — enforce in the type, not by convention.
 - [ ] Parser: accept bare `Token::Tilde` in primary position, mirroring the bare
       `Token::Question` arm
 - [ ] Update the `RegexpSearch` doc comment in `foolish-parser/src/ast.rs`,
