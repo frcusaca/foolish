@@ -4888,6 +4888,113 @@ mod tests {
         }
     }
 
+    /// FOOP-55 §5: a constanic clone strips AT MOST ONE SF/SFF mark.
+    ///
+    /// The single-mark case is the control: `<<X>>` resolves on
+    /// recoordination exactly as it always has. This test must keep passing
+    /// unchanged -- if it breaks, the strip budget is spending itself where it
+    /// should not.
+    #[test]
+    fn single_mark_strips_and_resolves_on_recoordination() {
+        let root = Compiler::compile("{defn = <<#-1>>; use = {5, 9, defn};}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        let scope = Scope::empty();
+        let _ = step_to_settled(&root, &scope);
+
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let use_brane = stmts[1].borrow().core().foolish_children()[0]
+            .clone()
+            .value();
+        let referenced = use_brane.borrow().core().foolish_children()[2].clone();
+        let body = referenced.borrow().core().foolish_children()[0].clone();
+
+        assert_eq!(
+            body.value().borrow().as_i64(),
+            Some(9),
+            "a SINGLY marked <<#-1>> resolves to the referencing brane's \
+             neighbor on the first recoordination -- unchanged by FOOP-55 §5"
+        );
+    }
+
+    /// FOOP-55 §5, case 1 (syntactic nesting): a DOUBLY marked term sits out
+    /// one coordination.
+    ///
+    /// `<< <<#-1>> >>` recoordinated once must still carry an SFF mark and
+    /// must NOT have searched. This is the property `'ite`'s branches depend
+    /// on: they survive the coordination that builds the lookup table, so the
+    /// branch the value search does not select never resolves at all.
+    #[test]
+    fn double_mark_defers_one_coordination() {
+        let root = Compiler::compile("{defn = << <<#-1>> >>; use = {5, 9, defn};}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        let scope = Scope::empty();
+        let _ = step_to_settled(&root, &scope);
+
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let use_brane = stmts[1].borrow().core().foolish_children()[0]
+            .clone()
+            .value();
+        let referenced = use_brane.borrow().core().foolish_children()[2].clone();
+        let body = referenced.borrow().core().foolish_children()[0].clone();
+
+        assert_eq!(
+            body.borrow().kind(),
+            FirKind::StayFullyFoolish,
+            "after ONE coordination a doubly marked term must STILL be \
+             SFF-marked -- exactly one mark comes off per constanic clone"
+        );
+        assert_eq!(
+            body.value().borrow().as_i64(),
+            None,
+            "a still-marked term has NOT searched, so it has no integer value"
+        );
+    }
+
+    /// FOOP-55 §5: the strip budget belongs to the clone OPERATION, not to a
+    /// node -- an SF wrapper and an SFF nested inside it share ONE strip.
+    ///
+    /// A per-node rule would let both marks come off in the same clone, which
+    /// is exactly the bug: sibling marks deeper in the tree would each strip
+    /// independently and the count would be meaningless.
+    #[test]
+    fn strip_budget_is_per_clone_tree_not_per_node() {
+        let root = Compiler::compile("{defn = <{inner = << <<#-1>> >>;}>; use = {5, 9, defn};}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        let scope = Scope::empty();
+        let _ = step_to_settled(&root, &scope);
+
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let use_brane = stmts[1].borrow().core().foolish_children()[0]
+            .clone()
+            .value();
+        let referenced = use_brane.borrow().core().foolish_children()[2].clone();
+        let inner_stmt = referenced
+            .borrow()
+            .core()
+            .foolish_children()
+            .first()
+            .cloned()
+            .and_then(|b| b.borrow().core().foolish_children().first().cloned());
+
+        if let Some(inner) = inner_stmt {
+            let body = inner.borrow().core().foolish_children().first().cloned();
+            if let Some(body) = body {
+                assert_eq!(
+                    body.borrow().kind(),
+                    FirKind::StayFullyFoolish,
+                    "one clone walking an SF wrapper AND an inner SFF must \
+                     spend only ONE strip -- the inner mark survives"
+                );
+            }
+        }
+    }
+
     #[test]
     fn stmt_ib_search_finds_earlier_null_characterized_sibling_by_searchable_name() {
         // FOOP-33 Phase 4 precondition: the null-constant rule's ancestral-conflict
