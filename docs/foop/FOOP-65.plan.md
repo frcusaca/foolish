@@ -192,15 +192,27 @@ variant, a `constanic_clone_at` arm, or a `fir_op_step`.
 
 ## Phase 3 — Comprehensive test and final gate
 
-- [ ] Write and verify `foolish-ubca/einmo_suite/input/foop/65/comprehensive.foo`
+- [x] Write and verify `foolish-ubca/einmo_suite/input/foop/65/comprehensive.foo`
       (reserved name; mix the backtick with searches, `$`, SF/SFF markers,
       nested branes, system operators; at least one path through every
       behavior this FOOP adds; slight repetition acceptable for coverage)
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
-- [ ] Verify ZERO foreign baseline divergence across the whole einmo suite
+      (2026-08-11 15:37)
+      — Comprehensive test covers: §3.1 chain pattern, backtick+juxtaposition
+        equivalence, $ extraction from backtick result, dot access, head/tail
+        search (^/$), backward name search (?), index search (#), forward
+        search (~), nested brane backtick, system operators via brane idiom,
+        backtick+SFF marker, chained backtick. All outputs verified correct.
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      (2026-08-11 15:37)
+      — 327 passed; 1 failed (einmo_gate_verified — expected, requires human
+        key). einmo_gate_checked and einmo_gate_output both pass.
+- [x] Verify ZERO foreign baseline divergence across the whole einmo suite
       (`einmo compare output checked foolish-ubca/einmo_suite/`) — any
       foreign divergence is a regression to fix, never to promote
       (`rust_instructions.md` §"Phase-by-phase testing discipline")
+      (2026-08-11 15:37)
+      — 178 matching, 0 differing, 0 only-in-output, 0 only-in-checked,
+        0 tampered. Zero foreign divergence confirmed.
 - [ ] Present the foop/65 baselines + comprehensive OUTPUT to the human for
       human review; checked-stage promotion only after approval; the
       verified stage requires the human key (einmo.toml leaves `verified`
