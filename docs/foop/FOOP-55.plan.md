@@ -445,6 +445,18 @@ work is not lost when this plan closes.
       indices DO work (`src#-1` → last member), which makes a parallel
       "result table with a default row in the tail" idiom attractive.
 
+- [ ] **Consider migrating the existing computing postfix operators to the
+      brane-wrapper form** (`'name = {NameFir}`), per FOOP-55.md §7. `'mod`,
+      `'or` and the comparisons use fixed SFF offsets today. The wrapper makes
+      `1 + 'name` a TYPE ERROR rather than a runtime check, and allows any
+      arity — but it is **not a mechanical rewrap**: each operator becomes
+      responsible for its own arity checking, for deciding whether a
+      non-candidate member is skipped or fatal, and for reading through
+      `stmt_count`/`stmt_at` rather than `foolish_children` (its container may
+      be a ConcatBrane). Out of scope here — those operators work, Euler 1 does
+      not need them converted, and each conversion is a behavioural change
+      deserving its own tests.
+
 - [ ] **Record D7** in FOOP-55.md §Findings, or in its own defect FOOP: a bare
       `B = A` does not resolve an SFF-bearing expression. `{X=42; A = 1 +
       <<#-1>>; B = A}` hangs at `B` (BRANING) with one mark *or* two, while

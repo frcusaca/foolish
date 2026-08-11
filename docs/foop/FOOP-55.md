@@ -1070,6 +1070,46 @@ design:
   diagnose — `rust_instructions.md` §1b rule 4 applied at the Foolish level. No
   bespoke error message to write or maintain.
 
+#### The brane wrapper is the general form for computing postfix operators
+
+The wrapper is not special to the extrema. **Every computing postfix operator
+should be declared `'name = {NameFir}`** — the extrema are simply the first
+written that way, because a variadic fold cannot be expressed any other way.
+
+The two mechanisms differ in what the operator receives, and that difference is
+the whole of the design:
+
+| | SFF offsets (`'or`, `'mod`, comparisons today) | Brane wrapper (§7) |
+|---|---|---|
+| **Arity** | fixed — `<<#-2>>`, `<<#-1>>` | any, including zero |
+| **How operands arrive** | recoordination resolves the offsets | concatenation splices the operator in beside them |
+| **Self-location** | never needed; the operator does not know where it sits | required — `.parent()` and its own index |
+| **`1 + 'name`** | type-checks (body is value-shaped), needs a runtime check | **type error** — the body is a brane |
+
+**But an operator must be written knowing what it is getting into.** The
+wrapper does not merely relocate the operands; it changes what the operator is
+responsible for:
+
+1. **Any number of preceding members, including none.** Fixed arity is no
+   longer supplied by the mechanism. An operator that genuinely wants exactly
+   two must *state* that and fail cleanly when it does not get it — the
+   requirement moves from the machinery into the operator.
+2. **Members of any kind.** Non-integers, branes, creations, other operators.
+   Each operator decides whether a non-candidate is skipped (a fold) or fatal
+   (a positional operand).
+3. **Read through `stmt_count`/`stmt_at`, never `foolish_children`.** The
+   container may be a ConcatBrane, whose children are `_ConcatHelper`s rather
+   than statements (FOOP-13).
+4. **The deferral rule still binds.** A pre-constanic member means
+   ECONSTANIC-and-wait, never NK — NK is terminal and would poison the
+   definition inside `system.foo`.
+
+**Migrating the existing operators is therefore a real change to each, not a
+mechanical rewrap**, and is **out of scope for this FOOP**: `'mod`, `'or` and
+the comparisons work today, Euler 1 does not need them converted, and each
+conversion is a behavioural change deserving its own tests. Recorded in the plan
+as a follow-up.
+
 #### Stepping
 
 When `MaxIntValFir` steps it asks its **parent** — the flattened brane — for the
