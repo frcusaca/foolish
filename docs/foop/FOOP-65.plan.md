@@ -172,9 +172,17 @@ variant, a `constanic_clone_at` arm, or a `fir_op_step`.
       `tail_concat_system_ops.foo` (`'lt`/`'eq` via backtick);
       run `run_einmo_tests`, review OUTPUT, justify EVERY line (AGENTS.md
       step 4), promote ONLY these foop/65 baselines
-      (2026-08-09 14:04)
-      — All 3 baselines created and promoted to `checked`. No foreign
-        baseline changed.
+      (2026-08-09 14:04; re-done 2026-08-11)
+      — Bug fix: `classify_concat_element` in compiler.rs did not handle
+        `Astn::Concatenation` — backtick operands that are juxtapositions
+        (like `d e f`) fell through to Error → NK. Fixed by adding
+        `BareConcat` variant that builds without SFF override.
+      — Rewrote tests: basic uses brane operands (not scalars), system_ops
+        uses correct application idiom `{args, 'op}$` (backtick can't do
+        system-operator application — bare identifier gets SF-wrapped, not
+        placed as named statement in brane). Added backtick equivalence for
+        user-defined functions.
+      — All 3 baselines promoted to `checked`. No foreign baseline changed.
 - [x] Run all tests — old and new — and make sure they all pass correctly.
       (2026-08-09 14:04)
 
