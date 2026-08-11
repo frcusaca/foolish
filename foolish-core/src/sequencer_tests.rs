@@ -409,49 +409,30 @@ fn foop65_embryonic_inspection() {
     use crate::fir::*;
     use crate::Nyes;
 
-    // §3.1 worked example: a`b`c`d e f — all elements Embryonic, named
-    let d = NormalBraneFirBuilder::new()
-        .statement(Some("d".into()), ConstantIntFirBuilder::new(4).build())
-        .state(Nyes::Embryonic)
-        .build();
-    let e = NormalBraneFirBuilder::new()
-        .statement(Some("e".into()), ConstantIntFirBuilder::new(5).build())
-        .state(Nyes::Embryonic)
-        .build();
-    let f = NormalBraneFirBuilder::new()
-        .statement(Some("f".into()), ConstantIntFirBuilder::new(6).build())
-        .state(Nyes::Embryonic)
-        .build();
+    // §3.1 worked example: ?A`?B`?C`?D ?E ?F
+    // Search elements are naturally embryonic (unresolved) — no forced state.
+    let s_a = SearchFirBuilder::new("A").build();
+    let s_b = SearchFirBuilder::new("B").build();
+    let s_c = SearchFirBuilder::new("C").build();
+    let s_d = SearchFirBuilder::new("D").build();
+    let s_e = SearchFirBuilder::new("E").build();
+    let s_f = SearchFirBuilder::new("F").build();
     let inner = ConcatenationFirBuilder::new()
-        .element(d)
-        .element(e)
-        .element(f)
-        .state(Nyes::Embryonic)
-        .build();
-    let a = NormalBraneFirBuilder::new()
-        .statement(Some("a".into()), ConstantIntFirBuilder::new(1).build())
-        .state(Nyes::Embryonic)
-        .build();
-    let b = NormalBraneFirBuilder::new()
-        .statement(Some("b".into()), ConstantIntFirBuilder::new(2).build())
-        .state(Nyes::Embryonic)
-        .build();
-    let c = NormalBraneFirBuilder::new()
-        .statement(Some("c".into()), ConstantIntFirBuilder::new(3).build())
-        .state(Nyes::Embryonic)
+        .element(s_d)
+        .element(s_e)
+        .element(s_f)
         .build();
     let outer = ConcatenationFirBuilder::new()
         .element(inner)
-        .element(a)
-        .element(b)
-        .element(c)
-        .state(Nyes::Embryonic)
+        .element(s_a)
+        .element(s_b)
+        .element(s_c)
         .is_tail_concatenation(true)
         .build();
     let rendered = format_fir_simple(&outer);
     eprintln!("\n=== FOOP-65 §6.1: ALL-EMBRYONIC TAIL CONCATENATION ===");
-    eprintln!("Input: a`b`c`d e f");
-    eprintln!("Storage order: [Concat(d,e,f), c, b, a]");
+    eprintln!("Input: ?A`?B`?C`?D ?E ?F");
+    eprintln!("Storage order: [Concat(?D,?E,?F), ?A, ?B, ?C]");
     eprintln!("Backtick rendering (reversed to source order):");
     eprintln!("  {}", rendered);
     eprintln!("=== END ===\n");
