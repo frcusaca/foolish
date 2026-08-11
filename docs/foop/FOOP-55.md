@@ -272,6 +272,54 @@ statements and are cycle-free).
   rewrite uses explicit parentheses + `$` — `X = (application)$` — and
   depends on neither sugar form.
 
+### D7. A system operator nested inside a juxtaposed definition never settles — unbounded `Index` recursion. **BLOCKS the pure-Foolish route.**
+
+Found 2026-08-11 while implementing §5's Phase 2C (`congruent_modulo` in pure
+Foolish). Not caused by §5 — reproduced at `2e3c18ab`, before the strip-budget
+implementation.
+
+**Reproduction.** Composed with `system.foo`:
+
+```foolish
+{
+	f = {out = ({<<#-2>>, <<#-1>>, 'mod})$;};
+	t = ({7, 3} f)$;
+}
+```
+
+`t` never settles. The arithmetic control is fine — replacing the operator with
+`+` (`f = {out = <<#-2>> + <<#-1>>;}`) gives `t=10` — and so is the operator
+without the wrapping definition (`({7, 3, 'mod})$` gives `1`). Only the
+*combination* fails.
+
+**Mechanism.** The FIR tree under the stuck definition shows `Modulo`'s operand
+growing without bound:
+
+```
+f[2] Statement Braning
+  f[0] Search Braning ^'mod$
+    u[0] Modulo Braning
+      f[0] Index Braning
+        u[0] Index Braning
+          u[0] Index Braning        <- another layer every step
+            u[1] FoolRef Constant
+```
+
+Each index resolution produces *another* `Index` in `ubc_children` rather than
+settling to a value. The two operands that belong to the enclosing brane
+(`StayFullyFoolish → Index Econstanic`) resolve and stop correctly; it is
+`Modulo`'s own recoordinated operand that recurses.
+
+**Consequence for this FOOP.** This is why plan Phase 2 abandoned the
+pure-Foolish truth table and fell back to `OrFir` — the note there ("the value
+search `T~A=A` inside system.foo can't resolve when `A` is ECONSTANIC") records
+the symptom; this is the mechanism. It blocks **Phase 2C** (`congruent_modulo`)
+and the pure-Foolish **`'ite`** of Phase 3D by the same route.
+
+§5 is necessary but **not sufficient** for the pure-Foolish definitions. D7 must
+be fixed as well, or `'ite`/`congruent_modulo` must be built some other way.
+Disposition is an Open Question below.
+
 ## Findings — exercise-file defects (Atlas is fixing the file)
 
 The human (Atlas) is repairing the exercise file directly; this FOOP does
@@ -1022,6 +1070,17 @@ upgrade won — is set out in prose in **Appendix A**.
   value). §5 is specified against the shape the exercise needs. Later exercises
   will find the others, and this section is expected to grow rather than to have
   anticipated them. **Adjust §5 when a shape breaks it**, and record what broke.
+- **(D7) How is the pure-Foolish route unblocked?** D7 (a system operator inside
+  a juxtaposed definition never settles — unbounded `Index` recursion) is a
+  pre-existing defect independent of §5, and it blocks `congruent_modulo`
+  (Phase 2C) and pure-Foolish `'ite` (Phase 3D). Three options, undecided:
+  **(a)** fix D7 in this FOOP — correct but widens scope into the index/
+  recoordination machinery; **(b)** keep `'ite` as a Rust FIR kind for now,
+  accepting the collaborator burden Appendix A.A argues against, and fix D7 in
+  its own FOOP; **(c)** find a formulation of `'ite` that avoids the failing
+  shape entirely. §5's own work (Phase 3A) is complete and unaffected either
+  way.
+
 
 
 - **Modulo with negative operands** — Rust truncating semantics are pinned
