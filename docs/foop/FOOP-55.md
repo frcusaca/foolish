@@ -1042,6 +1042,68 @@ directly where they sit.
   honouring `self.forward`, so the range logic lives in one place instead of
   being re-derived per call site.
 
+### §7. `'max_int_val` and `'min_int_val` — variadic folds over a concatenation
+
+Euler 1 needs a maximum. Unlike every other system operator, an extremum has no
+fixed arity: it folds however many integers it is given.
+
+#### The declaration is a BRANE, not a bare FIR
+
+```foolish
+'max_int_val = {MaxIntValFir}
+'min_int_val = {MinIntValFir}
+```
+
+The body is a **brane containing** the FIR. That one detail carries the whole
+design:
+
+- **Juxtaposition splices it.** `{1,2,3}'max_int_val` concatenates to the
+  flattened brane **`{1, 2, 3, MaxIntValFir}`** — the FIR arrives as the last
+  member, with the integers before it. Verified: `{1,2,3} marker` where
+  `marker = {sentinel = 42;}` flattens to `{1; 2; 3; sentinel=42}`.
+- **A bare FIR body would not concatenate at all.** `'or`'s body is an `OrFir`,
+  not a brane, so `{1,2,3} 'or` does not flatten — the juxtaposition degenerates
+  to a bare search. The `{…}` wrapper is what makes an operator concatenable.
+- **Misuse becomes a type error, not a runtime check.** `1 + 'max_int_val`
+  resolves the name to a **brane**, and `+` on a brane already fails. The
+  meaningless case is unrepresentable rather than something to detect and
+  diagnose — `rust_instructions.md` §1b rule 4 applied at the Foolish level. No
+  bespoke error message to write or maintain.
+
+#### Stepping
+
+When `MaxIntValFir` steps it asks its **parent** — the flattened brane — for the
+entries preceding it, folds the integers, and produces **one** `ubc_children`
+element which is the answer.
+
+It reads the container through **`stmt_count`/`stmt_at`**, never
+`foolish_children`. Inside a ConcatBrane (FOOP-13) the children are
+`_ConcatHelper`s, not the statements; only the trait accessors perform the
+offset arithmetic that makes FOOP-13's Equivalence Law hold. Using them means
+the operator works identically whether its container is materialized or not.
+
+| Situation | Outcome |
+|-----------|---------|
+| integers found | the extremum, settled **INDEPENDENT** — it depends on nothing outside itself |
+| a non-integer member | **skipped**, not fatal |
+| any preceding member still pre-constanic | **ECONSTANIC**, and wait |
+| no integers at all | **NK**, reason `"<name>: no integer operands"` |
+
+**Why non-integers are skipped rather than fatal.** `'mod` and `'or` name their
+operands positionally (`<<#-2>>`, `<<#-1>>`), so a non-integer *is* the named
+operand and there is nothing else the expression could mean — NK is right. A
+fold has made no such commitment: it asks "the largest integer here", and a
+member that is not an integer simply is not a candidate.
+
+**Why a pre-constanic member defers rather than folding a partial scan.** The
+answer could still change. And it must settle ECONSTANIC rather than NK: NK is
+terminal and would poison the definition inside `system.foo` — the exact failure
+that forced `OrFir` (see plan Phase 2 and §D7).
+
+**Why no integers is NK rather than ECONSTANIC.** The extremum of an empty set
+is not a value, and unlike the deferral case there is nothing recoordination
+could supply.
+
 ## FIR Impact
 
 - **Two new FIR kinds** in `foolish-ubca/src/system_foo.rs`:
