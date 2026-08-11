@@ -152,7 +152,7 @@ variant, a `constanic_clone_at` arm, or a `fir_op_step`.
       (2026-08-09 14:04)
       — 3 new sequencer tests: backtick rendering, juxtaposition rendering,
         settled identity.
-- [ ] **Significant step — inspection of embryonic Foolish (FOOP-65 §6.1,
+- [x] **Significant step — inspection of embryonic Foolish (FOOP-65 §6.1,
       FOOP-95 §4), by agent AND by human.** Render the all-embryonic
       `` a`b`c`d e f `` and judge it "reasonably informative for the
       purposes of future development, writing and maintaining Foolish
@@ -161,6 +161,10 @@ variant, a `constanic_clone_at` arm, or a `fir_op_step`.
       form genuinely more useful here than juxtaposition form? Record
       findings; PRESENT TO ATLAS and get sign-off before freezing the
       rendering into any baseline. The agent may NOT settle this alone.
+      (2026-08-11 15:22)
+      — Used naturally embryonic search elements (?A, ?B, ...) instead of
+        forced-Embryonic branes. Rendering shows reversed source order with
+        backtick separators: `(?D ?E ?F) ?C ?B ?A`. Human approved (LGTM).
 - [x] Sequencer tests pass (`cargo test -p foolish-core`) and FVM tests
       pass (`cargo test -p foolish-ubca --lib`)
       (2026-08-09 14:04)
