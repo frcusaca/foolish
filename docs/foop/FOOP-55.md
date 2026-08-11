@@ -72,8 +72,10 @@ is **worked around, not fixed**: the exercise uses an `INTERN_` prefix
 instead of a leading `_`, and this FOOP records the full details needed to
 fix the parser later if that becomes desirable.
 
-**Dependency:** the exercise rewrite uses FOOP-65's tail-concatenator
-(backtick) application form — FOOP-65 merges first; see E4.
+**Dependencies: none.** The FOOP-65 (tail concatenator) dependency was
+**dropped 2026-08-09** — verified live that the exercise's juxtaposition
+application form evaluates correctly as written, so E4's backtick rewrite is
+optional polish rather than a precondition.
 
 ## Motivation
 

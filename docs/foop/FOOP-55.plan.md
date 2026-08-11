@@ -13,11 +13,12 @@ WORKTREE_FULL_FS_PATH=/storage1/human/hcbusy/foolish/../foolish_worktrees/foop-5
 Note: the shell environment needs `RUSTUP_TOOLCHAIN=stable` exported (no
 default toolchain is configured on this machine).
 
-**Dependency gate: FOOP-65 (tail concatenator) must be merged to `jia`
-before this plan starts** — the exercise rewrite (FOOP-55 E4) is written
-in backtick application form. If FOOP-65 is not merged, STOP; do not
-begin, and do not rewrite the exercise in juxtaposition form as a
-stopgap.
+~~**Dependency gate: FOOP-65 must be merged before this plan starts**~~ —
+**DROPPED 2026-08-09.** Verified live on `jia` after the FOOP-75 merge that the
+exercise's juxtaposition application form (`{p=1} f`) evaluates correctly as
+written, so FOOP-65's backtick rewrite (E4) is optional polish, not a
+precondition. This plan has **no FOOP dependencies**. (See Phase 0's checked
+item for the verification.)
 
 ## Phase 0 — Begin, baseline, and prerequisites
 
