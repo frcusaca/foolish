@@ -291,11 +291,50 @@ regression gate for this whole FOOP.
   - [ ] Run `einmo promote output to checked foolish-ubca/einmo_suite`
   - [ ] Re-run `cargo test -p foolish-ubca --lib -- einmo_gate_checked` — must exit 0
 
+## Phase 3C2 — §6: the brane view and unanchored forward search `~name`
+
+Read FOOP-55.md §6 first. This is what unblocks `'ite`: with `~`, the branch
+table is selected by an **anchored** search over a view, so there is no carried
+position to survive a coordination — no `&#1`, and no mark-depth puzzle.
+
+- [ ] Read FOOP-55.md §6 in full
+- [ ] Read `foolish-parser/src/parser.rs` (the bare `Token::Question` arm, and
+      the `Token::Tilde` arms) and `fir_kinds.rs`
+      `ib_search_with_engine` / `ab_search_with_engine`
+- [ ] **Tests FIRST** (unit, `fir_kinds.rs`) — note these must compose with
+      `system.foo` via `compose_program_with_system`, or step through the real
+      evaluator; the module's own `step_to_settled` helper caps at 50 steps and
+      will not settle these:
+  - [ ] `~a` finds the EARLIEST match: `{a=1; b=2; a=4; a=5; r = ~a;}` → 1
+  - [ ] `?a` (control, must keep passing) finds the NEAREST PRECEDING: → 5
+  - [ ] the window stops before the searching statement: `{a=1; r = ~a; a=99;}`
+        → 1, with no self-match and `a=99` invisible
+  - [ ] an unanchored forward MISS settles ECONSTANIC, never NK
+  - [ ] a view is constanic while its source brane is not (FOOP-55.md §6
+        property 3 — the load-bearing one)
+- [ ] Implement the brane view: contiguous `[start, end]` over a source brane,
+      **same parent**, read-only. Index `i` in the view IS index `i` in the
+      source — no translation.
+- [ ] Parser: accept bare `Token::Tilde` in primary position, mirroring the bare
+      `Token::Question` arm
+- [ ] Update the `RegexpSearch` doc comment in `foolish-parser/src/ast.rs`,
+      which currently states the unanchored forward form does not exist and
+      that `RegexpForward` always carries an anchor
+- [ ] Rewrite `ib_search_with_engine` / `ab_search_with_engine` to anchor on a
+      view honouring `self.forward`, replacing the hardcoded
+      `BraneNavigator::new(&brane, false)` + inline `set_range`
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+- [ ] REPORT baseline changes to the human: `~` is NEW syntax, so no existing
+      input can use it; any existing baseline that moves is a regression in the
+      shared search path, not an expected consequence.
+
 ## Phase 3D — §5: rewrite `'ite` and remove the directive
 
-- [ ] Double-mark the two `INTERNAL_ite` branches in
-      `input/foop/55/euler_small.foo` and in the exercise, per the fenced
-      program in FOOP-55.md §5
+- [ ] Rewrite `'ite` using §6's `~` over the branch table — an ANCHORED search
+      over a view, with no `&#1` and therefore no carried position. Apply to
+      `input/foop/55/euler_small.foo` and the exercise. If a doubled mark is
+      still needed anywhere, record WHY in FOOP-55.md §5 rather than tuning
+      depths by trial.
 - [ ] `euler_small.foo` settles to **23** (hand-checkable: 3+5+6+9)
 - [ ] Remove `@einmo set iteration depth to 40000` from
       `input/exercises/project_euler/1.foo`. If the exercise still needs it,

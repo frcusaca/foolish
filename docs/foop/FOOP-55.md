@@ -909,6 +909,106 @@ One site, three parts (`foolish-ubca/src/fir_kinds.rs:160-199`):
 Confirm the new branch cannot reach the
 `eprintln!("ALARM: SF/SFF node has no children")` at line 192.
 
+### §6. The brane view, and the unanchored forward search `~name`
+
+`'ite` needs to select a row from a lookup table without carrying a position
+across coordination boundaries. The contexted index `&#1` cannot do it: its
+carried position must survive the definition-site coordination, and §5's mark
+counting brackets the answer without landing it (one mark and the pattern dies
+NK; three and nothing ever resolves). §6 removes the need for a carried position
+altogether.
+
+#### The gap
+
+Foolish has an **anchored** forward search — `tbl~a` scans `tbl` from the front
+and finds the *first* `a`. It has an **unanchored backward** search — `?a`
+scans my own brane rear-to-front from just before me, finding the *nearest
+preceding* `a`. It has **no unanchored forward** form: bare `~a` is a parse
+error today ("expected primary expression, found Tilde").
+
+```foolish
+tbl = {a = 1; b = 2; a = 99;}
+tbl~a        !! → 1    anchored forward: FIRST match
+tbl?a        !! → 99   anchored backward: LAST match
+?a           !! → the nearest PRECEDING match in my own brane
+~a           !! parse error — the hole this section fills
+```
+
+`ast.rs` records the reason: *"There is no unanchored forward (`~pattern`) form:
+Foolish cannot look forward in its own brane (FOOP-23 §Specification A.1)."*
+That rationale is about looking **ahead**, into statements that have not
+settled. §6 does not do that.
+
+#### The brane view
+
+A **brane view** is a brane-like object exposing a **contiguous range** of
+another brane's statements — for this feature, `[0, my_index-1]`, everything
+before the searching statement — while keeping the **same parent** as the brane
+it views.
+
+Three properties make it the right primitive:
+
+1. **Same parent.** A statement reached through the view resolves its own
+   searches against the real enclosing context. Being viewed distorts nothing
+   about position, ancestry, or line number.
+2. **Contiguous, and starting at 0.** Index `i` in the view *is* index `i` in
+   the underlying brane, so `#N`, `&#`, and line numbers stay honest with no
+   translation layer.
+3. **It can be constanic before the whole brane is.** This is the load-bearing
+   property. A view over `[0, k]` is constanic as soon as those `k+1`
+   statements are — and FIFO draining guarantees exactly that, since statement
+   `k+1` cannot step until its predecessors have settled. So the view is
+   *already* constanic at the moment a search anchors on it, with no waiting on
+   statements after me that I am not permitted to see.
+
+Property 3 is why a view beats clipping a navigator's range. A clipped scan
+still asks "has the anchor brane settled?" — and it has not. The view asks "has
+*my window* settled?" — and it always has. That is the same move §5 makes:
+narrow the dependency to what is actually needed.
+
+#### `~name` unanchored ≡ `view~name` anchored
+
+The unanchored forward search is then not a new search semantics at all:
+
+> **`~name`** builds a brane view of `[0, my_index-1]` over the home brane and
+> performs the **ordinary anchored forward search** on it.
+
+`~name` finds the **earliest** match in the candidate window; `?name` finds the
+**nearest preceding** one. Same window, opposite direction — restoring the
+symmetry the anchored forms already have.
+
+**The candidate window stops before the searching statement.** The searching
+statement itself and everything after it are not candidates. `{a=1; r = ~a;
+a=99;}` gives `r=1`: the later `a=99` is invisible, and there is no self-match.
+
+Because the window contains only settled statements, FOOP-23 §A.1's concern does
+not arise — nothing looks forward into unsettled territory. A miss remains
+**ECONSTANIC**, not NK, exactly as the unanchored backward form specifies: the
+search may still gain a value when the brane is recoordinated elsewhere.
+
+#### Why `'ite` wants this
+
+With `~`, the branch table is selected by an **anchored** search over a view —
+no carried position, therefore nothing that must survive a coordination, and
+therefore no `&#1` and no mark-depth puzzle. The table's rows are matched
+directly where they sit.
+
+#### Implementation
+
+- **Parser** (`foolish-parser/src/parser.rs`): accept bare `Token::Tilde` in
+  primary position, mirroring the bare `Token::Question` arm, emitting
+  `RegexpSearch { anchor: None, operator: RegexpForward, .. }`. Update the
+  `RegexpSearch` doc comment in `ast.rs`, which currently states the unanchored
+  forward form does not exist.
+- **Brane view** (`foolish-ubca`): a brane-like exposing `[start, end]` of a
+  source brane with the source's parent. Read-only — a lens for searching, never
+  a mutation path.
+- **Search** (`fir_kinds.rs`): `ib_search_with_engine` and
+  `ab_search_with_engine` both hardcode `BraneNavigator::new(&brane, false)`
+  with an inline `set_range(0, idx-1)`. Both become a view anchored search
+  honouring `self.forward`, so the range logic lives in one place instead of
+  being re-derived per call site.
+
 ## FIR Impact
 
 - **Two new FIR kinds** in `foolish-ubca/src/system_foo.rs`:
