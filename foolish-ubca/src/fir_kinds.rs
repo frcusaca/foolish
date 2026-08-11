@@ -4993,6 +4993,103 @@ mod tests {
         }
     }
 
+    /// Evaluate a program the way the CLI does — composed with `system.foo`
+    /// and stepped to settlement. The module's own `step_to_settled` caps at
+    /// 50 steps and does NOT compose the system brane, so it cannot settle
+    /// these.
+    #[cfg(test)]
+    fn settle_composed(src: &str) -> FirRef {
+        let root = crate::system_foo::compose_program_with_system(src)
+            .unwrap()
+            .pop()
+            .unwrap();
+        let scope = Scope::empty();
+        for _ in 0..20000 {
+            if root.borrow().core().get_nyes().is_constanic() {
+                break;
+            }
+            if root.step(&scope).is_err() {
+                break;
+            }
+        }
+        root
+    }
+
+    /// Read a named top-level statement's settled integer value.
+    #[cfg(test)]
+    fn named_i64(root: &FirRef, name: &str) -> Option<i64> {
+        // Recursive: compose_program_with_system wraps the user program, so
+        // the wanted statement is not a direct child of the composed root.
+        fn walk(n: &FirRef, name: &str, depth: usize) -> Option<i64> {
+            if depth > 8 {
+                return None;
+            }
+            if n.borrow()
+                .as_stmt_searchable_name()
+                .is_some_and(|s| s == name)
+            {
+                // Read through the statement's BODY, as the sibling tests do:
+                // a StatementFir's own .value() is not the settled result.
+                if let Some(body) = n.borrow().core().foolish_children().first() {
+                    let v = body.value();
+                    let out = v.borrow().as_i64();
+                    if out.is_some() {
+                        return out;
+                    }
+                }
+            }
+            let kids = n.borrow().core().foolish_children().to_vec();
+            for c in kids {
+                if let Some(found) = walk(&c, name, depth + 1) {
+                    return Some(found);
+                }
+            }
+            None
+        }
+        walk(root, name, 0)
+    }
+
+    /// FOOP-55 §6: unanchored FORWARD search `~name`.
+    ///
+    /// Scans the home brane from the FRONT, stopping before the searching
+    /// statement — the same candidate window `?name` uses, walked the other
+    /// way. `?name` finds the NEAREST PRECEDING match; `~name` the EARLIEST.
+    #[test]
+    fn unanchored_forward_search_finds_the_earliest_match() {
+        let root = settle_composed("{a=1; b=2; a=4; a=5; result = ~a;}");
+        assert_eq!(
+            named_i64(&root, "result"),
+            Some(1),
+            "~a scans from the FRONT of the brane, so it finds the FIRST a (=1)"
+        );
+    }
+
+    /// The backward twin, pinned alongside so the contrast is explicit and a
+    /// regression in either direction is obvious. This one passes today.
+    #[test]
+    fn unanchored_backward_search_finds_the_nearest_preceding_match() {
+        let root = settle_composed("{a=1; b=2; a=4; a=5; result = ?a;}");
+        assert_eq!(
+            named_i64(&root, "result"),
+            Some(5),
+            "?a scans BACKWARD from the searching statement, so it finds the \
+             nearest preceding a (=5)"
+        );
+    }
+
+    /// The candidate window stops BEFORE the searching statement: a later
+    /// same-named statement is not a candidate, and there is no self-match.
+    #[test]
+    fn unanchored_forward_search_does_not_see_itself_or_later_statements() {
+        let root = settle_composed("{a=1; result = ~a; a=99;}");
+        assert_eq!(
+            named_i64(&root, "result"),
+            Some(1),
+            "the a=99 AFTER the search is not a candidate -- the window is \
+             [0, my_index-1], so there is no self-match and nothing later"
+        );
+    }
+
     /// FOOP-55 §5: a constanic clone strips AT MOST ONE SF/SFF mark.
     ///
     /// The single-mark case is the control: `<<X>>` resolves on
