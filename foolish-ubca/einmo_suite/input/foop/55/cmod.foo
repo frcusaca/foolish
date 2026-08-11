@@ -1,9 +1,20 @@
 {
-	!! FOOP-55: cmod — congruent modulo composition
-	!! {a,b,c}'cmod computes boolean (a % b == c)
-	!! Using {a,b,c}'cmod in postfix form
-
-	r1 = ({3, 3, 0}'cmod)$;    !! 3%3==0 → 'True
-	r2 = ({7, 3, 1}'cmod)$;    !! 7%3==1 → 'True
-	r3 = ({7, 3, 0}'cmod)$;    !! 7%3!=0 → 'False
+	!! FOOP-55: congruent modulo — {a, b, c, 'cmod}$ computes the boolean (a % b == c)
+	!! The operator goes INSIDE the brane, exactly as 'mod and 'or do
+	!! ({7, 3, 'mod}$). The postfix-juxtaposition form `{a,b,c}'cmod` does NOT
+	!! parse — a null-characterized name cannot follow a brane that way
+	!! ("expected <token>, found Apostrophe"), which is how this file used to
+	!! be written.
+	!! NOTE: a comment line that is a BARE separator is not allowed here — the
+	!! Foolish einmo suite uses "!!"+newline as its section separator, so an
+	!! empty comment line breaks the envelope writer.
+	!! 'cmod is NOT YET IMPLEMENTED. FOOP-55 §5 plans it as `congruent_modulo`
+	!! defined in pure Foolish rather than as a Rust FIR kind; that route is
+	!! currently blocked by D7 (a system operator nested inside a juxtaposed
+	!! definition never settles). Until it lands, every row below settles
+	!! ECONSTANIC — an unanchored search for a name that is not declared, which
+	!! is the correct outcome for a missing operator, NOT a bug in this file.
+	r1 = {3, 3, 0, 'cmod}$;    !! 3%3==0 → 'True   (once implemented)
+	r2 = {7, 3, 1, 'cmod}$;    !! 7%3==1 → 'True   (once implemented)
+	r3 = {7, 3, 0, 'cmod}$;    !! 7%3!=0 → 'False  (once implemented)
 }

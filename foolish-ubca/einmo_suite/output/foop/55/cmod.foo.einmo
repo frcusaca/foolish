@@ -1,24 +1,54 @@
 #einmo 1 encoding=utf-8 separator=!!\n
 test: foop/55/cmod.foo
 suite: /storage1/human/hcbusy/foolish_worktrees/foop-55-project-euler-1/foolish-ubca/einmo_suite
-producer: 7bd60e50
-producer-diff: sha256:7fa82e3f28171fa272946bea6da027b0487ed817e2420da3197068a641ec516c
-generated: 2026-08-09T21:26:45.000000000Z
-status: input-error
-status-detail: Compilation failed: program failed to parse: expected <token>, found Apostrophe at line 6, column 13
+producer: 7ce93cce
+producer-diff: sha256:318e2d9c14c2d2ba8ea500a2a2c36774f866724f25462b0e7ce1b408178d9071
+generated: 2026-08-11T22:44:19.000000000Z
+status: normal
+status-detail: 
 sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
 {
-	!! FOOP-55: cmod — congruent modulo composition
-	!! {a,b,c}'cmod computes boolean (a % b == c)
-	!! Using {a,b,c}'cmod in postfix form
-
-	r1 = ({3, 3, 0}'cmod)$;    !! 3%3==0 → 'True
-	r2 = ({7, 3, 1}'cmod)$;    !! 7%3==1 → 'True
-	r3 = ({7, 3, 0}'cmod)$;    !! 7%3!=0 → 'False
+	!! FOOP-55: congruent modulo — {a, b, c, 'cmod}$ computes the boolean (a % b == c)
+	!! The operator goes INSIDE the brane, exactly as 'mod and 'or do
+	!! ({7, 3, 'mod}$). The postfix-juxtaposition form `{a,b,c}'cmod` does NOT
+	!! parse — a null-characterized name cannot follow a brane that way
+	!! ("expected <token>, found Apostrophe"), which is how this file used to
+	!! be written.
+	!! NOTE: a comment line that is a BARE separator is not allowed here — the
+	!! Foolish einmo suite uses "!!"+newline as its section separator, so an
+	!! empty comment line breaks the envelope writer.
+	!! 'cmod is NOT YET IMPLEMENTED. FOOP-55 §5 plans it as `congruent_modulo`
+	!! defined in pure Foolish rather than as a Rust FIR kind; that route is
+	!! currently blocked by D7 (a system operator nested inside a juxtaposed
+	!! definition never settles). Until it lands, every row below settles
+	!! ECONSTANIC — an unanchored search for a name that is not declared, which
+	!! is the correct outcome for a missing operator, NOT a bug in this file.
+	r1 = {3, 3, 0, 'cmod}$;    !! 3%3==0 → 'True   (once implemented)
+	r2 = {7, 3, 1, 'cmod}$;    !! 7%3==1 → 'True   (once implemented)
+	r3 = {7, 3, 0, 'cmod}$;    !! 7%3!=0 → 'False  (once implemented)
 }
 !!
-INPUT ERROR: Compilation failed: program failed to parse: expected <token>, found Apostrophe at line 6, column 13!!
+{WOCONSTANIC
+  r1 =$ {WOCONSTANIC (WOCONSTANIC)
+      3;
+      3;
+      0;
+      ?(pattern='^'cmod$', UNANCHORED, ECONSTANIC)
+  };
+  r2 =$ {WOCONSTANIC (WOCONSTANIC)
+      7;
+      3;
+      1;
+      ?(pattern='^'cmod$', UNANCHORED, ECONSTANIC)
+  };
+  r3 =$ {WOCONSTANIC (WOCONSTANIC)
+      7;
+      3;
+      0;
+      ?(pattern='^'cmod$', UNANCHORED, ECONSTANIC)
+  }
+}!!
 !!
-{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:72ae5abf5d991ebb0baf44024d02784c8f9f2a3780a3b05decbb3ff9c045b7ae","timestamp":"2026-08-09T21:26:45.000000000Z"}
-{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:72ae5abf5d991ebb0baf44024d02784c8f9f2a3780a3b05decbb3ff9c045b7ae","timestamp":"2026-08-09T21:26:45.000000000Z"}
-{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"k6tuHAnXDvim9wLqTpY+YN5LuiyWf6CaIdcaBfZNS1OTIAryOsZPZ7imJz4RMspyA69D3pA1S0PlqyDrLfxpDA==","produced_by":"einmo 0.1.0 sha256:72ae5abf5d991ebb0baf44024d02784c8f9f2a3780a3b05decbb3ff9c045b7ae","timestamp":"2026-08-09T21:26:45.000000000Z"}
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:624fbb17e8acd978f847c18abcdad948a9b762a8c50b35168b4a778736c8f17b","timestamp":"2026-08-11T22:44:20.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:624fbb17e8acd978f847c18abcdad948a9b762a8c50b35168b4a778736c8f17b","timestamp":"2026-08-11T22:44:20.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"wF9wrNehdvkNUOPRzhOIDc3HDsN45erVTpl8Am8ZEOGQny8yi79bcbdcUstQUOP8oB5BLPtFb4vMLHGpwNRSBg==","produced_by":"einmo 0.1.0 sha256:624fbb17e8acd978f847c18abcdad948a9b762a8c50b35168b4a778736c8f17b","timestamp":"2026-08-11T22:44:20.000000000Z"}

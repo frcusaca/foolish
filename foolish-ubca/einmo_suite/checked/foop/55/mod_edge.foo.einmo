@@ -1,0 +1,34 @@
+#einmo 1 encoding=utf-8 separator=!!\n
+test: foop/55/mod_edge.foo
+suite: /storage1/human/hcbusy/foolish_worktrees/foop-55-project-euler-1/foolish-ubca/einmo_suite
+producer: 7bd60e50
+producer-diff: sha256:5fcddfd60f1ee763ae87df1c30d647bfe3167151cea0054d9ea928f68c0eaf1f
+generated: 2026-08-09T21:26:46.000000000Z
+status: normal
+status-detail: 
+sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
+{
+	!! FOOP-55 §1: 'mod edge cases — NK outcomes
+	r1 = {7, 0, 'mod}$;            !! → NK (division by zero)
+	r2 = {7, {x=5;}, 'mod}$;       !! → NK (non-integer operand)
+}
+!!
+{NK
+  r1 =$ ?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^'mod$', UNANCHORED, NK)
+      7;
+      0;
+      ?(result=??? (division by zero), DIV-BY-ZERO: Division by zero produces NK, pattern='^'mod$', UNANCHORED, NK)
+  };
+  r2 =$ ?(result=??? (modulo: non-integer operand), pattern='^'mod$', UNANCHORED, NK)
+      7;
+      {
+        x=5
+      };
+      ?(result=??? (modulo: non-integer operand), pattern='^'mod$', UNANCHORED, NK)
+  }
+}!!
+!!
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:72ae5abf5d991ebb0baf44024d02784c8f9f2a3780a3b05decbb3ff9c045b7ae","timestamp":"2026-08-09T21:26:46.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:72ae5abf5d991ebb0baf44024d02784c8f9f2a3780a3b05decbb3ff9c045b7ae","timestamp":"2026-08-09T21:26:46.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"jfaNfYpUqaxUocooi9oOu/xqmAqfrlMoCPijfIaA9HmW9xCcRBL+B3SzZRO/42ObDPq5qb/PkUXCVWBSir5DCA==","produced_by":"einmo 0.1.0 sha256:72ae5abf5d991ebb0baf44024d02784c8f9f2a3780a3b05decbb3ff9c045b7ae","timestamp":"2026-08-09T21:26:46.000000000Z"}
+{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"Wjq8zIG/DuWE3UD7Ci6flry9U5JH09WaaGan/iGiF2r9Gj9NZOee1EX249imKLIQyq3MQZXyKdKbZharWnUrCA==","produced_by":"einmo 0.1.0 sha256:62d26a318529c2d357eecf727a7fd5c22e0e096c05eb0e3c2b30070f8b9ca9cf","timestamp":"2026-08-11T22:40:16.000000000Z"}
