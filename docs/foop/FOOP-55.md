@@ -590,10 +590,30 @@ yet"; the current code overrules it.
 
 **The change.** One layer of deferral is discharged per coordination:
 
-> A constanic clone may strip **at most one** SF/SFF mark. The budget belongs to
-> the **clone operation** — the whole recursive tree of `constanic_clone_at`
-> calls — not to any node. The first mark the walk meets is stripped; every
-> other mark in that tree is **retained**.
+> A constanic clone may strip **at most one** SF/SFF mark **per root-to-leaf
+> path**. Descending into a child inherits the parent's remaining budget;
+> spending it in one child does **not** affect that child's siblings. The first
+> mark on a path is stripped; any further mark *on that same path* is
+> **retained**.
+
+**Corrected 2026-08-11, during implementation.** An earlier draft said the
+budget belonged to the whole clone *tree*. That is wrong, and twelve existing
+tests proved it within minutes: the comparison and modulo operators take **two**
+SFF operands — `<<#-2>>` and `<<#-1>>` — as **siblings**, and a per-tree budget
+let only the first of them resolve (`modulo_basic_semantics` went from `Some(1)`
+to `None`, taking every comparison operator with it).
+
+The distinction is between marks stacked **vertically** and marks side by side
+**horizontally**:
+
+- **Nesting (vertical, same path)** — `<< <<X>> >>`. Depth is a **deferral
+  count**: one mark comes off per coordination.
+- **Siblings (horizontal, different paths)** — `{<<#-2>>, <<#-1>>}`. Each is an
+  independent one-level mark and each resolves on the same coordination,
+  exactly as before.
+
+`StripBudget` is therefore `Copy` and passed **by value**, not by reference —
+the type system carries the rule.
 
 Consequences, in order of importance:
 
@@ -603,12 +623,11 @@ Consequences, in order of importance:
 2. **`<< <<X>> >>` sits out one coordination**, then behaves like `<<X>>` at the
    next. Deferral is a count, and it is written in the term rather than inferred
    by the evaluator.
-3. **The budget is per-tree, not per-node.** In
-   `A = <{abcd, << <<blah>> >>}>` a single clone of `A` walks the SF wrapper,
-   the brane, and the inner SFF. Only one of those marks is spent. This is what
-   makes the rule independent of *which kind* of mark is met first, and it is
-   why a per-node rule is insufficient: sibling marks deeper in the same tree
-   would each strip independently.
+3. **The budget is per-path.** In `A = <{abcd, << <<blah>> >>}>` the path
+   root→SF→brane→SFF carries two marks, and only one is spent — so the rule is
+   independent of *which kind* of mark is met first. But two marks in *sibling*
+   subtrees are on different paths and each gets its own strip, which is what
+   keeps `'mod`'s two operands working.
 4. **Each use site counts separately.** `B = A` and `C = A` produce independent
    clones, so `C` does not observe `B`'s decrement. Deferral is per-coordination
    -path, which is what makes macro-style definitions compose.
