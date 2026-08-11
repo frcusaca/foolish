@@ -1042,23 +1042,53 @@ directly where they sit.
   honouring `self.forward`, so the range logic lives in one place instead of
   being re-derived per call site.
 
-### §7. `'max_int_val` and `'min_int_val` — variadic folds over a concatenation
+### §7. `ExtremumFir` — order-statistic selection over a concatenation
 
-Euler 1 needs a maximum. Unlike every other system operator, an extremum has no
-fixed arity: it folds however many integers it is given.
+Euler 1 needs a maximum. Rather than a max operator and a min operator, §7
+specifies **one** FIR parameterized by an **index into the ascending sort** of
+the integers it is given, with `'max_int_val` and `'min_int_val` as the two
+named aliases.
+
+#### Sort ascending, then index — the same convention `#` already uses
+
+The candidates are collected and sorted **ascending**. The parameter selects
+from that sorted sequence, with negatives counting from the end:
+
+| Index | Selects |
+|-------|---------|
+| `0` | smallest |
+| `1` | second smallest |
+| `-1` | **largest** |
+| `-2` | second largest |
+
+So `'min_int_val` is index `0` and `'max_int_val` is index `-1`.
+
+This is deliberately the **same indexing rule as `#`** — 0-based from the
+front, negatives from the end, as `src#-1` already means "the last statement".
+A Foolisher learns one convention and applies it either to source order (`#`) or
+to sorted order (§7), rather than two.
+
+**No wraparound.** An index outside the candidate count settles **NK**: with two
+candidates, index `2` and index `-3` are both out of range. This matches `#`,
+where `src#3` on a three-member brane is already NK. Out-of-range is a fact
+about this call, not something recoordination could change.
+
+Only the two aliases are declared for now; the parameterization leaves
+"third largest" and friends available without a new FIR kind when something
+needs them.
 
 #### The declaration is a BRANE, not a bare FIR
 
 ```foolish
-'max_int_val = {MaxIntValFir}
-'min_int_val = {MinIntValFir}
+'min_int_val = {ExtremumFir(0)}
+'max_int_val = {ExtremumFir(-1)}
 ```
 
 The body is a **brane containing** the FIR. That one detail carries the whole
 design:
 
 - **Juxtaposition splices it.** `{1,2,3}'max_int_val` concatenates to the
-  flattened brane **`{1, 2, 3, MaxIntValFir}`** — the FIR arrives as the last
+  flattened brane **`{1, 2, 3, ExtremumFir(-1)}`** — the FIR arrives as the last
   member, with the integers before it. Verified: `{1,2,3} marker` where
   `marker = {sentinel = 42;}` flattens to `{1; 2; 3; sentinel=42}`.
 - **A bare FIR body would not concatenate at all.** `'or`'s body is an `OrFir`,
@@ -1112,7 +1142,7 @@ as a follow-up.
 
 #### Stepping
 
-When `MaxIntValFir` steps it asks its **parent** — the flattened brane — for the
+When `ExtremumFir` steps it asks its **parent** — the flattened brane — for the
 entries preceding it, folds the integers, and produces **one** `ubc_children`
 element which is the answer.
 
@@ -1124,10 +1154,11 @@ the operator works identically whether its container is materialized or not.
 
 | Situation | Outcome |
 |-----------|---------|
-| integers found | the extremum, settled **INDEPENDENT** — it depends on nothing outside itself |
+| index in range | that order statistic, settled **INDEPENDENT** — it depends on nothing outside itself |
 | a non-integer member | **skipped**, not fatal |
 | any preceding member still pre-constanic | **ECONSTANIC**, and wait |
 | no integers at all | **NK**, reason `"<name>: no integer operands"` |
+| index outside the candidate count | **NK**, reason `"<name>: index N of M candidates"` — no wraparound |
 
 **Why non-integers are skipped rather than fatal.** `'mod` and `'or` name their
 operands positionally (`<<#-2>>`, `<<#-1>>`), so a non-integer *is* the named
