@@ -1511,7 +1511,12 @@ impl SearchFir {
         // range — return None rather than searching [0, 0] and self-matching
         // (as in the sibling `_ib_search`).
         let search_end = idx.checked_sub(1)?;
-        let mut nav = BraneNavigator::new(&brane, false);
+        // FOOP-55 §6: the candidate window is the home brane's statements
+        // BEFORE this one — [0, idx-1] — walked in the direction this search
+        // asks for. `?` (backward) finds the nearest preceding match; `~`
+        // (forward) the earliest. Same window, opposite direction; neither
+        // looks forward into statements that have not settled.
+        let mut nav = BraneNavigator::new(&brane, self.forward);
         nav.set_range(0, search_end);
         let predicate = SearchPredicate::Name {
             pattern: self.pattern.clone(),

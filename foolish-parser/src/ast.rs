@@ -62,12 +62,22 @@ pub enum Astn {
     },
 
     /// Regex search: anchor?pattern or anchor~pattern.
-    /// `anchor: None` is the bare unanchored backward form (`?pattern`) — searches the
-    /// current brane (IB), then climbs ancestors (AB), per FOOP-23 Part B / AGENTS.md
-    /// "Contextless Anchored Searches" — an unanchored miss settles ECONSTANIC, not NK.
-    /// There is no unanchored forward (`~pattern`) form: Foolish cannot look forward in
-    /// its own brane (FOOP-23 §Specification A.1), so `operator: RegexpForward` always
-    /// carries `anchor: Some(_)`.
+    /// `anchor: None` is a bare **unanchored** form — it searches the current brane
+    /// (IB), then climbs ancestors (AB), per FOOP-23 Part B / AGENTS.md "Contextless
+    /// Anchored Searches"; an unanchored miss settles ECONSTANIC, not NK.
+    ///
+    /// **Both directions have an unanchored form** (FOOP-55 §6). They scan the *same*
+    /// candidate window — the home brane's statements **before** the searching one,
+    /// `[0, my_index-1]` — in opposite directions:
+    /// - `?pattern` (`RegexpLocal`) walks it backward, finding the **nearest preceding**
+    ///   match.
+    /// - `~pattern` (`RegexpForward`) walks it forward, finding the **earliest** match.
+    ///
+    /// This does not contradict FOOP-23 §Specification A.1 ("Foolish cannot look forward
+    /// in its own brane"): that concerns looking *ahead* into statements which have not
+    /// settled. The window ends before the searching statement, so it contains only
+    /// statements FIFO draining has already settled — the searching statement itself
+    /// never matches, and nothing after it is a candidate.
     RegexpSearch {
         anchor: Option<Box<Astn>>,
         operator: SearchOperator,

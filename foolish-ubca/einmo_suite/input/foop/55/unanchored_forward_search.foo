@@ -1,0 +1,20 @@
+{
+	!! FOOP-55 §6: the unanchored FORWARD search  ~name
+	!! `?name` and `~name` scan the SAME candidate window — the home brane's
+	!! statements BEFORE the searching one, [0, my_index-1] — in opposite
+	!! directions. `?` finds the NEAREST PRECEDING match; `~` the EARLIEST.
+	!! Neither looks forward into statements that have not settled: the window
+	!! ends before the searching statement, so FOOP-23 §A.1 still holds.
+	a = 1;
+	b = 2;
+	a = 4;
+	a = 5;
+	earliest = ~a;             !! → 1   (first a, scanning from the front)
+	nearest  = ?a;             !! → 5   (nearest preceding, scanning back)
+	!! The window stops BEFORE the searching statement: no self-match, and
+	!! nothing after it is a candidate.
+	before_only = ~b;          !! → 2
+	!! A miss settles ECONSTANIC, never NK — an unanchored search may still
+	!! gain a value when this brane is recoordinated elsewhere.
+	miss = ~nonexistent_name;  !! → ECONSTANIC
+}

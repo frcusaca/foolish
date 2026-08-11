@@ -1,0 +1,45 @@
+#einmo 1 encoding=utf-8 separator=!!\n
+test: foop/55/unanchored_forward_search.foo
+suite: /storage1/human/hcbusy/foolish_worktrees/foop-55-project-euler-1/foolish-ubca/einmo_suite
+producer: ad0d937c
+producer-diff: sha256:303072c14826b69c19e93dc67aa007dc373467d0a322caeb57462bed277c81e8
+generated: 2026-08-11T23:30:05.000000000Z
+status: normal
+status-detail: 
+sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
+{
+	!! FOOP-55 §6: the unanchored FORWARD search  ~name
+	!! `?name` and `~name` scan the SAME candidate window — the home brane's
+	!! statements BEFORE the searching one, [0, my_index-1] — in opposite
+	!! directions. `?` finds the NEAREST PRECEDING match; `~` the EARLIEST.
+	!! Neither looks forward into statements that have not settled: the window
+	!! ends before the searching statement, so FOOP-23 §A.1 still holds.
+	a = 1;
+	b = 2;
+	a = 4;
+	a = 5;
+	earliest = ~a;             !! → 1   (first a, scanning from the front)
+	nearest  = ?a;             !! → 5   (nearest preceding, scanning back)
+	!! The window stops BEFORE the searching statement: no self-match, and
+	!! nothing after it is a candidate.
+	before_only = ~b;          !! → 2
+	!! A miss settles ECONSTANIC, never NK — an unanchored search may still
+	!! gain a value when this brane is recoordinated elsewhere.
+	miss = ~nonexistent_name;  !! → ECONSTANIC
+}
+!!
+{WOCONSTANIC
+  a=1;
+  b=2;
+  a=4;
+  a=5;
+  earliest=1;
+  nearest=5;
+  beforeˍonly=2;
+  miss=?(pattern='nonexistentˍname', UNANCHORED, ECONSTANIC)
+}!!
+!!
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:5cf9d3cd7005c9ace3c55b31751ecd0dff1f74d3a7db25393141fc7bf2c82578","timestamp":"2026-08-11T23:30:05.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:5cf9d3cd7005c9ace3c55b31751ecd0dff1f74d3a7db25393141fc7bf2c82578","timestamp":"2026-08-11T23:30:05.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"82RvKhyNdNDYA6htQghPfaf94ng9EscNvAk23qv+2geTAfc/Pvle775UrhZej14gvFjO3IC0e/EEqnNCYjYBAQ==","produced_by":"einmo 0.1.0 sha256:5cf9d3cd7005c9ace3c55b31751ecd0dff1f74d3a7db25393141fc7bf2c82578","timestamp":"2026-08-11T23:30:05.000000000Z"}
+{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"C9P1qZGhnOH4ipzKYJyP5TzV5rc/eta+M3RcTgRYzF9P9HEAQEVLG+53ltDO6nj/gCPkTujSw1/boqd8TGrXBg==","produced_by":"einmo 0.1.0 sha256:62d26a318529c2d357eecf727a7fd5c22e0e096c05eb0e3c2b30070f8b9ca9cf","timestamp":"2026-08-11T23:30:44.000000000Z"}

@@ -1188,6 +1188,32 @@ impl Parser {
                     })
                 }
             }
+            Some(Token::Tilde) => {
+                self.advance();
+                let pattern = self.parse_regexp_pattern()?;
+                if self.eat(&Token::Assign) {
+                    let value_pattern = self.parse_arith_expr()?;
+                    Ok(Astn::ValueSearch {
+                        anchor: None,
+                        forward: true,
+                        name_pattern: Some(pattern),
+                        value_pattern: Box::new(value_pattern),
+                    })
+                } else {
+                    // Bare unanchored FORWARD search (FOOP-55 §6), the twin of the
+                    // `?` arm above. Both scan the same candidate window — the home
+                    // brane's statements BEFORE this one — but in opposite
+                    // directions: `?` finds the nearest preceding match, `~` the
+                    // earliest. This does NOT look forward into unsettled
+                    // statements (FOOP-23 §A.1); the window ends before the
+                    // searching statement.
+                    Ok(Astn::RegexpSearch {
+                        anchor: None,
+                        operator: SearchOperator::RegexpForward,
+                        pattern,
+                    })
+                }
+            }
             Some(Token::Apostrophe) => {
                 let chars = self.parse_characterizations();
                 let id = self.parse_identifier()?;
