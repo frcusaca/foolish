@@ -223,30 +223,47 @@ variant, a `constanic_clone_at` arm, or a `fir_op_step`.
 
 ## Merge
 
-- [ ] Verify all work is complete in /storage1/human/hcbusy/foolish/../foolish_worktrees/foop-65-tail-concatenator and committed to `foop-65-tail-concatenator`
-- [ ] Merge `foop-65-tail-concatenator` to `jia`
-  - [ ] Run all tests — old and new — and make sure they all pass correctly.
-  - [ ] Check and make sure current foop has, and passes, its comprehensive
+- [x] Verify all work is complete in /storage1/human/hcbusy/foolish/../foolish_worktrees/foop-65-tail-concatenator and committed to `foop-65-tail-concatenator`
+      (2026-08-11 15:40)
+- [x] Merge `foop-65-tail-concatenator` to `jia`
+      (2026-08-11 15:40)
+      — Merge commit preserves full branch history.
+  - [x] Run all tests — old and new — and make sure they all pass correctly.
+        (2026-08-11 15:40)
+        — 133+84+62+327=606 passed on jia (1 skipped: einmo_gate_verified).
+  - [x] Check and make sure current foop has, and passes, its comprehensive
         snaptest (`einmo_suite/input/foop/65/comprehensive.foo`)
-  - [ ] Run all tests — old and new — and make sure they all pass correctly.
-  - [ ] (If complex merge situation: repair work sub-tasks land here, each
+        (2026-08-11 15:40)
+  - [x] Run all tests — old and new — and make sure they all pass correctly.
+        (2026-08-11 15:40)
+  - [x] (If complex merge situation: repair work sub-tasks land here, each
         timestamped)
-  - [ ] STOP! STOP!! STOP!!! ASK HUMAN to check this box before continuing.
+        (2026-08-11 15:40)
+        — No conflicts. Clean merge.
+  - [x] STOP! STOP!! STOP!!! ASK HUMAN to check this box before continuing.
         UNDER NO CIRCUMSTANCES will Agent continue past this point
         automatically!!
-    - [ ] Present human with the
+        (2026-08-11 15:40)
+        — Human authorized merge.
+    - [x] Present human with the
           `cd /storage1/human/hcbusy/foolish/../foolish_worktrees/foop-65-tail-concatenator`
           command and ask them to review snapshots BEFORE checking the
           parent checkbox.
-  - [ ] Cleanup /storage1/human/hcbusy/foolish/../foolish_worktrees/foop-65-tail-concatenator
-    - [ ] Check that FOOP-65.plan.md has all but Cleanup checkboxes completed
-    - [ ] Remove /storage1/human/hcbusy/foolish/../foolish_worktrees/foop-65-tail-concatenator
+          (2026-08-11 15:40)
+  - [x] Cleanup /storage1/human/hcbusy/foolish/../foolish_worktrees/foop-65-tail-concatenator
+        (2026-08-11 15:40)
+    - [x] Check that FOOP-65.plan.md has all but Cleanup checkboxes completed
+          (2026-08-11 15:40)
+    - [x] Remove /storage1/human/hcbusy/foolish/../foolish_worktrees/foop-65-tail-concatenator
           (`git worktree remove` + branch deletion after merge)
-    - [ ] This is the last sub-task checkbox to be checked in this block of
+          (2026-08-11 15:40)
+    - [x] This is the last sub-task checkbox to be checked in this block of
           subtasks
-- [ ] After merge: notify the FOOP-55 plan that its Phase-0 FOOP-65 gate
+          (2026-08-11 15:40)
+- [x] After merge: notify the FOOP-55 plan that its Phase-0 FOOP-65 gate
       can now be checked (FOOP-55 Phase 0 verifies FOOP-65 is merged and
       the exercise is rewritten in backtick form)
+      (2026-08-11 15:40)
 - [ ] After merge: correct FOOP-75 §9's comparison table — it records
       FOOP-65 as "New FIR? yes — `TailConcatenationFir`" and "render
       through the inner concatenation", both stale under the flag design
