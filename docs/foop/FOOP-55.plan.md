@@ -298,6 +298,54 @@ regression gate for this whole FOOP.
       promote over any foreign FOOP's baseline
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
+## Phase 4B — Follow-up FOOPs discovered by this work
+
+Not prerequisites, and not to be done inside this FOOP. Recorded here so the
+work is not lost when this plan closes.
+
+- [ ] **Create the "Search Context Access" FOOP** (run `foop_check.py gen_next`
+      at creation time — do NOT reserve a number now). See FOOP-55.md
+      Appendix A.B for the investigation that produced it.
+
+      Every search result already carries its found statement as
+      `ubc_children[1]`, a `FoolRefFir` holding the original with its parent
+      chain, line number, and home brane intact (FOOP-23's two-child
+      invariant). Today nothing in the *language* reads that context except a
+      following `&`-search, which consumes it implicitly. The FOOP would make
+      the context addressable:
+
+      - **`@` — the found statement's index** in its home brane (0-based, to
+        match `#`). `A~cond='True@`. Chosen over a trailing `#` because `#` is
+        absorbed into `?`-patterns today (`src?b#` searches for the *name*
+        `b#`), so overloading it would break the pattern language and need a
+        delimiter rule; `@` has no conflict and composes with arithmetic
+        directly (`A~cond='True@+1`).
+      - Misses **propagate rather than sentinel**: anchored → NK, unanchored →
+        ECONSTANIC. Collapsing ECONSTANIC to NK would kill a definition inside
+        `system.foo`, where operands legitimately have no neighbours yet — the
+        exact failure that forced `OrFir` (see plan Phase 2).
+      - **Other extractions worth specifying in the same FOOP**, since they
+        come from the same referent: the found statement's **name** (what a
+        regex pattern actually matched), its **home brane** as a searchable
+        value, and its settled **NYES** (did this hit or miss, without
+        collapsing to a value).
+
+      **Known blocker to design around:** `#` currently accepts only a
+      **literal** integer — `src#n` and `src#(0-1)` both fail to parse — so
+      `r#(c~cond='True@)` does not work today. Either `#` gains a computed
+      operand (which gives the index search an evaluation phase it lacks), or
+      the FOOP finds another consumer for the extracted index. Negative
+      indices DO work (`src#-1` → last member), which makes a parallel
+      "result table with a default row in the tail" idiom attractive.
+
+- [ ] **Record D7** in FOOP-55.md §Findings, or in its own defect FOOP: a bare
+      `B = A` does not resolve an SFF-bearing expression. `{X=42; A = 1 +
+      <<#-1>>; B = A}` hangs at `B` (BRANING) with one mark *or* two, while
+      the same body under juxtaposition (`({X=41} A)$`) resolves to 42. Whether
+      a plain name reference is *supposed* to recoordinate is a semantic
+      question this FOOP does not need answered — §5 routes through
+      juxtaposition, which works — but the next person will hit it.
+
 ## Phase 5 — The D1 decision (leading-underscore names)
 
 Deferred to the end deliberately: the exercise runs on the `INTERN_`
@@ -360,7 +408,14 @@ the exercise is green and the real cost is known.
 
 **Date**: 2026-08-09
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: Phases **3A-3D rewritten** for the upgraded SFF mark (FOOP-55.md
+**Changes**: Added **Phase 4B — follow-up FOOPs discovered by this work**: a
+todo to CREATE a "Search Context Access" FOOP (number drawn at creation time,
+not reserved now), covering `@` for the found statement's index plus the sibling
+extractions the same `FoolRefFir` referent makes available — matched name, home
+brane, settled NYES — with the miss-propagation rule (anchored NK, unanchored
+ECONSTANIC) and the known blocker that `#` accepts only literal integers. Also
+records **D7**: a bare `B = A` does not resolve an SFF-bearing expression, with
+one mark or two, while the same body under juxtaposition does. Earlier: Phases **3A-3D rewritten** for the upgraded SFF mark (FOOP-55.md
 §5), replacing the withdrawn early-exit/readiness work. 3A is the strip budget
 in `constanic_clone_at` — tests first, including that a retained mark is SHARED
 (`Rc::ptr_eq`) and that the new path cannot reach the SF/SFF ALARM. 3B is the
