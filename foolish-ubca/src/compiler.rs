@@ -5,8 +5,8 @@ use anyhow::anyhow;
 use foolish_parser::{AssignmentOperator, Astn, SearchOperator};
 
 use crate::fir_kinds::{
-    BraneFir, ConcatenationFir, CreationFir, IndepIntFir, IndexFir, NkFir, OperatorFir, SearchFir,
-    StatementFir, StayFoolishFir, StayFullyFoolishFir,
+    BraneFir, ConcatProvenance, ConcatenationFir, CreationFir, IndepIntFir, IndexFir, NkFir,
+    OperatorFir, SearchFir, StatementFir, StayFoolishFir, StayFullyFoolishFir,
 };
 use crate::fir_trait::{Fir, FirRef};
 use crate::proto_brane::ProtoBrane;
@@ -17,6 +17,10 @@ use foolish_core::fir::Nyes;
 enum ConcatElemKind {
     /// Bare brane literal — auto-wrap in SFF (under_sff = true).
     BareBrane,
+    /// Bare juxtaposition (Concatenation AST node) — build as-is, no SFF override.
+    /// Unlike BareBrane, this does NOT force under_sff = true, because the inner
+    /// Concatenation's elements should inherit the parent's SFF context.
+    BareConcat,
     /// Bare search — auto-wrap in SF.
     BareSearch,
     /// <search> — idempotent NOOP, build as-is.
@@ -30,6 +34,7 @@ enum ConcatElemKind {
 fn classify_concat_element(ast: &Astn) -> ConcatElemKind {
     match ast {
         Astn::Brane { .. } => ConcatElemKind::BareBrane,
+        Astn::Concatenation { .. } => ConcatElemKind::BareConcat,
         Astn::Identifier { .. }
         | Astn::DotSearch { .. }
         | Astn::RegexpSearch { .. }
@@ -83,10 +88,8 @@ fn classify_concat_element(ast: &Astn) -> ConcatElemKind {
 fn build_concat_element(ast: Astn, parent: &Weak<RefCell<dyn Fir>>, under_sff: bool) -> FirRef {
     let kind = classify_concat_element(&ast);
     match kind {
-        ConcatElemKind::BareBrane => {
-            // Bare brane literal → wrap in SFF: build with under_sff = true.
-            build_fir(ast, Some(parent), true)
-        }
+        ConcatElemKind::BareBrane => build_fir(ast, Some(parent), true),
+        ConcatElemKind::BareConcat => build_fir(ast, Some(parent), under_sff),
         ConcatElemKind::BareSearch => {
             // Bare search → wrap in SF: build, then wrap in StayFoolishFir.
             let search_fir = build_fir(ast, Some(parent), under_sff);
@@ -165,6 +168,12 @@ fn validate_astn(ast: &Astn) -> anyhow::Result<()> {
         Astn::HeadTail { anchor, .. } => validate_astn(anchor),
         Astn::ContextedSearch { inner } => validate_astn(inner),
         Astn::Concatenation { elements } => {
+            for e in elements {
+                validate_astn(e)?;
+            }
+            Ok(())
+        }
+        Astn::TailConcatenation { elements } => {
             for e in elements {
                 validate_astn(e)?;
             }
@@ -378,6 +387,22 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
                 RefCell::new(ConcatenationFir {
                     core: ProtoBrane::new(children, child_parent!(), Nyes::Prembrionic),
                     _helpers_populated: std::cell::Cell::new(false),
+                    provenance: ConcatProvenance::Juxtaposition,
+                })
+            })
+        }
+        Astn::TailConcatenation { elements } => {
+            Rc::new_cyclic(|me: &Weak<RefCell<ConcatenationFir>>| {
+                let me_dyn: Weak<RefCell<dyn Fir>> = me.clone();
+                let children: Vec<FirRef> = elements
+                    .into_iter()
+                    .rev()
+                    .map(|e| build_concat_element(e, &me_dyn, under_sff))
+                    .collect();
+                RefCell::new(ConcatenationFir {
+                    core: ProtoBrane::new(children, child_parent!(), Nyes::Prembrionic),
+                    _helpers_populated: std::cell::Cell::new(false),
+                    provenance: ConcatProvenance::TailConcatenation,
                 })
             })
         }
@@ -635,7 +660,7 @@ impl AstnCompilerExt for Astn {
 
 #[cfg(test)]
 mod tests {
-    use super::{ANON_STMT_NAME, AstnCompilerExt};
+    use super::{AstnCompilerExt, ANON_STMT_NAME};
     use std::cell::RefCell;
     use std::rc::{Rc, Weak};
 

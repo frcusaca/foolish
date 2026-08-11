@@ -55,6 +55,12 @@ pub enum Astn {
         elements: Vec<Astn>,
     },
 
+    /// Tail concatenation (backtick chain): `e1`e2`...`en` — flat, n-ary (len >= 2), source order.
+    /// Precedence and reversal are resolved in `build_fir` (compiler), not here.
+    TailConcatenation {
+        elements: Vec<Astn>,
+    },
+
     /// Dot search: anchor.coordinate
     DotSearch {
         anchor: Box<Astn>,
@@ -161,6 +167,15 @@ impl fmt::Display for Astn {
             }
             Astn::BinaryOp { op, left, right } => write!(f, "({} {} {})", left, op, right),
             Astn::UnaryOp { op, expr } => write!(f, "{}{}", op, expr),
+            Astn::TailConcatenation { elements } => {
+                for (i, e) in elements.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, "`")?;
+                    }
+                    write!(f, "{}", e)?;
+                }
+                Ok(())
+            }
             _ => write!(f, "{:?}", self),
         }
     }

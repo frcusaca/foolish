@@ -317,3 +317,87 @@ fn test_format_comparison_result_renders_true_false_names() {
     assert_eq!(format_fir_simple(&true_creation), "'True");
     assert_eq!(format_fir_simple(&false_creation), "'False");
 }
+
+// ── FOOP-65 Phase 2: sequencer backtick rendering ──────────────────────
+
+#[test]
+fn tail_concat_embryonic_renders_backtick() {
+    // Use NormalBraneFirBuilder with Embryonic state so elements pass the
+    // all-embryonic gate (Prembrionic || Embryonic).
+    let a = NormalBraneFirBuilder::new().state(Nyes::Embryonic).build();
+    let b = NormalBraneFirBuilder::new().state(Nyes::Embryonic).build();
+    let c = NormalBraneFirBuilder::new().state(Nyes::Embryonic).build();
+    let cat = ConcatenationFirBuilder::new()
+        .element(a)
+        .element(b)
+        .element(c)
+        .state(Nyes::Embryonic)
+        .is_tail_concatenation(true)
+        .build();
+    let rendered = format_fir_simple(&cat);
+    assert!(
+        rendered.contains('`'),
+        "tail-flagged all-embryonic should render with backtick: {}",
+        rendered
+    );
+    assert!(
+        rendered.starts_with("⨃{"),
+        "should have concatenation prefix: {}",
+        rendered
+    );
+}
+
+#[test]
+fn juxta_concat_embryonic_renders_ordinary() {
+    let a = ConstantIntFirBuilder::new(1).build();
+    let b = ConstantIntFirBuilder::new(2).build();
+    let c = ConstantIntFirBuilder::new(3).build();
+    let cat = ConcatenationFirBuilder::new()
+        .element(a)
+        .element(b)
+        .element(c)
+        .state(Nyes::Embryonic)
+        .is_tail_concatenation(false)
+        .build();
+    let rendered = format_fir_simple(&cat);
+    assert!(
+        !rendered.contains('`'),
+        "juxtaposition should NOT render with backtick: {}",
+        rendered
+    );
+    assert!(
+        rendered.starts_with("⨃("),
+        "should show proto-brane form: {}",
+        rendered
+    );
+}
+
+#[test]
+fn tail_concat_settled_renders_identical_to_juxta() {
+    let a = ConstantIntFirBuilder::new(10).build();
+    let b = ConstantIntFirBuilder::new(20).build();
+    let merged = NormalBraneFirBuilder::new()
+        .statement(Some("x".into()), ConstantIntFirBuilder::new(10).build())
+        .statement(Some("y".into()), ConstantIntFirBuilder::new(20).build())
+        .state(Nyes::Constant)
+        .build();
+
+    let tail = ConcatenationFirBuilder::new()
+        .element(ConstantIntFirBuilder::new(10).build())
+        .element(ConstantIntFirBuilder::new(20).build())
+        .merged(merged.clone())
+        .state(Nyes::Constant)
+        .is_tail_concatenation(true)
+        .build();
+    let juxta = ConcatenationFirBuilder::new()
+        .element(a)
+        .element(b)
+        .merged(merged)
+        .state(Nyes::Constant)
+        .is_tail_concatenation(false)
+        .build();
+
+    let tail_s = format_fir_simple(&tail);
+    let juxta_s = format_fir_simple(&juxta);
+    assert_eq!(tail_s, juxta_s, "settled forms must be byte-identical");
+}
