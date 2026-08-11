@@ -1,27 +1,47 @@
 #einmo 1 encoding=utf-8 separator=!!\n
 test: foop/65/tail_concat_system_ops.foo
 suite: /storage1/human/hcbusy/foolish_worktrees/foop-65-tail-concatenator/foolish-ubca/einmo_suite
-producer: 626b4f43
-producer-diff: sha256:6f867a1462ef0fc7a0410fc4aeadea0e1c319f87cfa230ee59667e1158082251
-generated: 2026-08-09T20:54:58.000000000Z
+producer: 4d2172f8
+producer-diff: sha256:8897cec33d02ecc73ba05ec4723ba70f2eb3ad0ef676a93b2a0a9713ddbb569d
+generated: 2026-08-11T21:57:10.000000000Z
 status: normal
 status-detail: 
 sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
 {
-	!! FOOP-65 — system-operator application via backtick.
-	!! 'lt`{1, 2} applies system.foo's 'lt with args {1, 2}.
-	!! The $ extracts the result.
+	!! FOOP-65 — system-operator application and backtick equivalence.
 
-	lt_result = ('lt`{1, 2})$;
-	eq_result = ('eq`{3, 3})$;
+	!! System operators use the brane application idiom: {args, 'op}$
+	lt_true  = {1, 2, 'lt}$;
+	lt_false = {2, 1, 'lt}$;
+	eq_true  = {3, 3, 'eq}$;
+
+	!! Backtick equivalence for user-defined brane application.
+	!! myfn`{a=10, b=-3} reverses to {a=10, b=-3} myfn — identical brane.
+	myfn = {result = a + b;};
+	r_backtick = myfn`{a=10, b=-3};
+	r_juxta    = {a=10, b=-3} myfn;
 }
 !!
-{
-  ltˍresult=2;
-  eqˍresult=3
+{WOCONSTANIC
+  ltˍtrue='True;
+  ltˍfalse='False;
+  eqˍtrue='True;
+  myfn={WOCONSTANIC
+      result=Op+(?(pattern='^a$', UNANCHORED, ECONSTANIC), ?(pattern='^b$', UNANCHORED, ECONSTANIC), WOCONSTANIC)
+  };
+  rˍbacktick={
+      a=10;
+      b=-3;
+      result=7
+  };
+  rˍjuxta={
+      a=10;
+      b=-3;
+      result=7
+  }
 }!!
 !!
-{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:4d41c76936d2ac18ef9f2cab758f6c632b86e1d2614ff8b3e918a75b019b49a5","timestamp":"2026-08-09T20:54:58.000000000Z"}
-{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:4d41c76936d2ac18ef9f2cab758f6c632b86e1d2614ff8b3e918a75b019b49a5","timestamp":"2026-08-09T20:54:58.000000000Z"}
-{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"+GHwSXz2fqWUCea3lK5fhItAe5GTPMcr3yzeY+VVE2UZ9UACSpNptR1LfXATcf3HvT5yBIaVpLZs2Ue3YlgpAw==","produced_by":"einmo 0.1.0 sha256:4d41c76936d2ac18ef9f2cab758f6c632b86e1d2614ff8b3e918a75b019b49a5","timestamp":"2026-08-09T20:54:58.000000000Z"}
-{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"+IqF3UNybKS8b3PFHCBBKh337dApbtbZfI9y7/OBbsoAoz/mAC7SQYjpgM67ofAUpXkS527QzlVS0m3EhmsLCA==","produced_by":"einmo 0.1.0 sha256:44f26726d78efd6141643515dc419543e09c0996660f7c686fdbf3c4094e84d8","timestamp":"2026-08-09T20:58:05.000000000Z"}
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:dbcf9155198e0adcbaec846901032525b21dce32f865feef1e21d5f10fa77054","timestamp":"2026-08-11T21:57:10.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:dbcf9155198e0adcbaec846901032525b21dce32f865feef1e21d5f10fa77054","timestamp":"2026-08-11T21:57:10.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"at5RtTXXjRMKRontv9KakbKb1zgYa3Eth6jxAl73PHTndAKE9VMKZltVWi2s51MBbIJqCi5upnHH2bnzYI0VDg==","produced_by":"einmo 0.1.0 sha256:dbcf9155198e0adcbaec846901032525b21dce32f865feef1e21d5f10fa77054","timestamp":"2026-08-11T21:57:10.000000000Z"}
+{"key":"stage:checked","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"ciqhPjvEHcuQ8AbeahRTt/BckZzv8Bcy+jZT8P4LiAD/awxvkFzLY9HeGqYYLPXrPwNPNCBpDBjFmYJRMngnAQ==","produced_by":"einmo 0.1.0 sha256:44f26726d78efd6141643515dc419543e09c0996660f7c686fdbf3c4094e84d8","timestamp":"2026-08-11T21:59:39.000000000Z"}

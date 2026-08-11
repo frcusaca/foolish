@@ -1,8 +1,14 @@
 {
-	!! FOOP-65 — system-operator application via backtick.
-	!! 'lt`{1, 2} applies system.foo's 'lt with args {1, 2}.
-	!! The $ extracts the result.
+	!! FOOP-65 — system-operator application and backtick equivalence.
 
-	lt_result = ('lt`{1, 2})$;
-	eq_result = ('eq`{3, 3})$;
+	!! System operators use the brane application idiom: {args, 'op}$
+	lt_true  = {1, 2, 'lt}$;
+	lt_false = {2, 1, 'lt}$;
+	eq_true  = {3, 3, 'eq}$;
+
+	!! Backtick equivalence for user-defined brane application.
+	!! myfn`{a=10, b=-3} reverses to {a=10, b=-3} myfn — identical brane.
+	myfn = {result = a + b;};
+	r_backtick = myfn`{a=10, b=-3};
+	r_juxta    = {a=10, b=-3} myfn;
 }

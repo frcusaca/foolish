@@ -409,19 +409,37 @@ fn foop65_embryonic_inspection() {
     use crate::fir::*;
     use crate::Nyes;
 
-    // §3.1 worked example: a`b`c`d e f — all elements Embryonic
-    let d = NormalBraneFirBuilder::new().state(Nyes::Embryonic).build();
-    let e = NormalBraneFirBuilder::new().state(Nyes::Embryonic).build();
-    let f = NormalBraneFirBuilder::new().state(Nyes::Embryonic).build();
+    // §3.1 worked example: a`b`c`d e f — all elements Embryonic, named
+    let d = NormalBraneFirBuilder::new()
+        .statement(Some("d".into()), ConstantIntFirBuilder::new(4).build())
+        .state(Nyes::Embryonic)
+        .build();
+    let e = NormalBraneFirBuilder::new()
+        .statement(Some("e".into()), ConstantIntFirBuilder::new(5).build())
+        .state(Nyes::Embryonic)
+        .build();
+    let f = NormalBraneFirBuilder::new()
+        .statement(Some("f".into()), ConstantIntFirBuilder::new(6).build())
+        .state(Nyes::Embryonic)
+        .build();
     let inner = ConcatenationFirBuilder::new()
         .element(d)
         .element(e)
         .element(f)
         .state(Nyes::Embryonic)
         .build();
-    let a = NormalBraneFirBuilder::new().state(Nyes::Embryonic).build();
-    let b = NormalBraneFirBuilder::new().state(Nyes::Embryonic).build();
-    let c = NormalBraneFirBuilder::new().state(Nyes::Embryonic).build();
+    let a = NormalBraneFirBuilder::new()
+        .statement(Some("a".into()), ConstantIntFirBuilder::new(1).build())
+        .state(Nyes::Embryonic)
+        .build();
+    let b = NormalBraneFirBuilder::new()
+        .statement(Some("b".into()), ConstantIntFirBuilder::new(2).build())
+        .state(Nyes::Embryonic)
+        .build();
+    let c = NormalBraneFirBuilder::new()
+        .statement(Some("c".into()), ConstantIntFirBuilder::new(3).build())
+        .state(Nyes::Embryonic)
+        .build();
     let outer = ConcatenationFirBuilder::new()
         .element(inner)
         .element(a)
