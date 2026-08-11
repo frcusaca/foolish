@@ -10,6 +10,8 @@
     cond='False, <<#-2>>;
   }
   'ite = ({<<#-2>>, <<#-1>>} INTERNAL_ite)~cond=(<<#-3>>)&#1
+  'lookup = <<{lookup=#-1}>>;
+  'ite = (<<{cond=<<#-3>>,val=<<#-3>>,else=<<#-3>>}>>, ~cond=(lookup)&#1}>>
 
   !! Congrulent modulo {a,b,c}'cmod computes boolean a%b==c
   INTERNAL_cmod = {INTERNAL_eq, {INTERNAL_numerator,INTERNAL_divisor, 'mod}$, 'eq};
