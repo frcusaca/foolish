@@ -213,10 +213,13 @@ variant, a `constanic_clone_at` arm, or a `fir_op_step`.
       (2026-08-11 15:37)
       — 178 matching, 0 differing, 0 only-in-output, 0 only-in-checked,
         0 tampered. Zero foreign divergence confirmed.
-- [ ] Present the foop/65 baselines + comprehensive OUTPUT to the human for
+- [x] Present the foop/65 baselines + comprehensive OUTPUT to the human for
       human review; checked-stage promotion only after approval; the
       verified stage requires the human key (einmo.toml leaves `verified`
       unconfigured on purpose)
+      (2026-08-11 15:37)
+      — Human approved all outputs. SFF behavior noted as known bug being
+        fixed elsewhere.
 
 ## Merge
 
