@@ -153,6 +153,51 @@ FOOP-73's fallback: `OrFir` as a dedicated FIR kind, same pattern as
 - [x] Run all tests — old and new — and make sure they all pass correctly.
       (2026-08-09 13:50)
 
+## Phase 2B — Restore the tree to `'mod` + `'or` only
+
+**Done 2026-08-10.** Phase 3 work-in-progress (`IteFir`, `CmodFir`, and their
+`system.foo` declarations) was uncommitted in the worktree; §5 makes both
+unnecessary, so it was discarded rather than finished. `'mod` and `'or` were
+already committed in `f8d3ea77` and are untouched — no rollback or cherry-pick
+was needed.
+
+- [x] Discard the uncommitted `'ite`/`'cmod` WIP; keep committed `'mod`/`'or`
+      (2026-08-10 00:20)
+- [x] `system/system.foo` declares `'True 'False 'lt 'gt 'le 'ge 'eq 'mod 'or`
+      and **no** `'ite`/`'cmod`
+      (2026-08-10 00:20)
+- [x] Working tree clean; baseline recorded below
+      (2026-08-10 00:20)
+
+**Baseline at the start of §5** (`cargo test -p foolish-ubca --lib
+-- --test-threads=1`): **332 passed, 2 failed.** Both failures are
+`einmo_gate_checked` and `einmo_gate_verified`, and both report only *missing*
+baselines — FOOP-55's own new tests (`foop/55/{cmod,ite,euler_small,mod_basic,
+mod_edge,or_table}`, `exercises/project_euler/1`) have never been promoted to
+`checked/`. **No pre-existing baseline diverges.** Promotion happens in Phase
+3C/4 through the Promotion Review Gate, not before.
+
+> **Run the suite with `--test-threads=1` on this branch.** The three einmo
+> gates share `einmo_suite/output/` and race under the default parallel runner,
+> which shows up as a spurious `einmo_gate_output` failure. `jia` has the
+> `GATE_LOCK` fix (commit `0a356f88`); this branch predates it and will inherit
+> it at merge.
+
+## Phase 2C — `congruent_modulo` in pure Foolish (the §5 proof case)
+
+`'cmod` is not reimplemented as a Rust FIR kind. Once the SFF mark defers
+correctly it can be **defined in Foolish**, which makes it the natural
+end-to-end test that §5 works. Spelled out in full — `congruent_modulo`, not
+`'cmod` — since it becomes part of `system.foo`.
+
+- [ ] First as a **test case**, not in `system.foo`: define `congruent_modulo`
+      in Foolish inside an einmo input under `foop/55/SFF/` and confirm
+      `{a, b, c} congruent_modulo` computes `a % b == c`. This is the honest
+      proof that the upgraded mark carries a real definition, not just a toy.
+- [ ] Only if that works, promote it into `system/system.foo` as
+      `congruent_modulo`
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
 ## Phase 3A — §5: the SFF strip budget
 
 Read FOOP-55.md §5 in full first, and Appendix A.A for why this design was
