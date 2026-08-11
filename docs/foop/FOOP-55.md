@@ -634,6 +634,15 @@ Marks compose in two structurally different ways. They *feel* like they ought to
 need different rules; they do not. Both are covered by "at most one strip per
 clone tree", applied at the granularity each case presents.
 
+**Priority: case 1 must work; case 2 must not regress.** Euler 1 depends
+entirely on case 1 — `'ite`'s doubly-marked branches surviving table
+construction. Case 2's single-marked chains already work and need only stay
+byte-identical. Whether case 2's *deferral* behavior (points 2 and 3 below) is
+the RIGHT or OPTIMAL semantics is a question to revisit once there is a working
+Euler 1 to reason from; it is explicitly **not** a gate on this FOOP. An
+implementer who finds case 2 behaving oddly should record it and move on, not
+stop to perfect it.
+
 ##### Case 1 — syntactic nesting: marks on ONE term
 
 ```foolish
