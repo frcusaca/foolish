@@ -2,7 +2,7 @@
 foop: D65
 title: The tail concatenator — backtick application that brings the method name to the front
 author: Sisyphus / qwen3.8-max (directed by Atlas)
-status: Implementing
+status: complete
 type: Standards
 created: 2026-08-07
 phase: phase-2
