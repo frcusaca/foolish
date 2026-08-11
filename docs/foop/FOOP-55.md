@@ -1401,7 +1401,18 @@ None of UBCb, UBCc, or UBCd is a prerequisite for this FOOP.
 
 **Date**: 2026-08-09
 **Updated By**: Claude Code / claude-opus-5
-**Changes**: **§5 rewritten around the upgraded SFF mark** — the third and final
+**Changes**: Added **§6 — the brane view and the unanchored forward search
+`~name`** (2026-08-11), plus **D7**. §5's mark counting was demonstrated to
+compose exactly as specified (one mark on `'ite`'s value-search pattern => the
+pattern dies NK; three => it survives but nothing resolves; each mark buys one
+coordination), but it never lands `'ite`, because `&#1` is a CONTEXTED index
+whose carried position must survive the definition-site coordination. §6 removes
+the need for one: a brane view is a contiguous `[0, my_index-1]` window sharing
+the home brane's parent, and `~name` is the ORDINARY anchored forward search
+over it. The view can be constanic before the whole brane is — FIFO guarantees
+the window has settled — so it never waits, the same narrowing move §5 makes.
+FOOP-23 §A.1's "cannot look forward in its own brane" is preserved literally:
+the window holds only settled statements. Earlier: **§5 rewritten around the upgraded SFF mark** — the third and final
 design. A constanic clone currently strips EVERY SF/SFF mark in one recursive
 pass (`constanic_clone_at`, `fir_kinds.rs:183-191`), so nesting is a no-op today
 and a mark protects a term across exactly one coordination. §5 makes it a
