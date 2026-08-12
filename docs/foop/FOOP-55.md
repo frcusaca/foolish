@@ -320,63 +320,68 @@ and the pure-Foolish **`'ite`** of Phase 3D by the same route.
 be fixed as well, or `'ite`/`congruent_modulo` must be built some other way.
 Disposition is an Open Question below.
 
-### D8. A search that lands on an SFF-marked statement never settles — spins BRANING. **ROOT CAUSE of D7 and of every function-shaped program failing.**
+### D8. **RETRACTED — not a defect.** SFF-marked self-reference correctly spins BRANING.
 
-Found 2026-08-11 while tracing why `'match`/`fbfn` would not run. **Two lines:**
+Filed 2026-08-11 and retracted the same day. Recorded because the mistake is
+easy to repeat and the correction is the useful part.
 
-```foolish
-{
-	n = <<#-1>>;
-	r = n;          !! spins BRANING -> Iteration exceeded 9999
-}
-```
-
-Unmarked is fine (`n = 5; r = n;` gives `r=5`). The mark is what breaks it.
-
-**Mechanism.** The search *finds* `n` — the pattern matches and the statement is
-located. But `n`'s body is an **unstripped SFF mark**, which by design holds no
-value yet. The search then has no rule for that case: it cannot settle CONSTANT
-(there is no value), it does not settle ECONSTANIC, and it does not settle NK.
-So it remains `BRANING` and the driver steps it until the iteration cap.
-
-```
-n=<<WOCONSTANIC #(offset=-1, UNANCHORED, ECONSTANIC)>>   <- mark correctly retained
-r=?(pattern='^n$', UNANCHORED, BRANING)                  <- STUCK
-```
-
-**This is NOT the §5 strip budget.** The mark is correctly *retained* — §5 is
-working. The defect is one level up, in what a **search** does when it lands on
-a marked statement.
-
-**The correct outcome is ECONSTANIC**, and it follows from what the mark means: a
-marked term is deliberately unevaluated *in this context*, so a search landing
-on one is in precisely the situation ECONSTANIC was defined for — "no value
-here, may gain one via recoordination".
-
-**Why this is the root cause of so much.** Any function that **binds a parameter
-and then uses it by name** has this shape:
+**The claim was** that a search landing on an SFF-marked statement had no defined
+outcome and spun BRANING, and that this was the root cause of D7 and of every
+function-shaped program failing. The reproduction offered:
 
 ```foolish
-f = {n = <<#-1>>; r = n + 100;}     !! never settles
+{ n = <<#-1>>; r = n; }        !! BRANING forever
 ```
 
-Verified by bisection — the failure needs *both* halves:
+**The reproduction was malformed.** `n` sits at index 0, so its `#-1` reaches
+*before the brane* — the definition is **self-referential**, and BRANING forever
+is the honest answer to a self-referential definition, not a defect.
 
-| Body | Result |
-|------|--------|
-| `{n = <<#-1>>; r = 100;}` — bound, not referenced | `100` ✅ |
-| `{k = 1; r = <<#-1>> + 100;}` — two statements, mark used directly | `101` ✅ |
-| `{n = <<#-1>>; r = n + 100;}` — bound **then referenced** | **hangs** ❌ |
+**The real distinction is SF versus SFF**, and it is a difference of *when*:
 
-This is the same defect as **D7** (a system operator inside a juxtaposed
-definition never settles) and as the `{A=<<a>>; B=A}` case noted during the §5
-discussion — one bug, three symptoms. It blocks `'ite`, `congruent_modulo`,
-`'match`, and every recursive function, because all of them bind parameters and
-then use them.
+| Mark | Resolves | Right for |
+|------|----------|-----------|
+| `<X>` (SF) | **here**, at its own position | "look at my neighbour" |
+| `<<X>>` (SFF) | **there**, wherever it is recoordinated to | a macro body that must not bind until applied |
 
-**Disposition.** Fixing D8 is expected to unblock D7 as well. It is the smallest
-and most tractable reproduction of the class, and it should be fixed before any
-further work on §7 or §8 — those features are built out of exactly this shape.
+Given a real preceding member, both behave exactly as specified:
+
+```foolish
+{100, n = <#-1>;  r = n+1;}    !! n=100, r=101   -- SF resolves here
+{100, n = <<#-1>>; r = n+1;}   !! n stays marked -- SFF defers, so the
+                               !! local `r = n+1` has nothing to read, forever
+```
+
+**A parameter bound and then used *locally* wants SF, not SFF.** Doubling to SFF
+pushes resolution one boundary further out than the use, so the local use finds
+nothing — permanently. That is a **usage error**, and it is what the failing
+bisection cases were doing:
+
+| Body | Result | Why |
+|------|--------|-----|
+| `{n = <<#-1>>; r = 100;}` | `100` | `n` is never read locally |
+| `{k = 1; r = <<#-1>> + 100;}` | `101` | the mark is consumed in place, not via a name |
+| `{n = <<#-1>>; r = n + 100;}` | hangs | SFF bound, then read **locally** — wrong mark |
+
+**D7 is probably the same mistake.** Its reproduction —
+`f = {out = ({<<#-2>>, <<#-1>>, 'mod})$;}` — uses SFF for operands consumed in
+the *same* brane. D7 should be re-tested with SF before being treated as a
+platform defect.
+
+#### The standing concern
+
+> **SF/SFF flexibility is dangerous and hard to reason about.** *(Atlas,
+> 2026-08-11.)*
+
+Both marks parse. Both look reasonable at a glance. One silently never
+terminates, with no diagnostic naming which was wanted. The rule — *use SF when
+the value is read in the same brane, SFF when it must survive to a use site* —
+is simple to state and easy to get wrong, and getting it wrong costs an
+interpreter hang rather than an error message.
+
+Worth its own FOOP: either a diagnostic for the common failure (an SFF-marked
+statement read by name within its own brane is almost certainly a usage error),
+or a re-examination of whether both marks need to be surface syntax.
 
 ## Findings — exercise-file defects (Atlas is fixing the file)
 

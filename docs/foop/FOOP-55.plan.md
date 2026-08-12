@@ -526,6 +526,18 @@ work is not lost when this plan closes.
       indices DO work (`src#-1` → last member), which makes a parallel
       "result table with a default row in the tail" idiom attractive.
 
+- [ ] **RE-TEST D7 with SF instead of SFF** before treating it as a platform
+      defect. D8's retraction (FOOP-55.md §Findings) shows the same mistake:
+      SFF marks operands that are consumed in the SAME brane, so the local read
+      never resolves. D7's reproduction
+      (`f = {out = ({<<#-2>>, <<#-1>>, 'mod})$;}`) has exactly that shape.
+- [ ] **Write the SF/SFF-usability FOOP** (Atlas, 2026-08-11: "this flexibility
+      is dangerous and hard to reason about"). Both marks parse, both look
+      reasonable, one silently never terminates with no diagnostic. Options: a
+      diagnostic for the common failure (an SFF-marked statement read by name
+      within its own brane is almost certainly a usage error), or a
+      re-examination of whether both marks need to be surface syntax.
+
 - [ ] **Write the equality-primitive FOOP.** FOOP-55 §8 clarifies FOOP-33 §2's
       rule 4 in place (naming "not mutually identifiable" and seaming the choice
       as `NOT_MUTUALLY_IDENTIFIABLE_IS_NOT_EQUAL`), but the equality primitive
