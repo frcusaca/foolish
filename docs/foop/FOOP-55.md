@@ -1175,6 +1175,107 @@ that forced `OrFir` (see plan Phase 2 and §D7).
 is not a value, and unlike the deferral case there is nothing recoordination
 could supply.
 
+### §8. `@` (search position) and `#` over an expression — pattern matching
+
+§5's mark counting and §6's `~` each removed part of `'ite`'s difficulty, but the
+construct still needed a *position* to survive coordination. §8 removes the need
+by turning the position into an **integer**, which survives coordination
+trivially because it is just a number.
+
+#### The two additions
+
+**`@` — project a search result's position.** A search already carries its found
+statement as `ubc_children[1]` (a `FoolRefFir` holding the original with its
+parent chain and line number intact — FOOP-23's two-child invariant). Nothing in
+the *language* reads that today except a following `&`-search, implicitly. `@`
+exposes it:
+
+```foolish
+tbl = {zzz=0; key=77; other=5;}
+tbl~key=(77)@        !! → 1, the found statement's index
+```
+
+**`#` accepts an expression, not only a literal.** Today `tbl#(1+1)`, `tbl#n`
+and `tbl# (1+1)` are all parse errors ("expected integer, found LParen"), and
+`tbl#1+1` parses as `(tbl#1)+1` — indexing by 1 then adding 1 to the *value*.
+§8 makes the index an ordinary operand.
+
+#### Dependencies and NYES
+
+This is the part that makes both well-behaved, and it is the **ordinary**
+dependency rule, not a special case:
+
+| | Dependencies | NYES once they are constanic |
+|---|--------------|------------------------------|
+| `@` | the anchor | **WOCONSTANIC** |
+| `#` | the anchor **and** the index number | **WOCONSTANIC** |
+
+WOCONSTANIC is exactly "waiting on constanics — dependencies themselves
+constanic" (AGENTS.md). A hit and a miss settle the same way, because the NYES
+comes from the *dependencies*, not from the search outcome. Accepting an
+expression is therefore not a new "evaluation phase" for `#` — it is a **second
+dependency**.
+
+#### The value: `-1` on a miss
+
+`@` yields the found statement's index, or **`-1`** when the search found
+nothing. The `-1` is not a sentinel smuggled into the value domain — it is what
+makes a default branch fall out of arithmetic.
+
+#### The pattern-matching idiom
+
+```foolish
+tbl = {
+  else_value=Z,
+  key=A, value=B,
+  key=AA, value=BB,
+}
+
+'match = {key=<<#-2>>, tbl=<<#-2>>, tbl~key=(key)@+1}
+result =$ {key, tbl}'match
+```
+
+Or inline, with no wrapper at all:
+
+```foolish
+tbl {~key=PAT@+1}
+```
+
+Why `else_value` is written **first**, and why the `+1`:
+
+| Outcome | `@` | `@+1` | `#(@+1)` selects |
+|---------|-----|-------|------------------|
+| hit on `key=A` (index 1) | `1` | `2` | `value=B` — the row beside it |
+| hit on `key=AA` (index 3) | `3` | `4` | `value=BB` |
+| **miss** | `-1` | `0` | **`else_value`** — index 0 |
+
+**One expression handles both cases with no branch.** The `+1` that steps a hit
+from its `key=` row to the adjacent `value=` row *also* steps a miss from `-1`
+to `0`, which is precisely where the default was placed. That is the whole
+reason the default comes first rather than last.
+
+#### Why this succeeds where `&#1` did not
+
+`&#1` carries a **position** — a reference into a specific brane at a specific
+place — and that is exactly what could not survive the definition-site
+coordination. §5's experiments bracketed the mark depth without landing it (one
+mark and the pattern died NK, three and nothing resolved).
+
+`@` carries an **integer**. Integers survive coordination because there is
+nothing contextual about them. The construct stops depending on a preserved
+position and starts depending on arithmetic.
+
+It also subsumes `'ite` without a dedicated operator: a two-row table keyed on
+`'True`/`'False` *is* an if-then-else, and an *n*-row table is an *n*-way
+switch, which no fixed-arity operator provides.
+
+#### Implementation note
+
+`@` is currently **silently ignored** rather than a parse error:
+`tbl~key=(77)@` and `tbl~key=(77)` both evaluate to `77` today. That is the
+dangerous failure mode — a program written to this proposal would *run* and give
+a plausible wrong answer. The tests must pin that `@` and no-`@` now differ.
+
 ## FIR Impact
 
 - **Two new FIR kinds** in `foolish-ubca/src/system_foo.rs`:
