@@ -1,0 +1,50 @@
+#einmo 1 encoding=utf-8 separator=!!\n
+test: exercises/fibonacci/1.foo
+suite: /storage1/human/hcbusy/foolish_worktrees/foop-55-project-euler-1/foolish-ubca/einmo_suite
+producer: cae82b25
+producer-diff: sha256:69ababef9edc4b29aa54fbc7b991e19053553d981f029957d068e488cc58a3c7
+generated: 2026-08-12T18:27:02.000000000Z
+status: input-error
+status-detail: Compilation failed: program failed to parse: expected integer, found LParen at line 15, column 38
+sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
+{
+	!! Fibonacci — recursion via pattern matching (FOOP-55 §8)
+	!! STATUS: does NOT run yet. It needs `@` (search position) and `#` over an
+	!! expression, neither of which exists — see FOOP-55.md §8. Carried here as
+	!! the worked example those features are for, and as the acceptance test for
+	!! them: when §8 lands, fib_5 must settle to a number.
+	!! .
+	!! 'match selects a row from a lookup table by key:
+	!!   - `tbl~key=(key)` finds the row whose key matches
+	!!   - `@` projects that row's POSITION (-1 when nothing matched)
+	!!   - `+1` steps to the `value=` statement beside it, and steps a miss
+	!!     from -1 to 0 -- which is why else_value is written FIRST
+	!!   - `tbl#(...)` selects it
+	!! One expression serves both hit and miss, with no branch.
+	'match={tbl=<<#-2>>, key=<<#-2>>, tbl#(tbl~key=(key)@+1)}
+	!! The recursive branch is DOUBLY marked so it survives the table lookup and
+	!! resolves only if 'match selects it. A single mark would resolve during the
+	!! lookup, before the condition was consulted, and recurse unconditionally.
+	!! The 'True branch is a literal and needs no mark at all.
+	!! NB (FOOP-55 §5, measured): the required depth is one mark per CONSTANIC
+	!! CLONE, and a single source step can perform more than one, so 2 is not
+	!! derivable by reading -- it is the depth this shape was observed to need.
+	fbfn={
+		fbfn=<<#-2>>;
+		param=<<#-2>>;
+		fibtbl={
+			else_value = ???;
+			key='True,  value=0;
+			key='False, value=<< <<({fbfn,param-1}fbfn)$>> >>
+		}
+		lower =$ {fibtbl,{0,param}'eq}'match
+		result = param + lower
+	}
+	fib_5 =$ {fbfn, 5}fbfn
+}
+!!
+INPUT ERROR: Compilation failed: program failed to parse: expected integer, found LParen at line 15, column 38!!
+!!
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:b92be976934a8eacb02de559a9adaf0ed2f4f229b534bda97afdcb685c8de25c","timestamp":"2026-08-12T18:27:02.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:b92be976934a8eacb02de559a9adaf0ed2f4f229b534bda97afdcb685c8de25c","timestamp":"2026-08-12T18:27:02.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"Hp135XgVL3foP9wK7b1kQQWq9SvvA/UZh27yMubUj+7m22LDkUKnaVX7oRLKRJg7QwWNKM3e+guXe1kLAFvkCg==","produced_by":"einmo 0.1.0 sha256:b92be976934a8eacb02de559a9adaf0ed2f4f229b534bda97afdcb685c8de25c","timestamp":"2026-08-12T18:27:02.000000000Z"}

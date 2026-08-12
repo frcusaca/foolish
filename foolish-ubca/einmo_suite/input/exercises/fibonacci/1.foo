@@ -1,0 +1,35 @@
+{
+	!! Fibonacci — recursion via pattern matching (FOOP-55 §8)
+	!! STATUS: does NOT run yet. It needs `@` (search position) and `#` over an
+	!! expression, neither of which exists — see FOOP-55.md §8. Carried here as
+	!! the worked example those features are for, and as the acceptance test for
+	!! them: when §8 lands, fib_5 must settle to a number.
+	!! .
+	!! 'match selects a row from a lookup table by key:
+	!!   - `tbl~key=(key)` finds the row whose key matches
+	!!   - `@` projects that row's POSITION (-1 when nothing matched)
+	!!   - `+1` steps to the `value=` statement beside it, and steps a miss
+	!!     from -1 to 0 -- which is why else_value is written FIRST
+	!!   - `tbl#(...)` selects it
+	!! One expression serves both hit and miss, with no branch.
+	'match={tbl=<<#-2>>, key=<<#-2>>, tbl#(tbl~key=(key)@+1)}
+	!! The recursive branch is DOUBLY marked so it survives the table lookup and
+	!! resolves only if 'match selects it. A single mark would resolve during the
+	!! lookup, before the condition was consulted, and recurse unconditionally.
+	!! The 'True branch is a literal and needs no mark at all.
+	!! NB (FOOP-55 §5, measured): the required depth is one mark per CONSTANIC
+	!! CLONE, and a single source step can perform more than one, so 2 is not
+	!! derivable by reading -- it is the depth this shape was observed to need.
+	fbfn={
+		fbfn=<<#-2>>;
+		param=<<#-2>>;
+		fibtbl={
+			else_value = ???;
+			key='True,  value=0;
+			key='False, value=<< <<({fbfn,param-1}fbfn)$>> >>
+		}
+		lower =$ {fibtbl,{0,param}'eq}'match
+		result = param + lower
+	}
+	fib_5 =$ {fbfn, 5}fbfn
+}

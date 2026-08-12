@@ -405,17 +405,44 @@ unnecessary; decide at its end rather than assuming either way.
       once both are constanic. Not a new "evaluation phase" — a dependency.
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
-### 3E.5 — the pattern-matching idiom end to end
+### 3E.5 — fibonacci, then Euler 1
 
-- [ ] einmo `foop/55/pattern_match.foo`: the `else_value`-first table, showing a
-      hit selecting its adjacent `value=` row and a miss falling through to
-      index 0 by the same `@+1`
+**Development loop, per feature** (3E.1–3E.4 each follow it):
+1. unit tests first, in `fir_kinds.rs` / `system_foo.rs`
+2. implement
+3. verify **that one einmo case alone** — `cargo test -p foolish-ubca --lib
+   -- --test-threads=1 einmo_gate_output`, then read the single file's OUTPUT.
+   Do not run the whole suite to check one feature.
+4. only then move to the next feature
+
+**Fibonacci is the stepping stone; Euler 1 is the target.** `exercises/fibonacci/1.foo`
+is the smaller integration test — recursion, pattern matching, and the doubled
+mark in one program, with no `'mod`/`'or`/`'cmod` in the way. Euler 1 then gets
+**rewritten to the same idiom** rather than kept in its old `'ite` form.
+
+- [ ] `exercises/fibonacci/1.foo` settles — `fib_5` is a number, not a parse
+      error. (Carried in the suite red today: `expected integer, found LParen at
+      line 15, column 38`, which is exactly the `#`-over-expression 3E.4 adds.)
+- [ ] Review its OUTPUT statement by statement, then promote through the
+      Promotion Review Gate
+- [ ] **REWRITE Euler 1 to the pattern-matching idiom** — `'match` + a keyed
+      table, replacing the `'ite` formulation. `'ite` was never implemented in
+      pure Foolish and §8 subsumes it, so the rewrite removes the dependency
+      rather than working around it.
+- [ ] `exercises/project_euler/1.foo` settles to **233168**
+- [ ] `foop/55/euler_small.foo` settles to **23** (3+5+6+9 — hand-checkable)
+- [ ] einmo `foop/55/pattern_match.foo`: the `else_value`-first table, a hit
+      selecting its adjacent `value=` row and a miss falling through to index 0
+      by the same `@+1`
 - [ ] einmo `foop/55/continuation_value_vs_position.foo`: value chases through
       (`{b = ?hello_world; {a = b&=10}}` matches when hello_world is 10) while
       position does not (`b@+1` is **b's own** position plus one)
 - [ ] Review every OUTPUT statement, then promote through the Promotion Review
       Gate
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
+- [ ] **DECIDE**: with §8 landed, are §7 (`ExtremumFir`) and Phase 3D (`'ite`)
+      still needed? Both were routes to the same end. Delete what §8 made
+      redundant rather than carrying it.
 
 ## Phase 3D — §5: rewrite `'ite` and remove the directive
 
