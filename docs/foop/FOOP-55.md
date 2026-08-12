@@ -361,8 +361,29 @@ from?*
 | the caller, at recoordination | `<<X>>` — SFF, resolve there |
 | the caller, but it must survive an **extra** structural boundary first | `<< <<X>> >>` — one mark per boundary crossed |
 
-The mark count is a **budget spent across a journey**, one per coordination.
-That is what makes `fbfn`'s recursive branch work:
+The mark count is a **budget spent across a journey — one per CONSTANIC CLONE**.
+Not one per syntactic boundary, and **not** "concatenation is free".
+
+> **Measured 2026-08-11, correcting an earlier claim in this section.**
+> Concatenation *does* spend marks:
+> ```foolish
+> t = {v = << <<#-1>> >>;};
+> c = {1, 2} t;              !! c = {1; 2; v=2} -- BOTH marks gone
+> ```
+> Instrumenting the strip budget shows it working correctly (one
+> `may_strip=false`, a mark properly retained) — but **two separate clones**
+> each spend one. `ConcatenationFir` calls `constanic_clone_at` per statement
+> (`fir_kinds.rs:2865`), and evaluation performs a further clone downstream.
+>
+> **A single source-level step can therefore perform more than one clone**,
+> which means the required mark depth **cannot be counted by reading the
+> source**. This is the concrete form of the standing SF/SFF concern below, and
+> it is why the §5 mark-depth experiments bracketed `'ite` without landing it
+> (one mark → the pattern died NK; three → nothing resolved): the depths were
+> being guessed because they are not derivable.
+
+With that caveat, `fbfn`'s recursive branch is verified to work **in the shape
+tested**:
 
 ```foolish
 key='False, value=<< <<({fbfn,param-1}fbfn)$>> >>

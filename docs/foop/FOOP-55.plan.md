@@ -531,6 +531,14 @@ work is not lost when this plan closes.
       SFF marks operands that are consumed in the SAME brane, so the local read
       never resolves. D7's reproduction
       (`f = {out = ({<<#-2>>, <<#-1>>, 'mod})$;}`) has exactly that shape.
+- [ ] **MEASURE how many constanic clones each source construct performs.** The
+      required SFF mark depth is one per clone, and a single source-level step
+      can perform more than one (concatenation strips two — measured
+      2026-08-11), so depth is NOT countable by reading the source. Until it is,
+      every doubled mark is a guess. Options: a rule stating clones-per-
+      construct, a diagnostic reporting the count, or a mark form that means
+      "defer until used" rather than "defer N times".
+
 - [ ] **Write the SF/SFF-usability FOOP** (Atlas, 2026-08-11: "this flexibility
       is dangerous and hard to reason about"). Both marks parse, both look
       reasonable, one silently never terminates with no diagnostic. Options: a
