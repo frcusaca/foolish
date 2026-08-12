@@ -1231,28 +1231,44 @@ is a brane, an integer, or anything else is not a meaningful question — there 
 no search whose position could be projected. This is checked **while building
 the FIR tree from the AST**, so a malformed `@` never reaches evaluation.
 
-Making it structural rather than a runtime guard means `@` can assume its anchor
-is a search, with no defensive branch for a case that cannot occur.
+**A malformed continuation becomes a true NK** — not a compile error. Checking
+at construction time means the FIR is *built as* an NK, not that the build
+fails: an unanswerable question yields NK, exactly as the rest of Foolish does,
+rather than refusing to run the program. `@` can then assume a well-formed
+anchor, because a malformed one never becomes an `@` at all.
 
-**2. Every search answers `is_constanic_not_found()` about itself.**
+**2. Every search answers `candidates_exhausted()` about itself.**
 
-```
-is_constanic_not_found()  ==  is_constanic() && anchor_not_nk_and_still_not_found()
-```
+> **`candidates_exhausted()`** — the scan ran to completion and no candidate
+> matched.
 
-"I have settled, and I found nothing — and that is a real answer, not the
-consequence of having had nothing to search."
+It reports **one observable fact**, not a compound claim. That is deliberate:
+an earlier draft called this `anchor_not_nk_and_still_not_found()`, which
+bundled a fact about the anchor with a fact about the outcome, so every caller
+inherited a conjunction it might not want.
 
-This is what `@` consults. It is deliberately **universally available on every
-search**, not a special hook for `@`: the question is one any consumer might
-ask, and answering it belongs to the search (`rust_instructions.md` rule zero —
-a function reporting on an object belongs to that object). `@` special-cases
-nothing; it asks a question every search can answer.
+The NK distinction then **falls out** rather than being encoded:
+
+| Situation | Scan | `candidates_exhausted()` |
+|-----------|------|--------------------------|
+| anchor was a real brane, nothing matched | ran over every candidate | **true** |
+| anchor was NK | never ran — there were no candidates | **false** |
+
+**It does not cascade.** It reflects *this* search's status only. A descendant
+wanting an ancestor's answer asks that ancestor — `.parent`, `.parent.parent`
+— rather than having a hidden traversal built in. This is the shallow-reference
+rule again: each node answers for itself, and anyone wanting a different node's
+answer addresses that node.
+
+Deliberately **universal on every search**, not a hook for `@`: the question is
+one any consumer might ask, and answering it belongs to the search
+(`rust_instructions.md` rule zero — a function reporting on an object belongs to
+that object). `@` special-cases nothing.
 
 | Search | `@` |
 |--------|-----|
 | found | the found statement's index |
-| `is_constanic_not_found()` | **`-1`** — falls through to the default row |
+| `candidates_exhausted()` | **`-1`** — falls through to the default row |
 | constanic, but its anchor was NK | **NK** — "where in nothing?" has no answer |
 | pre-constanic | not settled yet; `@` waits |
 

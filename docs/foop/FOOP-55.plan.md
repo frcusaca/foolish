@@ -361,23 +361,29 @@ unnecessary; decide at its end rather than assuming either way.
 - [ ] Enforce in `build_fir` (AST → FIR): a continuation's anchor must BE a
       search. Diagnostic names the real problem (`&#1` applied to a brane), not
       a downstream NK.
-- [ ] **DECIDE and record**: compile error, or NK? "Check at construction time"
-      literally means a compile error, but Foolish generally prefers NK to
-      refusing to run. Record the choice and the reason in FOOP-55.md §8.
+- [x] **DECIDED (2026-08-11): a malformed continuation becomes a TRUE NK**, not
+      a compile error. Checking at construction means the FIR is BUILT AS an NK,
+      not that the build fails — an unanswerable question yields NK exactly as
+      the rest of Foolish does. Recorded in FOOP-55.md §8.
+      (2026-08-11 10:32)
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
-### 3E.2 — `is_constanic_not_found()` on every search
+### 3E.2 — `candidates_exhausted()` on every search
 
-- [ ] **Tests FIRST**: a search that ran and matched nothing answers `true`; a
-      search whose anchor was NK answers `false`; a pre-constanic search answers
+- [ ] **Tests FIRST**: a search that ran over every candidate and matched
+      nothing answers `true`; a search whose anchor was NK answers `false` (the
+      scan never ran — there were no candidates); a pre-constanic search answers
       `false`.
-- [ ] Implement as `is_constanic() && anchor_not_nk_and_still_not_found()`,
-      **universal on every search** — not a hook for `@`. Rule zero: answering
-      a question about a search belongs to the search.
-- [ ] **DECIDE and record**: does `anchor_not_nk_and_still_not_found()` check
-      ONE link or walk the chain? One link is expected to suffice — the outer
-      link's anchor IS the inner search, so the recursion is structural — but
-      confirm with a chained test.
+- [ ] Implement `candidates_exhausted()` — **one observable fact**, "the scan
+      ran to completion and no candidate matched". NOT a compound predicate: an
+      earlier draft's `anchor_not_nk_and_still_not_found()` bundled a claim
+      about the anchor with one about the outcome, so every caller inherited a
+      conjunction it might not want. The NK distinction FALLS OUT of the honest
+      observation instead of being encoded.
+- [ ] **Universal on every search**, not a hook for `@` (rule zero).
+- [ ] **DOES NOT CASCADE** — it reflects THIS search's status only. Add a
+      chained test pinning that a descendant does not silently inherit an
+      ancestor's answer; a consumer wanting an ancestor's asks `.parent`.
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
 ### 3E.3 — `@`
