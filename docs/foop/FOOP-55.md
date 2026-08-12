@@ -352,10 +352,41 @@ Given a real preceding member, both behave exactly as specified:
                                !! local `r = n+1` has nothing to read, forever
 ```
 
-**A parameter bound and then used *locally* wants SF, not SFF.** Doubling to SFF
-pushes resolution one boundary further out than the use, so the local use finds
-nothing — permanently. That is a **usage error**, and it is what the failing
-bisection cases were doing:
+**The rule is not "local use wants SF".** It is: *where does the value come
+from?*
+
+| The value comes from | Mark |
+|----------------------|------|
+| my own brane's neighbours | `<X>` — SF, resolve here |
+| the caller, at recoordination | `<<X>>` — SFF, resolve there |
+| the caller, but it must survive an **extra** structural boundary first | `<< <<X>> >>` — one mark per boundary crossed |
+
+The mark count is a **budget spent across a journey**, one per coordination.
+That is what makes `fbfn`'s recursive branch work:
+
+```foolish
+key='False, value=<< <<({fbfn,param-1}fbfn)$>> >>
+```
+
+1. **As written** — two marks.
+2. **The search for `fibtbl`** constanic-clones the table, spending one — the
+   found row now carries `<<call>>`, still unresolved.
+3. **`'match` selects it and it lands at the use site** — the second coordination
+   spends the last, and only *now* does the call resolve.
+
+A **single** mark would resolve at step 2, during the table lookup, before
+`'match` had chosen anything — and the recursion would fire unconditionally. The
+`'True` branch (`value=0`) needs no mark at all: a literal has nothing to defer.
+
+Verified — the doubled branch survives the lookup and is never evaluated:
+
+```
+value=<<WOCONSTANIC <<WOCONSTANIC $(ECONSTANIC)>> >>   <- the call, un-run
+r=0   out=0                                            <- stop branch taken
+```
+
+The failing bisection cases below were **not** wrong-mark choices — they were
+SFF marks pointing at **nothing** (no preceding member to recoordinate from):
 
 | Body | Result | Why |
 |------|--------|-----|
