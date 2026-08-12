@@ -336,6 +336,81 @@ position to survive a coordination — no `&#1`, and no mark-depth puzzle.
       input can use it; any existing baseline that moves is a regression in the
       shared search path, not an expected consequence.
 
+## Phase 3E — §8: `@`, `#` over an expression, and the continuation checks
+
+Read FOOP-55.md §8 in full first. §8 subsumes `'ite` — a two-row table keyed on
+`'True`/`'False` IS an if-then-else — so this phase may make Phase 3D
+unnecessary; decide at its end rather than assuming either way.
+
+**Baseline facts, verified 2026-08-11 (do not re-derive):**
+
+- `@` does **not** exist and is **silently ignored**: `tbl~key=(77)@` and
+  `tbl~key=(77)` both evaluate to `77`. This is the dangerous failure mode — a
+  program written to §8 today runs and gives a plausible wrong answer.
+- `#` takes only a **literal**: `tbl#(1+1)`, `tbl#n`, `tbl# (1+1)` are parse
+  errors; `tbl#1+1` parses as `(tbl#1)+1`.
+- **Value already chases through a reference**: with `hello_world=10; b=?hello_world`,
+  `tbl~=(b)` matches `q=10`. §8 must PRESERVE this, not build it.
+
+### 3E.1 — the continuation requirement, enforced at construction
+
+- [ ] **Tests FIRST**, one per operator — a rejected non-search anchor for
+      `&?`, `&~`, `&#`, `&=`, `&^`, `&$` **and** `@`. A check that exists for
+      one operator and silently does not for its siblings teaches a rule the
+      language does not keep.
+- [ ] Enforce in `build_fir` (AST → FIR): a continuation's anchor must BE a
+      search. Diagnostic names the real problem (`&#1` applied to a brane), not
+      a downstream NK.
+- [ ] **DECIDE and record**: compile error, or NK? "Check at construction time"
+      literally means a compile error, but Foolish generally prefers NK to
+      refusing to run. Record the choice and the reason in FOOP-55.md §8.
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
+### 3E.2 — `is_constanic_not_found()` on every search
+
+- [ ] **Tests FIRST**: a search that ran and matched nothing answers `true`; a
+      search whose anchor was NK answers `false`; a pre-constanic search answers
+      `false`.
+- [ ] Implement as `is_constanic() && anchor_not_nk_and_still_not_found()`,
+      **universal on every search** — not a hook for `@`. Rule zero: answering
+      a question about a search belongs to the search.
+- [ ] **DECIDE and record**: does `anchor_not_nk_and_still_not_found()` check
+      ONE link or walk the chain? One link is expected to suffice — the outer
+      link's anchor IS the inner search, so the recursion is structural — but
+      confirm with a chained test.
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
+### 3E.3 — `@`
+
+- [ ] **Tests FIRST**: `@` on a hit gives the found index; on
+      `is_constanic_not_found()` gives **-1**; on an NK anchor propagates NK;
+      NYES is WOCONSTANIC once the anchor is constanic (hit and miss alike).
+- [ ] **Test that `@` and no-`@` now DIFFER** — today both give `77`, so a
+      regression here is silent.
+- [ ] `@`'s single dependency is its anchor.
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
+### 3E.4 — `#` over an expression
+
+- [ ] **Tests FIRST**: `tbl#(1+1)`, `tbl#n`, and `tbl#(expr)` where the operand
+      is itself a search; plus `tbl#1+1` KEEPING its current meaning
+      `(tbl#1)+1` — that is existing behaviour and must not change.
+- [ ] `#` gains a **second dependency** (anchor AND index number); WOCONSTANIC
+      once both are constanic. Not a new "evaluation phase" — a dependency.
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
+### 3E.5 — the pattern-matching idiom end to end
+
+- [ ] einmo `foop/55/pattern_match.foo`: the `else_value`-first table, showing a
+      hit selecting its adjacent `value=` row and a miss falling through to
+      index 0 by the same `@+1`
+- [ ] einmo `foop/55/continuation_value_vs_position.foo`: value chases through
+      (`{b = ?hello_world; {a = b&=10}}` matches when hello_world is 10) while
+      position does not (`b@+1` is **b's own** position plus one)
+- [ ] Review every OUTPUT statement, then promote through the Promotion Review
+      Gate
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
 ## Phase 3D — §5: rewrite `'ite` and remove the directive
 
 - [ ] Rewrite `'ite` using §6's `~` over the branch table — an ANCHORED search

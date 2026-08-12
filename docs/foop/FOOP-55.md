@@ -1300,9 +1300,37 @@ This is also *why* continuations are checked at construction time (below): the
 syntax is shallow by design, so "is my anchor a search?" is a fact about the
 source text, knowable without evaluating anything.
 
-**All continuations check at construction time** — not only `@`. `&?`, `&~`,
-`&#`, `&=`, `&^`, `&$` and `@` alike require their anchor to be a search, and
-that requirement is verified while the FIR tree is built from the AST.
+#### The requirement on contexted searches
+
+Every contexted (continuation) search carries the same structural requirement,
+and §8 makes it explicit and enforced:
+
+> **A continuation's anchor must BE a search.**
+
+This covers `&?`, `&~`, `&#`, `&=`, `&^`, `&$` — and now `@`. The reason is the
+shallow-reference rule above: a continuation navigates *from a position*, and
+only a search produces one. `{a=1}&#1` asks "one past where that landed", of
+something that never landed anywhere; there is no position to continue from and
+no sensible answer to give.
+
+**Checked while building the FIR tree from the AST**, not at evaluation. The
+requirement is a fact about the *source text* — "is the thing to my left a
+search?" — so it is knowable without evaluating anything, and catching it at
+construction means:
+
+- a continuation FIR can **assume** its anchor is a search, with no defensive
+  branch for a shape that cannot reach it;
+- the diagnostic names the real problem (`&#1` applied to a brane) rather than
+  surfacing later as a puzzling NK;
+- the rule is stated once, in one place, for every continuation operator instead
+  of being re-checked by each.
+
+The existing operators are **not currently checked** — this FOOP adds the check
+along with `@`, so `@` is not a special case but the newest member of a family
+that now has its requirement enforced. Tests must cover a rejected anchor for
+**each** continuation operator, not only `@`; a check that exists for one
+operator and silently does not for its siblings is worse than none, because it
+teaches a rule the language does not actually keep.
 
 #### The pattern-matching idiom
 
