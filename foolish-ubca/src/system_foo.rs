@@ -1414,6 +1414,66 @@ mod tests {
         );
     }
 
+    /// FOOP-55 §7: `ExtremumFir` selects an order statistic from the integers
+    /// that precede it in the flattened concatenation.
+    ///
+    /// `'min_int_val` is index 0 of the ascending sort; `'max_int_val` is
+    /// index -1 — the same 0-based-with-negatives convention `#` already uses
+    /// for source order.
+    #[test]
+    fn extremum_selects_min_and_max() {
+        for (op, expected) in [("'max_int_val", 0i64), ("'min_int_val", -2i64)] {
+            let src = format!("{{r = {{-1, -2, 0}}{op};}}");
+            let value = first_statement_value(&src);
+            assert_eq!(
+                value.borrow().as_i64(),
+                Some(expected),
+                "{{-1, -2, 0}}{op} sorts ascending to [-2, -1, 0]; \
+                 'min_int_val takes index 0 and 'max_int_val index -1"
+            );
+        }
+    }
+
+    /// The result is INDEPENDENT — a self-contained constant depending on
+    /// nothing outside itself — not merely CONSTANT.
+    #[test]
+    fn extremum_result_is_independent() {
+        let value = first_statement_value("{r = {-1, -2, 0}'max_int_val;}");
+        assert_eq!(
+            value.borrow().core().get_nyes(),
+            Nyes::Independent,
+            "the extremum of literal integers depends on nothing outside \
+             itself, so it settles INDEPENDENT"
+        );
+    }
+
+    /// Non-integer members are SKIPPED, not fatal — the deliberate difference
+    /// from `'mod`/`'or`, which name their operands positionally and settle NK
+    /// on a non-integer. A fold has no fixed arity, so a member that is not an
+    /// integer simply is not a candidate.
+    #[test]
+    fn extremum_skips_non_integer_members() {
+        let value = first_statement_value("{r = {1, {x=9;}, 7}'max_int_val;}");
+        assert_eq!(
+            value.borrow().as_i64(),
+            Some(7),
+            "a brane member is not an integer candidate -- it is skipped and \
+             the fold continues over the integers that remain"
+        );
+    }
+
+    /// No integers at all: the extremum of an empty set is not a value, and
+    /// unlike a deferral there is nothing recoordination could supply. NK.
+    #[test]
+    fn extremum_with_no_integer_candidates_settles_nk() {
+        let value = first_statement_value("{r = {{x=1;}}'max_int_val;}");
+        assert_eq!(
+            value.borrow().core().get_nyes(),
+            Nyes::Nk,
+            "no integer candidates means there is no maximum"
+        );
+    }
+
     #[test]
     fn modulo_basic_semantics() {
         // 7 % 3 = 1
