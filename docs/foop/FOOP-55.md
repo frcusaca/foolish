@@ -1348,6 +1348,54 @@ that now has its requirement enforced. Tests must cover a rejected anchor for
 operator and silently does not for its siblings is worse than none, because it
 teaches a rule the language does not actually keep.
 
+#### Non-equable candidates, and `NOT_EQUABLE_IS_NOT_EQUAL`
+
+`candidates_exhausted()` means "the scan **decided** every candidate and none
+matched" — not merely "the scan reached the end of the list". That raises the
+question of what a *non-decidable* candidate does, and the answer is already
+settled by an existing policy, now made explicit.
+
+**An NK candidate never arises as a scan problem.** Verified: a brane with an NK
+member goes **NK itself**, so a search over it has an NK *anchor* and the scan
+never runs. `candidates_exhausted()` is `false` and `@` propagates NK — the
+correct outcome, reached by brane-level NK propagation rather than by
+per-candidate logic.
+
+```foolish
+tbl = {p=1; q=2; bad={a=1;}?nope;}    !! tbl itself is NK
+hit = tbl~=(1)                        !! does NOT resolve — anchor is NK
+```
+
+**Non-comparable candidates are skipped, and the scan still completes.** A brane
+compared against an integer is *not equable*, and `default_equal` classifies
+that as **NotEqual** — so the matcher Rejects it and keeps scanning. Verified:
+`{p=1; q={z=9;}; r=3;}~=(3)` finds `3`, scanning past the brane member; an
+ECONSTANIC member is skipped the same way.
+
+Whether "not equable" means **not equal** or **unknowable** is a **policy, not a
+fact about the values**. §8 makes it an explicit, documented constant —
+`NOT_EQUABLE_IS_NOT_EQUAL` in `fir_kinds.rs` — so it can be made configurable
+later (per-suite, or per-search) without first having to find where the decision
+was buried.
+
+**Exactly one behaviour ships**: the flag is `true`, and the alternative branch
+documents what `false` would mean. It is deliberately a `const` rather than a
+runtime setting; adding the configuration surface is future work, and this FOOP
+only names the seam.
+
+**Flipping it is not a small change.** `rust_instructions.md` records the
+FOOP-33 incident where a three-valued `default_equal` returned Unknowable for
+brane-vs-integer, which made value searches **abort** on the first
+non-comparable candidate instead of skipping it — turning a working `mixed~=7`
+into NK and silently changing eleven baselines. The test
+`not_equable_is_classified_not_equal` pins both the policy and the resulting
+`Equality::NotEqual`.
+
+So a scan that skipped non-comparable candidates and matched nothing **is**
+exhausted: every candidate was decided, and "not equable ⇒ not equal" is what
+deciding means under the shipped policy. This mirrors §7's rule that a
+non-integer member "simply is not a candidate" for a fold.
+
 #### The pattern-matching idiom
 
 ```foolish

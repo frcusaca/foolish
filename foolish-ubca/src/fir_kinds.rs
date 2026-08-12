@@ -618,6 +618,32 @@ pub enum Equality {
     Unknowable,
 }
 
+/// How a comparison between two **non-equable** values is classified.
+///
+/// Two constanic values of different kinds — a brane against an integer, an
+/// integer against a creation — cannot be *compared* in any meaningful sense.
+/// Two readings are defensible:
+///
+/// - **`true` (current, and the only behaviour today): "not equable" IS "not
+///   equal".** A brane is never an integer, so the answer is decidable even
+///   though the comparison is not meaningful. A value search Rejects the
+///   candidate and keeps scanning.
+/// - **`false`: "not equable" is UNKNOWABLE.** The comparison has no answer, so
+///   neither does the search.
+///
+/// This is a **policy**, not a fact about the values, and it is made explicit
+/// here so it can be made configurable later (per-suite, or per-search) without
+/// first having to find where the decision was buried. It is deliberately a
+/// `const` for now: exactly one behaviour ships, and the branch below documents
+/// what the alternative would mean.
+///
+/// **Do not flip this to `false` casually.** `rust_instructions.md` records the
+/// FOOP-33 incident where a three-valued `default_equal` returned Unknowable
+/// for brane-vs-integer, which made value searches **abort** on the first
+/// non-comparable candidate instead of skipping it — turning a working
+/// `mixed~=7` into NK and silently changing eleven baselines.
+pub(crate) const NOT_EQUABLE_IS_NOT_EQUAL: bool = true;
+
 pub fn default_equal(a: &FirRef, b: &FirRef) -> Equality {
     let a_borrowed = a.borrow();
     let b_borrowed = b.borrow();
@@ -651,10 +677,19 @@ pub fn default_equal(a: &FirRef, b: &FirRef) -> Equality {
     if a_borrowed.kind() == FirKind::Brane && b_borrowed.kind() == FirKind::Brane {
         return Equality::Unknowable;
     }
-    // Different non-NK constanic kinds (brane-vs-integer, integer-vs-creation, etc.)
-    // are provably not equal — a brane is never an integer (different FIR kinds, decidable).
-    // The matcher should Reject (skip) and continue scanning, not NkStop (abort).
-    Equality::NotEqual
+    // Different non-NK constanic kinds (brane-vs-integer, integer-vs-creation,
+    // etc.). Whether that counts as "not equal" or as "unknowable" is a
+    // POLICY, not a fact about the values — see [`NOT_EQUABLE_IS_NOT_EQUAL`].
+    if NOT_EQUABLE_IS_NOT_EQUAL {
+        // A brane is never an integer: different FIR kinds, decidable. The
+        // matcher Rejects (skips) and continues scanning, rather than NkStop
+        // (abort) — see FOOP-55 §8 and the FOOP-33 incident in
+        // rust_instructions.md, where treating this as Unknowable made value
+        // searches abort on the first non-comparable candidate.
+        Equality::NotEqual
+    } else {
+        Equality::Unknowable
+    }
 }
 
 #[derive(Debug)]
@@ -6432,6 +6467,33 @@ mod tests {
     // complement the indirect matcher-level coverage below (which exercises
     // default_equal through SearchPredicate::Value/NameValue) by pinning the
     // primitive's own three-valued outcomes without going through search.
+
+    /// FOOP-55 §8: the "not equable" policy is explicit and pinned.
+    ///
+    /// A brane against an integer cannot be meaningfully compared. Under
+    /// `NOT_EQUABLE_IS_NOT_EQUAL` (the only behaviour that ships) it is
+    /// classified **NotEqual**, so a value search Rejects the candidate and
+    /// keeps scanning rather than aborting.
+    ///
+    /// This is what stops the FOOP-33 incident recurring: returning Unknowable
+    /// here made value searches abort on the first non-comparable candidate,
+    /// turning a working `mixed~=7` into NK.
+    #[test]
+    fn not_equable_is_classified_not_equal() {
+        assert!(
+            NOT_EQUABLE_IS_NOT_EQUAL,
+            "only the not-equable-is-not-equal policy ships today; flipping \
+             this constant changes value-search scanning across the language"
+        );
+        let brane = make_brane(vec![]);
+        let int = settled_int(7);
+        assert_eq!(
+            default_equal(&brane, &int),
+            Equality::NotEqual,
+            "a brane is never an integer -- decidable, so the matcher skips \
+             the candidate and keeps scanning rather than aborting"
+        );
+    }
 
     #[test]
     fn default_equal_same_integer_value_is_equal() {
