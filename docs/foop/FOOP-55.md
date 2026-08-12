@@ -1270,6 +1270,40 @@ correctness. Note the FVM already computes this distinction and discards it: at
 — it knows there was no table to search — then sets a bare `Nyes::Nk`
 indistinguishable from a genuine miss.
 
+#### Value chases through; position does not
+
+A continuation search is **shallow syntax**: context does not survive a
+reference. This is the rule that decides what `@` reports, and it differs from
+what a *value* does.
+
+```foolish
+{b = ?hello_world; … {a = b&=10}}
+```
+The **value** chases through. `b`'s value resolves to whatever `?hello_world`
+found, so the value search compares against `10` correctly and matches when
+`hello_world` is `10`. Constanic stepping delivers a firm `value()`, and a value
+is a thing that can be carried anywhere.
+
+```foolish
+{b = ?hello_world; … {a = b@+1}}
+```
+The **position** does not. `@` reports **`b`'s own position**, not
+`?hello_world`'s. `{a = b@+1}` asks "what comes after `b`, *here*?" — answering
+with `?hello_world`'s neighbour would answer a question nobody asked, about a
+brane the reader is not looking at.
+
+The asymmetry is principled: a value is context-free, a position is meaningful
+only relative to one specific brane. Following the chain would silently change
+which brane the answer is about.
+
+This is also *why* continuations are checked at construction time (below): the
+syntax is shallow by design, so "is my anchor a search?" is a fact about the
+source text, knowable without evaluating anything.
+
+**All continuations check at construction time** — not only `@`. `&?`, `&~`,
+`&#`, `&=`, `&^`, `&$` and `@` alike require their anchor to be a search, and
+that requirement is verified while the FIR tree is built from the AST.
+
 #### The pattern-matching idiom
 
 ```foolish
@@ -1436,6 +1470,7 @@ step 4); no promotion over any foreign FOOP's baseline
 | `nest_case2_double_link.foo` | §5 point 2 — `{A=<<a>>; B=<< <<A>> >>; C=<<B>>; r=C}` defers one extra hop. **Prediction, not verified**; if the implementation disagrees, amend §5 to match and record why. |
 | `nest_case2_mixed.foo` | §5 point 3 — a link whose body is syntactically nested (`B = << 1 + <<A>> >>`) spends one strip on that term's outer mark. Also a prediction. |
 | `nest_chain_that_hits.foo` | The untested path: a chain that **finds** something and carries a value back through each hop, rather than missing. |
+| `continuation_value_vs_position.foo` | §8's asymmetry, both halves in one case: `{b = ?hello_world; … {a = b&=10}}` MATCHES when `hello_world` is 10 (value chases through), while `{a = b@+1}` reports **`b`'s own** position, not `?hello_world`'s (position does not). |
 
 Each is reviewed statement by statement through the Promotion Review Gate
 (`foop.md`) before promotion.
