@@ -60,6 +60,12 @@ pub enum FirKind {
     /// A `system.foo` boolean OR operator (`'or`). Two SFF-marked operand
     /// lookups, boolean logic on `'True`/`'False` creations. FOOP-55 §2.
     Or,
+    /// A `system.foo` order-statistic operator (`'min_int_val`,
+    /// `'max_int_val`). Unlike the operators above it takes **no fixed
+    /// operands**: declared as a BRANE wrapping the FIR, it is spliced into a
+    /// concatenation and folds the integers preceding it, selecting by index
+    /// into their ascending sort. FOOP-55 §7.
+    Extremum,
 }
 
 /// Minimal Scope stub — enough for compilation. The real Scope comes later
@@ -349,6 +355,12 @@ pub trait Fir: std::fmt::Debug {
     // ── Capability methods (FOOP-13 A2) ──
 
     /// Number of statements this FIR presents as a brane. `None` = not brane-like.
+    /// An `Extremum` FIR's sort index and `system.foo` name (FOOP-55 §7).
+    /// `None` for every other kind.
+    fn as_extremum_config(&self) -> Option<(i64, &'static str)> {
+        None
+    }
+
     fn stmt_count(&self) -> Option<usize> {
         None
     }

@@ -703,6 +703,255 @@ fn operand_is_unevaluated_here(operand: &FirRef) -> bool {
         .is_some_and(|inner| inner.borrow().core().get_nyes() == Nyes::Econstanic)
 }
 
+/// `'min_int_val` / `'max_int_val` — order-statistic selection (FOOP-55 §7).
+///
+/// **Takes no fixed operands.** `'or`, `'mod` and the comparisons read
+/// `<<#-2>>`/`<<#-1>>` — a fixed arity at fixed offsets. An order statistic has
+/// no arity: declared as a BRANE wrapping this FIR (`'max_int_val =
+/// {ExtremumFir}`), it is spliced into a concatenation and folds whatever
+/// integers precede it.
+///
+/// ```foolish
+/// r = {-1, -2, 0}'max_int_val;    !! 0   (index -1 of [-2, -1, 0])
+/// r = {-1, -2, 0}'min_int_val;    !! -2  (index 0)
+/// ```
+///
+/// Candidates are sorted **ascending**, then `index` selects — 0-based from the
+/// front, negatives from the end, the same convention `#` uses for source
+/// order. `'min_int_val` is index `0`; `'max_int_val` is index `-1`. The
+/// parameterization leaves "third largest" available without a new FIR kind.
+///
+/// The brane wrapper also makes `1 + 'max_int_val` a **type error** rather than
+/// a runtime check: the name resolves to a brane, and `+` on a brane already
+/// fails.
+#[derive(Debug)]
+pub struct ExtremumFir {
+    core: ProtoBrane,
+    self_weak: Weak<RefCell<dyn Fir>>,
+    /// Index into the ascending sort. Negative counts from the end.
+    index: i64,
+    /// The `system.foo` name this instance answers to, for NK reasons.
+    name: &'static str,
+}
+
+impl ExtremumFir {
+    /// The two aliases `system.foo` declares, as (name, sort index).
+    /// The two aliases `system.foo` declares, as (searchable name, sort index).
+    ///
+    /// The names carry **U+02CD** (modifier letter low line), not ASCII `_`:
+    /// the lexer canonicalizes every identifier underscore to that separator
+    /// (`foolish-parser/src/lexer.rs`'s `SEP`), so a Rust-side comparison
+    /// against a Foolish name must use the canonical form. These are the first
+    /// system operators whose names contain an underscore at all — `'lt`,
+    /// `'mod` and `'or` never had to care.
+    pub(crate) const ALIASES: [(&'static str, i64); 2] = [
+        ("'min\u{02CD}int\u{02CD}val", 0),
+        ("'max\u{02CD}int\u{02CD}val", -1),
+    ];
+
+    fn extremum(index: i64, name: &'static str, parent: Weak<RefCell<dyn Fir>>) -> FirRef {
+        Rc::new_cyclic(|me: &Weak<RefCell<ExtremumFir>>| {
+            let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
+            // No operands: this operator reads its container, so it has no
+            // foolish_children of its own to build or drain.
+            let core = ProtoBrane::new(vec![], parent, Nyes::Prembrionic);
+            RefCell::new(ExtremumFir {
+                core,
+                self_weak,
+                index,
+                name,
+            })
+        })
+    }
+
+    pub(crate) fn constanic_clone(
+        source: &std::cell::Ref<'_, dyn Fir>,
+        new_parent: &Weak<RefCell<dyn Fir>>,
+        nyes: Nyes,
+        descendent_of_sfm_and_foolishly_ignorant: bool,
+        skip_foolish_children: bool,
+        index: i64,
+        name: &'static str,
+    ) -> FirRef {
+        Rc::new_cyclic(|me: &Weak<RefCell<ExtremumFir>>| {
+            let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
+            let core = ProtoBrane::clone_children_for_constanic_clone(
+                source.core(),
+                &self_weak,
+                new_parent,
+                nyes,
+                descendent_of_sfm_and_foolishly_ignorant,
+                skip_foolish_children,
+            );
+            RefCell::new(ExtremumFir {
+                core,
+                self_weak,
+                index,
+                name,
+            })
+        })
+    }
+
+    /// This instance's sort index, for `constanic_clone`.
+    pub(crate) fn index(&self) -> i64 {
+        self.index
+    }
+
+    /// This instance's `system.foo` name, for `constanic_clone`.
+    pub(crate) fn name(&self) -> &'static str {
+        self.name
+    }
+
+    fn settle_nk(&self, reason: &str, scope: &Scope) {
+        let nk_ref = crate::fir_kinds::NkFir::nk(reason, self.core.parent_weak());
+        nk_ref.borrow().core().set_nyes(Nyes::Nk);
+        self.core.push_ubc_child(ProtoBrane::constanic_clone_at(
+            &nk_ref,
+            &self.core.parent_weak(),
+            0,
+            scope.has_ancestral_sfm,
+            false,
+        ));
+        self.core.set_alarm_reason(reason.to_owned());
+        self.core.set_nyes(Nyes::Nk);
+    }
+
+    /// Collect the integers preceding this FIR in its container, sort them
+    /// ascending, and select by `index`.
+    fn combine(&self, scope: &Scope) -> Result<(), UbcError> {
+        let Some(self_ref) = self.self_weak.upgrade() else {
+            return Ok(());
+        };
+        let Some(container) = self_ref.borrow().core().parent() else {
+            // No container yet — this is the state inside system.foo itself.
+            // ECONSTANIC, never NK: NK is terminal and would poison the
+            // definition so the operator could never be used anywhere.
+            self.core.set_nyes(Nyes::Econstanic);
+            return Ok(());
+        };
+
+        // Read through stmt_count/stmt_at, NEVER foolish_children: inside a
+        // ConcatBrane the children are _ConcatHelpers rather than statements,
+        // and only these accessors do the offset arithmetic that makes
+        // FOOP-13's Equivalence Law hold.
+        let count = container.borrow().stmt_count().unwrap_or(0);
+        let mut candidates: Vec<i64> = Vec::new();
+        for i in 0..count {
+            let Some(stmt) = container.borrow().stmt_at(i) else {
+                continue;
+            };
+            if Rc::ptr_eq(&stmt, &self_ref) {
+                // Reached ourselves: only what PRECEDES us is a candidate.
+                break;
+            }
+            // A member that has not settled could still change the answer.
+            // Defer rather than fold a partial scan.
+            if !stmt.borrow().core().get_nyes().is_constanic() {
+                self.core.set_nyes(Nyes::Econstanic);
+                return Ok(());
+            }
+            // Not an integer -- skipped, not fatal. A fold has no fixed arity,
+            // so a non-integer member simply is not a candidate.
+            if let Some(n) = stmt.value().borrow().as_i64() {
+                candidates.push(n);
+            }
+        }
+
+        if candidates.is_empty() {
+            self.settle_nk(&format!("{}: no integer operands", self.name), scope);
+            return Ok(());
+        }
+        candidates.sort_unstable();
+
+        // 0-based from the front, negatives from the end -- the same rule `#`
+        // uses. No wraparound: out of range is NK.
+        let len = candidates.len() as i64;
+        let resolved = if self.index < 0 {
+            self.index + len
+        } else {
+            self.index
+        };
+        let Some(&picked) = usize::try_from(resolved)
+            .ok()
+            .and_then(|i| candidates.get(i))
+        else {
+            self.settle_nk(
+                &format!("{}: index {} of {len} candidates", self.name, self.index),
+                scope,
+            );
+            return Ok(());
+        };
+
+        // The result depends on nothing outside itself: INDEPENDENT, not merely
+        // CONSTANT.
+        let out = crate::fir_kinds::IndepIntFir::constant_int(picked, self.core.parent_weak());
+        out.borrow().core().set_nyes(Nyes::Independent);
+        self.core.push_ubc_child(out);
+        self.core.set_nyes(Nyes::Independent);
+        Ok(())
+    }
+}
+
+impl Fir for ExtremumFir {
+    #[inline(always)]
+    fn core(&self) -> &ProtoBrane {
+        &self.core
+    }
+
+    fn kind(&self) -> FirKind {
+        FirKind::Extremum
+    }
+
+    fn as_op_name(&self) -> Option<&str> {
+        Some(self.name)
+    }
+
+    fn as_extremum_config(&self) -> Option<(i64, &'static str)> {
+        Some((self.index, self.name))
+    }
+
+    fn fir_op_step(&self, scope: &Scope) -> Result<(), UbcError> {
+        match self.core.get_nyes() {
+            Nyes::Prembrionic | Nyes::Embryonic => {
+                // Nothing to enqueue: the candidates are the container's
+                // members, stepped by the container's own queue. `combine`
+                // defers while any of them is pre-constanic.
+                self.core.set_nyes(Nyes::Braning);
+                Ok(())
+            }
+            Nyes::Braning => self.combine(scope),
+            _ => Ok(()),
+        }
+    }
+}
+
+/// Wrap a FIR in a brane whose single member it is (FOOP-55 §7).
+///
+/// The wrapper is what makes a computing postfix operator **concatenable**:
+/// `{1,2,3}'max_int_val` flattens to `{1, 2, 3, <the FIR>}`, so the operator
+/// arrives as a member with its candidates before it. A bare FIR body does not
+/// concatenate at all — `{1,2,3} 'or` degenerates to a search, because `'or`'s
+/// body is an `OrFir` rather than a brane.
+///
+/// It also makes `1 + 'name` a **type error** instead of a runtime check: the
+/// name resolves to a brane, and `+` on a brane already fails.
+///
+/// `build` receives the brane's own weak handle, so the FIR's parent is the
+/// wrapper — which is how it later finds its container and its own position.
+fn wrap_in_brane<F>(build: F, parent: &Weak<RefCell<dyn Fir>>) -> FirRef
+where
+    F: FnOnce(Weak<RefCell<dyn Fir>>) -> FirRef,
+{
+    Rc::new_cyclic(|me: &Weak<RefCell<crate::fir_kinds::BraneFir>>| {
+        let me_dyn: Weak<RefCell<dyn Fir>> = me.clone();
+        let inner = build(me_dyn);
+        RefCell::new(crate::fir_kinds::BraneFir {
+            core: ProtoBrane::new(vec![inner], parent.clone(), Nyes::Prembrionic),
+            characterizations: Default::default(),
+        })
+    })
+}
+
 /// Compile one operand fragment directly beneath `parent`.
 ///
 /// `OPERAND_SRC` is fixed, valid Foolish compiled in by this crate — a parse
@@ -736,6 +985,18 @@ fn system_body(
     }
     if name == "'or" {
         return Some(OrFir::or(stmt_weak.clone()));
+    }
+    // FOOP-55 §7: the body is a BRANE WRAPPING the FIR, not the FIR itself.
+    // That is what lets concatenation splice the operator in beside its
+    // candidates -- and what makes `1 + 'max_int_val` a type error rather than
+    // a runtime check, since the name resolves to a brane.
+    for (alias, index) in ExtremumFir::ALIASES {
+        if name == alias {
+            return Some(wrap_in_brane(
+                |parent| ExtremumFir::extremum(index, alias, parent),
+                stmt_weak,
+            ));
+        }
     }
     None
 }

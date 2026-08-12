@@ -538,6 +538,12 @@ impl Parser {
             Token::LBrace
             | Token::LParen
             | Token::Ident(_)
+            // A null-characterized name continues a concatenation exactly as a
+            // plain one does, so `{a, b}'op` juxtaposes (FOOP-55 §7). Without
+            // this the `'` started a NEW statement, and `{1,2} 'or` silently
+            // became two statements rather than an application — the same
+            // parse gap that made `{a,b,c}'cmod` unwritable.
+            | Token::Apostrophe
             | Token::Up
             | Token::LtLt
             | Token::Lt => {

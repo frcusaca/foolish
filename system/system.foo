@@ -8,4 +8,6 @@
 	'eq    = ⬤    !! equality: <<#-2>> == <<#-1>>
 	'mod   = ⬤    !! modulo: <<#-2>> % <<#-1>>
 	'or    = ⬤    !! boolean OR: <<#-2>> || <<#-1>>
+	'min_int_val = ⬤    !! smallest integer among the preceding members (FOOP-55 §7)
+	'max_int_val = ⬤    !! largest integer among the preceding members (FOOP-55 §7)
 }
