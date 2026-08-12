@@ -996,6 +996,14 @@ literal checkbox
 > `- [ ] Run all tests — old and new — and make sure they all pass correctly.`
 
 at the end of every phase; a phase is not done until that box is checked.
+**Within a phase, run the sub-section's subset frequently.** Every plan sub-section (and every
+undivided phase) starts with an "Establish relevant tests" checkbox naming its SMALL test
+subset — the old unit tests and einmo cases the work must not break, plus the new tests as
+they are written. During development, run that subset after each increment and analyze the
+results before moving on; when the sub-section completes, run the full pair above even if the
+phase boundary comes later. The command forms for selecting specific unit tests and einmo
+cases live in `README.md` §"Running specific tests" (the central reference); the discipline
+lives in `foop.md` §"Sub-Section Test Subsets".
 
 **Promote rules (hard):**
 
@@ -1088,26 +1096,16 @@ AI-generated code is human-verified before submission. *(c23, c24)*
 
 ## Last Updated
 
-**Date**: 2026-08-09
-**Updated By**: Claude Code / claude-opus-5
-**Changes**: Added **promote rule 0** to §"Phase-by-phase testing discipline": only promote a
-case you have read statement by statement — ownership of the test makes promotion permissible,
-never justified; "the evaluator emitted this" is the thing being checked, not a reason to freeze
-it; if any case fails review, promote none. Rule 1 previously licensed blind promotion inside
-your own `foop/<N>/` directory, which is the gap this closes. Points at the new **Promotion
-Review Gate** in `foop.md` (one named review sub-task per case), also installed into both FOOP
-skills and AGENTS.md §"The agent is responsible for correctness". Earlier: added §"Phase-by-phase
-testing discipline (einmo)" under Testing — the
-non-regression invariant (a FOOP under development must not change the OUTPUT of any other
-FOOP's einmo tests), the three-stage contract (`output` throwaway / `checked` frozen expected
-/ `verified` human-attested, frozen-if-twin-exists), the "a failing einmo test is broken code,
-not a stale baseline" rule, the per-phase `einmo_gate_checked`+`cargo test --workspace` gate
-(non-zero ⇒ phase not complete), the four hard promote rules, and a "Why this exists" note
-documenting the FOOP-33 Phase-3 `default_equal` regression that motivated it (value search
-`mixed~=7` aborted on a brane candidate via `Unknowable→NkStop` instead of skipping it; the
-agent promoted 11 FOOP-23 baselines to convert the failure into a false green). Cross-linked
-from AGENTS.md §"Non-regression invariant" and the `foop-write-plan` skill's per-phase
-checkbox + safety invariant 8.
+**Date**: 2026-08-12
+**Updated By**: Sisyphus / oqwen/qwen/qwen3.8-max
+**Changes**: Added the **within-phase sub-section subset paragraph** to §"Phase-by-phase
+testing discipline": every plan sub-section starts with an "Establish relevant tests"
+checkbox naming its small test subset (old unit tests + einmo cases the work must not break,
+plus new tests as written); the subset runs frequently during development, the full
+`einmo_gate_checked` + `cargo test --workspace` pair runs when the sub-section completes —
+not only at the phase boundary. Command forms for selecting specific unit tests and einmo
+cases are centralized in `README.md` §"Running specific tests"; the discipline is defined in
+`foop.md` §"Sub-Section Test Subsets" (both FOOP skills carry the matching rule/invariant).
 
 This log keeps only the single newest entry — see `git log rust_instructions.md` for full
 history.

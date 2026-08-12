@@ -96,6 +96,13 @@ authoritative reference; if a skill and `foop.md` appear to disagree,
 - **Finding, executing, backburnering, cancelling, merging, or cleaning up a
   FOOP** → load the `foop-use-maintain` skill.
 
+Plans install, at the start of every sub-section (and every undivided phase), an **"Establish
+relevant tests" checkbox** naming that sub-section's small test subset — the old unit tests and
+einmo cases its work must not break, plus new tests as they are written — with a link to
+`README.md` §"Running specific tests", the CENTRAL reference for running one test or a subset.
+The subset runs frequently during development; all tests run when the sub-section completes
+(see `foop.md` §"Sub-Section Test Subsets").
+
 ### Crates of Foolish and Other Notable Sources
 
 Here is a maintained list of current top level crates:
@@ -318,7 +325,11 @@ Binary after release: `target/release/foolish`
 cargo test --workspace                           # All unit tests
 cargo test -p foolish-core                       # One crate
 cargo test -p foolish-core -- brane_search       # Specific test (substring match)
+cargo test -p foolish-core -- foo bar            # Batch: a test matching ANY filter runs
 ```
+
+See `README.md` §"Running specific tests" — the central reference for running ONE test or a
+SUBSET (unit-test name filters, `--exact`, einmo case selection).
 
 ### Approval Tests (einmo)
 
@@ -335,12 +346,9 @@ are Ed25519, derived from a passphrase via Argon2id.
 cargo test -p foolish-ubca --lib -- einmo_gate_checked    # run the full einmo suite
 cargo test -p foolish-core --lib -- approval_all       # foolish-core approval suite
 
-# Evaluate inputs to produce output files (single file or all):
-einmo evaluate foolish-ubca/einmo_suite \
-    --command "cat" \
-    --filter "foop/23/name_value_atomic"                # single file
-einmo evaluate foolish-ubca/einmo_suite \
-    --command "cat"                                     # all files
+# Evaluate specific inputs (subset runs): see README.md §"Running specific tests"
+# for the verified evaluator command and the --filter / compare / list forms.
+# (The command forms live ONLY in that README section — one central place.)
 
 # Review and promote:
 einmo compare output checked foolish-ubca/einmo_suite   # see what changed
@@ -799,16 +807,15 @@ When proposing updates, explain what has changed and why the documentation needs
 
 ## Last Updated
 
-**Date**: 2026-08-09
-**Updated By**: Claude Code / claude-sonnet-5
-**Changes**: Added an `ast-grep` row to the §Skills table (structural AST search/rewrite via
-the `ast_grep_engine` tool; prefer running it via a sub-agent) and a `bundle_repo_ctx` blurb
-under §Development tools (bundles one workspace crate's file tree + source + Git status; call
-with no `crate` arg to list crates). Earlier: added **"Crates of Foolish"** subsection under
-§Development Organization: a maintained bulleted list of current top-level crates
-(`foolish-core`, `foolish-parser`, `foolish-ubca`, `foolish-cli`, `einmo`, `zweimomo`) with a
-one-sentence blurb each. This log keeps only the single newest entry per the Markdown File
-Update Protocol; prior substance remains in git history and in the sections it describes.
+**Date**: 2026-08-12
+**Updated By**: Sisyphus / oqwen/qwen/qwen3.8-max
+**Changes**: Pointed the §Build Commands test sections at the new CENTRAL reference —
+`README.md` §"Running specific tests" (running one test or a subset: unit-test name filters,
+batch filters, `--exact`, and einmo case selection via the einmo CLI). Removed the broken
+`einmo evaluate --command "cat"` examples (cat echoes INPUT as OUTPUT — never a real
+evaluation; the working `foolish-cli run /dev/stdin | head -c -1` form lives in the README
+section) and added the batch-filter example to §Unit Tests. Noted in §FOOP the per-sub-section
+"Establish relevant tests" checkbox discipline (`foop.md` §"Sub-Section Test Subsets").
 
 ### MISC
 

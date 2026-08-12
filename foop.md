@@ -141,6 +141,9 @@ ordered list of checkbox tasks. Build the plan so that:
   file as the plan is being created.
 - Once work begins on a foop, all updates, including to the foop folder
   *MUST* be written *ONLY* to the worktree. This continues until merge time.
+- Every sub-section (and every phase that is not subdivided) STARTS with the
+  "Establish relevant tests" checkbox naming that sub-section's test subset
+  (see "Sub-Section Test Subsets" below).
 
 ### Checkbox Format
 
@@ -305,6 +308,37 @@ to the stated plan.
 When asking human questions, always remind them: "Above message comes from FOOP-<NUMBER>
 working to...briefe description...; the worktree is at ${WORKTREE_FULL_FS_PATH}. PTAL"
 
+### Sub-Section Test Subsets (frequent-run discipline)
+
+Every sub-section of the plan — and every phase that is not subdivided — **starts** with one
+checkbox that establishes the SMALL set of tests relevant to that sub-section: the old unit
+tests and einmo cases its work must not break, plus the new tests written for it. The checkbox
+names the cases and links to the central test-running documentation; the planner fills in REAL
+case names (expand every placeholder, same rule as worktree variables):
+
+```markdown
+- [ ] Establish relevant tests for this sub-section. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests: <case_1>, foop/<NUMBER>/<case_2>, <case_3>; run unit tests: <crate>::<test_a>, <crate>::<test_b>.
+```
+
+The list is alive: as the sub-section writes new tests, each one is added to its checkbox's
+list.
+
+**During development** the implementer runs this subset frequently — after each feature
+increment and each time a new test lands — and analyzes the results before moving on. **When
+the sub-section is complete**, ALL tests run (`cargo test --workspace` and
+`cargo test -p foolish-ubca --lib -- einmo_gate_checked`) — do not wait for the phase boundary
+if the sub-section ends earlier.
+
+**Run tests through subagents whenever the environment provides them.** Parallel subagent test
+runs are the agent equivalent of a human opening several terminals: launch the unit subset and
+the einmo subset (and independent filter batches) as separate subagent tasks, keep
+implementing, and collect the results. Do not serialize long test runs behind typing when a
+subagent could be running them.
+
+The command forms live ONLY in `README.md` §"Running specific tests" — the plan names CASES,
+the central document owns the COMMANDS. When the einmo CLI evolves, only that README section
+changes; existing plans keep working because they reference cases by name.
+
 ---
 
 ## Comprehensive FOOP Tests
@@ -414,26 +448,16 @@ prohibition live in `rust_instructions.md` §"Phase-by-phase testing discipline.
 
 ## Last Updated
 
-**Date**: 2026-08-09
-**Updated By**: Claude Code (Opus 5)
-**Changes**: Added the **Promotion Review Gate (`output` → `checked`)** section: promotion is a
-correctness claim, not bookkeeping; being your own FOOP's test makes it permissible, not
-justified; a plan must never contain a bare one-line promote task but instead the full checkbox
-block with **one named sub-task per einmo case**; and the criteria for "every OUTPUT statement
-justified" (statement-by-statement reading, "the evaluator emitted this" is not a justification,
-skepticism toward NK, statement names as specification, coherence with sibling features, step
-counts and alarms). If any case fails review, promote none. Added **"Reasonable effort, and what
-to do with a doubt"**: due diligence is not exhaustive proof — concentrate effort where results
-surprise; when in doubt, record the concern and KEEP REVIEWING, then present all accumulated
-concerns in ONE statement at the end of the pass (never halt mid-review, never trickle them out).
-Uncertainty is never grounds to promote unread. Motivated by observed agent behavior
-of promoting to `checked` with zero inspection. Both FOOP skills updated to match. Earlier: the
-**branch-naming rule** — the branch is
-`foop-<NUMBER>-<short_description>`, bare with **no `foop/` prefix**, identical to
-`WORKTREE_BRANCH_NAME` and to the worktree directory's basename — one name, used everywhere in the
-plan. The worked example had been triply inconsistent (directory `constanic-clone-foop-7`, then
-`3841-foop-7`, with branch `foop/foop-7-constanic-clone`), which is what let a real defect through
-in FOOP-84's plan: its create checkbox made one branch while its merge checkbox named another that
-did not exist. Example rewritten to use one consistent name. Both FOOP skills updated to match.
+**Date**: 2026-08-12
+**Updated By**: Sisyphus / oqwen/qwen/qwen3.8-max
+**Changes**: Added **§"Sub-Section Test Subsets (frequent-run discipline)"** under Plan Files:
+every plan sub-section (and every undivided phase) STARTS with an "Establish relevant tests"
+checkbox naming the sub-section's small test subset — old unit tests and einmo cases the work
+must not break, plus new tests as they are written — and linking to the central test-running
+reference (`README.md` §"Running specific tests"). The subset runs frequently during
+development; when the sub-section completes, ALL tests run. Implementers run tests through
+subagents in parallel where available (the agent equivalent of several terminals). Plans name
+CASES; the command forms live only in the README section, so einmo CLI evolution touches one
+place. Added the matching bullet to "Constructing the Plan"; both FOOP skills updated to match.
 
 This log keeps only the single newest entry — see `git log foop.md` for full history.

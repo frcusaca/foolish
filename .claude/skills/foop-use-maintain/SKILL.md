@@ -183,6 +183,30 @@ Always remind them of context:
 
 > Above message comes from FOOP-<NUMBER> working to <brief description>; the worktree is at $(pwd)/../foolish_worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>. PTAL
 
+### Running the sub-section test subset
+
+Each sub-section (or undivided phase) starts with an **"Establish relevant tests"** checkbox
+naming the sub-section's test subset and linking to `README.md` §"Running specific tests".
+When you reach it:
+
+1. Follow the linked README section to build the run commands for the NAMED cases (unit-test
+   name filters; einmo `evaluate --filter` + `compare` for the einmo cases).
+2. Run the subset FREQUENTLY while implementing the sub-section — after each feature increment
+   and each time a new test lands — and analyze the results before moving on. Add each new
+   test to the subset's list as it is written.
+3. When the sub-section is complete, run ALL tests (`cargo test --workspace` and
+   `cargo test -p foolish-ubca --lib -- einmo_gate_checked`) — even if the phase test-gate
+   checkbox comes later.
+
+**Use subagents for test runs whenever the environment provides them** — launch the unit
+subset and the einmo subset (and independent filter batches) as parallel subagent tasks, keep
+implementing, and collect the results. This is the agent equivalent of a human opening several
+terminals; do not serialize long test runs behind typing.
+
+Older plans (pre-2026-08-12) lack the "Establish relevant tests" checkbox. When executing
+one, derive the subset yourself from the sub-section's feature and its Test Plan, and apply
+the same discipline.
+
 ---
 
 ## Task: Checkbox Lifecycle
@@ -478,15 +502,13 @@ git worktree remove $(pwd)/../foolish_worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION
 
 ## Last Updated
 
-**Date**: 2026-08-09
-**Updated By**: Claude Code / claude-opus-5
-**Changes**: Added the **Task: Promote `output` → `checked` (Promotion Review Gate)** section — the
-six-step execution procedure (green suite / no `verified` twin, enumerate cases by name, re-read
-the in-force spec, statement-by-statement review, write the justification, promote then re-verify)
-with the review criteria spelled out: "the evaluator emitted this" is never a justification,
-skepticism toward NK, statement names as specification, coherence with sibling features, step
-counts and alarms as part of the contract — plus "Reasonable effort, and what to do with a
-doubt": record concerns and keep reviewing, then report them all in ONE statement (with PTAL). Added **safety invariants 13 and 14** (never promote a
-case unread; never promote over a foreign divergent baseline) and a pointer in the merge sub-task
-key-rules list. Motivated by observed agent behavior of promoting to `checked` with zero
-inspection; the plan-side gate block lives in the `foop-write-plan` skill.
+**Date**: 2026-08-12
+**Updated By**: Sisyphus / oqwen/qwen/qwen3.8-max
+**Changes**: Added **§"Running the sub-section test subset"** under Task: Execute a FOOP Plan:
+each sub-section's "Establish relevant tests" checkbox (installed by the `foop-write-plan`
+skill per its rule 11) names the sub-section's small test subset and links to `README.md`
+§"Running specific tests"; the implementer builds the commands from that central reference,
+runs the subset frequently during the sub-section, runs ALL tests when the sub-section
+completes, and runs tests through parallel subagents where available (the agent equivalent of
+several terminals). Includes the fallback for pre-2026-08-12 plans that lack the checkbox.
+Mirrors the new §"Sub-Section Test Subsets" in `foop.md`.
