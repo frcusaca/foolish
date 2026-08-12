@@ -1222,6 +1222,48 @@ dependency**.
 nothing. The `-1` is not a sentinel smuggled into the value domain — it is what
 makes a default branch fall out of arithmetic.
 
+#### Distinguishing "found nothing" from "there was nothing to search"
+
+There is **no official way to pass a failed search** today: a value search
+settles **NK** both when it completed and matched nothing, and when its *anchor*
+was itself NK. `@` is the first consumer that needs those apart — the first
+should yield `-1` and fall through to the default row; the second has no answer
+at all.
+
+The two are already **structurally distinguishable**, in the anchor rather than
+in the search:
+
+```foolish
+!! (1) real table, nothing matched
+tbl = {key=1; key=2;}
+miss = tbl~key=(99)
+   => =(anchor={key=1; key=2}, value=99, pattern='key', NK)
+        anchor is a settled brane -- the search RAN
+
+!! (2) the anchor itself is NK
+bad  = {a=1;}?nonexistent          !! ANCHORED miss => NK
+miss = bad~key=(1)
+   => =(anchor=?(..., ANCHORED, NK), ..., NK)
+        anchor is NK -- there was no table
+```
+
+So `@` reads **its anchor's** state, not the search's:
+
+| Anchor | `@` |
+|--------|-----|
+| constanic and not NK, search matched | the found index |
+| constanic and not NK, search matched nothing | **`-1`** |
+| **NK** | **NK** — "where in nothing?" has no answer |
+| pre-constanic | not settled yet; `@` waits |
+
+This is the same dependency rule stated above, not an extra one: `@`'s single
+dependency is its anchor, so the anchor's state determining `@`'s outcome is
+exactly what "one dependency" means.
+
+The lossiness at the search level is left as-is — this FOOP does not add a state
+to distinguish the two NKs, because `@` can already tell them apart by looking
+where the information actually lives.
+
 #### The pattern-matching idiom
 
 ```foolish
