@@ -5070,6 +5070,30 @@ mod tests {
     }
 
     /// Read a named top-level statement's settled integer value.
+    /// Find a named statement anywhere in a composed tree.
+    #[cfg(test)]
+    fn named_stmt(root: &FirRef, name: &str) -> Option<FirRef> {
+        fn walk(n: &FirRef, name: &str, d: usize) -> Option<FirRef> {
+            if d > 8 {
+                return None;
+            }
+            if n.borrow()
+                .as_stmt_searchable_name()
+                .is_some_and(|s| s == name)
+                && !n.borrow().core().foolish_children().is_empty()
+            {
+                return Some(Rc::clone(n));
+            }
+            for c in n.borrow().core().foolish_children().to_vec() {
+                if let Some(f) = walk(&c, name, d + 1) {
+                    return Some(f);
+                }
+            }
+            None
+        }
+        walk(root, name, 0)
+    }
+
     #[cfg(test)]
     fn named_i64(root: &FirRef, name: &str) -> Option<i64> {
         // Recursive: compose_program_with_system wraps the user program, so
@@ -5101,6 +5125,51 @@ mod tests {
             None
         }
         walk(root, name, 0)
+    }
+
+    /// FOOP-55 §8, 3E.1: a continuation's anchor must BE a search.
+    ///
+    /// A continuation navigates *from a position*, and only a search produces
+    /// one. `{a=1}&#1` asks "one past where that landed" of something that
+    /// never landed anywhere — there is no position to continue from, so the
+    /// answer is **NK**: an unanswerable question, not a refusal to run.
+    ///
+    /// Two operators are absent on purpose. `&^` and `&$` are consumed by the
+    /// FOOP-75 attached-search sugar (`r = X&^` parses as `r =^ X`) before they
+    /// can be read as continuations, so a malformed one cannot be written that
+    /// way. And there is no bare `&=`: the value continuations are `&?=` and
+    /// `&~=` ("expected search operator after &").
+    #[test]
+    fn continuation_on_a_non_search_anchor_is_nk() {
+        for src in [
+            "{r = {a=1}&#1;}",
+            "{r = {a=1}&?x;}",
+            "{r = {a=1}&~x;}",
+            "{r = {a=1}&?=1;}",
+            "{r = {a=1}&~=1;}",
+        ] {
+            let root = settle_composed(src);
+            let r = named_stmt(&root, "r").expect("statement r");
+            let body = r.borrow().core().foolish_children()[0].clone();
+            assert_eq!(
+                body.value().borrow().core().get_nyes(),
+                Nyes::Nk,
+                "a continuation whose anchor is not a search has no position to \
+                 continue from, so it settles NK: {src}"
+            );
+        }
+    }
+
+    /// The control: a continuation on a REAL search anchor resolves normally.
+    /// If this breaks, the check above is rejecting well-formed programs.
+    #[test]
+    fn continuation_on_a_search_anchor_resolves() {
+        let root = settle_composed("{tbl = {a=1; b=2; c=3;}; r = (tbl?b) &#1;}");
+        assert_eq!(
+            named_i64(&root, "r"),
+            Some(3),
+            "(tbl?b)&#1 navigates one past the found b, to c=3"
+        );
     }
 
     /// FOOP-55 §6: unanchored FORWARD search `~name`.

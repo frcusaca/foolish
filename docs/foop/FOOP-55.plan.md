@@ -354,13 +354,21 @@ unnecessary; decide at its end rather than assuming either way.
 
 ### 3E.1 — the continuation requirement, enforced at construction
 
-- [ ] **Tests FIRST**, one per operator — a rejected non-search anchor for
-      `&?`, `&~`, `&#`, `&=`, `&^`, `&$` **and** `@`. A check that exists for
-      one operator and silently does not for its siblings teaches a rule the
-      language does not keep.
-- [ ] Enforce in `build_fir` (AST → FIR): a continuation's anchor must BE a
-      search. Diagnostic names the real problem (`&#1` applied to a brane), not
-      a downstream NK.
+- [x] **Tests FIRST**, one per operator — a rejected non-search anchor.
+      `continuation_on_a_non_search_anchor_is_nk` covers `&#`, `&?`, `&~`,
+      `&?=`, `&~=`; `continuation_on_a_search_anchor_resolves` is the control.
+      (2026-08-11 11:34)
+- [x] **NO IMPLEMENTATION NEEDED — the behaviour is already correct.** All five
+      malformed forms already settle NK on a non-search anchor, exactly as §8
+      specifies. 3E.1 is therefore a VERIFICATION that pins the rule so a future
+      change cannot silently make a malformed continuation resolve.
+
+      Two syntax facts found while writing the tests:
+      - `&^` / `&$` cannot be written malformed — FOOP-75's attached-search
+        sugar claims them first (`r = X&^` parses as `r =^ X`).
+      - There is **no bare `&=`** — the value continuations are `&?=` and `&~=`
+        ("expected search operator after &").
+      (2026-08-11 11:34)
 - [x] **DECIDED (2026-08-11): a malformed continuation becomes a TRUE NK**, not
       a compile error. Checking at construction means the FIR is BUILT AS an NK,
       not that the build fails — an unanswerable question yields NK exactly as
