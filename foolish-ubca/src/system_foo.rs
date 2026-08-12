@@ -792,16 +792,6 @@ impl ExtremumFir {
         })
     }
 
-    /// This instance's sort index, for `constanic_clone`.
-    pub(crate) fn index(&self) -> i64 {
-        self.index
-    }
-
-    /// This instance's `system.foo` name, for `constanic_clone`.
-    pub(crate) fn name(&self) -> &'static str {
-        self.name
-    }
-
     fn settle_nk(&self, reason: &str, scope: &Scope) {
         let nk_ref = crate::fir_kinds::NkFir::nk(reason, self.core.parent_weak());
         nk_ref.borrow().core().set_nyes(Nyes::Nk);
