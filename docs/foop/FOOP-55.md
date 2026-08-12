@@ -1372,8 +1372,19 @@ that as **NotEqual** — so the matcher Rejects it and keeps scanning. Verified:
 `{p=1; q={z=9;}; r=3;}~=(3)` finds `3`, scanning past the brane member; an
 ECONSTANIC member is skipped the same way.
 
-Whether "not equable" means **not equal** or **unknowable** is a **policy, not a
-fact about the values**. §8 makes it an explicit, documented constant —
+**Terminology: Not Mutually Identifiable.** "Comparison" overstates what this
+primitive does — it does not order or measure, it asks whether two entities bear
+the **same identity** (which is why two creations are equal exactly when they
+are the same object). The formal term for a pair of kinds that can never bear
+the same identity — a number and a brane, a vector and a matrix — is **Not
+Mutually Identifiable**, defined in FOOP-33 §2. It is *decided*, not undecided:
+a number is never a brane. That is exactly why it classifies as `NotEqual` and
+not `Unknowable`, and calling it "incomparable" invites the opposite reading —
+the reading that produced the FOOP-33 Phase-3 defect. The constant's name
+predates the term and should be read as "not *identifiable* is not equal".
+
+Whether "not identifiable" means **not equal** or **unknowable** is a **policy,
+not a fact about the values**. §8 makes it an explicit, documented constant —
 `NOT_EQUABLE_IS_NOT_EQUAL` in `fir_kinds.rs` — so it can be made configurable
 later (per-suite, or per-search) without first having to find where the decision
 was buried.

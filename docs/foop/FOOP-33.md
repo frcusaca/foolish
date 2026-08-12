@@ -194,6 +194,37 @@ Its rules, for two constanic FIRs `a` and `b`:
    - **Either operand `NK`**, or **two branes** (brane-vs-brane equivalence unspecified,
      FOOP-23) → **`Unknowable`**. Here "unknowable" is honest.
 
+#### Terminology: **Not Mutually Identifiable** (added 2026-08-11, FOOP-55 §8)
+
+The word *comparison* implies more operations than this primitive performs. Foolish's default
+equality does not order, measure, or coerce — it asks whether two entities bear **the same
+identity**. Rule 3 above is the clearest statement of that: two creations are equal exactly
+when they are the same object.
+
+So the sub-case in rule 4 needs a name that says what is actually true of it:
+
+> **Not Mutually Identifiable** (shorthand: **not identifiable**) — the relation between two
+> entities of kinds that can never bear the same identity: a number and a brane, a vector and
+> a matrix, an integer and a creation.
+
+This is **not** a failure to decide. A number and a brane are *decidably* never the same
+entity, which is precisely why rule 4's first sub-case is `NotEqual` rather than `Unknowable`.
+Calling such a pair "incomparable" invites the opposite reading — that the answer is missing —
+and that reading is what produced the FOOP-33 Phase-3 defect recorded above, where
+`Unknowable` made value searches abort on the first non-integer candidate.
+
+The distinction the vocabulary should carry:
+
+| Relation | Meaning | `Equality` |
+|----------|---------|------------|
+| **Not mutually identifiable** | different kinds; they can never be the same entity — **decided** | `NotEqual` |
+| **Unknowable** | the same *kind*, but equivalence is unspecified (two branes) or undefined (either is NK) — **undecided** | `Unknowable` |
+
+Both sub-cases of rule 4 remain exactly as specified; this names them. The implementing
+constant is `NOT_EQUABLE_IS_NOT_EQUAL` in `foolish-ubca/src/fir_kinds.rs` (FOOP-55 §8), which
+makes the choice explicit and seams it for later configuration — its name predates this
+terminology and should be read as "not *identifiable* is not equal".
+
 Equality is observed only through a **value search** (`?=` / `~=`, and their
 contexted/combined forms — FOOP-23). The value-search matcher
 (`SearchPredicate::Value` / `NameValue` in `foolish-ubca/src/fir_kinds.rs`) today compares
