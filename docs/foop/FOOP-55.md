@@ -1372,7 +1372,11 @@ that as **NotEqual** — so the matcher Rejects it and keeps scanning. Verified:
 `{p=1; q={z=9;}; r=3;}~=(3)` finds `3`, scanning past the brane member; an
 ECONSTANIC member is skipped the same way.
 
-**Terminology: Not Mutually Identifiable.** "Comparison" overstates what this
+**Terminology: Not Mutually Identifiable — a clarification to FOOP-33 §2.**
+This is vocabulary and an explicit seam, **not a behaviour change**: the default
+stays what FOOP-33 already specified. A future FOOP should restate the equality
+primitive succinctly in one place; §8 only records the clarification where the
+work happened. "Comparison" overstates what this
 primitive does — it does not order or measure, it asks whether two entities bear
 the **same identity** (which is why two creations are equal exactly when they
 are the same object). The formal term for a pair of kinds that can never bear
@@ -1380,16 +1384,16 @@ the same identity — a number and a brane, a vector and a matrix — is **Not
 Mutually Identifiable**, defined in FOOP-33 §2. It is *decided*, not undecided:
 a number is never a brane. That is exactly why it classifies as `NotEqual` and
 not `Unknowable`, and calling it "incomparable" invites the opposite reading —
-the reading that produced the FOOP-33 Phase-3 defect. The constant's name
-predates the term and should be read as "not *identifiable* is not equal".
+the reading that produced the FOOP-33 Phase-3 defect. The constant is named `NOT_MUTUALLY_IDENTIFIABLE_IS_NOT_EQUAL`.
 
-Whether "not identifiable" means **not equal** or **unknowable** is a **policy,
+Whether "not mutually identifiable" means **not equal** or **unknowable** is a **policy,
 not a fact about the values**. §8 makes it an explicit, documented constant —
-`NOT_EQUABLE_IS_NOT_EQUAL` in `fir_kinds.rs` — so it can be made configurable
+`NOT_MUTUALLY_IDENTIFIABLE_IS_NOT_EQUAL` in `fir_kinds.rs` — so it can be made configurable
 later (per-suite, or per-search) without first having to find where the decision
 was buried.
 
-**Exactly one behaviour ships**: the flag is `true`, and the alternative branch
+**The default is preserved**: the flag is `true`, which is exactly FOOP-33's
+specified behaviour, and the alternative branch
 documents what `false` would mean. It is deliberately a `const` rather than a
 runtime setting; adding the configuration surface is future work, and this FOOP
 only names the seam.
@@ -1399,7 +1403,7 @@ FOOP-33 incident where a three-valued `default_equal` returned Unknowable for
 brane-vs-integer, which made value searches **abort** on the first
 non-comparable candidate instead of skipping it — turning a working `mixed~=7`
 into NK and silently changing eleven baselines. The test
-`not_equable_is_classified_not_equal` pins both the policy and the resulting
+`not_mutually_identifiable_is_not_equal` pins both the policy and the resulting
 `Equality::NotEqual`.
 
 So a scan that skipped non-comparable candidates and matched nothing **is**

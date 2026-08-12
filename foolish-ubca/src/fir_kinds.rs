@@ -618,17 +618,17 @@ pub enum Equality {
     Unknowable,
 }
 
-/// How a comparison between two **non-equable** values is classified.
+/// How equality classifies two **not mutually identifiable** values.
 ///
 /// Two constanic values of different kinds — a brane against an integer, an
-/// integer against a creation — cannot be *compared* in any meaningful sense.
-/// Two readings are defensible:
+/// integer against a creation — can never bear the same identity (FOOP-33 §2,
+/// as clarified by FOOP-55 §8). Two readings are defensible:
 ///
-/// - **`true` (current, and the only behaviour today): "not equable" IS "not
-///   equal".** A brane is never an integer, so the answer is decidable even
+/// - **`true` (current, and the only behaviour today): "not mutually
+///   identifiable" IS "not equal".** A brane is never an integer, so the answer is decidable even
 ///   though the comparison is not meaningful. A value search Rejects the
 ///   candidate and keeps scanning.
-/// - **`false`: "not equable" is UNKNOWABLE.** The comparison has no answer, so
+/// - **`false`: "not mutually identifiable" is UNKNOWABLE.** The comparison has no answer, so
 ///   neither does the search.
 ///
 /// This is a **policy**, not a fact about the values, and it is made explicit
@@ -642,7 +642,7 @@ pub enum Equality {
 /// for brane-vs-integer, which made value searches **abort** on the first
 /// non-comparable candidate instead of skipping it — turning a working
 /// `mixed~=7` into NK and silently changing eleven baselines.
-pub(crate) const NOT_EQUABLE_IS_NOT_EQUAL: bool = true;
+pub(crate) const NOT_MUTUALLY_IDENTIFIABLE_IS_NOT_EQUAL: bool = true;
 
 pub fn default_equal(a: &FirRef, b: &FirRef) -> Equality {
     let a_borrowed = a.borrow();
@@ -679,8 +679,8 @@ pub fn default_equal(a: &FirRef, b: &FirRef) -> Equality {
     }
     // Different non-NK constanic kinds (brane-vs-integer, integer-vs-creation,
     // etc.). Whether that counts as "not equal" or as "unknowable" is a
-    // POLICY, not a fact about the values — see [`NOT_EQUABLE_IS_NOT_EQUAL`].
-    if NOT_EQUABLE_IS_NOT_EQUAL {
+    // POLICY, not a fact about the values — see [`NOT_MUTUALLY_IDENTIFIABLE_IS_NOT_EQUAL`].
+    if NOT_MUTUALLY_IDENTIFIABLE_IS_NOT_EQUAL {
         // A brane is never an integer: different FIR kinds, decidable. The
         // matcher Rejects (skips) and continues scanning, rather than NkStop
         // (abort) — see FOOP-55 §8 and the FOOP-33 incident in
@@ -6468,10 +6468,10 @@ mod tests {
     // default_equal through SearchPredicate::Value/NameValue) by pinning the
     // primitive's own three-valued outcomes without going through search.
 
-    /// FOOP-55 §8: the "not equable" policy is explicit and pinned.
+    /// FOOP-55 §8: the "not mutually identifiable" policy is explicit and pinned.
     ///
-    /// A brane against an integer cannot be meaningfully compared. Under
-    /// `NOT_EQUABLE_IS_NOT_EQUAL` (the only behaviour that ships) it is
+    /// A brane against an integer can never bear the same identity. Under
+    /// `NOT_MUTUALLY_IDENTIFIABLE_IS_NOT_EQUAL` (the only behaviour that ships) it is
     /// classified **NotEqual**, so a value search Rejects the candidate and
     /// keeps scanning rather than aborting.
     ///
@@ -6479,9 +6479,9 @@ mod tests {
     /// here made value searches abort on the first non-comparable candidate,
     /// turning a working `mixed~=7` into NK.
     #[test]
-    fn not_equable_is_classified_not_equal() {
+    fn not_mutually_identifiable_is_not_equal() {
         assert!(
-            NOT_EQUABLE_IS_NOT_EQUAL,
+            NOT_MUTUALLY_IDENTIFIABLE_IS_NOT_EQUAL,
             "only the not-equable-is-not-equal policy ships today; flipping \
              this constant changes value-search scanning across the language"
         );

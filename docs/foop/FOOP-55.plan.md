@@ -526,6 +526,15 @@ work is not lost when this plan closes.
       indices DO work (`src#-1` → last member), which makes a parallel
       "result table with a default row in the tail" idiom attractive.
 
+- [ ] **Write the equality-primitive FOOP.** FOOP-55 §8 clarifies FOOP-33 §2's
+      rule 4 in place (naming "not mutually identifiable" and seaming the choice
+      as `NOT_MUTUALLY_IDENTIFIABLE_IS_NOT_EQUAL`), but the equality primitive
+      is now described across FOOP-33 §2, FOOP-23, and FOOP-55 §8. A future FOOP
+      should **restate it succinctly in one place** — the three-valued result,
+      what identity means for each kind, the not-mutually-identifiable relation,
+      and the configuration seam. Behaviour is unchanged by that work; it is a
+      consolidation.
+
 - [ ] **Consider migrating the existing computing postfix operators to the
       brane-wrapper form** (`'name = {NameFir}`), per FOOP-55.md §7. `'mod`,
       `'or` and the comparisons use fixed SFF offsets today. The wrapper makes
