@@ -1222,43 +1222,53 @@ dependency**.
 nothing. The `-1` is not a sentinel smuggled into the value domain — it is what
 makes a default branch fall out of arithmetic.
 
-#### The search records WHY it went NK
+#### `@` is a continuation search, and searches answer for themselves
 
-There is **no official way to pass a failed search** today: a value search
-settles **NK** both when it completed and matched nothing, and when its *anchor*
-was itself NK. `@` is the first consumer that needs those apart — the first
-should yield `-1` and fall through to the default row; the second has no answer
-at all.
+Two rules replace what would otherwise be `@` re-deriving facts about its anchor.
 
-**The FVM already computes the distinction and then discards it.** At
-`fir_kinds.rs:1672` an anchored search tests `resolved.get_nyes() == Nyes::Nk`
-— it knows, right there, that there was no table to search — and sets a bare
-`Nyes::Nk` indistinguishable from the miss NK produced a few lines later.
+**1. `@` is a continuation search: its anchor must BE a search.** `x@` where `x`
+is a brane, an integer, or anything else is not a meaningful question — there is
+no search whose position could be projected. This is checked **while building
+the FIR tree from the AST**, so a malformed `@` never reaches evaluation.
 
-So §8 does not add information the FVM lacks; it **retains** information the FVM
-already derives. **A search records its NK reason as it settles**, using the
-existing `set_alarm_reason` mechanism that one value-search site already uses
-(`fir_kinds.rs:1507`, `VALUE-SEARCH-UNSUPPORTED-PATTERN`):
+Making it structural rather than a runtime guard means `@` can assume its anchor
+is a search, with no defensive branch for a case that cannot occur.
 
-| Situation | Reason recorded |
-|-----------|-----------------|
-| the search ran and matched nothing | `SEARCH-MISS` |
-| the anchor was itself NK | `SEARCH-ANCHOR-NK` |
+**2. Every search answers `is_constanic_not_found()` about itself.**
 
-`@` then reads the reason from the search it projects:
+```
+is_constanic_not_found()  ==  is_constanic() && anchor_not_nk_and_still_not_found()
+```
 
-| Search state | `@` |
-|--------------|-----|
+"I have settled, and I found nothing — and that is a real answer, not the
+consequence of having had nothing to search."
+
+This is what `@` consults. It is deliberately **universally available on every
+search**, not a special hook for `@`: the question is one any consumer might
+ask, and answering it belongs to the search (`rust_instructions.md` rule zero —
+a function reporting on an object belongs to that object). `@` special-cases
+nothing; it asks a question every search can answer.
+
+| Search | `@` |
+|--------|-----|
 | found | the found statement's index |
-| NK, reason `SEARCH-MISS` | **`-1`** — falls through to the default row |
-| NK, reason `SEARCH-ANCHOR-NK` | **NK** — "where in nothing?" has no answer |
+| `is_constanic_not_found()` | **`-1`** — falls through to the default row |
+| constanic, but its anchor was NK | **NK** — "where in nothing?" has no answer |
 | pre-constanic | not settled yet; `@` waits |
 
-Recording the reason at the moment it is known is better than having `@`
-re-derive it by inspecting the anchor: the classification lives in **one** place
-rather than being reproduced by every consumer, where the copies could drift.
-The reason is also useful on its own — an NK a Foolisher can read the cause of
-is more debuggable than a bare one.
+**Why a predicate rather than a reason string.** An earlier draft had the search
+record `SEARCH-MISS` / `SEARCH-ANCHOR-NK` via `set_alarm_reason`, and `@` match
+on the text. That is stringly-typed — a typo misclassifies silently — and it
+makes the consumer parse what the producer already knows. A predicate is
+computed from state the search holds, cannot be mistyped, and puts the
+classification in one place.
+
+Reason strings remain worth recording for **debuggability** (an NK whose cause a
+Foolisher can read beats a bare one), but they are no longer load-bearing for
+correctness. Note the FVM already computes this distinction and discards it: at
+`fir_kinds.rs:1672` an anchored search tests `resolved.get_nyes() == Nyes::Nk`
+— it knows there was no table to search — then sets a bare `Nyes::Nk`
+indistinguishable from a genuine miss.
 
 #### The pattern-matching idiom
 
