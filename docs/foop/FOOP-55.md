@@ -548,22 +548,41 @@ When its helpers are unpopulated it populates them and sums:
 and `populate_concat_helpers` does the same over its elements. So an element
 that cannot yet say how many statements it has is counted as having **zero**.
 
-**Verified — a wrong answer, not a deferral:**
+**Verified — an answer settled too early, not merely a wrong one:**
 
 ```foolish
 {f = {c = {1,2} <<#-2>>; n = c$;}; tbl={x=8;y=9;}; r =$ {tbl,0}f}
    => r = 2
 ```
 
-The concatenation is `{1,2} <<#-2>>` with the marked element `ECONSTANIC` —
-deferred, not failed. `$` is the **tail**, so if that element eventually
-contributes statements the tail is one of *those*. Instead the element counted
-as zero lines and `$` landed on `2`, the last statement of the *known* part.
+The marked element is `ECONSTANIC` — deferred, not failed. **`2` is not a wrong
+count of what is locally known**; it is the honest count of the part that has
+arrived. The defect is that the concatenation *commits* to it.
 
-**This is worse than the `constanic_is_brane_like` boolean.** There a don't-know
-was read as "no" and produced a **loud NK**. Here a don't-know is read as
-**zero** and produces a **quiet wrong answer** — `r=2`, no alarm, no NK, nothing
-to notice.
+What it should be is **4**. A brane element contributes its **statements**,
+flattened — verified with a fully-known element:
+
+```foolish
+{tbl={x=8;y=9;}; c = {1,2} tbl; cnt = c$;}
+   => c = {1; 2; x=8; y=9}    cnt = 9
+```
+
+So once `<<#-2>>` resolves to `tbl`, `{1,2} <<#-2>>` is four statements with
+tail `9`.
+
+**And the freeze is the real damage.** In the deferred case `r =$ {tbl,0}f`
+**never flattened at all** — `r=2` is `f`'s own `n`, computed at the definition
+site. `stmt_count` answered `2` early, `$` took `2`, and `n` settled
+**CONSTANT**. Once settled, nothing re-opens it, so the later recoordination had
+nothing left to correct.
+
+**That is the difference the three states make.** With `NotReady`, `n` stays
+unsettled and resolves to `9` after recoordination. With `0`, `n` settles to `2`
+permanently.
+
+**Compare with the `constanic_is_brane_like` boolean.** There a don't-know reads
+as "no" and produces a **loud NK** — visible. Here it reads as **zero** and
+produces a **quietly frozen answer** — no alarm, no NK, nothing to notice.
 
 **When does a FIR actually need `stmt_count`?** That is the question to settle,
 and it is what makes the three-state answer necessary rather than merely tidy.
