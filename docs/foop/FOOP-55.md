@@ -531,13 +531,57 @@ NK.
 and concludes *provably not a brane* — terminal NK — when the honest answer is
 *ask me later*.
 
-**The fix is three-valued.** `Option<bool>` (or a named enum), where:
+#### Concatenation blocks knowledge of `stmt_count` too — and hides it
 
-- `Some(true)` — brane-like; proceed
-- `Some(false)` — provably not brane-like; **NK** is correct, and `{}$`/`{}^`
-  keep settling NK exactly as they do now
-- `None` — **not yet knowable**; the search settles **ECONSTANIC**, which
-  survives recoordination
+Asked whether a legitimate "don't know" can arise anywhere other than an
+ECONSTANIC search, the answer is: **the root cause is always an ECONSTANIC
+search, but concatenation propagates it as a silent wrong answer rather than as
+a deferral.**
+
+`ConcatenationFir::stmt_count` (`fir_kinds.rs:3230`) **never returns `None`**.
+When its helpers are unpopulated it populates them and sums:
+
+```rust
+.map(|h| h.borrow().stmt_count().unwrap_or(0))
+```
+
+and `populate_concat_helpers` does the same over its elements. So an element
+that cannot yet say how many statements it has is counted as having **zero**.
+
+**Verified — a wrong answer, not a deferral:**
+
+```foolish
+{f = {c = {1,2} <<#-2>>; n = c$;}; tbl={x=8;y=9;}; r =$ {tbl,0}f}
+   => r = 2
+```
+
+The concatenation is `{1,2} <<#-2>>` with the marked element `ECONSTANIC` —
+deferred, not failed. `$` is the **tail**, so if that element eventually
+contributes statements the tail is one of *those*. Instead the element counted
+as zero lines and `$` landed on `2`, the last statement of the *known* part.
+
+**This is worse than the `constanic_is_brane_like` boolean.** There a don't-know
+was read as "no" and produced a **loud NK**. Here a don't-know is read as
+**zero** and produces a **quiet wrong answer** — `r=2`, no alarm, no NK, nothing
+to notice.
+
+**When does a FIR actually need `stmt_count`?** That is the question to settle,
+and it is what makes the three-state answer necessary rather than merely tidy.
+The two callers differ:
+
+- A **search** asking "are you brane-like?" needs only to distinguish *yes* /
+  *no* / *not yet* — it never needs the number.
+- **Indexing and the Equivalence Law** need the exact count, and are entitled to
+  it only once the shape is frozen.
+
+**The fix is three-valued.** `Option<bool>` for brane-likeness and the same
+discipline for the count — `NK` / `NotReady` / `Some(n)`, where:
+
+- `Some(true)` / `Some(n)` — known; proceed
+- `Some(false)` / `NK` — provably not; **NK** is correct, and `{}$`/`{}^` keep
+  settling NK exactly as they do now
+- `None` / `NotReady` — **not yet knowable**; the caller settles **ECONSTANIC**,
+  which survives recoordination. Emphatically NOT `0`.
 
 This is the same shape as `candidates_exhausted()` (§8, 3E.2): one honest
 observation from the object that knows, with the caller deciding what each
