@@ -435,6 +435,51 @@ Worth its own FOOP: either a diagnostic for the common failure (an SFF-marked
 statement read by name within its own brane is almost certainly a usage error),
 or a re-examination of whether both marks need to be surface syntax.
 
+### D9. No search resolves on a **recoordinated SFF brane operand**. **BLOCKS `'match`.**
+
+Found 2026-08-12, after §8's four features (3E.1–3E.4) all landed and passed
+their own tests. Not caused by §8 — verified unchanged at `69535c6d`, before any
+of that work.
+
+**Reproduction.** A function takes a brane as a parameter and looks inside it:
+
+```foolish
+{
+	f = {<<#-2>>^};          !! or #0, or $, or ?x -- all the same
+	tbl = {x=5; y=6;};
+	r =$ {tbl, 1}f           !! ^(NK)
+}
+```
+
+Every search form fails identically on the recoordinated operand:
+
+| Form | Result |
+|------|--------|
+| `<<#-2>>#0` | NK |
+| `<<#-2>>^` | NK |
+| `<<#-2>>$` | NK |
+| `<<#-2>>?x` | NK |
+
+**It is not about computed indices.** Literal `#0` fails exactly as `#(0)`
+does, and `#(0)` on a *local* brane works (`tbl#(0)` → 5). §8's feature is
+sound; the operand never becomes searchable.
+
+**Why it blocks `'match`.** `'match`'s body is `tbl#(tbl~key=(key)@+1)`, where
+`tbl` arrives via `<<#-2>>` — exactly the failing shape. So the pattern-matching
+idiom works on a **local** table (verified: `hit_true=10`, `hit_false=20`,
+`miss=999`) but not through a function parameter.
+
+**Relation to D7.** Same family, but sharper. D7 was framed as "a system
+operator inside a juxtaposed definition"; the real statement is narrower and
+more general: **a brane arriving by recoordination cannot be searched.** That
+blocks every function that takes a brane parameter and looks inside it —
+`'match`, `congruent_modulo`, and the `fbfn` table lookup alike.
+
+**Disposition.** This is the last thing between §8 and a working `fbfn`. It
+should be traced with the `foolish-debugging` skill: the operand is presumably
+arriving as something not `is_brane_like()`, or arriving unresolved, so
+`resolve_anchor` declines. Fixing it is expected to unblock D7 as well.
+
 ## Findings — exercise-file defects (Atlas is fixing the file)
 
 The human (Atlas) is repairing the exercise file directly; this FOOP does
