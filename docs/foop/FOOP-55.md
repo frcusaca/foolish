@@ -1717,6 +1717,52 @@ switch, which no fixed-arity operator provides.
 dangerous failure mode — a program written to this proposal would *run* and give
 a plausible wrong answer. The tests must pin that `@` and no-`@` now differ.
 
+### §9. Concatenation element marking — the five rules
+
+`build_concat_element` / `classify_concat_element` (`compiler.rs:30-115`) decide
+what mark, if any, a concatenation element carries. The rules were implicit in
+the code and are stated here, forward-facing, as a **cascade tested in order**:
+
+| # | Test | Action |
+|---|------|--------|
+| 1 | **Already SF- or SFF-marked at the top** | **as written** — add nothing, change nothing |
+| 2 | **Constantew** (CONSTANT / INDEPENDENT / NK — "constant everywhere") | **as written** — nothing to defer |
+| 3 | **Any search** | wrap **SF** |
+| 4 | **Any brane-like** | build **SFF** (`under_sff = true`) |
+| 5 | otherwise | `Error` → NK at construction |
+
+**Rule 1 must be tested FIRST, before looking at what the mark contains.** The
+current code inverts this for branes — it matches `StayFoolish{Brane}` and
+`StayFullyFoolish{Brane}` in their own arms and re-wraps — which produces two
+defects:
+
+- `<{…}>` builds without `under_sff` and is then **re-wrapped in SF**: a mark
+  added on top of the user's.
+- `<<{…}>>` is classified `SfBrane` and **silently downgraded to SF**
+  (`compiler.rs:67-68`), so writing a doubled mark in a concatenation gets
+  single-mark semantics with no diagnostic.
+
+Testing "is it already marked?" before "what is inside it?" makes both
+impossible to write. `SfSearch` already behaves correctly — its comment reads
+"idempotent NOOP, build as-is" — so rule 1 generalizes what that arm already
+does.
+
+**Rule 2 is the constantew case.** A CONSTANT, INDEPENDENT or NK element has no
+context dependency, so a mark could not defer anything. Note the classifier runs
+on the **AST**, before evaluation, so it cannot ask a NYES question — it
+recognises the forms that are constantew *by construction*: `IntLit`,
+`UnknownLit`, `Creation`, and arithmetic over them. (Today this is unreachable
+in practice: the parser's `is_concatenation_continuation` does not accept an
+integer as a continuation, so `{0} 5` parses as two statements rather than a
+concatenation. The rule is stated so the classifier is complete on its own
+terms.)
+
+**Rule 3 gained two members in §8** that were not added when they were built:
+`Astn::SearchPosition` (`@`) and `Astn::ComputedSeek` (`#(expr)`). Both are
+searches and both currently fall through to `Error`, so they are **NK as
+concatenation elements** — verified: `{0} tbl~k=(1)@` and `{0} tbl#(1)` both
+give NK. This is an omission in §8's implementation, not a gap in the rules.
+
 ## FIR Impact
 
 - **Two new FIR kinds** in `foolish-ubca/src/system_foo.rs`:
