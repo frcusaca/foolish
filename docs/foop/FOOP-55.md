@@ -435,130 +435,70 @@ Worth its own FOOP: either a diagnostic for the common failure (an SFF-marked
 statement read by name within its own brane is almost certainly a usage error),
 or a re-examination of whether both marks need to be surface syntax.
 
-### D9. An anchored search whose anchor is an **unstripped SFF mark** settles NK instead of ECONSTANIC. **BLOCKS `'match`.**
+### D9. A **recoordinated ECONSTANIC clone is never enqueued**, so it never runs. **BLOCKS `'match`.**
 
-Found 2026-08-12, after §8's four features all landed and passed. Not caused by
-§8 — verified unchanged at `69535c6d`.
+Found 2026-08-13. Two earlier framings of this finding were wrong and are
+superseded; the correction is recorded because the wrong readings are easy to
+reach.
 
-**The first framing of this finding was wrong** and is corrected here. It was
-filed as "no search resolves on a recoordinated brane operand". It is not:
-recoordination delivers the brane correctly. The search is already dead by then.
+**The mechanism works exactly as designed, up to one step.** Atlas's trace of
+`{a = {1,2}, b=<<#-2>>, c= a b}`:
 
-**Reproduction — no use site is needed at all:**
+1. the search for `b` **succeeds** — the statement is found
+2. its body `<<#-2>>` is **constanic-cloned** into the search's `ubc_child`
+3. the clone **strips the SFF mark**, activating the `#-2` search
+4. the clone is **stepped to constanic** — and `#-2` now counts from `b`'s
+   position in the **concatenation**, not from its definition site
+5. all of the concatenation's `foolish_children` are then constanic
 
-```foolish
-{ f = {<<#-2>>^}; }        !!  f={NK ^(NK)}
+Steps 1–3 happen. **Step 4 does not.** The observed state:
+
+```
+?(result=#(offset=-2, UNANCHORED, ECONSTANIC), pattern='^b$', UNANCHORED, WOCONSTANIC)
+   ↑ search found b            ↑ mark stripped, bare #-2 — but ECONSTANIC and never stepped
 ```
 
-The `^` settles **NK at the definition site**, where `<<#-2>>` is deliberately
-deferred and has no value. Adding a use site changes nothing, and the trace
-shows why — recoordination works fine, but inherits a corpse:
+**The cause is one line** — `ProtoBrane::push_ubc_child`
+(`proto_brane.rs:200-205`):
 
-```
-f={NK ^(NK)}                          <- died here, unprompted
-r =$ ^(NK)
-     ?(result={x=5; y=6}, ...)        <- the table arrived CORRECTLY
-     1;
-     ^(NK)                            <- terminal NK carried in
-```
-
-**The anchor is not NK.** It is `WOCONSTANIC` with an ECONSTANIC interior — an
-intact SFF mark. The search settles NK *on its own*, because it demands its
-anchor resolve through to a brane, finds no value, and reads that as *provably
-absent* rather than *not here yet*.
-
-> An SFF mark is **defined** as "will gain a value via recoordination". A search
-> anchored on one must therefore settle **ECONSTANIC**, not NK. ECONSTANIC
-> survives recoordination; NK is terminal and cannot.
-
-**Relation to D8.** D8 was retracted correctly — its reproduction
-(`{n = <<#-1>>; r = n;}`) was self-referential, and BRANING is honest for a
-self-reference. But that retraction was over-generalised into "searches on
-marked statements are fine". They are not. The distinguishing question is
-whether the anchor **could** gain a value later:
-
-| Anchor | Could it gain a value? | Correct outcome |
-|--------|------------------------|-----------------|
-| self-reference | no | BRANING / NK — honest |
-| unstripped SFF mark | **yes, on recoordination** | **ECONSTANIC** — currently NK |
-
-**The concrete cause, confirmed 2026-08-12.** `is_brane_like()` is
-`stmt_count().is_some()` (`fir_trait.rs:404`), and **neither `StayFoolishFir`
-nor `StayFullyFoolishFir` overrides `stmt_count`** — so a marked term falls back
-to the trait default `None` and reports `is_brane_like() == false`. The anchored
-search at `fir_kinds.rs:2236` takes its `!is_brane_like()` branch and settles NK.
-
-**This is a different question from "what does an anchored search do when it
-finds nothing".** That behaviour is correct and must not change: `{}$` and `{}^`
-on a known, empty anchor genuinely have no head or tail, so NK is right. Here
-the search never looks at all.
-
-**The contrast that isolates it.** Offsets resolve perfectly well through marks
-when nothing sits on top of them:
-
-```foolish
-{a={1,2,3}{p1=<<#-3>>,p2=<<#-3>>,p3=<<#-4>>}}
-   => a = {1; 2; 3; p1=1; p2=2; p3=2}
+```rust
+pub fn push_ubc_child(&self, child: FirRef) {
+    self.ubc_children.borrow_mut().push(Rc::clone(&child));
+    if !child.borrow().core().get_nyes().is_constanic() {   // <- ECONSTANIC is constanic
+        self.tasks.borrow_mut().push_back(child);           //    so this never runs
+    }
+}
 ```
 
-The flattened brane is indices 0–5; `p1` at 3 reaches 0, `p2` at 4 reaches 1,
-`p3` at 5 reaches 1 — all arithmetically correct. The marks strip during
-concatenation and the offsets resolve against real neighbours. `{<<#-2>>^}`
-differs only in putting a **search on top of** the marked term, so `^` demands a
-brane *now*, before stripping has happened.
+Instrumented and confirmed: `kind=Index nyes=Econstanic enqueued=false`.
 
-**Corrected 2026-08-13.** An earlier draft of this section prescribed "SF/SFF
-should forward `stmt_count`". That fix would not work, and the reason narrows
-the defect usefully. Asked whether `stmt_count` can run before a term is
-constanic, the answer turns out to depend on **what the mark wraps**:
+**ECONSTANIC is doing double duty, and here the two meanings collide:**
 
-| Anchor | `stmt_count` answerable now? | Today |
-|--------|------------------------------|-------|
-| `<<{a=1;b=2}>>` — mark over a **literal brane** | **yes** — the shape is lexical, fixed at parse time | works: `<<{a=1;b=2}>>^` gives `1` |
-| `<<#-2>>` — mark over an **unresolved search** | **no** — nobody knows what it will resolve to | **NK** |
+- *"terminal — stop stepping me"*, which `is_constanic()` asserts
+- *"no value **in that context**; may gain one via recoordination"*, which is
+  what the state means
 
-`BraneFir::stmt_count` is `Some(children.len())` with no NYES guard, because a
-brane literal's shape is known before evaluation. `ConcatenationFir::stmt_count`
-must first `populate_concat_helpers()`. So "can you answer?" is a real question
-with different answers per kind, not a property of constanic-ness alone.
+Both are true at the **original** site: the definition's `#-2` genuinely has
+nothing to find and should stop. But this clone has just been **recoordinated
+into a new context** — precisely the event ECONSTANIC says can revive it.
+Cloning carried the state across unchanged, so a term that *should* now run
+arrives pre-declared as finished.
 
-Blanket-forwarding `stmt_count` therefore fixes nothing: `<<A>>` would forward to
-an unresolved `A`, get `None`, and still report false, and the search would still
-NK.
+**The fix.** A constanic clone that lands in a new context must be enqueued
+rather than assumed settled: either the clone is born pre-constanic so the
+existing guard enqueues it, or `push_ubc_child` distinguishes "terminal here"
+from "terminal anywhere" and enqueues an ECONSTANIC child. The first is
+narrower; the second states the real rule.
 
-**The actual defect is that `constanic_is_brane_like()` returns `bool`**, so
-"I cannot answer yet" is indistinguishable from "no". The search reads `false`
-and concludes *provably not a brane* — terminal NK — when the honest answer is
-*ask me later*.
+**Superseded framings, recorded so they are not re-derived:**
 
-**The fix is three-valued brane-likeness** — `Option<bool>`:
-
-- `Some(true)` — brane-like; proceed
-- `Some(false)` — provably not; **NK** is correct, and `{}$`/`{}^` keep settling
-  NK exactly as they do now
-- `None` — **not yet knowable**; the search settles **ECONSTANIC**, which
-  survives recoordination
-
-Note this is D9's whole scope: the *search* only ever needs yes / no / not-yet,
-never the number. The count itself carries the same three-state problem in a
-case the code was never written for — filed separately as **D10**, which is not
-on `fbfn`'s path.
-
-This is the same shape as `candidates_exhausted()` (§8, 3E.2): one honest
-observation from the object that knows, with the caller deciding what each
-answer means. It is also why `constanic_is_brane_like` was renamed — the name
-now marks which question the existing method answers.
-
-**Original suspicion (retained, now superseded).** `fir_kinds.rs:1672` — an anchored search tests
-`resolved.get_nyes() == Nyes::Nk` and settles NK; an SFF-marked anchor is not
-NK, so it falls through to the `!is_brane_like()` branch and settles NK there
-instead. The fix is to recognise a deferred anchor before that point and settle
-ECONSTANIC.
-
-**Why it blocks `'match`.** Its body is `tbl#(tbl~key=(key)@+1)` with `tbl`
-arriving via `<<#-2>>`. The idiom works on a **local** table (verified:
-`hit_true=10`, `hit_false=20`, `miss=999`) and dies as soon as the table is a
-parameter. Fixing D9 is expected to unblock D7 as well.
+- *"No search resolves on a recoordinated brane operand."* Wrong —
+  recoordination delivers correctly; the clone simply never runs.
+- *"SF/SFF do not forward `stmt_count`, so `constanic_is_brane_like` is false."*
+  True but not the cause: `<<{a=1;b=2}>>^` already works, because a literal
+  brane's shape is lexical. Three-valued brane-likeness remains worth having —
+  a `None` for "not yet knowable" is honest — but it is **not** what blocks
+  `'match`.
 
 ### D10. A concatenation with a **deferred element** settles its shape too early. **Unimplemented case, not on `fbfn`'s path.**
 
