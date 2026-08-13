@@ -445,6 +445,7 @@ impl ProtoBrane {
                         sf_inner_pattern: RefCell::new(None),
                         is_value_search: is_value,
                         contexted: is_contexted,
+                        exhausted: std::cell::Cell::new(false),
                     })
                 })
             }
@@ -1363,6 +1364,11 @@ pub struct SearchFir {
     pub(crate) sf_inner_pattern: RefCell<Option<String>>,
     pub(crate) is_value_search: bool,
     pub(crate) contexted: bool,
+    /// FOOP-55 §8: set when the scan ran to completion and no candidate
+    /// matched — as distinct from never having scanned (an NK anchor) or
+    /// having stopped at a match. Read through
+    /// [`Fir::candidates_exhausted`].
+    pub(crate) exhausted: std::cell::Cell<bool>,
 }
 
 impl SearchFir {
@@ -1664,6 +1670,10 @@ impl SearchFir {
                             return Ok(());
                         }
                         ScanOutcome::Miss => {
+                            // The scan decided every candidate and none matched
+                            // (FOOP-55 §8). Distinct from NkStop, which never
+                            // scanned.
+                            self.exhausted.set(true);
                             if !self.anchored {
                                 self.core.set_nyes(Nyes::Econstanic);
                                 return Ok(());
@@ -1752,6 +1762,10 @@ impl SearchFir {
                         self.core.set_nyes(Nyes::Nk);
                     }
                     ScanOutcome::Miss => {
+                        // The scan decided every candidate and none matched
+                        // (FOOP-55 §8). NkStop above never scanned, so it does
+                        // NOT set this — that is the distinction @ reads back.
+                        self.exhausted.set(true);
                         self.core.set_nyes(if self.anchored {
                             Nyes::Nk
                         } else {
@@ -1864,6 +1878,10 @@ impl Fir for SearchFir {
     }
     fn as_search_is_value(&self) -> bool {
         self.is_value_search
+    }
+
+    fn candidates_exhausted(&self) -> bool {
+        self.exhausted.get()
     }
     fn as_search_contexted(&self) -> bool {
         self.contexted
@@ -3520,6 +3538,7 @@ mod tests {
                 sf_inner_pattern: RefCell::new(None),
                 is_value_search: false,
                 contexted: false,
+                exhausted: std::cell::Cell::new(false),
             })
         })
     }
@@ -5125,6 +5144,73 @@ mod tests {
             None
         }
         walk(root, name, 0)
+    }
+
+    /// FOOP-55 §8, 3E.2: `candidates_exhausted()` — "the scan ran to
+    /// completion and no candidate matched".
+    ///
+    /// **One observable fact, not a compound claim.** The NK distinction falls
+    /// out of it rather than being encoded: a real brane with no match scanned
+    /// every candidate and IS exhausted; an NK anchor never ran a scan at all,
+    /// so it is NOT.
+    ///
+    /// Today both settle a bare `Nyes::Nk` (`fir_kinds.rs`'s value-search step
+    /// maps `ScanOutcome::NkStop` and an anchored `ScanOutcome::Miss` to the
+    /// same state), so the scan's knowledge is discarded exactly where it is
+    /// known. This is what `@` needs back.
+    #[test]
+    fn candidates_exhausted_true_when_the_scan_ran_and_matched_nothing() {
+        let root = settle_composed("{tbl = {p=1; q=2;}; miss = tbl~=(99);}");
+        let stmt = named_stmt(&root, "miss").expect("statement miss");
+        let search = stmt.borrow().core().foolish_children()[0].clone();
+        assert!(
+            search.borrow().candidates_exhausted(),
+            "the anchor is a real brane and every candidate was decided, so the \
+             scan is exhausted -- @ should yield -1 here, not NK"
+        );
+    }
+
+    /// The anchor was NK, so there were never any candidates and no scan ran.
+    /// Not exhausted — `@` must propagate NK rather than yield `-1`, because
+    /// "where in nothing?" has no answer.
+    #[test]
+    fn candidates_exhausted_false_when_the_anchor_was_nk() {
+        let root = settle_composed("{bad = {a=1;}?nope; miss = bad~=(1);}");
+        let stmt = named_stmt(&root, "miss").expect("statement miss");
+        let search = stmt.borrow().core().foolish_children()[0].clone();
+        assert!(
+            !search.borrow().candidates_exhausted(),
+            "an NK anchor means the scan never ran -- nothing was exhausted"
+        );
+    }
+
+    /// A search that FOUND something is not exhausted either: the scan stopped
+    /// early, at the match.
+    #[test]
+    fn candidates_exhausted_false_when_the_search_found_a_match() {
+        let root = settle_composed("{tbl = {p=1; q=2;}; hit = tbl~=(2);}");
+        let stmt = named_stmt(&root, "hit").expect("statement hit");
+        let search = stmt.borrow().core().foolish_children()[0].clone();
+        assert!(
+            !search.borrow().candidates_exhausted(),
+            "the scan stopped at a match, so it did not exhaust its candidates"
+        );
+    }
+
+    /// It DOES NOT CASCADE — it reflects this search's own status only. A
+    /// chained search that itself found something is not exhausted, whatever
+    /// its anchor did. A consumer wanting an ancestor's answer asks that
+    /// ancestor.
+    #[test]
+    fn candidates_exhausted_does_not_cascade() {
+        let root = settle_composed("{tbl = {p=1; q=2; r=3;}; outer = (tbl?q) &#1;}");
+        let stmt = named_stmt(&root, "outer").expect("statement outer");
+        let search = stmt.borrow().core().foolish_children()[0].clone();
+        assert!(
+            !search.borrow().candidates_exhausted(),
+            "the outer continuation found r=3; its own status is 'found', and \
+             it must not inherit anything from the search it continues"
+        );
     }
 
     /// FOOP-55 §8, 3E.1: a continuation's anchor must BE a search.

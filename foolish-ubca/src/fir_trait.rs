@@ -355,6 +355,23 @@ pub trait Fir: std::fmt::Debug {
     // ── Capability methods (FOOP-13 A2) ──
 
     /// Number of statements this FIR presents as a brane. `None` = not brane-like.
+    /// Did this search's scan run to completion with no candidate matching?
+    ///
+    /// **One observable fact** (FOOP-55 §8): "I scanned every candidate and
+    /// none matched". Deliberately NOT a compound claim about the anchor — the
+    /// NK distinction falls out of it instead of being encoded. A real brane
+    /// with no match IS exhausted; an NK anchor never scanned, so it is not;
+    /// and a search that found something stopped early, so it is not either.
+    ///
+    /// **Does not cascade** — it reflects this search's own status only. A
+    /// consumer wanting an ancestor's answer asks that ancestor.
+    ///
+    /// Universal on every FIR (rule zero: a question about a search is answered
+    /// by the search), defaulting to `false` for kinds that never scan.
+    fn candidates_exhausted(&self) -> bool {
+        false
+    }
+
     /// An `Extremum` FIR's sort index and `system.foo` name (FOOP-55 §7).
     /// `None` for every other kind.
     fn as_extremum_config(&self) -> Option<(i64, &'static str)> {
@@ -847,6 +864,7 @@ mod get_value_tests {
                 sf_inner_pattern: RefCell::new(None),
                 is_value_search: false,
                 contexted: false,
+                exhausted: std::cell::Cell::new(false),
             })
         })
     }

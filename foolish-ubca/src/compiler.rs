@@ -246,6 +246,7 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
                 sf_inner_pattern: RefCell::new(None),
                 is_value_search: false,
                 contexted: false,
+                exhausted: std::cell::Cell::new(false),
             }))
         }
         Astn::Brane {
@@ -290,6 +291,7 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
                     sf_inner_pattern: RefCell::new(None),
                     is_value_search: false,
                     contexted: false,
+                    exhausted: std::cell::Cell::new(false),
                 })
             })
         }
@@ -313,6 +315,7 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
                 sf_inner_pattern: RefCell::new(None),
                 is_value_search: false,
                 contexted: false,
+                exhausted: std::cell::Cell::new(false),
             })
         }),
         Astn::ValueSearch {
@@ -339,6 +342,7 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
                 sf_inner_pattern: RefCell::new(None),
                 is_value_search: true,
                 contexted: false,
+                exhausted: std::cell::Cell::new(false),
             })
         }),
         Astn::Seek { anchor, offset } => Rc::new_cyclic(|me: &Weak<RefCell<IndexFir>>| {

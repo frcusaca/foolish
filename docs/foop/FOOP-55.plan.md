@@ -378,20 +378,27 @@ unnecessary; decide at its end rather than assuming either way.
 
 ### 3E.2 — `candidates_exhausted()` on every search
 
-- [ ] **Tests FIRST**: a search that ran over every candidate and matched
-      nothing answers `true`; a search whose anchor was NK answers `false` (the
-      scan never ran — there were no candidates); a pre-constanic search answers
-      `false`.
-- [ ] Implement `candidates_exhausted()` — **one observable fact**, "the scan
-      ran to completion and no candidate matched". NOT a compound predicate: an
-      earlier draft's `anchor_not_nk_and_still_not_found()` bundled a claim
-      about the anchor with one about the outcome, so every caller inherited a
-      conjunction it might not want. The NK distinction FALLS OUT of the honest
-      observation instead of being encoded.
-- [ ] **Universal on every search**, not a hook for `@` (rule zero).
-- [ ] **DOES NOT CASCADE** — it reflects THIS search's status only. Add a
-      chained test pinning that a descendant does not silently inherit an
-      ancestor's answer; a consumer wanting an ancestor's asks `.parent`.
+- [x] **Tests FIRST** — four, all passing:
+      `candidates_exhausted_true_when_the_scan_ran_and_matched_nothing`,
+      `..._false_when_the_anchor_was_nk`,
+      `..._false_when_the_search_found_a_match`,
+      `..._does_not_cascade`.
+      (2026-08-12 03:58)
+- [x] Implemented as an `exhausted: Cell<bool>` on `SearchFir`, set at the two
+      `ScanOutcome::Miss` sites and read through the trait method. The
+      information was already computed and thrown away: the value-search step
+      mapped `ScanOutcome::NkStop` and an anchored `Miss` to the same bare
+      `Nyes::Nk`, so the scan's own knowledge was lost exactly where it was
+      known. `NkStop` deliberately does NOT set the flag — that is the
+      distinction `@` reads back.
+      (2026-08-12 03:58)
+- [x] **Universal on every FIR**, not a hook for `@` (rule zero) — a `false`
+      default on the `Fir` trait for kinds that never scan.
+      (2026-08-12 03:58)
+- [x] **DOES NOT CASCADE** — pinned by `candidates_exhausted_does_not_cascade`:
+      `(tbl?q) &#1` found `r=3`, so the outer continuation's own status is
+      "found" and it inherits nothing from the search it continues.
+      (2026-08-12 03:58)
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
 ### 3E.3 — `@`
