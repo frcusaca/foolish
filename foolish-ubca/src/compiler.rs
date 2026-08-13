@@ -104,7 +104,7 @@ fn build_concat_element(ast: Astn, parent: &Weak<RefCell<dyn Fir>>, under_sff: b
         ConcatElemKind::SfBrane => {
             // <{…}> — override auto-SFF: build WITHOUT under_sff, wrap in SF.
             let brane_fir = build_fir(ast, Some(parent), false);
-            Rc::new(RefCell::new(StayFoolishFir {
+            Rc::new(RefCell::new(StayFullyFoolishFir {
                 core: ProtoBrane::new(vec![brane_fir], parent.clone(), Nyes::Prembrionic),
             }))
         }
