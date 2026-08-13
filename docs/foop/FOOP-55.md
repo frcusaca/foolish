@@ -435,50 +435,63 @@ Worth its own FOOP: either a diagnostic for the common failure (an SFF-marked
 statement read by name within its own brane is almost certainly a usage error),
 or a re-examination of whether both marks need to be surface syntax.
 
-### D9. No search resolves on a **recoordinated SFF brane operand**. **BLOCKS `'match`.**
+### D9. An anchored search whose anchor is an **unstripped SFF mark** settles NK instead of ECONSTANIC. **BLOCKS `'match`.**
 
-Found 2026-08-12, after §8's four features (3E.1–3E.4) all landed and passed
-their own tests. Not caused by §8 — verified unchanged at `69535c6d`, before any
-of that work.
+Found 2026-08-12, after §8's four features all landed and passed. Not caused by
+§8 — verified unchanged at `69535c6d`.
 
-**Reproduction.** A function takes a brane as a parameter and looks inside it:
+**The first framing of this finding was wrong** and is corrected here. It was
+filed as "no search resolves on a recoordinated brane operand". It is not:
+recoordination delivers the brane correctly. The search is already dead by then.
+
+**Reproduction — no use site is needed at all:**
 
 ```foolish
-{
-	f = {<<#-2>>^};          !! or #0, or $, or ?x -- all the same
-	tbl = {x=5; y=6;};
-	r =$ {tbl, 1}f           !! ^(NK)
-}
+{ f = {<<#-2>>^}; }        !!  f={NK ^(NK)}
 ```
 
-Every search form fails identically on the recoordinated operand:
+The `^` settles **NK at the definition site**, where `<<#-2>>` is deliberately
+deferred and has no value. Adding a use site changes nothing, and the trace
+shows why — recoordination works fine, but inherits a corpse:
 
-| Form | Result |
-|------|--------|
-| `<<#-2>>#0` | NK |
-| `<<#-2>>^` | NK |
-| `<<#-2>>$` | NK |
-| `<<#-2>>?x` | NK |
+```
+f={NK ^(NK)}                          <- died here, unprompted
+r =$ ^(NK)
+     ?(result={x=5; y=6}, ...)        <- the table arrived CORRECTLY
+     1;
+     ^(NK)                            <- terminal NK carried in
+```
 
-**It is not about computed indices.** Literal `#0` fails exactly as `#(0)`
-does, and `#(0)` on a *local* brane works (`tbl#(0)` → 5). §8's feature is
-sound; the operand never becomes searchable.
+**The anchor is not NK.** It is `WOCONSTANIC` with an ECONSTANIC interior — an
+intact SFF mark. The search settles NK *on its own*, because it demands its
+anchor resolve through to a brane, finds no value, and reads that as *provably
+absent* rather than *not here yet*.
 
-**Why it blocks `'match`.** `'match`'s body is `tbl#(tbl~key=(key)@+1)`, where
-`tbl` arrives via `<<#-2>>` — exactly the failing shape. So the pattern-matching
-idiom works on a **local** table (verified: `hit_true=10`, `hit_false=20`,
-`miss=999`) but not through a function parameter.
+> An SFF mark is **defined** as "will gain a value via recoordination". A search
+> anchored on one must therefore settle **ECONSTANIC**, not NK. ECONSTANIC
+> survives recoordination; NK is terminal and cannot.
 
-**Relation to D7.** Same family, but sharper. D7 was framed as "a system
-operator inside a juxtaposed definition"; the real statement is narrower and
-more general: **a brane arriving by recoordination cannot be searched.** That
-blocks every function that takes a brane parameter and looks inside it —
-`'match`, `congruent_modulo`, and the `fbfn` table lookup alike.
+**Relation to D8.** D8 was retracted correctly — its reproduction
+(`{n = <<#-1>>; r = n;}`) was self-referential, and BRANING is honest for a
+self-reference. But that retraction was over-generalised into "searches on
+marked statements are fine". They are not. The distinguishing question is
+whether the anchor **could** gain a value later:
 
-**Disposition.** This is the last thing between §8 and a working `fbfn`. It
-should be traced with the `foolish-debugging` skill: the operand is presumably
-arriving as something not `is_brane_like()`, or arriving unresolved, so
-`resolve_anchor` declines. Fixing it is expected to unblock D7 as well.
+| Anchor | Could it gain a value? | Correct outcome |
+|--------|------------------------|-----------------|
+| self-reference | no | BRANING / NK — honest |
+| unstripped SFF mark | **yes, on recoordination** | **ECONSTANIC** — currently NK |
+
+**Likely site.** `fir_kinds.rs:1672` — an anchored search tests
+`resolved.get_nyes() == Nyes::Nk` and settles NK; an SFF-marked anchor is not
+NK, so it falls through to the `!is_brane_like()` branch and settles NK there
+instead. The fix is to recognise a deferred anchor before that point and settle
+ECONSTANIC.
+
+**Why it blocks `'match`.** Its body is `tbl#(tbl~key=(key)@+1)` with `tbl`
+arriving via `<<#-2>>`. The idiom works on a **local** table (verified:
+`hit_true=10`, `hit_false=20`, `miss=999`) and dies as soon as the table is a
+parameter. Fixing D9 is expected to unblock D7 as well.
 
 ## Findings — exercise-file defects (Atlas is fixing the file)
 
