@@ -531,7 +531,46 @@ NK.
 and concludes *provably not a brane* — terminal NK — when the honest answer is
 *ask me later*.
 
-#### Concatenation blocks knowledge of `stmt_count` too — and hides it
+**The fix is three-valued brane-likeness** — `Option<bool>`:
+
+- `Some(true)` — brane-like; proceed
+- `Some(false)` — provably not; **NK** is correct, and `{}$`/`{}^` keep settling
+  NK exactly as they do now
+- `None` — **not yet knowable**; the search settles **ECONSTANIC**, which
+  survives recoordination
+
+Note this is D9's whole scope: the *search* only ever needs yes / no / not-yet,
+never the number. The count itself carries the same three-state problem in a
+case the code was never written for — filed separately as **D10**, which is not
+on `fbfn`'s path.
+
+This is the same shape as `candidates_exhausted()` (§8, 3E.2): one honest
+observation from the object that knows, with the caller deciding what each
+answer means. It is also why `constanic_is_brane_like` was renamed — the name
+now marks which question the existing method answers.
+
+**Original suspicion (retained, now superseded).** `fir_kinds.rs:1672` — an anchored search tests
+`resolved.get_nyes() == Nyes::Nk` and settles NK; an SFF-marked anchor is not
+NK, so it falls through to the `!is_brane_like()` branch and settles NK there
+instead. The fix is to recognise a deferred anchor before that point and settle
+ECONSTANIC.
+
+**Why it blocks `'match`.** Its body is `tbl#(tbl~key=(key)@+1)` with `tbl`
+arriving via `<<#-2>>`. The idiom works on a **local** table (verified:
+`hit_true=10`, `hit_false=20`, `miss=999`) and dies as soon as the table is a
+parameter. Fixing D9 is expected to unblock D7 as well.
+
+### D10. A concatenation with a **deferred element** settles its shape too early. **Unimplemented case, not on `fbfn`'s path.**
+
+Found 2026-08-13 while establishing D9's fix. **This is a case the concatenation
+code was never written for**, rather than a defect in what it does handle:
+`.unwrap_or(0)` is what one writes when every element is assumed present.
+
+**Not on the critical path.** `fbfn`'s concatenations
+(`{fbfn, param-1}fbfn`, `{fibtbl, cond}'match`) have all elements present at the
+call site, so this does not block Euler 1 or fibonacci. Recorded so it is not
+rediscovered as a mystery.
+
 
 Asked whether a legitimate "don't know" can arise anywhere other than an
 ECONSTANIC search, the answer is: **the root cause is always an ECONSTANIC
@@ -592,31 +631,6 @@ The two callers differ:
   *no* / *not yet* — it never needs the number.
 - **Indexing and the Equivalence Law** need the exact count, and are entitled to
   it only once the shape is frozen.
-
-**The fix is three-valued.** `Option<bool>` for brane-likeness and the same
-discipline for the count — `NK` / `NotReady` / `Some(n)`, where:
-
-- `Some(true)` / `Some(n)` — known; proceed
-- `Some(false)` / `NK` — provably not; **NK** is correct, and `{}$`/`{}^` keep
-  settling NK exactly as they do now
-- `None` / `NotReady` — **not yet knowable**; the caller settles **ECONSTANIC**,
-  which survives recoordination. Emphatically NOT `0`.
-
-This is the same shape as `candidates_exhausted()` (§8, 3E.2): one honest
-observation from the object that knows, with the caller deciding what each
-answer means. It is also why `constanic_is_brane_like` was renamed — the name
-now marks which question the existing method answers.
-
-**Original suspicion (retained, now superseded).** `fir_kinds.rs:1672` — an anchored search tests
-`resolved.get_nyes() == Nyes::Nk` and settles NK; an SFF-marked anchor is not
-NK, so it falls through to the `!is_brane_like()` branch and settles NK there
-instead. The fix is to recognise a deferred anchor before that point and settle
-ECONSTANIC.
-
-**Why it blocks `'match`.** Its body is `tbl#(tbl~key=(key)@+1)` with `tbl`
-arriving via `<<#-2>>`. The idiom works on a **local** table (verified:
-`hit_true=10`, `hit_false=20`, `miss=999`) and dies as soon as the table is a
-parameter. Fixing D9 is expected to unblock D7 as well.
 
 ## Findings — exercise-file defects (Atlas is fixing the file)
 
