@@ -480,6 +480,7 @@ impl ProtoBrane {
                     RefCell::new(IndexFir {
                         core,
                         offset,
+                        index_expr: None,
                         anchored,
                         contexted: is_contexted,
                     })
@@ -2018,6 +2019,12 @@ impl Fir for SearchFir {
 pub struct IndexFir {
     pub(crate) core: ProtoBrane,
     pub(crate) offset: i32,
+    /// FOOP-55 §8: `#(expr)` — a COMPUTED index. When set, this is the index
+    /// search's **second dependency** (the anchor is the first): the operand
+    /// must settle to an integer before navigation can happen, and its value
+    /// replaces `offset`. `None` for the ordinary literal form, which keeps
+    /// `tbl#1+1` parsing as `(tbl#1)+1`.
+    pub(crate) index_expr: Option<FirRef>,
     pub(crate) anchored: bool,
     pub(crate) contexted: bool,
 }
@@ -2054,6 +2061,7 @@ impl IndexFir {
         Rc::new(RefCell::new(IndexFir {
             core: ProtoBrane::new(children, parent, Nyes::Prembrionic),
             offset,
+            index_expr: None,
             anchored,
             contexted: false,
         }))
@@ -2072,6 +2080,20 @@ impl IndexFir {
     }
 }
 
+impl IndexFir {
+    /// The offset to navigate by: the computed operand's value when `#(expr)`
+    /// was written, otherwise the literal `offset` (FOOP-55 §8).
+    ///
+    /// `None` means a computed operand that did not settle to an integer —
+    /// there is no position to navigate to, so the caller settles NK.
+    fn effective_offset(&self) -> Option<i32> {
+        match &self.index_expr {
+            None => Some(self.offset),
+            Some(ix) => ix.value().borrow().as_i64().map(|v| v as i32),
+        }
+    }
+}
+
 impl Fir for IndexFir {
     #[inline(always)]
     fn core(&self) -> &ProtoBrane {
@@ -2083,6 +2105,12 @@ impl Fir for IndexFir {
                 if self.anchored {
                     let anchor = Rc::clone(&self.core.foolish_children()[0]);
                     self.core.push_task(anchor);
+                    // FOOP-55 §8: a computed index is a SECOND dependency —
+                    // enqueue it alongside the anchor so both settle before
+                    // navigation. Not a new evaluation phase; just another task.
+                    if let Some(ix) = self.index_expr.clone() {
+                        self.core.push_task(ix);
+                    }
                     self.core.set_nyes(Nyes::Braning);
                 } else {
                     if self.offset >= 0 {
@@ -2096,7 +2124,13 @@ impl Fir for IndexFir {
                     match find_enclosing_stmt_and_brane(&self.core) {
                         Some((stmt_ref, brane_ref)) => {
                             if let Some(idx) = brane_ref.find_stmt_index(&stmt_ref) {
-                                let target = idx as i32 + self.offset;
+                                let Some(effective_offset) = self.effective_offset() else {
+                                    // A computed index that did not settle to an integer has no
+                                    // navigable position (FOOP-55 §8).
+                                    self.core.set_nyes(Nyes::Nk);
+                                    return Ok(());
+                                };
+                                let target = idx as i32 + effective_offset;
                                 let len = brane_ref.borrow().stmt_count().unwrap_or(0) as i32;
                                 if target < 0 || target >= len {
                                     self.core.set_nyes(Nyes::Nk);
@@ -2159,7 +2193,11 @@ impl Fir for IndexFir {
                         let referent = frf.borrow().as_fool_ref_referent().cloned()?;
                         let h_brane = referent.borrow()._get_my_brane(&referent)?;
                         let p = h_brane.find_stmt_index(&referent)?;
-                        let target = p as i32 + self.offset;
+                        // A computed index (FOOP-55 §8) that did not settle to
+                        // an integer has no navigable position; this closure
+                        // reports "no result" with None.
+                        let effective_offset = self.effective_offset()?;
+                        let target = p as i32 + effective_offset;
                         let len = h_brane.borrow().stmt_count().unwrap_or(0) as i32;
                         if target < 0 || target >= len {
                             return None;
@@ -2237,7 +2275,13 @@ impl Fir for IndexFir {
                         return Ok(());
                     }
                     let mut nav = BraneNavigator::new(&resolved, true);
-                    let predicate = SearchPredicate::Index(self.offset);
+                    let Some(effective_offset) = self.effective_offset() else {
+                        // A computed index (FOOP-55 §8) that did not settle to an
+                        // integer has no navigable position.
+                        self.core.set_nyes(Nyes::Nk);
+                        return Ok(());
+                    };
+                    let predicate = SearchPredicate::Index(effective_offset);
                     match contextful_search_scan_no_body_check(&mut nav, &predicate) {
                         ScanOutcome::Found(stmt) => {
                             let body = statement_value_for_comparison(&stmt);
@@ -3318,6 +3362,7 @@ pub fn index(
     Rc::new(RefCell::new(IndexFir {
         core: ProtoBrane::new(children, parent, Nyes::Prembrionic),
         offset,
+        index_expr: None,
         anchored,
         contexted: false,
     }))
@@ -3672,6 +3717,7 @@ mod tests {
             RefCell::new(IndexFir {
                 core: ProtoBrane::new(foolish_children, parent, Nyes::Prembrionic),
                 offset,
+                index_expr: None,
                 anchored,
                 contexted: false,
             })
@@ -4181,6 +4227,7 @@ mod tests {
             RefCell::new(IndexFir {
                 core: ProtoBrane::new(foolish_children, parent, Nyes::Prembrionic),
                 offset,
+                index_expr: None,
                 anchored,
                 contexted: false,
             })
@@ -5347,6 +5394,58 @@ mod tests {
             Nyes::Nk,
             "only a search produces a position; @ on anything else is an \
              unanswerable question, which is NK"
+        );
+    }
+
+    /// FOOP-55 §8, 3E.4: `#` accepts an EXPRESSION, not only a literal.
+    #[test]
+    fn hash_accepts_a_parenthesized_expression() {
+        let root = settle_composed("{tbl = {a=1; b=2; c=3;}; r = tbl#(1+1);}");
+        assert_eq!(
+            named_i64(&root, "r"),
+            Some(3),
+            "#(1+1) is index 2 -- c=3. Before 3E.4 this was a parse error, \
+             'expected integer, found LParen'"
+        );
+    }
+
+    /// The operand may be a name, whose value the index waits on. That is `#`'s
+    /// SECOND dependency (the anchor is the first) — not a new evaluation
+    /// phase.
+    #[test]
+    fn hash_accepts_a_named_operand() {
+        let root = settle_composed("{tbl = {a=1; b=2; c=3;}; n = 1; r = tbl#(n);}");
+        assert_eq!(
+            named_i64(&root, "r"),
+            Some(2),
+            "#(n) with n=1 selects index 1 -- b=2"
+        );
+    }
+
+    /// The operand may itself be a search — which is the whole point: it is how
+    /// `tbl#(tbl~key=(key)@+1)` selects a row by key.
+    #[test]
+    fn hash_accepts_a_search_expression_operand() {
+        let root = settle_composed("{tbl = {zzz=0; key=77; val=9;}; r = tbl#(tbl~key=(77)@+1);}");
+        assert_eq!(
+            named_i64(&root, "r"),
+            Some(9),
+            "key=77 is at index 1, so @+1 = 2 -- val=9, the row beside the \
+             matched key. This is the pattern-matching idiom in miniature."
+        );
+    }
+
+    /// `tbl#1+1` must KEEP its current meaning, `(tbl#1)+1`. It is existing
+    /// behaviour and 3E.4 must not change it: only a PARENTHESIZED operand is
+    /// the new form.
+    #[test]
+    fn hash_literal_then_plus_keeps_its_old_meaning() {
+        let root = settle_composed("{tbl = {a=1; b=2; c=3;}; r = tbl#1+1;}");
+        assert_eq!(
+            named_i64(&root, "r"),
+            Some(3),
+            "tbl#1 is b=2, then +1 gives 3 -- NOT index 2 (which is also 3, so \
+             this test uses values where the readings would differ if they did)"
         );
     }
 

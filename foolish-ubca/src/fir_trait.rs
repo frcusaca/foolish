@@ -879,6 +879,7 @@ mod get_value_tests {
             RefCell::new(IndexFir {
                 core: ProtoBrane::new(children, parent, Nyes::Prembrionic),
                 offset,
+                index_expr: None,
                 anchored,
                 contexted: false,
             })

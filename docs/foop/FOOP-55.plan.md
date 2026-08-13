@@ -425,11 +425,25 @@ unnecessary; decide at its end rather than assuming either way.
 
 ### 3E.4 — `#` over an expression
 
-- [ ] **Tests FIRST**: `tbl#(1+1)`, `tbl#n`, and `tbl#(expr)` where the operand
-      is itself a search; plus `tbl#1+1` KEEPING its current meaning
-      `(tbl#1)+1` — that is existing behaviour and must not change.
-- [ ] `#` gains a **second dependency** (anchor AND index number); WOCONSTANIC
-      once both are constanic. Not a new "evaluation phase" — a dependency.
+- [x] **Tests FIRST** — four, all passing:
+      `hash_accepts_a_parenthesized_expression` (`#(1+1)` → c=3),
+      `hash_accepts_a_named_operand` (`#(n)`),
+      `hash_accepts_a_search_expression_operand`
+      (`tbl#(tbl~key=(77)@+1)` → the row beside the matched key),
+      and `hash_literal_then_plus_keeps_its_old_meaning` — `tbl#1+1` still
+      parses as `(tbl#1)+1`, which is existing behaviour and unchanged.
+      (2026-08-12 04:31)
+- [x] Implemented as `Astn::ComputedSeek` + an `index_expr: Option<FirRef>` on
+      `IndexFir`. The operand is enqueued alongside the anchor — a genuine
+      SECOND DEPENDENCY, not a new evaluation phase — and `effective_offset()`
+      reads it at all three navigation sites, falling back to the literal
+      `offset` when absent.
+      (2026-08-12 04:31)
+- [x] **The full idiom verified end to end** with an `else_value`-first table:
+      `hit_true=10`, `hit_false=20`, `miss=999`. One expression, no branch —
+      the same `@+1` that steps a hit to its adjacent `value=` row steps a miss
+      from -1 to index 0.
+      (2026-08-12 04:31)
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
 ### 3E.5 — fibonacci, then Euler 1

@@ -114,6 +114,21 @@ pub enum Astn {
         offset: i32,
     },
 
+    /// `anchor#(expr)` — indexed access with a COMPUTED index (FOOP-55 §8).
+    ///
+    /// Distinct from [`Astn::Seek`], whose offset is a literal baked into the
+    /// AST. Here the index is an ordinary expression, so the index search gains
+    /// a **second dependency** (the anchor is the first) — it must wait for the
+    /// operand to settle before it can navigate. That is a dependency, not a
+    /// new evaluation phase.
+    ///
+    /// Only the PARENTHESIZED form is this node: `tbl#1+1` still parses as
+    /// `(tbl#1)+1`, unchanged.
+    ComputedSeek {
+        anchor: Box<Astn>,
+        index: Box<Astn>,
+    },
+
     /// Head/tail: anchor^ or anchor$
     HeadTail {
         is_head: bool,

@@ -841,11 +841,27 @@ impl Parser {
                 }
                 Some(Token::Hash) => {
                     self.advance();
-                    let offset = self.parse_seek_index()?;
-                    expr = Astn::Seek {
-                        anchor: Box::new(expr),
-                        offset,
-                    };
+                    // FOOP-55 §8: a PARENTHESIZED operand is a computed index.
+                    // The bare form keeps its literal-only parse, so `tbl#1+1`
+                    // still means `(tbl#1)+1`.
+                    if self.peek_token() == Some(&Token::LParen) {
+                        self.advance();
+                        // parse_add_expr, not parse_arith_expr: the operand may
+                        // contain postfix searches (`tbl~key=(k)@+1`), which
+                        // only the fuller chain reaches.
+                        let index = self.parse_add_expr()?;
+                        self.expect(&Token::RParen)?;
+                        expr = Astn::ComputedSeek {
+                            anchor: Box::new(expr),
+                            index: Box::new(index),
+                        };
+                    } else {
+                        let offset = self.parse_seek_index()?;
+                        expr = Astn::Seek {
+                            anchor: Box::new(expr),
+                            offset,
+                        };
+                    }
                 }
                 Some(Token::Caret) => {
                     self.advance();

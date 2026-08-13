@@ -133,6 +133,10 @@ fn validate_astn(ast: &Astn) -> anyhow::Result<()> {
         Astn::DetachmentBrane { .. } => Err(anyhow!("Detachment brane: deferred")),
         Astn::NotImplemented(r) => Err(anyhow!("Not yet implemented: {}", r)),
         Astn::SearchPosition { anchor } => validate_astn(anchor),
+        Astn::ComputedSeek { anchor, index } => {
+            validate_astn(anchor)?;
+            validate_astn(index)
+        }
         Astn::Brane { statements, .. } => {
             for s in statements {
                 validate_astn(s)?;
@@ -352,6 +356,7 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
             RefCell::new(IndexFir {
                 core: ProtoBrane::new(vec![a], child_parent!(), search_nyes),
                 offset,
+                index_expr: None,
                 anchored: true,
                 contexted: false,
             })
@@ -363,10 +368,28 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
             RefCell::new(IndexFir {
                 core: ProtoBrane::new(vec![a], child_parent!(), search_nyes),
                 offset,
+                index_expr: None,
                 anchored: true,
                 contexted: false,
             })
         }),
+        Astn::ComputedSeek { anchor, index } => {
+            Rc::new_cyclic(|me: &Weak<RefCell<IndexFir>>| {
+                let me_dyn: Weak<RefCell<dyn Fir>> = me.clone();
+                let a = build_fir(*anchor, Some(&me_dyn), under_sff);
+                let i = build_fir(*index, Some(&me_dyn), under_sff);
+                RefCell::new(IndexFir {
+                    // The anchor stays foolish_children[0], as for a literal
+                    // index; the operand is held separately so the navigation
+                    // code below can read it without disturbing that.
+                    core: ProtoBrane::new(vec![a], child_parent!(), search_nyes),
+                    offset: 0,
+                    index_expr: Some(i),
+                    anchored: true,
+                    contexted: false,
+                })
+            })
+        }
         Astn::SearchPosition { anchor } => {
             Rc::new_cyclic(|me: &Weak<RefCell<crate::fir_kinds::SearchPositionFir>>| {
                 let me_dyn: Weak<RefCell<dyn Fir>> = me.clone();
@@ -379,6 +402,7 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
         Astn::UnanchoredSeek { offset } => Rc::new(RefCell::new(IndexFir {
             core: ProtoBrane::new(vec![], child_parent!(), search_nyes),
             offset,
+            index_expr: None,
             anchored: false,
             contexted: false,
         })),
