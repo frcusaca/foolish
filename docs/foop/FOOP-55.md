@@ -482,7 +482,43 @@ whether the anchor **could** gain a value later:
 | self-reference | no | BRANING / NK — honest |
 | unstripped SFF mark | **yes, on recoordination** | **ECONSTANIC** — currently NK |
 
-**Likely site.** `fir_kinds.rs:1672` — an anchored search tests
+**The concrete cause, confirmed 2026-08-12.** `is_brane_like()` is
+`stmt_count().is_some()` (`fir_trait.rs:404`), and **neither `StayFoolishFir`
+nor `StayFullyFoolishFir` overrides `stmt_count`** — so a marked term falls back
+to the trait default `None` and reports `is_brane_like() == false`. The anchored
+search at `fir_kinds.rs:2236` takes its `!is_brane_like()` branch and settles NK.
+
+**This is a different question from "what does an anchored search do when it
+finds nothing".** That behaviour is correct and must not change: `{}$` and `{}^`
+on a known, empty anchor genuinely have no head or tail, so NK is right. Here
+the search never looks at all.
+
+**The contrast that isolates it.** Offsets resolve perfectly well through marks
+when nothing sits on top of them:
+
+```foolish
+{a={1,2,3}{p1=<<#-3>>,p2=<<#-3>>,p3=<<#-4>>}}
+   => a = {1; 2; 3; p1=1; p2=2; p3=2}
+```
+
+The flattened brane is indices 0–5; `p1` at 3 reaches 0, `p2` at 4 reaches 1,
+`p3` at 5 reaches 1 — all arithmetically correct. The marks strip during
+concatenation and the offsets resolve against real neighbours. `{<<#-2>>^}`
+differs only in putting a **search on top of** the marked term, so `^` demands a
+brane *now*, before stripping has happened.
+
+**Two fixes, and the first alone is not enough:**
+
+1. **SF/SFF should forward `stmt_count`** to their inner term, so
+   `is_brane_like` sees through the mark. As Atlas puts it: when a term is
+   WOCONSTANIC, the answer to "are you brane-like?" *is* constanic — it is known,
+   and known not to change within this context.
+2. **The search must still settle ECONSTANIC**, not proceed. Brane-likeness is
+   knowable; the *contents* are deliberately unavailable until recoordination.
+   Forwarding `stmt_count` alone would let the search scan a brane whose members
+   are still marked.
+
+**Original suspicion (retained, now superseded).** `fir_kinds.rs:1672` — an anchored search tests
 `resolved.get_nyes() == Nyes::Nk` and settles NK; an SFF-marked anchor is not
 NK, so it falls through to the `!is_brane_like()` branch and settles NK there
 instead. The fix is to recognise a deferred anchor before that point and settle
