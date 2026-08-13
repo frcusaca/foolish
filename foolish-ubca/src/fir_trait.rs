@@ -299,7 +299,7 @@ pub trait Fir: std::fmt::Debug {
                 if Rc::ptr_eq(&p, self_ref) {
                     return None;
                 }
-                if p.borrow().is_brane_like() {
+                if p.borrow().constanic_is_brane_like() {
                     Some(p)
                 } else {
                     p.borrow()._get_my_brane(&p)
@@ -400,8 +400,13 @@ pub trait Fir: std::fmt::Debug {
         self.core().ubc_children().into_iter().next()
     }
 
-    /// Whether this FIR is brane-like (has statements to iterate).
-    fn is_brane_like(&self) -> bool {
+    /// Whether this FIR, its shape now settled, is brane-like (has statements to iterate).
+    ///
+    /// This answers the question only for a term whose shape is final. A
+    /// pre-constanic counterpart — asking whether a term still being stepped
+    /// will *become* brane-like — is anticipated (FOOP-55 D9) but does not
+    /// exist yet.
+    fn constanic_is_brane_like(&self) -> bool {
         self.stmt_count().is_some()
     }
 
@@ -509,7 +514,7 @@ fn step_inner(this: &FirRef, scope: &Scope, depth: usize) -> Result<StepReport, 
                 if this_kind == FirKind::Statement {
                     child_scope.current_statement = Some(Rc::clone(this));
                 }
-                if this.borrow().is_brane_like() {
+                if this.borrow().constanic_is_brane_like() {
                     child_scope.current_brane = Some(Rc::clone(this));
                 }
                 step_inner(&front_rc, &child_scope, depth + 1)?;

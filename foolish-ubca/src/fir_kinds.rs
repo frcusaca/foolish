@@ -1842,7 +1842,7 @@ impl SearchFir {
                         self.core.set_nyes(Nyes::Nk);
                         return Ok(());
                     }
-                    if !resolved.borrow().is_brane_like() {
+                    if !resolved.borrow().constanic_is_brane_like() {
                         ScanOutcome::Miss
                     } else {
                         let mut nav = BraneNavigator::new(&resolved, self.forward);
@@ -1960,7 +1960,7 @@ impl Fir for SearchFir {
                     let anchor = Rc::clone(&self.core.foolish_children()[0]);
                     let resolved = anchor.resolve_anchor();
                     if resolved.borrow().core().get_nyes() == Nyes::Nk
-                        || !resolved.borrow().is_brane_like()
+                        || !resolved.borrow().constanic_is_brane_like()
                     {
                         self.core.set_nyes(Nyes::Nk);
                     } else {
@@ -2233,7 +2233,7 @@ impl Fir for IndexFir {
                     };
                     let anchor = Rc::clone(&self.core.foolish_children()[0]);
                     let resolved = anchor.resolve_anchor();
-                    if !resolved.borrow().is_brane_like() {
+                    if !resolved.borrow().constanic_is_brane_like() {
                         // FOOP-75 §7: settling NK is only half the answer —
                         // record WHY. An anchored search demands its anchor
                         // resolve *through* to a brane (AGENTS.md §Searches);
@@ -2961,7 +2961,7 @@ impl Fir for ConcatHelper {
         self.core.foolish_children().get(idx).cloned()
     }
 
-    fn is_brane_like(&self) -> bool {
+    fn constanic_is_brane_like(&self) -> bool {
         true
     }
 
@@ -3160,7 +3160,7 @@ impl Fir for ConcatenationFir {
                 let mut all_brane_like = true;
                 let mut type_errors: Vec<usize> = Vec::new();
                 for (idx, elem) in self.core.foolish_children().iter().enumerate() {
-                    let brane_like = elem.value().borrow().is_brane_like();
+                    let brane_like = elem.value().borrow().constanic_is_brane_like();
                     all_brane_like &= brane_like;
                     if !brane_like && elem.borrow().core().get_nyes().is_constantew() {
                         type_errors.push(idx);
@@ -3264,7 +3264,7 @@ impl Fir for ConcatenationFir {
         None
     }
 
-    fn is_brane_like(&self) -> bool {
+    fn constanic_is_brane_like(&self) -> bool {
         true
     }
 
@@ -8474,7 +8474,7 @@ mod tests {
 
         let stmts = root.borrow().core().foolish_children().to_vec();
         let cb_body = stmts[0].borrow().core().foolish_children()[0].value();
-        assert!(cb_body.borrow().is_brane_like());
+        assert!(cb_body.borrow().constanic_is_brane_like());
 
         let mut found_val = None;
         let count = cb_body.borrow().stmt_count().unwrap_or(0);
@@ -8499,7 +8499,10 @@ mod tests {
 
         let stmts = root.borrow().core().foolish_children().to_vec();
         let cb_body = stmts[1].borrow().core().foolish_children()[0].value();
-        assert!(cb_body.borrow().is_brane_like(), "cb must be brane-like");
+        assert!(
+            cb_body.borrow().constanic_is_brane_like(),
+            "cb must be brane-like"
+        );
 
         let cb_count = cb_body.borrow().stmt_count().unwrap_or(0);
         let mut found_val = None;
@@ -8866,7 +8869,10 @@ mod tests {
             }
         }
         let cb = cb_val.expect("must find cb");
-        assert!(cb.borrow().is_brane_like(), "cb must be brane-like");
+        assert!(
+            cb.borrow().constanic_is_brane_like(),
+            "cb must be brane-like"
+        );
 
         let cb_count = cb.borrow().stmt_count().unwrap_or(0);
         let mut c_val = None;

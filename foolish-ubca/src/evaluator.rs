@@ -1083,7 +1083,10 @@ mod step_until_tests {
                 bb.core().get_nyes()
             );
             eprintln!("cb body stmt_count() = {:?}", bb.stmt_count());
-            eprintln!("cb body is_brane_like() = {:?}", bb.is_brane_like());
+            eprintln!(
+                "cb body constanic_is_brane_like() = {:?}",
+                bb.constanic_is_brane_like()
+            );
             eprintln!(
                 "cb body ubc_children count = {:?}",
                 bb.core().ubc_children().len()
