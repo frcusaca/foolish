@@ -507,16 +507,42 @@ concatenation and the offsets resolve against real neighbours. `{<<#-2>>^}`
 differs only in putting a **search on top of** the marked term, so `^` demands a
 brane *now*, before stripping has happened.
 
-**Two fixes, and the first alone is not enough:**
+**Corrected 2026-08-13.** An earlier draft of this section prescribed "SF/SFF
+should forward `stmt_count`". That fix would not work, and the reason narrows
+the defect usefully. Asked whether `stmt_count` can run before a term is
+constanic, the answer turns out to depend on **what the mark wraps**:
 
-1. **SF/SFF should forward `stmt_count`** to their inner term, so
-   `is_brane_like` sees through the mark. As Atlas puts it: when a term is
-   WOCONSTANIC, the answer to "are you brane-like?" *is* constanic — it is known,
-   and known not to change within this context.
-2. **The search must still settle ECONSTANIC**, not proceed. Brane-likeness is
-   knowable; the *contents* are deliberately unavailable until recoordination.
-   Forwarding `stmt_count` alone would let the search scan a brane whose members
-   are still marked.
+| Anchor | `stmt_count` answerable now? | Today |
+|--------|------------------------------|-------|
+| `<<{a=1;b=2}>>` — mark over a **literal brane** | **yes** — the shape is lexical, fixed at parse time | works: `<<{a=1;b=2}>>^` gives `1` |
+| `<<#-2>>` — mark over an **unresolved search** | **no** — nobody knows what it will resolve to | **NK** |
+
+`BraneFir::stmt_count` is `Some(children.len())` with no NYES guard, because a
+brane literal's shape is known before evaluation. `ConcatenationFir::stmt_count`
+must first `populate_concat_helpers()`. So "can you answer?" is a real question
+with different answers per kind, not a property of constanic-ness alone.
+
+Blanket-forwarding `stmt_count` therefore fixes nothing: `<<A>>` would forward to
+an unresolved `A`, get `None`, and still report false, and the search would still
+NK.
+
+**The actual defect is that `constanic_is_brane_like()` returns `bool`**, so
+"I cannot answer yet" is indistinguishable from "no". The search reads `false`
+and concludes *provably not a brane* — terminal NK — when the honest answer is
+*ask me later*.
+
+**The fix is three-valued.** `Option<bool>` (or a named enum), where:
+
+- `Some(true)` — brane-like; proceed
+- `Some(false)` — provably not brane-like; **NK** is correct, and `{}$`/`{}^`
+  keep settling NK exactly as they do now
+- `None` — **not yet knowable**; the search settles **ECONSTANIC**, which
+  survives recoordination
+
+This is the same shape as `candidates_exhausted()` (§8, 3E.2): one honest
+observation from the object that knows, with the caller deciding what each
+answer means. It is also why `constanic_is_brane_like` was renamed — the name
+now marks which question the existing method answers.
 
 **Original suspicion (retained, now superseded).** `fir_kinds.rs:1672` — an anchored search tests
 `resolved.get_nyes() == Nyes::Nk` and settles NK; an SFF-marked anchor is not
