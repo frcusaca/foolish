@@ -25,6 +25,8 @@ pub enum Token {
     TildeTilde,       // ~~
     TildeEquals,      // ~=
     Hash,             // #
+    /// `@` — projects a search result's POSITION (FOOP-55 §8).
+    At, // @
     Ampersand,        // &
 
     Lt,         // <

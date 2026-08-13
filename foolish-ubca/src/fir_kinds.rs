@@ -373,6 +373,19 @@ impl ProtoBrane {
                 descendent_of_sfm_and_foolishly_ignorant,
                 skip_foolish_children,
             ),
+            FirKind::SearchPosition => Rc::new_cyclic(|me: &Weak<RefCell<SearchPositionFir>>| {
+                let self_weak: Weak<RefCell<dyn Fir>> = me.clone();
+                let core = ProtoBrane::clone_children_budgeted(
+                    borrowed.core(),
+                    &self_weak,
+                    new_parent,
+                    nyes,
+                    descendent_of_sfm_and_foolishly_ignorant,
+                    skip_foolish_children,
+                    budget,
+                );
+                RefCell::new(SearchPositionFir { core })
+            }),
             FirKind::Extremum => {
                 let (index, name) = borrowed
                     .as_extremum_config()
@@ -690,6 +703,116 @@ pub fn default_equal(a: &FirRef, b: &FirRef) -> Equality {
         Equality::NotEqual
     } else {
         Equality::Unknowable
+    }
+}
+
+/// `anchor@` — a search result's POSITION (FOOP-55 §8).
+///
+/// A **continuation**: the anchor must BE a search, because only a search
+/// produces a position. It has one dependency (that anchor), so it settles
+/// once the anchor is constanic — hit or miss alike, since NYES comes from the
+/// dependency and not from the search outcome.
+///
+/// | Anchor's state | `@` |
+/// |----------------|-----|
+/// | found | the found statement's index |
+/// | `candidates_exhausted()` | **-1** |
+/// | NK (never scanned) | **NK** — "where in nothing?" has no answer |
+/// | not a search at all | **NK** — a malformed continuation, per §8 |
+///
+/// The `-1` is what makes a default branch fall out of arithmetic: `@+1` maps a
+/// miss to index 0, so a table written with its default FIRST is selected by
+/// the same expression that steps a hit to its adjacent `value=` row.
+#[derive(Debug)]
+pub struct SearchPositionFir {
+    pub(crate) core: ProtoBrane,
+}
+
+impl SearchPositionFir {
+    fn settle_nk(&self, reason: &str) {
+        let nk_ref = NkFir::nk(reason, self.core.parent_weak());
+        nk_ref.borrow().core().set_nyes(Nyes::Nk);
+        self.core.push_ubc_child(nk_ref);
+        self.core.set_alarm_reason(reason.to_owned());
+        self.core.set_nyes(Nyes::Nk);
+    }
+
+    fn settle_index(&self, index: i64) {
+        let out = IndepIntFir::constant_int(index, self.core.parent_weak());
+        out.borrow().core().set_nyes(Nyes::Independent);
+        self.core.push_ubc_child(out);
+        // One dependency (the anchor), and it is constanic: WOCONSTANIC.
+        self.core.set_nyes(Nyes::Woconstanic);
+    }
+
+    fn combine(&self) -> Result<(), UbcError> {
+        let Some(anchor) = self.core.foolish_children().first().cloned() else {
+            self.settle_nk("@: no anchor");
+            return Ok(());
+        };
+
+        // §8: the anchor must BE a search. A malformed continuation is a true
+        // NK, not a compile error -- an unanswerable question, as elsewhere in
+        // Foolish.
+        if anchor.borrow().kind() != FirKind::Search {
+            self.settle_nk("@: anchor is not a search");
+            return Ok(());
+        }
+        if !anchor.borrow().core().get_nyes().is_constanic() {
+            return Ok(()); // still waiting on our one dependency
+        }
+
+        // The found statement is ubc_children[1] -- a FoolRefFir holding the
+        // original with its line number intact (FOOP-23's two-child
+        // invariant). That position has been carried all along; @ is the first
+        // thing in the language to read it.
+        let referent = {
+            let a = anchor.borrow();
+            a.core()
+                .ubc_children()
+                .get(1)
+                .and_then(|r| r.borrow().as_fool_ref_referent().cloned())
+        };
+
+        if let Some(stmt) = referent {
+            let idx = stmt.borrow().as_stmt_line_number().unwrap_or(0);
+            self.settle_index(idx as i64);
+            return Ok(());
+        }
+
+        // No referent: either the scan ran out of candidates, or there were
+        // never any. candidates_exhausted() is exactly that distinction.
+        if anchor.borrow().candidates_exhausted() {
+            self.settle_index(-1);
+        } else {
+            self.settle_nk("@: anchor never scanned (its own anchor was NK)");
+        }
+        Ok(())
+    }
+}
+
+impl Fir for SearchPositionFir {
+    #[inline(always)]
+    fn core(&self) -> &ProtoBrane {
+        &self.core
+    }
+
+    fn kind(&self) -> FirKind {
+        FirKind::SearchPosition
+    }
+
+    fn fir_op_step(&self, _scope: &Scope) -> Result<(), UbcError> {
+        match self.core.get_nyes() {
+            Nyes::Prembrionic | Nyes::Embryonic => {
+                self.core.set_nyes(Nyes::Braning);
+                if let Some(anchor) = self.core.foolish_children().first().cloned() {
+                    self.core.push_task(anchor);
+                }
+                Ok(())
+            }
+            Nyes::Braning => self.combine(),
+            _ => Ok(()),
+        }
     }
 }
 
@@ -5144,6 +5267,87 @@ mod tests {
             None
         }
         walk(root, name, 0)
+    }
+
+    /// FOOP-55 §8, 3E.3: `@` projects a search result's POSITION.
+    #[test]
+    fn at_yields_the_found_statements_index() {
+        let root = settle_composed("{tbl = {zzz=0; key=77; other=5;}; p = tbl~key=(77)@;}");
+        assert_eq!(
+            named_i64(&root, "p"),
+            Some(1),
+            "key=77 is the statement at index 1, so @ yields 1 -- NOT 77, which \
+             is what the search's VALUE would be"
+        );
+    }
+
+    /// The regression guard that matters most: before 3E.3, `@` fell into the
+    /// lexer's unknown-character fallback and was **silently ignored**, so
+    /// `tbl~key=(77)@` and `tbl~key=(77)` both gave 77. A program written to
+    /// §8 would have run and produced a plausible wrong answer.
+    #[test]
+    fn at_and_no_at_now_differ() {
+        let root = settle_composed(
+            "{tbl = {zzz=0; key=77; other=5;}; with_at = tbl~key=(77)@; without = tbl~key=(77);}",
+        );
+        // NB: the lexer canonicalizes identifier underscores to U+02CD, so the
+        // searchable name is "with\u{02CD}at", not "with_at".
+        assert_eq!(
+            named_i64(&root, "with\u{02CD}at"),
+            Some(1),
+            "@ gives the POSITION"
+        );
+        assert_eq!(
+            named_i64(&root, "without"),
+            Some(77),
+            "no @ gives the VALUE"
+        );
+    }
+
+    /// A miss yields **-1**, which is what makes a default branch fall out of
+    /// arithmetic: `@+1` maps a miss to index 0, so a table written with its
+    /// default FIRST is selected by the same expression that steps a hit to its
+    /// adjacent `value=` row.
+    #[test]
+    fn at_yields_minus_one_when_candidates_are_exhausted() {
+        let root = settle_composed("{tbl = {p=1; q=2;}; miss = tbl~=(99)@;}");
+        assert_eq!(
+            named_i64(&root, "miss"),
+            Some(-1),
+            "the scan ran and matched nothing, so @ is -1 -- and -1+1 = 0, the \
+             default row's index"
+        );
+    }
+
+    /// An NK anchor propagates NK rather than yielding -1: there was no table
+    /// to search, so "where in nothing?" has no answer. Distinguished from the
+    /// case above by `candidates_exhausted()`, not by the NYES.
+    #[test]
+    fn at_propagates_nk_when_the_anchor_was_nk() {
+        let root = settle_composed("{bad = {a=1;}?nope; miss = bad~=(1)@;}");
+        let stmt = named_stmt(&root, "miss").expect("statement miss");
+        let body = stmt.borrow().core().foolish_children()[0].clone();
+        assert_eq!(
+            body.value().borrow().core().get_nyes(),
+            Nyes::Nk,
+            "an NK anchor means there were never any candidates -- @ must NOT \
+             invent -1 and silently select a default branch"
+        );
+    }
+
+    /// A malformed continuation is a true NK, not a compile error (§8): `@` on
+    /// a brane has no search whose position could be projected.
+    #[test]
+    fn at_on_a_non_search_anchor_is_nk() {
+        let root = settle_composed("{r = {a=1}@;}");
+        let stmt = named_stmt(&root, "r").expect("statement r");
+        let body = stmt.borrow().core().foolish_children()[0].clone();
+        assert_eq!(
+            body.value().borrow().core().get_nyes(),
+            Nyes::Nk,
+            "only a search produces a position; @ on anything else is an \
+             unanswerable question, which is NK"
+        );
     }
 
     /// FOOP-55 §8, 3E.2: `candidates_exhausted()` — "the scan ran to

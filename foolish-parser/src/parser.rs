@@ -819,6 +819,16 @@ impl Parser {
                         };
                     }
                 }
+                Some(Token::At) => {
+                    // FOOP-55 §8: project the position of the search to our
+                    // left. Well-formedness (the anchor must BE a search) is
+                    // checked when the FIR is built, not here — a malformed
+                    // `@` becomes a true NK rather than a parse error.
+                    self.advance();
+                    expr = Astn::SearchPosition {
+                        anchor: Box::new(expr),
+                    };
+                }
                 Some(Token::TildeEquals) => {
                     self.advance();
                     let value_pattern = self.parse_arith_expr()?;
@@ -1318,6 +1328,7 @@ impl std::fmt::Display for Token {
             Token::TildeTilde => write!(f, "~~"),
             Token::TildeEquals => write!(f, "~="),
             Token::Hash => write!(f, "#"),
+            Token::At => write!(f, "@"),
             Token::Ampersand => write!(f, "&"),
             Token::Lt => write!(f, "<"),
             Token::Gt => write!(f, ">"),

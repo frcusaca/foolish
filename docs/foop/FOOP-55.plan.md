@@ -403,12 +403,24 @@ unnecessary; decide at its end rather than assuming either way.
 
 ### 3E.3 — `@`
 
-- [ ] **Tests FIRST**: `@` on a hit gives the found index; on
-      `is_constanic_not_found()` gives **-1**; on an NK anchor propagates NK;
-      NYES is WOCONSTANIC once the anchor is constanic (hit and miss alike).
-- [ ] **Test that `@` and no-`@` now DIFFER** — today both give `77`, so a
-      regression here is silent.
-- [ ] `@`'s single dependency is its anchor.
+- [x] **Tests FIRST** — five, all passing: `at_yields_the_found_statements_index`
+      (1, not 77 — the position, not the value), `at_and_no_at_now_differ`,
+      `at_yields_minus_one_when_candidates_are_exhausted`,
+      `at_propagates_nk_when_the_anchor_was_nk`,
+      `at_on_a_non_search_anchor_is_nk`.
+      (2026-08-12 04:12)
+- [x] **`@` and no-`@` now DIFFER** — pinned. Before this, `@` fell into the
+      lexer's unknown-character fallback and was SILENTLY IGNORED, so
+      `tbl~key=(77)@` and `tbl~key=(77)` both gave 77 and a program written to
+      §8 would have run with a plausible wrong answer.
+      (2026-08-12 04:12)
+- [x] Implemented: `Token::At` (lexer + Display), `Astn::SearchPosition`,
+      `SearchPositionFir` with `FirKind::SearchPosition`, and its evaluator and
+      constanic-clone arms. `@` reads the position from the anchor's
+      `ubc_children[1]` FoolRefFir — the position FOOP-23's two-child invariant
+      has carried all along, which nothing in the language read until now.
+      Single dependency (the anchor); settles WOCONSTANIC.
+      (2026-08-12 04:12)
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
 ### 3E.4 — `#` over an expression

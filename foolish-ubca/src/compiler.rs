@@ -132,6 +132,7 @@ fn validate_astn(ast: &Astn) -> anyhow::Result<()> {
         Astn::UpwardSearch => Err(anyhow!("Upward search: deferred")),
         Astn::DetachmentBrane { .. } => Err(anyhow!("Detachment brane: deferred")),
         Astn::NotImplemented(r) => Err(anyhow!("Not yet implemented: {}", r)),
+        Astn::SearchPosition { anchor } => validate_astn(anchor),
         Astn::Brane { statements, .. } => {
             for s in statements {
                 validate_astn(s)?;
@@ -366,6 +367,15 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
                 contexted: false,
             })
         }),
+        Astn::SearchPosition { anchor } => {
+            Rc::new_cyclic(|me: &Weak<RefCell<crate::fir_kinds::SearchPositionFir>>| {
+                let me_dyn: Weak<RefCell<dyn Fir>> = me.clone();
+                let a = build_fir(*anchor, Some(&me_dyn), under_sff);
+                RefCell::new(crate::fir_kinds::SearchPositionFir {
+                    core: ProtoBrane::new(vec![a], child_parent!(), search_nyes),
+                })
+            })
+        }
         Astn::UnanchoredSeek { offset } => Rc::new(RefCell::new(IndexFir {
             core: ProtoBrane::new(vec![], child_parent!(), search_nyes),
             offset,

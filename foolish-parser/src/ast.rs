@@ -84,6 +84,21 @@ pub enum Astn {
         pattern: String,
     },
 
+    /// `anchor@` — project a search result's POSITION (FOOP-55 §8).
+    ///
+    /// A **continuation**: `anchor` must BE a search, since only a search
+    /// produces a position. `@` yields the found statement's index, or `-1`
+    /// when the search `candidates_exhausted()` — which is what lets a default
+    /// branch fall out of arithmetic, since `@+1` maps a miss to index 0.
+    ///
+    /// The position is **shallow**: `{b = ?hello_world; {a = b@+1}}` reports
+    /// `b`'s own position, not `?hello_world`'s. A value chases through a
+    /// reference; a position does not, because a position is meaningful only
+    /// relative to one brane.
+    SearchPosition {
+        anchor: Box<Astn>,
+    },
+
     /// Value search: anchor~=value, anchor?=value, ?=value
     /// Combined: anchor~name=value, anchor?name=value, ?name=value
     ValueSearch {

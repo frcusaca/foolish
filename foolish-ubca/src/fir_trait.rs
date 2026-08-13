@@ -66,6 +66,10 @@ pub enum FirKind {
     /// concatenation and folds the integers preceding it, selecting by index
     /// into their ascending sort. FOOP-55 §7.
     Extremum,
+    /// `anchor@` — a search result's POSITION (FOOP-55 §8). A continuation:
+    /// the anchor must BE a search. Yields the found index, -1 when the scan
+    /// exhausted its candidates, or NK when there was nothing to scan.
+    SearchPosition,
 }
 
 /// Minimal Scope stub — enough for compilation. The real Scope comes later

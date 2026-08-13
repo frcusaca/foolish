@@ -275,6 +275,14 @@ impl Lexer {
                 self.advance();
                 return (self.make_token(Token::Hash), false);
             }
+            // FOOP-55 §8: `@` projects a search result's POSITION. Before this
+            // it fell into the unknown-character fallback, which emits a fake
+            // LineComment (D1) — so `tbl~key=(77)@` silently evaluated as if
+            // the `@` were absent.
+            '@' => {
+                self.advance();
+                return (self.make_token(Token::At), false);
+            }
             '>' => {
                 self.advance();
                 return (self.make_token(Token::Gt), false);

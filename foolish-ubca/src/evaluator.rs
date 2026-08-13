@@ -370,6 +370,14 @@ fn proto_to_core_fir_inner(
                 .state(state)
                 .build()
         }
+        FirKind::SearchPosition => {
+            if let Some(result) = borrowed.core().ubc_children().first() {
+                return proto_to_core_fir_inner(result, preserve_search, current_stmt);
+            }
+            NkFirBuilder::new(borrowed.core().alarm_reason().as_deref().unwrap_or("@"))
+                .state(state)
+                .build()
+        }
         FirKind::Extremum => {
             if let Some(result) = borrowed.core().ubc_children().first() {
                 return proto_to_core_fir_inner(result, preserve_search, current_stmt);
