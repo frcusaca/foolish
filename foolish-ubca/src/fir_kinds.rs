@@ -5516,6 +5516,71 @@ mod tests {
         );
     }
 
+    /// FOOP-55 §9 rule 3: `@` and `#(expr)` are SEARCHES, so the classifier
+    /// gives them the auto-SF wrap rather than rejecting them at construction.
+    ///
+    /// They still settle NK as concatenation *elements*, and correctly so — but
+    /// for a **typing** reason, not a classification one: a postfix search
+    /// yields a single value, and a concatenation requires brane-like elements
+    /// ("each element value must be brane-like"). `tbl^` and `tbl#1` behave
+    /// identically and always have, so this is not §8's omission.
+    ///
+    /// What the classifier must not do is treat them as *unclassifiable*. This
+    /// test pins that they take the same path as the older postfix searches.
+    #[test]
+    fn search_position_and_computed_seek_classify_as_searches() {
+        for src in [
+            "{tbl = {k=1; v=9;}; c = {0} tbl~k=(1)@;}",
+            "{tbl = {a=1; b=2;}; c = {0} tbl#(1);}",
+            // the pre-existing postfix searches, for comparison
+            "{tbl = {a=1; b=2;}; c = {0} tbl^;}",
+            "{tbl = {a=1; b=2;}; c = {0} tbl#1;}",
+        ] {
+            let root = settle_composed(src);
+            let c = named_stmt(&root, "c").expect("statement c");
+            let body = c.borrow().core().foolish_children()[0].clone();
+            assert_eq!(
+                body.value().borrow().core().get_nyes(),
+                Nyes::Nk,
+                "a postfix search yields a single value, not a brane, so it \
+                 cannot be a concatenation element -- all four alike: {src}"
+            );
+        }
+    }
+
+    /// A bare identifier resolving to a brane IS a valid element — the control
+    /// showing the NK above is about the VALUE's shape, not about searches.
+    #[test]
+    fn a_search_resolving_to_a_brane_is_a_valid_concat_element() {
+        let root = settle_composed("{tbl = {a=1; b=2;}; c = {0} tbl;}");
+        let c = named_stmt(&root, "c").expect("statement c");
+        let body = c.borrow().core().foolish_children()[0].clone();
+        assert_ne!(
+            body.value().borrow().core().get_nyes(),
+            Nyes::Nk,
+            "`tbl` resolves to a brane, so it concatenates: {{0; a=1; b=2}}"
+        );
+    }
+
+    /// FOOP-55 §9 rule 1: an element already marked at the top is built AS
+    /// WRITTEN — no second mark is added, and an SFF is not downgraded to SF.
+    ///
+    /// `<<{…}>>` was classified `SfBrane` and silently given SF semantics.
+    /// Under rule 1 the user's doubled mark survives, so the element defers one
+    /// coordination longer and the concatenation does not resolve it here.
+    #[test]
+    fn user_written_sff_on_a_concat_element_is_not_downgraded() {
+        let root = settle_composed("{c = {1,2} <<{v=<<#-1>>;}>>;}");
+        let c = named_stmt(&root, "c").expect("statement c");
+        let body = c.borrow().core().foolish_children()[0].clone();
+        assert_ne!(
+            body.value().borrow().core().get_nyes(),
+            Nyes::Nk,
+            "a user-written <<{{…}}>> element must be built as written (§9 rule \
+             1), not downgraded to SF and not re-wrapped"
+        );
+    }
+
     /// FOOP-55 §8, 3E.1: a continuation's anchor must BE a search.
     ///
     /// A continuation navigates *from a position*, and only a search produces

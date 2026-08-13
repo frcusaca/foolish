@@ -17,66 +17,81 @@ use foolish_core::fir::Nyes;
 enum ConcatElemKind {
     /// Bare brane literal — auto-wrap in SFF (under_sff = true).
     BareBrane,
-    /// Bare search — auto-wrap in SF.
+    /// Bare search — auto-wrap in SF (rule 3).
     BareSearch,
-    /// <search> — idempotent NOOP, build as-is.
-    SfSearch,
-    /// <{…}> — override auto-SFF: build without under_sff, wrap in SF.
-    SfBrane,
-    /// <<…>> or other — error, NK at construction.
+    /// Already SF- or SFF-marked at the top, or constantew — build AS WRITTEN,
+    /// adding nothing (rules 1 and 2).
+    AsWritten,
+    /// Not a valid concatenation element — error, NK at construction (rule 5).
     Error,
 }
 
+/// Classify a concatenation element per FOOP-55 §9's five rules, **tested in
+/// this order**:
+///
+/// 1. already SF/SFF-marked at the top → [`ConcatElemKind::AsWritten`]
+/// 2. constantew (constant everywhere) → [`ConcatElemKind::AsWritten`]
+/// 3. any search → [`ConcatElemKind::BareSearch`] (auto-SF)
+/// 4. any brane-like → [`ConcatElemKind::BareBrane`] (auto-SFF)
+/// 5. otherwise → [`ConcatElemKind::Error`]
+///
+/// **Order matters.** Rule 1 is tested before looking at what a mark contains.
+/// The previous implementation matched `StayFoolish{Brane}` and
+/// `StayFullyFoolish{Brane}` in their own arms and re-wrapped, which added a
+/// second mark to `<{…}>` and silently downgraded `<<{…}>>` to SF semantics.
+/// Testing "is it already marked?" first makes both unwritable.
+///
+/// # Requirements
+///
+/// The caller must not pass an AST node that cannot appear as a concatenation
+/// element. Rule 5 returns [`ConcatElemKind::Error`] for those, and
+/// `build_concat_element` turns it into an NK at construction with a reason —
+/// it is a malformed program, not an interpreter fault.
 fn classify_concat_element(ast: &Astn) -> ConcatElemKind {
+    // Rule 1: already marked at the top — build as written, add nothing.
+    if matches!(
+        ast,
+        Astn::StayFoolish { .. } | Astn::StayFullyFoolish { .. }
+    ) {
+        return ConcatElemKind::AsWritten;
+    }
+    // Rule 2: constantew — CONSTANT / INDEPENDENT / NK by construction. A mark
+    // could defer nothing, so leave it alone. (Recognised syntactically: the
+    // classifier runs on the AST, before any NYES exists.)
+    if matches!(ast, Astn::IntLit(_) | Astn::UnknownLit | Astn::Creation) {
+        return ConcatElemKind::AsWritten;
+    }
+    // Rule 3: any search — auto-SF.
+    if is_search_astn(ast) {
+        return ConcatElemKind::BareSearch;
+    }
+    // Rule 4: any brane-like — auto-SFF.
+    if matches!(ast, Astn::Brane { .. }) {
+        return ConcatElemKind::BareBrane;
+    }
+    // Rule 5.
+    ConcatElemKind::Error
+}
+
+/// Whether an AST node is a **search** for FOOP-55 §9 rule 3.
+///
+/// `SearchPosition` (`@`) and `ComputedSeek` (`#(expr)`) are included: both were
+/// added in §8 and are searches, and omitting them made them NK as
+/// concatenation elements.
+fn is_search_astn(ast: &Astn) -> bool {
     match ast {
-        Astn::Brane { .. } => ConcatElemKind::BareBrane,
         Astn::Identifier { .. }
         | Astn::DotSearch { .. }
         | Astn::RegexpSearch { .. }
         | Astn::Seek { .. }
+        | Astn::ComputedSeek { .. }
+        | Astn::SearchPosition { .. }
         | Astn::HeadTail { .. }
         | Astn::UnanchoredSeek { .. }
-        | Astn::ValueSearch { .. } => ConcatElemKind::BareSearch,
-        Astn::ContextedSearch { inner } => {
-            // Contexted search wraps a bare search.
-            matches!(
-                inner.as_ref(),
-                Astn::Identifier { .. }
-                    | Astn::DotSearch { .. }
-                    | Astn::RegexpSearch { .. }
-                    | Astn::Seek { .. }
-                    | Astn::HeadTail { .. }
-                    | Astn::UnanchoredSeek { .. }
-                    | Astn::ValueSearch { .. }
-            )
-            .then(|| ConcatElemKind::BareSearch)
-            .unwrap_or(ConcatElemKind::Error)
-        }
-        Astn::StayFoolish { expr } => match expr.as_ref() {
-            Astn::Brane { .. } => ConcatElemKind::SfBrane,
-            Astn::Identifier { .. }
-            | Astn::DotSearch { .. }
-            | Astn::RegexpSearch { .. }
-            | Astn::Seek { .. }
-            | Astn::HeadTail { .. }
-            | Astn::UnanchoredSeek { .. }
-            | Astn::ValueSearch { .. }
-            | Astn::ContextedSearch { .. } => ConcatElemKind::SfSearch,
-            _ => ConcatElemKind::Error,
-        },
-        Astn::StayFullyFoolish { expr } => match expr.as_ref() {
-            Astn::Brane { .. } => ConcatElemKind::SfBrane,
-            Astn::Identifier { .. }
-            | Astn::DotSearch { .. }
-            | Astn::RegexpSearch { .. }
-            | Astn::Seek { .. }
-            | Astn::HeadTail { .. }
-            | Astn::UnanchoredSeek { .. }
-            | Astn::ValueSearch { .. }
-            | Astn::ContextedSearch { .. } => ConcatElemKind::SfSearch,
-            _ => ConcatElemKind::Error,
-        },
-        _ => ConcatElemKind::Error,
+        | Astn::ValueSearch { .. } => true,
+        // A contexted search wraps a bare search.
+        Astn::ContextedSearch { inner } => is_search_astn(inner),
+        _ => false,
     }
 }
 
@@ -94,16 +109,11 @@ fn build_concat_element(ast: Astn, parent: &Weak<RefCell<dyn Fir>>, under_sff: b
                 core: ProtoBrane::new(vec![search_fir], parent.clone(), Nyes::Prembrionic),
             }))
         }
-        ConcatElemKind::SfSearch => {
-            // <search> — idempotent NOOP, build as-is.
+        ConcatElemKind::AsWritten => {
+            // Rules 1 and 2 — the user's own mark, or a constantew value.
+            // Build exactly as written: no wrapper is added and no mark is
+            // downgraded.
             build_fir(ast, Some(parent), under_sff)
-        }
-        ConcatElemKind::SfBrane => {
-            // <{…}> — override auto-SFF: build WITHOUT under_sff, wrap in SF.
-            let brane_fir = build_fir(ast, Some(parent), false);
-            Rc::new(RefCell::new(StayFoolishFir {
-                core: ProtoBrane::new(vec![brane_fir], parent.clone(), Nyes::Prembrionic),
-            }))
         }
         ConcatElemKind::Error => {
             // <<…>> or other — error: NK at construction.

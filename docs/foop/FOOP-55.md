@@ -1757,11 +1757,22 @@ integer as a continuation, so `{0} 5` parses as two statements rather than a
 concatenation. The rule is stated so the classifier is complete on its own
 terms.)
 
-**Rule 3 gained two members in §8** that were not added when they were built:
-`Astn::SearchPosition` (`@`) and `Astn::ComputedSeek` (`#(expr)`). Both are
-searches and both currently fall through to `Error`, so they are **NK as
-concatenation elements** — verified: `{0} tbl~k=(1)@` and `{0} tbl#(1)` both
-give NK. This is an omission in §8's implementation, not a gap in the rules.
+**Rule 3 gained two members in §8**: `Astn::SearchPosition` (`@`) and
+`Astn::ComputedSeek` (`#(expr)`). Both are searches and both were missing from
+the classifier, so they fell through to `Error`.
+
+**But adding them does not make them usable as elements, and should not.** A
+postfix search yields a **single value**, not a brane, and a concatenation
+requires brane-like elements (`populate_concat_helpers`: "each element value
+must be brane-like"). So `{0} tbl~k=(1)@` and `{0} tbl#(1)` still settle NK —
+and so do `{0} tbl^` and `{0} tbl#1`, which were classified `BareSearch` all
+along. Verified: all four behave identically, while `{0} tbl` (a search
+resolving to a **brane**) concatenates to `{0; a=1; b=2}`.
+
+An earlier draft of this section called the omission "§8's, not a gap in the
+rules". That was wrong in an instructive way: the classifier was never the gate.
+Classification decides the **mark**; whether an element is *usable* is a typing
+question answered later, on the resolved value. Rule 3 is about the former only.
 
 ## FIR Impact
 
