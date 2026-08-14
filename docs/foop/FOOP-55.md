@@ -1789,52 +1789,71 @@ they are compiled as written — the compiler adds nothing.
 
 #### §9.4 Consequences worked through, and what they expose
 
-Pushing the rule through its cases turned up five things the short statement
-does not settle. Each was probed live; the observed behaviour is recorded so the
-implementation is measured against reality rather than against expectation.
+Pushing the rule through its cases. Each claim below was probed live; where an
+earlier draft of this section was wrong, the correction is stated rather than
+quietly removed.
 
-**(a) "Operator → NK" cannot happen where it is written.** `{1} 2+3` does not
-NK. It **silently splits into two statements** — `c={1}` and a bare `5` — because
-the parser's `is_concatenation_continuation` does not accept an integer as a
-continuation, so the operator never becomes a constituent and the classifier
-never sees it.
+**(a) An operator constituent NKs when it is parenthesized, and splits when it
+is not.** Three readings, all measured:
 
-So the rule is right but unenforceable at the classifier. Two options, and the
-choice belongs in the plan rather than here:
+| Written | Result |
+|---------|--------|
+| `{1} (2+3)` | `c={NK 1}` — the operator **is** a constituent and NKs. **This is the specified behaviour, already working.** |
+| `{1} 2+3` | `c={1}` **plus a separate statement `5`** — splits |
+| `({1} 2) + 3` | parse error |
 
-- accept the split as the parser's answer, and say so explicitly, or
-- make the parser recognise an operator in constituent position precisely so it
-  can be rejected with a reason.
+The split happens because `is_concatenation_continuation`
+(`foolish-parser/src/parser.rs:532-554`) does not accept a bare integer as a
+continuation, so `2+3` never becomes a constituent. It is not that the rule is
+unenforceable — it fires correctly whenever the operator actually reaches the
+concatenation.
 
-The second is preferable: a silent split turns a malformed program into a
-different valid one, which is the failure mode hardest to notice. **A rule that
-cannot fire is not a rule.**
+**The NK reason should name the cause.** `ConcatenationFir` today NKs without
+saying why; per Atlas it should read "cannot concatenate number" (or the
+constituent's actual kind). Detection may happen either when the operator
+settles or earlier, when the constituent is classified — earlier is preferable,
+but both are correct.
 
-**(b) A nested written concatenation loses constituents.** `(({1}{2}) ({3}{4}))`
-evaluates to `{NK 1; 2}` — the second inner concatenation is **absent**, not
-merely NK. Since §9.2 says a concatenation constituent is treated exactly as a
-brane, the expected result is a four-statement flatten. This is a defect to fix
-under this section, not a rule to restate.
+**The remaining question is only the unparenthesized form**, and it is a parser
+question, not a marking one: should `{1} 2+3` split, or should the parser accept
+the operator so the concatenation can reject it with a reason? A silent split
+turns a malformed program into a *different valid one*, which argues for the
+latter.
 
-**(c) `<<{…}>>` still resolves as if single-marked.** `{0} <<{q=1;}>>` gives
-`{0; q=1}`, the same as `{0} <{q=1;}>` — the doubled mark loses one level. The
-classifier is **not** the cause: `AsWritten` builds via `build_fir`, and
-`build_fir`'s `StayFullyFoolish` arm constructs a real `StayFullyFoolishFir`.
-The downgrade is downstream of both, and finding where is part of implementing
-this section.
+**(b) A nested written concatenation loses constituents.**
+`(({1}{2}) ({3}{4}))` evaluates to `{NK 1; 2}` — the second inner concatenation
+is **absent**, not NK. The parser produces
+`Concat(Concat(brane(1),brane(2)), Concat(brane(3),brane(4)))`, and §9.2 says a
+concatenation constituent is treated exactly as a brane, so the expected result
+is a four-statement flatten. **A defect to fix under this section.**
 
-By contrast `{0} <<bb>>` — a doubled mark on a *search* — stays deferred
-correctly. So whatever loses the level is specific to a marked **brane**.
+**(c) RETRACTED — `<<{…}>>` is not downgraded.** An earlier draft of this
+section claimed a doubled mark on a brane constituent was silently given SF
+semantics. That was wrong on both counts: `{0} <<{q=1;}>>` **does** parse as a
+concatenation (`c = {0; q=1}`), and no case was ever demonstrated in which SFF
+and SF *should* differ here but do not. The evidence offered — three forms
+agreeing — proves nothing without a case that requires them to disagree.
+Measured, including with a context-dependent body:
 
-**(d) "Do nothing" needs one qualification.** A marked constituent is compiled
-as written — but it is still compiled *in* a concatenation, and the enclosing
-`under_sff` flag is threaded into it. "Do nothing" means **add no marker**; it
-does not mean "compile in a vacuum". Stated so an implementer does not read it
-as a licence to drop context.
+```foolish
+{c = {5,7} <{q=<<#-1>>;}>;}      !! c = {5; 7; q=7}
+{c = {5,7} <<{q=<<#-1>>;}>>;}    !! c = {5; 7; q=7}
+{c = {5,7} {q=<<#-1>>;}}         !! c = {5; 7; q=7}
+```
 
-**(e) A single-element concatenation is not one.** `c = {1}` is a brane, not a
-one-constituent concatenation, and none of §9.2 applies. The rules govern
-*written* concatenations of two or more constituents.
+All three agree, and all three are **correct** — `q=7` is the preceding
+statement. §9.2's rule for a marked constituent stands unqualified: compile it
+as written, change nothing.
+
+**(d) "Compile as written" threads `under_sff` in as normal.** A marked
+constituent is compiled in place, with the enclosing `under_sff` passed down
+exactly as any other node receives it. "Do nothing" means **add no marker**, not
+"compile in a vacuum".
+
+**(e) A single-element `{…}` is a brane, not a concatenation.** `c = {1}` is a
+brane literal; §9.2 governs *written* concatenations of two or more
+constituents. Recorded only so an implementer does not apply the marking rules
+to a lone brane.
 
 #### §9.5 What the rule deliberately does not say
 

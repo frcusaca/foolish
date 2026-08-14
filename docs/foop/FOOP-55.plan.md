@@ -550,37 +550,44 @@ one of the superseded formulations and is to be replaced, not extended.
   - [ ] the §9.3 worked example, as the complex interaction
   - [ ] a nested written concatenation `(({1}{2}) ({3}{4}))` flattens to four
         statements (§9.4b)
-  - [ ] `{0} <<{q=1;}>>` and `{0} <{q=1;}>` produce DIFFERENT output — the
-        doubled mark defers one coordination longer (§9.4c)
+  - [ ] `{0} <<{q=1;}>>`, `{0} <{q=1;}>` and `{0} {q=1;}` — pin that a marked
+        constituent is compiled as written (§9.2). They agree today, including
+        with a context-dependent body; the case exists so a future change that
+        makes them diverge is caught.
   - [ ] a single-element `c = {1}` is a brane, not a concatenation (§9.4e) —
         the control showing §9.2 does not apply to it
 - [ ] Review every OUTPUT statement, then promote through the Promotion Review
       Gate
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
-### 3G.3b — the three defects §9.4 exposed
+### 3G.3b — what §9.4 exposed
 
-Each was probed live while writing §9. They are defects to fix under this
-section, not rules to restate.
+See `docs/foop/FOOP-55.md` §9.4 (around line 1790) for the measured evidence
+behind each item.
 
-- [ ] **(a) An operator constituent silently splits instead of NK-ing.**
-      `{1} 2+3` yields `c={1}` and a separate bare `5` — the parser's
-      `is_concatenation_continuation` never accepts the operator, so the
-      classifier never sees it and §9.2's "compiler emits NK" cannot fire.
-      **DECIDE and record**: accept the split as the parser's answer and say so
-      in §9.2, or make the parser recognise an operator in constituent position
-      precisely so it can be rejected with a reason. Prefer the latter — a
-      silent split turns a malformed program into a different valid one.
+- [ ] **(a) Give the concatenation NK a reason.** `{1} (2+3)` already NKs
+      correctly — the operator IS a constituent there and is rejected — but the
+      NK carries no reason. Set it to name the cause, e.g. "cannot concatenate
+      number", or the constituent's actual kind. Detection may be at settle time
+      or at classify time; earlier is preferable, both are correct.
+- [ ] **(a2) DECIDE the unparenthesized form.** `{1} 2+3` does not reach the
+      concatenation at all: it splits into `c={1}` and a separate statement `5`,
+      because `is_concatenation_continuation`
+      (`foolish-parser/src/parser.rs:532-554`) does not accept a bare integer as
+      a continuation. Either accept the split and say so in §9.2, or make the
+      parser accept the operator so the concatenation can reject it with a
+      reason. A silent split turns a malformed program into a DIFFERENT VALID
+      ONE, which argues for the latter. Record the decision in §9.2.
 - [ ] **(b) A nested written concatenation loses constituents.**
       `(({1}{2}) ({3}{4}))` gives `{NK 1; 2}` — the second inner concatenation
-      is absent, not NK. §9.2 says a concatenation constituent is treated
-      exactly as a brane, so the expected result is a four-statement flatten.
-- [ ] **(c) `<<{…}>>` resolves as if single-marked.** `{0} <<{q=1;}>>` gives
-      `{0; q=1}`, identical to `{0} <{q=1;}>`. NOT the classifier: `AsWritten`
-      builds via `build_fir`, whose `StayFullyFoolish` arm constructs a real
-      `StayFullyFoolishFir`. The level is lost downstream — find where. Note
-      `{0} <<bb>>` (doubled mark on a SEARCH) defers correctly, so the defect is
-      specific to a marked **brane**.
+      is absent, not NK. The parser produces
+      `Concat(Concat(brane(1),brane(2)), Concat(brane(3),brane(4)))`, and §9.2
+      treats a concatenation constituent exactly as a brane, so a four-statement
+      flatten is expected.
+- [x] ~~(c) `<<{…}>>` resolves as if single-marked~~ — **RETRACTED, not a
+      defect.** It parses as a concatenation and behaves correctly; no case was
+      ever shown in which SFF and SF should differ here but do not. See §9.4(c).
+      (2026-08-13 18:52)
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
 ### 3G.4 — implement §9.2
