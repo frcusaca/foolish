@@ -509,11 +509,24 @@ impl Parser {
         })
     }
 
-    // --- expr: addExpr | ifExpr | concatenation ---
+    // --- expr: backtick chain (weakest) wrapping concat_level ---
     fn parse_expr(&mut self) -> Result<Astn> {
         if self.peek_token() == Some(&Token::If) {
             return self.parse_if_expr();
         }
+        let mut elements = vec![self.parse_concat_level()?];
+        while self.peek_token() == Some(&Token::Backtick) {
+            self.advance();
+            elements.push(self.parse_concat_level()?);
+        }
+        match elements.len() {
+            1 => Ok(elements.pop().unwrap()),
+            _ => Ok(Astn::TailConcatenation { elements }),
+        }
+    }
+
+    // --- concatLevel: addExpr | concatenation ---
+    fn parse_concat_level(&mut self) -> Result<Astn> {
         let mut first = self.parse_add_expr()?;
         while self.is_concatenation_continuation() {
             let second = self.parse_concatenation_element()?;
@@ -1353,6 +1366,7 @@ impl std::fmt::Display for Token {
             Token::GtGt => write!(f, ">>"),
             Token::LtLtEqGtGt => write!(f, "<<=>>>"),
             Token::Apostrophe => write!(f, "'"),
+            Token::Backtick => write!(f, "`"),
             Token::Integer(n) => write!(f, "{}", n),
             Token::Ident(s) => write!(f, "{}", s),
             Token::Shebang(s) => write!(f, "#!{}", s),
@@ -2047,6 +2061,270 @@ mod tests {
                 }
             }
             _ => panic!("expected brane"),
+        }
+    }
+
+    // ── FOOP-65: Tail Concatenator (backtick) ─────────────────────────
+
+    /// `f`X` parses to `TailConcatenation [f, X]`.
+    #[test]
+    fn tail_concat_basic() {
+        let ast = parse_single("{r = f`X;}").unwrap();
+        match ast {
+            Astn::Brane { statements, .. } => match &statements[0] {
+                Astn::Assignment { expr, .. } => match &**expr {
+                    Astn::TailConcatenation { elements } => {
+                        assert_eq!(elements.len(), 2);
+                        assert!(matches!(&elements[0], Astn::Identifier { id, .. } if id == "f"));
+                        assert!(matches!(&elements[1], Astn::Identifier { id, .. } if id == "X"));
+                    }
+                    other => panic!("expected TailConcatenation, got {other:?}"),
+                },
+                other => panic!("expected assignment, got {other:?}"),
+            },
+            other => panic!("expected brane, got {other:?}"),
+        }
+    }
+
+    /// `f`g`h`X` parses to ONE flat `TailConcatenation [f, g, h, X]` (no nesting).
+    #[test]
+    fn tail_concat_chain_is_flat() {
+        let ast = parse_single("{r = f`g`h`X;}").unwrap();
+        match ast {
+            Astn::Brane { statements, .. } => match &statements[0] {
+                Astn::Assignment { expr, .. } => match &**expr {
+                    Astn::TailConcatenation { elements } => {
+                        assert_eq!(elements.len(), 4);
+                        assert!(matches!(&elements[0], Astn::Identifier { id, .. } if id == "f"));
+                        assert!(matches!(&elements[1], Astn::Identifier { id, .. } if id == "g"));
+                        assert!(matches!(&elements[2], Astn::Identifier { id, .. } if id == "h"));
+                        assert!(matches!(&elements[3], Astn::Identifier { id, .. } if id == "X"));
+                    }
+                    other => panic!("expected TailConcatenation, got {other:?}"),
+                },
+                other => panic!("expected assignment, got {other:?}"),
+            },
+            other => panic!("expected brane, got {other:?}"),
+        }
+    }
+
+    /// Precedence pin: `fn`{a}{b}` → `[fn, Concatenation[{a},{b}]]`
+    /// Juxtaposition groups first; `{a}{b}` is ONE operand.
+    #[test]
+    fn tail_concat_precedence_juxtaposition_groups_first() {
+        let ast = parse_single("{r = fn`{a}{b};}").unwrap();
+        match ast {
+            Astn::Brane { statements, .. } => match &statements[0] {
+                Astn::Assignment { expr, .. } => match &**expr {
+                    Astn::TailConcatenation { elements } => {
+                        assert_eq!(elements.len(), 2);
+                        assert!(matches!(&elements[0], Astn::Identifier { id, .. } if id == "fn"));
+                        assert!(
+                            matches!(&elements[1], Astn::Concatenation { elements } if elements.len() == 2),
+                            "second operand should be Concatenation of 2 branes"
+                        );
+                    }
+                    other => panic!("expected TailConcatenation, got {other:?}"),
+                },
+                other => panic!("expected assignment, got {other:?}"),
+            },
+            other => panic!("expected brane, got {other:?}"),
+        }
+    }
+
+    /// Precedence pin: `fn`{a}$` → `[fn, HeadTail($, Brane[a])]`
+    /// `$` belongs INSIDE the right operand.
+    #[test]
+    fn tail_concat_precedence_dollar_inside_operand() {
+        let ast = parse_single("{r = fn`{a}$;}").unwrap();
+        match ast {
+            Astn::Brane { statements, .. } => match &statements[0] {
+                Astn::Assignment { expr, .. } => match &**expr {
+                    Astn::TailConcatenation { elements } => {
+                        assert_eq!(elements.len(), 2);
+                        assert!(matches!(&elements[0], Astn::Identifier { id, .. } if id == "fn"));
+                        // Second operand: {a}$ — HeadTail wrapping a Brane
+                        match &elements[1] {
+                            Astn::HeadTail { is_head, anchor } => {
+                                assert!(!is_head);
+                                assert!(matches!(&**anchor, Astn::Brane { .. }));
+                            }
+                            other => panic!("expected HeadTail on second operand, got {other:?}"),
+                        }
+                    }
+                    other => panic!("expected TailConcatenation, got {other:?}"),
+                },
+                other => panic!("expected assignment, got {other:?}"),
+            },
+            other => panic!("expected brane, got {other:?}"),
+        }
+    }
+
+    /// `(fn`X)~name` — search suffix attaches to the parenthesized whole.
+    #[test]
+    fn tail_concat_search_suffix_on_parenthesized() {
+        let ast = parse_single("{r = (fn`X)~name;}").unwrap();
+        match ast {
+            Astn::Brane { statements, .. } => match &statements[0] {
+                Astn::Assignment { expr, .. } => match &**expr {
+                    Astn::RegexpSearch { anchor, .. } => match anchor.as_deref() {
+                        Some(Astn::TailConcatenation { elements }) => {
+                            assert_eq!(elements.len(), 2);
+                        }
+                        other => panic!("expected TailConcatenation as anchor, got {other:?}"),
+                    },
+                    other => panic!("expected RegexpSearch, got {other:?}"),
+                },
+                other => panic!("expected assignment, got {other:?}"),
+            },
+            other => panic!("expected brane, got {other:?}"),
+        }
+    }
+
+    /// §3.1 worked example: `a`b`c`d e f` → TailConcatenation [a, b, c, Concatenation[d,e,f]]
+    /// The trailing `d e f` is ONE operand (an ordinary brane concatenation).
+    #[test]
+    fn tail_concat_worked_example() {
+        let ast = parse_single("{r = a`b`c`d e f;}").unwrap();
+        match ast {
+            Astn::Brane { statements, .. } => match &statements[0] {
+                Astn::Assignment { expr, .. } => match &**expr {
+                    Astn::TailConcatenation { elements } => {
+                        assert_eq!(elements.len(), 4);
+                        assert!(matches!(&elements[0], Astn::Identifier { id, .. } if id == "a"));
+                        assert!(matches!(&elements[1], Astn::Identifier { id, .. } if id == "b"));
+                        assert!(matches!(&elements[2], Astn::Identifier { id, .. } if id == "c"));
+                        // Fourth operand: Concatenation [d, e, f]
+                        match &elements[3] {
+                            Astn::Concatenation { elements: elems } => {
+                                assert_eq!(elems.len(), 3);
+                                assert!(
+                                    matches!(&elems[0], Astn::Identifier { id, .. } if id == "d")
+                                );
+                                assert!(
+                                    matches!(&elems[1], Astn::Identifier { id, .. } if id == "e")
+                                );
+                                assert!(
+                                    matches!(&elems[2], Astn::Identifier { id, .. } if id == "f")
+                                );
+                            }
+                            other => {
+                                panic!("expected Concatenation for 4th operand, got {other:?}")
+                            }
+                        }
+                    }
+                    other => panic!("expected TailConcatenation, got {other:?}"),
+                },
+                other => panic!("expected assignment, got {other:?}"),
+            },
+            other => panic!("expected brane, got {other:?}"),
+        }
+    }
+
+    /// Backtick inside brane statements works.
+    #[test]
+    fn backtick_in_brane_statements() {
+        let ast = parse_single("{r = {a`b;};}").unwrap();
+        match ast {
+            Astn::Brane { statements, .. } => match &statements[0] {
+                Astn::Assignment { expr, .. } => match &**expr {
+                    Astn::Brane {
+                        statements: inner, ..
+                    } => {
+                        assert_eq!(inner.len(), 1);
+                        assert!(
+                            matches!(&inner[0], Astn::TailConcatenation { elements } if elements.len() == 2)
+                        );
+                    }
+                    other => panic!("expected inner brane, got {other:?}"),
+                },
+                other => panic!("expected assignment, got {other:?}"),
+            },
+            other => panic!("expected brane, got {other:?}"),
+        }
+    }
+
+    /// Backtick inside parentheses works.
+    #[test]
+    fn backtick_in_parentheses() {
+        let ast = parse_single("{r = (a`b);}").unwrap();
+        match ast {
+            Astn::Brane { statements, .. } => match &statements[0] {
+                Astn::Assignment { expr, .. } => {
+                    assert!(
+                        matches!(&**expr, Astn::TailConcatenation { elements } if elements.len() == 2)
+                    );
+                }
+                other => panic!("expected assignment, got {other:?}"),
+            },
+            other => panic!("expected brane, got {other:?}"),
+        }
+    }
+
+    /// Backtick inside <...> (SF marker) works.
+    #[test]
+    fn backtick_in_sf_marker() {
+        let ast = parse_single("{r = <a`b>;}").unwrap();
+        match ast {
+            Astn::Brane { statements, .. } => match &statements[0] {
+                Astn::Assignment { expr, .. } => match &**expr {
+                    Astn::StayFoolish { expr: inner } => {
+                        assert!(
+                            matches!(&**inner, Astn::TailConcatenation { elements } if elements.len() == 2)
+                        );
+                    }
+                    other => panic!("expected StayFoolish, got {other:?}"),
+                },
+                other => panic!("expected assignment, got {other:?}"),
+            },
+            other => panic!("expected brane, got {other:?}"),
+        }
+    }
+
+    /// Backtick inside <<...>> (SFF marker) works.
+    #[test]
+    fn backtick_in_sff_marker() {
+        let ast = parse_single("{r = <<a`b>>;}").unwrap();
+        match ast {
+            Astn::Brane { statements, .. } => match &statements[0] {
+                Astn::Assignment { expr, .. } => match &**expr {
+                    Astn::StayFullyFoolish { expr: inner } => {
+                        assert!(
+                            matches!(&**inner, Astn::TailConcatenation { elements } if elements.len() == 2)
+                        );
+                    }
+                    other => panic!("expected StayFullyFoolish, got {other:?}"),
+                },
+                other => panic!("expected assignment, got {other:?}"),
+            },
+            other => panic!("expected brane, got {other:?}"),
+        }
+    }
+
+    /// A trailing backtick with no operand produces a parse error.
+    #[test]
+    fn trailing_backtick_errors() {
+        assert!(
+            parse_single("{r = f`; }").is_err(),
+            "trailing backtick with no operand must be a parse error"
+        );
+    }
+
+    /// Single element is NOT wrapped in TailConcatenation.
+    #[test]
+    fn single_expr_is_not_tail_concat() {
+        let ast = parse_single("{r = f;}").unwrap();
+        match ast {
+            Astn::Brane { statements, .. } => match &statements[0] {
+                Astn::Assignment { expr, .. } => {
+                    assert!(
+                        !matches!(&**expr, Astn::TailConcatenation { .. }),
+                        "single identifier must NOT be wrapped in TailConcatenation"
+                    );
+                }
+                other => panic!("expected assignment, got {other:?}"),
+            },
+            other => panic!("expected brane, got {other:?}"),
         }
     }
 }

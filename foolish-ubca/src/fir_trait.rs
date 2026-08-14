@@ -211,6 +211,11 @@ pub trait Fir: std::fmt::Debug {
         &[]
     }
 
+    /// ConcatenationFir provenance. Default: Juxtaposition.
+    fn as_concat_provenance(&self) -> crate::fir_kinds::ConcatProvenance {
+        crate::fir_kinds::ConcatProvenance::Juxtaposition
+    }
+
     /// The name a creation reports for itself, if any. Default: `None`.
     ///
     /// Only [`CreationFir`](crate::fir_kinds::CreationFir) overrides this, by
@@ -802,8 +807,8 @@ pub(crate) mod tests {
 mod get_value_tests {
     use super::*;
     use crate::fir_kinds::{
-        BraneFir, ConcatenationFir, IndepIntFir, IndexFir, NkFir, OperatorFir, SearchFir,
-        StatementFir, StayFoolishFir, StayFullyFoolishFir,
+        BraneFir, ConcatProvenance, ConcatenationFir, IndepIntFir, IndexFir, NkFir, OperatorFir,
+        SearchFir, StatementFir, StayFoolishFir, StayFullyFoolishFir,
     };
     use foolish_core::fir::Nyes;
     use std::rc::Weak;
@@ -915,6 +920,7 @@ mod get_value_tests {
             RefCell::new(ConcatenationFir {
                 core: ProtoBrane::new(elements, parent, Nyes::Prembrionic),
                 _helpers_populated: std::cell::Cell::new(false),
+                provenance: ConcatProvenance::Juxtaposition,
             })
         })
     }

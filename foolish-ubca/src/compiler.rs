@@ -5,8 +5,8 @@ use anyhow::anyhow;
 use foolish_parser::{AssignmentOperator, Astn, SearchOperator};
 
 use crate::fir_kinds::{
-    BraneFir, ConcatenationFir, CreationFir, IndepIntFir, IndexFir, NkFir, OperatorFir, SearchFir,
-    StatementFir, StayFoolishFir, StayFullyFoolishFir,
+    BraneFir, ConcatProvenance, ConcatenationFir, CreationFir, IndepIntFir, IndexFir, NkFir,
+    OperatorFir, SearchFir, StatementFir, StayFoolishFir, StayFullyFoolishFir,
 };
 use crate::fir_trait::{Fir, FirRef};
 use crate::proto_brane::ProtoBrane;
@@ -77,7 +77,10 @@ fn classify_concat_element(ast: &Astn) -> ConcatElemKind {
     // made `(({1}{2}) ({3}{4}))` drop its second inner concatenation: that
     // constituent fell through to rule 5 and NK'd, taking the outer
     // concatenation with it.
-    if matches!(ast, Astn::Brane { .. } | Astn::Concatenation { .. }) {
+    if matches!(
+        ast,
+        Astn::Brane { .. } | Astn::Concatenation { .. } | Astn::TailConcatenation { .. }
+    ) {
         return ConcatElemKind::BareBrane;
     }
     // Rule 5.
@@ -208,7 +211,7 @@ fn validate_astn(ast: &Astn) -> anyhow::Result<()> {
         Astn::Seek { anchor, .. } => validate_astn(anchor),
         Astn::HeadTail { anchor, .. } => validate_astn(anchor),
         Astn::ContextedSearch { inner } => validate_astn(inner),
-        Astn::Concatenation { elements } => {
+        Astn::Concatenation { elements } | Astn::TailConcatenation { elements } => {
             for e in elements {
                 validate_astn(e)?;
             }
@@ -237,6 +240,9 @@ fn validate_astn(ast: &Astn) -> anyhow::Result<()> {
 /// unevaluated. This is a BUILD-FROM-CODE rule ONLY; it does NOT affect constanic-cloning of
 /// an SFF child (that strips the marker and uses normal constanic-clone nyes rules).
 fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool) -> FirRef {
+    // Read the concatenation spelling before `ast` is moved into the match: the
+    // two spellings share one arm and differ only in provenance (FOOP-65 §5.3).
+    let is_tail_concat = matches!(ast, Astn::TailConcatenation { .. });
     // Searches built under an SFF start ECONSTANIC; otherwise PREMBRIONIC.
     let search_nyes = if under_sff {
         Nyes::Econstanic
@@ -445,7 +451,20 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
             anchored: false,
             contexted: false,
         })),
-        Astn::Concatenation { elements } => {
+        // Both concatenation spellings build identically and differ only in
+        // PROVENANCE, which affects sequencing and never evaluation (FOOP-65
+        // §5.3). §9.2's constituent rules therefore apply unchanged to both.
+        // Both concatenation spellings build identically and differ only in
+        // PROVENANCE, which affects sequencing and never evaluation (FOOP-65
+        // §5.3). FOOP-55 §9.2's constituent rules therefore apply unchanged to
+        // both: build_concat_element classifies each element the same way
+        // regardless of how the concatenation was spelled.
+        Astn::Concatenation { elements } | Astn::TailConcatenation { elements } => {
+            let provenance = if is_tail_concat {
+                ConcatProvenance::TailConcatenation
+            } else {
+                ConcatProvenance::Juxtaposition
+            };
             Rc::new_cyclic(|me: &Weak<RefCell<ConcatenationFir>>| {
                 let me_dyn: Weak<RefCell<dyn Fir>> = me.clone();
                 let children: Vec<FirRef> = elements
@@ -455,6 +474,7 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
                 RefCell::new(ConcatenationFir {
                     core: ProtoBrane::new(children, child_parent!(), Nyes::Prembrionic),
                     _helpers_populated: std::cell::Cell::new(false),
+                    provenance,
                 })
             })
         }
@@ -824,10 +844,16 @@ mod tests {
     fn marked_constituent_is_left_as_written() {
         for marked in [
             Astn::StayFoolish {
-                expr: Box::new(Astn::Brane { characterizations: vec![], statements: vec![] }),
+                expr: Box::new(Astn::Brane {
+                    characterizations: vec![],
+                    statements: vec![],
+                }),
             },
             Astn::StayFullyFoolish {
-                expr: Box::new(Astn::Brane { characterizations: vec![], statements: vec![] }),
+                expr: Box::new(Astn::Brane {
+                    characterizations: vec![],
+                    statements: vec![],
+                }),
             },
         ] {
             assert_eq!(

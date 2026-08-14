@@ -357,6 +357,7 @@ pub struct ConcatenationFir {
     pub(crate) elements: Vec<FirRef>,
     pub(crate) merged: Option<FirRef>,
     pub(crate) state: Nyes,
+    pub(crate) is_tail_concatenation: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -593,6 +594,9 @@ pub trait FirQueryable: std::fmt::Debug {
     fn hs_alarm(&self) -> Option<&Alarm> {
         None
     }
+    fn hs_is_tail_concatenation(&self) -> bool {
+        false
+    }
 }
 
 /// Wrapper for FirRef (Rc<RefCell<dyn Steppable>>) that implements FirQueryable.
@@ -678,6 +682,10 @@ impl FirQueryable for FirChildRef {
         } else {
             None
         }
+    }
+    fn hs_is_tail_concatenation(&self) -> bool {
+        let fir = clone_steppable(&self.inner);
+        fir.hs_is_tail_concatenation()
     }
 }
 
@@ -835,6 +843,13 @@ impl FirQueryable for Fir {
             Fir::NormalBrane(i) => i.alarm.as_ref(),
             Fir::Search(i) => i.alarm.as_ref(),
             _ => None,
+        }
+    }
+    fn hs_is_tail_concatenation(&self) -> bool {
+        if let Fir::Concatenation(i) = self {
+            i.is_tail_concatenation
+        } else {
+            false
         }
     }
     fn hs_creation(&self) -> bool {
@@ -1742,6 +1757,7 @@ impl<'de> Deserialize<'de> for Fir {
                     elements,
                     merged,
                     state,
+                    is_tail_concatenation: false,
                 })))
             }
             "NormalBrane" => {
@@ -2097,6 +2113,7 @@ pub struct ConcatenationFirBuilder {
     elements: Vec<FirRef>,
     merged: Option<FirRef>,
     state: Nyes,
+    is_tail_concatenation: bool,
 }
 
 impl Default for ConcatenationFirBuilder {
@@ -2111,6 +2128,7 @@ impl ConcatenationFirBuilder {
             elements: Vec::new(),
             merged: None,
             state: Nyes::Embryonic,
+            is_tail_concatenation: false,
         }
     }
     pub fn element(mut self, child: Fir) -> Self {
@@ -2129,11 +2147,16 @@ impl ConcatenationFirBuilder {
         self.state = state;
         self
     }
+    pub fn is_tail_concatenation(mut self, is_tail: bool) -> Self {
+        self.is_tail_concatenation = is_tail;
+        self
+    }
     pub fn build(self) -> Fir {
         Fir::Concatenation(Box::new(ConcatenationFir {
             elements: self.elements,
             merged: self.merged,
             state: self.state,
+            is_tail_concatenation: self.is_tail_concatenation,
         }))
     }
 }

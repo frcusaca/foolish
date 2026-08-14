@@ -37,6 +37,7 @@ pub enum Token {
     LtLtEqGtGt, // <<=>>>
 
     Apostrophe, // '
+    Backtick,   // `
 
     Creation, // ⬤ (U+2B24)
 

@@ -1026,7 +1026,7 @@ fn cmd_evaluate(args: EvaluateArgs) -> Result<ExitCode> {
         .filter(|p| {
             args.filter
                 .as_ref()
-                .map_or(true, |f| p.to_string_lossy().contains(f.as_str()))
+                .is_none_or(|f| p.to_string_lossy().contains(f.as_str()))
         })
         .collect();
 

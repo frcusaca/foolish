@@ -1,0 +1,66 @@
+#einmo 1 encoding=utf-8 separator=!!\n
+test: foop/65/tail_concat_chain.foo
+suite: /storage1/human/hcbusy/foolish_worktrees/foop-55-project-euler-1/foolish-ubca/einmo_suite
+producer: 8a16ab26
+producer-diff: sha256:0491a6d17ad1986c0983b59946f885e6c52258a65379d6821da14a1703ae7156
+generated: 2026-08-14T02:25:18.000000000Z
+status: normal
+status-detail: 
+sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
+{
+	!! FOOP-65 — tail concatenator chain: §3.1 worked example.
+	!! The backtick form and juxtaposition form produce identical settled branes.
+
+	!! Define operands
+	a_brn = {1};
+	b_brn = {2};
+	c_brn = {3};
+	d_brn = {4};
+	e_brn = {5};
+	f_brn = {6};
+
+	!! Backtick form: a_brn`b_brn`c_brn`d_brn e_brn f_brn
+	!! This is: (d_brn e_brn f_brn) c_brn b_brn a_brn
+	chain_backtick = a_brn`b_brn`c_brn`d_brn e_brn f_brn;
+
+	!! Juxtaposition form (reversed source order = same concatenation)
+	chain_juxta    = d_brn e_brn f_brn c_brn b_brn a_brn;
+}
+!!
+{
+  aˍbrn={
+      1
+  };
+  bˍbrn={
+      2
+  };
+  cˍbrn={
+      3
+  };
+  dˍbrn={
+      4
+  };
+  eˍbrn={
+      5
+  };
+  fˍbrn={
+      6
+  };
+  chainˍbacktick={
+      1;
+      2;
+      3
+  };
+  chainˍjuxta={
+      4;
+      5;
+      6;
+      3;
+      2;
+      1
+  }
+}!!
+!!
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:1fd5e3fc343975f5871c9da9da33db75d17f7b8f8cc1a21fdeb561a781ef7265","timestamp":"2026-08-14T02:25:19.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:1fd5e3fc343975f5871c9da9da33db75d17f7b8f8cc1a21fdeb561a781ef7265","timestamp":"2026-08-14T02:25:19.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"GDNVVJRtiKdQdv8yKgLIHC4JdnpwIlQNuV2vwsSVkQnJWTPzlhbxHE9GZtdJJlhTHuhQgwL3vY5z4ET9pRbkCg==","produced_by":"einmo 0.1.0 sha256:1fd5e3fc343975f5871c9da9da33db75d17f7b8f8cc1a21fdeb561a781ef7265","timestamp":"2026-08-14T02:25:19.000000000Z"}

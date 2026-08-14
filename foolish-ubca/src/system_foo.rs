@@ -1221,8 +1221,7 @@ mod tests {
             .iter()
             .find(|s| s.borrow().as_stmt_searchable_name() == Some(name))
             .expect("system.foo declares the comparison operators");
-        let body = stmt.borrow().core().foolish_children()[0].clone();
-        body
+        stmt.borrow().core().foolish_children()[0].clone()
     }
 
     #[test]

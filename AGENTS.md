@@ -96,6 +96,13 @@ authoritative reference; if a skill and `foop.md` appear to disagree,
 - **Finding, executing, backburnering, cancelling, merging, or cleaning up a
   FOOP** → load the `foop-use-maintain` skill.
 
+Plans install, at the start of every sub-section (and every undivided phase), an **"Establish
+relevant tests" checkbox** naming that sub-section's small test subset — the old unit tests and
+einmo cases its work must not break, plus new tests as they are written — with a link to
+`README.md` §"Running specific tests", the CENTRAL reference for running one test or a subset.
+The subset runs frequently during development; all tests run when the sub-section completes
+(see `foop.md` §"Sub-Section Test Subsets").
+
 ### Crates of Foolish and Other Notable Sources
 
 Here is a maintained list of current top level crates:
@@ -167,6 +174,67 @@ Typically, for Foolish, it is easiest to setup a very small, error reproducing, 
 The breakpoint would then be either inside that test case, or inside the main method under scrutiny.
 
 ## Development Rules
+
+### The agent is responsible for correctness
+
+**Agents should do due diligence, check output line by line, verify that each reasonably
+matches existing in-force specifications or the new behavior being implemented.**
+
+**Reasonable interpretation, reasonable effort, reasonable doubt.** Due diligence is not
+exhaustive proof of every line. Where a result is plainly consistent with the spec, say so and
+move on; spend the effort where the result is surprising, where the spec is ambiguous, or where
+a value contradicts the statement's own name. The standard is what a careful colleague would
+check, not what an infinitely patient one could.
+
+**Accumulate doubts; report them once, at the end.** When you genuinely doubt a line, a
+statement, or a whole file, do not stop mid-review to ask, and do not raise concerns one at a
+time as you meet them. Write the concern down — which case, which line, what you expected, what
+you saw, and which specification or sibling behavior makes you doubt it — and **keep reviewing**.
+When the pass is done, present **every** accumulated concern together in a single statement.
+
+This is the sanctioned way out of an impasse, and it exists precisely so that "I was not certain"
+never becomes a reason to promote unread. Three outcomes, and only three:
+
+- **No doubts** — proceed (promote, check the box, report done).
+- **Doubts, none blocking** — proceed, and report them in the same message, plainly marked.
+- **Doubts that block** — proceed no further on the affected work, report the full set, and wait.
+
+One consolidated report is also easier for a human to act on than a trickle of interruptions —
+a reader who answers the first question tends not to reach the fifth.
+
+**The agent — not the test suite, not the evaluator, not the human reviewer downstream — is
+responsible for the correctness of the program it produces.** A green suite is evidence, not
+a verdict. Tests check what someone thought to check; the evaluator reports what the code
+does, which is precisely the thing under question. Neither can tell you the program is right.
+
+Responsibility here means three things, in this order:
+
+1. **Adherence to specification.** Every behavior an agent produces or accepts must match what
+   the in-force specification says — the FOOP's current `.md`, `README.md`, and the sections of
+   this file that define the language. Read the spec that governs the feature; do not work from
+   memory of an earlier revision, and do not infer the spec from the implementation's behavior.
+2. **Coherence with the rest of Foolish.** A change must fit the language and the codebase
+   around it. Ask whether an analogous existing feature behaves the same way, whether a
+   Foolisher reading only the spec would predict this result, and whether the naming and idiom
+   match their neighbours. A change that is locally defensible but inconsistent with a sibling
+   feature is a design bug — raise it, do not quietly ship it.
+3. **Reasonable elegance.** Prefer the design that is easiest to prove correct, easiest to test,
+   and easiest for the next human to understand. Elegance is last of the three because it never
+   outranks correctness — but it is on the list because unreadable correct code decays into
+   incorrect code.
+
+**This responsibility is non-delegable, and it attaches most sharply at moments of acceptance
+— promoting an einmo `output` to `checked`, checking a plan checkbox, or reporting work
+complete.** Each of those is an assertion *you* are making about the program. "The tool
+produced it," "the test passed," and "it matched the baseline" are not grounds for any of them;
+the grounds are that you inspected the result and can say why it is right. An acceptance
+recorded without that inspection is not merely unhelpful — it is a false record, and it is
+worse than no record at all, because the next agent and the human both trust it.
+
+Concretely, before promoting any einmo output to `checked`, work the **Promotion Review Gate**
+in `foop.md` — case by case, statement by statement. It is not optional and it is not a
+formality.
+
 **NEVER** start file changes for project Phase or larger WHEN any tests are broken.
 **NEVER** start large project segment work WHEN ANY tests are broken even if there're notes indicating those breakage are known. The test has to be manually disabled by human OR repaired and committed.
 
@@ -257,7 +325,11 @@ Binary after release: `target/release/foolish`
 cargo test --workspace                           # All unit tests
 cargo test -p foolish-core                       # One crate
 cargo test -p foolish-core -- brane_search       # Specific test (substring match)
+cargo test -p foolish-core -- foo bar            # Batch: a test matching ANY filter runs
 ```
+
+See `README.md` §"Running specific tests" — the central reference for running ONE test or a
+SUBSET (unit-test name filters, `--exact`, einmo case selection).
 
 ### Approval Tests (einmo)
 
@@ -271,15 +343,12 @@ are Ed25519, derived from a passphrase via Argon2id.
 #### Key commands
 
 ```bash
-cargo test -p foolish-ubca --lib -- run_einmo_tests    # run the full einmo suite
+cargo test -p foolish-ubca --lib -- einmo_gate_checked    # run the full einmo suite
 cargo test -p foolish-core --lib -- approval_all       # foolish-core approval suite
 
-# Evaluate inputs to produce output files (single file or all):
-einmo evaluate foolish-ubca/einmo_suite \
-    --command "cat" \
-    --filter "foop/23/name_value_atomic"                # single file
-einmo evaluate foolish-ubca/einmo_suite \
-    --command "cat"                                     # all files
+# Evaluate specific inputs (subset runs): see README.md §"Running specific tests"
+# for the verified evaluator command and the --filter / compare / list forms.
+# (The command forms live ONLY in that README section — one central place.)
 
 # Review and promote:
 einmo compare output checked foolish-ubca/einmo_suite   # see what changed
@@ -288,7 +357,7 @@ einmo promote output to checked foolish-ubca/einmo_suite # promote all
 
 #### The einmo review workflow
 
-1. Run `cargo test -p foolish-ubca --lib -- run_einmo_tests` — evaluates all inputs, writes
+1. Run `cargo test -p foolish-ubca --lib -- einmo_gate_checked` — evaluates all inputs, writes
    signed `.einmo` to `output/`, and checks `output == checked`.
 2. If the test fails (output diverged from checked), review with `einmo compare`.
 3. Use `poor_einmo.sh foolish-ubca/einmo_suite` for the interactive review loop (vim-based).
@@ -318,13 +387,27 @@ einmo promote output to checked foolish-ubca/einmo_suite # promote all
    FOOP's current `.md` (not just the plan) for the feature each line exercises, and confirm
    the OUTPUT matches what that spec currently says — not what an earlier or superseded
    revision said.
+
+   **Review case by case, never in bulk.** `einmo promote` promotes everything at once; the
+   *review* preceding it does not get to. Enumerate the cases you intend to promote by name,
+   and work each one's OUTPUT statement by statement. "Promote the FOOP-*N* outputs" is not a
+   reviewable unit of work — `foop/23/value_search_unanchored` is. Being your own FOOP's test
+   makes promotion **permissible**, not **justified**; the justification is the reading. **If
+   any case fails review, promote none of them.**
+
+   **Write the justification down** — in the plan under the promotion gate, or in the commit
+   message: one or two sentences per case saying what it demonstrates and why its result is
+   spec-correct. If you cannot write it, you have not reviewed it. When a FOOP plan is in
+   play, this whole step is the **Promotion Review Gate** checkbox block (`foop.md`), with one
+   sub-task per named case.
 5. Promote reviewed outputs: `einmo promote output to checked foolish-ubca/einmo_suite`.
+   Then re-run `cargo test -p foolish-ubca --lib -- einmo_gate_checked` — it must exit 0.
 6. For release attestation: `einmo promote checked to verified foolish-ubca/einmo_suite --interactive`.
 
 #### Non-regression invariant (hard rule)
 
 A FOOP under development **must not change the OUTPUT** of any einmo test
-belonging to a different, already-shipped FOOP. If `run_einmo_tests` fails
+belonging to a different, already-shipped FOOP. If `einmo_gate_checked` fails
 because a pre-existing `checked/` baseline diverged, that is a **regression you
 introduced** — fix your code so the baseline passes again. **Never** `einmo
 promote` over a divergent pre-existing baseline; `promote` is only for your own
@@ -724,16 +807,15 @@ When proposing updates, explain what has changed and why the documentation needs
 
 ## Last Updated
 
-**Date**: 2026-08-09
-**Updated By**: Claude Code / claude-sonnet-5
-**Changes**: Added an `ast-grep` row to the §Skills table (structural AST search/rewrite via
-the `ast_grep_engine` tool; prefer running it via a sub-agent) and a `bundle_repo_ctx` blurb
-under §Development tools (bundles one workspace crate's file tree + source + Git status; call
-with no `crate` arg to list crates). Earlier: added **"Crates of Foolish"** subsection under
-§Development Organization: a maintained bulleted list of current top-level crates
-(`foolish-core`, `foolish-parser`, `foolish-ubca`, `foolish-cli`, `einmo`, `zweimomo`) with a
-one-sentence blurb each. This log keeps only the single newest entry per the Markdown File
-Update Protocol; prior substance remains in git history and in the sections it describes.
+**Date**: 2026-08-12
+**Updated By**: Sisyphus / oqwen/qwen/qwen3.8-max
+**Changes**: Pointed the §Build Commands test sections at the new CENTRAL reference —
+`README.md` §"Running specific tests" (running one test or a subset: unit-test name filters,
+batch filters, `--exact`, and einmo case selection via the einmo CLI). Removed the broken
+`einmo evaluate --command "cat"` examples (cat echoes INPUT as OUTPUT — never a real
+evaluation; the working `foolish-cli run /dev/stdin | head -c -1` form lives in the README
+section) and added the batch-filter example to §Unit Tests. Noted in §FOOP the per-sub-section
+"Establish relevant tests" checkbox discipline (`foop.md` §"Sub-Section Test Subsets").
 
 ### MISC
 

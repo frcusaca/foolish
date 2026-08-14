@@ -295,6 +295,10 @@ impl Lexer {
                 self.advance();
                 return (self.make_token(Token::Ampersand), false);
             }
+            '`' => {
+                self.advance();
+                return (self.make_token(Token::Backtick), false);
+            }
 
             // Upward arrow ↑
             '\u{2191}' => {
@@ -571,6 +575,11 @@ mod tests {
     #[test]
     fn lex_ampersand() {
         assert_eq!(tokens("&"), vec![Ampersand, Eof]);
+    }
+
+    #[test]
+    fn lex_backtick() {
+        assert_eq!(tokens("`"), vec![Backtick, Eof]);
     }
 
     /// FOOP-75 §5.3: the lexer must record whether whitespace preceded each

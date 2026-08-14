@@ -85,26 +85,21 @@ Type `{` to start a brane — the REPL accumulates lines until braces balance, t
 **Run all tests:**
 
 ```bash
-cargo test --workspace
+cargo test --workspace                                   # all unit tests, all crates
+cargo test -p foolish-ubca --lib -- einmo_gate_checked   # einmo approval gate (output == checked)
 ```
 
-**Approval tests (einmo):**
+**Approval tests (einmo) — the three gates:**
 
 ```bash
-cargo test -p foolish-ubca --lib                              # run all suites
-cargo test -p foolish-ubca --lib -- run_einmo_tests           # run one suite
-
-# Evaluate inputs to produce output files:
-einmo evaluate foolish-ubca/einmo_suite \
-    --command "cat"                     # all files (reads source from stdin)
-einmo evaluate foolish-ubca/einmo_suite \
-    --command "cat" \
-    --filter "foop/23/name_value_atomic"                      # single file
+cargo test -p foolish-ubca --lib -- einmo_gate_output    # every input evaluates + self-verifies in output/
+cargo test -p foolish-ubca --lib -- einmo_gate_checked   # output matches the signed checked/ baseline
+cargo test -p foolish-ubca --lib -- einmo_gate_verified  # checked matches the human-signed verified/
 
 # Review and promote:
-einmo compare output checked foolish-ubca/einmo_suite         # see what changed
-einmo promote output to checked foolish-ubca/einmo_suite       # promote all
-poor_einmo.sh foolish-ubca/einmo_suite                         # interactive review
+einmo compare output checked foolish-ubca/einmo_suite    # see what changed
+einmo promote output to checked foolish-ubca/einmo_suite # promote (ONLY after the Promotion Review Gate — see foop.md)
+poor_einmo.sh foolish-ubca/einmo_suite                   # interactive review
 ```
 
 **Snapshot workflow**: Run a test → if output differs, einmo reports the divergent sections →
@@ -115,6 +110,87 @@ Foolish programs use the `.foo` extension and embrace a philosophy where **proxi
 combination** and **containment enables organization**. The language provides rigorous abstraction
 capabilities while maintaining interfaces that ground your computations to the physical and
 biological realities you want to model.
+
+## Running specific tests
+
+**The central reference for running ONE test case or a SUBSET of cases** — the fast-iteration
+loop while developing a feature. FOOP plan checkboxes link here and name their cases; the
+command forms live ONLY in this section, so when the tooling changes (the einmo CLI is still
+evolving), this one section is what gets updated.
+
+A subset run is a development-loop ANALYSIS tool — it never replaces the full suite. At every
+sub-section and phase boundary, the canonical judgment is:
+
+```bash
+cargo test --workspace                                   # all unit tests
+cargo test -p foolish-ubca --lib -- einmo_gate_checked   # einmo approval gate
+```
+
+### Unit tests — select by name filter
+
+`cargo test` selects tests by name filter after `--` (substring match on the full test path):
+
+```bash
+# One test group (every test whose full path contains "step_until"):
+cargo test -p foolish-ubca --lib -- step_until
+
+# Batch — several filters in ONE invocation; a test matching ANY filter runs:
+cargo test -p foolish-ubca --lib -- step_until creation_display value_search
+
+# Exactly one test, by full path (no substring matching):
+cargo test -p foolish-ubca --lib -- --exact \
+    evaluator::step_until_tests::step_until_line_number_finds_line
+
+# Discover test names to filter on:
+cargo test -p foolish-ubca --lib -- --list value_search
+```
+
+### Einmo cases — select with `--filter` and file arguments
+
+The einmo GATE tests (`einmo_gate_output|checked|verified`) always evaluate the WHOLE suite —
+they have no case selection. Case selection lives in the einmo CLI and works on the throwaway
+`output/` stage only: a subset run never touches `checked/` or `verified/`.
+
+The evaluator command below pipes each case's source through the Foolish CLI via `/dev/stdin`;
+`head -c -1` strips the trailing newline so the result matches the gate byte-for-byte. Run from
+the repository root and build the binaries first: `cargo build -p foolish-cli -p einmo` (then
+use `einmo` from your PATH, or `./target/debug/einmo`).
+
+```bash
+# Re-evaluate ONE case, then compare it against the signed checked/ baseline:
+einmo evaluate foolish-ubca/einmo_suite \
+    --command "sh -c './target/debug/foolish-cli run /dev/stdin | head -c -1'" \
+    --filter "foop/23/name_value_atomic"
+einmo compare output checked foolish-ubca/einmo_suite \
+    foop/23/name_value_atomic.foo.einmo
+
+# Batch — the filter is a substring of the case path, so a shared prefix selects
+# many cases at once (here: every foop/23 case). Cases sharing no substring need
+# one invocation per group:
+einmo evaluate foolish-ubca/einmo_suite \
+    --command "sh -c './target/debug/foolish-cli run /dev/stdin | head -c -1'" \
+    --filter "foop/23"
+
+# Compare several SPECIFIC cases in one invocation (mirror-relative paths):
+einmo compare output checked foolish-ubca/einmo_suite \
+    foop/23/name_value_atomic.foo.einmo \
+    foop/23/comprehensive.foo.einmo \
+    misc/simple_addition.foo.einmo
+
+# Which cases exist / currently differ:
+einmo list foolish-ubca/einmo_suite --filter "foop/23" --differing
+```
+
+Note: einmo skips re-writing an output file whose evaluated body is unchanged; a file it DOES
+rewrite gets einmo's default `①` envelope separator rather than the suite's `!!` Foolish
+separator. That is framing only — the gate compares section bodies — but do not commit the
+churn: `git checkout -- foolish-ubca/einmo_suite/output/` restores the gate-written framing.
+
+If a subset run reveals a divergence, that is broken code, not a stale baseline — fix the code;
+never `einmo promote` to make the diff go away (see `rust_instructions.md` §"Phase-by-phase
+testing discipline").
+
+---
 
 ## Documentation Layout
 
@@ -509,18 +585,16 @@ The following documents in `docs/vintage_legacy/` document the original ubc0 imp
 
 ## Last Updated
 
-**Date**: 2026-08-04
-**Updated By**: Claude Code / claude-opus-5
-**Changes**: Merged FOOP-33 (The Creation Postulate — `⬤`, universal characterizations,
-comparison operators, and creation-name rendering) into `jia`. Earlier entries, folded in:
-2026-08-03, Claude Code / claude-opus-5 — added **"NK from a search"** under §"The Unknown",
-stating plainly that a search settling NK is the narrow, exceptional outcome (anchored miss, or
-an NK pattern/anchor on a value search), not the default; an unanchored miss settles ECONSTANIC
-instead; cross-references FOOP-23 §Specification as the in-force authority. 2026-07-31,
-Sisyphus / mimo-v2.5-pro — fixed CI badge URLs (replaced non-existent `einmo-gates.yml?job=`
-references with individual workflow files; created missing `einmo_gate_checked`/
-`einmo_gate_verified` workflow files; corrected badge text capitalization). 2026-07-05,
-Sisyphus-Junior / xiaomi/mimo-v2.5-pro — FOOP-23 Phase D.3, updated search operator reference
-for the contextless family, value search `~=`/`?=`, and contexted `&`-searches.
+**Date**: 2026-08-12
+**Updated By**: Sisyphus / oqwen/qwen/qwen3.8-max
+**Changes**: Added **§"Running specific tests"** — the CENTRAL reference for running one test
+case or a subset of cases (what FOOP plan checkboxes link to): unit-test selection by name
+filter (single filter, multi-filter batch with OR semantics, `--exact`, `--list`), and einmo
+case selection via the einmo CLI (`evaluate --filter` with the verified
+`foolish-cli run /dev/stdin | head -c -1` evaluator command — byte-identical to the gate's
+output; `compare` with specific case files; `list --filter --differing`). Repaired the stale
+test block above it: `run_einmo_tests` no longer exists (the three `einmo_gate_*` tests
+replaced it) and `einmo evaluate --command "cat"` was broken (it echoed INPUT as OUTPUT; the
+CLI also has no stdin mode — the `/dev/stdin` form is the working command).
 
 This log keeps only the single newest entry — see `git log README.md` for full history.

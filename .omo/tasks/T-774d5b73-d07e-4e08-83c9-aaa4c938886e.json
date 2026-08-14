@@ -1,0 +1,9 @@
+{
+  "id": "T-774d5b73-d07e-4e08-83c9-aaa4c938886e",
+  "subject": "Satellite docs (AGENTS.md, rust_instructions.md) + final gate verification",
+  "description": "Fix broken einmo examples in AGENTS.md, cross-reference in rust_instructions.md, run einmo_gate_checked to restore canonical output/.",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": [],
+  "threadID": "ses_008b93267ffeY9m6ODLRYYUjQP"
+}

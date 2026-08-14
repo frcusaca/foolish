@@ -1,6 +1,6 @@
 ---
 name: foop-write-plan
-description: "MUST USE when CREATING or PLANNING a FOOP (Foolish Optimization Process) — writing the specification file (FOOP-#.md) and the plan file (FOOP-#.plan.md). Covers: what a FOOP is, the two-file system (spec + plan), little-endian numbering (FOOP-1→FOOP-9→FOOP-01→FOOP-11→FOOP-21...), the foop_check.py helper script (check/get_last/gen_next/list), naming convention (dash in filenames, space in prose), the spec template (frontmatter fields foop/title/status/phase/begun, body sections Abstract/Motivation/Specification/FIR Impact/UBC Step Impact/Test Plan/Rejected Alternatives/Open Questions/References), the D-prefix sort-key rule, plan construction rules (ordered/concrete/trackable, worktree lifecycle checkboxes, sub-tasks, variable expansion), checkbox format (timestamp on next indented line), sub-task splitting, worktree branch tracking (naming, creation, lifecycle checkboxes), comprehensive snapshot tests (foop_<NUMBER>_comprehensive.foo), and the minimal plan skeleton. Gives exact copy-pasteable commands with <NUMBER> and <SHORT_DESCRIPTION> placeholders. Triggers: 'create foop', 'new foop', 'write foop', 'foop spec', 'foop plan', 'foop template', 'foop numbering', 'foop frontmatter', 'foop_check gen_next', 'plan a foop', 'foop worktree setup', 'foop comprehensive test'."
+description: "MUST USE when CREATING or PLANNING a FOOP (Foolish Optimization Process) — writing the specification file (FOOP-#.md) and the plan file (FOOP-#.plan.md). Covers: what a FOOP is, the two-file system (spec + plan), little-endian numbering (FOOP-1→FOOP-9→FOOP-01→FOOP-11→FOOP-21...), the foop_check.py helper script (check/get_last/gen_next/list), naming convention (dash in filenames, space in prose), the spec template (frontmatter fields foop/title/status/phase/begun, body sections Abstract/Motivation/Specification/FIR Impact/UBC Step Impact/Test Plan/Rejected Alternatives/Open Questions/References), the D-prefix sort-key rule, plan construction rules (ordered/concrete/trackable, worktree lifecycle checkboxes, sub-tasks, variable expansion, per-sub-section test subsets — the 'Establish relevant tests' checkbox linking to README §Running specific tests), checkbox format (timestamp on next indented line), sub-task splitting, worktree branch tracking (naming, creation, lifecycle checkboxes), comprehensive snapshot tests (input/foop/<NUMBER>/comprehensive.foo), and the minimal plan skeleton. Gives exact copy-pasteable commands with <NUMBER> and <SHORT_DESCRIPTION> placeholders. Triggers: 'create foop', 'new foop', 'write foop', 'foop spec', 'foop plan', 'foop template', 'foop numbering', 'foop frontmatter', 'foop_check gen_next', 'plan a foop', 'foop worktree setup', 'foop comprehensive test', 'foop test subset', 'establish relevant tests'."
 ---
 
 # FOOP — Writing and Planning
@@ -251,6 +251,46 @@ Build the plan so that:
    - [ ] Run all tests — old and new — and make sure they all pass correctly.
    ```
    A phase is not complete until this box is checked. The contract behind it (a failing einmo test is broken code, not a stale baseline; never `promote` over a foreign FOOP's divergent baseline; the three `output`/`checked`/`verified` stages are a contract) lives in `rust_instructions.md` §"Phase-by-phase testing discipline" — the plan installs the checkbox; `rust_instructions.md` explains why.
+10. **Every `output→checked` promotion gets its own review-gate block.** Promotion is a *correctness claim made by the agent*, never a bookkeeping step, and it is **never** installed as a bare one-line checkbox. Wherever a phase produces new or changed einmo output, the plan installs the full **Promotion Review Gate** block below (see "Promotion Review Gate"), with **one `[ ]` sub-task per einmo case** to be promoted, named individually. A block that names no cases is not a gate; a gate whose per-case boxes are checked faster than the cases could be read is a falsified record.
+11. **Every sub-section (and every undivided phase) starts with the "Establish relevant tests" checkbox** — the small test subset for that sub-section: the old unit tests and einmo cases its work must not break, plus the new tests written for it. The checkbox names the REAL cases (expand every placeholder) and links to `README.md` §"Running specific tests", the central command reference. The plan names CASES, never command forms — so einmo CLI evolution touches only the README section:
+    ```
+    - [ ] Establish relevant tests for this sub-section. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests: <case_1>, foop/<NUMBER>/<case_2>; run unit tests: <crate>::<test_a>, <crate>::<test_b>.
+    ```
+    The implementer runs this subset frequently while the sub-section is developed (after each increment, each new test — adding each new test to the list), and runs ALL tests when the sub-section completes (rule 9's gate covers the phase boundary). Test invocations should go through subagents in parallel where available — the agent equivalent of a human opening several terminals.
+
+### Promotion Review Gate
+
+`einmo promote output to checked` writes the **frozen expected-output contract**. Checking a promotion box asserts: *"I read this case's OUTPUT statement by statement, and I can say in my own words why each line is what the specification requires."* It does not assert "the suite is green" and it does not assert "the evaluator produced this."
+
+Install this block — expanded with the **real case names**, one sub-task each — before any `einmo promote` in the plan:
+
+```markdown
+- [ ] Review and promote `output` → `checked` for FOOP-<NUMBER>'s einmo cases
+  - [ ] Confirm the rest of the suite is green — no foreign-FOOP baseline diverges
+        (a foreign divergence is a regression I introduced: fix the code, do not promote)
+  - [ ] Confirm no case below has a `verified/` twin (if one does: STOP, ask the human)
+  - [ ] Re-read the in-force specification for each feature under test:
+        FOOP-<NUMBER>.md §Specification, plus README.md §"The Unknown" for any NK result
+  - [ ] Review `foop/<NUMBER>/<case_1>` — every OUTPUT statement justified
+  - [ ] Review `foop/<NUMBER>/<case_2>` — every OUTPUT statement justified
+        (…one checkbox per case; name them all, never "…and the rest")
+  - [ ] Write the justification summary into the plan or commit message:
+        for each case, what it demonstrates and why its result is spec-correct
+  - [ ] Report ALL accumulated doubts to the human in ONE statement — or record
+        "no doubts". Blocking doubts stop here; non-blocking ones are reported alongside.
+  - [ ] Run `einmo promote output to checked foolish-ubca/einmo_suite`
+  - [ ] Re-run `cargo test -p foolish-ubca --lib -- einmo_gate_checked` — must exit 0
+```
+
+**What "every OUTPUT statement justified" requires**, per case — this is the work, not a formality:
+
+- **Statement by statement.** Read each OUTPUT line against the INPUT statement that produced it. State *why that value is what the specification mandates*. "The evaluator emitted it" is the thing being tested, not a justification for it.
+- **Be skeptical of `NK`.** A search settling NK is the narrow, exceptional outcome. Name which legitimate case applies (see `README.md` §"The Unknown" and FOOP-23 §Specification — anchored miss ⇒ NK, unanchored miss ⇒ ECONSTANIC). If you cannot name it, trace it with the `foolish-debugging` skill; do not promote.
+- **Statement names are specification.** `hit = ?…` asserts the search finds its target; `miss = ?…` asserts it does not. A `hit` that yields NK is a contradiction between the test's own claim and its result — resolve it (fix the bug the name predicted, or rename with a comment explaining why) before promoting, never by promoting past it.
+- **Coherence, not just conformance.** Ask whether the result fits the rest of Foolish: does an analogous existing case behave the same way? Would a Foolisher reading only the spec predict this output? A result that is locally defensible but inconsistent with a sibling feature is a design bug worth raising, not a baseline to freeze.
+- **Step counts and alarms count too.** They are part of the OUTPUT contract. A step count that jumped sharply for a feature that should not have changed cost is a signal to investigate.
+
+If any case fails review, **do not promote any of them**. Fix the code (or revise the test's input/statement names, which is its own reviewable change) and re-run the gate.
 
 ### Checkbox Format
 
@@ -272,7 +312,7 @@ If a task proves larger than expected and splits into multiple sub-tasks, indent
 ```markdown
 - [ ] Merge `foop-<NUMBER>-<SHORT_DESCRIPTION>` to `jia`
   - [ ] Run all tests — old and new — and make sure they all pass correctly.
-  - [ ] Check and make sure current foop has, and passes, a "comprehensive" snaptest. Input name: `foop_<NUMBER>_comprehensive.foo` (reserved for this foop). Agent generates and verifies; human gives final signed approval.
+  - [ ] Check and make sure current foop has, and passes, a "comprehensive" snaptest. Input name: `input/foop/<NUMBER>/comprehensive.foo` (reserved for this foop). Agent generates and verifies; human gives final signed approval.
   - [ ] Run all tests — old and new — and make sure they all pass correctly.
   - [x] Detected complex merge situation requiring additional work
         (2026-05-06 14:00)
@@ -345,12 +385,12 @@ Every FOOP has the right — and the obligation — to generate a **comprehensiv
 
 | Attribute | Value |
 |-----------|-------|
-| **Input file** | `foolish-ubca/snapshot_tests/input/foop_<NUMBER>_comprehensive.foo` |
+| **Input file** | `foolish-ubca/einmo_suite/input/foop/<NUMBER>/comprehensive.foo` |
 | **Name** | Reserved for this FOOP alone |
 | **Purpose** | Coverage of high-value feature combinations and edge cases that per-phase approval tests may not reach. Slight repetition of earlier tests is acceptable if it serves coverage. |
 | **Scope** | Mix new features with old — value search inside nested branes, contexted operators chained with dot access, expression patterns referencing ancestral names, combined name+value with head/tail, etc. The test should be large enough to exercise at least one path through every new operator or predicate variant. |
-| **Process** | The agent generates the `.foo` input, runs it through the approval test suite, and verifies the `.snap.new` output. Final approval requires human review and formal signed acceptance. |
-| **Placement in plan** | A checkbox task "Write and verify `foop_<NUMBER>_comprehensive.foo`" should appear in the plan, **after all implementation phases and before the merge STOP**. |
+| **Process** | The agent generates the `.foo` input, runs it through the approval test suite, and **reviews the output statement by statement via the Promotion Review Gate** before promoting. Final approval requires human review and formal signed acceptance. |
+| **Placement in plan** | A checkbox task "Write and verify `input/foop/<NUMBER>/comprehensive.foo`" should appear in the plan, **after all implementation phases and before the merge STOP**. |
 
 ### Minimal Plan Skeleton
 
@@ -361,11 +401,16 @@ Every FOOP has the right — and the obligation — to generate a **comprehensiv
       (YYYY-MM-DD HH:MM)
 - [ ] Create worktree at $(pwd)/../foolish_worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION> with branch `foop-<NUMBER>-<SHORT_DESCRIPTION>`
 - [ ] (read §<SECTION> of FOOP-<NUMBER>.md)
+- [ ] Establish relevant tests for this phase. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests: <case_1>, foop/<NUMBER>/<case_2>; run unit tests: <crate>::<test_a>, <crate>::<test_b>. Run this subset frequently while implementing; add new tests to this list as they are written.
 - [ ] <implementation task 1>
 - [ ] <implementation task 2>
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
-- [ ] Write and verify `foolish-ubca/snapshot_tests/input/foop_<NUMBER>_comprehensive.foo`
+- [ ] Review and promote `output` → `checked` for FOOP-<NUMBER>'s einmo cases
+      (expand the full Promotion Review Gate block, one sub-task per named case)
+- [ ] Write and verify `foolish-ubca/einmo_suite/input/foop/<NUMBER>/comprehensive.foo`
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
+- [ ] Review and promote `output` → `checked` for `foop/<NUMBER>/comprehensive`
+      (expand the full Promotion Review Gate block)
 - [ ] Verify all work is complete in $(pwd)/../foolish_worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION> and committed to `foop-<NUMBER>-<SHORT_DESCRIPTION>`
 - [ ] Merge `foop-<NUMBER>-<SHORT_DESCRIPTION>` to `jia`
 - [ ] Cleanup worktree at $(pwd)/../foolish_worktrees/foop-<NUMBER>-<SHORT_DESCRIPTION>
@@ -404,20 +449,21 @@ git worktree add -b foop-<NUMBER>-<SHORT_DESCRIPTION> \
 6. **Never start Phase+ work when tests are broken.** Fix or disable (with human permission) first.
 7. **Never commit from inside this skill** unless the user explicitly asks.
 8. **Never promote over a foreign FOOP's divergent einmo baseline.** A failing einmo test (output≠checked) is broken code, not a stale baseline — fix your code so the pre-existing baseline passes again. `einmo promote output→checked` is only for your own FOOP's new tests, after the rest of the suite is green; never a remedy for a failing test. If the divergent baseline has a `verified/` twin, it is frozen — do not touch it without a human reviewer's key. See `rust_instructions.md` §"Phase-by-phase testing discipline."
+9. **Never promote a case you have not read.** "It is my own FOOP's test" makes promotion *permissible*, not *justified* — the justification is a statement-by-statement reading against the in-force specification. Every plan that promotes installs the **Promotion Review Gate** with one named sub-task per case; a plan with a bare `- [ ] einmo promote …` line is malformed, and a gate whose per-case boxes were checked without the cases being read is a false record of work.
+10. **Every sub-section (and undivided phase) starts with the "Establish relevant tests" checkbox** — the small subset of old + new unit tests and einmo cases, named by case, linking to `README.md` §"Running specific tests". The subset runs frequently during the sub-section; ALL tests run when it completes. Plans name cases, never command forms — the commands live only in the README section.
 
 ---
 
 ## Last Updated
 
-**Date**: 2026-08-02
-**Updated By**: Sisyphus / z-ai/glm-5.2
-**Changes**: Added **plan-construction rule 9** (every phase ends with the literal test-gate
-checkbox `- [ ] Run all tests — old and new — and make sure they all pass correctly.`) and
-**safety invariant 8** (never promote over a foreign FOOP's divergent einmo baseline — a
-failing test is broken code, not a stale baseline). Inserted the test-gate checkbox into the
-minimal plan skeleton (after implementation tasks, after the comprehensive test) and into the
-merge sub-task example (before comprehensive-snaptest check, and after it). Motivated by the
-FOOP-33 Phase-3 regression where `default_equal`'s `Unknowable→NkStop` branch broke FOOP-23
-value search and the agent promoted 11 divergent baselines instead of fixing the code. The
-contractual detail lives in `rust_instructions.md` §"Phase-by-phase testing discipline"; this
-skill installs the checkbox, that file explains why.
+**Date**: 2026-08-12
+**Updated By**: Sisyphus / oqwen/qwen/qwen3.8-max
+**Changes**: Added **plan-construction rule 11**, **safety invariant 10**, and the skeleton
+checkbox for **per-sub-section test subsets**: every sub-section (and every undivided phase)
+starts with an "Establish relevant tests" checkbox naming the sub-section's small test subset
+— old unit tests and einmo cases the work must not break, plus new tests as they are written —
+linking to the central command reference (`README.md` §"Running specific tests"). The subset
+runs frequently during development; ALL tests run when the sub-section completes; test
+invocations go through subagents in parallel where available. Plans name CASES, never command
+forms, so einmo CLI evolution touches only the README section. Mirrors the new §"Sub-Section
+Test Subsets" in `foop.md`; execution-side guidance lives in the `foop-use-maintain` skill.

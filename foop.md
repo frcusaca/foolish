@@ -141,6 +141,9 @@ ordered list of checkbox tasks. Build the plan so that:
   file as the plan is being created.
 - Once work begins on a foop, all updates, including to the foop folder
   *MUST* be written *ONLY* to the worktree. This continues until merge time.
+- Every sub-section (and every phase that is not subdivided) STARTS with the
+  "Establish relevant tests" checkbox naming that sub-section's test subset
+  (see "Sub-Section Test Subsets" below).
 
 ### Checkbox Format
 
@@ -270,7 +273,7 @@ split occurred:
 
 ```markdown
 - [ ] Merge ${WORKTREE_BRANCH_NAME} to ${WORKTREE_ORIGIN_BRANCH} # <-- this checkbox is the last to be checked after all the work is done.
-  - [ ] Check and make sure current foop has, and passes, a "comprehensive" snaptest that thoroughly tests interaction of current feature with older features. it would have the unique input name 'foop_<NUMBER>_comprehensive.foo', which is a name reserved for this foop. This test may be slightly repetitative of previous tests preferring coverage of high value features and checking odd edge cases. Note, generating and running the test and verifying is agent's job, but final approval for new tests requires human operator review and formal signed approval.
+  - [ ] Check and make sure current foop has, and passes, a "comprehensive" snaptest that thoroughly tests interaction of current feature with older features. it would have the unique input name 'input/foop/<NUMBER>/comprehensive.foo', which is a name reserved for this foop. This test may be slightly repetitative of previous tests preferring coverage of high value features and checking odd edge cases. Note, generating and running the test and verifying is agent's job, but final approval for new tests requires human operator review and formal signed approval.
   - [x] Detected complex merge situation requiring additional work
         (2026-05-06 14:00)
   - [ ] Update ${WORKTREE_BRANCH_NAME} to follow new coding style
@@ -305,6 +308,37 @@ to the stated plan.
 When asking human questions, always remind them: "Above message comes from FOOP-<NUMBER>
 working to...briefe description...; the worktree is at ${WORKTREE_FULL_FS_PATH}. PTAL"
 
+### Sub-Section Test Subsets (frequent-run discipline)
+
+Every sub-section of the plan — and every phase that is not subdivided — **starts** with one
+checkbox that establishes the SMALL set of tests relevant to that sub-section: the old unit
+tests and einmo cases its work must not break, plus the new tests written for it. The checkbox
+names the cases and links to the central test-running documentation; the planner fills in REAL
+case names (expand every placeholder, same rule as worktree variables):
+
+```markdown
+- [ ] Establish relevant tests for this sub-section. Use [these instructions](../../README.md#running-specific-tests) to run einmo tests: <case_1>, foop/<NUMBER>/<case_2>, <case_3>; run unit tests: <crate>::<test_a>, <crate>::<test_b>.
+```
+
+The list is alive: as the sub-section writes new tests, each one is added to its checkbox's
+list.
+
+**During development** the implementer runs this subset frequently — after each feature
+increment and each time a new test lands — and analyzes the results before moving on. **When
+the sub-section is complete**, ALL tests run (`cargo test --workspace` and
+`cargo test -p foolish-ubca --lib -- einmo_gate_checked`) — do not wait for the phase boundary
+if the sub-section ends earlier.
+
+**Run tests through subagents whenever the environment provides them.** Parallel subagent test
+runs are the agent equivalent of a human opening several terminals: launch the unit subset and
+the einmo subset (and independent filter batches) as separate subagent tasks, keep
+implementing, and collect the results. Do not serialize long test runs behind typing when a
+subagent could be running them.
+
+The command forms live ONLY in `README.md` §"Running specific tests" — the plan names CASES,
+the central document owns the COMMANDS. When the einmo CLI evolves, only that README section
+changes; existing plans keep working because they reference cases by name.
+
 ---
 
 ## Comprehensive FOOP Tests
@@ -312,8 +346,9 @@ working to...briefe description...; the worktree is at ${WORKTREE_FULL_FS_PATH}.
 Every FOOP has the right — and the obligation — to generate a **comprehensive snapshot test**
 that thoroughly exercises the new feature interacting with existing features. This test:
 
-- **Input file**: `foolish-ubca/snapshot_tests/input/foop_<NUMBER>_comprehensive.foo`
-  (e.g. `foop_23_comprehensive.foo`). The name is reserved for this FOOP alone.
+- **Input file**: `foolish-ubca/einmo_suite/input/foop/<NUMBER>/comprehensive.foo`
+  (e.g. `input/foop/23/comprehensive.foo`). The path is reserved for this FOOP alone.
+  Its einmo case name is therefore `foop/<NUMBER>/comprehensive`.
 - **Purpose**: coverage of high-value feature combinations and edge cases that the
   per-phase approval tests may not reach. Slight repetition of earlier tests is acceptable
   if it serves coverage.
@@ -322,23 +357,107 @@ that thoroughly exercises the new feature interacting with existing features. Th
   combined name+value with head/tail, etc. The test should be large enough to exercise
   at least one path through every new operator or predicate variant.
 - **Process**: the agent generates the `.foo` input, runs it through the approval test
-  suite, and verifies the `.snap.new` output. Final approval requires human review and
-  formal signed acceptance.
-- **Placement in plan**: a checkbox task "Write and verify `foop_<NUMBER>_comprehensive.foo`"
-  should appear in the plan, after all implementation phases and before the merge STOP.
+  suite, and reviews the output through the **Promotion Review Gate** (below) before
+  promoting. Final approval requires human review and formal signed acceptance.
+- **Placement in plan**: a checkbox task "Write and verify
+  `input/foop/<NUMBER>/comprehensive.foo`" should appear in the plan, after all implementation
+  phases and before the merge STOP, followed by its own Promotion Review Gate.
+
+---
+
+## Promotion Review Gate (`output` → `checked`)
+
+`einmo promote output to checked` writes the **frozen expected-output contract** that every
+future change is measured against. It is a *correctness claim made by the agent*, never a
+bookkeeping step and never a way to make a red suite green.
+
+**Checking a promotion checkbox asserts:** *"I read this case's OUTPUT statement by statement,
+and I can say in my own words why each line is what the specification requires."*
+
+Being your own FOOP's test makes promotion **permissible**, not **justified**. The justification
+is the reading. An agent that promotes without inspecting each case has not done the work the
+checkbox records — it has falsified the record.
+
+### The gate is a checkbox block, never a one-liner
+
+A plan **must not** contain a bare `- [ ] einmo promote output to checked`. Wherever a phase
+produces new or changed einmo output, the plan installs this block, expanded with the **real
+case names, one sub-task each**:
+
+```markdown
+- [ ] Review and promote `output` → `checked` for FOOP-<NUMBER>'s einmo cases
+  - [ ] Confirm the rest of the suite is green — no foreign-FOOP baseline diverges
+  - [ ] Confirm no case below has a `verified/` twin (if one does: STOP, ask the human)
+  - [ ] Re-read the in-force specification for each feature under test
+  - [ ] Review `foop/<NUMBER>/<case_1>` — every OUTPUT statement justified
+  - [ ] Review `foop/<NUMBER>/<case_2>` — every OUTPUT statement justified
+        (…one checkbox per case; name them all, never "…and the rest")
+  - [ ] Write the justification summary into the plan or commit message
+  - [ ] Report ALL accumulated doubts to the human in ONE statement — or record "no doubts"
+  - [ ] Run `einmo promote output to checked foolish-ubca/einmo_suite`
+  - [ ] Re-run `cargo test -p foolish-ubca --lib -- einmo_gate_checked` — must exit 0
+```
+
+Per the plan-execution rule above, a parent checkbox is not checked until its children are — so
+the per-case boxes cannot be collapsed into a single tick.
+
+### What "every OUTPUT statement justified" requires
+
+- **Statement by statement.** Read each OUTPUT line against the INPUT statement that produced
+  it, and state why that value is what the specification mandates. **"The evaluator emitted
+  this" is not a justification** — it is the thing being checked.
+- **Be skeptical of `NK`.** A search settling NK is the narrow, exceptional outcome, not a
+  default. Name which legitimate case applies (anchored miss ⇒ NK; unanchored miss ⇒
+  ECONSTANIC — see `README.md` §"The Unknown" and FOOP-23 §Specification). If you cannot name
+  it, trace it (see the `foolish-debugging` skill); do not promote it.
+- **Statement names are specification, not decoration.** `hit = ?…` asserts the search finds
+  its target; `miss = ?…` asserts it does not. A `hit` yielding NK is the test contradicting
+  itself — resolve it before promoting, never by promoting past it.
+- **Coherence, not just conformance.** Does an analogous existing feature behave the same way?
+  Would a Foolisher reading only the spec predict this output? A result that is locally
+  defensible but inconsistent with a sibling feature is a design bug to raise, not a baseline
+  to freeze.
+- **Step counts and alarms are part of the contract.** An unexplained jump in step count for a
+  feature whose cost should not have changed is a signal to investigate, not noise to accept.
+
+### Reasonable effort, and what to do with a doubt
+
+Justifying a line does not mean proving it from first principles. Where a result plainly follows
+from the spec, note it and move on; concentrate the effort where a result is surprising, where the
+spec is ambiguous, or where a value contradicts its statement's own name. Aim for what a careful
+colleague would check.
+
+**When you doubt something, write it down and keep going.** Do not halt the review to ask about
+one case, and do not send concerns one at a time. Record — case, line, what you expected, what you
+saw, and which specification or sibling behavior makes you doubt it — then continue to the next
+case. **At the end of the pass, present all accumulated concerns to the human in a single
+statement.**
+
+This is the sanctioned exit from an impasse. Uncertainty is never a reason to promote unread; it
+is a reason to finish reviewing and report. If the doubts are non-blocking, promote and report
+them alongside. If any doubt blocks, promote nothing and report the full set.
+
+**If any case fails review, promote none of them.** Fix the code — or revise the test's input or
+statement names, which is a reviewable change in its own right — and re-run the gate.
+
+The full three-stage contract (`output` throwaway / `checked` frozen / `verified` human-attested),
+the "a failing einmo test is broken code, not a stale baseline" rule, and the foreign-baseline
+prohibition live in `rust_instructions.md` §"Phase-by-phase testing discipline."
 
 ---
 
 ## Last Updated
 
-**Date**: 2026-07-29 (2)
-**Updated By**: Claude Code (Opus 5)
-**Changes**: Stated the **branch-naming rule** explicitly: the branch is
-`foop-<NUMBER>-<short_description>`, bare with **no `foop/` prefix**, identical to
-`WORKTREE_BRANCH_NAME` and to the worktree directory's basename — one name, used everywhere in the
-plan. The worked example had been triply inconsistent (directory `constanic-clone-foop-7`, then
-`3841-foop-7`, with branch `foop/foop-7-constanic-clone`), which is what let a real defect through
-in FOOP-84's plan: its create checkbox made one branch while its merge checkbox named another that
-did not exist. Example rewritten to use one consistent name. Both FOOP skills updated to match.
+**Date**: 2026-08-12
+**Updated By**: Sisyphus / oqwen/qwen/qwen3.8-max
+**Changes**: Added **§"Sub-Section Test Subsets (frequent-run discipline)"** under Plan Files:
+every plan sub-section (and every undivided phase) STARTS with an "Establish relevant tests"
+checkbox naming the sub-section's small test subset — old unit tests and einmo cases the work
+must not break, plus new tests as they are written — and linking to the central test-running
+reference (`README.md` §"Running specific tests"). The subset runs frequently during
+development; when the sub-section completes, ALL tests run. Implementers run tests through
+subagents in parallel where available (the agent equivalent of several terminals). Plans name
+CASES; the command forms live only in the README section, so einmo CLI evolution touches one
+place. Added the matching bullet to "Constructing the Plan"; both FOOP skills updated to match.
 
 This log keeps only the single newest entry — see `git log foop.md` for full history.

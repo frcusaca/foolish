@@ -759,10 +759,7 @@ impl EinmoSuite {
         if let Some(gated) = self.check_catastrophe_crumb(input_rel, &out_path) {
             return Ok(gated);
         }
-        let existing = match EinmoFile::from_file(&out_path) {
-            Ok(f) => Some(f),
-            Err(_) => None,
-        };
+        let existing = EinmoFile::from_file(&out_path).ok();
         let _ = self.write_crash_crumb(input_rel, &source, &out_path);
         let outcome = evaluate_capturing(evaluator, &source);
         self.write_output(input_rel, &source, outcome, None, existing.as_ref())
@@ -824,7 +821,7 @@ impl EinmoSuite {
         let (raw, suite_skipped, crumb_gated) = if let Some(threads) = self.config.parallel() {
             self.evaluate_raw_parallel(&ordered, evaluator, threads, suite_start)
         } else {
-            let mut raw: Vec<(PathBuf, String, EvalOutcome, Option<EinmoFile>)> = Vec::new();
+            let mut raw: Vec<RawEvaluation> = Vec::new();
             let mut skipped = 0usize;
             let mut crumb_gated: Vec<FileResult> = Vec::new();
             for rel in &ordered {
@@ -1029,18 +1026,13 @@ impl EinmoSuite {
         evaluator: &dyn Evaluator,
         threads: usize,
         suite_start: std::time::Instant,
-    ) -> (
-        Vec<(PathBuf, String, EvalOutcome, Option<EinmoFile>)>,
-        usize,
-        Vec<FileResult>,
-    ) {
+    ) -> (Vec<RawEvaluation>, usize, Vec<FileResult>) {
         use std::sync::Mutex;
         use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
         let next = AtomicUsize::new(0);
         let suite_timed_out = AtomicBool::new(false);
-        let results: Mutex<Vec<(PathBuf, String, EvalOutcome, Option<EinmoFile>)>> =
-            Mutex::new(Vec::new());
+        let results: Mutex<Vec<RawEvaluation>> = Mutex::new(Vec::new());
         let crumb_gated: Mutex<Vec<FileResult>> = Mutex::new(Vec::new());
         let threads = threads.max(1);
 
@@ -1072,7 +1064,7 @@ impl EinmoSuite {
                         // Wrap the worker body so ANY panic (read, evaluate,
                         // lock) becomes a failed `EvalOutcome` instead of
                         // poisoning the shared `Mutex`.
-                        let entry: (PathBuf, String, EvalOutcome, Option<EinmoFile>) =
+                        let entry: RawEvaluation =
                             match std::panic::catch_unwind(AssertUnwindSafe(|| {
                                 let source = match self.read_input(rel) {
                                     Ok(s) => s,
@@ -1296,11 +1288,7 @@ impl EinmoSuite {
     }
 
     /// If `rel` is a dependent, locate its reference's raw outcome from `raw`.
-    fn dependent_context(
-        &self,
-        rel: &Path,
-        raw: &[(PathBuf, String, EvalOutcome, Option<EinmoFile>)],
-    ) -> Option<DependentContext> {
+    fn dependent_context(&self, rel: &Path, raw: &[RawEvaluation]) -> Option<DependentContext> {
         let sep = self.config.dependent_separator();
         let reference_rel = reference_of(rel, sep)?;
         // Find the dependent's own outcome and the reference's outcome.
@@ -1317,6 +1305,19 @@ impl EinmoSuite {
         })
     }
 }
+
+/// One test's first-pass record: what was run, what came out, and what was
+/// already on disk.
+///
+/// `evaluate_all` evaluates every input before writing any envelope, because a
+/// dependent test diffs against its reference's output *from the same run*
+/// (see [`EinmoSuite::dependent_context`]). Each element holds the input's
+/// mirror-relative path, its source text, the captured [`EvalOutcome`], and the
+/// previous `output/` envelope if one parsed. That last field must be read
+/// *before* the crash crumb overwrites the file, so it is captured here and
+/// carried to the write pass, which restores it verbatim when content and keys
+/// are unchanged rather than paying Argon2id + Ed25519 to re-sign it.
+type RawEvaluation = (PathBuf, String, EvalOutcome, Option<EinmoFile>);
 
 /// A captured evaluation outcome.
 #[derive(Debug, Clone, PartialEq, Eq)]
