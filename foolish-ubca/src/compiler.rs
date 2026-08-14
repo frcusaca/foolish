@@ -35,11 +35,18 @@ enum ConcatElemKind {
 /// 4. any brane-like → [`ConcatElemKind::BareBrane`] (auto-SFF)
 /// 5. otherwise → [`ConcatElemKind::Error`]
 ///
-/// **Order matters.** Rule 1 is tested before looking at what a mark contains.
-/// The previous implementation matched `StayFoolish{Brane}` and
-/// `StayFullyFoolish{Brane}` in their own arms and re-wrapped, which added a
-/// second mark to `<{…}>` and silently downgraded `<<{…}>>` to SF semantics.
-/// Testing "is it already marked?" first makes both unwritable.
+/// **Order matters, and rule 1 comes first by specification** — not as a fix for
+/// any observed defect. FOOP-55 §9.2 says a constituent the Foolisher has
+/// already marked is compiled **as written**, adding nothing; testing "is it
+/// already marked?" before inspecting what the mark contains is what makes that
+/// literally true. Matching `StayFoolish`/`StayFullyFoolish` in arms that look
+/// inside the mark would re-wrap, adding a second mark the Foolisher did not
+/// write.
+///
+/// An earlier revision of this comment justified the ordering by claiming
+/// `<<{…}>>` had been "silently downgraded to SF semantics". **That claim was
+/// measured and is false** — see FOOP-55 §9.4(c). The ordering is right; the
+/// rationale was not.
 ///
 /// # Requirements
 ///
@@ -65,8 +72,12 @@ fn classify_concat_element(ast: &Astn) -> ConcatElemKind {
     if is_search_astn(ast) {
         return ConcatElemKind::BareSearch;
     }
-    // Rule 4: any brane-like — auto-SFF.
-    if matches!(ast, Astn::Brane { .. }) {
+    // Rule 4: any brane-like — auto-SFF. A written concatenation is brane-like,
+    // so a nested one is treated exactly as a brane (FOOP-55 §9.2). Omitting it
+    // made `(({1}{2}) ({3}{4}))` drop its second inner concatenation: that
+    // constituent fell through to rule 5 and NK'd, taking the outer
+    // concatenation with it.
+    if matches!(ast, Astn::Brane { .. } | Astn::Concatenation { .. }) {
         return ConcatElemKind::BareBrane;
     }
     // Rule 5.
@@ -95,6 +106,20 @@ fn is_search_astn(ast: &Astn) -> bool {
     }
 }
 
+/// A short human-readable name for a constituent that is **not** valid in a
+/// concatenation, used to build the NK reason (FOOP-55 §9.4(a)).
+///
+/// Only reached for [`ConcatElemKind::Error`], so it need not name every AST
+/// node — it names the kinds a Foolisher plausibly writes by mistake and falls
+/// back to a generic phrase otherwise.
+fn concat_element_kind_name(ast: &Astn) -> &'static str {
+    match ast {
+        Astn::BinaryOp { .. } => "number",
+        Astn::UnaryOp { .. } => "number",
+        _ => "this expression",
+    }
+}
+
 fn build_concat_element(ast: Astn, parent: &Weak<RefCell<dyn Fir>>, under_sff: bool) -> FirRef {
     let kind = classify_concat_element(&ast);
     match kind {
@@ -116,10 +141,14 @@ fn build_concat_element(ast: Astn, parent: &Weak<RefCell<dyn Fir>>, under_sff: b
             build_fir(ast, Some(parent), under_sff)
         }
         ConcatElemKind::Error => {
-            // <<…>> or other — error: NK at construction.
+            // Rule 5 — not a valid constituent. NK at construction, naming the
+            // cause: "cannot concatenate X" reads as a diagnosis, where the bare
+            // "invalid concatenation element" left the Foolisher to guess which
+            // constituent and why. Detection here (classify time) is earlier
+            // than settle time, which FOOP-55 §9.4(a) prefers.
             Rc::new(RefCell::new(NkFir {
                 core: ProtoBrane::new(vec![], parent.clone(), Nyes::Nk),
-                reason: "invalid concatenation element".to_string(),
+                reason: format!("cannot concatenate {}", concat_element_kind_name(&ast)),
             }))
         }
     }
@@ -683,7 +712,7 @@ impl AstnCompilerExt for Astn {
 
 #[cfg(test)]
 mod tests {
-    use super::{ANON_STMT_NAME, AstnCompilerExt};
+    use super::{ANON_STMT_NAME, AstnCompilerExt, ConcatElemKind, classify_concat_element};
     use std::cell::RefCell;
     use std::rc::{Rc, Weak};
 
@@ -751,5 +780,75 @@ mod tests {
         let sff = Astn::IntLit(2).build_expr_with_operator(AssignmentOperator::SFF, &parent, false);
         assert_eq!(sff.borrow().kind(), FirKind::StayFullyFoolish);
         assert_eq!(sff.borrow().core().get_nyes(), Nyes::Independent);
+    }
+
+    // ---- FOOP-55 §9.2: concatenation constituent classification ----------
+    //
+    // These pin the CLASSIFICATION, not the evaluated value: classification is
+    // where §9.2's rule lives, and a value test would also be sensitive to
+    // stepping and coordination, which §9.2 does not govern.
+
+    /// §9.2: "a concatenation is brane-like, so it is treated exactly as a
+    /// brane" — hence SFF, the same as `Astn::Brane`.
+    ///
+    /// Regression: while `Concatenation` was missing from rule 4 it fell through
+    /// to rule 5 and NK'd, so `(({1}{2}) ({3}{4}))` silently DROPPED its second
+    /// inner concatenation, yielding `{NK 1; 2}` instead of a four-statement
+    /// flatten.
+    #[test]
+    fn concat_constituent_classifies_as_brane_like() {
+        let nested = Astn::Concatenation {
+            elements: vec![Astn::IntLit(3), Astn::IntLit(4)],
+        };
+        assert_eq!(
+            classify_concat_element(&nested),
+            ConcatElemKind::BareBrane,
+            "a nested concatenation is brane-like and must be SFF-marked, as a brane is"
+        );
+        // …and identically to the brane it is being equated with.
+        let brane = Astn::Brane {
+            characterizations: vec![],
+            statements: vec![],
+        };
+        assert_eq!(
+            classify_concat_element(&brane),
+            classify_concat_element(&nested),
+            "§9.2 says 'treated exactly as a brane' — the two must not diverge"
+        );
+    }
+
+    /// §9.2 rule 1: a constituent the Foolisher already marked is compiled AS
+    /// WRITTEN. Rule 1 is tested before anything looks inside the mark, so
+    /// neither mark can pick up a second wrapper.
+    #[test]
+    fn marked_constituent_is_left_as_written() {
+        for marked in [
+            Astn::StayFoolish {
+                expr: Box::new(Astn::Brane { characterizations: vec![], statements: vec![] }),
+            },
+            Astn::StayFullyFoolish {
+                expr: Box::new(Astn::Brane { characterizations: vec![], statements: vec![] }),
+            },
+        ] {
+            assert_eq!(
+                classify_concat_element(&marked),
+                ConcatElemKind::AsWritten,
+                "already-marked constituent must be compiled as written: {marked:?}"
+            );
+        }
+    }
+
+    /// §9.2: an operator constituent is "not allowed — the compiler emits NK".
+    /// The reason must NAME THE CAUSE; a bare "invalid concatenation element"
+    /// leaves the Foolisher to guess which constituent and why.
+    #[test]
+    fn operator_constituent_is_error_naming_the_cause() {
+        let op = Astn::BinaryOp {
+            op: "+".to_string(),
+            left: Box::new(Astn::IntLit(2)),
+            right: Box::new(Astn::IntLit(3)),
+        };
+        assert_eq!(classify_concat_element(&op), ConcatElemKind::Error);
+        assert_eq!(super::concat_element_kind_name(&op), "number");
     }
 }

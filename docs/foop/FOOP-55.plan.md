@@ -570,14 +570,16 @@ behind each item.
       NK carries no reason. Set it to name the cause, e.g. "cannot concatenate
       number", or the constituent's actual kind. Detection may be at settle time
       or at classify time; earlier is preferable, both are correct.
-- [ ] **(a2) DECIDE the unparenthesized form.** `{1} 2+3` does not reach the
-      concatenation at all: it splits into `c={1}` and a separate statement `5`,
-      because `is_concatenation_continuation`
+- [x] **(a2) DECIDED — the parser may barf.** `{1} 2+3` need not reach the
+      concatenation. Today it silently splits into `c={1}` and a separate
+      statement `5`, because `is_concatenation_continuation`
       (`foolish-parser/src/parser.rs:532-554`) does not accept a bare integer as
-      a continuation. Either accept the split and say so in §9.2, or make the
-      parser accept the operator so the concatenation can reject it with a
-      reason. A silent split turns a malformed program into a DIFFERENT VALID
-      ONE, which argues for the latter. Record the decision in §9.2.
+      a continuation. Atlas's decision (2026-08-13): **a parse error is an
+      acceptable outcome for now** — it is not worth widening
+      continuation-start, which would touch every concatenation parse. The
+      silent split is still the worse failure mode (it turns a malformed program
+      into a DIFFERENT VALID ONE), so if the parser is being touched anyway,
+      prefer erroring over splitting. NOT a blocker for §9.2. (2026-08-13 19:16)
 - [ ] **(b) A nested written concatenation loses constituents.**
       `(({1}{2}) ({3}{4}))` gives `{NK 1; 2}` — the second inner concatenation
       is absent, not NK. The parser produces

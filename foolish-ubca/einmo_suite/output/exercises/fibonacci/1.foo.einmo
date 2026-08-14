@@ -1,11 +1,11 @@
 #einmo 1 encoding=utf-8 separator=!!\n
 test: exercises/fibonacci/1.foo
 suite: /storage1/human/hcbusy/foolish_worktrees/foop-55-project-euler-1/foolish-ubca/einmo_suite
-producer: cae82b25
-producer-diff: sha256:69ababef9edc4b29aa54fbc7b991e19053553d981f029957d068e488cc58a3c7
-generated: 2026-08-12T18:27:02.000000000Z
-status: input-error
-status-detail: Compilation failed: program failed to parse: expected integer, found LParen at line 15, column 38
+producer: 5d55dc9f
+producer-diff: sha256:f5e053d9c3eded38802a38086733c3842bcfdb638f9ebf5a48a1dc5c43f86fb2
+generated: 2026-08-14T02:11:14.000000000Z
+status: normal
+status-detail: 
 sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
 {
 	!! Fibonacci — recursion via pattern matching (FOOP-55 §8)
@@ -43,8 +43,70 @@ sections: INPUT, OUTPUT, COMMENTS, STAMPS!!
 	fib_5 =$ {fbfn, 5}fbfn
 }
 !!
-INPUT ERROR: Compilation failed: program failed to parse: expected integer, found LParen at line 15, column 38!!
+{NK(ITERATION-EXCEEDED, Iteration exceeded 9999)
+  'match={BRANING
+      tbl=<<WOCONSTANIC
+          #(offset=-2, UNANCHORED, ECONSTANIC)
+      >>;
+      key=<<WOCONSTANIC
+          #(offset=-2, UNANCHORED, ECONSTANIC)
+      >>;
+      ^(BRANING)
+  };
+  fbfn={PREMBRIONIC
+      fbfn=<<PREMBRIONIC
+          #(offset=-2, UNANCHORED, ECONSTANIC)
+      >>;
+      param=<<PREMBRIONIC
+          #(offset=-2, UNANCHORED, ECONSTANIC)
+      >>;
+      fibtbl={PREMBRIONIC
+          elseˍvalue=??? (??? literal);
+          key=?(pattern='^'True$', UNANCHORED, PREMBRIONIC);
+          value=0;
+          key=?(pattern='^'False$', UNANCHORED, PREMBRIONIC);
+          value=<<PREMBRIONIC
+              <<PREMBRIONIC
+                $(ECONSTANIC)
+              >>
+          >>
+      };
+      lower =$ ⨃( (PREMBRIONIC)
+          elements=2,
+          {PREMBRIONIC
+  ?(pattern='^fibtbl$', UNANCHORED, ECONSTANIC);
+  ⨃(
+    elements=2,
+    {PREMBRIONIC
+  0;
+  ?(pattern='^param$', UNANCHORED, ECONSTANIC)
+},
+    <PREMBRIONIC
+  ?(pattern='^'eq$', UNANCHORED, ECONSTANIC)
+>,
+    PREMBRIONIC
+  )
+},
+          <PREMBRIONIC
+  ?(pattern='^'match$', UNANCHORED, PREMBRIONIC)
+>,
+          PREMBRIONIC
+      );
+      result=Op+(?(pattern='^param$', UNANCHORED, PREMBRIONIC), ?(pattern='^lower$', UNANCHORED, PREMBRIONIC), PREMBRIONIC)
+  };
+  fibˍ5 =$ ⨃( (PREMBRIONIC)
+      elements=2,
+      {PREMBRIONIC
+  ?(pattern='^fbfn$', UNANCHORED, ECONSTANIC);
+  5
+},
+      <PREMBRIONIC
+  ?(pattern='^fbfn$', UNANCHORED, PREMBRIONIC)
+>,
+      PREMBRIONIC
+  )
+}!!
 !!
-{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:b92be976934a8eacb02de559a9adaf0ed2f4f229b534bda97afdcb685c8de25c","timestamp":"2026-08-12T18:27:02.000000000Z"}
-{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:b92be976934a8eacb02de559a9adaf0ed2f4f229b534bda97afdcb685c8de25c","timestamp":"2026-08-12T18:27:02.000000000Z"}
-{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"Hp135XgVL3foP9wK7b1kQQWq9SvvA/UZh27yMubUj+7m22LDkUKnaVX7oRLKRJg7QwWNKM3e+guXe1kLAFvkCg==","produced_by":"einmo 0.1.0 sha256:b92be976934a8eacb02de559a9adaf0ed2f4f229b534bda97afdcb685c8de25c","timestamp":"2026-08-12T18:27:02.000000000Z"}
+{"key":"compiled","pubkey":"a5e456f9286268d2c0ab99878bfff84c7a24e14ad14bf51e696d2f5ddf37a6fa","signs":"pubkey:configured","signature":"aNqg5JP11ZPMotuOeo3+mRViOjJJb5QR1ppoMEK93peEbc3xOBz4V12CTF0iRZlvPeis9dshg+6O1xSCSomxDQ==","produced_by":"einmo 0.1.0 sha256:bd395fff86b7dc38a58ce5f3f5f090c8d938cd446d6b30c78dfa650c44de726c","timestamp":"2026-08-14T02:11:14.000000000Z"}
+{"key":"configured","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"pubkey:stage:output","signature":"M3aNLgUg1ksoQWATcmgfOA13Wg2dfPdQj+qQJj6msspFMVayFVyKGCiqyPLI9YLCbRh4lAel1MzjNQWBdmzhDw==","produced_by":"einmo 0.1.0 sha256:bd395fff86b7dc38a58ce5f3f5f090c8d938cd446d6b30c78dfa650c44de726c","timestamp":"2026-08-14T02:11:14.000000000Z"}
+{"key":"stage:output","pubkey":"5b846599cda83acb9a67774f4d6970a396e0efb72cb508e544ef3c94c90e4853","signs":"prior-bytes","signature":"RWYlwhUK3q9N8gZFjZ0K59uG18wfAycl6YZVQQPGm/X50kbhy4sqe47H2TRieRzLOGEl0wfu7proVFlJdet1AA==","produced_by":"einmo 0.1.0 sha256:bd395fff86b7dc38a58ce5f3f5f090c8d938cd446d6b30c78dfa650c44de726c","timestamp":"2026-08-14T02:11:14.000000000Z"}
