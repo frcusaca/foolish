@@ -1787,6 +1787,68 @@ so each of `e`, `f`, `g` is SF-marked and the concatenation as a whole is
 brane-like. `x = <aa>` and `y = <<bb>>` are already marked by the Foolisher, so
 they are compiled as written — the compiler adds nothing.
 
+#### §9.4 Consequences worked through, and what they expose
+
+Pushing the rule through its cases turned up five things the short statement
+does not settle. Each was probed live; the observed behaviour is recorded so the
+implementation is measured against reality rather than against expectation.
+
+**(a) "Operator → NK" cannot happen where it is written.** `{1} 2+3` does not
+NK. It **silently splits into two statements** — `c={1}` and a bare `5` — because
+the parser's `is_concatenation_continuation` does not accept an integer as a
+continuation, so the operator never becomes a constituent and the classifier
+never sees it.
+
+So the rule is right but unenforceable at the classifier. Two options, and the
+choice belongs in the plan rather than here:
+
+- accept the split as the parser's answer, and say so explicitly, or
+- make the parser recognise an operator in constituent position precisely so it
+  can be rejected with a reason.
+
+The second is preferable: a silent split turns a malformed program into a
+different valid one, which is the failure mode hardest to notice. **A rule that
+cannot fire is not a rule.**
+
+**(b) A nested written concatenation loses constituents.** `(({1}{2}) ({3}{4}))`
+evaluates to `{NK 1; 2}` — the second inner concatenation is **absent**, not
+merely NK. Since §9.2 says a concatenation constituent is treated exactly as a
+brane, the expected result is a four-statement flatten. This is a defect to fix
+under this section, not a rule to restate.
+
+**(c) `<<{…}>>` still resolves as if single-marked.** `{0} <<{q=1;}>>` gives
+`{0; q=1}`, the same as `{0} <{q=1;}>` — the doubled mark loses one level. The
+classifier is **not** the cause: `AsWritten` builds via `build_fir`, and
+`build_fir`'s `StayFullyFoolish` arm constructs a real `StayFullyFoolishFir`.
+The downgrade is downstream of both, and finding where is part of implementing
+this section.
+
+By contrast `{0} <<bb>>` — a doubled mark on a *search* — stays deferred
+correctly. So whatever loses the level is specific to a marked **brane**.
+
+**(d) "Do nothing" needs one qualification.** A marked constituent is compiled
+as written — but it is still compiled *in* a concatenation, and the enclosing
+`under_sff` flag is threaded into it. "Do nothing" means **add no marker**; it
+does not mean "compile in a vacuum". Stated so an implementer does not read it
+as a licence to drop context.
+
+**(e) A single-element concatenation is not one.** `c = {1}` is a brane, not a
+one-constituent concatenation, and none of §9.2 applies. The rules govern
+*written* concatenations of two or more constituents.
+
+#### §9.5 What the rule deliberately does not say
+
+- **It does not depend on what a search resolves to.** A search constituent is
+  SF-marked whether it will resolve to a brane or to an integer. Whether the
+  resolved value can *be* a constituent is a **typing** question answered later,
+  on the value: `populate_concat_helpers` requires each element value to be
+  brane-like, which is why `{0} tbl` concatenates while `{0} tbl^` is NK. §9.2
+  decides the **mark**, never the legality of the outcome.
+- **It does not distinguish search forms.** Deliberately flat, per §9.2.
+- **It says nothing about mark *depth*.** A constituent already carrying two
+  marks keeps two. How many coordinations a term must survive is §5's question,
+  and §5 records that the depth is not derivable by reading the source.
+
 ## FIR Impact
 
 - **Two new FIR kinds** in `foolish-ubca/src/system_foo.rs`:

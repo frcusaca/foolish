@@ -548,8 +548,39 @@ one of the superseded formulations and is to be replaced, not extended.
         brane-like, SFF-marked
   - [ ] operator constituent → **NK**
   - [ ] the §9.3 worked example, as the complex interaction
+  - [ ] a nested written concatenation `(({1}{2}) ({3}{4}))` flattens to four
+        statements (§9.4b)
+  - [ ] `{0} <<{q=1;}>>` and `{0} <{q=1;}>` produce DIFFERENT output — the
+        doubled mark defers one coordination longer (§9.4c)
+  - [ ] a single-element `c = {1}` is a brane, not a concatenation (§9.4e) —
+        the control showing §9.2 does not apply to it
 - [ ] Review every OUTPUT statement, then promote through the Promotion Review
       Gate
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
+### 3G.3b — the three defects §9.4 exposed
+
+Each was probed live while writing §9. They are defects to fix under this
+section, not rules to restate.
+
+- [ ] **(a) An operator constituent silently splits instead of NK-ing.**
+      `{1} 2+3` yields `c={1}` and a separate bare `5` — the parser's
+      `is_concatenation_continuation` never accepts the operator, so the
+      classifier never sees it and §9.2's "compiler emits NK" cannot fire.
+      **DECIDE and record**: accept the split as the parser's answer and say so
+      in §9.2, or make the parser recognise an operator in constituent position
+      precisely so it can be rejected with a reason. Prefer the latter — a
+      silent split turns a malformed program into a different valid one.
+- [ ] **(b) A nested written concatenation loses constituents.**
+      `(({1}{2}) ({3}{4}))` gives `{NK 1; 2}` — the second inner concatenation
+      is absent, not NK. §9.2 says a concatenation constituent is treated
+      exactly as a brane, so the expected result is a four-statement flatten.
+- [ ] **(c) `<<{…}>>` resolves as if single-marked.** `{0} <<{q=1;}>>` gives
+      `{0; q=1}`, identical to `{0} <{q=1;}>`. NOT the classifier: `AsWritten`
+      builds via `build_fir`, whose `StayFullyFoolish` arm constructs a real
+      `StayFullyFoolishFir`. The level is lost downstream — find where. Note
+      `{0} <<bb>>` (doubled mark on a SEARCH) defers correctly, so the defect is
+      specific to a marked **brane**.
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
 ### 3G.4 — implement §9.2
