@@ -1717,62 +1717,75 @@ switch, which no fixed-arity operator provides.
 dangerous failure mode — a program written to this proposal would *run* and give
 a plausible wrong answer. The tests must pin that `@` and no-`@` now differ.
 
-### §9. Concatenation element marking — the five rules
+### §9. Concatenation ergonomics — the authoritative specification
 
-`build_concat_element` / `classify_concat_element` (`compiler.rs:30-115`) decide
-what mark, if any, a concatenation element carries. The rules were implicit in
-the code and are stated here, forward-facing, as a **cascade tested in order**:
+**This section supersedes every earlier statement in this FOOP about how
+concatenation elements are marked.** Prior formulations — the "five rules"
+cascade, the `SfBrane`/`SfSearch` element kinds, the rule-1-first ordering, and
+the constantew rule — are **superseded and deleted rather than archived**: they
+were partial statements of what this section says completely, and keeping them
+would only invite the reader to reconcile two descriptions of one mechanism.
+Where any older text elsewhere in this FOOP disagrees, this section governs.
 
-| # | Test | Action |
-|---|------|--------|
-| 1 | **Already SF- or SFF-marked at the top** | **as written** — add nothing, change nothing |
-| 2 | **Constantew** (CONSTANT / INDEPENDENT / NK — "constant everywhere") | **as written** — nothing to defer |
-| 3 | **Any search** | wrap **SF** |
-| 4 | **Any brane-like** | build **SFF** (`under_sff = true`) |
-| 5 | otherwise | `Error` → NK at construction |
+#### §9.1 How a FIR tree branches
 
-**Rule 1 must be tested FIRST, before looking at what the mark contains.** The
-current code inverts this for branes — it matches `StayFoolish{Brane}` and
-`StayFullyFoolish{Brane}` in their own arms and re-wraps — which produces two
-defects:
+Marking rules only make sense against the shapes a FIR tree can take. The
+current shapes:
 
-- `<{…}>` builds without `under_sff` and is then **re-wrapped in SF**: a mark
-  added on top of the user's.
-- `<<{…}>>` is classified `SfBrane` and **silently downgraded to SF**
-  (`compiler.rs:67-68`), so writing a doubled mark in a concatenation gets
-  single-mark semantics with no diagnostic.
+- **Brane** — many statements.
+- **Statement** — one body, which is one of:
+  - **Concatenation** — many elements (branes, searches resolving to branes,
+    other concatenations)
+  - **Operator** — dependencies plus an outcome; the dependencies are children
+  - **Search**
+    - uncontexted: unanchored, or anchored
+    - contexted (a chain continuing from a prior search's position)
+- **Markers** — exactly one child each:
+  - **SF marker** `<…>`
+  - **SFF marker** `<<…>>`
 
-Testing "is it already marked?" before "what is inside it?" makes both
-impossible to write. `SfSearch` already behaves correctly — its comment reads
-"idempotent NOOP, build as-is" — so rule 1 generalizes what that arm already
-does.
+This list is expected to grow with the language. It is **not** maintained here —
+see the plan's first task: it belongs in one central, maintained document, and
+this FOOP should cite that document rather than restate it.
 
-**Rule 2 is the constantew case.** A CONSTANT, INDEPENDENT or NK element has no
-context dependency, so a mark could not defer anything. Note the classifier runs
-on the **AST**, before evaluation, so it cannot ask a NYES question — it
-recognises the forms that are constantew *by construction*: `IntLit`,
-`UnknownLit`, `Creation`, and arithmetic over them. (Today this is unreachable
-in practice: the parser's `is_concatenation_continuation` does not accept an
-integer as a continuation, so `{0} 5` parses as two statements rather than a
-concatenation. The rule is stated so the classifier is complete on its own
-terms.)
+#### §9.2 The ergonomic rule
 
-**Rule 3 gained two members in §8**: `Astn::SearchPosition` (`@`) and
-`Astn::ComputedSeek` (`#(expr)`). Both are searches and both were missing from
-the classifier, so they fell through to `Error`.
+When a concatenation is **written**, each constituent is classified, and the
+classification decides what marking the constituent is compiled with. The point
+is ergonomics: the marking a Foolisher would otherwise have to write by hand is
+supplied by the compiler, so the common case needs no marks at all.
 
-**But adding them does not make them usable as elements, and should not.** A
-postfix search yields a **single value**, not a brane, and a concatenation
-requires brane-like elements (`populate_concat_helpers`: "each element value
-must be brane-like"). So `{0} tbl~k=(1)@` and `{0} tbl#(1)` still settle NK —
-and so do `{0} tbl^` and `{0} tbl#1`, which were classified `BareSearch` all
-along. Verified: all four behave identically, while `{0} tbl` (a search
-resolving to a **brane**) concatenates to `{0; a=1; b=2}`.
+| Constituent | Compiled as |
+|-------------|-------------|
+| **Marker** (`<…>` or `<<…>>`) | **do nothing** — compile AST→FIR as normal. The Foolisher marked it; that marking stands. |
+| **Brane** | **SFF-mark it** |
+| **Search** — any of them | **SF-mark it** |
+| **Concatenation** | **SFF-mark it** — a concatenation is brane-like, so it is treated exactly as a brane |
+| **Operator** | **not allowed** — the compiler emits NK |
 
-An earlier draft of this section called the omission "§8's, not a gap in the
-rules". That was wrong in an instructive way: the classifier was never the gate.
-Classification decides the **mark**; whether an element is *usable* is a typing
-question answered later, on the resolved value. Rule 3 is about the former only.
+**"Search — any of them" is deliberately flat.** Uncontexted unanchored,
+uncontexted anchored, and contexted chains all take the same treatment: if the
+**top** FIR of a constituent is a search, SF-mark it. The variety of search
+forms does not multiply the rule.
+
+**The procedure, stated once and shared by both marking cases.** To SFF-mark a
+brane: insert an SFF-marker AST node taking the brane's parent as *its* parent
+and the brane as its single child, then compile that marker node. Searches are
+SF-marked by the same procedure with an SF-marker node. An implementation may do
+anything **equivalent in effect**; the inserted-node formulation is the
+definition.
+
+#### §9.3 Worked example
+
+```foolish
+{a={b={c=d {e f g}}$ + 1; x= <aa>, y = <<bb>> } {'my_truth='True, 'my_falsehood='False}
+```
+
+The outer concatenation has two constituents, both **branes** → both SFF-marked.
+Within the first, `{e f g}` is itself a written concatenation of three searches,
+so each of `e`, `f`, `g` is SF-marked and the concatenation as a whole is
+brane-like. `x = <aa>` and `y = <<bb>>` are already marked by the Foolisher, so
+they are compiled as written — the compiler adds nothing.
 
 ## FIR Impact
 

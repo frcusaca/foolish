@@ -505,6 +505,77 @@ mark in one program, with no `'mod`/`'or`/`'cmod` in the way. Euler 1 then gets
       needed, record why in FOOP-55.md §5.
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
+## Phase 3G — §9: concatenation ergonomics
+
+Read FOOP-55.md §9 first. **It supersedes every earlier statement in this FOOP
+about element marking**; the "five rules" cascade implemented in `6eb69647` is
+one of the superseded formulations and is to be replaced, not extended.
+
+### 3G.1 — a central, maintained record of how FIR trees branch
+
+- [ ] **Create one document that owns the FIR-tree shape list** — brane;
+      statement (concatenation / operator / search, the search forms); markers
+      with their single child. FOOP-55 §9.1 currently restates it, which is
+      exactly the duplication to remove.
+- [ ] **DECIDE where it lives** and record the choice: a new `docs/how/`
+      document, or a section of an existing one. It must be a place that is
+      maintained as the language grows, not a FOOP — FOOPs are dated proposals,
+      and this is a living inventory.
+- [ ] Replace FOOP-55 §9.1's list with a citation of that document.
+- [ ] Note in it that the list is expected to grow, and that anything adding a
+      FIR kind updates it.
+
+### 3G.2 — specify the ergonomics (done)
+
+- [x] FOOP-55 §9.2 states the rule: markers compile as written; branes and
+      concatenations are SFF-marked; searches of every form are SF-marked;
+      operators are not allowed and the compiler emits NK. §9.3 works the
+      example through.
+      (2026-08-13 17:05)
+
+### 3G.3 — one einmo case, simple to complex
+
+- [ ] **`foop/55/concat_ergonomics.foo`** — a single input covering every case
+      in §9.2, ordered simple → complex, each line commented with the rule it
+      exercises:
+  - [ ] brane constituent → SFF-marked
+  - [ ] search constituent, uncontexted **unanchored**
+  - [ ] search constituent, uncontexted **anchored**
+  - [ ] search constituent, **contexted chain**
+  - [ ] constituent already `<…>`-marked → compiled as written, no second mark
+  - [ ] constituent already `<<…>>`-marked → as written, **not** downgraded
+  - [ ] nested written concatenation `(({1}{2}{3}) ({4}{5}{6}))` → treated as
+        brane-like, SFF-marked
+  - [ ] operator constituent → **NK**
+  - [ ] the §9.3 worked example, as the complex interaction
+- [ ] Review every OUTPUT statement, then promote through the Promotion Review
+      Gate
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
+### 3G.4 — implement §9.2
+
+- [ ] Unit tests first, one per §9.2 row
+- [ ] Rewrite the classifier and builder to §9.2. The current cascade tests
+      "already marked?" first and then inspects contents; §9.2 is flatter —
+      classify the constituent, then apply that constituent's marking. Prefer
+      the shape that reads like the table.
+- [ ] **Operators emit NK** with a reason naming the constituent, per §9.2
+- [ ] Implement marking as the **inserted-marker-node** procedure of §9.2, or
+      something demonstrably equivalent; if equivalent-but-different, say why in
+      the code comment
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+- [ ] REPORT baseline changes to the human before promoting anything
+
+### 3G.5 — the D9 fix
+
+- [ ] **A search RESULT must not inherit the searcher's SFM context.**
+      `handle_found` passes `scope.has_ancestral_sfm` into the clone, so a
+      result fetched from outside an SF marker keeps ECONSTANIC instead of
+      resetting to Embryonic (`transform_for_clone`, `fir.rs:186-189`), and
+      `push_ubc_child` then declines to enqueue it. See FOOP-55.md §D9.
+- [ ] Tests first: the `{a = {1,2}, b=<<#-2>>, c= a b}` chain resolves
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
 ## Phase 3F — Integration: make the exercise run
 
 - [ ] Read FOOP-55.md §4 (integration risks); load the `foolish-debugging`
