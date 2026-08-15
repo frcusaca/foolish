@@ -1,0 +1,83 @@
+{
+	!! FOOP-55 §9.2 — concatenation ergonomics, simple to complex.
+	!! Each statement names the §9.2 row it exercises. The rule: when a
+	!! concatenation is WRITTEN, each constituent is classified and that
+	!! classification decides the marking the compiler supplies, so the
+	!! common case needs no marks written by hand.
+	!! §9.2 row: BRANE constituent -> SFF-marked by the compiler.
+	!! Two brane literals flatten to the union of their statements.
+	brane_pair = {1, 2} {3, 4};
+	!! §9.2 row: MARKER already written -> compiled AS WRITTEN, no second
+	!! mark added. All three spellings below must agree: the Foolisher's
+	!! mark stands, and the compiler neither doubles nor downgrades it.
+	mark_none = {5, 7} {q = 1;};
+	mark_sf = {5, 7} <{q = 1;}>;
+	mark_sff = {5, 7} <<{q = 1;}>>;
+	!! The same three with a CONTEXT-DEPENDENT body. <<#-1>> resolves to the
+	!! statement one before it, so q picks up 7 in every spelling. This is
+	!! the case that would expose a silent SF/SFF downgrade if one existed.
+	ctx_none = {5, 7} {q = <<#-1>>;};
+	ctx_sf = {5, 7} <{q = <<#-1>>;}>;
+	ctx_sff = {5, 7} <<{q = <<#-1>>;}>>;
+	!! §9.2 row: SEARCH constituent -> SF-marked by the compiler.
+	!! "Search, any of them" is deliberately flat: every search form takes
+	!! the same treatment. Three forms follow, all resolving to the same
+	!! two-statement brane.
+	src = {8, 9};
+	!! uncontexted UNANCHORED search by name
+	search_unanchored = {0} src;
+	!! uncontexted ANCHORED search — anchor resolves through to a brane
+	holder = {inner = {10, 11};};
+	search_anchored = {0} holder.inner;
+	!! Positional search as a constituent needs an explicit mark. Written
+	!! bare, `{0} #-2` is NOT a concatenation at all: `#` binds POSTFIX and
+	!! takes the preceding `{0}` as its ANCHOR, so it reads as an anchored
+	!! seek into a one-statement brane and settles NK (nothing at -2). The
+	!! mark makes the seek its own constituent, and it stays UNANCHORED.
+	!! @agent NOTE: `search_index = {0} <<#-2>>;` is deliberately ABSENT.
+	!! It settles WOCONSTANIC — the marked search stays ECONSTANIC and the
+	!! concatenation never completes — which is defect D9 (FOOP-55 §D9,
+	!! plan 3G.5), NOT a §9.2 marking question. It is the same signature as
+	!! `{a={1,2}, b=<<#-2>>, c= a b}`. Add it here once D9 is fixed; this
+	!! file is the §9.2 baseline and must not carry a known-red line.
+	!! The postfix reading, kept as the control: `#` binds POSTFIX and takes
+	!! the preceding brane as its ANCHOR, so this is an anchored seek into
+	!! the brane (finding 9), not a concatenation at all. That is why a bare
+	!! `{0} #-2` cannot serve as a "search constituent" example.
+	seek_is_postfix = {0, 9, 8}#-2;
+	!! §9.2 row: CONCATENATION constituent -> SFF-marked, "treated exactly
+	!! as a brane". A nested written concatenation must FLATTEN, not NK.
+	!! Before this rule was implemented the second inner concatenation was
+	!! dropped and the whole outer expression went NK.
+	nested_concat = (({1}{2}) ({3}{4}));
+	!! Deeper nesting, three constituents per side.
+	nested_deep = (({1}{2}{3}) ({4}{5}{6}));
+	!! §9.2 row: OPERATOR constituent -> NK, with a reason naming the kind
+	!! ("cannot concatenate number"). The operator really is a constituent
+	!! here because the parentheses make it one.
+	operator_nk = {1} (2 + 3);
+	!! §9.4(e) control: a single-element {1} is a BRANE LITERAL, not a
+	!! one-constituent concatenation. §9.2 governs written concatenations of
+	!! two or more constituents, so none of the marking rules apply here.
+	single_is_brane = {1};
+	!! @agent NOTE on `worked` below: its `b` settles WOCONSTANIC, and that
+	!! is NOT a §9.2 marking failure. `{c = {e f g}}$` yields a BRANE, and
+	!! `brane + 1` has no meaning, so the Op+ never settles. Isolated:
+	!! `{c = {e f g}}$` alone flattens correctly to {{21;22;23}}, and
+	!! `{c = 5}$ + 1` gives 6 — only brane-plus-number hangs. Arguably it
+	!! should settle NK ("cannot add a brane") rather than stay WOCONSTANIC;
+	!! that is an operator question, filed outside §9.2. The line is kept
+	!! verbatim from §9.3 because the point under test is the MARKING of its
+	!! constituents, which is correct: {e f g} flattens and x/y resolve.
+	!! §9.3 worked example — the complex interaction. The outer
+	!! concatenation has two brane constituents, so both are SFF-marked.
+	!! Inside the first, {e f g} is itself a written concatenation of three
+	!! searches, so each of e, f and g is SF-marked; x and y are already
+	!! marked by the Foolisher and are compiled as written.
+	e = {21};
+	f = {22};
+	g = {23};
+	aa = 24;
+	bb = 25;
+	worked = {b = {c = {e f g}}$ + 1; x = <aa>, y = <<bb>>} {'my_truth = 'True, 'my_falsehood = 'False};
+}

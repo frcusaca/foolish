@@ -1761,7 +1761,26 @@ supplied by the compiler, so the common case needs no marks at all.
 | **Brane** | **SFF-mark it** |
 | **Search** — any of them | **SF-mark it** |
 | **Concatenation** | **SFF-mark it** — a concatenation is brane-like, so it is treated exactly as a brane |
-| **Operator** | **not allowed** — the compiler emits NK |
+| **Constantew** — an integer, `???`, or `⬤` | **add no mark**, then let the concatenation reject it. A mark defers a coordination and a CONSTANT/INDEPENDENT/NK value has nothing to defer, so marking would be noise — but a constantew is not brane-like either, so the concatenation NKs when it tries to flatten. Same OUTCOME as the operator row, reached one layer later. |
+| **Operator** | **not allowed** — the compiler emits NK naming the constituent's kind, e.g. "cannot concatenate number" |
+
+**Marking and acceptance are two separate questions**, and the constantew row
+is where they come apart. `classify_concat_element` decides only what MARK a
+constituent gets; whether the constituent can be concatenated at all is decided
+later, when `ConcatenationFir` flattens its elements' statements. An operator is
+refused at classify time (it can never be brane-like); a constantew is waved
+through unmarked and refused at flatten time. Both end in NK — an implementation
+may refuse a constantew at either point, provided the result is NK with a reason
+naming the kind.
+
+**The constantew row is reachable only through the backtick spelling today.**
+Juxtaposition's `is_concatenation_continuation`
+(`foolish-parser/src/parser.rs:532-554`) will not start a continuation on a bare
+integer, so `{x=1;} 99` SPLITS into two statements and never reaches the
+classifier — while `` 99`{x=1;} `` does reach it, and NKs. FOOP-65's Equivalence
+Law says those two spellings must agree; they currently do not. See plan item
+(a2) and the unit test `tail_concat_equivalence_brane_literal`, which pins the
+divergence. Resolving (a2) should make them agree.
 
 **"Search — any of them" is deliberately flat.** Uncontexted unanchored,
 uncontexted anchored, and contexted chains all take the same treatment: if the

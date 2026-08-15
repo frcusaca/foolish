@@ -9517,6 +9517,27 @@ mod tests {
         );
     }
 
+    /// FOOP-65's Equivalence Law: `` 99`{x=1;y=2;} `` and `{x=1;y=2;} 99` are
+    /// the same program spelled two ways, so they must settle the same.
+    ///
+    /// **They do not, and this test documents the divergence rather than
+    /// hiding it.** Both settle to a 2-statement `result`, but:
+    ///
+    /// | Spelling | NYES | why |
+    /// |----------|------|-----|
+    /// | `` 99`{…} `` | **NK** | the backtick parser accepts a bare integer, so `99` really is a constituent — and an integer is not concatenable |
+    /// | `{…} 99` | **INDEPENDENT** | `is_concatenation_continuation` rejects a bare integer, so `99` never joins: it splits into its own statement and the brane is untouched |
+    ///
+    /// The statement COUNT coincides at 2 either way, which is why the original
+    /// version of this test — comparing only `stmt_count()` — passed while the
+    /// two spellings disagreed about everything else.
+    ///
+    /// This is the same root cause as FOOP-55 §9.4(a) / plan item (a2): the
+    /// juxtaposition parser will not start a continuation on a bare integer.
+    /// Atlas decided (2026-08-13) that a parse error is acceptable there; that
+    /// decision now has a second consequence recorded here, since the backtick
+    /// spelling reaches the concatenation and the juxtaposed one does not.
+    /// **Resolving (a2) should make these two agree.**
     #[test]
     fn tail_concat_equivalence_brane_literal() {
         let a = Compiler::compile("{result = 99`{x=1; y=2;};}")
@@ -9533,11 +9554,37 @@ mod tests {
         let b_stmts = b.borrow().core().foolish_children().to_vec();
         let a_body = a_stmts[0].borrow().core().foolish_children()[0].clone();
         let b_body = b_stmts[0].borrow().core().foolish_children()[0].clone();
-        let a_lines = a_body.borrow().stmt_count().unwrap_or(0);
-        let b_lines = b_body.borrow().stmt_count().unwrap_or(0);
+
+        // `expect`, never `unwrap_or`: a default would turn "could not
+        // determine" into a number that might coincidentally match, which is
+        // precisely how this test used to pass without checking anything.
+        let a_lines = a_body
+            .borrow()
+            .stmt_count()
+            .expect("spelling `a` settled without a statement count");
+        let b_lines = b_body
+            .borrow()
+            .stmt_count()
+            .expect("spelling `b` settled without a statement count");
         assert_eq!(
             a_lines, b_lines,
-            "equivalent spellings settle to same stmt count"
+            "equivalent spellings settle to the same stmt count"
+        );
+
+        // The part that does NOT hold yet. Pinned as the current, known-wrong
+        // behaviour so that fixing (a2) fails this assertion loudly and forces
+        // the fix to be recorded, rather than passing silently either way.
+        assert_eq!(
+            (
+                a_body.borrow().core().get_nyes(),
+                b_body.borrow().core().get_nyes()
+            ),
+            (Nyes::Nk, Nyes::Independent),
+            "KNOWN DIVERGENCE (FOOP-55 plan item a2): the backtick spelling \
+             makes `99` a constituent and NKs, while juxtaposition refuses to \
+             continue on a bare integer and splits it off instead. Equivalence \
+             requires these to agree; when (a2) is resolved, update this \
+             assertion to demand equality."
         );
     }
 

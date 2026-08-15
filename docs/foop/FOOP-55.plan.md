@@ -589,27 +589,26 @@ one of the superseded formulations and is to be replaced, not extended.
 
 ### 3G.3 — one einmo case, simple to complex
 
-- [ ] **`foop/55/concat_ergonomics.foo`** — a single input covering every case
+- [x] **`foop/55/concat_ergonomics.foo`** (2026-08-14 18:30) — a single input covering every case
       in §9.2, ordered simple → complex, each line commented with the rule it
       exercises:
-  - [ ] brane constituent → SFF-marked
-  - [ ] search constituent, uncontexted **unanchored**
-  - [ ] search constituent, uncontexted **anchored**
-  - [ ] search constituent, **contexted chain**
-  - [ ] constituent already `<…>`-marked → compiled as written, no second mark
-  - [ ] constituent already `<<…>>`-marked → as written, **not** downgraded
-  - [ ] nested written concatenation `(({1}{2}{3}) ({4}{5}{6}))` → treated as
-        brane-like, SFF-marked
-  - [ ] operator constituent → **NK**
-  - [ ] the §9.3 worked example, as the complex interaction
-  - [ ] a nested written concatenation `(({1}{2}) ({3}{4}))` flattens to four
-        statements (§9.4b)
+  - [x] brane constituent → SFF-marked — `brane_pair` = {1;2;3;4}
+  - [x] search constituent, uncontexted **unanchored** — `search_unanchored` = {0;8;9}
+  - [x] search constituent, uncontexted **anchored** — `search_anchored` = {0;10;11}
+  - [ ] search constituent, **contexted chain** — BLOCKED by D9: a MARKED
+        search constituent stays ECONSTANIC and the concatenation never
+        settles. Same signature as `{a={1,2}, b=<<#-2>>, c= a b}`. Add after 3G.5.
+  - [x] constituent already `<…>`-marked → `mark_sf`/`ctx_sf` agree with the unmarked form
+  - [x] constituent already `<<…>>`-marked → `mark_sff`/`ctx_sff` agree; `ctx_*` uses a context-dependent body (q=7), the case that would expose a downgrade
+  - [x] nested written concatenation → `nested_deep` = {1..6}
+  - [x] operator constituent → **NK** — `operator_nk` = {NK 1}
+  - [x] the §9.3 worked example — marking is CORRECT ({e f g} flattens, x/y resolve). Its `b` is WOCONSTANIC because `{…}$ + 1` adds a number to a BRANE, an operator question outside §9.2; noted in the file
+  - [x] `(({1}{2}) ({3}{4}))` flattens to four statements (§9.4b) — `nested_concat`
   - [ ] `{0} <<{q=1;}>>`, `{0} <{q=1;}>` and `{0} {q=1;}` — pin that a marked
         constituent is compiled as written (§9.2). They agree today, including
         with a context-dependent body; the case exists so a future change that
         makes them diverge is caught.
-  - [ ] a single-element `c = {1}` is a brane, not a concatenation (§9.4e) —
-        the control showing §9.2 does not apply to it
+  - [x] single-element `c = {1}` is a brane (§9.4e) — `single_is_brane`
 - [ ] Review every OUTPUT statement, then promote through the Promotion Review
       Gate
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
@@ -619,11 +618,11 @@ one of the superseded formulations and is to be replaced, not extended.
 See `docs/foop/FOOP-55.md` §9.4 (around line 1790) for the measured evidence
 behind each item.
 
-- [ ] **(a) Give the concatenation NK a reason.** `{1} (2+3)` already NKs
-      correctly — the operator IS a constituent there and is rejected — but the
-      NK carries no reason. Set it to name the cause, e.g. "cannot concatenate
-      number", or the constituent's actual kind. Detection may be at settle time
-      or at classify time; earlier is preferable, both are correct.
+- [x] **(a) Give the concatenation NK a reason.** DONE (2026-08-14 18:12) — the
+      rule-5 NK now reads "cannot concatenate number" via
+      `concat_element_kind_name` (`foolish-ubca/src/compiler.rs`), detected at
+      CLASSIFY time (earlier than settle, which §9.4(a) prefers). Pinned by
+      `operator_constituent_is_error_naming_the_cause`.
 - [x] **(a2) DECIDED — the parser may barf.** `{1} 2+3` need not reach the
       concatenation. Today it silently splits into `c={1}` and a separate
       statement `5`, because `is_concatenation_continuation`
@@ -634,9 +633,13 @@ behind each item.
       silent split is still the worse failure mode (it turns a malformed program
       into a DIFFERENT VALID ONE), so if the parser is being touched anyway,
       prefer erroring over splitting. NOT a blocker for §9.2. (2026-08-13 19:16)
-- [ ] **(b) A nested written concatenation loses constituents.**
-      `(({1}{2}) ({3}{4}))` gives `{NK 1; 2}` — the second inner concatenation
-      is absent, not NK. The parser produces
+- [x] **(b) A nested written concatenation loses constituents.** FIXED (2026-08-14 18:12)
+      — rule 4 now matches `Astn::Concatenation` and `Astn::TailConcatenation`
+      alongside `Astn::Brane`. Measured: `(({1}{2}) ({3}{4}))` was `{NK 1; 2}`,
+      now flattens to `{1; 2; 3; 4}`. Pinned by
+      `concat_constituent_classifies_as_brane_like`, which asserts a nested
+      concatenation and a brane classify IDENTICALLY, since §9.2 equates them.
+      Was: the second inner concatenation is absent, not NK. The parser produces
       `Concat(Concat(brane(1),brane(2)), Concat(brane(3),brane(4)))`, and §9.2
       treats a concatenation constituent exactly as a brane, so a four-statement
       flatten is expected.
