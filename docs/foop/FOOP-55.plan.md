@@ -610,7 +610,10 @@ one of the superseded formulations and is to be replaced, not extended.
         makes them diverge is caught.
   - [x] single-element `c = {1}` is a brane (§9.4e) — `single_is_brane`
 - [ ] Review every OUTPUT statement, then promote through the Promotion Review
-      Gate
+      Gate — **HELD 2026-08-14**: the file carries two `@agent` notes (the
+      D9-blocked search-constituent line, and `worked`'s WOCONSTANIC `b`). Per
+      AGENTS.md an `@agent`-annotated snapshot may remain non-conformant
+      pending human review. Do NOT promote until Atlas has read them.
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
 ### 3G.3b — what §9.4 exposed
