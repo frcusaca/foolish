@@ -20,6 +20,26 @@ written, so FOOP-65's backtick rewrite (E4) is optional polish, not a
 precondition. This plan has **no FOOP dependencies**. (See Phase 0's checked
 item for the verification.)
 
+## Execution order — CORRECTNESS FIRST (Atlas, 2026-08-14)
+
+This plan is **not** executed top to bottom any more. Two phases were promoted
+ahead of the rest because they are correctness work, not features:
+
+| # | Phase | Why it is first |
+|---|-------|-----------------|
+| **1** | **3A — the SFF strip budget** | The mechanism ships and behaves correctly, but its ONLY test asserts nothing (see 3A). Nothing defends the behaviour; a refactor could silently break it and every gate would stay green. |
+| **2** | **3G — concatenation ergonomics** | Not a nice-to-have. The old code is hard to understand, and unreadable correct code decays into incorrect code. The jia merge proved the cost concretely: an OLDER four-kind classifier had been living there, contradicting §9.2 in two places (`BareConcat`, `SfBrane`), and nobody had noticed. |
+| 3 | 3G.5 / D9 | Unblocks `'match`, fibonacci, and probably the three `extremum_*` failures — all one question: what survives a constanic clone. |
+| 4 | everything else | 3B, 3C, 3C2, 3E, 3D, 3F in their existing order |
+
+**Rationale for putting readability under "correctness".** `AGENTS.md`
+§"Development Rules" ranks adherence-to-spec, then coherence, then elegance —
+and says elegance is last "because it never outranks correctness — but it is on
+the list because unreadable correct code decays into incorrect code." §9 is that
+last clause: the concatenation compiler had already decayed into a state where
+two implementations of the same rule coexisted on different branches. Making it
+legible IS the correctness work.
+
 ## Phase 0 — Begin, baseline, and prerequisites
 
 - [x] Begin work: commit FOOP-55.md and FOOP-55.plan.md to origin (`jia`),
@@ -198,33 +218,67 @@ end-to-end test that §5 works. Spelled out in full — `congruent_modulo`, not
       `congruent_modulo`
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
-## Phase 3A — §5: the SFF strip budget
+## Phase 3A — §5: the SFF strip budget  ← **PRIORITY 1 (correctness)**
 
-Read FOOP-55.md §5 in full first, and Appendix A.A for why this design was
-chosen over the three alternatives. **Stepping is not touched** — FIFO draining,
-`step_inner`, and every search's wait condition stay exactly as they are. The
-change is confined to `constanic_clone_at` (`fir_kinds.rs:160-199`).
+**STATUS (audited 2026-08-14): the MECHANISM is implemented and behaves
+correctly; the VERIFICATION does not exist.** Both halves matter, and the second
+is why a reviewer reported this phase as never done.
+
+What is genuinely in place:
+
+- `StripBudget` — `foolish-ubca/src/fir_kinds.rs:139`. `Copy`, passed **by
+  value**, which is exactly what makes the budget per-root-to-leaf-PATH rather
+  than per-clone-tree: descending inherits the parent's remaining budget, but
+  spending it in one child cannot affect that child's siblings.
+- Spent at `fir_kinds.rs:264` via `StripBudget::spend()`, gating the strip.
+- Threaded through `clone_children_budgeted` and `constanic_clone_at_budgeted`
+  down every recursive path.
+
+Measured behaviour (2026-08-14), which agrees with §5:
+
+| Probe | Result | Reading |
+|-------|--------|---------|
+| `{a = 5; b = << <<a>> >>; c = b;}` | `c`'s clone carries ONE `<<>>` | nested marks on one path: outer stripped, inner kept — a deferral count |
+| `{x = {1,2}; y = <<#-1>> + <<#-1>>;}` | both operands keep their marks | siblings are independent, each with its own budget |
+
+**The defect: the only budget test in the codebase asserts nothing.**
+`strip_budget_is_per_clone_tree_not_per_node` (`fir_kinds.rs:5773`) wraps its
+sole assertion in two `if let Some(...)` guards, and `inner_stmt` resolves to
+`None` — verified by replacing the guards with `expect` and watching the test
+panic with "asserted NOTHING". **It has passed vacuously since it was written,
+whether or not the budget worked.** Its name also still says `per_clone_tree`,
+the design 12 tests later disproved and §5 corrected to per-path.
+
+A test that cannot fail is worse than a missing test: a missing test is visibly
+absent, while this one reported the feature verified on every run. It is the
+reason "was the budget implemented?" could not be answered from the suite.
 
 - [ ] Read `rust_instructions.md` in full (mandatory before any Rust)
 - [ ] Read FOOP-55.md §5 and Appendix A
-- [ ] Read `fir_kinds.rs:160-199` — the SF/SFF strip (183-191) and the existing
-      constanic share (194-199)
-- [ ] **Tests FIRST** (unit, `fir_kinds.rs`), each failing until implemented:
-  - [ ] one clone strips exactly one mark: `<<X>>` stripped; `<< <<X>> >>`
-        retains one
-  - [ ] budget is **per-tree**: `<{a; << <<b>> >>}>` spends ONE strip across the
-        SF wrapper and the inner SFF combined
+- [x] **DELETE `strip_budget_is_per_clone_tree_not_per_node`** (2026-08-14 18:20) — — do not repair
+      it. Its name encodes the superseded design, and its navigation is what
+      silently returned `None`. Replace with the tests below.
+- [ ] **Tests FIRST**, each one asserting UNCONDITIONALLY — no `if let` around
+      an assertion, ever. Where a navigation may fail, `expect()` with a message
+      naming what was being navigated to.
+  - [x] one clone strips exactly one mark — `strip_budget_spends_one_mark_per_path` (2026-08-14 18:20)
+  - [x] budget is **per-PATH** — `strip_budget_is_per_path_not_per_tree_so_siblings_are_independent` (2026-08-14 18:20)
   - [ ] budget is **per-use-site**: `B = A` and `C = A` decrement independently
-  - [ ] a retained mark is **shared** — assert `Rc::ptr_eq` against the original,
-        not a deep copy
+  - [ ] a retained mark is **shared** — assert `Rc::ptr_eq` against the
+        original, not a deep copy
   - [ ] the retained path never reaches the "SF/SFF node has no children" ALARM
-        (`fir_kinds.rs:192`)
-- [ ] Thread the strip-budget flag through `constanic_clone_at`, alongside the
-      existing `descendent_of_sfm_and_foolishly_ignorant` parameter
-- [ ] Budget available → strip as today, and mark spent for the rest of the tree
-- [ ] Budget spent → `return Rc::clone(fir_ref)`. This needs its OWN arm: the
-      share at 194-199 keys on `Constant | Independent` and a marked node is
-      WOCONSTANIC, so it does not fall through.
+  - [x] **anti-vacuity guard** — the nesting test asserts the SOURCE carries 2
+        marks before comparing the clone, so wrong navigation fails loudly;
+        `peel_marks` `expect`s rather than returning `None` (2026-08-14 18:20)
+- [x] Confirmed by MUTATION (2026-08-14 18:20) — two mutants, each caught by the
+      test written to exclude it: (1) always-strip → the nesting test failed
+      (0 marks survived, 1 expected); (2) shared per-TREE budget via a
+      thread-local → the sibling test failed (sibling 1 kept its mark, the
+      `'mod` breakage). Neither mutant was caught by the OLD test, which passed
+      under both. A test that stays green with
+      the feature removed is not testing the feature — this is the specific
+      failure being corrected here.
+- [x] Renamed — no `per_clone_tree` remains (2026-08-14 18:20)
 - [ ] Add the style rule to `AGENTS.md` §Code Style: nested marks are written
       `<< <<A>> >>` or `<<(<<A>>)>>`, never `<<<<A>>>>`. (All three already lex
       identically — this is convention, not grammar.)
@@ -505,7 +559,7 @@ mark in one program, with no `'mod`/`'or`/`'cmod` in the way. Euler 1 then gets
       needed, record why in FOOP-55.md §5.
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
-## Phase 3G — §9: concatenation ergonomics
+## Phase 3G — §9: concatenation ergonomics  ← **PRIORITY 2 (correctness)**
 
 Read FOOP-55.md §9 first. **It supersedes every earlier statement in this FOOP
 about element marking**; the "five rules" cascade implemented in `6eb69647` is

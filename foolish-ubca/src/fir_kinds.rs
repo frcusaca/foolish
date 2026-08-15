@@ -5763,15 +5763,48 @@ mod tests {
         );
     }
 
-    /// FOOP-55 §5: the strip budget belongs to the clone OPERATION, not to a
-    /// node -- an SF wrapper and an SFF nested inside it share ONE strip.
+    /// Count the SF/SFF marks stacked at the top of a FIR, then return the
+    /// first non-mark node beneath them.
     ///
-    /// A per-node rule would let both marks come off in the same clone, which
-    /// is exactly the bug: sibling marks deeper in the tree would each strip
-    /// independently and the count would be meaningless.
+    /// Marks nest as a chain of single-child wrappers, so "how many marks
+    /// survived a clone" is the length of that chain. Every step `expect`s:
+    /// a mark with no child is the ALARM condition FOOP-55 §5 forbids, and a
+    /// silent `None` here is exactly what made the previous version of this
+    /// test vacuous.
+    fn peel_marks(fir: &FirRef) -> (usize, FirRef) {
+        let mut depth = 0usize;
+        let mut cur = Rc::clone(fir);
+        loop {
+            let kind = cur.borrow().kind();
+            if !matches!(kind, FirKind::StayFoolish | FirKind::StayFullyFoolish) {
+                return (depth, cur);
+            }
+            let child = cur
+                .borrow()
+                .core()
+                .foolish_children()
+                .first()
+                .cloned()
+                .unwrap_or_else(|| {
+                    panic!("{kind:?} has no child -- the FOOP-55 §5 ALARM condition")
+                });
+            depth += 1;
+            cur = child;
+        }
+    }
+
+    /// FOOP-55 §5: a clone may strip **at most one** mark per root-to-leaf
+    /// PATH. Nesting is therefore a deferral count — `<< <<X>> >>` comes back
+    /// from one clone with exactly one mark left.
+    ///
+    /// Navigates `ubc_children`, NOT `foolish_children`: `foolish_children` is
+    /// the program as written and always shows both marks. The clone the budget
+    /// governs is the search RESULT, which lives in `ubc_children[0]`. The
+    /// previous version of this test navigated the written tree, got `None`,
+    /// and swallowed it in an `if let` — passing while asserting nothing.
     #[test]
-    fn strip_budget_is_per_clone_tree_not_per_node() {
-        let root = Compiler::compile("{defn = <{inner = << <<#-1>> >>;}>; use = {5, 9, defn};}")
+    fn strip_budget_spends_one_mark_per_path() {
+        let root = Compiler::compile("{defn = {inner = << <<#-1>> >>;}; use = defn;}")
             .unwrap()
             .pop()
             .unwrap();
@@ -5779,28 +5812,87 @@ mod tests {
         let _ = step_to_settled(&root, &scope);
 
         let stmts = root.borrow().core().foolish_children().to_vec();
-        let use_brane = stmts[1].borrow().core().foolish_children()[0]
-            .clone()
-            .value();
-        let referenced = use_brane.borrow().core().foolish_children()[2].clone();
-        let inner_stmt = referenced
+        assert_eq!(stmts.len(), 2, "program has two statements");
+
+        // As WRITTEN: two marks.
+        let written = stmts[0].borrow().core().foolish_children()[0]
             .borrow()
             .core()
-            .foolish_children()
+            .foolish_children()[0]
+            .borrow()
+            .core()
+            .foolish_children()[0]
+            .clone();
+        let (written_depth, _) = peel_marks(&written);
+        assert_eq!(
+            written_depth, 2,
+            "the SOURCE must carry both marks -- if this is not 2 the test is \
+             navigating to the wrong node and everything below is meaningless"
+        );
+
+        // As CLONED by the search in `use`: one strip spent, one mark left.
+        let search = stmts[1].borrow().core().foolish_children()[0].clone();
+        let result = search
+            .borrow()
+            .core()
+            .ubc_children()
             .first()
             .cloned()
-            .and_then(|b| b.borrow().core().foolish_children().first().cloned());
+            .expect("a settled search has its value in ubc_children[0]");
+        let cloned_inner = result.borrow().core().foolish_children()[0]
+            .borrow()
+            .core()
+            .foolish_children()[0]
+            .clone();
+        let (cloned_depth, _) = peel_marks(&cloned_inner);
+        assert_eq!(
+            cloned_depth,
+            written_depth - 1,
+            "one clone spends exactly ONE strip on this path: {written_depth} \
+             marks written, so {} must survive",
+            written_depth - 1
+        );
+    }
 
-        if let Some(inner) = inner_stmt {
-            let body = inner.borrow().core().foolish_children().first().cloned();
-            if let Some(body) = body {
-                assert_eq!(
-                    body.borrow().kind(),
-                    FirKind::StayFullyFoolish,
-                    "one clone walking an SF wrapper AND an inner SFF must \
-                     spend only ONE strip -- the inner mark survives"
-                );
-            }
+    /// FOOP-55 §5: sibling marks are INDEPENDENT — each subtree carries its own
+    /// budget, because `StripBudget` is `Copy` and passed by value.
+    ///
+    /// This is the case that disproved the original per-clone-TREE design: a
+    /// tree-wide budget would let the first operand strip and leave the second
+    /// marked, breaking `'mod`, whose two operands are `<<#-2>>` and `<<#-1>>`.
+    #[test]
+    fn strip_budget_is_per_path_not_per_tree_so_siblings_are_independent() {
+        let root = Compiler::compile("{defn = {l = <<#-1>>; r = <<#-1>>;}; use = defn;}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        let scope = Scope::empty();
+        let _ = step_to_settled(&root, &scope);
+
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let search = stmts[1].borrow().core().foolish_children()[0].clone();
+        let result = search
+            .borrow()
+            .core()
+            .ubc_children()
+            .first()
+            .cloned()
+            .expect("a settled search has its value in ubc_children[0]");
+
+        let cloned_stmts = result.borrow().core().foolish_children().to_vec();
+        assert_eq!(
+            cloned_stmts.len(),
+            2,
+            "the cloned brane must still hold BOTH sibling statements"
+        );
+        for (i, stmt) in cloned_stmts.iter().enumerate() {
+            let body = stmt.borrow().core().foolish_children()[0].clone();
+            let (depth, _) = peel_marks(&body);
+            assert_eq!(
+                depth, 0,
+                "sibling {i} carries its OWN budget, so its single mark is \
+                 stripped -- a tree-wide budget would leave this one marked"
+            );
         }
     }
 
