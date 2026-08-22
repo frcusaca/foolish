@@ -500,16 +500,29 @@ narrower; the second states the real rule.
   a `None` for "not yet knowable" is honest — but it is **not** what blocks
   `'match`.
 
-### D10. A concatenation with a **deferred element** settles its shape too early. **Unimplemented case, not on `fbfn`'s path.**
+### D10. A concatenation with a **deferred element** settles its shape too early. **PROMOTED — now confirmed live against two shipped FOOP-65 baselines. BLOCKS.**
 
 Found 2026-08-13 while establishing D9's fix. **This is a case the concatenation
 code was never written for**, rather than a defect in what it does handle:
 `.unwrap_or(0)` is what one writes when every element is assumed present.
 
-**Not on the critical path.** `fbfn`'s concatenations
-(`{fbfn, param-1}fbfn`, `{fibtbl, cond}'match`) have all elements present at the
-call site, so this does not block Euler 1 or fibonacci. Recorded so it is not
-rediscovered as a mystery.
+**No longer merely off the critical path.** Originally recorded as not blocking
+Euler 1/fibonacci, since `fbfn`'s concatenations have all elements present at
+the call site. **Bisection of the FOOP-65 einmo regression (2026-08-XX, this
+worktree) found this same defect is the live cause of two already-shipped
+FOOP-65 baselines breaking**: `foop/65/tail_concat_chain.foo.einmo` and
+`foop/65/comprehensive.foo.einmo` both contain a backtick chain whose last
+element is itself a nested written concatenation (e.g.
+`` a`b`c`d e f` `` → `TailConcatenation[a, b, c, Concatenation[d,e,f]]`), and
+`stmt_count`/`populate_concat_helpers` locks in `0` for that nested element
+before it settles, silently dropping `d, e, f` from the flattened result. This
+is precisely the mechanism this section already describes — it was simply not
+known, until now, to be reachable through FOOP-65's own tail-concatenation
+form. **Disposition changed accordingly: D10 is promoted from a recorded
+follow-up to a required fix, scheduled as plan Phase 3G.6**, sequenced
+immediately after 3G.5's D9 fix since both are violations of the one rule
+§5.5 states. See §5.5 for the general principle and the exact relationship
+between D9 and D10.
 
 
 Asked whether a legitimate "don't know" can arise anywhere other than an
@@ -571,6 +584,43 @@ The two callers differ:
   *no* / *not yet* — it never needs the number.
 - **Indexing and the Equivalence Law** need the exact count, and are entitled to
   it only once the shape is frozen.
+
+**Correction (§5.5, written after the API survey that followed D9's fix):** the
+"not yet" case above is not a third value threaded through a new `NotReady`
+enum — it is `!is_constanic()` on the dependency being asked about. `stmt_count`
+does not need a richer return type; it needs to refuse to memoize (or even
+compute) an answer until its `foolish_children` have themselves been stepped to
+constanic. The distinction *yes/no/not-yet* is real, but "not yet" is already
+expressible as an ordinary NYES check — the survey found no caller of any
+brane-like content API that needs anything finer than that. See §5.5 for the
+rule stated once and D9's exact structural parallel.
+
+### D11. The tail-concatenator's element order silently reversed back to source order. **FOUND and FIXED during the FOOP-65-regression bisection; fix uncommitted.**
+
+Found while bisecting why `foop/65/tail_concat_basic.foo.einmo` and
+`foop/65/tail_concat_system_ops.foo.einmo` diverged from their `checked/`
+baselines on this branch. Not related to D9/D10/§5.5 — recorded here because it
+was found by the same investigation and must land before those baselines are
+green again.
+
+**Mechanism.** FOOP-65 §1's core equivalence (`` fn`X `` ≡ `X fn`) requires a
+backtick chain's operands in **reverse** of their written order — the method
+comes last in the concatenated result, matching plain juxtaposition. The
+original FOOP-65 implementation (`d7ec8237`) built this with
+`elements.into_iter().rev()` specifically for `Astn::TailConcatenation` in
+`compiler.rs`'s `build_fir`. A later refactor (part of this FOOP's §9.2 work)
+merged the `Astn::Concatenation` and `Astn::TailConcatenation` build arms into
+one shared match arm, since §9.2 correctly says both spellings classify their
+constituents identically — but the merge silently dropped the `.rev()`, which
+only `TailConcatenation` ever needed. `` lhs`rhs `` regressed from `{y=2; x=1}`
+(matching `rhs lhs`, the correct equivalence) to `{x=1; y=2}` (plain source
+order, wrong).
+
+**Fix.** Restore `.rev()`, gated on `is_tail_concat`, in the merged arm.
+Verified against the full `cargo test -p foolish-ubca --lib` suite (370
+passed, unchanged) and against `einmo compare` (both files drop off the
+differing list). **This fix is currently sitting uncommitted in this
+worktree** — see plan Phase 3G.6b.
 
 ## Findings — exercise-file defects (Atlas is fixing the file)
 
@@ -1160,6 +1210,85 @@ One site, three parts (`foolish-ubca/src/fir_kinds.rs:160-199`):
 
 Confirm the new branch cannot reach the
 `eprintln!("ALARM: SF/SFF node has no children")` at line 192.
+
+### §5.5. Search-context constancy — the rule D9 and D10 both violate
+
+**This section states, once, a rule that D9 and D10 (§Findings) are two independent
+violations of.** Both were found and fixed separately before the rule connecting them was
+written down; it is written down now so a third violation is recognized on sight rather than
+re-discovered by another bisection.
+
+**The question.** When may a brane-like answer a content or search query — "how many
+statements do I have," "what is statement N," "does a name/value match exist"? An earlier
+draft of this section proposed a graduated readiness ladder (count known, then names known,
+then per-candidate values known, then fully constanic), reasoning that a future
+breadth-first evaluator (UBCc, Appendix A) might want partial answers before full settlement.
+A survey of every current brane-like API call site in `foolish-ubca` (searches, `stmt_count`,
+`stmt_at`, `push_ubc_child`, the sequencer) found **no caller today that needs, or benefits
+from, a partial answer** — every real caller's correctness argument reduces to "wait for the
+context to be constanic." The ladder was solving a problem UBCa does not have.
+
+**Why UBCa does not have that problem: the SFF mark already carries the deferral.** A term
+that must survive to a later coordination without being read early is marked SFF (§5) — it is
+kept syntactically present but semantically inert, protected from premature search, until the
+coordination that activates it actually happens. Because deferral is carried by the *term*
+(the mark), nothing downstream ever needs to peek at a container's partial content to decide
+whether it is "ready enough" — the mark already decided that. This is why waiting for full
+constancy is not merely acceptable but sufficient: the one case that would have forced an
+early partial answer is exactly the case §5 already routes around.
+
+**The rule.** A content or search query requires its **search context** to be constanic, and
+that constancy is produced by **ordinary stepping of dependencies** — never assumed by reading
+a NYES that was computed in a different context, and never approximated by a partial answer.
+
+- **In-brane context** (`?name`, `~name`, `#`, `^`, `$` scanning my own brane) is constanic by
+  **FIFO drain order**: the work queue does not pop a statement until its predecessors have
+  settled, so "everything before me" is already an entitlement, not something to check
+  (Appendix A.C). No new mechanism is needed here.
+- **An anchored search's anchor** (`tbl?name`, `tbl~name`) is a `foolish_children` dependency.
+  It must be **stepped to constanic** before its resolved brane is scanned — this is a
+  stepping obligation, not a fact to assume from the anchor's NYES at some earlier moment.
+- **A concatenation's own content** (`stmt_count`, `stmt_at`) depends on its elements, which
+  are `foolish_children`. They must be driven to constanic — and, for a nested concatenation
+  element, that means the nested concatenation's *own* flattening must complete — before
+  `populate_concat_helpers` is allowed to lock in a count or a statement list.
+- **A recoordinated clone** is a **new** dependency in a **new** context. Its pre-clone NYES
+  (in particular ECONSTANIC, which means "no value *here*, may gain one via recoordination")
+  is evidence about the *old* context and is not evidence about the new one. It must be
+  (re-)enqueued and (re-)stepped, exactly as any other not-yet-constanic `foolish_children`
+  entry would be.
+- **The two-phase shape already used by `ComparisonFir`/`ModuloFir` is the general pattern**:
+  `fir_op_step`'s Prembrionic/Embryonic → Braning transition enqueues `foolish_children`
+  dependencies and waits for them; only once they are constanic does Braning → `combine` do
+  the `ubc_children` work. Reading or trusting `ubc_children`-shaped content before its
+  `foolish_children` dependency has actually reached constanic **in the current context** is
+  the shape of bug this section names.
+
+**D9 and D10 named against this rule:**
+
+- **D9** (`push_ubc_child`, `proto_brane.rs:200-205`) checks `is_constanic()` — "terminal in
+  *some* context" — where the rule requires "terminal *in the context this clone was just
+  placed into*." A freshly recoordinated ECONSTANIC clone fails that check and is silently
+  never enqueued, so it never gets the stepping the rule says it is owed.
+- **D10** (`ConcatenationFir::stmt_count`, `fir_kinds.rs:3230` region) treats "I have not yet
+  driven my elements to constanic" as license to answer anyway, memoizing a count computed
+  from whatever `populate_concat_helpers` finds on first call — including a nested element
+  that has not itself been driven to constanic. The rule requires waiting; the code answers
+  early and then, because the answer is cached, never gets to correct itself.
+
+**What this is not.** This is not a new NYES state and not a new predicate to add to the `Fir`
+trait beyond what already exists. `is_constanic()` is the only gate a content/search query
+ever needs; the fix at each violating site is to call it — on the right thing, at the right
+time — before trusting or memoizing an answer, not to build a finer-grained readiness type.
+The one exception recorded so it is not re-litigated: a **shape** question — "is this node
+*kind of thing* ever brane-like at all," e.g. `_get_my_brane`'s ancestor walk, or the
+element-level classification inside `ConcatenationFir::fir_op_step` that asks "will each
+constituent be brane-like once resolved" — is answerable from `kind()` alone at *any* NYES,
+including PREMBRIONIC, because it never touches count, names, or values. That shape question
+and the content question above are two different things that a single hardcoded
+`constanic_is_brane_like() -> true` (§9.1's shapes list; `fir_kinds.rs:3287-3289`) currently
+conflates into one wrong answer for `ConcatenationFir` — part of D10's mechanism, corrected in
+the D10 fix (plan 3G.6).
 
 ### §6. The brane view, and the unanchored forward search `~name`
 
@@ -2278,86 +2407,38 @@ None of UBCb, UBCc, or UBCd is a prerequisite for this FOOP.
 
 ## Last Updated
 
-**Date**: 2026-08-09
-**Updated By**: Claude Code / claude-opus-5
-**Changes**: Added **§6 — the brane view and the unanchored forward search
-`~name`** (2026-08-11), plus **D7**. §5's mark counting was demonstrated to
-compose exactly as specified (one mark on `'ite`'s value-search pattern => the
-pattern dies NK; three => it survives but nothing resolves; each mark buys one
-coordination), but it never lands `'ite`, because `&#1` is a CONTEXTED index
-whose carried position must survive the definition-site coordination. §6 removes
-the need for one: a brane view is a contiguous `[0, my_index-1]` window sharing
-the home brane's parent, and `~name` is the ORDINARY anchored forward search
-over it. The view can be constanic before the whole brane is — FIFO guarantees
-the window has settled — so it never waits, the same narrowing move §5 makes.
-FOOP-23 §A.1's "cannot look forward in its own brane" is preserved literally:
-the window holds only settled statements. Earlier: **§5 rewritten around the upgraded SFF mark** — the third and final
-design. A constanic clone currently strips EVERY SF/SFF mark in one recursive
-pass (`constanic_clone_at`, `fir_kinds.rs:183-191`), so nesting is a no-op today
-and a mark protects a term across exactly one coordination. §5 makes it a
-counter: at most one strip per clone TREE (not per node), with retained marks
-SHARED by `Rc::clone` since an unstripped mark is immutable and
-position-independent. Demonstrated to be a correctness fix, not an optimization:
-premature stripping resolves against the wrong neighbours and an early miss
-settles NK, which is terminal. §5 now includes the **full Euler 1 program in
-fenced code** as it is expected to run. Body reorganized for implementation:
-design, program, and implementation steps in §5; all decision-making moved to
-**Appendix A**, which sets out the four candidate designs in prose (A the SFF
-mark — chosen; B the `@` index projection — whose investigation located the real
-defect; C breadth-first execution; D message passing) and **authoritatively
-defines the UBC code names**: UBCa reference, UBCb dependency-tracking
-(attempted for months, machinery expected to feed UBCd), UBCc breadth-first
-(closest to UBCa, the natural next reference implementation), UBCd message
-passing. §Test Plan gains the SFF corpus analysis: of 17 `<<`-bearing einmo
-inputs exactly ONE nests (`misc/sff_nested.foo`) and is a direct semantic
-conflict to be deprecated under human review; the other 16 must be
-byte-identical. New `foop/55/SFF/` suite specified. Earlier same day:  **§5 redesigned** around two mechanisms per Atlas's
-direction, replacing the readiness-gating design of the first draft: (i) `depth`
-as a real parameter of `step` — `if depth==0 return`, else work and recurse with
-`depth-1` — held by the FVM per invocation, starting ≈5 and growing by a delta
-(≥1) when a sweep does not settle, making stepping genuinely **breadth-first**;
-and (ii) **`i_have_what_i_need()`**, where a FIR steps `foolish_children` until
-they are **ALL constanic OR** the predicate is true, default `false` so no
-un-opted kind can regress. The predicate **cannot be wrong** — a premature
-`true` settles a FIR on incomplete information, silently. `is_indexable()` is
-retained but becomes a plain `bool`: it is asked *of the brane-like*, which
-reports its own shape (encapsulation, `rust_instructions.md` rule zero), and the
-three-valued answer is withdrawn because "not yet" and "no" now share the same
-safe consequence — keep draining. Staged **5.0 depth → 5a plain brane → 5b
-concat → 5c other kinds → 5d `'ite`**, with 5.0 required to leave settled values
-identical. Added Rejected Alternatives H (full message-passing FVM — subsumes
-the problem but is a core rewrite deserving its own Major) and I (explicit
-dependency tracking — the same regress the greedy wait falls into). Earlier
-same day: added **§5 "Readiness-gated searches"** — the actual cause of §4
-risks 1-2. Measured: the exercise computes *nothing* (every statement
-PREMBRIONIC) at a 40000-step budget, so the `@einmo set iteration depth to
-40000` directive enlarges the room in which it fails rather than fixing it.
-Root cause: `step_inner` (`fir_trait.rs:466-499`) never runs a FIR's own
-`fir_op_step` while its task queue is non-empty, and an anchored search
-enqueues its whole anchor — so `IteFir`, which enqueues all three operands,
-drains the discarded `<loop>` branch unconditionally and never terminates.
-Specifies `is_indexable()` / `is_name_searchable()` / `is_value_searchable()`
-on brane-like FIRs, with a ready search **retargeting its task queue to the one
-selected statement**; `'ite` short-circuiting then falls out with no laziness
-rule added to the FVM. Records that indexability must mean **shape frozen**,
-not merely currently-readable (a selected statement carries its dependencies —
-selecting out of an incomplete concatenation would resolve its searches against
-a brane missing members), hence a three-valued readiness answer where
-"undecided" is distinct from "false". `is_indexable()` staged **5a plain brane
-→ 5b concatenation → 5c other brane-like kinds → 5d `'ite`** so the retargeting
-mechanism is proven on the parse-time-settled case before the freezing question
-arises; the other two predicates are specified but deferred. Added Rejected
-Alternatives E (raise the budget), F (make `IteFir` lazy directly), G (the
-spec's search-based `'ite` alone), five §5 Open Questions, and FIR/UBC-Step
-Impact entries including the expected suite-wide step-count *reduction* that
-must be reviewed case by case. Earlier: post-FOOP-65-creation revision, adding
-the **FOOP-65**
-dependency** — the exercise rewrite uses backtick (tail-concatenator)
-application: new E4 carries the full line-by-line rewrite mapping; §4
-risk 0 and the plan's Phase 0 gate on FOOP-65 merged. Added **D6** (`$=`
-does not parse; `=$` desugars to `BinaryOp{$, #-1, B}` and settles
-non-obviously — repros) and **E5** (the six `$=` lines rewritten as
-explicit `(X)$`); corrected the §3 sugar row accordingly. Earlier same
-day: created (Draft) — bisected the exercise failure, specified `'mod`
-(FOOP-33 §5.1 mechanism) and `'or` (FOOP-73 preferred design, `'or`
-only), documented D1–D5 and E1–E3 incl. the INTERN_ decision.
+**Date**: 2026-08-22
+**Updated By**: Claude Code / claude-sonnet-5
+**Changes**: Added **§5.5 — search-context constancy**, the rule D9 and D10 are
+now understood to be two independent violations of. Prompted by a bisection of
+a live FOOP-65 einmo baseline regression on this branch, which surfaced the
+question of when a brane-like may answer a content/search query — count,
+names, statement-at-index. An earlier working hypothesis (a graduated
+readiness ladder: count known, then names known, then per-candidate values,
+then fully constanic, aimed at a future breadth-first UBCc) was tested against
+a full survey of every current brane-like API call site and found
+**unnecessary for UBCa today**: no current caller needs a partial answer,
+because the SFF mark already carries whatever deferral would otherwise force
+one (a term that must survive to a later coordination is marked, not exposed
+early). §5.5 states the actual rule instead: a content/search query requires
+its **search context** to be constanic, produced by ordinary stepping of
+`foolish_children` dependencies — in-brane context via FIFO drain order,
+anchors and concatenation elements via being stepped before being trusted,
+and a recoordinated clone via being re-enqueued rather than trusted on its
+pre-clone NYES. `is_constanic()` is the only gate needed; the one thing kept
+distinct is a pure **shape** question ("is this kind of node ever brane-like
+at all") answerable at any NYES from `kind()` alone, which existing tree-walk
+and element-classification call sites correctly already treat this way.
+**D10 promoted** from a recorded, off-critical-path follow-up to a required
+fix (plan Phase 3G.6): the same survey found it is the live cause of two
+already-shipped FOOP-65 baselines losing elements
+(`foop/65/tail_concat_chain.foo.einmo`, `foop/65/comprehensive.foo.einmo`),
+not merely a case `fbfn` never exercises. **New D11** records a second,
+unrelated defect found by the same bisection and already fixed (uncommitted):
+a compiler refactor merging the `Concatenation`/`TailConcatenation` build arms
+silently dropped the `.rev()` FOOP-65's backtick equivalence depends on. Plan
+gained 3G.6 (the D10 fix), 3G.6b (commit D11's fix), and 3G.6c (add
+`misc/concat_sf_f_more.foo` to Phase 3B's human-approval deprecation list
+alongside `misc/sff_nested.foo` — its divergence is §5's strip-budget
+correctly deferring a nested mark, not a bug). Prior history of this section
+is in `git log`/`git blame` on this file, not accreted here.

@@ -289,10 +289,10 @@ reason "was the budget implemented?" could not be answered from the suite.
 17 einmo inputs use SFF marks. Exactly ONE nests. The single-mark cases are the
 regression gate for this whole FOOP.
 
-- [ ] Confirm the **16 single-mark inputs produce byte-identical OUTPUT**, step
+- [ ] Confirm the **15 single-mark inputs produce byte-identical OUTPUT**, step
       counts included. Any divergence is a regression in the strip budget — fix
-      the code, do not promote. The 16 are every `<<`-bearing input except
-      `misc/sff_nested.foo`.
+      the code, do not promote. The 15 are every `<<`-bearing input except
+      `misc/sff_nested.foo` and `misc/concat_sf_f_more.foo` (below).
 - [ ] `misc/sff_nested.foo` — `{a=1,b=2; c=<<a+<<b>>>>; c; c;}` — is a **direct
       semantic conflict**: its inner `<<b>>` means "resolve on each use" today
       and "defer one coordination" after §5.
@@ -300,6 +300,17 @@ regression gate for this whole FOOP.
   - [ ] STOP! ASK HUMAN to approve deprecating this input in favour of the new
         `foop/55/SFF/` cases. Do NOT rewrite a baseline whose meaning changed
         without review.
+- [ ] `misc/concat_sf_f_more.foo` — found nesting an SFF mark 2026-08-14 while
+      bisecting the FOOP-65 regression (see plan 3G.6c, FOOP-55.md §D11's
+      sibling finding). `oo` changes from `-54` to `-116`: the old
+      all-strip-in-one-pass code resolved a nested `<<...>>` mark too early;
+      §5's per-path budget correctly defers it one extra coordination. Same
+      disposition as `misc/sff_nested.foo` — **not a bug**, but a meaning
+      change requiring human approval before deprecating/re-baselining.
+  - [ ] Record the old and new OUTPUT side by side in this plan
+  - [ ] STOP! ASK HUMAN to approve deprecating this input (or re-baselining it
+        with an explanatory comment) in favour of the new `foop/55/SFF/` cases.
+        Do NOT rewrite a baseline whose meaning changed without review.
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
 ## Phase 3C — §5: the new `foop/55/SFF/` einmo suite
@@ -668,12 +679,77 @@ behind each item.
 
 ### 3G.5 — the D9 fix
 
+Read FOOP-55.md §5.5 first — D9 and D10 (3G.6) are the two named violations of
+one rule, and §5.5 states the rule once so the two fixes are not designed
+independently.
+
 - [ ] **A search RESULT must not inherit the searcher's SFM context.**
       `handle_found` passes `scope.has_ancestral_sfm` into the clone, so a
       result fetched from outside an SF marker keeps ECONSTANIC instead of
       resetting to Embryonic (`transform_for_clone`, `fir.rs:186-189`), and
       `push_ubc_child` then declines to enqueue it. See FOOP-55.md §D9.
 - [ ] Tests first: the `{a = {1,2}, b=<<#-2>>, c= a b}` chain resolves
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
+### 3G.6 — the D10 fix ← **PROMOTED from follow-up to required** (bisection, this branch)
+
+Read FOOP-55.md §5.5 and §D10 first. D10 was originally scoped as off the
+critical path; bisecting the FOOP-65 einmo regression found it is the live
+cause of `foop/65/tail_concat_chain.foo.einmo` and
+`foop/65/comprehensive.foo.einmo` losing elements (`d, e, f` silently dropped
+from a backtick chain whose last operand is a nested written concatenation).
+Both are already-shipped FOOP-65 baselines — this is a regression FOOP-55
+introduced, not a stale baseline, and must be fixed before either file's
+`einmo_gate_checked` can pass again.
+
+- [ ] **Tests first** — promote the bisection's temporary
+      `temporary_reproduce_to_debug_nested_concat_inside_tail_concat_drops_elements`
+      (`foolish-ubca/src/fir_kinds.rs`, `mod tests`) to a named regression test
+      per the `foolish-debugging` skill's cleanup discipline, rather than
+      leaving it as a temporary test or deleting it
+- [ ] Gate `ConcatenationFir::stmt_count`/`stmt_at`/`populate_concat_helpers`
+      on `is_constanic()` of the elements actually being counted — per §5.5,
+      this is an `is_constanic()` gate, NOT a new three-valued return type.
+      An element that is itself a not-yet-constanic nested concatenation must
+      block the outer `stmt_count` from memoizing, not be silently counted as
+      zero.
+- [ ] Split `ConcatenationFir::constanic_is_brane_like()` per §5.5's shape/
+      content distinction: the hardcoded `true` (`fir_kinds.rs:3287-3289`)
+      answers a CONTENT question ("do I know my own final shape") using a
+      SHAPE answer ("concatenations are the kind of thing that can be
+      brane-like"). Callers that only need the shape question (the
+      element-level `all_brane_like` classify inside `fir_op_step`) must keep
+      working at any NYES; callers that need the content question (the
+      anchored-search sites below) must gate on `is_constanic()`.
+- [ ] **Fix the two ungated anchored-search sites** found by the same survey
+      (`fir_kinds.rs:1846-1850` and `fir_kinds.rs:1965`, and confirm the
+      inconsistent sibling arm at `fir_kinds.rs:2238` against the one at
+      `fir_kinds.rs:2227` that already gates correctly): each must check
+      `is_constanic()` on the resolved anchor before trusting
+      `constanic_is_brane_like()`/`stmt_count()` on it, exactly as the
+      sequencer already does at `evaluator.rs:789`.
+- [ ] Re-verify `foop/65/tail_concat_chain.foo.einmo` and
+      `foop/65/comprehensive.foo.einmo` now match their `checked/` baselines
+      with NO code change to FOOP-65's own files — the fix is entirely in
+      `ConcatenationFir`'s content-readiness gating
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
+### 3G.6b — commit D11's fix (found during the same bisection, already verified)
+
+- [ ] Commit the `.rev()` restoration in `compiler.rs` (gated on
+      `is_tail_concat`) — see FOOP-55.md §D11. Already verified against the
+      full `cargo test -p foolish-ubca --lib` suite (370 passed) and against
+      `einmo compare` for `tail_concat_basic`/`tail_concat_system_ops`.
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
+### 3G.6c — add `misc/concat_sf_f_more.foo` to the Phase 3B human-approval list
+
+- [ ] `misc/concat_sf_f_more.foo.einmo`'s divergence (`oo=-54` → `oo=-116`) is
+      NOT a bug — it is §5's strip-budget fix correctly deferring a nested SFF
+      mark that the old all-strip-in-one-pass code resolved too early (same
+      category as `misc/sff_nested.foo`). Add it to Phase 3B's STOP-and-ask-
+      human deprecation list rather than treating it as something to silently
+      re-baseline.
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
 ## Phase 3F — Integration: make the exercise run
@@ -874,50 +950,30 @@ the exercise is green and the real cost is known.
 
 ## Last Updated
 
-**Date**: 2026-08-09
-**Updated By**: Claude Code / claude-opus-5
-**Changes**: Added **Phase 4B — follow-up FOOPs discovered by this work**: a
-todo to CREATE a "Search Context Access" FOOP (number drawn at creation time,
-not reserved now), covering `@` for the found statement's index plus the sibling
-extractions the same `FoolRefFir` referent makes available — matched name, home
-brane, settled NYES — with the miss-propagation rule (anchored NK, unanchored
-ECONSTANIC) and the known blocker that `#` accepts only literal integers. Also
-records **D7**: a bare `B = A` does not resolve an SFF-bearing expression, with
-one mark or two, while the same body under juxtaposition does. Earlier: Phases **3A-3D rewritten** for the upgraded SFF mark (FOOP-55.md
-§5), replacing the withdrawn early-exit/readiness work. 3A is the strip budget
-in `constanic_clone_at` — tests first, including that a retained mark is SHARED
-(`Rc::ptr_eq`) and that the new path cannot reach the SF/SFF ALARM. 3B is the
-existing corpus: the 16 single-mark inputs must be byte-identical (any
-divergence is a regression, not a baseline update), and `misc/sff_nested.foo`
-gets a human STOP before deprecation because its meaning changes. 3C builds the
-new `foop/55/SFF/` suite with a per-case Promotion Review Gate. 3D rewrites
-`'ite` with doubled branch marks, removes the `@einmo` depth directive, and
-RECONSIDERS deleting `IteFir`/`OrFir` — both exist only because the pure-Foolish
-definitions could not resolve, and a custom short-circuiting kind would oblige
-every collaborator to handle a FIR with un-stepped members. Earlier: split the old Phase 3 to
-insert FOOP-55.md **§5's staged
-implementation** ahead of integration: **3A** (readiness-gated indexing for a
-plain brane — builds the whole retargeting mechanism where shape is settled at
-parse time, so a later regression cannot be confused with a defect in the
-mechanism), **3B** (concatenation — the hard case, gated on first *measuring*
-what freezes a shape, with the negative test that an unresolved search operand
-answers `NotYet` not `Ready`), **3C** (remaining brane-like kinds), **3D**
-(`'ite` short-circuit, and removal of the `@einmo set iteration depth to 40000`
-directive — if the exercise still needs it, §5 is not finished), and the old
-integration phase renumbered **3F**. Each new phase ends by REPORTING baseline
-changes to the human: a `steps=` reduction is expected and legitimate, while a
-step count that *rises* or any change to a settled value is a bug. Reframed the
-depth/budget checkbox as a **re-measurement after §5**, since the exercise
-computes nothing at any budget, and added the question of whether
-`step_inner`'s silent `NoProgress` at `MAX_DEPTH` should become a loud error.
-Earlier: **dropped the FOOP-65 dependency** — verified live on `jia`
-after the FOOP-75 merge that the exercise's juxtaposition application form
-evaluates correctly as written, so the backtick unblocks nothing and E4's
-rewrite is optional polish. Recorded a **requirements survey** in Phase 0:
-every feature the exercise needs was probed through `UbcaEvaluator` for
-value as well as parse, leaving **`'mod` and `'or` as the only two features
-to build**. The six `$=` lines become `=$` (FOOP-75 is merged). Added
-**Phase 5 — the D1 decision**, deferred to the end deliberately: the
-exercise runs on the `INTERN_` workaround, so whether to fix the
-leading-underscore lexer defect is answered once the real cost is known,
-and a fix would need its own FOOP.
+**Date**: 2026-08-22
+**Updated By**: Claude Code / claude-sonnet-5
+**Changes**: Root-caused a live `einmo_gate_checked` failure: several
+FOOP-65-owned baselines had regressed on this branch, which per the
+non-regression invariant meant something in FOOP-55's own work had broken
+them. Bisection found two distinct causes and this update records the plan
+consequences (full narrative in FOOP-55.md's own Last Updated and its new
+§5.5/§D10/§D11). **3G.5** (D9) gained a pointer to new **§5.5 — search-context
+constancy**, the general rule D9 and D10 are both violations of: a
+content/search query needs its search context constanic, produced by
+ordinary stepping — never assumed from a pre-clone NYES, never approximated
+by a partial answer, since UBCa's SFF mark already carries whatever
+deferral would otherwise require one. **New 3G.6** promotes D10 from an
+off-critical-path follow-up to a required fix: it is the live cause of
+`foop/65/tail_concat_chain.foo.einmo` and `foop/65/comprehensive.foo.einmo`
+silently dropping elements, gates `ConcatenationFir::stmt_count`/`stmt_at`
+on `is_constanic()`, splits `constanic_is_brane_like()`'s conflated
+shape/content questions, and fixes two ungated anchored-search sites the
+same survey found. **New 3G.6b** commits an already-fixed, unrelated
+defect (D11) the same bisection found: a compiler refactor merging the
+`Concatenation`/`TailConcatenation` build arms dropped the `.rev()`
+FOOP-65's backtick equivalence depends on. **New 3G.6c** and a **Phase 3B**
+addition flag `misc/concat_sf_f_more.foo` for the same human-approval
+deprecation path already used for `misc/sff_nested.foo` — its divergence is
+§5's strip-budget correctly deferring a nested mark, not a bug. Prior
+history of this section is in `git log`/`git blame` on this file, not
+accreted here.
