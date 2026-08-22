@@ -467,6 +467,17 @@ fn build_fir(ast: Astn, parent: Option<&Weak<RefCell<dyn Fir>>>, under_sff: bool
             };
             Rc::new_cyclic(|me: &Weak<RefCell<ConcatenationFir>>| {
                 let me_dyn: Weak<RefCell<dyn Fir>> = me.clone();
+                // EXPERIMENT: TailConcatenation elements are stored in SOURCE
+                // order by the parser (leftmost backtick operand first), but
+                // FOOP-65 §1's equivalence (`fn`X` == `X fn`) requires the
+                // rightmost operand first, method last -- the original
+                // FOOP-65 Phase 1 implementation (d7ec8237) reversed here and
+                // this was lost when the two match arms were merged.
+                let elements: Vec<Astn> = if is_tail_concat {
+                    elements.into_iter().rev().collect()
+                } else {
+                    elements
+                };
                 let children: Vec<FirRef> = elements
                     .into_iter()
                     .map(|e| build_concat_element(e, &me_dyn, under_sff))

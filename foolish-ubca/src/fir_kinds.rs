@@ -9658,4 +9658,97 @@ mod tests {
         let body = stmts[0].borrow().core().foolish_children()[0].clone();
         assert!(body.borrow().core().get_nyes().is_constanic(), "settled");
     }
+
+    #[test]
+    fn temporary_reproduce_to_debug_nested_concat_inside_tail_concat_drops_elements() {
+        // Isolates the FOOP-65 einmo regression: a nested plain concatenation
+        // (`d_brn e_brn f_brn`) settles correctly on its own, but as the LAST
+        // element of a TailConcatenation (`a_brn`b_brn`c_brn`d_brn e_brn f_brn`)
+        // its statements vanish from the outer result.
+        let root = Compiler::compile(
+            "{a_brn={1;}; b_brn={2;}; c_brn={3;}; d_brn={4;}; e_brn={5;}; f_brn={6;}; \
+             chain = a_brn`b_brn`c_brn`d_brn e_brn f_brn;}",
+        )
+        .unwrap()
+        .pop()
+        .unwrap();
+        let scope = Scope::empty();
+        // Grab the chain statement's body BEFORE stepping, and do NOT query
+        // stmt_count()/value() on anything until the FVM itself has driven
+        // the whole tree to settlement -- otherwise the diagnostic query
+        // itself corrupts the very state being inspected (see below).
+        let stmts0 = root.borrow().core().foolish_children().to_vec();
+        let chain_stmt0 = stmts0
+            .iter()
+            .find(|s| s.borrow().as_stmt_searchable_name() == Some("chain"))
+            .expect("chain statement")
+            .clone();
+        let chain_body0 = chain_stmt0.borrow().core().foolish_children()[0].clone();
+
+        for _ in 0..2000 {
+            match root.step(&scope).unwrap() {
+                StepReport::Progress(nyes) if nyes.is_constanic() => break,
+                StepReport::NoProgress => break,
+                _ => {}
+            }
+        }
+        eprintln!(
+            "root NYES after driving to settlement (or 2000 steps): {:?}",
+            root.borrow().core().get_nyes()
+        );
+
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let chain_stmt = stmts
+            .iter()
+            .find(|s| s.borrow().as_stmt_searchable_name() == Some("chain"))
+            .expect("chain statement")
+            .clone();
+        let chain_body = chain_stmt.borrow().core().foolish_children()[0].clone();
+        eprintln!("chain_body kind: {:?}", chain_body.borrow().kind());
+        eprintln!(
+            "chain_body NYES (after full settlement): {:?}",
+            chain_body.borrow().core().get_nyes()
+        );
+        assert!(
+            Rc::ptr_eq(&chain_body0, &chain_body),
+            "sanity: same FirRef before/after stepping"
+        );
+        eprintln!(
+            "chain_body stmt_count (queried AFTER settlement): {:?}",
+            chain_body.borrow().stmt_count()
+        );
+        let outer_elements = chain_body.borrow().core().foolish_children().to_vec();
+        eprintln!("outer TailConcatenation element count: {}", outer_elements.len());
+        for (i, e) in outer_elements.iter().enumerate() {
+            eprintln!(
+                "  element[{i}] kind={:?} nyes={:?} stmt_count={:?}",
+                e.borrow().kind(),
+                e.borrow().core().get_nyes(),
+                e.borrow().stmt_count()
+            );
+        }
+        // The nested `d_brn e_brn f_brn` is the LAST element — inspect it directly.
+        let nested = outer_elements.last().unwrap().clone();
+        eprintln!(
+            "nested (d e f) kind={:?} nyes={:?}",
+            nested.borrow().kind(),
+            nested.borrow().core().get_nyes()
+        );
+        eprintln!(
+            "nested constanic_is_brane_like: {}",
+            nested.value().borrow().constanic_is_brane_like()
+        );
+        eprintln!(
+            "nested.value() stmt_count (queried BEFORE nested is constanic): {:?}",
+            nested.value().borrow().stmt_count()
+        );
+
+        // What the bug produces:
+        assert_eq!(
+            chain_body.borrow().stmt_count(),
+            Some(6),
+            "BUG: expected 6 flattened statements (1..6), got fewer — the nested \
+             concatenation's contribution was lost"
+        );
+    }
 }
