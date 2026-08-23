@@ -3291,51 +3291,6 @@ impl Fir for ConcatenationFir {
     fn constanic_is_brane_like(&self) -> bool {
         true
     }
-
-    fn _search_brane(
-        &self,
-        expression: &str,
-        starting_index: usize,
-        ending_index: usize,
-    ) -> Option<(usize, FirRef, Nyes)> {
-        if !self._helpers_populated.get() {
-            return None;
-        }
-        let total = self.stmt_count().unwrap_or(0);
-        if starting_index >= total || ending_index >= total {
-            return None;
-        }
-        let (from, to) = if starting_index >= ending_index {
-            (ending_index, starting_index)
-        } else {
-            (starting_index, ending_index)
-        };
-        let mut offset = 0;
-        for helper in self.core.ubc_children() {
-            let count = helper.borrow().stmt_count().unwrap_or(0);
-            let helper_end = offset + count;
-            if from < helper_end {
-                let local_start = from.saturating_sub(offset);
-                let local_end = if to < helper_end {
-                    to - offset
-                } else {
-                    count - 1
-                };
-                if let Some((local_idx, stmt, nyes)) =
-                    helper
-                        .borrow()
-                        ._search_brane(expression, local_start, local_end)
-                {
-                    return Some((offset + local_idx, stmt, nyes));
-                }
-            }
-            offset = helper_end;
-            if offset > to {
-                break;
-            }
-        }
-        None
-    }
 }
 
 pub fn nk(reason: &str, parent: Weak<RefCell<dyn Fir>>) -> FirRef {
