@@ -3288,41 +3288,6 @@ impl Fir for ConcatenationFir {
         self.provenance
     }
 
-    fn stmt_count(&self) -> Option<usize> {
-        // D10 / FOOP-55 §5.5: `populate_concat_helpers` may only run from
-        // `fir_op_step`'s own `Braning` arm, which is the ONLY place that has
-        // actually confirmed every element resolved to a constanic brane
-        // value ("case b") rather than an element whose search is still
-        // ECONSTANIC/pre-constanic ("case a" -- see FOOP-55.md §5.5). Calling
-        // it here is a side door around that gate.
-        //
-        // Crucially, `is_constanic()` is NOT the right gate on its own:
-        // `Nyes::Woconstanic` is genuinely correct and terminal-for-stepping
-        // when case (a) applies -- some element's search found nothing YET
-        // (ECONSTANIC), so this concatenation is honestly "waiting on
-        // constanics" and CANNOT join on its own. But that WOCONSTANIC must
-        // not be read as "joined, with nothing in it" -- it must stay
-        // answerable as "not yet knowable" until this concatenation is
-        // recoordinated into a context where the missing name resolves.
-        // `_helpers_populated` is the one bit that actually distinguishes
-        // "never attempted to join" (case a) from "joined successfully"
-        // (case b, `fir_op_step`'s `Braning` arm sets it before this is ever
-        // asked) -- so it, not NYES, is the gate.
-        if !self._helpers_populated.get() {
-            if self.core.foolish_children().is_empty() {
-                return Some(0);
-            }
-            return None;
-        }
-        let total: usize = self
-            .core
-            .ubc_children()
-            .iter()
-            .map(|h| h.borrow().stmt_count().unwrap_or(0))
-            .sum();
-        Some(total)
-    }
-
     fn constanic_is_brane_like(&self) -> bool {
         true
     }
@@ -9110,7 +9075,8 @@ mod tests {
             Nyes::Constant,
             "joined lines are all constant → ConcatBrane is Constant"
         );
-        assert_eq!(nl_body.borrow().stmt_count(), Some(3), "a, b, c joined");
+        // FOOP-55 §10: content is asked of the settled RESULT.
+        assert_eq!(nl_body.value().borrow().stmt_count(), Some(3), "a, b, c joined");
     }
 
     #[test]
