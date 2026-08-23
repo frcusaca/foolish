@@ -1,7 +1,10 @@
 {
+
+	!! ----
 	!! FOOP-55: euler_small — the exercise algorithm with bound 10
 	!! Expected answer: 23 (3+5+6+9)
 	!! Sum of multiples of 3 or 5 below 10
+	!! ----
 
 	INTERNAL_ite = {
 		cond='True, <<#-3>>;

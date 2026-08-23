@@ -149,15 +149,20 @@ FILTER="${2:-}"
 
 # --- locate einmo ---------------------------------------------------------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# cargo honors CARGO_TARGET_DIR when set, which may point outside the repo
+# (e.g. a shared /yolo/target across worktrees) -- check that first so a
+# build there is actually found, rather than assuming target/ sits beside
+# this script.
+TARGET_DIR="${CARGO_TARGET_DIR:-$SCRIPT_DIR/target}"
 if [[ -z "$EINMO" ]]; then
-    if [[ -x "$SCRIPT_DIR/target/debug/einmo" ]]; then
-        EINMO="$SCRIPT_DIR/target/debug/einmo"
+    if [[ -x "$TARGET_DIR/debug/einmo" ]]; then
+        EINMO="$TARGET_DIR/debug/einmo"
     elif command -v einmo >/dev/null 2>&1; then
         EINMO="einmo"
     else
         echo "einmo binary not found; building it in $SCRIPT_DIR ..." >&2
         ( cd "$SCRIPT_DIR" && cargo build -p einmo --bins )
-        EINMO="$SCRIPT_DIR/target/debug/einmo"
+        EINMO="$TARGET_DIR/debug/einmo"
     fi
 fi
 

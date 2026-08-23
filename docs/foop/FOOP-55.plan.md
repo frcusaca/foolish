@@ -691,60 +691,104 @@ independently.
 - [ ] Tests first: the `{a = {1,2}, b=<<#-2>>, c= a b}` chain resolves
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
-### 3G.6 — the D10 fix ← **PROMOTED from follow-up to required** (bisection, this branch)
+### 3G.6 — the D10 fix ← **PROMOTED from follow-up to required, DONE** (bisection, this branch)
 
-Read FOOP-55.md §5.5 and §D10 first. D10 was originally scoped as off the
-critical path; bisecting the FOOP-65 einmo regression found it is the live
-cause of `foop/65/tail_concat_chain.foo.einmo` and
+Read FOOP-55.md §5.5, §5.6, §9.2, and §D10 first. D10 was originally scoped
+as off the critical path; bisecting the FOOP-65 einmo regression found it is
+the live cause of `foop/65/tail_concat_chain.foo.einmo` and
 `foop/65/comprehensive.foo.einmo` losing elements (`d, e, f` silently dropped
 from a backtick chain whose last operand is a nested written concatenation).
-Both are already-shipped FOOP-65 baselines — this is a regression FOOP-55
-introduced, not a stale baseline, and must be fixed before either file's
-`einmo_gate_checked` can pass again.
+Both are already-shipped FOOP-65 baselines — this was a regression FOOP-55
+introduced, now fixed with no code change to FOOP-65's own files.
 
-**Corrected 2026-08-22, after reading the exact call sites (superseding the
-first draft of this sub-section, written from the survey alone).**
-`constanic_is_brane_like()` itself is NOT to be split or NYES-gated — its
-existing callers at `fir_trait.rs:307,522` (`_get_my_brane`'s parent walk,
-`step_inner`'s brane-cache) and `fir_kinds.rs:3180` (`fir_op_step`'s own
-per-element `all_brane_like` classify) are genuine shape-only questions and
-correctly work at any NYES; gating the method itself would break them. The
-actual defect is narrower: `ConcatenationFir::stmt_count`/`stmt_at`
-(`fir_kinds.rs:3250-3280`) call `populate_concat_helpers()` **directly**,
-bypassing the gate `fir_op_step`'s own `Braning` arm already applies
-correctly (it only populates helpers after confirming every element's
-`.value()` is `all_brane_like`, `fir_kinds.rs:3177-3213`). That direct call
-is the side door D10's mechanism goes through: asking `stmt_count()` on a
-still-PREMBRIONIC nested `ConcatenationFir` triggers *that* nested
-concatenation's own `populate_concat_helpers()` before its own `fir_op_step`
-ever validated its elements.
+**The fix turned out to be TWO independent defects, not one — the second
+found only because fixing the first exposed it.** The first draft of this
+sub-section (written from the API survey alone, before implementation)
+correctly identified defect 1 but did not yet know about defect 2:
 
-- [ ] **Tests first** — promote the bisection's temporary
-      `temporary_reproduce_to_debug_nested_concat_inside_tail_concat_drops_elements`
-      (`foolish-ubca/src/fir_kinds.rs`, `mod tests`) to a named regression test
-      per the `foolish-debugging` skill's cleanup discipline, rather than
-      leaving it as a temporary test or deleting it
-- [ ] `ConcatenationFir::stmt_count()` and `stmt_at()` must refuse to answer
-      (return `None`) — and, in particular, must NOT call
-      `populate_concat_helpers()` — unless `self.core.get_nyes().is_constanic()`.
-      This is the actual D10 fix: per §5.5, "not yet constanic" is not a
-      license to answer via a side door around `fir_op_step`'s own gate.
-- [ ] **Fix the three call sites where an anchored search trusts a resolved
+1. `ConcatenationFir::stmt_count`/`stmt_at` called `populate_concat_helpers()`
+   directly, bypassing the gate `fir_op_step`'s own `Braning` arm applies.
+   Fixed by gating on `_helpers_populated` (see the checkbox below for why
+   that, not `is_constanic()`, is the correct gate).
+2. **§9.2's classifier itself was wrong**: "Concatenation → SFF-mark it,
+   treated exactly as a brane" conflated a Foolish Brane literal (a deferred
+   value) with a written concatenation (an active joining process meant to
+   run immediately). SFF-marking a nested concatenation froze its own
+   constituent searches at construction, so it could never complete its own
+   join. This was invisible until defect 1 was fixed, because defect 1's
+   premature populate was itself masking the fact that the concatenation's
+   own searches never even got a chance to run at all.
+
+- [x] **Tests first** — the bisection's temporary reproduction was
+      superseded by cleaner, purpose-written regression tests instead of a
+      literal promotion:
+      `nested_written_concat_as_constituent_joins_immediately` (isolated
+      minimal case, pins both the classifier fix and that the join actually
+      completes) and `nested_concat_as_tail_concat_last_element_flattens_completely`
+      (the original tail-concatenation reproduction, now asserting all six
+      values present). The original temporary test's throwaway diagnostics
+      were removed per the `foolish-debugging` skill's cleanup discipline.
+      (2026-08-22)
+- [x] `ConcatenationFir::stmt_count()` refuses to answer (returns `None`) —
+      and, in particular, no longer calls `populate_concat_helpers()` at
+      all from outside `fir_op_step` — unless `_helpers_populated` is
+      already `true`. **Corrected during implementation**: the gate is
+      `_helpers_populated`, not `self.core.get_nyes().is_constanic()` as
+      first planned — `Nyes::Woconstanic` is a GENUINELY correct terminal
+      answer when a concatenation gives up via the "not joinable yet"
+      escape (§5.5's correction), so `is_constanic()` alone still let a
+      premature populate through; only `_helpers_populated` actually
+      distinguishes "never attempted to join" from "joined successfully".
+      (2026-08-22)
+- [x] **Fix the three call sites where an anchored search trusts a resolved
       anchor's `constanic_is_brane_like()` without first confirming the
-      anchor itself is constanic** (`fir_kinds.rs:1847`, `:1965`, `:2238` —
-      all three currently check only for `Nyes::Nk`, or nothing, before
-      calling `constanic_is_brane_like()`/scanning; none currently confirms
-      `resolved.borrow().core().get_nyes().is_constanic()` first). A
-      pre-constanic `resolved` that happens to be a `ConcatenationFir`
-      reaches the exact same premature-`populate_concat_helpers` path as
-      the direct D10 case above, just via a search instead of a bare
-      `stmt_count()` call. Add the `is_constanic()` check at all three,
-      matching the pattern the sequencer already uses at `evaluator.rs:789`.
-- [ ] Re-verify `foop/65/tail_concat_chain.foo.einmo` and
+      anchor itself is constanic** (`fir_kinds.rs` — the `ib_search_with_engine`
+      value-search-anchored arm, the positional-search anchored arm, and the
+      `#`-index-search anchored arm). Each now checks
+      `resolved.borrow().core().get_nyes().is_constanic()` before trusting
+      `constanic_is_brane_like()`/scanning, staying pre-constanic (or NOT
+      settling a permanent NK) rather than misreading a pre-constanic
+      `resolved` as a final "not brane-like". (2026-08-22)
+- [x] **A second, independently-discovered defect, found only once the
+      `stmt_count` fix above exposed it: §9.2's classifier itself was wrong.**
+      "Concatenation → SFF-mark it, treated exactly as a brane" conflated a
+      Foolish Brane literal (a deferred value, correctly SFF-marked) with a
+      written concatenation (an active joining process that must run
+      immediately) — SFF-marking a nested concatenation propagated
+      `under_sff` into its OWN constituent searches, freezing them at
+      construction so it could never complete its own join. Fixed:
+      `classify_concat_element` gives a nested `Concatenation`/
+      `TailConcatenation` its own `ConcatElemKind::BareConcatenation` with
+      no mark; only a genuine `Astn::Brane` literal gets `BareBrane`/SFF.
+      §9.2's table in FOOP-55.md corrected accordingly. Two now-superseded
+      unit tests (`concat_constituent_classifies_as_brane_like`,
+      `tail_concat_equivalence_brane_literal`) updated to match — see
+      commit `99ce4741`. (2026-08-22)
+- [x] **A forward-to-parent search mechanism on `ConcatenationFir` was
+      designed and implemented, then found unnecessary and removed.**
+      Investigated per Atlas's design intent that a not-yet-populated
+      concatenation should forward an IB search to its own parent. Traced
+      and confirmed: `ConcatenationFir::stmt_count() == None` already makes
+      `find_stmt_index` return `None` via `?`, which `SearchFir`'s existing
+      `Embryonic`→`Braning` (IB-then-AB) fallback already treats as "try my
+      parent next" — the general search machinery already implements the
+      intended behavior once `stmt_count` stopped lying, with no
+      concatenation-specific code needed. Confirmed by disabling the added
+      mechanism and re-running the full suite with an identical result
+      before removing it. FOOP-55.md §5.6 documents the final mechanism.
+      (2026-08-22)
+- [x] Re-verified `foop/65/tail_concat_chain.foo.einmo` and
       `foop/65/comprehensive.foo.einmo` now match their `checked/` baselines
-      with NO code change to FOOP-65's own files — the fix is entirely in
-      `ConcatenationFir`'s content-readiness gating
-- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      exactly (`einmo compare`: 4 matching, 0 differing across all four
+      affected FOOP-65 files), with NO code change to FOOP-65's own files.
+      (2026-08-22)
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      373 passed, 5 failed — every failure is pre-existing/expected
+      (`ExtremumFir` WIP unrelated to this work, new FOOP-55 einmo cases
+      pending their own promotion, `misc/sff_nested.foo`/
+      `misc/concat_sf_f_more.foo` pending human-approval deprecation per
+      Phase 3B). Zero new regressions.
+      (2026-08-22)
 
 ### 3G.6b — commit D11's fix (found during the same bisection, already verified)
 

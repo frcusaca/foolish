@@ -2,9 +2,11 @@
 set -euo pipefail
 
 # Resolve the signer relative to this script's own repository. verify_signatures
-# is a bin in foolish-core; build it if missing.
+# is a bin in foolish-core; build it if missing. Respect CARGO_TARGET_DIR when
+# set -- it may point outside the repo (e.g. a shared /yolo/target).
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SIGNER="$SCRIPT_DIR/target/debug/verify_signatures"
+TARGET_DIR="${CARGO_TARGET_DIR:-$SCRIPT_DIR/target}"
+SIGNER="$TARGET_DIR/debug/verify_signatures"
 if [[ ! -x "$SIGNER" ]]; then
     echo "verify_signatures not found; building it in $SCRIPT_DIR ..."
     ( cd "$SCRIPT_DIR" && cargo build -p foolish-core --bin verify_signatures )
