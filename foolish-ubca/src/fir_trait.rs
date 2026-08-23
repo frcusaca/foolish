@@ -304,7 +304,7 @@ pub trait Fir: std::fmt::Debug {
                 if Rc::ptr_eq(&p, self_ref) {
                     return None;
                 }
-                if p.borrow().constanic_is_brane_like() {
+                if p.borrow().is_constanic_branelike() {
                     Some(p)
                 } else {
                     p.borrow()._get_my_brane(&p)
@@ -407,11 +407,27 @@ pub trait Fir: std::fmt::Debug {
 
     /// Whether this FIR, its shape now settled, is brane-like (has statements to iterate).
     ///
-    /// This answers the question only for a term whose shape is final. A
-    /// pre-constanic counterpart — asking whether a term still being stepped
-    /// will *become* brane-like — is anticipated (FOOP-55 D9) but does not
-    /// exist yet.
-    fn constanic_is_brane_like(&self) -> bool {
+    /// **Precondition, preserved from this method's former name
+    /// (`constanic_is_brane_like`, renamed FOOP-55 §10 for readability): this
+    /// answers a CONTENT question and the caller must ensure `self` is
+    /// constanic before trusting the answer.** The default implementation
+    /// (`self.stmt_count().is_some()`) has no way to distinguish "not yet
+    /// brane-like" from "will never be brane-like" for a pre-constanic FIR —
+    /// it simply reports whatever `stmt_count()` says right now, which for a
+    /// kind gating its own count on settlement (e.g. a `BraneConcatOp` before
+    /// its combine step runs) is `None` regardless of what the FIR will
+    /// eventually become.
+    ///
+    /// The exception, not a violation of the above: a caller asking a pure
+    /// **shape** question — "is this the *kind* of node that is EVER
+    /// brane-like, structurally" (e.g. `_get_my_brane`'s ancestor walk,
+    /// `step_inner`'s brane-cache) — may call this at any NYES, because for
+    /// every kind that overrides this method with a constant (`true`/`false`
+    /// regardless of state), the answer to the shape question and the
+    /// (eventual) content question coincide. It is only kinds relying on the
+    /// DEFAULT implementation, whose answer tracks `stmt_count()` moment to
+    /// moment, where the constanic precondition is load-bearing.
+    fn is_constanic_branelike(&self) -> bool {
         self.stmt_count().is_some()
     }
 
@@ -519,7 +535,7 @@ fn step_inner(this: &FirRef, scope: &Scope, depth: usize) -> Result<StepReport, 
                 if this_kind == FirKind::Statement {
                     child_scope.current_statement = Some(Rc::clone(this));
                 }
-                if this.borrow().constanic_is_brane_like() {
+                if this.borrow().is_constanic_branelike() {
                     child_scope.current_brane = Some(Rc::clone(this));
                 }
                 step_inner(&front_rc, &child_scope, depth + 1)?;

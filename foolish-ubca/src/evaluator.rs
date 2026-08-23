@@ -1093,8 +1093,8 @@ mod step_until_tests {
             );
             eprintln!("cb body stmt_count() = {:?}", bb.stmt_count());
             eprintln!(
-                "cb body constanic_is_brane_like() = {:?}",
-                bb.constanic_is_brane_like()
+                "cb body is_constanic_branelike() = {:?}",
+                bb.is_constanic_branelike()
             );
             eprintln!(
                 "cb body ubc_children count = {:?}",
