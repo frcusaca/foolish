@@ -808,6 +808,60 @@ correctly identified defect 1 but did not yet know about defect 2:
       re-baseline.
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
 
+### 3G.7 — `BraneConcatOp`: concatenation is an operator, not a brane
+
+Read FOOP-55.md §10 first — it is the specification for this sub-section, drafted
+before implementation per Atlas's direction (spec first, then test-driven).
+
+**Already done, ahead of this phase (commit `b7b4813d`):** the `settled_result()`
+half of §10 — deleting `ConcatenationFir`'s hardcoded-`None` override so `.value()`
+correctly unwraps to the `ConcatHelper` once settled, per the universal rule every
+FIR follows. Confirmed by experiment: exactly two test-behavior changes (both
+rewritten to match), zero einmo OUTPUT regressions across the full suite.
+
+- [ ] **Tests first.** For each of the ~21 direct-call unit-test sites (§10's
+      survey) that call `.stmt_count()`/`.stmt_at()`/`.is_constanic_branelike()`
+      (post-rename)/`._search_brane()` directly on a concatenation `FirRef`:
+      decide whether the test's real intent is the OPERATOR or the RESULT, and
+      rewrite to insert `.value()` where the RESULT was intended. Run against
+      TODAY's code first — record which already pass (a pre-constanic `.value()`
+      is unaffected by this work) and which correctly fail (the settled case).
+  - [ ] Read the dense ~9-test block first (`concat_equals_big_brane`,
+        `concat_search_brane_translates_global_indices`,
+        `concat_ib_search_crosses_segments`, `concat_ab_search_reaches_outward`,
+        `concat_contexted_search_spans_segments`, `concat_index_spans_segments`,
+        `concat_find_stmt_index_is_global`,
+        `concat_statement_parents_point_at_concat_helper`,
+        `concat_constanic_clone_rewires_and_recoordinates`; `fir_kinds.rs`
+        ~8639-8924) — built around "concatenation behaves like an equivalent
+        big brane." This is where a genuine behavior gap, if one exists, will
+        surface; read each individually rather than batch-rewriting.
+- [ ] Rename `constanic_is_brane_like` → `is_constanic_branelike` trait-wide
+      (`fir_trait.rs`'s default impl, every kind's override, every caller in
+      `fir_kinds.rs`/`evaluator.rs`) — its own mechanical pass, done FIRST so
+      the removals below are written against the final name. State the
+      constanic-only-call precondition explicitly in the doc comment on the
+      default impl and each override, since the old name signaled it
+      implicitly and the new name no longer does.
+- [ ] Remove `stmt_count()`, `stmt_at()`, `_search_brane()`, and
+      `is_constanic_branelike()` from `ConcatenationFir` **one at a time**,
+      running the full suite after each removal (`rust_instructions.md`'s
+      testing discipline — one change, one verification, not a batch).
+  - [ ] Before removing `is_constanic_branelike()`: confirm the one caller §10
+        flags as needing care (`fir_op_step`'s element-classify,
+        `elem.value().borrow().is_constanic_branelike()`) already calls
+        `.value()` first — it does, per the read done while drafting §10, but
+        confirm again against the code at removal time, not from memory.
+- [ ] Rename `ConcatenationFir` → `BraneConcatOp` (mechanical). Decide and
+      record: does `FirKind::Concatenation` stay (it names the syntax, which is
+      accurate) or become `FirKind::BraneConcatOp` (for naming consistency)?
+      Either is acceptable per §10 — record the choice made.
+- [ ] Re-verify the full einmo suite: zero OUTPUT regressions across all 163
+      files is the acceptance bar, exactly as it was for the `settled_result()`
+      deletion. Re-verify the 8 einmo files §10's survey flagged as
+      concatenation-related specifically.
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+
 ## Phase 3F — Integration: make the exercise run
 
 - [ ] Read FOOP-55.md §4 (integration risks); load the `foolish-debugging`

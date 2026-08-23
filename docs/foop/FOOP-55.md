@@ -2295,6 +2295,179 @@ upgrade won — is set out in prose in **Appendix A**.
   (`fir_trait.rs:467-469`) should instead be a loud error — is measured in
   plan Phase 7, after §5's staged implementation.
 
+### §10. `BraneConcatOp` — concatenation is an operator, not a brane
+
+**This section is a structural correction, not a new feature.** It states plainly
+what §5.5/§5.6/D9/D10 all independently ran into without naming: `ConcatenationFir`
+has never actually behaved like a brane. It behaves like `OperatorFir` — it has
+operands it steps to constanic, and a combine step that produces a result — but
+its trait implementation still duplicated brane-like methods (`stmt_count`,
+`stmt_at`, `constanic_is_brane_like`, `_search_brane`) and, until §D10's follow-up
+fix (below), hardcoded its own `settled_result()` to `None` so that `.value()`
+always answered with itself instead of what it had actually produced. Every
+defect this FOOP has found in concatenation (D9's clone-context confusion, D10's
+premature-populate side door, §9.2's classifier conflating a nested concatenation
+with a Foolish Brane literal) is a symptom of the same category error: treating
+an *operation that produces a brane* as if it *were* a brane.
+
+**"Foolish Brane" vs. "Search Result Brane" vs. "operator whose result is brane-
+shaped" — three things this FOOP's own vocabulary once ran together (§9.2's
+correction).** A Foolish Brane is a `{...}` literal typed out in the program. A
+Search Result Brane is a name (or any search form) that *resolves to* a brane —
+still not a brane literal, just a value of brane shape. `BraneConcatOp` is
+neither: it is a **process**, analogous to `+` for integers — `Op+(a, b)` is not
+itself an integer, `a + b`'s *settled value* is. `BraneConcatOp`'s settled value
+is a brane (the `ConcatHelper` it builds), but the operator node itself is not.
+
+#### The already-corrected half: `value()`/`settled_result()`
+
+Fixed in commit `b7b4813d` (before this section was written) by deleting
+`ConcatenationFir::settled_result()`'s hardcoded-`None` override. The trait
+default (`fir_trait.rs`) is exactly the `OperatorFir`-shaped rule already needed:
+
+> `settled_result()` — `None` while pre-constanic (so `.value()` returns the
+> operator node itself, per the universal rule every FIR follows); once
+> constanic, the first `ubc_children` entry — which for a concatenation is
+> always the `ConcatHelper` `populate_concat_helpers()` already builds and
+> pushes there.
+
+No new mechanism, no new NYES, no new field. Confirmed by experiment before
+committing: this one deletion produces exactly two test-behavior changes (both
+were locking in the old conflation: `fir_kinds.rs`'s `concat_value_is_itself` →
+renamed `concat_value_is_itself_only_while_pre_constanic`; `fir_trait.rs`'s
+`get_value_concatenation_settled_returns_self` → renamed
+`get_value_concatenation_settled_returns_helper`) and **zero einmo OUTPUT
+regressions** across the full 163-file suite. The sequencer needed no
+adaptation — it already decides render-raw-vs-render-joined by checking
+`ubc_children.is_empty()` directly (an operator-state fact), never by reading
+through `.value()`.
+
+#### The remaining half: the brane-like trait methods themselves
+
+`ConcatenationFir` still implements four methods whose only reason for existing
+is that nothing used to unwrap through `.value()` correctly. Now that it does,
+every one of them is answerable by removing the override and letting external
+callers reach `ConcatHelper` (which already implements all four correctly,
+independently, with no dependency on `ConcatenationFir`) through `.value()`:
+
+| Method | Current location | Disposition |
+|---|---|---|
+| `stmt_count()` | `fir_kinds.rs` (~3284) | **Remove.** Falls to the trait default (`None` unconditionally) — correct, because nothing should ask the OPERATOR for a count; ask `.value()`'s result. |
+| `stmt_at()` | `fir_kinds.rs` (~3319) | **Remove.** Same reasoning. |
+| `_search_brane()` | `fir_kinds.rs` (~3338) | **Remove.** Same reasoning; `ConcatHelper::_search_brane` already does the real work with no delegation needed. |
+| `constanic_is_brane_like()` | `fir_kinds.rs` (~3334, hardcoded `true`) | **Remove — but verify the one legitimate SHAPE caller first (below).** |
+
+**Renamed, trait-wide, as part of this section (per Atlas): `constanic_is_brane_like`
+→ `is_constanic_branelike`.** The old identifier's word order was deliberate, not
+accidental: leading with "constanic" was meant to signal a PRECONDITION to the
+caller — this must only be called once the object is already constanic. That
+signal is worth keeping, but the identifier read ambiguously as prose ("constanic
+is brane-like"?) instead of as the precondition warning it was meant to be.
+`is_constanic_branelike` keeps `is_` as the verb and states the same precondition
+adjectivally; **the precondition itself must be stated explicitly in the method's
+doc comment** (`fir_trait.rs`'s default impl and every override), since the old
+name is no longer doing that signaling job on its own. This is a trait-wide
+rename (`fir_trait.rs`'s default impl, every kind's override, and every caller in
+`fir_kinds.rs`/`evaluator.rs`), done as one mechanical pass alongside the type
+rename below — not specific to `BraneConcatOp`, but landing in this section
+because this is where the method's own contract was being scrutinized closely
+enough to notice the name needed the doc comment to carry weight it used to carry
+on its own. References to the OLD name earlier in this FOOP (D9's findings, §5.5)
+are left as written, per this project's convention of not rewriting history —
+from this section forward, `is_constanic_branelike` is the name.
+
+**The one caller that needs care: `fir_op_step`'s own element-classify
+(`fir_kinds.rs` ~3214, `elem.value().borrow().is_constanic_branelike()`).**
+This asks each OPERAND's *settled value* whether it can be flattened — it already
+calls `.value()` first, so once an operand is itself a settled `BraneConcatOp`,
+`.value()` unwraps it to *its* `ConcatHelper`, whose own (unaffected, still
+correct) `is_constanic_branelike() -> true` answers correctly. The three
+anchored-search call sites fixed under §5.5 (`ib_search_with_engine` and its two
+siblings) follow the identical pattern: `resolved = anchor.resolve_anchor()` is
+already a `.value()` call, so they too reach `ConcatHelper`'s answer, not
+`BraneConcatOp`'s. **No caller has been found that asks `is_constanic_branelike()`
+on an unresolved `FirRef` that might be a `BraneConcatOp` without unwrapping
+first** — if implementation turns up one, it is a bug in that caller (skipping
+the universal `.value()` step), not a reason to keep the override.
+
+Once all four are removed, `BraneConcatOp` implements the `Fir` trait with
+exactly the same shape as `OperatorFir`: `core()`, `fir_op_step()`, `kind()`,
+and (unique to concatenation, because its combine step spans two `fir_op_step`
+calls rather than completing synchronously like `+`) `as_concat_provenance()`
+and the `_helpers_populated` gate. Nothing else.
+
+#### The rename
+
+`ConcatenationFir` → `BraneConcatOp`. Purely a naming change — no behavior
+depends on the type's name — but it is the point of this section: the old name
+asserted "I am a brane," which is exactly the false claim every defect above
+traces back to. `FirKind::Concatenation` may keep its name (it names the
+*syntax* — a written concatenation — which is accurate) or move to
+`FirKind::BraneConcatOp` for consistency; either is acceptable, record the
+choice made during implementation. `ConcatProvenance` and `ConcatHelper` keep
+their names: provenance is a fact about how the operator was spelled, and
+`ConcatHelper` already correctly names "the real brane this operator produces."
+
+#### State fields — unaffected
+
+`provenance: ConcatProvenance` and `_helpers_populated: Cell<bool>` already
+belong on the operator (the survey confirmed no field is on the wrong side of
+this split) — `_helpers_populated` is the one piece of state a brane-combining
+operator needs that a synchronous operator like `+` does not, because
+concatenation's combine step produces something (the `ConcatHelper`) that
+itself needs further stepping, rather than an immediately-final value.
+
+#### Blast radius and the test rewrite plan
+
+A crate-wide survey (conducted before this section was written) found:
+
+- **~21 unit tests** bind a concatenation `FirRef` to a local variable and call
+  `.stmt_count()`/`.stmt_at()`/`.is_constanic_branelike()`/`._search_brane()`
+  on it **directly**, without going through `.value()` first. Each needs either
+  an explicit `.value()` inserted before the call (if the test's intent is "ask
+  about the settled content") or a deliberate decision that the test is
+  actually asserting something about the *operator* (rare — most of these are
+  about content).
+- **One dense block of ~9 tests** (`concat_equals_big_brane`,
+  `concat_search_brane_translates_global_indices`,
+  `concat_ib_search_crosses_segments`, `concat_ab_search_reaches_outward`,
+  `concat_contexted_search_spans_segments`, `concat_index_spans_segments`,
+  `concat_find_stmt_index_is_global`,
+  `concat_statement_parents_point_at_concat_helper`,
+  `concat_constanic_clone_rewires_and_recoordinates`; `fir_kinds.rs` ~8639-8924)
+  is built specifically around "a concatenation behaves exactly like an
+  equivalent big brane" — the premise these tests exist to pin. Each needs
+  reading individually: most should still pass once rewritten to call
+  `.value()` first (the premise is still true — of the *result*, not the
+  operator), but this is where a genuine behavior gap, if one exists, will
+  surface.
+- **8 einmo `.foo` input files** reference concatenation by name or content —
+  re-verify OUTPUT is byte-identical after the trait-method removal, the same
+  way the `settled_result()` deletion was verified.
+
+#### Order of work (plan Phase 3G.7, below)
+
+1. Tests first: for each of the ~21 direct-call sites, decide operator-vs-result
+   intent and rewrite accordingly; run to see which fail against *today's* code
+   (some may already pass, since `.value()` on a pre-constanic concatenation
+   still returns itself — only the settled case changed).
+2. Remove `stmt_count`/`stmt_at`/`_search_brane`/`is_constanic_branelike` from
+   `ConcatenationFir` one at a time, running the suite after each, per
+   `rust_instructions.md`'s testing discipline.
+3. Rename `constanic_is_brane_like` → `is_constanic_branelike` trait-wide (its
+   own mechanical pass, independent of the type rename — do this one first so
+   step 2's removal is written against the final name), stating the
+   constanic-only-call precondition explicitly in the doc comment where the
+   old name used to signal it implicitly. Then rename `ConcatenationFir` →
+   `BraneConcatOp` (mechanical, IDE-assisted; decide and record the
+   `FirKind::Concatenation` question from above).
+4. Re-verify the full einmo suite — zero OUTPUT regressions is the acceptance bar,
+   exactly as it was for the `settled_result()` deletion.
+5. Update the FIR-tree-shape inventory this FOOP's plan item 3G.1 calls for
+   (still not written as of this section) to describe `BraneConcatOp` correctly
+   from the start, rather than inheriting the brane-like framing this section
+   retires.
+
 ## References
 
 - Prior FOOPs: FOOP-33 (creation, `system.foo`, comparisons — §5.0/§5.1 are
@@ -2473,38 +2646,29 @@ None of UBCb, UBCc, or UBCd is a prerequisite for this FOOP.
 
 ## Last Updated
 
-**Date**: 2026-08-22
+**Date**: 2026-08-23
 **Updated By**: Claude Code / claude-sonnet-5
-**Changes**: Added **§5.5 — search-context constancy**, the rule D9 and D10 are
-now understood to be two independent violations of. Prompted by a bisection of
-a live FOOP-65 einmo baseline regression on this branch, which surfaced the
-question of when a brane-like may answer a content/search query — count,
-names, statement-at-index. An earlier working hypothesis (a graduated
-readiness ladder: count known, then names known, then per-candidate values,
-then fully constanic, aimed at a future breadth-first UBCc) was tested against
-a full survey of every current brane-like API call site and found
-**unnecessary for UBCa today**: no current caller needs a partial answer,
-because the SFF mark already carries whatever deferral would otherwise force
-one (a term that must survive to a later coordination is marked, not exposed
-early). §5.5 states the actual rule instead: a content/search query requires
-its **search context** to be constanic, produced by ordinary stepping of
-`foolish_children` dependencies — in-brane context via FIFO drain order,
-anchors and concatenation elements via being stepped before being trusted,
-and a recoordinated clone via being re-enqueued rather than trusted on its
-pre-clone NYES. `is_constanic()` is the only gate needed; the one thing kept
-distinct is a pure **shape** question ("is this kind of node ever brane-like
-at all") answerable at any NYES from `kind()` alone, which existing tree-walk
-and element-classification call sites correctly already treat this way.
-**D10 promoted** from a recorded, off-critical-path follow-up to a required
-fix (plan Phase 3G.6): the same survey found it is the live cause of two
-already-shipped FOOP-65 baselines losing elements
-(`foop/65/tail_concat_chain.foo.einmo`, `foop/65/comprehensive.foo.einmo`),
-not merely a case `fbfn` never exercises. **New D11** records a second,
-unrelated defect found by the same bisection and already fixed (uncommitted):
-a compiler refactor merging the `Concatenation`/`TailConcatenation` build arms
-silently dropped the `.rev()` FOOP-65's backtick equivalence depends on. Plan
-gained 3G.6 (the D10 fix), 3G.6b (commit D11's fix), and 3G.6c (add
-`misc/concat_sf_f_more.foo` to Phase 3B's human-approval deprecation list
-alongside `misc/sff_nested.foo` — its divergence is §5's strip-budget
-correctly deferring a nested mark, not a bug). Prior history of this section
-is in `git log`/`git blame` on this file, not accreted here.
+**Changes**: Added **§10 — `BraneConcatOp`**, the structural correction Atlas
+named: `ConcatenationFir` has never actually behaved like a brane — it behaves
+like `OperatorFir` (operands stepped to constanic, a combine step producing a
+result), and every concatenation defect this FOOP has found (D9, D10, §9.2's
+classifier conflation) is a symptom of the type still claiming brane identity
+it doesn't have. The `settled_result()` half is already fixed (commit
+`b7b4813d`, before this section was written): deleting the hardcoded-`None`
+override lets `.value()` fall back to the universal default and correctly
+unwrap to the `ConcatHelper` once settled, confirmed by experiment to produce
+exactly two test-behavior changes and zero einmo OUTPUT regressions across the
+full suite. §10 specifies the remaining work: remove the now-redundant
+`stmt_count`/`stmt_at`/`_search_brane`/`is_constanic_branelike` overrides
+(callers already reach `ConcatHelper`'s correct answers via `.value()`), rename
+`ConcatenationFir` → `BraneConcatOp`, and — per Atlas, landing in this section
+because the method's contract was being scrutinized closely enough to notice —
+rename the trait-wide `constanic_is_brane_like` → `is_constanic_branelike`
+(clearer prose while preserving, now explicitly in the doc comment rather than
+implicitly in word order, the original name's precondition signal: only call
+this once the object is constanic). Plan gained Phase 3G.7 with the full
+tests-first order of work, informed by a crate-wide survey's blast-radius
+findings (~21 direct-call test sites, a dense 9-test block built around
+"concatenation behaves like an equivalent big brane," 8 einmo files to
+re-verify). Prior history of this section is in `git log`/`git blame` on this
+file, not accreted here.
