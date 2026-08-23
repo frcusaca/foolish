@@ -1110,8 +1110,12 @@ mod get_value_tests {
 
     // ── 12. ConcatenationFir settled ────────────────────────────────────────
 
+    /// FOOP-55 (BraneConcatOp correction): once constanic, `value()` unwraps
+    /// to the settled result (the `ConcatHelper` in `ubc_children`), exactly
+    /// like every other FIR kind (`StayFoolishFir`, test 14, is the same
+    /// shape) — the operator is not its own result once it has produced one.
     #[test]
-    fn get_value_concatenation_settled_returns_self() {
+    fn get_value_concatenation_settled_returns_helper() {
         let a = make_ci(1);
         let b = make_ci(2);
         let stmt_a = make_stmt("a", 1, Rc::clone(&a));
@@ -1123,10 +1127,12 @@ mod get_value_tests {
         assert_eq!(cat.borrow().core().get_nyes(), Nyes::Constant);
         assert_eq!(cat.borrow().core().ubc_children().len(), 1);
 
-        // ConcatBrane IS its own value — settled_result() returns None
         let result = cat.value();
-        assert!(Rc::ptr_eq(&result, &cat));
-        assert_eq!(result.borrow().kind(), FirKind::Concatenation);
+        assert!(
+            !Rc::ptr_eq(&result, &cat),
+            "value() once settled must return the ConcatHelper, not the operator"
+        );
+        assert_eq!(result.borrow().kind(), FirKind::ConcatHelper);
         assert_eq!(result.borrow().stmt_count(), Some(2));
     }
 

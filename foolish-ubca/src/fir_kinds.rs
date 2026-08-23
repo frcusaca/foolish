@@ -3331,11 +3331,6 @@ impl Fir for ConcatenationFir {
         None
     }
 
-    fn settled_result(&self) -> Option<FirRef> {
-        // ConcatBrane IS its own value — no separate result child.
-        None
-    }
-
     fn constanic_is_brane_like(&self) -> bool {
         true
     }
@@ -8839,26 +8834,50 @@ mod tests {
         assert_eq!(helper.borrow().stmt_count().unwrap(), 10);
     }
 
+    /// FOOP-55 (BraneConcatOp correction): a `ConcatenationFir` follows the
+    /// SAME universal `value()` rule every FIR follows (`fir_trait.rs`'s
+    /// `settled_result` contract) -- itself while pre-constanic, its settled
+    /// result (the `ConcatHelper` it pushes into `ubc_children`) once
+    /// constanic. There is no `ConcatenationFir`-specific exception: the
+    /// operator is not its own result once it has actually produced one,
+    /// exactly as `OperatorFir` is not its own result once `combine()` runs.
     #[test]
-    fn concat_value_is_itself() {
+    fn concat_value_is_itself_only_while_pre_constanic() {
         let cat = make_10_stmt_concat();
-        settle_root(&cat);
 
+        // Pre-constanic: value() returns the operator node itself, per the
+        // universal rule (fir_trait.rs's FirRefExt::value doc).
+        assert!(!cat.borrow().core().get_nyes().is_constanic());
+        assert!(cat.borrow().settled_result().is_none());
+        let v_pre = cat.value();
+        assert!(
+            Rc::ptr_eq(&v_pre, &cat),
+            "value() before settlement must return the operator itself"
+        );
+
+        settle_root(&cat);
         assert!(cat.borrow().core().get_nyes().is_constanic());
 
+        // Once constanic, value() unwraps to the settled result -- the
+        // ConcatHelper already sitting in ubc_children -- NOT the operator.
+        let helpers = cat.borrow().core().ubc_children();
+        assert_eq!(helpers.len(), 1, "unlimited k → single ConcatHelper");
+        let helper = &helpers[0];
+        let settled = cat.borrow().settled_result();
         assert!(
-            cat.borrow().settled_result().is_none(),
-            "ConcatBrane settled_result must be None"
+            settled.is_some_and(|s| Rc::ptr_eq(&s, helper)),
+            "settled_result must expose the ConcatHelper once constanic"
         );
-        let v = cat.value();
+        let v_settled = cat.value();
         assert!(
-            Rc::ptr_eq(&v, &cat),
-            "value() of ConcatBrane must return itself"
+            Rc::ptr_eq(&v_settled, helper),
+            "value() once settled must return the ConcatHelper, not the operator"
         );
+        assert_eq!(v_settled.borrow().kind(), FirKind::ConcatHelper);
 
         assert!(
             cat.borrow().as_i64().is_none(),
-            "as_i64 on ConcatBrane must be None"
+            "as_i64 on the operator node must be None"
         );
     }
 
