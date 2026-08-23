@@ -3070,6 +3070,16 @@ impl ConcatenationFir {
     /// pushed to `ubc_children`. Structural only — the caller decides NYES.
     /// Callers guarantee every element's value is brane-like first (the
     /// join-readiness gate in `fir_op_step`). Empty (no lines) → no helper.
+    /// FOOP-55 §10: ALWAYS builds and pushes a `_ConcatHelper`, even when
+    /// there are zero elements or every element is an empty brane (zero
+    /// total lines). A settled `BraneConcatOp`'s RESULT (`.value()`, reached
+    /// via `settled_result()`'s universal default of "first `ubc_children`
+    /// entry") must be a real `ConcatHelper` in every case where the
+    /// concatenation settles successfully — an empty result is still a
+    /// result, distinct from "not yet joined". Without this, an empty
+    /// concatenation would settle constanic with `ubc_children` empty,
+    /// making `.value()` indistinguishable from the pre-constanic case and
+    /// losing the "I settled to an empty brane" fact entirely.
     fn populate_concat_helpers(&self) {
         let self_weak = self.core.parent_weak();
         let elements = self.core.foolish_children();
@@ -3078,10 +3088,6 @@ impl ConcatenationFir {
             .iter()
             .map(|e| e.value().borrow().stmt_count().unwrap_or(0))
             .sum();
-
-        if total_lines == 0 {
-            return;
-        }
 
         // Build the _ConcatHelper first so its Weak becomes the parent of
         // every cloned line — cross-element search resolution walks to it.
@@ -3112,10 +3118,10 @@ impl ConcatenationFir {
             }
         }
 
-        if cloned_stmts.is_empty() {
-            return;
-        }
-
+        // Even when `cloned_stmts` is empty, replace the helper's core so it
+        // is born with the correct (empty) Nyes progression rather than
+        // sitting at Prembrionic with no children forever — an empty
+        // ProtoBrane still needs to be stepped to Constant.
         *helper.borrow_mut() = ConcatHelper {
             core: ProtoBrane::new(cloned_stmts, self_weak.clone(), Nyes::Prembrionic),
         };
@@ -3190,16 +3196,17 @@ impl Fir for ConcatenationFir {
     fn fir_op_step(&self, _scope: &Scope) -> Result<(), UbcError> {
         match self.core.get_nyes() {
             Nyes::Prembrionic | Nyes::Embryonic => {
-                let children: Vec<FirRef> = self.core.foolish_children().to_vec();
-                if children.is_empty() {
-                    // Empty ConcatBrane settles as empty constant brane immediately.
-                    self.core.set_nyes(Nyes::Constant);
-                } else {
-                    // Call 1: push elements as tasks, transition to Braning.
-                    self.core.set_nyes(Nyes::Braning);
-                    for child in children {
-                        self.core.push_task(child);
-                    }
+                // FOOP-55 §10: the zero-elements case is NOT special-cased
+                // here anymore -- it transitions to Braning like any other
+                // concatenation (there is simply nothing to push as a task),
+                // so the Braning arm's own populate_concat_helpers() runs and
+                // builds a real (empty) ConcatHelper. This is what makes
+                // .value() on an empty, settled concatenation reach a
+                // genuine result instead of being indistinguishable from
+                // "not yet settled".
+                self.core.set_nyes(Nyes::Braning);
+                for child in self.core.foolish_children() {
+                    self.core.push_task(Rc::clone(child));
                 }
             }
             Nyes::Braning => {
@@ -3314,21 +3321,6 @@ impl Fir for ConcatenationFir {
             .map(|h| h.borrow().stmt_count().unwrap_or(0))
             .sum();
         Some(total)
-    }
-
-    fn stmt_at(&self, idx: usize) -> Option<FirRef> {
-        if !self._helpers_populated.get() {
-            return None;
-        }
-        let mut remaining = idx;
-        for helper in self.core.ubc_children() {
-            let count = helper.borrow().stmt_count().unwrap_or(0);
-            if remaining < count {
-                return helper.borrow().stmt_at(remaining);
-            }
-            remaining -= count;
-        }
-        None
     }
 
     fn constanic_is_brane_like(&self) -> bool {
@@ -4441,6 +4433,12 @@ mod tests {
         assert_eq!(helper.borrow().core().foolish_children().len(), 2);
     }
 
+    /// FOOP-55 §10: an empty concatenation still produces a real (empty)
+    /// `ConcatHelper` as its settled result -- `populate_concat_helpers`
+    /// always pushes one, even with zero total lines, precisely so `.value()`
+    /// on a settled-but-empty concatenation reaches a genuine result instead
+    /// of being indistinguishable from "not yet settled" (which would happen
+    /// if `ubc_children` stayed empty on settlement).
     #[test]
     fn concatenation_empty_elements_is_constant_empty_brane() {
         let cat = make_concatenation(vec![]);
@@ -4451,8 +4449,16 @@ mod tests {
 
         assert_eq!(cat.borrow().core().get_nyes(), Nyes::Constant);
         let ubc = cat.borrow().core().ubc_children().to_vec();
-        assert_eq!(ubc.len(), 0);
-        assert_eq!(cat.borrow().stmt_count(), Some(0));
+        assert_eq!(ubc.len(), 1, "even an empty join produces a real ConcatHelper");
+        assert_eq!(ubc[0].borrow().kind(), FirKind::ConcatHelper);
+        assert_eq!(ubc[0].borrow().core().get_nyes(), Nyes::Constant);
+
+        let result = cat.value();
+        assert!(
+            Rc::ptr_eq(&result, &ubc[0]),
+            "value() must reach the empty ConcatHelper, not the operator"
+        );
+        assert_eq!(result.borrow().stmt_count(), Some(0));
     }
 
     #[test]
@@ -8672,26 +8678,29 @@ mod tests {
         settle_root(&cat);
         assert_eq!(cat.borrow().kind(), FirKind::Concatenation);
         assert!(cat.borrow().core().get_nyes().is_constanic());
+        // FOOP-55 §10: content is asked of the settled RESULT, not the
+        // operator -- .value() unwraps to the ConcatHelper.
+        let result_brane = cat.value();
 
-        let result = cat.borrow()._search_brane("^a$", 0, 9);
+        let result = result_brane.borrow()._search_brane("^a$", 0, 9);
         assert!(result.is_some(), "must find 'a'");
         let (idx, stmt, _nyes) = result.unwrap();
         assert_eq!(idx, 0, "global index of 'a' must be 0");
         assert_eq!(stmt.borrow().as_stmt_searchable_name(), Some("a"));
 
-        let result = cat.borrow()._search_brane("^f$", 0, 9);
+        let result = result_brane.borrow()._search_brane("^f$", 0, 9);
         assert!(result.is_some(), "must find 'f'");
         let (idx, stmt, _nyes) = result.unwrap();
         assert_eq!(idx, 5, "global index of 'f' must be 5");
         assert_eq!(stmt.borrow().as_stmt_searchable_name(), Some("f"));
 
-        let result = cat.borrow()._search_brane("^j$", 9, 0);
+        let result = result_brane.borrow()._search_brane("^j$", 9, 0);
         assert!(result.is_some(), "must find 'j' in reverse");
         let (idx, stmt, _nyes) = result.unwrap();
         assert_eq!(idx, 9, "global index of 'j' must be 9");
         assert_eq!(stmt.borrow().as_stmt_searchable_name(), Some("j"));
 
-        let result = cat.borrow()._search_brane("^e$", 0, 9);
+        let result = result_brane.borrow()._search_brane("^e$", 0, 9);
         assert!(result.is_some(), "must find 'e'");
         let (idx, stmt, _nyes) = result.unwrap();
         assert_eq!(idx, 4, "global index of 'e' must be 4");
@@ -8808,10 +8817,12 @@ mod tests {
     fn concat_find_stmt_index_is_global() {
         let cat = make_10_stmt_concat();
         settle_root(&cat);
+        // FOOP-55 §10: content is asked of the settled RESULT.
+        let result_brane = cat.value();
 
         for i in 0..10 {
-            let stmt = cat.borrow().stmt_at(i).unwrap();
-            let found = cat.find_stmt_index(&stmt);
+            let stmt = result_brane.borrow().stmt_at(i).unwrap();
+            let found = result_brane.find_stmt_index(&stmt);
             assert_eq!(
                 found,
                 Some(i),
@@ -8896,16 +8907,21 @@ mod tests {
         let new_parent = Rc::downgrade(&dummy);
         let clone = ProtoBrane::constanic_clone_at(&cat, &new_parent, 0, false, true);
 
+        // The CLONE's identity as an operator node is what's under test here
+        // -- it must still be Concatenation-kinded and constanic. Content
+        // comparisons, below, go through .value() (FOOP-55 §10).
         assert_eq!(clone.borrow().kind(), FirKind::Concatenation);
         assert!(clone.borrow().core().get_nyes().is_constanic());
+        let cat_result = cat.value();
+        let clone_result = clone.value();
         assert_eq!(
-            clone.borrow().stmt_count(),
-            cat.borrow().stmt_count(),
+            clone_result.borrow().stmt_count(),
+            cat_result.borrow().stmt_count(),
             "clone stmt_count must match original"
         );
         for i in 0..10 {
-            let orig = cat.borrow().stmt_at(i).unwrap();
-            let cloned = clone.borrow().stmt_at(i).unwrap();
+            let orig = cat_result.borrow().stmt_at(i).unwrap();
+            let cloned = clone_result.borrow().stmt_at(i).unwrap();
             assert_eq!(
                 orig.borrow().as_stmt_searchable_name(),
                 cloned.borrow().as_stmt_searchable_name(),
@@ -8967,15 +8983,17 @@ mod tests {
             "unlimited k must produce single _ConcatHelper"
         );
 
+        // FOOP-55 §10: content is asked of the settled RESULT.
+        let result = cat.value();
         assert_eq!(
-            cat.borrow().stmt_count(),
+            result.borrow().stmt_count(),
             Some(5),
             "total must be 5 statements"
         );
 
         let expected = ["a", "b", "c", "d", "e"];
         for (i, name) in expected.iter().enumerate() {
-            let stmt = cat.borrow().stmt_at(i).unwrap();
+            let stmt = result.borrow().stmt_at(i).unwrap();
             assert_eq!(
                 stmt.borrow().as_stmt_searchable_name(),
                 Some(*name),
@@ -8993,14 +9011,18 @@ mod tests {
         step_to_settled(&cat, &scope);
 
         assert_eq!(cat.borrow().core().get_nyes(), Nyes::Constant);
+        // FOOP-55 §10: content is asked of the settled RESULT; even zero
+        // total lines across all elements produces a real empty ConcatHelper.
+        let result = cat.value();
         assert_eq!(
-            cat.borrow().stmt_count(),
+            result.borrow().stmt_count(),
             Some(0),
             "empty branes → 0 statements"
         );
-        assert!(
-            cat.borrow().core().ubc_children().is_empty(),
-            "no _ConcatHelpers for empty concat"
+        assert_eq!(
+            cat.borrow().core().ubc_children().len(),
+            1,
+            "a real (empty) ConcatHelper for empty concat"
         );
 
         let val = make_constant_int(42);
@@ -9009,13 +9031,14 @@ mod tests {
         let empty = make_brane(vec![]);
         let cat2 = make_concatenation(vec![Rc::clone(&non_empty), Rc::clone(&empty)]);
         step_to_settled(&cat2, &scope);
+        let result2 = cat2.value();
 
         assert_eq!(
-            cat2.borrow().stmt_count(),
+            result2.borrow().stmt_count(),
             Some(1),
             "one non-empty → 1 statement"
         );
-        let first = cat2.borrow().stmt_at(0).unwrap();
+        let first = result2.borrow().stmt_at(0).unwrap();
         assert_eq!(first.borrow().as_stmt_searchable_name(), Some("x"));
     }
 
@@ -9893,10 +9916,12 @@ mod tests {
         // is a tail-concatenation chain, so D11's element-reversal applies to
         // ITS OWN elements too (FOOP-65 §1 equivalence) -- print the actual
         // order rather than assume it, then pin whatever it is.
-        assert_eq!(outer_body.borrow().stmt_count(), Some(4));
+        // FOOP-55 §10: content is asked of the settled RESULT.
+        let outer_result = outer_body.value();
+        assert_eq!(outer_result.borrow().stmt_count(), Some(4));
         let actual: Vec<i64> = (0..4)
             .map(|i| {
-                let stmt = outer_body.borrow().stmt_at(i).expect("stmt_at in range");
+                let stmt = outer_result.borrow().stmt_at(i).expect("stmt_at in range");
                 statement_value_for_comparison(&stmt)
                     .and_then(|v| v.borrow().as_i64())
                     .unwrap_or(-1)
@@ -9957,16 +9982,18 @@ mod tests {
             .find(|s| s.borrow().as_stmt_searchable_name() == Some("chain"))
             .expect("chain statement");
         let chain_body = chain_stmt.borrow().core().foolish_children()[0].clone();
+        // FOOP-55 §10: content is asked of the settled RESULT.
+        let chain_result = chain_body.value();
 
         assert_eq!(
-            chain_body.borrow().stmt_count(),
+            chain_result.borrow().stmt_count(),
             Some(6),
             "expected all 6 flattened statements; the nested concatenation's \
              contribution must not be dropped"
         );
         let actual: Vec<i64> = (0..6)
             .map(|i| {
-                let stmt = chain_body
+                let stmt = chain_result
                     .borrow()
                     .stmt_at(i)
                     .unwrap_or_else(|| panic!("stmt_at({i}) missing"));

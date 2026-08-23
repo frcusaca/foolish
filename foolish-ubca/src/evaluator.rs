@@ -786,6 +786,12 @@ fn proto_to_core_fir_inner(
             let joined = !borrowed.core().ubc_children().is_empty();
             let empty_done = matches!(state, Nyes::Constant | Nyes::Independent);
             if state.is_constanic() && (joined || empty_done) {
+                // FOOP-55 §10: content is asked of the settled RESULT, not
+                // the operator -- `.value()` unwraps to the ConcatHelper
+                // that `joined`/`empty_done` just confirmed exists.
+                drop(borrowed);
+                let result = ubca_ref.value();
+                let borrowed = result.borrow();
                 let count = borrowed.stmt_count().unwrap_or(0);
                 let stmt_tuples: Vec<(Option<String>, core_fir::Fir)> = (0..count)
                     .filter_map(|i| {
