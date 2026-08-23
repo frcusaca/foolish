@@ -1687,6 +1687,16 @@ impl SearchFir {
         };
         let stmt = scope.get_my_statement()?;
         let brane = stmt.borrow()._get_my_brane(&stmt)?;
+        // FOOP-55 §5.5: if `brane` is a ConcatenationFir that has not yet
+        // populated its helpers, `stmt_count()` honestly answers `None`
+        // (never a premature `Some(0)`), so `find_stmt_index` below
+        // short-circuits to `None` via `?` -- an ordinary IB miss. The
+        // caller (`SearchFir`'s Embryonic arm) already treats that as "try
+        // ab_search_with_engine next", which walks outward through
+        // successive ancestor branes on its own. No special-case forwarding
+        // is needed here: once a nested concatenation is built unmarked
+        // (§9.2's corrected classify_concat_element) and steps normally, the
+        // existing IB-then-AB fallback is sufficient.
         let idx = brane.find_stmt_index(&stmt)?;
         // `checked_sub` (not `saturating_sub`): index 0 has no preceding
         // range — return None rather than searching [0, 0] and self-matching
@@ -1840,8 +1850,19 @@ impl SearchFir {
                 } else if self.anchored {
                     let anchor = Rc::clone(&self.core.foolish_children()[0]);
                     let resolved = anchor.resolve_anchor();
-                    if resolved.borrow().core().get_nyes() == Nyes::Nk {
+                    let resolved_nyes = resolved.borrow().core().get_nyes();
+                    if resolved_nyes == Nyes::Nk {
                         self.core.set_nyes(Nyes::Nk);
+                        return Ok(());
+                    }
+                    // FOOP-55 §5.5: `constanic_is_brane_like`/scanning answer
+                    // a CONTENT question about `resolved` and require its
+                    // search context constanic -- a pre-constanic `resolved`
+                    // (e.g. a ConcatenationFir still Prembrionic) has not
+                    // been driven through its own fir_op_step gate yet, so
+                    // asking it now would reach the same premature-populate
+                    // path D10 named. Stay waiting instead of scanning.
+                    if !resolved_nyes.is_constanic() {
                         return Ok(());
                     }
                     if !resolved.borrow().constanic_is_brane_like() {
@@ -1961,9 +1982,15 @@ impl Fir for SearchFir {
                     };
                     let anchor = Rc::clone(&self.core.foolish_children()[0]);
                     let resolved = anchor.resolve_anchor();
-                    if resolved.borrow().core().get_nyes() == Nyes::Nk
-                        || !resolved.borrow().constanic_is_brane_like()
-                    {
+                    let resolved_nyes = resolved.borrow().core().get_nyes();
+                    if resolved_nyes == Nyes::Nk {
+                        self.core.set_nyes(Nyes::Nk);
+                    } else if !resolved_nyes.is_constanic() {
+                        // FOOP-55 §5.5: `resolved` has not been driven
+                        // through its own fir_op_step gate yet -- its
+                        // brane-likeness is not yet knowable, not "no".
+                        // Stay Braning and try again once it settles.
+                    } else if !resolved.borrow().constanic_is_brane_like() {
                         self.core.set_nyes(Nyes::Nk);
                     } else {
                         let mut nav = BraneNavigator::new(&resolved, self.forward);
@@ -2235,6 +2262,13 @@ impl Fir for IndexFir {
                     };
                     let anchor = Rc::clone(&self.core.foolish_children()[0]);
                     let resolved = anchor.resolve_anchor();
+                    if !resolved.borrow().core().get_nyes().is_constanic() {
+                        // FOOP-55 §5.5: `resolved` has not been driven
+                        // through its own fir_op_step gate yet -- its
+                        // brane-likeness is not yet knowable, not "no" (and
+                        // therefore not grounds for the permanent NK below).
+                        return Ok(());
+                    }
                     if !resolved.borrow().constanic_is_brane_like() {
                         // FOOP-75 §7: settling NK is only half the answer —
                         // record WHY. An anchored search demands its anchor
@@ -3248,12 +3282,30 @@ impl Fir for ConcatenationFir {
     }
 
     fn stmt_count(&self) -> Option<usize> {
+        // D10 / FOOP-55 §5.5: `populate_concat_helpers` may only run from
+        // `fir_op_step`'s own `Braning` arm, which is the ONLY place that has
+        // actually confirmed every element resolved to a constanic brane
+        // value ("case b") rather than an element whose search is still
+        // ECONSTANIC/pre-constanic ("case a" -- see FOOP-55.md §5.5). Calling
+        // it here is a side door around that gate.
+        //
+        // Crucially, `is_constanic()` is NOT the right gate on its own:
+        // `Nyes::Woconstanic` is genuinely correct and terminal-for-stepping
+        // when case (a) applies -- some element's search found nothing YET
+        // (ECONSTANIC), so this concatenation is honestly "waiting on
+        // constanics" and CANNOT join on its own. But that WOCONSTANIC must
+        // not be read as "joined, with nothing in it" -- it must stay
+        // answerable as "not yet knowable" until this concatenation is
+        // recoordinated into a context where the missing name resolves.
+        // `_helpers_populated` is the one bit that actually distinguishes
+        // "never attempted to join" (case a) from "joined successfully"
+        // (case b, `fir_op_step`'s `Braning` arm sets it before this is ever
+        // asked) -- so it, not NYES, is the gate.
         if !self._helpers_populated.get() {
             if self.core.foolish_children().is_empty() {
                 return Some(0);
             }
-            self._helpers_populated.set(true);
-            self.populate_concat_helpers();
+            return None;
         }
         let total: usize = self
             .core
@@ -9521,16 +9573,12 @@ mod tests {
     /// the same program spelled two ways, so they must settle the same.
     ///
     /// **They do not, and this test documents the divergence rather than
-    /// hiding it.** Both settle to a 2-statement `result`, but:
+    /// hiding it.**
     ///
     /// | Spelling | NYES | why |
     /// |----------|------|-----|
     /// | `` 99`{…} `` | **NK** | the backtick parser accepts a bare integer, so `99` really is a constituent — and an integer is not concatenable |
     /// | `{…} 99` | **INDEPENDENT** | `is_concatenation_continuation` rejects a bare integer, so `99` never joins: it splits into its own statement and the brane is untouched |
-    ///
-    /// The statement COUNT coincides at 2 either way, which is why the original
-    /// version of this test — comparing only `stmt_count()` — passed while the
-    /// two spellings disagreed about everything else.
     ///
     /// This is the same root cause as FOOP-55 §9.4(a) / plan item (a2): the
     /// juxtaposition parser will not start a continuation on a bare integer.
@@ -9538,6 +9586,18 @@ mod tests {
     /// decision now has a second consequence recorded here, since the backtick
     /// spelling reaches the concatenation and the juxtaposed one does not.
     /// **Resolving (a2) should make these two agree.**
+    ///
+    /// **Corrected 2026-08-22 (D10 fix, §5.5):** an earlier version of this
+    /// test compared `stmt_count()` on both spellings and asserted they
+    /// coincided at 2 -- which relied on the NK spelling's `stmt_count()`
+    /// populating helpers via the OLD, ungated `ConcatenationFir::stmt_count`
+    /// (a side door that memoized a count even for a concatenation that
+    /// never actually joined, via the `type_errors`-then-Nk path). Now that
+    /// `stmt_count`/`stmt_at` only answer once helpers are genuinely
+    /// populated, the NK spelling honestly reports `None` — it never joined
+    /// anything, so there is no count to report. Comparing counts across an
+    /// NK and a non-NK spelling was never a meaningful equivalence check;
+    /// the NYES comparison below is the actual documented divergence.
     #[test]
     fn tail_concat_equivalence_brane_literal() {
         let a = Compiler::compile("{result = 99`{x=1; y=2;};}")
@@ -9555,23 +9615,19 @@ mod tests {
         let a_body = a_stmts[0].borrow().core().foolish_children()[0].clone();
         let b_body = b_stmts[0].borrow().core().foolish_children()[0].clone();
 
-        // `expect`, never `unwrap_or`: a default would turn "could not
-        // determine" into a number that might coincidentally match, which is
-        // precisely how this test used to pass without checking anything.
-        let a_lines = a_body
-            .borrow()
-            .stmt_count()
-            .expect("spelling `a` settled without a statement count");
-        let b_lines = b_body
-            .borrow()
-            .stmt_count()
-            .expect("spelling `b` settled without a statement count");
         assert_eq!(
-            a_lines, b_lines,
-            "equivalent spellings settle to the same stmt count"
+            a_body.borrow().stmt_count(),
+            None,
+            "the NK spelling never actually joins anything, so it has no \
+             statement count to report -- None is the honest answer"
+        );
+        assert_eq!(
+            b_body.borrow().stmt_count(),
+            Some(2),
+            "the juxtaposed spelling settles a real 2-statement brane"
         );
 
-        // The part that does NOT hold yet. Pinned as the current, known-wrong
+        // The documented divergence. Pinned as the current, known-wrong
         // behaviour so that fixing (a2) fails this assertion loudly and forces
         // the fix to be recorded, rather than passing silently either way.
         assert_eq!(
@@ -9659,12 +9715,203 @@ mod tests {
         assert!(body.borrow().core().get_nyes().is_constanic(), "settled");
     }
 
+    /// ISOLATED illustration of the mechanism behind D10's remaining gap
+    /// (found while investigating `nested_concat_as_tail_concat_last_element_
+    /// flattens_completely` below). Plain English:
+    ///
+    /// `x y z` is a plain juxtaposition concatenation of three names. Inside
+    /// a concatenation, each bare name is compiled as a SEARCH (FOOP-55 §9.2
+    /// rule 3: "search — any of them — SF-marked"), NOT read directly as a
+    /// value: the compiler does not know yet whether `x` names a brane in
+    /// scope until the search actually runs.
+    ///
+    /// When `x`'s search steps, it is UNANCHORED — it looks in `x`'s own
+    /// ancestor chain for a statement named `x`. If none is found there
+    /// (yet), it settles **ECONSTANIC**: "no value HERE, but I may still
+    /// gain one later via recoordination" (AGENTS.md's NYES glossary). This
+    /// is not a failure — it is the ordinary, revivable "not yet" answer an
+    /// unanchored search gives when its brane hasn't been coordinated into a
+    /// context wide enough to contain the name it wants.
+    ///
+    /// `ConcatenationFir::fir_op_step`'s `Braning` arm decides whether it can
+    /// join its elements by asking each element's `.value().constanic_is_
+    /// brane_like()`. For a search that is still ECONSTANIC, `.value()`
+    /// returns the search node itself (unresolved — see `FirRefExt::value`'s
+    /// own doc: "for FIRs with no settled result, returns a clone of self"),
+    /// and a bare, unresolved `SearchFir` reports `constanic_is_brane_like()
+    /// == false` (it has no `stmt_count` of its own to report). The classify
+    /// therefore concludes `all_brane_like = false` and the concatenation
+    /// gives up, settling **Woconstanic via the "not joinable yet, render
+    /// raw elements" branch** (`fir_kinds.rs` ~3230-3235) — WITHOUT ever
+    /// calling `populate_concat_helpers()`.
+    ///
+    /// The bug: that Woconstanic is indistinguishable, from the OUTSIDE, from
+    /// an ordinary "I joined successfully but the result still has an
+    /// unsettled dependency" Woconstanic — both just read `Nyes::Woconstanic`
+    /// (a `is_constanic()` state). Once a caller sees `is_constanic() ==
+    /// true`, nothing re-steps this concatenation — `step_inner`'s task-queue
+    /// driver pops a constanic child and moves on (`fir_trait.rs:510`). So
+    /// this concatenation is now PERMANENTLY stuck reporting zero content,
+    /// even if `x`'s search would have found its target one step later, once
+    /// this concatenation is spliced into a wider context by an ENCLOSING
+    /// concatenation (exactly what D10's `nested_concat_as_tail_concat_last_
+    /// element_flattens_completely` test below does).
+    ///
+    /// This is the SAME defect shape §5.5/D9 already names — an ECONSTANIC
+    /// search misread as a permanent "no" — one level higher: here it is
+    /// `all_brane_like`'s classify doing the misreading, and the concatenation
+    /// borrowing WOCONSTANIC's terminal vocabulary for a genuinely
+    /// pre-constanic "haven't attempted the join yet" condition.
     #[test]
-    fn temporary_reproduce_to_debug_nested_concat_inside_tail_concat_drops_elements() {
-        // Isolates the FOOP-65 einmo regression: a nested plain concatenation
-        // (`d_brn e_brn f_brn`) settles correctly on its own, but as the LAST
-        // element of a TailConcatenation (`a_brn`b_brn`c_brn`d_brn e_brn f_brn`)
-        // its statements vanish from the outer result.
+    fn concat_element_that_is_an_econstanic_search_freezes_the_concatenation() {
+        // `x y z` with NO enclosing definition of x, y, or z: each name's
+        // search is unanchored and has nothing to find AT THIS SCOPE. This
+        // reproduces, in isolation, exactly the state the nested `d_brn e_brn
+        // f_brn` concatenation is in the moment BEFORE it is spliced into a
+        // wider outer context by an enclosing concatenation.
+        let root = Compiler::compile("{lonely = x y z;}").unwrap().pop().unwrap();
+        let scope = Scope::empty();
+        for _ in 0..200 {
+            match root.step(&scope).unwrap() {
+                StepReport::Progress(nyes) if nyes.is_constanic() => break,
+                StepReport::NoProgress => break,
+                _ => {}
+            }
+        }
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let lonely_stmt = stmts
+            .iter()
+            .find(|s| s.borrow().as_stmt_searchable_name() == Some("lonely"))
+            .expect("lonely statement");
+        let lonely_body = lonely_stmt.borrow().core().foolish_children()[0].clone();
+
+        // What actually happens today: the concatenation gives up on its
+        // FIRST attempt (its elements' searches are ECONSTANIC, not yet
+        // found) and freezes at Woconstanic with NOTHING joined --
+        // stmt_count reports Some(0)/None rather than "not yet knowable".
+        assert_eq!(
+            lonely_body.borrow().core().get_nyes(),
+            Nyes::Woconstanic,
+            "demonstrates the freeze: settles Woconstanic on the FIRST attempt, \
+             via the \"not joinable yet\" escape, before helpers are ever populated"
+        );
+        assert!(
+            lonely_body.borrow().stmt_count().unwrap_or(0) == 0,
+            "demonstrates the damage: once frozen, stmt_count reports no content \
+             and nothing re-steps this concatenation to try again"
+        );
+    }
+
+    /// FOOP-55 §9.2 (corrected 2026-08-22, per Atlas): a nested WRITTEN
+    /// concatenation is NOT a Foolish Brane (a `{...}` literal typed out in
+    /// the program) and must not be SFF-marked as one. It is an active
+    /// joining process, meant to run and complete immediately, right where
+    /// it is written -- exactly like a top-level concatenation. Only a
+    /// genuine Foolish Brane literal, or a search (whatever it resolves to),
+    /// gets a mark; a nested concatenation gets none, and its own
+    /// constituents are classified and marked by the same table, recursively.
+    ///
+    /// An earlier, INCORRECT version of this rule SFF-marked a nested
+    /// concatenation "because it's brane-like, treated exactly as a brane".
+    /// That over-corrected: `compiler.rs`'s `build_fir` has a separate,
+    /// correct rule that a search built while an SFF ancestor is under
+    /// construction is compiled ALREADY SETTLED at ECONSTANIC ("the SFF body
+    /// is constanic unevaluated") -- right for a brane literal's free
+    /// variables, but wrong for `d_brn`/`e_brn`/`f_brn` here, which are the
+    /// nested concatenation's OWN elements and must resolve normally. The
+    /// incorrect SFF wrap froze them at construction, so the nested
+    /// concatenation could never complete its own join (this test's earlier
+    /// form pinned exactly that failure: `d_search` Econstanic-by-
+    /// construction, `outer` stuck at `stmt_count = Some(1)`).
+    #[test]
+    fn nested_written_concat_as_constituent_joins_immediately() {
+        let root = Compiler::compile(
+            "{d_brn={4;}; e_brn={5;}; f_brn={6;}; c_brn={3;}; \
+             outer = (d_brn`e_brn`f_brn) c_brn;}",
+        )
+        .unwrap()
+        .pop()
+        .unwrap();
+        let scope = Scope::empty();
+        for _ in 0..200 {
+            match root.step(&scope).unwrap() {
+                StepReport::Progress(nyes) if nyes.is_constanic() => break,
+                StepReport::NoProgress => break,
+                _ => {}
+            }
+        }
+        let stmts = root.borrow().core().foolish_children().to_vec();
+        let outer_stmt = stmts
+            .iter()
+            .find(|s| s.borrow().as_stmt_searchable_name() == Some("outer"))
+            .expect("outer statement");
+        let outer_body = outer_stmt.borrow().core().foolish_children()[0].clone();
+
+        // The nested concatenation constituent carries NO mark of its own.
+        let nested_concat = outer_body.borrow().core().foolish_children()[0].clone();
+        assert_eq!(
+            nested_concat.borrow().kind(),
+            FirKind::Concatenation,
+            "a nested written concatenation must be built UNMARKED -- it is \
+             not a Foolish Brane literal and must not be wrapped in SFF"
+        );
+        // Its own elements ARE still individually SF-marked (search, rule 3)
+        // and their searches run and resolve normally -- NOT built
+        // already-Econstanic, since nothing SFF-marked sits above them now.
+        let d_elem = nested_concat.borrow().core().foolish_children()[0].clone();
+        assert_eq!(d_elem.borrow().kind(), FirKind::StayFoolish);
+        let d_search = d_elem.borrow().core().foolish_children()[0].clone();
+        assert_eq!(
+            d_search.borrow().core().get_nyes(),
+            Nyes::Constant,
+            "d_brn's search must actually RUN and resolve to Constant -- not \
+             be pre-settled Econstanic-by-construction as if it were a \
+             deferred macro-body free variable"
+        );
+
+        // The nested concatenation joins its own elements immediately, and
+        // the outer concatenation flattens ALL 4 statements. `d_brn`e_brn`f_brn`
+        // is a tail-concatenation chain, so D11's element-reversal applies to
+        // ITS OWN elements too (FOOP-65 §1 equivalence) -- print the actual
+        // order rather than assume it, then pin whatever it is.
+        assert_eq!(outer_body.borrow().stmt_count(), Some(4));
+        let actual: Vec<i64> = (0..4)
+            .map(|i| {
+                let stmt = outer_body.borrow().stmt_at(i).expect("stmt_at in range");
+                statement_value_for_comparison(&stmt)
+                    .and_then(|v| v.borrow().as_i64())
+                    .unwrap_or(-1)
+            })
+            .collect();
+        // `d_brn`e_brn`f_brn` is itself a TailConcatenation, so D11's
+        // element-reversal (FOOP-65 §1: `fn`X` == `X fn`) applies to its own
+        // elements too, flattening to f,e,d before the outer `) c_brn` adds
+        // c_brn last. The regression guard that matters is that ALL FOUR
+        // values are PRESENT -- D10's bug was values going MISSING, not
+        // reordered.
+        assert_eq!(actual, vec![6, 5, 4, 3]);
+    }
+
+    /// D10 (FOOP-55.md §Findings, §5.5, §9.2): a nested written concatenation
+    /// (`d_brn e_brn f_brn`) as the last element of a TailConcatenation
+    /// (`a_brn`b_brn`c_brn`d_brn e_brn f_brn`) must join immediately and
+    /// contribute ALL its statements to the outer flatten — none may be
+    /// silently dropped.
+    ///
+    /// Two independent defects on this path, both fixed:
+    /// - `ConcatenationFir::stmt_count`/`stmt_at` used to call
+    ///   `populate_concat_helpers()` unconditionally, bypassing
+    ///   `fir_op_step`'s own gate; a not-yet-populated concatenation now
+    ///   honestly answers "not yet knowable" (`None`) instead of a
+    ///   memoized, premature `Some(0)`.
+    /// - §9.2's "Concatenation → SFF-mark it" row incorrectly treated a
+    ///   nested concatenation as if it were a Foolish Brane literal. A
+    ///   nested concatenation is not a Foolish Brane — it is an active
+    ///   joining process — and must not be SFF-marked: doing so froze its
+    ///   own constituent searches at construction (`compiler.rs`'s
+    ///   `under_sff` rule), so it could never complete its own join.
+    #[test]
+    fn nested_concat_as_tail_concat_last_element_flattens_completely() {
         let root = Compiler::compile(
             "{a_brn={1;}; b_brn={2;}; c_brn={3;}; d_brn={4;}; e_brn={5;}; f_brn={6;}; \
              chain = a_brn`b_brn`c_brn`d_brn e_brn f_brn;}",
@@ -9673,18 +9920,6 @@ mod tests {
         .pop()
         .unwrap();
         let scope = Scope::empty();
-        // Grab the chain statement's body BEFORE stepping, and do NOT query
-        // stmt_count()/value() on anything until the FVM itself has driven
-        // the whole tree to settlement -- otherwise the diagnostic query
-        // itself corrupts the very state being inspected (see below).
-        let stmts0 = root.borrow().core().foolish_children().to_vec();
-        let chain_stmt0 = stmts0
-            .iter()
-            .find(|s| s.borrow().as_stmt_searchable_name() == Some("chain"))
-            .expect("chain statement")
-            .clone();
-        let chain_body0 = chain_stmt0.borrow().core().foolish_children()[0].clone();
-
         for _ in 0..2000 {
             match root.step(&scope).unwrap() {
                 StepReport::Progress(nyes) if nyes.is_constanic() => break,
@@ -9692,63 +9927,47 @@ mod tests {
                 _ => {}
             }
         }
-        eprintln!(
-            "root NYES after driving to settlement (or 2000 steps): {:?}",
-            root.borrow().core().get_nyes()
+        assert!(
+            root.borrow().core().get_nyes().is_constanic(),
+            "root did not settle"
         );
 
         let stmts = root.borrow().core().foolish_children().to_vec();
         let chain_stmt = stmts
             .iter()
             .find(|s| s.borrow().as_stmt_searchable_name() == Some("chain"))
-            .expect("chain statement")
-            .clone();
+            .expect("chain statement");
         let chain_body = chain_stmt.borrow().core().foolish_children()[0].clone();
-        eprintln!("chain_body kind: {:?}", chain_body.borrow().kind());
-        eprintln!(
-            "chain_body NYES (after full settlement): {:?}",
-            chain_body.borrow().core().get_nyes()
-        );
-        assert!(
-            Rc::ptr_eq(&chain_body0, &chain_body),
-            "sanity: same FirRef before/after stepping"
-        );
-        eprintln!(
-            "chain_body stmt_count (queried AFTER settlement): {:?}",
-            chain_body.borrow().stmt_count()
-        );
-        let outer_elements = chain_body.borrow().core().foolish_children().to_vec();
-        eprintln!("outer TailConcatenation element count: {}", outer_elements.len());
-        for (i, e) in outer_elements.iter().enumerate() {
-            eprintln!(
-                "  element[{i}] kind={:?} nyes={:?} stmt_count={:?}",
-                e.borrow().kind(),
-                e.borrow().core().get_nyes(),
-                e.borrow().stmt_count()
-            );
-        }
-        // The nested `d_brn e_brn f_brn` is the LAST element — inspect it directly.
-        let nested = outer_elements.last().unwrap().clone();
-        eprintln!(
-            "nested (d e f) kind={:?} nyes={:?}",
-            nested.borrow().kind(),
-            nested.borrow().core().get_nyes()
-        );
-        eprintln!(
-            "nested constanic_is_brane_like: {}",
-            nested.value().borrow().constanic_is_brane_like()
-        );
-        eprintln!(
-            "nested.value() stmt_count (queried BEFORE nested is constanic): {:?}",
-            nested.value().borrow().stmt_count()
-        );
 
-        // What the bug produces:
         assert_eq!(
             chain_body.borrow().stmt_count(),
             Some(6),
-            "BUG: expected 6 flattened statements (1..6), got fewer — the nested \
-             concatenation's contribution was lost"
+            "expected all 6 flattened statements; the nested concatenation's \
+             contribution must not be dropped"
+        );
+        let actual: Vec<i64> = (0..6)
+            .map(|i| {
+                let stmt = chain_body
+                    .borrow()
+                    .stmt_at(i)
+                    .unwrap_or_else(|| panic!("stmt_at({i}) missing"));
+                statement_value_for_comparison(&stmt)
+                    .and_then(|v| v.borrow().as_i64())
+                    .unwrap_or_else(|| panic!("stmt_at({i}) has no comparable value"))
+            })
+            .collect();
+        // Every value must be PRESENT — this is the regression D10 guards
+        // against (values going missing), not a claim about ORDER: this
+        // chain mixes plain backtick links with a trailing juxtaposition
+        // group, and D11's per-level reversal (FOOP-65 §1) applies at each
+        // nesting depth independently.
+        let mut sorted = actual.clone();
+        sorted.sort_unstable();
+        assert_eq!(
+            sorted,
+            vec![1, 2, 3, 4, 5, 6],
+            "actual flattened order was {actual:?}; all six literals \
+             (1..6) must be present exactly once"
         );
     }
 }

@@ -19,6 +19,17 @@ enum ConcatElemKind {
     BareBrane,
     /// Bare search — auto-wrap in SF (rule 3).
     BareSearch,
+    /// A nested written concatenation/tail-concatenation. **NOT the same as
+    /// `BareBrane`** (Atlas, 2026-08-22): a Foolish Brane is a `{...}` literal
+    /// typed out in the program; a Concatenation is neither a Foolish Brane
+    /// nor a search result that happens to BE brane-like — it is an active
+    /// joining process, meant to run and complete immediately, right where it
+    /// is written, exactly like a top-level concatenation. It gets **no
+    /// mark** of its own. Any Foolish Brane or search NESTED inside it is
+    /// still classified and marked by this same table, recursively — the
+    /// "no mark" applies only to the concatenation node itself, not to what
+    /// it contains.
+    BareConcatenation,
     /// Already SF- or SFF-marked at the top, or constantew — build AS WRITTEN,
     /// adding nothing (rules 1 and 2).
     AsWritten,
@@ -72,16 +83,27 @@ fn classify_concat_element(ast: &Astn) -> ConcatElemKind {
     if is_search_astn(ast) {
         return ConcatElemKind::BareSearch;
     }
-    // Rule 4: any brane-like — auto-SFF. A written concatenation is brane-like,
-    // so a nested one is treated exactly as a brane (FOOP-55 §9.2). Omitting it
-    // made `(({1}{2}) ({3}{4}))` drop its second inner concatenation: that
-    // constituent fell through to rule 5 and NK'd, taking the outer
-    // concatenation with it.
-    if matches!(
-        ast,
-        Astn::Brane { .. } | Astn::Concatenation { .. } | Astn::TailConcatenation { .. }
-    ) {
+    // Rule 4: a Foolish Brane literal — auto-SFF.
+    if matches!(ast, Astn::Brane { .. }) {
         return ConcatElemKind::BareBrane;
+    }
+    // Rule 4b (corrected 2026-08-22, per Atlas): a nested written
+    // Concatenation/TailConcatenation is NOT a Foolish Brane and does not get
+    // SFF-marked — it is an active joining process, not a deferred value, and
+    // must run immediately, right where it is written. An earlier version of
+    // this rule SFF-marked it "because it's brane-like, treated exactly as a
+    // brane" to fix `(({1}{2}) ({3}{4}))` dropping its second inner
+    // concatenation (that constituent fell through to rule 5 and NK'd,
+    // taking the outer concatenation with it) -- but the SFF wrap over-
+    // corrected: `under_sff` also propagates into the nested concatenation's
+    // OWN constituent searches (compiler.rs's `build_fir`, "searches built
+    // under an SFF start ECONSTANIC ... never run"), freezing them before
+    // they can ever resolve, so the nested concatenation can never complete
+    // its own join (D10's remaining case; see FOOP-55.md §9.2/§D10). The
+    // original bug this row was written to fix is addressed differently now:
+    // classify as its own kind, build unmarked, and let it run.
+    if matches!(ast, Astn::Concatenation { .. } | Astn::TailConcatenation { .. }) {
+        return ConcatElemKind::BareConcatenation;
     }
     // Rule 5.
     ConcatElemKind::Error
@@ -127,8 +149,27 @@ fn build_concat_element(ast: Astn, parent: &Weak<RefCell<dyn Fir>>, under_sff: b
     let kind = classify_concat_element(&ast);
     match kind {
         ConcatElemKind::BareBrane => {
-            // Bare brane literal → wrap in SFF: build with under_sff = true.
-            build_fir(ast, Some(parent), true)
+            // A Foolish Brane literal (`{...}` typed out in the program) →
+            // wrap in SFF: build, then wrap in StayFullyFoolishFir, mirroring
+            // BareSearch's SF wrap below. This is exactly the deferred-macro-
+            // body case §5 is built for.
+            let built = build_fir(ast, Some(parent), true);
+            StayFullyFoolishFir::stay_fully_foolish(built, parent.clone())
+        }
+        ConcatElemKind::BareConcatenation => {
+            // A nested written Concatenation/TailConcatenation → NO mark of
+            // its own (see the classify-time comment). Crucially, it is built
+            // with `under_sff` reset to whatever THIS position's own ambient
+            // context is (`under_sff`, the parameter already threaded in) --
+            // NOT forced to `true` the way BareBrane forces it. A nested
+            // concatenation is not itself an SFF ancestor, so its own
+            // elements' searches must NOT be built already-ECONSTANIC on its
+            // account; they build and run exactly as if this concatenation
+            // were written at the top level. (Any Foolish Brane or search
+            // nested inside it is still classified and marked normally by
+            // this same table, recursively, via that element's own call to
+            // `build_concat_element`.)
+            build_fir(ast, Some(parent), under_sff)
         }
         ConcatElemKind::BareSearch => {
             // Bare search → wrap in SF: build, then wrap in StayFoolishFir.
@@ -825,26 +866,47 @@ mod tests {
     /// Regression: while `Concatenation` was missing from rule 4 it fell through
     /// to rule 5 and NK'd, so `(({1}{2}) ({3}{4}))` silently DROPPED its second
     /// inner concatenation, yielding `{NK 1; 2}` instead of a four-statement
-    /// flatten.
+    /// flatten. It must not fall through to `Error`.
+    ///
+    /// **Corrected 2026-08-22 (per Atlas): a nested concatenation does NOT
+    /// classify the same as a Foolish Brane literal.** A Foolish Brane is a
+    /// `{...}` typed out in the program; a written concatenation is neither
+    /// that nor a search result that merely resolves to something brane-like
+    /// — it is an active joining process meant to run immediately, right
+    /// where it is written. SFF-marking it (as an earlier version of this
+    /// test asserted) froze its OWN constituent searches at construction
+    /// (`compiler.rs`'s `under_sff` rule: "searches built under an SFF start
+    /// ECONSTANIC ... never run"), so a nested concatenation could never
+    /// complete its own join — this is D10's remaining mechanism (FOOP-55.md
+    /// §Findings, §9.2, §5.5). A nested concatenation now gets its own
+    /// `ConcatElemKind::BareConcatenation`, with no mark of its own.
     #[test]
-    fn concat_constituent_classifies_as_brane_like() {
+    fn concat_constituent_does_not_fall_through_to_error() {
         let nested = Astn::Concatenation {
             elements: vec![Astn::IntLit(3), Astn::IntLit(4)],
         };
         assert_eq!(
             classify_concat_element(&nested),
-            ConcatElemKind::BareBrane,
-            "a nested concatenation is brane-like and must be SFF-marked, as a brane is"
+            ConcatElemKind::BareConcatenation,
+            "a nested concatenation must not fall through to Error (NK) -- \
+             but it is NOT a Foolish Brane literal, so it must not be \
+             classified or marked the same way one is"
         );
-        // …and identically to the brane it is being equated with.
+        // A Foolish Brane literal is a genuinely different case: it DOES get
+        // SFF-marked, precisely because it IS a deferred value written out.
         let brane = Astn::Brane {
             characterizations: vec![],
             statements: vec![],
         };
         assert_eq!(
             classify_concat_element(&brane),
+            ConcatElemKind::BareBrane,
+        );
+        assert_ne!(
+            classify_concat_element(&brane),
             classify_concat_element(&nested),
-            "§9.2 says 'treated exactly as a brane' — the two must not diverge"
+            "a Foolish Brane and a nested concatenation are different kinds \
+             of thing and must be classified differently"
         );
     }
 

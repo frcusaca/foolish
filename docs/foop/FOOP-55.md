@@ -1280,15 +1280,81 @@ a NYES that was computed in a different context, and never approximated by a par
 trait beyond what already exists. `is_constanic()` is the only gate a content/search query
 ever needs; the fix at each violating site is to call it — on the right thing, at the right
 time — before trusting or memoizing an answer, not to build a finer-grained readiness type.
-The one exception recorded so it is not re-litigated: a **shape** question — "is this node
-*kind of thing* ever brane-like at all," e.g. `_get_my_brane`'s ancestor walk, or the
-element-level classification inside `ConcatenationFir::fir_op_step` that asks "will each
-constituent be brane-like once resolved" — is answerable from `kind()` alone at *any* NYES,
-including PREMBRIONIC, because it never touches count, names, or values. That shape question
-and the content question above are two different things that a single hardcoded
-`constanic_is_brane_like() -> true` (§9.1's shapes list; `fir_kinds.rs:3287-3289`) currently
-conflates into one wrong answer for `ConcatenationFir` — part of D10's mechanism, corrected in
-the D10 fix (plan 3G.6).
+
+**Correction (2026-08-22, during D10 implementation): the claim below about `_get_my_brane`
+was wrong, and the actual defect it hid is §5.6.** An earlier draft of this paragraph claimed
+`_get_my_brane`'s stop condition (`constanic_is_brane_like()`) was a pure shape question,
+safe at any NYES, and cited it as the model to follow. Live tracing during the D10 fix showed
+this is false for `ConcatenationFir` specifically: `_get_my_brane` stops at the **first**
+ancestor reporting `constanic_is_brane_like() == true`, and a `ConcatenationFir` reports that
+**unconditionally**, including before it has populated any real content
+(`_helpers_populated == false`). A search whose home brane resolves to such a concatenation
+gets a brane with nothing in it to find, and the walk never continues past it to the real
+enclosing brane one or more hops further out — even though the parent chain is otherwise
+correctly wired all the way to the true root. Confirmed by tracing
+`nested_concat_as_tail_concat_last_element_flattens_completely`'s `d_brn` search: its parent
+chain reaches the actual root brane at hop 3, but `_get_my_brane` stops at hop 0 (the nested,
+not-yet-populated `ConcatenationFir`), which reports 3 unnamed, still-ECONSTANIC children —
+not the real statement list. See §5.6 for the fix.
+
+### §5.6. A not-yet-populated concatenation's IB miss falls through to AB — no special case needed
+
+**This section originally specified a bespoke forward-to-parent search handler on
+`ConcatenationFir`.** That mechanism was designed, implemented, and then found — by direct
+tracing, and confirmed by disabling it and re-running the full suite with an identical result —
+to be **dead code**: nothing exercises it, because the actual root cause it was built to route
+around (§9.2's classifier incorrectly SFF-marking a nested concatenation, corrected in §9.2
+itself, `compiler.rs`) meant a not-yet-populated concatenation never needed special search
+handling in the first place. The mechanism is **removed**; this section is kept, corrected, to
+record the reasoning so it is not reinvented.
+
+**A plain `BraneFir` and a `ConcatenationFir` behave differently while their own `foolish_children`
+are stepping, and that difference is exactly why no special case is needed here.** A plain brane can
+answer an IB search correctly for any statement before the searching one even while later
+statements are still stepping — FIFO drain order entitles it to trust that prefix (Appendix
+A.C). A `ConcatenationFir` has no such prefix to offer: its `foolish_children` are the unmerged
+elements, not the eventual joined statements, so there is no partial "join so far" it could
+search even in principle. **A not-yet-populated `ConcatenationFir` therefore does not attempt to
+resolve an IB search at all — it automatically answers "not found."**
+
+Mechanically: `ConcatenationFir::stmt_count()` (§5.5/§D10's fix) returns `None` while
+`!_helpers_populated`. `find_stmt_index` (`fir_trait.rs`) computes its answer via
+`self.borrow().stmt_count()?` — the `?` turns that `None` into an immediate `None`. So
+`ib_search_with_engine` (`fir_kinds.rs:1684+`), which calls `brane.find_stmt_index(&stmt)?` right
+after resolving the home brane, gets "not found" automatically the instant its home brane is a
+not-yet-populated concatenation — no scan is attempted, and none needs to be.
+
+`SearchFir`'s own `Nyes::Embryonic` arm already treats that IB "not found" as "move on to
+parent" — try `ab_search_with_engine` next — rather than as a final failure, and
+`ab_search_with_engine` already loops outward through successive ancestor branes on its own,
+independent of anything concatenation-specific. So the behavior Atlas asked about — *"while
+`foolish_children` are stepping, the concat brane simply says 'not found, I'll ask my parent'"*
+— is exactly what happens, for free, once `stmt_count()` stopped lying about a not-yet-joined
+concatenation's content. No bespoke concatenation-specific search handler was ever needed; the
+general IB-then-AB fallback already implements it.
+
+**Once helpers ARE populated**, the concatenation's `stmt_count()`/`find_stmt_index` report its
+own real, merged statement list, so IB search on it (or on anything reached through it) resolves
+normally against genuine content — never forwarding, exactly as intended.
+
+**Why "automatically not found" during `foolish_children` stepping never loses anything real
+(Atlas).** The cross-constituent resolutions §5's marks exist for — a Foolish Brane constituent's
+own `<<#-1>>` picking up a value from a *different, preceding* constituent — are not attempted
+during this window at all. A Foolish Brane constituent is SFF-marked, so its own internal
+searches are built already-ECONSTANIC (`compiler.rs`'s `under_sff` rule) and do not run yet; they
+run only after `populate_concat_helpers()` clones them into the real merged `ConcatHelper` and
+pushes it as a `ubc_children` task, per the strip budget releasing the mark (§5). By the time
+those searches actually execute, the concatenation already has genuine, joined content, so an IB
+search reaching it then behaves exactly like an ordinary brane's — because at that point it *is*
+one. The "not found" window during `foolish_children` stepping and the "resolves correctly"
+window during `ubc_children` stepping never overlap for the searches that matter.
+
+**What this leaves genuinely open (unlike the mechanism above, this is a real gap, not a solved
+question presented as one):** whether a *contexted* search (`&?`, `&~`, `&#`, …) — which
+navigates from a carried POSITION rather than performing a fresh IB/AB walk — needs an analogous
+treatment when its anchor's home brane is a not-yet-populated concatenation. No case has
+exercised this yet; if one does, trace it with the `foolish-debugging` skill before assuming the
+IB/AB fallback's reasoning transfers unchanged.
 
 ### §6. The brane view, and the unanchored forward search `~name`
 
