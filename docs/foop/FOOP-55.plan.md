@@ -637,26 +637,82 @@ either.
       parallel session's concurrent commits — no file touched by this phase
       has any fmt drift.
 
-## Phase 3H — §11: `fir_op_step` as four event handlers — **BLOCKED on design**
+## Phase 3H — §11: Braning States (four event handlers) — **DEFERRED, not a Euler-1 sub-task**
 
 **Do not start implementation.** FOOP-55.md §11 is a proposal under active
-discussion, not yet a specification — see its Open Questions, including
-whether this refactor is even required before the fibonacci/Euler-1 fix, or
-is better split into its own FOOP. This phase is a placeholder recording
-where the work will slot in once §11 is resolved.
+discussion, not yet a specification. **Confirmed by the human (2026-08-24):
+this is deferred follow-on work, sequenced to begin only after FOOP-55's
+main line of work (Euler 1, fibonacci) is otherwise complete or explicitly
+paused for it — it must not be worked inline with FOOP-55's active phases.**
+This phase is a placeholder recording where the work will slot in once §11's
+Open Questions are resolved and the human explicitly starts it.
 
+- [x] **DECIDE, with the human**: does making `exercises/fibonacci/1.foo`
+      and `exercises/project_euler/1.foo` settle require this refactor, or
+      only a narrower fix?
+      (2026-08-24) **Answered, and the premise was wrong.** D9's originally-
+      named fix location (`ProtoBrane::push_ubc_child`'s enqueue guard,
+      `proto_brane.rs:200-205`) is NOT the actual blocker — a live trace
+      (temporary test, now `fir_kinds.rs`'s
+      `d9_recoordinated_index_currently_stuck_woconstanic`) confirmed
+      patching that guard to always-enqueue has ZERO effect. The real cause
+      is a `has_ancestral_sfm` scope-propagation leak in `step_inner`
+      (`fir_trait.rs`): the flag, once set `true` on entering a
+      `StayFoolish` subtree, is never reset back to `false`, so it wrongly
+      marks later, unrelated clones as SFF-descendant-and-foolishly-ignorant
+      and preserves their stale `ECONSTANIC` NYES instead of resetting it.
+      See FOOP-55.md's D9 finding, "Correction (2026-08-24, live-traced)"
+      section, for the full mechanism and the expected result
+      (`c={1,2,1,2}`) once fixed.
+      **Sequencing, confirmed by the human**: the `has_ancestral_sfm` leak
+      fix is a prerequisite, independent of §11. The FURTHER fix — using
+      `terminates_econstanic()` and `ConcatenationFir`'s
+      `is_foolish_child_constanic_enough` override (both specified in §11)
+      to let concatenation correctly proceed past a resolved-but-still-
+      wrapped search element — is written AGAINST §11's Braning-state
+      machinery and must not be implemented before that machinery exists.
+      §11 itself remains this phase's placeholder; the `has_ancestral_sfm`
+      leak fix is tracked as new **Phase 3I** below, ahead of this phase.
 - [ ] (read FOOP-55.md §11 in full, including its Open Questions, before any
       work here)
-- [ ] **DECIDE, with the human**: does making `exercises/fibonacci/1.foo`
-      and `exercises/project_euler/1.foo` settle require this refactor, or
-      only D9's narrower fix (`ProtoBrane::push_ubc_child`'s enqueue guard,
-      `proto_brane.rs:200-205`)? If the narrower fix suffices, land that
-      first as its own phase and revisit §11 separately (possibly as its own
-      FOOP, per `foop.md`'s Project Segmentation guidance — a change to the
-      shared stepping contract across every FIR kind is Major/Phase-sized in
-      its own right, not a sub-task of Euler 1).
-- [ ] (this phase intentionally has no further tasks until the DECIDE box
-      above is checked and §11's Open Questions are resolved)
+- [ ] Write the ground-truth, per-kind statement of what each existing NYES
+      state currently does and what condition gates leaving it (§11's Open
+      Questions call this out as the concrete next step, ahead of finalizing
+      the 6-state "Braning States" shape) — no such document exists yet.
+- [ ] (this phase intentionally has no further implementation tasks until
+      §11's Open Questions are resolved and the human explicitly starts this
+      phase, per the deferred-scope note above)
+
+## Phase 3I — Fix the `has_ancestral_sfm` scope-propagation leak (D9's real cause)
+
+**Independent of Phase 3H/§11 — this can and should land first**, since it
+blocks `d9_recoordinated_index_currently_stuck_woconstanic` regardless of
+whether §11's Braning-state machinery ever ships. Read FOOP-55.md's D9
+finding ("Correction 2026-08-24, live-traced") in full before starting.
+
+- [ ] Establish relevant tests for this phase. Use
+      [these instructions](../../README.md#running-specific-tests) to run
+      unit test: `foolish-ubca::fir_kinds::tests::d9_recoordinated_index_currently_stuck_woconstanic`
+      (currently pins the BROKEN state — update its assertions once fixed,
+      per the doc comment on that test). Also run the full SF/SFF-related
+      corpus (§5's existing tests) frequently — this touches shared scope-
+      propagation machinery every SFF-marked term depends on.
+- [ ] Trace exactly where `step_inner` (`fir_trait.rs:502-535`) should reset
+      `has_ancestral_sfm` back to `false` on the way back out of a
+      `StayFoolish` subtree (it currently only ever sets it `true`, never
+      resets it, so it leaks to every sibling/descendant stepped afterward
+      in the same recursive call chain). Confirm the fix does not simply
+      move the bug (e.g. resetting too early, before the SFF body's own
+      deferred searches have had their chance to read the flag).
+- [ ] Fix it. Re-run `d9_recoordinated_index_currently_stuck_woconstanic` —
+      it should now FAIL (the broken-state assertions no longer hold).
+      Update the test's assertions to match D9's expected result
+      (`c` settles CONSTANT to `{1,2,1,2}`) and rename it to drop
+      "currently_stuck_woconstanic" once it asserts the fixed behavior.
+- [ ] Run all tests — old and new — and make sure they all pass correctly.
+      Pay particular attention to the SFF strip-budget corpus (§5) and
+      anything D10/§5.5/§5.6 touch — this is shared scope-propagation
+      machinery, a regression here would be silent and wide-reaching.
 
 ## Phase 3G — §9: concatenation ergonomics  ← **PRIORITY 2 (correctness)**
 
@@ -1150,24 +1206,21 @@ the exercise is green and the real cost is known.
 
 **Date**: 2026-08-24
 **Updated By**: Claude Code / claude-sonnet-5
-**Changes**: Checked the **Phase 3E DECIDE box** (§7/Phase 3D vs. §8): §8
-(`@`) is confirmed implemented, so §7 (`ExtremumFir`) is superseded and
-removed; Phase 3D (`'ite`) is a different mechanism, not superseded, and
-proceeds unchanged. **New Phase 3D2** removes `ExtremumFir` end to end
-(`system_foo.rs` struct/impl/tests, the `evaluator.rs`/`fir_trait.rs`
-dispatch stubs, any remaining `'min_int_val`/`'max_int_val` references),
-which also retires 3 of the 5 currently-broken tests
-(`extremum_result_is_independent`, `extremum_selects_min_and_max`,
-`extremum_skips_non_integer_members`) by deleting them rather than fixing
-them — they test a FIR kind this phase removes. **New Phase 3H** is a
-placeholder, explicitly marked BLOCKED, for the `fir_op_step`-as-four-
-event-handlers refactor recorded in FOOP-55.md's new §11: that section is a
-design proposal under active discussion, not yet buildable, and Phase 3H's
-first task is a DECIDE box asking whether the refactor is required before
-`exercises/fibonacci/1.foo` and `exercises/project_euler/1.foo` settle, or
-whether a narrower D9 fix (`ProtoBrane::push_ubc_child`'s enqueue guard)
-suffices on its own — and whether the refactor, given its cross-cutting
-scope across every FIR kind, belongs in its own FOOP rather than as a
-sub-phase of Euler 1. No implementation has started under Phase 3H. Prior
-history of this section is in `git log`/`git blame` on this file, not
-accreted here.
+**Changes**: Checked Phase 3H's DECIDE box with a corrected answer: D9's
+originally-named fix location (`push_ubc_child`'s enqueue guard) is
+confirmed NOT the actual blocker via a live trace (patching it to
+always-enqueue had zero effect) — the real cause is a `has_ancestral_sfm`
+scope-propagation leak in `step_inner` (`fir_trait.rs`), independent of §11.
+**New Phase 3I** tracks fixing that leak, sequenced BEFORE Phase 3H/§11
+since it does not depend on the Braning-states machinery. Phase 3H itself
+is retitled ("Braning States", matching FOOP-55.md §11's rewrite) and its
+status note strengthened per explicit human confirmation: this is deferred
+follow-on work, not a Euler-1 sub-task, and must not be worked inline with
+FOOP-55's active phases. A new task in Phase 3H asks for the ground-truth
+per-kind NYES-state document §11's Open Questions call for, as the concrete
+next step once that phase is actually started. `d9_recoordinated_index_currently_stuck_woconstanic`
+(`foolish-ubca/src/fir_kinds.rs`) is the promoted regression pin for D9's
+current (broken) behavior, replacing an earlier `temporary_reproduce_to_debug_*`
+scratch test per the `foolish-debugging` skill's promote-or-delete
+discipline. Prior history of this section is in `git log`/`git blame` on
+this file, not accreted here.

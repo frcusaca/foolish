@@ -5091,6 +5091,59 @@ mod tests {
         );
     }
 
+    /// Pins D9's live-traced root cause (docs/foop/FOOP-55.md, D9's
+    /// "Correction 2026-08-24" section) against `{a = {1,2}, b=<<#-2>>, c=
+    /// a b}`: `b`'s recoordinated `#-2` clone is wrongly treated as
+    /// SFF-descendant-and-foolishly-ignorant (`scope.has_ancestral_sfm` is
+    /// `true` when it should not be — a `step_inner` scope-propagation leak,
+    /// not the `push_ubc_child` enqueue guard D9 originally named), so its
+    /// stale `ECONSTANIC` NYES is preserved instead of reset, and `c` never
+    /// settles past `WOCONSTANIC`.
+    ///
+    /// **This test asserts the CURRENT BROKEN behavior, not the fix.** It
+    /// exists so the defect is pinned and cannot silently regress further
+    /// (or silently "fix itself" via an unrelated change without anyone
+    /// noticing) before the real fix — the Braning-state/predicate machinery
+    /// in §11 plus the `has_ancestral_sfm` leak fix — lands. When that fix
+    /// lands, REPLACE this assertion with the expected result from D9's
+    /// "Correction" section: `c` settles CONSTANT to the flattened
+    /// concatenation `{1,2,1,2}`.
+    #[test]
+    fn d9_recoordinated_index_currently_stuck_woconstanic() {
+        let root = Compiler::compile("{a = {1,2}, b=<<#-2>>, c= a b}")
+            .unwrap()
+            .pop()
+            .unwrap();
+        let scope = Scope::empty();
+
+        let trace = step_to_settled(&root, &scope);
+        assert_eq!(
+            *trace.last().unwrap(),
+            Nyes::Woconstanic,
+            "D9: if this changed, either the bug is fixed (update this test \
+             to assert the D9 'Correction' section's expected {{1,2,1,2}} \
+             result and promote/delete accordingly) or something else moved \
+             — do not leave this assertion stale either way"
+        );
+
+        let search_b = find_search(&root, "^b$").expect("search for b inside c");
+        let ubc_b: Vec<Nyes> = search_b
+            .borrow()
+            .core()
+            .ubc_children()
+            .iter()
+            .map(|c| c.borrow().core().get_nyes())
+            .collect();
+        assert_eq!(
+            ubc_b,
+            vec![Nyes::Econstanic, Nyes::Constant],
+            "D9: `?b`'s result pair should be [cloned #-2 body (stuck \
+             Econstanic), FoolRefFir to b (Constant)] -- this is the \
+             has_ancestral_sfm leak's signature. If this changed, the leak \
+             may already be partially addressed; re-trace before assuming."
+        );
+    }
+
     #[test]
     fn brane_fir_reports_its_own_characterizations() {
         // Pins the BraneFir.characterizations: Vec<String> → Characterizations
