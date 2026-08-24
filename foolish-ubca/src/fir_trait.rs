@@ -60,12 +60,6 @@ pub enum FirKind {
     /// A `system.foo` boolean OR operator (`'or`). Two SFF-marked operand
     /// lookups, boolean logic on `'True`/`'False` creations. FOOP-55 §2.
     Or,
-    /// A `system.foo` order-statistic operator (`'min_int_val`,
-    /// `'max_int_val`). Unlike the operators above it takes **no fixed
-    /// operands**: declared as a BRANE wrapping the FIR, it is spliced into a
-    /// concatenation and folds the integers preceding it, selecting by index
-    /// into their ascending sort. FOOP-55 §7.
-    Extremum,
     /// `anchor@` — a search result's POSITION (FOOP-55 §8). A continuation:
     /// the anchor must BE a search. Yields the found index, -1 when the scan
     /// exhausted its candidates, or NK when there was nothing to scan.
@@ -379,12 +373,6 @@ pub trait Fir: std::fmt::Debug {
     /// by the search), defaulting to `false` for kinds that never scan.
     fn candidates_exhausted(&self) -> bool {
         false
-    }
-
-    /// An `Extremum` FIR's sort index and `system.foo` name (FOOP-55 §7).
-    /// `None` for every other kind.
-    fn as_extremum_config(&self) -> Option<(i64, &'static str)> {
-        None
     }
 
     fn stmt_count(&self) -> Option<usize> {

@@ -546,9 +546,16 @@ mark in one program, with no `'mod`/`'or`/`'cmod` in the way. Euler 1 then gets
 - [ ] Review every OUTPUT statement, then promote through the Promotion Review
       Gate
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
-- [ ] **DECIDE**: with §8 landed, are §7 (`ExtremumFir`) and Phase 3D (`'ite`)
+- [x] **DECIDE**: with §8 landed, are §7 (`ExtremumFir`) and Phase 3D (`'ite`)
       still needed? Both were routes to the same end. Delete what §8 made
       redundant rather than carrying it.
+      (2026-08-24) §8 (`@`) is confirmed implemented and wired
+      (`SearchPositionFir::combine`, `fir_kinds.rs:751-794`; dispatched from
+      `evaluator.rs:373` and `fir_kinds.rs:376`). §7 (`ExtremumFir`) is
+      superseded — remove it (Phase 3D2 below). Phase 3D (`'ite`) is a
+      separate mechanism (branch selection via SFF-marked table lookup, not
+      order-statistic selection) and is NOT superseded by §8; it proceeds
+      below unchanged.
 
 ## Phase 3D — §5: rewrite `'ite` and remove the directive
 
@@ -569,6 +576,87 @@ mark in one program, with no `'mod`/`'or`/`'cmod` in the way. Euler 1 then gets
       mechanism does not. Confirm live before deleting; if a kind is still
       needed, record why in FOOP-55.md §5.
 - [ ] Run all tests — old and new — and make sure they all pass correctly.
+
+## Phase 3D2 — Remove `ExtremumFir` (§7), superseded by §8
+
+§7's order-statistic selection (`'min_int_val`/`'max_int_val`) was a route to
+values Euler 1 needs; §8 (`@`/pattern matching) is confirmed implemented and
+supersedes it (Phase 3E's DECIDE box, above, 2026-08-24). `exercises/
+fibonacci/1.foo` and `exercises/project_euler/1.foo` are this FOOP's target
+features going forward — remove code that is no longer on the path to
+either.
+
+- [x] Establish relevant tests for this phase. Use
+      [these instructions](../../README.md#running-specific-tests) to run
+      unit tests: `foolish-ubca::system_foo::extremum_selects_min_and_max`,
+      `foolish-ubca::system_foo::extremum_result_is_independent`,
+      `foolish-ubca::system_foo::extremum_skips_non_integer_members`,
+      `foolish-ubca::system_foo::extremum_with_no_integer_candidates_settles_nk`
+      (all four are deleted by this phase, not fixed — confirm each is gone
+      after, not passing).
+      (2026-08-24 07:55)
+- [x] Remove `ExtremumFir` and its impl from `foolish-ubca/src/system_foo.rs`
+      (struct, `impl ExtremumFir`, `impl Fir for ExtremumFir`, the
+      `ALIASES` registration loop, and the four `extremum_*` unit tests).
+      (2026-08-24 07:55)
+- [x] Remove the `FirKind::Extremum` dispatch arm from
+      `foolish-ubca/src/evaluator.rs:381-395`.
+      (2026-08-24 07:55)
+- [x] Remove `FirKind::Extremum` from `foolish-ubca/src/fir_trait.rs:68` and
+      `as_extremum_config`/its default impl at `fir_trait.rs:384-386`.
+      (2026-08-24 07:55)
+- [x] Grep for any remaining `Extremum`/`extremum` reference (including
+      `'min_int_val`/`'max_int_val` in einmo `.foo` inputs) and remove or
+      update each; none should remain.
+      (2026-08-24 07:55) Confirmed zero remaining references in
+      `foolish-ubca/src/*.rs`; also removed the two declarations in
+      `system/system.foo` (not originally listed above — found during the
+      sweep). No einmo `.foo` input referenced either alias.
+- [x] Update FOOP-55.md §7 to state plainly, at its top, that `ExtremumFir`
+      was removed (2026-08-24) as superseded by §8, with a pointer to this
+      phase — do not delete §7's text outright; it documents a design that
+      was built, worked, and was later superseded, which is worth keeping
+      as a record (matches how §10 documents the `BraneConcatOp` rename
+      rather than silently rewriting history).
+      (2026-08-24 07:55)
+- [x] Run all tests — old and new — and make sure they all pass correctly.
+      (Confirms 3 of the 5 currently-broken tests — `extremum_result_is_
+      independent`, `extremum_selects_min_and_max`,
+      `extremum_skips_non_integer_members` — are gone rather than fixed.)
+      (2026-08-24 07:55) `cargo check -p foolish-ubca` and
+      `cargo clippy -p foolish-ubca --all-targets -- -D warnings` both clean.
+      `cargo test --workspace`: all four `extremum_*` tests confirmed gone
+      (374 tests remain, filtered-count dropped from 378; explicit
+      `-- extremum` filter now matches 0). Remaining failures are
+      `einmo_gate_checked`/`einmo_gate_verified` only, both pre-existing and
+      listing exactly the expected in-scope divergences (`exercises/
+      fibonacci/1.foo`, `exercises/project_euler/1.foo`, plus the parallel
+      session's own in-flight §10/§9.2 concat work on this shared branch) —
+      not a regression introduced by this phase. `cargo fmt --check` shows
+      pre-existing drift in `compiler.rs`/`fir_kinds.rs` only, from the
+      parallel session's concurrent commits — no file touched by this phase
+      has any fmt drift.
+
+## Phase 3H — §11: `fir_op_step` as four event handlers — **BLOCKED on design**
+
+**Do not start implementation.** FOOP-55.md §11 is a proposal under active
+discussion, not yet a specification — see its Open Questions, including
+whether this refactor is even required before the fibonacci/Euler-1 fix, or
+is better split into its own FOOP. This phase is a placeholder recording
+where the work will slot in once §11 is resolved.
+
+- [ ] (read FOOP-55.md §11 in full, including its Open Questions, before any
+      work here)
+- [ ] **DECIDE, with the human**: does making `exercises/fibonacci/1.foo`
+      and `exercises/project_euler/1.foo` settle require this refactor, or
+      only D9's narrower fix (`ProtoBrane::push_ubc_child`'s enqueue guard,
+      `proto_brane.rs:200-205`)? If the narrower fix suffices, land that
+      first as its own phase and revisit §11 separately (possibly as its own
+      FOOP, per `foop.md`'s Project Segmentation guidance — a change to the
+      shared stepping contract across every FIR kind is Major/Phase-sized in
+      its own right, not a sub-task of Euler 1).
+- [ ] (this phase intentionally has no further tasks until the DECIDE box
+      above is checked and §11's Open Questions are resolved)
 
 ## Phase 3G — §9: concatenation ergonomics  ← **PRIORITY 2 (correctness)**
 
@@ -1060,30 +1148,26 @@ the exercise is green and the real cost is known.
 
 ## Last Updated
 
-**Date**: 2026-08-22
+**Date**: 2026-08-24
 **Updated By**: Claude Code / claude-sonnet-5
-**Changes**: Root-caused a live `einmo_gate_checked` failure: several
-FOOP-65-owned baselines had regressed on this branch, which per the
-non-regression invariant meant something in FOOP-55's own work had broken
-them. Bisection found two distinct causes and this update records the plan
-consequences (full narrative in FOOP-55.md's own Last Updated and its new
-§5.5/§D10/§D11). **3G.5** (D9) gained a pointer to new **§5.5 — search-context
-constancy**, the general rule D9 and D10 are both violations of: a
-content/search query needs its search context constanic, produced by
-ordinary stepping — never assumed from a pre-clone NYES, never approximated
-by a partial answer, since UBCa's SFF mark already carries whatever
-deferral would otherwise require one. **New 3G.6** promotes D10 from an
-off-critical-path follow-up to a required fix: it is the live cause of
-`foop/65/tail_concat_chain.foo.einmo` and `foop/65/comprehensive.foo.einmo`
-silently dropping elements, gates `ConcatenationFir::stmt_count`/`stmt_at`
-on `is_constanic()`, splits `constanic_is_brane_like()`'s conflated
-shape/content questions, and fixes two ungated anchored-search sites the
-same survey found. **New 3G.6b** commits an already-fixed, unrelated
-defect (D11) the same bisection found: a compiler refactor merging the
-`Concatenation`/`TailConcatenation` build arms dropped the `.rev()`
-FOOP-65's backtick equivalence depends on. **New 3G.6c** and a **Phase 3B**
-addition flag `misc/concat_sf_f_more.foo` for the same human-approval
-deprecation path already used for `misc/sff_nested.foo` — its divergence is
-§5's strip-budget correctly deferring a nested mark, not a bug. Prior
+**Changes**: Checked the **Phase 3E DECIDE box** (§7/Phase 3D vs. §8): §8
+(`@`) is confirmed implemented, so §7 (`ExtremumFir`) is superseded and
+removed; Phase 3D (`'ite`) is a different mechanism, not superseded, and
+proceeds unchanged. **New Phase 3D2** removes `ExtremumFir` end to end
+(`system_foo.rs` struct/impl/tests, the `evaluator.rs`/`fir_trait.rs`
+dispatch stubs, any remaining `'min_int_val`/`'max_int_val` references),
+which also retires 3 of the 5 currently-broken tests
+(`extremum_result_is_independent`, `extremum_selects_min_and_max`,
+`extremum_skips_non_integer_members`) by deleting them rather than fixing
+them — they test a FIR kind this phase removes. **New Phase 3H** is a
+placeholder, explicitly marked BLOCKED, for the `fir_op_step`-as-four-
+event-handlers refactor recorded in FOOP-55.md's new §11: that section is a
+design proposal under active discussion, not yet buildable, and Phase 3H's
+first task is a DECIDE box asking whether the refactor is required before
+`exercises/fibonacci/1.foo` and `exercises/project_euler/1.foo` settle, or
+whether a narrower D9 fix (`ProtoBrane::push_ubc_child`'s enqueue guard)
+suffices on its own — and whether the refactor, given its cross-cutting
+scope across every FIR kind, belongs in its own FOOP rather than as a
+sub-phase of Euler 1. No implementation has started under Phase 3H. Prior
 history of this section is in `git log`/`git blame` on this file, not
 accreted here.

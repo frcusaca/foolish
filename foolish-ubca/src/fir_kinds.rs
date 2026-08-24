@@ -386,20 +386,6 @@ impl ProtoBrane {
                 );
                 RefCell::new(SearchPositionFir { core })
             }),
-            FirKind::Extremum => {
-                let (index, name) = borrowed
-                    .as_extremum_config()
-                    .expect("an Extremum FIR must report its index and name");
-                crate::system_foo::ExtremumFir::constanic_clone(
-                    &borrowed,
-                    new_parent,
-                    nyes,
-                    descendent_of_sfm_and_foolishly_ignorant,
-                    skip_foolish_children,
-                    index,
-                    name,
-                )
-            }
             FirKind::Search => {
                 let clone_nyes_val =
                     nyes.transform_for_clone(descendent_of_sfm_and_foolishly_ignorant);
